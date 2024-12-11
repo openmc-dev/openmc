@@ -1147,40 +1147,56 @@ void sample_secondary_photons(Particle& p, int i_nuclide)
   // Sample the number of photons produced
   double y_t =
     p.neutron_xs(i_nuclide).photon_prod / p.neutron_xs(i_nuclide).total;
-  if (y_t <= 0.0)
-    return;
+  double photon_wgt = p.wgt();
+  int y = 1;
 
-  // Sample the reaction and product
-  int i_rx;
-  int i_product;
-  sample_photon_product(i_nuclide, p, &i_rx, &i_product);
-
-  // Sample the outgoing energy and angle
-  auto& rx = data::nuclides[i_nuclide]->reactions_[i_rx];
-  double E;
-  double mu;
-  rx->products_[i_product].sample(p.E(), E, mu, p.current_seed());
-
-  // Sample the new direction
-  Direction u = rotate_angle(p.u(), mu, nullptr, p.current_seed());
-
-  // In a k-eigenvalue simulation, it's necessary to provide higher weight to
-  // secondary photons from non-fission reactions to properly balance energy
-  // release and deposition. See D. P. Griesheimer, S. J. Douglass, and M. H.
-  // Stedry, "Self-consistent energy normalization for quasistatic reactor
-  // calculations", Proc. PHYSOR, Cambridge, UK, Mar 29-Apr 2, 2020.
-  double wgt = y_t * p.wgt();
-  if (settings::run_mode == RunMode::EIGENVALUE && !is_fission(rx->mt_)) {
-    wgt = simulation::keff * p.wgt();
+  if (settings::use_decay_photons) {
+    // For decay photons, sample a single photon and modify the weight
+    if (y_t <= 0.0)
+      return;
+    photon_wgt *= y_t;
+  } else {
+    // For prompt photons, sample an integral number of photons with weight
+    // equal to the neutron's weight
+    y = static_cast<int>(y_t);
+    if (prn(p.current_seed()) <= y_t - y)
+      ++y;
   }
 
-  // Create the secondary photon
-  bool created_photon = p.create_secondary(wgt, u, E, ParticleType::photon);
+  // Sample each secondary photon
+  for (int i = 0; i < y; ++i) {
+    // Sample the reaction and product
+    int i_rx;
+    int i_product;
+    sample_photon_product(i_nuclide, p, &i_rx, &i_product);
 
-  // Tag secondary particle with parent nuclide
-  if (created_photon && settings::use_decay_photons) {
-    p.secondary_bank().back().parent_nuclide =
-      rx->products_[i_product].parent_nuclide_;
+    // Sample the outgoing energy and angle
+    auto& rx = data::nuclides[i_nuclide]->reactions_[i_rx];
+    double E;
+    double mu;
+    rx->products_[i_product].sample(p.E(), E, mu, p.current_seed());
+
+    // Sample the new direction
+    Direction u = rotate_angle(p.u(), mu, nullptr, p.current_seed());
+
+    // In a k-eigenvalue simulation, it's necessary to provide higher weight to
+    // secondary photons from non-fission reactions to properly balance energy
+    // release and deposition. See D. P. Griesheimer, S. J. Douglass, and M. H.
+    // Stedry, "Self-consistent energy normalization for quasistatic reactor
+    // calculations", Proc. PHYSOR, Cambridge, UK, Mar 29-Apr 2, 2020.
+    double wgt = photon_wgt;
+    if (settings::run_mode == RunMode::EIGENVALUE && !is_fission(rx->mt_)) {
+      wgt *= simulation::keff;
+    }
+
+    // Create the secondary photon
+    bool created_photon = p.create_secondary(wgt, u, E, ParticleType::photon);
+
+    // Tag secondary particle with parent nuclide
+    if (created_photon && settings::use_decay_photons) {
+      p.secondary_bank().back().parent_nuclide =
+        rx->products_[i_product].parent_nuclide_;
+    }
   }
 }
 

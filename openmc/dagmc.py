@@ -161,10 +161,8 @@ class DAGMCUniverse(openmc.UniverseBase):
             elif int(key) in self.cells:
                 keys = [self.cells[int(key)]]
             else:
-                keys = []
-                for cell in self.cells.values():
-                    if cell.fill.name == KeyError:
-                        keys.append(self.cells[cell.id])        
+               raise ValueError(
+                    f"Material or Cell ID '{key}' not found in DAGMC universe")
         elif isinstance(key, int):
             if key not in self.cells:
                 raise ValueError(

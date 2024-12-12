@@ -459,13 +459,11 @@ class DAGMCUniverse(openmc.UniverseBase):
         out.auto_mat_ids = bool(elem.get('auto_mat_ids'))
 
         for item in elem.find('material_overrides').attrib:
-            cell_id, overwrite = item
-            for mat_name in overwrite.split():
-                for mat in mats:
-                    if mat_name == mat.name:
-                        out.material_overrides.setdefault(
-                                    cell_id.lower(), []).append(mat)
-
+            cell_id = int(item.split('_')[1])
+            mat_ids = elem.find('material_overrides').attrib[item].split(';')
+            mat_objs = [mats[mat_id] for mat_id in mat_ids]
+            out.add_material_override(cell_id, mat_objs)
+    
         return out
 
     def _partial_deepcopy(self):

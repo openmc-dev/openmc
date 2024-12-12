@@ -170,7 +170,11 @@ class DAGMCUniverse(openmc.UniverseBase):
             else:
                 keys = [self.cells[key]]
         elif isinstance(key, openmc.Cell):
-            keys = [key]
+            if key not in self.cells.values():
+                raise ValueError(
+                    f"Cell '{key.id}' not found in DAGMC universe")
+            else:
+                keys = [key]
         else:
             print("Key is a ", type(key))
             raise ValueError("Unrecognized key type. Must be a string or integer.")

@@ -394,6 +394,9 @@ Mixture::Mixture(pugi::xml_node node)
     distribution_.push_back(std::make_pair(cumsum, std::move(dist)));
   }
 
+  // Save integral of distribution
+  integral_ = cumsum;
+
   // Normalize cummulative probabilities to 1
   for (auto& pair : distribution_) {
     pair.first /= cumsum;

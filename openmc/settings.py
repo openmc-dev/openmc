@@ -8,12 +8,14 @@ from pathlib import Path
 import lxml.etree as ET
 
 import openmc.checkvalue as cv
-from openmc.stats.multivariate import MeshSpatial
-from . import (RegularMesh, SourceBase, MeshSource, IndependentSource,
-               VolumeCalculation, WeightWindows, WeightWindowGenerator)
-from ._xml import clean_indentation, get_text, reorder_attributes
 from openmc.checkvalue import PathLike
-from .mesh import _read_meshes
+from openmc.stats.multivariate import MeshSpatial
+from ._xml import clean_indentation, get_text, reorder_attributes
+from .mesh import _read_meshes, RegularMesh
+from .source import SourceBase, MeshSource, IndependentSource
+from .utility_funcs import input_path
+from .volume import VolumeCalculation
+from .weight_windows import WeightWindows, WeightWindowGenerator
 
 
 class RunMode(Enum):
@@ -168,6 +170,9 @@ class Settings:
             cm/cm^3. When disabled, flux tallies will be reported in units
             of cm (i.e., total distance traveled by neutrons in the spatial
             tally region).
+        :adjoint:
+            Whether to run the random ray solver in adjoint mode (bool). The
+            default is 'False'.
 
         .. versionadded:: 0.15.0
     resonance_scattering : dict
@@ -261,6 +266,9 @@ class Settings:
         Maximum number of batches simulated. If this is set, the number of
         batches specified via ``batches`` is interpreted as the minimum number
         of batches
+    uniform_source_sampling : bool
+        Whether to sampling among multiple sources uniformly, applying their
+        strengths as weights to sampled particles.
     ufs_mesh : openmc.RegularMesh
         Mesh to be used for redistributing source sites via the uniform fission
         site (UFS) method.
@@ -323,6 +331,7 @@ class Settings:
         self._photon_transport = None
         self._plot_seed = None
         self._ptables = None
+        self._uniform_source_sampling = None
         self._seed = None
         self._survival_biasing = None
 
@@ -571,6 +580,15 @@ class Settings:
         self._photon_transport = photon_transport
 
     @property
+    def uniform_source_sampling(self) -> bool:
+        return self._uniform_source_sampling
+
+    @uniform_source_sampling.setter
+    def uniform_source_sampling(self, uniform_source_sampling: bool):
+        cv.check_type('strength as weights', uniform_source_sampling, bool)
+        self._uniform_source_sampling = uniform_source_sampling
+
+    @property
     def plot_seed(self):
         return self._plot_seed
 
@@ -699,14 +717,18 @@ class Settings:
         return self._surf_source_read
 
     @surf_source_read.setter
-    def surf_source_read(self, surf_source_read: dict):
-        cv.check_type('surface source reading options', surf_source_read, Mapping)
-        for key, value in surf_source_read.items():
+    def surf_source_read(self, ssr: dict):
+        cv.check_type('surface source reading options', ssr, Mapping)
+        for key, value in ssr.items():
             cv.check_value('surface source reading key', key,
                            ('path'))
             if key == 'path':
-                cv.check_type('path to surface source file', value, str)
-        self._surf_source_read = surf_source_read
+                cv.check_type('path to surface source file', value, PathLike)
+        self._surf_source_read = dict(ssr)
+
+        # Resolve path to surface source file
+        if 'path' in ssr:
+            self._surf_source_read['path'] = input_path(ssr['path'])
 
     @property
     def surf_source_write(self) -> dict:
@@ -1066,8 +1088,8 @@ class Settings:
 
     @weight_windows_file.setter
     def weight_windows_file(self, value: PathLike):
-        cv.check_type('weight windows file', value, (str, Path))
-        self._weight_windows_file = value
+        cv.check_type('weight windows file', value, PathLike)
+        self._weight_windows_file = input_path(value)
 
     @property
     def weight_window_generators(self) -> list[WeightWindowGenerator]:
@@ -1107,6 +1129,8 @@ class Settings:
                                ('flat', 'linear', 'linear_xy'))
             elif key == 'volume_normalized_flux_tallies':
                 cv.check_type('volume normalized flux tallies', random_ray[key], bool)
+            elif key == 'adjoint':
+                cv.check_type('adjoint', random_ray[key], bool)
             else:
                 raise ValueError(f'Unable to set random ray to "{key}" which is '
                                  'unsupported by OpenMC')
@@ -1210,6 +1234,11 @@ class Settings:
                 subelement.text = ' '.join(
                     str(x) for x in self._statepoint['batches'])
 
+    def _create_uniform_source_sampling_subelement(self, root):
+        if self._uniform_source_sampling is not None:
+            element = ET.SubElement(root, "uniform_source_sampling")
+            element.text = str(self._uniform_source_sampling).lower()
+
     def _create_sourcepoint_subelement(self, root):
         if self._sourcepoint:
             element = ET.SubElement(root, "source_point")
@@ -1241,7 +1270,7 @@ class Settings:
             element = ET.SubElement(root, "surf_source_read")
             if 'path' in self._surf_source_read:
                 subelement = ET.SubElement(element, "path")
-                subelement.text = self._surf_source_read['path']
+                subelement.text = str(self._surf_source_read['path'])
 
     def _create_surf_source_write_subelement(self, root):
         if self._surf_source_write:
@@ -1501,7 +1530,7 @@ class Settings:
     def _create_weight_windows_file_element(self, root):
         if self.weight_windows_file is not None:
             element = ET.Element("weight_windows_file")
-            element.text = self.weight_windows_file
+            element.text = str(self.weight_windows_file)
             root.append(element)
 
     def _create_weight_window_checkpoints_subelement(self, root):
@@ -1645,9 +1674,11 @@ class Settings:
     def _surf_source_read_from_xml_element(self, root):
         elem = root.find('surf_source_read')
         if elem is not None:
+            ssr = {}
             value = get_text(elem, 'path')
             if value is not None:
-                self.surf_source_read['path'] = value
+                ssr['path'] = value
+            self.surf_source_read = ssr
 
     def _surf_source_write_from_xml_element(self, root):
         elem = root.find('surf_source_write')
@@ -1688,6 +1719,11 @@ class Settings:
         text = get_text(root, 'photon_transport')
         if text is not None:
             self.photon_transport = text in ('true', '1')
+
+    def _uniform_source_sampling_from_xml_element(self, root):
+        text = get_text(root, 'uniform_source_sampling')
+        if text is not None:
+            self.uniform_source_sampling = text in ('true', '1')
 
     def _plot_seed_from_xml_element(self, root):
         text = get_text(root, 'plot_seed')
@@ -1908,6 +1944,10 @@ class Settings:
                     self.random_ray['volume_normalized_flux_tallies'] = (
                         child.text in ('true', '1')
                     )
+                elif child.tag == 'adjoint':
+                    self.random_ray['adjoint'] = (
+                        child.text in ('true', '1')
+                    )
 
     def to_xml_element(self, mesh_memo=None):
         """Create a 'settings' element to be written to an XML file.
@@ -1940,6 +1980,7 @@ class Settings:
         self._create_energy_mode_subelement(element)
         self._create_max_order_subelement(element)
         self._create_photon_transport_subelement(element)
+        self._create_uniform_source_sampling_subelement(element)
         self._create_plot_seed_subelement(element)
         self._create_ptables_subelement(element)
         self._create_seed_subelement(element)
@@ -2046,6 +2087,7 @@ class Settings:
         settings._energy_mode_from_xml_element(elem)
         settings._max_order_from_xml_element(elem)
         settings._photon_transport_from_xml_element(elem)
+        settings._uniform_source_sampling_from_xml_element(elem)
         settings._plot_seed_from_xml_element(elem)
         settings._ptables_from_xml_element(elem)
         settings._seed_from_xml_element(elem)

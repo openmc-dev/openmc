@@ -5,6 +5,7 @@ from copy import deepcopy
 from numbers import Real
 from pathlib import Path
 import re
+import sys
 import warnings
 
 import lxml.etree as ET
@@ -16,6 +17,7 @@ import openmc.data
 import openmc.checkvalue as cv
 from ._xml import clean_indentation, reorder_attributes
 from .mixin import IDManagerMixin
+from .utility_funcs import input_path
 from openmc.checkvalue import PathLike
 from openmc.stats import Univariate, Discrete, Mixture
 from openmc.data.data import _get_element_symbol
@@ -24,6 +26,9 @@ from openmc.data.data import _get_element_symbol
 # Units for density supported by OpenMC
 DENSITY_UNITS = ('g/cm3', 'g/cc', 'kg/m3', 'atom/b-cm', 'atom/cm3', 'sum',
                  'macro')
+
+# Smallest normalized floating point number
+_SMALLEST_NORMAL = sys.float_info.min
 
 
 NuclideTuple = namedtuple('NuclideTuple', ['name', 'percent', 'percent_type'])
@@ -321,7 +326,7 @@ class Material(IDManagerMixin):
         probs = []
         for nuc, atoms_per_bcm in self.get_nuclide_atom_densities().items():
             source_per_atom = openmc.data.decay_photon_energy(nuc)
-            if source_per_atom is not None:
+            if source_per_atom is not None and atoms_per_bcm > 0.0:
                 dists.append(source_per_atom)
                 probs.append(1e24 * atoms_per_bcm * multiplier)
 
@@ -333,6 +338,11 @@ class Material(IDManagerMixin):
         combined = openmc.data.combine_distributions(dists, probs)
         if isinstance(combined, (Discrete, Mixture)):
             combined.clip(clip_tolerance, inplace=True)
+
+        # If clipping resulted in a single distribution within a mixture, pick
+        # out that single distribution
+        if isinstance(combined, Mixture) and len(combined.distribution) == 1:
+            combined = combined.distribution[0]
 
         return combined
 
@@ -1338,10 +1348,16 @@ class Material(IDManagerMixin):
         xml_element = ET.Element("nuclide")
         xml_element.set("name", nuclide.name)
 
+        # Prevent subnormal numbers from being written to XML, which causes an
+        # exception on the C++ side when calling std::stod
+        val = nuclide.percent
+        if abs(val) < _SMALLEST_NORMAL:
+            val = 0.0
+
         if nuclide.percent_type == 'ao':
-            xml_element.set("ao", str(nuclide.percent))
+            xml_element.set("ao", str(val))
         else:
-            xml_element.set("wo", str(nuclide.percent))
+            xml_element.set("wo", str(val))
 
         return xml_element
 
@@ -1520,7 +1536,7 @@ class Material(IDManagerMixin):
         if name is None:
             name = '-'.join([f'{m.name}({f})' for m, f in
                              zip(materials, fracs)])
-        new_mat = openmc.Material(name=name)
+        new_mat = cls(name=name)
 
         # Compute atom fractions of nuclides and add them to the new material
         tot_nuclides_per_cc = np.sum([dens for dens in nuclides_per_cc.values()])
@@ -1643,7 +1659,7 @@ class Materials(cv.CheckedList):
     @cross_sections.setter
     def cross_sections(self, cross_sections):
         if cross_sections is not None:
-            self._cross_sections = Path(cross_sections)
+            self._cross_sections = input_path(cross_sections)
 
     def append(self, material):
         """Append material to collection

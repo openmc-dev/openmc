@@ -79,7 +79,18 @@ DAGUniverse::DAGUniverse(pugi::xml_node node)
     for (pugi::xml_attribute attr = mat_node.first_attribute(); attr;
          attr = attr.next_attribute()) {
       // Store assignment reference name
-      std::string mat_ref_assignment = attr.name();
+      std::string ref_assignment = attr.name();
+      // Check formating of the key name (should be cell_XX, with XX matching a
+      // DAGMC Cell_ID)
+      size_t cell_str_pos = ref_assignment.find("cell_");
+      if (cell_str_pos != std::string::npos) {
+        ref_assignment = ref_assignment.substr(5);
+      } else {
+        fatal_error(fmt::format(
+          "Material override key name {} is not in the correct format. "
+          "It should be cell_XX, with XX matching a DAGMC Cell_ID",
+          ref_assignment));
+      }
 
       // Get mat name for each assignement instances
       std::stringstream iss {attr.value()};
@@ -87,7 +98,7 @@ DAGUniverse::DAGUniverse(pugi::xml_node node)
 
       // Store mat name for each instances
       material_overrides.insert(
-        std::make_pair(mat_ref_assignment, instance_mats));
+        std::make_pair(std::stoi(ref_assignment), instance_mats));
     }
   }
 
@@ -234,9 +245,8 @@ void DAGUniverse::init_geometry()
     if (mat_str == "void" || mat_str == "vacuum" || mat_str == "graveyard") {
       c->material_.push_back(MATERIAL_VOID);
     } else {
-      if (material_overrides.count("id_" + std::to_string(c->id_)) ||
-          material_overrides.count(mat_str)) { // Check for material override
-        override_assign_material(mat_str, vol_handle, c);
+      if (material_overrides.count(c->id_)) { // Check for material override
+        override_assign_material(c);
       } else if (uses_uwuw()) { // UWUW assignement
         uwuw_assign_material(vol_handle, c);
       } else { // legacy assignement
@@ -631,8 +641,7 @@ void DAGUniverse::uwuw_assign_material(
 #endif // OPENMC_UWUW
 }
 
-void DAGUniverse::override_assign_material(std::string key,
-  moab::EntityHandle vol_handle, std::unique_ptr<DAGCell>& c) const
+void DAGUniverse::override_assign_material(std::unique_ptr<DAGCell>& c) const
 {
 
   // if Cell ID matches an override key, use it to override the material
@@ -640,15 +649,16 @@ void DAGUniverse::override_assign_material(std::string key,
   // metadata
   // Notify User that an override is being applied on a DAGMCCell
   write_message(fmt::format("Applying override for DAGMCCell {}", c->id_), 8);
-  if (material_overrides.count("id_" + std::to_string(c->id_))) {
-    key = "id_" + std::to_string(c->id_);
-  } else if (uses_uwuw()) {
-    key = dmd_ptr->volume_material_property_data_eh[vol_handle];
+
+  if (c->n_instances_ != material_overrides.at(c->id_).size()) {
+    fatal_error(fmt::format("Material override key {} has a different number "
+                            "of instances than the cell has instances",
+      c->id_));
   }
 
   // Override the material assignment for each cell instance using the legacy
   // assignement
-  for (auto mat_str_instance : material_overrides.at(key)) {
+  for (auto mat_str_instance : material_overrides.at(c->id_)) {
     legacy_assign_material(mat_str_instance, c);
   }
 }

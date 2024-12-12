@@ -134,10 +134,8 @@ public:
     std::string mat_string, std::unique_ptr<DAGCell>& c) const;
 
   //! Assign a material overriding normal assignement to a cell
-  //! \param[in] key The material key to override
   //! \param[in] c The OpenMC cell to which the material is assigned
-  void override_assign_material(std::string key, moab::EntityHandle vol_handle,
-    std::unique_ptr<DAGCell>& c) const;
+  void override_assign_material(std::unique_ptr<DAGCell>& c) const;
 
   //! Return the index into the model cells vector for a given DAGMC volume
   //! handle in the universe
@@ -190,10 +188,9 @@ private:
                              //!< generate new material IDs for the universe
   bool has_graveyard_; //!< Indicates if the DAGMC geometry has a "graveyard"
                        //!< volume
-  std::map<std::string, vector<std::string>>
+  std::map<int, vector<std::string>>
     material_overrides; ///!< Map of material overrides
-                        ///!< keys correspond to the material name
-                        ///!< or id
+                        ///!< keys correspond to the DAGMCCell id
                         ///!< values are a list of materials used
                         ///!< git for the override
 };

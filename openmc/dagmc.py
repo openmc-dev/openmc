@@ -100,7 +100,7 @@ class DAGMCUniverse(openmc.UniverseBase):
         self.filename = filename
         self.auto_geom_ids = auto_geom_ids
         self.auto_mat_ids = auto_mat_ids
-        self._material_overrides = mat_overrides
+        self.material_overrides = mat_overrides
         self._dagmc_cells = []
 
     def __repr__(self):
@@ -138,13 +138,6 @@ class DAGMCUniverse(openmc.UniverseBase):
         else:
             cv.check_type('material overrides', val, dict)
             for key, value in val.items():
-                # ensuring key is a string and exists in the DAGMC file
-                cv.check_type('material name', key, str)
-                if key not in self.material_names:
-                    raise ValueError(
-                        f"Material name '{key}' not found in DAGMC file")
-                # ensuring overrides is an iterable of openmc.Material
-                cv.check_iterable_type('material objects', value, openmc.Material)
                 self.add_material_override(key, value)
 
     def add_material_override(self, key, overrides=None):
@@ -155,7 +148,7 @@ class DAGMCUniverse(openmc.UniverseBase):
         Parameters
         ----------
         key : str
-            Material name to override
+            Material name or ID of the Cell to override
         value : Iterable of Materials
             Materials to replace the key with
 
@@ -172,23 +165,28 @@ class DAGMCUniverse(openmc.UniverseBase):
                 for cell in self.cells.values():
                     if cell.fill.name == KeyError:
                         keys.append(self.cells[cell.id])        
-        elif isinstance(key, int()):
+        elif isinstance(key, int):
             if key not in self.cells:
                 raise ValueError(
                     f"Cell ID '{key}' not found in DAGMC universe")
             else:
                 keys = [self.cells[key]]
-
+        elif isinstance(key, openmc.Cell):
+            keys = [key]
         else:
+            print("Key is a ", type(key))
             raise ValueError("Unrecognized key type. Must be a string or integer.")
 
         # Ensure that overrides is an iterable of openmc.Material
         if not isinstance(overrides, Iterable):
             overrides = [overrides]
-        cv.check_iterable_type('material objects', overrides, openmc.Materials)
+        cv.check_iterable_type('material objects', overrides, openmc.Material)
 
-        for key in key:
-            self._material_overrides[key] = overrides
+        # if material_overrides is not initialized, initialize it
+        if not self._material_overrides:
+            self._material_overrides = {}
+        for item in keys:
+            self._material_overrides[item] = overrides
 
     @property
     def auto_geom_ids(self):
@@ -306,10 +304,9 @@ class DAGMCUniverse(openmc.UniverseBase):
         Returns:
             None
         """
-        self._material_overrides = {}
         for cell in self.cells.values():
             if isinstance(cell.fill, Iterable):
-                self._material_overrides[cell] = [mat for mat in cell.fill if mat]
+                self.add_material_override(cell, [mat for mat in cell.fill if mat])
 
     def bounding_region(
         self,

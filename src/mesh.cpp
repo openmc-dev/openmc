@@ -2935,6 +2935,11 @@ LibMesh::LibMesh(pugi::xml_node node) : UnstructuredMesh(node), adaptive_(false)
 LibMesh::LibMesh(libMesh::MeshBase& input_mesh, double length_multiplier)
   : adaptive_(input_mesh.n_active_elem() != input_mesh.n_elem())
 {
+  if (!dynamic_cast<libMesh::ReplicatedMesh*>(&input_mesh)) {
+    fatal_error("At present LibMesh tallies require a replicated mesh. Please "
+                "ensure 'input_mesh' is a libMesh::ReplicatedMesh.");
+  }
+
   m_ = &input_mesh;
   set_length_multiplier(length_multiplier);
   initialize();
@@ -2952,7 +2957,8 @@ LibMesh::LibMesh(const std::string& filename, double length_multiplier)
 void LibMesh::set_mesh_pointer_from_filename(const std::string& filename)
 {
   filename_ = filename;
-  unique_m_ = make_unique<libMesh::Mesh>(*settings::libmesh_comm, n_dimension_);
+  unique_m_ =
+    make_unique<libMesh::ReplicatedMesh>(*settings::libmesh_comm, n_dimension_);
   m_ = unique_m_.get();
   m_->read(filename_);
 }

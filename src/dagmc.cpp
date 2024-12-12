@@ -650,12 +650,6 @@ void DAGUniverse::override_assign_material(std::unique_ptr<DAGCell>& c) const
   // Notify User that an override is being applied on a DAGMCCell
   write_message(fmt::format("Applying override for DAGMCCell {}", c->id_), 8);
 
-  if (c->n_instances_ != material_overrides.at(c->id_).size()) {
-    fatal_error(fmt::format("Material override key {} has a different number "
-                            "of instances than the cell has instances",
-      c->id_));
-  }
-
   // Override the material assignment for each cell instance using the legacy
   // assignement
   for (auto mat_str_instance : material_overrides.at(c->id_)) {

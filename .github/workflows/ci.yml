@@ -158,6 +158,18 @@ jobs:
         run: |
           cpp-coveralls -i src -i include -e src/external --exclude-pattern "/usr/*" --dump cpp_cov.json
           coveralls --merge=cpp_cov.json --service=github
+  python-format-test:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with: 
+          python-version: 3.12
+      - run: pip install .[format]
+        name: install black
+      - run: black --check openmc/ tests/
+        name: Check if anything needs to be black formatted
 
   finish:
     needs: main

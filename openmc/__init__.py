@@ -45,7 +45,25 @@ from . import examples
 
 __version__ = importlib.metadata.version("openmc")
 
-def get_core_path(subdir, pattern="*", recursive=False):
+try:
+    OPENMC_CORE_BASE_PATH = os.path.join(__path__[0], "core")
+except NameError:
+    OPENMC_CORE_BASE_PATH = None
+
+if not OPENMC_CORE_BASE_PATH or not os.path.exists(OPENMC_CORE_BASE_PATH):
+    import sysconfig
+    OPENMC_CORE_BASE_PATH = os.path.join(sysconfig.get_path("platlib"), "openmc", "core")
+    if not os.path.exists(OPENMC_CORE_BASE_PATH):
+        raise ImportError("OpenMC is not installed. Please run 'pip install openmc'.")
+    warnings.warn(
+        "It seems OpenMC is being run from its source directory. "
+        "This setup is not recommended as it may lead to unexpected behavior, "
+        "such as conflicts between source and installed versions. "
+        "Please run your script from outside the OpenMC source tree.",
+        RuntimeWarning
+    )
+
+def get_paths(subdir, pattern="*", recursive=False):
     """
     Helper function to return paths that match a given pattern within a subdirectory.
 
@@ -57,30 +75,19 @@ def get_core_path(subdir, pattern="*", recursive=False):
     Returns:
         list: A list of matched paths.
     """
-    path = os.path.join(__path__[0], "core", subdir)
-    if not os.path.exists(path):
-        import sysconfig
-        path = os.path.join(sysconfig.get_path("platlib"), "openmc", "core", subdir)
-        warnings.warn(
-        "It seems OpenMC is being run from its source directory. "
-        "This setup is not recommended as it may lead to unexpected behavior, "
-        "such as conflicts between source and installed versions. "
-        "Please run your script from outside the OpenMC source tree.",
-        RuntimeWarning
-        )
-    search_pattern = os.path.join(path, "**", pattern) if recursive else os.path.join(path, pattern)
-    return glob.glob(search_pattern, recursive=recursive) if os.path.exists(path) else []
+    search_pattern = os.path.join(OPENMC_CORE_BASE_PATH, subdir, "**", pattern) if recursive else os.path.join(OPENMC_CORE_BASE_PATH, subdir, pattern)
+    return glob.glob(search_pattern, recursive=recursive) if os.path.exists(search_pattern) else []
 
 def get_include_path():
     """Return includes and include path for OpenMC headers."""
-    include = get_core_path("include", "*", recursive=True)
-    include_path = get_core_path("include", "", recursive=False)
+    include = get_paths("include", "*", recursive=True)
+    include_path = get_paths("include", "", recursive=False)
     return include, include_path
 
 def get_core_libraries():
     """Return libraries and library paths for OpenMC."""
-    lib = [lib_file for lib in ["lib", "lib64"] for lib_file in get_core_path(lib, "libopenmc*", recursive=True)]
-    lib_path = [lib_file for lib in ["lib", "lib64"] for lib_file in get_core_path(lib, "", recursive=False)]
+    lib = [lib_file for lib in ["lib", "lib64"] for lib_file in get_paths(lib, "libopenmc*", recursive=True)]
+    lib_path = [lib_file for lib in ["lib", "lib64"] for lib_file in get_paths(lib, "", recursive=False)]
     return lib, lib_path
 
 def get_extra_libraries():

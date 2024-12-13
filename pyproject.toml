@@ -63,5 +63,5 @@ Issues = "https://github.com/openmc-dev/openmc/issues"
 build.verbose = true
 logging.level = "INFO"
 wheel.install-dir = "openmc"
-wheel.packages = ["python/openmc"]
+wheel.packages = ["openmc"]
 sdist.include = ["*.h5"]

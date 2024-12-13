@@ -151,17 +151,20 @@ class MeshBase(IDManagerMixin, ABC):
         mesh_type = get_text(elem, 'type')
 
         if mesh_type == 'regular' or mesh_type is None:
-            return RegularMesh.from_xml_element(elem)
+            mesh = RegularMesh.from_xml_element(elem)
         elif mesh_type == 'rectilinear':
-            return RectilinearMesh.from_xml_element(elem)
+            mesh = RectilinearMesh.from_xml_element(elem)
         elif mesh_type == 'cylindrical':
-            return CylindricalMesh.from_xml_element(elem)
+            mesh = CylindricalMesh.from_xml_element(elem)
         elif mesh_type == 'spherical':
-            return SphericalMesh.from_xml_element(elem)
+            mesh = SphericalMesh.from_xml_element(elem)
         elif mesh_type == 'unstructured':
-            return UnstructuredMesh.from_xml_element(elem)
+            mesh = UnstructuredMesh.from_xml_element(elem)
         else:
             raise ValueError(f'Unrecognized mesh type "{mesh_type}" found.')
+
+        mesh.name = get_text(elem, 'name', default='')
+        return mesh
 
     def get_homogenized_materials(
             self,
@@ -951,10 +954,6 @@ class RegularMesh(StructuredMesh):
         """
         mesh_id = int(get_text(elem, 'id'))
         mesh = cls(mesh_id=mesh_id)
-
-        mesh_type = get_text(elem, 'type')
-        if mesh_type is not None:
-            mesh.type = mesh_type
 
         dimension = get_text(elem, 'dimension')
         if dimension is not None:

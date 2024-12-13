@@ -30,3 +30,16 @@ jobs:
       - name: Failure Check
         if: steps.linter.outputs.checks-failed > 0
         run: echo "Some files failed the formatting check! See job summary and file annotations for more info" && exit 1
+  
+  python-format-test:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with: 
+          python-version: 3.12
+      - run: pip install .[format]
+        name: install black
+      - run: black --check openmc/ tests/
+        name: Check if anything needs to be black formatted

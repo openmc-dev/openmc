@@ -21,5 +21,8 @@ if [[ $NCRYSTAL = 'y' ]]; then
   nctool --test
 fi
 
+# Remove openmc directory to avoid warnings
+rm -rf openmc/*
+
 # Run regression and unit tests
 pytest --cov=openmc -v $args tests

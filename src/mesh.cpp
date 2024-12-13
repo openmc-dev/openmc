@@ -238,8 +238,7 @@ vector<Mesh::MaterialVolume> Mesh::material_volumes(
   return result;
 }
 
-void
-Mesh::to_hdf5(hid_t group) const
+void Mesh::to_hdf5(hid_t group) const
 {
   // Create group for mesh
   std::string group_name = fmt::format("mesh {}", id_);

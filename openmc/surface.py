@@ -148,7 +148,13 @@ class Surface(IDManagerMixin, ABC):
         Name of the surface
     type : str
         Type of the surface
-
+    moving : bool
+        Whether or not the surface is moving
+    moving_velocities : iterable of iterable of float
+        3D velocities in which the surface moves
+    moving_durations : iterable of float
+        Durations during which the surface moves with the associated
+        velocities.
     """
 
     next_id = 1
@@ -166,6 +172,10 @@ class Surface(IDManagerMixin, ABC):
         # Key      - coefficient name
         # Value    - coefficient value
         self._coefficients = {}
+
+        self._moving = False
+        self._moving_velocities = np.array([[]])
+        self._moving_durations = np.array([])
 
     def __neg__(self):
         return Halfspace(self, '-')
@@ -191,6 +201,24 @@ class Surface(IDManagerMixin, ABC):
             coefficients += f'{coeff: <20}=\t{self._coefficients[coeff]}\n'
 
         string += coefficients
+
+        # TODO: print moving durations and velocities
+        if self._moving:
+            '''
+            string += '{0: <20}{1}{2}\n'.format(
+                'moving velocities', '=\t', np.array_repr(self._moving_velocities).replace('\n', ' '))
+            string += '{0: <20}{1}{2}\n'.format('moving durations',
+                                                '=\t', self._moving_durations)
+            '''
+            string += "\tMove parameters\n"
+            N_move = len(self._moving_durations)
+            string += "T        Vx       Vy       Vz\n"
+            for i in range(N_move):
+                string += '{0: <8} {1: <8} {2: <8} {3: <8}\n'.format(
+                    self._moving_durations[i],
+                    self._moving_velocities[i,0],
+                    self._moving_velocities[i,1],
+                    self._moving_velocities[i,2])
 
         return string
 
@@ -233,6 +261,18 @@ class Surface(IDManagerMixin, ABC):
     @property
     def coefficients(self):
         return self._coefficients
+
+    @property
+    def moving(self):
+        return self._moving
+
+    @property
+    def moving_velicities(self):
+        return self._moving_velocities
+
+    @property
+    def moving_durations(self):
+        return self._moving_durations
 
     def bounding_box(self, side):
         """Determine an axis-aligned bounding box.
@@ -327,6 +367,69 @@ class Surface(IDManagerMixin, ABC):
 
         return np.allclose(coeffs1, coeffs2, rtol=0., atol=self._atol)
 
+    def move(self, velocities, durations):
+        """Set the surface continuous movement based on the given velocities
+        and durations.
+
+        Parameters
+        ==========
+        velocities : iterable of iterable of float
+            3D velocities in which the surface moves
+        durations : iterable of float
+            Durations during which the surface moves with the associated
+            velocities.
+        """
+        self._moving = True
+        self._moving_velocities = np.array(velocities)
+        self._moving_durations = np.array(durations)
+
+        # Add the final static condition
+        self._moving_velocities = np.append(self._moving_velocities, np.zeros((1,3)), axis=0)
+        self._moving_durations = np.append(self._moving_durations, np.inf)
+
+        # Set moving time grid and translations for evaluation convenience
+        N_move = len(self._moving_durations)
+        self._moving_time_grid = np.zeros(N_move + 1)
+        self._moving_translations = np.zeros((N_move + 1, 3))
+        for n in range(N_move - 1):
+            duration = self._moving_durations[n]
+            velocity = self._moving_velocities[n]
+
+            t_start = self._moving_time_grid[n]
+            self._moving_time_grid[n + 1] = t_start + duration
+
+            trans_start = self._moving_translations[n]
+            self._moving_translations[n + 1] = trans_start + velocity * duration
+        # Manual assignment to avoid Numpy's warning
+        self._moving_time_grid[N_move] = np.inf
+        self._moving_translations[N_move] = self._moving_translations[N_move - 1]
+
+
+    def _adjust_point(self, point, time):
+        """Adjust point based on the surface movement"""
+        if not self._moving:
+            return point
+
+        # Get moving index
+        N_move = len(self._moving_durations)
+        time_grid = self._moving_time_grid
+        idx = np.searchsorted(time_grid, time, side='right') - 1
+
+        # Get moving translation, velocity, and starting time
+        trans_0 = self._moving_translations[idx]
+        time_0 = self._moving_time_grid[idx]
+        V = self._moving_velocities[idx]
+
+        # Translate the particle
+        t_local = time - time_0
+        x = point[0] - (trans_0[0] + V[0] * t_local)
+        y = point[1] - (trans_0[1] + V[1] * t_local)
+        z = point[2] - (trans_0[2] + V[2] * t_local)
+
+        print(time_grid)
+        print(time, idx)
+        return (x, y, z)
+
     @abstractmethod
     def _get_base_coeffs(self):
         """Return polynomial coefficients representing the implicit surface
@@ -335,19 +438,22 @@ class Surface(IDManagerMixin, ABC):
         """
 
     @abstractmethod
-    def evaluate(self, point):
-        """Evaluate the surface equation at a given point.
+    def evaluate(self, point, time=0.0):
+        """Evaluate the surface equation at a given point and time.
 
         Parameters
         ----------
         point : 3-tuple of float
             The Cartesian coordinates, :math:`(x',y',z')`, at which the surface
             equation should be evaluated.
+        time : float, optional
+            The time :math:`t'` at which the surface equation should be evaluated
 
         Returns
         -------
         float
             Evaluation of the surface polynomial at point :math:`(x',y',z')`
+            and time :math:`t'`
 
         """
 
@@ -431,6 +537,12 @@ class Surface(IDManagerMixin, ABC):
                 element.set("albedo", str(self.albedo))
         element.set("coeffs", ' '.join([str(self._coefficients.setdefault(key, 0.0))
                                         for key in self._coeff_keys]))
+
+        if self._moving:
+            element.set("moving_velocities", ' '.join(
+                [str(value) for value in self._moving_velocities[:-1]]))
+            element.set("moving_durations", ' '.join(
+                [str(value) for value in self._moving_durations[:-1]]))
 
         return element
 
@@ -574,14 +686,16 @@ class PlaneMixin:
 
         return BoundingBox(ll, ur)
 
-    def evaluate(self, point):
-        """Evaluate the surface equation at a given point.
+    def evaluate(self, point, time=0.0):
+        """Evaluate the surface equation at a given point and time.
 
         Parameters
         ----------
         point : 3-tuple of float
             The Cartesian coordinates, :math:`(x',y',z')`, at which the surface
             equation should be evaluated.
+        time : float, optional
+            The time :math:`t'` at which the surface equation should be evaluated
 
         Returns
         -------
@@ -590,7 +704,7 @@ class PlaneMixin:
 
         """
 
-        x, y, z = point
+        x, y, z = self._adjust_point(point, time)
         a, b, c, d = self._get_base_coeffs()
         return a*x + b*y + c*z - d
 
@@ -872,8 +986,9 @@ class XPlane(PlaneMixin, Surface):
     c = SurfaceCoefficient(0.)
     d = x0
 
-    def evaluate(self, point):
-        return point[0] - self.x0
+    def evaluate(self, point, time=0.0):
+        x, y, z = self._adjust_point(point, time)
+        return x - self.x0
 
 
 class YPlane(PlaneMixin, Surface):
@@ -937,8 +1052,9 @@ class YPlane(PlaneMixin, Surface):
     c = SurfaceCoefficient(0.)
     d = y0
 
-    def evaluate(self, point):
-        return point[1] - self.y0
+    def evaluate(self, point, time=0.0):
+        x, y, z = self._adjust_point(point, time)
+        return y - self.y0
 
 
 class ZPlane(PlaneMixin, Surface):
@@ -1002,8 +1118,9 @@ class ZPlane(PlaneMixin, Surface):
     c = SurfaceCoefficient(1.)
     d = z0
 
-    def evaluate(self, point):
-        return point[2] - self.z0
+    def evaluate(self, point, time=0.0):
+        x, y, z = self._adjust_point(point, time)
+        return z - self.z0
 
 
 class QuadricMixin:
@@ -1060,14 +1177,16 @@ class QuadricMixin:
         """
         return np.linalg.eigh(self.get_Abc(coeffs=coeffs)[0])
 
-    def evaluate(self, point):
-        """Evaluate the surface equation at a given point.
+    def evaluate(self, point, time=0.0):
+        """Evaluate the surface equation at a given point and time.
 
         Parameters
         ----------
         point : 3-tuple of float
             The Cartesian coordinates, :math:`(x',y',z')`, in [cm] at which the
             surface equation should be evaluated.
+        time : float, optional
+            The time :math:`t'` at which the surface equation should be evaluated
 
         Returns
         -------
@@ -1076,7 +1195,7 @@ class QuadricMixin:
             Jz' + K = 0`
 
         """
-        x = np.asarray(point)
+        x = np.asarray(self._adjust_point(point, time))
         A, b, c = self.get_Abc()
         return x.T @ A @ x + b.T @ x + c
 
@@ -1452,9 +1571,10 @@ class XCylinder(QuadricMixin, Surface):
         elif side == '+':
             return BoundingBox.infinite()
 
-    def evaluate(self, point):
-        y = point[1] - self.y0
-        z = point[2] - self.z0
+    def evaluate(self, point, time=0.0):
+        x, y, z = self._adjust_point(point, time)
+        y -= self.y0
+        z -= self.z0
         return y*y + z*z - self.r**2
 
 
@@ -1550,9 +1670,10 @@ class YCylinder(QuadricMixin, Surface):
         elif side == '+':
             return BoundingBox.infinite()
 
-    def evaluate(self, point):
-        x = point[0] - self.x0
-        z = point[2] - self.z0
+    def evaluate(self, point, time=0.0):
+        x, y, z = self._adjust_point(point, time)
+        x -= self.x0
+        z -= self.z0
         return x*x + z*z - self.r**2
 
 
@@ -1648,9 +1769,10 @@ class ZCylinder(QuadricMixin, Surface):
         elif side == '+':
             return BoundingBox.infinite()
 
-    def evaluate(self, point):
-        x = point[0] - self.x0
-        y = point[1] - self.y0
+    def evaluate(self, point, time=0.0):
+        x, y, z = self._adjust_point(point, time)
+        x -= self.x0
+        y -= self.y0
         return x*x + y*y - self.r**2
 
 
@@ -1745,10 +1867,11 @@ class Sphere(QuadricMixin, Surface):
         elif side == '+':
             return BoundingBox.infinite()
 
-    def evaluate(self, point):
-        x = point[0] - self.x0
-        y = point[1] - self.y0
-        z = point[2] - self.z0
+    def evaluate(self, point, time=0.0):
+        x, y, z = self._adjust_point(point, time)
+        x -= self.x0
+        y -= self.y0
+        z -= self.z0
         return x*x + y*y + z*z - self.r**2
 
 
@@ -2004,10 +2127,11 @@ class XCone(QuadricMixin, Surface):
 
         return (a, b, c, d, e, f, g, h, j, k)
 
-    def evaluate(self, point):
-        x = point[0] - self.x0
-        y = point[1] - self.y0
-        z = point[2] - self.z0
+    def evaluate(self, point, time=0.0):
+        x, y, z = self._adjust_point(point, time)
+        x -= self.x0
+        y -= self.y0
+        z -= self.z0
         return y*y + z*z - self.r2*x*x
 
 
@@ -2105,10 +2229,11 @@ class YCone(QuadricMixin, Surface):
 
         return (a, b, c, d, e, f, g, h, j, k)
 
-    def evaluate(self, point):
-        x = point[0] - self.x0
-        y = point[1] - self.y0
-        z = point[2] - self.z0
+    def evaluate(self, point, time=0.0):
+        x, y, z = self._adjust_point(point, time)
+        x -= self.x0
+        y -= self.y0
+        z -= self.z0
         return x*x + z*z - self.r2*y*y
 
 
@@ -2206,10 +2331,11 @@ class ZCone(QuadricMixin, Surface):
 
         return (a, b, c, d, e, f, g, h, j, k)
 
-    def evaluate(self, point):
-        x = point[0] - self.x0
-        y = point[1] - self.y0
-        z = point[2] - self.z0
+    def evaluate(self, point, time=0.0):
+        x, y, z = self._adjust_point(point, time)
+        x -= self.x0
+        y -= self.y0
+        z -= self.z0
         return x*x + y*y - self.r2*z*z
 
 
@@ -2408,10 +2534,11 @@ class XTorus(TorusMixin, Surface):
     """
     _type = 'x-torus'
 
-    def evaluate(self, point):
-        x = point[0] - self.x0
-        y = point[1] - self.y0
-        z = point[2] - self.z0
+    def evaluate(self, point, time=0.0):
+        x, y, z = self._adjust_point(point, time)
+        x -= self.x0
+        y -= self.y0
+        z -= self.z0
         a = self.a
         b = self.b
         c = self.c
@@ -2483,10 +2610,11 @@ class YTorus(TorusMixin, Surface):
     """
     _type = 'y-torus'
 
-    def evaluate(self, point):
-        x = point[0] - self.x0
-        y = point[1] - self.y0
-        z = point[2] - self.z0
+    def evaluate(self, point, time=0.0):
+        x, y, z = self._adjust_point(point, time)
+        x -= self.x0
+        y -= self.y0
+        z -= self.z0
         a = self.a
         b = self.b
         c = self.c
@@ -2558,10 +2686,11 @@ class ZTorus(TorusMixin, Surface):
 
     _type = 'z-torus'
 
-    def evaluate(self, point):
-        x = point[0] - self.x0
-        y = point[1] - self.y0
-        z = point[2] - self.z0
+    def evaluate(self, point, time=0.0):
+        x, y, z = self._adjust_point(point, time)
+        x -= self.x0
+        y -= self.y0
+        z -= self.z0
         a = self.a
         b = self.b
         c = self.c

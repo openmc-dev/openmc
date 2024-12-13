@@ -142,11 +142,11 @@ Doxygen commands, e.g., ``\brief`` instead of ``@brief``.
 Python
 ------
 
-Style for Python code should follow PEP8_.
+Style for Python code should follow PEP8_, and be formatted with black_.
 
 Docstrings for functions and methods should follow numpydoc_ style.
 
-Python code should work with Python 3.8+.
+Python code should work with Python 3.11+.
 
 Use of third-party Python packages should be limited to numpy_, scipy_,
 matplotlib_, pandas_, and h5py_. Use of other third-party packages must be
@@ -167,3 +167,4 @@ represent a filesystem path should work with both strings and Path_ objects.
 .. _pathlib: https://docs.python.org/3/library/pathlib.html
 .. _os: https://docs.python.org/3/library/os.html
 .. _Path: https://docs.python.org/3/library/pathlib.html#pathlib.Path
+.. _black: https://black.readthedocs.io/en/stable/index.html

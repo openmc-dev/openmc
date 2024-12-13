@@ -76,7 +76,7 @@ def get_paths(subdir, pattern="*", recursive=False):
         list: A list of matched paths.
     """
     search_pattern = os.path.join(OPENMC_CORE_BASE_PATH, subdir, "**", pattern) if recursive else os.path.join(OPENMC_CORE_BASE_PATH, subdir, pattern)
-    return glob.glob(search_pattern, recursive=recursive) if os.path.exists(search_pattern) else []
+    return glob.glob(search_pattern, recursive=recursive)
 
 def get_include_path():
     """Return includes and include path for OpenMC headers."""

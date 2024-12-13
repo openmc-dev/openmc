@@ -99,9 +99,7 @@ class MeshBase(IDManagerMixin, ABC):
             Instance of a MeshBase subclass
 
         """
-
-        mesh_type = 'regular' if 'type' not in group else group['type'][()].decode()
-
+        mesh_type = 'regular' if 'type' not in group.attrs else group.attrs['type'].decode()
         mesh_id = int(group.name.split('/')[-1].lstrip('mesh '))
         mesh_name = '' if not 'name' in group else group['name'][()].decode()
 

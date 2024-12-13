@@ -14,37 +14,19 @@ functions or objects in :mod:`openmc.lib`, for example:
 
 from ctypes import CDLL, c_bool, c_int
 import os
-import warnings
 
-def load_openmc_library():
-    try:
-        # Attempt to load the library from OpenMC
-        import openmc
-        _filename = openmc.lib[0]
-        if os.path.isfile(_filename):
-            return CDLL(str(_filename))
-        raise FileNotFoundError
-    except (IndexError, FileNotFoundError):
-        # Attempt to load the library from the installed module
-        import importlib
-        openmc = importlib.import_module("openmc")
-        _filename = openmc.lib[0]
-        if os.path.isfile(_filename):
-            warnings.warn(
-                "It seems OpenMC is being run from its source directory. "
-                "This setup is not recommended as it may lead to unexpected behavior, "
-                "such as conflicts between source and installed versions. "
-                "Please run your script from outside the OpenMC source tree.",
-                RuntimeWarning
-            )
-            return CDLL(str(_filename))
-        raise RuntimeError(
-            "Unable to load the OpenMC library. Please ensure OpenMC "
-            "is installed correctly and accessible from your Python environment."
-        )
-
-# Load the OpenMC shared library
-_dll = load_openmc_library()
+if os.environ.get('READTHEDOCS', None) != 'True':
+    # Open shared library
+    import openmc
+    _filename = openmc.lib[0]
+    _dll = CDLL(str(_filename))  # TODO: Remove str() when Python 3.12+
+else:
+    # For documentation builds, we don't actually have the shared library
+    # available. Instead, we create a mock object so that when the modules
+    # within the openmc.lib package try to configure arguments and return
+    # values for symbols, no errors occur
+    from unittest.mock import Mock
+    _dll = Mock()
 
 
 def _dagmc_enabled():

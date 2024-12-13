@@ -58,6 +58,16 @@ def get_core_path(subdir, pattern="*", recursive=False):
         list: A list of matched paths.
     """
     path = os.path.join(__path__[0], "core", subdir)
+    if not os.path.exists(path):
+        import sysconfig
+        path = os.path.join(sysconfig.get_path("platlib"), "openmc", "core", subdir)
+        warnings.warn(
+        "It seems OpenMC is being run from its source directory. "
+        "This setup is not recommended as it may lead to unexpected behavior, "
+        "such as conflicts between source and installed versions. "
+        "Please run your script from outside the OpenMC source tree.",
+        RuntimeWarning
+        )
     search_pattern = os.path.join(path, "**", pattern) if recursive else os.path.join(path, pattern)
     return glob.glob(search_pattern, recursive=recursive) if os.path.exists(path) else []
 

@@ -1424,6 +1424,10 @@ class PhongPlot(RayTracePlot):
 
     @opaque_domains.setter
     def opaque_domains(self, x):
+        # Note that _check_domains_consistent_with_color_by checks
+        # the types within later. This is because we don't necessarily
+        # know what types are acceptable until the user has set the
+        # color_by attribute, too.
         cv.check_type('opaque domains', x, Iterable)
         self._opaque_domains = x
 

@@ -204,14 +204,14 @@ def voxel_to_vtk(voxel_file: PathLike, output: PathLike = 'plot.vti'):
         Path of the .vti file produced
     """
 
-#imported vtk only if used as vtk is an option dependency
+    # imported vtk only if used as vtk is an option dependency
     import vtk
 
     _min_version = (2, 0)
 
-#Read data from voxel file
+    # Read data from voxel file
     with h5py.File(voxel_file, "r") as fh:
-#check version
+        # check version
         version = tuple(fh.attrs["version"])
         if version < _min_version:
             old_version = ".".join(map(str, version))
@@ -234,15 +234,15 @@ def voxel_to_vtk(voxel_file: PathLike, output: PathLike = 'plot.vti'):
         grid.SetOrigin(*lower_left)
         grid.SetSpacing(*width)
 
-#transpose data from OpenMC ordering(zyx) to VTK ordering(xyz)
-#and flatten to 1 - D array
+    # transpose data from OpenMC ordering(zyx) to VTK ordering(xyz)
+    # and flatten to 1 - D array
         h5data = fh["data"][...]
 
     data = vtk.vtkIntArray()
     data.SetName("id")
-#set the array using the h5data array
+    # set the array using the h5data array
     data.SetArray(h5data, h5data.size, True)
-#add data to image grid
+    # add data to image grid
     grid.GetCellData().AddArray(data)
 
     writer = vtk.vtkXMLImageDataWriter()
@@ -302,7 +302,7 @@ class PlotBase(IDManagerMixin):
     used_ids = set()
 
     def __init__(self, plot_id=None, name=''):
-#Initialize Plot class attributes
+        # Initialize Plot class attributes
         self.id = plot_id
         self.name = name
         self._pixels = [400, 400]
@@ -438,8 +438,8 @@ class PlotBase(IDManagerMixin):
                 cv.check_greater_than('RGB component', rgb, 0, True)
                 cv.check_less_than('RGB component', rgb, 256)
 
-    #Helper function that returns the domain ID given either a
-    #Cell / Material object or the domain ID itself
+    # Helper function that returns the domain ID given either a
+    # Cell / Material object or the domain ID itself
     @staticmethod
     def _get_id(domain):
         return domain if isinstance(domain, Integral) else domain.id
@@ -463,7 +463,7 @@ class PlotBase(IDManagerMixin):
         cv.check_type('seed', seed, Integral)
         cv.check_greater_than('seed', seed, 1, equality=True)
 
-        #Get collections of the domains which will be plotted
+        # Get collections of the domains which will be plotted
         if self.color_by == 'material':
             domains = geometry.get_all_materials().values()
         else:
@@ -708,7 +708,7 @@ class Plot(PlotBase):
         cv.check_type('geometry', geometry, openmc.Geometry)
         cv.check_value('basis', basis, _BASES)
 
-#Decide which axes to keep
+        # Decide which axes to keep
         if basis == 'xy':
             pick_index = (0, 1)
             slice_index = 2
@@ -719,7 +719,7 @@ class Plot(PlotBase):
             pick_index = (0, 2)
             slice_index = 1
 
-#Get lower - left and upper - right coordinates for desired axes
+        # Get lower - left and upper - right coordinates for desired axes
         lower_left, upper_right = geometry.bounding_box
         lower_left = lower_left[np.array(pick_index)]
         upper_right = upper_right[np.array(pick_index)]
@@ -765,17 +765,17 @@ class Plot(PlotBase):
         cv.check_less_than('alpha', alpha, 1., equality=True)
         cv.check_type('background', background, Iterable)
 
-#Get a background(R, G, B) tuple to apply in alpha compositing
+        # Get a background(R, G, B) tuple to apply in alpha compositing
         if isinstance(background, str):
             if background.lower() not in _SVG_COLORS:
                 raise ValueError(f"'{background}' is not a valid color.")
             background = _SVG_COLORS[background.lower()]
 
-#Generate a color scheme
+        # Generate a color scheme
         self.colorize(geometry, seed)
 
-#Apply alpha compositing to the colors for all domains
-#other than those the user wishes to highlight
+        # Apply alpha compositing to the colors for all domains
+        # other than those the user wishes to highlight
         for domain, color in self.colors.items():
             if domain not in domains:
                 if isinstance(color, str):
@@ -865,7 +865,7 @@ class Plot(PlotBase):
         plot.pixels = get_elem_tuple(elem, "pixels")
         plot._background = get_elem_tuple(elem, "background")
 
-#Set plot colors
+        # Set plot colors
         colors = {}
         for color_elem in elem.findall("color"):
             uid = int(color_elem.get("id"))
@@ -873,7 +873,7 @@ class Plot(PlotBase):
                                 for x in color_elem.get("rgb").split()])
         plot.colors = colors
 
-#Set masking information
+        # Set masking information
         mask_elem = elem.find("mask")
         if mask_elem is not None:
             plot.mask_components = [
@@ -883,7 +883,7 @@ class Plot(PlotBase):
                 plot.mask_background = tuple(
                     [int(x) for x in background.split()])
 
-#show overlaps
+        # show overlaps
         overlap_elem = elem.find("show_overlaps")
         if overlap_elem is not None:
             plot.show_overlaps = (overlap_elem.text in ('true', '1'))
@@ -891,12 +891,12 @@ class Plot(PlotBase):
         if overlap_color is not None:
             plot.overlap_color = overlap_color
 
-#Set universe level
+        # Set universe level
         level = elem.find("level")
         if level is not None:
             plot.level = int(level.text)
 
-#Set meshlines
+        # Set meshlines
         mesh_elem = elem.find("meshlines")
         if mesh_elem is not None:
             meshlines = {'type': mesh_elem.get('meshtype')}
@@ -934,13 +934,13 @@ class Plot(PlotBase):
             Image generated
 
         """
-#Create plots.xml
+        # Create plots.xml
         Plots([self]).export_to_xml(cwd)
 
-#Run OpenMC in geometry plotting mode
+        # Run OpenMC in geometry plotting mode
         openmc.plot_geometry(False, openmc_exec, cwd)
 
-#Return produced image
+        # Return produced image
         return _get_plot_image(self, cwd)
 
     def to_vtk(self, output: PathLike | None = None,
@@ -970,10 +970,10 @@ class Plot(PlotBase):
             raise ValueError(
                 'Generating a VTK file only works for voxel plots')
 
-#Create plots.xml
+        # Create plots.xml
         Plots([self]).export_to_xml(cwd)
 
-#Run OpenMC in geometry plotting mode and produces a h5 file
+        # Run OpenMC in geometry plotting mode and produces a h5 file
         openmc.plot_geometry(False, openmc_exec, cwd)
 
         h5_voxel_filename = self.filename if self.filename is not None else f'plot_{self.id}'
@@ -1030,7 +1030,7 @@ class RayTracePlot(PlotBase):
     """
 
     def __init__(self, plot_id=None, name=''):
-#Initialize Plot class attributes
+        # Initialize Plot class attributes
         super().__init__(plot_id, name)
         self._horizontal_field_of_view = 70.0
         self._camera_position = (1.0, 0.0, 0.0)
@@ -1095,8 +1095,8 @@ class RayTracePlot(PlotBase):
         """
 
         for region in domains:
-#if an integer is passed, we have to assume
-#it was a valid ID
+            # if an integer is passed, we have to assume
+            # it was a valid ID
             if isinstance(region, int):
                 continue
 
@@ -1131,7 +1131,7 @@ class RayTracePlot(PlotBase):
         subelement = ET.SubElement(element, "horizontal_field_of_view")
         subelement.text = str(self._horizontal_field_of_view)
 
-#do not need to write if orthographic_width == 0.0
+        # do not need to write if orthographic_width == 0.0
         if self._orthographic_width > 0.0:
             subelement = ET.SubElement(element, "orthographic_width")
             subelement.text = str(self._orthographic_width)
@@ -1184,18 +1184,18 @@ class RayTracePlot(PlotBase):
         self.camera_position = get_elem_tuple(elem, "camera_position", float)
         self.look_at = get_elem_tuple(elem, "look_at", float)
 
-#Set masking information
+        # Set masking information
         mask_elem = elem.find("mask")
         if mask_elem is not None:
             mask_components = [int(x)
                                for x in mask_elem.get("components").split()]
-#TODO : set mask components(needs geometry information)
+            # TODO : set mask components(needs geometry information)
             background = mask_elem.get("background")
             if background is not None:
                 self.mask_background = tuple(
                     [int(x) for x in background.split()])
 
-#Set universe level
+        # Set universe level
         level = elem.find("level")
         if level is not None:
             self.level = int(level.text)
@@ -1286,13 +1286,13 @@ class ProjectionPlot(RayTracePlot):
 
         cv.check_type('geometry', geometry, openmc.Geometry)
 
-#Get collections of the domains which will be plotted
+        # Get collections of the domains which will be plotted
         if self.color_by == 'material':
             domains = geometry.get_all_materials().values()
         else:
             domains = geometry.get_all_cells().values()
 
-#Generate random colors for each feature
+        # Generate random colors for each feature
         for domain in domains:
             self.xs[domain] = 0.0
 
@@ -1336,8 +1336,8 @@ class ProjectionPlot(RayTracePlot):
             subelement = ET.SubElement(element, "wireframe_ids")
             subelement.text = ' '.join([str(x) for x in id_list])
 
-#note that this differs from the slice plot colors
-#in that "xs" must also be specified
+        # note that this differs from the slice plot colors
+        # in that "xs" must also be specified
         if self._colors:
             for domain, color in sorted(self._colors.items(),
                                         key=lambda x: x[0].id):
@@ -1372,7 +1372,7 @@ class ProjectionPlot(RayTracePlot):
 
         plot._read_xml_attributes(elem)
 
-#Attempt to get wireframe thickness.May not be present
+        # Attempt to get wireframe thickness.May not be present
         wireframe_thickness = elem.get("wireframe_thickness")
         if wireframe_thickness:
             plot.wireframe_thickness = int(wireframe_thickness)
@@ -1380,7 +1380,7 @@ class ProjectionPlot(RayTracePlot):
         if wireframe_color:
             plot.wireframe_color = [int(item) for item in wireframe_color]
 
-#Set plot colors
+        # Set plot colors
         for color_elem in elem.findall("color"):
             uid = color_elem.get("id")
             plot.colors[uid] = get_elem_tuple(color_elem, "rgb")
@@ -1450,12 +1450,12 @@ class PhongPlot(RayTracePlot):
         element = super().to_xml_element()
         element.set("type", "phong")
 
-#no light position means put it at the camera
+        # no light position means put it at the camera
         if self._light_position:
             subelement = ET.SubElement(element, "light_position")
             subelement.text = ' '.join(map(str, self._light_position))
 
-#no diffuse fraction defaults to 0.1
+        # no diffuse fraction defaults to 0.1
         if self._diffuse_fraction:
             subelement = ET.SubElement(element, "diffuse_fraction")
             subelement.text = str(self._diffuse_fraction)
@@ -1463,8 +1463,8 @@ class PhongPlot(RayTracePlot):
         self._check_domains_consistent_with_color_by(self.opaque_domains)
         subelement = ET.SubElement(element, "opaque_ids")
 
-#Extract all IDs, or use the integer value passed in
-#explicitly if that was given
+        # Extract all IDs, or use the integer value passed in
+        # explicitly if that was given
         subelement.text = ' '.join(
             [str(domain) if isinstance(domain, int) else
              str(domain.id) for domain in self._opaque_domains])
@@ -1496,7 +1496,7 @@ class PhongPlot(RayTracePlot):
 
         plot._read_xml_attributes(elem)
 
-#Set plot colors
+        # Set plot colors
         for color_elem in elem.findall("color"):
             uid = color_elem.get("id")
             plot.colors[uid] = get_elem_tuple(color_elem, "rgb")
@@ -1619,14 +1619,14 @@ class Plots(cv.CheckedList):
             XML element containing all plot elements
 
         """
-#Reset xml element tree
+        # Reset xml element tree
         self._plots_file.clear()
 
         self._create_plot_subelements()
 
-#Clean the indentation in the file to be user - readable
+        # Clean the indentation in the file to be user - readable
         clean_indentation(self._plots_file)
-#TODO : Remove when support is Python 3.8 +
+        # TODO : Remove when support is Python 3.8 +
         reorder_attributes(self._plots_file)
 
         return self._plots_file
@@ -1640,13 +1640,13 @@ class Plots(cv.CheckedList):
             Path to file to write. Defaults to 'plots.xml'.
 
         """
-#Check if path is a directory
+        # Check if path is a directory
         p = Path(path)
         if p.is_dir():
             p /= 'plots.xml'
 
         self.to_xml_element()
-#Write the XML Tree to the plots.xml file
+        # Write the XML Tree to the plots.xml file
         tree = ET.ElementTree(self._plots_file)
         tree.write(str(p), xml_declaration=True, encoding='utf-8')
 
@@ -1665,7 +1665,7 @@ class Plots(cv.CheckedList):
             Plots collection
 
         """
-#Generate each plot
+        # Generate each plot
         plots = cls()
         for e in elem.findall('plot'):
             plot_type = e.get('type')

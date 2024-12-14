@@ -47,12 +47,11 @@ def test_get_mesh():
         statepoint.get_mesh(id=42, mesh_type=openmc.CylindricalMesh)
     with pytest.raises(LookupError):
         statepoint.get_mesh(id=999, mesh_type=openmc.RegularMesh)
+    with pytest.raises(LookupError):
+         statepoint.get_mesh(name='non_existent_name')
 
     # checks that the mesh returned is the one with the id 42
     assert statepoint.get_mesh(id=42).id == 42
     assert statepoint.get_mesh(mesh_type=openmc.RegularMesh).id == 42
     assert statepoint.get_mesh(id=42, mesh_type=openmc.RegularMesh).id == 42
-
-    # TODO add this test when in a bug fix PR as fixed the problem that he mesh is
-    # returned from the statepoint has no name set
-    # assert statepoint.get_mesh(name='custom_name').id == 42
+    assert statepoint.get_mesh(name='custom_name').id == 42

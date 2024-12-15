@@ -1,5 +1,5 @@
-
 import openmc
+
 
 def test_tally_trigger(run_in_tmpdir):
     pincell = openmc.examples.pwr_pin_cell()
@@ -10,10 +10,10 @@ def test_tally_trigger(run_in_tmpdir):
     # create a tally with triggers applied
     tally = openmc.Tally()
     tally.filters = [mat_filter]
-    tally.scores = ['scatter']
+    tally.scores = ["scatter"]
 
-    trigger = openmc.Trigger('rel_err', 0.05)
-    trigger.scores = ['scatter']
+    trigger = openmc.Trigger("rel_err", 0.05)
+    trigger.scores = ["scatter"]
 
     tally.triggers = [trigger]
 
@@ -29,7 +29,7 @@ def test_tally_trigger(run_in_tmpdir):
 
     # adding other scores to the tally should not change the
     # number of batches required to satisfy the trigger
-    tally.scores = ['total', 'absorption', 'scatter']
+    tally.scores = ["total", "absorption", "scatter"]
 
     sp_file = pincell.run()
 
@@ -42,16 +42,16 @@ def test_tally_trigger(run_in_tmpdir):
 def test_tally_trigger_null_score(run_in_tmpdir):
     pincell = openmc.examples.pwr_pin_cell()
 
-     # create a tally filter on the materials
+    # create a tally filter on the materials
     mat_filter = openmc.MaterialFilter(pincell.materials)
 
     # apply a tally with a score that be tallied in this model
     tally = openmc.Tally()
     tally.filters = [mat_filter]
-    tally.scores = ['pair-production']
+    tally.scores = ["pair-production"]
 
-    trigger = openmc.Trigger('rel_err', 0.05)
-    trigger.scores = ['pair-production']
+    trigger = openmc.Trigger("rel_err", 0.05)
+    trigger.scores = ["pair-production"]
 
     tally.triggers = [trigger]
 
@@ -83,12 +83,12 @@ def test_tally_trigger_zero_ignored(run_in_tmpdir):
     # create a tally with triggers applied
     tally = openmc.Tally()
     tally.filters = [e_filter]
-    tally.scores = ['(n,p)']
+    tally.scores = ["(n,p)"]
     tally.nuclides = ["O16"]
 
     # 100% relative error: should be immediately satisfied in nonzero bin
-    trigger = openmc.Trigger('rel_err', 1.0)
-    trigger.scores = ['(n,p)']
+    trigger = openmc.Trigger("rel_err", 1.0)
+    trigger.scores = ["(n,p)"]
     trigger.ignore_zeros = True
 
     tally.triggers = [trigger]
@@ -114,13 +114,12 @@ def test_tally_trigger_zero_ignored(run_in_tmpdir):
         assert total_batches < pincell.settings.trigger_max_batches
 
 
-
 def test_trigger_he3_production(run_in_tmpdir):
     li6 = openmc.Material()
-    li6.set_density('g/cm3', 1.0)
-    li6.add_nuclide('Li6', 1.0)
+    li6.set_density("g/cm3", 1.0)
+    li6.add_nuclide("Li6", 1.0)
 
-    sph = openmc.Sphere(r=20, boundary_type='vacuum')
+    sph = openmc.Sphere(r=20, boundary_type="vacuum")
     outer_cell = openmc.Cell(fill=li6, region=-sph)
     model = openmc.Model()
     model.geometry = openmc.Geometry([outer_cell])
@@ -129,16 +128,16 @@ def test_trigger_he3_production(run_in_tmpdir):
     )
     model.settings.batches = 10
     model.settings.particles = 100
-    model.settings.run_mode = 'fixed source'
+    model.settings.run_mode = "fixed source"
     model.settings.trigger_active = True
     model.settings.trigger_batch_interval = 10
     model.settings.trigger_max_batches = 30
 
     # Define tally with trigger
-    trigger = openmc.Trigger(trigger_type='rel_err', threshold=0.0001)
-    trigger.scores = ['He3-production']
+    trigger = openmc.Trigger(trigger_type="rel_err", threshold=0.0001)
+    trigger.scores = ["He3-production"]
     he3_production_tally = openmc.Tally()
-    he3_production_tally.scores = ['He3-production']
+    he3_production_tally.scores = ["He3-production"]
     he3_production_tally.triggers = [trigger]
     model.tallies = openmc.Tallies([he3_production_tally])
 

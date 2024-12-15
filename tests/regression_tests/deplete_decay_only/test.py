@@ -47,50 +47,47 @@ def model():
 
     return openmc.Model(geometry, materials, settings)
 
+
 @pytest.fixture(scope="module")
 def micro_xs():
-    micro_xs_file = Path(__file__).parents[2] / 'micro_xs_simple.csv'
+    micro_xs_file = Path(__file__).parents[2] / "micro_xs_simple.csv"
     return MicroXS.from_csv(micro_xs_file)
 
 
 @pytest.fixture(scope="module")
 def chain_file():
-    return Path(__file__).parents[2] / 'chain_simple_decay.xml'
+    return Path(__file__).parents[2] / "chain_simple_decay.xml"
 
 
 @pytest.mark.parametrize("operator_type", ["coupled", "independent"])
 def test_decay_only(run_in_tmpdir, operator_type, model, micro_xs, chain_file):
-    """Transport free system test suite.
-
-    """
+    """Transport free system test suite."""
     # Create operator
     if operator_type == "coupled":
         op = CoupledOperator(model, chain_file=chain_file)
     else:
-        op = IndependentOperator(openmc.Materials([model.materials[0]]),
-                                 [1e15],
-                                 [micro_xs],
-                                 chain_file)
+        op = IndependentOperator(
+            openmc.Materials([model.materials[0]]), [1e15], [micro_xs], chain_file
+        )
 
     # Power and timesteps
     dt = [917.4, 2262.6]  # one Xe135_m1 half life and one Cs135_m1 half life
 
     # Perform simulation using the predictor algorithm
-    openmc.deplete.PredictorIntegrator(op,
-                                       dt,
-                                       power=0.0,
-                                       timestep_units='s').integrate()
+    openmc.deplete.PredictorIntegrator(
+        op, dt, power=0.0, timestep_units="s"
+    ).integrate()
 
     # Get path to test and reference results
-    path_test = op.output_dir / 'depletion_results.h5'
+    path_test = op.output_dir / "depletion_results.h5"
 
     # Load the reference/test results
     res_test = openmc.deplete.Results(path_test)
 
-    _, xe135m1_atoms = res_test.get_atoms('1', 'Xe135_m1')
-    _, xe135_atoms = res_test.get_atoms('1', 'Xe135')
-    _, cs135m1_atoms = res_test.get_atoms('1', 'Cs135_m1')
-    _, cs135_atoms = res_test.get_atoms('1', 'Cs135')
+    _, xe135m1_atoms = res_test.get_atoms("1", "Xe135_m1")
+    _, xe135_atoms = res_test.get_atoms("1", "Xe135")
+    _, cs135m1_atoms = res_test.get_atoms("1", "Cs135_m1")
+    _, cs135_atoms = res_test.get_atoms("1", "Cs135")
 
     tol = 1.0e-14
     assert xe135m1_atoms[0] == pytest.approx(xe135m1_atoms[1] * 2, rel=tol)

@@ -230,9 +230,12 @@ def model_1():
 
     # Surfaces
     box1_rpp = openmc.model.RectangularParallelepiped(
-        -box1_size / 2.0, box1_size / 2.0,
-        -box1_size / 2.0, box1_size / 2.0,
-        -box1_size / 2.0, box1_size / 2.0,
+        -box1_size / 2.0,
+        box1_size / 2.0,
+        -box1_size / 2.0,
+        box1_size / 2.0,
+        -box1_size / 2.0,
+        box1_size / 2.0,
     )
 
     # Cell
@@ -247,10 +250,13 @@ def model_1():
 
     # Surfaces
     box2_rpp = openmc.model.RectangularParallelepiped(
-        -box2_size / 2.0, box2_size / 2.0,
-        -box2_size / 2.0, box2_size / 2.0,
-        -box2_size / 2.0, box2_size / 2.0,
-        boundary_type="vacuum"
+        -box2_size / 2.0,
+        box2_size / 2.0,
+        -box2_size / 2.0,
+        box2_size / 2.0,
+        -box2_size / 2.0,
+        box2_size / 2.0,
+        boundary_type="vacuum",
     )
 
     # Cell
@@ -279,7 +285,8 @@ def model_1():
     ]
     distribution = openmc.stats.Box(bounds[:3], bounds[3:])
     model.settings.source = openmc.IndependentSource(
-        space=distribution, constraints={'fissionable': True})
+        space=distribution, constraints={"fissionable": True}
+    )
 
     return model
 
@@ -350,10 +357,13 @@ def model_2():
 
     # Surfaces
     box1_rpp = openmc.model.RectangularParallelepiped(
-        -box1_size / 2.0, box1_size / 2.0,
-        -box1_size / 2.0, box1_size / 2.0,
-        -box1_size / 2.0, box1_size / 2.0,
-        boundary_type="vacuum"
+        -box1_size / 2.0,
+        box1_size / 2.0,
+        -box1_size / 2.0,
+        box1_size / 2.0,
+        -box1_size / 2.0,
+        box1_size / 2.0,
+        boundary_type="vacuum",
     )
 
     # Cell
@@ -382,7 +392,8 @@ def model_2():
     ]
     distribution = openmc.stats.Box(bounds[:3], bounds[3:])
     model.settings.source = openmc.IndependentSource(
-        space=distribution, constraints={'fissionable': True})
+        space=distribution, constraints={"fissionable": True}
+    )
 
     return model
 
@@ -453,10 +464,13 @@ def model_3():
 
     # Surfaces
     box1_rpp = openmc.model.RectangularParallelepiped(
-        -box1_size / 2.0, box1_size / 2.0,
-        -box1_size / 2.0, box1_size / 2.0,
-        -box1_size / 2.0, box1_size / 2.0,
-        boundary_type="reflective"
+        -box1_size / 2.0,
+        box1_size / 2.0,
+        -box1_size / 2.0,
+        box1_size / 2.0,
+        -box1_size / 2.0,
+        box1_size / 2.0,
+        boundary_type="reflective",
     )
 
     # Cell
@@ -485,7 +499,8 @@ def model_3():
     ]
     distribution = openmc.stats.Box(bounds[:3], bounds[3:])
     model.settings.source = openmc.IndependentSource(
-        space=distribution, constraints={'fissionable': True})
+        space=distribution, constraints={"fissionable": True}
+    )
 
     return model
 
@@ -599,7 +614,8 @@ def model_4():
     ]
     distribution = openmc.stats.Box(bounds[:3], bounds[3:])
     model.settings.source = openmc.IndependentSource(
-        space=distribution, constraints={'fissionable': True})
+        space=distribution, constraints={"fissionable": True}
+    )
 
     return model
 
@@ -934,7 +950,8 @@ def model_dagmc_1():
 
     source_box = openmc.stats.Box([-4, -4, -20], [4, 4, 20])
     model.settings.source = openmc.IndependentSource(
-        space=source_box, constraints={'fissionable': True})
+        space=source_box, constraints={"fissionable": True}
+    )
 
     return model
 
@@ -1069,7 +1086,8 @@ def model_dagmc_2():
 
     source_box = openmc.stats.Box([-4, -4, -20], [4, 4, 20])
     model.settings.source = openmc.IndependentSource(
-        space=source_box, constraints={'fissionable': True})
+        space=source_box, constraints={"fissionable": True}
+    )
 
     return model
 

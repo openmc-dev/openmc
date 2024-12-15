@@ -66,8 +66,15 @@ class ProbabilityTables(EqualityMixin):
         sections (True).
     """
 
-    def __init__(self, energy, table, interpolation, inelastic_flag=-1,
-                 absorption_flag=-1, multiply_smooth=False):
+    def __init__(
+        self,
+        energy,
+        table,
+        interpolation,
+        inelastic_flag=-1,
+        absorption_flag=-1,
+        multiply_smooth=False,
+    ):
         self.energy = energy
         self.table = table
         self.interpolation = interpolation
@@ -81,7 +88,7 @@ class ProbabilityTables(EqualityMixin):
 
     @absorption_flag.setter
     def absorption_flag(self, absorption_flag):
-        cv.check_type('absorption flag', absorption_flag, Integral)
+        cv.check_type("absorption flag", absorption_flag, Integral)
         self._absorption_flag = absorption_flag
 
     @property
@@ -90,7 +97,7 @@ class ProbabilityTables(EqualityMixin):
 
     @energy.setter
     def energy(self, energy):
-        cv.check_type('probability table energies', energy, Iterable, Real)
+        cv.check_type("probability table energies", energy, Iterable, Real)
         self._energy = energy
 
     @property
@@ -99,7 +106,7 @@ class ProbabilityTables(EqualityMixin):
 
     @inelastic_flag.setter
     def inelastic_flag(self, inelastic_flag):
-        cv.check_type('inelastic flag', inelastic_flag, Integral)
+        cv.check_type("inelastic flag", inelastic_flag, Integral)
         self._inelastic_flag = inelastic_flag
 
     @property
@@ -108,7 +115,7 @@ class ProbabilityTables(EqualityMixin):
 
     @interpolation.setter
     def interpolation(self, interpolation):
-        cv.check_value('interpolation', interpolation, [2, 5])
+        cv.check_value("interpolation", interpolation, [2, 5])
         self._interpolation = interpolation
 
     @property
@@ -117,7 +124,7 @@ class ProbabilityTables(EqualityMixin):
 
     @multiply_smooth.setter
     def multiply_smooth(self, multiply_smooth):
-        cv.check_type('multiply by smooth', multiply_smooth, bool)
+        cv.check_type("multiply by smooth", multiply_smooth, bool)
         self._multiply_smooth = multiply_smooth
 
     @property
@@ -126,7 +133,7 @@ class ProbabilityTables(EqualityMixin):
 
     @table.setter
     def table(self, table):
-        cv.check_type('probability tables', table, np.ndarray)
+        cv.check_type("probability tables", table, np.ndarray)
         self._table = table
 
     def to_hdf5(self, group):
@@ -138,13 +145,13 @@ class ProbabilityTables(EqualityMixin):
             HDF5 group to write to
 
         """
-        group.attrs['interpolation'] = self.interpolation
-        group.attrs['inelastic'] = self.inelastic_flag
-        group.attrs['absorption'] = self.absorption_flag
-        group.attrs['multiply_smooth'] = int(self.multiply_smooth)
+        group.attrs["interpolation"] = self.interpolation
+        group.attrs["inelastic"] = self.inelastic_flag
+        group.attrs["absorption"] = self.absorption_flag
+        group.attrs["multiply_smooth"] = int(self.multiply_smooth)
 
-        group.create_dataset('energy', data=self.energy)
-        group.create_dataset('table', data=self.table)
+        group.create_dataset("energy", data=self.energy)
+        group.create_dataset("table", data=self.table)
 
     @classmethod
     def from_hdf5(cls, group):
@@ -161,16 +168,22 @@ class ProbabilityTables(EqualityMixin):
             Probability tables
 
         """
-        interpolation = group.attrs['interpolation']
-        inelastic_flag = group.attrs['inelastic']
-        absorption_flag = group.attrs['absorption']
-        multiply_smooth = bool(group.attrs['multiply_smooth'])
+        interpolation = group.attrs["interpolation"]
+        inelastic_flag = group.attrs["inelastic"]
+        absorption_flag = group.attrs["absorption"]
+        multiply_smooth = bool(group.attrs["multiply_smooth"])
 
-        energy = group['energy'][()]
-        table = group['table'][()]
+        energy = group["energy"][()]
+        table = group["table"][()]
 
-        return cls(energy, table, interpolation, inelastic_flag,
-                   absorption_flag, multiply_smooth)
+        return cls(
+            energy,
+            table,
+            interpolation,
+            inelastic_flag,
+            absorption_flag,
+            multiply_smooth,
+        )
 
     @classmethod
     def from_ace(cls, ace):
@@ -192,24 +205,30 @@ class ProbabilityTables(EqualityMixin):
         if idx == 0:
             return None
 
-        N = int(ace.xss[idx])      # Number of incident energies
-        M = int(ace.xss[idx+1])    # Length of probability table
-        interpolation = int(ace.xss[idx+2])
-        inelastic_flag = int(ace.xss[idx+3])
-        absorption_flag = int(ace.xss[idx+4])
-        multiply_smooth = (int(ace.xss[idx+5]) == 1)
+        N = int(ace.xss[idx])  # Number of incident energies
+        M = int(ace.xss[idx + 1])  # Length of probability table
+        interpolation = int(ace.xss[idx + 2])
+        inelastic_flag = int(ace.xss[idx + 3])
+        absorption_flag = int(ace.xss[idx + 4])
+        multiply_smooth = int(ace.xss[idx + 5]) == 1
         idx += 6
 
         # Get energies at which tables exist
-        energy = ace.xss[idx : idx+N]*EV_PER_MEV
+        energy = ace.xss[idx : idx + N] * EV_PER_MEV
         idx += N
 
         # Get probability tables
-        table = ace.xss[idx : idx+N*6*M].copy()
+        table = ace.xss[idx : idx + N * 6 * M].copy()
         table.shape = (N, 6, M)
 
         # Convert units on heating numbers
-        table[:,5,:] *= EV_PER_MEV
+        table[:, 5, :] *= EV_PER_MEV
 
-        return cls(energy, table, interpolation, inelastic_flag,
-                   absorption_flag, multiply_smooth)
+        return cls(
+            energy,
+            table,
+            interpolation,
+            inelastic_flag,
+            absorption_flag,
+            multiply_smooth,
+        )

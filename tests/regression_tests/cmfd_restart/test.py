@@ -26,7 +26,7 @@ class CMFDRestartTestHarness(CMFDTestHarness):
             statepoint = glob.glob(os.path.join(os.getcwd(), self._restart_sp))
             assert len(statepoint) == 1
             statepoint = statepoint[0]
-            self._cmfd_restart_run.run(args=['-r', statepoint])
+            self._cmfd_restart_run.run(args=["-r", statepoint])
 
             # Compare results from second CMFD run
             self._test_output_created()
@@ -55,7 +55,7 @@ def test_cmfd_restart():
     cmfd_run.tally_begin = 5
     cmfd_run.solver_begin = 5
     cmfd_run.feedback = True
-    cmfd_run.gauss_seidel_tolerance = [1.e-15, 1.e-20]
+    cmfd_run.gauss_seidel_tolerance = [1.0e-15, 1.0e-20]
     cmfd_run.run()
 
     # Initialize second CMFDRun object which will be run from restart file
@@ -64,9 +64,10 @@ def test_cmfd_restart():
     cmfd_run2.tally_begin = 5
     cmfd_run2.solver_begin = 5
     cmfd_run2.feedback = True
-    cmfd_run2.gauss_seidel_tolerance = [1.e-15, 1.e-20]
+    cmfd_run2.gauss_seidel_tolerance = [1.0e-15, 1.0e-20]
 
     # Initialize and run CMFD restart test harness
-    harness = CMFDRestartTestHarness('statepoint.20.h5', 'statepoint.15.h5',
-                                     cmfd_run, cmfd_run2)
+    harness = CMFDRestartTestHarness(
+        "statepoint.20.h5", "statepoint.15.h5", cmfd_run, cmfd_run2
+    )
     harness.main()

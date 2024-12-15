@@ -58,9 +58,7 @@ class SourceBase(ABC):
     """
 
     def __init__(
-        self,
-        strength: float | None = 1.0,
-        constraints: dict[str, Any] | None = None
+        self, strength: float | None = 1.0, constraints: dict[str, Any] | None = None
     ):
         self.strength = strength
         self.constraints = constraints
@@ -71,9 +69,9 @@ class SourceBase(ABC):
 
     @strength.setter
     def strength(self, strength):
-        cv.check_type('source strength', strength, Real, none_ok=True)
+        cv.check_type("source strength", strength, Real, none_ok=True)
         if strength is not None:
-            cv.check_greater_than('source strength', strength, 0.0, True)
+            cv.check_greater_than("source strength", strength, 0.0, True)
         self._strength = strength
 
     @property
@@ -87,30 +85,34 @@ class SourceBase(ABC):
             return
 
         for key, value in constraints.items():
-            if key == 'domains':
-                cv.check_type('domains', value, Iterable,
-                              (openmc.Cell, openmc.Material, openmc.Universe))
+            if key == "domains":
+                cv.check_type(
+                    "domains",
+                    value,
+                    Iterable,
+                    (openmc.Cell, openmc.Material, openmc.Universe),
+                )
                 if isinstance(value[0], openmc.Cell):
-                    self._constraints['domain_type'] = 'cell'
+                    self._constraints["domain_type"] = "cell"
                 elif isinstance(value[0], openmc.Material):
-                    self._constraints['domain_type'] = 'material'
+                    self._constraints["domain_type"] = "material"
                 elif isinstance(value[0], openmc.Universe):
-                    self._constraints['domain_type'] = 'universe'
-                self._constraints['domain_ids'] = [d.id for d in value]
-            elif key == 'time_bounds':
-                cv.check_type('time bounds', value, Iterable, Real)
-                self._constraints['time_bounds'] = tuple(value)
-            elif key == 'energy_bounds':
-                cv.check_type('energy bounds', value, Iterable, Real)
-                self._constraints['energy_bounds'] = tuple(value)
-            elif key == 'fissionable':
-                cv.check_type('fissionable', value, bool)
-                self._constraints['fissionable'] = value
-            elif key == 'rejection_strategy':
-                cv.check_value('rejection strategy', value, ('resample', 'kill'))
-                self._constraints['rejection_strategy'] = value
+                    self._constraints["domain_type"] = "universe"
+                self._constraints["domain_ids"] = [d.id for d in value]
+            elif key == "time_bounds":
+                cv.check_type("time bounds", value, Iterable, Real)
+                self._constraints["time_bounds"] = tuple(value)
+            elif key == "energy_bounds":
+                cv.check_type("energy bounds", value, Iterable, Real)
+                self._constraints["energy_bounds"] = tuple(value)
+            elif key == "fissionable":
+                cv.check_type("fissionable", value, bool)
+                self._constraints["fissionable"] = value
+            elif key == "rejection_strategy":
+                cv.check_value("rejection strategy", value, ("resample", "kill"))
+                self._constraints["rejection_strategy"] = value
             else:
-                raise ValueError('Unknown key in constraints dictionary: {key}')
+                raise ValueError("Unknown key in constraints dictionary: {key}")
 
     @abstractmethod
     def populate_xml_element(self, element):
@@ -144,13 +146,13 @@ class SourceBase(ABC):
                 dt_elem = ET.SubElement(constraints_elem, "domain_type")
                 dt_elem.text = constraints["domain_type"]
                 id_elem = ET.SubElement(constraints_elem, "domain_ids")
-                id_elem.text = ' '.join(str(uid) for uid in constraints["domain_ids"])
+                id_elem.text = " ".join(str(uid) for uid in constraints["domain_ids"])
             if "time_bounds" in constraints:
                 dt_elem = ET.SubElement(constraints_elem, "time_bounds")
-                dt_elem.text = ' '.join(str(t) for t in constraints["time_bounds"])
+                dt_elem.text = " ".join(str(t) for t in constraints["time_bounds"])
             if "energy_bounds" in constraints:
                 dt_elem = ET.SubElement(constraints_elem, "energy_bounds")
-                dt_elem.text = ' '.join(str(E) for E in constraints["energy_bounds"])
+                dt_elem.text = " ".join(str(E) for E in constraints["energy_bounds"])
             if "fissionable" in constraints:
                 dt_elem = ET.SubElement(constraints_elem, "fissionable")
                 dt_elem.text = str(constraints["fissionable"]).lower()
@@ -178,28 +180,28 @@ class SourceBase(ABC):
             Source generated from XML element
 
         """
-        source_type = get_text(elem, 'type')
+        source_type = get_text(elem, "type")
 
         if source_type is None:
             # attempt to determine source type based on attributes
             # for backward compatibility
-            if get_text(elem, 'file') is not None:
+            if get_text(elem, "file") is not None:
                 return FileSource.from_xml_element(elem)
-            elif get_text(elem, 'library') is not None:
+            elif get_text(elem, "library") is not None:
                 return CompiledSource.from_xml_element(elem)
             else:
                 return IndependentSource.from_xml_element(elem)
         else:
-            if source_type == 'independent':
+            if source_type == "independent":
                 return IndependentSource.from_xml_element(elem, meshes)
-            elif source_type == 'compiled':
+            elif source_type == "compiled":
                 return CompiledSource.from_xml_element(elem)
-            elif source_type == 'file':
+            elif source_type == "file":
                 return FileSource.from_xml_element(elem)
-            elif source_type == 'mesh':
+            elif source_type == "mesh":
                 return MeshSource.from_xml_element(elem, meshes)
             else:
-                raise ValueError(f'Source type {source_type} is not recognized')
+                raise ValueError(f"Source type {source_type} is not recognized")
 
     @staticmethod
     def _get_constraints(elem: ET.Element) -> dict[str, Any]:
@@ -215,30 +217,30 @@ class SourceBase(ABC):
             # Instantiate some throw-away domains that are used by the
             # constructor to assign IDs
             with warnings.catch_warnings():
-                warnings.simplefilter('ignore', openmc.IDWarning)
-                if domain_type == 'cell':
+                warnings.simplefilter("ignore", openmc.IDWarning)
+                if domain_type == "cell":
                     domains = [openmc.Cell(uid) for uid in domain_ids]
-                elif domain_type == 'material':
+                elif domain_type == "material":
                     domains = [openmc.Material(uid) for uid in domain_ids]
-                elif domain_type == 'universe':
+                elif domain_type == "universe":
                     domains = [openmc.Universe(uid) for uid in domain_ids]
-            constraints['domains'] = domains
+            constraints["domains"] = domains
 
         time_bounds = get_text(elem, "time_bounds")
         if time_bounds is not None:
-            constraints['time_bounds'] = [float(x) for x in time_bounds.split()]
+            constraints["time_bounds"] = [float(x) for x in time_bounds.split()]
 
         energy_bounds = get_text(elem, "energy_bounds")
         if energy_bounds is not None:
-            constraints['energy_bounds'] = [float(x) for x in energy_bounds.split()]
+            constraints["energy_bounds"] = [float(x) for x in energy_bounds.split()]
 
         fissionable = get_text(elem, "fissionable")
         if fissionable is not None:
-            constraints['fissionable'] = fissionable in ('true', '1')
+            constraints["fissionable"] = fissionable in ("true", "1")
 
         rejection_strategy = get_text(elem, "rejection_strategy")
         if rejection_strategy is not None:
-            constraints['rejection_strategy'] = rejection_strategy
+            constraints["rejection_strategy"] = rejection_strategy
 
         return constraints
 
@@ -315,14 +317,19 @@ class IndependentSource(SourceBase):
         energy: openmc.stats.Univariate | None = None,
         time: openmc.stats.Univariate | None = None,
         strength: float = 1.0,
-        particle: str = 'neutron',
-        domains: Sequence[openmc.Cell | openmc.Material | openmc.Universe] | None = None,
-        constraints: dict[str, Any] | None = None
+        particle: str = "neutron",
+        domains: (
+            Sequence[openmc.Cell | openmc.Material | openmc.Universe] | None
+        ) = None,
+        constraints: dict[str, Any] | None = None,
     ):
         if domains is not None:
-            warnings.warn("The 'domains' arguments has been replaced by the "
-                          "'constraints' argument.", FutureWarning)
-            constraints = {'domains': domains}
+            warnings.warn(
+                "The 'domains' arguments has been replaced by the "
+                "'constraints' argument.",
+                FutureWarning,
+            )
+            constraints = {"domains": domains}
 
         super().__init__(strength=strength, constraints=constraints)
 
@@ -343,20 +350,24 @@ class IndependentSource(SourceBase):
 
     @property
     def type(self) -> str:
-        return 'independent'
+        return "independent"
 
     def __getattr__(self, name):
-        cls_names = {'file': 'FileSource', 'library': 'CompiledSource',
-                     'parameters': 'CompiledSource'}
+        cls_names = {
+            "file": "FileSource",
+            "library": "CompiledSource",
+            "parameters": "CompiledSource",
+        }
         if name in cls_names:
             raise AttributeError(
                 f'The "{name}" attribute has been deprecated on the '
-                f'IndependentSource class. Please use the {cls_names[name]} class.')
+                f"IndependentSource class. Please use the {cls_names[name]} class."
+            )
         else:
             super().__getattribute__(name)
 
     def __setattr__(self, name, value):
-        if name in ('file', 'library', 'parameters'):
+        if name in ("file", "library", "parameters"):
             # Ensure proper AttributeError is thrown
             getattr(self, name)
         else:
@@ -368,7 +379,7 @@ class IndependentSource(SourceBase):
 
     @space.setter
     def space(self, space):
-        cv.check_type('spatial distribution', space, Spatial)
+        cv.check_type("spatial distribution", space, Spatial)
         self._space = space
 
     @property
@@ -377,7 +388,7 @@ class IndependentSource(SourceBase):
 
     @angle.setter
     def angle(self, angle):
-        cv.check_type('angular distribution', angle, UnitSphere)
+        cv.check_type("angular distribution", angle, UnitSphere)
         self._angle = angle
 
     @property
@@ -386,7 +397,7 @@ class IndependentSource(SourceBase):
 
     @energy.setter
     def energy(self, energy):
-        cv.check_type('energy distribution', energy, Univariate)
+        cv.check_type("energy distribution", energy, Univariate)
         self._energy = energy
 
     @property
@@ -395,7 +406,7 @@ class IndependentSource(SourceBase):
 
     @time.setter
     def time(self, time):
-        cv.check_type('time distribution', time, Univariate)
+        cv.check_type("time distribution", time, Univariate)
         self._time = time
 
     @property
@@ -404,7 +415,7 @@ class IndependentSource(SourceBase):
 
     @particle.setter
     def particle(self, particle):
-        cv.check_value('source particle', particle, ['neutron', 'photon'])
+        cv.check_value("source particle", particle, ["neutron", "photon"])
         self._particle = particle
 
     def populate_xml_element(self, element):
@@ -422,9 +433,9 @@ class IndependentSource(SourceBase):
         if self.angle is not None:
             element.append(self.angle.to_xml_element())
         if self.energy is not None:
-            element.append(self.energy.to_xml_element('energy'))
+            element.append(self.energy.to_xml_element("energy"))
         if self.time is not None:
-            element.append(self.time.to_xml_element('time'))
+            element.append(self.time.to_xml_element("time"))
 
     @classmethod
     def from_xml_element(cls, elem: ET.Element, meshes=None) -> SourceBase:
@@ -447,27 +458,27 @@ class IndependentSource(SourceBase):
         constraints = cls._get_constraints(elem)
         source = cls(constraints=constraints)
 
-        strength = get_text(elem, 'strength')
+        strength = get_text(elem, "strength")
         if strength is not None:
             source.strength = float(strength)
 
-        particle = get_text(elem, 'particle')
+        particle = get_text(elem, "particle")
         if particle is not None:
             source.particle = particle
 
-        space = elem.find('space')
+        space = elem.find("space")
         if space is not None:
             source.space = Spatial.from_xml_element(space, meshes)
 
-        angle = elem.find('angle')
+        angle = elem.find("angle")
         if angle is not None:
             source.angle = UnitSphere.from_xml_element(angle)
 
-        energy = elem.find('energy')
+        energy = elem.find("energy")
         if energy is not None:
             source.energy = Univariate.from_xml_element(energy)
 
-        time = elem.find('time')
+        time = elem.find("time")
         if time is not None:
             source.time = Univariate.from_xml_element(time)
 
@@ -526,11 +537,12 @@ class MeshSource(SourceBase):
         'fissionable', and 'rejection_strategy'.
 
     """
+
     def __init__(
-            self,
-            mesh: MeshBase,
-            sources: Sequence[SourceBase],
-            constraints: dict[str, Any] | None  = None,
+        self,
+        mesh: MeshBase,
+        sources: Sequence[SourceBase],
+        constraints: dict[str, Any] | None = None,
     ):
         super().__init__(strength=None, constraints=constraints)
         self.mesh = mesh
@@ -554,41 +566,44 @@ class MeshSource(SourceBase):
 
     @mesh.setter
     def mesh(self, m):
-        cv.check_type('source mesh', m, MeshBase)
+        cv.check_type("source mesh", m, MeshBase)
         self._mesh = m
 
     @sources.setter
     def sources(self, s):
-        cv.check_iterable_type('mesh sources', s, SourceBase, max_depth=3)
+        cv.check_iterable_type("mesh sources", s, SourceBase, max_depth=3)
 
         s = np.asarray(s)
 
         if isinstance(self.mesh, StructuredMesh):
             if s.size != self.mesh.num_mesh_cells:
                 raise ValueError(
-                    f'The length of the source array ({s.size}) does not match '
-                    f'the number of mesh elements ({self.mesh.num_mesh_cells}).')
+                    f"The length of the source array ({s.size}) does not match "
+                    f"the number of mesh elements ({self.mesh.num_mesh_cells})."
+                )
 
             # If user gave a multidimensional array, flatten in the order
             # of the mesh indices
             if s.ndim > 1:
-                s = s.ravel(order='F')
+                s = s.ravel(order="F")
 
         elif isinstance(self.mesh, UnstructuredMesh):
             if s.ndim > 1:
-                raise ValueError('Sources must be a 1-D array for unstructured mesh')
+                raise ValueError("Sources must be a 1-D array for unstructured mesh")
 
         self._sources = s
         for src in self._sources:
             if isinstance(src, IndependentSource) and src.space is not None:
-                warnings.warn('Some sources on the mesh have spatial '
-                              'distributions that will be ignored at runtime.')
+                warnings.warn(
+                    "Some sources on the mesh have spatial "
+                    "distributions that will be ignored at runtime."
+                )
                 break
 
     @strength.setter
     def strength(self, val):
         if val is not None:
-            cv.check_type('mesh source strength', val, Real)
+            cv.check_type("mesh source strength", val, Real)
             self.set_total_strength(val)
 
     def set_total_strength(self, strength: float):
@@ -642,10 +657,10 @@ class MeshSource(SourceBase):
         openmc.MeshSource
             MeshSource generated from the XML element
         """
-        mesh_id = int(get_text(elem, 'mesh'))
+        mesh_id = int(get_text(elem, "mesh"))
         mesh = meshes[mesh_id]
 
-        sources = [SourceBase.from_xml_element(e) for e in elem.iterchildren('source')]
+        sources = [SourceBase.from_xml_element(e) for e in elem.iterchildren("source")]
         constraints = cls._get_constraints(elem)
         return cls(mesh, sources, constraints=constraints)
 
@@ -655,7 +670,9 @@ def Source(*args, **kwargs):
     A function for backward compatibility of sources. Will be removed in the
     future. Please update to IndependentSource.
     """
-    warnings.warn("This class is deprecated in favor of 'IndependentSource'", FutureWarning)
+    warnings.warn(
+        "This class is deprecated in favor of 'IndependentSource'", FutureWarning
+    )
     return openmc.IndependentSource(*args, **kwargs)
 
 
@@ -702,12 +719,13 @@ class CompiledSource(SourceBase):
         'fissionable', and 'rejection_strategy'.
 
     """
+
     def __init__(
         self,
         library: PathLike,
         parameters: str | None = None,
         strength: float = 1.0,
-        constraints: dict[str, Any] | None = None
+        constraints: dict[str, Any] | None = None,
     ) -> None:
         super().__init__(strength=strength, constraints=constraints)
         self.library = library
@@ -725,7 +743,7 @@ class CompiledSource(SourceBase):
 
     @library.setter
     def library(self, library_name: PathLike):
-        cv.check_type('library', library_name, PathLike)
+        cv.check_type("library", library_name, PathLike)
         self._library = input_path(library_name)
 
     @property
@@ -734,7 +752,7 @@ class CompiledSource(SourceBase):
 
     @parameters.setter
     def parameters(self, parameters_path):
-        cv.check_type('parameters', parameters_path, str)
+        cv.check_type("parameters", parameters_path, str)
         self._parameters = parameters_path
 
     def populate_xml_element(self, element):
@@ -769,16 +787,16 @@ class CompiledSource(SourceBase):
             Source generated from XML element
 
         """
-        kwargs = {'constraints': cls._get_constraints(elem)}
-        kwargs['library'] = get_text(elem, 'library')
+        kwargs = {"constraints": cls._get_constraints(elem)}
+        kwargs["library"] = get_text(elem, "library")
 
         source = cls(**kwargs)
 
-        strength = get_text(elem, 'strength')
+        strength = get_text(elem, "strength")
         if strength is not None:
             source.strength = float(strength)
 
-        parameters = get_text(elem, 'parameters')
+        parameters = get_text(elem, "parameters")
         if parameters is not None:
             source.parameters = parameters
 
@@ -829,7 +847,7 @@ class FileSource(SourceBase):
         self,
         path: PathLike,
         strength: float = 1.0,
-        constraints: dict[str, Any] | None = None
+        constraints: dict[str, Any] | None = None,
     ):
         super().__init__(strength=strength, constraints=constraints)
         self.path = path
@@ -844,7 +862,7 @@ class FileSource(SourceBase):
 
     @path.setter
     def path(self, p: PathLike):
-        cv.check_type('source file', p, PathLike)
+        cv.check_type("source file", p, PathLike)
         self._path = input_path(p)
 
     def populate_xml_element(self, element):
@@ -877,11 +895,11 @@ class FileSource(SourceBase):
             Source generated from XML element
 
         """
-        kwargs = {'constraints': cls._get_constraints(elem)}
-        kwargs['path'] = get_text(elem, 'file')
-        strength = get_text(elem, 'strength')
+        kwargs = {"constraints": cls._get_constraints(elem)}
+        kwargs["path"] = get_text(elem, "file")
+        strength = get_text(elem, "strength")
         if strength is not None:
-            kwargs['strength'] = float(strength)
+            kwargs["strength"] = float(strength)
 
         return cls(**kwargs)
 
@@ -891,6 +909,7 @@ class ParticleType(IntEnum):
     IntEnum class representing a particle type. Type
     values mirror those found in the C++ class.
     """
+
     NEUTRON = 0
     PHOTON = 1
     ELECTRON = 2
@@ -983,16 +1002,17 @@ class SourceParticle:
         Type of the particle
 
     """
+
     def __init__(
         self,
-        r: Iterable[float] = (0., 0., 0.),
-        u: Iterable[float] = (0., 0., 1.),
+        r: Iterable[float] = (0.0, 0.0, 0.0),
+        u: Iterable[float] = (0.0, 0.0, 1.0),
         E: float = 1.0e6,
         time: float = 0.0,
         wgt: float = 1.0,
         delayed_group: int = 0,
         surf_id: int = 0,
-        particle: ParticleType = ParticleType.NEUTRON
+        particle: ParticleType = ParticleType.NEUTRON,
     ):
 
         self.r = tuple(r)
@@ -1006,7 +1026,7 @@ class SourceParticle:
 
     def __repr__(self):
         name = self.particle.name.lower()
-        return f'<SourceParticle: {name} at E={self.E:.6e} eV>'
+        return f"<SourceParticle: {name} at E={self.E:.6e} eV>"
 
     def to_tuple(self) -> tuple:
         """Return source particle attributes as a tuple
@@ -1017,13 +1037,20 @@ class SourceParticle:
             Source particle attributes
 
         """
-        return (self.r, self.u, self.E, self.time, self.wgt,
-                self.delayed_group, self.surf_id, self.particle.value)
+        return (
+            self.r,
+            self.u,
+            self.E,
+            self.time,
+            self.wgt,
+            self.delayed_group,
+            self.surf_id,
+            self.particle.value,
+        )
 
 
 def write_source_file(
-    source_particles: Iterable[SourceParticle],
-    filename: PathLike, **kwargs
+    source_particles: Iterable[SourceParticle], filename: PathLike, **kwargs
 ):
     """Write a source file using a collection of source particles
 
@@ -1055,6 +1082,7 @@ class ParticleList(list):
         Particles to collect into the list
 
     """
+
     @classmethod
     def from_hdf5(cls, filename: PathLike) -> ParticleList:
         """Create particle list from an HDF5 file.
@@ -1069,16 +1097,15 @@ class ParticleList(list):
         ParticleList instance
 
         """
-        with h5py.File(filename, 'r') as fh:
-            filetype = fh.attrs['filetype']
-            arr = fh['source_bank'][...]
+        with h5py.File(filename, "r") as fh:
+            filetype = fh.attrs["filetype"]
+            arr = fh["source_bank"][...]
 
-        if filetype != b'source':
-            raise ValueError(f'File {filename} is not a source file')
+        if filetype != b"source":
+            raise ValueError(f"File {filename} is not a source file")
 
         source_particles = [
-            SourceParticle(*params, ParticleType(particle))
-            for *params, particle in arr
+            SourceParticle(*params, ParticleType(particle)) for *params, particle in arr
         ]
         return cls(source_particles)
 
@@ -1097,6 +1124,7 @@ class ParticleList(list):
 
         """
         import mcpl
+
         # Process .mcpl file
         particles = []
         with mcpl.MCPLFile(filename) as f:
@@ -1112,10 +1140,10 @@ class ParticleList(list):
                 source_particle = SourceParticle(
                     r=tuple(particle.position),
                     u=tuple(particle.direction),
-                    E=1.0e6*particle.ekin,
-                    time=1.0e-3*particle.time,
+                    E=1.0e6 * particle.ekin,
+                    time=1.0e-3 * particle.time,
                     wgt=particle.weight,
-                    particle=particle_type
+                    particle=particle_type,
                 )
                 particles.append(source_particle)
 
@@ -1149,8 +1177,10 @@ class ParticleList(list):
             # use super() here, so we call list.__getitem__ directly.
             return ParticleList([list.__getitem__(self, i) for i in index])
         else:
-            raise TypeError(f"Invalid index type: {type(index)}. Must be int, "
-                            "slice, or list of int.")
+            raise TypeError(
+                f"Invalid index type: {type(index)}. Must be int, "
+                "slice, or list of int."
+            )
 
     def to_dataframe(self) -> pd.DataFrame:
         """A dataframe representing the source particles
@@ -1161,13 +1191,39 @@ class ParticleList(list):
             DataFrame containing the source particles attributes.
         """
         # Extract the attributes of the source particles into a list of tuples
-        data = [(sp.r[0], sp.r[1], sp.r[2], sp.u[0], sp.u[1], sp.u[2],
-                 sp.E, sp.time, sp.wgt, sp.delayed_group, sp.surf_id,
-                 sp.particle.name.lower()) for sp in self]
+        data = [
+            (
+                sp.r[0],
+                sp.r[1],
+                sp.r[2],
+                sp.u[0],
+                sp.u[1],
+                sp.u[2],
+                sp.E,
+                sp.time,
+                sp.wgt,
+                sp.delayed_group,
+                sp.surf_id,
+                sp.particle.name.lower(),
+            )
+            for sp in self
+        ]
 
         # Define the column names for the DataFrame
-        columns = ['x', 'y', 'z', 'u_x', 'u_y', 'u_z', 'E', 'time', 'wgt',
-                   'delayed_group', 'surf_id', 'particle']
+        columns = [
+            "x",
+            "y",
+            "z",
+            "u_x",
+            "u_y",
+            "u_z",
+            "E",
+            "time",
+            "wgt",
+            "delayed_group",
+            "surf_id",
+            "particle",
+        ]
 
         # Create the pandas DataFrame from the data
         return pd.DataFrame(data, columns=columns)
@@ -1191,26 +1247,28 @@ class ParticleList(list):
 
         """
         # Create compound datatype for source particles
-        pos_dtype = np.dtype([('x', '<f8'), ('y', '<f8'), ('z', '<f8')])
-        source_dtype = np.dtype([
-            ('r', pos_dtype),
-            ('u', pos_dtype),
-            ('E', '<f8'),
-            ('time', '<f8'),
-            ('wgt', '<f8'),
-            ('delayed_group', '<i4'),
-            ('surf_id', '<i4'),
-            ('particle', '<i4'),
-        ])
+        pos_dtype = np.dtype([("x", "<f8"), ("y", "<f8"), ("z", "<f8")])
+        source_dtype = np.dtype(
+            [
+                ("r", pos_dtype),
+                ("u", pos_dtype),
+                ("E", "<f8"),
+                ("time", "<f8"),
+                ("wgt", "<f8"),
+                ("delayed_group", "<i4"),
+                ("surf_id", "<i4"),
+                ("particle", "<i4"),
+            ]
+        )
 
         # Create array of source particles
         arr = np.array([s.to_tuple() for s in self], dtype=source_dtype)
 
         # Write array to file
-        kwargs.setdefault('mode', 'w')
+        kwargs.setdefault("mode", "w")
         with h5py.File(filename, **kwargs) as fh:
-            fh.attrs['filetype'] = np.bytes_("source")
-            fh.create_dataset('source_bank', data=arr, dtype=source_dtype)
+            fh.attrs["filetype"] = np.bytes_("source")
+            fh.create_dataset("source_bank", data=arr, dtype=source_dtype)
 
 
 def read_source_file(filename: PathLike) -> ParticleList:
@@ -1233,10 +1291,10 @@ def read_source_file(filename: PathLike) -> ParticleList:
 
     """
     filename = Path(filename)
-    if filename.suffix not in ('.h5', '.mcpl'):
-        raise ValueError('Source file must have a .h5 or .mcpl extension.')
+    if filename.suffix not in (".h5", ".mcpl"):
+        raise ValueError("Source file must have a .h5 or .mcpl extension.")
 
-    if filename.suffix == '.h5':
+    if filename.suffix == ".h5":
         return ParticleList.from_hdf5(filename)
     else:
         return ParticleList.from_mcpl(filename)

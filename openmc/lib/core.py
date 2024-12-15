@@ -1,7 +1,19 @@
 from contextlib import contextmanager
-from ctypes import (c_bool, c_int, c_int32, c_int64, c_double, c_char_p,
-                    c_char, POINTER, Structure, c_void_p, create_string_buffer,
-                    c_uint64, c_size_t)
+from ctypes import (
+    c_bool,
+    c_int,
+    c_int32,
+    c_int64,
+    c_double,
+    c_char_p,
+    c_char,
+    POINTER,
+    Structure,
+    c_void_p,
+    create_string_buffer,
+    c_uint64,
+    c_size_t,
+)
 import sys
 import os
 from random import getrandbits
@@ -17,24 +29,24 @@ import openmc
 
 
 class _SourceSite(Structure):
-    _fields_ = [('r', c_double*3),
-                ('u', c_double*3),
-                ('E', c_double),
-                ('time', c_double),
-                ('wgt', c_double),
-                ('delayed_group', c_int),
-                ('surf_id', c_int),
-                ('particle', c_int),
-                ('parent_id', c_int64),
-                ('progeny_id', c_int64)]
+    _fields_ = [
+        ("r", c_double * 3),
+        ("u", c_double * 3),
+        ("E", c_double),
+        ("time", c_double),
+        ("wgt", c_double),
+        ("delayed_group", c_int),
+        ("surf_id", c_int),
+        ("particle", c_int),
+        ("parent_id", c_int64),
+        ("progeny_id", c_int64),
+    ]
 
 
 # Define input type for numpy arrays that will be passed into C++ functions
 # Must be an int or double array, with single dimension that is contiguous
-_array_1d_int = np.ctypeslib.ndpointer(dtype=np.int32, ndim=1,
-                                       flags='CONTIGUOUS')
-_array_1d_dble = np.ctypeslib.ndpointer(dtype=np.double, ndim=1,
-                                        flags='CONTIGUOUS')
+_array_1d_int = np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags="CONTIGUOUS")
+_array_1d_dble = np.ctypeslib.ndpointer(dtype=np.double, ndim=1, flags="CONTIGUOUS")
 
 _dll.openmc_calculate_volumes.restype = c_int
 _dll.openmc_calculate_volumes.errcheck = _error_handler
@@ -42,8 +54,11 @@ _dll.openmc_cmfd_reweight.argtypes = c_bool, _array_1d_dble
 _dll.openmc_cmfd_reweight.restype = None
 _dll.openmc_finalize.restype = c_int
 _dll.openmc_finalize.errcheck = _error_handler
-_dll.openmc_find_cell.argtypes = [POINTER(c_double*3), POINTER(c_int32),
-                                  POINTER(c_int32)]
+_dll.openmc_find_cell.argtypes = [
+    POINTER(c_double * 3),
+    POINTER(c_int32),
+    POINTER(c_int32),
+]
 _dll.openmc_find_cell.restype = c_int
 _dll.openmc_find_cell.errcheck = _error_handler
 _dll.openmc_hard_reset.restype = c_int
@@ -51,15 +66,21 @@ _dll.openmc_hard_reset.errcheck = _error_handler
 _dll.openmc_init.argtypes = [c_int, POINTER(POINTER(c_char)), c_void_p]
 _dll.openmc_init.restype = c_int
 _dll.openmc_init.errcheck = _error_handler
-_dll.openmc_get_keff.argtypes = [POINTER(c_double*2)]
+_dll.openmc_get_keff.argtypes = [POINTER(c_double * 2)]
 _dll.openmc_get_keff.restype = c_int
 _dll.openmc_get_keff.errcheck = _error_handler
-_dll.openmc_initialize_mesh_egrid.argtypes = [
-    c_int, _array_1d_int, c_double
-]
+_dll.openmc_initialize_mesh_egrid.argtypes = [c_int, _array_1d_int, c_double]
 _dll.openmc_initialize_mesh_egrid.restype = None
-_init_linsolver_argtypes = [_array_1d_int, c_int, _array_1d_int, c_int, c_int,
-                            c_double, _array_1d_int, c_bool]
+_init_linsolver_argtypes = [
+    _array_1d_int,
+    c_int,
+    _array_1d_int,
+    c_int,
+    c_int,
+    c_double,
+    _array_1d_int,
+    c_bool,
+]
 _dll.openmc_initialize_linsolver.argtypes = _init_linsolver_argtypes
 _dll.openmc_initialize_linsolver.restype = None
 _dll.openmc_is_statepoint_batch.restype = c_bool
@@ -81,8 +102,7 @@ _dll.openmc_reset.restype = c_int
 _dll.openmc_reset.errcheck = _error_handler
 _dll.openmc_reset_timers.restype = c_int
 _dll.openmc_reset_timers.errcheck = _error_handler
-_run_linsolver_argtypes = [_array_1d_dble, _array_1d_dble, _array_1d_dble,
-                           c_double]
+_run_linsolver_argtypes = [_array_1d_dble, _array_1d_dble, _array_1d_dble, c_double]
 _dll.openmc_run_linsolver.argtypes = _run_linsolver_argtypes
 _dll.openmc_run_linsolver.restype = c_int
 _dll.openmc_source_bank.argtypes = [POINTER(POINTER(_SourceSite)), POINTER(c_int64)]
@@ -100,21 +120,26 @@ _dll.openmc_statepoint_load.restype = c_int
 _dll.openmc_statepoint_load.errcheck = _error_handler
 _dll.openmc_statepoint_write.restype = c_int
 _dll.openmc_statepoint_write.errcheck = _error_handler
-_dll.openmc_global_bounding_box.argtypes = [POINTER(c_double),
-                                            POINTER(c_double)]
+_dll.openmc_global_bounding_box.argtypes = [POINTER(c_double), POINTER(c_double)]
 _dll.openmc_global_bounding_box.restype = c_int
 _dll.openmc_global_bounding_box.errcheck = _error_handler
-_dll.openmc_sample_external_source.argtypes = [c_size_t, POINTER(c_uint64), POINTER(_SourceSite)]
+_dll.openmc_sample_external_source.argtypes = [
+    c_size_t,
+    POINTER(c_uint64),
+    POINTER(_SourceSite),
+]
 _dll.openmc_sample_external_source.restype = c_int
 _dll.openmc_sample_external_source.errcheck = _error_handler
+
 
 def global_bounding_box():
     """Calculate a global bounding box for the model"""
     inf = sys.float_info.max
     llc = np.zeros(3)
     urc = np.zeros(3)
-    _dll.openmc_global_bounding_box(llc.ctypes.data_as(POINTER(c_double)),
-                                    urc.ctypes.data_as(POINTER(c_double)))
+    _dll.openmc_global_bounding_box(
+        llc.ctypes.data_as(POINTER(c_double)), urc.ctypes.data_as(POINTER(c_double))
+    )
     llc[llc == inf] = np.inf
     urc[urc == inf] = np.inf
     llc[llc == -inf] = -np.inf
@@ -149,7 +174,7 @@ def current_batch():
         Current batch of the simulation
 
     """
-    return c_int.in_dll(_dll, 'current_batch').value
+    return c_int.in_dll(_dll, "current_batch").value
 
 
 def export_properties(filename=None, output=True):
@@ -200,7 +225,7 @@ def export_weight_windows(filename="weight_windows.h5", output=True):
         _dll.openmc_weight_windows_export(filename)
 
 
-def import_weight_windows(filename='weight_windows.h5', output=True):
+def import_weight_windows(filename="weight_windows.h5", output=True):
     """Import weight windows.
 
     .. versionadded:: 0.14.0
@@ -249,7 +274,7 @@ def find_cell(xyz):
     """
     index = c_int32()
     instance = c_int32()
-    _dll.openmc_find_cell((c_double*3)(*xyz), index, instance)
+    _dll.openmc_find_cell((c_double * 3)(*xyz), index, instance)
     return openmc.lib.Cell(index=index.value), instance.value
 
 
@@ -269,7 +294,7 @@ def find_material(xyz):
     """
     index = c_int32()
     instance = c_int32()
-    _dll.openmc_find_cell((c_double*3)(*xyz), index, instance)
+    _dll.openmc_find_cell((c_double * 3)(*xyz), index, instance)
 
     mats = openmc.lib.Cell(index=index.value).fill
     if isinstance(mats, (openmc.lib.Material, type(None))):
@@ -318,9 +343,9 @@ def init(args=None, intracomm=None, output=True):
 
     """
     if args is not None:
-        args = ['openmc'] + list(args)
+        args = ["openmc"] + list(args)
     else:
-        args = ['openmc']
+        args = ["openmc"]
 
     argc = len(args)
     # Create the argv array. Note that it is actually expected to be of
@@ -400,7 +425,7 @@ def keff():
         Mean k-eigenvalue and standard deviation of the mean
 
     """
-    k = (c_double*2)()
+    k = (c_double * 2)()
     _dll.openmc_get_keff(k)
     return tuple(k)
 
@@ -475,8 +500,7 @@ def run(output=True):
 
 
 def sample_external_source(
-        n_samples: int = 1000,
-        prn_seed: int | None = None
+    n_samples: int = 1000, prn_seed: int | None = None
 ) -> openmc.ParticleList:
     """Sample external source and return source particles.
 
@@ -503,16 +527,26 @@ def sample_external_source(
 
     # Call into C API to sample source
     sites_array = (_SourceSite * n_samples)()
-    _dll.openmc_sample_external_source(c_size_t(n_samples), c_uint64(prn_seed), sites_array)
+    _dll.openmc_sample_external_source(
+        c_size_t(n_samples), c_uint64(prn_seed), sites_array
+    )
 
     # Convert to list of SourceParticle and return
-    return openmc.ParticleList([openmc.SourceParticle(
-            r=site.r, u=site.u, E=site.E, time=site.time, wgt=site.wgt,
-            delayed_group=site.delayed_group, surf_id=site.surf_id,
-            particle=openmc.ParticleType(site.particle)
-        )
-        for site in sites_array
-    ])
+    return openmc.ParticleList(
+        [
+            openmc.SourceParticle(
+                r=site.r,
+                u=site.u,
+                E=site.E,
+                time=site.time,
+                wgt=site.wgt,
+                delayed_group=site.delayed_group,
+                surf_id=site.surf_id,
+                particle=openmc.ParticleType(site.particle),
+            )
+            for site in sites_array
+        ]
+    )
 
 
 def simulation_init():
@@ -549,11 +583,13 @@ def source_bank():
         # /14214), re-raise with a more helpful error message.
         if len(err.args) == 0:
             raise err
-        if err.args[0].startswith('invalid shape in fixed-type tuple'):
-            raise ValueError('The source bank is too large to access via '
-                'openmc.lib with this version of numpy.  Use a different '
-                'version of numpy or reduce the bank size (fewer particles '
-                'per MPI process) so that it is smaller than 2 GB.') from err
+        if err.args[0].startswith("invalid shape in fixed-type tuple"):
+            raise ValueError(
+                "The source bank is too large to access via "
+                "openmc.lib with this version of numpy.  Use a different "
+                "version of numpy or reduce the bank size (fewer particles "
+                "per MPI process) so that it is smaller than 2 GB."
+            ) from err
         else:
             raise err
 
@@ -618,6 +654,7 @@ def run_in_memory(**kwargs):
 
 class _DLLGlobal:
     """Data descriptor that exposes global variables from libopenmc."""
+
     def __init__(self, ctype, name):
         self.ctype = ctype
         self.name = name
@@ -678,7 +715,7 @@ def quiet_dll(output=True):
         os.dup2(devnull, 1)
         os.close(devnull)
         # Now point stdout to the re-defined stdout
-        sys.stdout = os.fdopen(new_stdout, 'w')
+        sys.stdout = os.fdopen(new_stdout, "w")
 
         try:
             yield

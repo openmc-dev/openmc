@@ -12,8 +12,13 @@ import openmc.data
 from openmc.mixin import EqualityMixin
 from .data import EV_PER_MEV
 
-INTERPOLATION_SCHEME = {1: 'histogram', 2: 'linear-linear', 3: 'linear-log',
-                        4: 'log-linear', 5: 'log-log'}
+INTERPOLATION_SCHEME = {
+    1: "histogram",
+    2: "linear-linear",
+    3: "linear-log",
+    4: "log-linear",
+    5: "log-log",
+}
 
 
 def sum_functions(funcs):
@@ -39,8 +44,9 @@ def sum_functions(funcs):
         if isinstance(f, Tabulated1D):
             xs.append(f.x)
             if not np.all(f.interpolation == 2):
-                raise ValueError('Only linear-linear tabulated functions '
-                                 'can be combined')
+                raise ValueError(
+                    "Only linear-linear tabulated functions " "can be combined"
+                )
 
     if xs:
         # Take the union of all energies (sorted)
@@ -58,11 +64,13 @@ def sum_functions(funcs):
 
 class Function1D(EqualityMixin, ABC):
     """A function of one independent variable with HDF5 support."""
-    @abstractmethod
-    def __call__(self): pass
 
     @abstractmethod
-    def to_hdf5(self, group, name='xy'):
+    def __call__(self):
+        pass
+
+    @abstractmethod
+    def to_hdf5(self, group, name="xy"):
         """Write function to an HDF5 group
 
         Parameters
@@ -91,10 +99,11 @@ class Function1D(EqualityMixin, ABC):
 
         """
         for subclass in cls.__subclasses__():
-            if dataset.attrs['type'].decode() == subclass.__name__:
+            if dataset.attrs["type"].decode() == subclass.__name__:
                 return subclass.from_hdf5(dataset)
-        raise ValueError("Unrecognized Function1D class: '"
-                         + dataset.attrs['type'].decode() + "'")
+        raise ValueError(
+            "Unrecognized Function1D class: '" + dataset.attrs["type"].decode() + "'"
+        )
 
 
 class Tabulated1D(Function1D):
@@ -164,19 +173,19 @@ class Tabulated1D(Function1D):
         y = np.zeros_like(x)
 
         # Get indices for interpolation
-        idx = np.searchsorted(self.x, x, side='right') - 1
+        idx = np.searchsorted(self.x, x, side="right") - 1
 
         # Loop over interpolation regions
         for k in range(len(self.breakpoints)):
             # Get indices for the begining and ending of this region
-            i_begin = self.breakpoints[k-1] - 1 if k > 0 else 0
+            i_begin = self.breakpoints[k - 1] - 1 if k > 0 else 0
             i_end = self.breakpoints[k] - 1
 
             # Figure out which idx values lie within this region
             contained = (idx >= i_begin) & (idx < i_end)
 
-            xk = x[contained]                 # x values in this region
-            xi = self.x[idx[contained]]       # low edge of corresponding bins
+            xk = x[contained]  # x values in this region
+            xi = self.x[idx[contained]]  # low edge of corresponding bins
             xi1 = self.x[idx[contained] + 1]  # high edge of corresponding bins
             yi = self.y[idx[contained]]
             yi1 = self.y[idx[contained] + 1]
@@ -187,20 +196,21 @@ class Tabulated1D(Function1D):
 
             elif self.interpolation[k] == 2:
                 # Linear-linear
-                y[contained] = yi + (xk - xi)/(xi1 - xi)*(yi1 - yi)
+                y[contained] = yi + (xk - xi) / (xi1 - xi) * (yi1 - yi)
 
             elif self.interpolation[k] == 3:
                 # Linear-log
-                y[contained] = yi + np.log(xk/xi)/np.log(xi1/xi)*(yi1 - yi)
+                y[contained] = yi + np.log(xk / xi) / np.log(xi1 / xi) * (yi1 - yi)
 
             elif self.interpolation[k] == 4:
                 # Log-linear
-                y[contained] = yi*np.exp((xk - xi)/(xi1 - xi)*np.log(yi1/yi))
+                y[contained] = yi * np.exp((xk - xi) / (xi1 - xi) * np.log(yi1 / yi))
 
             elif self.interpolation[k] == 5:
                 # Log-log
-                y[contained] = (yi*np.exp(np.log(xk/xi)/np.log(xi1/xi)
-                                *np.log(yi1/yi)))
+                y[contained] = yi * np.exp(
+                    np.log(xk / xi) / np.log(xi1 / xi) * np.log(yi1 / yi)
+                )
 
         # In some cases, x values might be outside the tabulated region due only
         # to precision, so we check if they're close and set them equal if so.
@@ -216,14 +226,14 @@ class Tabulated1D(Function1D):
             return self._y[-1]
 
         # Get the index for interpolation
-        idx = np.searchsorted(self._x, x, side='right') - 1
+        idx = np.searchsorted(self._x, x, side="right") - 1
 
         # Loop over interpolation regions
         for b, p in zip(self.breakpoints, self.interpolation):
             if idx < b - 1:
                 break
 
-        xi = self._x[idx]       # low edge of the corresponding bin
+        xi = self._x[idx]  # low edge of the corresponding bin
         xi1 = self._x[idx + 1]  # high edge of the corresponding bin
         yi = self._y[idx]
         yi1 = self._y[idx + 1]
@@ -234,19 +244,19 @@ class Tabulated1D(Function1D):
 
         elif p == 2:
             # Linear-linear
-            return yi + (x - xi)/(xi1 - xi)*(yi1 - yi)
+            return yi + (x - xi) / (xi1 - xi) * (yi1 - yi)
 
         elif p == 3:
             # Linear-log
-            return yi + log(x/xi)/log(xi1/xi)*(yi1 - yi)
+            return yi + log(x / xi) / log(xi1 / xi) * (yi1 - yi)
 
         elif p == 4:
             # Log-linear
-            return yi*exp((x - xi)/(xi1 - xi)*log(yi1/yi))
+            return yi * exp((x - xi) / (xi1 - xi) * log(yi1 / yi))
 
         elif p == 5:
             # Log-log
-            return yi*exp(log(x/xi)/log(xi1/xi)*log(yi1/yi))
+            return yi * exp(log(x / xi) / log(xi1 / xi) * log(yi1 / yi))
 
     def __len__(self):
         return len(self.x)
@@ -257,7 +267,7 @@ class Tabulated1D(Function1D):
 
     @x.setter
     def x(self, x):
-        cv.check_type('x values', x, Iterable, Real)
+        cv.check_type("x values", x, Iterable, Real)
         self._x = x
 
     @property
@@ -266,7 +276,7 @@ class Tabulated1D(Function1D):
 
     @y.setter
     def y(self, y):
-        cv.check_type('y values', y, Iterable, Real)
+        cv.check_type("y values", y, Iterable, Real)
         self._y = y
 
     @property
@@ -275,7 +285,7 @@ class Tabulated1D(Function1D):
 
     @breakpoints.setter
     def breakpoints(self, breakpoints):
-        cv.check_type('breakpoints', breakpoints, Iterable, Integral)
+        cv.check_type("breakpoints", breakpoints, Iterable, Integral)
         self._breakpoints = breakpoints
 
     @property
@@ -284,7 +294,7 @@ class Tabulated1D(Function1D):
 
     @interpolation.setter
     def interpolation(self, interpolation):
-        cv.check_type('interpolation', interpolation, Iterable, Integral)
+        cv.check_type("interpolation", interpolation, Iterable, Integral)
         self._interpolation = interpolation
 
     @property
@@ -316,42 +326,44 @@ class Tabulated1D(Function1D):
 
             # Get x values and bounding (x,y) pairs
             x0 = self.x[i_low:i_high]
-            x1 = self.x[i_low + 1:i_high + 1]
+            x1 = self.x[i_low + 1 : i_high + 1]
             y0 = self.y[i_low:i_high]
-            y1 = self.y[i_low + 1:i_high + 1]
+            y1 = self.y[i_low + 1 : i_high + 1]
 
             if self.interpolation[k] == 1:
                 # Histogram
-                partial_sum[i_low:i_high] = y0*(x1 - x0)
+                partial_sum[i_low:i_high] = y0 * (x1 - x0)
 
             elif self.interpolation[k] == 2:
                 # Linear-linear
-                m = (y1 - y0)/(x1 - x0)
-                partial_sum[i_low:i_high] = (y0 - m*x0)*(x1 - x0) + \
-                                            m*(x1**2 - x0**2)/2
+                m = (y1 - y0) / (x1 - x0)
+                partial_sum[i_low:i_high] = (y0 - m * x0) * (x1 - x0) + m * (
+                    x1**2 - x0**2
+                ) / 2
 
             elif self.interpolation[k] == 3:
                 # Linear-log
-                logx = np.log(x1/x0)
-                m = (y1 - y0)/logx
-                partial_sum[i_low:i_high] = y0 + m*(x1*(logx - 1) + x0)
+                logx = np.log(x1 / x0)
+                m = (y1 - y0) / logx
+                partial_sum[i_low:i_high] = y0 + m * (x1 * (logx - 1) + x0)
 
             elif self.interpolation[k] == 4:
                 # Log-linear
-                m = np.log(y1/y0)/(x1 - x0)
-                partial_sum[i_low:i_high] = y0/m*(np.exp(m*(x1 - x0)) - 1)
+                m = np.log(y1 / y0) / (x1 - x0)
+                partial_sum[i_low:i_high] = y0 / m * (np.exp(m * (x1 - x0)) - 1)
 
             elif self.interpolation[k] == 5:
                 # Log-log
-                m = np.log(y1/y0)/np.log(x1/x0)
-                partial_sum[i_low:i_high] = y0/((m + 1)*x0**m)*(
-                    x1**(m + 1) - x0**(m + 1))
+                m = np.log(y1 / y0) / np.log(x1 / x0)
+                partial_sum[i_low:i_high] = (
+                    y0 / ((m + 1) * x0**m) * (x1 ** (m + 1) - x0 ** (m + 1))
+                )
 
             i_low = i_high
 
-        return np.concatenate(([0.], np.cumsum(partial_sum)))
+        return np.concatenate(([0.0], np.cumsum(partial_sum)))
 
-    def to_hdf5(self, group, name='xy'):
+    def to_hdf5(self, group, name="xy"):
         """Write tabulated function to an HDF5 group
 
         Parameters
@@ -362,11 +374,10 @@ class Tabulated1D(Function1D):
             Name of the dataset to create
 
         """
-        dataset = group.create_dataset(name, data=np.vstack(
-            [self.x, self.y]))
-        dataset.attrs['type'] = np.bytes_(type(self).__name__)
-        dataset.attrs['breakpoints'] = self.breakpoints
-        dataset.attrs['interpolation'] = self.interpolation
+        dataset = group.create_dataset(name, data=np.vstack([self.x, self.y]))
+        dataset.attrs["type"] = np.bytes_(type(self).__name__)
+        dataset.attrs["breakpoints"] = self.breakpoints
+        dataset.attrs["interpolation"] = self.interpolation
 
     @classmethod
     def from_hdf5(cls, dataset):
@@ -383,14 +394,15 @@ class Tabulated1D(Function1D):
             Function read from dataset
 
         """
-        if dataset.attrs['type'].decode() != cls.__name__:
-            raise ValueError("Expected an HDF5 attribute 'type' equal to '"
-                             + cls.__name__ + "'")
+        if dataset.attrs["type"].decode() != cls.__name__:
+            raise ValueError(
+                "Expected an HDF5 attribute 'type' equal to '" + cls.__name__ + "'"
+            )
 
         x = dataset[0, :]
         y = dataset[1, :]
-        breakpoints = dataset.attrs['breakpoints']
-        interpolation = dataset.attrs['interpolation']
+        breakpoints = dataset.attrs["breakpoints"]
+        interpolation = dataset.attrs["interpolation"]
         return cls(x, y, breakpoints, interpolation)
 
     @classmethod
@@ -416,22 +428,22 @@ class Tabulated1D(Function1D):
 
         # Get number of regions and pairs
         n_regions = int(ace.xss[idx])
-        n_pairs = int(ace.xss[idx + 1 + 2*n_regions])
+        n_pairs = int(ace.xss[idx + 1 + 2 * n_regions])
 
         # Get interpolation information
         idx += 1
         if n_regions > 0:
-            breakpoints = ace.xss[idx:idx + n_regions].astype(int)
-            interpolation = ace.xss[idx + n_regions:idx + 2*n_regions].astype(int)
+            breakpoints = ace.xss[idx : idx + n_regions].astype(int)
+            interpolation = ace.xss[idx + n_regions : idx + 2 * n_regions].astype(int)
         else:
             # 0 regions implies linear-linear interpolation by default
             breakpoints = np.array([n_pairs])
             interpolation = np.array([2])
 
         # Get (x,y) pairs
-        idx += 2*n_regions + 1
-        x = ace.xss[idx:idx + n_pairs].copy()
-        y = ace.xss[idx + n_pairs:idx + 2*n_pairs].copy()
+        idx += 2 * n_regions + 1
+        x = ace.xss[idx : idx + n_pairs].copy()
+        y = ace.xss[idx + n_pairs : idx + 2 * n_pairs].copy()
 
         if convert_units:
             x *= EV_PER_MEV
@@ -448,7 +460,8 @@ class Polynomial(np.polynomial.Polynomial, Function1D):
         Polynomial coefficients in order of increasing degree
 
     """
-    def to_hdf5(self, group, name='xy'):
+
+    def to_hdf5(self, group, name="xy"):
         """Write polynomial function to an HDF5 group
 
         Parameters
@@ -460,7 +473,7 @@ class Polynomial(np.polynomial.Polynomial, Function1D):
 
         """
         dataset = group.create_dataset(name, data=self.coef)
-        dataset.attrs['type'] = np.bytes_(type(self).__name__)
+        dataset.attrs["type"] = np.bytes_(type(self).__name__)
 
     @classmethod
     def from_hdf5(cls, dataset):
@@ -477,9 +490,10 @@ class Polynomial(np.polynomial.Polynomial, Function1D):
             Function read from dataset
 
         """
-        if dataset.attrs['type'].decode() != cls.__name__:
-            raise ValueError("Expected an HDF5 attribute 'type' equal to '"
-                             + cls.__name__ + "'")
+        if dataset.attrs["type"].decode() != cls.__name__:
+            raise ValueError(
+                "Expected an HDF5 attribute 'type' equal to '" + cls.__name__ + "'"
+            )
         return cls(dataset[()])
 
 
@@ -529,7 +543,7 @@ class Combination(EqualityMixin):
 
     @functions.setter
     def functions(self, functions):
-        cv.check_type('functions', functions, Iterable, Callable)
+        cv.check_type("functions", functions, Iterable, Callable)
         self._functions = functions
 
     @property
@@ -538,9 +552,9 @@ class Combination(EqualityMixin):
 
     @operations.setter
     def operations(self, operations):
-        cv.check_type('operations', operations, Iterable, np.ufunc)
+        cv.check_type("operations", operations, Iterable, np.ufunc)
         length = len(self.functions) - 1
-        cv.check_length('operations', operations, length, length_max=length)
+        cv.check_length("operations", operations, length, length_max=length)
         self._operations = operations
 
 
@@ -575,10 +589,10 @@ class Sum(Function1D):
 
     @functions.setter
     def functions(self, functions):
-        cv.check_type('functions', functions, Iterable, Callable)
+        cv.check_type("functions", functions, Iterable, Callable)
         self._functions = functions
 
-    def to_hdf5(self, group, name='xy'):
+    def to_hdf5(self, group, name="xy"):
         """Write sum of functions to an HDF5 group
 
         .. versionadded:: 0.13.1
@@ -592,10 +606,10 @@ class Sum(Function1D):
 
         """
         sum_group = group.create_group(name)
-        sum_group.attrs['type'] = np.bytes_(type(self).__name__)
-        sum_group.attrs['n'] = len(self.functions)
+        sum_group.attrs["type"] = np.bytes_(type(self).__name__)
+        sum_group.attrs["n"] = len(self.functions)
         for i, f in enumerate(self.functions):
-            f.to_hdf5(sum_group, f'func_{i+1}')
+            f.to_hdf5(sum_group, f"func_{i+1}")
 
     @classmethod
     def from_hdf5(cls, group):
@@ -614,11 +628,8 @@ class Sum(Function1D):
             Functions read from the group
 
         """
-        n = group.attrs['n']
-        functions = [
-            Function1D.from_hdf5(group[f'func_{i+1}'])
-            for i in range(n)
-        ]
+        n = group.attrs["n"]
+        functions = [Function1D.from_hdf5(group[f"func_{i+1}"]) for i in range(n)]
         return cls(functions)
 
 
@@ -666,7 +677,7 @@ class Regions1D(EqualityMixin):
 
     @functions.setter
     def functions(self, functions):
-        cv.check_type('functions', functions, Iterable, Callable)
+        cv.check_type("functions", functions, Iterable, Callable)
         self._functions = functions
 
     @property
@@ -675,7 +686,7 @@ class Regions1D(EqualityMixin):
 
     @breakpoints.setter
     def breakpoints(self, breakpoints):
-        cv.check_iterable_type('breakpoints', breakpoints, Real)
+        cv.check_iterable_type("breakpoints", breakpoints, Real)
         self._breakpoints = breakpoints
 
 
@@ -702,7 +713,6 @@ class ResonancesWithBackground(EqualityMixin):
 
     """
 
-
     def __init__(self, resonances, background, mt):
         self.resonances = resonances
         self.background = background
@@ -714,7 +724,7 @@ class ResonancesWithBackground(EqualityMixin):
 
     @background.setter
     def background(self, background):
-        cv.check_type('background cross section', background, Callable)
+        cv.check_type("background cross section", background, Callable)
         self._background = background
 
     @property
@@ -723,7 +733,7 @@ class ResonancesWithBackground(EqualityMixin):
 
     @mt.setter
     def mt(self, mt):
-        cv.check_type('MT value', mt, Integral)
+        cv.check_type("MT value", mt, Integral)
         self._mt = mt
 
     @property
@@ -732,6 +742,7 @@ class ResonancesWithBackground(EqualityMixin):
 
     @resonances.setter
     def resonances(self, resonances):
-        cv.check_type('resolved resonance parameters', resonances,
-                      openmc.data.Resonances)
+        cv.check_type(
+            "resolved resonance parameters", resonances, openmc.data.Resonances
+        )
         self._resonances = resonances

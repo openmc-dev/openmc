@@ -53,7 +53,7 @@ class IDManagerMixin:
             cls = self._id_class
         except AttributeError:
             for cls in self.__class__.__mro__:
-                if 'next_id' in cls.__dict__:
+                if "next_id" in cls.__dict__:
                     break
 
         if uid is None:
@@ -63,10 +63,10 @@ class IDManagerMixin:
             cls.used_ids.add(cls.next_id)
         else:
             name = cls.__name__
-            cv.check_type(f'{name} ID', uid, Integral)
-            cv.check_greater_than(f'{name} ID', uid, 0, equality=True)
+            cv.check_type(f"{name} ID", uid, Integral)
+            cv.check_greater_than(f"{name} ID", uid, 0, equality=True)
             if uid in cls.used_ids:
-                msg = f'Another {name} instance already exists with id={uid}.'
+                msg = f"Another {name} instance already exists with id={uid}."
                 warn(msg, IDWarning)
             else:
                 cls.used_ids.add(uid)

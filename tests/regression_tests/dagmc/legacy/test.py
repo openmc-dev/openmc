@@ -10,8 +10,9 @@ import pytest
 from tests.testing_harness import PyAPITestHarness, config
 
 pytestmark = pytest.mark.skipif(
-    not openmc.lib._dagmc_enabled(),
-    reason="DAGMC CAD geometry is not enabled.")
+    not openmc.lib._dagmc_enabled(), reason="DAGMC CAD geometry is not enabled."
+)
+
 
 @pytest.fixture
 def model():
@@ -24,8 +25,7 @@ def model():
     model.settings.inactive = 0
     model.settings.particles = 100
 
-    source_box = openmc.stats.Box([-4, -4, -4],
-                                  [ 4,  4,  4])
+    source_box = openmc.stats.Box([-4, -4, -4], [4, 4, 4])
     source = openmc.IndependentSource(space=source_box)
 
     model.settings.source = source
@@ -36,21 +36,21 @@ def model():
 
     # tally
     tally = openmc.Tally()
-    tally.scores = ['total']
+    tally.scores = ["total"]
     tally.filters = [openmc.CellFilter(1)]
     model.tallies = [tally]
 
     # materials
     u235 = openmc.Material(name="no-void fuel")
-    u235.add_nuclide('U235', 1.0, 'ao')
-    u235.set_density('g/cc', 11)
+    u235.add_nuclide("U235", 1.0, "ao")
+    u235.set_density("g/cc", 11)
     u235.id = 40
 
     water = openmc.Material(name="water")
-    water.add_nuclide('H1', 2.0, 'ao')
-    water.add_nuclide('O16', 1.0, 'ao')
-    water.set_density('g/cc', 1.0)
-    water.add_s_alpha_beta('c_H_in_H2O')
+    water.add_nuclide("H1", 2.0, "ao")
+    water.add_nuclide("O16", 1.0, "ao")
+    water.set_density("g/cc", 1.0)
+    water.add_s_alpha_beta("c_H_in_H2O")
     water.id = 41
 
     mats = openmc.Materials([u235, water])
@@ -81,27 +81,27 @@ def test_surf_source(model):
     # create a surface source read on this model to ensure
     # particles are being generated correctly
     n = 100
-    model.settings.surf_source_write = {'surface_ids': [1], 'max_particles': n}
+    model.settings.surf_source_write = {"surface_ids": [1], "max_particles": n}
 
     # If running in MPI mode, setup proper keyword arguments for run()
-    kwargs = {'openmc_exec': config['exe']}
-    if config['mpi']:
-        kwargs['mpi_args'] = [config['mpiexec'], '-n', config['mpi_np']]
+    kwargs = {"openmc_exec": config["exe"]}
+    if config["mpi"]:
+        kwargs["mpi_args"] = [config["mpiexec"], "-n", config["mpi_np"]]
     model.run(**kwargs)
 
-    with h5py.File('surface_source.h5') as fh:
-        assert fh.attrs['filetype'] == b'source'
-        arr = fh['source_bank'][...]
-    expected_size = n * int(config['mpi_np']) if config['mpi'] else n
+    with h5py.File("surface_source.h5") as fh:
+        assert fh.attrs["filetype"] == b"source"
+        arr = fh["source_bank"][...]
+    expected_size = n * int(config["mpi_np"]) if config["mpi"] else n
     assert arr.size == expected_size
 
     # check that all particles are on surface 1 (radius = 7)
-    xs = arr[:]['r']['x']
-    ys = arr[:]['r']['y']
+    xs = arr[:]["r"]["x"]
+    ys = arr[:]["r"]["y"]
     rad = np.sqrt(xs**2 + ys**2)
     assert np.allclose(rad, 7.0)
 
 
 def test_dagmc(model):
-    harness = PyAPITestHarness('statepoint.5.h5', model)
+    harness = PyAPITestHarness("statepoint.5.h5", model)
     harness.main()

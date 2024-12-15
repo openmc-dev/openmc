@@ -19,9 +19,9 @@ if __name__ == "__main__":
     # Reading the surface source file
     with h5py.File(f"{folder}/surface_source_true.h5", "r") as fp:
         source_bank = fp["source_bank"][()]
-        r_xs = source_bank['r']['x']
-        r_ys = source_bank['r']['y']
-        r_zs = source_bank['r']['z']
+        r_xs = source_bank["r"]["x"]
+        r_ys = source_bank["r"]["y"]
+        r_zs = source_bank["r"]["z"]
 
     print("Size of the source bank: ", len(source_bank))
 

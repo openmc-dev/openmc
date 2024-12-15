@@ -45,11 +45,11 @@ class Trigger(EqualityMixin):
         self._scores = []
 
     def __repr__(self):
-        string = 'Trigger\n'
-        string += '{: <16}=\t{}\n'.format('\tType', self._trigger_type)
-        string += '{: <16}=\t{}\n'.format('\tThreshold', self._threshold)
-        string += '{: <16}=\t{}\n'.format('\tIgnore Zeros', self._ignore_zeros)
-        string += '{: <16}=\t{}\n'.format('\tScores', self._scores)
+        string = "Trigger\n"
+        string += "{: <16}=\t{}\n".format("\tType", self._trigger_type)
+        string += "{: <16}=\t{}\n".format("\tThreshold", self._threshold)
+        string += "{: <16}=\t{}\n".format("\tIgnore Zeros", self._ignore_zeros)
+        string += "{: <16}=\t{}\n".format("\tScores", self._scores)
         return string
 
     @property
@@ -58,8 +58,9 @@ class Trigger(EqualityMixin):
 
     @trigger_type.setter
     def trigger_type(self, trigger_type):
-        cv.check_value('tally trigger type', trigger_type,
-                       ['variance', 'std_dev', 'rel_err'])
+        cv.check_value(
+            "tally trigger type", trigger_type, ["variance", "std_dev", "rel_err"]
+        )
         self._trigger_type = trigger_type
 
     @property
@@ -68,7 +69,7 @@ class Trigger(EqualityMixin):
 
     @threshold.setter
     def threshold(self, threshold):
-        cv.check_type('tally trigger threshold', threshold, Real)
+        cv.check_type("tally trigger threshold", threshold, Real)
         self._threshold = threshold
 
     @property
@@ -77,7 +78,7 @@ class Trigger(EqualityMixin):
 
     @ignore_zeros.setter
     def ignore_zeros(self, ignore_zeros):
-        cv.check_type('tally trigger ignores zeros', ignore_zeros, bool)
+        cv.check_type("tally trigger ignores zeros", ignore_zeros, bool)
         self._ignore_zeros = ignore_zeros
 
     @property
@@ -86,7 +87,7 @@ class Trigger(EqualityMixin):
 
     @scores.setter
     def scores(self, scores):
-        cv.check_type('trigger scores', scores, Iterable, str)
+        cv.check_type("trigger scores", scores, Iterable, str)
 
         # Set scores making sure not to have duplicates
         self._scores = []
@@ -110,7 +111,7 @@ class Trigger(EqualityMixin):
         if self._ignore_zeros:
             element.set("ignore_zeros", "true")
         if len(self._scores) != 0:
-            element.set("scores", ' '.join(self._scores))
+            element.set("scores", " ".join(self._scores))
         return element
 
     @classmethod
@@ -133,7 +134,7 @@ class Trigger(EqualityMixin):
         threshold = float(elem.get("threshold"))
         ignore_zeros = str(elem.get("ignore_zeros", "false")).lower()
         # Try to convert to bool. Let Trigger error out on instantiation.
-        ignore_zeros = ignore_zeros in ('true', '1')
+        ignore_zeros = ignore_zeros in ("true", "1")
         trigger = cls(trigger_type, threshold, ignore_zeros)
 
         # Add scores if present

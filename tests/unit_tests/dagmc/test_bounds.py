@@ -23,17 +23,17 @@ def test_bounding_region(request):
     assert isinstance(region, openmc.Region)
     assert len(region) == 6
     assert region[0].surface.type == "x-plane"
-    assert region[0].surface.x0 == -25.
+    assert region[0].surface.x0 == -25.0
     assert region[1].surface.type == "x-plane"
-    assert region[1].surface.x0 == 25.
+    assert region[1].surface.x0 == 25.0
     assert region[2].surface.type == "y-plane"
-    assert region[2].surface.y0 == -25.
+    assert region[2].surface.y0 == -25.0
     assert region[3].surface.type == "y-plane"
-    assert region[3].surface.y0 == 25.
+    assert region[3].surface.y0 == 25.0
     assert region[4].surface.type == "z-plane"
-    assert region[4].surface.z0 == -25.
+    assert region[4].surface.z0 == -25.0
     assert region[5].surface.type == "z-plane"
-    assert region[5].surface.z0 == 25.
+    assert region[5].surface.z0 == 25.0
     assert region[0].surface.boundary_type == "vacuum"
     assert region[1].surface.boundary_type == "vacuum"
     assert region[2].surface.boundary_type == "vacuum"
@@ -41,12 +41,12 @@ def test_bounding_region(request):
     assert region[4].surface.boundary_type == "vacuum"
     assert region[5].surface.boundary_type == "vacuum"
     region = u.bounding_region(padding_distance=5)
-    assert region[0].surface.x0 == -30.
-    assert region[1].surface.x0 == 30.
-    assert region[2].surface.y0 == -30.
-    assert region[3].surface.y0 == 30.
-    assert region[4].surface.z0 == -30.
-    assert region[5].surface.z0 == 30.
+    assert region[0].surface.x0 == -30.0
+    assert region[1].surface.x0 == 30.0
+    assert region[2].surface.y0 == -30.0
+    assert region[3].surface.y0 == 30.0
+    assert region[4].surface.z0 == -30.0
+    assert region[5].surface.z0 == 30.0
 
     region = u.bounding_region(bounded_type="sphere", boundary_type="reflective")
     assert isinstance(region, openmc.Region)
@@ -94,4 +94,4 @@ def test_material_names(request):
 
     u = openmc.DAGMCUniverse(Path(request.fspath).parent / "dagmc.h5m")
 
-    assert u.material_names == ['41', 'Graveyard', 'no-void fuel']
+    assert u.material_names == ["41", "Graveyard", "no-void fuel"]

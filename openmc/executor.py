@@ -7,10 +7,19 @@ import openmc
 from .plots import _get_plot_image
 
 
-def _process_CLI_arguments(volume=False, geometry_debug=False, particles=None,
-                           plot=False, restart_file=None, threads=None,
-                           tracks=False, event_based=None,
-                           openmc_exec='openmc', mpi_args=None, path_input=None):
+def _process_CLI_arguments(
+    volume=False,
+    geometry_debug=False,
+    particles=None,
+    plot=False,
+    restart_file=None,
+    threads=None,
+    tracks=False,
+    event_based=None,
+    openmc_exec="openmc",
+    mpi_args=None,
+    path_input=None,
+):
     """Converts user-readable flags in to command-line arguments to be run with
     the OpenMC executable via subprocess.
 
@@ -59,29 +68,29 @@ def _process_CLI_arguments(volume=False, geometry_debug=False, particles=None,
     args = [openmc_exec]
 
     if volume:
-        args.append('--volume')
+        args.append("--volume")
 
     if isinstance(particles, Integral) and particles > 0:
-        args += ['-n', str(particles)]
+        args += ["-n", str(particles)]
 
     if isinstance(threads, Integral) and threads > 0:
-        args += ['-s', str(threads)]
+        args += ["-s", str(threads)]
 
     if geometry_debug:
-        args.append('-g')
+        args.append("-g")
 
     if event_based is not None:
         if event_based:
-            args.append('-e')
+            args.append("-e")
 
     if isinstance(restart_file, (str, os.PathLike)):
-        args += ['-r', str(restart_file)]
+        args += ["-r", str(restart_file)]
 
     if tracks:
-        args.append('-t')
+        args.append("-t")
 
     if plot:
-        args.append('-p')
+        args.append("-p")
 
     if mpi_args is not None:
         args = mpi_args + args
@@ -94,8 +103,13 @@ def _process_CLI_arguments(volume=False, geometry_debug=False, particles=None,
 
 def _run(args, output, cwd):
     # Launch a subprocess
-    p = subprocess.Popen(args, cwd=cwd, stdout=subprocess.PIPE,
-                         stderr=subprocess.STDOUT, universal_newlines=True)
+    p = subprocess.Popen(
+        args,
+        cwd=cwd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        universal_newlines=True,
+    )
 
     # Capture and re-print OpenMC output in real-time
     lines = []
@@ -108,24 +122,24 @@ def _run(args, output, cwd):
         lines.append(line)
         if output:
             # If user requested output, print to screen
-            print(line, end='')
+            print(line, end="")
 
     # Raise an exception if return status is non-zero
     if p.returncode != 0:
         # Get error message from output and simplify whitespace
-        output = ''.join(lines)
-        if 'ERROR: ' in output:
-            _, _, error_msg = output.partition('ERROR: ')
-        elif 'what()' in output:
-            _, _, error_msg = output.partition('what(): ')
+        output = "".join(lines)
+        if "ERROR: " in output:
+            _, _, error_msg = output.partition("ERROR: ")
+        elif "what()" in output:
+            _, _, error_msg = output.partition("what(): ")
         else:
-            error_msg = 'OpenMC aborted unexpectedly.'
-        error_msg = ' '.join(error_msg.split())
+            error_msg = "OpenMC aborted unexpectedly."
+        error_msg = " ".join(error_msg.split())
 
         raise RuntimeError(error_msg)
 
 
-def plot_geometry(output=True, openmc_exec='openmc', cwd='.', path_input=None):
+def plot_geometry(output=True, openmc_exec="openmc", cwd=".", path_input=None):
     """Run OpenMC in plotting mode
 
     Parameters
@@ -148,13 +162,13 @@ def plot_geometry(output=True, openmc_exec='openmc', cwd='.', path_input=None):
         If the `openmc` executable returns a non-zero status
 
     """
-    args = [openmc_exec, '-p']
+    args = [openmc_exec, "-p"]
     if path_input is not None:
         args += [path_input]
     _run(args, output, cwd)
 
 
-def plot_inline(plots, openmc_exec='openmc', cwd='.', path_input=None):
+def plot_inline(plots, openmc_exec="openmc", cwd=".", path_input=None):
     """Display plots inline in a Jupyter notebook.
 
     .. versionchanged:: 0.13.0
@@ -198,9 +212,14 @@ def plot_inline(plots, openmc_exec='openmc', cwd='.', path_input=None):
         display(*images)
 
 
-def calculate_volumes(threads=None, output=True, cwd='.',
-                      openmc_exec='openmc', mpi_args=None,
-                      path_input=None):
+def calculate_volumes(
+    threads=None,
+    output=True,
+    cwd=".",
+    openmc_exec="openmc",
+    mpi_args=None,
+    path_input=None,
+):
     """Run stochastic volume calculations in OpenMC.
 
     This function runs OpenMC in stochastic volume calculation mode. To specify
@@ -247,17 +266,30 @@ def calculate_volumes(threads=None, output=True, cwd='.',
 
     """
 
-    args = _process_CLI_arguments(volume=True, threads=threads,
-                                  openmc_exec=openmc_exec, mpi_args=mpi_args,
-                                  path_input=path_input)
+    args = _process_CLI_arguments(
+        volume=True,
+        threads=threads,
+        openmc_exec=openmc_exec,
+        mpi_args=mpi_args,
+        path_input=path_input,
+    )
 
     _run(args, output, cwd)
 
 
-def run(particles=None, threads=None, geometry_debug=False,
-        restart_file=None, tracks=False, output=True, cwd='.',
-        openmc_exec='openmc', mpi_args=None, event_based=False,
-        path_input=None):
+def run(
+    particles=None,
+    threads=None,
+    geometry_debug=False,
+    restart_file=None,
+    tracks=False,
+    output=True,
+    cwd=".",
+    openmc_exec="openmc",
+    mpi_args=None,
+    event_based=False,
+    path_input=None,
+):
     """Run an OpenMC simulation.
 
     Parameters
@@ -306,9 +338,16 @@ def run(particles=None, threads=None, geometry_debug=False,
     """
 
     args = _process_CLI_arguments(
-        volume=False, geometry_debug=geometry_debug, particles=particles,
-        restart_file=restart_file, threads=threads, tracks=tracks,
-        event_based=event_based, openmc_exec=openmc_exec, mpi_args=mpi_args,
-        path_input=path_input)
+        volume=False,
+        geometry_debug=geometry_debug,
+        particles=particles,
+        restart_file=restart_file,
+        threads=threads,
+        tracks=tracks,
+        event_based=event_based,
+        openmc_exec=openmc_exec,
+        mpi_args=mpi_args,
+        path_input=path_input,
+    )
 
     _run(args, output, cwd)

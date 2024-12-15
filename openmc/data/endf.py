@@ -6,6 +6,7 @@ Data File ENDF-6". The latest version from June 2009 can be found at
 http://www-nds.iaea.org/ndspub/documents/endf/endf102/endf102.pdf
 
 """
+
 import io
 from pathlib import PurePath
 import re
@@ -17,51 +18,152 @@ from .function import Tabulated1D
 from endf.records import float_endf
 
 
-_LIBRARY = {0: 'ENDF/B', 1: 'ENDF/A', 2: 'JEFF', 3: 'EFF',
-            4: 'ENDF/B High Energy', 5: 'CENDL', 6: 'JENDL',
-            17: 'TENDL', 18: 'ROSFOND', 21: 'SG-21', 31: 'INDL/V',
-            32: 'INDL/A', 33: 'FENDL', 34: 'IRDF', 35: 'BROND',
-            36: 'INGDB-90', 37: 'FENDL/A', 41: 'BROND'}
-
-_SUBLIBRARY = {
-    0: 'Photo-nuclear data',
-    1: 'Photo-induced fission product yields',
-    3: 'Photo-atomic data',
-    4: 'Radioactive decay data',
-    5: 'Spontaneous fission product yields',
-    6: 'Atomic relaxation data',
-    10: 'Incident-neutron data',
-    11: 'Neutron-induced fission product yields',
-    12: 'Thermal neutron scattering data',
-    19: 'Neutron standards',
-    113: 'Electro-atomic data',
-    10010: 'Incident-proton data',
-    10011: 'Proton-induced fission product yields',
-    10020: 'Incident-deuteron data',
-    10030: 'Incident-triton data',
-    20030: 'Incident-helion (3He) data',
-    20040: 'Incident-alpha data'
+_LIBRARY = {
+    0: "ENDF/B",
+    1: "ENDF/A",
+    2: "JEFF",
+    3: "EFF",
+    4: "ENDF/B High Energy",
+    5: "CENDL",
+    6: "JENDL",
+    17: "TENDL",
+    18: "ROSFOND",
+    21: "SG-21",
+    31: "INDL/V",
+    32: "INDL/A",
+    33: "FENDL",
+    34: "IRDF",
+    35: "BROND",
+    36: "INGDB-90",
+    37: "FENDL/A",
+    41: "BROND",
 }
 
-SUM_RULES = {1: [2, 3],
-             3: [4, 5, 11, 16, 17, 22, 23, 24, 25, 27, 28, 29, 30, 32, 33, 34, 35,
-                 36, 37, 41, 42, 44, 45, 152, 153, 154, 156, 157, 158, 159, 160,
-                 161, 162, 163, 164, 165, 166, 167, 168, 169, 170, 171, 172,
-                 173, 174, 175, 176, 177, 178, 179, 180, 181, 183, 184, 185,
-                 186, 187, 188, 189, 190, 194, 195, 196, 198, 199, 200],
-             4: list(range(50, 92)),
-             16: list(range(875, 892)),
-             18: [19, 20, 21, 38],
-             27: [18, 101],
-             101: [102, 103, 104, 105, 106, 107, 108, 109, 111, 112, 113, 114,
-                   115, 116, 117, 155, 182, 191, 192, 193, 197],
-             103: list(range(600, 650)),
-             104: list(range(650, 700)),
-             105: list(range(700, 750)),
-             106: list(range(750, 800)),
-             107: list(range(800, 850))}
+_SUBLIBRARY = {
+    0: "Photo-nuclear data",
+    1: "Photo-induced fission product yields",
+    3: "Photo-atomic data",
+    4: "Radioactive decay data",
+    5: "Spontaneous fission product yields",
+    6: "Atomic relaxation data",
+    10: "Incident-neutron data",
+    11: "Neutron-induced fission product yields",
+    12: "Thermal neutron scattering data",
+    19: "Neutron standards",
+    113: "Electro-atomic data",
+    10010: "Incident-proton data",
+    10011: "Proton-induced fission product yields",
+    10020: "Incident-deuteron data",
+    10030: "Incident-triton data",
+    20030: "Incident-helion (3He) data",
+    20040: "Incident-alpha data",
+}
 
-ENDF_FLOAT_RE = re.compile(r'([\s\-\+]?\d*\.\d+)([\+\-]) ?(\d+)')
+SUM_RULES = {
+    1: [2, 3],
+    3: [
+        4,
+        5,
+        11,
+        16,
+        17,
+        22,
+        23,
+        24,
+        25,
+        27,
+        28,
+        29,
+        30,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        41,
+        42,
+        44,
+        45,
+        152,
+        153,
+        154,
+        156,
+        157,
+        158,
+        159,
+        160,
+        161,
+        162,
+        163,
+        164,
+        165,
+        166,
+        167,
+        168,
+        169,
+        170,
+        171,
+        172,
+        173,
+        174,
+        175,
+        176,
+        177,
+        178,
+        179,
+        180,
+        181,
+        183,
+        184,
+        185,
+        186,
+        187,
+        188,
+        189,
+        190,
+        194,
+        195,
+        196,
+        198,
+        199,
+        200,
+    ],
+    4: list(range(50, 92)),
+    16: list(range(875, 892)),
+    18: [19, 20, 21, 38],
+    27: [18, 101],
+    101: [
+        102,
+        103,
+        104,
+        105,
+        106,
+        107,
+        108,
+        109,
+        111,
+        112,
+        113,
+        114,
+        115,
+        116,
+        117,
+        155,
+        182,
+        191,
+        192,
+        193,
+        197,
+    ],
+    103: list(range(600, 650)),
+    104: list(range(650, 700)),
+    105: list(range(700, 750)),
+    106: list(range(750, 800)),
+    107: list(range(800, 850)),
+}
+
+ENDF_FLOAT_RE = re.compile(r"([\s\-\+]?\d*\.\d+)([\+\-]) ?(\d+)")
 
 
 def py_float_endf(s):
@@ -84,7 +186,7 @@ def py_float_endf(s):
         The number
 
     """
-    return float(ENDF_FLOAT_RE.sub(r'\1e\2\3', s))
+    return float(ENDF_FLOAT_RE.sub(r"\1e\2\3", s))
 
 
 def int_endf(s):
@@ -201,11 +303,11 @@ def get_list_record(file_obj):
 
     # read items
     b = []
-    for i in range((NPL - 1)//6 + 1):
+    for i in range((NPL - 1) // 6 + 1):
         line = file_obj.readline()
-        n = min(6, NPL - 6*i)
+        n = min(6, NPL - 6 * i)
         for j in range(n):
-            b.append(float_endf(line[11*j:11*(j + 1)]))
+            b.append(float_endf(line[11 * j : 11 * (j + 1)]))
 
     return (items, b)
 
@@ -240,7 +342,7 @@ def get_tab1_record(file_obj):
     breakpoints = np.zeros(n_regions, dtype=int)
     interpolation = np.zeros(n_regions, dtype=int)
     m = 0
-    for i in range((n_regions - 1)//3 + 1):
+    for i in range((n_regions - 1) // 3 + 1):
         line = file_obj.readline()
         to_read = min(3, n_regions - m)
         for j in range(to_read):
@@ -253,7 +355,7 @@ def get_tab1_record(file_obj):
     x = np.zeros(n_pairs)
     y = np.zeros(n_pairs)
     m = 0
-    for i in range((n_pairs - 1)//3 + 1):
+    for i in range((n_pairs - 1) // 3 + 1):
         line = file_obj.readline()
         to_read = min(3, n_pairs - m)
         for j in range(to_read):
@@ -274,7 +376,7 @@ def get_tab2_record(file_obj):
     breakpoints = np.zeros(n_regions, dtype=int)
     interpolation = np.zeros(n_regions, dtype=int)
     m = 0
-    for i in range((n_regions - 1)//3 + 1):
+    for i in range((n_regions - 1) // 3 + 1):
         line = file_obj.readline()
         to_read = min(3, n_regions - m)
         for j in range(to_read):
@@ -304,7 +406,7 @@ def get_intg_record(file_obj):
     # determine how many items are in list and NDIGIT
     items = get_cont_record(file_obj)
     ndigit = items[2]
-    npar = items[3]    # Number of parameters
+    npar = items[3]  # Number of parameters
     nlines = items[4]  # Lines to read
     NROW_RULES = {2: 18, 3: 12, 4: 11, 5: 9, 6: 8}
     nrow = NROW_RULES[ndigit]
@@ -317,13 +419,15 @@ def get_intg_record(file_obj):
         jj = int_endf(line[5:10]) - 1
         factor = 10**ndigit
         for j in range(nrow):
-            if jj+j >= ii:
+            if jj + j >= ii:
                 break
-            element = int_endf(line[11+(ndigit+1)*j:11+(ndigit+1)*(j+1)])
+            element = int_endf(
+                line[11 + (ndigit + 1) * j : 11 + (ndigit + 1) * (j + 1)]
+            )
             if element > 0:
-                corr[ii, jj] = (element+0.5)/factor
+                corr[ii, jj] = (element + 0.5) / factor
             elif element < 0:
-                corr[ii, jj] = (element-0.5)/factor
+                corr[ii, jj] = (element - 0.5) / factor
 
     # Symmetrize the correlation matrix
     corr = corr + corr.T - np.diag(corr.diagonal())
@@ -345,11 +449,11 @@ def get_evaluations(filename):
 
     """
     evaluations = []
-    with open(str(filename), 'r') as fh:
+    with open(str(filename), "r") as fh:
         while True:
             pos = fh.tell()
             line = fh.readline()
-            if line[66:70] == '  -1':
+            if line[66:70] == "  -1":
                 break
             fh.seek(pos)
             evaluations.append(Evaluation(fh))
@@ -380,9 +484,10 @@ class Evaluation:
         indicator (MOD).
 
     """
+
     def __init__(self, filename_or_obj):
         if isinstance(filename_or_obj, (str, PurePath)):
-            fh = open(str(filename_or_obj), 'r')
+            fh = open(str(filename_or_obj), "r")
             need_to_close = True
         else:
             fh = filename_or_obj
@@ -425,10 +530,10 @@ class Evaluation:
                 fh.readline()
                 break
 
-            section_data = ''
+            section_data = ""
             while True:
                 line = fh.readline()
-                if line[72:75] == '  0':
+                if line[72:75] == "  0":
                     break
                 else:
                     section_data += line
@@ -440,7 +545,7 @@ class Evaluation:
         self._read_header()
 
     def __repr__(self):
-        name = self.target['zsymam'].replace(' ', '')
+        name = self.target["zsymam"].replace(" ", "")
         return f"<{self.info['sublibrary']} for {name} {self.info['library']}>"
 
     def _read_header(self):
@@ -449,61 +554,61 @@ class Evaluation:
         # Information about target/projectile
         items = get_head_record(file_obj)
         Z, A = divmod(items[0], 1000)
-        self.target['atomic_number'] = Z
-        self.target['mass_number'] = A
-        self.target['mass'] = items[1]
+        self.target["atomic_number"] = Z
+        self.target["mass_number"] = A
+        self.target["mass"] = items[1]
         self._LRP = items[2]
-        self.target['fissionable'] = (items[3] == 1)
+        self.target["fissionable"] = items[3] == 1
         try:
             library = _LIBRARY[items[4]]
         except KeyError:
-            library = 'Unknown'
-        self.info['modification'] = items[5]
+            library = "Unknown"
+        self.info["modification"] = items[5]
 
         # Control record 1
         items = get_cont_record(file_obj)
-        self.target['excitation_energy'] = items[0]
-        self.target['stable'] = (int(items[1]) == 0)
-        self.target['state'] = items[2]
-        self.target['isomeric_state'] = m = items[3]
-        self.info['format'] = items[5]
-        assert self.info['format'] == 6
+        self.target["excitation_energy"] = items[0]
+        self.target["stable"] = int(items[1]) == 0
+        self.target["state"] = items[2]
+        self.target["isomeric_state"] = m = items[3]
+        self.info["format"] = items[5]
+        assert self.info["format"] == 6
 
         # Set correct excited state for Am242_m1, which is wrong in ENDF/B-VII.1
         if Z == 95 and A == 242 and m == 1:
-            self.target['state'] = 2
+            self.target["state"] = 2
 
         # Control record 2
         items = get_cont_record(file_obj)
-        self.projectile['mass'] = items[0]
-        self.info['energy_max'] = items[1]
+        self.projectile["mass"] = items[0]
+        self.info["energy_max"] = items[1]
         library_release = items[2]
-        self.info['sublibrary'] = _SUBLIBRARY[items[4]]
+        self.info["sublibrary"] = _SUBLIBRARY[items[4]]
         library_version = items[5]
-        self.info['library'] = (library, library_version, library_release)
+        self.info["library"] = (library, library_version, library_release)
 
         # Control record 3
         items = get_cont_record(file_obj)
-        self.target['temperature'] = items[0]
-        self.info['derived'] = (items[2] > 0)
+        self.target["temperature"] = items[0]
+        self.info["derived"] = items[2] > 0
         NWD = items[4]
         NXC = items[5]
 
         # Text records
         text = [get_text_record(file_obj) for i in range(NWD)]
         if len(text) >= 5:
-            self.target['zsymam'] = text[0][0:11]
-            self.info['laboratory'] = text[0][11:22]
-            self.info['date'] = text[0][22:32]
-            self.info['author'] = text[0][32:66]
-            self.info['reference'] = text[1][1:22]
-            self.info['date_distribution'] = text[1][22:32]
-            self.info['date_release'] = text[1][33:43]
-            self.info['date_entry'] = text[1][55:63]
-            self.info['identifier'] = text[2:5]
-            self.info['description'] = text[5:]
+            self.target["zsymam"] = text[0][0:11]
+            self.info["laboratory"] = text[0][11:22]
+            self.info["date"] = text[0][22:32]
+            self.info["author"] = text[0][32:66]
+            self.info["reference"] = text[1][1:22]
+            self.info["date_distribution"] = text[1][22:32]
+            self.info["date_release"] = text[1][33:43]
+            self.info["date_entry"] = text[1][55:63]
+            self.info["identifier"] = text[2:5]
+            self.info["description"] = text[5:]
         else:
-            self.target['zsymam'] = 'Unknown'
+            self.target["zsymam"] = "Unknown"
 
         # File numbers, reaction designations, and number of records
         for i in range(NXC):
@@ -512,9 +617,11 @@ class Evaluation:
 
     @property
     def gnds_name(self):
-        return gnds_name(self.target['atomic_number'],
-                         self.target['mass_number'],
-                         self.target['isomeric_state'])
+        return gnds_name(
+            self.target["atomic_number"],
+            self.target["mass_number"],
+            self.target["isomeric_state"],
+        )
 
 
 class Tabulated2D:
@@ -534,6 +641,7 @@ class Tabulated2D:
         ln(x).
 
     """
+
     def __init__(self, breakpoints, interpolation):
         self.breakpoints = breakpoints
         self.interpolation = interpolation

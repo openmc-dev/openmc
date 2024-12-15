@@ -3,67 +3,90 @@ import openmc.stats
 
 
 def test_export_to_xml(run_in_tmpdir):
-    s = openmc.Settings(run_mode='fixed source', batches=1000, seed=17)
+    s = openmc.Settings(run_mode="fixed source", batches=1000, seed=17)
     s.generations_per_batch = 10
     s.inactive = 100
     s.particles = 1000000
     s.max_lost_particles = 5
     s.rel_max_lost_particles = 1e-4
-    s.keff_trigger = {'type': 'std_dev', 'threshold': 0.001}
-    s.energy_mode = 'continuous-energy'
+    s.keff_trigger = {"type": "std_dev", "threshold": 0.001}
+    s.energy_mode = "continuous-energy"
     s.max_order = 5
     s.max_tracks = 1234
     s.source = openmc.IndependentSource(space=openmc.stats.Point())
-    s.output = {'summary': True, 'tallies': False, 'path': 'here'}
+    s.output = {"summary": True, "tallies": False, "path": "here"}
     s.verbosity = 7
-    s.sourcepoint = {'batches': [50, 150, 500, 1000], 'separate': True,
-                     'write': True, 'overwrite': True, 'mcpl': True}
-    s.statepoint = {'batches': [50, 150, 500, 1000]}
-    s.surf_source_read = {'path': 'surface_source_1.h5'}
-    s.surf_source_write = {'surface_ids': [2], 'max_particles': 200}
+    s.sourcepoint = {
+        "batches": [50, 150, 500, 1000],
+        "separate": True,
+        "write": True,
+        "overwrite": True,
+        "mcpl": True,
+    }
+    s.statepoint = {"batches": [50, 150, 500, 1000]}
+    s.surf_source_read = {"path": "surface_source_1.h5"}
+    s.surf_source_write = {"surface_ids": [2], "max_particles": 200}
     s.confidence_intervals = True
     s.ptables = True
     s.plot_seed = 100
     s.survival_biasing = True
-    s.cutoff = {'weight': 0.25, 'weight_avg': 0.5, 'energy_neutron': 1.0e-5,
-                'energy_photon': 1000.0, 'energy_electron': 1.0e-5,
-                'energy_positron': 1.0e-5, 'time_neutron': 1.0e-5,
-                'time_photon': 1.0e-5, 'time_electron': 1.0e-5,
-                'time_positron': 1.0e-5}
+    s.cutoff = {
+        "weight": 0.25,
+        "weight_avg": 0.5,
+        "energy_neutron": 1.0e-5,
+        "energy_photon": 1000.0,
+        "energy_electron": 1.0e-5,
+        "energy_positron": 1.0e-5,
+        "time_neutron": 1.0e-5,
+        "time_photon": 1.0e-5,
+        "time_electron": 1.0e-5,
+        "time_positron": 1.0e-5,
+    }
     mesh = openmc.RegularMesh()
-    mesh.lower_left = (-10., -10., -10.)
-    mesh.upper_right = (10., 10., 10.)
+    mesh.lower_left = (-10.0, -10.0, -10.0)
+    mesh.upper_right = (10.0, 10.0, 10.0)
     mesh.dimension = (5, 5, 5)
     s.entropy_mesh = mesh
     s.trigger_active = True
     s.trigger_max_batches = 10000
     s.trigger_batch_interval = 50
     s.no_reduce = False
-    s.tabular_legendre = {'enable': True, 'num_points': 50}
-    s.temperature = {'default': 293.6, 'method': 'interpolation',
-                     'multipole': True, 'range': (200., 1000.)}
+    s.tabular_legendre = {"enable": True, "num_points": 50}
+    s.temperature = {
+        "default": 293.6,
+        "method": "interpolation",
+        "multipole": True,
+        "range": (200.0, 1000.0),
+    }
     s.trace = (10, 1, 20)
     s.track = [(1, 1, 1), (2, 1, 1)]
     s.ufs_mesh = mesh
-    s.resonance_scattering = {'enable': True, 'method': 'rvs',
-                              'energy_min': 1.0, 'energy_max': 1000.0,
-                              'nuclides': ['U235', 'U238', 'Pu239']}
+    s.resonance_scattering = {
+        "enable": True,
+        "method": "rvs",
+        "energy_min": 1.0,
+        "energy_max": 1000.0,
+        "nuclides": ["U235", "U238", "Pu239"],
+    }
     s.volume_calculations = openmc.VolumeCalculation(
-        domains=[openmc.Cell()], samples=1000, lower_left=(-10., -10., -10.),
-        upper_right = (10., 10., 10.))
+        domains=[openmc.Cell()],
+        samples=1000,
+        lower_left=(-10.0, -10.0, -10.0),
+        upper_right=(10.0, 10.0, 10.0),
+    )
     s.create_fission_neutrons = True
     s.create_delayed_neutrons = False
     s.log_grid_bins = 2000
     s.photon_transport = False
-    s.electron_treatment = 'led'
+    s.electron_treatment = "led"
     s.write_initial_source = True
-    s.weight_window_checkpoints = {'surface': True, 'collision': False}
+    s.weight_window_checkpoints = {"surface": True, "collision": False}
     s.random_ray = {
-        'distance_inactive': 10.0,
-        'distance_active': 100.0,
-        'ray_source': openmc.IndependentSource(
-            space=openmc.stats.Box((-1., -1., -1.), (1., 1., 1.))
-        )
+        "distance_inactive": 10.0,
+        "distance_active": 100.0,
+        "ray_source": openmc.IndependentSource(
+            space=openmc.stats.Box((-1.0, -1.0, -1.0), (1.0, 1.0, 1.0))
+        ),
     }
 
     s.max_particle_events = 100
@@ -73,72 +96,92 @@ def test_export_to_xml(run_in_tmpdir):
 
     # Generate settings from XML
     s = openmc.Settings.from_xml()
-    assert s.run_mode == 'fixed source'
+    assert s.run_mode == "fixed source"
     assert s.batches == 1000
     assert s.generations_per_batch == 10
     assert s.inactive == 100
     assert s.particles == 1000000
     assert s.max_lost_particles == 5
     assert s.rel_max_lost_particles == 1e-4
-    assert s.keff_trigger == {'type': 'std_dev', 'threshold': 0.001}
-    assert s.energy_mode == 'continuous-energy'
+    assert s.keff_trigger == {"type": "std_dev", "threshold": 0.001}
+    assert s.energy_mode == "continuous-energy"
     assert s.max_order == 5
     assert s.max_tracks == 1234
     assert isinstance(s.source[0], openmc.IndependentSource)
     assert isinstance(s.source[0].space, openmc.stats.Point)
-    assert s.output == {'summary': True, 'tallies': False, 'path': 'here'}
+    assert s.output == {"summary": True, "tallies": False, "path": "here"}
     assert s.verbosity == 7
-    assert s.sourcepoint == {'batches': [50, 150, 500, 1000], 'separate': True,
-                             'write': True, 'overwrite': True, 'mcpl': True}
-    assert s.statepoint == {'batches': [50, 150, 500, 1000]}
-    assert s.surf_source_read['path'].name == 'surface_source_1.h5'
-    assert s.surf_source_write == {'surface_ids': [2], 'max_particles': 200}
+    assert s.sourcepoint == {
+        "batches": [50, 150, 500, 1000],
+        "separate": True,
+        "write": True,
+        "overwrite": True,
+        "mcpl": True,
+    }
+    assert s.statepoint == {"batches": [50, 150, 500, 1000]}
+    assert s.surf_source_read["path"].name == "surface_source_1.h5"
+    assert s.surf_source_write == {"surface_ids": [2], "max_particles": 200}
     assert s.confidence_intervals
     assert s.ptables
     assert s.plot_seed == 100
     assert s.seed == 17
     assert s.survival_biasing
-    assert s.cutoff == {'weight': 0.25, 'weight_avg': 0.5,
-                        'energy_neutron': 1.0e-5, 'energy_photon': 1000.0,
-                        'energy_electron': 1.0e-5, 'energy_positron': 1.0e-5,
-                        'time_neutron': 1.0e-5, 'time_photon': 1.0e-5,
-                        'time_electron': 1.0e-5, 'time_positron': 1.0e-5}
+    assert s.cutoff == {
+        "weight": 0.25,
+        "weight_avg": 0.5,
+        "energy_neutron": 1.0e-5,
+        "energy_photon": 1000.0,
+        "energy_electron": 1.0e-5,
+        "energy_positron": 1.0e-5,
+        "time_neutron": 1.0e-5,
+        "time_photon": 1.0e-5,
+        "time_electron": 1.0e-5,
+        "time_positron": 1.0e-5,
+    }
     assert isinstance(s.entropy_mesh, openmc.RegularMesh)
-    assert s.entropy_mesh.lower_left == [-10., -10., -10.]
-    assert s.entropy_mesh.upper_right == [10., 10., 10.]
+    assert s.entropy_mesh.lower_left == [-10.0, -10.0, -10.0]
+    assert s.entropy_mesh.upper_right == [10.0, 10.0, 10.0]
     assert s.entropy_mesh.dimension == (5, 5, 5)
     assert s.trigger_active
     assert s.trigger_max_batches == 10000
     assert s.trigger_batch_interval == 50
     assert not s.no_reduce
-    assert s.tabular_legendre == {'enable': True, 'num_points': 50}
-    assert s.temperature == {'default': 293.6, 'method': 'interpolation',
-                             'multipole': True, 'range': [200., 1000.]}
+    assert s.tabular_legendre == {"enable": True, "num_points": 50}
+    assert s.temperature == {
+        "default": 293.6,
+        "method": "interpolation",
+        "multipole": True,
+        "range": [200.0, 1000.0],
+    }
     assert s.trace == [10, 1, 20]
     assert s.track == [(1, 1, 1), (2, 1, 1)]
     assert isinstance(s.ufs_mesh, openmc.RegularMesh)
-    assert s.ufs_mesh.lower_left == [-10., -10., -10.]
-    assert s.ufs_mesh.upper_right == [10., 10., 10.]
+    assert s.ufs_mesh.lower_left == [-10.0, -10.0, -10.0]
+    assert s.ufs_mesh.upper_right == [10.0, 10.0, 10.0]
     assert s.ufs_mesh.dimension == (5, 5, 5)
-    assert s.resonance_scattering == {'enable': True, 'method': 'rvs',
-                                      'energy_min': 1.0, 'energy_max': 1000.0,
-                                      'nuclides': ['U235', 'U238', 'Pu239']}
+    assert s.resonance_scattering == {
+        "enable": True,
+        "method": "rvs",
+        "energy_min": 1.0,
+        "energy_max": 1000.0,
+        "nuclides": ["U235", "U238", "Pu239"],
+    }
     assert s.create_fission_neutrons
     assert not s.create_delayed_neutrons
     assert s.log_grid_bins == 2000
     assert not s.photon_transport
-    assert s.electron_treatment == 'led'
+    assert s.electron_treatment == "led"
     assert s.write_initial_source == True
     assert len(s.volume_calculations) == 1
     vol = s.volume_calculations[0]
-    assert vol.domain_type == 'cell'
+    assert vol.domain_type == "cell"
     assert len(vol.ids) == 1
     assert vol.samples == 1000
-    assert vol.lower_left == (-10., -10., -10.)
-    assert vol.upper_right == (10., 10., 10.)
-    assert s.weight_window_checkpoints == {'surface': True, 'collision': False}
+    assert vol.lower_left == (-10.0, -10.0, -10.0)
+    assert vol.upper_right == (10.0, 10.0, 10.0)
+    assert s.weight_window_checkpoints == {"surface": True, "collision": False}
     assert s.max_particle_events == 100
-    assert s.random_ray['distance_inactive'] == 10.0
-    assert s.random_ray['distance_active'] == 100.0
-    assert s.random_ray['ray_source'].space.lower_left == [-1., -1., -1.]
-    assert s.random_ray['ray_source'].space.upper_right == [1., 1., 1.]
+    assert s.random_ray["distance_inactive"] == 10.0
+    assert s.random_ray["distance_active"] == 100.0
+    assert s.random_ray["ray_source"].space.lower_left == [-1.0, -1.0, -1.0]
+    assert s.random_ray["ray_source"].space.upper_right == [1.0, 1.0, 1.0]

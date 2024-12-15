@@ -26,7 +26,7 @@ def change_directory(working_dir: PathLike | None = None, *, tmpdir: bool = Fals
         tmp = TemporaryDirectory()
         working_dir = tmp.name
     elif working_dir is None:
-        raise ValueError('Must pass working_dir argument or specify tmpdir=True.')
+        raise ValueError("Must pass working_dir argument or specify tmpdir=True.")
 
     working_dir = Path(working_dir)
     working_dir.mkdir(parents=True, exist_ok=True)
@@ -53,7 +53,7 @@ def input_path(filename: PathLike) -> Path:
         Path object
 
     """
-    if openmc.config['resolve_paths']:
+    if openmc.config["resolve_paths"]:
         return Path(filename).resolve()
     else:
         return Path(filename)

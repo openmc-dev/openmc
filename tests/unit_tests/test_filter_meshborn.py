@@ -30,11 +30,11 @@ def model():
     model.geometry = openmc.Geometry([core])
 
     # Settings
-    model.settings.run_mode = 'fixed source'
+    model.settings.run_mode = "fixed source"
     model.settings.particles = 2000
     model.settings.batches = 8
 
-    distribution = openmc.stats.Box((0., -r, -r), (r, r, r))
+    distribution = openmc.stats.Box((0.0, -r, -r), (r, r, r))
     model.settings.source = openmc.IndependentSource(space=distribution)
 
     # =============================================================================
@@ -73,9 +73,13 @@ def test_estimator_consistency(model, run_in_tmpdir):
     # Get radial flux distribution
     with openmc.StatePoint(sp_filename) as sp:
         scatter_collision = sp.get_tally(name="scatter-collision").mean.ravel()
-        scatter_collision_std_dev = sp.get_tally(name="scatter-collision").std_dev.ravel()
+        scatter_collision_std_dev = sp.get_tally(
+            name="scatter-collision"
+        ).std_dev.ravel()
         scatter_tracklength = sp.get_tally(name="scatter-tracklength").mean.ravel()
-        scatter_tracklength_std_dev = sp.get_tally(name="scatter-tracklength").std_dev.ravel()
+        scatter_tracklength_std_dev = sp.get_tally(
+            name="scatter-tracklength"
+        ).std_dev.ravel()
 
     collision = unumpy.uarray(scatter_collision, scatter_collision_std_dev)
     tracklength = unumpy.uarray(scatter_tracklength, scatter_tracklength_std_dev)
@@ -105,8 +109,8 @@ def test_xml_serialization():
     repr(filter)
 
     elem = filter.to_xml_element()
-    assert elem.tag == 'filter'
-    assert elem.attrib['type'] == 'meshborn'
+    assert elem.tag == "filter"
+    assert elem.attrib["type"] == "meshborn"
     assert elem[0].text == "1"
     assert elem.get("translation") == "2.0 2.0 2.0"
 

@@ -10,28 +10,28 @@ from openmc.deplete import nuclide
 
 
 def test_n_decay_modes():
-    """ Test the decay mode count parameter. """
+    """Test the decay mode count parameter."""
 
     nuc = nuclide.Nuclide()
 
     nuc.decay_modes = [
         nuclide.DecayTuple("beta1", "a", 0.5),
         nuclide.DecayTuple("beta2", "b", 0.3),
-        nuclide.DecayTuple("beta3", "c", 0.2)
+        nuclide.DecayTuple("beta3", "c", 0.2),
     ]
 
     assert nuc.n_decay_modes == 3
 
 
 def test_n_reaction_paths():
-    """ Test the reaction path count parameter. """
+    """Test the reaction path count parameter."""
 
     nuc = nuclide.Nuclide()
 
     nuc.reactions = [
         nuclide.ReactionTuple("(n,2n)", "a", 0.0, 1.0),
         nuclide.ReactionTuple("(n,3n)", "b", 0.0, 1.0),
-        nuclide.ReactionTuple("(n,4n)", "c", 0.0, 1.0)
+        nuclide.ReactionTuple("(n,4n)", "c", 0.0, 1.0),
     ]
 
     assert nuc.n_reaction_paths == 3
@@ -63,18 +63,19 @@ def test_from_xml():
     u235 = nuclide.Nuclide.from_xml(element)
 
     assert u235.decay_modes == [
-        nuclide.DecayTuple('sf', 'U235', 7.2e-11),
-        nuclide.DecayTuple('alpha', 'Th231', 1 - 7.2e-11)
+        nuclide.DecayTuple("sf", "U235", 7.2e-11),
+        nuclide.DecayTuple("alpha", "Th231", 1 - 7.2e-11),
     ]
     assert u235.reactions == [
-        nuclide.ReactionTuple('(n,2n)', 'U234', -5297781.0, 1.0),
-        nuclide.ReactionTuple('(n,3n)', 'U233', -12142300.0, 1.0),
-        nuclide.ReactionTuple('(n,4n)', 'U232', -17885600.0, 1.0),
-        nuclide.ReactionTuple('(n,gamma)', 'U236', 6545200.0, 1.0),
-        nuclide.ReactionTuple('fission', None, 193405400.0, 1.0),
+        nuclide.ReactionTuple("(n,2n)", "U234", -5297781.0, 1.0),
+        nuclide.ReactionTuple("(n,3n)", "U233", -12142300.0, 1.0),
+        nuclide.ReactionTuple("(n,4n)", "U232", -17885600.0, 1.0),
+        nuclide.ReactionTuple("(n,gamma)", "U236", 6545200.0, 1.0),
+        nuclide.ReactionTuple("fission", None, 193405400.0, 1.0),
     ]
-    expected_yield_data = nuclide.FissionYieldDistribution({
-        0.0253: {"Xe138": 0.0481413, "Zr100": 0.0497641, "Te134": 0.062155}})
+    expected_yield_data = nuclide.FissionYieldDistribution(
+        {0.0253: {"Xe138": 0.0481413, "Zr100": 0.0497641, "Te134": 0.062155}}
+    )
     assert u235.yield_data == expected_yield_data
     # test accessing the yield energies through the FissionYieldDistribution
     assert u235.yield_energies == (0.0253,)
@@ -106,7 +107,7 @@ def test_fpy_parent():
     """
 
     root = ET.fromstring(data)
-    elems = root.findall('nuclide')
+    elems = root.findall("nuclide")
     u235 = nuclide.Nuclide.from_xml(elems[0], root)
     u238 = nuclide.Nuclide.from_xml(elems[1], root)
 
@@ -116,8 +117,8 @@ def test_fpy_parent():
 
     # Make sure XML element created has single attribute
     elem = u238.to_xml_element()
-    fpy_elem = elem.find('neutron_fission_yields')
-    assert fpy_elem.get('parent') == 'U235'
+    fpy_elem = elem.find("neutron_fission_yields")
+    assert fpy_elem.get("parent") == "U235"
     assert len(fpy_elem) == 0
 
     data = """
@@ -134,7 +135,7 @@ def test_fpy_parent():
 
     # U235 yields are missing, so we should get an exception
     root = ET.fromstring(data)
-    elems = root.findall('nuclide')
+    elems = root.findall("nuclide")
     with pytest.raises(ValueError, match="yields"):
         u238 = nuclide.Nuclide.from_xml(elems[1], root)
 
@@ -145,15 +146,16 @@ def test_to_xml_element():
     C = nuclide.Nuclide("C")
     C.half_life = 0.123
     C.decay_modes = [
-        nuclide.DecayTuple('beta-', 'B', 0.99),
-        nuclide.DecayTuple('alpha', 'D', 0.01)
+        nuclide.DecayTuple("beta-", "B", 0.99),
+        nuclide.DecayTuple("alpha", "D", 0.01),
     ]
     C.reactions = [
-        nuclide.ReactionTuple('fission', None, 2.0e8, 1.0),
-        nuclide.ReactionTuple('(n,gamma)', 'A', 0.0, 1.0)
+        nuclide.ReactionTuple("fission", None, 2.0e8, 1.0),
+        nuclide.ReactionTuple("(n,gamma)", "A", 0.0, 1.0),
     ]
     C.yield_data = nuclide.FissionYieldDistribution(
-        {0.0253: {"A": 0.0292737, "B": 0.002566345}})
+        {0.0253: {"A": 0.0292737, "B": 0.002566345}}
+    )
     element = C.to_xml_element()
 
     assert element.get("half_life") == "0.123"
@@ -175,7 +177,7 @@ def test_to_xml_element():
     assert rx_elems[1].get("target") == "A"
     assert float(rx_elems[1].get("Q")) == 0.0
 
-    assert element.find('neutron_fission_yields') is not None
+    assert element.find("neutron_fission_yields") is not None
 
 
 def test_fission_yield_distribution():
@@ -192,10 +194,13 @@ def test_fission_yield_distribution():
         act_dist = yield_dict[exp_ene]
         for exp_prod, exp_yield in exp_dist.items():
             assert act_dist[exp_prod] == exp_yield
-    exp_yield = np.array([
-        [4.08e-12, 1.71e-12, 7.85e-4],
-        [1.32e-12, 0.0, 1.12e-3],
-        [5.83e-8, 2.69e-8, 4.54e-3]])
+    exp_yield = np.array(
+        [
+            [4.08e-12, 1.71e-12, 7.85e-4],
+            [1.32e-12, 0.0, 1.12e-3],
+            [5.83e-8, 2.69e-8, 4.54e-3],
+        ]
+    )
     assert np.array_equal(yield_dist.yield_matrix, exp_yield)
 
     # Test the operations / special methods for fission yield
@@ -236,8 +241,7 @@ def test_fission_yield_distribution():
 
     # Test restriction of fission products
     strict_restrict = yield_dist.restrict_products(["Xe135", "Sm149"])
-    with_extras = yield_dist.restrict_products(
-        ["Xe135", "Sm149", "H1", "U235"])
+    with_extras = yield_dist.restrict_products(["Xe135", "Sm149", "H1", "U235"])
 
     assert strict_restrict.products == ("Sm149", "Xe135")
     assert strict_restrict.energies == yield_dist.energies
@@ -249,6 +253,7 @@ def test_fission_yield_distribution():
             assert with_extras[ene][product] == yield_dist[ene][product]
 
     assert yield_dist.restrict_products(["U235"]) is None
+
 
 def test_validate():
 
@@ -341,7 +346,9 @@ def test_validate():
 
 def test_deepcopy():
     """Test deepcopying a FissionYield object"""
-    nuc = nuclide.FissionYield(products=("I129", "Sm149", "Xe135"), yields=np.array((0.001, 0.0003, 0.002)))
+    nuc = nuclide.FissionYield(
+        products=("I129", "Sm149", "Xe135"), yields=np.array((0.001, 0.0003, 0.002))
+    )
     copied_nuc = copy.deepcopy(nuc)
     # Check the deepcopy equals the original
     assert copied_nuc == nuc

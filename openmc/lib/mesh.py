@@ -1,6 +1,15 @@
 from collections.abc import Mapping, Sequence
-from ctypes import (c_int, c_int32, c_char_p, c_double, POINTER, Structure,
-                    create_string_buffer, c_uint64, c_size_t)
+from ctypes import (
+    c_int,
+    c_int32,
+    c_char_p,
+    c_double,
+    POINTER,
+    Structure,
+    create_string_buffer,
+    c_uint64,
+    c_size_t,
+)
 from random import getrandbits
 import sys
 from weakref import WeakValueDictionary
@@ -17,21 +26,27 @@ from .plot import _Position
 from ..bounding_box import BoundingBox
 
 __all__ = [
-    'Mesh', 'RegularMesh', 'RectilinearMesh', 'CylindricalMesh',
-    'SphericalMesh', 'UnstructuredMesh', 'meshes'
+    "Mesh",
+    "RegularMesh",
+    "RectilinearMesh",
+    "CylindricalMesh",
+    "SphericalMesh",
+    "UnstructuredMesh",
+    "meshes",
 ]
 
 
 class _MaterialVolume(Structure):
-    _fields_ = [
-        ("material", c_int32),
-        ("volume", c_double)
-    ]
+    _fields_ = [("material", c_int32), ("volume", c_double)]
 
 
 # Mesh functions
-_dll.openmc_extend_meshes.argtypes = [c_int32, c_char_p, POINTER(c_int32),
-                                      POINTER(c_int32)]
+_dll.openmc_extend_meshes.argtypes = [
+    c_int32,
+    c_char_p,
+    POINTER(c_int32),
+    POINTER(c_int32),
+]
 _dll.openmc_extend_meshes.restype = c_int
 _dll.openmc_extend_meshes.errcheck = _error_handler
 _dll.openmc_mesh_get_id.argtypes = [c_int32, POINTER(c_int32)]
@@ -46,17 +61,27 @@ _dll.openmc_mesh_get_n_elements.errcheck = _error_handler
 _dll.openmc_mesh_get_volumes.argtypes = [c_int32, POINTER(c_double)]
 _dll.openmc_mesh_get_volumes.restype = c_int
 _dll.openmc_mesh_get_volumes.errcheck = _error_handler
-_dll.openmc_mesh_bounding_box.argtypes = [
-    c_int32, POINTER(c_double), POINTER(c_double)]
+_dll.openmc_mesh_bounding_box.argtypes = [c_int32, POINTER(c_double), POINTER(c_double)]
 _dll.openmc_mesh_bounding_box.restype = c_int
 _dll.openmc_mesh_bounding_box.errcheck = _error_handler
 _dll.openmc_mesh_material_volumes.argtypes = [
-    c_int32, c_int, c_int, c_int, POINTER(_MaterialVolume),
-    POINTER(c_int), POINTER(c_uint64)]
+    c_int32,
+    c_int,
+    c_int,
+    c_int,
+    POINTER(_MaterialVolume),
+    POINTER(c_int),
+    POINTER(c_uint64),
+]
 _dll.openmc_mesh_material_volumes.restype = c_int
 _dll.openmc_mesh_material_volumes.errcheck = _error_handler
 _dll.openmc_mesh_get_plot_bins.argtypes = [
-    c_int32, _Position, _Position, c_int, POINTER(c_int), POINTER(c_int32)
+    c_int32,
+    _Position,
+    _Position,
+    c_int,
+    POINTER(c_int),
+    POINTER(c_int32),
 ]
 _dll.openmc_mesh_get_plot_bins.restype = c_int
 _dll.openmc_mesh_get_plot_bins.errcheck = _error_handler
@@ -65,58 +90,107 @@ _dll.openmc_get_mesh_index.restype = c_int
 _dll.openmc_get_mesh_index.errcheck = _error_handler
 _dll.n_meshes.argtypes = []
 _dll.n_meshes.restype = c_int
-_dll.openmc_rectilinear_mesh_get_grid.argtypes = [c_int32,
-    POINTER(POINTER(c_double)), POINTER(c_int), POINTER(POINTER(c_double)),
-    POINTER(c_int), POINTER(POINTER(c_double)), POINTER(c_int)]
+_dll.openmc_rectilinear_mesh_get_grid.argtypes = [
+    c_int32,
+    POINTER(POINTER(c_double)),
+    POINTER(c_int),
+    POINTER(POINTER(c_double)),
+    POINTER(c_int),
+    POINTER(POINTER(c_double)),
+    POINTER(c_int),
+]
 _dll.openmc_rectilinear_mesh_get_grid.restype = c_int
 _dll.openmc_rectilinear_mesh_get_grid.errcheck = _error_handler
-_dll.openmc_rectilinear_mesh_set_grid.argtypes = [c_int32, POINTER(c_double),
-    c_int, POINTER(c_double), c_int, POINTER(c_double), c_int]
+_dll.openmc_rectilinear_mesh_set_grid.argtypes = [
+    c_int32,
+    POINTER(c_double),
+    c_int,
+    POINTER(c_double),
+    c_int,
+    POINTER(c_double),
+    c_int,
+]
 _dll.openmc_rectilinear_mesh_set_grid.restype = c_int
 _dll.openmc_rectilinear_mesh_set_grid.errcheck = _error_handler
-_dll.openmc_regular_mesh_get_dimension.argtypes = [c_int32,
-    POINTER(POINTER(c_int)), POINTER(c_int)]
+_dll.openmc_regular_mesh_get_dimension.argtypes = [
+    c_int32,
+    POINTER(POINTER(c_int)),
+    POINTER(c_int),
+]
 _dll.openmc_regular_mesh_get_dimension.restype = c_int
 _dll.openmc_regular_mesh_get_dimension.errcheck = _error_handler
 _dll.openmc_regular_mesh_get_params.argtypes = [
-    c_int32, POINTER(POINTER(c_double)), POINTER(POINTER(c_double)),
-    POINTER(POINTER(c_double)), POINTER(c_int)]
+    c_int32,
+    POINTER(POINTER(c_double)),
+    POINTER(POINTER(c_double)),
+    POINTER(POINTER(c_double)),
+    POINTER(c_int),
+]
 _dll.openmc_regular_mesh_get_params.restype = c_int
 _dll.openmc_regular_mesh_get_params.errcheck = _error_handler
-_dll.openmc_regular_mesh_set_dimension.argtypes = [c_int32, c_int,
-                                                   POINTER(c_int)]
+_dll.openmc_regular_mesh_set_dimension.argtypes = [c_int32, c_int, POINTER(c_int)]
 _dll.openmc_regular_mesh_set_dimension.restype = c_int
 _dll.openmc_regular_mesh_set_dimension.errcheck = _error_handler
 _dll.openmc_regular_mesh_set_params.argtypes = [
-    c_int32, c_int, POINTER(c_double), POINTER(c_double), POINTER(c_double)]
+    c_int32,
+    c_int,
+    POINTER(c_double),
+    POINTER(c_double),
+    POINTER(c_double),
+]
 _dll.openmc_regular_mesh_set_params.restype = c_int
 _dll.openmc_regular_mesh_set_params.errcheck = _error_handler
 
-_dll.openmc_cylindrical_mesh_get_grid.argtypes = [c_int32,
-    POINTER(POINTER(c_double)), POINTER(c_int), POINTER(POINTER(c_double)),
-    POINTER(c_int), POINTER(POINTER(c_double)), POINTER(c_int)]
+_dll.openmc_cylindrical_mesh_get_grid.argtypes = [
+    c_int32,
+    POINTER(POINTER(c_double)),
+    POINTER(c_int),
+    POINTER(POINTER(c_double)),
+    POINTER(c_int),
+    POINTER(POINTER(c_double)),
+    POINTER(c_int),
+]
 _dll.openmc_cylindrical_mesh_get_grid.restype = c_int
 _dll.openmc_cylindrical_mesh_get_grid.errcheck = _error_handler
-_dll.openmc_cylindrical_mesh_set_grid.argtypes = [c_int32, POINTER(c_double),
-    c_int, POINTER(c_double), c_int, POINTER(c_double), c_int]
+_dll.openmc_cylindrical_mesh_set_grid.argtypes = [
+    c_int32,
+    POINTER(c_double),
+    c_int,
+    POINTER(c_double),
+    c_int,
+    POINTER(c_double),
+    c_int,
+]
 _dll.openmc_cylindrical_mesh_set_grid.restype = c_int
 _dll.openmc_cylindrical_mesh_set_grid.errcheck = _error_handler
 
-_dll.openmc_spherical_mesh_get_grid.argtypes = [c_int32,
-    POINTER(POINTER(c_double)), POINTER(c_int), POINTER(POINTER(c_double)),
-    POINTER(c_int), POINTER(POINTER(c_double)), POINTER(c_int)]
+_dll.openmc_spherical_mesh_get_grid.argtypes = [
+    c_int32,
+    POINTER(POINTER(c_double)),
+    POINTER(c_int),
+    POINTER(POINTER(c_double)),
+    POINTER(c_int),
+    POINTER(POINTER(c_double)),
+    POINTER(c_int),
+]
 _dll.openmc_spherical_mesh_get_grid.restype = c_int
 _dll.openmc_spherical_mesh_get_grid.errcheck = _error_handler
-_dll.openmc_spherical_mesh_set_grid.argtypes = [c_int32, POINTER(c_double),
-    c_int, POINTER(c_double), c_int, POINTER(c_double), c_int]
+_dll.openmc_spherical_mesh_set_grid.argtypes = [
+    c_int32,
+    POINTER(c_double),
+    c_int,
+    POINTER(c_double),
+    c_int,
+    POINTER(c_double),
+    c_int,
+]
 _dll.openmc_spherical_mesh_set_grid.restype = c_int
 _dll.openmc_spherical_mesh_set_grid.errcheck = _error_handler
 
 
 class Mesh(_FortranObjectWithID):
-    """Base class to represent mesh objects
+    """Base class to represent mesh objects"""
 
-    """
     __instances = WeakValueDictionary()
 
     def __new__(cls, uid=None, new=True, index=None):
@@ -128,14 +202,15 @@ class Mesh(_FortranObjectWithID):
                     uid = max(mapping, default=0) + 1
                 else:
                     if uid in mapping:
-                        raise AllocationError('A mesh with ID={} has already '
-                                              'been allocated.'.format(uid))
+                        raise AllocationError(
+                            "A mesh with ID={} has already "
+                            "been allocated.".format(uid)
+                        )
 
                 # Set the mesh type -- note that mesh type attribute only
                 # exists on subclasses!
                 index = c_int32()
-                _dll.openmc_extend_meshes(1, cls.mesh_type.encode(), index,
-                                          None)
+                _dll.openmc_extend_meshes(1, cls.mesh_type.encode(), index, None)
                 index = index.value
             else:
                 index = mapping[uid]._index
@@ -169,7 +244,8 @@ class Mesh(_FortranObjectWithID):
     def volumes(self) -> np.ndarray:
         volumes = np.empty((self.n_elements,))
         _dll.openmc_mesh_get_volumes(
-            self._index, volumes.ctypes.data_as(POINTER(c_double)))
+            self._index, volumes.ctypes.data_as(POINTER(c_double))
+        )
         return volumes
 
     @property
@@ -180,7 +256,7 @@ class Mesh(_FortranObjectWithID):
         _dll.openmc_mesh_bounding_box(
             self._index,
             ll.ctypes.data_as(POINTER(c_double)),
-            ur.ctypes.data_as(POINTER(c_double))
+            ur.ctypes.data_as(POINTER(c_double)),
         )
         ll[ll == inf] = np.inf
         ur[ur == inf] = np.inf
@@ -189,9 +265,7 @@ class Mesh(_FortranObjectWithID):
         return BoundingBox(ll, ur)
 
     def material_volumes(
-            self,
-            n_samples: int = 10_000,
-            prn_seed: int | None = None
+        self, n_samples: int = 10_000, prn_seed: int | None = None
     ) -> list[list[tuple[Material, float]]]:
         """Determine volume of materials in each mesh element
 
@@ -228,7 +302,8 @@ class Mesh(_FortranObjectWithID):
             while True:
                 try:
                     _dll.openmc_mesh_material_volumes(
-                        self._index, n_samples, i_element, size, result, hits, prn_seed)
+                        self._index, n_samples, i_element, size, result, hits, prn_seed
+                    )
                 except AllocationError:
                     # Increase size of result array and try again
                     size *= 2
@@ -237,18 +312,17 @@ class Mesh(_FortranObjectWithID):
                     # If no error, break out of loop
                     break
 
-            volumes.append([
-                (Material(index=r.material), r.volume)
-                for r in result[:hits.value]
-            ])
+            volumes.append(
+                [(Material(index=r.material), r.volume) for r in result[: hits.value]]
+            )
         return volumes
 
     def get_plot_bins(
-            self,
-            origin: Sequence[float],
-            width: Sequence[float],
-            basis: str,
-            pixels: Sequence[int]
+        self,
+        origin: Sequence[float],
+        width: Sequence[float],
+        basis: str,
+        pixels: Sequence[int],
     ) -> np.ndarray:
         """Get mesh bin indices for a rasterized plot.
 
@@ -273,13 +347,17 @@ class Mesh(_FortranObjectWithID):
         """
         origin = _Position(*origin)
         width = _Position(*width)
-        basis = {'xy': 1, 'xz': 2, 'yz': 3}[basis]
-        pixel_array = (c_int*2)(*pixels)
-        img_data = np.zeros((pixels[1], pixels[0]), dtype=np.dtype('int32'))
+        basis = {"xy": 1, "xz": 2, "yz": 3}[basis]
+        pixel_array = (c_int * 2)(*pixels)
+        img_data = np.zeros((pixels[1], pixels[0]), dtype=np.dtype("int32"))
 
         _dll.openmc_mesh_get_plot_bins(
-            self._index, origin, width, basis, pixel_array,
-            img_data.ctypes.data_as(POINTER(c_int32))
+            self._index,
+            origin,
+            width,
+            basis,
+            pixel_array,
+            img_data.ctypes.data_as(POINTER(c_int32)),
         )
         return img_data
 
@@ -318,7 +396,8 @@ class RegularMesh(Mesh):
         Axis-aligned bounding box of the mesh
 
     """
-    mesh_type = 'regular'
+
+    mesh_type = "regular"
 
     def __init__(self, uid=None, new=True, index=None):
         super().__init__(uid, new, index)
@@ -333,9 +412,8 @@ class RegularMesh(Mesh):
     @dimension.setter
     def dimension(self, dimension):
         n = len(dimension)
-        dimension = (c_int*n)(*dimension)
+        dimension = (c_int * n)(*dimension)
         _dll.openmc_regular_mesh_set_dimension(self._index, n, dimension)
-
 
     @property
     def lower_left(self):
@@ -358,20 +436,22 @@ class RegularMesh(Mesh):
         return (
             as_array(ll, (n.value,)),
             as_array(ur, (n.value,)),
-            as_array(w, (n.value,))
+            as_array(w, (n.value,)),
         )
 
     def set_parameters(self, lower_left=None, upper_right=None, width=None):
         if lower_left is not None:
             n = len(lower_left)
-            lower_left = (c_double*n)(*lower_left)
+            lower_left = (c_double * n)(*lower_left)
         if upper_right is not None:
             n = len(upper_right)
-            upper_right = (c_double*n)(*upper_right)
+            upper_right = (c_double * n)(*upper_right)
         if width is not None:
             n = len(width)
-            width = (c_double*n)(*width)
-        _dll.openmc_regular_mesh_set_params(self._index, n, lower_left, upper_right, width)
+            width = (c_double * n)(*width)
+        _dll.openmc_regular_mesh_set_params(
+            self._index, n, lower_left, upper_right, width
+        )
 
 
 class RectilinearMesh(Mesh):
@@ -406,7 +486,8 @@ class RectilinearMesh(Mesh):
         Axis-aligned bounding box of the mesh
 
     """
-    mesh_type = 'rectilinear'
+
+    mesh_type = "rectilinear"
 
     def __init__(self, uid=None, new=True, index=None):
         super().__init__(uid, new, index)
@@ -435,8 +516,7 @@ class RectilinearMesh(Mesh):
         gz = POINTER(c_double)()
         nz = c_int()
         # Call C API to get grid parameters
-        _dll.openmc_rectilinear_mesh_get_grid(self._index, gx, nx, gy, ny, gz,
-                                              nz)
+        _dll.openmc_rectilinear_mesh_get_grid(self._index, gx, nx, gy, ny, gz, nz)
 
         # Convert grid parameters to Numpy arrays
         grid_x = as_array(gx, (nx.value,))
@@ -470,13 +550,14 @@ class RectilinearMesh(Mesh):
 
         """
         nx = len(x_grid)
-        x_grid = (c_double*nx)(*x_grid)
+        x_grid = (c_double * nx)(*x_grid)
         ny = len(y_grid)
-        y_grid = (c_double*ny)(*y_grid)
+        y_grid = (c_double * ny)(*y_grid)
         nz = len(z_grid)
-        z_grid = (c_double*nz)(*z_grid)
-        _dll.openmc_rectilinear_mesh_set_grid(self._index, x_grid, nx, y_grid,
-                                              ny, z_grid, nz)
+        z_grid = (c_double * nz)(*z_grid)
+        _dll.openmc_rectilinear_mesh_set_grid(
+            self._index, x_grid, nx, y_grid, ny, z_grid, nz
+        )
 
 
 class CylindricalMesh(Mesh):
@@ -511,7 +592,8 @@ class CylindricalMesh(Mesh):
         Axis-aligned bounding box of the mesh
 
     """
-    mesh_type = 'cylindrical'
+
+    mesh_type = "cylindrical"
 
     def __init__(self, uid=None, new=True, index=None):
         super().__init__(uid, new, index)
@@ -540,8 +622,7 @@ class CylindricalMesh(Mesh):
         gz = POINTER(c_double)()
         nz = c_int()
         # Call C API to get grid parameters
-        _dll.openmc_cylindrical_mesh_get_grid(self._index, gx, nx, gy, ny, gz,
-                                              nz)
+        _dll.openmc_cylindrical_mesh_get_grid(self._index, gx, nx, gy, ny, gz, nz)
 
         # Convert grid parameters to Numpy arrays
         grid_x = as_array(gx, (nx.value,))
@@ -575,13 +656,14 @@ class CylindricalMesh(Mesh):
 
         """
         nr = len(r_grid)
-        r_grid = (c_double*nr)(*r_grid)
+        r_grid = (c_double * nr)(*r_grid)
         nphi = len(phi_grid)
-        phi_grid = (c_double*nphi)(*phi_grid)
+        phi_grid = (c_double * nphi)(*phi_grid)
         nz = len(z_grid)
-        z_grid = (c_double*nz)(*z_grid)
-        _dll.openmc_cylindrical_mesh_set_grid(self._index, r_grid, nr, phi_grid,
-                                              nphi, z_grid, nz)
+        z_grid = (c_double * nz)(*z_grid)
+        _dll.openmc_cylindrical_mesh_set_grid(
+            self._index, r_grid, nr, phi_grid, nphi, z_grid, nz
+        )
 
 
 class SphericalMesh(Mesh):
@@ -616,7 +698,8 @@ class SphericalMesh(Mesh):
         Axis-aligned bounding box of the mesh
 
     """
-    mesh_type = 'spherical'
+
+    mesh_type = "spherical"
 
     def __init__(self, uid=None, new=True, index=None):
         super().__init__(uid, new, index)
@@ -645,8 +728,7 @@ class SphericalMesh(Mesh):
         gz = POINTER(c_double)()
         nz = c_int()
         # Call C API to get grid parameters
-        _dll.openmc_spherical_mesh_get_grid(self._index, gx, nx, gy, ny, gz,
-                                              nz)
+        _dll.openmc_spherical_mesh_get_grid(self._index, gx, nx, gy, ny, gz, nz)
 
         # Convert grid parameters to Numpy arrays
         grid_x = as_array(gx, (nx.value,))
@@ -680,13 +762,14 @@ class SphericalMesh(Mesh):
 
         """
         nr = len(r_grid)
-        r_grid = (c_double*nr)(*r_grid)
+        r_grid = (c_double * nr)(*r_grid)
         ntheta = len(theta_grid)
-        theta_grid = (c_double*ntheta)(*theta_grid)
+        theta_grid = (c_double * ntheta)(*theta_grid)
         nphi = len(phi_grid)
-        phi_grid = (c_double*nphi)(*phi_grid)
-        _dll.openmc_spherical_mesh_set_grid(self._index, r_grid, nr, theta_grid,
-                                              ntheta, phi_grid, nphi)
+        phi_grid = (c_double * nphi)(*phi_grid)
+        _dll.openmc_spherical_mesh_set_grid(
+            self._index, r_grid, nr, theta_grid, ntheta, phi_grid, nphi
+        )
 
 
 class UnstructuredMesh(Mesh):
@@ -694,11 +777,11 @@ class UnstructuredMesh(Mesh):
 
 
 _MESH_TYPE_MAP = {
-    'regular': RegularMesh,
-    'rectilinear': RectilinearMesh,
-    'cylindrical': CylindricalMesh,
-    'spherical': SphericalMesh,
-    'unstructured': UnstructuredMesh
+    "regular": RegularMesh,
+    "rectilinear": RectilinearMesh,
+    "cylindrical": CylindricalMesh,
+    "spherical": SphericalMesh,
+    "unstructured": UnstructuredMesh,
 }
 
 
@@ -719,7 +802,6 @@ class _MeshMapping(Mapping):
             raise KeyError(str(e))
         return _get_mesh(index.value)
 
-
     def __iter__(self):
         for i in range(len(self)):
             yield _get_mesh(i).id
@@ -729,5 +811,6 @@ class _MeshMapping(Mapping):
 
     def __repr__(self):
         return repr(dict(self))
+
 
 meshes = _MeshMapping()

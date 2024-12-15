@@ -2,6 +2,7 @@
 
 An ndarray to store atom densities with string, integer, or slice indexing.
 """
+
 import numpy as np
 
 from openmc import Material
@@ -44,6 +45,7 @@ class AtomNumber:
         Number of nuclides.
 
     """
+
     def __init__(self, local_mats, nuclides, volume, n_nuc_burn):
         self.index_mat = {mat: i for i, mat in enumerate(local_mats)}
         self.index_nuc = {nuc: i for i, nuc in enumerate(nuclides)}
@@ -121,8 +123,7 @@ class AtomNumber:
 
     @property
     def burnable_nuclides(self):
-        return [nuc for nuc, ind in self.index_nuc.items()
-                if ind < self.n_nuc_burn]
+        return [nuc for nuc, ind in self.index_nuc.items() if ind < self.n_nuc_burn]
 
     def get_mat_volume(self, mat):
         """Return material volume
@@ -163,7 +164,7 @@ class AtomNumber:
 
         return self[mat, nuc] / self.volume[mat]
 
-    def get_atom_densities(self, mat, units='atom/b-cm'):
+    def get_atom_densities(self, mat, units="atom/b-cm"):
         """Return atom densities for a given material
 
         Parameters
@@ -182,10 +183,9 @@ class AtomNumber:
 
         """
         mat = self._get_mat_index(mat)
-        normalization = (1.0e-24 if units == 'atom/b-cm' else 1.0) / self.volume[mat]
+        normalization = (1.0e-24 if units == "atom/b-cm" else 1.0) / self.volume[mat]
         return {
-            name: normalization * self[mat, nuc]
-            for name, nuc in self.index_nuc.items()
+            name: normalization * self[mat, nuc] for name, nuc in self.index_nuc.items()
         }
 
     def set_atom_density(self, mat, nuc, val):
@@ -222,7 +222,7 @@ class AtomNumber:
 
         """
         mat = self._get_mat_index(mat)
-        return self[mat, :self.n_nuc_burn]
+        return self[mat, : self.n_nuc_burn]
 
     def set_mat_slice(self, mat, val):
         """Sets atom quantity indexed by mats for all burned nuclides
@@ -236,7 +236,7 @@ class AtomNumber:
 
         """
         mat = self._get_mat_index(mat)
-        self[mat, :self.n_nuc_burn] = val
+        self[mat, : self.n_nuc_burn] = val
 
     def set_density(self, total_density):
         """Sets density.

@@ -15,7 +15,7 @@ class MGXSTestHarness(PyAPITestHarness):
         super().__init__(*args, **kwargs)
 
         # Initialize a one-group structure
-        energy_groups = openmc.mgxs.EnergyGroups(group_edges=[0, 20.e6])
+        energy_groups = openmc.mgxs.EnergyGroups(group_edges=[0, 20.0e6])
 
         # Initialize MGXS Library for a few cross section types
         # for one material-filled cell in the geometry
@@ -23,16 +23,16 @@ class MGXSTestHarness(PyAPITestHarness):
         self.mgxs_lib.by_nuclide = False
 
         # Test all relevant MGXS types
-        relevant_MGXS_TYPES = [item for item in openmc.mgxs.MGXS_TYPES
-                               if item != 'current']
-        self.mgxs_lib.mgxs_types = tuple(relevant_MGXS_TYPES) + \
-                                   openmc.mgxs.MDGXS_TYPES
+        relevant_MGXS_TYPES = [
+            item for item in openmc.mgxs.MGXS_TYPES if item != "current"
+        ]
+        self.mgxs_lib.mgxs_types = tuple(relevant_MGXS_TYPES) + openmc.mgxs.MDGXS_TYPES
         self.mgxs_lib.energy_groups = energy_groups
         self.mgxs_lib.num_delayed_groups = 6
         self.mgxs_lib.legendre_order = 3
-        self.mgxs_lib.domain_type = 'distribcell'
+        self.mgxs_lib.domain_type = "distribcell"
         cells = self.mgxs_lib.geometry.get_all_material_cells().values()
-        self.mgxs_lib.domains = [c for c in cells if c.name == 'fuel']
+        self.mgxs_lib.domains = [c for c in cells if c.name == "fuel"]
         self.mgxs_lib.build_library()
 
         # Add tallies
@@ -52,17 +52,17 @@ class MGXSTestHarness(PyAPITestHarness):
         avg_lib = self.mgxs_lib.get_subdomain_avg_library()
 
         # Build a string from Pandas Dataframe for each 1-group MGXS
-        outstr = ''
+        outstr = ""
         for domain in avg_lib.domains:
             for mgxs_type in avg_lib.mgxs_types:
                 mgxs = avg_lib.get_mgxs(domain, mgxs_type)
                 df = mgxs.get_pandas_dataframe()
-                outstr += df.to_string() + '\n'
+                outstr += df.to_string() + "\n"
 
         # Hash the results if necessary
         if hash_output:
             sha512 = hashlib.sha512()
-            sha512.update(outstr.encode('utf-8'))
+            sha512.update(outstr.encode("utf-8"))
             outstr = sha512.hexdigest()
 
         return outstr
@@ -70,5 +70,5 @@ class MGXSTestHarness(PyAPITestHarness):
 
 def test_mgxs_library_distribcell():
     model = pwr_assembly()
-    harness = MGXSTestHarness('statepoint.10.h5', model)
+    harness = MGXSTestHarness("statepoint.10.h5", model)
     harness.main()

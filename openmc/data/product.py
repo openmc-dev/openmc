@@ -37,11 +37,11 @@ class Product(EqualityMixin):
 
     """
 
-    def __init__(self, particle='neutron'):
+    def __init__(self, particle="neutron"):
         self.applicability = []
         self.decay_rate = 0.0
         self.distribution = []
-        self.emission_mode = 'prompt'
+        self.emission_mode = "prompt"
         self.particle = particle
         self.yield_ = Polynomial((1,))  # 0-order polynomial, i.e., a constant
 
@@ -49,13 +49,16 @@ class Product(EqualityMixin):
         if isinstance(self.yield_, Tabulated1D):
             if np.all(self.yield_.y == self.yield_.y[0]):
                 return "<Product: {}, emission={}, yield={}>".format(
-                    self.particle, self.emission_mode, self.yield_.y[0])
+                    self.particle, self.emission_mode, self.yield_.y[0]
+                )
             else:
                 return "<Product: {}, emission={}, yield=tabulated>".format(
-                    self.particle, self.emission_mode)
+                    self.particle, self.emission_mode
+                )
         else:
             return "<Product: {}, emission={}, yield=polynomial>".format(
-                self.particle, self.emission_mode)
+                self.particle, self.emission_mode
+            )
 
     @property
     def applicability(self):
@@ -63,8 +66,9 @@ class Product(EqualityMixin):
 
     @applicability.setter
     def applicability(self, applicability):
-        cv.check_type('product distribution applicability', applicability,
-                      Iterable, Tabulated1D)
+        cv.check_type(
+            "product distribution applicability", applicability, Iterable, Tabulated1D
+        )
         self._applicability = applicability
 
     @property
@@ -73,8 +77,8 @@ class Product(EqualityMixin):
 
     @decay_rate.setter
     def decay_rate(self, decay_rate):
-        cv.check_type('product decay rate', decay_rate, Real)
-        cv.check_greater_than('product decay rate', decay_rate, 0.0, True)
+        cv.check_type("product decay rate", decay_rate, Real)
+        cv.check_greater_than("product decay rate", decay_rate, 0.0, True)
         self._decay_rate = decay_rate
 
     @property
@@ -83,8 +87,9 @@ class Product(EqualityMixin):
 
     @distribution.setter
     def distribution(self, distribution):
-        cv.check_type('product angle-energy distribution', distribution,
-                      Iterable, AngleEnergy)
+        cv.check_type(
+            "product angle-energy distribution", distribution, Iterable, AngleEnergy
+        )
         self._distribution = distribution
 
     @property
@@ -93,8 +98,9 @@ class Product(EqualityMixin):
 
     @emission_mode.setter
     def emission_mode(self, emission_mode):
-        cv.check_value('product emission mode', emission_mode,
-                       ('prompt', 'delayed', 'total'))
+        cv.check_value(
+            "product emission mode", emission_mode, ("prompt", "delayed", "total")
+        )
         self._emission_mode = emission_mode
 
     @property
@@ -103,7 +109,7 @@ class Product(EqualityMixin):
 
     @particle.setter
     def particle(self, particle):
-        cv.check_type('product particle type', particle, str)
+        cv.check_type("product particle type", particle, str)
         self._particle = particle
 
     @property
@@ -112,7 +118,7 @@ class Product(EqualityMixin):
 
     @yield_.setter
     def yield_(self, yield_):
-        cv.check_type('product yield', yield_, Function1D)
+        cv.check_type("product yield", yield_, Function1D)
         self._yield = yield_
 
     def to_hdf5(self, group):
@@ -124,20 +130,20 @@ class Product(EqualityMixin):
             HDF5 group to write to
 
         """
-        group.attrs['particle'] = np.bytes_(self.particle)
-        group.attrs['emission_mode'] = np.bytes_(self.emission_mode)
+        group.attrs["particle"] = np.bytes_(self.particle)
+        group.attrs["emission_mode"] = np.bytes_(self.emission_mode)
         if self.decay_rate > 0.0:
-            group.attrs['decay_rate'] = self.decay_rate
+            group.attrs["decay_rate"] = self.decay_rate
 
         # Write yield
-        self.yield_.to_hdf5(group, 'yield')
+        self.yield_.to_hdf5(group, "yield")
 
         # Write applicability/distribution
-        group.attrs['n_distribution'] = len(self.distribution)
+        group.attrs["n_distribution"] = len(self.distribution)
         for i, d in enumerate(self.distribution):
-            dgroup = group.create_group(f'distribution_{i}')
+            dgroup = group.create_group(f"distribution_{i}")
             if self.applicability:
-                self.applicability[i].to_hdf5(dgroup, 'applicability')
+                self.applicability[i].to_hdf5(dgroup, "applicability")
             d.to_hdf5(dgroup)
 
     @classmethod
@@ -155,25 +161,24 @@ class Product(EqualityMixin):
             Reaction product
 
         """
-        particle = group.attrs['particle'].decode()
+        particle = group.attrs["particle"].decode()
         p = cls(particle)
 
-        p.emission_mode = group.attrs['emission_mode'].decode()
-        if 'decay_rate' in group.attrs:
-            p.decay_rate = group.attrs['decay_rate']
+        p.emission_mode = group.attrs["emission_mode"].decode()
+        if "decay_rate" in group.attrs:
+            p.decay_rate = group.attrs["decay_rate"]
 
         # Read yield
-        p.yield_ = Function1D.from_hdf5(group['yield'])
+        p.yield_ = Function1D.from_hdf5(group["yield"])
 
         # Read applicability/distribution
-        n_distribution = group.attrs['n_distribution']
+        n_distribution = group.attrs["n_distribution"]
         distribution = []
         applicability = []
         for i in range(n_distribution):
-            dgroup = group[f'distribution_{i}']
-            if 'applicability' in dgroup:
-                applicability.append(Tabulated1D.from_hdf5(
-                    dgroup['applicability']))
+            dgroup = group[f"distribution_{i}"]
+            if "applicability" in dgroup:
+                applicability.append(Tabulated1D.from_hdf5(dgroup["applicability"]))
             distribution.append(AngleEnergy.from_hdf5(dgroup))
 
         p.distribution = distribution

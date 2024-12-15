@@ -8,152 +8,162 @@ import openmc.data
 
 from . import needs_njoy
 
-_TEMPERATURES = [300., 600., 900.]
+_TEMPERATURES = [300.0, 600.0, 900.0]
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def pu239():
     """Pu239 HDF5 data."""
-    directory = os.path.dirname(os.environ['OPENMC_CROSS_SECTIONS'])
-    filename = os.path.join(directory, 'Pu239.h5')
+    directory = os.path.dirname(os.environ["OPENMC_CROSS_SECTIONS"])
+    filename = os.path.join(directory, "Pu239.h5")
     return openmc.data.IncidentNeutron.from_hdf5(filename)
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def xe135():
     """Xe135 ENDF data (contains SLBW resonance range)"""
-    endf_data = os.environ['OPENMC_ENDF_DATA']
-    filename = os.path.join(endf_data, 'neutrons', 'n-054_Xe_135.endf')
+    endf_data = os.environ["OPENMC_ENDF_DATA"]
+    filename = os.path.join(endf_data, "neutrons", "n-054_Xe_135.endf")
     return openmc.data.IncidentNeutron.from_endf(filename)
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def sm150():
     """Sm150 ENDF data (contains MLBW resonance range)"""
-    endf_data = os.environ['OPENMC_ENDF_DATA']
-    filename = os.path.join(endf_data, 'neutrons', 'n-062_Sm_150.endf')
+    endf_data = os.environ["OPENMC_ENDF_DATA"]
+    filename = os.path.join(endf_data, "neutrons", "n-062_Sm_150.endf")
     return openmc.data.IncidentNeutron.from_endf(filename)
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def gd154():
     """Gd154 ENDF data (contains Reich Moore resonance range and reosnance
     covariance with LCOMP=1)."""
-    endf_data = os.environ['OPENMC_ENDF_DATA']
-    filename = os.path.join(endf_data, 'neutrons', 'n-064_Gd_154.endf')
+    endf_data = os.environ["OPENMC_ENDF_DATA"]
+    filename = os.path.join(endf_data, "neutrons", "n-064_Gd_154.endf")
     return openmc.data.IncidentNeutron.from_endf(filename, covariance=True)
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def cl35():
     """Cl35 ENDF data (contains RML resonance range)"""
-    endf_data = os.environ['OPENMC_ENDF_DATA']
-    filename = os.path.join(endf_data, 'neutrons', 'n-017_Cl_035.endf')
+    endf_data = os.environ["OPENMC_ENDF_DATA"]
+    filename = os.path.join(endf_data, "neutrons", "n-017_Cl_035.endf")
     return openmc.data.IncidentNeutron.from_endf(filename)
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def am241():
     """Am241 ENDF data (contains Madland-Nix fission energy distribution)."""
-    endf_data = os.environ['OPENMC_ENDF_DATA']
-    filename = os.path.join(endf_data, 'neutrons', 'n-095_Am_241.endf')
+    endf_data = os.environ["OPENMC_ENDF_DATA"]
+    filename = os.path.join(endf_data, "neutrons", "n-095_Am_241.endf")
     return openmc.data.IncidentNeutron.from_endf(filename)
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def u233():
     """U233 ENDF data (contains Watt fission energy distribution)."""
-    endf_data = os.environ['OPENMC_ENDF_DATA']
-    filename = os.path.join(endf_data, 'neutrons', 'n-092_U_233.endf')
+    endf_data = os.environ["OPENMC_ENDF_DATA"]
+    filename = os.path.join(endf_data, "neutrons", "n-092_U_233.endf")
     return openmc.data.IncidentNeutron.from_endf(filename)
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def u236():
     """U236 ENDF data (contains Watt fission energy distribution)."""
-    endf_data = os.environ['OPENMC_ENDF_DATA']
-    filename = os.path.join(endf_data, 'neutrons', 'n-092_U_236.endf')
+    endf_data = os.environ["OPENMC_ENDF_DATA"]
+    filename = os.path.join(endf_data, "neutrons", "n-092_U_236.endf")
     return openmc.data.IncidentNeutron.from_endf(filename)
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def na22():
     """Na22 ENDF data (contains evaporation spectrum)."""
-    endf_data = os.environ['OPENMC_ENDF_DATA']
-    filename = os.path.join(endf_data, 'neutrons', 'n-011_Na_022.endf')
+    endf_data = os.environ["OPENMC_ENDF_DATA"]
+    filename = os.path.join(endf_data, "neutrons", "n-011_Na_022.endf")
     return openmc.data.IncidentNeutron.from_endf(filename)
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def na23():
     """Na23 ENDF data (contains MLBW resonance covariance with LCOMP=0)."""
-    endf_data = os.environ['OPENMC_ENDF_DATA']
-    filename = os.path.join(endf_data, 'neutrons', 'n-011_Na_023.endf')
+    endf_data = os.environ["OPENMC_ENDF_DATA"]
+    filename = os.path.join(endf_data, "neutrons", "n-011_Na_023.endf")
     return openmc.data.IncidentNeutron.from_endf(filename, covariance=True)
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def be9():
     """Be9 ENDF data (contains laboratory angle-energy distribution)."""
-    endf_data = os.environ['OPENMC_ENDF_DATA']
-    filename = os.path.join(endf_data, 'neutrons', 'n-004_Be_009.endf')
+    endf_data = os.environ["OPENMC_ENDF_DATA"]
+    filename = os.path.join(endf_data, "neutrons", "n-004_Be_009.endf")
     return openmc.data.IncidentNeutron.from_endf(filename)
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def h2():
-    endf_data = os.environ['OPENMC_ENDF_DATA']
-    endf_file = os.path.join(endf_data, 'neutrons', 'n-001_H_002.endf')
-    return openmc.data.IncidentNeutron.from_njoy(
-        endf_file, temperatures=_TEMPERATURES)
+    endf_data = os.environ["OPENMC_ENDF_DATA"]
+    endf_file = os.path.join(endf_data, "neutrons", "n-001_H_002.endf")
+    return openmc.data.IncidentNeutron.from_njoy(endf_file, temperatures=_TEMPERATURES)
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def am244():
-    endf_data = os.environ['OPENMC_ENDF_DATA']
-    endf_file = os.path.join(endf_data, 'neutrons', 'n-095_Am_244.endf')
+    endf_data = os.environ["OPENMC_ENDF_DATA"]
+    endf_file = os.path.join(endf_data, "neutrons", "n-095_Am_244.endf")
     return openmc.data.IncidentNeutron.from_njoy(endf_file)
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def ti50():
     """Ti50 ENDF data (contains Multi-level Breit-Wigner resonance range and
-       resonance covariance with LCOMP=1)."""
-    endf_data = os.environ['OPENMC_ENDF_DATA']
-    filename = os.path.join(endf_data, 'neutrons', 'n-022_Ti_050.endf')
+    resonance covariance with LCOMP=1)."""
+    endf_data = os.environ["OPENMC_ENDF_DATA"]
+    filename = os.path.join(endf_data, "neutrons", "n-022_Ti_050.endf")
     return openmc.data.IncidentNeutron.from_endf(filename, covariance=True)
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def cf252():
     """Cf252 ENDF data (contains RM resonance covariance with LCOMP=0)."""
-    endf_data = os.environ['OPENMC_ENDF_DATA']
-    filename = os.path.join(endf_data, 'neutrons', 'n-098_Cf_252.endf')
+    endf_data = os.environ["OPENMC_ENDF_DATA"]
+    filename = os.path.join(endf_data, "neutrons", "n-098_Cf_252.endf")
     return openmc.data.IncidentNeutron.from_endf(filename, covariance=True)
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def th232():
     """Th232 ENDF data (contains RM resonance covariance with LCOMP=2)."""
-    endf_data = os.environ['OPENMC_ENDF_DATA']
-    filename = os.path.join(endf_data, 'neutrons', 'n-090_Th_232.endf')
+    endf_data = os.environ["OPENMC_ENDF_DATA"]
+    filename = os.path.join(endf_data, "neutrons", "n-090_Th_232.endf")
     return openmc.data.IncidentNeutron.from_endf(filename, covariance=True)
 
 
 def test_attributes(pu239):
-    assert pu239.name == 'Pu239'
+    assert pu239.name == "Pu239"
     assert pu239.mass_number == 239
     assert pu239.metastable == 0
-    assert pu239.atomic_symbol == 'Pu'
+    assert pu239.atomic_symbol == "Pu"
     assert pu239.atomic_weight_ratio == pytest.approx(236.9986)
 
 
 def test_fission_energy(pu239):
     fer = pu239.fission_energy
     assert isinstance(fer, openmc.data.FissionEnergyRelease)
-    components = ['betas', 'delayed_neutrons', 'delayed_photons', 'fragments',
-                  'neutrinos', 'prompt_neutrons', 'prompt_photons', 'recoverable',
-                  'total', 'q_prompt', 'q_recoverable', 'q_total']
+    components = [
+        "betas",
+        "delayed_neutrons",
+        "delayed_photons",
+        "fragments",
+        "neutrinos",
+        "prompt_neutrons",
+        "prompt_photons",
+        "recoverable",
+        "total",
+        "q_prompt",
+        "q_recoverable",
+        "q_total",
+    ]
     for c in components:
         assert isinstance(getattr(fer, c), Callable)
 
@@ -161,7 +171,7 @@ def test_fission_energy(pu239):
 def test_energy_grid(pu239):
     assert isinstance(pu239.energy, Mapping)
     for temp, grid in pu239.energy.items():
-        assert temp.endswith('K')
+        assert temp.endswith("K")
         assert np.all(np.diff(grid) >= 0.0)
 
 
@@ -177,13 +187,13 @@ def test_elastic(pu239):
     assert elastic.center_of_mass
     assert elastic.q_value == 0.0
     assert elastic.mt == 2
-    assert '0K' in elastic.xs
-    assert '294K' in elastic.xs
+    assert "0K" in elastic.xs
+    assert "294K" in elastic.xs
     assert len(elastic.products) == 1
     p = elastic.products[0]
     assert isinstance(p, openmc.data.Product)
-    assert p.particle == 'neutron'
-    assert p.emission_mode == 'prompt'
+    assert p.particle == "neutron"
+    assert p.emission_mode == "prompt"
     assert len(p.distribution) == 1
     d = p.distribution[0]
     assert isinstance(d, openmc.data.UncorrelatedAngleEnergy)
@@ -197,25 +207,25 @@ def test_fission(pu239):
     assert not fission.center_of_mass
     assert fission.q_value == pytest.approx(198902000.0)
     assert fission.mt == 18
-    assert '294K' in fission.xs
+    assert "294K" in fission.xs
     assert len(fission.products) == 8
     prompt = fission.products[0]
-    assert prompt.particle == 'neutron'
+    assert prompt.particle == "neutron"
     assert prompt.yield_(1.0e-5) == pytest.approx(2.874262)
-    delayed = [p for p in fission.products if p.emission_mode == 'delayed']
+    delayed = [p for p in fission.products if p.emission_mode == "delayed"]
     assert len(delayed) == 6
-    assert all(d.particle == 'neutron' for d in delayed)
+    assert all(d.particle == "neutron" for d in delayed)
     assert sum(d.decay_rate for d in delayed) == pytest.approx(4.037212)
     assert sum(d.yield_(1.0) for d in delayed) == pytest.approx(0.00645)
     photon = fission.products[-1]
-    assert photon.particle == 'photon'
+    assert photon.particle == "photon"
 
 
 @needs_njoy
 def test_derived_products(am244):
     fission = am244.reactions[18]
     total_neutron = fission.derived_products[0]
-    assert total_neutron.emission_mode == 'total'
+    assert total_neutron.emission_mode == "total"
     assert total_neutron.yield_(6e6) == pytest.approx(4.2558)
 
 
@@ -235,14 +245,14 @@ def test_kerma(run_in_tmpdir, am244, h2):
     read_in = openmc.data.IncidentNeutron.from_hdf5("H2.h5")
     assert 301 in read_in
     assert 901 in read_in
-    assert np.all(read_in[901].xs['300K'].y == h2[901].xs['300K'].y)
+    assert np.all(read_in[901].xs["300K"].y == h2[901].xs["300K"].y)
 
 
 def test_urr(pu239):
     for T, ptable in pu239.urr.items():
-        assert T.endswith('K')
+        assert T.endswith("K")
         assert isinstance(ptable, openmc.data.ProbabilityTables)
-    ptable = pu239.urr['294K']
+    ptable = pu239.urr["294K"]
     assert ptable.absorption_flag == -1
     assert ptable.energy[0] == pytest.approx(2500.001)
     assert ptable.energy[-1] == pytest.approx(29999.99)
@@ -262,11 +272,11 @@ def test_get_reaction_components(h2):
 
 
 def test_export_to_hdf5(tmpdir, pu239, gd154):
-    filename = str(tmpdir.join('pu239.h5'))
+    filename = str(tmpdir.join("pu239.h5"))
     pu239.export_to_hdf5(filename)
     assert os.path.exists(filename)
     with pytest.raises(NotImplementedError):
-        gd154.export_to_hdf5('gd154.h5')
+        gd154.export_to_hdf5("gd154.h5")
 
 
 def test_slbw(xe135):
@@ -276,18 +286,18 @@ def test_slbw(xe135):
     resolved = res.resolved
     assert isinstance(resolved, openmc.data.SingleLevelBreitWigner)
     assert resolved.energy_min == pytest.approx(1e-5)
-    assert resolved.energy_max == pytest.approx(190.)
+    assert resolved.energy_max == pytest.approx(190.0)
     assert resolved.target_spin == pytest.approx(1.5)
     assert isinstance(resolved.parameters, pd.DataFrame)
     s = resolved.parameters.iloc[0]
-    assert s['energy'] == pytest.approx(0.084)
+    assert s["energy"] == pytest.approx(0.084)
 
 
 def test_mlbw(sm150):
     resolved = sm150.resonances.resolved
     assert isinstance(resolved, openmc.data.MultiLevelBreitWigner)
     assert resolved.energy_min == pytest.approx(1e-5)
-    assert resolved.energy_max == pytest.approx(1570.)
+    assert resolved.energy_max == pytest.approx(1570.0)
     assert resolved.target_spin == 0.0
 
 
@@ -301,15 +311,15 @@ def test_reichmoore(gd154):
     assert isinstance(resolved, openmc.data.ReichMoore)
     assert isinstance(unresolved, openmc.data.Unresolved)
     assert resolved.energy_min == pytest.approx(1e-5)
-    assert resolved.energy_max == pytest.approx(2760.)
+    assert resolved.energy_max == pytest.approx(2760.0)
     assert resolved.target_spin == 0.0
     assert resolved.channel_radius[0](1.0) == pytest.approx(0.74)
     assert isinstance(resolved.parameters, pd.DataFrame)
-    assert (resolved.parameters['L'] == 0).all()
-    assert (resolved.parameters['J'] <= 0.5).all()
-    assert (resolved.parameters['fissionWidthA'] == 0.0).all()
+    assert (resolved.parameters["L"] == 0).all()
+    assert (resolved.parameters["J"] <= 0.5).all()
+    assert (resolved.parameters["fissionWidthA"] == 0.0).all()
 
-    elastic = gd154.reactions[2].xs['0K']
+    elastic = gd154.reactions[2].xs["0K"]
     assert isinstance(elastic, openmc.data.ResonancesWithBackground)
 
 
@@ -327,16 +337,18 @@ def test_mlbw_cov_lcomp0(cf252):
     # Testing on first range only
     cov = cf252.resonance_covariance.ranges[0]
     res = cf252.resonances.ranges[0]
-    assert cov.parameters['energy'][0] == pytest.approx(-3.5)
-    assert res.parameters['energy'][0] == cov.parameters['energy'][0]
-    assert isinstance(cov, openmc.data.resonance_covariance.MultiLevelBreitWignerCovariance)
+    assert cov.parameters["energy"][0] == pytest.approx(-3.5)
+    assert res.parameters["energy"][0] == cov.parameters["energy"][0]
+    assert isinstance(
+        cov, openmc.data.resonance_covariance.MultiLevelBreitWignerCovariance
+    )
     assert cov.energy_min == pytest.approx(1e-5)
-    assert cov.energy_max == pytest.approx(1000.)
-    assert cov.covariance[0,0] == pytest.approx(1.225e-05)
+    assert cov.energy_max == pytest.approx(1000.0)
+    assert cov.covariance[0, 0] == pytest.approx(1.225e-05)
 
-    subset = cov.subset('energy', [0, 100])
+    subset = cov.subset("energy", [0, 100])
     assert not subset.parameters.empty
-    assert (subset.file2res.parameters['energy'] < 100).all()
+    assert (subset.file2res.parameters["energy"] < 100).all()
     samples = cov.sample(1)
 
 
@@ -344,16 +356,18 @@ def test_mlbw_cov_lcomp1(ti50):
     # Testing on first range only
     cov = ti50.resonance_covariance.ranges[0]
     res = ti50.resonances.ranges[0]
-    assert cov.parameters['energy'][0] == pytest.approx(-21020.)
-    assert res.parameters['energy'][0] == cov.parameters['energy'][0]
-    assert isinstance(cov, openmc.data.resonance_covariance.MultiLevelBreitWignerCovariance)
+    assert cov.parameters["energy"][0] == pytest.approx(-21020.0)
+    assert res.parameters["energy"][0] == cov.parameters["energy"][0]
+    assert isinstance(
+        cov, openmc.data.resonance_covariance.MultiLevelBreitWignerCovariance
+    )
     assert cov.energy_min == pytest.approx(1e-5)
-    assert cov.energy_max == pytest.approx(587000.)
-    assert cov.covariance[0,0] == pytest.approx(1.410177e5)
+    assert cov.energy_max == pytest.approx(587000.0)
+    assert cov.covariance[0, 0] == pytest.approx(1.410177e5)
 
-    subset = cov.subset('L', [1, 1])
+    subset = cov.subset("L", [1, 1])
     assert not subset.parameters.empty
-    assert (subset.file2res.parameters['L'] == 1).all()
+    assert (subset.file2res.parameters["L"] == 1).all()
     cov.sample(1)
 
 
@@ -361,16 +375,18 @@ def test_mlbw_cov_lcomp2(na23):
     # Testing on first range only
     cov = na23.resonance_covariance.ranges[0]
     res = na23.resonances.ranges[0]
-    assert cov.parameters['energy'][0] == pytest.approx(2810.)
-    assert res.parameters['energy'][0] == cov.parameters['energy'][0]
-    assert isinstance(cov, openmc.data.resonance_covariance.MultiLevelBreitWignerCovariance)
+    assert cov.parameters["energy"][0] == pytest.approx(2810.0)
+    assert res.parameters["energy"][0] == cov.parameters["energy"][0]
+    assert isinstance(
+        cov, openmc.data.resonance_covariance.MultiLevelBreitWignerCovariance
+    )
     assert cov.energy_min == pytest.approx(600)
-    assert cov.energy_max == pytest.approx(500000.)
-    assert cov.covariance[0,0] == pytest.approx(16.1064163584)
+    assert cov.energy_max == pytest.approx(500000.0)
+    assert cov.covariance[0, 0] == pytest.approx(16.1064163584)
 
-    subset = cov.subset('L', [1, 1])
+    subset = cov.subset("L", [1, 1])
     assert not subset.parameters.empty
-    assert (subset.file2res.parameters['L'] == 1).all()
+    assert (subset.file2res.parameters["L"] == 1).all()
     cov.sample(1)
 
 
@@ -378,16 +394,16 @@ def test_rmcov_lcomp1(gd154):
     # Testing on first range only
     cov = gd154.resonance_covariance.ranges[0]
     res = gd154.resonances.ranges[0]
-    assert cov.parameters['energy'][0] == pytest.approx(-2.200001)
-    assert res.parameters['energy'][0] == cov.parameters['energy'][0]
+    assert cov.parameters["energy"][0] == pytest.approx(-2.200001)
+    assert res.parameters["energy"][0] == cov.parameters["energy"][0]
     assert isinstance(cov, openmc.data.resonance_covariance.ReichMooreCovariance)
     assert cov.energy_min == pytest.approx(1e-5)
-    assert cov.energy_max == pytest.approx(2760.)
-    assert cov.covariance[0,0] == pytest.approx(0.8895997)
+    assert cov.energy_max == pytest.approx(2760.0)
+    assert cov.covariance[0, 0] == pytest.approx(0.8895997)
 
-    subset = cov.subset('energy', [0, 100])
+    subset = cov.subset("energy", [0, 100])
     assert not subset.parameters.empty
-    assert (subset.file2res.parameters['energy'] < 100).all()
+    assert (subset.file2res.parameters["energy"] < 100).all()
     cov.sample(1)
 
 
@@ -395,16 +411,16 @@ def test_rmcov_lcomp2(th232):
     # Testing on first range only
     cov = th232.resonance_covariance.ranges[0]
     res = th232.resonances.ranges[0]
-    assert cov.parameters['energy'][0] == pytest.approx(-2000)
-    assert res.parameters['energy'][0] == cov.parameters['energy'][0]
+    assert cov.parameters["energy"][0] == pytest.approx(-2000)
+    assert res.parameters["energy"][0] == cov.parameters["energy"][0]
     assert isinstance(cov, openmc.data.resonance_covariance.ReichMooreCovariance)
     assert cov.energy_min == pytest.approx(1e-5)
-    assert cov.energy_max == pytest.approx(4000.)
-    assert cov.covariance[0,0] == pytest.approx(246.6043092496)
+    assert cov.energy_max == pytest.approx(4000.0)
+    assert cov.covariance[0, 0] == pytest.approx(246.6043092496)
 
-    subset = cov.subset('energy', [0, 100])
+    subset = cov.subset("energy", [0, 100])
     assert not subset.parameters.empty
-    assert (subset.file2res.parameters['energy'] < 100).all()
+    assert (subset.file2res.parameters["energy"] < 100).all()
     cov.sample(1)
 
 
@@ -444,22 +460,22 @@ def test_laboratory(be9):
     assert isinstance(dist, openmc.data.LaboratoryAngleEnergy)
     assert list(dist.breakpoints) == [18]
     assert list(dist.interpolation) == [2]
-    assert dist.energy[0] == pytest.approx(1748830.)
-    assert dist.energy[-1] == pytest.approx(20.e6)
+    assert dist.energy[0] == pytest.approx(1748830.0)
+    assert dist.energy[-1] == pytest.approx(20.0e6)
     assert len(dist.energy) == len(dist.energy_out) == len(dist.mu)
     for eout, mu in zip(dist.energy_out, dist.mu):
         assert len(eout) == len(mu)
-        assert np.all((-1. <= mu.x) & (mu.x <= 1.))
+        assert np.all((-1.0 <= mu.x) & (mu.x <= 1.0))
 
 
 @needs_njoy
 def test_correlated(tmpdir):
-    endf_data = os.environ['OPENMC_ENDF_DATA']
-    endf_file = os.path.join(endf_data, 'neutrons', 'n-014_Si_030.endf')
+    endf_data = os.environ["OPENMC_ENDF_DATA"]
+    endf_file = os.path.join(endf_data, "neutrons", "n-014_Si_030.endf")
     si30 = openmc.data.IncidentNeutron.from_njoy(endf_file, heatr=False)
 
     # Convert to HDF5 and read back
-    filename = str(tmpdir.join('si30.h5'))
+    filename = str(tmpdir.join("si30.h5"))
     si30.export_to_hdf5(filename)
     si30_copy = openmc.data.IncidentNeutron.from_hdf5(filename)
 
@@ -467,7 +483,7 @@ def test_correlated(tmpdir):
 @needs_njoy
 def test_nbody(tmpdir, h2):
     # Convert to HDF5 and read back
-    filename = str(tmpdir.join('h2.h5'))
+    filename = str(tmpdir.join("h2.h5"))
     h2.export_to_hdf5(filename)
     h2_copy = openmc.data.IncidentNeutron.from_hdf5(filename)
 
@@ -481,10 +497,10 @@ def test_nbody(tmpdir, h2):
 
 @needs_njoy
 def test_ace_convert(run_in_tmpdir):
-    endf_data = os.environ['OPENMC_ENDF_DATA']
-    filename = os.path.join(endf_data, 'neutrons', 'n-001_H_001.endf')
-    ace_ascii = 'ace_ascii'
-    ace_binary = 'ace_binary'
+    endf_data = os.environ["OPENMC_ENDF_DATA"]
+    filename = os.path.join(endf_data, "neutrons", "n-001_H_001.endf")
+    ace_ascii = "ace_ascii"
+    ace_binary = "ace_binary"
     openmc.data.njoy.make_ace(filename, acer=ace_ascii)
 
     # Convert to binary
@@ -505,19 +521,19 @@ def test_ace_convert(run_in_tmpdir):
 
 def test_ace_table_types():
     TT = openmc.data.ace.TableType
-    assert TT.from_suffix('c') == TT.NEUTRON_CONTINUOUS
-    assert TT.from_suffix('nc') == TT.NEUTRON_CONTINUOUS
-    assert TT.from_suffix('80c') == TT.NEUTRON_CONTINUOUS
-    assert TT.from_suffix('t') == TT.THERMAL_SCATTERING
-    assert TT.from_suffix('20t') == TT.THERMAL_SCATTERING
+    assert TT.from_suffix("c") == TT.NEUTRON_CONTINUOUS
+    assert TT.from_suffix("nc") == TT.NEUTRON_CONTINUOUS
+    assert TT.from_suffix("80c") == TT.NEUTRON_CONTINUOUS
+    assert TT.from_suffix("t") == TT.THERMAL_SCATTERING
+    assert TT.from_suffix("20t") == TT.THERMAL_SCATTERING
     with pytest.raises(ValueError):
-        TT.from_suffix('z')
+        TT.from_suffix("z")
 
 
 @needs_njoy
 def test_high_temperature():
-    endf_data = os.environ['OPENMC_ENDF_DATA']
-    endf_file = os.path.join(endf_data, 'neutrons', 'n-001_H_001.endf')
+    endf_data = os.environ["OPENMC_ENDF_DATA"]
+    endf_file = os.path.join(endf_data, "neutrons", "n-001_H_001.endf")
 
     # Ensure that from_njoy works when given a high temperature
     openmc.data.IncidentNeutron.from_njoy(endf_file, temperatures=[123_456.0])

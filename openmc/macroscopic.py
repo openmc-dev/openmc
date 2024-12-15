@@ -17,7 +17,7 @@ class Macroscopic(str):
     """
 
     def __new__(cls, name):
-        check_type('name', name, str)
+        check_type("name", name, str)
         return super().__new__(cls, name)
 
     @property

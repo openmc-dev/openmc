@@ -9,16 +9,16 @@ def rotated_lattice_model():
 
     # Create some materials
     fuel1 = openmc.Material()
-    fuel1.set_density('g/cm3', 10.0)
-    fuel1.add_nuclide('U235', 1.0)
+    fuel1.set_density("g/cm3", 10.0)
+    fuel1.add_nuclide("U235", 1.0)
     fuel2 = openmc.Material()
-    fuel2.set_density('g/cm3', 10.0)
-    fuel2.add_nuclide('U238', 1.0)
+    fuel2.set_density("g/cm3", 10.0)
+    fuel2.add_nuclide("U238", 1.0)
     water = openmc.Material()
-    water.set_density('g/cm3', 1.0)
-    water.add_nuclide('H1', 2.0)
-    water.add_nuclide('O16', 1.0)
-    water.add_s_alpha_beta('c_H_in_H2O')
+    water.set_density("g/cm3", 1.0)
+    water.add_nuclide("H1", 2.0)
+    water.add_nuclide("O16", 1.0)
+    water.add_s_alpha_beta("c_H_in_H2O")
     model.materials.extend([fuel1, fuel2, water])
 
     # Create universes for lattices
@@ -36,19 +36,19 @@ def rotated_lattice_model():
     # Create hexagonal lattice
     pitch = 1.25
     hexlat = openmc.HexLattice()
-    hexlat.center = (0., 0.)
+    hexlat.center = (0.0, 0.0)
     hexlat.pitch = [pitch]
     hexlat.outer = outer_universe
-    outer_ring = [big_pin_universe] + [pin_universe]*11
-    middle_ring = [big_pin_universe] + [pin_universe]*5
+    outer_ring = [big_pin_universe] + [pin_universe] * 11
+    middle_ring = [big_pin_universe] + [pin_universe] * 5
     inner_ring = [big_pin_universe]
     hexlat.universes = [outer_ring, middle_ring, inner_ring]
 
     # Create rectangular lattice
     rectlat = openmc.RectLattice()
-    rectlat.center = (0., 0.)
+    rectlat.center = (0.0, 0.0)
     rectlat.pitch = (pitch, pitch)
-    rectlat.lower_left = (-2*pitch, -2*pitch)
+    rectlat.lower_left = (-2 * pitch, -2 * pitch)
     rectlat.outer = outer_universe
     rectlat.universes = np.full((4, 4), pin_universe)
     rectlat.universes[0] = big_pin_universe
@@ -66,7 +66,7 @@ def rotated_lattice_model():
     right_cell.rotation = (0.0, 0.0, 30.0)
 
     # Finish up with the geometry
-    outer_cyl = openmc.ZCylinder(r=8.0, boundary_type='vacuum')
+    outer_cyl = openmc.ZCylinder(r=8.0, boundary_type="vacuum")
     main_cell = openmc.Cell(fill=water, region=-outer_cyl & +left_cyl & +right_cyl)
     model.geometry = openmc.Geometry([main_cell, left_cell, right_cell])
 
@@ -81,5 +81,5 @@ def rotated_lattice_model():
 
 def test():
     model = rotated_lattice_model()
-    harness = PyAPITestHarness('statepoint.5.h5', model)
+    harness = PyAPITestHarness("statepoint.5.h5", model)
     harness.main()

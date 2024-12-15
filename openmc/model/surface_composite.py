@@ -12,8 +12,14 @@ import numpy as np
 from scipy.spatial import ConvexHull, Delaunay
 
 import openmc
-from openmc.checkvalue import (check_greater_than, check_value, check_less_than,
-                               check_iterable_type, check_length, check_type)
+from openmc.checkvalue import (
+    check_greater_than,
+    check_value,
+    check_less_than,
+    check_iterable_type,
+    check_length,
+    check_type,
+)
 
 
 class CompositeSurface(ABC):
@@ -26,7 +32,7 @@ class CompositeSurface(ABC):
             setattr(surf, name, s.translate(vector, inplace))
         return surf
 
-    def rotate(self, rotation, pivot=(0., 0., 0.), order='xyz', inplace=False):
+    def rotate(self, rotation, pivot=(0.0, 0.0, 0.0), order="xyz", inplace=False):
         surf = self if inplace else copy(self)
         for name in self._surface_names:
             s = getattr(surf, name)
@@ -43,7 +49,7 @@ class CompositeSurface(ABC):
         # on one-sided cones
         classes = (XConeOneSided, YConeOneSided, ZConeOneSided, Vessel)
         for name in self._surface_names:
-            if isinstance(self, classes) and name.startswith('plane'):
+            if isinstance(self, classes) and name.startswith("plane"):
                 continue
             getattr(self, name).boundary_type = boundary_type
 
@@ -114,45 +120,46 @@ class CylinderSector(CompositeSurface):
 
     """
 
-    _surface_names = ('outer_cyl', 'inner_cyl', 'plane1', 'plane2')
+    _surface_names = ("outer_cyl", "inner_cyl", "plane1", "plane2")
 
-    def __init__(self,
-                 r1,
-                 r2,
-                 theta1,
-                 theta2,
-                 center=(0., 0.),
-                 axis='z',
-                 **kwargs):
+    def __init__(self, r1, r2, theta1, theta2, center=(0.0, 0.0), axis="z", **kwargs):
 
         if r2 <= r1:
-            raise ValueError('r2 must be greater than r1.')
+            raise ValueError("r2 must be greater than r1.")
 
         if theta2 <= theta1:
-            raise ValueError('theta2 must be greater than theta1.')
+            raise ValueError("theta2 must be greater than theta1.")
 
         phi1 = pi / 180 * theta1
         phi2 = pi / 180 * theta2
 
         # Coords for axis-perpendicular planes
-        p1 = np.array([center[0], center[1], 1.])
+        p1 = np.array([center[0], center[1], 1.0])
 
-        p2_plane1 = np.array([r1 * cos(phi1) + center[0], r1 * sin(phi1) + center[1], 0.])
-        p3_plane1 = np.array([r2 * cos(phi1) + center[0], r2 * sin(phi1) + center[1], 0.])
+        p2_plane1 = np.array(
+            [r1 * cos(phi1) + center[0], r1 * sin(phi1) + center[1], 0.0]
+        )
+        p3_plane1 = np.array(
+            [r2 * cos(phi1) + center[0], r2 * sin(phi1) + center[1], 0.0]
+        )
 
-        p2_plane2 = np.array([r1 * cos(phi2) + center[0], r1 * sin(phi2)+ center[1], 0.])
-        p3_plane2 = np.array([r2 * cos(phi2) + center[0], r2 * sin(phi2)+ center[1], 0.])
+        p2_plane2 = np.array(
+            [r1 * cos(phi2) + center[0], r1 * sin(phi2) + center[1], 0.0]
+        )
+        p3_plane2 = np.array(
+            [r2 * cos(phi2) + center[0], r2 * sin(phi2) + center[1], 0.0]
+        )
 
         points = [p1, p2_plane1, p3_plane1, p2_plane2, p3_plane2]
-        if axis == 'z':
+        if axis == "z":
             coord_map = [0, 1, 2]
             self.inner_cyl = openmc.ZCylinder(*center, r1, **kwargs)
             self.outer_cyl = openmc.ZCylinder(*center, r2, **kwargs)
-        elif axis == 'y':
+        elif axis == "y":
             coord_map = [0, 2, 1]
             self.inner_cyl = openmc.YCylinder(*center, r1, **kwargs)
             self.outer_cyl = openmc.YCylinder(*center, r2, **kwargs)
-        elif axis == 'x':
+        elif axis == "x":
             coord_map = [2, 0, 1]
             self.inner_cyl = openmc.XCylinder(*center, r1, **kwargs)
             self.outer_cyl = openmc.XCylinder(*center, r2, **kwargs)
@@ -161,20 +168,13 @@ class CylinderSector(CompositeSurface):
         for p in points:
             p[:] = p[coord_map]
 
-        self.plane1 = openmc.Plane.from_points(p1, p2_plane1, p3_plane1,
-                                               **kwargs)
-        self.plane2 = openmc.Plane.from_points(p1, p2_plane2, p3_plane2,
-                                               **kwargs)
+        self.plane1 = openmc.Plane.from_points(p1, p2_plane1, p3_plane1, **kwargs)
+        self.plane2 = openmc.Plane.from_points(p1, p2_plane2, p3_plane2, **kwargs)
 
     @classmethod
-    def from_theta_alpha(cls,
-                         r1,
-                         r2,
-                         theta,
-                         alpha,
-                         center = (0.,0.),
-                         axis='z',
-                         **kwargs):
+    def from_theta_alpha(
+        cls, r1, r2, theta, alpha, center=(0.0, 0.0), axis="z", **kwargs
+    ):
         r"""Alternate constructor for :class:`CylinderSector`. Returns a
         :class:`CylinderSector` object based on a central angle :math:`\theta`
         and an angular offset :math:`\alpha`. Note that
@@ -210,8 +210,8 @@ class CylinderSector(CompositeSurface):
             CylinderSector with the given central angle at the given
             offset.
         """
-        if theta >= 360. or theta <= 0:
-            raise ValueError('theta must be less than 360 and greater than 0.')
+        if theta >= 360.0 or theta <= 0:
+            raise ValueError("theta must be less than 360 and greater than 0.")
 
         theta1 = alpha
         theta2 = alpha + theta
@@ -284,12 +284,18 @@ class IsogonalOctagon(CompositeSurface):
 
     """
 
-    _surface_names = ('top', 'bottom',
-                      'upper_right', 'lower_left',
-                      'right', 'left',
-                      'lower_right', 'upper_left')
+    _surface_names = (
+        "top",
+        "bottom",
+        "upper_right",
+        "lower_left",
+        "right",
+        "left",
+        "lower_right",
+        "upper_left",
+    )
 
-    def __init__(self, center, r1, r2, axis='z', **kwargs):
+    def __init__(self, center, r1, r2, axis="z", **kwargs):
         c1, c2 = center
 
         # Coordinates for axis-perpendicular planes
@@ -301,22 +307,24 @@ class IsogonalOctagon(CompositeSurface):
 
         # Side lengths
         if r2 > r1 * sqrt(2):
-            raise ValueError('r2 is greater than sqrt(2) * r1. Octagon' +
-                             ' may be erroneous.')
+            raise ValueError(
+                "r2 is greater than sqrt(2) * r1. Octagon" + " may be erroneous."
+            )
         if r1 > r2 * sqrt(2):
-            raise ValueError('r1 is greater than sqrt(2) * r2. Octagon' +
-                             ' may be erroneous.')
+            raise ValueError(
+                "r1 is greater than sqrt(2) * r2. Octagon" + " may be erroneous."
+            )
 
-        L_basis_ax = (r2 * sqrt(2) - r1)
+        L_basis_ax = r2 * sqrt(2) - r1
 
         # Coordinates for quadrant planes
-        p1_ur = np.array([L_basis_ax, r1, 0.])
-        p2_ur = np.array([r1, L_basis_ax, 0.])
-        p3_ur = np.array([r1, L_basis_ax, 1.])
+        p1_ur = np.array([L_basis_ax, r1, 0.0])
+        p2_ur = np.array([r1, L_basis_ax, 0.0])
+        p3_ur = np.array([r1, L_basis_ax, 1.0])
 
-        p1_lr = np.array([r1, -L_basis_ax, 0.])
-        p2_lr = np.array([L_basis_ax, -r1, 0.])
-        p3_lr = np.array([L_basis_ax, -r1, 1.])
+        p1_lr = np.array([r1, -L_basis_ax, 0.0])
+        p2_lr = np.array([L_basis_ax, -r1, 0.0])
+        p3_lr = np.array([L_basis_ax, -r1, 1.0])
 
         p1_ll = -p1_ur
         p2_ll = -p2_ur
@@ -326,23 +334,35 @@ class IsogonalOctagon(CompositeSurface):
         p2_ul = -p2_lr
         p3_ul = -p3_lr
 
-        points = [p1_ur, p2_ur, p3_ur, p1_lr, p2_lr, p3_lr,
-                  p1_ll, p2_ll, p3_ll, p1_ul, p2_ul, p3_ul]
+        points = [
+            p1_ur,
+            p2_ur,
+            p3_ur,
+            p1_lr,
+            p2_lr,
+            p3_lr,
+            p1_ll,
+            p2_ll,
+            p3_ll,
+            p1_ul,
+            p2_ul,
+            p3_ul,
+        ]
 
         # Orientation specific variables
-        if axis == 'z':
+        if axis == "z":
             coord_map = [0, 1, 2]
             self.top = openmc.YPlane(ctop, **kwargs)
             self.bottom = openmc.YPlane(cbottom, **kwargs)
             self.right = openmc.XPlane(cright, **kwargs)
             self.left = openmc.XPlane(cleft, **kwargs)
-        elif axis == 'y':
+        elif axis == "y":
             coord_map = [0, 2, 1]
             self.top = openmc.ZPlane(ctop, **kwargs)
             self.bottom = openmc.ZPlane(cbottom, **kwargs)
             self.right = openmc.XPlane(cright, **kwargs)
             self.left = openmc.XPlane(cleft, **kwargs)
-        elif axis == 'x':
+        elif axis == "x":
             coord_map = [2, 0, 1]
             self.top = openmc.ZPlane(ctop, **kwargs)
             self.bottom = openmc.ZPlane(cbottom, **kwargs)
@@ -356,36 +376,60 @@ class IsogonalOctagon(CompositeSurface):
             p[1] += c2
             p[:] = p[coord_map]
 
-        self.upper_right = openmc.Plane.from_points(p1_ur, p2_ur, p3_ur,
-                                                    **kwargs)
-        self.lower_right = openmc.Plane.from_points(p1_lr, p2_lr, p3_lr,
-                                                    **kwargs)
-        self.lower_left = openmc.Plane.from_points(p1_ll, p2_ll, p3_ll,
-                                                   **kwargs)
-        self.upper_left = openmc.Plane.from_points(p1_ul, p2_ul, p3_ul,
-                                                   **kwargs)
+        self.upper_right = openmc.Plane.from_points(p1_ur, p2_ur, p3_ur, **kwargs)
+        self.lower_right = openmc.Plane.from_points(p1_lr, p2_lr, p3_lr, **kwargs)
+        self.lower_left = openmc.Plane.from_points(p1_ll, p2_ll, p3_ll, **kwargs)
+        self.upper_left = openmc.Plane.from_points(p1_ul, p2_ul, p3_ul, **kwargs)
 
     def __neg__(self):
-        if self.axis == 'y':
-            region = -self.top & +self.bottom & -self.right & +self.left & \
-                -self.upper_right & -self.lower_right & +self.lower_left & \
-                +self.upper_left
+        if self.axis == "y":
+            region = (
+                -self.top
+                & +self.bottom
+                & -self.right
+                & +self.left
+                & -self.upper_right
+                & -self.lower_right
+                & +self.lower_left
+                & +self.upper_left
+            )
         else:
-            region = -self.top & +self.bottom & -self.right & +self.left & \
-                +self.upper_right & +self.lower_right & -self.lower_left & \
-                -self.upper_left
+            region = (
+                -self.top
+                & +self.bottom
+                & -self.right
+                & +self.left
+                & +self.upper_right
+                & +self.lower_right
+                & -self.lower_left
+                & -self.upper_left
+            )
 
         return region
 
     def __pos__(self):
-        if self.axis == 'y':
-            region = +self.top | -self.bottom | +self.right | -self.left | \
-                +self.upper_right | +self.lower_right | -self.lower_left | \
-                -self.upper_left
+        if self.axis == "y":
+            region = (
+                +self.top
+                | -self.bottom
+                | +self.right
+                | -self.left
+                | +self.upper_right
+                | +self.lower_right
+                | -self.lower_left
+                | -self.upper_left
+            )
         else:
-            region = +self.top | -self.bottom | +self.right | -self.left | \
-                -self.upper_right | -self.lower_right | +self.lower_left | \
-                +self.upper_left
+            region = (
+                +self.top
+                | -self.bottom
+                | +self.right
+                | -self.left
+                | -self.upper_right
+                | -self.lower_right
+                | +self.lower_left
+                | +self.upper_left
+            )
         return region
 
 
@@ -445,108 +489,132 @@ class RightCircularCylinder(CompositeSurface):
         :attr:`lower_fillet_radius` is set.
 
     """
-    _surface_names = ('cyl', 'bottom', 'top')
 
-    def __init__(self, center_base, height, radius, axis='z',
-                 upper_fillet_radius=0., lower_fillet_radius=0., **kwargs):
+    _surface_names = ("cyl", "bottom", "top")
+
+    def __init__(
+        self,
+        center_base,
+        height,
+        radius,
+        axis="z",
+        upper_fillet_radius=0.0,
+        lower_fillet_radius=0.0,
+        **kwargs,
+    ):
         cx, cy, cz = center_base
-        check_greater_than('cylinder height', height, 0.0)
-        check_greater_than('cylinder radius', radius, 0.0)
-        check_value('cylinder axis', axis, ('x', 'y', 'z'))
-        check_type('upper_fillet_radius', upper_fillet_radius, float)
-        check_less_than('upper_fillet_radius', upper_fillet_radius,
-                        radius, equality=True)
-        check_type('lower_fillet_radius', lower_fillet_radius, float)
-        check_less_than('lower_fillet_radius', lower_fillet_radius,
-                        radius, equality=True)
+        check_greater_than("cylinder height", height, 0.0)
+        check_greater_than("cylinder radius", radius, 0.0)
+        check_value("cylinder axis", axis, ("x", "y", "z"))
+        check_type("upper_fillet_radius", upper_fillet_radius, float)
+        check_less_than(
+            "upper_fillet_radius", upper_fillet_radius, radius, equality=True
+        )
+        check_type("lower_fillet_radius", lower_fillet_radius, float)
+        check_less_than(
+            "lower_fillet_radius", lower_fillet_radius, radius, equality=True
+        )
 
-        if axis == 'x':
+        if axis == "x":
             self.cyl = openmc.XCylinder(y0=cy, z0=cz, r=radius, **kwargs)
             self.bottom = openmc.XPlane(x0=cx, **kwargs)
             self.top = openmc.XPlane(x0=cx + height, **kwargs)
-            x1, x2 = 'y', 'z'
+            x1, x2 = "y", "z"
             axcoord, axcoord1, axcoord2 = 0, 1, 2
-        elif axis == 'y':
+        elif axis == "y":
             self.cyl = openmc.YCylinder(x0=cx, z0=cz, r=radius, **kwargs)
             self.bottom = openmc.YPlane(y0=cy, **kwargs)
             self.top = openmc.YPlane(y0=cy + height, **kwargs)
-            x1, x2 = 'x', 'z'
+            x1, x2 = "x", "z"
             axcoord, axcoord1, axcoord2 = 1, 0, 2
-        elif axis == 'z':
+        elif axis == "z":
             self.cyl = openmc.ZCylinder(x0=cx, y0=cy, r=radius, **kwargs)
             self.bottom = openmc.ZPlane(z0=cz, **kwargs)
             self.top = openmc.ZPlane(z0=cz + height, **kwargs)
-            x1, x2 = 'x', 'y'
+            x1, x2 = "x", "y"
             axcoord, axcoord1, axcoord2 = 2, 0, 1
 
-        def _create_fillet_objects(axis_args, height, center_base, radius, fillet_radius, pos='upper'):
+        def _create_fillet_objects(
+            axis_args, height, center_base, radius, fillet_radius, pos="upper"
+        ):
             axis, x1, x2, axcoord, axcoord1, axcoord2 = axis_args
             fillet_ext = height / 2 - fillet_radius
             sign = 1
-            if pos == 'lower':
+            if pos == "lower":
                 sign = -1
             coord = center_base[axcoord] + (height / 2) + sign * fillet_ext
 
             # cylinder
-            cyl_name = f'{pos}_min'
+            cyl_name = f"{pos}_min"
             cylinder_args = {
-                x1 + '0': center_base[axcoord1],
-                x2 + '0': center_base[axcoord2],
-                'r': radius - fillet_radius
+                x1 + "0": center_base[axcoord1],
+                x2 + "0": center_base[axcoord2],
+                "r": radius - fillet_radius,
             }
-            cls = getattr(openmc, f'{axis.upper()}Cylinder')
-            cyl = cls(name=f'{cyl_name} {axis}', **cylinder_args)
+            cls = getattr(openmc, f"{axis.upper()}Cylinder")
+            cyl = cls(name=f"{cyl_name} {axis}", **cylinder_args)
 
-            #torus
-            tor_name = f'{axis} {pos}'
+            # torus
+            tor_name = f"{axis} {pos}"
             tor_args = {
-                'a': radius - fillet_radius,
-                'b': fillet_radius,
-                'c': fillet_radius,
-                x1 + '0': center_base[axcoord1],
-                x2 + '0': center_base[axcoord2],
-                axis + '0': coord
+                "a": radius - fillet_radius,
+                "b": fillet_radius,
+                "c": fillet_radius,
+                x1 + "0": center_base[axcoord1],
+                x2 + "0": center_base[axcoord2],
+                axis + "0": coord,
             }
-            cls = getattr(openmc, f'{axis.upper()}Torus')
+            cls = getattr(openmc, f"{axis.upper()}Torus")
             torus = cls(name=tor_name, **tor_args)
 
             # plane
-            p_name = f'{pos} ext'
-            p_args = {axis + '0': coord}
-            cls = getattr(openmc, f'{axis.upper()}Plane')
+            p_name = f"{pos} ext"
+            p_args = {axis + "0": coord}
+            cls = getattr(openmc, f"{axis.upper()}Plane")
             plane = cls(name=p_name, **p_args)
 
             return cyl, torus, plane
 
-        if upper_fillet_radius > 0. or lower_fillet_radius > 0.:
-            if 'boundary_type' in kwargs:
-                if kwargs['boundary_type'] == 'periodic':
-                    raise ValueError('Periodic boundary conditions not permitted when '
-                                     'rounded corners are used.')
+        if upper_fillet_radius > 0.0 or lower_fillet_radius > 0.0:
+            if "boundary_type" in kwargs:
+                if kwargs["boundary_type"] == "periodic":
+                    raise ValueError(
+                        "Periodic boundary conditions not permitted when "
+                        "rounded corners are used."
+                    )
 
             axis_args = (axis, x1, x2, axcoord, axcoord1, axcoord2)
-            if upper_fillet_radius > 0.:
+            if upper_fillet_radius > 0.0:
                 cylinder, torus, plane = _create_fillet_objects(
-                    axis_args, height, center_base, radius, upper_fillet_radius)
+                    axis_args, height, center_base, radius, upper_fillet_radius
+                )
                 self.upper_fillet_cylinder = cylinder
                 self.upper_fillet_torus = torus
                 self.upper_fillet_plane = plane
-                self._surface_names += ('upper_fillet_cylinder',
-                                        'upper_fillet_torus',
-                                        'upper_fillet_plane')
+                self._surface_names += (
+                    "upper_fillet_cylinder",
+                    "upper_fillet_torus",
+                    "upper_fillet_plane",
+                )
 
-            if lower_fillet_radius > 0.:
+            if lower_fillet_radius > 0.0:
                 cylinder, torus, plane = _create_fillet_objects(
-                    axis_args, height, center_base, radius, lower_fillet_radius,
-                    pos='lower'
+                    axis_args,
+                    height,
+                    center_base,
+                    radius,
+                    lower_fillet_radius,
+                    pos="lower",
                 )
                 self.lower_fillet_cylinder = cylinder
                 self.lower_fillet_torus = torus
                 self.lower_fillet_plane = plane
 
-                self._surface_names += ('lower_fillet_cylinder',
-                                        'lower_fillet_torus',
-                                        'lower_fillet_plane')
+                self._surface_names += (
+                    "lower_fillet_cylinder",
+                    "lower_fillet_torus",
+                    "lower_fillet_plane",
+                )
 
     def _get_fillet(self):
         upper_fillet = self._get_upper_fillet()
@@ -564,17 +632,25 @@ class RightCircularCylinder(CompositeSurface):
         return fillet
 
     def _get_upper_fillet(self):
-        has_upper_fillet = hasattr(self, 'upper_fillet_plane')
+        has_upper_fillet = hasattr(self, "upper_fillet_plane")
         if has_upper_fillet:
-            upper_fillet = +self.upper_fillet_cylinder & +self.upper_fillet_torus & +self.upper_fillet_plane
+            upper_fillet = (
+                +self.upper_fillet_cylinder
+                & +self.upper_fillet_torus
+                & +self.upper_fillet_plane
+            )
         else:
             upper_fillet = None
         return upper_fillet
 
     def _get_lower_fillet(self):
-        has_lower_fillet = hasattr(self, 'lower_fillet_plane')
+        has_lower_fillet = hasattr(self, "lower_fillet_plane")
         if has_lower_fillet:
-            lower_fillet = +self.lower_fillet_cylinder & +self.lower_fillet_torus & -self.lower_fillet_plane
+            lower_fillet = (
+                +self.lower_fillet_cylinder
+                & +self.lower_fillet_torus
+                & -self.lower_fillet_plane
+            )
         else:
             lower_fillet = None
         return lower_fillet
@@ -625,15 +701,16 @@ class RectangularParallelepiped(CompositeSurface):
         Sides of the parallelepiped
 
     """
-    _surface_names = ('xmin', 'xmax', 'ymin', 'ymax', 'zmin', 'zmax')
+
+    _surface_names = ("xmin", "xmax", "ymin", "ymax", "zmin", "zmax")
 
     def __init__(self, xmin, xmax, ymin, ymax, zmin, zmax, **kwargs):
         if xmin >= xmax:
-            raise ValueError('xmin must be less than xmax')
+            raise ValueError("xmin must be less than xmax")
         if ymin >= ymax:
-            raise ValueError('ymin must be less than ymax')
+            raise ValueError("ymin must be less than ymax")
         if zmin >= zmax:
-            raise ValueError('zmin must be less than zmax')
+            raise ValueError("zmin must be less than zmax")
         self.xmin = openmc.XPlane(x0=xmin, **kwargs)
         self.xmax = openmc.XPlane(x0=xmax, **kwargs)
         self.ymin = openmc.YPlane(y0=ymin, **kwargs)
@@ -642,10 +719,14 @@ class RectangularParallelepiped(CompositeSurface):
         self.zmax = openmc.ZPlane(z0=zmax, **kwargs)
 
     def __neg__(self):
-        return -self.xmax & +self.xmin & -self.ymax & +self.ymin & -self.zmax & +self.zmin
+        return (
+            -self.xmax & +self.xmin & -self.ymax & +self.ymin & -self.zmax & +self.zmin
+        )
 
     def __pos__(self):
-        return +self.xmax | -self.xmin | +self.ymax | -self.ymin | +self.zmax | -self.zmin
+        return (
+            +self.xmax | -self.xmin | +self.ymax | -self.ymin | +self.zmax | -self.zmin
+        )
 
 
 class OrthogonalBox(CompositeSurface):
@@ -679,7 +760,8 @@ class OrthogonalBox(CompositeSurface):
         Planes representing minimum and maximum along third axis
 
     """
-    _surface_names = ('ax1_min', 'ax1_max', 'ax2_min', 'ax2_max', 'ax3_min', 'ax3_max')
+
+    _surface_names = ("ax1_min", "ax1_max", "ax2_min", "ax2_max", "ax3_min", "ax3_max")
 
     def __init__(self, v, a1, a2, a3=None, **kwargs):
         v = np.array(v)
@@ -710,21 +792,20 @@ class OrthogonalBox(CompositeSurface):
 
         # Make sure a point inside the box produces the correct senses. If not,
         # flip the plane coefficients so it does.
-        mid_point = v + (a1 + a2 + a3)/2
+        mid_point = v + (a1 + a2 + a3) / 2
         nums = (1, 2, 3) if has_a3 else (1, 2)
         for num in nums:
-            min_surf = getattr(self, f'ax{num}_min')
-            max_surf = getattr(self, f'ax{num}_max')
+            min_surf = getattr(self, f"ax{num}_min")
+            max_surf = getattr(self, f"ax{num}_max")
             if mid_point in -min_surf:
                 min_surf.flip_normal()
             if mid_point in +max_surf:
                 max_surf.flip_normal()
 
     def __neg__(self):
-        region = (+self.ax1_min & -self.ax1_max &
-                  +self.ax2_min & -self.ax2_max)
-        if hasattr(self, 'ax3_min'):
-            region &= (+self.ax3_min & -self.ax3_max)
+        region = +self.ax1_min & -self.ax1_max & +self.ax2_min & -self.ax2_max
+        if hasattr(self, "ax3_min"):
+            region &= +self.ax3_min & -self.ax3_max
         return region
 
 
@@ -770,10 +851,11 @@ class XConeOneSided(CompositeSurface):
         the ambiguity plane)
 
     """
-    _surface_names = ('cone', 'plane')
 
-    def __init__(self, x0=0., y0=0., z0=0., r2=1., up=True, **kwargs):
-        check_greater_than('cone R^2', r2, 0.0)
+    _surface_names = ("cone", "plane")
+
+    def __init__(self, x0=0.0, y0=0.0, z0=0.0, r2=1.0, up=True, **kwargs):
+        check_greater_than("cone R^2", r2, 0.0)
         self.cone = openmc.XCone(x0, y0, z0, r2, **kwargs)
         self.plane = openmc.XPlane(x0)
         self.up = up
@@ -824,10 +906,11 @@ class YConeOneSided(CompositeSurface):
         the ambiguity plane)
 
     """
-    _surface_names = ('cone', 'plane')
 
-    def __init__(self, x0=0., y0=0., z0=0., r2=1., up=True, **kwargs):
-        check_greater_than('cone R^2', r2, 0.0)
+    _surface_names = ("cone", "plane")
+
+    def __init__(self, x0=0.0, y0=0.0, z0=0.0, r2=1.0, up=True, **kwargs):
+        check_greater_than("cone R^2", r2, 0.0)
         self.cone = openmc.YCone(x0, y0, z0, r2, **kwargs)
         self.plane = openmc.YPlane(y0)
         self.up = up
@@ -877,10 +960,11 @@ class ZConeOneSided(CompositeSurface):
         the ambiguity plane)
 
     """
-    _surface_names = ('cone', 'plane')
 
-    def __init__(self, x0=0., y0=0., z0=0., r2=1., up=True, **kwargs):
-        check_greater_than('cone R^2', r2, 0.0)
+    _surface_names = ("cone", "plane")
+
+    def __init__(self, x0=0.0, y0=0.0, z0=0.0, r2=1.0, up=True, **kwargs):
+        check_greater_than("cone R^2", r2, 0.0)
         self.cone = openmc.ZCone(x0, y0, z0, r2, **kwargs)
         self.plane = openmc.ZPlane(z0)
         self.up = up
@@ -917,8 +1001,8 @@ class Polygon(CompositeSurface):
         The union of all the regions comprising the polygon.
     """
 
-    def __init__(self, points, basis='rz'):
-        check_value('basis', basis, ('xy', 'yz', 'xz', 'rz'))
+    def __init__(self, points, basis="rz"):
+        check_value("basis", basis, ("xy", "yz", "xz", "rz"))
         self._basis = basis
 
         # Create a constrained triangulation of the validated points.
@@ -935,8 +1019,8 @@ class Polygon(CompositeSurface):
         for surfset in self._surfsets:
             for surf, op, on_boundary in surfset:
                 if on_boundary:
-                    setattr(self, f'surface_{i}', surf)
-                    surfnames.append(f'surface_{i}')
+                    setattr(self, f"surface_{i}", surf)
+                    surfnames.append(f"surface_{i}")
                     i += 1
         self._surfnames = tuple(surfnames)
 
@@ -958,13 +1042,15 @@ class Polygon(CompositeSurface):
 
     @CompositeSurface.boundary_type.setter
     def boundary_type(self, boundary_type):
-        if boundary_type != 'transmission':
-            warnings.warn("Setting boundary_type to a value other than "
-                          "'transmission' on Polygon composite surfaces can "
-                          "result in unintended behavior. Please use the "
-                          "regions property of the Polygon to generate "
-                          "individual openmc.Cell objects to avoid unwanted "
-                          "behavior.")
+        if boundary_type != "transmission":
+            warnings.warn(
+                "Setting boundary_type to a value other than "
+                "'transmission' on Polygon composite surfaces can "
+                "result in unintended behavior. Please use the "
+                "regions property of the Polygon to generate "
+                "individual openmc.Cell objects to avoid unwanted "
+                "behavior."
+            )
         for name in self._surface_names:
             getattr(self, name).boundary_type = boundary_type
 
@@ -981,7 +1067,7 @@ class Polygon(CompositeSurface):
         """Generate the outward normal unit vectors for the polygon."""
         # Rotation matrix for 90 degree clockwise rotation (-90 degrees about z
         # axis for an 'xy' basis).
-        rotation = np.array([[0., 1.], [-1., 0.]])
+        rotation = np.array([[0.0, 1.0], [-1.0, 0.0]])
         # Get the unit vectors that point from one point in the polygon to the
         # next given that they are ordered counterclockwise and that the final
         # point is connected to the first point
@@ -997,7 +1083,7 @@ class Polygon(CompositeSurface):
         normals = self._normals
         equations = np.empty((normals.shape[0], 3))
         equations[:, :2] = normals
-        equations[:, 2] = -np.sum(normals*self.points, axis=-1)
+        equations[:, 2] = -np.sum(normals * self.points, axis=-1)
         return equations
 
     @property
@@ -1022,17 +1108,17 @@ class Polygon(CompositeSurface):
         ordered_points : the input points ordered counter-clockwise
         """
         points = np.asarray(points, dtype=float)
-        check_iterable_type('points', points, float, min_depth=2, max_depth=2)
-        check_length('points', points[0, :], 2, 2)
+        check_iterable_type("points", points, float, min_depth=2, max_depth=2)
+        check_length("points", points[0, :], 2, 2)
 
         # If the last point is the same as the first, remove it and make sure
         # there are still at least 3 points for a valid polygon.
         if np.allclose(points[0, :], points[-1, :]):
             points = points[:-1, :]
-        check_length('points', points, 3)
+        check_length("points", points, 3)
 
         if len(points) != len(np.unique(points, axis=0)):
-            raise ValueError('Duplicate points were detected in the Polygon input')
+            raise ValueError("Duplicate points were detected in the Polygon input")
 
         # Order the points counter-clockwise (necessary for offset method)
         # Calculates twice the signed area of the polygon using the "Shoelace
@@ -1040,7 +1126,7 @@ class Polygon(CompositeSurface):
         # If signed area is positive the curve is oriented counter-clockwise.
         # If the signed area is negative the curve is oriented clockwise.
         xpts, ypts = points.T
-        if np.sum(ypts*(np.roll(xpts, 1) - np.roll(xpts, -1))) < 0:
+        if np.sum(ypts * (np.roll(xpts, 1) - np.roll(xpts, -1))) < 0:
             points = points[::-1, :]
 
         # Check if polygon is self-intersecting by comparing edges pairwise
@@ -1052,13 +1138,13 @@ class Polygon(CompositeSurface):
                 p2 = np.append(points[j, :], 0)
                 p3 = np.append(points[(j + 1) % n, :], 0)
                 # Compute orientation of p0 wrt p2->p3 line segment
-                cp0 = np.cross(p3-p0, p2-p0)[-1]
+                cp0 = np.cross(p3 - p0, p2 - p0)[-1]
                 # Compute orientation of p1 wrt p2->p3 line segment
-                cp1 = np.cross(p3-p1, p2-p1)[-1]
+                cp1 = np.cross(p3 - p1, p2 - p1)[-1]
                 # Compute orientation of p2 wrt p0->p1 line segment
-                cp2 = np.cross(p1-p2, p0-p2)[-1]
+                cp2 = np.cross(p1 - p2, p0 - p2)[-1]
                 # Compute orientation of p3 wrt p0->p1 line segment
-                cp3 = np.cross(p1-p3, p0-p3)[-1]
+                cp3 = np.cross(p1 - p3, p0 - p3)[-1]
 
                 # Group cross products in an array and find out how many are 0
                 cross_products = np.array([[cp0, cp1], [cp2, cp3]])
@@ -1087,7 +1173,7 @@ class Polygon(CompositeSurface):
                     # and the orientations of p2 and p3 have opposite signs
                     # then there is an intersection.
                     if all(np.prod(cross_products, axis=-1) < 0):
-                        raise ValueError('Polygon cannot be self-intersecting')
+                        raise ValueError("Polygon cannot be self-intersecting")
                     continue
 
                 elif num_zeros == 1:
@@ -1095,14 +1181,14 @@ class Polygon(CompositeSurface):
                     # points
                     idx = np.argwhere(np.sum(cps_near_zero, axis=-1) == 0)
                     if np.prod(cross_products[idx, :]) < 0:
-                        raise ValueError('Polygon cannot be self-intersecting')
+                        raise ValueError("Polygon cannot be self-intersecting")
                     continue
 
                 elif num_zeros == 2:
                     continue
 
                 elif num_zeros == 3:
-                    warnings.warn('Unclear if Polygon is self-intersecting')
+                    warnings.warn("Unclear if Polygon is self-intersecting")
                     continue
 
                 else:
@@ -1116,7 +1202,7 @@ class Polygon(CompositeSurface):
                     xlap = xmin1 < xmax2 and xmin2 < xmax1
                     ylap = ymin1 < ymax2 and ymin2 < ymax1
                     if xlap or ylap:
-                        raise ValueError('Polygon cannot be self-intersecting')
+                        raise ValueError("Polygon cannot be self-intersecting")
                     continue
 
         return points
@@ -1137,10 +1223,11 @@ class Polygon(CompositeSurface):
         """
         # Only attempt the triangulation up to 5 times.
         if depth > 4:
-            raise RuntimeError('Could not create a valid triangulation after 5'
-                               ' attempts')
+            raise RuntimeError(
+                "Could not create a valid triangulation after 5" " attempts"
+            )
 
-        tri = Delaunay(points, qhull_options='QJ')
+        tri = Delaunay(points, qhull_options="QJ")
         # Loop through the boundary edges of the polygon. If an edge is not
         # included in the triangulation, break it into two line segments.
         n = len(points)
@@ -1199,7 +1286,7 @@ class Polygon(CompositeSurface):
                 test_group = group + [n]
                 test_point_idx = np.unique(self._tri.simplices[test_group, :])
                 test_points = self.points[test_point_idx]
-                test_hull = ConvexHull(test_points, qhull_options='Qc')
+                test_hull = ConvexHull(test_points, qhull_options="Qc")
                 pts_on_hull = len(test_hull.vertices) + len(test_hull.coplanar)
                 # If test_points are convex (including coplanar) keep adding to
                 # this group
@@ -1232,33 +1319,33 @@ class Polygon(CompositeSurface):
             on_boundary = any([np.allclose(facet_eq, eq) for eq in boundary_eqns])
             # Check if the facet is horizontal
             if isclose(dx, 0, abs_tol=1e-8):
-                if basis in ('xz', 'yz', 'rz'):
-                    surf = openmc.ZPlane(z0=-c/dy)
+                if basis in ("xz", "yz", "rz"):
+                    surf = openmc.ZPlane(z0=-c / dy)
                 else:
-                    surf = openmc.YPlane(y0=-c/dy)
+                    surf = openmc.YPlane(y0=-c / dy)
                 # if (0, 1).(dx, dy) < 0 we want positive halfspace instead
                 op = operator.pos if dy < 0 else operator.neg
             # Check if the facet is vertical
             elif isclose(dy, 0, abs_tol=1e-8):
-                if basis in ('xy', 'xz'):
-                    surf = openmc.XPlane(x0=-c/dx)
-                elif basis == 'yz':
-                    surf = openmc.YPlane(y0=-c/dx)
+                if basis in ("xy", "xz"):
+                    surf = openmc.XPlane(x0=-c / dx)
+                elif basis == "yz":
+                    surf = openmc.YPlane(y0=-c / dx)
                 else:
-                    surf = openmc.ZCylinder(r=-c/dx)
+                    surf = openmc.ZCylinder(r=-c / dx)
                 # if (1, 0).(dx, dy) < 0 we want positive halfspace instead
                 op = operator.pos if dx < 0 else operator.neg
             # Otherwise the facet is at an angle
             else:
                 op = operator.neg
-                if basis == 'xy':
+                if basis == "xy":
                     surf = openmc.Plane(a=dx, b=dy, d=-c)
-                elif basis == 'yz':
+                elif basis == "yz":
                     surf = openmc.Plane(b=dx, c=dy, d=-c)
-                elif basis == 'xz':
+                elif basis == "xz":
                     surf = openmc.Plane(a=dx, c=dy, d=-c)
                 else:
-                    y0 = -c/dy
+                    y0 = -c / dy
                     r2 = dy**2 / dx**2
                     # Check if the *slope* of the facet is positive. If dy/dx < 0
                     # then we want up to be True for the one-sided cones.
@@ -1296,7 +1383,7 @@ class Polygon(CompositeSurface):
         for i, nlist in enumerate(self._tri.neighbors):
             if not in_polygon[i]:
                 continue
-            neighbor_map[i] = [n for n in nlist if in_polygon[n] and n >=0]
+            neighbor_map[i] = [n for n in nlist if in_polygon[n] and n >= 0]
 
         # Get the groups of simplices forming convex polygons whose union
         # comprises the full input polygon. While there are still simplices
@@ -1351,9 +1438,9 @@ class Polygon(CompositeSurface):
             )
 
         normals = np.insert(self._normals, 0, self._normals[-1, :], axis=0)
-        cos2theta = np.sum(normals[1:, :]*normals[:-1, :], axis=-1, keepdims=True)
+        cos2theta = np.sum(normals[1:, :] * normals[:-1, :], axis=-1, keepdims=True)
         costheta = np.cos(np.arccos(cos2theta) / 2)
-        nvec = (normals[1:, :] + normals[:-1, :])
+        nvec = normals[1:, :] + normals[:-1, :]
         unit_nvec = nvec / np.linalg.norm(nvec, axis=-1, keepdims=True)
         disp_vec = distance[:, np.newaxis] / costheta * unit_nvec
 
@@ -1384,17 +1471,17 @@ class CruciformPrism(CompositeSurface):
 
     """
 
-    def __init__(self, distances, center=(0., 0.), axis='z', **kwargs):
+    def __init__(self, distances, center=(0.0, 0.0), axis="z", **kwargs):
         x0, y0 = center
         self.distances = distances
 
-        if axis == 'x':
+        if axis == "x":
             cls_horizontal = openmc.YPlane
             cls_vertical = openmc.ZPlane
-        elif axis == 'y':
+        elif axis == "y":
             cls_horizontal = openmc.XPlane
             cls_vertical = openmc.ZPlane
-        elif axis == 'z':
+        elif axis == "z":
             cls_horizontal = openmc.XPlane
             cls_vertical = openmc.YPlane
         else:
@@ -1403,11 +1490,11 @@ class CruciformPrism(CompositeSurface):
         # Create each planar surface
         surfnames = []
         for i, d in enumerate(distances):
-            setattr(self, f'hmin{i}', cls_horizontal(x0 - d, **kwargs))
-            setattr(self, f'hmax{i}', cls_horizontal(x0 + d, **kwargs))
-            setattr(self, f'vmin{i}', cls_vertical(y0 - d, **kwargs))
-            setattr(self, f'vmax{i}', cls_vertical(y0 + d, **kwargs))
-            surfnames.extend([f'hmin{i}', f'hmax{i}', f'vmin{i}', f'vmax{i}'])
+            setattr(self, f"hmin{i}", cls_horizontal(x0 - d, **kwargs))
+            setattr(self, f"hmax{i}", cls_horizontal(x0 + d, **kwargs))
+            setattr(self, f"vmin{i}", cls_vertical(y0 - d, **kwargs))
+            setattr(self, f"vmax{i}", cls_vertical(y0 + d, **kwargs))
+            surfnames.extend([f"hmin{i}", f"hmax{i}", f"vmin{i}", f"vmax{i}"])
 
         # Set _surfnames to satisfy CompositeSurface protocol
         self._surfnames = tuple(surfnames)
@@ -1437,19 +1524,18 @@ class CruciformPrism(CompositeSurface):
         regions = []
         for i in range(n):
             regions.append(
-                +getattr(self, f'hmin{i}') &
-                -getattr(self, f'hmax{i}') &
-                +getattr(self, f'vmin{n-1-i}') &
-                -getattr(self, f'vmax{n-1-i}')
+                +getattr(self, f"hmin{i}")
+                & -getattr(self, f"hmax{i}")
+                & +getattr(self, f"vmin{n-1-i}")
+                & -getattr(self, f"vmax{n-1-i}")
             )
         return openmc.Union(regions)
 
 
 # Define function to create a plane on given axis
-def _plane(axis, name, value, boundary_type='transmission', albedo=1.0):
-        cls = getattr(openmc, f'{axis.upper()}Plane')
-        return cls(value, name=f'{name} {axis}',
-                   boundary_type=boundary_type, albedo=albedo)
+def _plane(axis, name, value, boundary_type="transmission", albedo=1.0):
+    cls = getattr(openmc, f"{axis.upper()}Plane")
+    return cls(value, name=f"{name} {axis}", boundary_type=boundary_type, albedo=albedo)
 
 
 class RectangularPrism(CompositeSurface):
@@ -1482,94 +1568,111 @@ class RectangularPrism(CompositeSurface):
         Prism corner radius in units of [cm].
 
     """
-    _surface_names = ('min_x1', 'max_x1', 'min_x2', 'max_x2')
+
+    _surface_names = ("min_x1", "max_x1", "min_x2", "max_x2")
 
     def __init__(
-            self,
-            width: float,
-            height: float,
-            axis: str = 'z',
-            origin: Sequence[float] = (0., 0.),
-            boundary_type: str = 'transmission',
-            albedo: float = 1.,
-            corner_radius: float = 0.
-        ):
-        check_type('width', width, Real)
-        check_type('height', height, Real)
-        check_type('albedo', albedo, Real)
-        check_type('corner_radius', corner_radius, Real)
-        check_value('axis', axis, ('x', 'y', 'z'))
-        check_type('origin', origin, Iterable, Real)
+        self,
+        width: float,
+        height: float,
+        axis: str = "z",
+        origin: Sequence[float] = (0.0, 0.0),
+        boundary_type: str = "transmission",
+        albedo: float = 1.0,
+        corner_radius: float = 0.0,
+    ):
+        check_type("width", width, Real)
+        check_type("height", height, Real)
+        check_type("albedo", albedo, Real)
+        check_type("corner_radius", corner_radius, Real)
+        check_value("axis", axis, ("x", "y", "z"))
+        check_type("origin", origin, Iterable, Real)
 
-        if axis == 'x':
-            x1, x2 = 'y', 'z'
-        elif axis == 'y':
-            x1, x2 = 'x', 'z'
+        if axis == "x":
+            x1, x2 = "y", "z"
+        elif axis == "y":
+            x1, x2 = "x", "z"
         else:
-            x1, x2 = 'x', 'y'
+            x1, x2 = "x", "y"
 
         # Get cylinder class corresponding to given axis
-        cyl = getattr(openmc, f'{axis.upper()}Cylinder')
+        cyl = getattr(openmc, f"{axis.upper()}Cylinder")
 
         # Create container for boundary arguments
-        bc_args = {'boundary_type': boundary_type, 'albedo': albedo}
+        bc_args = {"boundary_type": boundary_type, "albedo": albedo}
 
         # Create rectangular region
-        self.min_x1 = _plane(x1, 'minimum', -width/2 + origin[0], **bc_args)
-        self.max_x1 = _plane(x1, 'maximum', width/2 + origin[0], **bc_args)
-        self.min_x2 = _plane(x2, 'minimum', -height/2 + origin[1], **bc_args)
-        self.max_x2 = _plane(x2, 'maximum', height/2 + origin[1], **bc_args)
-        if boundary_type == 'periodic':
+        self.min_x1 = _plane(x1, "minimum", -width / 2 + origin[0], **bc_args)
+        self.max_x1 = _plane(x1, "maximum", width / 2 + origin[0], **bc_args)
+        self.min_x2 = _plane(x2, "minimum", -height / 2 + origin[1], **bc_args)
+        self.max_x2 = _plane(x2, "maximum", height / 2 + origin[1], **bc_args)
+        if boundary_type == "periodic":
             self.min_x1.periodic_surface = self.max_x1
             self.min_x2.periodic_surface = self.max_x2
 
         # Handle rounded corners if given
-        if corner_radius > 0.:
-            if boundary_type == 'periodic':
-                raise ValueError('Periodic boundary conditions not permitted when '
-                                'rounded corners are used.')
+        if corner_radius > 0.0:
+            if boundary_type == "periodic":
+                raise ValueError(
+                    "Periodic boundary conditions not permitted when "
+                    "rounded corners are used."
+                )
 
-            args = {'r': corner_radius, 'boundary_type': boundary_type, 'albedo': albedo}
+            args = {
+                "r": corner_radius,
+                "boundary_type": boundary_type,
+                "albedo": albedo,
+            }
 
-            args[x1 + '0'] = origin[0] - width/2 + corner_radius
-            args[x2 + '0'] = origin[1] - height/2 + corner_radius
-            self.x1_min_x2_min = cyl(name=f'{x1} min {x2} min', **args)
+            args[x1 + "0"] = origin[0] - width / 2 + corner_radius
+            args[x2 + "0"] = origin[1] - height / 2 + corner_radius
+            self.x1_min_x2_min = cyl(name=f"{x1} min {x2} min", **args)
 
-            args[x1 + '0'] = origin[0] - width/2 + corner_radius
-            args[x2 + '0'] = origin[1] + height/2 - corner_radius
-            self.x1_min_x2_max = cyl(name=f'{x1} min {x2} max', **args)
+            args[x1 + "0"] = origin[0] - width / 2 + corner_radius
+            args[x2 + "0"] = origin[1] + height / 2 - corner_radius
+            self.x1_min_x2_max = cyl(name=f"{x1} min {x2} max", **args)
 
-            args[x1 + '0'] = origin[0] + width/2 - corner_radius
-            args[x2 + '0'] = origin[1] - height/2 + corner_radius
-            self.x1_max_x2_min = cyl(name=f'{x1} max {x2} min', **args)
+            args[x1 + "0"] = origin[0] + width / 2 - corner_radius
+            args[x2 + "0"] = origin[1] - height / 2 + corner_radius
+            self.x1_max_x2_min = cyl(name=f"{x1} max {x2} min", **args)
 
-            args[x1 + '0'] = origin[0] + width/2 - corner_radius
-            args[x2 + '0'] = origin[1] + height/2 - corner_radius
-            self.x1_max_x2_max = cyl(name=f'{x1} max {x2} max', **args)
+            args[x1 + "0"] = origin[0] + width / 2 - corner_radius
+            args[x2 + "0"] = origin[1] + height / 2 - corner_radius
+            self.x1_max_x2_max = cyl(name=f"{x1} max {x2} max", **args)
 
-            self.x1_min = _plane(x1, 'min', -width/2 + origin[0] + corner_radius,
-                                 **bc_args)
-            self.x1_max = _plane(x1, 'max', width/2 + origin[0] - corner_radius,
-                                 **bc_args)
-            self.x2_min = _plane(x2, 'min', -height/2 + origin[1] + corner_radius,
-                                 **bc_args)
-            self.x2_max = _plane(x2, 'max', height/2 + origin[1] - corner_radius,
-                                 **bc_args)
+            self.x1_min = _plane(
+                x1, "min", -width / 2 + origin[0] + corner_radius, **bc_args
+            )
+            self.x1_max = _plane(
+                x1, "max", width / 2 + origin[0] - corner_radius, **bc_args
+            )
+            self.x2_min = _plane(
+                x2, "min", -height / 2 + origin[1] + corner_radius, **bc_args
+            )
+            self.x2_max = _plane(
+                x2, "max", height / 2 + origin[1] - corner_radius, **bc_args
+            )
             self._surface_names += (
-                'x1_min_x2_min', 'x1_min_x2_max', 'x1_max_x2_min',
-                'x1_max_x2_max', 'x1_min', 'x1_max', 'x2_min', 'x2_max'
+                "x1_min_x2_min",
+                "x1_min_x2_max",
+                "x1_max_x2_min",
+                "x1_max_x2_max",
+                "x1_min",
+                "x1_max",
+                "x2_min",
+                "x2_max",
             )
 
     def __neg__(self):
         prism = +self.min_x1 & -self.max_x1 & +self.min_x2 & -self.max_x2
 
         # Cut out corners if a corner radius was given
-        if hasattr(self, 'x1_min'):
+        if hasattr(self, "x1_min"):
             corners = (
-                (+self.x1_min_x2_min & -self.x1_min & -self.x2_min) |
-                (+self.x1_min_x2_max & -self.x1_min & +self.x2_max) |
-                (+self.x1_max_x2_min & +self.x1_max & -self.x2_min) |
-                (+self.x1_max_x2_max & +self.x1_max & +self.x2_max)
+                (+self.x1_min_x2_min & -self.x1_min & -self.x2_min)
+                | (+self.x1_min_x2_max & -self.x1_min & +self.x2_max)
+                | (+self.x1_max_x2_min & +self.x1_max & -self.x2_min)
+                | (+self.x1_max_x2_max & +self.x1_max & +self.x2_max)
             )
             prism &= ~corners
 
@@ -1603,137 +1706,187 @@ class HexagonalPrism(CompositeSurface):
         Prism corner radius in units of [cm].
 
     """
-    _surface_names = ('plane_max', 'plane_min', 'upper_right', 'upper_left',
-                      'lower_right', 'lower_left')
+
+    _surface_names = (
+        "plane_max",
+        "plane_min",
+        "upper_right",
+        "upper_left",
+        "lower_right",
+        "lower_left",
+    )
 
     def __init__(
-            self,
-            edge_length: float = 1.,
-            orientation: str = 'y',
-            origin: Sequence[float] = (0., 0.),
-            boundary_type: str = 'transmission',
-            albedo: float = 1.,
-            corner_radius: float = 0.
+        self,
+        edge_length: float = 1.0,
+        orientation: str = "y",
+        origin: Sequence[float] = (0.0, 0.0),
+        boundary_type: str = "transmission",
+        albedo: float = 1.0,
+        corner_radius: float = 0.0,
     ):
-        check_type('edge_length', edge_length, Real)
-        check_type('albedo', albedo, Real)
-        check_type('corner_radius', corner_radius, Real)
-        check_value('orientation', orientation, ('x', 'y'))
-        check_type('origin', origin, Iterable, Real)
+        check_type("edge_length", edge_length, Real)
+        check_type("albedo", albedo, Real)
+        check_type("corner_radius", corner_radius, Real)
+        check_value("orientation", orientation, ("x", "y"))
+        check_type("origin", origin, Iterable, Real)
 
         l = edge_length
         x, y = origin
 
         # Create container for boundary arguments
-        bc_args = {'boundary_type': boundary_type, 'albedo': albedo}
+        bc_args = {"boundary_type": boundary_type, "albedo": albedo}
 
-        if orientation == 'y':
+        if orientation == "y":
             # Left and right planes
-            self.plane_max = openmc.XPlane(x + sqrt(3.)/2*l, **bc_args)
-            self.plane_min = openmc.XPlane(x - sqrt(3.)/2*l, **bc_args)
-            c = sqrt(3.)/3.
+            self.plane_max = openmc.XPlane(x + sqrt(3.0) / 2 * l, **bc_args)
+            self.plane_min = openmc.XPlane(x - sqrt(3.0) / 2 * l, **bc_args)
+            c = sqrt(3.0) / 3.0
 
             # y = -x/sqrt(3) + a
-            self.upper_right = openmc.Plane(a=c, b=1., d=l+x*c+y, **bc_args)
+            self.upper_right = openmc.Plane(a=c, b=1.0, d=l + x * c + y, **bc_args)
 
             # y = x/sqrt(3) + a
-            self.upper_left = openmc.Plane(a=-c, b=1., d=l-x*c+y, **bc_args)
+            self.upper_left = openmc.Plane(a=-c, b=1.0, d=l - x * c + y, **bc_args)
 
             # y = x/sqrt(3) - a
-            self.lower_right = openmc.Plane(a=-c, b=1., d=-l-x*c+y, **bc_args)
+            self.lower_right = openmc.Plane(a=-c, b=1.0, d=-l - x * c + y, **bc_args)
 
             # y = -x/sqrt(3) - a
-            self.lower_left = openmc.Plane(a=c, b=1., d=-l+x*c+y, **bc_args)
+            self.lower_left = openmc.Plane(a=c, b=1.0, d=-l + x * c + y, **bc_args)
 
-        elif orientation == 'x':
-            self.plane_max = openmc.YPlane(y + sqrt(3.)/2*l, **bc_args)
-            self.plane_min = openmc.YPlane(y - sqrt(3.)/2*l, **bc_args)
-            c = sqrt(3.)
+        elif orientation == "x":
+            self.plane_max = openmc.YPlane(y + sqrt(3.0) / 2 * l, **bc_args)
+            self.plane_min = openmc.YPlane(y - sqrt(3.0) / 2 * l, **bc_args)
+            c = sqrt(3.0)
 
             # Upper-right surface: y = -sqrt(3)*(x - a)
-            self.upper_right = openmc.Plane(a=c, b=1., d=c*l+x*c+y, **bc_args)
+            self.upper_right = openmc.Plane(a=c, b=1.0, d=c * l + x * c + y, **bc_args)
 
             # Lower-right surface: y = sqrt(3)*(x + a)
-            self.lower_right = openmc.Plane(a=-c, b=1., d=-c*l-x*c+y, **bc_args)
+            self.lower_right = openmc.Plane(
+                a=-c, b=1.0, d=-c * l - x * c + y, **bc_args
+            )
 
             # Lower-left surface: y = -sqrt(3)*(x + a)
-            self.lower_left = openmc.Plane(a=c, b=1., d=-c*l+x*c+y, **bc_args)
+            self.lower_left = openmc.Plane(a=c, b=1.0, d=-c * l + x * c + y, **bc_args)
 
             # Upper-left surface: y = sqrt(3)*(x + a)
-            self.upper_left = openmc.Plane(a=-c, b=1., d=c*l-x*c+y, **bc_args)
+            self.upper_left = openmc.Plane(a=-c, b=1.0, d=c * l - x * c + y, **bc_args)
 
         # Handle periodic boundary conditions
-        if boundary_type == 'periodic':
+        if boundary_type == "periodic":
             self.plane_min.periodic_surface = self.plane_max
             self.upper_right.periodic_surface = self.lower_left
             self.lower_right.periodic_surface = self.upper_left
 
         # Handle rounded corners if given
-        if corner_radius > 0.:
-            if boundary_type == 'periodic':
-                raise ValueError('Periodic boundary conditions not permitted '
-                                 'when rounded corners are used.')
+        if corner_radius > 0.0:
+            if boundary_type == "periodic":
+                raise ValueError(
+                    "Periodic boundary conditions not permitted "
+                    "when rounded corners are used."
+                )
 
-            c = sqrt(3.)/2
-            t = l - corner_radius/c
+            c = sqrt(3.0) / 2
+            t = l - corner_radius / c
 
             # Cylinder with corner radius and boundary type pre-applied
             cyl1 = partial(openmc.ZCylinder, r=corner_radius, **bc_args)
-            cyl2 = partial(openmc.ZCylinder, r=corner_radius/(2*c), **bc_args)
+            cyl2 = partial(openmc.ZCylinder, r=corner_radius / (2 * c), **bc_args)
 
-            if orientation == 'x':
-                self.x_min_y_min_in = cyl1(name='x min y min in', x0=x-t/2, y0=y-c*t)
-                self.x_min_y_max_in = cyl1(name='x min y max in', x0=x+t/2, y0=y-c*t)
-                self.x_max_y_min_in = cyl1(name='x max y min in', x0=x-t/2, y0=y+c*t)
-                self.x_max_y_max_in = cyl1(name='x max y max in', x0=x+t/2, y0=y+c*t)
-                self.min_in = cyl1(name='x min in', x0=x-t, y0=y)
-                self.max_in = cyl1(name='x max in', x0=x+t, y0=y)
+            if orientation == "x":
+                self.x_min_y_min_in = cyl1(
+                    name="x min y min in", x0=x - t / 2, y0=y - c * t
+                )
+                self.x_min_y_max_in = cyl1(
+                    name="x min y max in", x0=x + t / 2, y0=y - c * t
+                )
+                self.x_max_y_min_in = cyl1(
+                    name="x max y min in", x0=x - t / 2, y0=y + c * t
+                )
+                self.x_max_y_max_in = cyl1(
+                    name="x max y max in", x0=x + t / 2, y0=y + c * t
+                )
+                self.min_in = cyl1(name="x min in", x0=x - t, y0=y)
+                self.max_in = cyl1(name="x max in", x0=x + t, y0=y)
 
-                self.x_min_y_min_out = cyl2(name='x min y min out', x0=x-l/2, y0=y-c*l)
-                self.x_min_y_max_out = cyl2(name='x min y max out', x0=x+l/2, y0=y-c*l)
-                self.x_max_y_min_out = cyl2(name='x max y min out', x0=x-l/2, y0=y+c*l)
-                self.x_max_y_max_out = cyl2(name='x max y max out', x0=x+l/2, y0=y+c*l)
-                self.min_out = cyl2(name='x min out', x0=x-l, y0=y)
-                self.max_out = cyl2(name='x max out', x0=x+l, y0=y)
+                self.x_min_y_min_out = cyl2(
+                    name="x min y min out", x0=x - l / 2, y0=y - c * l
+                )
+                self.x_min_y_max_out = cyl2(
+                    name="x min y max out", x0=x + l / 2, y0=y - c * l
+                )
+                self.x_max_y_min_out = cyl2(
+                    name="x max y min out", x0=x - l / 2, y0=y + c * l
+                )
+                self.x_max_y_max_out = cyl2(
+                    name="x max y max out", x0=x + l / 2, y0=y + c * l
+                )
+                self.min_out = cyl2(name="x min out", x0=x - l, y0=y)
+                self.max_out = cyl2(name="x max out", x0=x + l, y0=y)
 
-            elif orientation == 'y':
-                self.x_min_y_min_in = cyl1(name='x min y min in', x0=x-c*t, y0=y-t/2)
-                self.x_min_y_max_in = cyl1(name='x min y max in', x0=x-c*t, y0=y+t/2)
-                self.x_max_y_min_in = cyl1(name='x max y min in', x0=x+c*t, y0=y-t/2)
-                self.x_max_y_max_in = cyl1(name='x max y max in', x0=x+c*t, y0=y+t/2)
-                self.min_in = cyl1(name='y min in', x0=x, y0=y-t)
-                self.max_in = cyl1(name='y max in', x0=x, y0=y+t)
+            elif orientation == "y":
+                self.x_min_y_min_in = cyl1(
+                    name="x min y min in", x0=x - c * t, y0=y - t / 2
+                )
+                self.x_min_y_max_in = cyl1(
+                    name="x min y max in", x0=x - c * t, y0=y + t / 2
+                )
+                self.x_max_y_min_in = cyl1(
+                    name="x max y min in", x0=x + c * t, y0=y - t / 2
+                )
+                self.x_max_y_max_in = cyl1(
+                    name="x max y max in", x0=x + c * t, y0=y + t / 2
+                )
+                self.min_in = cyl1(name="y min in", x0=x, y0=y - t)
+                self.max_in = cyl1(name="y max in", x0=x, y0=y + t)
 
-                self.x_min_y_min_out = cyl2(name='x min y min out', x0=x-c*l, y0=y-l/2)
-                self.x_min_y_max_out = cyl2(name='x min y max out', x0=x-c*l, y0=y+l/2)
-                self.x_max_y_min_out = cyl2(name='x max y min out', x0=x+c*l, y0=y-l/2)
-                self.x_max_y_max_out = cyl2(name='x max y max out', x0=x+c*l, y0=y+l/2)
-                self.min_out = cyl2(name='y min out', x0=x, y0=y-l)
-                self.max_out = cyl2(name='y max out', x0=x, y0=y+l)
+                self.x_min_y_min_out = cyl2(
+                    name="x min y min out", x0=x - c * l, y0=y - l / 2
+                )
+                self.x_min_y_max_out = cyl2(
+                    name="x min y max out", x0=x - c * l, y0=y + l / 2
+                )
+                self.x_max_y_min_out = cyl2(
+                    name="x max y min out", x0=x + c * l, y0=y - l / 2
+                )
+                self.x_max_y_max_out = cyl2(
+                    name="x max y max out", x0=x + c * l, y0=y + l / 2
+                )
+                self.min_out = cyl2(name="y min out", x0=x, y0=y - l)
+                self.max_out = cyl2(name="y max out", x0=x, y0=y + l)
 
             # Add to tuple of surface names
-            for s in ('in', 'out'):
+            for s in ("in", "out"):
                 self._surface_names += (
-                    f'x_min_y_min_{s}', f'x_min_y_max_{s}',
-                    f'x_max_y_min_{s}', f'x_max_y_max_{s}',
-                    f'min_{s}', f'max_{s}')
+                    f"x_min_y_min_{s}",
+                    f"x_min_y_max_{s}",
+                    f"x_max_y_min_{s}",
+                    f"x_max_y_max_{s}",
+                    f"min_{s}",
+                    f"max_{s}",
+                )
 
     def __neg__(self) -> openmc.Region:
         prism = (
-            -self.plane_max & +self.plane_min &
-            -self.upper_right & -self.upper_left &
-            +self.lower_right & +self.lower_left
+            -self.plane_max
+            & +self.plane_min
+            & -self.upper_right
+            & -self.upper_left
+            & +self.lower_right
+            & +self.lower_left
         )
 
         # Cut out corners if a corner radius was given
-        if hasattr(self, 'min_in'):
+        if hasattr(self, "min_in"):
             corners = (
-                +self.x_min_y_min_in & -self.x_min_y_min_out |
-                +self.x_min_y_max_in & -self.x_min_y_max_out |
-                +self.x_max_y_min_in & -self.x_max_y_min_out |
-                +self.x_max_y_max_in & -self.x_max_y_max_out |
-                +self.min_in & -self.min_out |
-                +self.max_in & -self.max_out
+                +self.x_min_y_min_in & -self.x_min_y_min_out
+                | +self.x_min_y_max_in & -self.x_min_y_max_out
+                | +self.x_max_y_min_in & -self.x_max_y_min_out
+                | +self.x_max_y_max_in & -self.x_max_y_max_out
+                | +self.min_in & -self.min_out
+                | +self.max_in & -self.max_out
             )
             prism &= ~corners
 
@@ -1764,10 +1917,10 @@ def _rotation_matrix(v1, v2):
 
     # Handle special case where vectors are parallel or anti-parallel
     if isclose(abs(cos_angle), 1.0, rel_tol=1e-8):
-        return np.sign(cos_angle)*I
+        return np.sign(cos_angle) * I
     else:
         # Calculate rotation angle
-        sin_angle = np.sqrt(1 - cos_angle*cos_angle)
+        sin_angle = np.sqrt(1 - cos_angle * cos_angle)
 
         # Calculate axis of rotation
         axis = np.cross(u1, u2)
@@ -1775,11 +1928,7 @@ def _rotation_matrix(v1, v2):
 
         # Create cross-product matrix K
         kx, ky, kz = axis
-        K = np.array([
-            [0.0, -kz, ky],
-            [kz, 0.0, -kx],
-            [-ky, kx, 0.0]
-        ])
+        K = np.array([[0.0, -kz, ky], [kz, 0.0, -kx], [-ky, kx, 0.0]])
 
         # Create rotation matrix using Rodrigues' rotation formula
         return I + K * sin_angle + (K @ K) * (1 - cos_angle)
@@ -1820,10 +1969,17 @@ class ConicalFrustum(CompositeSurface):
         Plane surface defining the top of the frustum
 
     """
-    _surface_names = ('cone', 'plane_bottom', 'plane_top')
 
-    def __init__(self, center_base: Sequence[float], axis: Sequence[float],
-                 r1: float, r2: float, **kwargs):
+    _surface_names = ("cone", "plane_bottom", "plane_top")
+
+    def __init__(
+        self,
+        center_base: Sequence[float],
+        axis: Sequence[float],
+        r1: float,
+        r2: float,
+        **kwargs,
+    ):
         center_base = np.array(center_base)
         axis = np.array(axis)
 
@@ -1836,8 +1992,8 @@ class ConicalFrustum(CompositeSurface):
         # as a reference.
         x0, y0, z0 = center_base
         if r1 != r2:
-            apex = z0 + r1*h/(r1 - r2)
-            r_sq = ((r1 - r2)/h)**2
+            apex = z0 + r1 * h / (r1 - r2)
+            r_sq = ((r1 - r2) / h) ** 2
             cone = openmc.ZCone(x0, y0, apex, r2=r_sq, **kwargs)
         else:
             # In the degenerate case r1 == r2, the cone becomes a cylinder
@@ -1848,7 +2004,7 @@ class ConicalFrustum(CompositeSurface):
         plane_top = openmc.ZPlane(z0 + h, **kwargs)
 
         # Determine rotation matrix corresponding to specified axis
-        u = np.array([0., 0., 1.])
+        u = np.array([0.0, 0.0, 1.0])
         rotation = _rotation_matrix(u, axis)
 
         # Rotate the surfaces
@@ -1889,17 +2045,26 @@ class Vessel(CompositeSurface):
 
     """
 
-    _surface_names = ('cyl', 'plane_bottom', 'plane_top', 'bottom', 'top')
+    _surface_names = ("cyl", "plane_bottom", "plane_top", "bottom", "top")
 
-    def __init__(self, r: float, p1: float, p2: float, h1: float, h2: float,
-                 center: Sequence[float] = (0., 0.), axis: str = 'z', **kwargs):
+    def __init__(
+        self,
+        r: float,
+        p1: float,
+        p2: float,
+        h1: float,
+        h2: float,
+        center: Sequence[float] = (0.0, 0.0),
+        axis: str = "z",
+        **kwargs,
+    ):
         if p1 >= p2:
-            raise ValueError('p1 must be less than p2')
-        check_value('axis', axis, {'x', 'y', 'z'})
+            raise ValueError("p1 must be less than p2")
+        check_value("axis", axis, {"x", "y", "z"})
 
         c1, c2 = center
-        cyl_class = getattr(openmc, f'{axis.upper()}Cylinder')
-        plane_class = getattr(openmc, f'{axis.upper()}Plane')
+        cyl_class = getattr(openmc, f"{axis.upper()}Cylinder")
+        plane_class = getattr(openmc, f"{axis.upper()}Plane")
         self.cyl = cyl_class(c1, c2, r, **kwargs)
         self.plane_bottom = plane_class(p1)
         self.plane_top = plane_class(p2)
@@ -1911,43 +2076,45 @@ class Vessel(CompositeSurface):
         #   (x² - 2x₀x + x₀²) + (y² - 2y₀y + y₀²) + (z² - 2z₀z + z₀²)s² = r²
         #   x² + y² + s²z² - 2x₀x - 2y₀y - 2s²z₀z + (x₀² + y₀² + z₀²s² - r²) = 0
 
-        sb = (r/h1)
-        st = (r/h2)
-        kwargs['a'] = kwargs['b'] = kwargs['c'] = 1.0
+        sb = r / h1
+        st = r / h2
+        kwargs["a"] = kwargs["b"] = kwargs["c"] = 1.0
         kwargs_bottom = kwargs
         kwargs_top = kwargs.copy()
 
-        sb2 = sb*sb
-        st2 = st*st
-        kwargs_bottom['k'] = c1*c1 + c2*c2 + p1*p1*sb2 - r*r
-        kwargs_top['k'] = c1*c1 + c2*c2 + p2*p2*st2 - r*r
+        sb2 = sb * sb
+        st2 = st * st
+        kwargs_bottom["k"] = c1 * c1 + c2 * c2 + p1 * p1 * sb2 - r * r
+        kwargs_top["k"] = c1 * c1 + c2 * c2 + p2 * p2 * st2 - r * r
 
-        if axis == 'x':
-            kwargs_bottom['a'] *= sb2
-            kwargs_top['a'] *= st2
-            kwargs_bottom['g'] = -2*p1*sb2
-            kwargs_top['g'] = -2*p2*st2
-            kwargs_top['h'] = kwargs_bottom['h'] = -2*c1
-            kwargs_top['j'] = kwargs_bottom['j'] = -2*c2
-        elif axis == 'y':
-            kwargs_bottom['b'] *= sb2
-            kwargs_top['b'] *= st2
-            kwargs_top['g'] = kwargs_bottom['g'] = -2*c1
-            kwargs_bottom['h'] = -2*p1*sb2
-            kwargs_top['h'] = -2*p2*st2
-            kwargs_top['j'] = kwargs_bottom['j'] = -2*c2
-        elif axis == 'z':
-            kwargs_bottom['c'] *= sb2
-            kwargs_top['c'] *= st2
-            kwargs_top['g'] = kwargs_bottom['g'] = -2*c1
-            kwargs_top['h'] = kwargs_bottom['h'] = -2*c2
-            kwargs_bottom['j'] = -2*p1*sb2
-            kwargs_top['j'] = -2*p2*st2
+        if axis == "x":
+            kwargs_bottom["a"] *= sb2
+            kwargs_top["a"] *= st2
+            kwargs_bottom["g"] = -2 * p1 * sb2
+            kwargs_top["g"] = -2 * p2 * st2
+            kwargs_top["h"] = kwargs_bottom["h"] = -2 * c1
+            kwargs_top["j"] = kwargs_bottom["j"] = -2 * c2
+        elif axis == "y":
+            kwargs_bottom["b"] *= sb2
+            kwargs_top["b"] *= st2
+            kwargs_top["g"] = kwargs_bottom["g"] = -2 * c1
+            kwargs_bottom["h"] = -2 * p1 * sb2
+            kwargs_top["h"] = -2 * p2 * st2
+            kwargs_top["j"] = kwargs_bottom["j"] = -2 * c2
+        elif axis == "z":
+            kwargs_bottom["c"] *= sb2
+            kwargs_top["c"] *= st2
+            kwargs_top["g"] = kwargs_bottom["g"] = -2 * c1
+            kwargs_top["h"] = kwargs_bottom["h"] = -2 * c2
+            kwargs_bottom["j"] = -2 * p1 * sb2
+            kwargs_top["j"] = -2 * p2 * st2
 
         self.bottom = openmc.Quadric(**kwargs_bottom)
         self.top = openmc.Quadric(**kwargs_top)
 
     def __neg__(self):
-        return ((-self.cyl & +self.plane_bottom & -self.plane_top) |
-                (-self.bottom & -self.plane_bottom) |
-                (-self.top & +self.plane_top))
+        return (
+            (-self.cyl & +self.plane_bottom & -self.plane_top)
+            | (-self.bottom & -self.plane_bottom)
+            | (-self.top & +self.plane_top)
+        )

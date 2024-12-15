@@ -3,14 +3,14 @@ import openmc
 from pytest import fixture, approx, raises
 
 
-@fixture(scope='module')
+@fixture(scope="module")
 def box_model():
     model = openmc.model.Model()
     m = openmc.Material()
-    m.add_nuclide('U235', 1.0)
-    m.set_density('g/cm3', 1.0)
+    m.add_nuclide("U235", 1.0)
+    m.set_density("g/cm3", 1.0)
 
-    box = openmc.model.RectangularPrism(10., 10., boundary_type='vacuum')
+    box = openmc.model.RectangularPrism(10.0, 10.0, boundary_type="vacuum")
     c = openmc.Cell(fill=m, region=-box)
     model.geometry.root_universe = openmc.Universe(cells=[c])
 
@@ -31,9 +31,9 @@ def test_cell_instance():
 
     # to_xml_element()
     elem = f.to_xml_element()
-    assert elem.tag == 'filter'
-    assert elem.attrib['type'] == 'cellinstance'
-    bins = [int(x) for x in elem.find('bins').text.split()]
+    assert elem.tag == "filter"
+    assert elem.attrib["type"] == "cellinstance"
+    bins = [int(x) for x in elem.find("bins").text.split()]
     assert all(x == c1.id for x in bins[:6:2])
     assert all(x == c2.id for x in bins[6::2])
 
@@ -44,8 +44,8 @@ def test_cell_instance():
 
     # get_pandas_dataframe()
     df = f.get_pandas_dataframe(f.num_bins, 1)
-    cells = df['cellinstance', 'cell']
-    instances = df['cellinstance', 'instance']
+    cells = df["cellinstance", "cell"]
+    instances = df["cellinstance", "instance"]
     assert cells.apply(lambda x: x in (c1.id, c2.id)).all()
     assert instances.apply(lambda x: x in (0, 1, 2)).all()
 
@@ -62,8 +62,8 @@ def test_collision():
 
     # to_xml_element()
     elem = f.to_xml_element()
-    assert elem.tag == 'filter'
-    assert elem.attrib['type'] == 'collision'
+    assert elem.tag == "filter"
+    assert elem.attrib["type"] == "collision"
 
     # from_xml_element()
     new_f = openmc.Filter.from_xml_element(elem)
@@ -75,8 +75,8 @@ def test_legendre():
     n = 5
     f = openmc.LegendreFilter(n)
     assert f.order == n
-    assert f.bins[0] == 'P0'
-    assert f.bins[-1] == 'P5'
+    assert f.bins[0] == "P0"
+    assert f.bins[-1] == "P5"
     assert len(f.bins) == n + 1
 
     # Make sure __repr__ works
@@ -84,9 +84,9 @@ def test_legendre():
 
     # to_xml_element()
     elem = f.to_xml_element()
-    assert elem.tag == 'filter'
-    assert elem.attrib['type'] == 'legendre'
-    assert elem.find('order').text == str(n)
+    assert elem.tag == "filter"
+    assert elem.attrib["type"] == "legendre"
+    assert elem.find("order").text == str(n)
 
     # from_xml_element()
     new_f = openmc.Filter.from_xml_element(elem)
@@ -96,14 +96,14 @@ def test_legendre():
 
 def test_spatial_legendre():
     n = 5
-    axis = 'x'
-    f = openmc.SpatialLegendreFilter(n, axis, -10., 10.)
+    axis = "x"
+    f = openmc.SpatialLegendreFilter(n, axis, -10.0, 10.0)
     assert f.order == n
     assert f.axis == axis
-    assert f.minimum == -10.
-    assert f.maximum == 10.
-    assert f.bins[0] == 'P0'
-    assert f.bins[-1] == 'P5'
+    assert f.minimum == -10.0
+    assert f.maximum == 10.0
+    assert f.bins[0] == "P0"
+    assert f.bins[-1] == "P5"
     assert len(f.bins) == n + 1
 
     # Make sure __repr__ works
@@ -111,10 +111,10 @@ def test_spatial_legendre():
 
     # to_xml_element()
     elem = f.to_xml_element()
-    assert elem.tag == 'filter'
-    assert elem.attrib['type'] == 'spatiallegendre'
-    assert elem.find('order').text == str(n)
-    assert elem.find('axis').text == str(axis)
+    assert elem.tag == "filter"
+    assert elem.attrib["type"] == "spatiallegendre"
+    assert elem.find("order").text == str(n)
+    assert elem.find("axis").text == str(axis)
 
     # from_xml_element()
     new_f = openmc.Filter.from_xml_element(elem)
@@ -126,21 +126,21 @@ def test_spatial_legendre():
 def test_spherical_harmonics():
     n = 3
     f = openmc.SphericalHarmonicsFilter(n)
-    f.cosine = 'particle'
+    f.cosine = "particle"
     assert f.order == n
-    assert f.bins[0] == 'Y0,0'
-    assert f.bins[-1] == 'Y{0},{0}'.format(n)
-    assert len(f.bins) == (n + 1)**2
+    assert f.bins[0] == "Y0,0"
+    assert f.bins[-1] == "Y{0},{0}".format(n)
+    assert len(f.bins) == (n + 1) ** 2
 
     # Make sure __repr__ works
     repr(f)
 
     # to_xml_element()
     elem = f.to_xml_element()
-    assert elem.tag == 'filter'
-    assert elem.attrib['type'] == 'sphericalharmonics'
-    assert elem.attrib['cosine'] == f.cosine
-    assert elem.find('order').text == str(n)
+    assert elem.tag == "filter"
+    assert elem.attrib["type"] == "sphericalharmonics"
+    assert elem.attrib["cosine"] == f.cosine
+    assert elem.find("order").text == str(n)
 
     # from_xml_element()
     new_f = openmc.Filter.from_xml_element(elem)
@@ -151,80 +151,86 @@ def test_spherical_harmonics():
 
 def test_zernike():
     n = 4
-    f = openmc.ZernikeFilter(n, 0., 0., 1.)
+    f = openmc.ZernikeFilter(n, 0.0, 0.0, 1.0)
     assert f.order == n
-    assert f.bins[0] == 'Z0,0'
-    assert f.bins[-1] == 'Z{0},{0}'.format(n)
-    assert len(f.bins) == (n + 1)*(n + 2)//2
+    assert f.bins[0] == "Z0,0"
+    assert f.bins[-1] == "Z{0},{0}".format(n)
+    assert len(f.bins) == (n + 1) * (n + 2) // 2
 
     # Make sure __repr__ works
     repr(f)
 
     # to_xml_element()
     elem = f.to_xml_element()
-    assert elem.tag == 'filter'
-    assert elem.attrib['type'] == 'zernike'
-    assert elem.find('order').text == str(n)
+    assert elem.tag == "filter"
+    assert elem.attrib["type"] == "zernike"
+    assert elem.find("order").text == str(n)
 
     # from_xml_element()
     new_f = openmc.Filter.from_xml_element(elem)
-    for attr in ('id', 'order', 'x', 'y', 'r'):
+    for attr in ("id", "order", "x", "y", "r"):
         assert getattr(new_f, attr) == getattr(f, attr)
 
 
 def test_zernike_radial():
     n = 4
-    f = openmc.ZernikeRadialFilter(n, 0., 0., 1.)
+    f = openmc.ZernikeRadialFilter(n, 0.0, 0.0, 1.0)
     assert f.order == n
-    assert f.bins[0] == 'Z0,0'
-    assert f.bins[-1] == 'Z{},0'.format(n)
-    assert len(f.bins) == n//2 + 1
+    assert f.bins[0] == "Z0,0"
+    assert f.bins[-1] == "Z{},0".format(n)
+    assert len(f.bins) == n // 2 + 1
 
     # Make sure __repr__ works
     repr(f)
 
     # to_xml_element()
     elem = f.to_xml_element()
-    assert elem.tag == 'filter'
-    assert elem.attrib['type'] == 'zernikeradial'
-    assert elem.find('order').text == str(n)
+    assert elem.tag == "filter"
+    assert elem.attrib["type"] == "zernikeradial"
+    assert elem.find("order").text == str(n)
 
     # from_xml_element()
     new_f = openmc.Filter.from_xml_element(elem)
-    for attr in ('id', 'order', 'x', 'y', 'r'):
+    for attr in ("id", "order", "x", "y", "r"):
         assert getattr(new_f, attr) == getattr(f, attr)
 
 
 def test_first_moment(run_in_tmpdir, box_model):
     plain_tally = openmc.Tally()
-    plain_tally.scores = ['flux', 'scatter']
+    plain_tally.scores = ["flux", "scatter"]
 
     # Create tallies with expansion filters
     leg_tally = openmc.Tally()
     leg_tally.filters = [openmc.LegendreFilter(3)]
-    leg_tally.scores = ['scatter']
+    leg_tally.scores = ["scatter"]
     leg_sptl_tally = openmc.Tally()
-    leg_sptl_tally.filters = [openmc.SpatialLegendreFilter(3, 'x', -5., 5.)]
-    leg_sptl_tally.scores = ['scatter']
+    leg_sptl_tally.filters = [openmc.SpatialLegendreFilter(3, "x", -5.0, 5.0)]
+    leg_sptl_tally.scores = ["scatter"]
     sph_scat_filter = openmc.SphericalHarmonicsFilter(5)
-    sph_scat_filter.cosine = 'scatter'
+    sph_scat_filter.cosine = "scatter"
     sph_scat_tally = openmc.Tally()
     sph_scat_tally.filters = [sph_scat_filter]
-    sph_scat_tally.scores = ['scatter']
+    sph_scat_tally.scores = ["scatter"]
     sph_flux_filter = openmc.SphericalHarmonicsFilter(5)
-    sph_flux_filter.cosine = 'particle'
+    sph_flux_filter.cosine = "particle"
     sph_flux_tally = openmc.Tally()
     sph_flux_tally.filters = [sph_flux_filter]
-    sph_flux_tally.scores = ['flux']
+    sph_flux_tally.scores = ["flux"]
     zernike_tally = openmc.Tally()
-    zernike_tally.filters = [openmc.ZernikeFilter(3, r=10.)]
-    zernike_tally.scores = ['scatter']
+    zernike_tally.filters = [openmc.ZernikeFilter(3, r=10.0)]
+    zernike_tally.scores = ["scatter"]
 
     # Add tallies to model and ensure they all use the same estimator
-    box_model.tallies = [plain_tally, leg_tally, leg_sptl_tally,
-                         sph_scat_tally, sph_flux_tally, zernike_tally]
+    box_model.tallies = [
+        plain_tally,
+        leg_tally,
+        leg_sptl_tally,
+        sph_scat_tally,
+        sph_flux_tally,
+        zernike_tally,
+    ]
     for t in box_model.tallies:
-        t.estimator = 'analog'
+        t.estimator = "analog"
 
     sp_name = box_model.run()
 
@@ -243,7 +249,7 @@ def test_first_moment(run_in_tmpdir, box_model):
 
 
 def test_energy():
-    f = openmc.EnergyFilter.from_group_structure('CCFE-709')
+    f = openmc.EnergyFilter.from_group_structure("CCFE-709")
     assert f.bins.shape == (709, 2)
     assert len(f.values) == 710
 
@@ -254,18 +260,16 @@ def test_energyfilter_error_handling():
 
 
 def test_lethargy_bin_width():
-    f = openmc.EnergyFilter.from_group_structure('VITAMIN-J-175')
+    f = openmc.EnergyFilter.from_group_structure("VITAMIN-J-175")
     assert len(f.lethargy_bin_width) == 175
-    energy_bins = openmc.mgxs.GROUP_STRUCTURES['VITAMIN-J-175']
-    assert f.lethargy_bin_width[0] == np.log10(energy_bins[1]/energy_bins[0])
-    assert f.lethargy_bin_width[-1] == np.log10(energy_bins[-1]/energy_bins[-2])
+    energy_bins = openmc.mgxs.GROUP_STRUCTURES["VITAMIN-J-175"]
+    assert f.lethargy_bin_width[0] == np.log10(energy_bins[1] / energy_bins[0])
+    assert f.lethargy_bin_width[-1] == np.log10(energy_bins[-1] / energy_bins[-2])
 
 
 def test_energyfunc():
     f = openmc.EnergyFunctionFilter(
-        [0.0, 10.0, 2.0e3, 1.0e6, 20.0e6],
-        [1.0, 0.9, 0.8, 0.7, 0.6],
-        'histogram'
+        [0.0, 10.0, 2.0e3, 1.0e6, 20.0e6], [1.0, 0.9, 0.8, 0.7, 0.6], "histogram"
     )
 
     # Make sure XML roundtrip works
@@ -290,7 +294,9 @@ def test_tabular_from_energyfilter():
     assert tab.integral() == approx(1.0)
 
     # 'histogram' is the default
-    assert tab.interpolation == 'histogram'
+    assert tab.interpolation == "histogram"
 
-    tab = efilter.get_tabular(values=np.array([10, 10, 5]), interpolation='linear-linear')
-    assert tab.interpolation == 'linear-linear'
+    tab = efilter.get_tabular(
+        values=np.array([10, 10, 5]), interpolation="linear-linear"
+    )
+    assert tab.interpolation == "linear-linear"

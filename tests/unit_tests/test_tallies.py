@@ -6,20 +6,24 @@ import openmc
 def test_xml_roundtrip(run_in_tmpdir):
     # Create a tally with all possible gizmos
     mesh = openmc.RegularMesh()
-    mesh.lower_left = (-10., -10., -10.)
-    mesh.upper_right = (10., 10., 10.,)
+    mesh.lower_left = (-10.0, -10.0, -10.0)
+    mesh.upper_right = (
+        10.0,
+        10.0,
+        10.0,
+    )
     mesh.dimension = (5, 5, 5)
     mesh_filter = openmc.MeshFilter(mesh)
     meshborn_filter = openmc.MeshBornFilter(mesh)
     tally = openmc.Tally()
     tally.filters = [mesh_filter, meshborn_filter]
-    tally.nuclides = ['U235', 'I135', 'Li6']
-    tally.scores = ['total', 'fission', 'heating']
+    tally.nuclides = ["U235", "I135", "Li6"]
+    tally.scores = ["total", "fission", "heating"]
     tally.derivative = openmc.TallyDerivative(
-        variable='nuclide_density', material=1, nuclide='Li6'
+        variable="nuclide_density", material=1, nuclide="Li6"
     )
-    tally.triggers = [openmc.Trigger('rel_err', 0.025)]
-    tally.triggers[0].scores = ['total', 'fission']
+    tally.triggers = [openmc.Trigger("rel_err", 0.025)]
+    tally.triggers[0].scores = ["total", "fission"]
     tallies = openmc.Tallies([tally])
 
     # Roundtrip through XML and make sure we get what we started with

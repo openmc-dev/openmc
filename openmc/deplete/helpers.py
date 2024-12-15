@@ -1,6 +1,7 @@
 """
 Classes for collecting and calculating quantities for reaction rate operators
 """
+
 import bisect
 from abc import abstractmethod
 from collections import defaultdict
@@ -15,16 +16,25 @@ from openmc.mpi import comm
 from openmc.checkvalue import check_type, check_greater_than
 from openmc.data import JOULE_PER_EV, REACTION_MT
 from openmc.lib import (
-    Tally, MaterialFilter, EnergyFilter, EnergyFunctionFilter, load_nuclide)
+    Tally,
+    MaterialFilter,
+    EnergyFilter,
+    EnergyFunctionFilter,
+    load_nuclide,
+)
 import openmc.lib
-from .abc import (
-    ReactionRateHelper, NormalizationHelper, FissionYieldHelper)
+from .abc import ReactionRateHelper, NormalizationHelper, FissionYieldHelper
 
 __all__ = (
-    "DirectReactionRateHelper", "ChainFissionHelper", "EnergyScoreHelper"
-    "SourceRateHelper", "TalliedFissionYieldHelper",
-    "ConstantFissionYieldHelper", "FissionYieldCutoffHelper",
-    "AveragedFissionYieldHelper", "FluxCollapseHelper")
+    "DirectReactionRateHelper",
+    "ChainFissionHelper",
+    "EnergyScoreHelper" "SourceRateHelper",
+    "TalliedFissionYieldHelper",
+    "ConstantFissionYieldHelper",
+    "FissionYieldCutoffHelper",
+    "AveragedFissionYieldHelper",
+    "FluxCollapseHelper",
+)
 
 
 class TalliedFissionYieldHelper(FissionYieldHelper):
@@ -78,7 +88,7 @@ class TalliedFissionYieldHelper(FissionYieldHelper):
         # Tally group-wise fission reaction rates
         self._fission_rate_tally = Tally()
         self._fission_rate_tally.writable = False
-        self._fission_rate_tally.scores = ['fission']
+        self._fission_rate_tally.scores = ["fission"]
         self._fission_rate_tally.filters = [MaterialFilter(materials)]
 
     def update_tally_nuclides(self, nuclides):
@@ -103,8 +113,7 @@ class TalliedFissionYieldHelper(FissionYieldHelper):
         AttributeError
             If tallies not generated
         """
-        assert self._fission_rate_tally is not None, (
-                "Run generate_tallies first")
+        assert self._fission_rate_tally is not None, "Run generate_tallies first"
         overlap = set(self._chain_nuclides).intersection(set(nuclides))
         nuclides = sorted(overlap)
         self._tally_nucs = [self._chain_nuclides[n] for n in nuclides]
@@ -145,6 +154,7 @@ class DirectReactionRateHelper(ReactionRateHelper):
     nuclides : list of str
         All nuclides with desired reaction rates.
     """
+
     def __init__(self, n_nuc, n_react):
         super().__init__(n_nuc, n_react)
         self._rate_tally = None
@@ -181,8 +191,7 @@ class DirectReactionRateHelper(ReactionRateHelper):
 
     @property
     def rate_tally_means(self):
-        """The mean results of the tally of every material's reaction rates for this cycle
-        """
+        """The mean results of the tally of every material's reaction rates for this cycle"""
         # If the mean cache is empty, fill it once with this transport cycle's results
         if self._rate_tally_means_cache is None:
             self._rate_tally_means_cache = self._rate_tally.mean
@@ -256,6 +265,7 @@ class FluxCollapseHelper(ReactionRateHelper):
         All nuclides with desired reaction rates.
 
     """
+
     def __init__(self, n_nucs, n_reacts, energies, reactions=None, nuclides=None):
         super().__init__(n_nucs, n_reacts)
         self._energies = asarray(energies)
@@ -299,9 +309,9 @@ class FluxCollapseHelper(ReactionRateHelper):
         self._flux_tally.writable = False
         self._flux_tally.filters = [
             MaterialFilter(materials),
-            EnergyFilter(self._energies)
+            EnergyFilter(self._energies),
         ]
-        self._flux_tally.scores = ['flux']
+        self._flux_tally.scores = ["flux"]
         self._flux_tally_means_cache = None
 
         # Create reaction rate tally
@@ -323,8 +333,7 @@ class FluxCollapseHelper(ReactionRateHelper):
 
     @property
     def rate_tally_means(self):
-        """The mean results of the tally of every material's reaction rates for this cycle
-        """
+        """The mean results of the tally of every material's reaction rates for this cycle"""
         # If the mean cache is empty, fill it once with this transport cycle's results
         if self._rate_tally_means_cache is None:
             self._rate_tally_means_cache = self._rate_tally.mean
@@ -390,12 +399,15 @@ class FluxCollapseHelper(ReactionRateHelper):
                     i_nuc_direct = nuclides_direct.index(name)
 
                     # Get reaction rate from tally
-                    self._results_cache[i_nuc, i_rx] = rx_rates[i_nuc_direct, i_rx_direct]
+                    self._results_cache[i_nuc, i_rx] = rx_rates[
+                        i_nuc_direct, i_rx_direct
+                    ]
                 else:
                     # Use flux to collapse reaction rate (per N)
                     nuc = openmc.lib.nuclides[name]
                     rate_per_nuc = nuc.collapse_rate(
-                        mt, mat.temperature, self._energies, flux)
+                        mt, mat.temperature, self._energies, flux
+                    )
 
                     self._results_cache[i_nuc, i_rx] = rate_per_nuc
 
@@ -423,8 +435,12 @@ class EnergyNormalizationHelper(NormalizationHelper):
         if energy == 0:
             if comm.rank == 0:
                 sys.stderr.flush()
-                print("No energy reported from OpenMC tallies. Do your HDF5 "
-                      "files have heating data?\n", file=sys.stderr, flush=True)
+                print(
+                    "No energy reported from OpenMC tallies. Do your HDF5 "
+                    "files have heating data?\n",
+                    file=sys.stderr,
+                    flush=True,
+                )
             comm.barrier()
             comm.Abort(1)
 
@@ -463,8 +479,9 @@ class ChainFissionHelper(EnergyNormalizationHelper):
             to a corresponding index in the desired fission Q
             vector.
         """
-        if (self._fission_q_vector is not None
-                and self._fission_q_vector.shape == (len(rate_index),)):
+        if self._fission_q_vector is not None and self._fission_q_vector.shape == (
+            len(rate_index),
+        ):
             return
 
         fission_qs = zeros(len(rate_index))
@@ -549,6 +566,7 @@ class SourceRateHelper(NormalizationHelper):
 
     def factor(self, source_rate):
         return source_rate
+
 
 # ------------------------------------
 # Helper for collapsing fission yields
@@ -691,8 +709,14 @@ class FissionYieldCutoffHelper(TalliedFissionYieldHelper):
         :class:`openmc.deplete.CoupledOperator`
     """
 
-    def __init__(self, chain_nuclides, n_bmats, cutoff=112.0,
-                 thermal_energy=0.0253, fast_energy=500.0e3):
+    def __init__(
+        self,
+        chain_nuclides,
+        n_bmats,
+        cutoff=112.0,
+        thermal_energy=0.0253,
+        fast_energy=500.0e3,
+    ):
         check_type("cutoff", cutoff, Real)
         check_type("thermal_energy", thermal_energy, Real)
         check_type("fast_energy", fast_energy, Real)
@@ -724,12 +748,14 @@ class FissionYieldCutoffHelper(TalliedFissionYieldHelper):
                 cutoff_ix = bisect.bisect_left(energies, cutoff)
                 # find closest energy to requested thermal, fast energies
                 if thermal is None:
-                    min_E = min(energies[:cutoff_ix],
-                                key=lambda e: abs(e - thermal_energy))
+                    min_E = min(
+                        energies[:cutoff_ix], key=lambda e: abs(e - thermal_energy)
+                    )
                     thermal = yields[min_E]
                 if fast is None:
-                    min_E = min(energies[cutoff_ix:],
-                                key=lambda e: abs(e - fast_energy))
+                    min_E = min(
+                        energies[cutoff_ix:], key=lambda e: abs(e - fast_energy)
+                    )
                     fast = yields[min_E]
             self._thermal_yields[name] = thermal
             self._fast_yields[name] = fast
@@ -755,8 +781,7 @@ class FissionYieldCutoffHelper(TalliedFissionYieldHelper):
         FissionYieldCutoffHelper
 
         """
-        return cls(operator.chain.nuclides, len(operator.burnable_mats),
-                   **kwargs)
+        return cls(operator.chain.nuclides, len(operator.burnable_mats), **kwargs)
 
     def generate_tallies(self, materials, mat_indexes):
         """Use C API to produce a fission rate tally in burnable materials
@@ -777,8 +802,9 @@ class FissionYieldCutoffHelper(TalliedFissionYieldHelper):
         """
         super().generate_tallies(materials, mat_indexes)
         energy_filter = EnergyFilter([0.0, self._cutoff, self._upper_energy])
-        self._fission_rate_tally.filters = (
-            self._fission_rate_tally.filters + [energy_filter])
+        self._fission_rate_tally.filters = self._fission_rate_tally.filters + [
+            energy_filter
+        ]
 
     def unpack(self):
         """Obtain fast and thermal fission fractions from tally"""
@@ -786,7 +812,8 @@ class FissionYieldCutoffHelper(TalliedFissionYieldHelper):
             self.results = None
             return
         fission_rates = self._fission_rate_tally.mean.reshape(
-            self.n_bmats, 2, len(self._tally_nucs))
+            self.n_bmats, 2, len(self._tally_nucs)
+        )
         self.results = fission_rates[self._local_indexes]
         total_fission = self.results.sum(axis=1)
         nz_mat, nz_nuc = total_fission.nonzero()
@@ -825,8 +852,10 @@ class FissionYieldCutoffHelper(TalliedFissionYieldHelper):
         rates = self.results[local_mat_index]
         # iterate over thermal then fast yields, prefer __mul__ to __rmul__
         for therm_frac, fast_frac, nuc in zip(rates[0], rates[1], self._tally_nucs):
-            yields[nuc.name] = (self._thermal_yields[nuc.name] * therm_frac
-                                + self._fast_yields[nuc.name] * fast_frac)
+            yields[nuc.name] = (
+                self._thermal_yields[nuc.name] * therm_frac
+                + self._fast_yields[nuc.name] * fast_frac
+            )
         return yields
 
     @property
@@ -911,7 +940,7 @@ class AveragedFissionYieldHelper(TalliedFissionYieldHelper):
         func_filter.set_data((0, self._upper_energy), (0, self._upper_energy))
         weighted_tally = Tally()
         weighted_tally.writable = False
-        weighted_tally.scores = ['fission']
+        weighted_tally.scores = ["fission"]
         weighted_tally.filters = filters + [func_filter]
         self._weighted_tally = weighted_tally
 
@@ -946,10 +975,8 @@ class AveragedFissionYieldHelper(TalliedFissionYieldHelper):
         if not self._tally_nucs or self._local_indexes.size == 0:
             self.results = None
             return
-        fission_results = (
-            self._fission_rate_tally.mean[self._local_indexes])
-        self.results = (
-            self._weighted_tally.mean[self._local_indexes]).copy()
+        fission_results = self._fission_rate_tally.mean[self._local_indexes]
+        self.results = (self._weighted_tally.mean[self._local_indexes]).copy()
         nz_mat, nz_nuc = fission_results.nonzero()
         self.results[nz_mat, nz_nuc] /= fission_results[nz_mat, nz_nuc]
 
@@ -992,11 +1019,12 @@ class AveragedFissionYieldHelper(TalliedFissionYieldHelper):
             for ix, ene in enumerate(nuc_energies[:-1]):
                 if nuc_energies[ix + 1] > avg_e:
                     break
-            lower, upper = nuc_energies[ix:ix + 2]
+            lower, upper = nuc_energies[ix : ix + 2]
             fast_frac = (avg_e - lower) / (upper - lower)
             mat_yields[nuc.name] = (
                 nuc.yield_data[lower] * (1 - fast_frac)
-                + nuc.yield_data[upper] * fast_frac)
+                + nuc.yield_data[upper] * fast_frac
+            )
         mat_yields.update(self.constant_yields)
         return mat_yields
 

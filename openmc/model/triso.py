@@ -23,7 +23,7 @@ MAX_PF_CRP = 0.64  # maximum packing fraction for close random packing
 
 def _volume_sphere(r):
     """Return volume of a sphere of radius r"""
-    return 4/3 * pi * r**3
+    return 4 / 3 * pi * r**3
 
 
 class TRISO(openmc.Cell):
@@ -53,7 +53,7 @@ class TRISO(openmc.Cell):
 
     """
 
-    def __init__(self, outer_radius, fill, center=(0., 0., 0.)):
+    def __init__(self, outer_radius, fill, center=(0.0, 0.0, 0.0)):
         self._surface = openmc.Sphere(r=outer_radius)
         super().__init__(fill=fill, region=-self._surface)
         self.center = np.asarray(center)
@@ -64,7 +64,7 @@ class TRISO(openmc.Cell):
 
     @center.setter
     def center(self, center):
-        check_type('TRISO center', center, Iterable, Real)
+        check_type("TRISO center", center, Iterable, Real)
         self._surface.x0 = center[0]
         self._surface.y0 = center[1]
         self._surface.z0 = center[2]
@@ -91,13 +91,15 @@ class TRISO(openmc.Cell):
         if lattice.ndim == 2:
             (i_min, j_min), p = lattice.find_element(ll)
             (i_max, j_max), p = lattice.find_element(ur)
-            return list(np.broadcast(*np.ogrid[
-                j_min:j_max+1, i_min:i_max+1]))
+            return list(np.broadcast(*np.ogrid[j_min : j_max + 1, i_min : i_max + 1]))
         else:
             (i_min, j_min, k_min), p = lattice.find_element(ll)
             (i_max, j_max, k_max), p = lattice.find_element(ur)
-            return list(np.broadcast(*np.ogrid[
-                k_min:k_max+1, j_min:j_max+1, i_min:i_max+1]))
+            return list(
+                np.broadcast(
+                    *np.ogrid[k_min : k_max + 1, j_min : j_max + 1, i_min : i_max + 1]
+                )
+            )
 
 
 class _Container(ABC):
@@ -127,7 +129,8 @@ class _Container(ABC):
         Volume of the container.
 
     """
-    def __init__(self, sphere_radius, center=(0., 0., 0.)):
+
+    def __init__(self, sphere_radius, center=(0.0, 0.0, 0.0)):
         self._cell_length = None
         self._limits = None
 
@@ -164,7 +167,6 @@ class _Container(ABC):
     def volume(self):
         pass
 
-
     def mesh_cell(self, p):
         """Calculate the index of the cell in a mesh overlaid on the domain in
         which the given sphere center falls.
@@ -180,7 +182,7 @@ class _Container(ABC):
             Indices of mesh cell.
 
         """
-        return tuple(int(p[i]/self.cell_length[i]) for i in range(3))
+        return tuple(int(p[i] / self.cell_length[i]) for i in range(3))
 
     def nearby_mesh_cells(self, p):
         """Calculates the indices of all cells in a mesh overlaid on the domain
@@ -197,9 +199,11 @@ class _Container(ABC):
             Indices of mesh cells.
 
         """
-        d = 2*self.sphere_radius
-        r = [[a/self.cell_length[i] for a in [p[i]-d, p[i], p[i]+d]]
-             for i in range(3)]
+        d = 2 * self.sphere_radius
+        r = [
+            [a / self.cell_length[i] for a in [p[i] - d, p[i], p[i] + d]]
+            for i in range(3)
+        ]
         return list(itertools.product(*({int(x) for x in y} for y in r)))
 
     @abstractmethod
@@ -291,7 +295,7 @@ class _RectangularPrism(_Container):
 
     """
 
-    def __init__(self, width, depth, height, sphere_radius, center=(0., 0., 0.)):
+    def __init__(self, width, depth, height, sphere_radius, center=(0.0, 0.0, 0.0)):
         super().__init__(sphere_radius, center)
         self.width = width
         self.depth = depth
@@ -332,9 +336,11 @@ class _RectangularPrism(_Container):
         if self._limits is None:
             c = self.center
             r = self.sphere_radius
-            x, y, z = self.width/2, self.depth/2, self.height/2
-            self._limits = [[c[0] - x + r, c[1] - y + r, c[2] - z + r],
-                            [c[0] + x - r, c[1] + y - r, c[2] + z - r]]
+            x, y, z = self.width / 2, self.depth / 2, self.height / 2
+            self._limits = [
+                [c[0] - x + r, c[1] - y + r, c[2] - z + r],
+                [c[0] + x - r, c[1] + y - r, c[2] + z - r],
+            ]
 
         return self._limits
 
@@ -346,17 +352,18 @@ class _RectangularPrism(_Container):
     def cell_length(self):
         if self._cell_length is None:
             mesh_length = [self.width, self.depth, self.height]
-            self._cell_length = [x/int(x/(4*self.sphere_radius))
-                                 for x in mesh_length]
+            self._cell_length = [
+                x / int(x / (4 * self.sphere_radius)) for x in mesh_length
+            ]
         return self._cell_length
 
     @property
     def volume(self):
-        return self.width*self.depth*self.height
+        return self.width * self.depth * self.height
 
     @classmethod
     def from_region(self, region, sphere_radius):
-        check_type('region', region, openmc.Region)
+        check_type("region", region, openmc.Region)
 
         # Assume the simplest case where the prism volume is the intersection
         # of the half-spaces of six planes
@@ -373,12 +380,14 @@ class _RectangularPrism(_Container):
         px1, px2, py1, py2, pz1, pz2 = sorted(region, key=lambda x: x.surface.type)
 
         # Make sure the region consists of the correct surfaces
-        if (not isinstance(px1.surface, openmc.XPlane) or
-            not isinstance(px2.surface, openmc.XPlane) or
-            not isinstance(py1.surface, openmc.YPlane) or
-            not isinstance(py2.surface, openmc.YPlane) or
-            not isinstance(pz1.surface, openmc.ZPlane) or
-            not isinstance(pz2.surface, openmc.ZPlane)):
+        if (
+            not isinstance(px1.surface, openmc.XPlane)
+            or not isinstance(px2.surface, openmc.XPlane)
+            or not isinstance(py1.surface, openmc.YPlane)
+            or not isinstance(py2.surface, openmc.YPlane)
+            or not isinstance(pz1.surface, openmc.ZPlane)
+            or not isinstance(pz2.surface, openmc.ZPlane)
+        ):
             raise ValueError
 
         # Make sure the half-spaces are on the correct side of the surfaces
@@ -388,26 +397,24 @@ class _RectangularPrism(_Container):
 
         # Calculate the parameters for the container
         width, depth, height = ur - ll
-        center = ll + [width/2, depth/2, height/2]
+        center = ll + [width / 2, depth / 2, height / 2]
 
         # The region is the volume of a rectangular prism, so create container
         return _RectangularPrism(width, depth, height, sphere_radius, center)
 
     def random_point(self):
         ll, ul = self.limits
-        return [uniform(ll[0], ul[0]),
-                uniform(ll[1], ul[1]),
-                uniform(ll[2], ul[2])]
+        return [uniform(ll[0], ul[0]), uniform(ll[1], ul[1]), uniform(ll[2], ul[2])]
 
     def repel_spheres(self, p, q, d, d_new):
         # Moving each sphere distance 's' away from the other along the line
         # joining the sphere centers will ensure their final distance is
         # equal to the outer diameter
-        s = (d_new - d)/2
+        s = (d_new - d) / 2
 
-        v = (p - q)/d
-        p += s*v
-        q -= s*v
+        v = (p - q) / d
+        p += s * v
+        q -= s * v
 
         # Enforce the rigid boundary by moving each sphere back along the
         # surface normal until it is completely within the container if it
@@ -461,7 +468,7 @@ class _Cylinder(_Container):
 
     """
 
-    def __init__(self, length, radius, axis, sphere_radius, center=(0., 0., 0.)):
+    def __init__(self, length, radius, axis, sphere_radius, center=(0.0, 0.0, 0.0)):
         super().__init__(sphere_radius, center)
         self._shift = None
         self.length = length
@@ -500,9 +507,9 @@ class _Cylinder(_Container):
     @property
     def shift(self):
         if self._shift is None:
-            if self.axis == 'x':
+            if self.axis == "x":
                 self._shift = [1, 2, 0]
-            elif self.axis == 'y':
+            elif self.axis == "y":
                 self._shift = [2, 0, 1]
             else:
                 self._shift = [0, 1, 2]
@@ -512,7 +519,7 @@ class _Cylinder(_Container):
     def limits(self):
         if self._limits is None:
             z0 = self.center[self.shift[2]]
-            z = self.length/2
+            z = self.length / 2
             r = self.sphere_radius
             self._limits = [[z0 - z + r], [z0 + z - r, self.radius - r]]
         return self._limits
@@ -524,21 +531,21 @@ class _Cylinder(_Container):
     @property
     def cell_length(self):
         if self._cell_length is None:
-            h = 4*self.sphere_radius
+            h = 4 * self.sphere_radius
             i, j, k = self.shift
-            self._cell_length = [None]*3
-            self._cell_length[i] = 2*self.radius/int(2*self.radius/h)
-            self._cell_length[j] = 2*self.radius/int(2*self.radius/h)
-            self._cell_length[k] = self.length/int(self.length/h)
+            self._cell_length = [None] * 3
+            self._cell_length[i] = 2 * self.radius / int(2 * self.radius / h)
+            self._cell_length[j] = 2 * self.radius / int(2 * self.radius / h)
+            self._cell_length[k] = self.length / int(self.length / h)
         return self._cell_length
 
     @property
     def volume(self):
-        return self.length*pi*self.radius**2
+        return self.length * pi * self.radius**2
 
     @classmethod
     def from_region(self, region, sphere_radius):
-        check_type('region', region, openmc.Region)
+        check_type("region", region, openmc.Region)
 
         # Assume the simplest case where the cylinder volume is the
         # intersection of the half-spaces of a cylinder and two planes
@@ -557,35 +564,35 @@ class _Cylinder(_Container):
         # Make sure the region is composed of a cylinder and two planes on the
         # same axis
         count = Counter(node.surface.type for node in region)
-        if count[axis + '-cylinder'] != 1 or count[axis + '-plane'] != 2:
+        if count[axis + "-cylinder"] != 1 or count[axis + "-plane"] != 2:
             raise ValueError
 
         # Sort the half-spaces by surface type
         cyl, p1, p2 = sorted(region, key=lambda x: x.surface.type)
 
         # Calculate the parameters for a cylinder along the x-axis
-        if axis == 'x':
+        if axis == "x":
             if p1.surface.x0 > p2.surface.x0:
                 p1, p2 = p2, p1
             length = p2.surface.x0 - p1.surface.x0
-            center = (p1.surface.x0 + length/2, cyl.surface.y0, cyl.surface.z0)
+            center = (p1.surface.x0 + length / 2, cyl.surface.y0, cyl.surface.z0)
 
         # Calculate the parameters for a cylinder along the y-axis
-        elif axis == 'y':
+        elif axis == "y":
             if p1.surface.y0 > p2.surface.y0:
                 p1, p2 = p2, p1
             length = p2.surface.y0 - p1.surface.y0
-            center = (cyl.surface.x0, p1.surface.y0 + length/2, cyl.surface.z0)
+            center = (cyl.surface.x0, p1.surface.y0 + length / 2, cyl.surface.z0)
 
         # Calculate the parameters for a cylinder along the z-axis
         else:
             if p1.surface.z0 > p2.surface.z0:
                 p1, p2 = p2, p1
             length = p2.surface.z0 - p1.surface.z0
-            center = (cyl.surface.x0, cyl.surface.y0, p1.surface.z0 + length/2)
+            center = (cyl.surface.x0, cyl.surface.y0, p1.surface.z0 + length / 2)
 
         # Make sure the half-spaces are on the correct side of the surfaces
-        if cyl.side != '-' or p1.side != '+' or p2.side != '-':
+        if cyl.side != "-" or p1.side != "+" or p2.side != "-":
             raise ValueError
 
         radius = cyl.surface.r
@@ -595,12 +602,12 @@ class _Cylinder(_Container):
 
     def random_point(self):
         ll, ul = self.limits
-        r = sqrt(uniform(0, ul[1]**2))
-        t = uniform(0, 2*pi)
+        r = sqrt(uniform(0, ul[1] ** 2))
+        t = uniform(0, 2 * pi)
         i, j, k = self.shift
-        p = [None]*3
-        p[i] = r*cos(t) + self.center[i]
-        p[j] = r*sin(t) + self.center[j]
+        p = [None] * 3
+        p[i] = r * cos(t) + self.center[i]
+        p[j] = r * sin(t) + self.center[j]
         p[k] = uniform(ll[0], ul[0])
         return p
 
@@ -608,11 +615,11 @@ class _Cylinder(_Container):
         # Moving each sphere distance 's' away from the other along the line
         # joining the sphere centers will ensure their final distance is
         # equal to the outer diameter
-        s = (d_new - d)/2
+        s = (d_new - d) / 2
 
-        v = (p - q)/d
-        p += s*v
-        q -= s*v
+        v = (p - q) / d
+        p += s * v
+        q -= s * v
 
         # Enforce the rigid boundary by moving each sphere back along the
         # surface normal until it is completely within the container if it
@@ -621,16 +628,16 @@ class _Cylinder(_Container):
         c = self.center
         i, j, k = self.shift
 
-        r = sqrt((p[i] - c[i])**2 + (p[j] - c[j])**2)
+        r = sqrt((p[i] - c[i]) ** 2 + (p[j] - c[j]) ** 2)
         if r > ul[1]:
-            p[i] = (p[i] - c[i])*ul[1]/r + c[i]
-            p[j] = (p[j] - c[j])*ul[1]/r + c[j]
+            p[i] = (p[i] - c[i]) * ul[1] / r + c[i]
+            p[j] = (p[j] - c[j]) * ul[1] / r + c[j]
         p[k] = np.clip(p[k], ll[0], ul[0])
 
-        r = sqrt((q[i] - c[i])**2 + (q[j] - c[j])**2)
+        r = sqrt((q[i] - c[i]) ** 2 + (q[j] - c[j]) ** 2)
         if r > ul[1]:
-            q[i] = (q[i] - c[i])*ul[1]/r + c[i]
-            q[j] = (q[j] - c[j])*ul[1]/r + c[j]
+            q[i] = (q[i] - c[i]) * ul[1] / r + c[i]
+            q[j] = (q[j] - c[j]) * ul[1] / r + c[j]
         q[k] = np.clip(q[k], ll[0], ul[0])
 
 
@@ -668,8 +675,7 @@ class _SphericalShell(_Container):
 
     """
 
-    def __init__(self, radius, inner_radius, sphere_radius,
-                 center=(0., 0., 0.)):
+    def __init__(self, radius, inner_radius, sphere_radius, center=(0.0, 0.0, 0.0)):
         super().__init__(sphere_radius, center)
         self.radius = radius
         self.inner_radius = inner_radius
@@ -711,9 +717,10 @@ class _SphericalShell(_Container):
     @property
     def cell_length(self):
         if self._cell_length is None:
-            mesh_length = 3*[2*self.radius]
-            self._cell_length = [x/int(x/(4*self.sphere_radius))
-                                 for x in mesh_length]
+            mesh_length = 3 * [2 * self.radius]
+            self._cell_length = [
+                x / int(x / (4 * self.sphere_radius)) for x in mesh_length
+            ]
         return self._cell_length
 
     @property
@@ -722,20 +729,22 @@ class _SphericalShell(_Container):
 
     @classmethod
     def from_region(self, region, sphere_radius):
-        check_type('region', region, openmc.Region)
+        check_type("region", region, openmc.Region)
 
         # First check if the region is the volume inside a sphere. Assume the
         # simplest case where the sphere volume is the negative half-space of a
         # sphere.
-        if (isinstance(region, openmc.Halfspace)
+        if (
+            isinstance(region, openmc.Halfspace)
             and isinstance(region.surface, openmc.Sphere)
-            and region.side == '-'):
+            and region.side == "-"
+        ):
 
             # The region is the volume of a sphere, so create container
             radius = region.surface.r
             center = (region.surface.x0, region.surface.y0, region.surface.z0)
 
-            return _SphericalShell(radius, 0., sphere_radius, center)
+            return _SphericalShell(radius, 0.0, sphere_radius, center)
 
         # Next check for a spherical shell volume. Assume the simplest case
         # where the spherical shell volume is the intersection of the
@@ -760,7 +769,7 @@ class _SphericalShell(_Container):
         if center != (s2.surface.x0, s2.surface.y0, s2.surface.z0):
             raise ValueError
 
-        if s1.side != '+' or s2.side != '-':
+        if s1.side != "+" or s2.side != "-":
             raise ValueError
 
         # The region is the volume of a spherical shell, so create container
@@ -770,18 +779,18 @@ class _SphericalShell(_Container):
         c = self.center
         ll, ul = self.limits
         x, y, z = (gauss(0, 1), gauss(0, 1), gauss(0, 1))
-        r = (uniform(ll[0]**3, ul[0]**3)**(1/3)/sqrt(x**2 + y**2 + z**2))
-        return [r*x + c[0],  r*y + c[1], r*z + c[2]]
+        r = uniform(ll[0] ** 3, ul[0] ** 3) ** (1 / 3) / sqrt(x**2 + y**2 + z**2)
+        return [r * x + c[0], r * y + c[1], r * z + c[2]]
 
     def repel_spheres(self, p, q, d, d_new):
         # Moving each sphere distance 's' away from the other along the line
         # joining the sphere centers will ensure their final distance is
         # equal to the outer diameter
-        s = (d_new - d)/2
+        s = (d_new - d) / 2
 
-        v = (p - q)/d
-        p += s*v
-        q -= s*v
+        v = (p - q) / d
+        p += s * v
+        q -= s * v
 
         # Enforce the rigid boundary by moving each sphere back along the
         # surface normal until it is completely within the container if it
@@ -789,17 +798,17 @@ class _SphericalShell(_Container):
         c = self.center
         ll, ul = self.limits
 
-        r = sqrt((p[0] - c[0])**2 + (p[1] - c[1])**2 + (p[2] - c[2])**2)
+        r = sqrt((p[0] - c[0]) ** 2 + (p[1] - c[1]) ** 2 + (p[2] - c[2]) ** 2)
         if r > ul[0]:
-            p[:] = (p - c)*ul[0]/r + c
+            p[:] = (p - c) * ul[0] / r + c
         elif r < ll[0]:
-            p[:] = (p - c)*ll[0]/r + c
+            p[:] = (p - c) * ll[0] / r + c
 
-        r = sqrt((q[0] - c[0])**2 + (q[1] - c[1])**2 + (q[2] - c[2])**2)
+        r = sqrt((q[0] - c[0]) ** 2 + (q[1] - c[1]) ** 2 + (q[2] - c[2]) ** 2)
         if r > ul[0]:
-            q[:] = (q - c)*ul[0]/r + c
+            q[:] = (q - c) * ul[0] / r + c
         elif r < ll[0]:
-            q[:] = (q - c)*ll[0]/r + c
+            q[:] = (q - c) * ll[0] / r + c
 
 
 def create_triso_lattice(trisos, lower_left, pitch, shape, background):
@@ -830,7 +839,7 @@ def create_triso_lattice(trisos, lower_left, pitch, shape, background):
     lattice.lower_left = lower_left
     lattice.pitch = pitch
 
-    indices = list(np.broadcast(*np.ogrid[:shape[2], :shape[1], :shape[0]]))
+    indices = list(np.broadcast(*np.ogrid[: shape[2], : shape[1], : shape[0]]))
     triso_locations = {idx: [] for idx in indices}
     for t in trisos:
         for idx in t.classify(lattice):
@@ -840,15 +849,16 @@ def create_triso_lattice(trisos, lower_left, pitch, shape, background):
                 t_copy = copy.copy(t)
                 t_copy.id = None
                 t_copy.fill = t.fill
-                t_copy._surface = openmc.Sphere(r=t._surface.r,
-                                                x0=t._surface.x0,
-                                                y0=t._surface.y0,
-                                                z0=t._surface.z0)
+                t_copy._surface = openmc.Sphere(
+                    r=t._surface.r, x0=t._surface.x0, y0=t._surface.y0, z0=t._surface.z0
+                )
                 t_copy.region = -t_copy._surface
                 triso_locations[idx].append(t_copy)
             else:
-                warnings.warn('TRISO particle is partially or completely '
-                              'outside of the lattice.')
+                warnings.warn(
+                    "TRISO particle is partially or completely "
+                    "outside of the lattice."
+                )
 
     # Create universes
     universes = np.empty(shape[::-1], dtype=openmc.Universe)
@@ -896,7 +906,7 @@ def _random_sequential_pack(domain, num_spheres):
 
     """
 
-    sqd = (2*domain.sphere_radius)**2
+    sqd = (2 * domain.sphere_radius) ** 2
     spheres = []
     mesh = defaultdict(list)
 
@@ -905,8 +915,10 @@ def _random_sequential_pack(domain, num_spheres):
         while True:
             p = domain.random_point()
             idx = domain.mesh_cell(p)
-            if any((p[0]-q[0])**2 + (p[1]-q[1])**2 + (p[2]-q[2])**2 < sqd
-                   for q in mesh[idx]):
+            if any(
+                (p[0] - q[0]) ** 2 + (p[1] - q[1]) ** 2 + (p[2] - q[2]) ** 2 < sqd
+                for q in mesh[idx]
+            ):
                 continue
             else:
                 break
@@ -1026,8 +1038,7 @@ def _close_random_pack(domain, spheres, contraction_rate):
         r = list({tuple(x) for x in a} & {tuple(x) for x in b})
 
         # Remove duplicate rods and sort by distance
-        r = map(list, set([(x[2], int(min(x[0:2])), int(max(x[0:2])))
-                            for x in r]))
+        r = map(list, set([(x[2], int(min(x[0:2])), int(max(x[0:2]))) for x in r]))
 
         # Clear priority queue and add rods
         del rods[:]
@@ -1080,12 +1091,14 @@ def _close_random_pack(domain, spheres, contraction_rate):
 
         """
 
-        inner_pf = _volume_sphere(inner_diameter/2)*num_spheres / domain.volume
-        outer_pf = _volume_sphere(outer_diameter/2)*num_spheres / domain.volume
+        inner_pf = _volume_sphere(inner_diameter / 2) * num_spheres / domain.volume
+        outer_pf = _volume_sphere(outer_diameter / 2) * num_spheres / domain.volume
 
         j = floor(-log10(outer_pf - inner_pf))
-        return (outer_diameter - 0.5**j * contraction_rate *
-                initial_outer_diameter / num_spheres)
+        return (
+            outer_diameter
+            - 0.5**j * contraction_rate * initial_outer_diameter / num_spheres
+        )
 
     def nearest(i):
         """Find index of nearest neighbor of sphere i.
@@ -1131,23 +1144,27 @@ def _close_random_pack(domain, spheres, contraction_rate):
         # remove the rod currently containing k from the rod list and add rod
         # k-i, keeping the rod list sorted
         k, d_ik = nearest(i)
-        if (k and nearest(k)[0] == i and d_ik < outer_diameter
-            and not np.isclose(d, outer_diameter, atol=1.0e-14)):
+        if (
+            k
+            and nearest(k)[0] == i
+            and d_ik < outer_diameter
+            and not np.isclose(d, outer_diameter, atol=1.0e-14)
+        ):
             remove_rod(k)
             add_rod(d_ik, i, k)
 
     num_spheres = len(spheres)
-    diameter = 2*domain.sphere_radius
+    diameter = 2 * domain.sphere_radius
 
     # Flag for marking rods that have been removed from priority queue
     removed = -1
 
     # Outer diameter initially set to arbitrary value that yields pf of 1
-    initial_outer_diameter = 2*(domain.volume/(num_spheres*4/3*pi))**(1/3)
+    initial_outer_diameter = 2 * (domain.volume / (num_spheres * 4 / 3 * pi)) ** (1 / 3)
 
     # Inner and outer diameter of spheres will change during packing
     outer_diameter = initial_outer_diameter
-    inner_diameter = 0.
+    inner_diameter = 0.0
 
     # List of rods arranged in a heap and mapping of sphere ids to rods
     rods = []
@@ -1185,9 +1202,11 @@ def _close_random_pack(domain, spheres, contraction_rate):
         # the number of iterations needed to remove all overlaps is inversely
         # proportional to the contraction rate.
         if inner_diameter >= outer_diameter or not rods:
-            warnings.warn('Close random pack converged before reaching true '
-                          'sphere radius; some spheres may overlap. Try '
-                          'reducing contraction rate or packing fraction.')
+            warnings.warn(
+                "Close random pack converged before reaching true "
+                "sphere radius; some spheres may overlap. Try "
+                "reducing contraction rate or packing fraction."
+            )
             break
 
         while True:
@@ -1207,8 +1226,15 @@ def _close_random_pack(domain, spheres, contraction_rate):
                 break
 
 
-def pack_spheres(radius, region, pf=None, num_spheres=None, initial_pf=0.3,
-                 contraction_rate=1.e-3, seed=None):
+def pack_spheres(
+    radius,
+    region,
+    pf=None,
+    num_spheres=None,
+    initial_pf=0.3,
+    contraction_rate=1.0e-3,
+    seed=None,
+):
     """Generate a random, non-overlapping configuration of spheres within a
     container.
 
@@ -1292,20 +1318,22 @@ def pack_spheres(radius, region, pf=None, num_spheres=None, initial_pf=0.3,
             pass
 
     if not domain:
-        raise ValueError('Could not map region {} to a container: supported '
-                         'container shapes are rectangular prism, cylinder, '
-                         'sphere, and spherical shell.'.format(region))
+        raise ValueError(
+            "Could not map region {} to a container: supported "
+            "container shapes are rectangular prism, cylinder, "
+            "sphere, and spherical shell.".format(region)
+        )
 
     # Determine the packing fraction/number of spheres
     volume = _volume_sphere(radius)
     if pf is None and num_spheres is None:
-        raise ValueError('`pf` or `num_spheres` must be specified.')
+        raise ValueError("`pf` or `num_spheres` must be specified.")
     elif pf is None:
         num_spheres = int(num_spheres)
-        pf = volume*num_spheres/domain.volume
+        pf = volume * num_spheres / domain.volume
     else:
         pf = float(pf)
-        num_spheres = int(pf*domain.volume//volume)
+        num_spheres = int(pf * domain.volume // volume)
 
     # Make sure initial packing fraction is less than packing fraction
     if initial_pf > pf:
@@ -1313,24 +1341,32 @@ def pack_spheres(radius, region, pf=None, num_spheres=None, initial_pf=0.3,
 
     # Check packing fraction for close random packing
     if pf > MAX_PF_CRP:
-        raise ValueError(f'Packing fraction {pf} is greater than the limit for '
-                         f'close random packing, {MAX_PF_CRP}')
+        raise ValueError(
+            f"Packing fraction {pf} is greater than the limit for "
+            f"close random packing, {MAX_PF_CRP}"
+        )
 
     # Check packing fraction for random sequential packing
     if initial_pf > MAX_PF_RSP:
-        raise ValueError(f'Initial packing fraction {initial_pf} is greater than'
-                         f'the limit for random sequential packing, {MAX_PF_RSP}')
+        raise ValueError(
+            f"Initial packing fraction {initial_pf} is greater than"
+            f"the limit for random sequential packing, {MAX_PF_RSP}"
+        )
 
     # Calculate the sphere radius used in the initial random sequential
     # packing from the initial packing fraction
-    initial_radius = (3/4*initial_pf*domain.volume/(pi*num_spheres))**(1/3)
+    initial_radius = (3 / 4 * initial_pf * domain.volume / (pi * num_spheres)) ** (
+        1 / 3
+    )
     domain.sphere_radius = initial_radius
 
     # Recalculate the limits for the initial random sequential packing using
     # the desired final sphere radius to ensure spheres are fully contained
     # within the domain during the close random pack
-    domain.limits = [[x - initial_radius + radius for x in domain.limits[0]],
-                     [x + initial_radius - radius for x in domain.limits[1]]]
+    domain.limits = [
+        [x - initial_radius + radius for x in domain.limits[0]],
+        [x + initial_radius - radius for x in domain.limits[1]],
+    ]
 
     # Generate non-overlapping spheres for an initial inner radius using
     # random sequential packing algorithm

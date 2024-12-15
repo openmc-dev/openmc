@@ -9,11 +9,11 @@ def model():
     model = openmc.model.Model()
 
     m = openmc.Material()
-    m.set_density('g/cm3', 10.0)
-    m.add_nuclide('Am241', 1.0)
+    m.set_density("g/cm3", 10.0)
+    m.add_nuclide("Am241", 1.0)
     model.materials.append(m)
 
-    s = openmc.Sphere(r=100.0, boundary_type='vacuum')
+    s = openmc.Sphere(r=100.0, boundary_type="vacuum")
     c = openmc.Cell(fill=m, region=-s)
     model.geometry = openmc.Geometry([c])
 
@@ -29,25 +29,25 @@ def model():
     filt1 = openmc.EnergyFunctionFilter(x, y)
 
     # check interpolatoin property setter
-    assert filt1.interpolation == 'linear-linear'
+    assert filt1.interpolation == "linear-linear"
 
     with pytest.raises(ValueError):
-        filt1.interpolation = '🥏'
+        filt1.interpolation = "🥏"
 
     # Also make a filter with the .from_tabulated1d constructor.  Make sure
     # the filters are identical.
     tab1d = openmc.data.Tabulated1D(x, y)
     filt2 = openmc.EnergyFunctionFilter.from_tabulated1d(tab1d)
-    assert filt1 == filt2, 'Error with the .from_tabulated1d constructor'
+    assert filt1 == filt2, "Error with the .from_tabulated1d constructor"
 
     filt3 = openmc.EnergyFunctionFilter(x, y)
-    filt3.interpolation = 'log-log'
+    filt3.interpolation = "log-log"
 
     filt4 = openmc.EnergyFunctionFilter(x, y)
-    filt4.interpolation = 'linear-log'
+    filt4.interpolation = "linear-log"
 
     filt5 = openmc.EnergyFunctionFilter(x, y)
-    filt5.interpolation = 'log-linear'
+    filt5.interpolation = "log-linear"
 
     # define a trapezoidal function for comparison
     x = [0.0, 5e6, 1e7, 1.5e7]
@@ -56,37 +56,34 @@ def model():
     filt6 = openmc.EnergyFunctionFilter(x, y)
 
     filt7 = openmc.EnergyFunctionFilter(x, y)
-    filt7.interpolation = 'quadratic'
+    filt7.interpolation = "quadratic"
 
     filt8 = openmc.EnergyFunctionFilter(x, y)
-    filt8.interpolation = 'cubic'
+    filt8.interpolation = "cubic"
 
     filt9 = openmc.EnergyFunctionFilter(x, y)
-    filt9.interpolation = 'histogram'
+    filt9.interpolation = "histogram"
 
     filters = [filt1, filt3, filt4, filt5, filt6, filt7, filt8, filt9]
     # Make tallies
     tallies = [openmc.Tally() for _ in range(len(filters) + 1)]
     for t in tallies:
-        t.scores = ['(n,gamma)']
-        t.nuclides = ['Am241']
+        t.scores = ["(n,gamma)"]
+        t.nuclides = ["Am241"]
 
     for t, f in zip(tallies[1:], filters):
         t.filters = [f]
 
     model.tallies.extend(tallies)
 
-    interpolation_vals = \
-    list(openmc.EnergyFunctionFilter.INTERPOLATION_SCHEMES.keys())
+    interpolation_vals = list(openmc.EnergyFunctionFilter.INTERPOLATION_SCHEMES.keys())
     for i_val in interpolation_vals:
         # breakpoint here is fake and unused
-        t1d = openmc.data.Tabulated1D(x,
-                                      y,
-                                      breakpoints=[1],
-                                      interpolation=[i_val])
+        t1d = openmc.data.Tabulated1D(x, y, breakpoints=[1], interpolation=[i_val])
         f = openmc.EnergyFunctionFilter.from_tabulated1d(t1d)
-        assert f.interpolation == \
-        openmc.EnergyFunctionFilter.INTERPOLATION_SCHEMES[i_val]
+        assert (
+            f.interpolation == openmc.EnergyFunctionFilter.INTERPOLATION_SCHEMES[i_val]
+        )
 
     return model
 
@@ -99,11 +96,11 @@ class FilterEnergyFunHarness(PyAPITestHarness):
         dataframes_string = ""
         # Use tally arithmetic to compute the branching ratio.
         br_tally = sp.tallies[2] / sp.tallies[1]
-        dataframes_string += br_tally.get_pandas_dataframe().to_string() + '\n'
+        dataframes_string += br_tally.get_pandas_dataframe().to_string() + "\n"
 
         for t_id in (3, 4, 5, 6):
             ef_tally = sp.tallies[t_id]
-            dataframes_string += ef_tally.get_pandas_dataframe().to_string() + '\n'
+            dataframes_string += ef_tally.get_pandas_dataframe().to_string() + "\n"
 
         # Output the tally in a Pandas DataFrame.
         return dataframes_string
@@ -121,9 +118,11 @@ class FilterEnergyFunHarness(PyAPITestHarness):
         sp_lin_lin_filt = sp_lin_lin_tally.find_filter(openmc.EnergyFunctionFilter)
 
         model_lin_lin_tally = self._model.tallies[1]
-        model_lin_lin_filt = model_lin_lin_tally.find_filter(openmc.EnergyFunctionFilter)
+        model_lin_lin_filt = model_lin_lin_tally.find_filter(
+            openmc.EnergyFunctionFilter
+        )
 
-        assert sp_lin_lin_filt.interpolation == 'linear-linear'
+        assert sp_lin_lin_filt.interpolation == "linear-linear"
         assert all(sp_lin_lin_filt.energy == model_lin_lin_filt.energy)
         assert all(sp_lin_lin_filt.y == model_lin_lin_filt.y)
 
@@ -132,9 +131,11 @@ class FilterEnergyFunHarness(PyAPITestHarness):
         sp_log_log_filt = sp_log_log_tally.find_filter(openmc.EnergyFunctionFilter)
 
         model_log_log_tally = self._model.tallies[2]
-        model_log_log_filt = model_log_log_tally.find_filter(openmc.EnergyFunctionFilter)
+        model_log_log_filt = model_log_log_tally.find_filter(
+            openmc.EnergyFunctionFilter
+        )
 
-        assert sp_log_log_filt.interpolation == 'log-log'
+        assert sp_log_log_filt.interpolation == "log-log"
         assert all(sp_log_log_filt.energy == model_log_log_filt.energy)
         assert all(sp_log_log_filt.y == model_log_log_filt.y)
 
@@ -144,11 +145,11 @@ class FilterEnergyFunHarness(PyAPITestHarness):
 
         sp_lin_log_tally = self._model.tallies[3]
         sp_lin_log_filt = sp_lin_log_tally.find_filter(openmc.EnergyFunctionFilter)
-        assert sp_lin_log_filt.interpolation == 'linear-log'
+        assert sp_lin_log_filt.interpolation == "linear-log"
 
         sp_log_lin_tally = self._model.tallies[4]
         sp_log_lin_filt = sp_log_lin_tally.find_filter(openmc.EnergyFunctionFilter)
-        assert sp_log_lin_filt.interpolation == 'log-linear'
+        assert sp_log_lin_filt.interpolation == "log-linear"
 
         # check that the cubic interpolation provides a higher value
         # than linear-linear
@@ -164,6 +165,7 @@ class FilterEnergyFunHarness(PyAPITestHarness):
         assert all(histogram_tally.mean < contrived_quadratic_tally.mean)
         assert all(histogram_tally.mean < contrived_cubic_tally.mean)
 
+
 def test_filter_energyfun(model):
-    harness = FilterEnergyFunHarness('statepoint.5.h5', model)
+    harness = FilterEnergyFunHarness("statepoint.5.h5", model)
     harness.main()

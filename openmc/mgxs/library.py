@@ -99,22 +99,21 @@ class Library:
 
     """
 
-    def __init__(self, geometry, by_nuclide=False,
-                 mgxs_types=None, name=''):
+    def __init__(self, geometry, by_nuclide=False, mgxs_types=None, name=""):
 
-        self._name = ''
+        self._name = ""
         self._geometry = None
         self._by_nuclide = None
         self._mgxs_types = []
         self._domain_type = None
-        self._domains = 'all'
+        self._domains = "all"
         self._energy_groups = None
         self._num_polar = 1
         self._num_azimuthal = 1
         self._nuclides = None
         self._num_delayed_groups = 0
-        self._correction = 'P0'
-        self._scatter_format = 'legendre'
+        self._correction = "P0"
+        self._scatter_format = "legendre"
         self._legendre_order = 0
         self._histogram_bins = 16
         self._tally_trigger = None
@@ -179,7 +178,7 @@ class Library:
 
     @geometry.setter
     def geometry(self, geometry):
-        cv.check_type('geometry', geometry, openmc.Geometry)
+        cv.check_type("geometry", geometry, openmc.Geometry)
         self._geometry = geometry
 
     @property
@@ -188,7 +187,7 @@ class Library:
 
     @name.setter
     def name(self, name):
-        cv.check_type('name', name, str)
+        cv.check_type("name", name, str)
         self._name = name
 
     @property
@@ -197,15 +196,18 @@ class Library:
 
     @mgxs_types.setter
     def mgxs_types(self, mgxs_types):
-        all_mgxs_types = openmc.mgxs.MGXS_TYPES + openmc.mgxs.MDGXS_TYPES + \
-            openmc.mgxs.ARBITRARY_VECTOR_TYPES + \
-            openmc.mgxs.ARBITRARY_MATRIX_TYPES
-        if mgxs_types == 'all':
+        all_mgxs_types = (
+            openmc.mgxs.MGXS_TYPES
+            + openmc.mgxs.MDGXS_TYPES
+            + openmc.mgxs.ARBITRARY_VECTOR_TYPES
+            + openmc.mgxs.ARBITRARY_MATRIX_TYPES
+        )
+        if mgxs_types == "all":
             self._mgxs_types = all_mgxs_types
         else:
-            cv.check_iterable_type('mgxs_types', mgxs_types, str)
+            cv.check_iterable_type("mgxs_types", mgxs_types, str)
             for mgxs_type in mgxs_types:
-                cv.check_value('mgxs_type', mgxs_type, all_mgxs_types)
+                cv.check_value("mgxs_type", mgxs_type, all_mgxs_types)
             self._mgxs_types = mgxs_types
 
     @property
@@ -214,11 +216,12 @@ class Library:
 
     @by_nuclide.setter
     def by_nuclide(self, by_nuclide):
-        cv.check_type('by_nuclide', by_nuclide, bool)
+        cv.check_type("by_nuclide", by_nuclide, bool)
 
-        if by_nuclide and self.domain_type == 'mesh':
-            raise ValueError('Unable to create MGXS library by nuclide with '
-                             'mesh domain')
+        if by_nuclide and self.domain_type == "mesh":
+            raise ValueError(
+                "Unable to create MGXS library by nuclide with " "mesh domain"
+            )
 
         self._by_nuclide = by_nuclide
 
@@ -228,29 +231,30 @@ class Library:
 
     @domain_type.setter
     def domain_type(self, domain_type):
-        cv.check_value('domain type', domain_type, openmc.mgxs.DOMAIN_TYPES)
+        cv.check_value("domain type", domain_type, openmc.mgxs.DOMAIN_TYPES)
 
-        if self.by_nuclide and domain_type == 'mesh':
-            raise ValueError('Unable to create MGXS library by nuclide with '
-                             'mesh domain')
+        if self.by_nuclide and domain_type == "mesh":
+            raise ValueError(
+                "Unable to create MGXS library by nuclide with " "mesh domain"
+            )
 
         self._domain_type = domain_type
 
     @property
     def domains(self):
-        if self._domains == 'all':
-            if self.domain_type == 'material':
+        if self._domains == "all":
+            if self.domain_type == "material":
                 return list(self.geometry.get_all_materials().values())
-            elif self.domain_type == 'cell':
+            elif self.domain_type == "cell":
                 return list(self.geometry.get_all_cells().values())
-            elif self.domain_type in 'distribcell':
+            elif self.domain_type in "distribcell":
                 return list(self.geometry.get_all_material_cells().values())
-            elif self.domain_type == 'universe':
+            elif self.domain_type == "universe":
                 return list(self.geometry.get_all_universes().values())
-            elif self.domain_type == 'mesh':
-                raise ValueError('Unable to get domains for Mesh domain type')
+            elif self.domain_type == "mesh":
+                raise ValueError("Unable to get domains for Mesh domain type")
             else:
-                raise ValueError('Unable to get domains without a domain type')
+                raise ValueError("Unable to get domains without a domain type")
         else:
             return self._domains
 
@@ -258,38 +262,42 @@ class Library:
     def domains(self, domains):
 
         # Use all materials, cells or universes in the geometry as domains
-        if domains == 'all':
+        if domains == "all":
             self._domains = domains
 
         # User specified a list of material, cell or universe domains
         else:
-            if self.domain_type == 'material':
-                cv.check_type('domain', domains, Iterable, openmc.Material)
+            if self.domain_type == "material":
+                cv.check_type("domain", domains, Iterable, openmc.Material)
                 all_domains = self.geometry.get_all_materials().values()
-            elif self.domain_type == 'cell':
-                cv.check_type('domain', domains, Iterable, openmc.Cell)
+            elif self.domain_type == "cell":
+                cv.check_type("domain", domains, Iterable, openmc.Cell)
                 all_domains = self.geometry.get_all_cells().values()
-            elif self.domain_type == 'distribcell':
-                cv.check_type('domain', domains, Iterable, openmc.Cell)
+            elif self.domain_type == "distribcell":
+                cv.check_type("domain", domains, Iterable, openmc.Cell)
                 all_domains = self.geometry.get_all_material_cells().values()
-            elif self.domain_type == 'universe':
-                cv.check_type('domain', domains, Iterable, openmc.Universe)
+            elif self.domain_type == "universe":
+                cv.check_type("domain", domains, Iterable, openmc.Universe)
                 all_domains = self.geometry.get_all_universes().values()
-            elif self.domain_type == 'mesh':
-                cv.check_type('domain', domains, Iterable, openmc.RegularMesh)
+            elif self.domain_type == "mesh":
+                cv.check_type("domain", domains, Iterable, openmc.RegularMesh)
 
                 # The mesh and geometry are independent, so set all_domains
                 # to the input domains
                 all_domains = domains
             else:
-                raise ValueError('Unable to set domains with domain '
-                                 'type "{}"'.format(self.domain_type))
+                raise ValueError(
+                    "Unable to set domains with domain "
+                    'type "{}"'.format(self.domain_type)
+                )
 
             # Check that each domain can be found in the geometry
             for domain in domains:
                 if domain not in all_domains:
-                    raise ValueError('Domain "{}" could not be found in the '
-                                     'geometry.'.format(domain))
+                    raise ValueError(
+                        'Domain "{}" could not be found in the '
+                        "geometry.".format(domain)
+                    )
 
             self._domains = list(domains)
 
@@ -299,7 +307,7 @@ class Library:
 
     @nuclides.setter
     def nuclides(self, nuclides):
-        cv.check_iterable_type('nuclides', nuclides, str)
+        cv.check_iterable_type("nuclides", nuclides, str)
         self._nuclides = nuclides
 
     @property
@@ -308,7 +316,7 @@ class Library:
 
     @energy_groups.setter
     def energy_groups(self, energy_groups):
-        cv.check_type('energy groups', energy_groups, openmc.mgxs.EnergyGroups)
+        cv.check_type("energy groups", energy_groups, openmc.mgxs.EnergyGroups)
         self._energy_groups = energy_groups
 
     @property
@@ -318,10 +326,15 @@ class Library:
     @num_delayed_groups.setter
     def num_delayed_groups(self, num_delayed_groups):
 
-        cv.check_less_than('num delayed groups', num_delayed_groups,
-                           openmc.mgxs.MAX_DELAYED_GROUPS, equality=True)
-        cv.check_greater_than('num delayed groups', num_delayed_groups, 0,
-                              equality=True)
+        cv.check_less_than(
+            "num delayed groups",
+            num_delayed_groups,
+            openmc.mgxs.MAX_DELAYED_GROUPS,
+            equality=True,
+        )
+        cv.check_greater_than(
+            "num delayed groups", num_delayed_groups, 0, equality=True
+        )
         self._num_delayed_groups = num_delayed_groups
 
     @property
@@ -330,8 +343,8 @@ class Library:
 
     @num_polar.setter
     def num_polar(self, num_polar):
-        cv.check_type('num_polar', num_polar, Integral)
-        cv.check_greater_than('num_polar', num_polar, 0)
+        cv.check_type("num_polar", num_polar, Integral)
+        cv.check_greater_than("num_polar", num_polar, 0)
         self._num_polar = num_polar
 
     @property
@@ -340,8 +353,8 @@ class Library:
 
     @num_azimuthal.setter
     def num_azimuthal(self, num_azimuthal):
-        cv.check_type('num_azimuthal', num_azimuthal, Integral)
-        cv.check_greater_than('num_azimuthal', num_azimuthal, 0)
+        cv.check_type("num_azimuthal", num_azimuthal, Integral)
+        cv.check_greater_than("num_azimuthal", num_azimuthal, 0)
         self._num_azimuthal = num_azimuthal
 
     @property
@@ -350,17 +363,21 @@ class Library:
 
     @correction.setter
     def correction(self, correction):
-        cv.check_value('correction', correction, ('P0', None))
+        cv.check_value("correction", correction, ("P0", None))
 
-        if self.scatter_format == 'legendre':
-            if correction == 'P0' and self.legendre_order > 0:
-                msg = 'The P0 correction will be ignored since the ' \
-                      'scattering order {} is greater than '\
-                      'zero'.format(self.legendre_order)
+        if self.scatter_format == "legendre":
+            if correction == "P0" and self.legendre_order > 0:
+                msg = (
+                    "The P0 correction will be ignored since the "
+                    "scattering order {} is greater than "
+                    "zero".format(self.legendre_order)
+                )
                 warn(msg)
-        elif self.scatter_format == 'histogram':
-            msg = 'The P0 correction will be ignored since the ' \
-                  'scatter format is set to histogram'
+        elif self.scatter_format == "histogram":
+            msg = (
+                "The P0 correction will be ignored since the "
+                "scatter format is set to histogram"
+            )
             warn(msg)
 
         self._correction = correction
@@ -371,12 +388,13 @@ class Library:
 
     @scatter_format.setter
     def scatter_format(self, scatter_format):
-        cv.check_value('scatter_format', scatter_format,
-                       openmc.mgxs.MU_TREATMENTS)
+        cv.check_value("scatter_format", scatter_format, openmc.mgxs.MU_TREATMENTS)
 
-        if scatter_format == 'histogram' and self.correction == 'P0':
-            msg = 'The P0 correction will be ignored since the ' \
-                  'scatter format is set to histogram'
+        if scatter_format == "histogram" and self.correction == "P0":
+            msg = (
+                "The P0 correction will be ignored since the "
+                "scatter format is set to histogram"
+            )
             warn(msg)
             self.correction = None
 
@@ -388,21 +406,24 @@ class Library:
 
     @legendre_order.setter
     def legendre_order(self, legendre_order):
-        cv.check_type('legendre_order', legendre_order, Integral)
-        cv.check_greater_than('legendre_order', legendre_order, 0,
-                              equality=True)
-        cv.check_less_than('legendre_order', legendre_order, 10, equality=True)
+        cv.check_type("legendre_order", legendre_order, Integral)
+        cv.check_greater_than("legendre_order", legendre_order, 0, equality=True)
+        cv.check_less_than("legendre_order", legendre_order, 10, equality=True)
 
-        if self.scatter_format == 'legendre':
-            if self.correction == 'P0' and legendre_order > 0:
-                msg = 'The P0 correction will be ignored since the ' \
-                      'scattering order {} is greater than '\
-                      'zero'.format(legendre_order)
+        if self.scatter_format == "legendre":
+            if self.correction == "P0" and legendre_order > 0:
+                msg = (
+                    "The P0 correction will be ignored since the "
+                    "scattering order {} is greater than "
+                    "zero".format(legendre_order)
+                )
                 warn(msg, RuntimeWarning)
                 self.correction = None
-        elif self.scatter_format == 'histogram':
-            msg = 'The legendre order will be ignored since the ' \
-                  'scatter format is set to histogram'
+        elif self.scatter_format == "histogram":
+            msg = (
+                "The legendre order will be ignored since the "
+                "scatter format is set to histogram"
+            )
             warn(msg)
 
         self._legendre_order = legendre_order
@@ -413,18 +434,22 @@ class Library:
 
     @histogram_bins.setter
     def histogram_bins(self, histogram_bins):
-        cv.check_type('histogram_bins', histogram_bins, Integral)
-        cv.check_greater_than('histogram_bins', histogram_bins, 0)
+        cv.check_type("histogram_bins", histogram_bins, Integral)
+        cv.check_greater_than("histogram_bins", histogram_bins, 0)
 
-        if self.scatter_format == 'legendre':
-            msg = 'The histogram bins will be ignored since the ' \
-                  'scatter format is set to legendre'
+        if self.scatter_format == "legendre":
+            msg = (
+                "The histogram bins will be ignored since the "
+                "scatter format is set to legendre"
+            )
             warn(msg)
-        elif self.scatter_format == 'histogram':
-            if self.correction == 'P0':
-                msg = 'The P0 correction will be ignored since ' \
-                      'a histogram representation of the scattering '\
-                      'kernel is requested'
+        elif self.scatter_format == "histogram":
+            if self.correction == "P0":
+                msg = (
+                    "The P0 correction will be ignored since "
+                    "a histogram representation of the scattering "
+                    "kernel is requested"
+                )
                 warn(msg, RuntimeWarning)
                 self.correction = None
 
@@ -436,7 +461,7 @@ class Library:
 
     @tally_trigger.setter
     def tally_trigger(self, tally_trigger):
-        cv.check_type('tally trigger', tally_trigger, openmc.Trigger)
+        cv.check_type("tally trigger", tally_trigger, openmc.Trigger)
         self._tally_trigger = tally_trigger
 
     @property
@@ -445,7 +470,7 @@ class Library:
 
     @estimator.setter
     def estimator(self, estimator):
-        cv.check_value('estimator', estimator, ESTIMATOR_TYPES)
+        cv.check_value("estimator", estimator, ESTIMATOR_TYPES)
         self._estimator = estimator
 
     @property
@@ -480,7 +505,7 @@ class Library:
 
         """
 
-        cv.check_type('sparse', sparse, bool)
+        cv.check_type("sparse", sparse, bool)
 
         # Sparsify or densify each MGXS in the Library
         for domain in self.domains:
@@ -506,12 +531,18 @@ class Library:
             for mgxs_type in self.mgxs_types:
                 if mgxs_type in openmc.mgxs.MDGXS_TYPES:
                     mgxs = openmc.mgxs.MDGXS.get_mgxs(
-                        mgxs_type, name=self.name, num_polar=self.num_polar,
-                        num_azimuthal=self.num_azimuthal)
+                        mgxs_type,
+                        name=self.name,
+                        num_polar=self.num_polar,
+                        num_azimuthal=self.num_azimuthal,
+                    )
                 else:
                     mgxs = openmc.mgxs.MGXS.get_mgxs(
-                        mgxs_type, name=self.name, num_polar=self.num_polar,
-                        num_azimuthal=self.num_azimuthal)
+                        mgxs_type,
+                        name=self.name,
+                        num_polar=self.num_polar,
+                        num_azimuthal=self.num_azimuthal,
+                    )
 
                 mgxs.domain = domain
                 mgxs.domain_type = self.domain_type
@@ -524,8 +555,7 @@ class Library:
                     if self.num_delayed_groups == 0:
                         mgxs.delayed_groups = None
                     else:
-                        delayed_groups \
-                            = list(range(1, self.num_delayed_groups + 1))
+                        delayed_groups = list(range(1, self.num_delayed_groups + 1))
                         mgxs.delayed_groups = delayed_groups
 
                 # If a tally trigger was specified, add it to the MGXS
@@ -547,7 +577,8 @@ class Library:
                     if self.nuclides:
                         if domain_nuclides:
                             mgxs.nuclides = [
-                                nuclide for nuclide in self.nuclides
+                                nuclide
+                                for nuclide in self.nuclides
                                 if nuclide in domain_nuclides
                             ] + ["total"]
                         else:
@@ -571,7 +602,7 @@ class Library:
 
         """
 
-        cv.check_type('tallies_file', tallies_file, openmc.Tallies)
+        cv.check_type("tallies_file", tallies_file, openmc.Tallies)
 
         # Add tallies from each MGXS for each domain and mgxs type
         for domain in self.domains:
@@ -582,8 +613,9 @@ class Library:
                     if self.num_delayed_groups == 0:
                         mgxs.delayed_groups = None
                     else:
-                        mgxs.delayed_groups \
-                            = list(range(1, self.num_delayed_groups + 1))
+                        mgxs.delayed_groups = list(
+                            range(1, self.num_delayed_groups + 1)
+                        )
 
                 for tally in mgxs.tallies.values():
                     tallies_file.append(tally, merge=merge)
@@ -610,18 +642,20 @@ class Library:
 
         """
 
-        cv.check_type('statepoint', statepoint, openmc.StatePoint)
+        cv.check_type("statepoint", statepoint, openmc.StatePoint)
 
         if statepoint.summary is None:
-            msg = 'Unable to load data from a statepoint which has not been ' \
-                  'linked with a summary file'
+            msg = (
+                "Unable to load data from a statepoint which has not been "
+                "linked with a summary file"
+            )
             raise ValueError(msg)
 
         self._sp_filename = statepoint._f.filename
         self._geometry = statepoint.summary.geometry
         self._atomic_weight_ratios = statepoint.summary.nuclides
 
-        if statepoint.run_mode == 'eigenvalue':
+        if statepoint.run_mode == "eigenvalue":
             self._keff = statepoint.keff.n
 
         # Load tallies for each MGXS for each domain and mgxs type
@@ -661,14 +695,14 @@ class Library:
 
         """
 
-        if self.domain_type == 'material':
-            cv.check_type('domain', domain, (openmc.Material, Integral))
-        elif self.domain_type == 'cell' or self.domain_type == 'distribcell':
-            cv.check_type('domain', domain, (openmc.Cell, Integral))
-        elif self.domain_type == 'universe':
-            cv.check_type('domain', domain, (openmc.Universe, Integral))
-        elif self.domain_type == 'mesh':
-            cv.check_type('domain', domain, (openmc.RegularMesh, Integral))
+        if self.domain_type == "material":
+            cv.check_type("domain", domain, (openmc.Material, Integral))
+        elif self.domain_type == "cell" or self.domain_type == "distribcell":
+            cv.check_type("domain", domain, (openmc.Cell, Integral))
+        elif self.domain_type == "universe":
+            cv.check_type("domain", domain, (openmc.Universe, Integral))
+        elif self.domain_type == "mesh":
+            cv.check_type("domain", domain, (openmc.RegularMesh, Integral))
 
         # Check that requested domain is included in library
         if isinstance(domain, Integral):
@@ -677,8 +711,9 @@ class Library:
                 if domain_id == domain.id:
                     break
             else:
-                msg = 'Unable to find MGXS for "{0}" "{1}" in ' \
-                      'library'.format(self.domain_type, domain_id)
+                msg = 'Unable to find MGXS for "{0}" "{1}" in ' "library".format(
+                    self.domain_type, domain_id
+                )
                 raise ValueError(msg)
         else:
             domain_id = domain.id
@@ -721,17 +756,26 @@ class Library:
         """
 
         if self.sp_filename is None:
-            msg = 'Unable to get a condensed coarse group cross section ' \
-                  'library since the statepoint has not yet been loaded'
+            msg = (
+                "Unable to get a condensed coarse group cross section "
+                "library since the statepoint has not yet been loaded"
+            )
             raise ValueError(msg)
 
-        cv.check_type('coarse_groups', coarse_groups, openmc.mgxs.EnergyGroups)
-        cv.check_less_than('coarse groups', coarse_groups.num_groups,
-                           self.num_groups, equality=True)
-        cv.check_value('upper coarse energy', coarse_groups.group_edges[-1],
-                       [self.energy_groups.group_edges[-1]])
-        cv.check_value('lower coarse energy', coarse_groups.group_edges[0],
-                       [self.energy_groups.group_edges[0]])
+        cv.check_type("coarse_groups", coarse_groups, openmc.mgxs.EnergyGroups)
+        cv.check_less_than(
+            "coarse groups", coarse_groups.num_groups, self.num_groups, equality=True
+        )
+        cv.check_value(
+            "upper coarse energy",
+            coarse_groups.group_edges[-1],
+            [self.energy_groups.group_edges[-1]],
+        )
+        cv.check_value(
+            "lower coarse energy",
+            coarse_groups.group_edges[0],
+            [self.energy_groups.group_edges[0]],
+        )
 
         # Clone this Library to initialize the condensed version
         condensed_library = copy.deepcopy(self)
@@ -773,15 +817,17 @@ class Library:
         """
 
         if self.sp_filename is None:
-            msg = 'Unable to get a subdomain-averaged cross section ' \
-                  'library since the statepoint has not yet been loaded'
+            msg = (
+                "Unable to get a subdomain-averaged cross section "
+                "library since the statepoint has not yet been loaded"
+            )
             raise ValueError(msg)
 
         # Clone this Library to initialize the subdomain-averaged version
         subdomain_avg_library = copy.deepcopy(self)
 
-        if subdomain_avg_library.domain_type == 'distribcell':
-            subdomain_avg_library.domain_type = 'cell'
+        if subdomain_avg_library.domain_type == "distribcell":
+            subdomain_avg_library.domain_type = "cell"
         else:
             return subdomain_avg_library
 
@@ -789,15 +835,22 @@ class Library:
         for domain in self.domains:
             for mgxs_type in self.mgxs_types:
                 mgxs = subdomain_avg_library.get_mgxs(domain, mgxs_type)
-                if mgxs.domain_type == 'distribcell':
+                if mgxs.domain_type == "distribcell":
                     avg_mgxs = mgxs.get_subdomain_avg_xs()
                     subdomain_avg_library.all_mgxs[domain.id][mgxs_type] = avg_mgxs
 
         return subdomain_avg_library
 
-    def build_hdf5_store(self, filename='mgxs.h5', directory='mgxs',
-                         subdomains='all', nuclides='all', xs_type='macro',
-                         row_column='inout', libver='earliest'):
+    def build_hdf5_store(
+        self,
+        filename="mgxs.h5",
+        directory="mgxs",
+        subdomains="all",
+        nuclides="all",
+        xs_type="macro",
+        row_column="inout",
+        libver="earliest",
+    ):
         """Export the multi-group cross section library to an HDF5 binary file.
 
         This method constructs an HDF5 file which stores the library's
@@ -847,12 +900,14 @@ class Library:
         """
 
         if self.sp_filename is None:
-            msg = 'Unable to export multi-group cross section library ' \
-                  'since a statepoint has not yet been loaded'
+            msg = (
+                "Unable to export multi-group cross section library "
+                "since a statepoint has not yet been loaded"
+            )
             raise ValueError(msg)
 
-        cv.check_type('filename', filename, str)
-        cv.check_type('directory', directory, str)
+        cv.check_type("filename", filename, str)
+        cv.check_type("directory", directory, str)
 
         import h5py
 
@@ -862,9 +917,9 @@ class Library:
 
         # Add an attribute for the number of energy groups to the HDF5 file
         full_filename = os.path.join(directory, filename)
-        full_filename = full_filename.replace(' ', '-')
-        f = h5py.File(full_filename, 'w', libver=libver)
-        f.attrs['# groups'] = self.num_groups
+        full_filename = full_filename.replace(" ", "-")
+        f = h5py.File(full_filename, "w", libver=libver)
+        f.attrs["# groups"] = self.num_groups
         f.close()
 
         # Export MGXS for each domain and mgxs type to an HDF5 file
@@ -872,13 +927,18 @@ class Library:
             for mgxs_type in self.mgxs_types:
                 mgxs = self.all_mgxs[domain.id][mgxs_type]
 
-                if subdomains == 'avg':
+                if subdomains == "avg":
                     mgxs = mgxs.get_subdomain_avg_xs()
 
-                mgxs.build_hdf5_store(filename, directory, xs_type=xs_type,
-                                      nuclides=nuclides, row_column=row_column)
+                mgxs.build_hdf5_store(
+                    filename,
+                    directory,
+                    xs_type=xs_type,
+                    nuclides=nuclides,
+                    row_column=row_column,
+                )
 
-    def dump_to_file(self, filename='mgxs', directory='mgxs'):
+    def dump_to_file(self, filename="mgxs", directory="mgxs"):
         """Store this Library object in a pickle binary file.
 
         Parameters
@@ -894,22 +954,22 @@ class Library:
 
         """
 
-        cv.check_type('filename', filename, str)
-        cv.check_type('directory', directory, str)
+        cv.check_type("filename", filename, str)
+        cv.check_type("directory", directory, str)
 
         # Make directory if it does not exist
         if not os.path.exists(directory):
             os.makedirs(directory)
 
-        full_filename = os.path.join(directory, f'{filename}.pkl')
-        full_filename = full_filename.replace(' ', '-')
+        full_filename = os.path.join(directory, f"{filename}.pkl")
+        full_filename = full_filename.replace(" ", "-")
 
         # Load and return pickled Library object
-        with open(full_filename, 'wb') as f:
+        with open(full_filename, "wb") as f:
             pickle.dump(self, f)
 
     @staticmethod
-    def load_from_file(filename='mgxs', directory='mgxs'):
+    def load_from_file(filename="mgxs", directory="mgxs"):
         """Load a Library object from a pickle binary file.
 
         Parameters
@@ -930,22 +990,29 @@ class Library:
 
         """
 
-        cv.check_type('filename', filename, str)
-        cv.check_type('directory', directory, str)
+        cv.check_type("filename", filename, str)
+        cv.check_type("directory", directory, str)
 
         # Make directory if it does not exist
         if not os.path.exists(directory):
             os.makedirs(directory)
 
-        full_filename = os.path.join(directory, filename + '.pkl')
-        full_filename = full_filename.replace(' ', '-')
+        full_filename = os.path.join(directory, filename + ".pkl")
+        full_filename = full_filename.replace(" ", "-")
 
         # Load and return pickled Library object
-        with open(full_filename, 'rb') as f:
+        with open(full_filename, "rb") as f:
             return pickle.load(f)
 
-    def get_xsdata(self, domain, xsdata_name, nuclide='total', xs_type='macro',
-                   subdomain=None, apply_domain_chi=False):
+    def get_xsdata(
+        self,
+        domain,
+        xsdata_name,
+        nuclide="total",
+        xs_type="macro",
+        subdomain=None,
+        apply_domain_chi=False,
+    ):
         """Generates an openmc.XSdata object describing a multi-group cross section
         dataset for writing to an openmc.MGXSLibrary object.
 
@@ -999,259 +1066,299 @@ class Library:
 
         """
 
-        cv.check_type('domain', domain, (openmc.Material, openmc.Cell,
-                                         openmc.Universe, openmc.RegularMesh))
-        cv.check_type('xsdata_name', xsdata_name, str)
-        cv.check_type('nuclide', nuclide, str)
-        cv.check_value('xs_type', xs_type, ['macro', 'micro'])
+        cv.check_type(
+            "domain",
+            domain,
+            (openmc.Material, openmc.Cell, openmc.Universe, openmc.RegularMesh),
+        )
+        cv.check_type("xsdata_name", xsdata_name, str)
+        cv.check_type("nuclide", nuclide, str)
+        cv.check_value("xs_type", xs_type, ["macro", "micro"])
         if subdomain is not None:
-            cv.check_iterable_type('subdomain', subdomain, Integral,
-                                   max_depth=3)
+            cv.check_iterable_type("subdomain", subdomain, Integral, max_depth=3)
 
         # Make sure statepoint has been loaded
         if self._sp_filename is None:
-            msg = 'A StatePoint must be loaded before calling ' \
-                  'the create_mg_library() function'
+            msg = (
+                "A StatePoint must be loaded before calling "
+                "the create_mg_library() function"
+            )
             raise ValueError(msg)
 
         # If gathering material-specific data, set the xs_type to macro
         if not self.by_nuclide:
-            xs_type = 'macro'
+            xs_type = "macro"
 
         # Build & add metadata to XSdata object
         name = xsdata_name
-        if nuclide != 'total':
-            name += '_' + nuclide
+        if nuclide != "total":
+            name += "_" + nuclide
         if self.num_polar > 1 or self.num_azimuthal > 1:
-            representation = 'angle'
+            representation = "angle"
         else:
-            representation = 'isotropic'
-        xsdata = openmc.XSdata(name, self.energy_groups,
-                               representation=representation)
+            representation = "isotropic"
+        xsdata = openmc.XSdata(name, self.energy_groups, representation=representation)
         xsdata.num_delayed_groups = self.num_delayed_groups
         if self.num_polar > 1 or self.num_azimuthal > 1:
             xsdata.num_polar = self.num_polar
             xsdata.num_azimuthal = self.num_azimuthal
 
-        if nuclide != 'total':
+        if nuclide != "total":
             xsdata.atomic_weight_ratio = self._atomic_weight_ratios[nuclide]
 
         if subdomain is None:
-            subdomain = 'all'
+            subdomain = "all"
         else:
             subdomain = [subdomain]
 
         # Now get xs data itself
-        if 'nu-transport' in self.mgxs_types and self.correction == 'P0':
-            mymgxs = self.get_mgxs(domain, 'nu-transport')
-            xsdata.set_total_mgxs(mymgxs, xs_type=xs_type, nuclide=[nuclide],
-                                  subdomain=subdomain)
+        if "nu-transport" in self.mgxs_types and self.correction == "P0":
+            mymgxs = self.get_mgxs(domain, "nu-transport")
+            xsdata.set_total_mgxs(
+                mymgxs, xs_type=xs_type, nuclide=[nuclide], subdomain=subdomain
+            )
 
-        elif 'transport' in self.mgxs_types and self.correction == 'P0':
-            mymgxs = self.get_mgxs(domain, 'transport')
-            xsdata.set_total_mgxs(mymgxs, xs_type=xs_type, nuclide=[nuclide],
-                                  subdomain=subdomain)
+        elif "transport" in self.mgxs_types and self.correction == "P0":
+            mymgxs = self.get_mgxs(domain, "transport")
+            xsdata.set_total_mgxs(
+                mymgxs, xs_type=xs_type, nuclide=[nuclide], subdomain=subdomain
+            )
 
-        elif 'total' in self.mgxs_types:
-            mymgxs = self.get_mgxs(domain, 'total')
-            xsdata.set_total_mgxs(mymgxs, xs_type=xs_type, nuclide=[nuclide],
-                                  subdomain=subdomain)
+        elif "total" in self.mgxs_types:
+            mymgxs = self.get_mgxs(domain, "total")
+            xsdata.set_total_mgxs(
+                mymgxs, xs_type=xs_type, nuclide=[nuclide], subdomain=subdomain
+            )
 
-        if 'absorption' in self.mgxs_types:
-            mymgxs = self.get_mgxs(domain, 'absorption')
-            xsdata.set_absorption_mgxs(mymgxs, xs_type=xs_type,
-                                       nuclide=[nuclide],
-                                       subdomain=subdomain)
+        if "absorption" in self.mgxs_types:
+            mymgxs = self.get_mgxs(domain, "absorption")
+            xsdata.set_absorption_mgxs(
+                mymgxs, xs_type=xs_type, nuclide=[nuclide], subdomain=subdomain
+            )
 
-        if 'fission' in self.mgxs_types:
-            mymgxs = self.get_mgxs(domain, 'fission')
-            xsdata.set_fission_mgxs(mymgxs, xs_type=xs_type,
-                                    nuclide=[nuclide], subdomain=subdomain)
+        if "fission" in self.mgxs_types:
+            mymgxs = self.get_mgxs(domain, "fission")
+            xsdata.set_fission_mgxs(
+                mymgxs, xs_type=xs_type, nuclide=[nuclide], subdomain=subdomain
+            )
 
-        if 'kappa-fission' in self.mgxs_types:
-            mymgxs = self.get_mgxs(domain, 'kappa-fission')
-            xsdata.set_kappa_fission_mgxs(mymgxs, xs_type=xs_type,
-                                          nuclide=[nuclide],
-                                          subdomain=subdomain)
+        if "kappa-fission" in self.mgxs_types:
+            mymgxs = self.get_mgxs(domain, "kappa-fission")
+            xsdata.set_kappa_fission_mgxs(
+                mymgxs, xs_type=xs_type, nuclide=[nuclide], subdomain=subdomain
+            )
 
-        if 'inverse-velocity' in self.mgxs_types:
-            mymgxs = self.get_mgxs(domain, 'inverse-velocity')
-            xsdata.set_inverse_velocity_mgxs(mymgxs, xs_type=xs_type,
-                                             nuclide=[nuclide],
-                                             subdomain=subdomain)
+        if "inverse-velocity" in self.mgxs_types:
+            mymgxs = self.get_mgxs(domain, "inverse-velocity")
+            xsdata.set_inverse_velocity_mgxs(
+                mymgxs, xs_type=xs_type, nuclide=[nuclide], subdomain=subdomain
+            )
 
-        if 'nu-fission matrix' in self.mgxs_types:
-            mymgxs = self.get_mgxs(domain, 'nu-fission matrix')
-            xsdata.set_nu_fission_mgxs(mymgxs, xs_type=xs_type,
-                                       nuclide=[nuclide],
-                                       subdomain=subdomain)
+        if "nu-fission matrix" in self.mgxs_types:
+            mymgxs = self.get_mgxs(domain, "nu-fission matrix")
+            xsdata.set_nu_fission_mgxs(
+                mymgxs, xs_type=xs_type, nuclide=[nuclide], subdomain=subdomain
+            )
 
-        if 'chi' in self.mgxs_types:
-            mymgxs = self.get_mgxs(domain, 'chi')
+        if "chi" in self.mgxs_types:
+            mymgxs = self.get_mgxs(domain, "chi")
             if apply_domain_chi and nuclide != "total":
                 nuc = "sum"
             else:
                 nuc = nuclide
-            xsdata.set_chi_mgxs(mymgxs, xs_type=xs_type, nuclide=[nuc],
-                                subdomain=subdomain)
+            xsdata.set_chi_mgxs(
+                mymgxs, xs_type=xs_type, nuclide=[nuc], subdomain=subdomain
+            )
 
-        if 'chi-prompt' in self.mgxs_types:
-            mymgxs = self.get_mgxs(domain, 'chi-prompt')
+        if "chi-prompt" in self.mgxs_types:
+            mymgxs = self.get_mgxs(domain, "chi-prompt")
             if apply_domain_chi and nuclide != "total":
                 nuc = "sum"
             else:
                 nuc = nuclide
-            xsdata.set_chi_prompt_mgxs(mymgxs, xs_type=xs_type,
-                                       nuclide=[nuc], subdomain=subdomain)
+            xsdata.set_chi_prompt_mgxs(
+                mymgxs, xs_type=xs_type, nuclide=[nuc], subdomain=subdomain
+            )
 
-        if 'chi-delayed' in self.mgxs_types:
-            mymgxs = self.get_mgxs(domain, 'chi-delayed')
+        if "chi-delayed" in self.mgxs_types:
+            mymgxs = self.get_mgxs(domain, "chi-delayed")
             if apply_domain_chi and nuclide != "total":
                 nuc = "sum"
             else:
                 nuc = nuclide
-            xsdata.set_chi_delayed_mgxs(mymgxs, xs_type=xs_type,
-                                        nuclide=[nuc], subdomain=subdomain)
+            xsdata.set_chi_delayed_mgxs(
+                mymgxs, xs_type=xs_type, nuclide=[nuc], subdomain=subdomain
+            )
 
-        if 'nu-fission' in self.mgxs_types:
-            mymgxs = self.get_mgxs(domain, 'nu-fission')
-            xsdata.set_nu_fission_mgxs(mymgxs, xs_type=xs_type,
-                                       nuclide=[nuclide],
-                                       subdomain=subdomain)
+        if "nu-fission" in self.mgxs_types:
+            mymgxs = self.get_mgxs(domain, "nu-fission")
+            xsdata.set_nu_fission_mgxs(
+                mymgxs, xs_type=xs_type, nuclide=[nuclide], subdomain=subdomain
+            )
 
-        if 'prompt-nu-fission' in self.mgxs_types:
-            mymgxs = self.get_mgxs(domain, 'prompt-nu-fission')
-            xsdata.set_prompt_nu_fission_mgxs(mymgxs, xs_type=xs_type,
-                                              nuclide=[nuclide],
-                                              subdomain=subdomain)
+        if "prompt-nu-fission" in self.mgxs_types:
+            mymgxs = self.get_mgxs(domain, "prompt-nu-fission")
+            xsdata.set_prompt_nu_fission_mgxs(
+                mymgxs, xs_type=xs_type, nuclide=[nuclide], subdomain=subdomain
+            )
 
-        if 'prompt-nu-fission matrix' in self.mgxs_types:
-            mymgxs = self.get_mgxs(domain, 'prompt-nu-fission matrix')
-            xsdata.set_prompt_nu_fission_mgxs(mymgxs, xs_type=xs_type,
-                                              nuclide=[nuclide],
-                                              subdomain=subdomain)
+        if "prompt-nu-fission matrix" in self.mgxs_types:
+            mymgxs = self.get_mgxs(domain, "prompt-nu-fission matrix")
+            xsdata.set_prompt_nu_fission_mgxs(
+                mymgxs, xs_type=xs_type, nuclide=[nuclide], subdomain=subdomain
+            )
 
-        if 'delayed-nu-fission' in self.mgxs_types:
-            mymgxs = self.get_mgxs(domain, 'delayed-nu-fission')
-            xsdata.set_delayed_nu_fission_mgxs(mymgxs, xs_type=xs_type,
-                                               nuclide=[nuclide],
-                                               subdomain=subdomain)
+        if "delayed-nu-fission" in self.mgxs_types:
+            mymgxs = self.get_mgxs(domain, "delayed-nu-fission")
+            xsdata.set_delayed_nu_fission_mgxs(
+                mymgxs, xs_type=xs_type, nuclide=[nuclide], subdomain=subdomain
+            )
 
-        if 'delayed-nu-fission matrix' in self.mgxs_types:
-            mymgxs = self.get_mgxs(domain, 'delayed-nu-fission matrix')
-            xsdata.set_delayed_nu_fission_mgxs(mymgxs, xs_type=xs_type,
-                                               nuclide=[nuclide],
-                                               subdomain=subdomain)
+        if "delayed-nu-fission matrix" in self.mgxs_types:
+            mymgxs = self.get_mgxs(domain, "delayed-nu-fission matrix")
+            xsdata.set_delayed_nu_fission_mgxs(
+                mymgxs, xs_type=xs_type, nuclide=[nuclide], subdomain=subdomain
+            )
 
-        if 'beta' in self.mgxs_types:
-            mymgxs = self.get_mgxs(domain, 'beta')
-            xsdata.set_beta_mgxs(mymgxs, xs_type=xs_type, nuclide=[nuclide],
-                                 subdomain=subdomain)
+        if "beta" in self.mgxs_types:
+            mymgxs = self.get_mgxs(domain, "beta")
+            xsdata.set_beta_mgxs(
+                mymgxs, xs_type=xs_type, nuclide=[nuclide], subdomain=subdomain
+            )
 
-        if 'decay-rate' in self.mgxs_types:
-            mymgxs = self.get_mgxs(domain, 'decay-rate')
-            xsdata.set_decay_rate_mgxs(mymgxs, xs_type=xs_type, nuclide=[nuclide],
-                                subdomain=subdomain)
+        if "decay-rate" in self.mgxs_types:
+            mymgxs = self.get_mgxs(domain, "decay-rate")
+            xsdata.set_decay_rate_mgxs(
+                mymgxs, xs_type=xs_type, nuclide=[nuclide], subdomain=subdomain
+            )
 
         # If multiplicity matrix is available, prefer that
-        if 'multiplicity matrix' in self.mgxs_types:
-            mymgxs = self.get_mgxs(domain, 'multiplicity matrix')
-            xsdata.set_multiplicity_matrix_mgxs(mymgxs, xs_type=xs_type,
-                                                nuclide=[nuclide],
-                                                subdomain=subdomain)
+        if "multiplicity matrix" in self.mgxs_types:
+            mymgxs = self.get_mgxs(domain, "multiplicity matrix")
+            xsdata.set_multiplicity_matrix_mgxs(
+                mymgxs, xs_type=xs_type, nuclide=[nuclide], subdomain=subdomain
+            )
             using_multiplicity = True
 
         # multiplicity will fall back to using scatter and nu-scatter
-        elif 'scatter matrix' in self.mgxs_types and \
-             'nu-scatter matrix' in self.mgxs_types:
-            scatt_mgxs = self.get_mgxs(domain, 'scatter matrix')
-            nuscatt_mgxs = self.get_mgxs(domain, 'nu-scatter matrix')
-            xsdata.set_multiplicity_matrix_mgxs(nuscatt_mgxs, scatt_mgxs,
-                                                xs_type=xs_type,
-                                                nuclide=[nuclide],
-                                                subdomain=subdomain)
+        elif (
+            "scatter matrix" in self.mgxs_types
+            and "nu-scatter matrix" in self.mgxs_types
+        ):
+            scatt_mgxs = self.get_mgxs(domain, "scatter matrix")
+            nuscatt_mgxs = self.get_mgxs(domain, "nu-scatter matrix")
+            xsdata.set_multiplicity_matrix_mgxs(
+                nuscatt_mgxs,
+                scatt_mgxs,
+                xs_type=xs_type,
+                nuclide=[nuclide],
+                subdomain=subdomain,
+            )
             using_multiplicity = True
 
         # multiplicity will fall back to using scatter and nu-scatter
-        elif 'consistent scatter matrix' in self.mgxs_types and \
-             'consistent nu-scatter matrix' in self.mgxs_types:
-            scatt_mgxs = self.get_mgxs(domain, 'consistent scatter matrix')
-            nuscatt_mgxs = \
-                self.get_mgxs(domain, 'consistent nu-scatter matrix')
-            xsdata.set_multiplicity_matrix_mgxs(nuscatt_mgxs, scatt_mgxs,
-                                                xs_type=xs_type,
-                                                nuclide=[nuclide],
-                                                subdomain=subdomain)
+        elif (
+            "consistent scatter matrix" in self.mgxs_types
+            and "consistent nu-scatter matrix" in self.mgxs_types
+        ):
+            scatt_mgxs = self.get_mgxs(domain, "consistent scatter matrix")
+            nuscatt_mgxs = self.get_mgxs(domain, "consistent nu-scatter matrix")
+            xsdata.set_multiplicity_matrix_mgxs(
+                nuscatt_mgxs,
+                scatt_mgxs,
+                xs_type=xs_type,
+                nuclide=[nuclide],
+                subdomain=subdomain,
+            )
             using_multiplicity = True
 
         else:
             using_multiplicity = False
 
         if using_multiplicity:
-            if 'nu-scatter matrix' in self.mgxs_types:
-                nuscatt_mgxs = self.get_mgxs(domain, 'nu-scatter matrix')
+            if "nu-scatter matrix" in self.mgxs_types:
+                nuscatt_mgxs = self.get_mgxs(domain, "nu-scatter matrix")
             else:
-                nuscatt_mgxs = \
-                    self.get_mgxs(domain, 'consistent nu-scatter matrix')
-            xsdata.set_scatter_matrix_mgxs(nuscatt_mgxs, xs_type=xs_type,
-                                           nuclide=[nuclide],
-                                           subdomain=subdomain)
+                nuscatt_mgxs = self.get_mgxs(domain, "consistent nu-scatter matrix")
+            xsdata.set_scatter_matrix_mgxs(
+                nuscatt_mgxs, xs_type=xs_type, nuclide=[nuclide], subdomain=subdomain
+            )
         else:
-            if 'nu-scatter matrix' in self.mgxs_types or \
-                    'consistent nu-scatter matrix' in self.mgxs_types:
-                if 'nu-scatter matrix' in self.mgxs_types:
-                    nuscatt_mgxs = self.get_mgxs(domain, 'nu-scatter matrix')
+            if (
+                "nu-scatter matrix" in self.mgxs_types
+                or "consistent nu-scatter matrix" in self.mgxs_types
+            ):
+                if "nu-scatter matrix" in self.mgxs_types:
+                    nuscatt_mgxs = self.get_mgxs(domain, "nu-scatter matrix")
                 else:
-                    nuscatt_mgxs = \
-                        self.get_mgxs(domain, 'consistent nu-scatter matrix')
-                xsdata.set_scatter_matrix_mgxs(nuscatt_mgxs, xs_type=xs_type,
-                                               nuclide=[nuclide],
-                                               subdomain=subdomain)
+                    nuscatt_mgxs = self.get_mgxs(domain, "consistent nu-scatter matrix")
+                xsdata.set_scatter_matrix_mgxs(
+                    nuscatt_mgxs,
+                    xs_type=xs_type,
+                    nuclide=[nuclide],
+                    subdomain=subdomain,
+                )
 
                 # Since we are not using multiplicity, then
                 # scattering multiplication (nu-scatter) must be
                 # accounted for approximately by using an adjusted
                 # absorption cross section.
-                if 'total' in self.mgxs_types or 'transport' in self.mgxs_types:
-                    if xsdata.scatter_format == 'legendre':
+                if "total" in self.mgxs_types or "transport" in self.mgxs_types:
+                    if xsdata.scatter_format == "legendre":
                         for i in range(len(xsdata.temperatures)):
-                            if representation == 'isotropic':
-                                xsdata._absorption[i] = \
-                                    np.subtract(xsdata._total[i], np.sum(
-                                        xsdata._scatter_matrix[i][:, :, 0],
-                                        axis=1))
-                            elif representation == 'angle':
-                                xsdata._absorption[i] = \
-                                    np.subtract(xsdata._total[i], np.sum(
-                                        xsdata._scatter_matrix[i][:, :, :, :, 0],
-                                        axis=3))
-                    elif xsdata.scatter_format == 'histogram':
+                            if representation == "isotropic":
+                                xsdata._absorption[i] = np.subtract(
+                                    xsdata._total[i],
+                                    np.sum(xsdata._scatter_matrix[i][:, :, 0], axis=1),
+                                )
+                            elif representation == "angle":
+                                xsdata._absorption[i] = np.subtract(
+                                    xsdata._total[i],
+                                    np.sum(
+                                        xsdata._scatter_matrix[i][:, :, :, :, 0], axis=3
+                                    ),
+                                )
+                    elif xsdata.scatter_format == "histogram":
                         for i in range(len(xsdata.temperatures)):
-                            if representation == 'isotropic':
-                                xsdata._absorption[i] = \
-                                    np.subtract(xsdata._total[i], np.sum(np.sum(
-                                        xsdata._scatter_matrix[i][:, :, :],
-                                        axis=2), axis=1))
-                            elif representation == 'angle':
-                                xsdata._absorption[i] = \
-                                    np.subtract(xsdata._total[i], np.sum(np.sum(
-                                        xsdata._scatter_matrix[i][:, :, :, :, :],
-                                        axis=4), axis=3))
+                            if representation == "isotropic":
+                                xsdata._absorption[i] = np.subtract(
+                                    xsdata._total[i],
+                                    np.sum(
+                                        np.sum(
+                                            xsdata._scatter_matrix[i][:, :, :], axis=2
+                                        ),
+                                        axis=1,
+                                    ),
+                                )
+                            elif representation == "angle":
+                                xsdata._absorption[i] = np.subtract(
+                                    xsdata._total[i],
+                                    np.sum(
+                                        np.sum(
+                                            xsdata._scatter_matrix[i][:, :, :, :, :],
+                                            axis=4,
+                                        ),
+                                        axis=3,
+                                    ),
+                                )
             # if only scatter matrices have been tallied, multiplicity cannot
             # be accounted for
             else:
-                msg = 'Scatter multiplicity (such as (n,xn) reactions) '\
-                      'are ignored since multiplicity or nu-scatter matrices '\
-                      'were not tallied for ' + xsdata_name
+                msg = (
+                    "Scatter multiplicity (such as (n,xn) reactions) "
+                    "are ignored since multiplicity or nu-scatter matrices "
+                    "were not tallied for " + xsdata_name
+                )
                 warn(msg, RuntimeWarning)
-                xsdata.set_scatter_matrix_mgxs(scatt_mgxs, xs_type=xs_type,
-                                               nuclide=[nuclide],
-                                               subdomain=subdomain)
+                xsdata.set_scatter_matrix_mgxs(
+                    scatt_mgxs, xs_type=xs_type, nuclide=[nuclide], subdomain=subdomain
+                )
 
         return xsdata
 
-    def create_mg_library(self, xs_type='macro', xsdata_names=None,
-                          apply_domain_chi=False):
+    def create_mg_library(
+        self, xs_type="macro", xsdata_names=None, apply_domain_chi=False
+    ):
         """Creates an openmc.MGXSLibrary object to contain the MGXS data for the
         Multi-Group mode of OpenMC.
 
@@ -1301,35 +1408,36 @@ class Library:
         # multi-group cross section types
         self.check_library_for_openmc_mgxs()
 
-        cv.check_value('xs_type', xs_type, ['macro', 'micro'])
+        cv.check_value("xs_type", xs_type, ["macro", "micro"])
         if xsdata_names is not None:
-            cv.check_iterable_type('xsdata_names', xsdata_names, str)
+            cv.check_iterable_type("xsdata_names", xsdata_names, str)
 
         # If gathering material-specific data, set the xs_type to macro
         if not self.by_nuclide:
-            xs_type = 'macro'
+            xs_type = "macro"
 
         # Initialize file
         mgxs_file = openmc.MGXSLibrary(
-            self.energy_groups, num_delayed_groups=self.num_delayed_groups)
+            self.energy_groups, num_delayed_groups=self.num_delayed_groups
+        )
 
-        if self.domain_type == 'mesh':
+        if self.domain_type == "mesh":
             # Create the xsdata objects and add to the mgxs_file
             i = 0
             for domain in self.domains:
                 if self.by_nuclide:
-                    raise NotImplementedError("Mesh domains do not currently "
-                                              "support nuclidic tallies")
+                    raise NotImplementedError(
+                        "Mesh domains do not currently " "support nuclidic tallies"
+                    )
                 for subdomain in domain.indices:
                     # Build & add metadata to XSdata object
                     if xsdata_names is None:
-                        xsdata_name = 'set' + str(i + 1)
+                        xsdata_name = "set" + str(i + 1)
                     else:
                         xsdata_name = xsdata_names[i]
 
                     # Create XSdata and Macroscopic for this domain
-                    xsdata = self.get_xsdata(domain, xsdata_name,
-                                             subdomain=subdomain)
+                    xsdata = self.get_xsdata(domain, xsdata_name, subdomain=subdomain)
                     mgxs_file.add_xsdata(xsdata)
                     i += 1
 
@@ -1339,24 +1447,29 @@ class Library:
                 if self.by_nuclide:
                     nuclides = domain.get_nuclides()
                 else:
-                    nuclides = ['total']
+                    nuclides = ["total"]
                 for nuclide in nuclides:
                     # Build & add metadata to XSdata object
                     if xsdata_names is None:
-                        xsdata_name = 'set' + str(i + 1)
+                        xsdata_name = "set" + str(i + 1)
                     else:
                         xsdata_name = xsdata_names[i]
 
-                    xsdata = self.get_xsdata(domain, xsdata_name,
-                                             nuclide=nuclide, xs_type=xs_type,
-                                             apply_domain_chi=apply_domain_chi)
+                    xsdata = self.get_xsdata(
+                        domain,
+                        xsdata_name,
+                        nuclide=nuclide,
+                        xs_type=xs_type,
+                        apply_domain_chi=apply_domain_chi,
+                    )
 
                     mgxs_file.add_xsdata(xsdata)
 
         return mgxs_file
 
-    def create_mg_mode(self, xsdata_names=None, bc=['reflective'] * 6,
-                       apply_domain_chi=False):
+    def create_mg_mode(
+        self, xsdata_names=None, bc=["reflective"] * 6, apply_domain_chi=False
+    ):
         """Creates an openmc.MGXSLibrary object to contain the MGXS data for the
         Multi-Group mode of OpenMC as well as the associated openmc.Materials
         and openmc.Geometry objects.
@@ -1425,20 +1538,20 @@ class Library:
         # the multiple meshes could be overlapping or in disparate regions
         # of the continuous energy model. The next step makes sure there is
         # only one before continuing.
-        if self.domain_type == 'mesh':
+        if self.domain_type == "mesh":
             cv.check_length("domains", self.domains, 1, 1)
 
         # Get the MGXS File Data
-        mgxs_file = self.create_mg_library('macro', xsdata_names,
-                                           apply_domain_chi=apply_domain_chi)
+        mgxs_file = self.create_mg_library(
+            "macro", xsdata_names, apply_domain_chi=apply_domain_chi
+        )
 
         # Now move on the creating the geometry and assigning materials
-        if self.domain_type == 'mesh':
-            root = openmc.Universe(name='root', universe_id=0)
+        if self.domain_type == "mesh":
+            root = openmc.Universe(name="root", universe_id=0)
 
             # Add cells representative of the mesh with reflective BC
-            root_cell, cells = \
-                self.domains[0].build_cells(bc)
+            root_cell, cells = self.domains[0].build_cells(bc)
             root.add_cell(root_cell)
 
             geometry = openmc.Geometry()
@@ -1480,18 +1593,23 @@ class Library:
                 materials.append(material)
 
                 # Differentiate Geometry with new Material
-                if self.domain_type == 'material':
+                if self.domain_type == "material":
                     # Fill all appropriate Cells with new Material
                     for cell in all_cells:
-                        if isinstance(cell.fill, openmc.Material) and cell.fill.id == domain.id:
+                        if (
+                            isinstance(cell.fill, openmc.Material)
+                            and cell.fill.id == domain.id
+                        ):
                             cell.fill = material
 
-                elif self.domain_type == 'cell':
+                elif self.domain_type == "cell":
                     for cell in all_cells:
                         if not isinstance(cell.fill, openmc.Material):
-                            warn('If the library domain includes a lattice or universe cell '
-                            'in conjunction with a consituent cell of that lattice/universe, '
-                            'the multi-group simulation will fail')
+                            warn(
+                                "If the library domain includes a lattice or universe cell "
+                                "in conjunction with a consituent cell of that lattice/universe, "
+                                "the multi-group simulation will fail"
+                            )
                         if cell.id == domain.id:
                             cell.fill = material
 
@@ -1529,57 +1647,83 @@ class Library:
 
         # if correction is 'P0', then transport must be provided
         # otherwise total must be provided
-        if self.correction == 'P0':
-            if ('transport' not in self.mgxs_types and
-                'nu-transport' not in self.mgxs_types):
+        if self.correction == "P0":
+            if (
+                "transport" not in self.mgxs_types
+                and "nu-transport" not in self.mgxs_types
+            ):
                 error_flag = True
-                warn('If the "correction" parameter is "P0", then a '
-                     '"transport" or "nu-transport" MGXS type is required.')
+                warn(
+                    'If the "correction" parameter is "P0", then a '
+                    '"transport" or "nu-transport" MGXS type is required.'
+                )
         else:
-            if 'total' not in self.mgxs_types:
+            if "total" not in self.mgxs_types:
                 error_flag = True
-                warn('If the "correction" parameter is None, then a '
-                     '"total" MGXS type is required.')
+                warn(
+                    'If the "correction" parameter is None, then a '
+                    '"total" MGXS type is required.'
+                )
 
         # Check consistency of "nu-transport" and "nu-scatter"
-        if 'nu-transport' in self.mgxs_types:
-            if not ('nu-scatter matrix' in self.mgxs_types or
-                    'consistent nu-scatter matrix' in self.mgxs_types):
+        if "nu-transport" in self.mgxs_types:
+            if not (
+                "nu-scatter matrix" in self.mgxs_types
+                or "consistent nu-scatter matrix" in self.mgxs_types
+            ):
                 error_flag = True
-                warn('If a "nu-transport" MGXS type is used then a '
-                     '"nu-scatter matrix" or "consistent nu-scatter matrix" '
-                     'must also be used.')
-        elif 'transport' in self.mgxs_types:
-            if not ('scatter matrix' in self.mgxs_types or
-                    'consistent scatter matrix' in self.mgxs_types):
+                warn(
+                    'If a "nu-transport" MGXS type is used then a '
+                    '"nu-scatter matrix" or "consistent nu-scatter matrix" '
+                    "must also be used."
+                )
+        elif "transport" in self.mgxs_types:
+            if not (
+                "scatter matrix" in self.mgxs_types
+                or "consistent scatter matrix" in self.mgxs_types
+            ):
                 error_flag = True
-                warn('If a "transport" MGXS type is used then a '
-                     '"scatter matrix" or "consistent scatter matrix" '
-                     'must also be used.')
+                warn(
+                    'If a "transport" MGXS type is used then a '
+                    '"scatter matrix" or "consistent scatter matrix" '
+                    "must also be used."
+                )
 
         # Make sure there is some kind of a scattering matrix data
-        if 'nu-scatter matrix' not in self.mgxs_types and \
-            'consistent nu-scatter matrix' not in self.mgxs_types and \
-            'scatter matrix' not in self.mgxs_types and \
-            'consistent scatter matrix' not in self.mgxs_types:
+        if (
+            "nu-scatter matrix" not in self.mgxs_types
+            and "consistent nu-scatter matrix" not in self.mgxs_types
+            and "scatter matrix" not in self.mgxs_types
+            and "consistent scatter matrix" not in self.mgxs_types
+        ):
             error_flag = True
-            warn('A "nu-scatter matrix", "consistent nu-scatter matrix", '
-                 '"scatter matrix", or "consistent scatter matrix" MGXS '
-                 'type is required.')
+            warn(
+                'A "nu-scatter matrix", "consistent nu-scatter matrix", '
+                '"scatter matrix", or "consistent scatter matrix" MGXS '
+                "type is required."
+            )
 
         # Make sure there is some kind of a scattering multiplicity matrix data
-        if 'multiplicity matrix' not in self.mgxs_types and \
-            ('scatter matrix' not in self.mgxs_types or
-             'nu-scatter matrix' not in self.mgxs_types) and\
-            ('consistent scatter matrix' not in self.mgxs_types or
-             'consistent nu-scatter matrix' not in self.mgxs_types):
-            warn('A "multiplicity matrix" or both a "scatter" and "nu-scatter" '
-                 'matrix MGXS type(s) should be provided.')
+        if (
+            "multiplicity matrix" not in self.mgxs_types
+            and (
+                "scatter matrix" not in self.mgxs_types
+                or "nu-scatter matrix" not in self.mgxs_types
+            )
+            and (
+                "consistent scatter matrix" not in self.mgxs_types
+                or "consistent nu-scatter matrix" not in self.mgxs_types
+            )
+        ):
+            warn(
+                'A "multiplicity matrix" or both a "scatter" and "nu-scatter" '
+                "matrix MGXS type(s) should be provided."
+            )
 
         # Ensure absorption is present
-        if 'absorption' not in self.mgxs_types:
+        if "absorption" not in self.mgxs_types:
             error_flag = True
             warn('An "absorption" MGXS type is required but not provided.')
 
         if error_flag:
-            raise ValueError('Invalid MGXS configuration encountered.')
+            raise ValueError("Invalid MGXS configuration encountered.")

@@ -32,6 +32,7 @@ class UnitSphere(ABC):
         Direction from which polar angle is measured
 
     """
+
     def __init__(self, reference_uvw=None):
         self._reference_uvw = None
         if reference_uvw is not None:
@@ -43,23 +44,23 @@ class UnitSphere(ABC):
 
     @reference_uvw.setter
     def reference_uvw(self, uvw):
-        cv.check_type('reference direction', uvw, Iterable, Real)
+        cv.check_type("reference direction", uvw, Iterable, Real)
         uvw = np.asarray(uvw)
-        self._reference_uvw = uvw/np.linalg.norm(uvw)
+        self._reference_uvw = uvw / np.linalg.norm(uvw)
 
     @abstractmethod
     def to_xml_element(self):
-        return ''
+        return ""
 
     @classmethod
     @abstractmethod
     def from_xml_element(cls, elem):
-        distribution = get_text(elem, 'type')
-        if distribution == 'mu-phi':
+        distribution = get_text(elem, "type")
+        if distribution == "mu-phi":
             return PolarAzimuthal.from_xml_element(elem)
-        elif distribution == 'isotropic':
+        elif distribution == "isotropic":
             return Isotropic.from_xml_element(elem)
-        elif distribution == 'monodirectional':
+        elif distribution == "monodirectional":
             return Monodirectional.from_xml_element(elem)
 
 
@@ -89,17 +90,17 @@ class PolarAzimuthal(UnitSphere):
 
     """
 
-    def __init__(self, mu=None, phi=None, reference_uvw=(0., 0., 1.)):
+    def __init__(self, mu=None, phi=None, reference_uvw=(0.0, 0.0, 1.0)):
         super().__init__(reference_uvw)
         if mu is not None:
             self.mu = mu
         else:
-            self.mu = Uniform(-1., 1.)
+            self.mu = Uniform(-1.0, 1.0)
 
         if phi is not None:
             self.phi = phi
         else:
-            self.phi = Uniform(0., 2*pi)
+            self.phi = Uniform(0.0, 2 * pi)
 
     @property
     def mu(self):
@@ -107,7 +108,7 @@ class PolarAzimuthal(UnitSphere):
 
     @mu.setter
     def mu(self, mu):
-        cv.check_type('cosine of polar angle', mu, Univariate)
+        cv.check_type("cosine of polar angle", mu, Univariate)
         self._mu = mu
 
     @property
@@ -116,7 +117,7 @@ class PolarAzimuthal(UnitSphere):
 
     @phi.setter
     def phi(self, phi):
-        cv.check_type('azimuthal angle', phi, Univariate)
+        cv.check_type("azimuthal angle", phi, Univariate)
         self._phi = phi
 
     def to_xml_element(self):
@@ -128,12 +129,12 @@ class PolarAzimuthal(UnitSphere):
             XML element containing angular distribution data
 
         """
-        element = ET.Element('angle')
+        element = ET.Element("angle")
         element.set("type", "mu-phi")
         if self.reference_uvw is not None:
-            element.set("reference_uvw", ' '.join(map(str, self.reference_uvw)))
-        element.append(self.mu.to_xml_element('mu'))
-        element.append(self.phi.to_xml_element('phi'))
+            element.set("reference_uvw", " ".join(map(str, self.reference_uvw)))
+        element.append(self.mu.to_xml_element("mu"))
+        element.append(self.phi.to_xml_element("phi"))
         return element
 
     @classmethod
@@ -152,11 +153,11 @@ class PolarAzimuthal(UnitSphere):
 
         """
         mu_phi = cls()
-        uvw = get_text(elem, 'reference_uvw')
+        uvw = get_text(elem, "reference_uvw")
         if uvw is not None:
             mu_phi.reference_uvw = [float(x) for x in uvw.split()]
-        mu_phi.mu = Univariate.from_xml_element(elem.find('mu'))
-        mu_phi.phi = Univariate.from_xml_element(elem.find('phi'))
+        mu_phi.mu = Univariate.from_xml_element(elem.find("mu"))
+        mu_phi.phi = Univariate.from_xml_element(elem.find("phi"))
         return mu_phi
 
 
@@ -175,7 +176,7 @@ class Isotropic(UnitSphere):
             XML element containing isotropic distribution data
 
         """
-        element = ET.Element('angle')
+        element = ET.Element("angle")
         element.set("type", "isotropic")
         return element
 
@@ -212,7 +213,7 @@ class Monodirectional(UnitSphere):
 
     """
 
-    def __init__(self, reference_uvw: Sequence[float] = [1., 0., 0.]):
+    def __init__(self, reference_uvw: Sequence[float] = [1.0, 0.0, 0.0]):
         super().__init__(reference_uvw)
 
     def to_xml_element(self):
@@ -224,10 +225,10 @@ class Monodirectional(UnitSphere):
             XML element containing monodirectional distribution data
 
         """
-        element = ET.Element('angle')
+        element = ET.Element("angle")
         element.set("type", "monodirectional")
         if self.reference_uvw is not None:
-            element.set("reference_uvw", ' '.join(map(str, self.reference_uvw)))
+            element.set("reference_uvw", " ".join(map(str, self.reference_uvw)))
         return element
 
     @classmethod
@@ -246,7 +247,7 @@ class Monodirectional(UnitSphere):
 
         """
         monodirectional = cls()
-        uvw = get_text(elem, 'reference_uvw')
+        uvw = get_text(elem, "reference_uvw")
         if uvw is not None:
             monodirectional.reference_uvw = [float(x) for x in uvw.split()]
         return monodirectional
@@ -259,27 +260,28 @@ class Spatial(ABC):
     distributions of source sites.
 
     """
+
     @abstractmethod
     def to_xml_element(self):
-        return ''
+        return ""
 
     @classmethod
     @abstractmethod
     def from_xml_element(cls, elem, meshes=None):
-        distribution = get_text(elem, 'type')
-        if distribution == 'cartesian':
+        distribution = get_text(elem, "type")
+        if distribution == "cartesian":
             return CartesianIndependent.from_xml_element(elem)
-        elif distribution == 'cylindrical':
+        elif distribution == "cylindrical":
             return CylindricalIndependent.from_xml_element(elem)
-        elif distribution == 'spherical':
+        elif distribution == "spherical":
             return SphericalIndependent.from_xml_element(elem)
-        elif distribution == 'box' or distribution == 'fission':
+        elif distribution == "box" or distribution == "fission":
             return Box.from_xml_element(elem)
-        elif distribution == 'point':
+        elif distribution == "point":
             return Point.from_xml_element(elem)
-        elif distribution == 'mesh':
+        elif distribution == "mesh":
             return MeshSpatial.from_xml_element(elem, meshes)
-        elif distribution == 'cloud':
+        elif distribution == "cloud":
             return PointCloud.from_xml_element(elem)
 
 
@@ -313,7 +315,7 @@ class CartesianIndependent(Spatial):
         self,
         x: openmc.stats.Univariate,
         y: openmc.stats.Univariate,
-        z: openmc.stats.Univariate
+        z: openmc.stats.Univariate,
     ):
         self.x = x
         self.y = y
@@ -325,7 +327,7 @@ class CartesianIndependent(Spatial):
 
     @x.setter
     def x(self, x):
-        cv.check_type('x coordinate', x, Univariate)
+        cv.check_type("x coordinate", x, Univariate)
         self._x = x
 
     @property
@@ -334,7 +336,7 @@ class CartesianIndependent(Spatial):
 
     @y.setter
     def y(self, y):
-        cv.check_type('y coordinate', y, Univariate)
+        cv.check_type("y coordinate", y, Univariate)
         self._y = y
 
     @property
@@ -343,7 +345,7 @@ class CartesianIndependent(Spatial):
 
     @z.setter
     def z(self, z):
-        cv.check_type('z coordinate', z, Univariate)
+        cv.check_type("z coordinate", z, Univariate)
         self._z = z
 
     def to_xml_element(self):
@@ -355,11 +357,11 @@ class CartesianIndependent(Spatial):
             XML element containing spatial distribution data
 
         """
-        element = ET.Element('space')
-        element.set('type', 'cartesian')
-        element.append(self.x.to_xml_element('x'))
-        element.append(self.y.to_xml_element('y'))
-        element.append(self.z.to_xml_element('z'))
+        element = ET.Element("space")
+        element.set("type", "cartesian")
+        element.append(self.x.to_xml_element("x"))
+        element.append(self.y.to_xml_element("y"))
+        element.append(self.z.to_xml_element("z"))
         return element
 
     @classmethod
@@ -377,9 +379,9 @@ class CartesianIndependent(Spatial):
             Spatial distribution generated from XML element
 
         """
-        x = Univariate.from_xml_element(elem.find('x'))
-        y = Univariate.from_xml_element(elem.find('y'))
-        z = Univariate.from_xml_element(elem.find('z'))
+        x = Univariate.from_xml_element(elem.find("x"))
+        y = Univariate.from_xml_element(elem.find("y"))
+        z = Univariate.from_xml_element(elem.find("z"))
         return cls(x, y, z)
 
 
@@ -438,7 +440,7 @@ class SphericalIndependent(Spatial):
 
     @r.setter
     def r(self, r):
-        cv.check_type('r coordinate', r, Univariate)
+        cv.check_type("r coordinate", r, Univariate)
         self._r = r
 
     @property
@@ -447,7 +449,7 @@ class SphericalIndependent(Spatial):
 
     @cos_theta.setter
     def cos_theta(self, cos_theta):
-        cv.check_type('cos_theta coordinate', cos_theta, Univariate)
+        cv.check_type("cos_theta coordinate", cos_theta, Univariate)
         self._cos_theta = cos_theta
 
     @property
@@ -456,7 +458,7 @@ class SphericalIndependent(Spatial):
 
     @phi.setter
     def phi(self, phi):
-        cv.check_type('phi coordinate', phi, Univariate)
+        cv.check_type("phi coordinate", phi, Univariate)
         self._phi = phi
 
     @property
@@ -465,7 +467,7 @@ class SphericalIndependent(Spatial):
 
     @origin.setter
     def origin(self, origin):
-        cv.check_type('origin coordinates', origin, Iterable, Real)
+        cv.check_type("origin coordinates", origin, Iterable, Real)
         origin = np.asarray(origin)
         self._origin = origin
 
@@ -478,12 +480,12 @@ class SphericalIndependent(Spatial):
             XML element containing spatial distribution data
 
         """
-        element = ET.Element('space')
-        element.set('type', 'spherical')
-        element.append(self.r.to_xml_element('r'))
-        element.append(self.cos_theta.to_xml_element('cos_theta'))
-        element.append(self.phi.to_xml_element('phi'))
-        element.set("origin", ' '.join(map(str, self.origin)))
+        element = ET.Element("space")
+        element.set("type", "spherical")
+        element.append(self.r.to_xml_element("r"))
+        element.append(self.cos_theta.to_xml_element("cos_theta"))
+        element.append(self.phi.to_xml_element("phi"))
+        element.set("origin", " ".join(map(str, self.origin)))
         return element
 
     @classmethod
@@ -501,10 +503,10 @@ class SphericalIndependent(Spatial):
             Spatial distribution generated from XML element
 
         """
-        r = Univariate.from_xml_element(elem.find('r'))
-        cos_theta = Univariate.from_xml_element(elem.find('cos_theta'))
-        phi = Univariate.from_xml_element(elem.find('phi'))
-        origin = [float(x) for x in elem.get('origin').split()]
+        r = Univariate.from_xml_element(elem.find("r"))
+        cos_theta = Univariate.from_xml_element(elem.find("cos_theta"))
+        phi = Univariate.from_xml_element(elem.find("phi"))
+        origin = [float(x) for x in elem.get("origin").split()]
         return cls(r, cos_theta, phi, origin=origin)
 
 
@@ -560,7 +562,7 @@ class CylindricalIndependent(Spatial):
 
     @r.setter
     def r(self, r):
-        cv.check_type('r coordinate', r, Univariate)
+        cv.check_type("r coordinate", r, Univariate)
         self._r = r
 
     @property
@@ -569,7 +571,7 @@ class CylindricalIndependent(Spatial):
 
     @phi.setter
     def phi(self, phi):
-        cv.check_type('phi coordinate', phi, Univariate)
+        cv.check_type("phi coordinate", phi, Univariate)
         self._phi = phi
 
     @property
@@ -578,7 +580,7 @@ class CylindricalIndependent(Spatial):
 
     @z.setter
     def z(self, z):
-        cv.check_type('z coordinate', z, Univariate)
+        cv.check_type("z coordinate", z, Univariate)
         self._z = z
 
     @property
@@ -587,7 +589,7 @@ class CylindricalIndependent(Spatial):
 
     @origin.setter
     def origin(self, origin):
-        cv.check_type('origin coordinates', origin, Iterable, Real)
+        cv.check_type("origin coordinates", origin, Iterable, Real)
         origin = np.asarray(origin)
         self._origin = origin
 
@@ -600,12 +602,12 @@ class CylindricalIndependent(Spatial):
             XML element containing spatial distribution data
 
         """
-        element = ET.Element('space')
-        element.set('type', 'cylindrical')
-        element.append(self.r.to_xml_element('r'))
-        element.append(self.phi.to_xml_element('phi'))
-        element.append(self.z.to_xml_element('z'))
-        element.set("origin", ' '.join(map(str, self.origin)))
+        element = ET.Element("space")
+        element.set("type", "cylindrical")
+        element.append(self.r.to_xml_element("r"))
+        element.append(self.phi.to_xml_element("phi"))
+        element.append(self.z.to_xml_element("z"))
+        element.set("origin", " ".join(map(str, self.origin)))
         return element
 
     @classmethod
@@ -623,10 +625,10 @@ class CylindricalIndependent(Spatial):
             Spatial distribution generated from XML element
 
         """
-        r = Univariate.from_xml_element(elem.find('r'))
-        phi = Univariate.from_xml_element(elem.find('phi'))
-        z = Univariate.from_xml_element(elem.find('z'))
-        origin = [float(x) for x in elem.get('origin').split()]
+        r = Univariate.from_xml_element(elem.find("r"))
+        phi = Univariate.from_xml_element(elem.find("phi"))
+        z = Univariate.from_xml_element(elem.find("z"))
+        origin = [float(x) for x in elem.get("origin").split()]
         return cls(r, phi, z, origin=origin)
 
 
@@ -673,7 +675,7 @@ class MeshSpatial(Spatial):
     @mesh.setter
     def mesh(self, mesh):
         if mesh is not None:
-            cv.check_type('mesh instance', mesh, MeshBase)
+            cv.check_type("mesh instance", mesh, MeshBase)
         self._mesh = mesh
 
     @property
@@ -682,7 +684,7 @@ class MeshSpatial(Spatial):
 
     @volume_normalized.setter
     def volume_normalized(self, volume_normalized):
-        cv.check_type('Multiply strengths by element volumes', volume_normalized, bool)
+        cv.check_type("Multiply strengths by element volumes", volume_normalized, bool)
         self._volume_normalized = volume_normalized
 
     @property
@@ -692,7 +694,7 @@ class MeshSpatial(Spatial):
     @strengths.setter
     def strengths(self, given_strengths):
         if given_strengths is not None:
-            cv.check_type('strengths array passed in', given_strengths, Iterable, Real)
+            cv.check_type("strengths array passed in", given_strengths, Iterable, Real)
             self._strengths = np.asarray(given_strengths, dtype=float).flatten()
         else:
             self._strengths = None
@@ -700,7 +702,7 @@ class MeshSpatial(Spatial):
     @property
     def num_strength_bins(self):
         if self.strengths is None:
-            raise ValueError('Strengths are not set')
+            raise ValueError("Strengths are not set")
         return self.strengths.size
 
     def to_xml_element(self):
@@ -712,15 +714,15 @@ class MeshSpatial(Spatial):
             XML element containing spatial distribution data
 
         """
-        element = ET.Element('space')
+        element = ET.Element("space")
 
-        element.set('type', 'mesh')
+        element.set("type", "mesh")
         element.set("mesh_id", str(self.mesh.id))
         element.set("volume_normalized", str(self.volume_normalized))
 
         if self.strengths is not None:
-            subelement = ET.SubElement(element, 'strengths')
-            subelement.text = ' '.join(str(e) for e in self.strengths)
+            subelement = ET.SubElement(element, "strengths")
+            subelement.text = " ".join(str(e) for e in self.strengths)
 
         return element
 
@@ -743,17 +745,17 @@ class MeshSpatial(Spatial):
 
         """
 
-        mesh_id = int(elem.get('mesh_id'))
+        mesh_id = int(elem.get("mesh_id"))
 
         # check if this mesh has been read in from another location already
         if mesh_id not in meshes:
             raise ValueError(f'Could not locate mesh with ID "{mesh_id}"')
 
         volume_normalized = elem.get("volume_normalized")
-        volume_normalized = get_text(elem, 'volume_normalized').lower() == 'true'
-        strengths = get_text(elem, 'strengths')
+        volume_normalized = get_text(elem, "volume_normalized").lower() == "true"
+        strengths = get_text(elem, "strengths")
         if strengths is not None:
-            strengths = [float(b) for b in get_text(elem, 'strengths').split()]
+            strengths = [float(b) for b in get_text(elem, "strengths").split()]
 
         return cls(meshes[mesh_id], strengths, volume_normalized)
 
@@ -785,7 +787,7 @@ class PointCloud(Spatial):
     def __init__(
         self,
         positions: Sequence[Sequence[float]],
-        strengths: Sequence[float] | None = None
+        strengths: Sequence[float] | None = None,
     ):
         self.positions = positions
         self.strengths = strengths
@@ -798,9 +800,9 @@ class PointCloud(Spatial):
     def positions(self, positions):
         positions = np.array(positions, dtype=float)
         if positions.ndim != 2:
-            raise ValueError('positions must be a 2D array')
+            raise ValueError("positions must be a 2D array")
         elif positions.shape[1] != 3:
-            raise ValueError('Each position must have 3 values')
+            raise ValueError("Each position must have 3 values")
         self._positions = positions
 
     @property
@@ -812,15 +814,15 @@ class PointCloud(Spatial):
         if strengths is not None:
             strengths = np.array(strengths, dtype=float)
             if strengths.ndim != 1:
-                raise ValueError('strengths must be a 1D array')
+                raise ValueError("strengths must be a 1D array")
             elif strengths.size != self.positions.shape[0]:
-                raise ValueError('strengths must have the same length as positions')
+                raise ValueError("strengths must have the same length as positions")
         self._strengths = strengths
 
     @property
     def num_strength_bins(self) -> int:
         if self.strengths is None:
-            raise ValueError('Strengths are not set')
+            raise ValueError("Strengths are not set")
         return self.strengths.size
 
     def to_xml_element(self) -> ET.Element:
@@ -832,15 +834,15 @@ class PointCloud(Spatial):
             XML element containing spatial distribution data
 
         """
-        element = ET.Element('space')
-        element.set('type', 'cloud')
+        element = ET.Element("space")
+        element.set("type", "cloud")
 
-        subelement = ET.SubElement(element, 'coords')
-        subelement.text = ' '.join(str(e) for e in self.positions.flatten())
+        subelement = ET.SubElement(element, "coords")
+        subelement.text = " ".join(str(e) for e in self.positions.flatten())
 
         if self.strengths is not None:
-            subelement = ET.SubElement(element, 'strengths')
-            subelement.text = ' '.join(str(e) for e in self.strengths)
+            subelement = ET.SubElement(element, "strengths")
+            subelement.text = " ".join(str(e) for e in self.strengths)
 
         return element
 
@@ -860,10 +862,10 @@ class PointCloud(Spatial):
 
 
         """
-        coord_data = get_text(elem, 'coords')
+        coord_data = get_text(elem, "coords")
         positions = np.array([float(b) for b in coord_data.split()]).reshape((-1, 3))
 
-        strengths = get_text(elem, 'strengths')
+        strengths = get_text(elem, "strengths")
         if strengths is not None:
             strengths = [float(b) for b in strengths.split()]
 
@@ -905,7 +907,7 @@ class Box(Spatial):
         self,
         lower_left: Sequence[float],
         upper_right: Sequence[float],
-        only_fissionable: bool = False
+        only_fissionable: bool = False,
     ):
         self.lower_left = lower_left
         self.upper_right = upper_right
@@ -917,8 +919,8 @@ class Box(Spatial):
 
     @lower_left.setter
     def lower_left(self, lower_left):
-        cv.check_type('lower left coordinate', lower_left, Iterable, Real)
-        cv.check_length('lower left coordinate', lower_left, 3)
+        cv.check_type("lower left coordinate", lower_left, Iterable, Real)
+        cv.check_length("lower left coordinate", lower_left, 3)
         self._lower_left = lower_left
 
     @property
@@ -927,8 +929,8 @@ class Box(Spatial):
 
     @upper_right.setter
     def upper_right(self, upper_right):
-        cv.check_type('upper right coordinate', upper_right, Iterable, Real)
-        cv.check_length('upper right coordinate', upper_right, 3)
+        cv.check_type("upper right coordinate", upper_right, Iterable, Real)
+        cv.check_length("upper right coordinate", upper_right, 3)
         self._upper_right = upper_right
 
     @property
@@ -937,12 +939,14 @@ class Box(Spatial):
 
     @only_fissionable.setter
     def only_fissionable(self, only_fissionable):
-        cv.check_type('only fissionable', only_fissionable, bool)
+        cv.check_type("only fissionable", only_fissionable, bool)
         self._only_fissionable = only_fissionable
         if only_fissionable:
-            warn("The 'only_fissionable' has been deprecated. Use the "
-                 "'constraints' argument when defining a source instead.",
-                 FutureWarning)
+            warn(
+                "The 'only_fissionable' has been deprecated. Use the "
+                "'constraints' argument when defining a source instead.",
+                FutureWarning,
+            )
 
     def to_xml_element(self):
         """Return XML representation of the box distribution
@@ -953,14 +957,17 @@ class Box(Spatial):
             XML element containing box distribution data
 
         """
-        element = ET.Element('space')
+        element = ET.Element("space")
         if self.only_fissionable:
             element.set("type", "fission")
         else:
             element.set("type", "box")
         params = ET.SubElement(element, "parameters")
-        params.text = ' '.join(map(str, self.lower_left)) + ' ' + \
-                      ' '.join(map(str, self.upper_right))
+        params.text = (
+            " ".join(map(str, self.lower_left))
+            + " "
+            + " ".join(map(str, self.upper_right))
+        )
         return element
 
     @classmethod
@@ -978,10 +985,10 @@ class Box(Spatial):
             Box distribution generated from XML element
 
         """
-        only_fissionable = get_text(elem, 'type') == 'fission'
-        params = [float(x) for x in get_text(elem, 'parameters').split()]
-        lower_left = params[:len(params)//2]
-        upper_right = params[len(params)//2:]
+        only_fissionable = get_text(elem, "type") == "fission"
+        params = [float(x) for x in get_text(elem, "parameters").split()]
+        lower_left = params[: len(params) // 2]
+        upper_right = params[len(params) // 2 :]
         return cls(lower_left, upper_right, only_fissionable)
 
 
@@ -1003,7 +1010,7 @@ class Point(Spatial):
 
     """
 
-    def __init__(self, xyz: Sequence[float] = (0., 0., 0.)):
+    def __init__(self, xyz: Sequence[float] = (0.0, 0.0, 0.0)):
         self.xyz = xyz
 
     @property
@@ -1012,8 +1019,8 @@ class Point(Spatial):
 
     @xyz.setter
     def xyz(self, xyz):
-        cv.check_type('coordinate', xyz, Iterable, Real)
-        cv.check_length('coordinate', xyz, 3)
+        cv.check_type("coordinate", xyz, Iterable, Real)
+        cv.check_length("coordinate", xyz, 3)
         self._xyz = xyz
 
     def to_xml_element(self):
@@ -1025,10 +1032,10 @@ class Point(Spatial):
             XML element containing point distribution location
 
         """
-        element = ET.Element('space')
+        element = ET.Element("space")
         element.set("type", "point")
         params = ET.SubElement(element, "parameters")
-        params.text = ' '.join(map(str, self.xyz))
+        params.text = " ".join(map(str, self.xyz))
         return element
 
     @classmethod
@@ -1046,17 +1053,17 @@ class Point(Spatial):
             Point distribution generated from XML element
 
         """
-        xyz = [float(x) for x in get_text(elem, 'parameters').split()]
+        xyz = [float(x) for x in get_text(elem, "parameters").split()]
         return cls(xyz)
 
 
 def spherical_uniform(
-        r_outer: float,
-        r_inner: float = 0.0,
-        thetas: Sequence[float] = (0., pi),
-        phis: Sequence[float] = (0., 2*pi),
-        origin: Sequence[float] = (0., 0., 0.)
-    ):
+    r_outer: float,
+    r_inner: float = 0.0,
+    thetas: Sequence[float] = (0.0, pi),
+    phis: Sequence[float] = (0.0, 2 * pi),
+    origin: Sequence[float] = (0.0, 0.0, 0.0),
+):
     """Return a uniform spatial distribution over a spherical shell.
 
     This function provides a uniform spatial distribution over a spherical

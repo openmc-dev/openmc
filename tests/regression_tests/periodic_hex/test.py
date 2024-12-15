@@ -9,10 +9,10 @@ def hex_model():
     model = openmc.model.Model()
 
     fuel = openmc.Material()
-    fuel.add_nuclide('U235', 1.0)
-    fuel.set_density('g/cc', 4.5)
+    fuel.add_nuclide("U235", 1.0)
+    fuel.set_density("g/cc", 4.5)
 
-    hex_prism = openmc.model.HexagonalPrism(10.0, boundary_type='periodic')
+    hex_prism = openmc.model.HexagonalPrism(10.0, boundary_type="periodic")
     cell = openmc.Cell(fill=fuel, region=-hex_prism)
     model.geometry = openmc.Geometry([cell])
 
@@ -24,5 +24,5 @@ def hex_model():
 
 
 def test_periodic_hex(hex_model):
-    harness = PyAPITestHarness('statepoint.5.h5', hex_model)
+    harness = PyAPITestHarness("statepoint.5.h5", hex_model)
     harness.main()

@@ -72,7 +72,7 @@ def get_openmoc_material(openmc_material):
 
     """
 
-    cv.check_type('openmc_material', openmc_material, openmc.Material)
+    cv.check_type("openmc_material", openmc_material, openmc.Material)
 
     material_id = openmc_material.id
 
@@ -108,7 +108,7 @@ def get_openmc_material(openmoc_material):
 
     """
 
-    cv.check_type('openmoc_material', openmoc_material, openmoc.Material)
+    cv.check_type("openmoc_material", openmoc_material, openmoc.Material)
 
     material_id = openmoc_material.getId()
 
@@ -144,7 +144,7 @@ def get_openmoc_surface(openmc_surface):
 
     """
 
-    cv.check_type('openmc_surface', openmc_surface, openmc.Surface)
+    cv.check_type("openmc_surface", openmc_surface, openmc.Surface)
 
     surface_id = openmc_surface.id
 
@@ -156,16 +156,16 @@ def get_openmoc_surface(openmc_surface):
     name = openmc_surface.name
 
     # Determine the type of boundary conditions applied to the Surface
-    if openmc_surface.boundary_type == 'vacuum':
+    if openmc_surface.boundary_type == "vacuum":
         boundary = openmoc.VACUUM
-    elif openmc_surface.boundary_type == 'reflective':
+    elif openmc_surface.boundary_type == "reflective":
         boundary = openmoc.REFLECTIVE
-    elif openmc_surface.boundary_type == 'periodic':
+    elif openmc_surface.boundary_type == "periodic":
         boundary = openmoc.PERIODIC
     else:
         boundary = openmoc.BOUNDARY_NONE
 
-    if openmc_surface.type == 'plane':
+    if openmc_surface.type == "plane":
         A = openmc_surface.a
         B = openmc_surface.b
         C = openmc_surface.c
@@ -174,28 +174,30 @@ def get_openmoc_surface(openmc_surface):
         # OpenMOC uses the opposite sign on D
         openmoc_surface = openmoc.Plane(A, B, C, -D, surface_id, name)
 
-    elif openmc_surface.type == 'x-plane':
+    elif openmc_surface.type == "x-plane":
         x0 = openmc_surface.x0
         openmoc_surface = openmoc.XPlane(x0, surface_id, name)
 
-    elif openmc_surface.type == 'y-plane':
+    elif openmc_surface.type == "y-plane":
         y0 = openmc_surface.y0
         openmoc_surface = openmoc.YPlane(y0, surface_id, name)
 
-    elif openmc_surface.type == 'z-plane':
+    elif openmc_surface.type == "z-plane":
         z0 = openmc_surface.z0
         openmoc_surface = openmoc.ZPlane(z0, surface_id, name)
 
-    elif openmc_surface.type == 'z-cylinder':
+    elif openmc_surface.type == "z-cylinder":
         x0 = openmc_surface.x0
         y0 = openmc_surface.y0
         R = openmc_surface.r
         openmoc_surface = openmoc.ZCylinder(x0, y0, R, surface_id, name)
 
     else:
-        msg = ('Unable to create an OpenMOC Surface from an OpenMC Surface of '
-               f'type "{type(openmc_surface)}" since it is not a compatible '
-               'Surface type in OpenMOC')
+        msg = (
+            "Unable to create an OpenMOC Surface from an OpenMC Surface of "
+            f'type "{type(openmc_surface)}" since it is not a compatible '
+            "Surface type in OpenMOC"
+        )
         raise ValueError(msg)
 
     # Set the boundary condition for this Surface
@@ -225,7 +227,7 @@ def get_openmc_surface(openmoc_surface):
 
     """
 
-    cv.check_type('openmoc_surface', openmoc_surface, openmoc.Surface)
+    cv.check_type("openmoc_surface", openmoc_surface, openmoc.Surface)
 
     surface_id = openmoc_surface.getId()
 
@@ -239,13 +241,13 @@ def get_openmc_surface(openmoc_surface):
     # Correct for OpenMC's syntax for Surfaces dividing Cells
     boundary = openmoc_surface.getBoundaryType()
     if boundary == openmoc.VACUUM:
-        boundary = 'vacuum'
+        boundary = "vacuum"
     elif boundary == openmoc.REFLECTIVE:
-        boundary = 'reflective'
+        boundary = "reflective"
     elif boundary == openmoc.PERIODIC:
-        boundary = 'periodic'
+        boundary = "periodic"
     else:
-        boundary = 'transmission'
+        boundary = "transmission"
 
     if openmoc_surface.getSurfaceType() == openmoc.PLANE:
         openmoc_surface = openmoc.castSurfaceToPlane(openmoc_surface)
@@ -303,7 +305,7 @@ def get_openmoc_cell(openmc_cell):
 
     """
 
-    cv.check_type('openmc_cell', openmc_cell, openmc.Cell)
+    cv.check_type("openmc_cell", openmc_cell, openmc.Cell)
 
     cell_id = openmc_cell.id
 
@@ -317,9 +319,9 @@ def get_openmoc_cell(openmc_cell):
 
     fill = openmc_cell.fill
 
-    if openmc_cell.fill_type == 'material':
+    if openmc_cell.fill_type == "material":
         openmoc_cell.setFill(get_openmoc_material(fill))
-    elif openmc_cell.fill_type == 'universe':
+    elif openmc_cell.fill_type == "universe":
         openmoc_cell.setFill(get_openmoc_universe(fill))
     else:
         openmoc_cell.setFill(get_openmoc_lattice(fill))
@@ -359,14 +361,13 @@ def get_openmoc_region(openmc_region):
 
     """
 
-    cv.check_type('openmc_region', openmc_region, openmc.Region)
+    cv.check_type("openmc_region", openmc_region, openmc.Region)
 
     # Recursively instantiate a region of the appropriate type
     if isinstance(openmc_region, openmc.Halfspace):
         surface = openmc_region.surface
-        halfspace = -1 if openmc_region.side == '-' else 1
-        openmoc_region = \
-            openmoc.Halfspace(halfspace, get_openmoc_surface(surface))
+        halfspace = -1 if openmc_region.side == "-" else 1
+        openmoc_region = openmoc.Halfspace(halfspace, get_openmoc_surface(surface))
     elif isinstance(openmc_region, openmc.Intersection):
         openmoc_region = openmoc.Intersection()
         for openmc_node in openmc_region:
@@ -397,13 +398,13 @@ def get_openmc_region(openmoc_region):
 
     """
 
-    cv.check_type('openmoc_region', openmoc_region, openmoc.Region)
+    cv.check_type("openmoc_region", openmoc_region, openmoc.Region)
 
     # Recursively instantiate a region of the appropriate type
     if openmoc_region.getRegionType() == openmoc.HALFSPACE:
         openmoc_region = openmoc.castRegionToHalfspace(openmoc_region)
         surface = get_openmc_surface(openmoc_region.getSurface())
-        side = '-' if openmoc_region.getHalfspace() == -1 else '+'
+        side = "-" if openmoc_region.getHalfspace() == -1 else "+"
         openmc_region = openmc.Halfspace(surface, side)
     elif openmoc_region.getRegionType() == openmoc.INTERSECTION:
         openmc_region = openmc.Intersection([])
@@ -438,7 +439,7 @@ def get_openmc_cell(openmoc_cell):
 
     """
 
-    cv.check_type('openmoc_cell', openmoc_cell, openmoc.Cell)
+    cv.check_type("openmoc_cell", openmoc_cell, openmoc.Cell)
 
     cell_id = openmoc_cell.getId()
 
@@ -499,7 +500,7 @@ def get_openmoc_universe(openmc_universe):
 
     """
 
-    cv.check_type('openmc_universe', openmc_universe, openmc.Universe)
+    cv.check_type("openmc_universe", openmc_universe, openmc.Universe)
 
     universe_id = openmc_universe.id
 
@@ -542,7 +543,7 @@ def get_openmc_universe(openmoc_universe):
 
     """
 
-    cv.check_type('openmoc_universe', openmoc_universe, openmoc.Universe)
+    cv.check_type("openmoc_universe", openmoc_universe, openmoc.Universe)
 
     universe_id = openmoc_universe.getId()
 
@@ -583,7 +584,7 @@ def get_openmoc_lattice(openmc_lattice):
 
     """
 
-    cv.check_type('openmc_lattice', openmc_lattice, openmc.RectLattice)
+    cv.check_type("openmc_lattice", openmc_lattice, openmc.RectLattice)
 
     lattice_id = openmc_lattice.id
 
@@ -613,7 +614,7 @@ def get_openmoc_lattice(openmc_lattice):
     # Convert 2D lower left to 3D for OpenMOC
     if len(lower_left) == 2:
         new_lower_left = np.ones(3, dtype=np.float64)
-        new_lower_left *= np.finfo(np.float64).min / 2.
+        new_lower_left *= np.finfo(np.float64).min / 2.0
         new_lower_left[:2] = lower_left
         lower_left = new_lower_left
 
@@ -643,9 +644,11 @@ def get_openmoc_lattice(openmc_lattice):
     openmoc_lattice.setWidth(pitch[0], pitch[1], pitch[2])
     openmoc_lattice.setUniverses(universe_array.tolist())
 
-    offset = np.array(lower_left, dtype=np.float64) - \
-             ((np.array(pitch, dtype=np.float64) *
-               np.array(dimension, dtype=np.float64))) / -2.0
+    offset = (
+        np.array(lower_left, dtype=np.float64)
+        - ((np.array(pitch, dtype=np.float64) * np.array(dimension, dtype=np.float64)))
+        / -2.0
+    )
     openmoc_lattice.setOffset(offset[0], offset[1], offset[2])
 
     # Add the OpenMC Lattice to the global collection of all OpenMC Lattices
@@ -672,7 +675,7 @@ def get_openmc_lattice(openmoc_lattice):
 
     """
 
-    cv.check_type('openmoc_lattice', openmoc_lattice, openmoc.Lattice)
+    cv.check_type("openmoc_lattice", openmoc_lattice, openmoc.Lattice)
 
     lattice_id = openmoc_lattice.getId()
 
@@ -681,21 +684,26 @@ def get_openmc_lattice(openmoc_lattice):
         return OPENMC_LATTICES[lattice_id]
 
     name = openmoc_lattice.getName()
-    dimension = [openmoc_lattice.getNumX(),
-                 openmoc_lattice.getNumY(),
-                 openmoc_lattice.getNumZ()]
-    width = [openmoc_lattice.getWidthX(),
-             openmoc_lattice.getWidthY(),
-             openmoc_lattice.getWidthZ()]
+    dimension = [
+        openmoc_lattice.getNumX(),
+        openmoc_lattice.getNumY(),
+        openmoc_lattice.getNumZ(),
+    ]
+    width = [
+        openmoc_lattice.getWidthX(),
+        openmoc_lattice.getWidthY(),
+        openmoc_lattice.getWidthZ(),
+    ]
     offset = openmoc_lattice.getOffset()
     offset = [offset.getX(), offset.getY(), offset.getZ()]
-    lower_left = np.array(offset, dtype=np.float64) + \
-                 ((np.array(width, dtype=np.float64) *
-                   np.array(dimension, dtype=np.float64))) / -2.0
+    lower_left = (
+        np.array(offset, dtype=np.float64)
+        + ((np.array(width, dtype=np.float64) * np.array(dimension, dtype=np.float64)))
+        / -2.0
+    )
 
     # Initialize an empty array for the OpenMOC nested Universes in this Lattice
-    universe_array = np.ndarray(tuple(np.array(dimension)),
-                                dtype=openmoc.Universe)
+    universe_array = np.ndarray(tuple(np.array(dimension)), dtype=openmoc.Universe)
 
     # Create OpenMOC Universes for each unique nested Universe in this Lattice
     unique_universes = openmoc_lattice.getUniqueUniverses()
@@ -709,8 +717,7 @@ def get_openmc_lattice(openmoc_lattice):
             for z in range(dimension[2]):
                 universe = openmoc_lattice.getUniverse(x, y, z)
                 universe_id = universe.getId()
-                universe_array[x][y][z] = \
-                    unique_universes[universe_id]
+                universe_array[x][y][z] = unique_universes[universe_id]
 
     universe_array = np.swapaxes(universe_array, 0, 2)
 
@@ -751,7 +758,7 @@ def get_openmoc_geometry(openmc_geometry):
 
     """
 
-    cv.check_type('openmc_geometry', openmc_geometry, openmc.Geometry)
+    cv.check_type("openmc_geometry", openmc_geometry, openmc.Geometry)
 
     # Clear dictionaries and auto-generated IDs
     OPENMC_SURFACES.clear()
@@ -781,10 +788,10 @@ def get_openmoc_geometry(openmc_geometry):
     max_cell_id = max(all_cells.keys())
     max_universe_id = max(all_universes.keys())
 
-    openmoc.maximize_material_id(max_material_id+1)
-    openmoc.maximize_surface_id(max_surface_id+1)
-    openmoc.maximize_cell_id(max_cell_id+1)
-    openmoc.maximize_universe_id(max_universe_id+1)
+    openmoc.maximize_material_id(max_material_id + 1)
+    openmoc.maximize_surface_id(max_surface_id + 1)
+    openmoc.maximize_cell_id(max_cell_id + 1)
+    openmoc.maximize_universe_id(max_universe_id + 1)
 
     return openmoc_geometry
 
@@ -804,7 +811,7 @@ def get_openmc_geometry(openmoc_geometry):
 
     """
 
-    cv.check_type('openmoc_geometry', openmoc_geometry, openmoc.Geometry)
+    cv.check_type("openmoc_geometry", openmoc_geometry, openmoc.Geometry)
 
     # Clear dictionaries and auto-generated ID
     OPENMC_SURFACES.clear()

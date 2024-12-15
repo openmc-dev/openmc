@@ -24,14 +24,14 @@ import openmc.lib
 from openmc.mpi import comm
 
 _valid_rxns = list(REACTIONS)
-_valid_rxns.append('fission')
-_valid_rxns.append('damage-energy')
+_valid_rxns.append("fission")
+_valid_rxns.append("damage-energy")
 
 
 def _resolve_chain_file_path(chain_file: str | None):
     if chain_file is None:
-        chain_file = openmc.config.get('chain_file')
-        if 'chain_file' not in openmc.config:
+        chain_file = openmc.config.get("chain_file")
+        if "chain_file" not in openmc.config:
             raise DataError(
                 "No depletion chain specified and could not find depletion "
                 "chain in openmc.config['chain_file']"
@@ -40,14 +40,14 @@ def _resolve_chain_file_path(chain_file: str | None):
 
 
 def get_microxs_and_flux(
-        model: openmc.Model,
-        domains,
-        nuclides: Iterable[str] | None = None,
-        reactions: Iterable[str] | None = None,
-        energies: Iterable[float] | str | None = None,
-        chain_file: PathLike | None = None,
-        run_kwargs=None
-    ) -> tuple[list[np.ndarray], list[MicroXS]]:
+    model: openmc.Model,
+    domains,
+    nuclides: Iterable[str] | None = None,
+    reactions: Iterable[str] | None = None,
+    energies: Iterable[float] | str | None = None,
+    chain_file: PathLike | None = None,
+    run_kwargs=None,
+) -> tuple[list[np.ndarray], list[MicroXS]]:
     """Generate a microscopic cross sections and flux from a Model
 
     .. versionadded:: 0.14.0
@@ -93,8 +93,9 @@ def get_microxs_and_flux(
     if not nuclides:
         cross_sections = _find_cross_sections(model)
         nuclides_with_data = _get_nuclides_with_data(cross_sections)
-        nuclides = [nuc.name for nuc in chain.nuclides
-                    if nuc.name in nuclides_with_data]
+        nuclides = [
+            nuc.name for nuc in chain.nuclides if nuc.name in nuclides_with_data
+        ]
 
     # Set up the reaction rate and flux tallies
     if energies is None:
@@ -114,15 +115,15 @@ def get_microxs_and_flux(
     else:
         raise ValueError(f"Unsupported domain type: {type(domains[0])}")
 
-    rr_tally = openmc.Tally(name='MicroXS RR')
+    rr_tally = openmc.Tally(name="MicroXS RR")
     rr_tally.filters = [domain_filter, energy_filter]
     rr_tally.nuclides = nuclides
     rr_tally.multiply_density = False
     rr_tally.scores = reactions
 
-    flux_tally = openmc.Tally(name='MicroXS flux')
+    flux_tally = openmc.Tally(name="MicroXS flux")
     flux_tally.filters = [domain_filter, energy_filter]
-    flux_tally.scores = ['flux']
+    flux_tally.scores = ["flux"]
     model.tallies = openmc.Tallies([rr_tally, flux_tally])
 
     if openmc.lib.is_initialized:
@@ -140,7 +141,7 @@ def get_microxs_and_flux(
             run_kwargs = {}
         else:
             run_kwargs = dict(run_kwargs)
-        run_kwargs.setdefault('cwd', temp_dir)
+        run_kwargs.setdefault("cwd", temp_dir)
         statepoint_path = model.run(**run_kwargs)
 
         if comm.rank == 0:
@@ -153,15 +154,19 @@ def get_microxs_and_flux(
     rr_tally = comm.bcast(rr_tally)
     flux_tally = comm.bcast(flux_tally)
     # Get reaction rates and flux values
-    reaction_rates = rr_tally.get_reshaped_data()  # (domains, groups, nuclides, reactions)
+    reaction_rates = (
+        rr_tally.get_reshaped_data()
+    )  # (domains, groups, nuclides, reactions)
     flux = flux_tally.get_reshaped_data()  # (domains, groups, 1, 1)
 
     # Make energy groups last dimension
-    reaction_rates = np.moveaxis(reaction_rates, 1, -1)  # (domains, nuclides, reactions, groups)
+    reaction_rates = np.moveaxis(
+        reaction_rates, 1, -1
+    )  # (domains, nuclides, reactions, groups)
     flux = np.moveaxis(flux, 1, -1)  # (domains, 1, 1, groups)
 
     # Divide RR by flux to get microscopic cross sections
-    xs = np.empty_like(reaction_rates) # (domains, nuclides, reactions, groups)
+    xs = np.empty_like(reaction_rates)  # (domains, nuclides, reactions, groups)
     d, _, _, g = np.nonzero(flux)
     xs[d, ..., g] = reaction_rates[d, ..., g] / flux[d, :, :, g]
 
@@ -196,20 +201,22 @@ class MicroXS:
         :data:`openmc.deplete.chain.REACTIONS`
 
     """
+
     def __init__(self, data: np.ndarray, nuclides: list[str], reactions: list[str]):
         # Validate inputs
         if len(data.shape) != 3:
-            raise ValueError('Data array must be 3D.')
+            raise ValueError("Data array must be 3D.")
         if data.shape[:2] != (len(nuclides), len(reactions)):
             raise ValueError(
-                f'Nuclides list of length {len(nuclides)} and '
-                f'reactions array of length {len(reactions)} do not '
-                f'match dimensions of data array of shape {data.shape}')
-        check_iterable_type('nuclides', nuclides, str)
-        check_iterable_type('reactions', reactions, str)
-        check_type('data', data, np.ndarray, expected_iter_type=float)
+                f"Nuclides list of length {len(nuclides)} and "
+                f"reactions array of length {len(reactions)} do not "
+                f"match dimensions of data array of shape {data.shape}"
+            )
+        check_iterable_type("nuclides", nuclides, str)
+        check_iterable_type("reactions", reactions, str)
+        check_type("data", data, np.ndarray, expected_iter_type=float)
         for reaction in reactions:
-            check_value('reactions', reaction, _valid_rxns)
+            check_value("reactions", reaction, _valid_rxns)
 
         self.data = data
         self.nuclides = nuclides
@@ -269,11 +276,11 @@ class MicroXS:
             # if user inputs energies check they are ascending (low to high) as
             # some depletion codes use high energy to low energy.
             if not np.all(np.diff(energies) > 0):
-                raise ValueError('Energy group boundaries must be in ascending order')
+                raise ValueError("Energy group boundaries must be in ascending order")
 
         # check dimension consistency
         if len(multigroup_flux) != len(energies) - 1:
-            raise ValueError('Length of flux array should be len(energies)-1')
+            raise ValueError("Length of flux array should be len(energies)-1")
 
         chain_file_path = _resolve_chain_file_path(chain_file)
         chain = Chain.from_xml(chain_file_path)
@@ -312,7 +319,8 @@ class MicroXS:
         model = openmc.Model()
         model.geometry = openmc.Geometry([surf1_cell])
         model.settings = openmc.Settings(
-            particles=1, batches=1, output={'summary': False})
+            particles=1, batches=1, output={"summary": False}
+        )
 
         with change_directory(tmpdir=True):
             # Export model within temporary directory
@@ -350,14 +358,14 @@ class MicroXS:
         MicroXS
 
         """
-        if 'float_precision' not in kwargs:
-            kwargs['float_precision'] = 'round_trip'
+        if "float_precision" not in kwargs:
+            kwargs["float_precision"] = "round_trip"
 
         df = pd.read_csv(csv_file, **kwargs)
-        df.set_index(['nuclides', 'reactions', 'groups'], inplace=True)
-        nuclides = list(df.index.unique(level='nuclides'))
-        reactions = list(df.index.unique(level='reactions'))
-        groups = list(df.index.unique(level='groups'))
+        df.set_index(["nuclides", "reactions", "groups"], inplace=True)
+        nuclides = list(df.index.unique(level="nuclides"))
+        reactions = list(df.index.unique(level="reactions"))
+        groups = list(df.index.unique(level="groups"))
         shape = (len(nuclides), len(reactions), len(groups))
         data = df.values.reshape(shape)
         return cls(data, nuclides, reactions)
@@ -382,7 +390,7 @@ class MicroXS:
         groups = self.data.shape[2]
         multi_index = pd.MultiIndex.from_product(
             [self.nuclides, self.reactions, range(1, groups + 1)],
-            names=['nuclides', 'reactions', 'groups']
+            names=["nuclides", "reactions", "groups"],
         )
-        df = pd.DataFrame({'xs': self.data.flatten()}, index=multi_index)
+        df = pd.DataFrame({"xs": self.data.flatten()}, index=multi_index)
         df.to_csv(*args, **kwargs)

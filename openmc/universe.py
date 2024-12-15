@@ -34,7 +34,7 @@ class UniverseBase(ABC, IDManagerMixin):
     next_id = 1
     used_ids = set()
 
-    def __init__(self, universe_id=None, name=''):
+    def __init__(self, universe_id=None, name=""):
         # Initialize Universe class attributes
         self.id = universe_id
         self.name = name
@@ -46,9 +46,9 @@ class UniverseBase(ABC, IDManagerMixin):
         self._cells = {}
 
     def __repr__(self):
-        string = 'Universe\n'
-        string += '{: <16}=\t{}\n'.format('\tID', self._id)
-        string += '{: <16}=\t{}\n'.format('\tName', self._name)
+        string = "Universe\n"
+        string += "{: <16}=\t{}\n".format("\tID", self._id)
+        string += "{: <16}=\t{}\n".format("\tName", self._name)
         return string
 
     @property
@@ -58,10 +58,10 @@ class UniverseBase(ABC, IDManagerMixin):
     @name.setter
     def name(self, name):
         if name is not None:
-            cv.check_type('universe name', name, str)
+            cv.check_type("universe name", name, str)
             self._name = name
         else:
-            self._name = ''
+            self._name = ""
 
     @property
     def volume(self):
@@ -70,7 +70,7 @@ class UniverseBase(ABC, IDManagerMixin):
     @volume.setter
     def volume(self, volume):
         if volume is not None:
-            cv.check_type('universe volume', volume, Real)
+            cv.check_type("universe volume", volume, Real)
         self._volume = volume
 
     def add_volume_information(self, volume_calc):
@@ -82,15 +82,14 @@ class UniverseBase(ABC, IDManagerMixin):
             Results from a stochastic volume calculation
 
         """
-        if volume_calc.domain_type == 'universe':
+        if volume_calc.domain_type == "universe":
             if self.id in volume_calc.volumes:
                 self._volume = volume_calc.volumes[self.id].n
                 self._atoms = volume_calc.atoms[self.id]
             else:
-                raise ValueError(
-                    'No volume information found for this universe.')
+                raise ValueError("No volume information found for this universe.")
         else:
-            raise ValueError('No volume information found for this universe.')
+            raise ValueError("No volume information found for this universe.")
 
     def get_all_universes(self, memo=None):
         """Return all universes that are contained within this one.
@@ -174,8 +173,7 @@ class UniverseBase(ABC, IDManagerMixin):
             # Clone all cells for the universe clone
             clone._cells = {}
             for cell in self._cells.values():
-                clone.add_cell(cell.clone(clone_materials, clone_regions,
-                                          memo))
+                clone.add_cell(cell.clone(clone_materials, clone_regions, memo))
 
             # Memoize the clone
             memo[self] = clone
@@ -215,7 +213,7 @@ class Universe(UniverseBase):
 
     """
 
-    def __init__(self, universe_id=None, name='', cells=None):
+    def __init__(self, universe_id=None, name="", cells=None):
         super().__init__(universe_id, name)
 
         if cells is not None:
@@ -223,8 +221,8 @@ class Universe(UniverseBase):
 
     def __repr__(self):
         string = super().__repr__()
-        string += '{: <16}=\t{}\n'.format('\tGeom', 'CSG')
-        string += '{: <16}=\t{}\n'.format('\tCells', list(self._cells.keys()))
+        string += "{: <16}=\t{}\n".format("\tGeom", "CSG")
+        string += "{: <16}=\t{}\n".format("\tCells", list(self._cells.keys()))
         return string
 
     @property
@@ -233,8 +231,7 @@ class Universe(UniverseBase):
 
     @property
     def bounding_box(self) -> openmc.BoundingBox:
-        regions = [c.region for c in self.cells.values()
-                   if c.region is not None]
+        regions = [c.region for c in self.cells.values() if c.region is not None]
         if regions:
             return openmc.Union(regions).bounding_box
         else:
@@ -257,8 +254,8 @@ class Universe(UniverseBase):
             Universe instance
 
         """
-        universe_id = int(group.name.split('/')[-1].lstrip('universe '))
-        cell_ids = group['cells'][()]
+        universe_id = int(group.name.split("/")[-1].lstrip("universe "))
+        cell_ids = group["cells"][()]
 
         # Create this Universe
         universe = cls(universe_id)
@@ -287,9 +284,9 @@ class Universe(UniverseBase):
         p = np.asarray(point)
         for cell in self._cells.values():
             if p in cell:
-                if cell.fill_type in ('material', 'distribmat', 'void'):
+                if cell.fill_type in ("material", "distribmat", "void"):
                     return [self, cell]
-                elif cell.fill_type == 'universe':
+                elif cell.fill_type == "universe":
                     if cell.translation is not None:
                         p -= cell.translation
                     if cell.rotation is not None:
@@ -300,14 +297,29 @@ class Universe(UniverseBase):
         return []
 
     # default kwargs that are passed to plt.legend in the plot method below.
-    _default_legend_kwargs = {'bbox_to_anchor': (
-        1.05, 1), 'loc': 2, 'borderaxespad': 0.0}
+    _default_legend_kwargs = {
+        "bbox_to_anchor": (1.05, 1),
+        "loc": 2,
+        "borderaxespad": 0.0,
+    }
 
-    def plot(self, origin=None, width=None, pixels=40000,
-             basis='xy', color_by='cell', colors=None, seed=None,
-             openmc_exec='openmc', axes=None, legend=False, axis_units='cm',
-             legend_kwargs=_default_legend_kwargs, outline=False,
-             **kwargs):
+    def plot(
+        self,
+        origin=None,
+        width=None,
+        pixels=40000,
+        basis="xy",
+        color_by="cell",
+        colors=None,
+        seed=None,
+        openmc_exec="openmc",
+        axes=None,
+        legend=False,
+        axis_units="cm",
+        legend_kwargs=_default_legend_kwargs,
+        outline=False,
+        **kwargs,
+    ):
         """Display a slice plot of the universe.
 
         Parameters
@@ -380,15 +392,15 @@ class Universe(UniverseBase):
         import matplotlib.pyplot as plt
 
         # Determine extents of plot
-        if basis == 'xy':
+        if basis == "xy":
             x, y = 0, 1
-            xlabel, ylabel = f'x [{axis_units}]', f'y [{axis_units}]'
-        elif basis == 'yz':
+            xlabel, ylabel = f"x [{axis_units}]", f"y [{axis_units}]"
+        elif basis == "yz":
             x, y = 1, 2
-            xlabel, ylabel = f'y [{axis_units}]', f'z [{axis_units}]'
-        elif basis == 'xz':
+            xlabel, ylabel = f"y [{axis_units}]", f"z [{axis_units}]"
+        elif basis == "xz":
             x, y = 0, 2
-            xlabel, ylabel = f'x [{axis_units}]', f'z [{axis_units}]'
+            xlabel, ylabel = f"x [{axis_units}]", f"z [{axis_units}]"
 
         bb = self.bounding_box
         # checks to see if bounding box contains -inf or inf values
@@ -406,8 +418,8 @@ class Universe(UniverseBase):
                     origin = np.nan_to_num(bb.center)
             if width is None:
                 bb_width = bb.width
-                x_width = bb_width['xyz'.index(basis[0])]
-                y_width = bb_width['xyz'.index(basis[1])]
+                x_width = bb_width["xyz".index(basis[0])]
+                y_width = bb_width["xyz".index(basis[1])]
                 width = (x_width, y_width)
 
         if isinstance(pixels, int):
@@ -415,12 +427,12 @@ class Universe(UniverseBase):
             pixels_y = math.sqrt(pixels / aspect_ratio)
             pixels = (int(pixels / pixels_y), int(pixels_y))
 
-        axis_scaling_factor = {'km': 0.00001, 'm': 0.01, 'cm': 1, 'mm': 10}
+        axis_scaling_factor = {"km": 0.00001, "m": 0.01, "cm": 1, "mm": 10}
 
-        x_min = (origin[x] - 0.5*width[0]) * axis_scaling_factor[axis_units]
-        x_max = (origin[x] + 0.5*width[0]) * axis_scaling_factor[axis_units]
-        y_min = (origin[y] - 0.5*width[1]) * axis_scaling_factor[axis_units]
-        y_max = (origin[y] + 0.5*width[1]) * axis_scaling_factor[axis_units]
+        x_min = (origin[x] - 0.5 * width[0]) * axis_scaling_factor[axis_units]
+        x_max = (origin[x] + 0.5 * width[0]) * axis_scaling_factor[axis_units]
+        y_min = (origin[y] - 0.5 * width[1]) * axis_scaling_factor[axis_units]
+        y_max = (origin[y] + 0.5 * width[1]) * axis_scaling_factor[axis_units]
 
         with TemporaryDirectory() as tmpdir:
             model = openmc.Model()
@@ -432,7 +444,7 @@ class Universe(UniverseBase):
             # so, set energy mode accordingly
             for mat in self.get_all_materials().values():
                 if mat._macroscopic is not None:
-                    model.settings.energy_mode = 'multi-group'
+                    model.settings.energy_mode = "multi-group"
                     break
 
             # Create plot object matching passed arguments
@@ -450,28 +462,27 @@ class Universe(UniverseBase):
             model.plot_geometry(False, cwd=tmpdir, openmc_exec=openmc_exec)
 
             # Read image from file
-            img_path = Path(tmpdir) / f'plot_{plot.id}.png'
+            img_path = Path(tmpdir) / f"plot_{plot.id}.png"
             if not img_path.is_file():
-                img_path = img_path.with_suffix('.ppm')
+                img_path = img_path.with_suffix(".ppm")
             img = mpimg.imread(str(img_path))
 
             # Create a figure sized such that the size of the axes within
             # exactly matches the number of pixels specified
             if axes is None:
-                px = 1/plt.rcParams['figure.dpi']
+                px = 1 / plt.rcParams["figure.dpi"]
                 fig, axes = plt.subplots()
                 axes.set_xlabel(xlabel)
                 axes.set_ylabel(ylabel)
                 params = fig.subplotpars
-                width = pixels[0]*px/(params.right - params.left)
-                height = pixels[1]*px/(params.top - params.bottom)
+                width = pixels[0] * px / (params.right - params.left)
+                height = pixels[1] * px / (params.top - params.bottom)
                 fig.set_size_inches(width, height)
 
             if outline:
                 # Combine R, G, B values into a single int
                 rgb = (img * 256).astype(int)
-                image_value = (rgb[..., 0] << 16) + \
-                    (rgb[..., 1] << 8) + (rgb[..., 2])
+                image_value = (rgb[..., 0] << 16) + (rgb[..., 1] << 8) + (rgb[..., 2])
 
                 axes.contour(
                     image_value,
@@ -487,8 +498,10 @@ class Universe(UniverseBase):
             # or cell if that was requested
             if legend:
                 if plot.colors == {}:
-                    raise ValueError("Must pass 'colors' dictionary if you "
-                                     "are adding a legend via legend=True.")
+                    raise ValueError(
+                        "Must pass 'colors' dictionary if you "
+                        "are adding a legend via legend=True."
+                    )
 
                 if color_by == "cell":
                     expected_key_type = openmc.Cell
@@ -500,13 +513,13 @@ class Universe(UniverseBase):
 
                     if isinstance(key, int):
                         raise TypeError(
-                            "Cannot use IDs in colors dict for auto legend.")
+                            "Cannot use IDs in colors dict for auto legend."
+                        )
                     elif not isinstance(key, expected_key_type):
-                        raise TypeError(
-                            "Color dict key type does not match color_by")
+                        raise TypeError("Color dict key type does not match color_by")
 
                     # this works whether we're doing cells or materials
-                    label = key.name if key.name != '' else key.id
+                    label = key.name if key.name != "" else key.id
 
                     # matplotlib takes RGB on 0-1 scale rather than 0-255. at
                     # this point PlotBase has already checked that 3-tuple
@@ -514,8 +527,7 @@ class Universe(UniverseBase):
                     # then we know it just needs to be converted to the 0-1
                     # format.
                     if len(color) == 3 and not isinstance(color, str):
-                        scaled_color = (
-                            color[0]/255, color[1]/255, color[2]/255)
+                        scaled_color = (color[0] / 255, color[1] / 255, color[2] / 255)
                     else:
                         scaled_color = color
 
@@ -539,8 +551,10 @@ class Universe(UniverseBase):
         """
 
         if not isinstance(cell, openmc.Cell):
-            msg = f'Unable to add a Cell to Universe ID="{self._id}" since ' \
-                  f'"{cell}" is not a Cell'
+            msg = (
+                f'Unable to add a Cell to Universe ID="{self._id}" since '
+                f'"{cell}" is not a Cell'
+            )
             raise TypeError(msg)
 
         cell_id = cell.id
@@ -559,8 +573,10 @@ class Universe(UniverseBase):
         """
 
         if not isinstance(cells, Iterable):
-            msg = f'Unable to add Cells to Universe ID="{self._id}" since ' \
-                  f'"{cells}" is not iterable'
+            msg = (
+                f'Unable to add Cells to Universe ID="{self._id}" since '
+                f'"{cells}" is not iterable'
+            )
             raise TypeError(msg)
 
         for cell in cells:
@@ -577,8 +593,10 @@ class Universe(UniverseBase):
         """
 
         if not isinstance(cell, openmc.Cell):
-            msg = f'Unable to remove a Cell from Universe ID="{self._id}" ' \
-                  f'since "{cell}" is not a Cell'
+            msg = (
+                f'Unable to remove a Cell from Universe ID="{self._id}" '
+                f'since "{cell}" is not a Cell'
+            )
             raise TypeError(msg)
 
         # If the Cell is in the Universe's list of Cells, delete it
@@ -625,14 +643,15 @@ class Universe(UniverseBase):
             volume = self.volume
             for name, atoms in self._atoms.items():
                 nuclide = openmc.Nuclide(name)
-                density = 1.0e-24 * atoms.n/volume  # density in atoms/b-cm
+                density = 1.0e-24 * atoms.n / volume  # density in atoms/b-cm
                 nuclides[name] = (nuclide, density)
         else:
             raise RuntimeError(
-                'Volume information is needed to calculate microscopic cross '
-                f'sections for universe {self.id}. This can be done by running '
-                'a stochastic volume calculation via the '
-                'openmc.VolumeCalculation object')
+                "Volume information is needed to calculate microscopic cross "
+                f"sections for universe {self.id}. This can be done by running "
+                "a stochastic volume calculation via the "
+                "openmc.VolumeCalculation object"
+            )
 
         return nuclides
 
@@ -706,36 +725,37 @@ class Universe(UniverseBase):
             cell_element.set("universe", str(self._id))
             xml_element.append(cell_element)
 
-    def _determine_paths(self, path='', instances_only=False):
+    def _determine_paths(self, path="", instances_only=False):
         """Count the number of instances for each cell in the universe, and
         record the count in the :attr:`Cell.num_instances` properties."""
 
-        univ_path = path + f'u{self.id}'
+        univ_path = path + f"u{self.id}"
 
         for cell in self.cells.values():
-            cell_path = f'{univ_path}->c{cell.id}'
+            cell_path = f"{univ_path}->c{cell.id}"
             fill = cell._fill
             fill_type = cell.fill_type
 
             # If universe-filled, recursively count cells in filling universe
-            if fill_type == 'universe':
-                fill._determine_paths(cell_path + '->', instances_only)
+            if fill_type == "universe":
+                fill._determine_paths(cell_path + "->", instances_only)
 
             # If lattice-filled, recursively call for all universes in lattice
-            elif fill_type == 'lattice':
+            elif fill_type == "lattice":
                 latt = fill
 
                 # Count instances in each universe in the lattice
                 for index in latt._natural_indices:
-                    latt_path = '{}->l{}({})->'.format(
-                        cell_path, latt.id, ",".join(str(x) for x in index))
+                    latt_path = "{}->l{}({})->".format(
+                        cell_path, latt.id, ",".join(str(x) for x in index)
+                    )
                     univ = latt.get_universe(index)
                     univ._determine_paths(latt_path, instances_only)
 
             else:
-                if fill_type == 'material':
+                if fill_type == "material":
                     mat = fill
-                elif fill_type == 'distribmat':
+                elif fill_type == "distribmat":
                     mat = fill[cell._num_instances]
                 else:
                     mat = None
@@ -743,7 +763,7 @@ class Universe(UniverseBase):
                 if mat is not None:
                     mat._num_instances += 1
                     if not instances_only:
-                        mat._paths.append(f'{cell_path}->m{mat.id}')
+                        mat._paths.append(f"{cell_path}->m{mat.id}")
 
             # Append current path
             cell._num_instances += 1
@@ -820,12 +840,14 @@ class DAGMCUniverse(UniverseBase):
 
     """
 
-    def __init__(self,
-                 filename: cv.PathLike,
-                 universe_id=None,
-                 name='',
-                 auto_geom_ids=False,
-                 auto_mat_ids=False):
+    def __init__(
+        self,
+        filename: cv.PathLike,
+        universe_id=None,
+        name="",
+        auto_geom_ids=False,
+        auto_mat_ids=False,
+    ):
         super().__init__(universe_id, name)
         # Initialize class attributes
         self.filename = filename
@@ -834,14 +856,14 @@ class DAGMCUniverse(UniverseBase):
 
     def __repr__(self):
         string = super().__repr__()
-        string += '{: <16}=\t{}\n'.format('\tGeom', 'DAGMC')
-        string += '{: <16}=\t{}\n'.format('\tFile', self.filename)
+        string += "{: <16}=\t{}\n".format("\tGeom", "DAGMC")
+        string += "{: <16}=\t{}\n".format("\tFile", self.filename)
         return string
 
     @property
     def bounding_box(self):
         with h5py.File(self.filename) as dagmc_file:
-            coords = dagmc_file['tstt']['nodes']['coordinates'][()]
+            coords = dagmc_file["tstt"]["nodes"]["coordinates"][()]
             lower_left_corner = coords.min(axis=0)
             upper_right_corner = coords.max(axis=0)
             return openmc.BoundingBox(lower_left_corner, upper_right_corner)
@@ -852,7 +874,7 @@ class DAGMCUniverse(UniverseBase):
 
     @filename.setter
     def filename(self, val: cv.PathLike):
-        cv.check_type('DAGMC filename', val, cv.PathLike)
+        cv.check_type("DAGMC filename", val, cv.PathLike)
         self._filename = input_path(val)
 
     @property
@@ -861,7 +883,7 @@ class DAGMCUniverse(UniverseBase):
 
     @auto_geom_ids.setter
     def auto_geom_ids(self, val):
-        cv.check_type('DAGMC automatic geometry ids', val, bool)
+        cv.check_type("DAGMC automatic geometry ids", val, bool)
         self._auto_geom_ids = val
 
     @property
@@ -870,19 +892,18 @@ class DAGMCUniverse(UniverseBase):
 
     @auto_mat_ids.setter
     def auto_mat_ids(self, val):
-        cv.check_type('DAGMC automatic material ids', val, bool)
+        cv.check_type("DAGMC automatic material ids", val, bool)
         self._auto_mat_ids = val
 
     @property
     def material_names(self):
         dagmc_file_contents = h5py.File(self.filename)
-        material_tags_hex = dagmc_file_contents['/tstt/tags/NAME'].get(
-            'values')
+        material_tags_hex = dagmc_file_contents["/tstt/tags/NAME"].get("values")
         material_tags_ascii = []
         for tag in material_tags_hex:
-            candidate_tag = tag.tobytes().decode().replace('\x00', '')
+            candidate_tag = tag.tobytes().decode().replace("\x00", "")
             # tags might be for temperature or reflective surfaces
-            if candidate_tag.startswith('mat:'):
+            if candidate_tag.startswith("mat:"):
                 # removes first 4 characters as openmc.Material name should be
                 # set without the 'mat:' part of the tag
                 material_tags_ascii.append(candidate_tag[4:])
@@ -911,32 +932,32 @@ class DAGMCUniverse(UniverseBase):
         int
             Number of geometry elements of the specified type
         """
-        cv.check_value('geometry type', geom_type, ('volume', 'surface'))
+        cv.check_value("geometry type", geom_type, ("volume", "surface"))
 
         def decode_str_tag(tag_val):
-            return tag_val.tobytes().decode().replace('\x00', '')
+            return tag_val.tobytes().decode().replace("\x00", "")
 
         with h5py.File(self.filename) as dagmc_file:
-            category_data = dagmc_file['tstt/tags/CATEGORY/values']
+            category_data = dagmc_file["tstt/tags/CATEGORY/values"]
             category_strs = map(decode_str_tag, category_data)
             n = sum([v == geom_type.capitalize() for v in category_strs])
 
             # check for presence of an implicit complement in the file and
             # increment the number of cells if it doesn't exist
-            if geom_type == 'volume':
-                name_data = dagmc_file['tstt/tags/NAME/values']
+            if geom_type == "volume":
+                name_data = dagmc_file["tstt/tags/NAME/values"]
                 name_strs = map(decode_str_tag, name_data)
-                if not sum(['impl_complement' in n for n in name_strs]):
+                if not sum(["impl_complement" in n for n in name_strs]):
                     n += 1
         return n
 
     @property
     def n_cells(self):
-        return self._n_geom_elements('volume')
+        return self._n_geom_elements("volume")
 
     @property
     def n_surfaces(self):
-        return self._n_geom_elements('surface')
+        return self._n_geom_elements("surface")
 
     def create_xml_subelement(self, xml_element, memo=None):
         if memo is None:
@@ -948,23 +969,23 @@ class DAGMCUniverse(UniverseBase):
         memo.add(self)
 
         # Set xml element values
-        dagmc_element = ET.Element('dagmc_universe')
-        dagmc_element.set('id', str(self.id))
+        dagmc_element = ET.Element("dagmc_universe")
+        dagmc_element.set("id", str(self.id))
 
         if self.auto_geom_ids:
-            dagmc_element.set('auto_geom_ids', 'true')
+            dagmc_element.set("auto_geom_ids", "true")
         if self.auto_mat_ids:
-            dagmc_element.set('auto_mat_ids', 'true')
-        dagmc_element.set('filename', str(self.filename))
+            dagmc_element.set("auto_mat_ids", "true")
+        dagmc_element.set("filename", str(self.filename))
         xml_element.append(dagmc_element)
 
     def bounding_region(
-            self,
-            bounded_type: str = 'box',
-            boundary_type: str = 'vacuum',
-            starting_id: int = 10000,
-            padding_distance: float = 0.
-        ):
+        self,
+        bounded_type: str = "box",
+        boundary_type: str = "vacuum",
+        starting_id: int = 10000,
+        padding_distance: float = 0.0,
+    ):
         """Creates a either a spherical or box shaped bounding region around
         the DAGMC geometry.
 
@@ -995,15 +1016,15 @@ class DAGMCUniverse(UniverseBase):
             Region instance
         """
 
-        check_type('boundary type', boundary_type, str)
-        check_value('boundary type', boundary_type, _BOUNDARY_TYPES)
-        check_type('starting surface id', starting_id, Integral)
-        check_type('bounded type', bounded_type, str)
-        check_value('bounded type', bounded_type, ('box', 'sphere'))
+        check_type("boundary type", boundary_type, str)
+        check_value("boundary type", boundary_type, _BOUNDARY_TYPES)
+        check_type("starting surface id", starting_id, Integral)
+        check_type("bounded type", bounded_type, str)
+        check_value("bounded type", bounded_type, ("box", "sphere"))
 
         bbox = self.bounding_box.expand(padding_distance, True)
 
-        if bounded_type == 'sphere':
+        if bounded_type == "sphere":
             radius = np.linalg.norm(bbox.upper_right - bbox.center)
             bounding_surface = openmc.Sphere(
                 surface_id=starting_id,
@@ -1016,14 +1037,14 @@ class DAGMCUniverse(UniverseBase):
 
             return -bounding_surface
 
-        if bounded_type == 'box':
+        if bounded_type == "box":
             # defines plane surfaces for all six faces of the bounding box
             lower_x = openmc.XPlane(bbox[0][0], surface_id=starting_id)
-            upper_x = openmc.XPlane(bbox[1][0], surface_id=starting_id+1)
-            lower_y = openmc.YPlane(bbox[0][1], surface_id=starting_id+2)
-            upper_y = openmc.YPlane(bbox[1][1], surface_id=starting_id+3)
-            lower_z = openmc.ZPlane(bbox[0][2], surface_id=starting_id+4)
-            upper_z = openmc.ZPlane(bbox[1][2], surface_id=starting_id+5)
+            upper_x = openmc.XPlane(bbox[1][0], surface_id=starting_id + 1)
+            lower_y = openmc.YPlane(bbox[0][1], surface_id=starting_id + 2)
+            upper_y = openmc.YPlane(bbox[1][1], surface_id=starting_id + 3)
+            lower_z = openmc.ZPlane(bbox[0][2], surface_id=starting_id + 4)
+            upper_z = openmc.ZPlane(bbox[1][2], surface_id=starting_id + 5)
 
             region = +lower_x & -upper_x & +lower_y & -upper_y & +lower_z & -upper_z
 
@@ -1050,7 +1071,8 @@ class DAGMCUniverse(UniverseBase):
             Universe instance
         """
         bounding_cell = openmc.Cell(
-            fill=self, cell_id=bounding_cell_id, region=self.bounding_region(**kwargs))
+            fill=self, cell_id=bounding_cell_id, region=self.bounding_region(**kwargs)
+        )
         return openmc.Universe(cells=[bounding_cell])
 
     @classmethod
@@ -1068,14 +1090,14 @@ class DAGMCUniverse(UniverseBase):
             DAGMCUniverse instance
 
         """
-        id = int(group.name.split('/')[-1].lstrip('universe '))
-        fname = group['filename'][()].decode()
-        name = group['name'][()].decode() if 'name' in group else None
+        id = int(group.name.split("/")[-1].lstrip("universe "))
+        fname = group["filename"][()].decode()
+        name = group["name"][()].decode() if "name" in group else None
 
         out = cls(fname, universe_id=id, name=name)
 
-        out.auto_geom_ids = bool(group.attrs['auto_geom_ids'])
-        out.auto_mat_ids = bool(group.attrs['auto_mat_ids'])
+        out.auto_geom_ids = bool(group.attrs["auto_geom_ids"])
+        out.auto_mat_ids = bool(group.attrs["auto_mat_ids"])
 
         return out
 
@@ -1094,17 +1116,17 @@ class DAGMCUniverse(UniverseBase):
             DAGMCUniverse instance
 
         """
-        id = int(get_text(elem, 'id'))
-        fname = get_text(elem, 'filename')
+        id = int(get_text(elem, "id"))
+        fname = get_text(elem, "filename")
 
         out = cls(fname, universe_id=id)
 
-        name = get_text(elem, 'name')
+        name = get_text(elem, "name")
         if name is not None:
             out.name = name
 
-        out.auto_geom_ids = bool(elem.get('auto_geom_ids'))
-        out.auto_mat_ids = bool(elem.get('auto_mat_ids'))
+        out.auto_geom_ids = bool(elem.get("auto_geom_ids"))
+        out.auto_mat_ids = bool(elem.get("auto_mat_ids"))
 
         return out
 

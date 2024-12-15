@@ -73,8 +73,7 @@ def test_restart(run_in_tmpdir, scheme):
     bundle.solver(operator, [0.75], 1.0).integrate()
 
     # restart
-    prev_res = openmc.deplete.Results(
-        operator.output_dir / "depletion_results.h5")
+    prev_res = openmc.deplete.Results(operator.output_dir / "depletion_results.h5")
     operator = dummy_operator.DummyOperator(prev_res)
 
     # take second step
@@ -82,8 +81,7 @@ def test_restart(run_in_tmpdir, scheme):
 
     # compare results
 
-    results = openmc.deplete.Results(
-        operator.output_dir / "depletion_results.h5")
+    results = openmc.deplete.Results(operator.output_dir / "depletion_results.h5")
 
     _t, y1 = results.get_atoms("1", "1")
     _t, y2 = results.get_atoms("1", "2")

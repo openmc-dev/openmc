@@ -39,12 +39,12 @@ class Summary:
 
     def __init__(self, filename):
         filename = str(filename)
-        if not filename.endswith(('.h5', '.hdf5')):
+        if not filename.endswith((".h5", ".hdf5")):
             msg = f'Unable to open "{filename}" which is not an HDF5 summary file'
             raise ValueError(msg)
 
-        self._f = h5py.File(filename, 'r')
-        cv.check_filetype_version(self._f, 'summary', _VERSION_SUMMARY)
+        self._f = h5py.File(filename, "r")
+        cv.check_filetype_version(self._f, "summary", _VERSION_SUMMARY)
 
         self._geometry = openmc.Geometry()
 
@@ -64,7 +64,7 @@ class Summary:
 
     @property
     def date_and_time(self):
-        return self._f.attrs['date_and_time'].decode()
+        return self._f.attrs["date_and_time"].decode()
 
     @property
     def geometry(self):
@@ -84,18 +84,18 @@ class Summary:
 
     @property
     def version(self):
-        return tuple(self._f.attrs['openmc_version'])
+        return tuple(self._f.attrs["openmc_version"])
 
     def _read_nuclides(self):
-        if 'nuclides/names' in self._f:
-            names = self._f['nuclides/names'][()]
-            awrs = self._f['nuclides/awrs'][()]
+        if "nuclides/names" in self._f:
+            names = self._f["nuclides/names"][()]
+            awrs = self._f["nuclides/awrs"][()]
             for name, awr in zip(names, awrs):
                 self._nuclides[name.decode()] = awr
 
     def _read_macroscopics(self):
-        if 'macroscopics/names' in self._f:
-            names = self._f['macroscopics/names'][()]
+        if "macroscopics/names" in self._f:
+            names = self._f["macroscopics/names"][()]
             self._macroscopics = [name.decode() for name in names]
 
     def _read_geometry(self):
@@ -109,7 +109,7 @@ class Summary:
             self._read_materials()
 
             # Read native geometry only
-            if "dagmc" not in self._f['geometry'].attrs.keys():
+            if "dagmc" not in self._f["geometry"].attrs.keys():
                 self._read_surfaces()
                 cell_fills = self._read_cells()
                 self._read_universes()
@@ -117,7 +117,7 @@ class Summary:
                 self._finalize_geometry(cell_fills)
 
     def _read_materials(self):
-        for group in self._f['materials'].values():
+        for group in self._f["materials"].values():
             material = openmc.Material.from_hdf5(group)
 
             # Add the material to the Materials collection
@@ -127,7 +127,7 @@ class Summary:
             self._fast_materials[material.id] = material
 
     def _read_surfaces(self):
-        for group in self._f['geometry/surfaces'].values():
+        for group in self._f["geometry/surfaces"].values():
             surface = openmc.Surface.from_hdf5(group)
             # surface may be None for DAGMC surfaces
             if surface:
@@ -138,37 +138,37 @@ class Summary:
         # Initialize dictionary for each Cell's fill
         cell_fills = {}
 
-        for key, group in self._f['geometry/cells'].items():
-            cell_id = int(key.lstrip('cell '))
-            name = group['name'][()].decode() if 'name' in group else ''
-            fill_type = group['fill_type'][()].decode()
+        for key, group in self._f["geometry/cells"].items():
+            cell_id = int(key.lstrip("cell "))
+            name = group["name"][()].decode() if "name" in group else ""
+            fill_type = group["fill_type"][()].decode()
 
-            if fill_type == 'material':
-                fill_id = group['material'][()]
-            elif fill_type == 'universe':
-                fill_id = group['fill'][()]
+            if fill_type == "material":
+                fill_id = group["material"][()]
+            elif fill_type == "universe":
+                fill_id = group["fill"][()]
             else:
-                fill_id = group['lattice'][()]
+                fill_id = group["lattice"][()]
 
-            region = group['region'][()].decode() if 'region' in group else ''
+            region = group["region"][()].decode() if "region" in group else ""
 
             # Create this Cell
             cell = openmc.Cell(cell_id=cell_id, name=name)
 
-            if fill_type == 'universe':
-                if 'translation' in group:
-                    translation = group['translation'][()]
+            if fill_type == "universe":
+                if "translation" in group:
+                    translation = group["translation"][()]
                     translation = np.asarray(translation, dtype=np.float64)
                     cell.translation = translation
 
-                if 'rotation' in group:
-                    rotation = group['rotation'][()]
+                if "rotation" in group:
+                    rotation = group["rotation"][()]
                     if rotation.size == 9:
                         rotation.shape = (3, 3)
                     cell.rotation = rotation
 
-            elif fill_type == 'material':
-                cell.temperature = group['temperature'][()]
+            elif fill_type == "material":
+                cell.temperature = group["temperature"][()]
 
             # Store Cell fill information for after Universe/Lattice creation
             cell_fills[cell.id] = (fill_type, fill_id)
@@ -183,16 +183,16 @@ class Summary:
         return cell_fills
 
     def _read_universes(self):
-        for group in self._f['geometry/universes'].values():
-            geom_type = group.get('geom_type')
-            if geom_type and geom_type[()].decode() == 'dagmc':
+        for group in self._f["geometry/universes"].values():
+            geom_type = group.get("geom_type")
+            if geom_type and geom_type[()].decode() == "dagmc":
                 universe = openmc.DAGMCUniverse.from_hdf5(group)
             else:
                 universe = openmc.Universe.from_hdf5(group, self._fast_cells)
             self._fast_universes[universe.id] = universe
 
     def _read_lattices(self):
-        for group in self._f['geometry/lattices'].values():
+        for group in self._f["geometry/lattices"].values():
             lattice = openmc.Lattice.from_hdf5(group, self._fast_universes)
             self._fast_lattices[lattice.id] = lattice
 
@@ -206,13 +206,15 @@ class Summary:
         # Iterate over all Cells and add fill Materials, Universes and Lattices
         for cell_id, (fill_type, fill_id) in cell_fills.items():
             # Retrieve the object corresponding to the fill type and ID
-            if fill_type == 'material':
+            if fill_type == "material":
                 if isinstance(fill_id, Iterable):
-                    fill = [self._fast_materials[mat] if mat > 0 else None
-                            for mat in fill_id]
+                    fill = [
+                        self._fast_materials[mat] if mat > 0 else None
+                        for mat in fill_id
+                    ]
                 else:
                     fill = self._fast_materials[fill_id] if fill_id > 0 else None
-            elif fill_type == 'universe':
+            elif fill_type == "universe":
                 fill = self._fast_universes[fill_id]
                 fill_univ_ids.add(fill_id)
             else:

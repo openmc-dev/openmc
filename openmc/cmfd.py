@@ -22,23 +22,29 @@ import numpy as np
 from scipy import sparse
 
 import openmc.lib
-from .checkvalue import (check_type, check_length, check_value,
-                         check_greater_than, check_less_than)
+from .checkvalue import (
+    check_type,
+    check_length,
+    check_value,
+    check_greater_than,
+    check_less_than,
+)
 from .exceptions import OpenMCError
 
 # See if mpi4py module can be imported, define have_mpi global variable
 try:
     from mpi4py import MPI
+
     have_mpi = True
 except ImportError:
     have_mpi = False
 
 # Maximum/minimum neutron energies
 _ENERGY_MAX_NEUTRON = np.inf
-_ENERGY_MIN_NEUTRON = 0.
+_ENERGY_MIN_NEUTRON = 0.0
 
 # Tolerance for detecting zero flux values
-_TINY_BIT = 1.e-8
+_TINY_BIT = 1.0e-8
 
 # For non-accelerated regions on coarse mesh overlay
 _CMFD_NOACCEL = -1
@@ -48,9 +54,18 @@ _ZERO_FLUX = 999.0
 
 # Map that returns index of current direction in numpy current matrix
 _CURRENTS = {
-    'out_left':   0, 'in_left':   1, 'out_right': 2, 'in_right': 3,
-    'out_back':   4, 'in_back':   5, 'out_front': 6, 'in_front': 7,
-    'out_bottom': 8, 'in_bottom': 9, 'out_top':  10, 'in_top':  11
+    "out_left": 0,
+    "in_left": 1,
+    "out_right": 2,
+    "in_right": 3,
+    "out_back": 4,
+    "in_back": 5,
+    "out_front": 6,
+    "in_front": 7,
+    "out_bottom": 8,
+    "in_bottom": 9,
+    "out_top": 10,
+    "in_top": 11,
 }
 
 
@@ -117,21 +132,31 @@ class CMFDMesh:
         self._energy = None
         self._albedo = None
         self._map = None
-        self._mesh_type = 'regular'
+        self._mesh_type = "regular"
         self._grid = None
 
     def __repr__(self):
-        outstr = type(self).__name__ + '\n'
-        if self._mesh_type == 'regular':
-            outstr += (self._get_repr(self._lower_left, "Lower left") + "\n" +
-                       self._get_repr(self._upper_right, "Upper right") + "\n" +
-                       self._get_repr(self._dimension, "Dimension") + "\n" +
-                       self._get_repr(self._width, "Width") + "\n" +
-                       self._get_repr(self._albedo, "Albedo"))
-        elif self._mesh_type == 'rectilinear':
-            outstr += (self._get_repr(self._grid[0], "X-grid") + "\n" +
-                       self._get_repr(self._grid[1], "Y-grid") + "\n" +
-                       self._get_repr(self._grid[2], "Z-grid"))
+        outstr = type(self).__name__ + "\n"
+        if self._mesh_type == "regular":
+            outstr += (
+                self._get_repr(self._lower_left, "Lower left")
+                + "\n"
+                + self._get_repr(self._upper_right, "Upper right")
+                + "\n"
+                + self._get_repr(self._dimension, "Dimension")
+                + "\n"
+                + self._get_repr(self._width, "Width")
+                + "\n"
+                + self._get_repr(self._albedo, "Albedo")
+            )
+        elif self._mesh_type == "rectilinear":
+            outstr += (
+                self._get_repr(self._grid[0], "X-grid")
+                + "\n"
+                + self._get_repr(self._grid[1], "Y-grid")
+                + "\n"
+                + self._get_repr(self._grid[2], "Z-grid")
+            )
         return outstr
 
     def _get_repr(self, list_var, label):
@@ -178,81 +203,81 @@ class CMFDMesh:
 
     @lower_left.setter
     def lower_left(self, lower_left):
-        check_type('CMFD mesh lower_left', lower_left, Iterable, Real)
-        check_length('CMFD mesh lower_left', lower_left, 2, 3)
+        check_type("CMFD mesh lower_left", lower_left, Iterable, Real)
+        check_length("CMFD mesh lower_left", lower_left, 2, 3)
         self._lower_left = lower_left
-        self._display_mesh_warning('regular', 'CMFD mesh lower_left')
+        self._display_mesh_warning("regular", "CMFD mesh lower_left")
 
     @upper_right.setter
     def upper_right(self, upper_right):
-        check_type('CMFD mesh upper_right', upper_right, Iterable, Real)
-        check_length('CMFD mesh upper_right', upper_right, 2, 3)
+        check_type("CMFD mesh upper_right", upper_right, Iterable, Real)
+        check_length("CMFD mesh upper_right", upper_right, 2, 3)
         self._upper_right = upper_right
-        self._display_mesh_warning('regular', 'CMFD mesh upper_right')
+        self._display_mesh_warning("regular", "CMFD mesh upper_right")
 
     @dimension.setter
     def dimension(self, dimension):
-        check_type('CMFD mesh dimension', dimension, Iterable, Integral)
-        check_length('CMFD mesh dimension', dimension, 2, 3)
+        check_type("CMFD mesh dimension", dimension, Iterable, Integral)
+        check_length("CMFD mesh dimension", dimension, 2, 3)
         for d in dimension:
-            check_greater_than('CMFD mesh dimension', d, 0)
+            check_greater_than("CMFD mesh dimension", d, 0)
         self._dimension = dimension
 
     @width.setter
     def width(self, width):
-        check_type('CMFD mesh width', width, Iterable, Real)
-        check_length('CMFD mesh width', width, 2, 3)
+        check_type("CMFD mesh width", width, Iterable, Real)
+        check_length("CMFD mesh width", width, 2, 3)
         for w in width:
-            check_greater_than('CMFD mesh width', w, 0)
+            check_greater_than("CMFD mesh width", w, 0)
         self._width = width
-        self._display_mesh_warning('regular', 'CMFD mesh width')
+        self._display_mesh_warning("regular", "CMFD mesh width")
 
     @energy.setter
     def energy(self, energy):
-        check_type('CMFD mesh energy', energy, Iterable, Real)
+        check_type("CMFD mesh energy", energy, Iterable, Real)
         for e in energy:
-            check_greater_than('CMFD mesh energy', e, 0, True)
+            check_greater_than("CMFD mesh energy", e, 0, True)
         self._energy = energy
 
     @albedo.setter
     def albedo(self, albedo):
-        check_type('CMFD mesh albedo', albedo, Iterable, Real)
-        check_length('CMFD mesh albedo', albedo, 6)
+        check_type("CMFD mesh albedo", albedo, Iterable, Real)
+        check_length("CMFD mesh albedo", albedo, 6)
         for a in albedo:
-            check_greater_than('CMFD mesh albedo', a, 0, True)
-            check_less_than('CMFD mesh albedo', a, 1, True)
+            check_greater_than("CMFD mesh albedo", a, 0, True)
+            check_less_than("CMFD mesh albedo", a, 1, True)
         self._albedo = albedo
 
     @map.setter
     def map(self, mesh_map):
-        check_type('CMFD mesh map', mesh_map, Iterable, Integral)
+        check_type("CMFD mesh map", mesh_map, Iterable, Integral)
         for m in mesh_map:
-            check_value('CMFD mesh map', m, [0, 1])
+            check_value("CMFD mesh map", m, [0, 1])
         self._map = mesh_map
 
     @mesh_type.setter
     def mesh_type(self, mesh_type):
-        check_value('CMFD mesh type', mesh_type, ['regular', 'rectilinear'])
+        check_value("CMFD mesh type", mesh_type, ["regular", "rectilinear"])
         self._mesh_type = mesh_type
 
     @grid.setter
     def grid(self, grid):
         grid_length = 3
-        dims = ['x', 'y', 'z']
+        dims = ["x", "y", "z"]
 
-        check_length('CMFD mesh grid', grid, grid_length)
+        check_length("CMFD mesh grid", grid, grid_length)
         for i in range(grid_length):
-            check_type(f'CMFD mesh {dims[i]}-grid', grid[i], Iterable,
-                       Real)
-            check_greater_than(f'CMFD mesh {dims[i]}-grid length',
-                               len(grid[i]), 1)
+            check_type(f"CMFD mesh {dims[i]}-grid", grid[i], Iterable, Real)
+            check_greater_than(f"CMFD mesh {dims[i]}-grid length", len(grid[i]), 1)
         self._grid = [np.array(g) for g in grid]
-        self._display_mesh_warning('rectilinear', 'CMFD mesh grid')
+        self._display_mesh_warning("rectilinear", "CMFD mesh grid")
 
     def _display_mesh_warning(self, mesh_type, variable_label):
         if self._mesh_type != mesh_type:
-            warn_msg = (f'Setting {variable_label} if mesh type is not set to '
-                        f'{mesh_type} will have no effect')
+            warn_msg = (
+                f"Setting {variable_label} if mesh type is not set to "
+                f"{mesh_type} will have no effect"
+            )
             warnings.warn(warn_msg, RuntimeWarning)
 
 
@@ -378,23 +403,27 @@ class CMFDRun:
         self._tally_begin = 1
         self._solver_begin = 1
         self._ref_d = np.array([])
-        self._display = {'balance': False, 'dominance': False,
-                         'entropy': False, 'source': False}
+        self._display = {
+            "balance": False,
+            "dominance": False,
+            "entropy": False,
+            "source": False,
+        }
         self._downscatter = False
         self._feedback = False
-        self._cmfd_ktol = 1.e-8
+        self._cmfd_ktol = 1.0e-8
         self._mesh = None
-        self._norm = 1.
+        self._norm = 1.0
         self._power_monitor = False
         self._run_adjoint = False
-        self._w_shift = 1.e6
-        self._stol = 1.e-8
+        self._w_shift = 1.0e6
+        self._stol = 1.0e-8
         self._reset = []
         self._write_matrices = False
         self._spectral = 0.0
-        self._gauss_seidel_tolerance = [1.e-10, 1.e-5]
-        self._adjoint_type = 'physical'
-        self._window_type = 'none'
+        self._gauss_seidel_tolerance = [1.0e-10, 1.0e-5]
+        self._adjoint_type = "physical"
+        self._window_type = "none"
         self._window_size = 10
         self._intracomm = None
         self._use_all_threads = False
@@ -590,176 +619,194 @@ class CMFDRun:
 
     @tally_begin.setter
     def tally_begin(self, begin):
-        check_type('CMFD tally begin batch', begin, Integral)
-        check_greater_than('CMFD tally begin batch', begin, 0)
+        check_type("CMFD tally begin batch", begin, Integral)
+        check_greater_than("CMFD tally begin batch", begin, 0)
         self._tally_begin = begin
 
     @solver_begin.setter
     def solver_begin(self, begin):
-        check_type('CMFD feedback begin batch', begin, Integral)
-        check_greater_than('CMFD feedback begin batch', begin, 0)
+        check_type("CMFD feedback begin batch", begin, Integral)
+        check_greater_than("CMFD feedback begin batch", begin, 0)
         self._solver_begin = begin
 
     @ref_d.setter
     def ref_d(self, diff_params):
-        check_type('Reference diffusion params', diff_params,
-                   Iterable, Real)
+        check_type("Reference diffusion params", diff_params, Iterable, Real)
         self._ref_d = np.array(diff_params)
 
     @display.setter
     def display(self, display):
-        check_type('display', display, Mapping)
+        check_type("display", display, Mapping)
         for key, value in display.items():
-            check_value('display key', key,
-                        ('balance', 'entropy', 'dominance', 'source'))
+            check_value(
+                "display key", key, ("balance", "entropy", "dominance", "source")
+            )
             check_type(f"display['{key}']", value, bool)
             self._display[key] = value
 
     @downscatter.setter
     def downscatter(self, downscatter):
-        check_type('CMFD downscatter', downscatter, bool)
+        check_type("CMFD downscatter", downscatter, bool)
         self._downscatter = downscatter
 
     @feedback.setter
     def feedback(self, feedback):
-        check_type('CMFD feedback', feedback, bool)
+        check_type("CMFD feedback", feedback, bool)
         self._feedback = feedback
 
     @cmfd_ktol.setter
     def cmfd_ktol(self, cmfd_ktol):
-        check_type('CMFD eigenvalue tolerance', cmfd_ktol, Real)
+        check_type("CMFD eigenvalue tolerance", cmfd_ktol, Real)
         self._cmfd_ktol = cmfd_ktol
 
     @mesh.setter
     def mesh(self, cmfd_mesh):
-        check_type('CMFD mesh', cmfd_mesh, CMFDMesh)
+        check_type("CMFD mesh", cmfd_mesh, CMFDMesh)
 
-        if cmfd_mesh.mesh_type == 'regular':
+        if cmfd_mesh.mesh_type == "regular":
             # Check dimension defined
             if cmfd_mesh.dimension is None:
-                raise ValueError('CMFD regular mesh requires spatial '
-                                 'dimensions to be specified')
+                raise ValueError(
+                    "CMFD regular mesh requires spatial " "dimensions to be specified"
+                )
 
             # Check lower left defined
             if cmfd_mesh.lower_left is None:
-                raise ValueError('CMFD regular mesh requires lower left '
-                                 'coordinates to be specified')
+                raise ValueError(
+                    "CMFD regular mesh requires lower left "
+                    "coordinates to be specified"
+                )
 
             # Check that both upper right and width both not defined
             if cmfd_mesh.upper_right is not None and cmfd_mesh.width is not None:
-                raise ValueError('Both upper right coordinates and width '
-                                 'cannot be specified for CMFD regular mesh')
+                raise ValueError(
+                    "Both upper right coordinates and width "
+                    "cannot be specified for CMFD regular mesh"
+                )
 
             # Check that at least one of width or upper right is defined
             if cmfd_mesh.upper_right is None and cmfd_mesh.width is None:
-                raise ValueError('CMFD regular mesh requires either upper right '
-                                 'coordinates or width to be specified')
+                raise ValueError(
+                    "CMFD regular mesh requires either upper right "
+                    "coordinates or width to be specified"
+                )
 
             # Check width and lower length are same dimension and define
             # upper_right
             if cmfd_mesh.width is not None:
-                check_length('CMFD mesh width', cmfd_mesh.width,
-                             len(cmfd_mesh.lower_left))
-                cmfd_mesh.upper_right = np.array(cmfd_mesh.lower_left) + \
-                    np.array(cmfd_mesh.width) * np.array(cmfd_mesh.dimension)
+                check_length(
+                    "CMFD mesh width", cmfd_mesh.width, len(cmfd_mesh.lower_left)
+                )
+                cmfd_mesh.upper_right = np.array(cmfd_mesh.lower_left) + np.array(
+                    cmfd_mesh.width
+                ) * np.array(cmfd_mesh.dimension)
 
             # Check upper_right and lower length are same dimension and define
             # width
             elif cmfd_mesh.upper_right is not None:
-                check_length('CMFD mesh upper right', cmfd_mesh.upper_right,
-                             len(cmfd_mesh.lower_left))
+                check_length(
+                    "CMFD mesh upper right",
+                    cmfd_mesh.upper_right,
+                    len(cmfd_mesh.lower_left),
+                )
                 # Check upper right coordinates are greater than lower left
-                if np.any(np.array(cmfd_mesh.upper_right) <=
-                          np.array(cmfd_mesh.lower_left)):
-                    raise ValueError('CMFD regular mesh requires upper right '
-                                     'coordinates to be greater than lower '
-                                     'left coordinates')
-                cmfd_mesh.width = np.true_divide((np.array(cmfd_mesh.upper_right) -
-                                                 np.array(cmfd_mesh.lower_left)),
-                                                 np.array(cmfd_mesh.dimension))
-        elif cmfd_mesh.mesh_type == 'rectilinear':
+                if np.any(
+                    np.array(cmfd_mesh.upper_right) <= np.array(cmfd_mesh.lower_left)
+                ):
+                    raise ValueError(
+                        "CMFD regular mesh requires upper right "
+                        "coordinates to be greater than lower "
+                        "left coordinates"
+                    )
+                cmfd_mesh.width = np.true_divide(
+                    (np.array(cmfd_mesh.upper_right) - np.array(cmfd_mesh.lower_left)),
+                    np.array(cmfd_mesh.dimension),
+                )
+        elif cmfd_mesh.mesh_type == "rectilinear":
             # Check dimension defined
             if cmfd_mesh.grid is None:
-                raise ValueError('CMFD rectilinear mesh requires spatial '
-                                 'grid to be specified')
+                raise ValueError(
+                    "CMFD rectilinear mesh requires spatial " "grid to be specified"
+                )
             cmfd_mesh.dimension = [len(cmfd_mesh.grid[i]) - 1 for i in range(3)]
 
         self._mesh = cmfd_mesh
 
     @norm.setter
     def norm(self, norm):
-        check_type('CMFD norm', norm, Real)
+        check_type("CMFD norm", norm, Real)
         self._norm = norm
 
     @adjoint_type.setter
     def adjoint_type(self, adjoint_type):
-        check_type('CMFD adjoint type', adjoint_type, str)
-        check_value('CMFD adjoint type', adjoint_type,
-                    ['math', 'physical'])
+        check_type("CMFD adjoint type", adjoint_type, str)
+        check_value("CMFD adjoint type", adjoint_type, ["math", "physical"])
         self._adjoint_type = adjoint_type
 
     @window_type.setter
     def window_type(self, window_type):
-        check_type('CMFD window type', window_type, str)
-        check_value('CMFD window type', window_type,
-                    ['none', 'rolling', 'expanding'])
+        check_type("CMFD window type", window_type, str)
+        check_value("CMFD window type", window_type, ["none", "rolling", "expanding"])
         self._window_type = window_type
 
     @window_size.setter
     def window_size(self, window_size):
-        check_type('CMFD window size', window_size, Integral)
-        check_greater_than('CMFD window size', window_size, 0)
-        if self._window_type != 'rolling':
-            warn_msg = 'Window size will have no effect on CMFD simulation ' \
-                       'unless window type is set to "rolling".'
+        check_type("CMFD window size", window_size, Integral)
+        check_greater_than("CMFD window size", window_size, 0)
+        if self._window_type != "rolling":
+            warn_msg = (
+                "Window size will have no effect on CMFD simulation "
+                'unless window type is set to "rolling".'
+            )
             warnings.warn(warn_msg, RuntimeWarning)
         self._window_size = window_size
 
     @power_monitor.setter
     def power_monitor(self, power_monitor):
-        check_type('CMFD power monitor', power_monitor, bool)
+        check_type("CMFD power monitor", power_monitor, bool)
         self._power_monitor = power_monitor
 
     @run_adjoint.setter
     def run_adjoint(self, run_adjoint):
-        check_type('CMFD run adjoint', run_adjoint, bool)
+        check_type("CMFD run adjoint", run_adjoint, bool)
         self._run_adjoint = run_adjoint
 
     @w_shift.setter
     def w_shift(self, w_shift):
-        check_type('CMFD Wielandt shift', w_shift, Real)
+        check_type("CMFD Wielandt shift", w_shift, Real)
         self._w_shift = w_shift
 
     @stol.setter
     def stol(self, stol):
-        check_type('CMFD fission source tolerance', stol, Real)
+        check_type("CMFD fission source tolerance", stol, Real)
         self._stol = stol
 
     @spectral.setter
     def spectral(self, spectral):
-        check_type('CMFD spectral radius', spectral, Real)
+        check_type("CMFD spectral radius", spectral, Real)
         self._spectral = spectral
 
     @reset.setter
     def reset(self, reset):
-        check_type('tally reset batches', reset, Iterable, Integral)
+        check_type("tally reset batches", reset, Iterable, Integral)
         self._reset = reset
 
     @write_matrices.setter
     def write_matrices(self, write_matrices):
-        check_type('CMFD write matrices', write_matrices, bool)
+        check_type("CMFD write matrices", write_matrices, bool)
         self._write_matrices = write_matrices
 
     @gauss_seidel_tolerance.setter
     def gauss_seidel_tolerance(self, gauss_seidel_tolerance):
-        check_type('CMFD Gauss-Seidel tolerance', gauss_seidel_tolerance,
-                   Iterable, Real)
-        check_length('Gauss-Seidel tolerance', gauss_seidel_tolerance, 2)
+        check_type(
+            "CMFD Gauss-Seidel tolerance", gauss_seidel_tolerance, Iterable, Real
+        )
+        check_length("Gauss-Seidel tolerance", gauss_seidel_tolerance, 2)
         self._gauss_seidel_tolerance = gauss_seidel_tolerance
 
     @use_all_threads.setter
     def use_all_threads(self, use_all_threads):
-        check_type('CMFD use all threads', use_all_threads, bool)
+        check_type("CMFD use all threads", use_all_threads, bool)
         self._use_all_threads = use_all_threads
 
     def run(self, **kwargs):
@@ -781,7 +828,7 @@ class CMFDRun:
 
     @contextmanager
     def run_in_memory(self, **kwargs):
-        """ Context manager for running CMFD functions with OpenMC shared
+        """Context manager for running CMFD functions with OpenMC shared
         library functions.
 
         This function can be used with a 'with' statement to ensure the
@@ -802,8 +849,8 @@ class CMFDRun:
         """
         # Store intracomm for part of CMFD routine where MPI reduce and
         # broadcast calls are made
-        if 'intracomm' in kwargs and kwargs['intracomm'] is not None:
-            self._intracomm = kwargs['intracomm']
+        if "intracomm" in kwargs and kwargs["intracomm"] is not None:
+            self._intracomm = kwargs["intracomm"]
         elif have_mpi:
             self._intracomm = MPI.COMM_WORLD
 
@@ -814,7 +861,7 @@ class CMFDRun:
             self.finalize()
 
     def iter_batches(self):
-        """ Iterator over batches.
+        """Iterator over batches.
 
         This function returns a generator-iterator that allows Python code to
         be run between batches when running an OpenMC simulation with CMFD.
@@ -829,7 +876,7 @@ class CMFDRun:
             yield
 
     def init(self):
-        """ Initialize CMFDRun instance by setting up CMFD parameters and
+        """Initialize CMFDRun instance by setting up CMFD parameters and
         calling :func:`openmc.lib.simulation_init`
 
         """
@@ -858,7 +905,7 @@ class CMFDRun:
         openmc.lib.settings.cmfd_run = True
 
     def next_batch(self):
-        """ Run next batch for CMFDRun.
+        """Run next batch for CMFDRun.
 
         Returns
         -------
@@ -882,7 +929,7 @@ class CMFDRun:
         return status
 
     def finalize(self):
-        """ Finalize simulation by calling
+        """Finalize simulation by calling
         :func:`openmc.lib.simulation_finalize` and print out CMFD timing
         information.
 
@@ -906,7 +953,7 @@ class CMFDRun:
         if filename is None:
             batch_str_len = len(str(openmc.lib.settings.get_batches()))
             batch_str = str(openmc.lib.current_batch()).zfill(batch_str_len)
-            filename = f'statepoint.{batch_str}.h5'
+            filename = f"statepoint.{batch_str}.h5"
 
         # Call C API statepoint_write to save source distribution with CMFD
         # feedback
@@ -925,105 +972,105 @@ class CMFDRun:
 
         """
         if openmc.lib.master():
-            with h5py.File(filename, 'a') as f:
-                if 'cmfd' not in f:
+            with h5py.File(filename, "a") as f:
+                if "cmfd" not in f:
                     if openmc.lib.settings.verbosity >= 5:
-                        print(f' Writing CMFD data to {filename}...')
+                        print(f" Writing CMFD data to {filename}...")
                         sys.stdout.flush()
                     cmfd_group = f.create_group("cmfd")
-                    cmfd_group.attrs['cmfd_on'] = self._cmfd_on
-                    cmfd_group.attrs['feedback'] = self._feedback
-                    cmfd_group.attrs['solver_begin'] = self._solver_begin
-                    cmfd_group.attrs['mesh_id'] = self._mesh_id
-                    cmfd_group.attrs['tally_begin'] = self._tally_begin
-                    cmfd_group.attrs['time_cmfd'] = self._time_cmfd
-                    cmfd_group.attrs['time_cmfdbuild'] = self._time_cmfdbuild
-                    cmfd_group.attrs['time_cmfdsolve'] = self._time_cmfdsolve
-                    cmfd_group.attrs['window_size'] = self._window_size
-                    cmfd_group.attrs['window_type'] = self._window_type
-                    cmfd_group.create_dataset('k_cmfd', data=self._k_cmfd)
-                    cmfd_group.create_dataset('dom', data=self._dom)
-                    cmfd_group.create_dataset('src_cmp', data=self._src_cmp)
-                    cmfd_group.create_dataset('balance', data=self._balance)
-                    cmfd_group.create_dataset('entropy', data=self._entropy)
-                    cmfd_group.create_dataset('reset', data=self._reset)
-                    cmfd_group.create_dataset('albedo', data=self._albedo)
-                    cmfd_group.create_dataset('coremap', data=self._coremap)
-                    cmfd_group.create_dataset('egrid', data=self._egrid)
-                    cmfd_group.create_dataset('indices', data=self._indices)
-                    cmfd_group.create_dataset('tally_ids',
-                                              data=self._tally_ids)
-                    cmfd_group.create_dataset('current_rate',
-                                              data=self._current_rate)
-                    cmfd_group.create_dataset('flux_rate',
-                                              data=self._flux_rate)
-                    cmfd_group.create_dataset('nfiss_rate',
-                                              data=self._nfiss_rate)
-                    cmfd_group.create_dataset('openmc_src_rate',
-                                              data=self._openmc_src_rate)
-                    cmfd_group.create_dataset('p1scatt_rate',
-                                              data=self._p1scatt_rate)
-                    cmfd_group.create_dataset('scatt_rate',
-                                              data=self._scatt_rate)
-                    cmfd_group.create_dataset('total_rate',
-                                              data=self._total_rate)
+                    cmfd_group.attrs["cmfd_on"] = self._cmfd_on
+                    cmfd_group.attrs["feedback"] = self._feedback
+                    cmfd_group.attrs["solver_begin"] = self._solver_begin
+                    cmfd_group.attrs["mesh_id"] = self._mesh_id
+                    cmfd_group.attrs["tally_begin"] = self._tally_begin
+                    cmfd_group.attrs["time_cmfd"] = self._time_cmfd
+                    cmfd_group.attrs["time_cmfdbuild"] = self._time_cmfdbuild
+                    cmfd_group.attrs["time_cmfdsolve"] = self._time_cmfdsolve
+                    cmfd_group.attrs["window_size"] = self._window_size
+                    cmfd_group.attrs["window_type"] = self._window_type
+                    cmfd_group.create_dataset("k_cmfd", data=self._k_cmfd)
+                    cmfd_group.create_dataset("dom", data=self._dom)
+                    cmfd_group.create_dataset("src_cmp", data=self._src_cmp)
+                    cmfd_group.create_dataset("balance", data=self._balance)
+                    cmfd_group.create_dataset("entropy", data=self._entropy)
+                    cmfd_group.create_dataset("reset", data=self._reset)
+                    cmfd_group.create_dataset("albedo", data=self._albedo)
+                    cmfd_group.create_dataset("coremap", data=self._coremap)
+                    cmfd_group.create_dataset("egrid", data=self._egrid)
+                    cmfd_group.create_dataset("indices", data=self._indices)
+                    cmfd_group.create_dataset("tally_ids", data=self._tally_ids)
+                    cmfd_group.create_dataset("current_rate", data=self._current_rate)
+                    cmfd_group.create_dataset("flux_rate", data=self._flux_rate)
+                    cmfd_group.create_dataset("nfiss_rate", data=self._nfiss_rate)
+                    cmfd_group.create_dataset(
+                        "openmc_src_rate", data=self._openmc_src_rate
+                    )
+                    cmfd_group.create_dataset("p1scatt_rate", data=self._p1scatt_rate)
+                    cmfd_group.create_dataset("scatt_rate", data=self._scatt_rate)
+                    cmfd_group.create_dataset("total_rate", data=self._total_rate)
                 elif openmc.settings.verbosity >= 5:
-                    print('  CMFD data not written to statepoint file as it '
-                          'already exists in {}'.format(filename), flush=True)
+                    print(
+                        "  CMFD data not written to statepoint file as it "
+                        "already exists in {}".format(filename),
+                        flush=True,
+                    )
 
     def _initialize_linsolver(self):
         # Determine number of rows in CMFD matrix
         ng = self._indices[3]
-        n = self._mat_dim*ng
+        n = self._mat_dim * ng
 
         # Create temp loss matrix to pass row/col indices to C++ linear solver
         loss_row = self._loss_row
         loss_col = self._loss_col
         temp_data = np.ones(len(loss_row))
-        temp_loss = sparse.csr_matrix((temp_data, (loss_row, loss_col)),
-                                      shape=(n, n))
+        temp_loss = sparse.csr_matrix((temp_data, (loss_row, loss_col)), shape=(n, n))
         temp_loss.sort_indices()
 
         # Pass coremap as 1-d array of 32-bit integers
         coremap = np.swapaxes(self._coremap, 0, 2).flatten().astype(np.int32)
 
         return openmc.lib._dll.openmc_initialize_linsolver(
-            temp_loss.indptr.astype(np.int32), len(temp_loss.indptr),
-            temp_loss.indices.astype(np.int32), len(temp_loss.indices), n,
-            self._spectral, coremap, self._use_all_threads
+            temp_loss.indptr.astype(np.int32),
+            len(temp_loss.indptr),
+            temp_loss.indices.astype(np.int32),
+            len(temp_loss.indices),
+            n,
+            self._spectral,
+            coremap,
+            self._use_all_threads,
         )
 
     def _write_cmfd_output(self):
         """Write CMFD output to buffer at the end of each batch"""
         # Display CMFD k-effective
-        outstr = '{:>11s}CMFD k:    {:0.5f}'.format('', self._k_cmfd[-1])
+        outstr = "{:>11s}CMFD k:    {:0.5f}".format("", self._k_cmfd[-1])
         # Display value of additional fields based on display dict
-        outstr += '\n'
-        if self._display['dominance']:
-            outstr += ('{:>11s}Dom Rat:   {:0.5f}\n'
-                       .format('', self._dom[-1]))
-        if self._display['entropy']:
-            outstr += ('{:>11s}CMFD Ent:  {:0.5f}\n'
-                       .format('', self._entropy[-1]))
-        if self._display['source']:
-            outstr += ('{:>11s}RMS Src:   {:0.5f}\n'
-                       .format('', self._src_cmp[-1]))
-        if self._display['balance']:
-            outstr += ('{:>11s}RMS Bal:   {:0.5f}\n'
-                       .format('', self._balance[-1]))
+        outstr += "\n"
+        if self._display["dominance"]:
+            outstr += "{:>11s}Dom Rat:   {:0.5f}\n".format("", self._dom[-1])
+        if self._display["entropy"]:
+            outstr += "{:>11s}CMFD Ent:  {:0.5f}\n".format("", self._entropy[-1])
+        if self._display["source"]:
+            outstr += "{:>11s}RMS Src:   {:0.5f}\n".format("", self._src_cmp[-1])
+        if self._display["balance"]:
+            outstr += "{:>11s}RMS Bal:   {:0.5f}\n".format("", self._balance[-1])
 
         print(outstr)
         sys.stdout.flush()
 
     def _write_cmfd_timing_stats(self):
         """Write CMFD timing stats to buffer after finalizing simulation"""
-        outstr = ("=====================>     "
-                  "CMFD TIMING STATISTICS     <====================\n\n"
-                  "   Time in CMFD                    =  {:.5e} seconds\n"
-                  "     Building matrices             =  {:.5e} seconds\n"
-                  "     Solving matrices              =  {:.5e} seconds\n")
-        print(outstr.format(self._time_cmfd, self._time_cmfdbuild,
-                            self._time_cmfdsolve))
+        outstr = (
+            "=====================>     "
+            "CMFD TIMING STATISTICS     <====================\n\n"
+            "   Time in CMFD                    =  {:.5e} seconds\n"
+            "     Building matrices             =  {:.5e} seconds\n"
+            "     Solving matrices              =  {:.5e} seconds\n"
+        )
+        print(
+            outstr.format(self._time_cmfd, self._time_cmfdbuild, self._time_cmfdsolve)
+        )
         sys.stdout.flush()
 
     def _configure_cmfd(self):
@@ -1040,19 +1087,18 @@ class CMFDRun:
 
     def _initialize_cmfd(self):
         """Sets values of CMFD instance variables based on user input,
-           separating between variables that only exist on all processes
-           and those that only exist on the master process
+        separating between variables that only exist on all processes
+        and those that only exist on the master process
 
         """
         # Print message to user and flush output to stdout
         if openmc.lib.settings.verbosity >= 7 and openmc.lib.master():
-            print(' Configuring CMFD parameters for simulation')
+            print(" Configuring CMFD parameters for simulation")
             sys.stdout.flush()
 
         # Check if CMFD mesh is defined
         if self._mesh is None:
-            raise ValueError('No CMFD mesh has been specified for '
-                             'simulation')
+            raise ValueError("No CMFD mesh has been specified for " "simulation")
 
         # Set spatial dimensions of CMFD object
         for i, n in enumerate(self._mesh.dimension):
@@ -1060,7 +1106,7 @@ class CMFDRun:
 
         # Check if in continuous energy mode
         if not openmc.lib.settings.run_CE:
-            raise OpenMCError('CMFD must be run in continuous energy mode')
+            raise OpenMCError("CMFD must be run in continuous energy mode")
 
         # Set number of energy groups
         if self._mesh.energy is not None:
@@ -1075,8 +1121,7 @@ class CMFDRun:
 
         # Get acceleration map, otherwise set all regions to be accelerated
         if self._mesh.map is not None:
-            check_length('CMFD coremap', self._mesh.map,
-                         np.prod(self._indices[:3]))
+            check_length("CMFD coremap", self._mesh.map, np.prod(self._indices[:3]))
             if openmc.lib.master():
                 self._coremap = np.array(self._mesh.map)
         else:
@@ -1085,8 +1130,7 @@ class CMFDRun:
 
         # Check CMFD tallies accummulated before feedback turned on
         if self._feedback and self._solver_begin < self._tally_begin:
-            raise ValueError('Tally begin must be less than or equal to '
-                             'CMFD begin')
+            raise ValueError("Tally begin must be less than or equal to " "CMFD begin")
 
         # Initialize parameters for CMFD tally windows
         self._set_tally_window()
@@ -1103,7 +1147,7 @@ class CMFDRun:
             if self._mesh.albedo is not None:
                 self._albedo = np.array(self._mesh.albedo)
             else:
-                self._albedo = np.array([1., 1., 1., 1., 1., 1.])
+                self._albedo = np.array([1.0, 1.0, 1.0, 1.0, 1.0, 1.0])
 
             # Set up CMFD coremap
             self._set_coremap()
@@ -1131,79 +1175,78 @@ class CMFDRun:
             Filename of statepoint to read from
 
         """
-        with h5py.File(filename, 'r') as f:
-            if 'cmfd' not in f:
-                raise OpenMCError('Could not find CMFD parameters in ',
-                                  f'file {filename}')
+        with h5py.File(filename, "r") as f:
+            if "cmfd" not in f:
+                raise OpenMCError(
+                    "Could not find CMFD parameters in ", f"file {filename}"
+                )
             else:
                 # Overwrite CMFD values from statepoint
-                if (openmc.lib.master() and
-                        openmc.lib.settings.verbosity >= 5):
-                    print(f' Loading CMFD data from {filename}...')
+                if openmc.lib.master() and openmc.lib.settings.verbosity >= 5:
+                    print(f" Loading CMFD data from {filename}...")
                     sys.stdout.flush()
-                cmfd_group = f['cmfd']
+                cmfd_group = f["cmfd"]
 
                 # Define variables that exist on all processes
-                self._cmfd_on = cmfd_group.attrs['cmfd_on']
-                self._feedback = cmfd_group.attrs['feedback']
-                self._solver_begin = cmfd_group.attrs['solver_begin']
-                self._tally_begin = cmfd_group.attrs['tally_begin']
-                self._k_cmfd = list(cmfd_group['k_cmfd'])
-                self._dom = list(cmfd_group['dom'])
-                self._src_cmp = list(cmfd_group['src_cmp'])
-                self._balance = list(cmfd_group['balance'])
-                self._entropy = list(cmfd_group['entropy'])
-                self._reset = list(cmfd_group['reset'])
-                self._egrid = cmfd_group['egrid'][()]
-                self._indices = cmfd_group['indices'][()]
-                default_egrid = np.array([_ENERGY_MIN_NEUTRON,
-                                          _ENERGY_MAX_NEUTRON])
-                self._energy_filters = not np.array_equal(self._egrid,
-                                                          default_egrid)
-                self._window_size = cmfd_group.attrs['window_size']
-                self._window_type = cmfd_group.attrs['window_type']
-                self._reset_every = (self._window_type == 'expanding' or
-                                     self._window_type == 'rolling')
+                self._cmfd_on = cmfd_group.attrs["cmfd_on"]
+                self._feedback = cmfd_group.attrs["feedback"]
+                self._solver_begin = cmfd_group.attrs["solver_begin"]
+                self._tally_begin = cmfd_group.attrs["tally_begin"]
+                self._k_cmfd = list(cmfd_group["k_cmfd"])
+                self._dom = list(cmfd_group["dom"])
+                self._src_cmp = list(cmfd_group["src_cmp"])
+                self._balance = list(cmfd_group["balance"])
+                self._entropy = list(cmfd_group["entropy"])
+                self._reset = list(cmfd_group["reset"])
+                self._egrid = cmfd_group["egrid"][()]
+                self._indices = cmfd_group["indices"][()]
+                default_egrid = np.array([_ENERGY_MIN_NEUTRON, _ENERGY_MAX_NEUTRON])
+                self._energy_filters = not np.array_equal(self._egrid, default_egrid)
+                self._window_size = cmfd_group.attrs["window_size"]
+                self._window_type = cmfd_group.attrs["window_type"]
+                self._reset_every = (
+                    self._window_type == "expanding" or self._window_type == "rolling"
+                )
 
                 # Overwrite CMFD mesh properties
-                cmfd_mesh_name = 'mesh ' + str(cmfd_group.attrs['mesh_id'])
-                cmfd_mesh = f['tallies']['meshes'][cmfd_mesh_name]
-                self._mesh.mesh_type = cmfd_mesh['type'][()].decode()
-                if self._mesh.mesh_type == 'regular':
-                    self._mesh.dimension = cmfd_mesh['dimension'][()]
-                    self._mesh.lower_left = cmfd_mesh['lower_left'][()]
-                    self._mesh.upper_right = cmfd_mesh['upper_right'][()]
-                    self._mesh.width = cmfd_mesh['width'][()]
-                elif self._mesh.mesh_type == 'rectilinear':
-                    x_grid = cmfd_mesh['x_grid'][()]
-                    y_grid = cmfd_mesh['y_grid'][()]
-                    z_grid = cmfd_mesh['z_grid'][()]
+                cmfd_mesh_name = "mesh " + str(cmfd_group.attrs["mesh_id"])
+                cmfd_mesh = f["tallies"]["meshes"][cmfd_mesh_name]
+                self._mesh.mesh_type = cmfd_mesh["type"][()].decode()
+                if self._mesh.mesh_type == "regular":
+                    self._mesh.dimension = cmfd_mesh["dimension"][()]
+                    self._mesh.lower_left = cmfd_mesh["lower_left"][()]
+                    self._mesh.upper_right = cmfd_mesh["upper_right"][()]
+                    self._mesh.width = cmfd_mesh["width"][()]
+                elif self._mesh.mesh_type == "rectilinear":
+                    x_grid = cmfd_mesh["x_grid"][()]
+                    y_grid = cmfd_mesh["y_grid"][()]
+                    z_grid = cmfd_mesh["z_grid"][()]
                     self._mesh.grid = [x_grid, y_grid, z_grid]
 
                 # Define variables that exist only on master process
                 if openmc.lib.master():
-                    self._time_cmfd = cmfd_group.attrs['time_cmfd']
-                    self._time_cmfdbuild = cmfd_group.attrs['time_cmfdbuild']
-                    self._time_cmfdsolve = cmfd_group.attrs['time_cmfdsolve']
-                    self._albedo = cmfd_group['albedo'][()]
-                    self._coremap = cmfd_group['coremap'][()]
-                    self._current_rate = cmfd_group['current_rate'][()]
-                    self._flux_rate = cmfd_group['flux_rate'][()]
-                    self._nfiss_rate = cmfd_group['nfiss_rate'][()]
-                    self._openmc_src_rate = cmfd_group['openmc_src_rate'][()]
-                    self._p1scatt_rate = cmfd_group['p1scatt_rate'][()]
-                    self._scatt_rate = cmfd_group['scatt_rate'][()]
-                    self._total_rate = cmfd_group['total_rate'][()]
+                    self._time_cmfd = cmfd_group.attrs["time_cmfd"]
+                    self._time_cmfdbuild = cmfd_group.attrs["time_cmfdbuild"]
+                    self._time_cmfdsolve = cmfd_group.attrs["time_cmfdsolve"]
+                    self._albedo = cmfd_group["albedo"][()]
+                    self._coremap = cmfd_group["coremap"][()]
+                    self._current_rate = cmfd_group["current_rate"][()]
+                    self._flux_rate = cmfd_group["flux_rate"][()]
+                    self._nfiss_rate = cmfd_group["nfiss_rate"][()]
+                    self._openmc_src_rate = cmfd_group["openmc_src_rate"][()]
+                    self._p1scatt_rate = cmfd_group["p1scatt_rate"][()]
+                    self._scatt_rate = cmfd_group["scatt_rate"][()]
+                    self._total_rate = cmfd_group["total_rate"][()]
                     self._mat_dim = np.max(self._coremap) + 1
 
     def _set_tally_window(self):
         """Sets parameters to handle different tally window options"""
         # Set parameters for expanding window
-        if self._window_type == 'expanding':
+        if self._window_type == "expanding":
             self._reset_every = True
             self._window_size = 1
         # Set parameters for rolling window
-        elif self.window_type == 'rolling':
+        elif self.window_type == "rolling":
             self._reset_every = True
         # Set parameters for default case, with no window
         else:
@@ -1221,8 +1264,7 @@ class CMFDRun:
             self._cmfd_on = True
 
         # Check to reset tallies
-        if ((len(self._reset) > 0 and current_batch in self._reset)
-                or self._reset_every):
+        if (len(self._reset) > 0 and current_batch in self._reset) or self._reset_every:
             self._cmfd_tally_reset()
 
     def _execute_cmfd(self):
@@ -1274,9 +1316,12 @@ class CMFDRun:
     def _cmfd_tally_reset(self):
         """Resets all CMFD tallies in memory"""
         # Print message
-        if (openmc.lib.settings.verbosity >= 6 and openmc.lib.master() and
-                not self._reset_every):
-            print(' CMFD tallies reset')
+        if (
+            openmc.lib.settings.verbosity >= 6
+            and openmc.lib.master()
+            and not self._reset_every
+        ):
+            print(" CMFD tallies reset")
             sys.stdout.flush()
 
         # Reset CMFD tallies
@@ -1285,9 +1330,7 @@ class CMFDRun:
             tallies[tally_id].reset()
 
     def _set_up_cmfd(self):
-        """Configures CMFD object for a CMFD eigenvalue calculation
-
-        """
+        """Configures CMFD object for a CMFD eigenvalue calculation"""
         # Compute effective downscatter cross section
         if self._downscatter:
             self._compute_effective_downscatter()
@@ -1320,7 +1363,7 @@ class CMFDRun:
             prod = self._build_prod_matrix(False)
         else:
             # Build adjoint matrices by running adjoint calculation
-            if self._adjoint_type == 'physical':
+            if self._adjoint_type == "physical":
                 loss = self._build_loss_matrix(True)
                 prod = self._build_prod_matrix(True)
             # Build adjoint matrices as transpose of non-adjoint matrices
@@ -1331,11 +1374,11 @@ class CMFDRun:
         # Write out the matrices.
         if self._write_matrices:
             if not adjoint:
-                self._write_matrix(loss, 'loss')
-                self._write_matrix(prod, 'prod')
+                self._write_matrix(loss, "loss")
+                self._write_matrix(prod, "prod")
             else:
-                self._write_matrix(loss, 'adj_loss')
-                self._write_matrix(prod, 'adj_prod')
+                self._write_matrix(loss, "adj_loss")
+                self._write_matrix(prod, "adj_prod")
 
         # Stop timer for build
         time_stop_buildcmfd = time.time()
@@ -1350,19 +1393,19 @@ class CMFDRun:
         # Save results, normalizing phi to sum to 1
         if adjoint:
             self._adj_keff = keff
-            self._adj_phi = phi/np.sqrt(np.sum(phi*phi))
+            self._adj_phi = phi / np.sqrt(np.sum(phi * phi))
         else:
             self._keff = keff
-            self._phi = phi/np.sqrt(np.sum(phi*phi))
+            self._phi = phi / np.sqrt(np.sum(phi * phi))
 
         self._dom.append(dom)
 
         # Write out flux vector
         if self._write_matrices:
             if adjoint:
-                self._write_vector(self._adj_phi, 'adj_fluxvec')
+                self._write_vector(self._adj_phi, "adj_fluxvec")
             else:
-                self._write_vector(self._phi, 'fluxvec')
+                self._write_vector(self._phi, "fluxvec")
 
     def _write_vector(self, vector, base_filename):
         """Write a 1-D numpy array to file and also save it in .npy format.
@@ -1380,7 +1423,7 @@ class CMFDRun:
 
         """
         # Write each element in vector to file
-        np.savetxt(f'{base_filename}.dat', vector, fmt='%.8f')
+        np.savetxt(f"{base_filename}.dat", vector, fmt="%.8f")
 
         # Save as numpy format
         np.save(base_filename, vector)
@@ -1402,14 +1445,14 @@ class CMFDRun:
         """
         # Write row, col, and data of each entry in sparse matrix. This ignores
         # all zero-entries, and indices are written with zero-based indexing
-        with open(base_filename+'.dat', 'w') as fh:
+        with open(base_filename + ".dat", "w") as fh:
             for row in range(matrix.shape[0]):
                 # Get all cols for particular row in matrix
-                cols = matrix.indices[matrix.indptr[row]:matrix.indptr[row+1]]
+                cols = matrix.indices[matrix.indptr[row] : matrix.indptr[row + 1]]
                 # Get all data entries for particular row in matrix
-                data = matrix.data[matrix.indptr[row]:matrix.indptr[row+1]]
+                data = matrix.data[matrix.indptr[row] : matrix.indptr[row + 1]]
                 for i in range(len(cols)):
-                    fh.write(f'{row:3d}, {cols[i]:3d}, {data[i]:0.8f}\n')
+                    fh.write(f"{row:3d}, {cols[i]:3d}, {data[i]:0.8f}\n")
 
         # Save matrix in scipy format
         sparse.save_npz(base_filename, matrix)
@@ -1443,12 +1486,13 @@ class CMFDRun:
         # Loop over all groups and set CMFD flux based on indices of
         # coremap and values of phi
         for g in range(ng):
-            phi_g = phi[:,g]
+            phi_g = phi[:, g]
             cmfd_flux[idx + (g,)] = phi_g[self._coremap[idx]]
 
         # Compute fission source
-        cmfd_src = (np.sum(self._nfissxs[:,:,:,:,:] *
-                    cmfd_flux[:,:,:,:,np.newaxis], axis=3))
+        cmfd_src = np.sum(
+            self._nfissxs[:, :, :, :, :] * cmfd_flux[:, :, :, :, np.newaxis], axis=3
+        )
 
         # Normalize source such that it sums to 1.0
         self._cmfd_src = cmfd_src / np.sum(cmfd_src)
@@ -1456,113 +1500,116 @@ class CMFDRun:
         # Compute entropy
         if openmc.lib.settings.entropy_on:
             # Compute source times log_2(source)
-            source = self._cmfd_src[self._cmfd_src > 0] \
-                * np.log(self._cmfd_src[self._cmfd_src > 0])/np.log(2)
+            source = (
+                self._cmfd_src[self._cmfd_src > 0]
+                * np.log(self._cmfd_src[self._cmfd_src > 0])
+                / np.log(2)
+            )
 
             # Sum source and store
             self._entropy.append(-1.0 * np.sum(source))
 
         # Normalize source so average is 1.0
-        self._cmfd_src = self._cmfd_src/np.sum(self._cmfd_src) * self._norm
+        self._cmfd_src = self._cmfd_src / np.sum(self._cmfd_src) * self._norm
 
         # Calculate differences between normalized sources
-        self._src_cmp.append(np.sqrt(1.0 / self._norm
-                             * np.sum((self._cmfd_src - self._openmc_src)**2)))
+        self._src_cmp.append(
+            np.sqrt(1.0 / self._norm * np.sum((self._cmfd_src - self._openmc_src) ** 2))
+        )
 
     def _build_loss_matrix(self, adjoint):
         # Extract spatial and energy indices and define matrix dimension
         ng = self._indices[3]
-        n = self._mat_dim*ng
+        n = self._mat_dim * ng
 
         # Define data entries used to build csr matrix
         data = np.array([])
 
-        dtilde_left = self._dtilde[:,:,:,:,0]
-        dtilde_right = self._dtilde[:,:,:,:,1]
-        dtilde_back = self._dtilde[:,:,:,:,2]
-        dtilde_front = self._dtilde[:,:,:,:,3]
-        dtilde_bottom = self._dtilde[:,:,:,:,4]
-        dtilde_top = self._dtilde[:,:,:,:,5]
-        dhat_left = self._dhat[:,:,:,:,0]
-        dhat_right = self._dhat[:,:,:,:,1]
-        dhat_back = self._dhat[:,:,:,:,2]
-        dhat_front = self._dhat[:,:,:,:,3]
-        dhat_bottom = self._dhat[:,:,:,:,4]
-        dhat_top = self._dhat[:,:,:,:,5]
+        dtilde_left = self._dtilde[:, :, :, :, 0]
+        dtilde_right = self._dtilde[:, :, :, :, 1]
+        dtilde_back = self._dtilde[:, :, :, :, 2]
+        dtilde_front = self._dtilde[:, :, :, :, 3]
+        dtilde_bottom = self._dtilde[:, :, :, :, 4]
+        dtilde_top = self._dtilde[:, :, :, :, 5]
+        dhat_left = self._dhat[:, :, :, :, 0]
+        dhat_right = self._dhat[:, :, :, :, 1]
+        dhat_back = self._dhat[:, :, :, :, 2]
+        dhat_front = self._dhat[:, :, :, :, 3]
+        dhat_bottom = self._dhat[:, :, :, :, 4]
+        dhat_top = self._dhat[:, :, :, :, 5]
 
-        dx = self._hxyz[:,:,:,np.newaxis,0]
-        dy = self._hxyz[:,:,:,np.newaxis,1]
-        dz = self._hxyz[:,:,:,np.newaxis,2]
+        dx = self._hxyz[:, :, :, np.newaxis, 0]
+        dy = self._hxyz[:, :, :, np.newaxis, 1]
+        dz = self._hxyz[:, :, :, np.newaxis, 2]
 
         # Define net leakage coefficient for each surface in each matrix
         # element
-        jnet = (((dtilde_right + dhat_right)-(-1.0 * dtilde_left + dhat_left))
-                / dx +
-                ((dtilde_front + dhat_front)-(-1.0 * dtilde_back + dhat_back))
-                / dy +
-                ((dtilde_top + dhat_top)-(-1.0 * dtilde_bottom + dhat_bottom))
-                / dz)
+        jnet = (
+            ((dtilde_right + dhat_right) - (-1.0 * dtilde_left + dhat_left)) / dx
+            + ((dtilde_front + dhat_front) - (-1.0 * dtilde_back + dhat_back)) / dy
+            + ((dtilde_top + dhat_top) - (-1.0 * dtilde_bottom + dhat_bottom)) / dz
+        )
 
         for g in range(ng):
             # Define leakage terms that relate terms to their neighbors to the
             # left
-            dtilde = self._dtilde[:,:,:,g,0][self._accel_neig_left_idxs]
-            dhat = self._dhat[:,:,:,g,0][self._accel_neig_left_idxs]
-            dx = self._hxyz[:,:,:,0][self._accel_neig_left_idxs]
+            dtilde = self._dtilde[:, :, :, g, 0][self._accel_neig_left_idxs]
+            dhat = self._dhat[:, :, :, g, 0][self._accel_neig_left_idxs]
+            dx = self._hxyz[:, :, :, 0][self._accel_neig_left_idxs]
             vals = (-1.0 * dtilde - dhat) / dx
             # Store data to add to CSR matrix
             data = np.append(data, vals)
 
             # Define leakage terms that relate terms to their neighbors to the
             # right
-            dtilde = self._dtilde[:,:,:,g,1][self._accel_neig_right_idxs]
-            dhat = self._dhat[:,:,:,g,1][self._accel_neig_right_idxs]
-            dx = self._hxyz[:,:,:,0][self._accel_neig_right_idxs]
+            dtilde = self._dtilde[:, :, :, g, 1][self._accel_neig_right_idxs]
+            dhat = self._dhat[:, :, :, g, 1][self._accel_neig_right_idxs]
+            dx = self._hxyz[:, :, :, 0][self._accel_neig_right_idxs]
             vals = (-1.0 * dtilde + dhat) / dx
             # Store data to add to CSR matrix
             data = np.append(data, vals)
 
             # Define leakage terms that relate terms to their neighbors in the
             # back
-            dtilde = self._dtilde[:,:,:,g,2][self._accel_neig_back_idxs]
-            dhat = self._dhat[:,:,:,g,2][self._accel_neig_back_idxs]
-            dy = self._hxyz[:,:,:,1][self._accel_neig_back_idxs]
+            dtilde = self._dtilde[:, :, :, g, 2][self._accel_neig_back_idxs]
+            dhat = self._dhat[:, :, :, g, 2][self._accel_neig_back_idxs]
+            dy = self._hxyz[:, :, :, 1][self._accel_neig_back_idxs]
             vals = (-1.0 * dtilde - dhat) / dy
             # Store data to add to CSR matrix
             data = np.append(data, vals)
 
             # Define leakage terms that relate terms to their neighbors in the
             # front
-            dtilde = self._dtilde[:,:,:,g,3][self._accel_neig_front_idxs]
-            dhat = self._dhat[:,:,:,g,3][self._accel_neig_front_idxs]
-            dy = self._hxyz[:,:,:,1][self._accel_neig_front_idxs]
+            dtilde = self._dtilde[:, :, :, g, 3][self._accel_neig_front_idxs]
+            dhat = self._dhat[:, :, :, g, 3][self._accel_neig_front_idxs]
+            dy = self._hxyz[:, :, :, 1][self._accel_neig_front_idxs]
             vals = (-1.0 * dtilde + dhat) / dy
             # Store data to add to CSR matrix
             data = np.append(data, vals)
 
             # Define leakage terms that relate terms to their neighbors to the
             # bottom
-            dtilde = self._dtilde[:,:,:,g,4][self._accel_neig_bot_idxs]
-            dhat = self._dhat[:,:,:,g,4][self._accel_neig_bot_idxs]
-            dz = self._hxyz[:,:,:,2][self._accel_neig_bot_idxs]
+            dtilde = self._dtilde[:, :, :, g, 4][self._accel_neig_bot_idxs]
+            dhat = self._dhat[:, :, :, g, 4][self._accel_neig_bot_idxs]
+            dz = self._hxyz[:, :, :, 2][self._accel_neig_bot_idxs]
             vals = (-1.0 * dtilde - dhat) / dz
             # Store data to add to CSR matrix
             data = np.append(data, vals)
 
             # Define leakage terms that relate terms to their neighbors to the
             # top
-            dtilde = self._dtilde[:,:,:,g,5][self._accel_neig_top_idxs]
-            dhat = self._dhat[:,:,:,g,5][self._accel_neig_top_idxs]
-            dz = self._hxyz[:,:,:,2][self._accel_neig_top_idxs]
+            dtilde = self._dtilde[:, :, :, g, 5][self._accel_neig_top_idxs]
+            dhat = self._dhat[:, :, :, g, 5][self._accel_neig_top_idxs]
+            dz = self._hxyz[:, :, :, 2][self._accel_neig_top_idxs]
             vals = (-1.0 * dtilde + dhat) / dz
             # Store data to add to CSR matrix
             data = np.append(data, vals)
 
             # Define terms that relate to loss of neutrons in a cell. These
             # correspond to all the diagonal entries of the loss matrix
-            jnet_g = jnet[:,:,:,g][self._accel_idxs]
-            total_xs = self._totalxs[:,:,:,g][self._accel_idxs]
-            scatt_xs = self._scattxs[:,:,:,g,g][self._accel_idxs]
+            jnet_g = jnet[:, :, :, g][self._accel_idxs]
+            total_xs = self._totalxs[:, :, :, g][self._accel_idxs]
+            scatt_xs = self._scattxs[:, :, :, g, g][self._accel_idxs]
             vals = jnet_g + total_xs - scatt_xs
             # Store data to add to CSR matrix
             data = np.append(data, vals)
@@ -1574,10 +1621,10 @@ class CMFDRun:
                 if h != g:
                     # Get scattering macro xs, transposed
                     if adjoint:
-                        scatt_xs = self._scattxs[:,:,:,g,h][self._accel_idxs]
+                        scatt_xs = self._scattxs[:, :, :, g, h][self._accel_idxs]
                     # Get scattering macro xs
                     else:
-                        scatt_xs = self._scattxs[:,:,:,h,g][self._accel_idxs]
+                        scatt_xs = self._scattxs[:, :, :, h, g][self._accel_idxs]
                     vals = -1.0 * scatt_xs
                     # Store data to add to CSR matrix
                     data = np.append(data, vals)
@@ -1592,7 +1639,7 @@ class CMFDRun:
     def _build_prod_matrix(self, adjoint):
         # Extract spatial and energy indices and define matrix dimension
         ng = self._indices[3]
-        n = self._mat_dim*ng
+        n = self._mat_dim * ng
 
         # Define rows, columns, and data used to build csr matrix
         data = np.array([])
@@ -1657,7 +1704,7 @@ class CMFDRun:
         k_o = k_n
         dw = self._w_shift
         k_s = k_o + dw
-        k_ln = 1.0/(1.0/k_n - 1.0/k_s)
+        k_ln = 1.0 / (1.0 / k_n - 1.0 / k_s)
         k_lo = k_ln
 
         # Set norms to 0
@@ -1668,14 +1715,15 @@ class CMFDRun:
         maxits = 10000
 
         # Perform Wielandt shift
-        loss -= 1.0/k_s*prod
+        loss -= 1.0 / k_s * prod
 
         # Begin power iteration
         for i in range(maxits):
             # Check if reach max number of iterations
             if i == maxits - 1:
-                raise OpenMCError('Reached maximum iterations in CMFD power '
-                                  'iteration solver.')
+                raise OpenMCError(
+                    "Reached maximum iterations in CMFD power " "iteration solver."
+                )
 
             # Compute source vector
             s_o = prod.dot(phi_o)
@@ -1684,8 +1732,7 @@ class CMFDRun:
             s_o /= k_lo
 
             # Compute new flux with C++ solver
-            innerits = openmc.lib._dll.openmc_run_linsolver(loss.data, s_o,
-                                                            phi_n, toli)
+            innerits = openmc.lib._dll.openmc_run_linsolver(loss.data, s_o, phi_n, toli)
 
             # Compute new source vector
             s_n = prod.dot(phi_n)
@@ -1694,14 +1741,13 @@ class CMFDRun:
             k_ln = np.sum(s_n) / np.sum(s_o)
 
             # Compute new eigenvalue
-            k_n = 1.0/(1.0/k_ln + 1.0/k_s)
+            k_n = 1.0 / (1.0 / k_ln + 1.0 / k_s)
 
             # Renormalize the old source
             s_o *= k_lo
 
             # Check convergence
-            iconv, norm_n = self._check_convergence(s_n, s_o, k_n, k_o, i+1,
-                                                    innerits)
+            iconv, norm_n = self._check_convergence(s_n, s_o, k_n, k_o, i + 1, innerits)
 
             # If converged, calculate dominance ratio and break from loop
             if iconv:
@@ -1715,7 +1761,7 @@ class CMFDRun:
             norm_o = norm_n
 
             # Update tolerance for inner iterations
-            toli = max(atoli, rtoli*norm_n)
+            toli = max(atoli, rtoli * norm_n)
 
     def _check_convergence(self, s_n, s_o, k_n, k_o, iteration, innerits):
         """Checks the convergence of the CMFD problem
@@ -1748,22 +1794,26 @@ class CMFDRun:
         kerr = abs(k_o - k_n) / k_n
 
         # Calculate max error in source
-        with np.errstate(divide='ignore', invalid='ignore'):
-            serr = np.sqrt(np.sum(np.where(s_n > 0, ((s_n-s_o) / s_n)**2, 0))
-                           / len(s_n))
+        with np.errstate(divide="ignore", invalid="ignore"):
+            serr = np.sqrt(
+                np.sum(np.where(s_n > 0, ((s_n - s_o) / s_n) ** 2, 0)) / len(s_n)
+            )
 
         # Check for convergence
         iconv = kerr < self._cmfd_ktol and serr < self._stol
 
         # Print out to user
         if self._power_monitor and openmc.lib.master():
-            print('{:8s}{:20s}{:25s}{:s}{:s}'.format(
-                ' {:d}:'.format(iteration),
-                'k-eff: {:0.8f}'.format(k_n),
-                'k-error:  {:.5e}'.format(kerr),
-                'src-error:  {:.5e}'.format(serr),
-                '  {:d}'.format(innerits)
-            ), flush=True)
+            print(
+                "{:8s}{:20s}{:25s}{:s}{:s}".format(
+                    " {:d}:".format(iteration),
+                    "k-eff: {:0.8f}".format(k_n),
+                    "k-error:  {:.5e}".format(kerr),
+                    "src-error:  {:.5e}".format(serr),
+                    "  {:d}".format(innerits),
+                ),
+                flush=True,
+            )
 
         return iconv, serr
 
@@ -1780,8 +1830,9 @@ class CMFDRun:
 
         # Define coremap as cumulative sum over accelerated regions,
         # otherwise set value to _CMFD_NOACCEL
-        self._coremap = np.where(self._coremap == 0, _CMFD_NOACCEL,
-                                 np.cumsum(self._coremap) - 1)
+        self._coremap = np.where(
+            self._coremap == 0, _CMFD_NOACCEL, np.cumsum(self._coremap) - 1
+        )
 
         # Reshape coremap to three dimensional array
         # Indices of coremap in user input switched in x and z axes
@@ -1797,20 +1848,22 @@ class CMFDRun:
         """
         # Update window size for expanding window if necessary
         num_cmfd_batches = openmc.lib.current_batch() - self._tally_begin + 1
-        if (self._window_type == 'expanding' and
-                num_cmfd_batches == self._window_size * 2):
+        if (
+            self._window_type == "expanding"
+            and num_cmfd_batches == self._window_size * 2
+        ):
             self._window_size *= 2
 
         # Discard tallies from oldest batch if window limit reached
         tally_windows = self._flux_rate.shape[-1] + 1
         if tally_windows > self._window_size:
-            self._flux_rate = self._flux_rate[...,1:]
-            self._total_rate = self._total_rate[...,1:]
-            self._p1scatt_rate = self._p1scatt_rate[...,1:]
-            self._scatt_rate = self._scatt_rate[...,1:]
-            self._nfiss_rate = self._nfiss_rate[...,1:]
-            self._current_rate = self._current_rate[...,1:]
-            self._openmc_src_rate = self._openmc_src_rate[...,1:]
+            self._flux_rate = self._flux_rate[..., 1:]
+            self._total_rate = self._total_rate[..., 1:]
+            self._p1scatt_rate = self._p1scatt_rate[..., 1:]
+            self._scatt_rate = self._scatt_rate[..., 1:]
+            self._nfiss_rate = self._nfiss_rate[..., 1:]
+            self._current_rate = self._current_rate[..., 1:]
+            self._openmc_src_rate = self._openmc_src_rate[..., 1:]
             tally_windows -= 1
 
         # Extract spatial and energy indices
@@ -1824,7 +1877,7 @@ class CMFDRun:
 
         # Get flux from CMFD tally 0
         tally_id = self._tally_ids[0]
-        flux = tallies[tally_id].results[:,0,1]
+        flux = tallies[tally_id].results[:, 0, 1]
 
         # Define target tally reshape dimensions. This defines how openmc
         # tallies are ordered by dimension
@@ -1842,50 +1895,54 @@ class CMFDRun:
         self._flux_rate = np.append(self._flux_rate, reshape_flux, axis=4)
 
         # Compute flux as aggregate of banked flux_rate over tally window
-        self._flux = np.where(is_accel[..., np.newaxis],
-                              np.sum(self._flux_rate, axis=4), 0.0)
+        self._flux = np.where(
+            is_accel[..., np.newaxis], np.sum(self._flux_rate, axis=4), 0.0
+        )
 
         # Detect zero flux, abort if located and cmfd is on
-        zero_flux = np.logical_and(self._flux < _TINY_BIT,
-                                   is_accel[..., np.newaxis])
+        zero_flux = np.logical_and(self._flux < _TINY_BIT, is_accel[..., np.newaxis])
         if np.any(zero_flux) and self._cmfd_on:
             # Get index of first zero flux in flux array
             idx = np.argwhere(zero_flux)[0]
 
             # Throw error message (one-based indexing)
             # Index of group is flipped
-            err_message = 'Detected zero flux without coremap overlay' + \
-                          ' at mesh: (' + \
-                          ', '.join(str(i+1) for i in idx[:-1]) + \
-                          ') in group ' + str(ng-idx[-1])
+            err_message = (
+                "Detected zero flux without coremap overlay"
+                + " at mesh: ("
+                + ", ".join(str(i + 1) for i in idx[:-1])
+                + ") in group "
+                + str(ng - idx[-1])
+            )
             raise OpenMCError(err_message)
 
         # Get total reaction rate (rr) from CMFD tally 0
-        totalrr = tallies[tally_id].results[:,1,1]
+        totalrr = tallies[tally_id].results[:, 1, 1]
 
         # Reshape total reaction rate array to target shape. Swap x and z axes
         # so that shape is now [nx, ny, nz, ng, 1]
-        reshape_totalrr = np.swapaxes(totalrr.reshape(target_tally_shape),
-                                      0, 2)
+        reshape_totalrr = np.swapaxes(totalrr.reshape(target_tally_shape), 0, 2)
 
         # Total reaction rate is flipped in energy axis as tally results are
         # given in reverse order of energy group
         reshape_totalrr = np.flip(reshape_totalrr, axis=3)
 
         # Bank total reaction rate to total_rate
-        self._total_rate = np.append(self._total_rate, reshape_totalrr,
-                                     axis=4)
+        self._total_rate = np.append(self._total_rate, reshape_totalrr, axis=4)
 
         # Compute total xs as aggregate of banked total_rate over tally window
         # divided by flux
-        self._totalxs = np.divide(np.sum(self._total_rate, axis=4),
-                                  self._flux, where=self._flux > 0,
-                                  out=np.zeros_like(self._totalxs))
+        self._totalxs = np.divide(
+            np.sum(self._total_rate, axis=4),
+            self._flux,
+            where=self._flux > 0,
+            out=np.zeros_like(self._totalxs),
+        )
 
         # Get scattering rr from CMFD tally 1
         # flux is repeated to account for extra dimensionality of scattering xs
         tally_id = self._tally_ids[1]
-        scattrr = tallies[tally_id].results[:,0,1]
+        scattrr = tallies[tally_id].results[:, 0, 1]
 
         # Define target tally reshape dimensions for xs with incoming
         # and outgoing energies
@@ -1893,8 +1950,7 @@ class CMFDRun:
 
         # Reshape scattrr array to target shape. Swap x and z axes so that
         # shape is now [nx, ny, nz, ng, ng, 1]
-        reshape_scattrr = np.swapaxes(scattrr.reshape(target_tally_shape),
-                                      0, 2)
+        reshape_scattrr = np.swapaxes(scattrr.reshape(target_tally_shape), 0, 2)
 
         # Scattering rr is flipped in both incoming and outgoing energy axes
         # as tally results are given in reverse order of energy group
@@ -1902,25 +1958,26 @@ class CMFDRun:
         reshape_scattrr = np.flip(reshape_scattrr, axis=4)
 
         # Bank scattering rr to scatt_rate
-        self._scatt_rate = np.append(self._scatt_rate, reshape_scattrr,
-                                     axis=5)
+        self._scatt_rate = np.append(self._scatt_rate, reshape_scattrr, axis=5)
 
         # Compute scattering xs as aggregate of banked scatt_rate over tally
         # window divided by flux. Flux dimensionality increased to account for
         # extra dimensionality of scattering xs
-        extended_flux = self._flux[:,:,:,:,np.newaxis]
-        self._scattxs = np.divide(np.sum(self._scatt_rate, axis=5),
-                                  extended_flux, where=extended_flux > 0,
-                                  out=np.zeros_like(self._scattxs))
+        extended_flux = self._flux[:, :, :, :, np.newaxis]
+        self._scattxs = np.divide(
+            np.sum(self._scatt_rate, axis=5),
+            extended_flux,
+            where=extended_flux > 0,
+            out=np.zeros_like(self._scattxs),
+        )
 
         # Get nu-fission rr from CMFD tally 1
-        nfissrr = tallies[tally_id].results[:,1,1]
+        nfissrr = tallies[tally_id].results[:, 1, 1]
         num_realizations = tallies[tally_id].num_realizations
 
         # Reshape nfissrr array to target shape. Swap x and z axes so that
         # shape is now [nx, ny, nz, ng, ng, 1]
-        reshape_nfissrr = np.swapaxes(nfissrr.reshape(target_tally_shape),
-                                      0, 2)
+        reshape_nfissrr = np.swapaxes(nfissrr.reshape(target_tally_shape), 0, 2)
 
         # Nu-fission rr is flipped in both incoming and outgoing energy axes
         # as tally results are given in reverse order of energy group
@@ -1928,15 +1985,17 @@ class CMFDRun:
         reshape_nfissrr = np.flip(reshape_nfissrr, axis=4)
 
         # Bank nu-fission rr to nfiss_rate
-        self._nfiss_rate = np.append(self._nfiss_rate, reshape_nfissrr,
-                                     axis=5)
+        self._nfiss_rate = np.append(self._nfiss_rate, reshape_nfissrr, axis=5)
 
         # Compute nu-fission xs as aggregate of banked nfiss_rate over tally
         # window divided by flux. Flux dimensionality increased to account for
         # extra dimensionality of nu-fission xs
-        self._nfissxs = np.divide(np.sum(self._nfiss_rate, axis=5),
-                                  extended_flux, where=extended_flux > 0,
-                                  out=np.zeros_like(self._nfissxs))
+        self._nfissxs = np.divide(
+            np.sum(self._nfiss_rate, axis=5),
+            extended_flux,
+            where=extended_flux > 0,
+            out=np.zeros_like(self._nfissxs),
+        )
 
         # Openmc source distribution is sum of nu-fission rr in incoming
         # energies
@@ -1944,78 +2003,82 @@ class CMFDRun:
 
         # Bank OpenMC source distribution from current batch to
         # openmc_src_rate
-        self._openmc_src_rate = np.append(self._openmc_src_rate, openmc_src,
-                                          axis=4)
+        self._openmc_src_rate = np.append(self._openmc_src_rate, openmc_src, axis=4)
 
         # Compute source distribution over entire tally window
         self._openmc_src = np.sum(self._openmc_src_rate, axis=4)
 
         # Compute k_eff from source distribution
-        self._keff_bal = (np.sum(self._openmc_src) / num_realizations /
-                          tally_windows)
+        self._keff_bal = np.sum(self._openmc_src) / num_realizations / tally_windows
 
         # Normalize openmc source distribution
         self._openmc_src /= np.sum(self._openmc_src) * self._norm
 
         # Get surface currents from CMFD tally 2
         tally_id = self._tally_ids[2]
-        current = tallies[tally_id].results[:,0,1]
+        current = tallies[tally_id].results[:, 0, 1]
 
         # Define target tally reshape dimensions for current
         target_tally_shape = [nz, ny, nx, 12, ng, 1]
 
         # Reshape current array to target shape. Swap x and z axes so that
         # shape is now [nx, ny, nz, 12, ng, 1]
-        reshape_current = np.swapaxes(current.reshape(target_tally_shape),
-                                      0, 2)
+        reshape_current = np.swapaxes(current.reshape(target_tally_shape), 0, 2)
 
         # Current is flipped in energy axis as tally results are given in
         # reverse order of energy group
         reshape_current = np.flip(reshape_current, axis=4)
 
         # Bank current to current_rate
-        self._current_rate = np.append(self._current_rate, reshape_current,
-                                       axis=5)
+        self._current_rate = np.append(self._current_rate, reshape_current, axis=5)
 
         # Compute current as aggregate of banked current_rate over tally window
-        self._current = np.where(is_accel[..., np.newaxis, np.newaxis],
-                                 np.sum(self._current_rate, axis=5), 0.0)
+        self._current = np.where(
+            is_accel[..., np.newaxis, np.newaxis],
+            np.sum(self._current_rate, axis=5),
+            0.0,
+        )
 
         # Get p1 scatter rr from CMFD tally 3
         tally_id = self._tally_ids[3]
-        p1scattrr = tallies[tally_id].results[:,0,1]
+        p1scattrr = tallies[tally_id].results[:, 0, 1]
 
         # Define target tally reshape dimensions for p1 scatter tally
         target_tally_shape = [nz, ny, nx, 2, ng, 1]
 
         # Reshape and extract only p1 data from tally results as there is
         # no need for p0 data
-        reshape_p1scattrr = np.swapaxes(p1scattrr.reshape(target_tally_shape),
-                                        0, 2)[:,:,:,1,:,:]
+        reshape_p1scattrr = np.swapaxes(p1scattrr.reshape(target_tally_shape), 0, 2)[
+            :, :, :, 1, :, :
+        ]
 
         # p1-scatter rr is flipped in energy axis as tally results are given in
         # reverse order of energy group
         reshape_p1scattrr = np.flip(reshape_p1scattrr, axis=3)
 
         # Bank p1-scatter rr to p1scatt_rate
-        self._p1scatt_rate = np.append(self._p1scatt_rate, reshape_p1scattrr,
-                                       axis=4)
+        self._p1scatt_rate = np.append(self._p1scatt_rate, reshape_p1scattrr, axis=4)
 
         # Compute p1-scatter xs as aggregate of banked p1scatt_rate over tally
         # window divided by flux
-        self._p1scattxs = np.divide(np.sum(self._p1scatt_rate, axis=4),
-                                    self._flux, where=self._flux > 0,
-                                    out=np.zeros_like(self._p1scattxs))
+        self._p1scattxs = np.divide(
+            np.sum(self._p1scatt_rate, axis=4),
+            self._flux,
+            where=self._flux > 0,
+            out=np.zeros_like(self._p1scattxs),
+        )
 
         if self._set_reference_params:
             # Set diffusion coefficients based on reference value
-            self._diffcof = np.where(self._flux > 0,
-                                     self._ref_d[None, None, None, :], 0.0)
+            self._diffcof = np.where(
+                self._flux > 0, self._ref_d[None, None, None, :], 0.0
+            )
         else:
             # Calculate and store diffusion coefficient
-            with np.errstate(divide='ignore', invalid='ignore'):
-                self._diffcof = np.where(self._flux > 0, 1.0 / (3.0 *
-                                         (self._totalxs-self._p1scattxs)), 0.)
+            with np.errstate(divide="ignore", invalid="ignore"):
+                self._diffcof = np.where(
+                    self._flux > 0, 1.0 / (3.0 * (self._totalxs - self._p1scattxs)), 0.0
+                )
 
     def _compute_effective_downscatter(self):
         """Changes downscatter rate for zero upscatter"""
@@ -2027,35 +2090,35 @@ class CMFDRun:
             return
 
         # Extract cross sections and flux for each group
-        flux1 = self._flux[:,:,:,0]
-        flux2 = self._flux[:,:,:,1]
-        sigt1 = self._totalxs[:,:,:,0]
-        sigt2 = self._totalxs[:,:,:,1]
+        flux1 = self._flux[:, :, :, 0]
+        flux2 = self._flux[:, :, :, 1]
+        sigt1 = self._totalxs[:, :, :, 0]
+        sigt2 = self._totalxs[:, :, :, 1]
 
         # First energy index is incoming energy, second is outgoing energy
-        sigs11 = self._scattxs[:,:,:,0,0]
-        sigs21 = self._scattxs[:,:,:,1,0]
-        sigs12 = self._scattxs[:,:,:,0,1]
-        sigs22 = self._scattxs[:,:,:,1,1]
+        sigs11 = self._scattxs[:, :, :, 0, 0]
+        sigs21 = self._scattxs[:, :, :, 1, 0]
+        sigs12 = self._scattxs[:, :, :, 0, 1]
+        sigs22 = self._scattxs[:, :, :, 1, 1]
 
         # Compute absorption xs
         siga1 = sigt1 - sigs11 - sigs12
         siga2 = sigt2 - sigs22 - sigs21
 
         # Compute effective downscatter XS
-        sigs12_eff = sigs12 - sigs21 * np.divide(flux2, flux1,
-                                                 where=flux1 > 0,
-                                                 out=np.zeros_like(flux2))
+        sigs12_eff = sigs12 - sigs21 * np.divide(
+            flux2, flux1, where=flux1 > 0, out=np.zeros_like(flux2)
+        )
 
         # Recompute total cross sections and record
-        self._totalxs[:,:,:,0] = siga1 + sigs11 + sigs12_eff
-        self._totalxs[:,:,:,1] = siga2 + sigs22
+        self._totalxs[:, :, :, 0] = siga1 + sigs11 + sigs12_eff
+        self._totalxs[:, :, :, 1] = siga2 + sigs22
 
         # Record effective dowmscatter xs
-        self._scattxs[:,:,:,0,1] = sigs12_eff
+        self._scattxs[:, :, :, 0, 1] = sigs12_eff
 
         # Zero out upscatter cross section
-        self._scattxs[:,:,:,1,0] = 0.0
+        self._scattxs[:, :, :, 1, 0] = 0.0
 
     def _neutron_balance(self):
         """Computes the RMS neutron balance over the CMFD mesh"""
@@ -2069,43 +2132,62 @@ class CMFDRun:
         keff = openmc.lib.keff()[0]
 
         # Define leakage in each mesh cell and energy group
-        leakage = (((self._current[:,:,:,_CURRENTS['out_right'],:] -
-                   self._current[:,:,:,_CURRENTS['in_right'],:]) -
-                   (self._current[:,:,:,_CURRENTS['in_left'],:] -
-                   self._current[:,:,:,_CURRENTS['out_left'],:])) +
-                   ((self._current[:,:,:,_CURRENTS['out_front'],:] -
-                    self._current[:,:,:,_CURRENTS['in_front'],:]) -
-                   (self._current[:,:,:,_CURRENTS['in_back'],:] -
-                    self._current[:,:,:,_CURRENTS['out_back'],:])) +
-                   ((self._current[:,:,:,_CURRENTS['out_top'],:] -
-                    self._current[:,:,:,_CURRENTS['in_top'],:]) -
-                   (self._current[:,:,:,_CURRENTS['in_bottom'],:] -
-                    self._current[:,:,:,_CURRENTS['out_bottom'],:])))
+        leakage = (
+            (
+                (
+                    self._current[:, :, :, _CURRENTS["out_right"], :]
+                    - self._current[:, :, :, _CURRENTS["in_right"], :]
+                )
+                - (
+                    self._current[:, :, :, _CURRENTS["in_left"], :]
+                    - self._current[:, :, :, _CURRENTS["out_left"], :]
+                )
+            )
+            + (
+                (
+                    self._current[:, :, :, _CURRENTS["out_front"], :]
+                    - self._current[:, :, :, _CURRENTS["in_front"], :]
+                )
+                - (
+                    self._current[:, :, :, _CURRENTS["in_back"], :]
+                    - self._current[:, :, :, _CURRENTS["out_back"], :]
+                )
+            )
+            + (
+                (
+                    self._current[:, :, :, _CURRENTS["out_top"], :]
+                    - self._current[:, :, :, _CURRENTS["in_top"], :]
+                )
+                - (
+                    self._current[:, :, :, _CURRENTS["in_bottom"], :]
+                    - self._current[:, :, :, _CURRENTS["out_bottom"], :]
+                )
+            )
+        )
 
         # Compute total rr
         interactions = self._totalxs * self._flux
 
         # Compute scattering rr by broadcasting flux in outgoing energy and
         # summing over incoming energy
-        scattering = np.sum(self._scattxs * self._flux[:,:,:,:, np.newaxis],
-                            axis=3)
+        scattering = np.sum(self._scattxs * self._flux[:, :, :, :, np.newaxis], axis=3)
 
         # Compute fission rr by broadcasting flux in outgoing energy and
         # summing over incoming energy
-        fission = np.sum(self._nfissxs * self._flux[:,:,:,:, np.newaxis],
-                         axis=3)
+        fission = np.sum(self._nfissxs * self._flux[:, :, :, :, np.newaxis], axis=3)
 
         # Compute residual
         res = leakage + interactions - scattering - (1.0 / keff) * fission
 
         # Normalize res by flux and bank res
-        self._resnb = np.divide(res, self._flux, where=self._flux > 0,
-                                out=np.zeros_like(self._flux))
+        self._resnb = np.divide(
+            res, self._flux, where=self._flux > 0, out=np.zeros_like(self._flux)
+        )
 
         # Calculate RMS and record for this batch
-        self._balance.append(np.sqrt(
-            np.sum(np.multiply(self._resnb, self._resnb)) /
-            (ng * num_accel)))
+        self._balance.append(
+            np.sqrt(np.sum(np.multiply(self._resnb, self._resnb)) / (ng * num_accel))
+        )
 
     def _precompute_array_indices(self):
         """Initializes cross section arrays and computes the indices
@@ -2137,8 +2219,10 @@ class CMFDRun:
             # Check length of reference diffusion parameters equal to number of
             # energy groups
             if self._ref_d.size != self._indices[3]:
-                raise OpenMCError('Number of reference diffusion parameters '
-                                  'must equal number of CMFD energy groups')
+                raise OpenMCError(
+                    "Number of reference diffusion parameters "
+                    "must equal number of CMFD energy groups"
+                )
 
         # Logical for determining whether region of interest is accelerated
         # region
@@ -2148,131 +2232,166 @@ class CMFDRun:
         x_inds, y_inds, z_inds = np.indices((nx, ny, nz))
 
         # Define slice equivalent to is_accel[0,:,:]
-        slice_x = x_inds[:1,:,:]
-        slice_y = y_inds[:1,:,:]
-        slice_z = z_inds[:1,:,:]
+        slice_x = x_inds[:1, :, :]
+        slice_y = y_inds[:1, :, :]
+        slice_z = z_inds[:1, :, :]
         bndry_accel = is_accel[(slice_x, slice_y, slice_z)]
-        self._first_x_accel = (slice_x[bndry_accel], slice_y[bndry_accel],
-                               slice_z[bndry_accel])
+        self._first_x_accel = (
+            slice_x[bndry_accel],
+            slice_y[bndry_accel],
+            slice_z[bndry_accel],
+        )
 
         # Define slice equivalent to is_accel[-1,:,:]
-        slice_x = x_inds[-1:,:,:]
-        slice_y = y_inds[-1:,:,:]
-        slice_z = z_inds[-1:,:,:]
+        slice_x = x_inds[-1:, :, :]
+        slice_y = y_inds[-1:, :, :]
+        slice_z = z_inds[-1:, :, :]
         bndry_accel = is_accel[(slice_x, slice_y, slice_z)]
-        self._last_x_accel = (slice_x[bndry_accel], slice_y[bndry_accel],
-                              slice_z[bndry_accel])
+        self._last_x_accel = (
+            slice_x[bndry_accel],
+            slice_y[bndry_accel],
+            slice_z[bndry_accel],
+        )
 
         # Define slice equivalent to is_accel[:,0,:]
-        slice_x = x_inds[:,:1,:]
-        slice_y = y_inds[:,:1,:]
-        slice_z = z_inds[:,:1,:]
+        slice_x = x_inds[:, :1, :]
+        slice_y = y_inds[:, :1, :]
+        slice_z = z_inds[:, :1, :]
         bndry_accel = is_accel[(slice_x, slice_y, slice_z)]
-        self._first_y_accel = (slice_x[bndry_accel], slice_y[bndry_accel],
-                               slice_z[bndry_accel])
+        self._first_y_accel = (
+            slice_x[bndry_accel],
+            slice_y[bndry_accel],
+            slice_z[bndry_accel],
+        )
 
         # Define slice equivalent to is_accel[:,-1,:]
-        slice_x = x_inds[:,-1:,:]
-        slice_y = y_inds[:,-1:,:]
-        slice_z = z_inds[:,-1:,:]
+        slice_x = x_inds[:, -1:, :]
+        slice_y = y_inds[:, -1:, :]
+        slice_z = z_inds[:, -1:, :]
         bndry_accel = is_accel[(slice_x, slice_y, slice_z)]
-        self._last_y_accel = (slice_x[bndry_accel], slice_y[bndry_accel],
-                              slice_z[bndry_accel])
+        self._last_y_accel = (
+            slice_x[bndry_accel],
+            slice_y[bndry_accel],
+            slice_z[bndry_accel],
+        )
 
         # Define slice equivalent to is_accel[:,:,0]
-        slice_x = x_inds[:,:,:1]
-        slice_y = y_inds[:,:,:1]
-        slice_z = z_inds[:,:,:1]
+        slice_x = x_inds[:, :, :1]
+        slice_y = y_inds[:, :, :1]
+        slice_z = z_inds[:, :, :1]
         bndry_accel = is_accel[(slice_x, slice_y, slice_z)]
-        self._first_z_accel = (slice_x[bndry_accel], slice_y[bndry_accel],
-                               slice_z[bndry_accel])
+        self._first_z_accel = (
+            slice_x[bndry_accel],
+            slice_y[bndry_accel],
+            slice_z[bndry_accel],
+        )
 
         # Define slice equivalent to is_accel[:,:,-1]
-        slice_x = x_inds[:,:,-1:]
-        slice_y = y_inds[:,:,-1:]
-        slice_z = z_inds[:,:,-1:]
+        slice_x = x_inds[:, :, -1:]
+        slice_y = y_inds[:, :, -1:]
+        slice_z = z_inds[:, :, -1:]
         bndry_accel = is_accel[(slice_x, slice_y, slice_z)]
-        self._last_z_accel = (slice_x[bndry_accel], slice_y[bndry_accel],
-                              slice_z[bndry_accel])
+        self._last_z_accel = (
+            slice_x[bndry_accel],
+            slice_y[bndry_accel],
+            slice_z[bndry_accel],
+        )
 
         # Define slice equivalent to is_accel[1:,:,:]
-        slice_x = x_inds[1:,:,:]
-        slice_y = y_inds[1:,:,:]
-        slice_z = z_inds[1:,:,:]
+        slice_x = x_inds[1:, :, :]
+        slice_y = y_inds[1:, :, :]
+        slice_z = z_inds[1:, :, :]
         bndry_accel = is_accel[(slice_x, slice_y, slice_z)]
-        self._notfirst_x_accel = (slice_x[bndry_accel], slice_y[bndry_accel],
-                                  slice_z[bndry_accel])
+        self._notfirst_x_accel = (
+            slice_x[bndry_accel],
+            slice_y[bndry_accel],
+            slice_z[bndry_accel],
+        )
 
         # Define slice equivalent to is_accel[:-1,:,:]
-        slice_x = x_inds[:-1,:,:]
-        slice_y = y_inds[:-1,:,:]
-        slice_z = z_inds[:-1,:,:]
+        slice_x = x_inds[:-1, :, :]
+        slice_y = y_inds[:-1, :, :]
+        slice_z = z_inds[:-1, :, :]
         bndry_accel = is_accel[(slice_x, slice_y, slice_z)]
-        self._notlast_x_accel = (slice_x[bndry_accel], slice_y[bndry_accel],
-                                 slice_z[bndry_accel])
+        self._notlast_x_accel = (
+            slice_x[bndry_accel],
+            slice_y[bndry_accel],
+            slice_z[bndry_accel],
+        )
 
         # Define slice equivalent to is_accel[:,1:,:]
-        slice_x = x_inds[:,1:,:]
-        slice_y = y_inds[:,1:,:]
-        slice_z = z_inds[:,1:,:]
+        slice_x = x_inds[:, 1:, :]
+        slice_y = y_inds[:, 1:, :]
+        slice_z = z_inds[:, 1:, :]
         bndry_accel = is_accel[(slice_x, slice_y, slice_z)]
-        self._notfirst_y_accel = (slice_x[bndry_accel], slice_y[bndry_accel],
-                                  slice_z[bndry_accel])
+        self._notfirst_y_accel = (
+            slice_x[bndry_accel],
+            slice_y[bndry_accel],
+            slice_z[bndry_accel],
+        )
 
         # Define slice equivalent to is_accel[:,:-1,:]
-        slice_x = x_inds[:,:-1,:]
-        slice_y = y_inds[:,:-1,:]
-        slice_z = z_inds[:,:-1,:]
+        slice_x = x_inds[:, :-1, :]
+        slice_y = y_inds[:, :-1, :]
+        slice_z = z_inds[:, :-1, :]
         bndry_accel = is_accel[(slice_x, slice_y, slice_z)]
-        self._notlast_y_accel = (slice_x[bndry_accel], slice_y[bndry_accel],
-                                 slice_z[bndry_accel])
+        self._notlast_y_accel = (
+            slice_x[bndry_accel],
+            slice_y[bndry_accel],
+            slice_z[bndry_accel],
+        )
 
         # Define slice equivalent to is_accel[:,:,1:]
-        slice_x = x_inds[:,:,1:]
-        slice_y = y_inds[:,:,1:]
-        slice_z = z_inds[:,:,1:]
+        slice_x = x_inds[:, :, 1:]
+        slice_y = y_inds[:, :, 1:]
+        slice_z = z_inds[:, :, 1:]
         bndry_accel = is_accel[(slice_x, slice_y, slice_z)]
-        self._notfirst_z_accel = (slice_x[bndry_accel], slice_y[bndry_accel],
-                                  slice_z[bndry_accel])
+        self._notfirst_z_accel = (
+            slice_x[bndry_accel],
+            slice_y[bndry_accel],
+            slice_z[bndry_accel],
+        )
 
         # Define slice equivalent to is_accel[:,:,:-1]
-        slice_x = x_inds[:,:,:-1]
-        slice_y = y_inds[:,:,:-1]
-        slice_z = z_inds[:,:,:-1]
+        slice_x = x_inds[:, :, :-1]
+        slice_y = y_inds[:, :, :-1]
+        slice_z = z_inds[:, :, :-1]
         bndry_accel = is_accel[(slice_x, slice_y, slice_z)]
-        self._notlast_z_accel = (slice_x[bndry_accel], slice_y[bndry_accel],
-                                 slice_z[bndry_accel])
+        self._notlast_z_accel = (
+            slice_x[bndry_accel],
+            slice_y[bndry_accel],
+            slice_z[bndry_accel],
+        )
 
         # Store logical for whether neighboring cell is reflector region
         # in all directions
         adj_reflector_left = np.roll(self._coremap, 1, axis=0) == _CMFD_NOACCEL
         self._is_adj_ref_left = adj_reflector_left[
-                self._notfirst_x_accel + (np.newaxis,)]
+            self._notfirst_x_accel + (np.newaxis,)
+        ]
 
-        adj_reflector_right = np.roll(self._coremap, -1, axis=0) == \
-            _CMFD_NOACCEL
+        adj_reflector_right = np.roll(self._coremap, -1, axis=0) == _CMFD_NOACCEL
         self._is_adj_ref_right = adj_reflector_right[
-                self._notlast_x_accel + (np.newaxis,)]
+            self._notlast_x_accel + (np.newaxis,)
+        ]
 
-        adj_reflector_back = np.roll(self._coremap, 1, axis=1) == \
-            _CMFD_NOACCEL
+        adj_reflector_back = np.roll(self._coremap, 1, axis=1) == _CMFD_NOACCEL
         self._is_adj_ref_back = adj_reflector_back[
-                self._notfirst_y_accel + (np.newaxis,)]
+            self._notfirst_y_accel + (np.newaxis,)
+        ]
 
-        adj_reflector_front = np.roll(self._coremap, -1, axis=1) == \
-            _CMFD_NOACCEL
+        adj_reflector_front = np.roll(self._coremap, -1, axis=1) == _CMFD_NOACCEL
         self._is_adj_ref_front = adj_reflector_front[
-                self._notlast_y_accel + (np.newaxis,)]
+            self._notlast_y_accel + (np.newaxis,)
+        ]
 
-        adj_reflector_bottom = np.roll(self._coremap, 1, axis=2) == \
-            _CMFD_NOACCEL
+        adj_reflector_bottom = np.roll(self._coremap, 1, axis=2) == _CMFD_NOACCEL
         self._is_adj_ref_bottom = adj_reflector_bottom[
-                self._notfirst_z_accel + (np.newaxis,)]
+            self._notfirst_z_accel + (np.newaxis,)
+        ]
 
-        adj_reflector_top = np.roll(self._coremap, -1, axis=2) == \
-            _CMFD_NOACCEL
-        self._is_adj_ref_top = adj_reflector_top[
-                self._notlast_z_accel + (np.newaxis,)]
+        adj_reflector_top = np.roll(self._coremap, -1, axis=2) == _CMFD_NOACCEL
+        self._is_adj_ref_top = adj_reflector_top[self._notlast_z_accel + (np.newaxis,)]
 
     def _precompute_matrix_indices(self):
         """Computes the indices and row/column data used to populate CMFD CSR
@@ -2285,29 +2404,47 @@ class CMFDRun:
 
         # Shift coremap in all directions to determine whether leakage term
         # should be defined for particular cell in matrix
-        coremap_shift_left = np.pad(self._coremap, ((1,0),(0,0),(0,0)),
-                                    mode='constant',
-                                    constant_values=_CMFD_NOACCEL)[:-1,:,:]
+        coremap_shift_left = np.pad(
+            self._coremap,
+            ((1, 0), (0, 0), (0, 0)),
+            mode="constant",
+            constant_values=_CMFD_NOACCEL,
+        )[:-1, :, :]
 
-        coremap_shift_right = np.pad(self._coremap, ((0,1),(0,0),(0,0)),
-                                     mode='constant',
-                                     constant_values=_CMFD_NOACCEL)[1:,:,:]
+        coremap_shift_right = np.pad(
+            self._coremap,
+            ((0, 1), (0, 0), (0, 0)),
+            mode="constant",
+            constant_values=_CMFD_NOACCEL,
+        )[1:, :, :]
 
-        coremap_shift_back = np.pad(self._coremap, ((0,0),(1,0),(0,0)),
-                                    mode='constant',
-                                    constant_values=_CMFD_NOACCEL)[:,:-1,:]
+        coremap_shift_back = np.pad(
+            self._coremap,
+            ((0, 0), (1, 0), (0, 0)),
+            mode="constant",
+            constant_values=_CMFD_NOACCEL,
+        )[:, :-1, :]
 
-        coremap_shift_front = np.pad(self._coremap, ((0,0),(0,1),(0,0)),
-                                     mode='constant',
-                                     constant_values=_CMFD_NOACCEL)[:,1:,:]
+        coremap_shift_front = np.pad(
+            self._coremap,
+            ((0, 0), (0, 1), (0, 0)),
+            mode="constant",
+            constant_values=_CMFD_NOACCEL,
+        )[:, 1:, :]
 
-        coremap_shift_bottom = np.pad(self._coremap, ((0,0),(0,0),(1,0)),
-                                      mode='constant',
-                                      constant_values=_CMFD_NOACCEL)[:,:,:-1]
+        coremap_shift_bottom = np.pad(
+            self._coremap,
+            ((0, 0), (0, 0), (1, 0)),
+            mode="constant",
+            constant_values=_CMFD_NOACCEL,
+        )[:, :, :-1]
 
-        coremap_shift_top = np.pad(self._coremap, ((0,0),(0,0),(0,1)),
-                                   mode='constant',
-                                   constant_values=_CMFD_NOACCEL)[:,:,1:]
+        coremap_shift_top = np.pad(
+            self._coremap,
+            ((0, 0), (0, 0), (0, 1)),
+            mode="constant",
+            constant_values=_CMFD_NOACCEL,
+        )[:, :, 1:]
 
         # Create empty row and column vectors to store for loss matrix
         row = np.array([], dtype=int)
@@ -2316,18 +2453,24 @@ class CMFDRun:
         # Store all indices used to populate production and loss matrix
         is_accel = self._coremap != _CMFD_NOACCEL
         self._accel_idxs = np.where(is_accel)
-        self._accel_neig_left_idxs = (np.where(is_accel &
-                                      (coremap_shift_left != _CMFD_NOACCEL)))
-        self._accel_neig_right_idxs = (np.where(is_accel &
-                                       (coremap_shift_right != _CMFD_NOACCEL)))
-        self._accel_neig_back_idxs = (np.where(is_accel &
-                                      (coremap_shift_back != _CMFD_NOACCEL)))
-        self._accel_neig_front_idxs = (np.where(is_accel &
-                                       (coremap_shift_front != _CMFD_NOACCEL)))
-        self._accel_neig_bot_idxs = (np.where(is_accel &
-                                     (coremap_shift_bottom != _CMFD_NOACCEL)))
-        self._accel_neig_top_idxs = (np.where(is_accel &
-                                     (coremap_shift_top != _CMFD_NOACCEL)))
+        self._accel_neig_left_idxs = np.where(
+            is_accel & (coremap_shift_left != _CMFD_NOACCEL)
+        )
+        self._accel_neig_right_idxs = np.where(
+            is_accel & (coremap_shift_right != _CMFD_NOACCEL)
+        )
+        self._accel_neig_back_idxs = np.where(
+            is_accel & (coremap_shift_back != _CMFD_NOACCEL)
+        )
+        self._accel_neig_front_idxs = np.where(
+            is_accel & (coremap_shift_front != _CMFD_NOACCEL)
+        )
+        self._accel_neig_bot_idxs = np.where(
+            is_accel & (coremap_shift_bottom != _CMFD_NOACCEL)
+        )
+        self._accel_neig_top_idxs = np.where(
+            is_accel & (coremap_shift_top != _CMFD_NOACCEL)
+        )
 
         for g in range(ng):
             # Extract row and column data of regions where a cell and its
@@ -2361,8 +2504,7 @@ class CMFDRun:
             # Extract row and column data of regions where a cell and its
             # neighbor to the bottom are both fuel regions
             idx_x = ng * (self._coremap[self._accel_neig_bot_idxs]) + g
-            idx_y = ng * (coremap_shift_bottom[self._accel_neig_bot_idxs]) \
-                + g
+            idx_y = ng * (coremap_shift_bottom[self._accel_neig_bot_idxs]) + g
             row = np.append(row, idx_x)
             col = np.append(col, idx_y)
 
@@ -2431,9 +2573,9 @@ class CMFDRun:
             self._dtilde[boundary_grps + (0,)] = 2.0 * D / dx
         else:
             alb = self._albedo[0]
-            self._dtilde[boundary_grps + (0,)] = ((2.0 * D * (1.0 - alb))
-                                                  / (4.0 * D * (1.0 + alb) +
-                                                  (1.0 - alb) * dx))
+            self._dtilde[boundary_grps + (0,)] = (2.0 * D * (1.0 - alb)) / (
+                4.0 * D * (1.0 + alb) + (1.0 - alb) * dx
+            )
 
         # Define dtilde at right surface for all mesh cells on right boundary
         # Separate between zero flux b.c. and alebdo b.c.
@@ -2445,9 +2587,9 @@ class CMFDRun:
             self._dtilde[boundary_grps + (1,)] = 2.0 * D / dx
         else:
             alb = self._albedo[1]
-            self._dtilde[boundary_grps + (1,)] = ((2.0 * D * (1.0 - alb))
-                                                  / (4.0 * D * (1.0 + alb) +
-                                                  (1.0 - alb) * dx))
+            self._dtilde[boundary_grps + (1,)] = (2.0 * D * (1.0 - alb)) / (
+                4.0 * D * (1.0 + alb) + (1.0 - alb) * dx
+            )
 
         # Define dtilde at back surface for all mesh cells on back boundary
         # Separate between zero flux b.c. and alebdo b.c.
@@ -2459,9 +2601,9 @@ class CMFDRun:
             self._dtilde[boundary_grps + (2,)] = 2.0 * D / dy
         else:
             alb = self._albedo[2]
-            self._dtilde[boundary_grps + (2,)] = ((2.0 * D * (1.0 - alb))
-                                                  / (4.0 * D * (1.0 + alb) +
-                                                  (1.0 - alb) * dy))
+            self._dtilde[boundary_grps + (2,)] = (2.0 * D * (1.0 - alb)) / (
+                4.0 * D * (1.0 + alb) + (1.0 - alb) * dy
+            )
 
         # Define dtilde at front surface for all mesh cells on front boundary
         # Separate between zero flux b.c. and alebdo b.c.
@@ -2473,9 +2615,9 @@ class CMFDRun:
             self._dtilde[boundary_grps + (3,)] = 2.0 * D / dy
         else:
             alb = self._albedo[3]
-            self._dtilde[boundary_grps + (3,)] = ((2.0 * D * (1.0 - alb))
-                                                  / (4.0 * D * (1.0 + alb) +
-                                                  (1.0 - alb) * dy))
+            self._dtilde[boundary_grps + (3,)] = (2.0 * D * (1.0 - alb)) / (
+                4.0 * D * (1.0 + alb) + (1.0 - alb) * dy
+            )
 
         # Define dtilde at bottom surface for all mesh cells on bottom boundary
         # Separate between zero flux b.c. and alebdo b.c.
@@ -2487,9 +2629,9 @@ class CMFDRun:
             self._dtilde[boundary_grps + (4,)] = 2.0 * D / dz
         else:
             alb = self._albedo[4]
-            self._dtilde[boundary_grps + (4,)] = ((2.0 * D * (1.0 - alb))
-                                                  / (4.0 * D * (1.0 + alb) +
-                                                  (1.0 - alb) * dz))
+            self._dtilde[boundary_grps + (4,)] = (2.0 * D * (1.0 - alb)) / (
+                4.0 * D * (1.0 + alb) + (1.0 - alb) * dz
+            )
 
         # Define dtilde at top surface for all mesh cells on top boundary
         # Separate between zero flux b.c. and alebdo b.c.
@@ -2502,17 +2644,20 @@ class CMFDRun:
             self._dtilde[boundary_grps + (5,)] = 2.0 * D / dz
         else:
             alb = self._albedo[5]
-            self._dtilde[boundary_grps + (5,)] = ((2.0 * D * (1 - alb))
-                                                  / (4.0 * D * (1.0 + alb) +
-                                                  (1.0 - alb) * dz))
+            self._dtilde[boundary_grps + (5,)] = (2.0 * D * (1 - alb)) / (
+                4.0 * D * (1.0 + alb) + (1.0 - alb) * dz
+            )
 
         # Define reflector albedo for all cells on the left surface, in case
         # a cell borders a reflector region on the left
-        current_in_left = self._current[:,:,:,_CURRENTS['in_left'],:]
-        current_out_left = self._current[:,:,:,_CURRENTS['out_left'],:]
-        ref_albedo = np.divide(current_in_left, current_out_left,
-                               where=current_out_left > 1.0e-10,
-                               out=np.ones_like(current_out_left))
+        current_in_left = self._current[:, :, :, _CURRENTS["in_left"], :]
+        current_out_left = self._current[:, :, :, _CURRENTS["out_left"], :]
+        ref_albedo = np.divide(
+            current_in_left,
+            current_out_left,
+            where=current_out_left > 1.0e-10,
+            out=np.ones_like(current_out_left),
+        )
 
         # Diffusion coefficient of neighbor to left
         neig_dc = np.roll(self._diffcof, 1, axis=0)
@@ -2530,18 +2675,23 @@ class CMFDRun:
         neig_dx = neig_hxyz[boundary + (np.newaxis, 0)]
         alb = ref_albedo[boundary_grps]
         is_adj_ref = self._is_adj_ref_left
-        dtilde = np.where(is_adj_ref, (2.0 * D * (1.0 - alb)) /
-                          (4.0 * D * (1.0 + alb) + (1.0 - alb) * dx),
-                          (2.0 * D * neig_D) / (neig_dx * D + dx * neig_D))
+        dtilde = np.where(
+            is_adj_ref,
+            (2.0 * D * (1.0 - alb)) / (4.0 * D * (1.0 + alb) + (1.0 - alb) * dx),
+            (2.0 * D * neig_D) / (neig_dx * D + dx * neig_D),
+        )
         self._dtilde[boundary_grps + (0,)] = dtilde
 
         # Define reflector albedo for all cells on the right surface, in case
         # a cell borders a reflector region on the right
-        current_in_right = self._current[:,:,:,_CURRENTS['in_right'],:]
-        current_out_right = self._current[:,:,:,_CURRENTS['out_right'],:]
-        ref_albedo = np.divide(current_in_right, current_out_right,
-                               where=current_out_right > 1.0e-10,
-                               out=np.ones_like(current_out_right))
+        current_in_right = self._current[:, :, :, _CURRENTS["in_right"], :]
+        current_out_right = self._current[:, :, :, _CURRENTS["out_right"], :]
+        ref_albedo = np.divide(
+            current_in_right,
+            current_out_right,
+            where=current_out_right > 1.0e-10,
+            out=np.ones_like(current_out_right),
+        )
 
         # Diffusion coefficient of neighbor to right
         neig_dc = np.roll(self._diffcof, -1, axis=0)
@@ -2559,18 +2709,23 @@ class CMFDRun:
         neig_dx = neig_hxyz[boundary + (np.newaxis, 0)]
         alb = ref_albedo[boundary_grps]
         is_adj_ref = self._is_adj_ref_right
-        dtilde = np.where(is_adj_ref, (2.0 * D * (1.0 - alb)) /
-                          (4.0 * D * (1.0 + alb) + (1.0 - alb) * dx),
-                          (2.0 * D * neig_D) / (neig_dx * D + dx * neig_D))
+        dtilde = np.where(
+            is_adj_ref,
+            (2.0 * D * (1.0 - alb)) / (4.0 * D * (1.0 + alb) + (1.0 - alb) * dx),
+            (2.0 * D * neig_D) / (neig_dx * D + dx * neig_D),
+        )
         self._dtilde[boundary_grps + (1,)] = dtilde
 
         # Define reflector albedo for all cells on the back surface, in case
         # a cell borders a reflector region on the back
-        current_in_back = self._current[:,:,:,_CURRENTS['in_back'],:]
-        current_out_back = self._current[:,:,:,_CURRENTS['out_back'],:]
-        ref_albedo = np.divide(current_in_back, current_out_back,
-                               where=current_out_back > 1.0e-10,
-                               out=np.ones_like(current_out_back))
+        current_in_back = self._current[:, :, :, _CURRENTS["in_back"], :]
+        current_out_back = self._current[:, :, :, _CURRENTS["out_back"], :]
+        ref_albedo = np.divide(
+            current_in_back,
+            current_out_back,
+            where=current_out_back > 1.0e-10,
+            out=np.ones_like(current_out_back),
+        )
 
         # Diffusion coefficient of neighbor to back
         neig_dc = np.roll(self._diffcof, 1, axis=1)
@@ -2588,18 +2743,23 @@ class CMFDRun:
         neig_dy = neig_hxyz[boundary + (np.newaxis, 1)]
         alb = ref_albedo[boundary_grps]
         is_adj_ref = self._is_adj_ref_back
-        dtilde = np.where(is_adj_ref, (2.0 * D * (1.0 - alb)) /
-                          (4.0 * D * (1.0 + alb) + (1.0 - alb) * dy),
-                          (2.0 * D * neig_D) / (neig_dy * D + dy * neig_D))
+        dtilde = np.where(
+            is_adj_ref,
+            (2.0 * D * (1.0 - alb)) / (4.0 * D * (1.0 + alb) + (1.0 - alb) * dy),
+            (2.0 * D * neig_D) / (neig_dy * D + dy * neig_D),
+        )
         self._dtilde[boundary_grps + (2,)] = dtilde
 
         # Define reflector albedo for all cells on the front surface, in case
         # a cell borders a reflector region in the front
-        current_in_front = self._current[:,:,:,_CURRENTS['in_front'],:]
-        current_out_front = self._current[:,:,:,_CURRENTS['out_front'],:]
-        ref_albedo = np.divide(current_in_front, current_out_front,
-                               where=current_out_front > 1.0e-10,
-                               out=np.ones_like(current_out_front))
+        current_in_front = self._current[:, :, :, _CURRENTS["in_front"], :]
+        current_out_front = self._current[:, :, :, _CURRENTS["out_front"], :]
+        ref_albedo = np.divide(
+            current_in_front,
+            current_out_front,
+            where=current_out_front > 1.0e-10,
+            out=np.ones_like(current_out_front),
+        )
 
         # Diffusion coefficient of neighbor to front
         neig_dc = np.roll(self._diffcof, -1, axis=1)
@@ -2617,18 +2777,23 @@ class CMFDRun:
         neig_dy = neig_hxyz[boundary + (np.newaxis, 1)]
         alb = ref_albedo[boundary_grps]
         is_adj_ref = self._is_adj_ref_front
-        dtilde = np.where(is_adj_ref, (2.0 * D * (1.0 - alb)) /
-                          (4.0 * D * (1.0 + alb) + (1.0 - alb) * dy),
-                          (2.0 * D * neig_D) / (neig_dy * D + dy * neig_D))
+        dtilde = np.where(
+            is_adj_ref,
+            (2.0 * D * (1.0 - alb)) / (4.0 * D * (1.0 + alb) + (1.0 - alb) * dy),
+            (2.0 * D * neig_D) / (neig_dy * D + dy * neig_D),
+        )
         self._dtilde[boundary_grps + (3,)] = dtilde
 
         # Define reflector albedo for all cells on the bottom surface, in case
         # a cell borders a reflector region on the bottom
-        current_in_bottom = self._current[:,:,:,_CURRENTS['in_bottom'],:]
-        current_out_bottom = self._current[:,:,:,_CURRENTS['out_bottom'],:]
-        ref_albedo = np.divide(current_in_bottom, current_out_bottom,
-                               where=current_out_bottom > 1.0e-10,
-                               out=np.ones_like(current_out_bottom))
+        current_in_bottom = self._current[:, :, :, _CURRENTS["in_bottom"], :]
+        current_out_bottom = self._current[:, :, :, _CURRENTS["out_bottom"], :]
+        ref_albedo = np.divide(
+            current_in_bottom,
+            current_out_bottom,
+            where=current_out_bottom > 1.0e-10,
+            out=np.ones_like(current_out_bottom),
+        )
 
         # Diffusion coefficient of neighbor to bottom
         neig_dc = np.roll(self._diffcof, 1, axis=2)
@@ -2646,18 +2811,23 @@ class CMFDRun:
         neig_dz = neig_hxyz[boundary + (np.newaxis, 2)]
         alb = ref_albedo[boundary_grps]
         is_adj_ref = self._is_adj_ref_bottom
-        dtilde = np.where(is_adj_ref, (2.0 * D * (1.0 - alb)) /
-                          (4.0 * D * (1.0 + alb) + (1.0 - alb) * dz),
-                          (2.0 * D * neig_D) / (neig_dz * D + dz * neig_D))
+        dtilde = np.where(
+            is_adj_ref,
+            (2.0 * D * (1.0 - alb)) / (4.0 * D * (1.0 + alb) + (1.0 - alb) * dz),
+            (2.0 * D * neig_D) / (neig_dz * D + dz * neig_D),
+        )
         self._dtilde[boundary_grps + (4,)] = dtilde
 
         # Define reflector albedo for all cells on the top surface, in case
         # a cell borders a reflector region on the top
-        current_in_top = self._current[:,:,:,_CURRENTS['in_top'],:]
-        current_out_top = self._current[:,:,:,_CURRENTS['out_top'],:]
-        ref_albedo = np.divide(current_in_top, current_out_top,
-                               where=current_out_top > 1.0e-10,
-                               out=np.ones_like(current_out_top))
+        current_in_top = self._current[:, :, :, _CURRENTS["in_top"], :]
+        current_out_top = self._current[:, :, :, _CURRENTS["out_top"], :]
+        ref_albedo = np.divide(
+            current_in_top,
+            current_out_top,
+            where=current_out_top > 1.0e-10,
+            out=np.ones_like(current_out_top),
+        )
 
         # Diffusion coefficient of neighbor to top
         neig_dc = np.roll(self._diffcof, -1, axis=2)
@@ -2675,9 +2845,11 @@ class CMFDRun:
         neig_dz = neig_hxyz[boundary + (np.newaxis, 2)]
         alb = ref_albedo[boundary_grps]
         is_adj_ref = self._is_adj_ref_top
-        dtilde = np.where(is_adj_ref, (2.0 * D * (1.0 - alb)) /
-                          (4.0 * D * (1.0 + alb) + (1.0 - alb) * dz),
-                          (2.0 * D * neig_D) / (neig_dz * D + dz * neig_D))
+        dtilde = np.where(
+            is_adj_ref,
+            (2.0 * D * (1.0 - alb)) / (4.0 * D * (1.0 + alb) + (1.0 - alb) * dz),
+            (2.0 * D * neig_D) / (neig_dz * D + dz * neig_D),
+        )
         self._dtilde[boundary_grps + (5,)] = dtilde
 
     def _compute_dhat(self):
@@ -2690,33 +2862,30 @@ class CMFDRun:
 
         """
         # Define current in each direction
-        current_in_left = self._current[:,:,:,_CURRENTS['in_left'],:]
-        current_out_left = self._current[:,:,:,_CURRENTS['out_left'],:]
-        current_in_right = self._current[:,:,:,_CURRENTS['in_right'],:]
-        current_out_right = self._current[:,:,:,_CURRENTS['out_right'],:]
-        current_in_back = self._current[:,:,:,_CURRENTS['in_back'],:]
-        current_out_back = self._current[:,:,:,_CURRENTS['out_back'],:]
-        current_in_front = self._current[:,:,:,_CURRENTS['in_front'],:]
-        current_out_front = self._current[:,:,:,_CURRENTS['out_front'],:]
-        current_in_bottom = self._current[:,:,:,_CURRENTS['in_bottom'],:]
-        current_out_bottom = self._current[:,:,:,_CURRENTS['out_bottom'],:]
-        current_in_top = self._current[:,:,:,_CURRENTS['in_top'],:]
-        current_out_top = self._current[:,:,:,_CURRENTS['out_top'],:]
+        current_in_left = self._current[:, :, :, _CURRENTS["in_left"], :]
+        current_out_left = self._current[:, :, :, _CURRENTS["out_left"], :]
+        current_in_right = self._current[:, :, :, _CURRENTS["in_right"], :]
+        current_out_right = self._current[:, :, :, _CURRENTS["out_right"], :]
+        current_in_back = self._current[:, :, :, _CURRENTS["in_back"], :]
+        current_out_back = self._current[:, :, :, _CURRENTS["out_back"], :]
+        current_in_front = self._current[:, :, :, _CURRENTS["in_front"], :]
+        current_out_front = self._current[:, :, :, _CURRENTS["out_front"], :]
+        current_in_bottom = self._current[:, :, :, _CURRENTS["in_bottom"], :]
+        current_out_bottom = self._current[:, :, :, _CURRENTS["out_bottom"], :]
+        current_in_top = self._current[:, :, :, _CURRENTS["in_top"], :]
+        current_out_top = self._current[:, :, :, _CURRENTS["out_top"], :]
 
-        dx = self._hxyz[:,:,:,np.newaxis,0]
-        dy = self._hxyz[:,:,:,np.newaxis,1]
-        dz = self._hxyz[:,:,:,np.newaxis,2]
-        dxdydz = np.prod(self._hxyz, axis=3)[:,:,:,np.newaxis]
+        dx = self._hxyz[:, :, :, np.newaxis, 0]
+        dy = self._hxyz[:, :, :, np.newaxis, 1]
+        dz = self._hxyz[:, :, :, np.newaxis, 2]
+        dxdydz = np.prod(self._hxyz, axis=3)[:, :, :, np.newaxis]
 
         # Define net current on each face
         net_current_left = (current_in_left - current_out_left) / dxdydz * dx
-        net_current_right = (current_out_right - current_in_right) / dxdydz * \
-            dx
+        net_current_right = (current_out_right - current_in_right) / dxdydz * dx
         net_current_back = (current_in_back - current_out_back) / dxdydz * dy
-        net_current_front = (current_out_front - current_in_front) / dxdydz * \
-            dy
-        net_current_bottom = (current_in_bottom - current_out_bottom) / \
-            dxdydz * dz
+        net_current_front = (current_out_front - current_in_front) / dxdydz * dy
+        net_current_bottom = (current_in_bottom - current_out_bottom) / dxdydz * dz
         net_current_top = (current_out_top - current_in_top) / dxdydz * dz
 
         # Define flux in each cell
@@ -2783,9 +2952,11 @@ class CMFDRun:
         flux = cell_flux[boundary_grps]
         flux_left = neig_flux[boundary_grps]
         is_adj_ref = self._is_adj_ref_left
-        dhat = np.where(is_adj_ref, (net_current + dtilde * flux) / flux,
-                        (net_current - dtilde * (flux_left - flux)) /
-                        (flux_left + flux))
+        dhat = np.where(
+            is_adj_ref,
+            (net_current + dtilde * flux) / flux,
+            (net_current - dtilde * (flux_left - flux)) / (flux_left + flux),
+        )
         self._dhat[boundary_grps + (0,)] = dhat
 
         # Cell flux of neighbor to right
@@ -2801,9 +2972,11 @@ class CMFDRun:
         flux = cell_flux[boundary_grps]
         flux_right = neig_flux[boundary_grps]
         is_adj_ref = self._is_adj_ref_right
-        dhat = np.where(is_adj_ref, (net_current - dtilde * flux) / flux,
-                        (net_current + dtilde * (flux_right - flux)) /
-                        (flux_right + flux))
+        dhat = np.where(
+            is_adj_ref,
+            (net_current - dtilde * flux) / flux,
+            (net_current + dtilde * (flux_right - flux)) / (flux_right + flux),
+        )
         self._dhat[boundary_grps + (1,)] = dhat
 
         # Cell flux of neighbor to back
@@ -2819,9 +2992,11 @@ class CMFDRun:
         flux = cell_flux[boundary_grps]
         flux_back = neig_flux[boundary_grps]
         is_adj_ref = self._is_adj_ref_back
-        dhat = np.where(is_adj_ref, (net_current + dtilde * flux) / flux,
-                        (net_current - dtilde * (flux_back - flux)) /
-                        (flux_back + flux))
+        dhat = np.where(
+            is_adj_ref,
+            (net_current + dtilde * flux) / flux,
+            (net_current - dtilde * (flux_back - flux)) / (flux_back + flux),
+        )
         self._dhat[boundary_grps + (2,)] = dhat
 
         # Cell flux of neighbor to front
@@ -2837,9 +3012,11 @@ class CMFDRun:
         flux = cell_flux[boundary_grps]
         flux_front = neig_flux[boundary_grps]
         is_adj_ref = self._is_adj_ref_front
-        dhat = np.where(is_adj_ref, (net_current - dtilde * flux) / flux,
-                        (net_current + dtilde * (flux_front - flux)) /
-                        (flux_front + flux))
+        dhat = np.where(
+            is_adj_ref,
+            (net_current - dtilde * flux) / flux,
+            (net_current + dtilde * (flux_front - flux)) / (flux_front + flux),
+        )
         self._dhat[boundary_grps + (3,)] = dhat
 
         # Cell flux of neighbor to bottom
@@ -2855,9 +3032,11 @@ class CMFDRun:
         flux = cell_flux[boundary_grps]
         flux_bottom = neig_flux[boundary_grps]
         is_adj_ref = self._is_adj_ref_bottom
-        dhat = np.where(is_adj_ref, (net_current + dtilde * flux) / flux,
-                        (net_current - dtilde * (flux_bottom - flux)) /
-                        (flux_bottom + flux))
+        dhat = np.where(
+            is_adj_ref,
+            (net_current + dtilde * flux) / flux,
+            (net_current - dtilde * (flux_bottom - flux)) / (flux_bottom + flux),
+        )
         self._dhat[boundary_grps + (4,)] = dhat
 
         # Cell flux of neighbor to top
@@ -2873,22 +3052,26 @@ class CMFDRun:
         flux = cell_flux[boundary_grps]
         flux_top = neig_flux[boundary_grps]
         is_adj_ref = self._is_adj_ref_top
-        dhat = np.where(is_adj_ref, (net_current - dtilde * flux) / flux,
-                        (net_current + dtilde * (flux_top - flux)) /
-                        (flux_top + flux))
+        dhat = np.where(
+            is_adj_ref,
+            (net_current - dtilde * flux) / flux,
+            (net_current + dtilde * (flux_top - flux)) / (flux_top + flux),
+        )
         self._dhat[boundary_grps + (5,)] = dhat
 
     def _create_cmfd_tally(self):
         """Creates all tallies in-memory that are used to solve CMFD problem"""
         # Create Mesh object based on CMFDMesh mesh_type, stored internally
-        if self._mesh.mesh_type == 'regular':
+        if self._mesh.mesh_type == "regular":
             cmfd_mesh = openmc.lib.RegularMesh()
             # Set dimension and parameters of mesh object
             cmfd_mesh.dimension = self._mesh.dimension
-            cmfd_mesh.set_parameters(lower_left=self._mesh.lower_left,
-                                     upper_right=self._mesh.upper_right,
-                                     width=self._mesh.width)
-        elif self._mesh.mesh_type == 'rectilinear':
+            cmfd_mesh.set_parameters(
+                lower_left=self._mesh.lower_left,
+                upper_right=self._mesh.upper_right,
+                width=self._mesh.width,
+            )
+        elif self._mesh.mesh_type == "rectilinear":
             cmfd_mesh = openmc.lib.RectilinearMesh()
             # Set grid of mesh object
             x_grid, y_grid, z_grid = self._mesh.grid
@@ -2930,7 +3113,7 @@ class CMFDRun:
         for i in range(n_tallies):
             cmfd_tally = openmc.lib.Tally()
             # Set nuclide bins
-            cmfd_tally.nuclides = ['total']
+            cmfd_tally.nuclides = ["total"]
             self._tally_ids.append(cmfd_tally.id)
 
             # Set attributes of CMFD flux, total tally
@@ -2941,22 +3124,21 @@ class CMFDRun:
                 else:
                     cmfd_tally.filters = [mesh_filter]
                 # Set scores, type, and estimator for tally
-                cmfd_tally.scores = ['flux', 'total']
-                cmfd_tally.type = 'volume'
-                cmfd_tally.estimator = 'analog'
+                cmfd_tally.scores = ["flux", "total"]
+                cmfd_tally.type = "volume"
+                cmfd_tally.estimator = "analog"
 
             # Set attributes of CMFD neutron production tally
             elif i == 1:
                 # Set filters for tally
                 if self._energy_filters:
-                    cmfd_tally.filters = [mesh_filter, energy_filter,
-                                          energyout_filter]
+                    cmfd_tally.filters = [mesh_filter, energy_filter, energyout_filter]
                 else:
                     cmfd_tally.filters = [mesh_filter]
                 # Set scores, type, and estimator for tally
-                cmfd_tally.scores = ['nu-scatter', 'nu-fission']
-                cmfd_tally.type = 'volume'
-                cmfd_tally.estimator = 'analog'
+                cmfd_tally.scores = ["nu-scatter", "nu-fission"]
+                cmfd_tally.type = "volume"
+                cmfd_tally.estimator = "analog"
 
             # Set attributes of CMFD surface current tally
             elif i == 2:
@@ -2966,22 +3148,21 @@ class CMFDRun:
                 else:
                     cmfd_tally.filters = [meshsurface_filter]
                 # Set scores, type, and estimator for tally
-                cmfd_tally.scores = ['current']
-                cmfd_tally.type = 'mesh-surface'
-                cmfd_tally.estimator = 'analog'
+                cmfd_tally.scores = ["current"]
+                cmfd_tally.type = "mesh-surface"
+                cmfd_tally.estimator = "analog"
 
             # Set attributes of CMFD P1 scatter tally
             elif i == 3:
                 # Set filters for tally
                 if self._energy_filters:
-                    cmfd_tally.filters = [mesh_filter, legendre_filter,
-                                          energy_filter]
+                    cmfd_tally.filters = [mesh_filter, legendre_filter, energy_filter]
                 else:
                     cmfd_tally.filters = [mesh_filter, legendre_filter]
                 # Set scores for tally
-                cmfd_tally.scores = ['scatter']
-                cmfd_tally.type = 'volume'
-                cmfd_tally.estimator = 'analog'
+                cmfd_tally.scores = ["scatter"]
+                cmfd_tally.type = "volume"
+                cmfd_tally.estimator = "analog"
 
             # Set all tallies to be active from beginning
             cmfd_tally.active = True

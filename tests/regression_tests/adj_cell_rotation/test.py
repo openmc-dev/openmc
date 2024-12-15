@@ -9,12 +9,12 @@ def model():
     model = openmc.model.Model()
 
     fuel = openmc.Material()
-    fuel.set_density('g/cc', 10.0)
-    fuel.add_nuclide('U235', 1.0)
+    fuel.set_density("g/cc", 10.0)
+    fuel.add_nuclide("U235", 1.0)
 
     h1 = openmc.Material()
-    h1.set_density('g/cc', 0.1)
-    h1.add_nuclide('H1', 0.1)
+    h1.set_density("g/cc", 0.1)
+    h1.add_nuclide("H1", 0.1)
 
     inner_sphere = openmc.Sphere(x0=1.0, r=5.0)
 
@@ -24,9 +24,9 @@ def model():
 
     # Create one cell on top of the other. Only one
     # has a rotation
-    box = openmc.model.RectangularPrism(15., 15., 'z', boundary_type='vacuum')
-    lower_z = openmc.ZPlane(-7.5, boundary_type='vacuum')
-    upper_z = openmc.ZPlane(22.5, boundary_type='vacuum')
+    box = openmc.model.RectangularPrism(15.0, 15.0, "z", boundary_type="vacuum")
+    lower_z = openmc.ZPlane(-7.5, boundary_type="vacuum")
+    upper_z = openmc.ZPlane(22.5, boundary_type="vacuum")
     middle_z = openmc.ZPlane(7.5)
 
     lower_cell = openmc.Cell(fill=univ, region=-box & +lower_z & -middle_z)
@@ -39,12 +39,12 @@ def model():
     model.settings.particles = 10000
     model.settings.inactive = 5
     model.settings.batches = 10
-    source_box = openmc.stats.Box((-4., -4., -4.), (4., 4., 4.))
+    source_box = openmc.stats.Box((-4.0, -4.0, -4.0), (4.0, 4.0, 4.0))
     model.settings.source = openmc.IndependentSource(space=source_box)
 
     return model
 
 
 def test_rotation(model):
-    harness = PyAPITestHarness('statepoint.10.h5', model)
+    harness = PyAPITestHarness("statepoint.10.h5", model)
     harness.main()

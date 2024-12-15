@@ -31,15 +31,14 @@ def model():
 
     radii = [0.42, 0.45]
     fuel.volume = np.pi * radii[0] ** 2
-    clad.volume = np.pi * (radii[1]**2 - radii[0]**2)
-    water.volume = 1.24**2 - (np.pi * radii[1]**2)
+    clad.volume = np.pi * (radii[1] ** 2 - radii[0] ** 2)
+    water.volume = 1.24**2 - (np.pi * radii[1] ** 2)
 
     materials = openmc.Materials([fuel, clad, water])
 
     pin_surfaces = [openmc.ZCylinder(r=r) for r in radii]
     pin_univ = openmc.model.pin(pin_surfaces, materials)
-    bound_box = openmc.model.RectangularPrism(
-        1.24, 1.24, boundary_type="reflective")
+    bound_box = openmc.model.RectangularPrism(1.24, 1.24, boundary_type="reflective")
     root_cell = openmc.Cell(fill=pin_univ, region=-bound_box)
     geometry = openmc.Geometry([root_cell])
 
@@ -92,8 +91,8 @@ def test_diff_volume_method_match_cell(model_with_volumes):
     operator = openmc.deplete.CoupledOperator(
         model=model_with_volumes,
         diff_burnable_mats=True,
-        diff_volume_method='match cell',
-        chain_file=CHAIN_PATH
+        diff_volume_method="match cell",
+        chain_file=CHAIN_PATH,
     )
 
     all_cells = list(operator.model.geometry.get_all_cells().values())
@@ -109,8 +108,8 @@ def test_diff_volume_method_divide_equally(model_with_volumes):
     operator = openmc.deplete.CoupledOperator(
         model=model_with_volumes,
         diff_burnable_mats=True,
-        diff_volume_method='divide equally',
-        chain_file=CHAIN_PATH
+        diff_volume_method="divide equally",
+        chain_file=CHAIN_PATH,
     )
 
     all_cells = list(operator.model.geometry.get_all_cells().values())

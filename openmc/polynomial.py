@@ -25,13 +25,13 @@ def legendre_from_expcoef(coef, domain=(-1, 1)):
     """
 
     n = np.arange(len(coef))
-    c = (2*n + 1) * np.asarray(coef) / (domain[1] - domain[0])
+    c = (2 * n + 1) * np.asarray(coef) / (domain[1] - domain[0])
     return np.polynomial.Legendre(c, domain)
 
 
 class Polynomial:
-    """Abstract Polynomial Class for creating polynomials.
-    """
+    """Abstract Polynomial Class for creating polynomials."""
+
     def __init__(self, coef):
         self.coef = np.asarray(coef)
 
@@ -62,6 +62,7 @@ class ZernikeRadial(Polynomial):
         normalization.
 
     """
+
     def __init__(self, coef, radius=1):
         super().__init__(coef)
         self._order = 2 * (len(self.coef) - 1)
@@ -75,11 +76,16 @@ class ZernikeRadial(Polynomial):
 
     def __call__(self, r):
         import openmc.lib as lib
+
         if isinstance(r, Iterable):
-            return [np.sum(self._norm_coef * lib.calc_zn_rad(self.order, r_i / self.radius))
-                    for r_i in r]
+            return [
+                np.sum(self._norm_coef * lib.calc_zn_rad(self.order, r_i / self.radius))
+                for r_i in r
+            ]
         else:
-            return np.sum(self._norm_coef * lib.calc_zn_rad(self.order, r / self.radius))
+            return np.sum(
+                self._norm_coef * lib.calc_zn_rad(self.order, r / self.radius)
+            )
 
 
 class Zernike(Polynomial):
@@ -108,6 +114,7 @@ class Zernike(Polynomial):
         The list of coefficients of each term in the polynomials after
         normalization.
     """
+
     def __init__(self, coef, radius=1):
         super().__init__(coef)
         # Solve order from number of coefficients
@@ -117,12 +124,12 @@ class Zernike(Polynomial):
         norm_vec = np.ones(len(self.coef))
         for n in range(self._order + 1):
             for m in range(-n, n + 1, 2):
-                j = int((n*(n + 2) + m)/2)
+                j = int((n * (n + 2) + m) / 2)
                 if m == 0:
                     norm_vec[j] = n + 1
                 else:
-                    norm_vec[j] = 2*n + 2
-        norm_vec /= (math.pi * radius**2)
+                    norm_vec[j] = 2 * n + 2
+        norm_vec /= math.pi * radius**2
         self._norm_coef = norm_vec * self.coef
 
     @property
@@ -131,14 +138,33 @@ class Zernike(Polynomial):
 
     def __call__(self, r, theta=0.0):
         import openmc.lib as lib
+
         if isinstance(r, Iterable) and isinstance(theta, Iterable):
-            return [[np.sum(self._norm_coef * lib.calc_zn(self.order, r_i / self.radius, theta_i))
-                    for r_i in r] for theta_i in theta]
+            return [
+                [
+                    np.sum(
+                        self._norm_coef
+                        * lib.calc_zn(self.order, r_i / self.radius, theta_i)
+                    )
+                    for r_i in r
+                ]
+                for theta_i in theta
+            ]
         elif isinstance(r, Iterable) and not isinstance(theta, Iterable):
-            return [np.sum(self._norm_coef * lib.calc_zn(self.order, r_i / self.radius, theta))
-                    for r_i in r]
+            return [
+                np.sum(
+                    self._norm_coef * lib.calc_zn(self.order, r_i / self.radius, theta)
+                )
+                for r_i in r
+            ]
         elif not isinstance(r, Iterable) and isinstance(theta, Iterable):
-            return [np.sum(self._norm_coef * lib.calc_zn(self.order, r / self.radius, theta_i))
-                    for theta_i in theta]
+            return [
+                np.sum(
+                    self._norm_coef * lib.calc_zn(self.order, r / self.radius, theta_i)
+                )
+                for theta_i in theta
+            ]
         else:
-            return np.sum(self._norm_coef * lib.calc_zn(self.order, r / self.radius, theta))
+            return np.sum(
+                self._norm_coef * lib.calc_zn(self.order, r / self.radius, theta)
+            )

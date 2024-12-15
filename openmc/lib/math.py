@@ -14,7 +14,7 @@ _dll.calc_zn_rad.argtypes = [c_int, c_double, ndpointer(c_double)]
 
 
 def calc_zn(n, rho, phi):
-    """ Calculate the n-th order modified Zernike polynomial moment for a
+    """Calculate the n-th order modified Zernike polynomial moment for a
     given angle (rho, theta) location in the unit disk. The normalization of
     the polynomials is such that the integral of Z_pq*Z_pq over the unit disk
     is exactly pi
@@ -39,7 +39,7 @@ def calc_zn(n, rho, phi):
 
 
 def calc_zn_rad(n, rho):
-    """ Calculate the even orders in n-th order modified Zernike polynomial
+    """Calculate the even orders in n-th order modified Zernike polynomial
     moment with no azimuthal dependency (m=0) for a given radial location in
     the unit disk. The normalization of the polynomials is such that the
     integral of Z_pq*Z_pq over the unit disk is exactly pi.

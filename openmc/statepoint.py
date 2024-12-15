@@ -124,14 +124,14 @@ class StatePoint:
 
     def __init__(self, filepath, autolink=True):
         filename = str(filepath)  # in case it's a Path
-        self._f = h5py.File(filename, 'r')
+        self._f = h5py.File(filename, "r")
         self._meshes = {}
         self._filters = {}
         self._tallies = {}
         self._derivs = {}
 
         # Check filetype and version
-        cv.check_filetype_version(self._f, 'statepoint', _VERSION_STATEPOINT)
+        cv.check_filetype_version(self._f, "statepoint", _VERSION_STATEPOINT)
 
         # Set flags for what data has been read
         self._meshes_read = False
@@ -144,14 +144,14 @@ class StatePoint:
 
         # Automatically link in a summary file if one exists
         if autolink:
-            path_summary = os.path.join(os.path.dirname(filename), 'summary.h5')
+            path_summary = os.path.join(os.path.dirname(filename), "summary.h5")
             if os.path.exists(path_summary):
                 su = openmc.Summary(path_summary)
                 self.link_with_summary(su)
 
-            path_volume = os.path.join(os.path.dirname(filename), 'volume_*.h5')
+            path_volume = os.path.join(os.path.dirname(filename), "volume_*.h5")
             for path_i in glob.glob(path_volume):
-                if re.search(r'volume_\d+\.h5', path_i):
+                if re.search(r"volume_\d+\.h5", path_i):
                     vol = openmc.VolumeCalculation.from_hdf5(path_i)
                     self.add_volume_information(vol)
 
@@ -163,56 +163,56 @@ class StatePoint:
 
     @property
     def cmfd_on(self):
-        return self._f.attrs['cmfd_on'] > 0
+        return self._f.attrs["cmfd_on"] > 0
 
     @property
     def cmfd_balance(self):
-        return self._f['cmfd/cmfd_balance'][()] if self.cmfd_on else None
+        return self._f["cmfd/cmfd_balance"][()] if self.cmfd_on else None
 
     @property
     def cmfd_dominance(self):
-        return self._f['cmfd/cmfd_dominance'][()] if self.cmfd_on else None
+        return self._f["cmfd/cmfd_dominance"][()] if self.cmfd_on else None
 
     @property
     def cmfd_entropy(self):
-        return self._f['cmfd/cmfd_entropy'][()] if self.cmfd_on else None
+        return self._f["cmfd/cmfd_entropy"][()] if self.cmfd_on else None
 
     @property
     def cmfd_indices(self):
-        return self._f['cmfd/indices'][()] if self.cmfd_on else None
+        return self._f["cmfd/indices"][()] if self.cmfd_on else None
 
     @property
     def cmfd_src(self):
         if self.cmfd_on:
-            data = self._f['cmfd/cmfd_src'][()]
-            return np.reshape(data, tuple(self.cmfd_indices), order='F')
+            data = self._f["cmfd/cmfd_src"][()]
+            return np.reshape(data, tuple(self.cmfd_indices), order="F")
         else:
             return None
 
     @property
     def cmfd_srccmp(self):
-        return self._f['cmfd/cmfd_srccmp'][()] if self.cmfd_on else None
+        return self._f["cmfd/cmfd_srccmp"][()] if self.cmfd_on else None
 
     @property
     def current_batch(self):
-        return self._f['current_batch'][()]
+        return self._f["current_batch"][()]
 
     @property
     def date_and_time(self):
-        s = self._f.attrs['date_and_time'].decode()
-        return datetime.strptime(s, '%Y-%m-%d %H:%M:%S')
+        s = self._f.attrs["date_and_time"].decode()
+        return datetime.strptime(s, "%Y-%m-%d %H:%M:%S")
 
     @property
     def entropy(self):
-        if self.run_mode == 'eigenvalue':
-            return self._f['entropy'][()]
+        if self.run_mode == "eigenvalue":
+            return self._f["entropy"][()]
         else:
             return None
 
     @property
     def filters(self):
         if not self._filters_read:
-            filters_group = self._f['tallies/filters']
+            filters_group = self._f["tallies/filters"]
 
             # Iterate over all Filters
             for group in filters_group.values():
@@ -225,27 +225,33 @@ class StatePoint:
 
     @property
     def generations_per_batch(self):
-        if self.run_mode == 'eigenvalue':
-            return self._f['generations_per_batch'][()]
+        if self.run_mode == "eigenvalue":
+            return self._f["generations_per_batch"][()]
         else:
             return None
 
     @property
     def global_tallies(self):
         if self._global_tallies is None:
-            data = self._f['global_tallies'][()]
-            gt = np.zeros(data.shape[0], dtype=[
-                ('name', 'S14'), ('sum', 'f8'), ('sum_sq', 'f8'),
-                ('mean', 'f8'), ('std_dev', 'f8')])
-            gt['name'] = ['k-collision', 'k-absorption', 'k-tracklength',
-                          'leakage']
-            gt['sum'] = data[:,1]
-            gt['sum_sq'] = data[:,2]
+            data = self._f["global_tallies"][()]
+            gt = np.zeros(
+                data.shape[0],
+                dtype=[
+                    ("name", "S14"),
+                    ("sum", "f8"),
+                    ("sum_sq", "f8"),
+                    ("mean", "f8"),
+                    ("std_dev", "f8"),
+                ],
+            )
+            gt["name"] = ["k-collision", "k-absorption", "k-tracklength", "leakage"]
+            gt["sum"] = data[:, 1]
+            gt["sum_sq"] = data[:, 2]
 
             # Calculate mean and sample standard deviation of mean
             n = self.n_realizations
-            gt['mean'] = gt['sum']/n
-            gt['std_dev'] = np.sqrt((gt['sum_sq']/n - gt['mean']**2)/(n - 1))
+            gt["mean"] = gt["sum"] / n
+            gt["std_dev"] = np.sqrt((gt["sum_sq"] / n - gt["mean"] ** 2) / (n - 1))
 
             self._global_tallies = gt
 
@@ -254,21 +260,21 @@ class StatePoint:
     @property
     def k_cmfd(self):
         if self.cmfd_on:
-            return self._f['cmfd/k_cmfd'][()]
+            return self._f["cmfd/k_cmfd"][()]
         else:
             return None
 
     @property
     def k_generation(self):
-        if self.run_mode == 'eigenvalue':
-            return self._f['k_generation'][()]
+        if self.run_mode == "eigenvalue":
+            return self._f["k_generation"][()]
         else:
             return None
 
     @property
     def keff(self):
-        if self.run_mode == 'eigenvalue':
-            return ufloat(*self._f['k_combined'][()])
+        if self.run_mode == "eigenvalue":
+            return ufloat(*self._f["k_combined"][()])
         else:
             return None
 
@@ -276,35 +282,36 @@ class StatePoint:
     def k_combined(self):
         warnings.warn(
             "The 'k_combined' property has been renamed to 'keff' and will be "
-            "removed in a future version of OpenMC.", FutureWarning
+            "removed in a future version of OpenMC.",
+            FutureWarning,
         )
         return self.keff
 
     @property
     def k_col_abs(self):
-        if self.run_mode == 'eigenvalue':
-            return self._f['k_col_abs'][()]
+        if self.run_mode == "eigenvalue":
+            return self._f["k_col_abs"][()]
         else:
             return None
 
     @property
     def k_col_tra(self):
-        if self.run_mode == 'eigenvalue':
-            return self._f['k_col_tra'][()]
+        if self.run_mode == "eigenvalue":
+            return self._f["k_col_tra"][()]
         else:
             return None
 
     @property
     def k_abs_tra(self):
-        if self.run_mode == 'eigenvalue':
-            return self._f['k_abs_tra'][()]
+        if self.run_mode == "eigenvalue":
+            return self._f["k_abs_tra"][()]
         else:
             return None
 
     @property
     def meshes(self):
         if not self._meshes_read:
-            mesh_group = self._f['tallies/meshes']
+            mesh_group = self._f["tallies/meshes"]
 
             # Iterate over all meshes
             for group in mesh_group.values():
@@ -317,51 +324,50 @@ class StatePoint:
 
     @property
     def n_batches(self):
-        return self._f['n_batches'][()]
+        return self._f["n_batches"][()]
 
     @property
     def n_inactive(self):
-        if self.run_mode == 'eigenvalue':
-            return self._f['n_inactive'][()]
+        if self.run_mode == "eigenvalue":
+            return self._f["n_inactive"][()]
         else:
             return None
 
     @property
     def n_particles(self):
-        return self._f['n_particles'][()]
+        return self._f["n_particles"][()]
 
     @property
     def n_realizations(self):
-        return self._f['n_realizations'][()]
+        return self._f["n_realizations"][()]
 
     @property
     def path(self):
-        return self._f.attrs['path'].decode()
+        return self._f.attrs["path"].decode()
 
     @property
     def photon_transport(self):
-        return self._f.attrs['photon_transport'] > 0
+        return self._f.attrs["photon_transport"] > 0
 
     @property
     def run_mode(self):
-        return self._f['run_mode'][()].decode()
+        return self._f["run_mode"][()].decode()
 
     @property
     def runtime(self):
-        return {name: dataset[()]
-                for name, dataset in self._f['runtime'].items()}
+        return {name: dataset[()] for name, dataset in self._f["runtime"].items()}
 
     @property
     def seed(self):
-        return self._f['seed'][()]
+        return self._f["seed"][()]
 
     @property
     def source(self):
-        return self._f['source_bank'][()] if self.source_present else None
+        return self._f["source_bank"][()] if self.source_present else None
 
     @property
     def source_present(self):
-        return self._f.attrs['source_present'] > 0
+        return self._f.attrs["source_present"] > 0
 
     @property
     def sparse(self):
@@ -379,7 +385,7 @@ class StatePoint:
 
         """
 
-        cv.check_type('sparse', sparse, bool)
+        cv.check_type("sparse", sparse, bool)
         self._sparse = sparse
 
         # Update tally sparsities
@@ -391,23 +397,23 @@ class StatePoint:
     def tallies(self):
         if self.tallies_present and not self._tallies_read:
             # Read the number of tallies
-            tallies_group = self._f['tallies']
-            n_tallies = tallies_group.attrs['n_tallies']
+            tallies_group = self._f["tallies"]
+            n_tallies = tallies_group.attrs["n_tallies"]
 
             # Read a list of the IDs for each Tally
             if n_tallies > 0:
                 # Tally user-defined IDs
-                tally_ids = tallies_group.attrs['ids']
+                tally_ids = tallies_group.attrs["ids"]
             else:
                 tally_ids = []
 
             # Ignore warnings about duplicate IDs
             with warnings.catch_warnings():
-                warnings.simplefilter('ignore', openmc.IDWarning)
+                warnings.simplefilter("ignore", openmc.IDWarning)
 
                 # Iterate over all tallies
                 for tally_id in tally_ids:
-                    group = tallies_group[f'tally {tally_id}']
+                    group = tallies_group[f"tally {tally_id}"]
 
                     # Check if tally is internal and therefore has no data
                     if group.attrs.get("internal"):
@@ -416,36 +422,39 @@ class StatePoint:
                     # Create Tally object and assign basic properties
                     tally = openmc.Tally(tally_id)
                     tally._sp_filename = self._f.filename
-                    tally.name = group['name'][()].decode() if 'name' in group else ''
+                    tally.name = group["name"][()].decode() if "name" in group else ""
 
                     # Check if tally has multiply_density attribute
                     if "multiply_density" in group.attrs:
-                        tally.multiply_density = group.attrs["multiply_density"].item() > 0
+                        tally.multiply_density = (
+                            group.attrs["multiply_density"].item() > 0
+                        )
 
                     # Read the number of realizations
-                    n_realizations = group['n_realizations'][()]
+                    n_realizations = group["n_realizations"][()]
 
-                    tally.estimator = group['estimator'][()].decode()
+                    tally.estimator = group["estimator"][()].decode()
                     tally.num_realizations = n_realizations
 
                     # Read derivative information.
-                    if 'derivative' in group:
-                        deriv_id = group['derivative'][()]
+                    if "derivative" in group:
+                        deriv_id = group["derivative"][()]
                         tally.derivative = self.tally_derivatives[deriv_id]
 
                     # Read all filters
-                    n_filters = group['n_filters'][()]
+                    n_filters = group["n_filters"][()]
                     if n_filters > 0:
-                        filter_ids = group['filters'][()]
-                        filters_group = self._f['tallies/filters']
+                        filter_ids = group["filters"][()]
+                        filters_group = self._f["tallies/filters"]
                         for filter_id in filter_ids:
-                            filter_group = filters_group[f'filter {filter_id}']
+                            filter_group = filters_group[f"filter {filter_id}"]
                             new_filter = openmc.Filter.from_hdf5(
-                                filter_group, meshes=self.meshes)
+                                filter_group, meshes=self.meshes
+                            )
                             tally.filters.append(new_filter)
 
                     # Read nuclide bins
-                    nuclide_names = group['nuclides'][()]
+                    nuclide_names = group["nuclides"][()]
 
                     # Add all nuclides to the Tally
                     for name in nuclide_names:
@@ -453,7 +462,7 @@ class StatePoint:
                         tally.nuclides.append(nuclide)
 
                     # Add the scores to the Tally
-                    scores = group['score_bins'][()]
+                    scores = group["score_bins"][()]
                     for score in scores:
                         tally.scores.append(score.decode())
 
@@ -467,29 +476,29 @@ class StatePoint:
 
     @property
     def tallies_present(self):
-        return self._f.attrs['tallies_present'] > 0
+        return self._f.attrs["tallies_present"] > 0
 
     @property
     def tally_derivatives(self):
         if not self._derivs_read:
             # Populate the dictionary if any derivatives are present.
-            if 'derivatives' in self._f['tallies']:
+            if "derivatives" in self._f["tallies"]:
                 # Read the derivative ids.
-                base = 'tallies/derivatives'
-                deriv_ids = [int(k.split(' ')[1]) for k in self._f[base]]
+                base = "tallies/derivatives"
+                deriv_ids = [int(k.split(" ")[1]) for k in self._f[base]]
 
                 # Create each derivative object and add it to the dictionary.
                 for d_id in deriv_ids:
-                    group = self._f[f'tallies/derivatives/derivative {d_id}']
+                    group = self._f[f"tallies/derivatives/derivative {d_id}"]
                     deriv = openmc.TallyDerivative(derivative_id=d_id)
-                    deriv.variable = group['independent variable'][()].decode()
-                    if deriv.variable == 'density':
-                        deriv.material = group['material'][()]
-                    elif deriv.variable == 'nuclide_density':
-                        deriv.material = group['material'][()]
-                        deriv.nuclide = group['nuclide'][()].decode()
-                    elif deriv.variable == 'temperature':
-                        deriv.material = group['material'][()]
+                    deriv.variable = group["independent variable"][()].decode()
+                    if deriv.variable == "density":
+                        deriv.material = group["material"][()]
+                    elif deriv.variable == "nuclide_density":
+                        deriv.material = group["material"][()]
+                        deriv.nuclide = group["nuclide"][()].decode()
+                    elif deriv.variable == "temperature":
+                        deriv.material = group["material"][()]
                     self._derivs[d_id] = deriv
 
             self._derivs_read = True
@@ -498,7 +507,7 @@ class StatePoint:
 
     @property
     def version(self):
-        return tuple(self._f.attrs['openmc_version'])
+        return tuple(self._f.attrs["openmc_version"])
 
     @property
     def summary(self):
@@ -524,9 +533,18 @@ class StatePoint:
         if self.summary is not None:
             self.summary.add_volume_information(volume_calc)
 
-    def get_tally(self, scores=[], filters=[], nuclides=[],
-                  name=None, id=None, estimator=None, exact_filters=False,
-                  exact_nuclides=False, exact_scores=False):
+    def get_tally(
+        self,
+        scores=[],
+        filters=[],
+        nuclides=[],
+        name=None,
+        id=None,
+        estimator=None,
+        exact_filters=False,
+        exact_nuclides=False,
+        exact_scores=False,
+    ):
         """Finds and returns a Tally object with certain properties.
 
         This routine searches the list of Tallies and returns the first Tally
@@ -640,7 +658,7 @@ class StatePoint:
 
         # If we did not find the Tally, return an error message
         if tally is None:
-            raise LookupError('Unable to get Tally')
+            raise LookupError("Unable to get Tally")
 
         return tally
 
@@ -668,13 +686,14 @@ class StatePoint:
         """
 
         if self.summary is not None:
-            warnings.warn('A Summary object has already been linked.',
-                          RuntimeWarning)
+            warnings.warn("A Summary object has already been linked.", RuntimeWarning)
             return
 
         if not isinstance(summary, openmc.Summary):
-            msg = f'Unable to link statepoint with "{summary}" which is not a' \
-                  'Summary object'
+            msg = (
+                f'Unable to link statepoint with "{summary}" which is not a'
+                "Summary object"
+            )
             raise ValueError(msg)
 
         cells = summary.geometry.get_all_cells()

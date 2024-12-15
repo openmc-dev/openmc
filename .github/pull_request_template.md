@@ -14,6 +14,7 @@ Fixes # (issue)
 
 - [ ] I have performed a self-review of my own code
 - [ ] I have run [clang-format](https://docs.openmc.org/en/latest/devguide/styleguide.html#automatic-formatting) (version 15) on any C++ source files (if applicable)
+- [ ] I have run [black](https://black.readthedocs.io/en/stable/index.html) on any Python source files (if applicable)
 - [ ] I have followed the [style guidelines](https://docs.openmc.org/en/latest/devguide/styleguide.html#python) for Python source files (if applicable)
 - [ ] I have made corresponding changes to the documentation (if applicable)
 - [ ] I have added tests that prove my fix is effective or that my feature works (if applicable)

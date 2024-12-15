@@ -7,8 +7,8 @@ import openmc.lib
 import pytest
 
 pytestmark = pytest.mark.skipif(
-    not openmc.lib._dagmc_enabled(),
-    reason="DAGMC CAD geometry is not enabled.")
+    not openmc.lib._dagmc_enabled(), reason="DAGMC CAD geometry is not enabled."
+)
 
 
 @pytest.fixture
@@ -17,17 +17,17 @@ def broken_dagmc_model(request):
     model = openmc.Model()
 
     ### MATERIALS ###
-    fuel = openmc.Material(name='no-void fuel')
-    fuel.set_density('g/cc', 10.29769)
-    fuel.add_nuclide('U233', 1.0)
+    fuel = openmc.Material(name="no-void fuel")
+    fuel.set_density("g/cc", 10.29769)
+    fuel.add_nuclide("U233", 1.0)
 
-    cladding = openmc.Material(name='clad')
-    cladding.set_density('g/cc', 6.55)
-    cladding.add_nuclide('Zr90', 1.0)
+    cladding = openmc.Material(name="clad")
+    cladding.set_density("g/cc", 6.55)
+    cladding.add_nuclide("Zr90", 1.0)
 
-    h1 = openmc.Material(name='water')
-    h1.set_density('g/cc', 0.75)
-    h1.add_nuclide('H1', 1.0)
+    h1 = openmc.Material(name="water")
+    h1.set_density("g/cc", 0.75)
+    h1.add_nuclide("H1", 1.0)
 
     model.materials = openmc.Materials([fuel, cladding, h1])
 
@@ -46,7 +46,14 @@ def broken_dagmc_model(request):
 
     # clip the DAGMC geometry at +/- 10 cm w/ CSG planes
     rpp = openmc.model.RectangularParallelepiped(
-        -pitch[0], pitch[0], -pitch[1], pitch[1], -10.0, 10.0, boundary_type='reflective')
+        -pitch[0],
+        pitch[0],
+        -pitch[1],
+        pitch[1],
+        -10.0,
+        10.0,
+        boundary_type="reflective",
+    )
     bounding_cell = openmc.Cell(fill=lattice, region=-rpp)
 
     model.geometry = openmc.Geometry(root=[bounding_cell])
@@ -55,7 +62,7 @@ def broken_dagmc_model(request):
     model.settings.particles = 100
     model.settings.batches = 10
     model.settings.inactive = 2
-    model.settings.output = {'summary': False}
+    model.settings.output = {"summary": False}
 
     model.export_to_xml()
 
@@ -66,7 +73,9 @@ def test_lost_particles(run_in_tmpdir, broken_dagmc_model):
     broken_dagmc_model.export_to_xml()
     # ensure that particles will be lost when cell intersections can't be found
     # due to the removed triangles in this model
-    with pytest.raises(RuntimeError, match='Maximum number of lost particles has been reached.'):
+    with pytest.raises(
+        RuntimeError, match="Maximum number of lost particles has been reached."
+    ):
         openmc.run()
 
     # run this again, but with the dagmc universe as the root unvierse
@@ -76,6 +85,7 @@ def test_lost_particles(run_in_tmpdir, broken_dagmc_model):
             break
 
     broken_dagmc_model.export_to_xml()
-    with pytest.raises(RuntimeError, match='Maximum number of lost particles has been reached.'):
+    with pytest.raises(
+        RuntimeError, match="Maximum number of lost particles has been reached."
+    ):
         openmc.run()
-

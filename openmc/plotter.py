@@ -9,20 +9,45 @@ import openmc.checkvalue as cv
 import openmc.data
 
 # Supported keywords for continuous-energy cross section plotting
-PLOT_TYPES = {'total', 'scatter', 'elastic', 'inelastic', 'fission',
-              'absorption', 'capture', 'nu-fission', 'nu-scatter', 'unity',
-              'slowing-down power', 'damage'}
+PLOT_TYPES = {
+    "total",
+    "scatter",
+    "elastic",
+    "inelastic",
+    "fission",
+    "absorption",
+    "capture",
+    "nu-fission",
+    "nu-scatter",
+    "unity",
+    "slowing-down power",
+    "damage",
+}
 
 # Supported keywords for multi-group cross section plotting
-PLOT_TYPES_MGXS = {'total', 'absorption', 'scatter', 'fission',
-                   'kappa-fission', 'nu-fission', 'prompt-nu-fission',
-                   'deleyed-nu-fission', 'chi', 'chi-prompt', 'chi-delayed',
-                   'inverse-velocity', 'beta', 'decay-rate', 'unity'}
+PLOT_TYPES_MGXS = {
+    "total",
+    "absorption",
+    "scatter",
+    "fission",
+    "kappa-fission",
+    "nu-fission",
+    "prompt-nu-fission",
+    "deleyed-nu-fission",
+    "chi",
+    "chi-prompt",
+    "chi-delayed",
+    "inverse-velocity",
+    "beta",
+    "decay-rate",
+    "unity",
+}
 # Create a dictionary which can be used to convert PLOT_TYPES_MGXS to the
 # openmc.XSdata attribute name needed to access the data
-_PLOT_MGXS_ATTR = {line: line.replace(' ', '_').replace('-', '_')
-                   for line in PLOT_TYPES_MGXS}
-_PLOT_MGXS_ATTR['scatter'] = 'scatter_matrix'
+_PLOT_MGXS_ATTR = {
+    line: line.replace(" ", "_").replace("-", "_") for line in PLOT_TYPES_MGXS
+}
+_PLOT_MGXS_ATTR["scatter"] = "scatter_matrix"
 
 # Special MT values
 UNITY_MT = -1
@@ -31,27 +56,31 @@ XI_MT = -2
 # MTs to combine to generate associated plot_types
 _INELASTIC = [mt for mt in openmc.data.SUM_RULES[3] if mt != 27]
 PLOT_TYPES_MT = {
-    'total': openmc.data.SUM_RULES[1],
-    'scatter': [2] + _INELASTIC,
-    'elastic': [2],
-    'inelastic': _INELASTIC,
-    'fission': [18],
-    'absorption': [27],
-    'capture': [101],
-    'nu-fission': [18],
-    'nu-scatter': [2] + _INELASTIC,
-    'unity': [UNITY_MT],
-    'slowing-down power': [2] + [XI_MT],
-    'damage': [444]
+    "total": openmc.data.SUM_RULES[1],
+    "scatter": [2] + _INELASTIC,
+    "elastic": [2],
+    "inelastic": _INELASTIC,
+    "fission": [18],
+    "absorption": [27],
+    "capture": [101],
+    "nu-fission": [18],
+    "nu-scatter": [2] + _INELASTIC,
+    "unity": [UNITY_MT],
+    "slowing-down power": [2] + [XI_MT],
+    "damage": [444],
 }
 
 # Types of plots to plot linearly in y
-PLOT_TYPES_LINEAR = {'nu-fission / fission', 'nu-scatter / scatter',
-                     'nu-fission / absorption', 'fission / absorption'}
+PLOT_TYPES_LINEAR = {
+    "nu-fission / fission",
+    "nu-scatter / scatter",
+    "nu-fission / absorption",
+    "fission / absorption",
+}
 
 # Minimum and maximum energies for plotting (units of eV)
-_MIN_E = 1.e-5
-_MAX_E = 20.e6
+_MIN_E = 1.0e-5
+_MAX_E = 20.0e6
 
 
 ELEMENT_NAMES = list(openmc.data.ELEMENT_SYMBOL.values())[1:]
@@ -62,19 +91,19 @@ def _get_legend_label(this, type):
     if isinstance(this, str):
         if type in openmc.data.DADZ:
             if this in ELEMENT_NAMES:
-                return f'{this} {type}'
+                return f"{this} {type}"
             else:  # this is a nuclide so the legend can contain more information
                 z, a, m = openmc.data.zam(this)
                 da, dz = openmc.data.DADZ[type]
                 gnds_name = openmc.data.gnds_name(z + dz, a + da, m)
                 # makes a string with nuclide reaction and new nuclide
                 # For example "Be9 (n,2n) Be8"
-                return f'{this} {type} {gnds_name}'
-        return f'{this} {type}'
-    elif this.name == '':
-        return f'Material {this.id} {type}'
+                return f"{this} {type} {gnds_name}"
+        return f"{this} {type}"
+    elif this.name == "":
+        return f"Material {this.id} {type}"
     else:
-        return f'{this.name} {type}'
+        return f"{this.name} {type}"
 
 
 def _get_yaxis_label(reactions, divisor_types):
@@ -95,7 +124,7 @@ def _get_yaxis_label(reactions, divisor_types):
                     )
         stem = "Microscopic"
     elif all(isinstance(item, openmc.Material) for item in reactions.keys()):
-        stem = 'Macroscopic'
+        stem = "Macroscopic"
     else:
         msg = "Mixture of openmc.Material and elements/nuclides. Invalid type for plotting"
         raise TypeError(msg)
@@ -110,16 +139,17 @@ def _get_yaxis_label(reactions, divisor_types):
             "Heating": "[eV-barn]",
         }[stem]
 
-    return f'{stem} {mid} {units}'
+    return f"{stem} {mid} {units}"
+
 
 def _get_title(reactions):
     """Gets a title for the type of data plotted"""
     if len(reactions) == 1:
-        this, = reactions
+        (this,) = reactions
         name = this.name if isinstance(this, openmc.Material) else this
-        return f'Cross Section Plot For {name}'
+        return f"Cross Section Plot For {name}"
     else:
-        return 'Cross Section Plot'
+        return "Cross Section Plot"
 
 
 def plot_xs(
@@ -215,13 +245,19 @@ def plot_xs(
         if plot_CE:
             cv.check_type("this", this, (str, openmc.Material))
             # Calculate for the CE cross sections
-            E, data = calculate_cexs(this, types, temperature, sab_name,
-                                    ce_cross_sections, enrichment)
+            E, data = calculate_cexs(
+                this, types, temperature, sab_name, ce_cross_sections, enrichment
+            )
             if divisor_types:
-                cv.check_length('divisor types', divisor_types, len(types))
-                Ediv, data_div = calculate_cexs(this, divisor_types, temperature,
-                                                sab_name, ce_cross_sections,
-                                                enrichment)
+                cv.check_length("divisor types", divisor_types, len(types))
+                Ediv, data_div = calculate_cexs(
+                    this,
+                    divisor_types,
+                    temperature,
+                    sab_name,
+                    ce_cross_sections,
+                    enrichment,
+                )
 
                 # Create a new union grid, interpolate data and data_div on to that
                 # grid, and then do the actual division
@@ -230,47 +266,59 @@ def plot_xs(
                 data_new = np.zeros((len(types), len(E)))
 
                 for line in range(len(types)):
-                    data_new[line, :] = \
-                        np.divide(np.interp(E, Enum, data[line, :]),
-                                np.interp(E, Ediv, data_div[line, :]))
-                    if divisor_types[line] != 'unity':
-                        types[line] = types[line] + ' / ' + divisor_types[line]
+                    data_new[line, :] = np.divide(
+                        np.interp(E, Enum, data[line, :]),
+                        np.interp(E, Ediv, data_div[line, :]),
+                    )
+                    if divisor_types[line] != "unity":
+                        types[line] = types[line] + " / " + divisor_types[line]
                 data = data_new
         else:
             # Calculate for MG cross sections
-            E, data = calculate_mgxs(this, types, orders, temperature,
-                                    mg_cross_sections, ce_cross_sections,
-                                    enrichment)
+            E, data = calculate_mgxs(
+                this,
+                types,
+                orders,
+                temperature,
+                mg_cross_sections,
+                ce_cross_sections,
+                enrichment,
+            )
 
             if divisor_types:
-                cv.check_length('divisor types', divisor_types, len(types))
-                Ediv, data_div = calculate_mgxs(this, divisor_types,
-                                                divisor_orders, temperature,
-                                                mg_cross_sections,
-                                                ce_cross_sections, enrichment)
+                cv.check_length("divisor types", divisor_types, len(types))
+                Ediv, data_div = calculate_mgxs(
+                    this,
+                    divisor_types,
+                    divisor_orders,
+                    temperature,
+                    mg_cross_sections,
+                    ce_cross_sections,
+                    enrichment,
+                )
 
                 # Perform the division
                 for line in range(len(types)):
                     data[line, :] /= data_div[line, :]
-                    if divisor_types[line] != 'unity':
-                        types[line] += ' / ' + divisor_types[line]
+                    if divisor_types[line] != "unity":
+                        types[line] += " / " + divisor_types[line]
 
         E *= axis_scaling_factor[energy_axis_units]
 
         # Plot the data
         for i in range(len(data)):
             data[i, :] = np.nan_to_num(data[i, :])
-            if np.sum(data[i, :]) > 0.:
+            if np.sum(data[i, :]) > 0.0:
                 ax.plot(E, data[i, :], label=_get_legend_label(this, types[i]))
 
     # Set to loglog or semilogx depending on if we are plotting a data
     # type which we expect to vary linearly
     if set(all_types).issubset(PLOT_TYPES_LINEAR):
-        ax.set_xscale('log')
-        ax.set_yscale('linear')
+        ax.set_xscale("log")
+        ax.set_yscale("linear")
     else:
-        ax.set_xscale('log')
-        ax.set_yscale('log')
+        ax.set_xscale("log")
+        ax.set_yscale("log")
 
     ax.set_xlabel(f"Energy [{energy_axis_units}]")
     if plot_CE:
@@ -282,14 +330,21 @@ def plot_xs(
         ax.set_xlim(E[-1], E[0])
 
     ax.set_ylabel(_get_yaxis_label(reactions, divisor_types))
-    ax.legend(loc='best')
+    ax.legend(loc="best")
     ax.set_title(_get_title(reactions))
 
     return fig
 
 
-def calculate_cexs(this, types, temperature=294., sab_name=None,
-                   cross_sections=None, enrichment=None, ncrystal_cfg=None):
+def calculate_cexs(
+    this,
+    types,
+    temperature=294.0,
+    sab_name=None,
+    cross_sections=None,
+    enrichment=None,
+    ncrystal_cfg=None,
+):
     """Calculates continuous-energy cross sections of a requested type.
 
     Parameters
@@ -325,12 +380,12 @@ def calculate_cexs(this, types, temperature=294., sab_name=None,
     """
 
     # Check types
-    cv.check_type('this', this, (str, openmc.Material))
-    cv.check_type('temperature', temperature, Real)
+    cv.check_type("this", this, (str, openmc.Material))
+    cv.check_type("temperature", temperature, Real)
     if sab_name:
-        cv.check_type('sab_name', sab_name, str)
+        cv.check_type("sab_name", sab_name, str)
     if enrichment:
-        cv.check_type('enrichment', enrichment, Real)
+        cv.check_type("enrichment", enrichment, Real)
 
     if isinstance(this, str):
         if this in ELEMENT_NAMES:
@@ -339,8 +394,7 @@ def calculate_cexs(this, types, temperature=294., sab_name=None,
             )
         else:
             energy_grid, xs = _calculate_cexs_nuclide(
-                this, types, temperature, sab_name, cross_sections,
-                ncrystal_cfg
+                this, types, temperature, sab_name, cross_sections, ncrystal_cfg
             )
 
             # Convert xs (Iterable of Callable) to a grid of cross section values
@@ -350,14 +404,21 @@ def calculate_cexs(this, types, temperature=294., sab_name=None,
             for line in range(len(types)):
                 data[line, :] = xs[line](energy_grid)
     else:
-        energy_grid, data = _calculate_cexs_elem_mat(this, types, temperature,
-                                                     cross_sections)
+        energy_grid, data = _calculate_cexs_elem_mat(
+            this, types, temperature, cross_sections
+        )
 
     return energy_grid, data
 
 
-def _calculate_cexs_nuclide(this, types, temperature=294., sab_name=None,
-                            cross_sections=None, ncrystal_cfg=None):
+def _calculate_cexs_nuclide(
+    this,
+    types,
+    temperature=294.0,
+    sab_name=None,
+    cross_sections=None,
+    ncrystal_cfg=None,
+):
     """Calculates continuous-energy cross sections of a requested type.
 
     Parameters
@@ -402,7 +463,7 @@ def _calculate_cexs_nuclide(this, types, temperature=294., sab_name=None,
     xs = []
     lib = library.get_by_material(this)
     if lib is not None:
-        nuc = openmc.data.IncidentNeutron.from_hdf5(lib['path'])
+        nuc = openmc.data.IncidentNeutron.from_hdf5(lib["path"])
         # Obtain the nearest temperature
         if strT in nuc.temperatures:
             nucT = strT
@@ -424,7 +485,7 @@ def _calculate_cexs_nuclide(this, types, temperature=294., sab_name=None,
 
             # Create an energy grid composed the S(a,b) and the nuclide's grid
             grid = nuc.energy[nucT]
-            sab_Emax = 0.
+            sab_Emax = 0.0
             sab_funcs = []
             if sab.elastic is not None:
                 elastic = sab.elastic.xs[sabT]
@@ -441,7 +502,7 @@ def _calculate_cexs_nuclide(this, types, temperature=294., sab_name=None,
                 inelastic = sab.inelastic.xs[sabT]
                 grid = np.union1d(grid, inelastic.x)
                 if inelastic.x[-1] > sab_Emax:
-                        sab_Emax = inelastic.x[-1]
+                    sab_Emax = inelastic.x[-1]
                 sab_funcs.append(inelastic)
             energy_grid = grid
         else:
@@ -453,10 +514,13 @@ def _calculate_cexs_nuclide(this, types, temperature=294., sab_name=None,
         yields = []
         for line in types:
             if line in PLOT_TYPES:
-                tmp_mts = [mtj for mti in PLOT_TYPES_MT[line] for mtj in
-                           nuc.get_reaction_components(mti)]
+                tmp_mts = [
+                    mtj
+                    for mti in PLOT_TYPES_MT[line]
+                    for mtj in nuc.get_reaction_components(mti)
+                ]
                 mts.append(tmp_mts)
-                if line.startswith('nu'):
+                if line.startswith("nu"):
                     yields.append(True)
                 else:
                     yields.append(False)
@@ -466,16 +530,16 @@ def _calculate_cexs_nuclide(this, types, temperature=294., sab_name=None,
                     ops.append((np.add,) * (len(tmp_mts) - 1))
             elif line in openmc.data.REACTION_MT:
                 mt_number = openmc.data.REACTION_MT[line]
-                cv.check_type('MT in types', mt_number, Integral)
-                cv.check_greater_than('MT in types', mt_number, 0)
+                cv.check_type("MT in types", mt_number, Integral)
+                cv.check_greater_than("MT in types", mt_number, 0)
                 tmp_mts = nuc.get_reaction_components(mt_number)
                 mts.append(tmp_mts)
                 ops.append((np.add,) * (len(tmp_mts) - 1))
                 yields.append(False)
             elif isinstance(line, int):
                 # Not a built-in type, we have to parse it ourselves
-                cv.check_type('MT in types', line, Integral)
-                cv.check_greater_than('MT in types', line, 0)
+                cv.check_type("MT in types", line, Integral)
+                cv.check_greater_than("MT in types", line, 0)
                 tmp_mts = nuc.get_reaction_components(line)
                 mts.append(tmp_mts)
                 ops.append((np.add,) * (len(tmp_mts) - 1))
@@ -494,21 +558,25 @@ def _calculate_cexs_nuclide(this, types, temperature=294., sab_name=None,
                         # The S(a,b) and non-thermal data
                         sab_sum = openmc.data.Sum(sab_funcs)
                         pw_funcs = openmc.data.Regions1D(
-                            [sab_sum, nuc[mt].xs[nucT]],
-                            [sab_Emax])
+                            [sab_sum, nuc[mt].xs[nucT]], [sab_Emax]
+                        )
                         funcs.append(pw_funcs)
                     elif ncrystal_cfg:
                         import NCrystal
+
                         nc_scatter = NCrystal.createScatter(ncrystal_cfg)
                         nc_func = nc_scatter.crossSectionNonOriented
-                        nc_emax = 5 # eV # this should be obtained from NCRYSTAL_MAX_ENERGY
-                        energy_grid = np.union1d(np.geomspace(min(energy_grid),
-                                                              1.1*nc_emax,
-                                                              1000),energy_grid) # NCrystal does not have
-                                                                                 # an intrinsic energy grid
+                        nc_emax = (
+                            5  # eV # this should be obtained from NCRYSTAL_MAX_ENERGY
+                        )
+                        energy_grid = np.union1d(
+                            np.geomspace(min(energy_grid), 1.1 * nc_emax, 1000),
+                            energy_grid,
+                        )  # NCrystal does not have
+                        # an intrinsic energy grid
                         pw_funcs = openmc.data.Regions1D(
-                            [nc_func, nuc[mt].xs[nucT]],
-                            [nc_emax])
+                            [nc_func, nuc[mt].xs[nucT]], [nc_emax]
+                        )
                         funcs.append(pw_funcs)
                     else:
                         funcs.append(nuc[mt].xs[nucT])
@@ -516,13 +584,14 @@ def _calculate_cexs_nuclide(this, types, temperature=294., sab_name=None,
                     if yields[i]:
                         # Get the total yield first if available. This will be
                         # used primarily for fission.
-                        for prod in chain(nuc[mt].products,
-                                          nuc[mt].derived_products):
-                            if prod.particle == 'neutron' and \
-                                prod.emission_mode == 'total':
+                        for prod in chain(nuc[mt].products, nuc[mt].derived_products):
+                            if (
+                                prod.particle == "neutron"
+                                and prod.emission_mode == "total"
+                            ):
                                 func = openmc.data.Combination(
-                                    [nuc[mt].xs[nucT], prod.yield_],
-                                    [np.multiply])
+                                    [nuc[mt].xs[nucT], prod.yield_], [np.multiply]
+                                )
                                 funcs.append(func)
                                 break
                         else:
@@ -530,18 +599,25 @@ def _calculate_cexs_nuclide(this, types, temperature=294., sab_name=None,
                             # prompt and delayed. This is used for scatter
                             # multiplication.
                             func = None
-                            for prod in chain(nuc[mt].products,
-                                              nuc[mt].derived_products):
-                                if prod.particle == 'neutron' and \
-                                    prod.emission_mode != 'total':
+                            for prod in chain(
+                                nuc[mt].products, nuc[mt].derived_products
+                            ):
+                                if (
+                                    prod.particle == "neutron"
+                                    and prod.emission_mode != "total"
+                                ):
                                     if func:
                                         func = openmc.data.Combination(
-                                            [prod.yield_, func], [np.add])
+                                            [prod.yield_, func], [np.add]
+                                        )
                                     else:
                                         func = prod.yield_
                             if func:
-                                funcs.append(openmc.data.Combination(
-                                    [func, nuc[mt].xs[nucT]], [np.multiply]))
+                                funcs.append(
+                                    openmc.data.Combination(
+                                        [func, nuc[mt].xs[nucT]], [np.multiply]
+                                    )
+                                )
                             else:
                                 # If func is still None, then there were no
                                 # products. In that case, assume the yield is
@@ -551,15 +627,15 @@ def _calculate_cexs_nuclide(this, types, temperature=294., sab_name=None,
                     else:
                         funcs.append(nuc[mt].xs[nucT])
                 elif mt == UNITY_MT:
-                    funcs.append(lambda x: 1.)
+                    funcs.append(lambda x: 1.0)
                 elif mt == XI_MT:
                     awr = nuc.atomic_weight_ratio
-                    alpha = ((awr - 1.) / (awr + 1.))**2
-                    xi = 1. + alpha * np.log(alpha) / (1. - alpha)
+                    alpha = ((awr - 1.0) / (awr + 1.0)) ** 2
+                    xi = 1.0 + alpha * np.log(alpha) / (1.0 - alpha)
                     funcs.append(lambda x: xi)
                 else:
-                    funcs.append(lambda x: 0.)
-            funcs = funcs if funcs else [lambda x: 0.]
+                    funcs.append(lambda x: 0.0)
+            funcs = funcs if funcs else [lambda x: 0.0]
             xs.append(openmc.data.Combination(funcs, op))
     else:
         raise ValueError(this + " not in library")
@@ -567,9 +643,9 @@ def _calculate_cexs_nuclide(this, types, temperature=294., sab_name=None,
     return energy_grid, xs
 
 
-def _calculate_cexs_elem_mat(this, types, temperature=294.,
-                             cross_sections=None, sab_name=None,
-                             enrichment=None):
+def _calculate_cexs_elem_mat(
+    this, types, temperature=294.0, cross_sections=None, sab_name=None, enrichment=None
+):
     """Calculates continuous-energy cross sections of a requested type.
 
     Parameters
@@ -623,8 +699,9 @@ def _calculate_cexs_elem_mat(this, types, temperature=294.,
         ncrystal_cfg = this.ncrystal_cfg
     else:
         # Expand elements in to nuclides with atomic densities
-        nuclides = openmc.Element(this).expand(1., 'ao', enrichment=enrichment,
-                               cross_sections=cross_sections)
+        nuclides = openmc.Element(this).expand(
+            1.0, "ao", enrichment=enrichment, cross_sections=cross_sections
+        )
         # For ease of processing split out the nuclide and its fraction
         nuc_fractions = {nuclide[0]: nuclide[1] for nuclide in nuclides}
         # Create a dict of [nuclide name] = nuclide object to carry forward
@@ -638,16 +715,19 @@ def _calculate_cexs_elem_mat(this, types, temperature=294.,
     if isinstance(this, openmc.Material):
         for sab_name, _ in this._sab:
             sab = openmc.data.ThermalScattering.from_hdf5(
-                library.get_by_material(sab_name, data_type='thermal')['path'])
+                library.get_by_material(sab_name, data_type="thermal")["path"]
+            )
             for nuc in sab.nuclides:
-                sabs[nuc] = library.get_by_material(sab_name,
-                        data_type='thermal')['path']
+                sabs[nuc] = library.get_by_material(sab_name, data_type="thermal")[
+                    "path"
+                ]
     else:
         if sab_name:
             sab = openmc.data.ThermalScattering.from_hdf5(sab_name)
             for nuc in sab.nuclides:
-                sabs[nuc] = library.get_by_material(sab_name,
-                        data_type='thermal')['path']
+                sabs[nuc] = library.get_by_material(sab_name, data_type="thermal")[
+                    "path"
+                ]
 
     # Now we can create the data sets to be plotted
     xs = {}
@@ -656,14 +736,15 @@ def _calculate_cexs_elem_mat(this, types, temperature=294.,
         name = nuclide[0]
         nuc = nuclide[1]
         sab_tab = sabs[name]
-        temp_E, temp_xs = calculate_cexs(nuc, types, T, sab_tab, cross_sections,
-                                         ncrystal_cfg=ncrystal_cfg
-                                         )
+        temp_E, temp_xs = calculate_cexs(
+            nuc, types, T, sab_tab, cross_sections, ncrystal_cfg=ncrystal_cfg
+        )
         E.append(temp_E)
         # Since the energy grids are different, store the cross sections as
         # a tabulated function so they can be calculated on any grid needed.
-        xs[name] = [openmc.data.Tabulated1D(temp_E, temp_xs[line])
-                    for line in range(len(types))]
+        xs[name] = [
+            openmc.data.Tabulated1D(temp_E, temp_xs[line]) for line in range(len(types))
+        ]
 
     # Condense the data for every nuclide
     # First create a union energy grid
@@ -674,20 +755,25 @@ def _calculate_cexs_elem_mat(this, types, temperature=294.,
     # Now we can combine all the nuclidic data
     data = np.zeros((len(types), len(energy_grid)))
     for line in range(len(types)):
-        if types[line] == 'unity':
-            data[line, :] = 1.
+        if types[line] == "unity":
+            data[line, :] = 1.0
         else:
             for nuclide in nuclides.items():
                 name = nuclide[0]
-                data[line, :] += (nuc_fractions[name] *
-                                  xs[name][line](energy_grid))
+                data[line, :] += nuc_fractions[name] * xs[name][line](energy_grid)
 
     return energy_grid, data
 
 
-def calculate_mgxs(this, types, orders=None, temperature=294.,
-                   cross_sections=None, ce_cross_sections=None,
-                   enrichment=None):
+def calculate_mgxs(
+    this,
+    types,
+    orders=None,
+    temperature=294.0,
+    cross_sections=None,
+    ce_cross_sections=None,
+    enrichment=None,
+):
     """Calculates multi-group cross sections of a requested type.
 
     If the data for the nuclide or macroscopic object in the library is
@@ -728,21 +814,20 @@ def calculate_mgxs(this, types, orders=None, temperature=294.,
     """
 
     # Check types
-    cv.check_type('temperature', temperature, Real)
+    cv.check_type("temperature", temperature, Real)
     if enrichment:
-        cv.check_type('enrichment', enrichment, Real)
-    cv.check_iterable_type('types', types, str)
+        cv.check_type("enrichment", enrichment, Real)
+    cv.check_iterable_type("types", types, str)
 
     cv.check_type("cross_sections", cross_sections, str)
     library = openmc.MGXSLibrary.from_hdf5(cross_sections)
 
     if this in ELEMENT_NAMES or isinstance(this, openmc.Material):
-        mgxs = _calculate_mgxs_elem_mat(this, types, library, orders,
-                                        temperature, ce_cross_sections,
-                                        enrichment)
+        mgxs = _calculate_mgxs_elem_mat(
+            this, types, library, orders, temperature, ce_cross_sections, enrichment
+        )
     elif isinstance(this, str):
-        mgxs = _calculate_mgxs_nuc_macro(this, types, library, orders,
-                                         temperature)
+        mgxs = _calculate_mgxs_nuc_macro(this, types, library, orders, temperature)
     else:
         raise TypeError("Invalid type")
 
@@ -750,21 +835,19 @@ def calculate_mgxs(this, types, orders=None, temperature=294.,
     data = np.zeros((len(types), 2 * library.energy_groups.num_groups))
     energy_grid = np.zeros(2 * library.energy_groups.num_groups)
     for g in range(library.energy_groups.num_groups):
-        energy_grid[g * 2: g * 2 + 2] = \
-            library.energy_groups.group_edges[g: g + 2]
+        energy_grid[g * 2 : g * 2 + 2] = library.energy_groups.group_edges[g : g + 2]
     # Ensure the energy will show on a log-axis by replacing 0s with a
     # sufficiently small number
     energy_grid[0] = max(energy_grid[0], _MIN_E)
 
     for line in range(len(types)):
         for g in range(library.energy_groups.num_groups):
-            data[line, g * 2: g * 2 + 2] = mgxs[line, g]
+            data[line, g * 2 : g * 2 + 2] = mgxs[line, g]
 
     return energy_grid[::-1], data
 
 
-def _calculate_mgxs_nuc_macro(this, types, library, orders=None,
-                              temperature=294.):
+def _calculate_mgxs_nuc_macro(this, types, library, orders=None, temperature=294.0):
     """Determines the multi-group cross sections of a nuclide or macroscopic
     object.
 
@@ -800,8 +883,9 @@ def _calculate_mgxs_nuc_macro(this, types, library, orders=None,
 
     # Check the parameters and grab order/delayed groups
     if orders:
-        cv.check_iterable_type('orders', orders, Integral,
-                               min_depth=len(types), max_depth=len(types))
+        cv.check_iterable_type(
+            "orders", orders, Integral, min_depth=len(types), max_depth=len(types)
+        )
     else:
         orders = [None] * len(types)
     for i, line in enumerate(types):
@@ -819,10 +903,10 @@ def _calculate_mgxs_nuc_macro(this, types, library, orders=None,
         # Get the data
         data = np.zeros((len(types), library.energy_groups.num_groups))
         for i, line in enumerate(types):
-            if 'fission' in line and not xsdata.fissionable:
+            if "fission" in line and not xsdata.fissionable:
                 continue
-            elif line == 'unity':
-                data[i, :] = 1.
+            elif line == "unity":
+                data[i, :] = 1.0
             else:
                 # Now we have to get the cross section data and properly
                 # treat it depending on the requested type.
@@ -832,14 +916,13 @@ def _calculate_mgxs_nuc_macro(this, types, library, orders=None,
                 # If we have angular data, then want the geometric
                 # average over all provided angles.  Since the angles are
                 # equi-distant, un-weighted averaging will suffice
-                if xsdata.representation == 'angle':
+                if xsdata.representation == "angle":
                     temp_data = np.mean(temp_data, axis=(0, 1))
 
                 # Now we can look at the shape of the data to identify how
                 # it should be modified to produce an array of values
                 # with groups.
-                if shape in (xsdata.xs_shapes["[G']"],
-                             xsdata.xs_shapes["[G]"]):
+                if shape in (xsdata.xs_shapes["[G']"], xsdata.xs_shapes["[G]"]):
                     # Then the data is already an array vs groups so copy
                     # and move along
                     data[i, :] = temp_data
@@ -857,8 +940,10 @@ def _calculate_mgxs_nuc_macro(this, types, library, orders=None,
                             data[i, :] = temp_data[orders[i]]
                     else:
                         data[i, :] = np.sum(temp_data[:])
-                elif shape in (xsdata.xs_shapes["[DG][G']"],
-                               xsdata.xs_shapes["[DG][G]"]):
+                elif shape in (
+                    xsdata.xs_shapes["[DG][G']"],
+                    xsdata.xs_shapes["[DG][G]"],
+                ):
                     # Then we have an array vs groups with values for each
                     # delayed group. The user-provided value of orders tells us
                     # which delayed group we want. If none are provided, then
@@ -900,9 +985,15 @@ def _calculate_mgxs_nuc_macro(this, types, library, orders=None,
     return data
 
 
-def _calculate_mgxs_elem_mat(this, types, library, orders=None,
-                             temperature=294., ce_cross_sections=None,
-                             enrichment=None):
+def _calculate_mgxs_elem_mat(
+    this,
+    types,
+    library,
+    orders=None,
+    temperature=294.0,
+    ce_cross_sections=None,
+    enrichment=None,
+):
     """Determines the multi-group cross sections of an element or material
     object.
 
@@ -962,22 +1053,24 @@ def _calculate_mgxs_elem_mat(this, types, library, orders=None,
     else:
         T = temperature
         # Expand elements in to nuclides with atomic densities
-        nuclides = openmc.Element(this).expand(100., 'ao', enrichment=enrichment,
-                               cross_sections=ce_cross_sections)
+        nuclides = openmc.Element(this).expand(
+            100.0, "ao", enrichment=enrichment, cross_sections=ce_cross_sections
+        )
 
         # For ease of processing split out nuc and nuc_fractions
         nuc_fraction = [nuclide[1] for nuclide in nuclides]
 
     nuc_data = []
     for nuclide in nuclides.items():
-        nuc_data.append(_calculate_mgxs_nuc_macro(nuclide[0], types, library,
-                                                  orders, T))
+        nuc_data.append(
+            _calculate_mgxs_nuc_macro(nuclide[0], types, library, orders, T)
+        )
 
     # Combine across the nuclides
     data = np.zeros((len(types), library.energy_groups.num_groups))
     for line in range(len(types)):
-        if types[line] == 'unity':
-            data[line, :] = 1.
+        if types[line] == "unity":
+            data[line, :] = 1.0
         else:
             for n in range(len(nuclides)):
                 data[line, :] += nuc_fraction[n] * nuc_data[n][line, :]

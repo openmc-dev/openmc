@@ -20,18 +20,20 @@ def create_library():
     capture = np.array([0.008708, 0.02518])
     absorption = capture + fiss
     scatter = np.array(
-        [[[0.31980, 0.06694], [0.004555, -0.0003972]],
-         [[0.00000, 0.00000], [0.424100, 0.05439000]]])
+        [
+            [[0.31980, 0.06694], [0.004555, -0.0003972]],
+            [[0.00000, 0.00000], [0.424100, 0.05439000]],
+        ]
+    )
     total = np.array([0.33588, 0.54628])
-    chi = np.array([1., 0.])
-    decay_rate = np.array([0.013336, 0.032739, 0.12078, 0.30278, 0.84949,
-                           2.853])
-    delayed_yield = np.array([0.00055487, 0.00286407, 0.00273429, 0.0061305,
-                              0.00251342, 0.00105286])
+    chi = np.array([1.0, 0.0])
+    decay_rate = np.array([0.013336, 0.032739, 0.12078, 0.30278, 0.84949, 2.853])
+    delayed_yield = np.array(
+        [0.00055487, 0.00286407, 0.00273429, 0.0061305, 0.00251342, 0.00105286]
+    )
     inv_vel = 1.0 / np.array([1.4e9, 4.4e5])
 
-
-    mat_1 = openmc.XSdata('mat_1', groups, num_delayed_groups=6)
+    mat_1 = openmc.XSdata("mat_1", groups, num_delayed_groups=6)
     mat_1.order = 1
     mat_1.set_fission(fiss)
     mat_1.set_kappa_fission(fiss * 200e6)
@@ -46,13 +48,13 @@ def create_library():
     mg_cross_sections_file.add_xsdata(mat_1)
 
     # Write the file
-    mg_cross_sections_file.export_to_hdf5('2g.h5')
+    mg_cross_sections_file.export_to_hdf5("2g.h5")
 
 
 class MGXSTestHarness(PyAPITestHarness):
     def _cleanup(self):
         super()._cleanup()
-        f = '2g.h5'
+        f = "2g.h5"
         if os.path.exists(f):
             os.remove(f)
 
@@ -80,16 +82,26 @@ def test_mg_tallies():
     nuclides = model.xs_data
 
     scores_with_nuclides = [
-      'total', 'absorption', 'fission', 'nu-fission', 'inverse-velocity',
-      'prompt-nu-fission', 'delayed-nu-fission', 'kappa-fission', 'events',
-      'decay-rate']
-    scores_without_nuclides = scores_with_nuclides + ['flux']
+        "total",
+        "absorption",
+        "fission",
+        "nu-fission",
+        "inverse-velocity",
+        "prompt-nu-fission",
+        "delayed-nu-fission",
+        "kappa-fission",
+        "events",
+        "decay-rate",
+    ]
+    scores_without_nuclides = scores_with_nuclides + ["flux"]
 
-    for do_nuclides, scores in ((False, scores_without_nuclides),
-                                (True, scores_with_nuclides)):
+    for do_nuclides, scores in (
+        (False, scores_without_nuclides),
+        (True, scores_with_nuclides),
+    ):
         t = openmc.Tally()
         t.filters = [mesh_filter]
-        t.estimator = 'analog'
+        t.estimator = "analog"
         t.scores = scores
         if do_nuclides:
             t.nuclides = nuclides
@@ -97,7 +109,7 @@ def test_mg_tallies():
 
         t = openmc.Tally()
         t.filters = [mesh_filter]
-        t.estimator = 'tracklength'
+        t.estimator = "tracklength"
         t.scores = scores
         if do_nuclides:
             t.nuclides = nuclides
@@ -115,15 +127,15 @@ def test_mg_tallies():
 
             t = openmc.Tally()
             t.filters = [mat_filter, e_filter]
-            t.estimator = 'analog'
-            t.scores = scores + ['scatter', 'nu-scatter']
+            t.estimator = "analog"
+            t.scores = scores + ["scatter", "nu-scatter"]
             if do_nuclides:
                 t.nuclides = nuclides
             model.tallies.append(t)
 
             t = openmc.Tally()
             t.filters = [mat_filter, e_filter]
-            t.estimator = 'collision'
+            t.estimator = "collision"
             t.scores = scores
             if do_nuclides:
                 t.nuclides = nuclides
@@ -131,7 +143,7 @@ def test_mg_tallies():
 
             t = openmc.Tally()
             t.filters = [mat_filter, e_filter]
-            t.estimator = 'tracklength'
+            t.estimator = "tracklength"
             t.scores = scores
             if do_nuclides:
                 t.nuclides = nuclides
@@ -139,10 +151,10 @@ def test_mg_tallies():
 
             t = openmc.Tally()
             t.filters = [mat_filter, e_filter, eout_filter]
-            t.scores = ['scatter', 'nu-scatter', 'nu-fission']
+            t.scores = ["scatter", "nu-scatter", "nu-fission"]
             if do_nuclides:
                 t.nuclides = nuclides
             model.tallies.append(t)
 
-    harness = MGXSTestHarness('statepoint.10.h5', model)
+    harness = MGXSTestHarness("statepoint.10.h5", model)
     harness.main()

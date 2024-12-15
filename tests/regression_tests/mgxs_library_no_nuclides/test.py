@@ -13,29 +13,41 @@ class MGXSTestHarness(PyAPITestHarness):
         super().__init__(*args, **kwargs)
 
         # Initialize a two-group structure
-        energy_groups = openmc.mgxs.EnergyGroups(group_edges=[0, 0.625, 20.e6])
+        energy_groups = openmc.mgxs.EnergyGroups(group_edges=[0, 0.625, 20.0e6])
 
         # Initialize MGXS Library for a few cross section types
         self.mgxs_lib = openmc.mgxs.Library(self._model.geometry)
         self.mgxs_lib.by_nuclide = False
 
         # Test relevant MGXS types
-        relevant_MGXS_TYPES = [item for item in openmc.mgxs.MGXS_TYPES
-                               if item != 'current']
+        relevant_MGXS_TYPES = [
+            item for item in openmc.mgxs.MGXS_TYPES if item != "current"
+        ]
         # Add in a subset of openmc.mgxs.ARBITRARY_VECTOR_TYPES and
         # openmc.mgxs.ARBITRARY_MATRIX_TYPES so we can see the code works,
         # but not use too much resources
         relevant_MGXS_TYPES += [
-            "(n,elastic)",  "(n,level)",  "(n,2n)",  "(n,na)",  "(n,nc)",
-            "(n,gamma)",  "(n,a)",  "(n,Xa)",  "heating",  "damage-energy",
-            "(n,n1)",  "(n,a0)",  "(n,nc) matrix",  "(n,n1) matrix",
-            "(n,2n) matrix"]
-        self.mgxs_lib.mgxs_types = tuple(relevant_MGXS_TYPES) + \
-                                   openmc.mgxs.MDGXS_TYPES
+            "(n,elastic)",
+            "(n,level)",
+            "(n,2n)",
+            "(n,na)",
+            "(n,nc)",
+            "(n,gamma)",
+            "(n,a)",
+            "(n,Xa)",
+            "heating",
+            "damage-energy",
+            "(n,n1)",
+            "(n,a0)",
+            "(n,nc) matrix",
+            "(n,n1) matrix",
+            "(n,2n) matrix",
+        ]
+        self.mgxs_lib.mgxs_types = tuple(relevant_MGXS_TYPES) + openmc.mgxs.MDGXS_TYPES
         self.mgxs_lib.energy_groups = energy_groups
         self.mgxs_lib.num_delayed_groups = 6
         self.mgxs_lib.legendre_order = 3
-        self.mgxs_lib.domain_type = 'material'
+        self.mgxs_lib.domain_type = "material"
         self.mgxs_lib.build_library()
 
         # Add tallies
@@ -51,17 +63,17 @@ class MGXSTestHarness(PyAPITestHarness):
         self.mgxs_lib.load_from_statepoint(sp)
 
         # Build a string from Pandas Dataframe for each MGXS
-        outstr = ''
+        outstr = ""
         for domain in self.mgxs_lib.domains:
             for mgxs_type in self.mgxs_lib.mgxs_types:
                 mgxs = self.mgxs_lib.get_mgxs(domain, mgxs_type)
                 df = mgxs.get_pandas_dataframe()
-                outstr += mgxs_type + '\n' + df.to_string() + '\n'
+                outstr += mgxs_type + "\n" + df.to_string() + "\n"
 
         # Hash the results if necessary
         if hash_output:
             sha512 = hashlib.sha512()
-            sha512.update(outstr.encode('utf-8'))
+            sha512.update(outstr.encode("utf-8"))
             outstr = sha512.hexdigest()
 
         return outstr
@@ -69,5 +81,5 @@ class MGXSTestHarness(PyAPITestHarness):
 
 def test_mgxs_library_no_nuclides():
     model = pwr_pin_cell()
-    harness = MGXSTestHarness('statepoint.10.h5', model)
+    harness = MGXSTestHarness("statepoint.10.h5", model)
     harness.main()

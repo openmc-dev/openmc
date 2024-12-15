@@ -7,17 +7,19 @@ import pytest
 
 geom_size = 5
 
+
 @pytest.fixture()
 def model():
     openmc.reset_auto_ids()
 
-    water = openmc.Material(name='water')
-    water.add_element('H', 2.0)
-    water.add_element('O', 1.0)
-    water.set_density('g/cc', 1.0)
+    water = openmc.Material(name="water")
+    water.add_element("H", 2.0)
+    water.add_element("O", 1.0)
+    water.set_density("g/cc", 1.0)
 
-    rpp = openmc.model.RectangularParallelepiped(*([-geom_size, geom_size] * 3),
-                                                 boundary_type='vacuum')
+    rpp = openmc.model.RectangularParallelepiped(
+        *([-geom_size, geom_size] * 3), boundary_type="vacuum"
+    )
 
     cell = openmc.Cell(region=-rpp, fill=water)
 
@@ -30,11 +32,11 @@ def model():
     settings = openmc.Settings()
     settings.particles = 2000
     settings.batches = 10
-    settings.run_mode = 'fixed source'
+    settings.run_mode = "fixed source"
 
     # build
     mesh = openmc.SphericalMesh(
-        phi_grid=np.linspace(0, 2*np.pi, 13),
+        phi_grid=np.linspace(0, 2 * np.pi, 13),
         theta_grid=np.linspace(0, np.pi, 7),
         r_grid=np.linspace(0, geom_size, geom_size),
     )
@@ -49,9 +51,9 @@ def model():
 
     return openmc.Model(geometry=geom, settings=settings, tallies=tallies)
 
+
 def test_origin_read_write_to_xml(run_in_tmpdir, model):
-    """Tests that the origin attribute can be written and read back to XML
-    """
+    """Tests that the origin attribute can be written and read back to XML"""
     mesh = model.tallies[0].filters[0].mesh
     mesh.origin = [0.1, 0.2, 0.3]
     model.tallies.export_to_xml()
@@ -62,7 +64,8 @@ def test_origin_read_write_to_xml(run_in_tmpdir, model):
     new_mesh = new_tally.filters[0].mesh
     np.testing.assert_equal(new_mesh.origin, mesh.origin)
 
-estimators = ('tracklength', 'collision')
+
+estimators = ("tracklength", "collision")
 # TODO: determine why this is needed for spherical mesh
 # but not cylindrical mesh
 offset = geom_size + 0.001
@@ -72,16 +75,17 @@ origins |= set(permutations((offset, 0, 0)))
 
 test_cases = product(estimators, origins)
 
+
 def label(p):
     if isinstance(p, tuple):
-        return f'origin:{p}'
+        return f"origin:{p}"
     if isinstance(p, str):
-        return f'estimator:{p}'
+        return f"estimator:{p}"
 
-@pytest.mark.parametrize('estimator,origin', test_cases, ids=label)
+
+@pytest.mark.parametrize("estimator,origin", test_cases, ids=label)
 def test_offset_mesh(run_in_tmpdir, model, estimator, origin):
-    """Tests that the mesh has been moved based on tally results
-    """
+    """Tests that the mesh has been moved based on tally results"""
     mesh = model.tallies[0].filters[0].mesh
     model.tallies[0].estimator = estimator
     # move the center of the spherical mesh
@@ -98,7 +102,7 @@ def test_offset_mesh(run_in_tmpdir, model, estimator, origin):
 
         # check that the half of the mesh that is outside of the geometry
         # contains the zero values
-        mean = tally.get_reshaped_data('mean', expand_dims=True)
+        mean = tally.get_reshaped_data("mean", expand_dims=True)
         centroids = mesh.centroids
         for ijk in mesh.indices:
             i, j, k = np.array(ijk) - 1
@@ -107,8 +111,10 @@ def test_offset_mesh(run_in_tmpdir, model, estimator, origin):
             else:
                 mean[i, j, k] != 0.0
 
+
 # Some void geometry tests to check our radial intersection methods on
 # spherical and cylindrical meshes
+
 
 @pytest.fixture()
 def void_coincident_geom_model():
@@ -122,7 +128,7 @@ def void_coincident_geom_model():
     model.materials = openmc.Materials()
     radii = [0.1, 1, 5, 50, 100, 150, 250]
     spheres = [openmc.Sphere(r=ri) for ri in radii]
-    spheres[-1].boundary_type = 'vacuum'
+    spheres[-1].boundary_type = "vacuum"
 
     regions = openmc.model.subdivide(spheres)[:-1]
     cells = [openmc.Cell(region=r, fill=None) for r in regions]
@@ -130,7 +136,7 @@ def void_coincident_geom_model():
 
     model.geometry = geom
 
-    settings = openmc.Settings(run_mode='fixed source')
+    settings = openmc.Settings(run_mode="fixed source")
     settings.batches = 2
     settings.particles = 5000
     model.settings = settings
@@ -139,7 +145,7 @@ def void_coincident_geom_model():
     mesh_filter = openmc.MeshFilter(mesh)
 
     tally = openmc.Tally()
-    tally.scores = ['flux']
+    tally.scores = ["flux"]
     tally.filters = [mesh_filter]
 
     model.tallies = openmc.Tallies([tally])
@@ -177,7 +183,7 @@ def test_void_geom_boundary_src(run_in_tmpdir, void_coincident_geom_model):
     # with directions pointing toward the origin
     n_sources = 20
     phi_vals = np.linspace(0, np.pi, n_sources)
-    theta_vals = np.linspace(0, 2.0*np.pi, n_sources)
+    theta_vals = np.linspace(0, 2.0 * np.pi, n_sources)
 
     bbox = void_coincident_geom_model.geometry.bounding_box
     # can't source particles directly on the geometry boundary
@@ -192,13 +198,15 @@ def test_void_geom_boundary_src(run_in_tmpdir, void_coincident_geom_model):
         src = openmc.IndependentSource()
         src.energy = energy
 
-        pnt = np.array([np.sin(phi)*np.cos(theta), np.sin(phi)*np.sin(theta), np.cos(phi)])
+        pnt = np.array(
+            [np.sin(phi) * np.cos(theta), np.sin(phi) * np.sin(theta), np.cos(phi)]
+        )
         u = -pnt
-        src.space = openmc.stats.Point(outer_r*pnt)
+        src.space = openmc.stats.Point(outer_r * pnt)
         src.angle = openmc.stats.Monodirectional(u)
         # set source strengths so that we can still expect
         # a tally value of 0.5
-        src.strength = 0.5/n_sources
+        src.strength = 0.5 / n_sources
 
         sources.append(src)
 

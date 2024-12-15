@@ -20,14 +20,16 @@ class Nuclide(str):
         # Initialize class attributes
         orig_name = name
 
-        if '-' in name:
-            name = name.replace('-', '')
-            name = name.replace('Nat', '0')
-            if name.endswith('m'):
-                name = name[:-1] + '_m1'
+        if "-" in name:
+            name = name.replace("-", "")
+            name = name.replace("Nat", "0")
+            if name.endswith("m"):
+                name = name[:-1] + "_m1"
 
-            msg = ('OpenMC nuclides follow the GNDS naming convention. '
-                   f'Nuclide "{orig_name}" is being renamed as "{name}".')
+            msg = (
+                "OpenMC nuclides follow the GNDS naming convention. "
+                f'Nuclide "{orig_name}" is being renamed as "{name}".'
+            )
             warnings.warn(msg)
 
         return super().__new__(cls, name)

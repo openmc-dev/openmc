@@ -15,11 +15,17 @@ from .mesh import _get_mesh
 from .mesh import meshes
 
 
-__all__ = ['WeightWindows', 'weight_windows']
+__all__ = ["WeightWindows", "weight_windows"]
 
-_dll.openmc_extend_weight_windows.argtypes = [c_int32, POINTER(c_int32), POINTER(c_int32)]
+_dll.openmc_extend_weight_windows.argtypes = [
+    c_int32,
+    POINTER(c_int32),
+    POINTER(c_int32),
+]
 
-_dll.openmc_weight_windows_update_magic.argtypes = 2*[c_int32] + [c_char_p] + 2*[c_double]
+_dll.openmc_weight_windows_update_magic.argtypes = (
+    2 * [c_int32] + [c_char_p] + 2 * [c_double]
+)
 _dll.openmc_weight_windows_update_magic.restype = c_int
 _dll.openmc_weight_windows_update_magic.errcheck = _error_handler
 
@@ -45,11 +51,19 @@ _dll.openmc_weight_windows_get_mesh.argtypes = [c_int32, POINTER(c_int32)]
 _dll.openmc_weight_windows_get_mesh.restype = c_int
 _dll.openmc_weight_windows_get_mesh.errcheck = _error_handler
 
-_dll.openmc_weight_windows_set_energy_bounds.argtypes = [c_int32, POINTER(c_double), c_size_t]
+_dll.openmc_weight_windows_set_energy_bounds.argtypes = [
+    c_int32,
+    POINTER(c_double),
+    c_size_t,
+]
 _dll.openmc_weight_windows_set_energy_bounds.restype = c_int
 _dll.openmc_weight_windows_set_energy_bounds.errcheck = _error_handler
 
-_dll.openmc_weight_windows_get_energy_bounds.argtypes = [c_int32, POINTER(POINTER(c_double)), POINTER(c_size_t)]
+_dll.openmc_weight_windows_get_energy_bounds.argtypes = [
+    c_int32,
+    POINTER(POINTER(c_double)),
+    POINTER(c_size_t),
+]
 _dll.openmc_weight_windows_get_energy_bounds.restype = c_int
 _dll.openmc_weight_windows_get_energy_bounds.errcheck = _error_handler
 
@@ -61,11 +75,21 @@ _dll.openmc_weight_windows_get_particle.argtypes = [c_int32, POINTER(c_int)]
 _dll.openmc_weight_windows_get_particle.restype = c_int
 _dll.openmc_weight_windows_get_particle.errcheck = _error_handler
 
-_dll.openmc_weight_windows_set_bounds.argtypes = [c_int32, POINTER(c_double), POINTER(c_double), c_size_t]
+_dll.openmc_weight_windows_set_bounds.argtypes = [
+    c_int32,
+    POINTER(c_double),
+    POINTER(c_double),
+    c_size_t,
+]
 _dll.openmc_weight_windows_set_bounds.restype = c_int
 _dll.openmc_weight_windows_set_bounds.errcheck = _error_handler
 
-_dll.openmc_weight_windows_get_bounds.argtypes = [c_int32, POINTER(POINTER(c_double)), POINTER(POINTER(c_double)), POINTER(c_size_t)]
+_dll.openmc_weight_windows_get_bounds.argtypes = [
+    c_int32,
+    POINTER(POINTER(c_double)),
+    POINTER(POINTER(c_double)),
+    POINTER(c_size_t),
+]
 _dll.openmc_weight_windows_get_bounds.restype = c_int
 _dll.openmc_weight_windows_get_bounds.errcheck = _error_handler
 
@@ -77,7 +101,10 @@ _dll.openmc_weight_windows_set_survival_ratio.argtypes = [c_int32, c_double]
 _dll.openmc_weight_windows_set_survival_ratio.restype = c_int
 _dll.openmc_weight_windows_set_survival_ratio.errcheck = _error_handler
 
-_dll.openmc_weight_windows_get_max_lower_bound_ratio.argtypes = [c_int32, POINTER(c_double)]
+_dll.openmc_weight_windows_get_max_lower_bound_ratio.argtypes = [
+    c_int32,
+    POINTER(c_double),
+]
 _dll.openmc_weight_windows_get_max_lower_bound_ratio.restype = c_int
 _dll.openmc_weight_windows_get_max_lower_bound_ratio.errcheck = _error_handler
 
@@ -134,6 +161,7 @@ class WeightWindows(_FortranObjectWithID):
     bounds : numpy.ndarray
         The weight window bounds
     """
+
     __instances = WeakValueDictionary()
 
     def __new__(cls, id=None, new=True, index=None):
@@ -146,8 +174,10 @@ class WeightWindows(_FortranObjectWithID):
                     id = max(mapping, default=0) + 1
                 else:
                     if id in mapping:
-                        raise AllocationError(f'A weight windows object with ID={id} '
-                                              'has already been allocated.')
+                        raise AllocationError(
+                            f"A weight windows object with ID={id} "
+                            "has already been allocated."
+                        )
 
                 index = c_int32()
                 _dll.openmc_extend_weight_windows(1, index, None)
@@ -183,7 +213,8 @@ class WeightWindows(_FortranObjectWithID):
     @mesh.setter
     def mesh(self, mesh):
         _dll.openmc_weight_windows_set_mesh(
-            weight_windows[self.id]._index, meshes[mesh.id]._index)
+            weight_windows[self.id]._index, meshes[mesh.id]._index
+        )
 
     @property
     def energy_bounds(self):
@@ -197,7 +228,8 @@ class WeightWindows(_FortranObjectWithID):
         e_bounds_arr = np.asarray(e_bounds, dtype=float)
         e_bounds_ptr = e_bounds_arr.ctypes.data_as(POINTER(c_double))
         _dll.openmc_weight_windows_set_energy_bounds(
-            self._index, e_bounds_ptr, e_bounds_arr.size)
+            self._index, e_bounds_ptr, e_bounds_arr.size
+        )
 
     @property
     def particle(self):
@@ -273,7 +305,7 @@ class WeightWindows(_FortranObjectWithID):
     def max_split(self, max_split):
         _dll.openmc_weight_windows_set_max_split(self._index, max_split)
 
-    def update_magic(self, tally, value='mean', threshold=1.0, ratio=5.0):
+    def update_magic(self, tally, value="mean", threshold=1.0, ratio=5.0):
         """Update weight window values using the MAGIC method
 
         Reference: https://inis.iaea.org/search/48022314
@@ -290,11 +322,9 @@ class WeightWindows(_FortranObjectWithID):
             Ratio of the lower to upper weight window bounds
 
         """
-        _dll.openmc_weight_windows_update_magic(self._index,
-                                                tally._index,
-                                                c_char_p(value.encode()),
-                                                threshold,
-                                                ratio)
+        _dll.openmc_weight_windows_update_magic(
+            self._index, tally._index, c_char_p(value.encode()), threshold, ratio
+        )
 
     @classmethod
     def from_tally(cls, tally, particle=ParticleType.NEUTRON):
@@ -329,14 +359,18 @@ class WeightWindows(_FortranObjectWithID):
         """
         # do some checks on particle value
         if not isinstance(particle, (ParticleType, str)):
-            raise ValueError(f"Parameter 'particle' must be {ParticleType} or one of ('neutron', 'photon').")
+            raise ValueError(
+                f"Parameter 'particle' must be {ParticleType} or one of ('neutron', 'photon')."
+            )
 
         # convert particle type if needed
         if isinstance(particle, str):
             particle = ParticleType.from_string(particle)
 
         if particle not in (ParticleType.NEUTRON, ParticleType.PHOTON):
-            raise ValueError('Weight windows can only be applied for neutrons or photons')
+            raise ValueError(
+                "Weight windows can only be applied for neutrons or photons"
+            )
 
         try:
             particle_filter = tally.find_filter(ParticleFilter)
@@ -345,8 +379,10 @@ class WeightWindows(_FortranObjectWithID):
 
         # ensure that the tally won't filter out the specified particle
         if particle_filter is not None and particle not in particle_filter.bins:
-            raise ValueError(f'Specified tally for weight windows (Tally {tally.id})'
-                             f' does not track the requested particle: "{particle}"')
+            raise ValueError(
+                f"Specified tally for weight windows (Tally {tally.id})"
+                f' does not track the requested particle: "{particle}"'
+            )
 
         # tally must have a mesh filter
         mesh_filter = tally.find_filter(MeshFilter)
@@ -391,5 +427,6 @@ class _WeightWindowsMapping(Mapping):
 
     def __delitem__(self):
         raise NotImplementedError("WeightWindows object remove not implemented")
+
 
 weight_windows = _WeightWindowsMapping()

@@ -28,10 +28,12 @@ def test_cylindrical_mesh_from_cell():
 
     assert isinstance(mesh, openmc.CylindricalMesh)
     assert np.array_equal(mesh.dimension, (2, 4, 3))
-    assert np.array_equal(mesh.r_grid, [0., 25., 50.])
-    assert np.array_equal(mesh.phi_grid, [0., 0.5*np.pi, np.pi, 1.5*np.pi, 2.*np.pi])
-    assert np.array_equal(mesh.z_grid, [0., 10., 20., 30.])
-    assert np.array_equal(mesh.origin, [0., 0., 10.])
+    assert np.array_equal(mesh.r_grid, [0.0, 25.0, 50.0])
+    assert np.array_equal(
+        mesh.phi_grid, [0.0, 0.5 * np.pi, np.pi, 1.5 * np.pi, 2.0 * np.pi]
+    )
+    assert np.array_equal(mesh.z_grid, [0.0, 10.0, 20.0, 30.0])
+    assert np.array_equal(mesh.origin, [0.0, 0.0, 10.0])
 
     # Cell is not centralized on Z or X axis
     cy_surface = openmc.ZCylinder(r=50, x0=100)
@@ -40,8 +42,8 @@ def test_cylindrical_mesh_from_cell():
 
     assert isinstance(mesh, openmc.CylindricalMesh)
     assert np.array_equal(mesh.dimension, (1, 1, 1))
-    assert np.array_equal(mesh.r_grid, [0., 150.])
-    assert np.array_equal(mesh.origin, [100., 0., 10.])
+    assert np.array_equal(mesh.r_grid, [0.0, 150.0])
+    assert np.array_equal(mesh.origin, [100.0, 0.0, 10.0])
 
     # Cell is not centralized on Z, X or Y axis
     cy_surface = openmc.ZCylinder(r=50, x0=100, y0=170)
@@ -49,8 +51,8 @@ def test_cylindrical_mesh_from_cell():
     mesh = openmc.CylindricalMesh.from_domain(domain=cell, dimension=[1, 1, 1])
 
     assert isinstance(mesh, openmc.CylindricalMesh)
-    assert np.array_equal(mesh.r_grid, [0., 220.])
-    assert np.array_equal(mesh.origin, [100., 170., 10.])
+    assert np.array_equal(mesh.r_grid, [0.0, 220.0])
+    assert np.array_equal(mesh.origin, [100.0, 170.0, 10.0])
 
 
 def test_reg_mesh_from_region():
@@ -74,17 +76,15 @@ def test_cylindrical_mesh_from_region():
     z_surface_2 = openmc.ZPlane(z0=-30)
     cell = openmc.Cell(region=-cy_surface & -z_surface_1 & +z_surface_2)
     mesh = openmc.CylindricalMesh.from_domain(
-        domain=cell,
-        dimension=(6, 2, 3),
-        phi_grid_bounds=(0., np.pi)
+        domain=cell, dimension=(6, 2, 3), phi_grid_bounds=(0.0, np.pi)
     )
 
     assert isinstance(mesh, openmc.CylindricalMesh)
     assert np.array_equal(mesh.dimension, (6, 2, 3))
-    assert np.array_equal(mesh.r_grid, [0., 1., 2., 3., 4., 5., 6.])
-    assert np.array_equal(mesh.phi_grid, [0., 0.5*np.pi, np.pi])
-    assert np.array_equal(mesh.z_grid, [0.0, 20., 40., 60])
-    assert np.array_equal(mesh.origin, (0.0, 0.0, -30.))
+    assert np.array_equal(mesh.r_grid, [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0])
+    assert np.array_equal(mesh.phi_grid, [0.0, 0.5 * np.pi, np.pi])
+    assert np.array_equal(mesh.z_grid, [0.0, 20.0, 40.0, 60])
+    assert np.array_equal(mesh.origin, (0.0, 0.0, -30.0))
 
 
 def test_reg_mesh_from_universe():

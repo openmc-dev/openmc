@@ -16,25 +16,24 @@ class MGXSTestHarness(PyAPITestHarness):
         super().__init__(*args, **kwargs)
 
         # Initialize a two-group structure
-        energy_groups = openmc.mgxs.EnergyGroups(group_edges=[0, 0.625, 20.e6])
+        energy_groups = openmc.mgxs.EnergyGroups(group_edges=[0, 0.625, 20.0e6])
 
         # Initialize MGXS Library for a few cross section types
         self.mgxs_lib = openmc.mgxs.Library(self._model.geometry)
         self.mgxs_lib.by_nuclide = False
 
         # Test all MGXS types
-        self.mgxs_lib.mgxs_types = openmc.mgxs.MGXS_TYPES + \
-                                   openmc.mgxs.MDGXS_TYPES
+        self.mgxs_lib.mgxs_types = openmc.mgxs.MGXS_TYPES + openmc.mgxs.MDGXS_TYPES
         self.mgxs_lib.energy_groups = energy_groups
         self.mgxs_lib.num_delayed_groups = 6
         self.mgxs_lib.legendre_order = 3
-        self.mgxs_lib.domain_type = 'mesh'
+        self.mgxs_lib.domain_type = "mesh"
 
         # Instantiate a tally mesh
         mesh = openmc.RegularMesh(mesh_id=1)
         mesh.dimension = [2, 2]
-        mesh.lower_left = [-100., -100.]
-        mesh.width = [100., 100.]
+        mesh.lower_left = [-100.0, -100.0]
+        mesh.width = [100.0, 100.0]
 
         self.mgxs_lib.domains = [mesh]
         self.mgxs_lib.build_library()
@@ -52,44 +51,44 @@ class MGXSTestHarness(PyAPITestHarness):
         self.mgxs_lib.load_from_statepoint(sp)
 
         # Export the MGXS Library to an HDF5 file
-        self.mgxs_lib.build_hdf5_store(directory='.')
+        self.mgxs_lib.build_hdf5_store(directory=".")
 
         # Test export of the MGXS Library to an Excel spreadsheet
         for mgxs in self.mgxs_lib.all_mgxs.values():
             for xs in mgxs.values():
-                xs.export_xs_data('mgxs', xs_type='macro', format='excel')
+                xs.export_xs_data("mgxs", xs_type="macro", format="excel")
 
         # Open the MGXS HDF5 file
-        with h5py.File('mgxs.h5', 'r') as f:
+        with h5py.File("mgxs.h5", "r") as f:
 
             # Build a string from the datasets in the HDF5 file
-            outstr = ''
+            outstr = ""
             for domain in self.mgxs_lib.domains:
                 for mgxs_type in self.mgxs_lib.mgxs_types:
-                    outstr += 'domain={0} type={1}\n'.format(domain.id, mgxs_type)
-                    avg_key = 'mesh/{}/{}/average'.format(domain.id, mgxs_type)
-                    std_key = 'mesh/{}/{}/std. dev.'.format(domain.id, mgxs_type)
-                    outstr += '{}\n{}\n'.format(f[avg_key][...], f[std_key][...])
+                    outstr += "domain={0} type={1}\n".format(domain.id, mgxs_type)
+                    avg_key = "mesh/{}/{}/average".format(domain.id, mgxs_type)
+                    std_key = "mesh/{}/{}/std. dev.".format(domain.id, mgxs_type)
+                    outstr += "{}\n{}\n".format(f[avg_key][...], f[std_key][...])
 
         # Hash the results if necessary
         if hash_output:
             sha512 = hashlib.sha512()
-            sha512.update(outstr.encode('utf-8'))
+            sha512.update(outstr.encode("utf-8"))
             outstr = sha512.hexdigest()
 
         return outstr
 
     def _cleanup(self):
         super()._cleanup()
-        files = ['mgxs.h5', 'mgxs.xlsx']
+        files = ["mgxs.h5", "mgxs.xlsx"]
         (os.remove(f) for f in files if os.path.exists(f))
 
 
 def test_mgxs_library_hdf5():
     try:
-        np.set_printoptions(formatter={'float_kind': '{:.8e}'.format})
+        np.set_printoptions(formatter={"float_kind": "{:.8e}".format})
         model = pwr_pin_cell()
-        harness = MGXSTestHarness('statepoint.10.h5', model)
+        harness = MGXSTestHarness("statepoint.10.h5", model)
         harness.main()
     finally:
         np.set_printoptions(formatter=None)

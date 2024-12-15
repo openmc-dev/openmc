@@ -8,8 +8,14 @@ from uncertainties import ufloat
 from openmc.deplete.reaction_rates import ReactionRates
 from openmc.deplete.abc import TransportOperator, OperatorResult
 from openmc.deplete import (
-    CECMIntegrator, PredictorIntegrator, CELIIntegrator, LEQIIntegrator,
-    EPCRK4Integrator, CF4Integrator, SICELIIntegrator, SILEQIIntegrator
+    CECMIntegrator,
+    PredictorIntegrator,
+    CELIIntegrator,
+    LEQIIntegrator,
+    EPCRK4Integrator,
+    CF4Integrator,
+    SICELIIntegrator,
+    SILEQIIntegrator,
 )
 
 # Bundle for nicely passing test data to depletion unit tests
@@ -18,48 +24,63 @@ from openmc.deplete import (
 # similar for atoms_2, but for type 2. This includes the first step
 # Solutions should be the exact solution that can be obtained using
 # the DummyOperator depletion matrix with two 0.75 second time steps
-DepletionSolutionTuple = namedtuple(
-    "DepletionSolutionTuple", "solver atoms_1 atoms_2")
+DepletionSolutionTuple = namedtuple("DepletionSolutionTuple", "solver atoms_1 atoms_2")
 
 
 predictor_solution = DepletionSolutionTuple(
-    PredictorIntegrator, np.array([1.0, 2.46847546272295, 4.11525874568034]),
-    np.array([1.0, 0.986431226850467, -0.0581692232513460]))
+    PredictorIntegrator,
+    np.array([1.0, 2.46847546272295, 4.11525874568034]),
+    np.array([1.0, 0.986431226850467, -0.0581692232513460]),
+)
 
 
 cecm_solution = DepletionSolutionTuple(
-    CECMIntegrator, np.array([1.0, 1.86872629872102, 2.18097439443550]),
-    np.array([1.0, 1.395525772416039, 2.69429754646747]))
+    CECMIntegrator,
+    np.array([1.0, 1.86872629872102, 2.18097439443550]),
+    np.array([1.0, 1.395525772416039, 2.69429754646747]),
+)
 
 
 cf4_solution = DepletionSolutionTuple(
-    CF4Integrator, np.array([1.0, 2.06101629, 2.57241318]),
-    np.array([1.0, 1.37783588, 2.63731630]))
+    CF4Integrator,
+    np.array([1.0, 2.06101629, 2.57241318]),
+    np.array([1.0, 1.37783588, 2.63731630]),
+)
 
 
 epc_rk4_solution = DepletionSolutionTuple(
-    EPCRK4Integrator, np.array([1.0, 2.01978516, 2.05246421]),
-    np.array([1.0, 1.42038037, 3.06177191]))
+    EPCRK4Integrator,
+    np.array([1.0, 2.01978516, 2.05246421]),
+    np.array([1.0, 1.42038037, 3.06177191]),
+)
 
 
 celi_solution = DepletionSolutionTuple(
-    CELIIntegrator, np.array([1.0, 1.82078767, 2.68441779]),
-    np.array([1.0, 0.97122898, 0.05125966]))
+    CELIIntegrator,
+    np.array([1.0, 1.82078767, 2.68441779]),
+    np.array([1.0, 0.97122898, 0.05125966]),
+)
 
 
 si_celi_solution = DepletionSolutionTuple(
-    SICELIIntegrator, np.array([1.0, 2.03325094, 2.69291933]),
-    np.array([1.0, 1.16826254, 0.37907772]))
+    SICELIIntegrator,
+    np.array([1.0, 2.03325094, 2.69291933]),
+    np.array([1.0, 1.16826254, 0.37907772]),
+)
 
 
 leqi_solution = DepletionSolutionTuple(
-    LEQIIntegrator, np.array([1.0, 1.82078767, 2.74526197]),
-    np.array([1.0, 0.97122898, 0.23339915]))
+    LEQIIntegrator,
+    np.array([1.0, 1.82078767, 2.74526197]),
+    np.array([1.0, 0.97122898, 0.23339915]),
+)
 
 
 si_leqi_solution = DepletionSolutionTuple(
-    SILEQIIntegrator, np.array([1.0, 2.03325094, 2.92711288]),
-    np.array([1.0, 1.16826254, 0.53753236]))
+    SILEQIIntegrator,
+    np.array([1.0, 2.03325094, 2.92711288]),
+    np.array([1.0, 1.16826254, 0.53753236]),
+)
 
 
 SCHEMES = {
@@ -130,6 +151,7 @@ class DummyOperator(TransportOperator):
     y_2(1.5) ~ 3.1726475740397628
 
     """
+
     def __init__(self, previous_results=None):
         self.prev_res = previous_results
         self.chain = TestChain()

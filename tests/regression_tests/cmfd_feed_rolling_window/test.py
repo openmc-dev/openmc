@@ -17,11 +17,11 @@ def test_cmfd_feed_rolling_window():
     cmfd_run.tally_begin = 5
     cmfd_run.solver_begin = 10
     cmfd_run.feedback = True
-    cmfd_run.gauss_seidel_tolerance = [1.e-15, 1.e-20]
-    cmfd_run.window_type = 'rolling'
+    cmfd_run.gauss_seidel_tolerance = [1.0e-15, 1.0e-20]
+    cmfd_run.window_type = "rolling"
     cmfd_run.window_size = 5
     cmfd_run.run()
 
     # Initialize and run CMFD test harness
-    harness = CMFDTestHarness('statepoint.20.h5', cmfd_run)
+    harness = CMFDTestHarness("statepoint.20.h5", cmfd_run)
     harness.main()

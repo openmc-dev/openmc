@@ -21,20 +21,50 @@ from ._xml import get_text
 
 
 _FILTER_TYPES = (
-    'universe', 'material', 'cell', 'cellborn', 'surface', 'mesh', 'energy',
-    'energyout', 'mu', 'musurface', 'polar', 'azimuthal', 'distribcell', 'delayedgroup',
-    'energyfunction', 'cellfrom', 'materialfrom', 'legendre', 'spatiallegendre',
-    'sphericalharmonics', 'zernike', 'zernikeradial', 'particle', 'cellinstance',
-    'collision', 'time'
+    "universe",
+    "material",
+    "cell",
+    "cellborn",
+    "surface",
+    "mesh",
+    "energy",
+    "energyout",
+    "mu",
+    "musurface",
+    "polar",
+    "azimuthal",
+    "distribcell",
+    "delayedgroup",
+    "energyfunction",
+    "cellfrom",
+    "materialfrom",
+    "legendre",
+    "spatiallegendre",
+    "sphericalharmonics",
+    "zernike",
+    "zernikeradial",
+    "particle",
+    "cellinstance",
+    "collision",
+    "time",
 )
 
 _CURRENT_NAMES = (
-    'x-min out', 'x-min in', 'x-max out', 'x-max in',
-    'y-min out', 'y-min in', 'y-max out', 'y-max in',
-    'z-min out', 'z-min in', 'z-max out', 'z-max in'
+    "x-min out",
+    "x-min in",
+    "x-max out",
+    "x-max in",
+    "y-min out",
+    "y-min in",
+    "y-max out",
+    "y-max in",
+    "z-min out",
+    "z-min in",
+    "z-max out",
+    "z-max in",
 )
 
-_PARTICLES = {'neutron', 'photon', 'electron', 'positron'}
+_PARTICLES = {"neutron", "photon", "electron", "positron"}
 
 
 class FilterMeta(ABCMeta):
@@ -42,12 +72,12 @@ class FilterMeta(ABCMeta):
 
     def __new__(cls, name, bases, namespace, **kwargs):
         # Check the class name.
-        required_suffix = 'Filter'
+        required_suffix = "Filter"
         if not name.endswith(required_suffix):
             raise ValueError("All filter class names must end with 'Filter'")
 
         # Create a 'short_name' attribute that removes the 'Filter' suffix.
-        namespace['short_name'] = name[:-len(required_suffix)]
+        namespace["short_name"] = name[: -len(required_suffix)]
 
         # Subclass methods can sort of inherit the docstring of parent class
         # methods.  If a function is defined without a docstring, most (all?)
@@ -61,8 +91,7 @@ class FilterMeta(ABCMeta):
             for func_name in namespace:
                 if func_name in Filter.__dict__:
                     # Inherit the docstring from Filter if not defined.
-                    if isinstance(namespace[func_name],
-                                  (classmethod, staticmethod)):
+                    if isinstance(namespace[func_name], (classmethod, staticmethod)):
                         new_doc = namespace[func_name].__func__.__doc__
                         old_doc = Filter.__dict__[func_name].__func__.__doc__
                         if new_doc is None and old_doc is not None:
@@ -125,10 +154,10 @@ class Filter(IDManagerMixin, metaclass=FilterMeta):
 
     def __gt__(self, other):
         if type(self) is not type(other):
-            if self.short_name in _FILTER_TYPES and \
-                other.short_name in _FILTER_TYPES:
-                delta = _FILTER_TYPES.index(self.short_name) - \
-                        _FILTER_TYPES.index(other.short_name)
+            if self.short_name in _FILTER_TYPES and other.short_name in _FILTER_TYPES:
+                delta = _FILTER_TYPES.index(self.short_name) - _FILTER_TYPES.index(
+                    other.short_name
+                )
                 return delta > 0
             else:
                 return False
@@ -139,14 +168,14 @@ class Filter(IDManagerMixin, metaclass=FilterMeta):
         return not self > other
 
     def __hash__(self):
-        string = type(self).__name__ + '\n'
-        string += '{: <16}=\t{}\n'.format('\tBins', self.bins)
+        string = type(self).__name__ + "\n"
+        string += "{: <16}=\t{}\n".format("\tBins", self.bins)
         return hash(string)
 
     def __repr__(self):
-        string = type(self).__name__ + '\n'
-        string += '{: <16}=\t{}\n'.format('\tBins', self.bins)
-        string += '{: <16}=\t{}\n'.format('\tID', self.id)
+        string = type(self).__name__ + "\n"
+        string += "{: <16}=\t{}\n".format("\tBins", self.bins)
+        string += "{: <16}=\t{}\n".format("\tID", self.id)
         return string
 
     @classmethod
@@ -177,23 +206,24 @@ class Filter(IDManagerMixin, metaclass=FilterMeta):
 
         """
 
-        filter_id = int(group.name.split('/')[-1].lstrip('filter '))
+        filter_id = int(group.name.split("/")[-1].lstrip("filter "))
 
         # If the HDF5 'type' variable matches this class's short_name, then
         # there is no overridden from_hdf5 method.  Pass the bins to __init__.
-        if group['type'][()].decode() == cls.short_name.lower():
-            out = cls(group['bins'][()], filter_id=filter_id)
-            out._num_bins = group['n_bins'][()]
+        if group["type"][()].decode() == cls.short_name.lower():
+            out = cls(group["bins"][()], filter_id=filter_id)
+            out._num_bins = group["n_bins"][()]
             return out
 
         # Search through all subclasses and find the one matching the HDF5
         # 'type'.  Call that class's from_hdf5 method.
         for subclass in cls._recursive_subclasses():
-            if group['type'][()].decode() == subclass.short_name.lower():
+            if group["type"][()].decode() == subclass.short_name.lower():
                 return subclass.from_hdf5(group, **kwargs)
 
-        raise ValueError("Unrecognized Filter class: '"
-                         + group['type'][()].decode() + "'")
+        raise ValueError(
+            "Unrecognized Filter class: '" + group["type"][()].decode() + "'"
+        )
 
     @property
     def bins(self):
@@ -233,12 +263,12 @@ class Filter(IDManagerMixin, metaclass=FilterMeta):
             XML element containing filter data
 
         """
-        element = ET.Element('filter')
-        element.set('id', str(self.id))
-        element.set('type', self.short_name.lower())
+        element = ET.Element("filter")
+        element.set("id", str(self.id))
+        element.set("type", self.short_name.lower())
 
-        subelement = ET.SubElement(element, 'bins')
-        subelement.text = ' '.join(str(b) for b in self.bins)
+        subelement = ET.SubElement(element, "bins")
+        subelement.text = " ".join(str(b) for b in self.bins)
         return element
 
     @classmethod
@@ -258,17 +288,17 @@ class Filter(IDManagerMixin, metaclass=FilterMeta):
             Filter object
 
         """
-        filter_type = elem.get('type')
+        filter_type = elem.get("type")
         if filter_type is None:
-            filter_type = elem.find('type').text
+            filter_type = elem.find("type").text
 
         # If the filter type matches this class's short_name, then
         # there is no overridden from_xml_element method
         if filter_type == cls.short_name.lower():
             # Get bins from element -- the default here works for any filters
             # that just store a list of bins that can be represented as integers
-            filter_id = int(elem.get('id'))
-            bins = [int(x) for x in get_text(elem, 'bins').split()]
+            filter_id = int(elem.get("id"))
+            bins = [int(x) for x in get_text(elem, "bins").split()]
             return cls(bins, filter_id=filter_id)
 
         # Search through all subclasses and find the one matching the HDF5
@@ -276,7 +306,6 @@ class Filter(IDManagerMixin, metaclass=FilterMeta):
         for subclass in cls._recursive_subclasses():
             if filter_type == subclass.short_name.lower():
                 return subclass.from_xml_element(elem, **kwargs)
-
 
     def can_merge(self, other):
         """Determine if filter can be merged with another.
@@ -369,8 +398,10 @@ class Filter(IDManagerMixin, metaclass=FilterMeta):
         """
 
         if filter_bin not in self.bins:
-            msg = ('Unable to get the bin index for Filter since '
-                   f'"{filter_bin}" is not one of the bins')
+            msg = (
+                "Unable to get the bin index for Filter since "
+                f'"{filter_bin}" is not one of the bins'
+            )
             raise ValueError(msg)
 
         if isinstance(self.bins, np.ndarray):
@@ -420,30 +451,28 @@ class Filter(IDManagerMixin, metaclass=FilterMeta):
         filter_bins = np.repeat(self.bins, stride)
         tile_factor = data_size // len(filter_bins)
         filter_bins = np.tile(filter_bins, tile_factor)
-        df = pd.concat([df, pd.DataFrame(
-            {self.short_name.lower(): filter_bins})])
+        df = pd.concat([df, pd.DataFrame({self.short_name.lower(): filter_bins})])
 
         return df
 
 
 class WithIDFilter(Filter):
     """Abstract parent for filters of types with IDs (Cell, Material, etc.)."""
+
     def __init__(self, bins, filter_id=None):
         bins = np.atleast_1d(bins)
 
         # Make sure bins are either integers or appropriate objects
-        cv.check_iterable_type('filter bins', bins,
-                               (Integral, self.expected_type))
+        cv.check_iterable_type("filter bins", bins, (Integral, self.expected_type))
 
         # Extract ID values
-        bins = np.array([b if isinstance(b, Integral) else b.id
-                         for b in bins])
+        bins = np.array([b if isinstance(b, Integral) else b.id for b in bins])
         super().__init__(bins, filter_id)
 
     def check_bins(self, bins):
         # Check the bin values.
         for edge in bins:
-            cv.check_greater_than('filter bin', edge, 0, equality=True)
+            cv.check_greater_than("filter bin", edge, 0, equality=True)
 
 
 class UniverseFilter(WithIDFilter):
@@ -467,6 +496,7 @@ class UniverseFilter(WithIDFilter):
         The number of filter bins
 
     """
+
     expected_type = UniverseBase
 
 
@@ -491,6 +521,7 @@ class MaterialFilter(WithIDFilter):
         The number of filter bins
 
     """
+
     expected_type = Material
 
 
@@ -515,6 +546,7 @@ class MaterialFromFilter(WithIDFilter):
         The number of filter bins
 
     """
+
     expected_type = Material
 
 
@@ -539,6 +571,7 @@ class CellFilter(WithIDFilter):
         The number of filter bins
 
     """
+
     expected_type = Cell
 
 
@@ -563,6 +596,7 @@ class CellFromFilter(WithIDFilter):
         The number of filter bins
 
     """
+
     expected_type = Cell
 
 
@@ -587,14 +621,18 @@ class CellBornFilter(WithIDFilter):
         The number of filter bins
 
     """
+
     expected_type = Cell
 
 
 # Temporary alias for CellbornFilter
 def CellbornFilter(*args, **kwargs):
-    warnings.warn('The name of "CellbornFilter" has changed to '
-                  '"CellBornFilter". "CellbornFilter" will be '
-                  'removed in the future.', FutureWarning)
+    warnings.warn(
+        'The name of "CellbornFilter" has changed to '
+        '"CellBornFilter". "CellbornFilter" will be '
+        "removed in the future.",
+        FutureWarning,
+    )
     return CellBornFilter(*args, **kwargs)
 
 
@@ -631,6 +669,7 @@ class CellInstanceFilter(Filter):
     DistribcellFilter
 
     """
+
     def __init__(self, bins, filter_id=None):
         self.bins = bins
         self.id = filter_id
@@ -639,8 +678,8 @@ class CellInstanceFilter(Filter):
     def bins(self, bins):
         pairs = np.empty((len(bins), 2), dtype=int)
         for i, (cell, instance) in enumerate(bins):
-            cv.check_type('cell', cell, (openmc.Cell, Integral))
-            cv.check_type('instance', instance, Integral)
+            cv.check_type("cell", cell, (openmc.Cell, Integral))
+            cv.check_type("instance", instance, Integral)
             pairs[i, 0] = cell if isinstance(cell, Integral) else cell.id
             pairs[i, 1] = instance
         self._bins = pairs
@@ -677,8 +716,9 @@ class CellInstanceFilter(Filter):
         tile_factor = data_size // len(bins)
         bins = np.tile(bins, (tile_factor, 1))
 
-        columns = pd.MultiIndex.from_product([[self.short_name.lower()],
-                                              ['cell', 'instance']])
+        columns = pd.MultiIndex.from_product(
+            [[self.short_name.lower()], ["cell", "instance"]]
+        )
         return pd.DataFrame(bins, columns=columns)
 
     def to_xml_element(self):
@@ -690,18 +730,18 @@ class CellInstanceFilter(Filter):
             XML element containing filter data
 
         """
-        element = ET.Element('filter')
-        element.set('id', str(self.id))
-        element.set('type', self.short_name.lower())
+        element = ET.Element("filter")
+        element.set("id", str(self.id))
+        element.set("type", self.short_name.lower())
 
-        subelement = ET.SubElement(element, 'bins')
-        subelement.text = ' '.join(str(i) for i in self.bins.ravel())
+        subelement = ET.SubElement(element, "bins")
+        subelement.text = " ".join(str(i) for i in self.bins.ravel())
         return element
 
     @classmethod
     def from_xml_element(cls, elem, **kwargs):
-        filter_id = int(elem.get('id'))
-        bins = [int(x) for x in get_text(elem, 'bins').split()]
+        filter_id = int(elem.get("id"))
+        bins = [int(x) for x in get_text(elem, "bins").split()]
         cell_instances = list(zip(bins[::2], bins[1::2]))
         return cls(cell_instances, filter_id=filter_id)
 
@@ -728,6 +768,7 @@ class SurfaceFilter(WithIDFilter):
         The number of filter bins
 
     """
+
     expected_type = Surface
 
 
@@ -752,6 +793,7 @@ class ParticleFilter(Filter):
         The number of filter bins
 
     """
+
     def __eq__(self, other):
         if type(self) is not type(other):
             return False
@@ -764,27 +806,31 @@ class ParticleFilter(Filter):
 
     @Filter.bins.setter
     def bins(self, bins):
-        cv.check_type('bins', bins, Sequence, str)
+        cv.check_type("bins", bins, Sequence, str)
         bins = np.atleast_1d(bins)
         for edge in bins:
-            cv.check_value('filter bin', edge, _PARTICLES)
+            cv.check_value("filter bin", edge, _PARTICLES)
         self._bins = bins
 
     @classmethod
     def from_hdf5(cls, group, **kwargs):
-        if group['type'][()].decode() != cls.short_name.lower():
-            raise ValueError("Expected HDF5 data for filter type '"
-                             + cls.short_name.lower() + "' but got '"
-                             + group['type'][()].decode() + " instead")
+        if group["type"][()].decode() != cls.short_name.lower():
+            raise ValueError(
+                "Expected HDF5 data for filter type '"
+                + cls.short_name.lower()
+                + "' but got '"
+                + group["type"][()].decode()
+                + " instead"
+            )
 
-        particles = [b.decode() for b in group['bins'][()]]
-        filter_id = int(group.name.split('/')[-1].lstrip('filter '))
+        particles = [b.decode() for b in group["bins"][()]]
+        filter_id = int(group.name.split("/")[-1].lstrip("filter "))
         return cls(particles, filter_id=filter_id)
 
     @classmethod
     def from_xml_element(cls, elem, **kwargs):
-        filter_id = int(elem.get('id'))
-        bins = get_text(elem, 'bins').split()
+        filter_id = int(elem.get("id"))
+        bins = get_text(elem, "bins").split()
         return cls(bins, filter_id=filter_id)
 
 
@@ -821,35 +867,38 @@ class MeshFilter(Filter):
         self._translation = None
 
     def __hash__(self):
-        string = type(self).__name__ + '\n'
-        string += '{: <16}=\t{}\n'.format('\tMesh ID', self.mesh.id)
+        string = type(self).__name__ + "\n"
+        string += "{: <16}=\t{}\n".format("\tMesh ID", self.mesh.id)
         return hash(string)
 
     def __repr__(self):
-        string = type(self).__name__ + '\n'
-        string += '{: <16}=\t{}\n'.format('\tMesh ID', self.mesh.id)
-        string += '{: <16}=\t{}\n'.format('\tID', self.id)
-        string += '{: <16}=\t{}\n'.format('\tTranslation', self.translation)
+        string = type(self).__name__ + "\n"
+        string += "{: <16}=\t{}\n".format("\tMesh ID", self.mesh.id)
+        string += "{: <16}=\t{}\n".format("\tID", self.id)
+        string += "{: <16}=\t{}\n".format("\tTranslation", self.translation)
         return string
 
     @classmethod
     def from_hdf5(cls, group, **kwargs):
-        if group['type'][()].decode() != cls.short_name.lower():
-            raise ValueError("Expected HDF5 data for filter type '"
-                             + cls.short_name.lower() + "' but got '"
-                             + group['type'][()].decode() + " instead")
+        if group["type"][()].decode() != cls.short_name.lower():
+            raise ValueError(
+                "Expected HDF5 data for filter type '"
+                + cls.short_name.lower()
+                + "' but got '"
+                + group["type"][()].decode()
+                + " instead"
+            )
 
-        if 'meshes' not in kwargs:
-            raise ValueError(cls.__name__ + " requires a 'meshes' keyword "
-                             "argument.")
+        if "meshes" not in kwargs:
+            raise ValueError(cls.__name__ + " requires a 'meshes' keyword " "argument.")
 
-        mesh_id = group['bins'][()]
-        mesh_obj = kwargs['meshes'][mesh_id]
-        filter_id = int(group.name.split('/')[-1].lstrip('filter '))
+        mesh_id = group["bins"][()]
+        mesh_obj = kwargs["meshes"][mesh_id]
+        filter_id = int(group.name.split("/")[-1].lstrip("filter "))
 
         out = cls(mesh_obj, filter_id=filter_id)
 
-        translation = group.get('translation')
+        translation = group.get("translation")
         if translation:
             out.translation = translation[()]
 
@@ -861,7 +910,7 @@ class MeshFilter(Filter):
 
     @mesh.setter
     def mesh(self, mesh):
-        cv.check_type('filter mesh', mesh, openmc.MeshBase)
+        cv.check_type("filter mesh", mesh, openmc.MeshBase)
         self._mesh = mesh
         if isinstance(mesh, openmc.UnstructuredMesh):
             if mesh.has_statepoint_data:
@@ -883,8 +932,8 @@ class MeshFilter(Filter):
 
     @translation.setter
     def translation(self, t):
-        cv.check_type('mesh filter translation', t, Iterable, Real)
-        cv.check_length('mesh filter translation', t, 3)
+        cv.check_type("mesh filter translation", t, Iterable, Real)
+        cv.check_length("mesh filter translation", t, 3)
         self._translation = np.asarray(t)
 
     def can_merge(self, other):
@@ -926,7 +975,7 @@ class MeshFilter(Filter):
         filter_dict = {}
 
         # Append mesh ID as outermost index of multi-index
-        mesh_key = f'mesh {self.mesh.id}'
+        mesh_key = f"mesh {self.mesh.id}"
 
         # Find mesh dimensions - use 3D indices for simplicity
         n_dim = len(self.mesh.dimension)
@@ -940,16 +989,19 @@ class MeshFilter(Filter):
             ny = nz = 1
 
         # Generate multi-index sub-column for x-axis
-        filter_dict[mesh_key, 'x'] = _repeat_and_tile(
-            np.arange(1, nx + 1), stride, data_size)
+        filter_dict[mesh_key, "x"] = _repeat_and_tile(
+            np.arange(1, nx + 1), stride, data_size
+        )
 
         # Generate multi-index sub-column for y-axis
-        filter_dict[mesh_key, 'y'] = _repeat_and_tile(
-            np.arange(1, ny + 1), nx * stride, data_size)
+        filter_dict[mesh_key, "y"] = _repeat_and_tile(
+            np.arange(1, ny + 1), nx * stride, data_size
+        )
 
         # Generate multi-index sub-column for z-axis
-        filter_dict[mesh_key, 'z'] = _repeat_and_tile(
-            np.arange(1, nz + 1), nx * ny * stride, data_size)
+        filter_dict[mesh_key, "z"] = _repeat_and_tile(
+            np.arange(1, nz + 1), nx * ny * stride, data_size
+        )
 
         # Initialize a Pandas DataFrame from the mesh dictionary
         df = pd.concat([df, pd.DataFrame(filter_dict)])
@@ -968,17 +1020,17 @@ class MeshFilter(Filter):
         element = super().to_xml_element()
         element[0].text = str(self.mesh.id)
         if self.translation is not None:
-            element.set('translation', ' '.join(map(str, self.translation)))
+            element.set("translation", " ".join(map(str, self.translation)))
         return element
 
     @classmethod
     def from_xml_element(cls, elem: ET.Element, **kwargs) -> MeshFilter:
-        mesh_id = int(get_text(elem, 'bins'))
-        mesh_obj = kwargs['meshes'][mesh_id]
-        filter_id = int(elem.get('id'))
+        mesh_id = int(get_text(elem, "bins"))
+        mesh_obj = kwargs["meshes"][mesh_id]
+        filter_id = int(elem.get("id"))
         out = cls(mesh_obj, filter_id=filter_id)
 
-        translation = elem.get('translation')
+        translation = elem.get("translation")
         if translation:
             out.translation = [float(x) for x in translation.split()]
         return out
@@ -1041,13 +1093,15 @@ class MeshSurfaceFilter(MeshFilter):
 
     @MeshFilter.mesh.setter
     def mesh(self, mesh):
-        cv.check_type('filter mesh', mesh, openmc.MeshBase)
+        cv.check_type("filter mesh", mesh, openmc.MeshBase)
         self._mesh = mesh
 
         # Take the product of mesh indices and current names
         n_dim = mesh.n_dimension
-        self.bins = [mesh_tuple + (surf,) for mesh_tuple, surf in
-                     product(mesh.indices, _CURRENT_NAMES[:4*n_dim])]
+        self.bins = [
+            mesh_tuple + (surf,)
+            for mesh_tuple, surf in product(mesh.indices, _CURRENT_NAMES[: 4 * n_dim])
+        ]
 
     def get_pandas_dataframe(self, data_size, stride, **kwargs):
         """Builds a Pandas DataFrame for the Filter's bins.
@@ -1084,7 +1138,7 @@ class MeshSurfaceFilter(MeshFilter):
         filter_dict = {}
 
         # Append mesh ID as outermost index of multi-index
-        mesh_key = f'mesh {self.mesh.id}'
+        mesh_key = f"mesh {self.mesh.id}"
 
         # Find mesh dimensions - use 3D indices for simplicity
         n_surfs = 4 * len(self.mesh.dimension)
@@ -1098,22 +1152,26 @@ class MeshSurfaceFilter(MeshFilter):
             ny = nz = 1
 
         # Generate multi-index sub-column for x-axis
-        filter_dict[mesh_key, 'x'] = _repeat_and_tile(
-            np.arange(1, nx + 1), n_surfs * stride, data_size)
+        filter_dict[mesh_key, "x"] = _repeat_and_tile(
+            np.arange(1, nx + 1), n_surfs * stride, data_size
+        )
 
         # Generate multi-index sub-column for y-axis
         if len(self.mesh.dimension) > 1:
-            filter_dict[mesh_key, 'y'] = _repeat_and_tile(
-                np.arange(1, ny + 1), n_surfs * nx * stride, data_size)
+            filter_dict[mesh_key, "y"] = _repeat_and_tile(
+                np.arange(1, ny + 1), n_surfs * nx * stride, data_size
+            )
 
         # Generate multi-index sub-column for z-axis
         if len(self.mesh.dimension) > 2:
-            filter_dict[mesh_key, 'z'] = _repeat_and_tile(
-                np.arange(1, nz + 1), n_surfs * nx * ny * stride, data_size)
+            filter_dict[mesh_key, "z"] = _repeat_and_tile(
+                np.arange(1, nz + 1), n_surfs * nx * ny * stride, data_size
+            )
 
         # Generate multi-index sub-column for surface
-        filter_dict[mesh_key, 'surf'] = _repeat_and_tile(
-            _CURRENT_NAMES[:n_surfs], stride, data_size)
+        filter_dict[mesh_key, "surf"] = _repeat_and_tile(
+            _CURRENT_NAMES[:n_surfs], stride, data_size
+        )
 
         # Initialize a Pandas DataFrame from the mesh dictionary
         return pd.concat([df, pd.DataFrame(filter_dict)])
@@ -1152,8 +1210,8 @@ class CollisionFilter(Filter):
     def check_bins(self, bins):
         for x in bins:
             # Values should be integers
-            cv.check_type('filter value', x, Integral)
-            cv.check_greater_than('filter value', x, 0, equality=True)
+            cv.check_type("filter value", x, Integral)
+            cv.check_greater_than("filter value", x, 0, equality=True)
 
 
 class RealFilter(Filter):
@@ -1181,6 +1239,7 @@ class RealFilter(Filter):
         The number of filter bins
 
     """
+
     def __init__(self, values, filter_id=None):
         self.values = np.asarray(values)
         self.bins = np.vstack((self.values[:-1], self.values[1:])).T
@@ -1195,9 +1254,9 @@ class RealFilter(Filter):
             return super().__gt__(other)
 
     def __repr__(self):
-        string = type(self).__name__ + '\n'
-        string += '{: <16}=\t{}\n'.format('\tValues', self.values)
-        string += '{: <16}=\t{}\n'.format('\tID', self.id)
+        string = type(self).__name__ + "\n"
+        string += "{: <16}=\t{}\n".format("\tValues", self.values)
+        string += "{: <16}=\t{}\n".format("\tID", self.id)
         return string
 
     @Filter.bins.setter
@@ -1207,19 +1266,19 @@ class RealFilter(Filter):
     def check_bins(self, bins):
         for v0, v1 in bins:
             # Values should be real
-            cv.check_type('filter value', v0, Real)
-            cv.check_type('filter value', v1, Real)
+            cv.check_type("filter value", v0, Real)
+            cv.check_type("filter value", v1, Real)
 
             # Make sure that each tuple has values that are increasing
             if v1 < v0:
-                raise ValueError(f'Values {v0} and {v1} appear to be out of '
-                                 'order')
+                raise ValueError(f"Values {v0} and {v1} appear to be out of " "order")
 
         for pair0, pair1 in zip(bins[:-1], bins[1:]):
             # Successive pairs should be ordered
             if pair1[1] < pair0[1]:
-                raise ValueError(f'Values {pair1[1]} and {pair0[1]} appear to '
-                                 'be out of order')
+                raise ValueError(
+                    f"Values {pair1[1]} and {pair0[1]} appear to " "be out of order"
+                )
 
     def can_merge(self, other):
         if type(self) is not type(other):
@@ -1274,8 +1333,10 @@ class RealFilter(Filter):
     def get_bin_index(self, filter_bin):
         i = np.where(self.bins[:, 1] == filter_bin[1])[0]
         if len(i) == 0:
-            msg = ('Unable to get the bin index for Filter since '
-                   f'"{filter_bin}" is not one of the bins')
+            msg = (
+                "Unable to get the bin index for Filter since "
+                f'"{filter_bin}" is not one of the bins'
+            )
             raise ValueError(msg)
         else:
             return i[0]
@@ -1320,13 +1381,13 @@ class RealFilter(Filter):
         hi_bins = np.tile(hi_bins, tile_factor)
 
         # Add the new energy columns to the DataFrame.
-        if hasattr(self, 'units'):
-            units = f' [{self.units}]'
+        if hasattr(self, "units"):
+            units = f" [{self.units}]"
         else:
-            units = ''
+            units = ""
 
-        df.loc[:, self.short_name.lower() + ' low' + units] = lo_bins
-        df.loc[:, self.short_name.lower() + ' high' + units] = hi_bins
+        df.loc[:, self.short_name.lower() + " low" + units] = lo_bins
+        df.loc[:, self.short_name.lower() + " high" + units] = hi_bins
 
         return df
 
@@ -1340,13 +1401,13 @@ class RealFilter(Filter):
 
         """
         element = super().to_xml_element()
-        element[0].text = ' '.join(str(x) for x in self.values)
+        element[0].text = " ".join(str(x) for x in self.values)
         return element
 
     @classmethod
     def from_xml_element(cls, elem, **kwargs):
-        filter_id = int(elem.get('id'))
-        bins = [float(x) for x in get_text(elem, 'bins').split()]
+        filter_id = int(elem.get("id"))
+        bins = [float(x) for x in get_text(elem, "bins").split()]
         return cls(bins, filter_id=filter_id)
 
 
@@ -1375,28 +1436,31 @@ class EnergyFilter(RealFilter):
         The number of filter bins
 
     """
-    units = 'eV'
+
+    units = "eV"
 
     def __init__(self, values, filter_id=None):
-        cv.check_length('values', values, 2)
+        cv.check_length("values", values, 2)
         super().__init__(values, filter_id)
 
     def get_bin_index(self, filter_bin):
         # Use lower energy bound to find index for RealFilters
         deltas = np.abs(self.bins[:, 1] - filter_bin[1]) / filter_bin[1]
         min_delta = np.min(deltas)
-        if min_delta < 1E-3:
+        if min_delta < 1e-3:
             return deltas.argmin()
         else:
-            msg = ('Unable to get the bin index for Filter since '
-                   f'"{filter_bin}" is not one of the bins')
+            msg = (
+                "Unable to get the bin index for Filter since "
+                f'"{filter_bin}" is not one of the bins'
+            )
             raise ValueError(msg)
 
     def check_bins(self, bins):
         super().check_bins(bins)
         for v0, v1 in bins:
-            cv.check_greater_than('filter value', v0, 0., equality=True)
-            cv.check_greater_than('filter value', v1, 0., equality=True)
+            cv.check_greater_than("filter value", v0, 0.0, equality=True)
+            cv.check_greater_than("filter value", v1, 0.0, equality=True)
 
     def get_tabular(self, values, **kwargs):
         """Create a tabulated distribution based on tally results with an energy filter
@@ -1427,7 +1491,7 @@ class EnergyFilter(RealFilter):
         probability_per_ev = probabilities / np.diff(self.values)
         probability_per_ev = np.append(probability_per_ev, 0.0)
 
-        kwargs.setdefault('interpolation', 'histogram')
+        kwargs.setdefault("interpolation", "histogram")
         return openmc.stats.Tabular(self.values, probability_per_ev, **kwargs)
 
     @property
@@ -1440,7 +1504,7 @@ class EnergyFilter(RealFilter):
         numpy.array
             Array of bin widths
         """
-        return np.log10(self.bins[:, 1]/self.bins[:, 0])
+        return np.log10(self.bins[:, 1] / self.bins[:, 0])
 
     @classmethod
     def from_group_structure(cls, group_structure):
@@ -1456,7 +1520,9 @@ class EnergyFilter(RealFilter):
 
         """
 
-        cv.check_value('group_structure', group_structure, openmc.mgxs.GROUP_STRUCTURES.keys())
+        cv.check_value(
+            "group_structure", group_structure, openmc.mgxs.GROUP_STRUCTURES.keys()
+        )
         return cls(openmc.mgxs.GROUP_STRUCTURES[group_structure.upper()])
 
 
@@ -1486,6 +1552,7 @@ class EnergyoutFilter(EnergyFilter):
 
     """
 
+
 class TimeFilter(RealFilter):
     """Bins tally events based on the particle's time.
 
@@ -1513,7 +1580,8 @@ class TimeFilter(RealFilter):
         The number of filter bins
 
     """
-    units = 's'
+
+    units = "s"
 
     def get_bin_index(self, filter_bin):
         # Use lower energy bound to find index for RealFilters
@@ -1522,15 +1590,17 @@ class TimeFilter(RealFilter):
         if min_delta < 1e-3:
             return deltas.argmin()
         else:
-            msg = ('Unable to get the bin index for Filter since '
-                   f'"{filter_bin}" is not one of the bins')
+            msg = (
+                "Unable to get the bin index for Filter since "
+                f'"{filter_bin}" is not one of the bins'
+            )
             raise ValueError(msg)
 
     def check_bins(self, bins):
         super().check_bins(bins)
         for v0, v1 in bins:
-            cv.check_greater_than('filter value', v0, 0., equality=True)
-            cv.check_greater_than('filter value', v1, 0., equality=True)
+            cv.check_greater_than("filter value", v0, 0.0, equality=True)
+            cv.check_greater_than("filter value", v1, 0.0, equality=True)
 
 
 def _path_to_levels(path):
@@ -1548,23 +1618,23 @@ def _path_to_levels(path):
 
     """
     # Split path into universes/cells/lattices
-    path_items = path.split('->')
+    path_items = path.split("->")
 
     # Pair together universe and cell information from the same level
-    idx = [i for i, item in enumerate(path_items) if item.startswith('u')]
+    idx = [i for i, item in enumerate(path_items) if item.startswith("u")]
     for i in reversed(idx):
         univ_id = int(path_items.pop(i)[1:])
         cell_id = int(path_items.pop(i)[1:])
-        path_items.insert(i, ('universe', univ_id, cell_id))
+        path_items.insert(i, ("universe", univ_id, cell_id))
 
     # Reformat lattice into tuple
     idx = [i for i, item in enumerate(path_items) if isinstance(item, str)]
     for i in idx:
         item = path_items.pop(i)[1:-1]
-        lat_id, lat_xyz = item.split('(')
+        lat_id, lat_xyz = item.split("(")
         lat_id = int(lat_id)
-        lat_xyz = tuple(int(x) for x in lat_xyz.split(','))
-        path_items.insert(i, ('lattice', lat_id, lat_xyz))
+        lat_xyz = tuple(int(x) for x in lat_xyz.split(","))
+        path_items.insert(i, ("lattice", lat_id, lat_xyz))
 
     return path_items
 
@@ -1609,15 +1679,19 @@ class DistribcellFilter(Filter):
 
     @classmethod
     def from_hdf5(cls, group, **kwargs):
-        if group['type'][()].decode() != cls.short_name.lower():
-            raise ValueError("Expected HDF5 data for filter type '"
-                             + cls.short_name.lower() + "' but got '"
-                             + group['type'][()].decode() + " instead")
+        if group["type"][()].decode() != cls.short_name.lower():
+            raise ValueError(
+                "Expected HDF5 data for filter type '"
+                + cls.short_name.lower()
+                + "' but got '"
+                + group["type"][()].decode()
+                + " instead"
+            )
 
-        filter_id = int(group.name.split('/')[-1].lstrip('filter '))
+        filter_id = int(group.name.split("/")[-1].lstrip("filter "))
 
-        out = cls(group['bins'][()], filter_id=filter_id)
-        out._num_bins = group['n_bins'][()]
+        out = cls(group["bins"][()], filter_id=filter_id)
+        out._num_bins = group["n_bins"][()]
 
         return out
 
@@ -1633,7 +1707,7 @@ class DistribcellFilter(Filter):
 
     @paths.setter
     def paths(self, paths):
-        cv.check_iterable_type('paths', paths, str)
+        cv.check_iterable_type("paths", paths, str)
         self._paths = paths
 
     @Filter.bins.setter
@@ -1643,12 +1717,14 @@ class DistribcellFilter(Filter):
 
         # Make sure there is only 1 bin.
         if not len(bins) == 1:
-            msg = (f'Unable to add bins "{bins}" to a DistribcellFilter since '
-                  'only a single distribcell can be used per tally')
+            msg = (
+                f'Unable to add bins "{bins}" to a DistribcellFilter since '
+                "only a single distribcell can be used per tally"
+            )
             raise ValueError(msg)
 
         # Check the type and extract the id, if necessary.
-        cv.check_type('distribcell bin', bins[0], (Integral, openmc.Cell))
+        cv.check_type("distribcell bin", bins[0], (Integral, openmc.Cell))
         if isinstance(bins[0], openmc.Cell):
             bins = np.atleast_1d(bins[0].id)
 
@@ -1710,15 +1786,17 @@ class DistribcellFilter(Filter):
 
         level_df = None
 
-        paths = kwargs.setdefault('paths', True)
+        paths = kwargs.setdefault("paths", True)
 
         # Create Pandas Multi-index columns for each level in CSG tree
         if paths:
 
             # Distribcell paths require linked metadata from the Summary
             if self.paths is None:
-                msg = 'Unable to construct distribcell paths since ' \
-                      'the Summary is not linked to the StatePoint'
+                msg = (
+                    "Unable to construct distribcell paths since "
+                    "the Summary is not linked to the StatePoint"
+                )
                 raise ValueError(msg)
 
             # Make copy of array of distribcell paths to use in
@@ -1730,7 +1808,7 @@ class DistribcellFilter(Filter):
             num_levels = len(paths[0])
             for i_level in range(num_levels):
                 # Use level key as first index in Pandas Multi-index column
-                level_key = f'level {i_level + 1}'
+                level_key = f"level {i_level + 1}"
 
                 # Create a dictionary for this level for Pandas Multi-index
                 level_dict = {}
@@ -1738,12 +1816,12 @@ class DistribcellFilter(Filter):
                 # Use the first distribcell path to determine if level
                 # is a universe/cell or lattice level
                 path = paths[0]
-                if path[i_level][0] == 'lattice':
+                if path[i_level][0] == "lattice":
                     # Initialize prefix Multi-index keys
-                    lat_id_key = (level_key, 'lat', 'id')
-                    lat_x_key = (level_key, 'lat', 'x')
-                    lat_y_key = (level_key, 'lat', 'y')
-                    lat_z_key = (level_key, 'lat', 'z')
+                    lat_id_key = (level_key, "lat", "id")
+                    lat_x_key = (level_key, "lat", "x")
+                    lat_y_key = (level_key, "lat", "y")
+                    lat_z_key = (level_key, "lat", "z")
 
                     # Allocate NumPy arrays for each CSG level and
                     # each Multi-index column in the DataFrame
@@ -1755,8 +1833,8 @@ class DistribcellFilter(Filter):
 
                 else:
                     # Initialize prefix Multi-index keys
-                    univ_key = (level_key, 'univ', 'id')
-                    cell_key = (level_key, 'cell', 'id')
+                    univ_key = (level_key, "univ", "id")
+                    cell_key = (level_key, "cell", "id")
 
                     # Allocate NumPy arrays for each CSG level and
                     # each Multi-index column in the DataFrame
@@ -1767,7 +1845,7 @@ class DistribcellFilter(Filter):
                 for i, path in enumerate(paths):
 
                     level = path[i_level]
-                    if level[0] == 'lattice':
+                    if level[0] == "lattice":
                         # Assign entry to Lattice Multi-index column
                         level_dict[lat_id_key][i] = level[1]
                         level_dict[lat_x_key][i] = level[2][0]
@@ -1783,25 +1861,24 @@ class DistribcellFilter(Filter):
                 # Tile the Multi-index columns
                 for level_key, level_bins in level_dict.items():
                     level_dict[level_key] = _repeat_and_tile(
-                        level_bins, stride, data_size)
+                        level_bins, stride, data_size
+                    )
 
                 # Initialize a Pandas DataFrame from the level dictionary
                 if level_df is None:
                     level_df = pd.DataFrame(level_dict)
                 else:
-                    level_df = pd.concat([level_df, pd.DataFrame(level_dict)],
-                                         axis=1)
+                    level_df = pd.concat([level_df, pd.DataFrame(level_dict)], axis=1)
 
         # Create DataFrame column for distribcell instance IDs
         # NOTE: This is performed regardless of whether the user
         # requests Summary geometric information
-        filter_bins = _repeat_and_tile(
-            np.arange(self.num_bins), stride, data_size)
-        df = pd.DataFrame({self.short_name.lower() : filter_bins})
+        filter_bins = _repeat_and_tile(np.arange(self.num_bins), stride, data_size)
+        df = pd.DataFrame({self.short_name.lower(): filter_bins})
 
         # Concatenate with DataFrame of distribcell instance IDs
         if level_df is not None:
-            level_df = level_df.dropna(axis=1, how='all')
+            level_df = level_df.dropna(axis=1, how="all")
             level_df = level_df.astype(int)
             df = pd.concat([level_df, df], axis=1)
 
@@ -1836,18 +1913,19 @@ class MuFilter(RealFilter):
         The number of filter bins
 
     """
+
     def __init__(self, values, filter_id=None):
         if isinstance(values, Integral):
-            values = np.linspace(-1., 1., values + 1)
+            values = np.linspace(-1.0, 1.0, values + 1)
         super().__init__(values, filter_id)
 
     def check_bins(self, bins):
         super().check_bins(bins)
         for x in np.ravel(bins):
-            if not np.isclose(x, -1.):
-                cv.check_greater_than('filter value', x, -1., equality=True)
-            if not np.isclose(x, 1.):
-                cv.check_less_than('filter value', x, 1., equality=True)
+            if not np.isclose(x, -1.0):
+                cv.check_greater_than("filter value", x, -1.0, equality=True)
+            if not np.isclose(x, 1.0):
+                cv.check_less_than("filter value", x, 1.0, equality=True)
 
 
 class MuSurfaceFilter(MuFilter):
@@ -1885,6 +1963,7 @@ class MuSurfaceFilter(MuFilter):
         The number of filter bins
 
     """
+
     # Note: inherits implementation from MuFilter
 
 
@@ -1917,20 +1996,21 @@ class PolarFilter(RealFilter):
         The number of filter bins
 
     """
-    units = 'rad'
+
+    units = "rad"
 
     def __init__(self, values, filter_id=None):
         if isinstance(values, Integral):
-            values = np.linspace(0., np.pi, values + 1)
+            values = np.linspace(0.0, np.pi, values + 1)
         super().__init__(values, filter_id)
 
     def check_bins(self, bins):
         super().check_bins(bins)
         for x in np.ravel(bins):
-            if not np.isclose(x, 0.):
-                cv.check_greater_than('filter value', x, 0., equality=True)
+            if not np.isclose(x, 0.0):
+                cv.check_greater_than("filter value", x, 0.0, equality=True)
             if not np.isclose(x, np.pi):
-                cv.check_less_than('filter value', x, np.pi, equality=True)
+                cv.check_less_than("filter value", x, np.pi, equality=True)
 
 
 class AzimuthalFilter(RealFilter):
@@ -1961,7 +2041,8 @@ class AzimuthalFilter(RealFilter):
         The number of filter bins
 
     """
-    units = 'rad'
+
+    units = "rad"
 
     def __init__(self, values, filter_id=None):
         if isinstance(values, Integral):
@@ -1972,9 +2053,9 @@ class AzimuthalFilter(RealFilter):
         super().check_bins(bins)
         for x in np.ravel(bins):
             if not np.isclose(x, -np.pi):
-                cv.check_greater_than('filter value', x, -np.pi, equality=True)
+                cv.check_greater_than("filter value", x, -np.pi, equality=True)
             if not np.isclose(x, np.pi):
-                cv.check_less_than('filter value', x, np.pi, equality=True)
+                cv.check_less_than("filter value", x, np.pi, equality=True)
 
 
 class DelayedGroupFilter(Filter):
@@ -2001,10 +2082,11 @@ class DelayedGroupFilter(Filter):
         The number of filter bins
 
     """
+
     def check_bins(self, bins):
         # Check the bin values.
         for g in bins:
-            cv.check_greater_than('delayed group', g, 0)
+            cv.check_greater_than("delayed group", g, 0)
 
 
 class EnergyFunctionFilter(Filter):
@@ -2045,12 +2127,17 @@ class EnergyFunctionFilter(Filter):
     # keys selected to match those in function.py where possible
     # skip 6 b/c ENDF-6 reserves this value for
     # "special one-dimensional interpolation law"
-    INTERPOLATION_SCHEMES = {1: 'histogram', 2: 'linear-linear',
-                             3: 'linear-log', 4: 'log-linear',
-                             5: 'log-log', 7: 'quadratic',
-                             8: 'cubic'}
+    INTERPOLATION_SCHEMES = {
+        1: "histogram",
+        2: "linear-linear",
+        3: "linear-log",
+        4: "log-linear",
+        5: "log-log",
+        7: "quadratic",
+        8: "cubic",
+    }
 
-    def __init__(self, energy, y, interpolation='linear-linear', filter_id=None):
+    def __init__(self, energy, y, interpolation="linear-linear", filter_id=None):
         self.energy = energy
         self.y = y
         self.id = filter_id
@@ -2068,10 +2155,10 @@ class EnergyFunctionFilter(Filter):
 
     def __gt__(self, other):
         if type(self) is not type(other):
-            if self.short_name in _FILTER_TYPES and \
-                other.short_name in _FILTER_TYPES:
-                delta = _FILTER_TYPES.index(self.short_name) - \
-                        _FILTER_TYPES.index(other.short_name)
+            if self.short_name in _FILTER_TYPES and other.short_name in _FILTER_TYPES:
+                delta = _FILTER_TYPES.index(self.short_name) - _FILTER_TYPES.index(
+                    other.short_name
+                )
                 return delta > 0
             else:
                 return False
@@ -2080,10 +2167,10 @@ class EnergyFunctionFilter(Filter):
 
     def __lt__(self, other):
         if type(self) is not type(other):
-            if self.short_name in _FILTER_TYPES and \
-                other.short_name in _FILTER_TYPES:
-                delta = _FILTER_TYPES.index(self.short_name) - \
-                        _FILTER_TYPES.index(other.short_name)
+            if self.short_name in _FILTER_TYPES and other.short_name in _FILTER_TYPES:
+                delta = _FILTER_TYPES.index(self.short_name) - _FILTER_TYPES.index(
+                    other.short_name
+                )
                 return delta < 0
             else:
                 return False
@@ -2091,36 +2178,41 @@ class EnergyFunctionFilter(Filter):
             return False
 
     def __hash__(self):
-        string = type(self).__name__ + '\n'
-        string += '{: <16}=\t{}\n'.format('\tEnergy', self.energy)
-        string += '{: <16}=\t{}\n'.format('\tInterpolant', self.y)
-        string += '{: <16}=\t{}\n'.format('\tInterpolation', self.interpolation)
+        string = type(self).__name__ + "\n"
+        string += "{: <16}=\t{}\n".format("\tEnergy", self.energy)
+        string += "{: <16}=\t{}\n".format("\tInterpolant", self.y)
+        string += "{: <16}=\t{}\n".format("\tInterpolation", self.interpolation)
         return hash(string)
 
     def __repr__(self):
-        string = type(self).__name__ + '\n'
-        string += '{: <16}=\t{}\n'.format('\tEnergy', self.energy)
-        string += '{: <16}=\t{}\n'.format('\tInterpolant', self.y)
-        string += '{: <16}=\t{}\n'.format('\tInterpolation', self.interpolation)
-        string += '{: <16}=\t{}\n'.format('\tID', self.id)
+        string = type(self).__name__ + "\n"
+        string += "{: <16}=\t{}\n".format("\tEnergy", self.energy)
+        string += "{: <16}=\t{}\n".format("\tInterpolant", self.y)
+        string += "{: <16}=\t{}\n".format("\tInterpolation", self.interpolation)
+        string += "{: <16}=\t{}\n".format("\tID", self.id)
         return string
 
     @classmethod
     def from_hdf5(cls, group, **kwargs):
-        if group['type'][()].decode() != cls.short_name.lower():
-            raise ValueError("Expected HDF5 data for filter type '"
-                             + cls.short_name.lower() + "' but got '"
-                             + group['type'][()].decode() + " instead")
+        if group["type"][()].decode() != cls.short_name.lower():
+            raise ValueError(
+                "Expected HDF5 data for filter type '"
+                + cls.short_name.lower()
+                + "' but got '"
+                + group["type"][()].decode()
+                + " instead"
+            )
 
-        energy = group['energy'][()]
-        y_grp = group['y']
+        energy = group["energy"][()]
+        y_grp = group["y"]
         y = y_grp[()]
-        filter_id = int(group.name.split('/')[-1].lstrip('filter '))
+        filter_id = int(group.name.split("/")[-1].lstrip("filter "))
 
         out = cls(energy, y, filter_id=filter_id)
-        if 'interpolation' in y_grp.attrs:
-            out.interpolation =  \
-                cls.INTERPOLATION_SCHEMES[y_grp.attrs['interpolation'][()]]
+        if "interpolation" in y_grp.attrs:
+            out.interpolation = cls.INTERPOLATION_SCHEMES[
+                y_grp.attrs["interpolation"][()]
+            ]
 
         return out
 
@@ -2139,15 +2231,17 @@ class EnergyFunctionFilter(Filter):
         EnergyFunctionFilter
 
         """
-        cv.check_type('EnergyFunctionFilter tab1d', tab1d,
-                      openmc.data.Tabulated1D)
+        cv.check_type("EnergyFunctionFilter tab1d", tab1d, openmc.data.Tabulated1D)
         if tab1d.n_regions > 1:
-            raise ValueError('Only Tabulated1Ds with a single interpolation '
-                             'region are supported')
+            raise ValueError(
+                "Only Tabulated1Ds with a single interpolation " "region are supported"
+            )
         interpolation_val = tab1d.interpolation[0]
         if interpolation_val not in cls.INTERPOLATION_SCHEMES.keys():
-            raise ValueError('Only histogram, linear-linear, linear-log, log-linear, and '
-                             'log-log Tabulated1Ds are supported')
+            raise ValueError(
+                "Only histogram, linear-linear, linear-log, log-linear, and "
+                "log-log Tabulated1Ds are supported"
+            )
         return cls(tab1d.x, tab1d.y, cls.INTERPOLATION_SCHEMES[interpolation_val])
 
     @property
@@ -2160,9 +2254,9 @@ class EnergyFunctionFilter(Filter):
         energy = np.atleast_1d(energy)
 
         # Make sure the values are Real and positive.
-        cv.check_type('filter energy grid', energy, Iterable, Real)
+        cv.check_type("filter energy grid", energy, Iterable, Real)
         for E in energy:
-            cv.check_greater_than('filter energy grid', E, 0, equality=True)
+            cv.check_greater_than("filter energy grid", E, 0, equality=True)
 
         self._energy = energy
 
@@ -2176,7 +2270,7 @@ class EnergyFunctionFilter(Filter):
         y = np.atleast_1d(y)
 
         # Make sure the values are Real.
-        cv.check_type('filter interpolant values', y, Iterable, Real)
+        cv.check_type("filter interpolant values", y, Iterable, Real)
 
         self._y = y
 
@@ -2186,24 +2280,24 @@ class EnergyFunctionFilter(Filter):
 
     @interpolation.setter
     def interpolation(self, val):
-        cv.check_type('interpolation', val, str)
-        cv.check_value('interpolation', val, self.INTERPOLATION_SCHEMES.values())
+        cv.check_type("interpolation", val, str)
+        cv.check_value("interpolation", val, self.INTERPOLATION_SCHEMES.values())
 
-        if val == 'quadratic' and len(self.energy) < 3:
-            raise ValueError('Quadratic interpolation requires 3 or more values.')
+        if val == "quadratic" and len(self.energy) < 3:
+            raise ValueError("Quadratic interpolation requires 3 or more values.")
 
-        if val == 'cubic' and len(self.energy) < 4:
-            raise ValueError('Cubic interpolation requires 3 or more values.')
+        if val == "cubic" and len(self.energy) < 4:
+            raise ValueError("Cubic interpolation requires 3 or more values.")
 
         self._interpolation = val
 
     @property
     def bins(self):
-        raise AttributeError('EnergyFunctionFilters have no bins.')
+        raise AttributeError("EnergyFunctionFilters have no bins.")
 
     @bins.setter
     def bins(self, bins):
-        raise RuntimeError('EnergyFunctionFilters have no bins.')
+        raise RuntimeError("EnergyFunctionFilters have no bins.")
 
     @property
     def num_bins(self):
@@ -2218,29 +2312,29 @@ class EnergyFunctionFilter(Filter):
             XML element containing filter data
 
         """
-        element = ET.Element('filter')
-        element.set('id', str(self.id))
-        element.set('type', self.short_name.lower())
+        element = ET.Element("filter")
+        element.set("id", str(self.id))
+        element.set("type", self.short_name.lower())
 
-        subelement = ET.SubElement(element, 'energy')
-        subelement.text = ' '.join(str(e) for e in self.energy)
+        subelement = ET.SubElement(element, "energy")
+        subelement.text = " ".join(str(e) for e in self.energy)
 
-        subelement = ET.SubElement(element, 'y')
-        subelement.text = ' '.join(str(y) for y in self.y)
+        subelement = ET.SubElement(element, "y")
+        subelement.text = " ".join(str(y) for y in self.y)
 
-        subelement = ET.SubElement(element, 'interpolation')
+        subelement = ET.SubElement(element, "interpolation")
         subelement.text = self.interpolation
 
         return element
 
     @classmethod
     def from_xml_element(cls, elem, **kwargs):
-        filter_id = int(elem.get('id'))
-        energy = [float(x) for x in get_text(elem, 'energy').split()]
-        y = [float(x) for x in get_text(elem, 'y').split()]
+        filter_id = int(elem.get("id"))
+        energy = [float(x) for x in get_text(elem, "energy").split()]
+        y = [float(x) for x in get_text(elem, "y").split()]
         out = cls(energy, y, filter_id=filter_id)
-        if elem.find('interpolation') is not None:
-            out.interpolation = elem.find('interpolation').text
+        if elem.find("interpolation") is not None:
+            out.interpolation = elem.find("interpolation").text
         return out
 
     def can_merge(self, other):
@@ -2289,7 +2383,7 @@ class EnergyFunctionFilter(Filter):
         # reproducible after restarting the interpreter so we'll use hashlib.md5
         # rather than the intrinsic hash().
         hash_fun = hashlib.md5()
-        hash_fun.update(repr(self).encode('utf-8'))
+        hash_fun.update(repr(self).encode("utf-8"))
         out = hash_fun.hexdigest()
 
         # The full 16 bytes make for a really wide column.  Just 7 bytes (14
@@ -2297,7 +2391,6 @@ class EnergyFunctionFilter(Filter):
         out = out[:14]
 
         filter_bins = _repeat_and_tile(out, stride, data_size)
-        df = pd.concat([df, pd.DataFrame(
-            {self.short_name.lower(): filter_bins})])
+        df = pd.concat([df, pd.DataFrame({self.short_name.lower(): filter_bins})])
 
         return df

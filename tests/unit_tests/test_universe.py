@@ -10,8 +10,8 @@ def test_basic():
     c1 = openmc.Cell()
     c2 = openmc.Cell()
     c3 = openmc.Cell()
-    u = openmc.Universe(name='cool', cells=(c1, c2, c3))
-    assert u.name == 'cool'
+    u = openmc.Universe(name="cool", cells=(c1, c2, c3))
+    assert u.name == "cool"
 
     cells = set(u.cells.values())
     assert not (cells ^ {c1, c2, c3})
@@ -40,8 +40,8 @@ def test_bounding_box():
 
     u = openmc.Universe(cells=[c1, c2])
     ll, ur = u.bounding_box
-    assert ll == pytest.approx((-2., -2., -np.inf))
-    assert ur == pytest.approx((2., 2., np.inf))
+    assert ll == pytest.approx((-2.0, -2.0, -np.inf))
+    assert ur == pytest.approx((2.0, 2.0, np.inf))
 
     u = openmc.Universe()
     assert_unbounded(u)
@@ -56,10 +56,10 @@ def test_plot(run_in_tmpdir, sphere_model):
     mat_colors = {
         materials[0]: (200, 1, 1),
         materials[1]: "gray",
-        materials[2]: "limegreen"
+        materials[2]: "limegreen",
     }
 
-    for basis in ('xy', 'yz', 'xz'):
+    for basis in ("xy", "yz", "xz"):
         plot = pincell.geometry.root_universe.plot(
             colors=mat_colors,
             color_by="material",
@@ -67,28 +67,28 @@ def test_plot(run_in_tmpdir, sphere_model):
             pixels=(10, 10),
             basis=basis,
             outline=True,
-            axis_units='m'
+            axis_units="m",
         )
-        assert plot.xaxis.get_label().get_text() == f'{basis[0]} [m]'
-        assert plot.yaxis.get_label().get_text() == f'{basis[1]} [m]'
+        assert plot.xaxis.get_label().get_text() == f"{basis[0]} [m]"
+        assert plot.yaxis.get_label().get_text() == f"{basis[1]} [m]"
 
     # model with no inf values in bounding box
     m = sphere_model.materials[0]
     univ = sphere_model.geometry.root_universe
 
-    colors = {m: 'limegreen'}
+    colors = {m: "limegreen"}
 
-    for basis in ('xy', 'yz', 'xz'):
+    for basis in ("xy", "yz", "xz"):
         plot = univ.plot(
             colors=colors,
             color_by="cell",
             legend=False,
             pixels=100,
             basis=basis,
-            outline=False
+            outline=False,
         )
-        assert plot.xaxis.get_label().get_text() == f'{basis[0]} [cm]'
-        assert plot.yaxis.get_label().get_text() == f'{basis[1]} [cm]'
+        assert plot.xaxis.get_label().get_text() == f"{basis[0]} [cm]"
+        assert plot.yaxis.get_label().get_text() == f"{basis[1]} [cm]"
 
     msg = "Must pass 'colors' dictionary if you are adding a legend via legend=True."
     # This plot call should fail as legend is True but colors is None
@@ -104,7 +104,7 @@ def test_get_nuclides(uo2):
     c = openmc.Cell(fill=uo2)
     univ = openmc.Universe(cells=[c])
     nucs = univ.get_nuclides()
-    assert nucs == ['U235', 'O16']
+    assert nucs == ["U235", "O16"]
 
 
 def test_cells():
@@ -146,8 +146,8 @@ def test_clone():
     c2 = openmc.Cell(cell_id=2)
     c2.fill = openmc.Material()
     c3 = openmc.Cell()
-    u1 = openmc.Universe(name='cool', cells=(c1, c2, c3))
-    u1.volume = 1.
+    u1 = openmc.Universe(name="cool", cells=(c1, c2, c3))
+    u1.volume = 1.0
 
     u2 = u1.clone()
     assert u2.name == u1.name
@@ -159,18 +159,17 @@ def test_clone():
     assert u2.get_all_materials() == u1.get_all_materials()
 
     u3 = u1.clone(clone_regions=False)
-    assert next(iter(u3.cells.values())).region ==\
-         next(iter(u1.cells.values())).region
+    assert next(iter(u3.cells.values())).region == next(iter(u1.cells.values())).region
 
     # Change attributes, make sure clone stays intact
-    u1.volume = 2.
+    u1.volume = 2.0
     u1.name = "different name"
     assert u3.volume != u1.volume
     assert u3.name != u1.name
 
     # Test cloning a DAGMC universe
     dagmc_u = openmc.DAGMCUniverse(filename="", name="DAGMC universe")
-    dagmc_u.volume = 1.
+    dagmc_u.volume = 1.0
     dagmc_u.auto_geom_ids = True
     dagmc_u.auto_mat_ids = True
     dagmc_u1 = dagmc_u.clone()
@@ -183,7 +182,7 @@ def test_clone():
     dagmc_u.name = "another name"
     dagmc_u.auto_geom_ids = False
     dagmc_u.auto_mat_ids = False
-    dagmc_u.volume = 2.
+    dagmc_u.volume = 2.0
     assert dagmc_u1.name != dagmc_u.name
     assert dagmc_u1.volume != dagmc_u.volume
     assert dagmc_u1.auto_geom_ids != dagmc_u.auto_geom_ids
@@ -194,13 +193,12 @@ def test_create_xml(cell_with_lattice):
     cells = [openmc.Cell() for i in range(5)]
     u = openmc.Universe(cells=cells)
 
-    geom = ET.Element('geom')
+    geom = ET.Element("geom")
     u.create_xml_subelement(geom)
-    cell_elems = geom.findall('cell')
+    cell_elems = geom.findall("cell")
     assert len(cell_elems) == len(cells)
-    assert all(c.get('universe') == str(u.id) for c in cell_elems)
-    assert not (set(c.get('id') for c in cell_elems) ^
-                set(str(c.id) for c in cells))
+    assert all(c.get("universe") == str(u.id) for c in cell_elems)
+    assert not (set(c.get("id") for c in cell_elems) ^ set(str(c.id) for c in cells))
 
 
 def test_get_nuclide_densities():

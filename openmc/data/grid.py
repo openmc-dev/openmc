@@ -42,14 +42,14 @@ def linearize(x, f, tolerance=0.001):
             y_high, y_low = y_stack[-2:]
 
             # Evaluate the function at the midpoint
-            x_mid = 0.5*(x_low + x_high)
+            x_mid = 0.5 * (x_low + x_high)
             y_mid = f(x_mid)
 
             # Linearly interpolate between the bounding points
-            y_interp = y_low + (y_high - y_low)/(x_high - x_low)*(x_mid - x_low)
+            y_interp = y_low + (y_high - y_low) / (x_high - x_low) * (x_mid - x_low)
 
             # Check the error on the interpolated point and compare to tolerance
-            error = abs((y_interp - y_mid)/y_mid)
+            error = abs((y_interp - y_mid) / y_mid)
             if error > tolerance:
                 x_stack.insert(-1, x_mid)
                 y_stack.insert(-1, y_mid)
@@ -63,6 +63,7 @@ def linearize(x, f, tolerance=0.001):
     y_out.append(y_stack.pop())
 
     return np.array(x_out), np.array(y_out)
+
 
 def thin(x, y, tolerance=0.001):
     """Check for (x,y) points that can be removed.
@@ -93,15 +94,15 @@ def thin(x, y, tolerance=0.001):
     i_right = 2
 
     while i_left < N - 2 and i_right < N:
-        m = (y[i_right] - y[i_left])/(x[i_right] - x[i_left])
+        m = (y[i_right] - y[i_left]) / (x[i_right] - x[i_left])
 
         for i in range(i_left + 1, i_right):
             # Determine error in interpolated point
-            y_interp = y[i_left] + m*(x[i] - x[i_left])
-            if abs(y[i]) > 0.:
-                error = abs((y_interp - y[i])/y[i])
+            y_interp = y[i_left] + m * (x[i] - x[i_left])
+            if abs(y[i]) > 0.0:
+                error = abs((y_interp - y[i]) / y[i])
             else:
-                error = 2*tolerance
+                error = 2 * tolerance
 
             if error > tolerance:
                 for i_remove in range(i_left + 1, i_right - 1):

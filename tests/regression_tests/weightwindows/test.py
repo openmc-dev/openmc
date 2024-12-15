@@ -14,8 +14,8 @@ def model():
 
     # materials (M4 steel alloy)
     m4 = openmc.Material()
-    m4.set_density('g/cc', 2.3)
-    m4.add_nuclide('H1', 0.168018676)
+    m4.set_density("g/cc", 2.3)
+    m4.add_nuclide("H1", 0.168018676)
     m4.add_nuclide("H2", 1.93244e-05)
     m4.add_nuclide("O16", 0.561814465)
     m4.add_nuclide("O17", 0.00021401)
@@ -36,7 +36,7 @@ def model():
     m4.add_nuclide("Fe58", 1.19737e-05)
 
     s0 = openmc.Sphere(r=240)
-    s1 = openmc.Sphere(r=250, boundary_type='vacuum')
+    s1 = openmc.Sphere(r=250, boundary_type="vacuum")
 
     c0 = openmc.Cell(fill=m4, region=-s0)
     c1 = openmc.Cell(region=+s0 & -s1)
@@ -45,13 +45,13 @@ def model():
 
     # settings
     settings = model.settings
-    settings.run_mode = 'fixed source'
+    settings.run_mode = "fixed source"
     settings.particles = 200
     settings.batches = 2
     settings.max_history_splits = 200
     settings.photon_transport = True
     space = Point((0.001, 0.001, 0.001))
-    energy = Discrete([14E6], [1.0])
+    energy = Discrete([14e6], [1.0])
 
     settings.source = openmc.IndependentSource(space=space, energy=energy)
 
@@ -63,14 +63,14 @@ def model():
 
     mesh_filter = openmc.MeshFilter(mesh)
 
-    e_bnds = [0.0, 0.5, 2E7]
+    e_bnds = [0.0, 0.5, 2e7]
     energy_filter = openmc.EnergyFilter(e_bnds)
 
-    particle_filter = openmc.ParticleFilter(['neutron', 'photon'])
+    particle_filter = openmc.ParticleFilter(["neutron", "photon"])
 
     tally = openmc.Tally()
     tally.filters = [mesh_filter, energy_filter, particle_filter]
-    tally.scores = ['flux']
+    tally.scores = ["flux"]
 
     model.tallies.append(tally)
 
@@ -78,8 +78,8 @@ def model():
 
     # load pre-generated weight windows
     # (created using the same tally as above)
-    ww_n_lower_bnds = np.loadtxt('ww_n.txt')
-    ww_p_lower_bnds = np.loadtxt('ww_p.txt')
+    ww_n_lower_bnds = np.loadtxt("ww_n.txt")
+    ww_p_lower_bnds = np.loadtxt("ww_p.txt")
 
     # create a mesh matching the one used
     # to generate the weight windows
@@ -88,19 +88,13 @@ def model():
     ww_mesh.upper_right = (240, 240, 240)
     ww_mesh.dimension = (5, 6, 7)
 
-    ww_n = openmc.WeightWindows(ww_mesh,
-                                ww_n_lower_bnds,
-                                None,
-                                10.0,
-                                e_bnds,
-                                max_lower_bound_ratio=1.5)
+    ww_n = openmc.WeightWindows(
+        ww_mesh, ww_n_lower_bnds, None, 10.0, e_bnds, max_lower_bound_ratio=1.5
+    )
 
-    ww_p = openmc.WeightWindows(ww_mesh,
-                                ww_p_lower_bnds,
-                                None,
-                                10.0,
-                                e_bnds,
-                                max_lower_bound_ratio=1.5)
+    ww_p = openmc.WeightWindows(
+        ww_mesh, ww_p_lower_bnds, None, 10.0, e_bnds, max_lower_bound_ratio=1.5
+    )
 
     model.settings.weight_windows = [ww_n, ww_p]
 
@@ -108,29 +102,35 @@ def model():
 
 
 def test_weightwindows(model):
-    test = HashedPyAPITestHarness('statepoint.2.h5', model)
+    test = HashedPyAPITestHarness("statepoint.2.h5", model)
     test.main()
 
 
 def test_wwinp_cylindrical():
 
-    ww = openmc.wwinp_to_wws('ww_n_cyl.txt')[0]
+    ww = openmc.wwinp_to_wws("ww_n_cyl.txt")[0]
 
     mesh = ww.mesh
 
     assert mesh.dimension == (8, 8, 7)
 
     # make sure that the mesh grids are correct
-    exp_r_grid = np.hstack((np.linspace(0.0, 3.02, 3, endpoint=False),
-                            np.linspace(3.02, 6.0001, 6))).flatten()
+    exp_r_grid = np.hstack(
+        (np.linspace(0.0, 3.02, 3, endpoint=False), np.linspace(3.02, 6.0001, 6))
+    ).flatten()
 
-    exp_phi_grid = np.hstack((np.linspace(0.0, 0.25, 2, endpoint=False),
-                              np.linspace(0.25, 1.5707, 1, endpoint=False),
-                              np.linspace(1.5707, 3.1415, 2, endpoint=False),
-                              np.linspace(3.1415, 4.7124, 4))).flatten()
+    exp_phi_grid = np.hstack(
+        (
+            np.linspace(0.0, 0.25, 2, endpoint=False),
+            np.linspace(0.25, 1.5707, 1, endpoint=False),
+            np.linspace(1.5707, 3.1415, 2, endpoint=False),
+            np.linspace(3.1415, 4.7124, 4),
+        )
+    ).flatten()
 
-    exp_z_grid = np.hstack((np.linspace(0.0, 8.008, 4, endpoint=False),
-                            np.linspace(8.008, 14.002, 4))).flatten()
+    exp_z_grid = np.hstack(
+        (np.linspace(0.0, 8.008, 4, endpoint=False), np.linspace(8.008, 14.002, 4))
+    ).flatten()
 
     assert isinstance(mesh, openmc.CylindricalMesh)
 
@@ -144,25 +144,34 @@ def test_wwinp_cylindrical():
 
 def test_wwinp_spherical():
 
-    ww = openmc.wwinp_to_wws('ww_n_sph.txt')[0]
+    ww = openmc.wwinp_to_wws("ww_n_sph.txt")[0]
 
     mesh = ww.mesh
 
     assert mesh.dimension == (8, 7, 8)
 
     # make sure that the mesh grids are correct
-    exp_r_grid = np.hstack((np.linspace(0.0, 3.02, 3, endpoint=False),
-                            np.linspace(3.02, 6.0001, 6))).flatten()
+    exp_r_grid = np.hstack(
+        (np.linspace(0.0, 3.02, 3, endpoint=False), np.linspace(3.02, 6.0001, 6))
+    ).flatten()
 
-    exp_theta_grid = np.hstack((np.linspace(0.0, 0.25, 2, endpoint=False),
-                              np.linspace(0.25, 0.5, 1, endpoint=False),
-                              np.linspace(0.5, 0.75, 2, endpoint=False),
-                              np.linspace(0.75, 1.5707, 3))).flatten()
+    exp_theta_grid = np.hstack(
+        (
+            np.linspace(0.0, 0.25, 2, endpoint=False),
+            np.linspace(0.25, 0.5, 1, endpoint=False),
+            np.linspace(0.5, 0.75, 2, endpoint=False),
+            np.linspace(0.75, 1.5707, 3),
+        )
+    ).flatten()
 
-    exp_phi_grid = np.hstack((np.linspace(0.0, 0.25, 2, endpoint=False),
-                              np.linspace(0.25, 0.5, 1, endpoint=False),
-                              np.linspace(0.5, 1.5707, 2, endpoint=False),
-                              np.linspace(1.5707, 3.1415, 4))).flatten()
+    exp_phi_grid = np.hstack(
+        (
+            np.linspace(0.0, 0.25, 2, endpoint=False),
+            np.linspace(0.25, 0.5, 1, endpoint=False),
+            np.linspace(0.5, 1.5707, 2, endpoint=False),
+            np.linspace(1.5707, 3.1415, 4),
+        )
+    ).flatten()
 
     assert isinstance(mesh, openmc.SphericalMesh)
 

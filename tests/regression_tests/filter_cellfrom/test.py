@@ -95,9 +95,12 @@ def model():
 
     # Surfaces
     box1_rpp = openmc.model.RectangularParallelepiped(
-        -box1_size / 2.0, box1_size / 2.0,
-        -box1_size / 2.0, box1_size / 2.0,
-        -box1_size / 2.0, box1_size / 2.0,
+        -box1_size / 2.0,
+        box1_size / 2.0,
+        -box1_size / 2.0,
+        box1_size / 2.0,
+        -box1_size / 2.0,
+        box1_size / 2.0,
     )
 
     # Cell
@@ -112,10 +115,13 @@ def model():
 
     # Surfaces
     box2_rpp = openmc.model.RectangularParallelepiped(
-        -box2_size / 2.0, box2_size / 2.0,
-        -box2_size / 2.0, box2_size / 2.0,
-        -box2_size / 2.0, box2_size / 2.0,
-        boundary_type="vacuum"
+        -box2_size / 2.0,
+        box2_size / 2.0,
+        -box2_size / 2.0,
+        box2_size / 2.0,
+        -box2_size / 2.0,
+        box2_size / 2.0,
+        boundary_type="vacuum",
     )
 
     # Cell
@@ -144,7 +150,8 @@ def model():
     ]
     distribution = openmc.stats.Box(bounds[:3], bounds[3:])
     model.settings.source = openmc.IndependentSource(
-        space=distribution, constraints={'fissionable': True})
+        space=distribution, constraints={"fissionable": True}
+    )
 
     # =============================================================================
     # Tallies

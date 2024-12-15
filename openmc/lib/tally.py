@@ -14,7 +14,7 @@ from .error import _error_handler
 from .filter import _get_filter
 
 
-__all__ = ['Tally', 'tallies', 'global_tallies', 'num_realizations']
+__all__ = ["Tally", "tallies", "global_tallies", "num_realizations"]
 
 # Tally functions
 _dll.openmc_extend_tallies.argtypes = [c_int32, POINTER(c_int32), POINTER(c_int32)]
@@ -36,7 +36,10 @@ _dll.openmc_tally_get_id.argtypes = [c_int32, POINTER(c_int32)]
 _dll.openmc_tally_get_id.restype = c_int
 _dll.openmc_tally_get_id.errcheck = _error_handler
 _dll.openmc_tally_get_filters.argtypes = [
-    c_int32, POINTER(POINTER(c_int32)), POINTER(c_size_t)]
+    c_int32,
+    POINTER(POINTER(c_int32)),
+    POINTER(c_size_t),
+]
 _dll.openmc_tally_get_filters.restype = c_int
 _dll.openmc_tally_get_filters.errcheck = _error_handler
 _dll.openmc_tally_get_multiply_density.argtypes = [c_int32, POINTER(c_bool)]
@@ -46,11 +49,17 @@ _dll.openmc_tally_get_n_realizations.argtypes = [c_int32, POINTER(c_int32)]
 _dll.openmc_tally_get_n_realizations.restype = c_int
 _dll.openmc_tally_get_n_realizations.errcheck = _error_handler
 _dll.openmc_tally_get_nuclides.argtypes = [
-    c_int32, POINTER(POINTER(c_int)), POINTER(c_int)]
+    c_int32,
+    POINTER(POINTER(c_int)),
+    POINTER(c_int),
+]
 _dll.openmc_tally_get_nuclides.restype = c_int
 _dll.openmc_tally_get_nuclides.errcheck = _error_handler
 _dll.openmc_tally_get_scores.argtypes = [
-    c_int32, POINTER(POINTER(c_int)), POINTER(c_int)]
+    c_int32,
+    POINTER(POINTER(c_int)),
+    POINTER(c_int),
+]
 _dll.openmc_tally_get_scores.restype = c_int
 _dll.openmc_tally_get_scores.errcheck = _error_handler
 _dll.openmc_tally_get_type.argtypes = [c_int32, POINTER(c_int32)]
@@ -63,7 +72,10 @@ _dll.openmc_tally_reset.argtypes = [c_int32]
 _dll.openmc_tally_reset.restype = c_int
 _dll.openmc_tally_reset.errcheck = _error_handler
 _dll.openmc_tally_results.argtypes = [
-    c_int32, POINTER(POINTER(c_double)), POINTER(c_size_t*3)]
+    c_int32,
+    POINTER(POINTER(c_double)),
+    POINTER(c_size_t * 3),
+]
 _dll.openmc_tally_results.restype = c_int
 _dll.openmc_tally_results.errcheck = _error_handler
 _dll.openmc_tally_set_active.argtypes = [c_int32, c_bool]
@@ -100,18 +112,26 @@ _dll.tallies_size.restype = c_size_t
 
 
 _SCORES = {
-    -1: 'flux', -2: 'total', -3: 'scatter', -4: 'nu-scatter',
-    -5: 'absorption', -6: 'fission', -7: 'nu-fission', -8: 'kappa-fission',
-    -9: 'current', -10: 'events', -11: 'delayed-nu-fission',
-    -12: 'prompt-nu-fission', -13: 'inverse-velocity', -14: 'fission-q-prompt',
-    -15: 'fission-q-recoverable', -16: 'decay-rate', -17: 'pulse-height'
+    -1: "flux",
+    -2: "total",
+    -3: "scatter",
+    -4: "nu-scatter",
+    -5: "absorption",
+    -6: "fission",
+    -7: "nu-fission",
+    -8: "kappa-fission",
+    -9: "current",
+    -10: "events",
+    -11: "delayed-nu-fission",
+    -12: "prompt-nu-fission",
+    -13: "inverse-velocity",
+    -14: "fission-q-prompt",
+    -15: "fission-q-recoverable",
+    -16: "decay-rate",
+    -17: "pulse-height",
 }
-_ESTIMATORS = {
-    0: 'analog', 1: 'tracklength', 2: 'collision'
-}
-_TALLY_TYPES = {
-    0: 'volume', 1: 'mesh-surface', 2: 'surface', 3: 'pulse-height'
-}
+_ESTIMATORS = {0: "analog", 1: "tracklength", 2: "collision"}
+_TALLY_TYPES = {0: "volume", 1: "mesh-surface", 2: "surface", 3: "pulse-height"}
 
 
 def global_tallies():
@@ -143,14 +163,14 @@ def global_tallies():
     stdev = np.empty_like(mean)
     stdev.fill(np.inf)
     if n > 1:
-        stdev[nonzero] = np.sqrt((sum_sq[nonzero]/n - mean[nonzero]**2)/(n - 1))
+        stdev[nonzero] = np.sqrt((sum_sq[nonzero] / n - mean[nonzero] ** 2) / (n - 1))
 
     return list(zip(mean, stdev))
 
 
 def num_realizations():
     """Number of realizations of global tallies."""
-    return c_int32.in_dll(_dll, 'n_realizations').value
+    return c_int32.in_dll(_dll, "n_realizations").value
 
 
 class Tally(_FortranObjectWithID):
@@ -196,6 +216,7 @@ class Tally(_FortranObjectWithID):
         Type of tally (volume, mesh_surface, surface)
 
     """
+
     __instances = WeakValueDictionary()
 
     def __new__(cls, uid=None, new=True, index=None):
@@ -207,8 +228,10 @@ class Tally(_FortranObjectWithID):
                     uid = max(mapping, default=0) + 1
                 else:
                     if uid in mapping:
-                        raise AllocationError('A tally with ID={} has already '
-                                              'been allocated.'.format(uid))
+                        raise AllocationError(
+                            "A tally with ID={} has already "
+                            "been allocated.".format(uid)
+                        )
 
                 index = c_int32()
                 _dll.openmc_extend_tallies(1, index, None)
@@ -276,7 +299,7 @@ class Tally(_FortranObjectWithID):
     def filters(self, filters):
         # Get filter indices as int32_t[]
         n = len(filters)
-        indices = (c_int32*n)(*(f._index for f in filters))
+        indices = (c_int32 * n)(*(f._index for f in filters))
 
         _dll.openmc_tally_set_filters(self._index, n, indices)
 
@@ -302,7 +325,7 @@ class Tally(_FortranObjectWithID):
             if isinstance(filter, filter_type):
                 return filter
 
-        raise ValueError(f'No filter of type {filter_type} on tally {self.id}')
+        raise ValueError(f"No filter of type {filter_type} on tally {self.id}")
 
     @property
     def mean(self):
@@ -318,8 +341,9 @@ class Tally(_FortranObjectWithID):
         nucs = POINTER(c_int)()
         n = c_int()
         _dll.openmc_tally_get_nuclides(self._index, nucs, n)
-        return [Nuclide(nucs[i]).name if nucs[i] >= 0 else 'total'
-                for i in range(n.value)]
+        return [
+            Nuclide(nucs[i]).name if nucs[i] >= 0 else "total" for i in range(n.value)
+        ]
 
     @nuclides.setter
     def nuclides(self, nuclides):
@@ -336,7 +360,7 @@ class Tally(_FortranObjectWithID):
     @property
     def results(self):
         data = POINTER(c_double)()
-        shape = (c_size_t*3)()
+        shape = (c_size_t * 3)()
         _dll.openmc_tally_results(self._index, data, shape)
         return as_array(data, tuple(shape))
 
@@ -383,7 +407,8 @@ class Tally(_FortranObjectWithID):
 
             # Calculate sample standard deviation of the mean
             std_dev[nonzero] = np.sqrt(
-                (sum_sq[nonzero]/n - mean[nonzero]**2)/(n - 1))
+                (sum_sq[nonzero] / n - mean[nonzero] ** 2) / (n - 1)
+            )
 
         return std_dev
 
@@ -428,7 +453,7 @@ class Tally(_FortranObjectWithID):
         half_width = self.std_dev.copy()
         n = self.num_realizations
         if n > 1:
-            half_width *= scipy.stats.t.ppf(1 - alpha/2, n - 1)
+            half_width *= scipy.stats.t.ppf(1 - alpha / 2, n - 1)
         return half_width
 
 
@@ -455,5 +480,6 @@ class _TallyMapping(Mapping):
     def __delitem__(self, key):
         """Delete a tally from tally vector and remove the ID,index pair from tally"""
         _dll.openmc_remove_tally(self[key]._index)
+
 
 tallies = _TallyMapping()

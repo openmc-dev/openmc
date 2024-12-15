@@ -2,7 +2,7 @@ import openmc
 
 
 def test_musurface(run_in_tmpdir):
-    sphere = openmc.Sphere(r=1.0, boundary_type='vacuum')
+    sphere = openmc.Sphere(r=1.0, boundary_type="vacuum")
     cell = openmc.Cell(region=-sphere)
     model = openmc.Model()
     model.geometry = openmc.Geometry([cell])
@@ -20,7 +20,7 @@ def test_musurface(run_in_tmpdir):
     filter2 = openmc.SurfaceFilter(sphere)
     tally = openmc.Tally()
     tally.filters = [filter1, filter2]
-    tally.scores = ['current']
+    tally.scores = ["current"]
     model.tallies = openmc.Tallies([tally])
 
     # Run OpenMC
@@ -34,5 +34,3 @@ def test_musurface(run_in_tmpdir):
     assert current_mu[-1] == 1.0
     for element in current_mu[:-1]:
         assert element == 0.0
-
-

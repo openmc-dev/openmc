@@ -12,7 +12,7 @@ from tests.testing_harness import TolerantPyAPITestHarness
 class MGXSTestHarness(TolerantPyAPITestHarness):
     def _cleanup(self):
         super()._cleanup()
-        f = 'mgxs.h5'
+        f = "mgxs.h5"
         if os.path.exists(f):
             os.remove(f)
 
@@ -22,8 +22,8 @@ def test_random_ray_fixed_source_linear(shape):
     with change_directory(shape):
         openmc.reset_auto_ids()
         model = random_ray_three_region_cube()
-        model.settings.random_ray['source_shape'] = shape
+        model.settings.random_ray["source_shape"] = shape
         model.settings.inactive = 20
         model.settings.batches = 40
-        harness = MGXSTestHarness('statepoint.40.h5', model)
+        harness = MGXSTestHarness("statepoint.40.h5", model)
         harness.main()

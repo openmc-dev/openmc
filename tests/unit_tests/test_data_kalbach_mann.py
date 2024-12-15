@@ -15,37 +15,37 @@ from openmc.data import KalbachMann
 from . import needs_njoy
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def neutron():
     """Neutron AtomicRepresentation."""
     return _AtomicRepresentation(z=0, a=1)
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def triton():
     """Triton AtomicRepresentation."""
     return _AtomicRepresentation(z=1, a=3)
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def b10():
     """B10 AtomicRepresentation."""
     return _AtomicRepresentation(z=5, a=10)
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def c12():
     """C12 AtomicRepresentation."""
     return _AtomicRepresentation(z=6, a=12)
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def c13():
     """C13 AtomicRepresentation."""
     return _AtomicRepresentation(z=6, a=13)
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def na23():
     """Na23 AtomicRepresentation."""
     return _AtomicRepresentation(z=11, a=23)
@@ -91,9 +91,7 @@ def test_atomic_representation(neutron, triton, b10, c12, c13, na23):
 def test_separation_energy(triton, b10, c13):
     """Comparison to hand-calculations on a simple example."""
     assert _separation_energy(
-        compound=c13,
-        nucleus=b10,
-        particle=triton
+        compound=c13, nucleus=b10, particle=triton
     ) == pytest.approx(18.6880713)
 
 
@@ -110,7 +108,7 @@ def test_kalbach_slope():
             energy_emitted=energy_emitted,
             za_projectile=1000,
             za_emitted=1,
-            za_target=6012
+            za_target=6012,
         )
 
     assert kalbach_slope(
@@ -118,16 +116,17 @@ def test_kalbach_slope():
         energy_emitted=energy_emitted,
         za_projectile=1,
         za_emitted=1003,
-        za_target=6012
+        za_target=6012,
     ) == pytest.approx(0.8409921475)
 
 
 @pytest.mark.parametrize(
-    "hdf5_filename, endf_filename", [
-        ('O16.h5', 'n-008_O_016.endf'),
-        ('Ca46.h5', 'n-020_Ca_046.endf'),
-        ('Hg204.h5', 'n-080_Hg_204.endf')
-    ]
+    "hdf5_filename, endf_filename",
+    [
+        ("O16.h5", "n-008_O_016.endf"),
+        ("Ca46.h5", "n-020_Ca_046.endf"),
+        ("Hg204.h5", "n-080_Hg_204.endf"),
+    ],
 )
 def test_comparison_slope_hdf5(hdf5_filename, endf_filename):
     """Test the calculation of the Kalbach-Mann slope done by OpenMC
@@ -147,14 +146,14 @@ def test_comparison_slope_hdf5(hdf5_filename, endf_filename):
 
     """
     # HDF5 data
-    hdf5_directory = Path(os.environ['OPENMC_CROSS_SECTIONS']).parent
+    hdf5_directory = Path(os.environ["OPENMC_CROSS_SECTIONS"]).parent
     hdf5_data = IncidentNeutron.from_hdf5(hdf5_directory / hdf5_filename)
     hdf5_product = hdf5_data[5].products[0]
     hdf5_distribution = hdf5_product.distribution[0]
 
     # ENDF data
-    endf_directory = Path(os.environ['OPENMC_ENDF_DATA'])
-    endf_path = endf_directory / 'neutrons' / endf_filename
+    endf_directory = Path(os.environ["OPENMC_ENDF_DATA"])
+    endf_path = endf_directory / "neutrons" / endf_filename
     endf_data = IncidentNeutron.from_endf(endf_path)
     endf_product = endf_data[5].products[0]
     endf_distribution = endf_product.distribution[0]
@@ -170,7 +169,5 @@ def test_comparison_slope_hdf5(hdf5_filename, endf_filename):
         assert endf_distribution._calculated_slope[i]
 
         np.testing.assert_array_almost_equal(
-            endf_distribution.slope[i].y,
-            hdf5_slope.y,
-            decimal=5
+            endf_distribution.slope[i].y, hdf5_slope.y, decimal=5
         )

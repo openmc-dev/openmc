@@ -39,8 +39,9 @@ void Universe::to_hdf5(hid_t universes_group) const
 
 bool Universe::find_cell(GeometryState& p) const
 {
-  const auto& cells {
-    !partitioner_ ? cells_ : partitioner_->get_cells(p.r_local(), p.u_local(), p.time())};
+  const auto& cells {!partitioner_ ? cells_
+                                   : partitioner_->get_cells(
+                                       p.r_local(), p.u_local(), p.time())};
 
   Position r {p.r_local()};
   Position u {p.u_local()};

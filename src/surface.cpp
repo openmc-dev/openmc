@@ -262,8 +262,8 @@ double CSGSurface::evaluate(Position r, double t) const
   // The surface moves
 
   // Get moving index
-  int idx = lower_bound_index(
-    moving_time_grid_.begin(), moving_time_grid_.end(), t);
+  int idx =
+    lower_bound_index(moving_time_grid_.begin(), moving_time_grid_.end(), t);
 
   // Get moving translation, velocity, and starting time
   Position translation = moving_translations_[idx];
@@ -273,7 +273,7 @@ double CSGSurface::evaluate(Position r, double t) const
   // Move the position relative to the surface movement
   double t_local = t - time_0;
   Position r_moved = r - (translation + velocity * t_local);
- 
+
   // Evaluate the moved position
   return _evaluate(r_moved);
 }

@@ -812,7 +812,8 @@ std::pair<double, int32_t> Region::distance(
 
 //==============================================================================
 
-bool Region::contains(Position r, Direction u, double t, int32_t on_surface) const
+bool Region::contains(
+  Position r, Direction u, double t, int32_t on_surface) const
 {
   if (simple_) {
     return contains_simple(r, u, t, on_surface);
@@ -823,7 +824,8 @@ bool Region::contains(Position r, Direction u, double t, int32_t on_surface) con
 
 //==============================================================================
 
-bool Region::contains_simple(Position r, Direction u, double t, int32_t on_surface) const
+bool Region::contains_simple(
+  Position r, Direction u, double t, int32_t on_surface) const
 {
   for (int32_t token : expression_) {
     // Assume that no tokens are operators. Evaluate the sense of particle with
@@ -846,7 +848,8 @@ bool Region::contains_simple(Position r, Direction u, double t, int32_t on_surfa
 
 //==============================================================================
 
-bool Region::contains_complex(Position r, Direction u, double t, int32_t on_surface) const
+bool Region::contains_complex(
+  Position r, Direction u, double t, int32_t on_surface) const
 {
   bool in_cell = true;
   int total_depth = 0;

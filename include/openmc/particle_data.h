@@ -301,7 +301,7 @@ public:
   const double& time() const { return time_; }
   double& time_last() { return time_last_; }
   const double& time_last() const { return time_last_; }
-  
+
   // Surface that the particle is on
   int& surface() { return surface_; }
   const int& surface() const { return surface_; }
@@ -343,8 +343,8 @@ private:
   Position r_last_;         //!< previous coordinates
   Direction u_last_;        //!< previous direction coordinates
 
-  double time_;          //!< time
-  double time_last_;     //!< previous time
+  double time_;      //!< time
+  double time_last_; //!< previous time
 
   int surface_ {0}; //!< index for surface particle is on
 

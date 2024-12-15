@@ -191,9 +191,65 @@ CSGSurface::CSGSurface() : Surface {}
 {
   geom_type_ = GeometryType::CSG;
 };
+
 CSGSurface::CSGSurface(pugi::xml_node surf_node) : Surface {surf_node}
 {
   geom_type_ = GeometryType::CSG;
+
+  // Not moving?
+  if (!(check_for_node(surf_node, "moving_velocities") || 
+       check_for_node(surf_node, "moving_durations"))){
+    moving_ = false;
+    return;
+  }
+  
+  // Now, set the surface moving parameters
+  moving_ = true;
+
+  // Moving durations
+  auto durations = get_node_array<double>(surf_node, "moving_durations");
+  const int N_move = durations.size() + 1;
+
+  // Moving time grids
+  moving_time_grid_.resize(N_move + 1);
+  moving_time_grid_[0] = 0.0;
+  for (int n = 0; n < N_move - 1; n++) {
+    moving_time_grid_[n + 1] = moving_time_grid_[n] + durations[n];
+  }
+  moving_time_grid_[N_move] = INFTY;
+  
+  // Moving velocities
+  moving_velocities_.resize(N_move);
+  std::string velocities_spec = get_node_value(surf_node, "moving_velocities");
+  // Parse
+  std::vector<double> numbers;
+  for (int i = 0; i < velocities_spec.size();) {
+    if (velocities_spec[i] == '-' || std::isdigit(velocities_spec[i])) {
+      int j = i + 1;
+      while (j < velocities_spec.size() && std::isdigit(velocities_spec[j])) {
+        j++;
+      }
+      numbers.push_back(std::stod(velocities_spec.substr(i, j - i)));
+      i = j;
+    }
+    i++;
+  }
+  // Assign to velocities
+  for (int n = 0; n < N_move - 1; n++) {
+    int idx = 3 * n;
+    moving_velocities_[n][0] = numbers[idx];
+    moving_velocities_[n][1] = numbers[idx + 1];
+    moving_velocities_[n][2] = numbers[idx + 2];
+  }
+  moving_velocities_[N_move - 1] *= 0.0;
+
+  // Moving translations
+  moving_translations_.resize(N_move + 1);
+  moving_translations_[0] *= 0.0;
+  for (int n = 0; n < N_move - 1; n++) {
+    moving_translations_[n + 1] = moving_translations_[n] + moving_velocities_[n] * durations[n];
+  }
+  moving_translations_[N_move] = moving_translations_[N_move - 1];
 };
 
 //==============================================================================

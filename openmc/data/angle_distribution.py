@@ -10,8 +10,13 @@ from openmc.mixin import EqualityMixin
 from openmc.stats import Univariate, Tabular, Uniform, Legendre
 from .function import INTERPOLATION_SCHEME
 from .data import EV_PER_MEV
-from .endf import get_head_record, get_cont_record, get_tab1_record, \
-    get_list_record, get_tab2_record
+from .endf import (
+    get_head_record,
+    get_cont_record,
+    get_tab1_record,
+    get_list_record,
+    get_tab2_record,
+)
 
 
 class AngleDistribution(EqualityMixin):
@@ -44,8 +49,7 @@ class AngleDistribution(EqualityMixin):
 
     @energy.setter
     def energy(self, energy):
-        cv.check_type('angle distribution incoming energy', energy,
-                      Iterable, Real)
+        cv.check_type("angle distribution incoming energy", energy, Iterable, Real)
         self._energy = energy
 
     @property
@@ -54,8 +58,7 @@ class AngleDistribution(EqualityMixin):
 
     @mu.setter
     def mu(self, mu):
-        cv.check_type('angle distribution scattering cosines', mu,
-                      Iterable, Univariate)
+        cv.check_type("angle distribution scattering cosines", mu, Iterable, Univariate)
         self._mu = mu
 
     def to_hdf5(self, group):
@@ -68,11 +71,12 @@ class AngleDistribution(EqualityMixin):
 
         """
 
-        dset = group.create_dataset('energy', data=self.energy)
+        dset = group.create_dataset("energy", data=self.energy)
 
         # Make sure all data is tabular
-        mu_tabular = [mu_i if isinstance(mu_i, Tabular) else
-                      mu_i.to_tabular() for mu_i in self.mu]
+        mu_tabular = [
+            mu_i if isinstance(mu_i, Tabular) else mu_i.to_tabular() for mu_i in self.mu
+        ]
 
         # Determine total number of (mu,p) pairs and create array
         n_pairs = sum([len(mu_i.x) for mu_i in mu_tabular])
@@ -87,18 +91,18 @@ class AngleDistribution(EqualityMixin):
         for i, mu_i in enumerate(mu_tabular):
             n = len(mu_i.x)
             offsets[i] = j
-            interpolation[i] = 1 if mu_i.interpolation == 'histogram' else 2
-            pairs[0, j:j+n] = mu_i.x
-            pairs[1, j:j+n] = mu_i.p
-            pairs[2, j:j+n] = mu_i.c
+            interpolation[i] = 1 if mu_i.interpolation == "histogram" else 2
+            pairs[0, j : j + n] = mu_i.x
+            pairs[1, j : j + n] = mu_i.p
+            pairs[2, j : j + n] = mu_i.c
             j += n
 
         # Create dataset for distributions
-        dset = group.create_dataset('mu', data=pairs)
+        dset = group.create_dataset("mu", data=pairs)
 
         # Write interpolation as attribute
-        dset.attrs['offsets'] = offsets
-        dset.attrs['interpolation'] = interpolation
+        dset.attrs["offsets"] = offsets
+        dset.attrs["interpolation"] = interpolation
 
     @classmethod
     def from_hdf5(cls, group):
@@ -115,10 +119,10 @@ class AngleDistribution(EqualityMixin):
             Angular distribution
 
         """
-        energy = group['energy'][()]
-        data = group['mu']
-        offsets = data.attrs['offsets']
-        interpolation = data.attrs['interpolation']
+        energy = group["energy"][()]
+        data = group["mu"]
+        offsets = data.attrs["offsets"]
+        interpolation = data.attrs["interpolation"]
 
         mu = []
         n_energy = len(energy)
@@ -127,13 +131,13 @@ class AngleDistribution(EqualityMixin):
             # discrete lines
             j = offsets[i]
             if i < n_energy - 1:
-                n = offsets[i+1] - j
+                n = offsets[i + 1] - j
             else:
                 n = data.shape[1] - j
 
             interp = INTERPOLATION_SCHEME[interpolation[i]]
-            mu_i = Tabular(data[0, j:j+n], data[1, j:j+n], interp)
-            mu_i.c = data[2, j:j+n]
+            mu_i = Tabular(data[0, j : j + n], data[1, j : j + n], interp)
+            mu_i.c = data[2, j : j + n]
 
             mu.append(mu_i)
 
@@ -168,11 +172,11 @@ class AngleDistribution(EqualityMixin):
         idx += 1
 
         # Incoming energy grid
-        energy = ace.xss[idx:idx + n_energies]*EV_PER_MEV
+        energy = ace.xss[idx : idx + n_energies] * EV_PER_MEV
         idx += n_energies
 
         # Read locations for angular distributions
-        lc = ace.xss[idx:idx + n_energies].astype(int)
+        lc = ace.xss[idx : idx + n_energies].astype(int)
         idx += n_energies
 
         mu = []
@@ -181,12 +185,12 @@ class AngleDistribution(EqualityMixin):
                 # Equiprobable 32 bin distribution
                 n_bins = 32
                 idx = location_dist + abs(lc[i]) - 1
-                cos = ace.xss[idx:idx + n_bins + 1]
+                cos = ace.xss[idx : idx + n_bins + 1]
                 pdf = np.zeros(n_bins + 1)
-                pdf[:n_bins] = 1.0/(n_bins*np.diff(cos))
+                pdf[:n_bins] = 1.0 / (n_bins * np.diff(cos))
                 cdf = np.linspace(0.0, 1.0, n_bins + 1)
 
-                mu_i = Tabular(cos, pdf, 'histogram', ignore_negative=True)
+                mu_i = Tabular(cos, pdf, "histogram", ignore_negative=True)
                 mu_i.c = cdf
             elif lc[i] < 0:
                 # Tabular angular distribution
@@ -194,14 +198,14 @@ class AngleDistribution(EqualityMixin):
                 intt = int(ace.xss[idx])
                 n_points = int(ace.xss[idx + 1])
                 # Data is given as rows of (values, PDF, CDF)
-                data = ace.xss[idx + 2:idx + 2 + 3*n_points]
+                data = ace.xss[idx + 2 : idx + 2 + 3 * n_points]
                 data.shape = (3, n_points)
 
                 mu_i = Tabular(data[0], data[1], INTERPOLATION_SCHEME[intt])
                 mu_i.c = data[2]
             else:
                 # Isotropic angular distribution
-                mu_i = Uniform(-1., 1.)
+                mu_i = Uniform(-1.0, 1.0)
 
             mu.append(mu_i)
 
@@ -239,15 +243,16 @@ class AngleDistribution(EqualityMixin):
         # Check for obsolete energy transformation matrix. If present, just skip
         # it and keep reading
         if lvt > 0:
-            warn('Obsolete energy transformation matrix in MF=4 angular '
-                 'distribution.')
-            for _ in range((nk + 5)//6):
+            warn(
+                "Obsolete energy transformation matrix in MF=4 angular " "distribution."
+            )
+            for _ in range((nk + 5) // 6):
                 file_obj.readline()
 
         if ltt == 0 and li == 1:
             # Purely isotropic
-            energy = np.array([0., ev.info['energy_max']])
-            mu = [Uniform(-1., 1.), Uniform(-1., 1.)]
+            energy = np.array([0.0, ev.info["energy_max"]])
+            mu = [Uniform(-1.0, 1.0), Uniform(-1.0, 1.0)]
 
         elif ltt == 1 and li == 0:
             # Legendre polynomial coefficients
@@ -273,8 +278,10 @@ class AngleDistribution(EqualityMixin):
                 params, f = get_tab1_record(file_obj)
                 energy[i] = params[1]
                 if f.n_regions > 1:
-                    raise NotImplementedError('Angular distribution with multiple '
-                                              'interpolation regions not supported.')
+                    raise NotImplementedError(
+                        "Angular distribution with multiple "
+                        "interpolation regions not supported."
+                    )
                 mu.append(Tabular(f.x, f.y, INTERPOLATION_SCHEME[f.interpolation[0]]))
 
         elif ltt == 3 and li == 0:
@@ -298,8 +305,10 @@ class AngleDistribution(EqualityMixin):
                 params, f = get_tab1_record(file_obj)
                 energy_tabulated[i] = params[1]
                 if f.n_regions > 1:
-                    raise NotImplementedError('Angular distribution with multiple '
-                                              'interpolation regions not supported.')
+                    raise NotImplementedError(
+                        "Angular distribution with multiple "
+                        "interpolation regions not supported."
+                    )
                 mu.append(Tabular(f.x, f.y, INTERPOLATION_SCHEME[f.interpolation[0]]))
 
             energy = np.concatenate((energy_legendre, energy_tabulated))

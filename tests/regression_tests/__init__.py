@@ -2,13 +2,13 @@ import pytest
 
 # Test configuration options for regression tests
 config = {
-    'event' : False,
-    'exe': 'openmc',
-    'mpi': False,
-    'mpiexec': 'mpiexec',
-    'mpi_np': '2',
-    'update': False,
-    'build_inputs': False
+    "event": False,
+    "exe": "openmc",
+    "mpi": False,
+    "mpiexec": "mpiexec",
+    "mpi_np": "2",
+    "update": False,
+    "build_inputs": False,
 }
 
 
@@ -28,9 +28,10 @@ def assert_atoms_equal(res_ref, res_test, tol=1e-5):
         for nuc in res_test[0].index_nuc:
             _, y_test = res_test.get_atoms(mat, nuc)
             _, y_ref = res_ref.get_atoms(mat, nuc)
-            assert y_test == pytest.approx(y_ref, rel=tol), \
-                f'Atoms not equal for material {mat}, nuclide {nuc}\n' \
-                f'y_ref={y_ref}\ny_test={y_test}'
+            assert y_test == pytest.approx(y_ref, rel=tol), (
+                f"Atoms not equal for material {mat}, nuclide {nuc}\n"
+                f"y_ref={y_ref}\ny_test={y_test}"
+            )
 
 
 def assert_reaction_rates_equal(res_ref, res_test, tol=1e-5):
@@ -40,6 +41,7 @@ def assert_reaction_rates_equal(res_ref, res_test, tol=1e-5):
                 for rx in reactions.index_rx:
                     y_test = res_test.get_reaction_rate(mat, nuc, rx)[1]
                     y_ref = res_ref.get_reaction_rate(mat, nuc, rx)[1]
-                    assert y_test == pytest.approx(y_ref, rel=tol), \
-                        f'Reaction rate not equal for material {mat}, nuclide '\
-                        f'{nuc}, {rx}\ny_ref={y_ref}\ny_test={y_test}'
+                    assert y_test == pytest.approx(y_ref, rel=tol), (
+                        f"Reaction rate not equal for material {mat}, nuclide "
+                        f"{nuc}, {rx}\ny_ref={y_ref}\ny_test={y_test}"
+                    )

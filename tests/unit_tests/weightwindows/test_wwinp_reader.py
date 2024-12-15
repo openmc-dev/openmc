@@ -17,42 +17,32 @@ import pytest
 
 # expected retults - neutron data only
 n_mesh = openmc.RectilinearMesh()
-n_mesh.x_grid = np.array([-100.0,
-                            -99.0,
-                            -97.0,
-                            -79.3636,
-                            -61.7273,
-                            -44.0909,
-                            -26.4546,
-                            -8.81818,
-                            8.81818,
-                            26.4546,
-                            44.0909,
-                            61.7273,
-                            79.3636,
-                            97.0,
-                            99.0,
-                            100])
-n_mesh.y_grid = np.array([-100.0,
-                            -50.0,
-                            -13.3333,
-                            23.3333,
-                            60.0,
-                            70.0,
-                            80.0,
-                            90.0,
-                            100.0])
-n_mesh.z_grid = np.array([-100.0,
-                            -66.6667,
-                            -33.3333,
-                            0.0,
-                            33.3333,
-                            66.6667,
-                            100.0])
-n_e_bounds = (np.array([0.0,
-                         100000.0,
-                         146780.0]),)
-n_particles = ('neutron',)
+n_mesh.x_grid = np.array(
+    [
+        -100.0,
+        -99.0,
+        -97.0,
+        -79.3636,
+        -61.7273,
+        -44.0909,
+        -26.4546,
+        -8.81818,
+        8.81818,
+        26.4546,
+        44.0909,
+        61.7273,
+        79.3636,
+        97.0,
+        99.0,
+        100,
+    ]
+)
+n_mesh.y_grid = np.array(
+    [-100.0, -50.0, -13.3333, 23.3333, 60.0, 70.0, 80.0, 90.0, 100.0]
+)
+n_mesh.z_grid = np.array([-100.0, -66.6667, -33.3333, 0.0, 33.3333, 66.6667, 100.0])
+n_e_bounds = (np.array([0.0, 100000.0, 146780.0]),)
+n_particles = ("neutron",)
 
 # expected results - neutron and photon data
 np_mesh = openmc.RectilinearMesh()
@@ -61,9 +51,8 @@ np_mesh.x_grid = np.array([-100.0, 100.0])
 np_mesh.y_grid = n_mesh.y_grid
 np_mesh.z_grid = n_mesh.z_grid
 
-np_e_bounds = (np.array([0.0, 100000.0, 146780.0, 215440.0]),
-               np.array([0.0, 1.0E8]))
-np_particles = ('neutron', 'photon')
+np_e_bounds = (np.array([0.0, 100000.0, 146780.0, 215440.0]), np.array([0.0, 1.0e8]))
+np_particles = ("neutron", "photon")
 
 # expected results - photon data only
 p_mesh = openmc.RectilinearMesh()
@@ -74,25 +63,27 @@ p_mesh.y_grid = np_mesh.y_grid
 p_mesh.z_grid = np.array([-50.0, 50.0])
 
 p_e_bounds = (np.array([0.0, 100000.0, 146780.0, 215440.0, 316230.0]),)
-p_particles = ('photon',)
+p_particles = ("photon",)
 
-expected_results = [('wwinp_n', n_mesh, n_particles, n_e_bounds),
-                    ('wwinp_np', np_mesh, np_particles, np_e_bounds),
-                    ('wwinp_p', p_mesh, p_particles, p_e_bounds)]
+expected_results = [
+    ("wwinp_n", n_mesh, n_particles, n_e_bounds),
+    ("wwinp_np", np_mesh, np_particles, np_e_bounds),
+    ("wwinp_p", p_mesh, p_particles, p_e_bounds),
+]
 
 
 # function for printing readable test labels
 def id_fn(params):
-    suffix = params[0].split('_')[-1]
-    if suffix == 'n':
-        return 'neutron-only'
-    elif suffix == 'np':
-        return 'neutron-photon'
-    elif suffix == 'p':
-        return 'photon-only'
+    suffix = params[0].split("_")[-1]
+    if suffix == "n":
+        return "neutron-only"
+    elif suffix == "np":
+        return "neutron-photon"
+    elif suffix == "p":
+        return "photon-only"
 
 
-@pytest.mark.parametrize('wwinp_data', expected_results, ids=id_fn)
+@pytest.mark.parametrize("wwinp_data", expected_results, ids=id_fn)
 def test_wwinp_reader(wwinp_data, request):
     wwinp_file, mesh, particle_types, energy_bounds = wwinp_data
 
@@ -124,18 +115,17 @@ def test_wwinp_reader(wwinp_data, request):
 
 # check expected failures
 def fail_id_fn(params):
-    suffix = params[0].split('_')[-1]
-    if suffix == 't':
-        return 'time-steps-failure'
-    elif suffix == 'cyl':
-        return 'cyl-mesh-failure'
+    suffix = params[0].split("_")[-1]
+    if suffix == "t":
+        return "time-steps-failure"
+    elif suffix == "cyl":
+        return "cyl-mesh-failure"
 
 
-expected_failure_data = (('wwinp_t', ValueError),
-                         ('wwinp_cyl', NotImplementedError))
+expected_failure_data = (("wwinp_t", ValueError), ("wwinp_cyl", NotImplementedError))
 
 
-@pytest.mark.parametrize('wwinp_data', expected_failure_data, ids=fail_id_fn)
+@pytest.mark.parametrize("wwinp_data", expected_failure_data, ids=fail_id_fn)
 def test_wwinp_reader_failures(wwinp_data, request):
     filename, expected_failure = wwinp_data
 

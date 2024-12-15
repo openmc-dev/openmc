@@ -5,8 +5,13 @@ from warnings import warn
 
 from openmc import Cylinder, Universe, Cell
 from .surface_composite import RectangularPrism, HexagonalPrism
-from ..checkvalue import (check_type, check_value, check_length,
-                          check_less_than, check_iterable_type)
+from ..checkvalue import (
+    check_type,
+    check_value,
+    check_length,
+    check_less_than,
+    check_iterable_type,
+)
 import openmc.data
 
 
@@ -15,8 +20,15 @@ ZERO_FAHRENHEIT_TO_KELVIN = 459.67
 PSI_TO_MPA = 0.006895
 
 
-def borated_water(boron_ppm, temperature=293., pressure=0.1013, temp_unit='K',
-                  press_unit='MPa', density=None, **kwargs):
+def borated_water(
+    boron_ppm,
+    temperature=293.0,
+    pressure=0.1013,
+    temp_unit="K",
+    press_unit="MPa",
+    density=None,
+    **kwargs,
+):
     """Return a Material with the composition of boron dissolved in water.
 
     The water density can be determined from a temperature and pressure, or it
@@ -50,17 +62,17 @@ def borated_water(boron_ppm, temperature=293., pressure=0.1013, temp_unit='K',
 
     """
     # Perform any necessary unit conversions.
-    check_value('temperature unit', temp_unit, ('K', 'C', 'F'))
-    if temp_unit == 'K':
+    check_value("temperature unit", temp_unit, ("K", "C", "F"))
+    if temp_unit == "K":
         T = temperature
-    elif temp_unit == 'C':
+    elif temp_unit == "C":
         T = temperature + ZERO_CELSIUS_TO_KELVIN
-    elif temp_unit == 'F':
-        T = (temperature + ZERO_FAHRENHEIT_TO_KELVIN) * (5/9)
-    check_value('pressure unit', press_unit, ('MPa', 'psi'))
-    if press_unit == 'MPa':
+    elif temp_unit == "F":
+        T = (temperature + ZERO_FAHRENHEIT_TO_KELVIN) * (5 / 9)
+    check_value("pressure unit", press_unit, ("MPa", "psi"))
+    if press_unit == "MPa":
         P = pressure
-    elif press_unit == 'psi':
+    elif press_unit == "psi":
         P = pressure * PSI_TO_MPA
 
     # Set the density of water, either from an explicitly given density or from
@@ -74,18 +86,18 @@ def borated_water(boron_ppm, temperature=293., pressure=0.1013, temp_unit='K',
     solution_density = water_density / (1 - boron_ppm * 1e-6)
 
     # Compute the molar mass of pure water.
-    hydrogen = openmc.Element('H')
-    oxygen = openmc.Element('O')
+    hydrogen = openmc.Element("H")
+    oxygen = openmc.Element("O")
     M_H2O = 0.0
-    for iso_name, frac, junk in hydrogen.expand(2.0, 'ao'):
+    for iso_name, frac, junk in hydrogen.expand(2.0, "ao"):
         M_H2O += frac * openmc.data.atomic_mass(iso_name)
-    for iso_name, frac, junk in oxygen.expand(1.0, 'ao'):
+    for iso_name, frac, junk in oxygen.expand(1.0, "ao"):
         M_H2O += frac * openmc.data.atomic_mass(iso_name)
 
     # Compute the molar mass of boron.
-    boron = openmc.Element('B')
+    boron = openmc.Element("B")
     M_B = 0.0
-    for iso_name, frac, junk in boron.expand(1.0, 'ao'):
+    for iso_name, frac, junk in boron.expand(1.0, "ao"):
         M_B += frac * openmc.data.atomic_mass(iso_name)
 
     # Compute the number fractions of each element.
@@ -99,40 +111,66 @@ def borated_water(boron_ppm, temperature=293., pressure=0.1013, temp_unit='K',
         out = openmc.Material(temperature=T, **kwargs)
     else:
         out = openmc.Material(**kwargs)
-    out.add_element('H', frac_H, 'ao')
-    out.add_element('O', frac_O, 'ao')
-    out.add_element('B', frac_B, 'ao')
-    out.set_density('g/cc', solution_density)
-    out.add_s_alpha_beta('c_H_in_H2O')
+    out.add_element("H", frac_H, "ao")
+    out.add_element("O", frac_O, "ao")
+    out.add_element("B", frac_B, "ao")
+    out.set_density("g/cc", solution_density)
+    out.add_s_alpha_beta("c_H_in_H2O")
     return out
 
 
-
-
-def rectangular_prism(width, height, axis='z', origin=(0., 0.),
-                      boundary_type='transmission', corner_radius=0.):
-    warn("The rectangular_prism(...) function has been replaced by the "
-         "RectangularPrism(...) class. Future versions of OpenMC will not "
-         "accept rectangular_prism.", FutureWarning)
+def rectangular_prism(
+    width,
+    height,
+    axis="z",
+    origin=(0.0, 0.0),
+    boundary_type="transmission",
+    corner_radius=0.0,
+):
+    warn(
+        "The rectangular_prism(...) function has been replaced by the "
+        "RectangularPrism(...) class. Future versions of OpenMC will not "
+        "accept rectangular_prism.",
+        FutureWarning,
+    )
     return -RectangularPrism(
-        width=width, height=height, axis=axis, origin=origin,
-        boundary_type=boundary_type, corner_radius=corner_radius)
+        width=width,
+        height=height,
+        axis=axis,
+        origin=origin,
+        boundary_type=boundary_type,
+        corner_radius=corner_radius,
+    )
 
 
-def hexagonal_prism(edge_length=1., orientation='y', origin=(0., 0.),
-                    boundary_type='transmission', corner_radius=0.):
-    warn("The hexagonal_prism(...) function has been replaced by the "
-         "HexagonalPrism(...) class. Future versions of OpenMC will not "
-         "accept hexagonal_prism.", FutureWarning)
+def hexagonal_prism(
+    edge_length=1.0,
+    orientation="y",
+    origin=(0.0, 0.0),
+    boundary_type="transmission",
+    corner_radius=0.0,
+):
+    warn(
+        "The hexagonal_prism(...) function has been replaced by the "
+        "HexagonalPrism(...) class. Future versions of OpenMC will not "
+        "accept hexagonal_prism.",
+        FutureWarning,
+    )
     return -HexagonalPrism(
-        edge_length=edge_length, orientation=orientation, origin=origin,
-        boundary_type=boundary_type, corner_radius=corner_radius)
+        edge_length=edge_length,
+        orientation=orientation,
+        origin=origin,
+        boundary_type=boundary_type,
+        corner_radius=corner_radius,
+    )
 
 
 def get_hexagonal_prism(*args, **kwargs):
-    warn("get_hexagonal_prism(...) has been renamed hexagonal_prism(...). "
-         "Future versions of OpenMC will not accept get_hexagonal_prism.",
-         FutureWarning)
+    warn(
+        "get_hexagonal_prism(...) has been renamed hexagonal_prism(...). "
+        "Future versions of OpenMC will not accept get_hexagonal_prism.",
+        FutureWarning,
+    )
     return hexagonal_prism(*args, **kwargs)
 
 
@@ -166,8 +204,7 @@ def subdivide(surfaces):
     return regions
 
 
-def pin(surfaces, items, subdivisions=None, divide_vols=True,
-        **kwargs):
+def pin(surfaces, items, subdivisions=None, divide_vols=True, **kwargs):
     """Convenience function for building a fuel pin
 
     Parameters
@@ -204,8 +241,9 @@ def pin(surfaces, items, subdivisions=None, divide_vols=True,
     """
     if "cells" in kwargs:
         raise ValueError(
-            "Cells will be set by this function, not from input arguments.")
-    check_type("items",  items, Iterable)
+            "Cells will be set by this function, not from input arguments."
+        )
+    check_type("items", items, Iterable)
     check_length("surfaces", surfaces, len(items) - 1, len(items) - 1)
     # Check that all surfaces are of similar orientation
     check_type("surface", surfaces[0], Cylinder)
@@ -220,8 +258,7 @@ def pin(surfaces, items, subdivisions=None, divide_vols=True,
     elif surf_type is openmc.XCylinder:
         center_getter = attrgetter("z0", "y0")
     else:
-        raise TypeError(
-            f"Not configured to interpret {surf_type.__name__} surfaces")
+        raise TypeError(f"Not configured to interpret {surf_type.__name__} surfaces")
 
     centers = set()
     prev_rad = 0
@@ -231,28 +268,27 @@ def pin(surfaces, items, subdivisions=None, divide_vols=True,
             raise ValueError(
                 "Surfaces do not appear to be increasing in radius. "
                 "Surface {} at index {} has radius {:7.3e} compared to "
-                "previous radius of {:7.5e}".format(
-                    surf.id, ix, cur_rad, prev_rad))
+                "previous radius of {:7.5e}".format(surf.id, ix, cur_rad, prev_rad)
+            )
         prev_rad = cur_rad
         centers.add(center_getter(surf))
 
     if len(centers) > 1:
         raise ValueError(
             "Surfaces do not appear to be concentric. The following "
-            "centers were found: {}".format(centers))
+            "centers were found: {}".format(centers)
+        )
 
     if subdivisions is not None:
         check_length("subdivisions", subdivisions, 1, len(surfaces))
         orig_indexes = list(subdivisions.keys())
         check_iterable_type("ring indexes", orig_indexes, int)
-        check_iterable_type(
-            "number of divisions", list(subdivisions.values()), int)
+        check_iterable_type("number of divisions", list(subdivisions.values()), int)
         for ix in orig_indexes:
             if ix < 0:
                 subdivisions[len(surfaces) + ix] = subdivisions.pop(ix)
         # Dissallow subdivision on outer most, infinite region
-        check_less_than(
-            "outer ring", max(subdivisions), len(surfaces), equality=True)
+        check_less_than("outer ring", max(subdivisions), len(surfaces), equality=True)
 
         # ensure ability to concatenate
         if not isinstance(items, list):
@@ -272,22 +308,19 @@ def pin(surfaces, items, subdivisions=None, divide_vols=True,
 
             upper_rad = surfaces[ring_index].r
 
-            area_term = (upper_rad ** 2 - lower_rad ** 2) / nr
+            area_term = (upper_rad**2 - lower_rad**2) / nr
 
             for new_index in range(nr - 1):
-                lower_rad = sqrt(area_term + lower_rad ** 2)
+                lower_rad = sqrt(area_term + lower_rad**2)
                 new_surfs.append(surf_type(r=lower_rad))
 
-            surfaces = (
-                    surfaces[:ring_index] + new_surfs + surfaces[ring_index:])
+            surfaces = surfaces[:ring_index] + new_surfs + surfaces[ring_index:]
 
             filler = items[ring_index]
-            if (divide_vols and hasattr(filler, "volume")
-                    and filler.volume is not None):
+            if divide_vols and hasattr(filler, "volume") and filler.volume is not None:
                 filler.volume /= nr
 
-            items[ring_index:ring_index] = [
-                filler.clone() for _i in range(nr - 1)]
+            items[ring_index:ring_index] = [filler.clone() for _i in range(nr - 1)]
 
     # Build the universe
     regions = subdivide(surfaces)

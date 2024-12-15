@@ -26,12 +26,12 @@ def test_cmfd_physical_adjoint():
     cmfd_run.tally_begin = 5
     cmfd_run.solver_begin = 5
     cmfd_run.feedback = True
-    cmfd_run.gauss_seidel_tolerance = [1.e-15, 1.e-20]
+    cmfd_run.gauss_seidel_tolerance = [1.0e-15, 1.0e-20]
     cmfd_run.run_adjoint = True
-    cmfd_run.adjoint_type = 'physical'
+    cmfd_run.adjoint_type = "physical"
     cmfd_run.run()
-    assert(np.all(cmfd_run._phi == cmfd_run._adj_phi))
-    assert(cmfd_run._adj_keff == cmfd_run._keff)
+    assert np.all(cmfd_run._phi == cmfd_run._adj_phi)
+    assert cmfd_run._adj_keff == cmfd_run._keff
 
 
 def test_cmfd_math_adjoint():
@@ -56,12 +56,12 @@ def test_cmfd_math_adjoint():
     cmfd_run.tally_begin = 5
     cmfd_run.solver_begin = 5
     cmfd_run.feedback = True
-    cmfd_run.gauss_seidel_tolerance = [1.e-15, 1.e-20]
+    cmfd_run.gauss_seidel_tolerance = [1.0e-15, 1.0e-20]
     cmfd_run.run_adjoint = True
-    cmfd_run.adjoint_type = 'math'
+    cmfd_run.adjoint_type = "math"
     cmfd_run.run()
-    assert(np.all(cmfd_run._phi == cmfd_run._adj_phi))
-    assert(cmfd_run._adj_keff == cmfd_run._keff)
+    assert np.all(cmfd_run._phi == cmfd_run._adj_phi)
+    assert cmfd_run._adj_keff == cmfd_run._keff
 
 
 def test_cmfd_write_matrices():
@@ -84,38 +84,38 @@ def test_cmfd_write_matrices():
     cmfd_run.mesh = cmfd_mesh
     cmfd_run.tally_begin = 5
     cmfd_run.solver_begin = 5
-    cmfd_run.display = {'dominance': True}
+    cmfd_run.display = {"dominance": True}
     cmfd_run.feedback = True
-    cmfd_run.gauss_seidel_tolerance = [1.e-15, 1.e-20]
+    cmfd_run.gauss_seidel_tolerance = [1.0e-15, 1.0e-20]
     cmfd_run.write_matrices = True
     cmfd_run.run()
 
     # Load loss matrix from numpy output file
-    loss_np = scipy.sparse.load_npz('loss.npz').todense()
+    loss_np = scipy.sparse.load_npz("loss.npz").todense()
     # Load loss matrix from data file
-    loss_dat = np.loadtxt("loss.dat", delimiter=',')
+    loss_dat = np.loadtxt("loss.dat", delimiter=",")
 
     # Go through each element of loss_dat and compare to loss_np
     for elem in loss_dat:
-        assert(np.isclose(loss_np[int(elem[0]), int(elem[1])], elem[2]))
+        assert np.isclose(loss_np[int(elem[0]), int(elem[1])], elem[2])
 
     # Load production matrix from numpy output file
-    prod_np = scipy.sparse.load_npz('prod.npz').todense()
+    prod_np = scipy.sparse.load_npz("prod.npz").todense()
     # Load production matrix from data file
-    prod_dat = np.loadtxt("prod.dat", delimiter=',')
+    prod_dat = np.loadtxt("prod.dat", delimiter=",")
 
     # Go through each element of prod_dat and compare to prod_np
     for elem in prod_dat:
-        assert(np.isclose(prod_np[int(elem[0]), int(elem[1])], elem[2]))
+        assert np.isclose(prod_np[int(elem[0]), int(elem[1])], elem[2])
 
     # Load flux vector from numpy output file
-    flux_np = np.load('fluxvec.npy')
+    flux_np = np.load("fluxvec.npy")
     # Load flux from data file
     flux_dat = np.loadtxt("fluxvec.dat")
 
     # Compare flux from numpy file, .dat file, and from simulation
-    assert(np.all(np.isclose(flux_np, cmfd_run._phi)))
-    assert(np.all(np.isclose(flux_np, flux_dat)))
+    assert np.all(np.isclose(flux_np, cmfd_run._phi))
+    assert np.all(np.isclose(flux_np, flux_dat))
 
 
 def test_cmfd_feed():
@@ -132,23 +132,24 @@ def test_cmfd_feed():
     cmfd_run.mesh = cmfd_mesh
     cmfd_run.tally_begin = 5
     cmfd_run.solver_begin = 5
-    cmfd_run.display = {'dominance': True}
+    cmfd_run.display = {"dominance": True}
     cmfd_run.feedback = True
-    cmfd_run.gauss_seidel_tolerance = [1.e-15, 1.e-20]
+    cmfd_run.gauss_seidel_tolerance = [1.0e-15, 1.0e-20]
     cmfd_run.run()
 
     # Initialize and run CMFD test harness
-    harness = CMFDTestHarness('statepoint.20.h5', cmfd_run)
+    harness = CMFDTestHarness("statepoint.20.h5", cmfd_run)
     harness.main()
+
 
 def test_cmfd_feed_rectlin():
     """Test 1 group CMFD solver with CMFD feedback"""
     # Initialize and set CMFD mesh
     cmfd_mesh = cmfd.CMFDMesh()
-    cmfd_mesh.mesh_type = 'rectilinear'
+    cmfd_mesh.mesh_type = "rectilinear"
     x_grid = np.linspace(-10, 10, 11)
-    y_grid = [-1., 1.]
-    z_grid = [-1., 1.]
+    y_grid = [-1.0, 1.0]
+    z_grid = [-1.0, 1.0]
     cmfd_mesh.grid = [x_grid, y_grid, z_grid]
     cmfd_mesh.albedo = (0.0, 0.0, 1.0, 1.0, 1.0, 1.0)
 
@@ -157,14 +158,15 @@ def test_cmfd_feed_rectlin():
     cmfd_run.mesh = cmfd_mesh
     cmfd_run.tally_begin = 5
     cmfd_run.solver_begin = 5
-    cmfd_run.display = {'dominance': True}
+    cmfd_run.display = {"dominance": True}
     cmfd_run.feedback = True
-    cmfd_run.gauss_seidel_tolerance = [1.e-15, 1.e-20]
+    cmfd_run.gauss_seidel_tolerance = [1.0e-15, 1.0e-20]
     cmfd_run.run()
 
     # Initialize and run CMFD test harness
-    harness = CMFDTestHarness('statepoint.20.h5', cmfd_run)
+    harness = CMFDTestHarness("statepoint.20.h5", cmfd_run)
     harness.main()
+
 
 def test_cmfd_multithread():
     """Test 1 group CMFD solver with all available threads"""
@@ -180,12 +182,12 @@ def test_cmfd_multithread():
     cmfd_run.mesh = cmfd_mesh
     cmfd_run.tally_begin = 5
     cmfd_run.solver_begin = 5
-    cmfd_run.display = {'dominance': True}
+    cmfd_run.display = {"dominance": True}
     cmfd_run.feedback = True
-    cmfd_run.gauss_seidel_tolerance = [1.e-15, 1.e-20]
+    cmfd_run.gauss_seidel_tolerance = [1.0e-15, 1.0e-20]
     cmfd_run.use_all_threads = True
     cmfd_run.run()
 
     # Initialize and run CMFD test harness
-    harness = CMFDTestHarness('statepoint.20.h5', cmfd_run)
+    harness = CMFDTestHarness("statepoint.20.h5", cmfd_run)
     harness.main()

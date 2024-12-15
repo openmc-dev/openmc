@@ -8,11 +8,19 @@ import openmc.model
 import openmc.checkvalue as cv
 
 
-_SCALAR_BRACKETED_METHODS = {'brentq', 'brenth', 'ridder', 'bisect'}
+_SCALAR_BRACKETED_METHODS = {"brentq", "brenth", "ridder", "bisect"}
 
 
-def _search_keff(guess, target, model_builder, model_args, print_iterations,
-                 run_args, guesses, results):
+def _search_keff(
+    guess,
+    target,
+    model_builder,
+    model_args,
+    print_iterations,
+    run_args,
+    guesses,
+    results,
+):
     """Function which will actually create our model, run the calculation, and
     obtain the result. This function will be passed to the root finding
     algorithm
@@ -60,17 +68,26 @@ def _search_keff(guess, target, model_builder, model_args, print_iterations,
     results.append(keff)
 
     if print_iterations:
-        text = 'Iteration: {}; Guess of {:.2e} produced a keff of ' + \
-            '{:1.5f} +/- {:1.5f}'
+        text = (
+            "Iteration: {}; Guess of {:.2e} produced a keff of " + "{:1.5f} +/- {:1.5f}"
+        )
         print(text.format(len(guesses), guess, keff.n, keff.s))
 
     return keff.n - target
 
 
-def search_for_keff(model_builder, initial_guess=None, target=1.0,
-                    bracket=None, model_args=None, tol=None,
-                    bracketed_method='bisect', print_iterations=False,
-                    run_args=None, **kwargs):
+def search_for_keff(
+    model_builder,
+    initial_guess=None,
+    target=1.0,
+    bracket=None,
+    model_args=None,
+    tol=None,
+    bracketed_method="bisect",
+    print_iterations=False,
+    run_args=None,
+    **kwargs,
+):
     """Function to perform a keff search by modifying a model parametrized by a
     single independent variable.
 
@@ -125,25 +142,24 @@ def search_for_keff(model_builder, initial_guess=None, target=1.0,
     """
 
     if initial_guess is not None:
-        cv.check_type('initial_guess', initial_guess, Real)
+        cv.check_type("initial_guess", initial_guess, Real)
     if bracket is not None:
-        cv.check_iterable_type('bracket', bracket, Real)
-        cv.check_length('bracket', bracket, 2)
-        cv.check_less_than('bracket values', bracket[0], bracket[1])
+        cv.check_iterable_type("bracket", bracket, Real)
+        cv.check_length("bracket", bracket, 2)
+        cv.check_less_than("bracket values", bracket[0], bracket[1])
     if model_args is None:
         model_args = {}
     else:
-        cv.check_type('model_args', model_args, dict)
-    cv.check_type('target', target, Real)
-    cv.check_type('tol', tol, Real)
-    cv.check_value('bracketed_method', bracketed_method,
-                   _SCALAR_BRACKETED_METHODS)
-    cv.check_type('print_iterations', print_iterations, bool)
+        cv.check_type("model_args", model_args, dict)
+    cv.check_type("target", target, Real)
+    cv.check_type("tol", tol, Real)
+    cv.check_value("bracketed_method", bracketed_method, _SCALAR_BRACKETED_METHODS)
+    cv.check_type("print_iterations", print_iterations, bool)
     if run_args is None:
         run_args = {}
     else:
-        cv.check_type('run_args', run_args, dict)
-    cv.check_type('model_builder', model_builder, Callable)
+        cv.check_type("run_args", run_args, dict)
+    cv.check_type("model_builder", model_builder, Callable)
 
     # Run the model builder function once to make sure it provides the correct
     # output type
@@ -151,7 +167,7 @@ def search_for_keff(model_builder, initial_guess=None, target=1.0,
         model = model_builder(bracket[0], **model_args)
     elif initial_guess is not None:
         model = model_builder(initial_guess, **model_args)
-    cv.check_type('model_builder return', model, openmc.model.Model)
+    cv.check_type("model_builder return", model, openmc.model.Model)
 
     # Set the iteration data storage variables
     guesses = []
@@ -163,37 +179,45 @@ def search_for_keff(model_builder, initial_guess=None, target=1.0,
 
     if bracket is not None:
         # Generate our arguments
-        args = {'f': search_function, 'a': bracket[0], 'b': bracket[1]}
+        args = {"f": search_function, "a": bracket[0], "b": bracket[1]}
         if tol is not None:
-            args['rtol'] = tol
+            args["rtol"] = tol
 
         # Set the root finding method
-        if bracketed_method == 'brentq':
+        if bracketed_method == "brentq":
             root_finder = sopt.brentq
-        elif bracketed_method == 'brenth':
+        elif bracketed_method == "brenth":
             root_finder = sopt.brenth
-        elif bracketed_method == 'ridder':
+        elif bracketed_method == "ridder":
             root_finder = sopt.ridder
-        elif bracketed_method == 'bisect':
+        elif bracketed_method == "bisect":
             root_finder = sopt.bisect
 
     elif initial_guess is not None:
 
         # Generate our arguments
-        args = {'func': search_function, 'x0': initial_guess}
+        args = {"func": search_function, "x0": initial_guess}
         if tol is not None:
-            args['tol'] = tol
+            args["tol"] = tol
 
         # Set the root finding method
         root_finder = sopt.newton
 
     else:
-        raise ValueError("Either the 'bracket' or 'initial_guess' parameters "
-                         "must be set")
+        raise ValueError(
+            "Either the 'bracket' or 'initial_guess' parameters " "must be set"
+        )
 
     # Add information to be passed to the searching function
-    args['args'] = (target, model_builder, model_args, print_iterations,
-                    run_args, guesses, results)
+    args["args"] = (
+        target,
+        model_builder,
+        model_args,
+        print_iterations,
+        run_args,
+        guesses,
+        results,
+    )
 
     # Create a new dictionary with the arguments from args and kwargs
     args.update(kwargs)

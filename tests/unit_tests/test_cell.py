@@ -17,7 +17,7 @@ def test_contains():
 
     # Cell with no region
     c = openmc.Cell()
-    assert (10.0, -4., 2.0) in c
+    assert (10.0, -4.0, 2.0) in c
 
 
 def test_repr(cell_with_lattice):
@@ -43,8 +43,8 @@ def test_bounding_box():
     zcyl = openmc.ZCylinder()
     c = openmc.Cell(region=-zcyl)
     ll, ur = c.bounding_box
-    assert ll == pytest.approx((-1., -1., -np.inf))
-    assert ur == pytest.approx((1., 1., np.inf))
+    assert ll == pytest.approx((-1.0, -1.0, -np.inf))
+    assert ur == pytest.approx((1.0, 1.0, np.inf))
 
     # Cell with no region specified
     c = openmc.Cell()
@@ -73,9 +73,9 @@ def test_clone():
     assert c4.region == c.region
 
     # Add optional properties to the original cell to ensure they're cloned successfully
-    c.temperature = 650.
-    c.translation = (1., 2., 3.)
-    c.rotation = (4., 5., 6.)
+    c.temperature = 650.0
+    c.translation = (1.0, 2.0, 3.0)
+    c.rotation = (4.0, 5.0, 6.0)
     c.volume = 100
 
     c5 = c.clone(clone_materials=False, clone_regions=False)
@@ -90,8 +90,8 @@ def test_clone():
     # Mutate the original to ensure the changes are not seen in the clones
     c.fill = openmc.Material()
     c.region = +openmc.ZCylinder()
-    c.translation = (-1., -2., -3.)
-    c.rotation = (-4., -5., -6.)
+    c.translation = (-1.0, -2.0, -3.0)
+    c.rotation = (-4.0, -5.0, -6.0)
     c.temperature = 1
     c.volume = 1
     assert c5.fill != c.fill
@@ -115,7 +115,7 @@ def test_temperature(cell_with_lattice):
     assert c1.temperature == 400.0
     assert c2.temperature == 400.0
     with pytest.raises(ValueError):
-        c.temperature = -100.
+        c.temperature = -100.0
     c.temperature = None
     assert c1.temperature == None
     assert c2.temperature == None
@@ -123,31 +123,27 @@ def test_temperature(cell_with_lattice):
     # distributed temperature
     cells, _, _, _ = cell_with_lattice
     c = cells[0]
-    c.temperature = (300., 600., 900.)
+    c.temperature = (300.0, 600.0, 900.0)
 
 
 def test_rotation():
     u = openmc.Universe()
     c = openmc.Cell(fill=u)
     c.rotation = (180.0, 0.0, 0.0)
-    assert np.allclose(c.rotation_matrix, [
-        [1., 0., 0.],
-        [0., -1., 0.],
-        [0., 0., -1.]
-    ])
+    assert np.allclose(
+        c.rotation_matrix, [[1.0, 0.0, 0.0], [0.0, -1.0, 0.0], [0.0, 0.0, -1.0]]
+    )
 
     c.rotation = (0.0, 90.0, 0.0)
-    assert np.allclose(c.rotation_matrix, [
-        [0., 0., -1.],
-        [0., 1., 0.],
-        [1., 0., 0.]
-    ])
+    assert np.allclose(
+        c.rotation_matrix, [[0.0, 0.0, -1.0], [0.0, 1.0, 0.0], [1.0, 0.0, 0.0]]
+    )
 
 
 def test_get_nuclides(uo2):
     c = openmc.Cell(fill=uo2)
     nucs = c.get_nuclides()
-    assert nucs == ['U235', 'O16']
+    assert nucs == ["U235", "O16"]
 
 
 def test_volume_setting():
@@ -169,18 +165,18 @@ def test_volume_setting():
 
 
 def test_atoms_material_cell(uo2, water):
-    """ Test if correct number of atoms is returned.
+    """Test if correct number of atoms is returned.
     Also check if Cell.atoms still works after volume/material was changed
     """
     c = openmc.Cell(fill=uo2)
     c.volume = 2.0
-    expected_nucs = ['U235', 'O16']
+    expected_nucs = ["U235", "O16"]
 
     # Precalculate the expected number of atoms
-    M = (atomic_mass('U235') + 2 * atomic_mass('O16')) / 3
+    M = (atomic_mass("U235") + 2 * atomic_mass("O16")) / 3
     expected_atoms = [
-        1/3 * uo2.density/M * AVOGADRO * 2.0,  # U235
-        2/3 * uo2.density/M * AVOGADRO * 2.0   # O16
+        1 / 3 * uo2.density / M * AVOGADRO * 2.0,  # U235
+        2 / 3 * uo2.density / M * AVOGADRO * 2.0,  # O16
     ]
 
     tuples = c.atoms.items()
@@ -191,8 +187,8 @@ def test_atoms_material_cell(uo2, water):
     # Change volume and check if OK
     c.volume = 3.0
     expected_atoms = [
-        1/3 * uo2.density/M * AVOGADRO * 3.0,  # U235
-        2/3 * uo2.density/M * AVOGADRO * 3.0   # O16
+        1 / 3 * uo2.density / M * AVOGADRO * 3.0,  # U235
+        2 / 3 * uo2.density / M * AVOGADRO * 3.0,  # O16
     ]
 
     tuples = c.atoms.items()
@@ -202,11 +198,11 @@ def test_atoms_material_cell(uo2, water):
 
     # Change material and check if OK
     c.fill = water
-    expected_nucs = ['H1', 'O16']
-    M = (2 * atomic_mass('H1') + atomic_mass('O16')) / 3
+    expected_nucs = ["H1", "O16"]
+    M = (2 * atomic_mass("H1") + atomic_mass("O16")) / 3
     expected_atoms = [
-        2/3 * water.density/M * AVOGADRO * 3.0,  # H1
-        1/3 * water.density/M * AVOGADRO * 3.0   # O16
+        2 / 3 * water.density / M * AVOGADRO * 3.0,  # H1
+        1 / 3 * water.density / M * AVOGADRO * 3.0,  # O16
     ]
 
     tuples = c.atoms.items()
@@ -216,21 +212,23 @@ def test_atoms_material_cell(uo2, water):
 
 
 def test_atoms_distribmat_cell(uo2, water):
-    """ Test if correct number of atoms is returned for a cell with
+    """Test if correct number of atoms is returned for a cell with
     'distribmat' fill
     """
     c = openmc.Cell(fill=[uo2, water])
     c.volume = 6.0
 
     # Calculate the expected number of atoms
-    expected_nucs = ['U235', 'O16', 'H1']
-    M_uo2 = (atomic_mass('U235') + 2 * atomic_mass('O16')) / 3
-    M_water = (2 * atomic_mass('H1') + atomic_mass('O16')) / 3
+    expected_nucs = ["U235", "O16", "H1"]
+    M_uo2 = (atomic_mass("U235") + 2 * atomic_mass("O16")) / 3
+    M_water = (2 * atomic_mass("H1") + atomic_mass("O16")) / 3
     expected_atoms = [
-        1/3 * uo2.density/M_uo2 * AVOGADRO * 3.0,        # U235
-        (2/3 * uo2.density/M_uo2 * AVOGADRO * 3.0 +
-         1/3 * water.density/M_water * AVOGADRO * 3.0),  # O16
-        2/3 * water.density/M_water * AVOGADRO * 3.0     # H1
+        1 / 3 * uo2.density / M_uo2 * AVOGADRO * 3.0,  # U235
+        (
+            2 / 3 * uo2.density / M_uo2 * AVOGADRO * 3.0
+            + 1 / 3 * water.density / M_water * AVOGADRO * 3.0
+        ),  # O16
+        2 / 3 * water.density / M_water * AVOGADRO * 3.0,  # H1
     ]
 
     tuples = c.atoms.items()
@@ -260,7 +258,7 @@ def test_atoms_errors(cell_with_lattice):
 
 def test_nuclide_densities(uo2):
     c = openmc.Cell(fill=uo2)
-    expected_nucs = ['U235', 'O16']
+    expected_nucs = ["U235", "O16"]
     expected_density = [1.0, 2.0]
     tuples = list(c.get_nuclide_densities().values())
     for nuc, density, t in zip(expected_nucs, expected_density, tuples):
@@ -293,7 +291,7 @@ def test_get_all_materials(cell_with_lattice):
     m = openmc.Material()
     c = openmc.Cell(fill=m)
     test_mats = set(c.get_all_materials().values())
-    assert not(test_mats ^ {m})
+    assert not (test_mats ^ {m})
 
     # Cell filled with distributed materials
     cells, mats, univ, lattice = cell_with_lattice
@@ -311,36 +309,35 @@ def test_to_xml_element(cell_with_lattice):
     cells, mats, univ, lattice = cell_with_lattice
 
     c = cells[-1]
-    root = ET.Element('geometry')
+    root = ET.Element("geometry")
     elem = c.create_xml_subelement(root)
-    assert elem.tag == 'cell'
-    assert elem.get('id') == str(c.id)
-    assert elem.get('region') is None
-    surf_elem = root.find('surface')
-    assert surf_elem.get('id') == str(cells[0].region.surface.id)
+    assert elem.tag == "cell"
+    assert elem.get("id") == str(c.id)
+    assert elem.get("region") is None
+    surf_elem = root.find("surface")
+    assert surf_elem.get("id") == str(cells[0].region.surface.id)
 
     c = cells[0]
     c.temperature = 900.0
     c.volume = 1.0
     elem = c.create_xml_subelement(root)
-    assert elem.get('region') == str(c.region)
-    assert elem.get('temperature') == str(c.temperature)
-    assert elem.get('volume') == str(c.volume)
+    assert elem.get("region") == str(c.region)
+    assert elem.get("temperature") == str(c.temperature)
+    assert elem.get("volume") == str(c.volume)
 
 
-@pytest.mark.parametrize("rotation", [
-    (90, 45, 0),
-    [[1.0, 0.0, 0.0], [0.0, 0.0, 1.0], [0.0, -1.0, 0.0]]
-])
+@pytest.mark.parametrize(
+    "rotation", [(90, 45, 0), [[1.0, 0.0, 0.0], [0.0, 0.0, 1.0], [0.0, -1.0, 0.0]]]
+)
 def test_rotation_from_xml(rotation):
     # Make sure rotation attribute (matrix) round trips through XML correctly
     s = openmc.ZCylinder(r=10.0)
     cell = openmc.Cell(region=-s)
     cell.rotation = rotation
-    root = ET.Element('geometry')
+    root = ET.Element("geometry")
     elem = cell.create_xml_subelement(root)
     new_cell = openmc.Cell.from_xml_element(
-        elem, {s.id: s}, {'void': None}, openmc.Universe
+        elem, {s.id: s}, {"void": None}, openmc.Universe
     )
     np.testing.assert_allclose(new_cell.rotation, cell.rotation)
 

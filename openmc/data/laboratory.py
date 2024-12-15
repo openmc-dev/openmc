@@ -56,8 +56,9 @@ class LaboratoryAngleEnergy(AngleEnergy):
 
     @breakpoints.setter
     def breakpoints(self, breakpoints):
-        cv.check_type('laboratory angle-energy breakpoints', breakpoints,
-                      Iterable, Integral)
+        cv.check_type(
+            "laboratory angle-energy breakpoints", breakpoints, Iterable, Integral
+        )
         self._breakpoints = breakpoints
 
     @property
@@ -66,8 +67,9 @@ class LaboratoryAngleEnergy(AngleEnergy):
 
     @interpolation.setter
     def interpolation(self, interpolation):
-        cv.check_type('laboratory angle-energy interpolation', interpolation,
-                      Iterable, Integral)
+        cv.check_type(
+            "laboratory angle-energy interpolation", interpolation, Iterable, Integral
+        )
         self._interpolation = interpolation
 
     @property
@@ -76,8 +78,7 @@ class LaboratoryAngleEnergy(AngleEnergy):
 
     @energy.setter
     def energy(self, energy):
-        cv.check_type('laboratory angle-energy incoming energy', energy,
-                      Iterable, Real)
+        cv.check_type("laboratory angle-energy incoming energy", energy, Iterable, Real)
         self._energy = energy
 
     @property
@@ -86,8 +87,9 @@ class LaboratoryAngleEnergy(AngleEnergy):
 
     @mu.setter
     def mu(self, mu):
-        cv.check_type('laboratory angle-energy outgoing cosine', mu,
-                      Iterable, Univariate)
+        cv.check_type(
+            "laboratory angle-energy outgoing cosine", mu, Iterable, Univariate
+        )
         self._mu = mu
 
     @property
@@ -96,8 +98,9 @@ class LaboratoryAngleEnergy(AngleEnergy):
 
     @energy_out.setter
     def energy_out(self, energy_out):
-        cv.check_iterable_type('laboratory angle-energy outgoing energy',
-                               energy_out, Univariate, 2, 2)
+        cv.check_iterable_type(
+            "laboratory angle-energy outgoing energy", energy_out, Univariate, 2, 2
+        )
         self._energy_out = energy_out
 
     @classmethod

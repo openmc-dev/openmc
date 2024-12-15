@@ -6,6 +6,7 @@ import openmc.checkvalue as cv
 from .angle_energy import AngleEnergy
 from .endf import get_cont_record
 
+
 class NBodyPhaseSpace(AngleEnergy):
     """N-body phase space distribution
 
@@ -45,9 +46,9 @@ class NBodyPhaseSpace(AngleEnergy):
 
     @total_mass.setter
     def total_mass(self, total_mass):
-        name = 'N-body phase space total mass'
+        name = "N-body phase space total mass"
         cv.check_type(name, total_mass, Real)
-        cv.check_greater_than(name, total_mass, 0.)
+        cv.check_greater_than(name, total_mass, 0.0)
         self._total_mass = total_mass
 
     @property
@@ -56,7 +57,7 @@ class NBodyPhaseSpace(AngleEnergy):
 
     @n_particles.setter
     def n_particles(self, n_particles):
-        name = 'N-body phase space number of particles'
+        name = "N-body phase space number of particles"
         cv.check_type(name, n_particles, Integral)
         cv.check_greater_than(name, n_particles, 0)
         self._n_particles = n_particles
@@ -67,7 +68,7 @@ class NBodyPhaseSpace(AngleEnergy):
 
     @atomic_weight_ratio.setter
     def atomic_weight_ratio(self, atomic_weight_ratio):
-        name = 'N-body phase space atomic weight ratio'
+        name = "N-body phase space atomic weight ratio"
         cv.check_type(name, atomic_weight_ratio, Real)
         cv.check_greater_than(name, atomic_weight_ratio, 0.0)
         self._atomic_weight_ratio = atomic_weight_ratio
@@ -78,7 +79,7 @@ class NBodyPhaseSpace(AngleEnergy):
 
     @q_value.setter
     def q_value(self, q_value):
-        name = 'N-body phase space Q value'
+        name = "N-body phase space Q value"
         cv.check_type(name, q_value, Real)
         self._q_value = q_value
 
@@ -91,11 +92,11 @@ class NBodyPhaseSpace(AngleEnergy):
             HDF5 group to write to
 
         """
-        group.attrs['type'] = np.bytes_('nbody')
-        group.attrs['total_mass'] = self.total_mass
-        group.attrs['n_particles'] = self.n_particles
-        group.attrs['atomic_weight_ratio'] = self.atomic_weight_ratio
-        group.attrs['q_value'] = self.q_value
+        group.attrs["type"] = np.bytes_("nbody")
+        group.attrs["total_mass"] = self.total_mass
+        group.attrs["n_particles"] = self.n_particles
+        group.attrs["atomic_weight_ratio"] = self.atomic_weight_ratio
+        group.attrs["q_value"] = self.q_value
 
     @classmethod
     def from_hdf5(cls, group):
@@ -112,10 +113,10 @@ class NBodyPhaseSpace(AngleEnergy):
             N-body phase space distribution
 
         """
-        total_mass = group.attrs['total_mass']
-        n_particles = group.attrs['n_particles']
-        awr = group.attrs['atomic_weight_ratio']
-        q_value = group.attrs['q_value']
+        total_mass = group.attrs["total_mass"]
+        n_particles = group.attrs["n_particles"]
+        awr = group.attrs["atomic_weight_ratio"]
+        q_value = group.attrs["q_value"]
         return cls(total_mass, n_particles, awr, q_value)
 
     @classmethod

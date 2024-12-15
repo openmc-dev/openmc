@@ -42,19 +42,19 @@ class Particle:
     """
 
     def __init__(self, filename):
-        with h5py.File(filename, 'r') as f:
+        with h5py.File(filename, "r") as f:
 
             # Ensure filetype and version are correct
-            cv.check_filetype_version(f, 'particle restart', _VERSION_PARTICLE_RESTART)
+            cv.check_filetype_version(f, "particle restart", _VERSION_PARTICLE_RESTART)
 
-            self.current_batch = f['current_batch'][()]
-            self.current_generation = f['current_generation'][()]
-            self.energy = f['energy'][()]
-            self.generations_per_batch = f['generations_per_batch'][()]
-            self.id = f['id'][()]
-            self.type = f['type'][()]
-            self.n_particles = f['n_particles'][()]
-            self.run_mode = f['run_mode'][()].decode()
-            self.uvw = f['uvw'][()]
-            self.weight = f['weight'][()]
-            self.xyz = f['xyz'][()]
+            self.current_batch = f["current_batch"][()]
+            self.current_generation = f["current_generation"][()]
+            self.energy = f["energy"][()]
+            self.generations_per_batch = f["generations_per_batch"][()]
+            self.id = f["id"][()]
+            self.type = f["type"][()]
+            self.n_particles = f["n_particles"][()]
+            self.run_mode = f["run_mode"][()].decode()
+            self.uvw = f["uvw"][()]
+            self.weight = f["weight"][()]
+            self.xyz = f["xyz"][()]

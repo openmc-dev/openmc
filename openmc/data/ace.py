@@ -27,7 +27,7 @@ from .data import ATOMIC_SYMBOL, gnds_name, EV_PER_MEV, K_BOLTZMANN
 from .endf import ENDF_FLOAT_RE
 
 
-def get_metadata(zaid, metastable_scheme='nndc'):
+def get_metadata(zaid, metastable_scheme="nndc"):
     """Return basic identifying data for a nuclide with a given ZAID.
 
     Parameters
@@ -58,13 +58,13 @@ def get_metadata(zaid, metastable_scheme='nndc'):
 
     """
 
-    cv.check_type('zaid', zaid, int)
-    cv.check_value('metastable_scheme', metastable_scheme, ['nndc', 'mcnp'])
+    cv.check_type("zaid", zaid, int)
+    cv.check_value("metastable_scheme", metastable_scheme, ["nndc", "mcnp"])
 
     Z = zaid // 1000
     mass_number = zaid % 1000
 
-    if metastable_scheme == 'mcnp':
+    if metastable_scheme == "mcnp":
         if zaid > 1000000:
             # New SZA format
             Z = Z % 1000
@@ -79,7 +79,7 @@ def get_metadata(zaid, metastable_scheme='nndc'):
                 metastable = 0
             else:
                 metastable = 1 if mass_number > 300 else 0
-    elif metastable_scheme == 'nndc':
+    elif metastable_scheme == "nndc":
         metastable = 1 if mass_number > 300 else 0
 
     while mass_number > 3 * Z:
@@ -105,23 +105,24 @@ def ascii_to_binary(ascii_file, binary_file):
     """
 
     # Read data from ASCII file
-    with open(str(ascii_file), 'r') as ascii_file:
+    with open(str(ascii_file), "r") as ascii_file:
         lines = ascii_file.readlines()
 
     # Set default record length
     record_length = 4096
 
     # Open binary file
-    with open(str(binary_file), 'wb') as binary_file:
+    with open(str(binary_file), "wb") as binary_file:
         idx = 0
         while idx < len(lines):
             # check if it's a > 2.0.0 version header
-            if lines[idx].split()[0][1] == '.':
-                if lines[idx + 1].split()[3] == '3':
+            if lines[idx].split()[0][1] == ".":
+                if lines[idx + 1].split()[3] == "3":
                     idx = idx + 3
                 else:
-                    raise NotImplementedError('Only backwards compatible ACE'
-                                              'headers currently supported')
+                    raise NotImplementedError(
+                        "Only backwards compatible ACE" "headers currently supported"
+                    )
             # Read/write header block
             hz = lines[idx][:10].encode()
             aw0 = float(lines[idx][10:22])
@@ -129,30 +130,32 @@ def ascii_to_binary(ascii_file, binary_file):
             hd = lines[idx][35:45].encode()
             hk = lines[idx + 1][:70].encode()
             hm = lines[idx + 1][70:80].encode()
-            binary_file.write(struct.pack(str('=10sdd10s70s10s'),
-                              hz, aw0, tz, hd, hk, hm))
+            binary_file.write(
+                struct.pack(str("=10sdd10s70s10s"), hz, aw0, tz, hd, hk, hm)
+            )
 
             # Read/write IZ/AW pairs
-            data = ' '.join(lines[idx + 2:idx + 6]).split()
+            data = " ".join(lines[idx + 2 : idx + 6]).split()
             iz = np.array(data[::2], dtype=int)
             aw = np.array(data[1::2], dtype=float)
             izaw = [item for sublist in zip(iz, aw) for item in sublist]
-            binary_file.write(struct.pack(str('=' + 16*'id'), *izaw))
+            binary_file.write(struct.pack(str("=" + 16 * "id"), *izaw))
 
             # Read/write NXS and JXS arrays. Null bytes are added at the end so
             # that XSS will start at the second record
-            nxs = [int(x) for x in ' '.join(lines[idx + 6:idx + 8]).split()]
-            jxs = [int(x) for x in ' '.join(lines[idx + 8:idx + 12]).split()]
-            binary_file.write(struct.pack(str(f'=16i32i{record_length - 500}x'),
-                                          *(nxs + jxs)))
+            nxs = [int(x) for x in " ".join(lines[idx + 6 : idx + 8]).split()]
+            jxs = [int(x) for x in " ".join(lines[idx + 8 : idx + 12]).split()]
+            binary_file.write(
+                struct.pack(str(f"=16i32i{record_length - 500}x"), *(nxs + jxs))
+            )
 
             # Read/write XSS array. Null bytes are added to form a complete record
             # at the end of the file
-            n_lines = (nxs[0] + 3)//4
+            n_lines = (nxs[0] + 3) // 4
             start = idx + _ACE_HEADER_SIZE
-            xss = np.fromstring(' '.join(lines[start:start + n_lines]), sep=' ')
-            extra_bytes = record_length - ((len(xss)*8 - 1) % record_length + 1)
-            binary_file.write(struct.pack(str(f'={nxs[0]}d{extra_bytes}x'), *xss))
+            xss = np.fromstring(" ".join(lines[start : start + n_lines]), sep=" ")
+            extra_bytes = record_length - ((len(xss) * 8 - 1) % record_length + 1)
+            binary_file.write(struct.pack(str(f"={nxs[0]}d{extra_bytes}x"), *xss))
 
             # Advance to next table in file
             idx += _ACE_HEADER_SIZE + n_lines
@@ -183,7 +186,7 @@ def get_table(filename, name=None):
         if lib.tables:
             return lib.tables[0]
         else:
-            raise ValueError(f'Could not find ACE table with name: {name}')
+            raise ValueError(f"Could not find ACE table with name: {name}")
 
 
 # The beginning of an ASCII ACE file consists of 12 lines that include the name,
@@ -224,24 +227,25 @@ class Library(EqualityMixin):
         # Determine whether file is ASCII or binary
         filename = str(filename)
         try:
-            fh = open(filename, 'rb')
+            fh = open(filename, "rb")
             # Grab 10 lines of the library
-            sb = b''.join([fh.readline() for i in range(10)])
+            sb = b"".join([fh.readline() for i in range(10)])
 
             # Try to decode it with ascii
-            sb.decode('ascii')
+            sb.decode("ascii")
 
             # No exception so proceed with ASCII - reopen in non-binary
             fh.close()
-            with open(filename, 'r') as fh:
+            with open(filename, "r") as fh:
                 self._read_ascii(fh, table_names, verbose)
         except UnicodeDecodeError:
             fh.close()
-            with open(filename, 'rb') as fh:
+            with open(filename, "rb") as fh:
                 self._read_binary(fh, table_names, verbose)
 
-    def _read_binary(self, ace_file, table_names, verbose=False,
-                     recl_length=4096, entries=512):
+    def _read_binary(
+        self, ace_file, table_names, verbose=False, recl_length=4096, entries=512
+    ):
         """Read a binary (Type 2) ACE table.
 
         Parameters
@@ -271,24 +275,25 @@ class Library(EqualityMixin):
 
             # Read name, atomic mass ratio, temperature, date, comment, and
             # material
-            name, atomic_weight_ratio, temperature, date, comment, mat = \
-                struct.unpack(str('=10sdd10s70s10s'), ace_file.read(116))
+            name, atomic_weight_ratio, temperature, date, comment, mat = struct.unpack(
+                str("=10sdd10s70s10s"), ace_file.read(116)
+            )
             name = name.decode().strip()
 
             # Read ZAID/awr combinations
-            data = struct.unpack(str('=' + 16*'id'), ace_file.read(192))
+            data = struct.unpack(str("=" + 16 * "id"), ace_file.read(192))
             pairs = list(zip(data[::2], data[1::2]))
 
             # Read NXS
-            nxs = list(struct.unpack(str('=16i'), ace_file.read(64)))
+            nxs = list(struct.unpack(str("=16i"), ace_file.read(64)))
 
             # Determine length of XSS and number of records
             length = nxs[0]
-            n_records = (length + entries - 1)//entries
+            n_records = (length + entries - 1) // entries
 
             # verify that we are supposed to read this table in
             if (table_names is not None) and (name not in table_names):
-                ace_file.seek(start_position + recl_length*(n_records + 1))
+                ace_file.seek(start_position + recl_length * (n_records + 1))
                 continue
 
             if verbose:
@@ -296,12 +301,11 @@ class Library(EqualityMixin):
                 print(f"Loading nuclide {name} at {kelvin} K")
 
             # Read JXS
-            jxs = list(struct.unpack(str('=32i'), ace_file.read(128)))
+            jxs = list(struct.unpack(str("=32i"), ace_file.read(128)))
 
             # Read XSS
             ace_file.seek(start_position + recl_length)
-            xss = list(struct.unpack(str(f'={length}d'),
-                                     ace_file.read(length*8)))
+            xss = list(struct.unpack(str(f"={length}d"), ace_file.read(length * 8)))
 
             # Insert zeros at beginning of NXS, JXS, and XSS arrays so that the
             # indexing will be the same as Fortran. This makes it easier to
@@ -316,12 +320,11 @@ class Library(EqualityMixin):
             xss = np.array(xss)
 
             # Create ACE table with data read in
-            table = Table(name, atomic_weight_ratio, temperature, pairs,
-                          nxs, jxs, xss)
+            table = Table(name, atomic_weight_ratio, temperature, pairs, nxs, jxs, xss)
             self.tables.append(table)
 
             # Advance to next record
-            ace_file.seek(start_position + recl_length*(n_records + 1))
+            ace_file.seek(start_position + recl_length * (n_records + 1))
 
     def _read_ascii(self, ace_file, table_names, verbose=False):
         """Read an ASCII (Type 1) ACE table.
@@ -342,12 +345,12 @@ class Library(EqualityMixin):
 
         lines = [ace_file.readline() for i in range(_ACE_HEADER_SIZE + 1)]
 
-        while len(lines) != 0 and lines[0].strip() != '':
+        while len(lines) != 0 and lines[0].strip() != "":
             # Read name of table, atomic mass ratio, and temperature. If first
             # line is empty, we are at end of file
 
             # check if it's a 2.0 style header
-            if lines[0].split()[0][1] == '.':
+            if lines[0].split()[0][1] == ".":
                 words = lines[0].split()
                 name = words[1]
                 words = lines[1].split()
@@ -363,16 +366,15 @@ class Library(EqualityMixin):
                 atomic_weight_ratio = float(words[1])
                 temperature = float(words[2])
 
-            datastr = ' '.join(lines[2:6]).split()
-            pairs = list(zip(map(int, datastr[::2]),
-                             map(float, datastr[1::2])))
+            datastr = " ".join(lines[2:6]).split()
+            pairs = list(zip(map(int, datastr[::2]), map(float, datastr[1::2])))
 
-            datastr = '0 ' + ' '.join(lines[6:8])
-            nxs = np.fromstring(datastr, sep=' ', dtype=int)
+            datastr = "0 " + " ".join(lines[6:8])
+            nxs = np.fromstring(datastr, sep=" ", dtype=int)
 
             # Detemrine number of lines in the XSS array; each line consists of
             # four values
-            n_lines = (nxs[1] + 3)//4
+            n_lines = (nxs[1] + 3) // 4
 
             # Ensure that we have more tables to read in
             if (table_names is not None) and (table_names <= tables_seen):
@@ -396,11 +398,13 @@ class Library(EqualityMixin):
             # Insert zeros at beginning of NXS, JXS, and XSS arrays so that the
             # indexing will be the same as Fortran. This makes it easier to
             # follow the ACE format specification.
-            datastr = '0 ' + ' '.join(lines[8:_ACE_HEADER_SIZE])
-            jxs = np.fromstring(datastr, dtype=int, sep=' ')
+            datastr = "0 " + " ".join(lines[8:_ACE_HEADER_SIZE])
+            jxs = np.fromstring(datastr, dtype=int, sep=" ")
 
-            datastr = '0.0 ' + ''.join(lines[_ACE_HEADER_SIZE:_ACE_HEADER_SIZE + n_lines])
-            xss = np.fromstring(datastr, sep=' ')
+            datastr = "0.0 " + "".join(
+                lines[_ACE_HEADER_SIZE : _ACE_HEADER_SIZE + n_lines]
+            )
+            xss = np.fromstring(datastr, sep=" ")
 
             # When NJOY writes an ACE file, any values less than 1e-100 actually
             # get written without the 'e'. Thus, what we do here is check
@@ -409,12 +413,11 @@ class Library(EqualityMixin):
             # after it). If it's too short, then we apply the ENDF float regular
             # expression. We don't do this by default because it's expensive!
             if xss.size != nxs[1] + 1:
-                datastr = ENDF_FLOAT_RE.sub(r'\1e\2\3', datastr)
-                xss = np.fromstring(datastr, sep=' ')
+                datastr = ENDF_FLOAT_RE.sub(r"\1e\2\3", datastr)
+                xss = np.fromstring(datastr, sep=" ")
                 assert xss.size == nxs[1] + 1
 
-            table = Table(name, atomic_weight_ratio, temperature, pairs,
-                          nxs, jxs, xss)
+            table = Table(name, atomic_weight_ratio, temperature, pairs, nxs, jxs, xss)
             self.tables.append(table)
 
             # Read all data blocks
@@ -423,17 +426,18 @@ class Library(EqualityMixin):
 
 class TableType(enum.Enum):
     """Type of ACE data table."""
-    NEUTRON_CONTINUOUS = 'c'
-    NEUTRON_DISCRETE = 'd'
-    THERMAL_SCATTERING = 't'
-    DOSIMETRY = 'y'
-    PHOTOATOMIC = 'p'
-    PHOTONUCLEAR = 'u'
-    PROTON = 'h'
-    DEUTERON = 'o'
-    TRITON = 'r'
-    HELIUM3 = 's'
-    ALPHA = 'a'
+
+    NEUTRON_CONTINUOUS = "c"
+    NEUTRON_DISCRETE = "d"
+    THERMAL_SCATTERING = "t"
+    DOSIMETRY = "y"
+    PHOTOATOMIC = "p"
+    PHOTONUCLEAR = "u"
+    PROTON = "h"
+    DEUTERON = "o"
+    TRITON = "r"
+    HELIUM3 = "s"
+    ALPHA = "a"
 
     @classmethod
     def from_suffix(cls, suffix):
@@ -484,8 +488,8 @@ class Table(EqualityMixin):
         Type of the ACE data
 
     """
-    def __init__(self, name, atomic_weight_ratio, temperature, pairs,
-                 nxs, jxs, xss):
+
+    def __init__(self, name, atomic_weight_ratio, temperature, pairs, nxs, jxs, xss):
         self.name = name
         self.atomic_weight_ratio = atomic_weight_ratio
         self.temperature = temperature
@@ -496,11 +500,11 @@ class Table(EqualityMixin):
 
     @property
     def zaid(self):
-        return self.name.split('.')[0]
+        return self.name.split(".")[0]
 
     @property
     def data_type(self):
-        xs = self.name.split('.')[1]
+        xs = self.name.split(".")[1]
         return TableType.from_suffix(xs[-1])
 
     def __repr__(self):
@@ -523,18 +527,17 @@ def get_libraries_from_xsdir(path):
     xsdir = Path(path)
 
     # Find 'directory' section
-    with open(path, 'r') as fh:
+    with open(path, "r") as fh:
         lines = fh.readlines()
     for index, line in enumerate(lines):
-        if line.strip().lower() == 'directory':
+        if line.strip().lower() == "directory":
             break
     else:
         raise RuntimeError("Could not find 'directory' section in MCNP xsdir file")
 
     # Handle continuation lines indicated by '+' at end of line
-    lines = lines[index + 1:]
-    continue_lines = [i for i, line in enumerate(lines)
-                      if line.strip().endswith('+')]
+    lines = lines[index + 1 :]
+    continue_lines = [i for i, line in enumerate(lines) if line.strip().endswith("+")]
     for i in reversed(continue_lines):
         lines[i] = lines[i].strip()[:-1] + lines.pop(i + 1)
 
@@ -569,7 +572,7 @@ def get_libraries_from_xsdata(path):
         List of paths to ACE libraries
     """
     xsdata = Path(path)
-    with open(xsdata, 'r') as xsdata_file:
+    with open(xsdata, "r") as xsdata_file:
         # As in get_libraries_from_xsdir, we use a dict for O(1) membership
         # check while retaining insertion order
         libraries = {}

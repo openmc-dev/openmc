@@ -31,6 +31,7 @@ class CoherentElasticAE(AngleEnergy):
         Coherent elastic scattering cross section
 
     """
+
     def __init__(self, coherent_xs):
         self.coherent_xs = coherent_xs
 
@@ -43,8 +44,8 @@ class CoherentElasticAE(AngleEnergy):
             HDF5 group to write to
 
         """
-        group.attrs['type'] = np.bytes_('coherent_elastic')
-        self.coherent_xs.to_hdf5(group, 'coherent_xs')
+        group.attrs["type"] = np.bytes_("coherent_elastic")
+        self.coherent_xs.to_hdf5(group, "coherent_xs")
 
     @classmethod
     def from_hdf5(cls, group):
@@ -63,7 +64,7 @@ class CoherentElasticAE(AngleEnergy):
             Coherent elastic distribution
 
         """
-        coherent_xs = openmc.data.CoherentElastic.from_hdf5(group['coherent_xs'])
+        coherent_xs = openmc.data.CoherentElastic.from_hdf5(group["coherent_xs"])
         return cls(coherent_xs)
 
 
@@ -92,6 +93,7 @@ class IncoherentElasticAE(AngleEnergy):
         Debye-Waller integral in [eV\ :math:`^{-1}`]
 
     """
+
     def __init__(self, debye_waller):
         self.debye_waller = debye_waller
 
@@ -104,8 +106,8 @@ class IncoherentElasticAE(AngleEnergy):
             HDF5 group to write to
 
         """
-        group.attrs['type'] = np.bytes_('incoherent_elastic')
-        group.create_dataset('debye_waller', data=self.debye_waller)
+        group.attrs["type"] = np.bytes_("incoherent_elastic")
+        group.create_dataset("debye_waller", data=self.debye_waller)
 
     @classmethod
     def from_hdf5(cls, group):
@@ -122,7 +124,7 @@ class IncoherentElasticAE(AngleEnergy):
             Incoherent elastic distribution
 
         """
-        return cls(group['debye_waller'][()])
+        return cls(group["debye_waller"][()])
 
 
 class IncoherentElasticAEDiscrete(AngleEnergy):
@@ -134,6 +136,7 @@ class IncoherentElasticAEDiscrete(AngleEnergy):
         Equi-probable discrete angles at each incoming energy
 
     """
+
     def __init__(self, mu_out):
         self.mu_out = mu_out
 
@@ -146,8 +149,8 @@ class IncoherentElasticAEDiscrete(AngleEnergy):
             HDF5 group to write to
 
         """
-        group.attrs['type'] = np.bytes_('incoherent_elastic_discrete')
-        group.create_dataset('mu_out', data=self.mu_out)
+        group.attrs["type"] = np.bytes_("incoherent_elastic_discrete")
+        group.create_dataset("mu_out", data=self.mu_out)
 
     @classmethod
     def from_hdf5(cls, group):
@@ -164,7 +167,7 @@ class IncoherentElasticAEDiscrete(AngleEnergy):
             Discrete incoherent elastic distribution
 
         """
-        return cls(group['mu_out'][()])
+        return cls(group["mu_out"][()])
 
 
 class IncoherentInelasticAEDiscrete(AngleEnergy):
@@ -189,6 +192,7 @@ class IncoherentInelasticAEDiscrete(AngleEnergy):
         Whether discrete angles are equi-probable or have a skewed distribution
 
     """
+
     def __init__(self, energy_out, mu_out, skewed=False):
         self.energy_out = energy_out
         self.mu_out = mu_out
@@ -203,10 +207,10 @@ class IncoherentInelasticAEDiscrete(AngleEnergy):
             HDF5 group to write to
 
         """
-        group.attrs['type'] = np.bytes_('incoherent_inelastic_discrete')
-        group.create_dataset('energy_out', data=self.energy_out)
-        group.create_dataset('mu_out', data=self.mu_out)
-        group.create_dataset('skewed', data=self.skewed)
+        group.attrs["type"] = np.bytes_("incoherent_inelastic_discrete")
+        group.create_dataset("energy_out", data=self.energy_out)
+        group.create_dataset("mu_out", data=self.mu_out)
+        group.create_dataset("skewed", data=self.skewed)
 
     @classmethod
     def from_hdf5(cls, group):
@@ -223,14 +227,14 @@ class IncoherentInelasticAEDiscrete(AngleEnergy):
             Discrete incoherent inelastic distribution
 
         """
-        energy_out = group['energy_out'][()]
-        mu_out = group['mu_out'][()]
-        skewed = bool(group['skewed'][()])
+        energy_out = group["energy_out"][()]
+        mu_out = group["mu_out"][()]
+        skewed = bool(group["skewed"][()])
         return cls(energy_out, mu_out, skewed)
 
 
 class IncoherentInelasticAE(CorrelatedAngleEnergy):
-    _name = 'incoherent_inelastic'
+    _name = "incoherent_inelastic"
 
 
 class MixedElasticAE(AngleEnergy):
@@ -253,6 +257,7 @@ class MixedElasticAE(AngleEnergy):
         Secondary distribution for incoherent elastic scattering
 
     """
+
     def __init__(self, coherent, incoherent):
         self.coherent = coherent
         self.incoherent = incoherent
@@ -266,10 +271,10 @@ class MixedElasticAE(AngleEnergy):
             HDF5 group to write to
 
         """
-        group.attrs['type'] = np.bytes_('mixed_elastic')
-        coherent_group = group.create_group('coherent')
+        group.attrs["type"] = np.bytes_("mixed_elastic")
+        coherent_group = group.create_group("coherent")
         self.coherent.to_hdf5(coherent_group)
-        incoherent_group = group.create_group('incoherent')
+        incoherent_group = group.create_group("incoherent")
         self.incoherent.to_hdf5(incoherent_group)
 
     @classmethod
@@ -287,6 +292,6 @@ class MixedElasticAE(AngleEnergy):
             Mixed thermal elastic distribution
 
         """
-        coherent = AngleEnergy.from_hdf5(group['coherent'])
-        incoherent = AngleEnergy.from_hdf5(group['incoherent'])
+        coherent = AngleEnergy.from_hdf5(group["coherent"])
+        incoherent = AngleEnergy.from_hdf5(group["incoherent"])
         return cls(coherent, incoherent)

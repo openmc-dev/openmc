@@ -66,7 +66,7 @@ class EnergyGroups:
         return hash(tuple(self.group_edges))
 
     def __repr__(self):
-        if hasattr(self, '_name'):
+        if hasattr(self, "_name"):
             return f"<EnergyGroups: {self.num_groups} groups ({self._name})>"
         else:
             return f"<EnergyGroups: {self.num_groups} groups>"
@@ -77,8 +77,8 @@ class EnergyGroups:
 
     @group_edges.setter
     def group_edges(self, edges):
-        cv.check_type('group edges', edges, Iterable, Real)
-        cv.check_greater_than('number of group edges', len(edges), 1)
+        cv.check_type("group edges", edges, Iterable, Real)
+        cv.check_greater_than("number of group edges", len(edges), 1)
         self._group_edges = np.array(edges)
 
     @property
@@ -106,8 +106,10 @@ class EnergyGroups:
         """
 
         if self.group_edges is None:
-            msg = 'Unable to get energy group for energy "{0}" eV since ' \
-                  'the group edges have not yet been set'.format(energy)
+            msg = (
+                'Unable to get energy group for energy "{0}" eV since '
+                "the group edges have not yet been set".format(energy)
+            )
             raise ValueError(msg)
 
         index = np.where(self.group_edges > energy)[0][0]
@@ -135,18 +137,20 @@ class EnergyGroups:
         """
 
         if self.group_edges is None:
-            msg = 'Unable to get energy group bounds for group "{0}" since ' \
-                  'the group edges have not yet been set'.format(group)
+            msg = (
+                'Unable to get energy group bounds for group "{0}" since '
+                "the group edges have not yet been set".format(group)
+            )
             raise ValueError(msg)
 
-        cv.check_greater_than('group', group, 0)
-        cv.check_less_than('group', group, self.num_groups, equality=True)
+        cv.check_greater_than("group", group, 0)
+        cv.check_less_than("group", group, self.num_groups, equality=True)
 
-        lower = self.group_edges[self.num_groups-group]
-        upper = self.group_edges[self.num_groups-group+1]
+        lower = self.group_edges[self.num_groups - group]
+        upper = self.group_edges[self.num_groups - group + 1]
         return lower, upper
 
-    def get_group_indices(self, groups='all'):
+    def get_group_indices(self, groups="all"):
         """Returns the array indices for one or more energy groups.
 
         Parameters
@@ -169,18 +173,20 @@ class EnergyGroups:
         """
 
         if self.group_edges is None:
-            msg = 'Unable to get energy group indices for groups "{0}" since ' \
-                  'the group edges have not yet been set'.format(groups)
+            msg = (
+                'Unable to get energy group indices for groups "{0}" since '
+                "the group edges have not yet been set".format(groups)
+            )
             raise ValueError(msg)
 
-        if groups == 'all':
+        if groups == "all":
             return np.arange(self.num_groups)
         else:
             indices = np.zeros(len(groups), dtype=int)
 
         for i, group in enumerate(groups):
-            cv.check_greater_than('group', group, 0)
-            cv.check_less_than('group', group, self.num_groups, equality=True)
+            cv.check_greater_than("group", group, 0)
+            cv.check_less_than("group", group, self.num_groups, equality=True)
             indices[i] = group - 1
 
         return indices
@@ -213,15 +219,15 @@ class EnergyGroups:
             If the group edges have not yet been set.
         """
 
-        cv.check_type('group edges', coarse_groups, Iterable)
+        cv.check_type("group edges", coarse_groups, Iterable)
         for group in coarse_groups:
-            cv.check_type('group edges', group, Iterable)
-            cv.check_length('group edges', group, 2)
-            cv.check_greater_than('lower group', group[0], 1, True)
-            cv.check_less_than('lower group', group[0], self.num_groups, True)
-            cv.check_greater_than('upper group', group[0], 1, True)
-            cv.check_less_than('upper group', group[0], self.num_groups, True)
-            cv.check_less_than('lower group', group[0], group[1], False)
+            cv.check_type("group edges", group, Iterable)
+            cv.check_length("group edges", group, 2)
+            cv.check_greater_than("lower group", group[0], 1, True)
+            cv.check_less_than("lower group", group[0], self.num_groups, True)
+            cv.check_greater_than("upper group", group[0], 1, True)
+            cv.check_less_than("upper group", group[0], self.num_groups, True)
+            cv.check_less_than("lower group", group[0], group[1], False)
 
         # Compute the group indices into the coarse group
         group_bounds = [group[1] for group in coarse_groups]
@@ -287,7 +293,7 @@ class EnergyGroups:
         """
 
         if not self.can_merge(other):
-            raise ValueError('Unable to merge energy groups')
+            raise ValueError("Unable to merge energy groups")
 
         # Create deep copy to return as merged energy groups
         merged_groups = copy.deepcopy(self)

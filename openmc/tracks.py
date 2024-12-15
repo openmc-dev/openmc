@@ -8,7 +8,7 @@ from .source import SourceParticle, ParticleType
 
 from pathlib import Path
 
-ParticleTrack = namedtuple('ParticleTrack', ['particle', 'states'])
+ParticleTrack = namedtuple("ParticleTrack", ["particle", "states"])
 ParticleTrack.__doc__ = """\
 Particle track information
 
@@ -24,8 +24,12 @@ states : numpy.ndarray
     ``material_id`` (material ID).
 
 """
+
+
 def _particle_track_repr(self):
     return f"<ParticleTrack: {self.particle}, {len(self.states)} states>"
+
+
 ParticleTrack.__repr__ = _particle_track_repr
 
 
@@ -34,7 +38,7 @@ _VERSION_TRACK = 3
 
 def _identifier(dset_name):
     """Return (batch, gen, particle) tuple given dataset name"""
-    _, batch, gen, particle = dset_name.split('_')
+    _, batch, gen, particle = dset_name.split("_")
     return (int(batch), int(gen), int(particle))
 
 
@@ -67,8 +71,8 @@ class Track(Sequence):
 
     def __init__(self, dset):
         tracks = dset[()]
-        offsets = dset.attrs['offsets']
-        particles = dset.attrs['particles']
+        offsets = dset.attrs["offsets"]
+        particles = dset.attrs["particles"]
         self.identifier = _identifier(dset.name)
 
         # Construct list of track histories
@@ -79,7 +83,7 @@ class Track(Sequence):
         self.particle_tracks = tracks_list
 
     def __repr__(self):
-        return f'<Track {self.identifier}: {len(self.particle_tracks)} particles>'
+        return f"<Track {self.identifier}: {len(self.particle_tracks)} particles>"
 
     def __getitem__(self, index):
         return self.particle_tracks[index]
@@ -166,17 +170,17 @@ class Track(Sequence):
         # Setup axes is one wasn't passed
         if axes is None:
             fig = plt.figure()
-            ax = plt.axes(projection='3d')
-            ax.set_xlabel('x [cm]')
-            ax.set_ylabel('y [cm]')
-            ax.set_zlabel('z [cm]')
+            ax = plt.axes(projection="3d")
+            ax.set_xlabel("x [cm]")
+            ax.set_ylabel("y [cm]")
+            ax.set_zlabel("z [cm]")
         else:
             ax = axes
 
         # Plot each particle track
         for _, states in self:
-            r = states['r']
-            ax.plot3D(r['x'], r['y'], r['z'])
+            r = states["r"]
+            ax.plot3D(r["x"], r["y"], r["z"])
 
         return ax
 
@@ -188,9 +192,12 @@ class Track(Sequence):
             state = particle_track.states[0]
             sources.append(
                 SourceParticle(
-                    r=state['r'], u=state['u'], E=state['E'],
-                    time=state['time'], wgt=state['wgt'],
-                    particle=particle_type
+                    r=state["r"],
+                    u=state["u"],
+                    E=state["E"],
+                    time=state["time"],
+                    wgt=state["wgt"],
+                    particle=particle_type,
                 )
             )
         return sources
@@ -211,11 +218,11 @@ class Tracks(list):
 
     """
 
-    def __init__(self, filepath='tracks.h5'):
+    def __init__(self, filepath="tracks.h5"):
         # Read data from track file
-        with h5py.File(filepath, 'r') as fh:
+        with h5py.File(filepath, "r") as fh:
             # Check filetype and version
-            check_filetype_version(fh, 'track', _VERSION_TRACK)
+            check_filetype_version(fh, "track", _VERSION_TRACK)
 
             for dset_name in sorted(fh, key=_identifier):
                 dset = fh[dset_name]
@@ -261,16 +268,17 @@ class Tracks(list):
 
         """
         import matplotlib.pyplot as plt
+
         fig = plt.figure()
-        ax = plt.axes(projection='3d')
-        ax.set_xlabel('x [cm]')
-        ax.set_ylabel('y [cm]')
-        ax.set_zlabel('z [cm]')
+        ax = plt.axes(projection="3d")
+        ax.set_xlabel("x [cm]")
+        ax.set_ylabel("y [cm]")
+        ax.set_zlabel("z [cm]")
         for track in self:
             track.plot(ax)
         return ax
 
-    def write_to_vtk(self, filename=Path('tracks.vtp')):
+    def write_to_vtk(self, filename=Path("tracks.vtp")):
         """Creates a VTP file of the tracks
 
         Parameters
@@ -294,7 +302,7 @@ class Tracks(list):
         for particle in self:
             for pt in particle.particle_tracks:
                 for state in pt.states:
-                    points.InsertNextPoint(state['r'])
+                    points.InsertNextPoint(state["r"])
 
             # Create VTK line and assign points to line.
             n = pt.states.size
@@ -322,7 +330,7 @@ class Tracks(list):
         return data
 
     @staticmethod
-    def combine(track_files, path='tracks.h5'):
+    def combine(track_files, path="tracks.h5"):
         """Combine multiple track files into a single track file
 
         Parameters
@@ -333,13 +341,13 @@ class Tracks(list):
             Path of combined track file to create
 
         """
-        with h5py.File(path, 'w') as h5_out:
+        with h5py.File(path, "w") as h5_out:
             for i, fname in enumerate(track_files):
-                with h5py.File(fname, 'r') as h5_in:
+                with h5py.File(fname, "r") as h5_in:
                     # Copy file attributes for first file
                     if i == 0:
-                        h5_out.attrs['filetype'] = h5_in.attrs['filetype']
-                        h5_out.attrs['version'] = h5_in.attrs['version']
+                        h5_out.attrs["filetype"] = h5_in.attrs["filetype"]
+                        h5_out.attrs["version"] = h5_in.attrs["version"]
 
                     # Copy each 'track_*' dataset from input file
                     for dset in h5_in:

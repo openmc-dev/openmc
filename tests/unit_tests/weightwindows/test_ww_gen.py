@@ -15,21 +15,21 @@ def model():
 
     ### Materials ###
     water = openmc.Material()
-    water.set_density('g/cc', 1.0)
+    water.set_density("g/cc", 1.0)
     water.add_nuclide("H1", 2)
     water.add_nuclide("O16", 1)
 
     steel = openmc.Material()
-    steel.set_density('g/cc', 8.0)
+    steel.set_density("g/cc", 8.0)
     steel.add_nuclide("Fe56", 1.0)
 
     air = openmc.Material()
-    air.set_density('g/cc', 0.001205)
+    air.set_density("g/cc", 0.001205)
     air.add_nuclide("N14", 0.781557629247)
     air.add_nuclide("O16", 0.210668126508)
 
     boron = openmc.Material()
-    boron.set_density('g/cc', 2.52)
+    boron.set_density("g/cc", 2.52)
     boron.add_nuclide("B10", 0.15856)
     boron.add_nuclide("B11", 0.64144)
     boron.add_nuclide("C0", 0.2)
@@ -39,7 +39,7 @@ def model():
 
     surfs = [openmc.Sphere(r=r) for r in radii]
 
-    surfs[-1].boundary_type = 'vacuum'
+    surfs[-1].boundary_type = "vacuum"
 
     regions = openmc.model.subdivide(surfs)
 
@@ -52,11 +52,11 @@ def model():
     ### Settings ###
 
     settings = openmc.Settings(
-        run_mode='fixed source',
+        run_mode="fixed source",
         particles=100,
         batches=10,
         max_history_splits=10,
-        survival_biasing=False
+        survival_biasing=False,
     )
 
     # 10 keV neutron point source at the origin
@@ -79,7 +79,7 @@ mf = openmc.MeshFilter(mesh)
 
 ef = openmc.EnergyFilter([0.0, 1e7])
 
-pf = openmc.ParticleFilter(['neutron', 'photon'])
+pf = openmc.ParticleFilter(["neutron", "photon"])
 
 filters = [mf, ef, pf]
 
@@ -92,12 +92,12 @@ def labels(params):
     out = []
     for p in params:
         if isinstance(p, openmc.ParticleFilter):
-            out.append('particle')
+            out.append("particle")
         elif isinstance(p, openmc.MeshFilter):
-            out.append('mesh')
+            out.append("mesh")
         elif isinstance(p, openmc.EnergyFilter):
-            out.append('energy')
-    return "filters:" + '-'.join(out)
+            out.append("energy")
+    return "filters:" + "-".join(out)
 
 
 @pytest.mark.parametrize("filters", test_cases, ids=labels)
@@ -105,7 +105,7 @@ def test_ww_gen(filters, run_in_tmpdir, model):
 
     tally = openmc.Tally()
     tally.filters = list(filters)
-    tally.scores = ['flux']
+    tally.scores = ["flux"]
     model.tallies = openmc.Tallies([tally])
 
     model.export_to_model_xml()
@@ -177,11 +177,11 @@ def test_ww_import_export(run_in_tmpdir, model):
     e_groups = np.logspace(0, 7, 8)
     ef = openmc.EnergyFilter(e_groups)
 
-    pf = openmc.ParticleFilter(['neutron', 'photon'])
+    pf = openmc.ParticleFilter(["neutron", "photon"])
 
     tally = openmc.Tally()
     tally.filters = [mf, ef, pf]
-    tally.scores = ['flux']
+    tally.scores = ["flux"]
 
     model.tallies = openmc.Tallies([tally])
 
@@ -221,9 +221,9 @@ def test_ww_import_export(run_in_tmpdir, model):
 
     openmc.lib.export_weight_windows()
 
-    assert Path('weight_windows.h5').exists()
+    assert Path("weight_windows.h5").exists()
 
-    openmc.lib.import_weight_windows('weight_windows.h5')
+    openmc.lib.import_weight_windows("weight_windows.h5")
 
     imported_ww = openmc.lib.weight_windows[2]
 
@@ -244,12 +244,10 @@ def test_ww_gen_roundtrip(run_in_tmpdir, model):
 
     mesh = openmc.RegularMesh.from_domain(model.geometry.root_universe)
     energy_bounds = np.linspace(0.0, 1e8, 11)
-    particle_type = 'neutron'
+    particle_type = "neutron"
 
     wwg = openmc.WeightWindowGenerator(mesh, energy_bounds, particle_type)
-    wwg.update_parameters = {'ratio' : 5.0,
-                             'threshold': 0.8,
-                             'value' : 'mean'}
+    wwg.update_parameters = {"ratio": 5.0, "threshold": 0.8, "value": "mean"}
 
     model.settings.weight_window_generators = wwg
     model.export_to_xml()
@@ -270,10 +268,10 @@ def test_ww_gen_roundtrip(run_in_tmpdir, model):
     assert wwg_in.update_parameters == wwg.update_parameters
 
     with pytest.raises(ValueError):
-        wwg.method = '🦍🐒'
+        wwg.method = "🦍🐒"
 
     with pytest.raises(TypeError):
-        wwg.update_parameters = {'ratio' : 'one-to-one'}
+        wwg.update_parameters = {"ratio": "one-to-one"}
 
     with pytest.raises(ValueError):
         wwg.max_realizations = -1
@@ -316,7 +314,7 @@ def test_python_hdf5_roundtrip(run_in_tmpdir, model):
 def test_ww_bounds_set_in_memory(run_in_tmpdir, model):
     tally = openmc.Tally()
     tally.filters = filters
-    tally.scores = ['flux']
+    tally.scores = ["flux"]
     model.tallies = [tally]
 
     bounds = np.arange(ef.num_bins * np.prod(mf.mesh.dimension))

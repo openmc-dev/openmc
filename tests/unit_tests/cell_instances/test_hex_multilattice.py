@@ -8,7 +8,7 @@ import openmc.lib
 from tests import cdtemp
 
 
-@pytest.fixture(scope='module', autouse=True)
+@pytest.fixture(scope="module", autouse=True)
 def double_hex_lattice_model():
     openmc.reset_auto_ids()
     radius = 0.9
@@ -21,19 +21,20 @@ def double_hex_lattice_model():
 
     # materials
     nat_u = openmc.Material()
-    nat_u.set_density('g/cm3', 12.0)
-    nat_u.add_element('U', 1.0)
+    nat_u.set_density("g/cm3", 12.0)
+    nat_u.add_element("U", 1.0)
 
     graphite = openmc.Material()
-    graphite.set_density('g/cm3', 1.1995)
-    graphite.add_element('C', 1.0)
+    graphite.set_density("g/cm3", 1.1995)
+    graphite.add_element("C", 1.0)
 
     # zplanes to define lower and upper region
-    z_low = openmc.ZPlane(-10, boundary_type='vacuum')
+    z_low = openmc.ZPlane(-10, boundary_type="vacuum")
     z_mid = openmc.ZPlane(0)
-    z_high = openmc.ZPlane(10, boundary_type='vacuum')
+    z_high = openmc.ZPlane(10, boundary_type="vacuum")
     hex_prism = openmc.model.HexagonalPrism(
-        edge_length=hex_prism_edge, boundary_type='reflective')
+        edge_length=hex_prism_edge, boundary_type="reflective"
+    )
 
     # geometry
     cyl = openmc.ZCylinder(r=radius)
@@ -41,9 +42,9 @@ def double_hex_lattice_model():
 
     # create a hexagonal lattice of compacts
     hex_lattice = openmc.HexLattice()
-    hex_lattice.orientation = 'y'
+    hex_lattice.orientation = "y"
     hex_lattice.pitch = (pin_lattice_pitch,)
-    hex_lattice.center = (0., 0.)
+    hex_lattice.center = (0.0, 0.0)
     center = [univ]
     ring = [univ, univ, univ, univ, univ, univ]
     hex_lattice.universes = [ring, center]
@@ -57,13 +58,13 @@ def double_hex_lattice_model():
     tally = openmc.Tally(tally_id=1)
     filter = openmc.DistribcellFilter(cell)
     tally.filters = [filter]
-    tally.scores = ['flux']
+    tally.scores = ["flux"]
     model.tallies = [tally]
 
     # settings
     # source definition. fission source given bounding box of graphite active region
-    system_LL = (-pin_lattice_pitch*sqrt(3)/2, -pin_lattice_pitch, -5)
-    system_UR = (pin_lattice_pitch*sqrt(3)/2, pin_lattice_pitch, 5)
+    system_LL = (-pin_lattice_pitch * sqrt(3) / 2, -pin_lattice_pitch, -5)
+    system_UR = (pin_lattice_pitch * sqrt(3) / 2, pin_lattice_pitch, 5)
     source_dist = openmc.stats.Box(system_LL, system_UR)
     model.settings.source = openmc.IndependentSource(space=source_dist)
     model.settings.particles = 100

@@ -5,11 +5,12 @@ import glob
 import os
 
 from tests.testing_harness import *
-pytestmark = pytest.mark.skipif(
-    not openmc.lib._mcpl_enabled(),
-    reason="MCPL is not enabled.")
 
-settings1="""<?xml version="1.0"?>
+pytestmark = pytest.mark.skipif(
+    not openmc.lib._mcpl_enabled(), reason="MCPL is not enabled."
+)
+
+settings1 = """<?xml version="1.0"?>
 <settings>
   <state_point batches="10" />
   <source_point mcpl="true" separate="true" />
@@ -68,34 +69,33 @@ class SourceFileTestHarness(TestHarness):
     def _test_output_created(self):
         """Make sure statepoint and source files have been created."""
         statepoint = glob.glob(os.path.join(os.getcwd(), self._sp_name))
-        assert len(statepoint) == 1, 'Either multiple or no statepoint files ' \
-             'exist.'
-        assert statepoint[0].endswith('h5'), \
-             'Statepoint file is not a HDF5 file.'
+        assert len(statepoint) == 1, "Either multiple or no statepoint files " "exist."
+        assert statepoint[0].endswith("h5"), "Statepoint file is not a HDF5 file."
 
-        source = glob.glob(os.path.join(os.getcwd(), 'source.10.mcpl*'))
-        assert len(source) == 1, 'Either multiple or no source files exist.'
-        assert source[0].endswith('mcpl') or source[0].endswith('mcpl.gz'), \
-             'Source file is not a MCPL file.'
+        source = glob.glob(os.path.join(os.getcwd(), "source.10.mcpl*"))
+        assert len(source) == 1, "Either multiple or no source files exist."
+        assert source[0].endswith("mcpl") or source[0].endswith(
+            "mcpl.gz"
+        ), "Source file is not a MCPL file."
 
     def _run_openmc_restart(self):
         # Get the name of the source file.
-        source = glob.glob(os.path.join(os.getcwd(), 'source.10.*'))
+        source = glob.glob(os.path.join(os.getcwd(), "source.10.*"))
 
         # Write the new settings.xml file.
-        with open('settings.xml','w') as fh:
-            fh.write(settings2.format(source[0].split('.')[-1]))
+        with open("settings.xml", "w") as fh:
+            fh.write(settings2.format(source[0].split(".")[-1]))
 
         # Run OpenMC.
         self._run_openmc()
 
     def _cleanup(self):
         TestHarness._cleanup(self)
-        output = glob.glob(os.path.join(os.getcwd(), 'source.*'))
-        with open('settings.xml','w') as fh:
+        output = glob.glob(os.path.join(os.getcwd(), "source.*"))
+        with open("settings.xml", "w") as fh:
             fh.write(settings1)
 
 
 def test_source_file():
-    harness = SourceFileTestHarness('statepoint.10.h5')
+    harness = SourceFileTestHarness("statepoint.10.h5")
     harness.main()

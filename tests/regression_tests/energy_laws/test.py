@@ -29,14 +29,14 @@ def model():
     model = openmc.model.Model()
 
     m = openmc.Material()
-    m.set_density('g/cm3', 20.0)
-    m.add_nuclide('U233', 1.0)
-    m.add_nuclide('Am244', 1.0)
-    m.add_nuclide('H2', 1.0)
-    m.add_nuclide('Na23', 1.0)
-    m.add_nuclide('Ta181', 1.0)
+    m.set_density("g/cm3", 20.0)
+    m.add_nuclide("U233", 1.0)
+    m.add_nuclide("Am244", 1.0)
+    m.add_nuclide("H2", 1.0)
+    m.add_nuclide("Na23", 1.0)
+    m.add_nuclide("Ta181", 1.0)
 
-    s = openmc.Sphere(r=100.0, boundary_type='reflective')
+    s = openmc.Sphere(r=100.0, boundary_type="reflective")
     c = openmc.Cell(fill=m, region=-s)
     model.geometry = openmc.Geometry([c])
 
@@ -48,5 +48,5 @@ def model():
 
 
 def test_energy_laws(model):
-    harness = PyAPITestHarness('statepoint.10.h5', model)
+    harness = PyAPITestHarness("statepoint.10.h5", model)
     harness.main()

@@ -25,9 +25,15 @@ from .openmc_operator import OpenMCOperator
 from .pool import _distribute
 from .results import Results
 from .helpers import (
-    DirectReactionRateHelper, ChainFissionHelper, ConstantFissionYieldHelper,
-    FissionYieldCutoffHelper, AveragedFissionYieldHelper, EnergyScoreHelper,
-    SourceRateHelper, FluxCollapseHelper)
+    DirectReactionRateHelper,
+    ChainFissionHelper,
+    ConstantFissionYieldHelper,
+    FissionYieldCutoffHelper,
+    AveragedFissionYieldHelper,
+    EnergyScoreHelper,
+    SourceRateHelper,
+    FluxCollapseHelper,
+)
 
 
 __all__ = ["CoupledOperator", "Operator", "OperatorResult"]
@@ -74,9 +80,9 @@ def _get_nuclides_with_data(cross_sections):
     nuclides = set()
     data_lib = DataLibrary.from_xml(cross_sections)
     for library in data_lib.libraries:
-        if library['type'] != 'neutron':
+        if library["type"] != "neutron":
             continue
-        for name in library['materials']:
+        for name in library["materials"]:
             if name not in nuclides:
                 nuclides.add(name)
 
@@ -203,35 +209,52 @@ class CoupledOperator(OpenMCOperator):
         Whether to finalize and clear the shared library memory when the
         depletion operation is complete. Defaults to clearing the library.
     """
+
     _fission_helpers = {
         "average": AveragedFissionYieldHelper,
         "constant": ConstantFissionYieldHelper,
         "cutoff": FissionYieldCutoffHelper,
     }
 
-    def __init__(self, model, chain_file=None, prev_results=None,
-                 diff_burnable_mats=False, diff_volume_method="divide equally",
-                 normalization_mode="fission-q", fission_q=None,
-                 fission_yield_mode="constant", fission_yield_opts=None,
-                 reaction_rate_mode="direct", reaction_rate_opts=None,
-                 reduce_chain=False, reduce_chain_level=None):
+    def __init__(
+        self,
+        model,
+        chain_file=None,
+        prev_results=None,
+        diff_burnable_mats=False,
+        diff_volume_method="divide equally",
+        normalization_mode="fission-q",
+        fission_q=None,
+        fission_yield_mode="constant",
+        fission_yield_opts=None,
+        reaction_rate_mode="direct",
+        reaction_rate_opts=None,
+        reduce_chain=False,
+        reduce_chain_level=None,
+    ):
 
         # check for old call to constructor
         if isinstance(model, openmc.Geometry):
-            msg = "As of version 0.13.0 openmc.deplete.CoupledOperator " \
-                "requires an openmc.Model object rather than the " \
-                "openmc.Geometry and openmc.Settings parameters. Please use " \
-                "the geometry and settings objects passed here to create a " \
+            msg = (
+                "As of version 0.13.0 openmc.deplete.CoupledOperator "
+                "requires an openmc.Model object rather than the "
+                "openmc.Geometry and openmc.Settings parameters. Please use "
+                "the geometry and settings objects passed here to create a "
                 " model with which to generate the transport Operator."
+            )
             raise TypeError(msg)
 
         # Determine cross sections
         cross_sections = _find_cross_sections(model)
 
-        check_value('fission yield mode', fission_yield_mode,
-                    self._fission_helpers.keys())
-        check_value('normalization mode', normalization_mode,
-                    ('energy-deposition', 'fission-q', 'source-rate'))
+        check_value(
+            "fission yield mode", fission_yield_mode, self._fission_helpers.keys()
+        )
+        check_value(
+            "normalization mode",
+            normalization_mode,
+            ("energy-deposition", "fission-q", "source-rate"),
+        )
         if normalization_mode != "fission-q":
             if fission_q is not None:
                 warn("Fission Q dictionary will not be used")
@@ -251,11 +274,11 @@ class CoupledOperator(OpenMCOperator):
         if fission_yield_opts is None:
             fission_yield_opts = {}
         helper_kwargs = {
-            'reaction_rate_mode': reaction_rate_mode,
-            'normalization_mode': normalization_mode,
-            'fission_yield_mode': fission_yield_mode,
-            'reaction_rate_opts': reaction_rate_opts,
-            'fission_yield_opts': fission_yield_opts
+            "reaction_rate_mode": reaction_rate_mode,
+            "normalization_mode": normalization_mode,
+            "fission_yield_mode": fission_yield_mode,
+            "reaction_rate_opts": reaction_rate_opts,
+            "fission_yield_opts": fission_yield_opts,
         }
 
         # Records how many times the operator has been called
@@ -271,7 +294,8 @@ class CoupledOperator(OpenMCOperator):
             fission_q=fission_q,
             helper_kwargs=helper_kwargs,
             reduce_chain=reduce_chain,
-            reduce_chain_level=reduce_chain_level)
+            reduce_chain_level=reduce_chain_level,
+        )
 
     def _differentiate_burnable_mats(self):
         """Assign distribmats for each burnable material"""
@@ -322,28 +346,30 @@ class CoupledOperator(OpenMCOperator):
             Keyword arguments for helper classes
 
         """
-        reaction_rate_mode = helper_kwargs['reaction_rate_mode']
-        normalization_mode = helper_kwargs['normalization_mode']
-        fission_yield_mode = helper_kwargs['fission_yield_mode']
-        reaction_rate_opts = helper_kwargs['reaction_rate_opts']
-        fission_yield_opts = helper_kwargs['fission_yield_opts']
+        reaction_rate_mode = helper_kwargs["reaction_rate_mode"]
+        normalization_mode = helper_kwargs["normalization_mode"]
+        fission_yield_mode = helper_kwargs["fission_yield_mode"]
+        reaction_rate_opts = helper_kwargs["reaction_rate_opts"]
+        fission_yield_opts = helper_kwargs["fission_yield_opts"]
 
         # Get classes to assist working with tallies
         if reaction_rate_mode == "direct":
             self._rate_helper = DirectReactionRateHelper(
-                self.reaction_rates.n_nuc, self.reaction_rates.n_react)
+                self.reaction_rates.n_nuc, self.reaction_rates.n_react
+            )
         elif reaction_rate_mode == "flux":
             # Ensure energy group boundaries were specified
-            if 'energies' not in reaction_rate_opts:
+            if "energies" not in reaction_rate_opts:
                 raise ValueError(
                     "Energy group boundaries must be specified in the "
                     "reaction_rate_opts argument when reaction_rate_mode is"
-                    "set to 'flux'.")
+                    "set to 'flux'."
+                )
 
             self._rate_helper = FluxCollapseHelper(
                 self.reaction_rates.n_nuc,
                 self.reaction_rates.n_react,
-                **reaction_rate_opts
+                **reaction_rate_opts,
             )
         else:
             raise ValueError("Invalid reaction rate mode.")
@@ -351,15 +377,16 @@ class CoupledOperator(OpenMCOperator):
         if normalization_mode == "fission-q":
             self._normalization_helper = ChainFissionHelper()
         elif normalization_mode == "energy-deposition":
-            score = "heating" if self.model.settings.photon_transport else "heating-local"
+            score = (
+                "heating" if self.model.settings.photon_transport else "heating-local"
+            )
             self._normalization_helper = EnergyScoreHelper(score)
         else:
             self._normalization_helper = SourceRateHelper()
 
         # Select and create fission yield helper
         fission_helper = self._fission_helpers[fission_yield_mode]
-        self._yield_helper = fission_helper.from_operator(
-            self, **fission_yield_opts)
+        self._yield_helper = fission_helper.from_operator(self, **fission_yield_opts)
 
     def initial_condition(self):
         """Performs final setup and returns initial condition.
@@ -492,10 +519,11 @@ class CoupledOperator(OpenMCOperator):
                             # negative. CRAM does not guarantee positive
                             # values.
                             if val < -1.0e-21:
-                                print(f'WARNING: nuclide {nuc} in material'
-                                      f'{mat} is negative (density = {val}'
-
-                                      ' atom/b-cm)')
+                                print(
+                                    f"WARNING: nuclide {nuc} in material"
+                                    f"{mat} is negative (density = {val}"
+                                    " atom/b-cm)"
+                                )
 
                                 number_i[mat, nuc] = 0.0
 
@@ -516,9 +544,7 @@ class CoupledOperator(OpenMCOperator):
             Current depletion step including restarts
 
         """
-        openmc.lib.statepoint_write(
-            f"openmc_simulation_n{step}.h5",
-            write_source=False)
+        openmc.lib.statepoint_write(f"openmc_simulation_n{step}.h5", write_source=False)
 
     def finalize(self):
         """Finalize a depletion simulation and release resources."""
@@ -563,6 +589,6 @@ def Operator(*args, **kwargs):
         "The Operator(...) class has been renamed and will "
         "be removed in a future version of OpenMC. Use "
         "CoupledOperator(...) instead.",
-        FutureWarning
+        FutureWarning,
     )
     return CoupledOperator(*args, **kwargs)

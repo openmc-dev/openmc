@@ -11,15 +11,15 @@ def test_volume(run_in_tmpdir, uo2):
     # Create model with nested spheres
     model = openmc.model.Model()
     model.materials.append(uo2)
-    inner = openmc.Sphere(r=1.)
-    outer = openmc.Sphere(r=2., boundary_type='vacuum')
+    inner = openmc.Sphere(r=1.0)
+    outer = openmc.Sphere(r=2.0, boundary_type="vacuum")
     c1 = openmc.Cell(fill=uo2, region=-inner)
     c2 = openmc.Cell(region=+inner & -outer)
     u = openmc.Universe(cells=[c1, c2])
     model.geometry.root_universe = u
     model.settings.particles = 100
     model.settings.batches = 10
-    model.settings.run_mode = 'fixed source'
+    model.settings.run_mode = "fixed source"
     model.settings.source = openmc.IndependentSource(space=openmc.stats.Point())
 
     ll, ur = model.geometry.bounding_box
@@ -30,35 +30,36 @@ def test_volume(run_in_tmpdir, uo2):
     for domain in (c1, uo2, u):
         # Run stochastic volume calculation
         volume_calc = openmc.VolumeCalculation(
-            domains=[domain], samples=1000, lower_left=ll, upper_right=ur)
+            domains=[domain], samples=1000, lower_left=ll, upper_right=ur
+        )
         model.settings.volume_calculations = [volume_calc]
         model.export_to_xml()
         openmc.calculate_volumes()
 
         # Load results and add volume information
-        volume_calc.load_results('volume_1.h5')
+        volume_calc.load_results("volume_1.h5")
         model.geometry.add_volume_information(volume_calc)
 
         # get_nuclide_densities relies on volume information
         nucs = set(domain.get_nuclide_densities())
-        assert not nucs ^ {'U235', 'O16'}
+        assert not nucs ^ {"U235", "O16"}
 
 
 def test_export_xml(run_in_tmpdir, uo2):
-    s1 = openmc.Sphere(r=1.)
-    s2 = openmc.Sphere(r=2., boundary_type='reflective')
+    s1 = openmc.Sphere(r=1.0)
+    s2 = openmc.Sphere(r=2.0, boundary_type="reflective")
     c1 = openmc.Cell(fill=uo2, region=-s1)
     c2 = openmc.Cell(fill=uo2, region=+s1 & -s2)
     geom = openmc.Geometry([c1, c2])
     geom.export_to_xml()
 
-    doc = ET.parse('geometry.xml')
+    doc = ET.parse("geometry.xml")
     root = doc.getroot()
-    assert root.tag == 'geometry'
-    cells = root.findall('cell')
-    assert [int(c.get('id')) for c in cells] == [c1.id, c2.id]
-    surfs = root.findall('surface')
-    assert [int(s.get('id')) for s in surfs] == [s1.id, s2.id]
+    assert root.tag == "geometry"
+    cells = root.findall("cell")
+    assert [int(c.get("id")) for c in cells] == [c1.id, c2.id]
+    surfs = root.findall("surface")
+    assert [int(s.get("id")) for s in surfs] == [s1.id, s2.id]
 
 
 def test_find(uo2):
@@ -72,11 +73,11 @@ def test_find(uo2):
     c4 = openmc.Cell(region=+cyl)
     geom = openmc.Geometry((c3, c4))
 
-    seq = geom.find((0.5, 0., 0.))
+    seq = geom.find((0.5, 0.0, 0.0))
     assert seq[-1] == c1
-    seq = geom.find((-0.5, 0., 0.))
+    seq = geom.find((-0.5, 0.0, 0.0))
     assert seq[-1] == c2
-    seq = geom.find((-1.5, 0., 0.))
+    seq = geom.find((-1.5, 0.0, 0.0))
     assert seq[-1] == c4
 
 
@@ -144,7 +145,7 @@ def test_get_all_lattices(cell_with_lattice):
 
 
 def test_get_all_surfaces(uo2):
-    planes = [openmc.ZPlane(z0=z) for z in np.linspace(-100., 100.)]
+    planes = [openmc.ZPlane(z0=z) for z in np.linspace(-100.0, 100.0)]
     slabs = []
     for region in openmc.model.subdivide(planes):
         slabs.append(openmc.Cell(fill=uo2, region=region))
@@ -155,67 +156,67 @@ def test_get_all_surfaces(uo2):
 
 
 def test_get_by_name():
-    m1 = openmc.Material(name='zircaloy')
-    m1.add_element('Zr', 1.0)
-    m2 = openmc.Material(name='Zirconium')
-    m2.add_element('Zr', 1.0)
+    m1 = openmc.Material(name="zircaloy")
+    m1.add_element("Zr", 1.0)
+    m2 = openmc.Material(name="Zirconium")
+    m2.add_element("Zr", 1.0)
 
-    s1 = openmc.Sphere(name='surface1')
-    c1 = openmc.Cell(fill=m1, region=-s1, name='cell1')
-    u1 = openmc.Universe(name='Zircaloy universe', cells=[c1])
+    s1 = openmc.Sphere(name="surface1")
+    c1 = openmc.Cell(fill=m1, region=-s1, name="cell1")
+    u1 = openmc.Universe(name="Zircaloy universe", cells=[c1])
 
-    s2 = openmc.ZCylinder(name='surface2')
-    c2 = openmc.Cell(fill=u1, region=-s2, name='cell2')
-    c3 = openmc.Cell(fill=m2, region=+s2, name='Cell3')
-    root = openmc.Universe(name='root Universe', cells=[c2, c3])
+    s2 = openmc.ZCylinder(name="surface2")
+    c2 = openmc.Cell(fill=u1, region=-s2, name="cell2")
+    c3 = openmc.Cell(fill=m2, region=+s2, name="Cell3")
+    root = openmc.Universe(name="root Universe", cells=[c2, c3])
     geom = openmc.Geometry(root)
 
-    mats = set(geom.get_materials_by_name('zirc'))
+    mats = set(geom.get_materials_by_name("zirc"))
     assert not mats ^ {m1, m2}
-    mats = set(geom.get_materials_by_name('zirc', True))
+    mats = set(geom.get_materials_by_name("zirc", True))
     assert not mats ^ {m1}
-    mats = set(geom.get_materials_by_name('zirconium', False, True))
+    mats = set(geom.get_materials_by_name("zirconium", False, True))
     assert not mats ^ {m2}
-    mats = geom.get_materials_by_name('zirconium', True, True)
+    mats = geom.get_materials_by_name("zirconium", True, True)
     assert not mats
 
-    surfaces = set(geom.get_surfaces_by_name('surface'))
+    surfaces = set(geom.get_surfaces_by_name("surface"))
     assert not surfaces ^ {s1, s2}
-    surfaces = set(geom.get_surfaces_by_name('Surface2', False, True))
+    surfaces = set(geom.get_surfaces_by_name("Surface2", False, True))
     assert not surfaces ^ {s2}
-    surfaces = geom.get_surfaces_by_name('Surface2', True, True)
+    surfaces = geom.get_surfaces_by_name("Surface2", True, True)
     assert not surfaces
 
-    cells = set(geom.get_cells_by_name('cell'))
+    cells = set(geom.get_cells_by_name("cell"))
     assert not cells ^ {c1, c2, c3}
-    cells = set(geom.get_cells_by_name('cell', True))
+    cells = set(geom.get_cells_by_name("cell", True))
     assert not cells ^ {c1, c2}
-    cells = set(geom.get_cells_by_name('cell3', False, True))
+    cells = set(geom.get_cells_by_name("cell3", False, True))
     assert not cells ^ {c3}
-    cells = geom.get_cells_by_name('cell3', True, True)
+    cells = geom.get_cells_by_name("cell3", True, True)
     assert not cells
 
-    cells = set(geom.get_cells_by_fill_name('Zircaloy'))
+    cells = set(geom.get_cells_by_fill_name("Zircaloy"))
     assert not cells ^ {c1, c2}
-    cells = set(geom.get_cells_by_fill_name('Zircaloy', True))
+    cells = set(geom.get_cells_by_fill_name("Zircaloy", True))
     assert not cells ^ {c2}
-    cells = set(geom.get_cells_by_fill_name('Zircaloy', False, True))
+    cells = set(geom.get_cells_by_fill_name("Zircaloy", False, True))
     assert not cells ^ {c1}
-    cells = geom.get_cells_by_fill_name('Zircaloy', True, True)
+    cells = geom.get_cells_by_fill_name("Zircaloy", True, True)
     assert not cells
 
-    univs = set(geom.get_universes_by_name('universe'))
+    univs = set(geom.get_universes_by_name("universe"))
     assert not univs ^ {u1, root}
-    univs = set(geom.get_universes_by_name('universe', True))
+    univs = set(geom.get_universes_by_name("universe", True))
     assert not univs ^ {u1}
-    univs = set(geom.get_universes_by_name('universe', True, True))
+    univs = set(geom.get_universes_by_name("universe", True, True))
     assert not univs
 
 
 def test_hex_prism():
-    hex_prism = openmc.model.HexagonalPrism(edge_length=5.0,
-                                            origin=(0.0, 0.0),
-                                            orientation='y')
+    hex_prism = openmc.model.HexagonalPrism(
+        edge_length=5.0, origin=(0.0, 0.0), orientation="y"
+    )
     # clear checks
     assert (0.0, 0.0, 0.0) in -hex_prism
     assert (10.0, 10.0, 10.0) not in -hex_prism
@@ -223,10 +224,9 @@ def test_hex_prism():
     assert (0.0, 5.01, 0.0) not in -hex_prism
     assert (0.0, 4.99, 0.0) in -hex_prism
 
-    rounded_hex_prism = openmc.model.HexagonalPrism(edge_length=5.0,
-                                                    origin=(0.0, 0.0),
-                                                    orientation='y',
-                                                    corner_radius=1.0)
+    rounded_hex_prism = openmc.model.HexagonalPrism(
+        edge_length=5.0, origin=(0.0, 0.0), orientation="y", corner_radius=1.0
+    )
 
     # clear checks
     assert (0.0, 0.0, 0.0) in -rounded_hex_prism
@@ -241,11 +241,11 @@ def test_get_lattice_by_name(cell_with_lattice):
     geom = openmc.Geometry([cells[-1]])
 
     f = geom.get_lattices_by_name
-    assert f('lattice') == [lattice]
-    assert f('lattice', True) == []
-    assert f('Lattice', True) == [lattice]
-    assert f('my lattice', False, True) == [lattice]
-    assert f('my lattice', True, True) == []
+    assert f("lattice") == [lattice]
+    assert f("lattice", True) == []
+    assert f("Lattice", True) == [lattice]
+    assert f("my lattice", False, True) == [lattice]
+    assert f("my lattice", True, True) == []
 
 
 def test_clone():
@@ -283,10 +283,10 @@ def test_from_xml(run_in_tmpdir, mixed_lattice_model):
     # Export model
     mixed_lattice_model.export_to_xml()
 
-    mats_from_xml = openmc.Materials.from_xml('materials.xml')
+    mats_from_xml = openmc.Materials.from_xml("materials.xml")
     # checking string a Path are both acceptable
-    for path in ['geometry.xml', Path('geometry.xml')]:
-        for materials in [mats_from_xml, 'materials.xml']:
+    for path in ["geometry.xml", Path("geometry.xml")]:
+        for materials in [mats_from_xml, "materials.xml"]:
             # Import geometry from file
             geom = openmc.Geometry.from_xml(path=path, materials=materials)
             assert isinstance(geom, openmc.Geometry)
@@ -295,7 +295,7 @@ def test_from_xml(run_in_tmpdir, mixed_lattice_model):
             assert ur == pytest.approx((6.0, 6.0, np.inf))
 
     with pytest.raises(TypeError) as excinfo:
-        geom = openmc.Geometry.from_xml(path='geometry.xml', materials=None)
+        geom = openmc.Geometry.from_xml(path="geometry.xml", materials=None)
     assert 'Unable to set "materials" to "None"' in str(excinfo.value)
 
     # checking that the default args also work
@@ -310,7 +310,7 @@ def test_rotation_matrix():
     """Test ability to set a rotation matrix directly"""
     y = openmc.YPlane()
     cyl1 = openmc.ZCylinder(r=1.0)
-    cyl2 = openmc.ZCylinder(r=2.0, boundary_type='vacuum')
+    cyl2 = openmc.ZCylinder(r=2.0, boundary_type="vacuum")
 
     # Create a universe and then reflect in the y-direction
     c1 = openmc.Cell(region=-cyl1 & +y)
@@ -326,22 +326,23 @@ def test_rotation_matrix():
     assert geom.find((0.0, -0.5, 0.0))[-1] == c1
     assert geom.find((0.0, -1.5, 0.0))[-1] == c2
 
+
 def test_remove_redundant_surfaces():
     """Test ability to remove redundant surfaces"""
 
     m1 = openmc.Material()
-    m1.add_nuclide('U235', 1.0, 'wo')
-    m1.add_nuclide('O16', 2.0, 'wo')
-    m1.set_density('g/cm3', 10.0)
+    m1.add_nuclide("U235", 1.0, "wo")
+    m1.add_nuclide("O16", 2.0, "wo")
+    m1.set_density("g/cm3", 10.0)
 
     m2 = openmc.Material()
-    m2.add_element('Zr', 1.0)
-    m2.set_density('g/cm3', 2.0)
+    m2.add_element("Zr", 1.0)
+    m2.set_density("g/cm3", 2.0)
 
     m3 = openmc.Material()
-    m3.add_nuclide('H1', 2.0)
-    m3.add_nuclide('O16', 1.0)
-    m3.set_density('g/cm3', 1.0)
+    m3.add_nuclide("H1", 2.0)
+    m3.add_nuclide("O16", 1.0)
+    m3.set_density("g/cm3", 1.0)
 
     def get_cyl_cell(r1, r2, z1, z2, fill):
         """Create a finite height cylindrical cell with a fill"""
@@ -356,8 +357,8 @@ def test_remove_redundant_surfaces():
             region = +cyl1 & -cyl2 & +zplane1 & -zplane2
         return openmc.Cell(region=region, fill=fill)
 
-    r1, r2, r3 = 1., 2., 3.
-    z1, z2 = -2., 2.
+    r1, r2, r3 = 1.0, 2.0, 3.0
+    z1, z2 = -2.0, 2.0
     fuel = get_cyl_cell(0, r1, z1, z2, m1)
     clad = get_cyl_cell(r1, r2, z1, z2, m2)
     water = get_cyl_cell(r2, r3, z1, z2, m3)
@@ -369,8 +370,7 @@ def test_remove_redundant_surfaces():
     assert geom.surface_precision == 11
     geom.surface_precision = 10
     assert geom.surface_precision == 10
-    model = openmc.model.Model(geometry=geom,
-                               materials=openmc.Materials([m1, m2, m3]))
+    model = openmc.model.Model(geometry=geom, materials=openmc.Materials([m1, m2, m3]))
 
     # There should be 6 redundant surfaces in this geometry
     n_redundant_surfs = len(geom.remove_redundant_surfaces().keys())
@@ -379,17 +379,18 @@ def test_remove_redundant_surfaces():
     n_redundant_surfs = len(geom.remove_redundant_surfaces().keys())
     assert n_redundant_surfs == 0
 
+
 def test_get_all_nuclides():
     m1 = openmc.Material()
-    m1.add_nuclide('Fe56', 1)
-    m1.add_nuclide('Be9', 1)
+    m1.add_nuclide("Fe56", 1)
+    m1.add_nuclide("Be9", 1)
     m2 = openmc.Material()
-    m2.add_nuclide('Be9', 1)
+    m2.add_nuclide("Be9", 1)
     s = openmc.Sphere()
     c1 = openmc.Cell(fill=m1, region=-s)
     c2 = openmc.Cell(fill=m2, region=+s)
     geom = openmc.Geometry([c1, c2])
-    assert geom.get_all_nuclides() == ['Be9', 'Fe56']
+    assert geom.get_all_nuclides() == ["Be9", "Fe56"]
 
 
 def test_redundant_surfaces():

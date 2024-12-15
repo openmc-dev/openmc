@@ -68,6 +68,7 @@ class VolumeCalculation:
         .. versionadded:: 0.12
 
     """
+
     def __init__(self, domains, samples, lower_left=None, upper_right=None):
         self._atoms = {}
         self._volumes = {}
@@ -75,55 +76,68 @@ class VolumeCalculation:
         self._trigger_type = None
         self._iterations = None
 
-        cv.check_type('domains', domains, Iterable,
-                      (openmc.Cell, openmc.Material, openmc.Universe))
+        cv.check_type(
+            "domains",
+            domains,
+            Iterable,
+            (openmc.Cell, openmc.Material, openmc.Universe),
+        )
         if isinstance(domains[0], openmc.Cell):
-            self._domain_type = 'cell'
+            self._domain_type = "cell"
         elif isinstance(domains[0], openmc.Material):
-            self._domain_type = 'material'
+            self._domain_type = "material"
         elif isinstance(domains[0], openmc.Universe):
-            self._domain_type = 'universe'
+            self._domain_type = "universe"
         self.ids = [d.id for d in domains]
 
         self.samples = samples
 
         if lower_left is not None:
             if upper_right is None:
-                raise ValueError('Both lower-left and upper-right coordinates '
-                                 'should be specified')
+                raise ValueError(
+                    "Both lower-left and upper-right coordinates " "should be specified"
+                )
 
             # For cell domains, try to compute bounding box and make sure
             # user-specified one is valid
-            if self.domain_type == 'cell':
+            if self.domain_type == "cell":
                 for c in domains:
                     ll, ur = c.bounding_box
                     if np.any(np.isinf(ll)) or np.any(np.isinf(ur)):
                         continue
-                    if (np.any(np.asarray(lower_left) > ll) or
-                        np.any(np.asarray(upper_right) < ur)):
-                        msg = ('Specified bounding box is smaller than '
-                               f'computed bounding box for cell {c.id}. Volume '
-                               'calculation may be incorrect!')
+                    if np.any(np.asarray(lower_left) > ll) or np.any(
+                        np.asarray(upper_right) < ur
+                    ):
+                        msg = (
+                            "Specified bounding box is smaller than "
+                            f"computed bounding box for cell {c.id}. Volume "
+                            "calculation may be incorrect!"
+                        )
                         warnings.warn(msg)
 
             self.lower_left = lower_left
             self.upper_right = upper_right
         else:
-            if self.domain_type == 'cell':
+            if self.domain_type == "cell":
                 ll, ur = openmc.Union(c.region for c in domains).bounding_box
                 if np.any(np.isinf(ll)) or np.any(np.isinf(ur)):
-                    raise ValueError('Could not automatically determine bounding '
-                                     'box for stochastic volume calculation.')
+                    raise ValueError(
+                        "Could not automatically determine bounding "
+                        "box for stochastic volume calculation."
+                    )
                 else:
                     self.lower_left = ll
                     self.upper_right = ur
             else:
-                raise ValueError('Could not automatically determine bounding box '
-                                 'for stochastic volume calculation.')
+                raise ValueError(
+                    "Could not automatically determine bounding box "
+                    "for stochastic volume calculation."
+                )
 
         if np.isinf(self.lower_left).any() or np.isinf(self.upper_right).any():
-            raise ValueError('Lower-left and upper-right bounding box '
-                             'coordinates must be finite.')
+            raise ValueError(
+                "Lower-left and upper-right bounding box " "coordinates must be finite."
+            )
 
     @property
     def ids(self):
@@ -131,7 +145,7 @@ class VolumeCalculation:
 
     @ids.setter
     def ids(self, ids):
-        cv.check_type('domain IDs', ids, Iterable, Real)
+        cv.check_type("domain IDs", ids, Iterable, Real)
         self._ids = ids
 
     @property
@@ -140,8 +154,8 @@ class VolumeCalculation:
 
     @samples.setter
     def samples(self, samples):
-        cv.check_type('number of samples', samples, Integral)
-        cv.check_greater_than('number of samples', samples, 0)
+        cv.check_type("number of samples", samples, Integral)
+        cv.check_greater_than("number of samples", samples, 0)
         self._samples = samples
 
     @property
@@ -150,7 +164,7 @@ class VolumeCalculation:
 
     @lower_left.setter
     def lower_left(self, lower_left):
-        name = 'lower-left bounding box coordinates',
+        name = ("lower-left bounding box coordinates",)
         cv.check_type(name, lower_left, Iterable, Real)
         cv.check_length(name, lower_left, 3)
         self._lower_left = lower_left
@@ -161,7 +175,7 @@ class VolumeCalculation:
 
     @upper_right.setter
     def upper_right(self, upper_right):
-        name = 'upper-right bounding box coordinates'
+        name = "upper-right bounding box coordinates"
         cv.check_type(name, upper_right, Iterable, Real)
         cv.check_length(name, upper_right, 3)
         self._upper_right = upper_right
@@ -172,7 +186,7 @@ class VolumeCalculation:
 
     @threshold.setter
     def threshold(self, threshold):
-        name = 'volume std. dev. threshold'
+        name = "volume std. dev. threshold"
         cv.check_type(name, threshold, Real)
         cv.check_greater_than(name, threshold, 0.0)
         self._threshold = threshold
@@ -183,8 +197,9 @@ class VolumeCalculation:
 
     @trigger_type.setter
     def trigger_type(self, trigger_type):
-        cv.check_value('tally trigger type', trigger_type,
-                       ('variance', 'std_dev', 'rel_err'))
+        cv.check_value(
+            "tally trigger type", trigger_type, ("variance", "std_dev", "rel_err")
+        )
         self._trigger_type = trigger_type
 
     @property
@@ -193,7 +208,7 @@ class VolumeCalculation:
 
     @iterations.setter
     def iterations(self, iterations):
-        name = 'volume calculation iterations'
+        name = "volume calculation iterations"
         cv.check_type(name, iterations, Integral)
         cv.check_greater_than(name, iterations, 0)
         self._iterations = iterations
@@ -208,7 +223,7 @@ class VolumeCalculation:
 
     @atoms.setter
     def atoms(self, atoms):
-        cv.check_type('atoms', atoms, Mapping)
+        cv.check_type("atoms", atoms, Mapping)
         self._atoms = atoms
 
     @property
@@ -217,13 +232,13 @@ class VolumeCalculation:
 
     @volumes.setter
     def volumes(self, volumes):
-        cv.check_type('volumes', volumes, Mapping)
+        cv.check_type("volumes", volumes, Mapping)
         self._volumes = volumes
 
     @property
     def atoms_dataframe(self):
         items = []
-        columns = [self.domain_type.capitalize(), 'Nuclide', 'Atoms']
+        columns = [self.domain_type.capitalize(), "Nuclide", "Atoms"]
         for uid, atoms_dict in self.atoms.items():
             for name, atoms in atoms_dict.items():
                 items.append((uid, name, atoms))
@@ -260,30 +275,30 @@ class VolumeCalculation:
             Results of the stochastic volume calculation
 
         """
-        with h5py.File(filename, 'r') as f:
+        with h5py.File(filename, "r") as f:
             cv.check_filetype_version(f, "volume", _VERSION_VOLUME)
 
-            domain_type = f.attrs['domain_type'].decode()
-            samples = f.attrs['samples']
-            lower_left = f.attrs['lower_left']
-            upper_right = f.attrs['upper_right']
+            domain_type = f.attrs["domain_type"].decode()
+            samples = f.attrs["samples"]
+            lower_left = f.attrs["lower_left"]
+            upper_right = f.attrs["upper_right"]
 
-            threshold = f.attrs.get('threshold')
-            trigger_type = f.attrs.get('trigger_type')
-            iterations = f.attrs.get('iterations', 1)
+            threshold = f.attrs.get("threshold")
+            trigger_type = f.attrs.get("trigger_type")
+            iterations = f.attrs.get("iterations", 1)
 
             volumes = {}
             atoms = {}
             ids = []
             for obj_name in f:
-                if obj_name.startswith('domain_'):
+                if obj_name.startswith("domain_"):
                     domain_id = int(obj_name[7:])
                     ids.append(domain_id)
                     group = f[obj_name]
-                    volume = ufloat(*group['volume'][()])
+                    volume = ufloat(*group["volume"][()])
                     volumes[domain_id] = volume
-                    nucnames = group['nuclides'][()]
-                    atoms_ = group['atoms'][()]
+                    nucnames = group["nuclides"][()]
+                    atoms_ = group["atoms"][()]
                     atom_dict = {}
                     for name_i, atoms_i in zip(nucnames, atoms_):
                         atom_dict[name_i.decode()] = ufloat(*atoms_i)
@@ -292,12 +307,12 @@ class VolumeCalculation:
         # Instantiate some throw-away domains that are used by the constructor
         # to assign IDs
         with warnings.catch_warnings():
-            warnings.simplefilter('ignore', openmc.IDWarning)
-            if domain_type == 'cell':
+            warnings.simplefilter("ignore", openmc.IDWarning)
+            if domain_type == "cell":
                 domains = [openmc.Cell(uid) for uid in ids]
-            elif domain_type == 'material':
+            elif domain_type == "material":
                 domains = [openmc.Material(uid) for uid in ids]
-            elif domain_type == 'universe':
+            elif domain_type == "universe":
                 domains = [openmc.Universe(uid) for uid in ids]
 
         # Instantiate the class and assign results
@@ -344,13 +359,13 @@ class VolumeCalculation:
         dt_elem = ET.SubElement(element, "domain_type")
         dt_elem.text = self.domain_type
         id_elem = ET.SubElement(element, "domain_ids")
-        id_elem.text = ' '.join(str(uid) for uid in self.ids)
+        id_elem.text = " ".join(str(uid) for uid in self.ids)
         samples_elem = ET.SubElement(element, "samples")
         samples_elem.text = str(self.samples)
         ll_elem = ET.SubElement(element, "lower_left")
-        ll_elem.text = ' '.join(str(x) for x in self.lower_left)
+        ll_elem.text = " ".join(str(x) for x in self.lower_left)
         ur_elem = ET.SubElement(element, "upper_right")
-        ur_elem.text = ' '.join(str(x) for x in self.upper_right)
+        ur_elem.text = " ".join(str(x) for x in self.upper_right)
         if self.threshold:
             trigger_elem = ET.SubElement(element, "threshold")
             trigger_elem.set("type", self.trigger_type)
@@ -386,12 +401,12 @@ class VolumeCalculation:
         # Instantiate some throw-away domains that are used by the constructor
         # to assign IDs
         with warnings.catch_warnings():
-            warnings.simplefilter('ignore', openmc.IDWarning)
-            if domain_type == 'cell':
+            warnings.simplefilter("ignore", openmc.IDWarning)
+            if domain_type == "cell":
                 domains = [openmc.Cell(uid) for uid in ids]
-            elif domain_type == 'material':
+            elif domain_type == "material":
                 domains = [openmc.Material(uid) for uid in ids]
-            elif domain_type == 'universe':
+            elif domain_type == "universe":
                 domains = [openmc.Universe(uid) for uid in ids]
 
         vol = cls(domains, samples, lower_left, upper_right)

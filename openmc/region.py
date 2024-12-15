@@ -25,6 +25,7 @@ class Region(ABC):
         Axis-aligned bounding box of the region
 
     """
+
     def __and__(self, other):
         return Intersection((self, other))
 
@@ -115,7 +116,7 @@ class Region(ABC):
         i_start = -1
         tokens = []
         while i < len(expression):
-            if expression[i] in '()|~ ':
+            if expression[i] in "()|~ ":
                 # If special character appears immediately after a non-operator,
                 # create a token with the appropriate half-space
                 if i_start >= 0:
@@ -127,37 +128,39 @@ class Region(ABC):
 
                     # When an opening parenthesis appears after a non-operator,
                     # there's an implicit intersection operator between them
-                    if expression[i] == '(':
-                        tokens.append(' ')
+                    if expression[i] == "(":
+                        tokens.append(" ")
 
-                if expression[i] in '()|~':
+                if expression[i] in "()|~":
                     # For everything other than intersection, add the operator
                     # to the list of tokens
                     tokens.append(expression[i])
 
                     # If two parentheses appear immediately adjacent to one
                     # another, we need an intersection between them
-                    if expression[i:i+2] == ')(':
-                        tokens.append(' ')
+                    if expression[i : i + 2] == ")(":
+                        tokens.append(" ")
                 else:
                     # Find next non-space character
-                    while expression[i+1] == ' ':
+                    while expression[i + 1] == " ":
                         i += 1
 
                     # If previous token is a halfspace or right parenthesis and
                     # next token is not a left parenthesis or union operator,
                     # that implies that the whitespace is to be interpreted as
                     # an intersection operator
-                    if (i_start >= 0 or tokens[-1] == ')') and \
-                       expression[i+1] not in ')|':
-                        tokens.append(' ')
+                    if (i_start >= 0 or tokens[-1] == ")") and expression[
+                        i + 1
+                    ] not in ")|":
+                        tokens.append(" ")
 
                 i_start = -1
             else:
                 # Check for invalid characters
-                if expression[i] not in '-+0123456789':
-                    raise SyntaxError(f"Invalid character '{expression[i]}' in "
-                                      "expression")
+                if expression[i] not in "-+0123456789":
+                    raise SyntaxError(
+                        f"Invalid character '{expression[i]}' in " "expression"
+                    )
 
                 # If we haven't yet reached the start of a word, start one
                 if i_start < 0:
@@ -176,11 +179,11 @@ class Region(ABC):
         # The functions below are used to apply an operator to operands on the
         # output queue during the shunting yard algorithm.
         def can_be_combined(region):
-            return isinstance(region, Complement) or hasattr(region, 'surface')
+            return isinstance(region, Complement) or hasattr(region, "surface")
 
         def apply_operator(output, operator):
             r2 = output.pop()
-            if operator == ' ':
+            if operator == " ":
                 r1 = output.pop()
                 if isinstance(r1, Intersection):
                     r1 &= r2
@@ -190,7 +193,7 @@ class Region(ABC):
                     output.append(r2)
                 else:
                     output.append(r1 & r2)
-            elif operator == '|':
+            elif operator == "|":
                 r1 = output.pop()
                 if isinstance(r1, Union):
                     r1 |= r2
@@ -200,47 +203,52 @@ class Region(ABC):
                     output.append(r2)
                 else:
                     output.append(r1 | r2)
-            elif operator == '~':
+            elif operator == "~":
                 output.append(~r2)
 
         # The following is an implementation of the shunting yard algorithm to
         # generate an abstract syntax tree for the region expression.
         output = []
         stack = []
-        precedence = {'|': 1, ' ': 2, '~': 3}
-        associativity = {'|': 'left', ' ': 'left', '~': 'right'}
+        precedence = {"|": 1, " ": 2, "~": 3}
+        associativity = {"|": "left", " ": "left", "~": "right"}
         for token in tokens:
-            if token in (' ', '|', '~'):
+            if token in (" ", "|", "~"):
                 # Normal operators
                 while stack:
                     op = stack[-1]
-                    if (op not in ('(', ')') and
-                        ((associativity[token] == 'right' and
-                          precedence[token] < precedence[op]) or
-                         (associativity[token] == 'left' and
-                          precedence[token] <= precedence[op]))):
+                    if op not in ("(", ")") and (
+                        (
+                            associativity[token] == "right"
+                            and precedence[token] < precedence[op]
+                        )
+                        or (
+                            associativity[token] == "left"
+                            and precedence[token] <= precedence[op]
+                        )
+                    ):
                         apply_operator(output, stack.pop())
                     else:
                         break
                 stack.append(token)
-            elif token == '(':
+            elif token == "(":
                 # Left parentheses
                 stack.append(token)
-            elif token == ')':
+            elif token == ")":
                 # Right parentheses
-                while stack[-1] != '(':
+                while stack[-1] != "(":
                     apply_operator(output, stack.pop())
                     if len(stack) == 0:
-                        raise SyntaxError('Mismatched parentheses in '
-                                          'region specification.')
+                        raise SyntaxError(
+                            "Mismatched parentheses in " "region specification."
+                        )
                 stack.pop()
             else:
                 # Surface halfspaces
                 output.append(token)
         while stack:
-            if stack[-1] in '()':
-                raise SyntaxError('Mismatched parentheses in region '
-                                  'specification.')
+            if stack[-1] in "()":
+                raise SyntaxError("Mismatched parentheses in region " "specification.")
             apply_operator(output, stack.pop())
 
         # Since we are generating an abstract syntax tree rather than a reverse
@@ -299,8 +307,9 @@ class Region(ABC):
             memo = {}
         return type(self)(n.translate(vector, inplace, memo) for n in self)
 
-    def rotate(self, rotation, pivot=(0., 0., 0.), order='xyz', inplace=False,
-               memo=None):
+    def rotate(
+        self, rotation, pivot=(0.0, 0.0, 0.0), order="xyz", inplace=False, memo=None
+    ):
         r"""Rotate surface by angles provided or by applying matrix directly.
 
         .. versionadded:: 0.12
@@ -340,8 +349,10 @@ class Region(ABC):
         """
         if memo is None:
             memo = {}
-        return type(self)(n.rotate(rotation, pivot=pivot, order=order,
-                                   inplace=inplace, memo=memo) for n in self)
+        return type(self)(
+            n.rotate(rotation, pivot=pivot, order=order, inplace=inplace, memo=memo)
+            for n in self
+        )
 
     def plot(self, *args, **kwargs):
         """Display a slice plot of the region.
@@ -385,9 +396,11 @@ class Region(ABC):
             Axes containing resulting image
 
         """
-        for key in ('color_by', 'colors', 'legend', 'legend_kwargs'):
+        for key in ("color_by", "colors", "legend", "legend_kwargs"):
             if key in kwargs:
-                warnings.warn(f"The '{key}' argument is present but won't be applied in a region plot")
+                warnings.warn(
+                    f"The '{key}' argument is present but won't be applied in a region plot"
+                )
 
         # Create cell while not perturbing use of autogenerated IDs
         next_id = openmc.Cell.next_id
@@ -430,7 +443,7 @@ class Intersection(Region, MutableSequence):
         self._nodes = list(nodes)
         for node in nodes:
             if not isinstance(node, Region):
-                raise ValueError('Intersection operands must be of type Region')
+                raise ValueError("Intersection operands must be of type Region")
 
     def __and__(self, other):
         new = Intersection(self)
@@ -480,7 +493,7 @@ class Intersection(Region, MutableSequence):
         return all(point in n for n in self)
 
     def __str__(self):
-        return '(' + ' '.join(map(str, self)) + ')'
+        return "(" + " ".join(map(str, self)) + ")"
 
     @property
     def bounding_box(self) -> BoundingBox:
@@ -521,7 +534,7 @@ class Union(Region, MutableSequence):
         self._nodes = list(nodes)
         for node in nodes:
             if not isinstance(node, Region):
-                raise ValueError('Union operands must be of type Region')
+                raise ValueError("Union operands must be of type Region")
 
     def __or__(self, other):
         new = Union(self)
@@ -571,12 +584,11 @@ class Union(Region, MutableSequence):
         return any(point in n for n in self)
 
     def __str__(self):
-        return '(' + ' | '.join(map(str, self)) + ')'
+        return "(" + " | ".join(map(str, self)) + ")"
 
     @property
     def bounding_box(self) -> BoundingBox:
-        bbox = BoundingBox(np.array([np.inf]*3),
-                           np.array([-np.inf]*3))
+        bbox = BoundingBox(np.array([np.inf] * 3), np.array([-np.inf] * 3))
         for n in self:
             bbox |= n.bounding_box
         return bbox
@@ -634,7 +646,7 @@ class Complement(Region):
         return self.node
 
     def __str__(self):
-        return '~' + str(self.node)
+        return "~" + str(self.node)
 
     @property
     def node(self):
@@ -643,7 +655,7 @@ class Complement(Region):
     @node.setter
     def node(self, node):
         if not isinstance(node, Region):
-            raise ValueError('Complement operand must be of type Region')
+            raise ValueError("Complement operand must be of type Region")
         self._node = node
 
     @property
@@ -698,9 +710,13 @@ class Complement(Region):
             memo = {}
         return type(self)(self.node.translate(vector, inplace, memo))
 
-    def rotate(self, rotation, pivot=(0., 0., 0.), order='xyz', inplace=False,
-               memo=None):
+    def rotate(
+        self, rotation, pivot=(0.0, 0.0, 0.0), order="xyz", inplace=False, memo=None
+    ):
         if memo is None:
             memo = {}
-        return type(self)(self.node.rotate(rotation, pivot=pivot, order=order,
-                                           inplace=inplace, memo=memo))
+        return type(self)(
+            self.node.rotate(
+                rotation, pivot=pivot, order=order, inplace=inplace, memo=memo
+            )
+        )

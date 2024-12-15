@@ -11,7 +11,7 @@ from tests.testing_harness import TolerantPyAPITestHarness
 class MGXSTestHarness(TolerantPyAPITestHarness):
     def _cleanup(self):
         super()._cleanup()
-        f = 'mgxs.h5'
+        f = "mgxs.h5"
         if os.path.exists(f):
             os.remove(f)
 
@@ -27,25 +27,25 @@ def test_random_ray_fixed_source(domain_type):
         source = model.settings.source[0]
         constraints = source.constraints
 
-        if domain_type == 'cell':
+        if domain_type == "cell":
             cells = model.geometry.get_all_cells()
             for key, cell in cells.items():
                 print(cell.name)
-                if cell.name == 'infinite source region':
-                    constraints['domain_type'] = 'cell'
-                    constraints['domain_ids'] = [cell.id]
-        elif domain_type == 'material':
+                if cell.name == "infinite source region":
+                    constraints["domain_type"] = "cell"
+                    constraints["domain_ids"] = [cell.id]
+        elif domain_type == "material":
             materials = model.materials
             for material in materials:
-                if material.name == 'source':
-                    constraints['domain_type'] = 'material'
-                    constraints['domain_ids'] = [material.id]
-        elif domain_type == 'universe':
+                if material.name == "source":
+                    constraints["domain_type"] = "material"
+                    constraints["domain_ids"] = [material.id]
+        elif domain_type == "universe":
             universes = model.geometry.get_all_universes()
             for key, universe in universes.items():
-                if universe.name == 'source universe':
-                    constraints['domain_type'] = 'universe'
-                    constraints['domain_ids'] = [universe.id]
+                if universe.name == "source universe":
+                    constraints["domain_type"] = "universe"
+                    constraints["domain_ids"] = [universe.id]
 
-        harness = MGXSTestHarness('statepoint.10.h5', model)
+        harness = MGXSTestHarness("statepoint.10.h5", model)
         harness.main()

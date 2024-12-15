@@ -54,7 +54,7 @@ def model():
     # Material
     h1 = openmc.Material(name="H1")
     h1.add_nuclide("H1", 1.0)
-    h1.set_density('g/cm3', 1e-7)
+    h1.set_density("g/cm3", 1e-7)
 
     # Geometry
     radius = 1.0
@@ -82,12 +82,13 @@ def model():
         (100, 1),
     ],
 )
-def test_number_surface_source_file_created(max_particles, max_source_files,
-                                            run_in_tmpdir, model):
+def test_number_surface_source_file_created(
+    max_particles, max_source_files, run_in_tmpdir, model
+):
     """Check the number of surface source files written."""
     model.settings.surf_source_write = {
         "max_particles": max_particles,
-        "max_source_files": max_source_files
+        "max_source_files": max_source_files,
     }
     model.run()
     should_be_numbered = max_source_files > 1
@@ -96,6 +97,7 @@ def test_number_surface_source_file_created(max_particles, max_source_files,
             assert Path(f"surface_source.{i}.h5").exists()
     if not should_be_numbered:
         assert Path("surface_source.h5").exists()
+
 
 ERROR_MSG_1 = (
     "A maximum number of particles needs to be specified "
@@ -223,7 +225,9 @@ def model_dagmc(request):
     # =============================================================================
     # Geometry
     # =============================================================================
-    dagmc_path = Path(request.fspath).parent / "../regression_tests/dagmc/legacy/dagmc.h5m"
+    dagmc_path = (
+        Path(request.fspath).parent / "../regression_tests/dagmc/legacy/dagmc.h5m"
+    )
     dagmc_univ = openmc.DAGMCUniverse(dagmc_path)
     model.geometry = openmc.Geometry(dagmc_univ)
 

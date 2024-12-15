@@ -18,17 +18,17 @@ from .resonance import ResonanceRange
 
 
 # Constants that determine which value to access
-_MP_EA = 0       # Pole
+_MP_EA = 0  # Pole
 
 # Residue indices
-_MP_RS = 1       # Residue scattering
-_MP_RA = 2       # Residue absorption
-_MP_RF = 3       # Residue fission
+_MP_RS = 1  # Residue scattering
+_MP_RA = 2  # Residue absorption
+_MP_RF = 3  # Residue fission
 
 # Polynomial fit indices
-_FIT_S = 0       # Scattering
-_FIT_A = 1       # Absorption
-_FIT_F = 2       # Fission
+_FIT_S = 0  # Scattering
+_FIT_A = 1  # Absorption
+_FIT_F = 2  # Fission
 
 # Upper temperature limit (K)
 TEMPERATURE_LIMIT = 3000
@@ -77,6 +77,7 @@ def _faddeeva(z):
 
     """
     from scipy.special import wofz
+
     if np.angle(z) > 0:
         return wofz(z)
     else:
@@ -116,7 +117,7 @@ def _broaden_wmp_polynomials(E, dopp, n):
         exp_m_beta2 = 0.0
     else:
         erf_beta = erf(beta)
-        exp_m_beta2 = exp(-beta**2)
+        exp_m_beta2 = exp(-(beta**2))
 
     # Assume that, for sure, we'll use a second order (1/E, 1/V, const)
     # fit, and no less.
@@ -125,24 +126,35 @@ def _broaden_wmp_polynomials(E, dopp, n):
 
     factors[0] = erf_beta / E
     factors[1] = 1.0 / sqrtE
-    factors[2] = (factors[0] * (half_inv_dopp2 + E)
-                  + exp_m_beta2 / (beta * sqrt(pi)))
+    factors[2] = factors[0] * (half_inv_dopp2 + E) + exp_m_beta2 / (beta * sqrt(pi))
 
     # Perform recursive broadening of high order components. range(1, n-2)
     # replaces a do i = 1, n-3.  All indices are reduced by one due to the
     # 1-based vs. 0-based indexing.
-    for i in range(1, n-2):
+    for i in range(1, n - 2):
         if i != 1:
-            factors[i+2] = (-factors[i-2] * (i - 1.0) * i * quarter_inv_dopp4
-                + factors[i] * (E + (1.0 + 2.0 * i) * half_inv_dopp2))
+            factors[i + 2] = -factors[i - 2] * (
+                i - 1.0
+            ) * i * quarter_inv_dopp4 + factors[i] * (
+                E + (1.0 + 2.0 * i) * half_inv_dopp2
+            )
         else:
-            factors[i+2] = factors[i]*(E + (1.0 + 2.0 * i) * half_inv_dopp2)
+            factors[i + 2] = factors[i] * (E + (1.0 + 2.0 * i) * half_inv_dopp2)
 
     return factors
 
 
-def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
-                n_vf_iter=30, log=False, path_out=None):
+def _vectfit_xs(
+    energy,
+    ce_xs,
+    mts,
+    rtol=1e-3,
+    atol=1e-5,
+    orders=None,
+    n_vf_iter=30,
+    log=False,
+    path_out=None,
+):
     """Convert point-wise cross section to multipole data via vector fitting.
 
     Parameters
@@ -181,13 +193,14 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
     ne = energy.size
     nmt = len(mts)
     if ce_xs.shape != (nmt, ne):
-        raise ValueError('Inconsistent cross section data.')
+        raise ValueError("Inconsistent cross section data.")
 
     # construct test data: interpolate xs with finer grids
     n_finer = 10
-    ne_test = (ne - 1)*n_finer + 1
-    test_energy = np.interp(np.arange(ne_test),
-                            np.arange(ne_test, step=n_finer), energy)
+    ne_test = (ne - 1) * n_finer + 1
+    test_energy = np.interp(
+        np.arange(ne_test), np.arange(ne_test, step=n_finer), energy
+    )
     test_energy[[0, -1]] = energy[[0, -1]]  # avoid numerical issue
     test_xs_ref = np.zeros((nmt, ne_test))
     for i in range(nmt):
@@ -205,8 +218,8 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
 
     # inverse weighting is used for minimizing the relative deviation instead of
     # absolute deviation in vector fitting
-    with np.errstate(divide='ignore'):
-        weight = 1.0/f
+    with np.errstate(divide="ignore"):
+        weight = 1.0 / f
 
     # avoid too large weights which will harm the fitting accuracy
     min_cross_section = 1e-7
@@ -214,18 +227,19 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
         if np.all(ce_xs[i] <= min_cross_section):
             weight[i] = 1.0
         elif np.any(ce_xs[i] <= min_cross_section):
-            weight[i, ce_xs[i] <= min_cross_section] = \
-               max(weight[i, ce_xs[i] > min_cross_section])
+            weight[i, ce_xs[i] <= min_cross_section] = max(
+                weight[i, ce_xs[i] > min_cross_section]
+            )
 
     # detect peaks (resonances) and determine VF order search range
     peaks, _ = find_peaks(ce_xs[0] + ce_xs[1])
     n_peaks = peaks.size
     if orders is not None:
         # make sure orders are even integers
-        orders = list(set([int(i/2)*2 for i in orders if i >= 2]))
+        orders = list(set([int(i / 2) * 2 for i in orders if i >= 2]))
     else:
-        lowest_order = max(2, 2*n_peaks)
-        highest_order = max(200, 4*n_peaks)
+        lowest_order = max(2, 2 * n_peaks)
+        highest_order = max(200, 4 * n_peaks)
         orders = list(range(lowest_order, highest_order + 1, 2))
 
     if log:
@@ -240,8 +254,8 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
         if log:
             print(f"Order={order}({i}/{len(orders)})")
         # initial guessed poles
-        poles_r = np.linspace(s[0], s[-1], order//2)
-        poles = poles_r + poles_r*0.01j
+        poles_r = np.linspace(s[0], s[-1], order // 2)
+        poles = poles_r + poles_r * 0.01j
         poles = np.sort(np.append(poles, np.conj(poles)))
 
         found_better = False
@@ -258,8 +272,8 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
             new_poles = []
             for p in poles:
                 p_r, p_i = np.real(p), np.imag(p)
-                if (s[0] <= p_r <= s[-1]) and p_i == 0.:
-                    new_poles += [p_r+p_r*0.01j, p_r-p_r*0.01j]
+                if (s[0] <= p_r <= s[-1]) and p_i == 0.0:
+                    new_poles += [p_r + p_r * 0.01j, p_r - p_r * 0.01j]
                     n_real_poles += 1
                 else:
                     new_poles += [p]
@@ -268,28 +282,31 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
             if n_real_poles > 0:
                 if log >= DETAILED_LOGGING:
                     print(f"  # real poles: {n_real_poles}")
-                new_poles, residues, cf, f_fit, rms = \
-                      vf.vectfit(f, s, new_poles, weight, skip_pole=True)
+                new_poles, residues, cf, f_fit, rms = vf.vectfit(
+                    f, s, new_poles, weight, skip_pole=True
+                )
 
             # assess the result on test grid
             test_xs = vf.evaluate(test_s, new_poles, residues) / test_energy
             abserr = np.abs(test_xs - test_xs_ref)
-            with np.errstate(invalid='ignore', divide='ignore'):
+            with np.errstate(invalid="ignore", divide="ignore"):
                 relerr = abserr / test_xs_ref
                 if np.any(np.isnan(abserr)):
                     maxre, ratio, ratio2 = np.inf, -np.inf, -np.inf
                 elif np.all(abserr <= atol):
-                    maxre, ratio, ratio2 = 0., 1., 1.
+                    maxre, ratio, ratio2 = 0.0, 1.0, 1.0
                 else:
                     maxre = np.max(relerr[abserr > atol])
                     ratio = np.sum((relerr < rtol) | (abserr < atol)) / relerr.size
-                    ratio2 = np.sum((relerr < 10*rtol) | (abserr < atol)) / relerr.size
+                    ratio2 = (
+                        np.sum((relerr < 10 * rtol) | (abserr < atol)) / relerr.size
+                    )
 
             # define a metric for choosing the best fitting results
             # basically, it is preferred to have more points within accuracy
             # tolerance, smaller maximum deviation and fewer poles
-            #TODO: improve the metric with clearer basis
-            quality = ratio + ratio2 - min(0.1*maxre, 1) - 0.001*new_poles.size
+            # TODO: improve the metric with clearer basis
+            quality = ratio + ratio2 - min(0.1 * maxre, 1) - 0.001 * new_poles.size
 
             if np.any(test_xs < -atol):
                 quality = -np.inf
@@ -323,7 +340,7 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
         if found_better:
             n_discarded = 0
         else:
-            if order > max(2*n_peaks, 50) and best_ratio > 0.7:
+            if order > max(2 * n_peaks, 50) and best_ratio > 0.7:
                 n_discarded += 1
                 if n_discarded >= 10 or (n_discarded >= 5 and best_ratio > 0.9):
                     if log >= DETAILED_LOGGING:
@@ -338,7 +355,7 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
         if found_conj:
             found_conj = False
             continue
-        if np.imag(p) == 0.:
+        if np.imag(p) == 0.0:
             real_idx.append(i)
         else:
             if i < best_poles.size and np.conj(p) == best_poles[i + 1]:
@@ -347,11 +364,18 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
             else:
                 raise RuntimeError("Complex poles are not conjugate!")
     if log:
-        print("Found {} real poles and {} conjugate complex pairs.".format(
-               len(real_idx), len(conj_idx)))
+        print(
+            "Found {} real poles and {} conjugate complex pairs.".format(
+                len(real_idx), len(conj_idx)
+            )
+        )
     mp_poles = best_poles[real_idx + conj_idx]
-    mp_residues = np.concatenate((best_residues[:, real_idx],
-                                  best_residues[:, conj_idx]*2), axis=1)/1j
+    mp_residues = (
+        np.concatenate(
+            (best_residues[:, real_idx], best_residues[:, conj_idx] * 2), axis=1
+        )
+        / 1j
+    )
     if log:
         print(f"Final number of poles: {mp_poles.size}")
 
@@ -362,25 +386,28 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
             if not test_xs_ref[i].any():
                 continue
             import matplotlib.pyplot as plt
+
             fig, ax1 = plt.subplots()
-            lns1 = ax1.loglog(test_energy, test_xs_ref[i], 'g', label="ACE xs")
-            lns2 = ax1.loglog(test_energy, best_test_xs[i], 'b', label="VF xs")
+            lns1 = ax1.loglog(test_energy, test_xs_ref[i], "g", label="ACE xs")
+            lns2 = ax1.loglog(test_energy, best_test_xs[i], "b", label="VF xs")
             ax2 = ax1.twinx()
-            lns3 = ax2.loglog(test_energy, best_relerr[i], 'r',
-                              label="Relative error", alpha=0.5)
+            lns3 = ax2.loglog(
+                test_energy, best_relerr[i], "r", label="Relative error", alpha=0.5
+            )
             lns = lns1 + lns2 + lns3
             labels = [l.get_label() for l in lns]
-            ax1.legend(lns, labels, loc='best')
-            ax1.set_xlabel('energy (eV)')
-            ax1.set_ylabel('cross section (b)', color='b')
-            ax1.tick_params('y', colors='b')
-            ax2.set_ylabel('relative error', color='r')
-            ax2.tick_params('y', colors='r')
+            ax1.legend(lns, labels, loc="best")
+            ax1.set_xlabel("energy (eV)")
+            ax1.set_ylabel("cross section (b)", color="b")
+            ax1.tick_params("y", colors="b")
+            ax2.set_ylabel("relative error", color="r")
+            ax2.tick_params("y", colors="r")
 
             plt.title(f"MT {mt} vector fitted with {mp_poles.size} poles")
             fig.tight_layout()
-            fig_file = os.path.join(path_out, "{:.0f}-{:.0f}_MT{}.png".format(
-                                    energy[0], energy[-1], mt))
+            fig_file = os.path.join(
+                path_out, "{:.0f}-{:.0f}_MT{}.png".format(energy[0], energy[-1], mt)
+            )
             plt.savefig(fig_file)
             plt.close()
             if log:
@@ -389,8 +416,15 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
     return (mp_poles, mp_residues)
 
 
-def vectfit_nuclide(endf_file, njoy_error=5e-4, vf_pieces=None,
-                    log=False, path_out=None, mp_filename=None, **kwargs):
+def vectfit_nuclide(
+    endf_file,
+    njoy_error=5e-4,
+    vf_pieces=None,
+    log=False,
+    path_out=None,
+    mp_filename=None,
+    **kwargs,
+):
     r"""Generate multipole data for a nuclide from ENDF.
 
     Parameters
@@ -424,45 +458,52 @@ def vectfit_nuclide(endf_file, njoy_error=5e-4, vf_pieces=None,
     if log:
         print(f"Running NJOY to get 0K point-wise data (error={njoy_error})...")
 
-    nuc_ce = IncidentNeutron.from_njoy(endf_file, temperatures=[0.0],
-             error=njoy_error, broadr=False, heatr=False, purr=False)
+    nuc_ce = IncidentNeutron.from_njoy(
+        endf_file,
+        temperatures=[0.0],
+        error=njoy_error,
+        broadr=False,
+        heatr=False,
+        purr=False,
+    )
 
     if log:
         print("Parsing cross sections within resolved resonance range...")
 
     # Determine upper energy: the lower of RRR upper bound and first threshold
     endf_res = IncidentNeutron.from_endf(endf_file).resonances
-    if hasattr(endf_res, 'resolved') and \
-       hasattr(endf_res.resolved, 'energy_max') and \
-       type(endf_res.resolved) is not ResonanceRange:
+    if (
+        hasattr(endf_res, "resolved")
+        and hasattr(endf_res.resolved, "energy_max")
+        and type(endf_res.resolved) is not ResonanceRange
+    ):
         E_max = endf_res.resolved.energy_max
-    elif hasattr(endf_res, 'unresolved') and \
-         hasattr(endf_res.unresolved, 'energy_min'):
+    elif hasattr(endf_res, "unresolved") and hasattr(endf_res.unresolved, "energy_min"):
         E_max = endf_res.unresolved.energy_min
     else:
-        E_max = nuc_ce.energy['0K'][-1]
-    E_max_idx = np.searchsorted(nuc_ce.energy['0K'], E_max, side='right') - 1
+        E_max = nuc_ce.energy["0K"][-1]
+    E_max_idx = np.searchsorted(nuc_ce.energy["0K"], E_max, side="right") - 1
     for mt in nuc_ce.reactions:
-        if hasattr(nuc_ce.reactions[mt].xs['0K'], '_threshold_idx'):
-            threshold_idx = nuc_ce.reactions[mt].xs['0K']._threshold_idx
+        if hasattr(nuc_ce.reactions[mt].xs["0K"], "_threshold_idx"):
+            threshold_idx = nuc_ce.reactions[mt].xs["0K"]._threshold_idx
             if 0 < threshold_idx < E_max_idx:
                 E_max_idx = threshold_idx
 
     # parse energy and cross sections
-    energy = nuc_ce.energy['0K'][:E_max_idx + 1]
+    energy = nuc_ce.energy["0K"][: E_max_idx + 1]
     E_min, E_max = energy[0], energy[-1]
     n_points = energy.size
-    total_xs = nuc_ce[1].xs['0K'](energy)
-    elastic_xs = nuc_ce[2].xs['0K'](energy)
+    total_xs = nuc_ce[1].xs["0K"](energy)
+    elastic_xs = nuc_ce[2].xs["0K"](energy)
 
     try:
-        absorption_xs = nuc_ce[27].xs['0K'](energy)
+        absorption_xs = nuc_ce[27].xs["0K"](energy)
     except KeyError:
         absorption_xs = np.zeros_like(total_xs)
 
     fissionable = False
     try:
-        fission_xs = nuc_ce[18].xs['0K'](energy)
+        fission_xs = nuc_ce[18].xs["0K"](energy)
         fissionable = True
     except KeyError:
         pass
@@ -486,13 +527,13 @@ def vectfit_nuclide(endf_file, njoy_error=5e-4, vf_pieces=None,
         # divide into pieces for complex nuclides
         peaks, _ = find_peaks(total_xs)
         n_peaks = peaks.size
-        if n_peaks > 200 or n_points > 30000 or n_peaks * n_points > 100*10000:
-            vf_pieces = max(5, n_peaks // 50,  n_points // 2000)
+        if n_peaks > 200 or n_points > 30000 or n_peaks * n_points > 100 * 10000:
+            vf_pieces = max(5, n_peaks // 50, n_points // 2000)
         else:
             vf_pieces = 1
     piece_width = (sqrt(E_max) - sqrt(E_min)) / vf_pieces
 
-    alpha = nuc_ce.atomic_weight_ratio/(K_BOLTZMANN*TEMPERATURE_LIMIT)
+    alpha = nuc_ce.atomic_weight_ratio / (K_BOLTZMANN * TEMPERATURE_LIMIT)
 
     poles, residues = [], []
     # VF piece by piece
@@ -500,32 +541,35 @@ def vectfit_nuclide(endf_file, njoy_error=5e-4, vf_pieces=None,
         if log:
             print(f"Vector fitting piece {i_piece + 1}/{vf_pieces}...")
         # start E of this piece
-        e_bound = (sqrt(E_min) + piece_width*(i_piece-0.5))**2
-        if i_piece == 0 or sqrt(alpha*e_bound) < 4.0:
+        e_bound = (sqrt(E_min) + piece_width * (i_piece - 0.5)) ** 2
+        if i_piece == 0 or sqrt(alpha * e_bound) < 4.0:
             e_start = E_min
             e_start_idx = 0
         else:
-            e_start = max(E_min, (sqrt(alpha*e_bound) - 4.0)**2/alpha)
-            e_start_idx = np.searchsorted(energy, e_start, side='right') - 1
+            e_start = max(E_min, (sqrt(alpha * e_bound) - 4.0) ** 2 / alpha)
+            e_start_idx = np.searchsorted(energy, e_start, side="right") - 1
         # end E of this piece
-        e_bound = (sqrt(E_min) + piece_width*(i_piece + 1))**2
-        e_end = min(E_max, (sqrt(alpha*e_bound) + 4.0)**2/alpha)
-        e_end_idx = np.searchsorted(energy, e_end, side='left') + 1
+        e_bound = (sqrt(E_min) + piece_width * (i_piece + 1)) ** 2
+        e_end = min(E_max, (sqrt(alpha * e_bound) + 4.0) ** 2 / alpha)
+        e_end_idx = np.searchsorted(energy, e_end, side="left") + 1
         e_idx = range(e_start_idx, min(e_end_idx + 1, n_points))
 
-        p, r = _vectfit_xs(energy[e_idx], ce_xs[:, e_idx], mts, log=log,
-                           path_out=path_out, **kwargs)
+        p, r = _vectfit_xs(
+            energy[e_idx], ce_xs[:, e_idx], mts, log=log, path_out=path_out, **kwargs
+        )
 
         poles.append(p)
         residues.append(r)
 
     # collect multipole data into a dictionary
-    mp_data = {"name": nuc_ce.name,
-               "AWR": nuc_ce.atomic_weight_ratio,
-               "E_min": E_min,
-               "E_max": E_max,
-               "poles": poles,
-               "residues": residues}
+    mp_data = {
+        "name": nuc_ce.name,
+        "AWR": nuc_ce.atomic_weight_ratio,
+        "E_min": E_min,
+        "E_max": E_max,
+        "poles": poles,
+        "residues": residues,
+    }
 
     # dump multipole data to file
     if path_out:
@@ -534,7 +578,7 @@ def vectfit_nuclide(endf_file, njoy_error=5e-4, vf_pieces=None,
         if not mp_filename:
             mp_filename = f"{nuc_ce.name}_mp.pickle"
         mp_filename = os.path.join(path_out, mp_filename)
-        with open(mp_filename, 'wb') as f:
+        with open(mp_filename, "wb") as f:
             pickle.dump(mp_data, f)
         if log:
             print(f"Dumped multipole data to file: {mp_filename}")
@@ -542,8 +586,9 @@ def vectfit_nuclide(endf_file, njoy_error=5e-4, vf_pieces=None,
     return mp_data
 
 
-def _windowing(mp_data, n_cf, rtol=1e-3, atol=1e-5, n_win=None, spacing=None,
-               log=False):
+def _windowing(
+    mp_data, n_cf, rtol=1e-3, atol=1e-5, n_win=None, spacing=None, log=False
+):
     """Generate windowed multipole library from multipole data with specific
         settings of window size, curve fit order, etc.
 
@@ -585,21 +630,21 @@ def _windowing(mp_data, n_cf, rtol=1e-3, atol=1e-5, n_win=None, spacing=None,
 
     n_pieces = len(mp_poles)
     piece_width = (sqrt(E_max) - sqrt(E_min)) / n_pieces
-    alpha = awr / (K_BOLTZMANN*TEMPERATURE_LIMIT)
+    alpha = awr / (K_BOLTZMANN * TEMPERATURE_LIMIT)
 
     # determine window size
     if n_win is None:
         if spacing is not None:
             # ensure the windows are within the multipole energy range
             n_win = int((sqrt(E_max) - sqrt(E_min)) / spacing)
-            E_max = (sqrt(E_min) + n_win*spacing)**2
+            E_max = (sqrt(E_min) + n_win * spacing) ** 2
         else:
             n_win = 1000
     # inner window size
     spacing = (sqrt(E_max) - sqrt(E_min)) / n_win
     # make sure inner window size is smaller than energy piece size
     if spacing > piece_width:
-        raise ValueError('Window spacing cannot be larger than piece spacing.')
+        raise ValueError("Window spacing cannot be larger than piece spacing.")
 
     if log:
         print("Windowing:")
@@ -627,28 +672,28 @@ def _windowing(mp_data, n_cf, rtol=1e-3, atol=1e-5, n_win=None, spacing=None,
         inend = inbegin + spacing
         incenter = (inbegin + inend) / 2.0
         # extend window energy range for Doppler broadening
-        if iw == 0 or sqrt(alpha)*inbegin < 4.0:
+        if iw == 0 or sqrt(alpha) * inbegin < 4.0:
             e_start = inbegin**2
         else:
-            e_start = max(E_min, (sqrt(alpha)*inbegin - 4.0)**2/alpha)
-        e_end = min(E_max, (sqrt(alpha)*inend + 4.0)**2/alpha)
+            e_start = max(E_min, (sqrt(alpha) * inbegin - 4.0) ** 2 / alpha)
+        e_end = min(E_max, (sqrt(alpha) * inend + 4.0) ** 2 / alpha)
 
         # locate piece and relevant poles
-        i_piece = min(n_pieces - 1, int((inbegin - sqrt(E_min))/piece_width + 0.5))
+        i_piece = min(n_pieces - 1, int((inbegin - sqrt(E_min)) / piece_width + 0.5))
         poles, residues = mp_poles[i_piece], mp_residues[i_piece]
         n_poles = poles.size
 
         # generate energy points for fitting: equally spaced in momentum
-        n_points = min(max(100, int((e_end - e_start)*4)), 10000)
+        n_points = min(max(100, int((e_end - e_start) * 4)), 10000)
         energy_sqrt = np.linspace(np.sqrt(e_start), np.sqrt(e_end), n_points)
         energy = energy_sqrt**2
 
         # reference xs from multipole form, note the residue terms in the
         # multipole and vector fitting representations differ by a 1j
-        xs_ref = vf.evaluate(energy_sqrt, poles, residues*1j) / energy
+        xs_ref = vf.evaluate(energy_sqrt, poles, residues * 1j) / energy
 
         # curve fit matrix
-        matrix = np.vstack([energy**(0.5*i - 1) for i in range(n_cf + 1)]).T
+        matrix = np.vstack([energy ** (0.5 * i - 1) for i in range(n_cf + 1)]).T
 
         # start from 0 poles, initialize pointers to the center nearest pole
         center_pole_ind = np.argmin((np.fabs(poles.real - incenter)))
@@ -659,8 +704,10 @@ def _windowing(mp_data, n_cf, rtol=1e-3, atol=1e-5, n_win=None, spacing=None,
 
             # calculate the cross sections contributed by the windowed poles
             if rp > lp:
-                xs_wp = vf.evaluate(energy_sqrt, poles[lp:rp],
-                                    residues[:, lp:rp]*1j) / energy
+                xs_wp = (
+                    vf.evaluate(energy_sqrt, poles[lp:rp], residues[:, lp:rp] * 1j)
+                    / energy
+                )
             else:
                 xs_wp = np.zeros_like(xs_ref)
 
@@ -670,13 +717,18 @@ def _windowing(mp_data, n_cf, rtol=1e-3, atol=1e-5, n_win=None, spacing=None,
 
             # assess the result
             abserr = np.abs(xs_fit + xs_wp - xs_ref)
-            with np.errstate(invalid='ignore', divide='ignore'):
+            with np.errstate(invalid="ignore", divide="ignore"):
                 relerr = abserr / xs_ref
             if not np.any(np.isnan(abserr)):
                 re = relerr[abserr > atol]
-                if re.size == 0 or np.all(re <= rtol) or \
-                   (re.max() <= 2*rtol and (re > rtol).sum() <= 0.01*relerr.size) or \
-                   (iw == 0 and np.all(relerr.mean(axis=1) <= rtol)):
+                if (
+                    re.size == 0
+                    or np.all(re <= rtol)
+                    or (
+                        re.max() <= 2 * rtol and (re > rtol).sum() <= 0.01 * relerr.size
+                    )
+                    or (iw == 0 and np.all(relerr.mean(axis=1) <= rtol))
+                ):
                     # meet tolerances
                     if log >= DETAILED_LOGGING:
                         print("Accuracy satisfied.")
@@ -685,7 +737,7 @@ def _windowing(mp_data, n_cf, rtol=1e-3, atol=1e-5, n_win=None, spacing=None,
             # we expect pure curvefit will succeed for the first window
             # TODO: find the energy boundary below which no poles are allowed
             if iw == 0:
-                raise RuntimeError('Pure curvefit failed for the first window!')
+                raise RuntimeError("Pure curvefit failed for the first window!")
 
             # try to include one more pole (next center nearest)
             if rp >= n_poles:
@@ -704,7 +756,7 @@ def _windowing(mp_data, n_cf, rtol=1e-3, atol=1e-5, n_win=None, spacing=None,
     # flatten and shrink by removing unused poles
     data = []  # used poles and residues
     for ip in range(n_pieces):
-        used = (poles_unused[ip] == 0)
+        used = poles_unused[ip] == 0
         # stack poles and residues for library format
         data.append(np.vstack([mp_poles[ip][used], mp_residues[ip][:, used]]).T)
     # stack poles/residues in sequence vertically
@@ -716,8 +768,10 @@ def _windowing(mp_data, n_cf, rtol=1e-3, atol=1e-5, n_win=None, spacing=None,
         ip, lp, rp, coefs = win_data[iw]
         # adjust indices and change to 1-based for the library format
         n_prev_poles = sum([poles_unused[i].size for i in range(ip)])
-        n_unused = sum([(poles_unused[i] == 1).sum() for i in range(ip)]) + \
-                  (poles_unused[ip][:lp] == 1).sum()
+        n_unused = (
+            sum([(poles_unused[i] == 1).sum() for i in range(ip)])
+            + (poles_unused[ip][:lp] == 1).sum()
+        )
         lp += n_prev_poles - n_unused + 1
         rp += n_prev_poles - n_unused
         windows.append([lp, rp])
@@ -781,6 +835,7 @@ class WindowedMultipole(EqualityMixin):
         a/E + b/sqrt(E) + c + d sqrt(E) + ...
 
     """
+
     def __init__(self, name):
         self.name = name
         self.spacing = None
@@ -798,7 +853,7 @@ class WindowedMultipole(EqualityMixin):
 
     @name.setter
     def name(self, name):
-        cv.check_type('name', name, str)
+        cv.check_type("name", name, str)
         self._name = name
 
     @property
@@ -828,8 +883,8 @@ class WindowedMultipole(EqualityMixin):
     @spacing.setter
     def spacing(self, spacing):
         if spacing is not None:
-            cv.check_type('spacing', spacing, Real)
-            cv.check_greater_than('spacing', spacing, 0.0, equality=False)
+            cv.check_type("spacing", spacing, Real)
+            cv.check_greater_than("spacing", spacing, 0.0, equality=False)
         self._spacing = spacing
 
     @property
@@ -839,8 +894,8 @@ class WindowedMultipole(EqualityMixin):
     @sqrtAWR.setter
     def sqrtAWR(self, sqrtAWR):
         if sqrtAWR is not None:
-            cv.check_type('sqrtAWR', sqrtAWR, Real)
-            cv.check_greater_than('sqrtAWR', sqrtAWR, 0.0, equality=False)
+            cv.check_type("sqrtAWR", sqrtAWR, Real)
+            cv.check_greater_than("sqrtAWR", sqrtAWR, 0.0, equality=False)
         self._sqrtAWR = sqrtAWR
 
     @property
@@ -850,8 +905,8 @@ class WindowedMultipole(EqualityMixin):
     @E_min.setter
     def E_min(self, E_min):
         if E_min is not None:
-            cv.check_type('E_min', E_min, Real)
-            cv.check_greater_than('E_min', E_min, 0.0, equality=True)
+            cv.check_type("E_min", E_min, Real)
+            cv.check_greater_than("E_min", E_min, 0.0, equality=True)
         self._E_min = E_min
 
     @property
@@ -861,8 +916,8 @@ class WindowedMultipole(EqualityMixin):
     @E_max.setter
     def E_max(self, E_max):
         if E_max is not None:
-            cv.check_type('E_max', E_max, Real)
-            cv.check_greater_than('E_max', E_max, 0.0, equality=False)
+            cv.check_type("E_max", E_max, Real)
+            cv.check_greater_than("E_max", E_max, 0.0, equality=False)
         self._E_max = E_max
 
     @property
@@ -872,16 +927,17 @@ class WindowedMultipole(EqualityMixin):
     @data.setter
     def data(self, data):
         if data is not None:
-            cv.check_type('data', data, np.ndarray)
+            cv.check_type("data", data, np.ndarray)
             if len(data.shape) != 2:
-                raise ValueError('Multipole data arrays must be 2D')
+                raise ValueError("Multipole data arrays must be 2D")
             if data.shape[1] not in (3, 4):
                 raise ValueError(
-                     'data.shape[1] must be 3 or 4. One value for the pole.'
-                     ' One each for the scattering and absorption residues. '
-                     'Possibly one more for a fission residue.')
+                    "data.shape[1] must be 3 or 4. One value for the pole."
+                    " One each for the scattering and absorption residues. "
+                    "Possibly one more for a fission residue."
+                )
             if not np.issubdtype(data.dtype, np.complexfloating):
-                raise TypeError('Multipole data arrays must be complex dtype')
+                raise TypeError("Multipole data arrays must be complex dtype")
         self._data = data
 
     @property
@@ -891,12 +947,11 @@ class WindowedMultipole(EqualityMixin):
     @windows.setter
     def windows(self, windows):
         if windows is not None:
-            cv.check_type('windows', windows, np.ndarray)
+            cv.check_type("windows", windows, np.ndarray)
             if len(windows.shape) != 2:
-                raise ValueError('Multipole windows arrays must be 2D')
+                raise ValueError("Multipole windows arrays must be 2D")
             if not np.issubdtype(windows.dtype, np.integer):
-                raise TypeError('Multipole windows arrays must be integer'
-                                ' dtype')
+                raise TypeError("Multipole windows arrays must be integer" " dtype")
         self._windows = windows
 
     @property
@@ -906,12 +961,13 @@ class WindowedMultipole(EqualityMixin):
     @broaden_poly.setter
     def broaden_poly(self, broaden_poly):
         if broaden_poly is not None:
-            cv.check_type('broaden_poly', broaden_poly, np.ndarray)
+            cv.check_type("broaden_poly", broaden_poly, np.ndarray)
             if len(broaden_poly.shape) != 1:
-                raise ValueError('Multipole broaden_poly arrays must be 1D')
+                raise ValueError("Multipole broaden_poly arrays must be 1D")
             if not np.issubdtype(broaden_poly.dtype, np.bool_):
-                raise TypeError('Multipole broaden_poly arrays must be boolean'
-                                ' dtype')
+                raise TypeError(
+                    "Multipole broaden_poly arrays must be boolean" " dtype"
+                )
         self._broaden_poly = broaden_poly
 
     @property
@@ -921,14 +977,16 @@ class WindowedMultipole(EqualityMixin):
     @curvefit.setter
     def curvefit(self, curvefit):
         if curvefit is not None:
-            cv.check_type('curvefit', curvefit, np.ndarray)
+            cv.check_type("curvefit", curvefit, np.ndarray)
             if len(curvefit.shape) != 3:
-                raise ValueError('Multipole curvefit arrays must be 3D')
+                raise ValueError("Multipole curvefit arrays must be 3D")
             if curvefit.shape[2] not in (2, 3):  # sig_s, sig_a (maybe sig_f)
-                raise ValueError('The third dimension of multipole curvefit'
-                                 ' arrays must have a length of 2 or 3')
+                raise ValueError(
+                    "The third dimension of multipole curvefit"
+                    " arrays must have a length of 2 or 3"
+                )
             if not np.issubdtype(curvefit.dtype, np.floating):
-                raise TypeError('Multipole curvefit arrays must be float dtype')
+                raise TypeError("Multipole curvefit arrays must be float dtype")
         self._curvefit = curvefit
 
     @classmethod
@@ -954,22 +1012,25 @@ class WindowedMultipole(EqualityMixin):
             group = group_or_filename
             need_to_close = False
         else:
-            h5file = h5py.File(str(group_or_filename), 'r')
+            h5file = h5py.File(str(group_or_filename), "r")
             need_to_close = True
 
             # Make sure version matches
-            if 'version' in h5file.attrs:
-                major, minor = h5file.attrs['version']
+            if "version" in h5file.attrs:
+                major, minor = h5file.attrs["version"]
                 if major != WMP_VERSION_MAJOR:
                     raise DataError(
-                        'WMP data format uses version {}. {} whereas your '
-                        'installation of the OpenMC Python API expects version '
-                        '{}.x.'.format(major, minor, WMP_VERSION_MAJOR))
+                        "WMP data format uses version {}. {} whereas your "
+                        "installation of the OpenMC Python API expects version "
+                        "{}.x.".format(major, minor, WMP_VERSION_MAJOR)
+                    )
             else:
                 raise DataError(
-                    'WMP data does not indicate a version. Your installation of '
-                    'the OpenMC Python API expects version {}.x data.'
-                    .format(WMP_VERSION_MAJOR))
+                    "WMP data does not indicate a version. Your installation of "
+                    "the OpenMC Python API expects version {}.x data.".format(
+                        WMP_VERSION_MAJOR
+                    )
+                )
 
             group = list(h5file.values())[0]
 
@@ -978,31 +1039,33 @@ class WindowedMultipole(EqualityMixin):
 
         # Read scalars.
 
-        out.spacing = group['spacing'][()]
-        out.sqrtAWR = group['sqrtAWR'][()]
-        out.E_min = group['E_min'][()]
-        out.E_max = group['E_max'][()]
+        out.spacing = group["spacing"][()]
+        out.sqrtAWR = group["sqrtAWR"][()]
+        out.E_min = group["E_min"][()]
+        out.E_max = group["E_max"][()]
 
         # Read arrays.
 
         err = "WMP '{}' array shape is not consistent with the '{}' array shape"
 
-        out.data = group['data'][()]
+        out.data = group["data"][()]
 
-        out.windows = group['windows'][()]
+        out.windows = group["windows"][()]
 
-        out.broaden_poly = group['broaden_poly'][...].astype(bool)
+        out.broaden_poly = group["broaden_poly"][...].astype(bool)
         if out.broaden_poly.shape[0] != out.windows.shape[0]:
-            raise ValueError(err.format('broaden_poly', 'windows'))
+            raise ValueError(err.format("broaden_poly", "windows"))
 
-        out.curvefit = group['curvefit'][()]
+        out.curvefit = group["curvefit"][()]
         if out.curvefit.shape[0] != out.windows.shape[0]:
-            raise ValueError(err.format('curvefit', 'windows'))
+            raise ValueError(err.format("curvefit", "windows"))
 
         # _broaden_wmp_polynomials assumes the curve fit has at least 3 terms.
         if out.fit_order < 2:
-            raise ValueError("Windowed multipole is only supported for "
-                             "curvefits with 3 or more terms.")
+            raise ValueError(
+                "Windowed multipole is only supported for "
+                "curvefits with 3 or more terms."
+            )
 
         # If HDF5 file was opened here, make sure it gets closed
         if need_to_close:
@@ -1079,11 +1142,11 @@ class WindowedMultipole(EqualityMixin):
 
         if isinstance(mp_data, str):
             # load multipole data from file
-            with open(mp_data, 'rb') as f:
+            with open(mp_data, "rb") as f:
                 mp_data = pickle.load(f)
 
         if search is None:
-            if 'n_cf' in kwargs and ('n_win' in kwargs or 'spacing' in kwargs):
+            if "n_cf" in kwargs and ("n_win" in kwargs or "spacing" in kwargs):
                 search = False
             else:
                 search = True
@@ -1091,7 +1154,7 @@ class WindowedMultipole(EqualityMixin):
         # windowing with specific options
         if not search:
             # set default value for curvefit order if not specified
-            if 'n_cf' not in kwargs:
+            if "n_cf" not in kwargs:
                 kwargs.update(n_cf=5)
             return _windowing(mp_data, log=log, **kwargs)
 
@@ -1115,14 +1178,17 @@ class WindowedMultipole(EqualityMixin):
                     wmp = _windowing(mp_data, log=log, **kwargs)
                 except Exception as e:
                     if log:
-                        print('Failed: ' + str(e))
+                        print("Failed: " + str(e))
                     break
 
                 # select wmp library with metric:
                 # - performance: average # used poles per window and CF order
                 # - memory: # windows
-                metric = -(wmp.poles_per_window * 10. + wmp.fit_order * 1. +
-                           wmp.n_windows * 0.01)
+                metric = -(
+                    wmp.poles_per_window * 10.0
+                    + wmp.fit_order * 1.0
+                    + wmp.n_windows * 0.01
+                )
                 if best_wmp is None or metric > best_metric:
                     if log:
                         print("Best library so far.")
@@ -1131,9 +1197,15 @@ class WindowedMultipole(EqualityMixin):
 
         # return the best wmp library
         if log:
-            print("Final library: {} poles, {} windows, {:.2g} poles per window, "
-                  "{} CF order".format(best_wmp.n_poles, best_wmp.n_windows,
-                   best_wmp.poles_per_window, best_wmp.fit_order))
+            print(
+                "Final library: {} poles, {} windows, {:.2g} poles per window, "
+                "{} CF order".format(
+                    best_wmp.n_poles,
+                    best_wmp.n_windows,
+                    best_wmp.poles_per_window,
+                    best_wmp.fit_order,
+                )
+            )
 
         return best_wmp
 
@@ -1155,8 +1227,10 @@ class WindowedMultipole(EqualityMixin):
 
         """
 
-        if E < self.E_min: return (0, 0, 0)
-        if E > self.E_max: return (0, 0, 0)
+        if E < self.E_min:
+            return (0, 0, 0)
+        if E > self.E_max:
+            return (0, 0, 0)
 
         # ======================================================================
         # Bookkeeping
@@ -1171,8 +1245,9 @@ class WindowedMultipole(EqualityMixin):
         # indexing.  Similarly startw needs to be decreased by 1.  endw does
         # not need to be decreased because range(startw, endw) does not include
         # endw.
-        i_window = min(self.n_windows - 1,
-                       int(np.floor((sqrtE - sqrt(self.E_min)) / self.spacing)))
+        i_window = min(
+            self.n_windows - 1, int(np.floor((sqrtE - sqrt(self.E_min)) / self.spacing))
+        )
         startw = self.windows[i_window, 0] - 1
         endw = self.windows[i_window, 1]
 
@@ -1187,16 +1262,23 @@ class WindowedMultipole(EqualityMixin):
         if sqrtkT != 0 and self.broaden_poly[i_window]:
             # Broaden the curvefit.
             dopp = self.sqrtAWR / sqrtkT
-            broadened_polynomials = _broaden_wmp_polynomials(E, dopp,
-                                                             self.fit_order + 1)
+            broadened_polynomials = _broaden_wmp_polynomials(
+                E, dopp, self.fit_order + 1
+            )
             for i_poly in range(self.fit_order + 1):
-                sig_s += (self.curvefit[i_window, i_poly, _FIT_S]
-                          * broadened_polynomials[i_poly])
-                sig_a += (self.curvefit[i_window, i_poly, _FIT_A]
-                          * broadened_polynomials[i_poly])
+                sig_s += (
+                    self.curvefit[i_window, i_poly, _FIT_S]
+                    * broadened_polynomials[i_poly]
+                )
+                sig_a += (
+                    self.curvefit[i_window, i_poly, _FIT_A]
+                    * broadened_polynomials[i_poly]
+                )
                 if self.fissionable:
-                    sig_f += (self.curvefit[i_window, i_poly, _FIT_F]
-                              * broadened_polynomials[i_poly])
+                    sig_f += (
+                        self.curvefit[i_window, i_poly, _FIT_F]
+                        * broadened_polynomials[i_poly]
+                    )
         else:
             temp = invE
             for i_poly in range(self.fit_order + 1):
@@ -1253,7 +1335,7 @@ class WindowedMultipole(EqualityMixin):
         fun = np.vectorize(lambda x: self._evaluate(x, T))
         return fun(E)
 
-    def export_to_hdf5(self, path, mode='a', libver='earliest'):
+    def export_to_hdf5(self, path, mode="a", libver="earliest"):
         """Export windowed multipole data to an HDF5 file.
 
         Parameters
@@ -1271,20 +1353,19 @@ class WindowedMultipole(EqualityMixin):
 
         # Open file and write version.
         with h5py.File(str(path), mode, libver=libver) as f:
-            f.attrs['filetype'] = np.bytes_('data_wmp')
-            f.attrs['version'] = np.array(WMP_VERSION)
+            f.attrs["filetype"] = np.bytes_("data_wmp")
+            f.attrs["version"] = np.array(WMP_VERSION)
 
             g = f.create_group(self.name)
 
             # Write scalars.
-            g.create_dataset('spacing', data=np.array(self.spacing))
-            g.create_dataset('sqrtAWR', data=np.array(self.sqrtAWR))
-            g.create_dataset('E_min', data=np.array(self.E_min))
-            g.create_dataset('E_max', data=np.array(self.E_max))
+            g.create_dataset("spacing", data=np.array(self.spacing))
+            g.create_dataset("sqrtAWR", data=np.array(self.sqrtAWR))
+            g.create_dataset("E_min", data=np.array(self.E_min))
+            g.create_dataset("E_max", data=np.array(self.E_max))
 
             # Write arrays.
-            g.create_dataset('data', data=self.data)
-            g.create_dataset('windows', data=self.windows)
-            g.create_dataset('broaden_poly',
-                             data=self.broaden_poly.astype(np.int8))
-            g.create_dataset('curvefit', data=self.curvefit)
+            g.create_dataset("data", data=self.data)
+            g.create_dataset("windows", data=self.windows)
+            g.create_dataset("broaden_poly", data=self.broaden_poly.astype(np.int8))
+            g.create_dataset("curvefit", data=self.curvefit)

@@ -3,14 +3,30 @@ from itertools import repeat
 
 from .abc import Integrator, SIIntegrator, OperatorResult, add_params
 from ._matrix_funcs import (
-    cf4_f1, cf4_f2, cf4_f3, cf4_f4, celi_f1, celi_f2,
-    leqi_f1, leqi_f2, leqi_f3, leqi_f4, rk4_f1, rk4_f4
+    cf4_f1,
+    cf4_f2,
+    cf4_f3,
+    cf4_f4,
+    celi_f1,
+    celi_f2,
+    leqi_f1,
+    leqi_f2,
+    leqi_f3,
+    leqi_f4,
+    rk4_f1,
+    rk4_f4,
 )
 
 __all__ = [
-    "PredictorIntegrator", "CECMIntegrator", "CF4Integrator",
-    "CELIIntegrator", "EPCRK4Integrator", "LEQIIntegrator",
-    "SICELIIntegrator", "SILEQIIntegrator"]
+    "PredictorIntegrator",
+    "CECMIntegrator",
+    "CF4Integrator",
+    "CELIIntegrator",
+    "EPCRK4Integrator",
+    "LEQIIntegrator",
+    "SICELIIntegrator",
+    "SILEQIIntegrator",
+]
 
 
 @add_params
@@ -24,6 +40,7 @@ class PredictorIntegrator(Integrator):
         \mathbf{n}_{i+1} = \exp\left(h\mathbf{A}(\mathbf{n}_i) \right) \mathbf{n}_i
 
     """
+
     _num_stages = 1
 
     def __call__(self, n, rates, dt, source_rate, _i=None):
@@ -76,6 +93,7 @@ class CECMIntegrator(Integrator):
             \mathbf{n}_i.
         \end{aligned}
     """
+
     _num_stages = 2
 
     def __call__(self, n, rates, dt, source_rate, _i=None):
@@ -140,6 +158,7 @@ class CF4Integrator(Integrator):
             \frac{\mathbf{A}_3}{6} + \frac{\mathbf{A}_4}{4} \right ) \mathbf{n}_i.
         \end{aligned}
     """
+
     _num_stages = 4
 
     def __call__(self, n_bos, bos_rates, dt, source_rate, _i=None):
@@ -171,31 +190,28 @@ class CF4Integrator(Integrator):
             simulations
         """
         # Step 1: deplete with matrix 1/2*A(y0)
-        time1, n_eos1 = self._timed_deplete(
-            n_bos, bos_rates, dt, matrix_func=cf4_f1)
+        time1, n_eos1 = self._timed_deplete(n_bos, bos_rates, dt, matrix_func=cf4_f1)
         res1 = self.operator(n_eos1, source_rate)
 
         # Step 2: deplete with matrix 1/2*A(y1)
-        time2, n_eos2 = self._timed_deplete(
-            n_bos, res1.rates, dt, matrix_func=cf4_f1)
+        time2, n_eos2 = self._timed_deplete(n_bos, res1.rates, dt, matrix_func=cf4_f1)
         res2 = self.operator(n_eos2, source_rate)
 
         # Step 3: deplete with matrix -1/2*A(y0)+A(y2)
         list_rates = list(zip(bos_rates, res2.rates))
-        time3, n_eos3 = self._timed_deplete(
-            n_eos1, list_rates, dt, matrix_func=cf4_f2)
+        time3, n_eos3 = self._timed_deplete(n_eos1, list_rates, dt, matrix_func=cf4_f2)
         res3 = self.operator(n_eos3, source_rate)
 
         # Step 4: deplete with two matrix exponentials
         list_rates = list(zip(bos_rates, res1.rates, res2.rates, res3.rates))
-        time4, n_inter = self._timed_deplete(
-            n_bos, list_rates, dt, matrix_func=cf4_f3)
-        time5, n_eos5 = self._timed_deplete(
-            n_inter, list_rates, dt, matrix_func=cf4_f4)
+        time4, n_inter = self._timed_deplete(n_bos, list_rates, dt, matrix_func=cf4_f3)
+        time5, n_eos5 = self._timed_deplete(n_inter, list_rates, dt, matrix_func=cf4_f4)
 
-        return (time1 + time2 + time3 + time4 + time5,
-                [n_eos1, n_eos2, n_eos3, n_eos5],
-                [res1, res2, res3])
+        return (
+            time1 + time2 + time3 + time4 + time5,
+            [n_eos1, n_eos2, n_eos3, n_eos5],
+            [res1, res2, res3],
+        )
 
 
 @add_params
@@ -218,6 +234,7 @@ class CELIIntegrator(Integrator):
         \frac{h}{12} \mathbf{A}(\mathbf{n}_{i+1}^p) \right) \mathbf{n}_i.
         \end{aligned}
     """
+
     _num_stages = 2
 
     def __call__(self, n_bos, rates, dt, source_rate, _i=None):
@@ -256,10 +273,12 @@ class CELIIntegrator(Integrator):
         list_rates = list(zip(rates, res_ce.rates))
 
         time_le1, n_inter = self._timed_deplete(
-            n_bos, list_rates, dt, matrix_func=celi_f1)
+            n_bos, list_rates, dt, matrix_func=celi_f1
+        )
 
         time_le2, n_end = self._timed_deplete(
-            n_inter, list_rates, dt, matrix_func=celi_f2)
+            n_inter, list_rates, dt, matrix_func=celi_f2
+        )
 
         return proc_time + time_le1 + time_le1, [n_ce, n_end], [res_ce]
 
@@ -284,6 +303,7 @@ class EPCRK4Integrator(Integrator):
         + \frac{\mathbf{A}_3}{3} + \frac{\mathbf{A}_4}{6} \right ) \mathbf{n}_i.
         \end{aligned}
     """
+
     _num_stages = 4
 
     def __call__(self, n, rates, dt, source_rate, _i=None):
@@ -366,6 +386,7 @@ class LEQIIntegrator(Integrator):
 
     It is initialized using the CE/LI algorithm.
     """
+
     _num_stages = 2
 
     def __call__(self, n_bos, bos_rates, dt, source_rate, i):
@@ -400,7 +421,8 @@ class LEQIIntegrator(Integrator):
             if self._i_res < 1:  # need at least previous transport solution
                 self._prev_rates = bos_rates
                 return CELIIntegrator.__call__(
-                    self, n_bos, bos_rates, dt, source_rate, i)
+                    self, n_bos, bos_rates, dt, source_rate, i
+                )
             prev_res = self.operator.prev_res[-2]
             prev_dt = self.timesteps[i] - prev_res.time[0]
             self._prev_rates = prev_res.rates[0]
@@ -410,31 +432,32 @@ class LEQIIntegrator(Integrator):
         # Remaining LE/QI
         bos_res = self.operator(n_bos, source_rate)
 
-        le_inputs = list(zip(
-            self._prev_rates, bos_res.rates, repeat(prev_dt), repeat(dt)))
+        le_inputs = list(
+            zip(self._prev_rates, bos_res.rates, repeat(prev_dt), repeat(dt))
+        )
 
-        time1, n_inter = self._timed_deplete(
-            n_bos, le_inputs, dt, matrix_func=leqi_f1)
-        time2, n_eos0 = self._timed_deplete(
-            n_inter, le_inputs, dt, matrix_func=leqi_f2)
+        time1, n_inter = self._timed_deplete(n_bos, le_inputs, dt, matrix_func=leqi_f1)
+        time2, n_eos0 = self._timed_deplete(n_inter, le_inputs, dt, matrix_func=leqi_f2)
 
         res_inter = self.operator(n_eos0, source_rate)
 
-        qi_inputs = list(zip(
-            self._prev_rates, bos_res.rates, res_inter.rates,
-            repeat(prev_dt), repeat(dt)))
+        qi_inputs = list(
+            zip(
+                self._prev_rates,
+                bos_res.rates,
+                res_inter.rates,
+                repeat(prev_dt),
+                repeat(dt),
+            )
+        )
 
-        time3, n_inter = self._timed_deplete(
-            n_bos, qi_inputs, dt, matrix_func=leqi_f3)
-        time4, n_eos1 = self._timed_deplete(
-            n_inter, qi_inputs, dt, matrix_func=leqi_f4)
+        time3, n_inter = self._timed_deplete(n_bos, qi_inputs, dt, matrix_func=leqi_f3)
+        time4, n_eos1 = self._timed_deplete(n_inter, qi_inputs, dt, matrix_func=leqi_f4)
 
         # store updated rates
         self._prev_rates = copy.deepcopy(bos_res.rates)
 
-        return (
-            time1 + time2 + time3 + time4, [n_eos0, n_eos1],
-            [bos_res, res_inter])
+        return (time1 + time2 + time3 + time4, [n_eos0, n_eos1], [bos_res, res_inter])
 
 
 @add_params
@@ -448,6 +471,7 @@ class SICELIIntegrator(SIIntegrator):
     Detailed algorithm can be found in section 3.2 in `Colin Josey's thesis
     <http://hdl.handle.net/1721.1/113721>`_.
     """
+
     _num_stages = 2
 
     def __call__(self, n_bos, bos_rates, dt, source_rate, _i=None):
@@ -488,15 +512,17 @@ class SICELIIntegrator(SIIntegrator):
             if j <= 1:
                 res_bar = copy.deepcopy(inter_res)
             else:
-                rates = 1/j * inter_res.rates + (1 - 1 / j) * res_bar.rates
-                k = 1/j * inter_res.k + (1 - 1 / j) * res_bar.k
+                rates = 1 / j * inter_res.rates + (1 - 1 / j) * res_bar.rates
+                k = 1 / j * inter_res.k + (1 - 1 / j) * res_bar.k
                 res_bar = OperatorResult(k, rates)
 
             list_rates = list(zip(bos_rates, res_bar.rates))
             time1, n_inter = self._timed_deplete(
-                n_bos, list_rates, dt, matrix_func=celi_f1)
+                n_bos, list_rates, dt, matrix_func=celi_f1
+            )
             time2, n_inter = self._timed_deplete(
-                n_inter, list_rates, dt, matrix_func=celi_f2)
+                n_inter, list_rates, dt, matrix_func=celi_f2
+            )
             proc_time += time1 + time2
 
         # end iteration
@@ -514,6 +540,7 @@ class SILEQIIntegrator(SIIntegrator):
     Detailed algorithm can be found in Section 3.2 in `Colin Josey's thesis
     <http://hdl.handle.net/1721.1/113721>`_.
     """
+
     _num_stages = 2
 
     def __call__(self, n_bos, bos_rates, dt, source_rate, i):
@@ -549,7 +576,8 @@ class SILEQIIntegrator(SIIntegrator):
                 self._prev_rates = bos_rates
                 # Perform CELI for initial steps
                 return SICELIIntegrator.__call__(
-                    self, n_bos, bos_rates, dt, source_rate, i)
+                    self, n_bos, bos_rates, dt, source_rate, i
+                )
             prev_res = self.operator.prev_res[-2]
             prev_dt = self.timesteps[i] - prev_res.time[0]
             self._prev_rates = prev_res.rates[0]
@@ -557,12 +585,9 @@ class SILEQIIntegrator(SIIntegrator):
             prev_dt = self.timesteps[i - 1]
 
         # Perform remaining LE/QI
-        inputs = list(zip(self._prev_rates, bos_rates,
-                          repeat(prev_dt), repeat(dt)))
-        proc_time, n_inter = self._timed_deplete(
-            n_bos, inputs, dt, matrix_func=leqi_f1)
-        time1, n_eos = self._timed_deplete(
-            n_inter, inputs, dt, matrix_func=leqi_f2)
+        inputs = list(zip(self._prev_rates, bos_rates, repeat(prev_dt), repeat(dt)))
+        proc_time, n_inter = self._timed_deplete(n_bos, inputs, dt, matrix_func=leqi_f1)
+        time1, n_eos = self._timed_deplete(n_inter, inputs, dt, matrix_func=leqi_f2)
 
         proc_time += time1
         n_inter = copy.deepcopy(n_eos)
@@ -577,24 +602,31 @@ class SILEQIIntegrator(SIIntegrator):
                 k = 1 / j * inter_res.k + (1 - 1 / j) * res_bar.k
                 res_bar = OperatorResult(k, rates)
 
-            inputs = list(zip(self._prev_rates, bos_rates, res_bar.rates,
-                              repeat(prev_dt), repeat(dt)))
-            time1, n_inter = self._timed_deplete(
-                n_bos, inputs, dt, matrix_func=leqi_f3)
+            inputs = list(
+                zip(
+                    self._prev_rates,
+                    bos_rates,
+                    res_bar.rates,
+                    repeat(prev_dt),
+                    repeat(dt),
+                )
+            )
+            time1, n_inter = self._timed_deplete(n_bos, inputs, dt, matrix_func=leqi_f3)
             time2, n_inter = self._timed_deplete(
-                n_inter, inputs, dt, matrix_func=leqi_f4)
+                n_inter, inputs, dt, matrix_func=leqi_f4
+            )
             proc_time += time1 + time2
 
         return proc_time, [n_eos, n_inter], [res_bar]
 
 
 integrator_by_name = {
-    'cecm': CECMIntegrator,
-    'predictor': PredictorIntegrator,
-    'cf4': CF4Integrator,
-    'epc_rk4': EPCRK4Integrator,
-    'si_celi': SICELIIntegrator,
-    'si_leqi': SILEQIIntegrator,
-    'celi': CELIIntegrator,
-    'leqi': LEQIIntegrator
+    "cecm": CECMIntegrator,
+    "predictor": PredictorIntegrator,
+    "cf4": CF4Integrator,
+    "epc_rk4": EPCRK4Integrator,
+    "si_celi": SICELIIntegrator,
+    "si_leqi": SILEQIIntegrator,
+    "celi": CELIIntegrator,
+    "leqi": LEQIIntegrator,
 }

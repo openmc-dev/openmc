@@ -16,9 +16,10 @@ class DiffTallyTestHarness(PyAPITestHarness):
         self._model.settings.batches = 3
         self._model.settings.inactive = 0
         self._model.settings.particles = 100
-        self._model.settings.source = openmc.IndependentSource(space=openmc.stats.Box(
-            [-160, -160, -183], [160, 160, 183]))
-        self._model.settings.temperature['multipole'] = True
+        self._model.settings.source = openmc.IndependentSource(
+            space=openmc.stats.Box([-160, -160, -183], [160, 160, 183])
+        )
+        self._model.settings.temperature["multipole"] = True
 
         filt_mats = openmc.MaterialFilter((1, 3))
         filt_eout = openmc.EnergyoutFilter((0.0, 0.625, 20.0e6))
@@ -26,29 +27,29 @@ class DiffTallyTestHarness(PyAPITestHarness):
         # We want density derivatives for both water and fuel to get coverage
         # for both fissile and non-fissile materials.
         d1 = openmc.TallyDerivative(derivative_id=1)
-        d1.variable = 'density'
+        d1.variable = "density"
         d1.material = 3
         d2 = openmc.TallyDerivative(derivative_id=2)
-        d2.variable = 'density'
+        d2.variable = "density"
         d2.material = 1
 
         # O-16 is a good nuclide to test against because it is present in both
         # water and fuel.  Some routines need to recognize that they have the
         # perturbed nuclide but not the perturbed material.
         d3 = openmc.TallyDerivative(derivative_id=3)
-        d3.variable = 'nuclide_density'
+        d3.variable = "nuclide_density"
         d3.material = 1
-        d3.nuclide = 'O16'
+        d3.nuclide = "O16"
 
         # A fissile nuclide, just for good measure.
         d4 = openmc.TallyDerivative(derivative_id=4)
-        d4.variable = 'nuclide_density'
+        d4.variable = "nuclide_density"
         d4.material = 1
-        d4.nuclide = 'U235'
+        d4.nuclide = "U235"
 
         # Temperature derivatives.
         d5 = openmc.TallyDerivative(derivative_id=5)
-        d5.variable = 'temperature'
+        d5.variable = "temperature"
         d5.material = 1
 
         derivs = [d1, d2, d3, d4, d5]
@@ -56,7 +57,7 @@ class DiffTallyTestHarness(PyAPITestHarness):
         # Cover the flux score.
         for i in range(5):
             t = openmc.Tally()
-            t.scores = ['flux']
+            t.scores = ["flux"]
             t.filters = [filt_mats]
             t.derivative = derivs[i]
             self._model.tallies.append(t)
@@ -64,36 +65,36 @@ class DiffTallyTestHarness(PyAPITestHarness):
         # Cover supported scores with a collision estimator.
         for i in range(5):
             t = openmc.Tally()
-            t.scores = ['total', 'absorption', 'scatter', 'fission', 'nu-fission']
+            t.scores = ["total", "absorption", "scatter", "fission", "nu-fission"]
             t.filters = [filt_mats]
-            t.nuclides = ['total', 'U235']
+            t.nuclides = ["total", "U235"]
             t.derivative = derivs[i]
             self._model.tallies.append(t)
 
         # Cover an analog estimator.
         for i in range(5):
             t = openmc.Tally()
-            t.scores = ['absorption']
+            t.scores = ["absorption"]
             t.filters = [filt_mats]
-            t.estimator = 'analog'
+            t.estimator = "analog"
             t.derivative = derivs[i]
             self._model.tallies.append(t)
 
         # Energyout filter and total nuclide for the density derivatives.
         for i in range(2):
             t = openmc.Tally()
-            t.scores = ['nu-fission', 'scatter']
+            t.scores = ["nu-fission", "scatter"]
             t.filters = [filt_mats, filt_eout]
-            t.nuclides = ['total', 'U235']
+            t.nuclides = ["total", "U235"]
             t.derivative = derivs[i]
             self._model.tallies.append(t)
 
         # Energyout filter without total nuclide for other derivatives.
         for i in range(2, 5):
             t = openmc.Tally()
-            t.scores = ['nu-fission', 'scatter']
+            t.scores = ["nu-fission", "scatter"]
             t.filters = [filt_mats, filt_eout]
-            t.nuclides = ['U235']
+            t.nuclides = ["U235"]
             t.derivative = derivs[i]
             self._model.tallies.append(t)
 
@@ -107,11 +108,10 @@ class DiffTallyTestHarness(PyAPITestHarness):
         df = pd.concat(tally_dfs, ignore_index=True)
 
         # Extract the relevant data as a CSV string.
-        cols = ('d_material', 'd_nuclide', 'd_variable', 'score', 'mean',
-                'std. dev.')
-        return df.to_csv(None, columns=cols, index=False, float_format='%.7e')
+        cols = ("d_material", "d_nuclide", "d_variable", "score", "mean", "std. dev.")
+        return df.to_csv(None, columns=cols, index=False, float_format="%.7e")
 
 
 def test_diff_tally():
-    harness = DiffTallyTestHarness('statepoint.3.h5')
+    harness = DiffTallyTestHarness("statepoint.3.h5")
     harness.main()

@@ -7,15 +7,15 @@ import openmc.lib
 from tests import cdtemp
 
 
-@pytest.fixture(scope='module', autouse=True)
+@pytest.fixture(scope="module", autouse=True)
 def double_rect_lattice_model():
     openmc.reset_auto_ids()
     model = openmc.Model()
 
     # Create a single material
     m = openmc.Material()
-    m.add_nuclide('U235', 1.0)
-    m.set_density('g/cm3', 10.0)
+    m.add_nuclide("U235", 1.0)
+    m.set_density("g/cm3", 10.0)
     model.materials.append(m)
 
     # Create a universe with a single infinite cell
@@ -30,20 +30,20 @@ def double_rect_lattice_model():
 
     # Create two cells each filled with the same lattice, one from x=0..2 and
     # y=0..2 and the other from x=2..4 and y=0..2
-    x0 = openmc.XPlane(0.0, boundary_type='vacuum')
+    x0 = openmc.XPlane(0.0, boundary_type="vacuum")
     x2 = openmc.XPlane(2.0)
-    x4 = openmc.XPlane(4.0, boundary_type='vacuum')
-    y0 = openmc.YPlane(0.0, boundary_type='vacuum')
-    y2 = openmc.YPlane(2.0, boundary_type='vacuum')
+    x4 = openmc.XPlane(4.0, boundary_type="vacuum")
+    y0 = openmc.YPlane(0.0, boundary_type="vacuum")
+    y2 = openmc.YPlane(2.0, boundary_type="vacuum")
     cell_with_lattice1 = openmc.Cell(fill=lattice, region=+x0 & -x2 & +y0 & -y2)
     cell_with_lattice2 = openmc.Cell(fill=lattice, region=+x2 & -x4 & +y0 & -y2)
-    cell_with_lattice2.translation = (2., 0., 0.)
+    cell_with_lattice2.translation = (2.0, 0.0, 0.0)
     model.geometry = openmc.Geometry([cell_with_lattice1, cell_with_lattice2])
 
     tally = openmc.Tally(tally_id=1)
     dcell_filter = openmc.DistribcellFilter(c)
     tally.filters = [dcell_filter]
-    tally.scores = ['flux']
+    tally.scores = ["flux"]
     model.tallies = [tally]
 
     # Add box source that covers the model space well
@@ -65,6 +65,7 @@ def double_rect_lattice_model():
         yield
         openmc.lib.finalize()
 
+
 # This shows the expected cell instance numbers for each lattice position:
 #      ┌─┬─┬─┬─┐
 #      │2│3│6│7│
@@ -83,7 +84,9 @@ rect_expected_results = [
 ]
 
 
-@pytest.mark.parametrize("r,expected_cell_instance", rect_expected_results, ids=lambda p : f'{p}')
+@pytest.mark.parametrize(
+    "r,expected_cell_instance", rect_expected_results, ids=lambda p: f"{p}"
+)
 def test_cell_instance_rect_multilattice(r, expected_cell_instance):
     _, cell_instance = openmc.lib.find_cell(r)
     assert cell_instance == expected_cell_instance

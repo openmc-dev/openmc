@@ -14,6 +14,7 @@ from tests import cdtemp
 ###################
 TETS_PER_VOXEL = 12
 
+
 # This test uses a geometry file with cells that match a regular mesh. Each cell
 # in the geometry corresponds to 12 tetrahedra in the unstructured mesh file.
 @pytest.fixture
@@ -39,62 +40,64 @@ def model():
     regular_mesh.dimension = (10, 10, 10)
     regular_mesh.width = (2, 2, 2)
 
-    root_cell, _ = regular_mesh.build_cells(bc=['vacuum']*6)
+    root_cell, _ = regular_mesh.build_cells(bc=["vacuum"] * 6)
 
     geometry = openmc.Geometry(root=[root_cell])
 
     ### Settings ###
     settings = openmc.Settings()
-    settings.run_mode = 'fixed source'
+    settings.run_mode = "fixed source"
     settings.particles = 100
     settings.batches = 2
 
-    return openmc.Model(geometry=geometry,
-                        materials=materials,
-                        settings=settings)
+    return openmc.Model(geometry=geometry, materials=materials, settings=settings)
+
 
 ### Setup test cases ###
-param_values = (['libmesh', 'moab'], # mesh libraries
-                ['uniform', 'manual']) # Element weighting schemes
+param_values = (
+    ["libmesh", "moab"],  # mesh libraries
+    ["uniform", "manual"],
+)  # Element weighting schemes
 
 test_cases = []
 for i, (lib, schemes) in enumerate(product(*param_values)):
-    test_cases.append({'library' : lib,
-                       'source_strengths' : schemes})
+    test_cases.append({"library": lib, "source_strengths": schemes})
+
 
 def ids(params):
     """Test naming function for clarity"""
     return f"{params['library']}-{params['source_strengths']}"
 
+
 @pytest.mark.parametrize("test_cases", test_cases, ids=ids)
 def test_unstructured_mesh_sampling(model, request, test_cases):
     # skip the test if the library is not enabled
-    if test_cases['library'] == 'moab' and not openmc.lib._dagmc_enabled():
+    if test_cases["library"] == "moab" and not openmc.lib._dagmc_enabled():
         pytest.skip("DAGMC (and MOAB) mesh not enabled in this build.")
 
-    if test_cases['library'] == 'libmesh' and not openmc.lib._libmesh_enabled():
+    if test_cases["library"] == "libmesh" and not openmc.lib._libmesh_enabled():
         pytest.skip("LibMesh is not enabled in this build.")
 
     # setup mesh source ###
     mesh_filename = Path(request.fspath).parent / "test_mesh_tets.e"
-    uscd_mesh = openmc.UnstructuredMesh(mesh_filename, test_cases['library'])
+    uscd_mesh = openmc.UnstructuredMesh(mesh_filename, test_cases["library"])
 
     # subtract one to account for root cell produced by RegularMesh.build_cells
     n_cells = len(model.geometry.get_all_cells()) - 1
 
     # set source weights according to test case
-    if test_cases['source_strengths'] == 'uniform':
+    if test_cases["source_strengths"] == "uniform":
         vol_norm = True
         strengths = None
-    elif test_cases['source_strengths'] == 'manual':
+    elif test_cases["source_strengths"] == "manual":
         vol_norm = False
         # assign random weights
-        strengths = np.random.rand(n_cells*TETS_PER_VOXEL)
+        strengths = np.random.rand(n_cells * TETS_PER_VOXEL)
 
     # create the spatial distribution based on the mesh
     space = openmc.stats.MeshSpatial(uscd_mesh, strengths, vol_norm)
 
-    energy = openmc.stats.Discrete(x=[15.e+06], p=[1.0])
+    energy = openmc.stats.Discrete(x=[15.0e06], p=[1.0])
     source = openmc.IndependentSource(space=space, energy=energy)
     model.settings.source = source
 
@@ -131,7 +134,7 @@ def test_unstructured_mesh_sampling(model, request, test_cases):
         mean = cell_counts.mean(axis=1)
         std_dev = cell_counts.std(axis=1)
 
-        if test_cases['source_strengths'] == 'uniform':
+        if test_cases["source_strengths"] == "uniform":
             exp_vals = np.ones(n_cells) / n_cells
         else:
             # sum up the source strengths for each tet, these are the expected true mean
@@ -139,30 +142,30 @@ def test_unstructured_mesh_sampling(model, request, test_cases):
             exp_vals = strengths.reshape(-1, 12).sum(axis=1) / sum(strengths)
 
         diff = np.abs(mean - exp_vals)
-        assert((diff < 2*std_dev).sum() / diff.size >= 0.95)
-        assert((diff < 6*std_dev).sum() / diff.size >= 0.997)
+        assert (diff < 2 * std_dev).sum() / diff.size >= 0.95
+        assert (diff < 6 * std_dev).sum() / diff.size >= 0.997
 
 
 def test_strengths_size_failure(request, model):
     # setup mesh source ###
     mesh_filename = Path(request.fspath).parent / "test_mesh_tets.e"
-    uscd_mesh = openmc.UnstructuredMesh(mesh_filename, 'libmesh')
+    uscd_mesh = openmc.UnstructuredMesh(mesh_filename, "libmesh")
 
     # intentionally incorrectly sized to trigger an error
     n_cells = len(model.geometry.get_all_cells())
-    strengths = np.random.rand(n_cells*TETS_PER_VOXEL)
+    strengths = np.random.rand(n_cells * TETS_PER_VOXEL)
 
     # create the spatial distribution based on the mesh
     space = openmc.stats.MeshSpatial(uscd_mesh, strengths)
 
-    energy = openmc.stats.Discrete(x=[15.e+06], p=[1.0])
+    energy = openmc.stats.Discrete(x=[15.0e06], p=[1.0])
     source = openmc.IndependentSource(space=space, energy=energy)
     model.settings.source = source
 
     # skip the test if unstructured mesh is not available
     if not openmc.lib._libmesh_enabled():
         if openmc.lib._dagmc_enabled():
-            source.space.mesh.library = 'moab'
+            source.space.mesh.library = "moab"
         else:
             pytest.skip("Unstructured mesh support unavailable.")
 
@@ -171,7 +174,7 @@ def test_strengths_size_failure(request, model):
 
     mesh_filename = Path(request.fspath).parent / source.space.mesh.filename
 
-    with pytest.raises(RuntimeError, match=r'strengths array'), cdtemp([mesh_filename]):
+    with pytest.raises(RuntimeError, match=r"strengths array"), cdtemp([mesh_filename]):
         model.export_to_xml()
         openmc.run()
 
@@ -180,16 +183,16 @@ def test_roundtrip(run_in_tmpdir, model, request):
     if not openmc.lib._libmesh_enabled() and not openmc.lib._dagmc_enabled():
         pytest.skip("Unstructured mesh is not enabled in this build.")
 
-    mesh_filename = Path(request.fspath).parent / 'test_mesh_tets.e'
-    ucd_mesh = openmc.UnstructuredMesh(mesh_filename, library='libmesh')
+    mesh_filename = Path(request.fspath).parent / "test_mesh_tets.e"
+    ucd_mesh = openmc.UnstructuredMesh(mesh_filename, library="libmesh")
 
     if not openmc.lib._libmesh_enabled():
-        ucd_mesh.library = 'moab'
+        ucd_mesh.library = "moab"
 
     n_cells = len(model.geometry.get_all_cells())
 
     space_out = openmc.MeshSpatial(ucd_mesh)
-    space_out.strengths = np.random.rand(n_cells*TETS_PER_VOXEL)
+    space_out.strengths = np.random.rand(n_cells * TETS_PER_VOXEL)
     model.settings.source = openmc.IndependentSource(space=space_out)
 
     # write out the model
@@ -215,17 +218,17 @@ def void_model():
     """
     model = openmc.Model()
 
-    box = openmc.model.RectangularParallelepiped(*[-10, 10]*3, boundary_type='vacuum')
+    box = openmc.model.RectangularParallelepiped(*[-10, 10] * 3, boundary_type="vacuum")
     model.geometry = openmc.Geometry([openmc.Cell(region=-box)])
 
     model.settings.particles = 100
     model.settings.batches = 10
-    model.settings.run_mode = 'fixed source'
+    model.settings.run_mode = "fixed source"
 
     return model
 
 
-@pytest.mark.parametrize('mesh_type', ('rectangular', 'cylindrical'))
+@pytest.mark.parametrize("mesh_type", ("rectangular", "cylindrical"))
 def test_mesh_source_independent(run_in_tmpdir, void_model, mesh_type):
     """
     A void model containing a single box
@@ -233,12 +236,12 @@ def test_mesh_source_independent(run_in_tmpdir, void_model, mesh_type):
     model = void_model
 
     # define a 2 x 2 x 2 mesh
-    if mesh_type == 'rectangular':
+    if mesh_type == "rectangular":
         mesh = openmc.RegularMesh.from_domain(model.geometry, (2, 2, 2))
-    elif mesh_type == 'cylindrical':
+    elif mesh_type == "cylindrical":
         mesh = openmc.CylindricalMesh.from_domain(model.geometry, (1, 4, 2))
 
-    energy = openmc.stats.Discrete([1.e6], [1.0])
+    energy = openmc.stats.Discrete([1.0e6], [1.0])
 
     # create sources with only one non-zero strength for the source in the mesh
     # voxel occupying the lowest octant. Direct source particles straight out of
@@ -251,7 +254,7 @@ def test_mesh_source_independent(run_in_tmpdir, void_model, mesh_type):
     x, y, z = np.swapaxes(mesh.centroids, -1, 0)
     for i, j, k in mesh.indices:
         # mesh.indices is currently one-indexed, adjust for Python arrays
-        ijk = (i-1, j-1, k-1)
+        ijk = (i - 1, j - 1, k - 1)
 
         # get the centroid of the ijk mesh element and use it to set the
         # direction of the source directly out of the problem
@@ -259,7 +262,9 @@ def test_mesh_source_independent(run_in_tmpdir, void_model, mesh_type):
         vec = np.sign(centroid, dtype=float)
         vec /= np.linalg.norm(vec)
         angle = openmc.stats.Monodirectional(vec)
-        sources[ijk] = openmc.IndependentSource(energy=energy, angle=angle, strength=0.0)
+        sources[ijk] = openmc.IndependentSource(
+            energy=energy, angle=angle, strength=0.0
+        )
 
     # create and apply the mesh source
     mesh_source = openmc.MeshSource(mesh, sources)
@@ -269,7 +274,7 @@ def test_mesh_source_independent(run_in_tmpdir, void_model, mesh_type):
     mesh_filter = openmc.MeshFilter(mesh)
     tally = openmc.Tally()
     tally.filters = [mesh_filter]
-    tally.scores = ['flux']
+    tally.scores = ["flux"]
 
     model.tallies = openmc.Tallies([tally])
 
@@ -277,7 +282,7 @@ def test_mesh_source_independent(run_in_tmpdir, void_model, mesh_type):
     # traveling out of the mesh (and geometry) w/o crossing any other
     # mesh elements
     for flat_index, (i, j, k) in enumerate(mesh.indices):
-        ijk = (i-1, j-1, k-1)
+        ijk = (i - 1, j - 1, k - 1)
         # zero-out all source strengths and set the strength
         # on the element of interest
         mesh_source.strength = 0.0
@@ -295,7 +300,9 @@ def test_mesh_source_independent(run_in_tmpdir, void_model, mesh_type):
         assert mean[ijk] != 0
         # all other values should be zero
         mean[ijk] = 0
-        assert np.all(mean == 0), f'Failed on index {ijk} with centroid {mesh.centroids[ijk]}'
+        assert np.all(
+            mean == 0
+        ), f"Failed on index {ijk} with centroid {mesh.centroids[ijk]}"
 
         # test roundtrip
         xml_model = openmc.Model.from_model_xml()
@@ -316,14 +323,15 @@ def test_mesh_source_independent(run_in_tmpdir, void_model, mesh_type):
     assert mesh_source.strength == 1.0
 
 
-@pytest.mark.parametrize("library", ('moab', 'libmesh'))
+@pytest.mark.parametrize("library", ("moab", "libmesh"))
 def test_umesh_source_independent(run_in_tmpdir, request, void_model, library):
     import openmc.lib
+
     # skip the test if the library is not enabled
-    if library == 'moab' and not openmc.lib._dagmc_enabled():
+    if library == "moab" and not openmc.lib._dagmc_enabled():
         pytest.skip("DAGMC (and MOAB) mesh not enabled in this build.")
 
-    if library == 'libmesh' and not openmc.lib._libmesh_enabled():
+    if library == "libmesh" and not openmc.lib._libmesh_enabled():
         pytest.skip("LibMesh is not enabled in this build.")
 
     model = void_model
@@ -332,17 +340,17 @@ def test_umesh_source_independent(run_in_tmpdir, request, void_model, library):
     uscd_mesh = openmc.UnstructuredMesh(mesh_filename, library)
     ind_source = openmc.IndependentSource()
     n_elements = 12_000
-    model.settings.source = openmc.MeshSource(uscd_mesh, n_elements*[ind_source])
+    model.settings.source = openmc.MeshSource(uscd_mesh, n_elements * [ind_source])
     model.export_to_model_xml()
     try:
         openmc.lib.init()
         openmc.lib.simulation_init()
         sites = openmc.lib.sample_external_source(10)
-        openmc.lib.statepoint_write('statepoint.h5')
+        openmc.lib.statepoint_write("statepoint.h5")
     finally:
         openmc.lib.finalize()
 
-    with openmc.StatePoint('statepoint.h5') as sp:
+    with openmc.StatePoint("statepoint.h5") as sp:
         uscd_mesh = sp.meshes[uscd_mesh.id]
 
     # ensure at least that all sites are inside the mesh
@@ -354,21 +362,22 @@ def test_umesh_source_independent(run_in_tmpdir, request, void_model, library):
 def test_mesh_source_file(run_in_tmpdir):
     # Creating a source file with a single particle
     source_particle = openmc.SourceParticle(time=10.0)
-    openmc.write_source_file([source_particle], 'source.h5')
-    file_source = openmc.FileSource('source.h5')
+    openmc.write_source_file([source_particle], "source.h5")
+    file_source = openmc.FileSource("source.h5")
 
     model = openmc.Model()
 
     rect_prism = openmc.model.RectangularParallelepiped(
-        -5.0, 5.0, -5.0, 5.0, -5.0, 5.0, boundary_type='vacuum')
+        -5.0, 5.0, -5.0, 5.0, -5.0, 5.0, boundary_type="vacuum"
+    )
 
     mat = openmc.Material()
-    mat.add_nuclide('H1', 1.0)
+    mat.add_nuclide("H1", 1.0)
 
     model.geometry = openmc.Geometry([openmc.Cell(fill=mat, region=-rect_prism)])
     model.settings.particles = 1000
     model.settings.batches = 10
-    model.settings.run_mode = 'fixed source'
+    model.settings.run_mode = "fixed source"
 
     mesh = openmc.RegularMesh()
     mesh.lower_left = (-1, -2, -3)

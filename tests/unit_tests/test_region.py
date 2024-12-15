@@ -25,14 +25,14 @@ def test_union(reset):
     assert (0, 0, 0) not in region
 
     # string representation
-    assert str(region) == '(1 | -2)'
+    assert str(region) == "(1 | -2)"
 
     # Combining region with intersection
     s3 = openmc.YPlane(surface_id=3)
     reg2 = region & +s3
     assert (6, 1, 0) in reg2
     assert (6, -1, 0) not in reg2
-    assert str(reg2) == '((1 | -2) 3)'
+    assert str(reg2) == "((1 | -2) 3)"
 
     # translate method
     regt = region.translate((2.0, 0.0, 0.0))
@@ -41,7 +41,7 @@ def test_union(reset):
     assert (8, 0, 0) in regt
 
     # rotate method
-    regr = region.rotate((0., 90., 0.))
+    regr = region.rotate((0.0, 90.0, 0.0))
     assert (-4, 0, 0) not in regr
     assert (0, 0, 6) in regr
     assert (0, 0, -6) in regr
@@ -65,14 +65,14 @@ def test_intersection(reset):
     assert (0, 0, 0) in region
 
     # string representation
-    assert str(region) == '(-1 2)'
+    assert str(region) == "(-1 2)"
 
     # Combining region with union
     s3 = openmc.YPlane(surface_id=3)
     reg2 = region | +s3
     assert (-6, 2, 0) in reg2
     assert (-6, -2, 0) not in reg2
-    assert str(reg2) == '((-1 2) | 3)'
+    assert str(reg2) == "((-1 2) | 3)"
 
     # translate method
     regt = region.translate((2.0, 0.0, 0.0))
@@ -81,7 +81,7 @@ def test_intersection(reset):
     assert (8, 0, 0) not in regt
 
     # rotate method
-    regr = region.rotate((0., 90., 0.))
+    regr = region.rotate((0.0, 90.0, 0.0))
     assert (-4, 0, 0) in regr
     assert (0, 0, 6) not in regr
     assert (0, 0, -6) not in regr
@@ -89,9 +89,9 @@ def test_intersection(reset):
 
 
 def test_complement(reset):
-    zcyl = openmc.ZCylinder(r=1., surface_id=1)
-    z0 = openmc.ZPlane(-5., surface_id=2)
-    z1 = openmc.ZPlane(5., surface_id=3)
+    zcyl = openmc.ZCylinder(r=1.0, surface_id=1)
+    z0 = openmc.ZPlane(-5.0, surface_id=2)
+    z1 = openmc.ZPlane(5.0, surface_id=3)
     outside = +zcyl | -z0 | +z1
     inside = ~outside
     outside_equiv = ~(-zcyl & +z0 & -z1)
@@ -100,13 +100,13 @@ def test_complement(reset):
     # Check bounding box
     for region in (inside, inside_equiv):
         ll, ur = region.bounding_box
-        assert ll == pytest.approx((-1., -1., -5.))
-        assert ur == pytest.approx((1., 1., 5.))
+        assert ll == pytest.approx((-1.0, -1.0, -5.0))
+        assert ur == pytest.approx((1.0, 1.0, 5.0))
     assert_unbounded(outside)
     assert_unbounded(outside_equiv)
 
     # string represention
-    assert str(inside) == '(-1 2 -3)'
+    assert str(inside) == "(-1 2 -3)"
 
     # evaluate method
     assert (0, 0, 0) in inside
@@ -117,16 +117,16 @@ def test_complement(reset):
     # translate method
     inside_t = inside.translate((1.0, 1.0, 1.0))
     ll, ur = inside_t.bounding_box
-    assert ll == pytest.approx((0., 0., -4.))
-    assert ur == pytest.approx((2., 2., 6.))
+    assert ll == pytest.approx((0.0, 0.0, -4.0))
+    assert ur == pytest.approx((2.0, 2.0, 6.0))
 
     # rotate method
-    inside_r = inside.rotate((90., 0., 0.))
+    inside_r = inside.rotate((90.0, 0.0, 0.0))
     ll, ur = inside_r.bounding_box
-    assert (.5, 2, 0) in inside_r
+    assert (0.5, 2, 0) in inside_r
     assert (0, 0, 6) not in inside_r
-    assert ll == pytest.approx((-1., -5., -1.))
-    assert ur == pytest.approx((1., 5., 1.))
+    assert ll == pytest.approx((-1.0, -5.0, -1.0))
+    assert ur == pytest.approx((1.0, 5.0, 1.0))
 
 
 def test_get_surfaces():
@@ -173,43 +173,44 @@ def test_extend_clone():
 def test_from_expression(reset):
     # Create surface dictionary
     s1 = openmc.ZCylinder(surface_id=1)
-    s2 = openmc.ZPlane(-10., surface_id=2)
-    s3 = openmc.ZPlane(10., surface_id=3)
+    s2 = openmc.ZPlane(-10.0, surface_id=2)
+    s3 = openmc.ZPlane(10.0, surface_id=3)
     surfs = {1: s1, 2: s2, 3: s3}
 
-    r = openmc.Region.from_expression('-1 2 -3', surfs)
+    r = openmc.Region.from_expression("-1 2 -3", surfs)
     assert isinstance(r, openmc.Intersection)
     assert r[:] == [-s1, +s2, -s3]
 
-    r = openmc.Region.from_expression('+1 | -2 | +3', surfs)
+    r = openmc.Region.from_expression("+1 | -2 | +3", surfs)
     assert isinstance(r, openmc.Union)
     assert r[:] == [+s1, -s2, +s3]
 
-    r = openmc.Region.from_expression('~(-1)', surfs)
+    r = openmc.Region.from_expression("~(-1)", surfs)
     assert r == +s1
 
     # Since & has higher precendence than |, the resulting region should be an
     # instance of Union
-    r = openmc.Region.from_expression('1 -2 | 3', surfs)
+    r = openmc.Region.from_expression("1 -2 | 3", surfs)
     assert isinstance(r, openmc.Union)
     assert isinstance(r[0], openmc.Intersection)
     assert r[0][:] == [+s1, -s2]
 
     # ...but not if we use parentheses
-    r = openmc.Region.from_expression('1 (-2 | 3)', surfs)
+    r = openmc.Region.from_expression("1 (-2 | 3)", surfs)
     assert isinstance(r, openmc.Intersection)
     assert isinstance(r[1], openmc.Union)
     assert r[1][:] == [-s2, +s3]
 
     # Make sure ")(" is handled correctly
-    r = openmc.Region.from_expression('(-1|2)(2|-3)', surfs)
-    assert str(r) == '((-1 | 2) (2 | -3))'
+    r = openmc.Region.from_expression("(-1|2)(2|-3)", surfs)
+    assert str(r) == "((-1 | 2) (2 | -3))"
 
     # Opening parenthesis immediately after halfspace
-    r = openmc.Region.from_expression('1(2|-3)', surfs)
-    assert str(r) == '(1 (2 | -3))'
-    r = openmc.Region.from_expression('-1|(1 2(-3))', surfs)
-    assert str(r) == '(-1 | (1 2 -3))'
+    r = openmc.Region.from_expression("1(2|-3)", surfs)
+    assert str(r) == "(1 (2 | -3))"
+    r = openmc.Region.from_expression("-1|(1 2(-3))", surfs)
+    assert str(r) == "(-1 | (1 2 -3))"
+
 
 def test_translate_inplace():
     sph = openmc.Sphere()
@@ -230,15 +231,15 @@ def test_invalid_operands():
     z = 3
 
     # Intersection with invalid operand
-    with pytest.raises(ValueError, match='must be of type Region'):
+    with pytest.raises(ValueError, match="must be of type Region"):
         -s & +z
 
     # Union with invalid operand
-    with pytest.raises(ValueError, match='must be of type Region'):
+    with pytest.raises(ValueError, match="must be of type Region"):
         -s | +z
 
     # Complement with invalid operand
-    with pytest.raises(ValueError, match='must be of type Region'):
+    with pytest.raises(ValueError, match="must be of type Region"):
         openmc.Complement(z)
 
 

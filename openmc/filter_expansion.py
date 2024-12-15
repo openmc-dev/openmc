@@ -25,8 +25,8 @@ class ExpansionFilter(Filter):
 
     @order.setter
     def order(self, order):
-        cv.check_type('expansion order', order, Integral)
-        cv.check_greater_than('expansion order', order, 0, equality=True)
+        cv.check_type("expansion order", order, Integral)
+        cv.check_greater_than("expansion order", order, 0, equality=True)
         self._order = order
 
     def to_xml_element(self):
@@ -38,19 +38,19 @@ class ExpansionFilter(Filter):
             XML element containing Legendre filter data
 
         """
-        element = ET.Element('filter')
-        element.set('id', str(self.id))
-        element.set('type', self.short_name.lower())
+        element = ET.Element("filter")
+        element.set("id", str(self.id))
+        element.set("type", self.short_name.lower())
 
-        subelement = ET.SubElement(element, 'order')
+        subelement = ET.SubElement(element, "order")
         subelement.text = str(self.order)
 
         return element
 
     @classmethod
     def from_xml_element(cls, elem, **kwargs):
-        filter_id = int(elem.get('id'))
-        order = int(elem.find('order').text)
+        filter_id = int(elem.get("id"))
+        order = int(elem.find("order").text)
         return cls(order, filter_id=filter_id)
 
     def merge(self, other):
@@ -107,31 +107,35 @@ class LegendreFilter(ExpansionFilter):
     """
 
     def __hash__(self):
-        string = type(self).__name__ + '\n'
-        string += '{: <16}=\t{}\n'.format('\tOrder', self.order)
+        string = type(self).__name__ + "\n"
+        string += "{: <16}=\t{}\n".format("\tOrder", self.order)
         return hash(string)
 
     def __repr__(self):
-        string = type(self).__name__ + '\n'
-        string += '{: <16}=\t{}\n'.format('\tOrder', self.order)
-        string += '{: <16}=\t{}\n'.format('\tID', self.id)
+        string = type(self).__name__ + "\n"
+        string += "{: <16}=\t{}\n".format("\tOrder", self.order)
+        string += "{: <16}=\t{}\n".format("\tID", self.id)
         return string
 
     @ExpansionFilter.order.setter
     def order(self, order):
         ExpansionFilter.order.__set__(self, order)
-        self.bins = [f'P{i}' for i in range(order + 1)]
+        self.bins = [f"P{i}" for i in range(order + 1)]
 
     @classmethod
     def from_hdf5(cls, group, **kwargs):
-        if group['type'][()].decode() != cls.short_name.lower():
-            raise ValueError("Expected HDF5 data for filter type '"
-                             + cls.short_name.lower() + "' but got '"
-                             + group['type'][()].decode() + " instead")
+        if group["type"][()].decode() != cls.short_name.lower():
+            raise ValueError(
+                "Expected HDF5 data for filter type '"
+                + cls.short_name.lower()
+                + "' but got '"
+                + group["type"][()].decode()
+                + " instead"
+            )
 
-        filter_id = int(group.name.split('/')[-1].lstrip('filter '))
+        filter_id = int(group.name.split("/")[-1].lstrip("filter "))
 
-        out = cls(group['order'][()], filter_id)
+        out = cls(group["order"][()], filter_id)
 
         return out
 
@@ -180,26 +184,26 @@ class SpatialLegendreFilter(ExpansionFilter):
         self.maximum = maximum
 
     def __hash__(self):
-        string = type(self).__name__ + '\n'
-        string += '{: <16}=\t{}\n'.format('\tOrder', self.order)
-        string += '{: <16}=\t{}\n'.format('\tAxis', self.axis)
-        string += '{: <16}=\t{}\n'.format('\tMin', self.minimum)
-        string += '{: <16}=\t{}\n'.format('\tMax', self.maximum)
+        string = type(self).__name__ + "\n"
+        string += "{: <16}=\t{}\n".format("\tOrder", self.order)
+        string += "{: <16}=\t{}\n".format("\tAxis", self.axis)
+        string += "{: <16}=\t{}\n".format("\tMin", self.minimum)
+        string += "{: <16}=\t{}\n".format("\tMax", self.maximum)
         return hash(string)
 
     def __repr__(self):
-        string = type(self).__name__ + '\n'
-        string += '{: <16}=\t{}\n'.format('\tOrder', self.order)
-        string += '{: <16}=\t{}\n'.format('\tAxis', self.axis)
-        string += '{: <16}=\t{}\n'.format('\tMin', self.minimum)
-        string += '{: <16}=\t{}\n'.format('\tMax', self.maximum)
-        string += '{: <16}=\t{}\n'.format('\tID', self.id)
+        string = type(self).__name__ + "\n"
+        string += "{: <16}=\t{}\n".format("\tOrder", self.order)
+        string += "{: <16}=\t{}\n".format("\tAxis", self.axis)
+        string += "{: <16}=\t{}\n".format("\tMin", self.minimum)
+        string += "{: <16}=\t{}\n".format("\tMax", self.maximum)
+        string += "{: <16}=\t{}\n".format("\tID", self.id)
         return string
 
     @ExpansionFilter.order.setter
     def order(self, order):
         ExpansionFilter.order.__set__(self, order)
-        self.bins = [f'P{i}' for i in range(order + 1)]
+        self.bins = [f"P{i}" for i in range(order + 1)]
 
     @property
     def axis(self):
@@ -207,7 +211,7 @@ class SpatialLegendreFilter(ExpansionFilter):
 
     @axis.setter
     def axis(self, axis):
-        cv.check_value('axis', axis, ('x', 'y', 'z'))
+        cv.check_value("axis", axis, ("x", "y", "z"))
         self._axis = axis
 
     @property
@@ -216,7 +220,7 @@ class SpatialLegendreFilter(ExpansionFilter):
 
     @minimum.setter
     def minimum(self, minimum):
-        cv.check_type('minimum', minimum, Real)
+        cv.check_type("minimum", minimum, Real)
         self._minimum = minimum
 
     @property
@@ -225,20 +229,24 @@ class SpatialLegendreFilter(ExpansionFilter):
 
     @maximum.setter
     def maximum(self, maximum):
-        cv.check_type('maximum', maximum, Real)
+        cv.check_type("maximum", maximum, Real)
         self._maximum = maximum
 
     @classmethod
     def from_hdf5(cls, group, **kwargs):
-        if group['type'][()].decode() != cls.short_name.lower():
-            raise ValueError("Expected HDF5 data for filter type '"
-                             + cls.short_name.lower() + "' but got '"
-                             + group['type'][()].decode() + " instead")
+        if group["type"][()].decode() != cls.short_name.lower():
+            raise ValueError(
+                "Expected HDF5 data for filter type '"
+                + cls.short_name.lower()
+                + "' but got '"
+                + group["type"][()].decode()
+                + " instead"
+            )
 
-        filter_id = int(group.name.split('/')[-1].lstrip('filter '))
-        order = group['order'][()]
-        axis = group['axis'][()].decode()
-        min_, max_ = group['min'][()], group['max'][()]
+        filter_id = int(group.name.split("/")[-1].lstrip("filter "))
+        order = group["order"][()]
+        axis = group["axis"][()].decode()
+        min_, max_ = group["min"][()], group["max"][()]
 
         return cls(order, axis, min_, max_, filter_id)
 
@@ -252,22 +260,22 @@ class SpatialLegendreFilter(ExpansionFilter):
 
         """
         element = super().to_xml_element()
-        subelement = ET.SubElement(element, 'axis')
+        subelement = ET.SubElement(element, "axis")
         subelement.text = self.axis
-        subelement = ET.SubElement(element, 'min')
+        subelement = ET.SubElement(element, "min")
         subelement.text = str(self.minimum)
-        subelement = ET.SubElement(element, 'max')
+        subelement = ET.SubElement(element, "max")
         subelement.text = str(self.maximum)
 
         return element
 
     @classmethod
     def from_xml_element(cls, elem, **kwargs):
-        filter_id = int(elem.get('id'))
-        order = int(elem.find('order').text)
-        axis = elem.find('axis').text
-        minimum = float(elem.find('min').text)
-        maximum = float(elem.find('max').text)
+        filter_id = int(elem.get("id"))
+        order = int(elem.find("order").text)
+        axis = elem.find("axis").text
+        minimum = float(elem.find("min").text)
+        maximum = float(elem.find("max").text)
         return cls(order, axis, minimum, maximum, filter_id=filter_id)
 
 
@@ -301,27 +309,25 @@ class SphericalHarmonicsFilter(ExpansionFilter):
 
     def __init__(self, order, filter_id=None):
         super().__init__(order, filter_id)
-        self._cosine = 'particle'
+        self._cosine = "particle"
 
     def __hash__(self):
-        string = type(self).__name__ + '\n'
-        string += '{: <16}=\t{}\n'.format('\tOrder', self.order)
-        string += '{: <16}=\t{}\n'.format('\tCosine', self.cosine)
+        string = type(self).__name__ + "\n"
+        string += "{: <16}=\t{}\n".format("\tOrder", self.order)
+        string += "{: <16}=\t{}\n".format("\tCosine", self.cosine)
         return hash(string)
 
     def __repr__(self):
-        string = type(self).__name__ + '\n'
-        string += '{: <16}=\t{}\n'.format('\tOrder', self.order)
-        string += '{: <16}=\t{}\n'.format('\tCosine', self.cosine)
-        string += '{: <16}=\t{}\n'.format('\tID', self.id)
+        string = type(self).__name__ + "\n"
+        string += "{: <16}=\t{}\n".format("\tOrder", self.order)
+        string += "{: <16}=\t{}\n".format("\tCosine", self.cosine)
+        string += "{: <16}=\t{}\n".format("\tID", self.id)
         return string
 
     @ExpansionFilter.order.setter
     def order(self, order):
         ExpansionFilter.order.__set__(self, order)
-        self.bins = [f'Y{n},{m}'
-                     for n in range(order + 1)
-                     for m in range(-n, n + 1)]
+        self.bins = [f"Y{n},{m}" for n in range(order + 1) for m in range(-n, n + 1)]
 
     @property
     def cosine(self):
@@ -329,21 +335,26 @@ class SphericalHarmonicsFilter(ExpansionFilter):
 
     @cosine.setter
     def cosine(self, cosine):
-        cv.check_value('Spherical harmonics cosine treatment', cosine,
-                       ('scatter', 'particle'))
+        cv.check_value(
+            "Spherical harmonics cosine treatment", cosine, ("scatter", "particle")
+        )
         self._cosine = cosine
 
     @classmethod
     def from_hdf5(cls, group, **kwargs):
-        if group['type'][()].decode() != cls.short_name.lower():
-            raise ValueError("Expected HDF5 data for filter type '"
-                             + cls.short_name.lower() + "' but got '"
-                             + group['type'][()].decode() + " instead")
+        if group["type"][()].decode() != cls.short_name.lower():
+            raise ValueError(
+                "Expected HDF5 data for filter type '"
+                + cls.short_name.lower()
+                + "' but got '"
+                + group["type"][()].decode()
+                + " instead"
+            )
 
-        filter_id = int(group.name.split('/')[-1].lstrip('filter '))
+        filter_id = int(group.name.split("/")[-1].lstrip("filter "))
 
-        out = cls(group['order'][()], filter_id)
-        out.cosine = group['cosine'][()].decode()
+        out = cls(group["order"][()], filter_id)
+        out.cosine = group["cosine"][()].decode()
 
         return out
 
@@ -357,15 +368,15 @@ class SphericalHarmonicsFilter(ExpansionFilter):
 
         """
         element = super().to_xml_element()
-        element.set('cosine', self.cosine)
+        element.set("cosine", self.cosine)
         return element
 
     @classmethod
     def from_xml_element(cls, elem, **kwargs):
-        filter_id = int(elem.get('id'))
-        order = int(elem.find('order').text)
+        filter_id = int(elem.get("id"))
+        order = int(elem.find("order").text)
         filter = cls(order, filter_id=filter_id)
-        filter.cosine = elem.get('cosine')
+        filter.cosine = elem.get("cosine")
         return filter
 
 
@@ -437,25 +448,23 @@ class ZernikeFilter(ExpansionFilter):
         self.r = r
 
     def __hash__(self):
-        string = type(self).__name__ + '\n'
-        string += '{: <16}=\t{}\n'.format('\tOrder', self.order)
-        string += '{: <16}=\t{}\n'.format('\tX', self.x)
-        string += '{: <16}=\t{}\n'.format('\tY', self.y)
-        string += '{: <16}=\t{}\n'.format('\tR', self.r)
+        string = type(self).__name__ + "\n"
+        string += "{: <16}=\t{}\n".format("\tOrder", self.order)
+        string += "{: <16}=\t{}\n".format("\tX", self.x)
+        string += "{: <16}=\t{}\n".format("\tY", self.y)
+        string += "{: <16}=\t{}\n".format("\tR", self.r)
         return hash(string)
 
     def __repr__(self):
-        string = type(self).__name__ + '\n'
-        string += '{: <16}=\t{}\n'.format('\tOrder', self.order)
-        string += '{: <16}=\t{}\n'.format('\tID', self.id)
+        string = type(self).__name__ + "\n"
+        string += "{: <16}=\t{}\n".format("\tOrder", self.order)
+        string += "{: <16}=\t{}\n".format("\tID", self.id)
         return string
 
     @ExpansionFilter.order.setter
     def order(self, order):
         ExpansionFilter.order.__set__(self, order)
-        self.bins = [f'Z{n},{m}'
-                     for n in range(order + 1)
-                     for m in range(-n, n + 1, 2)]
+        self.bins = [f"Z{n},{m}" for n in range(order + 1) for m in range(-n, n + 1, 2)]
 
     @property
     def x(self):
@@ -463,7 +472,7 @@ class ZernikeFilter(ExpansionFilter):
 
     @x.setter
     def x(self, x):
-        cv.check_type('x', x, Real)
+        cv.check_type("x", x, Real)
         self._x = x
 
     @property
@@ -472,7 +481,7 @@ class ZernikeFilter(ExpansionFilter):
 
     @y.setter
     def y(self, y):
-        cv.check_type('y', y, Real)
+        cv.check_type("y", y, Real)
         self._y = y
 
     @property
@@ -481,19 +490,23 @@ class ZernikeFilter(ExpansionFilter):
 
     @r.setter
     def r(self, r):
-        cv.check_type('r', r, Real)
+        cv.check_type("r", r, Real)
         self._r = r
 
     @classmethod
     def from_hdf5(cls, group, **kwargs):
-        if group['type'][()].decode() != cls.short_name.lower():
-            raise ValueError("Expected HDF5 data for filter type '"
-                             + cls.short_name.lower() + "' but got '"
-                             + group['type'][()].decode() + " instead")
+        if group["type"][()].decode() != cls.short_name.lower():
+            raise ValueError(
+                "Expected HDF5 data for filter type '"
+                + cls.short_name.lower()
+                + "' but got '"
+                + group["type"][()].decode()
+                + " instead"
+            )
 
-        filter_id = int(group.name.split('/')[-1].lstrip('filter '))
-        order = group['order'][()]
-        x, y, r = group['x'][()], group['y'][()], group['r'][()]
+        filter_id = int(group.name.split("/")[-1].lstrip("filter "))
+        order = group["order"][()]
+        x, y, r = group["x"][()], group["y"][()], group["r"][()]
 
         return cls(order, x, y, r, filter_id)
 
@@ -507,22 +520,22 @@ class ZernikeFilter(ExpansionFilter):
 
         """
         element = super().to_xml_element()
-        subelement = ET.SubElement(element, 'x')
+        subelement = ET.SubElement(element, "x")
         subelement.text = str(self.x)
-        subelement = ET.SubElement(element, 'y')
+        subelement = ET.SubElement(element, "y")
         subelement.text = str(self.y)
-        subelement = ET.SubElement(element, 'r')
+        subelement = ET.SubElement(element, "r")
         subelement.text = str(self.r)
 
         return element
 
     @classmethod
     def from_xml_element(cls, elem, **kwargs):
-        filter_id = int(elem.get('id'))
-        order = int(elem.find('order').text)
-        x = float(elem.find('x').text)
-        y = float(elem.find('y').text)
-        r = float(elem.find('r').text)
+        filter_id = int(elem.get("id"))
+        order = int(elem.find("order").text)
+        x = float(elem.find("x").text)
+        y = float(elem.find("y").text)
+        r = float(elem.find("r").text)
         return cls(order, x, y, r, filter_id=filter_id)
 
 
@@ -583,4 +596,4 @@ class ZernikeRadialFilter(ZernikeFilter):
     @ExpansionFilter.order.setter
     def order(self, order):
         ExpansionFilter.order.__set__(self, order)
-        self.bins = [f'Z{n},0' for n in range(0, order+1, 2)]
+        self.bins = [f"Z{n},0" for n in range(0, order + 1, 2)]

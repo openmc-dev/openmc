@@ -42,15 +42,18 @@ class _AtomicRepresentation(EqualityMixin):
         number
 
     """
+
     def __init__(self, z, a):
         # Sanity checks on values
-        cv.check_type('z', z, Integral)
-        cv.check_greater_than('z', z, 0, equality=True)
-        cv.check_type('a', a, Integral)
-        cv.check_greater_than('a', a, 0, equality=True)
+        cv.check_type("z", z, Integral)
+        cv.check_greater_than("z", z, 0, equality=True)
+        cv.check_type("a", a, Integral)
+        cv.check_greater_than("a", a, 0, equality=True)
         if z > a:
-            raise ValueError(f"Number of protons ({z}) must be less than or "
-                             f"equal to number of nucleons ({a}).")
+            raise ValueError(
+                f"Number of protons ({z}) must be less than or "
+                f"equal to number of nucleons ({a})."
+            )
 
         self._z = z
         self._a = a
@@ -140,25 +143,30 @@ def _separation_energy(compound, nucleus, particle):
         1002: 2.224566,
         1003: 8.481798,
         2003: 7.718043,
-        2004: 28.29566
+        2004: 28.29566,
     }
     I_a = za_to_breaking_energy[particle.za]
 
     # Eq. 4 in in doi:10.1103/PhysRevC.37.2350 or ENDF-6 Formats Manual section
     # 6.2.3.2
     return (
-        15.68 * (A_c - A_a) -
-        28.07 * ((N_c - Z_c)**2 / A_c - (N_a - Z_a)**2 / A_a) -
-        18.56 * (A_c**(2./3.) - A_a**(2./3.)) +
-        33.22 * ((N_c - Z_c)**2 / A_c**(4./3.) - (N_a - Z_a)**2 / A_a**(4./3.)) -
-        0.717 * (Z_c**2 / A_c**(1./3.) - Z_a**2 / A_a**(1./3.)) +
-        1.211 * (Z_c**2 / A_c - Z_a**2 / A_a) -
-        I_a
+        15.68 * (A_c - A_a)
+        - 28.07 * ((N_c - Z_c) ** 2 / A_c - (N_a - Z_a) ** 2 / A_a)
+        - 18.56 * (A_c ** (2.0 / 3.0) - A_a ** (2.0 / 3.0))
+        + 33.22
+        * (
+            (N_c - Z_c) ** 2 / A_c ** (4.0 / 3.0)
+            - (N_a - Z_a) ** 2 / A_a ** (4.0 / 3.0)
+        )
+        - 0.717 * (Z_c**2 / A_c ** (1.0 / 3.0) - Z_a**2 / A_a ** (1.0 / 3.0))
+        + 1.211 * (Z_c**2 / A_c - Z_a**2 / A_a)
+        - I_a
     )
 
 
-def kalbach_slope(energy_projectile, energy_emitted, za_projectile,
-                  za_emitted, za_target):
+def kalbach_slope(
+    energy_projectile, energy_emitted, za_projectile, za_emitted, za_target
+):
     """Returns Kalbach-Mann slope from calculations.
 
     The associated reaction is defined as:
@@ -207,9 +215,7 @@ def kalbach_slope(energy_projectile, energy_emitted, za_projectile,
     # TODO: develop for photons as projectile
     # TODO: test for other particles than neutron
     if za_projectile != 1:
-        raise NotImplementedError(
-            "Developed and tested for neutron projectile only."
-        )
+        raise NotImplementedError("Developed and tested for neutron projectile only.")
 
     # Special handling of elemental carbon
     if za_emitted == 6000:
@@ -226,8 +232,7 @@ def kalbach_slope(energy_projectile, energy_emitted, za_projectile,
     # Calculate entrance and emission channel energy in MeV, defined in section
     # 6.2.3.2 in the ENDF-6 Formats Manual
     epsilon_a = energy_projectile * target.a / (target.a + projectile.a) / EV_PER_MEV
-    epsilon_b = energy_emitted * (residual.a + emitted.a) \
-        / (residual.a * EV_PER_MEV)
+    epsilon_b = energy_emitted * (residual.a + emitted.a) / (residual.a * EV_PER_MEV)
 
     # Calculate separation energies using Eq. 4 in doi:10.1103/PhysRevC.37.2350
     # or ENDF-6 Formats Manual section 6.2.3.2
@@ -242,8 +247,8 @@ def kalbach_slope(energy_projectile, energy_emitted, za_projectile,
     m = za_to_m[emitted.za]
     e_a = epsilon_a + s_a
     e_b = epsilon_b + s_b
-    r_1 = min(e_a, 130.)
-    r_3 = min(e_a, 41.)
+    r_1 = min(e_a, 130.0)
+    r_3 = min(e_a, 41.0)
     x_1 = r_1 * e_b / e_a
     x_3 = r_3 * e_b / e_a
     return 0.04 * x_1 + 1.8e-6 * x_1**3 + 6.7e-7 * M * m * x_3**4
@@ -288,8 +293,9 @@ class KalbachMann(AngleEnergy):
 
     """
 
-    def __init__(self, breakpoints, interpolation, energy, energy_out,
-                 precompound, slope):
+    def __init__(
+        self, breakpoints, interpolation, energy, energy_out, precompound, slope
+    ):
         super().__init__()
         self.breakpoints = breakpoints
         self.interpolation = interpolation
@@ -304,8 +310,7 @@ class KalbachMann(AngleEnergy):
 
     @breakpoints.setter
     def breakpoints(self, breakpoints):
-        cv.check_type('Kalbach-Mann breakpoints', breakpoints,
-                      Iterable, Integral)
+        cv.check_type("Kalbach-Mann breakpoints", breakpoints, Iterable, Integral)
         self._breakpoints = breakpoints
 
     @property
@@ -314,8 +319,7 @@ class KalbachMann(AngleEnergy):
 
     @interpolation.setter
     def interpolation(self, interpolation):
-        cv.check_type('Kalbach-Mann interpolation', interpolation,
-                      Iterable, Integral)
+        cv.check_type("Kalbach-Mann interpolation", interpolation, Iterable, Integral)
         self._interpolation = interpolation
 
     @property
@@ -324,8 +328,7 @@ class KalbachMann(AngleEnergy):
 
     @energy.setter
     def energy(self, energy):
-        cv.check_type('Kalbach-Mann incoming energy', energy,
-                      Iterable, Real)
+        cv.check_type("Kalbach-Mann incoming energy", energy, Iterable, Real)
         self._energy = energy
 
     @property
@@ -334,8 +337,7 @@ class KalbachMann(AngleEnergy):
 
     @energy_out.setter
     def energy_out(self, energy_out):
-        cv.check_type('Kalbach-Mann distributions', energy_out,
-                      Iterable, Univariate)
+        cv.check_type("Kalbach-Mann distributions", energy_out, Iterable, Univariate)
         self._energy_out = energy_out
 
     @property
@@ -344,8 +346,9 @@ class KalbachMann(AngleEnergy):
 
     @precompound.setter
     def precompound(self, precompound):
-        cv.check_type('Kalbach-Mann precompound factor', precompound,
-                      Iterable, Tabulated1D)
+        cv.check_type(
+            "Kalbach-Mann precompound factor", precompound, Iterable, Tabulated1D
+        )
         self._precompound = precompound
 
     @property
@@ -354,7 +357,7 @@ class KalbachMann(AngleEnergy):
 
     @slope.setter
     def slope(self, slope):
-        cv.check_type('Kalbach-Mann slope', slope, Iterable, Tabulated1D)
+        cv.check_type("Kalbach-Mann slope", slope, Iterable, Tabulated1D)
         self._slope = slope
 
     def to_hdf5(self, group):
@@ -366,11 +369,10 @@ class KalbachMann(AngleEnergy):
             HDF5 group to write to
 
         """
-        group.attrs['type'] = np.bytes_('kalbach-mann')
+        group.attrs["type"] = np.bytes_("kalbach-mann")
 
-        dset = group.create_dataset('energy', data=self.energy)
-        dset.attrs['interpolation'] = np.vstack((self.breakpoints,
-                                                 self.interpolation))
+        dset = group.create_dataset("energy", data=self.energy)
+        dset.attrs["interpolation"] = np.vstack((self.breakpoints, self.interpolation))
 
         # Determine total number of (E,p,r,a) tuples and create array
         n_tuple = sum(len(d) for d in self.energy_out)
@@ -383,43 +385,44 @@ class KalbachMann(AngleEnergy):
         j = 0
 
         # Populate offsets and distribution array
-        for i, (eout, km_r, km_a) in enumerate(zip(
-                self.energy_out, self.precompound, self.slope)):
+        for i, (eout, km_r, km_a) in enumerate(
+            zip(self.energy_out, self.precompound, self.slope)
+        ):
             n = len(eout)
             offsets[i] = j
 
             if isinstance(eout, Mixture):
                 discrete, continuous = eout.distribution
                 n_discrete_lines[i] = m = len(discrete)
-                interpolation[i] = 1 if continuous.interpolation == 'histogram' else 2
-                distribution[0, j:j+m] = discrete.x
-                distribution[1, j:j+m] = discrete.p
-                distribution[2, j:j+m] = discrete.c
-                distribution[0, j+m:j+n] = continuous.x
-                distribution[1, j+m:j+n] = continuous.p
-                distribution[2, j+m:j+n] = continuous.c
+                interpolation[i] = 1 if continuous.interpolation == "histogram" else 2
+                distribution[0, j : j + m] = discrete.x
+                distribution[1, j : j + m] = discrete.p
+                distribution[2, j : j + m] = discrete.c
+                distribution[0, j + m : j + n] = continuous.x
+                distribution[1, j + m : j + n] = continuous.p
+                distribution[2, j + m : j + n] = continuous.c
             else:
                 if isinstance(eout, Tabular):
                     n_discrete_lines[i] = 0
-                    interpolation[i] = 1 if eout.interpolation == 'histogram' else 2
+                    interpolation[i] = 1 if eout.interpolation == "histogram" else 2
                 elif isinstance(eout, Discrete):
                     n_discrete_lines[i] = n
                     interpolation[i] = 1
-                distribution[0, j:j+n] = eout.x
-                distribution[1, j:j+n] = eout.p
-                distribution[2, j:j+n] = eout.c
+                distribution[0, j : j + n] = eout.x
+                distribution[1, j : j + n] = eout.p
+                distribution[2, j : j + n] = eout.c
 
-            distribution[3, j:j+n] = km_r.y
-            distribution[4, j:j+n] = km_a.y
+            distribution[3, j : j + n] = km_r.y
+            distribution[4, j : j + n] = km_a.y
             j += n
 
         # Create dataset for distributions
-        dset = group.create_dataset('distribution', data=distribution)
+        dset = group.create_dataset("distribution", data=distribution)
 
         # Write interpolation as attribute
-        dset.attrs['offsets'] = offsets
-        dset.attrs['interpolation'] = interpolation
-        dset.attrs['n_discrete_lines'] = n_discrete_lines
+        dset.attrs["offsets"] = offsets
+        dset.attrs["interpolation"] = interpolation
+        dset.attrs["n_discrete_lines"] = n_discrete_lines
 
     @classmethod
     def from_hdf5(cls, group):
@@ -436,15 +439,15 @@ class KalbachMann(AngleEnergy):
             Kalbach-Mann energy distribution
 
         """
-        interp_data = group['energy'].attrs['interpolation']
+        interp_data = group["energy"].attrs["interpolation"]
         energy_breakpoints = interp_data[0, :]
         energy_interpolation = interp_data[1, :]
-        energy = group['energy'][()]
+        energy = group["energy"][()]
 
-        data = group['distribution']
-        offsets = data.attrs['offsets']
-        interpolation = data.attrs['interpolation']
-        n_discrete_lines = data.attrs['n_discrete_lines']
+        data = group["distribution"]
+        offsets = data.attrs["offsets"]
+        interpolation = data.attrs["interpolation"]
+        n_discrete_lines = data.attrs["n_discrete_lines"]
 
         energy_out = []
         precompound = []
@@ -455,22 +458,24 @@ class KalbachMann(AngleEnergy):
             # discrete lines
             j = offsets[i]
             if i < n_energy - 1:
-                n = offsets[i+1] - j
+                n = offsets[i + 1] - j
             else:
                 n = data.shape[1] - j
             m = n_discrete_lines[i]
 
             # Create discrete distribution if lines are present
             if m > 0:
-                eout_discrete = Discrete(data[0, j:j+m], data[1, j:j+m])
-                eout_discrete.c = data[2, j:j+m]
+                eout_discrete = Discrete(data[0, j : j + m], data[1, j : j + m])
+                eout_discrete.c = data[2, j : j + m]
                 p_discrete = eout_discrete.c[-1]
 
             # Create continuous distribution
             if m < n:
                 interp = INTERPOLATION_SCHEME[interpolation[i]]
-                eout_continuous = Tabular(data[0, j+m:j+n], data[1, j+m:j+n], interp)
-                eout_continuous.c = data[2, j+m:j+n]
+                eout_continuous = Tabular(
+                    data[0, j + m : j + n], data[1, j + m : j + n], interp
+                )
+                eout_continuous.c = data[2, j + m : j + n]
 
             # If both continuous and discrete are present, create a mixture
             # distribution
@@ -479,19 +484,26 @@ class KalbachMann(AngleEnergy):
             elif m == n:
                 eout_i = eout_discrete
             else:
-                eout_i = Mixture([p_discrete, 1. - p_discrete],
-                                 [eout_discrete, eout_continuous])
+                eout_i = Mixture(
+                    [p_discrete, 1.0 - p_discrete], [eout_discrete, eout_continuous]
+                )
 
             # Precompound factor and slope are on rows 3 and 4, respectively
-            km_r = Tabulated1D(data[0, j:j+n], data[3, j:j+n])
-            km_a = Tabulated1D(data[0, j:j+n], data[4, j:j+n])
+            km_r = Tabulated1D(data[0, j : j + n], data[3, j : j + n])
+            km_a = Tabulated1D(data[0, j : j + n], data[4, j : j + n])
 
             energy_out.append(eout_i)
             precompound.append(km_r)
             slope.append(km_a)
 
-        return cls(energy_breakpoints, energy_interpolation,
-                   energy, energy_out, precompound, slope)
+        return cls(
+            energy_breakpoints,
+            energy_interpolation,
+            energy,
+            energy_out,
+            precompound,
+            slope,
+        )
 
     @classmethod
     def from_ace(cls, ace, idx, ldis):
@@ -516,24 +528,24 @@ class KalbachMann(AngleEnergy):
         """
         # Read number of interpolation regions and incoming energies
         n_regions = int(ace.xss[idx])
-        n_energy_in = int(ace.xss[idx + 1 + 2*n_regions])
+        n_energy_in = int(ace.xss[idx + 1 + 2 * n_regions])
 
         # Get interpolation information
         idx += 1
         if n_regions > 0:
-            breakpoints = ace.xss[idx:idx + n_regions].astype(int)
-            interpolation = ace.xss[idx + n_regions:idx + 2*n_regions].astype(int)
+            breakpoints = ace.xss[idx : idx + n_regions].astype(int)
+            interpolation = ace.xss[idx + n_regions : idx + 2 * n_regions].astype(int)
         else:
             breakpoints = np.array([n_energy_in])
             interpolation = np.array([2])
 
         # Incoming energies at which distributions exist
-        idx += 2*n_regions + 1
-        energy = ace.xss[idx:idx + n_energy_in]*EV_PER_MEV
+        idx += 2 * n_regions + 1
+        energy = ace.xss[idx : idx + n_energy_in] * EV_PER_MEV
 
         # Location of distributions
         idx += n_energy_in
-        loc_dist = ace.xss[idx:idx + n_energy_in].astype(int)
+        loc_dist = ace.xss[idx : idx + n_energy_in].astype(int)
 
         # Initialize variables
         energy_out = []
@@ -547,38 +559,43 @@ class KalbachMann(AngleEnergy):
             # intt = interpolation scheme (1=hist, 2=lin-lin)
             INTTp = int(ace.xss[idx])
             intt = INTTp % 10
-            n_discrete_lines = (INTTp - intt)//10
+            n_discrete_lines = (INTTp - intt) // 10
             if intt not in (1, 2):
-                warn("Interpolation scheme for continuous tabular distribution "
-                     "is not histogram or linear-linear.")
+                warn(
+                    "Interpolation scheme for continuous tabular distribution "
+                    "is not histogram or linear-linear."
+                )
                 intt = 2
 
             n_energy_out = int(ace.xss[idx + 1])
-            data = ace.xss[idx + 2:idx + 2 + 5*n_energy_out].copy()
+            data = ace.xss[idx + 2 : idx + 2 + 5 * n_energy_out].copy()
             data.shape = (5, n_energy_out)
             data[0, :] *= EV_PER_MEV
 
             # Create continuous distribution
-            eout_continuous = Tabular(data[0][n_discrete_lines:],
-                                      data[1][n_discrete_lines:]/EV_PER_MEV,
-                                      INTERPOLATION_SCHEME[intt],
-                                      ignore_negative=True)
+            eout_continuous = Tabular(
+                data[0][n_discrete_lines:],
+                data[1][n_discrete_lines:] / EV_PER_MEV,
+                INTERPOLATION_SCHEME[intt],
+                ignore_negative=True,
+            )
             eout_continuous.c = data[2][n_discrete_lines:]
             if np.any(data[1][n_discrete_lines:] < 0.0):
-                warn("Kalbach-Mann energy distribution has negative "
-                     "probabilities.")
+                warn("Kalbach-Mann energy distribution has negative " "probabilities.")
 
             # If discrete lines are present, create a mixture distribution
             if n_discrete_lines > 0:
-                eout_discrete = Discrete(data[0][:n_discrete_lines],
-                                         data[1][:n_discrete_lines])
+                eout_discrete = Discrete(
+                    data[0][:n_discrete_lines], data[1][:n_discrete_lines]
+                )
                 eout_discrete.c = data[2][:n_discrete_lines]
                 if n_discrete_lines == n_energy_out:
                     eout_i = eout_discrete
                 else:
                     p_discrete = min(sum(eout_discrete.p), 1.0)
-                    eout_i = Mixture([p_discrete, 1. - p_discrete],
-                                     [eout_discrete, eout_continuous])
+                    eout_i = Mixture(
+                        [p_discrete, 1.0 - p_discrete], [eout_discrete, eout_continuous]
+                    )
             else:
                 eout_i = eout_continuous
 
@@ -655,7 +672,7 @@ class KalbachMann(AngleEnergy):
                 calculated_slope.append(False)
             else:
                 # Check if the projectile is not a neutron
-                if not np.isclose(projectile_mass, 1.0, atol=1.0e-12, rtol=0.):
+                if not np.isclose(projectile_mass, 1.0, atol=1.0e-12, rtol=0.0):
                     warn(
                         "Kalbach-Mann slope calculation is only available with "
                         "neutrons as projectile. Slope coefficients are set to 0."
@@ -666,19 +683,24 @@ class KalbachMann(AngleEnergy):
                 else:
                     # TODO: retrieve ZA of the projectile
                     za_projectile = 1
-                    a_i = [kalbach_slope(energy_projectile=energy[i],
-                                         energy_emitted=e,
-                                         za_projectile=za_projectile,
-                                         za_emitted=za_emitted,
-                                         za_target=za_target)
-                           for e in eout_i]
+                    a_i = [
+                        kalbach_slope(
+                            energy_projectile=energy[i],
+                            energy_emitted=e,
+                            za_projectile=za_projectile,
+                            za_emitted=za_emitted,
+                            za_target=za_target,
+                        )
+                        for e in eout_i
+                    ]
                     calculated_slope.append(True)
 
             precompound.append(Tabulated1D(eout_i, r_i))
             slope.append(Tabulated1D(eout_i, a_i))
 
-        km_distribution = cls(tab2.breakpoints, tab2.interpolation, energy,
-                              energy_out, precompound, slope)
+        km_distribution = cls(
+            tab2.breakpoints, tab2.interpolation, energy, energy_out, precompound, slope
+        )
 
         # List of bool to indicate slope calculation by OpenMC
         km_distribution._calculated_slope = calculated_slope

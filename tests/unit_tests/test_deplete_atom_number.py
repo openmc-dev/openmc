@@ -9,7 +9,7 @@ def test_indexing():
 
     local_mats = ["10000", "10001"]
     nuclides = ["U238", "U235", "U234"]
-    volume = {"10000" : 0.38, "10001" : 0.21}
+    volume = {"10000": 0.38, "10001": 0.21}
 
     number = atom_number.AtomNumber(local_mats, nuclides, volume, 2)
 
@@ -37,10 +37,10 @@ def test_indexing():
 
 
 def test_properties():
-    """Test properties. """
+    """Test properties."""
     local_mats = ["10000", "10001"]
     nuclides = ["U238", "U235", "Gd157"]
-    volume = {"10000" : 0.38, "10001" : 0.21}
+    volume = {"10000": 0.38, "10001": 0.21}
 
     number = atom_number.AtomNumber(local_mats, nuclides, volume, 2)
 
@@ -55,7 +55,7 @@ def test_density_indexing():
 
     local_mats = ["10000", "10001", "10002"]
     nuclides = ["U238", "U235", "U234"]
-    volume = {"10000" : 0.38, "10001" : 0.21}
+    volume = {"10000": 0.38, "10001": 0.21}
 
     number = atom_number.AtomNumber(local_mats, nuclides, volume, 2)
 
@@ -91,7 +91,6 @@ def test_density_indexing():
     assert number.get_atom_density(1, 2) == 8.0
     assert number.get_atom_density(2, 2) == 9.0
 
-
     number.set_atom_density(0, 0, 5.0)
     assert number.get_atom_density(0, 0) == 5.0
 
@@ -112,7 +111,7 @@ def test_get_mat_slice():
 
     local_mats = ["10000", "10001", "10002"]
     nuclides = ["U238", "U235", "U234"]
-    volume = {"10000" : 0.38, "10001" : 0.21}
+    volume = {"10000": 0.38, "10001": 0.21}
 
     number = atom_number.AtomNumber(local_mats, nuclides, volume, 2)
 
@@ -132,7 +131,7 @@ def test_set_mat_slice():
 
     local_mats = ["10000", "10001", "10002"]
     nuclides = ["U238", "U235", "U234"]
-    volume = {"10000" : 0.38, "10001" : 0.21}
+    volume = {"10000": 0.38, "10001": 0.21}
 
     number = atom_number.AtomNumber(local_mats, nuclides, volume, 2)
 

@@ -11,7 +11,7 @@ from .core import _FortranObjectWithID
 from .error import _error_handler
 
 
-__all__ = ['Material', 'materials']
+__all__ = ["Material", "materials"]
 
 # Material functions
 _dll.openmc_extend_materials.argtypes = [c_int32, POINTER(c_int32), POINTER(c_int32)]
@@ -20,16 +20,18 @@ _dll.openmc_extend_materials.errcheck = _error_handler
 _dll.openmc_get_material_index.argtypes = [c_int32, POINTER(c_int32)]
 _dll.openmc_get_material_index.restype = c_int
 _dll.openmc_get_material_index.errcheck = _error_handler
-_dll.openmc_material_add_nuclide.argtypes = [
-    c_int32, c_char_p, c_double]
+_dll.openmc_material_add_nuclide.argtypes = [c_int32, c_char_p, c_double]
 _dll.openmc_material_add_nuclide.restype = c_int
 _dll.openmc_material_add_nuclide.errcheck = _error_handler
 _dll.openmc_material_get_id.argtypes = [c_int32, POINTER(c_int32)]
 _dll.openmc_material_get_id.restype = c_int
 _dll.openmc_material_get_id.errcheck = _error_handler
 _dll.openmc_material_get_densities.argtypes = [
-    c_int32, POINTER(POINTER(c_int)), POINTER(POINTER(c_double)),
-    POINTER(c_int)]
+    c_int32,
+    POINTER(POINTER(c_int)),
+    POINTER(POINTER(c_double)),
+    POINTER(c_int),
+]
 _dll.openmc_material_get_densities.restype = c_int
 _dll.openmc_material_get_densities.errcheck = _error_handler
 _dll.openmc_material_get_density.argtypes = [c_int32, POINTER(c_double)]
@@ -45,7 +47,11 @@ _dll.openmc_material_set_density.argtypes = [c_int32, c_double, c_char_p]
 _dll.openmc_material_set_density.restype = c_int
 _dll.openmc_material_set_density.errcheck = _error_handler
 _dll.openmc_material_set_densities.argtypes = [
-    c_int32, c_int, POINTER(c_char_p), POINTER(c_double)]
+    c_int32,
+    c_int,
+    POINTER(c_char_p),
+    POINTER(c_double),
+]
 _dll.openmc_material_set_densities.restype = c_int
 _dll.openmc_material_set_densities.errcheck = _error_handler
 _dll.openmc_material_set_id.argtypes = [c_int32, c_int32]
@@ -105,6 +111,7 @@ class Material(_FortranObjectWithID):
         Volume of the material in [cm^3]
 
     """
+
     __instances = WeakValueDictionary()
 
     def __new__(cls, uid=None, new=True, index=None):
@@ -116,8 +123,10 @@ class Material(_FortranObjectWithID):
                     uid = max(mapping, default=0) + 1
                 else:
                     if uid in mapping:
-                        raise AllocationError('A material with ID={} has already '
-                                              'been allocated.'.format(uid))
+                        raise AllocationError(
+                            "A material with ID={} has already "
+                            "been allocated.".format(uid)
+                        )
 
                 index = c_int32()
                 _dll.openmc_extend_materials(1, index, None)
@@ -232,7 +241,7 @@ class Material(_FortranObjectWithID):
         """
         _dll.openmc_material_add_nuclide(self._index, name.encode(), density)
 
-    def get_density(self, units='atom/b-cm'):
+    def get_density(self, units="atom/b-cm"):
         """Get density of a material.
 
         Parameters
@@ -246,16 +255,16 @@ class Material(_FortranObjectWithID):
             Density in requested units
 
         """
-        if units == 'atom/b-cm':
+        if units == "atom/b-cm":
             return self.densities.sum()
-        elif units == 'g/cm3':
+        elif units == "g/cm3":
             density = c_double()
             _dll.openmc_material_get_density(self._index, density)
             return density.value
         else:
             raise ValueError("Units must be 'atom/b-cm' or 'g/cm3'")
 
-    def set_density(self, density, units='atom/b-cm'):
+    def set_density(self, density, units="atom/b-cm"):
         """Set density of a material.
 
         Parameters
@@ -309,5 +318,6 @@ class _MaterialMapping(Mapping):
 
     def __repr__(self):
         return repr(dict(self))
+
 
 materials = _MaterialMapping()

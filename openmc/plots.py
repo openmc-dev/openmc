@@ -13,156 +13,156 @@ from openmc.checkvalue import PathLike
 from ._xml import clean_indentation, get_elem_tuple, reorder_attributes, get_text
 from .mixin import IDManagerMixin
 
-_BASES = {'xy', 'xz', 'yz'}
+_BASES = {"xy", "xz", "yz"}
 
 _SVG_COLORS = {
-    'aliceblue': (240, 248, 255),
-    'antiquewhite': (250, 235, 215),
-    'aqua': (0, 255, 255),
-    'aquamarine': (127, 255, 212),
-    'azure': (240, 255, 255),
-    'beige': (245, 245, 220),
-    'bisque': (255, 228, 196),
-    'black': (0, 0, 0),
-    'blanchedalmond': (255, 235, 205),
-    'blue': (0, 0, 255),
-    'blueviolet': (138, 43, 226),
-    'brown': (165, 42, 42),
-    'burlywood': (222, 184, 135),
-    'cadetblue': (95, 158, 160),
-    'chartreuse': (127, 255, 0),
-    'chocolate': (210, 105, 30),
-    'coral': (255, 127, 80),
-    'cornflowerblue': (100, 149, 237),
-    'cornsilk': (255, 248, 220),
-    'crimson': (220, 20, 60),
-    'cyan': (0, 255, 255),
-    'darkblue': (0, 0, 139),
-    'darkcyan': (0, 139, 139),
-    'darkgoldenrod': (184, 134, 11),
-    'darkgray': (169, 169, 169),
-    'darkgreen': (0, 100, 0),
-    'darkgrey': (169, 169, 169),
-    'darkkhaki': (189, 183, 107),
-    'darkmagenta': (139, 0, 139),
-    'darkolivegreen': (85, 107, 47),
-    'darkorange': (255, 140, 0),
-    'darkorchid': (153, 50, 204),
-    'darkred': (139, 0, 0),
-    'darksalmon': (233, 150, 122),
-    'darkseagreen': (143, 188, 143),
-    'darkslateblue': (72, 61, 139),
-    'darkslategray': (47, 79, 79),
-    'darkslategrey': (47, 79, 79),
-    'darkturquoise': (0, 206, 209),
-    'darkviolet': (148, 0, 211),
-    'deeppink': (255, 20, 147),
-    'deepskyblue': (0, 191, 255),
-    'dimgray': (105, 105, 105),
-    'dimgrey': (105, 105, 105),
-    'dodgerblue': (30, 144, 255),
-    'firebrick': (178, 34, 34),
-    'floralwhite': (255, 250, 240),
-    'forestgreen': (34, 139, 34),
-    'fuchsia': (255, 0, 255),
-    'gainsboro': (220, 220, 220),
-    'ghostwhite': (248, 248, 255),
-    'gold': (255, 215, 0),
-    'goldenrod': (218, 165, 32),
-    'gray': (128, 128, 128),
-    'green': (0, 128, 0),
-    'greenyellow': (173, 255, 47),
-    'grey': (128, 128, 128),
-    'honeydew': (240, 255, 240),
-    'hotpink': (255, 105, 180),
-    'indianred': (205, 92, 92),
-    'indigo': (75, 0, 130),
-    'ivory': (255, 255, 240),
-    'khaki': (240, 230, 140),
-    'lavender': (230, 230, 250),
-    'lavenderblush': (255, 240, 245),
-    'lawngreen': (124, 252, 0),
-    'lemonchiffon': (255, 250, 205),
-    'lightblue': (173, 216, 230),
-    'lightcoral': (240, 128, 128),
-    'lightcyan': (224, 255, 255),
-    'lightgoldenrodyellow': (250, 250, 210),
-    'lightgray': (211, 211, 211),
-    'lightgreen': (144, 238, 144),
-    'lightgrey': (211, 211, 211),
-    'lightpink': (255, 182, 193),
-    'lightsalmon': (255, 160, 122),
-    'lightseagreen': (32, 178, 170),
-    'lightskyblue': (135, 206, 250),
-    'lightslategray': (119, 136, 153),
-    'lightslategrey': (119, 136, 153),
-    'lightsteelblue': (176, 196, 222),
-    'lightyellow': (255, 255, 224),
-    'lime': (0, 255, 0),
-    'limegreen': (50, 205, 50),
-    'linen': (250, 240, 230),
-    'magenta': (255, 0, 255),
-    'maroon': (128, 0, 0),
-    'mediumaquamarine': (102, 205, 170),
-    'mediumblue': (0, 0, 205),
-    'mediumorchid': (186, 85, 211),
-    'mediumpurple': (147, 112, 219),
-    'mediumseagreen': (60, 179, 113),
-    'mediumslateblue': (123, 104, 238),
-    'mediumspringgreen': (0, 250, 154),
-    'mediumturquoise': (72, 209, 204),
-    'mediumvioletred': (199, 21, 133),
-    'midnightblue': (25, 25, 112),
-    'mintcream': (245, 255, 250),
-    'mistyrose': (255, 228, 225),
-    'moccasin': (255, 228, 181),
-    'navajowhite': (255, 222, 173),
-    'navy': (0, 0, 128),
-    'oldlace': (253, 245, 230),
-    'olive': (128, 128, 0),
-    'olivedrab': (107, 142, 35),
-    'orange': (255, 165, 0),
-    'orangered': (255, 69, 0),
-    'orchid': (218, 112, 214),
-    'palegoldenrod': (238, 232, 170),
-    'palegreen': (152, 251, 152),
-    'paleturquoise': (175, 238, 238),
-    'palevioletred': (219, 112, 147),
-    'papayawhip': (255, 239, 213),
-    'peachpuff': (255, 218, 185),
-    'peru': (205, 133, 63),
-    'pink': (255, 192, 203),
-    'plum': (221, 160, 221),
-    'powderblue': (176, 224, 230),
-    'purple': (128, 0, 128),
-    'red': (255, 0, 0),
-    'rosybrown': (188, 143, 143),
-    'royalblue': (65, 105, 225),
-    'saddlebrown': (139, 69, 19),
-    'salmon': (250, 128, 114),
-    'sandybrown': (244, 164, 96),
-    'seagreen': (46, 139, 87),
-    'seashell': (255, 245, 238),
-    'sienna': (160, 82, 45),
-    'silver': (192, 192, 192),
-    'skyblue': (135, 206, 235),
-    'slateblue': (106, 90, 205),
-    'slategray': (112, 128, 144),
-    'slategrey': (112, 128, 144),
-    'snow': (255, 250, 250),
-    'springgreen': (0, 255, 127),
-    'steelblue': (70, 130, 180),
-    'tan': (210, 180, 140),
-    'teal': (0, 128, 128),
-    'thistle': (216, 191, 216),
-    'tomato': (255, 99, 71),
-    'turquoise': (64, 224, 208),
-    'violet': (238, 130, 238),
-    'wheat': (245, 222, 179),
-    'white': (255, 255, 255),
-    'whitesmoke': (245, 245, 245),
-    'yellow': (255, 255, 0),
-    'yellowgreen': (154, 205, 50)
+    "aliceblue": (240, 248, 255),
+    "antiquewhite": (250, 235, 215),
+    "aqua": (0, 255, 255),
+    "aquamarine": (127, 255, 212),
+    "azure": (240, 255, 255),
+    "beige": (245, 245, 220),
+    "bisque": (255, 228, 196),
+    "black": (0, 0, 0),
+    "blanchedalmond": (255, 235, 205),
+    "blue": (0, 0, 255),
+    "blueviolet": (138, 43, 226),
+    "brown": (165, 42, 42),
+    "burlywood": (222, 184, 135),
+    "cadetblue": (95, 158, 160),
+    "chartreuse": (127, 255, 0),
+    "chocolate": (210, 105, 30),
+    "coral": (255, 127, 80),
+    "cornflowerblue": (100, 149, 237),
+    "cornsilk": (255, 248, 220),
+    "crimson": (220, 20, 60),
+    "cyan": (0, 255, 255),
+    "darkblue": (0, 0, 139),
+    "darkcyan": (0, 139, 139),
+    "darkgoldenrod": (184, 134, 11),
+    "darkgray": (169, 169, 169),
+    "darkgreen": (0, 100, 0),
+    "darkgrey": (169, 169, 169),
+    "darkkhaki": (189, 183, 107),
+    "darkmagenta": (139, 0, 139),
+    "darkolivegreen": (85, 107, 47),
+    "darkorange": (255, 140, 0),
+    "darkorchid": (153, 50, 204),
+    "darkred": (139, 0, 0),
+    "darksalmon": (233, 150, 122),
+    "darkseagreen": (143, 188, 143),
+    "darkslateblue": (72, 61, 139),
+    "darkslategray": (47, 79, 79),
+    "darkslategrey": (47, 79, 79),
+    "darkturquoise": (0, 206, 209),
+    "darkviolet": (148, 0, 211),
+    "deeppink": (255, 20, 147),
+    "deepskyblue": (0, 191, 255),
+    "dimgray": (105, 105, 105),
+    "dimgrey": (105, 105, 105),
+    "dodgerblue": (30, 144, 255),
+    "firebrick": (178, 34, 34),
+    "floralwhite": (255, 250, 240),
+    "forestgreen": (34, 139, 34),
+    "fuchsia": (255, 0, 255),
+    "gainsboro": (220, 220, 220),
+    "ghostwhite": (248, 248, 255),
+    "gold": (255, 215, 0),
+    "goldenrod": (218, 165, 32),
+    "gray": (128, 128, 128),
+    "green": (0, 128, 0),
+    "greenyellow": (173, 255, 47),
+    "grey": (128, 128, 128),
+    "honeydew": (240, 255, 240),
+    "hotpink": (255, 105, 180),
+    "indianred": (205, 92, 92),
+    "indigo": (75, 0, 130),
+    "ivory": (255, 255, 240),
+    "khaki": (240, 230, 140),
+    "lavender": (230, 230, 250),
+    "lavenderblush": (255, 240, 245),
+    "lawngreen": (124, 252, 0),
+    "lemonchiffon": (255, 250, 205),
+    "lightblue": (173, 216, 230),
+    "lightcoral": (240, 128, 128),
+    "lightcyan": (224, 255, 255),
+    "lightgoldenrodyellow": (250, 250, 210),
+    "lightgray": (211, 211, 211),
+    "lightgreen": (144, 238, 144),
+    "lightgrey": (211, 211, 211),
+    "lightpink": (255, 182, 193),
+    "lightsalmon": (255, 160, 122),
+    "lightseagreen": (32, 178, 170),
+    "lightskyblue": (135, 206, 250),
+    "lightslategray": (119, 136, 153),
+    "lightslategrey": (119, 136, 153),
+    "lightsteelblue": (176, 196, 222),
+    "lightyellow": (255, 255, 224),
+    "lime": (0, 255, 0),
+    "limegreen": (50, 205, 50),
+    "linen": (250, 240, 230),
+    "magenta": (255, 0, 255),
+    "maroon": (128, 0, 0),
+    "mediumaquamarine": (102, 205, 170),
+    "mediumblue": (0, 0, 205),
+    "mediumorchid": (186, 85, 211),
+    "mediumpurple": (147, 112, 219),
+    "mediumseagreen": (60, 179, 113),
+    "mediumslateblue": (123, 104, 238),
+    "mediumspringgreen": (0, 250, 154),
+    "mediumturquoise": (72, 209, 204),
+    "mediumvioletred": (199, 21, 133),
+    "midnightblue": (25, 25, 112),
+    "mintcream": (245, 255, 250),
+    "mistyrose": (255, 228, 225),
+    "moccasin": (255, 228, 181),
+    "navajowhite": (255, 222, 173),
+    "navy": (0, 0, 128),
+    "oldlace": (253, 245, 230),
+    "olive": (128, 128, 0),
+    "olivedrab": (107, 142, 35),
+    "orange": (255, 165, 0),
+    "orangered": (255, 69, 0),
+    "orchid": (218, 112, 214),
+    "palegoldenrod": (238, 232, 170),
+    "palegreen": (152, 251, 152),
+    "paleturquoise": (175, 238, 238),
+    "palevioletred": (219, 112, 147),
+    "papayawhip": (255, 239, 213),
+    "peachpuff": (255, 218, 185),
+    "peru": (205, 133, 63),
+    "pink": (255, 192, 203),
+    "plum": (221, 160, 221),
+    "powderblue": (176, 224, 230),
+    "purple": (128, 0, 128),
+    "red": (255, 0, 0),
+    "rosybrown": (188, 143, 143),
+    "royalblue": (65, 105, 225),
+    "saddlebrown": (139, 69, 19),
+    "salmon": (250, 128, 114),
+    "sandybrown": (244, 164, 96),
+    "seagreen": (46, 139, 87),
+    "seashell": (255, 245, 238),
+    "sienna": (160, 82, 45),
+    "silver": (192, 192, 192),
+    "skyblue": (135, 206, 235),
+    "slateblue": (106, 90, 205),
+    "slategray": (112, 128, 144),
+    "slategrey": (112, 128, 144),
+    "snow": (255, 250, 250),
+    "springgreen": (0, 255, 127),
+    "steelblue": (70, 130, 180),
+    "tan": (210, 180, 140),
+    "teal": (0, 128, 128),
+    "thistle": (216, 191, 216),
+    "tomato": (255, 99, 71),
+    "turquoise": (64, 224, 208),
+    "violet": (238, 130, 238),
+    "wheat": (245, 222, 179),
+    "white": (255, 255, 255),
+    "whitesmoke": (245, 245, 245),
+    "yellow": (255, 255, 0),
+    "yellowgreen": (154, 205, 50),
 }
 
 
@@ -170,7 +170,7 @@ def _get_plot_image(plot, cwd):
     from IPython.display import Image
 
     # Make sure .png file was created
-    png_filename = plot.filename if plot.filename is not None else f'plot_{plot.id}'
+    png_filename = plot.filename if plot.filename is not None else f"plot_{plot.id}"
 
     # Add file extension if not already present. The C++ code added it
     # automatically if it wasn't present.
@@ -181,12 +181,13 @@ def _get_plot_image(plot, cwd):
     if not png_file.exists():
         raise FileNotFoundError(
             f"Could not find .png image for plot {plot.id}. Your version of "
-            "OpenMC may not be built against libpng.")
+            "OpenMC may not be built against libpng."
+        )
 
     return Image(str(png_file))
 
 
-def voxel_to_vtk(voxel_file: PathLike, output: PathLike = 'plot.vti'):
+def voxel_to_vtk(voxel_file: PathLike, output: PathLike = "plot.vti"):
     """Converts a voxel HDF5 file to a VTK file
 
     .. versionadded:: 0.14.0
@@ -301,13 +302,13 @@ class PlotBase(IDManagerMixin):
     next_id = 1
     used_ids = set()
 
-    def __init__(self, plot_id=None, name=''):
+    def __init__(self, plot_id=None, name=""):
         # Initialize Plot class attributes
         self.id = plot_id
         self.name = name
         self._pixels = [400, 400]
         self._filename = None
-        self._color_by = 'cell'
+        self._color_by = "cell"
         self._background = None
         self._mask_components = None
         self._mask_background = None
@@ -322,7 +323,7 @@ class PlotBase(IDManagerMixin):
 
     @name.setter
     def name(self, name):
-        cv.check_type('plot name', name, str)
+        cv.check_type("plot name", name, str)
         self._name = name
 
     @property
@@ -331,10 +332,10 @@ class PlotBase(IDManagerMixin):
 
     @pixels.setter
     def pixels(self, pixels):
-        cv.check_type('plot pixels', pixels, Iterable, Integral)
-        cv.check_length('plot pixels', pixels, 2, 3)
+        cv.check_type("plot pixels", pixels, Iterable, Integral)
+        cv.check_length("plot pixels", pixels, 2, 3)
         for dim in pixels:
-            cv.check_greater_than('plot pixels', dim, 0)
+            cv.check_greater_than("plot pixels", dim, 0)
         self._pixels = pixels
 
     @property
@@ -343,7 +344,7 @@ class PlotBase(IDManagerMixin):
 
     @filename.setter
     def filename(self, filename):
-        cv.check_type('filename', filename, str)
+        cv.check_type("filename", filename, str)
         self._filename = filename
 
     @property
@@ -352,7 +353,7 @@ class PlotBase(IDManagerMixin):
 
     @color_by.setter
     def color_by(self, color_by):
-        cv.check_value('plot color_by', color_by, ['cell', 'material'])
+        cv.check_value("plot color_by", color_by, ["cell", "material"])
         self._color_by = color_by
 
     @property
@@ -361,7 +362,7 @@ class PlotBase(IDManagerMixin):
 
     @background.setter
     def background(self, background):
-        self._check_color('plot background', background)
+        self._check_color("plot background", background)
         self._background = background
 
     @property
@@ -370,8 +371,12 @@ class PlotBase(IDManagerMixin):
 
     @mask_components.setter
     def mask_components(self, mask_components):
-        cv.check_type('plot mask components', mask_components, Iterable,
-                      (openmc.Cell, openmc.Material, Integral))
+        cv.check_type(
+            "plot mask components",
+            mask_components,
+            Iterable,
+            (openmc.Cell, openmc.Material, Integral),
+        )
         self._mask_components = mask_components
 
     @property
@@ -380,7 +385,7 @@ class PlotBase(IDManagerMixin):
 
     @mask_background.setter
     def mask_background(self, mask_background):
-        self._check_color('plot mask background', mask_background)
+        self._check_color("plot mask background", mask_background)
         self._mask_background = mask_background
 
     @property
@@ -389,8 +394,9 @@ class PlotBase(IDManagerMixin):
 
     @show_overlaps.setter
     def show_overlaps(self, show_overlaps):
-        cv.check_type(f'Show overlaps flag for Plot ID="{self.id}"',
-                      show_overlaps, bool)
+        cv.check_type(
+            f'Show overlaps flag for Plot ID="{self.id}"', show_overlaps, bool
+        )
         self._show_overlaps = show_overlaps
 
     @property
@@ -399,7 +405,7 @@ class PlotBase(IDManagerMixin):
 
     @overlap_color.setter
     def overlap_color(self, overlap_color):
-        self._check_color('plot overlap color', overlap_color)
+        self._check_color("plot overlap color", overlap_color)
         self._overlap_color = overlap_color
 
     @property
@@ -408,11 +414,12 @@ class PlotBase(IDManagerMixin):
 
     @colors.setter
     def colors(self, colors):
-        cv.check_type('plot colors', colors, Mapping)
+        cv.check_type("plot colors", colors, Mapping)
         for key, value in colors.items():
-            cv.check_type('plot color key', key,
-                          (openmc.Cell, openmc.Material, Integral))
-            self._check_color('plot color value', value)
+            cv.check_type(
+                "plot color key", key, (openmc.Cell, openmc.Material, Integral)
+            )
+            self._check_color("plot color value", value)
         self._colors = colors
 
     @property
@@ -421,8 +428,8 @@ class PlotBase(IDManagerMixin):
 
     @level.setter
     def level(self, plot_level):
-        cv.check_type('plot level', plot_level, Integral)
-        cv.check_greater_than('plot level', plot_level, 0, equality=True)
+        cv.check_type("plot level", plot_level, Integral)
+        cv.check_greater_than("plot level", plot_level, 0, equality=True)
         self._level = plot_level
 
     @staticmethod
@@ -435,8 +442,8 @@ class PlotBase(IDManagerMixin):
             cv.check_length(err_string, color, 3)
             for rgb in color:
                 cv.check_type(err_string, rgb, Real)
-                cv.check_greater_than('RGB component', rgb, 0, True)
-                cv.check_less_than('RGB component', rgb, 256)
+                cv.check_greater_than("RGB component", rgb, 0, True)
+                cv.check_less_than("RGB component", rgb, 256)
 
     # Helper function that returns the domain ID given either a
     # Cell/Material object or the domain ID itself
@@ -459,12 +466,12 @@ class PlotBase(IDManagerMixin):
 
         """
 
-        cv.check_type('geometry', geometry, openmc.Geometry)
-        cv.check_type('seed', seed, Integral)
-        cv.check_greater_than('seed', seed, 1, equality=True)
+        cv.check_type("geometry", geometry, openmc.Geometry)
+        cv.check_type("seed", seed, Integral)
+        cv.check_greater_than("seed", seed, 1, equality=True)
 
         # Get collections of the domains which will be plotted
-        if self.color_by == 'material':
+        if self.color_by == "material":
             domains = geometry.get_all_materials().values()
         else:
             domains = geometry.get_all_cells().values()
@@ -495,25 +502,26 @@ class PlotBase(IDManagerMixin):
         element.set("color_by", self._color_by)
 
         subelement = ET.SubElement(element, "pixels")
-        subelement.text = ' '.join(map(str, self._pixels))
+        subelement.text = " ".join(map(str, self._pixels))
 
         if self._background is not None:
             subelement = ET.SubElement(element, "background")
             color = self._background
             if isinstance(color, str):
                 color = _SVG_COLORS[color.lower()]
-            subelement.text = ' '.join(str(x) for x in color)
+            subelement.text = " ".join(str(x) for x in color)
 
         if self._mask_components is not None:
             subelement = ET.SubElement(element, "mask")
-            subelement.set("components", ' '.join(
-                str(PlotBase._get_id(d)) for d in self._mask_components))
+            subelement.set(
+                "components",
+                " ".join(str(PlotBase._get_id(d)) for d in self._mask_components),
+            )
             color = self._mask_background
             if color is not None:
                 if isinstance(color, str):
                     color = _SVG_COLORS[color.lower()]
-                subelement.set("background", ' '.join(
-                    str(x) for x in color))
+                subelement.set("background", " ".join(str(x) for x in color))
 
         if self._level is not None:
             subelement = ET.SubElement(element, "level")
@@ -580,12 +588,12 @@ class Plot(PlotBase):
 
     """
 
-    def __init__(self, plot_id=None, name=''):
+    def __init__(self, plot_id=None, name=""):
         super().__init__(plot_id, name)
         self._width = [4.0, 4.0]
-        self._origin = [0., 0., 0.]
-        self._type = 'slice'
-        self._basis = 'xy'
+        self._origin = [0.0, 0.0, 0.0]
+        self._type = "slice"
+        self._basis = "xy"
         self._meshlines = None
 
     @property
@@ -594,8 +602,8 @@ class Plot(PlotBase):
 
     @width.setter
     def width(self, width):
-        cv.check_type('plot width', width, Iterable, Real)
-        cv.check_length('plot width', width, 2, 3)
+        cv.check_type("plot width", width, Iterable, Real)
+        cv.check_length("plot width", width, 2, 3)
         self._width = width
 
     @property
@@ -604,8 +612,8 @@ class Plot(PlotBase):
 
     @origin.setter
     def origin(self, origin):
-        cv.check_type('plot origin', origin, Iterable, Real)
-        cv.check_length('plot origin', origin, 3)
+        cv.check_type("plot origin", origin, Iterable, Real)
+        cv.check_length("plot origin", origin, 3)
         self._origin = origin
 
     @property
@@ -614,7 +622,7 @@ class Plot(PlotBase):
 
     @type.setter
     def type(self, plottype):
-        cv.check_value('plot type', plottype, ['slice', 'voxel'])
+        cv.check_value("plot type", plottype, ["slice", "voxel"])
         self._type = plottype
 
     @property
@@ -623,7 +631,7 @@ class Plot(PlotBase):
 
     @basis.setter
     def basis(self, basis):
-        cv.check_value('plot basis', basis, _BASES)
+        cv.check_value("plot basis", basis, _BASES)
         self._basis = basis
 
     @property
@@ -632,57 +640,57 @@ class Plot(PlotBase):
 
     @meshlines.setter
     def meshlines(self, meshlines):
-        cv.check_type('plot meshlines', meshlines, dict)
-        if 'type' not in meshlines:
-            msg = f'Unable to set the meshlines to "{meshlines}" which ' \
+        cv.check_type("plot meshlines", meshlines, dict)
+        if "type" not in meshlines:
+            msg = (
+                f'Unable to set the meshlines to "{meshlines}" which '
                 'does not have a "type" key'
+            )
             raise ValueError(msg)
 
-        elif meshlines['type'] not in ['tally', 'entropy', 'ufs', 'cmfd']:
+        elif meshlines["type"] not in ["tally", "entropy", "ufs", "cmfd"]:
             msg = f"Unable to set the meshlines with type \"{meshlines['type']}\""
             raise ValueError(msg)
 
-        if 'id' in meshlines:
-            cv.check_type('plot meshlines id', meshlines['id'], Integral)
-            cv.check_greater_than('plot meshlines id', meshlines['id'], 0,
-                                  equality=True)
+        if "id" in meshlines:
+            cv.check_type("plot meshlines id", meshlines["id"], Integral)
+            cv.check_greater_than(
+                "plot meshlines id", meshlines["id"], 0, equality=True
+            )
 
-        if 'linewidth' in meshlines:
-            cv.check_type('plot mesh linewidth',
-                          meshlines['linewidth'], Integral)
-            cv.check_greater_than('plot mesh linewidth', meshlines['linewidth'],
-                                  0, equality=True)
+        if "linewidth" in meshlines:
+            cv.check_type("plot mesh linewidth", meshlines["linewidth"], Integral)
+            cv.check_greater_than(
+                "plot mesh linewidth", meshlines["linewidth"], 0, equality=True
+            )
 
-        if 'color' in meshlines:
-            self._check_color('plot meshlines color', meshlines['color'])
+        if "color" in meshlines:
+            self._check_color("plot meshlines color", meshlines["color"])
 
         self._meshlines = meshlines
 
     def __repr__(self):
-        string = 'Plot\n'
-        string += '{: <16}=\t{}\n'.format('\tID', self._id)
-        string += '{: <16}=\t{}\n'.format('\tName', self._name)
-        string += '{: <16}=\t{}\n'.format('\tFilename', self._filename)
-        string += '{: <16}=\t{}\n'.format('\tType', self._type)
-        string += '{: <16}=\t{}\n'.format('\tBasis', self._basis)
-        string += '{: <16}=\t{}\n'.format('\tWidth', self._width)
-        string += '{: <16}=\t{}\n'.format('\tOrigin', self._origin)
-        string += '{: <16}=\t{}\n'.format('\tPixels', self._pixels)
-        string += '{: <16}=\t{}\n'.format('\tColor by', self._color_by)
-        string += '{: <16}=\t{}\n'.format('\tBackground', self._background)
-        string += '{: <16}=\t{}\n'.format('\tMask components',
-                                          self._mask_components)
-        string += '{: <16}=\t{}\n'.format('\tMask background',
-                                          self._mask_background)
-        string += '{: <16}=\t{}\n'.format('\tOverlap Color',
-                                          self._overlap_color)
-        string += '{: <16}=\t{}\n'.format('\tColors', self._colors)
-        string += '{: <16}=\t{}\n'.format('\tLevel', self._level)
-        string += '{: <16}=\t{}\n'.format('\tMeshlines', self._meshlines)
+        string = "Plot\n"
+        string += "{: <16}=\t{}\n".format("\tID", self._id)
+        string += "{: <16}=\t{}\n".format("\tName", self._name)
+        string += "{: <16}=\t{}\n".format("\tFilename", self._filename)
+        string += "{: <16}=\t{}\n".format("\tType", self._type)
+        string += "{: <16}=\t{}\n".format("\tBasis", self._basis)
+        string += "{: <16}=\t{}\n".format("\tWidth", self._width)
+        string += "{: <16}=\t{}\n".format("\tOrigin", self._origin)
+        string += "{: <16}=\t{}\n".format("\tPixels", self._pixels)
+        string += "{: <16}=\t{}\n".format("\tColor by", self._color_by)
+        string += "{: <16}=\t{}\n".format("\tBackground", self._background)
+        string += "{: <16}=\t{}\n".format("\tMask components", self._mask_components)
+        string += "{: <16}=\t{}\n".format("\tMask background", self._mask_background)
+        string += "{: <16}=\t{}\n".format("\tOverlap Color", self._overlap_color)
+        string += "{: <16}=\t{}\n".format("\tColors", self._colors)
+        string += "{: <16}=\t{}\n".format("\tLevel", self._level)
+        string += "{: <16}=\t{}\n".format("\tMeshlines", self._meshlines)
         return string
 
     @classmethod
-    def from_geometry(cls, geometry, basis='xy', slice_coord=0.):
+    def from_geometry(cls, geometry, basis="xy", slice_coord=0.0):
         """Return plot that encompasses a geometry.
 
         Parameters
@@ -697,17 +705,17 @@ class Plot(PlotBase):
             origin.
 
         """
-        cv.check_type('geometry', geometry, openmc.Geometry)
-        cv.check_value('basis', basis, _BASES)
+        cv.check_type("geometry", geometry, openmc.Geometry)
+        cv.check_value("basis", basis, _BASES)
 
         # Decide which axes to keep
-        if basis == 'xy':
+        if basis == "xy":
             pick_index = (0, 1)
             slice_index = 2
-        elif basis == 'yz':
+        elif basis == "yz":
             pick_index = (1, 2)
             slice_index = 0
-        elif basis == 'xz':
+        elif basis == "xz":
             pick_index = (0, 2)
             slice_index = 1
 
@@ -717,18 +725,21 @@ class Plot(PlotBase):
         upper_right = upper_right[np.array(pick_index)]
 
         if np.any(np.isinf((lower_left, upper_right))):
-            raise ValueError('The geometry does not appear to be bounded '
-                             f'in the {basis} plane.')
+            raise ValueError(
+                "The geometry does not appear to be bounded " f"in the {basis} plane."
+            )
 
         plot = cls()
-        plot.origin = np.insert((lower_left + upper_right)/2,
-                                slice_index, slice_coord)
+        plot.origin = np.insert(
+            (lower_left + upper_right) / 2, slice_index, slice_coord
+        )
         plot.width = upper_right - lower_left
         plot.basis = basis
         return plot
 
-    def highlight_domains(self, geometry, domains, seed=1,
-                          alpha=0.5, background='gray'):
+    def highlight_domains(
+        self, geometry, domains, seed=1, alpha=0.5, background="gray"
+    ):
         """Use alpha compositing to highlight one or more domains in the plot.
 
         This routine generates a color scheme and applies alpha compositing to
@@ -750,12 +761,11 @@ class Plot(PlotBase):
 
         """
 
-        cv.check_type('domains', domains, Iterable,
-                      (openmc.Cell, openmc.Material))
-        cv.check_type('alpha', alpha, Real)
-        cv.check_greater_than('alpha', alpha, 0., equality=True)
-        cv.check_less_than('alpha', alpha, 1., equality=True)
-        cv.check_type('background', background, Iterable)
+        cv.check_type("domains", domains, Iterable, (openmc.Cell, openmc.Material))
+        cv.check_type("alpha", alpha, Real)
+        cv.check_greater_than("alpha", alpha, 0.0, equality=True)
+        cv.check_less_than("alpha", alpha, 1.0, equality=True)
+        cv.check_type("background", background, Iterable)
 
         # Get a background (R,G,B) tuple to apply in alpha compositing
         if isinstance(background, str):
@@ -773,9 +783,9 @@ class Plot(PlotBase):
                 if isinstance(color, str):
                     color = _SVG_COLORS[color.lower()]
                 r, g, b = color
-                r = int(((1-alpha) * background[0]) + (alpha * r))
-                g = int(((1-alpha) * background[1]) + (alpha * g))
-                b = int(((1-alpha) * background[2]) + (alpha * b))
+                r = int(((1 - alpha) * background[0]) + (alpha * r))
+                g = int(((1 - alpha) * background[1]) + (alpha * g))
+                b = int(((1 - alpha) * background[2]) + (alpha * b))
                 self._colors[domain] = (r, g, b)
 
     def to_xml_element(self):
@@ -791,23 +801,24 @@ class Plot(PlotBase):
         element = super().to_xml_element()
         element.set("type", self._type)
 
-        if self._type == 'slice':
+        if self._type == "slice":
             element.set("basis", self._basis)
 
         subelement = ET.SubElement(element, "origin")
-        subelement.text = ' '.join(map(str, self._origin))
+        subelement.text = " ".join(map(str, self._origin))
 
         subelement = ET.SubElement(element, "width")
-        subelement.text = ' '.join(map(str, self._width))
+        subelement.text = " ".join(map(str, self._width))
 
         if self._colors:
-            for domain, color in sorted(self._colors.items(),
-                                        key=lambda x: PlotBase._get_id(x[0])):
+            for domain, color in sorted(
+                self._colors.items(), key=lambda x: PlotBase._get_id(x[0])
+            ):
                 subelement = ET.SubElement(element, "color")
                 subelement.set("id", str(PlotBase._get_id(domain)))
                 if isinstance(color, str):
                     color = _SVG_COLORS[color.lower()]
-                subelement.set("rgb", ' '.join(str(x) for x in color))
+                subelement.set("rgb", " ".join(str(x) for x in color))
 
         if self._show_overlaps:
             subelement = ET.SubElement(element, "show_overlaps")
@@ -818,18 +829,17 @@ class Plot(PlotBase):
                 if isinstance(color, str):
                     color = _SVG_COLORS[color.lower()]
                 subelement = ET.SubElement(element, "overlap_color")
-                subelement.text = ' '.join(str(x) for x in color)
+                subelement.text = " ".join(str(x) for x in color)
 
         if self._meshlines is not None:
             subelement = ET.SubElement(element, "meshlines")
-            subelement.set("meshtype", self._meshlines['type'])
-            if 'id' in self._meshlines:
-                subelement.set("id", str(self._meshlines['id']))
-            if 'linewidth' in self._meshlines:
-                subelement.set("linewidth", str(self._meshlines['linewidth']))
-            if 'color' in self._meshlines:
-                subelement.set("color", ' '.join(map(
-                    str, self._meshlines['color'])))
+            subelement.set("meshtype", self._meshlines["type"])
+            if "id" in self._meshlines:
+                subelement.set("id", str(self._meshlines["id"]))
+            if "linewidth" in self._meshlines:
+                subelement.set("linewidth", str(self._meshlines["linewidth"]))
+            if "color" in self._meshlines:
+                subelement.set("color", " ".join(map(str, self._meshlines["color"])))
 
         return element
 
@@ -849,13 +859,13 @@ class Plot(PlotBase):
 
         """
         plot_id = int(elem.get("id"))
-        name = get_text(elem, 'name', '')
+        name = get_text(elem, "name", "")
         plot = cls(plot_id, name)
         if "filename" in elem.keys():
             plot.filename = elem.get("filename")
         plot.color_by = elem.get("color_by")
         plot.type = elem.get("type")
-        if plot.type == 'slice':
+        if plot.type == "slice":
             plot.basis = elem.get("basis")
 
         plot.origin = get_elem_tuple(elem, "origin", float)
@@ -867,24 +877,21 @@ class Plot(PlotBase):
         colors = {}
         for color_elem in elem.findall("color"):
             uid = int(color_elem.get("id"))
-            colors[uid] = tuple([int(x)
-                                for x in color_elem.get("rgb").split()])
+            colors[uid] = tuple([int(x) for x in color_elem.get("rgb").split()])
         plot.colors = colors
 
         # Set masking information
         mask_elem = elem.find("mask")
         if mask_elem is not None:
-            plot.mask_components = [
-                int(x) for x in mask_elem.get("components").split()]
+            plot.mask_components = [int(x) for x in mask_elem.get("components").split()]
             background = mask_elem.get("background")
             if background is not None:
-                plot.mask_background = tuple(
-                    [int(x) for x in background.split()])
+                plot.mask_background = tuple([int(x) for x in background.split()])
 
         # show overlaps
         overlap_elem = elem.find("show_overlaps")
         if overlap_elem is not None:
-            plot.show_overlaps = (overlap_elem.text in ('true', '1'))
+            plot.show_overlaps = overlap_elem.text in ("true", "1")
         overlap_color = get_elem_tuple(elem, "overlap_color")
         if overlap_color is not None:
             plot.overlap_color = overlap_color
@@ -897,20 +904,20 @@ class Plot(PlotBase):
         # Set meshlines
         mesh_elem = elem.find("meshlines")
         if mesh_elem is not None:
-            meshlines = {'type': mesh_elem.get('meshtype')}
-            if 'id' in mesh_elem.keys():
-                meshlines['id'] = int(mesh_elem.get('id'))
-            if 'linewidth' in mesh_elem.keys():
-                meshlines['linewidth'] = int(mesh_elem.get('linewidth'))
-            if 'color' in mesh_elem.keys():
-                meshlines['color'] = tuple(
-                    [int(x) for x in mesh_elem.get('color').split()]
+            meshlines = {"type": mesh_elem.get("meshtype")}
+            if "id" in mesh_elem.keys():
+                meshlines["id"] = int(mesh_elem.get("id"))
+            if "linewidth" in mesh_elem.keys():
+                meshlines["linewidth"] = int(mesh_elem.get("linewidth"))
+            if "color" in mesh_elem.keys():
+                meshlines["color"] = tuple(
+                    [int(x) for x in mesh_elem.get("color").split()]
                 )
             plot.meshlines = meshlines
 
         return plot
 
-    def to_ipython_image(self, openmc_exec='openmc', cwd='.'):
+    def to_ipython_image(self, openmc_exec="openmc", cwd="."):
         """Render plot as an image
 
         This method runs OpenMC in plotting mode to produce a .png file.
@@ -941,8 +948,12 @@ class Plot(PlotBase):
         # Return produced image
         return _get_plot_image(self, cwd)
 
-    def to_vtk(self, output: PathLike | None = None,
-               openmc_exec: str = 'openmc', cwd: str = '.'):
+    def to_vtk(
+        self,
+        output: PathLike | None = None,
+        openmc_exec: str = "openmc",
+        cwd: str = ".",
+    ):
         """Render plot as an voxel image
 
         This method runs OpenMC in plotting mode to produce a .vti file.
@@ -964,8 +975,8 @@ class Plot(PlotBase):
             Path of the .vti file produced
 
         """
-        if self.type != 'voxel':
-            raise ValueError('Generating a VTK file only works for voxel plots')
+        if self.type != "voxel":
+            raise ValueError("Generating a VTK file only works for voxel plots")
 
         # Create plots.xml
         Plots([self]).export_to_xml(cwd)
@@ -973,7 +984,9 @@ class Plot(PlotBase):
         # Run OpenMC in geometry plotting mode and produces a h5 file
         openmc.plot_geometry(False, openmc_exec, cwd)
 
-        h5_voxel_filename = self.filename if self.filename is not None else f'plot_{self.id}'
+        h5_voxel_filename = (
+            self.filename if self.filename is not None else f"plot_{self.id}"
+        )
 
         # Add file extension if not already present
         if Path(h5_voxel_filename).suffix != ".h5":
@@ -981,7 +994,7 @@ class Plot(PlotBase):
 
         h5_voxel_file = Path(cwd) / h5_voxel_filename
         if output is None:
-            output = h5_voxel_file.with_suffix('.vti')
+            output = h5_voxel_file.with_suffix(".vti")
 
         return voxel_to_vtk(h5_voxel_file, output)
 
@@ -1044,7 +1057,7 @@ class ProjectionPlot(PlotBase):
         values can be obtained using the set_transparent method.
     """
 
-    def __init__(self, plot_id=None, name=''):
+    def __init__(self, plot_id=None, name=""):
         # Initialize Plot class attributes
         super().__init__(plot_id, name)
         self._horizontal_field_of_view = 70.0
@@ -1053,7 +1066,7 @@ class ProjectionPlot(PlotBase):
         self._up = (0.0, 0.0, 1.0)
         self._orthographic_width = 0.0
         self._wireframe_thickness = 1
-        self._wireframe_color = _SVG_COLORS['black']
+        self._wireframe_color = _SVG_COLORS["black"]
         self._wireframe_domains = []
         self._xs = {}
 
@@ -1063,8 +1076,7 @@ class ProjectionPlot(PlotBase):
 
     @horizontal_field_of_view.setter
     def horizontal_field_of_view(self, horizontal_field_of_view):
-        cv.check_type('plot horizontal field of view', horizontal_field_of_view,
-                      Real)
+        cv.check_type("plot horizontal field of view", horizontal_field_of_view, Real)
         assert horizontal_field_of_view > 0.0
         assert horizontal_field_of_view < 180.0
         self._horizontal_field_of_view = horizontal_field_of_view
@@ -1075,8 +1087,8 @@ class ProjectionPlot(PlotBase):
 
     @camera_position.setter
     def camera_position(self, camera_position):
-        cv.check_type('plot camera position', camera_position, Iterable, Real)
-        cv.check_length('plot camera position', camera_position, 3)
+        cv.check_type("plot camera position", camera_position, Iterable, Real)
+        cv.check_length("plot camera position", camera_position, 3)
         self._camera_position = camera_position
 
     @property
@@ -1085,8 +1097,8 @@ class ProjectionPlot(PlotBase):
 
     @look_at.setter
     def look_at(self, look_at):
-        cv.check_type('plot look at', look_at, Iterable, Real)
-        cv.check_length('plot look at', look_at, 3)
+        cv.check_type("plot look at", look_at, Iterable, Real)
+        cv.check_length("plot look at", look_at, 3)
         self._look_at = look_at
 
     @property
@@ -1095,8 +1107,8 @@ class ProjectionPlot(PlotBase):
 
     @up.setter
     def up(self, up):
-        cv.check_type('plot up', up, Iterable, Real)
-        cv.check_length('plot up', up, 3)
+        cv.check_type("plot up", up, Iterable, Real)
+        cv.check_length("plot up", up, 3)
         self._up = up
 
     @property
@@ -1105,7 +1117,7 @@ class ProjectionPlot(PlotBase):
 
     @orthographic_width.setter
     def orthographic_width(self, orthographic_width):
-        cv.check_type('plot orthographic width', orthographic_width, Real)
+        cv.check_type("plot orthographic width", orthographic_width, Real)
         assert orthographic_width >= 0.0
         self._orthographic_width = orthographic_width
 
@@ -1115,8 +1127,7 @@ class ProjectionPlot(PlotBase):
 
     @wireframe_thickness.setter
     def wireframe_thickness(self, wireframe_thickness):
-        cv.check_type('plot wireframe thickness',
-                      wireframe_thickness, Integral)
+        cv.check_type("plot wireframe thickness", wireframe_thickness, Integral)
         assert wireframe_thickness >= 0
         self._wireframe_thickness = wireframe_thickness
 
@@ -1126,7 +1137,7 @@ class ProjectionPlot(PlotBase):
 
     @wireframe_color.setter
     def wireframe_color(self, wireframe_color):
-        self._check_color('plot wireframe color', wireframe_color)
+        self._check_color("plot wireframe color", wireframe_color)
         self._wireframe_color = wireframe_color
 
     @property
@@ -1136,14 +1147,18 @@ class ProjectionPlot(PlotBase):
     @wireframe_domains.setter
     def wireframe_domains(self, wireframe_domains):
         for region in wireframe_domains:
-            if self._color_by == 'material':
+            if self._color_by == "material":
                 if not isinstance(region, openmc.Material):
-                    raise Exception('Must provide a list of materials for \
-                            wireframe_region if color_by=Material')
+                    raise Exception(
+                        "Must provide a list of materials for \
+                            wireframe_region if color_by=Material"
+                    )
             else:
                 if not isinstance(region, openmc.Cell):
-                    raise Exception('Must provide a list of cells for \
-                            wireframe_region if color_by=cell')
+                    raise Exception(
+                        "Must provide a list of cells for \
+                            wireframe_region if color_by=cell"
+                    )
         self._wireframe_domains = wireframe_domains
 
     @property
@@ -1152,10 +1167,10 @@ class ProjectionPlot(PlotBase):
 
     @xs.setter
     def xs(self, xs):
-        cv.check_type('plot xs', xs, Mapping)
+        cv.check_type("plot xs", xs, Mapping)
         for key, value in xs.items():
-            cv.check_type('plot xs key', key, (openmc.Cell, openmc.Material))
-            cv.check_type('plot xs value', value, Real)
+            cv.check_type("plot xs key", key, (openmc.Cell, openmc.Material))
+            cv.check_type("plot xs value", value, Real)
             assert value >= 0.0
         self._xs = xs
 
@@ -1168,10 +1183,10 @@ class ProjectionPlot(PlotBase):
             The geometry for which the plot is defined
         """
 
-        cv.check_type('geometry', geometry, openmc.Geometry)
+        cv.check_type("geometry", geometry, openmc.Geometry)
 
         # Get collections of the domains which will be plotted
-        if self.color_by == 'material':
+        if self.color_by == "material":
             domains = geometry.get_all_materials().values()
         else:
             domains = geometry.get_all_cells().values()
@@ -1194,10 +1209,10 @@ class ProjectionPlot(PlotBase):
         element.set("type", "projection")
 
         subelement = ET.SubElement(element, "camera_position")
-        subelement.text = ' '.join(map(str, self._camera_position))
+        subelement.text = " ".join(map(str, self._camera_position))
 
         subelement = ET.SubElement(element, "look_at")
-        subelement.text = ' '.join(map(str, self._look_at))
+        subelement.text = " ".join(map(str, self._look_at))
 
         subelement = ET.SubElement(element, "wireframe_thickness")
         subelement.text = str(self._wireframe_thickness)
@@ -1206,23 +1221,22 @@ class ProjectionPlot(PlotBase):
         color = self._wireframe_color
         if isinstance(color, str):
             color = _SVG_COLORS[color.lower()]
-        subelement.text = ' '.join(str(x) for x in color)
+        subelement.text = " ".join(str(x) for x in color)
 
         if self._wireframe_domains:
             id_list = [x.id for x in self._wireframe_domains]
             subelement = ET.SubElement(element, "wireframe_ids")
-            subelement.text = ' '.join([str(x) for x in id_list])
+            subelement.text = " ".join([str(x) for x in id_list])
 
         # note that this differs from the slice plot colors
         # in that "xs" must also be specified
         if self._colors:
-            for domain, color in sorted(self._colors.items(),
-                                        key=lambda x: x[0].id):
+            for domain, color in sorted(self._colors.items(), key=lambda x: x[0].id):
                 subelement = ET.SubElement(element, "color")
                 subelement.set("id", str(domain.id))
                 if isinstance(color, str):
                     color = _SVG_COLORS[color.lower()]
-                subelement.set("rgb", ' '.join(str(x) for x in color))
+                subelement.set("rgb", " ".join(str(x) for x in color))
                 subelement.set("xs", str(self._xs[domain]))
 
         subelement = ET.SubElement(element, "horizontal_field_of_view")
@@ -1236,30 +1250,32 @@ class ProjectionPlot(PlotBase):
         return element
 
     def __repr__(self):
-        string = 'Projection Plot\n'
-        string += '{: <16}=\t{}\n'.format('\tID', self._id)
-        string += '{: <16}=\t{}\n'.format('\tName', self._name)
-        string += '{: <16}=\t{}\n'.format('\tFilename', self._filename)
-        string += '{: <16}=\t{}\n'.format('\tHorizontal FOV',
-                                          self._horizontal_field_of_view)
-        string += '{: <16}=\t{}\n'.format('\tOrthographic width',
-                                          self._orthographic_width)
-        string += '{: <16}=\t{}\n'.format('\tWireframe thickness',
-                                          self._wireframe_thickness)
-        string += '{: <16}=\t{}\n'.format('\tWireframe color',
-                                          self._wireframe_color)
-        string += '{: <16}=\t{}\n'.format('\tWireframe domains',
-                                          self._wireframe_domains)
-        string += '{: <16}=\t{}\n'.format('\tCamera position',
-                                          self._camera_position)
-        string += '{: <16}=\t{}\n'.format('\tLook at', self._look_at)
-        string += '{: <16}=\t{}\n'.format('\tUp', self._up)
-        string += '{: <16}=\t{}\n'.format('\tPixels', self._pixels)
-        string += '{: <16}=\t{}\n'.format('\tColor by', self._color_by)
-        string += '{: <16}=\t{}\n'.format('\tBackground', self._background)
-        string += '{: <16}=\t{}\n'.format('\tColors', self._colors)
-        string += '{: <16}=\t{}\n'.format('\tTransparencies', self._xs)
-        string += '{: <16}=\t{}\n'.format('\tLevel', self._level)
+        string = "Projection Plot\n"
+        string += "{: <16}=\t{}\n".format("\tID", self._id)
+        string += "{: <16}=\t{}\n".format("\tName", self._name)
+        string += "{: <16}=\t{}\n".format("\tFilename", self._filename)
+        string += "{: <16}=\t{}\n".format(
+            "\tHorizontal FOV", self._horizontal_field_of_view
+        )
+        string += "{: <16}=\t{}\n".format(
+            "\tOrthographic width", self._orthographic_width
+        )
+        string += "{: <16}=\t{}\n".format(
+            "\tWireframe thickness", self._wireframe_thickness
+        )
+        string += "{: <16}=\t{}\n".format("\tWireframe color", self._wireframe_color)
+        string += "{: <16}=\t{}\n".format(
+            "\tWireframe domains", self._wireframe_domains
+        )
+        string += "{: <16}=\t{}\n".format("\tCamera position", self._camera_position)
+        string += "{: <16}=\t{}\n".format("\tLook at", self._look_at)
+        string += "{: <16}=\t{}\n".format("\tUp", self._up)
+        string += "{: <16}=\t{}\n".format("\tPixels", self._pixels)
+        string += "{: <16}=\t{}\n".format("\tColor by", self._color_by)
+        string += "{: <16}=\t{}\n".format("\tBackground", self._background)
+        string += "{: <16}=\t{}\n".format("\tColors", self._colors)
+        string += "{: <16}=\t{}\n".format("\tTransparencies", self._xs)
+        string += "{: <16}=\t{}\n".format("\tLevel", self._level)
         return string
 
     @classmethod
@@ -1315,13 +1331,11 @@ class ProjectionPlot(PlotBase):
         # Set masking information
         mask_elem = elem.find("mask")
         if mask_elem is not None:
-            mask_components = [int(x)
-                               for x in mask_elem.get("components").split()]
+            mask_components = [int(x) for x in mask_elem.get("components").split()]
             # TODO: set mask components (needs geometry information)
             background = mask_elem.get("background")
             if background is not None:
-                plot.mask_background = tuple(
-                    [int(x) for x in background.split()])
+                plot.mask_background = tuple([int(x) for x in background.split()])
 
         # Set universe level
         level = elem.find("level")
@@ -1354,7 +1368,7 @@ class Plots(cv.CheckedList):
     """
 
     def __init__(self, plots=None):
-        super().__init__((Plot, ProjectionPlot), 'plots collection')
+        super().__init__((Plot, ProjectionPlot), "plots collection")
         self._plots_file = ET.Element("plots")
         if plots is not None:
             self += plots
@@ -1402,8 +1416,9 @@ class Plots(cv.CheckedList):
         for plot in self:
             plot.colorize(geometry, seed)
 
-    def highlight_domains(self, geometry, domains, seed=1,
-                          alpha=0.5, background='gray'):
+    def highlight_domains(
+        self, geometry, domains, seed=1, alpha=0.5, background="gray"
+    ):
         """Use alpha compositing to highlight one or more domains in the plot.
 
         This routine generates a color scheme and applies alpha compositing to
@@ -1458,7 +1473,7 @@ class Plots(cv.CheckedList):
 
         return self._plots_file
 
-    def export_to_xml(self, path='plots.xml'):
+    def export_to_xml(self, path="plots.xml"):
         """Export plot specifications to an XML file.
 
         Parameters
@@ -1470,12 +1485,12 @@ class Plots(cv.CheckedList):
         # Check if path is a directory
         p = Path(path)
         if p.is_dir():
-            p /= 'plots.xml'
+            p /= "plots.xml"
 
         self.to_xml_element()
         # Write the XML Tree to the plots.xml file
         tree = ET.ElementTree(self._plots_file)
-        tree.write(str(p), xml_declaration=True, encoding='utf-8')
+        tree.write(str(p), xml_declaration=True, encoding="utf-8")
 
     @classmethod
     def from_xml_element(cls, elem):
@@ -1494,16 +1509,16 @@ class Plots(cv.CheckedList):
         """
         # Generate each plot
         plots = cls()
-        for e in elem.findall('plot'):
-            plot_type = e.get('type')
-            if plot_type == 'projection':
+        for e in elem.findall("plot"):
+            plot_type = e.get("type")
+            if plot_type == "projection":
                 plots.append(ProjectionPlot.from_xml_element(e))
             else:
                 plots.append(Plot.from_xml_element(e))
         return plots
 
     @classmethod
-    def from_xml(cls, path='plots.xml'):
+    def from_xml(cls, path="plots.xml"):
         """Generate plots collection from XML file
 
         Parameters

@@ -6,8 +6,9 @@ import pytest
 from tests.testing_harness import PyAPITestHarness
 
 pytestmark = pytest.mark.skipif(
-    not openmc.lib._uwuw_enabled(),
-    reason="UWUW is not enabled.")
+    not openmc.lib._uwuw_enabled(), reason="UWUW is not enabled."
+)
+
 
 class UWUWTest(PyAPITestHarness):
     def __init__(self, *args, **kwargs):
@@ -18,8 +19,7 @@ class UWUWTest(PyAPITestHarness):
         self._model.settings.inactive = 0
         self._model.settings.particles = 100
 
-        source = openmc.IndependentSource(space=Box([-4, -4, -4],
-                                                    [ 4,  4,  4]))
+        source = openmc.IndependentSource(space=Box([-4, -4, -4], [4, 4, 4]))
         self._model.settings.source = source
 
         # geometry
@@ -28,11 +28,11 @@ class UWUWTest(PyAPITestHarness):
 
         # tally
         tally = openmc.Tally()
-        tally.scores = ['total']
+        tally.scores = ["total"]
         tally.filters = [openmc.CellFilter(1)]
         self._model.tallies = [tally]
 
 
 def test_uwuw():
-    harness = UWUWTest('statepoint.5.h5', model=openmc.Model())
+    harness = UWUWTest("statepoint.5.h5", model=openmc.Model())
     harness.main()

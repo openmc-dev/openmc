@@ -18,21 +18,22 @@ def build_mgxs_library(convert):
     groups = openmc.mgxs.EnergyGroups(group_edges=[1e-5, 0.625, 20.0e6])
 
     # Instantiate the 2-group (C5G7) cross section data
-    uo2_xsdata = openmc.XSdata('UO2', groups)
+    uo2_xsdata = openmc.XSdata("UO2", groups)
     uo2_xsdata.order = 2
-    uo2_xsdata.set_total([2., 2.])
-    uo2_xsdata.set_absorption([1., 1.])
-    scatter_matrix = np.array([[[0.75, 0.25],
-                                [0.00, 1.00]],
-                               [[0.75 / 3., 0.25 / 3.],
-                                [0.00 / 3., 1.00 / 3.]],
-                               [[0.75 / 4., 0.25 / 4.],
-                                [0.00 / 4., 1.00 / 4.]]])
+    uo2_xsdata.set_total([2.0, 2.0])
+    uo2_xsdata.set_absorption([1.0, 1.0])
+    scatter_matrix = np.array(
+        [
+            [[0.75, 0.25], [0.00, 1.00]],
+            [[0.75 / 3.0, 0.25 / 3.0], [0.00 / 3.0, 1.00 / 3.0]],
+            [[0.75 / 4.0, 0.25 / 4.0], [0.00 / 4.0, 1.00 / 4.0]],
+        ]
+    )
     scatter_matrix = np.rollaxis(scatter_matrix, 0, 3)
     uo2_xsdata.set_scatter_matrix(scatter_matrix)
     uo2_xsdata.set_fission([0.5, 0.5])
-    uo2_xsdata.set_nu_fission([1., 1.])
-    uo2_xsdata.set_chi([1., 0.])
+    uo2_xsdata.set_nu_fission([1.0, 1.0])
+    uo2_xsdata.set_chi([1.0, 0.0])
 
     mg_cross_sections_file = openmc.MGXSLibrary(groups)
     mg_cross_sections_file.add_xsdatas([uo2_xsdata])
@@ -40,22 +41,24 @@ def build_mgxs_library(convert):
     if convert is not None:
         if isinstance(convert[0], list):
             for conv in convert:
-                if conv[0] in ['legendre', 'tabular', 'histogram']:
-                    mg_cross_sections_file = \
-                        mg_cross_sections_file.convert_scatter_format(
-                            conv[0], conv[1])
-                elif conv[0] in ['angle', 'isotropic']:
-                    mg_cross_sections_file = \
+                if conv[0] in ["legendre", "tabular", "histogram"]:
+                    mg_cross_sections_file = (
+                        mg_cross_sections_file.convert_scatter_format(conv[0], conv[1])
+                    )
+                elif conv[0] in ["angle", "isotropic"]:
+                    mg_cross_sections_file = (
                         mg_cross_sections_file.convert_representation(
-                            conv[0], conv[1], conv[1])
-        elif convert[0] in ['legendre', 'tabular', 'histogram']:
-            mg_cross_sections_file = \
-                mg_cross_sections_file.convert_scatter_format(
-                    convert[0], convert[1])
-        elif convert[0] in ['angle', 'isotropic']:
-            mg_cross_sections_file = \
-                mg_cross_sections_file.convert_representation(
-                    convert[0], convert[1], convert[1])
+                            conv[0], conv[1], conv[1]
+                        )
+                    )
+        elif convert[0] in ["legendre", "tabular", "histogram"]:
+            mg_cross_sections_file = mg_cross_sections_file.convert_scatter_format(
+                convert[0], convert[1]
+            )
+        elif convert[0] in ["angle", "isotropic"]:
+            mg_cross_sections_file = mg_cross_sections_file.convert_representation(
+                convert[0], convert[1], convert[1]
+            )
 
     mg_cross_sections_file.export_to_hdf5()
 
@@ -64,11 +67,11 @@ class MGXSTestHarness(PyAPITestHarness):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Instantiate some Macroscopic Data
-        uo2_data = openmc.Macroscopic('UO2')
+        uo2_data = openmc.Macroscopic("UO2")
 
         # Instantiate some Materials and register the appropriate objects
-        mat = openmc.Material(material_id=1, name='UO2 fuel')
-        mat.set_density('macro', 1.1)
+        mat = openmc.Material(material_id=1, name="UO2 fuel")
+        mat.set_density("macro", 1.1)
         mat.add_macroscopic(uo2_data)
 
         # Instantiate a Materials collection and export to XML
@@ -77,18 +80,18 @@ class MGXSTestHarness(PyAPITestHarness):
         self._model.materials = materials_file
 
         # Instantiate ZCylinder surfaces
-        left = openmc.XPlane(surface_id=4, x0=-5., name='left')
-        right = openmc.XPlane(surface_id=5, x0=5., name='right')
-        bottom = openmc.YPlane(surface_id=6, y0=-5., name='bottom')
-        top = openmc.YPlane(surface_id=7, y0=5., name='top')
+        left = openmc.XPlane(surface_id=4, x0=-5.0, name="left")
+        right = openmc.XPlane(surface_id=5, x0=5.0, name="right")
+        bottom = openmc.YPlane(surface_id=6, y0=-5.0, name="bottom")
+        top = openmc.YPlane(surface_id=7, y0=5.0, name="top")
 
-        left.boundary_type = 'reflective'
-        right.boundary_type = 'vacuum'
-        top.boundary_type = 'reflective'
-        bottom.boundary_type = 'reflective'
+        left.boundary_type = "reflective"
+        right.boundary_type = "vacuum"
+        top.boundary_type = "reflective"
+        bottom.boundary_type = "reflective"
 
         # Instantiate Cells
-        fuel = openmc.Cell(cell_id=1, name='cell 1')
+        fuel = openmc.Cell(cell_id=1, name="cell 1")
 
         # Use surface half-spaces to define regions
         fuel.region = +left & -right & +bottom & -top
@@ -97,7 +100,7 @@ class MGXSTestHarness(PyAPITestHarness):
         fuel.fill = mat
 
         # Instantiate Universe
-        root = openmc.Universe(universe_id=0, name='root universe')
+        root = openmc.Universe(universe_id=0, name="root universe")
 
         # Register Cells with Universe
         root.add_cells([fuel])
@@ -120,31 +123,36 @@ class MGXSTestHarness(PyAPITestHarness):
 
     def _run_openmc(self):
         # Run multiple conversions to compare results
-        cases = [['legendre', 2], ['legendre', 0],
-                 ['tabular', 33], ['histogram', 32],
-                 [['tabular', 33], ['legendre', 1]],
-                 [['tabular', 33], ['tabular', 3]],
-                 [['tabular', 33], ['histogram', 32]],
-                 [['histogram', 32], ['legendre', 1]],
-                 [['histogram', 32], ['tabular', 3]],
-                 [['histogram', 32], ['histogram', 16]],
-                 ['angle', 2], [['angle', 2], ['isotropic', None]]]
+        cases = [
+            ["legendre", 2],
+            ["legendre", 0],
+            ["tabular", 33],
+            ["histogram", 32],
+            [["tabular", 33], ["legendre", 1]],
+            [["tabular", 33], ["tabular", 3]],
+            [["tabular", 33], ["histogram", 32]],
+            [["histogram", 32], ["legendre", 1]],
+            [["histogram", 32], ["tabular", 3]],
+            [["histogram", 32], ["histogram", 16]],
+            ["angle", 2],
+            [["angle", 2], ["isotropic", None]],
+        ]
 
-        outstr = ''
+        outstr = ""
         for case in cases:
             build_mgxs_library(case)
 
-            if config['mpi']:
-                mpi_args = [config['mpiexec'], '-n', config['mpi_np']]
-                openmc.run(openmc_exec=config['exe'], mpi_args=mpi_args)
+            if config["mpi"]:
+                mpi_args = [config["mpiexec"], "-n", config["mpi_np"]]
+                openmc.run(openmc_exec=config["exe"], mpi_args=mpi_args)
 
             else:
-                openmc.run(openmc_exec=config['exe'])
+                openmc.run(openmc_exec=config["exe"])
 
-            with openmc.StatePoint('statepoint.{}.h5'.format(batches)) as sp:
+            with openmc.StatePoint("statepoint.{}.h5".format(batches)) as sp:
                 # Write out k-combined.
-                outstr += 'k-combined:\n'
-                form = '{:12.6E} {:12.6E}\n'
+                outstr += "k-combined:\n"
+                form = "{:12.6E} {:12.6E}\n"
                 outstr += form.format(sp.keff.n, sp.keff.s)
 
         return outstr
@@ -153,14 +161,14 @@ class MGXSTestHarness(PyAPITestHarness):
         # Hash the results if necessary.
         if hash_output:
             sha512 = hashlib.sha512()
-            sha512.update(outstr.encode('utf-8'))
+            sha512.update(outstr.encode("utf-8"))
             outstr = sha512.hexdigest()
 
         return outstr
 
     def _cleanup(self):
         super()._cleanup()
-        f = os.path.join(os.getcwd(), 'mgxs.h5')
+        f = os.path.join(os.getcwd(), "mgxs.h5")
         if os.path.exists(f):
             os.remove(f)
 
@@ -194,5 +202,5 @@ class MGXSTestHarness(PyAPITestHarness):
 
 
 def test_mg_convert():
-    harness = MGXSTestHarness('statepoint.10.h5', model=openmc.Model())
+    harness = MGXSTestHarness("statepoint.10.h5", model=openmc.Model())
     harness.main()

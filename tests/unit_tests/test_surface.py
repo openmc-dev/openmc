@@ -17,35 +17,35 @@ def assert_infinite_bb(s):
 
 
 def test_plane():
-    s = openmc.Plane(a=1, b=2, c=-1, d=3, name='my plane')
+    s = openmc.Plane(a=1, b=2, c=-1, d=3, name="my plane")
     assert s.a == 1
     assert s.b == 2
     assert s.c == -1
     assert s.d == 3
-    assert s.boundary_type == 'transmission'
-    assert s.name == 'my plane'
-    assert s.type == 'plane'
+    assert s.boundary_type == "transmission"
+    assert s.name == "my plane"
+    assert s.type == "plane"
 
     # Generic planes don't have well-defined bounding boxes
     assert_infinite_bb(s)
 
     # evaluate method
     x, y, z = (4, 3, 6)
-    assert s.evaluate((x, y, z)) == pytest.approx(s.a*x + s.b*y + s.c*z - s.d)
+    assert s.evaluate((x, y, z)) == pytest.approx(s.a * x + s.b * y + s.c * z - s.d)
 
     # translate method
     st = s.translate((1.0, 0.0, 0.0))
     assert (st.a, st.b, st.c, st.d) == (s.a, s.b, s.c, 4)
 
     # rotate method
-    yp = openmc.YPlane(abs(s.d)/math.sqrt(s.a**2 + s.b**2 + s.c**2))
+    yp = openmc.YPlane(abs(s.d) / math.sqrt(s.a**2 + s.b**2 + s.c**2))
     psi = math.degrees(math.atan2(1, 2))
     phi = math.degrees(math.atan2(1, math.sqrt(5)))
-    sr = s.rotate((phi, 0., psi), order='zyx')
+    sr = s.rotate((phi, 0.0, psi), order="zyx")
     assert yp.normalize() == pytest.approx(sr.normalize())
     # test rotation ordering
     phi = math.degrees(math.atan2(1, math.sqrt(2)))
-    sr = s.rotate((0., -45., phi), order='xyz')
+    sr = s.rotate((0.0, -45.0, phi), order="xyz")
     assert yp.normalize() == pytest.approx(sr.normalize())
 
     # Make sure repr works
@@ -67,16 +67,16 @@ def test_plane_from_points():
 
 
 def test_xplane():
-    s = openmc.XPlane(3., boundary_type='reflective')
-    assert s.x0 == 3.
-    assert s.boundary_type == 'reflective'
+    s = openmc.XPlane(3.0, boundary_type="reflective")
+    assert s.x0 == 3.0
+    assert s.boundary_type == "reflective"
 
     # Check bounding box
     ll, ur = (+s).bounding_box
-    assert ll == pytest.approx((3., -np.inf, -np.inf))
+    assert ll == pytest.approx((3.0, -np.inf, -np.inf))
     assert np.all(np.isinf(ur))
     ll, ur = (-s).bounding_box
-    assert ur == pytest.approx((3., np.inf, np.inf))
+    assert ur == pytest.approx((3.0, np.inf, np.inf))
     assert np.all(np.isinf(ll))
 
     # __contains__ on associated half-spaces
@@ -86,7 +86,7 @@ def test_xplane():
     assert (-2, 1, 10) not in +s
 
     # evaluate method
-    assert s.evaluate((5., 0., 0.)) == pytest.approx(2.)
+    assert s.evaluate((5.0, 0.0, 0.0)) == pytest.approx(2.0)
 
     # translate method
     st = s.translate((1.0, 0.0, 0.0))
@@ -94,26 +94,26 @@ def test_xplane():
 
     # rotate method
     # make sure rotating around x axis does nothing to coefficients
-    sr = s.rotate((37.4, 0., 0.))
+    sr = s.rotate((37.4, 0.0, 0.0))
     assert s._get_base_coeffs() == pytest.approx(sr._get_base_coeffs())
     # rotating around z by 90 deg then x by -90 deg should give negative z-plane
-    sr = s.rotate((-90., 0., 90), order='zyx')
-    assert (0., 0., -1., 3.) == pytest.approx(sr._get_base_coeffs())
+    sr = s.rotate((-90.0, 0.0, 90), order="zyx")
+    assert (0.0, 0.0, -1.0, 3.0) == pytest.approx(sr._get_base_coeffs())
 
     # Make sure repr works
     repr(s)
 
 
 def test_yplane():
-    s = openmc.YPlane(y0=3.)
-    assert s.y0 == 3.
+    s = openmc.YPlane(y0=3.0)
+    assert s.y0 == 3.0
 
     # Check bounding box
     ll, ur = (+s).bounding_box
-    assert ll == pytest.approx((-np.inf, 3., -np.inf))
+    assert ll == pytest.approx((-np.inf, 3.0, -np.inf))
     assert np.all(np.isinf(ur))
-    ll, ur = s.bounding_box('-')
-    assert ur == pytest.approx((np.inf, 3., np.inf))
+    ll, ur = s.bounding_box("-")
+    assert ur == pytest.approx((np.inf, 3.0, np.inf))
     assert np.all(np.isinf(ll))
 
     # __contains__ on associated half-spaces
@@ -123,7 +123,7 @@ def test_yplane():
     assert (-2, 1, 10) not in +s
 
     # evaluate method
-    assert s.evaluate((0., 0., 0.)) == pytest.approx(-3.)
+    assert s.evaluate((0.0, 0.0, 0.0)) == pytest.approx(-3.0)
 
     # translate method
     st = s.translate((0.0, 1.0, 0.0))
@@ -131,26 +131,26 @@ def test_yplane():
 
     # rotate method
     # make sure rotating around y axis does nothing to coefficients
-    sr = s.rotate((0., -12.4, 0.), order='yxz')
+    sr = s.rotate((0.0, -12.4, 0.0), order="yxz")
     assert s._get_base_coeffs() == pytest.approx(sr._get_base_coeffs())
     # rotate around x by -90 deg and y by 90 deg should give negative x-plane
-    sr = s.rotate((-90, 90, 0.))
-    assert (-1, 0., 0., 3.) == pytest.approx(sr._get_base_coeffs())
+    sr = s.rotate((-90, 90, 0.0))
+    assert (-1, 0.0, 0.0, 3.0) == pytest.approx(sr._get_base_coeffs())
 
     # Make sure repr works
     repr(s)
 
 
 def test_zplane():
-    s = openmc.ZPlane(z0=3.)
-    assert s.z0 == 3.
+    s = openmc.ZPlane(z0=3.0)
+    assert s.z0 == 3.0
 
     # Check bounding box
     ll, ur = (+s).bounding_box
-    assert ll == pytest.approx((-np.inf, -np.inf, 3.))
+    assert ll == pytest.approx((-np.inf, -np.inf, 3.0))
     assert np.all(np.isinf(ur))
     ll, ur = (-s).bounding_box
-    assert ur == pytest.approx((np.inf, np.inf, 3.))
+    assert ur == pytest.approx((np.inf, np.inf, 3.0))
     assert np.all(np.isinf(ll))
 
     # __contains__ on associated half-spaces
@@ -160,7 +160,7 @@ def test_zplane():
     assert (-2, 1, -10) not in +s
 
     # evaluate method
-    assert s.evaluate((0., 0., 10.)) == pytest.approx(7.)
+    assert s.evaluate((0.0, 0.0, 10.0)) == pytest.approx(7.0)
 
     # translate method
     st = s.translate((0.0, 0.0, 1.0))
@@ -168,11 +168,11 @@ def test_zplane():
 
     # rotate method
     # make sure rotating around z axis does nothing to coefficients
-    sr = s.rotate((0., 0., 123), order='zxy')
+    sr = s.rotate((0.0, 0.0, 123), order="zxy")
     assert s._get_base_coeffs() == pytest.approx(sr._get_base_coeffs())
     # rotate around x by -90 deg and y by 90 deg should give negative x-plane
-    sr = s.rotate((-90, 0., 90.))
-    assert (-1., 0., 0., 3.) == pytest.approx(sr._get_base_coeffs())
+    sr = s.rotate((-90, 0.0, 90.0))
+    assert (-1.0, 0.0, 0.0, 3.0) == pytest.approx(sr._get_base_coeffs())
 
     # Make sure repr works
     repr(s)
@@ -197,16 +197,16 @@ def test_cylinder():
     # |(p - p1) ⨯ (p - p2)|^2 / |p2 - p1|^2 - r^2
     p1 = s._origin
     p2 = p1 + s._axis
-    perp = np.array((1, -2, 1))*(1 / s._axis)
+    perp = np.array((1, -2, 1)) * (1 / s._axis)
     divisor = np.linalg.norm(p2 - p1)
-    pin = p1 + 5*s._axis # point inside cylinder
-    pout = np.array((4., 0., 2.5)) # point outside the cylinder
-    pon = p1 + s.r*perp / np.linalg.norm(perp) # point on cylinder
+    pin = p1 + 5 * s._axis  # point inside cylinder
+    pout = np.array((4.0, 0.0, 2.5))  # point outside the cylinder
+    pon = p1 + s.r * perp / np.linalg.norm(perp)  # point on cylinder
     for p, fn in zip((pin, pout, pon), (np.less, np.greater, np.isclose)):
         c1 = np.linalg.norm(np.cross(p - p1, p - p2)) / divisor
-        val = c1*c1 - s.r*s.r
+        val = c1 * c1 - s.r * s.r
         p_eval = s.evaluate(p)
-        assert fn(p_eval, 0.)
+        assert fn(p_eval, 0.0)
         assert p_eval == pytest.approx(val)
 
     # translate method
@@ -244,11 +244,11 @@ def test_xcylinder():
     assert np.all(np.isinf(ll))
     assert np.all(np.isinf(ur))
     ll, ur = (-s).bounding_box
-    assert ll == pytest.approx((-np.inf, y-r, z-r))
-    assert ur == pytest.approx((np.inf, y+r, z+r))
+    assert ll == pytest.approx((-np.inf, y - r, z - r))
+    assert ur == pytest.approx((np.inf, y + r, z + r))
 
     # evaluate method
-    assert s.evaluate((0, y, z)) == pytest.approx(-r**2)
+    assert s.evaluate((0, y, z)) == pytest.approx(-(r**2))
 
     # translate method
     st = s.translate((1.0, 1.0, 1.0))
@@ -270,8 +270,8 @@ def test_xcylinder():
 
 
 def test_periodic():
-    x = openmc.XPlane(boundary_type='periodic')
-    y = openmc.YPlane(boundary_type='periodic')
+    x = openmc.XPlane(boundary_type="periodic")
+    y = openmc.YPlane(boundary_type="periodic")
     x.periodic_surface = y
     assert y.periodic_surface == x
     with pytest.raises(TypeError):
@@ -290,11 +290,11 @@ def test_ycylinder():
     assert np.all(np.isinf(ll))
     assert np.all(np.isinf(ur))
     ll, ur = (-s).bounding_box
-    assert ll == pytest.approx((x-r, -np.inf, z-r))
-    assert ur == pytest.approx((x+r, np.inf, z+r))
+    assert ll == pytest.approx((x - r, -np.inf, z - r))
+    assert ur == pytest.approx((x + r, np.inf, z + r))
 
     # evaluate method
-    assert s.evaluate((x, 0, z)) == pytest.approx(-r**2)
+    assert s.evaluate((x, 0, z)) == pytest.approx(-(r**2))
 
     # translate method
     st = s.translate((1.0, 1.0, 1.0))
@@ -327,11 +327,11 @@ def test_zcylinder():
     assert np.all(np.isinf(ll))
     assert np.all(np.isinf(ur))
     ll, ur = (-s).bounding_box
-    assert ll == pytest.approx((x-r, y-r, -np.inf))
-    assert ur == pytest.approx((x+r, y+r, np.inf))
+    assert ll == pytest.approx((x - r, y - r, -np.inf))
+    assert ur == pytest.approx((x + r, y + r, np.inf))
 
     # evaluate method
-    assert s.evaluate((x, y, 0)) == pytest.approx(-r**2)
+    assert s.evaluate((x, y, 0)) == pytest.approx(-(r**2))
 
     # translate method
     st = s.translate((1.0, 1.0, 1.0))
@@ -365,11 +365,11 @@ def test_sphere():
     assert np.all(np.isinf(ll))
     assert np.all(np.isinf(ur))
     ll, ur = (-s).bounding_box
-    assert ll == pytest.approx((x-r, y-r, z-r))
-    assert ur == pytest.approx((x+r, y+r, z+r))
+    assert ll == pytest.approx((x - r, y - r, z - r))
+    assert ur == pytest.approx((x + r, y + r, z + r))
 
     # evaluate method
-    assert s.evaluate((x, y, z)) == pytest.approx(-r**2)
+    assert s.evaluate((x, y, z)) == pytest.approx(-(r**2))
 
     # translate method
     st = s.translate((1.0, 1.0, 1.0))
@@ -452,15 +452,15 @@ def test_cone():
     # point inside
     p1 = s._origin
     d = s._axis
-    perp = np.array((1, -2, 1))*(1 / d)
+    perp = np.array((1, -2, 1)) * (1 / d)
     perp /= np.linalg.norm(perp)
-    pin = p1 + 5*d # point inside cone
-    pout = p1 + 3.2*perp # point outside cone
-    pon = p1 + 3.2*d + 3.2*math.sqrt(s.r2)*perp # point on cone
+    pin = p1 + 5 * d  # point inside cone
+    pout = p1 + 3.2 * perp  # point outside cone
+    pon = p1 + 3.2 * d + 3.2 * math.sqrt(s.r2) * perp  # point on cone
     for p, fn in zip((pin, pout, pon), (np.less, np.greater, np.isclose)):
-        val = np.sum((p - p1)**2) / (1 + s.r2) - np.sum((d @ (p - p1))**2)
+        val = np.sum((p - p1) ** 2) / (1 + s.r2) - np.sum((d @ (p - p1)) ** 2)
         p_eval = s.evaluate(p)
-        assert fn(p_eval, 0.)
+        assert fn(p_eval, 0.0)
         assert p_eval == pytest.approx(val)
 
     # translate method
@@ -507,28 +507,28 @@ def test_zcone():
 def test_quadric():
     # Make a sphere from a quadric
     r = 10.0
-    coeffs = {'a': 1, 'b': 1, 'c': 1, 'k': -r**2}
+    coeffs = {"a": 1, "b": 1, "c": 1, "k": -(r**2)}
     s = openmc.Quadric(**coeffs)
-    assert s.a == coeffs['a']
-    assert s.b == coeffs['b']
-    assert s.c == coeffs['c']
-    assert s.k == coeffs['k']
+    assert s.a == coeffs["a"]
+    assert s.b == coeffs["b"]
+    assert s.c == coeffs["c"]
+    assert s.k == coeffs["k"]
     assert openmc.Sphere(r=10).is_equal(s)
 
     # All other coeffs should be zero
-    for coeff in ('d', 'e', 'f', 'g', 'h', 'j'):
+    for coeff in ("d", "e", "f", "g", "h", "j"):
         assert getattr(s, coeff) == 0.0
 
     # Check bounding box
     assert_infinite_bb(s)
 
     # evaluate method
-    assert s.evaluate((0., 0., 0.)) == pytest.approx(coeffs['k'])
-    assert s.evaluate((1., 1., 1.)) == pytest.approx(3 + coeffs['k'])
+    assert s.evaluate((0.0, 0.0, 0.0)) == pytest.approx(coeffs["k"])
+    assert s.evaluate((1.0, 1.0, 1.0)) == pytest.approx(3 + coeffs["k"])
 
     # translate method
     st = s.translate((1.0, 1.0, 1.0))
-    for coeff in 'abcdef':
+    for coeff in "abcdef":
         assert getattr(s, coeff) == getattr(st, coeff)
     assert (st.g, st.h, st.j) == (-2, -2, -2)
     assert st.k == s.k + 3
@@ -559,7 +559,7 @@ def test_cylinder_from_points():
 
         # Points further along the line should be inside cylinder as well
         t = uniform(-100.0, 100.0)
-        p = p1 + t*(p2 - p1)
+        p = p1 + t * (p2 - p1)
         assert p in -s
 
         # Check that points outside cylinder are in positive half-space and
@@ -567,13 +567,13 @@ def test_cylinder_from_points():
         # that includes the cylinder's axis, finding the normal to the plane,
         # and using it to find a point slightly more/less than one radius away
         # from the axis.
-        plane = openmc.Plane.from_points(p1, p2, (0., 0., 0.))
+        plane = openmc.Plane.from_points(p1, p2, (0.0, 0.0, 0.0))
         n = np.array([plane.a, plane.b, plane.c])
         n /= np.linalg.norm(n)
-        assert p1 + 1.1*r*n in +s
-        assert p2 + 1.1*r*n in +s
-        assert p1 + 0.9*r*n in -s
-        assert p2 + 0.9*r*n in -s
+        assert p1 + 1.1 * r * n in +s
+        assert p2 + 1.1 * r * n in +s
+        assert p1 + 0.9 * r * n in -s
+        assert p2 + 0.9 * r * n in -s
 
 
 def test_cylinder_from_points_axis():
@@ -581,30 +581,30 @@ def test_cylinder_from_points_axis():
 
     # (x - 3)^2 + (y - 4)^2 = 2^2
     # x^2 + y^2 - 6x - 8y + 21 = 0
-    s = openmc.Cylinder.from_points((3., 4., 0.), (3., 4., 1.), 2.)
+    s = openmc.Cylinder.from_points((3.0, 4.0, 0.0), (3.0, 4.0, 1.0), 2.0)
     a, b, c, d, e, f, g, h, j, k = s._get_base_coeffs()
-    assert (a, b, c) == pytest.approx((1., 1., 0.))
-    assert (d, e, f) == pytest.approx((0., 0., 0.))
-    assert (g, h, j) == pytest.approx((-6., -8., 0.))
-    assert k == pytest.approx(21.)
+    assert (a, b, c) == pytest.approx((1.0, 1.0, 0.0))
+    assert (d, e, f) == pytest.approx((0.0, 0.0, 0.0))
+    assert (g, h, j) == pytest.approx((-6.0, -8.0, 0.0))
+    assert k == pytest.approx(21.0)
 
     # (y + 7)^2 + (z - 1)^2 = 3^2
     # y^2 + z^2 + 14y - 2z + 41 = 0
-    s = openmc.Cylinder.from_points((0., -7, 1.), (1., -7., 1.), 3.)
+    s = openmc.Cylinder.from_points((0.0, -7, 1.0), (1.0, -7.0, 1.0), 3.0)
     a, b, c, d, e, f, g, h, j, k = s._get_base_coeffs()
-    assert (a, b, c) == pytest.approx((0., 1., 1.))
-    assert (d, e, f) == pytest.approx((0., 0., 0.))
-    assert (g, h, j) == pytest.approx((0., 14., -2.))
-    assert k == 41.
+    assert (a, b, c) == pytest.approx((0.0, 1.0, 1.0))
+    assert (d, e, f) == pytest.approx((0.0, 0.0, 0.0))
+    assert (g, h, j) == pytest.approx((0.0, 14.0, -2.0))
+    assert k == 41.0
 
     # (x - 2)^2 + (z - 5)^2 = 4^2
     # x^2 + z^2 - 4x - 10z + 13 = 0
-    s = openmc.Cylinder.from_points((2., 0., 5.), (2., 1., 5.), 4.)
+    s = openmc.Cylinder.from_points((2.0, 0.0, 5.0), (2.0, 1.0, 5.0), 4.0)
     a, b, c, d, e, f, g, h, j, k = s._get_base_coeffs()
-    assert (a, b, c) == pytest.approx((1., 0., 1.))
-    assert (d, e, f) == pytest.approx((0., 0., 0.))
-    assert (g, h, j) == pytest.approx((-4., 0., -10.))
-    assert k == pytest.approx(13.)
+    assert (a, b, c) == pytest.approx((1.0, 0.0, 1.0))
+    assert (d, e, f) == pytest.approx((0.0, 0.0, 0.0))
+    assert (g, h, j) == pytest.approx((-4.0, 0.0, -10.0))
+    assert k == pytest.approx(13.0)
 
 
 def torus_common(center, R, r1, r2, cls):
@@ -631,14 +631,19 @@ def torus_common(center, R, r1, r2, cls):
     assert st.c == s.c
 
     # trivial rotations
-    for rotation in [(0., 0., 0.), (180., 0., 0.), (0., 180., 0.), (0., 0., 180.)]:
+    for rotation in [
+        (0.0, 0.0, 0.0),
+        (180.0, 0.0, 0.0),
+        (0.0, 180.0, 0.0),
+        (0.0, 0.0, 180.0),
+    ]:
         sr = s.rotate(rotation)
         assert type(sr) == type(s)
         assert (sr.a, sr.b, sr.c) == (s.a, s.b, s.c)
 
     # can't do generic rotate at present
     with pytest.raises(NotImplementedError):
-        s.rotate((0., 45., 0.))
+        s.rotate((0.0, 45.0, 0.0))
 
     # Check bounding box
     ll, ur = (+s).bounding_box
@@ -683,9 +688,9 @@ def test_xtorus():
     assert s.evaluate((x + r1 + 0.01, y + R, z)) > 0.0
 
     # rotation
-    sr = s.rotate((0., 0., 90.))
+    sr = s.rotate((0.0, 0.0, 90.0))
     assert isinstance(sr, openmc.YTorus)
-    sr = s.rotate((0., 90., 0.))
+    sr = s.rotate((0.0, 90.0, 0.0))
     assert isinstance(sr, openmc.ZTorus)
 
 
@@ -716,9 +721,9 @@ def test_ytorus():
     assert s.evaluate((x + R, y + r1 + 0.01, z)) > 0.0
 
     # rotation
-    sr = s.rotate((90., 0., 0.))
+    sr = s.rotate((90.0, 0.0, 0.0))
     assert isinstance(sr, openmc.ZTorus)
-    sr = s.rotate((0., 0., 90.))
+    sr = s.rotate((0.0, 0.0, 90.0))
     assert isinstance(sr, openmc.XTorus)
 
 
@@ -749,7 +754,7 @@ def test_ztorus():
     assert s.evaluate((x, y + R, z + r1 + 0.01)) > 0.0
 
     # rotation
-    sr = s.rotate((90., 0., 0.))
+    sr = s.rotate((90.0, 0.0, 0.0))
     assert isinstance(sr, openmc.YTorus)
-    sr = s.rotate((0., 90., 0.))
+    sr = s.rotate((0.0, 90.0, 0.0))
     assert isinstance(sr, openmc.XTorus)

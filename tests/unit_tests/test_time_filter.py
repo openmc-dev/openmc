@@ -18,16 +18,16 @@ def test_time_filter_basics():
 
     # to_xml_element()
     elem = f.to_xml_element()
-    assert elem.tag == 'filter'
-    assert elem.attrib['type'] == 'time'
+    assert elem.tag == "filter"
+    assert elem.attrib["type"] == "time"
 
 
 def time(particle, distance, E):
     """Return the time it takes a particle at a given energy to travel a certain
     distance"""
-    if particle == 'neutron':
+    if particle == "neutron":
         mass = 939.56542052e6  # eV/c²
-    elif particle == 'photon':
+    elif particle == "photon":
         mass = 0.0
 
     # Calculate speed via v = c * sqrt(1 - γ^-2)
@@ -36,34 +36,34 @@ def time(particle, distance, E):
     return distance / velocity
 
 
-@pytest.fixture(params=['neutron', 'photon'])
+@pytest.fixture(params=["neutron", "photon"])
 def model(request):
     # Select random sphere radius, source position, and source energy
-    r = uniform(0., 2.)
-    x = uniform(2., 10.)
-    E = uniform(0., 20.0e6)
+    r = uniform(0.0, 2.0)
+    x = uniform(2.0, 10.0)
+    E = uniform(0.0, 20.0e6)
 
     # Create model
     model = openmc.Model()
     mat = openmc.Material()
-    mat.add_nuclide('Zr90', 1.0)
-    mat.set_density('g/cm3', 1.0)
+    mat.add_nuclide("Zr90", 1.0)
+    mat.set_density("g/cm3", 1.0)
     model.materials.append(mat)
     inner_sphere = openmc.Sphere(r=r)
-    outer_sphere = openmc.Sphere(r=10.0, boundary_type='vacuum')
+    outer_sphere = openmc.Sphere(r=10.0, boundary_type="vacuum")
     center_cell = openmc.Cell(fill=mat, region=-inner_sphere)
     outer_void = openmc.Cell(region=+inner_sphere & -outer_sphere)
     model.geometry = openmc.Geometry([center_cell, outer_void])
     model.settings = openmc.Settings()
-    model.settings.run_mode = 'fixed source'
+    model.settings.run_mode = "fixed source"
     model.settings.particles = 1000
     model.settings.batches = 20
     particle = request.param
     model.settings.source = openmc.IndependentSource(
-        space=openmc.stats.Point((x, 0., 0.)),
-        angle=openmc.stats.Monodirectional([-1., 0., 0.]),
+        space=openmc.stats.Point((x, 0.0, 0.0)),
+        angle=openmc.stats.Monodirectional([-1.0, 0.0, 0.0]),
         energy=openmc.stats.Discrete([E], [1.0]),
-        particle=particle
+        particle=particle,
     )
 
     # Calculate time it will take neutrons to reach sphere
@@ -71,40 +71,40 @@ def model(request):
 
     # Create tally with time filter
     tally = openmc.Tally()
-    tally.filters = [openmc.TimeFilter([0.0, t0, 2*t0])]
-    tally.scores = ['total']
+    tally.filters = [openmc.TimeFilter([0.0, t0, 2 * t0])]
+    tally.scores = ["total"]
     model.tallies.append(tally)
     return model
 
 
-@pytest.fixture(params=['neutron', 'photon'])
+@pytest.fixture(params=["neutron", "photon"])
 def model_surf(request):
     # Select random distance and source energy
-    x = uniform(50., 100.)
-    E = uniform(0., 20.0e6)
+    x = uniform(50.0, 100.0)
+    E = uniform(0.0, 20.0e6)
 
     # Create model
     model = openmc.Model()
     mat = openmc.Material()
-    mat.add_nuclide('Zr90', 1.0)
-    mat.set_density('g/cm3', 1.0)
+    mat.add_nuclide("Zr90", 1.0)
+    mat.set_density("g/cm3", 1.0)
     model.materials.append(mat)
-    left = openmc.XPlane(-1., boundary_type='vacuum')
-    black_surface = openmc.XPlane(x, boundary_type='vacuum')
+    left = openmc.XPlane(-1.0, boundary_type="vacuum")
+    black_surface = openmc.XPlane(x, boundary_type="vacuum")
     right = openmc.XPlane(x + 1)
     void_cell = openmc.Cell(region=+left & -black_surface)
     black_cell = openmc.Cell(region=+black_surface & -right)
     model.geometry = openmc.Geometry([void_cell, black_cell])
     model.settings = openmc.Settings()
-    model.settings.run_mode = 'fixed source'
+    model.settings.run_mode = "fixed source"
     model.settings.particles = 1000
     model.settings.batches = 20
     particle = request.param
     model.settings.source = openmc.IndependentSource(
-        space=openmc.stats.Point((0., 0., 0.)),
-        angle=openmc.stats.Monodirectional([1., 0., 0.]),
+        space=openmc.stats.Point((0.0, 0.0, 0.0)),
+        angle=openmc.stats.Monodirectional([1.0, 0.0, 0.0]),
         energy=openmc.stats.Discrete([E], [1.0]),
-        particle=particle
+        particle=particle,
     )
 
     # Calculate time it will take neutrons to reach purely-absorbing surface
@@ -114,9 +114,9 @@ def model_surf(request):
     tally = openmc.Tally()
     tally.filters = [
         openmc.SurfaceFilter([black_surface]),
-        openmc.TimeFilter([0.0, t0*0.999, t0*1.001, 100.0])
+        openmc.TimeFilter([0.0, t0 * 0.999, t0 * 1.001, 100.0]),
     ]
-    tally.scores = ['current']
+    tally.scores = ["current"]
     model.tallies.append(tally)
     return model
 
@@ -156,27 +156,26 @@ def test_small_time_interval(run_in_tmpdir):
     # of the photon, the time intervals are on the order of 1e-9 seconds, which
     # are effectively 0 when compared to the starting time of the photon.
     mat = openmc.Material()
-    mat.add_element('N', 1.0)
-    mat.set_density('g/cm3', 0.001)
-    sph = openmc.Sphere(r=5.0, boundary_type='vacuum')
+    mat.add_element("N", 1.0)
+    mat.set_density("g/cm3", 0.001)
+    sph = openmc.Sphere(r=5.0, boundary_type="vacuum")
     cell = openmc.Cell(fill=mat, region=-sph)
     model = openmc.Model()
     model.geometry = openmc.Geometry([cell])
     model.settings.particles = 100
     model.settings.batches = 10
-    model.settings.run_mode = 'fixed source'
+    model.settings.run_mode = "fixed source"
     model.settings.source = openmc.IndependentSource(
-        time=openmc.stats.Discrete([1.0e8], [1.0]),
-        particle='photon'
+        time=openmc.stats.Discrete([1.0e8], [1.0]), particle="photon"
     )
 
     # Add tallies with and without a time filter that should match all particles
     time_filter = openmc.TimeFilter([0.0, 1.0e100])
     tally_with_filter = openmc.Tally()
     tally_with_filter.filters = [time_filter]
-    tally_with_filter.scores = ['flux']
+    tally_with_filter.scores = ["flux"]
     tally_without_filter = openmc.Tally()
-    tally_without_filter.scores = ['flux']
+    tally_without_filter.scores = ["flux"]
     model.tallies.extend([tally_with_filter, tally_without_filter])
 
     # Run the model and make sure the two tallies match

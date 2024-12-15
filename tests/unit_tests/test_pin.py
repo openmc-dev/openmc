@@ -44,7 +44,7 @@ def test_failure(pin_mats, good_radii):
 
     # Incorrect lengths
     with pytest.raises(ValueError, match="length"):
-        pin(good_surfaces[:len(pin_mats) - 2], pin_mats)
+        pin(good_surfaces[: len(pin_mats) - 2], pin_mats)
 
     # Non-positive radii
     rad = [openmc.ZCylinder(r=-0.1)] + good_surfaces[1:]
@@ -69,15 +69,19 @@ def test_failure(pin_mats, good_radii):
 def test_pins_of_universes(pin_mats, good_radii):
     """Build a pin with a Universe in one ring"""
     u1 = openmc.Universe(cells=[openmc.Cell(fill=pin_mats[1])])
-    new_items = pin_mats[:1] + (u1, ) + pin_mats[2:]
+    new_items = pin_mats[:1] + (u1,) + pin_mats[2:]
     new_pin = pin(
-        [openmc.ZCylinder(r=r) for r in good_radii], new_items,
-        subdivisions={0: 2}, divide_vols=True)
+        [openmc.ZCylinder(r=r) for r in good_radii],
+        new_items,
+        subdivisions={0: 2},
+        divide_vols=True,
+    )
     assert len(new_pin.cells) == len(pin_mats) + 1
 
 
 @pytest.mark.parametrize(
-    "surf_type", [openmc.ZCylinder, openmc.XCylinder, openmc.YCylinder])
+    "surf_type", [openmc.ZCylinder, openmc.XCylinder, openmc.YCylinder]
+)
 def test_subdivide(pin_mats, good_radii, surf_type):
     """Test the subdivision with various orientations"""
     surfs = [surf_type(r=r) for r in good_radii]
@@ -112,6 +116,8 @@ def test_subdivide(pin_mats, good_radii, surf_type):
 
     # check volumes of new rings
     radii = get_pin_radii(new_pin)
-    sqrs = np.square(radii[:N + 1])
-    assert np.all(sqrs[1:] - sqrs[:-1] == pytest.approx(
-        (good_radii[1] ** 2 - good_radii[0] ** 2) / N))
+    sqrs = np.square(radii[: N + 1])
+    assert np.all(
+        sqrs[1:] - sqrs[:-1]
+        == pytest.approx((good_radii[1] ** 2 - good_radii[0] ** 2) / N)
+    )

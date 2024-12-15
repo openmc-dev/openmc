@@ -13,11 +13,11 @@ from .mgxs import _DOMAIN_TO_FILTER
 
 # Supported cross section types
 MDGXS_TYPES = (
-    'delayed-nu-fission',
-    'chi-delayed',
-    'beta',
-    'decay-rate',
-    'delayed-nu-fission matrix'
+    "delayed-nu-fission",
+    "chi-delayed",
+    "beta",
+    "decay-rate",
+    "delayed-nu-fission matrix",
 )
 
 # Maximum number of delayed groups, from include/openmc/constants.h
@@ -127,11 +127,26 @@ class MDGXS(MGXS):
 
     """
 
-    def __init__(self, domain=None, domain_type=None, energy_groups=None,
-                 delayed_groups=None, by_nuclide=False, name='',
-                 num_polar=1, num_azimuthal=1):
-        super().__init__(domain, domain_type, energy_groups, by_nuclide, name,
-                         num_polar, num_azimuthal)
+    def __init__(
+        self,
+        domain=None,
+        domain_type=None,
+        energy_groups=None,
+        delayed_groups=None,
+        by_nuclide=False,
+        name="",
+        num_polar=1,
+        num_azimuthal=1,
+    ):
+        super().__init__(
+            domain,
+            domain_type,
+            energy_groups,
+            by_nuclide,
+            name,
+            num_polar,
+            num_azimuthal,
+        )
 
         self._delayed_groups = None
 
@@ -191,14 +206,15 @@ class MDGXS(MGXS):
 
         if delayed_groups is not None:
 
-            cv.check_type('delayed groups', delayed_groups, list, int)
-            cv.check_greater_than('num delayed groups', len(delayed_groups), 0)
+            cv.check_type("delayed groups", delayed_groups, list, int)
+            cv.check_greater_than("num delayed groups", len(delayed_groups), 0)
 
             # Check that the groups are within [1, MAX_DELAYED_GROUPS]
             for group in delayed_groups:
-                cv.check_greater_than('delayed group', group, 0)
-                cv.check_less_than('delayed group', group, MAX_DELAYED_GROUPS,
-                                   equality=True)
+                cv.check_greater_than("delayed group", group, 0)
+                cv.check_less_than(
+                    "delayed group", group, MAX_DELAYED_GROUPS, equality=True
+                )
 
         self._delayed_groups = delayed_groups
 
@@ -224,9 +240,17 @@ class MDGXS(MGXS):
         return self._add_angle_filters(filters)
 
     @staticmethod
-    def get_mgxs(mdgxs_type, domain=None, domain_type=None, energy_groups=None,
-                 delayed_groups=None, by_nuclide=False, name='',
-                 num_polar=1, num_azimuthal=1):
+    def get_mgxs(
+        mdgxs_type,
+        domain=None,
+        domain_type=None,
+        energy_groups=None,
+        delayed_groups=None,
+        by_nuclide=False,
+        name="",
+        num_polar=1,
+        num_azimuthal=1,
+    ):
         """Return a MDGXS subclass object for some energy group structure within
         some spatial domain for some reaction type.
 
@@ -266,21 +290,22 @@ class MDGXS(MGXS):
 
         """
 
-        cv.check_value('mdgxs_type', mdgxs_type, MDGXS_TYPES)
+        cv.check_value("mdgxs_type", mdgxs_type, MDGXS_TYPES)
 
-        if mdgxs_type == 'delayed-nu-fission':
-            mdgxs = DelayedNuFissionXS(domain, domain_type, energy_groups,
-                                       delayed_groups)
-        elif mdgxs_type == 'chi-delayed':
-            mdgxs = ChiDelayed(domain, domain_type, energy_groups,
-                               delayed_groups)
-        elif mdgxs_type == 'beta':
+        if mdgxs_type == "delayed-nu-fission":
+            mdgxs = DelayedNuFissionXS(
+                domain, domain_type, energy_groups, delayed_groups
+            )
+        elif mdgxs_type == "chi-delayed":
+            mdgxs = ChiDelayed(domain, domain_type, energy_groups, delayed_groups)
+        elif mdgxs_type == "beta":
             mdgxs = Beta(domain, domain_type, energy_groups, delayed_groups)
-        elif mdgxs_type == 'decay-rate':
+        elif mdgxs_type == "decay-rate":
             mdgxs = DecayRate(domain, domain_type, energy_groups, delayed_groups)
-        elif mdgxs_type == 'delayed-nu-fission matrix':
-            mdgxs = DelayedNuFissionMatrixXS(domain, domain_type, energy_groups,
-                                             delayed_groups)
+        elif mdgxs_type == "delayed-nu-fission matrix":
+            mdgxs = DelayedNuFissionMatrixXS(
+                domain, domain_type, energy_groups, delayed_groups
+            )
 
         mdgxs.by_nuclide = by_nuclide
         mdgxs.name = name
@@ -288,9 +313,18 @@ class MDGXS(MGXS):
         mdgxs.num_azimuthal = num_azimuthal
         return mdgxs
 
-    def get_xs(self, groups='all', subdomains='all', nuclides='all',
-               xs_type='macro', order_groups='increasing',
-               value='mean', delayed_groups='all', squeeze=True, **kwargs):
+    def get_xs(
+        self,
+        groups="all",
+        subdomains="all",
+        nuclides="all",
+        xs_type="macro",
+        order_groups="increasing",
+        value="mean",
+        delayed_groups="all",
+        squeeze=True,
+        **kwargs,
+    ):
         """Returns an array of multi-delayed-group cross sections.
 
         This method constructs a 4D NumPy array for the requested
@@ -338,14 +372,16 @@ class MDGXS(MGXS):
 
         """
 
-        cv.check_value('value', value, ['mean', 'std_dev', 'rel_err'])
-        cv.check_value('xs_type', xs_type, ['macro', 'micro'])
+        cv.check_value("value", value, ["mean", "std_dev", "rel_err"])
+        cv.check_value("xs_type", xs_type, ["macro", "micro"])
 
         # FIXME: Unable to get microscopic xs for mesh domain because the mesh
         # cells do not know the nuclide densities in each mesh cell.
-        if self.domain_type == 'mesh' and xs_type == 'micro':
-            msg = 'Unable to get micro xs for mesh domain since the mesh ' \
-                  'cells do not know the nuclide densities in each mesh cell.'
+        if self.domain_type == "mesh" and xs_type == "micro":
+            msg = (
+                "Unable to get micro xs for mesh domain since the mesh "
+                "cells do not know the nuclide densities in each mesh cell."
+            )
             raise ValueError(msg)
 
         filters = []
@@ -353,65 +389,67 @@ class MDGXS(MGXS):
 
         # Construct a collection of the domain filter bins
         if not isinstance(subdomains, str):
-            cv.check_iterable_type('subdomains', subdomains, Integral,
-                                   max_depth=3)
+            cv.check_iterable_type("subdomains", subdomains, Integral, max_depth=3)
             for subdomain in subdomains:
                 filters.append(_DOMAIN_TO_FILTER[self.domain_type])
                 filter_bins.append((subdomain,))
 
         # Construct list of energy group bounds tuples for all requested groups
         if not isinstance(groups, str):
-            cv.check_iterable_type('groups', groups, Integral)
+            cv.check_iterable_type("groups", groups, Integral)
             for group in groups:
                 filters.append(openmc.EnergyFilter)
-                filter_bins.append(
-                    (self.energy_groups.get_group_bounds(group),))
+                filter_bins.append((self.energy_groups.get_group_bounds(group),))
 
         # Construct list of delayed group tuples for all requested groups
         if not isinstance(delayed_groups, str):
-            cv.check_type('delayed groups', delayed_groups, list, int)
+            cv.check_type("delayed groups", delayed_groups, list, int)
             for delayed_group in delayed_groups:
                 filters.append(openmc.DelayedGroupFilter)
                 filter_bins.append((delayed_group,))
 
         # Construct a collection of the nuclides to retrieve from the xs tally
         if self.by_nuclide:
-            if nuclides == 'all' or nuclides == 'sum' or nuclides == ['sum']:
+            if nuclides == "all" or nuclides == "sum" or nuclides == ["sum"]:
                 query_nuclides = self.get_nuclides()
             else:
                 query_nuclides = nuclides
         else:
-            query_nuclides = ['total']
+            query_nuclides = ["total"]
 
         # If user requested the sum for all nuclides, use tally summation
-        if nuclides == 'sum' or nuclides == ['sum']:
+        if nuclides == "sum" or nuclides == ["sum"]:
             xs_tally = self.xs_tally.summation(nuclides=query_nuclides)
-            xs = xs_tally.get_values(filters=filters,
-                                     filter_bins=filter_bins, value=value)
+            xs = xs_tally.get_values(
+                filters=filters, filter_bins=filter_bins, value=value
+            )
         else:
-            xs = self.xs_tally.get_values(filters=filters,
-                                          filter_bins=filter_bins,
-                                          nuclides=query_nuclides, value=value)
+            xs = self.xs_tally.get_values(
+                filters=filters,
+                filter_bins=filter_bins,
+                nuclides=query_nuclides,
+                value=value,
+            )
 
         # Divide by atom number densities for microscopic cross sections
-        if xs_type == 'micro' and self._divide_by_density:
+        if xs_type == "micro" and self._divide_by_density:
             if self.by_nuclide:
                 densities = self.get_nuclide_densities(nuclides)
             else:
-                densities = self.get_nuclide_densities('sum')
-            if value == 'mean' or value == 'std_dev':
+                densities = self.get_nuclide_densities("sum")
+            if value == "mean" or value == "std_dev":
                 xs /= densities[np.newaxis, :, np.newaxis]
 
         # Eliminate the trivial score dimension
         xs = np.squeeze(xs, axis=len(xs.shape) - 1)
         xs = np.nan_to_num(xs)
 
-        if groups == 'all':
+        if groups == "all":
             num_groups = self.num_groups
         else:
             num_groups = len(groups)
 
-        if delayed_groups == 'all':
+        if delayed_groups == "all":
             num_delayed_groups = self.num_delayed_groups
         else:
             num_delayed_groups = len(delayed_groups)
@@ -419,12 +457,18 @@ class MDGXS(MGXS):
         # Reshape tally data array with separate axes for domain,
         # energy groups, delayed groups, and nuclides
         # Accommodate the polar and azimuthal bins if needed
-        num_subdomains = \
-            int(xs.shape[0] / (num_groups * num_delayed_groups *
-                               self.num_polar * self.num_azimuthal))
+        num_subdomains = int(
+            xs.shape[0]
+            / (num_groups * num_delayed_groups * self.num_polar * self.num_azimuthal)
+        )
         if self.num_polar > 1 or self.num_azimuthal > 1:
-            new_shape = (self.num_polar, self.num_azimuthal, num_subdomains,
-                         num_delayed_groups, num_groups)
+            new_shape = (
+                self.num_polar,
+                self.num_azimuthal,
+                num_subdomains,
+                num_delayed_groups,
+                num_groups,
+            )
         else:
             new_shape = (num_subdomains, num_delayed_groups, num_groups)
         new_shape += xs.shape[1:]
@@ -432,7 +476,7 @@ class MDGXS(MGXS):
 
         # Reverse data if user requested increasing energy groups since
         # tally data is stored in order of increasing energies
-        if order_groups == 'increasing':
+        if order_groups == "increasing":
             xs = xs[..., ::-1, :]
 
         if squeeze:
@@ -472,9 +516,9 @@ class MDGXS(MGXS):
 
         """
 
-        cv.check_iterable_type('nuclides', nuclides, str)
-        cv.check_iterable_type('energy_groups', groups, Integral)
-        cv.check_type('delayed groups', delayed_groups, list, int)
+        cv.check_iterable_type("nuclides", nuclides, str)
+        cv.check_iterable_type("energy_groups", groups, Integral)
+        cv.check_type("delayed groups", delayed_groups, list, int)
 
         # Build lists of filters and filter bins to slice
         filters = []
@@ -501,9 +545,9 @@ class MDGXS(MGXS):
         for tally_type, tally in slice_xs.tallies.items():
             slice_nuclides = [nuc for nuc in nuclides if nuc in tally.nuclides]
             if filters != []:
-                tally_slice = tally.get_slice(filters=filters,
-                                              filter_bins=filter_bins,
-                                              nuclides=slice_nuclides)
+                tally_slice = tally.get_slice(
+                    filters=filters, filter_bins=filter_bins, nuclides=slice_nuclides
+                )
             else:
                 tally_slice = tally.get_slice(nuclides=slice_nuclides)
             slice_xs.tallies[tally_type] = tally_slice
@@ -552,12 +596,13 @@ class MDGXS(MGXS):
 
         # Merge delayed groups
         if self.delayed_groups != other.delayed_groups:
-            merged_mdgxs.delayed_groups = list(set(self.delayed_groups +
-                                                   other.delayed_groups))
+            merged_mdgxs.delayed_groups = list(
+                set(self.delayed_groups + other.delayed_groups)
+            )
 
         return merged_mdgxs
 
-    def print_xs(self, subdomains='all', nuclides='all', xs_type='macro'):
+    def print_xs(self, subdomains="all", nuclides="all", xs_type="macro"):
         """Print a string representation for the multi-group cross section.
 
         Parameters
@@ -583,10 +628,10 @@ class MDGXS(MGXS):
 
         # Construct a collection of the subdomains to report
         if not isinstance(subdomains, str):
-            cv.check_iterable_type('subdomains', subdomains, Integral)
-        elif self.domain_type == 'distribcell':
+            cv.check_iterable_type("subdomains", subdomains, Integral)
+        elif self.domain_type == "distribcell":
             subdomains = np.arange(self.num_subdomains, dtype=int)
-        elif self.domain_type == 'mesh':
+        elif self.domain_type == "mesh":
             xyz = [range(1, x + 1) for x in self.domain.dimension]
             subdomains = list(itertools.product(*xyz))
         else:
@@ -594,25 +639,25 @@ class MDGXS(MGXS):
 
         # Construct a collection of the nuclides to report
         if self.by_nuclide:
-            if nuclides == 'all':
+            if nuclides == "all":
                 nuclides = self.get_nuclides()
-            elif nuclides == 'sum':
-                nuclides = ['sum']
+            elif nuclides == "sum":
+                nuclides = ["sum"]
             else:
-                cv.check_iterable_type('nuclides', nuclides, str)
+                cv.check_iterable_type("nuclides", nuclides, str)
         else:
-            nuclides = ['sum']
+            nuclides = ["sum"]
 
-        cv.check_value('xs_type', xs_type, ['macro', 'micro'])
+        cv.check_value("xs_type", xs_type, ["macro", "micro"])
 
         # Build header for string with type and domain info
-        string = 'Multi-Delayed-Group XS\n'
-        string += '{0: <16}=\t{1}\n'.format('\tReaction Type', self.mgxs_type)
-        string += '{0: <16}=\t{1}\n'.format('\tDomain Type', self.domain_type)
-        string += '{0: <16}=\t{1}\n'.format('\tDomain ID', self.domain.id)
+        string = "Multi-Delayed-Group XS\n"
+        string += "{0: <16}=\t{1}\n".format("\tReaction Type", self.mgxs_type)
+        string += "{0: <16}=\t{1}\n".format("\tDomain Type", self.domain_type)
+        string += "{0: <16}=\t{1}\n".format("\tDomain ID", self.domain.id)
 
         # Generate the header for an individual XS
-        xs_header = f'\tCross Sections [{self.get_units(xs_type)}]:'
+        xs_header = f"\tCross Sections [{self.get_units(xs_type)}]:"
 
         # If cross section data has not been computed, only print string header
         if self.tallies is None:
@@ -621,83 +666,100 @@ class MDGXS(MGXS):
 
         # Set polar/azimuthal bins
         if self.num_polar > 1 or self.num_azimuthal > 1:
-            polar_bins = np.linspace(0., np.pi, num=self.num_polar + 1,
-                                     endpoint=True)
-            azimuthal_bins = np.linspace(-np.pi, np.pi,
-                                         num=self.num_azimuthal + 1,
-                                         endpoint=True)
+            polar_bins = np.linspace(0.0, np.pi, num=self.num_polar + 1, endpoint=True)
+            azimuthal_bins = np.linspace(
+                -np.pi, np.pi, num=self.num_azimuthal + 1, endpoint=True
+            )
 
         # Loop over all subdomains
         for subdomain in subdomains:
 
-            if self.domain_type == 'distribcell' or self.domain_type == 'mesh':
-                string += '{0: <16}=\t{1}\n'.format('\tSubdomain', subdomain)
+            if self.domain_type == "distribcell" or self.domain_type == "mesh":
+                string += "{0: <16}=\t{1}\n".format("\tSubdomain", subdomain)
 
             # Loop over all Nuclides
             for nuclide in nuclides:
 
                 # Build header for nuclide type
-                if nuclide != 'sum':
-                    string += '{0: <16}=\t{1}\n'.format('\tNuclide', nuclide)
+                if nuclide != "sum":
+                    string += "{0: <16}=\t{1}\n".format("\tNuclide", nuclide)
 
                 # Add the cross section header
-                string += f'{xs_header: <16}\n'
+                string += f"{xs_header: <16}\n"
 
                 for delayed_group in self.delayed_groups:
 
-                    template = '{0: <12}Delayed Group {1}:\t'
-                    string += template.format('', delayed_group)
-                    string += '\n'
+                    template = "{0: <12}Delayed Group {1}:\t"
+                    string += template.format("", delayed_group)
+                    string += "\n"
 
-                    template = '{0: <12}Group {1} [{2: <10} - {3: <10}eV]:\t'
+                    template = "{0: <12}Group {1} [{2: <10} - {3: <10}eV]:\t"
 
-                    average_xs = self.get_xs(nuclides=[nuclide],
-                                             subdomains=[subdomain],
-                                             xs_type=xs_type, value='mean',
-                                             delayed_groups=[delayed_group])
-                    rel_err_xs = self.get_xs(nuclides=[nuclide],
-                                             subdomains=[subdomain],
-                                             xs_type=xs_type, value='rel_err',
-                                             delayed_groups=[delayed_group])
-                    rel_err_xs = rel_err_xs * 100.
+                    average_xs = self.get_xs(
+                        nuclides=[nuclide],
+                        subdomains=[subdomain],
+                        xs_type=xs_type,
+                        value="mean",
+                        delayed_groups=[delayed_group],
+                    )
+                    rel_err_xs = self.get_xs(
+                        nuclides=[nuclide],
+                        subdomains=[subdomain],
+                        xs_type=xs_type,
+                        value="rel_err",
+                        delayed_groups=[delayed_group],
+                    )
+                    rel_err_xs = rel_err_xs * 100.0
 
                     if self.num_polar > 1 or self.num_azimuthal > 1:
                         # Loop over polar, azimuthal, and energy group ranges
                         for pol in range(len(polar_bins) - 1):
-                            pol_low, pol_high = polar_bins[pol: pol + 2]
+                            pol_low, pol_high = polar_bins[pol : pol + 2]
                             for azi in range(len(azimuthal_bins) - 1):
-                                azi_low, azi_high = azimuthal_bins[azi: azi + 2]
-                                string += '\t\tPolar Angle: [{0:5f} - {1:5f}]'.format(
-                                    pol_low, pol_high) + \
-                                    '\tAzimuthal Angle: [{0:5f} - {1:5f}]'.format(
-                                    azi_low, azi_high) + '\n'
+                                azi_low, azi_high = azimuthal_bins[azi : azi + 2]
+                                string += (
+                                    "\t\tPolar Angle: [{0:5f} - {1:5f}]".format(
+                                        pol_low, pol_high
+                                    )
+                                    + "\tAzimuthal Angle: [{0:5f} - {1:5f}]".format(
+                                        azi_low, azi_high
+                                    )
+                                    + "\n"
+                                )
                                 for group in range(1, self.num_groups + 1):
-                                    bounds = \
-                                        self.energy_groups.get_group_bounds(group)
-                                    string += '\t' + template.format('', group,
-                                                                     bounds[0],
-                                                                     bounds[1])
-                                    string += '{0:.2e} +/- {1:.2e}%'.format(
+                                    bounds = self.energy_groups.get_group_bounds(group)
+                                    string += "\t" + template.format(
+                                        "", group, bounds[0], bounds[1]
+                                    )
+                                    string += "{0:.2e} +/- {1:.2e}%".format(
                                         average_xs[pol, azi, group - 1],
-                                        rel_err_xs[pol, azi, group - 1])
-                                    string += '\n'
-                                string += '\n'
+                                        rel_err_xs[pol, azi, group - 1],
+                                    )
+                                    string += "\n"
+                                string += "\n"
                     else:
                         # Loop over energy groups ranges
-                        for group in range(1, self.num_groups+1):
+                        for group in range(1, self.num_groups + 1):
                             bounds = self.energy_groups.get_group_bounds(group)
-                            string += template.format('', group, bounds[0], bounds[1])
-                            string += '{0:.2e} +/- {1:.2e}%'.format(
-                                average_xs[group - 1], rel_err_xs[group - 1])
-                            string += '\n'
-                    string += '\n'
-                string += '\n'
+                            string += template.format("", group, bounds[0], bounds[1])
+                            string += "{0:.2e} +/- {1:.2e}%".format(
+                                average_xs[group - 1], rel_err_xs[group - 1]
+                            )
+                            string += "\n"
+                    string += "\n"
+                string += "\n"
 
         print(string)
 
-    def export_xs_data(self, filename='mgxs', directory='mgxs',
-                       format='csv', groups='all', xs_type='macro',
-                       delayed_groups='all'):
+    def export_xs_data(
+        self,
+        filename="mgxs",
+        directory="mgxs",
+        format="csv",
+        groups="all",
+        xs_type="macro",
+        delayed_groups="all",
+    ):
         """Export the multi-delayed-group cross section data to a file.
 
         This method leverages the functionality in the Pandas library to export
@@ -722,57 +784,65 @@ class MDGXS(MGXS):
 
         """
 
-        cv.check_type('filename', filename, str)
-        cv.check_type('directory', directory, str)
-        cv.check_value('format', format, ['csv', 'excel', 'pickle', 'latex'])
-        cv.check_value('xs_type', xs_type, ['macro', 'micro'])
+        cv.check_type("filename", filename, str)
+        cv.check_type("directory", directory, str)
+        cv.check_value("format", format, ["csv", "excel", "pickle", "latex"])
+        cv.check_value("xs_type", xs_type, ["macro", "micro"])
 
         # Make directory if it does not exist
         if not os.path.exists(directory):
             os.makedirs(directory)
 
         filename = os.path.join(directory, filename)
-        filename = filename.replace(' ', '-')
+        filename = filename.replace(" ", "-")
 
         # Get a Pandas DataFrame for the data
-        df = self.get_pandas_dataframe(groups=groups, xs_type=xs_type,
-                                       delayed_groups=delayed_groups)
+        df = self.get_pandas_dataframe(
+            groups=groups, xs_type=xs_type, delayed_groups=delayed_groups
+        )
 
         # Export the data using Pandas IO API
-        if format == 'csv':
-            df.to_csv(filename + '.csv', index=False)
-        elif format == 'excel':
-            if self.domain_type == 'mesh':
-                df.to_excel(filename + '.xlsx')
+        if format == "csv":
+            df.to_csv(filename + ".csv", index=False)
+        elif format == "excel":
+            if self.domain_type == "mesh":
+                df.to_excel(filename + ".xlsx")
             else:
-                df.to_excel(filename + '.xlsx', index=False)
-        elif format == 'pickle':
-            df.to_pickle(filename + '.pkl')
-        elif format == 'latex':
-            if self.domain_type == 'distribcell':
-                msg = 'Unable to export distribcell multi-group cross section' \
-                      'data to a LaTeX table'
+                df.to_excel(filename + ".xlsx", index=False)
+        elif format == "pickle":
+            df.to_pickle(filename + ".pkl")
+        elif format == "latex":
+            if self.domain_type == "distribcell":
+                msg = (
+                    "Unable to export distribcell multi-group cross section"
+                    "data to a LaTeX table"
+                )
                 raise NotImplementedError(msg)
 
-            df.to_latex(filename + '.tex', bold_rows=True,
-                        longtable=True, index=False)
+            df.to_latex(filename + ".tex", bold_rows=True, longtable=True, index=False)
 
             # Surround LaTeX table with code needed to run pdflatex
-            with open(filename + '.tex','r') as original:
+            with open(filename + ".tex", "r") as original:
                 data = original.read()
-            with open(filename + '.tex','w') as modified:
+            with open(filename + ".tex", "w") as modified:
                 modified.write(
-                    '\\documentclass[preview, 12pt, border=1mm]{standalone}\n')
-                modified.write('\\usepackage{caption}\n')
-                modified.write('\\usepackage{longtable}\n')
-                modified.write('\\usepackage{booktabs}\n')
-                modified.write('\\begin{document}\n\n')
+                    "\\documentclass[preview, 12pt, border=1mm]{standalone}\n"
+                )
+                modified.write("\\usepackage{caption}\n")
+                modified.write("\\usepackage{longtable}\n")
+                modified.write("\\usepackage{booktabs}\n")
+                modified.write("\\begin{document}\n\n")
                 modified.write(data)
-                modified.write('\n\\end{document}')
+                modified.write("\n\\end{document}")
 
-    def get_pandas_dataframe(self, groups='all', nuclides='all',
-                             xs_type='macro', paths=True,
-                             delayed_groups='all'):
+    def get_pandas_dataframe(
+        self,
+        groups="all",
+        nuclides="all",
+        xs_type="macro",
+        paths=True,
+        delayed_groups="all",
+    ):
         """Build a Pandas DataFrame for the MDGXS data.
 
         This method leverages :meth:`openmc.Tally.get_pandas_dataframe`, but
@@ -814,29 +884,29 @@ class MDGXS(MGXS):
         """
 
         if not isinstance(groups, str):
-            cv.check_iterable_type('groups', groups, Integral)
-        if nuclides != 'all' and nuclides != 'sum':
-            cv.check_iterable_type('nuclides', nuclides, str)
+            cv.check_iterable_type("groups", groups, Integral)
+        if nuclides != "all" and nuclides != "sum":
+            cv.check_iterable_type("nuclides", nuclides, str)
         if not isinstance(delayed_groups, str):
-            cv.check_type('delayed groups', delayed_groups, list, int)
+            cv.check_type("delayed groups", delayed_groups, list, int)
 
-        cv.check_value('xs_type', xs_type, ['macro', 'micro'])
+        cv.check_value("xs_type", xs_type, ["macro", "micro"])
 
         # Get a Pandas DataFrame from the derived xs tally
-        if self.by_nuclide and nuclides == 'sum':
+        if self.by_nuclide and nuclides == "sum":
 
             # Use tally summation to sum across all nuclides
             xs_tally = self.xs_tally.summation(nuclides=self.get_nuclides())
             df = xs_tally.get_pandas_dataframe(paths=paths)
 
             # Remove nuclide column since it is homogeneous and redundant
-            if self.domain_type == 'mesh':
-                df.drop('sum(nuclide)', axis=1, level=0, inplace=True)
+            if self.domain_type == "mesh":
+                df.drop("sum(nuclide)", axis=1, level=0, inplace=True)
             else:
-                df.drop('sum(nuclide)', axis=1, inplace=True)
+                df.drop("sum(nuclide)", axis=1, inplace=True)
 
         # If the user requested a specific set of nuclides
-        elif self.by_nuclide and nuclides != 'all':
+        elif self.by_nuclide and nuclides != "all":
             xs_tally = self.xs_tally.get_slice(nuclides=nuclides)
             df = xs_tally.get_pandas_dataframe(paths=paths)
 
@@ -845,10 +915,10 @@ class MDGXS(MGXS):
             df = self.xs_tally.get_pandas_dataframe(paths=paths)
 
         # Remove the score column since it is homogeneous and redundant
-        if self.domain_type == 'mesh':
-            df = df.drop('score', axis=1, level=0)
+        if self.domain_type == "mesh":
+            df = df.drop("score", axis=1, level=0)
         else:
-            df = df.drop('score', axis=1)
+            df = df.drop("score", axis=1)
 
         # Convert azimuthal, polar, energy in and energy out bin values in to
         # bin indices
@@ -856,28 +926,30 @@ class MDGXS(MGXS):
 
         # Select out those groups the user requested
         if not isinstance(groups, str):
-            if 'group in' in df:
-                df = df[df['group in'].isin(groups)]
-            if 'group out' in df:
-                df = df[df['group out'].isin(groups)]
+            if "group in" in df:
+                df = df[df["group in"].isin(groups)]
+            if "group out" in df:
+                df = df[df["group out"].isin(groups)]
 
         # If user requested micro cross sections, divide out the atom densities
-        if xs_type == 'micro' and self._divide_by_density:
+        if xs_type == "micro" and self._divide_by_density:
             if self.by_nuclide:
                 densities = self.get_nuclide_densities(nuclides)
             else:
-                densities = self.get_nuclide_densities('sum')
+                densities = self.get_nuclide_densities("sum")
             densities = np.repeat(densities, len(self.rxn_rate_tally.scores))
             tile_factor = int(df.shape[0] / len(densities))
-            df['mean'] /= np.tile(densities, tile_factor)
-            df['std. dev.'] /= np.tile(densities, tile_factor)
+            df["mean"] /= np.tile(densities, tile_factor)
+            df["std. dev."] /= np.tile(densities, tile_factor)
 
         # Sort the dataframe by domain type id (e.g., distribcell id) and
         # energy groups such that data is from fast to thermal
-        if self.domain_type == 'mesh':
-            mesh_str = f'mesh {self.domain.id}'
-            df.sort_values(by=[(mesh_str, 'x'), (mesh_str, 'y'),
-                               (mesh_str, 'z')] + columns, inplace=True)
+        if self.domain_type == "mesh":
+            mesh_str = f"mesh {self.domain.id}"
+            df.sort_values(
+                by=[(mesh_str, "x"), (mesh_str, "y"), (mesh_str, "z")] + columns,
+                inplace=True,
+            )
         else:
             df.sort_values(by=[self.domain_type] + columns, inplace=True)
 
@@ -1015,17 +1087,33 @@ class ChiDelayed(MDGXS):
     # data should not be divided by the number density
     _divide_by_density = False
 
-    def __init__(self, domain=None, domain_type=None, energy_groups=None,
-                 delayed_groups=None, by_nuclide=False, name='',
-                 num_polar=1, num_azimuthal=1):
-        super().__init__(domain, domain_type, energy_groups, delayed_groups,
-                         by_nuclide, name, num_polar, num_azimuthal)
-        self._rxn_type = 'chi-delayed'
-        self._estimator = 'analog'
+    def __init__(
+        self,
+        domain=None,
+        domain_type=None,
+        energy_groups=None,
+        delayed_groups=None,
+        by_nuclide=False,
+        name="",
+        num_polar=1,
+        num_azimuthal=1,
+    ):
+        super().__init__(
+            domain,
+            domain_type,
+            energy_groups,
+            delayed_groups,
+            by_nuclide,
+            name,
+            num_polar,
+            num_azimuthal,
+        )
+        self._rxn_type = "chi-delayed"
+        self._estimator = "analog"
 
     @property
     def scores(self):
-        return ['delayed-nu-fission', 'delayed-nu-fission']
+        return ["delayed-nu-fission", "delayed-nu-fission"]
 
     @property
     def filters(self):
@@ -1043,12 +1131,12 @@ class ChiDelayed(MDGXS):
 
     @property
     def tally_keys(self):
-        return ['delayed-nu-fission-in', 'delayed-nu-fission-out']
+        return ["delayed-nu-fission-in", "delayed-nu-fission-out"]
 
     @property
     def rxn_rate_tally(self):
         if self._rxn_rate_tally is None:
-            self._rxn_rate_tally = self.tallies['delayed-nu-fission-out']
+            self._rxn_rate_tally = self.tallies["delayed-nu-fission-out"]
             self._rxn_rate_tally.sparse = self.sparse
         return self._rxn_rate_tally
 
@@ -1056,11 +1144,10 @@ class ChiDelayed(MDGXS):
     def xs_tally(self):
 
         if self._xs_tally is None:
-            delayed_nu_fission_in = self.tallies['delayed-nu-fission-in']
+            delayed_nu_fission_in = self.tallies["delayed-nu-fission-in"]
 
             # Remove coarse energy filter to keep it out of tally arithmetic
-            energy_filter = delayed_nu_fission_in.find_filter(
-                openmc.EnergyFilter)
+            energy_filter = delayed_nu_fission_in.find_filter(openmc.EnergyFilter)
             delayed_nu_fission_in.remove_filter(energy_filter)
 
             # Compute chi
@@ -1097,7 +1184,7 @@ class ChiDelayed(MDGXS):
 
         """
 
-        return self._get_homogenized_mgxs(other_mgxs, 'delayed-nu-fission-in')
+        return self._get_homogenized_mgxs(other_mgxs, "delayed-nu-fission-in")
 
     def get_slice(self, nuclides=[], groups=[], delayed_groups=[]):
         """Build a sliced ChiDelayed for the specified nuclides and energy
@@ -1131,7 +1218,7 @@ class ChiDelayed(MDGXS):
 
         # Temporarily remove energy filter from delayed-nu-fission-in since its
         # group structure will work in super MGXS.get_slice(...) method
-        delayed_nu_fission_in = self.tallies['delayed-nu-fission-in']
+        delayed_nu_fission_in = self.tallies["delayed-nu-fission-in"]
         energy_filter = delayed_nu_fission_in.find_filter(openmc.EnergyFilter)
         delayed_nu_fission_in.remove_filter(energy_filter)
 
@@ -1159,14 +1246,15 @@ class ChiDelayed(MDGXS):
         if filters != []:
 
             # Slice nu-fission-out tally along energyout filter
-            delayed_nu_fission_out = slice_xs.tallies['delayed-nu-fission-out']
-            tally_slice = delayed_nu_fission_out.get_slice \
-                          (filters=filters, filter_bins=filter_bins)
-            slice_xs._tallies['delayed-nu-fission-out'] = tally_slice
+            delayed_nu_fission_out = slice_xs.tallies["delayed-nu-fission-out"]
+            tally_slice = delayed_nu_fission_out.get_slice(
+                filters=filters, filter_bins=filter_bins
+            )
+            slice_xs._tallies["delayed-nu-fission-out"] = tally_slice
 
         # Add energy filter back to nu-fission-in tallies
-        self.tallies['delayed-nu-fission-in'].add_filter(energy_filter)
-        slice_xs._tallies['delayed-nu-fission-in'].add_filter(energy_filter)
+        self.tallies["delayed-nu-fission-in"].add_filter(energy_filter)
+        slice_xs._tallies["delayed-nu-fission-in"].add_filter(energy_filter)
 
         slice_xs.sparse = self.sparse
         return slice_xs
@@ -1189,7 +1277,7 @@ class ChiDelayed(MDGXS):
         """
 
         if not self.can_merge(other):
-            raise ValueError('Unable to merge ChiDelayed')
+            raise ValueError("Unable to merge ChiDelayed")
 
         # Create deep copy of tally to return as merged tally
         merged_mdgxs = copy.deepcopy(self)
@@ -1204,8 +1292,9 @@ class ChiDelayed(MDGXS):
 
         # Merge delayed groups
         if self.delayed_groups != other.delayed_groups:
-            merged_mdgxs.delayed_groups = list(set(self.delayed_groups +
-                                                   other.delayed_groups))
+            merged_mdgxs.delayed_groups = list(
+                set(self.delayed_groups + other.delayed_groups)
+            )
 
         # Merge nuclides
         if self.nuclides != other.nuclides:
@@ -1213,7 +1302,7 @@ class ChiDelayed(MDGXS):
             # The nuclides must be mutually exclusive
             for nuclide in self.nuclides:
                 if nuclide in other.nuclides:
-                    msg = 'Unable to merge Chi Delayed with shared nuclides'
+                    msg = "Unable to merge Chi Delayed with shared nuclides"
                     raise ValueError(msg)
 
             # Concatenate lists of nuclides for the merged MGXS
@@ -1221,15 +1310,23 @@ class ChiDelayed(MDGXS):
 
         # Merge tallies
         for tally_key in self.tallies:
-            merged_tally = self.tallies[tally_key].merge\
-                           (other.tallies[tally_key])
+            merged_tally = self.tallies[tally_key].merge(other.tallies[tally_key])
             merged_mdgxs.tallies[tally_key] = merged_tally
 
         return merged_mdgxs
 
-    def get_xs(self, groups='all', subdomains='all', nuclides='all',
-               xs_type='macro', order_groups='increasing',
-               value='mean', delayed_groups='all', squeeze=True, **kwargs):
+    def get_xs(
+        self,
+        groups="all",
+        subdomains="all",
+        nuclides="all",
+        xs_type="macro",
+        order_groups="increasing",
+        value="mean",
+        delayed_groups="all",
+        squeeze=True,
+        **kwargs,
+    ):
         """Returns an array of the delayed fission spectrum.
 
         This method constructs a 4D NumPy array for the requested
@@ -1278,14 +1375,16 @@ class ChiDelayed(MDGXS):
 
         """
 
-        cv.check_value('value', value, ['mean', 'std_dev', 'rel_err'])
-        cv.check_value('xs_type', xs_type, ['macro', 'micro'])
+        cv.check_value("value", value, ["mean", "std_dev", "rel_err"])
+        cv.check_value("xs_type", xs_type, ["macro", "micro"])
 
         # FIXME: Unable to get microscopic xs for mesh domain because the mesh
         # cells do not know the nuclide densities in each mesh cell.
-        if self.domain_type == 'mesh' and xs_type == 'micro':
-            msg = 'Unable to get micro xs for mesh domain since the mesh ' \
-                  'cells do not know the nuclide densities in each mesh cell.'
+        if self.domain_type == "mesh" and xs_type == "micro":
+            msg = (
+                "Unable to get micro xs for mesh domain since the mesh "
+                "cells do not know the nuclide densities in each mesh cell."
+            )
             raise ValueError(msg)
 
         filters = []
@@ -1293,23 +1392,21 @@ class ChiDelayed(MDGXS):
 
         # Construct a collection of the domain filter bins
         if not isinstance(subdomains, str):
-            cv.check_iterable_type('subdomains', subdomains, Integral,
-                                   max_depth=3)
+            cv.check_iterable_type("subdomains", subdomains, Integral, max_depth=3)
             for subdomain in subdomains:
                 filters.append(_DOMAIN_TO_FILTER[self.domain_type])
                 filter_bins.append((subdomain,))
 
         # Construct list of energy group bounds tuples for all requested groups
         if not isinstance(groups, str):
-            cv.check_iterable_type('groups', groups, Integral)
+            cv.check_iterable_type("groups", groups, Integral)
             for group in groups:
                 filters.append(openmc.EnergyoutFilter)
-                filter_bins.append(
-                    (self.energy_groups.get_group_bounds(group),))
+                filter_bins.append((self.energy_groups.get_group_bounds(group),))
 
         # Construct list of delayed group tuples for all requested groups
         if not isinstance(delayed_groups, str):
-            cv.check_type('delayed groups', delayed_groups, list, int)
+            cv.check_type("delayed groups", delayed_groups, list, int)
             for delayed_group in delayed_groups:
                 filters.append(openmc.DelayedGroupFilter)
                 filter_bins.append((delayed_group,))
@@ -1319,22 +1416,23 @@ class ChiDelayed(MDGXS):
 
             # Get the sum as the fission source weighted average chi for all
             # nuclides in the domain
-            if nuclides == 'sum' or nuclides == ['sum']:
+            if nuclides == "sum" or nuclides == ["sum"]:
 
                 # Retrieve the fission production tallies
-                delayed_nu_fission_in = self.tallies['delayed-nu-fission-in']
-                delayed_nu_fission_out = self.tallies['delayed-nu-fission-out']
+                delayed_nu_fission_in = self.tallies["delayed-nu-fission-in"]
+                delayed_nu_fission_out = self.tallies["delayed-nu-fission-out"]
 
                 # Sum out all nuclides
                 nuclides = self.get_nuclides()
                 delayed_nu_fission_in = delayed_nu_fission_in.summation(
-                    nuclides=nuclides)
+                    nuclides=nuclides
+                )
                 delayed_nu_fission_out = delayed_nu_fission_out.summation(
-                    nuclides=nuclides)
+                    nuclides=nuclides
+                )
 
                 # Remove coarse energy filter to keep it out of tally arithmetic
-                energy_filter = delayed_nu_fission_in.find_filter(
-                    openmc.EnergyFilter)
+                energy_filter = delayed_nu_fission_in.find_filter(openmc.EnergyFilter)
                 delayed_nu_fission_in.remove_filter(energy_filter)
 
                 # Compute chi and store it as the xs_tally attribute so we can
@@ -1344,51 +1442,65 @@ class ChiDelayed(MDGXS):
                 # Add the coarse energy filter back to the nu-fission tally
                 delayed_nu_fission_in.filters.append(energy_filter)
 
-                xs = xs_tally.get_values(filters=filters,
-                                         filter_bins=filter_bins, value=value)
+                xs = xs_tally.get_values(
+                    filters=filters, filter_bins=filter_bins, value=value
+                )
 
             # Get chi delayed for all nuclides in the domain
-            elif nuclides == 'all':
+            elif nuclides == "all":
                 nuclides = self.get_nuclides()
-                xs = self.xs_tally.get_values(filters=filters,
-                                              filter_bins=filter_bins,
-                                              nuclides=nuclides, value=value)
+                xs = self.xs_tally.get_values(
+                    filters=filters,
+                    filter_bins=filter_bins,
+                    nuclides=nuclides,
+                    value=value,
+                )
 
             # Get chi delayed for user-specified nuclides in the domain
             else:
-                cv.check_iterable_type('nuclides', nuclides, str)
-                xs = self.xs_tally.get_values(filters=filters,
-                                              filter_bins=filter_bins,
-                                              nuclides=nuclides, value=value)
+                cv.check_iterable_type("nuclides", nuclides, str)
+                xs = self.xs_tally.get_values(
+                    filters=filters,
+                    filter_bins=filter_bins,
+                    nuclides=nuclides,
+                    value=value,
+                )
 
         # If chi delayed was computed as an average of nuclides in the domain
         else:
-            xs = self.xs_tally.get_values(filters=filters,
-                                          filter_bins=filter_bins, value=value)
+            xs = self.xs_tally.get_values(
+                filters=filters, filter_bins=filter_bins, value=value
+            )
 
         # Eliminate the trivial score dimension
         xs = np.squeeze(xs, axis=len(xs.shape) - 1)
         xs = np.nan_to_num(xs)
 
         # Reshape tally data array with separate axes for domain and energy
-        if groups == 'all':
+        if groups == "all":
             num_groups = self.num_groups
         else:
             num_groups = len(groups)
 
-        if delayed_groups == 'all':
+        if delayed_groups == "all":
             num_delayed_groups = self.num_delayed_groups
         else:
             num_delayed_groups = len(delayed_groups)
 
         # Reshape tally data array with separate axes for domain, energy
         # groups, and accomodate the polar and azimuthal bins if needed
-        num_subdomains = int(xs.shape[0] / (num_delayed_groups *
-                                            num_groups * self.num_polar *
-                                            self.num_azimuthal))
+        num_subdomains = int(
+            xs.shape[0]
+            / (num_delayed_groups * num_groups * self.num_polar * self.num_azimuthal)
+        )
         if self.num_polar > 1 or self.num_azimuthal > 1:
-            new_shape = (self.num_polar, self.num_azimuthal, num_subdomains,
-                         num_delayed_groups, num_groups)
+            new_shape = (
+                self.num_polar,
+                self.num_azimuthal,
+                num_subdomains,
+                num_delayed_groups,
+                num_groups,
+            )
         else:
             new_shape = (num_subdomains, num_delayed_groups, num_groups)
         new_shape += xs.shape[1:]
@@ -1396,7 +1508,7 @@ class ChiDelayed(MDGXS):
 
         # Reverse data if user requested increasing energy groups since
         # tally data is stored in order of increasing energies
-        if order_groups == 'increasing':
+        if order_groups == "increasing":
             xs = xs[..., ::-1, :]
 
         if squeeze:
@@ -1529,12 +1641,28 @@ class DelayedNuFissionXS(MDGXS):
 
     """
 
-    def __init__(self, domain=None, domain_type=None, energy_groups=None,
-                 delayed_groups=None, by_nuclide=False, name='',
-                 num_polar=1, num_azimuthal=1):
-        super().__init__(domain, domain_type, energy_groups, delayed_groups,
-                         by_nuclide, name, num_polar, num_azimuthal)
-        self._rxn_type = 'delayed-nu-fission'
+    def __init__(
+        self,
+        domain=None,
+        domain_type=None,
+        energy_groups=None,
+        delayed_groups=None,
+        by_nuclide=False,
+        name="",
+        num_polar=1,
+        num_azimuthal=1,
+    ):
+        super().__init__(
+            domain,
+            domain_type,
+            energy_groups,
+            delayed_groups,
+            by_nuclide,
+            name,
+            num_polar,
+            num_azimuthal,
+        )
+        self._rxn_type = "delayed-nu-fission"
 
 
 class Beta(MDGXS):
@@ -1673,25 +1801,41 @@ class Beta(MDGXS):
     # quantity, it should not be divided by the number density
     _divide_by_density = False
 
-    def __init__(self, domain=None, domain_type=None, energy_groups=None,
-                 delayed_groups=None, by_nuclide=False, name='',
-                 num_polar=1, num_azimuthal=1):
-        super().__init__(domain, domain_type, energy_groups, delayed_groups,
-                         by_nuclide, name, num_polar, num_azimuthal)
-        self._rxn_type = 'beta'
+    def __init__(
+        self,
+        domain=None,
+        domain_type=None,
+        energy_groups=None,
+        delayed_groups=None,
+        by_nuclide=False,
+        name="",
+        num_polar=1,
+        num_azimuthal=1,
+    ):
+        super().__init__(
+            domain,
+            domain_type,
+            energy_groups,
+            delayed_groups,
+            by_nuclide,
+            name,
+            num_polar,
+            num_azimuthal,
+        )
+        self._rxn_type = "beta"
 
     @property
     def scores(self):
-        return ['nu-fission', 'delayed-nu-fission']
+        return ["nu-fission", "delayed-nu-fission"]
 
     @property
     def tally_keys(self):
-        return ['nu-fission', 'delayed-nu-fission']
+        return ["nu-fission", "delayed-nu-fission"]
 
     @property
     def rxn_rate_tally(self):
         if self._rxn_rate_tally is None:
-            self._rxn_rate_tally = self.tallies['delayed-nu-fission']
+            self._rxn_rate_tally = self.tallies["delayed-nu-fission"]
             self._rxn_rate_tally.sparse = self.sparse
         return self._rxn_rate_tally
 
@@ -1699,7 +1843,7 @@ class Beta(MDGXS):
     def xs_tally(self):
 
         if self._xs_tally is None:
-            nu_fission = self.tallies['nu-fission']
+            nu_fission = self.tallies["nu-fission"]
 
             # Compute beta
             self._xs_tally = self.rxn_rate_tally / nu_fission
@@ -1732,7 +1876,7 @@ class Beta(MDGXS):
 
         """
 
-        return self._get_homogenized_mgxs(other_mgxs, 'nu-fission')
+        return self._get_homogenized_mgxs(other_mgxs, "nu-fission")
 
 
 class DecayRate(MDGXS):
@@ -1866,20 +2010,36 @@ class DecayRate(MDGXS):
     # macroscopic quantities, it should not be divided by the number density.
     _divide_by_density = False
 
-    def __init__(self, domain=None, domain_type=None, energy_groups=None,
-                 delayed_groups=None, by_nuclide=False, name='',
-                 num_polar=1, num_azimuthal=1):
-        super().__init__(domain, domain_type, energy_groups, delayed_groups,
-                         by_nuclide, name, num_polar, num_azimuthal)
-        self._rxn_type = 'decay-rate'
+    def __init__(
+        self,
+        domain=None,
+        domain_type=None,
+        energy_groups=None,
+        delayed_groups=None,
+        by_nuclide=False,
+        name="",
+        num_polar=1,
+        num_azimuthal=1,
+    ):
+        super().__init__(
+            domain,
+            domain_type,
+            energy_groups,
+            delayed_groups,
+            by_nuclide,
+            name,
+            num_polar,
+            num_azimuthal,
+        )
+        self._rxn_type = "decay-rate"
 
     @property
     def scores(self):
-        return ['delayed-nu-fission', 'decay-rate']
+        return ["delayed-nu-fission", "decay-rate"]
 
     @property
     def tally_keys(self):
-        return ['delayed-nu-fission', 'decay-rate']
+        return ["delayed-nu-fission", "decay-rate"]
 
     @property
     def filters(self):
@@ -1896,7 +2056,7 @@ class DecayRate(MDGXS):
     def xs_tally(self):
 
         if self._xs_tally is None:
-            delayed_nu_fission = self.tallies['delayed-nu-fission']
+            delayed_nu_fission = self.tallies["delayed-nu-fission"]
 
             # Compute the decay rate
             self._xs_tally = self.rxn_rate_tally / delayed_nu_fission
@@ -1929,11 +2089,19 @@ class DecayRate(MDGXS):
 
         """
 
-        return self._get_homogenized_mgxs(other_mgxs, 'delayed-nu-fission')
+        return self._get_homogenized_mgxs(other_mgxs, "delayed-nu-fission")
 
-    def get_xs(self, subdomains='all', nuclides='all',
-               xs_type='macro', order_groups='increasing',
-               value='mean', delayed_groups='all', squeeze=True, **kwargs):
+    def get_xs(
+        self,
+        subdomains="all",
+        nuclides="all",
+        xs_type="macro",
+        order_groups="increasing",
+        value="mean",
+        delayed_groups="all",
+        squeeze=True,
+        **kwargs,
+    ):
         """Returns an array of multi-delayed-group cross sections.
 
         This method constructs a 4D NumPy array for the requested
@@ -1979,14 +2147,16 @@ class DecayRate(MDGXS):
 
         """
 
-        cv.check_value('value', value, ['mean', 'std_dev', 'rel_err'])
-        cv.check_value('xs_type', xs_type, ['macro', 'micro'])
+        cv.check_value("value", value, ["mean", "std_dev", "rel_err"])
+        cv.check_value("xs_type", xs_type, ["macro", "micro"])
 
         # FIXME: Unable to get microscopic xs for mesh domain because the mesh
         # cells do not know the nuclide densities in each mesh cell.
-        if self.domain_type == 'mesh' and xs_type == 'micro':
-            msg = 'Unable to get micro xs for mesh domain since the mesh ' \
-                  'cells do not know the nuclide densities in each mesh cell.'
+        if self.domain_type == "mesh" and xs_type == "micro":
+            msg = (
+                "Unable to get micro xs for mesh domain since the mesh "
+                "cells do not know the nuclide densities in each mesh cell."
+            )
             raise ValueError(msg)
 
         filters = []
@@ -1994,52 +2164,55 @@ class DecayRate(MDGXS):
 
         # Construct a collection of the domain filter bins
         if not isinstance(subdomains, str):
-            cv.check_iterable_type('subdomains', subdomains, Integral,
-                                   max_depth=3)
+            cv.check_iterable_type("subdomains", subdomains, Integral, max_depth=3)
             for subdomain in subdomains:
                 filters.append(_DOMAIN_TO_FILTER[self.domain_type])
                 filter_bins.append((subdomain,))
 
         # Construct list of delayed group tuples for all requested groups
         if not isinstance(delayed_groups, str):
-            cv.check_type('delayed groups', delayed_groups, list, int)
+            cv.check_type("delayed groups", delayed_groups, list, int)
             for delayed_group in delayed_groups:
                 filters.append(openmc.DelayedGroupFilter)
                 filter_bins.append((delayed_group,))
 
         # Construct a collection of the nuclides to retrieve from the xs tally
         if self.by_nuclide:
-            if nuclides == 'all' or nuclides == 'sum' or nuclides == ['sum']:
+            if nuclides == "all" or nuclides == "sum" or nuclides == ["sum"]:
                 query_nuclides = self.get_nuclides()
             else:
                 query_nuclides = nuclides
         else:
-            query_nuclides = ['total']
+            query_nuclides = ["total"]
 
         # If user requested the sum for all nuclides, use tally summation
-        if nuclides == 'sum' or nuclides == ['sum']:
+        if nuclides == "sum" or nuclides == ["sum"]:
             xs_tally = self.xs_tally.summation(nuclides=query_nuclides)
-            xs = xs_tally.get_values(filters=filters,
-                                     filter_bins=filter_bins, value=value)
+            xs = xs_tally.get_values(
+                filters=filters, filter_bins=filter_bins, value=value
+            )
         else:
-            xs = self.xs_tally.get_values(filters=filters,
-                                          filter_bins=filter_bins,
-                                          nuclides=query_nuclides, value=value)
+            xs = self.xs_tally.get_values(
+                filters=filters,
+                filter_bins=filter_bins,
+                nuclides=query_nuclides,
+                value=value,
+            )
 
         # Divide by atom number densities for microscopic cross sections
-        if xs_type == 'micro' and self._divide_by_density:
+        if xs_type == "micro" and self._divide_by_density:
             if self.by_nuclide:
                 densities = self.get_nuclide_densities(nuclides)
             else:
-                densities = self.get_nuclide_densities('sum')
-            if value == 'mean' or value == 'std_dev':
+                densities = self.get_nuclide_densities("sum")
+            if value == "mean" or value == "std_dev":
                 xs /= densities[np.newaxis, :, np.newaxis]
 
         # Eliminate the trivial score dimension
         xs = np.squeeze(xs, axis=len(xs.shape) - 1)
         xs = np.nan_to_num(xs)
 
-        if delayed_groups == 'all':
+        if delayed_groups == "all":
             num_delayed_groups = self.num_delayed_groups
         else:
             num_delayed_groups = len(delayed_groups)
@@ -2047,12 +2220,16 @@ class DecayRate(MDGXS):
         # Reshape tally data array with separate axes for domain,
         # energy groups, delayed groups, and nuclides
         # Accommodate the polar and azimuthal bins if needed
-        num_subdomains = \
-            int(xs.shape[0] / (num_delayed_groups *
-                               self.num_polar * self.num_azimuthal))
+        num_subdomains = int(
+            xs.shape[0] / (num_delayed_groups * self.num_polar * self.num_azimuthal)
+        )
         if self.num_polar > 1 or self.num_azimuthal > 1:
-            new_shape = (self.num_polar, self.num_azimuthal, num_subdomains,
-                         num_delayed_groups)
+            new_shape = (
+                self.num_polar,
+                self.num_azimuthal,
+                num_subdomains,
+                num_delayed_groups,
+            )
         else:
             new_shape = (num_subdomains, num_delayed_groups)
         xs = np.reshape(xs, new_shape)
@@ -2196,11 +2373,20 @@ class MatrixMDGXS(MDGXS):
 
         return self._add_angle_filters(filters)
 
-    def get_xs(self, in_groups='all', out_groups='all',
-               subdomains='all', nuclides='all',
-               xs_type='macro', order_groups='increasing',
-               row_column='inout', value='mean', delayed_groups='all',
-               squeeze=True, **kwargs):
+    def get_xs(
+        self,
+        in_groups="all",
+        out_groups="all",
+        subdomains="all",
+        nuclides="all",
+        xs_type="macro",
+        order_groups="increasing",
+        row_column="inout",
+        value="mean",
+        delayed_groups="all",
+        squeeze=True,
+        **kwargs,
+    ):
         """Returns an array of multi-group cross sections.
 
         This method constructs a 4D NumPy array for the requested
@@ -2256,14 +2442,16 @@ class MatrixMDGXS(MDGXS):
 
         """
 
-        cv.check_value('value', value, ['mean', 'std_dev', 'rel_err'])
-        cv.check_value('xs_type', xs_type, ['macro', 'micro'])
+        cv.check_value("value", value, ["mean", "std_dev", "rel_err"])
+        cv.check_value("xs_type", xs_type, ["macro", "micro"])
 
         # FIXME: Unable to get microscopic xs for mesh domain because the mesh
         # cells do not know the nuclide densities in each mesh cell.
-        if self.domain_type == 'mesh' and xs_type == 'micro':
-            msg = 'Unable to get micro xs for mesh domain since the mesh ' \
-                  'cells do not know the nuclide densities in each mesh cell.'
+        if self.domain_type == "mesh" and xs_type == "micro":
+            msg = (
+                "Unable to get micro xs for mesh domain since the mesh "
+                "cells do not know the nuclide densities in each mesh cell."
+            )
             raise ValueError(msg)
 
         filters = []
@@ -2271,61 +2459,62 @@ class MatrixMDGXS(MDGXS):
 
         # Construct a collection of the domain filter bins
         if not isinstance(subdomains, str):
-            cv.check_iterable_type('subdomains', subdomains, Integral,
-                                   max_depth=3)
+            cv.check_iterable_type("subdomains", subdomains, Integral, max_depth=3)
             for subdomain in subdomains:
                 filters.append(_DOMAIN_TO_FILTER[self.domain_type])
                 filter_bins.append((subdomain,))
 
         # Construct list of energy group bounds tuples for all requested groups
         if not isinstance(in_groups, str):
-            cv.check_iterable_type('groups', in_groups, Integral)
+            cv.check_iterable_type("groups", in_groups, Integral)
             for group in in_groups:
                 filters.append(openmc.EnergyFilter)
-                filter_bins.append((
-                    self.energy_groups.get_group_bounds(group),))
+                filter_bins.append((self.energy_groups.get_group_bounds(group),))
 
         # Construct list of energy group bounds tuples for all requested groups
         if not isinstance(out_groups, str):
-            cv.check_iterable_type('groups', out_groups, Integral)
+            cv.check_iterable_type("groups", out_groups, Integral)
             for group in out_groups:
                 filters.append(openmc.EnergyoutFilter)
-                filter_bins.append((
-                    self.energy_groups.get_group_bounds(group),))
+                filter_bins.append((self.energy_groups.get_group_bounds(group),))
 
         # Construct list of delayed group tuples for all requested groups
         if not isinstance(delayed_groups, str):
-            cv.check_type('delayed groups', delayed_groups, list, int)
+            cv.check_type("delayed groups", delayed_groups, list, int)
             for delayed_group in delayed_groups:
                 filters.append(openmc.DelayedGroupFilter)
                 filter_bins.append((delayed_group,))
 
         # Construct a collection of the nuclides to retrieve from the xs tally
         if self.by_nuclide:
-            if nuclides == 'all' or nuclides == 'sum' or nuclides == ['sum']:
+            if nuclides == "all" or nuclides == "sum" or nuclides == ["sum"]:
                 query_nuclides = self.get_nuclides()
             else:
                 query_nuclides = nuclides
         else:
-            query_nuclides = ['total']
+            query_nuclides = ["total"]
 
         # Use tally summation if user requested the sum for all nuclides
-        if nuclides == 'sum' or nuclides == ['sum']:
+        if nuclides == "sum" or nuclides == ["sum"]:
             xs_tally = self.xs_tally.summation(nuclides=query_nuclides)
-            xs = xs_tally.get_values(filters=filters, filter_bins=filter_bins,
-                                     value=value)
+            xs = xs_tally.get_values(
+                filters=filters, filter_bins=filter_bins, value=value
+            )
         else:
-            xs = self.xs_tally.get_values(filters=filters,
-                                          filter_bins=filter_bins,
-                                          nuclides=query_nuclides, value=value)
+            xs = self.xs_tally.get_values(
+                filters=filters,
+                filter_bins=filter_bins,
+                nuclides=query_nuclides,
+                value=value,
+            )
 
         # Divide by atom number densities for microscopic cross sections
-        if xs_type == 'micro' and self._divide_by_density:
+        if xs_type == "micro" and self._divide_by_density:
             if self.by_nuclide:
                 densities = self.get_nuclide_densities(nuclides)
             else:
-                densities = self.get_nuclide_densities('sum')
-            if value == 'mean' or value == 'std_dev':
+                densities = self.get_nuclide_densities("sum")
+            if value == "mean" or value == "std_dev":
                 xs /= densities[np.newaxis, :, np.newaxis]
 
         # Eliminate the trivial score dimension
@@ -2334,49 +2523,65 @@ class MatrixMDGXS(MDGXS):
         # Eliminate NaNs which may have been produced by dividing by density
         xs = np.nan_to_num(xs)
 
-        if in_groups == 'all':
+        if in_groups == "all":
             num_in_groups = self.num_groups
         else:
             num_in_groups = len(in_groups)
 
-        if out_groups == 'all':
+        if out_groups == "all":
             num_out_groups = self.num_groups
         else:
             num_out_groups = len(out_groups)
 
-        if delayed_groups == 'all':
+        if delayed_groups == "all":
             num_delayed_groups = self.num_delayed_groups
         else:
             num_delayed_groups = len(delayed_groups)
 
         # Reshape tally data array with separate axes for domain and energy
         # Accomodate the polar and azimuthal bins if needed
-        num_subdomains = int(xs.shape[0] / (num_delayed_groups *
-                                            num_in_groups * num_out_groups *
-                                            self.num_polar *
-                                            self.num_azimuthal))
+        num_subdomains = int(
+            xs.shape[0]
+            / (
+                num_delayed_groups
+                * num_in_groups
+                * num_out_groups
+                * self.num_polar
+                * self.num_azimuthal
+            )
+        )
         if self.num_polar > 1 or self.num_azimuthal > 1:
-            new_shape = (self.num_polar, self.num_azimuthal, num_subdomains,
-                         num_delayed_groups, num_in_groups, num_out_groups)
+            new_shape = (
+                self.num_polar,
+                self.num_azimuthal,
+                num_subdomains,
+                num_delayed_groups,
+                num_in_groups,
+                num_out_groups,
+            )
             new_shape += xs.shape[1:]
             xs = np.reshape(xs, new_shape)
 
             # Transpose the matrix if requested by user
-            if row_column == 'outin':
+            if row_column == "outin":
                 xs = np.swapaxes(xs, 4, 5)
         else:
-            new_shape = (num_subdomains, num_delayed_groups, num_in_groups,
-                         num_out_groups)
+            new_shape = (
+                num_subdomains,
+                num_delayed_groups,
+                num_in_groups,
+                num_out_groups,
+            )
             new_shape += xs.shape[1:]
             xs = np.reshape(xs, new_shape)
 
             # Transpose the matrix if requested by user
-            if row_column == 'outin':
+            if row_column == "outin":
                 xs = np.swapaxes(xs, 2, 3)
 
         # Reverse data if user requested increasing energy groups since
         # tally data is stored in order of increasing energies
-        if order_groups == 'increasing':
+        if order_groups == "increasing":
             xs = xs[..., ::-1, ::-1, :]
 
         if squeeze:
@@ -2386,8 +2591,7 @@ class MatrixMDGXS(MDGXS):
 
         return xs
 
-    def get_slice(self, nuclides=[], in_groups=[], out_groups=[],
-                  delayed_groups=[]):
+    def get_slice(self, nuclides=[], in_groups=[], out_groups=[], delayed_groups=[]):
         """Build a sliced MatrixMDGXS object for the specified nuclides and
         energy groups.
 
@@ -2437,14 +2641,14 @@ class MatrixMDGXS(MDGXS):
             for tally_type, tally in slice_xs.tallies.items():
                 if tally.contains_filter(openmc.EnergyoutFilter):
                     tally_slice = tally.get_slice(
-                        filters=[openmc.EnergyoutFilter],
-                        filter_bins=filter_bins)
+                        filters=[openmc.EnergyoutFilter], filter_bins=filter_bins
+                    )
                     slice_xs.tallies[tally_type] = tally_slice
 
         slice_xs.sparse = self.sparse
         return slice_xs
 
-    def print_xs(self, subdomains='all', nuclides='all', xs_type='macro'):
+    def print_xs(self, subdomains="all", nuclides="all", xs_type="macro"):
         """Prints a string representation for the multi-group cross section.
 
         Parameters
@@ -2467,10 +2671,10 @@ class MatrixMDGXS(MDGXS):
 
         # Construct a collection of the subdomains to report
         if not isinstance(subdomains, str):
-            cv.check_iterable_type('subdomains', subdomains, Integral)
-        elif self.domain_type == 'distribcell':
+            cv.check_iterable_type("subdomains", subdomains, Integral)
+        elif self.domain_type == "distribcell":
             subdomains = np.arange(self.num_subdomains, dtype=int)
-        elif self.domain_type == 'mesh':
+        elif self.domain_type == "mesh":
             xyz = [range(1, x + 1) for x in self.domain.dimension]
             subdomains = list(itertools.product(*xyz))
         else:
@@ -2478,165 +2682,200 @@ class MatrixMDGXS(MDGXS):
 
         # Construct a collection of the nuclides to report
         if self.by_nuclide:
-            if nuclides == 'all':
+            if nuclides == "all":
                 nuclides = self.get_nuclides()
-            if nuclides == 'sum':
-                nuclides = ['sum']
+            if nuclides == "sum":
+                nuclides = ["sum"]
             else:
-                cv.check_iterable_type('nuclides', nuclides, str)
+                cv.check_iterable_type("nuclides", nuclides, str)
         else:
-            nuclides = ['sum']
+            nuclides = ["sum"]
 
-        cv.check_value('xs_type', xs_type, ['macro', 'micro'])
+        cv.check_value("xs_type", xs_type, ["macro", "micro"])
 
         # Build header for string with type and domain info
-        string = 'Multi-Delayed-Group XS\n'
-        string += '{0: <16}=\t{1}\n'.format('\tReaction Type', self.mgxs_type)
-        string += '{0: <16}=\t{1}\n'.format('\tDomain Type', self.domain_type)
-        string += '{0: <16}=\t{1}\n'.format('\tDomain ID', self.domain.id)
+        string = "Multi-Delayed-Group XS\n"
+        string += "{0: <16}=\t{1}\n".format("\tReaction Type", self.mgxs_type)
+        string += "{0: <16}=\t{1}\n".format("\tDomain Type", self.domain_type)
+        string += "{0: <16}=\t{1}\n".format("\tDomain ID", self.domain.id)
 
         # Generate the header for an individual XS
-        xs_header = f'\tCross Sections [{self.get_units(xs_type)}]:'
+        xs_header = f"\tCross Sections [{self.get_units(xs_type)}]:"
 
         # If cross section data has not been computed, only print string header
         if self.tallies is None:
             print(string)
             return
 
-        string += '{0: <16}\n'.format('\tEnergy Groups:')
-        template = '{0: <12}Group {1} [{2: <10} - {3: <10}eV]\n'
+        string += "{0: <16}\n".format("\tEnergy Groups:")
+        template = "{0: <12}Group {1} [{2: <10} - {3: <10}eV]\n"
 
         # Loop over energy groups ranges
         for group in range(1, self.num_groups + 1):
             bounds = self.energy_groups.get_group_bounds(group)
-            string += template.format('', group, bounds[0], bounds[1])
+            string += template.format("", group, bounds[0], bounds[1])
 
         # Set polar and azimuthal bins if necessary
         if self.num_polar > 1 or self.num_azimuthal > 1:
-            pol_bins = np.linspace(0., np.pi, num=self.num_polar + 1,
-                                   endpoint=True)
-            azi_bins = np.linspace(-np.pi, np.pi, num=self.num_azimuthal + 1,
-                                   endpoint=True)
+            pol_bins = np.linspace(0.0, np.pi, num=self.num_polar + 1, endpoint=True)
+            azi_bins = np.linspace(
+                -np.pi, np.pi, num=self.num_azimuthal + 1, endpoint=True
+            )
 
         # Loop over all subdomains
         for subdomain in subdomains:
 
-            if self.domain_type == 'distribcell':
-                string += '{: <16}=\t{}\n'.format('\tSubdomain', subdomain)
+            if self.domain_type == "distribcell":
+                string += "{: <16}=\t{}\n".format("\tSubdomain", subdomain)
 
             # Loop over all Nuclides
             for nuclide in nuclides:
 
                 # Build header for nuclide type
-                if xs_type != 'sum':
-                    string += '{: <16}=\t{}\n'.format('\tNuclide', nuclide)
+                if xs_type != "sum":
+                    string += "{: <16}=\t{}\n".format("\tNuclide", nuclide)
 
                 # Build header for cross section type
-                string += f'{xs_header: <16}\n'
+                string += f"{xs_header: <16}\n"
 
                 if self.delayed_groups is not None:
 
                     for delayed_group in self.delayed_groups:
 
-                        template = '{0: <12}Delayed Group {1}:\t'
-                        string += template.format('', delayed_group)
-                        string += '\n'
+                        template = "{0: <12}Delayed Group {1}:\t"
+                        string += template.format("", delayed_group)
+                        string += "\n"
 
-                        template = '{0: <12}Group {1} -> Group {2}:\t\t'
+                        template = "{0: <12}Group {1} -> Group {2}:\t\t"
 
-                        average_xs = self.get_xs(nuclides=[nuclide],
-                                                 subdomains=[subdomain],
-                                                 xs_type=xs_type, value='mean',
-                                                 delayed_groups=[delayed_group])
-                        rel_err_xs = self.get_xs(nuclides=[nuclide],
-                                                 subdomains=[subdomain],
-                                                 xs_type=xs_type,
-                                                 value='rel_err',
-                                                 delayed_groups=[delayed_group])
-                        rel_err_xs = rel_err_xs * 100.
+                        average_xs = self.get_xs(
+                            nuclides=[nuclide],
+                            subdomains=[subdomain],
+                            xs_type=xs_type,
+                            value="mean",
+                            delayed_groups=[delayed_group],
+                        )
+                        rel_err_xs = self.get_xs(
+                            nuclides=[nuclide],
+                            subdomains=[subdomain],
+                            xs_type=xs_type,
+                            value="rel_err",
+                            delayed_groups=[delayed_group],
+                        )
+                        rel_err_xs = rel_err_xs * 100.0
 
                         if self.num_polar > 1 or self.num_azimuthal > 1:
                             # Loop over polar, azi, and in/out group ranges
                             for pol in range(len(pol_bins) - 1):
-                                pol_low, pol_high = pol_bins[pol: pol + 2]
+                                pol_low, pol_high = pol_bins[pol : pol + 2]
                                 for azi in range(len(azi_bins) - 1):
-                                    azi_low, azi_high = azi_bins[azi: azi + 2]
-                                    string += '\t\tPolar Angle: [{0:5f} - {1:5f}]'.format(
-                                        pol_low, pol_high) + \
-                                        '\tAzimuthal Angle: [{0:5f} - {1:5f}]'.format(
-                                        azi_low, azi_high) + '\n'
+                                    azi_low, azi_high = azi_bins[azi : azi + 2]
+                                    string += (
+                                        "\t\tPolar Angle: [{0:5f} - {1:5f}]".format(
+                                            pol_low, pol_high
+                                        )
+                                        + "\tAzimuthal Angle: [{0:5f} - {1:5f}]".format(
+                                            azi_low, azi_high
+                                        )
+                                        + "\n"
+                                    )
                                     for in_group in range(1, self.num_groups + 1):
                                         for out_group in range(1, self.num_groups + 1):
-                                            string += '\t' + template.format(
-                                                '', in_group, out_group)
-                                            string += '{0:.2e} +/- {1:.2e}%'.format(
-                                                average_xs[pol, azi, in_group - 1,
-                                                           out_group - 1],
-                                                rel_err_xs[pol, azi, in_group - 1,
-                                                           out_group - 1])
-                                            string += '\n'
-                                        string += '\n'
-                                    string += '\n'
+                                            string += "\t" + template.format(
+                                                "", in_group, out_group
+                                            )
+                                            string += "{0:.2e} +/- {1:.2e}%".format(
+                                                average_xs[
+                                                    pol,
+                                                    azi,
+                                                    in_group - 1,
+                                                    out_group - 1,
+                                                ],
+                                                rel_err_xs[
+                                                    pol,
+                                                    azi,
+                                                    in_group - 1,
+                                                    out_group - 1,
+                                                ],
+                                            )
+                                            string += "\n"
+                                        string += "\n"
+                                    string += "\n"
                         else:
                             # Loop over incoming/outgoing energy groups ranges
                             for in_group in range(1, self.num_groups + 1):
                                 for out_group in range(1, self.num_groups + 1):
-                                    string += template.format(
-                                        '', in_group, out_group)
-                                    string += '{:.2e} +/- {:.2e}%'.format(
-                                        average_xs[in_group-1, out_group-1],
-                                        rel_err_xs[in_group-1, out_group-1])
-                                    string += '\n'
-                                string += '\n'
-                        string += '\n'
+                                    string += template.format("", in_group, out_group)
+                                    string += "{:.2e} +/- {:.2e}%".format(
+                                        average_xs[in_group - 1, out_group - 1],
+                                        rel_err_xs[in_group - 1, out_group - 1],
+                                    )
+                                    string += "\n"
+                                string += "\n"
+                        string += "\n"
                 else:
 
-                    template = '{0: <12}Group {1} -> Group {2}:\t\t'
+                    template = "{0: <12}Group {1} -> Group {2}:\t\t"
 
-                    average_xs = self.get_xs(nuclides=[nuclide],
-                                             subdomains=[subdomain],
-                                             xs_type=xs_type, value='mean')
-                    rel_err_xs = self.get_xs(nuclides=[nuclide],
-                                             subdomains=[subdomain],
-                                             xs_type=xs_type, value='rel_err')
-                    rel_err_xs = rel_err_xs * 100.
+                    average_xs = self.get_xs(
+                        nuclides=[nuclide],
+                        subdomains=[subdomain],
+                        xs_type=xs_type,
+                        value="mean",
+                    )
+                    rel_err_xs = self.get_xs(
+                        nuclides=[nuclide],
+                        subdomains=[subdomain],
+                        xs_type=xs_type,
+                        value="rel_err",
+                    )
+                    rel_err_xs = rel_err_xs * 100.0
 
                     if self.num_polar > 1 or self.num_azimuthal > 1:
                         # Loop over polar, azi, and in/out energy group ranges
                         for pol in range(len(pol_bins) - 1):
-                            pol_low, pol_high = pol_bins[pol: pol + 2]
+                            pol_low, pol_high = pol_bins[pol : pol + 2]
                             for azi in range(len(azi_bins) - 1):
-                                azi_low, azi_high = azi_bins[azi: azi + 2]
-                                string += '\t\tPolar Angle: [{0:5f} - {1:5f}]'.format(
-                                    pol_low, pol_high) + \
-                                    '\tAzimuthal Angle: [{0:5f} - {1:5f}]'.format(
-                                    azi_low, azi_high) + '\n'
+                                azi_low, azi_high = azi_bins[azi : azi + 2]
+                                string += (
+                                    "\t\tPolar Angle: [{0:5f} - {1:5f}]".format(
+                                        pol_low, pol_high
+                                    )
+                                    + "\tAzimuthal Angle: [{0:5f} - {1:5f}]".format(
+                                        azi_low, azi_high
+                                    )
+                                    + "\n"
+                                )
                                 for in_group in range(1, self.num_groups + 1):
                                     for out_group in range(1, self.num_groups + 1):
-                                        string += '\t' + template.format(
-                                            '', in_group, out_group)
-                                        string += '{0:.2e} +/- {1:.2e}%'.format(
-                                            average_xs[pol, azi, in_group - 1,
-                                                       out_group - 1],
-                                            rel_err_xs[pol, azi, in_group - 1,
-                                                       out_group - 1])
-                                        string += '\n'
-                                    string += '\n'
-                                string += '\n'
+                                        string += "\t" + template.format(
+                                            "", in_group, out_group
+                                        )
+                                        string += "{0:.2e} +/- {1:.2e}%".format(
+                                            average_xs[
+                                                pol, azi, in_group - 1, out_group - 1
+                                            ],
+                                            rel_err_xs[
+                                                pol, azi, in_group - 1, out_group - 1
+                                            ],
+                                        )
+                                        string += "\n"
+                                    string += "\n"
+                                string += "\n"
                     else:
                         # Loop over incoming/outgoing energy groups ranges
                         for in_group in range(1, self.num_groups + 1):
                             for out_group in range(1, self.num_groups + 1):
-                                string += template.format('', in_group,
-                                                          out_group)
-                                string += '{0:.2e} +/- {1:.2e}%'.format(
+                                string += template.format("", in_group, out_group)
+                                string += "{0:.2e} +/- {1:.2e}%".format(
                                     average_xs[in_group - 1, out_group - 1],
-                                    rel_err_xs[in_group - 1, out_group - 1])
-                                string += '\n'
-                            string += '\n'
-                    string += '\n'
-                string += '\n'
-            string += '\n'
+                                    rel_err_xs[in_group - 1, out_group - 1],
+                                )
+                                string += "\n"
+                            string += "\n"
+                    string += "\n"
+                string += "\n"
+            string += "\n"
 
         print(string)
 
@@ -2770,12 +3009,28 @@ class DelayedNuFissionMatrixXS(MatrixMDGXS):
 
     """
 
-    def __init__(self, domain=None, domain_type=None, energy_groups=None,
-                 delayed_groups=None, by_nuclide=False, name='',
-                 num_polar=1, num_azimuthal=1):
-        super().__init__(domain, domain_type, energy_groups, delayed_groups,
-                         by_nuclide, name, num_polar, num_azimuthal)
-        self._rxn_type = 'delayed-nu-fission'
-        self._mgxs_type = 'delayed-nu-fission matrix'
-        self._estimator = 'analog'
-        self._valid_estimators = ['analog']
+    def __init__(
+        self,
+        domain=None,
+        domain_type=None,
+        energy_groups=None,
+        delayed_groups=None,
+        by_nuclide=False,
+        name="",
+        num_polar=1,
+        num_azimuthal=1,
+    ):
+        super().__init__(
+            domain,
+            domain_type,
+            energy_groups,
+            delayed_groups,
+            by_nuclide,
+            name,
+            num_polar,
+            num_azimuthal,
+        )
+        self._rxn_type = "delayed-nu-fission"
+        self._mgxs_type = "delayed-nu-fission matrix"
+        self._estimator = "analog"
+        self._valid_estimators = ["analog"]

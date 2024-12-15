@@ -36,10 +36,10 @@ def model():
     model.geometry = openmc.Geometry([core])
 
     # Settings
-    model.settings.run_mode = 'fixed source'
+    model.settings.run_mode = "fixed source"
     model.settings.particles = 2000
     model.settings.batches = 8
-    distribution = openmc.stats.Box((0., -r, -r), (r, r, r))
+    distribution = openmc.stats.Box((0.0, -r, -r), (r, r, r))
     model.settings.source = openmc.IndependentSource(space=distribution)
 
     # Tallies

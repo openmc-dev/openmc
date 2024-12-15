@@ -10,31 +10,30 @@ from scipy.special import eval_legendre
 import openmc
 import openmc.mgxs
 from openmc.mgxs import SCATTER_TABULAR, SCATTER_LEGENDRE, SCATTER_HISTOGRAM
-from .checkvalue import check_type, check_value, check_greater_than, \
-    check_iterable_type, check_less_than, check_filetype_version
+from .checkvalue import (
+    check_type,
+    check_value,
+    check_greater_than,
+    check_iterable_type,
+    check_less_than,
+    check_filetype_version,
+)
 
 ROOM_TEMPERATURE_KELVIN = 294.0
 
 # Supported incoming particle MGXS angular treatment representations
-REPRESENTATION_ISOTROPIC = 'isotropic'
-REPRESENTATION_ANGLE = 'angle'
-_REPRESENTATIONS = {
-    REPRESENTATION_ISOTROPIC,
-    REPRESENTATION_ANGLE
-}
+REPRESENTATION_ISOTROPIC = "isotropic"
+REPRESENTATION_ANGLE = "angle"
+_REPRESENTATIONS = {REPRESENTATION_ISOTROPIC, REPRESENTATION_ANGLE}
 
 # Supported scattering angular distribution representations
-_SCATTER_TYPES = {
-    SCATTER_TABULAR,
-    SCATTER_LEGENDRE,
-    SCATTER_HISTOGRAM
-}
+_SCATTER_TYPES = {SCATTER_TABULAR, SCATTER_LEGENDRE, SCATTER_HISTOGRAM}
 
 # Number of mu points for conversion between scattering formats
 _NMU = 257
 
 # Filetype name of the MGXS Library
-_FILETYPE_MGXS_LIBRARY = 'mgxs'
+_FILETYPE_MGXS_LIBRARY = "mgxs"
 
 # Current version of the MGXS Library Format
 _VERSION_MGXS_LIBRARY = 1
@@ -174,8 +173,14 @@ class XSdata:
 
     """
 
-    def __init__(self, name, energy_groups, temperatures=[ROOM_TEMPERATURE_KELVIN],
-                 representation=REPRESENTATION_ISOTROPIC, num_delayed_groups=0):
+    def __init__(
+        self,
+        name,
+        energy_groups,
+        temperatures=[ROOM_TEMPERATURE_KELVIN],
+        representation=REPRESENTATION_ISOTROPIC,
+        num_delayed_groups=0,
+    ):
 
         # Initialize class attributes
         self.name = name
@@ -226,22 +231,18 @@ class XSdata:
             clone._total = copy.deepcopy(self._total, memo)
             clone._absorption = copy.deepcopy(self._absorption, memo)
             clone._scatter_matrix = copy.deepcopy(self._scatter_matrix, memo)
-            clone._multiplicity_matrix = \
-                copy.deepcopy(self._multiplicity_matrix, memo)
+            clone._multiplicity_matrix = copy.deepcopy(self._multiplicity_matrix, memo)
             clone._fission = copy.deepcopy(self._fission, memo)
             clone._nu_fission = copy.deepcopy(self._nu_fission, memo)
-            clone._prompt_nu_fission = \
-                copy.deepcopy(self._prompt_nu_fission, memo)
-            clone._delayed_nu_fission = \
-                copy.deepcopy(self._delayed_nu_fission, memo)
+            clone._prompt_nu_fission = copy.deepcopy(self._prompt_nu_fission, memo)
+            clone._delayed_nu_fission = copy.deepcopy(self._delayed_nu_fission, memo)
             clone._kappa_fission = copy.deepcopy(self._kappa_fission, memo)
             clone._chi = copy.deepcopy(self._chi, memo)
             clone._chi_prompt = copy.deepcopy(self._chi_prompt, memo)
             clone._chi_delayed = copy.deepcopy(self._chi_delayed, memo)
             clone._beta = copy.deepcopy(self._beta, memo)
             clone._decay_rate = copy.deepcopy(self._decay_rate, memo)
-            clone._inverse_velocity = \
-                copy.deepcopy(self._inverse_velocity, memo)
+            clone._inverse_velocity = copy.deepcopy(self._inverse_velocity, memo)
             clone._xs_shapes = copy.deepcopy(self._xs_shapes, memo)
 
             memo[id(self)] = clone
@@ -259,7 +260,7 @@ class XSdata:
     @name.setter
     def name(self, name):
 
-        check_type('name for XSdata', name, str)
+        check_type("name for XSdata", name, str)
         self._name = name
 
     @property
@@ -269,10 +270,12 @@ class XSdata:
     @energy_groups.setter
     def energy_groups(self, energy_groups):
 
-        check_type('energy_groups', energy_groups, openmc.mgxs.EnergyGroups)
+        check_type("energy_groups", energy_groups, openmc.mgxs.EnergyGroups)
         if energy_groups.group_edges is None:
-            msg = 'Unable to assign an EnergyGroups object ' \
-                  'with uninitialized group edges'
+            msg = (
+                "Unable to assign an EnergyGroups object "
+                "with uninitialized group edges"
+            )
             raise ValueError(msg)
 
         self._energy_groups = energy_groups
@@ -284,11 +287,14 @@ class XSdata:
     @num_delayed_groups.setter
     def num_delayed_groups(self, num_delayed_groups):
 
-        check_type('num_delayed_groups', num_delayed_groups, Integral)
-        check_less_than('num_delayed_groups', num_delayed_groups,
-                        openmc.mgxs.MAX_DELAYED_GROUPS, equality=True)
-        check_greater_than('num_delayed_groups', num_delayed_groups, 0,
-                           equality=True)
+        check_type("num_delayed_groups", num_delayed_groups, Integral)
+        check_less_than(
+            "num_delayed_groups",
+            num_delayed_groups,
+            openmc.mgxs.MAX_DELAYED_GROUPS,
+            equality=True,
+        )
+        check_greater_than("num_delayed_groups", num_delayed_groups, 0, equality=True)
         self._num_delayed_groups = num_delayed_groups
 
     @property
@@ -298,7 +304,7 @@ class XSdata:
     @representation.setter
     def representation(self, representation):
 
-        check_value('representation', representation, _REPRESENTATIONS)
+        check_value("representation", representation, _REPRESENTATIONS)
         self._representation = representation
 
     @property
@@ -308,8 +314,8 @@ class XSdata:
     @atomic_weight_ratio.setter
     def atomic_weight_ratio(self, atomic_weight_ratio):
 
-        check_type('atomic_weight_ratio', atomic_weight_ratio, Real)
-        check_greater_than('atomic_weight_ratio', atomic_weight_ratio, 0.0)
+        check_type("atomic_weight_ratio", atomic_weight_ratio, Real)
+        check_greater_than("atomic_weight_ratio", atomic_weight_ratio, 0.0)
         self._atomic_weight_ratio = atomic_weight_ratio
 
     @property
@@ -323,7 +329,7 @@ class XSdata:
     @temperatures.setter
     def temperatures(self, temperatures):
 
-        check_iterable_type('temperatures', temperatures, Real)
+        check_iterable_type("temperatures", temperatures, Real)
         self._temperatures = np.array(temperatures)
 
     @property
@@ -333,7 +339,7 @@ class XSdata:
     @scatter_format.setter
     def scatter_format(self, scatter_format):
 
-        check_value('scatter_format', scatter_format, _SCATTER_TYPES)
+        check_value("scatter_format", scatter_format, _SCATTER_TYPES)
         self._scatter_format = scatter_format
 
     @property
@@ -343,8 +349,8 @@ class XSdata:
     @order.setter
     def order(self, order):
 
-        check_type('order', order, Integral)
-        check_greater_than('order', order, 0, equality=True)
+        check_type("order", order, Integral)
+        check_greater_than("order", order, 0, equality=True)
         self._order = order
 
     @property
@@ -354,8 +360,8 @@ class XSdata:
     @num_polar.setter
     def num_polar(self, num_polar):
 
-        check_type('num_polar', num_polar, Integral)
-        check_greater_than('num_polar', num_polar, 0)
+        check_type("num_polar", num_polar, Integral)
+        check_greater_than("num_polar", num_polar, 0)
         self._num_polar = num_polar
 
     @property
@@ -365,8 +371,8 @@ class XSdata:
     @num_azimuthal.setter
     def num_azimuthal(self, num_azimuthal):
 
-        check_type('num_azimuthal', num_azimuthal, Integral)
-        check_greater_than('num_azimuthal', num_azimuthal, 0)
+        check_type("num_azimuthal", num_azimuthal, Integral)
+        check_greater_than("num_azimuthal", num_azimuthal, 0)
         self._num_azimuthal = num_azimuthal
 
     @property
@@ -432,7 +438,7 @@ class XSdata:
     @property
     def num_orders(self):
         if self._order is None:
-            raise ValueError('Order has not been set.')
+            raise ValueError("Order has not been set.")
 
         if self._scatter_format in (None, SCATTER_LEGENDRE):
             return self._order + 1
@@ -447,26 +453,35 @@ class XSdata:
             self._xs_shapes = {}
             self._xs_shapes["[G]"] = (self.energy_groups.num_groups,)
             self._xs_shapes["[G']"] = (self.energy_groups.num_groups,)
-            self._xs_shapes["[G][G']"] = (self.energy_groups.num_groups,
-                                          self.energy_groups.num_groups)
+            self._xs_shapes["[G][G']"] = (
+                self.energy_groups.num_groups,
+                self.energy_groups.num_groups,
+            )
             self._xs_shapes["[DG]"] = (self.num_delayed_groups,)
-            self._xs_shapes["[DG][G]"] = (self.num_delayed_groups,
-                                          self.energy_groups.num_groups)
-            self._xs_shapes["[DG][G']"] = (self.num_delayed_groups,
-                                           self.energy_groups.num_groups)
-            self._xs_shapes["[DG][G][G']"] = (self.num_delayed_groups,
-                                              self.energy_groups.num_groups,
-                                              self.energy_groups.num_groups)
+            self._xs_shapes["[DG][G]"] = (
+                self.num_delayed_groups,
+                self.energy_groups.num_groups,
+            )
+            self._xs_shapes["[DG][G']"] = (
+                self.num_delayed_groups,
+                self.energy_groups.num_groups,
+            )
+            self._xs_shapes["[DG][G][G']"] = (
+                self.num_delayed_groups,
+                self.energy_groups.num_groups,
+                self.energy_groups.num_groups,
+            )
 
-            self._xs_shapes["[G][G'][Order]"] \
-                = (self.energy_groups.num_groups,
-                   self.energy_groups.num_groups, self.num_orders)
+            self._xs_shapes["[G][G'][Order]"] = (
+                self.energy_groups.num_groups,
+                self.energy_groups.num_groups,
+                self.num_orders,
+            )
 
             # If representation is by angle prepend num polar and num azim
             if self.representation == REPRESENTATION_ANGLE:
                 for key, shapes in self._xs_shapes.items():
-                    self._xs_shapes[key] \
-                        = (self.num_polar, self.num_azimuthal) + shapes
+                    self._xs_shapes[key] = (self.num_polar, self.num_azimuthal) + shapes
 
         return self._xs_shapes
 
@@ -482,7 +497,7 @@ class XSdata:
 
         """
 
-        check_type('temperature', temperature, Real)
+        check_type("temperature", temperature, Real)
 
         temp_store = self.temperatures.tolist().append(temperature)
         self.temperatures = temp_store
@@ -504,8 +519,8 @@ class XSdata:
         self._inverse_velocity.append(None)
 
     def _check_temperature(self, temperature):
-        check_type('temperature', temperature, Real)
-        check_value('temperature', temperature, self.temperatures)
+        check_type("temperature", temperature, Real)
+        check_value("temperature", temperature, self.temperatures)
 
     def _temperature_index(self, temperature):
         return np.where(self.temperatures == temperature)[0][0]
@@ -537,7 +552,7 @@ class XSdata:
 
         # Convert to a numpy array so we can easily get the shape for checking
         total = np.asarray(total)
-        check_value('total shape', total.shape, shapes)
+        check_value("total shape", total.shape, shapes)
         self._check_temperature(temperature)
 
         i = self._temperature_index(temperature)
@@ -566,7 +581,7 @@ class XSdata:
 
         # Convert to a numpy array so we can easily get the shape for checking
         absorption = np.asarray(absorption)
-        check_value('absorption shape', absorption.shape, shapes)
+        check_value("absorption shape", absorption.shape, shapes)
         self._check_temperature(temperature)
 
         i = self._temperature_index(temperature)
@@ -595,7 +610,7 @@ class XSdata:
 
         # Convert to a numpy array so we can easily get the shape for checking
         fission = np.asarray(fission)
-        check_value('fission shape', fission.shape, shapes)
+        check_value("fission shape", fission.shape, shapes)
         self._check_temperature(temperature)
 
         i = self._temperature_index(temperature)
@@ -626,7 +641,7 @@ class XSdata:
 
         # Convert to a numpy array so we can easily get the shape for checking
         kappa_fission = np.asarray(kappa_fission)
-        check_value('kappa fission shape', kappa_fission.shape, shapes)
+        check_value("kappa fission shape", kappa_fission.shape, shapes)
         self._check_temperature(temperature)
 
         i = self._temperature_index(temperature)
@@ -657,7 +672,7 @@ class XSdata:
 
         # Convert to a numpy array so we can easily get the shape for checking
         chi = np.asarray(chi)
-        check_value('chi shape', chi.shape, shapes)
+        check_value("chi shape", chi.shape, shapes)
         self._check_temperature(temperature)
 
         i = self._temperature_index(temperature)
@@ -686,7 +701,7 @@ class XSdata:
 
         # Convert to a numpy array so we can easily get the shape for checking
         chi_prompt = np.asarray(chi_prompt)
-        check_value('chi prompt shape', chi_prompt.shape, shapes)
+        check_value("chi prompt shape", chi_prompt.shape, shapes)
         self._check_temperature(temperature)
 
         i = self._temperature_index(temperature)
@@ -715,10 +730,10 @@ class XSdata:
 
         # Convert to a numpy array so we can easily get the shape for checking
         chi_delayed = np.asarray(chi_delayed)
-        check_value('chi delayed shape', chi_delayed.shape, shapes)
+        check_value("chi delayed shape", chi_delayed.shape, shapes)
         self._check_temperature(temperature)
-        check_type('temperature', temperature, Real)
-        check_value('temperature', temperature, self.temperatures)
+        check_type("temperature", temperature, Real)
+        check_value("temperature", temperature, self.temperatures)
 
         i = self._temperature_index(temperature)
         self._chi_delayed[i] = chi_delayed
@@ -746,7 +761,7 @@ class XSdata:
 
         # Convert to a numpy array so we can easily get the shape for checking
         beta = np.asarray(beta)
-        check_value('beta shape', beta.shape, shapes)
+        check_value("beta shape", beta.shape, shapes)
         self._check_temperature(temperature)
 
         i = self._temperature_index(temperature)
@@ -775,7 +790,7 @@ class XSdata:
 
         # Convert to a numpy array so we can easily get the shape for checking
         decay_rate = np.asarray(decay_rate)
-        check_value('decay rate shape', decay_rate.shape, shapes)
+        check_value("decay rate shape", decay_rate.shape, shapes)
         self._check_temperature(temperature)
 
         i = self._temperature_index(temperature)
@@ -804,15 +819,16 @@ class XSdata:
 
         # Convert to a numpy array so we can easily get the shape for checking
         scatter = np.asarray(scatter)
-        check_iterable_type('scatter', scatter, Real,
-                            max_depth=len(scatter.shape))
-        check_value('scatter shape', scatter.shape, shapes)
+        check_iterable_type("scatter", scatter, Real, max_depth=len(scatter.shape))
+        check_value("scatter shape", scatter.shape, shapes)
         self._check_temperature(temperature)
 
         i = self._temperature_index(temperature)
         self._scatter_matrix[i] = scatter
 
-    def set_multiplicity_matrix(self, multiplicity, temperature=ROOM_TEMPERATURE_KELVIN):
+    def set_multiplicity_matrix(
+        self, multiplicity, temperature=ROOM_TEMPERATURE_KELVIN
+    ):
         """This method sets the cross section for this XSdata object at the
         provided temperature.
 
@@ -835,9 +851,10 @@ class XSdata:
 
         # Convert to a numpy array so we can easily get the shape for checking
         multiplicity = np.asarray(multiplicity)
-        check_iterable_type('multiplicity', multiplicity, Real,
-                            max_depth=len(multiplicity.shape))
-        check_value('multiplicity shape', multiplicity.shape, shapes)
+        check_iterable_type(
+            "multiplicity", multiplicity, Real, max_depth=len(multiplicity.shape)
+        )
+        check_value("multiplicity shape", multiplicity.shape, shapes)
         self._check_temperature(temperature)
 
         i = self._temperature_index(temperature)
@@ -866,16 +883,19 @@ class XSdata:
 
         # Convert to a numpy array so we can easily get the shape for checking
         nu_fission = np.asarray(nu_fission)
-        check_value('nu_fission shape', nu_fission.shape, shapes)
-        check_iterable_type('nu_fission', nu_fission, Real,
-                            max_depth=len(nu_fission.shape))
+        check_value("nu_fission shape", nu_fission.shape, shapes)
+        check_iterable_type(
+            "nu_fission", nu_fission, Real, max_depth=len(nu_fission.shape)
+        )
         self._check_temperature(temperature)
 
         i = self._temperature_index(temperature)
         self._nu_fission[i] = nu_fission
         self._set_fissionable(nu_fission)
 
-    def set_prompt_nu_fission(self, prompt_nu_fission, temperature=ROOM_TEMPERATURE_KELVIN):
+    def set_prompt_nu_fission(
+        self, prompt_nu_fission, temperature=ROOM_TEMPERATURE_KELVIN
+    ):
         """This method sets the cross section for this XSdata object at the
         provided temperature.
 
@@ -898,16 +918,22 @@ class XSdata:
 
         # Convert to a numpy array so we can easily get the shape for checking
         prompt_nu_fission = np.asarray(prompt_nu_fission)
-        check_value('prompt_nu_fission shape', prompt_nu_fission.shape, shapes)
-        check_iterable_type('prompt_nu_fission', prompt_nu_fission, Real,
-                            max_depth=len(prompt_nu_fission.shape))
+        check_value("prompt_nu_fission shape", prompt_nu_fission.shape, shapes)
+        check_iterable_type(
+            "prompt_nu_fission",
+            prompt_nu_fission,
+            Real,
+            max_depth=len(prompt_nu_fission.shape),
+        )
         self._check_temperature(temperature)
 
         i = self._temperature_index(temperature)
         self._prompt_nu_fission[i] = prompt_nu_fission
         self._set_fissionable(prompt_nu_fission)
 
-    def set_delayed_nu_fission(self, delayed_nu_fission, temperature=ROOM_TEMPERATURE_KELVIN):
+    def set_delayed_nu_fission(
+        self, delayed_nu_fission, temperature=ROOM_TEMPERATURE_KELVIN
+    ):
         """This method sets the cross section for this XSdata object at the
         provided temperature.
 
@@ -930,10 +956,13 @@ class XSdata:
 
         # Convert to a numpy array so we can easily get the shape for checking
         delayed_nu_fission = np.asarray(delayed_nu_fission)
-        check_value('delayed_nu_fission shape', delayed_nu_fission.shape,
-                    shapes)
-        check_iterable_type('delayed_nu_fission', delayed_nu_fission, Real,
-                            max_depth=len(delayed_nu_fission.shape))
+        check_value("delayed_nu_fission shape", delayed_nu_fission.shape, shapes)
+        check_iterable_type(
+            "delayed_nu_fission",
+            delayed_nu_fission,
+            Real,
+            max_depth=len(delayed_nu_fission.shape),
+        )
         self._check_temperature(temperature)
 
         i = self._temperature_index(temperature)
@@ -959,14 +988,20 @@ class XSdata:
 
         # Convert to a numpy array so we can easily get the shape for checking
         inv_vel = np.asarray(inv_vel)
-        check_value('inverse_velocity shape', inv_vel.shape, shapes)
+        check_value("inverse_velocity shape", inv_vel.shape, shapes)
         self._check_temperature(temperature)
 
         i = self._temperature_index(temperature)
         self._inverse_velocity[i] = inv_vel
 
-    def set_total_mgxs(self, total, temperature=ROOM_TEMPERATURE_KELVIN, nuclide='total',
-                       xs_type='macro', subdomain=None):
+    def set_total_mgxs(
+        self,
+        total,
+        temperature=ROOM_TEMPERATURE_KELVIN,
+        nuclide="total",
+        xs_type="macro",
+        subdomain=None,
+    ):
         """This method allows for an openmc.mgxs.TotalXS or
         openmc.mgxs.TransportXS to be used to set the total cross section for
         this XSdata object.
@@ -996,18 +1031,24 @@ class XSdata:
 
         """
 
-        check_type('total', total, (openmc.mgxs.TotalXS,
-                                    openmc.mgxs.TransportXS))
-        check_value('energy_groups', total.energy_groups, [self.energy_groups])
-        check_value('domain_type', total.domain_type, openmc.mgxs.DOMAIN_TYPES)
+        check_type("total", total, (openmc.mgxs.TotalXS, openmc.mgxs.TransportXS))
+        check_value("energy_groups", total.energy_groups, [self.energy_groups])
+        check_value("domain_type", total.domain_type, openmc.mgxs.DOMAIN_TYPES)
         self._check_temperature(temperature)
 
         i = self._temperature_index(temperature)
-        self._total[i] = total.get_xs(nuclides=nuclide, xs_type=xs_type,
-                                      subdomains=subdomain)
+        self._total[i] = total.get_xs(
+            nuclides=nuclide, xs_type=xs_type, subdomains=subdomain
+        )
 
-    def set_absorption_mgxs(self, absorption, temperature=ROOM_TEMPERATURE_KELVIN,
-                            nuclide='total', xs_type='macro', subdomain=None):
+    def set_absorption_mgxs(
+        self,
+        absorption,
+        temperature=ROOM_TEMPERATURE_KELVIN,
+        nuclide="total",
+        xs_type="macro",
+        subdomain=None,
+    ):
         """This method allows for an openmc.mgxs.AbsorptionXS
         to be used to set the absorption cross section for this XSdata object.
 
@@ -1036,20 +1077,24 @@ class XSdata:
 
         """
 
-        check_type('absorption', absorption, openmc.mgxs.AbsorptionXS)
-        check_value('energy_groups', absorption.energy_groups,
-                    [self.energy_groups])
-        check_value('domain_type', absorption.domain_type,
-                    openmc.mgxs.DOMAIN_TYPES)
+        check_type("absorption", absorption, openmc.mgxs.AbsorptionXS)
+        check_value("energy_groups", absorption.energy_groups, [self.energy_groups])
+        check_value("domain_type", absorption.domain_type, openmc.mgxs.DOMAIN_TYPES)
         self._check_temperature(temperature)
 
         i = self._temperature_index(temperature)
-        self._absorption[i] = absorption.get_xs(nuclides=nuclide,
-                                                xs_type=xs_type,
-                                                subdomains=subdomain)
+        self._absorption[i] = absorption.get_xs(
+            nuclides=nuclide, xs_type=xs_type, subdomains=subdomain
+        )
 
-    def set_fission_mgxs(self, fission, temperature=ROOM_TEMPERATURE_KELVIN, nuclide='total',
-                         xs_type='macro', subdomain=None):
+    def set_fission_mgxs(
+        self,
+        fission,
+        temperature=ROOM_TEMPERATURE_KELVIN,
+        nuclide="total",
+        xs_type="macro",
+        subdomain=None,
+    ):
         """This method allows for an openmc.mgxs.FissionXS
         to be used to set the fission cross section for this XSdata object.
 
@@ -1078,20 +1123,24 @@ class XSdata:
 
         """
 
-        check_type('fission', fission, openmc.mgxs.FissionXS)
-        check_value('energy_groups', fission.energy_groups,
-                    [self.energy_groups])
-        check_value('domain_type', fission.domain_type,
-                    openmc.mgxs.DOMAIN_TYPES)
+        check_type("fission", fission, openmc.mgxs.FissionXS)
+        check_value("energy_groups", fission.energy_groups, [self.energy_groups])
+        check_value("domain_type", fission.domain_type, openmc.mgxs.DOMAIN_TYPES)
         self._check_temperature(temperature)
 
         i = self._temperature_index(temperature)
-        self._fission[i] = fission.get_xs(nuclides=nuclide,
-                                          xs_type=xs_type,
-                                          subdomains=subdomain)
+        self._fission[i] = fission.get_xs(
+            nuclides=nuclide, xs_type=xs_type, subdomains=subdomain
+        )
 
-    def set_nu_fission_mgxs(self, nu_fission, temperature=ROOM_TEMPERATURE_KELVIN,
-                            nuclide='total', xs_type='macro', subdomain=None):
+    def set_nu_fission_mgxs(
+        self,
+        nu_fission,
+        temperature=ROOM_TEMPERATURE_KELVIN,
+        nuclide="total",
+        xs_type="macro",
+        subdomain=None,
+    ):
         """This method allows for an openmc.mgxs.FissionXS
         to be used to set the nu-fission cross section for this XSdata object.
 
@@ -1120,26 +1169,32 @@ class XSdata:
 
         """
 
-        check_type('nu_fission', nu_fission, (openmc.mgxs.FissionXS,
-                                              openmc.mgxs.NuFissionMatrixXS))
+        check_type(
+            "nu_fission",
+            nu_fission,
+            (openmc.mgxs.FissionXS, openmc.mgxs.NuFissionMatrixXS),
+        )
         if isinstance(nu_fission, openmc.mgxs.FissionXS):
-            check_value('nu', nu_fission.nu, [True])
-        check_value('energy_groups', nu_fission.energy_groups,
-                    [self.energy_groups])
-        check_value('domain_type', nu_fission.domain_type,
-                    openmc.mgxs.DOMAIN_TYPES)
+            check_value("nu", nu_fission.nu, [True])
+        check_value("energy_groups", nu_fission.energy_groups, [self.energy_groups])
+        check_value("domain_type", nu_fission.domain_type, openmc.mgxs.DOMAIN_TYPES)
         self._check_temperature(temperature)
 
         i = self._temperature_index(temperature)
-        self._nu_fission[i] = nu_fission.get_xs(nuclides=nuclide,
-                                                xs_type=xs_type,
-                                                subdomains=subdomain)
+        self._nu_fission[i] = nu_fission.get_xs(
+            nuclides=nuclide, xs_type=xs_type, subdomains=subdomain
+        )
 
         self._set_fissionable(self._nu_fission)
 
-    def set_prompt_nu_fission_mgxs(self, prompt_nu_fission, temperature=ROOM_TEMPERATURE_KELVIN,
-                                   nuclide='total', xs_type='macro',
-                                   subdomain=None):
+    def set_prompt_nu_fission_mgxs(
+        self,
+        prompt_nu_fission,
+        temperature=ROOM_TEMPERATURE_KELVIN,
+        nuclide="total",
+        xs_type="macro",
+        subdomain=None,
+    ):
         """Sets the prompt-nu-fission cross section.
 
         This method allows for an openmc.mgxs.FissionXS or
@@ -1171,24 +1226,35 @@ class XSdata:
 
         """
 
-        check_type('prompt_nu_fission', prompt_nu_fission,
-                   (openmc.mgxs.FissionXS, openmc.mgxs.NuFissionMatrixXS))
-        check_value('prompt', prompt_nu_fission.prompt, [True])
-        check_value('energy_groups', prompt_nu_fission.energy_groups,
-                    [self.energy_groups])
-        check_value('domain_type', prompt_nu_fission.domain_type,
-                    openmc.mgxs.DOMAIN_TYPES)
+        check_type(
+            "prompt_nu_fission",
+            prompt_nu_fission,
+            (openmc.mgxs.FissionXS, openmc.mgxs.NuFissionMatrixXS),
+        )
+        check_value("prompt", prompt_nu_fission.prompt, [True])
+        check_value(
+            "energy_groups", prompt_nu_fission.energy_groups, [self.energy_groups]
+        )
+        check_value(
+            "domain_type", prompt_nu_fission.domain_type, openmc.mgxs.DOMAIN_TYPES
+        )
         self._check_temperature(temperature)
 
         i = self._temperature_index(temperature)
         self._prompt_nu_fission[i] = prompt_nu_fission.get_xs(
-            nuclides=nuclide, xs_type=xs_type, subdomains=subdomain)
+            nuclides=nuclide, xs_type=xs_type, subdomains=subdomain
+        )
 
         self._set_fissionable(self._prompt_nu_fission)
 
-    def set_delayed_nu_fission_mgxs(self, delayed_nu_fission, temperature=ROOM_TEMPERATURE_KELVIN,
-                                    nuclide='total', xs_type='macro',
-                                    subdomain=None):
+    def set_delayed_nu_fission_mgxs(
+        self,
+        delayed_nu_fission,
+        temperature=ROOM_TEMPERATURE_KELVIN,
+        nuclide="total",
+        xs_type="macro",
+        subdomain=None,
+    ):
         """This method allows for an openmc.mgxs.DelayedNuFissionXS or
         openmc.mgxs.DelayedNuFissionMatrixXS to be used to set the
         delayed-nu-fission cross section for this XSdata object.
@@ -1218,26 +1284,39 @@ class XSdata:
 
         """
 
-        check_type('delayed_nu_fission', delayed_nu_fission,
-                   (openmc.mgxs.DelayedNuFissionXS,
-                    openmc.mgxs.DelayedNuFissionMatrixXS))
-        check_value('energy_groups', delayed_nu_fission.energy_groups,
-                    [self.energy_groups])
-        check_value('num_delayed_groups', delayed_nu_fission.num_delayed_groups,
-                    [self.num_delayed_groups])
-        check_value('domain_type', delayed_nu_fission.domain_type,
-                    openmc.mgxs.DOMAIN_TYPES)
+        check_type(
+            "delayed_nu_fission",
+            delayed_nu_fission,
+            (openmc.mgxs.DelayedNuFissionXS, openmc.mgxs.DelayedNuFissionMatrixXS),
+        )
+        check_value(
+            "energy_groups", delayed_nu_fission.energy_groups, [self.energy_groups]
+        )
+        check_value(
+            "num_delayed_groups",
+            delayed_nu_fission.num_delayed_groups,
+            [self.num_delayed_groups],
+        )
+        check_value(
+            "domain_type", delayed_nu_fission.domain_type, openmc.mgxs.DOMAIN_TYPES
+        )
         self._check_temperature(temperature)
 
         i = self._temperature_index(temperature)
         self._delayed_nu_fission[i] = delayed_nu_fission.get_xs(
-            nuclides=nuclide, xs_type=xs_type, subdomains=subdomain)
+            nuclides=nuclide, xs_type=xs_type, subdomains=subdomain
+        )
 
         self._set_fissionable(self._delayed_nu_fission)
 
-    def set_kappa_fission_mgxs(self, k_fission, temperature=ROOM_TEMPERATURE_KELVIN,
-                               nuclide='total', xs_type='macro',
-                               subdomain=None):
+    def set_kappa_fission_mgxs(
+        self,
+        k_fission,
+        temperature=ROOM_TEMPERATURE_KELVIN,
+        nuclide="total",
+        xs_type="macro",
+        subdomain=None,
+    ):
         """This method allows for an openmc.mgxs.KappaFissionXS
         to be used to set the kappa-fission cross section for this XSdata
         object.
@@ -1267,20 +1346,24 @@ class XSdata:
 
         """
 
-        check_type('kappa_fission', k_fission, openmc.mgxs.KappaFissionXS)
-        check_value('energy_groups', k_fission.energy_groups,
-                    [self.energy_groups])
-        check_value('domain_type', k_fission.domain_type,
-                    openmc.mgxs.DOMAIN_TYPES)
+        check_type("kappa_fission", k_fission, openmc.mgxs.KappaFissionXS)
+        check_value("energy_groups", k_fission.energy_groups, [self.energy_groups])
+        check_value("domain_type", k_fission.domain_type, openmc.mgxs.DOMAIN_TYPES)
         self._check_temperature(temperature)
 
         i = self._temperature_index(temperature)
-        self._kappa_fission[i] = k_fission.get_xs(nuclides=nuclide,
-                                                  xs_type=xs_type,
-                                                  subdomains=subdomain)
+        self._kappa_fission[i] = k_fission.get_xs(
+            nuclides=nuclide, xs_type=xs_type, subdomains=subdomain
+        )
 
-    def set_chi_mgxs(self, chi, temperature=ROOM_TEMPERATURE_KELVIN, nuclide='total',
-                     xs_type='macro', subdomain=None):
+    def set_chi_mgxs(
+        self,
+        chi,
+        temperature=ROOM_TEMPERATURE_KELVIN,
+        nuclide="total",
+        xs_type="macro",
+        subdomain=None,
+    ):
         """This method allows for an openmc.mgxs.Chi
         to be used to set chi for this XSdata object.
 
@@ -1308,17 +1391,24 @@ class XSdata:
 
         """
 
-        check_type('chi', chi, openmc.mgxs.Chi)
-        check_value('energy_groups', chi.energy_groups, [self.energy_groups])
-        check_value('domain_type', chi.domain_type, openmc.mgxs.DOMAIN_TYPES)
+        check_type("chi", chi, openmc.mgxs.Chi)
+        check_value("energy_groups", chi.energy_groups, [self.energy_groups])
+        check_value("domain_type", chi.domain_type, openmc.mgxs.DOMAIN_TYPES)
         self._check_temperature(temperature)
 
         i = self._temperature_index(temperature)
-        self._chi[i] = chi.get_xs(nuclides=nuclide, xs_type=xs_type,
-                                  subdomains=subdomain)
+        self._chi[i] = chi.get_xs(
+            nuclides=nuclide, xs_type=xs_type, subdomains=subdomain
+        )
 
-    def set_chi_prompt_mgxs(self, chi_prompt, temperature=ROOM_TEMPERATURE_KELVIN,
-                            nuclide='total', xs_type='macro', subdomain=None):
+    def set_chi_prompt_mgxs(
+        self,
+        chi_prompt,
+        temperature=ROOM_TEMPERATURE_KELVIN,
+        nuclide="total",
+        xs_type="macro",
+        subdomain=None,
+    ):
         """This method allows for an openmc.mgxs.Chi to be used to set
         chi-prompt for this XSdata object.
 
@@ -1346,21 +1436,25 @@ class XSdata:
 
         """
 
-        check_type('chi_prompt', chi_prompt, openmc.mgxs.Chi)
-        check_value('prompt', chi_prompt.prompt, [True])
-        check_value('energy_groups', chi_prompt.energy_groups,
-                    [self.energy_groups])
-        check_value('domain_type', chi_prompt.domain_type,
-                    openmc.mgxs.DOMAIN_TYPES)
+        check_type("chi_prompt", chi_prompt, openmc.mgxs.Chi)
+        check_value("prompt", chi_prompt.prompt, [True])
+        check_value("energy_groups", chi_prompt.energy_groups, [self.energy_groups])
+        check_value("domain_type", chi_prompt.domain_type, openmc.mgxs.DOMAIN_TYPES)
         self._check_temperature(temperature)
 
         i = self._temperature_index(temperature)
-        self._chi_prompt[i] = chi_prompt.get_xs(nuclides=nuclide,
-                                                xs_type=xs_type,
-                                                subdomains=subdomain)
+        self._chi_prompt[i] = chi_prompt.get_xs(
+            nuclides=nuclide, xs_type=xs_type, subdomains=subdomain
+        )
 
-    def set_chi_delayed_mgxs(self, chi_delayed, temperature=ROOM_TEMPERATURE_KELVIN,
-                             nuclide='total', xs_type='macro', subdomain=None):
+    def set_chi_delayed_mgxs(
+        self,
+        chi_delayed,
+        temperature=ROOM_TEMPERATURE_KELVIN,
+        nuclide="total",
+        xs_type="macro",
+        subdomain=None,
+    ):
         """This method allows for an openmc.mgxs.ChiDelayed
         to be used to set chi-delayed for this XSdata object.
 
@@ -1388,22 +1482,29 @@ class XSdata:
 
         """
 
-        check_type('chi_delayed', chi_delayed, openmc.mgxs.ChiDelayed)
-        check_value('energy_groups', chi_delayed.energy_groups,
-                    [self.energy_groups])
-        check_value('num_delayed_groups', chi_delayed.num_delayed_groups,
-                    [self.num_delayed_groups])
-        check_value('domain_type', chi_delayed.domain_type,
-                    openmc.mgxs.DOMAIN_TYPES)
+        check_type("chi_delayed", chi_delayed, openmc.mgxs.ChiDelayed)
+        check_value("energy_groups", chi_delayed.energy_groups, [self.energy_groups])
+        check_value(
+            "num_delayed_groups",
+            chi_delayed.num_delayed_groups,
+            [self.num_delayed_groups],
+        )
+        check_value("domain_type", chi_delayed.domain_type, openmc.mgxs.DOMAIN_TYPES)
         self._check_temperature(temperature)
 
         i = self._temperature_index(temperature)
-        self._chi_delayed[i] = chi_delayed.get_xs(nuclides=nuclide,
-                                                  xs_type=xs_type,
-                                                  subdomains=subdomain)
+        self._chi_delayed[i] = chi_delayed.get_xs(
+            nuclides=nuclide, xs_type=xs_type, subdomains=subdomain
+        )
 
-    def set_beta_mgxs(self, beta, temperature=ROOM_TEMPERATURE_KELVIN,
-                      nuclide='total', xs_type='macro', subdomain=None):
+    def set_beta_mgxs(
+        self,
+        beta,
+        temperature=ROOM_TEMPERATURE_KELVIN,
+        nuclide="total",
+        xs_type="macro",
+        subdomain=None,
+    ):
         """This method allows for an openmc.mgxs.Beta
         to be used to set beta for this XSdata object.
 
@@ -1431,19 +1532,26 @@ class XSdata:
 
         """
 
-        check_type('beta', beta, openmc.mgxs.Beta)
-        check_value('num_delayed_groups', beta.num_delayed_groups,
-                    [self.num_delayed_groups])
-        check_value('domain_type', beta.domain_type, openmc.mgxs.DOMAIN_TYPES)
+        check_type("beta", beta, openmc.mgxs.Beta)
+        check_value(
+            "num_delayed_groups", beta.num_delayed_groups, [self.num_delayed_groups]
+        )
+        check_value("domain_type", beta.domain_type, openmc.mgxs.DOMAIN_TYPES)
         self._check_temperature(temperature)
 
         i = self._temperature_index(temperature)
-        self._beta[i] = beta.get_xs(nuclides=nuclide,
-                                    xs_type=xs_type,
-                                    subdomains=subdomain)
+        self._beta[i] = beta.get_xs(
+            nuclides=nuclide, xs_type=xs_type, subdomains=subdomain
+        )
 
-    def set_decay_rate_mgxs(self, decay_rate, temperature=ROOM_TEMPERATURE_KELVIN,
-                            nuclide='total', xs_type='macro', subdomain=None):
+    def set_decay_rate_mgxs(
+        self,
+        decay_rate,
+        temperature=ROOM_TEMPERATURE_KELVIN,
+        nuclide="total",
+        xs_type="macro",
+        subdomain=None,
+    ):
         """This method allows for an openmc.mgxs.DecayRate
         to be used to set decay rate for this XSdata object.
 
@@ -1471,21 +1579,28 @@ class XSdata:
 
         """
 
-        check_type('decay_rate', decay_rate, openmc.mgxs.DecayRate)
-        check_value('num_delayed_groups', decay_rate.num_delayed_groups,
-                    [self.num_delayed_groups])
-        check_value('domain_type', decay_rate.domain_type,
-                    openmc.mgxs.DOMAIN_TYPES)
+        check_type("decay_rate", decay_rate, openmc.mgxs.DecayRate)
+        check_value(
+            "num_delayed_groups",
+            decay_rate.num_delayed_groups,
+            [self.num_delayed_groups],
+        )
+        check_value("domain_type", decay_rate.domain_type, openmc.mgxs.DOMAIN_TYPES)
         self._check_temperature(temperature)
 
         i = self._temperature_index(temperature)
-        self._decay_rate[i] = decay_rate.get_xs(nuclides=nuclide,
-                                                xs_type=xs_type,
-                                                subdomains=subdomain)
+        self._decay_rate[i] = decay_rate.get_xs(
+            nuclides=nuclide, xs_type=xs_type, subdomains=subdomain
+        )
 
-    def set_scatter_matrix_mgxs(self, scatter, temperature=ROOM_TEMPERATURE_KELVIN,
-                                nuclide='total', xs_type='macro',
-                                subdomain=None):
+    def set_scatter_matrix_mgxs(
+        self,
+        scatter,
+        temperature=ROOM_TEMPERATURE_KELVIN,
+        nuclide="total",
+        xs_type="macro",
+        subdomain=None,
+    ):
         """This method allows for an openmc.mgxs.ScatterMatrixXS
         to be used to set the scatter matrix cross section for this XSdata
         object.  If the XSdata.order attribute has not yet been set, then
@@ -1516,11 +1631,9 @@ class XSdata:
 
         """
 
-        check_type('scatter', scatter, openmc.mgxs.ScatterMatrixXS)
-        check_value('energy_groups', scatter.energy_groups,
-                    [self.energy_groups])
-        check_value('domain_type', scatter.domain_type,
-                    openmc.mgxs.DOMAIN_TYPES)
+        check_type("scatter", scatter, openmc.mgxs.ScatterMatrixXS)
+        check_value("energy_groups", scatter.energy_groups, [self.energy_groups])
+        check_value("domain_type", scatter.domain_type, openmc.mgxs.DOMAIN_TYPES)
         self._check_temperature(temperature)
 
         # Set the value of scatter_format based on the same value within
@@ -1535,38 +1648,47 @@ class XSdata:
             if self.order is None:
                 self.order = scatter.legendre_order
             else:
-                check_value('legendre_order', scatter.legendre_order,
-                            [self.order])
+                check_value("legendre_order", scatter.legendre_order, [self.order])
         elif self.scatter_format == SCATTER_HISTOGRAM:
             if self.order is None:
                 self.order = scatter.histogram_bins
             else:
-                check_value('histogram_bins', scatter.histogram_bins,
-                            [self.order])
+                check_value("histogram_bins", scatter.histogram_bins, [self.order])
 
         i = self._temperature_index(temperature)
         if self.scatter_format == SCATTER_LEGENDRE:
-            self._scatter_matrix[i] = \
-                np.zeros(self.xs_shapes["[G][G'][Order]"])
+            self._scatter_matrix[i] = np.zeros(self.xs_shapes["[G][G'][Order]"])
             # Get the scattering orders in the outermost dimension
             if self.representation == REPRESENTATION_ISOTROPIC:
                 for moment in range(self.num_orders):
-                    self._scatter_matrix[i][:, :, moment] = \
-                        scatter.get_xs(nuclides=nuclide, xs_type=xs_type,
-                                       moment=moment, subdomains=subdomain)
+                    self._scatter_matrix[i][:, :, moment] = scatter.get_xs(
+                        nuclides=nuclide,
+                        xs_type=xs_type,
+                        moment=moment,
+                        subdomains=subdomain,
+                    )
             elif self.representation == REPRESENTATION_ANGLE:
                 for moment in range(self.num_orders):
-                    self._scatter_matrix[i][:, :, :, :, moment] = \
-                        scatter.get_xs(nuclides=nuclide, xs_type=xs_type,
-                                       moment=moment, subdomains=subdomain)
+                    self._scatter_matrix[i][:, :, :, :, moment] = scatter.get_xs(
+                        nuclides=nuclide,
+                        xs_type=xs_type,
+                        moment=moment,
+                        subdomains=subdomain,
+                    )
         else:
-            self._scatter_matrix[i] = \
-                scatter.get_xs(nuclides=nuclide, xs_type=xs_type,
-                               subdomains=subdomain)
+            self._scatter_matrix[i] = scatter.get_xs(
+                nuclides=nuclide, xs_type=xs_type, subdomains=subdomain
+            )
 
-    def set_multiplicity_matrix_mgxs(self, nuscatter, scatter=None,
-                                     temperature=ROOM_TEMPERATURE_KELVIN, nuclide='total',
-                                     xs_type='macro', subdomain=None):
+    def set_multiplicity_matrix_mgxs(
+        self,
+        nuscatter,
+        scatter=None,
+        temperature=ROOM_TEMPERATURE_KELVIN,
+        nuclide="total",
+        xs_type="macro",
+        subdomain=None,
+    ):
         """This method allows for either the direct use of only an
         openmc.mgxs.MultiplicityMatrixXS or an openmc.mgxs.ScatterMatrixXS and
         openmc.mgxs.ScatterMatrixXS to be used to set the scattering
@@ -1604,47 +1726,52 @@ class XSdata:
 
         """
 
-        check_type('nuscatter', nuscatter, (openmc.mgxs.ScatterMatrixXS,
-                                            openmc.mgxs.MultiplicityMatrixXS))
-        check_value('energy_groups', nuscatter.energy_groups,
-                    [self.energy_groups])
-        check_value('domain_type', nuscatter.domain_type,
-                    openmc.mgxs.DOMAIN_TYPES)
+        check_type(
+            "nuscatter",
+            nuscatter,
+            (openmc.mgxs.ScatterMatrixXS, openmc.mgxs.MultiplicityMatrixXS),
+        )
+        check_value("energy_groups", nuscatter.energy_groups, [self.energy_groups])
+        check_value("domain_type", nuscatter.domain_type, openmc.mgxs.DOMAIN_TYPES)
         self._check_temperature(temperature)
 
         if scatter is not None:
-            check_type('scatter', scatter, openmc.mgxs.ScatterMatrixXS)
+            check_type("scatter", scatter, openmc.mgxs.ScatterMatrixXS)
             if isinstance(nuscatter, openmc.mgxs.MultiplicityMatrixXS):
-                msg = 'Either an MultiplicityMatrixXS object must be passed ' \
-                      'for "nuscatter" or the "scatter" argument must be ' \
-                      'provided.'
+                msg = (
+                    "Either an MultiplicityMatrixXS object must be passed "
+                    'for "nuscatter" or the "scatter" argument must be '
+                    "provided."
+                )
                 raise ValueError(msg)
-            check_value('energy_groups', scatter.energy_groups,
-                        [self.energy_groups])
-            check_value('domain_type', scatter.domain_type,
-                        openmc.mgxs.DOMAIN_TYPES)
+            check_value("energy_groups", scatter.energy_groups, [self.energy_groups])
+            check_value("domain_type", scatter.domain_type, openmc.mgxs.DOMAIN_TYPES)
         i = self._temperature_index(temperature)
-        nuscatt = nuscatter.get_xs(nuclides=nuclide,
-                                   xs_type=xs_type, moment=0,
-                                   subdomains=subdomain)
+        nuscatt = nuscatter.get_xs(
+            nuclides=nuclide, xs_type=xs_type, moment=0, subdomains=subdomain
+        )
         if isinstance(nuscatter, openmc.mgxs.MultiplicityMatrixXS):
             self._multiplicity_matrix[i] = nuscatt
         else:
-            scatt = scatter.get_xs(nuclides=nuclide,
-                                   xs_type=xs_type, moment=0,
-                                   subdomains=subdomain)
+            scatt = scatter.get_xs(
+                nuclides=nuclide, xs_type=xs_type, moment=0, subdomains=subdomain
+            )
             if scatter.scatter_format == SCATTER_HISTOGRAM:
                 scatt = np.sum(scatt, axis=2)
             if nuscatter.scatter_format == SCATTER_HISTOGRAM:
                 nuscatt = np.sum(nuscatt, axis=2)
             self._multiplicity_matrix[i] = np.divide(nuscatt, scatt)
 
-        self._multiplicity_matrix[i] = \
-            np.nan_to_num(self._multiplicity_matrix[i])
+        self._multiplicity_matrix[i] = np.nan_to_num(self._multiplicity_matrix[i])
 
-    def set_inverse_velocity_mgxs(self, inverse_velocity, temperature=ROOM_TEMPERATURE_KELVIN,
-                                  nuclide='total', xs_type='macro',
-                                  subdomain=None):
+    def set_inverse_velocity_mgxs(
+        self,
+        inverse_velocity,
+        temperature=ROOM_TEMPERATURE_KELVIN,
+        nuclide="total",
+        xs_type="macro",
+        subdomain=None,
+    ):
         """This method allows for an openmc.mgxs.InverseVelocity
         to be used to set the inverse velocity for this XSdata object.
 
@@ -1673,20 +1800,23 @@ class XSdata:
 
         """
 
-        check_type('inverse_velocity', inverse_velocity,
-                   openmc.mgxs.InverseVelocity)
-        check_value('energy_groups', inverse_velocity.energy_groups,
-                    [self.energy_groups])
-        check_value('domain_type', inverse_velocity.domain_type,
-                    openmc.mgxs.DOMAIN_TYPES)
+        check_type("inverse_velocity", inverse_velocity, openmc.mgxs.InverseVelocity)
+        check_value(
+            "energy_groups", inverse_velocity.energy_groups, [self.energy_groups]
+        )
+        check_value(
+            "domain_type", inverse_velocity.domain_type, openmc.mgxs.DOMAIN_TYPES
+        )
         self._check_temperature(temperature)
 
         i = self._temperature_index(temperature)
         self._inverse_velocity[i] = inverse_velocity.get_xs(
-            nuclides=nuclide, xs_type=xs_type, subdomains=subdomain)
+            nuclides=nuclide, xs_type=xs_type, subdomains=subdomain
+        )
 
-    def convert_representation(self, target_representation, num_polar=None,
-                               num_azimuthal=None):
+    def convert_representation(
+        self, target_representation, num_polar=None, num_azimuthal=None
+    ):
         """Produce a new XSdata object with the same data, but converted to the
         new representation (isotropic or angle-dependent).
 
@@ -1720,13 +1850,12 @@ class XSdata:
 
         """
 
-        check_value('target_representation', target_representation,
-                    _REPRESENTATIONS)
+        check_value("target_representation", target_representation, _REPRESENTATIONS)
         if target_representation == REPRESENTATION_ANGLE:
-            check_type('num_polar', num_polar, Integral)
-            check_type('num_azimuthal', num_azimuthal, Integral)
-            check_greater_than('num_polar', num_polar, 0)
-            check_greater_than('num_azimuthal', num_azimuthal, 0)
+            check_type("num_polar", num_polar, Integral)
+            check_type("num_azimuthal", num_azimuthal, Integral)
+            check_greater_than("num_polar", num_polar, 0)
+            check_greater_than("num_azimuthal", num_azimuthal, 0)
 
         xsdata = copy.deepcopy(self)
 
@@ -1736,9 +1865,11 @@ class XSdata:
             # Check to make sure the num_polar and num_azimuthal values match
             if target_representation == REPRESENTATION_ANGLE:
                 if num_polar != self.num_polar or num_azimuthal != self.num_azimuthal:
-                    raise ValueError("Cannot translate between `angle`"
-                                     " representations with different angle"
-                                     " bin structures")
+                    raise ValueError(
+                        "Cannot translate between `angle`"
+                        " representations with different angle"
+                        " bin structures"
+                    )
             # Nothing to do as the same structure was requested
             return xsdata
 
@@ -1758,16 +1889,28 @@ class XSdata:
         xsdata._xs_shapes = None
 
         for i, temp in enumerate(xsdata.temperatures):
-            for xs in ['total', 'absorption', 'fission', 'nu_fission',
-                       'scatter_matrix', 'multiplicity_matrix',
-                       'prompt_nu_fission', 'delayed_nu_fission',
-                       'kappa_fission', 'chi', 'chi_prompt', 'chi_delayed',
-                       'beta', 'decay_rate', 'inverse_velocity']:
+            for xs in [
+                "total",
+                "absorption",
+                "fission",
+                "nu_fission",
+                "scatter_matrix",
+                "multiplicity_matrix",
+                "prompt_nu_fission",
+                "delayed_nu_fission",
+                "kappa_fission",
+                "chi",
+                "chi_prompt",
+                "chi_delayed",
+                "beta",
+                "decay_rate",
+                "inverse_velocity",
+            ]:
                 # Get the original data
-                orig_data = getattr(self, '_' + xs)[i]
+                orig_data = getattr(self, "_" + xs)[i]
                 if orig_data is not None:
 
-                    if target_representation == 'isotropic':
+                    if target_representation == "isotropic":
                         # Since we are going from angle to isotropic, the
                         # current data is just the average over the angle bins
                         new_data = orig_data.mean(axis=(0, 1))
@@ -1775,11 +1918,10 @@ class XSdata:
                     elif target_representation == REPRESENTATION_ANGLE:
                         # Since we are going from isotropic to angle, the
                         # current data is just copied for every angle bin
-                        new_shape = (num_polar, num_azimuthal) + \
-                            orig_data.shape
+                        new_shape = (num_polar, num_azimuthal) + orig_data.shape
                         new_data = np.resize(orig_data, new_shape)
 
-                    setter = getattr(xsdata, 'set_' + xs)
+                    setter = getattr(xsdata, "set_" + xs)
                     setter(new_data, temp)
 
         return xsdata
@@ -1805,12 +1947,12 @@ class XSdata:
 
         """
 
-        check_value('target_format', target_format, _SCATTER_TYPES)
-        check_type('target_order', target_order, Integral)
+        check_value("target_format", target_format, _SCATTER_TYPES)
+        check_type("target_order", target_order, Integral)
         if target_format == SCATTER_LEGENDRE:
-            check_greater_than('target_order', target_order, 0, equality=True)
+            check_greater_than("target_order", target_order, 0, equality=True)
         else:
-            check_greater_than('target_order', target_order, 0)
+            check_greater_than("target_order", target_order, 0)
 
         xsdata = copy.deepcopy(self)
         xsdata.scatter_format = target_format
@@ -1820,7 +1962,7 @@ class XSdata:
         xsdata._xs_shapes = None
 
         # scipy 1.11+ prefers 'simpson', whereas older versions use 'simps'
-        if hasattr(scipy.integrate, 'simpson'):
+        if hasattr(scipy.integrate, "simpson"):
             integrate = scipy.integrate.simpson
         else:
             integrate = scipy.integrate.simps
@@ -1843,8 +1985,10 @@ class XSdata:
                     for imu in range(len(mu)):
                         for l in range(self.num_orders):
                             new_data[..., imu] += (
-                                 (l + 0.5) * eval_legendre(l, mu[imu]) *
-                                 orig_data[..., l])
+                                (l + 0.5)
+                                * eval_legendre(l, mu[imu])
+                                * orig_data[..., l]
+                            )
 
                 elif target_format == SCATTER_HISTOGRAM:
                     # This code uses the vectorized integration capabilities
@@ -1859,9 +2003,11 @@ class XSdata:
                         table_fine = np.zeros(new_data.shape[:-1] + (_NMU,))
                         for imu in range(len(mu_fine)):
                             for l in range(self.num_orders):
-                                table_fine[..., imu] += ((l + 0.5)
-                                     * eval_legendre(l, mu_fine[imu]) *
-                                     orig_data[..., l])
+                                table_fine[..., imu] += (
+                                    (l + 0.5)
+                                    * eval_legendre(l, mu_fine[imu])
+                                    * orig_data[..., l]
+                                )
                         new_data[..., h_bin] = integrate(table_fine, x=mu_fine)
 
             elif self.scatter_format == SCATTER_TABULAR:
@@ -1874,8 +2020,9 @@ class XSdata:
                     # this is done with fixed sample integration routines.
                     mu_fine = np.linspace(-1, 1, _NMU)
                     for l in range(xsdata.num_orders):
-                        y = (interp1d(mu_self, orig_data)(mu_fine) *
-                             eval_legendre(l, mu_fine))
+                        y = interp1d(mu_self, orig_data)(mu_fine) * eval_legendre(
+                            l, mu_fine
+                        )
                         new_data[..., l] = integrate(y, x=mu_fine)
 
                 elif target_format == SCATTER_TABULAR:
@@ -1903,11 +2050,9 @@ class XSdata:
                 # error. We will make the assumption that the center of the bin
                 # has the value of the bin. The mu=-1 and 1 points will be
                 # extrapolated from the shape.
-                mu_midpoint = np.linspace(-1, 1, self.num_orders,
-                                          endpoint=False)
+                mu_midpoint = np.linspace(-1, 1, self.num_orders, endpoint=False)
                 mu_midpoint += (mu_midpoint[1] - mu_midpoint[0]) * 0.5
-                interp = interp1d(mu_midpoint, orig_data,
-                                  fill_value='extrapolate')
+                interp = interp1d(mu_midpoint, orig_data, fill_value="extrapolate")
                 # Now get the distribution normalization factor to take from
                 # an integral quantity to a point-wise quantity
                 norm = float(self.num_orders) / 2.0
@@ -1939,11 +2084,12 @@ class XSdata:
                     # angle representation path.
                     for h_bin in range(xsdata.num_orders):
                         mu_fine = np.linspace(mu[h_bin], mu[h_bin + 1], _NMU)
-                        new_data[..., h_bin] = \
-                            norm * integrate(interp(mu_fine), x=mu_fine)
+                        new_data[..., h_bin] = norm * integrate(
+                            interp(mu_fine), x=mu_fine
+                        )
 
             # Remove small values resulting from numerical precision issues
-            new_data[..., np.abs(new_data) < 1.E-10] = 0.
+            new_data[..., np.abs(new_data) < 1.0e-10] = 0.0
 
             xsdata.set_scatter_matrix(new_data, temp)
 
@@ -1961,26 +2107,26 @@ class XSdata:
 
         grp = file.create_group(self.name)
         if self.atomic_weight_ratio is not None:
-            grp.attrs['atomic_weight_ratio'] = self.atomic_weight_ratio
+            grp.attrs["atomic_weight_ratio"] = self.atomic_weight_ratio
         if self.fissionable is not None:
-            grp.attrs['fissionable'] = self.fissionable
+            grp.attrs["fissionable"] = self.fissionable
 
         if self.representation is not None:
-            grp.attrs['representation'] = np.bytes_(self.representation)
+            grp.attrs["representation"] = np.bytes_(self.representation)
             if self.representation == REPRESENTATION_ANGLE:
                 if self.num_azimuthal is not None:
-                    grp.attrs['num_azimuthal'] = self.num_azimuthal
+                    grp.attrs["num_azimuthal"] = self.num_azimuthal
 
                 if self.num_polar is not None:
-                    grp.attrs['num_polar'] = self.num_polar
+                    grp.attrs["num_polar"] = self.num_polar
 
-        grp.attrs['scatter_shape'] = np.bytes_("[G][G'][Order]")
+        grp.attrs["scatter_shape"] = np.bytes_("[G][G'][Order]")
         if self.scatter_format is not None:
-            grp.attrs['scatter_format'] = np.bytes_(self.scatter_format)
+            grp.attrs["scatter_format"] = np.bytes_(self.scatter_format)
         if self.order is not None:
-            grp.attrs['order'] = self.order
+            grp.attrs["order"] = self.order
 
-        ktg = grp.create_group('kTs')
+        ktg = grp.create_group("kTs")
         for temperature in self.temperatures:
             temp_label = str(int(np.round(temperature))) + "K"
             kT = temperature * openmc.data.K_BOLTZMANN
@@ -1992,14 +2138,16 @@ class XSdata:
             xs_grp = grp.create_group(str(int(np.round(temperature))) + "K")
 
             if self._total[i] is None:
-                raise ValueError('total data must be provided when writing '
-                                 'the HDF5 library')
+                raise ValueError(
+                    "total data must be provided when writing " "the HDF5 library"
+                )
 
             xs_grp.create_dataset("total", data=self._total[i])
 
             if self._absorption[i] is None:
-                raise ValueError('absorption data must be provided when '
-                                 'writing the HDF5 library')
+                raise ValueError(
+                    "absorption data must be provided when " "writing the HDF5 library"
+                )
 
             xs_grp.create_dataset("absorption", data=self._absorption[i])
 
@@ -2008,49 +2156,50 @@ class XSdata:
                     xs_grp.create_dataset("fission", data=self._fission[i])
 
                 if self._kappa_fission[i] is not None:
-                    xs_grp.create_dataset("kappa-fission",
-                                          data=self._kappa_fission[i])
+                    xs_grp.create_dataset("kappa-fission", data=self._kappa_fission[i])
 
                 if self._chi[i] is not None:
                     xs_grp.create_dataset("chi", data=self._chi[i])
 
                 if self._chi_prompt[i] is not None:
-                    xs_grp.create_dataset("chi-prompt",
-                                          data=self._chi_prompt[i])
+                    xs_grp.create_dataset("chi-prompt", data=self._chi_prompt[i])
 
                 if self._chi_delayed[i] is not None:
-                    xs_grp.create_dataset("chi-delayed",
-                                          data=self._chi_delayed[i])
+                    xs_grp.create_dataset("chi-delayed", data=self._chi_delayed[i])
 
-                if self._nu_fission[i] is None and \
-                   (self._delayed_nu_fission[i] is None or \
-                    self._prompt_nu_fission[i] is None):
-                    raise ValueError('nu-fission or prompt-nu-fission and '
-                                     'delayed-nu-fission data must be '
-                                     'provided when writing the HDF5 library')
+                if self._nu_fission[i] is None and (
+                    self._delayed_nu_fission[i] is None
+                    or self._prompt_nu_fission[i] is None
+                ):
+                    raise ValueError(
+                        "nu-fission or prompt-nu-fission and "
+                        "delayed-nu-fission data must be "
+                        "provided when writing the HDF5 library"
+                    )
 
                 if self._nu_fission[i] is not None:
-                    xs_grp.create_dataset("nu-fission",
-                                          data=self._nu_fission[i])
+                    xs_grp.create_dataset("nu-fission", data=self._nu_fission[i])
 
                 if self._prompt_nu_fission[i] is not None:
-                    xs_grp.create_dataset("prompt-nu-fission",
-                                          data=self._prompt_nu_fission[i])
+                    xs_grp.create_dataset(
+                        "prompt-nu-fission", data=self._prompt_nu_fission[i]
+                    )
 
                 if self._delayed_nu_fission[i] is not None:
-                    xs_grp.create_dataset("delayed-nu-fission",
-                                          data=self._delayed_nu_fission[i])
+                    xs_grp.create_dataset(
+                        "delayed-nu-fission", data=self._delayed_nu_fission[i]
+                    )
 
                 if self._beta[i] is not None:
                     xs_grp.create_dataset("beta", data=self._beta[i])
 
                 if self._decay_rate[i] is not None:
-                    xs_grp.create_dataset("decay-rate",
-                                          data=self._decay_rate[i])
+                    xs_grp.create_dataset("decay-rate", data=self._decay_rate[i])
 
             if self._scatter_matrix[i] is None:
-                raise ValueError('Scatter matrix must be provided when '
-                                 'writing the HDF5 library')
+                raise ValueError(
+                    "Scatter matrix must be provided when " "writing the HDF5 library"
+                )
 
             # Get the sparse scattering data to print to the library
             G = self.energy_groups.num_groups
@@ -2067,20 +2216,18 @@ class XSdata:
                     for g_in in range(G):
                         if self.scatter_format == SCATTER_LEGENDRE:
                             if self.representation == REPRESENTATION_ISOTROPIC:
-                                matrix = \
-                                    self._scatter_matrix[i][g_in, :, 0]
+                                matrix = self._scatter_matrix[i][g_in, :, 0]
                             elif self.representation == REPRESENTATION_ANGLE:
-                                matrix = \
-                                    self._scatter_matrix[i][p, a, g_in, :, 0]
+                                matrix = self._scatter_matrix[i][p, a, g_in, :, 0]
                         else:
                             if self.representation == REPRESENTATION_ISOTROPIC:
-                                matrix = \
-                                    np.sum(self._scatter_matrix[i][g_in, :, :],
-                                           axis=1)
+                                matrix = np.sum(
+                                    self._scatter_matrix[i][g_in, :, :], axis=1
+                                )
                             elif self.representation == REPRESENTATION_ANGLE:
-                                matrix = \
-                                    np.sum(self._scatter_matrix[i][p, a, g_in, :, :],
-                                           axis=1)
+                                matrix = np.sum(
+                                    self._scatter_matrix[i][p, a, g_in, :, :], axis=1
+                                )
                         nz = np.nonzero(matrix)
                         # It is possible that there only zeros in matrix
                         # and therefore nz will be empty, in that case set
@@ -2100,15 +2247,15 @@ class XSdata:
                     elif self.representation == REPRESENTATION_ANGLE:
                         matrix = self._scatter_matrix[i][p, a, :, :, :]
                     for g_in in range(G):
-                        for g_out in range(g_out_bounds[p, a, g_in, 0],
-                                           g_out_bounds[p, a, g_in, 1] + 1):
+                        for g_out in range(
+                            g_out_bounds[p, a, g_in, 0], g_out_bounds[p, a, g_in, 1] + 1
+                        ):
                             for l in range(len(matrix[g_in, g_out, :])):
                                 flat_scatt.append(matrix[g_in, g_out, l])
 
             # And write it.
-            scatt_grp = xs_grp.create_group('scatter_data')
-            scatt_grp.create_dataset("scatter_matrix",
-                                     data=np.array(flat_scatt))
+            scatt_grp = xs_grp.create_group("scatter_data")
+            scatt_grp.create_dataset("scatter_matrix", data=np.array(flat_scatt))
 
             # Repeat for multiplicity
             if self._multiplicity_matrix[i] is not None:
@@ -2122,13 +2269,16 @@ class XSdata:
                         elif self.representation == REPRESENTATION_ANGLE:
                             matrix = self._multiplicity_matrix[i][p, a, :, :]
                         for g_in in range(G):
-                            for g_out in range(g_out_bounds[p, a, g_in, 0],
-                                               g_out_bounds[p, a, g_in, 1] + 1):
+                            for g_out in range(
+                                g_out_bounds[p, a, g_in, 0],
+                                g_out_bounds[p, a, g_in, 1] + 1,
+                            ):
                                 flat_mult.append(matrix[g_in, g_out])
 
                 # And write it.
-                scatt_grp.create_dataset("multiplicity_matrix",
-                                         data=np.array(flat_mult))
+                scatt_grp.create_dataset(
+                    "multiplicity_matrix", data=np.array(flat_mult)
+                )
 
             # And finally, adjust g_out_bounds for 1-based group counting
             # and write it.
@@ -2142,8 +2292,9 @@ class XSdata:
 
             # Add the kinetics data
             if self._inverse_velocity[i] is not None:
-                xs_grp.create_dataset("inverse-velocity",
-                                      data=self._inverse_velocity[i])
+                xs_grp.create_dataset(
+                    "inverse-velocity", data=self._inverse_velocity[i]
+                )
 
     @classmethod
     def from_hdf5(cls, group, name, energy_groups, num_delayed_groups):
@@ -2172,61 +2323,72 @@ class XSdata:
         subgroups = group.keys()
         temperatures = []
         for subgroup in subgroups:
-            if subgroup != 'kTs':
+            if subgroup != "kTs":
                 temperatures.append(subgroup)
 
         # To ensure the actual floating point temperature used when creating
         # the new library is consistent with that used when originally creating
         # the file, get the floating point temperatures straight from the kTs
         # group.
-        kTs_group = group['kTs']
+        kTs_group = group["kTs"]
         float_temperatures = []
         for temperature in temperatures:
             kT = kTs_group[temperature][()]
             float_temperatures.append(kT / openmc.data.K_BOLTZMANN)
 
         attrs = group.attrs.keys()
-        if 'representation' in attrs:
-            representation = group.attrs['representation'].decode()
+        if "representation" in attrs:
+            representation = group.attrs["representation"].decode()
         else:
             representation = REPRESENTATION_ISOTROPIC
 
-        data = cls(name, energy_groups, float_temperatures, representation,
-                   num_delayed_groups)
+        data = cls(
+            name, energy_groups, float_temperatures, representation, num_delayed_groups
+        )
 
-        if 'scatter_format' in attrs:
-            data.scatter_format = group.attrs['scatter_format'].decode()
+        if "scatter_format" in attrs:
+            data.scatter_format = group.attrs["scatter_format"].decode()
 
         # Get the remaining optional attributes
-        if 'atomic_weight_ratio' in attrs:
-            data.atomic_weight_ratio = group.attrs['atomic_weight_ratio']
-        if 'order' in attrs:
-            data.order = group.attrs['order']
+        if "atomic_weight_ratio" in attrs:
+            data.atomic_weight_ratio = group.attrs["atomic_weight_ratio"]
+        if "order" in attrs:
+            data.order = group.attrs["order"]
         if data.representation == REPRESENTATION_ANGLE:
-            data.num_azimuthal = group.attrs['num_azimuthal']
-            data.num_polar = group.attrs['num_polar']
+            data.num_azimuthal = group.attrs["num_azimuthal"]
+            data.num_polar = group.attrs["num_polar"]
 
         # Read the temperature-dependent datasets
         for temp, float_temp in zip(temperatures, float_temperatures):
-            xs_types = ['total', 'absorption', 'fission', 'kappa-fission',
-                        'chi', 'chi-prompt', 'chi-delayed', 'nu-fission',
-                        'prompt-nu-fission', 'delayed-nu-fission', 'beta',
-                        'decay-rate', 'inverse-velocity']
+            xs_types = [
+                "total",
+                "absorption",
+                "fission",
+                "kappa-fission",
+                "chi",
+                "chi-prompt",
+                "chi-delayed",
+                "nu-fission",
+                "prompt-nu-fission",
+                "delayed-nu-fission",
+                "beta",
+                "decay-rate",
+                "inverse-velocity",
+            ]
 
             temperature_group = group[temp]
 
             for xs_type in xs_types:
-                set_func = 'set_' + xs_type.replace(' ', '_').replace('-', '_')
+                set_func = "set_" + xs_type.replace(" ", "_").replace("-", "_")
                 if xs_type in temperature_group:
-                    getattr(data, set_func)(temperature_group[xs_type][()],
-                                            float_temp)
+                    getattr(data, set_func)(temperature_group[xs_type][()], float_temp)
 
-            scatt_group = temperature_group['scatter_data']
+            scatt_group = temperature_group["scatter_data"]
 
             # Get scatter matrix and 'un-flatten' it
-            g_max = scatt_group['g_max']
-            g_min = scatt_group['g_min']
-            flat_scatter = scatt_group['scatter_matrix'][()]
+            g_max = scatt_group["g_max"]
+            g_min = scatt_group["g_min"]
+            flat_scatter = scatt_group["scatter_matrix"][()]
             scatter_matrix = np.zeros(data.xs_shapes["[G][G'][Order]"])
             G = data.energy_groups.num_groups
             if data.representation == REPRESENTATION_ISOTROPIC:
@@ -2248,17 +2410,19 @@ class XSdata:
                         for g_out in range(g_mins - 1, g_maxs):
                             for ang in range(data.num_orders):
                                 if data.representation == REPRESENTATION_ISOTROPIC:
-                                    scatter_matrix[g_in, g_out, ang] = \
-                                        flat_scatter[flat_index]
+                                    scatter_matrix[g_in, g_out, ang] = flat_scatter[
+                                        flat_index
+                                    ]
                                 elif data.representation == REPRESENTATION_ANGLE:
-                                    scatter_matrix[p, a, g_in, g_out, ang] = \
+                                    scatter_matrix[p, a, g_in, g_out, ang] = (
                                         flat_scatter[flat_index]
+                                    )
                                 flat_index += 1
             data.set_scatter_matrix(scatter_matrix, float_temp)
 
             # Repeat for multiplicity
-            if 'multiplicity_matrix' in scatt_group:
-                flat_mult = scatt_group['multiplicity_matrix'][()]
+            if "multiplicity_matrix" in scatt_group:
+                flat_mult = scatt_group["multiplicity_matrix"][()]
                 mult_matrix = np.zeros(data.xs_shapes["[G][G']"])
                 flat_index = 0
                 for p in range(Np):
@@ -2272,11 +2436,11 @@ class XSdata:
                                 g_maxs = g_max[p, a, g_in]
                             for g_out in range(g_mins - 1, g_maxs):
                                 if data.representation == REPRESENTATION_ISOTROPIC:
-                                    mult_matrix[g_in, g_out] = \
-                                        flat_mult[flat_index]
+                                    mult_matrix[g_in, g_out] = flat_mult[flat_index]
                                 elif data.representation == REPRESENTATION_ANGLE:
-                                    mult_matrix[p, a, g_in, g_out] = \
-                                        flat_mult[flat_index]
+                                    mult_matrix[p, a, g_in, g_out] = flat_mult[
+                                        flat_index
+                                    ]
                                 flat_index += 1
                 data.set_multiplicity_matrix(mult_matrix, float_temp)
 
@@ -2334,7 +2498,7 @@ class MGXSLibrary:
 
     @energy_groups.setter
     def energy_groups(self, energy_groups):
-        check_type('energy groups', energy_groups, openmc.mgxs.EnergyGroups)
+        check_type("energy groups", energy_groups, openmc.mgxs.EnergyGroups)
         self._energy_groups = energy_groups
 
     @property
@@ -2343,11 +2507,14 @@ class MGXSLibrary:
 
     @num_delayed_groups.setter
     def num_delayed_groups(self, num_delayed_groups):
-        check_type('num_delayed_groups', num_delayed_groups, Integral)
-        check_greater_than('num_delayed_groups', num_delayed_groups, 0,
-                           equality=True)
-        check_less_than('num_delayed_groups', num_delayed_groups,
-                        openmc.mgxs.MAX_DELAYED_GROUPS, equality=True)
+        check_type("num_delayed_groups", num_delayed_groups, Integral)
+        check_greater_than("num_delayed_groups", num_delayed_groups, 0, equality=True)
+        check_less_than(
+            "num_delayed_groups",
+            num_delayed_groups,
+            openmc.mgxs.MAX_DELAYED_GROUPS,
+            equality=True,
+        )
         self._num_delayed_groups = num_delayed_groups
 
     @property
@@ -2369,12 +2536,13 @@ class MGXSLibrary:
         """
 
         if not isinstance(xsdata, XSdata):
-            msg = f'Unable to add a non-XSdata "{xsdata}" to the ' \
-                  'MGXSLibrary instance'
+            msg = (
+                f'Unable to add a non-XSdata "{xsdata}" to the ' "MGXSLibrary instance"
+            )
             raise ValueError(msg)
 
         if xsdata.energy_groups != self._energy_groups:
-            msg = 'Energy groups of XSdata do not match that of MGXSLibrary.'
+            msg = "Energy groups of XSdata do not match that of MGXSLibrary."
             raise ValueError(msg)
 
         self._xsdatas.append(xsdata)
@@ -2389,7 +2557,7 @@ class MGXSLibrary:
 
         """
 
-        check_iterable_type('xsdatas', xsdatas, XSdata)
+        check_iterable_type("xsdatas", xsdatas, XSdata)
 
         for xsdata in xsdatas:
             self.add_xsdata(xsdata)
@@ -2405,8 +2573,10 @@ class MGXSLibrary:
         """
 
         if not isinstance(xsdata, XSdata):
-            msg = f'Unable to remove a non-XSdata "{xsdata}" from the ' \
-                  'MGXSLibrary instance'
+            msg = (
+                f'Unable to remove a non-XSdata "{xsdata}" from the '
+                "MGXSLibrary instance"
+            )
             raise ValueError(msg)
 
         self._xsdatas.remove(xsdata)
@@ -2432,8 +2602,9 @@ class MGXSLibrary:
                 result = xsdata
         return result
 
-    def convert_representation(self, target_representation, num_polar=None,
-                               num_azimuthal=None):
+    def convert_representation(
+        self, target_representation, num_polar=None, num_azimuthal=None
+    ):
         """Produce a new XSdata object with the same data, but converted to the
         new representation (isotropic or angle-dependent).
 
@@ -2467,9 +2638,9 @@ class MGXSLibrary:
 
         library = copy.deepcopy(self)
         for i, xsdata in enumerate(self.xsdatas):
-            library.xsdatas[i] = \
-                xsdata.convert_representation(target_representation,
-                                              num_polar, num_azimuthal)
+            library.xsdatas[i] = xsdata.convert_representation(
+                target_representation, num_polar, num_azimuthal
+            )
         return library
 
     def convert_scatter_format(self, target_format, target_order):
@@ -2496,12 +2667,13 @@ class MGXSLibrary:
 
         library = copy.deepcopy(self)
         for i, xsdata in enumerate(self.xsdatas):
-            library.xsdatas[i] = \
-                xsdata.convert_scatter_format(target_format, target_order)
+            library.xsdatas[i] = xsdata.convert_scatter_format(
+                target_format, target_order
+            )
 
         return library
 
-    def export_to_hdf5(self, filename='mgxs.h5', libver='earliest'):
+    def export_to_hdf5(self, filename="mgxs.h5", libver="earliest"):
         """Create an hdf5 file that can be used for a simulation.
 
         Parameters
@@ -2514,15 +2686,15 @@ class MGXSLibrary:
 
         """
 
-        check_type('filename', filename, str)
+        check_type("filename", filename, str)
 
         # Create and write to the HDF5 file
         file = h5py.File(filename, "w", libver=libver)
-        file.attrs['filetype'] = np.bytes_(_FILETYPE_MGXS_LIBRARY)
-        file.attrs['version'] = [_VERSION_MGXS_LIBRARY, 0]
-        file.attrs['energy_groups'] = self.energy_groups.num_groups
-        file.attrs['delayed_groups'] = self.num_delayed_groups
-        file.attrs['group structure'] = self.energy_groups.group_edges
+        file.attrs["filetype"] = np.bytes_(_FILETYPE_MGXS_LIBRARY)
+        file.attrs["version"] = [_VERSION_MGXS_LIBRARY, 0]
+        file.attrs["energy_groups"] = self.energy_groups.num_groups
+        file.attrs["delayed_groups"] = self.num_delayed_groups
+        file.attrs["group structure"] = self.energy_groups.group_edges
 
         for xsdata in self._xsdatas:
             xsdata.to_hdf5(file)
@@ -2547,28 +2719,30 @@ class MGXSLibrary:
         """
         # If filename is None, get the cross sections from openmc.config
         if filename is None:
-            filename = openmc.config.get('mg_cross_sections')
+            filename = openmc.config.get("mg_cross_sections")
 
         # Check to make sure there was an environmental variable.
         if filename is None:
-            raise ValueError("Either path or openmc.config['mg_cross_sections']"
-                             "must be set")
+            raise ValueError(
+                "Either path or openmc.config['mg_cross_sections']" "must be set"
+            )
 
-        check_type('filename', filename, str)
-        file = h5py.File(filename, 'r')
+        check_type("filename", filename, str)
+        file = h5py.File(filename, "r")
 
         # Check filetype and version
-        check_filetype_version(file, _FILETYPE_MGXS_LIBRARY,
-                               _VERSION_MGXS_LIBRARY)
+        check_filetype_version(file, _FILETYPE_MGXS_LIBRARY, _VERSION_MGXS_LIBRARY)
 
-        group_structure = file.attrs['group structure']
-        num_delayed_groups = file.attrs['delayed_groups']
+        group_structure = file.attrs["group structure"]
+        num_delayed_groups = file.attrs["delayed_groups"]
         energy_groups = openmc.mgxs.EnergyGroups(group_structure)
         data = cls(energy_groups, num_delayed_groups)
 
         for group_name, group in file.items():
-            data.add_xsdata(openmc.XSdata.from_hdf5(group, group_name,
-                                                    energy_groups,
-                                                    num_delayed_groups))
+            data.add_xsdata(
+                openmc.XSdata.from_hdf5(
+                    group, group_name, energy_groups, num_delayed_groups
+                )
+            )
 
         return data

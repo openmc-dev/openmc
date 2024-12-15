@@ -11,8 +11,10 @@ import openmc
 from openmc import lib
 from openmc.deplete.nuclide import Nuclide, FissionYieldDistribution
 from openmc.deplete.helpers import (
-    FissionYieldCutoffHelper, ConstantFissionYieldHelper,
-    AveragedFissionYieldHelper)
+    FissionYieldCutoffHelper,
+    ConstantFissionYieldHelper,
+    AveragedFissionYieldHelper,
+)
 
 
 @pytest.fixture(scope="module")
@@ -43,8 +45,12 @@ def materials(tmpdir_factory):
         with lib.run_in_memory():
             yield [lib.Material(), lib.Material()]
     finally:
-        for file_path in ("settings.xml", "geometry.xml", "materials.xml",
-                          "summary.h5"):
+        for file_path in (
+            "settings.xml",
+            "geometry.xml",
+            "materials.xml",
+            "summary.h5",
+        ):
             os.remove(tmpdir / file_path)
         orig.chdir()
         os.rmdir(tmpdir)
@@ -76,7 +82,8 @@ def nuclide_bundle():
     u5yield_dict = {
         0.0253: {"Xe135": 7.85e-4, "Gd155": 4.08e-12, "Sm149": 1.71e-12},
         5.0e5: {"Xe135": 7.85e-4, "Sm149": 1.71e-12},
-        1.40e7: {"Xe135": 4.54e-3, "Gd155": 5.83e-8}}
+        1.40e7: {"Xe135": 4.54e-3, "Gd155": 5.83e-8},
+    }
     u235 = Nuclide("U235")
     u235.yield_data = FissionYieldDistribution(u5yield_dict)
 
@@ -87,24 +94,28 @@ def nuclide_bundle():
     xe135 = Nuclide("Xe135")
 
     pu239 = Nuclide("Pu239")
-    pu239.yield_data = FissionYieldDistribution({
-        5.0e5: {"Xe135": 6.14e-3, "Sm149": 9.429e-10, "Gd155": 5.24e-9},
-        2e6: {"Xe135": 6.15e-3, "Sm149": 9.42e-10, "Gd155": 5.29e-9}})
+    pu239.yield_data = FissionYieldDistribution(
+        {
+            5.0e5: {"Xe135": 6.14e-3, "Sm149": 9.429e-10, "Gd155": 5.24e-9},
+            2e6: {"Xe135": 6.15e-3, "Sm149": 9.42e-10, "Gd155": 5.29e-9},
+        }
+    )
 
     NuclideBundle = namedtuple("NuclideBundle", "u235 u238 xe135 pu239")
     return NuclideBundle(u235, u238, xe135, pu239)
 
 
 @pytest.mark.parametrize(
-    "input_energy, yield_energy",
-    ((0.0253, 0.0253), (0.01, 0.0253), (4e5, 5e5)))
+    "input_energy, yield_energy", ((0.0253, 0.0253), (0.01, 0.0253), (4e5, 5e5))
+)
 def test_constant_helper(nuclide_bundle, input_energy, yield_energy):
     helper = ConstantFissionYieldHelper(nuclide_bundle, energy=input_energy)
     assert helper.energy == input_energy
     assert helper.constant_yields == {
         "U235": nuclide_bundle.u235.yield_data[yield_energy],
         "U238": nuclide_bundle.u238.yield_data[5.00e5],
-        "Pu239": nuclide_bundle.pu239.yield_data[5e5]}
+        "Pu239": nuclide_bundle.pu239.yield_data[5e5],
+    }
     assert helper.constant_yields == helper.weighted_yields(1)
 
 
@@ -117,7 +128,8 @@ def test_cutoff_construction(nuclide_bundle):
     helper = FissionYieldCutoffHelper(nuclide_bundle, 1)
     assert helper.constant_yields == {
         "U238": u238.yield_data[5.0e5],
-        "Pu239": pu239.yield_data[5e5]}
+        "Pu239": pu239.yield_data[5e5],
+    }
     assert helper.thermal_yields == {"U235": u235.yield_data[0.0253]}
     assert helper.fast_yields == {"U235": u235.yield_data[5e5]}
 
@@ -125,7 +137,8 @@ def test_cutoff_construction(nuclide_bundle):
     helper = FissionYieldCutoffHelper(nuclide_bundle, 1, fast_energy=14e6)
     assert helper.constant_yields == {
         "U238": u238.yield_data[5.0e5],
-        "Pu239": pu239.yield_data[5e5]}
+        "Pu239": pu239.yield_data[5e5],
+    }
     assert helper.thermal_yields == {"U235": u235.yield_data[0.0253]}
     assert helper.fast_yields == {"U235": u235.yield_data[14e6]}
 
@@ -140,30 +153,39 @@ def test_cutoff_construction(nuclide_bundle):
     assert helper.fast_yields == {"U235": u235.yield_data[5e5]}
 
     # higher cutoff energy -> obtain fast and "faster" yields
-    helper = FissionYieldCutoffHelper(nuclide_bundle, 1, cutoff=1e6,
-                                      thermal_energy=5e5, fast_energy=14e6)
+    helper = FissionYieldCutoffHelper(
+        nuclide_bundle, 1, cutoff=1e6, thermal_energy=5e5, fast_energy=14e6
+    )
     assert helper.constant_yields == {"U238": u238.yield_data[5e5]}
     assert helper.thermal_yields == {
-        "U235": u235.yield_data[5e5], "Pu239": pu239.yield_data[5e5]}
+        "U235": u235.yield_data[5e5],
+        "Pu239": pu239.yield_data[5e5],
+    }
     assert helper.fast_yields == {
-        "U235": u235.yield_data[14e6], "Pu239": pu239.yield_data[2e6]}
+        "U235": u235.yield_data[14e6],
+        "Pu239": pu239.yield_data[2e6],
+    }
 
     # test super low and super high cutoff energies
     helper = FissionYieldCutoffHelper(
-        nuclide_bundle, 1, thermal_energy=0.001, cutoff=0.002)
+        nuclide_bundle, 1, thermal_energy=0.001, cutoff=0.002
+    )
     assert helper.fast_yields == {}
     assert helper.thermal_yields == {}
     assert helper.constant_yields == {
-        "U235": u235.yield_data[0.0253], "U238": u238.yield_data[5e5],
-        "Pu239": pu239.yield_data[5e5]}
+        "U235": u235.yield_data[0.0253],
+        "U238": u238.yield_data[5e5],
+        "Pu239": pu239.yield_data[5e5],
+    }
 
-    helper = FissionYieldCutoffHelper(
-        nuclide_bundle, 1, cutoff=15e6, fast_energy=17e6)
+    helper = FissionYieldCutoffHelper(nuclide_bundle, 1, cutoff=15e6, fast_energy=17e6)
     assert helper.thermal_yields == {}
     assert helper.fast_yields == {}
     assert helper.constant_yields == {
-        "U235": u235.yield_data[14e6], "U238": u238.yield_data[5e5],
-        "Pu239": pu239.yield_data[2e6]}
+        "U235": u235.yield_data[14e6],
+        "U238": u238.yield_data[5e5],
+        "Pu239": pu239.yield_data[2e6],
+    }
 
 
 @pytest.mark.parametrize("key", ("cutoff", "thermal_energy", "fast_energy"))
@@ -177,8 +199,9 @@ def test_cutoff_failure(key):
 # emulate some split between fast and thermal U235 fissions
 @pytest.mark.parametrize("therm_frac", (0.5, 0.2, 0.8))
 def test_cutoff_helper(materials, nuclide_bundle, therm_frac):
-    helper = FissionYieldCutoffHelper(nuclide_bundle, len(materials),
-                                      cutoff=1e6, fast_energy=14e6)
+    helper = FissionYieldCutoffHelper(
+        nuclide_bundle, len(materials), cutoff=1e6, fast_energy=14e6
+    )
     helper.generate_tallies(materials, [0])
 
     non_zero_nucs = [n.name for n in nuclide_bundle]
@@ -217,15 +240,15 @@ def test_cutoff_helper(materials, nuclide_bundle, therm_frac):
     for nuc in tally_nucs:
         assert actual_yields[nuc] == (
             helper.thermal_yields[nuc] * therm_frac
-            + helper.fast_yields[nuc] * (1 - therm_frac))
+            + helper.fast_yields[nuc] * (1 - therm_frac)
+        )
 
 
 @pytest.mark.parametrize("avg_energy", (0.01, 6e5, 15e6))
 def test_averaged_helper(materials, nuclide_bundle, avg_energy):
     helper = AveragedFissionYieldHelper(nuclide_bundle)
     helper.generate_tallies(materials, [0])
-    tallied_nucs = helper.update_tally_nuclides(
-        [n.name for n in nuclide_bundle])
+    tallied_nucs = helper.update_tally_nuclides([n.name for n in nuclide_bundle])
     assert tallied_nucs == ["Pu239", "U235"]
 
     # check generated tallies
@@ -254,8 +277,7 @@ def test_averaged_helper(materials, nuclide_bundle, avg_energy):
 
     helper_flux = 1e16
     fission_results = proxy_tally_data(fission_tally, helper_flux)
-    weighted_results = proxy_tally_data(
-        weighted_tally, helper_flux * avg_energy)
+    weighted_results = proxy_tally_data(weighted_tally, helper_flux * avg_energy)
 
     helper._fission_rate_tally = Mock()
     helper._weighted_tally = Mock()
@@ -285,7 +307,7 @@ def interp_average_yields(nuc, avg_energy):
     if avg_energy > energies[-1]:
         return yields[energies[-1]]
     thermal_ix = bisect.bisect_left(energies, avg_energy)
-    thermal_E, fast_E = energies[thermal_ix - 1:thermal_ix + 1]
+    thermal_E, fast_E = energies[thermal_ix - 1 : thermal_ix + 1]
     assert thermal_E < avg_energy < fast_E
-    split = (avg_energy - thermal_E)/(fast_E - thermal_E)
-    return yields[thermal_E]*(1 - split) + yields[fast_E]*split
+    split = (avg_energy - thermal_E) / (fast_E - thermal_E)
+    return yields[thermal_E] * (1 - split) + yields[fast_E] * split

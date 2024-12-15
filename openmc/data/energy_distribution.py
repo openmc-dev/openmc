@@ -15,6 +15,7 @@ from .function import Tabulated1D, INTERPOLATION_SCHEME
 
 class EnergyDistribution(EqualityMixin, ABC):
     """Abstract superclass for all energy distributions."""
+
     def __init__(self):
         pass
 
@@ -37,20 +38,20 @@ class EnergyDistribution(EqualityMixin, ABC):
             Energy distribution
 
         """
-        energy_type = group.attrs['type'].decode()
-        if energy_type == 'maxwell':
+        energy_type = group.attrs["type"].decode()
+        if energy_type == "maxwell":
             return MaxwellEnergy.from_hdf5(group)
-        elif energy_type == 'evaporation':
+        elif energy_type == "evaporation":
             return Evaporation.from_hdf5(group)
-        elif energy_type == 'watt':
+        elif energy_type == "watt":
             return WattEnergy.from_hdf5(group)
-        elif energy_type == 'madland-nix':
+        elif energy_type == "madland-nix":
             return MadlandNix.from_hdf5(group)
-        elif energy_type == 'discrete_photon':
+        elif energy_type == "discrete_photon":
             return DiscretePhoton.from_hdf5(group)
-        elif energy_type == 'level':
+        elif energy_type == "level":
             return LevelInelastic.from_hdf5(group)
-        elif energy_type == 'continuous':
+        elif energy_type == "continuous":
             return ContinuousTabular.from_hdf5(group)
         else:
             raise ValueError(f"Unknown energy distribution type: {energy_type}")
@@ -254,7 +255,7 @@ class MaxwellEnergy(EnergyDistribution):
 
     @theta.setter
     def theta(self, theta):
-        cv.check_type('Maxwell theta', theta, Tabulated1D)
+        cv.check_type("Maxwell theta", theta, Tabulated1D)
         self._theta = theta
 
     @property
@@ -263,7 +264,7 @@ class MaxwellEnergy(EnergyDistribution):
 
     @u.setter
     def u(self, u):
-        cv.check_type('Maxwell restriction energy', u, Real)
+        cv.check_type("Maxwell restriction energy", u, Real)
         self._u = u
 
     def to_hdf5(self, group):
@@ -276,9 +277,9 @@ class MaxwellEnergy(EnergyDistribution):
 
         """
 
-        group.attrs['type'] = np.bytes_('maxwell')
-        group.attrs['u'] = self.u
-        self.theta.to_hdf5(group, 'theta')
+        group.attrs["type"] = np.bytes_("maxwell")
+        group.attrs["u"] = self.u
+        self.theta.to_hdf5(group, "theta")
 
     @classmethod
     def from_hdf5(cls, group):
@@ -295,8 +296,8 @@ class MaxwellEnergy(EnergyDistribution):
             Maxwell distribution
 
         """
-        theta = Tabulated1D.from_hdf5(group['theta'])
-        u = group.attrs['u']
+        theta = Tabulated1D.from_hdf5(group["theta"])
+        u = group.attrs["u"]
         return cls(theta, u)
 
     @classmethod
@@ -322,8 +323,8 @@ class MaxwellEnergy(EnergyDistribution):
 
         # Restriction energy
         nr = int(ace.xss[idx])
-        ne = int(ace.xss[idx + 1 + 2*nr])
-        u = ace.xss[idx + 2 + 2*nr + 2*ne]*EV_PER_MEV
+        ne = int(ace.xss[idx + 1 + 2 * nr])
+        u = ace.xss[idx + 2 + 2 * nr + 2 * ne] * EV_PER_MEV
 
         return cls(theta, u)
 
@@ -387,7 +388,7 @@ class Evaporation(EnergyDistribution):
 
     @theta.setter
     def theta(self, theta):
-        cv.check_type('Evaporation theta', theta, Tabulated1D)
+        cv.check_type("Evaporation theta", theta, Tabulated1D)
         self._theta = theta
 
     @property
@@ -396,7 +397,7 @@ class Evaporation(EnergyDistribution):
 
     @u.setter
     def u(self, u):
-        cv.check_type('Evaporation restriction energy', u, Real)
+        cv.check_type("Evaporation restriction energy", u, Real)
         self._u = u
 
     def to_hdf5(self, group):
@@ -409,9 +410,9 @@ class Evaporation(EnergyDistribution):
 
         """
 
-        group.attrs['type'] = np.bytes_('evaporation')
-        group.attrs['u'] = self.u
-        self.theta.to_hdf5(group, 'theta')
+        group.attrs["type"] = np.bytes_("evaporation")
+        group.attrs["u"] = self.u
+        self.theta.to_hdf5(group, "theta")
 
     @classmethod
     def from_hdf5(cls, group):
@@ -428,8 +429,8 @@ class Evaporation(EnergyDistribution):
             Evaporation spectrum
 
         """
-        theta = Tabulated1D.from_hdf5(group['theta'])
-        u = group.attrs['u']
+        theta = Tabulated1D.from_hdf5(group["theta"])
+        u = group.attrs["u"]
         return cls(theta, u)
 
     @classmethod
@@ -455,8 +456,8 @@ class Evaporation(EnergyDistribution):
 
         # Restriction energy
         nr = int(ace.xss[idx])
-        ne = int(ace.xss[idx + 1 + 2*nr])
-        u = ace.xss[idx + 2 + 2*nr + 2*ne]*EV_PER_MEV
+        ne = int(ace.xss[idx + 1 + 2 * nr])
+        u = ace.xss[idx + 2 + 2 * nr + 2 * ne] * EV_PER_MEV
 
         return cls(theta, u)
 
@@ -524,7 +525,7 @@ class WattEnergy(EnergyDistribution):
 
     @a.setter
     def a(self, a):
-        cv.check_type('Watt a', a, Tabulated1D)
+        cv.check_type("Watt a", a, Tabulated1D)
         self._a = a
 
     @property
@@ -533,7 +534,7 @@ class WattEnergy(EnergyDistribution):
 
     @b.setter
     def b(self, b):
-        cv.check_type('Watt b', b, Tabulated1D)
+        cv.check_type("Watt b", b, Tabulated1D)
         self._b = b
 
     @property
@@ -542,7 +543,7 @@ class WattEnergy(EnergyDistribution):
 
     @u.setter
     def u(self, u):
-        cv.check_type('Watt restriction energy', u, Real)
+        cv.check_type("Watt restriction energy", u, Real)
         self._u = u
 
     def to_hdf5(self, group):
@@ -555,10 +556,10 @@ class WattEnergy(EnergyDistribution):
 
         """
 
-        group.attrs['type'] = np.bytes_('watt')
-        group.attrs['u'] = self.u
-        self.a.to_hdf5(group, 'a')
-        self.b.to_hdf5(group, 'b')
+        group.attrs["type"] = np.bytes_("watt")
+        group.attrs["u"] = self.u
+        self.a.to_hdf5(group, "a")
+        self.b.to_hdf5(group, "b")
 
     @classmethod
     def from_hdf5(cls, group):
@@ -575,9 +576,9 @@ class WattEnergy(EnergyDistribution):
             Watt fission spectrum
 
         """
-        a = Tabulated1D.from_hdf5(group['a'])
-        b = Tabulated1D.from_hdf5(group['b'])
-        u = group.attrs['u']
+        a = Tabulated1D.from_hdf5(group["a"])
+        b = Tabulated1D.from_hdf5(group["b"])
+        u = group.attrs["u"]
         return cls(a, b, u)
 
     @classmethod
@@ -603,8 +604,8 @@ class WattEnergy(EnergyDistribution):
 
         # Advance index
         nr = int(ace.xss[idx])
-        ne = int(ace.xss[idx + 1 + 2*nr])
-        idx += 2 + 2*nr + 2*ne
+        ne = int(ace.xss[idx + 1 + 2 * nr])
+        idx += 2 + 2 * nr + 2 * ne
 
         # Energy-dependent b parameter -- units are MeV^-1
         b = Tabulated1D.from_ace(ace, idx)
@@ -612,11 +613,11 @@ class WattEnergy(EnergyDistribution):
 
         # Advance index
         nr = int(ace.xss[idx])
-        ne = int(ace.xss[idx + 1 + 2*nr])
-        idx += 2 + 2*nr + 2*ne
+        ne = int(ace.xss[idx + 1 + 2 * nr])
+        idx += 2 + 2 * nr + 2 * ne
 
         # Restriction energy
-        u = ace.xss[idx]*EV_PER_MEV
+        u = ace.xss[idx] * EV_PER_MEV
 
         return cls(a, b, u)
 
@@ -692,9 +693,9 @@ class MadlandNix(EnergyDistribution):
 
     @efl.setter
     def efl(self, efl):
-        name = 'Madland-Nix light fragment energy'
+        name = "Madland-Nix light fragment energy"
         cv.check_type(name, efl, Real)
-        cv.check_greater_than(name, efl, 0.)
+        cv.check_greater_than(name, efl, 0.0)
         self._efl = efl
 
     @property
@@ -703,9 +704,9 @@ class MadlandNix(EnergyDistribution):
 
     @efh.setter
     def efh(self, efh):
-        name = 'Madland-Nix heavy fragment energy'
+        name = "Madland-Nix heavy fragment energy"
         cv.check_type(name, efh, Real)
-        cv.check_greater_than(name, efh, 0.)
+        cv.check_greater_than(name, efh, 0.0)
         self._efh = efh
 
     @property
@@ -714,7 +715,7 @@ class MadlandNix(EnergyDistribution):
 
     @tm.setter
     def tm(self, tm):
-        cv.check_type('Madland-Nix maximum temperature', tm, Tabulated1D)
+        cv.check_type("Madland-Nix maximum temperature", tm, Tabulated1D)
         self._tm = tm
 
     def to_hdf5(self, group):
@@ -727,9 +728,9 @@ class MadlandNix(EnergyDistribution):
 
         """
 
-        group.attrs['type'] = np.bytes_('madland-nix')
-        group.attrs['efl'] = self.efl
-        group.attrs['efh'] = self.efh
+        group.attrs["type"] = np.bytes_("madland-nix")
+        group.attrs["efl"] = self.efl
+        group.attrs["efh"] = self.efh
         self.tm.to_hdf5(group)
 
     @classmethod
@@ -747,9 +748,9 @@ class MadlandNix(EnergyDistribution):
             Madland-Nix fission spectrum
 
         """
-        efl = group.attrs['efl']
-        efh = group.attrs['efh']
-        tm = Tabulated1D.from_hdf5(group['tm'])
+        efl = group.attrs["efl"]
+        efh = group.attrs["efh"]
+        tm = Tabulated1D.from_hdf5(group["tm"])
         return cls(efl, efh, tm)
 
     @classmethod
@@ -814,7 +815,7 @@ class DiscretePhoton(EnergyDistribution):
 
     @primary_flag.setter
     def primary_flag(self, primary_flag):
-        cv.check_type('discrete photon primary_flag', primary_flag, Integral)
+        cv.check_type("discrete photon primary_flag", primary_flag, Integral)
         self._primary_flag = primary_flag
 
     @property
@@ -823,7 +824,7 @@ class DiscretePhoton(EnergyDistribution):
 
     @energy.setter
     def energy(self, energy):
-        cv.check_type('discrete photon energy', energy, Real)
+        cv.check_type("discrete photon energy", energy, Real)
         self._energy = energy
 
     @property
@@ -832,7 +833,7 @@ class DiscretePhoton(EnergyDistribution):
 
     @atomic_weight_ratio.setter
     def atomic_weight_ratio(self, atomic_weight_ratio):
-        cv.check_type('atomic weight ratio', atomic_weight_ratio, Real)
+        cv.check_type("atomic weight ratio", atomic_weight_ratio, Real)
         self._atomic_weight_ratio = atomic_weight_ratio
 
     def to_hdf5(self, group):
@@ -845,10 +846,10 @@ class DiscretePhoton(EnergyDistribution):
 
         """
 
-        group.attrs['type'] = np.bytes_('discrete_photon')
-        group.attrs['primary_flag'] = self.primary_flag
-        group.attrs['energy'] = self.energy
-        group.attrs['atomic_weight_ratio'] = self.atomic_weight_ratio
+        group.attrs["type"] = np.bytes_("discrete_photon")
+        group.attrs["primary_flag"] = self.primary_flag
+        group.attrs["energy"] = self.energy
+        group.attrs["atomic_weight_ratio"] = self.atomic_weight_ratio
 
     @classmethod
     def from_hdf5(cls, group):
@@ -865,9 +866,9 @@ class DiscretePhoton(EnergyDistribution):
             Discrete photon energy distribution
 
         """
-        primary_flag = group.attrs['primary_flag']
-        energy = group.attrs['energy']
-        awr = group.attrs['atomic_weight_ratio']
+        primary_flag = group.attrs["primary_flag"]
+        energy = group.attrs["energy"]
+        awr = group.attrs["atomic_weight_ratio"]
         return cls(primary_flag, energy, awr)
 
     @classmethod
@@ -888,7 +889,7 @@ class DiscretePhoton(EnergyDistribution):
 
         """
         primary_flag = int(ace.xss[idx])
-        energy = ace.xss[idx + 1]*EV_PER_MEV
+        energy = ace.xss[idx + 1] * EV_PER_MEV
         return cls(primary_flag, energy, ace.atomic_weight_ratio)
 
 
@@ -922,7 +923,7 @@ class LevelInelastic(EnergyDistribution):
 
     @threshold.setter
     def threshold(self, threshold):
-        cv.check_type('level inelastic threhsold', threshold, Real)
+        cv.check_type("level inelastic threhsold", threshold, Real)
         self._threshold = threshold
 
     @property
@@ -931,7 +932,7 @@ class LevelInelastic(EnergyDistribution):
 
     @mass_ratio.setter
     def mass_ratio(self, mass_ratio):
-        cv.check_type('level inelastic mass ratio', mass_ratio, Real)
+        cv.check_type("level inelastic mass ratio", mass_ratio, Real)
         self._mass_ratio = mass_ratio
 
     def to_hdf5(self, group):
@@ -944,9 +945,9 @@ class LevelInelastic(EnergyDistribution):
 
         """
 
-        group.attrs['type'] = np.bytes_('level')
-        group.attrs['threshold'] = self.threshold
-        group.attrs['mass_ratio'] = self.mass_ratio
+        group.attrs["type"] = np.bytes_("level")
+        group.attrs["threshold"] = self.threshold
+        group.attrs["mass_ratio"] = self.mass_ratio
 
     @classmethod
     def from_hdf5(cls, group):
@@ -963,8 +964,8 @@ class LevelInelastic(EnergyDistribution):
             Level inelastic scattering distribution
 
         """
-        threshold = group.attrs['threshold']
-        mass_ratio = group.attrs['mass_ratio']
+        threshold = group.attrs["threshold"]
+        mass_ratio = group.attrs["mass_ratio"]
         return cls(threshold, mass_ratio)
 
     @classmethod
@@ -984,7 +985,7 @@ class LevelInelastic(EnergyDistribution):
             Level inelastic scattering distribution
 
         """
-        threshold = ace.xss[idx]*EV_PER_MEV
+        threshold = ace.xss[idx] * EV_PER_MEV
         mass_ratio = ace.xss[idx + 1]
         return cls(threshold, mass_ratio)
 
@@ -1029,8 +1030,7 @@ class ContinuousTabular(EnergyDistribution):
 
     @breakpoints.setter
     def breakpoints(self, breakpoints):
-        cv.check_type('continuous tabular breakpoints', breakpoints,
-                      Iterable, Integral)
+        cv.check_type("continuous tabular breakpoints", breakpoints, Iterable, Integral)
         self._breakpoints = breakpoints
 
     @property
@@ -1039,8 +1039,9 @@ class ContinuousTabular(EnergyDistribution):
 
     @interpolation.setter
     def interpolation(self, interpolation):
-        cv.check_type('continuous tabular interpolation', interpolation,
-                      Iterable, Integral)
+        cv.check_type(
+            "continuous tabular interpolation", interpolation, Iterable, Integral
+        )
         self._interpolation = interpolation
 
     @property
@@ -1049,8 +1050,7 @@ class ContinuousTabular(EnergyDistribution):
 
     @energy.setter
     def energy(self, energy):
-        cv.check_type('continuous tabular incoming energy', energy,
-                      Iterable, Real)
+        cv.check_type("continuous tabular incoming energy", energy, Iterable, Real)
         self._energy = energy
 
     @property
@@ -1059,8 +1059,9 @@ class ContinuousTabular(EnergyDistribution):
 
     @energy_out.setter
     def energy_out(self, energy_out):
-        cv.check_type('continuous tabular outgoing energy', energy_out,
-                      Iterable, Univariate)
+        cv.check_type(
+            "continuous tabular outgoing energy", energy_out, Iterable, Univariate
+        )
         self._energy_out = energy_out
 
     def to_hdf5(self, group):
@@ -1073,11 +1074,10 @@ class ContinuousTabular(EnergyDistribution):
 
         """
 
-        group.attrs['type'] = np.bytes_('continuous')
+        group.attrs["type"] = np.bytes_("continuous")
 
-        dset = group.create_dataset('energy', data=self.energy)
-        dset.attrs['interpolation'] = np.vstack((self.breakpoints,
-                                                 self.interpolation))
+        dset = group.create_dataset("energy", data=self.energy)
+        dset.attrs["interpolation"] = np.vstack((self.breakpoints, self.interpolation))
 
         # Determine total number of (E,p) pairs and create array
         n_pairs = sum(len(d) for d in self.energy_out)
@@ -1097,32 +1097,32 @@ class ContinuousTabular(EnergyDistribution):
             if isinstance(eout, Mixture):
                 discrete, continuous = eout.distribution
                 n_discrete_lines[i] = m = len(discrete)
-                interpolation[i] = 1 if continuous.interpolation == 'histogram' else 2
-                pairs[0, j:j+m] = discrete.x
-                pairs[1, j:j+m] = discrete.p
-                pairs[2, j:j+m] = discrete.c
-                pairs[0, j+m:j+n] = continuous.x
-                pairs[1, j+m:j+n] = continuous.p
-                pairs[2, j+m:j+n] = continuous.c
+                interpolation[i] = 1 if continuous.interpolation == "histogram" else 2
+                pairs[0, j : j + m] = discrete.x
+                pairs[1, j : j + m] = discrete.p
+                pairs[2, j : j + m] = discrete.c
+                pairs[0, j + m : j + n] = continuous.x
+                pairs[1, j + m : j + n] = continuous.p
+                pairs[2, j + m : j + n] = continuous.c
             else:
                 if isinstance(eout, Tabular):
                     n_discrete_lines[i] = 0
-                    interpolation[i] = 1 if eout.interpolation == 'histogram' else 2
+                    interpolation[i] = 1 if eout.interpolation == "histogram" else 2
                 elif isinstance(eout, Discrete):
                     n_discrete_lines[i] = n
                     interpolation[i] = 1
-                pairs[0, j:j+n] = eout.x
-                pairs[1, j:j+n] = eout.p
-                pairs[2, j:j+n] = eout.c
+                pairs[0, j : j + n] = eout.x
+                pairs[1, j : j + n] = eout.p
+                pairs[2, j : j + n] = eout.c
             j += n
 
         # Create dataset for distributions
-        dset = group.create_dataset('distribution', data=pairs)
+        dset = group.create_dataset("distribution", data=pairs)
 
         # Write interpolation as attribute
-        dset.attrs['offsets'] = offsets
-        dset.attrs['interpolation'] = interpolation
-        dset.attrs['n_discrete_lines'] = n_discrete_lines
+        dset.attrs["offsets"] = offsets
+        dset.attrs["interpolation"] = interpolation
+        dset.attrs["n_discrete_lines"] = n_discrete_lines
 
     @classmethod
     def from_hdf5(cls, group):
@@ -1139,15 +1139,15 @@ class ContinuousTabular(EnergyDistribution):
             Continuous tabular energy distribution
 
         """
-        interp_data = group['energy'].attrs['interpolation']
+        interp_data = group["energy"].attrs["interpolation"]
         energy_breakpoints = interp_data[0, :]
         energy_interpolation = interp_data[1, :]
-        energy = group['energy'][()]
+        energy = group["energy"][()]
 
-        data = group['distribution']
-        offsets = data.attrs['offsets']
-        interpolation = data.attrs['interpolation']
-        n_discrete_lines = data.attrs['n_discrete_lines']
+        data = group["distribution"]
+        offsets = data.attrs["offsets"]
+        interpolation = data.attrs["interpolation"]
+        n_discrete_lines = data.attrs["n_discrete_lines"]
 
         energy_out = []
         n_energy = len(energy)
@@ -1156,22 +1156,24 @@ class ContinuousTabular(EnergyDistribution):
             # discrete lines
             j = offsets[i]
             if i < n_energy - 1:
-                n = offsets[i+1] - j
+                n = offsets[i + 1] - j
             else:
                 n = data.shape[1] - j
             m = n_discrete_lines[i]
 
             # Create discrete distribution if lines are present
             if m > 0:
-                eout_discrete = Discrete(data[0, j:j+m], data[1, j:j+m])
-                eout_discrete.c = data[2, j:j+m]
+                eout_discrete = Discrete(data[0, j : j + m], data[1, j : j + m])
+                eout_discrete.c = data[2, j : j + m]
                 p_discrete = eout_discrete.c[-1]
 
             # Create continuous distribution
             if m < n:
                 interp = INTERPOLATION_SCHEME[interpolation[i]]
-                eout_continuous = Tabular(data[0, j+m:j+n], data[1, j+m:j+n], interp)
-                eout_continuous.c = data[2, j+m:j+n]
+                eout_continuous = Tabular(
+                    data[0, j + m : j + n], data[1, j + m : j + n], interp
+                )
+                eout_continuous.c = data[2, j + m : j + n]
 
             # If both continuous and discrete are present, create a mixture
             # distribution
@@ -1180,12 +1182,12 @@ class ContinuousTabular(EnergyDistribution):
             elif m == n:
                 eout_i = eout_discrete
             else:
-                eout_i = Mixture([p_discrete, 1. - p_discrete],
-                                 [eout_discrete, eout_continuous])
+                eout_i = Mixture(
+                    [p_discrete, 1.0 - p_discrete], [eout_discrete, eout_continuous]
+                )
             energy_out.append(eout_i)
 
-        return cls(energy_breakpoints, energy_interpolation,
-                   energy, energy_out)
+        return cls(energy_breakpoints, energy_interpolation, energy, energy_out)
 
     @classmethod
     def from_ace(cls, ace, idx, ldis):
@@ -1210,24 +1212,24 @@ class ContinuousTabular(EnergyDistribution):
         """
         # Read number of interpolation regions and incoming energies
         n_regions = int(ace.xss[idx])
-        n_energy_in = int(ace.xss[idx + 1 + 2*n_regions])
+        n_energy_in = int(ace.xss[idx + 1 + 2 * n_regions])
 
         # Get interpolation information
         idx += 1
         if n_regions > 0:
-            breakpoints = ace.xss[idx:idx + n_regions].astype(int)
-            interpolation = ace.xss[idx + n_regions:idx + 2*n_regions].astype(int)
+            breakpoints = ace.xss[idx : idx + n_regions].astype(int)
+            interpolation = ace.xss[idx + n_regions : idx + 2 * n_regions].astype(int)
         else:
             breakpoints = np.array([n_energy_in])
             interpolation = np.array([2])
 
         # Incoming energies at which distributions exist
-        idx += 2*n_regions + 1
-        energy = ace.xss[idx:idx + n_energy_in]*EV_PER_MEV
+        idx += 2 * n_regions + 1
+        energy = ace.xss[idx : idx + n_energy_in] * EV_PER_MEV
 
         # Location of distributions
         idx += n_energy_in
-        loc_dist = ace.xss[idx:idx + n_energy_in].astype(int)
+        loc_dist = ace.xss[idx : idx + n_energy_in].astype(int)
 
         # Initialize variables
         energy_out = []
@@ -1239,34 +1241,40 @@ class ContinuousTabular(EnergyDistribution):
             # intt = interpolation scheme (1=hist, 2=lin-lin)
             INTTp = int(ace.xss[idx])
             intt = INTTp % 10
-            n_discrete_lines = (INTTp - intt)//10
+            n_discrete_lines = (INTTp - intt) // 10
             if intt not in (1, 2):
-                warn("Interpolation scheme for continuous tabular distribution "
-                     "is not histogram or linear-linear.")
+                warn(
+                    "Interpolation scheme for continuous tabular distribution "
+                    "is not histogram or linear-linear."
+                )
                 intt = 2
 
             n_energy_out = int(ace.xss[idx + 1])
-            data = ace.xss[idx + 2:idx + 2 + 3*n_energy_out].copy()
+            data = ace.xss[idx + 2 : idx + 2 + 3 * n_energy_out].copy()
             data.shape = (3, n_energy_out)
-            data[0,:] *= EV_PER_MEV
+            data[0, :] *= EV_PER_MEV
 
             # Create continuous distribution
-            eout_continuous = Tabular(data[0][n_discrete_lines:],
-                                      data[1][n_discrete_lines:]/EV_PER_MEV,
-                                      INTERPOLATION_SCHEME[intt])
+            eout_continuous = Tabular(
+                data[0][n_discrete_lines:],
+                data[1][n_discrete_lines:] / EV_PER_MEV,
+                INTERPOLATION_SCHEME[intt],
+            )
             eout_continuous.c = data[2][n_discrete_lines:]
 
             # If discrete lines are present, create a mixture distribution
             if n_discrete_lines > 0:
-                eout_discrete = Discrete(data[0][:n_discrete_lines],
-                                         data[1][:n_discrete_lines])
+                eout_discrete = Discrete(
+                    data[0][:n_discrete_lines], data[1][:n_discrete_lines]
+                )
                 eout_discrete.c = data[2][:n_discrete_lines]
                 if n_discrete_lines == n_energy_out:
                     eout_i = eout_discrete
                 else:
                     p_discrete = min(sum(eout_discrete.p), 1.0)
-                    eout_i = Mixture([p_discrete, 1. - p_discrete],
-                                     [eout_discrete, eout_continuous])
+                    eout_i = Mixture(
+                        [p_discrete, 1.0 - p_discrete], [eout_discrete, eout_continuous]
+                    )
             else:
                 eout_i = eout_continuous
 

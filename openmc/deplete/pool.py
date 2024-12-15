@@ -2,6 +2,7 @@
 
 Provided to avoid some circular imports
 """
+
 from itertools import repeat, starmap
 from multiprocessing import Pool
 
@@ -17,6 +18,7 @@ USE_MULTIPROCESSING = True
 # Allow user to override the number of worker processes to use for depletion
 # calculations
 NUM_PROCESSES = None
+
 
 def _distribute(items):
     """Distribute items across MPI communicator
@@ -37,11 +39,13 @@ def _distribute(items):
     for i in range(comm.size):
         chunk_size = min_size + int(i < extra)
         if comm.rank == i:
-            return items[j:j + chunk_size]
+            return items[j : j + chunk_size]
         j += chunk_size
 
-def deplete(func, chain, n, rates, dt, matrix_func=None, transfer_rates=None,
-            *matrix_args):
+
+def deplete(
+    func, chain, n, rates, dt, matrix_func=None, transfer_rates=None, *matrix_args
+):
     """Deplete materials using given reaction rates for a specified time
 
     Parameters
@@ -84,22 +88,23 @@ def deplete(func, chain, n, rates, dt, matrix_func=None, transfer_rates=None,
     elif len(fission_yields) != len(n):
         raise ValueError(
             "Number of material fission yield distributions {} is not "
-            "equal to the number of compositions {}".format(
-                len(fission_yields), len(n)))
+            "equal to the number of compositions {}".format(len(fission_yields), len(n))
+        )
 
     if matrix_func is None:
         matrices = map(chain.form_matrix, rates, fission_yields)
     else:
-        matrices = map(matrix_func, repeat(chain), rates, fission_yields,
-                       *matrix_args)
+        matrices = map(matrix_func, repeat(chain), rates, fission_yields, *matrix_args)
 
     if transfer_rates is not None:
         # Calculate transfer rate terms as diagonal matrices
-        transfers = map(chain.form_rr_term, repeat(transfer_rates),
-                        transfer_rates.local_mats)
+        transfers = map(
+            chain.form_rr_term, repeat(transfer_rates), transfer_rates.local_mats
+        )
         # Subtract transfer rate terms from Bateman matrices
-        matrices = [matrix - transfer for (matrix, transfer) in zip(matrices,
-                                                                    transfers)]
+        matrices = [
+            matrix - transfer for (matrix, transfer) in zip(matrices, transfers)
+        ]
 
         if len(transfer_rates.index_transfer) > 0:
             # Gather all on comm.rank 0
@@ -109,7 +114,7 @@ def deplete(func, chain, n, rates, dt, matrix_func=None, transfer_rates=None,
             if comm.rank == 0:
                 # Expand lists
                 matrices = [elm for matrix in matrices for elm in matrix]
-                n = [n_elm for n_mat in n for  n_elm in n_mat]
+                n = [n_elm for n_mat in n for n_elm in n_mat]
 
                 # Calculate transfer rate terms as diagonal matrices
                 transfer_pair = {
@@ -124,8 +129,10 @@ def deplete(func, chain, n, rates, dt, matrix_func=None, transfer_rates=None,
                 for row in range(n_rows):
                     cols = []
                     for col in range(n_cols):
-                        mat_pair = (transfer_rates.burnable_mats[row],
-                                    transfer_rates.burnable_mats[col])
+                        mat_pair = (
+                            transfer_rates.burnable_mats[row],
+                            transfer_rates.burnable_mats[col],
+                        )
                         if row == col:
                             # Fill the diagonals with the Bateman matrices
                             cols.append(matrices[row])

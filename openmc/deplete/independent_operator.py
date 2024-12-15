@@ -114,39 +114,45 @@ class IndependentOperator(OpenMCOperator):
 
     """
 
-    def __init__(self,
-                 materials,
-                 fluxes,
-                 micros,
-                 chain_file=None,
-                 keff=None,
-                 normalization_mode='fission-q',
-                 fission_q=None,
-                 prev_results=None,
-                 reduce_chain=False,
-                 reduce_chain_level=None,
-                 fission_yield_opts=None):
+    def __init__(
+        self,
+        materials,
+        fluxes,
+        micros,
+        chain_file=None,
+        keff=None,
+        normalization_mode="fission-q",
+        fission_q=None,
+        prev_results=None,
+        reduce_chain=False,
+        reduce_chain_level=None,
+        fission_yield_opts=None,
+    ):
         # Validate micro-xs parameters
-        check_type('materials', materials, Iterable, openmc.Material)
-        check_type('micros', micros, Iterable, MicroXS)
+        check_type("materials", materials, Iterable, openmc.Material)
+        check_type("micros", micros, Iterable, MicroXS)
         materials = openmc.Materials(materials)
 
         if not (len(fluxes) == len(micros) == len(materials)):
-            msg = (f'The length of fluxes ({len(fluxes)}) should be equal to '
-                   f'the length of micros ({len(micros)}) and the length of '
-                   f'materials ({len(materials)}).')
+            msg = (
+                f"The length of fluxes ({len(fluxes)}) should be equal to "
+                f"the length of micros ({len(micros)}) and the length of "
+                f"materials ({len(materials)})."
+            )
             raise ValueError(msg)
 
         if keff is not None:
-            check_type('keff', keff, tuple, float)
+            check_type("keff", keff, tuple, float)
             keff = ufloat(*keff)
 
         self._keff = keff
 
         if fission_yield_opts is None:
             fission_yield_opts = {}
-        helper_kwargs = {'normalization_mode': normalization_mode,
-                         'fission_yield_opts': fission_yield_opts}
+        helper_kwargs = {
+            "normalization_mode": normalization_mode,
+            "fission_yield_opts": fission_yield_opts,
+        }
 
         # Sort fluxes and micros in same order that materials get sorted
         index_sort = np.argsort([mat.id for mat in materials])
@@ -162,21 +168,26 @@ class IndependentOperator(OpenMCOperator):
             fission_q=fission_q,
             helper_kwargs=helper_kwargs,
             reduce_chain=reduce_chain,
-            reduce_chain_level=reduce_chain_level)
+            reduce_chain_level=reduce_chain_level,
+        )
 
     @classmethod
-    def from_nuclides(cls, volume, nuclides,
-                      flux,
-                      micro_xs,
-                      chain_file=None,
-                      nuc_units='atom/b-cm',
-                      keff=None,
-                      normalization_mode='fission-q',
-                      fission_q=None,
-                      prev_results=None,
-                      reduce_chain=False,
-                      reduce_chain_level=None,
-                      fission_yield_opts=None):
+    def from_nuclides(
+        cls,
+        volume,
+        nuclides,
+        flux,
+        micro_xs,
+        chain_file=None,
+        nuc_units="atom/b-cm",
+        keff=None,
+        normalization_mode="fission-q",
+        fission_q=None,
+        prev_results=None,
+        reduce_chain=False,
+        reduce_chain_level=None,
+        fission_yield_opts=None,
+    ):
         """
         Alternate constructor from a dictionary of nuclide concentrations
 
@@ -224,32 +235,32 @@ class IndependentOperator(OpenMCOperator):
             the defaults for the associated helper.
 
         """
-        check_type('nuclides', nuclides, dict, str)
+        check_type("nuclides", nuclides, dict, str)
         materials = cls._consolidate_nuclides_to_material(nuclides, nuc_units, volume)
         fluxes = [flux]
         micros = [micro_xs]
-        return cls(materials,
-                   fluxes,
-                   micros,
-                   chain_file,
-                   keff=keff,
-                   normalization_mode=normalization_mode,
-                   fission_q=fission_q,
-                   prev_results=prev_results,
-                   reduce_chain=reduce_chain,
-                   reduce_chain_level=reduce_chain_level,
-                   fission_yield_opts=fission_yield_opts)
+        return cls(
+            materials,
+            fluxes,
+            micros,
+            chain_file,
+            keff=keff,
+            normalization_mode=normalization_mode,
+            fission_q=fission_q,
+            prev_results=prev_results,
+            reduce_chain=reduce_chain,
+            reduce_chain_level=reduce_chain_level,
+            fission_yield_opts=fission_yield_opts,
+        )
 
     @staticmethod
     def _consolidate_nuclides_to_material(nuclides, nuc_units, volume):
-        """Puts nuclide list into an openmc.Materials object.
-
-        """
+        """Puts nuclide list into an openmc.Materials object."""
         mat = openmc.Material()
-        if nuc_units == 'atom/b-cm':
+        if nuc_units == "atom/b-cm":
             for nuc, conc in nuclides.items():
                 mat.add_nuclide(nuc, conc)
-        elif nuc_units == 'atom/cm3':
+        elif nuc_units == "atom/cm3":
             for nuc, conc in nuclides.items():
                 mat.add_nuclide(nuc, conc * 1e-24)  # convert to at/b-cm
         else:
@@ -362,8 +373,8 @@ class IndependentOperator(OpenMCOperator):
 
         """
 
-        normalization_mode = helper_kwargs['normalization_mode']
-        fission_yield_opts = helper_kwargs['fission_yield_opts']
+        normalization_mode = helper_kwargs["normalization_mode"]
+        fission_yield_opts = helper_kwargs["fission_yield_opts"]
 
         self._rate_helper = self._IndependentRateHelper(self)
         if normalization_mode == "fission-q":
@@ -373,8 +384,7 @@ class IndependentOperator(OpenMCOperator):
 
         # Select and create fission yield helper
         fission_helper = ConstantFissionYieldHelper
-        self._yield_helper = fission_helper.from_operator(
-            self, **fission_yield_opts)
+        self._yield_helper = fission_helper.from_operator(self, **fission_yield_opts)
 
     def initial_condition(self):
         """Performs final setup and returns initial condition.
@@ -448,8 +458,9 @@ class IndependentOperator(OpenMCOperator):
                             # negative. CRAM does not guarantee positive
                             # values.
                             if val < -1.0e-21:
-                                print(f'WARNING: nuclide {nuc} in material'
-                                      f'{mat} is negative (density = {val}'
-
-                                      ' atom/b-cm)')
+                                print(
+                                    f"WARNING: nuclide {nuc} in material"
+                                    f"{mat} is negative (density = {val}"
+                                    " atom/b-cm)"
+                                )
                             number_i[mat, nuc] = 0.0

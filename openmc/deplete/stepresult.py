@@ -61,6 +61,7 @@ class StepResult:
         materials and processes
 
     """
+
     def __init__(self):
         self.k = None
         self.time = None
@@ -191,8 +192,14 @@ class StepResult:
         new.index_mat = {mat: idx for (idx, mat) in enumerate(local_materials)}
 
         # Direct transfer
-        direct_attrs = ("time", "k", "source_rate", "index_nuc",
-                        "mat_to_hdf5_ind", "proc_time")
+        direct_attrs = (
+            "time",
+            "k",
+            "source_rate",
+            "index_nuc",
+            "mat_to_hdf5_ind",
+            "proc_time",
+        )
         for attr in direct_attrs:
             setattr(new, attr, getattr(self, attr))
         # Get applicable slice of data
@@ -222,14 +229,14 @@ class StepResult:
 
         """
         with warnings.catch_warnings():
-            warnings.simplefilter('ignore', openmc.IDWarning)
+            warnings.simplefilter("ignore", openmc.IDWarning)
             material = openmc.Material(material_id=int(mat_id))
         try:
             vol = self.volume[mat_id]
         except KeyError as e:
             raise KeyError(
-                f'mat_id {mat_id} not found in StepResult. Available mat_id '
-                f'values are {list(self.volume.keys())}'
+                f"mat_id {mat_id} not found in StepResult. Available mat_id "
+                f"values are {list(self.volume.keys())}"
             ) from e
         for nuc, _ in sorted(self.index_nuc.items(), key=lambda x: x[1]):
             atoms = self[0, mat_id, nuc]
@@ -252,12 +259,12 @@ class StepResult:
 
         """
         # Write new file if first time step, else add to existing file
-        kwargs = {'mode': "w" if step == 0 else "a"}
+        kwargs = {"mode": "w" if step == 0 else "a"}
 
         if h5py.get_config().mpi and comm.size > 1:
             # Write results in parallel
-            kwargs['driver'] = 'mpio'
-            kwargs['comm'] = comm
+            kwargs["driver"] = "mpio"
+            kwargs["comm"] = comm
             with h5py.File(filename, **kwargs) as handle:
                 self._to_hdf5(handle, step, parallel=True)
         else:
@@ -290,8 +297,8 @@ class StepResult:
 
         # Store concentration mat and nuclide dictionaries (along with volumes)
 
-        handle.attrs['version'] = np.array(VERSION_RESULTS)
-        handle.attrs['filetype'] = np.bytes_('depletion results')
+        handle.attrs["version"] = np.array(VERSION_RESULTS)
+        handle.attrs["filetype"] = np.bytes_("depletion results")
 
         mat_list = sorted(self.mat_to_hdf5_ind, key=int)
         nuc_list = sorted(self.index_nuc)
@@ -316,7 +323,9 @@ class StepResult:
             nuc_single_group = nuc_group.create_group(nuc)
             nuc_single_group.attrs["atom number index"] = self.index_nuc[nuc]
             if nuc in self.rates[0].index_nuc:
-                nuc_single_group.attrs["reaction rate index"] = self.rates[0].index_nuc[nuc]
+                nuc_single_group.attrs["reaction rate index"] = self.rates[0].index_nuc[
+                    nuc
+                ]
 
         rxn_group = handle.create_group("reactions")
 
@@ -326,28 +335,37 @@ class StepResult:
 
         # Construct array storage
 
-        handle.create_dataset("number", (1, n_stages, n_mats, n_nuc_number),
-                              maxshape=(None, n_stages, n_mats, n_nuc_number),
-                              chunks=(1, 1, n_mats, n_nuc_number),
-                              dtype='float64')
+        handle.create_dataset(
+            "number",
+            (1, n_stages, n_mats, n_nuc_number),
+            maxshape=(None, n_stages, n_mats, n_nuc_number),
+            chunks=(1, 1, n_mats, n_nuc_number),
+            dtype="float64",
+        )
 
         if n_nuc_rxn > 0 and n_rxn > 0:
-            handle.create_dataset("reaction rates", (1, n_stages, n_mats, n_nuc_rxn, n_rxn),
-                                maxshape=(None, n_stages, n_mats, n_nuc_rxn, n_rxn),
-                                chunks=(1, 1, n_mats, n_nuc_rxn, n_rxn),
-                                dtype='float64')
-
-        handle.create_dataset("eigenvalues", (1, n_stages, 2),
-                              maxshape=(None, n_stages, 2), dtype='float64')
-
-        handle.create_dataset("time", (1, 2), maxshape=(None, 2), dtype='float64')
-
-        handle.create_dataset("source_rate", (1, n_stages), maxshape=(None, n_stages),
-                              dtype='float64')
+            handle.create_dataset(
+                "reaction rates",
+                (1, n_stages, n_mats, n_nuc_rxn, n_rxn),
+                maxshape=(None, n_stages, n_mats, n_nuc_rxn, n_rxn),
+                chunks=(1, 1, n_mats, n_nuc_rxn, n_rxn),
+                dtype="float64",
+            )
 
         handle.create_dataset(
-            "depletion time", (1,), maxshape=(None,),
-            dtype="float64")
+            "eigenvalues",
+            (1, n_stages, 2),
+            maxshape=(None, n_stages, 2),
+            dtype="float64",
+        )
+
+        handle.create_dataset("time", (1, 2), maxshape=(None, 2), dtype="float64")
+
+        handle.create_dataset(
+            "source_rate", (1, n_stages), maxshape=(None, n_stages), dtype="float64"
+        )
+
+        handle.create_dataset("depletion time", (1,), maxshape=(None,), dtype="float64")
 
     def _to_hdf5(self, handle, index, parallel=False):
         """Converts results object into an hdf5 object.
@@ -372,7 +390,7 @@ class StepResult:
 
         # Grab handles
         number_dset = handle["/number"]
-        has_reactions = ("reaction rates" in handle)
+        has_reactions = "reaction rates" in handle
         if has_reactions:
             rxn_dset = handle["/reaction rates"]
         eigenvalues_dset = handle["/eigenvalues"]
@@ -423,18 +441,16 @@ class StepResult:
         low = min(inds)
         high = max(inds)
         for i in range(n_stages):
-            number_dset[index, i, low:high+1] = self.data[i]
+            number_dset[index, i, low : high + 1] = self.data[i]
             if has_reactions:
-                rxn_dset[index, i, low:high+1] = self.rates[i]
+                rxn_dset[index, i, low : high + 1] = self.rates[i]
             if comm.rank == 0:
                 eigenvalues_dset[index, i] = self.k[i]
         if comm.rank == 0:
             time_dset[index] = self.time
             source_rate_dset[index] = self.source_rate
             if self.proc_time is not None:
-                proc_time_dset[index] = (
-                    self.proc_time / (comm.size * self.n_hdf5_mats)
-                )
+                proc_time_dset[index] = self.proc_time / (comm.size * self.n_hdf5_mats)
 
     @classmethod
     def from_hdf5(cls, handle, step):
@@ -508,8 +524,16 @@ class StepResult:
         return results
 
     @staticmethod
-    def save(op, x, op_results, t, source_rate, step_ind, proc_time=None,
-             path: PathLike = "depletion_results.h5"):
+    def save(
+        op,
+        x,
+        op_results,
+        t,
+        source_rate,
+        step_ind,
+        proc_time=None,
+        path: PathLike = "depletion_results.h5",
+    ):
         """Creates and writes depletion results to disk
 
         Parameters
@@ -580,9 +604,7 @@ class StepResult:
         """
 
         if not model.materials:
-            materials = openmc.Materials(
-                model.geometry.get_all_materials().values()
-            )
+            materials = openmc.Materials(model.geometry.get_all_materials().values())
         else:
             materials = model.materials
 

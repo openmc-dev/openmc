@@ -16,9 +16,20 @@ import pytest
 
 from openmc.mpi import comm
 from openmc.deplete import (
-    ReactionRates, StepResult, Results, OperatorResult, PredictorIntegrator,
-    CECMIntegrator, CF4Integrator, CELIIntegrator, EPCRK4Integrator,
-    LEQIIntegrator, SICELIIntegrator, SILEQIIntegrator, cram)
+    ReactionRates,
+    StepResult,
+    Results,
+    OperatorResult,
+    PredictorIntegrator,
+    CECMIntegrator,
+    CF4Integrator,
+    CELIIntegrator,
+    EPCRK4Integrator,
+    LEQIIntegrator,
+    SICELIIntegrator,
+    SILEQIIntegrator,
+    cram,
+)
 
 from tests import dummy_operator
 
@@ -31,7 +42,7 @@ INTEGRATORS = [
     EPCRK4Integrator,
     LEQIIntegrator,
     SICELIIntegrator,
-    SILEQIIntegrator
+    SILEQIIntegrator,
 ]
 
 
@@ -52,16 +63,15 @@ def test_results_save(run_in_tmpdir):
     full_burn_list = []
 
     for i in range(comm.size):
-        vol_dict[str(2*i)] = 1.2
-        vol_dict[str(2*i + 1)] = 1.2
-        full_burn_list.append(str(2*i))
-        full_burn_list.append(str(2*i + 1))
+        vol_dict[str(2 * i)] = 1.2
+        vol_dict[str(2 * i + 1)] = 1.2
+        full_burn_list.append(str(2 * i))
+        full_burn_list.append(str(2 * i + 1))
 
-    burn_list = full_burn_list[2*comm.rank: 2*comm.rank + 2]
+    burn_list = full_burn_list[2 * comm.rank : 2 * comm.rank + 2]
     nuc_list = ["na", "nb"]
 
-    op.get_results_info.return_value = (
-        vol_dict, nuc_list, burn_list, full_burn_list)
+    op.get_results_info.return_value = (vol_dict, nuc_list, burn_list, full_burn_list)
 
     # Construct x
     x1 = []
@@ -95,14 +105,12 @@ def test_results_save(run_in_tmpdir):
     t1 = [0.0, 1.0]
     t2 = [1.0, 2.0]
 
-    op_result1 = [OperatorResult(ufloat(*k), rates)
-                  for k, rates in zip(eigvl1, rate1)]
-    op_result2 = [OperatorResult(ufloat(*k), rates)
-                  for k, rates in zip(eigvl2, rate2)]
+    op_result1 = [OperatorResult(ufloat(*k), rates) for k, rates in zip(eigvl1, rate1)]
+    op_result2 = [OperatorResult(ufloat(*k), rates) for k, rates in zip(eigvl2, rate2)]
 
     # saves within a subdirectory
-    StepResult.save(op, x1, op_result1, t1, 0, 0, path='out/put/depletion.h5')
-    res = Results('out/put/depletion.h5')
+    StepResult.save(op, x1, op_result1, t1, 0, 0, path="out/put/depletion.h5")
+    res = Results("out/put/depletion.h5")
 
     # saves with default filename
     StepResult.save(op, x1, op_result1, t1, 0, 0)
@@ -194,7 +202,7 @@ def test_integrator(run_in_tmpdir, scheme):
 
     # test structure of depletion time dataset
     dep_time = res.get_depletion_time()
-    assert dep_time.shape == (2, )
+    assert dep_time.shape == (2,)
     assert all(dep_time > 0)
 
     integrator = bundle.solver(operator, [0.75], 1, solver=cram.CRAM48)
@@ -224,47 +232,51 @@ def test_timesteps(integrator):
 
     # Reference timesteps in seconds
     day = 86400.0
-    ref_timesteps = [1*day, 2*day, 5*day, 10*day]
+    ref_timesteps = [1 * day, 2 * day, 5 * day, 10 * day]
 
     # Case 1, timesteps in seconds
     timesteps = ref_timesteps
-    x = integrator(op, timesteps, power, timestep_units='s')
+    x = integrator(op, timesteps, power, timestep_units="s")
     assert np.allclose(x.timesteps, ref_timesteps)
 
     # Case 2, timesteps in minutes
     minute = 60
     timesteps = [t / minute for t in ref_timesteps]
-    x = integrator(op, timesteps, power, timestep_units='min')
+    x = integrator(op, timesteps, power, timestep_units="min")
     assert np.allclose(x.timesteps, ref_timesteps)
 
     # Case 3, timesteps in hours
-    hour = 60*60
+    hour = 60 * 60
     timesteps = [t / hour for t in ref_timesteps]
-    x = integrator(op, timesteps, power, timestep_units='h')
+    x = integrator(op, timesteps, power, timestep_units="h")
     assert np.allclose(x.timesteps, ref_timesteps)
 
     # Case 4, timesteps in days
     timesteps = [t / day for t in ref_timesteps]
-    x = integrator(op, timesteps, power, timestep_units='d')
+    x = integrator(op, timesteps, power, timestep_units="d")
     assert np.allclose(x.timesteps, ref_timesteps)
 
     # Case 5, timesteps in MWd/kg
     kilograms = op.heavy_metal / 1000.0
-    days = [t/day for t in ref_timesteps]
+    days = [t / day for t in ref_timesteps]
     megawatts = power / 1000000.0
     burnup = [t * megawatts / kilograms for t in days]
-    x = integrator(op, burnup, power, timestep_units='MWd/kg')
+    x = integrator(op, burnup, power, timestep_units="MWd/kg")
     assert np.allclose(x.timesteps, ref_timesteps)
 
     # Case 6, mixed units
-    burnup_per_day = (1e-6*power) / kilograms
-    timesteps = [(burnup_per_day, 'MWd/kg'), (2*day, 's'), (5, 'd'),
-                 (10*burnup_per_day, 'MWd/kg')]
+    burnup_per_day = (1e-6 * power) / kilograms
+    timesteps = [
+        (burnup_per_day, "MWd/kg"),
+        (2 * day, "s"),
+        (5, "d"),
+        (10 * burnup_per_day, "MWd/kg"),
+    ]
     x = integrator(op, timesteps, power)
     assert np.allclose(x.timesteps, ref_timesteps)
 
     # Bad units should raise an exception
     with pytest.raises(ValueError, match="unit"):
-        integrator(op, ref_timesteps, power, timestep_units='🐨')
+        integrator(op, ref_timesteps, power, timestep_units="🐨")
     with pytest.raises(ValueError, match="unit"):
-        integrator(op, [(800.0, 'gorillas')], power)
+        integrator(op, [(800.0, "gorillas")], power)

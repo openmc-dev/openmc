@@ -6,6 +6,7 @@ from openmc.mixin import EqualityMixin
 
 class AngleEnergy(EqualityMixin, ABC):
     """Distribution in angle and energy of a secondary particle."""
+
     @abstractmethod
     def to_hdf5(self, group):
         pass
@@ -25,26 +26,26 @@ class AngleEnergy(EqualityMixin, ABC):
             Angle-energy distribution
 
         """
-        dist_type = group.attrs['type'].decode()
-        if dist_type == 'uncorrelated':
+        dist_type = group.attrs["type"].decode()
+        if dist_type == "uncorrelated":
             return openmc.data.UncorrelatedAngleEnergy.from_hdf5(group)
-        elif dist_type == 'correlated':
+        elif dist_type == "correlated":
             return openmc.data.CorrelatedAngleEnergy.from_hdf5(group)
-        elif dist_type == 'kalbach-mann':
+        elif dist_type == "kalbach-mann":
             return openmc.data.KalbachMann.from_hdf5(group)
-        elif dist_type == 'nbody':
+        elif dist_type == "nbody":
             return openmc.data.NBodyPhaseSpace.from_hdf5(group)
-        elif dist_type == 'coherent_elastic':
+        elif dist_type == "coherent_elastic":
             return openmc.data.CoherentElasticAE.from_hdf5(group)
-        elif dist_type == 'incoherent_elastic':
+        elif dist_type == "incoherent_elastic":
             return openmc.data.IncoherentElasticAE.from_hdf5(group)
-        elif dist_type == 'incoherent_elastic_discrete':
+        elif dist_type == "incoherent_elastic_discrete":
             return openmc.data.IncoherentElasticAEDiscrete.from_hdf5(group)
-        elif dist_type == 'incoherent_inelastic_discrete':
+        elif dist_type == "incoherent_inelastic_discrete":
             return openmc.data.IncoherentInelasticAEDiscrete.from_hdf5(group)
-        elif dist_type == 'incoherent_inelastic':
+        elif dist_type == "incoherent_inelastic":
             return openmc.data.IncoherentInelasticAE.from_hdf5(group)
-        elif dist_type == 'mixed_elastic':
+        elif dist_type == "mixed_elastic":
             return openmc.data.MixedElasticAE.from_hdf5(group)
 
     @staticmethod
@@ -89,7 +90,8 @@ class AngleEnergy(EqualityMixin, ABC):
         elif law == 4:
             distribution = openmc.data.UncorrelatedAngleEnergy()
             distribution.energy = openmc.data.ContinuousTabular.from_ace(
-                ace, idx, location_dist)
+                ace, idx, location_dist
+            )
         elif law == 5:
             distribution = openmc.data.UncorrelatedAngleEnergy()
             distribution.energy = openmc.data.GeneralEvaporation.from_ace(ace, idx)
@@ -103,14 +105,13 @@ class AngleEnergy(EqualityMixin, ABC):
             distribution = openmc.data.UncorrelatedAngleEnergy()
             distribution.energy = openmc.data.WattEnergy.from_ace(ace, idx)
         elif law == 44:
-            distribution = openmc.data.KalbachMann.from_ace(
-                ace, idx, location_dist)
+            distribution = openmc.data.KalbachMann.from_ace(ace, idx, location_dist)
         elif law == 61:
             distribution = openmc.data.CorrelatedAngleEnergy.from_ace(
-                ace, idx, location_dist)
+                ace, idx, location_dist
+            )
         elif law == 66:
-            distribution = openmc.data.NBodyPhaseSpace.from_ace(
-                ace, idx, rx.q_value)
+            distribution = openmc.data.NBodyPhaseSpace.from_ace(ace, idx, rx.q_value)
         else:
             raise ValueError(f"Unsupported ACE secondary energy distribution law {law}")
 

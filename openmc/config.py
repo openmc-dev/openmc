@@ -12,7 +12,7 @@ __all__ = ["config"]
 
 class _Config(MutableMapping):
     def __init__(self, data=()):
-        self._mapping = {'resolve_paths': True}
+        self._mapping = {"resolve_paths": True}
         self.update(data)
 
     def __getitem__(self, key):
@@ -20,35 +20,37 @@ class _Config(MutableMapping):
 
     def __delitem__(self, key):
         del self._mapping[key]
-        if key == 'cross_sections':
-            del os.environ['OPENMC_CROSS_SECTIONS']
-        elif key == 'mg_cross_sections':
-            del os.environ['OPENMC_MG_CROSS_SECTIONS']
-        elif key == 'chain_file':
-            del os.environ['OPENMC_CHAIN_FILE']
+        if key == "cross_sections":
+            del os.environ["OPENMC_CROSS_SECTIONS"]
+        elif key == "mg_cross_sections":
+            del os.environ["OPENMC_MG_CROSS_SECTIONS"]
+        elif key == "chain_file":
+            del os.environ["OPENMC_CHAIN_FILE"]
             # Reset photon source data since it relies on chain file
             _DECAY_PHOTON_ENERGY.clear()
 
     def __setitem__(self, key, value):
-        if key == 'cross_sections':
+        if key == "cross_sections":
             # Force environment variable to match
             self._set_path(key, value)
-            os.environ['OPENMC_CROSS_SECTIONS'] = str(value)
-        elif key == 'mg_cross_sections':
+            os.environ["OPENMC_CROSS_SECTIONS"] = str(value)
+        elif key == "mg_cross_sections":
             self._set_path(key, value)
-            os.environ['OPENMC_MG_CROSS_SECTIONS'] = str(value)
-        elif key == 'chain_file':
+            os.environ["OPENMC_MG_CROSS_SECTIONS"] = str(value)
+        elif key == "chain_file":
             self._set_path(key, value)
-            os.environ['OPENMC_CHAIN_FILE'] = str(value)
+            os.environ["OPENMC_CHAIN_FILE"] = str(value)
             # Reset photon source data since it relies on chain file
             _DECAY_PHOTON_ENERGY.clear()
             _DECAY_ENERGY.clear()
-        elif key == 'resolve_paths':
+        elif key == "resolve_paths":
             self._mapping[key] = value
         else:
-            raise KeyError(f'Unrecognized config key: {key}. Acceptable keys '
-                           'are "cross_sections", "mg_cross_sections", '
-                           '"chain_file", and "resolve_paths".')
+            raise KeyError(
+                f"Unrecognized config key: {key}. Acceptable keys "
+                'are "cross_sections", "mg_cross_sections", '
+                '"chain_file", and "resolve_paths".'
+            )
 
     def __iter__(self):
         return iter(self._mapping)
@@ -83,30 +85,32 @@ class _Config(MutableMapping):
         else:
             self[key] = previous_value
 
+
 def _default_config():
     """Return default configuration"""
     config = _Config()
 
     # Set cross sections using environment variable
     if "OPENMC_CROSS_SECTIONS" in os.environ:
-        config['cross_sections'] = os.environ["OPENMC_CROSS_SECTIONS"]
+        config["cross_sections"] = os.environ["OPENMC_CROSS_SECTIONS"]
     if "OPENMC_MG_CROSS_SECTIONS" in os.environ:
-        config['mg_cross_sections'] = os.environ["OPENMC_MG_CROSS_SECTIONS"]
+        config["mg_cross_sections"] = os.environ["OPENMC_MG_CROSS_SECTIONS"]
 
     # Set depletion chain
     chain_file = os.environ.get("OPENMC_CHAIN_FILE")
-    if (chain_file is None and
-        config.get('cross_sections') is not None and
-        config['cross_sections'].exists()
-        ):
+    if (
+        chain_file is None
+        and config.get("cross_sections") is not None
+        and config["cross_sections"].exists()
+    ):
         # Check for depletion chain in cross_sections.xml
-        data = DataLibrary.from_xml(config['cross_sections'])
+        data = DataLibrary.from_xml(config["cross_sections"])
         for lib in reversed(data.libraries):
-            if lib['type'] == 'depletion_chain':
-                chain_file = lib['path']
+            if lib["type"] == "depletion_chain":
+                chain_file = lib["path"]
                 break
     if chain_file is not None:
-        config['chain_file'] = chain_file
+        config["chain_file"] = chain_file
 
     return config
 

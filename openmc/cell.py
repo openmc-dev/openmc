@@ -99,7 +99,7 @@ class Cell(IDManagerMixin):
     next_id = 1
     used_ids = set()
 
-    def __init__(self, cell_id=None, name='', fill=None, region=None):
+    def __init__(self, cell_id=None, name="", fill=None, region=None):
         # Initialize Cell class attributes
         self.id = cell_id
         self.name = name
@@ -121,27 +121,27 @@ class Cell(IDManagerMixin):
             return point in self.region
 
     def __repr__(self):
-        string = 'Cell\n'
-        string += '{: <16}=\t{}\n'.format('\tID', self.id)
-        string += '{: <16}=\t{}\n'.format('\tName', self.name)
+        string = "Cell\n"
+        string += "{: <16}=\t{}\n".format("\tID", self.id)
+        string += "{: <16}=\t{}\n".format("\tName", self.name)
 
-        if self.fill_type == 'material':
-            string += '{: <16}=\tMaterial {}\n'.format('\tFill', self.fill.id)
-        elif self.fill_type == 'void':
-            string += '{: <16}=\tNone\n'.format('\tFill')
-        elif self.fill_type == 'distribmat':
-            string += '{: <16}=\t{}\n'.format('\tFill', list(map(
-                lambda m: m if m is None else m.id, self.fill)))
+        if self.fill_type == "material":
+            string += "{: <16}=\tMaterial {}\n".format("\tFill", self.fill.id)
+        elif self.fill_type == "void":
+            string += "{: <16}=\tNone\n".format("\tFill")
+        elif self.fill_type == "distribmat":
+            string += "{: <16}=\t{}\n".format(
+                "\tFill", list(map(lambda m: m if m is None else m.id, self.fill))
+            )
         else:
-            string += '{: <16}=\t{}\n'.format('\tFill', self.fill.id)
+            string += "{: <16}=\t{}\n".format("\tFill", self.fill.id)
 
-        string += '{: <16}=\t{}\n'.format('\tRegion', self.region)
-        string += '{: <16}=\t{}\n'.format('\tRotation', self.rotation)
-        if self.fill_type == 'material':
-            string += '\t{0: <15}=\t{1}\n'.format('Temperature',
-                                                  self.temperature)
-        string += '{: <16}=\t{}\n'.format('\tTranslation', self.translation)
-        string += '{: <16}=\t{}\n'.format('\tVolume', self.volume)
+        string += "{: <16}=\t{}\n".format("\tRegion", self.region)
+        string += "{: <16}=\t{}\n".format("\tRotation", self.rotation)
+        if self.fill_type == "material":
+            string += "\t{0: <15}=\t{1}\n".format("Temperature", self.temperature)
+        string += "{: <16}=\t{}\n".format("\tTranslation", self.translation)
+        string += "{: <16}=\t{}\n".format("\tVolume", self.volume)
 
         return string
 
@@ -152,10 +152,10 @@ class Cell(IDManagerMixin):
     @name.setter
     def name(self, name):
         if name is not None:
-            cv.check_type('cell name', name, str)
+            cv.check_type("cell name", name, str)
             self._name = name
         else:
-            self._name = ''
+            self._name = ""
 
     @property
     def fill(self):
@@ -167,12 +167,15 @@ class Cell(IDManagerMixin):
             if isinstance(fill, Iterable):
                 for i, f in enumerate(fill):
                     if f is not None:
-                        cv.check_type('cell.fill[i]', f, openmc.Material)
+                        cv.check_type("cell.fill[i]", f, openmc.Material)
 
-            elif not isinstance(fill, (openmc.Material, openmc.Lattice,
-                                       openmc.UniverseBase)):
-                msg = (f'Unable to set Cell ID="{self._id}" to use a '
-                       f'non-Material or Universe fill "{fill}"')
+            elif not isinstance(
+                fill, (openmc.Material, openmc.Lattice, openmc.UniverseBase)
+            ):
+                msg = (
+                    f'Unable to set Cell ID="{self._id}" to use a '
+                    f'non-Material or Universe fill "{fill}"'
+                )
                 raise ValueError(msg)
         self._fill = fill
 
@@ -183,15 +186,15 @@ class Cell(IDManagerMixin):
     @property
     def fill_type(self):
         if isinstance(self.fill, openmc.Material):
-            return 'material'
+            return "material"
         elif isinstance(self.fill, openmc.UniverseBase):
-            return 'universe'
+            return "universe"
         elif isinstance(self.fill, openmc.Lattice):
-            return 'lattice'
+            return "lattice"
         elif isinstance(self.fill, Iterable):
-            return 'distribmat'
+            return "distribmat"
         else:
-            return 'void'
+            return "void"
 
     @property
     def region(self):
@@ -200,7 +203,7 @@ class Cell(IDManagerMixin):
     @region.setter
     def region(self, region):
         if region is not None:
-            cv.check_type('cell region', region, Region)
+            cv.check_type("cell region", region, Region)
         self._region = region
 
     @property
@@ -209,7 +212,7 @@ class Cell(IDManagerMixin):
 
     @rotation.setter
     def rotation(self, rotation):
-        cv.check_length('cell rotation', rotation, 3)
+        cv.check_length("cell rotation", rotation, 3)
         self._rotation = np.asarray(rotation)
 
         # Save rotation matrix -- the reason we do this instead of having it be
@@ -219,14 +222,17 @@ class Cell(IDManagerMixin):
             # User specified rotation matrix directly
             self._rotation_matrix = self._rotation
         else:
-            phi, theta, psi = self.rotation*(-pi/180.)
+            phi, theta, psi = self.rotation * (-pi / 180.0)
             c3, s3 = cos(phi), sin(phi)
             c2, s2 = cos(theta), sin(theta)
             c1, s1 = cos(psi), sin(psi)
-            self._rotation_matrix = np.array([
-                [c1*c2, c1*s2*s3 - c3*s1, s1*s3 + c1*c3*s2],
-                [c2*s1, c1*c3 + s1*s2*s3, c3*s1*s2 - c1*s3],
-                [-s2, c2*s3, c2*c3]])
+            self._rotation_matrix = np.array(
+                [
+                    [c1 * c2, c1 * s2 * s3 - c3 * s1, s1 * s3 + c1 * c3 * s2],
+                    [c2 * s1, c1 * c3 + s1 * s2 * s3, c3 * s1 * s2 - c1 * s3],
+                    [-s2, c2 * s3, c2 * c3],
+                ]
+            )
 
     @property
     def rotation_matrix(self):
@@ -239,19 +245,19 @@ class Cell(IDManagerMixin):
     @temperature.setter
     def temperature(self, temperature):
         # Make sure temperatures are positive
-        cv.check_type('cell temperature', temperature, (Iterable, Real), none_ok=True)
+        cv.check_type("cell temperature", temperature, (Iterable, Real), none_ok=True)
         if isinstance(temperature, Iterable):
-            cv.check_type('cell temperature', temperature, Iterable, Real)
+            cv.check_type("cell temperature", temperature, Iterable, Real)
             for T in temperature:
-                cv.check_greater_than('cell temperature', T, 0.0, True)
+                cv.check_greater_than("cell temperature", T, 0.0, True)
         elif isinstance(temperature, Real):
-            cv.check_greater_than('cell temperature', temperature, 0.0, True)
+            cv.check_greater_than("cell temperature", temperature, 0.0, True)
 
         # If this cell is filled with a universe or lattice, propagate
         # temperatures to all cells contained. Otherwise, simply assign it.
-        if self.fill_type in ('universe', 'lattice'):
+        if self.fill_type in ("universe", "lattice"):
             for c in self.get_all_cells().values():
-                if c.fill_type == 'material':
+                if c.fill_type == "material":
                     c._temperature = temperature
         else:
             self._temperature = temperature
@@ -262,8 +268,8 @@ class Cell(IDManagerMixin):
 
     @translation.setter
     def translation(self, translation):
-        cv.check_type('cell translation', translation, Iterable, Real)
-        cv.check_length('cell translation', translation, 3)
+        cv.check_type("cell translation", translation, Iterable, Real)
+        cv.check_length("cell translation", translation, 3)
         self._translation = np.asarray(translation)
 
     @property
@@ -273,8 +279,8 @@ class Cell(IDManagerMixin):
     @volume.setter
     def volume(self, volume):
         if volume is not None:
-            cv.check_type('cell volume', volume, (Real, UFloat))
-            cv.check_greater_than('cell volume', volume, 0.0, equality=True)
+            cv.check_type("cell volume", volume, (Real, UFloat))
+            cv.check_greater_than("cell volume", volume, 0.0, equality=True)
 
         self._volume = volume
 
@@ -286,32 +292,38 @@ class Cell(IDManagerMixin):
     def atoms(self):
         if self._atoms is None:
             if self._volume is None:
-                msg = ('Cannot calculate atom content because no volume '
-                       'is set. Use Cell.volume to provide it or perform '
-                       'a stochastic volume calculation.')
+                msg = (
+                    "Cannot calculate atom content because no volume "
+                    "is set. Use Cell.volume to provide it or perform "
+                    "a stochastic volume calculation."
+                )
                 raise ValueError(msg)
 
-            elif self.fill_type == 'void':
-                msg = ('Cell is filled with void. It contains no atoms. '
-                       'Material must be set to calculate atom content.')
+            elif self.fill_type == "void":
+                msg = (
+                    "Cell is filled with void. It contains no atoms. "
+                    "Material must be set to calculate atom content."
+                )
                 raise ValueError(msg)
 
-            elif self.fill_type in ['lattice', 'universe']:
-                msg = ('Universe and Lattice cells can contain multiple '
-                       'materials in diffrent proportions. Atom content must '
-                       'be calculated with stochastic volume calculation.')
+            elif self.fill_type in ["lattice", "universe"]:
+                msg = (
+                    "Universe and Lattice cells can contain multiple "
+                    "materials in diffrent proportions. Atom content must "
+                    "be calculated with stochastic volume calculation."
+                )
                 raise ValueError(msg)
 
-            elif self.fill_type == 'material':
+            elif self.fill_type == "material":
                 # Get atomic densities
                 self._atoms = self._fill.get_nuclide_atom_densities()
 
                 # Convert to total number of atoms
                 for key, atom_per_bcm in self._atoms.items():
-                    atom = atom_per_bcm * self._volume * 1.0e+24
+                    atom = atom_per_bcm * self._volume * 1.0e24
                     self._atoms[key] = atom
 
-            elif self.fill_type == 'distribmat':
+            elif self.fill_type == "distribmat":
                 # Assumes that volume is total volume of all instances
                 # Also assumes that all instances have the same volume
                 partial_volume = self.volume / len(self.fill)
@@ -322,11 +334,11 @@ class Cell(IDManagerMixin):
                         # we need to append new atoms to any existing value
                         # hence it is necessary to ask for default.
                         atom = self._atoms.setdefault(key, 0)
-                        atom += atom_per_bcm * partial_volume * 1.0e+24
+                        atom += atom_per_bcm * partial_volume * 1.0e24
                         self._atoms[key] = atom
 
             else:
-                msg = f'Unrecognized fill_type: {self.fill_type}'
+                msg = f"Unrecognized fill_type: {self.fill_type}"
                 raise ValueError(msg)
 
         return self._atoms
@@ -334,8 +346,10 @@ class Cell(IDManagerMixin):
     @property
     def paths(self):
         if self._paths is None:
-            raise ValueError('Cell instance paths have not been determined. '
-                             'Call the Geometry.determine_paths() method.')
+            raise ValueError(
+                "Cell instance paths have not been determined. "
+                "Call the Geometry.determine_paths() method."
+            )
         return self._paths
 
     @property
@@ -349,8 +363,9 @@ class Cell(IDManagerMixin):
     def num_instances(self):
         if self._num_instances is None:
             raise ValueError(
-                'Number of cell instances have not been determined. Call the '
-                'Geometry.determine_paths() method.')
+                "Number of cell instances have not been determined. Call the "
+                "Geometry.determine_paths() method."
+            )
         return self._num_instances
 
     def add_volume_information(self, volume_calc):
@@ -362,14 +377,14 @@ class Cell(IDManagerMixin):
             Results from a stochastic volume calculation
 
         """
-        if volume_calc.domain_type == 'cell':
+        if volume_calc.domain_type == "cell":
             if self.id in volume_calc.volumes:
                 self._volume = volume_calc.volumes[self.id].n
                 self._atoms = volume_calc.atoms[self.id]
             else:
-                raise ValueError('No volume information found for this cell.')
+                raise ValueError("No volume information found for this cell.")
         else:
-            raise ValueError('No volume information found for this cell.')
+            raise ValueError("No volume information found for this cell.")
 
     def get_nuclides(self):
         """Returns all nuclides in the cell
@@ -380,7 +395,7 @@ class Cell(IDManagerMixin):
             List of nuclide names
 
         """
-        return self.fill.get_nuclides() if self.fill_type != 'void' else []
+        return self.fill.get_nuclides() if self.fill_type != "void" else []
 
     def get_nuclide_densities(self):
         """Return all nuclides contained in the cell and their densities
@@ -395,23 +410,24 @@ class Cell(IDManagerMixin):
 
         nuclides = {}
 
-        if self.fill_type == 'material':
+        if self.fill_type == "material":
             nuclides.update(self.fill.get_nuclide_densities())
-        elif self.fill_type == 'void':
+        elif self.fill_type == "void":
             pass
         else:
             if self._atoms is not None:
                 volume = self.volume
                 for name, atoms in self._atoms.items():
                     nuclide = openmc.Nuclide(name)
-                    density = 1.0e-24 * atoms.n/volume  # density in atoms/b-cm
+                    density = 1.0e-24 * atoms.n / volume  # density in atoms/b-cm
                     nuclides[name] = (nuclide, density)
             else:
                 raise RuntimeError(
-                    'Volume information is needed to calculate microscopic '
-                    f'cross sections for cell {self.id}. This can be done by '
-                    'running a stochastic volume calculation via the '
-                    'openmc.VolumeCalculation object')
+                    "Volume information is needed to calculate microscopic "
+                    f"cross sections for cell {self.id}. This can be done by "
+                    "running a stochastic volume calculation via the "
+                    "openmc.VolumeCalculation object"
+                )
 
         return nuclides
 
@@ -433,7 +449,7 @@ class Cell(IDManagerMixin):
         memo.add(self)
 
         cells = {}
-        if self.fill_type in ('universe', 'lattice'):
+        if self.fill_type in ("universe", "lattice"):
             cells.update(self.fill.get_all_cells(memo))
 
         return cells
@@ -449,9 +465,9 @@ class Cell(IDManagerMixin):
 
         """
         materials = {}
-        if self.fill_type == 'material':
+        if self.fill_type == "material":
             materials[self.fill.id] = self.fill
-        elif self.fill_type == 'distribmat':
+        elif self.fill_type == "distribmat":
             for m in self.fill:
                 if m is not None:
                     materials[m.id] = m
@@ -481,10 +497,10 @@ class Cell(IDManagerMixin):
         memo.add(self)
 
         universes = {}
-        if self.fill_type == 'universe':
+        if self.fill_type == "universe":
             universes[self.fill.id] = self.fill
             universes.update(self.fill.get_all_universes(memo))
-        elif self.fill_type == 'lattice':
+        elif self.fill_type == "lattice":
             universes.update(self.fill.get_all_universes(memo))
 
         return universes
@@ -540,20 +556,21 @@ class Cell(IDManagerMixin):
                 else:
                     clone.region = self.region
             if self.fill is not None:
-                if self.fill_type == 'distribmat':
+                if self.fill_type == "distribmat":
                     if not clone_materials:
                         clone.fill = self.fill
                     else:
-                        clone.fill = [fill.clone(memo) if fill is not None else
-                                      None for fill in self.fill]
-                elif self.fill_type == 'material':
+                        clone.fill = [
+                            fill.clone(memo) if fill is not None else None
+                            for fill in self.fill
+                        ]
+                elif self.fill_type == "material":
                     if not clone_materials:
                         clone.fill = self.fill
                     else:
                         clone.fill = self.fill.clone(memo)
                 else:
-                    clone.fill = self.fill.clone(clone_materials,
-                         clone_regions, memo)
+                    clone.fill = self.fill.clone(clone_materials, clone_regions, memo)
 
             # Memoize the clone
             memo[self] = clone
@@ -650,24 +667,26 @@ class Cell(IDManagerMixin):
         if len(self._name) > 0:
             element.set("name", str(self.name))
 
-        if self.fill_type == 'void':
+        if self.fill_type == "void":
             element.set("material", "void")
 
-        elif self.fill_type == 'material':
+        elif self.fill_type == "material":
             element.set("material", str(self.fill.id))
 
-        elif self.fill_type == 'distribmat':
-            element.set("material", ' '.join(['void' if m is None else str(m.id)
-                                              for m in self.fill]))
+        elif self.fill_type == "distribmat":
+            element.set(
+                "material",
+                " ".join(["void" if m is None else str(m.id) for m in self.fill]),
+            )
 
-        elif self.fill_type in ('universe', 'lattice'):
+        elif self.fill_type in ("universe", "lattice"):
             element.set("fill", str(self.fill.id))
             self.fill.create_xml_subelement(xml_element, memo)
 
         if self.region is not None:
             # Set the region attribute with the region specification
             region = str(self.region)
-            if region.startswith('('):
+            if region.startswith("("):
                 region = region[1:-1]
             if len(region) > 0:
                 element.set("region", region)
@@ -698,16 +717,15 @@ class Cell(IDManagerMixin):
 
         if self.temperature is not None:
             if isinstance(self.temperature, Iterable):
-                element.set("temperature", ' '.join(
-                    str(t) for t in self.temperature))
+                element.set("temperature", " ".join(str(t) for t in self.temperature))
             else:
                 element.set("temperature", str(self.temperature))
 
         if self.translation is not None:
-            element.set("translation", ' '.join(map(str, self.translation)))
+            element.set("translation", " ".join(map(str, self.translation)))
 
         if self.rotation is not None:
-            element.set("rotation", ' '.join(map(str, self.rotation.ravel())))
+            element.set("rotation", " ".join(map(str, self.rotation.ravel())))
 
         if self.volume is not None:
             element.set("volume", str(self.volume))
@@ -737,12 +755,12 @@ class Cell(IDManagerMixin):
             Cell instance
 
         """
-        cell_id = int(get_text(elem, 'id'))
-        name = get_text(elem, 'name')
+        cell_id = int(get_text(elem, "id"))
+        name = get_text(elem, "name")
         c = cls(cell_id, name)
 
         # Assign material/distributed materials or fill
-        mat_text = get_text(elem, 'material')
+        mat_text = get_text(elem, "material")
         if mat_text is not None:
             mat_ids = mat_text.split()
             if len(mat_ids) > 1:
@@ -750,33 +768,33 @@ class Cell(IDManagerMixin):
             else:
                 c.fill = materials[mat_ids[0]]
         else:
-            fill_id = int(get_text(elem, 'fill'))
+            fill_id = int(get_text(elem, "fill"))
             c.fill = get_universe(fill_id)
 
         # Assign region
-        region = get_text(elem, 'region')
+        region = get_text(elem, "region")
         if region is not None:
             c.region = Region.from_expression(region, surfaces)
 
         # Check for other attributes
-        t = get_text(elem, 'temperature')
+        t = get_text(elem, "temperature")
         if t is not None:
-            if ' ' in t:
+            if " " in t:
                 c.temperature = [float(t_i) for t_i in t.split()]
             else:
                 c.temperature = float(t)
-        v = get_text(elem, 'volume')
+        v = get_text(elem, "volume")
         if v is not None:
             c.volume = float(v)
-        for key in ('temperature', 'rotation', 'translation'):
+        for key in ("temperature", "rotation", "translation"):
             value = get_text(elem, key)
             if value is not None:
                 values = [float(x) for x in value.split()]
-                if key == 'rotation' and len(values) == 9:
+                if key == "rotation" and len(values) == 9:
                     values = np.array(values).reshape(3, 3)
                 setattr(c, key, values)
 
         # Add this cell to appropriate universe
-        univ_id = int(get_text(elem, 'universe', 0))
+        univ_id = int(get_text(elem, "universe", 0))
         get_universe(univ_id).add_cell(c)
         return c

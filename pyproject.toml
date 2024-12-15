@@ -51,7 +51,7 @@ docs = [
 test = ["packaging", "pytest", "pytest-cov", "colorama", "openpyxl"]
 ci = ["cpp-coveralls", "coveralls"]
 vtk = ["vtk"]
-format = ["black"]
+format = ["black~=24.8"]
 develop = ["openmc[test,format]"]
 
 [project.urls]

@@ -812,18 +812,18 @@ std::pair<double, int32_t> Region::distance(
 
 //==============================================================================
 
-bool Region::contains(Position r, Direction u, int32_t on_surface) const
+bool Region::contains(Position r, Direction u, double t, int32_t on_surface) const
 {
   if (simple_) {
-    return contains_simple(r, u, on_surface);
+    return contains_simple(r, u, t, on_surface);
   } else {
-    return contains_complex(r, u, on_surface);
+    return contains_complex(r, u, t, on_surface);
   }
 }
 
 //==============================================================================
 
-bool Region::contains_simple(Position r, Direction u, int32_t on_surface) const
+bool Region::contains_simple(Position r, Direction u, double t, int32_t on_surface) const
 {
   for (int32_t token : expression_) {
     // Assume that no tokens are operators. Evaluate the sense of particle with
@@ -835,7 +835,7 @@ bool Region::contains_simple(Position r, Direction u, int32_t on_surface) const
       return false;
     } else {
       // Note the off-by-one indexing
-      bool sense = model::surfaces[abs(token) - 1]->sense(r, u);
+      bool sense = model::surfaces[abs(token) - 1]->sense(r, u, t);
       if (sense != (token > 0)) {
         return false;
       }
@@ -846,7 +846,7 @@ bool Region::contains_simple(Position r, Direction u, int32_t on_surface) const
 
 //==============================================================================
 
-bool Region::contains_complex(Position r, Direction u, int32_t on_surface) const
+bool Region::contains_complex(Position r, Direction u, double t, int32_t on_surface) const
 {
   bool in_cell = true;
   int total_depth = 0;
@@ -865,7 +865,7 @@ bool Region::contains_complex(Position r, Direction u, int32_t on_surface) const
         in_cell = false;
       } else {
         // Note the off-by-one indexing
-        bool sense = model::surfaces[abs(token) - 1]->sense(r, u);
+        bool sense = model::surfaces[abs(token) - 1]->sense(r, u, t);
         in_cell = (sense == (token > 0));
       }
     } else if ((token == OP_UNION && in_cell == true) ||

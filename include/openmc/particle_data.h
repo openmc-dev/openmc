@@ -296,6 +296,12 @@ public:
   Direction& u_local() { return coord_[n_coord_ - 1].u; }
   const Direction& u_local() const { return coord_[n_coord_ - 1].u; }
 
+  // Accessors for time (units are seconds).
+  double& time() { return time_; }
+  const double& time() const { return time_; }
+  double& time_last() { return time_last_; }
+  const double& time_last() const { return time_last_; }
+  
   // Surface that the particle is on
   int& surface() { return surface_; }
   const int& surface() const { return surface_; }
@@ -336,6 +342,9 @@ private:
                             //!< current tallies
   Position r_last_;         //!< previous coordinates
   Direction u_last_;        //!< previous direction coordinates
+
+  double time_;          //!< time
+  double time_last_;     //!< previous time
 
   int surface_ {0}; //!< index for surface particle is on
 
@@ -407,8 +416,6 @@ private:
 
   double wgt_ {1.0};
   double mu_;
-  double time_ {0.0};
-  double time_last_ {0.0};
   double wgt_last_ {1.0};
 
   bool fission_ {false};
@@ -514,13 +521,6 @@ public:
   // Polar scattering angle after a collision
   double& mu() { return mu_; }
   const double& mu() const { return mu_; }
-
-  // Tracks the time of a particle as it traverses the problem.
-  // Units are seconds.
-  double& time() { return time_; }
-  const double& time() const { return time_; }
-  double& time_last() { return time_last_; }
-  const double& time_last() const { return time_last_; }
 
   // What event took place, described in greater detail below
   TallyEvent& event() { return event_; }

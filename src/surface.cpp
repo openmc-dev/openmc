@@ -16,6 +16,7 @@
 #include "openmc/hdf5_interface.h"
 #include "openmc/math_functions.h"
 #include "openmc/random_lcg.h"
+#include "openmc/search.h"
 #include "openmc/settings.h"
 #include "openmc/string_utils.h"
 #include "openmc/xml_interface.h"
@@ -114,11 +115,11 @@ Surface::Surface(pugi::xml_node surf_node)
   }
 }
 
-bool Surface::sense(Position r, Direction u) const
+bool Surface::sense(Position r, Direction u, double t) const
 {
   // Evaluate the surface equation at the particle's coordinates to determine
   // which side the particle is on.
-  const double f = evaluate(r);
+  const double f = evaluate(r, t);
 
   // Check which side of surface the point is on.
   if (std::abs(f) < FP_COINCIDENT) {
@@ -253,6 +254,30 @@ CSGSurface::CSGSurface(pugi::xml_node surf_node) : Surface {surf_node}
   moving_translations_[N_move] = moving_translations_[N_move - 1];
 };
 
+double CSGSurface::evaluate(Position r, double t) const
+{
+  if (!moving_) {
+    return _evaluate(r);
+  }
+  // The surface moves
+
+  // Get moving index
+  int idx = lower_bound_index(
+    moving_time_grid_.begin(), moving_time_grid_.end(), t);
+
+  // Get moving translation, velocity, and starting time
+  Position translation = moving_translations_[idx];
+  double time_0 = moving_time_grid_[idx];
+  Position velocity = moving_velocities_[idx];
+
+  // Move the position relative to the surface movement
+  double t_local = t - time_0;
+  Position r_moved = r - (translation + velocity * t_local);
+ 
+  // Evaluate the moved position
+  return _evaluate(r_moved);
+}
+
 //==============================================================================
 // Generic functions for x-, y-, and z-, planes.
 //==============================================================================
@@ -280,7 +305,7 @@ SurfaceXPlane::SurfaceXPlane(pugi::xml_node surf_node) : CSGSurface(surf_node)
   read_coeffs(surf_node, id_, {&x0_});
 }
 
-double SurfaceXPlane::evaluate(Position r) const
+double SurfaceXPlane::_evaluate(Position r) const
 {
   return r.x - x0_;
 }
@@ -320,7 +345,7 @@ SurfaceYPlane::SurfaceYPlane(pugi::xml_node surf_node) : CSGSurface(surf_node)
   read_coeffs(surf_node, id_, {&y0_});
 }
 
-double SurfaceYPlane::evaluate(Position r) const
+double SurfaceYPlane::_evaluate(Position r) const
 {
   return r.y - y0_;
 }
@@ -360,7 +385,7 @@ SurfaceZPlane::SurfaceZPlane(pugi::xml_node surf_node) : CSGSurface(surf_node)
   read_coeffs(surf_node, id_, {&z0_});
 }
 
-double SurfaceZPlane::evaluate(Position r) const
+double SurfaceZPlane::_evaluate(Position r) const
 {
   return r.z - z0_;
 }
@@ -400,7 +425,7 @@ SurfacePlane::SurfacePlane(pugi::xml_node surf_node) : CSGSurface(surf_node)
   read_coeffs(surf_node, id_, {&A_, &B_, &C_, &D_});
 }
 
-double SurfacePlane::evaluate(Position r) const
+double SurfacePlane::_evaluate(Position r) const
 {
   return A_ * r.x + B_ * r.y + C_ * r.z - D_;
 }
@@ -519,7 +544,7 @@ SurfaceXCylinder::SurfaceXCylinder(pugi::xml_node surf_node)
   read_coeffs(surf_node, id_, {&y0_, &z0_, &radius_});
 }
 
-double SurfaceXCylinder::evaluate(Position r) const
+double SurfaceXCylinder::_evaluate(Position r) const
 {
   return axis_aligned_cylinder_evaluate<1, 2>(r, y0_, z0_, radius_);
 }
@@ -562,7 +587,7 @@ SurfaceYCylinder::SurfaceYCylinder(pugi::xml_node surf_node)
   read_coeffs(surf_node, id_, {&x0_, &z0_, &radius_});
 }
 
-double SurfaceYCylinder::evaluate(Position r) const
+double SurfaceYCylinder::_evaluate(Position r) const
 {
   return axis_aligned_cylinder_evaluate<0, 2>(r, x0_, z0_, radius_);
 }
@@ -606,7 +631,7 @@ SurfaceZCylinder::SurfaceZCylinder(pugi::xml_node surf_node)
   read_coeffs(surf_node, id_, {&x0_, &y0_, &radius_});
 }
 
-double SurfaceZCylinder::evaluate(Position r) const
+double SurfaceZCylinder::_evaluate(Position r) const
 {
   return axis_aligned_cylinder_evaluate<0, 1>(r, x0_, y0_, radius_);
 }
@@ -649,7 +674,7 @@ SurfaceSphere::SurfaceSphere(pugi::xml_node surf_node) : CSGSurface(surf_node)
   read_coeffs(surf_node, id_, {&x0_, &y0_, &z0_, &radius_});
 }
 
-double SurfaceSphere::evaluate(Position r) const
+double SurfaceSphere::_evaluate(Position r) const
 {
   const double x = r.x - x0_;
   const double y = r.y - y0_;
@@ -815,7 +840,7 @@ SurfaceXCone::SurfaceXCone(pugi::xml_node surf_node) : CSGSurface(surf_node)
   read_coeffs(surf_node, id_, {&x0_, &y0_, &z0_, &radius_sq_});
 }
 
-double SurfaceXCone::evaluate(Position r) const
+double SurfaceXCone::_evaluate(Position r) const
 {
   return axis_aligned_cone_evaluate<0, 1, 2>(r, x0_, y0_, z0_, radius_sq_);
 }
@@ -847,7 +872,7 @@ SurfaceYCone::SurfaceYCone(pugi::xml_node surf_node) : CSGSurface(surf_node)
   read_coeffs(surf_node, id_, {&x0_, &y0_, &z0_, &radius_sq_});
 }
 
-double SurfaceYCone::evaluate(Position r) const
+double SurfaceYCone::_evaluate(Position r) const
 {
   return axis_aligned_cone_evaluate<1, 0, 2>(r, y0_, x0_, z0_, radius_sq_);
 }
@@ -879,7 +904,7 @@ SurfaceZCone::SurfaceZCone(pugi::xml_node surf_node) : CSGSurface(surf_node)
   read_coeffs(surf_node, id_, {&x0_, &y0_, &z0_, &radius_sq_});
 }
 
-double SurfaceZCone::evaluate(Position r) const
+double SurfaceZCone::_evaluate(Position r) const
 {
   return axis_aligned_cone_evaluate<2, 0, 1>(r, z0_, x0_, y0_, radius_sq_);
 }
@@ -912,7 +937,7 @@ SurfaceQuadric::SurfaceQuadric(pugi::xml_node surf_node) : CSGSurface(surf_node)
     surf_node, id_, {&A_, &B_, &C_, &D_, &E_, &F_, &G_, &H_, &J_, &K_});
 }
 
-double SurfaceQuadric::evaluate(Position r) const
+double SurfaceQuadric::_evaluate(Position r) const
 {
   const double x = r.x;
   const double y = r.y;
@@ -1078,7 +1103,7 @@ void SurfaceXTorus::to_hdf5_inner(hid_t group_id) const
   write_dataset(group_id, "coefficients", coeffs);
 }
 
-double SurfaceXTorus::evaluate(Position r) const
+double SurfaceXTorus::_evaluate(Position r) const
 {
   double x = r.x - x0_;
   double y = r.y - y0_;
@@ -1131,7 +1156,7 @@ void SurfaceYTorus::to_hdf5_inner(hid_t group_id) const
   write_dataset(group_id, "coefficients", coeffs);
 }
 
-double SurfaceYTorus::evaluate(Position r) const
+double SurfaceYTorus::_evaluate(Position r) const
 {
   double x = r.x - x0_;
   double y = r.y - y0_;
@@ -1184,7 +1209,7 @@ void SurfaceZTorus::to_hdf5_inner(hid_t group_id) const
   write_dataset(group_id, "coefficients", coeffs);
 }
 
-double SurfaceZTorus::evaluate(Position r) const
+double SurfaceZTorus::_evaluate(Position r) const
 {
   double x = r.x - x0_;
   double y = r.y - y0_;

@@ -40,7 +40,7 @@ public:
 
   moab::EntityHandle mesh_handle() const;
 
-  double evaluate(Position r) const override;
+  double evaluate(Position r, double t) const override;
   double distance(Position r, Direction u, bool coincident) const override;
   Direction normal(Position r) const override;
   Direction reflect(Position r, Direction u, GeometryState* p) const override;

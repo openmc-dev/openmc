@@ -727,7 +727,7 @@ moab::EntityHandle DAGSurface::mesh_handle() const
   return dagmc_ptr()->entity_by_index(2, dag_index());
 }
 
-double DAGSurface::evaluate(Position r) const
+double DAGSurface::evaluate(Position r, double t) const
 {
   return 0.0;
 }

@@ -411,7 +411,6 @@ class Surface(IDManagerMixin, ABC):
             return point
 
         # Get moving index
-        N_move = len(self._moving_durations)
         time_grid = self._moving_time_grid
         idx = np.searchsorted(time_grid, time, side='right') - 1
 

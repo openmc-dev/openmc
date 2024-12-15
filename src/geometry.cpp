@@ -43,7 +43,7 @@ bool check_cell_overlap(GeometryState& p, bool error)
     // Loop through each cell on this level
     for (auto index_cell : univ.cells_) {
       Cell& c = *model::cells[index_cell];
-      if (c.contains(p.coord(j).r, p.coord(j).u, p.surface())) {
+      if (c.contains(p.coord(j).r, p.coord(j).u, p.time(), p.surface())) {
         if (index_cell != p.coord(j).cell) {
           if (error) {
             fatal_error(
@@ -110,7 +110,7 @@ bool find_cell_inner(
     for (auto it = neighbor_list->cbegin(); it != neighbor_list->cend(); ++it) {
       i_cell = *it;
 
-      // Make sure the search cell is in the same universe.
+      // Make sure the search cell is in the same `universe.
       int i_universe = p.lowest_coord().universe;
       if (model::cells[i_cell]->universe_ != i_universe)
         continue;
@@ -118,8 +118,9 @@ bool find_cell_inner(
       // Check if this cell contains the particle.
       Position r {p.r_local()};
       Direction u {p.u_local()};
+      double t {p.time()};
       auto surf = p.surface();
-      if (model::cells[i_cell]->contains(r, u, surf)) {
+      if (model::cells[i_cell]->contains(r, u, t, surf)) {
         p.lowest_coord().cell = i_cell;
         found = true;
         break;

@@ -69,6 +69,10 @@ exclude = ['tests*']
 "openmc.data" = ["*.txt", "*.DAT", "*.json", "*.h5"]
 "openmc.lib" = ["libopenmc.dylib", "libopenmc.so"]
 
+[tool.black]
+target-version = ["py311", "py312", "py313"]
+line-length = 88
+
 [project.scripts]
 openmc-ace-to-hdf5 = "scripts.openmc_ace_to_hdf5:main"
 openmc-plot-mesh-tally = "scripts.openmc_plot_mesh_tally:main"

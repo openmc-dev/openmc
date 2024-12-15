@@ -197,12 +197,12 @@ CSGSurface::CSGSurface(pugi::xml_node surf_node) : Surface {surf_node}
   geom_type_ = GeometryType::CSG;
 
   // Not moving?
-  if (!(check_for_node(surf_node, "moving_velocities") || 
-       check_for_node(surf_node, "moving_durations"))){
+  if (!(check_for_node(surf_node, "moving_velocities") ||
+        check_for_node(surf_node, "moving_durations"))) {
     moving_ = false;
     return;
   }
-  
+
   // Now, set the surface moving parameters
   moving_ = true;
 
@@ -217,7 +217,7 @@ CSGSurface::CSGSurface(pugi::xml_node surf_node) : Surface {surf_node}
     moving_time_grid_[n + 1] = moving_time_grid_[n] + durations[n];
   }
   moving_time_grid_[N_move] = INFTY;
-  
+
   // Moving velocities
   moving_velocities_.resize(N_move);
   std::string velocities_spec = get_node_value(surf_node, "moving_velocities");
@@ -247,7 +247,8 @@ CSGSurface::CSGSurface(pugi::xml_node surf_node) : Surface {surf_node}
   moving_translations_.resize(N_move + 1);
   moving_translations_[0] *= 0.0;
   for (int n = 0; n < N_move - 1; n++) {
-    moving_translations_[n + 1] = moving_translations_[n] + moving_velocities_[n] * durations[n];
+    moving_translations_[n + 1] =
+      moving_translations_[n] + moving_velocities_[n] * durations[n];
   }
   moving_translations_[N_move] = moving_translations_[N_move - 1];
 };

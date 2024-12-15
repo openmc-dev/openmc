@@ -41,12 +41,6 @@ public:
   GeometryType geom_type_;           //!< Geometry type indicator (CSG or DAGMC)
   bool surf_source_ {false}; //!< Activate source banking for the surface?
 
-  //!< Moving surface parameters
-  bool moving_ {false};
-  vector<double> moving_time_grid_;      // Time grid points [0.0, ..., INFTY]
-  vector<Position> moving_translations_; // Translations at the time grid points
-  vector<Position> moving_velocities_;   // Velocities within time bins
-
   explicit Surface(pugi::xml_node surf_node);
   Surface();
 
@@ -103,6 +97,12 @@ protected:
 
 class CSGSurface : public Surface {
 public:
+  //!< Moving surface parameters
+  bool moving_ {false};
+  vector<double> moving_time_grid_;      // Time grid points [0.0, ..., INFTY]
+  vector<Position> moving_translations_; // Translations at the time grid points
+  vector<Position> moving_velocities_;   // Velocities within time bins
+
   explicit CSGSurface(pugi::xml_node surf_node);
   CSGSurface();
 };

@@ -6,6 +6,7 @@
 [![dockerhub-publish-develop-dagmc](https://github.com/openmc-dev/openmc/workflows/dockerhub-publish-develop-dagmc/badge.svg)](https://github.com/openmc-dev/openmc/actions?query=workflow%3Adockerhub-publish-develop-dagmc)
 [![dockerhub-publish-develop](https://github.com/openmc-dev/openmc/workflows/dockerhub-publish-develop/badge.svg)](https://github.com/openmc-dev/openmc/actions?query=workflow%3Adockerhub-publish-develop)
 [![conda-pacakge](https://anaconda.org/conda-forge/openmc/badges/version.svg)](https://anaconda.org/conda-forge/openmc)
+[![black-style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 The OpenMC project aims to provide a fully-featured Monte Carlo particle
 transport code based on modern methods. It is a constructive solid geometry,

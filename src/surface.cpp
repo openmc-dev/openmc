@@ -115,7 +115,7 @@ Surface::Surface(pugi::xml_node surf_node)
   }
 }
 
-bool Surface::sense(Position r, Direction u, double t) const
+bool Surface::sense(Position r, Direction u, double t, double speed) const
 {
   // Evaluate the surface equation at the particle's coordinates to determine
   // which side the particle is on.
@@ -126,7 +126,7 @@ bool Surface::sense(Position r, Direction u, double t) const
     // Particle may be coincident with this surface. To determine the sense, we
     // look at the direction of the particle relative to the surface normal (by
     // default in the positive direction) via their dot product.
-    return u.dot(normal(r)) > 0.0;
+    return dot_normal(r, u, t, speed) > 0.0;
   }
   return f > 0.0;
 }
@@ -277,6 +277,34 @@ double CSGSurface::evaluate(Position r, double t) const
   // Evaluate the moved position
   return _evaluate(r_moved);
 }
+
+double CSGSurface::dot_normal(Position r, Direction u, double t, double speed) const
+{
+  if (!moving_) {
+    return u.dot(normal(r));
+  }
+  // The surface moves
+  
+  // Get moving index
+  int idx =
+    lower_bound_index(moving_time_grid_.begin(), moving_time_grid_.end(), t);
+
+  // Get moving translation, velocity, and starting time
+  Position translation = moving_translations_[idx];
+  double time_0 = moving_time_grid_[idx];
+  Position velocity = moving_velocities_[idx];
+
+  // Move the position relative to the surface movement
+  double t_local = t - time_0;
+  Position r_moved = r - (translation + velocity * t_local);
+
+  // Get the relative direction
+  Direction u_relative = u - velocity / speed;
+
+  // Get the dot product
+  return u_relative.dot(normal(r_moved));
+}
+
 
 //==============================================================================
 // Generic functions for x-, y-, and z-, planes.

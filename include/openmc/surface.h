@@ -51,9 +51,10 @@ public:
   //! \param u A direction used to "break ties" and pick a sense when the
   //!   point is very close to the surface.
   //! \param t The time for the evaluation
+  //! \param speed The point speed to "break ties" with moving surface.
   //! \return true if the point is on the "positive" side of the surface and
   //!   false otherwise.
-  bool sense(Position r, Direction u, double t) const;
+  bool sense(Position r, Direction u, double t, double speed) const;
 
   //! Determine the direction of a ray reflected from the surface.
   //! \param[in] r The point at which the ray is incident.
@@ -86,6 +87,15 @@ public:
   //! \param r A 3D Cartesian coordinate.
   //! \return Normal direction
   virtual Direction normal(Position r) const = 0;
+  
+  //! Compute the dot product of the local outward normal direction of the 
+  //! surface to a geometry coordinate.
+  //! \param r A 3D Cartesian coordinate.
+  //! \param u The direction of the ray.
+  //! \param t The time for the evaluation.
+  //! \param speed The speed of the particle.
+  //! \return The dot product
+  virtual double dot_normal(Position r, Direction u, double t, double speed) const = 0;
 
   //! Write all information needed to reconstruct the surface to an HDF5 group.
   //! \param group_id An HDF5 group id.
@@ -109,6 +119,7 @@ public:
   explicit CSGSurface(pugi::xml_node surf_node);
   CSGSurface();
   double evaluate(Position r, double t) const override;
+  double dot_normal(Position r, Direction u, double t, double speed) const override;
 
 protected:
   //! Static CSG surface evaluation.

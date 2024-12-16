@@ -758,6 +758,11 @@ Direction DAGSurface::normal(Position r) const
   return dir;
 }
 
+double DAGSurface::dot_normal(Position r, Direction u, double t, double speed) const
+{
+  return u.dot(normal(r));
+}
+
 Direction DAGSurface::reflect(Position r, Direction u, GeometryState* p) const
 {
   Expects(p);

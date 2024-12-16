@@ -43,7 +43,7 @@ bool check_cell_overlap(GeometryState& p, bool error)
     // Loop through each cell on this level
     for (auto index_cell : univ.cells_) {
       Cell& c = *model::cells[index_cell];
-      if (c.contains(p.coord(j).r, p.coord(j).u, p.time(), p.surface())) {
+      if (c.contains(p.coord(j).r, p.coord(j).u, p.time(), p.surface(), p.speed())) {
         if (index_cell != p.coord(j).cell) {
           if (error) {
             fatal_error(
@@ -119,8 +119,9 @@ bool find_cell_inner(
       Position r {p.r_local()};
       Direction u {p.u_local()};
       double t {p.time()};
+      double speed {p.speed()};
       auto surf = p.surface();
-      if (model::cells[i_cell]->contains(r, u, t, surf)) {
+      if (model::cells[i_cell]->contains(r, u, t, speed, surf)) {
         p.lowest_coord().cell = i_cell;
         found = true;
         break;

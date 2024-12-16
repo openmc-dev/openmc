@@ -302,6 +302,10 @@ public:
   double& time_last() { return time_last_; }
   const double& time_last() const { return time_last_; }
 
+  // Accessors for speed (cm/s).
+  double& speed() { return speed_; }
+  const double& speed() const { return speed_; }
+
   // Surface that the particle is on
   int& surface() { return surface_; }
   const int& surface() const { return surface_; }
@@ -345,6 +349,8 @@ private:
 
   double time_;      //!< time
   double time_last_; //!< previous time
+  
+  double speed_;
 
   int surface_ {0}; //!< index for surface particle is on
 

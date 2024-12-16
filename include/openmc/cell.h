@@ -78,10 +78,11 @@ public:
   //! \param u A direction used to "break ties" the coordinates are very
   //!   close to a surface.
   //! \param t The time coordinate to check.
+  //! \param speed Particle speed to "break ties" for moving surface.
   //! \param on_surface The signed index of a surface that the coordinate is
   //!   known to be on.  This index takes precedence over surface sense
   //!   calculations.
-  bool contains(Position r, Direction u, double t, int32_t on_surface) const;
+  bool contains(Position r, Direction u, double t, double speed, int32_t on_surface) const;
 
   //! Find the oncoming boundary of this cell.
   std::pair<double, int32_t> distance(
@@ -112,7 +113,8 @@ private:
   //! Determine if a particle is inside the cell for a simple cell (only
   //! intersection operators)
   bool contains_simple(
-    Position r, Direction u, double t, int32_t on_surface) const;
+
+    Position r, Direction u, double t, double speed, int32_t on_surface) const;
 
   //! Determine if a particle is inside the cell for a complex cell.
   //!
@@ -120,7 +122,7 @@ private:
   //! if short circuiting can be used. Short cicuiting uses the relative and
   //! absolute depth of parenthases in the expression.
   bool contains_complex(
-    Position r, Direction u, double t, int32_t on_surface) const;
+    Position r, Direction u, double t, double speed, int32_t on_surface) const;
 
   //! BoundingBox if the paritcle is in a simple cell.
   BoundingBox bounding_box_simple() const;
@@ -181,11 +183,12 @@ public:
   //! \param u A direction used to "break ties" the coordinates are very
   //!   close to a surface.
   //! \param t The time coordinate to check.
+  //! \param speed Particle speed to "break ties" for moving surface.
   //! \param on_surface The signed index of a surface that the coordinate is
   //!   known to be on.  This index takes precedence over surface sense
   //!   calculations.
   virtual bool contains(
-    Position r, Direction u, double t, int32_t on_surface) const = 0;
+    Position r, Direction u, double t, double speed, int32_t on_surface) const = 0;
 
   //! Find the oncoming boundary of this cell.
   virtual std::pair<double, int32_t> distance(
@@ -382,9 +385,9 @@ public:
   }
 
   bool contains(
-    Position r, Direction u, double t, int32_t on_surface) const override
+    Position r, Direction u, double t, double speed, int32_t on_surface) const override
   {
-    return region_.contains(r, u, t, on_surface);
+    return region_.contains(r, u, t, speed, on_surface);
   }
 
   BoundingBox bounding_box() const override

@@ -101,7 +101,7 @@ void Particle::create_secondary(
   bank.E = settings::run_CE ? E : g();
   bank.time = time();
 
-  n_bank_second() += 1;
+  bank_second_E() += bank.E;
 }
 
 void Particle::from_source(const SourceSite* src)
@@ -356,7 +356,7 @@ void Particle::event_collide()
 
   // Reset banked weight during collision
   n_bank() = 0;
-  n_bank_second() = 0;
+  bank_second_E() = 0.0;
   wgt_bank() = 0.0;
   zero_delayed_bank();
 

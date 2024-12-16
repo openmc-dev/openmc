@@ -418,7 +418,7 @@ private:
   int delayed_group_ {0};
 
   int n_bank_ {0};
-  int n_bank_second_ {0};
+  double bank_second_E_ {0.0};
   double wgt_bank_ {0.0};
   int n_delayed_bank_[MAX_DELAYED_GROUPS];
 
@@ -532,11 +532,10 @@ public:
   int& delayed_group() { return delayed_group_; } // delayed group
 
   // Post-collision data
+  double& bank_second_E() { return bank_second_E_; } // energy of last reaction secondaries
+  const double& bank_second_E() const { return bank_second_E_; }
+
   int& n_bank() { return n_bank_; } // number of banked fission sites
-  int& n_bank_second()
-  {
-    return n_bank_second_;
-  }                                        // number of secondaries banked
   double& wgt_bank() { return wgt_bank_; } // weight of banked fission sites
   int* n_delayed_bank()
   {

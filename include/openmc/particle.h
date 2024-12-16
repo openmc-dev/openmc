@@ -37,7 +37,7 @@ public:
   //==========================================================================
   // Methods
 
-  double speed() const;
+  double get_speed() const;
 
   //! moves the particle by the distance length to its next location
   //! \param length the distance the particle is moved

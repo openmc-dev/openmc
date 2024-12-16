@@ -572,6 +572,8 @@ void initialize_history(Particle& p, int64_t index_source)
   }
   p.current_work() = index_source;
 
+  p.speed() = p.get_speed();
+
   // set identifier for particle
   p.id() = simulation::work_index[mpi::rank] + index_source;
 

@@ -109,6 +109,8 @@ Mesh::Mesh(pugi::xml_node node)
 {
   // Read mesh id
   id_ = std::stoi(get_node_value(node, "id"));
+  if (check_for_node(node, "name"))
+    name_ = get_node_value(node, "name");
 }
 
 void Mesh::set_id(int32_t id)
@@ -234,6 +236,28 @@ vector<Mesh::MaterialVolume> Mesh::material_volumes(
   }
 
   return result;
+}
+
+void Mesh::to_hdf5(hid_t group) const
+{
+  // Create group for mesh
+  std::string group_name = fmt::format("mesh {}", id_);
+  hid_t mesh_group = create_group(group, group_name.c_str());
+
+  // Write mesh type
+  write_attribute(mesh_group, "type", this->get_mesh_type());
+
+  // Write mesh ID
+  write_attribute(mesh_group, "id", id_);
+
+  // Write mesh name
+  write_dataset(mesh_group, "name", name_);
+
+  // Write mesh data
+  this->to_hdf5_inner(mesh_group);
+
+  // Close group
+  close_group(mesh_group);
 }
 
 //==============================================================================
@@ -389,11 +413,8 @@ std::string UnstructuredMesh::bin_label(int bin) const
   return fmt::format("Mesh Index ({})", bin);
 };
 
-void UnstructuredMesh::to_hdf5(hid_t group) const
+void UnstructuredMesh::to_hdf5_inner(hid_t mesh_group) const
 {
-  hid_t mesh_group = create_group(group, fmt::format("mesh {}", id_));
-
-  write_dataset(mesh_group, "type", mesh_type);
   write_dataset(mesh_group, "filename", filename_);
   write_dataset(mesh_group, "library", this->library());
   if (!options_.empty()) {
@@ -453,8 +474,6 @@ void UnstructuredMesh::to_hdf5(hid_t group) const
   write_dataset(mesh_group, "volumes", volumes);
   write_dataset(mesh_group, "connectivity", connectivity);
   write_dataset(mesh_group, "element_types", elem_types);
-
-  close_group(mesh_group);
 }
 
 void UnstructuredMesh::set_length_multiplier(double length_multiplier)
@@ -948,17 +967,13 @@ std::pair<vector<double>, vector<double>> RegularMesh::plot(
   return {axis_lines[0], axis_lines[1]};
 }
 
-void RegularMesh::to_hdf5(hid_t group) const
+void RegularMesh::to_hdf5_inner(hid_t mesh_group) const
 {
-  hid_t mesh_group = create_group(group, "mesh " + std::to_string(id_));
-
   write_dataset(mesh_group, "type", "regular");
   write_dataset(mesh_group, "dimension", get_x_shape());
   write_dataset(mesh_group, "lower_left", lower_left_);
   write_dataset(mesh_group, "upper_right", upper_right_);
   write_dataset(mesh_group, "width", width_);
-
-  close_group(mesh_group);
 }
 
 xt::xtensor<double, 1> RegularMesh::count_sites(
@@ -1138,16 +1153,12 @@ std::pair<vector<double>, vector<double>> RectilinearMesh::plot(
   return {axis_lines[0], axis_lines[1]};
 }
 
-void RectilinearMesh::to_hdf5(hid_t group) const
+void RectilinearMesh::to_hdf5_inner(hid_t mesh_group) const
 {
-  hid_t mesh_group = create_group(group, "mesh " + std::to_string(id_));
-
   write_dataset(mesh_group, "type", "rectilinear");
   write_dataset(mesh_group, "x_grid", grid_[0]);
   write_dataset(mesh_group, "y_grid", grid_[1]);
   write_dataset(mesh_group, "z_grid", grid_[2]);
-
-  close_group(mesh_group);
 }
 
 double RectilinearMesh::volume(const MeshIndex& ijk) const
@@ -1417,17 +1428,13 @@ std::pair<vector<double>, vector<double>> CylindricalMesh::plot(
   return {axis_lines[0], axis_lines[1]};
 }
 
-void CylindricalMesh::to_hdf5(hid_t group) const
+void CylindricalMesh::to_hdf5_inner(hid_t mesh_group) const
 {
-  hid_t mesh_group = create_group(group, "mesh " + std::to_string(id_));
-
   write_dataset(mesh_group, "type", "cylindrical");
   write_dataset(mesh_group, "r_grid", grid_[0]);
   write_dataset(mesh_group, "phi_grid", grid_[1]);
   write_dataset(mesh_group, "z_grid", grid_[2]);
   write_dataset(mesh_group, "origin", origin_);
-
-  close_group(mesh_group);
 }
 
 double CylindricalMesh::volume(const MeshIndex& ijk) const
@@ -1733,17 +1740,13 @@ std::pair<vector<double>, vector<double>> SphericalMesh::plot(
   return {axis_lines[0], axis_lines[1]};
 }
 
-void SphericalMesh::to_hdf5(hid_t group) const
+void SphericalMesh::to_hdf5_inner(hid_t mesh_group) const
 {
-  hid_t mesh_group = create_group(group, "mesh " + std::to_string(id_));
-
   write_dataset(mesh_group, "type", SphericalMesh::mesh_type);
   write_dataset(mesh_group, "r_grid", grid_[0]);
   write_dataset(mesh_group, "theta_grid", grid_[1]);
   write_dataset(mesh_group, "phi_grid", grid_[2]);
   write_dataset(mesh_group, "origin", origin_);
-
-  close_group(mesh_group);
 }
 
 double SphericalMesh::volume(const MeshIndex& ijk) const

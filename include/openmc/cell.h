@@ -82,7 +82,8 @@ public:
   //! \param on_surface The signed index of a surface that the coordinate is
   //!   known to be on.  This index takes precedence over surface sense
   //!   calculations.
-  bool contains(Position r, Direction u, double t, double speed, int32_t on_surface) const;
+  bool contains(
+    Position r, Direction u, double t, double speed, int32_t on_surface) const;
 
   //! Find the oncoming boundary of this cell.
   std::pair<double, int32_t> distance(
@@ -187,8 +188,8 @@ public:
   //! \param on_surface The signed index of a surface that the coordinate is
   //!   known to be on.  This index takes precedence over surface sense
   //!   calculations.
-  virtual bool contains(
-    Position r, Direction u, double t, double speed, int32_t on_surface) const = 0;
+  virtual bool contains(Position r, Direction u, double t, double speed,
+    int32_t on_surface) const = 0;
 
   //! Find the oncoming boundary of this cell.
   virtual std::pair<double, int32_t> distance(
@@ -384,8 +385,8 @@ public:
     return region_.distance(r, u, on_surface);
   }
 
-  bool contains(
-    Position r, Direction u, double t, double speed, int32_t on_surface) const override
+  bool contains(Position r, Direction u, double t, double speed,
+    int32_t on_surface) const override
   {
     return region_.contains(r, u, t, speed, on_surface);
   }

@@ -43,7 +43,8 @@ bool check_cell_overlap(GeometryState& p, bool error)
     // Loop through each cell on this level
     for (auto index_cell : univ.cells_) {
       Cell& c = *model::cells[index_cell];
-      if (c.contains(p.coord(j).r, p.coord(j).u, p.time(), p.surface(), p.speed())) {
+      if (c.contains(
+            p.coord(j).r, p.coord(j).u, p.time(), p.surface(), p.speed())) {
         if (index_cell != p.coord(j).cell) {
           if (error) {
             fatal_error(

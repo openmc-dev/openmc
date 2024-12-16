@@ -349,7 +349,7 @@ private:
 
   double time_;      //!< time
   double time_last_; //!< previous time
-  
+
   double speed_;
 
   int surface_ {0}; //!< index for surface particle is on

@@ -87,15 +87,16 @@ public:
   //! \param r A 3D Cartesian coordinate.
   //! \return Normal direction
   virtual Direction normal(Position r) const = 0;
-  
-  //! Compute the dot product of the local outward normal direction of the 
+
+  //! Compute the dot product of the local outward normal direction of the
   //! surface to a geometry coordinate.
   //! \param r A 3D Cartesian coordinate.
   //! \param u The direction of the ray.
   //! \param t The time for the evaluation.
   //! \param speed The speed of the particle.
   //! \return The dot product
-  virtual double dot_normal(Position r, Direction u, double t, double speed) const = 0;
+  virtual double dot_normal(
+    Position r, Direction u, double t, double speed) const = 0;
 
   //! Write all information needed to reconstruct the surface to an HDF5 group.
   //! \param group_id An HDF5 group id.
@@ -119,7 +120,8 @@ public:
   explicit CSGSurface(pugi::xml_node surf_node);
   CSGSurface();
   double evaluate(Position r, double t) const override;
-  double dot_normal(Position r, Direction u, double t, double speed) const override;
+  double dot_normal(
+    Position r, Direction u, double t, double speed) const override;
 
 protected:
   //! Static CSG surface evaluation.

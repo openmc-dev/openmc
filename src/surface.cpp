@@ -278,13 +278,14 @@ double CSGSurface::evaluate(Position r, double t) const
   return _evaluate(r_moved);
 }
 
-double CSGSurface::dot_normal(Position r, Direction u, double t, double speed) const
+double CSGSurface::dot_normal(
+  Position r, Direction u, double t, double speed) const
 {
   if (!moving_) {
     return u.dot(normal(r));
   }
   // The surface moves
-  
+
   // Get moving index
   int idx =
     lower_bound_index(moving_time_grid_.begin(), moving_time_grid_.end(), t);
@@ -304,7 +305,6 @@ double CSGSurface::dot_normal(Position r, Direction u, double t, double speed) c
   // Get the dot product
   return u_relative.dot(normal(r_moved));
 }
-
 
 //==============================================================================
 // Generic functions for x-, y-, and z-, planes.

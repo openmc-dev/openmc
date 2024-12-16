@@ -308,7 +308,7 @@
   </settings>
   <tallies>
     <!--mesh-->
-    <mesh id="1">
+    <mesh id="1" name="mesh">
       <dimension>2 2</dimension>
       <lower_left>-50.0 -50.0</lower_left>
       <upper_right>50.0 50.0</upper_right>

@@ -144,7 +144,7 @@ def test_continuous_dist(h2o_njoy):
 def test_h2o_endf():
     endf_data = os.environ['OPENMC_ENDF_DATA']
     filename = os.path.join(endf_data, 'thermal_scatt', 'tsl-HinH2O.endf')
-    h2o = openmc.data.ThermalScattering.from_endf(filename)
+    h2o = openmc.data.ThermalScattering.from_endf(filename, nonstandard_endf=True)
     assert not h2o.elastic
     assert h2o.atomic_weight_ratio == pytest.approx(0.99917)
     assert h2o.energy_max == pytest.approx(3.99993)

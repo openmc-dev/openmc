@@ -21,13 +21,11 @@ if [[ $NCRYSTAL = 'y' ]]; then
   nctool --test
 fi
 
-# Create a temporary directory and copy the tests there
-TEMP_DIR=$(mktemp -d)
-cp -r tests $TEMP_DIR   
-cd $TEMP_DIR
+# Move openmc to python/openmc
+mv openmc python/openmc
 
 # Run regression and unit tests
 pytest --cov=openmc -v $args tests
 
-# Clean up temporary directory
-rm -rf $TEMP_DIR
+# Move openmc back
+mv python/openmc openmc

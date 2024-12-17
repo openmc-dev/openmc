@@ -82,7 +82,7 @@ DAGUniverse::DAGUniverse(pugi::xml_node node)
 
       // Get mat name for each assignement instances
       std::string mat_overrides = get_node_value(cell_node, "material");
-      vector<std::string> instance_mats = split(mat_overrides, ';');
+      vector<std::string> instance_mats = split(mat_overrides, ' ');
 
       // Store mat name for each instances
       material_overrides.insert(

@@ -191,8 +191,8 @@ private:
   std::map<int, vector<std::string>>
     material_overrides; ///!< Map of material overrides
                         ///!< keys correspond to the DAGMCCell id
-                        ///!< values are a list of materials used
-                        ///!< git for the override
+                        ///!< values are a list of material ids used
+                        ///!< for the override
 };
 
 //==============================================================================

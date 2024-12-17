@@ -409,11 +409,11 @@ Each ``<dagmc_universe>`` element can have the following attributes or sub-eleme
 
   :material_overrides:
     Dictionnary of material overrides to be applied to the DAGMC universe. The keys are 
-    the the Cell ID in the DAGMC Geometry and the values are a list of the material IDs 
-    or name. If the list contains only one materials if will replace the original 
-    material assignemnt of the DAGMC cell. If the list contains more than one material
-    the materials, each material of the list will be assigned to the different instances
-    of the DAGMC cell.
+    the the Cell ID in the DAGMC Geometry and the values are a list of the material IDs.
+    If the list contains only one materials if will replace the original material 
+    assignemnt of the DAGMC cell. If the list contains more than one material the 
+    materials, each material of the list will be assigned to the different instances of
+    the DAGMC cell.
 
     *Default*: None
 

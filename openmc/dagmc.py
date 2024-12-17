@@ -296,7 +296,7 @@ class DAGMCUniverse(openmc.UniverseBase):
             for key in self._material_overrides:
                 cell_overrides = ET.Element('cell')
                 cell_overrides.set("id", str(key.id))
-                cell_overrides.set("material",  ';'.join(
+                cell_overrides.set("material",  ' '.join(
                     str(t.id) for t in self._material_overrides[key]))
                 mat_element.append(cell_overrides)
             dagmc_element.append(mat_element)
@@ -463,7 +463,7 @@ class DAGMCUniverse(openmc.UniverseBase):
 
         for item in elem.find('material_overrides').attrib:
             cell_id = int(item.split('_')[1])
-            mat_ids = elem.find('material_overrides').attrib[item].split(';')
+            mat_ids = elem.find('material_overrides').attrib[item].split(' ')
             mat_objs = [mats[mat_id] for mat_id in mat_ids]
             out.add_material_override(cell_id, mat_objs)
     

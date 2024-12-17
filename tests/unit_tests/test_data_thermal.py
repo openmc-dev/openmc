@@ -41,7 +41,7 @@ def hzrh():
     """H in ZrH thermal scattering data."""
     endf_data = os.environ['OPENMC_ENDF_DATA']
     filename = os.path.join(endf_data, 'thermal_scatt', 'tsl-HinZrH.endf')
-    return openmc.data.ThermalScattering.from_endf(filename)
+    return openmc.data.ThermalScattering.from_endf(filename, nonstandard_endf=True)
 
 
 @pytest.fixture(scope='module')
@@ -64,7 +64,7 @@ def sio2():
     """SiO2 thermal scattering data."""
     endf_data = os.environ['OPENMC_ENDF_DATA']
     filename = os.path.join(endf_data, 'thermal_scatt', 'tsl-SiO2.endf')
-    return openmc.data.ThermalScattering.from_endf(filename)
+    return openmc.data.ThermalScattering.from_endf(filename, nonstandard_endf=True)
 
 
 def test_h2o_attributes(h2o):

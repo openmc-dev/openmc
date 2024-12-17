@@ -103,7 +103,8 @@ void Particle::create_secondary(
   bank_second_E() += bank.E;
 }
 
-void Particle::split(double wgt) {
+void Particle::split(double wgt)
+{
   secondary_bank().emplace_back();
   auto& bank {secondary_bank().back()};
   bank.particle = type();

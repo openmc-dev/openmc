@@ -114,7 +114,7 @@ void apply_weight_windows(Particle& p)
     // Create secondaries and divide weight among all particles
     int i_split = std::round(n_split);
     for (int l = 0; l < i_split - 1; l++) {
-      p.create_secondary(weight / n_split, p.u(), p.E(), p.type());
+      p.create_secondary(weight / n_split, p.u(), p.E(), p.type(), false);
     }
     // remaining weight is applied to current particle
     p.wgt() = weight / n_split;

@@ -76,25 +76,13 @@ DAGUniverse::DAGUniverse(pugi::xml_node node)
   if (check_for_node(node, "material_overrides")) {
     auto mat_node = node.child("material_overrides");
     // loop over all attributes (each attribute corresponds to a material)
-    for (pugi::xml_attribute attr = mat_node.first_attribute(); attr;
-         attr = attr.next_attribute()) {
+    for (pugi::xml_node cell_node : mat_node.children("cell")) {
       // Store assignment reference name
-      std::string ref_assignment = attr.name();
-      // Check formating of the key name (should be cell_XX, with XX matching a
-      // DAGMC Cell_ID)
-      size_t cell_str_pos = ref_assignment.find("cell_");
-      if (cell_str_pos != std::string::npos) {
-        ref_assignment = ref_assignment.substr(5);
-      } else {
-        fatal_error(fmt::format(
-          "Material override key name {} is not in the correct format. "
-          "It should be cell_XX, with XX matching a DAGMC Cell_ID",
-          ref_assignment));
-      }
+      std::string ref_assignment = get_node_value(cell_node, "id");
 
       // Get mat name for each assignement instances
-      std::stringstream iss {attr.value()};
-      vector<std::string> instance_mats = split(iss.str(), ';');
+      std::string mat_overrides = get_node_value(cell_node, "material");
+      vector<std::string> instance_mats = split(mat_overrides, ';');
 
       // Store mat name for each instances
       material_overrides.insert(

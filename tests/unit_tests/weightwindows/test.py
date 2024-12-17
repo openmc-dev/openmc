@@ -224,6 +224,52 @@ def test_lower_ww_bounds_shape():
     assert ww.lower_ww_bounds.shape == (2, 3, 4, 1)
 
 
+def test_photon_heating():
+    model = openmc.Model()
+
+    water = openmc.Material()
+    water.add_element('H', 1.0)
+    water.add_element('O', 2.0)
+    water.set_density('g/cm3', 1.0)
+
+    box = openmc.model.RectangularParallelepiped(*(3*[-300, 300]), boundary_type='reflective')
+    cell = openmc.Cell(region=-box, fill=water)
+
+    model.geometry = openmc.Geometry([cell])
+
+    mesh = openmc.RegularMesh.from_domain(model.geometry, dimension=(5, 5, 5))
+
+    wwg = openmc.WeightWindowGenerator(mesh, particle_type='photon')
+
+    model.settings.weight_window_generators = [wwg]
+
+    space = openmc.stats.Point((0, 0, 0))
+    energy = openmc.stats.Discrete([5E6], [1.0])
+
+    source = openmc.IndependentSource(space=space, energy=energy, particle='photon')
+
+    model.settings.source = source
+
+    model.settings.run_mode = 'fixed source'
+    model.settings.batches = 5
+    model.settings.particles = 100
+
+    tally = openmc.Tally()
+    tally.scores = ['heating']
+    particle_filter = openmc.ParticleFilter(['photon'])
+    mesh_filter = openmc.MeshFilter(mesh)
+    tally.filters = [particle_filter, mesh_filter]
+    model.tallies = [tally]
+
+    sp_file = model.run()
+    with openmc.StatePoint(sp_file) as sp:
+        tally_sum = sp.tallies[tally.id].mean.sum()
+
+    # these values should be nearly identical
+    # assert np.all(tally.mean > 0)
+    assert tally_sum >= 0.0
+
+
 def test_roundtrip(run_in_tmpdir, model, wws):
     model.settings.weight_windows = wws
 

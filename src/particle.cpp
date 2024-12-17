@@ -83,7 +83,7 @@ void Particle::move_distance(double length)
 }
 
 void Particle::create_secondary(
-  double wgt, Direction u, double E, ParticleType type, bool accumulate_E)
+  double wgt, Direction u, double E, ParticleType type)
 {
   // If energy is below cutoff for this particle, don't create secondary
   // particle
@@ -100,9 +100,18 @@ void Particle::create_secondary(
   bank.u = u;
   bank.E = settings::run_CE ? E : g();
   bank.time = time();
+  bank_second_E() += bank.E;
+}
 
-  if (accumulate_E)
-    bank_second_E() += bank.E;
+void Particle::split(double wgt) {
+  secondary_bank().emplace_back();
+  auto& bank {secondary_bank().back()};
+  bank.particle = type();
+  bank.wgt = wgt;
+  bank.r = r();
+  bank.u = u();
+  bank.E = settings::run_CE ? E() : g();
+  bank.time = time();
 }
 
 void Particle::from_source(const SourceSite* src)

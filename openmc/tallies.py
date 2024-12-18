@@ -56,7 +56,9 @@ class Tally(IDManagerMixin):
         Name of the tally
     multiply_density : bool
         Whether reaction rates should be multiplied by atom density
-
+    VOV : bool
+        Whether the tally will accumulate sum third and sum fourth for each tally bin
+    
         .. versionadded:: 0.14.0
     filters : list of openmc.Filter
         List of specified filters for the tally
@@ -116,6 +118,7 @@ class Tally(IDManagerMixin):
         self._triggers = cv.CheckedList(openmc.Trigger, 'tally triggers')
         self._derivative = None
         self._multiply_density = True
+        self._vov = None
 
         self._num_realizations = 0
         self._with_summary = False
@@ -144,6 +147,7 @@ class Tally(IDManagerMixin):
         parts.append('{: <15}=\t{}'.format('Scores', self.scores))
         parts.append('{: <15}=\t{}'.format('Estimator', self.estimator))
         parts.append('{: <15}=\t{}'.format('Multiply dens.', self.multiply_density))
+        parts.append('{: <15}=\t{}'.format('VOV', self.vov))
         return '\n\t'.join(parts)
 
     @property
@@ -158,11 +162,20 @@ class Tally(IDManagerMixin):
     @property
     def multiply_density(self):
         return self._multiply_density
-
+    
     @multiply_density.setter
     def multiply_density(self, value):
         cv.check_type('multiply density', value, bool)
         self._multiply_density = value
+
+    @property
+    def vov(self):
+        return self._vov
+    
+    @vov.setter
+    def vov(self, value):
+        cv.check_type('VOV', value, bool)
+        self._vov = value
 
     @property
     def filters(self):
@@ -881,6 +894,11 @@ class Tally(IDManagerMixin):
             subelement = ET.SubElement(element, "derivative")
             subelement.text = str(self.derivative.id)
 
+        # Optional VOV
+        if self.vov:
+            vov_element = ET.SubElement(element, "VOV")
+            vov_element.text = str(self.vov).lower()
+
         return element
 
     @classmethod
@@ -907,6 +925,10 @@ class Tally(IDManagerMixin):
         text = get_text(elem, 'multiply_density')
         if text is not None:
             tally.multiply_density = text in ('true', '1')
+
+        text = get_text(elem, 'VOV')
+        if text is None:
+            tally.vov = text in ('true', '1')
 
         # Read filters
         filters_elem = elem.find('filters')

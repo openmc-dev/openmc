@@ -507,7 +507,7 @@ void print_runtime()
 
 double variance_of_variance(const double* x, int n)
 {
-  // Need to choose a bin for each tally
+  // Need to create a double for each sum
   double sum = (x[static_cast<int>(TallyResult::SUM)]) ; 
   double sum_sq = (x[static_cast<int>(TallyResult::SUM_SQ)]) ;
   double sum_rd = (x[static_cast<int>(TallyResult::SUM_THIRD)]) ;
@@ -759,7 +759,7 @@ void write_tallies()
           std::tie(mean, stdev) =
             mean_stdev(&tally.results_(filter_index, score_index, 0),
               tally.n_realizations_);
-          if (settings::vov_complete || settings::vov) {
+          if (tally.vov_) {
             vov = variance_of_variance(&tally.results_(filter_index, score_index, 0),tally.n_realizations_);
             fmt::print(tallies_out, "{0:{1}}{2:<36} {3:.6} +/- {4:.6} -- VOV: {5:.6}\n", "",
               indent + 1, score_name, mean, t_value * stdev, vov);

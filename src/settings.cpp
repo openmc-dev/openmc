@@ -79,8 +79,6 @@ bool weight_window_checkpoint_surface {false};
 bool weight_window_checkpoint_collision {true};
 bool write_all_tracks {false};
 bool write_initial_source {false};
-bool vov {false};
-bool vov_complete {false};
 
 std::string path_cross_sections;
 std::string path_input;
@@ -1096,18 +1094,6 @@ void read_settings_xml(pugi::xml_node root)
       weight_window_checkpoint_surface =
         get_node_value_bool(ww_checkpoints, "surface");
     }
-  }
-  // Read vov and vov_complete settings
-  if (check_for_node(root, "vov")) {
-    vov = get_node_value_bool(root, "vov");
-  }
-  if (check_for_node(root, "vov_complete")) {
-    vov_complete = get_node_value_bool(root, "vov_complete");
-  }
-
-  // Ensure that both vov and vov_complete are not set to true simultaneously
-  if (vov && vov_complete) {
-    fatal_error("Both vov and vov_complete cannot be set to true simultaneously.");
   }
 }
 

@@ -101,6 +101,10 @@ Tally::Tally(pugi::xml_node node)
     multiply_density_ = get_node_value_bool(node, "multiply_density");
   }
 
+  if (check_for_node(node, "VOV")) {
+    vov_ = get_node_value_bool(node, "VOV");
+  }
+
   // =======================================================================
   // READ DATA FOR FILTERS
 
@@ -779,21 +783,47 @@ void Tally::accumulate()
         results_(i, j, TallyResult::VALUE) = 0.0;
         results_(i, j, TallyResult::SUM) += val;
         results_(i, j, TallyResult::SUM_SQ) += val * val;
-        
-        if (settings::vov_complete) {
-          results_(i, j, TallyResult::SUM_THIRD) += (val * val * val);
-          results_(i, j, TallyResult::SUM_FOURTH) += (val * val * val * val);
-        }
+      }
+    }
+  }
+}
 
-        /*if (settings::vov) {
-          std::vector<int> filter_bins;
-          for (auto f : filters()) {
-            filter_bins.push_back(model::tally_filters[f]->n_bins());
-          } 
-          int num_bins = filter_bins[i % filter_bins.size()];
-          results_(i, j, TallyResult::SUM_THIRD) += (val * val * val)/num_bins;
-          results_(i, j, TallyResult::SUM_FOURTH) += (val * val * val * val)/num_bins;
-        }*/
+void Tally::accumulate_vov()
+{
+  // Increment number of realizations
+  n_realizations_ += settings::reduce_tallies ? 1 : mpi::n_procs;
+
+  if (mpi::master || !settings::reduce_tallies) {
+    // Calculate total source strength for normalization
+    double total_source = 0.0;
+    if (settings::run_mode == RunMode::FIXED_SOURCE) {
+      for (const auto& s : model::external_sources) {
+        total_source += s->strength();
+      }
+    } else {
+      total_source = 1.0;
+    }
+
+    // Account for number of source particles in normalization
+    double norm =
+      total_source / (settings::n_particles * settings::gen_per_batch);
+
+    if (settings::solver_type == SolverType::RANDOM_RAY) {
+      norm = 1.0;
+    }
+
+// Accumulate each result
+#pragma omp parallel for
+// filter bins (specific cell, energy bins)
+    for (int i = 0; i < results_.shape()[0]; ++i) {
+      // score bins (flux, total reaction rate, fission reaction rate, etc.)
+      for (int j = 0; j < results_.shape()[1]; ++j) {
+        double val = results_(i, j, TallyResult::VALUE) * norm;
+        results_(i, j, TallyResult::VALUE) = 0.0;
+        results_(i, j, TallyResult::SUM) += val;
+        results_(i, j, TallyResult::SUM_SQ) += val * val;
+        results_(i, j, TallyResult::SUM_THIRD) += (val * val * val);
+        results_(i, j, TallyResult::SUM_FOURTH) += (val * val * val * val);
       }
     }
   }
@@ -1023,7 +1053,11 @@ void accumulate_tallies()
   // Accumulate results for each tally
   for (int i_tally : model::active_tallies) {
     auto& tally {model::tallies[i_tally]};
-    tally->accumulate();
+    if (tally->vov_){
+      tally->accumulate_vov();
+    } else {
+      tally->accumulate();
+    }
   }
 }
 
@@ -1286,6 +1320,29 @@ extern "C" int openmc_tally_set_multiply_density(int32_t index, bool value)
 
   return 0;
 }
+
+/*extern "C" int openmc_tally_get_vov(int32_t index, bool* vov)
+{
+  if (index < 0 || index >= model::tallies.size()) {
+    set_errmsg("Index in tallies array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
+  *vov = model::tallies[index]->vov_;
+  return 0;
+}
+
+extern "C" int openmc_tally_set_vov(int32_t index, bool vov)
+{
+  if (index < 0 || index >= model::tallies.size()) {
+    set_errmsg("Index in tallies array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
+  model::tallies[index]->vov_ = vov;
+
+  return 0;
+}*/
 
 extern "C" int openmc_tally_get_scores(int32_t index, int** scores, int* n)
 {

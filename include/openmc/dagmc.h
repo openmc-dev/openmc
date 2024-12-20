@@ -29,6 +29,12 @@ void check_dagmc_root_univ();
 #include "openmc/particle.h"
 #include "openmc/position.h"
 #include "openmc/surface.h"
+#include "openmc/vector.h"
+
+#include <memory> // for shared_ptr, unique_ptr
+#include <string>
+#include <unordered_map>
+#include <utility> // for pair
 
 class UWUW;
 
@@ -188,11 +194,11 @@ private:
                              //!< generate new material IDs for the universe
   bool has_graveyard_; //!< Indicates if the DAGMC geometry has a "graveyard"
                        //!< volume
-  std::map<int, vector<int>>
-    material_overrides; ///!< Map of material overrides
-                        ///!< keys correspond to the DAGMCCell id
-                        ///!< values are a list of material ids used
-                        ///!< for the override
+  std::unordered_map<int, vector<int>>
+    material_overrides_; //!< Map of material overrides
+                         //!< keys correspond to the DAGMCCell id
+                         //!< values are a list of material ids used
+                         //!< for the override
 };
 
 //==============================================================================

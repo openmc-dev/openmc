@@ -75,18 +75,16 @@ DAGUniverse::DAGUniverse(pugi::xml_node node)
   // get material assignment overloading
   if (check_for_node(node, "material_overrides")) {
     auto mat_node = node.child("material_overrides");
-    // loop over all attributes (each attribute corresponds to a material)
+    // loop over all subelements (each subelement corresponds to a material)
     for (pugi::xml_node cell_node : mat_node.children("cell")) {
       // Store assignment reference name
       std::string ref_assignment = get_node_value(cell_node, "id");
 
       // Get mat name for each assignement instances
-      std::string mat_overrides = get_node_value(cell_node, "material");
       vector<int> instance_mats = get_node_array<int>(cell_node, "material");
 
       // Store mat name for each instances
-      material_overrides.insert(
-        std::make_pair(std::stoi(ref_assignment), instance_mats));
+      material_overrides_.emplace(std::stoi(ref_assignment), instance_mats);
     }
   }
 
@@ -233,7 +231,7 @@ void DAGUniverse::init_geometry()
     if (mat_str == "void" || mat_str == "vacuum" || mat_str == "graveyard") {
       c->material_.push_back(MATERIAL_VOID);
     } else {
-      if (material_overrides.count(c->id_)) { // Check for material override
+      if (material_overrides_.count(c->id_)) { // Check for material override
         override_assign_material(c);
       } else if (uses_uwuw()) { // UWUW assignement
         uwuw_assign_material(vol_handle, c);
@@ -640,8 +638,8 @@ void DAGUniverse::override_assign_material(std::unique_ptr<DAGCell>& c) const
 
   // Override the material assignment for each cell instance using the legacy
   // assignement
-  for (auto mat_str_instance : material_overrides.at(c->id_)) {
-    legacy_assign_material(std::to_string(mat_str_instance), c);
+  for (auto mat_str_instance : material_overrides_.at(c->id_)) {
+    this->legacy_assign_material(std::to_string(mat_str_instance), c);
   }
 }
 
@@ -860,8 +858,7 @@ extern "C" int openmc_dagmc_universe_get_cell_ids(
   // make sure the universe id is a DAGMC Universe
   const auto& univ = model::universes[model::universe_map[univ_id]];
   if (univ->geom_type() != GeometryType::DAG) {
-    set_errmsg(fmt::format(
-      "Universe {} is not a DAGMC Universe!", std::to_string(univ_id)));
+    set_errmsg(fmt::format("Universe {} is not a DAGMC Universe!", univ_id));
     return OPENMC_E_INVALID_TYPE;
   }
 
@@ -869,8 +866,7 @@ extern "C" int openmc_dagmc_universe_get_cell_ids(
   for (const auto& cell_index : univ->cells_) {
     const auto& cell = model::cells[cell_index];
     if (cell->geom_type() == GeometryType::CSG) {
-      set_errmsg(
-        fmt::format("Cell {} is not a DAGMC Cell!", std::to_string(cell->id_)));
+      set_errmsg(fmt::format("Cell {} is not a DAGMC Cell!", cell->id_));
       return OPENMC_E_INVALID_TYPE;
     }
     dag_cell_ids.push_back(cell->id_);

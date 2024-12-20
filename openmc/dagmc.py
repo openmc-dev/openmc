@@ -155,13 +155,14 @@ class DAGMCUniverse(openmc.UniverseBase):
         """
         keys = []
         if isinstance(key, str):
-            if key not in self.material_names:
-                raise ValueError(
-                    f"Material name '{key}' not found in DAGMC file")
+            if key in self.material_names:
+                for cell in self.cells.values():
+                    if cell.fill.name == key:
+                        keys.append(cell)
             elif int(key) in self.cells:
                 keys = [self.cells[int(key)]]
             else:
-               raise ValueError(
+                raise ValueError(
                     f"Material or Cell ID '{key}' not found in DAGMC universe")
         elif isinstance(key, int):
             if key not in self.cells:
@@ -176,7 +177,6 @@ class DAGMCUniverse(openmc.UniverseBase):
             else:
                 keys = [key]
         else:
-            print("Key is a ", type(key))
             raise ValueError("Unrecognized key type. Must be a string or integer.")
 
         # Ensure that overrides is an iterable of openmc.Material
@@ -280,7 +280,7 @@ class DAGMCUniverse(openmc.UniverseBase):
         memo.add(self)
 
         # Ensure that the material overrides are up-t-date
-        self.build_overide_mat_from_cells()
+        self.build_override_mat_from_cells()
 
         # Set xml element values
         dagmc_element = ET.Element('dagmc_universe')
@@ -312,6 +312,9 @@ class DAGMCUniverse(openmc.UniverseBase):
         for cell in self.cells.values():
             if isinstance(cell.fill, Iterable):
                 self.add_material_override(cell, [mat for mat in cell.fill if mat])
+            else:
+                if cell.fill:
+                    self.add_material_override(cell, cell.fill)
 
     def bounding_region(
         self,
@@ -461,10 +464,12 @@ class DAGMCUniverse(openmc.UniverseBase):
         out.auto_geom_ids = bool(elem.get('auto_geom_ids'))
         out.auto_mat_ids = bool(elem.get('auto_mat_ids'))
 
-        for item in elem.find('material_overrides').attrib:
-            cell_id = int(item.split('_')[1])
-            mat_ids = elem.find('material_overrides').attrib[item].split(' ')
-            mat_objs = [mats[mat_id] for mat_id in mat_ids]
+        el_mat_override = elem.find('material_overrides')
+        if el_mat_override is not None:
+            for elem in el_mat_override.findall('cell'):
+                cell_id = elem.attrib('id')
+                mat_ids = elem.attrib["material"].split(' ')
+                mat_objs = [mats[mat_id] for mat_id in mat_ids]
             out.add_material_override(cell_id, mat_objs)
     
         return out

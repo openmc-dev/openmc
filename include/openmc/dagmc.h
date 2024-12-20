@@ -188,7 +188,7 @@ private:
                              //!< generate new material IDs for the universe
   bool has_graveyard_; //!< Indicates if the DAGMC geometry has a "graveyard"
                        //!< volume
-  std::map<int, vector<std::string>>
+  std::map<int, vector<int>>
     material_overrides; ///!< Map of material overrides
                         ///!< keys correspond to the DAGMCCell id
                         ///!< values are a list of material ids used

@@ -308,8 +308,9 @@ class Material(IDManagerMixin):
 
         Returns
         -------
-        Decay photon energy distribution. The integral of this distribution is
-        the total intensity of the photon source in the requested units.
+        Univariate or None
+            Decay photon energy distribution. The integral of this distribution
+            is the total intensity of the photon source in the requested units.
 
         """
         cv.check_value('units', units, {'Bq', 'Bq/g', 'Bq/cm3'})

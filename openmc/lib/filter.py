@@ -21,9 +21,10 @@ __all__ = [
     'CellInstanceFilter', 'CollisionFilter', 'DistribcellFilter', 'DelayedGroupFilter',
     'EnergyFilter', 'EnergyoutFilter', 'EnergyFunctionFilter', 'LegendreFilter',
     'MaterialFilter', 'MaterialFromFilter', 'MeshFilter', 'MeshBornFilter',
-    'MeshSurfaceFilter', 'MuFilter', 'MuSurfaceFilter', 'ParticleFilter', 'PolarFilter',
-    'SphericalHarmonicsFilter', 'SpatialLegendreFilter', 'SurfaceFilter', 'UniverseFilter',
-    'ZernikeFilter', 'ZernikeRadialFilter', 'filters'
+    'MeshSurfaceFilter', 'MuFilter', 'MuSurfaceFilter', 'ParentNuclideFilter',
+    'ParticleFilter', 'PolarFilter', 'SphericalHarmonicsFilter',
+    'SpatialLegendreFilter', 'SurfaceFilter', 'UniverseFilter', 'ZernikeFilter',
+    'ZernikeRadialFilter', 'filters'
 ]
 
 # Tally functions

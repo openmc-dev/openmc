@@ -88,8 +88,9 @@ def time_correction_factors(
 
     Returns
     -------
-    Dictionary mapping nuclide to an array of time correction factors for each
-    time.
+    dict
+        Dictionary mapping nuclide to an array of time correction factors for
+        each time.
 
     """
 
@@ -144,7 +145,8 @@ def apply_time_correction(
 
     Returns
     -------
-    Derived tally with time correction factors applied
+    openmc.Tally
+        Derived tally with time correction factors applied
 
     """
     # Make sure the tally contains a ParentNuclideFilter
@@ -221,6 +223,11 @@ def prepare_tallies(
     chain_file : str, optional
         Chain file to use for inspecting decay data. If None, defaults to
         ``openmc.config['chain_file']``
+
+    Returns
+    -------
+    list of str
+        List of possible radionuclides
 
     """
     if nuclides is None:

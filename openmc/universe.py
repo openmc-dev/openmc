@@ -1038,12 +1038,12 @@ class DAGMCUniverse(UniverseBase):
         boundary_type_others: str = "vacuum",
         starting_id: int = 10000,
         padding_distance: float = 0.0,
-        wedge_angles: Iterable[float] = (0, 90),
+        wedge_angles: Iterable[float] = (0, 180),
     ):
         """
         Create a region bounded by a Z axis aligned cylindrical surface, two
-        Z planes and two planar surfaces forming a wedge. Assumes the geometry
-        is centered at the origin.
+        Z planes and two angled planar surfaces forming a wedge. Assumes the
+        geometry is centered at the origin.
 
         Parameters
         ----------
@@ -1063,9 +1063,11 @@ class DAGMCUniverse(UniverseBase):
         padding_distance : float
             Distance between the bounding region surfaces and the minimal
             bounding box. Allows for the region to be larger than the DAGMC
-            geometry.
+            geometry. Only changes the cylindrical surface radius and the upper
+            and lower Z plane surfaces z0 values.
         wedge_angles : Iterable[float]
-            Angles (in degrees) defining the wedge. Default is (0, 90).
+            Angles (in degrees) defining the angles of the side planes used for
+                the wedge. Default is (0, 180).
 
         Returns
         -------
@@ -1135,7 +1137,6 @@ class DAGMCUniverse(UniverseBase):
                 & +lower_z
                 & -upper_z
             )
-        # region = region
 
         return region
 
@@ -1144,14 +1145,19 @@ class DAGMCUniverse(UniverseBase):
         with a cell. Defaults to a box cell with a vacuum surface however this
         can be changed using the kwargs which are passed directly to
         either DAGMCUniverse.bounding_region() for bounded_type 'box' or
-        'sphere' and DAGMCUniverse.bounding_wedge_region() for bounded_type
-        'wedge'.
+        'sphere' and passed to DAGMCUniverse.bounding_wedge_region() for
+        bounded_type 'wedge'.
 
         Parameters
         ----------
         bounding_cell_id : int
             The cell ID number to use for the bounding cell, defaults to 10000 to reduce
             the chance of overlapping ID numbers with the DAGMC geometry.
+        bounded_type : str
+            The type of bounding surface(s) to use when constructing the region.
+            Options include a single spherical surface (sphere) or a rectangle
+            made from six planes (box) or a (wedge) shape made from a
+            cylindrical surface and four planes.
 
         Returns
         -------

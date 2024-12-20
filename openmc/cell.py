@@ -780,4 +780,3 @@ class Cell(IDManagerMixin):
         univ_id = int(get_text(elem, 'universe', 0))
         get_universe(univ_id).add_cell(c)
         return c
-

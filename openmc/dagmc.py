@@ -41,7 +41,7 @@ class DAGMCUniverse(openmc.UniverseBase):
         space between OpenMC and UWUW materials (False)
     material_overrides : dict
         A dictionary of material overrides. The keys are material name
-        strings and the values are Iterables of openmc.Material objects. If a 
+        strings and the values are Iterables of openmc.Material objects. If a
         material name is found in the DAGMC file, the material will be replaced
         with the openmc.Material object in the value.
 
@@ -83,11 +83,11 @@ class DAGMCUniverse(openmc.UniverseBase):
         .. versionadded:: 0.15
     material_overrides : dict
         A dictionary of material overrides. The keys are material name
-        strings and the values are Iterables of openmc.Material objects. If a 
+        strings and the values are Iterables of openmc.Material objects. If a
         material name is found in the DAGMC file, the material will be replaced
         with the openmc.Material object in the value.
     """
-    
+
     def __init__(self,
                  filename: cv.PathLike,
                  universe_id=None,
@@ -471,7 +471,7 @@ class DAGMCUniverse(openmc.UniverseBase):
                 mat_ids = elem.attrib["material"].split(' ')
                 mat_objs = [mats[mat_id] for mat_id in mat_ids]
             out.add_material_override(cell_id, mat_objs)
-    
+
         return out
 
     def _partial_deepcopy(self):
@@ -534,7 +534,7 @@ class DAGMCUniverse(openmc.UniverseBase):
                                "initialized via Model.init_lib before calling "
                                "this method.")
 
-        dagmc_cell_ids = openmc.lib.dagmc.get_dagmc_cell_ids(self.id)
+        dagmc_cell_ids = openmc.lib.dagmc.dagmc_universe_cell_ids(self.id)
         if len(dagmc_cell_ids) != self.n_cells:
             raise ValueError(
                 f"Number of cells in DAGMC universe {self.id} does not match "

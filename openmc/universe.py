@@ -1034,27 +1034,28 @@ class DAGMCUniverse(UniverseBase):
 
     def bounding_wedge_region(
         self,
-        boundary_type_cylinder: str = "vacuum",
-        boundary_type_planes: str = "reflective",
+        boundary_type_angled_planes: str = "reflective",
+        boundary_type_others: str = "vacuum",
         starting_id: int = 10000,
         padding_distance: float = 0.0,
         wedge_angles: Iterable[float] = (0, 90),
     ):
         """
-        Create a region bounded by a Z axis aligned cylindrical surface and two
-        planar surfaces forming a wedge. Assumes the geometry is centered at the
-        origin.
+        Create a region bounded by a Z axis aligned cylindrical surface, two
+        Z planes and two planar surfaces forming a wedge. Assumes the geometry
+        is centered at the origin.
 
         Parameters
         ----------
-        boundary_type_cylinder : str
+        boundary_type_angled_planes : str
             Boundary condition that defines the behavior for particles hitting
-            the cylindrical surfaces. Defaults to 'vacuum' boundary condition.
-            Passed into the surface construction.
-        boundary_type_planes : str
+            the plane surfaces on the angled sides of the wedge. Defaults to
+            'reflective' boundary condition. Passed into the surface
+            construction.
+        boundary_type_others : str
             Boundary condition that defines the behavior for particles hitting
-            the plane surfaces. Defaults to 'reflective' boundary condition.
-            Passed into the surface construction.
+            the cylindrical surface or the upper and lower planes. Defaults to
+            'vacuum' boundary condition. Passed into the surface construction.
         starting_id : int
             Starting ID of the surface(s) used in the region. For bounded_type
             'box', the next 5 IDs will also be used. Defaults to 10000 to reduce
@@ -1072,8 +1073,10 @@ class DAGMCUniverse(UniverseBase):
             Region bounded by the cylindrical surface and the two planar surfaces.
         """
 
-        check_value("boundary_type_cylinder", boundary_type_cylinder, _BOUNDARY_TYPES)
-        check_value("boundary_type_planes", boundary_type_planes, _BOUNDARY_TYPES)
+        check_value("boundary_type_others", boundary_type_others, _BOUNDARY_TYPES)
+        check_value(
+            "boundary_type_angled_planes", boundary_type_angled_planes, _BOUNDARY_TYPES
+        )
         check_type("starting surface id", starting_id, Integral)
         check_type("padding distance", padding_distance, float)
         # check_iterable_type('wedge_angles', wedge_angles, float)
@@ -1089,7 +1092,7 @@ class DAGMCUniverse(UniverseBase):
         radius = max(radius_upper_right, radius_lower_left)
 
         cylinder_surface = openmc.ZCylinder(
-            r=radius, surface_id=starting_id, boundary_type=boundary_type_cylinder
+            r=radius, surface_id=starting_id, boundary_type=boundary_type_others
         )
 
         wedge_angle_surf_1 = openmc.Plane(
@@ -1098,7 +1101,7 @@ class DAGMCUniverse(UniverseBase):
             c=0.0,
             d=0.0,
             surface_id=starting_id + 1,
-            boundary_type=boundary_type_planes,
+            boundary_type=boundary_type_angled_planes,
         )
 
         wedge_angle_surf_2 = openmc.Plane(
@@ -1107,13 +1110,32 @@ class DAGMCUniverse(UniverseBase):
             c=0.0,
             d=0.0,
             surface_id=starting_id + 2,
-            boundary_type=boundary_type_planes,
+            boundary_type=boundary_type_angled_planes,
+        )
+
+        lower_z = openmc.ZPlane(
+            bbox[0][2], boundary_type=boundary_type_others, surface_id=starting_id + 4
+        )
+        upper_z = openmc.ZPlane(
+            bbox[1][2], boundary_type=boundary_type_others, surface_id=starting_id + 5
         )
 
         if wedge_angles[1] - wedge_angles[0] >= 180:
-            region = -cylinder_surface & (-wedge_angle_surf_1 | +wedge_angle_surf_2)
+            region = (
+                -cylinder_surface
+                & (-wedge_angle_surf_1 | +wedge_angle_surf_2)
+                & +lower_z
+                & -upper_z
+            )
         else:
-            region = -cylinder_surface & -wedge_angle_surf_1 & +wedge_angle_surf_2
+            region = (
+                -cylinder_surface
+                & -wedge_angle_surf_1
+                & +wedge_angle_surf_2
+                & +lower_z
+                & -upper_z
+            )
+        # region = region
 
         return region
 

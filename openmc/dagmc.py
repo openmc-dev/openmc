@@ -302,7 +302,7 @@ class DAGMCUniverse(openmc.UniverseBase):
             dagmc_element.append(mat_element)
         xml_element.append(dagmc_element)
 
-    def build_overide_mat_from_cells(self):
+    def build_override_mat_from_cells(self):
         """
         Builds the material override dictionary for cells with multiple instances.
 

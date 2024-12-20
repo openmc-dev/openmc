@@ -19,7 +19,6 @@ void to_lower(std::string& str);
 int word_count(const std::string& str);
 
 vector<std::string> split(const std::string& in);
-vector<std::string> split(const std::string& in, char delim);
 
 bool ends_with(const std::string& value, const std::string& ending);
 

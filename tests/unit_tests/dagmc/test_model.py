@@ -1,11 +1,9 @@
 import pkg_resources
-from pathlib import Path
 
 import numpy as np
 import pytest
 
 import openmc
-from openmc import ZPlane, YPlane, XPlane, Cell
 
 pytestmark = pytest.mark.skipif(
     not openmc.lib._dagmc_enabled(),
@@ -42,7 +40,7 @@ def model():
 
     box = openmc.model.RectangularParallelepiped(-PITCH, PITCH, -PITCH, PITCH, -5, 5)
 
-    root = openmc.Universe(cells=[Cell(region= -box, fill=lattice)])
+    root = openmc.Universe(cells=[openmc.Cell(region= -box, fill=lattice)])
 
     settings = openmc.Settings()
     settings.batches = 100

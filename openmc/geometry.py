@@ -415,9 +415,9 @@ class Geometry:
         """
         universes = self.get_all_universes()
         dag_universes = {}
-        for id, uni in universes.items():
+        for id, univ in universes.items():
             if isinstance(uni, openmc.DAGMCUniverse):
-                dag_universes[id] = uni
+                dag_universes[id] = univ
         return dag_universes
 
     def get_all_materials(self) -> dict[int, openmc.Material]:

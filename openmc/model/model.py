@@ -338,9 +338,10 @@ class Model:
             if self.materials:
                 materials = self.materials
             else:
-                materials = self.geometry.get_all_materials().values()
-            for dagmc_universe in self.geometry.get_all_dagmc_universes().values():
-                dagmc_universe.sync_dagmc_cells(materials)
+                materials = list(self.geometry.get_all_materials().values())
+            for univ in self.geometry.get_all_universes().values():
+                if isinstance(univ, openmc.DAGMCUniverse):
+                    univ.sync_dagmc_cells(materials)
         else:
             raise ValueError("The model must be initialized before calling "
                              "this method")

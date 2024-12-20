@@ -56,6 +56,26 @@ def test_bounding_region(request):
     larger_region = u.bounding_region(bounded_type="sphere", padding_distance=10)
     assert larger_region.surface.r > region.surface.r
 
+    region = u.bounding_wedge_region()
+    assert isinstance(region, openmc.Region)
+    assert len(region) == 3
+    assert region[0].surface.type == "z-cylinder"
+    assert region[1].surface.type == "plane"
+    assert region[2].surface.type == "plane"
+    assert region[0].surface.boundary_type == "vacuum"
+    assert region[1].surface.boundary_type == "reflective"
+    assert region[2].surface.boundary_type == "reflective"
+    larger_region = u.bounding_wedge_region(padding_distance=10.0)
+    assert larger_region[0].surface.r > region[0].surface.r
+    region = u.bounding_wedge_region(boundary_type_cylinder="periodic")
+    assert region[0].surface.boundary_type == "periodic"
+    assert region[1].surface.boundary_type == "reflective"
+    assert region[2].surface.boundary_type == "reflective"
+    region = u.bounding_wedge_region(boundary_type_planes="white")
+    assert region[0].surface.boundary_type == "vacuum"
+    assert region[1].surface.boundary_type == "white"
+    assert region[2].surface.boundary_type == "white"
+
 
 def test_bounded_universe(request):
     """Checks that the DAGMCUniverse.bounded_universe() returns a

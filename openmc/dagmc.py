@@ -82,10 +82,11 @@ class DAGMCUniverse(openmc.UniverseBase):
 
         .. versionadded:: 0.15
     material_overrides : dict
-        A dictionary of material overrides. The keys are material name
-        strings and the values are Iterables of openmc.Material objects. If a
-        material name is found in the DAGMC file, the material will be replaced
-        with the openmc.Material object in the value.
+        A dictionary of material overrides. The keys are Cell id and values
+        are Iterables of openmc.Material objects. The material assignment of 
+        each DAGMC Cell id key will be replaced with the openmc.Material object
+        in the value. If the value contains multiple openmc.Material objects, each
+        Material of the list will replace one instance of the Cell.
     """
 
     def __init__(self,
@@ -158,7 +159,7 @@ class DAGMCUniverse(openmc.UniverseBase):
             if key in self.material_names:
                 for cell in self.cells.values():
                     if cell.fill.name == key:
-                        keys.append(cell)
+                        keys.append(cell.id)
             elif int(key) in self.cells:
                 keys = [self.cells[int(key)]]
             else:
@@ -169,13 +170,13 @@ class DAGMCUniverse(openmc.UniverseBase):
                 raise ValueError(
                     f"Cell ID '{key}' not found in DAGMC universe")
             else:
-                keys = [self.cells[key]]
+                keys = [key]
         elif isinstance(key, openmc.Cell):
             if key not in self.cells.values():
                 raise ValueError(
                     f"Cell '{key.id}' not found in DAGMC universe")
             else:
-                keys = [key]
+                keys = [key.id]
         else:
             raise ValueError("Unrecognized key type. Must be a string or integer.")
 
@@ -295,7 +296,7 @@ class DAGMCUniverse(openmc.UniverseBase):
             mat_element = ET.Element('material_overrides')
             for key in self._material_overrides:
                 cell_overrides = ET.Element('cell')
-                cell_overrides.set("id", str(key.id))
+                cell_overrides.set("id", str(key))
                 cell_overrides.set("material",  ' '.join(
                     str(t.id) for t in self._material_overrides[key]))
                 mat_element.append(cell_overrides)

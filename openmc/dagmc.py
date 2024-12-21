@@ -280,8 +280,10 @@ class DAGMCUniverse(openmc.UniverseBase):
 
         memo.add(self)
 
-        # Ensure that the material overrides are up-t-date
-        self.build_override_mat_from_cells()
+        # Ensure that the material overrides are up-to-date
+        for cell in self.cells.values():
+            fill = cell.fill if isinstance(cell.fill, openmc.Iterable) else [cell.fill]
+            self.add_material_override(cell.id, fill)
 
         # Set xml element values
         dagmc_element = ET.Element('dagmc_universe')
@@ -302,17 +304,6 @@ class DAGMCUniverse(openmc.UniverseBase):
                 mat_element.append(cell_overrides)
             dagmc_element.append(mat_element)
         xml_element.append(dagmc_element)
-
-    def build_override_mat_from_cells(self):
-        """
-        Builds the material override dictionary for cells with multiple instances.
-
-        Returns:
-            None
-        """
-        for cell in self.cells.values():
-            fill = cell.fill if isinstance(cell.fill, openmc.Iterable) else [cell.fill]
-            self.add_material_override(cell.id, fill)
 
     def bounding_region(
         self,

@@ -83,10 +83,10 @@ class DAGMCUniverse(openmc.UniverseBase):
         .. versionadded:: 0.15
     material_overrides : dict
         A dictionary of material overrides. The keys are Cell id and values
-        are Iterables of openmc.Material objects. The material assignment of 
+        are Iterables of openmc.Material objects. The material assignment of
         each DAGMC Cell id key will be replaced with the openmc.Material object
         in the value. If the value contains multiple openmc.Material objects, each
-        Material of the list will replace one instance of the Cell.
+        Material in the list be assigned to one instance of the Cell.
     """
 
     def __init__(self,
@@ -151,7 +151,7 @@ class DAGMCUniverse(openmc.UniverseBase):
         key : str
             Material name or ID of the Cell to override
         value : Iterable of Materials
-            Materials to replace the key with
+            Materials to be applied to the Cell passed as the key
 
         """
         keys = []
@@ -311,11 +311,8 @@ class DAGMCUniverse(openmc.UniverseBase):
             None
         """
         for cell in self.cells.values():
-            if isinstance(cell.fill, Iterable):
-                self.add_material_override(cell, [mat for mat in cell.fill if mat])
-            else:
-                if cell.fill:
-                    self.add_material_override(cell, cell.fill)
+            fill = cell.fill if isinstance(cell.fill, openmc.Iterable) else [cell.fill]
+            self.add_material_override(cell.id, fill)
 
     def bounding_region(
         self,

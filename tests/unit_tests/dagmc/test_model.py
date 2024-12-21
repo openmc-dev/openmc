@@ -80,10 +80,9 @@ def test_model_differentiate_depletable_with_dagmc(model, run_in_tmpdir):
 
 
 def test_model_differentiate_with_dagmc(model, run_in_tmpdir):
+    root = model.geometry.root_universe
+    ll, ur = root.bounding_box
     try:
-        root = model.geometry.root_universe
-        ll, ur = root.bounding_box
-
         model.init_lib()
         model.sync_dagmc_universes()
         model.calculate_volumes()
@@ -103,5 +102,18 @@ def test_model_differentiate_with_dagmc(model, run_in_tmpdir):
         volume_after = np.sum([m.volume for m in model.materials if "fuel" in m.name])
         assert np.isclose(volume_before, volume_after)
         assert len(model.materials) == 4*2 + 4
+    finally:
+        model.finalize_lib()
+
+
+def test_bad_override_cell_id(model, run_in_tmpdir):
+    try:
+        model.init_lib()
+        model.sync_dagmc_universes()
+        for univ in model.geometry.get_all_universes().values():
+            if isinstance(univ, openmc.DAGMCUniverse):
+                break
+        with pytest.raises(ValueError, match="Cell ID '1' not found in DAGMC universe"):
+            univ.material_overrides = {1 : model.materials[0]}
     finally:
         model.finalize_lib()

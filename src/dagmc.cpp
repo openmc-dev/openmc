@@ -81,7 +81,8 @@ DAGUniverse::DAGUniverse(pugi::xml_node node)
       int32_t ref_assignment = std::stoi(get_node_value(cell_node, "id"));
 
       // Get mat name for each assignement instances
-      vector<int32_t> instance_mats = get_node_array<int32_t>(cell_node, "material");
+      vector<int32_t> instance_mats =
+        get_node_array<int32_t>(cell_node, "material");
 
       // Store mat name for each instances
       material_overrides_.emplace(ref_assignment, instance_mats);

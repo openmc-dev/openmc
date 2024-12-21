@@ -1038,7 +1038,7 @@ class DAGMCUniverse(UniverseBase):
         boundary_type_others: str = "vacuum",
         starting_id: int = 10000,
         padding_distance: float = 0.0,
-        wedge_angles: Iterable[float] = (0, 180),
+        wedge_angles: Iterable[float] = (0.0, 180.0),
     ):
         """
         Create a region bounded by a Z axis aligned cylindrical surface, two

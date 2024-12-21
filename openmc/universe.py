@@ -1122,20 +1122,20 @@ class DAGMCUniverse(UniverseBase):
             bbox[1][2], boundary_type=boundary_type_others, surface_id=starting_id + 5
         )
 
-        if wedge_angles[1] - wedge_angles[0] >= 180:
+        if wedge_angles[1] - wedge_angles[0] >= 180.0:
             region = (
                 -cylinder_surface
-                & (-wedge_angle_surf_1 | +wedge_angle_surf_2)
                 & +lower_z
                 & -upper_z
+                & (-wedge_angle_surf_1 | +wedge_angle_surf_2)
             )
         else:
             region = (
                 -cylinder_surface
-                & -wedge_angle_surf_1
-                & +wedge_angle_surf_2
                 & +lower_z
                 & -upper_z
+                & -wedge_angle_surf_1
+                & +wedge_angle_surf_2
             )
 
         return region

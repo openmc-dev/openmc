@@ -56,37 +56,42 @@ def test_bounding_region(request):
     larger_region = u.bounding_region(bounded_type="sphere", padding_distance=10)
     assert larger_region.surface.r > region.surface.r
 
-    region = u.bounding_wedge_region()
+    # angle less than 180 so union not used for surfaces
+    region = u.bounding_wedge_region(wedge_angles=(0, 90))
     assert isinstance(region, openmc.Region)
     assert len(region) == 5
     assert region[0].surface.type == "z-cylinder"
-    assert region[1].surface.type == "plane"
-    assert region[2].surface.type == "plane"
-    assert region[3].surface.type == "z-plane"
-    assert region[3].surface.z0 == -25.0
-    assert region[4].surface.type == "z-plane"
-    assert region[4].surface.z0 == 25.0
+    assert region[1].surface.type == "z-plane"
+    assert region[1].surface.z0 == -25.0
+    assert region[2].surface.type == "z-plane"
+    assert region[2].surface.z0 == 25.0
+    assert region[3].surface.type == "plane"
+    assert region[4].surface.type == "plane"
     assert region[0].surface.boundary_type == "vacuum"
-    assert region[1].surface.boundary_type == "reflective"
-    assert region[2].surface.boundary_type == "reflective"
-    assert region[3].surface.boundary_type == "vacuum"
-    assert region[4].surface.boundary_type == "vacuum"
-    larger_region = u.bounding_wedge_region(padding_distance=10.0)
+    assert region[1].surface.boundary_type == "vacuum"
+    assert region[2].surface.boundary_type == "vacuum"
+    assert region[3].surface.boundary_type == "reflective"
+    assert region[4].surface.boundary_type == "reflective"
+    # angle above 180 so union used for surfaces
+    larger_region = u.bounding_wedge_region(
+        wedge_angles=(0, 200), padding_distance=10.0
+    )
     assert larger_region[0].surface.r > region[0].surface.r
-    assert larger_region[3].surface.z0 == -35.0
-    assert larger_region[4].surface.z0 == 35.0
+    assert larger_region[1].surface.z0 == -35.0
+    assert larger_region[2].surface.z0 == 35.0
+    assert len(larger_region) == 4
+    # angle above 180 (by default) so union used for surfaces
     region = u.bounding_wedge_region(boundary_type_others="periodic")
     assert region[0].surface.boundary_type == "periodic"
-    assert region[1].surface.boundary_type == "reflective"
-    assert region[2].surface.boundary_type == "reflective"
-    assert region[3].surface.boundary_type == "periodic"
-    assert region[4].surface.boundary_type == "periodic"
+    assert region[1].surface.boundary_type == "periodic"
+    assert region[2].surface.boundary_type == "periodic"
+    assert len(region) == 4
+    # angle above 180 (by default) so union used for surfaces
     region = u.bounding_wedge_region(boundary_type_angled_planes="white")
     assert region[0].surface.boundary_type == "vacuum"
-    assert region[1].surface.boundary_type == "white"
-    assert region[2].surface.boundary_type == "white"
-    assert region[3].surface.boundary_type == "vacuum"
-    assert region[4].surface.boundary_type == "vacuum"
+    assert region[1].surface.boundary_type == "vacuum"
+    assert region[2].surface.boundary_type == "vacuum"
+    assert len(region) == 4
 
 
 def test_bounded_universe(request):

@@ -329,7 +329,8 @@ class Model:
         """
         Synchronize all DAGMC universes in the current geometry.
         This method iterates over all DAGMC universes in the geometry and
-        synchronizes their cells with the current material assignments.
+        synchronizes their cells with the current material assignments. Requires
+        that the model has been initialized via :meth:`Model.init_lib`.
 
         .. versionadded:: 0.15.1-dev
 
@@ -1207,14 +1208,14 @@ class Model:
         ----------
         diff_volume_method : str
             Specifies how the volumes of the new materials should be found.
-            - 'None': Do not assign volumes to the new materials (Default)
+            - None: Do not assign volumes to the new materials (Default)
             - 'divide_equally': Divide the original material volume equally between the new materials
             - 'match cell': Set the volume of the material to the volume of the cell they fill
         depletable_only : bool
-            Default is True, only depletable materials will be differentiated all materials will be 
-            differentiated otherwise.
+            Default is True, only depletable materials will be differentiated. If False, all materials will be
+            differentiated.
         """
-        check_value('volume differentiation method', diff_volume_method, ["divide equally", "match cell", None])
+        check_value('volume differentiation method', diff_volume_method, ("divide equally", "match cell", None))
 
         # Count the number of instances for each cell and material
         self.geometry.determine_paths(instances_only=True)
@@ -1246,19 +1247,18 @@ class Model:
                                     "diff_volume_method='match cell'.")
                 distribmats.add(mat)
 
-        if distribmats:
-            # Assign distribmats to cells
-            for cell in self.geometry.get_all_material_cells().values():
-                if cell.fill in distribmats:
-                    mat = cell.fill
-                    if diff_volume_method != 'match cell':
-                        cell.fill = [mat.clone() for _ in range(cell.num_instances)]
-                    elif diff_volume_method == 'match cell':
-                        cell.fill = mat.clone()
-                        cell.fill.volume = cell.volume
-                    if isinstance(cell, openmc.DAGMCCell):
-                        for i in range(cell.num_instances):
-                            cell.fill[i].name = f"{cell.fill[i].name}_{cell.id}_{i}"
+        if not distribmats:
+            return
+
+        # Assign distribmats to cells
+        for cell in self.geometry.get_all_material_cells().values():
+            if cell.fill in distribmats:
+                mat = cell.fill
+                if diff_volume_method != 'match cell':
+                    cell.fill = [mat.clone() for _ in range(cell.num_instances)]
+                elif diff_volume_method == 'match cell':
+                    cell.fill = mat.clone()
+                    cell.fill.volume = cell.volume
 
         if self.materials is not None:
             self.materials = openmc.Materials(

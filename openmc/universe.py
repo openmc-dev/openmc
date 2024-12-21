@@ -14,7 +14,7 @@ import numpy as np
 import openmc
 import openmc.checkvalue as cv
 from ._xml import get_text
-from .checkvalue import check_type, check_value
+from .checkvalue import check_type, check_value, check_iterable_type
 from .mixin import IDManagerMixin
 from .surface import _BOUNDARY_TYPES
 from .utility_funcs import input_path
@@ -995,11 +995,11 @@ class DAGMCUniverse(UniverseBase):
             Region instance
         """
 
-        check_type('boundary type', boundary_type, str)
-        check_value('boundary type', boundary_type, _BOUNDARY_TYPES)
-        check_type('starting surface id', starting_id, Integral)
-        check_type('bounded type', bounded_type, str)
-        check_value('bounded type', bounded_type, ('box', 'sphere'))
+        check_type("boundary type", boundary_type, str)
+        check_value("boundary type", boundary_type, _BOUNDARY_TYPES)
+        check_type("starting surface id", starting_id, Integral)
+        check_type("bounded type", bounded_type, str)
+        check_value("bounded type", bounded_type, ("box", "sphere", "wedge"))
 
         bbox = self.bounding_box.expand(padding_distance, True)
 
@@ -1032,25 +1032,154 @@ class DAGMCUniverse(UniverseBase):
 
             return region
 
-    def bounded_universe(self, bounding_cell_id=10000, **kwargs):
+    def bounding_wedge_region(
+        self,
+        boundary_type_angled_planes: str = "reflective",
+        boundary_type_others: str = "vacuum",
+        starting_id: int = 10000,
+        padding_distance: float = 0.0,
+        wedge_angles: Iterable[float] = (0.0, 180.0),
+    ):
+        """
+        Create a region bounded by a Z axis aligned cylindrical surface, two
+        Z planes and two angled planar surfaces forming a wedge. Assumes the
+        geometry is centered at the origin.
+
+        Parameters
+        ----------
+        boundary_type_angled_planes : str
+            Boundary condition that defines the behavior for particles hitting
+            the plane surfaces on the angled sides of the wedge. Defaults to
+            'reflective' boundary condition. Passed into the surface
+            construction.
+        boundary_type_others : str
+            Boundary condition that defines the behavior for particles hitting
+            the cylindrical surface or the upper and lower planes. Defaults to
+            'vacuum' boundary condition. Passed into the surface construction.
+        starting_id : int
+            Starting ID of the surface(s) used in the region. For bounded_type
+            'box', the next 5 IDs will also be used. Defaults to 10000 to reduce
+            the chance of an overlap of surface IDs with the DAGMC geometry.
+        padding_distance : float
+            Distance between the bounding region surfaces and the minimal
+            bounding box. Allows for the region to be larger than the DAGMC
+            geometry. Only changes the cylindrical surface radius and the upper
+            and lower Z plane surfaces z0 values.
+        wedge_angles : Iterable[float]
+            Angles (in degrees) defining the angles of the side planes used for
+                the wedge. Default is (0, 180).
+
+        Returns
+        -------
+        openmc.Region
+            Region bounded by the cylindrical surface and the two planar surfaces.
+        """
+
+        check_value("boundary_type_others", boundary_type_others, _BOUNDARY_TYPES)
+        check_value(
+            "boundary_type_angled_planes", boundary_type_angled_planes, _BOUNDARY_TYPES
+        )
+        check_type("starting surface id", starting_id, Integral)
+        check_type("padding distance", padding_distance, float)
+        # check_iterable_type('wedge_angles', wedge_angles, float)
+
+        bbox = self.bounding_box.expand(padding_distance, True)
+
+        radius_upper_right = np.linalg.norm(
+            np.array(bbox[0][0], bbox[0][1]) - np.array([0.0, 0.0])
+        )
+        radius_lower_left = np.linalg.norm(
+            np.array(bbox[1][0], bbox[1][1]) - np.array([0.0, 0.0])
+        )
+        radius = max(radius_upper_right, radius_lower_left)
+
+        cylinder_surface = openmc.ZCylinder(
+            r=radius, surface_id=starting_id, boundary_type=boundary_type_others
+        )
+
+        wedge_angle_surf_1 = openmc.Plane(
+            a=math.sin(math.radians(wedge_angles[0])),
+            b=-math.cos(math.radians(wedge_angles[0])),
+            c=0.0,
+            d=0.0,
+            surface_id=starting_id + 1,
+            boundary_type=boundary_type_angled_planes,
+        )
+
+        wedge_angle_surf_2 = openmc.Plane(
+            a=math.sin(math.radians(wedge_angles[1])),
+            b=-math.cos(math.radians(wedge_angles[1])),
+            c=0.0,
+            d=0.0,
+            surface_id=starting_id + 2,
+            boundary_type=boundary_type_angled_planes,
+        )
+
+        lower_z = openmc.ZPlane(
+            bbox[0][2], boundary_type=boundary_type_others, surface_id=starting_id + 4
+        )
+        upper_z = openmc.ZPlane(
+            bbox[1][2], boundary_type=boundary_type_others, surface_id=starting_id + 5
+        )
+
+        if wedge_angles[1] - wedge_angles[0] >= 180.0:
+            region = (
+                -cylinder_surface
+                & +lower_z
+                & -upper_z
+                & (-wedge_angle_surf_1 | +wedge_angle_surf_2)
+            )
+        else:
+            region = (
+                -cylinder_surface
+                & +lower_z
+                & -upper_z
+                & -wedge_angle_surf_1
+                & +wedge_angle_surf_2
+            )
+
+        return region
+
+    def bounded_universe(self, bounding_cell_id=10000, bounded_type="box", **kwargs):
         """Returns an openmc.Universe filled with this DAGMCUniverse and bounded
         with a cell. Defaults to a box cell with a vacuum surface however this
         can be changed using the kwargs which are passed directly to
-        DAGMCUniverse.bounding_region().
+        either DAGMCUniverse.bounding_region() for bounded_type 'box' or
+        'sphere' and passed to DAGMCUniverse.bounding_wedge_region() for
+        bounded_type 'wedge'.
 
         Parameters
         ----------
         bounding_cell_id : int
             The cell ID number to use for the bounding cell, defaults to 10000 to reduce
             the chance of overlapping ID numbers with the DAGMC geometry.
+        bounded_type : str
+            The type of bounding surface(s) to use when constructing the region.
+            Options include a single spherical surface (sphere) or a rectangle
+            made from six planes (box) or a (wedge) shape made from a
+            cylindrical surface and four planes.
 
         Returns
         -------
         openmc.Universe
             Universe instance
         """
-        bounding_cell = openmc.Cell(
-            fill=self, cell_id=bounding_cell_id, region=self.bounding_region(**kwargs))
+
+        check_value("bounded type", bounded_type, ("box", "sphere", "wedge"))
+        if bounded_type in ["box", "sphere"]:
+            bounding_cell = openmc.Cell(
+                fill=self,
+                cell_id=bounding_cell_id,
+                region=self.bounding_region(bounded_type=bounded_type, **kwargs),
+            )
+        else:  # bounded_type is wedge
+            # Remove 'bounded_type' from kwargs before passing to bounding_wedge_region
+            kwargs.pop("bounded_type", None)
+            bounding_cell = openmc.Cell(
+                fill=self,
+                cell_id=bounding_cell_id,
+                region=self.bounding_wedge_region(**kwargs),
+            )
         return openmc.Universe(cells=[bounding_cell])
 
     @classmethod

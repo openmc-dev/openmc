@@ -183,7 +183,7 @@ class DAGMCUniverse(openmc.UniverseBase):
         # Ensure that overrides is an iterable of openmc.Material
         if not isinstance(overrides, Iterable):
             overrides = [overrides]
-        cv.check_iterable_type('material objects', overrides, openmc.Material)
+        cv.check_iterable_type('material objects', overrides, (openmc.Material, type(None)))
 
         # if material_overrides is not initialized, initialize it
         if not self._material_overrides:
@@ -282,8 +282,10 @@ class DAGMCUniverse(openmc.UniverseBase):
 
         # Ensure that the material overrides are up-to-date
         for cell in self.cells.values():
+            if cell.fill is None:
+                continue
             fill = cell.fill if isinstance(cell.fill, openmc.Iterable) else [cell.fill]
-            self.add_material_override(cell.id, fill)
+            self.add_material_override(cell, fill)
 
         # Set xml element values
         dagmc_element = ET.Element('dagmc_universe')

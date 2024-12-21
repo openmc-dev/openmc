@@ -78,13 +78,13 @@ DAGUniverse::DAGUniverse(pugi::xml_node node)
     // loop over all subelements (each subelement corresponds to a material)
     for (pugi::xml_node cell_node : mat_node.children("cell")) {
       // Store assignment reference name
-      std::string ref_assignment = get_node_value(cell_node, "id");
+      int32_t ref_assignment = std::stoi(get_node_value(cell_node, "id"));
 
       // Get mat name for each assignement instances
-      vector<int> instance_mats = get_node_array<int>(cell_node, "material");
+      vector<int32_t> instance_mats = get_node_array<int32_t>(cell_node, "material");
 
       // Store mat name for each instances
-      material_overrides_.emplace(std::stoi(ref_assignment), instance_mats);
+      material_overrides_.emplace(ref_assignment, instance_mats);
     }
   }
 
@@ -629,7 +629,6 @@ void DAGUniverse::uwuw_assign_material(
 
 void DAGUniverse::override_assign_material(std::unique_ptr<DAGCell>& c) const
 {
-
   // if Cell ID matches an override key, use it to override the material
   // assignment else if UWUW is used, get the material assignment from the DAGMC
   // metadata
@@ -858,7 +857,7 @@ extern "C" int openmc_dagmc_universe_get_cell_ids(
   // make sure the universe id is a DAGMC Universe
   const auto& univ = model::universes[model::universe_map[univ_id]];
   if (univ->geom_type() != GeometryType::DAG) {
-    set_errmsg(fmt::format("Universe {} is not a DAGMC Universe!", univ_id));
+    set_errmsg(fmt::format("Universe {} is not a DAGMC Universe", univ_id));
     return OPENMC_E_INVALID_TYPE;
   }
 
@@ -866,7 +865,7 @@ extern "C" int openmc_dagmc_universe_get_cell_ids(
   for (const auto& cell_index : univ->cells_) {
     const auto& cell = model::cells[cell_index];
     if (cell->geom_type() == GeometryType::CSG) {
-      set_errmsg(fmt::format("Cell {} is not a DAGMC Cell!", cell->id_));
+      set_errmsg(fmt::format("Cell {} is not a DAGMC Cell", cell->id_));
       return OPENMC_E_INVALID_TYPE;
     }
     dag_cell_ids.push_back(cell->id_);

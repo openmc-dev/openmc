@@ -181,7 +181,7 @@ class DAGMCUniverse(openmc.UniverseBase):
             raise ValueError("Unrecognized key type. Must be a string or integer.")
 
         # Ensure that overrides is an iterable of openmc.Material
-        if not isinstance(overrides, Iterable):
+        if not isinstance(overrides, openmc.Iterable):
             overrides = [overrides]
         cv.check_iterable_type('material objects', overrides, (openmc.Material, type(None)))
 
@@ -436,6 +436,9 @@ class DAGMCUniverse(openmc.UniverseBase):
         ----------
         elem : lxml.etree._Element
             `<dagmc_universe>` element
+        mats : dict
+            Dictionary mapping material ID strings to :class:`openmc.Material`
+            instances (defined in :meth:`openmc.Geometry.from_xml`)
 
         Returns
         -------
@@ -457,11 +460,12 @@ class DAGMCUniverse(openmc.UniverseBase):
 
         el_mat_override = elem.find('material_overrides')
         if el_mat_override is not None:
+            out._material_overrides = {}
             for elem in el_mat_override.findall('cell'):
-                cell_id = elem.attrib('id')
-                mat_ids = elem.attrib["material"].split(' ')
+                cell_id = int(get_text(elem, 'id'))
+                mat_ids = get_text(elem, 'material').split(' ')
                 mat_objs = [mats[mat_id] for mat_id in mat_ids]
-            out.add_material_override(cell_id, mat_objs)
+                out._material_overrides[cell_id] = mat_objs
 
         return out
 

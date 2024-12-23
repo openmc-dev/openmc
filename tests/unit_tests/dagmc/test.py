@@ -117,12 +117,12 @@ def test_dagmc_xml():
     assert dagmc_ele.get('auto_geom_ids') == str(daguniv.auto_geom_ids).lower()
 
     # Verify the material overrides element in the XML tree
-    override_eles = dagmc_ele.find('material_overrides').findall('cell')
+    override_eles = dagmc_ele.find('material_overrides').findall('cell_override')
     assert len(override_eles) == 2
     assert override_eles[0].get('id') == '40'
-    assert override_eles[0].get('material') == str(mats["no-void fuel"].id)
+    assert override_eles[0].find('material_ids').text == str(mats["no-void fuel"].id)
     assert override_eles[1].get('id') == '52'
-    assert override_eles[1].get('material') == str(mats["41"].id)
+    assert override_eles[1].find('material_ids').text == str(mats["41"].id)
 
     # Create a dictionary of materials to pass to from_xml_element indexing by
     # material ID strings

@@ -76,13 +76,13 @@ DAGUniverse::DAGUniverse(pugi::xml_node node)
   if (check_for_node(node, "material_overrides")) {
     auto mat_node = node.child("material_overrides");
     // loop over all subelements (each subelement corresponds to a material)
-    for (pugi::xml_node cell_node : mat_node.children("cell")) {
+    for (pugi::xml_node cell_node : mat_node.children("cell_override")) {
       // Store assignment reference name
       int32_t ref_assignment = std::stoi(get_node_value(cell_node, "id"));
 
       // Get mat name for each assignement instances
       vector<int32_t> instance_mats =
-        get_node_array<int32_t>(cell_node, "material");
+        get_node_array<int32_t>(cell_node, "material_ids");
 
       // Store mat name for each instances
       material_overrides_.emplace(ref_assignment, instance_mats);

@@ -284,7 +284,7 @@ class DAGMCUniverse(openmc.UniverseBase):
         for cell in self.cells.values():
             if cell.fill is None:
                 continue
-            fill = cell.fill if isinstance(cell.fill, openmc.Iterable) else [cell.fill]
+            fill = cell.fill
             self.add_material_override(cell, fill)
 
         # Set xml element values

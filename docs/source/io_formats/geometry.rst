@@ -413,13 +413,13 @@ Each ``<dagmc_universe>`` element can have the following attributes or sub-eleme
 
     :cell:
       Material override information for a single cell. It contains the following
-      attributes:
+      attributes and sub-elements:
 
       :id:
         The cell ID in the DAGMC geometry for which the material override will
         apply.
 
-      :material:
+      :materials:
         A list of material IDs that will apply to instances of the cell. If the
         list contains only one ID, it will replace the original material
         assignment of all instances of the DAGMC cell. If the list contains more

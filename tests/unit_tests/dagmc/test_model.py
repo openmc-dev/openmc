@@ -117,3 +117,52 @@ def test_bad_override_cell_id(model, run_in_tmpdir):
             univ.material_overrides = {1 : model.materials[0]}
     finally:
         model.finalize_lib()
+
+
+def test_dagmc_xml(model, run_in_tmpdir):
+    # Set the environment
+    mats = {}
+    mats["no-void fuel"] = openmc.Material(1, name="no-void fuel")
+    mats["no-void fuel"].add_nuclide("U235", 0.03)
+    mats["no-void fuel"].add_nuclide("U238", 0.97)
+    mats["no-void fuel"].add_nuclide("O16", 2.0)
+    mats["no-void fuel"].set_density("g/cm3", 10.0)
+
+    mats[23] = openmc.Material(name="41")
+    mats[23].add_nuclide("H1", 2.0)
+    mats[23].add_element("O", 1.0)
+    mats[23].set_density("g/cm3", 1.0)
+    mats[23].add_s_alpha_beta("c_H_in_H2O")
+
+    try:
+        model.init_lib()
+        model.sync_dagmc_universes()
+    finally:
+        model.finalize_lib()
+
+    for univ in model.geometry.get_all_universes().values():
+        if isinstance(univ, openmc.DAGMCUniverse):
+            dag_univ = univ
+            break
+
+    print(dag_univ.cells)
+
+    for k, v in mats.items():
+        if isinstance(k, int):
+            dag_univ.add_material_override(k, v)
+        elif isinstance(k, str):
+            dag_univ.replace_material_assignment(k, v)
+
+    model.export_to_model_xml()
+
+    xml_model = openmc.Model.from_model_xml()
+
+    for univ in xml_model.geometry.get_all_universes().values():
+        if isinstance(univ, openmc.DAGMCUniverse):
+            xml_dagmc_univ = univ
+            break
+
+    assert xml_dagmc_univ._material_overrides.keys() == dag_univ._material_overrides.keys()
+
+    for xml_mats, model_mats in zip(xml_dagmc_univ._material_overrides.values(), dag_univ._material_overrides.values()):
+        assert all([xml_mat.id == orig_mat.id for xml_mat, orig_mat in zip(xml_mats, model_mats)])

@@ -145,8 +145,6 @@ def test_dagmc_xml(model, run_in_tmpdir):
             dag_univ = univ
             break
 
-    print(dag_univ.cells)
-
     for k, v in mats.items():
         if isinstance(k, int):
             dag_univ.add_material_override(k, v)

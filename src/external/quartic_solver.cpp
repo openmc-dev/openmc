@@ -1,3 +1,4 @@
+#define _USE_MATH_DEFINES // to make M_PI declared in Intel and MSVC compilers
 #include <algorithm>
 #include <cmath>
 #include <complex>

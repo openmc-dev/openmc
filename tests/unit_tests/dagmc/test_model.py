@@ -1,5 +1,6 @@
 import pkg_resources
 
+import lxml.etree as ET
 import numpy as np
 import pytest
 
@@ -148,8 +149,25 @@ def test_dagmc_xml(model, run_in_tmpdir):
     for k, v in mats.items():
         if isinstance(k, int):
             dag_univ.add_material_override(k, v)
+            model.materials.append(v)
         elif isinstance(k, str):
             dag_univ.replace_material_assignment(k, v)
+
+    # Tesing the XML subelement generation
+    root = ET.Element('dagmc_universe')
+    dag_univ.create_xml_subelement(root)
+    dagmc_ele = root.find('dagmc_universe')
+
+    assert dagmc_ele.get('id') == str(dag_univ.id)
+    assert dagmc_ele.get('filename') == str(dag_univ.filename)
+    assert dagmc_ele.get('auto_geom_ids') == str(dag_univ.auto_geom_ids).lower()
+
+    override_eles = dagmc_ele.find('material_overrides').findall('cell_override')
+    assert len(override_eles) == 4
+
+    for i, override_ele in enumerate(override_eles):
+        cell_id = override_ele.get('id')
+        assert dag_univ.material_overrides[int(cell_id)][0].id == int(override_ele.find('material_ids').text)
 
     model.export_to_model_xml()
 

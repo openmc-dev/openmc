@@ -186,8 +186,8 @@ class DAGMCUniverse(openmc.UniverseBase):
         """
         # Ensure that they key is a valid type
         if not isinstance(key, (int, openmc.DAGMCCell)):
-            raise ValueError("Unrecognized key type.  \
-                Must be a string, integer, or openmc.DAGMCCell object")
+            raise ValueError("Unrecognized key type. "
+                             "Must be a integer, or openmc.DAGMCCell object")
 
         # Ensure that overrides is an iterable of openmc.Material
         overrides = overrides if isinstance(overrides, openmc.Iterable) else [overrides]

@@ -29,6 +29,7 @@
 #include "openmc/memory.h"
 #include "openmc/message_passing.h"
 #include "openmc/openmp_interface.h"
+#include "openmc/output.h"
 #include "openmc/particle_data.h"
 #include "openmc/plot.h"
 #include "openmc/random_dist.h"
@@ -37,6 +38,7 @@
 #include "openmc/string_utils.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/tallies/tally.h"
+#include "openmc/timer.h"
 #include "openmc/volume_calc.h"
 #include "openmc/xml_interface.h"
 
@@ -192,6 +194,20 @@ vector<double> Mesh::volumes() const
 void Mesh::material_volumes(int nx, int ny, int nz, int max_materials,
   int32_t* materials, double* volumes) const
 {
+  if (mpi::master) {
+    header("MESH MATERIAL VOLUMES CALCULATION", 7);
+  }
+  write_message(7, "Number of rays (x) = {}", nx);
+  write_message(7, "Number of rays (y) = {}", ny);
+  write_message(7, "Number of rays (z) = {}", nz);
+  int64_t n_total = nx * ny + ny * nz + nx * nz;
+  write_message(7, "Total number of rays = {}", n_total);
+  write_message(
+    7, "Maximum number of materials per mesh element = {}", max_materials);
+
+  Timer timer;
+  timer.start();
+
   // Create object for keeping track of materials/volumes
   detail::MaterialVolumes result(materials, volumes, max_materials);
 
@@ -235,11 +251,19 @@ void Mesh::material_volumes(int nx, int ny, int nz, int max_materials,
       int n1 = n_rays[ax1];
       int n2 = n_rays[ax2];
 
+      // Divide rays in first direction over MPI processes by computing starting
+      // and ending indices
+      int min_work = n1 / mpi::n_procs;
+      int remainder = n1 % mpi::n_procs;
+      int n1_local = (mpi::rank < remainder) ? min_work + 1 : min_work;
+      int i1_start = mpi::rank * min_work + std::min(mpi::rank, remainder);
+      int i1_end = i1_start + n1_local;
+
       // Loop over rays on face of bounding box
-#pragma omp for
-      for (int i1 = 0; i1 < n1; ++i1) {
-        site.r[ax1] = min1 + (i1 + 0.5) * d1;
+#pragma omp for collapse(2)
+      for (int i1 = i1_start; i1 < i1_end; ++i1) {
         for (int i2 = 0; i2 < n2; ++i2) {
+          site.r[ax1] = min1 + (i1 + 0.5) * d1;
           site.r[ax2] = min2 + (i2 + 0.5) * d2;
 
           p.from_source(&site);
@@ -329,6 +353,46 @@ void Mesh::material_volumes(int nx, int ny, int nz, int max_materials,
                              "volume calculation insufficient.");
   }
 
+  // Compute time for raytracing
+  double t_raytrace = timer.elapsed();
+
+#ifdef OPENMC_MPI
+  // Combine results from multiple MPI processes
+  if (mpi::n_procs > 1) {
+    int total = this->n_bins() * max_materials;
+    if (mpi::master) {
+      // Allocate temporary buffer for receiving data
+      std::vector<int32_t> mats(total);
+      std::vector<double> vols(total);
+
+      for (int i = 1; i < mpi::n_procs; ++i) {
+        // Receive material indices and volumes from process i
+        MPI_Recv(
+          mats.data(), total, MPI_INT, i, i, mpi::intracomm, MPI_STATUS_IGNORE);
+        MPI_Recv(vols.data(), total, MPI_DOUBLE, i, i, mpi::intracomm,
+          MPI_STATUS_IGNORE);
+
+        // Combine with existing results
+        for (int index_elem = 0; index_elem < n_bins(); ++index_elem) {
+          for (int k = 0; k < max_materials; ++k) {
+            int index = index_elem * max_materials + k;
+            result.add_volume(index_elem, mats[index], vols[index]);
+          }
+        }
+      }
+    } else {
+      // Send material indices and volumes to process 0
+      MPI_Send(materials, total, MPI_INT, 0, mpi::rank, mpi::intracomm);
+      MPI_Send(volumes, total, MPI_DOUBLE, 0, mpi::rank, mpi::intracomm);
+    }
+  }
+
+  // Report time for MPI communication
+  double t_mpi = timer.elapsed() - t_raytrace;
+#else
+  double t_mpi = 0.0;
+#endif
+
   // Normalize based on known volumes of elements
   for (int i = 0; i < this->n_bins(); ++i) {
     // Estimated total volume in element i
@@ -337,11 +401,24 @@ void Mesh::material_volumes(int nx, int ny, int nz, int max_materials,
       volume += result.volumes(i, j);
     }
 
-    // Renormalize volumes based on known volume of elemnet i
+    // Renormalize volumes based on known volume of element i
     double norm = this->volume(i) / volume;
     for (int j = 0; j < max_materials; ++j) {
       result.volumes(i, j) *= norm;
     }
+  }
+
+  // Show elapsed time
+  timer.stop();
+  double t_total = timer.elapsed();
+  double t_normalize = t_total - t_raytrace - t_mpi;
+  if (mpi::master) {
+    header("Timing Statistics", 7);
+    show_time("Total time elapsed", t_total);
+    show_time("Ray tracing", t_raytrace, 1);
+    show_time("Ray tracing (per ray)", t_raytrace / n_total, 1);
+    show_time("MPI communication", t_mpi, 1);
+    show_time("Normalization", t_normalize, 1);
   }
 }
 

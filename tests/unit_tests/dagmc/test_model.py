@@ -58,7 +58,14 @@ def model():
     model.materials = openmc.Materials(mats.values())
     model.geometry = openmc.Geometry(root=root)
     model.settings = settings
-    return model
+
+    try:
+        model.init_lib()
+        model.sync_dagmc_universes()
+        yield model
+    finally:
+        model.finalize_lib()
+        openmc.reset_auto_ids()
 
 
 def test_dagmc_replace_material_assignment(model, run_in_tmpdir):
@@ -70,25 +77,19 @@ def test_dagmc_replace_material_assignment(model, run_in_tmpdir):
     mats["foo"].set_density("g/cm3", 1.0)
     mats["foo"].add_s_alpha_beta("c_H_in_H2O")
 
-    try:
-        model.init_lib()
-        model.sync_dagmc_universes()
-        for univ in model.geometry.get_all_universes().values():
-            if not isinstance(univ, openmc.DAGMCUniverse):
-                break
+    for univ in model.geometry.get_all_universes().values():
+        if not isinstance(univ, openmc.DAGMCUniverse):
+            break
 
-            cells_with_41 = []
-            for cell in univ.cells.values():
-                if cell.fill is None:
-                    continue
-                if cell.fill.name == "41":
-                    cells_with_41.append(cell.id)
-            univ.replace_material_assignment("41", mats["foo"])
-            for cell_id in cells_with_41:
-                assert univ.cells[cell_id] == mats["foo"]
-    finally:
-        model.finalize_lib()
-        openmc.reset_auto_ids()
+        cells_with_41 = []
+        for cell in univ.cells.values():
+            if cell.fill is None:
+                continue
+            if cell.fill.name == "41":
+                cells_with_41.append(cell.id)
+        univ.replace_material_assignment("41", mats["foo"])
+        for cell_id in cells_with_41:
+            assert univ.cells[cell_id] == mats["foo"]
 
 
 def test_dagmc_add_material_override_with_id(model, run_in_tmpdir):
@@ -99,25 +100,19 @@ def test_dagmc_add_material_override_with_id(model, run_in_tmpdir):
     mats["foo"].set_density("g/cm3", 1.0)
     mats["foo"].add_s_alpha_beta("c_H_in_H2O")
 
-    try:
-        model.init_lib()
-        model.sync_dagmc_universes()
-        for univ in model.geometry.get_all_universes().values():
-            if not isinstance(univ, openmc.DAGMCUniverse):
-                break
+    for univ in model.geometry.get_all_universes().values():
+        if not isinstance(univ, openmc.DAGMCUniverse):
+            break
 
-            cells_with_41 = []
-            for cell in univ.cells.values():
-                if cell.fill is None:
-                    continue
-                if cell.fill.name == "41":
-                    cells_with_41.append(cell.id)
-                    univ.add_material_override(cell.id, mats["foo"])         
-            for cell_id in cells_with_41:
-                assert univ.cells[cell_id] == mats["foo"]
-    finally:
-        model.finalize_lib()
-        openmc.reset_auto_ids()
+        cells_with_41 = []
+        for cell in univ.cells.values():
+            if cell.fill is None:
+                continue
+            if cell.fill.name == "41":
+                cells_with_41.append(cell.id)
+                univ.add_material_override(cell.id, mats["foo"])
+        for cell_id in cells_with_41:
+            assert univ.cells[cell_id] == mats["foo"]
 
 
 def test_dagmc_add_material_override_with_cell(model, run_in_tmpdir):
@@ -128,116 +123,80 @@ def test_dagmc_add_material_override_with_cell(model, run_in_tmpdir):
     mats["foo"].set_density("g/cm3", 1.0)
     mats["foo"].add_s_alpha_beta("c_H_in_H2O")
 
-    try:
-        model.init_lib()
-        model.sync_dagmc_universes()
-        for univ in model.geometry.get_all_universes().values():
-            if not isinstance(univ, openmc.DAGMCUniverse):
-                break
+    for univ in model.geometry.get_all_universes().values():
+        if not isinstance(univ, openmc.DAGMCUniverse):
+            break
 
-            cells_with_41 = []
-            for cell in univ.cells.values():
-                if cell.fill is None:
-                    continue
-                if cell.fill.name == "41":
-                    cells_with_41.append(cell.id)
-                    univ.add_material_override(cell, mats["foo"])         
-            for cell_id in cells_with_41:
-                assert univ.cells[cell_id] == mats["foo"]
-    finally:
-        model.finalize_lib()
-        openmc.reset_auto_ids()
+        cells_with_41 = []
+        for cell in univ.cells.values():
+            if cell.fill is None:
+                continue
+            if cell.fill.name == "41":
+                cells_with_41.append(cell.id)
+                univ.add_material_override(cell, mats["foo"])
+        for cell_id in cells_with_41:
+            assert univ.cells[cell_id] == mats["foo"]
 
 
 def test_model_differentiate_depletable_with_dagmc(model, run_in_tmpdir):
-    try:
-        model.init_lib()
-        model.sync_dagmc_universes()
-        model.calculate_volumes()
+    model.calculate_volumes()
 
-        # Get the volume of the no-void fuel material before differentiation
-        volume_before = np.sum([m.volume for m in model.materials if m.name == "no-void fuel"])
+    # Get the volume of the no-void fuel material before differentiation
+    volume_before = np.sum([m.volume for m in model.materials if m.name == "no-void fuel"])
 
-        # Differentiate the depletable materials
-        model.differentiate_depletable_mats(diff_volume_method="divide equally")
-        # Get the volume of the no-void fuel material after differentiation
-        volume_after = np.sum([m.volume for m in model.materials if "fuel" in m.name])
-        assert np.isclose(volume_before, volume_after)
-        assert len(model.materials) == 4*2 +1
-    finally:
-        model.finalize_lib()
-        openmc.reset_auto_ids()
+    # Differentiate the depletable materials
+    model.differentiate_depletable_mats(diff_volume_method="divide equally")
+    # Get the volume of the no-void fuel material after differentiation
+    volume_after = np.sum([m.volume for m in model.materials if "fuel" in m.name])
+    assert np.isclose(volume_before, volume_after)
+    assert len(model.materials) == 4*2 +1
 
 
 def test_model_differentiate_with_dagmc(model, run_in_tmpdir):
     root = model.geometry.root_universe
     ll, ur = root.bounding_box
-    try:
-        model.init_lib()
-        model.sync_dagmc_universes()
-        model.calculate_volumes()
-        # Get the volume of the no-void fuel material before differentiation
-        volume_before = np.sum([m.volume for m in model.materials if m.name == "no-void fuel"])
+    model.calculate_volumes()
+    # Get the volume of the no-void fuel material before differentiation
+    volume_before = np.sum([m.volume for m in model.materials if m.name == "no-void fuel"])
 
-        # Differentiate all the materials
-        model.differentiate_mats(depletable_only=False)
+    # Differentiate all the materials
+    model.differentiate_mats(depletable_only=False)
 
-        # Get the volume of the no-void fuel material after differentiation
-        mat_list = [m for m in model.materials]
-        mat_vol = openmc.VolumeCalculation(mat_list, 1000000, ll, ur)
-        cell_vol = openmc.VolumeCalculation(list(root.cells.values()), 1000000, ll, ur)
-        model.settings.volume_calculations = [mat_vol, cell_vol]
-        model.init_lib() # need to reinitialize the lib after differentiating the materials
-        model.calculate_volumes()
-        volume_after = np.sum([m.volume for m in model.materials if "fuel" in m.name])
-        assert np.isclose(volume_before, volume_after)
-        assert len(model.materials) == 4*2 + 4
-    finally:
-        model.finalize_lib()
-        openmc.reset_auto_ids()
+    # Get the volume of the no-void fuel material after differentiation
+    mat_list = [m for m in model.materials]
+    mat_vol = openmc.VolumeCalculation(mat_list, 1000000, ll, ur)
+    cell_vol = openmc.VolumeCalculation(list(root.cells.values()), 1000000, ll, ur)
+    model.settings.volume_calculations = [mat_vol, cell_vol]
+    model.init_lib() # need to reinitialize the lib after differentiating the materials
+    model.calculate_volumes()
+    volume_after = np.sum([m.volume for m in model.materials if "fuel" in m.name])
+    assert np.isclose(volume_before, volume_after)
+    assert len(model.materials) == 4*2 + 4
 
 
 def test_bad_override_cell_id(model, run_in_tmpdir):
-    try:
-        model.init_lib()
-        model.sync_dagmc_universes()
-        for univ in model.geometry.get_all_universes().values():
-            if isinstance(univ, openmc.DAGMCUniverse):
-                break
-        with pytest.raises(ValueError, match="Cell ID '1' not found in DAGMC universe"):
-            univ.material_overrides = {1 : model.materials[0]}
-    finally:
-        model.finalize_lib()
-        openmc.reset_auto_ids()
+    for univ in model.geometry.get_all_universes().values():
+        if isinstance(univ, openmc.DAGMCUniverse):
+            break
+    with pytest.raises(ValueError, match="Cell ID '1' not found in DAGMC universe"):
+        univ.material_overrides = {1 : model.materials[0]}
 
 
 def test_bad_override_type(model, run_in_tmpdir):
     not_a_dag_cell = openmc.Cell()
-    try:
-        model.init_lib()
-        model.sync_dagmc_universes()
-        for univ in model.geometry.get_all_universes().values():
-            if isinstance(univ, openmc.DAGMCUniverse):
-                break
-        with pytest.raises(ValueError, match="Unrecognized key type. Must be a integer, or openmc.DAGMCCell object"):
-            univ.material_overrides = {not_a_dag_cell : model.materials[0]}
-    finally:
-        model.finalize_lib()
-        openmc.reset_auto_ids()
+    for univ in model.geometry.get_all_universes().values():
+        if isinstance(univ, openmc.DAGMCUniverse):
+            break
+    with pytest.raises(ValueError, match="Unrecognized key type. Must be a integer, or openmc.DAGMCCell object"):
+        univ.material_overrides = {not_a_dag_cell : model.materials[0]}
 
 
 def test_bad_replacement_mat_name(model, run_in_tmpdir):
-    try:
-        model.init_lib()
-        model.sync_dagmc_universes()
-        for univ in model.geometry.get_all_universes().values():
-            if isinstance(univ, openmc.DAGMCUniverse):
-                break
-        with pytest.raises(ValueError, match="No material with name 'not_a_mat' found in the DAGMC universe"):
-            univ.replace_material_assignment("not_a_mat", model.materials[0])
-    finally:
-        model.finalize_lib()
-        openmc.reset_auto_ids()
+    for univ in model.geometry.get_all_universes().values():
+        if isinstance(univ, openmc.DAGMCUniverse):
+            break
+    with pytest.raises(ValueError, match="No material with name 'not_a_mat' found in the DAGMC universe"):
+        univ.replace_material_assignment("not_a_mat", model.materials[0])
 
 
 def test_dagmc_xml(model, run_in_tmpdir):
@@ -254,12 +213,6 @@ def test_dagmc_xml(model, run_in_tmpdir):
     mats[5].add_element("O", 1.0)
     mats[5].set_density("g/cm3", 1.0)
     mats[5].add_s_alpha_beta("c_H_in_H2O")
-
-    try:
-        model.init_lib()
-        model.sync_dagmc_universes()
-    finally:
-        model.finalize_lib()
 
     for univ in model.geometry.get_all_universes().values():
         if isinstance(univ, openmc.DAGMCUniverse):

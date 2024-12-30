@@ -442,7 +442,7 @@ class DAGMCUniverse(openmc.UniverseBase):
         return out
 
     @classmethod
-    def from_xml_element(cls, elem, mats):
+    def from_xml_element(cls, elem, mats = None):
         """Generate DAGMC universe from XML element
 
         Parameters
@@ -473,6 +473,10 @@ class DAGMCUniverse(openmc.UniverseBase):
 
         el_mat_override = elem.find('material_overrides')
         if el_mat_override is not None:
+            if mats is None:
+                raise ValueError("Material overrides found in DAGMC universe "
+                                 "but no materials were provided to populate "
+                                 "the mapping.")
             out._material_overrides = {}
             for elem in el_mat_override.findall('cell_override'):
                 cell_id = int(get_text(elem, 'id'))

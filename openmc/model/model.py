@@ -1183,19 +1183,17 @@ class Model:
         .. versionadded:: 0.14.0
 
         .. version added:: 0.15.1-dev
-            diff_volume_method default is None, do not apply volume to the new
-            materials. Is now a convenience method for
+            diff_volume_method default is None, do not set volumes on the new
+            material ovjects. Is now a convenience method for
             differentiate_mats(diff_volume_method, depletable_only=True)
 
         Parameters
         ----------
         diff_volume_method : str
             Specifies how the volumes of the new materials should be found.
-            Default is 'None', do not apply volume to the new materials,
-            'divide equally' which divides the original material
-            volume equally between the new materials,
-            'match cell' sets the volume of the material to volume of the cell
-            they fill.
+            - None: Do not assign volumes to the new materials (Default)
+            - 'divide_equally': Divide the original material volume equally between the new materials
+            - 'match cell': Set the volume of the material to the volume of the cell they fill
         """
         self.differentiate_mats(diff_volume_method, depletable_only=True)
 

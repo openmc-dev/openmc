@@ -232,11 +232,11 @@ void DAGUniverse::init_geometry()
     if (mat_str == "void" || mat_str == "vacuum" || mat_str == "graveyard") {
       c->material_.push_back(MATERIAL_VOID);
     } else {
-      if (material_overrides_.count(c->id_)) { // Check for material override
+      if (material_overrides_.count(c->id_)) {
         override_assign_material(c);
-      } else if (uses_uwuw()) { // UWUW assignement
+      } else if (uses_uwuw()) {
         uwuw_assign_material(vol_handle, c);
-      } else { // legacy assignement
+      } else {
         legacy_assign_material(mat_str, c);
       }
     }
@@ -636,10 +636,20 @@ void DAGUniverse::override_assign_material(std::unique_ptr<DAGCell>& c) const
   // Notify User that an override is being applied on a DAGMCCell
   write_message(fmt::format("Applying override for DAGMCCell {}", c->id_), 8);
 
+  if (settings::verbosity >= 10) {
+    auto msg = fmt::format("Assigning DAGMC cell {} material(s) based on override information (see input XML).",
+      c->id_);
+    write_message(msg, 10);
+  }
+
   // Override the material assignment for each cell instance using the legacy
   // assignement
-  for (auto mat_str_instance : material_overrides_.at(c->id_)) {
-    this->legacy_assign_material(std::to_string(mat_str_instance), c);
+  for (auto mat_id : material_overrides_.at(c->id_)) {
+    if (model::material_map.find(mat_id) == model::material_map.end()) {
+      fatal_error(fmt::format("Material with ID '{}' not found for DAGMC cell {}",
+        mat_id, c->id_));
+    }
+    c->material_.push_back(mat_id);
   }
 }
 

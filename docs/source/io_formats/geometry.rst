@@ -409,7 +409,7 @@ Each ``<dagmc_universe>`` element can have the following attributes or sub-eleme
 
   :material_overrides:
     This element contains information on material overrides to be applied to the
-    DAGMC universe. It has the following sub-elements:
+    DAGMC universe. It has the following attributes and sub-elements:
 
     :cell:
       Material override information for a single cell. It contains the following

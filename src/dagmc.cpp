@@ -637,7 +637,8 @@ void DAGUniverse::override_assign_material(std::unique_ptr<DAGCell>& c) const
   write_message(fmt::format("Applying override for DAGMCCell {}", c->id_), 8);
 
   if (settings::verbosity >= 10) {
-    auto msg = fmt::format("Assigning DAGMC cell {} material(s) based on override information (see input XML).",
+    auto msg = fmt::format("Assigning DAGMC cell {} material(s) based on "
+                           "override information (see input XML).",
       c->id_);
     write_message(msg, 10);
   }
@@ -646,8 +647,8 @@ void DAGUniverse::override_assign_material(std::unique_ptr<DAGCell>& c) const
   // assignement
   for (auto mat_id : material_overrides_.at(c->id_)) {
     if (model::material_map.find(mat_id) == model::material_map.end()) {
-      fatal_error(fmt::format("Material with ID '{}' not found for DAGMC cell {}",
-        mat_id, c->id_));
+      fatal_error(fmt::format(
+        "Material with ID '{}' not found for DAGMC cell {}", mat_id, c->id_));
     }
     c->material_.push_back(mat_id);
   }

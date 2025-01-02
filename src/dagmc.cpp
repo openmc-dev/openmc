@@ -753,18 +753,16 @@ Direction DAGSurface::normal(Position r) const
   moab::EntityHandle surf = dagmc_ptr_->entity_by_index(2, dag_index_);
   double pnt[3] = {r.x, r.y, r.z};
   double dir[3];
-  rval = dagmc_ptr_->get_angle(surf, pnt, dir, &p->history());
+  rval = dagmc_ptr_->get_angle(surf, pnt, dir);
   MB_CHK_ERR_CONT(rval);
   return dir;
 }
 
-Direction DAGSurface::reflect(Position r, Direction u) const
+Direction DAGSurface::reflect(Position r, Direction u, GeometryState* p) const
 {
-  moab::ErrorCode rval;
-  moab::EntityHandle surf = dagmc_ptr_->entity_by_index(2, dag_index_);
   double pnt[3] = {r.x, r.y, r.z};
   double dir[3];
-  rval = dagmc_ptr_->get_angle(surf, pnt, dir);
+  moab::ErrorCode rval = dagmc_ptr_->get_angle(mesh_handle(), pnt, dir, &p->history());
   MB_CHK_ERR_CONT(rval);
   return u.reflect(dir);
 }

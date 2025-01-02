@@ -130,7 +130,7 @@ bool Surface::sense(Position r, Direction u) const
   return f > 0.0;
 }
 
-Direction Surface::reflect(Position r, Direction u) const
+Direction Surface::reflect(Position r, Direction u, GeometryState* p) const
 {
   // Determine projection of direction onto normal and squared magnitude of
   // normal.

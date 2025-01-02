@@ -762,7 +762,8 @@ Direction DAGSurface::reflect(Position r, Direction u, GeometryState* p) const
 {
   double pnt[3] = {r.x, r.y, r.z};
   double dir[3];
-  moab::ErrorCode rval = dagmc_ptr_->get_angle(mesh_handle(), pnt, dir, &p->history());
+  moab::ErrorCode rval =
+    dagmc_ptr_->get_angle(mesh_handle(), pnt, dir, &p->history());
   MB_CHK_ERR_CONT(rval);
   return u.reflect(dir);
 }

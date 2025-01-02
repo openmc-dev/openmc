@@ -1478,6 +1478,24 @@ class PhongPlot(RayTracePlot):
 
         return element
 
+    def _read_phong_attributes(self, elem):
+        """Read attributes specific to the Phong plot
+        from an XML element
+        Returns
+        -------
+        None
+        """
+        if elem.find('light_position') is not None:
+            self.light_position = get_elem_tuple(elem, 'light_position', float)
+
+        diffuse_fraction = elem.find('diffuse_fraction')
+        if diffuse_fraction is not None:
+            self.diffuse_fraction = float(diffuse_fraction.text)
+
+        if elem.find('opaque_ids') is not None:
+            self.opaque_domains = list(get_elem_tuple(elem, 'opaque_ids', int))
+
+
     @classmethod
     def from_xml_element(cls, elem):
         """Generate plot object from an XML element
@@ -1495,15 +1513,19 @@ class PhongPlot(RayTracePlot):
         """
 
         plot_id = int(elem.get("id"))
-        plot = cls(plot_id)
+        plot_name = get_text(elem, 'name', '')
+        plot = cls(plot_id, plot_name)
         plot.type = "phong"
 
         plot._read_xml_attributes(elem)
+        plot._read_phong_attributes(elem)
 
         # Set plot colors
         for color_elem in elem.findall("color"):
             uid = color_elem.get("id")
             plot.colors[uid] = get_elem_tuple(color_elem, "rgb")
+
+        return plot
 
 
 class Plots(cv.CheckedList):

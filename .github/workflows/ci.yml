@@ -38,6 +38,7 @@ jobs:
 
   main:
     runs-on: ubuntu-22.04
+    timeout-minutes: 180
     needs: setup
     strategy:
       matrix: "${{ fromJSON( needs.setup.outputs.matrix ) }}"

@@ -87,6 +87,7 @@ public:
   //! \param[in] index_material Index of the material
   //! \param[in] volume Volume to add
   void add_volume(int index_elem, int index_material, double volume);
+  void add_volume_unsafe(int index_elem, int index_material, double volume);
 
   // Accessors
   int32_t& materials(int i, int j) { return materials_[i * n_mats_ + j]; }

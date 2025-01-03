@@ -106,7 +106,7 @@ inline bool check_intersection_point(double x1, double x0, double y1, double y0,
 }
 
 //==============================================================================
-// Mesh implementation
+// MaterialVolumes implementation
 //==============================================================================
 
 namespace detail {
@@ -137,6 +137,34 @@ void MaterialVolumes::add_volume(
 
   // Accumulate volume
 #pragma omp atomic
+  this->volumes(index_elem, i) += volume;
+}
+
+// Same as add_volume above, but without the OpenMP critical/atomic section
+void MaterialVolumes::add_volume_unsafe(
+  int index_elem, int index_material, double volume)
+{
+  int i;
+  for (i = 0; i < n_mats_; ++i) {
+    // Check whether material already is present
+    if (this->materials(index_elem, i) == index_material)
+      break;
+
+    // If not already present, check for unused position (-2)
+    if (this->materials(index_elem, i) == -2) {
+      this->materials(index_elem, i) = index_material;
+      break;
+    }
+  }
+
+  // If maximum number of materials exceeded, set a flag that can be checked
+  // later
+  if (i >= n_mats_) {
+    too_many_mats_ = true;
+    return;
+  }
+
+  // Accumulate volume
   this->volumes(index_elem, i) += volume;
 }
 
@@ -372,11 +400,13 @@ void Mesh::material_volumes(int nx, int ny, int nz, int max_materials,
         MPI_Recv(vols.data(), total, MPI_DOUBLE, i, i, mpi::intracomm,
           MPI_STATUS_IGNORE);
 
-        // Combine with existing results
+        // Combine with existing results; we can call thread unsafe version of
+        // add_volume because each thread is operating on a different element
+#pragma omp for
         for (int index_elem = 0; index_elem < n_bins(); ++index_elem) {
           for (int k = 0; k < max_materials; ++k) {
             int index = index_elem * max_materials + k;
-            result.add_volume(index_elem, mats[index], vols[index]);
+            result.add_volume_unsafe(index_elem, mats[index], vols[index]);
           }
         }
       }

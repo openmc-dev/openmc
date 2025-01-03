@@ -10,7 +10,7 @@ from numpy.ctypeslib import as_array
 
 from ..exceptions import AllocationError, InvalidIDError
 from . import _dll
-from .core import _FortranObjectWithID
+from .core import _FortranObjectWithID, quiet_dll
 from .error import _error_handler
 from .plot import _Position
 from ..bounding_box import BoundingBox
@@ -186,7 +186,8 @@ class Mesh(_FortranObjectWithID):
     def material_volumes(
             self,
             n_samples: int | tuple[int, int, int] = 10_000,
-            max_materials: int = 4
+            max_materials: int = 4,
+            output: bool = True,
     ) -> MeshMaterialVolumes:
         """Determine volume of materials in each mesh element.
 
@@ -210,6 +211,8 @@ class Mesh(_FortranObjectWithID):
             the x, y, and z dimensions.
         max_materials : int, optional
             Estimated maximum number of materials in any given mesh element.
+        output : bool, optional
+            Whether or not to show output.
 
         Returns
         -------
@@ -238,8 +241,9 @@ class Mesh(_FortranObjectWithID):
         # Run material volume calculation
         while True:
             try:
-                _dll.openmc_mesh_material_volumes(
-                    self._index, nx, ny, nz, max_materials, materials, volumes)
+                with quiet_dll(output):
+                    _dll.openmc_mesh_material_volumes(
+                        self._index, nx, ny, nz, max_materials, materials, volumes)
             except AllocationError:
                 # Increase size of result array and try again
                 max_materials *= 2

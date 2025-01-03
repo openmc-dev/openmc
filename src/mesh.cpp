@@ -449,6 +449,7 @@ void Mesh::material_volumes(int nx, int ny, int nz, int max_materials,
     show_time("Ray tracing (per ray)", t_raytrace / n_total, 1);
     show_time("MPI communication", t_mpi, 1);
     show_time("Normalization", t_normalize, 1);
+    std::fflush(stdout);
   }
 }
 

@@ -9,6 +9,7 @@ import warnings
 
 import h5py
 import lxml.etree as ET
+import numpy as np
 
 import openmc
 import openmc._xml as xml
@@ -718,7 +719,8 @@ class Model:
 
     def calculate_volumes(self, threads=None, output=True, cwd='.',
                           openmc_exec='openmc', mpi_args=None,
-                          apply_volumes=True):
+                          apply_volumes=True, export_model_xml=True,
+                          **export_kwargs):
         """Runs an OpenMC stochastic volume calculation and, if requested,
         applies volumes to the model
 
@@ -747,6 +749,13 @@ class Model:
         apply_volumes : bool, optional
             Whether apply the volume calculation results from this calculation
             to the model. Defaults to applying the volumes.
+        export_model_xml : bool, optional
+            Exports a single model.xml file rather than separate files. Defaults
+            to True.
+        **export_kwargs
+            Keyword arguments passed to either :meth:`Model.export_to_model_xml`
+            or :meth:`Model.export_to_xml`.
+
         """
 
         if len(self.settings.volume_calculations) == 0:
@@ -768,10 +777,15 @@ class Model:
                 openmc.lib.calculate_volumes(output)
 
             else:
-                self.export_to_xml()
-                openmc.calculate_volumes(threads=threads, output=output,
-                                         openmc_exec=openmc_exec,
-                                         mpi_args=mpi_args)
+                if export_model_xml:
+                    self.export_to_model_xml(**export_kwargs)
+                else:
+                    self.export_to_xml(**export_kwargs)
+                path_input = export_kwargs.get("path", None)
+                openmc.calculate_volumes(
+                    threads=threads, output=output, openmc_exec=openmc_exec,
+                    mpi_args=mpi_args, path_input=path_input
+                )
 
             # Now we apply the volumes
             if apply_volumes:
@@ -793,7 +807,123 @@ class Model:
                             openmc.lib.materials[domain_id].volume = \
                                 vol_calc.volumes[domain_id].n
 
-    def plot_geometry(self, output=True, cwd='.', openmc_exec='openmc'):
+    def plot(
+        self,
+        n_samples: int | None = None,
+        plane_tolerance: float = 1.,
+        source_kwargs: dict | None = None,
+        **kwargs,
+    ):
+        """Display a slice plot of the geometry.
+
+        .. versionadded:: 0.15.1
+
+        Parameters
+        ----------
+        n_samples : int, optional
+            The number of source particles to sample and add to plot. Defaults
+            to None which doesn't plot any particles on the plot.
+        plane_tolerance: float
+            When plotting a plane the source locations within the plane +/-
+            the plane_tolerance will be included and those outside of the
+            plane_tolerance will not be shown
+        source_kwargs : dict, optional
+            Keyword arguments passed to :func:`matplotlib.pyplot.scatter`.
+        **kwargs
+            Keyword arguments passed to :func:`openmc.Universe.plot`
+
+        Returns
+        -------
+        matplotlib.axes.Axes
+            Axes containing resulting image
+        """
+
+        check_type('n_samples', n_samples, int | None)
+        check_type('plane_tolerance', plane_tolerance, float)
+        if source_kwargs is None:
+            source_kwargs = {}
+        source_kwargs.setdefault('marker', 'x')
+
+        ax = self.geometry.plot(**kwargs)
+        if n_samples:
+            # Sample external source particles
+            particles = self.sample_external_source(n_samples)
+
+            # Determine plotting parameters and bounding box of geometry
+            bbox = self.geometry.bounding_box
+            origin = kwargs.get('origin', None)
+            basis = kwargs.get('basis', 'xy')
+            indices = {'xy': (0, 1, 2), 'xz': (0, 2, 1), 'yz': (1, 2, 0)}[basis]
+
+            # Infer origin if not provided
+            if np.isinf(bbox.extent[basis]).any():
+                if origin is None:
+                    origin = (0, 0, 0)
+            else:
+                if origin is None:
+                    # if nan values in the bbox.center they get replaced with 0.0
+                    # this happens when the bounding_box contains inf values
+                    with warnings.catch_warnings():
+                        warnings.simplefilter("ignore", RuntimeWarning)
+                        origin = np.nan_to_num(bbox.center)
+
+            slice_index = indices[2]
+            slice_value = origin[slice_index]
+
+            xs = []
+            ys = []
+            tol = plane_tolerance
+            for particle in particles:
+                if (slice_value - tol < particle.r[slice_index] < slice_value + tol):
+                    xs.append(particle.r[indices[0]])
+                    ys.append(particle.r[indices[1]])
+            ax.scatter(xs, ys, **source_kwargs)
+        return ax
+
+    def sample_external_source(
+            self,
+            n_samples: int = 1000,
+            prn_seed: int | None = None,
+            **init_kwargs
+    ) -> openmc.ParticleList:
+        """Sample external source and return source particles.
+
+        .. versionadded:: 0.15.1
+
+        Parameters
+        ----------
+        n_samples : int
+            Number of samples
+        prn_seed : int
+            Pseudorandom number generator (PRNG) seed; if None, one will be
+            generated randomly.
+        **init_kwargs
+            Keyword arguments passed to :func:`openmc.lib.init`
+
+        Returns
+        -------
+        openmc.ParticleList
+            List of samples source particles
+        """
+        import openmc.lib
+
+        # Silence output by default. Also set arguments to start in volume
+        # calculation mode to avoid loading cross sections
+        init_kwargs.setdefault('output', False)
+        init_kwargs.setdefault('args', ['-c'])
+
+        with change_directory(tmpdir=True):
+            # Export model within temporary directory
+            self.export_to_model_xml()
+
+            # Sample external source sites
+            with openmc.lib.run_in_memory(**init_kwargs):
+                return openmc.lib.sample_external_source(
+                    n_samples=n_samples, prn_seed=prn_seed
+                )
+
+    def plot_geometry(self, output=True, cwd='.', openmc_exec='openmc',
+                      export_model_xml=True, **export_kwargs):
         """Creates plot images as specified by the Model.plots attribute
 
         .. versionadded:: 0.13.0
@@ -808,6 +938,12 @@ class Model:
         openmc_exec : str, optional
             Path to OpenMC executable. Defaults to 'openmc'.
             This only applies to the case when not using the C API.
+        export_model_xml : bool, optional
+            Exports a single model.xml file rather than separate files. Defaults
+            to True.
+        **export_kwargs
+            Keyword arguments passed to either :meth:`Model.export_to_model_xml`
+            or :meth:`Model.export_to_xml`.
 
         """
 
@@ -821,8 +957,13 @@ class Model:
                 # Compute the volumes
                 openmc.lib.plot_geometry(output)
             else:
-                self.export_to_xml()
-                openmc.plot_geometry(output=output, openmc_exec=openmc_exec)
+                if export_model_xml:
+                    self.export_to_model_xml(**export_kwargs)
+                else:
+                    self.export_to_xml(**export_kwargs)
+                path_input = export_kwargs.get("path", None)
+                openmc.plot_geometry(output=output, openmc_exec=openmc_exec,
+                                     path_input=path_input)
 
     def _change_py_lib_attribs(self, names_or_ids, value, obj_type,
                                attrib_name, density_units='atom/b-cm'):

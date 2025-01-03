@@ -411,7 +411,7 @@ which when partially simplified becomes:
 
 Note that there are now four (seemingly identical) volume terms in this equation.
 
-.. _methods-volume-dilemma:
+.. _methods_random_ray_vol:
 
 ~~~~~~~~~~~~~~
 Volume Dilemma
@@ -440,9 +440,11 @@ features stochastic variables (the sums over random ray lengths and angular
 fluxes) in both the numerator and denominator, making it a stochastic ratio
 estimator, which is inherently biased. In practice, usage of the naive estimator
 does result in a biased, but "consistent"  estimator (i.e., it is biased, but
-the bias tends towards zero as the sample size increases). Experimentally, the
-right answer can be obtained with this estimator, though a very fine ray density
-is required to eliminate the bias.
+the bias tends towards zero as the sample size increases). Empirically, this
+bias tends to effect eigenvalue calculations much more significantly than in
+fixed source simulations. Experimentally, the right answer can be obtained with
+this estimator, though for eigenvalue simulations a very fine ray density is
+required to eliminate the bias.
 
 How might we solve the biased ratio estimator problem? While there is no obvious
 way to alter the numerator term (which arises from the characteristic
@@ -463,17 +465,17 @@ replace the actual tracklength that was accumulated inside that FSR each
 iteration with the expected value.
 
 If we know the analytical volumes, then those can be used to directly compute
-the expected value of the tracklength in each cell. However, as the analytical
-volumes are not typically known in OpenMC due to the usage of user-defined
-constructive solid geometry, we need to source this quantity from elsewhere. An
-obvious choice is to simply accumulate the total tracklength through each FSR
-across all iterations (batches) and to use that sum to compute the expected
-average length per iteration, as:
+the expected value of the tracklength in each cell, :math:`L_{avg}`. However, as
+the analytical volumes are not typically known in OpenMC due to the usage of
+user-defined constructive solid geometry, we need to source this quantity from
+elsewhere. An obvious choice is to simply accumulate the total tracklength
+through each FSR across all iterations (batches) and to use that sum to compute
+the expected average length per iteration, as:
 
 .. math::
-    :label: sim_estimator
+    :label: L_avg
 
-       \sum\limits^{}_{i} \ell_i \approx \frac{\sum\limits^{B}_{b}\sum\limits^{N_i}_{r} \ell_{b,r} }{B}
+    \sum\limits^{}_{i} \ell_i \approx L_{avg} = \frac{\sum\limits^{B}_{b}\sum\limits^{N_i}_{r=1} \ell_{b,r} }{B}
 
 where :math:`b` is a single batch in :math:`B` total batches simulated so far.
 
@@ -486,7 +488,7 @@ averaged" estimator is therefore:
 .. math::
     :label: phi_sim
 
-    \phi_{i,g}^{simulation} = \frac{Q_{i,g} }{\Sigma_{t,i,g}} + \frac{\sum\limits_{r=1}^{N_i} \Delta \psi_{r,g}}{\Sigma_{t,i,g} \frac{\sum\limits^{B}_{b}\sum\limits^{N_i}_{r} \ell_{b,r} }{B}}
+    \phi_{i,g}^{simulation} = \frac{Q_{i,g} }{\Sigma_{t,i,g}} + \frac{\sum\limits_{r=1}^{N_i} \Delta \psi_{r,g}}{\Sigma_{t,i,g} L_{avg}}
 
 In practical terms, the "simulation averaged" estimator is virtually
 indistinguishable numerically from use of the true analytical volume to estimate
@@ -500,17 +502,81 @@ in which case the denominator served as a normalization term for the numerator
 integral in Equation :eq:`integral`. Essentially, we have now used a different
 term for the volume in the numerator as compared to the normalizing volume in
 the denominator. The inevitable mismatch (due to noise) between these two
-quantities results in a significant increase in variance. Notably, the same
-problem occurs if using a tracklength estimate based on the analytical volume,
-as again the numerator integral and the normalizing denominator integral no
-longer match on a per-iteration basis.
+quantities results in a significant increase in variance, and can even result in
+the generation of negative fluxes. Notably, the same problem occurs if using a
+tracklength estimate based on the analytical volume, as again the numerator
+integral and the normalizing denominator integral no longer match on a
+per-iteration basis.
 
-In practice, the simulation averaged method does completely remove the bias,
-though at the cost of a notable increase in variance. Empirical testing reveals
-that on most problems, the simulation averaged estimator does win out overall in
-numerical performance, as a much coarser quadrature can be used resulting in
-faster runtimes overall. Thus, OpenMC uses the simulation averaged estimator in
-its random ray mode.
+In practice, the simulation averaged method does completely remove the bias seen
+when using the naive estimator, though at the cost of a notable increase in
+variance. Empirical testing reveals that on most eigenvalue problems, the
+simulation averaged estimator does win out overall in numerical performance, as
+a much coarser quadrature can be used resulting in faster runtimes overall.
+Thus, OpenMC uses the simulation averaged estimator as default in its random ray
+mode for eigenvalue solves.
+
+OpenMC also features a "hybrid" volume estimator that uses the naive estimator
+for all regions containing an external (fixed) source term. For all other
+source regions, the "simulation averaged" estimator is used. This typically achieves
+a best of both worlds result, with the benefits of the low bias simulation averaged
+estimator in most regions, while preventing instability and/or large biases in regions
+with external source terms via use of the naive estimator. In general, it is
+recommended to use the "hybrid" estimator, which is the default method used
+in OpenMC. If instability is encountered despite high ray densities, then
+the naive estimator may be preferable.
+
+A table that summarizes the pros and cons, as well as recommendations for
+different use cases, is given in the :ref:`volume
+estimators<usersguide_vol_estimators>` section of the user guide.
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+What Happens When a Source Region is Missed?
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Given the stochastic nature of random ray, when low ray densities are used it is
+common for small source regions to occasionally not be hit by any rays in a
+particular power iteration :math:`n`. This naturally collapses the flux estimate
+in that cell for the iteration from Equation :eq:`phi_naive` to:
+
+.. math::
+    :label: phi_missed_one
+
+    \phi_{i,g,n}^{missed} = \frac{Q_{i,g,n} }{\Sigma_{t,i,g}}
+
+as the streaming operator has gone to zero. While this is obviously innacurate
+as it ignores transport, for most problems where the region is only occasionally
+missed this estimator does not tend to introduce any significant bias.
+
+However, in cases where the total cross section in the region is very small
+(e.g., a void-like material) and where a strong external fixed source has been
+placed, then this treatment causes major issues. In this pathological case, the
+lack of transport forces the entirety of the fixed source to effectively be
+contained and collided within the cell, which for a low cross section region is
+highly unphysical. The net effect is that a very high estimate of the flux
+(often orders of magnitude higher than is expected) is generated that iteration,
+which cannot be washed out even with hundreds or thousands of iterations. Thus,
+huge biases are often seen in spatial tallies containing void-like regions with
+external sources unless a high enough ray density is used such that all source
+regions are always hit each iteration. This is particularly problematic as
+external sources placed in void-like regions are very common in many types of
+fixed source analysis.
+
+For regions where external sources are present, to eliminate this bias it is
+therefore preferable to simply use the previous iteration's estimate of the flux
+in that cell, as:
+
+.. math::
+    :label: phi_missed_two
+
+    \phi_{i,g,n}^{missed} = \phi_{i,g,n-1} .
+
+When linear sources are present, the flux moments from the previous iteration
+are used in the same manner. While this introduces some small degree of
+correlation to the simulation, for miss rates on the order of a few percent the
+correlations are trivial and the bias is eliminated. Thus, in OpenMC the
+previous iteration's scalar flux estimate is applied to cells that are missed
+where there is an external source term present within the cell.
 
 ~~~~~~~~~~~~~~~
 Power Iteration
@@ -563,15 +629,15 @@ total spatial- and energy-integrated fission rate :math:`F^{n-1}` in iteration
 
 Notably, the volume term :math:`V_i` appears in the eigenvalue update equation.
 The same logic applies to the treatment of this term as was discussed earlier.
-In OpenMC, we use the "simulation averaged" volume derived from summing over all
-ray tracklength contributions to a FSR over all iterations and dividing by the
-total integration tracklength to date. Thus, Equation :eq:`fission_source`
-becomes:
+In OpenMC, we use the "simulation averaged" volume (Equation :eq:`L_avg`)
+derived from summing over all ray tracklength contributions to a FSR over all
+iterations and dividing by the total integration tracklength to date. Thus,
+Equation :eq:`fission_source` becomes:
 
 .. math::
     :label: fission_source_volumed
 
-    F^n = \sum\limits^{M}_{i} \left( \frac{\sum\limits^{B}_{b}\sum\limits^{N_i}_{r} \ell_{b,r} }{B} \sum\limits^{G}_{g} \nu \Sigma_f(i, g) \phi^{n}(g) \right)
+    F^n = \sum\limits^{M}_{i} \left( L_{avg} \sum\limits^{G}_{g} \nu \Sigma_f(i, g) \phi^{n}(g) \right)
 
 and a similar substitution can be made to update Equation
 :eq:`fission_source_prev` . In OpenMC, the most up-to-date version of the volume
@@ -965,7 +1031,7 @@ The Shannon entropy is then computed normally as
 
 where :math:`N` is the number of FSRs. FSRs with no fission source (or,
 occassionally, negative fission source, :ref:`due to the volume estimator
-problem <methods-volume-dilemma>`) are skipped to avoid taking an undefined
+problem <methods_random_ray_vol>`) are skipped to avoid taking an undefined
 logarithm in :eq:`shannon-entropy-random-ray`.
 
 .. _usersguide_fixed_source_methods:
@@ -993,6 +1059,49 @@ random ray and Monte Carlo, however.
   source distribution. However, in random ray mode, there is still a need to
   develop the scattering source by way of inactive batches before beginning
   active batches.
+
+------------------------
+Adjoint Flux Solver Mode
+------------------------
+
+The random ray solver in OpenMC can also be used to solve for the adjoint flux,
+:math:`\psi^{\dagger}`. In combination with the regular (forward) flux solution,
+the adjoint flux is useful for perturbation methods as well as for computing
+weight windows for subsequent Monte Carlo simulations. The adjoint flux can be
+thought of as the "backwards" flux, representing the flux where a particle is
+born at an absoprtion point (and typical absorption energy), and then undergoes
+transport with a transposed scattering matrix. That is, instead of sampling a
+particle and seeing where it might go as in a standard forward solve, we will
+sample an absorption location and see where the particle that was absorbed there
+might have come from. Notably, for typical neutron absorption at low energy
+levels, this means that adjoint flux particles are typically sampled at a low
+energy and then upscatter (via a transposed scattering matrix) over their
+lifetimes.
+
+In OpenMC, the random ray adjoint solver is implemented simply by transposing
+the scattering matrix, swapping :math:`\nu\Sigma_f` and :math:`\chi`, and then
+running a normal transport solve. When no external fixed source is present, no
+additional changes are needed in the transport process. However, if an external
+fixed forward source is present in the simulation problem, then an additional
+step is taken to compute the accompanying fixed adjoint source. In OpenMC, the
+adjoint flux does *not* represent a response function for a particular detector
+region. Rather, the adjoint flux is the global response, making it appropriate
+for use with weight window generation schemes for global variance reduction.
+Thus, if using a fixed source, the external source for the adjoint mode is
+simply computed as being :math:`1 / \phi`, where :math:`\phi` is the forward
+scalar flux that results from a normal forward solve (which OpenMC will run
+first automatically when in adjoint mode). The adjoint external source will be
+computed for each source region in the simulation mesh, independent of any
+tallies. The adjoint external source is always flat, even when a linear
+scattering and fission source shape is used. When in adjoint mode, all reported
+results (e.g., tallies, eigenvalues, etc.) are derived from the adjoint flux,
+even when the physical meaning is not necessarily obvious. These values are
+still reported, though we emphasize that the primary use case for adjoint mode
+is for producing adjoint flux tallies to support subsequent perturbation studies
+and weight window generation.
+
+Note that the adjoint :math:`k_{eff}` is statistically the same as the forward
+:math:`k_{eff}`, despite the flux distributions taking different shapes.
 
 ---------------------------
 Fundamental Sources of Bias

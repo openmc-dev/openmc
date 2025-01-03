@@ -20,7 +20,7 @@ def test_deplete_decay_products(run_in_tmpdir):
         """)
 
     # Create MicroXS object with no cross sections
-    micro_xs = openmc.deplete.MicroXS(np.empty((0, 0)), [], [])
+    micro_xs = openmc.deplete.MicroXS(np.empty((0, 0, 0)), [], [])
 
     # Create depletion operator with no reactions
     op = openmc.deplete.IndependentOperator.from_nuclides(
@@ -40,8 +40,9 @@ def test_deplete_decay_products(run_in_tmpdir):
 
     # Get concentration of H1 and He4
     results = openmc.deplete.Results('depletion_results.h5')
-    _, h1 = results.get_atoms("1", "H1")
-    _, he4 = results.get_atoms("1", "He4")
+    mat_id = op.materials[0].id
+    _, h1 = results.get_atoms(f"{mat_id}", "H1")
+    _, he4 = results.get_atoms(f"{mat_id}", "He4")
 
     # Since we started with 1e24 atoms of Li5, we should have 1e24 atoms of both
     # H1 and He4
@@ -58,7 +59,7 @@ def test_deplete_decay_step_fissionable(run_in_tmpdir):
     """
 
     # Set up a pure decay operator
-    micro_xs = openmc.deplete.MicroXS(np.empty((0, 0)), [], [])
+    micro_xs = openmc.deplete.MicroXS(np.empty((0, 0, 0)), [], [])
     mat = openmc.Material()
     mat.name = 'I do not decay.'
     mat.add_nuclide('U238', 1.0, 'ao')
@@ -78,6 +79,6 @@ def test_deplete_decay_step_fissionable(run_in_tmpdir):
 
     # Get concentration of U238. It should be unchanged since this chain has no U238 decay.
     results = openmc.deplete.Results('depletion_results.h5')
-    _, u238 = results.get_atoms("1", "U238")
+    _, u238 = results.get_atoms(f"{mat.id}", "U238")
 
     assert u238[1] == pytest.approx(original_atoms)

@@ -86,7 +86,7 @@ Nuclide::Nuclide(hid_t group, const vector<double>& temperature)
   for (const auto& name : dset_names) {
     double T;
     read_dataset(kT_group, name.c_str(), T);
-    temps_available.push_back(T / K_BOLTZMANN);
+    temps_available.push_back(std::round(T / K_BOLTZMANN));
   }
   std::sort(temps_available.begin(), temps_available.end());
 
@@ -158,9 +158,12 @@ Nuclide::Nuclide(hid_t group, const vector<double>& temperature)
           }
         }
       } else {
-        fatal_error(
-          "Nuclear data library does not contain cross sections for " + name_ +
-          " at or near " + std::to_string(T_desired) + " K.");
+        fatal_error(fmt::format(
+          "Nuclear data library does not contain cross sections "
+          "for {}  at or near {} K. Available temperatures "
+          "are {} K. Consider making use of openmc.Settings.temperature "
+          "to specify how intermediate temperatures are treated.",
+          name_, std::to_string(T_desired), concatenate(temps_available)));
       }
     }
     break;
@@ -173,8 +176,8 @@ Nuclide::Nuclide(hid_t group, const vector<double>& temperature)
       for (int j = 0; j < temps_available.size() - 1; ++j) {
         if (temps_available[j] <= T_desired &&
             T_desired < temps_available[j + 1]) {
-          int T_j = std::round(temps_available[j]);
-          int T_j1 = std::round(temps_available[j + 1]);
+          int T_j = temps_available[j];
+          int T_j1 = temps_available[j + 1];
           if (!contains(temps_to_read, T_j)) {
             temps_to_read.push_back(T_j);
           }
@@ -191,14 +194,14 @@ Nuclide::Nuclide(hid_t group, const vector<double>& temperature)
         if (std::abs(T_desired - temps_available.front()) <=
             settings::temperature_tolerance) {
           if (!contains(temps_to_read, temps_available.front())) {
-            temps_to_read.push_back(std::round(temps_available.front()));
+            temps_to_read.push_back(temps_available.front());
           }
           continue;
         }
         if (std::abs(T_desired - temps_available.back()) <=
             settings::temperature_tolerance) {
           if (!contains(temps_to_read, temps_available.back())) {
-            temps_to_read.push_back(std::round(temps_available.back()));
+            temps_to_read.push_back(temps_available.back());
           }
           continue;
         }

@@ -17,7 +17,6 @@ else
     --disable-eigen --disable-lapack --disable-mpi
 fi
 make -j4 install
-export LIBMESH_PC=$HOME/LIBMESH/lib/pkgconfig/
 rm -rf $HOME/LIBMESH/build
 
 popd

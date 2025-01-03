@@ -1,3 +1,4 @@
+from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import Iterable, Sequence
 from copy import copy
@@ -26,7 +27,7 @@ class CompositeSurface(ABC):
         return surf
 
     def rotate(self, rotation, pivot=(0., 0., 0.), order='xyz', inplace=False):
-        surf = copy(self)
+        surf = self if inplace else copy(self)
         for name in self._surface_names:
             s = getattr(surf, name)
             setattr(surf, name, s.rotate(rotation, pivot, order, inplace))
@@ -40,9 +41,11 @@ class CompositeSurface(ABC):
     def boundary_type(self, boundary_type):
         # Set boundary type on underlying surfaces, but not for ambiguity plane
         # on one-sided cones
+        classes = (XConeOneSided, YConeOneSided, ZConeOneSided, Vessel)
         for name in self._surface_names:
-            if name != 'plane':
-                getattr(self, name).boundary_type = boundary_type
+            if isinstance(self, classes) and name.startswith('plane'):
+                continue
+            getattr(self, name).boundary_type = boundary_type
 
     def __repr__(self):
         return f"<{type(self).__name__} at 0x{id(self):x}>"
@@ -89,8 +92,8 @@ class CylinderSector(CompositeSurface):
         counterclockwise direction with respect to the first basis axis
         (+y, +z, or +x). Must be greater than :attr:`theta1`.
     center : iterable of float
-       Coordinate for central axes of cylinders in the (y, z), (x, z), or (x, y)
-       basis. Defaults to (0,0).
+        Coordinate for central axes of cylinders in the (y, z), (x, z), or (x, y)
+        basis. Defaults to (0,0).
     axis : {'x', 'y', 'z'}
         Central axis of the cylinders defining the inner and outer surfaces of
         the sector. Defaults to 'z'.
@@ -118,7 +121,7 @@ class CylinderSector(CompositeSurface):
                  r2,
                  theta1,
                  theta2,
-                 center=(0.,0.),
+                 center=(0., 0.),
                  axis='z',
                  **kwargs):
 
@@ -645,6 +648,86 @@ class RectangularParallelepiped(CompositeSurface):
         return +self.xmax | -self.xmin | +self.ymax | -self.ymin | +self.zmax | -self.zmin
 
 
+class OrthogonalBox(CompositeSurface):
+    """Arbitrarily oriented orthogonal box
+
+    This composite surface is composed of four or six planar surfaces that form
+    an arbitrarily oriented orthogonal box when combined.
+
+    Parameters
+    ----------
+    v : iterable of float
+        (x,y,z) coordinates of a corner of the box
+    a1 : iterable of float
+        Vector of first side starting from ``v``
+    a2 : iterable of float
+        Vector of second side starting from ``v``
+    a3 : iterable of float, optional
+        Vector of third side starting from ``v``. When not specified, it is
+        assumed that the box will be infinite along the vector normal to the
+        plane specified by ``a1`` and ``a2``.
+    **kwargs
+        Keyword arguments passed to underlying plane classes
+
+    Attributes
+    ----------
+    ax1_min, ax1_max : openmc.Plane
+        Planes representing minimum and maximum along first axis
+    ax2_min, ax2_max : openmc.Plane
+        Planes representing minimum and maximum along second axis
+    ax3_min, ax3_max : openmc.Plane
+        Planes representing minimum and maximum along third axis
+
+    """
+    _surface_names = ('ax1_min', 'ax1_max', 'ax2_min', 'ax2_max', 'ax3_min', 'ax3_max')
+
+    def __init__(self, v, a1, a2, a3=None, **kwargs):
+        v = np.array(v)
+        a1 = np.array(a1)
+        a2 = np.array(a2)
+        if has_a3 := a3 is not None:
+            a3 = np.array(a3)
+        else:
+            a3 = np.cross(a1, a2)  # normal to plane specified by a1 and a2
+
+        # Generate corners of box
+        p1 = v
+        p2 = v + a1
+        p3 = v + a2
+        p4 = v + a3
+        p5 = v + a1 + a2
+        p6 = v + a2 + a3
+        p7 = v + a1 + a3
+
+        # Generate 6 planes of box
+        self.ax1_min = openmc.Plane.from_points(p1, p3, p4, **kwargs)
+        self.ax1_max = openmc.Plane.from_points(p2, p5, p7, **kwargs)
+        self.ax2_min = openmc.Plane.from_points(p1, p4, p2, **kwargs)
+        self.ax2_max = openmc.Plane.from_points(p3, p6, p5, **kwargs)
+        if has_a3:
+            self.ax3_min = openmc.Plane.from_points(p1, p2, p3, **kwargs)
+            self.ax3_max = openmc.Plane.from_points(p4, p7, p6, **kwargs)
+
+        # Make sure a point inside the box produces the correct senses. If not,
+        # flip the plane coefficients so it does.
+        mid_point = v + (a1 + a2 + a3)/2
+        nums = (1, 2, 3) if has_a3 else (1, 2)
+        for num in nums:
+            min_surf = getattr(self, f'ax{num}_min')
+            max_surf = getattr(self, f'ax{num}_max')
+            if mid_point in -min_surf:
+                min_surf.flip_normal()
+            if mid_point in +max_surf:
+                max_surf.flip_normal()
+
+    def __neg__(self):
+        region = (+self.ax1_min & -self.ax1_max &
+                  +self.ax2_min & -self.ax2_max)
+        if hasattr(self, 'ax3_min'):
+            region &= (+self.ax3_min & -self.ax3_max)
+        return region
+
+
 class XConeOneSided(CompositeSurface):
     """One-sided cone parallel the x-axis
 
@@ -698,12 +781,6 @@ class XConeOneSided(CompositeSurface):
     def __neg__(self):
         return -self.cone & (+self.plane if self.up else -self.plane)
 
-    def __pos__(self):
-        if self.up:
-            return (+self.cone & +self.plane) | -self.plane
-        else:
-            return (+self.cone & -self.plane) | +self.plane
-
 
 class YConeOneSided(CompositeSurface):
     """One-sided cone parallel the y-axis
@@ -756,7 +833,6 @@ class YConeOneSided(CompositeSurface):
         self.up = up
 
     __neg__ = XConeOneSided.__neg__
-    __pos__ = XConeOneSided.__pos__
 
 
 class ZConeOneSided(CompositeSurface):
@@ -810,7 +886,6 @@ class ZConeOneSided(CompositeSurface):
         self.up = up
 
     __neg__ = XConeOneSided.__neg__
-    __pos__ = XConeOneSided.__pos__
 
 
 class Polygon(CompositeSurface):
@@ -1244,25 +1319,43 @@ class Polygon(CompositeSurface):
             surfsets.append(surf_ops)
         return surfsets
 
-    def offset(self, distance):
+    def offset(self, distance: float | Sequence[float] | np.ndarray) -> Polygon:
         """Offset this polygon by a set distance
 
         Parameters
         ----------
-        distance : float
+        distance : float or sequence of float or np.ndarray
             The distance to offset the polygon by. Positive is outward
-            (expanding) and negative is inward (shrinking).
+            (expanding) and negative is inward (shrinking). If a float is
+            provided, the same offset is applied to all vertices. If a list or
+            tuple is provided, each vertex gets a different offset. If an
+            iterable or numpy array is provided, each vertex gets a different
+            offset.
 
         Returns
         -------
         offset_polygon : openmc.model.Polygon
         """
+
+        if isinstance(distance, float):
+            distance = np.full(len(self.points), distance)
+        elif isinstance(distance, Sequence):
+            distance = np.array(distance)
+        elif not isinstance(distance, np.ndarray):
+            raise TypeError("Distance must be a float or sequence of float.")
+
+        if len(distance) != len(self.points):
+            raise ValueError(
+                f"Length of distance {len(distance)} array must "
+                f"match number of polygon points {len(self.points)}"
+            )
+
         normals = np.insert(self._normals, 0, self._normals[-1, :], axis=0)
         cos2theta = np.sum(normals[1:, :]*normals[:-1, :], axis=-1, keepdims=True)
         costheta = np.cos(np.arccos(cos2theta) / 2)
         nvec = (normals[1:, :] + normals[:-1, :])
         unit_nvec = nvec / np.linalg.norm(nvec, axis=-1, keepdims=True)
-        disp_vec = distance / costheta * unit_nvec
+        disp_vec = distance[:, np.newaxis] / costheta * unit_nvec
 
         return type(self)(self.points + disp_vec, basis=self.basis)
 
@@ -1645,3 +1738,216 @@ class HexagonalPrism(CompositeSurface):
             prism &= ~corners
 
         return prism
+
+
+def _rotation_matrix(v1, v2):
+    """Compute rotation matrix that would rotate v1 into v2.
+
+    Parameters
+    ----------
+    v1 : numpy.ndarray
+        Unrotated vector
+    v2 : numpy.ndarray
+        Rotated vector
+
+    Returns
+    -------
+    3x3 rotation matrix
+
+    """
+    # Normalize vectors and compute cosine
+    u1 = v1 / np.linalg.norm(v1)
+    u2 = v2 / np.linalg.norm(v2)
+    cos_angle = np.dot(u1, u2)
+
+    I = np.identity(3)
+
+    # Handle special case where vectors are parallel or anti-parallel
+    if isclose(abs(cos_angle), 1.0, rel_tol=1e-8):
+        return np.sign(cos_angle)*I
+    else:
+        # Calculate rotation angle
+        sin_angle = np.sqrt(1 - cos_angle*cos_angle)
+
+        # Calculate axis of rotation
+        axis = np.cross(u1, u2)
+        axis /= np.linalg.norm(axis)
+
+        # Create cross-product matrix K
+        kx, ky, kz = axis
+        K = np.array([
+            [0.0, -kz, ky],
+            [kz, 0.0, -kx],
+            [-ky, kx, 0.0]
+        ])
+
+        # Create rotation matrix using Rodrigues' rotation formula
+        return I + K * sin_angle + (K @ K) * (1 - cos_angle)
+
+
+class ConicalFrustum(CompositeSurface):
+    """Conical frustum.
+
+    A conical frustum, also known as a right truncated cone, is a cone that is
+    truncated by two parallel planes that are perpendicular to the axis of the
+    cone. The lower and upper base of the conical frustum are circular faces.
+    This surface is equivalent to the TRC macrobody in MCNP.
+
+    .. versionadded:: 0.15.1
+
+    Parameters
+    ----------
+    center_base : iterable of float
+        Cartesian coordinates of the center of the bottom planar face.
+    axis : iterable of float
+        Vector from the center of the bottom planar face to the center of the
+        top planar face that defines the axis of the cone. The length of this
+        vector is the height of the conical frustum.
+    r1 : float
+        Radius of the lower cone base
+    r2 : float
+        Radius of the upper cone base
+    **kwargs
+        Keyword arguments passed to underlying plane classes
+
+    Attributes
+    ----------
+    cone : openmc.Cone
+        Cone surface
+    plane_bottom : openmc.Plane
+        Plane surface defining the bottom of the frustum
+    plane_top : openmc.Plane
+        Plane surface defining the top of the frustum
+
+    """
+    _surface_names = ('cone', 'plane_bottom', 'plane_top')
+
+    def __init__(self, center_base: Sequence[float], axis: Sequence[float],
+                 r1: float, r2: float, **kwargs):
+        center_base = np.array(center_base)
+        axis = np.array(axis)
+
+        # Determine length of axis height vector
+        h = np.linalg.norm(axis)
+
+        # To create the frustum oriented with the correct axis, first we will
+        # create a cone along the z axis and then rotate it according to the
+        # given axis. Thus, we first need to determine the apex using the z axis
+        # as a reference.
+        x0, y0, z0 = center_base
+        if r1 != r2:
+            apex = z0 + r1*h/(r1 - r2)
+            r_sq = ((r1 - r2)/h)**2
+            cone = openmc.ZCone(x0, y0, apex, r2=r_sq, **kwargs)
+        else:
+            # In the degenerate case r1 == r2, the cone becomes a cylinder
+            cone = openmc.ZCylinder(x0, y0, r1, **kwargs)
+
+        # Create the parallel planes
+        plane_bottom = openmc.ZPlane(z0, **kwargs)
+        plane_top = openmc.ZPlane(z0 + h, **kwargs)
+
+        # Determine rotation matrix corresponding to specified axis
+        u = np.array([0., 0., 1.])
+        rotation = _rotation_matrix(u, axis)
+
+        # Rotate the surfaces
+        self.cone = cone.rotate(rotation, pivot=center_base)
+        self.plane_bottom = plane_bottom.rotate(rotation, pivot=center_base)
+        self.plane_top = plane_top.rotate(rotation, pivot=center_base)
+
+    def __neg__(self) -> openmc.Region:
+        return +self.plane_bottom & -self.plane_top & -self.cone
+
+
+class Vessel(CompositeSurface):
+    """Vessel composed of cylinder with semi-ellipsoid top and bottom.
+
+    This composite surface is represented by a finite cylinder with ellipsoidal
+    top and bottom surfaces. This surface is equivalent to the 'vesesl' surface
+    in Serpent.
+
+    .. versionadded:: 0.15.1
+
+    Parameters
+    ----------
+    r : float
+        Radius of vessel.
+    p1 : float
+        Minimum coordinate for cylindrical part of vessel.
+    p2 : float
+        Maximum coordinate for cylindrical part of vessel.
+    h1 : float
+        Height of bottom ellipsoidal part of vessel.
+    h2 : float
+        Height of top ellipsoidal part of vessel.
+    center : 2-tuple of float
+        Coordinate for central axis of the cylinder in the (y, z), (x, z), or
+        (x, y) basis. Defaults to (0,0).
+    axis : {'x', 'y', 'z'}
+        Central axis of the cylinder.
+
+    """
+
+    _surface_names = ('cyl', 'plane_bottom', 'plane_top', 'bottom', 'top')
+
+    def __init__(self, r: float, p1: float, p2: float, h1: float, h2: float,
+                 center: Sequence[float] = (0., 0.), axis: str = 'z', **kwargs):
+        if p1 >= p2:
+            raise ValueError('p1 must be less than p2')
+        check_value('axis', axis, {'x', 'y', 'z'})
+
+        c1, c2 = center
+        cyl_class = getattr(openmc, f'{axis.upper()}Cylinder')
+        plane_class = getattr(openmc, f'{axis.upper()}Plane')
+        self.cyl = cyl_class(c1, c2, r, **kwargs)
+        self.plane_bottom = plane_class(p1)
+        self.plane_top = plane_class(p2)
+
+        # General equation for an ellipsoid:
+        #   (x-x₀)²/r² + (y-y₀)²/r² + (z-z₀)²/h² = 1
+        #   (x-x₀)² + (y-y₀)² + (z-z₀)²s² = r²
+        # Let s = r/h:
+        #   (x² - 2x₀x + x₀²) + (y² - 2y₀y + y₀²) + (z² - 2z₀z + z₀²)s² = r²
+        #   x² + y² + s²z² - 2x₀x - 2y₀y - 2s²z₀z + (x₀² + y₀² + z₀²s² - r²) = 0
+
+        sb = (r/h1)
+        st = (r/h2)
+        kwargs['a'] = kwargs['b'] = kwargs['c'] = 1.0
+        kwargs_bottom = kwargs
+        kwargs_top = kwargs.copy()
+
+        sb2 = sb*sb
+        st2 = st*st
+        kwargs_bottom['k'] = c1*c1 + c2*c2 + p1*p1*sb2 - r*r
+        kwargs_top['k'] = c1*c1 + c2*c2 + p2*p2*st2 - r*r
+
+        if axis == 'x':
+            kwargs_bottom['a'] *= sb2
+            kwargs_top['a'] *= st2
+            kwargs_bottom['g'] = -2*p1*sb2
+            kwargs_top['g'] = -2*p2*st2
+            kwargs_top['h'] = kwargs_bottom['h'] = -2*c1
+            kwargs_top['j'] = kwargs_bottom['j'] = -2*c2
+        elif axis == 'y':
+            kwargs_bottom['b'] *= sb2
+            kwargs_top['b'] *= st2
+            kwargs_top['g'] = kwargs_bottom['g'] = -2*c1
+            kwargs_bottom['h'] = -2*p1*sb2
+            kwargs_top['h'] = -2*p2*st2
+            kwargs_top['j'] = kwargs_bottom['j'] = -2*c2
+        elif axis == 'z':
+            kwargs_bottom['c'] *= sb2
+            kwargs_top['c'] *= st2
+            kwargs_top['g'] = kwargs_bottom['g'] = -2*c1
+            kwargs_top['h'] = kwargs_bottom['h'] = -2*c2
+            kwargs_bottom['j'] = -2*p1*sb2
+            kwargs_top['j'] = -2*p2*st2
+
+        self.bottom = openmc.Quadric(**kwargs_bottom)
+        self.top = openmc.Quadric(**kwargs_top)
+
+    def __neg__(self):
+        return ((-self.cyl & +self.plane_bottom & -self.plane_top) |
+                (-self.bottom & -self.plane_bottom) |
+                (-self.top & +self.plane_top))

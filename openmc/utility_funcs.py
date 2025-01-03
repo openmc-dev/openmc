@@ -3,7 +3,9 @@ import os
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+import openmc
 from .checkvalue import PathLike
+
 
 @contextmanager
 def change_directory(working_dir: PathLike | None = None, *, tmpdir: bool = False):
@@ -35,3 +37,23 @@ def change_directory(working_dir: PathLike | None = None, *, tmpdir: bool = Fals
         os.chdir(orig_dir)
         if tmpdir:
             tmp.cleanup()
+
+
+def input_path(filename: PathLike) -> Path:
+    """Return a path object for an input file based on global configuration
+
+    Parameters
+    ----------
+    filename : PathLike
+        Path to input file
+
+    Returns
+    -------
+    pathlib.Path
+        Path object
+
+    """
+    if openmc.config['resolve_paths']:
+        return Path(filename).resolve()
+    else:
+        return Path(filename)

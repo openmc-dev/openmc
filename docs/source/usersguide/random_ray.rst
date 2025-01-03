@@ -535,6 +535,91 @@ points of 1.0e-2 and 1.0e1.
     # Add fixed source and ray sampling source to settings file
     settings.source = [neutron_source]
 
+.. _usersguide_vol_estimators:
+
+-----------------------------
+Alternative Volume Estimators
+-----------------------------
+
+As discussed in the random ray theory section on :ref:`volume estimators
+<methods_random_ray_vol>`, there are several possible derivations for the scalar
+flux estimate. These options deal with different ways of treating the
+accumulation over ray lengths crossing each FSR (a quantity directly
+proportional to volume), which can be computed using several methods. The
+following methods are currently available in OpenMC:
+
+.. list-table:: Comparison of Estimators
+   :header-rows: 1
+   :widths: 10 30 30 30
+
+   * - Estimator
+     - Description
+     - Pros
+     - Cons
+   * - ``simulation_averaged``
+     - Accumulates total active ray lengths in each FSR over all iterations,
+       improving the estimate of the volume in each cell each iteration.
+     - * Virtually unbiased after several iterations
+       * Asymptotically approaches the true analytical volume
+       * Typically most efficient in terms of speed vs. accuracy
+     - * Higher variance
+       * Can lead to negative fluxes and numerical instability in pathological
+         cases
+   * - ``naive``
+     - Treats the volume as composed only of the active ray length through each
+       FSR per iteration, being a biased but numerically consistent ratio
+       estimator.
+     - * Low variance
+       * Unlikely to result in negative fluxes
+       * Recommended in cases where the simulation averaged estimator is
+         unstable
+     - * Biased estimator
+       * Requires more rays or longer active ray length to mitigate bias
+   * - ``hybrid`` (default)
+     - Applies the naive estimator to all cells that contain an external (fixed)
+       source contribution. Applies the simulation averaged estimator to all
+       other cells.
+     - * High accuracy/low bias of the simulation averaged estimator in most
+         cells
+       * Stability of the naive estimator in cells with fixed sources
+     - * Can lead to slightly negative fluxes in cells where the simulation
+         averaged estimator is used
+
+These estimators can be selected by setting the ``volume_estimator`` field in the
+:attr:`openmc.Settings.random_ray` dictionary. For example, to use the naive
+estimator, the following code would be used:
+
+::
+
+    settings.random_ray['volume_estimator'] = 'naive'
+
+-----------------
+Adjoint Flux Mode
+-----------------
+
+The adjoint flux random ray solver mode can be enabled as:
+entire
+::
+
+    settings.random_ray['adjoint'] = True
+
+When enabled, OpenMC will first run a forward transport simulation followed by
+an adjoint transport simulation. The purpose of the forward solve is to compute
+the adjoint external source when an external source is present in the
+simulation. Simulation settings (e.g., number of rays, batches, etc.) will be
+identical for both simulations. At the conclusion of the run, all results (e.g.,
+tallies, plots, etc.) will be derived from the adjoint flux rather than the
+forward flux but are not labeled any differently. The initial forward flux
+solution will not be stored or available in the final statepoint file. Those
+wishing to do analysis requiring both the forward and adjoint solutions will
+need to run two separate simulations and load both statepoint files.
+
+.. note::
+    When adjoint mode is selected, OpenMC will always perform a full forward
+    solve and then run a full adjoint solve immediately afterwards. Statepoint
+    and tally results will be derived from the adjoint flux, but will not be
+    labeled any differently.
+
 ---------------------------------------
 Putting it All Together: Example Inputs
 ---------------------------------------

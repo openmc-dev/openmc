@@ -1,4 +1,5 @@
 from collections.abc import MutableMapping
+from contextlib import contextmanager
 import os
 from pathlib import Path
 import warnings
@@ -11,7 +12,7 @@ __all__ = ["config"]
 
 class _Config(MutableMapping):
     def __init__(self, data=()):
-        self._mapping = {}
+        self._mapping = {'resolve_paths': True}
         self.update(data)
 
     def __getitem__(self, key):
@@ -42,10 +43,12 @@ class _Config(MutableMapping):
             # Reset photon source data since it relies on chain file
             _DECAY_PHOTON_ENERGY.clear()
             _DECAY_ENERGY.clear()
+        elif key == 'resolve_paths':
+            self._mapping[key] = value
         else:
             raise KeyError(f'Unrecognized config key: {key}. Acceptable keys '
-                           'are "cross_sections", "mg_cross_sections" and '
-                           '"chain_file"')
+                           'are "cross_sections", "mg_cross_sections", '
+                           '"chain_file", and "resolve_paths".')
 
     def __iter__(self):
         return iter(self._mapping)
@@ -61,6 +64,24 @@ class _Config(MutableMapping):
         if not p.exists():
             warnings.warn(f"'{value}' does not exist.")
 
+    @contextmanager
+    def patch(self, key, value):
+        """Temporarily change a value in the configuration.
+
+        Parameters
+        ----------
+        key : str
+            Key to change
+        value : object
+            New value
+        """
+        previous_value = self.get(key)
+        self[key] = value
+        yield
+        if previous_value is None:
+            del self[key]
+        else:
+            self[key] = previous_value
 
 def _default_config():
     """Return default configuration"""

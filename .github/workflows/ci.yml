@@ -106,7 +106,11 @@ jobs:
       - name: Restore NJOY2016
         uses: actions/cache@v4
         with:
-          path: ~/NJOY2016
+          path: |
+            ~/NJOY2016/metaconfigure
+            ~/NJOY2016/src
+            ~/NJOY2016/build/njoy
+            ~/NJOY2016/build/libnjoy.so
           key: NJOY2016-${{ env.NJOY_HASH }} 
 
       - name: Restore DAGMC

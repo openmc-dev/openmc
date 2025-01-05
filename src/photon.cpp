@@ -337,7 +337,6 @@ PhotonInteraction::PhotonInteraction(hid_t group)
   pair_production_total_ = xt::where(
     pair_production_total_ > 0.0, xt::log(pair_production_total_), -900.0);
   heating_ = xt::where(heating_ > 0.0, xt::log(heating_), -900.0);
-
 }
 
 PhotonInteraction::~PhotonInteraction()

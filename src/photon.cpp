@@ -330,13 +330,14 @@ PhotonInteraction::PhotonInteraction(hid_t group)
   // Take logarithm of energies and cross sections since they are log-log
   // interpolated
   energy_ = xt::log(energy_);
-  coherent_ = xt::where(coherent_ > 0.0, xt::log(coherent_), -500.0);
-  incoherent_ = xt::where(incoherent_ > 0.0, xt::log(incoherent_), -500.0);
+  coherent_ = xt::where(coherent_ > 0.0, xt::log(coherent_), -900.0);
+  incoherent_ = xt::where(incoherent_ > 0.0, xt::log(incoherent_), -900.0);
   photoelectric_total_ = xt::where(
-    photoelectric_total_ > 0.0, xt::log(photoelectric_total_), -500.0);
+    photoelectric_total_ > 0.0, xt::log(photoelectric_total_), -900.0);
   pair_production_total_ = xt::where(
-    pair_production_total_ > 0.0, xt::log(pair_production_total_), -500.0);
-  heating_ = xt::where(heating_ > 0.0, xt::log(heating_), -500.0);
+    pair_production_total_ > 0.0, xt::log(pair_production_total_), -900.0);
+  heating_ = xt::where(heating_ > 0.0, xt::log(heating_), -900.0);
+
 }
 
 PhotonInteraction::~PhotonInteraction()

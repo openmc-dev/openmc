@@ -1,7 +1,6 @@
 from collections.abc import Iterable, Mapping
 from numbers import Integral, Real
 from pathlib import Path
-from typing import Optional
 
 import h5py
 import lxml.etree as ET
@@ -14,7 +13,7 @@ from openmc.checkvalue import PathLike
 from ._xml import clean_indentation, get_elem_tuple, reorder_attributes, get_text
 from .mixin import IDManagerMixin
 
-_BASES = ['xy', 'xz', 'yz']
+_BASES = {'xy', 'xz', 'yz'}
 
 _SVG_COLORS = {
     'aliceblue': (240, 248, 255),
@@ -942,7 +941,7 @@ class Plot(PlotBase):
         # Return produced image
         return _get_plot_image(self, cwd)
 
-    def to_vtk(self, output: Optional[PathLike] = None,
+    def to_vtk(self, output: PathLike | None = None,
                openmc_exec: str = 'openmc', cwd: str = '.'):
         """Render plot as an voxel image
 

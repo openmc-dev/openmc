@@ -1,3 +1,4 @@
+from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import MutableSequence
 from copy import deepcopy
@@ -30,8 +31,9 @@ class Region(ABC):
     def __or__(self, other):
         return Union((self, other))
 
-    def __invert__(self):
-        return Complement(self)
+    @abstractmethod
+    def __invert__(self) -> Region:
+        pass
 
     @abstractmethod
     def __contains__(self, point):
@@ -344,7 +346,7 @@ class Region(ABC):
     def plot(self, *args, **kwargs):
         """Display a slice plot of the region.
 
-        .. versionadded:: 0.14.1
+        .. versionadded:: 0.15.0
 
         Parameters
         ----------
@@ -442,6 +444,9 @@ class Intersection(Region, MutableSequence):
             self.append(other)
         return self
 
+    def __invert__(self) -> Union:
+        return Union(~n for n in self)
+
     # Implement mutable sequence protocol by delegating to list
     def __getitem__(self, key):
         return self._nodes[key]
@@ -530,6 +535,9 @@ class Union(Region, MutableSequence):
             self.append(other)
         return self
 
+    def __invert__(self) -> Intersection:
+        return Intersection(~n for n in self)
+
     # Implement mutable sequence protocol by delegating to list
     def __getitem__(self, key):
         return self._nodes[key]
@@ -603,7 +611,7 @@ class Complement(Region):
 
     """
 
-    def __init__(self, node):
+    def __init__(self, node: Region):
         self.node = node
 
     def __contains__(self, point):
@@ -622,6 +630,9 @@ class Complement(Region):
         """
         return point not in self.node
 
+    def __invert__(self) -> Region:
+        return self.node
+
     def __str__(self):
         return '~' + str(self.node)
 
@@ -637,18 +648,7 @@ class Complement(Region):
 
     @property
     def bounding_box(self) -> BoundingBox:
-        # Use De Morgan's laws to distribute the complement operator so that it
-        # only applies to surface half-spaces, thus allowing us to calculate the
-        # bounding box in the usual recursive manner.
-        if isinstance(self.node, Union):
-            temp_region = Intersection(~n for n in self.node)
-        elif isinstance(self.node, Intersection):
-            temp_region = Union(~n for n in self.node)
-        elif isinstance(self.node, Complement):
-            temp_region = self.node.node
-        else:
-            temp_region = ~self.node
-        return temp_region.bounding_box
+        return (~self.node).bounding_box
 
     def get_surfaces(self, surfaces=None):
         """Recursively find and return all the surfaces referenced by the node

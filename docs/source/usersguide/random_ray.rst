@@ -62,6 +62,17 @@ solver::
     settings.batches = 1200
     settings.inactive = 600
 
+---------------
+Shannon Entropy
+---------------
+
+Similar to Monte Carlo, :ref:`Shannon entropy
+<methods-shannon-entropy-random-ray>` can be used to gauge whether the fission
+source has fully developed. The Shannon entropy is calculated automatically
+after each batch and is printed to the statepoint file. Unlike Monte Carlo, an
+entropy mesh does not need to be defined, as the Shannon entropy is calculated
+over FSRs using a volume-weighted approach.
+
 -------------------------------
 Inactive Ray Length (Dead Zone)
 -------------------------------
@@ -319,6 +330,8 @@ of a two-dimensional 2x2 reflective pincell lattice:
 
 In the future, automated subdivision of FSRs via mesh overlay may be supported.
 
+.. _usersguide_flux_norm:
+
 -------
 Tallies
 -------
@@ -355,6 +368,25 @@ Supported Filters:
 Note that there is no difference between the analog, tracklength, and collision
 estimators in random ray mode as individual particles are not being simulated.
 Tracklength-style tally estimation is inherent to the random ray method.
+
+As discussed in the random ray theory section on :ref:`Random Ray
+Tallies<methods_random_tallies>`, by default flux tallies in the random ray mode
+are not normalized by the spatial tally volumes such that flux tallies are in
+units of cm. While the volume information is readily available as a byproduct of
+random ray integration, the flux value is reported in unnormalized units of cm
+so that the user will be able to compare "apples to apples" with the default
+flux tallies from the Monte Carlo solver (also reported by default in units of
+cm). If volume normalized flux tallies (in units of cm\ :sup:`-2`) are desired,
+then the user can set the ``volume_normalized_flux_tallies`` field in the
+:attr:`openmc.Settings.random_ray` dictionary to ``True``. An example is given
+below:
+
+::
+
+    settings.random_ray['volume_normalized_flux_tallies'] = True
+
+Note that MC mode flux tallies can also be normalized by volume, as discussed in
+the :ref:`Volume Calculation Section<usersguide_volume>` of the user guide.
 
 --------
 Plotting
@@ -415,6 +447,34 @@ in the `OpenMC Jupyter notebook collection
     separate materials can be defined each with a separate multigroup dataset
     corresponding to a given temperature.
 
+--------------
+Linear Sources
+--------------
+
+Linear Sources (LS), are supported with the eigenvalue and fixed source random
+ray solvers. General 3D LS can be toggled by setting the ``source_shape`` field
+in the :attr:`openmc.Settings.random_ray` dictionary to ``'linear'`` as::
+
+    settings.random_ray['source_shape'] = 'linear'
+
+LS enables the use of coarser mesh discretizations and lower ray populations,
+offsetting the increased computation per ray.
+
+While OpenMC has no specific mode for 2D simulations, such simulations can be
+performed implicitly by leaving one of the dimensions of the geometry unbounded
+or by imposing reflective boundary conditions with no variation in between them
+in that dimension. When 3D linear sources are used in a 2D random ray
+simulation, the extremely long (or potentially infinite) spatial dimension along
+one of the axes can cause the linear source to become noisy, leading to
+potentially large increases in variance. To mitigate this, the user can force
+the z-terms of the linear source to zero by setting the ``source_shape`` field
+as::
+
+    settings.random_ray['source_shape'] = 'linear_xy'
+
+which will greatly improve the quality of the linear source term in 2D
+simulations.
+
 ---------------------------------
 Fixed Source and Eigenvalue Modes
 ---------------------------------
@@ -474,6 +534,91 @@ points of 1.0e-2 and 1.0e1.
 
     # Add fixed source and ray sampling source to settings file
     settings.source = [neutron_source]
+
+.. _usersguide_vol_estimators:
+
+-----------------------------
+Alternative Volume Estimators
+-----------------------------
+
+As discussed in the random ray theory section on :ref:`volume estimators
+<methods_random_ray_vol>`, there are several possible derivations for the scalar
+flux estimate. These options deal with different ways of treating the
+accumulation over ray lengths crossing each FSR (a quantity directly
+proportional to volume), which can be computed using several methods. The
+following methods are currently available in OpenMC:
+
+.. list-table:: Comparison of Estimators
+   :header-rows: 1
+   :widths: 10 30 30 30
+
+   * - Estimator
+     - Description
+     - Pros
+     - Cons
+   * - ``simulation_averaged``
+     - Accumulates total active ray lengths in each FSR over all iterations,
+       improving the estimate of the volume in each cell each iteration.
+     - * Virtually unbiased after several iterations
+       * Asymptotically approaches the true analytical volume
+       * Typically most efficient in terms of speed vs. accuracy
+     - * Higher variance
+       * Can lead to negative fluxes and numerical instability in pathological
+         cases
+   * - ``naive``
+     - Treats the volume as composed only of the active ray length through each
+       FSR per iteration, being a biased but numerically consistent ratio
+       estimator.
+     - * Low variance
+       * Unlikely to result in negative fluxes
+       * Recommended in cases where the simulation averaged estimator is
+         unstable
+     - * Biased estimator
+       * Requires more rays or longer active ray length to mitigate bias
+   * - ``hybrid`` (default)
+     - Applies the naive estimator to all cells that contain an external (fixed)
+       source contribution. Applies the simulation averaged estimator to all
+       other cells.
+     - * High accuracy/low bias of the simulation averaged estimator in most
+         cells
+       * Stability of the naive estimator in cells with fixed sources
+     - * Can lead to slightly negative fluxes in cells where the simulation
+         averaged estimator is used
+
+These estimators can be selected by setting the ``volume_estimator`` field in the
+:attr:`openmc.Settings.random_ray` dictionary. For example, to use the naive
+estimator, the following code would be used:
+
+::
+
+    settings.random_ray['volume_estimator'] = 'naive'
+
+-----------------
+Adjoint Flux Mode
+-----------------
+
+The adjoint flux random ray solver mode can be enabled as:
+entire
+::
+
+    settings.random_ray['adjoint'] = True
+
+When enabled, OpenMC will first run a forward transport simulation followed by
+an adjoint transport simulation. The purpose of the forward solve is to compute
+the adjoint external source when an external source is present in the
+simulation. Simulation settings (e.g., number of rays, batches, etc.) will be
+identical for both simulations. At the conclusion of the run, all results (e.g.,
+tallies, plots, etc.) will be derived from the adjoint flux rather than the
+forward flux but are not labeled any differently. The initial forward flux
+solution will not be stored or available in the final statepoint file. Those
+wishing to do analysis requiring both the forward and adjoint solutions will
+need to run two separate simulations and load both statepoint files.
+
+.. note::
+    When adjoint mode is selected, OpenMC will always perform a full forward
+    solve and then run a full adjoint solve immediately afterwards. Statepoint
+    and tally results will be derived from the adjoint flux, but will not be
+    labeled any differently.
 
 ---------------------------------------
 Putting it All Together: Example Inputs

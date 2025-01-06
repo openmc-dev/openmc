@@ -15,6 +15,7 @@
 #include "openmc/error.h"
 #include "openmc/file_utils.h"
 #include "openmc/hdf5_interface.h"
+#include "openmc/mcpl_interface.h"
 #include "openmc/mesh.h"
 #include "openmc/message_passing.h"
 #include "openmc/mgxs_interface.h"
@@ -566,8 +567,23 @@ hid_t h5banktype()
   return banktype;
 }
 
-void write_source_point(const char* filename, gsl::span<SourceSite> source_bank,
-  const vector<int64_t>& bank_index)
+void write_source_point(std::string filename, gsl::span<SourceSite> source_bank,
+  const vector<int64_t>& bank_index, bool use_mcpl)
+{
+  std::string ext = use_mcpl ? "mcpl" : "h5";
+  write_message("Creating source file {}.{} with {} particles ...", filename,
+    ext, source_bank.size(), 5);
+
+  // Dispatch to appropriate function based on file type
+  if (use_mcpl) {
+    write_mcpl_source_point(filename.c_str(), source_bank, bank_index);
+  } else {
+    write_h5_source_point(filename.c_str(), source_bank, bank_index);
+  }
+}
+
+void write_h5_source_point(const char* filename,
+  gsl::span<SourceSite> source_bank, const vector<int64_t>& bank_index)
 {
   // When using parallel HDF5, the file is written to collectively by all
   // processes. With MPI-only, the file is opened and written by the master

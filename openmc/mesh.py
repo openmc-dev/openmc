@@ -1,14 +1,10 @@
 from __future__ import annotations
-import typing
 import warnings
 from abc import ABC, abstractmethod
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from functools import wraps
 from math import pi, sqrt, atan2
 from numbers import Integral, Real
-from pathlib import Path
-import tempfile
-from typing import Optional, Sequence, Tuple, List
 
 import h5py
 import lxml.etree as ET
@@ -21,6 +17,7 @@ from openmc.utility_funcs import change_directory
 from ._xml import get_text
 from .mixin import IDManagerMixin
 from .surface import _BOUNDARY_TYPES
+from .utility_funcs import input_path
 
 
 class MeshBase(IDManagerMixin, ABC):
@@ -49,7 +46,7 @@ class MeshBase(IDManagerMixin, ABC):
     next_id = 1
     used_ids = set()
 
-    def __init__(self, mesh_id: Optional[int] = None, name: str = ''):
+    def __init__(self, mesh_id: int | None = None, name: str = ''):
         # Initialize Mesh class attributes
         self.id = mesh_id
         self.name = name
@@ -102,20 +99,39 @@ class MeshBase(IDManagerMixin, ABC):
             Instance of a MeshBase subclass
 
         """
+        mesh_type = 'regular' if 'type' not in group.attrs else group.attrs['type'].decode()
+        mesh_id = int(group.name.split('/')[-1].lstrip('mesh '))
+        mesh_name = '' if not 'name' in group else group['name'][()].decode()
 
-        mesh_type = group['type'][()].decode()
         if mesh_type == 'regular':
-            return RegularMesh.from_hdf5(group)
+            return RegularMesh.from_hdf5(group, mesh_id, mesh_name)
         elif mesh_type == 'rectilinear':
-            return RectilinearMesh.from_hdf5(group)
+            return RectilinearMesh.from_hdf5(group, mesh_id, mesh_name)
         elif mesh_type == 'cylindrical':
-            return CylindricalMesh.from_hdf5(group)
+            return CylindricalMesh.from_hdf5(group, mesh_id, mesh_name)
         elif mesh_type == 'spherical':
-            return SphericalMesh.from_hdf5(group)
+            return SphericalMesh.from_hdf5(group, mesh_id, mesh_name)
         elif mesh_type == 'unstructured':
-            return UnstructuredMesh.from_hdf5(group)
+            return UnstructuredMesh.from_hdf5(group, mesh_id, mesh_name)
         else:
             raise ValueError('Unrecognized mesh type: "' + mesh_type + '"')
+
+    def to_xml_element(self):
+        """Return XML representation of the mesh
+
+        Returns
+        -------
+        element : lxml.etree._Element
+            XML element containing mesh data
+
+        """
+        elem = ET.Element("mesh")
+
+        elem.set("id", str(self._id))
+        if self.name:
+            elem.set("name", self.name)
+
+        return elem
 
     @classmethod
     def from_xml_element(cls, elem: ET.Element):
@@ -135,29 +151,32 @@ class MeshBase(IDManagerMixin, ABC):
         mesh_type = get_text(elem, 'type')
 
         if mesh_type == 'regular' or mesh_type is None:
-            return RegularMesh.from_xml_element(elem)
+            mesh = RegularMesh.from_xml_element(elem)
         elif mesh_type == 'rectilinear':
-            return RectilinearMesh.from_xml_element(elem)
+            mesh = RectilinearMesh.from_xml_element(elem)
         elif mesh_type == 'cylindrical':
-            return CylindricalMesh.from_xml_element(elem)
+            mesh = CylindricalMesh.from_xml_element(elem)
         elif mesh_type == 'spherical':
-            return SphericalMesh.from_xml_element(elem)
+            mesh = SphericalMesh.from_xml_element(elem)
         elif mesh_type == 'unstructured':
-            return UnstructuredMesh.from_xml_element(elem)
+            mesh = UnstructuredMesh.from_xml_element(elem)
         else:
             raise ValueError(f'Unrecognized mesh type "{mesh_type}" found.')
+
+        mesh.name = get_text(elem, 'name', default='')
+        return mesh
 
     def get_homogenized_materials(
             self,
             model: openmc.Model,
             n_samples: int = 10_000,
-            prn_seed: Optional[int] = None,
+            prn_seed: int | None = None,
             include_void: bool = True,
             **kwargs
-    ) -> List[openmc.Material]:
+    ) -> list[openmc.Material]:
         """Generate homogenized materials over each element in a mesh.
 
-        .. versionadded:: 0.14.1
+        .. versionadded:: 0.15.0
 
         Parameters
         ----------
@@ -211,6 +230,18 @@ class MeshBase(IDManagerMixin, ABC):
 
         # Create homogenized material for each element
         materials = model.geometry.get_all_materials()
+
+        # Account for materials in DAGMC universes
+        # TODO: This should really get incorporated in lower-level calls to
+        # get_all_materials, but right now it requires information from the
+        # Model object
+        for cell in model.geometry.get_all_cells().values():
+            if isinstance(cell.fill, openmc.DAGMCUniverse):
+                names = cell.fill.material_names
+                materials.update({
+                    mat.id: mat for mat in model.materials if mat.name in names
+                })
+
         homogenized_materials = []
         for mat_volume_list in mat_volume_by_element:
             material_ids, volumes = [list(x) for x in zip(*mat_volume_list)]
@@ -381,7 +412,7 @@ class StructuredMesh(MeshBase):
 
     def write_data_to_vtk(self,
                           filename: PathLike,
-                          datasets: Optional[dict] = None,
+                          datasets: dict | None = None,
                           volume_normalization: bool = True,
                           curvilinear: bool = False):
         """Creates a VTK object of the mesh
@@ -630,7 +661,7 @@ class RegularMesh(StructuredMesh):
 
     """
 
-    def __init__(self, mesh_id: Optional[int] = None, name: str = ''):
+    def __init__(self, mesh_id: int | None = None, name: str = ''):
         super().__init__(mesh_id, name)
 
         self._dimension = None
@@ -643,7 +674,7 @@ class RegularMesh(StructuredMesh):
         return tuple(self._dimension)
 
     @dimension.setter
-    def dimension(self, dimension: typing.Iterable[int]):
+    def dimension(self, dimension: Iterable[int]):
         cv.check_type('mesh dimension', dimension, Iterable, Integral)
         cv.check_length('mesh dimension', dimension, 1, 3)
         self._dimension = dimension
@@ -660,7 +691,7 @@ class RegularMesh(StructuredMesh):
         return self._lower_left
 
     @lower_left.setter
-    def lower_left(self, lower_left: typing.Iterable[Real]):
+    def lower_left(self, lower_left: Iterable[Real]):
         cv.check_type('mesh lower_left', lower_left, Iterable, Real)
         cv.check_length('mesh lower_left', lower_left, 1, 3)
         self._lower_left = lower_left
@@ -680,7 +711,7 @@ class RegularMesh(StructuredMesh):
                 return [l + w * d for l, w, d in zip(ls, ws, dims)]
 
     @upper_right.setter
-    def upper_right(self, upper_right: typing.Iterable[Real]):
+    def upper_right(self, upper_right: Iterable[Real]):
         cv.check_type('mesh upper_right', upper_right, Iterable, Real)
         cv.check_length('mesh upper_right', upper_right, 1, 3)
         self._upper_right = upper_right
@@ -704,7 +735,7 @@ class RegularMesh(StructuredMesh):
                 return [(u - l) / d for u, l, d in zip(us, ls, dims)]
 
     @width.setter
-    def width(self, width: typing.Iterable[Real]):
+    def width(self, width: Iterable[Real]):
         cv.check_type('mesh width', width, Iterable, Real)
         cv.check_length('mesh width', width, 1, 3)
         self._width = width
@@ -777,16 +808,14 @@ class RegularMesh(StructuredMesh):
         string += '{0: <16}{1}{2}\n'.format('\tDimensions', '=\t', self.n_dimension)
         string += '{0: <16}{1}{2}\n'.format('\tVoxels', '=\t', self._dimension)
         string += '{0: <16}{1}{2}\n'.format('\tLower left', '=\t', self._lower_left)
-        string += '{0: <16}{1}{2}\n'.format('\tUpper Right', '=\t', self._upper_right)
-        string += '{0: <16}{1}{2}\n'.format('\tWidth', '=\t', self._width)
+        string += '{0: <16}{1}{2}\n'.format('\tUpper Right', '=\t', self.upper_right)
+        string += '{0: <16}{1}{2}\n'.format('\tWidth', '=\t', self.width)
         return string
 
     @classmethod
-    def from_hdf5(cls, group: h5py.Group):
-        mesh_id = int(group.name.split('/')[-1].lstrip('mesh '))
-
+    def from_hdf5(cls, group: h5py.Group, mesh_id: int, name: str):
         # Read and assign mesh properties
-        mesh = cls(mesh_id)
+        mesh = cls(mesh_id=mesh_id, name=name)
         mesh.dimension = group['dimension'][()]
         mesh.lower_left = group['lower_left'][()]
         if 'width' in group:
@@ -803,7 +832,7 @@ class RegularMesh(StructuredMesh):
         cls,
         lattice: 'openmc.RectLattice',
         division: int = 1,
-        mesh_id: Optional[int] = None,
+        mesh_id: int | None = None,
         name: str = ''
     ):
         """Create mesh from an existing rectangular lattice
@@ -841,9 +870,9 @@ class RegularMesh(StructuredMesh):
     @classmethod
     def from_domain(
         cls,
-        domain: typing.Union['openmc.Cell', 'openmc.Region', 'openmc.Universe', 'openmc.Geometry'],
+        domain: 'openmc.Cell' | 'openmc.Region' | 'openmc.Universe' | 'openmc.Geometry',
         dimension: Sequence[int] = (10, 10, 10),
-        mesh_id: Optional[int] = None,
+        mesh_id: int | None = None,
         name: str = ''
     ):
         """Create mesh from an existing openmc cell, region, universe or
@@ -890,9 +919,7 @@ class RegularMesh(StructuredMesh):
             XML element containing mesh data
 
         """
-
-        element = ET.Element("mesh")
-        element.set("id", str(self._id))
+        element = super().to_xml_element()
 
         if self._dimension is not None:
             subelement = ET.SubElement(element, "dimension")
@@ -928,10 +955,6 @@ class RegularMesh(StructuredMesh):
         mesh_id = int(get_text(elem, 'id'))
         mesh = cls(mesh_id=mesh_id)
 
-        mesh_type = get_text(elem, 'type')
-        if mesh_type is not None:
-            mesh.type = mesh_type
-
         dimension = get_text(elem, 'dimension')
         if dimension is not None:
             mesh.dimension = [int(x) for x in dimension.split()]
@@ -950,7 +973,7 @@ class RegularMesh(StructuredMesh):
 
         return mesh
 
-    def build_cells(self, bc: Optional[str] = None):
+    def build_cells(self, bc: str | None = None):
         """Generates a lattice of universes with the same dimensionality
         as the mesh object.  The individual cells/universes produced
         will not have material definitions applied and so downstream code
@@ -1226,11 +1249,9 @@ class RectilinearMesh(StructuredMesh):
         return string
 
     @classmethod
-    def from_hdf5(cls, group: h5py.Group):
-        mesh_id = int(group.name.split('/')[-1].lstrip('mesh '))
-
+    def from_hdf5(cls, group: h5py.Group, mesh_id: int, name: str):
         # Read and assign mesh properties
-        mesh = cls(mesh_id=mesh_id)
+        mesh = cls(mesh_id=mesh_id, name=name)
         mesh.x_grid = group['x_grid'][()]
         mesh.y_grid = group['y_grid'][()]
         mesh.z_grid = group['z_grid'][()]
@@ -1270,8 +1291,7 @@ class RectilinearMesh(StructuredMesh):
 
         """
 
-        element = ET.Element("mesh")
-        element.set("id", str(self._id))
+        element = super().to_xml_element()
         element.set("type", "rectilinear")
 
         subelement = ET.SubElement(element, "x_grid")
@@ -1351,7 +1371,7 @@ class CylindricalMesh(StructuredMesh):
         z_grid: Sequence[float],
         phi_grid: Sequence[float] = (0, 2*pi),
         origin: Sequence[float] = (0., 0., 0.),
-        mesh_id: Optional[int] = None,
+        mesh_id: int | None = None,
         name: str = '',
     ):
         super().__init__(mesh_id, name)
@@ -1472,8 +1492,10 @@ class CylindricalMesh(StructuredMesh):
     def get_indices_at_coords(
             self,
             coords: Sequence[float]
-        ) -> Tuple[int, int, int]:
+        ) -> tuple[int, int, int]:
         """Finds the index of the mesh voxel at the specified x,y,z coordinates.
+
+        .. versionadded:: 0.15.0
 
         Parameters
         ----------
@@ -1482,7 +1504,7 @@ class CylindricalMesh(StructuredMesh):
 
         Returns
         -------
-        Tuple[int, int, int]
+        tuple[int, int, int]
             The r, phi, z indices
 
         """
@@ -1530,12 +1552,11 @@ class CylindricalMesh(StructuredMesh):
         return (r_index, phi_index, z_index)
 
     @classmethod
-    def from_hdf5(cls, group: h5py.Group):
-        mesh_id = int(group.name.split('/')[-1].lstrip('mesh '))
-
+    def from_hdf5(cls, group: h5py.Group, mesh_id: int, name: str):
         # Read and assign mesh properties
         mesh = cls(
             mesh_id=mesh_id,
+            name=name,
             r_grid = group['r_grid'][()],
             phi_grid = group['phi_grid'][()],
             z_grid = group['z_grid'][()],
@@ -1548,9 +1569,9 @@ class CylindricalMesh(StructuredMesh):
     @classmethod
     def from_domain(
         cls,
-        domain: typing.Union['openmc.Cell', 'openmc.Region', 'openmc.Universe', 'openmc.Geometry'],
+        domain: 'openmc.Cell' | 'openmc.Region' | 'openmc.Universe' | 'openmc.Geometry',
         dimension: Sequence[int] = (10, 10, 10),
-        mesh_id: Optional[int] = None,
+        mesh_id: int | None = None,
         phi_grid_bounds: Sequence[float] = (0.0, 2*pi),
         name: str = ''
     ):
@@ -1636,8 +1657,7 @@ class CylindricalMesh(StructuredMesh):
 
         """
 
-        element = ET.Element("mesh")
-        element.set("id", str(self._id))
+        element = super().to_xml_element()
         element.set("type", "cylindrical")
 
         subelement = ET.SubElement(element, "r_grid")
@@ -1799,7 +1819,7 @@ class SphericalMesh(StructuredMesh):
         phi_grid: Sequence[float] = (0, 2*pi),
         theta_grid: Sequence[float] = (0, pi),
         origin: Sequence[float] = (0., 0., 0.),
-        mesh_id: Optional[int] = None,
+        mesh_id: int | None = None,
         name: str = '',
     ):
         super().__init__(mesh_id, name)
@@ -1915,15 +1935,14 @@ class SphericalMesh(StructuredMesh):
         return string
 
     @classmethod
-    def from_hdf5(cls, group: h5py.Group):
-        mesh_id = int(group.name.split('/')[-1].lstrip('mesh '))
-
+    def from_hdf5(cls, group: h5py.Group, mesh_id: int, name: str):
         # Read and assign mesh properties
         mesh = cls(
             r_grid = group['r_grid'][()],
             theta_grid = group['theta_grid'][()],
             phi_grid = group['phi_grid'][()],
             mesh_id=mesh_id,
+            name=name
         )
         if 'origin' in group:
             mesh.origin = group['origin'][()]
@@ -1940,8 +1959,7 @@ class SphericalMesh(StructuredMesh):
 
         """
 
-        element = ET.Element("mesh")
-        element.set("id", str(self._id))
+        element = super().to_xml_element()
         element.set("type", "spherical")
 
         subelement = ET.SubElement(element, "r_grid")
@@ -2060,8 +2078,10 @@ class UnstructuredMesh(MeshBase):
 
     Parameters
     ----------
-    filename : str or pathlib.Path
-        Location of the unstructured mesh file
+    filename : path-like
+        Location of the unstructured mesh file. Supported files for 'moab'
+        library are .h5 and .vtk. Supported files for 'libmesh' library are
+        exodus mesh files .exo.
     library : {'moab', 'libmesh'}
         Mesh library used for the unstructured mesh tally
     mesh_id : int
@@ -2125,9 +2145,9 @@ class UnstructuredMesh(MeshBase):
     _LINEAR_TET = 0
     _LINEAR_HEX = 1
 
-    def __init__(self, filename: PathLike, library: str, mesh_id: Optional[int] = None,
+    def __init__(self, filename: PathLike, library: str, mesh_id: int | None = None,
                  name: str = '', length_multiplier: float = 1.0,
-                 options: Optional[str] = None):
+                 options: str | None = None):
         super().__init__(mesh_id, name)
         self.filename = filename
         self._volumes = None
@@ -2146,8 +2166,8 @@ class UnstructuredMesh(MeshBase):
 
     @filename.setter
     def filename(self, filename):
-        cv.check_type('Unstructured Mesh filename', filename, (str, Path))
-        self._filename = filename
+        cv.check_type('Unstructured Mesh filename', filename, PathLike)
+        self._filename = input_path(filename)
 
     @property
     def library(self):
@@ -2159,11 +2179,11 @@ class UnstructuredMesh(MeshBase):
         self._library = lib
 
     @property
-    def options(self) -> Optional[str]:
+    def options(self) -> str | None:
         return self._options
 
     @options.setter
-    def options(self, options: Optional[str]):
+    def options(self, options: str | None):
         cv.check_type('options', options, (str, type(None)))
         self._options = options
 
@@ -2201,7 +2221,7 @@ class UnstructuredMesh(MeshBase):
         return self._volumes
 
     @volumes.setter
-    def volumes(self, volumes: typing.Iterable[Real]):
+    def volumes(self, volumes: Iterable[Real]):
         cv.check_type("Unstructured mesh volumes", volumes, Iterable, Real)
         self._volumes = volumes
 
@@ -2339,8 +2359,8 @@ class UnstructuredMesh(MeshBase):
 
     def write_data_to_vtk(
             self,
-            filename: Optional[PathLike] = None,
-            datasets: Optional[dict] = None,
+            filename: PathLike | None  = None,
+            datasets: dict | None = None,
             volume_normalization: bool = True
     ):
         """Map data to unstructured VTK mesh elements.
@@ -2431,8 +2451,7 @@ class UnstructuredMesh(MeshBase):
         writer.Write()
 
     @classmethod
-    def from_hdf5(cls, group: h5py.Group):
-        mesh_id = int(group.name.split('/')[-1].lstrip('mesh '))
+    def from_hdf5(cls, group: h5py.Group, mesh_id: int, name: str):
         filename = group['filename'][()].decode()
         library = group['library'][()].decode()
         if 'options' in group.attrs:
@@ -2440,7 +2459,7 @@ class UnstructuredMesh(MeshBase):
         else:
             options = None
 
-        mesh = cls(filename=filename, library=library, mesh_id=mesh_id, options=options)
+        mesh = cls(filename=filename, library=library, mesh_id=mesh_id, name=name, options=options)
         mesh._has_statepoint_data = True
         vol_data = group['volumes'][()]
         mesh.volumes = np.reshape(vol_data, (vol_data.shape[0],))
@@ -2467,9 +2486,9 @@ class UnstructuredMesh(MeshBase):
 
         """
 
-        element = ET.Element("mesh")
-        element.set("id", str(self._id))
+        element = super().to_xml_element()
         element.set("type", "unstructured")
+
         element.set("library", self._library)
         if self.options is not None:
             element.set('options', self.options)

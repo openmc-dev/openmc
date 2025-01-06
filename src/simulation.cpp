@@ -117,6 +117,7 @@ int openmc_simulation_init()
   // Reset global variables -- this is done before loading state point (as that
   // will potentially populate k_generation and entropy)
   simulation::current_batch = 0;
+  simulation::ssw_current_file = 1;
   simulation::k_generation.clear();
   simulation::entropy.clear();
   openmc_reset();
@@ -308,6 +309,7 @@ int n_lost_particles {0};
 bool need_depletion_rx {false};
 int restart_batch;
 bool satisfy_triggers {false};
+int ssw_current_file;
 int total_gen {0};
 double total_weight;
 int64_t work_per_rank;
@@ -337,7 +339,7 @@ void allocate_banks()
 
   if (settings::surf_source_write) {
     // Allocate surface source bank
-    simulation::surf_source_bank.reserve(settings::max_surface_particles);
+    simulation::surf_source_bank.reserve(settings::ssw_max_particles);
   }
 }
 
@@ -345,7 +347,6 @@ void initialize_batch()
 {
   // Increment current batch
   ++simulation::current_batch;
-
   if (settings::run_mode == RunMode::FIXED_SOURCE) {
     if (settings::solver_type == SolverType::RANDOM_RAY &&
         simulation::current_batch < settings::n_inactive + 1) {
@@ -445,14 +446,13 @@ void finalize_batch()
           source_point_filename.c_str(), bankspan, simulation::work_index);
       } else {
         source_point_filename.append(".h5");
-        write_source_point(
+        write_h5_source_point(
           source_point_filename.c_str(), bankspan, simulation::work_index);
       }
     }
 
     // Write a continously-overwritten source point if requested.
     if (settings::source_latest) {
-
       auto filename = settings::path_output + "source";
       gsl::span<SourceSite> bankspan(simulation::source_bank);
       if (settings::source_mcpl_write) {
@@ -461,25 +461,44 @@ void finalize_batch()
           filename.c_str(), bankspan, simulation::work_index);
       } else {
         filename.append(".h5");
-        write_source_point(filename.c_str(), bankspan, simulation::work_index);
+        write_h5_source_point(filename.c_str(), bankspan, simulation::work_index);
       }
     }
   }
 
   // Write out surface source if requested.
   if (settings::surf_source_write &&
-      simulation::current_batch == settings::n_batches) {
-    auto filename = settings::path_output + "surface_source";
-    auto surf_work_index =
-      mpi::calculate_parallel_index_vector(simulation::surf_source_bank.size());
-    gsl::span<SourceSite> surfbankspan(simulation::surf_source_bank.begin(),
-      simulation::surf_source_bank.size());
+      simulation::ssw_current_file <= settings::ssw_max_files) {
+    bool last_batch = (simulation::current_batch == settings::n_batches);
+    if (simulation::surf_source_bank.full() || last_batch) {
+      // Determine appropriate filename
+      auto filename = fmt::format("{}surface_source.{}", settings::path_output,
+        simulation::current_batch);
+      if (settings::ssw_max_files == 1 ||
+          (simulation::ssw_current_file == 1 && last_batch)) {
+        filename = settings::path_output + "surface_source";
+      }
+
+      // Get span of source bank and calculate parallel index vector
+      auto surf_work_index = mpi::calculate_parallel_index_vector(
+        simulation::surf_source_bank.size());
+      gsl::span<SourceSite> surfbankspan(simulation::surf_source_bank.begin(),
+        simulation::surf_source_bank.size());
+
+      // Write surface source file
     if (settings::surf_mcpl_write) {
       filename.append(".mcpl");
       write_mcpl_source_point(filename.c_str(), surfbankspan, surf_work_index);
     } else {
       filename.append(".h5");
-      write_source_point(filename.c_str(), surfbankspan, surf_work_index);
+      write_h5_source_point(filename.c_str(), surfbankspan, simulation::work_index);
+    }
+      // Reset surface source bank and increment counter
+      simulation::surf_source_bank.clear();
+      if (!last_batch && settings::ssw_max_files >= 1) {
+        simulation::surf_source_bank.reserve(settings::ssw_max_particles);
+      }
+      ++simulation::ssw_current_file;
     }
   }
 }
@@ -536,7 +555,8 @@ void finalize_generation()
   if (settings::run_mode == RunMode::EIGENVALUE) {
 
     // Calculate shannon entropy
-    if (settings::entropy_on)
+    if (settings::entropy_on &&
+        settings::solver_type == SolverType::MONTE_CARLO)
       shannon_entropy();
 
     // Collect results and statistics
@@ -767,13 +787,15 @@ void transport_history_based_single_particle(Particle& p)
 {
   while (p.alive()) {
     p.event_calculate_xs();
-    if (!p.alive())
-      break;
-    p.event_advance();
-    if (p.collision_distance() > p.boundary().distance) {
-      p.event_cross_surface();
-    } else {
-      p.event_collide();
+    if (p.alive()) {
+      p.event_advance();
+    }
+    if (p.alive()) {
+      if (p.collision_distance() > p.boundary().distance) {
+        p.event_cross_surface();
+      } else if (p.alive()) {
+        p.event_collide();
+      }
     }
     p.event_revive_from_secondary();
   }

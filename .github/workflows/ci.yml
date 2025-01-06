@@ -96,7 +96,6 @@ jobs:
 
       - name: Environment Variables
         run: |
-          echo "DAGMC_ROOT=$HOME/DAGMC"
           echo "OPENMC_CROSS_SECTIONS=$HOME/nndc_hdf5/cross_sections.xml" >> $GITHUB_ENV
           echo "OPENMC_ENDF_DATA=$HOME/endf-b-vii.1" >> $GITHUB_ENV
 
@@ -130,6 +129,11 @@ jobs:
         run: |
           echo "$HOME/NJOY2016/build" >> $GITHUB_PATH
           $GITHUB_WORKSPACE/tools/ci/gha-install.sh
+
+      - name: display-config
+        shell: bash
+        run: |
+          openmc -v
 
       - name: cache-xs
         uses: actions/cache@v4

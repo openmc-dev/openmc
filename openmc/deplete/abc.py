@@ -754,8 +754,9 @@ class Integrator(ABC):
         rates = res.rates[0]
         k = ufloat(res.k[0, 0], res.k[0, 1])
 
-        # Scale reaction rates by ratio of source rates
-        rates *= source_rate / res.source_rate
+        if res.source_rate != 0.0:
+            # Scale reaction rates by ratio of source rates
+            rates *= source_rate / res.source_rate
         return bos_conc, OperatorResult(k, rates)
 
     def _get_start_data(self):
@@ -786,7 +787,7 @@ class Integrator(ABC):
         path : PathLike
             Path to file to write. Defaults to 'depletion_results.h5'.
 
-            .. versionadded:: 0.14.1
+            .. versionadded:: 0.15.0
         """
         with change_directory(self.operator.output_dir):
             n = self.operator.initial_condition()
@@ -993,7 +994,7 @@ class SIIntegrator(Integrator):
         path : PathLike
             Path to file to write. Defaults to 'depletion_results.h5'.
 
-            .. versionadded:: 0.14.1
+            .. versionadded:: 0.15.0
         """
         with change_directory(self.operator.output_dir):
             n = self.operator.initial_condition()

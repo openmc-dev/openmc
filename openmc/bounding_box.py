@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Iterable
+from collections.abc import Iterable
 
 import numpy as np
 
@@ -42,7 +42,8 @@ class BoundingBox:
 
     def __repr__(self) -> str:
         return "BoundingBox(lower_left={}, upper_right={})".format(
-            tuple(self.lower_left), tuple(self.upper_right))
+            tuple(float(x) for x in self.lower_left),
+            tuple(float(x) for x in self.upper_right))
 
     def __getitem__(self, key) -> np.ndarray:
         return self._bounds[key]

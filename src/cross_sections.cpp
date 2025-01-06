@@ -289,6 +289,11 @@ void read_ce_cross_sections_xml()
       "Cross sections XML file '" + filename.string() + "' does not exist.");
   }
 
+  if (std::filesystem::is_directory(filename)) {
+    fatal_error("OPENMC_CROSS_SECTIONS is set to a directory. "
+                "It should be set to an XML file.");
+  }
+
   write_message("Reading cross sections XML file...", 5);
 
   // Parse cross_sections.xml file

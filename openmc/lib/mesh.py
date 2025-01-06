@@ -1,8 +1,8 @@
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from ctypes import (c_int, c_int32, c_char_p, c_double, POINTER, Structure,
                     create_string_buffer, c_uint64, c_size_t)
 from random import getrandbits
-from typing import Optional, List, Tuple, Sequence
+import sys
 from weakref import WeakValueDictionary
 
 import numpy as np
@@ -14,6 +14,7 @@ from .core import _FortranObjectWithID
 from .error import _error_handler
 from .material import Material
 from .plot import _Position
+from ..bounding_box import BoundingBox
 
 __all__ = [
     'Mesh', 'RegularMesh', 'RectilinearMesh', 'CylindricalMesh',
@@ -45,6 +46,10 @@ _dll.openmc_mesh_get_n_elements.errcheck = _error_handler
 _dll.openmc_mesh_get_volumes.argtypes = [c_int32, POINTER(c_double)]
 _dll.openmc_mesh_get_volumes.restype = c_int
 _dll.openmc_mesh_get_volumes.errcheck = _error_handler
+_dll.openmc_mesh_bounding_box.argtypes = [
+    c_int32, POINTER(c_double), POINTER(c_double)]
+_dll.openmc_mesh_bounding_box.restype = c_int
+_dll.openmc_mesh_bounding_box.errcheck = _error_handler
 _dll.openmc_mesh_material_volumes.argtypes = [
     c_int32, c_int, c_int, c_int, POINTER(_MaterialVolume),
     POINTER(c_int), POINTER(c_uint64)]
@@ -167,14 +172,30 @@ class Mesh(_FortranObjectWithID):
             self._index, volumes.ctypes.data_as(POINTER(c_double)))
         return volumes
 
+    @property
+    def bounding_box(self) -> BoundingBox:
+        inf = sys.float_info.max
+        ll = np.zeros(3)
+        ur = np.zeros(3)
+        _dll.openmc_mesh_bounding_box(
+            self._index,
+            ll.ctypes.data_as(POINTER(c_double)),
+            ur.ctypes.data_as(POINTER(c_double))
+        )
+        ll[ll == inf] = np.inf
+        ur[ur == inf] = np.inf
+        ll[ll == -inf] = -np.inf
+        ur[ur == -inf] = -np.inf
+        return BoundingBox(ll, ur)
+
     def material_volumes(
             self,
             n_samples: int = 10_000,
-            prn_seed: Optional[int] = None
-    ) -> List[List[Tuple[Material, float]]]:
+            prn_seed: int | None = None
+    ) -> list[list[tuple[Material, float]]]:
         """Determine volume of materials in each mesh element
 
-        .. versionadded:: 0.14.1
+        .. versionadded:: 0.15.0
 
         Parameters
         ----------
@@ -231,7 +252,7 @@ class Mesh(_FortranObjectWithID):
     ) -> np.ndarray:
         """Get mesh bin indices for a rasterized plot.
 
-        .. versionadded:: 0.14.1
+        .. versionadded:: 0.15.0
 
         Parameters
         ----------
@@ -293,6 +314,8 @@ class RegularMesh(Mesh):
         Total number of mesh elements.
     volumes : numpy.ndarray
         Volume of each mesh element in [cm^3]
+    bounding_box : openmc.BoundingBox
+        Axis-aligned bounding box of the mesh
 
     """
     mesh_type = 'regular'
@@ -379,6 +402,8 @@ class RectilinearMesh(Mesh):
         Total number of mesh elements.
     volumes : numpy.ndarray
         Volume of each mesh element in [cm^3]
+    bounding_box : openmc.BoundingBox
+        Axis-aligned bounding box of the mesh
 
     """
     mesh_type = 'rectilinear'
@@ -482,6 +507,8 @@ class CylindricalMesh(Mesh):
         Total number of mesh elements.
     volumes : numpy.ndarray
         Volume of each mesh element in [cm^3]
+    bounding_box : openmc.BoundingBox
+        Axis-aligned bounding box of the mesh
 
     """
     mesh_type = 'cylindrical'
@@ -585,6 +612,8 @@ class SphericalMesh(Mesh):
         Total number of mesh elements.
     volumes : numpy.ndarray
         Volume of each mesh element in [cm^3]
+    bounding_box : openmc.BoundingBox
+        Axis-aligned bounding box of the mesh
 
     """
     mesh_type = 'spherical'

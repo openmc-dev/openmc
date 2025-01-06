@@ -474,7 +474,7 @@ applied as universes in the OpenMC geometry file. A geometry represented
 entirely by a DAGMC geometry will contain only the DAGMC universe. Using a
 :class:`openmc.DAGMCUniverse` looks like the following::
 
-   dag_univ = openmc.DAGMCUniverse(filename='dagmc.h5m')
+   dag_univ = openmc.DAGMCUniverse('dagmc.h5m')
    geometry = openmc.Geometry(dag_univ)
    geometry.export_to_xml()
 
@@ -495,13 +495,22 @@ It is important in these cases to understand the DAGMC model's position
 with respect to the CSG geometry. DAGMC geometries can be plotted with
 OpenMC to verify that the model matches one's expectations.
 
-**Note:** DAGMC geometries used in OpenMC are currently required to be clean,
-meaning that all surfaces have been `imprinted and merged
-<https://svalinn.github.io/DAGMC/usersguide/cubit_basics.html>`_ successfully
-and that the model is `watertight
-<https://svalinn.github.io/DAGMC/usersguide/tools.html#make-watertight>`_.
-Future implementations of DAGMC geometry will support small volume overlaps and
-un-merged surfaces.
+By default, when you specify a .h5m file for a :class:`~openmc.DAGMCUniverse`
+instance, it will store the absolute path to the .h5m file. If you prefer to
+store the relative path, you can set the ``'resolve_paths'`` configuration
+variable::
+
+  openmc.config['resolve_paths'] = False
+  dag_univ = openmc.DAGMCUniverse('dagmc.h5m')
+
+.. note::
+    DAGMC geometries used in OpenMC are currently required to be clean,
+    meaning that all surfaces have been `imprinted and merged
+    <https://svalinn.github.io/DAGMC/usersguide/cubit_basics.html>`_ successfully
+    and that the model is `watertight
+    <https://svalinn.github.io/DAGMC/usersguide/tools.html#make-watertight>`_.
+    Future implementations of DAGMC geometry will support small volume overlaps and
+    un-merged surfaces.
 
 Cell, Surface, and Material IDs
 -------------------------------

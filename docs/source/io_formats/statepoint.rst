@@ -72,7 +72,10 @@ The current version of the statepoint file format is 18.1.
 
 **/tallies/meshes/mesh <uid>/**
 
-:Datasets: - **type** (*char[]*) -- Type of mesh.
+:Attributes: - **id** (*int*) -- ID of the mesh
+             - **type** (*char[]*) -- Type of mesh.
+
+:Datasets: - **name** (*char[]*) -- Name of the mesh.
            - **dimension** (*int*) -- Number of mesh cells in each dimension.
            - **Regular Mesh Only:**
               - **lower_left** (*double[]*) -- Coordinates of lower-left corner of

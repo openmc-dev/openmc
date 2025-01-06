@@ -234,8 +234,8 @@ def voxel_to_vtk(voxel_file: PathLike, output: PathLike = 'plot.vti'):
         grid.SetOrigin(*lower_left)
         grid.SetSpacing(*width)
 
-    # transpose data from OpenMC ordering(zyx) to VTK ordering(xyz)
-    # and flatten to 1 - D array
+        # transpose data from OpenMC ordering(zyx) to VTK ordering(xyz)
+        # and flatten to 1 - D array
         h5data = fh["data"][...]
 
     data = vtk.vtkIntArray()
@@ -471,7 +471,7 @@ class PlotBase(IDManagerMixin):
 
         rng = np.random.RandomState(seed)
 
-        #Generate random colors for each feature
+        # Generate random colors for each feature
         for domain in domains:
             self.colors[domain] = rng.randint(0, 256, (3,))
 

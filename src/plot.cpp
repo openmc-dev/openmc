@@ -1117,11 +1117,11 @@ void RayTracePlot::set_output_path(pugi::xml_node node)
 int RayTracePlot::advance_to_boundary_from_void(GeometryState& p)
 {
   double min_dist {INFINITY};
-  auto coord = p.coord(0);
+  auto root_coord = p.coord(0);
   Universe* uni = model::universes[model::root_universe].get();
   int intersected_surface = -1;
   for (auto c_i : uni->cells_) {
-    auto dist = model::cells.at(c_i)->distance(coord.r, coord.u, 0, &p);
+    auto dist = model::cells.at(c_i)->distance(root_coord.r, root_coord.u, 0, &p);
     if (dist.first < min_dist) {
       min_dist = dist.first;
       intersected_surface = dist.second;
@@ -1231,15 +1231,10 @@ std::pair<Position, Direction> RayTracePlot::get_pixel_ray(
     double x_pix_coord = (static_cast<double>(horiz) - p0 / 2.0) / p0;
     double y_pix_coord = (static_cast<double>(vert) - p1 / 2.0) / p1;
 
-    Direction yaxis = {
-      camera_to_model_[1], camera_to_model_[4], camera_to_model_[7]};
-    Direction zaxis = {
-      camera_to_model_[2], camera_to_model_[5], camera_to_model_[8]};
     result.first = camera_position_ +
-                   yaxis * x_pix_coord * orthographic_width_ +
-                   zaxis * y_pix_coord * orthographic_width_;
-    result.second = {
-      camera_to_model_[0], camera_to_model_[3], camera_to_model_[6]};
+                   camera_y_axis() * x_pix_coord * orthographic_width_ +
+                   camera_z_axis() * y_pix_coord * orthographic_width_;
+    result.second = camera_x_axis();
   }
 
   return result;

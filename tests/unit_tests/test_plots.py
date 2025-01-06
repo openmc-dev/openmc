@@ -223,7 +223,7 @@ def test_voxel_plot_roundtrip():
     assert new_plot.color_by == plot.color_by
 
 
-def test_phone_plot_roundtrip():
+def test_phong_plot_roundtrip():
     plot = openmc.PhongPlot(name='my phong plot')
     plot.id = 2300
     plot.filename = 'phong1'

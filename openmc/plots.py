@@ -1699,9 +1699,7 @@ class Plots(cv.CheckedList):
                 plots.append(ProjectionPlot.from_xml_element(e))
             elif plot_type == 'phong':
                 plots.append(PhongPlot.from_xml_element(e))
-            elif plot_type == 'voxel':
-                plots.append(Plot.from_xml_element(e))
-            elif plot_type == 'slice':
+            elif plot_type in ('slice', 'voxel'):
                 plots.append(Plot.from_xml_element(e))
             else:
                 raise ValueError("Unknown plot type: {}".format(plot_type))

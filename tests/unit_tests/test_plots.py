@@ -238,6 +238,8 @@ def test_phong_plot_roundtrip():
 
     elem = plot.to_xml_element()
 
+    repr(plot)
+
     new_plot = openmc.PhongPlot.from_xml_element(elem)
 
     assert new_plot.name == plot.name

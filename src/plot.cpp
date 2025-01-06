@@ -1121,7 +1121,8 @@ int RayTracePlot::advance_to_boundary_from_void(GeometryState& p)
   Universe* uni = model::universes[model::root_universe].get();
   int intersected_surface = -1;
   for (auto c_i : uni->cells_) {
-    auto dist = model::cells.at(c_i)->distance(root_coord.r, root_coord.u, 0, &p);
+    auto dist =
+      model::cells.at(c_i)->distance(root_coord.r, root_coord.u, 0, &p);
     if (dist.first < min_dist) {
       min_dist = dist.first;
       intersected_surface = dist.second;

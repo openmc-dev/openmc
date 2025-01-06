@@ -313,7 +313,6 @@ public:
   static int advance_to_boundary_from_void(GeometryState& p);
 
 protected:
-
   Direction camera_x_axis() const
   {
     return {camera_to_model_[0], camera_to_model_[3], camera_to_model_[6]};
@@ -328,7 +327,6 @@ protected:
   {
     return {camera_to_model_[2], camera_to_model_[5], camera_to_model_[8]};
   }
-
 
   void set_output_path(pugi::xml_node plot_node);
 
@@ -348,7 +346,7 @@ private:
   void set_orthographic_width(pugi::xml_node node);
 
   double horizontal_field_of_view_ {70.0}; // horiz. f.o.v. in degrees
-  Position camera_position_; // where camera is
+  Position camera_position_;               // where camera is
   Position look_at_; // point camera is centered looking at
 
   Direction up_ {0.0, 0.0, 1.0}; // which way is up

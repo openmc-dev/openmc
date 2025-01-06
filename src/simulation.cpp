@@ -461,7 +461,8 @@ void finalize_batch()
           filename.c_str(), bankspan, simulation::work_index);
       } else {
         filename.append(".h5");
-        write_h5_source_point(filename.c_str(), bankspan, simulation::work_index);
+        write_h5_source_point(
+          filename.c_str(), bankspan, simulation::work_index);
       }
     }
   }
@@ -486,13 +487,15 @@ void finalize_batch()
         simulation::surf_source_bank.size());
 
       // Write surface source file
-    if (settings::surf_mcpl_write) {
-      filename.append(".mcpl");
-      write_mcpl_source_point(filename.c_str(), surfbankspan, surf_work_index);
-    } else {
-      filename.append(".h5");
-      write_h5_source_point(filename.c_str(), surfbankspan, simulation::work_index);
-    }
+      if (settings::surf_mcpl_write) {
+        filename.append(".mcpl");
+        write_mcpl_source_point(
+          filename.c_str(), surfbankspan, surf_work_index);
+      } else {
+        filename.append(".h5");
+        write_h5_source_point(
+          filename.c_str(), surfbankspan, simulation::work_index);
+      }
       // Reset surface source bank and increment counter
       simulation::surf_source_bank.clear();
       if (!last_batch && settings::ssw_max_files >= 1) {

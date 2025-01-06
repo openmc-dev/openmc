@@ -37,7 +37,7 @@ void VacuumBC::handle_particle(Particle& p, const Surface& surf) const
 
 void ReflectiveBC::handle_particle(Particle& p, const Surface& surf) const
 {
-  Direction u = surf.reflect(p.r(), p.u());
+  Direction u = surf.reflect(p.r(), p.u(), &p);
   u /= u.norm();
 
   // Handle the effects of the surface albedo on the particle's weight.

@@ -760,6 +760,7 @@ Direction DAGSurface::normal(Position r) const
 
 Direction DAGSurface::reflect(Position r, Direction u, GeometryState* p) const
 {
+  Expects(p);
   double pnt[3] = {r.x, r.y, r.z};
   double dir[3];
   moab::ErrorCode rval =

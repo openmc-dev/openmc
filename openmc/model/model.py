@@ -1,7 +1,6 @@
 from __future__ import annotations
 from collections.abc import Iterable
 from functools import lru_cache
-import os
 from pathlib import Path
 from numbers import Integral
 from tempfile import NamedTemporaryFile
@@ -15,7 +14,7 @@ import openmc
 import openmc._xml as xml
 from openmc.dummy_comm import DummyCommunicator
 from openmc.executor import _process_CLI_arguments
-from openmc.checkvalue import check_type, check_value, PathLike
+from openmc.checkvalue import check_type, check_value
 from openmc.exceptions import InvalidIDError
 import openmc.lib
 from openmc.utility_funcs import change_directory
@@ -326,13 +325,13 @@ class Model:
         openmc.lib.init(args=args, intracomm=intracomm, output=output)
 
     def sync_dagmc_universes(self):
-        """
-        Synchronize all DAGMC universes in the current geometry.
+        """Synchronize all DAGMC universes in the current geometry.
+
         This method iterates over all DAGMC universes in the geometry and
         synchronizes their cells with the current material assignments. Requires
         that the model has been initialized via :meth:`Model.init_lib`.
 
-        .. versionadded:: 0.15.1-dev
+        .. versionadded:: 0.15.1
 
         """
         if self.is_initialized:
@@ -1177,12 +1176,12 @@ class Model:
 
         self._change_py_lib_attribs(names_or_ids, volume, 'material', 'volume')
 
-    def differentiate_depletable_mats(self, diff_volume_method : str = None):
+    def differentiate_depletable_mats(self, diff_volume_method: str = None):
         """Assign distribmats for each depletable material
 
         .. versionadded:: 0.14.0
 
-        .. version added:: 0.15.1-dev
+        .. versionchanged:: 0.15.1
             diff_volume_method default is None, do not set volumes on the new
             material ovjects. Is now a convenience method for
             differentiate_mats(diff_volume_method, depletable_only=True)
@@ -1200,7 +1199,7 @@ class Model:
     def differentiate_mats(self, diff_volume_method: str = None, depletable_only: bool = True):
         """Assign distribmats for each material
 
-        .. versionadded:: 0.15.1-dev
+        .. versionadded:: 0.15.1
 
         Parameters
         ----------

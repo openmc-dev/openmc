@@ -1,7 +1,5 @@
-import pkg_resources
 import shutil
 
-import lxml.etree as ET
 import numpy as np
 from pathlib import Path
 import pytest

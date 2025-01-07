@@ -1,18 +1,19 @@
-import pkg_resources
+from pathlib import Path
 
 import lxml.etree as ET
 import numpy as np
 import pytest
-
 import openmc
+from openmc.utility_funcs import change_directory
 
 pytestmark = pytest.mark.skipif(
     not openmc.lib._dagmc_enabled(),
     reason="DAGMC CAD geometry is not enabled.")
 
+
 @pytest.fixture()
-def model():
-    PITCH = 1.26
+def model(request):
+    pitch = 1.26
 
     mats = {}
     mats["no-void fuel"] = openmc.Material(1, name="no-void fuel")
@@ -27,21 +28,21 @@ def model():
     mats["41"].set_density("g/cm3", 1.0)
     mats["41"].add_s_alpha_beta("c_H_in_H2O")
 
-    p = pkg_resources.resource_filename(__name__, "dagmc.h5m")
+    p = Path(request.fspath).parent / "dagmc.h5m"
 
-    daguniv = openmc.DAGMCUniverse(p,auto_geom_ids=True,)
+    daguniv = openmc.DAGMCUniverse(p, auto_geom_ids=True)
 
     lattice = openmc.RectLattice()
     lattice.dimension = [2, 2]
-    lattice.lower_left = [-PITCH, -PITCH]
-    lattice.pitch = [PITCH, PITCH]
+    lattice.lower_left = [-pitch, -pitch]
+    lattice.pitch = [pitch, pitch]
     lattice.universes = [
         [daguniv, daguniv],
         [daguniv, daguniv]]
 
-    box = openmc.model.RectangularParallelepiped(-PITCH, PITCH, -PITCH, PITCH, -5, 5)
+    box = openmc.model.RectangularParallelepiped(-pitch, pitch, -pitch, pitch, -5, 5)
 
-    root = openmc.Universe(cells=[openmc.Cell(region= -box, fill=lattice)])
+    root = openmc.Universe(cells=[openmc.Cell(region=-box, fill=lattice)])
 
     settings = openmc.Settings()
     settings.batches = 100
@@ -50,8 +51,7 @@ def model():
 
     ll, ur = root.bounding_box
     mat_vol = openmc.VolumeCalculation([mats["no-void fuel"]], 1000000, ll, ur)
-    cell_vol = openmc.VolumeCalculation(
-        list(root.cells.values()), 1000000, ll, ur)
+    cell_vol = openmc.VolumeCalculation(list(root.cells.values()), 1000000, ll, ur)
     settings.volume_calculations = [mat_vol, cell_vol]
 
     model = openmc.Model()
@@ -59,16 +59,17 @@ def model():
     model.geometry = openmc.Geometry(root=root)
     model.settings = settings
 
-    try:
-        model.init_lib()
-        model.sync_dagmc_universes()
-        yield model
-    finally:
-        model.finalize_lib()
-        openmc.reset_auto_ids()
+    with change_directory(tmpdir=True):
+        try:
+            model.init_lib()
+            model.sync_dagmc_universes()
+            yield model
+        finally:
+            model.finalize_lib()
+            openmc.reset_auto_ids()
 
 
-def test_dagmc_replace_material_assignment(model, run_in_tmpdir):
+def test_dagmc_replace_material_assignment(model):
     mats = {}
 
     mats["foo"] = openmc.Material(name="foo")
@@ -92,7 +93,7 @@ def test_dagmc_replace_material_assignment(model, run_in_tmpdir):
             assert univ.cells[cell_id] == mats["foo"]
 
 
-def test_dagmc_add_material_override_with_id(model, run_in_tmpdir):
+def test_dagmc_add_material_override_with_id(model):
     mats = {}
     mats["foo"] = openmc.Material(name="foo")
     mats["foo"].add_nuclide("H1", 2.0)
@@ -115,7 +116,7 @@ def test_dagmc_add_material_override_with_id(model, run_in_tmpdir):
             assert univ.cells[cell_id] == mats["foo"]
 
 
-def test_dagmc_add_material_override_with_cell(model, run_in_tmpdir):
+def test_dagmc_add_material_override_with_cell(model):
     mats = {}
     mats["foo"] = openmc.Material(name="foo")
     mats["foo"].add_nuclide("H1", 2.0)
@@ -152,7 +153,7 @@ def test_model_differentiate_depletable_with_dagmc(model, run_in_tmpdir):
     assert len(model.materials) == 4*2 +1
 
 
-def test_model_differentiate_with_dagmc(model, run_in_tmpdir):
+def test_model_differentiate_with_dagmc(model):
     root = model.geometry.root_universe
     ll, ur = root.bounding_box
     model.calculate_volumes()
@@ -163,35 +164,33 @@ def test_model_differentiate_with_dagmc(model, run_in_tmpdir):
     model.differentiate_mats(depletable_only=False)
 
     # Get the volume of the no-void fuel material after differentiation
-    mat_list = [m for m in model.materials]
-    mat_vol = openmc.VolumeCalculation(mat_list, 1000000, ll, ur)
-    cell_vol = openmc.VolumeCalculation(list(root.cells.values()), 1000000, ll, ur)
-    model.settings.volume_calculations = [mat_vol, cell_vol]
-    model.init_lib() # need to reinitialize the lib after differentiating the materials
+    mat_vol = openmc.VolumeCalculation(model.materials, 1000000, ll, ur)
+    model.settings.volume_calculations = [mat_vol]
+    model.init_lib()  # need to reinitialize the lib after differentiating the materials
     model.calculate_volumes()
     volume_after = np.sum([m.volume for m in model.materials if "fuel" in m.name])
     assert np.isclose(volume_before, volume_after)
     assert len(model.materials) == 4*2 + 4
 
 
-def test_bad_override_cell_id(model, run_in_tmpdir):
+def test_bad_override_cell_id(model):
     for univ in model.geometry.get_all_universes().values():
         if isinstance(univ, openmc.DAGMCUniverse):
             break
     with pytest.raises(ValueError, match="Cell ID '1' not found in DAGMC universe"):
-        univ.material_overrides = {1 : model.materials[0]}
+        univ.material_overrides = {1: model.materials[0]}
 
 
-def test_bad_override_type(model, run_in_tmpdir):
+def test_bad_override_type(model):
     not_a_dag_cell = openmc.Cell()
     for univ in model.geometry.get_all_universes().values():
         if isinstance(univ, openmc.DAGMCUniverse):
             break
-    with pytest.raises(ValueError, match="Unrecognized key type. Must be a integer, or openmc.DAGMCCell object"):
-        univ.material_overrides = {not_a_dag_cell : model.materials[0]}
+    with pytest.raises(ValueError, match="Unrecognized key type. Must be an integer or openmc.DAGMCCell object"):
+        univ.material_overrides = {not_a_dag_cell: model.materials[0]}
 
 
-def test_bad_replacement_mat_name(model, run_in_tmpdir):
+def test_bad_replacement_mat_name(model):
     for univ in model.geometry.get_all_universes().values():
         if isinstance(univ, openmc.DAGMCUniverse):
             break
@@ -199,7 +198,7 @@ def test_bad_replacement_mat_name(model, run_in_tmpdir):
         univ.replace_material_assignment("not_a_mat", model.materials[0])
 
 
-def test_dagmc_xml(model, run_in_tmpdir):
+def test_dagmc_xml(model):
     # Set the environment
     mats = {}
     mats["no-void fuel"] = openmc.Material(1, name="no-void fuel")

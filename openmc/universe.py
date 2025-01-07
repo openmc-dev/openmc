@@ -2,22 +2,16 @@ from __future__ import annotations
 import math
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
-from numbers import Integral, Real
+from numbers import Real
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import warnings
 
-import h5py
-import lxml.etree as ET
 import numpy as np
 
 import openmc
 import openmc.checkvalue as cv
-from ._xml import get_text
-from .checkvalue import check_type, check_value
 from .mixin import IDManagerMixin
-from .surface import _BOUNDARY_TYPES
-from .utility_funcs import input_path
 
 
 class UniverseBase(ABC, IDManagerMixin):
@@ -207,7 +201,7 @@ class UniverseBase(ABC, IDManagerMixin):
     @abstractmethod
     def remove_cell(self, cell):
         pass
-    
+
     def clear_cells(self):
         """Remove all cells from the universe."""
 

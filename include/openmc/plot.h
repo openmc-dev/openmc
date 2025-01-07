@@ -313,6 +313,7 @@ public:
   static int advance_to_boundary_from_void(GeometryState& p);
 
 protected:
+
   Direction camera_x_axis() const
   {
     return {camera_to_model_[0], camera_to_model_[3], camera_to_model_[6]};
@@ -356,7 +357,12 @@ private:
    */
   double orthographic_width_ {0.0};
 
-  // Cached camera-to-model matrix
+  /*
+  * Cached camera-to-model matrix with column vectors of axes. The x-axis is
+  * the vector between the camera_position_ and look_at_; the y-axis is the
+  * cross product of the x-axis with the up_ vector, and the z-axis is the cross
+  * product of the x and y axes.
+  */
   std::array<double, 9> camera_to_model_;
 };
 

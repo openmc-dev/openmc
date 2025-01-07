@@ -1,7 +1,8 @@
 #include "openmc/mesh.h"
-#include <algorithm> // for copy, equal, min, min_element
-#include <cmath>     // for ceil
-#include <cstddef>   // for size_t
+#include <algorithm>      // for copy, equal, min, min_element
+#define _USE_MATH_DEFINES // to make M_PI declared in Intel and MSVC compilers
+#include <cmath>          // for ceil
+#include <cstddef>        // for size_t
 #include <gsl/gsl-lite.hpp>
 #include <string>
 

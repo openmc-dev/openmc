@@ -144,10 +144,6 @@ def test_projection_plot_roundtrip(myprojectionplot):
     assert xml_plot.level == myprojectionplot.level
 
 
-
-
-
-
 def test_from_geometry():
     width = 25.
     s = openmc.Sphere(r=width/2, boundary_type='vacuum')

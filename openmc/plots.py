@@ -1184,6 +1184,9 @@ class RayTracePlot(PlotBase):
         self.camera_position = get_elem_tuple(elem, "camera_position", float)
         self.look_at = get_elem_tuple(elem, "look_at", float)
 
+        if elem.find("background") is not None:
+            self.background = get_elem_tuple(elem, "background")
+
         # Set masking information
         mask_elem = elem.find("mask")
         if mask_elem is not None:
@@ -1367,27 +1370,27 @@ class ProjectionPlot(RayTracePlot):
         """
 
         plot_id = int(elem.get("id"))
-        plot = cls(plot_id)
+        plot_name = get_text(elem, 'name', '')
+        plot = cls(plot_id, plot_name)
         plot.type = "projection"
 
         plot._read_xml_attributes(elem)
 
         # Attempt to get wireframe thickness.May not be present
-        wireframe_thickness = elem.get("wireframe_thickness")
-        if wireframe_thickness:
-            plot.wireframe_thickness = int(wireframe_thickness)
+        wireframe_thickness = elem.find("wireframe_thickness")
+        if wireframe_thickness is not None:
+            plot.wireframe_thickness = int(wireframe_thickness.text)
         wireframe_color = elem.get("wireframe_color")
         if wireframe_color:
             plot.wireframe_color = [int(item) for item in wireframe_color]
 
         # Set plot colors
         for color_elem in elem.findall("color"):
-            uid = color_elem.get("id")
-            plot.colors[uid] = get_elem_tuple(color_elem, "rgb")
+            uid = int(color_elem.get("id"))
+            plot.colors[uid] = tuple(int(i) for i in get_text(color_elem, 'rgb').split())
             plot.xs[uid] = float(color_elem.get("xs"))
 
         return plot
-
 
 class PhongPlot(RayTracePlot):
 

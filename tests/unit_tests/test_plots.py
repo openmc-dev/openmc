@@ -4,6 +4,8 @@ import openmc
 import openmc.examples
 import pytest
 
+import openmc.plots
+
 
 @pytest.fixture(scope='module')
 def myplot():
@@ -116,6 +118,34 @@ def test_repr(myplot):
 def test_repr_proj(myprojectionplot):
     r = repr(myprojectionplot)
     assert isinstance(r, str)
+
+def test_projection_plot_roundtrip(myprojectionplot):
+
+    elem = myprojectionplot.to_xml_element()
+
+    xml_plot = openmc.ProjectionPlot.from_xml_element(elem)
+
+    svg_colors = openmc.plots._SVG_COLORS
+
+    assert xml_plot.name == myprojectionplot.name
+    assert xml_plot.look_at == myprojectionplot.look_at
+    assert xml_plot.camera_position == myprojectionplot.camera_position
+    assert xml_plot.pixels == myprojectionplot.pixels
+    assert xml_plot.filename == myprojectionplot.filename
+    assert xml_plot.background == svg_colors[myprojectionplot.background]
+    assert xml_plot.color_by == myprojectionplot.color_by
+    expected_colors = {m.id: svg_colors[c] for m, c in myprojectionplot.colors.items()}
+    assert xml_plot.colors == expected_colors
+    # TODO: needs geometry information
+    # assert xml_plot.mask_components == myprojectionplot.mask_components
+    assert xml_plot.mask_background == svg_colors[myprojectionplot.mask_background]
+    # assert xml_plot.overlap_color == svg_colors[myprojectionplot.overlap_color]
+    assert xml_plot.wireframe_thickness == myprojectionplot.wireframe_thickness
+    assert xml_plot.level == myprojectionplot.level
+
+
+
+
 
 
 def test_from_geometry():

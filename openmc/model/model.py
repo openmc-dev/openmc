@@ -16,7 +16,6 @@ from openmc.dummy_comm import DummyCommunicator
 from openmc.executor import _process_CLI_arguments
 from openmc.checkvalue import check_type, check_value
 from openmc.exceptions import InvalidIDError
-import openmc.lib
 from openmc.utility_funcs import change_directory
 
 

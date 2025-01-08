@@ -3,6 +3,7 @@ from math import pi
 import numpy as np
 import pytest
 import openmc
+from pathlib import Path
 
 
 @pytest.mark.parametrize("val_left,val_right", [(0, 0), (-1., -1.), (2.0, 2)])
@@ -449,3 +450,70 @@ def test_mesh_get_homogenized_materials():
     m5, = mesh_void.get_homogenized_materials(
         model, n_samples=1000, include_void=False)
     assert m5.get_mass_density('H1') == pytest.approx(1.0)
+
+
+def test_umesh(run_in_tmpdir, request):
+    """Performs a minimal UnstructuredMesh simulation, reads in the resulting statepoint
+    file and writes the mesh data to vtk and hdf files. It is necessary to read in the
+    unstructured mesh from a statepoint file to ensure it has all the required attributes
+    """
+
+    surf1 = openmc.Sphere(R=1000.0, boundary_type="vacuum")
+    cell1 = openmc.Cell(region=-surf1)
+    my_geometry = openmc.Geometry([cell1])
+
+    umesh = openmc.UnstructuredMesh(
+        request.path.parent.parent
+        / "regression_tests/unstructured_mesh/test_mesh_dagmc_tets.vtk",
+        "moab",
+    )
+    umesh.id = (
+        1  # setting ID to make it easier to get the mesh from the statepoint later
+    )
+    mesh_filter = openmc.MeshFilter(umesh)
+
+    # Create flux mesh tally to score alpha production
+    mesh_tally = openmc.Tally(name="test_tally")
+    mesh_tally.filters = [mesh_filter]
+    mesh_tally.scores = ["flux"]
+
+    tallies = openmc.Tallies([mesh_tally])
+
+    my_source = openmc.IndependentSource()
+    my_source.space = openmc.stats.Point((0.4, 0, 0.4))
+
+    settings = openmc.Settings()
+    settings.run_mode = "fixed source"
+    settings.batches = 1
+    settings.particles = 100
+    settings.source = my_source
+
+    my_model = openmc.Model(
+        materials=None, geometry=my_geometry, settings=settings, tallies=tallies
+    )
+
+    statepoint_file = my_model.run()
+
+    statepoint = openmc.StatePoint(statepoint_file)
+
+    my_tally = statepoint.get_tally(name="test_tally")
+
+    umesh_from_sp = statepoint.meshes[1]
+
+    umesh_from_sp.write_data_to_vtk(
+        datasets={"mean": my_tally.mean.flatten()},
+        filename="test_mesh.vtk",
+    )
+    umesh_from_sp.write_data_to_vtk(
+        datasets={"mean": my_tally.mean.flatten()},
+        filename="test_mesh.hdf",
+    )
+    with pytest.raises(ValueError):
+        # Supported file extensions are vtk or hdf, not hdf5, so this should raise an error
+        umesh_from_sp.write_data_to_vtk(
+            datasets={"mean": my_tally.mean.flatten()},
+            filename="test_mesh.hdf5",
+        )
+
+    assert Path("test_mesh.vtk").exists()
+    assert Path("test_mesh.hdf").exists()

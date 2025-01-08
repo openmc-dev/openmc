@@ -453,9 +453,10 @@ def test_mesh_get_homogenized_materials():
 
 
 def test_umesh(run_in_tmpdir, request):
-    """Performs a minimal UnstructuredMesh simulation, reads in the resulting statepoint
-    file and writes the mesh data to vtk and hdf files. It is necessary to read in the
-    unstructured mesh from a statepoint file to ensure it has all the required attributes
+    """Performs a minimal UnstructuredMesh simulation, reads in the resulting
+    statepoint file and writes the mesh data to vtk and hdf files. It is
+    necessary to read in the unstructured mesh from a statepoint file to ensure
+    it has all the required attributes
     """
 
     surf1 = openmc.Sphere(R=1000.0, boundary_type="vacuum")
@@ -467,9 +468,8 @@ def test_umesh(run_in_tmpdir, request):
         / "regression_tests/unstructured_mesh/test_mesh_dagmc_tets.vtk",
         "moab",
     )
-    umesh.id = (
-        1  # setting ID to make it easier to get the mesh from the statepoint later
-    )
+    # setting ID to make it easier to get the mesh from the statepoint later
+    umesh.id = 1
     mesh_filter = openmc.MeshFilter(umesh)
 
     # Create flux mesh tally to score alpha production
@@ -480,12 +480,11 @@ def test_umesh(run_in_tmpdir, request):
     tallies = openmc.Tallies([mesh_tally])
 
     my_source = openmc.IndependentSource()
-    my_source.space = openmc.stats.Point((0.4, 0, 0.4))
 
     settings = openmc.Settings()
     settings.run_mode = "fixed source"
-    settings.batches = 1
-    settings.particles = 100
+    settings.batches = 2
+    settings.particles = 10
     settings.source = my_source
 
     my_model = openmc.Model(
@@ -500,19 +499,25 @@ def test_umesh(run_in_tmpdir, request):
 
     umesh_from_sp = statepoint.meshes[1]
 
-    umesh_from_sp.write_data_to_vtk(
-        datasets={"mean": my_tally.mean.flatten()},
-        filename="test_mesh.vtk",
-    )
-    umesh_from_sp.write_data_to_vtk(
-        datasets={"mean": my_tally.mean.flatten()},
-        filename="test_mesh.hdf",
-    )
+    datasets={
+        "mean": my_tally.mean.flatten(),
+        "std_dev": my_tally.std_dev.flatten()
+    }
+
+    umesh_from_sp.write_data_to_vtk(datasets=datasets, filename="test_mesh.vtk")
+    umesh_from_sp.write_data_to_vtk(datasets=datasets, filename="test_mesh.hdf")
+
     with pytest.raises(ValueError):
         # Supported file extensions are vtk or hdf, not hdf5, so this should raise an error
         umesh_from_sp.write_data_to_vtk(
-            datasets={"mean": my_tally.mean.flatten()},
+            datasets=datasets,
             filename="test_mesh.hdf5",
+        )
+    with pytest.raises(ValueError):
+        # Supported file extensions are vtk or hdf, not hdf5, so this should raise an error
+        umesh_from_sp.write_data_to_vtk(
+            datasets={'incorrectly_shaped_data': np.array(([1,2,3]))},
+            filename="test_mesh.hdf",
         )
 
     assert Path("test_mesh.vtk").exists()

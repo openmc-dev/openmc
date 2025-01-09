@@ -74,12 +74,13 @@ GeometryState::advance_to_boundary_from_void() {
   // if no intersection or near-infinite intersection, reset
   // boundary information
   if (boundary().distance > 1e300) {
-    boundary().reset();
+    boundary().distance = INFTY;
+    boundary().surface_index = -1;
     return;
   }
 
   // move the particle up to (and just past) the boundary
-  // move_distance(boundary().distance + TINY_BIT);
+  move_distance(boundary().distance + TINY_BIT);
 }
 
 void GeometryState::move_distance(double length)

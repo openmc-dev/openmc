@@ -1640,10 +1640,9 @@ void Ray::trace()
 
   // Advance to the boundary of the model
   while (!inside_cell) {
-    // advance_to_boundary_from_void();
-    // first_surface_ = boundary().surface_index;
-    first_surface_ = RayTracePlot::advance_to_boundary_from_void(*this);
-
+    advance_to_boundary_from_void();
+    first_surface_ = boundary().surface_index;
+    // first_surface_ = RayTracePlot::advance_to_boundary_from_void(*this);
     intersection_found_ = first_surface_ != -1; // -1 if no surface found
                                                 //
     inside_cell = exhaustive_find_cell(*this, settings::verbosity >= 10);

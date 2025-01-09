@@ -254,3 +254,28 @@ def test_dagmc_xml(model):
 
     for xml_mats, model_mats in zip(xml_dagmc_univ._material_overrides.values(), dag_univ._material_overrides.values()):
         assert all([xml_mat.id == orig_mat.id for xml_mat, orig_mat in zip(xml_mats, model_mats)])
+
+
+def test_dagmc_vacuum(model):
+    # Set the environment
+    mats = {}
+    mats["Vacuum"] = openmc.Material(1, name="Vacuum")
+    mats["Vacuum"].add_nuclide("U235", 0.03)
+    mats["Vacuum"].add_nuclide("U238", 0.97)
+    mats["Vacuum"].add_nuclide("O16", 2.0)
+    mats["Vacuum"].set_density("g/cm3", 10.0)
+
+    for univ in model.geometry.get_all_universes().values():
+        if isinstance(univ, openmc.DAGMCUniverse):
+            dag_univ = univ
+            break
+
+    for mat in dag_univ.material_names:
+        dag_univ.replace_material_assignment(mat, mats["Vacuum"])
+
+    model.export_to_xml()
+    # ensure that particles will be lost when cell intersections can't be found
+    # due to the removed triangles in this model
+    with pytest.raises(RuntimeError, match='Maximum number of lost particles has been reached.'):
+        openmc.run()
+  

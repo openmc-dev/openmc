@@ -1769,10 +1769,11 @@ class Cone(QuadricMixin, Surface):
     z0 : float, optional
         z-coordinate of the apex in [cm]. Defaults to 0.
     r2 : float, optional
-        Parameter related to the aperture [:math:`\\rm cm^2`]. This is the
-        square of the radius of the cone 1 cm from the apex. This can also be
-        treated as the square of the cone's slope relative to its axis of
-        revolution. Defaults to 1.
+        This parameter is the square of the slope of the cone. It is defined as
+        :math:`\\left(\\frac{r}{h}\\right)^2` for a radius, :math:`r`, an axial
+        distance :math:`h` from the apex. An easy way to define this quantity is
+        to take the square of the radius of the cone (in cm) 1 cm from the apex.
+        Defaults to 1.
     dx : float, optional
         x-component of the vector representing the axis of the cone.
         Defaults to 0.
@@ -1806,7 +1807,7 @@ class Cone(QuadricMixin, Surface):
     z0 : float
         z-coordinate of the apex in [cm]
     r2 : float
-        Parameter related to the aperture [:math:`\\rm cm^2`]
+        Parameter related to the aperture
     dx : float
         x-component of the vector representing the axis of the cone.
     dy : float
@@ -1928,10 +1929,11 @@ class XCone(QuadricMixin, Surface):
     z0 : float, optional
         z-coordinate of the apex in [cm]. Defaults to 0.
     r2 : float, optional
-        Parameter related to the aperture [:math:`\\rm cm^2`]. This is t1he
-        square of the radius of the cone 1 cm from the apex. This can also be
-        treated as the square of the cone's slope relative to its axis of
-        revolution. Defaults to 1.
+        This parameter is the square of the slope of the cone. It is defined as
+        :math:`\\left(\\frac{r}{h}\\right)^2` for a radius, :math:`r`, an axial
+        distance :math:`h` from the apex. An easy way to define this quantity is
+        to take the square of the radius of the cone (in cm) 1 cm from the apex.
+        Defaults to 1.
     boundary_type : {'transmission', 'vacuum', 'reflective', 'white'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
@@ -1955,7 +1957,7 @@ class XCone(QuadricMixin, Surface):
     z0 : float
         z-coordinate of the apex in [cm]
     r2 : float
-        Parameter related to the aperture [:math:`\\rm cm^2`]
+        Parameter related to the aperture
     boundary_type : {'transmission', 'vacuum', 'reflective', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
@@ -2030,10 +2032,11 @@ class YCone(QuadricMixin, Surface):
     z0 : float, optional
         z-coordinate of the apex in [cm]. Defaults to 0.
     r2 : float, optional
-        Parameter related to the aperture [:math:`\\rm cm^2`]. This is the
-        square of the radius of the cone 1 cm from the apex. This can also be
-        treated as the square of the cone's slope relative to its axis of
-        revolution. Defaults to 1.
+        This parameter is the square of the slope of the cone. It is defined as
+        :math:`\\left(\\frac{r}{h}\\right)^2` for a radius, :math:`r`, an axial
+        distance :math:`h` from the apex. An easy way to define this quantity is
+        to take the square of the radius of the cone (in cm) 1 cm from the apex.
+        Defaults to 1.
     boundary_type : {'transmission', 'vacuum', 'reflective', 'white'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
@@ -2057,7 +2060,7 @@ class YCone(QuadricMixin, Surface):
     z0 : float
         z-coordinate of the apex in [cm]
     r2 : float
-        Parameter related to the aperture [:math:`\\rm cm^2`].
+        Parameter related to the aperture
     boundary_type : {'transmission', 'vacuum', 'reflective', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
@@ -2132,10 +2135,11 @@ class ZCone(QuadricMixin, Surface):
     z0 : float, optional
         z-coordinate of the apex in [cm]. Defaults to 0.
     r2 : float, optional
-        Parameter related to the aperture [:math:`\\rm cm^2`]. This is the
-        square of the radius of the cone 1 cm from the apex. This can also be
-        treated as the square of the cone's slope relative to its axis of
-        revolution. Defaults to 1.
+        This parameter is the square of the slope of the cone. It is defined as
+        :math:`\\left(\\frac{r}{h}\\right)^2` for a radius, :math:`r`, an axial
+        distance :math:`h` from the apex. An easy way to define this quantity is
+        to take the square of the radius of the cone (in cm) 1 cm from the apex.
+        Defaults to 1.
     boundary_type : {'transmission', 'vacuum', 'reflective', 'white'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
@@ -2159,7 +2163,7 @@ class ZCone(QuadricMixin, Surface):
     z0 : float
         z-coordinate of the apex in [cm]
     r2 : float
-        Parameter related to the aperture [:math:`\\rm cm^2`].
+        Parameter related to the aperture.
     boundary_type : {'transmission', 'vacuum', 'reflective', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.

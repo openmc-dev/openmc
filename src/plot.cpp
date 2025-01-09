@@ -1118,7 +1118,7 @@ int RayTracePlot::advance_to_boundary_from_void(GeometryState& p)
 {
   double min_dist {INFINITY};
   auto root_coord = p.coord(0);
-  Universe* uni = model::universes[model::root_universe].get();
+  const auto& uni = model::universes[model::root_universe];
   int intersected_surface = -1;
   for (auto c_i : uni->cells_) {
     auto dist =
@@ -1218,7 +1218,7 @@ std::pair<Position, Direction> RayTracePlot::get_pixel_ray(
   std::pair<Position, Direction> result;
 
   // Generate the starting position/direction of the ray
-  if (orthographic_width_ == 0.0) { // perspective projection
+  if (orthographic_width_ == C_NONE) { // perspective projection
     Direction camera_local_vec;
     camera_local_vec.x = focal_plane_dist;
     camera_local_vec.y = -0.5 * dx + horiz * dx / p0;
@@ -1617,7 +1617,7 @@ void PhongPlot::set_diffuse_fraction(pugi::xml_node node)
 
 void Ray::compute_distance()
 {
-  dist_ = distance_to_boundary(*this);
+  boundary() = distance_to_boundary(*this);
 }
 
 void Ray::trace()
@@ -1694,37 +1694,37 @@ void Ray::trace()
     // if we hit the edge of the model, so stop
     // the particle in that case. Also, just exit
     // if a negative distance was somehow computed.
-    if (dist_.distance == INFTY || dist_.distance == INFINITY ||
-        dist_.distance < 0) {
+    if (boundary().distance == INFTY || boundary().distance == INFINITY ||
+        boundary().distance < 0) {
       return;
     }
 
     // See below comment where call_on_intersection is checked in an
     // if statement for an explanation of this.
     bool call_on_intersection {true};
-    if (dist_.distance < 10 * TINY_BIT) {
+    if (boundary().distance < 10 * TINY_BIT) {
       call_on_intersection = false;
     }
 
     // DAGMC surfaces expect us to go a little bit further than the advance
     // distance to properly check cell inclusion.
-    dist_.distance += TINY_BIT;
+    boundary().distance += TINY_BIT;
 
     // Advance particle, prepare for next intersection
     for (int lev = 0; lev < n_coord(); ++lev) {
-      coord(lev).r += dist_.distance * coord(lev).u;
+      coord(lev).r += boundary().distance * coord(lev).u;
     }
-    surface() = dist_.surface_index;
+    surface() = boundary().surface_index;
     n_coord_last() = n_coord();
-    n_coord() = dist_.coord_level;
-    if (dist_.lattice_translation[0] != 0 ||
-        dist_.lattice_translation[1] != 0 ||
-        dist_.lattice_translation[2] != 0) {
-      cross_lattice(*this, dist_, settings::verbosity >= 10);
+    n_coord() = boundary().coord_level;
+    if (boundary().lattice_translation[0] != 0 ||
+        boundary().lattice_translation[1] != 0 ||
+        boundary().lattice_translation[2] != 0) {
+      cross_lattice(*this, boundary(), settings::verbosity >= 10);
     }
 
     // Record how far the ray has traveled
-    traversal_distance_ += dist_.distance;
+    traversal_distance_ += boundary().distance;
 
     inside_cell = neighbor_list_find_cell(*this, settings::verbosity >= 10);
     i_surface_ = std::abs(surface()) - 1;
@@ -1766,7 +1766,7 @@ void ProjectionRay::on_intersection()
     plot_.color_by_ == PlottableInterface::PlotColorBy::mats
       ? material()
       : lowest_coord().cell,
-    traversal_distance_, std::abs(dist().surface_index));
+    traversal_distance_, std::abs(boundary().surface_index));
 }
 
 void PhongRay::on_intersection()

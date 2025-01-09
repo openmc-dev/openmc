@@ -354,7 +354,7 @@ private:
   /* The horizontal thickness, if using an orthographic projection.
    * If set to zero, we assume using a perspective projection.
    */
-  double orthographic_width_ {0.0};
+  double orthographic_width_ {C_NONE};
 
   /*
    * Cached camera-to-model matrix with column vectors of axes. The x-axis is
@@ -474,12 +474,6 @@ public:
    */
   void trace();
 
-  /*
-   * Implementation code has read-only access to the distance
-   * between the ray and the next cell it's intersecting
-   */
-  const BoundaryInfo& dist() { return dist_; }
-
   const int& first_surface() { return first_surface_; }
 
   const int& i_surface() { return i_surface_; }
@@ -508,8 +502,6 @@ private:
   // Records the first intersected surface on the model
   int first_surface_ {-1};
   int i_surface_ {-1};
-
-  BoundaryInfo dist_;
 };
 
 class ProjectionRay : public Ray {

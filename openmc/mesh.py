@@ -2369,7 +2369,7 @@ class UnstructuredMesh(MeshBase):
         Parameters
         ----------
         filename : str or pathlib.Path
-            Name of the VTK file to write. If the filename ends in '.hdf' then a VTKHDF
+            Name of the VTK file to write. If the filename ends in '.vtkhdf' then a VTKHDF
             format file will be written and can be opened with Paraview versions 5.13.0
             and above, if the filename ends in '.vtk' then a .vtk file will be written.
         datasets : dict
@@ -2381,7 +2381,7 @@ class UnstructuredMesh(MeshBase):
             volume of the mesh elements
         """
 
-        if Path(filename).suffix == ".hdf":
+        if Path(filename).suffix == ".vtkhdf":
 
             def append_dataset(dset, array):
                 """Convenience function to append data to an HDF5 dataset"""
@@ -2558,7 +2558,7 @@ class UnstructuredMesh(MeshBase):
 
         else:
             raise ValueError(
-                f"Unsupported file extension for '{filename}'. Extension must be '.hdf' or '.vtk'."
+                f"Unsupported file extension for '{filename}'. Extension must be '.vtkhdf' or '.vtk'."
             )
 
     @classmethod

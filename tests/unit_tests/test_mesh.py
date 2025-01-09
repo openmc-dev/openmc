@@ -451,7 +451,11 @@ def test_mesh_get_homogenized_materials():
         model, n_samples=1000, include_void=False)
     assert m5.get_mass_density('H1') == pytest.approx(1.0)
 
+skip_if_no_dagmc = pytest.mark.skipif(
+    not openmc.lib._dagmc_enabled(),
+    reason="DAGMC CAD geometry is not enabled.")
 
+@skip_if_no_dagmc
 def test_umesh(run_in_tmpdir, request):
     """Performs a minimal UnstructuredMesh simulation, reads in the resulting
     statepoint file and writes the mesh data to vtk and hdf files. It is

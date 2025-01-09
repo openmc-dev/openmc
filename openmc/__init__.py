@@ -17,6 +17,7 @@ from openmc.volume import *
 from openmc.weight_windows import *
 from openmc.surface import *
 from openmc.universe import *
+from openmc.dagmc import *
 from openmc.source import *
 from openmc.settings import *
 from openmc.lattice import *

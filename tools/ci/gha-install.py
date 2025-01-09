@@ -24,7 +24,8 @@ def install(omp=False, mpi=False, phdf5=False, dagmc=False, libmesh=False, ncrys
         cmake_args.append('-DHDF5_PREFER_PARALLEL=OFF')
 
     if dagmc:
-        cmake_args.append('-DOPENMC_USE_DAGMC=ON')
+        cmake_cmd.append('-DOPENMC_USE_DAGMC=ON')
+        cmake_cmd.append('-DOPENMC_USE_UWUW=ON')
         dagmc_path = os.environ.get('HOME') + '/DAGMC'
         cmake_args.append('-DCMAKE_PREFIX_PATH=' + dagmc_path)
 

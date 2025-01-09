@@ -257,25 +257,45 @@ def test_dagmc_xml(model):
 
 
 def test_dagmc_vacuum(model):
-    # Set the environment
-    mats = {}
-    mats["Vacuum"] = openmc.Material(1, name="Vacuum")
-    mats["Vacuum"].add_nuclide("U235", 0.03)
-    mats["Vacuum"].add_nuclide("U238", 0.97)
-    mats["Vacuum"].add_nuclide("O16", 2.0)
-    mats["Vacuum"].set_density("g/cm3", 10.0)
+
+    # Verify Not_A_Vacuum is not detected as a Vacuum
+    mat_not_a_vacuum = openmc.Material(1, name="Not_A_Vacuum")
+    mat_not_a_vacuum.add_nuclide("U235", 0.03)
+    mat_not_a_vacuum.add_nuclide("U238", 0.97)
+    mat_not_a_vacuum.add_nuclide("O16", 2.0)
+    mat_not_a_vacuum.set_density("g/cm3", 10.0)
 
     for univ in model.geometry.get_all_universes().values():
         if isinstance(univ, openmc.DAGMCUniverse):
             dag_univ = univ
             break
 
+    # Replacing all the materials with vacuum
     for mat in dag_univ.material_names:
-        dag_univ.replace_material_assignment(mat, mats["Vacuum"])
+        dag_univ.replace_material_assignment(mat, mat_not_a_vacuum)
+
+    model.export_to_xml()
+    # Ensure this run as expected.
+    openmc.run()
+
+    # Verify that the vacuum is detected as a Vacuum
+    mat_a_vacuum = openmc.Material(1, name="Vacuum")
+    mat_a_vacuum.add_nuclide("U235", 0.03)
+    mat_a_vacuum.add_nuclide("U238", 0.97)
+    mat_a_vacuum.add_nuclide("O16", 2.0)
+    mat_a_vacuum.set_density("g/cm3", 10.0)
+
+    for univ in model.geometry.get_all_universes().values():
+        if isinstance(univ, openmc.DAGMCUniverse):
+            dag_univ = univ
+            break
+
+    # Replacing all the materials with vacuum
+    for mat in dag_univ.material_names:
+        dag_univ.replace_material_assignment(mat, at_a_vacuum)
 
     model.export_to_xml()
     # ensure that particles will be lost when cell intersections can't be found
     # due to the removed triangles in this model
     with pytest.raises(RuntimeError, match='Maximum number of lost particles has been reached.'):
         openmc.run()
-  

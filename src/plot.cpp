@@ -1128,13 +1128,12 @@ int RayTracePlot::advance_to_boundary_from_void(GeometryState& p)
       intersected_surface = dist.second;
     }
   }
+
   if (min_dist > 1e300)
     return -1;
-  else { // advance the particle
-    for (int j = 0; j < p.n_coord(); ++j)
-      p.coord(j).r += (min_dist + TINY_BIT) * p.coord(j).u;
-    return std::abs(intersected_surface);
-  }
+
+  p.move_distance(min_dist + TINY_BIT);
+  return std::abs(intersected_surface);
 }
 
 bool ProjectionPlot::trackstack_equivalent(
@@ -1641,7 +1640,10 @@ void Ray::trace()
 
   // Advance to the boundary of the model
   while (!inside_cell) {
+    // advance_to_boundary_from_void();
+    // first_surface_ = boundary().surface_index;
     first_surface_ = RayTracePlot::advance_to_boundary_from_void(*this);
+
     intersection_found_ = first_surface_ != -1; // -1 if no surface found
                                                 //
     inside_cell = exhaustive_find_cell(*this, settings::verbosity >= 10);

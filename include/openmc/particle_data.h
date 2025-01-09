@@ -189,6 +189,13 @@ struct BoundaryInfo {
   int coord_level;       //!< coordinate level after crossing boundary
   array<int, 3>
     lattice_translation {}; //!< which way lattice indices will change
+
+  void reset() {
+    distance = INFINITY;
+    surface_index = 0;
+    coord_level = 0;
+    lattice_translation = {0, 0, 0};
+  }
 };
 
 /*
@@ -221,6 +228,12 @@ public:
     }
     n_coord_last_ = 1;
   }
+
+  //! moves the particle by the distance length to its next location
+  //! \param length the distance the particle is moved
+  void move_distance(double distance);
+
+  void advance_to_boundary_from_void();
 
   // Initialize all internal state from position and direction
   void init_from_r_u(Position r_a, Direction u_a)

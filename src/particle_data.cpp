@@ -56,6 +56,39 @@ GeometryState::GeometryState()
   clear();
 }
 
+void
+GeometryState::advance_to_boundary_from_void() {
+  auto root_coord = this->coord(0);
+  const auto& root_universe = model::universes[model::root_universe];
+  boundary().reset();
+
+  for (auto c_i : root_universe->cells_) {
+    auto dist =
+      model::cells.at(c_i)->distance(root_coord.r, root_coord.u, 0, this);
+    if (dist.first < boundary().distance) {
+      boundary().distance = dist.first;
+      boundary().surface_index = std::abs(dist.second);
+    }
+  }
+
+  // if no intersection or near-infinite intersection, reset
+  // boundary information
+  if (boundary().distance > 1e300) {
+    boundary().reset();
+    return;
+  }
+
+  // move the particle up to (and just past) the boundary
+  // move_distance(boundary().distance + TINY_BIT);
+}
+
+void GeometryState::move_distance(double length)
+{
+  for (int j = 0; j < n_coord(); ++j) {
+    coord(j).r += length * coord(j).u;
+  }
+}
+
 ParticleData::ParticleData()
 {
   zero_delayed_bank();

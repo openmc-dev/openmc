@@ -509,10 +509,10 @@ def test_umesh(run_in_tmpdir, request):
     }
 
     umesh_from_sp.write_data_to_vtk(datasets=datasets, filename="test_mesh.vtk")
-    umesh_from_sp.write_data_to_vtk(datasets=datasets, filename="test_mesh.hdf")
+    umesh_from_sp.write_data_to_vtk(datasets=datasets, filename="test_mesh.vtkhdf")
 
     with pytest.raises(ValueError, match="Unsupported file extension"):
-        # Supported file extensions are vtk or hdf, not hdf5, so this should raise an error
+        # Supported file extensions are vtk or vtkhdf, not hdf5, so this should raise an error
         umesh_from_sp.write_data_to_vtk(
             datasets=datasets,
             filename="test_mesh.hdf5",
@@ -521,8 +521,8 @@ def test_umesh(run_in_tmpdir, request):
         # The shape of the data should match the shape of the mesh, so this should raise an error
         umesh_from_sp.write_data_to_vtk(
             datasets={'incorrectly_shaped_data': np.array(([1,2,3]))},
-            filename="test_mesh.hdf",
+            filename="test_mesh.vtkhdf",
         )
 
     assert Path("test_mesh.vtk").exists()
-    assert Path("test_mesh.hdf").exists()
+    assert Path("test_mesh.vtkhdf").exists()

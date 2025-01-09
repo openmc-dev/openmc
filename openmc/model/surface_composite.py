@@ -748,10 +748,9 @@ class XConeOneSided(CompositeSurface):
     z0 : float, optional
         z-coordinate of the apex. Defaults to 0.
     r2 : float, optional
-        Parameter related to the aperture [:math:`\\rm cm^2`]. This is the
-        square of the radius of the cone 1 cm from the apex. This can also be
-        treated as the square of the cone's slope relative to its axis of
-        revolution. Defaults to 1.
+        This parameter is the square of the slope of the cone.
+        It is defined as :math:`\left(\frac{r}{h}\right)^2` for a radius, :math:`r`, an axial distance :math:`h` from the apex.
+        An easy way to define this quantity is to take the square of the radius of the cone (in cm) 1 cm from the apex.
     up : bool
         Whether to select the side of the cone that extends to infinity in the
         positive direction of the coordinate axis (the positive half-space of

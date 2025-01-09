@@ -258,6 +258,8 @@ def test_dagmc_xml(model):
 
 def test_dagmc_vacuum(model):
 
+    openmc.run()
+
     # Verify Not_A_Vacuum is not detected as a Vacuum
     mat_not_a_vacuum = openmc.Material(1, name="Not_A_Vacuum")
     mat_not_a_vacuum.add_nuclide("U235", 0.03)

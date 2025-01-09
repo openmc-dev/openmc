@@ -458,7 +458,7 @@ skip_if_no_dagmc = pytest.mark.skipif(
 @skip_if_no_dagmc
 def test_umesh(run_in_tmpdir, request):
     """Performs a minimal UnstructuredMesh simulation, reads in the resulting
-    statepoint file and writes the mesh data to vtk and hdf files. It is
+    statepoint file and writes the mesh data to vtk and vtkhdf files. It is
     necessary to read in the unstructured mesh from a statepoint file to ensure
     it has all the required attributes
     """

@@ -633,7 +633,7 @@ void score_collision_sensitivity(Particle& p)
       double score;
       switch (sens.sens_reaction) {
       case SCORE_TOTAL:
-        score = 1.0;
+        score = 0.0;
         break;
       case SCORE_SCATTER:
         score = 1.0;

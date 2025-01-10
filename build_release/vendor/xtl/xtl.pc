@@ -1,0 +1,7 @@
+prefix=/usr/local
+includedir=${prefix}/include
+
+Name: xtl
+Description: Basic tools (containers, algorithms) used by other quantstack packages.
+Version: 0.7.7
+Cflags: -I${includedir}

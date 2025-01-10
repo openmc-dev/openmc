@@ -505,7 +505,7 @@ class StatePoint:
 
     @property
     def tally_sensitivities(self):
-        if not self._sens_read:
+        if not self._senss_read:
             # Populate the dictionary if any sensitivities are present.
             if 'sensitivities' in self._f['tallies']:
                 # Read the sensitivity ids.

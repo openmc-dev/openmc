@@ -1502,7 +1502,7 @@ class ImportanceFilter(Filter):
 
     @property
     def bins(self):
-        raise AttributeError('EnergyFunctionFilters have no bins.')
+        raise AttributeError('ImportanceFilter have no bins.')
 
     @property
     def num_bins(self):
@@ -1510,7 +1510,7 @@ class ImportanceFilter(Filter):
     
     @bins.setter
     def bins(self, bins):
-        raise RuntimeError('EnergyFunctionFilters have no bins.')
+        raise RuntimeError('ImportanceFilter have no bins.')
 
     @classmethod
     def from_hdf5(cls, group, **kwargs):
@@ -1639,6 +1639,15 @@ class ImportanceFilter(Filter):
         subelement.text = str(self.mesh.id)
         
         return element
+        
+    @classmethod
+    def from_xml_element(cls, elem, **kwargs):
+        filter_id = int(elem.get('id'))
+        importance = [float(x) for x in get_text(elem, 'importance').split()]
+        mesh_id = int(get_text(elem, 'mesh'))
+        mesh_obj = kwargs['meshes'][mesh_id]
+        out = cls(importance, mesh_obj, filter_id=filter_id)
+        return out
 
 
 class EnergyoutFilter(EnergyFilter):

@@ -4,6 +4,7 @@ import lxml.etree as ET
 
 import openmc.checkvalue as cv
 from .mixin import EqualityMixin, IDManagerMixin
+from ._xml import get_text
 
 
 class Sensitivity(EqualityMixin, IDManagerMixin):
@@ -39,7 +40,7 @@ class Sensitivity(EqualityMixin, IDManagerMixin):
     next_id = 1
     used_ids = set()
 
-    def __init__(self, sensitivity_id=None, variable=None, material=None,
+    def __init__(self, sensitivity_id=None, variable=None,
                  nuclide=None, reaction=None,energy=None):
         # Initialize Tally class attributes
         self.id = sensitivity_id
@@ -122,3 +123,12 @@ class Sensitivity(EqualityMixin, IDManagerMixin):
             subelement.text = ' '.join(str(e) for e in self.energy)
 
         return element
+    
+    @classmethod
+    def from_xml_element(cls, elem):
+        sens_id = int(elem.get("id"))
+        variable = elem.get("variable")
+        energy = [float(x) for x in get_text(elem, 'energy').split()]
+        nuclide = elem.get("nuclide")
+        reaction = elem.get("reaction") if variable == "cross_section" else None        
+        return cls(sens_id, variable, nuclide, reaction, energy)

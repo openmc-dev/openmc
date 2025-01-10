@@ -3410,16 +3410,16 @@ class Tallies(cv.CheckedList):
             derivatives[deriv.id] = deriv
 
         # Read sensitivity elements
-        # senss = {}
-        # for e in elem.findall('sensitivity'):
-        #     sens = openmc.Sensitivity.from_xml_element(e)
-        #     senss[sens.id] = sens
+        senss = {}
+        for e in elem.findall('sensitivity'):
+            sens = openmc.Sensitivity.from_xml_element(e)
+            senss[sens.id] = sens
         
         # Read tally elements
         tallies = []
         for e in elem.findall('tally'):
             tally = openmc.Tally.from_xml_element(
-                e, filters=filters, derivatives=derivatives,
+                e, filters=filters, derivatives=derivatives, sensitivity=senss
             )
             tallies.append(tally)
 

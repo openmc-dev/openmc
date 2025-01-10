@@ -2512,13 +2512,14 @@ void score_collision_sensitivity_tally(Particle& p, int i_tally, int start_index
   // Get the pre-collision energy of the particle.
   auto E = p.E_last();
   
-  // Determine how much weight was absorbed due to survival biasing
-  double wgt_absorb = settings::survival_biasing
-                        ? p.wgt_last() *
-                            p.neutron_xs(p.event_nuclide()).absorption /
-                            p.neutron_xs(p.event_nuclide()).total
-                        : 0.0;
-
+  // Determine how much weight was absorbed due to survival biasing 
+  double wgt_absorb = 0.0;  
+  if (settings::survival_biasing) {           
+      wgt_absorb = p.wgt_last() * p.neutron_xs(i_nuclide).absorption /
+                              p.neutron_xs(i_nuclide).total;
+      flux = (p.wgt_last() - wgt_absorb) / p.macro_xs().total;                             
+  }
+  
   for (auto i = 0; i < tally.scores_.size(); ++i) {
     auto score_bin = tally.scores_[i];
     auto score_index = start_index + i;
@@ -2533,7 +2534,7 @@ void score_collision_sensitivity_tally(Particle& p, int i_tally, int start_index
         if (settings::survival_biasing) {
           // We need to account for the fact that some weight was already
           // absorbed
-          score = p.wgt_last() + wgt_absorb;
+          score = p.wgt_last() - wgt_absorb;
         } else {
           score = p.wgt_last();
         }
@@ -2557,7 +2558,7 @@ void score_collision_sensitivity_tally(Particle& p, int i_tally, int start_index
         if (settings::survival_biasing) {
           // We need to account for the fact that some weight was already
           // absorbed
-          score = (p.wgt_last() + wgt_absorb) * flux;
+          score = (p.wgt_last() - wgt_absorb) * flux;
         } else {
           score = p.wgt_last() * flux;
         }
@@ -2584,7 +2585,7 @@ void score_collision_sensitivity_tally(Particle& p, int i_tally, int start_index
         if (settings::survival_biasing) {
           // We need to account for the fact that some weight was already
           // absorbed
-          score = p.wgt_last() + wgt_absorb;
+          score = p.wgt_last() - wgt_absorb;
         } else {
           score = p.wgt_last();
         }
@@ -3427,92 +3428,90 @@ void score_collision_sensitivity_tally(Particle& p, int i_tally, int start_index
           break;
         }
       }
-    } else {
-    
+    } else {      
+      
       for (int idx = 0; idx < cumulative_sensitivities.size(); idx++){
         #pragma omp atomic
         tally.results_(idx, score_index, SensitivityTallyResult::VALUE) += cumulative_sensitivities[idx]*filter_weight;      
       }  
-  
-      switch (sens.variable) {
-  
-      case SensitivityVariable::CROSS_SECTION:
-      {
-        double atom_density = 0.;
-        if (sens.sens_nuclide >= 0) {
-          auto j = model::materials[p.material()]->mat_nuclide_index_[sens.sens_nuclide];
-          if (j == C_NONE) break;
-          atom_density = model::materials[p.material()]->atom_density_(j);
-        }
-        
-        double macro_xs;
-        switch (sens.sens_reaction) {        
-          
-        case SCORE_TOTAL:
-          if (sens.sens_reaction != score_bin ) break;
-          if (sens.sens_nuclide >=0){
-              macro_xs = p.neutron_xs(sens.sens_nuclide).total * atom_density;
-          } else {
-              macro_xs = p.macro_xs().total;
-          }
-          break;
-        case SCORE_SCATTER:
-          if (sens.sens_reaction != score_bin ) break;
-          if (sens.sens_nuclide >=0){
-              macro_xs = (p.neutron_xs(sens.sens_nuclide).total 
-              - p.neutron_xs(sens.sens_nuclide).absorption) * atom_density;
-          } else {
-              macro_xs = p.macro_xs().total - p.macro_xs().absorption;
-          }
-          break;
-        case ELASTIC:
-          if (sens.sens_reaction != score_bin ) break;
-          if (sens.sens_nuclide >= 0) {
-              if (p.neutron_xs(sens.sens_nuclide).elastic == CACHE_INVALID)
-                data::nuclides[sens.sens_nuclide]->calculate_elastic_xs(p);
-              macro_xs = p.neutron_xs(sens.sens_nuclide).elastic * atom_density;
-            } 
-          break;
-        case SCORE_ABSORPTION: 
-          if (sens.sens_reaction != score_bin ) break;
-          if (sens.sens_nuclide >=0){
-              macro_xs = p.neutron_xs(sens.sens_nuclide).absorption * atom_density;
-          } else {
-              macro_xs = p.macro_xs().absorption;
-          }
-          break;
-        case SCORE_FISSION:
-          if (sens.sens_reaction != score_bin ) break;
-          if (p.macro_xs().absorption == 0) break;
-      
-          if (sens.sens_nuclide >= 0) {
-            macro_xs = p.neutron_xs(sens.sens_nuclide).fission * atom_density;
-          } else {
-            macro_xs = p.macro_xs().fission;
-          }
-          break;      
-        case N_T:
-        case N_XT:
-        case N_GAMMA:
-        case N_P:     
-        case N_A: 
-        case N_2N:
-          if (sens.sens_reaction != score_bin ) break;
-          if (sens.sens_nuclide >= 0) {
-            macro_xs = get_nuclide_xs(p, sens.sens_nuclide, sens.sens_reaction) * atom_density;
-          }
-          break;
-        }
-      
-        // Bin the energy.
-        if (E >= sens.energy_bins_.front() && E <= sens.energy_bins_.back()) {
-          auto bin = lower_bound_index(sens.energy_bins_.begin(), sens.energy_bins_.end(), E);
-          #pragma omp atomic
-          tally.previous_results_(bin, score_index, SensitivityTallyResult::VALUE) += flux * macro_xs;
-        }                
-      }
-      break;    
-      } 
+      //if (sens.sens_nuclide == p.event_nuclide()){ 
+      // switch (sens.variable) {
+      // 
+      // case SensitivityVariable::CROSS_SECTION:
+      // {         
+      //   double macro_xs;
+      //   // switch (sens.sens_reaction) {                    
+      //   //if (sens.sens_reaction == SCORE_TOTAL){
+      //   macro_xs = 1.0;
+      //   if (E >= sens.energy_bins_.front() && E <= sens.energy_bins_.back()) {
+      //       auto bin = lower_bound_index(sens.energy_bins_.begin(), sens.energy_bins_.end(), E);
+      //       #pragma omp atomic
+      //       tally.previous_results_(bin, score_index, SensitivityTallyResult::VALUE) += filter_weight;
+      //   }
+      //     // break;
+      //   //}  
+      //   // case SCORE_SCATTER:
+      //   //   if (sens.sens_reaction != score_bin ) break;
+      //   //   if (sens.sens_nuclide >=0){
+      //   //       macro_xs = (p.neutron_xs(sens.sens_nuclide).total 
+      //   //       - p.neutron_xs(sens.sens_nuclide).absorption) * atom_density;
+      //   //   } else {
+      //   //       macro_xs = p.macro_xs().total - p.macro_xs().absorption;
+      //   //   }
+      //   //   break;
+      //   // case ELASTIC:
+      //   //   // if (sens.sens_reaction != score_bin ) break;
+      //   //   if (p.event_mt() != ELASTIC) break;
+      //   //   macro_xs = 1.0;
+      //   //   // if (sens.sens_nuclide >= 0) {
+      //   //   //     if (p.neutron_xs(sens.sens_nuclide).elastic == CACHE_INVALID)
+      //   //   //       data::nuclides[sens.sens_nuclide]->calculate_elastic_xs(p);
+      //   //   //     macro_xs = p.neutron_xs(sens.sens_nuclide).elastic * atom_density;
+      //   //   //   } 
+      //   //   break;
+      //   // case SCORE_ABSORPTION: 
+      //   //   if (sens.sens_reaction != score_bin ) break;
+      //   //   if (sens.sens_nuclide >=0){
+      //   //       macro_xs = p.neutron_xs(sens.sens_nuclide).absorption * atom_density;
+      //   //   } else {
+      //   //       macro_xs = p.macro_xs().absorption;
+      //   //   }
+      //   //   break;
+      //   // case SCORE_FISSION:
+      //   //   if (sens.sens_reaction != score_bin ) break;
+      //   //   if (p.macro_xs().absorption == 0) break;
+      //   // 
+      //   //   if (sens.sens_nuclide >= 0) {
+      //   //     macro_xs = p.neutron_xs(sens.sens_nuclide).fission * atom_density;
+      //   //   } else {
+      //   //     macro_xs = p.macro_xs().fission;
+      //   //   }
+      //   //   break;      
+      //   // case N_T:
+      //   // case N_XT:
+      //   // case N_GAMMA:
+      //   // case N_P:     
+      //   // case N_A: 
+      //   // case N_2N:
+      //   //   // if (sens.sens_reaction != score_bin ) break;
+      //   //   if (p.event_mt() != sens.sens_reaction) break;
+      //   //   macro_xs = 1.0;
+      //   //   // if (sens.sens_nuclide >= 0) {
+      //   //   //   macro_xs = get_nuclide_xs(p, sens.sens_nuclide, sens.sens_reaction) * atom_density;
+      //   //   // }
+      //   //   break;
+      //   // }
+      // 
+      //   // Bin the energy.
+      //   // if (E >= sens.energy_bins_.front() && E <= sens.energy_bins_.back()) {
+      //   //   auto bin = lower_bound_index(sens.energy_bins_.begin(), sens.energy_bins_.end(), E);
+      //   //   #pragma omp atomic
+      //   //   tally.previous_results_(bin, score_index, SensitivityTallyResult::VALUE) += macro_xs*filter_weight;
+      //   // }                
+      // }
+      // break;    
+      // }
+      //}      
     }            
   }
 }

@@ -75,6 +75,7 @@ Classes
    Mesh
    MeshFilter
    MeshBornFilter
+   ImportanceFilter
    MeshSurfaceFilter
    MuFilter
    Nuclide
@@ -87,6 +88,7 @@ Classes
    SphericalMesh
    SurfaceFilter
    Tally
+   SensitivityTally
    UniverseFilter
    UnstructuredMesh
    WeightWindows

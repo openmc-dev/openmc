@@ -400,7 +400,7 @@ def make_ace(filename, temperatures=None, acer=True, xsdir=None,
     if acer:
         ace = (output_dir / "ace") if acer is True else Path(acer)
         xsdir = (ace.parent / "xsdir") if xsdir is None else xsdir
-        with open(ace, 'w') as ace_file, open(xsdir, 'w') as xsdir_file:
+        with ace.open('w') as ace_file, xsdir.open('w') as xsdir_file:
             for temperature in temperatures:
                 # Get contents of ACE file
                 text = (output_dir / f"ace_{temperature:.1f}").read_text()
@@ -426,7 +426,7 @@ def make_ace(filename, temperatures=None, acer=True, xsdir=None,
 
 
 def make_ace_thermal(filename, filename_thermal, temperatures=None,
-                     ace='ace', xsdir=None, output_dir=None, error=0.001,
+                     ace=None, xsdir=None, output_dir=None, error=0.001,
                      iwt=2, evaluation=None, evaluation_thermal=None,
                      table_name=None, zaids=None, nmix=None, **kwargs):
     """Generate thermal scattering ACE file from ENDF files
@@ -441,7 +441,7 @@ def make_ace_thermal(filename, filename_thermal, temperatures=None,
         Temperatures in Kelvin to produce data at. If omitted, data is produced
         at all temperatures given in the ENDF thermal scattering sublibrary.
     ace : str, optional
-        Path of ACE file to write
+        Path of ACE file to write. Default to ``"ace"``.
     xsdir : str, optional
         Path of xsdir file to write. Defaults to ``"xsdir"`` in the same
         directory as ``ace``
@@ -589,30 +589,16 @@ def make_ace_thermal(filename, filename_thermal, temperatures=None,
     commands += 'stop\n'
     run(commands, tapein, tapeout, **kwargs)
 
-    # Determine the path for the final ACE and xsdir files
-    # If 'ace' is an absolute path, use it directly
-    # If 'ace' is a relative path, place it in the current directory
-    if not os.path.isabs(ace):
-        ace = os.path.abspath(ace)
-
-    # Determine xsdir path similarly
-    if xsdir is None:
-        xsdir = os.path.join(os.path.dirname(ace), 'xsdir')
-    else:
-        if not os.path.isabs(xsdir):
-            xsdir = os.path.abspath(xsdir)
-            
+    ace = (output_dir / "ace") if ace is None else Path(ace)
     xsdir = (ace.parent / "xsdir") if xsdir is None else Path(xsdir)
-    with open(ace, 'w') as ace_file, open(xsdir, 'w') as xsdir_file:
+    with ace.open('w') as ace_file, xsdir.open('w') as xsdir_file:
         # Concatenate ACE and xsdir files together
         for temperature in temperatures:
-            ace_in = os.path.join(output_dir, f"ace_{temperature:.1f}")
-            with open(ace_in, 'r') as f:
-                ace_file.write(f.read())
+            ace_in = output_dir / f"ace_{temperature:.1f}"
+            ace_file.write(ace_in.read_text())
 
-            xsdir_in = os.path.join(output_dir, f"xsdir_{temperature:.1f}")
-            with open(xsdir_in, 'r') as f:
-                xsdir_file.write(f.read())
+            xsdir_in = output_dir / f"xsdir_{temperature:.1f}"
+            xsdir_file.write(xsdir_in.read_text())
 
     # Remove ACE/xsdir files for each temperature
     for temperature in temperatures:

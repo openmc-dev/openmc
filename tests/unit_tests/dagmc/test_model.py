@@ -41,6 +41,7 @@ def model(request):
         [daguniv, daguniv]]
 
     box = openmc.model.RectangularParallelepiped(-pitch, pitch, -pitch, pitch, -5, 5)
+    box.boundary_type = "vacuum"
 
     root = openmc.Universe(cells=[openmc.Cell(region=-box, fill=lattice)])
 

@@ -75,7 +75,7 @@ bool trigger_predict {false};
 bool uniform_source_sampling {false};
 bool ufs_on {false};
 bool urr_ptables_on {true};
-bool use_decay_photons {true};
+bool use_decay_photons {false};
 bool weight_windows_on {false};
 bool weight_window_checkpoint_surface {false};
 bool weight_window_checkpoint_collision {true};

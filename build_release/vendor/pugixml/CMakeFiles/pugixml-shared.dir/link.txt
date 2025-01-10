@@ -1,1 +1,0 @@
-/usr/bin/c++ -fPIC -O2 -g -DNDEBUG -shared -Wl,-soname,libpugixml-shared.so.1 -o ../../lib/libpugixml-shared.so.1.10 "CMakeFiles/pugixml-shared.dir/src/pugixml.cpp.o"

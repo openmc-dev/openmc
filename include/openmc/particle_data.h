@@ -226,7 +226,7 @@ public:
   void init_from_r_u(Position r_a, Direction u_a)
   {
     clear();
-    surface() = 0;
+    surface() = NO_SURFACE;
     material() = C_NONE;
     r() = r_a;
     u() = u_a;
@@ -337,7 +337,7 @@ private:
   Position r_last_;         //!< previous coordinates
   Direction u_last_;        //!< previous direction coordinates
 
-  int surface_ {0}; //!< index for surface particle is on
+  int surface_ {NO_SURFACE}; //!< index for surface particle is on
 
   BoundaryInfo boundary_; //!< Info about the next intersection
 

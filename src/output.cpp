@@ -200,7 +200,7 @@ void print_particle(Particle& p)
   }
 
   // Display miscellaneous info.
-  if (p.surface() != 0) {
+  if (p.surface() != NO_SURFACE) {
     // Surfaces identifiers are >= 1, but indices are >= 0 so we need -1
     const Surface& surf {*model::surfaces[std::abs(p.surface()) - 1]};
     fmt::print("  Surface = {}\n", (p.surface() > 0) ? surf.id_ : -surf.id_);

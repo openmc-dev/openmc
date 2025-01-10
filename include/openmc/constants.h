@@ -350,6 +350,14 @@ enum class RandomRaySourceShape { FLAT, LINEAR, LINEAR_XY };
 
 enum class GeometryType { CSG, DAG };
 
+constexpr int32_t OP_LEFT_PAREN {std::numeric_limits<int32_t>::max()};
+constexpr int32_t OP_RIGHT_PAREN {std::numeric_limits<int32_t>::max() - 1};
+constexpr int32_t OP_COMPLEMENT {std::numeric_limits<int32_t>::max() - 2};
+constexpr int32_t OP_INTERSECTION {std::numeric_limits<int32_t>::max() - 3};
+constexpr int32_t OP_UNION {std::numeric_limits<int32_t>::max() - 4};
+constexpr int32_t NO_SURFACE {std::numeric_limits<int32_t>::max() - 5};
+
+
 } // namespace openmc
 
 #endif // OPENMC_CONSTANTS_H

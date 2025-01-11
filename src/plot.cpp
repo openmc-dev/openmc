@@ -1639,7 +1639,7 @@ void Ray::trace()
   // Advance to the boundary of the model
   while (!inside_cell) {
     advance_to_boundary_from_void();
-                                                   //
+    //
     inside_cell = exhaustive_find_cell(*this, settings::verbosity >= 10);
 
     // If true this means no surface was intersected. See cell.cpp and search

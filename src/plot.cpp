@@ -1807,7 +1807,7 @@ void PhongRay::on_intersection()
     // We cannot detect it in the outer loop, and it only matters here, so
     // that's why the error handling is a little different than for a lost
     // ray.
-    if (std::abs(i_surface()) - 1 == -1) {
+    if (i_surface() == 0) {
       result_color_ = plot_.overlap_color_;
       stop();
       return;

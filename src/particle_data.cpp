@@ -67,7 +67,7 @@ GeometryState::advance_to_boundary_from_void() {
       model::cells.at(c_i)->distance(root_coord.r, root_coord.u, 0, this);
     if (dist.first < boundary().distance) {
       boundary().distance = dist.first;
-      boundary().surface_index = std::abs(dist.second);
+      boundary().surface_index = dist.second;
     }
   }
 

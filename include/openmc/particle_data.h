@@ -347,7 +347,7 @@ private:
   Position r_last_;         //!< previous coordinates
   Direction u_last_;        //!< previous direction coordinates
 
-  int surface_ {SURFACE_NONE}; //!< index for surface particle is on
+  int surface_ {SURFACE_NONE}; //!< surface token for surface the particle is currently on
 
   BoundaryInfo boundary_; //!< Info about the next intersection
 

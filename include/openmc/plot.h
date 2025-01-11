@@ -306,12 +306,6 @@ public:
 
   virtual void print_info() const;
 
-  /* If starting the particle from outside the geometry, we have to
-   * find a distance to the boundary in a non-standard surface intersection
-   * check. It's an exhaustive search over surfaces in the top-level universe.
-   */
-  static int advance_to_boundary_from_void(GeometryState& p);
-
 protected:
   Direction camera_x_axis() const
   {

@@ -1111,31 +1111,6 @@ void RayTracePlot::set_output_path(pugi::xml_node node)
   path_plot_ = filename;
 }
 
-// Advances to the next boundary from outside the geometry
-// Returns -1 if no intersection found, and the surface index
-// if an intersection was found.
-int RayTracePlot::advance_to_boundary_from_void(GeometryState& p)
-{
-  double min_dist {INFINITY};
-  auto root_coord = p.coord(0);
-  const auto& uni = model::universes[model::root_universe];
-  int intersected_surface = -1;
-  for (auto c_i : uni->cells_) {
-    auto dist =
-      model::cells.at(c_i)->distance(root_coord.r, root_coord.u, 0, &p);
-    if (dist.first < min_dist) {
-      min_dist = dist.first;
-      intersected_surface = dist.second;
-    }
-  }
-
-  if (min_dist > 1e300)
-    return -1;
-
-  p.move_distance(min_dist + TINY_BIT);
-  return std::abs(intersected_surface);
-}
-
 bool ProjectionPlot::trackstack_equivalent(
   const std::vector<TrackSegment>& track1,
   const std::vector<TrackSegment>& track2) const

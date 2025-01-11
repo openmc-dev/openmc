@@ -526,7 +526,7 @@ void Particle::cross_surface(const Surface& surf)
 
 // if we're crossing a CSG surface, make sure the DAG history is reset
 #ifdef DAGMC
-  if (surf.geom_type_ == GeometryType::CSG)
+  if (surf.geom_type() == GeometryType::CSG)
     history().reset();
 #endif
 
@@ -541,7 +541,7 @@ void Particle::cross_surface(const Surface& surf)
 
 #ifdef DAGMC
   // in DAGMC, we know what the next cell should be
-  if (surf.geom_type_ == GeometryType::DAG) {
+  if (surf.geom_type() == GeometryType::DAG) {
     int32_t i_cell = next_cell(std::abs(surface()), cell_last(n_coord() - 1),
                        lowest_coord().universe) -
                      1;
@@ -661,7 +661,8 @@ void Particle::cross_reflective_bc(const Surface& surf, Direction new_u)
   // the lower universes.
   // (unless we're using a dagmc model, which has exactly one universe)
   n_coord() = 1;
-  if (surf.geom_type_ != GeometryType::DAG && !neighbor_list_find_cell(*this)) {
+  if (surf.geom_type() != GeometryType::DAG &&
+      !neighbor_list_find_cell(*this)) {
     mark_as_lost("Couldn't find particle after reflecting from surface " +
                  std::to_string(surf.id_) + ".");
     return;

@@ -1252,11 +1252,11 @@ class Polygon(CompositeSurface):
             else:
                 op = operator.neg
                 if basis == 'xy':
-                    surf = openmc.Plane(a=dx, b=dy, d=-c)
+                    surf = openmc.Plane(a=dx, b=dy, c=0.0, d=-c)
                 elif basis == 'yz':
-                    surf = openmc.Plane(b=dx, c=dy, d=-c)
+                    surf = openmc.Plane(a=0.0, b=dx, c=dy, d=-c)
                 elif basis == 'xz':
-                    surf = openmc.Plane(a=dx, c=dy, d=-c)
+                    surf = openmc.Plane(a=dx, b=0.0, c=dy, d=-c)
                 else:
                     y0 = -c/dy
                     r2 = dy**2 / dx**2

@@ -185,8 +185,9 @@ struct CacheDataMG {
 
 struct BoundaryInfo {
   double distance {INFINITY}; //!< distance to nearest boundary
-  int surface {SURFACE_NONE}; //!< surface token, non-zero if boundary is surface
-  int coord_level;       //!< coordinate level after crossing boundary
+  int surface {
+    SURFACE_NONE}; //!< surface token, non-zero if boundary is surface
+  int coord_level; //!< coordinate level after crossing boundary
   array<int, 3>
     lattice_translation {}; //!< which way lattice indices will change
 
@@ -347,7 +348,8 @@ private:
   Position r_last_;         //!< previous coordinates
   Direction u_last_;        //!< previous direction coordinates
 
-  int surface_ {SURFACE_NONE}; //!< surface token for surface the particle is currently on
+  int surface_ {
+    SURFACE_NONE}; //!< surface token for surface the particle is currently on
 
   BoundaryInfo boundary_; //!< Info about the next intersection
 

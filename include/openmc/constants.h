@@ -354,7 +354,6 @@ enum class GeometryType { CSG, DAG };
 // representations. This value represents no surface.
 constexpr int32_t SURFACE_NONE {0};
 
-
 } // namespace openmc
 
 #endif // OPENMC_CONSTANTS_H

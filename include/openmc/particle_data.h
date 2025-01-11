@@ -185,7 +185,7 @@ struct CacheDataMG {
 
 struct BoundaryInfo {
   double distance {INFINITY}; //!< distance to nearest boundary
-  int surface_index {0}; //!< if boundary is surface, index in surfaces vector
+  int surface_index {SURFACE_NONE}; //!< if boundary is surface, index in surfaces vector
   int coord_level;       //!< coordinate level after crossing boundary
   array<int, 3>
     lattice_translation {}; //!< which way lattice indices will change
@@ -226,7 +226,7 @@ public:
   void init_from_r_u(Position r_a, Direction u_a)
   {
     clear();
-    surface() = NO_SURFACE;
+    surface() = SURFACE_NONE;
     material() = C_NONE;
     r() = r_a;
     u() = u_a;
@@ -300,6 +300,12 @@ public:
   int& surface() { return surface_; }
   const int& surface() const { return surface_; }
 
+  // Surface index based on the current value of the surface_ attribute
+  int surface_index() const
+  {
+    return std::abs(surface_) - 1;
+  }
+
   // Boundary information
   BoundaryInfo& boundary() { return boundary_; }
 
@@ -337,7 +343,7 @@ private:
   Position r_last_;         //!< previous coordinates
   Direction u_last_;        //!< previous direction coordinates
 
-  int surface_ {NO_SURFACE}; //!< index for surface particle is on
+  int surface_ {SURFACE_NONE}; //!< index for surface particle is on
 
   BoundaryInfo boundary_; //!< Info about the next intersection
 

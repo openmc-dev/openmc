@@ -108,7 +108,7 @@ void Particle::from_source(const SourceSite* src)
 {
   // Reset some attributes
   clear();
-  surface() = NO_SURFACE;
+  surface() = SURFACE_NONE;
   cell_born() = C_NONE;
   material() = C_NONE;
   n_collision() = 0;
@@ -328,7 +328,7 @@ void Particle::event_collide()
     score_surface_tally(*this, model::active_meshsurf_tallies);
 
   // Clear surface component
-  surface() = NO_SURFACE;
+  surface() = SURFACE_NONE;
 
   if (settings::run_CE) {
     collision(*this);
@@ -587,7 +587,7 @@ void Particle::cross_surface(const Surface& surf)
     // the particle is really traveling tangent to a surface, if we move it
     // forward a tiny bit it should fix the problem.
 
-    surface() = NO_SURFACE;
+    surface() = SURFACE_NONE;
     n_coord() = 1;
     r() += TINY_BIT * u();
 

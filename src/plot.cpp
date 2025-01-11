@@ -1788,7 +1788,6 @@ void PhongRay::on_intersection()
     return;
 
   if (!reflected_) {
-
     // reflect the particle and set the color to be colored by
     // the normal or the diffuse lighting contribution
     reflected_ = true;

@@ -1670,7 +1670,7 @@ void Ray::trace()
   }
 
   // At this point the ray is inside the model
-  i_surface_ = first_surface_ - 1;
+  i_surface_ = boundary().surface_index == -1 ? 0 : boundary().surface_index;
 
   // Call the specialized logic for this type of ray. This is for the
   // intersection for the first intersection if we had one.
@@ -1728,7 +1728,7 @@ void Ray::trace()
     traversal_distance_ += boundary().distance;
 
     inside_cell = neighbor_list_find_cell(*this, settings::verbosity >= 10);
-    i_surface_ = std::abs(surface()) - 1;
+    i_surface_ = surface();
 
     // Call the specialized logic for this type of ray. Note that we do not
     // call this if the advance distance is very small. Unfortunately, it seems
@@ -1807,14 +1807,14 @@ void PhongRay::on_intersection()
     // We cannot detect it in the outer loop, and it only matters here, so
     // that's why the error handling is a little different than for a lost
     // ray.
-    if (i_surface() == -1) {
+    if (std::abs(i_surface()) - 1 == -1) {
       result_color_ = plot_.overlap_color_;
       stop();
       return;
     }
 
     // Get surface pointer
-    const auto& surf = model::surfaces.at(i_surface());
+    const auto& surf = model::surfaces.at(std::abs(i_surface()) - 1);
 
     Direction normal = surf->normal(r_local());
     normal /= normal.norm();

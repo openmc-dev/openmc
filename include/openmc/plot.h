@@ -501,7 +501,7 @@ private:
 
   // Records the first intersected surface on the model
   int first_surface_ {-1};
-  int i_surface_ {-1};
+  int i_surface_ {0};
 };
 
 class ProjectionRay : public Ray {

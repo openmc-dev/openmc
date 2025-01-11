@@ -1632,8 +1632,6 @@ void Ray::trace()
   // After phase one is done, we can starting tracing from cell to cell within
   // the model. This step can use neighbor lists to accelerate the ray tracing.
 
-  int first_surface_index {-1}; // surface first passed when entering the model
-
   // Attempt to initialize the particle. We may have to enter a loop to move
   // it up to the edge of the model.
   bool inside_cell = exhaustive_find_cell(*this, settings::verbosity >= 10);
@@ -1641,8 +1639,7 @@ void Ray::trace()
   // Advance to the boundary of the model
   while (!inside_cell) {
     advance_to_boundary_from_void();
-    first_surface_index = std::abs(boundary().surface_index);
-                                                //
+                                                   //
     inside_cell = exhaustive_find_cell(*this, settings::verbosity >= 10);
 
     // If true this means no surface was intersected. See cell.cpp and search
@@ -1668,17 +1665,19 @@ void Ray::trace()
     }
   }
 
-  // At this point the ray is inside the model
-  surface() = boundary().surface_index;
   // Call the specialized logic for this type of ray. This is for the
   // intersection for the first intersection if we had one.
-  if (first_surface_index != -1) {
+  if (boundary().surface_index != 0) {
+    // set the geometry state's surface attribute to be used for
+    // surface normal computation
+    surface() = boundary().surface_index;
     on_intersection();
     if (stop_)
       return;
   }
 
-  // reset surface to 0 after the first intersection
+  // reset surface attribute to zero after the first intersection so that it
+  // doesn't perturb surface crossing logic from here on out
   surface() = 0;
 
   // This is the ray tracing loop within the model. It exits after exiting

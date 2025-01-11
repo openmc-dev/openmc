@@ -584,10 +584,6 @@ distributions.
       parallel runs. This package is needed if you plan on running depletion
       simulations in parallel using MPI.
 
-   `Cython <https://cython.org/>`_
-      Cython is used for resonance reconstruction for ENDF data converted to
-      :class:`openmc.data.IncidentNeutron`.
-
    `vtk <https://vtk.org/>`_
       The Python VTK bindings are needed to convert voxel and track files to VTK
       format.

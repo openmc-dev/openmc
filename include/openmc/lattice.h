@@ -56,13 +56,14 @@ public:
 
   virtual ~Lattice() {}
 
-  virtual int32_t const& operator[](array<int, 3> const& i_xyz) = 0;
+  virtual const int32_t& operator[](const array<int, 3>& i_xyz) = 0;
 
   virtual LatticeIter begin();
-  LatticeIter end();
+  virtual LatticeIter end();
+  virtual int32_t& back();
 
   virtual ReverseLatticeIter rbegin();
-  ReverseLatticeIter rend();
+  virtual ReverseLatticeIter rend();
 
   //! Convert internal universe values from IDs to indices using universe_map.
   void adjust_indices();
@@ -70,7 +71,8 @@ public:
   //! Allocate offset table for distribcell.
   void allocate_offset_table(int n_maps)
   {
-    offsets_.resize(n_maps * universes_.size(), C_NONE);
+    offsets_.resize(n_maps * universes_.size());
+    std::fill(offsets_.begin(), offsets_.end(), C_NONE);
   }
 
   //! Populate the distribcell offset tables.
@@ -81,7 +83,7 @@ public:
   //! \param i_xyz[3] The indices for a lattice tile.
   //! \return true if the given indices fit within the lattice bounds.  False
   //!   otherwise.
-  virtual bool are_valid_indices(array<int, 3> const& i_xyz) const = 0;
+  virtual bool are_valid_indices(const array<int, 3>& i_xyz) const = 0;
 
   //! \brief Find the next lattice surface crossing
   //! \param r A 3D Cartesian coordinate.
@@ -125,7 +127,7 @@ public:
   //! \param i_xyz[3] The indices for a lattice tile.
   //! \return Distribcell offset i.e. the largest instance number for the target
   //!  cell found in the geometry tree under this lattice tile.
-  virtual int32_t& offset(int map, array<int, 3> const& i_xyz) = 0;
+  virtual int32_t& offset(int map, const array<int, 3>& i_xyz) = 0;
 
   //! \brief Get the distribcell offset for a lattice tile.
   //! \param The map index for the target cell.
@@ -167,12 +169,12 @@ public:
 
   LatticeIter& operator++()
   {
-    while (indx_ < lat_.universes_.size()) {
+    while (indx_ < lat_.end().indx_) {
       ++indx_;
       if (lat_.is_valid_index(indx_))
         return *this;
     }
-    indx_ = lat_.universes_.size();
+    indx_ = lat_.end().indx_;
     return *this;
   }
 
@@ -190,7 +192,7 @@ public:
 
   ReverseLatticeIter& operator++()
   {
-    while (indx_ > -1) {
+    while (indx_ > lat_.begin().indx_ - 1) {
       --indx_;
       if (lat_.is_valid_index(indx_))
         return *this;
@@ -206,9 +208,9 @@ class RectLattice : public Lattice {
 public:
   explicit RectLattice(pugi::xml_node lat_node);
 
-  int32_t const& operator[](array<int, 3> const& i_xyz) override;
+  const int32_t& operator[](const array<int, 3>& i_xyz) override;
 
-  bool are_valid_indices(array<int, 3> const& i_xyz) const override;
+  bool are_valid_indices(const array<int, 3>& i_xyz) const override;
 
   std::pair<double, array<int, 3>> distance(
     Position r, Direction u, const array<int, 3>& i_xyz) const override;
@@ -221,7 +223,7 @@ public:
   Position get_local_position(
     Position r, const array<int, 3>& i_xyz) const override;
 
-  int32_t& offset(int map, array<int, 3> const& i_xyz) override;
+  int32_t& offset(int map, const array<int, 3>& i_xyz) override;
 
   int32_t offset(int map, int indx) const override;
 
@@ -241,13 +243,19 @@ class HexLattice : public Lattice {
 public:
   explicit HexLattice(pugi::xml_node lat_node);
 
-  int32_t const& operator[](array<int, 3> const& i_xyz) override;
+  const int32_t& operator[](const array<int, 3>& i_xyz) override;
 
   LatticeIter begin() override;
 
   ReverseLatticeIter rbegin() override;
 
-  bool are_valid_indices(array<int, 3> const& i_xyz) const override;
+  LatticeIter end() override;
+
+  int32_t& back() override;
+
+  ReverseLatticeIter rend() override;
+
+  bool are_valid_indices(const array<int, 3>& i_xyz) const override;
 
   std::pair<double, array<int, 3>> distance(
     Position r, Direction u, const array<int, 3>& i_xyz) const override;
@@ -262,7 +270,7 @@ public:
 
   bool is_valid_index(int indx) const override;
 
-  int32_t& offset(int map, array<int, 3> const& i_xyz) override;
+  int32_t& offset(int map, const array<int, 3>& i_xyz) override;
 
   int32_t offset(int map, int indx) const override;
 

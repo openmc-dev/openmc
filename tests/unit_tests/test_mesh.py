@@ -189,6 +189,42 @@ def test_CylindricalMesh_initiation():
         openmc.SphericalMesh(('🧇', '🥞'))
 
 
+def test_invalid_cylindrical_mesh_errors():
+    # Test invalid r_grid values
+    with pytest.raises(ValueError):
+        openmc.CylindricalMesh(r_grid=[5, 1], phi_grid=[0, pi], z_grid=[0, 10])
+
+    with pytest.raises(ValueError):
+        openmc.CylindricalMesh(r_grid=[1, 2, 4, 3], phi_grid=[0, pi], z_grid=[0, 10])
+
+    with pytest.raises(ValueError):
+        openmc.CylindricalMesh(r_grid=[1], phi_grid=[0, pi], z_grid=[0, 10])
+
+    # Test invalid phi_grid values
+    with pytest.raises(ValueError):
+        openmc.CylindricalMesh(r_grid=[0, 1, 2], phi_grid=[-1, 3], z_grid=[0, 10])
+
+    with pytest.raises(ValueError):
+        openmc.CylindricalMesh(
+            r_grid=[0, 1, 2],
+            phi_grid=[0, 2*pi + 0.1],
+            z_grid=[0, 10]
+        )
+
+    with pytest.raises(ValueError):
+        openmc.CylindricalMesh(r_grid=[0, 1, 2], phi_grid=[pi], z_grid=[0, 10])
+
+    # Test invalid z_grid values
+    with pytest.raises(ValueError):
+        openmc.CylindricalMesh(r_grid=[0, 1, 2], phi_grid=[0, pi], z_grid=[5])
+
+    with pytest.raises(ValueError):
+        openmc.CylindricalMesh(r_grid=[0, 1, 2], phi_grid=[0, pi], z_grid=[5, 1])
+
+    with pytest.raises(ValueError):
+        openmc.CylindricalMesh(r_grid=[1, 2, 4, 3], phi_grid=[0, pi], z_grid=[0, 10, 5])
+
+
 def test_centroids():
     # regular mesh
     mesh = openmc.RegularMesh()
@@ -321,6 +357,27 @@ def test_CylindricalMesh_get_indices_at_coords():
     assert mesh.get_indices_at_coords([102, 199.1, 299]) == (0, 3, 0)  # forth angle quadrant
 
 
+def test_mesh_name_roundtrip(run_in_tmpdir):
+
+    mesh = openmc.RegularMesh()
+    mesh.name = 'regular-mesh'
+    mesh.lower_left = (-1, -1, -1)
+    mesh.width = (1, 1, 1)
+    mesh.dimension = (1, 1, 1)
+
+    mesh_filter = openmc.MeshFilter(mesh)
+    tally = openmc.Tally()
+    tally.filters = [mesh_filter]
+    tally.scores = ['flux']
+
+    openmc.Tallies([tally]).export_to_xml()
+
+    xml_tallies = openmc.Tallies.from_xml()
+
+    mesh = xml_tallies[0].find_filter(openmc.MeshFilter).mesh
+    assert mesh.name == 'regular-mesh'
+
+
 def test_umesh_roundtrip(run_in_tmpdir, request):
     umesh = openmc.UnstructuredMesh(request.path.parent / 'test_mesh_tets.e', 'moab')
     umesh.output = True
@@ -386,3 +443,9 @@ def test_mesh_get_homogenized_materials():
 
     # Mesh element that overlaps void should have half density
     assert m4.get_mass_density('H1') == pytest.approx(0.5, rel=1e-2)
+
+    # If not including void, density of homogenized material should be same as
+    # original material
+    m5, = mesh_void.get_homogenized_materials(
+        model, n_samples=1000, include_void=False)
+    assert m5.get_mass_density('H1') == pytest.approx(1.0)

@@ -12,6 +12,7 @@
 #include "pugixml.hpp"
 #include <gsl/gsl-lite.hpp>
 
+#include "openmc/bounding_box.h"
 #include "openmc/constants.h"
 #include "openmc/memory.h" // for unique_ptr
 #include "openmc/neighbor_list.h"
@@ -128,8 +129,7 @@ private:
   void add_precedence();
 
   //! Add parenthesis to enforce precedence
-  std::vector<int32_t>::iterator add_parentheses(
-    std::vector<int32_t>::iterator start);
+  gsl::index add_parentheses(gsl::index start);
 
   //! Remove complement operators from the expression
   void remove_complement_ops();
@@ -320,7 +320,6 @@ public:
   int32_t universe_;        //!< Universe # this cell is in
   int32_t fill_;            //!< Universe # filling this cell
   int32_t n_instances_ {0}; //!< Number of instances of this cell
-  GeometryType geom_type_;  //!< Geometric representation type (CSG, DAGMC)
 
   //! \brief Index corresponding to this cell in distribcell arrays
   int distribcell_index_ {C_NONE};
@@ -350,6 +349,13 @@ public:
   vector<double> rotation_;
 
   vector<int32_t> offset_; //!< Distribcell offset table
+
+  // Accessors
+  const GeometryType& geom_type() const { return geom_type_; }
+  GeometryType& geom_type() { return geom_type_; }
+
+private:
+  GeometryType geom_type_; //!< Geometric representation type (CSG, DAGMC)
 };
 
 struct CellInstanceItem {

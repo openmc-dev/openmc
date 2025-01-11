@@ -50,6 +50,13 @@ def test_discrete():
     assert_sample_mean(samples, exp_mean)
 
 
+def test_delta_function():
+    d = openmc.stats.delta_function(14.1e6)
+    assert isinstance(d, openmc.stats.Discrete)
+    np.testing.assert_array_equal(d.x, [14.1e6])
+    np.testing.assert_array_equal(d.p, [1.0])
+
+
 def test_merge_discrete():
     x1 = [0.0, 1.0, 10.0]
     p1 = [0.3, 0.2, 0.5]
@@ -255,7 +262,7 @@ def test_mixture():
     d2 = openmc.stats.Uniform(3, 7)
     p = [0.5, 0.5]
     mix = openmc.stats.Mixture(p, [d1, d2])
-    assert mix.probability == p
+    np.testing.assert_allclose(mix.probability, p)
     assert mix.distribution == [d1, d2]
     assert len(mix) == 4
 
@@ -267,7 +274,7 @@ def test_mixture():
     elem = mix.to_xml_element('distribution')
 
     d = openmc.stats.Mixture.from_xml_element(elem)
-    assert d.probability == p
+    np.testing.assert_allclose(d.probability, p)
     assert d.distribution == [d1, d2]
     assert len(d) == 4
 
@@ -288,6 +295,20 @@ def test_mixture_clip():
     # Make sure inplace returns same object
     mix_same = mix.clip(1e-6, inplace=True)
     assert mix_same is mix
+
+    # Make sure clip removes low probability distributions
+    d_small = openmc.stats.Uniform(0., 1.)
+    d_large = openmc.stats.Uniform(2., 5.)
+    mix = openmc.stats.Mixture([1e-10, 1.0], [d_small, d_large])
+    mix_clip = mix.clip(1e-3)
+    assert mix_clip.distribution == [d_large]
+
+    # Make sure warning is raised if tolerance is exceeded
+    d1 = openmc.stats.Discrete([1.0, 1.001], [1.0, 0.7e-6])
+    d2 = openmc.stats.Tabular([0.0, 1.0], [0.7e-6], interpolation='histogram')
+    mix = openmc.stats.Mixture([1.0, 1.0], [d1, d2])
+    with pytest.warns(UserWarning):
+        mix_clip = mix.clip(1e-6)
 
 
 def test_polar_azimuthal():
@@ -376,15 +397,6 @@ def test_box():
     d = openmc.stats.Box.from_xml_element(elem)
     assert d.lower_left == pytest.approx(lower_left)
     assert d.upper_right == pytest.approx(upper_right)
-    assert not d.only_fissionable
-
-    # only fissionable parameter
-    d2 = openmc.stats.Box(lower_left, upper_right, True)
-    assert d2.only_fissionable
-    elem = d2.to_xml_element()
-    assert elem.attrib['type'] == 'fission'
-    d = openmc.stats.Spatial.from_xml_element(elem)
-    assert isinstance(d, openmc.stats.Box)
 
 
 def test_point():

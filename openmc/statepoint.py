@@ -235,7 +235,7 @@ class StatePoint:
         if self._global_tallies is None:
             data = self._f['global_tallies'][()]
             gt = np.zeros(data.shape[0], dtype=[
-                ('name', 'a14'), ('sum', 'f8'), ('sum_sq', 'f8'),
+                ('name', 'S14'), ('sum', 'f8'), ('sum_sq', 'f8'),
                 ('mean', 'f8'), ('std_dev', 'f8')])
             gt['name'] = ['k-collision', 'k-absorption', 'k-tracklength',
                           'leakage']

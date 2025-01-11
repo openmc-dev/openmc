@@ -102,7 +102,7 @@ void apply_weight_windows(Particle& p)
   // the window
   if (weight > weight_window.upper_weight) {
     // do not further split the particle if above the limit
-    if (p.n_split() >= settings::max_splits)
+    if (p.n_split() >= settings::max_history_splits)
       return;
 
     double n_split = std::ceil(weight / weight_window.upper_weight);
@@ -147,8 +147,8 @@ WeightWindows::WeightWindows(int32_t id)
 WeightWindows::WeightWindows(pugi::xml_node node)
 {
   // Make sure required elements are present
-  const vector<std::string> required_elems {"id", "particle_type",
-    "energy_bounds", "lower_ww_bounds", "upper_ww_bounds"};
+  const vector<std::string> required_elems {
+    "id", "particle_type", "lower_ww_bounds", "upper_ww_bounds"};
   for (const auto& elem : required_elems) {
     if (!check_for_node(node, elem.c_str())) {
       fatal_error(fmt::format("Must specify <{}> for weight windows.", elem));
@@ -165,7 +165,7 @@ WeightWindows::WeightWindows(pugi::xml_node node)
 
   // Determine associated mesh
   int32_t mesh_id = std::stoi(get_node_value(node, "mesh"));
-  mesh_idx_ = model::mesh_map.at(mesh_id);
+  set_mesh(model::mesh_map.at(mesh_id));
 
   // energy bounds
   if (check_for_node(node, "energy_bounds"))
@@ -340,6 +340,7 @@ void WeightWindows::set_mesh(int32_t mesh_idx)
     fatal_error(fmt::format("Could not find a mesh for index {}", mesh_idx));
 
   mesh_idx_ = mesh_idx;
+  model::meshes[mesh_idx_]->prepare_for_point_location();
   allocate_ww_bounds();
 }
 
@@ -736,7 +737,7 @@ WeightWindowsGenerator::WeightWindowsGenerator(pugi::xml_node node)
   int32_t mesh_idx = model::mesh_map[mesh_id];
   max_realizations_ = std::stoi(get_node_value(node, "max_realizations"));
 
-  int active_batches = settings::n_batches - settings::n_inactive;
+  int32_t active_batches = settings::n_batches - settings::n_inactive;
   if (max_realizations_ > active_batches) {
     auto msg =
       fmt::format("The maximum number of specified tally realizations ({}) is "

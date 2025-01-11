@@ -37,6 +37,7 @@ extern "C" int n_lost_particles;   //!< cumulative number of lost particles
 extern "C" bool need_depletion_rx; //!< need to calculate depletion rx?
 extern "C" int restart_batch;      //!< batch at which a restart job resumed
 extern "C" bool satisfy_triggers;  //!< have tally triggers been satisfied?
+extern int ssw_current_file;       //!< current surface source file
 extern "C" int total_gen;          //!< total number of generations simulated
 extern double total_weight;        //!< Total source weight in a batch
 extern int64_t work_per_rank;      //!< number of particles per MPI rank

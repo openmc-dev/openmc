@@ -5,7 +5,6 @@ import re
 from pathlib import Path
 from math import sqrt, log
 from warnings import warn
-from typing import Dict
 
 # Isotopic abundances from Meija J, Coplen T B, et al, "Isotopic compositions
 # of the elements 2013 (IUPAC Technical Report)", Pure. Appl. Chem. 88 (3),
@@ -283,13 +282,13 @@ AVOGADRO = 6.02214076e23
 NEUTRON_MASS = 1.00866491595
 
 # Used in atomic_mass function as a cache
-_ATOMIC_MASS: Dict[str, float] = {}
+_ATOMIC_MASS: dict[str, float] = {}
 
 # Regex for GNDS nuclide names (used in zam function)
 _GNDS_NAME_RE = re.compile(r'([A-Zn][a-z]*)(\d+)((?:_[em]\d+)?)')
 
 # Used in half_life function as a cache
-_HALF_LIFE: Dict[str, float] = {}
+_HALF_LIFE: dict[str, float] = {}
 _LOG_TWO = log(2.0)
 
 def atomic_mass(isotope):
@@ -550,7 +549,18 @@ def gnds_name(Z, A, m=0):
     return f'{ATOMIC_SYMBOL[Z]}{A}'
 
 
-def isotopes(element):
+
+def _get_element_symbol(element: str) -> str:
+    if len(element) > 2:
+        symbol = ELEMENT_SYMBOL.get(element.lower())
+        if symbol is None:
+            raise ValueError(f'Element name "{element}" not recognized')
+        return symbol
+    else:
+        return element
+
+
+def isotopes(element: str) -> list[tuple[str, float]]:
     """Return naturally occurring isotopes and their abundances
 
     .. versionadded:: 0.12.1
@@ -571,12 +581,7 @@ def isotopes(element):
         If the element name is not recognized
 
     """
-    # Convert name to symbol if needed
-    if len(element) > 2:
-        symbol = ELEMENT_SYMBOL.get(element.lower())
-        if symbol is None:
-            raise ValueError(f'Element name "{element}" not recognised')
-        element = symbol
+    element = _get_element_symbol(element)
 
     # Get the nuclides present in nature
     result = []

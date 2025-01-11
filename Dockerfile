@@ -48,7 +48,7 @@ ENV DD_REPO='https://github.com/pshriwise/double-down'
 ENV DD_INSTALL_DIR=$HOME/Double_down
 
 # DAGMC variables
-ENV DAGMC_BRANCH='v3.2.3'
+ENV DAGMC_BRANCH='v3.2.4'
 ENV DAGMC_REPO='https://github.com/svalinn/DAGMC'
 ENV DAGMC_INSTALL_DIR=$HOME/DAGMC/
 
@@ -95,7 +95,7 @@ RUN cd $HOME \
 RUN if [ "$build_dagmc" = "on" ]; then \
         # Install addition packages required for DAGMC
         apt-get -y install libeigen3-dev libnetcdf-dev libtbb-dev libglfw3-dev \
-        && pip install --upgrade numpy "cython<3.0" \
+        && pip install --upgrade numpy \
         # Clone and install EMBREE
         && mkdir -p $HOME/EMBREE && cd $HOME/EMBREE \
         && git clone --single-branch -b ${EMBREE_TAG} --depth 1 ${EMBREE_REPO} \
@@ -111,7 +111,8 @@ RUN if [ "$build_dagmc" = "on" ]; then \
         mkdir -p $HOME/MOAB && cd $HOME/MOAB \
         && git clone  --single-branch -b ${MOAB_TAG} --depth 1 ${MOAB_REPO} \
         && mkdir build && cd build \
-        && cmake ../moab -DENABLE_HDF5=ON \
+        && cmake ../moab -DCMAKE_BUILD_TYPE=Release \
+                      -DENABLE_HDF5=ON \
                       -DENABLE_NETCDF=ON \
                       -DBUILD_SHARED_LIBS=OFF \
                       -DENABLE_FORTRAN=OFF \

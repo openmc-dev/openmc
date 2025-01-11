@@ -137,6 +137,26 @@ private:
 };
 
 //==============================================================================
+//! Distribution of points
+//==============================================================================
+
+class PointCloud : public SpatialDistribution {
+public:
+  explicit PointCloud(pugi::xml_node node);
+  explicit PointCloud(
+    std::vector<Position> point_cloud, gsl::span<const double> strengths);
+
+  //! Sample a position from the distribution
+  //! \param seed Pseudorandom number seed pointer
+  //! \return Sampled position
+  Position sample(uint64_t* seed) const override;
+
+private:
+  std::vector<Position> point_cloud_;
+  DiscreteIndex point_idx_dist_; //!< Distribution of Position indices
+};
+
+//==============================================================================
 //! Uniform distribution of points over a box
 //==============================================================================
 

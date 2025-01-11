@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from openmc import Material, Materials
+from openmc import Material
 from openmc.deplete import IndependentOperator, MicroXS
 
 CHAIN_PATH = Path(__file__).parents[1] / "chain_simple.xml"
@@ -34,7 +34,7 @@ def test_operator_init():
     fuel.set_density("g/cc", 10.4)
     fuel.depletable = True
     fuel.volume = 1
-    materials = Materials([fuel])
+    materials = [fuel]
     fluxes = [1.0]
     micros = [micro_xs]
     IndependentOperator(materials, fluxes, micros, CHAIN_PATH)
@@ -47,7 +47,7 @@ def test_error_handling():
     fuel.set_density("g/cc", 1)
     fuel.depletable = True
     fuel.volume = 1
-    materials = Materials([fuel])
+    materials = [fuel]
     fluxes = [1.0, 2.0]
     micros = [micro_xs]
     with pytest.raises(ValueError, match=r"The length of fluxes \(2\)"):

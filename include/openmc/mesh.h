@@ -11,6 +11,7 @@
 #include "xtensor/xtensor.hpp"
 #include <gsl/gsl-lite.hpp>
 
+#include "openmc/bounding_box.h"
 #include "openmc/error.h"
 #include "openmc/memory.h" // for unique_ptr
 #include "openmc/particle.h"
@@ -82,8 +83,8 @@ public:
   virtual ~Mesh() = default;
 
   // Methods
-  //! Perform any preparation needed to support use in mesh filters
-  virtual void prepare_for_tallies() {};
+  //! Perform any preparation needed to support point location within the mesh
+  virtual void prepare_for_point_location() {};
 
   //! Update a position to the local coordinates of the mesh
   virtual void local_coords(Position& r) const {};
@@ -131,13 +132,18 @@ public:
 
   int32_t id() const { return id_; }
 
+  const std::string& name() const { return name_; }
+
   //! Set the mesh ID
   void set_id(int32_t id = -1);
+
+  //! Write the mesh data to an HDF5 group
+  void to_hdf5(hid_t group) const;
 
   //! Write mesh data to an HDF5 group
   //
   //! \param[in] group HDF5 group
-  virtual void to_hdf5(hid_t group) const = 0;
+  virtual void to_hdf5_inner(hid_t group) const = 0;
 
   //! Find the mesh lines that intersect an axis-aligned slice plot
   //
@@ -185,9 +191,25 @@ public:
   vector<MaterialVolume> material_volumes(
     int n_sample, int bin, uint64_t* seed) const;
 
+  //! Determine bounding box of mesh
+  //
+  //! \return Bounding box of mesh
+  BoundingBox bounding_box() const
+  {
+    auto ll = this->lower_left();
+    auto ur = this->upper_right();
+    return {ll.x, ur.x, ll.y, ur.y, ll.z, ur.z};
+  }
+
+  virtual Position lower_left() const = 0;
+  virtual Position upper_right() const = 0;
+
   // Data members
-  int id_ {-1};          //!< User-specified ID
-  int n_dimension_ {-1}; //!< Number of dimensions
+  xt::xtensor<double, 1> lower_left_;  //!< Lower-left coordinates of mesh
+  xt::xtensor<double, 1> upper_right_; //!< Upper-right coordinates of mesh
+  int id_ {-1};                        //!< Mesh ID
+  std::string name_;                   //!< User-specified name
+  int n_dimension_ {-1};               //!< Number of dimensions
 };
 
 class StructuredMesh : public Mesh {
@@ -325,14 +347,30 @@ public:
     return this->volume(get_indices_from_bin(bin));
   }
 
+  Position lower_left() const override
+  {
+    int n = lower_left_.size();
+    Position ll {lower_left_[0], 0.0, 0.0};
+    ll.y = (n >= 2) ? lower_left_[1] : -INFTY;
+    ll.z = (n == 3) ? lower_left_[2] : -INFTY;
+    return ll;
+  };
+
+  Position upper_right() const override
+  {
+    int n = upper_right_.size();
+    Position ur {upper_right_[0], 0.0, 0.0};
+    ur.y = (n >= 2) ? upper_right_[1] : INFTY;
+    ur.z = (n == 3) ? upper_right_[2] : INFTY;
+    return ur;
+  };
+
   //! Get the volume of a specified element
   //! \param[in] ijk Mesh index to return the volume for
   //! \return Volume of the bin
   virtual double volume(const MeshIndex& ijk) const = 0;
 
   // Data members
-  xt::xtensor<double, 1> lower_left_;  //!< Lower-left coordinates of mesh
-  xt::xtensor<double, 1> upper_right_; //!< Upper-right coordinates of mesh
   std::array<int, 3> shape_; //!< Number of mesh elements in each dimension
 
 protected:
@@ -378,7 +416,7 @@ public:
   std::pair<vector<double>, vector<double>> plot(
     Position plot_ll, Position plot_ur) const override;
 
-  void to_hdf5(hid_t group) const override;
+  void to_hdf5_inner(hid_t group) const override;
 
   //! Get the coordinate for the mesh grid boundary in the positive direction
   //!
@@ -428,7 +466,7 @@ public:
   std::pair<vector<double>, vector<double>> plot(
     Position plot_ll, Position plot_ur) const override;
 
-  void to_hdf5(hid_t group) const override;
+  void to_hdf5_inner(hid_t group) const override;
 
   //! Get the coordinate for the mesh grid boundary in the positive direction
   //!
@@ -474,7 +512,7 @@ public:
   std::pair<vector<double>, vector<double>> plot(
     Position plot_ll, Position plot_ur) const override;
 
-  void to_hdf5(hid_t group) const override;
+  void to_hdf5_inner(hid_t group) const override;
 
   double volume(const MeshIndex& ijk) const override;
 
@@ -538,7 +576,7 @@ public:
   std::pair<vector<double>, vector<double>> plot(
     Position plot_ll, Position plot_ur) const override;
 
-  void to_hdf5(hid_t group) const override;
+  void to_hdf5_inner(hid_t group) const override;
 
   double r(int i) const { return grid_[0][i]; }
   double theta(int i) const { return grid_[1][i]; }
@@ -600,7 +638,7 @@ public:
   void surface_bins_crossed(Position r0, Position r1, const Direction& u,
     vector<int>& bins) const override;
 
-  void to_hdf5(hid_t group) const override;
+  void to_hdf5_inner(hid_t group) const override;
 
   std::string bin_label(int bin) const override;
 
@@ -655,6 +693,15 @@ public:
 
   ElementType element_type(int bin) const;
 
+  Position lower_left() const override
+  {
+    return {lower_left_[0], lower_left_[1], lower_left_[2]};
+  }
+  Position upper_right() const override
+  {
+    return {upper_right_[0], upper_right_[1], upper_right_[2]};
+  }
+
 protected:
   //! Set the length multiplier to apply to each point in the mesh
   void set_length_multiplier(const double length_multiplier);
@@ -671,6 +718,9 @@ protected:
   double length_multiplier_ {
     -1.0};              //!< Multiplicative factor applied to mesh coordinates
   std::string options_; //!< Options for search data structures
+
+  //! Determine lower-left and upper-right bounds of mesh
+  void determine_bounds();
 
 private:
   //! Setup method for the mesh. Builds data structures,
@@ -693,7 +743,7 @@ public:
   // Overridden Methods
 
   //! Perform any preparation needed to support use in mesh filters
-  void prepare_for_tallies() override;
+  void prepare_for_point_location() override;
 
   Position sample_element(int32_t bin, uint64_t* seed) const override;
 
@@ -904,6 +954,7 @@ public:
 private:
   void initialize() override;
   void set_mesh_pointer_from_filename(const std::string& filename);
+  void build_eqn_sys();
 
   // Methods
 
@@ -922,7 +973,8 @@ private:
   vector<unique_ptr<libMesh::PointLocatorBase>>
     pl_; //!< per-thread point locators
   unique_ptr<libMesh::EquationSystems>
-    equation_systems_; //!< pointer to the equation systems of the mesh
+    equation_systems_; //!< pointer to the libMesh EquationSystems
+                       //!< instance
   std::string
     eq_system_name_; //!< name of the equation system holding OpenMC results
   std::unordered_map<std::string, unsigned int>
@@ -931,6 +983,13 @@ private:
   libMesh::BoundingBox bbox_; //!< bounding box of the mesh
   libMesh::dof_id_type
     first_element_id_; //!< id of the first element in the mesh
+
+  const bool adaptive_; //!< whether this mesh has adaptivity enabled or not
+  std::vector<libMesh::dof_id_type>
+    bin_to_elem_map_; //!< mapping bin indices to dof indices for active
+                      //!< elements
+  std::vector<int> elem_to_bin_map_; //!< mapping dof indices to bin indices for
+                                     //!< active elements
 };
 
 #endif

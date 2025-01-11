@@ -1,6 +1,8 @@
 #include "openmc/plot.h"
 
 #include <algorithm>
+#define _USE_MATH_DEFINES // to make M_PI declared in Intel and MSVC compilers
+#include <cmath>
 #include <cstdio>
 #include <fstream>
 #include <sstream>
@@ -314,6 +316,11 @@ void Plot::set_output_path(pugi::xml_node plot_node)
     filename = get_node_value(plot_node, "filename");
   } else {
     filename = fmt::format("plot_{}", id());
+  }
+  const std::string dir_if_present =
+    filename.substr(0, filename.find_last_of("/") + 1);
+  if (dir_if_present.size() > 0 && !dir_exists(dir_if_present)) {
+    fatal_error(fmt::format("Directory '{}' does not exist!", dir_if_present));
   }
   // add appropriate file extension to name
   switch (type_) {
@@ -966,10 +973,6 @@ void Plot::create_voxel() const
 
   ProgressBar pb;
   for (int z = 0; z < pixels_[2]; z++) {
-    // update progress bar
-    pb.set_value(
-      100. * static_cast<double>(z) / static_cast<double>((pixels_[2] - 1)));
-
     // update z coordinate
     pltbase.origin_.z = ll.z + z * vox[2];
 
@@ -984,6 +987,10 @@ void Plot::create_voxel() const
 
     // Write to HDF5 dataset
     voxel_write_slice(z, dspace, dset, memspace, data_flipped.data());
+
+    // update progress bar
+    pb.set_value(
+      100. * static_cast<double>(z + 1) / static_cast<double>((pixels_[2])));
   }
 
   voxel_finalize(dspace, dset, memspace);
@@ -1296,7 +1303,7 @@ void ProjectionPlot::create_output() const
 
             int32_t i_surface = std::abs(p.surface()) - 1;
             if (i_surface > 0 &&
-                model::surfaces[i_surface]->geom_type_ == GeometryType::DAG) {
+                model::surfaces[i_surface]->geom_type() == GeometryType::DAG) {
 #ifdef DAGMC
               int32_t i_cell = next_cell(i_surface,
                 p.cell_last(p.n_coord() - 1), p.lowest_coord().universe);

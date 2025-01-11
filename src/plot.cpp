@@ -1633,7 +1633,6 @@ void Ray::trace()
   // the model. This step can use neighbor lists to accelerate the ray tracing.
 
   int first_surface_index {-1}; // surface first passed when entering the model
-  bool intersection_found {false}; // whether or not a first surface was intersected
 
   // Attempt to initialize the particle. We may have to enter a loop to move
   // it up to the edge of the model.
@@ -1642,8 +1641,7 @@ void Ray::trace()
   // Advance to the boundary of the model
   while (!inside_cell) {
     advance_to_boundary_from_void();
-    intersection_found = boundary().surface_index != 0; // -1 if no surface found
-    if (intersection_found) first_surface_index = std::abs(boundary().surface_index);
+    first_surface_index = std::abs(boundary().surface_index);
                                                 //
     inside_cell = exhaustive_find_cell(*this, settings::verbosity >= 10);
 
@@ -1659,7 +1657,8 @@ void Ray::trace()
     if (inside_cell)
       break;
 
-    if (!intersection_found)
+    // if there is no intersection with the model, we're done
+    if (boundary().surface_index == 0)
       return;
 
     event_counter_++;

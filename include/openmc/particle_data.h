@@ -185,10 +185,13 @@ struct CacheDataMG {
 
 struct BoundaryInfo {
   double distance {INFINITY}; //!< distance to nearest boundary
-  int surface_index {SURFACE_NONE}; //!< if boundary is surface, index in surfaces vector
+  int surface {SURFACE_NONE}; //!< surface token, non-zero if boundary is surface
   int coord_level;       //!< coordinate level after crossing boundary
   array<int, 3>
     lattice_translation {}; //!< which way lattice indices will change
+
+  // TODO: off-by-one
+  int surface_index() const { return std::abs(surface) - 1; }
 };
 
 /*
@@ -303,6 +306,7 @@ public:
   // Surface index based on the current value of the surface_ attribute
   int surface_index() const
   {
+    // TODO: off-by-one on surface indices throughout this function.
     return std::abs(surface_) - 1;
   }
 

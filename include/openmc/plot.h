@@ -474,8 +474,6 @@ public:
    */
   void trace();
 
-  const int& first_surface() { return first_surface_; }
-
   // Stops the ray and exits tracing when called from on_intersection
   void stop() { stop_ = true; }
 
@@ -496,9 +494,6 @@ private:
   bool stop_ {false};
 
   unsigned event_counter_ {0};
-
-  // Records the first intersected surface on the model
-  int first_surface_ {-1};
 };
 
 class ProjectionRay : public Ray {

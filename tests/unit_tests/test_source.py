@@ -1,3 +1,4 @@
+from collections import Counter
 from math import pi
 
 import openmc
@@ -48,6 +49,61 @@ def test_spherical_uniform():
                                                         origin)
 
     assert isinstance(sph_indep_function, openmc.stats.SphericalIndependent)
+
+def test_point_cloud():
+    positions = [(1, 0, 2), (0, 1, 0), (0, 0, 3), (4, 9, 2)]
+    strengths = [1, 2, 3, 4]
+
+    space = openmc.stats.PointCloud(positions, strengths)
+    np.testing.assert_equal(space.positions, positions)
+    np.testing.assert_equal(space.strengths, strengths)
+
+    src = openmc.IndependentSource(space=space)
+    assert src.space == space
+    np.testing.assert_equal(src.space.positions, positions)
+    np.testing.assert_equal(src.space.strengths, strengths)
+
+    elem = src.to_xml_element()
+    src = openmc.IndependentSource.from_xml_element(elem)
+    np.testing.assert_equal(src.space.positions, positions)
+    np.testing.assert_equal(src.space.strengths, strengths)
+
+
+def test_point_cloud_invalid():
+    with pytest.raises(ValueError, match='2D'):
+        openmc.stats.PointCloud([1, 0, 2, 0, 1, 0])
+
+    with pytest.raises(ValueError, match='3 values'):
+        openmc.stats.PointCloud([(1, 0, 2, 3), (4, 5, 2, 3)])
+
+    with pytest.raises(ValueError, match='1D'):
+        openmc.stats.PointCloud([(1, 0, 2), (4, 5, 2)], [(1, 2), (3, 4)])
+
+    with pytest.raises(ValueError, match='same length'):
+        openmc.stats.PointCloud([(1, 0, 2), (4, 5, 2)], [1, 2, 4])
+
+
+def test_point_cloud_strengths(run_in_tmpdir, sphere_box_model):
+    positions = [(1., 0., 2.), (0., 1., 0.), (0., 0., 3.), (-1., -1., 2.)]
+    strengths = [1, 2, 3, 4]
+    space = openmc.stats.PointCloud(positions, strengths)
+
+    model = sphere_box_model[0]
+    model.settings.run_mode = 'fixed source'
+    model.settings.source = openmc.IndependentSource(space=space)
+
+    try:
+        model.init_lib()
+        n_samples = 50_000
+        sites = openmc.lib.sample_external_source(n_samples)
+    finally:
+        model.finalize_lib()
+
+    count = Counter(s.r for s in sites)
+    for i, (strength, position) in enumerate(zip(strengths, positions)):
+        sampled_strength = count[position] / n_samples
+        expected_strength = pytest.approx(strength/sum(strengths), abs=0.02)
+        assert sampled_strength == expected_strength, f'Strength incorrect for {positions[i]}'
 
 
 def test_source_file():

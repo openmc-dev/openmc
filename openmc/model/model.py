@@ -1,7 +1,6 @@
 from __future__ import annotations
 from collections.abc import Iterable
 from functools import lru_cache
-import os
 from pathlib import Path
 from numbers import Integral
 from tempfile import NamedTemporaryFile
@@ -15,7 +14,7 @@ import openmc
 import openmc._xml as xml
 from openmc.dummy_comm import DummyCommunicator
 from openmc.executor import _process_CLI_arguments
-from openmc.checkvalue import check_type, check_value, PathLike
+from openmc.checkvalue import check_type, check_value
 from openmc.exceptions import InvalidIDError
 from openmc.utility_funcs import change_directory
 
@@ -323,6 +322,28 @@ class Model:
         # the user-provided intracomm which will either be None or an mpi4py
         # communicator
         openmc.lib.init(args=args, intracomm=intracomm, output=output)
+
+    def sync_dagmc_universes(self):
+        """Synchronize all DAGMC universes in the current geometry.
+
+        This method iterates over all DAGMC universes in the geometry and
+        synchronizes their cells with the current material assignments. Requires
+        that the model has been initialized via :meth:`Model.init_lib`.
+
+        .. versionadded:: 0.15.1
+
+        """
+        if self.is_initialized:
+            if self.materials:
+                materials = self.materials
+            else:
+                materials = list(self.geometry.get_all_materials().values())
+            for univ in self.geometry.get_all_universes().values():
+                if isinstance(univ, openmc.DAGMCUniverse):
+                    univ.sync_dagmc_cells(materials)
+        else:
+            raise ValueError("The model must be initialized before calling "
+                             "this method")
 
     def finalize_lib(self):
         """Finalize simulation and free memory allocated for the C API
@@ -719,7 +740,8 @@ class Model:
 
     def calculate_volumes(self, threads=None, output=True, cwd='.',
                           openmc_exec='openmc', mpi_args=None,
-                          apply_volumes=True):
+                          apply_volumes=True, export_model_xml=True,
+                          **export_kwargs):
         """Runs an OpenMC stochastic volume calculation and, if requested,
         applies volumes to the model
 
@@ -748,6 +770,13 @@ class Model:
         apply_volumes : bool, optional
             Whether apply the volume calculation results from this calculation
             to the model. Defaults to applying the volumes.
+        export_model_xml : bool, optional
+            Exports a single model.xml file rather than separate files. Defaults
+            to True.
+        **export_kwargs
+            Keyword arguments passed to either :meth:`Model.export_to_model_xml`
+            or :meth:`Model.export_to_xml`.
+
         """
 
         if len(self.settings.volume_calculations) == 0:
@@ -769,10 +798,15 @@ class Model:
                 openmc.lib.calculate_volumes(output)
 
             else:
-                self.export_to_xml()
-                openmc.calculate_volumes(threads=threads, output=output,
-                                         openmc_exec=openmc_exec,
-                                         mpi_args=mpi_args)
+                if export_model_xml:
+                    self.export_to_model_xml(**export_kwargs)
+                else:
+                    self.export_to_xml(**export_kwargs)
+                path_input = export_kwargs.get("path", None)
+                openmc.calculate_volumes(
+                    threads=threads, output=output, openmc_exec=openmc_exec,
+                    mpi_args=mpi_args, path_input=path_input
+                )
 
             # Now we apply the volumes
             if apply_volumes:
@@ -807,14 +841,14 @@ class Model:
 
         Parameters
         ----------
-        n_samples : dict
+        n_samples : int, optional
             The number of source particles to sample and add to plot. Defaults
             to None which doesn't plot any particles on the plot.
         plane_tolerance: float
             When plotting a plane the source locations within the plane +/-
             the plane_tolerance will be included and those outside of the
             plane_tolerance will not be shown
-        source_kwargs : dict
+        source_kwargs : dict, optional
             Keyword arguments passed to :func:`matplotlib.pyplot.scatter`.
         **kwargs
             Keyword arguments passed to :func:`openmc.Universe.plot`
@@ -872,7 +906,7 @@ class Model:
             n_samples: int = 1000,
             prn_seed: int | None = None,
             **init_kwargs
-    ) -> list[openmc.SourceParticle]:
+    ) -> openmc.ParticleList:
         """Sample external source and return source particles.
 
         .. versionadded:: 0.15.1
@@ -889,7 +923,7 @@ class Model:
 
         Returns
         -------
-        list of openmc.SourceParticle
+        openmc.ParticleList
             List of samples source particles
         """
         import openmc.lib
@@ -909,7 +943,8 @@ class Model:
                     n_samples=n_samples, prn_seed=prn_seed
                 )
 
-    def plot_geometry(self, output=True, cwd='.', openmc_exec='openmc'):
+    def plot_geometry(self, output=True, cwd='.', openmc_exec='openmc',
+                      export_model_xml=True, **export_kwargs):
         """Creates plot images as specified by the Model.plots attribute
 
         .. versionadded:: 0.13.0
@@ -924,6 +959,12 @@ class Model:
         openmc_exec : str, optional
             Path to OpenMC executable. Defaults to 'openmc'.
             This only applies to the case when not using the C API.
+        export_model_xml : bool, optional
+            Exports a single model.xml file rather than separate files. Defaults
+            to True.
+        **export_kwargs
+            Keyword arguments passed to either :meth:`Model.export_to_model_xml`
+            or :meth:`Model.export_to_xml`.
 
         """
 
@@ -937,8 +978,13 @@ class Model:
                 # Compute the volumes
                 openmc.lib.plot_geometry(output)
             else:
-                self.export_to_xml()
-                openmc.plot_geometry(output=output, openmc_exec=openmc_exec)
+                if export_model_xml:
+                    self.export_to_model_xml(**export_kwargs)
+                else:
+                    self.export_to_xml(**export_kwargs)
+                path_input = export_kwargs.get("path", None)
+                openmc.plot_geometry(output=output, openmc_exec=openmc_exec,
+                                     path_input=path_input)
 
     def _change_py_lib_attribs(self, names_or_ids, value, obj_type,
                                attrib_name, density_units='atom/b-cm'):
@@ -1129,51 +1175,86 @@ class Model:
 
         self._change_py_lib_attribs(names_or_ids, volume, 'material', 'volume')
 
-    def differentiate_depletable_mats(self, diff_volume_method: str):
+    def differentiate_depletable_mats(self, diff_volume_method: str = None):
         """Assign distribmats for each depletable material
 
         .. versionadded:: 0.14.0
+
+        .. versionchanged:: 0.15.1
+            diff_volume_method default is None, do not set volumes on the new
+            material ovjects. Is now a convenience method for
+            differentiate_mats(diff_volume_method, depletable_only=True)
 
         Parameters
         ----------
         diff_volume_method : str
             Specifies how the volumes of the new materials should be found.
-            Default is to 'divide equally' which divides the original material
-            volume equally between the new materials, 'match cell' sets the
-            volume of the material to volume of the cell they fill.
+            - None: Do not assign volumes to the new materials (Default)
+            - 'divide_equally': Divide the original material volume equally between the new materials
+            - 'match cell': Set the volume of the material to the volume of the cell they fill
         """
+        self.differentiate_mats(diff_volume_method, depletable_only=True)
+
+    def differentiate_mats(self, diff_volume_method: str = None, depletable_only: bool = True):
+        """Assign distribmats for each material
+
+        .. versionadded:: 0.15.1
+
+        Parameters
+        ----------
+        diff_volume_method : str
+            Specifies how the volumes of the new materials should be found.
+            - None: Do not assign volumes to the new materials (Default)
+            - 'divide_equally': Divide the original material volume equally between the new materials
+            - 'match cell': Set the volume of the material to the volume of the cell they fill
+        depletable_only : bool
+            Default is True, only depletable materials will be differentiated. If False, all materials will be
+            differentiated.
+        """
+        check_value('volume differentiation method', diff_volume_method, ("divide equally", "match cell", None))
+
         # Count the number of instances for each cell and material
         self.geometry.determine_paths(instances_only=True)
 
-        # Extract all depletable materials which have multiple instances
-        distribmats = set(
-            [mat for mat in self.materials
-                if mat.depletable and mat.num_instances > 1])
-
-        if diff_volume_method == 'divide equally':
-            for mat in distribmats:
-                if mat.volume is None:
-                    raise RuntimeError("Volume not specified for depletable "
-                                        f"material with ID={mat.id}.")
-                mat.volume /= mat.num_instances
-
-        if distribmats:
-            # Assign distribmats to cells
-            for cell in self.geometry.get_all_material_cells().values():
-                if cell.fill in distribmats:
-                    mat = cell.fill
-                    if diff_volume_method == 'divide equally':
-                        cell.fill = [mat.clone() for _ in range(cell.num_instances)]
-                    elif diff_volume_method == 'match cell':
-                        for _ in range(cell.num_instances):
-                            cell.fill = mat.clone()
+        # Find all or depletable_only materials which have multiple instance
+        distribmats = set()
+        for mat in self.materials:
+            # Differentiate all materials with multiple instances
+            diff_mat = mat.num_instances > 1
+            # If depletable_only is True, differentiate only depletable materials
+            if depletable_only:
+                diff_mat = diff_mat and mat.depletable
+            if diff_mat:
+                # Assign volumes to the materials according to requirements
+                if diff_volume_method == "divide equally":
+                    if mat.volume is None:
+                        raise RuntimeError(
+                            "Volume not specified for "
+                            f"material with ID={mat.id}.")
+                    else:
+                        mat.volume /= mat.num_instances
+                elif diff_volume_method == "match cell":
+                    for cell in self.geometry.get_all_material_cells().values():
+                        if cell.fill == mat:
                             if not cell.volume:
                                 raise ValueError(
                                     f"Volume of cell ID={cell.id} not specified. "
                                     "Set volumes of cells prior to using "
-                                    "diff_volume_method='match cell'."
-                                )
-                            cell.fill.volume = cell.volume
+                                    "diff_volume_method='match cell'.")
+                distribmats.add(mat)
+
+        if not distribmats:
+            return
+
+        # Assign distribmats to cells
+        for cell in self.geometry.get_all_material_cells().values():
+            if cell.fill in distribmats:
+                mat = cell.fill
+                if diff_volume_method != 'match cell':
+                    cell.fill = [mat.clone() for _ in range(cell.num_instances)]
+                elif diff_volume_method == 'match cell':
+                    cell.fill = mat.clone()
+                    cell.fill.volume = cell.volume
 
         if self.materials is not None:
             self.materials = openmc.Materials(

@@ -1632,7 +1632,7 @@ void Ray::trace()
   // After phase one is done, we can starting tracing from cell to cell within
   // the model. This step can use neighbor lists to accelerate the ray tracing.
 
-  int first_surface_ = -1; // surface first passed when entering the model
+  first_surface_ = -1; // surface first passed when entering the model
 
   // Attempt to initialize the particle. We may have to enter a loop to move
   // it up to the edge of the model.
@@ -1671,7 +1671,6 @@ void Ray::trace()
 
   // At this point the ray is inside the model
   i_surface_ = boundary().surface_index == -1 ? 0 : boundary().surface_index;
-
   // Call the specialized logic for this type of ray. This is for the
   // intersection for the first intersection if we had one.
   if (first_surface_ != -1) {
@@ -1828,7 +1827,8 @@ void PhongRay::on_intersection()
       }
     }
 
-    if (surf->geom_type_ != GeometryType::DAG && surface() > 0) {
+    // use the normal opposed to the ray direction
+    if (normal.dot(u()) > 0.0) {
       normal *= -1.0;
     }
 

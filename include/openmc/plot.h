@@ -490,7 +490,6 @@ private:
   static const int MAX_INTERSECTIONS = 1000000;
 
   bool hit_something_ {false};
-  bool intersection_found_ {true};
   bool stop_ {false};
 
   unsigned event_counter_ {0};

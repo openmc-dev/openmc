@@ -75,7 +75,7 @@ GeometryState::advance_to_boundary_from_void() {
   // boundary information
   if (boundary().distance > 1e300) {
     boundary().distance = INFTY;
-    boundary().surface_index = -1;
+    boundary().surface_index = 0;
     return;
   }
 

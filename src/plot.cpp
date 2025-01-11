@@ -1670,7 +1670,7 @@ void Ray::trace()
   }
 
   // At this point the ray is inside the model
-  i_surface_ = boundary().surface_index == -1 ? 0 : boundary().surface_index;
+  surface() = boundary().surface_index == -1 ? 0 : boundary().surface_index;
   // Call the specialized logic for this type of ray. This is for the
   // intersection for the first intersection if we had one.
   if (first_surface_ != -1) {
@@ -1678,6 +1678,9 @@ void Ray::trace()
     if (stop_)
       return;
   }
+
+  // reset surface to 0 after the first intersection
+  surface() = 0;
 
   // This is the ray tracing loop within the model. It exits after exiting
   // the model, which is equivalent to assuming that the model is convex.
@@ -1725,9 +1728,7 @@ void Ray::trace()
 
     // Record how far the ray has traveled
     traversal_distance_ += boundary().distance;
-
     inside_cell = neighbor_list_find_cell(*this, settings::verbosity >= 10);
-    i_surface_ = surface();
 
     // Call the specialized logic for this type of ray. Note that we do not
     // call this if the advance distance is very small. Unfortunately, it seems
@@ -1798,22 +1799,22 @@ void PhongRay::on_intersection()
     to_light /= to_light.norm();
 
     // TODO
-    // Not sure what can cause i_surface()==-1, although it sometimes happens
-    // for a few pixels. It's very very rare, so proceed by coloring the pixel
-    // with the overlap color. It seems to happen only for a few pixels on the
-    // outer boundary of a hex lattice.
+    // Not sure what can cause a surface token to be invalid here, although it
+    // sometimes happens for a few pixels. It's very very rare, so proceed by
+    // coloring the pixel with the overlap color. It seems to happen only for a
+    // few pixels on the outer boundary of a hex lattice.
     //
     // We cannot detect it in the outer loop, and it only matters here, so
     // that's why the error handling is a little different than for a lost
     // ray.
-    if (i_surface() == 0) {
+    if (surface() == 0) {
       result_color_ = plot_.overlap_color_;
       stop();
       return;
     }
 
     // Get surface pointer
-    const auto& surf = model::surfaces.at(std::abs(i_surface()) - 1);
+    const auto& surf = model::surfaces.at(std::abs(surface()) - 1);
 
     Direction normal = surf->normal(r_local());
     normal /= normal.norm();

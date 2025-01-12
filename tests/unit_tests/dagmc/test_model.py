@@ -295,7 +295,7 @@ def test_dagmc_vacuum(model):
 
     # Replacing all the materials with vacuum
     for mat in dag_univ.material_names:
-        dag_univ.replace_material_assignment(mat, at_a_vacuum)
+        dag_univ.replace_material_assignment(mat, mat_a_vacuum)
 
     model.export_to_xml()
     # ensure that particles will be lost when cell intersections can't be found

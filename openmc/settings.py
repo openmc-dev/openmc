@@ -173,6 +173,9 @@ class Settings:
         :adjoint:
             Whether to run the random ray solver in adjoint mode (bool). The
             default is 'False'.
+        :sample_method:
+            Sampling method for the ray starting location and direction of travel.
+            Options are `prng` (default) or 'halton`.
 
         .. versionadded:: 0.15.0
     resonance_scattering : dict
@@ -1131,6 +1134,9 @@ class Settings:
                 cv.check_type('volume normalized flux tallies', random_ray[key], bool)
             elif key == 'adjoint':
                 cv.check_type('adjoint', random_ray[key], bool)
+            elif key == 'sample_method':
+                cv.check_value('sample method', random_ray[key],
+                               ('prng', 'halton'))
             else:
                 raise ValueError(f'Unable to set random ray to "{key}" which is '
                                  'unsupported by OpenMC')
@@ -1948,6 +1954,8 @@ class Settings:
                     self.random_ray['adjoint'] = (
                         child.text in ('true', '1')
                     )
+                elif child.tag == 'sample_method':
+                    self.random_ray['sample_method'] = child.text
 
     def to_xml_element(self, mesh_memo=None):
         """Create a 'settings' element to be written to an XML file.

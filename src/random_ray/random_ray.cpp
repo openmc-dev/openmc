@@ -196,9 +196,6 @@ void fisher_yates_shuffle(vector<int>& arr, uint64_t* seed)
 // Algorithm adapted from:
 //      A. B. Owen. A randomized halton algorithm in r. Arxiv, 6 2017.
 //      URL http:arxiv.org/abs/1706.02808
-//
-// Results are not idential to Python implementation - the permutation process
-// produces different results due to differences in shuffle/rng implementation.
 vector<vector<float>> rhalton(int N, int dim, uint64_t* seed, int64_t skip = 0)
 {
   vector<int> primes = {2, 3, 5, 7, 11, 13, 17, 19, 23, 29};
@@ -240,6 +237,7 @@ vector<vector<float>> rhalton(int N, int dim, uint64_t* seed, int64_t skip = 0)
   }
 
   return halton;
+}
 
 //==============================================================================
 // RandomRay implementation
@@ -250,6 +248,7 @@ double RandomRay::distance_inactive_;
 double RandomRay::distance_active_;
 unique_ptr<Source> RandomRay::ray_source_;
 RandomRaySourceShape RandomRay::source_shape_ {RandomRaySourceShape::FLAT};
+RandomRaySampleMethod RandomRay::sample_method_ {RandomRaySampleMethod::PRNG};
 
 RandomRay::RandomRay()
   : angular_flux_(data::mg.num_energy_groups_),
@@ -576,16 +575,21 @@ void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
   // set identifier for particle
   id() = simulation::work_index[mpi::rank] + ray_id;
 
-  // set random number seed
-  int64_t batch_seed = (simulation::current_batch - 1) * settings::n_particles;
-  int64_t skip = id();
-  init_particle_seeds(batch_seed, seeds());
-  stream() = STREAM_TRACKING;
+  // generate source site using sample method
+  SourceSite site;
+  switch (sample_method_) {
+  case RandomRaySampleMethod::PRNG:
+    site = sample_prng();
+    break;
+  case RandomRaySampleMethod::HALTON:
+    site = sample_halton();
+    break;
+  default:
+    fatal_error("Unknown sample method for random ray transport.");
+  }
 
-  // Sample from ray source distribution
-  SourceSite site = sample_lds(current_seed(), skip);
   site.E = lower_bound_index(
-    data::mg.rev_energy_bins_.begin(), data::mg.rev_energy_bins_.end(), site.E);
+      data::mg.rev_energy_bins_.begin(), data::mg.rev_energy_bins_.end(), site.E);
   site.E = negroups_ - site.E - 1.;
   this->from_source(&site);
 
@@ -612,14 +616,34 @@ void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
   }
 }
 
-SourceSite RandomRay::sample_lds(uint64_t* seed, int64_t skip)
+SourceSite RandomRay::sample_prng()
+{
+    // set random number seed
+    int64_t particle_seed =
+      (simulation::current_batch - 1) * settings::n_particles + id();
+    init_particle_seeds(particle_seed, seeds());
+    stream() = STREAM_TRACKING;
+
+    // Sample from ray source distribution
+    SourceSite site {ray_source_->sample(current_seed())};
+
+    return site;
+}
+
+SourceSite RandomRay::sample_halton()
 {
   SourceSite site;
 
-  // Calculate next samples in LDS
-  vector<vector<float>> samples = rhalton(1, 5, seed, skip = skip);
+  // Set random number seed
+  int64_t batch_seed = (simulation::current_batch - 1) * settings::n_particles;
+  int64_t skip = id();
+  init_particle_seeds(batch_seed, seeds());
+  stream() = STREAM_TRACKING;
 
-  // get spatial box of ray_source_
+  // Calculate next samples in LDS
+  vector<vector<float>> samples = rhalton(1, 5, current_seed(), skip = skip);
+
+  // Get spatial box of ray_source_
   SpatialBox* sb = dynamic_cast<SpatialBox*>(
     dynamic_cast<IndependentSource*>(RandomRay::ray_source_.get())->space());
 
@@ -633,7 +657,7 @@ SourceSite RandomRay::sample_lds(uint64_t* seed, int64_t skip)
   float mu = 2.0 * samples[0][3] - 1.0;
   float azi = 2.0 * PI * samples[0][4];
   // Convert to Cartesian coordinates
-  float c = std::pow((1.0 - std::pow(mu, 2)), 0.5);
+  float c = std::pow((1.0 - mu*mu), 0.5);
   site.u.x = mu;
   site.u.y = std::cos(azi) * c;
   site.u.z = std::sin(azi) * c;

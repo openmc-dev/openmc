@@ -86,7 +86,7 @@
         </space>
       </source>
       <volume_normalized_flux_tallies>True</volume_normalized_flux_tallies>
-      <adjoint>True</adjoint>
+      <sample_method>halton</sample_method>
     </random_ray>
   </settings>
   <tallies>

@@ -12,9 +12,8 @@ class MGXSTestHarness(TolerantPyAPITestHarness):
         if os.path.exists(f):
             os.remove(f)
 
-
-def test_random_ray_basic():
+def test_random_ray_halton_samples():
     model = random_ray_lattice()
-    model.settings.random_ray['adjoint'] = True
+    model.settings.random_ray['sample_method'] = 'halton'
     harness = MGXSTestHarness('statepoint.10.h5', model)
     harness.main()

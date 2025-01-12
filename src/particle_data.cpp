@@ -56,8 +56,8 @@ GeometryState::GeometryState()
   clear();
 }
 
-void
-GeometryState::advance_to_boundary_from_void() {
+void GeometryState::advance_to_boundary_from_void()
+{
   auto root_coord = this->coord(0);
   const auto& root_universe = model::universes[model::root_universe];
   boundary().reset();

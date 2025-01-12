@@ -3,6 +3,7 @@ project(openmc C CXX)
 
 # Try to get the version from git describe
 if(EXISTS "${CMAKE_SOURCE_DIR}/.git")
+  message(STATUS "Using git describe for versioning")
   # Extract the tag
     execute_process(
         COMMAND git describe --tags --match "*[0-9]*" --dirty
@@ -19,6 +20,7 @@ if(EXISTS "${CMAKE_SOURCE_DIR}/.git")
         OUTPUT_STRIP_TRAILING_WHITESPACE
     )
 else()
+  message(STATUS "Using .git_archival.txt for versioning")
   set(GIT_ARCHIVAL_FILE "${CMAKE_SOURCE_DIR}/.git_archival.txt")
   if(EXISTS "${GIT_ARCHIVAL_FILE}")
       file(READ "${GIT_ARCHIVAL_FILE}" GIT_ARCHIVAL_CONTENT)

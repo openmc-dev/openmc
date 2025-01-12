@@ -77,12 +77,9 @@ void title()
     "                 | The OpenMC Monte Carlo Code\n"
     "       Copyright | 2011-2025 MIT, UChicago Argonne LLC, and contributors\n"
     "         License | https://docs.openmc.org/en/latest/license.html\n"
-    "         Version | {}.{}.{}{} ({})\n",
-    VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE, VERSION_DEV ? "-dev" : "",
-    VERSION_HASH);
-#ifdef GIT_SHA1
-  fmt::print("        Git SHA1 | {}\n", GIT_SHA1);
-#endif
+    "         Version | {}.{}.{}{}\n",
+    VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE, VERSION_DEV ? "-dev" : "");
+  fmt::print("     Commit Hash | {}\n", COMMIT_HASH);
 
   // Write the date and time
   fmt::print("       Date/Time | {}\n", time_stamp());
@@ -292,12 +289,10 @@ void print_usage()
 void print_version()
 {
   if (mpi::master) {
-    fmt::print("OpenMC version {}.{}.{}\n", VERSION_MAJOR, VERSION_MINOR,
-      VERSION_RELEASE);
-#ifdef GIT_SHA1
-    fmt::print("Git SHA1: {}\n", GIT_SHA1);
-#endif
-    fmt::print("Copyright (c) 2011-2024 MIT, UChicago Argonne LLC, and "
+    fmt::print("OpenMC version {}.{}.{}{}\n", VERSION_MAJOR, VERSION_MINOR,
+      VERSION_RELEASE, VERSION_DEV ? "-dev" : "");
+    fmt::print("Commit hash: {}\n", COMMIT_HASH);
+    fmt::print("Copyright (c) 2011-2025 MIT, UChicago Argonne LLC, and "
                "contributors\nMIT/X license at "
                "<https://docs.openmc.org/en/latest/license.html>\n");
   }

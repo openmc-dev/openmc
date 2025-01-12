@@ -1,8 +1,11 @@
 cmake_minimum_required(VERSION 3.16 FATAL_ERROR)
 project(openmc C CXX)
 
+# Find git
+find_package(Git)
+
 # Try to get the version from git describe
-if(EXISTS "${CMAKE_SOURCE_DIR}/.git")
+if(EXISTS "${CMAKE_SOURCE_DIR}/.git" AND GIT_FOUND)
   message(STATUS "Using git describe for versioning")
   # Extract the tag
     execute_process(
@@ -12,11 +15,11 @@ if(EXISTS "${CMAKE_SOURCE_DIR}/.git")
         OUTPUT_STRIP_TRAILING_WHITESPACE
     )
 
-    # Extract the abbreviated hash
+    # Extract the commit hash
     execute_process(
-        COMMAND git rev-parse --short HEAD
+        COMMAND git rev-parse HEAD
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-        OUTPUT_VARIABLE ABBREVIATED_HASH
+        OUTPUT_VARIABLE COMMIT_HASH
         OUTPUT_STRIP_TRAILING_WHITESPACE
     )
 else()
@@ -35,14 +38,14 @@ else()
           message(FATAL_ERROR "Could not extract version from .git_archival.txt")
       endif()
 
-      # Extract the abbreviated hash
-      string(REGEX MATCH "short-node: ([a-f0-9]+)" ABBREVIATED_HASH "${GIT_ARCHIVAL_CONTENT}")
+      # Extract the commit hash
+      string(REGEX MATCH "commit: ([a-f0-9]+)" COMMIT_HASH "${GIT_ARCHIVAL_CONTENT}")
 
-      # If a abbreviated hash is found, use it
-      if(ABBREVIATED_HASH MATCHES "short-node: ([a-f0-9]+)")
-          set(ABBREVIATED_HASH "${CMAKE_MATCH_1}")
+      # If a commit hash is found, use it
+      if(COMMIT_HASH  MATCHES "commit: ([a-f0-9]+)")
+          set(COMMIT_HASH "${CMAKE_MATCH_1}")
       else()
-          message(FATAL_ERROR "Could not extract abbreviated hash from .git_archival.txt")
+          message(FATAL_ERROR "Could not extract commit hash from .git_archival.txt")
       endif()
   else()
       message(FATAL_ERROR "Neither git describe nor .git_archival.txt is available for versioning.")
@@ -53,9 +56,9 @@ endif()
 if(VERSION_STRING MATCHES "^v?([0-9]+\\.[0-9]+\\.[0-9]+)([-].*)?")
   set(VERSION_NO_SUFFIX "${CMAKE_MATCH_1}")
   if(VERSION_STRING MATCHES "-.*")
-    set(VERSION_DEV_SUFFIX "true")
+    set(VERSION_DEV "true")
   else()
-    set(VERSION_DEV_SUFFIX "false")
+    set(VERSION_DEV "false")
   endif()
 else()
   message(FATAL_ERROR "Invalid version format: ${VERSION_STRING}")
@@ -68,8 +71,8 @@ list(GET VERSION_LIST 1 OPENMC_VERSION_MINOR)
 list(GET VERSION_LIST 2 OPENMC_VERSION_RELEASE)
 set(OPENMC_VERSION ${OPENMC_VERSION_MAJOR}.${OPENMC_VERSION_MINOR}.${OPENMC_VERSION_RELEASE})
 message(STATUS "OpenMC version: ${OPENMC_VERSION}")
-message(STATUS "OpenMC development version: ${VERSION_DEV_SUFFIX}")
-message(STATUS "OpenMC version hash: ${ABBREVIATED_HASH}")
+message(STATUS "OpenMC development version: ${VERSION_DEV}")
+message(STATUS "OpenMC commit hash: ${COMMIT_HASH}")
 
 # Generate version.h
 configure_file(include/openmc/version.h.in "${CMAKE_BINARY_DIR}/include/openmc/version.h" @ONLY)
@@ -287,8 +290,6 @@ endif()
 #===============================================================================
 # Update git submodules as needed
 #===============================================================================
-
-find_package(Git)
 if(GIT_FOUND AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.git")
   option(GIT_SUBMODULE "Check submodules during build" ON)
   if(GIT_SUBMODULE)
@@ -548,18 +549,6 @@ if (HDF5_IS_PARALLEL)
 endif()
 if (OPENMC_USE_MPI)
   target_compile_definitions(libopenmc PUBLIC -DOPENMC_MPI)
-endif()
-
-# Set git SHA1 hash as a compile definition
-if(GIT_FOUND)
-  execute_process(COMMAND ${GIT_EXECUTABLE} rev-parse HEAD
-                  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-                  RESULT_VARIABLE GIT_SHA1_SUCCESS
-                  OUTPUT_VARIABLE GIT_SHA1
-                  ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
-  if(GIT_SHA1_SUCCESS EQUAL 0)
-    target_compile_definitions(libopenmc PRIVATE -DGIT_SHA1="${GIT_SHA1}")
-  endif()
 endif()
 
 # target_link_libraries treats any arguments starting with - but not -l as

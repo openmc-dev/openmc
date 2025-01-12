@@ -1824,7 +1824,7 @@ void PhongRay::on_intersection()
     // OpenMC native CSG and DAGMC surfaces have some slight differences
     // in how they interpret particles that are sitting on a surface.
     // I don't know exactly why, but this makes everything work beautifully.
-    if (surf->geom_type_ == GeometryType::DAG) {
+    if (surf->geom_type() == GeometryType::DAG) {
       surface() = 0;
     } else {
       surface() = -surface(); // go to other side

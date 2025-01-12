@@ -75,10 +75,10 @@ void title()
   // Write version information
   fmt::print(
     "                 | The OpenMC Monte Carlo Code\n"
-    "       Copyright | 2011-2024 MIT, UChicago Argonne LLC, and contributors\n"
+    "       Copyright | 2011-2025 MIT, UChicago Argonne LLC, and contributors\n"
     "         License | https://docs.openmc.org/en/latest/license.html\n"
-    "         Version | {}.{}.{}{}\n",
-    VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE, VERSION_DEV ? "-dev" : "");
+    "         Version | {}.{}.{}{} ({})\n",
+    VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE, VERSION_DEV ? "-dev" : "", VERSION_HASH);
 #ifdef GIT_SHA1
   fmt::print("        Git SHA1 | {}\n", GIT_SHA1);
 #endif

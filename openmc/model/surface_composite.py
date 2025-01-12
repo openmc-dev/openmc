@@ -729,7 +729,7 @@ class OrthogonalBox(CompositeSurface):
 
 
 class XConeOneSided(CompositeSurface):
-    """One-sided cone parallel the x-axis
+    r"""One-sided cone parallel the x-axis
 
     A one-sided cone is composed of a normal cone surface and a "disambiguation"
     surface that eliminates the ambiguity as to which region of space is
@@ -742,17 +742,16 @@ class XConeOneSided(CompositeSurface):
     Parameters
     ----------
     x0 : float, optional
-        x-coordinate of the apex. Defaults to 0.
+        x-coordinate of the apex in [cm].
     y0 : float, optional
-        y-coordinate of the apex. Defaults to 0.
+        y-coordinate of the apex in [cm].
     z0 : float, optional
-        z-coordinate of the apex. Defaults to 0.
+        z-coordinate of the apex in [cm].
     r2 : float, optional
-        This parameter is the square of the slope of the cone. It is defined as
-        :math:`\\left(\\frac{r}{h}\\right)^2` for a radius, :math:`r`, an axial
+        The square of the slope of the cone. It is defined as
+        :math:`\left(\frac{r}{h}\right)^2` for a radius, :math:`r` and an axial
         distance :math:`h` from the apex. An easy way to define this quantity is
         to take the square of the radius of the cone (in cm) 1 cm from the apex.
-        Defaults to 1.
     up : bool
         Whether to select the side of the cone that extends to infinity in the
         positive direction of the coordinate axis (the positive half-space of
@@ -785,7 +784,7 @@ class XConeOneSided(CompositeSurface):
 
 
 class YConeOneSided(CompositeSurface):
-    """One-sided cone parallel the y-axis
+    r"""One-sided cone parallel the y-axis
 
     A one-sided cone is composed of a normal cone surface and a "disambiguation"
     surface that eliminates the ambiguity as to which region of space is
@@ -798,17 +797,16 @@ class YConeOneSided(CompositeSurface):
     Parameters
     ----------
     x0 : float, optional
-        x-coordinate of the apex. Defaults to 0.
+        x-coordinate of the apex in [cm].
     y0 : float, optional
-        y-coordinate of the apex. Defaults to 0.
+        y-coordinate of the apex in [cm].
     z0 : float, optional
-        z-coordinate of the apex. Defaults to 0.
+        z-coordinate of the apex in [cm].
     r2 : float, optional
-        This parameter is the square of the slope of the cone. It is defined as
-        :math:`\\left(\\frac{r}{h}\\right)^2` for a radius, :math:`r`, an axial
+        The square of the slope of the cone. It is defined as
+        :math:`\left(\frac{r}{h}\right)^2` for a radius, :math:`r` and an axial
         distance :math:`h` from the apex. An easy way to define this quantity is
         to take the square of the radius of the cone (in cm) 1 cm from the apex.
-        Defaults to 1.
     up : bool
         Whether to select the side of the cone that extends to infinity in the
         positive direction of the coordinate axis (the positive half-space of
@@ -840,7 +838,7 @@ class YConeOneSided(CompositeSurface):
 
 
 class ZConeOneSided(CompositeSurface):
-    """One-sided cone parallel the z-axis
+    r"""One-sided cone parallel the z-axis
 
     A one-sided cone is composed of a normal cone surface and a "disambiguation"
     surface that eliminates the ambiguity as to which region of space is
@@ -853,17 +851,16 @@ class ZConeOneSided(CompositeSurface):
     Parameters
     ----------
     x0 : float, optional
-        x-coordinate of the apex. Defaults to 0.
+        x-coordinate of the apex in [cm].
     y0 : float, optional
-        y-coordinate of the apex. Defaults to 0.
+        y-coordinate of the apex in [cm].
     z0 : float, optional
-        z-coordinate of the apex. Defaults to 0.
+        z-coordinate of the apex in [cm].
     r2 : float, optional
-        This parameter is the square of the slope of the cone. It is defined as
-        :math:`\\left(\\frac{r}{h}\\right)^2` for a radius, :math:`r`, an axial
+        The square of the slope of the cone. It is defined as
+        :math:`\left(\frac{r}{h}\right)^2` for a radius, :math:`r` and an axial
         distance :math:`h` from the apex. An easy way to define this quantity is
         to take the square of the radius of the cone (in cm) 1 cm from the apex.
-        Defaults to 1.
     up : bool
         Whether to select the side of the cone that extends to infinity in the
         positive direction of the coordinate axis (the positive half-space of

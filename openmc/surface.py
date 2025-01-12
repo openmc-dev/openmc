@@ -1753,7 +1753,7 @@ class Sphere(QuadricMixin, Surface):
 
 
 class Cone(QuadricMixin, Surface):
-    """A conical surface parallel to the x-, y-, or z-axis.
+    r"""A conical surface parallel to the x-, y-, or z-axis.
 
     .. Note::
         This creates a double cone, which is two one-sided cones that meet at their apex.
@@ -1763,26 +1763,22 @@ class Cone(QuadricMixin, Surface):
     Parameters
     ----------
     x0 : float, optional
-        x-coordinate of the apex in [cm]. Defaults to 0.
+        x-coordinate of the apex in [cm].
     y0 : float, optional
-        y-coordinate of the apex in [cm]. Defaults to 0.
+        y-coordinate of the apex in [cm].
     z0 : float, optional
-        z-coordinate of the apex in [cm]. Defaults to 0.
+        z-coordinate of the apex in [cm].
     r2 : float, optional
-        This parameter is the square of the slope of the cone. It is defined as
-        :math:`\\left(\\frac{r}{h}\\right)^2` for a radius, :math:`r`, an axial
+        The square of the slope of the cone. It is defined as
+        :math:`\left(\frac{r}{h}\right)^2` for a radius, :math:`r` and an axial
         distance :math:`h` from the apex. An easy way to define this quantity is
         to take the square of the radius of the cone (in cm) 1 cm from the apex.
-        Defaults to 1.
     dx : float, optional
         x-component of the vector representing the axis of the cone.
-        Defaults to 0.
     dy : float, optional
         y-component of the vector representing the axis of the cone.
-        Defaults to 0.
     dz : float, optional
         z-component of the vector representing the axis of the cone.
-        Defaults to 1.
     surface_id : int, optional
         Unique identifier for the surface. If not specified, an identifier will
         automatically be assigned.
@@ -1913,7 +1909,7 @@ class Cone(QuadricMixin, Surface):
 
 
 class XCone(QuadricMixin, Surface):
-    """A cone parallel to the x-axis of the form :math:`(y - y_0)^2 + (z - z_0)^2 =
+    r"""A cone parallel to the x-axis of the form :math:`(y - y_0)^2 + (z - z_0)^2 =
     r^2 (x - x_0)^2`.
 
     .. Note::
@@ -1923,17 +1919,16 @@ class XCone(QuadricMixin, Surface):
     Parameters
     ----------
     x0 : float, optional
-        x-coordinate of the apex in [cm]. Defaults to 0.
+        x-coordinate of the apex in [cm].
     y0 : float, optional
-        y-coordinate of the apex in [cm]. Defaults to 0.
+        y-coordinate of the apex in [cm].
     z0 : float, optional
-        z-coordinate of the apex in [cm]. Defaults to 0.
+        z-coordinate of the apex in [cm].
     r2 : float, optional
-        This parameter is the square of the slope of the cone. It is defined as
-        :math:`\\left(\\frac{r}{h}\\right)^2` for a radius, :math:`r`, an axial
+        The square of the slope of the cone. It is defined as
+        :math:`\left(\frac{r}{h}\right)^2` for a radius, :math:`r` and an axial
         distance :math:`h` from the apex. An easy way to define this quantity is
         to take the square of the radius of the cone (in cm) 1 cm from the apex.
-        Defaults to 1.
     boundary_type : {'transmission', 'vacuum', 'reflective', 'white'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
@@ -2016,7 +2011,7 @@ class XCone(QuadricMixin, Surface):
 
 
 class YCone(QuadricMixin, Surface):
-    """A cone parallel to the y-axis of the form :math:`(x - x_0)^2 + (z - z_0)^2 =
+    r"""A cone parallel to the y-axis of the form :math:`(x - x_0)^2 + (z - z_0)^2 =
     r^2 (y - y_0)^2`.
 
     .. Note::
@@ -2026,17 +2021,16 @@ class YCone(QuadricMixin, Surface):
     Parameters
     ----------
     x0 : float, optional
-        x-coordinate of the apex in [cm]. Defaults to 0.
+        x-coordinate of the apex in [cm].
     y0 : float, optional
-        y-coordinate of the apex in [cm]. Defaults to 0.
+        y-coordinate of the apex in [cm].
     z0 : float, optional
-        z-coordinate of the apex in [cm]. Defaults to 0.
+        z-coordinate of the apex in [cm].
     r2 : float, optional
-        This parameter is the square of the slope of the cone. It is defined as
-        :math:`\\left(\\frac{r}{h}\\right)^2` for a radius, :math:`r`, an axial
+        The square of the slope of the cone. It is defined as
+        :math:`\left(\frac{r}{h}\right)^2` for a radius, :math:`r` and an axial
         distance :math:`h` from the apex. An easy way to define this quantity is
         to take the square of the radius of the cone (in cm) 1 cm from the apex.
-        Defaults to 1.
     boundary_type : {'transmission', 'vacuum', 'reflective', 'white'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
@@ -2119,7 +2113,7 @@ class YCone(QuadricMixin, Surface):
 
 
 class ZCone(QuadricMixin, Surface):
-    """A cone parallel to the z-axis of the form :math:`(x - x_0)^2 + (y - y_0)^2 =
+    r"""A cone parallel to the z-axis of the form :math:`(x - x_0)^2 + (y - y_0)^2 =
     r^2 (z - z_0)^2`.
 
     .. Note::
@@ -2129,17 +2123,16 @@ class ZCone(QuadricMixin, Surface):
     Parameters
     ----------
     x0 : float, optional
-        x-coordinate of the apex in [cm]. Defaults to 0.
+        x-coordinate of the apex in [cm].
     y0 : float, optional
-        y-coordinate of the apex in [cm]. Defaults to 0.
+        y-coordinate of the apex in [cm].
     z0 : float, optional
-        z-coordinate of the apex in [cm]. Defaults to 0.
+        z-coordinate of the apex in [cm].
     r2 : float, optional
-        This parameter is the square of the slope of the cone. It is defined as
-        :math:`\\left(\\frac{r}{h}\\right)^2` for a radius, :math:`r`, an axial
+        The square of the slope of the cone. It is defined as
+        :math:`\left(\frac{r}{h}\right)^2` for a radius, :math:`r` and an axial
         distance :math:`h` from the apex. An easy way to define this quantity is
         to take the square of the radius of the cone (in cm) 1 cm from the apex.
-        Defaults to 1.
     boundary_type : {'transmission', 'vacuum', 'reflective', 'white'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles

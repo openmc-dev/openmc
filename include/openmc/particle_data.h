@@ -300,14 +300,14 @@ public:
   Direction& u_local() { return coord_[n_coord_ - 1].u; }
   const Direction& u_local() const { return coord_[n_coord_ - 1].u; }
 
-  // Surface that the particle is on
+  // Surface token for the surfae that the particle is currently on
   int& surface() { return surface_; }
   const int& surface() const { return surface_; }
 
   // Surface index based on the current value of the surface_ attribute
   int surface_index() const
   {
-    // TODO: off-by-one on surface indices throughout this function.
+    // TODO: off-by-one on
     return std::abs(surface_) - 1;
   }
 

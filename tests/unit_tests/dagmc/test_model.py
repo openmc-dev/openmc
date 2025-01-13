@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 import openmc
 from openmc.utility_funcs import change_directory
-
+import openmc.lib
 pytestmark = pytest.mark.skipif(
     not openmc.lib._dagmc_enabled(),
     reason="DAGMC CAD geometry is not enabled.")
@@ -259,8 +259,6 @@ def test_dagmc_xml(model):
 
 def test_dagmc_vacuum(model):
 
-    openmc.run()
-
     # Verify Not_A_Vacuum is not detected as a Vacuum
     mat_not_a_vacuum = openmc.Material(1, name="Not_A_Vacuum")
     mat_not_a_vacuum.add_nuclide("U235", 0.03)
@@ -276,6 +274,12 @@ def test_dagmc_vacuum(model):
     # Replacing all the materials with vacuum
     for mat in dag_univ.material_names:
         dag_univ.replace_material_assignment(mat, mat_not_a_vacuum)
+
+    current = openmc.Tally()
+    current.scores = ['current']
+    model._tallies.append(current)
+    src = openmc.IndependentSource(space=openmc.stats.Point())
+    model.settings.source = src
 
     model.export_to_xml()
     # Ensure this run as expected.

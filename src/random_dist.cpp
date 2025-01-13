@@ -12,13 +12,9 @@ double uniform_distribution(double a, double b, uint64_t* seed)
   return a + (b - a) * prn(seed);
 }
 
-double uniform_int_distribution(double a, double b, uint64_t* seed)
+int64_t uniform_int_distribution(int64_t a, int64_t b, uint64_t* seed)
 {
-  // Generate a random uint64_t value using the PRNG
-  uint64_t random_value =
-    static_cast<uint64_t>(prn(seed) * std::numeric_limits<uint64_t>::max());
-  // Map the random value to the range [a, b]
-  return a + (random_value % static_cast<uint64_t>(b - a + 1));
+  return a + static_cast<int64_t>(prn(seed) * (b - a + 1));
 }
 
 double maxwell_spectrum(double T, uint64_t* seed)

@@ -25,7 +25,7 @@ double uniform_distribution(double a, double b, uint64_t* seed);
 //! \return Sampled variate
 //==============================================================================
 
-double uniform_int_distribution(double a, double b, uint64_t* seed);
+int64_t uniform_int_distribution(int64_t a, int64_t b, uint64_t* seed);
 
 //==============================================================================
 //! Samples an energy from the Maxwell fission distribution based on a direct

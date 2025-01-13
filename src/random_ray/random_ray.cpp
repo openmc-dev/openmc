@@ -195,7 +195,7 @@ void fisher_yates_shuffle(vector<int>& arr, uint64_t* seed)
 //
 // Algorithm adapted from:
 //      A. B. Owen. A randomized halton algorithm in r. Arxiv, 6 2017.
-//      URL http:arxiv.org/abs/1706.02808
+//      URL https://arxiv.org/abs/1706.02808
 vector<vector<float>> rhalton(int N, int dim, uint64_t* seed, int64_t skip = 0)
 {
   vector<int> primes = {2, 3, 5, 7, 11, 13, 17, 19, 23, 29};
@@ -657,7 +657,7 @@ SourceSite RandomRay::sample_halton()
   float mu = 2.0 * samples[0][3] - 1.0;
   float azi = 2.0 * PI * samples[0][4];
   // Convert to Cartesian coordinates
-  float c = std::pow((1.0 - mu*mu), 0.5);
+  float c = std::sqrt(1.0 - mu*mu);
   site.u.x = mu;
   site.u.y = std::cos(azi) * c;
   site.u.z = std::sin(azi) * c;

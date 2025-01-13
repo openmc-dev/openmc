@@ -275,9 +275,13 @@ def test_dagmc_vacuum(model):
     for mat in dag_univ.material_names:
         dag_univ.replace_material_assignment(mat, mat_not_a_vacuum)
 
+
+    pitch = 1.26
+    box = openmc.SurfaceFilter(openmc.Sphere(r=pitch))
     current = openmc.Tally()
     current.scores = ['current']
-    model._tallies.append(current)
+    current.filters = [box]
+    model.tallies.append(current)
     src = openmc.IndependentSource(space=openmc.stats.Point())
     model.settings.source = src
 

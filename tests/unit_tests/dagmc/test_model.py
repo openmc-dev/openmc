@@ -288,7 +288,14 @@ def test_dagmc_vacuum(model):
     model.export_to_xml()
     # Ensure this run as expected.
     openmc.run()
+    # Read the statepoint file.
+    sp = openmc.StatePoint("statepoint.100.h5")
 
+    # Extract the tally data as a Pandas DataFrame.
+    tally_dfs = [t.get_pandas_dataframe() for t in sp.tallies.values()]
+    df = pd.concat(tally_dfs, ignore_index=True)
+    print(df)
+    
     # Verify that the vacuum is detected as a Vacuum
     mat_a_vacuum = openmc.Material(1, name="Vacuum")
     mat_a_vacuum.add_nuclide("U235", 0.03)

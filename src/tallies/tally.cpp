@@ -498,7 +498,7 @@ void Tally::set_scores(const vector<std::string>& scores)
   for (auto score_str : scores) {
     // Make sure a delayed group filter wasn't used with an incompatible score.
     if (delayedgroup_filter_ != C_NONE) {
-      if (score_str != "delayed-nu-fission" && score_str != "decay-rate")
+      if (score_str != "delayed-nu-fission" && score_str != "decay-rate" && score_str != "ifp-beta-numerator")
         fatal_error("Cannot tally " + score_str + "with a delayedgroup filter");
     }
 

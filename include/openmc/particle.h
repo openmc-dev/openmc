@@ -49,7 +49,9 @@ public:
   // Advance particle in space and time
   // Short-term solution until the surface source is revised and we can use
   // this->move_distance(distance)
-  void is_hit_time_boundary(double distance);
+  void is_hit_time_boundary(double distance, bool& hit_time_boundary);
+
+  void set_particle_weight_to_zero_if_it_hit_time_boundary(bool hit_time_boundary);
 
   void score_non_mesh_track_length_tallies(double distance);
 

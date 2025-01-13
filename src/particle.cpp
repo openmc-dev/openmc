@@ -229,7 +229,7 @@ double Particle::get_destination_distance()
   return distance;
 }
 
-void Particle::is_hit_time_boundary(double distance)
+void Particle::is_hit_time_boundary(double distance, bool& hit_time_boundary)
 {
   for (int j = 0; j < this->n_coord(); ++j) {
     this->coord(j).r += distance * this->coord(j).u;
@@ -237,7 +237,7 @@ void Particle::is_hit_time_boundary(double distance)
   this->time() += distance / this->speed();
 
   // Kill particle if its time exceeds the cutoff
-  bool hit_time_boundary = false;
+  hit_time_boundary = false;
   double time_cutoff = settings::time_cutoff[static_cast<int>(this->type())];
   if (this->time() > time_cutoff) {
     double dt = this->time() - time_cutoff;
@@ -247,9 +247,13 @@ void Particle::is_hit_time_boundary(double distance)
     this->move_distance(-push_back_distance);
     hit_time_boundary = true;
   }
+}
+
+void Particle::set_particle_weight_to_zero_if_it_hit_time_boundary(bool hit_time_boundary)
+{
   // Set particle weight to zero if it hit the time boundary
   if (hit_time_boundary) {
-    wgt() = 0.0;
+    this->wgt() = 0.0;
   }
 }
 
@@ -279,10 +283,12 @@ void Particle::score_non_mesh_track_length_tallies(double distance)
 void Particle::event_advance()
 {
   double distance = get_destination_distance();
-  is_hit_time_boundary(distance);
+  bool hit_time_boundary = false;
+  is_hit_time_boundary(distance, hit_time_boundary);
 
   // Score track-length tallies
   score_the_tallies(distance);
+  set_particle_weight_to_zero_if_it_hit_time_boundary(hit_time_boundary);
 }
 
 void Particle::event_advance_deprecated()

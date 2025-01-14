@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import pandas as pd
 import lxml.etree as ET
 import numpy as np
 import pytest
@@ -256,64 +257,114 @@ def test_dagmc_xml(model):
     for xml_mats, model_mats in zip(xml_dagmc_univ._material_overrides.values(), dag_univ._material_overrides.values()):
         assert all([xml_mat.id == orig_mat.id for xml_mat, orig_mat in zip(xml_mats, model_mats)])
 
+def test_dagmc_vacuum(request, run_in_tmpdir):
+    
+    import shutil
+    shutil.copyfile(Path(request.fspath).parent / "dagmc.h5m", Path(request.fspath).parent / "dagmc_not_a_vacuum.h5m")
 
-def test_dagmc_vacuum(model):
+    mats = {}
+    mats["not_a_vacuum"] = openmc.Material(1, name="not_a_vacuum")
+    mats["not_a_vacuum"].add_nuclide("U235", 0.03)
+    mats["not_a_vacuum"].add_nuclide("U238", 0.97)
+    mats["not_a_vacuum"].add_nuclide("O16", 2.0)
+    mats["not_a_vacuum"].set_density("g/cm3", 10.0)
 
-    # Verify Not_A_Vacuum is not detected as a Vacuum
-    mat_not_a_vacuum = openmc.Material(1, name="Not_A_Vacuum")
-    mat_not_a_vacuum.add_nuclide("U235", 0.03)
-    mat_not_a_vacuum.add_nuclide("U238", 0.97)
-    mat_not_a_vacuum.add_nuclide("O16", 2.0)
-    mat_not_a_vacuum.set_density("g/cm3", 10.0)
+    mats["vacuum"] = openmc.Material(name="vacuum")
+    mats["vacuum"].add_nuclide("U235", 0.03)
+    mats["vacuum"].add_nuclide("U238", 0.97)
+    mats["vacuum"].add_nuclide("O16", 2.0)
+    mats["vacuum"].set_density("g/cm3", 10.0)
 
+    mats["41"] = openmc.Material(name="41")
+    mats["41"].add_nuclide("U235", 0.03)
+    mats["41"].add_nuclide("U238", 0.97)
+    mats["41"].add_nuclide("O16", 2.0)
+    mats["41"].set_density("g/cm3", 10.0)
+
+    import h5py
+    hf = h5py.File(Path(request.fspath).parent / "dagmc_not_a_vacuum.h5m", 'r+')
+    new_assignment = 'mat:not_a_vacuum'.encode('utf-8')
+    hf['/tstt/tags/NAME']['values'][1] = new_assignment
+    hf.close()
+    
+    p = Path(request.fspath).parent / "dagmc_not_a_vacuum.h5m"
+    daguniv = openmc.DAGMCUniverse(p, auto_geom_ids=True).bounded_universe()
+    settings = openmc.Settings()
+    settings.batches = 100
+    settings.inactive = 10
+    settings.particles = 1000
+    model = openmc.Model()
+    model.materials = openmc.Materials(mats.values())
+    model.geometry = openmc.Geometry(root=daguniv)
+    model.settings = settings
+    model.init_lib()
+    model.sync_dagmc_universes()
     for univ in model.geometry.get_all_universes().values():
         if isinstance(univ, openmc.DAGMCUniverse):
             dag_univ = univ
             break
 
-    # Replacing all the materials with vacuum
-    for mat in dag_univ.material_names:
-        dag_univ.replace_material_assignment(mat, mat_not_a_vacuum)
+    my_tally = openmc.Tally()
+    cell_filter = openmc.CellFilter([x.id for x in dag_univ.get_all_cells().values()])
 
-
-    pitch = 1.26
-    box = openmc.SurfaceFilter(openmc.Sphere(r=pitch))
-    current = openmc.Tally()
-    current.scores = ['current']
-    current.filters = [box]
-    model.tallies.append(current)
+    my_tally.scores = ['nu-fission']
+    my_tally.filters = [cell_filter]
+    model.tallies.append(my_tally)
     src = openmc.IndependentSource(space=openmc.stats.Point())
     model.settings.source = src
 
-    model.export_to_xml()
-    # Ensure this run as expected.
-    openmc.run()
+    model.export_to_model_xml('sub_dir_not_a_vacuum/model.xml',)
+    openmc.run(cwd='sub_dir_not_a_vacuum')
     # Read the statepoint file.
-    sp = openmc.StatePoint("statepoint.100.h5")
+    sp = openmc.StatePoint("sub_dir_not_a_vacuum/statepoint.100.h5")
 
     # Extract the tally data as a Pandas DataFrame.
     tally_dfs = [t.get_pandas_dataframe() for t in sp.tallies.values()]
     df = pd.concat(tally_dfs, ignore_index=True)
-    print(df)
-    
-    # Verify that the vacuum is detected as a Vacuum
-    mat_a_vacuum = openmc.Material(1, name="Vacuum")
-    mat_a_vacuum.add_nuclide("U235", 0.03)
-    mat_a_vacuum.add_nuclide("U238", 0.97)
-    mat_a_vacuum.add_nuclide("O16", 2.0)
-    mat_a_vacuum.set_density("g/cm3", 10.0)
+    # not detected as vacuum so tally should be non-zero
+    assert df['mean'].loc[0] > 0
 
+    shutil.copyfile(Path(request.fspath).parent / "dagmc.h5m", Path(request.fspath).parent / "dagmc_a_vacuum.h5m")
+    hf = h5py.File(Path(request.fspath).parent / "dagmc_a_vacuum.h5m", 'r+')
+    new_assignment = 'mat:vacuum'.encode('utf-8')
+    hf['/tstt/tags/NAME']['values'][1] = new_assignment
+    hf.close()
+
+    p = Path(request.fspath).parent / "dagmc_a_vacuum.h5m"
+
+    daguniv = openmc.DAGMCUniverse(p, auto_geom_ids=True).bounded_universe()
+    settings = openmc.Settings()
+    settings.batches = 100
+    settings.inactive = 10
+    settings.particles = 1000
+    model = openmc.Model()
+    model.materials = openmc.Materials(mats.values())
+    model.geometry = openmc.Geometry(root=daguniv)
+    model.settings = settings
+    model.init_lib()
+    model.sync_dagmc_universes()
     for univ in model.geometry.get_all_universes().values():
         if isinstance(univ, openmc.DAGMCUniverse):
             dag_univ = univ
             break
 
-    # Replacing all the materials with vacuum
-    for mat in dag_univ.material_names:
-        dag_univ.replace_material_assignment(mat, mat_a_vacuum)
+    my_tally = openmc.Tally()
+    cell_filter = openmc.CellFilter([x.id for x in dag_univ.get_all_cells().values()])
 
-    model.export_to_xml()
-    # ensure that particles will be lost when cell intersections can't be found
-    # due to the removed triangles in this model
-    with pytest.raises(RuntimeError, match='Maximum number of lost particles has been reached.'):
-        openmc.run()
+    my_tally.scores = ['nu-fission']
+    my_tally.filters = [cell_filter]
+    model.tallies.append(my_tally)
+    src = openmc.IndependentSource(space=openmc.stats.Point())
+    model.settings.source = src
+
+    model.export_to_model_xml('sub_dir_vacuum/model.xml',)
+    openmc.run(cwd='sub_dir_vacuum')
+    # Read the statepoint file.
+    sp = openmc.StatePoint("sub_dir_vacuum/statepoint.100.h5")
+
+    # Extract the tally data as a Pandas DataFrame.
+    tally_dfs = [t.get_pandas_dataframe() for t in sp.tallies.values()]
+    df = pd.concat(tally_dfs, ignore_index=True)
+    # detected as vacuum so tally should be zero
+    assert df['mean'].loc[0] == 0
+    

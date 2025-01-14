@@ -257,10 +257,10 @@ def test_dagmc_xml(model):
     for xml_mats, model_mats in zip(xml_dagmc_univ._material_overrides.values(), dag_univ._material_overrides.values()):
         assert all([xml_mat.id == orig_mat.id for xml_mat, orig_mat in zip(xml_mats, model_mats)])
 
-def test_dagmc_vacuum(request, run_in_tmpdir):
+def test_dagmc_vacuum(request, run_in_tmpdir, tmpdir):
     
     import shutil
-    shutil.copyfile(Path(request.fspath).parent / "dagmc.h5m", Path(request.fspath).parent / "dagmc_not_a_vacuum.h5m")
+    shutil.copyfile(Path(request.fspath).parent / "dagmc.h5m", tmpdir/"dagmc_not_a_vacuum.h5m")
 
     mats = {}
     mats["not_a_vacuum"] = openmc.Material(1, name="not_a_vacuum")
@@ -282,12 +282,12 @@ def test_dagmc_vacuum(request, run_in_tmpdir):
     mats["41"].set_density("g/cm3", 10.0)
 
     import h5py
-    hf = h5py.File(Path(request.fspath).parent / "dagmc_not_a_vacuum.h5m", 'r+')
+    hf = h5py.File(tmpdir/ "dagmc_not_a_vacuum.h5m", 'r+')
     new_assignment = 'mat:not_a_vacuum'.encode('utf-8')
     hf['/tstt/tags/NAME']['values'][1] = new_assignment
     hf.close()
     
-    p = Path(request.fspath).parent / "dagmc_not_a_vacuum.h5m"
+    p = tmpdir/"dagmc_not_a_vacuum.h5m"
     daguniv = openmc.DAGMCUniverse(p, auto_geom_ids=True).bounded_universe()
     settings = openmc.Settings()
     settings.batches = 100
@@ -324,14 +324,13 @@ def test_dagmc_vacuum(request, run_in_tmpdir):
     # not detected as vacuum so tally should be non-zero
     assert df['mean'].loc[0] > 0
 
-    shutil.copyfile(Path(request.fspath).parent / "dagmc.h5m", Path(request.fspath).parent / "dagmc_a_vacuum.h5m")
-    hf = h5py.File(Path(request.fspath).parent / "dagmc_a_vacuum.h5m", 'r+')
+    shutil.copyfile(Path(request.fspath).parent / "dagmc.h5m", tmpdir/"dagmc_a_vacuum.h5m")
+    hf = h5py.File(tmpdir/ "dagmc_a_vacuum.h5m", 'r+')
     new_assignment = 'mat:vacuum'.encode('utf-8')
     hf['/tstt/tags/NAME']['values'][1] = new_assignment
     hf.close()
 
-    p = Path(request.fspath).parent / "dagmc_a_vacuum.h5m"
-
+    p = tmpdir/"dagmc_a_vacuum.h5m"
     daguniv = openmc.DAGMCUniverse(p, auto_geom_ids=True).bounded_universe()
     settings = openmc.Settings()
     settings.batches = 100

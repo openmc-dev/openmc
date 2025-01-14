@@ -250,7 +250,7 @@ def voxel_to_vtk(voxel_file: PathLike, output: PathLike = 'plot.vti'):
         writer.SetInputData(grid)
     else:
         writer.SetInput(grid)
-    if not output.endswith(".vti"):
+    if not output.name.endswith(".vti"):
         output += ".vti"
     writer.SetFileName(str(output))
     writer.Write()

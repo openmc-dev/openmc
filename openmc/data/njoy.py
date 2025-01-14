@@ -426,7 +426,7 @@ def make_ace(filename, temperatures=None, acer=True, xsdir=None,
 
 
 def make_ace_thermal(filename, filename_thermal, temperatures=None,
-                     ace='ace', xsdir=None, output_dir=None, error=0.001,
+                     ace=None, xsdir=None, output_dir=None, error=0.001,
                      iwt=2, evaluation=None, evaluation_thermal=None,
                      table_name=None, zaids=None, nmix=None, **kwargs):
     """Generate thermal scattering ACE file from ENDF files
@@ -441,7 +441,7 @@ def make_ace_thermal(filename, filename_thermal, temperatures=None,
         Temperatures in Kelvin to produce data at. If omitted, data is produced
         at all temperatures given in the ENDF thermal scattering sublibrary.
     ace : str, optional
-        Path of ACE file to write
+        Path of ACE file to write. Default to ``"ace"``.
     xsdir : str, optional
         Path of xsdir file to write. Defaults to ``"xsdir"`` in the same
         directory as ``ace``
@@ -589,7 +589,7 @@ def make_ace_thermal(filename, filename_thermal, temperatures=None,
     commands += 'stop\n'
     run(commands, tapein, tapeout, **kwargs)
 
-    ace = output_dir / ace
+    ace = (output_dir / "ace") if ace is None else Path(ace)
     xsdir = (ace.parent / "xsdir") if xsdir is None else Path(xsdir)
     with ace.open('w') as ace_file, xsdir.open('w') as xsdir_file:
         # Concatenate ACE and xsdir files together

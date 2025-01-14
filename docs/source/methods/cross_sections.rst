@@ -290,7 +290,7 @@ scattering information in the water while the fuel can be simulated with linear
 or even isotropic scattering.
 
 .. _logarithmic mapping technique:
-   https://laws.lanl.gov/vhosts/mcnp.lanl.gov/pdf_files/la-ur-14-24530.pdf
+   https://mcnp.lanl.gov/pdf_files/TechReport_2014_LANL_LA-UR-14-24530_Brown.pdf
 .. _Hwang: https://doi.org/10.13182/NSE87-A16381
 .. _Josey: https://doi.org/10.1016/j.jcp.2015.08.013
 .. _WMP Library: https://github.com/mit-crpg/WMP_Library

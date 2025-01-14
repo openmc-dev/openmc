@@ -354,9 +354,9 @@ def test_dagmc_vacuum(request, run_in_tmpdir, tmpdir):
     model.settings.source = src
 
     model.export_to_model_xml('sub_dir_vacuum/model.xml',)
-    openmc.run(cwd='sub_dir_vacuum')
+    sp_filename = openmc.run(cwd='sub_dir_vacuum')
     # Read the statepoint file.
-    sp = openmc.StatePoint("sub_dir_vacuum/statepoint.100.h5")
+    sp = openmc.StatePoint(sp_filename)
 
     # Extract the tally data as a Pandas DataFrame.
     tally_dfs = [t.get_pandas_dataframe() for t in sp.tallies.values()]

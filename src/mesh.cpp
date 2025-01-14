@@ -1,7 +1,8 @@
 #include "openmc/mesh.h"
-#include <algorithm> // for copy, equal, min, min_element
-#include <cmath>     // for ceil
-#include <cstddef>   // for size_t
+#include <algorithm>      // for copy, equal, min, min_element
+#define _USE_MATH_DEFINES // to make M_PI declared in Intel and MSVC compilers
+#include <cmath>          // for ceil
+#include <cstddef>        // for size_t
 #include <gsl/gsl-lite.hpp>
 #include <string>
 
@@ -245,7 +246,7 @@ void Mesh::to_hdf5(hid_t group) const
   hid_t mesh_group = create_group(group, group_name.c_str());
 
   // Write mesh type
-  write_attribute(mesh_group, "type", this->get_mesh_type());
+  write_dataset(mesh_group, "type", this->get_mesh_type());
 
   // Write mesh ID
   write_attribute(mesh_group, "id", id_);
@@ -307,7 +308,6 @@ Position StructuredMesh::sample_element(
 
 UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node)
 {
-
   // check the mesh type
   if (check_for_node(node, "type")) {
     auto temp = get_node_value(node, "type", true, true);
@@ -969,7 +969,6 @@ std::pair<vector<double>, vector<double>> RegularMesh::plot(
 
 void RegularMesh::to_hdf5_inner(hid_t mesh_group) const
 {
-  write_dataset(mesh_group, "type", "regular");
   write_dataset(mesh_group, "dimension", get_x_shape());
   write_dataset(mesh_group, "lower_left", lower_left_);
   write_dataset(mesh_group, "upper_right", upper_right_);
@@ -1155,7 +1154,6 @@ std::pair<vector<double>, vector<double>> RectilinearMesh::plot(
 
 void RectilinearMesh::to_hdf5_inner(hid_t mesh_group) const
 {
-  write_dataset(mesh_group, "type", "rectilinear");
   write_dataset(mesh_group, "x_grid", grid_[0]);
   write_dataset(mesh_group, "y_grid", grid_[1]);
   write_dataset(mesh_group, "z_grid", grid_[2]);
@@ -1430,7 +1428,6 @@ std::pair<vector<double>, vector<double>> CylindricalMesh::plot(
 
 void CylindricalMesh::to_hdf5_inner(hid_t mesh_group) const
 {
-  write_dataset(mesh_group, "type", "cylindrical");
   write_dataset(mesh_group, "r_grid", grid_[0]);
   write_dataset(mesh_group, "phi_grid", grid_[1]);
   write_dataset(mesh_group, "z_grid", grid_[2]);
@@ -1742,7 +1739,6 @@ std::pair<vector<double>, vector<double>> SphericalMesh::plot(
 
 void SphericalMesh::to_hdf5_inner(hid_t mesh_group) const
 {
-  write_dataset(mesh_group, "type", SphericalMesh::mesh_type);
   write_dataset(mesh_group, "r_grid", grid_[0]);
   write_dataset(mesh_group, "theta_grid", grid_[1]);
   write_dataset(mesh_group, "phi_grid", grid_[2]);

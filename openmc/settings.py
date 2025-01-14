@@ -79,7 +79,7 @@ class Settings:
         .. versionadded:: 0.12
     generations_per_batch : int
         Number of generations per batch
-    iterated_fission_probability: dict
+    iterated_fission_probability : dict
         Dictionary indicating the Iterated Fission Probability parameters.
         Acceptable keys are:
 
@@ -782,12 +782,12 @@ class Settings:
             Mapping,
         )
         for key, value in iterated_fission_probability.items():
-            cv.check_value("Iterated Fission Probability key", key, ["parameter", "n_generation"])
+            cv.check_value("Iterated Fission Probability key", key, {"parameter", "n_generation"})
             if key == "parameter":
-                cv.check_value("parameter", value, ["beta_effective", "generation_time", "both"])
+                cv.check_value("parameter", value, {"beta_effective", "generation_time", "both"})
             elif key == "n_generation":
-                cv.check_type("number of generation", value, Integral)
-                cv.check_greater_than("number of generation", value, 0)
+                cv.check_type("number of generations", value, Integral)
+                cv.check_greater_than("number of generations", value, 0)
 
         self._iterated_fission_probability = iterated_fission_probability
 
@@ -1792,11 +1792,13 @@ class Settings:
         elem = root.find('iterated_fission_probability')
         if elem is not None:
             text = get_text(elem, 'parameter')
+            ifp = {}
             if text is not None:
-                self.iterated_fission_probability['parameter'] = text
+                ifp['parameter'] = text
             text = get_text(elem, 'n_generation')
             if text is not None:
-                self.iterated_fission_probability['n_generation'] = int(text)
+                ifp['n_generation'] = int(text)
+            self.iterated_fission_probability = ifp
 
     def _tabular_legendre_from_xml_element(self, root):
         elem = root.find('tabular_legendre')

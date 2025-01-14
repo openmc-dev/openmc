@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import h5py
+import shutil
 import pandas as pd
 import lxml.etree as ET
 import numpy as np
@@ -259,7 +261,6 @@ def test_dagmc_xml(model):
 
 def test_dagmc_vacuum(request, run_in_tmpdir, tmpdir):
     
-    import shutil
     shutil.copyfile(Path(request.fspath).parent / "dagmc.h5m", tmpdir/"dagmc_not_a_vacuum.h5m")
 
     mats = {}
@@ -281,7 +282,6 @@ def test_dagmc_vacuum(request, run_in_tmpdir, tmpdir):
     mats["41"].add_nuclide("O16", 2.0)
     mats["41"].set_density("g/cm3", 10.0)
 
-    import h5py
     hf = h5py.File(tmpdir/ "dagmc_not_a_vacuum.h5m", 'r+')
     new_assignment = 'mat:not_a_vacuum'.encode('utf-8')
     hf['/tstt/tags/NAME']['values'][1] = new_assignment
@@ -291,7 +291,6 @@ def test_dagmc_vacuum(request, run_in_tmpdir, tmpdir):
     daguniv = openmc.DAGMCUniverse(p, auto_geom_ids=True).bounded_universe()
     settings = openmc.Settings()
     settings.batches = 100
-    settings.inactive = 10
     settings.particles = 1000
     model = openmc.Model()
     model.materials = openmc.Materials(mats.values())

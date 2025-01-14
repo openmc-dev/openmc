@@ -589,7 +589,7 @@ void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
   }
 
   site.E = lower_bound_index(
-      data::mg.rev_energy_bins_.begin(), data::mg.rev_energy_bins_.end(), site.E);
+    data::mg.rev_energy_bins_.begin(), data::mg.rev_energy_bins_.end(), site.E);
   site.E = negroups_ - site.E - 1.;
   this->from_source(&site);
 
@@ -618,16 +618,16 @@ void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
 
 SourceSite RandomRay::sample_prng()
 {
-    // set random number seed
-    int64_t particle_seed =
-      (simulation::current_batch - 1) * settings::n_particles + id();
-    init_particle_seeds(particle_seed, seeds());
-    stream() = STREAM_TRACKING;
+  // set random number seed
+  int64_t particle_seed =
+    (simulation::current_batch - 1) * settings::n_particles + id();
+  init_particle_seeds(particle_seed, seeds());
+  stream() = STREAM_TRACKING;
 
-    // Sample from ray source distribution
-    SourceSite site {ray_source_->sample(current_seed())};
+  // Sample from ray source distribution
+  SourceSite site {ray_source_->sample(current_seed())};
 
-    return site;
+  return site;
 }
 
 SourceSite RandomRay::sample_halton()
@@ -657,7 +657,7 @@ SourceSite RandomRay::sample_halton()
   float mu = 2.0 * samples[0][3] - 1.0;
   float azi = 2.0 * PI * samples[0][4];
   // Convert to Cartesian coordinates
-  float c = std::sqrt(1.0 - mu*mu);
+  float c = std::sqrt(1.0 - mu * mu);
   site.u.x = mu;
   site.u.y = std::cos(azi) * c;
   site.u.z = std::sin(azi) * c;

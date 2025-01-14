@@ -36,11 +36,11 @@ public:
 
   //----------------------------------------------------------------------------
   // Static data members
-  static double distance_inactive_;             // Inactive (dead zone) ray length
-  static double distance_active_;               // Active ray length
-  static unique_ptr<Source> ray_source_;        // Starting source for ray sampling
-  static RandomRaySourceShape source_shape_;    // Flag for linear source
-  static RandomRaySampleMethod sample_method_;  // Flag for sampling method
+  static double distance_inactive_;          // Inactive (dead zone) ray length
+  static double distance_active_;            // Active ray length
+  static unique_ptr<Source> ray_source_;     // Starting source for ray sampling
+  static RandomRaySourceShape source_shape_; // Flag for linear source
+  static RandomRaySampleMethod sample_method_; // Flag for sampling method
 
   //----------------------------------------------------------------------------
   // Public data members

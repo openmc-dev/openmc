@@ -440,30 +440,16 @@ void finalize_batch()
       std::string source_point_filename = fmt::format("{0}source.{1:0{2}}",
         settings::path_output, simulation::current_batch, w);
       gsl::span<SourceSite> bankspan(simulation::source_bank);
-      if (settings::source_mcpl_write) {
-        source_point_filename.append(".mcpl");
-        write_mcpl_source_point(
-          source_point_filename.c_str(), bankspan, simulation::work_index);
-      } else {
-        source_point_filename.append(".h5");
-        write_h5_source_point(
-          source_point_filename.c_str(), bankspan, simulation::work_index);
-      }
+      write_source_point(source_point_filename, bankspan,
+        simulation::work_index, settings::source_mcpl_write);
     }
 
     // Write a continously-overwritten source point if requested.
     if (settings::source_latest) {
       auto filename = settings::path_output + "source";
       gsl::span<SourceSite> bankspan(simulation::source_bank);
-      if (settings::source_mcpl_write) {
-        filename.append(".mcpl");
-        write_mcpl_source_point(
-          filename.c_str(), bankspan, simulation::work_index);
-      } else {
-        filename.append(".h5");
-        write_h5_source_point(
-          filename.c_str(), bankspan, simulation::work_index);
-      }
+      write_source_point(filename, bankspan, simulation::work_index,
+        settings::source_mcpl_write);
     }
   }
 
@@ -487,15 +473,9 @@ void finalize_batch()
         simulation::surf_source_bank.size());
 
       // Write surface source file
-      if (settings::surf_mcpl_write) {
-        filename.append(".mcpl");
-        write_mcpl_source_point(
-          filename.c_str(), surfbankspan, surf_work_index);
-      } else {
-        filename.append(".h5");
-        write_h5_source_point(
-          filename.c_str(), surfbankspan, simulation::work_index);
-      }
+      write_source_point(
+        filename, surfbankspan, surf_work_index, settings::surf_mcpl_write);
+
       // Reset surface source bank and increment counter
       simulation::surf_source_bank.clear();
       if (!last_batch && settings::ssw_max_files >= 1) {

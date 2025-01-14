@@ -576,8 +576,10 @@ void write_source_point(std::string filename, gsl::span<SourceSite> source_bank,
 
   // Dispatch to appropriate function based on file type
   if (use_mcpl) {
+    filename.append(".mcpl");
     write_mcpl_source_point(filename.c_str(), source_bank, bank_index);
   } else {
+    filename.append(".h5");
     write_h5_source_point(filename.c_str(), source_bank, bank_index);
   }
 }

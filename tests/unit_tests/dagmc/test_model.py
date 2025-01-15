@@ -258,8 +258,9 @@ def test_dagmc_xml(model):
     for xml_mats, model_mats in zip(xml_dagmc_univ._material_overrides.values(), dag_univ._material_overrides.values()):
         assert all([xml_mat.id == orig_mat.id for xml_mat, orig_mat in zip(xml_mats, model_mats)])
 
-def test_dagmc_vacuum(request, run_in_tmpdir):
-    tmpdir = Path(os.getcwd())
+def test_dagmc_vacuum(run_in_tmpdir, request):
+    h5m = Path(request.fspath).parent / "dagmc.h5m"
+
     # Required initial mats.
     mats = {}
     mats["41"] = openmc.Material(name="41")
@@ -273,16 +274,17 @@ def test_dagmc_vacuum(request, run_in_tmpdir):
     mats[na_vacuum_str].set_density("g/cm3", 1)
 
     # Tweaking the h5m file to change the material assignment
-    na_vacuum_h5 = tmpdir / f"dagmc_{na_vacuum_str}.h5m"
-    shutil.copyfile(Path(request.fspath).parent / "dagmc.h5m",
-                    na_vacuum_h5)
+    subdir = Path(na_vacuum_str)
+    subdir.mkdir()
+    na_vacuum_h5 = subdir / f"dagmc_{na_vacuum_str}.h5m"
+    shutil.copy(h5m, na_vacuum_h5)
     hf = h5py.File(na_vacuum_h5, 'r+')
     new_assignment = 'mat:not_a_vacuum'.encode('utf-8')
     hf['/tstt/tags/NAME']['values'][1] = new_assignment
     hf.close()
 
     # Set the Model
-    daguniv = openmc.DAGMCUniverse(na_vacuum_h5,
+    daguniv = openmc.DAGMCUniverse(na_vacuum_h5.absolute(),
                                    auto_geom_ids=True).bounded_universe()
     settings = openmc.Settings()
     settings.batches = 10
@@ -310,11 +312,10 @@ def test_dagmc_vacuum(request, run_in_tmpdir):
     model.settings.source = src
 
     # Run and check the results
-    sub_dir = f"sub_dir_{na_vacuum_str}"
-    model.export_to_model_xml(f'{sub_dir}/model.xml',)
-    openmc.run(cwd=sub_dir)
+    model.export_to_model_xml((subdir / 'model.xml').absolute())
+    openmc.run(cwd=subdir.absolute())
     # If cell are not vacuum, fission site should not spread to other cells
-    with openmc.StatePoint(f"{sub_dir}/statepoint.{settings.batches}.h5") as sp:
+    with openmc.StatePoint(subdir / f"statepoint.{settings.batches}.h5") as sp:
         tally = list(sp.tallies.values())[0]
         non_zero_tal = [x for x in tally.mean.flatten() if x > 0]
         assert len(non_zero_tal) > 1
@@ -328,15 +329,18 @@ def test_dagmc_vacuum(request, run_in_tmpdir):
     mats[vacuum_str].set_density("g/cm3", 10.0)
 
     # Tweaking the h5m file to change the material assignment
-    vacuum_h5 = tmpdir / f"dagmc_{vacuum_str}.h5m"
-    shutil.copyfile(Path(request.fspath).parent / "dagmc.h5m", vacuum_h5)
+    subdir = Path(vacuum_str)
+    subdir.mkdir()
+    vacuum_h5 = subdir / f"dagmc_{vacuum_str}.h5m"
+    shutil.copy(h5m, vacuum_h5)
+    hf = h5py.File(vacuum_h5, 'r+')
     hf = h5py.File(vacuum_h5, 'r+')
     new_assignment = 'mat:vacuum'.encode('utf-8')
     hf['/tstt/tags/NAME']['values'][1] = new_assignment
     hf.close()
 
     # Set the Model
-    daguniv = openmc.DAGMCUniverse(vacuum_h5,
+    daguniv = openmc.DAGMCUniverse(vacuum_h5.absolute(),
                                    auto_geom_ids=True).bounded_universe()
     settings = openmc.Settings()
     settings.batches = 10
@@ -364,11 +368,10 @@ def test_dagmc_vacuum(request, run_in_tmpdir):
     model.settings.source = src
 
     # Run and check the results
-    sub_dir = f"sub_dir_{vacuum_str}"
-    model.export_to_model_xml(f'{sub_dir}/model.xml',)
-    openmc.run(cwd=sub_dir)
+    model.export_to_model_xml((subdir / 'model.xml').absolute())
+    openmc.run(cwd=subdir.absolute())
     # If cell are not vacuum, fission site should not spread to other cells
-    with openmc.StatePoint(f"{sub_dir}/statepoint.{settings.batches}.h5") as sp:
+    with openmc.StatePoint(subdir / f"statepoint.{settings.batches}.h5") as sp:
         tally = list(sp.tallies.values())[0]
         non_zero_tal = [x for x in tally.mean.flatten() if x > 0]
         assert len(non_zero_tal) == 1

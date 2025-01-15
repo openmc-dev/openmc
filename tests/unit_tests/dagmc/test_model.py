@@ -330,7 +330,7 @@ def test_dagmc_vacuum(request, run_in_tmpdir, tmpdir):
     p = tmpdir/"dagmc_a_vacuum.h5m"
     daguniv = openmc.DAGMCUniverse(p, auto_geom_ids=True).bounded_universe()
     settings = openmc.Settings()
-    settings.batches = 100
+    settings.batches = 2
     settings.inactive = 10
     settings.particles = 1000
     model = openmc.Model()

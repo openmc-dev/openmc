@@ -682,7 +682,7 @@ class Plot(PlotBase):
         return string
 
     @classmethod
-    def from_geometry(cls, geometry, basis='xy', slice_coord=0.):
+    def from_geometry(cls, geometry, basis='xy', slice_coord=0., width=None, origin=None):
         """Return plot that encompasses a geometry.
 
         Parameters
@@ -716,14 +716,14 @@ class Plot(PlotBase):
         lower_left = lower_left[np.array(pick_index)]
         upper_right = upper_right[np.array(pick_index)]
 
-        if np.any(np.isinf((lower_left, upper_right))):
+        if width is None and np.any(np.isinf((lower_left, upper_right))):
             raise ValueError('The geometry does not appear to be bounded '
                              f'in the {basis} plane.')
 
         plot = cls()
-        plot.origin = np.insert((lower_left + upper_right)/2,
+        plot.origin = origin if origin is not None else np.insert((lower_left + upper_right)/2,
                                 slice_index, slice_coord)
-        plot.width = upper_right - lower_left
+        plot.width = width if width is not None else upper_right - lower_left
         plot.basis = basis
         return plot
 

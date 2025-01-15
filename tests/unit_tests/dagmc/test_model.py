@@ -259,10 +259,8 @@ def test_dagmc_xml(model):
         assert all([xml_mat.id == orig_mat.id for xml_mat, orig_mat in zip(xml_mats, model_mats)])
 
 def test_dagmc_vacuum(request, run_in_tmpdir, tmpdir):
-    
     # Required initial mats.
     mats = {}
-
     mats["41"] = openmc.Material(name="41")
     mats["41"].add_nuclide("U235", 0.03)
     mats["41"].add_nuclide("U238", 0.97)
@@ -324,7 +322,7 @@ def test_dagmc_vacuum(request, run_in_tmpdir, tmpdir):
         non_zero_tal = [x for x in tally.mean.flatten() if x > 0]
         assert len(non_zero_tal) > 1
 
-    # Not a vacuum material
+    # Vacuum material
     vacuum_str = "vacuum"
     mats[vacuum_str] = openmc.Material(name=vacuum_str)
     mats[vacuum_str].add_nuclide("U235", 0.03)

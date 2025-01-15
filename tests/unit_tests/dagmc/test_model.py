@@ -8,6 +8,7 @@ import numpy as np
 import pytest
 import openmc
 from openmc.utility_funcs import change_directory
+import openmc.lib
 pytestmark = pytest.mark.skipif(
     not openmc.lib._dagmc_enabled(),
     reason="DAGMC CAD geometry is not enabled.")
@@ -259,20 +260,8 @@ def test_dagmc_xml(model):
 
 def test_dagmc_vacuum(request, run_in_tmpdir, tmpdir):
     
-    shutil.copyfile(Path(request.fspath).parent / "dagmc.h5m", tmpdir/"dagmc_not_a_vacuum.h5m")
-
+    # Required initial mats.
     mats = {}
-    mats["not_a_vacuum"] = openmc.Material(1, name="not_a_vacuum")
-    mats["not_a_vacuum"].add_nuclide("U235", 0.03)
-    mats["not_a_vacuum"].add_nuclide("U238", 0.97)
-    mats["not_a_vacuum"].add_nuclide("O16", 2.0)
-    mats["not_a_vacuum"].set_density("g/cm3", 10.0)
-
-    mats["vacuum"] = openmc.Material(name="vacuum")
-    mats["vacuum"].add_nuclide("U235", 0.03)
-    mats["vacuum"].add_nuclide("U238", 0.97)
-    mats["vacuum"].add_nuclide("O16", 2.0)
-    mats["vacuum"].set_density("g/cm3", 10.0)
 
     mats["41"] = openmc.Material(name="41")
     mats["41"].add_nuclide("U235", 0.03)
@@ -280,87 +269,111 @@ def test_dagmc_vacuum(request, run_in_tmpdir, tmpdir):
     mats["41"].add_nuclide("O16", 2.0)
     mats["41"].set_density("g/cm3", 10.0)
 
-    hf = h5py.File(tmpdir/ "dagmc_not_a_vacuum.h5m", 'r+')
+    # Not a vacuum material
+    na_vacuum_str = "not_a_vacuum"
+    mats[na_vacuum_str] = openmc.Material(name=na_vacuum_str)
+    mats[na_vacuum_str].add_nuclide("U235", 0.03)
+    mats[na_vacuum_str].add_nuclide("U238", 0.97)
+    mats[na_vacuum_str].add_nuclide("O16", 2.0)
+    mats[na_vacuum_str].set_density("g/cm3", 10.0)
+
+    # Tweaking the h5m file to change the material assignment
+    na_vacuum_h5 = tmpdir / f"dagmc_{na_vacuum_str}.h5m"
+    shutil.copyfile(Path(request.fspath).parent / "dagmc.h5m",
+                    na_vacuum_h5)
+    hf = h5py.File(na_vacuum_h5, 'r+')
     new_assignment = 'mat:not_a_vacuum'.encode('utf-8')
     hf['/tstt/tags/NAME']['values'][1] = new_assignment
     hf.close()
-    
-    p = tmpdir/"dagmc_not_a_vacuum.h5m"
-    daguniv = openmc.DAGMCUniverse(p, auto_geom_ids=True).bounded_universe()
+
+    # Set the Model
+    daguniv = openmc.DAGMCUniverse(na_vacuum_h5,
+                                   auto_geom_ids=True).bounded_universe()
     settings = openmc.Settings()
-    settings.batches = 100
-    settings.particles = 1000
-    model = openmc.Model()
-    model.materials = openmc.Materials(mats.values())
-    model.geometry = openmc.Geometry(root=daguniv)
-    model.settings = settings
-    model.init_lib()
-    model.sync_dagmc_universes()
-    for univ in model.geometry.get_all_universes().values():
-        if isinstance(univ, openmc.DAGMCUniverse):
-            dag_univ = univ
-            break
-
-    my_tally = openmc.Tally()
-    cell_filter = openmc.CellFilter([x.id for x in dag_univ.get_all_cells().values()])
-
-    my_tally.scores = ['nu-fission']
-    my_tally.filters = [cell_filter]
-    model.tallies.append(my_tally)
-    src = openmc.IndependentSource(space=openmc.stats.Point())
-    model.settings.source = src
-
-    model.export_to_model_xml('sub_dir_not_a_vacuum/model.xml',)
-    openmc.run(cwd='sub_dir_not_a_vacuum')
-    # Read the statepoint file.
-    sp = openmc.StatePoint("sub_dir_not_a_vacuum/statepoint.100.h5")
-
-    # Extract the tally data as a Pandas DataFrame.
-    tally_dfs = [t.get_pandas_dataframe() for t in sp.tallies.values()]
-    df = pd.concat(tally_dfs, ignore_index=True)
-    # not detected as vacuum so tally should be non-zero
-    assert df['mean'].loc[0] > 0
-
-    shutil.copyfile(Path(request.fspath).parent / "dagmc.h5m", tmpdir/"dagmc_a_vacuum.h5m")
-    hf = h5py.File(tmpdir/ "dagmc_a_vacuum.h5m", 'r+')
-    new_assignment = 'mat:vacuum'.encode('utf-8')
-    hf['/tstt/tags/NAME']['values'][1] = new_assignment
-    hf.close()
-
-    p = tmpdir/"dagmc_a_vacuum.h5m"
-    daguniv = openmc.DAGMCUniverse(p, auto_geom_ids=True).bounded_universe()
-    settings = openmc.Settings()
-    settings.batches = 2
-    settings.inactive = 10
+    settings.batches = 10
     settings.particles = 100
     model = openmc.Model()
     model.materials = openmc.Materials(mats.values())
     model.geometry = openmc.Geometry(root=daguniv)
     model.settings = settings
+
+    # Set the Tally
     model.init_lib()
     model.sync_dagmc_universes()
     for univ in model.geometry.get_all_universes().values():
         if isinstance(univ, openmc.DAGMCUniverse):
             dag_univ = univ
             break
-
     my_tally = openmc.Tally()
     cell_filter = openmc.CellFilter([x.id for x in dag_univ.get_all_cells().values()])
-
     my_tally.scores = ['nu-fission']
     my_tally.filters = [cell_filter]
     model.tallies.append(my_tally)
+
+    # Only a confined point source
     src = openmc.IndependentSource(space=openmc.stats.Point())
     model.settings.source = src
 
-    model.export_to_model_xml('sub_dir_vacuum/model.xml',)
-    sp_filename = openmc.run(cwd='sub_dir_vacuum')
-    # Read the statepoint file.
-    sp = openmc.StatePoint(sp_filename)
+    # Run and check the results
+    sub_dir = f"sub_dir_{na_vacuum_str}"
+    model.export_to_model_xml(f'{sub_dir}/model.xml',)
+    openmc.run(cwd=sub_dir)
+    # If cell are not vacuum, fission site should not spread to other cells
+    with openmc.StatePoint(f"{sub_dir}/statepoint.{settings.batches}.h5") as sp:
+        tally = list(sp.tallies.values())[0]
+        non_zero_tal = [x for x in tally.mean.flatten() if x > 0]
+        assert len(non_zero_tal) > 1
 
-    # Extract the tally data as a Pandas DataFrame.
-    tally_dfs = [t.get_pandas_dataframe() for t in sp.tallies.values()]
-    df = pd.concat(tally_dfs, ignore_index=True)
-    # detected as vacuum so tally should be zero
-    assert df['mean'].loc[0] == 0
-    
+    # Not a vacuum material
+    vacuum_str = "vacuum"
+    mats[vacuum_str] = openmc.Material(name=vacuum_str)
+    mats[vacuum_str].add_nuclide("U235", 0.03)
+    mats[vacuum_str].add_nuclide("U238", 0.97)
+    mats[vacuum_str].add_nuclide("O16", 2.0)
+    mats[vacuum_str].set_density("g/cm3", 10.0)
+
+    # Tweaking the h5m file to change the material assignment
+    vacuum_h5 = tmpdir / f"dagmc_{vacuum_str}.h5m"
+    shutil.copyfile(Path(request.fspath).parent / "dagmc.h5m", vacuum_h5)
+    hf = h5py.File(vacuum_h5, 'r+')
+    new_assignment = 'mat:vacuum'.encode('utf-8')
+    hf['/tstt/tags/NAME']['values'][1] = new_assignment
+    hf.close()
+
+    # Set the Model
+    daguniv = openmc.DAGMCUniverse(vacuum_h5,
+                                   auto_geom_ids=True).bounded_universe()
+    settings = openmc.Settings()
+    settings.batches = 10
+    settings.particles = 100
+    model = openmc.Model()
+    model.materials = openmc.Materials(mats.values())
+    model.geometry = openmc.Geometry(root=daguniv)
+    model.settings = settings
+
+    # Set the Tally
+    model.init_lib()
+    model.sync_dagmc_universes()
+    for univ in model.geometry.get_all_universes().values():
+        if isinstance(univ, openmc.DAGMCUniverse):
+            dag_univ = univ
+            break
+    my_tally = openmc.Tally()
+    cell_filter = openmc.CellFilter([x.id for x in dag_univ.get_all_cells().values()])
+    my_tally.scores = ['nu-fission']
+    my_tally.filters = [cell_filter]
+    model.tallies.append(my_tally)
+
+    # Only a confined point source
+    src = openmc.IndependentSource(space=openmc.stats.Point())
+    model.settings.source = src
+
+    # Run and check the results
+    sub_dir = f"sub_dir_{vacuum_str}"
+    model.export_to_model_xml(f'{sub_dir}/model.xml',)
+    openmc.run(cwd=sub_dir)
+    # If cell are not vacuum, fission site should not spread to other cells
+    with openmc.StatePoint(f"{sub_dir}/statepoint.{settings.batches}.h5") as sp:
+        tally = list(sp.tallies.values())[0]
+        non_zero_tal = [x for x in tally.mean.flatten() if x > 0]
+        assert len(non_zero_tal) == 1

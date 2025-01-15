@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import os
 import h5py
 import shutil
 import lxml.etree as ET
@@ -257,7 +258,8 @@ def test_dagmc_xml(model):
     for xml_mats, model_mats in zip(xml_dagmc_univ._material_overrides.values(), dag_univ._material_overrides.values()):
         assert all([xml_mat.id == orig_mat.id for xml_mat, orig_mat in zip(xml_mats, model_mats)])
 
-def test_dagmc_vacuum(request, run_in_tmpdir, tmpdir):
+def test_dagmc_vacuum(request, run_in_tmpdir):
+    tmpdir = Path(os.getcwd())
     # Required initial mats.
     mats = {}
     mats["41"] = openmc.Material(name="41")

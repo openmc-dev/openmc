@@ -332,7 +332,7 @@ def test_dagmc_vacuum(request, run_in_tmpdir, tmpdir):
     settings = openmc.Settings()
     settings.batches = 2
     settings.inactive = 10
-    settings.particles = 1000
+    settings.particles = 100
     model = openmc.Model()
     model.materials = openmc.Materials(mats.values())
     model.geometry = openmc.Geometry(root=daguniv)

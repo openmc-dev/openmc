@@ -897,7 +897,7 @@ class WeightWindowGenerator:
         mesh_id = int(get_text(elem, 'mesh'))
         mesh = meshes[mesh_id]
 
-        if energy_bounds := get_text(elem, 'energy_bounds') is not None:
+        if (energy_bounds := get_text(elem, 'energy_bounds')) is not None:
             energy_bounds = [float(x) for x in energy_bounds.split()]
         else:
             energy_bounds = None

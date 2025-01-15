@@ -7,7 +7,6 @@ import numpy as np
 import pytest
 import openmc
 from openmc.utility_funcs import change_directory
-import openmc.lib
 pytestmark = pytest.mark.skipif(
     not openmc.lib._dagmc_enabled(),
     reason="DAGMC CAD geometry is not enabled.")

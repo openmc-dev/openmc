@@ -2,7 +2,6 @@ from pathlib import Path
 
 import h5py
 import shutil
-import pandas as pd
 import lxml.etree as ET
 import numpy as np
 import pytest
@@ -262,18 +261,14 @@ def test_dagmc_vacuum(request, run_in_tmpdir, tmpdir):
     # Required initial mats.
     mats = {}
     mats["41"] = openmc.Material(name="41")
-    mats["41"].add_nuclide("U235", 0.03)
-    mats["41"].add_nuclide("U238", 0.97)
-    mats["41"].add_nuclide("O16", 2.0)
-    mats["41"].set_density("g/cm3", 10.0)
+    mats["41"].add_nuclide("U235", 1)
+    mats["41"].set_density("g/cm3", 0.03)
 
     # Not a vacuum material
     na_vacuum_str = "not_a_vacuum"
     mats[na_vacuum_str] = openmc.Material(name=na_vacuum_str)
-    mats[na_vacuum_str].add_nuclide("U235", 0.03)
-    mats[na_vacuum_str].add_nuclide("U238", 0.97)
-    mats[na_vacuum_str].add_nuclide("O16", 2.0)
-    mats[na_vacuum_str].set_density("g/cm3", 10.0)
+    mats[na_vacuum_str].add_nuclide("U235", 1)
+    mats[na_vacuum_str].set_density("g/cm3", 0.03)
 
     # Tweaking the h5m file to change the material assignment
     na_vacuum_h5 = tmpdir / f"dagmc_{na_vacuum_str}.h5m"

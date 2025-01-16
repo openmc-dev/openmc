@@ -379,3 +379,4 @@ def test_dagmc_vacuum(run_in_tmpdir, request):
         tally = list(sp.tallies.values())[0]
         non_zero_tal = [x for x in tally.mean.flatten() if x > 0]
         assert len(non_zero_tal) == 1
+    openmc.lib.finalize()

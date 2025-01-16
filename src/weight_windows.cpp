@@ -737,7 +737,7 @@ WeightWindowsGenerator::WeightWindowsGenerator(pugi::xml_node node)
   int32_t mesh_idx = model::mesh_map[mesh_id];
   max_realizations_ = std::stoi(get_node_value(node, "max_realizations"));
 
-  int active_batches = settings::n_batches - settings::n_inactive;
+  int32_t active_batches = settings::n_batches - settings::n_inactive;
   if (max_realizations_ > active_batches) {
     auto msg =
       fmt::format("The maximum number of specified tally realizations ({}) is "

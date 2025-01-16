@@ -72,6 +72,23 @@ DAGUniverse::DAGUniverse(pugi::xml_node node)
     adjust_material_ids_ = get_node_value_bool(node, "auto_mat_ids");
   }
 
+  // get material assignment overloading
+  if (check_for_node(node, "material_overrides")) {
+    auto mat_node = node.child("material_overrides");
+    // loop over all subelements (each subelement corresponds to a material)
+    for (pugi::xml_node cell_node : mat_node.children("cell_override")) {
+      // Store assignment reference name
+      int32_t ref_assignment = std::stoi(get_node_value(cell_node, "id"));
+
+      // Get mat name for each assignement instances
+      vector<int32_t> instance_mats =
+        get_node_array<int32_t>(cell_node, "material_ids");
+
+      // Store mat name for each instances
+      material_overrides_.emplace(ref_assignment, instance_mats);
+    }
+  }
+
   initialize();
 }
 
@@ -211,12 +228,13 @@ void DAGUniverse::init_geometry()
     if (mat_str == "graveyard") {
       graveyard = vol_handle;
     }
-
     // material void checks
     if (mat_str == "void" || mat_str == "vacuum" || mat_str == "graveyard") {
       c->material_.push_back(MATERIAL_VOID);
     } else {
-      if (uses_uwuw()) {
+      if (material_overrides_.count(c->id_)) {
+        override_assign_material(c);
+      } else if (uses_uwuw()) {
         uwuw_assign_material(vol_handle, c);
       } else {
         legacy_assign_material(mat_str, c);
@@ -609,6 +627,33 @@ void DAGUniverse::uwuw_assign_material(
   fatal_error("DAGMC was not configured with UWUW.");
 #endif // OPENMC_UWUW
 }
+
+void DAGUniverse::override_assign_material(std::unique_ptr<DAGCell>& c) const
+{
+  // if Cell ID matches an override key, use it to override the material
+  // assignment else if UWUW is used, get the material assignment from the DAGMC
+  // metadata
+  // Notify User that an override is being applied on a DAGMCCell
+  write_message(fmt::format("Applying override for DAGMCCell {}", c->id_), 8);
+
+  if (settings::verbosity >= 10) {
+    auto msg = fmt::format("Assigning DAGMC cell {} material(s) based on "
+                           "override information (see input XML).",
+      c->id_);
+    write_message(msg, 10);
+  }
+
+  // Override the material assignment for each cell instance using the legacy
+  // assignement
+  for (auto mat_id : material_overrides_.at(c->id_)) {
+    if (model::material_map.find(mat_id) == model::material_map.end()) {
+      fatal_error(fmt::format(
+        "Material with ID '{}' not found for DAGMC cell {}", mat_id, c->id_));
+    }
+    c->material_.push_back(mat_id);
+  }
+}
+
 //==============================================================================
 // DAGMC Cell implementation
 //==============================================================================
@@ -616,7 +661,7 @@ void DAGUniverse::uwuw_assign_material(
 DAGCell::DAGCell(std::shared_ptr<moab::DagMC> dag_ptr, int32_t dag_idx)
   : Cell {}, dagmc_ptr_(dag_ptr), dag_index_(dag_idx)
 {
-  geom_type_ = GeometryType::DAG;
+  geom_type() = GeometryType::DAG;
 };
 
 std::pair<double, int32_t> DAGCell::distance(
@@ -719,7 +764,7 @@ BoundingBox DAGCell::bounding_box() const
 DAGSurface::DAGSurface(std::shared_ptr<moab::DagMC> dag_ptr, int32_t dag_idx)
   : Surface {}, dagmc_ptr_(dag_ptr), dag_index_(dag_idx)
 {
-  geom_type_ = GeometryType::DAG;
+  geom_type() = GeometryType::DAG;
 } // empty constructor
 
 moab::EntityHandle DAGSurface::mesh_handle() const
@@ -802,7 +847,7 @@ void check_dagmc_root_univ()
 
 int32_t next_cell(int32_t surf, int32_t curr_cell, int32_t univ)
 {
-  auto surfp = dynamic_cast<DAGSurface*>(model::surfaces[surf - 1].get());
+  auto surfp = dynamic_cast<DAGSurface*>(model::surfaces[surf].get());
   auto cellp = dynamic_cast<DAGCell*>(model::cells[curr_cell].get());
   auto univp = static_cast<DAGUniverse*>(model::universes[univ].get());
 
@@ -818,11 +863,60 @@ int32_t next_cell(int32_t surf, int32_t curr_cell, int32_t univ)
   return univp->cell_index(new_vol);
 }
 
+extern "C" int openmc_dagmc_universe_get_cell_ids(
+  int32_t univ_id, int32_t* ids, size_t* n)
+{
+  // make sure the universe id is a DAGMC Universe
+  const auto& univ = model::universes[model::universe_map[univ_id]];
+  if (univ->geom_type() != GeometryType::DAG) {
+    set_errmsg(fmt::format("Universe {} is not a DAGMC Universe", univ_id));
+    return OPENMC_E_INVALID_TYPE;
+  }
+
+  std::vector<int32_t> dag_cell_ids;
+  for (const auto& cell_index : univ->cells_) {
+    const auto& cell = model::cells[cell_index];
+    if (cell->geom_type() == GeometryType::CSG) {
+      set_errmsg(fmt::format("Cell {} is not a DAGMC Cell", cell->id_));
+      return OPENMC_E_INVALID_TYPE;
+    }
+    dag_cell_ids.push_back(cell->id_);
+  }
+  std::copy(dag_cell_ids.begin(), dag_cell_ids.end(), ids);
+  *n = dag_cell_ids.size();
+  return 0;
+}
+
+extern "C" int openmc_dagmc_universe_get_num_cells(int32_t univ_id, size_t* n)
+{
+  // make sure the universe id is a DAGMC Universe
+  const auto& univ = model::universes[model::universe_map[univ_id]];
+  if (univ->geom_type() != GeometryType::DAG) {
+    set_errmsg(fmt::format("Universe {} is not a DAGMC universe", univ_id));
+    return OPENMC_E_INVALID_TYPE;
+  }
+  *n = univ->cells_.size();
+  return 0;
+}
+
 } // namespace openmc
 
 #else
 
 namespace openmc {
+
+extern "C" int openmc_dagmc_universe_get_cell_ids(
+  int32_t univ_id, int32_t* ids, size_t* n)
+{
+  set_errmsg("OpenMC was not configured with DAGMC");
+  return OPENMC_E_UNASSIGNED;
+};
+
+extern "C" int openmc_dagmc_universe_get_num_cells(int32_t univ_id, size_t* n)
+{
+  set_errmsg("OpenMC was not configured with DAGMC");
+  return OPENMC_E_UNASSIGNED;
+};
 
 void read_dagmc_universes(pugi::xml_node node)
 {

@@ -154,9 +154,9 @@ jobs:
           $GITHUB_WORKSPACE/tools/ci/gha-script.sh
 
       - name: Setup tmate debug session
-          continue-on-error: true
-          uses: mxschmitt/action-tmate@v3
-          timeout-minutes: 60
+        continue-on-error: true
+        uses: mxschmitt/action-tmate@v3
+        timeout-minutes: 60
 
       - name: after_success
         shell: bash

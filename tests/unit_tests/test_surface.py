@@ -4,6 +4,7 @@ from random import uniform, seed
 import numpy as np
 import math
 import openmc
+#import openmc.lib
 import pytest
 
 

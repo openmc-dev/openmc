@@ -9,7 +9,7 @@ import lxml.etree as ET
 
 import openmc
 import openmc._xml as xml
-from .checkvalue import check_type, check_less_than, check_greater_than, PathLike
+from .checkvalue import check_type, check_less_than, check_greater_than, PathLike, check_value
 
 
 class Geometry:
@@ -55,6 +55,12 @@ class Geometry:
                     univ.add_cell(cell)
                 self._root_universe = univ
 
+    def __contains__(self, cell):
+
+        check_type('cell', cell, openmc.Cell)
+        return cell in self.root_universe
+
+            
     @property
     def root_universe(self) -> openmc.UniverseBase:
         return self._root_universe

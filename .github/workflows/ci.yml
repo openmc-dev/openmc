@@ -146,11 +146,6 @@ jobs:
       - name: before
         shell: bash
         run: $GITHUB_WORKSPACE/tools/ci/gha-before-script.sh
-        
-      - name: Setup tmate debug session
-        continue-on-error: true
-        uses: mxschmitt/action-tmate@v3
-        timeout-minutes: 60
 
       - name: test
         shell: bash

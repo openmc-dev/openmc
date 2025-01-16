@@ -233,8 +233,9 @@ void Particle::event_advance()
   for (int j = 0; j < n_coord(); ++j) {
     coord(j).r += distance * coord(j).u;
   }
-  this->time() += distance / this->speed();
-  this->lifetime() += distance / this->speed();
+  double dt = distance / this->speed();
+  this->time() += dt;
+  this->lifetime() += dt;
 
   // Kill particle if its time exceeds the cutoff
   bool hit_time_boundary = false;

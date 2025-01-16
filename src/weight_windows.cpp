@@ -22,6 +22,7 @@
 #include "openmc/particle.h"
 #include "openmc/particle_data.h"
 #include "openmc/physics_common.h"
+#include "openmc/random_ray/flat_source_domain.h"
 #include "openmc/search.h"
 #include "openmc/settings.h"
 #include "openmc/tallies/filter_energy.h"
@@ -624,20 +625,44 @@ void WeightWindows::update_magic(
   auto mesh_vols = this->mesh()->volumes();
 
   int e_bins = new_bounds.shape()[0];
-  for (int e = 0; e < e_bins; e++) {
-    // select all
-    auto group_view = xt::view(new_bounds, e);
 
-    // divide by volume of mesh elements
-    for (int i = 0; i < group_view.size(); i++) {
-      group_view[i] /= mesh_vols[i];
+  if (settings::solver_type == MONTE_CARLO || !FlatSourceDomain::adjoint_) {
+    // If we are computing weight windows with forward fluxes derived from a
+    // Monte Carlo or random ray solve, we use the MAGIC algorithm.
+    for (int e = 0; e < e_bins; e++) {
+      // select all
+      auto group_view = xt::view(new_bounds, e);
+
+      // divide by volume of mesh elements
+      for (int i = 0; i < group_view.size(); i++) {
+        group_view[i] /= mesh_vols[i];
+      }
+
+      double group_max =
+        *std::max_element(group_view.begin(), group_view.end());
+      // normalize values in this energy group by the maximum value for this
+      // group
+      if (group_max > 0.0)
+        group_view /= 2.0 * group_max;
+    }
+  } else {
+    // If we are computing weight windows with adjoint fluxes derived from a
+    // random ray solve, we use the FW-CADIS algorithm.
+    for (int e = 0; e < e_bins; e++) {
+      // select all
+      auto group_view = xt::view(new_bounds, e);
+
+      // divide by volume of mesh elements
+      for (int i = 0; i < group_view.size(); i++) {
+        group_view[i] /= mesh_vols[i];
+      }
     }
 
-    double group_max = *std::max_element(group_view.begin(), group_view.end());
-    // normalize values in this energy group by the maximum value for this
-    // group
-    if (group_max > 0.0)
-      group_view /= 2.0 * group_max;
+    xt::noalias(new_bounds) = 1.0 / new_bounds;
+
+    auto max_val = xt::amax(new_bounds)();
+
+    xt::noalias(new_bounds) = new_bounds / (2.0 * max_val);
   }
 
   // make sure that values where the mean is zero are set s.t. the weight window

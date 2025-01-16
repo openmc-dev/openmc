@@ -626,7 +626,8 @@ void WeightWindows::update_magic(
 
   int e_bins = new_bounds.shape()[0];
 
-  if (settings::solver_type == MONTE_CARLO || !FlatSourceDomain::adjoint_) {
+  if (settings::solver_type == SolverType::MONTE_CARLO ||
+      !FlatSourceDomain::adjoint_) {
     // If we are computing weight windows with forward fluxes derived from a
     // Monte Carlo or random ray solve, we use the MAGIC algorithm.
     for (int e = 0; e < e_bins; e++) {

@@ -823,8 +823,8 @@ void Tally::accumulate_vov()
         results_(i, j, TallyResult::VALUE) = 0.0;
         results_(i, j, TallyResult::SUM) += val;
         results_(i, j, TallyResult::SUM_SQ) += val * val;
-        results_(i, j, TallyResult::SUM_THIRD) += (val * val * val);
-        results_(i, j, TallyResult::SUM_FOURTH) += (val * val * val * val);
+        results_(i, j, TallyResult::SUM_THIRD) += val * val * val;
+        results_(i, j, TallyResult::SUM_FOURTH) += val * val * val * val;
       }
     }
   }

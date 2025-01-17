@@ -844,7 +844,7 @@ void check_dagmc_root_univ()
 
 int32_t next_cell(int32_t surf, int32_t curr_cell, int32_t univ)
 {
-  auto surfp = dynamic_cast<DAGSurface*>(model::surfaces[surf - 1].get());
+  auto surfp = dynamic_cast<DAGSurface*>(model::surfaces[surf].get());
   auto cellp = dynamic_cast<DAGCell*>(model::cells[curr_cell].get());
   auto univp = static_cast<DAGUniverse*>(model::universes[univ].get());
 

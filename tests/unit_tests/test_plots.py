@@ -92,7 +92,7 @@ def test_voxel_plot(run_in_tmpdir):
     assert Path('test_voxel_plot.vti').is_file()
 
     vox_plot.filename = 'h5_voxel_plot'
-    vox_plot.to_vtk('another_test_voxel_plot.vti')
+    vox_plot.to_vtk(Path('another_test_voxel_plot.vti'))
 
     assert Path('h5_voxel_plot.h5').is_file()
     assert Path('another_test_voxel_plot.vti').is_file()

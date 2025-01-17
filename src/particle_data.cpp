@@ -67,7 +67,7 @@ void GeometryState::advance_to_boundary_from_void()
       model::cells.at(c_i)->distance(root_coord.r, root_coord.u, 0, this);
     if (dist.first < boundary().distance) {
       boundary().distance = dist.first;
-      boundary().surface_index = dist.second;
+      boundary().surface = dist.second;
     }
   }
 
@@ -75,7 +75,7 @@ void GeometryState::advance_to_boundary_from_void()
   // boundary information
   if (boundary().distance > 1e300) {
     boundary().distance = INFTY;
-    boundary().surface_index = 0;
+    boundary().surface = SURFACE_NONE;
     return;
   }
 

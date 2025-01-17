@@ -1632,7 +1632,7 @@ void Ray::trace()
       break;
 
     // if there is no intersection with the model, we're done
-    if (boundary().surface_index == 0)
+    if (boundary().surface == SURFACE_NONE)
       return;
 
     event_counter_++;
@@ -1644,10 +1644,10 @@ void Ray::trace()
 
   // Call the specialized logic for this type of ray. This is for the
   // intersection for the first intersection if we had one.
-  if (boundary().surface_index != 0) {
+  if (boundary().surface != SURFACE_NONE) {
     // set the geometry state's surface attribute to be used for
     // surface normal computation
-    surface() = boundary().surface_index;
+    surface() = boundary().surface;
     on_intersection();
     if (stop_)
       return;
@@ -1692,7 +1692,7 @@ void Ray::trace()
     for (int lev = 0; lev < n_coord(); ++lev) {
       coord(lev).r += boundary().distance * coord(lev).u;
     }
-    surface() = boundary().surface_index;
+    surface() = boundary().surface;
     n_coord_last() = n_coord();
     n_coord() = boundary().coord_level;
     if (boundary().lattice_translation[0] != 0 ||
@@ -1742,7 +1742,7 @@ void ProjectionRay::on_intersection()
     plot_.color_by_ == PlottableInterface::PlotColorBy::mats
       ? material()
       : lowest_coord().cell,
-    traversal_distance_, std::abs(boundary().surface_index));
+    traversal_distance_, std::abs(boundary().surface));
 }
 
 void PhongRay::on_intersection()
@@ -1788,7 +1788,7 @@ void PhongRay::on_intersection()
     }
 
     // Get surface pointer
-    const auto& surf = model::surfaces.at(std::abs(surface()) - 1);
+    const auto& surf = model::surfaces.at(surface_index());
 
     Direction normal = surf->normal(r_local());
     normal /= normal.norm();

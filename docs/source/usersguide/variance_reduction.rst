@@ -29,7 +29,9 @@ The most typical way of generating weight windows is to define a mesh and then a
 
 Notably, the :attr:`max_realizations` attribute is adjusted to 1000, such that multiple iterations are used to refine the weight window parameters.
 
-With the :class:`WeightWindowGenerator`` object added to the :attr:`openmc.Settings` object, the rest of the problem can be defined as normal. When running, note that the second iteration and beyond may be several orders of magnitude slower than the first. As the weight windows are applied in each iteration, particles may be agressively split, resulting in a large number of secondary (split) particles being generated per initial source particle. This is not necessarily a bad thing, as the split particles are much more efficient at exploring low flux regions of phase space as compared to initial particles. Thus, even though the reported "particles/second" metric of OpenMC may be much lower when generating (or just applying) weight windows as compared to analog MC, the variance vs. runtime figure of merit is typically much more advantageous. With this in mind, the number of particles per batch may need to be adjusted downward significantly to result in reasonable runtimes when weight windows are being generated or used.
+With the :class:`WeightWindowGenerator` object added to the :attr:`openmc.Settings` object, the rest of the problem can be defined as normal. When running, note that the second iteration and beyond may be several orders of magnitude slower than the first. As the weight windows are applied in each iteration, particles may be agressively split, resulting in a large number of secondary (split) particles being generated per initial source particle. This is not necessarily a bad thing, as the split particles are much more efficient at exploring low flux regions of phase space as compared to initial particles. Thus, even though the reported "particles/second" metric of OpenMC may be much lower when generating (or just applying) weight windows as compared to analog MC, the variance vs. runtime figure of merit is typically much more advantageous. 
+
+.. warning:: The number of particles per batch may need to be adjusted downward significantly to result in reasonable runtimes when weight windows are being generated or used.
 
 At the end of the simulation, a "weight_windows.h5" file will be saved to disk for later use. Loading it in another subsequent simulation will be discussed in the "Using Weight Windows" section below.
 
@@ -187,7 +189,7 @@ into multigroup materials as::
     
     settings.random_ray['adjoint'] = True
 
-If the random ray solver in OpenMC is run in adjoint mode, the FW-CADIS algorithm will be utilize if weight window generation is enabled. If adjoint mode is not enabled, then the MAGIC algorithm will be used with the available forward flux tally data. As FW-CADIS weight windows are usually more efficient, it is highly recommended to use FW-CADIS and adjoint mode.
+If the random ray solver in OpenMC is run in adjoint mode, the FW-CADIS algorithm will be utilized if weight window generation is enabled. If adjoint mode is not enabled, then the MAGIC algorithm will be used with the available forward flux tally data. As FW-CADIS weight windows are usually more efficient, it is highly recommended to use FW-CADIS and adjoint mode.
 
 6. Add in a :class:`WeightWindowGenerator` in the same manner as for MAGIC generation with Monte Carlo. Ensure that the selected weight window mesh does not subdivide any cells in the problem. In the future, this restriction is intended to be relaxed, but for now subdivision of cells by a mesh tally will result in undefined behavior.
 

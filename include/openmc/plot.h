@@ -406,9 +406,9 @@ private:
      * if two surfaces bound a single cell, it allows drawing that sharp edge
      * where the surfaces intersect.
      */
-    int surface; // last surface ID intersected in this segment
+    int surface_index {-1}; // last surface index intersected in this segment
     TrackSegment(int id_a, double length_a, int surface_a)
-      : id(id_a), length(length_a), surface(surface_a)
+      : id(id_a), length(length_a), surface_index(surface_a)
     {}
   };
 

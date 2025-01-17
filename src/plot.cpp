@@ -1123,7 +1123,7 @@ bool ProjectionPlot::trackstack_equivalent(
       return false;
     for (int i = 0; i < track1.size(); ++i) {
       if (track1[i].id != track2[i].id ||
-          track1[i].surface != track2[i].surface) {
+          track1[i].surface_index != track2[i].surface_index) {
         return false;
       }
     }
@@ -1150,7 +1150,7 @@ bool ProjectionPlot::trackstack_equivalent(
         if (t1_i == track1.size() && t2_i == track2.size())
           break;
         // Check if surface different
-        if (track1[t1_i].surface != track2[t2_i].surface)
+        if (track1[t1_i].surface_index != track2[t2_i].surface_index)
           return false;
 
         // Pretty sure this should not be used:
@@ -1158,7 +1158,7 @@ bool ProjectionPlot::trackstack_equivalent(
         //     t1_i != track1.size() - 1 &&
         //     track1[t1_i+1].id != track2[t2_i+1].id) return false;
         if (t2_i != 0 && t1_i != 0 &&
-            track1[t1_i - 1].surface != track2[t2_i - 1].surface)
+            track1[t1_i - 1].surface_index != track2[t2_i - 1].surface_index)
           return false;
 
         // Check if neighboring cells are different
@@ -1742,7 +1742,7 @@ void ProjectionRay::on_intersection()
     plot_.color_by_ == PlottableInterface::PlotColorBy::mats
       ? material()
       : lowest_coord().cell,
-    traversal_distance_, std::abs(boundary().surface));
+    traversal_distance_, boundary().surface_index());
 }
 
 void PhongRay::on_intersection()

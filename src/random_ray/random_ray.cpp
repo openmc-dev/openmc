@@ -198,16 +198,20 @@ void fisher_yates_shuffle(vector<int>& arr, uint64_t* seed)
 //      URL https://arxiv.org/abs/1706.02808
 vector<vector<float>> rhalton(int N, int dim, uint64_t* seed, int64_t skip = 0)
 {
+  int b;
+  double b2r;
+  vector<double> ans(N);
+  vector<int> ind(N);
   vector<int> primes = {2, 3, 5, 7, 11, 13, 17, 19, 23, 29};
   vector<vector<float>> halton(N, vector<float>(dim, 0.0));
 
+  std::iota(ind.begin(), ind.end(), skip);
+
   for (int D = 0; D < dim; ++D) {
-    int b = primes[D];
-    vector<int> ind(N);
-    std::iota(ind.begin(), ind.end(), skip);
-    double b2r = 1.0 / b;
-    vector<double> ans(N, 0.0);
+    b = primes[D];
+    b2r = 1.0 / b;
     vector<int> res(ind);
+    std::fill(ans.begin(), ans.end(), 0.0);
 
     while ((1.0 - b2r) < 1.0) {
       vector<int> dig(N);
@@ -216,19 +220,12 @@ vector<vector<float>> rhalton(int N, int dim, uint64_t* seed, int64_t skip = 0)
       std::iota(perm.begin(), perm.end(), 0);
       fisher_yates_shuffle(perm, seed);
 
-      // compute element wise remainder of division (mod)
       for (int i = 0; i < N; ++i) {
         dig[i] = res[i] % b;
-      }
-
-      for (int i = 0; i < N; ++i) {
         ans[i] += perm[dig[i]] * b2r;
-      }
-
-      b2r /= b;
-      for (int i = 0; i < N; ++i) {
         res[i] = (res[i] - dig[i]) / b;
       }
+      b2r /= b;
     }
 
     for (int i = 0; i < N; ++i) {

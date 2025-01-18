@@ -29,7 +29,6 @@ namespace openmc {
 
 enum class Fill { MATERIAL, UNIVERSE, LATTICE };
 
-// TODO: Convert to enum
 constexpr int32_t OP_LEFT_PAREN {std::numeric_limits<int32_t>::max()};
 constexpr int32_t OP_RIGHT_PAREN {std::numeric_limits<int32_t>::max() - 1};
 constexpr int32_t OP_COMPLEMENT {std::numeric_limits<int32_t>::max() - 2};

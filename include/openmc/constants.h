@@ -351,6 +351,10 @@ enum class RandomRaySampleMethod { PRNG, HALTON };
 
 enum class GeometryType { CSG, DAG };
 
+// a surface token cannot be zero due to the unsigned nature of zero for integer
+// representations. This value represents no surface.
+constexpr int32_t SURFACE_NONE {0};
+
 } // namespace openmc
 
 #endif // OPENMC_CONSTANTS_H

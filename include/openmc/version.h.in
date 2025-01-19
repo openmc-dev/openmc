@@ -11,7 +11,8 @@ constexpr int VERSION_MAJOR {@OPENMC_VERSION_MAJOR@};
 constexpr int VERSION_MINOR {@OPENMC_VERSION_MINOR@};
 constexpr int VERSION_RELEASE {@OPENMC_VERSION_RELEASE@};
 constexpr bool VERSION_DEV {@VERSION_DEV@};
-constexpr const char* COMMIT_HASH = "@COMMIT_HASH@";
+constexpr const char* VERSION_COMMIT_COUNT = "@VERSION_COMMIT_COUNT@";
+constexpr const char* VERSION_COMMIT_HASH = "@VERSION_COMMIT_HASH@";
 constexpr std::array<int, 3> VERSION {VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE};
 // clang-format on
 

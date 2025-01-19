@@ -207,8 +207,8 @@ void write_mcpl_source_point(const char* filename,
   if (mpi::master) {
     file_id = mcpl_create_outfile(filename_.c_str());
     if (VERSION_DEV) {
-      line = fmt::format("OpenMC {0}.{1}.{2}-development", VERSION_MAJOR,
-        VERSION_MINOR, VERSION_RELEASE);
+      line = fmt::format("OpenMC {0}.{1}.{2}-dev{3}", VERSION_MAJOR,
+        VERSION_MINOR, VERSION_RELEASE, VERSION_COMMIT_COUNT);
     } else {
       line = fmt::format(
         "OpenMC {0}.{1}.{2}", VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE);

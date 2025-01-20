@@ -407,13 +407,33 @@ Each ``<dagmc_universe>`` element can have the following attributes or sub-eleme
 
     *Default*: None
 
+  :material_overrides:
+    This element contains information on material overrides to be applied to the
+    DAGMC universe. It has the following attributes and sub-elements:
 
-  .. note:: A geometry.xml file containing only a DAGMC model for a file named `dagmc.h5m` (no CSG)
-            looks as follows
+    :cell:
+      Material override information for a single cell. It contains the following
+      attributes and sub-elements:
 
-            .. code-block:: xml
+      :id:
+        The cell ID in the DAGMC geometry for which the material override will
+        apply.
 
-              <?xml version='1.0' encoding='utf-8'?>
-              <geometry>
-                <dagmc_universe filename="dagmc.h5m" id="1" />
-              </geometry>
+      :materials:
+        A list of material IDs that will apply to instances of the cell. If the
+        list contains only one ID, it will replace the original material
+        assignment of all instances of the DAGMC cell. If the list contains more
+        than one material, each material ID of the list will be assigned to the
+        various instances of the DAGMC cell.
+
+    *Default*: None
+
+.. note:: A geometry.xml file containing only a DAGMC model for a file named
+          `dagmc.h5m` (no CSG) looks as follows:
+
+    .. code-block:: xml
+
+        <?xml version='1.0' encoding='utf-8'?>
+        <geometry>
+          <dagmc_universe filename="dagmc.h5m" id="1" />
+        </geometry>

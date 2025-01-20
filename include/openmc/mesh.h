@@ -177,13 +177,18 @@ public:
 
   int32_t id() const { return id_; }
 
+  const std::string& name() const { return name_; }
+
   //! Set the mesh ID
   void set_id(int32_t id = -1);
+
+  //! Write the mesh data to an HDF5 group
+  void to_hdf5(hid_t group) const;
 
   //! Write mesh data to an HDF5 group
   //
   //! \param[in] group HDF5 group
-  virtual void to_hdf5(hid_t group) const = 0;
+  virtual void to_hdf5_inner(hid_t group) const = 0;
 
   //! Find the mesh lines that intersect an axis-aligned slice plot
   //
@@ -240,7 +245,8 @@ public:
   // Data members
   xt::xtensor<double, 1> lower_left_;  //!< Lower-left coordinates of mesh
   xt::xtensor<double, 1> upper_right_; //!< Upper-right coordinates of mesh
-  int id_ {-1};                        //!< User-specified ID
+  int id_ {-1};                        //!< Mesh ID
+  std::string name_;                   //!< User-specified name
   int n_dimension_ {-1};               //!< Number of dimensions
 };
 
@@ -448,7 +454,7 @@ public:
   std::pair<vector<double>, vector<double>> plot(
     Position plot_ll, Position plot_ur) const override;
 
-  void to_hdf5(hid_t group) const override;
+  void to_hdf5_inner(hid_t group) const override;
 
   //! Get the coordinate for the mesh grid boundary in the positive direction
   //!
@@ -498,7 +504,7 @@ public:
   std::pair<vector<double>, vector<double>> plot(
     Position plot_ll, Position plot_ur) const override;
 
-  void to_hdf5(hid_t group) const override;
+  void to_hdf5_inner(hid_t group) const override;
 
   //! Get the coordinate for the mesh grid boundary in the positive direction
   //!
@@ -544,7 +550,7 @@ public:
   std::pair<vector<double>, vector<double>> plot(
     Position plot_ll, Position plot_ur) const override;
 
-  void to_hdf5(hid_t group) const override;
+  void to_hdf5_inner(hid_t group) const override;
 
   double volume(const MeshIndex& ijk) const override;
 
@@ -608,7 +614,7 @@ public:
   std::pair<vector<double>, vector<double>> plot(
     Position plot_ll, Position plot_ur) const override;
 
-  void to_hdf5(hid_t group) const override;
+  void to_hdf5_inner(hid_t group) const override;
 
   double r(int i) const { return grid_[0][i]; }
   double theta(int i) const { return grid_[1][i]; }
@@ -670,7 +676,7 @@ public:
   void surface_bins_crossed(Position r0, Position r1, const Direction& u,
     vector<int>& bins) const override;
 
-  void to_hdf5(hid_t group) const override;
+  void to_hdf5_inner(hid_t group) const override;
 
   std::string bin_label(int bin) const override;
 
@@ -986,6 +992,7 @@ public:
 private:
   void initialize() override;
   void set_mesh_pointer_from_filename(const std::string& filename);
+  void build_eqn_sys();
 
   // Methods
 
@@ -1004,7 +1011,8 @@ private:
   vector<unique_ptr<libMesh::PointLocatorBase>>
     pl_; //!< per-thread point locators
   unique_ptr<libMesh::EquationSystems>
-    equation_systems_; //!< pointer to the equation systems of the mesh
+    equation_systems_; //!< pointer to the libMesh EquationSystems
+                       //!< instance
   std::string
     eq_system_name_; //!< name of the equation system holding OpenMC results
   std::unordered_map<std::string, unsigned int>
@@ -1013,6 +1021,13 @@ private:
   libMesh::BoundingBox bbox_; //!< bounding box of the mesh
   libMesh::dof_id_type
     first_element_id_; //!< id of the first element in the mesh
+
+  const bool adaptive_; //!< whether this mesh has adaptivity enabled or not
+  std::vector<libMesh::dof_id_type>
+    bin_to_elem_map_; //!< mapping bin indices to dof indices for active
+                      //!< elements
+  std::vector<int> elem_to_bin_map_; //!< mapping dof indices to bin indices for
+                                     //!< active elements
 };
 
 #endif

@@ -108,7 +108,7 @@ void Particle::from_source(const SourceSite* src)
 {
   // Reset some attributes
   clear();
-  surface() = 0;
+  surface() = SURFACE_NONE;
   cell_born() = C_NONE;
   material() = C_NONE;
   n_collision() = 0;
@@ -277,7 +277,7 @@ void Particle::event_cross_surface()
   n_coord_last() = n_coord();
 
   // Set surface that particle is on and adjust coordinate levels
-  surface() = boundary().surface_index;
+  surface() = boundary().surface;
   n_coord() = boundary().coord_level;
 
   if (boundary().lattice_translation[0] != 0 ||
@@ -291,7 +291,7 @@ void Particle::event_cross_surface()
   } else {
     // Particle crosses surface
     // TODO: off-by-one
-    const auto& surf {model::surfaces[std::abs(surface()) - 1].get()};
+    const auto& surf {model::surfaces[surface_index()].get()};
     // If BC, add particle to surface source before crossing surface
     if (surf->surf_source_ && surf->bc_) {
       add_surf_source_to_bank(*this, *surf);
@@ -328,7 +328,7 @@ void Particle::event_collide()
     score_surface_tally(*this, model::active_meshsurf_tallies);
 
   // Clear surface component
-  surface() = 0;
+  surface() = SURFACE_NONE;
 
   if (settings::run_CE) {
     collision(*this);
@@ -533,7 +533,7 @@ void Particle::cross_surface(const Surface& surf)
 
 // if we're crossing a CSG surface, make sure the DAG history is reset
 #ifdef DAGMC
-  if (surf.geom_type_ == GeometryType::CSG)
+  if (surf.geom_type() == GeometryType::CSG)
     history().reset();
 #endif
 
@@ -548,8 +548,8 @@ void Particle::cross_surface(const Surface& surf)
 
 #ifdef DAGMC
   // in DAGMC, we know what the next cell should be
-  if (surf.geom_type_ == GeometryType::DAG) {
-    int32_t i_cell = next_cell(std::abs(surface()), cell_last(n_coord() - 1),
+  if (surf.geom_type() == GeometryType::DAG) {
+    int32_t i_cell = next_cell(surface_index(), cell_last(n_coord() - 1),
                        lowest_coord().universe) -
                      1;
     // save material and temp
@@ -587,7 +587,7 @@ void Particle::cross_surface(const Surface& surf)
     // the particle is really traveling tangent to a surface, if we move it
     // forward a tiny bit it should fix the problem.
 
-    surface() = 0;
+    surface() = SURFACE_NONE;
     n_coord() = 1;
     r() += TINY_BIT * u();
 
@@ -668,7 +668,8 @@ void Particle::cross_reflective_bc(const Surface& surf, Direction new_u)
   // the lower universes.
   // (unless we're using a dagmc model, which has exactly one universe)
   n_coord() = 1;
-  if (surf.geom_type_ != GeometryType::DAG && !neighbor_list_find_cell(*this)) {
+  if (surf.geom_type() != GeometryType::DAG &&
+      !neighbor_list_find_cell(*this)) {
     mark_as_lost("Couldn't find particle after reflecting from surface " +
                  std::to_string(surf.id_) + ".");
     return;

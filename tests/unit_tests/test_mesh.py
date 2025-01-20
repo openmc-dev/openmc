@@ -358,6 +358,27 @@ def test_CylindricalMesh_get_indices_at_coords():
     assert mesh.get_indices_at_coords([102, 199.1, 299]) == (0, 3, 0)  # forth angle quadrant
 
 
+def test_mesh_name_roundtrip(run_in_tmpdir):
+
+    mesh = openmc.RegularMesh()
+    mesh.name = 'regular-mesh'
+    mesh.lower_left = (-1, -1, -1)
+    mesh.width = (1, 1, 1)
+    mesh.dimension = (1, 1, 1)
+
+    mesh_filter = openmc.MeshFilter(mesh)
+    tally = openmc.Tally()
+    tally.filters = [mesh_filter]
+    tally.scores = ['flux']
+
+    openmc.Tallies([tally]).export_to_xml()
+
+    xml_tallies = openmc.Tallies.from_xml()
+
+    mesh = xml_tallies[0].find_filter(openmc.MeshFilter).mesh
+    assert mesh.name == 'regular-mesh'
+
+
 def test_umesh_roundtrip(run_in_tmpdir, request):
     umesh = openmc.UnstructuredMesh(request.path.parent / 'test_mesh_tets.e', 'moab')
     umesh.output = True

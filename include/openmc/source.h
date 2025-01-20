@@ -36,6 +36,9 @@ namespace model {
 
 extern vector<unique_ptr<Source>> external_sources;
 
+// Probability distribution for selecting external sources
+extern DiscreteIndex external_sources_probability;
+
 } // namespace model
 
 //==============================================================================

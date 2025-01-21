@@ -6,6 +6,8 @@ Variance Reduction
 
 Global variance reduction in OpenMC is accomplished by weight windowing techniques. OpenMC is capable of generating weight windows using either the MAGIC or FW-CADIS methods. Both techniques will produce a "weight_windows.h5" file that can be loaded and used later on. In this section, we break down the steps required to both generate and then apply weight windows.
 
+.. _ww_generator:
+
 ------------------------------------
 Generating Weight Windows with MAGIC
 ------------------------------------
@@ -47,143 +49,15 @@ The only difference is that the code must be run in random ray mode, and adjoint
 .. note::
     It is a long term goal for OpenMC to be able to generate FW-CADIS weight windows with only a few tweaks to an existing continuous energy Monte Carlo input deck. However, at the present time, the workflow requires several steps to generate multigroup cross section data and to configure the random ray solver. A high level overview of the current workflow for generation of weight windows with FW-CADIS using random ray is given below.
 
-1. Produce approximate multigroup cross section data. There is more
+1. Produce approximate multigroup cross section data (stored in a `mgxs.h5` library). There is more
 information on generating multigroup cross sections via OpenMC in the
-:ref:`multigroup materials <create_mgxs>` user guide. An example of using OpenMC's Python
-interface to generate a correctly formatted ``mgxs.h5`` input file is given
-in the `OpenMC Jupyter notebook collection
-<https://nbviewer.org/github/openmc-dev/openmc-notebooks/blob/main/mg-mode-part-i.ipynb>`_. We recommend generation of a 2-group, material-wise MGXS library. One method for doing this is by starting with an existing set of XML input files (that has no tallies.xml file) that has been run so as to generate statepoint and summary files, and then running the following script to generate the tallies needed for MGXS generation::
-
-    import openmc
-    import openmc.mgxs as mgxs
-
-    summary = openmc.Summary('summary.h5')
-    geom = summary.geometry
-    mats = summary.materials
-
-    statepoint_filename = 'statepoint.40.h5'
-    sp = openmc.StatePoint(statepoint_filename)
-
-    # MGXS
-    groups = mgxs.EnergyGroups(mgxs.GROUP_STRUCTURES['CASMO-2'])
-    mgxs_lib = openmc.mgxs.Library(geom)
-    mgxs_lib.energy_groups = groups
-    mgxs_lib.correction = None
-    mgxs_lib.mgxs_types = ['total', 'absorption', 'nu-fission', 'fission',
-                        'nu-scatter matrix', 'multiplicity matrix', 'chi']
-
-    # Specify a "cell" domain type for the cross section tally filters
-    mgxs_lib.domain_type = "material"
-
-    # Specify the cell domains over which to compute multi-group cross sections
-    mgxs_lib.domains = geom.get_all_materials().values()
-
-    # Do not compute cross sections on a nuclide-by-nuclide basis
-    mgxs_lib.by_nuclide = False
-
-    # Check the library - if no errors are raised, then the library is satisfactory.
-    mgxs_lib.check_library_for_openmc_mgxs()
-
-    # Construct all tallies needed for the multi-group cross section library
-    mgxs_lib.build_library()
-
-    # Create a "tallies.xml" file for the MGXS Library
-    tallies = openmc.Tallies()
-    mgxs_lib.add_to_tallies_file(tallies, merge=True)
-
-    # Export
-    tallies.export_to_xml()
-
-OpenMC can then be run again with the new tallies.xml to produce the required cross section data for tallies. Tight convergence is not needed, as the accuracy of the MGXS data doesn't need to be very high for the purposes of weight window generation. Finally, the below script can be run to generate the final "mgxs.h5" file that will be needed for the multigroup random ray solve::
-
-    import openmc
-    import openmc.mgxs as mgxs
-
-    summary = openmc.Summary('summary.h5')
-    geom = summary.geometry
-    mats = summary.materials
-
-    statepoint_filename = 'statepoint.40.h5'
-    sp = openmc.StatePoint(statepoint_filename)
-
-    groups = mgxs.EnergyGroups(mgxs.GROUP_STRUCTURES['CASMO-2'])
-    mgxs_lib = openmc.mgxs.Library(geom)
-    mgxs_lib.energy_groups = groups
-    mgxs_lib.correction = None
-    mgxs_lib.mgxs_types = ['total', 'absorption', 'nu-fission', 'fission',
-                           'nu-scatter matrix', 'multiplicity matrix', 'chi']
-
-    # Specify a "cell" domain type for the cross section tally filters
-    mgxs_lib.domain_type = "material"
-
-    # Specify the cell domains over which to compute multi-group cross sections
-    mgxs_lib.domains = geom.get_all_materials().values()
-
-    # Do not compute cross sections on a nuclide-by-nuclide basis
-    mgxs_lib.by_nuclide = False
-
-    # Check the library - if no errors are raised, then the library is satisfactory.
-    mgxs_lib.check_library_for_openmc_mgxs()
-
-    # Construct all tallies needed for the multi-group cross section library
-    mgxs_lib.build_library()
-
-    mgxs_lib.load_from_statepoint(sp)
-
-    names = []
-    for mat in mgxs_lib.domains: names.append(mat.name)
-
-    # Create a MGXS File which can then be written to disk
-    mgxs_file = mgxs_lib.create_mg_library(xs_type='macro', xsdata_names=names)
-
-    # Write the file to disk using the default filename of "mgxs.h5"
-    mgxs_file.export_to_hdf5("mgxs.h5")
-
-Note that the above two scripts are useful as they work for any model. In the future, our goal is for this step to be automated so that manual creation of MGXS data doesn't need to be undertaken by the user.
+:ref:`multigroup materials <create_mgxs>` user guide, and a specific example of generating cross section data for use with random ray in the :ref:`random ray MGXS guide <mgxs_gen>`. 
 
 2. Make a copy of your continuous energy python input file. You'll edit the new file to work in multigroup mode with random ray for producing weight windows.
 
-3. Adjust the material definitions in your new multigroup python file to utilise the multigroup cross sections instead of nuclide-wise continuous energy data. For instance, you might convert the following material definition from a continuous energy deck::
+3. Adjust the material definitions in your new multigroup python file to utilise the multigroup cross sections instead of nuclide-wise continuous energy data. There is a specific example of making this conversion in the random ray in the :ref:`random ray MGXS guide <mgxs_gen>`.
 
-    fuel = openmc.Material(name='UO2 (2.4%)')
-    fuel.set_density('g/cm3', 10.29769)
-    fuel.add_nuclide('U234', 4.4843e-6)
-    fuel.add_nuclide('U235', 5.5815e-4)
-    fuel.add_nuclide('U238', 2.2408e-2)
-    fuel.add_nuclide('O16', 4.5829e-2)
-
-    water = openmc.Material(name='Hot borated water')
-    water.set_density('g/cm3', 0.740582)
-    water.add_nuclide('H1', 4.9457e-2)
-    water.add_nuclide('O16', 2.4672e-2)
-    water.add_nuclide('B10', 8.0042e-6)
-    water.add_nuclide('B11', 3.2218e-5)
-    water.add_s_alpha_beta('c_H_in_H2O')
-
-    materials = openmc.Materials([fuel, water])
-
-into multigroup materials as::
-
-    # Instantiate some Macroscopic Data
-    fuel_data = openmc.Macroscopic('UO2 (2.4%)')
-    water_data = openmc.Macroscopic('Hot borated water')
-
-    # Instantiate some Materials and register the appropriate Macroscopic objects
-    fuel= openmc.Material(name='UO2 (2.4%)')
-    fuel.set_density('macro', 1.0)
-    fuel.add_macroscopic(fuel_data)
-
-    water= openmc.Material(name='Hot borated water')
-    water.set_density('macro', 1.0)
-    water.add_macroscopic(water_data)
-
-    # Instantiate a Materials collection and export to XML
-    materials = openmc.Materials([fuel, water])
-    materials.cross_sections = "mgxs.h5"
-
-
-4. Add standard random ray flags and settings (to the :attr:`openmc.Settings.random_ray` dictionary). More information can be found in the  :ref:`Random Ray User Guide
-<random_ray>`. 
+4. Configure OpenMC to run in random ray mode (by adding several standard random ray input flags and settings to the :attr:`openmc.Settings.random_ray` dictionary). More information can be found in the  :ref:`Random Ray User Guide <random_ray>`. 
 
 5. Enable adjoint mode in random ray as::
     
@@ -191,9 +65,9 @@ into multigroup materials as::
 
 If the random ray solver in OpenMC is run in adjoint mode, the FW-CADIS algorithm will be utilized if weight window generation is enabled. If adjoint mode is not enabled, then the MAGIC algorithm will be used with the available forward flux tally data. As FW-CADIS weight windows are usually more efficient, it is highly recommended to use FW-CADIS and adjoint mode.
 
-6. Add in a :class:`WeightWindowGenerator` in the same manner as for MAGIC generation with Monte Carlo. Ensure that the selected weight window mesh does not subdivide any cells in the problem. In the future, this restriction is intended to be relaxed, but for now subdivision of cells by a mesh tally will result in undefined behavior.
+6. Add in a :class:`WeightWindowGenerator` in the same manner as for MAGIC generation with Monte Carlo, as in the example given above in the :ref:`MAGIC weight window generator guide <ww_generator>`. Ensure that the selected weight window mesh does not subdivide any cells in the problem. In the future, this restriction is intended to be relaxed, but for now subdivision of cells by a mesh tally will result in undefined behavior.
 
-7. When running your multigroup random ray input deck, OpenMC will automatically run a forward solve followed by an adjoint solve, with a "weight_windows.h5" file generated at the end. The weight_windows.h5 file can be used in an identical manner as one generated with MAGIC.
+7. When running your multigroup random ray input deck, OpenMC will automatically run a forward solve followed by an adjoint solve, with a "weight_windows.h5" file generated at the end. The weight_windows.h5 file will contain FW-CADIS generated weight windows. This file can be used in identical manner as one generated with MAGIC, as described below.
 
 --------------------
 Using Weight Windows
@@ -206,4 +80,4 @@ To use a "weight_windows.h5" weight window file with OpenMC's Monte Carlo solver
     settings.weight_windows = openmc.hdf5_to_wws()
     settings.weight_windows_on = True
 
-Make sure that the :class:`WeightWindowGenerator` is not present in the file when loading existing weight windows, so as to avoid added costs of generating weight windows again.
+Make sure that the :class:`WeightWindowGenerator` is not present in the file when loading existing weight windows, so as to avoid added costs of generating weight windows again. Weight window mesh information is embedded into the weight window file, so it does not need to be redfined. Monte Carlo solves that load a weight window file as above will utilize the weight windows to reduce the variance of the simulation.

@@ -90,6 +90,19 @@ std::string HexgonalMesh::get_mesh_type() const
   return mesh_type;
 }
 
+int HexagonalMesh::get_index_in_direction(double, r, int i) const
+{
+  double range
+  switch (i){
+    case 0:
+      return (0.5 * r.x - 1.0/(2*sqrt(3)) * r.y) / this->abs_a;
+    case 1:
+      return (1.0/sqrt(3)) * r.y) / this->abs_a;
+    case 2:
+      return std::ceil((r - lower_left_[i]) / width_[i]);
+  }
+}
+
 StructuredMesh::MeshIndex HexgonalMesh::get_indices(
   Position r, bool& in_mesh) const
 {
@@ -99,8 +112,8 @@ StructuredMesh::MeshIndex HexgonalMesh::get_indices(
   local_coords(r);
 
   MeshIndex idx;
-  idx[0] = this->size() * (sqrt(3.0) * r.x - 1.0/3.0 * r.y);
-  idx[1] = this->size() * 2.0/3.0 * r.y;
+  idx[0] = (0.5 * r.x - 1.0/(2*sqrt(3)) * r.y);
+  idx[1] = 1.0/sqrt(3) * r.y;
 
   idx[2] = get_index_in_direction(r, 2);
   return idx;

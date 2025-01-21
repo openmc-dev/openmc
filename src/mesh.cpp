@@ -354,7 +354,7 @@ void Mesh::material_volumes(int nx, int ny, int nz, int max_materials,
             p.n_coord_last() = p.n_coord();
 
             // Set surface that particle is on and adjust coordinate levels
-            p.surface() = boundary.surface_index;
+            p.surface() = boundary.surface;
             p.n_coord() = boundary.coord_level;
 
             if (boundary.lattice_translation[0] != 0 ||
@@ -365,9 +365,7 @@ void Mesh::material_volumes(int nx, int ny, int nz, int max_materials,
               cross_lattice(p, boundary);
             } else {
               // Particle crosses surface
-              // TODO: off-by-one
-              const auto& surf {
-                model::surfaces[std::abs(p.surface()) - 1].get()};
+              const auto& surf {model::surfaces[p.surface_index()].get()};
               p.cross_surface(*surf);
             }
           }

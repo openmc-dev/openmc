@@ -98,22 +98,11 @@ StructuredMesh::MeshIndex HexgonalMesh::get_indices(
   //should exist fast patterns in literature for doing this
   local_coords(r);
 
-  Position mapped_r;
-  mapped_r[0] = std::hypot(r.x, r.y);
-  mapped_r[2] = r[2];
+  MeshIndex idx;
+  idx[0] = this->size() * (sqrt(3.0) * r.x - 1.0/3.0 * r.y);
+  idx[1] = this->size() * 2.0/3.0 * r.y;
 
-  if (mapped_r[0] < FP_PRECISION) {
-    mapped_r[1] = 0.0;
-  } else {
-    mapped_r[1] = std::atan2(r.y, r.x);
-    if (mapped_r[1] < 0)
-      mapped_r[1] += 2 * M_PI;
-  }
-
-  MeshIndex idx = StructuredMesh::get_indices(mapped_r, in_mesh);
-
-  idx[1] = sanitize_phi(idx[1]);
-
+  idx[2] = get_index_in_directio(r, 2);
   return idx;
 }
 

@@ -71,10 +71,11 @@ HexagonalMesh::HexagonalMesh(pugi::xml_node node)
   : PeriodicStructuredMesh {node}
 {
   //contructor from xml
-  n_dimension_ = 3;
-  grid_[0] = get_node_array<double>(node, "r_grid");
-  grid_[1] = get_node_array<double>(node, "phi_grid");
-  grid_[2] = get_node_array<double>(node, "z_grid");
+  n_dimension_ = 4;
+  grid_[0] = get_node_array<double>(node, "a_grid");
+  grid_[1] = copy(grid_[0]);
+  grid_[2] = copy(grid_[0]);
+  grid_[3] = get_node_array<double>(node, "z_grid");
   origin_ = get_node_position(node, "origin");
 
   if (int err = set_grid()) {

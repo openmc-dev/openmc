@@ -102,7 +102,7 @@ StructuredMesh::MeshIndex HexgonalMesh::get_indices(
   idx[0] = this->size() * (sqrt(3.0) * r.x - 1.0/3.0 * r.y);
   idx[1] = this->size() * 2.0/3.0 * r.y;
 
-  idx[2] = get_index_in_directio(r, 2);
+  idx[2] = get_index_in_direction(r, 2);
   return idx;
 }
 

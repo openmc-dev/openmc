@@ -103,7 +103,7 @@ struct Position {
       x * rotation[6] + y * rotation[7] + z * rotation[8]};
   }
 
-  //! Rotate the position by aplpying the inverse of a rotation matrix
+  //! Rotate the position by applying the inverse of a rotation matrix
   //! using the fact that rotation matrices are orthonormal.
   template<typename T>
   Position inverse_rotate(const T& rotation) const

@@ -994,11 +994,11 @@ class RayTracePlot(PlotBase):
     """Definition of a camera's view of OpenMC geometry
 
     The camera projection may either by orthographic or perspective. Perspective
-    projections are more similar to a pinhole camera, and orthographic projections
-    preserve parallel lines and distances.
+    projections are more similar to a pinhole camera, and orthographic
+    projections preserve parallel lines and distances.
 
-    This is an abstract base class that ProjectionPlot and PhongPlot finish
-    the implementation of.
+    This is an abstract base class that :class:`ProjectionPlot` and
+    :class:`PhongPlot` finish the implementation of.
 
     .. versionadded:: 0.14.0
 
@@ -1094,7 +1094,6 @@ class RayTracePlot(PlotBase):
     def _check_domains_consistent_with_color_by(self, domains):
         """Check domains are the same as the type we are coloring by
         """
-
         for region in domains:
             # if an integer is passed, we have to assume
             # it was a valid ID

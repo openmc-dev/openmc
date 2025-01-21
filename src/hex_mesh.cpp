@@ -121,28 +121,16 @@ Position HexgonalMesh::sample_element(
   const MeshIndex& ijk, uint64_t* seed) const
 {
   //return random position inside mesh element
-  double r_min = this->r(ijk[0] - 1);
-  double r_max = this->r(ijk[0]);
+  double a_r = uniform_distribution();
+  double b_r = uniform_distribution();
 
-  double phi_min = this->phi(ijk[1] - 1);
-  double phi_max = this->phi(ijk[1]);
+  x = this->a_x * (a_r + (ijk[0]-1) ) + this->b_x * (b_r + (ijk[1]-1) );
+  y = this->a_y * (a_r + (ijk[0]-1) ) + this->b_y * (b_r + (ijk[1]-1) );
 
-  double z_min = this->z(ijk[2] - 1);
-  double z_max = this->z(ijk[2]);
-
-  double r_min_sq = r_min * r_min;
-  double r_max_sq = r_max * r_max;
-  double r = std::sqrt(uniform_distribution(r_min_sq, r_max_sq, seed));
-  double phi = uniform_distribution(phi_min, phi_max, seed);
   double z = uniform_distribution(z_min, z_max, seed);
-
-  double x = r * std::cos(phi);
-  double y = r * std::sin(phi);
 
   return origin_ + Position(x, y, z);
 }
-
-
 
 
 double HexgonalMesh::find_r_crossing(

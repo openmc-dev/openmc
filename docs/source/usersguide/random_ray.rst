@@ -435,10 +435,11 @@ Inputting Multigroup Cross Sections (MGXS)
 Multigroup cross sections for use with OpenMC's random ray solver are input the
 same way as with OpenMC's traditional multigroup Monte Carlo mode. There is more
 information on generating multigroup cross sections via OpenMC in the
-:ref:`multigroup materials <create_mgxs>` user guide. You may also wish to
-use an existing multigroup library. An example of using OpenMC's Python
-interface to generate a correctly formatted ``mgxs.h5`` input file is given
-in the `OpenMC Jupyter notebook collection
+:ref:`multigroup materials <create_mgxs>` user guide. You may also wish to use
+an existing ``mgxs.h5`` MGXS library file, or define your own given a known set
+of cross section data values (e.g., as taken from a benchmark specification). An
+example of using OpenMC's Python interface to generate a correctly formatted
+``mgxs.h5`` input file is given in the `OpenMC Jupyter notebook collection
 <https://nbviewer.org/github/openmc-dev/openmc-notebooks/blob/main/mg-mode-part-i.ipynb>`_.
 
 .. note::

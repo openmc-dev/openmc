@@ -454,11 +454,27 @@ example of using OpenMC's Python interface to generate a correctly formatted
 Generating Multigroup Cross Sections (MGXS)
 -------------------------------------------
 
-OpenMC is capable of generating multigroup cross sections by way of flux collapsing data based on flux solutions obtained from a continuous energy Monte Carlo solve. While it is a circular excercise in some respects to use continuous energy Monte Carlo to generate cross sections to be used by a reduced-fidelity multigroup transport solver, there are many use cases where this is nonetheless highly desirable. For instance, generation of a multigroup library may enable the same set of approximate multigroup cross section data to be used across a variety of problem types (or through a multidimensional parameter sweep of design variables) with only modest errors and at greatly reduced cost as compared to using only continuous energy Monte Carlo.
+OpenMC is capable of generating multigroup cross sections by way of flux
+collapsing data based on flux solutions obtained from a continuous energy Monte
+Carlo solve. While it is a circular excercise in some respects to use continuous
+energy Monte Carlo to generate cross sections to be used by a reduced-fidelity
+multigroup transport solver, there are many use cases where this is nonetheless
+highly desirable. For instance, generation of a multigroup library may enable
+the same set of approximate multigroup cross section data to be used across a
+variety of problem types (or through a multidimensional parameter sweep of
+design variables) with only modest errors and at greatly reduced cost as
+compared to using only continuous energy Monte Carlo.
 
-We give here a quick summary of how to produce a multigroup cross section data file (``mgxs.h5``) from a starting point of a typical continuous energy Monte Carlo input file. Notably, continuous energy input files define materials as a mixture of nuclides with different densities, whereas multigroup materials are simply defined by which name they correspond to in a ``mgxs.h5`` library file.
+We give here a quick summary of how to produce a multigroup cross section data
+file (``mgxs.h5``) from a starting point of a typical continuous energy Monte
+Carlo input file. Notably, continuous energy input files define materials as a
+mixture of nuclides with different densities, whereas multigroup materials are
+simply defined by which name they correspond to in a ``mgxs.h5`` library file.
 
-To generate the cross section data, we begin with a continuous energy Monte Carlo input deck and add in the required tallies that will be needed to generate our library. In this example, we will specify material-wise cross sections and a two group energy decomposition::
+To generate the cross section data, we begin with a continuous energy Monte
+Carlo input deck and add in the required tallies that will be needed to generate
+our library. In this example, we will specify material-wise cross sections and a
+two group energy decomposition::
 
   # Define geometry
   ...
@@ -505,7 +521,14 @@ To generate the cross section data, we begin with a continuous energy Monte Carl
 
   ...
 
-When selecting an energy decomposition, you can manually define group boundaries or pick out a group structure already known to OpenMC (a list of which can be found at :class:`openmc.mgxs.GROUP_STRUCTURES`). Once the above input deck has been run, the resulting statepoint file will contain the needed flux and reaction rate tally data so that a MGXS library file can be generated. Below is the postprocessing script needed to generate the ``mgxs.h5`` library file given a statepoint file (e.g., ``statepoint.100.h5``) file and summary file (e.g., ``summary.h5``) that resulted from running our previous example::
+When selecting an energy decomposition, you can manually define group boundaries
+or pick out a group structure already known to OpenMC (a list of which can be
+found at :class:`openmc.mgxs.GROUP_STRUCTURES`). Once the above input deck has
+been run, the resulting statepoint file will contain the needed flux and
+reaction rate tally data so that a MGXS library file can be generated. Below is
+the postprocessing script needed to generate the ``mgxs.h5`` library file given
+a statepoint file (e.g., ``statepoint.100.h5``) file and summary file (e.g.,
+``summary.h5``) that resulted from running our previous example::
 
   import openmc
   import openmc.mgxs as mgxs
@@ -550,9 +573,15 @@ When selecting an energy decomposition, you can manually define group boundaries
   # Write the file to disk using the default filename of "mgxs.h5"
   mgxs_file.export_to_hdf5("mgxs.h5")
 
-Notably, the postprocessing script needs to match the same :class:`openmc.mgxs.Library` settings that were used to generate the tallies, but otherwise is able to discern the rest of the simulation details from the statepoint and summary files. Once the postprocessing script is successfully run, the ``mgxs.h5`` file can be loaded by subsequent runs of OpenMC.
+Notably, the postprocessing script needs to match the same
+:class:`openmc.mgxs.Library` settings that were used to generate the tallies,
+but otherwise is able to discern the rest of the simulation details from the
+statepoint and summary files. Once the postprocessing script is successfully
+run, the ``mgxs.h5`` file can be loaded by subsequent runs of OpenMC.
 
-If you want to convert continuous energy material objects in an OpenMC input deck to multigroup ones from a ``mgxs.h5`` library, you can follow the below example. Here we begin with several continuous energy materials::
+If you want to convert continuous energy material objects in an OpenMC input
+deck to multigroup ones from a ``mgxs.h5`` library, you can follow the below
+example. Here we begin with several continuous energy materials::
 
     fuel = openmc.Material(name='UO2 (2.4%)')
     fuel.set_density('g/cm3', 10.29769)
@@ -571,7 +600,8 @@ If you want to convert continuous energy material objects in an OpenMC input dec
 
     materials = openmc.Materials([fuel, water])
 
-and make the necessary changes to turn them into multigroup library materials as::
+and make the necessary changes to turn them into multigroup library materials
+as::
 
     # Instantiate some Macroscopic Data
     fuel_data = openmc.Macroscopic('UO2 (2.4%)')

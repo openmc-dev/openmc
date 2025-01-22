@@ -93,23 +93,22 @@ information, and which is often much cheaper than Monte Carlo given that
 maximal-fidelity is not needed for weight window generation.
 
 The FW-CADIS implementation in OpenMC utilizes its own internal random ray
-multigroup transport solver. No coupling to an external solver or library is
-needed for generating weight windows with OpenMC. The random ray solver is ideal
-for this purpose as it naturally produces a relatively uniform uncertainty
-distribution throughout the simulation domain that is not proportional to the
-physical flux density. Additionally, the random ray solver operates on the same
-geometry as the Monte Carlo solver (all OpenMC geometries are supported), so the
-user does not need to provide a second set of inputs.
+multigroup transport solver to generate the adjoint source distribution. No
+coupling to any external transport is solver is necessary. The random ray solver
+operates on the same geometry as the Monte Carlo solver, so no redefinition of
+the simulation geometry is required. More details on how the adjoint flux is
+computed are given in the :ref:`adjoint methods section <adjoint>`.
 
-More information on the workflow is available in the user guide, but generally
-production of weight windows with FW-CADIS involves several stages (some of
-which are highly automated). These tasks include generation of approximate
-multigroup cross section data for use by the random ray solver, running of the
-random ray solver in normal (forward flux) mode to generate a source for the
-adjoint solver, running of the random ray solver in adjoint mode to generate
-adjoint flux tallies, and finally the production of weight windows via the
-FW-CADIS method. As is discussed in the user guide, most of these steps are
-automated together, making the additional burden on the user fairly small.
+More information on the workflow is available in the :ref:`user guide
+<variance_reduction>`, but generally production of weight windows with FW-CADIS
+involves several stages (some of which are highly automated). These tasks
+include generation of approximate multigroup cross section data for use by the
+random ray solver, running of the random ray solver in normal (forward flux)
+mode to generate a source for the adjoint solver, running of the random ray
+solver in adjoint mode to generate adjoint flux tallies, and finally the
+production of weight windows via the FW-CADIS method. As is discussed in the
+user guide, most of these steps are automated together, making the additional
+burden on the user fairly small.
 
 The major advantage of this technique is that it typically produces much more
 numerically efficient weight windows as compared to those generated with MAGIC,

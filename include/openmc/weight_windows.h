@@ -18,7 +18,7 @@
 namespace openmc {
 
 enum class WeightWindowUpdateMethod {
-  MAGIC,
+  MAGIC, FW_CADIS
 };
 
 //==============================================================================
@@ -223,8 +223,7 @@ public:
   // Data members
   int32_t tally_idx_;  //!< Index of the tally used to update the weight windows
   int32_t ww_idx_;     //!< Index of the weight windows object being generated
-  std::string method_; //!< Method used to update weight window. Only "magic"
-                       //!< is valid for now.
+  WeightWindowUpdateMethod method_; //!< Method used to update weight window.
   int32_t max_realizations_; //!< Maximum number of tally realizations
   int32_t update_interval_;  //!< Determines how often updates occur
   bool on_the_fly_; //!< Whether or not to keep tally results between batches or

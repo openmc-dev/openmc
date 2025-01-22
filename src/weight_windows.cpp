@@ -626,8 +626,7 @@ void WeightWindows::update_magic(
 
   int e_bins = new_bounds.shape()[0];
 
-  if (settings::solver_type == SolverType::MONTE_CARLO ||
-      !FlatSourceDomain::adjoint_) {
+  if (method_ == WeightWindowUpdateMethod::MAGIC) {
     // If we are computing weight windows with forward fluxes derived from a
     // Monte Carlo or random ray solve, we use the MAGIC algorithm.
     for (int e = 0; e < e_bins; e++) {
@@ -646,7 +645,7 @@ void WeightWindows::update_magic(
       if (group_max > 0.0)
         group_view /= 2.0 * group_max;
     }
-  } else {
+  } else if (method_ == WeightWindowUpdateMethod::FW_CADIS){
     // If we are computing weight windows with adjoint fluxes derived from a
     // random ray solve, we use the FW-CADIS algorithm.
     for (int e = 0; e < e_bins; e++) {
@@ -786,37 +785,42 @@ WeightWindowsGenerator::WeightWindowsGenerator(pugi::xml_node node)
     e_bounds.push_back(data::energy_max[p_type]);
   }
 
-  // set method and parameters for updates
-  method_ = get_node_value(node, "method");
-  if (method_ == "magic") {
-    // parse non-default update parameters if specified
-    if (check_for_node(node, "update_parameters")) {
-      pugi::xml_node params_node = node.child("update_parameters");
-      if (check_for_node(params_node, "value"))
-        tally_value_ = get_node_value(params_node, "value");
-      if (check_for_node(params_node, "threshold"))
-        threshold_ = std::stod(get_node_value(params_node, "threshold"));
-      if (check_for_node(params_node, "ratio")) {
-        ratio_ = std::stod(get_node_value(params_node, "ratio"));
-      }
-    }
-    // check update parameter values
-    if (tally_value_ != "mean" && tally_value_ != "rel_err") {
-      fatal_error(fmt::format("Unsupported tally value '{}' specified for "
-                              "weight window generation.",
-        tally_value_));
-    }
-    if (threshold_ <= 0.0)
-      fatal_error(fmt::format("Invalid relative error threshold '{}' (<= 0.0) "
-                              "specified for weight window generation",
-        ratio_));
-    if (ratio_ <= 1.0)
-      fatal_error(fmt::format("Invalid weight window ratio '{}' (<= 1.0) "
-                              "specified for weight window generation"));
+  // set method
+  std::string method_string = get_node_value(node, "method");
+  if (method_string == "magic") {
+    method_ = WeightWindowUpdateMethod::MAGIC;
+  } else if (method_string == "fw_cadis") {
+    method_ = WeightWindowUpdateMethod::FW_CADIS;
   } else {
     fatal_error(fmt::format(
-      "Unknown weight window update method '{}' specified", method_));
+      "Unknown weight window update method '{}' specified", method_string));
   }
+
+  // parse non-default update parameters if specified
+  if (check_for_node(node, "update_parameters")) {
+    pugi::xml_node params_node = node.child("update_parameters");
+    if (check_for_node(params_node, "value"))
+      tally_value_ = get_node_value(params_node, "value");
+    if (check_for_node(params_node, "threshold"))
+      threshold_ = std::stod(get_node_value(params_node, "threshold"));
+    if (check_for_node(params_node, "ratio")) {
+      ratio_ = std::stod(get_node_value(params_node, "ratio"));
+    }
+  }
+
+  // check update parameter values
+  if (tally_value_ != "mean" && tally_value_ != "rel_err") {
+    fatal_error(fmt::format("Unsupported tally value '{}' specified for "
+                            "weight window generation.",
+      tally_value_));
+  }
+  if (threshold_ <= 0.0)
+    fatal_error(fmt::format("Invalid relative error threshold '{}' (<= 0.0) "
+                            "specified for weight window generation",
+      ratio_));
+  if (ratio_ <= 1.0)
+    fatal_error(fmt::format("Invalid weight window ratio '{}' (<= 1.0) "
+                            "specified for weight window generation"));
 
   // create a matching weight windows object
   auto wws = WeightWindows::create();

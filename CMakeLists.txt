@@ -206,6 +206,8 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 if(OPENMC_ENABLE_PROFILE)
   list(APPEND cxxflags -g -fno-omit-frame-pointer)
 endif()
+  
+list(APPEND cxxflags -fno-relaxed-template-template-args)
 
 if(OPENMC_ENABLE_COVERAGE)
   list(APPEND cxxflags --coverage)

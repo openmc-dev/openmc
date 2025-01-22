@@ -790,12 +790,14 @@ WeightWindowsGenerator::WeightWindowsGenerator(pugi::xml_node node)
   std::string method_string = get_node_value(node, "method");
   if (method_string == "magic") {
     method_ = WeightWindowUpdateMethod::MAGIC;
-    if (solver_type == SolverType::RANDOM_RAY && FlatSourceDomain::adjoint_) {
-      fatal_error("Random ray weight window generation with MAGIC cannot be done in adjoint mode.");
+    if (settings::solver_type == SolverType::RANDOM_RAY &&
+        FlatSourceDomain::adjoint_) {
+      fatal_error("Random ray weight window generation with MAGIC cannot be "
+                  "done in adjoint mode.");
     }
   } else if (method_string == "fw_cadis") {
     method_ = WeightWindowUpdateMethod::FW_CADIS;
-    if (solver_type != SolverType::RANDOM_RAY) {
+    if (settings::solver_type != SolverType::RANDOM_RAY) {
       fatal_error("FW-CADIS can only be run in random ray solver mode.");
     }
     FlatSourceDomain::adjoint_ = true;

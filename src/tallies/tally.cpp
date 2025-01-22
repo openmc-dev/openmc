@@ -56,6 +56,7 @@ vector<int> active_tallies;
 vector<int> active_analog_tallies;
 vector<int> active_tracklength_tallies;
 vector<int> active_collision_tallies;
+vector<int> active_point_tallies;
 vector<int> active_meshsurf_tallies;
 vector<int> active_surface_tallies;
 vector<int> active_pulse_height_tallies;
@@ -170,6 +171,10 @@ Tally::Tally(pugi::xml_node node)
 
   this->set_nuclides(node);
 
+  // READ DATA FOR POSITIONS
+
+  this->set_positions(node);
+
   // =======================================================================
   // READ DATA FOR SCORES
 
@@ -283,6 +288,7 @@ Tally::Tally(pugi::xml_node node)
   // Check if user specified estimator
   if (check_for_node(node, "estimator")) {
     std::string est = get_node_value(node, "estimator");
+    fmt::print("est = {}\n", est);
     if (est == "analog") {
       estimator_ = TallyEstimator::ANALOG;
     } else if (est == "tracklength" || est == "track-length" ||
@@ -310,6 +316,18 @@ Tally::Tally(pugi::xml_node node)
 
       // Set estimator to collision estimator
       estimator_ = TallyEstimator::COLLISION;
+
+    } else if (est == "point") {
+      // If the estimator was set to an analog estimator, this means the
+      // tally needs post-collision information
+      if (estimator_ == TallyEstimator::ANALOG) {
+        throw std::runtime_error {fmt::format("Cannot use collision estimator "
+                                              "for tally ",
+          id_)};
+      }
+
+      // Set estimator to collision estimator
+      estimator_ = TallyEstimator::POINT;
 
     } else {
       throw std::runtime_error {
@@ -653,6 +671,31 @@ void Tally::set_nuclides(const vector<std::string>& nuclides)
       }
       nuclides_.push_back(data::nuclide_map.at(nuc));
     }
+  }
+}
+
+void Tally::set_positions(pugi::xml_node node)
+{
+  positions_.clear();
+
+  // By default, we tally just the total material rates.
+  if (!check_for_node(node, "positions")) {
+    positions_.push_back("");
+    return;
+  }
+
+  // The user provided specifics nuclides.  Parse it as an array with either
+  // "total" or a nuclide name like "U235" in each position.
+  auto words = get_node_array<std::string>(node, "positions");
+  this->set_positions(words);
+}
+
+void Tally::set_positions(const vector<std::string>& positions)
+{
+  positions_.clear();
+
+  for (const auto& pos : positions) {
+    positions_.push_back(pos);
   }
 }
 
@@ -1013,6 +1056,7 @@ void setup_active_tallies()
   model::active_analog_tallies.clear();
   model::active_tracklength_tallies.clear();
   model::active_collision_tallies.clear();
+  model::active_point_tallies.clear();
   model::active_meshsurf_tallies.clear();
   model::active_surface_tallies.clear();
   model::active_pulse_height_tallies.clear();
@@ -1031,6 +1075,9 @@ void setup_active_tallies()
           break;
         case TallyEstimator::TRACKLENGTH:
           model::active_tracklength_tallies.push_back(i);
+          break;
+        case TallyEstimator::POINT:
+          model::active_point_tallies.push_back(i);
           break;
         case TallyEstimator::COLLISION:
           model::active_collision_tallies.push_back(i);
@@ -1067,6 +1114,7 @@ void free_memory_tally()
   model::active_analog_tallies.clear();
   model::active_tracklength_tallies.clear();
   model::active_collision_tallies.clear();
+  model::active_point_tallies.clear();
   model::active_meshsurf_tallies.clear();
   model::active_surface_tallies.clear();
   model::active_pulse_height_tallies.clear();

@@ -34,9 +34,6 @@ public:
 
   Particle() = default;
 
-  //==========================================================================
-  // Methods
-
   double speed() const;
 
   //! moves the particle by the distance length to its next location
@@ -44,6 +41,10 @@ public:
   void move_distance(double length);
 
   //! create a secondary particle
+  //
+  //
+  double getMass() const;
+  //
   //
   //! stores the current phase space attributes of the particle in the
   //! secondary bank and increments the number of sites in the secondary bank.
@@ -60,7 +61,9 @@ public:
   //! simply as a secondary particle.
   //! \param src Source site data
   void from_source(const SourceSite* src);
-
+  void initialize_ghost_particle(Particle& p, Direction u, double E);
+  void initialize_ghost_particle_from_source(
+    const SourceSite* src, Direction u_new);
   // Coarse-grained particle events
   void event_calculate_xs();
   void event_advance();

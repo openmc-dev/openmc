@@ -1,0 +1,36 @@
+  fmt::print("post energy = {0} pre energy = {1}\n",p.E(),p.E_last());
+  fmt::print("event mt = {}\n",p.event_mt());
+  fmt::print("post weight = {0} pre weight = {1}\n",p.wgt(),p.wgt_last());
+  fmt::print("pos = {0} , {1} , {2}\n",p.r().x,p.r().y,p.r().z);
+  fmt::print("u = {0} , {1} , {2}\n",p.u().x,p.u().y,p.u().z);
+  fmt::print("u_last = {0} , {1} , {2}\n",p.u_last().x,p.u_last().y,p.u_last().z);
+  fmt::print("distance = {}\n",distance);
+  fmt::print("xs = {}\n",p.macro_xs().total);
+  fmt::print("number of nuclear = {}\n",n);
+  fmt::print("name of 1# nuclicde = {}\n",nuc->name_);
+  fmt::print("name of 2# nuclicde = {}\n",nuc2->name_);
+  fmt::print("reaction MT = {}\n",rx->mt_);
+  fmt::print("d type = {}\n",typeid(d.get()).name());
+  fmt::print("energy distribution at 0 {}\n",d_->angle().get_energy(0));
+  fmt::print("energy distribution at 1 {}\n",d_->angle().get_energy(1));
+  fmt::print("post energy = {}\n",p.E);
+  fmt::print(p.E);
+
+  // Neutron velocity in LAB
+  Direction v_n = vel * p.u_last();
+
+ // // Sample velocity of target nucleus
+ // Direction v_t {};
+ // if (!p.neutron_xs(i_nuclide).use_ptable) {
+ //   v_t = sample_target_velocity(*nuc, p.E_last(), p.u_last(), v_n,
+ //     p.neutron_xs(i_nuclide).elastic, kT, p.current_seed());
+ // }
+
+  // Velocity of center-of-mass
+  Direction v_cm = (v_n ) / (awr + 1.0);  //(v_n + awr * v_t) / (awr + 1.0);
+
+  // Transform to CM frame
+  v_n -= v_cm;
+
+  // Find speed of neutron in CM
+  vel = v_n.norm();

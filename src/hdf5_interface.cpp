@@ -92,7 +92,7 @@ void get_shape_attr(hid_t obj_id, const char* name, hsize_t* dims)
   H5Aclose(attr);
 }
 
-hid_t create_group(hid_t parent_id, char const* name)
+hid_t create_group(hid_t parent_id, const char* name)
 {
   hid_t out = H5Gcreate(parent_id, name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   if (out < 0) {

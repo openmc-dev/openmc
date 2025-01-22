@@ -90,6 +90,11 @@ Direction sample_cxs_target_velocity(
 void sample_fission_neutron(
   int i_nuclide, const Reaction& rx, SourceSite* site, Particle& p);
 
+void score_fission_neutron(int i_tally, int i_nuclide, const Reaction& rx,
+  SourceSite* site, Particle& p, std::vector<double>& mu_cm,
+  std::vector<double>& Js, std::vector<Particle>& ghost_particles,
+  std::vector<double>& pdfs_lab);
+
 //! handles all reactions with a single secondary neutron (other than fission),
 //! i.e. level scattering, (n,np), (n,na), etc.
 void inelastic_scatter(const Nuclide& nuc, const Reaction& rx, Particle& p);

@@ -10,6 +10,7 @@
 #include "openmc/angle_energy.h"
 #include "openmc/constants.h"
 #include "openmc/endf.h"
+#include "openmc/particle.h"
 #include "openmc/vector.h"
 
 namespace openmc {
@@ -31,6 +32,10 @@ public:
   //! \param[inout] seed Pseudorandom seed pointer
   void sample(
     double E_in, double& E_out, double& mu, uint64_t* seed) const override;
+  void get_pdf(double det_pos[4], double E_in, double& E_out, uint64_t* seed,
+    Particle& p, std::vector<double>& mu_cm, std::vector<double>& Js,
+    std::vector<Particle>& ghost_particles,
+    std::vector<double>& pdfs_lab) const;
 
 private:
   //! Outgoing energy/angle at a single incoming energy

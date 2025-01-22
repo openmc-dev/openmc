@@ -48,9 +48,11 @@ struct SourceSite {
   double wgt {1.0};
   int delayed_group {0};
   int surf_id {0};
+  bool ext {false};
   ParticleType particle;
   int64_t parent_id;
   int64_t progeny_id;
+  int source_index;
 };
 
 //! State of a particle used for particle track files
@@ -403,41 +405,78 @@ private:
 class ParticleData : public GeometryState {
 private:
   //==========================================================================
-  // Data members -- see public: below for descriptions
+  // Data members (accessor methods are below)
 
-  vector<NuclideMicroXS> neutron_xs_;
-  vector<ElementMicroXS> photon_xs_;
-  MacroXS macro_xs_;
-  CacheDataMG mg_xs_cache_;
+  // Cross section caches
+  vector<NuclideMicroXS> neutron_xs_; //!< Microscopic neutron cross sections
+  vector<ElementMicroXS> photon_xs_;  //!< Microscopic photon cross sections
+  MacroXS macro_xs_;                  //!< Macroscopic cross sections
+  CacheDataMG mg_xs_cache_;           //!< Multigroup XS cache
 
-  ParticleType type_ {ParticleType::neutron};
+  int64_t id_;                                //!< Unique ID
+  ParticleType type_ {ParticleType::neutron}; //!< Particle type (n, p, e, etc.)
 
-  double E_;
-  double E_last_;
-  int g_ {0};
-  int g_last_;
+  int n_coord_ {1};          //!< number of current coordinate levels
+  int cell_instance_;        //!< offset for distributed properties
+  vector<LocalCoord> coord_; //!< coordinates for all levels
 
-  double wgt_ {1.0};
-  double mu_;
-  double time_ {0.0};
-  double time_last_ {0.0};
-  double wgt_last_ {1.0};
+  // Particle coordinates before crossing a surface
+  int n_coord_last_ {1};  //!< number of current coordinates
+  vector<int> cell_last_; //!< coordinates for all levels
 
-  bool fission_ {false};
-  TallyEvent event_;
-  int event_nuclide_;
-  int event_mt_;
-  int delayed_group_ {0};
+  // Energy data
+  double E_;      //!< post-collision energy in eV
+  double E_last_; //!< pre-collision energy in eV
+  int g_ {0};     //!< post-collision energy group (MG only)
+  int g_last_;    //!< pre-collision energy group (MG only)
 
-  int n_bank_ {0};
-  int n_bank_second_ {0};
-  double wgt_bank_ {0.0};
-  int n_delayed_bank_[MAX_DELAYED_GROUPS];
+  // Other physical data
+  double wgt_ {1.0};       //!< particle weight
+  double mu_;              //!< angle of scatter
+  double time_ {0.0};      //!< time in [s]
+  double time_last_ {0.0}; //!< previous time in [s]
 
-  int cell_born_ {-1};
+  // Other physical data
+  Position r_last_current_; //!< coordinates of the last collision or
+                            //!< reflective/periodic surface crossing for
+                            //!< current tallies
+  Position r_last_;         //!< previous coordinates
+  Direction u_last_;        //!< previous direction coordinates
+  double wgt_last_ {1.0};   //!< pre-collision particle weight
 
-  int n_collision_ {0};
+  // What event took place
+  bool fission_ {false}; //!< did particle cause implicit fission
+  TallyEvent event_;     //!< scatter, absorption
+  int event_nuclide_;    //!< index in nuclides array
+  int event_mt_;         //!< reaction MT
+  int event_index_mt_;
+  int delayed_group_ {0}; //!< delayed group
+  Direction v_t_;
 
+  // Post-collision physical data
+  int n_bank_ {0};        //!< number of fission sites banked
+  int n_bank_second_ {0}; //!< number of secondary particles banked
+  double wgt_bank_ {0.0}; //!< weight of fission sites banked
+  int n_delayed_bank_[MAX_DELAYED_GROUPS]; //!< number of delayed fission
+                                           //!< sites banked
+
+  // Indices for various arrays
+  int surface_ {0};        //!< index for surface particle is on
+  int cell_born_ {-1};     //!< index for cell particle was born in
+  int material_ {-1};      //!< index for current material
+  int material_last_ {-1}; //!< index for last material
+
+  // Boundary information
+  BoundaryInfo boundary_;
+
+  // Temperature of current cell
+  double sqrtkT_ {-1.0};     //!< sqrt(k_Boltzmann * temperature) in eV
+  double sqrtkT_last_ {0.0}; //!< last temperature
+
+  // Statistical data
+  int n_collision_ {0}; //!< number of collisions
+
+  // Track output
   bool write_track_ {false};
 
   uint64_t seeds_[N_STREAMS];
@@ -540,8 +579,11 @@ public:
   bool& fission() { return fission_; }            // true if implicit fission
   int& event_nuclide() { return event_nuclide_; } // index of collision nuclide
   const int& event_nuclide() const { return event_nuclide_; }
-  int& event_mt() { return event_mt_; }           // MT number of collision
+  int& event_mt() { return event_mt_; } // MT number of collision
+  int& event_index_mt() { return event_index_mt_; }
   int& delayed_group() { return delayed_group_; } // delayed group
+  Position& v_t() { return v_t_; }
+  const Position& v_t() const { return v_t_; }
 
   // Post-collision data
   int& n_bank() { return n_bank_; } // number of banked fission sites

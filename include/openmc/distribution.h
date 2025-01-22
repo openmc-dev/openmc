@@ -23,7 +23,7 @@ class Distribution {
 public:
   virtual ~Distribution() = default;
   virtual double sample(uint64_t* seed) const = 0;
-
+  virtual double get_pdf(double x) const = 0;
   //! Return integral of distribution
   //! \return Integral of distribution
   virtual double integral() const { return 1.0; };
@@ -84,6 +84,10 @@ public:
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
   double sample(uint64_t* seed) const override;
+  //! Calculate the probability density function (PDF) at a given value
+  //! \param x The value at which to evaluate the PDF
+  //! \return The value of the PDF at the given point
+  double get_pdf(double x) const;
 
   double integral() const override { return di_.integral(); };
 
@@ -111,6 +115,7 @@ public:
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
   double sample(uint64_t* seed) const override;
+  double get_pdf(double x) const;
 
   double a() const { return a_; }
   double b() const { return b_; }
@@ -135,6 +140,7 @@ public:
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
   double sample(uint64_t* seed) const override;
+  double get_pdf(double x) const;
 
   double a() const { return std::pow(offset_, ninv_); }
   double b() const { return std::pow(offset_ + span_, ninv_); }
@@ -160,6 +166,7 @@ public:
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
   double sample(uint64_t* seed) const override;
+  double get_pdf(double x) const;
 
   double theta() const { return theta_; }
 
@@ -180,6 +187,7 @@ public:
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
   double sample(uint64_t* seed) const override;
+  double get_pdf(double x) const;
 
   double a() const { return a_; }
   double b() const { return b_; }
@@ -204,6 +212,7 @@ public:
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
   double sample(uint64_t* seed) const override;
+  double get_pdf(double x) const;
 
   double mean_value() const { return mean_value_; }
   double std_dev() const { return std_dev_; }
@@ -227,8 +236,10 @@ public:
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
   double sample(uint64_t* seed) const override;
+  double get_pdf(double x) const;
 
-  // properties
+  // double get_pdf_value(double x,uint64_t* seed) const;
+  //  properties
   vector<double>& x() { return x_; }
   const vector<double>& x() const { return x_; }
   const vector<double>& p() const { return p_; }
@@ -263,6 +274,7 @@ public:
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
   double sample(uint64_t* seed) const override;
+  double get_pdf(double x) const;
 
   const vector<double>& x() const { return x_; }
 
@@ -282,6 +294,7 @@ public:
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
   double sample(uint64_t* seed) const override;
+  double get_pdf(double x) const;
 
   double integral() const override { return integral_; }
 

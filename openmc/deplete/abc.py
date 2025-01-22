@@ -613,7 +613,8 @@ class Integrator(ABC):
             power_density: Optional[Union[float, Sequence[float]]] = None,
             source_rates: Optional[Union[float, Sequence[float]]] = None,
             timestep_units: str = 's',
-            solver: str = "cram48"
+            solver: str = "cram48",
+            continue_timesteps: bool = False,
         ):
         # Check number of stages previously used
         if operator.prev_res is not None:

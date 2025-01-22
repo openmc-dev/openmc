@@ -626,9 +626,10 @@ void WeightWindows::update_magic(
 
   int e_bins = new_bounds.shape()[0];
 
-  if (method_ == WeightWindowUpdateMethod::MAGIC) {
+  if (settings::solver_type == SolverType::MONTE_CARLO ||
+      !FlatSourceDomain::adjoint_) {
     // If we are computing weight windows with forward fluxes derived from a
-    // Monte Carlo or random ray solve, we use the MAGIC algorithm.
+    // Monte Carlo or forward random ray solve, we use the MAGIC algorithm.
     for (int e = 0; e < e_bins; e++) {
       // select all
       auto group_view = xt::view(new_bounds, e);
@@ -645,9 +646,9 @@ void WeightWindows::update_magic(
       if (group_max > 0.0)
         group_view /= 2.0 * group_max;
     }
-  } else if (method_ == WeightWindowUpdateMethod::FW_CADIS){
-    // If we are computing weight windows with adjoint fluxes derived from a
-    // random ray solve, we use the FW-CADIS algorithm.
+  } else {
+    // If we are computing weight windows with adjoint fluxes derived from an
+    // adjoint random ray solve, we use the FW-CADIS algorithm.
     for (int e = 0; e < e_bins; e++) {
       // select all
       auto group_view = xt::view(new_bounds, e);
@@ -789,6 +790,9 @@ WeightWindowsGenerator::WeightWindowsGenerator(pugi::xml_node node)
   std::string method_string = get_node_value(node, "method");
   if (method_string == "magic") {
     method_ = WeightWindowUpdateMethod::MAGIC;
+    if (solver_type == SolverType::RANDOM_RAY && FlatSourceDomain::adjoint_) {
+      fatal_error("Random ray weight window generation with MAGIC cannot be done in adjoint mode.");
+    }
   } else if (method_string == "fw_cadis") {
     method_ = WeightWindowUpdateMethod::FW_CADIS;
     if (solver_type != SolverType::RANDOM_RAY) {

@@ -44,6 +44,7 @@ def test_xml_roundtrip(run_in_tmpdir):
     assert new_tally.triggers[0].scores == tally.triggers[0].scores
     assert new_tally.multiply_density == tally.multiply_density
 
+
 def test_tally_equivalence():
     tally_a = openmc.Tally()
     tally_b = openmc.Tally(tally_id=tally_a.id)
@@ -94,8 +95,8 @@ def test_tally_equivalence():
     tally_b.triggers = [trigger_b]
     assert tally_a == tally_b
 
-def test_tally_application(run_in_tmpdir):
 
+def test_tally_application(run_in_tmpdir):
     model = openmc.examples.pwr_pin_cell()
 
     # Create a tally with most possible gizmos

@@ -541,34 +541,33 @@ class StatePoint:
         if self.summary is not None:
             self.summary.add_volume_information(volume_calc)
 
-    def match_tally(self, tally):
-        """
-        Find a tally with an exact specification match.
+    def match_tally(self, tally: openmc.Tally):
+        """Find a tally with an exact specification match.
 
-            .. versionadded:: 0.15.1
+        .. versionadded:: 0.15.1
 
         Parameters
         ----------
-        tally : openmc.Tally instance
+        tally : openmc.Tally
             The Tally object to match.
 
         Returns
         -------
         None or openmc.Tally
         """
-        sp_tally = self.get_tally(tally.scores,
-                                    tally.filters,
-                                    tally.nuclides,
-                                    tally.name,
-                                    tally.id,
-                                    tally.estimator,
-                                    exact_filters=True,
-                                    exact_nuclides=True,
-                                    exact_scores=True,
-                                    multiply_density=True,
-                                    derivative=tally.derivative)
-
-        return sp_tally
+        return self.get_tally(
+            tally.scores,
+            tally.filters,
+            tally.nuclides,
+            tally.name,
+            tally.id,
+            tally.estimator,
+            exact_filters=True,
+            exact_nuclides=True,
+            exact_scores=True,
+            multiply_density=True,
+            derivative=tally.derivative
+        )
 
     def get_tally(self, scores=[], filters=[], nuclides=[],
                   name=None, id=None, estimator=None, exact_filters=False,

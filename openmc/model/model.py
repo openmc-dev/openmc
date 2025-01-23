@@ -14,7 +14,7 @@ import openmc
 import openmc._xml as xml
 from openmc.dummy_comm import DummyCommunicator
 from openmc.executor import _process_CLI_arguments
-from openmc.checkvalue import check_type, check_value
+from openmc.checkvalue import check_type, check_value, PathLike
 from openmc.exceptions import InvalidIDError
 from openmc.utility_funcs import change_directory
 
@@ -656,7 +656,7 @@ class Model:
 
             .. versionadded:: 0.13.3
         apply_tally_results : bool
-            Whether or not to apply results of the final statepoint file to the
+            Whether to apply results of the final statepoint file to the
             model's tally objects.
 
             .. versionadded:: 0.15.1
@@ -942,15 +942,19 @@ class Model:
                     n_samples=n_samples, prn_seed=prn_seed
                 )
 
-    def apply_tally_results(self, statepoint):
+    def apply_tally_results(self, statepoint: PathLike | openmc.StatePoint):
         """Apply results from a statepoint to tally objects on the Model
 
         Parameters
         ----------
-        statepoint : PathLike or openmc.StatePoint instance
-            StatePoint file used to update tally results
+        statepoint : PathLike or openmc.StatePoint
+            Statepoint file used to update tally results
         """
-        self.tallies.add_results(statepoint)
+        if isinstance(statepoint, openmc.StatePoint):
+            self.tallies.add_results(statepoint)
+        else:
+            with openmc.StatePoint(statepoint) as sp:
+                self.tallies.add_results(sp)
 
     def plot_geometry(self, output=True, cwd='.', openmc_exec='openmc',
                       export_model_xml=True, **export_kwargs):

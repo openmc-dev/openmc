@@ -1,3 +1,4 @@
+from __future__ import annotations
 from collections.abc import Iterable, MutableSequence
 import copy
 from functools import partial, reduce
@@ -923,23 +924,23 @@ class Tally(IDManagerMixin):
 
         return element
 
-    def add_results(self, statepoint):
+    def add_results(self, statepoint: cv.PathLike | openmc.StatePoint):
         """Add results from the provided statepoint file to this tally instance
 
-            .. versionadded: 0.15.1
+        .. versionadded: 0.15.1
 
         Parameters
         ----------
-        statepoint : openmc.PathLike or openmc.StatePoint instance
-            StatePoint used to update tally results
+        statepoint : openmc.PathLike or openmc.StatePoint
+            Statepoint used to update tally results
         """
         if isinstance(statepoint, openmc.StatePoint):
-            sp = statepoint
+            if self in statepoint.tallies.values():
+                statepoint._populate_tally(self)
         else:
-            sp = openmc.StatePoint(statepoint)
-        # check for an exact tally match in the sp file
-        if self in statepoint.tallies.values():
-            sp._populate_tally(self)
+            with openmc.StatePoint(statepoint) as sp:
+                if self in sp.tallies.values():
+                    sp._populate_tally(self)
 
     @classmethod
     def from_xml_element(cls, elem, **kwargs):
@@ -3225,21 +3226,25 @@ class Tallies(cv.CheckedList):
                     # Continue iterating from the first loop
                     break
 
-    def add_results(self, statepoint):
-        """Add results from the provided statepoint file the tally objects in this collection
-0
-            .. versionadded: 0.15.1
+    def add_results(self, statepoint: cv.PathLike | openmc.StatePoint):
+        """Add results from the provided statepoint file
+
+        .. versionadded: 0.15.1
 
         Parameters
         ----------
-        statepoint : openmc.PathLike or openmc.StatePoint instance
-            StatePoint used to update tally results
+        statepoint : openmc.PathLike or openmc.StatePoint
+            Statepoint used to update tally results
         """
         if not self:
             return
-        sp = statepoint if isinstance(statepoint, openmc.StatePoint) else openmc.StatePoint(statepoint)
-        for tally in self:
-            tally.add_results(sp)
+        if isinstance(statepoint, openmc.StatePoint):
+            for tally in self:
+                tally.add_results(statepoint)
+        else:
+            with openmc.StatePoint(statepoint) as sp:
+                for tally in self:
+                    tally.add_results(sp)
 
     def _create_tally_subelements(self, root_element):
         for tally in self:

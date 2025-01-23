@@ -1301,7 +1301,7 @@ void ProjectionPlot::create_output() const
           while (intersection_found) {
             bool inside_cell = false;
 
-            int32_t i_surface = std::abs(p.surface()) - 1;
+            int32_t i_surface = p.surface_index();
             if (i_surface > 0 &&
                 model::surfaces[i_surface]->geom_type() == GeometryType::DAG) {
 #ifdef DAGMC
@@ -1334,13 +1334,13 @@ void ProjectionPlot::create_output() const
               this_line_segments[tid][horiz].emplace_back(
                 color_by_ == PlotColorBy::mats ? p.material()
                                                : p.lowest_coord().cell,
-                dist.distance, std::abs(dist.surface_index));
+                dist.distance, std::abs(dist.surface));
 
               // Advance particle
               for (int lev = 0; lev < p.n_coord(); ++lev) {
                 p.coord(lev).r += dist.distance * p.coord(lev).u;
               }
-              p.surface() = dist.surface_index;
+              p.surface() = dist.surface;
               p.n_coord_last() = p.n_coord();
               p.n_coord() = dist.coord_level;
               if (dist.lattice_translation[0] != 0 ||

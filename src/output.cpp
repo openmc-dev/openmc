@@ -199,9 +199,9 @@ void print_particle(Particle& p)
   }
 
   // Display miscellaneous info.
-  if (p.surface() != 0) {
+  if (p.surface() != SURFACE_NONE) {
     // Surfaces identifiers are >= 1, but indices are >= 0 so we need -1
-    const Surface& surf {*model::surfaces[std::abs(p.surface()) - 1]};
+    const Surface& surf {*model::surfaces[p.surface_index()]};
     fmt::print("  Surface = {}\n", (p.surface() > 0) ? surf.id_ : -surf.id_);
   }
   fmt::print("  Weight = {}\n", p.wgt());

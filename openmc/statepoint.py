@@ -658,9 +658,9 @@ class StatePoint:
                 continue
             if exact_filters and len(filters) != test_tally.num_filters:
                 continue
-            if derivative is not None and derivative != sp_tally.derivative:
+            if derivative is not None and derivative != test_tally.derivative:
                 continue
-            if multiply_density is not None and multiply_density != sp_tally.multiply_density:
+            if multiply_density is not None and multiply_density != test_tally.multiply_density:
                 continue
 
             # Determine if Tally has the queried score(s)

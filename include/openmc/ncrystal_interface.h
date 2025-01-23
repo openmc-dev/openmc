@@ -2,7 +2,6 @@
 #define OPENMC_NCRYSTAL_INTERFACE_H
 
 #ifdef NCRYSTAL
-#include "NCrystal/NCRNG.hh"
 #include "NCrystal/NCrystal.hh"
 #endif
 

@@ -23,11 +23,10 @@ def test_weight_windows_mg(request, run_in_tmpdir):
     settings.run_mode = 'fixed source'
     space = openmc.stats.Point((1, 1, 1))
     energy = openmc.stats.delta_function(1e6)
-    source = openmc.IndependentSource(space=space)
-    settings.source = source
+    settings.source = openmc.IndependentSource(space=space, energy=energy)
+    model.settings = settings
 
     # perform analog simulation
-    model.settings = settings
     statepoint = model.run()
 
     # extract flux from analog simulation
@@ -40,7 +39,6 @@ def test_weight_windows_mg(request, run_in_tmpdir):
     weight_windows = openmc.WeightWindows(mesh, lower_ww_bounds=ww_lower_bnds, upper_bound_ratio=5.0)
     model.settings.weight_windows = weight_windows
     model.settings.weight_windows_on = True
-    settings.weight_windows = weight_windows
 
     # re-run with weight windows
     statepoint = model.run()

@@ -161,9 +161,6 @@ class StatePoint:
     def __exit__(self, *exc):
         self.close()
 
-    def __del__(self):
-        self.close()
-
     @property
     def cmfd_on(self):
         return self._f.attrs['cmfd_on'] > 0

@@ -403,9 +403,8 @@ class Cell(IDManagerMixin):
             if self._atoms is not None:
                 volume = self.volume
                 for name, atoms in self._atoms.items():
-                    nuclide = openmc.Nuclide(name)
                     density = 1.0e-24 * atoms.n/volume  # density in atoms/b-cm
-                    nuclides[name] = (nuclide, density)
+                    nuclides[name] = (name, density)
             else:
                 raise RuntimeError(
                     'Volume information is needed to calculate microscopic '

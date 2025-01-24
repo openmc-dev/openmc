@@ -553,7 +553,7 @@ class Tally(IDManagerMixin):
 
         Parameters
         ----------
-        nuclide : openmc.Nuclide
+        nuclide : str
             Nuclide to remove
 
         """
@@ -1077,17 +1077,10 @@ class Tally(IDManagerMixin):
             in the Tally.
 
         """
-        # Look for the user-requested nuclide in all of the Tally's Nuclides
+        # Look for the user-requested nuclide in all of the Tally's nuclides
         for i, test_nuclide in enumerate(self.nuclides):
-            # If the Summary was linked, then values are Nuclide objects
-            if isinstance(test_nuclide, openmc.Nuclide):
-                if test_nuclide.name == nuclide:
-                    return i
-
-            # If the Summary has not been linked, then values are ZAIDs
-            else:
-                if test_nuclide == nuclide:
-                    return i
+            if test_nuclide == nuclide:
+                return i
 
         msg = (f'Unable to get the nuclide index for Tally since "{nuclide}" '
                'is not one of the nuclides')
@@ -1414,9 +1407,7 @@ class Tally(IDManagerMixin):
             column_name = 'nuclide'
 
             for nuclide in self.nuclides:
-                if isinstance(nuclide, openmc.Nuclide):
-                    nuclides.append(nuclide.name)
-                elif isinstance(nuclide, openmc.AggregateNuclide):
+                if isinstance(nuclide, openmc.AggregateNuclide):
                     nuclides.append(nuclide.name)
                     column_name = f'{nuclide.aggregate_op}(nuclide)'
                 else:
@@ -2701,8 +2692,8 @@ class Tally(IDManagerMixin):
 
             # Determine the nuclide indices from any of the requested nuclides
             for nuclide in self.nuclides:
-                if nuclide.name not in nuclides:
-                    nuclide_index = self.get_nuclide_index(nuclide.name)
+                if nuclide not in nuclides:
+                    nuclide_index = self.get_nuclide_index(nuclide)
                     nuclide_indices.append(nuclide_index)
 
             # Loop over indices in reverse to remove excluded Nuclides

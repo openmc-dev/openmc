@@ -776,9 +776,7 @@ estimator, the following code would be used:
 Adjoint Flux Mode
 -----------------
 
-The adjoint flux random ray solver mode can be enabled as:
-entire
-::
+The adjoint flux random ray solver mode can be enabled as::
 
     settings.random_ray['adjoint'] = True
 

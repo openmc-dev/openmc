@@ -96,25 +96,18 @@ def test_tally_equivalence():
     assert tally_a == tally_b
 
 
-def test_tally_application(run_in_tmpdir):
-    model = openmc.examples.pwr_pin_cell()
-
+def test_tally_application(sphere_model, run_in_tmpdir):
     # Create a tally with most possible gizmos
-    tally = openmc.Tally()
-    tally.name = 'test tally'
+    tally = openmc.Tally(name='test tally')
     ef = openmc.EnergyFilter([0.0, 0.1, 1.0, 10.0e6])
-    bbox = model.geometry.bounding_box
-    mesh = openmc.RegularMesh()
-    mesh.lower_left = bbox[0][:2]
-    mesh.upper_right = bbox[1][:2]
-    mesh.dimension = (2, 2)
+    mesh = openmc.RegularMesh.from_domain(sphere_model.geometry, (2, 2, 2))
     mf = openmc.MeshFilter(mesh)
     tally.filters = [ef, mf]
     tally.scores = ['flux', 'absorption', 'fission', 'scatter']
-    model.tallies = [tally]
+    sphere_model.tallies = [tally]
 
-    # run the simulation and apply retsults
-    sp_file = model.run(apply_tally_results=True)
+    # run the simulation and apply results
+    sp_file = sphere_model.run(apply_tally_results=True)
     with openmc.StatePoint(sp_file) as sp:
         assert tally in sp.tallies.values()
         sp_tally = sp.tallies[tally.id]

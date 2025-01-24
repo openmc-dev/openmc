@@ -28,11 +28,11 @@ void collision_mg(Particle& p)
   // Add to the collision counter for the particle
   p.n_collision()++;
 
-  if (settings::weight_window_checkpoint_collision)
-    apply_weight_windows(p);
-
   // Sample the reaction type
   sample_reaction(p);
+
+  if (settings::weight_window_checkpoint_collision)
+    apply_weight_windows(p);
 
   // Display information about collision
   if ((settings::verbosity >= 10) || p.trace()) {

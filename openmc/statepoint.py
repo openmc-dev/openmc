@@ -392,7 +392,6 @@ class StatePoint:
         if self.tallies_present and not self._tallies_read:
             # Read the number of tallies
             tallies_group = self._f['tallies']
-
             n_tallies = tallies_group.attrs['n_tallies']
 
             # Read a list of the IDs for each Tally
@@ -408,76 +407,60 @@ class StatePoint:
 
                 # Iterate over all tallies
                 for tally_id in tally_ids:
-                    tally = self._read_tally(tally_id)
-                    if tally is not None:
-                        self._tallies[tally_id] = tally
+                    group = tallies_group[f'tally {tally_id}']
+
+                    # Check if tally is internal and therefore has no data
+                    if group.attrs.get("internal"):
+                        continue
+
+                    # Create Tally object and assign basic properties
+                    tally = openmc.Tally(tally_id)
+                    tally._sp_filename = self._f.filename
+                    tally.name = group['name'][()].decode() if 'name' in group else ''
+
+                    # Check if tally has multiply_density attribute
+                    if "multiply_density" in group.attrs:
+                        tally.multiply_density = group.attrs["multiply_density"].item() > 0
+
+                    # Read the number of realizations
+                    n_realizations = group['n_realizations'][()]
+
+                    tally.estimator = group['estimator'][()].decode()
+                    tally.num_realizations = n_realizations
+
+                    # Read derivative information.
+                    if 'derivative' in group:
+                        deriv_id = group['derivative'][()]
+                        tally.derivative = self.tally_derivatives[deriv_id]
+
+                    # Read all filters
+                    n_filters = group['n_filters'][()]
+                    if n_filters > 0:
+                        filter_ids = group['filters'][()]
+                        filters_group = self._f['tallies/filters']
+                        for filter_id in filter_ids:
+                            filter_group = filters_group[f'filter {filter_id}']
+                            new_filter = openmc.Filter.from_hdf5(
+                                filter_group, meshes=self.meshes)
+                            tally.filters.append(new_filter)
+
+                    # Read nuclide bins
+                    nuclide_names = group['nuclides'][()]
+
+                    # Add all nuclides to the Tally
+                    tally.nuclides = [name.decode().strip() for name in nuclide_names]
+
+                    # Add the scores to the Tally
+                    scores = group['score_bins'][()]
+                    tally.scores = [score.decode() for score in scores]
+
+                    # Add Tally to the global dictionary of all Tallies
+                    tally.sparse = self.sparse
+                    self._tallies[tally_id] = tally
 
             self._tallies_read = True
 
         return self._tallies
-
-    def _read_tally(self, tally_id):
-        if self._f['tallies'][f'tally {tally_id}'].attrs.get('internal'):
-            return
-        tally = openmc.Tally(tally_id)
-        self._populate_tally(tally)
-        return tally
-
-    def _populate_tally(self, tally: openmc.Tally):
-        group = self._f['tallies'][f'tally {tally.id}']
-
-        # Check if tally is internal and therefore has no data
-        if group.attrs.get('internal'):
-            return
-
-        tally._sp_filename = self._f.filename
-        tally.name = group['name'][()].decode() if 'name' in group else ''
-
-        # Check if tally has multiply_density attribute
-        if "multiply_density" in group.attrs:
-            tally.multiply_density = group.attrs["multiply_density"].item() > 0
-
-        # Read the number of realizations
-        n_realizations = group['n_realizations'][()]
-
-        # accept the estimator set during execution of OpenMC
-        estimator = group['estimator'][()].decode()
-        if tally.estimator is not None and tally.estimator != estimator:
-            warnings.warn(f"Estimator for Tally {tally.id} changed from "
-                          f"{tally.estimator} to {estimator} in OpenMC execution")
-        tally.estimator = estimator
-
-        tally.num_realizations = n_realizations
-
-        # Read derivative information.
-        if 'derivative' in group:
-            deriv_id = group['derivative'][()]
-            tally.derivative = self.tally_derivatives[deriv_id]
-
-        # Read all filters
-        n_filters = group['n_filters'][()]
-        if n_filters > 0:
-            filter_ids = group['filters'][()]
-            filters_group = self._f['tallies/filters']
-            tally.filters = []
-            for filter_id in filter_ids:
-                filter_group = filters_group[f'filter {filter_id}']
-                new_filter = openmc.Filter.from_hdf5(
-                    filter_group, meshes=self.meshes)
-                tally.filters.append(new_filter)
-
-        # Read nuclide bins
-        nuclide_names = group['nuclides'][()]
-
-        # Add all nuclides to the Tally
-        tally.nuclides = [name.decode().strip() for name in nuclide_names]
-
-        # Add the scores to the Tally
-        scores = group['score_bins'][()]
-        tally.scores = [score.decode() for score in scores]
-
-        # Add Tally to the global dictionary of all Tallies
-        tally.sparse = self.sparse
 
     @property
     def tallies_present(self):
@@ -537,34 +520,6 @@ class StatePoint:
         """
         if self.summary is not None:
             self.summary.add_volume_information(volume_calc)
-
-    def match_tally(self, tally: openmc.Tally):
-        """Find a tally with an exact specification match.
-
-        .. versionadded:: 0.15.1
-
-        Parameters
-        ----------
-        tally : openmc.Tally
-            The Tally object to match.
-
-        Returns
-        -------
-        None or openmc.Tally
-        """
-        return self.get_tally(
-            tally.scores,
-            tally.filters,
-            tally.nuclides,
-            tally.name,
-            tally.id,
-            tally.estimator,
-            exact_filters=True,
-            exact_nuclides=True,
-            exact_scores=True,
-            multiply_density=True,
-            derivative=tally.derivative
-        )
 
     def get_tally(self, scores=[], filters=[], nuclides=[],
                   name=None, id=None, estimator=None, exact_filters=False,

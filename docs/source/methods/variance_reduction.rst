@@ -35,13 +35,13 @@ MAGIC Method
 
 The MAGIC method is an iterative technique that uses spatial flux information
 :math:`\phi(r)` obtained from a normal Monte Carlo solve to produce weight
-windows (:math:`\w(r)`) that can be utilized by a subsequent iteration of Monte
+windows :math:`w(r)` that can be utilized by a subsequent iteration of Monte
 Carlo. While the first generation of weight windows produced may only help to
 reduce variance slightly, use of these weights to generate another set of weight
 windows results in a progressively improving iterative scheme. 
 
 Equation :eq:`magic` defines how the lower bound of weight windows
-(:math:`\w_\ell(r)`) are generated with MAGIC using forward flux information.
+:math:`w_{\ell}(r)` are generated with MAGIC using forward flux information.
 Here, we can see that the flux at location :math:`r` is normalized by the
 maximum flux in any group at that location. We can also see that the weights are
 divided by a factor of two, which accounts for the typical :math:`5\times`
@@ -50,14 +50,14 @@ factor separating the lower and upper weight window bounds in OpenMC.
 .. math::
     :label: magic
 
-    w_\ell(r) = \frac{\phi(r)}{2\text{max}(\phi(r))}
+    w_{\ell}(r) = \frac{\phi(r)}{2\text{max}(\phi(r))}
 
 A major advantage of this technique is that it does not require any special
 transport machinery -- it simply uses multiple Monte Carlo simulations to
 iteratively improve a set of weight windows (which are typically defined on a
 mesh covering the simulation domain). The downside to this method is that as the
 flux differential increases between areas near and far from the source, it
-requires more outer Monte Carlo iterations, each of which can be highly
+requires more outer Monte Carlo iterations, each of which can be 
 expensive in itself. Additionally, computation of weight windows based on
 regular (forward) neutron flux tally information does not produce the most
 numerically effective set of weight windows. Nonetheless, MAGIC remains a simple
@@ -70,20 +70,21 @@ FW-CADIS
 As discussed in the previous section, computation of weight windows based on
 regular (forward) neutron flux tally information does not produce the most
 numerically efficient set of weight windows. It is highly preferable to generate
-weight windows based on spatial adjoint flux (:math:`\phi^{\dag}(r)`)
+weight windows based on spatial adjoint flux :math:`\phi^{\dag}(r)`
 information. The adjoint flux is essentially the "reverse" simulation problem,
 where we sample a random point and assume this is where a particle was absorbed,
 and then trace it backwards (upscattering in energy), until we sample the point
 where it was born from.
 
 The FW-CADIS method produces weight windows for global variance reduction given
-adjoint flux information throughout the entire domain. The weight window lower bound is defined in Equation
-:eq:`fw_cadis`, and also involves a normalization step not shown here.
+adjoint flux information throughout the entire domain. The weight window lower
+bound is defined in Equation :eq:`fw_cadis`, and also involves a normalization
+step not shown here.
 
 .. math::
     :label: fw_cadis
 
-    w_\ell(r) = \frac{1}{2\phi^{\dag}(r)}
+    w_{\ell}(r) = \frac{1}{2\phi^{\dag}(r)}
 
 While the algorithm itself is quite simple, it requires estimates of the global
 adjoint flux distribution, which is difficult to generate directly with Monte

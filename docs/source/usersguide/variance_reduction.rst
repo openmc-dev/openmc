@@ -16,12 +16,12 @@ steps required to both generate and then apply weight windows.
 Generating Weight Windows with MAGIC
 ------------------------------------
 
-As discussed in the :ref:`methods section <methods_variance_reduction>`, MAGIC is an iterative method that uses flux
-tally information from a Monte Carlo simulation to produce weight windows for a
-user defined mesh. While generating the weight windows, OpenMC is capable of
-applying the weight windows generated from a previous batch while processing the
-next batch, allowing for progressive improvement in the weight window quality
-across iterations.
+As discussed in the :ref:`methods section <methods_variance_reduction>`, MAGIC
+is an iterative method that uses flux tally information from a Monte Carlo
+simulation to produce weight windows for a user defined mesh. While generating
+the weight windows, OpenMC is capable of applying the weight windows generated
+from a previous batch while processing the next batch, allowing for progressive
+improvement in the weight window quality across iterations.
 
 The most typical way of generating weight windows is to define a mesh and then
 add an :class:`openmc.WeightWindowGenerator` object to the
@@ -135,10 +135,11 @@ solver, the python input just needs to load the h5 file::
     settings.weight_windows = openmc.hdf5_to_wws()
     settings.weight_windows_on = True
 
-Make sure that the :class:`openmc.WeightWindowGenerator` is not present in the
-file when loading existing weight windows, so as to avoid added costs of
-generating weight windows again and overwriting the original weight window file.
-Weight window mesh information is embedded into the weight window file, so the
+The :class:`openmc.WeightWindowGenerator` object is not needed to load an
+existing ``weight_windows.h5`` weight window file. Inclusion of a
+:class:`openmc.WeightWindowGenerator` object will cause OpenMC to generate new
+weight windows and thus overwrite any existing ``weight_windows.h5`` file. Note
+that window mesh information is embedded into the weight window file, so the
 mesh does not need to be redefined. Monte Carlo solves that load a weight window
 file as above will utilize the weight windows to reduce the variance of the
 simulation.

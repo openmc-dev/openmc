@@ -581,7 +581,8 @@ run, the ``mgxs.h5`` file can be loaded by subsequent runs of OpenMC.
 
 If you want to convert continuous energy material objects in an OpenMC input
 deck to multigroup ones from a ``mgxs.h5`` library, you can follow the below
-example. Here we begin with several continuous energy materials::
+example. Here we begin with the original continuous energy materials we used to
+generate our MGXS library::
 
     fuel = openmc.Material(name='UO2 (2.4%)')
     fuel.set_density('g/cm3', 10.29769)
@@ -600,8 +601,9 @@ example. Here we begin with several continuous energy materials::
 
     materials = openmc.Materials([fuel, water])
 
-and make the necessary changes to turn them into multigroup library materials
-as::
+Once the ``mgxs.h5`` library file has been generated, we can then manually make
+the necessary edits to the material definitions so that they load from the
+multigroup library instead of defining their isotopic contents, as::
 
     # Instantiate some Macroscopic Data
     fuel_data = openmc.Macroscopic('UO2 (2.4%)')
@@ -619,6 +621,10 @@ as::
     # Instantiate a Materials collection and export to XML
     materials = openmc.Materials([fuel, water])
     materials.cross_sections = "mgxs.h5"
+
+In the above example, our ``fuel`` and ``water`` materials will now load MGXS
+data from the ``mgxs.h5`` file instead of loading continuous energy isotopic
+cross section data.
 
 --------------
 Linear Sources

@@ -10,7 +10,7 @@ Variance Reduction
 Introduction
 ------------
 
-Transport problems can sometimes infolve a significant degree of attenuation
+Transport problems can sometimes involve a significant degree of attenuation
 between the neutron source and a detector (tally) region, which can result in a
 flux differential of ten orders of magnitude (or more) throughout the simulation
 domain. As Monte Carlo uncertainties tend to be inversely proportional to the
@@ -23,7 +23,7 @@ Variance reduction techniques aim to either flatten the global uncertainty
 distribution, such that all regions of phase space have a fairly similar
 uncertainty, or to reduce the uncertainty in specific locations (such as a
 detector). There are two strategies available in OpenMC for variance reduction:
-the Monte Carlo MAGIC method, and with FW-CADIS. Both strategies work by
+the Monte Carlo MAGIC method, and the FW-CADIS method. Both strategies work by
 developing a weight window mesh, which can be utilized by subsequent Monte Carlo
 solves to split particles heading towards areas of lower flux densities while
 terminating particles in higher flux regions -- all while maintaining a fair
@@ -34,7 +34,7 @@ MAGIC Method
 ------------
 
 The MAGIC method is an iterative technique that uses spatial flux information
-(:math:`\phi(r)`) obtained from a normal Monte Carlo solve to produce weight
+:math:`\phi(r)` obtained from a normal Monte Carlo solve to produce weight
 windows (:math:`\w(r)`) that can be utilized by a subsequent iteration of Monte
 Carlo. While the first generation of weight windows produced may only help to
 reduce variance slightly, use of these weights to generate another set of weight
@@ -77,7 +77,7 @@ and then trace it backwards (upscattering in energy), until we sample the point
 where it was born from.
 
 The FW-CADIS method produces weight windows for global variance reduction given
-adjoint flux information throughout the entire domain. It is defined in Equation
+adjoint flux information throughout the entire domain. The weight window lower bound is defined in Equation
 :eq:`fw_cadis`, and also involves a normalization step not shown here.
 
 .. math::

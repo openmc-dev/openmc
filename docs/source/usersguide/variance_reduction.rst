@@ -16,7 +16,7 @@ steps required to both generate and then apply weight windows.
 Generating Weight Windows with MAGIC
 ------------------------------------
 
-As discussed in the methods section, MAGIC is an iterative method that uses flux
+As discussed in the :ref:`methods section <methods_variance_reduction>`, MAGIC is an iterative method that uses flux
 tally information from a Monte Carlo simulation to produce weight windows for a
 user defined mesh. While generating the weight windows, OpenMC is capable of
 applying the weight windows generated from a previous batch while processing the
@@ -127,7 +127,7 @@ description of how to enable and setup random ray mode can be found in the
 Using Weight Windows
 --------------------
 
-To use a "weight_windows.h5" weight window file with OpenMC's Monte Carlo
+To use a ``weight_windows.h5`` weight window file with OpenMC's Monte Carlo
 solver, the python input just needs to load the h5 file::
 
     settings.weight_window_checkpoints = {'collision': True, 'surface': True}

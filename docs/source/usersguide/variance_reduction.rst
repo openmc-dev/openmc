@@ -97,7 +97,7 @@ random ray mode can be found in the :ref:`Random Ray User Guide <random_ray>`.
 2. Make a copy of your continuous energy Python input file. You'll edit the new
    file to work in multigroup mode with random ray for producing weight windows.
 
-3. Adjust the material definitions in your new multigroup python file to utilize
+3. Adjust the material definitions in your new multigroup Python file to utilize
    the multigroup cross sections instead of nuclide-wise continuous energy data.
    There is a specific example of making this conversion in the :ref:`random ray
    MGXS guide <mgxs_gen>`.

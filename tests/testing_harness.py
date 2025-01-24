@@ -459,16 +459,15 @@ class WeightWindowPyAPITestHarness(PyAPITestHarness):
         formatted_upper_bound = [f'{x:.2e}' for x in flattened_upper_bound]
 
         # Concatenate the formatted arrays
-        concatenated_strings = [
-            "Lower Bounds"] + formatted_lower_bound + ["Upper Bounds"] + formatted_upper_bound
+        concatenated_strings = ["Lower Bounds"] + formatted_lower_bound + \
+            ["Upper Bounds"] + formatted_upper_bound
 
         # Join the concatenated strings into a single string with newline characters
         final_string = '\n'.join(concatenated_strings)
 
         # Prepend the mesh text description and return final string
-        final_string = str(ww.mesh) + final_string
-        return final_string
-    
+        return str(ww.mesh) + final_string
+
     def _cleanup(self):
         super()._cleanup()
         f = 'weight_windows.h5'

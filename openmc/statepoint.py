@@ -423,7 +423,7 @@ class StatePoint:
         self._populate_tally(tally)
         return tally
 
-    def _populate_tally(self, tally):
+    def _populate_tally(self, tally: openmc.Tally):
         group = self._f['tallies'][f'tally {tally.id}']
 
         # Check if tally is internal and therefore has no data
@@ -470,7 +470,7 @@ class StatePoint:
         nuclide_names = group['nuclides'][()]
 
         # Add all nuclides to the Tally
-        tally.nuclides = [openmc.Nuclide(name.decode().strip()) for name in nuclide_names]
+        tally.nuclides = [name.decode().strip() for name in nuclide_names]
 
         # Add the scores to the Tally
         scores = group['score_bins'][()]
@@ -576,8 +576,8 @@ class StatePoint:
         found which satisfies all of the input parameters.
 
         NOTE: If any of the "exact" parameters are False (default), the input
-        parameters do not need to match the complete Tally specification and
-        may only represent a subset of the Tally's properties. If an "exact"
+        parameters do not need to match the complete Tally specification and may
+        only represent a subset of the Tally's properties. If an "exact"
         parameter is True then number of scores, filters, or nuclides in the
         parameters must precisely match those of any matching Tally.
 
@@ -604,15 +604,15 @@ class StatePoint:
             to those in the matching Tally. If False (default), the nuclides in
             the parameters may be a subset of those in the matching Tally.
         exact_scores : bool
-            If True, the number of scores in the parameters must be identical
-            to those in the matching Tally. If False (default), the scores
-            in the parameters may be a subset of those in the matching Tally.
-            Default is None (no check).
+            If True, the number of scores in the parameters must be identical to
+            those in the matching Tally. If False (default), the scores in the
+            parameters may be a subset of those in the matching Tally. Default
+            is None (no check).
         multiply_density : bool, optional
-            If True, the Tally must have the multiply by density flag set to
-            the same value as the input parameter. Default is True.
+            If not None, the Tally must have the multiply_density attribute set
+            to the same value as this parameter.
         derivative : openmc.TallyDerivative, optional
-            TallyDerivative object to match. Default is None.
+            TallyDerivative object to match.
 
         Returns
         -------

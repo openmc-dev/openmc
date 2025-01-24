@@ -34,7 +34,7 @@ _NUCLIDE_CLASSES = (str, openmc.CrossNuclide, openmc.AggregateNuclide)
 _FILTER_CLASSES = (openmc.Filter, openmc.CrossFilter, openmc.AggregateFilter)
 
 # Valid types of estimators
-ESTIMATOR_TYPES = ('tracklength', 'collision', 'analog')
+ESTIMATOR_TYPES = {'tracklength', 'collision', 'analog'}
 
 
 class Tally(IDManagerMixin):
@@ -159,14 +159,9 @@ class Tally(IDManagerMixin):
             self_nuclides.remove('total')
         if other_nuclides != self_nuclides:
             return False
-        if other.scores != self.scores:
-            return False
-        if other.triggers != self.triggers:
-            return False
-        if other.derivative != self.derivative:
-            return False
-        if other.multiply_density != self.multiply_density:
-            return False
+        for attr in {'scores', 'triggers', 'derivative', 'multiply_density'}:
+            if getattr(other, attr) != getattr(self, attr):
+                return False
         return True
 
     def __repr__(self):
@@ -307,7 +302,7 @@ class Tally(IDManagerMixin):
     @estimator.setter
     def estimator(self, estimator):
         # allow the estimator to be set to None (let OpenMC choose the estimator at runtime)
-        cv.check_value('estimator', estimator, ESTIMATOR_TYPES + (None,))
+        cv.check_value('estimator', estimator, ESTIMATOR_TYPES | {None})
         self._estimator = estimator
 
     @property

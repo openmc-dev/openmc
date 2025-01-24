@@ -1,7 +1,7 @@
 # OpenMC Monte Carlo Particle Transport Code
 
 [![License](https://img.shields.io/badge/license-MIT-green)](https://docs.openmc.org/en/latest/license.html)
-[![GitHub Actions build status (Linux)](https://github.com/openmc-dev/openmc/workflows/CI/badge.svg?branch=develop)](https://github.com/openmc-dev/openmc/actions?query=workflow%3ACI)
+[![GitHub Actions build status (Linux)](https://github.com/openmc-dev/openmc/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/openmc-dev/openmc/actions/workflows/ci.yml)
 [![Code Coverage](https://coveralls.io/repos/github/openmc-dev/openmc/badge.svg?branch=develop)](https://coveralls.io/github/openmc-dev/openmc?branch=develop)
 [![dockerhub-publish-develop-dagmc](https://github.com/openmc-dev/openmc/workflows/dockerhub-publish-develop-dagmc/badge.svg)](https://github.com/openmc-dev/openmc/actions?query=workflow%3Adockerhub-publish-develop-dagmc)
 [![dockerhub-publish-develop](https://github.com/openmc-dev/openmc/workflows/dockerhub-publish-develop/badge.svg)](https://github.com/openmc-dev/openmc/actions?query=workflow%3Adockerhub-publish-develop)
@@ -15,7 +15,8 @@ project started under the Computational Reactor Physics Group at MIT.
 Complete documentation on the usage of OpenMC is hosted on Read the Docs (both
 for the [latest release](https://docs.openmc.org/en/stable/) and
 [developmental](https://docs.openmc.org/en/latest/) version). If you are
-interested in the project, or would like to help and contribute, please get in touch on the OpenMC [discussion forum](https://openmc.discourse.group/).
+interested in the project, or would like to help and contribute, please get in
+touch on the OpenMC [discussion forum](https://openmc.discourse.group/).
 
 ## Installation
 
@@ -36,20 +37,21 @@ citing the following publication:
 ## Troubleshooting
 
 If you run into problems compiling, installing, or running OpenMC, first check
-the [Troubleshooting section](https://docs.openmc.org/en/stable/usersguide/troubleshoot.html) in
-the User's Guide. If you are not able to find a solution to your problem there,
+the [Troubleshooting
+section](https://docs.openmc.org/en/stable/usersguide/troubleshoot.html) in the
+User's Guide. If you are not able to find a solution to your problem there,
 please post to the [discussion forum](https://openmc.discourse.group/).
 
 ## Reporting Bugs
 
 OpenMC is hosted on GitHub and all bugs are reported and tracked through the
-[Issues](https://github.com/openmc-dev/openmc/issues) feature on GitHub. However,
-GitHub Issues should not be used for common troubleshooting purposes. If you are
-having trouble installing the code or getting your model to run properly, you
-should first send a message to the User's Group mailing list. If it turns out
-your issue really is a bug in the code, an issue will then be created on
-GitHub. If you want to request that a feature be added to the code, you may
-create an Issue on github.
+[Issues](https://github.com/openmc-dev/openmc/issues) feature on GitHub.
+However, GitHub Issues should not be used for common troubleshooting purposes.
+If you are having trouble installing the code or getting your model to run
+properly, you should first send a message to the [discussion
+forum](https://openmc.discourse.group/). If it turns out your issue really is a
+bug in the code, an issue will then be created on GitHub. If you want to request
+that a feature be added to the code, you may create an Issue on github.
 
 ## License
 

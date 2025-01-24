@@ -25,8 +25,7 @@ states : numpy.ndarray
 
 """
 def _particle_track_repr(self):
-    name = self.particle.name.lower()
-    return f"<ParticleTrack: {name}, {len(self.states)} states>"
+    return f"<ParticleTrack: {self.particle}, {len(self.states)} states>"
 ParticleTrack.__repr__ = _particle_track_repr
 
 

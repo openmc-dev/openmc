@@ -11,6 +11,8 @@ from . import _dll
 from .core import _FortranObjectWithID
 from .error import _error_handler
 from .material import Material
+from ..bounding_box import BoundingBox
+
 
 __all__ = ['Cell', 'cells']
 
@@ -101,8 +103,8 @@ class Cell(_FortranObjectWithID):
         Name of the cell
     num_instances : int
         Number of unique cell instances
-    bounding_box : 2-tuple of numpy.ndarray
-        Lower-left and upper-right coordinates of bounding box
+    bounding_box : openmc.BoundingBox
+        Axis-aligned bounding box of the cell
     translation : Iterable of float
         3-D coordinates of the translation vector
     rotation : Iterable of float
@@ -266,7 +268,7 @@ class Cell(_FortranObjectWithID):
             return rotation_data[9:]
         else:
             raise ValueError(
-                'Invalid size of rotation matrix: {}'.format(rot_size))
+                f'Invalid size of rotation matrix: {rot_size}')
 
     @rotation.setter
     def rotation(self, rotation_data):
@@ -289,7 +291,7 @@ class Cell(_FortranObjectWithID):
         llc[llc == -inf] = -np.inf
         urc[urc == -inf] = -np.inf
 
-        return llc, urc
+        return BoundingBox(llc, urc)
 
 
 class _CellMapping(Mapping):

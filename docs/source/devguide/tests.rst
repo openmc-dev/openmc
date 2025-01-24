@@ -23,11 +23,7 @@ Prerequisites
   OpenMC in development/editable mode. With setuptools, this is accomplished by
   running::
 
-      python setup.py develop
-
-  or using pip (recommended)::
-
-      pip install -e .[test]
+      python -m pip install -e .[test]
 
 - The test suite requires a specific set of cross section data in order for
   tests to pass. A download URL for the data that OpenMC expects can be found
@@ -63,6 +59,31 @@ If you want to view testing output on failure run::
 
     ctest --output-on-failure
 
+Possible Reasons for Test Failures
+----------------------------------
+
+You may find that when you run the test suite, not everything passes. First,
+make sure you have satisfied all the prerequisites above. After you have done
+that, consider the following:
+
+- When building OpenMC, make sure you run CMake with
+  ``-DCMAKE_BUILD_TYPE=Debug``. Building with a release build will result in
+  some test failures due to differences in which compiler optimizations are
+  used.
+- Because tallies involve the sum of many floating point numbers, the
+  non-associativity of floating point numbers can result in different answers
+  especially when the number of threads is high (different order of operations).
+  Thus, if you are running on a CPU with many cores, you may need to limit the
+  number of OpenMP threads used. It is recommended to set the
+  :envvar:`OMP_NUM_THREADS` environment variable to 2.
+- Recent versions of NumPy use instruction dispatch that may generate different
+  results depending the particular ISA that you are running on. To avoid issues,
+  you may need to disable AVX512 instructions. This can be done by setting the
+  :envvar:`NPY_DISABLE_CPU_FEATURES` environment variable to "AVX512F
+  AVX512_SKX". When NumPy/SciPy are built against OpenBLAS, you may also need to
+  limit the number of threads that OpenBLAS uses internally; this can be done by
+  setting the :envvar:`OPENBLAS_NUM_THREADS` environment variable to 1.
+
 Generating XML Inputs
 ---------------------
 
@@ -83,13 +104,13 @@ does not exist run::
 
     touch test_<name-of-header-file>.cpp
 
-The file must be added to the CMake build system in 
-``tests/cpp_unit_tests/CMakeLists.txt``. ``test_<name-of-header-file>`` should 
-be added to ``TEST_NAMES``. 
+The file must be added to the CMake build system in
+``tests/cpp_unit_tests/CMakeLists.txt``. ``test_<name-of-header-file>`` should
+be added to ``TEST_NAMES``.
 
-To add a test case to ``test_<name-of-header-file>.cpp`` ensure 
-``catch2/catch_test_macros.hpp`` is included. A unit test can then be added 
-using the ``TEST_CASE`` macro and the ``REQUIRE`` assertion from Catch2. 
+To add a test case to ``test_<name-of-header-file>.cpp`` ensure
+``catch2/catch_test_macros.hpp`` is included. A unit test can then be added
+using the ``TEST_CASE`` macro and the ``REQUIRE`` assertion from Catch2.
 
 Adding Tests to the Regression Suite
 ------------------------------------
@@ -112,6 +133,12 @@ following files to your new test directory:
       commit. It should be noted that this file should be generated with basic
       compiler options during openmc configuration and build (e.g., no MPI, no
       debug/optimization).
+
+For tests using the Python API, both the **inputs_true.dat** and
+**results_true.dat** files can be generated automatically in the correct format
+via::
+
+    pytest --update <name-of-test>
 
 In addition to this description, please see the various types of tests that are
 already included in the test suite to see how to create them. If all is

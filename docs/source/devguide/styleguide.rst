@@ -29,6 +29,10 @@ whenever a file is saved. For example, `Visual Studio Code
 <https://code.visualstudio.com/docs/cpp/cpp-ide#_code-formatting>`_ includes
 support for running clang-format.
 
+.. note::
+    OpenMC's CI uses `clang-format` version 15. A different version of `clang-format`
+    may produce different line changes and as a result fail the CI test.
+
 Miscellaneous
 -------------
 
@@ -36,7 +40,7 @@ Follow the `C++ Core Guidelines`_ except when they conflict with another
 guideline listed here. For convenience, many important guidelines from that
 list are repeated here.
 
-Conform to the C++14 standard.
+Conform to the C++17 standard.
 
 Always use C++-style comments (``//``) as opposed to C-style (``/**/``). (It
 is more difficult to comment out a large section of code that uses C-style
@@ -142,7 +146,7 @@ Style for Python code should follow PEP8_.
 
 Docstrings for functions and methods should follow numpydoc_ style.
 
-Python code should work with Python 3.7+.
+Python code should work with Python 3.8+.
 
 Use of third-party Python packages should be limited to numpy_, scipy_,
 matplotlib_, pandas_, and h5py_. Use of other third-party packages must be

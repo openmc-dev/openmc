@@ -2,34 +2,34 @@
 <model>
   <materials>
     <material depletable="true" id="1">
-      <density units="g/cc" value="10.0" />
-      <nuclide ao="1.0" name="U235" />
+      <density units="g/cc" value="10.0"/>
+      <nuclide ao="1.0" name="U235"/>
     </material>
     <material id="2">
-      <density units="g/cc" value="0.1" />
-      <nuclide ao="0.1" name="H1" />
+      <density units="g/cc" value="0.1"/>
+      <nuclide ao="0.1" name="H1"/>
     </material>
   </materials>
   <geometry>
-    <cell id="1" material="1" region="-1" universe="1" />
-    <cell id="2" material="2" region="1" universe="1" />
-    <cell fill="1" id="3" region="2 -3 4 -5 6 -8" rotation="10 20 30" universe="2" />
-    <cell fill="1" id="4" region="2 -3 4 -5 8 -7" translation="0 0 15" universe="2" />
-    <surface coeffs="1.0 0.0 0.0 5.0" id="1" type="sphere" />
-    <surface boundary="vacuum" coeffs="-7.5" id="2" name="minimum x" type="x-plane" />
-    <surface boundary="vacuum" coeffs="7.5" id="3" name="maximum x" type="x-plane" />
-    <surface boundary="vacuum" coeffs="-7.5" id="4" name="minimum y" type="y-plane" />
-    <surface boundary="vacuum" coeffs="7.5" id="5" name="maximum y" type="y-plane" />
-    <surface boundary="vacuum" coeffs="-7.5" id="6" type="z-plane" />
-    <surface boundary="vacuum" coeffs="22.5" id="7" type="z-plane" />
-    <surface coeffs="7.5" id="8" type="z-plane" />
+    <cell id="1" material="1" region="-1" universe="1"/>
+    <cell id="2" material="2" region="1" universe="1"/>
+    <cell fill="1" id="3" region="2 -3 4 -5 6 -8" rotation="10 20 30" universe="2"/>
+    <cell fill="1" id="4" region="2 -3 4 -5 8 -7" translation="0 0 15" universe="2"/>
+    <surface coeffs="1.0 0.0 0.0 5.0" id="1" type="sphere"/>
+    <surface boundary="vacuum" coeffs="-7.5" id="2" name="minimum x" type="x-plane"/>
+    <surface boundary="vacuum" coeffs="7.5" id="3" name="maximum x" type="x-plane"/>
+    <surface boundary="vacuum" coeffs="-7.5" id="4" name="minimum y" type="y-plane"/>
+    <surface boundary="vacuum" coeffs="7.5" id="5" name="maximum y" type="y-plane"/>
+    <surface boundary="vacuum" coeffs="-7.5" id="6" type="z-plane"/>
+    <surface boundary="vacuum" coeffs="22.5" id="7" type="z-plane"/>
+    <surface coeffs="7.5" id="8" type="z-plane"/>
   </geometry>
   <settings>
     <run_mode>eigenvalue</run_mode>
     <particles>10000</particles>
     <batches>10</batches>
     <inactive>5</inactive>
-    <source strength="1.0">
+    <source particle="neutron" strength="1.0" type="independent">
       <space type="box">
         <parameters>-4.0 -4.0 -4.0 4.0 4.0 4.0</parameters>
       </space>

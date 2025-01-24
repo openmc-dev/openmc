@@ -257,3 +257,85 @@ choose one of two methods for estimating the heating rate, including:
 
 The method for normalization can be chosen through the ``normalization_mode``
 argument to the :class:`openmc.deplete.CoupledOperator` class.
+
+--------------
+Transfer Rates
+--------------
+
+OpenMC allows continuous removal or feed of nuclides by adding an
+extra transfer rate term to the depletion matrix. An application of this feature
+is the chemical processing of Molten Salt Reactors (MSRs), where one can
+model the removal of fission products or feeding fresh fuel into the system.
+
+A transfer rate as defined here is the rate at which nuclides are
+continuously removed/fed from/to a material.
+
+.. note::
+
+    A transfer rate can be positive or negative, indicating removal or feed
+    respectively.
+
+Mathematically, it can be thought of as an additional term :math:`\mathbf{T}`
+in the depletion equation that is proportional to the nuclide density, which can be written as:
+
+.. math::
+
+  \begin{aligned}\frac{dN_i(t)}{dt} = &\underbrace{\sum\limits_j f_{j\rightarrow i}
+  \int_0^\infty dE  \; \sigma_j (E,t) \phi(E,t) N_j(t)  - \int_0^\infty dE \; \sigma_i(E,t)
+  \phi(E,t) N_i(t)}_\textbf{R} \\
+  &+ \underbrace{\sum_j \left [ \lambda_{j\rightarrow i} N_j(t) - \lambda_{i\rightarrow j} N_i(t) \right ]}_\textbf{D} \\
+  &- \underbrace{t_i N_i(t)}_\textbf{T} \end{aligned}
+
+where the reaction term :math:`\mathbf{R}`, the decay term :math:`\mathbf{D}`
+and the new transfer term :math:`\mathbf{T}` have been grouped together so that
+:math:`\mathbf{A} = \mathbf{R}+\mathbf{D}-\mathbf{T}`.
+The transfer rate coefficient :math:`t_i` defines the continuous transfer of the
+nuclide :math:`i`, which behaves similar to radioactive decay.
+:math:`t_i` can also be defined as the reciprocal of a cycle time
+:math:`T_{cyc}`, intended as the time needed to process the whole inventory.
+
+Note that this formulation assumes homogeneous distribution of nuclide
+:math:`i` throughout the material.
+
+A more rigorous description of removal rate and its implementation can be found
+in the paper by `Hombourger
+<https://doi.org/10.1016/j.anucene.2020.107504>`_.
+
+The resulting burnup matrix can be solved with the same integration algorithms
+that are used in the absence of the transfer term.
+
+.. note::
+
+    If no ``destination_material`` is specified, nuclides that are removed
+    or fed will not be tracked afterwards.
+
+Coupling materials
+------------------
+
+To keep track of removed nuclides or to feed nuclides from one depletable material
+to another, the respective depletion equations have to be coupled. This can be
+achieved by defining one block matrix, with diagonal blocks corresponding to
+depletion matrices :math:`\mathbf{A_{ii}}`, where the index :math:`i` indicates
+the depletable material id, and off-diagonal blocks corresponding to inter-material
+coupling matrices :math:`\mathbf{T_{ij}}`, positioned so that that the indices :math:`i` and
+:math:`j` indicate the nuclides receiving and losing materials, respectively.
+The nuclide vectors are assembled together in one single vector and the resulting
+system is solved with the same integration algorithms seen before.
+
+As an example, consider the case of two depletable materials and one
+transfer defined from material 1 to material 2. The final system will look like:
+
+.. math::
+
+  \begin{aligned}\frac{d}{dt}\begin{pmatrix}\vec{N_1}\\ \vec{N_2}\end{pmatrix} &=
+  \begin{pmatrix}\mathbf{A_{11}} & \mathbf{0}\\ \mathbf{T_{21}} & \mathbf{A_{22 }}
+  \end{pmatrix} \begin{pmatrix}\vec{N_1}\\ \vec{N_2}\end{pmatrix} \end{aligned}
+
+where:
+
+:math:`\mathbf{A_{11}} = \mathbf{R_{11}}+\mathbf{D_{11}}-\mathbf{T_{21}}`, and
+
+:math:`\mathbf{A_{22}} = \mathbf{R_{22}}+\mathbf{D_{22}}`.
+
+Note that mass conservation is guaranteed by transferring the number
+of atoms directly.

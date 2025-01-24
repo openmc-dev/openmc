@@ -11,7 +11,7 @@ import openmc.data
 
 def test_data_library(tmpdir):
     lib = openmc.data.DataLibrary.from_xml()
-    for f in lib.libraries:
+    for f in lib:
         assert sorted(f.keys()) == ['materials', 'path', 'type']
 
     f = lib.get_by_material('U235')
@@ -22,6 +22,9 @@ def test_data_library(tmpdir):
     assert f['type'] == 'thermal'
     assert 'c_H_in_H2O' in f['materials']
 
+    lib.remove_by_material('Pu239')
+    assert lib.get_by_material('Pu239') is None
+
     filename = str(tmpdir.join('test.xml'))
     lib.export_to_xml(filename)
     assert os.path.exists(filename)
@@ -29,9 +32,9 @@ def test_data_library(tmpdir):
     new_lib = openmc.data.DataLibrary()
     directory = os.path.dirname(os.environ['OPENMC_CROSS_SECTIONS'])
     new_lib.register_file(os.path.join(directory, 'H1.h5'))
-    assert new_lib.libraries[-1]['type'] == 'neutron'
+    assert new_lib[-1]['type'] == 'neutron'
     new_lib.register_file(os.path.join(directory, 'c_Zr_in_ZrH.h5'))
-    assert new_lib.libraries[-1]['type'] == 'thermal'
+    assert new_lib[-1]['type'] == 'thermal'
 
 
 def test_depletion_chain_data_library(run_in_tmpdir):

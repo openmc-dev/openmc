@@ -1,10 +1,9 @@
 import numpy as np
 import openmc
 import pytest
-from matplotlib.figure import Figure
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope='module')
 def test_mat():
     mat_1 = openmc.Material()
     mat_1.add_element("H", 4.0, "ao")
@@ -33,12 +32,11 @@ def test_calculate_cexs_elem_mat_sab(test_mat):
     assert len(data[0]) == len(energy_grid)
 
 
-@pytest.mark.parametrize("this,data_type", [("Li", "element"), ("Li6", "nuclide")])
-def test_calculate_cexs_with_element(this, data_type):
-
+@pytest.mark.parametrize("this", ["Li", "Li6"])
+def test_calculate_cexs_with_nuclide_and_element(this):
     # single type (reaction)
     energy_grid, data = openmc.plotter.calculate_cexs(
-        this=this, data_type=data_type, types=[205]
+        this=this, types=[205]
     )
 
     assert isinstance(energy_grid, np.ndarray)
@@ -47,9 +45,9 @@ def test_calculate_cexs_with_element(this, data_type):
     assert len(data) == 1
     assert len(data[0]) == len(energy_grid)
 
-    # two types (reaction)
+    # two types (reactions)
     energy_grid, data = openmc.plotter.calculate_cexs(
-        this=this, data_type=data_type, types=[2, "elastic"]
+        this=this, types=[2, "elastic"]
     )
 
     assert isinstance(energy_grid, np.ndarray)
@@ -64,7 +62,7 @@ def test_calculate_cexs_with_element(this, data_type):
 
 def test_calculate_cexs_with_materials(test_mat):
     energy_grid, data = openmc.plotter.calculate_cexs(
-        this=test_mat, types=[205], data_type="material"
+        this=test_mat, types=[205]
     )
 
     assert isinstance(energy_grid, np.ndarray)
@@ -74,14 +72,112 @@ def test_calculate_cexs_with_materials(test_mat):
     assert len(data[0]) == len(energy_grid)
 
 
-@pytest.mark.parametrize(("this,data_type"), [("Be", "element"), ("Be9", "nuclide")])
-def test_plot_xs(this, data_type):
-    assert isinstance(
-        openmc.plotter.plot_xs(this, data_type=data_type, types=["total"]), Figure
-    )
+@pytest.mark.parametrize("this", ["Be", "Be9"])
+def test_plot_xs(this):
+    from matplotlib.figure import Figure
+    assert isinstance(openmc.plot_xs({this: ['total', 'elastic', 16, '(n,2n)']}), Figure)
 
 
 def test_plot_xs_mat(test_mat):
-    assert isinstance(
-        openmc.plotter.plot_xs(test_mat, data_type="material", types=["total"]), Figure
+    from matplotlib.figure import Figure
+    assert isinstance(openmc.plot_xs({test_mat: ['total']}), Figure)
+
+
+@pytest.mark.parametrize("units", ["eV", "keV", "MeV"])
+def test_plot_xs_energy_axis(units):
+    plot = openmc.plot_xs({'Be9': ['(n,2n)']}, energy_axis_units=units)
+    axis_text = plot.get_axes()[0].get_xaxis().get_label().get_text()
+    assert axis_text == f'Energy [{units}]'
+
+
+def test_plot_axes_labels():
+    # just nuclides
+    axis_label = openmc.plotter._get_yaxis_label(
+        reactions={
+            'Li6': [205],
+            'Li7': [205],
+        }, divisor_types=False
     )
+    assert axis_label == 'Microscopic Cross Section [b]'
+
+    # just elements
+    axis_label = openmc.plotter._get_yaxis_label(
+        reactions={
+            'Li': [205],
+            'Be': [16],
+        }, divisor_types=False
+    )
+    assert axis_label == 'Microscopic Cross Section [b]'
+
+    # mixed nuclide and element
+    axis_label = openmc.plotter._get_yaxis_label(
+        reactions={
+            'Li': [205],
+            'Li7': [205],
+        }, divisor_types=False
+    )
+    assert axis_label == 'Microscopic Cross Section [b]'
+
+    axis_label = openmc.plotter._get_yaxis_label(
+        reactions={
+            "Li": ["heating", "heating-local"],
+            "Li7": ["heating"],
+            "Be": ["damage-energy"],
+        },
+        divisor_types=False,
+    )
+    assert axis_label == "Heating Cross Section [eV-barn]"
+
+    with pytest.raises(TypeError):
+        axis_label = openmc.plotter.plot_xs(
+            reactions={"Li": ["heating", "heating-local"], "Be9": ["(n,2n)"]}
+        )
+
+    # just materials
+    mat1 = openmc.Material()
+    mat1.add_nuclide('Fe56', 1)
+    mat1.set_density('g/cm3', 1)
+    mat2 = openmc.Material()
+    mat2.add_element('Fe', 1)
+    mat2.add_nuclide('Fe55', 1)
+    mat2.set_density('g/cm3', 1)
+    axis_label = openmc.plotter._get_yaxis_label(
+        reactions={
+            mat1: [205],
+            mat2: [16],
+        }, divisor_types=False
+    )
+    assert axis_label == 'Macroscopic Cross Section [1/cm]'
+
+    # mixed materials and nuclides
+    with pytest.raises(TypeError):
+        openmc.plotter._get_yaxis_label(
+            reactions={'Li6': [205], mat2: [16]},
+            divisor_types=False
+        )
+
+    # mixed materials and elements
+    with pytest.raises(TypeError):
+        openmc.plotter._get_yaxis_label(
+            reactions={'Li': [205], mat2: [16]},
+            divisor_types=False
+        )
+
+
+def test_get_title():
+    title = openmc.plotter._get_title(reactions={'Li': [205]})
+    assert title == 'Cross Section Plot For Li'
+    title = openmc.plotter._get_title(reactions={'Li6': [205]})
+    assert title == 'Cross Section Plot For Li6'
+    title = openmc.plotter._get_title(reactions={
+        'Li6': [205],
+        'Li7': [205]
+    })
+    assert title == 'Cross Section Plot'
+
+    mat1 = openmc.Material()
+    mat1.add_nuclide('Fe56', 1)
+    mat1.set_density('g/cm3', 1)
+    mat1.name = 'my_mat'
+    title = openmc.plotter._get_title(reactions={mat1: [205]})
+    assert title == 'Cross Section Plot For my_mat'

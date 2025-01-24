@@ -11,6 +11,7 @@ from numpy.ctypeslib import as_array
 
 from . import _dll
 from .error import _error_handler
+from openmc.checkvalue import PathLike
 import openmc.lib
 import openmc
 
@@ -94,6 +95,11 @@ _dll.openmc_simulation_finalize.errcheck = _error_handler
 _dll.openmc_statepoint_write.argtypes = [c_char_p, POINTER(c_bool)]
 _dll.openmc_statepoint_write.restype = c_int
 _dll.openmc_statepoint_write.errcheck = _error_handler
+_dll.openmc_statepoint_load.argtypes = [c_char_p]
+_dll.openmc_statepoint_load.restype = c_int
+_dll.openmc_statepoint_load.errcheck = _error_handler
+_dll.openmc_statepoint_write.restype = c_int
+_dll.openmc_statepoint_write.errcheck = _error_handler
 _dll.openmc_global_bounding_box.argtypes = [POINTER(c_double),
                                             POINTER(c_double)]
 _dll.openmc_global_bounding_box.restype = c_int
@@ -101,7 +107,6 @@ _dll.openmc_global_bounding_box.errcheck = _error_handler
 _dll.openmc_sample_external_source.argtypes = [c_size_t, POINTER(c_uint64), POINTER(_SourceSite)]
 _dll.openmc_sample_external_source.restype = c_int
 _dll.openmc_sample_external_source.errcheck = _error_handler
-
 
 def global_bounding_box():
     """Calculate a global bounding box for the model"""
@@ -169,6 +174,54 @@ def export_properties(filename=None, output=True):
 
     with quiet_dll(output):
         _dll.openmc_properties_export(filename)
+
+
+def export_weight_windows(filename="weight_windows.h5", output=True):
+    """Export weight windows.
+
+    .. versionadded:: 0.14.0
+
+    Parameters
+    ----------
+    filename : PathLike or None
+        Filename to export weight windows to
+    output : bool, optional
+        Whether or not to show output.
+
+    See Also
+    --------
+    openmc.lib.import_weight_windows
+
+    """
+    if filename is not None:
+        filename = c_char_p(str(filename).encode())
+
+    with quiet_dll(output):
+        _dll.openmc_weight_windows_export(filename)
+
+
+def import_weight_windows(filename='weight_windows.h5', output=True):
+    """Import weight windows.
+
+    .. versionadded:: 0.14.0
+
+    Parameters
+    ----------
+    filename : PathLike or None
+        Filename to import weight windows from
+    output : bool, optional
+        Whether or not to show output.
+
+    See Also
+    --------
+    openmc.lib.export_weight_windows
+
+    """
+    if filename is not None:
+        filename = c_char_p(str(filename).encode())
+
+    with quiet_dll(output):
+        _dll.openmc_weight_windows_import(filename)
 
 
 def finalize():
@@ -421,8 +474,11 @@ def run(output=True):
         _dll.openmc_run()
 
 
-def sample_external_source(n_samples=1, prn_seed=None):
-    """Sample external source
+def sample_external_source(
+        n_samples: int = 1000,
+        prn_seed: int | None = None
+) -> openmc.ParticleList:
+    """Sample external source and return source particles.
 
     .. versionadded:: 0.13.1
 
@@ -436,8 +492,8 @@ def sample_external_source(n_samples=1, prn_seed=None):
 
     Returns
     -------
-    list of openmc.SourceParticle
-        List of samples source particles
+    openmc.ParticleList
+        List of sampled source particles
 
     """
     if n_samples <= 0:
@@ -450,14 +506,13 @@ def sample_external_source(n_samples=1, prn_seed=None):
     _dll.openmc_sample_external_source(c_size_t(n_samples), c_uint64(prn_seed), sites_array)
 
     # Convert to list of SourceParticle and return
-    return [
-        openmc.SourceParticle(
+    return openmc.ParticleList([openmc.SourceParticle(
             r=site.r, u=site.u, E=site.E, time=site.time, wgt=site.wgt,
             delayed_group=site.delayed_group, surf_id=site.surf_id,
             particle=openmc.ParticleType(site.particle)
         )
         for site in sites_array
-    ]
+    ])
 
 
 def simulation_init():
@@ -520,6 +575,19 @@ def statepoint_write(filename=None, write_source=True):
     _dll.openmc_statepoint_write(filename, c_bool(write_source))
 
 
+def statepoint_load(filename: PathLike):
+    """Load a statepoint file.
+
+    Parameters
+    ----------
+    filename : path-like
+        Path to the statepoint to load.
+
+    """
+    filename = c_char_p(str(filename).encode())
+    _dll.openmc_statepoint_load(filename)
+
+
 @contextmanager
 def run_in_memory(**kwargs):
     """Provides context manager for calling OpenMC shared library functions.
@@ -563,7 +631,7 @@ class _DLLGlobal:
 
 class _FortranObject:
     def __repr__(self):
-        return "{}[{}]".format(type(self).__name__, self._index)
+        return f"<{type(self).__name__}(index={self._index})>"
 
 
 class _FortranObjectWithID(_FortranObject):
@@ -573,6 +641,9 @@ class _FortranObjectWithID(_FortranObject):
         # assigned. If the array index of the object is out of bounds, an
         # OutOfBoundsError will be raised here by virtue of referencing self.id
         self.id
+
+    def __repr__(self):
+        return f"<{type(self).__name__}(id={self.id})>"
 
 
 @contextmanager

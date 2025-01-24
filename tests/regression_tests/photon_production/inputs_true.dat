@@ -1,68 +1,67 @@
 <?xml version='1.0' encoding='utf-8'?>
-<geometry>
-  <cell id="1" material="void" region="-1 2 -3" universe="1" />
-  <cell id="2" material="1" region="-1 3 -4" universe="1" />
-  <cell id="3" material="void" region="~(-1 2 -4)" universe="1" />
-  <surface boundary="vacuum" coeffs="0.0 0.0 1.0" id="1" type="x-cylinder" />
-  <surface boundary="vacuum" coeffs="-1.0" id="2" type="x-plane" />
-  <surface coeffs="1.0" id="3" type="x-plane" />
-  <surface boundary="vacuum" coeffs="1000000000.0" id="4" type="x-plane" />
-</geometry>
-<?xml version='1.0' encoding='utf-8'?>
-<materials>
-  <material id="1">
-    <density units="g/cm3" value="2.6989" />
-    <nuclide ao="1.0" name="Al27" />
-  </material>
-</materials>
-<?xml version='1.0' encoding='utf-8'?>
-<settings>
-  <run_mode>fixed source</run_mode>
-  <particles>10000</particles>
-  <batches>1</batches>
-  <source strength="1.0">
-    <space type="point">
-      <parameters>0 0 0</parameters>
-    </space>
-    <angle reference_uvw="1.0 0.0 0.0" type="monodirectional" />
-    <energy type="discrete">
-      <parameters>14000000.0 1.0</parameters>
-    </energy>
-  </source>
-  <electron_treatment>ttb</electron_treatment>
-  <photon_transport>true</photon_transport>
-  <cutoff>
-    <energy_photon>1000.0</energy_photon>
-  </cutoff>
-</settings>
-<?xml version='1.0' encoding='utf-8'?>
-<tallies>
-  <filter id="1" type="surface">
-    <bins>1</bins>
-  </filter>
-  <filter id="2" type="particle">
-    <bins>neutron photon electron positron</bins>
-  </filter>
-  <tally id="1">
-    <filters>1 2</filters>
-    <scores>current</scores>
-  </tally>
-  <tally id="2">
-    <filters>2</filters>
-    <nuclides>Al27 total</nuclides>
-    <scores>total (n,gamma)</scores>
-    <estimator>tracklength</estimator>
-  </tally>
-  <tally id="3">
-    <filters>2</filters>
-    <nuclides>Al27 total</nuclides>
-    <scores>total heating (n,gamma)</scores>
-    <estimator>collision</estimator>
-  </tally>
-  <tally id="4">
-    <filters>2</filters>
-    <nuclides>Al27 total</nuclides>
-    <scores>total heating (n,gamma)</scores>
-    <estimator>analog</estimator>
-  </tally>
-</tallies>
+<model>
+  <materials>
+    <material id="1">
+      <density units="g/cm3" value="2.6989"/>
+      <nuclide ao="1.0" name="Al27"/>
+    </material>
+  </materials>
+  <geometry>
+    <cell id="1" material="void" region="-1 2 -3" universe="1"/>
+    <cell id="2" material="1" region="-1 3 -4" universe="1"/>
+    <cell id="3" material="void" region="1 | -2 | 4" universe="1"/>
+    <surface boundary="vacuum" coeffs="0.0 0.0 1.0" id="1" type="x-cylinder"/>
+    <surface boundary="vacuum" coeffs="-1.0" id="2" type="x-plane"/>
+    <surface coeffs="1.0" id="3" type="x-plane"/>
+    <surface boundary="vacuum" coeffs="1000000000.0" id="4" type="x-plane"/>
+  </geometry>
+  <settings>
+    <run_mode>fixed source</run_mode>
+    <particles>10000</particles>
+    <batches>1</batches>
+    <source particle="neutron" strength="1.0" type="independent">
+      <space type="point">
+        <parameters>0 0 0</parameters>
+      </space>
+      <angle reference_uvw="1.0 0.0 0.0" type="monodirectional"/>
+      <energy type="discrete">
+        <parameters>14000000.0 1.0</parameters>
+      </energy>
+    </source>
+    <electron_treatment>ttb</electron_treatment>
+    <photon_transport>true</photon_transport>
+    <cutoff>
+      <energy_photon>1000.0</energy_photon>
+    </cutoff>
+  </settings>
+  <tallies>
+    <filter id="1" type="surface">
+      <bins>1</bins>
+    </filter>
+    <filter id="2" type="particle">
+      <bins>neutron photon electron positron</bins>
+    </filter>
+    <tally id="1">
+      <filters>1 2</filters>
+      <scores>current</scores>
+    </tally>
+    <tally id="2">
+      <filters>2</filters>
+      <nuclides>Al27 total</nuclides>
+      <scores>total (n,gamma)</scores>
+      <estimator>tracklength</estimator>
+    </tally>
+    <tally id="3">
+      <filters>2</filters>
+      <nuclides>Al27 total</nuclides>
+      <scores>total heating (n,gamma)</scores>
+      <estimator>collision</estimator>
+    </tally>
+    <tally id="4">
+      <filters>2</filters>
+      <nuclides>Al27 total</nuclides>
+      <scores>total heating (n,gamma)</scores>
+      <estimator>analog</estimator>
+    </tally>
+  </tallies>
+</model>

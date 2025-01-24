@@ -40,7 +40,7 @@ def test_results_save(run_in_tmpdir):
 
     stages = 3
 
-    np.random.seed(comm.rank)
+    rng = np.random.RandomState(comm.rank)
 
     # Mock geometry
     op = MagicMock()
@@ -68,26 +68,26 @@ def test_results_save(run_in_tmpdir):
     x2 = []
 
     for i in range(stages):
-        x1.append([np.random.rand(2), np.random.rand(2)])
-        x2.append([np.random.rand(2), np.random.rand(2)])
+        x1.append([rng.random(2), rng.random(2)])
+        x2.append([rng.random(2), rng.random(2)])
 
     # Construct r
     r1 = ReactionRates(burn_list, ["na", "nb"], ["ra", "rb"])
-    r1[:] = np.random.rand(2, 2, 2)
+    r1[:] = rng.random((2, 2, 2))
 
     rate1 = []
     rate2 = []
 
     for i in range(stages):
         rate1.append(copy.deepcopy(r1))
-        r1[:] = np.random.rand(2, 2, 2)
+        r1[:] = rng.random((2, 2, 2))
         rate2.append(copy.deepcopy(r1))
-        r1[:] = np.random.rand(2, 2, 2)
+        r1[:] = rng.random((2, 2, 2))
 
     # Create global terms
     # Col 0: eig, Col 1: uncertainty
-    eigvl1 = np.random.rand(stages, 2)
-    eigvl2 = np.random.rand(stages, 2)
+    eigvl1 = rng.random((stages, 2))
+    eigvl2 = rng.random((stages, 2))
 
     eigvl1 = comm.bcast(eigvl1, root=0)
     eigvl2 = comm.bcast(eigvl2, root=0)
@@ -99,6 +99,12 @@ def test_results_save(run_in_tmpdir):
                   for k, rates in zip(eigvl1, rate1)]
     op_result2 = [OperatorResult(ufloat(*k), rates)
                   for k, rates in zip(eigvl2, rate2)]
+
+    # saves within a subdirectory
+    StepResult.save(op, x1, op_result1, t1, 0, 0, path='out/put/depletion.h5')
+    res = Results('out/put/depletion.h5')
+
+    # saves with default filename
     StepResult.save(op, x1, op_result1, t1, 0, 0)
     StepResult.save(op, x2, op_result2, t2, 0, 1)
 

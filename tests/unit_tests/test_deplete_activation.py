@@ -11,7 +11,7 @@ import pytest
 @pytest.fixture
 def model():
     """Sphere of single nuclide"""
-    model = openmc.model.Model()
+    model = openmc.Model()
 
     w = openmc.Material(name='tungsten')
     w.add_nuclide('W186', 1.0)
@@ -27,13 +27,13 @@ def model():
 
     model.settings.batches = 10
     model.settings.particles = 1000
-    model.settings.source = openmc.Source(
+    model.settings.source = openmc.IndependentSource(
         space=openmc.stats.Point(),
         energy=openmc.stats.Discrete([1.0e6], [1.0])
     )
     model.settings.run_mode = 'fixed source'
 
-    rx_tally = openmc.Tally()
+    rx_tally = openmc.Tally(name='activation tally')
     rx_tally.scores = ['(n,gamma)']
     model.tallies.append(rx_tally)
 
@@ -47,13 +47,13 @@ ENERGIES = np.logspace(log10(1e-5), log10(2e7), 100)
     ("direct", {}, 1e-5),
     ("flux", {'energies': ENERGIES}, 0.01),
     ("flux", {'energies': ENERGIES, 'reactions': ['(n,gamma)']}, 1e-5),
-    ("flux", {'energies': ENERGIES, 'reactions': ['(n,gamma)'], 'nuclides': ['W186']}, 1e-5),
+    ("flux", {'energies': ENERGIES, 'reactions': ['(n,gamma)'], 'nuclides': ['W186', 'H3']}, 1e-2),
 ])
 def test_activation(run_in_tmpdir, model, reaction_rate_mode, reaction_rate_opts, tolerance):
     # Determine (n.gamma) reaction rate using initial run
     sp = model.run()
     with openmc.StatePoint(sp) as sp:
-        tally = sp.tallies[1]
+        tally = sp.get_tally(name='activation tally')
         capture_rate = tally.mean.flat[0]
 
     # Create one-nuclide depletion chain
@@ -161,3 +161,30 @@ def test_decay(run_in_tmpdir):
     # Ensure density goes down by a factor of 2 after each half-life
     assert atoms[1] / atoms[0] == pytest.approx(0.5)
     assert atoms[2] / atoms[1] == pytest.approx(0.25)
+
+
+def test_flux_rr_missing_nuclide(run_in_tmpdir, model):
+    # Create two-nuclide depletion chain -- since W184 is not in the model, this
+    # test ensures that FluxCollapseHelper loads missing nuclides appropriately
+    chain = openmc.deplete.Chain()
+    w184 = openmc.deplete.Nuclide('W184')
+    w184.add_reaction('(n,gamma)', None, 0.0, 1.0)
+    chain.add_nuclide(w184)
+    w186 = openmc.deplete.Nuclide('W186')
+    w186.add_reaction('(n,gamma)', None, 0.0, 1.0)
+    chain.add_nuclide(w186)
+    chain.export_to_xml('test_chain.xml')
+
+    # Create transport operator
+    op = openmc.deplete.CoupledOperator(
+        model, 'test_chain.xml',
+        normalization_mode="source-rate",
+        reaction_rate_mode="flux",
+        reaction_rate_opts={'energies': [0.0, 20.0e6]},
+    )
+
+    # Deplete with two decay steps
+    integrator = openmc.deplete.PredictorIntegrator(
+        op, [100.0], source_rates=[10.0]
+    )
+    integrator.integrate()

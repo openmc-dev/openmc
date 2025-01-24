@@ -23,6 +23,7 @@ def test_float_endf():
     assert endf.float_endf('-1.+2') == approx(-100.0)
     assert endf.float_endf('        ') == 0.0
     assert endf.float_endf('9.876540000000000') == approx(9.87654)
+    assert endf.float_endf('-2.225002+6') == approx(-2.225002e+6)
 
 
 def test_int_endf():

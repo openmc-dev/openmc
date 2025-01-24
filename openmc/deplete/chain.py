@@ -7,123 +7,109 @@ loaded from an .xml file and all the nuclides are linked together.
 from io import StringIO
 from itertools import chain
 import math
-import os
 import re
-from collections import OrderedDict, defaultdict, namedtuple
+from collections import defaultdict, namedtuple
 from collections.abc import Mapping, Iterable
 from numbers import Real, Integral
 from warnings import warn
 
-from openmc.checkvalue import check_type, check_greater_than
-from openmc.data import gnds_name, zam, DataLibrary
-from openmc.exceptions import DataError
-from .nuclide import FissionYieldDistribution
-
-# Try to use lxml if it is available. It preserves the order of attributes and
-# provides a pretty-printer by default. If not available,
-# use OpenMC function to pretty print.
-try:
-    import lxml.etree as ET
-    _have_lxml = True
-except ImportError:
-    import xml.etree.ElementTree as ET
-    _have_lxml = False
+import lxml.etree as ET
 import scipy.sparse as sp
 
+from openmc.checkvalue import check_type, check_greater_than
+from openmc.data import gnds_name, zam
+from .nuclide import FissionYieldDistribution, Nuclide
 import openmc.data
-from openmc._xml import clean_indentation
-from .nuclide import Nuclide, DecayTuple, ReactionTuple
 
 
-# tuple of (possible MT values, (dA, dZ), secondaries) where dA is the change in
-# the mass number and dZ is the change in the atomic number
-ReactionInfo = namedtuple('ReactionInfo', ('mts', 'dadz', 'secondaries'))
+# tuple of (possible MT values, secondaries)
+ReactionInfo = namedtuple('ReactionInfo', ('mts', 'secondaries'))
 
 REACTIONS = {
-    '(n,2nd)': ReactionInfo({11}, (-3, -1), ('H2',)),
-    '(n,2n)': ReactionInfo(set(chain([16], range(875, 892))), (-1, 0), ()),
-    '(n,3n)': ReactionInfo({17}, (-2, 0), ()),
-    '(n,na)': ReactionInfo({22}, (-4, -2), ('He4',)),
-    '(n,n3a)': ReactionInfo({23}, (-12, -6), ('He4', 'He4', 'He4')),
-    '(n,2na)': ReactionInfo({24}, (-5, -2), ('He4',)),
-    '(n,3na)': ReactionInfo({25}, (-6, -2), ('He4',)),
-    '(n,np)': ReactionInfo({28}, (-1, -1), ('H1',)),
-    '(n,n2a)': ReactionInfo({29}, (-8, -4), ('He4', 'He4')),
-    '(n,2n2a)': ReactionInfo({30}, (-9, -4), ('He4', 'He4')),
-    '(n,nd)': ReactionInfo({32}, (-2, -1), ('H2',)),
-    '(n,nt)': ReactionInfo({33}, (-3, -1), ('H3',)),
-    '(n,n3He)': ReactionInfo({34}, (-3, -2), ('He3',)),
-    '(n,nd2a)': ReactionInfo({35}, (-10, -5), ('H2', 'He4', 'He4')),
-    '(n,nt2a)': ReactionInfo({36}, (-11, -5), ('H3', 'He4', 'He4')),
-    '(n,4n)': ReactionInfo({37}, (-3, 0), ()),
-    '(n,2np)': ReactionInfo({41}, (-2, -1), ('H1',)),
-    '(n,3np)': ReactionInfo({42}, (-3, -1), ('H1',)),
-    '(n,n2p)': ReactionInfo({44}, (-2, -2), ('H1', 'H1')),
-    '(n,npa)': ReactionInfo({45}, (-5, -3), ('H1', 'He4')),
-    '(n,gamma)': ReactionInfo({102}, (1, 0), ()),
-    '(n,p)': ReactionInfo(set(chain([103], range(600, 650))), (0, -1), ('H1',)),
-    '(n,d)': ReactionInfo(set(chain([104], range(650, 700))), (-1, -1), ('H2',)),
-    '(n,t)': ReactionInfo(set(chain([105], range(700, 750))), (-2, -1), ('H3',)),
-    '(n,3He)': ReactionInfo(set(chain([106], range(750, 800))), (-2, -2), ('He3',)),
-    '(n,a)': ReactionInfo(set(chain([107], range(800, 850))), (-3, -2), ('He4',)),
-    '(n,2a)': ReactionInfo({108}, (-7, -4), ('He4', 'He4')),
-    '(n,3a)': ReactionInfo({109}, (-11, -6), ('He4', 'He4', 'He4')),
-    '(n,2p)': ReactionInfo({111}, (-1, -2), ('H1', 'H1')),
-    '(n,pa)': ReactionInfo({112}, (-4, -3), ('H1', 'He4')),
-    '(n,t2a)': ReactionInfo({113}, (-10, -5), ('H3', 'He4', 'He4')),
-    '(n,d2a)': ReactionInfo({114}, (-9, -5), ('H2', 'He4', 'He4')),
-    '(n,pd)': ReactionInfo({115}, (-2, -2), ('H1', 'H2')),
-    '(n,pt)': ReactionInfo({116}, (-3, -2), ('H1', 'H3')),
-    '(n,da)': ReactionInfo({117}, (-5, -3), ('H2', 'He4')),
-    '(n,5n)': ReactionInfo({152}, (-4, 0), ()),
-    '(n,6n)': ReactionInfo({153}, (-5, 0), ()),
-    '(n,2nt)': ReactionInfo({154}, (-4, -1), ('H3',)),
-    '(n,ta)': ReactionInfo({155}, (-6, -3), ('H3', 'He4')),
-    '(n,4np)': ReactionInfo({156}, (-4, -1), ('H1',)),
-    '(n,3nd)': ReactionInfo({157}, (-4, -1), ('H2',)),
-    '(n,nda)': ReactionInfo({158}, (-6, -3), ('H2', 'He4')),
-    '(n,2npa)': ReactionInfo({159}, (-6, -3), ('H1', 'He4')),
-    '(n,7n)': ReactionInfo({160}, (-6, 0), ()),
-    '(n,8n)': ReactionInfo({161}, (-7, 0), ()),
-    '(n,5np)': ReactionInfo({162}, (-5, -1), ('H1',)),
-    '(n,6np)': ReactionInfo({163}, (-6, -1), ('H1',)),
-    '(n,7np)': ReactionInfo({164}, (-7, -1), ('H1',)),
-    '(n,4na)': ReactionInfo({165}, (-7, -2), ('He4',)),
-    '(n,5na)': ReactionInfo({166}, (-8, -2), ('He4',)),
-    '(n,6na)': ReactionInfo({167}, (-9, -2), ('He4',)),
-    '(n,7na)': ReactionInfo({168}, (-10, -2), ('He4',)),
-    '(n,4nd)': ReactionInfo({169}, (-5, -1), ('H2',)),
-    '(n,5nd)': ReactionInfo({170}, (-6, -1), ('H2',)),
-    '(n,6nd)': ReactionInfo({171}, (-7, -1), ('H2',)),
-    '(n,3nt)': ReactionInfo({172}, (-5, -1), ('H3',)),
-    '(n,4nt)': ReactionInfo({173}, (-6, -1), ('H3',)),
-    '(n,5nt)': ReactionInfo({174}, (-7, -1), ('H3',)),
-    '(n,6nt)': ReactionInfo({175}, (-8, -1), ('H3',)),
-    '(n,2n3He)': ReactionInfo({176}, (-4, -2), ('He3',)),
-    '(n,3n3He)': ReactionInfo({177}, (-5, -2), ('He3',)),
-    '(n,4n3He)': ReactionInfo({178}, (-6, -2), ('He3',)),
-    '(n,3n2p)': ReactionInfo({179}, (-4, -2), ('H1', 'H1')),
-    '(n,3n2a)': ReactionInfo({180}, (-10, -4), ('He4', 'He4')),
-    '(n,3npa)': ReactionInfo({181}, (-7, -3), ('H1', 'He4')),
-    '(n,dt)': ReactionInfo({182}, (-4, -2), ('H2', 'H3')),
-    '(n,npd)': ReactionInfo({183}, (-3, -2), ('H1', 'H2')),
-    '(n,npt)': ReactionInfo({184}, (-4, -2), ('H1', 'H3')),
-    '(n,ndt)': ReactionInfo({185}, (-5, -2), ('H2', 'H3')),
-    '(n,np3He)': ReactionInfo({186}, (-4, -3), ('H1', 'He3')),
-    '(n,nd3He)': ReactionInfo({187}, (-5, -3), ('H2', 'He3')),
-    '(n,nt3He)': ReactionInfo({188}, (-6, -3), ('H3', 'He3')),
-    '(n,nta)': ReactionInfo({189}, (-7, -3), ('H3', 'He4')),
-    '(n,2n2p)': ReactionInfo({190}, (-3, -2), ('H1', 'H1')),
-    '(n,p3He)': ReactionInfo({191}, (-4, -3), ('H1', 'He3')),
-    '(n,d3He)': ReactionInfo({192}, (-5, -3), ('H2', 'He3')),
-    '(n,3Hea)': ReactionInfo({193}, (-6, -4), ('He3', 'He4')),
-    '(n,4n2p)': ReactionInfo({194}, (-5, -2), ('H1', 'H1')),
-    '(n,4n2a)': ReactionInfo({195}, (-11, -4), ('He4', 'He4')),
-    '(n,4npa)': ReactionInfo({196}, (-8, -3), ('H1', 'He4')),
-    '(n,3p)': ReactionInfo({197}, (-2, -3), ('H1', 'H1', 'H1')),
-    '(n,n3p)': ReactionInfo({198}, (-3, -3), ('H1', 'H1', 'H1')),
-    '(n,3n2pa)': ReactionInfo({199}, (-8, -4), ('H1', 'H1', 'He4')),
-    '(n,5n2p)': ReactionInfo({200}, (-6, -2), ('H1', 'H1')),
+    '(n,2nd)': ReactionInfo({11}, ('H2',)),
+    '(n,2n)': ReactionInfo(set(chain([16], range(875, 892))), ()),
+    '(n,3n)': ReactionInfo({17}, ()),
+    '(n,na)': ReactionInfo({22}, ('He4',)),
+    '(n,n3a)': ReactionInfo({23}, ('He4', 'He4', 'He4')),
+    '(n,2na)': ReactionInfo({24}, ('He4',)),
+    '(n,3na)': ReactionInfo({25}, ('He4',)),
+    '(n,np)': ReactionInfo({28}, ('H1',)),
+    '(n,n2a)': ReactionInfo({29}, ('He4', 'He4')),
+    '(n,2n2a)': ReactionInfo({30}, ('He4', 'He4')),
+    '(n,nd)': ReactionInfo({32}, ('H2',)),
+    '(n,nt)': ReactionInfo({33}, ('H3',)),
+    '(n,n3He)': ReactionInfo({34}, ('He3',)),
+    '(n,nd2a)': ReactionInfo({35}, ('H2', 'He4', 'He4')),
+    '(n,nt2a)': ReactionInfo({36}, ('H3', 'He4', 'He4')),
+    '(n,4n)': ReactionInfo({37}, ()),
+    '(n,2np)': ReactionInfo({41}, ('H1',)),
+    '(n,3np)': ReactionInfo({42}, ('H1',)),
+    '(n,n2p)': ReactionInfo({44}, ('H1', 'H1')),
+    '(n,npa)': ReactionInfo({45}, ('H1', 'He4')),
+    '(n,gamma)': ReactionInfo({102}, ()),
+    '(n,p)': ReactionInfo(set(chain([103], range(600, 650))), ('H1',)),
+    '(n,d)': ReactionInfo(set(chain([104], range(650, 700))), ('H2',)),
+    '(n,t)': ReactionInfo(set(chain([105], range(700, 750))), ('H3',)),
+    '(n,3He)': ReactionInfo(set(chain([106], range(750, 800))), ('He3',)),
+    '(n,a)': ReactionInfo(set(chain([107], range(800, 850))), ('He4',)),
+    '(n,2a)': ReactionInfo({108}, ('He4', 'He4')),
+    '(n,3a)': ReactionInfo({109}, ('He4', 'He4', 'He4')),
+    '(n,2p)': ReactionInfo({111}, ('H1', 'H1')),
+    '(n,pa)': ReactionInfo({112}, ('H1', 'He4')),
+    '(n,t2a)': ReactionInfo({113}, ('H3', 'He4', 'He4')),
+    '(n,d2a)': ReactionInfo({114}, ('H2', 'He4', 'He4')),
+    '(n,pd)': ReactionInfo({115}, ('H1', 'H2')),
+    '(n,pt)': ReactionInfo({116}, ('H1', 'H3')),
+    '(n,da)': ReactionInfo({117}, ('H2', 'He4')),
+    '(n,5n)': ReactionInfo({152}, ()),
+    '(n,6n)': ReactionInfo({153}, ()),
+    '(n,2nt)': ReactionInfo({154}, ('H3',)),
+    '(n,ta)': ReactionInfo({155}, ('H3', 'He4')),
+    '(n,4np)': ReactionInfo({156}, ('H1',)),
+    '(n,3nd)': ReactionInfo({157}, ('H2',)),
+    '(n,nda)': ReactionInfo({158}, ('H2', 'He4')),
+    '(n,2npa)': ReactionInfo({159}, ('H1', 'He4')),
+    '(n,7n)': ReactionInfo({160}, ()),
+    '(n,8n)': ReactionInfo({161}, ()),
+    '(n,5np)': ReactionInfo({162}, ('H1',)),
+    '(n,6np)': ReactionInfo({163}, ('H1',)),
+    '(n,7np)': ReactionInfo({164}, ('H1',)),
+    '(n,4na)': ReactionInfo({165}, ('He4',)),
+    '(n,5na)': ReactionInfo({166}, ('He4',)),
+    '(n,6na)': ReactionInfo({167}, ('He4',)),
+    '(n,7na)': ReactionInfo({168}, ('He4',)),
+    '(n,4nd)': ReactionInfo({169}, ('H2',)),
+    '(n,5nd)': ReactionInfo({170}, ('H2',)),
+    '(n,6nd)': ReactionInfo({171}, ('H2',)),
+    '(n,3nt)': ReactionInfo({172}, ('H3',)),
+    '(n,4nt)': ReactionInfo({173}, ('H3',)),
+    '(n,5nt)': ReactionInfo({174}, ('H3',)),
+    '(n,6nt)': ReactionInfo({175}, ('H3',)),
+    '(n,2n3He)': ReactionInfo({176}, ('He3',)),
+    '(n,3n3He)': ReactionInfo({177}, ('He3',)),
+    '(n,4n3He)': ReactionInfo({178}, ('He3',)),
+    '(n,3n2p)': ReactionInfo({179}, ('H1', 'H1')),
+    '(n,3n2a)': ReactionInfo({180}, ('He4', 'He4')),
+    '(n,3npa)': ReactionInfo({181}, ('H1', 'He4')),
+    '(n,dt)': ReactionInfo({182}, ('H2', 'H3')),
+    '(n,npd)': ReactionInfo({183}, ('H1', 'H2')),
+    '(n,npt)': ReactionInfo({184}, ('H1', 'H3')),
+    '(n,ndt)': ReactionInfo({185}, ('H2', 'H3')),
+    '(n,np3He)': ReactionInfo({186}, ('H1', 'He3')),
+    '(n,nd3He)': ReactionInfo({187}, ('H2', 'He3')),
+    '(n,nt3He)': ReactionInfo({188}, ('H3', 'He3')),
+    '(n,nta)': ReactionInfo({189}, ('H3', 'He4')),
+    '(n,2n2p)': ReactionInfo({190}, ('H1', 'H1')),
+    '(n,p3He)': ReactionInfo({191}, ('H1', 'He3')),
+    '(n,d3He)': ReactionInfo({192}, ('H2', 'He3')),
+    '(n,3Hea)': ReactionInfo({193}, ('He3', 'He4')),
+    '(n,4n2p)': ReactionInfo({194}, ('H1', 'H1')),
+    '(n,4n2a)': ReactionInfo({195}, ('He4', 'He4')),
+    '(n,4npa)': ReactionInfo({196}, ('H1', 'He4')),
+    '(n,3p)': ReactionInfo({197}, ('H1', 'H1', 'H1')),
+    '(n,n3p)': ReactionInfo({198}, ('H1', 'H1', 'H1')),
+    '(n,3n2pa)': ReactionInfo({199}, ('H1', 'H1', 'He4')),
+    '(n,5n2p)': ReactionInfo({200}, ('H1', 'H1')),
 }
 
 __all__ = ["Chain", "REACTIONS"]
@@ -155,7 +141,7 @@ def replace_missing(product, decay_data):
 
     # First check if ground state is available
     if state:
-        product = '{}{}'.format(symbol, A)
+        product = f'{symbol}{A}'
 
     # Find isotope with longest half-life
     half_life = 0.0
@@ -186,7 +172,7 @@ def replace_missing(product, decay_data):
                 Z += 1
             else:
                 Z -= 1
-        product = '{}{}'.format(openmc.data.ATOMIC_SYMBOL[Z], A)
+        product = f'{openmc.data.ATOMIC_SYMBOL[Z]}{A}'
 
     return product
 
@@ -256,7 +242,7 @@ class Chain:
         Nuclides present in the chain.
     reactions : list of str
         Reactions that are tracked in the depletion chain
-    nuclide_dict : OrderedDict of str to int
+    nuclide_dict : dict of str to int
         Maps a nuclide name to an index in nuclides.
     fission_yields : None or iterable of dict
         List of effective fission yields for materials. Each dictionary
@@ -272,7 +258,7 @@ class Chain:
     def __init__(self):
         self.nuclides = []
         self.reactions = []
-        self.nuclide_dict = OrderedDict()
+        self.nuclide_dict = {}
         self._fission_yields = None
 
     def __contains__(self, nuclide):
@@ -400,24 +386,31 @@ class Chain:
             if not data.nuclide['stable'] and data.half_life.nominal_value != 0.0:
                 nuclide.half_life = data.half_life.nominal_value
                 nuclide.decay_energy = data.decay_energy.nominal_value
-                sum_br = 0.0
-                for i, mode in enumerate(data.modes):
+                branch_ratios = []
+                branch_ids = []
+                for mode in data.modes:
                     type_ = ','.join(mode.modes)
                     if mode.daughter in decay_data:
                         target = mode.daughter
                     else:
                         print('missing {} {} {}'.format(
-                            parent, ','.join(mode.modes), mode.daughter))
+                            parent, type_, mode.daughter))
                         target = replace_missing(mode.daughter, decay_data)
-
-                    # Write branching ratio, taking care to ensure sum is unity
                     br = mode.branching_ratio.nominal_value
-                    sum_br += br
-                    if i == len(data.modes) - 1 and sum_br != 1.0:
-                        br = 1.0 - sum(m.branching_ratio.nominal_value
-                                       for m in data.modes[:-1])
+                    branch_ratios.append(br)
+                    branch_ids.append((type_, target))
 
-                    # Append decay mode
+                if not math.isclose(sum(branch_ratios), 1.0):
+                    max_br = max(branch_ratios)
+                    max_index = branch_ratios.index(max_br)
+
+                    # Adjust maximum branching ratio so they sum to unity
+                    new_br = max_br - sum(branch_ratios) + 1.0
+                    branch_ratios[max_index] = new_br
+                    assert math.isclose(sum(branch_ratios), 1.0)
+
+                # Append decay modes
+                for br, (type_, target) in zip(branch_ratios, branch_ids):
                     nuclide.add_decay_mode(type_, target, br)
 
                 nuclide.sources = data.sources
@@ -426,12 +419,12 @@ class Chain:
             if parent in reactions:
                 reactions_available = set(reactions[parent].keys())
                 for name in transmutation_reactions:
-                    mts, changes, _ = REACTIONS[name]
+                    mts = REACTIONS[name].mts
+                    delta_A, delta_Z = openmc.data.DADZ[name]
                     if mts & reactions_available:
-                        delta_A, delta_Z = changes
                         A = data.nuclide['mass_number'] + delta_A
                         Z = data.nuclide['atomic_number'] + delta_Z
-                        daughter = '{}{}'.format(openmc.data.ATOMIC_SYMBOL[Z], A)
+                        daughter = f'{openmc.data.ATOMIC_SYMBOL[Z]}{A}'
 
                         if daughter not in decay_data:
                             daughter = replace_missing(daughter, decay_data)
@@ -497,7 +490,7 @@ class Chain:
         if missing_daughter:
             print('The following decay modes have daughters with no decay data:')
             for mode in missing_daughter:
-                print('  {}'.format(mode))
+                print(f'  {mode}')
             print('')
 
         if missing_rx_product:
@@ -509,7 +502,7 @@ class Chain:
         if missing_fpy:
             print('The following fissionable nuclides have no fission product yields:')
             for parent, replacement in missing_fpy:
-                print('  {}, replaced with {}'.format(parent, replacement))
+                print(f'  {parent}, replaced with {replacement}')
             print('')
 
         if missing_fp:
@@ -565,11 +558,7 @@ class Chain:
             root_elem.append(nuclide.to_xml_element())
 
         tree = ET.ElementTree(root_elem)
-        if _have_lxml:
-            tree.write(str(filename), encoding='utf-8', pretty_print=True)
-        else:
-            clean_indentation(root_elem)
-            tree.write(str(filename), encoding='utf-8')
+        tree.write(str(filename), encoding='utf-8', pretty_print=True)
 
     def get_default_fission_yields(self):
         """Return fission yields at lowest incident neutron energy
@@ -608,15 +597,18 @@ class Chain:
 
         Returns
         -------
-        scipy.sparse.csr_matrix
+        scipy.sparse.csc_matrix
             Sparse matrix representing depletion.
 
         See Also
         --------
         :meth:`get_default_fission_yields`
         """
-        matrix = defaultdict(float)
         reactions = set()
+
+        # Use DOK matrix as intermediate representation for matrix
+        n = len(self)
+        matrix = sp.dok_matrix((n, n))
 
         if fission_yields is None:
             fission_yields = self.get_default_fission_yields()
@@ -692,11 +684,71 @@ class Chain:
                 # Clear set of reactions
                 reactions.clear()
 
-        # Use DOK matrix as intermediate representation, then convert to CSR and return
+        # Return CSC representation instead of DOK
+        return matrix.tocsc()
+
+    def form_rr_term(self, tr_rates, mats):
+        """Function to form the transfer rate term matrices.
+
+        .. versionadded:: 0.14.0
+
+        Parameters
+        ----------
+        tr_rates : openmc.deplete.TransferRates
+            Instance of openmc.deplete.TransferRates
+        mats : string or two-tuple of strings
+            Two cases are possible:
+
+            1) Material ID as string:
+            Nuclide transfer only. In this case the transfer rate terms will be
+            subtracted from the respective depletion matrix
+
+            2) Two-tuple of material IDs as strings:
+            Nuclide transfer from one material into another.
+            The pair is assumed to be
+            ``(destination_material, source_material)``, where
+            ``destination_material`` and ``source_material`` are the nuclide
+            receiving and losing materials, respectively.
+            The transfer rate terms get placed in the final matrix with indexing
+            position corresponding to the ID of the materials set.
+
+        Returns
+        -------
+        scipy.sparse.csc_matrix
+            Sparse matrix representing transfer term.
+
+        """
+        # Use DOK as intermediate representation
         n = len(self)
-        matrix_dok = sp.dok_matrix((n, n))
-        dict.update(matrix_dok, matrix)
-        return matrix_dok.tocsr()
+        matrix = sp.dok_matrix((n, n))
+
+        for i, nuc in enumerate(self.nuclides):
+            elm = re.split(r'\d+', nuc.name)[0]
+            # Build transfer terms matrices
+            if isinstance(mats, str):
+                mat = mats
+                components = tr_rates.get_components(mat)
+                if elm in components:
+                    matrix[i, i] = sum(tr_rates.get_transfer_rate(mat, elm))
+                elif nuc.name in components:
+                    matrix[i, i] = sum(tr_rates.get_transfer_rate(mat, nuc.name))
+                else:
+                    matrix[i, i] = 0.0
+            #Build transfer terms matrices
+            elif isinstance(mats, tuple):
+                dest_mat, mat = mats
+                if dest_mat in tr_rates.get_destination_material(mat, elm):
+                    dest_mat_idx = tr_rates.get_destination_material(mat, elm).index(dest_mat)
+                    matrix[i, i] = tr_rates.get_transfer_rate(mat, elm)[dest_mat_idx]
+                elif dest_mat in tr_rates.get_destination_material(mat, nuc.name):
+                    dest_mat_idx = tr_rates.get_destination_material(mat, nuc.name).index(dest_mat)
+                    matrix[i, i] = tr_rates.get_transfer_rate(mat, nuc.name)[dest_mat_idx]
+                else:
+                    matrix[i, i] = 0.0
+            #Nothing else is allowed
+
+        # Return CSC instead of DOK
+        return matrix.tocsc()
 
     def get_branch_ratios(self, reaction="(n,gamma)"):
         """Return a dictionary with reaction branching ratios
@@ -828,8 +880,7 @@ class Chain:
             if len(indexes) == 0:
                 if strict:
                     raise AttributeError(
-                        "Nuclide {} does not have {} reactions".format(
-                            parent, reaction))
+                        f"Nuclide {parent} does not have {reaction} reactions")
                 missing_reaction.add(parent)
                 continue
 
@@ -851,8 +902,7 @@ class Chain:
 
         if len(rxn_ix_map) == 0:
             raise IndexError(
-                "No {} reactions found in this {}".format(
-                    reaction, self.__class__.__name__))
+                f"No {reaction} reactions found in this {self.__class__.__name__}")
 
         if len(missing_parents) > 0:
             warn("The following nuclides were not found in {}: {}".format(
@@ -863,14 +913,14 @@ class Chain:
                  "{}".format(reaction, ", ".join(sorted(missing_reaction))))
 
         if len(missing_products) > 0:
-            tail = ("{} -> {}".format(k, v)
+            tail = (f"{k} -> {v}"
                     for k, v in sorted(missing_products.items()))
             warn("The following products were not found in the {} and "
                  "parents were unmodified: \n{}".format(
                      self.__class__.__name__, ", ".join(tail)))
 
         if len(bad_sums) > 0:
-            tail = ("{}: {:5.3f}".format(k, s)
+            tail = (f"{k}: {s:5.3f}"
                     for k, s in sorted(bad_sums.items()))
             warn("The following parent nuclides were given {} branch ratios "
                  "with a sum outside tolerance of 1 +/- {:5.3e}:\n{}".format(

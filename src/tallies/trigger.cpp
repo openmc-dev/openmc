@@ -39,7 +39,8 @@ std::pair<double, double> get_tally_uncertainty(
   auto mean = sum / n;
 
   // if the result has no contributions, return an invalid pair
-  if (mean == 0) return {-1 , -1};
+  if (mean == 0)
+    return {-1, -1};
 
   double std_dev = std::sqrt((sum_sq / n - mean * mean) / (n - 1));
   double rel_err = (mean != 0.) ? std_dev / std::abs(mean) : 0.;
@@ -76,9 +77,9 @@ void check_tally_triggers(double& ratio, int& tally_id, int& score)
         auto uncert_pair =
           get_tally_uncertainty(i_tally, trigger.score_index, filter_index);
 
-        // if there is a score without contributions, set ratio to inf and
-        // exit early
-        if (uncert_pair.first == -1) {
+        // If there is a score without contributions, set ratio to inf and
+        // exit early, unless zero scores are ignored for this trigger.
+        if (uncert_pair.first == -1 && !trigger.ignore_zeros) {
           ratio = INFINITY;
           score = t.scores_[trigger.score_index];
           tally_id = t.id_;
@@ -193,8 +194,10 @@ void check_triggers()
       keff_ratio);
   } else {
     if (tally_ratio == INFINITY) {
-      msg = fmt::format("Triggers unsatisfied, no result tallied for score {} in tally {}", reaction_name(score), tally_id);
-    } else{
+      msg = fmt::format(
+        "Triggers unsatisfied, no result tallied for score {} in tally {}",
+        reaction_name(score), tally_id);
+    } else {
       msg = fmt::format(
         "Triggers unsatisfied, max unc./thresh. is {} for {} in tally {}",
         tally_ratio, reaction_name(score), tally_id);
@@ -211,13 +214,20 @@ void check_triggers()
     auto n_pred_batches = static_cast<int>(n_active * max_ratio * max_ratio) +
                           settings::n_inactive + 1;
 
-    std::string msg =
-      fmt::format("The estimated number of batches is {}", n_pred_batches);
-    if (n_pred_batches > settings::n_max_batches) {
-      msg.append(" --- greater than max batches");
-      warning(msg);
-    } else {
+    if (max_ratio == INFINITY) {
+      std::string msg =
+        fmt::format("One or more tallies with triggers have no scores. Unable "
+                    "to estimate the number of remaining batches.");
       write_message(msg, 7);
+    } else {
+      std::string msg =
+        fmt::format("The estimated number of batches is {}", n_pred_batches);
+      if (n_pred_batches > settings::n_max_batches) {
+        msg.append(" --- greater than max batches");
+        warning(msg);
+      } else {
+        write_message(msg, 7);
+      }
     }
   }
 }

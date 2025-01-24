@@ -1,5 +1,6 @@
 from numbers import Integral
-from xml.etree import ElementTree as ET
+
+import lxml.etree as ET
 
 import openmc.checkvalue as cv
 from .mixin import EqualityMixin, IDManagerMixin
@@ -60,14 +61,6 @@ class TallyDerivative(EqualityMixin, IDManagerMixin):
     def variable(self):
         return self._variable
 
-    @property
-    def material(self):
-        return self._material
-
-    @property
-    def nuclide(self):
-        return self._nuclide
-
     @variable.setter
     def variable(self, var):
         if var is not None:
@@ -76,11 +69,19 @@ class TallyDerivative(EqualityMixin, IDManagerMixin):
                            ('density', 'nuclide_density', 'temperature'))
         self._variable = var
 
+    @property
+    def material(self):
+        return self._material
+
     @material.setter
     def material(self, mat):
         if mat is not None:
             cv.check_type('derivative material', mat, Integral)
         self._material = mat
+
+    @property
+    def nuclide(self):
+        return self._nuclide
 
     @nuclide.setter
     def nuclide(self, nuc):
@@ -93,7 +94,7 @@ class TallyDerivative(EqualityMixin, IDManagerMixin):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing derivative data
 
         """
@@ -112,7 +113,7 @@ class TallyDerivative(EqualityMixin, IDManagerMixin):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns

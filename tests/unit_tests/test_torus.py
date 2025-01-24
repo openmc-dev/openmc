@@ -17,7 +17,7 @@ def get_torus_keff(cls, R, r, center=(0, 0, 0)):
     outer_cell = openmc.Cell(region=+torus & -sphere)
     model.geometry = openmc.Geometry([torus_cell, outer_cell])
 
-    model.settings.source = openmc.Source(space=openmc.stats.Point(center))
+    model.settings.source = openmc.IndependentSource(space=openmc.stats.Point(center))
     model.settings.batches = 10
     model.settings.inactive = 5
     model.settings.particles = 1000

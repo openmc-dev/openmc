@@ -1,4 +1,4 @@
-import xml.etree.ElementTree as ET
+import lxml.etree as ET
 from pathlib import Path
 
 import numpy as np
@@ -20,7 +20,7 @@ def test_volume(run_in_tmpdir, uo2):
     model.settings.particles = 100
     model.settings.batches = 10
     model.settings.run_mode = 'fixed source'
-    model.settings.source = openmc.Source(space=openmc.stats.Point())
+    model.settings.source = openmc.IndependentSource(space=openmc.stats.Point())
 
     ll, ur = model.geometry.bounding_box
     assert ll == pytest.approx((-outer.r, -outer.r, -outer.r))
@@ -213,27 +213,27 @@ def test_get_by_name():
 
 
 def test_hex_prism():
-    hex_prism = openmc.model.hexagonal_prism(edge_length=5.0,
-                                             origin=(0.0, 0.0),
-                                             orientation='y')
+    hex_prism = openmc.model.HexagonalPrism(edge_length=5.0,
+                                            origin=(0.0, 0.0),
+                                            orientation='y')
     # clear checks
-    assert (0.0, 0.0, 0.0) in hex_prism
-    assert (10.0, 10.0, 10.0) not in hex_prism
+    assert (0.0, 0.0, 0.0) in -hex_prism
+    assert (10.0, 10.0, 10.0) not in -hex_prism
     # edge checks
-    assert (0.0, 5.01, 0.0) not in hex_prism
-    assert (0.0, 4.99, 0.0) in hex_prism
+    assert (0.0, 5.01, 0.0) not in -hex_prism
+    assert (0.0, 4.99, 0.0) in -hex_prism
 
-    rounded_hex_prism = openmc.model.hexagonal_prism(edge_length=5.0,
-                                                     origin=(0.0, 0.0),
-                                                     orientation='y',
-                                                     corner_radius=1.0)
+    rounded_hex_prism = openmc.model.HexagonalPrism(edge_length=5.0,
+                                                    origin=(0.0, 0.0),
+                                                    orientation='y',
+                                                    corner_radius=1.0)
 
     # clear checks
-    assert (0.0, 0.0, 0.0) in rounded_hex_prism
-    assert (10.0, 10.0, 10.0) not in rounded_hex_prism
+    assert (0.0, 0.0, 0.0) in -rounded_hex_prism
+    assert (10.0, 10.0, 10.0) not in -rounded_hex_prism
     # edge checks
-    assert (0.0, 5.01, 0.0) not in rounded_hex_prism
-    assert (0.0, 4.99, 0.0) not in rounded_hex_prism
+    assert (0.0, 5.01, 0.0) not in -rounded_hex_prism
+    assert (0.0, 4.99, 0.0) not in -rounded_hex_prism
 
 
 def test_get_lattice_by_name(cell_with_lattice):
@@ -362,8 +362,13 @@ def test_remove_redundant_surfaces():
     clad = get_cyl_cell(r1, r2, z1, z2, m2)
     water = get_cyl_cell(r2, r3, z1, z2, m3)
     root = openmc.Universe(cells=[fuel, clad, water])
-    geom = openmc.Geometry(root)
-    geom.merge_surfaces=True
+    geom = openmc.Geometry(root=root, merge_surfaces=True, surface_precision=11)
+    assert geom.merge_surfaces is True
+    geom.merge_surfaces = False
+    assert geom.merge_surfaces is False
+    assert geom.surface_precision == 11
+    geom.surface_precision = 10
+    assert geom.surface_precision == 10
     model = openmc.model.Model(geometry=geom,
                                materials=openmc.Materials([m1, m2, m3]))
 
@@ -373,3 +378,28 @@ def test_remove_redundant_surfaces():
     # There should be 0 remaining redundant surfaces
     n_redundant_surfs = len(geom.remove_redundant_surfaces().keys())
     assert n_redundant_surfs == 0
+
+def test_get_all_nuclides():
+    m1 = openmc.Material()
+    m1.add_nuclide('Fe56', 1)
+    m1.add_nuclide('Be9', 1)
+    m2 = openmc.Material()
+    m2.add_nuclide('Be9', 1)
+    s = openmc.Sphere()
+    c1 = openmc.Cell(fill=m1, region=-s)
+    c2 = openmc.Cell(fill=m2, region=+s)
+    geom = openmc.Geometry([c1, c2])
+    assert geom.get_all_nuclides() == ['Be9', 'Fe56']
+
+
+def test_redundant_surfaces():
+    # Make sure boundary condition is accounted for
+    s1 = openmc.Sphere(r=5.0)
+    s2 = openmc.Sphere(r=5.0, boundary_type="vacuum")
+    c1 = openmc.Cell(region=-s1)
+    c2 = openmc.Cell(region=+s1)
+    u_lower = openmc.Universe(cells=[c1, c2])
+    c3 = openmc.Cell(fill=u_lower, region=-s2)
+    geom = openmc.Geometry([c3])
+    redundant_surfs = geom.remove_redundant_surfaces()
+    assert len(redundant_surfs) == 0

@@ -7,12 +7,12 @@ from tests.testing_harness import PyAPITestHarness
 
 
 class SourceTestHarness(PyAPITestHarness):
-    def _build_inputs(self):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         mat1 = openmc.Material(material_id=1, temperature=294)
         mat1.set_density('g/cm3', 4.5)
         mat1.add_nuclide(openmc.Nuclide('U235'), 1.0)
-        materials = openmc.Materials([mat1])
-        materials.export_to_xml()
+        self._model.materials = openmc.Materials([mat1])
 
         sphere = openmc.Sphere(surface_id=1, r=10.0, boundary_type='vacuum')
         inside_sphere = openmc.Cell(cell_id=1)
@@ -21,9 +21,7 @@ class SourceTestHarness(PyAPITestHarness):
 
         root = openmc.Universe(universe_id=0)
         root.add_cell(inside_sphere)
-        geometry = openmc.Geometry()
-        geometry.root_universe = root
-        geometry.export_to_xml()
+        self._model.geometry = openmc.Geometry(root)
 
         # Create an array of different sources
         x_dist = openmc.stats.Uniform(-3., 3.)
@@ -70,23 +68,23 @@ class SourceTestHarness(PyAPITestHarness):
 
         time1 = openmc.stats.Uniform(2, 5)
 
-        source1 = openmc.Source(spatial1, angle1, energy1, strength=0.3)
-        source2 = openmc.Source(spatial2, angle2, energy2, strength=0.1)
-        source3 = openmc.Source(spatial3, angle3, energy3, strength=0.1)
-        source4 = openmc.Source(spatial4, angle3, energy3, strength=0.1)
-        source5 = openmc.Source(spatial5, angle3, energy3, strength=0.1)
-        source6 = openmc.Source(spatial5, angle3, energy4, strength=0.1)
-        source7 = openmc.Source(spatial6, angle3, energy4, time1, strength=0.1)
-        source8 = openmc.Source(spatial7, angle3, energy4, time1, strength=0.1)
+        source1 = openmc.IndependentSource(spatial1, angle1, energy1, strength=0.3)
+        source2 = openmc.IndependentSource(spatial2, angle2, energy2, strength=0.1)
+        source3 = openmc.IndependentSource(spatial3, angle3, energy3, strength=0.1)
+        source4 = openmc.IndependentSource(spatial4, angle3, energy3, strength=0.1)
+        source5 = openmc.IndependentSource(spatial5, angle3, energy3, strength=0.1)
+        source6 = openmc.IndependentSource(spatial5, angle3, energy4, strength=0.1)
+        source7 = openmc.IndependentSource(spatial6, angle3, energy4, time1, strength=0.1)
+        source8 = openmc.IndependentSource(spatial7, angle3, energy4, time1, strength=0.1)
 
         settings = openmc.Settings()
         settings.batches = 10
         settings.inactive = 5
         settings.particles = 1000
         settings.source = [source1, source2, source3, source4, source5, source6, source7, source8]
-        settings.export_to_xml()
+        self._model.settings = settings
 
 
 def test_source():
-    harness = SourceTestHarness('statepoint.10.h5')
+    harness = SourceTestHarness('statepoint.10.h5', model=openmc.Model())
     harness.main()

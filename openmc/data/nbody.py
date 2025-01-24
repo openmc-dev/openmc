@@ -43,24 +43,16 @@ class NBodyPhaseSpace(AngleEnergy):
     def total_mass(self):
         return self._total_mass
 
-    @property
-    def n_particles(self):
-        return self._n_particles
-
-    @property
-    def atomic_weight_ratio(self):
-        return self._atomic_weight_ratio
-
-    @property
-    def q_value(self):
-        return self._q_value
-
     @total_mass.setter
     def total_mass(self, total_mass):
         name = 'N-body phase space total mass'
         cv.check_type(name, total_mass, Real)
         cv.check_greater_than(name, total_mass, 0.)
         self._total_mass = total_mass
+
+    @property
+    def n_particles(self):
+        return self._n_particles
 
     @n_particles.setter
     def n_particles(self, n_particles):
@@ -69,12 +61,20 @@ class NBodyPhaseSpace(AngleEnergy):
         cv.check_greater_than(name, n_particles, 0)
         self._n_particles = n_particles
 
+    @property
+    def atomic_weight_ratio(self):
+        return self._atomic_weight_ratio
+
     @atomic_weight_ratio.setter
     def atomic_weight_ratio(self, atomic_weight_ratio):
         name = 'N-body phase space atomic weight ratio'
         cv.check_type(name, atomic_weight_ratio, Real)
         cv.check_greater_than(name, atomic_weight_ratio, 0.0)
         self._atomic_weight_ratio = atomic_weight_ratio
+
+    @property
+    def q_value(self):
+        return self._q_value
 
     @q_value.setter
     def q_value(self, q_value):
@@ -91,7 +91,7 @@ class NBodyPhaseSpace(AngleEnergy):
             HDF5 group to write to
 
         """
-        group.attrs['type'] = np.string_('nbody')
+        group.attrs['type'] = np.bytes_('nbody')
         group.attrs['total_mass'] = self.total_mass
         group.attrs['n_particles'] = self.n_particles
         group.attrs['atomic_weight_ratio'] = self.atomic_weight_ratio

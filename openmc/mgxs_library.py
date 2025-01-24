@@ -3,7 +3,7 @@ from numbers import Real, Integral
 
 import h5py
 import numpy as np
-from scipy.integrate import simps
+import scipy.integrate
 from scipy.interpolate import interp1d
 from scipy.special import eval_legendre
 
@@ -18,21 +18,17 @@ ROOM_TEMPERATURE_KELVIN = 294.0
 # Supported incoming particle MGXS angular treatment representations
 REPRESENTATION_ISOTROPIC = 'isotropic'
 REPRESENTATION_ANGLE = 'angle'
-_REPRESENTATIONS = [
+_REPRESENTATIONS = {
     REPRESENTATION_ISOTROPIC,
     REPRESENTATION_ANGLE
-]
+}
 
 # Supported scattering angular distribution representations
-_SCATTER_TYPES = [
+_SCATTER_TYPES = {
     SCATTER_TABULAR,
     SCATTER_LEGENDRE,
     SCATTER_HISTOGRAM
-]
-
-# List of MGXS indexing schemes
-_XS_SHAPES = ["[G][G'][Order]", "[G]", "[G']", "[G][G']", "[DG]", "[DG][G]",
-              "[DG][G']", "[DG][G][G']"]
+}
 
 # Number of mu points for conversion between scattering formats
 _NMU = 257
@@ -260,21 +256,61 @@ class XSdata:
     def name(self):
         return self._name
 
+    @name.setter
+    def name(self, name):
+
+        check_type('name for XSdata', name, str)
+        self._name = name
+
     @property
     def energy_groups(self):
         return self._energy_groups
+
+    @energy_groups.setter
+    def energy_groups(self, energy_groups):
+
+        check_type('energy_groups', energy_groups, openmc.mgxs.EnergyGroups)
+        if energy_groups.group_edges is None:
+            msg = 'Unable to assign an EnergyGroups object ' \
+                  'with uninitialized group edges'
+            raise ValueError(msg)
+
+        self._energy_groups = energy_groups
 
     @property
     def num_delayed_groups(self):
         return self._num_delayed_groups
 
+    @num_delayed_groups.setter
+    def num_delayed_groups(self, num_delayed_groups):
+
+        check_type('num_delayed_groups', num_delayed_groups, Integral)
+        check_less_than('num_delayed_groups', num_delayed_groups,
+                        openmc.mgxs.MAX_DELAYED_GROUPS, equality=True)
+        check_greater_than('num_delayed_groups', num_delayed_groups, 0,
+                           equality=True)
+        self._num_delayed_groups = num_delayed_groups
+
     @property
     def representation(self):
         return self._representation
 
+    @representation.setter
+    def representation(self, representation):
+
+        check_value('representation', representation, _REPRESENTATIONS)
+        self._representation = representation
+
     @property
     def atomic_weight_ratio(self):
         return self._atomic_weight_ratio
+
+    @atomic_weight_ratio.setter
+    def atomic_weight_ratio(self, atomic_weight_ratio):
+
+        check_type('atomic_weight_ratio', atomic_weight_ratio, Real)
+        check_greater_than('atomic_weight_ratio', atomic_weight_ratio, 0.0)
+        self._atomic_weight_ratio = atomic_weight_ratio
 
     @property
     def fissionable(self):
@@ -284,21 +320,54 @@ class XSdata:
     def temperatures(self):
         return self._temperatures
 
+    @temperatures.setter
+    def temperatures(self, temperatures):
+
+        check_iterable_type('temperatures', temperatures, Real)
+        self._temperatures = np.array(temperatures)
+
     @property
     def scatter_format(self):
         return self._scatter_format
+
+    @scatter_format.setter
+    def scatter_format(self, scatter_format):
+
+        check_value('scatter_format', scatter_format, _SCATTER_TYPES)
+        self._scatter_format = scatter_format
 
     @property
     def order(self):
         return self._order
 
+    @order.setter
+    def order(self, order):
+
+        check_type('order', order, Integral)
+        check_greater_than('order', order, 0, equality=True)
+        self._order = order
+
     @property
     def num_polar(self):
         return self._num_polar
 
+    @num_polar.setter
+    def num_polar(self, num_polar):
+
+        check_type('num_polar', num_polar, Integral)
+        check_greater_than('num_polar', num_polar, 0)
+        self._num_polar = num_polar
+
     @property
     def num_azimuthal(self):
         return self._num_azimuthal
+
+    @num_azimuthal.setter
+    def num_azimuthal(self, num_azimuthal):
+
+        check_type('num_azimuthal', num_azimuthal, Integral)
+        check_greater_than('num_azimuthal', num_azimuthal, 0)
+        self._num_azimuthal = num_azimuthal
 
     @property
     def total(self):
@@ -400,79 +469,6 @@ class XSdata:
                         = (self.num_polar, self.num_azimuthal) + shapes
 
         return self._xs_shapes
-
-    @name.setter
-    def name(self, name):
-
-        check_type('name for XSdata', name, str)
-        self._name = name
-
-    @energy_groups.setter
-    def energy_groups(self, energy_groups):
-
-        check_type('energy_groups', energy_groups, openmc.mgxs.EnergyGroups)
-        if energy_groups.group_edges is None:
-            msg = 'Unable to assign an EnergyGroups object ' \
-                  'with uninitialized group edges'
-            raise ValueError(msg)
-
-        self._energy_groups = energy_groups
-
-    @num_delayed_groups.setter
-    def num_delayed_groups(self, num_delayed_groups):
-
-        check_type('num_delayed_groups', num_delayed_groups, Integral)
-        check_less_than('num_delayed_groups', num_delayed_groups,
-                        openmc.mgxs.MAX_DELAYED_GROUPS, equality=True)
-        check_greater_than('num_delayed_groups', num_delayed_groups, 0,
-                           equality=True)
-        self._num_delayed_groups = num_delayed_groups
-
-    @representation.setter
-    def representation(self, representation):
-
-        check_value('representation', representation, _REPRESENTATIONS)
-        self._representation = representation
-
-    @atomic_weight_ratio.setter
-    def atomic_weight_ratio(self, atomic_weight_ratio):
-
-        check_type('atomic_weight_ratio', atomic_weight_ratio, Real)
-        check_greater_than('atomic_weight_ratio', atomic_weight_ratio, 0.0)
-        self._atomic_weight_ratio = atomic_weight_ratio
-
-    @temperatures.setter
-    def temperatures(self, temperatures):
-
-        check_iterable_type('temperatures', temperatures, Real)
-        self._temperatures = np.array(temperatures)
-
-    @scatter_format.setter
-    def scatter_format(self, scatter_format):
-
-        check_value('scatter_format', scatter_format, _SCATTER_TYPES)
-        self._scatter_format = scatter_format
-
-    @order.setter
-    def order(self, order):
-
-        check_type('order', order, Integral)
-        check_greater_than('order', order, 0, equality=True)
-        self._order = order
-
-    @num_polar.setter
-    def num_polar(self, num_polar):
-
-        check_type('num_polar', num_polar, Integral)
-        check_greater_than('num_polar', num_polar, 0)
-        self._num_polar = num_polar
-
-    @num_azimuthal.setter
-    def num_azimuthal(self, num_azimuthal):
-
-        check_type('num_azimuthal', num_azimuthal, Integral)
-        check_greater_than('num_azimuthal', num_azimuthal, 0)
-        self._num_azimuthal = num_azimuthal
 
     def add_temperature(self, temperature):
         """This method re-sizes the attributes of this XSdata object so that it
@@ -1823,6 +1819,12 @@ class XSdata:
         # Reset and re-generate XSdata.xs_shapes with the new scattering format
         xsdata._xs_shapes = None
 
+        # scipy 1.11+ prefers 'simpson', whereas older versions use 'simps'
+        if hasattr(scipy.integrate, 'simpson'):
+            integrate = scipy.integrate.simpson
+        else:
+            integrate = scipy.integrate.simps
+
         for i, temp in enumerate(xsdata.temperatures):
             orig_data = self._scatter_matrix[i]
             new_shape = orig_data.shape[:-1] + (xsdata.num_orders,)
@@ -1860,7 +1862,7 @@ class XSdata:
                                 table_fine[..., imu] += ((l + 0.5)
                                      * eval_legendre(l, mu_fine[imu]) *
                                      orig_data[..., l])
-                        new_data[..., h_bin] = simps(table_fine, mu_fine)
+                        new_data[..., h_bin] = integrate(table_fine, x=mu_fine)
 
             elif self.scatter_format == SCATTER_TABULAR:
                 # Calculate the mu points of the current data
@@ -1874,7 +1876,7 @@ class XSdata:
                     for l in range(xsdata.num_orders):
                         y = (interp1d(mu_self, orig_data)(mu_fine) *
                              eval_legendre(l, mu_fine))
-                        new_data[..., l] = simps(y, mu_fine)
+                        new_data[..., l] = integrate(y, x=mu_fine)
 
                 elif target_format == SCATTER_TABULAR:
                     # Simply use an interpolating function to get the new data
@@ -1893,7 +1895,7 @@ class XSdata:
                     interp = interp1d(mu_self, orig_data)
                     for h_bin in range(xsdata.num_orders):
                         mu_fine = np.linspace(mu[h_bin], mu[h_bin + 1], _NMU)
-                        new_data[..., h_bin] = simps(interp(mu_fine), mu_fine)
+                        new_data[..., h_bin] = integrate(interp(mu_fine), x=mu_fine)
 
             elif self.scatter_format == SCATTER_HISTOGRAM:
                 # The histogram format does not have enough information to
@@ -1919,7 +1921,7 @@ class XSdata:
                     mu_fine = np.linspace(-1, 1, _NMU)
                     for l in range(xsdata.num_orders):
                         y = interp(mu_fine) * norm * eval_legendre(l, mu_fine)
-                        new_data[..., l] = simps(y, mu_fine)
+                        new_data[..., l] = integrate(y, x=mu_fine)
 
                 elif target_format == SCATTER_TABULAR:
                     # Simply use an interpolating function to get the new data
@@ -1938,7 +1940,7 @@ class XSdata:
                     for h_bin in range(xsdata.num_orders):
                         mu_fine = np.linspace(mu[h_bin], mu[h_bin + 1], _NMU)
                         new_data[..., h_bin] = \
-                            norm * simps(interp(mu_fine), mu_fine)
+                            norm * integrate(interp(mu_fine), x=mu_fine)
 
             # Remove small values resulting from numerical precision issues
             new_data[..., np.abs(new_data) < 1.E-10] = 0.
@@ -1964,7 +1966,7 @@ class XSdata:
             grp.attrs['fissionable'] = self.fissionable
 
         if self.representation is not None:
-            grp.attrs['representation'] = np.string_(self.representation)
+            grp.attrs['representation'] = np.bytes_(self.representation)
             if self.representation == REPRESENTATION_ANGLE:
                 if self.num_azimuthal is not None:
                     grp.attrs['num_azimuthal'] = self.num_azimuthal
@@ -1972,9 +1974,9 @@ class XSdata:
                 if self.num_polar is not None:
                     grp.attrs['num_polar'] = self.num_polar
 
-        grp.attrs['scatter_shape'] = np.string_("[G][G'][Order]")
+        grp.attrs['scatter_shape'] = np.bytes_("[G][G'][Order]")
         if self.scatter_format is not None:
-            grp.attrs['scatter_format'] = np.string_(self.scatter_format)
+            grp.attrs['scatter_format'] = np.bytes_(self.scatter_format)
         if self.order is not None:
             grp.attrs['order'] = self.order
 
@@ -2330,22 +2332,14 @@ class MGXSLibrary:
     def energy_groups(self):
         return self._energy_groups
 
-    @property
-    def num_delayed_groups(self):
-        return self._num_delayed_groups
-
-    @property
-    def xsdatas(self):
-        return self._xsdatas
-
-    @property
-    def names(self):
-        return [xsdata.name for xsdata in self.xsdatas]
-
     @energy_groups.setter
     def energy_groups(self, energy_groups):
         check_type('energy groups', energy_groups, openmc.mgxs.EnergyGroups)
         self._energy_groups = energy_groups
+
+    @property
+    def num_delayed_groups(self):
+        return self._num_delayed_groups
 
     @num_delayed_groups.setter
     def num_delayed_groups(self, num_delayed_groups):
@@ -2355,6 +2349,14 @@ class MGXSLibrary:
         check_less_than('num_delayed_groups', num_delayed_groups,
                         openmc.mgxs.MAX_DELAYED_GROUPS, equality=True)
         self._num_delayed_groups = num_delayed_groups
+
+    @property
+    def xsdatas(self):
+        return self._xsdatas
+
+    @property
+    def names(self):
+        return [xsdata.name for xsdata in self.xsdatas]
 
     def add_xsdata(self, xsdata):
         """Add an XSdata entry to the file.
@@ -2516,7 +2518,7 @@ class MGXSLibrary:
 
         # Create and write to the HDF5 file
         file = h5py.File(filename, "w", libver=libver)
-        file.attrs['filetype'] = np.string_(_FILETYPE_MGXS_LIBRARY)
+        file.attrs['filetype'] = np.bytes_(_FILETYPE_MGXS_LIBRARY)
         file.attrs['version'] = [_VERSION_MGXS_LIBRARY, 0]
         file.attrs['energy_groups'] = self.energy_groups.num_groups
         file.attrs['delayed_groups'] = self.num_delayed_groups

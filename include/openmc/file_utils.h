@@ -1,9 +1,7 @@
 #ifndef OPENMC_FILE_UTILS_H
 #define OPENMC_FILE_UTILS_H
 
-#include <fstream> // for ifstream
 #include <string>
-#include <sys/stat.h>
 
 namespace openmc {
 
@@ -11,27 +9,23 @@ namespace openmc {
 //! Determine if a path is a directory
 //! \param[in] path Path to check
 //! \return Whether the path is a directory
-inline bool dir_exists(const std::string& path)
-{
-  struct stat s;
-  if (stat(path.c_str(), &s) != 0)
-    return false;
-
-  return s.st_mode & S_IFDIR;
-}
+bool dir_exists(const std::string& path);
 
 //! Determine if a file exists
 //! \param[in] filename Path to file
 //! \return Whether file exists
-inline bool file_exists(const std::string& filename)
-{
-  // rule out file being a path to a directory
-  if (dir_exists(filename))
-    return false;
+bool file_exists(const std::string& filename);
 
-  std::ifstream s {filename};
-  return s.good();
-}
+//! Determine directory containing given file
+//! \param[in] filename Path to file
+//! \return Name of directory containing file
+std::string dir_name(const std::string& filename);
+
+// Gets the file extension of whatever string is passed in. This is defined as
+// a sequence of strictly alphanumeric characters which follow the last period,
+// i.e. at least one alphabet character is present, and zero or more numbers.
+// If such a sequence of characters is not found, an empty string is returned.
+std::string get_file_extension(const std::string& filename);
 
 } // namespace openmc
 

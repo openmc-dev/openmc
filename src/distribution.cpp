@@ -19,32 +19,31 @@
 namespace openmc {
 
 //==============================================================================
-// Discrete implementation
+// DiscreteIndex implementation
 //==============================================================================
 
-Discrete::Discrete(pugi::xml_node node)
+DiscreteIndex::DiscreteIndex(pugi::xml_node node)
 {
   auto params = get_node_array<double>(node, "parameters");
+  std::size_t n = params.size() / 2;
 
-  std::size_t n = params.size();
-  std::vector<double> x_vec(params.begin(), params.begin() + n / 2);
-  std::vector<double> p_vec(params.begin() + n / 2, params.end());
-
-  this->init_alias(x_vec, p_vec);
+  assign({params.data() + n, n});
 }
 
-Discrete::Discrete(const double* x, const double* p, int n)
+DiscreteIndex::DiscreteIndex(gsl::span<const double> p)
 {
-  std::vector<double> x_vec(x, x + n);
-  std::vector<double> p_vec(p, p + n);
-
-  this->init_alias(x_vec, p_vec);
+  assign(p);
 }
 
-void Discrete::init_alias(vector<double>& x, vector<double>& p)
+void DiscreteIndex::assign(gsl::span<const double> p)
 {
-  x_ = x;
-  prob_ = p;
+  prob_.assign(p.begin(), p.end());
+
+  this->init_alias();
+}
+
+void DiscreteIndex::init_alias()
+{
   normalize();
 
   // The initialization and sampling method is based on Vose
@@ -53,13 +52,14 @@ void Discrete::init_alias(vector<double>& x, vector<double>& p)
   vector<size_t> large;
   vector<size_t> small;
 
+  size_t n = prob_.size();
+
   // Set and allocate memory
-  vector<size_t> alias(x_.size(), 0);
-  alias_ = alias;
+  alias_.assign(n, 0);
 
   // Fill large and small vectors based on 1/n
-  for (size_t i = 0; i < x_.size(); i++) {
-    prob_[i] *= x_.size();
+  for (size_t i = 0; i < n; i++) {
+    prob_[i] *= n;
     if (prob_[i] > 1.0) {
       large.push_back(i);
     } else {
@@ -86,29 +86,55 @@ void Discrete::init_alias(vector<double>& x, vector<double>& p)
   }
 }
 
-double Discrete::sample(uint64_t* seed) const
+size_t DiscreteIndex::sample(uint64_t* seed) const
 {
   // Alias sampling of discrete distribution
-  int n = x_.size();
+  size_t n = prob_.size();
   if (n > 1) {
-    int u = prn(seed) * n;
+    size_t u = prn(seed) * n;
     if (prn(seed) < prob_[u]) {
-      return x_[u];
+      return u;
     } else {
-      return x_[alias_[u]];
+      return alias_[u];
     }
   } else {
-    return x_[0];
+    return 0;
   }
 }
 
-void Discrete::normalize()
+void DiscreteIndex::normalize()
 {
-  // Renormalize density function so that it sums to unity
-  double norm = std::accumulate(prob_.begin(), prob_.end(), 0.0);
+  // Renormalize density function so that it sums to unity. Note that we save
+  // the integral of the distribution so that if it is used as part of another
+  // distribution (e.g., Mixture), we know its relative strength.
+  integral_ = std::accumulate(prob_.begin(), prob_.end(), 0.0);
   for (auto& p_i : prob_) {
-    p_i /= norm;
+    p_i /= integral_;
   }
+}
+
+//==============================================================================
+// Discrete implementation
+//==============================================================================
+
+Discrete::Discrete(pugi::xml_node node) : di_(node)
+{
+  auto params = get_node_array<double>(node, "parameters");
+
+  std::size_t n = params.size() / 2;
+
+  x_.assign(params.begin(), params.begin() + n);
+}
+
+Discrete::Discrete(const double* x, const double* p, size_t n) : di_({p, n})
+{
+
+  x_.assign(x, x + n);
+}
+
+double Discrete::sample(uint64_t* seed) const
+{
+  return x_[di_.sample(seed)];
 }
 
 //==============================================================================
@@ -276,10 +302,13 @@ void Tabular::init(
     }
   }
 
-  // Normalize density and distribution functions
+  // Normalize density and distribution functions. Note that we save the
+  // integral of the distribution so that if it is used as part of another
+  // distribution (e.g., Mixture), we know its relative strength.
+  integral_ = c_[n - 1];
   for (int i = 0; i < n; ++i) {
-    p_[i] = p_[i] / c_[n - 1];
-    c_[i] = c_[i] / c_[n - 1];
+    p_[i] = p_[i] / integral_;
+    c_[i] = c_[i] / integral_;
   }
 }
 
@@ -355,13 +384,18 @@ Mixture::Mixture(pugi::xml_node node)
     if (!pair.child("dist"))
       fatal_error("Mixture pair element does not have a distribution.");
 
-    // cummulative sum of probybilities
-    cumsum += std::stod(pair.attribute("probability").value());
+    // cummulative sum of probabilities
+    double p = std::stod(pair.attribute("probability").value());
 
-    // Save cummulative probybility and distrubution
-    distribution_.push_back(
-      std::make_pair(cumsum, distribution_from_xml(pair.child("dist"))));
+    // Save cummulative probability and distribution
+    auto dist = distribution_from_xml(pair.child("dist"));
+    cumsum += p * dist->integral();
+
+    distribution_.push_back(std::make_pair(cumsum, std::move(dist)));
   }
+
+  // Save integral of distribution
+  integral_ = cumsum;
 
   // Normalize cummulative probabilities to 1
   for (auto& pair : distribution_) {

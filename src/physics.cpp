@@ -47,15 +47,9 @@ void collision(Particle& p)
   switch (p.type()) {
   case ParticleType::neutron:
     sample_neutron_reaction(p);
-    if (settings::weight_windows_on) {
-      apply_weight_windows(p);
-    }
     break;
   case ParticleType::photon:
     sample_photon_reaction(p);
-    if (settings::weight_windows_on) {
-      apply_weight_windows(p);
-    }
     break;
   case ParticleType::electron:
     sample_electron_reaction(p);
@@ -64,6 +58,9 @@ void collision(Particle& p)
     sample_positron_reaction(p);
     break;
   }
+
+  if (settings::weight_window_checkpoint_collision)
+    apply_weight_windows(p);
 
   // Kill particle if energy falls below cutoff
   int type = static_cast<int>(p.type());
@@ -106,7 +103,7 @@ void sample_neutron_reaction(Particle& p)
 
   const auto& nuc {data::nuclides[i_nuclide]};
 
-  if (nuc->fissionable_) {
+  if (nuc->fissionable_ && p.neutron_xs(i_nuclide).fission > 0.0) {
     auto& rx = sample_fission(i_nuclide, p);
     if (settings::run_mode == RunMode::EIGENVALUE) {
       create_fission_sites(p, i_nuclide, rx);
@@ -150,9 +147,7 @@ void sample_neutron_reaction(Particle& p)
 
   // Advance URR seed stream 'N' times after energy changes
   if (p.E() != p.E_last()) {
-    p.stream() = STREAM_URR_PTABLE;
-    advance_prn_seed(data::nuclides.size(), p.current_seed());
-    p.stream() = STREAM_TRACKING;
+    advance_prn_seed(data::nuclides.size(), &p.seeds(STREAM_URR_PTABLE));
   }
 
   // Play russian roulette if survival biasing is turned on
@@ -298,8 +293,8 @@ void sample_photon_reaction(Particle& p)
   // Coherent (Rayleigh) scattering
   prob += micro.coherent;
   if (prob > cutoff) {
-    double mu = element.rayleigh_scatter(alpha, p.current_seed());
-    p.u() = rotate_angle(p.u(), mu, nullptr, p.current_seed());
+    p.mu() = element.rayleigh_scatter(alpha, p.current_seed());
+    p.u() = rotate_angle(p.u(), p.mu(), nullptr, p.current_seed());
     p.event() = TallyEvent::SCATTER;
     p.event_mt() = COHERENT;
     return;
@@ -308,10 +303,10 @@ void sample_photon_reaction(Particle& p)
   // Incoherent (Compton) scattering
   prob += micro.incoherent;
   if (prob > cutoff) {
-    double alpha_out, mu;
+    double alpha_out;
     int i_shell;
     element.compton_scatter(
-      alpha, true, &alpha_out, &mu, &i_shell, p.current_seed());
+      alpha, true, &alpha_out, &p.mu(), &i_shell, p.current_seed());
 
     // Determine binding energy of shell. The binding energy is 0.0 if
     // doppler broadening is not used.
@@ -327,9 +322,9 @@ void sample_photon_reaction(Particle& p)
     double E_electron = (alpha - alpha_out) * MASS_ELECTRON_EV - e_b;
     int electron = static_cast<int>(ParticleType::electron);
     if (E_electron >= settings::energy_cutoff[electron]) {
-      double mu_electron = (alpha - alpha_out * mu) /
+      double mu_electron = (alpha - alpha_out * p.mu()) /
                            std::sqrt(alpha * alpha + alpha_out * alpha_out -
-                                     2.0 * alpha * alpha_out * mu);
+                                     2.0 * alpha * alpha_out * p.mu());
       Direction u = rotate_angle(p.u(), mu_electron, &phi, p.current_seed());
       p.create_secondary(p.wgt(), u, E_electron, ParticleType::electron);
     }
@@ -343,7 +338,7 @@ void sample_photon_reaction(Particle& p)
 
     phi += PI;
     p.E() = alpha_out * MASS_ELECTRON_EV;
-    p.u() = rotate_angle(p.u(), mu, &phi, p.current_seed());
+    p.u() = rotate_angle(p.u(), p.mu(), &phi, p.current_seed());
     p.event() = TallyEvent::SCATTER;
     p.event_mt() = INCOHERENT;
     return;

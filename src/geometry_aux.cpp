@@ -81,7 +81,8 @@ void read_geometry_xml(pugi::xml_node root)
     }
   }
 
-  if (settings::run_mode != RunMode::PLOTTING && !boundary_exists) {
+  if (settings::run_mode != RunMode::PLOTTING &&
+      settings::run_mode != RunMode::VOLUME && !boundary_exists) {
     fatal_error("No boundary conditions were applied to any surfaces!");
   }
 
@@ -529,7 +530,8 @@ std::string distribcell_path_inner(int32_t target_cell, int32_t map,
     if (c.type_ != Fill::MATERIAL) {
       int32_t temp_offset;
       if (c.type_ == Fill::UNIVERSE) {
-        temp_offset = offset + c.offset_[map];
+        temp_offset =
+          offset + c.offset_[map]; // TODO: should also apply to lattice fills?
       } else {
         Lattice& lat = *model::lattices[c.fill_];
         int32_t indx = lat.universes_.size() * map + lat.begin().indx_;
@@ -538,9 +540,18 @@ std::string distribcell_path_inner(int32_t target_cell, int32_t map,
 
       // The desired cell is the first cell that gives an offset smaller or
       // equal to the target offset.
-      if (temp_offset <= target_offset)
+      if (temp_offset <= target_offset - c.offset_[map])
         break;
     }
+  }
+
+  // if we get through the loop without finding an appropriate entry, throw
+  // an error
+  if (cell_it == search_univ.cells_.crend()) {
+    fatal_error(
+      fmt::format("Failed to generate a text label for distribcell with ID {}."
+                  "The current label is: '{}'",
+        model::cells[target_cell]->id_, path.str()));
   }
 
   // Add the cell to the path string.
@@ -560,11 +571,11 @@ std::string distribcell_path_inner(int32_t target_cell, int32_t map,
     for (ReverseLatticeIter it = lat.rbegin(); it != lat.rend(); ++it) {
       int32_t indx = lat.universes_.size() * map + it.indx_;
       int32_t temp_offset = offset + lat.offsets_[indx];
-      if (temp_offset <= target_offset) {
+      if (temp_offset <= target_offset - c.offset_[map]) {
         offset = temp_offset;
         path << "(" << lat.index_to_string(it.indx_) << ")->";
-        path << distribcell_path_inner(
-          target_cell, map, target_offset, *model::universes[*it], offset);
+        path << distribcell_path_inner(target_cell, map, target_offset,
+          *model::universes[*it], offset + c.offset_[map]);
         return path.str();
       }
     }
@@ -608,6 +619,11 @@ int maximum_levels(int32_t univ)
   ++levels_below;
   model::universe_level_counts[univ] = levels_below;
   return levels_below;
+}
+
+bool is_root_universe(int32_t univ_id)
+{
+  return model::universe_map[univ_id] == model::root_universe;
 }
 
 //==============================================================================

@@ -152,7 +152,7 @@ def model(tmp_path_factory):
     mat = openmc.Material()
     mat.add_nuclide('U235', 1.0)
     model.materials.append(mat)
-    model.materials.cross_sections = str(Path('cross_sections_fake.xml').resolve())
+    model.materials.cross_sections = 'cross_sections_fake.xml'
 
     sph = openmc.Sphere(r=100.0, boundary_type='reflective')
     cell = openmc.Cell(fill=mat, region=-sph)
@@ -238,3 +238,38 @@ def test_temperature_interpolation_tolerance(model):
     # All calculated k-effectives should be equal
     assert default_k == pytest.approx(interpolated_k)
     assert interpolated_k == pytest.approx(cell_k)
+
+
+def test_temperature_slightly_above(run_in_tmpdir):
+    """In this test, we have two materials at temperatures close to actual data
+    temperatures. However, one is slightly above the highest temperature which
+    invokes separate logic. The k-effective value should be somewhere between
+    k=2 (if the temperature were only 600 K) and k=1 (if the temperature were
+    only 900 K)."""
+
+    make_fake_cross_section()
+
+    model = openmc.Model()
+    mat1 = openmc.Material()
+    mat1.add_nuclide('U235', 1.0)
+    mat1.temperature = 900.1
+    mat2 = openmc.Material()
+    mat2.add_nuclide('U235', 1.0)
+    mat2.temperature = 600.0
+    model.materials.extend([mat1, mat2])
+    model.materials.cross_sections = 'cross_sections_fake.xml'
+
+    sph1 = openmc.Sphere(r=1.0)
+    sph2 = openmc.Sphere(r=4.0, boundary_type='reflective')
+    cell1 = openmc.Cell(fill=mat1, region=-sph1)
+    cell2 = openmc.Cell(fill=mat2, region=+sph1 & -sph2)
+    model.geometry = openmc.Geometry([cell1, cell2])
+
+    model.settings.particles = 1000
+    model.settings.inactive = 0
+    model.settings.batches = 10
+    model.settings.temperature = {'method': 'interpolation'}
+
+    sp_filename = model.run()
+    with openmc.StatePoint(sp_filename) as sp:
+        assert 1.1 < sp.keff.n < 1.9

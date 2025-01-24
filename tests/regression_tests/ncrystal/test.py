@@ -1,4 +1,6 @@
 from math import pi
+import filecmp
+from difflib import unified_diff
 
 import numpy as np
 import openmc
@@ -33,7 +35,7 @@ def pencil_beam_model(cfg, E0, N):
 
     # Source definition
 
-    source = openmc.Source()
+    source = openmc.IndependentSource()
     source.space = openmc.stats.Point((0, 0, -20))
     source.angle = openmc.stats.Monodirectional(reference_uvw=(0, 0, 1))
     source.energy = openmc.stats.Discrete([E0], [1.0])
@@ -78,3 +80,26 @@ def test_ncrystal():
     test = pencil_beam_model(cfg, E0, n_particles)
     harness = NCrystalTest('statepoint.10.h5', model=test)
     harness.main()
+
+
+def test_cfg_from_xml():
+    """Make sure the cfg string is read by from_xml method"""
+    n_particles = 100000
+    E0 = 0.012  # eV
+    cfg = 'Al_sg225.ncmat'
+    model = pencil_beam_model(cfg, E0, n_particles)
+    #export the original material generated with cfg string
+    model.materials.export_to_xml('materials.xml.orig')
+    expected = open('materials.xml.orig', 'r').readlines()
+    #read back the original material
+    mats_from_xml = openmc.Materials.from_xml('materials.xml.orig')
+    #export again
+    mats_from_xml.export_to_xml('materials.xml.after')
+    actual = open('materials.xml.after', 'r').readlines()
+    compare = filecmp.cmp('materials.xml.orig','materials.xml.after')
+    if not compare:
+        diff = unified_diff(expected, actual, 'materials.xml.orig',
+                           'materials.xml.after')
+        print('Input differences:')
+        print(''.join(diff))
+    assert compare, 'Materials not read correctly from XML'

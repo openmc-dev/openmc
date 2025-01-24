@@ -25,7 +25,7 @@ def cpp_driver(request):
     openmc_dir = Path(str(request.config.rootdir)) / 'build'
     with open('CMakeLists.txt', 'w') as f:
         f.write(textwrap.dedent("""
-            cmake_minimum_required(VERSION 3.3 FATAL_ERROR)
+            cmake_minimum_required(VERSION 3.10 FATAL_ERROR)
             project(openmc_cpp_driver CXX)
             add_executable(main main.cpp)
             find_package(OpenMC REQUIRED HINTS {})
@@ -65,7 +65,7 @@ def model():
     model.settings.particles = 100
     source_box = openmc.stats.Box([-4, -4, -4],
                                   [ 4,  4,  4])
-    source = openmc.Source(space=source_box)
+    source = openmc.IndependentSource(space=source_box)
     model.settings.source = source
     model.settings.temperature['default'] = 293
 

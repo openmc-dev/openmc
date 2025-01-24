@@ -32,30 +32,54 @@ _THERMAL_NAMES = {
     'c_Al_in_Al2O3': ('asap00', 'asap', 'al(al2o3)'),
     'c_Be': ('be', 'be-metal', 'be-met', 'be00', 'be-metal', 'be metal', '4-be'),
     'c_BeO': ('beo',),
-    'c_Be_in_BeO': ('bebeo', 'be-beo', 'be-o', 'be/o', 'bbeo00', 'be(beo)'),
-    'c_Be_in_Be2C': ('bebe2c',),
+    'c_Be_distinct': ('besd', 'be+sd'),
+    'c_Be_in_BeO': ('bebeo', 'be-beo', 'be-o', 'be/o', 'bbeo00', 'be(beo)', 'be_beo'),
+    'c_Be_in_Be2C': ('bebe2c', 'be(be2c)'),
+    'c_Be_in_BeF2': ('bebef2', 'be in bef2'),
     'c_Be_in_FLiBe': ('beflib', 'be(flibe)'),
     'c_C6H6': ('benz', 'c6h6', 'benzine'),
-    'c_C_in_SiC': ('csic', 'c-sic', 'c(3c-sic)'),
-    'c_Ca_in_CaH2': ('cah', 'cah00', 'cacah2', 'ca(cah2)'),
+    'c_C_in_Be2C': ('cbe2c', 'c(be2c)'),
+    'c_C_in_C5O2H8': ('clucit', 'c(lucite)'),
+    'c_C_in_C8H8': ('cc8h8', 'c(polystyr'),
+    'c_C_in_CF2': ('ccf2', 'c(teflon)'),
+    'c_C_in_SiC': ('csic', 'c-sic', 'c(3c-sic)', 'c_sic'),
+    'c_C_in_UC_100p': ('cuc100', 'cinuc_100p'),
+    'c_C_in_UC_10p': ('cuc10', 'cinuc_10p'),
+    'c_C_in_UC_5p': ('cuc5', 'cinuc_5p'),
+    'c_C_in_UC': ('cinuc', 'cinuc_nat'),
+    'c_C_in_UC_HALEU': ('cuchal', 'cinuc_haleu'),
+    'c_C_in_UC_HEU': ('cucheu', 'cinuc_heu'),
+    'c_C_in_ZrC': ('czrc', 'c(zrc)'),
+    'c_Ca_in_CaH2': ('cah', 'cah00', 'cacah2', 'ca(cah2)', 'ca_cah2'),
+    'c_D_in_7LiD': ('dlid', 'd(7lid)'),
     'c_D_in_D2O': ('dd2o', 'd-d2o', 'hwtr', 'hw', 'dhw00', 'd(d2o)'),
-    'c_D_in_D2O_ice': ('dice',),
+    'c_D_in_D2O_solid': ('dice',),
+    'c_F_in_Be2': ('fbef2', 'f in bef2'),
+    'c_F_in_CF2': ('fcf2', 'f(teflon)'),
     'c_F_in_FLiBe': ('fflibe', 'f(flibe)'),
+    'c_F_in_HF': ('f_hf',),
+    'c_F_in_MgF2': ('fmgf2', 'f in mgf2'),
     'c_Fe56': ('fe', 'fe56', 'fe-56', '26-fe- 56'),
     'c_Graphite': ('graph', 'grph', 'gr', 'gr00', 'graphite'),
     'c_Graphite_10p': ('grph10', '10p graphit'),
+    'c_Graphite_20p': ('grph20', '20 graphite'),
     'c_Graphite_30p': ('grph30', '30p graphit'),
+    'c_Graphite_distinct': ('grphsd', 'grph+sd'),
+    'c_H_in_7LiH': ('hlih', 'h(7lih)'),
     'c_H_in_C5O2H8': ('lucite', 'c5o2h8', 'h-luci', 'h(lucite)'),
+    'c_H_in_C8H8': ('hc8h8', 'h(polystyr'),
     'c_H_in_CaH2': ('hcah2', 'hca00', 'h(cah2)'),
+    'c_H1_in_CaH2': ('h1cah2', 'h1_cah2'),
+    'c_H2_in_CaH2': ('h2cah2', 'h2_cah2'),
     'c_H_in_CH2': ('hch2', 'poly', 'pol', 'h-poly', 'pol00', 'h(ch2)'),
     'c_H_in_CH4_liquid': ('lch4', 'lmeth', 'l-ch4'),
     'c_H_in_CH4_solid': ('sch4', 'smeth', 's-ch4'),
     'c_H_in_CH4_solid_phase_II': ('sch4p2',),
     'c_H_in_H2O': ('hh2o', 'h-h2o', 'lwtr', 'lw', 'lw00', 'h(h2o)'),
     'c_H_in_H2O_solid': ('hice', 'h-ice', 'ice00', 'h(ice-ih)', 'h(ice)'),
-    'c_H_in_HF': ('hhf', 'h(hf)'),
+    'c_H_in_HF': ('hhf', 'h(hf)', 'h_hf'),
     'c_H_in_Mesitylene': ('mesi00', 'mesi', 'mesi-phii'),
-    'c_H_in_ParaffinicOil': ('hparaf', 'h(paraffin'),
+    'c_H_in_ParaffinicOil': ('hparaf', 'h(paraffin', 'h(paraffini'),
     'c_H_in_Toluene': ('tol00', 'tol', 'tolue-phii'),
     'c_H_in_UH3': ('huh3', 'h(uh3)'),
     'c_H_in_YH2': ('hyh2', 'h-yh2', 'h(yh2)'),
@@ -63,24 +87,67 @@ _THERMAL_NAMES = {
     'c_H_in_ZrH2': ('hzrh2', 'h(zrh2)'),
     'c_H_in_ZrHx': ('hzrhx', 'h(zrhx)'),
     'c_Li_in_FLiBe': ('liflib', 'li(flibe)'),
+    'c_Li_in_7LiD': ('lilid', '7li(7lid)'),
+    'c_Li_in_7LiH': ('lilih', '7li(7lih)'),
     'c_Mg24': ('mg', 'mg24', 'mg00', '24-mg'),
-    'c_N_in_UN': ('n-un', 'n(un)', 'n(un)    l'),
+    'c_Mg_in_MgF2': ('mgmgf2', 'mg in mgf2'),
+    'c_Mg_in_MgO': ('mgmgo', 'mg in mgo'),
+    'c_N_in_UN_100p': ('nun100', 'n-un-100p'),
+    'c_N_in_UN_10p': ('nun10', 'n-un-10p'),
+    'c_N_in_UN_5p': ('nun5', 'n-un-5p'),
+    'c_N_in_UN': ('n-un', 'n(un)', 'n(un)    l', 'ninun'),
+    'c_N_in_UN_HALEU': ('nunhal', 'n-un-haleu'),
+    'c_N_in_UN_HEU': ('nunheu', 'n-un-heu'),
     'c_O_in_Al2O3': ('osap00', 'osap', 'o(al2o3)'),
-    'c_O_in_BeO': ('obeo', 'o-beo', 'o-be', 'o/be', 'obeo00', 'o(beo)'),
+    'c_O_in_BeO': ('obeo', 'o-beo', 'o-be', 'o/be', 'obeo00', 'o(beo)', 'o_beo'),
+    'c_O_in_C5O2H8': ('olucit', 'o(lucite)'),
     'c_O_in_D2O': ('od2o', 'o-d2o', 'ohw00', 'o(d2o)'),
     'c_O_in_H2O_solid': ('oice', 'o-ice', 'o(ice-ih)'),
+    'c_O_in_MgO': ('omgo', 'o in mgo'),
+    'c_O_in_PuO2': ('opuo2', 'o in puo2'),
+    'c_O_in_SiO2_alpha': ('osio2a', 'o_sio2a'),
+    'c_O_in_UO2_100p': ('ouo200', 'o-uo2-100p'),
+    'c_O_in_UO2_10p': ('ouo210', 'oinuo2-10p'),
+    'c_O_in_UO2_5p': ('ouo25', 'oinuo2-5p'),
     'c_O_in_UO2': ('ouo2', 'o-uo2', 'o2-u', 'o2/u', 'ouo200', 'o(uo2)'),
+    'c_O_in_UO2_HALEU': ('ouo2hl', 'ouo2-haleu'),
+    'c_O_in_UO2_HEU': ('ouo2he', 'o_uo2-heu'),
     'c_ortho_D': ('orthod', 'orthoD', 'dortho', 'od200', 'ortod', 'ortho-d'),
     'c_ortho_H': ('orthoh', 'orthoH', 'hortho', 'oh200', 'ortoh', 'ortho-h'),
     'c_para_D': ('parad', 'paraD', 'dpara', 'pd200', 'para-d'),
     'c_para_H': ('parah', 'paraH', 'hpara', 'ph200', 'para-h'),
+    'c_Pu_in_PuO2': ('puo2', 'pu in puo2'),
     'c_Si28': ('si00', 'sili', 'si'),
-    'c_Si_in_SiC': ('sisic', 'si-sic', 'si(3c-sic)'),
+    'c_Si_in_SiC': ('sisic', 'si-sic', 'si(3c-sic)', 'si_sic'),
+    'c_Si_in_SiO2_alpha': ('si_o2a', 'si_sio2a'),
     'c_SiO2_alpha': ('sio2', 'sio2a', 'sio2alpha'),
     'c_SiO2_beta': ('sio2b', 'sio2beta'),
-    'c_U_in_UN': ('u-un', 'u(un)', 'u(un)    l'),
+    'c_U_metal_100p': ('u-100p',),
+    'c_U_metal_10p': ('u-10p',),
+    'c_U_metal_5p': ('u-5p',),
+    'c_U_metal': ('umetal', 'u-metal'),
+    'c_U_metal_HALEU': ('uhaleu', 'u-haleu'),
+    'c_U_metal_HEU': ('u-heu',),
+    'c_U_in_UC_100p': ('uc-100', 'uinuc_100p'),
+    'c_U_in_UC_10p': ('uc-10', 'uinuc_10p'),
+    'c_U_in_UC_5p': ('uc-5', 'uinuc_5p'),
+    'c_U_in_UC': ('uc-nat', 'uinuc_nat'),
+    'c_U_in_UC_HALEU': ('uc-hal', 'uinuc_haleu'),
+    'c_U_in_UC_HEU': ('uc-heu', 'uinuc_heu'),
+    'c_U_in_UN_100p': ('un-100', 'u-un-100p'),
+    'c_U_in_UN_10p': ('un-10', 'u-un-10p'),
+    'c_U_in_UN_5p': ('un-5', 'u-un-5p'),
+    'c_U_in_UN': ('u-un', 'u(un)', 'u(un)    l', 'uinun'),
+    'c_U_in_UN_HALEU': ('un-hal', 'u-un-haleu'),
+    'c_U_in_UN_HEU': ('un-heu', 'u-un-heu'),
+    'c_U_in_UO2_100p': ('uo2100', 'uuo2-100p'),
+    'c_U_in_UO2_10p': ('uo2-10', 'uuo2-10p'),
+    'c_U_in_UO2_5p': ('uo2-5', 'uuo2-5p'),
     'c_U_in_UO2': ('uuo2', 'u-uo2', 'u-o2', 'u/o2', 'uuo200', 'u(uo2)'),
+    'c_U_in_UO2_HALEU': ('uo2hal', 'uuo2-haleu'),
+    'c_U_in_UO2_HEU': ('uo2heu', 'u_uo2-heu'),
     'c_Y_in_YH2': ('yyh2', 'y-yh2', 'y(yh2)'),
+    'c_Zr_in_ZrC': ('zrzrc', 'zr(zrc)'),
     'c_Zr_in_ZrH': ('zrzrh', 'zr-zrh', 'zr-h', 'zr/h', 'zr(zrh)'),
     'c_Zr_in_ZrH2': ('zrzrh2', 'zr(zrh2)'),
     'c_Zr_in_ZrHx': ('zrzrhx', 'zr(zrhx)'),
@@ -90,7 +157,7 @@ _THERMAL_NAMES = {
 def _temperature_str(T):
     # round() normally returns an int when called with a single argument, but
     # numpy floats overload rounding to return another float
-    return "{}K".format(int(round(T)))
+    return f"{int(round(T))}K"
 
 
 def get_thermal_name(name):
@@ -193,14 +260,14 @@ class CoherentElastic(Function1D):
     def bragg_edges(self):
         return self._bragg_edges
 
-    @property
-    def factors(self):
-        return self._factors
-
     @bragg_edges.setter
     def bragg_edges(self, bragg_edges):
         cv.check_type('Bragg edges', bragg_edges, Iterable, Real)
         self._bragg_edges = np.asarray(bragg_edges)
+
+    @property
+    def factors(self):
+        return self._factors
 
     @factors.setter
     def factors(self, factors):
@@ -221,7 +288,7 @@ class CoherentElastic(Function1D):
         """
         dataset = group.create_dataset(name, data=np.vstack(
             [self.bragg_edges, self.factors]))
-        dataset.attrs['type'] = np.string_(type(self).__name__)
+        dataset.attrs['type'] = np.bytes_(type(self).__name__)
 
     @classmethod
     def from_hdf5(cls, dataset):
@@ -294,7 +361,7 @@ class IncoherentElastic(Function1D):
         """
         data = np.array([self.bound_xs, self.debye_waller])
         dataset = group.create_dataset(name, data=data)
-        dataset.attrs['type'] = np.string_(type(self).__name__)
+        dataset.attrs['type'] = np.bytes_(type(self).__name__)
 
     @classmethod
     def from_hdf5(cls, dataset):
@@ -439,7 +506,7 @@ class ThermalScattering(EqualityMixin):
 
     def __repr__(self):
         if hasattr(self, 'name'):
-            return "<Thermal Scattering Data: {}>".format(self.name)
+            return f"<Thermal Scattering Data: {self.name}>"
         else:
             return "<Thermal Scattering Data>"
 
@@ -464,7 +531,7 @@ class ThermalScattering(EqualityMixin):
         """
         # Open file and write version
         with h5py.File(str(path), mode, libver=libver) as f:
-            f.attrs['filetype'] = np.string_('data_thermal')
+            f.attrs['filetype'] = np.bytes_('data_thermal')
             f.attrs['version'] = np.array(HDF5_VERSION)
 
             # Write basic data
@@ -506,7 +573,7 @@ class ThermalScattering(EqualityMixin):
         # Check if temprature already exists
         strT = data.temperatures[0]
         if strT in self.temperatures:
-            warn('S(a,b) data at T={} already exists.'.format(strT))
+            warn(f'S(a,b) data at T={strT} already exists.')
             return
 
         # Check that name matches
@@ -614,7 +681,7 @@ class ThermalScattering(EqualityMixin):
         # Get new name that is GND-consistent
         ace_name, xs = ace.name.split('.')
         if not xs.endswith('t'):
-            raise TypeError("{} is not a thermal scattering ACE table.".format(ace))
+            raise TypeError(f"{ace} is not a thermal scattering ACE table.")
         if name is None:
             name = get_thermal_name(ace_name)
 
@@ -676,6 +743,15 @@ class ThermalScattering(EqualityMixin):
                     # here, because they are equiprobable, so the order
                     # doesn't matter.
                     mu.sort()
+
+                    # Older versions of NJOY had a bug, and the discrete
+                    # scattering angles could sometimes be less than -1 or
+                    # greater than 1. We check for this here, and warn users.
+                    if mu[0] < -1. or mu[-1] > 1.:
+                        warn('S(a,b) scattering angle for incident energy index '
+                             f'{i} and exit energy index {j} outside of the '
+                             'interval [-1, 1].')
+
                     p_mu = 1. / n_mu * np.ones(n_mu)
                     mu_ij = Discrete(mu, p_mu)
                     mu_ij.c = np.cumsum(p_mu)
@@ -689,8 +765,8 @@ class ThermalScattering(EqualityMixin):
                 # add an outgoing energy 0 eV that has a PDF of 0 (and of
                 # course, a CDF of 0 as well).
                 if eout_i.c[0] > 0.:
-                    eout_i.x = np.insert(eout_i.x, 0, 0.)
-                    eout_i.p = np.insert(eout_i.p, 0, 0.)
+                    eout_i._x = np.insert(eout_i.x, 0, 0.)
+                    eout_i._p = np.insert(eout_i.p, 0, 0.)
                     eout_i.c = np.insert(eout_i.c, 0, 0.)
 
                     # For this added outgoing energy (of 0 eV) we add a set of

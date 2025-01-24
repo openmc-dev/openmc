@@ -4,7 +4,8 @@ from tests.testing_harness import PyAPITestHarness
 
 
 class EnergyCutoffTestHarness(PyAPITestHarness):
-    def _build_inputs(self):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         # Set energy cutoff
         energy_cutoff = 4.0
 
@@ -12,8 +13,7 @@ class EnergyCutoffTestHarness(PyAPITestHarness):
         mat = openmc.Material(material_id=1, name='mat')
         mat.set_density('atom/b-cm', 0.069335)
         mat.add_nuclide('H1', 40.0)
-        materials_file = openmc.Materials([mat])
-        materials_file.export_to_xml()
+        self._model.materials = openmc.Materials([mat])
 
         # Cell is box with reflective boundary
         x1 = openmc.XPlane(surface_id=1, x0=-1)
@@ -29,8 +29,7 @@ class EnergyCutoffTestHarness(PyAPITestHarness):
         box.fill = mat
         root = openmc.Universe(universe_id=0, name='root universe')
         root.add_cell(box)
-        geometry = openmc.Geometry(root)
-        geometry.export_to_xml()
+        self._model.geometry = openmc.Geometry(root)
 
         # Set the running parameters
         settings_file = openmc.Settings()
@@ -41,9 +40,9 @@ class EnergyCutoffTestHarness(PyAPITestHarness):
         bounds = [-1, -1, -1, 1, 1, 1]
         uniform_dist = openmc.stats.Box(bounds[:3], bounds[3:])
         watt_dist = openmc.stats.Watt()
-        settings_file.source = openmc.source.Source(space=uniform_dist,
-                                                    energy=watt_dist)
-        settings_file.export_to_xml()
+        settings_file.source = openmc.IndependentSource(space=uniform_dist,
+                                                        energy=watt_dist)
+        self._model.settings = settings_file
 
         # Tally flux under energy cutoff
         tallies = openmc.Tallies()
@@ -52,7 +51,7 @@ class EnergyCutoffTestHarness(PyAPITestHarness):
         energy_filter = openmc.filter.EnergyFilter((0.0, energy_cutoff))
         tally.filters = [energy_filter]
         tallies.append(tally)
-        tallies.export_to_xml()
+        self._model.tallies = tallies
 
     def _get_results(self):
         """Digest info in the statepoint and return as a string."""
@@ -70,5 +69,5 @@ class EnergyCutoffTestHarness(PyAPITestHarness):
 
 
 def test_energy_cutoff():
-    harness = EnergyCutoffTestHarness('statepoint.10.h5')
+    harness = EnergyCutoffTestHarness('statepoint.10.h5', model=openmc.Model())
     harness.main()

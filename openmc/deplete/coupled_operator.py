@@ -21,7 +21,8 @@ from openmc.exceptions import DataError
 import openmc.lib
 from openmc.mpi import comm
 from .abc import OperatorResult
-from .openmc_operator import OpenMCOperator, _distribute
+from .openmc_operator import OpenMCOperator
+from .pool import _distribute
 from .results import Results
 from .helpers import (
     DirectReactionRateHelper, ChainFissionHelper, ConstantFissionYieldHelper,
@@ -32,18 +33,19 @@ from .helpers import (
 __all__ = ["CoupledOperator", "Operator", "OperatorResult"]
 
 
-def _find_cross_sections(model):
+def _find_cross_sections(model: str | None = None):
     """Determine cross sections to use for depletion
 
     Parameters
     ----------
-    model : openmc.model.Model
+    model : openmc.model.Model, optional
         Reactor model
 
     """
-    if model.materials and model.materials.cross_sections is not None:
-        # Prefer info from Model class if available
-        return model.materials.cross_sections
+    if model:
+        if model.materials and model.materials.cross_sections is not None:
+            # Prefer info from Model class if available
+            return model.materials.cross_sections
 
     # otherwise fallback to environment variable
     cross_sections = openmc.config.get("cross_sections")
@@ -66,7 +68,7 @@ def _get_nuclides_with_data(cross_sections):
     Returns
     -------
     nuclides : set of str
-        Set of nuclide names that have cross secton data
+        Set of nuclide names that have cross section data
 
     """
     nuclides = set()
@@ -121,10 +123,6 @@ class CoupledOperator(OpenMCOperator):
         Dictionary of nuclides and their fission Q values [eV]. If not given,
         values will be pulled from the ``chain_file``. Only applicable
         if ``"normalization_mode" == "fission-q"``
-    dilute_initial : float, optional
-        Initial atom density [atoms/cm^3] to add for nuclides that are zero
-        in initial condition to ensure they exist in the decay chain.
-        Only done for nuclides with reaction rates.
     fission_yield_mode : {"constant", "cutoff", "average"}
         Key indicating what fission product yield scheme to use. The
         key determines what fission energy helper is used:
@@ -167,19 +165,18 @@ class CoupledOperator(OpenMCOperator):
         ``None`` implies no limit on the depth.
 
         .. versionadded:: 0.12
+    diff_volume_method : str
+        Specifies how the volumes of the new materials should be found. Default
+        is to 'divide equally' which divides the original material volume
+        equally between the new materials, 'match cell' sets the volume of the
+        material to volume of the cell they fill.
+
+        .. versionadded:: 0.14.0
 
     Attributes
     ----------
     model : openmc.model.Model
         OpenMC model object
-    geometry : openmc.Geometry
-        OpenMC geometry object
-    settings : openmc.Settings
-        OpenMC settings object
-    dilute_initial : float
-        Initial atom density [atoms/cm^3] to add for nuclides that
-        are zero in initial condition to ensure they exist in the decay
-        chain. Only done for nuclides with reaction rates.
     output_dir : pathlib.Path
         Path to output directory to save results.
     round_number : bool
@@ -213,8 +210,8 @@ class CoupledOperator(OpenMCOperator):
     }
 
     def __init__(self, model, chain_file=None, prev_results=None,
-                 diff_burnable_mats=False, normalization_mode="fission-q",
-                 fission_q=None, dilute_initial=1.0e3,
+                 diff_burnable_mats=False, diff_volume_method="divide equally",
+                 normalization_mode="fission-q", fission_q=None,
                  fission_yield_mode="constant", fission_yield_opts=None,
                  reaction_rate_mode="direct", reaction_rate_opts=None,
                  reduce_chain=False, reduce_chain_level=None):
@@ -240,8 +237,6 @@ class CoupledOperator(OpenMCOperator):
                 warn("Fission Q dictionary will not be used")
                 fission_q = None
         self.model = model
-        self.settings = model.settings
-        self.geometry = model.geometry
 
         # determine set of materials in the model
         if not model.materials:
@@ -263,45 +258,26 @@ class CoupledOperator(OpenMCOperator):
             'fission_yield_opts': fission_yield_opts
         }
 
+        # Records how many times the operator has been called
+        self._n_calls = 0
+
         super().__init__(
-            model.materials,
-            cross_sections,
-            chain_file,
-            prev_results,
-            diff_burnable_mats,
-            fission_q,
-            dilute_initial,
-            helper_kwargs,
-            reduce_chain,
-            reduce_chain_level)
+            materials=model.materials,
+            cross_sections=cross_sections,
+            chain_file=chain_file,
+            prev_results=prev_results,
+            diff_burnable_mats=diff_burnable_mats,
+            diff_volume_method=diff_volume_method,
+            fission_q=fission_q,
+            helper_kwargs=helper_kwargs,
+            reduce_chain=reduce_chain,
+            reduce_chain_level=reduce_chain_level)
 
     def _differentiate_burnable_mats(self):
         """Assign distribmats for each burnable material"""
 
-        # Count the number of instances for each cell and material
-        self.geometry.determine_paths(instances_only=True)
-
-        # Extract all burnable materials which have multiple instances
-        distribmats = set(
-            [mat for mat in self.materials
-             if mat.depletable and mat.num_instances > 1])
-
-        for mat in distribmats:
-            if mat.volume is None:
-                raise RuntimeError("Volume not specified for depletable "
-                                   "material with ID={}.".format(mat.id))
-            mat.volume /= mat.num_instances
-
-        if distribmats:
-            # Assign distribmats to cells
-            for cell in self.geometry.get_all_material_cells().values():
-                if cell.fill in distribmats:
-                    mat = cell.fill
-                    cell.fill = [mat.clone()
-                                 for i in range(cell.num_instances)]
-
-        self.materials = openmc.Materials(
-            self.model.geometry.get_all_materials().values()
+        self.model.differentiate_depletable_mats(
+            diff_volume_method=self.diff_volume_method
         )
 
     def _load_previous_results(self):
@@ -314,7 +290,7 @@ class CoupledOperator(OpenMCOperator):
         # on this process
         if comm.size != 1:
             prev_results = self.prev_res
-            self.prev_res = Results()
+            self.prev_res = Results(filename=None)
             mat_indexes = _distribute(range(len(self.burnable_mats)))
             for res_obj in prev_results:
                 new_res = res_obj.distribute(self.local_mats, mat_indexes)
@@ -375,7 +351,7 @@ class CoupledOperator(OpenMCOperator):
         if normalization_mode == "fission-q":
             self._normalization_helper = ChainFissionHelper()
         elif normalization_mode == "energy-deposition":
-            score = "heating" if self.settings.photon_transport else "heating-local"
+            score = "heating" if self.model.settings.photon_transport else "heating-local"
             self._normalization_helper = EnergyScoreHelper(score)
         else:
             self._normalization_helper = SourceRateHelper()
@@ -397,8 +373,12 @@ class CoupledOperator(OpenMCOperator):
 
         # Create XML files
         if comm.rank == 0:
-            self.geometry.export_to_xml()
-            self.settings.export_to_xml()
+            self.model.geometry.export_to_xml()
+            self.model.settings.export_to_xml()
+            if self.model.plots:
+                self.model.plots.export_to_xml()
+            if self.model.tallies:
+                self.model.tallies.export_to_xml()
             self._generate_materials_xml()
 
         # Initialize OpenMC library
@@ -424,7 +404,7 @@ class CoupledOperator(OpenMCOperator):
         for mat in self.materials:
             mat._nuclides.sort(key=lambda x: nuclides.index(x[0]))
 
-        self.materials.export_to_xml()
+        self.materials.export_to_xml(nuclides_to_ignore=self._decay_nucs)
 
     def __call__(self, vec, source_rate):
         """Runs a simulation.
@@ -449,6 +429,16 @@ class CoupledOperator(OpenMCOperator):
         # Reset results in OpenMC
         openmc.lib.reset()
 
+        # The timers are reset only if the operator has been called before.
+        # This is because we call this method after loading cross sections, and
+        # no transport has taken place yet. As a result, we only reset the
+        # timers after the first step so as to correctly report the time spent
+        # reading cross sections in the first depletion step, and from there
+        # correctly report all particle tracking rates in multistep depletion
+        # solvers.
+        if self._n_calls > 0:
+            openmc.lib.reset_timers()
+
         self._update_materials_and_nuclides(vec)
 
         # If the source rate is zero, return zero reaction rates without running
@@ -468,6 +458,8 @@ class CoupledOperator(OpenMCOperator):
         keff = ufloat(*openmc.lib.keff())
 
         op_result = OperatorResult(keff, rates)
+
+        self._n_calls += 1
 
         return copy.deepcopy(op_result)
 
@@ -525,15 +517,43 @@ class CoupledOperator(OpenMCOperator):
 
         """
         openmc.lib.statepoint_write(
-            "openmc_simulation_n{}.h5".format(step),
+            f"openmc_simulation_n{step}.h5",
             write_source=False)
-
-        openmc.lib.reset_timers()
 
     def finalize(self):
         """Finalize a depletion simulation and release resources."""
         if self.cleanup_when_done:
             openmc.lib.finalize()
+
+    # The next few class variables and methods should be removed after one
+    # release cycle or so. For now, we will provide compatibility to
+    # accessing CoupledOperator.settings and CoupledOperator.geometry. In
+    # the future these should stay on the Model class.
+
+    var_warning_msg = "The CoupledOperator.{0} variable should be \
+accessed through CoupledOperator.model.{0}."
+    geometry_warning_msg = var_warning_msg.format("geometry")
+    settings_warning_msg = var_warning_msg.format("settings")
+
+    @property
+    def settings(self):
+        warn(self.settings_warning_msg, FutureWarning)
+        return self.model.settings
+
+    @settings.setter
+    def settings(self, new_settings):
+        warn(self.settings_warning_msg, FutureWarning)
+        self.model.settings = new_settings
+
+    @property
+    def geometry(self):
+        warn(self.geometry_warning_msg, FutureWarning)
+        return self.model.geometry
+
+    @geometry.setter
+    def geometry(self, new_geometry):
+        warn(self.geometry_warning_msg, FutureWarning)
+        self.model.geometry = new_geometry
 
 
 # Retain deprecated name for the time being

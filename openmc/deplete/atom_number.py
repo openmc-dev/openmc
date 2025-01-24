@@ -2,8 +2,6 @@
 
 An ndarray to store atom densities with string, integer, or slice indexing.
 """
-from collections import OrderedDict
-
 import numpy as np
 
 from openmc import Material
@@ -47,8 +45,8 @@ class AtomNumber:
 
     """
     def __init__(self, local_mats, nuclides, volume, n_nuc_burn):
-        self.index_mat = OrderedDict((mat, i) for i, mat in enumerate(local_mats))
-        self.index_nuc = OrderedDict((nuc, i) for i, nuc in enumerate(nuclides))
+        self.index_mat = {mat: i for i, mat in enumerate(local_mats)}
+        self.index_nuc = {nuc: i for i, nuc in enumerate(nuclides)}
 
         self.volume = np.ones(len(local_mats))
         for mat, val in volume.items():

@@ -11,8 +11,6 @@ Convenience Functions
    :template: myfunction.rst
 
    openmc.model.borated_water
-   openmc.model.hexagonal_prism
-   openmc.model.rectangular_prism
    openmc.model.subdivide
    openmc.model.pin
 
@@ -24,14 +22,20 @@ Composite Surfaces
    :nosignatures:
    :template: myclass.rst
 
+   openmc.model.ConicalFrustum
+   openmc.model.CruciformPrism
    openmc.model.CylinderSector
+   openmc.model.HexagonalPrism
    openmc.model.IsogonalOctagon
+   openmc.model.OrthogonalBox
+   openmc.model.Polygon
    openmc.model.RectangularParallelepiped
+   openmc.model.RectangularPrism
    openmc.model.RightCircularCylinder
+   openmc.model.Vessel
    openmc.model.XConeOneSided
    openmc.model.YConeOneSided
    openmc.model.ZConeOneSided
-   openmc.model.Polygon
 
 TRISO Fuel Modeling
 -------------------

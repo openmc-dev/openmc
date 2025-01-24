@@ -1,6 +1,7 @@
 import math
 
 import numpy as np
+import pytest
 from uncertainties import unumpy
 
 import openmc
@@ -21,15 +22,17 @@ def test_spherical_mesh_estimators(run_in_tmpdir):
     model.settings.inactive = 10
     model.settings.batches = 20
 
-    sph_mesh = openmc.SphericalMesh()
-    sph_mesh.r_grid = np.linspace(0.0, 5.0**3, 20)**(1/3)
+    sph_mesh = openmc.SphericalMesh(
+        r_grid=np.linspace(0.0, 5.0**3, 20)**(1/3)
+    )
     tally1 = openmc.Tally()
     tally1.filters = [openmc.MeshFilter(sph_mesh)]
     tally1.scores = ['flux']
     tally1.estimator = 'collision'
 
-    sph_mesh = openmc.SphericalMesh()
-    sph_mesh.r_grid = np.linspace(0.0, 5.0**3, 20)**(1/3)
+    sph_mesh = openmc.SphericalMesh(
+        r_grid=np.linspace(0.0, 5.0**3, 20)**(1/3)
+    )
     tally2 = openmc.Tally()
     tally2.filters = [openmc.MeshFilter(sph_mesh)]
     tally2.scores = ['flux']
@@ -74,17 +77,19 @@ def test_cylindrical_mesh_estimators(run_in_tmpdir):
     model.settings.inactive = 10
     model.settings.batches = 20
 
-    cyl_mesh = openmc.CylindricalMesh()
-    cyl_mesh.r_grid = np.linspace(0.0, 5.0**3, 20)**(1/3)
-    cyl_mesh.z_grid = [-5., 5.]
+    cyl_mesh = openmc.CylindricalMesh(
+        r_grid=np.linspace(0.0, 5.0**3, 20)**(1/3),
+        z_grid=[-5., 5.]
+    )
     tally1 = openmc.Tally()
     tally1.filters = [openmc.MeshFilter(cyl_mesh)]
     tally1.scores = ['flux']
     tally1.estimator = 'collision'
 
-    cyl_mesh = openmc.CylindricalMesh()
-    cyl_mesh.r_grid = np.linspace(0.0, 5.0**3, 20)**(1/3)
-    cyl_mesh.z_grid = [-5., 5.]
+    cyl_mesh = openmc.CylindricalMesh(
+        r_grid=np.linspace(0.0, 5.0**3, 20)**(1/3),
+        z_grid=[-5., 5.]
+    )
     tally2 = openmc.Tally()
     tally2.filters = [openmc.MeshFilter(cyl_mesh)]
     tally2.scores = ['flux']
@@ -112,6 +117,108 @@ def test_cylindrical_mesh_estimators(run_in_tmpdir):
     std_dev = unumpy.std_devs(delta)
     assert np.all(diff < 3*std_dev)
 
+
+@pytest.mark.parametrize("scale", [0.1, 1.0, 1e2, 1e4, 1e5])
+def test_cylindrical_mesh_coincident(scale, run_in_tmpdir):
+    """Test for cylindrical mesh boundary being coincident with a cell boundary"""
+
+    fuel = openmc.Material()
+    fuel.add_nuclide('U235', 1.)
+    fuel.set_density('g/cm3', 4.5)
+
+    zcyl = openmc.ZCylinder(r=1.25*scale)
+    box = openmc.model.RectangularPrism(4*scale, 4*scale, boundary_type='reflective')
+    cell1 = openmc.Cell(fill=fuel, region=-zcyl)
+    cell2 = openmc.Cell(fill=None, region=+zcyl & -box)
+    model = openmc.Model()
+    model.geometry = openmc.Geometry([cell1, cell2])
+
+    model.settings.particles = 100
+    model.settings.batches = 10
+    model.settings.inactive = 0
+
+    cyl_mesh = openmc.CylindricalMesh(
+        r_grid=[0., 1.25*scale],
+        phi_grid=[0., 2*math.pi],
+        z_grid=[-1e10, 1e10]
+    )
+    cyl_mesh_filter = openmc.MeshFilter(cyl_mesh)
+    cell_filter = openmc.CellFilter([cell1])
+
+    tally1 = openmc.Tally()
+    tally1.filters = [cyl_mesh_filter]
+    tally1.scores = ['flux']
+    tally2 = openmc.Tally()
+    tally2.filters = [cell_filter]
+    tally2.scores = ['flux']
+    model.tallies = openmc.Tallies([tally1, tally2])
+
+    # Run OpenMC
+    sp_filename = model.run()
+
+    # Get flux for each of the two tallies
+    with openmc.StatePoint(sp_filename) as sp:
+        t1 = sp.tallies[tally1.id]
+        t2 = sp.tallies[tally2.id]
+        mean1 = t1.mean.ravel()[0]
+        mean2 = t2.mean.ravel()[0]
+
+    # The two tallies should be exactly the same
+    assert mean1 == pytest.approx(mean2)
+
+
+@pytest.mark.parametrize("scale", [0.1, 1.0, 1e2, 1e4, 1e5])
+def test_spherical_mesh_coincident(scale, run_in_tmpdir):
+    """Test for spherical mesh boundary being coincident with a cell boundary"""
+
+    fuel = openmc.Material()
+    fuel.add_nuclide('U235', 1.)
+    fuel.set_density('g/cm3', 4.5)
+
+    sph = openmc.Sphere(r=1.25*scale)
+    rcc = openmc.model.RectangularParallelepiped(
+        -2*scale, 2*scale, -2*scale, 2*scale, -2*scale, 2*scale,
+        boundary_type='reflective')
+    cell1 = openmc.Cell(fill=fuel, region=-sph)
+    cell2 = openmc.Cell(fill=None, region=+sph & -rcc)
+    model = openmc.Model()
+    model.geometry = openmc.Geometry([cell1, cell2])
+
+    model.settings.particles = 100
+    model.settings.batches = 10
+    model.settings.inactive = 0
+
+    sph_mesh = openmc.SphericalMesh(
+        r_grid=[0., 1.25*scale],
+        phi_grid=[0., 2*math.pi],
+        theta_grid=[0., math.pi],
+    )
+
+    sph_mesh_filter = openmc.MeshFilter(sph_mesh)
+    cell_filter = openmc.CellFilter([cell1])
+
+    tally1 = openmc.Tally()
+    tally1.filters = [sph_mesh_filter]
+    tally1.scores = ['flux']
+    tally2 = openmc.Tally()
+    tally2.filters = [cell_filter]
+    tally2.scores = ['flux']
+    model.tallies = openmc.Tallies([tally1, tally2])
+
+    # Run OpenMC
+    sp_filename = model.run()
+
+    # Get flux for each of the two tallies
+    with openmc.StatePoint(sp_filename) as sp:
+        t1 = sp.tallies[tally1.id]
+        t2 = sp.tallies[tally2.id]
+        mean1 = t1.mean.ravel()[0]
+        mean2 = t2.mean.ravel()[0]
+
+    # The two tallies should be exactly the same
+    assert mean1 == pytest.approx(mean2)
+
+
 def test_get_reshaped_data(run_in_tmpdir):
     """Test that expanding MeshFilter dimensions works as expected"""
 
@@ -127,10 +234,11 @@ def test_get_reshaped_data(run_in_tmpdir):
     model.settings.inactive = 10
     model.settings.batches = 20
 
-    sph_mesh = openmc.SphericalMesh()
-    sph_mesh.r_grid = np.linspace(0.0, 5.0**3, 20)**(1/3)
-    sph_mesh.theta_grid = np.linspace(0, math.pi, 4)
-    sph_mesh.phi_grid = np.linspace(0, 2*math.pi, 3)
+    sph_mesh = openmc.SphericalMesh(
+        r_grid=np.linspace(0.0, 5.0**3, 20)**(1/3),
+        theta_grid=np.linspace(0, math.pi, 4),
+        phi_grid=np.linspace(0, 2*math.pi, 3)
+    )
     tally1 = openmc.Tally()
     efilter = openmc.EnergyFilter([0, 1e5, 1e8])
     meshfilter = openmc.MeshFilter(sph_mesh)

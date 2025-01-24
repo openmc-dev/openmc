@@ -255,17 +255,37 @@ class Tabulated1D(Function1D):
     def x(self):
         return self._x
 
+    @x.setter
+    def x(self, x):
+        cv.check_type('x values', x, Iterable, Real)
+        self._x = x
+
     @property
     def y(self):
         return self._y
+
+    @y.setter
+    def y(self, y):
+        cv.check_type('y values', y, Iterable, Real)
+        self._y = y
 
     @property
     def breakpoints(self):
         return self._breakpoints
 
+    @breakpoints.setter
+    def breakpoints(self, breakpoints):
+        cv.check_type('breakpoints', breakpoints, Iterable, Integral)
+        self._breakpoints = breakpoints
+
     @property
     def interpolation(self):
         return self._interpolation
+
+    @interpolation.setter
+    def interpolation(self, interpolation):
+        cv.check_type('interpolation', interpolation, Iterable, Integral)
+        self._interpolation = interpolation
 
     @property
     def n_pairs(self):
@@ -274,26 +294,6 @@ class Tabulated1D(Function1D):
     @property
     def n_regions(self):
         return len(self.breakpoints)
-
-    @x.setter
-    def x(self, x):
-        cv.check_type('x values', x, Iterable, Real)
-        self._x = x
-
-    @y.setter
-    def y(self, y):
-        cv.check_type('y values', y, Iterable, Real)
-        self._y = y
-
-    @breakpoints.setter
-    def breakpoints(self, breakpoints):
-        cv.check_type('breakpoints', breakpoints, Iterable, Integral)
-        self._breakpoints = breakpoints
-
-    @interpolation.setter
-    def interpolation(self, interpolation):
-        cv.check_type('interpolation', interpolation, Iterable, Integral)
-        self._interpolation = interpolation
 
     def integral(self):
         """Integral of the tabulated function over its tabulated range.
@@ -364,7 +364,7 @@ class Tabulated1D(Function1D):
         """
         dataset = group.create_dataset(name, data=np.vstack(
             [self.x, self.y]))
-        dataset.attrs['type'] = np.string_(type(self).__name__)
+        dataset.attrs['type'] = np.bytes_(type(self).__name__)
         dataset.attrs['breakpoints'] = self.breakpoints
         dataset.attrs['interpolation'] = self.interpolation
 
@@ -460,7 +460,7 @@ class Polynomial(np.polynomial.Polynomial, Function1D):
 
         """
         dataset = group.create_dataset(name, data=self.coef)
-        dataset.attrs['type'] = np.string_(type(self).__name__)
+        dataset.attrs['type'] = np.bytes_(type(self).__name__)
 
     @classmethod
     def from_hdf5(cls, dataset):
@@ -592,7 +592,7 @@ class Sum(Function1D):
 
         """
         sum_group = group.create_group(name)
-        sum_group.attrs['type'] = np.string_(type(self).__name__)
+        sum_group.attrs['type'] = np.bytes_(type(self).__name__)
         sum_group.attrs['n'] = len(self.functions)
         for i, f in enumerate(self.functions):
             f.to_hdf5(sum_group, f'func_{i+1}')
@@ -664,14 +664,14 @@ class Regions1D(EqualityMixin):
     def functions(self):
         return self._functions
 
-    @property
-    def breakpoints(self):
-        return self._breakpoints
-
     @functions.setter
     def functions(self, functions):
         cv.check_type('functions', functions, Iterable, Callable)
         self._functions = functions
+
+    @property
+    def breakpoints(self):
+        return self._breakpoints
 
     @breakpoints.setter
     def breakpoints(self, breakpoints):
@@ -708,49 +708,27 @@ class ResonancesWithBackground(EqualityMixin):
         self.background = background
         self.mt = mt
 
-    def __call__(self, x):
-        # Get background cross section
-        xs = self.background(x)
-
-        for r in self.resonances:
-            if not isinstance(r, openmc.data.resonance._RESOLVED):
-                continue
-
-            if isinstance(x, Iterable):
-                # Determine which energies are within resolved resonance range
-                within = (r.energy_min <= x) & (x <= r.energy_max)
-
-                # Get resonance cross sections and add to background
-                resonant_xs = r.reconstruct(x[within])
-                xs[within] += resonant_xs[self.mt]
-            else:
-                if r.energy_min <= x <= r.energy_max:
-                    resonant_xs = r.reconstruct(x)
-                    xs += resonant_xs[self.mt]
-
-        return xs
-
     @property
     def background(self):
         return self._background
-
-    @property
-    def mt(self):
-        return self._mt
-
-    @property
-    def resonances(self):
-        return self._resonances
 
     @background.setter
     def background(self, background):
         cv.check_type('background cross section', background, Callable)
         self._background = background
 
+    @property
+    def mt(self):
+        return self._mt
+
     @mt.setter
     def mt(self, mt):
         cv.check_type('MT value', mt, Integral)
         self._mt = mt
+
+    @property
+    def resonances(self):
+        return self._resonances
 
     @resonances.setter
     def resonances(self, resonances):

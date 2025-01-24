@@ -4,15 +4,16 @@ Contains capabilities for generating and saving results of a single depletion
 timestep.
 """
 
-from collections import OrderedDict
 import copy
 import warnings
+from pathlib import Path
 
 import h5py
 import numpy as np
 
 import openmc
 from openmc.mpi import comm, MPI
+from openmc.checkvalue import PathLike
 from .reaction_rates import ReactionRates
 
 VERSION_RESULTS = (1, 1)
@@ -41,13 +42,13 @@ class StepResult:
         Number of nuclides.
     rates : list of ReactionRates
         The reaction rates for each substep.
-    volume : OrderedDict of str to float
+    volume : dict of str to float
         Dictionary mapping mat id to volume.
-    index_mat : OrderedDict of str to int
+    index_mat : dict of str to int
         A dictionary mapping mat ID as string to index.
-    index_nuc : OrderedDict of str to int
+    index_nuc : dict of str to int
         A dictionary mapping nuclide name as string to index.
-    mat_to_hdf5_ind : OrderedDict of str to int
+    mat_to_hdf5_ind : dict of str to int
         A dictionary mapping mat ID as string to global index.
     n_hdf5_mats : int
         Number of materials in entire geometry.
@@ -213,11 +214,23 @@ class StepResult:
         -------
         openmc.Material
             Equivalent material
+
+        Raises
+        ------
+        KeyError
+            If specified material ID is not found in the StepResult
+
         """
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', openmc.IDWarning)
             material = openmc.Material(material_id=int(mat_id))
-        vol = self.volume[mat_id]
+        try:
+            vol = self.volume[mat_id]
+        except KeyError as e:
+            raise KeyError(
+                f'mat_id {mat_id} not found in StepResult. Available mat_id '
+                f'values are {list(self.volume.keys())}'
+            ) from e
         for nuc, _ in sorted(self.index_nuc.items(), key=lambda x: x[1]):
             atoms = self[0, mat_id, nuc]
             if atoms < 0.0:
@@ -278,7 +291,7 @@ class StepResult:
         # Store concentration mat and nuclide dictionaries (along with volumes)
 
         handle.attrs['version'] = np.array(VERSION_RESULTS)
-        handle.attrs['filetype'] = np.string_('depletion results')
+        handle.attrs['filetype'] = np.bytes_('depletion results')
 
         mat_list = sorted(self.mat_to_hdf5_ind, key=int)
         nuc_list = sorted(self.index_nuc)
@@ -460,11 +473,11 @@ class StepResult:
             results.proc_time = np.array([np.nan])
 
         # Reconstruct dictionaries
-        results.volume = OrderedDict()
-        results.index_mat = OrderedDict()
-        results.index_nuc = OrderedDict()
-        rxn_nuc_to_ind = OrderedDict()
-        rxn_to_ind = OrderedDict()
+        results.volume = {}
+        results.index_mat = {}
+        results.index_nuc = {}
+        rxn_nuc_to_ind = {}
+        rxn_to_ind = {}
 
         for mat, mat_handle in handle["/materials"].items():
             vol = mat_handle.attrs["volume"]
@@ -495,7 +508,8 @@ class StepResult:
         return results
 
     @staticmethod
-    def save(op, x, op_results, t, source_rate, step_ind, proc_time=None):
+    def save(op, x, op_results, t, source_rate, step_ind, proc_time=None,
+             path: PathLike = "depletion_results.h5"):
         """Creates and writes depletion results to disk
 
         Parameters
@@ -517,6 +531,10 @@ class StepResult:
             be process-dependent and will be reduced across MPI
             processes.
 
+        path : PathLike
+            Path to file to write. Defaults to 'depletion_results.h5'.
+
+            .. versionadded:: 0.14.0
         """
         # Get indexing terms
         vol_dict, nuc_list, burn_list, full_burn_list = op.get_results_info()
@@ -547,7 +565,9 @@ class StepResult:
         if results.proc_time is not None:
             results.proc_time = comm.reduce(proc_time, op=MPI.SUM)
 
-        results.export_to_hdf5("depletion_results.h5", step_ind)
+        if not Path(path).is_file():
+            Path(path).parent.mkdir(parents=True, exist_ok=True)
+        results.export_to_hdf5(path, step_ind)
 
     def transfer_volumes(self, model):
         """Transfers volumes from depletion results to geometry

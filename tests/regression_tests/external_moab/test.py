@@ -32,7 +32,7 @@ def cpp_driver(request):
     openmc_dir = Path(str(request.config.rootdir)) / 'build'
     with open('CMakeLists.txt', 'w') as f:
         f.write(textwrap.dedent("""
-            cmake_minimum_required(VERSION 3.3 FATAL_ERROR)
+            cmake_minimum_required(VERSION 3.10 FATAL_ERROR)
             project(openmc_cpp_driver CXX)
             add_executable(main main.cpp)
             find_package(OpenMC REQUIRED HINTS {})
@@ -162,8 +162,6 @@ def test_external_mesh(cpp_driver):
     water_mat.set_density("atom/b-cm", 0.07416)
     materials.append(water_mat)
 
-    materials.export_to_xml()
-
     # Geometry
     fuel_min_x = openmc.XPlane(-5.0, name="minimum x")
     fuel_max_x = openmc.XPlane(5.0, name="maximum x")
@@ -260,7 +258,7 @@ def test_external_mesh(cpp_driver):
     space = openmc.stats.Point()
     angle = openmc.stats.Monodirectional((-1.0, 0.0, 0.0))
     energy = openmc.stats.Discrete(x=[15.e+06], p=[1.0])
-    source = openmc.Source(space=space, energy=energy, angle=angle)
+    source = openmc.IndependentSource(space=space, energy=energy, angle=angle)
     settings.source = source
 
     model = openmc.model.Model(geometry=geometry,

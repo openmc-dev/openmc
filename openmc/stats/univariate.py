@@ -1,26 +1,27 @@
+from __future__ import annotations
+import math
 from abc import ABC, abstractmethod
 from collections import defaultdict
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from copy import deepcopy
-import math
 from numbers import Real
 from warnings import warn
-from xml.etree import ElementTree as ET
 
+import lxml.etree as ET
 import numpy as np
+from scipy.integrate import trapezoid
 
 import openmc.checkvalue as cv
 from .._xml import get_text
 from ..mixin import EqualityMixin
 
-
-_INTERPOLATION_SCHEMES = [
+_INTERPOLATION_SCHEMES = {
     'histogram',
     'linear-linear',
     'linear-log',
     'log-linear',
     'log-log'
-]
+}
 
 
 class Univariate(EqualityMixin, ABC):
@@ -66,7 +67,7 @@ class Univariate(EqualityMixin, ABC):
             return Mixture.from_xml_element(elem)
 
     @abstractmethod
-    def sample(n_samples=1, seed=None):
+    def sample(n_samples: int = 1, seed: int | None = None):
         """Sample the univariate distribution
 
         Parameters
@@ -94,6 +95,45 @@ class Univariate(EqualityMixin, ABC):
             Integral of distribution
         """
         return 1.0
+
+
+def _intensity_clip(intensity: Sequence[float], tolerance: float = 1e-6) -> np.ndarray:
+    """Clip low-importance points from an array of intensities.
+
+    Given an array of intensities, this function returns an array of indices for
+    points that contribute non-negligibly to the total sum of intensities.
+
+    Parameters
+    ----------
+    intensity : sequence of float
+        Intensities in arbitrary units.
+    tolerance : float
+        Maximum fraction of intensities that will be discarded.
+
+    Returns
+    -------
+    Array of indices
+
+    """
+    # Get indices of intensities from largest to smallest
+    index_sort = np.argsort(intensity)[::-1]
+
+    # Get intensities from largest to smallest
+    sorted_intensity = np.asarray(intensity)[index_sort]
+
+    # Determine cumulative sum of probabilities
+    cumsum = np.cumsum(sorted_intensity)
+    cumsum /= cumsum[-1]
+
+    # Find index that satisfies cutoff
+    index_cutoff = np.searchsorted(cumsum, 1.0 - tolerance)
+
+    # Now get indices up to cutoff
+    new_indices = index_sort[:index_cutoff + 1]
+
+    # Put back in the order of the original array and return
+    new_indices.sort()
+    return new_indices
 
 
 class Discrete(Univariate):
@@ -130,16 +170,16 @@ class Discrete(Univariate):
     def x(self):
         return self._x
 
-    @property
-    def p(self):
-        return self._p
-
     @x.setter
     def x(self, x):
         if isinstance(x, Real):
             x = [x]
         cv.check_type('discrete values', x, Iterable, Real)
         self._x = np.array(x, dtype=float)
+
+    @property
+    def p(self):
+        return self._p
 
     @p.setter
     def p(self, p):
@@ -154,9 +194,9 @@ class Discrete(Univariate):
         return np.insert(np.cumsum(self.p), 0, 0.0)
 
     def sample(self, n_samples=1, seed=None):
-        np.random.seed(seed)
+        rng = np.random.RandomState(seed)
         p = self.p / self.p.sum()
-        return np.random.choice(self.x, n_samples, p=p)
+        return rng.choice(self.x, n_samples, p=p)
 
     def normalize(self):
         """Normalize the probabilities stored on the distribution"""
@@ -173,7 +213,7 @@ class Discrete(Univariate):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing discrete distribution data
 
         """
@@ -186,12 +226,12 @@ class Discrete(Univariate):
         return element
 
     @classmethod
-    def from_xml_element(cls, elem):
+    def from_xml_element(cls, elem: ET.Element):
         """Generate discrete distribution from an XML element
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -206,7 +246,11 @@ class Discrete(Univariate):
         return cls(x, p)
 
     @classmethod
-    def merge(cls, dists, probs):
+    def merge(
+        cls,
+        dists: Sequence[Discrete],
+        probs: Sequence[int]
+    ):
         """Merge multiple discrete distributions into a single distribution
 
         .. versionadded:: 0.13.1
@@ -252,6 +296,70 @@ class Discrete(Univariate):
         """
         return np.sum(self.p)
 
+    def clip(self, tolerance: float = 1e-6, inplace: bool = False) -> Discrete:
+        r"""Remove low-importance points from discrete distribution.
+
+        Given a probability mass function :math:`p(x)` with :math:`\{x_1, x_2,
+        x_3, \dots\}` the possible values of the random variable with
+        corresponding probabilities :math:`\{p_1, p_2, p_3, \dots\}`, this
+        function will remove any low-importance points such that :math:`\sum_i
+        x_i p_i` is preserved to within some threshold.
+
+        .. versionadded:: 0.14.0
+
+        Parameters
+        ----------
+        tolerance : float
+            Maximum fraction of :math:`\sum_i x_i p_i` that will be discarded.
+        inplace : bool
+            Whether to modify the current object in-place or return a new one.
+
+        Returns
+        -------
+        Discrete distribution with low-importance points removed
+
+        """
+        cv.check_less_than("tolerance", tolerance, 1.0, equality=True)
+        cv.check_greater_than("tolerance", tolerance, 0.0, equality=True)
+
+        # Compute intensities
+        intensity = self.p * self.x
+
+        # Get indices for intensities above threshold
+        indices = _intensity_clip(intensity, tolerance=tolerance)
+
+        # Create new discrete distribution
+        if inplace:
+            self.x = self.x[indices]
+            self.p = self.p[indices]
+            return self
+        else:
+            new_x = self.x[indices]
+            new_p = self.p[indices]
+            return type(self)(new_x, new_p)
+
+
+def delta_function(value: float, intensity: float = 1.0) -> Discrete:
+    """Return a discrete distribution with a single point.
+
+    .. versionadded:: 0.15.1
+
+    Parameters
+    ----------
+    value : float
+        Value of the random variable.
+    intensity : float, optional
+        When used for an energy distribution, this can be used to assign an
+        intensity.
+
+    Returns
+    -------
+    Discrete distribution with a single point
+
+    """
+    return Discrete([value], [intensity])
+
+
 class Uniform(Univariate):
     """Distribution with constant probability over a finite interval [a,b]
 
@@ -271,7 +379,7 @@ class Uniform(Univariate):
 
     """
 
-    def __init__(self, a=0.0, b=1.0):
+    def __init__(self, a: float = 0.0, b: float = 1.0):
         self.a = a
         self.b = b
 
@@ -282,14 +390,14 @@ class Uniform(Univariate):
     def a(self):
         return self._a
 
-    @property
-    def b(self):
-        return self._b
-
     @a.setter
     def a(self, a):
         cv.check_type('Uniform a', a, Real)
         self._a = a
+
+    @property
+    def b(self):
+        return self._b
 
     @b.setter
     def b(self, b):
@@ -303,10 +411,10 @@ class Uniform(Univariate):
         return t
 
     def sample(self, n_samples=1, seed=None):
-        np.random.seed(seed)
-        return np.random.uniform(self.a, self.b, n_samples)
+        rng = np.random.RandomState(seed)
+        return rng.uniform(self.a, self.b, n_samples)
 
-    def to_xml_element(self, element_name):
+    def to_xml_element(self, element_name: str):
         """Return XML representation of the uniform distribution
 
         Parameters
@@ -316,22 +424,22 @@ class Uniform(Univariate):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing uniform distribution data
 
         """
         element = ET.Element(element_name)
         element.set("type", "uniform")
-        element.set("parameters", '{} {}'.format(self.a, self.b))
+        element.set("parameters", f'{self.a} {self.b}')
         return element
 
     @classmethod
-    def from_xml_element(cls, elem):
+    def from_xml_element(cls, elem: ET.Element):
         """Generate uniform distribution from an XML element
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -372,7 +480,7 @@ class PowerLaw(Univariate):
 
     """
 
-    def __init__(self, a=0.0, b=1.0, n=0):
+    def __init__(self, a: float = 0.0, b: float = 1.0, n: float = 0.):
         self.a = a
         self.b = b
         self.n = n
@@ -384,23 +492,23 @@ class PowerLaw(Univariate):
     def a(self):
         return self._a
 
-    @property
-    def b(self):
-        return self._b
-
-    @property
-    def n(self):
-        return self._n
-
     @a.setter
     def a(self, a):
         cv.check_type('interval lower bound', a, Real)
         self._a = a
 
+    @property
+    def b(self):
+        return self._b
+
     @b.setter
     def b(self, b):
         cv.check_type('interval upper bound', b, Real)
         self._b = b
+
+    @property
+    def n(self):
+        return self._n
 
     @n.setter
     def n(self, n):
@@ -408,14 +516,14 @@ class PowerLaw(Univariate):
         self._n = n
 
     def sample(self, n_samples=1, seed=None):
-        np.random.seed(seed)
-        xi = np.random.rand(n_samples)
+        rng = np.random.RandomState(seed)
+        xi = rng.random(n_samples)
         pwr = self.n + 1
         offset = self.a**pwr
         span = self.b**pwr - offset
         return np.power(offset + xi * span, 1/pwr)
 
-    def to_xml_element(self, element_name):
+    def to_xml_element(self, element_name: str):
         """Return XML representation of the power law distribution
 
         Parameters
@@ -425,7 +533,7 @@ class PowerLaw(Univariate):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing distribution data
 
         """
@@ -435,12 +543,12 @@ class PowerLaw(Univariate):
         return element
 
     @classmethod
-    def from_xml_element(cls, elem):
+    def from_xml_element(cls, elem: ET.Element):
         """Generate power law distribution from an XML element
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -489,16 +597,18 @@ class Maxwell(Univariate):
         self._theta = theta
 
     def sample(self, n_samples=1, seed=None):
-        np.random.seed(seed)
-        return self.sample_maxwell(self.theta, n_samples)
+        rng = np.random.RandomState(seed)
+        return self.sample_maxwell(self.theta, n_samples, rng=rng)
 
     @staticmethod
-    def sample_maxwell(t, n_samples):
-        r1, r2, r3 = np.random.rand(3, n_samples)
+    def sample_maxwell(t, n_samples: int, rng=None):
+        if rng is None:
+            rng = np.random.default_rng()
+        r1, r2, r3 = rng.random((3, n_samples))
         c = np.cos(0.5 * np.pi * r3)
         return -t * (np.log(r1) + np.log(r2) * c * c)
 
-    def to_xml_element(self, element_name):
+    def to_xml_element(self, element_name: str):
         """Return XML representation of the Maxwellian distribution
 
         Parameters
@@ -508,7 +618,7 @@ class Maxwell(Univariate):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing Maxwellian distribution data
 
         """
@@ -518,12 +628,12 @@ class Maxwell(Univariate):
         return element
 
     @classmethod
-    def from_xml_element(cls, elem):
+    def from_xml_element(cls, elem: ET.Element):
         """Generate Maxwellian distribution from an XML element
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -570,15 +680,15 @@ class Watt(Univariate):
     def a(self):
         return self._a
 
-    @property
-    def b(self):
-        return self._b
-
     @a.setter
     def a(self, a):
         cv.check_type('Watt a', a, Real)
         cv.check_greater_than('Watt a', a, 0.0)
         self._a = a
+
+    @property
+    def b(self):
+        return self._b
 
     @b.setter
     def b(self, b):
@@ -587,13 +697,13 @@ class Watt(Univariate):
         self._b = b
 
     def sample(self, n_samples=1, seed=None):
-        np.random.seed(seed)
-        w = Maxwell.sample_maxwell(self.a, n_samples)
-        u = np.random.uniform(-1., 1., n_samples)
+        rng = np.random.RandomState(seed)
+        w = Maxwell.sample_maxwell(self.a, n_samples, rng=rng)
+        u = rng.uniform(-1., 1., n_samples)
         aab = self.a * self.a * self.b
         return w + 0.25*aab + u*np.sqrt(aab*w)
 
-    def to_xml_element(self, element_name):
+    def to_xml_element(self, element_name: str):
         """Return XML representation of the Watt distribution
 
         Parameters
@@ -603,22 +713,22 @@ class Watt(Univariate):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing Watt distribution data
 
         """
         element = ET.Element(element_name)
         element.set("type", "watt")
-        element.set("parameters", '{} {}'.format(self.a, self.b))
+        element.set("parameters", f'{self.a} {self.b}')
         return element
 
     @classmethod
-    def from_xml_element(cls, elem):
+    def from_xml_element(cls, elem: ET.Element):
         """Generate Watt distribution from an XML element
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -664,14 +774,14 @@ class Normal(Univariate):
     def mean_value(self):
         return self._mean_value
 
-    @property
-    def std_dev(self):
-        return self._std_dev
-
     @mean_value.setter
     def mean_value(self, mean_value):
         cv.check_type('Normal mean_value', mean_value, Real)
         self._mean_value = mean_value
+
+    @property
+    def std_dev(self):
+        return self._std_dev
 
     @std_dev.setter
     def std_dev(self, std_dev):
@@ -680,10 +790,10 @@ class Normal(Univariate):
         self._std_dev = std_dev
 
     def sample(self, n_samples=1, seed=None):
-        np.random.seed(seed)
-        return np.random.normal(self.mean_value, self.std_dev, n_samples)
+        rng = np.random.RandomState(seed)
+        return rng.normal(self.mean_value, self.std_dev, n_samples)
 
-    def to_xml_element(self, element_name):
+    def to_xml_element(self, element_name: str):
         """Return XML representation of the Normal distribution
 
         Parameters
@@ -693,22 +803,22 @@ class Normal(Univariate):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing Watt distribution data
 
         """
         element = ET.Element(element_name)
         element.set("type", "normal")
-        element.set("parameters", '{} {}'.format(self.mean_value, self.std_dev))
+        element.set("parameters", f'{self.mean_value} {self.std_dev}')
         return element
 
     @classmethod
-    def from_xml_element(cls, elem):
+    def from_xml_element(cls, elem: ET.Element):
         """Generate Normal distribution from an XML element
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -721,7 +831,7 @@ class Normal(Univariate):
         return cls(*map(float, params))
 
 
-def muir(e0, m_rat, kt):
+def muir(e0: float, m_rat: float, kt: float):
     """Generate a Muir energy spectrum
 
     The Muir energy spectrum is a normal distribution, but for convenience
@@ -747,7 +857,7 @@ def muir(e0, m_rat, kt):
 
     """
     # https://permalink.lanl.gov/object/tr?what=info:lanl-repo/lareport/LA-05411-MS
-    std_dev = math.sqrt(4 * e0 * kt / m_rat)
+    std_dev = math.sqrt(2 * e0 * kt / m_rat)
     return Normal(e0, std_dev)
 
 
@@ -774,10 +884,12 @@ class Tabular(Univariate):
     x : Iterable of float
         Tabulated values of the random variable
     p : Iterable of float
-        Tabulated probabilities
+        Tabulated probabilities. For histogram interpolation, if the length of
+        `p` is the same as `x`, the last value is ignored. Probabilities `p` are
+        given per unit of `x`.
     interpolation : {'histogram', 'linear-linear', 'linear-log', 'log-linear', 'log-log'}, optional
-        Indicate whether the density function is constant between tabulated
-        points or linearly-interpolated. Defaults to 'linear-linear'.
+        Indicates how the density function is interpolated between tabulated
+        points. Defaults to 'linear-linear'.
     ignore_negative : bool
         Ignore negative probabilities
 
@@ -787,21 +899,51 @@ class Tabular(Univariate):
         Tabulated values of the random variable
     p : numpy.ndarray
         Tabulated probabilities
-    interpolation : {'histogram', 'linear-linear', 'linear-log', 'log-linear', 'log-log'}, optional
-        Indicate whether the density function is constant between tabulated
-        points or linearly-interpolated.
+    interpolation : {'histogram', 'linear-linear', 'linear-log', 'log-linear', 'log-log'}
+        Indicates how the density function is interpolated between tabulated
+        points. Defaults to 'linear-linear'.
+
+    Notes
+    -----
+    The probabilities `p` are interpreted per unit of the corresponding
+    independent variable `x`. This follows the definition of a probability
+    density function (PDF) in probability theory, where the PDF represents the
+    relative likelihood of the random variable taking on a particular value per
+    unit of the variable. For example, if `x` represents energy in eV, then `p`
+    should represent probabilities per eV.
 
     """
 
-    def __init__(self, x, p, interpolation='linear-linear',
-                 ignore_negative=False):
-        self._ignore_negative = ignore_negative
-        self.x = x
-        self.p = p
+    def __init__(
+            self,
+            x: Sequence[float],
+            p: Sequence[float],
+            interpolation: str = 'linear-linear',
+            ignore_negative: bool = False
+        ):
         self.interpolation = interpolation
 
+        cv.check_type('tabulated values', x, Iterable, Real)
+        cv.check_type('tabulated probabilities', p, Iterable, Real)
+
+        x = np.array(x, dtype=float)
+        p = np.array(p, dtype=float)
+
+        if p.size > x.size:
+            raise ValueError('Number of probabilities exceeds number of table values.')
+        if self.interpolation != 'histogram' and x.size != p.size:
+            raise ValueError(f'Tabulated values ({x.size}) and probabilities '
+                             f'({p.size}) should have the same length')
+
+        if not ignore_negative:
+            for pk in p:
+                cv.check_greater_than('tabulated probability', pk, 0.0, True)
+
+        self._x = x
+        self._p = p
+
     def __len__(self):
-        return len(self.x)
+        return self.p.size
 
     @property
     def x(self):
@@ -815,46 +957,30 @@ class Tabular(Univariate):
     def interpolation(self):
         return self._interpolation
 
-    @x.setter
-    def x(self, x):
-        cv.check_type('tabulated values', x, Iterable, Real)
-        self._x = np.array(x, dtype=float)
-
-    @p.setter
-    def p(self, p):
-        cv.check_type('tabulated probabilities', p, Iterable, Real)
-        if not self._ignore_negative:
-            for pk in p:
-                cv.check_greater_than('tabulated probability', pk, 0.0, True)
-        self._p = np.array(p, dtype=float)
-
     @interpolation.setter
     def interpolation(self, interpolation):
         cv.check_value('interpolation', interpolation, _INTERPOLATION_SCHEMES)
         self._interpolation = interpolation
 
     def cdf(self):
-        if not self.interpolation in ('histogram', 'linear-linear'):
-            raise NotImplementedError('Can only generate CDFs for tabular '
-                                      'distributions using histogram or '
-                                      'linear-linear interpolation')
         c = np.zeros_like(self.x)
         x = self.x
         p = self.p
 
         if self.interpolation == 'histogram':
-            c[1:] = p[:-1] * np.diff(x)
+            c[1:] = p[:x.size-1] * np.diff(x)
         elif self.interpolation == 'linear-linear':
             c[1:] = 0.5 * (p[:-1] + p[1:]) * np.diff(x)
+        else:
+            raise NotImplementedError('Can only generate CDFs for tabular '
+                                      'distributions using histogram or '
+                                      'linear-linear interpolation')
+
 
         return np.cumsum(c)
 
     def mean(self):
         """Compute the mean of the tabular distribution"""
-        if not self.interpolation in ('histogram', 'linear-linear'):
-            raise NotImplementedError('Can only compute mean for tabular '
-                                      'distributions using histogram '
-                                      'or linear-linear interpolation.')
         if self.interpolation == 'linear-linear':
             mean = 0.0
             for i in range(1, len(self.x)):
@@ -873,8 +999,12 @@ class Tabular(Univariate):
         elif self.interpolation == 'histogram':
             x_l = self.x[:-1]
             x_r = self.x[1:]
-            p_l = self.p[:-1]
+            p_l = self.p[:self.x.size-1]
             mean = (0.5 * (x_l + x_r) * (x_r - x_l) * p_l).sum()
+        else:
+            raise NotImplementedError('Can only compute mean for tabular '
+                                      'distributions using histogram '
+                                      'or linear-linear interpolation.')
 
         # Normalize for when integral of distribution is not 1
         mean /= self.integral()
@@ -883,15 +1013,11 @@ class Tabular(Univariate):
 
     def normalize(self):
         """Normalize the probabilities stored on the distribution"""
-        self.p /= self.cdf().max()
+        self._p /= self.cdf().max()
 
-    def sample(self, n_samples=1, seed=None):
-        if not self.interpolation in ('histogram', 'linear-linear'):
-            raise NotImplementedError('Can only sample tabular distributions '
-                                      'using histogram or '
-                                      'linear-linear interpolation')
-        np.random.seed(seed)
-        xi = np.random.rand(n_samples)
+    def sample(self, n_samples: int = 1, seed: int | None = None):
+        rng = np.random.RandomState(seed)
+        xi = rng.random(n_samples)
 
         # always use normalized probabilities when sampling
         cdf = self.cdf()
@@ -942,10 +1068,15 @@ class Tabular(Univariate):
             m[non_zero] = x_i[non_zero] + (np.sqrt(quad) - p_i[non_zero]) / m[non_zero]
             samples_out = m
 
+        else:
+            raise NotImplementedError('Can only sample tabular distributions '
+                                      'using histogram or '
+                                      'linear-linear interpolation')
+
         assert all(samples_out < self.x[-1])
         return samples_out
 
-    def to_xml_element(self, element_name):
+    def to_xml_element(self, element_name: str):
         """Return XML representation of the tabular distribution
 
         Parameters
@@ -955,7 +1086,7 @@ class Tabular(Univariate):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing tabular distribution data
 
         """
@@ -969,12 +1100,12 @@ class Tabular(Univariate):
         return element
 
     @classmethod
-    def from_xml_element(cls, elem):
+    def from_xml_element(cls, elem: ET.Element):
         """Generate tabular distribution from an XML element
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -1000,9 +1131,9 @@ class Tabular(Univariate):
             Integral of tabular distrbution
         """
         if self.interpolation == 'histogram':
-            return np.sum(np.diff(self.x) * self.p[:-1])
+            return np.sum(np.diff(self.x) * self.p[:self.x.size-1])
         elif self.interpolation == 'linear-linear':
-            return np.trapz(self.p, self.x)
+            return trapezoid(self.p, self.x)
         else:
             raise NotImplementedError(
                 f'integral() not supported for {self.inteprolation} interpolation')
@@ -1026,7 +1157,7 @@ class Legendre(Univariate):
 
     """
 
-    def __init__(self, coefficients):
+    def __init__(self, coefficients: Sequence[float]):
         self.coefficients = coefficients
         self._legendre_poly = None
 
@@ -1080,7 +1211,11 @@ class Mixture(Univariate):
 
     """
 
-    def __init__(self, probability, distribution):
+    def __init__(
+        self,
+        probability: Sequence[float],
+        distribution: Sequence[Univariate]
+    ):
         self.probability = probability
         self.distribution = distribution
 
@@ -1091,10 +1226,6 @@ class Mixture(Univariate):
     def probability(self):
         return self._probability
 
-    @property
-    def distribution(self):
-        return self._distribution
-
     @probability.setter
     def probability(self, probability):
         cv.check_type('mixture distribution probabilities', probability,
@@ -1102,7 +1233,11 @@ class Mixture(Univariate):
         for p in probability:
             cv.check_greater_than('mixture distribution probabilities',
                                   p, 0.0, True)
-        self._probability = probability
+        self._probability = np.array(probability, dtype=float)
+
+    @property
+    def distribution(self):
+        return self._distribution
 
     @distribution.setter
     def distribution(self, distribution):
@@ -1114,7 +1249,7 @@ class Mixture(Univariate):
         return np.insert(np.cumsum(self.probability), 0, 0.0)
 
     def sample(self, n_samples=1, seed=None):
-        np.random.seed(seed)
+        rng = np.random.RandomState(seed)
 
         # Get probability of each distribution accounting for its intensity
         p = np.array([prob*dist.integral() for prob, dist in
@@ -1122,8 +1257,7 @@ class Mixture(Univariate):
         p /= p.sum()
 
         # Sample from the distributions
-        idx = np.random.choice(range(len(self.distribution)),
-                               n_samples, p=p)
+        idx = rng.choice(range(len(self.distribution)), n_samples, p=p)
 
         # Draw samples from the distributions sampled above
         out = np.empty_like(idx, dtype=float)
@@ -1138,7 +1272,7 @@ class Mixture(Univariate):
         norm = sum(self.probability)
         self.probability = [val / norm for val in self.probability]
 
-    def to_xml_element(self, element_name):
+    def to_xml_element(self, element_name: str):
         """Return XML representation of the mixture distribution
 
         .. versionadded:: 0.13.0
@@ -1150,7 +1284,7 @@ class Mixture(Univariate):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing mixture distribution data
 
         """
@@ -1165,14 +1299,14 @@ class Mixture(Univariate):
         return element
 
     @classmethod
-    def from_xml_element(cls, elem):
+    def from_xml_element(cls, elem: ET.Element):
         """Generate mixture distribution from an XML element
 
         .. versionadded:: 0.13.0
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -1204,8 +1338,70 @@ class Mixture(Univariate):
             for p, dist in zip(self.probability, self.distribution)
         ])
 
+    def clip(self, tolerance: float = 1e-6, inplace: bool = False) -> Mixture:
+        r"""Remove low-importance points / distributions
 
-def combine_distributions(dists, probs):
+        Like :meth:`Discrete.clip`, this method will remove low-importance
+        points from discrete distributions contained within the mixture but it
+        will also clip any distributions that have negligible contributions to
+        the overall intensity.
+
+        .. versionadded:: 0.14.0
+
+        Parameters
+        ----------
+        tolerance : float
+            Maximum fraction of intensities that will be discarded.
+        inplace : bool
+            Whether to modify the current object in-place or return a new one.
+
+        Returns
+        -------
+        Distribution with low-importance points / distributions removed
+
+        """
+        # Determine integral of original distribution to compare later
+        original_integral = self.integral()
+
+        # Determine indices for any distributions that contribute non-negligibly
+        # to overall intensity
+        intensities = [prob*dist.integral() for prob, dist in
+                       zip(self.probability, self.distribution)]
+        indices = _intensity_clip(intensities, tolerance=tolerance)
+
+        # Clip mixture of distributions
+        probability = self.probability[indices]
+        distribution = [self.distribution[i] for i in indices]
+
+        # Clip points from Discrete distributions
+        distribution = [
+            dist.clip(tolerance, inplace) if isinstance(dist, Discrete) else dist
+            for dist in distribution
+        ]
+
+        if inplace:
+            # Set attributes of current object and return
+            self.probability = probability
+            self.distribution = distribution
+            new_dist = self
+        else:
+            # Create new distribution
+            new_dist = type(self)(probability, distribution)
+
+        # Show warning if integral of new distribution is not within
+        # tolerance of original
+        diff = (original_integral - new_dist.integral())/original_integral
+        if diff > tolerance:
+            warn("Clipping mixture distribution resulted in an integral that is "
+                    f"lower by a fraction of {diff} when tolerance={tolerance}.")
+
+        return new_dist
+
+
+def combine_distributions(
+    dists: Sequence[Univariate],
+    probs: Sequence[float]
+):
     """Combine distributions with specified probabilities
 
     This function can be used to combine multiple instances of
@@ -1234,7 +1430,7 @@ def combine_distributions(dists, probs):
     # Apply probabilites to continuous distributions
     for i in cont_index:
         dist = dist_list[i]
-        dist.p *= probs[i]
+        dist._p *= probs[i]
 
     if discrete_index:
         # Create combined discrete distribution

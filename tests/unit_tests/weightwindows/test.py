@@ -6,6 +6,7 @@ import pytest
 from uncertainties import ufloat
 
 import openmc
+import openmc.lib
 from openmc.stats import Discrete, Point
 
 from tests import cdtemp
@@ -15,8 +16,6 @@ from tests import cdtemp
 def wws():
 
     # weight windows
-
-
     ww_files = ('ww_n.txt', 'ww_p.txt')
     cwd = Path(__file__).parent.absolute()
     ww_n_file, ww_p_file = [cwd / Path(f) for f in ww_files]
@@ -95,12 +94,12 @@ def model():
     settings.run_mode = 'fixed source'
     settings.particles = 500
     settings.batches = 2
-    settings.max_splits = 100
+    settings.max_history_splits = 100
     settings.photon_transport = True
     space = Point((0.001, 0.001, 0.001))
     energy = Discrete([14E6], [1.0])
 
-    settings.source = openmc.Source(space=space, energy=energy)
+    settings.source = openmc.IndependentSource(space=space, energy=energy)
 
     # tally
     mesh = openmc.RegularMesh()
@@ -240,3 +239,97 @@ def test_roundtrip(run_in_tmpdir, model, wws):
     # ensure the lower bounds read in from the XML match those of the
     for ww_out, ww_in in zipped_wws:
         assert(ww_out == ww_in)
+
+
+def test_ww_attrs_python(model):
+    mesh = openmc.RegularMesh.from_domain(model.geometry)
+    lower_bounds = np.ones(mesh.dimension)
+
+    # ensure that creation of weight window objects with default arg values
+    # is successful
+    wws = openmc.WeightWindows(mesh, lower_bounds, upper_bound_ratio=10.0)
+
+    assert wws.energy_bounds == None
+
+    wwg = openmc.WeightWindowGenerator(mesh)
+
+    assert wwg.energy_bounds == None
+
+def test_ww_attrs_capi(run_in_tmpdir, model):
+    model.export_to_xml()
+
+    openmc.lib.init()
+
+    tally = openmc.lib.tallies[model.tallies[0].id]
+
+    wws = openmc.lib.WeightWindows.from_tally(tally)
+
+    # this is the first weight window object created
+    assert wws.id == 1
+
+    with pytest.raises(ValueError):
+        tally.find_filter(openmc.lib.AzimuthalFilter)
+
+    mesh_filter = tally.find_filter(openmc.lib.MeshFilter)
+    mesh = mesh_filter.mesh
+
+    assert wws.mesh.id == mesh.id
+
+    assert wws.particle == openmc.ParticleType.NEUTRON
+
+    wws.particle = 1
+    assert wws.particle == openmc.ParticleType.PHOTON
+    wws.particle = 'photon'
+    assert wws.particle == openmc.ParticleType.PHOTON
+
+    with pytest.raises(ValueError):
+        wws.particle = '🌠'
+
+    energy_filter = tally.find_filter(openmc.lib.EnergyFilter)
+    np.testing.assert_allclose(np.unique(energy_filter.bins), wws.energy_bounds)
+
+    # at this point the weight window bounds are uninitialized
+    assert all(wws.bounds[0] == -1)
+    assert all(wws.bounds[1] == -1)
+
+    wws = openmc.lib.WeightWindows.from_tally(tally, particle='photon')
+    assert wws.id == 2
+    assert wws.particle == openmc.ParticleType.PHOTON
+
+    openmc.lib.finalize()
+
+
+@pytest.mark.parametrize('library', ('libmesh', 'moab'))
+def test_unstructured_mesh_applied_wws(request, run_in_tmpdir, library):
+    """
+    Ensure that weight windows on unstructured mesh work when
+    they aren't part of a tally or weight window generator
+    """
+
+    if library == 'libmesh' and not openmc.lib._libmesh_enabled():
+        pytest.skip('LibMesh not enabled in this build.')
+    if library == 'moab' and not openmc.lib._dagmc_enabled():
+        pytest.skip('DAGMC (and MOAB) mesh not enabled in this build.')
+
+    water = openmc.Material(name='water')
+    water.add_nuclide('H1', 2.0)
+    water.add_nuclide('O16', 1.0)
+    water.set_density('g/cc', 1.0)
+    box = openmc.model.RectangularParallelepiped(*(3*[-10, 10]), boundary_type='vacuum')
+    cell = openmc.Cell(region=-box, fill=water)
+
+    geometry = openmc.Geometry([cell])
+    mesh_file = str(request.fspath.dirpath() / 'test_mesh_tets.exo')
+    mesh = openmc.UnstructuredMesh(mesh_file, library)
+
+    dummy_wws = np.ones((12_000,))
+
+    wws = openmc.WeightWindows(mesh, dummy_wws, upper_bound_ratio=5.0)
+
+    model = openmc.Model(geometry)
+    model.settings.weight_windows = wws
+    model.settings.weight_windows_on = True
+    model.settings.run_mode = 'fixed source'
+    model.settings.particles = 100
+    model.settings.batches = 2
+    model.run()

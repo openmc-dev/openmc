@@ -3,7 +3,8 @@
 
 namespace openmc {
 extern "C" const bool DAGMC_ENABLED;
-}
+extern "C" const bool UWUW_ENABLED;
+} // namespace openmc
 
 // always include the XML interface header
 #include "openmc/xml_interface.h"
@@ -28,6 +29,12 @@ void check_dagmc_root_univ();
 #include "openmc/particle.h"
 #include "openmc/position.h"
 #include "openmc/surface.h"
+#include "openmc/vector.h"
+
+#include <memory> // for shared_ptr, unique_ptr
+#include <string>
+#include <unordered_map>
+#include <utility> // for pair
 
 class UWUW;
 
@@ -37,15 +44,17 @@ class DAGSurface : public Surface {
 public:
   DAGSurface(std::shared_ptr<moab::DagMC> dag_ptr, int32_t dag_idx);
 
+  moab::EntityHandle mesh_handle() const;
+
   double evaluate(Position r) const override;
   double distance(Position r, Direction u, bool coincident) const override;
   Direction normal(Position r) const override;
-  Direction reflect(Position r, Direction u, Particle* p) const override;
+  Direction reflect(Position r, Direction u, GeometryState* p) const override;
 
   inline void to_hdf5_inner(hid_t group_id) const override {};
 
   // Accessor methods
-  const std::shared_ptr<moab::DagMC>& dagmc_ptr() const { return dagmc_ptr_; }
+  moab::DagMC* dagmc_ptr() const { return dagmc_ptr_.get(); }
   int32_t dag_index() const { return dag_index_; }
 
 private:
@@ -57,17 +66,19 @@ class DAGCell : public Cell {
 public:
   DAGCell(std::shared_ptr<moab::DagMC> dag_ptr, int32_t dag_idx);
 
+  moab::EntityHandle mesh_handle() const;
+
   bool contains(Position r, Direction u, int32_t on_surface) const override;
 
-  std::pair<double, int32_t> distance(
-    Position r, Direction u, int32_t on_surface, Particle* p) const override;
+  std::pair<double, int32_t> distance(Position r, Direction u,
+    int32_t on_surface, GeometryState* p) const override;
 
   BoundingBox bounding_box() const override;
 
   void to_hdf5_inner(hid_t group_id) const override;
 
   // Accessor methods
-  const std::shared_ptr<moab::DagMC>& dagmc_ptr() const { return dagmc_ptr_; }
+  moab::DagMC* dagmc_ptr() const { return dagmc_ptr_.get(); }
   int32_t dag_index() const { return dag_index_; }
 
 private:
@@ -116,11 +127,31 @@ public:
   void write_uwuw_materials_xml(
     const std::string& outfile = "uwuw_materials.xml") const;
 
+  //! Assign a material to a cell from uwuw material library
+  //! \param[in] vol_handle The DAGMC material assignment string
+  //! \param[in] c The OpenMC cell to which the material is assigned
+  void uwuw_assign_material(
+    moab::EntityHandle vol_handle, std::unique_ptr<DAGCell>& c) const;
+
   //! Assign a material to a cell based
   //! \param[in] mat_string The DAGMC material assignment string
   //! \param[in] c The OpenMC cell to which the material is assigned
   void legacy_assign_material(
     std::string mat_string, std::unique_ptr<DAGCell>& c) const;
+
+  //! Assign a material overriding normal assignement to a cell
+  //! \param[in] c The OpenMC cell to which the material is assigned
+  void override_assign_material(std::unique_ptr<DAGCell>& c) const;
+
+  //! Return the index into the model cells vector for a given DAGMC volume
+  //! handle in the universe
+  //! \param[in] vol MOAB handle to the DAGMC volume set
+  int32_t cell_index(moab::EntityHandle vol) const;
+
+  //! Return the index into the model surfaces vector for a given DAGMC surface
+  //! handle in the universe
+  //! \param[in] surf MOAB handle to the DAGMC surface set
+  int32_t surface_index(moab::EntityHandle surf) const;
 
   //! Generate a string representing the ranges of IDs present in the DAGMC
   //! model. Contiguous chunks of IDs are represented as a range (i.e. 1-10). If
@@ -129,7 +160,7 @@ public:
   //! string of the ID ranges for entities of dimension \p dim
   std::string dagmc_ids_for_dim(int dim) const;
 
-  bool find_cell(Particle& p) const override;
+  bool find_cell(GeometryState& p) const override;
 
   void to_hdf5(hid_t universes_group) const override;
 
@@ -142,6 +173,7 @@ public:
                             //!< universe in OpenMC's surface vector
 
   // Accessors
+  moab::DagMC* dagmc_ptr() const { return dagmc_instance_.get(); }
   bool has_graveyard() const { return has_graveyard_; }
 
 private:
@@ -162,14 +194,18 @@ private:
                              //!< generate new material IDs for the universe
   bool has_graveyard_; //!< Indicates if the DAGMC geometry has a "graveyard"
                        //!< volume
+  std::unordered_map<int32_t, vector<int32_t>>
+    material_overrides_; //!< Map of material overrides
+                         //!< keys correspond to the DAGMCCell id
+                         //!< values are a list of material ids used
+                         //!< for the override
 };
 
 //==============================================================================
 // Non-member functions
 //==============================================================================
 
-int32_t next_cell(
-  DAGUniverse* dag_univ, DAGCell* cur_cell, DAGSurface* surf_xed);
+int32_t next_cell(int32_t surf, int32_t curr_cell, int32_t univ);
 
 } // namespace openmc
 

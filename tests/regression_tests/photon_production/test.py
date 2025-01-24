@@ -27,7 +27,7 @@ def model():
     inner_cyl_right.fill = mat
     model.geometry = openmc.Geometry([inner_cyl_left, inner_cyl_right, outer_cyl])
 
-    source = openmc.Source()
+    source = openmc.IndependentSource()
     source.space = openmc.stats.Point((0, 0, 0))
     source.angle = openmc.stats.Monodirectional()
     source.energy = openmc.stats.Discrete([14.0e6], [1.0])

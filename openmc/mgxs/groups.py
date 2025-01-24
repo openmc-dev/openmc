@@ -5,30 +5,36 @@ from numbers import Real
 import numpy as np
 
 import openmc.checkvalue as cv
+import openmc.mgxs
 
 
 class EnergyGroups:
-    """An energy groups structure used for multi-group cross-sections.
+    """An energy group structure used for multigroup cross-sections.
 
     Parameters
     ----------
-    group_edges : Iterable of Real
-        The energy group boundaries [eV]
+    group_edges : Iterable of float or str
+        The energy group boundaries in [eV] or the name of the group structure
+        (Must be a valid key in the openmc.mgxs.GROUP_STRUCTURES dictionary).
+
+        .. versionchanged:: 0.14.0
+            Changed to allow a string specifying the group structure name.
 
     Attributes
     ----------
-    group_edges : Iterable of Real
-        The energy group boundaries [eV]
+    group_edges : np.ndarray
+        The energy group boundaries in [eV]
     num_groups : int
         The number of energy groups
 
     """
 
-    def __init__(self, group_edges=None):
-        self._group_edges = None
+    def __init__(self, group_edges):
+        if isinstance(group_edges, str):
+            self._name = group_edges.upper()
+            group_edges = openmc.mgxs.GROUP_STRUCTURES[self._name]
 
-        if group_edges is not None:
-            self.group_edges = group_edges
+        self.group_edges = group_edges
 
     def __deepcopy__(self, memo):
         existing = memo.get(id(self))
@@ -59,19 +65,25 @@ class EnergyGroups:
     def __hash__(self):
         return hash(tuple(self.group_edges))
 
+    def __repr__(self):
+        if hasattr(self, '_name'):
+            return f"<EnergyGroups: {self.num_groups} groups ({self._name})>"
+        else:
+            return f"<EnergyGroups: {self.num_groups} groups>"
+
     @property
     def group_edges(self):
         return self._group_edges
-
-    @property
-    def num_groups(self):
-        return len(self.group_edges) - 1
 
     @group_edges.setter
     def group_edges(self, edges):
         cv.check_type('group edges', edges, Iterable, Real)
         cv.check_greater_than('number of group edges', len(edges), 1)
         self._group_edges = np.array(edges)
+
+    @property
+    def num_groups(self):
+        return len(self.group_edges) - 1
 
     def get_group(self, energy):
         """Returns the energy group in which the given energy resides.
@@ -226,10 +238,7 @@ class EnergyGroups:
         group_edges = np.sort(group_edges)
 
         # Create a new condensed EnergyGroups object
-        condensed_groups = EnergyGroups()
-        condensed_groups.group_edges = group_edges
-
-        return condensed_groups
+        return EnergyGroups(group_edges)
 
     def can_merge(self, other):
         """Determine if energy groups can be merged with another.

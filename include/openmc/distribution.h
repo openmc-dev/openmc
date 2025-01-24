@@ -7,6 +7,7 @@
 #include <cstddef> // for size_t
 
 #include "pugixml.hpp"
+#include <gsl/gsl-lite.hpp>
 
 #include "openmc/constants.h"
 #include "openmc/memory.h" // for unique_ptr
@@ -22,6 +23,10 @@ class Distribution {
 public:
   virtual ~Distribution() = default;
   virtual double sample(uint64_t* seed) const = 0;
+
+  //! Return integral of distribution
+  //! \return Integral of distribution
+  virtual double integral() const { return 1.0; };
 };
 
 using UPtrDist = unique_ptr<Distribution>;
@@ -32,35 +37,65 @@ using UPtrDist = unique_ptr<Distribution>;
 UPtrDist distribution_from_xml(pugi::xml_node node);
 
 //==============================================================================
+//! A discrete distribution index (probability mass function)
+//==============================================================================
+
+class DiscreteIndex {
+public:
+  DiscreteIndex() {};
+  DiscreteIndex(pugi::xml_node node);
+  DiscreteIndex(gsl::span<const double> p);
+
+  void assign(gsl::span<const double> p);
+
+  //! Sample a value from the distribution
+  //! \param seed Pseudorandom number seed pointer
+  //! \return Sampled value
+  size_t sample(uint64_t* seed) const;
+
+  // Properties
+  const vector<double>& prob() const { return prob_; }
+  const vector<size_t>& alias() const { return alias_; }
+  double integral() const { return integral_; }
+
+private:
+  vector<double> prob_; //!< Probability of accepting the uniformly sampled bin,
+                        //!< mapped to alias method table
+  vector<size_t> alias_; //!< Alias table
+  double integral_;      //!< Integral of distribution
+
+  //! Normalize distribution so that probabilities sum to unity
+  void normalize();
+
+  //! Initialize alias tables for distribution
+  void init_alias();
+};
+
+//==============================================================================
 //! A discrete distribution (probability mass function)
 //==============================================================================
 
 class Discrete : public Distribution {
 public:
   explicit Discrete(pugi::xml_node node);
-  Discrete(const double* x, const double* p, int n);
+  Discrete(const double* x, const double* p, size_t n);
 
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
   double sample(uint64_t* seed) const override;
 
+  double integral() const override { return di_.integral(); };
+
   // Properties
   const vector<double>& x() const { return x_; }
-  const vector<double>& prob() const { return prob_; }
-  const vector<size_t>& alias() const { return alias_; }
+  const vector<double>& prob() const { return di_.prob(); }
+  const vector<size_t>& alias() const { return di_.alias(); }
 
 private:
-  vector<double> x_;    //!< Possible outcomes
-  vector<double> prob_; //!< Probability of accepting the uniformly sampled bin,
-                        //!< mapped to alias method table
-  vector<size_t> alias_; //!< Alias table
-
-  //! Normalize distribution so that probabilities sum to unity
-  void normalize();
-
-  //! Initialize alias tables for distribution
-  void init_alias(vector<double>& x, vector<double>& p);
+  vector<double> x_; //!< Possible outcomes
+  DiscreteIndex di_; //!< discrete probability distribution of
+                     //!< outcome indices
 };
 
 //==============================================================================
@@ -193,17 +228,19 @@ public:
   //! \return Sampled value
   double sample(uint64_t* seed) const override;
 
-  // x property
+  // properties
   vector<double>& x() { return x_; }
   const vector<double>& x() const { return x_; }
   const vector<double>& p() const { return p_; }
   Interpolation interp() const { return interp_; }
+  double integral() const override { return integral_; };
 
 private:
   vector<double> x_;     //!< tabulated independent variable
   vector<double> p_;     //!< tabulated probability density
   vector<double> c_;     //!< cumulative distribution at tabulated values
   Interpolation interp_; //!< interpolation rule
+  double integral_;      //!< Integral of distribution
 
   //! Initialize tabulated probability density function
   //! \param x Array of values for independent variable
@@ -246,12 +283,15 @@ public:
   //! \return Sampled value
   double sample(uint64_t* seed) const override;
 
+  double integral() const override { return integral_; }
+
 private:
   // Storrage for probability + distribution
   using DistPair = std::pair<double, UPtrDist>;
 
   vector<DistPair>
-    distribution_; //!< sub-distributions + cummulative probabilities
+    distribution_;  //!< sub-distributions + cummulative probabilities
+  double integral_; //!< integral of distribution
 };
 
 } // namespace openmc

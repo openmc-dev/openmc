@@ -54,8 +54,10 @@ class AsymmetricLatticeTestHarness(PyAPITestHarness):
         self._model.tallies.append(tally)
 
         # Specify summary output and correct source sampling box
-        self._model.settings.source = openmc.Source(space=openmc.stats.Box(
-            [-32, -32, 0], [32, 32, 32], only_fissionable = True))
+        self._model.settings.source = openmc.IndependentSource(
+            space=openmc.stats.Box([-32, -32, 0], [32, 32, 32]),
+            constraints={'fissionable': True}
+        )
 
     def _get_results(self, hash_output=True):
         """Digest info in statepoint and summary and return as a string."""

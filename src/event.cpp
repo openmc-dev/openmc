@@ -51,7 +51,7 @@ void dispatch_xs_event(int64_t buffer_idx)
 {
   Particle& p = simulation::particles[buffer_idx];
   if (p.material() == MATERIAL_VOID ||
-      !model::materials[p.material()]->fissionable_) {
+      !model::materials[p.material()]->fissionable()) {
     simulation::calculate_nonfuel_xs_queue.thread_safe_append({p, buffer_idx});
   } else {
     simulation::calculate_fuel_xs_queue.thread_safe_append({p, buffer_idx});
@@ -112,6 +112,8 @@ void process_advance_particle_events()
     int64_t buffer_idx = simulation::advance_particle_queue[i].idx;
     Particle& p = simulation::particles[buffer_idx];
     p.event_advance();
+    if (!p.alive())
+      continue;
     if (p.collision_distance() > p.boundary().distance) {
       simulation::surface_crossing_queue.thread_safe_append({p, buffer_idx});
     } else {

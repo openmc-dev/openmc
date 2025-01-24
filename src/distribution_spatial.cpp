@@ -9,6 +9,38 @@
 namespace openmc {
 
 //==============================================================================
+// SpatialDistribution implementation
+//==============================================================================
+
+unique_ptr<SpatialDistribution> SpatialDistribution::create(pugi::xml_node node)
+{
+  // Check for type of spatial distribution and read
+  std::string type;
+  if (check_for_node(node, "type"))
+    type = get_node_value(node, "type", true, true);
+  if (type == "cartesian") {
+    return UPtrSpace {new CartesianIndependent(node)};
+  } else if (type == "cylindrical") {
+    return UPtrSpace {new CylindricalIndependent(node)};
+  } else if (type == "spherical") {
+    return UPtrSpace {new SphericalIndependent(node)};
+  } else if (type == "mesh") {
+    return UPtrSpace {new MeshSpatial(node)};
+  } else if (type == "cloud") {
+    return UPtrSpace {new PointCloud(node)};
+  } else if (type == "box") {
+    return UPtrSpace {new SpatialBox(node)};
+  } else if (type == "fission") {
+    return UPtrSpace {new SpatialBox(node, true)};
+  } else if (type == "point") {
+    return UPtrSpace {new SpatialPoint(node)};
+  } else {
+    fatal_error(fmt::format(
+      "Invalid spatial distribution for external source: {}", type));
+  }
+}
+
+//==============================================================================
 // CartesianIndependent implementation
 //==============================================================================
 
@@ -189,37 +221,28 @@ Position SphericalIndependent::sample(uint64_t* seed) const
 
 MeshSpatial::MeshSpatial(pugi::xml_node node)
 {
+
+  if (get_node_value(node, "type", true, true) != "mesh") {
+    fatal_error(fmt::format(
+      "Incorrect spatial type '{}' for a MeshSpatial distribution"));
+  }
+
   // No in-tet distributions implemented, could include distributions for the
   // barycentric coords Read in unstructured mesh from mesh_id value
   int32_t mesh_id = std::stoi(get_node_value(node, "mesh_id"));
   // Get pointer to spatial distribution
   mesh_idx_ = model::mesh_map.at(mesh_id);
 
-  auto mesh_ptr =
-    dynamic_cast<UnstructuredMesh*>(model::meshes.at(mesh_idx_).get());
-  if (!mesh_ptr) {
-    fatal_error("Only unstructured mesh is supported for source sampling.");
-  }
+  const auto mesh_ptr = model::meshes.at(mesh_idx_).get();
 
-  // ensure that the unstructured mesh contains only linear tets
-  for (int bin = 0; bin < mesh_ptr->n_bins(); bin++) {
-    if (mesh_ptr->element_type(bin) != ElementType::LINEAR_TET) {
-      fatal_error(
-        "Mesh specified for source must contain only linear tetrahedra.");
-    }
-  }
+  check_element_types();
 
-  int32_t n_bins = this->n_sources();
-  std::vector<double> strengths(n_bins, 0.0);
-
-  mesh_CDF_.resize(n_bins + 1);
-  mesh_CDF_[0] = {0.0};
-  total_strength_ = 0.0;
+  size_t n_bins = this->n_sources();
+  std::vector<double> strengths(n_bins, 1.0);
 
   // Create cdfs for sampling for an element over a mesh
   // Volume scheme is weighted by the volume of each tet
   // File scheme is weighted by an array given in the xml file
-  mesh_strengths_ = std::vector<double>(n_bins, 1.0);
   if (check_for_node(node, "strengths")) {
     strengths = get_node_array<double>(node, "strengths");
     if (strengths.size() != n_bins) {
@@ -228,37 +251,96 @@ MeshSpatial::MeshSpatial(pugi::xml_node node)
                     "not match the number of entities in mesh {} ({}).",
           strengths.size(), mesh_id, n_bins));
     }
-    mesh_strengths_ = std::move(strengths);
   }
 
   if (get_node_value_bool(node, "volume_normalized")) {
     for (int i = 0; i < n_bins; i++) {
-      mesh_strengths_[i] *= mesh()->volume(i);
+      strengths[i] *= this->mesh()->volume(i);
     }
   }
 
-  total_strength_ =
-    std::accumulate(mesh_strengths_.begin(), mesh_strengths_.end(), 0.0);
+  elem_idx_dist_.assign(strengths);
+}
 
-  for (int i = 0; i < n_bins; i++) {
-    mesh_CDF_[i + 1] = mesh_CDF_[i] + mesh_strengths_[i] / total_strength_;
-  }
+MeshSpatial::MeshSpatial(int32_t mesh_idx, gsl::span<const double> strengths)
+  : mesh_idx_(mesh_idx)
+{
+  check_element_types();
+  elem_idx_dist_.assign(strengths);
+}
 
-  if (fabs(mesh_CDF_.back() - 1.0) > FP_COINCIDENT) {
-    fatal_error(
-      fmt::format("Mesh sampling CDF is incorrectly formed. Final value is: {}",
-        mesh_CDF_.back()));
+void MeshSpatial::check_element_types() const
+{
+  const auto umesh_ptr = dynamic_cast<const UnstructuredMesh*>(this->mesh());
+  if (umesh_ptr) {
+    // ensure that the unstructured mesh contains only linear tets
+    for (int bin = 0; bin < umesh_ptr->n_bins(); bin++) {
+      if (umesh_ptr->element_type(bin) != ElementType::LINEAR_TET) {
+        fatal_error(
+          "Mesh specified for source must contain only linear tetrahedra.");
+      }
+    }
   }
-  mesh_CDF_.back() = 1.0;
+}
+
+int32_t MeshSpatial::sample_element_index(uint64_t* seed) const
+{
+  return elem_idx_dist_.sample(seed);
+}
+
+std::pair<int32_t, Position> MeshSpatial::sample_mesh(uint64_t* seed) const
+{
+  // Sample the CDF defined in initialization above
+  int32_t elem_idx = this->sample_element_index(seed);
+  return {elem_idx, mesh()->sample_element(elem_idx, seed)};
 }
 
 Position MeshSpatial::sample(uint64_t* seed) const
 {
-  // Create random variable for sampling element from mesh
-  double eta = prn(seed);
-  // Sample over the CDF defined in initialization above
-  int32_t elem_idx = lower_bound_index(mesh_CDF_.begin(), mesh_CDF_.end(), eta);
-  return mesh()->sample(seed, elem_idx);
+  return this->sample_mesh(seed).second;
+}
+
+//==============================================================================
+// PointCloud implementation
+//==============================================================================
+
+PointCloud::PointCloud(pugi::xml_node node)
+{
+  if (check_for_node(node, "coords")) {
+    point_cloud_ = get_node_position_array(node, "coords");
+  } else {
+    fatal_error("No coordinates were provided for the PointCloud "
+                "spatial distribution");
+  }
+
+  std::vector<double> strengths;
+
+  if (check_for_node(node, "strengths"))
+    strengths = get_node_array<double>(node, "strengths");
+  else
+    strengths.resize(point_cloud_.size(), 1.0);
+
+  if (strengths.size() != point_cloud_.size()) {
+    fatal_error(
+      fmt::format("Number of entries for the strengths array {} does "
+                  "not match the number of spatial points provided {}.",
+        strengths.size(), point_cloud_.size()));
+  }
+
+  point_idx_dist_.assign(strengths);
+}
+
+PointCloud::PointCloud(
+  std::vector<Position> point_cloud, gsl::span<const double> strengths)
+{
+  point_cloud_.assign(point_cloud.begin(), point_cloud.end());
+  point_idx_dist_.assign(strengths);
+}
+
+Position PointCloud::sample(uint64_t* seed) const
+{
+  int32_t index = point_idx_dist_.sample(seed);
+  return point_cloud_[index];
 }
 
 //==============================================================================

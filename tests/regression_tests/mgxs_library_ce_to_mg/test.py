@@ -48,15 +48,12 @@ class MGXSTestHarness(PyAPITestHarness):
         # Modify materials and settings so we can run in MG mode
         self._model.materials.cross_sections = './mgxs.h5'
         self._model.settings.energy_mode = 'multi-group'
+        # Dont need tallies so clear them from the model
+        self._model.tallies = openmc.Tallies()
 
         # Write modified input files
-        self._model.settings.export_to_xml()
-        self._model.geometry.export_to_xml()
-        self._model.materials.export_to_xml()
+        self._model.export_to_model_xml()
         self._model.mgxs_file.export_to_hdf5()
-        # Dont need tallies.xml, so remove the file
-        if os.path.exists('tallies.xml'):
-            os.remove('tallies.xml')
 
         # Enforce closing statepoint and summary files so HDF5
         # does not throw an error during the next OpenMC execution

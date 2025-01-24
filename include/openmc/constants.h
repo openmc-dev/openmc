@@ -25,7 +25,7 @@ using double_4dvec = vector<vector<vector<vector<double>>>>;
 constexpr int HDF5_VERSION[] {3, 0};
 
 // Version numbers for binary files
-constexpr array<int, 2> VERSION_STATEPOINT {18, 0};
+constexpr array<int, 2> VERSION_STATEPOINT {18, 1};
 constexpr array<int, 2> VERSION_PARTICLE_RESTART {2, 0};
 constexpr array<int, 2> VERSION_TRACK {3, 0};
 constexpr array<int, 2> VERSION_SUMMARY {6, 0};
@@ -33,6 +33,7 @@ constexpr array<int, 2> VERSION_VOLUME {1, 0};
 constexpr array<int, 2> VERSION_VOXEL {2, 0};
 constexpr array<int, 2> VERSION_MGXS_LIBRARY {1, 0};
 constexpr array<int, 2> VERSION_PROPERTIES {1, 0};
+constexpr array<int, 2> VERSION_WEIGHT_WINDOWS {1, 0};
 
 // ============================================================================
 // ADJUSTABLE PARAMETERS
@@ -50,6 +51,10 @@ constexpr double TINY_BIT {1e-8};
 constexpr double FP_PRECISION {1e-14};
 constexpr double FP_REL_PRECISION {1e-5};
 constexpr double FP_COINCIDENT {1e-12};
+
+// Coincidence tolerances
+constexpr double TORUS_TOL {1e-10};
+constexpr double RADIAL_MESH_TOL {1e-10};
 
 // Maximum number of random samples per history
 constexpr int MAX_SAMPLE {100000};
@@ -272,9 +277,9 @@ enum class MgxsType {
 // ============================================================================
 // TALLY-RELATED CONSTANTS
 
-enum class TallyResult { VALUE, SUM, SUM_SQ };
+enum class TallyResult { VALUE, SUM, SUM_SQ, SIZE };
 
-enum class TallyType { VOLUME, MESH_SURFACE, SURFACE };
+enum class TallyType { VOLUME, MESH_SURFACE, SURFACE, PULSE_HEIGHT };
 
 enum class TallyEstimator { ANALOG, TRACKLENGTH, COLLISION };
 
@@ -302,7 +307,8 @@ enum TallyScore {
   SCORE_INVERSE_VELOCITY = -13,   // flux-weighted inverse velocity
   SCORE_FISS_Q_PROMPT = -14,      // prompt fission Q-value
   SCORE_FISS_Q_RECOV = -15,       // recoverable fission Q-value
-  SCORE_DECAY_RATE = -16          // delayed neutron precursor decay rate
+  SCORE_DECAY_RATE = -16,         // delayed neutron precursor decay rate
+  SCORE_PULSE_HEIGHT = -17        // pulse-height
 };
 
 // Global tally parameters
@@ -311,7 +317,6 @@ enum class GlobalTally { K_COLLISION, K_ABSORPTION, K_TRACKLENGTH, LEAKAGE };
 
 // Miscellaneous
 constexpr int C_NONE {-1};
-constexpr int F90_NONE {0}; // TODO: replace usage of this with C_NONE
 
 // Interpolation rules
 enum class Interpolation {
@@ -335,10 +340,19 @@ enum class RunMode {
   VOLUME
 };
 
+enum class SolverType { MONTE_CARLO, RANDOM_RAY };
+
+enum class RandomRayVolumeEstimator { NAIVE, SIMULATION_AVERAGED, HYBRID };
+enum class RandomRaySourceShape { FLAT, LINEAR, LINEAR_XY };
+
 //==============================================================================
 // Geometry Constants
 
 enum class GeometryType { CSG, DAG };
+
+// a surface token cannot be zero due to the unsigned nature of zero for integer
+// representations. This value represents no surface.
+constexpr int32_t SURFACE_NONE {0};
 
 } // namespace openmc
 

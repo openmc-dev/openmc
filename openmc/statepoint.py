@@ -235,7 +235,7 @@ class StatePoint:
         if self._global_tallies is None:
             data = self._f['global_tallies'][()]
             gt = np.zeros(data.shape[0], dtype=[
-                ('name', 'a14'), ('sum', 'f8'), ('sum_sq', 'f8'),
+                ('name', 'S14'), ('sum', 'f8'), ('sum_sq', 'f8'),
                 ('mean', 'f8'), ('std_dev', 'f8')])
             gt['name'] = ['k-collision', 'k-absorption', 'k-tracklength',
                           'leakage']
@@ -367,6 +367,26 @@ class StatePoint:
     def sparse(self):
         return self._sparse
 
+    @sparse.setter
+    def sparse(self, sparse):
+        """Convert tally data from NumPy arrays to SciPy list of lists (LIL)
+        sparse matrices, and vice versa.
+
+        This property may be used to reduce the amount of data in memory during
+        tally data processing. The tally data will be stored as SciPy LIL
+        matrices internally within each Tally object. All tally data access
+        properties and methods will return data as a dense NumPy array.
+
+        """
+
+        cv.check_type('sparse', sparse, bool)
+        self._sparse = sparse
+
+        # Update tally sparsities
+        if self._tallies_read:
+            for tally_id in self.tallies:
+                self.tallies[tally_id].sparse = self.sparse
+
     @property
     def tallies(self):
         if self.tallies_present and not self._tallies_read:
@@ -397,6 +417,10 @@ class StatePoint:
                     tally = openmc.Tally(tally_id)
                     tally._sp_filename = self._f.filename
                     tally.name = group['name'][()].decode() if 'name' in group else ''
+
+                    # Check if tally has multiply_density attribute
+                    if "multiply_density" in group.attrs:
+                        tally.multiply_density = group.attrs["multiply_density"].item() > 0
 
                     # Read the number of realizations
                     n_realizations = group['n_realizations'][()]
@@ -479,26 +503,6 @@ class StatePoint:
     @property
     def summary(self):
         return self._summary
-
-    @sparse.setter
-    def sparse(self, sparse):
-        """Convert tally data from NumPy arrays to SciPy list of lists (LIL)
-        sparse matrices, and vice versa.
-
-        This property may be used to reduce the amount of data in memory during
-        tally data processing. The tally data will be stored as SciPy LIL
-        matrices internally within each Tally object. All tally data access
-        properties and methods will return data as a dense NumPy array.
-
-        """
-
-        cv.check_type('sparse', sparse, bool)
-        self._sparse = sparse
-
-        # Update tally sparsities
-        if self._tallies_read:
-            for tally_id in self.tallies:
-                self.tallies[tally_id].sparse = self.sparse
 
     def close(self):
         """Close the statepoint HDF5 file and the corresponding

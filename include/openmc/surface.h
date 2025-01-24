@@ -9,6 +9,7 @@
 #include "pugixml.hpp"
 
 #include "openmc/boundary_condition.h"
+#include "openmc/bounding_box.h"
 #include "openmc/constants.h"
 #include "openmc/memory.h" // for unique_ptr
 #include "openmc/particle.h"
@@ -29,64 +30,14 @@ extern vector<unique_ptr<Surface>> surfaces;
 } // namespace model
 
 //==============================================================================
-//! Coordinates for an axis-aligned cuboid that bounds a geometric object.
-//==============================================================================
-
-struct BoundingBox {
-  double xmin = -INFTY;
-  double xmax = INFTY;
-  double ymin = -INFTY;
-  double ymax = INFTY;
-  double zmin = -INFTY;
-  double zmax = INFTY;
-
-  inline BoundingBox operator&(const BoundingBox& other)
-  {
-    BoundingBox result = *this;
-    return result &= other;
-  }
-
-  inline BoundingBox operator|(const BoundingBox& other)
-  {
-    BoundingBox result = *this;
-    return result |= other;
-  }
-
-  // intersect operator
-  inline BoundingBox& operator&=(const BoundingBox& other)
-  {
-    xmin = std::max(xmin, other.xmin);
-    xmax = std::min(xmax, other.xmax);
-    ymin = std::max(ymin, other.ymin);
-    ymax = std::min(ymax, other.ymax);
-    zmin = std::max(zmin, other.zmin);
-    zmax = std::min(zmax, other.zmax);
-    return *this;
-  }
-
-  // union operator
-  inline BoundingBox& operator|=(const BoundingBox& other)
-  {
-    xmin = std::min(xmin, other.xmin);
-    xmax = std::max(xmax, other.xmax);
-    ymin = std::min(ymin, other.ymin);
-    ymax = std::max(ymax, other.ymax);
-    zmin = std::min(zmin, other.zmin);
-    zmax = std::max(zmax, other.zmax);
-    return *this;
-  }
-};
-
-//==============================================================================
 //! A geometry primitive used to define regions of 3D space.
 //==============================================================================
 
 class Surface {
 public:
-  int id_;                                          //!< Unique ID
-  std::string name_;                                //!< User-defined name
-  std::shared_ptr<BoundaryCondition> bc_ {nullptr}; //!< Boundary condition
-  GeometryType geom_type_;   //!< Geometry type indicator (CSG or DAGMC)
+  int id_;                           //!< Unique ID
+  std::string name_;                 //!< User-defined name
+  unique_ptr<BoundaryCondition> bc_; //!< Boundary condition
   bool surf_source_ {false}; //!< Activate source banking for the surface?
 
   explicit Surface(pugi::xml_node surf_node);
@@ -105,12 +56,13 @@ public:
   //! Determine the direction of a ray reflected from the surface.
   //! \param[in] r The point at which the ray is incident.
   //! \param[in] u Incident direction of the ray
-  //! \param[inout] p Pointer to the particle
+  //! \param[inout] p Pointer to the particle. Only DAGMC uses this.
   //! \return Outgoing direction of the ray
-  virtual Direction reflect(Position r, Direction u, Particle* p) const;
+  virtual Direction reflect(
+    Position r, Direction u, GeometryState* p = nullptr) const;
 
   virtual Direction diffuse_reflect(
-    Position r, Direction u, uint64_t* seed) const;
+    Position r, Direction u, uint64_t* seed, GeometryState* p = nullptr) const;
 
   //! Evaluate the equation describing the surface.
   //!
@@ -137,6 +89,13 @@ public:
 
   //! Get the BoundingBox for this surface.
   virtual BoundingBox bounding_box(bool /*pos_side*/) const { return {}; }
+
+  // Accessors
+  const GeometryType& geom_type() const { return geom_type_; }
+  GeometryType& geom_type() { return geom_type_; }
+
+private:
+  GeometryType geom_type_; //!< Geometry type indicator (CSG or DAGMC)
 
 protected:
   virtual void to_hdf5_inner(hid_t group_id) const = 0;

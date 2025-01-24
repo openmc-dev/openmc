@@ -25,7 +25,7 @@ jobs:
     runs-on: ubuntu-22.04
     strategy:
       matrix:
-        python-version: ["3.10"]
+        python-version: ["3.11"]
         mpi: [n, y]
         omp: [n, y]
         dagmc: [n]
@@ -35,37 +35,34 @@ jobs:
         vectfit: [n]
 
         include:
-          - python-version: 3.7
+          - python-version: "3.12"
             omp: n
             mpi: n
-          - python-version: 3.8
-            omp: n
-            mpi: n
-          - python-version: 3.9
+          - python-version: "3.13"
             omp: n
             mpi: n
           - dagmc: y
-            python-version: "3.10"
+            python-version: "3.11"
             mpi: y
             omp: y
           - ncrystal: y
-            python-version: "3.10"
+            python-version: "3.11"
             mpi: n
             omp: n
           - libmesh: y
-            python-version: "3.10"
+            python-version: "3.11"
             mpi: y
             omp: y
           - libmesh: y
-            python-version: "3.10"
+            python-version: "3.11"
             mpi: n
             omp: y
           - event: y
-            python-version: "3.10"
+            python-version: "3.11"
             omp: y
             mpi: n
           - vectfit: y
-            python-version: "3.10"
+            python-version: "3.11"
             omp: n
             mpi: y
     name: "Python ${{ matrix.python-version }} (omp=${{ matrix.omp }},
@@ -90,16 +87,15 @@ jobs:
       RDMAV_FORK_SAFE: 1
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
       - name: Environment Variables
         run: |
-          echo "DAGMC_ROOT=$HOME/DAGMC"
           echo "OPENMC_CROSS_SECTIONS=$HOME/nndc_hdf5/cross_sections.xml" >> $GITHUB_ENV
           echo "OPENMC_ENDF_DATA=$HOME/endf-b-vii.1" >> $GITHUB_ENV
 
@@ -108,21 +104,44 @@ jobs:
         run: |
           sudo apt -y update
           sudo apt install -y libpng-dev \
-                              libmpich-dev \
                               libnetcdf-dev \
                               libpnetcdf-dev \
                               libhdf5-serial-dev \
-                              libhdf5-mpich-dev \
                               libeigen3-dev
+
+      - name: Optional apt dependencies for MPI
+        shell: bash
+        if: ${{ matrix.mpi == 'y' }}
+        run: |
+          sudo apt install -y libhdf5-mpich-dev \
+                              libmpich-dev
           sudo update-alternatives --set mpi /usr/bin/mpicc.mpich
           sudo update-alternatives --set mpirun /usr/bin/mpirun.mpich
           sudo update-alternatives --set mpi-x86_64-linux-gnu /usr/include/x86_64-linux-gnu/mpich
+
+      - name: Optional apt dependencies for vectfit
+        shell: bash
+        if: ${{ matrix.vectfit == 'y' }}
+        run: sudo apt install -y libblas-dev liblapack-dev
 
       - name: install
         shell: bash
         run: |
           echo "$HOME/NJOY2016/build" >> $GITHUB_PATH
           $GITHUB_WORKSPACE/tools/ci/gha-install.sh
+
+      - name: display-config
+        shell: bash
+        run: |
+          openmc -v
+
+      - name: cache-xs
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/nndc_hdf5
+            ~/endf-b-vii.1
+          key: ${{ runner.os }}-build-xs-cache
 
       - name: before
         shell: bash
@@ -145,7 +164,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Coveralls Finished
-        uses: coverallsapp/github-action@master
+        uses: coverallsapp/github-action@v2
         with:
           github-token: ${{ secrets.github_token }}
           parallel-finished: true

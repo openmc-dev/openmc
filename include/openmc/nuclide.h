@@ -29,6 +29,7 @@ namespace openmc {
 
 class Nuclide {
 public:
+  //============================================================================
   // Types, aliases
   using EmissionMode = ReactionProduct::EmissionMode;
   struct EnergyGrid {
@@ -36,18 +37,32 @@ public:
     vector<double> energy;
   };
 
+  //============================================================================
   // Constructors/destructors
   Nuclide(hid_t group, const vector<double>& temperature);
   ~Nuclide();
 
+  //============================================================================
+  // Methods
+
   //! Initialize logarithmic grid for energy searches
   void init_grid();
 
+  //! Calculate microscopic cross sections
+  //
+  //! \param[in] i_sab  Index in data::thermal_scatt
+  //! \param[in] i_log_union  Log-grid search index
+  //! \param[in] sab_frac  S(a,b) table fraction
+  //! \param[in,out] p  Particle object
   void calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle& p);
 
+  //! Calculate thermal scattering cross section
+  //
+  //! \param[in] i_sab  Index in data::thermal_scatt
+  //! \param[in] sab_frac  S(a,b) table fraction
+  //! \param[in,out] p  Particle object
   void calculate_sab_xs(int i_sab, double sab_frac, Particle& p);
 
-  // Methods
   double nu(double E, EmissionMode mode, int group = 0) const;
   void calculate_elastic_xs(Particle& p) const;
 
@@ -69,6 +84,7 @@ public:
   double collapse_rate(int MT, double temperature,
     gsl::span<const double> energy, gsl::span<const double> flux) const;
 
+  //============================================================================
   // Data members
   std::string name_; //!< Name of nuclide, e.g. "U235"
   int Z_;            //!< Atomic number

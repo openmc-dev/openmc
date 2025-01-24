@@ -1,5 +1,5 @@
 import openmc
-from pytest import approx, raises
+from pytest import approx, raises, warns
 
 from openmc.data import NATURAL_ABUNDANCE, atomic_mass
 
@@ -35,6 +35,13 @@ def test_expand_enrichment():
     # Verify the enrichment by weight
     for isotope in lithium.expand(100.0, 'wo', 25.0, 'Li7', 'wo'):
         assert isotope[1] == approx(ref[isotope[0]])
+
+
+def test_expand_no_isotopes():
+    """Test that correct warning is raised for elements with no isotopes"""
+    with warns(UserWarning, match='No naturally occurring'):
+        element = openmc.Element('Tc')
+        element.expand(100.0, 'ao')
 
 
 def test_expand_exceptions():

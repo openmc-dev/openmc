@@ -1,4 +1,4 @@
-"""Nuclide module.
+"""Nuclide module.xml.etree.Ele
 
 Contains the per-nuclide components of a depletion chain.
 """
@@ -8,11 +8,8 @@ from collections.abc import Mapping
 from collections import namedtuple, defaultdict
 from warnings import warn
 from numbers import Real
-try:
-    import lxml.etree as ET
-except ImportError:
-    import xml.etree.ElementTree as ET
 
+import lxml.etree as ET
 import numpy as np
 
 from openmc.checkvalue import check_type
@@ -212,9 +209,9 @@ class Nuclide:
 
         Parameters
         ----------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element to read nuclide data from
-        root : xml.etree.ElementTree.Element, optional
+        root : lxml.etree._Element, optional
             Root XML element for chain file (only used when fission product
             yields are borrowed from another parent)
         fission_q : None or float
@@ -278,7 +275,7 @@ class Nuclide:
             if parent is not None:
                 assert root is not None
                 fpy_elem = root.find(
-                    './/nuclide[@name="{}"]/neutron_fission_yields'.format(parent)
+                    f'.//nuclide[@name="{parent}"]/neutron_fission_yields'
                 )
                 if fpy_elem is None:
                     raise ValueError(
@@ -297,7 +294,7 @@ class Nuclide:
 
         Returns
         -------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element to write nuclide data to
 
         """
@@ -318,13 +315,7 @@ class Nuclide:
         # Write decay sources
         if self.sources:
             for particle, source in self.sources.items():
-                # TODO: Ugly hack to deal with the fact that
-                # 'source.to_xml_element' will return an xml.etree object
-                # whereas here lxml is being used preferentially. We should just
-                # switch to use lxml everywhere
-                import xml.etree.ElementTree as etree
-                src_elem_xmletree = source.to_xml_element('source')
-                src_elem = ET.fromstring(etree.tostring(src_elem_xmletree))
+                src_elem = source.to_xml_element('source')
                 src_elem.set('particle', particle)
                 elem.append(src_elem)
 
@@ -422,7 +413,7 @@ class Nuclide:
                     continue
                 msg = msg_func(
                     name=self.name, actual=sum_br, expected=1.0, tol=tolerance,
-                    prop="{} reaction branch ratios".format(rxn_type))
+                    prop=f"{rxn_type} reaction branch ratios")
                 if strict:
                     raise ValueError(msg)
                 elif quiet:
@@ -439,7 +430,7 @@ class Nuclide:
                 msg = msg_func(
                     name=self.name, actual=sum_yield,
                     expected=2.0, tol=tolerance,
-                    prop="fission yields (E = {:7.4e} eV)".format(energy))
+                    prop=f"fission yields (E = {energy:7.4e} eV)")
                 if strict:
                     raise ValueError(msg)
                 elif quiet:
@@ -529,7 +520,7 @@ class FissionYieldDistribution(Mapping):
 
         Parameters
         ----------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element to pull fission yield data from
 
         Returns
@@ -551,7 +542,7 @@ class FissionYieldDistribution(Mapping):
 
         Parameters
         ----------
-        root : xml.etree.ElementTree.Element
+        root : lxml.etree._Element
             Element to write distribution data to
         """
         for energy, yield_obj in self.items():
@@ -704,8 +695,7 @@ class FissionYield(Mapping):
         return self * scalar
 
     def __repr__(self):
-        return "<{} containing {} products and yields>".format(
-            self.__class__.__name__, len(self))
+        return f"<{self.__class__.__name__} containing {len(self)} products and yields>"
 
     def __deepcopy__(self, memo):
         result = FissionYield(self.products, self.yields.copy())

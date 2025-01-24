@@ -23,7 +23,7 @@ def model():
     model.settings.run_mode = 'fixed source'
     model.settings.batches = 3
     model.settings.particles = 1000
-    model.settings.source = openmc.Source(space=openmc.stats.Point())
+    model.settings.source = openmc.IndependentSource(space=openmc.stats.Point())
 
     cell_filter = openmc.CellFilter(cells)
     tally = openmc.Tally()

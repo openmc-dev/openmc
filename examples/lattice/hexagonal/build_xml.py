@@ -114,8 +114,9 @@ settings_file.particles = particles
 
 # Create an initial uniform spatial source distribution over fissionable zones
 bounds = [-1, -1, -1, 1, 1, 1]
-uniform_dist = openmc.stats.Box(bounds[:3], bounds[3:], only_fissionable=True)
-settings_file.source = openmc.source.Source(space=uniform_dist)
+uniform_dist = openmc.stats.Box(bounds[:3], bounds[3:])
+settings_file.source = openmc.IndependentSource(
+    space=uniform_dist, constraints={'fissionable': True})
 
 settings_file.keff_trigger = {'type' : 'std_dev', 'threshold' : 5E-4}
 settings_file.trigger_active = True

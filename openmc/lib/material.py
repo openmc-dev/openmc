@@ -1,5 +1,5 @@
 from collections.abc import Mapping
-from ctypes import c_int, c_int32, c_double, c_char_p, POINTER, c_size_t
+from ctypes import c_bool, c_int, c_int32, c_double, c_char_p, POINTER, c_size_t
 from weakref import WeakValueDictionary
 
 import numpy as np
@@ -60,6 +60,12 @@ _dll.openmc_material_set_name.errcheck = _error_handler
 _dll.openmc_material_set_volume.argtypes = [c_int32, c_double]
 _dll.openmc_material_set_volume.restype = c_int
 _dll.openmc_material_set_volume.errcheck = _error_handler
+_dll.openmc_material_get_depletable.argtypes = [c_int32, POINTER(c_bool)]
+_dll.openmc_material_get_depletable.restype = c_int
+_dll.openmc_material_get_depletable.errcheck = _error_handler
+_dll.openmc_material_set_depletable.argtypes = [c_int32, c_bool]
+_dll.openmc_material_set_depletable.restype = c_int
+_dll.openmc_material_set_depletable.errcheck = _error_handler
 _dll.n_materials.argtypes = []
 _dll.n_materials.restype = c_size_t
 
@@ -89,6 +95,8 @@ class Material(_FortranObjectWithID):
         List of nuclides in the material
     densities : numpy.ndarray
         Array of densities in atom/b-cm
+    depletable : bool
+        Whether this material is marked as depletable
     name : str
         Name of the material
     temperature : float
@@ -168,6 +176,16 @@ class Material(_FortranObjectWithID):
     @volume.setter
     def volume(self, volume):
         _dll.openmc_material_set_volume(self._index, volume)
+
+    @property
+    def depletable(self):
+        depletable = c_bool()
+        _dll.openmc_material_get_depletable(self._index, depletable)
+        return depletable.value
+
+    @depletable.setter
+    def depletable(self, depletable):
+        _dll.openmc_material_set_depletable(self._index, depletable)
 
     @property
     def nuclides(self):

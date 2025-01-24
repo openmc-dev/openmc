@@ -2,7 +2,6 @@ from collections.abc import Iterable
 from io import StringIO
 from math import log
 import re
-from typing import Optional
 from warnings import warn
 
 import numpy as np
@@ -128,7 +127,7 @@ class FissionProductYields(EqualityMixin):
                     isomeric_state = int(values[4*j + 1])
                     name = ATOMIC_SYMBOL[Z] + str(A)
                     if isomeric_state > 0:
-                        name += '_m{}'.format(isomeric_state)
+                        name += f'_m{isomeric_state}'
                     yield_j = ufloat(values[4*j + 2], values[4*j + 3])
                     yields[name] = yield_j
 
@@ -228,6 +227,18 @@ class DecayMode(EqualityMixin):
     def branching_ratio(self):
         return self._branching_ratio
 
+    @branching_ratio.setter
+    def branching_ratio(self, branching_ratio):
+        cv.check_type('branching ratio', branching_ratio, UFloat)
+        cv.check_greater_than('branching ratio',
+                              branching_ratio.nominal_value, 0.0, True)
+        if branching_ratio.nominal_value == 0.0:
+            warn('Decay mode {} of parent {} has a zero branching ratio.'
+                 .format(self.modes, self.parent))
+        cv.check_greater_than('branching ratio uncertainty',
+                              branching_ratio.std_dev, 0.0, True)
+        self._branching_ratio = branching_ratio
+
     @property
     def daughter(self):
         # Determine atomic number and mass number of parent
@@ -245,33 +256,22 @@ class DecayMode(EqualityMixin):
                         Z += delta_Z
 
         if self._daughter_state > 0:
-            return '{}{}_m{}'.format(ATOMIC_SYMBOL[Z], A, self._daughter_state)
+            return f'{ATOMIC_SYMBOL[Z]}{A}_m{self._daughter_state}'
         else:
-            return '{}{}'.format(ATOMIC_SYMBOL[Z], A)
-
-    @property
-    def energy(self):
-        return self._energy
-
-    @property
-    def modes(self):
-        return self._modes
+            return f'{ATOMIC_SYMBOL[Z]}{A}'
 
     @property
     def parent(self):
         return self._parent
 
-    @branching_ratio.setter
-    def branching_ratio(self, branching_ratio):
-        cv.check_type('branching ratio', branching_ratio, UFloat)
-        cv.check_greater_than('branching ratio',
-                              branching_ratio.nominal_value, 0.0, True)
-        if branching_ratio.nominal_value == 0.0:
-            warn('Decay mode {} of parent {} has a zero branching ratio.'
-                 .format(self.modes, self.parent))
-        cv.check_greater_than('branching ratio uncertainty',
-                              branching_ratio.std_dev, 0.0, True)
-        self._branching_ratio = branching_ratio
+    @parent.setter
+    def parent(self, parent):
+        cv.check_type('parent nuclide', parent, str)
+        self._parent = parent
+
+    @property
+    def energy(self):
+        return self._energy
 
     @energy.setter
     def energy(self, energy):
@@ -281,15 +281,14 @@ class DecayMode(EqualityMixin):
                               energy.std_dev, 0.0, True)
         self._energy = energy
 
+    @property
+    def modes(self):
+        return self._modes
+
     @modes.setter
     def modes(self, modes):
         cv.check_type('decay modes', modes, Iterable, str)
         self._modes = modes
-
-    @parent.setter
-    def parent(self, parent):
-        cv.check_type('parent nuclide', parent, str)
-        self._parent = parent
 
 
 class Decay(EqualityMixin):
@@ -350,10 +349,9 @@ class Decay(EqualityMixin):
         self.nuclide['mass_number'] = A
         self.nuclide['isomeric_state'] = metastable
         if metastable > 0:
-            self.nuclide['name'] = '{}{}_m{}'.format(ATOMIC_SYMBOL[Z], A,
-                                                     metastable)
+            self.nuclide['name'] = f'{ATOMIC_SYMBOL[Z]}{A}_m{metastable}'
         else:
-            self.nuclide['name'] = '{}{}'.format(ATOMIC_SYMBOL[Z], A)
+            self.nuclide['name'] = f'{ATOMIC_SYMBOL[Z]}{A}'
         self.nuclide['mass'] = items[1]  # AWR
         self.nuclide['excited_state'] = items[2]  # State of the original nuclide
         self.nuclide['stable'] = (items[4] == 1)  # Nucleus stability flag
@@ -558,9 +556,9 @@ class Decay(EqualityMixin):
                     raise NotImplementedError("Multiple interpolation regions: {name}, {particle}")
                 interpolation = INTERPOLATION_SCHEME[f.interpolation[0]]
                 if interpolation not in ('histogram', 'linear-linear'):
-                    raise NotImplementedError(
+                    warn(
                         f"Continuous spectra with {interpolation} interpolation "
-                        f"({name}, {particle}) not supported")
+                        f"({name}, {particle}) encountered.")
 
                 intensity = spectra['continuous_normalization'].n
                 rates = decay_constant * intensity * f.y
@@ -580,7 +578,7 @@ class Decay(EqualityMixin):
 _DECAY_PHOTON_ENERGY = {}
 
 
-def decay_photon_energy(nuclide: str) -> Optional[Univariate]:
+def decay_photon_energy(nuclide: str) -> Univariate | None:
     """Get photon energy distribution resulting from the decay of a nuclide
 
     This function relies on data stored in a depletion chain. Before calling it
@@ -599,7 +597,7 @@ def decay_photon_energy(nuclide: str) -> Optional[Univariate]:
     openmc.stats.Univariate or None
         Distribution of energies in [eV] of photons emitted from decay, or None
         if no photon source exists. Note that the probabilities represent
-        intensities, given as [decay/sec].
+        intensities, given as [Bq].
     """
     if not _DECAY_PHOTON_ENERGY:
         chain_file = openmc.config.get('chain_file')

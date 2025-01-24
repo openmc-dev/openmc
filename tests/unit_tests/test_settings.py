@@ -13,7 +13,7 @@ def test_export_to_xml(run_in_tmpdir):
     s.energy_mode = 'continuous-energy'
     s.max_order = 5
     s.max_tracks = 1234
-    s.source = openmc.Source(space=openmc.stats.Point())
+    s.source = openmc.IndependentSource(space=openmc.stats.Point())
     s.output = {'summary': True, 'tallies': False, 'path': 'here'}
     s.verbosity = 7
     s.sourcepoint = {'batches': [50, 150, 500, 1000], 'separate': True,
@@ -23,10 +23,13 @@ def test_export_to_xml(run_in_tmpdir):
     s.surf_source_write = {'surface_ids': [2], 'max_particles': 200}
     s.confidence_intervals = True
     s.ptables = True
+    s.plot_seed = 100
     s.survival_biasing = True
     s.cutoff = {'weight': 0.25, 'weight_avg': 0.5, 'energy_neutron': 1.0e-5,
                 'energy_photon': 1000.0, 'energy_electron': 1.0e-5,
-                'energy_positron': 1.0e-5}
+                'energy_positron': 1.0e-5, 'time_neutron': 1.0e-5,
+                'time_photon': 1.0e-5, 'time_electron': 1.0e-5,
+                'time_positron': 1.0e-5}
     mesh = openmc.RegularMesh()
     mesh.lower_left = (-10., -10., -10.)
     mesh.upper_right = (10., 10., 10.)
@@ -54,6 +57,16 @@ def test_export_to_xml(run_in_tmpdir):
     s.photon_transport = False
     s.electron_treatment = 'led'
     s.write_initial_source = True
+    s.weight_window_checkpoints = {'surface': True, 'collision': False}
+    s.random_ray = {
+        'distance_inactive': 10.0,
+        'distance_active': 100.0,
+        'ray_source': openmc.IndependentSource(
+            space=openmc.stats.Box((-1., -1., -1.), (1., 1., 1.))
+        )
+    }
+
+    s.max_particle_events = 100
 
     # Make sure exporting XML works
     s.export_to_xml()
@@ -71,22 +84,25 @@ def test_export_to_xml(run_in_tmpdir):
     assert s.energy_mode == 'continuous-energy'
     assert s.max_order == 5
     assert s.max_tracks == 1234
-    assert isinstance(s.source[0], openmc.Source)
+    assert isinstance(s.source[0], openmc.IndependentSource)
     assert isinstance(s.source[0].space, openmc.stats.Point)
     assert s.output == {'summary': True, 'tallies': False, 'path': 'here'}
     assert s.verbosity == 7
     assert s.sourcepoint == {'batches': [50, 150, 500, 1000], 'separate': True,
                              'write': True, 'overwrite': True, 'mcpl': True}
     assert s.statepoint == {'batches': [50, 150, 500, 1000]}
-    assert s.surf_source_read == {'path': 'surface_source_1.h5'}
+    assert s.surf_source_read['path'].name == 'surface_source_1.h5'
     assert s.surf_source_write == {'surface_ids': [2], 'max_particles': 200}
     assert s.confidence_intervals
     assert s.ptables
+    assert s.plot_seed == 100
     assert s.seed == 17
     assert s.survival_biasing
     assert s.cutoff == {'weight': 0.25, 'weight_avg': 0.5,
                         'energy_neutron': 1.0e-5, 'energy_photon': 1000.0,
-                        'energy_electron': 1.0e-5, 'energy_positron': 1.0e-5}
+                        'energy_electron': 1.0e-5, 'energy_positron': 1.0e-5,
+                        'time_neutron': 1.0e-5, 'time_photon': 1.0e-5,
+                        'time_electron': 1.0e-5, 'time_positron': 1.0e-5}
     assert isinstance(s.entropy_mesh, openmc.RegularMesh)
     assert s.entropy_mesh.lower_left == [-10., -10., -10.]
     assert s.entropy_mesh.upper_right == [10., 10., 10.]
@@ -108,7 +124,7 @@ def test_export_to_xml(run_in_tmpdir):
                                       'energy_min': 1.0, 'energy_max': 1000.0,
                                       'nuclides': ['U235', 'U238', 'Pu239']}
     assert s.create_fission_neutrons
-    assert not s.create_delayed_neutrons 
+    assert not s.create_delayed_neutrons
     assert s.log_grid_bins == 2000
     assert not s.photon_transport
     assert s.electron_treatment == 'led'
@@ -120,3 +136,9 @@ def test_export_to_xml(run_in_tmpdir):
     assert vol.samples == 1000
     assert vol.lower_left == (-10., -10., -10.)
     assert vol.upper_right == (10., 10., 10.)
+    assert s.weight_window_checkpoints == {'surface': True, 'collision': False}
+    assert s.max_particle_events == 100
+    assert s.random_ray['distance_inactive'] == 10.0
+    assert s.random_ray['distance_active'] == 100.0
+    assert s.random_ray['ray_source'].space.lower_left == [-1., -1., -1.]
+    assert s.random_ray['ray_source'].space.upper_right == [1., 1., 1.]

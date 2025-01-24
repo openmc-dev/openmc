@@ -16,8 +16,6 @@ XTENSOR_PYTHON_REPO='https://github.com/xtensor-stack/xtensor-python'
 XTENSOR_BLAS_BRANCH='0.17.1'
 XTENSOR_BLAS_REPO='https://github.com/xtensor-stack/xtensor-blas'
 
-sudo apt-get install -y libblas-dev liblapack-dev
-
 cd $HOME
 git clone -b $PYBIND_BRANCH $PYBIND_REPO
 cd pybind11 && mkdir build && cd build && cmake .. && sudo make install
@@ -39,7 +37,10 @@ cd $HOME
 git clone -b $XTENSOR_BLAS_BRANCH $XTENSOR_BLAS_REPO
 cd xtensor-blas && mkdir build && cd build && cmake .. && sudo make install
 
+# Install wheel (remove when vectfit supports installation with build isolation)
+pip install wheel
+
 # Install vectfit
 cd $HOME
 git clone https://github.com/liangjg/vectfit.git
-pip install ./vectfit
+pip install --no-build-isolation ./vectfit

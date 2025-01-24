@@ -1,28 +1,33 @@
 import os
-import xml.etree.ElementTree as ET
 import pathlib
 
 import h5py
+import lxml.etree as ET
 
 import openmc
-from openmc.mixin import EqualityMixin
 from openmc._xml import clean_indentation, reorder_attributes
 
 
-class DataLibrary(EqualityMixin):
+class DataLibrary(list):
     """Collection of cross section data libraries.
 
-    Attributes
-    ----------
-    libraries : list of dict
-        List in which each item is a dictionary summarizing cross section data
-        from a single file. The dictionary has keys 'path', 'type', and
-        'materials'.
+    This class behaves like a list where each item is a dictionary summarizing
+    cross section data from a single file. The dictionary has keys 'path',
+    'type', and 'materials'.
+
+    .. versionchanged:: 0.14.0
+        This class now behaves like a list rather than requiring you to access
+        the list of libraries through a special attribute.
 
     """
 
     def __init__(self):
-        self.libraries = []
+        super().__init__()
+
+    @property
+    def libraries(self):
+        # For backwards compatibility
+        return self
 
     def get_by_material(self, name, data_type='neutron'):
         """Return the library dictionary containing a given material.
@@ -43,10 +48,25 @@ class DataLibrary(EqualityMixin):
             the dictionary has keys 'path', 'type', and 'materials'.
 
         """
-        for library in self.libraries:
+        for library in self:
             if name in library['materials'] and data_type in library['type']:
                 return library
         return None
+
+    def remove_by_material(self, name: str, data_type='neutron'):
+        """Remove the library dictionary containing a specific material
+
+        Parameters
+        ----------
+        name : str
+            Name of material, e.g. 'Am241'
+        data_type : str
+            Name of data type, e.g. 'neutron', 'photon', 'wmp', or 'thermal'
+
+        """
+        library = self.get_by_material(name, data_type)
+        if library is not None:
+            self.remove(library)
 
     def register_file(self, filename):
         """Register a file with the data library.
@@ -73,11 +93,10 @@ class DataLibrary(EqualityMixin):
                 materials = list(h5file)
         else:
             raise ValueError(
-                "File type {} not supported by {}"
-                .format(path.name, self.__class__.__name__))
+                f"File type {path.name} not supported by {self.__class__.__name__}")
 
         library = {'path': str(path), 'type': filetype, 'materials': materials}
-        self.libraries.append(library)
+        self.append(library)
 
     def export_to_xml(self, path='cross_sections.xml'):
         """Export cross section data library to an XML file.
@@ -92,7 +111,7 @@ class DataLibrary(EqualityMixin):
 
         # Determine common directory for library paths
         common_dir = os.path.dirname(os.path.commonprefix(
-            [lib['path'] for lib in self.libraries]))
+            [lib['path'] for lib in self]))
         if common_dir == '':
             common_dir = '.'
 
@@ -100,7 +119,7 @@ class DataLibrary(EqualityMixin):
             dir_element = ET.SubElement(root, "directory")
             dir_element.text = os.path.realpath(common_dir)
 
-        for library in self.libraries:
+        for library in self:
             if library['type'] == "depletion_chain":
                 lib_element = ET.SubElement(root, "depletion_chain")
             else:

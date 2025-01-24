@@ -21,9 +21,12 @@
 #include "openmc/tallies/filter_energyfunc.h"
 #include "openmc/tallies/filter_legendre.h"
 #include "openmc/tallies/filter_material.h"
+#include "openmc/tallies/filter_materialfrom.h"
 #include "openmc/tallies/filter_mesh.h"
+#include "openmc/tallies/filter_meshborn.h"
 #include "openmc/tallies/filter_meshsurface.h"
 #include "openmc/tallies/filter_mu.h"
+#include "openmc/tallies/filter_musurface.h"
 #include "openmc/tallies/filter_particle.h"
 #include "openmc/tallies/filter_polar.h"
 #include "openmc/tallies/filter_sph_harm.h"
@@ -121,12 +124,18 @@ Filter* Filter::create(const std::string& type, int32_t id)
     return Filter::create<LegendreFilter>(id);
   } else if (type == "material") {
     return Filter::create<MaterialFilter>(id);
+  } else if (type == "materialfrom") {
+    return Filter::create<MaterialFromFilter>(id);
   } else if (type == "mesh") {
     return Filter::create<MeshFilter>(id);
+  } else if (type == "meshborn") {
+    return Filter::create<MeshBornFilter>(id);
   } else if (type == "meshsurface") {
     return Filter::create<MeshSurfaceFilter>(id);
   } else if (type == "mu") {
     return Filter::create<MuFilter>(id);
+  } else if (type == "musurface") {
+    return Filter::create<MuSurfaceFilter>(id);
   } else if (type == "particle") {
     return Filter::create<ParticleFilter>(id);
   } else if (type == "polar") {
@@ -218,6 +227,15 @@ extern "C" int openmc_filter_get_type(int32_t index, char* type)
     return err;
 
   std::strcpy(type, model::tally_filters[index]->type_str().c_str());
+  return 0;
+}
+
+extern "C" int openmc_filter_get_num_bins(int32_t index, int* n_bins)
+{
+  if (int err = verify_filter(index))
+    return err;
+
+  *n_bins = model::tally_filters[index]->n_bins();
   return 0;
 }
 

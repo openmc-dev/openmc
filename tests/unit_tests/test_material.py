@@ -74,6 +74,18 @@ def test_add_components():
     with pytest.raises(ValueError):
         m.add_components({'H1': 1.0}, percent_type = 'oa')
 
+def test_nuclides_to_ignore(run_in_tmpdir):
+    """Test nuclides_to_ignore when exporting a material to XML"""
+    m = openmc.Material()
+    m.add_nuclide('U235', 1.0)
+    m.add_nuclide('H1', 1.0)
+    m.add_nuclide('O16', 1.0)
+
+    mats = openmc.Materials([m])
+    mats.export_to_xml(nuclides_to_ignore=['H1'])
+
+    test_mats = openmc.Materials.from_xml()
+    assert 'H1' not in test_mats[0].get_nuclides()
 
 def test_remove_nuclide():
     """Test removing nuclides."""
@@ -368,6 +380,28 @@ def test_get_nuclide_atom_densities_specific(uo2):
     assert all_nuc['O16'] == one_nuc['O16']
 
 
+def test_get_element_atom_densities(uo2):
+    for element, density in uo2.get_element_atom_densities().items():
+        assert element in ('U', 'O')
+        assert density > 0
+
+
+def test_get_element_atom_densities_specific(uo2):
+    one_nuc = uo2.get_element_atom_densities('O')
+    assert list(one_nuc.keys()) == ['O']
+    assert list(one_nuc.values())[0] > 0
+
+    one_nuc = uo2.get_element_atom_densities('uranium')
+    assert list(one_nuc.keys()) == ['U']
+    assert list(one_nuc.values())[0] > 0
+
+    with pytest.raises(ValueError, match='not found'):
+        uo2.get_element_atom_densities('Li')
+
+    with pytest.raises(ValueError, match='not recognized'):
+        uo2.get_element_atom_densities('proximium')
+
+
 def test_get_nuclide_atoms():
     mat = openmc.Material()
     mat.add_nuclide('Li6', 1.0)
@@ -614,13 +648,19 @@ def test_decay_photon_energy():
     m.volume = 1.0
 
     # Get decay photon source and make sure it's the right type
-    src = m.decay_photon_energy
+    src = m.get_decay_photon_energy()
     assert isinstance(src, openmc.stats.Discrete)
+
+    # Make sure units/volume work as expected
+    src_v2 = m.get_decay_photon_energy(volume=2.0)
+    assert src.p * 2.0 == pytest.approx(src_v2.p)
+    src_per_cm3 = m.get_decay_photon_energy(units='Bq/cm3', volume=100.0)
+    assert (src.p == src_per_cm3.p).all()
 
     # If we add Xe135 (which has a tabular distribution), the photon source
     # should be a mixture distribution
     m.add_nuclide('Xe135', 1.0e-24)
-    src = m.decay_photon_energy
+    src = m.get_decay_photon_energy()
     assert isinstance(src, openmc.stats.Mixture)
 
     # With a single atom of each, the intensity of the photon source should be
@@ -630,10 +670,30 @@ def test_decay_photon_energy():
 
     assert src.integral() == pytest.approx(sum(
         intensity(decay_photon_energy(nuc)) for nuc in m.get_nuclides()
+    ), rel=1e-3)
+
+    # When the clipping threshold is zero, the intensities should match exactly
+    src = m.get_decay_photon_energy(0.0)
+    assert src.integral() == pytest.approx(sum(
+        intensity(decay_photon_energy(nuc)) for nuc in m.get_nuclides()
     ))
 
     # A material with no unstable nuclides should have no decay photon source
     stable = openmc.Material()
     stable.add_nuclide('Gd156', 1.0)
     stable.volume = 1.0
-    assert stable.decay_photon_energy is None
+    assert stable.get_decay_photon_energy() is None
+
+
+def test_avoid_subnormal(run_in_tmpdir):
+    # Write a materials.xml with a material that has a nuclide density that is
+    # represented as a subnormal floating point value
+    mat = openmc.Material()
+    mat.add_nuclide('H1', 1.0)
+    mat.add_nuclide('H2', 1.0e-315)
+    mats = openmc.Materials([mat])
+    mats.export_to_xml()
+
+    # When read back in, the density should be zero
+    mats = openmc.Materials.from_xml()
+    assert mats[0].get_nuclide_atom_densities()['H2'] == 0.0

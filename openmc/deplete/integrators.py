@@ -26,13 +26,14 @@ class PredictorIntegrator(Integrator):
     """
     _num_stages = 1
 
-    def __call__(self, conc, rates, dt, source_rate, _i=None):
+    def __call__(self, n, rates, dt, source_rate, _i=None):
         """Perform the integration across one time step
 
         Parameters
         ----------
-        conc : numpy.ndarray
-            Initial concentrations for all nuclides in [atom]
+        n : list of numpy.ndarray
+            List of atom number arrays for each material. Each array in the list
+            contains the number of [atom] of each nuclide.
         rates : openmc.deplete.ReactionRates
             Reaction rates from operator
         dt : float
@@ -46,15 +47,15 @@ class PredictorIntegrator(Integrator):
         -------
         proc_time : float
             Time spent in CRAM routines for all materials in [s]
-        conc_list : list of numpy.ndarray
+        n_list : list of list of numpy.ndarray
             Concentrations at end of interval
         op_results : empty list
-            Kept for consistency with API. No intermediate calls to
-            operator with predictor
+            Kept for consistency with API. No intermediate calls to operator
+            with predictor
 
         """
-        proc_time, conc_end = self._timed_deplete(conc, rates, dt)
-        return proc_time, [conc_end], []
+        proc_time, n_end = self._timed_deplete(n, rates, dt)
+        return proc_time, [n_end], []
 
 
 @add_params
@@ -77,13 +78,14 @@ class CECMIntegrator(Integrator):
     """
     _num_stages = 2
 
-    def __call__(self, conc, rates, dt, source_rate, _i=None):
+    def __call__(self, n, rates, dt, source_rate, _i=None):
         """Integrate using CE/CM
 
         Parameters
         ----------
-        conc : numpy.ndarray
-            Initial concentrations for all nuclides in [atom]
+        n : list of numpy.ndarray
+            List of atom number arrays for each material. Each array in the list
+            contains the number of [atom] of each nuclide.
         rates : openmc.deplete.ReactionRates
             Reaction rates from operator
         dt : float
@@ -97,21 +99,21 @@ class CECMIntegrator(Integrator):
         -------
         proc_time : float
             Time spent in CRAM routines for all materials in [s]
-        conc_list : list of numpy.ndarray
+        n_list : list of list of numpy.ndarray
             Concentrations at each of the intermediate points with
             the final concentration as the last element
         op_results : list of openmc.deplete.OperatorResult
             Eigenvalue and reaction rates from transport simulations
         """
         # deplete across first half of interval
-        time0, x_middle = self._timed_deplete(conc, rates, dt / 2)
-        res_middle = self.operator(x_middle, source_rate)
+        time0, n_middle = self._timed_deplete(n, rates, dt / 2)
+        res_middle = self.operator(n_middle, source_rate)
 
         # deplete across entire interval with BOS concentrations,
         # MOS reaction rates
-        time1, x_end = self._timed_deplete(conc, res_middle.rates, dt)
+        time1, n_end = self._timed_deplete(n, res_middle.rates, dt)
 
-        return time0 + time1, [x_middle, x_end], [res_middle]
+        return time0 + time1, [n_middle, n_end], [res_middle]
 
 
 @add_params
@@ -135,18 +137,19 @@ class CF4Integrator(Integrator):
         \mathbf{n}_{i+1} &= \exp \left ( \frac{\mathbf{A}_1}{4} + \frac{\mathbf{A}_2}{6}
             + \frac{\mathbf{A}_3}{6} - \frac{\mathbf{A}_4}{12} \right )
         \exp \left ( -\frac{\mathbf{A}_1}{12} + \frac{\mathbf{A}_2}{6} +
-            \frac{\mathbf{A}_3}{6} - \frac{\mathbf{A}_4}{4} \right ) \mathbf{n}_i.
+            \frac{\mathbf{A}_3}{6} + \frac{\mathbf{A}_4}{4} \right ) \mathbf{n}_i.
         \end{aligned}
     """
     _num_stages = 4
 
-    def __call__(self, bos_conc, bos_rates, dt, source_rate, _i=None):
+    def __call__(self, n_bos, bos_rates, dt, source_rate, _i=None):
         """Perform the integration across one time step
 
         Parameters
         ----------
-        bos_conc : numpy.ndarray
-            Initial concentrations for all nuclides in [atom]
+        n_bos : list of numpy.ndarray
+            List of atom number arrays for each material. Each array in the list
+            contains the number of [atom] of each nuclide.
         bos_rates : openmc.deplete.ReactionRates
             Reaction rates from operator
         dt : float
@@ -160,7 +163,7 @@ class CF4Integrator(Integrator):
         -------
         proc_time : float
             Time spent in CRAM routines for all materials in [s]
-        conc_list : list of numpy.ndarray
+        n_list : list of numpy.ndarray
             Concentrations at each of the intermediate points with
             the final concentration as the last element
         op_results : list of openmc.deplete.OperatorResult
@@ -168,30 +171,30 @@ class CF4Integrator(Integrator):
             simulations
         """
         # Step 1: deplete with matrix 1/2*A(y0)
-        time1, conc_eos1 = self._timed_deplete(
-            bos_conc, bos_rates, dt, matrix_func=cf4_f1)
-        res1 = self.operator(conc_eos1, source_rate)
+        time1, n_eos1 = self._timed_deplete(
+            n_bos, bos_rates, dt, matrix_func=cf4_f1)
+        res1 = self.operator(n_eos1, source_rate)
 
         # Step 2: deplete with matrix 1/2*A(y1)
-        time2, conc_eos2 = self._timed_deplete(
-            bos_conc, res1.rates, dt, matrix_func=cf4_f1)
-        res2 = self.operator(conc_eos2, source_rate)
+        time2, n_eos2 = self._timed_deplete(
+            n_bos, res1.rates, dt, matrix_func=cf4_f1)
+        res2 = self.operator(n_eos2, source_rate)
 
         # Step 3: deplete with matrix -1/2*A(y0)+A(y2)
         list_rates = list(zip(bos_rates, res2.rates))
-        time3, conc_eos3 = self._timed_deplete(
-            conc_eos1, list_rates, dt, matrix_func=cf4_f2)
-        res3 = self.operator(conc_eos3, source_rate)
+        time3, n_eos3 = self._timed_deplete(
+            n_eos1, list_rates, dt, matrix_func=cf4_f2)
+        res3 = self.operator(n_eos3, source_rate)
 
         # Step 4: deplete with two matrix exponentials
         list_rates = list(zip(bos_rates, res1.rates, res2.rates, res3.rates))
-        time4, conc_inter = self._timed_deplete(
-            bos_conc, list_rates, dt, matrix_func=cf4_f3)
-        time5, conc_eos5 = self._timed_deplete(
-            conc_inter, list_rates, dt, matrix_func=cf4_f4)
+        time4, n_inter = self._timed_deplete(
+            n_bos, list_rates, dt, matrix_func=cf4_f3)
+        time5, n_eos5 = self._timed_deplete(
+            n_inter, list_rates, dt, matrix_func=cf4_f4)
 
         return (time1 + time2 + time3 + time4 + time5,
-                [conc_eos1, conc_eos2, conc_eos3, conc_eos5],
+                [n_eos1, n_eos2, n_eos3, n_eos5],
                 [res1, res2, res3])
 
 
@@ -217,13 +220,14 @@ class CELIIntegrator(Integrator):
     """
     _num_stages = 2
 
-    def __call__(self, bos_conc, rates, dt, source_rate, _i=None):
+    def __call__(self, n_bos, rates, dt, source_rate, _i=None):
         """Perform the integration across one time step
 
         Parameters
         ----------
-        bos_conc : numpy.ndarray
-            Initial concentrations for all nuclides in [atom]
+        n_bos : list of numpy.ndarray
+            List of atom number arrays for each material. Each array in the list
+            contains the number of [atom] of each nuclide.
         rates : openmc.deplete.ReactionRates
             Reaction rates from operator
         dt : float
@@ -237,7 +241,7 @@ class CELIIntegrator(Integrator):
         -------
         proc_time : float
             Time spent in CRAM routines for all materials in [s]
-        conc_list : list of numpy.ndarray
+        n_list : list of list of numpy.ndarray
             Concentrations at each of the intermediate points with
             the final concentration as the last element
         op_results : list of openmc.deplete.OperatorResult
@@ -245,19 +249,19 @@ class CELIIntegrator(Integrator):
             simulation
         """
         # deplete to end using BOS rates
-        proc_time, conc_ce = self._timed_deplete(bos_conc, rates, dt)
-        res_ce = self.operator(conc_ce, source_rate)
+        proc_time, n_ce = self._timed_deplete(n_bos, rates, dt)
+        res_ce = self.operator(n_ce, source_rate)
 
         # deplete using two matrix exponentials
         list_rates = list(zip(rates, res_ce.rates))
 
-        time_le1, conc_inter = self._timed_deplete(
-            bos_conc, list_rates, dt, matrix_func=celi_f1)
+        time_le1, n_inter = self._timed_deplete(
+            n_bos, list_rates, dt, matrix_func=celi_f1)
 
-        time_le2, conc_end = self._timed_deplete(
-            conc_inter, list_rates, dt, matrix_func=celi_f2)
+        time_le2, n_end = self._timed_deplete(
+            n_inter, list_rates, dt, matrix_func=celi_f2)
 
-        return proc_time + time_le1 + time_le1, [conc_ce, conc_end], [res_ce]
+        return proc_time + time_le1 + time_le1, [n_ce, n_end], [res_ce]
 
 
 @add_params
@@ -282,13 +286,14 @@ class EPCRK4Integrator(Integrator):
     """
     _num_stages = 4
 
-    def __call__(self, conc, rates, dt, source_rate, _i=None):
+    def __call__(self, n, rates, dt, source_rate, _i=None):
         """Perform the integration across one time step
 
         Parameters
         ----------
-        conc : numpy.ndarray
-            Initial concentrations for all nuclides in [atom]
+        n : list of numpy.ndarray
+            List of atom number arrays for each material. Each array in the list
+            contains the number of [atom] of each nuclide.
         rates : openmc.deplete.ReactionRates
             Reaction rates from operator
         dt : float
@@ -302,7 +307,7 @@ class EPCRK4Integrator(Integrator):
         -------
         proc_time : float
             Time spent in CRAM routines for all materials in [s]
-        conc_list : list of numpy.ndarray
+        n_list : list of list of numpy.ndarray
             Concentrations at each of the intermediate points with
             the final concentration as the last element
         op_results : list of openmc.deplete.OperatorResult
@@ -311,26 +316,22 @@ class EPCRK4Integrator(Integrator):
         """
 
         # Step 1: deplete with matrix A(y0) / 2
-        time1, conc1 = self._timed_deplete(
-            conc, rates, dt, matrix_func=rk4_f1)
-        res1 = self.operator(conc1, source_rate)
+        time1, n1 = self._timed_deplete(n, rates, dt, matrix_func=rk4_f1)
+        res1 = self.operator(n1, source_rate)
 
         # Step 2: deplete with matrix A(y1) / 2
-        time2, conc2 = self._timed_deplete(
-            conc, res1.rates, dt, matrix_func=rk4_f1)
-        res2 = self.operator(conc2, source_rate)
+        time2, n2 = self._timed_deplete(n, res1.rates, dt, matrix_func=rk4_f1)
+        res2 = self.operator(n2, source_rate)
 
         # Step 3: deplete with matrix A(y2)
-        time3, conc3 = self._timed_deplete(conc, res2.rates, dt)
-        res3 = self.operator(conc3, source_rate)
+        time3, n3 = self._timed_deplete(n, res2.rates, dt)
+        res3 = self.operator(n3, source_rate)
 
         # Step 4: deplete with matrix built from weighted rates
         list_rates = list(zip(rates, res1.rates, res2.rates, res3.rates))
-        time4, conc4 = self._timed_deplete(
-            conc, list_rates, dt, matrix_func=rk4_f4)
+        time4, n4 = self._timed_deplete(n, list_rates, dt, matrix_func=rk4_f4)
 
-        return (time1 + time2 + time3 + time4, [conc1, conc2, conc3, conc4],
-                [res1, res2, res3])
+        return (time1 + time2 + time3 + time4, [n1, n2, n3, n4], [res1, res2, res3])
 
 
 @add_params
@@ -359,8 +360,7 @@ class LEQIIntegrator(Integrator):
               h_i)} \mathbf{A}_0 + \frac{h_{i-1}}{12 (h_{i-1} + h_i)} \mathbf{A}_1 \\
         \mathbf{F}_4 &= \frac{-h_i^2}{12 h_{i-1} (h_{i-1} + h_i)} \mathbf{A}_{-1} +
               \frac{h_{i-1}^2 + 2 h_i h_{i-1} + h_i^2}{12 h_{i-1} (h_{i-1} + h_i)}
-              \mathbf{A}_0 + \frac{5 h_{i-1}^2 + 4 h_i h_{i-1}}{12 h_{i-1}
-              (h_{i-1} + h_i)} \mathbf{A}_1 \\
+              \mathbf{A}_0 + \frac{5 h_{i-1} + 4 h_i}{12 (h_{i-1} + h_i)} \mathbf{A}_1 \\
         \mathbf{n}_{i+1} &= \exp(h_i \mathbf{F}_4) \exp(h_i \mathbf{F}_3) \mathbf{n}_i
         \end{aligned}
 
@@ -368,14 +368,15 @@ class LEQIIntegrator(Integrator):
     """
     _num_stages = 2
 
-    def __call__(self, bos_conc, bos_rates, dt, source_rate, i):
+    def __call__(self, n_bos, bos_rates, dt, source_rate, i):
         """Perform the integration across one time step
 
         Parameters
         ----------
-        conc : numpy.ndarray
-            Initial concentrations for all nuclides in [atom]
-        rates : openmc.deplete.ReactionRates
+        n_bos : list of numpy.ndarray
+            List of atom number arrays for each material. Each array in the list
+            contains the number of [atom] of each nuclide.
+        bos_rates : openmc.deplete.ReactionRates
             Reaction rates from operator
         dt : float
             Time in [s] for the entire depletion interval
@@ -388,7 +389,7 @@ class LEQIIntegrator(Integrator):
         -------
         proc_time : float
             Time spent in CRAM routines for all materials in [s]
-        conc_list : list of numpy.ndarray
+        n_list : list of list of numpy.ndarray
             Concentrations at each of the intermediate points with
             the final concentration as the last element
         op_results : list of openmc.deplete.OperatorResult
@@ -399,7 +400,7 @@ class LEQIIntegrator(Integrator):
             if self._i_res < 1:  # need at least previous transport solution
                 self._prev_rates = bos_rates
                 return CELIIntegrator.__call__(
-                    self, bos_conc, bos_rates, dt, source_rate, i)
+                    self, n_bos, bos_rates, dt, source_rate, i)
             prev_res = self.operator.prev_res[-2]
             prev_dt = self.timesteps[i] - prev_res.time[0]
             self._prev_rates = prev_res.rates[0]
@@ -407,32 +408,32 @@ class LEQIIntegrator(Integrator):
             prev_dt = self.timesteps[i - 1]
 
         # Remaining LE/QI
-        bos_res = self.operator(bos_conc, source_rate)
+        bos_res = self.operator(n_bos, source_rate)
 
         le_inputs = list(zip(
             self._prev_rates, bos_res.rates, repeat(prev_dt), repeat(dt)))
 
-        time1, conc_inter = self._timed_deplete(
-            bos_conc, le_inputs, dt, matrix_func=leqi_f1)
-        time2, conc_eos0 = self._timed_deplete(
-            conc_inter, le_inputs, dt, matrix_func=leqi_f2)
+        time1, n_inter = self._timed_deplete(
+            n_bos, le_inputs, dt, matrix_func=leqi_f1)
+        time2, n_eos0 = self._timed_deplete(
+            n_inter, le_inputs, dt, matrix_func=leqi_f2)
 
-        res_inter = self.operator(conc_eos0, source_rate)
+        res_inter = self.operator(n_eos0, source_rate)
 
         qi_inputs = list(zip(
             self._prev_rates, bos_res.rates, res_inter.rates,
             repeat(prev_dt), repeat(dt)))
 
-        time3, conc_inter = self._timed_deplete(
-            bos_conc, qi_inputs, dt, matrix_func=leqi_f3)
-        time4, conc_eos1 = self._timed_deplete(
-            conc_inter, qi_inputs, dt, matrix_func=leqi_f4)
+        time3, n_inter = self._timed_deplete(
+            n_bos, qi_inputs, dt, matrix_func=leqi_f3)
+        time4, n_eos1 = self._timed_deplete(
+            n_inter, qi_inputs, dt, matrix_func=leqi_f4)
 
         # store updated rates
         self._prev_rates = copy.deepcopy(bos_res.rates)
 
         return (
-            time1 + time2 + time3 + time4, [conc_eos0, conc_eos1],
+            time1 + time2 + time3 + time4, [n_eos0, n_eos1],
             [bos_res, res_inter])
 
 
@@ -449,13 +450,14 @@ class SICELIIntegrator(SIIntegrator):
     """
     _num_stages = 2
 
-    def __call__(self, bos_conc, bos_rates, dt, source_rate, _i=None):
+    def __call__(self, n_bos, bos_rates, dt, source_rate, _i=None):
         """Perform the integration across one time step
 
         Parameters
         ----------
-        bos_conc : numpy.ndarray
-            Initial bos_concentrations for all nuclides in [atom]
+        n_bos : list of numpy.ndarray
+            List of atom number arrays for each material. Each array in the list
+            contains the number of [atom] of each nuclide.
         bos_rates : openmc.deplete.ReactionRates
             Reaction rates from operator
         dt : float
@@ -469,19 +471,19 @@ class SICELIIntegrator(SIIntegrator):
         -------
         proc_time : float
             Time spent in CRAM routines for all materials in [s]
-        bos_conc_list : list of numpy.ndarray
+        n_bos_list : list of list of numpy.ndarray
             Concentrations at each of the intermediate points with
-            the final bos_concentration as the last element
+            the final concentration as the last element
         op_results : list of openmc.deplete.OperatorResult
             Eigenvalue and reaction rates from intermediate transport
             simulations
         """
-        proc_time, eos_conc = self._timed_deplete(bos_conc, bos_rates, dt)
-        inter_conc = copy.deepcopy(eos_conc)
+        proc_time, n_eos = self._timed_deplete(n_bos, bos_rates, dt)
+        n_inter = copy.deepcopy(n_eos)
 
         # Begin iteration
         for j in range(self.n_steps + 1):
-            inter_res = self.operator(inter_conc, source_rate)
+            inter_res = self.operator(n_inter, source_rate)
 
             if j <= 1:
                 res_bar = copy.deepcopy(inter_res)
@@ -491,14 +493,14 @@ class SICELIIntegrator(SIIntegrator):
                 res_bar = OperatorResult(k, rates)
 
             list_rates = list(zip(bos_rates, res_bar.rates))
-            time1, inter_conc = self._timed_deplete(
-                bos_conc, list_rates, dt, matrix_func=celi_f1)
-            time2, inter_conc = self._timed_deplete(
-                inter_conc, list_rates, dt, matrix_func=celi_f2)
+            time1, n_inter = self._timed_deplete(
+                n_bos, list_rates, dt, matrix_func=celi_f1)
+            time2, n_inter = self._timed_deplete(
+                n_inter, list_rates, dt, matrix_func=celi_f2)
             proc_time += time1 + time2
 
         # end iteration
-        return proc_time, [eos_conc, inter_conc], [res_bar]
+        return proc_time, [n_eos, n_inter], [res_bar]
 
 
 @add_params
@@ -514,14 +516,14 @@ class SILEQIIntegrator(SIIntegrator):
     """
     _num_stages = 2
 
-    def __call__(self, bos_conc, bos_rates, dt, source_rate, i):
+    def __call__(self, n_bos, bos_rates, dt, source_rate, i):
         """Perform the integration across one time step
 
         Parameters
         ----------
-        bos_conc : list of numpy.ndarray
-            Initial concentrations for all nuclides in [atom] for
-            all depletable materials
+        n_bos : list of numpy.ndarray
+            List of atom number arrays for each material. Each array in the list
+            contains the number of [atom] of each nuclide.
         bos_rates : list of openmc.deplete.ReactionRates
             Reaction rates from operator for all depletable materials
         dt : float
@@ -535,7 +537,7 @@ class SILEQIIntegrator(SIIntegrator):
         -------
         proc_time : float
             Time spent in CRAM routines for all materials in [s]
-        conc_list : list of numpy.ndarray
+        n_list : list of list of numpy.ndarray
             Concentrations at each of the intermediate points with
             the final concentration as the last element
         op_results : list of openmc.deplete.OperatorResult
@@ -547,7 +549,7 @@ class SILEQIIntegrator(SIIntegrator):
                 self._prev_rates = bos_rates
                 # Perform CELI for initial steps
                 return SICELIIntegrator.__call__(
-                    self, bos_conc, bos_rates, dt, source_rate, i)
+                    self, n_bos, bos_rates, dt, source_rate, i)
             prev_res = self.operator.prev_res[-2]
             prev_dt = self.timesteps[i] - prev_res.time[0]
             self._prev_rates = prev_res.rates[0]
@@ -557,16 +559,16 @@ class SILEQIIntegrator(SIIntegrator):
         # Perform remaining LE/QI
         inputs = list(zip(self._prev_rates, bos_rates,
                           repeat(prev_dt), repeat(dt)))
-        proc_time, inter_conc = self._timed_deplete(
-            bos_conc, inputs, dt, matrix_func=leqi_f1)
-        time1, eos_conc = self._timed_deplete(
-            inter_conc, inputs, dt, matrix_func=leqi_f2)
+        proc_time, n_inter = self._timed_deplete(
+            n_bos, inputs, dt, matrix_func=leqi_f1)
+        time1, n_eos = self._timed_deplete(
+            n_inter, inputs, dt, matrix_func=leqi_f2)
 
         proc_time += time1
-        inter_conc = copy.deepcopy(eos_conc)
+        n_inter = copy.deepcopy(n_eos)
 
         for j in range(self.n_steps + 1):
-            inter_res = self.operator(inter_conc, source_rate)
+            inter_res = self.operator(n_inter, source_rate)
 
             if j <= 1:
                 res_bar = copy.deepcopy(inter_res)
@@ -577,13 +579,13 @@ class SILEQIIntegrator(SIIntegrator):
 
             inputs = list(zip(self._prev_rates, bos_rates, res_bar.rates,
                               repeat(prev_dt), repeat(dt)))
-            time1, inter_conc = self._timed_deplete(
-                bos_conc, inputs, dt, matrix_func=leqi_f3)
-            time2, inter_conc = self._timed_deplete(
-                inter_conc, inputs, dt, matrix_func=leqi_f4)
+            time1, n_inter = self._timed_deplete(
+                n_bos, inputs, dt, matrix_func=leqi_f3)
+            time2, n_inter = self._timed_deplete(
+                n_inter, inputs, dt, matrix_func=leqi_f4)
             proc_time += time1 + time2
 
-        return proc_time, [eos_conc, inter_conc], [res_bar]
+        return proc_time, [n_eos, n_inter], [res_bar]
 
 
 integrator_by_name = {

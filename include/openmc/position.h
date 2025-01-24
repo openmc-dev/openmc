@@ -83,6 +83,11 @@ struct Position {
     return x * other.x + y * other.y + z * other.z;
   }
   inline double norm() const { return std::sqrt(x * x + y * y + z * z); }
+  inline Position cross(Position other) const
+  {
+    return {y * other.z - z * other.y, z * other.x - x * other.z,
+      x * other.y - y * other.x};
+  }
 
   //! Reflect a direction across a normal vector
   //! \param[in] other Vector to reflect across
@@ -211,14 +216,22 @@ using Direction = Position;
 
 } // namespace openmc
 
+namespace fmt {
+
 template<>
-struct fmt::formatter<openmc::Position> : formatter<std::string> {
+struct formatter<openmc::Position> : formatter<std::string> {
   template<typename FormatContext>
+#if FMT_VERSION >= 110000 // Version 11.0.0 and above
+  auto format(const openmc::Position& pos, FormatContext& ctx) const {
+#else // For versions below 11.0.0
   auto format(const openmc::Position& pos, FormatContext& ctx)
   {
-    return fmt::formatter<std::string>::format(
+#endif
+    return formatter<std::string>::format(
       fmt::format("({}, {}, {})", pos.x, pos.y, pos.z), ctx);
-  }
-};
+}
+}; // namespace fmt
+
+} // namespace fmt
 
 #endif // OPENMC_POSITION_H

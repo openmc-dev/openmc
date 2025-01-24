@@ -302,31 +302,15 @@ class KalbachMann(AngleEnergy):
     def breakpoints(self):
         return self._breakpoints
 
-    @property
-    def interpolation(self):
-        return self._interpolation
-
-    @property
-    def energy(self):
-        return self._energy
-
-    @property
-    def energy_out(self):
-        return self._energy_out
-
-    @property
-    def precompound(self):
-        return self._precompound
-
-    @property
-    def slope(self):
-        return self._slope
-
     @breakpoints.setter
     def breakpoints(self, breakpoints):
         cv.check_type('Kalbach-Mann breakpoints', breakpoints,
                       Iterable, Integral)
         self._breakpoints = breakpoints
+
+    @property
+    def interpolation(self):
+        return self._interpolation
 
     @interpolation.setter
     def interpolation(self, interpolation):
@@ -334,11 +318,19 @@ class KalbachMann(AngleEnergy):
                       Iterable, Integral)
         self._interpolation = interpolation
 
+    @property
+    def energy(self):
+        return self._energy
+
     @energy.setter
     def energy(self, energy):
         cv.check_type('Kalbach-Mann incoming energy', energy,
                       Iterable, Real)
         self._energy = energy
+
+    @property
+    def energy_out(self):
+        return self._energy_out
 
     @energy_out.setter
     def energy_out(self, energy_out):
@@ -346,11 +338,19 @@ class KalbachMann(AngleEnergy):
                       Iterable, Univariate)
         self._energy_out = energy_out
 
+    @property
+    def precompound(self):
+        return self._precompound
+
     @precompound.setter
     def precompound(self, precompound):
         cv.check_type('Kalbach-Mann precompound factor', precompound,
                       Iterable, Tabulated1D)
         self._precompound = precompound
+
+    @property
+    def slope(self):
+        return self._slope
 
     @slope.setter
     def slope(self, slope):
@@ -366,7 +366,7 @@ class KalbachMann(AngleEnergy):
             HDF5 group to write to
 
         """
-        group.attrs['type'] = np.string_('kalbach-mann')
+        group.attrs['type'] = np.bytes_('kalbach-mann')
 
         dset = group.create_dataset('energy', data=self.energy)
         dset.attrs['interpolation'] = np.vstack((self.breakpoints,

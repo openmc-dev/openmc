@@ -17,20 +17,6 @@
 namespace openmc {
 
 //==============================================================================
-// Cache contains the cached data for an MGXS object
-//==============================================================================
-
-struct CacheData {
-  double sqrtkT; // last temperature corresponding to t
-  int t;         // temperature index
-  int a;         // angle index
-  // last angle that corresponds to a
-  double u;
-  double v;
-  double w;
-};
-
-//==============================================================================
 // MGXS contains the mgxs data for a nuclide/material
 //==============================================================================
 
@@ -43,7 +29,6 @@ private:
   int num_delayed_groups; // number of delayed neutron groups
   vector<XsData> xs;      // Cross section data
   // MGXS Incoming Flux Angular grid information
-  bool is_isotropic; // used to skip search for angle indices if isotropic
   int n_pol;
   int n_azi;
   vector<double> polar;
@@ -96,12 +81,15 @@ private:
   bool equiv(const Mgxs& that);
 
 public:
-  std::string name;        // name of dataset, e.g., UO2
-  double awr;              // atomic weight ratio
-  bool fissionable;        // Is this fissionable
-  vector<CacheData> cache; // index and data cache
+  std::string name; // name of dataset, e.g., UO2
+  double awr;       // atomic weight ratio
+  bool fissionable; // Is this fissionable
+  bool is_isotropic {
+    true}; // used to skip search for angle indices if isotropic
+  bool exists_in_model {true}; // Is this present in model
 
   Mgxs() = default;
+  Mgxs(bool exists) : exists_in_model(exists) {}
 
   //! \brief Constructor that loads the Mgxs object from the HDF5 file
   //!
@@ -135,13 +123,15 @@ public:
   //! @param mu Cosine of the change-in-angle, for scattering quantities;
   //!   use nullptr if irrelevant.
   //! @param dg delayed group index; use nullptr if irrelevant.
+  //! @param t Temperature index.
+  //! @param a Angle index.
   //! @return Requested cross section value.
-  double get_xs(
-    MgxsType xstype, int gin, const int* gout, const double* mu, const int* dg);
+  double get_xs(MgxsType xstype, int gin, const int* gout, const double* mu,
+    const int* dg, int t, int a);
 
-  inline double get_xs(MgxsType xstype, int gin)
+  inline double get_xs(MgxsType xstype, int gin, int t, int a)
   {
-    return get_xs(xstype, gin, nullptr, nullptr, nullptr);
+    return get_xs(xstype, gin, nullptr, nullptr, nullptr, t, a);
   }
 
   //! \brief Samples the fission neutron energy and if prompt or delayed.
@@ -150,7 +140,10 @@ public:
   //! @param dg Sampled delayed group index.
   //! @param gout Sampled outgoing energy group.
   //! @param seed Pseudorandom seed pointer
-  void sample_fission_energy(int gin, int& dg, int& gout, uint64_t* seed);
+  //! @param t Temperature index.
+  //! @param a Angle index.
+  void sample_fission_energy(
+    int gin, int& dg, int& gout, uint64_t* seed, int t, int a);
 
   //! \brief Samples the outgoing energy and angle from a scatter event.
   //!
@@ -159,23 +152,37 @@ public:
   //! @param mu Sampled cosine of the change-in-angle.
   //! @param wgt Weight of the particle to be adjusted.
   //! @param seed Pseudorandom seed pointer.
+  //! @param t Temperature index.
+  //! @param a Angle index.
   void sample_scatter(
-    int gin, int& gout, double& mu, double& wgt, uint64_t* seed);
+    int gin, int& gout, double& mu, double& wgt, uint64_t* seed, int t, int a);
 
   //! \brief Calculates cross section quantities needed for tracking.
   //!
   //! @param p The particle whose attributes set which MGXS to get.
   void calculate_xs(Particle& p);
 
-  //! \brief Sets the temperature index in cache given a temperature
+  //! \brief Sets the temperature index in the particle's cache.
+  //!
+  //! @param p Particle.
+  void set_temperature_index(Particle& p);
+
+  //! \brief Gets the temperature index given a temperature.
   //!
   //! @param sqrtkT Temperature of the material.
-  void set_temperature_index(double sqrtkT);
+  //! @return The temperature index corresponding to sqrtkT.
+  int get_temperature_index(double sqrtkT) const;
 
-  //! \brief Sets the angle index in cache given a direction
+  //! \brief Sets the angle index in the particle's cache.
+  //!
+  //! @param p Particle.
+  void set_angle_index(Particle& p);
+
+  //! \brief Gets the angle index given a direction.
   //!
   //! @param u Incoming particle direction.
-  void set_angle_index(Direction u);
+  //! @return The angle index corresponding to u.
+  int get_angle_index(const Direction& u) const;
 
   //! \brief Provide const access to list of XsData held by this
   const vector<XsData>& get_xsdata() const { return xs; }

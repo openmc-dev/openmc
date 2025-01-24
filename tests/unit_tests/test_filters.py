@@ -1,6 +1,6 @@
 import numpy as np
 import openmc
-from pytest import fixture, approx
+from pytest import fixture, approx, raises
 
 
 @fixture(scope='module')
@@ -10,14 +10,14 @@ def box_model():
     m.add_nuclide('U235', 1.0)
     m.set_density('g/cm3', 1.0)
 
-    box = openmc.model.rectangular_prism(10., 10., boundary_type='vacuum')
-    c = openmc.Cell(fill=m, region=box)
+    box = openmc.model.RectangularPrism(10., 10., boundary_type='vacuum')
+    c = openmc.Cell(fill=m, region=-box)
     model.geometry.root_universe = openmc.Universe(cells=[c])
 
     model.settings.particles = 100
     model.settings.batches = 10
     model.settings.inactive = 0
-    model.settings.source = openmc.Source(space=openmc.stats.Point())
+    model.settings.source = openmc.IndependentSource(space=openmc.stats.Point())
     return model
 
 
@@ -246,6 +246,11 @@ def test_energy():
     f = openmc.EnergyFilter.from_group_structure('CCFE-709')
     assert f.bins.shape == (709, 2)
     assert len(f.values) == 710
+
+
+def test_energyfilter_error_handling():
+    with raises(ValueError):
+        openmc.EnergyFilter([1e6])
 
 
 def test_lethargy_bin_width():

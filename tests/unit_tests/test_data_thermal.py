@@ -363,7 +363,7 @@ def test_mixed_elastic(fake_mixed_elastic, run_in_tmpdir):
     model.settings.particles = 1000
     model.settings.batches = 10
     model.settings.run_mode = 'fixed source'
-    model.settings.source = openmc.Source(
+    model.settings.source = openmc.IndependentSource(
         energy=openmc.stats.Discrete([3.0], [1.0])  # 3 eV source
     )
     model.run()

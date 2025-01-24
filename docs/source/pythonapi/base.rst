@@ -21,10 +21,13 @@ Simulation Settings
    :nosignatures:
    :template: myclass.rst
 
-   openmc.Source
+   openmc.SourceBase
+   openmc.IndependentSource
+   openmc.FileSource
+   openmc.CompiledSource
+   openmc.MeshSource
    openmc.SourceParticle
    openmc.VolumeCalculation
-   openmc.WeightWindows
    openmc.Settings
 
 .. autosummary::
@@ -32,6 +35,7 @@ Simulation Settings
    :nosignatures:
    :template: myfunction.rst
 
+   openmc.read_source_file
    openmc.write_source_file
    openmc.wwinp_to_wws
 
@@ -43,9 +47,6 @@ Material Specification
    :nosignatures:
    :template: myclass.rst
 
-   openmc.Nuclide
-   openmc.Element
-   openmc.Macroscopic
    openmc.Material
    openmc.Materials
 
@@ -87,6 +88,7 @@ Building geometry
    openmc.Intersection
    openmc.Union
    openmc.Complement
+   openmc.BoundingBox
    openmc.Cell
    openmc.Universe
    openmc.DAGMCUniverse
@@ -118,6 +120,7 @@ Constructing Tallies
    openmc.Filter
    openmc.UniverseFilter
    openmc.MaterialFilter
+   openmc.MaterialFromFilter
    openmc.CellFilter
    openmc.CellFromFilter
    openmc.CellBornFilter
@@ -125,10 +128,12 @@ Constructing Tallies
    openmc.CollisionFilter
    openmc.SurfaceFilter
    openmc.MeshFilter
+   openmc.MeshBornFilter
    openmc.MeshSurfaceFilter
    openmc.EnergyFilter
    openmc.EnergyoutFilter
    openmc.MuFilter
+   openmc.MuSurfaceFilter
    openmc.PolarFilter
    openmc.AzimuthalFilter
    openmc.DistribcellFilter
@@ -160,6 +165,7 @@ Geometry Plotting
    :template: myclass.rst
 
    openmc.Plot
+   openmc.ProjectionPlot
    openmc.Plots
 
 Running OpenMC
@@ -185,11 +191,19 @@ Post-processing
    :template: myclass.rst
 
    openmc.Particle
+   openmc.ParticleList
    openmc.ParticleTrack
    openmc.StatePoint
    openmc.Summary
    openmc.Track
    openmc.Tracks
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myfunction.rst
+
+   openmc.voxel_to_vtk
 
 The following classes and functions are used for functional expansion reconstruction.
 
@@ -221,6 +235,19 @@ Various classes may be created when performing tally slicing and/or arithmetic:
    openmc.arithmetic.AggregateScore
    openmc.arithmetic.AggregateNuclide
    openmc.arithmetic.AggregateFilter
+
+Variance Reduction
+------------------
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myclass
+
+   openmc.WeightWindows
+   openmc.WeightWindowGenerator
+   openmc.hdf5_to_wws
+
 
 Coarse Mesh Finite Difference Acceleration
 ------------------------------------------

@@ -14,11 +14,7 @@ import numpy as np
 
 from .data import gnds_name
 from .function import Tabulated1D
-try:
-    from ._endf import float_endf
-    _CYTHON = True
-except ImportError:
-    _CYTHON = False
+from endf.records import float_endf
 
 
 _LIBRARY = {0: 'ENDF/B', 1: 'ENDF/A', 2: 'JEFF', 3: 'EFF',
@@ -89,10 +85,6 @@ def py_float_endf(s):
 
     """
     return float(ENDF_FLOAT_RE.sub(r'\1e\2\3', s))
-
-
-if not _CYTHON:
-    float_endf = py_float_endf
 
 
 def int_endf(s):
@@ -449,8 +441,7 @@ class Evaluation:
 
     def __repr__(self):
         name = self.target['zsymam'].replace(' ', '')
-        return '<{} for {} {}>'.format(self.info['sublibrary'], name,
-                                       self.info['library'])
+        return f"<{self.info['sublibrary']} for {name} {self.info['library']}>"
 
     def _read_header(self):
         file_obj = io.StringIO(self.section[1, 451])

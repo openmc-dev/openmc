@@ -1,8 +1,7 @@
 import numbers
 import bisect
 import math
-import typing  # required to prevent typing.Union namespace overwriting Union
-from typing import Iterable, Optional, Tuple
+from collections.abc import Iterable
 from warnings import warn
 
 import h5py
@@ -10,6 +9,7 @@ import numpy as np
 
 from .stepresult import StepResult, VERSION_RESULTS
 import openmc.checkvalue as cv
+from openmc.data import atomic_mass, AVOGADRO
 from openmc.data.library import DataLibrary
 from openmc.material import Material, Materials
 from openmc.exceptions import DataError
@@ -54,11 +54,11 @@ class Results(list):
 
     Parameters
     ----------
-    filename : str
+    filename : str, optional
         Path to depletion result file
 
     """
-    def __init__(self, filename=None):
+    def __init__(self, filename='depletion_results.h5'):
         data = []
         if filename is not None:
             with h5py.File(str(filename), "r") as fh:
@@ -94,21 +94,69 @@ class Results(list):
         )
         return cls(filename)
 
+    def get_activity(
+        self,
+        mat: Material | str,
+        units: str = "Bq/cm3",
+        by_nuclide: bool = False,
+        volume: float | None = None
+    ) -> tuple[np.ndarray, np.ndarray | list[dict]]:
+        """Get activity of material over time.
+
+        .. versionadded:: 0.14.0
+
+        Parameters
+        ----------
+        mat : openmc.Material, str
+            Material object or material id to evaluate
+        units : {'Bq', 'Bq/g', 'Bq/cm3'}
+            Specifies the type of activity to return, options include total
+            activity [Bq], specific [Bq/g] or volumetric activity [Bq/cm3].
+        by_nuclide : bool
+            Specifies if the activity should be returned for the material as a
+            whole or per nuclide. Default is False.
+        volume : float, optional
+            Volume of the material. If not passed, defaults to using the
+            :attr:`Material.volume` attribute.
+
+        Returns
+        -------
+        times : numpy.ndarray
+            Array of times in [s]
+        activities : numpy.ndarray or List[dict]
+            Array of total activities if by_nuclide = False (default)
+            or list of dictionaries of activities by nuclide if
+            by_nuclide = True.
+
+        """
+        if isinstance(mat, Material):
+            mat_id = str(mat.id)
+        elif isinstance(mat, str):
+            mat_id = mat
+        else:
+            raise TypeError('mat should be of type openmc.Material or str')
+
+        times = np.empty_like(self, dtype=float)
+        if by_nuclide:
+            activities = [None] * len(self)
+        else:
+            activities = np.empty_like(self, dtype=float)
+
+        # Evaluate activity for each depletion time
+        for i, result in enumerate(self):
+            times[i] = result.time[0]
+            activities[i] = result.get_material(mat_id).get_activity(units, by_nuclide, volume)
+
+        return times, activities
+
     def get_atoms(
         self,
-        mat: typing.Union[Material, str],
+        mat: Material | str,
         nuc: str,
         nuc_units: str = "atoms",
         time_units: str = "s"
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> tuple[np.ndarray, np.ndarray]:
         """Get number of nuclides over time from a single material
-
-        .. note::
-            Initial values for some isotopes that do not appear in
-            initial concentrations may be non-zero, depending on the
-            value of the :attr:`openmc.deplete.CoupledOperator.dilute_initial`
-            attribute. The :class:`openmc.deplete.CoupledOperator` class adds
-            isotopes according to this setting, which can be set to zero.
 
         Parameters
         ----------
@@ -164,21 +212,122 @@ class Results(list):
 
         return times, concentrations
 
+    def get_decay_heat(
+            self,
+            mat: Material | str,
+            units: str = "W",
+            by_nuclide: bool = False,
+            volume: float | None = None
+    ) -> tuple[np.ndarray, np.ndarray | list[dict]]:
+        """Get decay heat of material over time.
+
+        .. versionadded:: 0.14.0
+
+        Parameters
+        ----------
+        mat : openmc.Material, str
+            Material object or material id to evaluate.
+        units : {'W', 'W/g', 'W/cm3'}
+            Specifies the units of decay heat to return. Options include total
+            heat [W], specific [W/g] or volumetric heat [W/cm3].
+        by_nuclide : bool
+            Specifies if the decay heat should be returned for the material as a
+            whole or per nuclide. Default is False.
+        volume : float, optional
+            Volume of the material. If not passed, defaults to using the
+            :attr:`Material.volume` attribute.
+
+        Returns
+        -------
+        times : numpy.ndarray
+            Array of times in [s]
+        decay_heat : numpy.ndarray or list[dict]
+            Array of total decay heat values if by_nuclide = False (default)
+            or list of dictionaries of decay heat values by nuclide if
+            by_nuclide = True.
+        """
+
+        if isinstance(mat, Material):
+            mat_id = str(mat.id)
+        elif isinstance(mat, str):
+            mat_id = mat
+        else:
+            raise TypeError('mat should be of type openmc.Material or str')
+
+        times = np.empty_like(self, dtype=float)
+        if by_nuclide:
+            decay_heat = [None] * len(self)
+        else:
+            decay_heat = np.empty_like(self, dtype=float)
+
+        # Evaluate decay heat for each depletion time
+        for i, result in enumerate(self):
+            times[i] = result.time[0]
+            decay_heat[i] = result.get_material(mat_id).get_decay_heat(
+                units, by_nuclide, volume)
+
+        return times, decay_heat
+
+    def get_mass(self,
+        mat: Material | str,
+        nuc: str,
+        mass_units: str = "g",
+        time_units: str = "s"
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Get mass of nuclides over time from a single material
+
+        .. versionadded:: 0.14.0
+
+        Parameters
+        ----------
+        mat : openmc.Material, str
+            Material object or material id to evaluate
+        nuc : str
+            Nuclide name to evaluate
+        mass_units : {"g", "g/cm3", "kg"}, optional
+            Units for the returned mass.
+        time_units : {"s", "min", "h", "d", "a"}, optional
+            Units for the returned time array. Default is ``"s"`` to
+            return the value in seconds. Other options are minutes ``"min"``,
+            hours ``"h"``, days ``"d"``, and Julian years ``"a"``.
+
+        Returns
+        -------
+        times : numpy.ndarray
+            Array of times in units of ``time_units``
+        mass : numpy.ndarray
+            Mass of specified nuclide in units of ``mass_units``
+
+        """
+        cv.check_value("mass_units", mass_units, {"g", "g/cm3", "kg"})
+
+        if isinstance(mat, Material):
+            mat_id = str(mat.id)
+        elif isinstance(mat, str):
+            mat_id = mat
+        else:
+            raise TypeError('mat should be of type openmc.Material or str')
+
+        times, atoms = self.get_atoms(mat, nuc, time_units=time_units)
+
+        mass = atoms * atomic_mass(nuc) / AVOGADRO
+
+        # Unit conversions
+        if mass_units == "g/cm3":
+            # Divide by volume to get density
+            mass /= self[0].volume[mat_id]
+        elif mass_units == "kg":
+            mass /= 1e3
+
+        return times, mass
+
     def get_reaction_rate(
         self,
-        mat: typing.Union[Material, str],
+        mat: Material | str,
         nuc: str,
         rx: str
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> tuple[np.ndarray, np.ndarray]:
         """Get reaction rate in a single material/nuclide over time
-
-        .. note::
-
-            Initial values for some isotopes that do not appear in
-            initial concentrations may be non-zero, depending on the
-            value of :class:`openmc.deplete.CoupledOperator` ``dilute_initial``
-            The :class:`openmc.deplete.CoupledOperator` adds isotopes according
-            to this setting, which can be set to zero.
 
         Parameters
         ----------
@@ -214,7 +363,7 @@ class Results(list):
 
         return times, rates
 
-    def get_keff(self, time_units: str = 's') -> Tuple[np.ndarray, np.ndarray]:
+    def get_keff(self, time_units: str = 's') -> tuple[np.ndarray, np.ndarray]:
         """Evaluates the eigenvalue from a results list.
 
         .. versionadded:: 0.13.1
@@ -250,7 +399,7 @@ class Results(list):
         times = _get_time_as(times, time_units)
         return times, eigenvalues
 
-    def get_eigenvalue(self, time_units: str = 's') -> Tuple[np.ndarray, np.ndarray]:
+    def get_eigenvalue(self, time_units: str = 's') -> tuple[np.ndarray, np.ndarray]:
         warn("The get_eigenvalue(...) function has been renamed get_keff and "
              "will be removed in a future version of OpenMC.", FutureWarning)
         return self.get_keff(time_units)
@@ -366,16 +515,17 @@ class Results(list):
         if math.isclose(time, times[ix], rel_tol=rtol, abs_tol=atol):
             return ix
 
+        closest = min(times, key=lambda t: abs(time - t))
         raise ValueError(
-            "A value of {} {} was not found given absolute and "
-            "relative tolerances {} and {}.".format(
-                time, time_units, atol, rtol)
+            f"A value of {time} {time_units} was not found given absolute and "
+            f"relative tolerances {atol} and {rtol}. Closest time is {closest} "
+            f"{time_units}."
         )
 
     def export_to_materials(
         self,
         burnup_index: int,
-        nuc_with_data: Optional[Iterable[str]] = None,
+        nuc_with_data: Iterable[str] | None = None,
         path: PathLike = 'materials.xml'
     ) -> Materials:
         """Return openmc.Materials object based on results at a given step
@@ -397,6 +547,8 @@ class Results(list):
             nuclides from openmc.config['cross_sections'] will be used.
         path : PathLike
             Path to materials XML file to read. Defaults to 'materials.xml'.
+
+            .. versionadded:: 0.13.3
 
         Returns
         -------

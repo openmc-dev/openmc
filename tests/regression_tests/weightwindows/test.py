@@ -48,12 +48,12 @@ def model():
     settings.run_mode = 'fixed source'
     settings.particles = 200
     settings.batches = 2
-    settings.max_splits = 200
+    settings.max_history_splits = 200
     settings.photon_transport = True
     space = Point((0.001, 0.001, 0.001))
     energy = Discrete([14E6], [1.0])
 
-    settings.source = openmc.Source(space=space, energy=energy)
+    settings.source = openmc.IndependentSource(space=space, energy=energy)
 
     # tally
     mesh = openmc.RegularMesh()
@@ -110,3 +110,65 @@ def model():
 def test_weightwindows(model):
     test = HashedPyAPITestHarness('statepoint.2.h5', model)
     test.main()
+
+
+def test_wwinp_cylindrical():
+
+    ww = openmc.wwinp_to_wws('ww_n_cyl.txt')[0]
+
+    mesh = ww.mesh
+
+    assert mesh.dimension == (8, 8, 7)
+
+    # make sure that the mesh grids are correct
+    exp_r_grid = np.hstack((np.linspace(0.0, 3.02, 3, endpoint=False),
+                            np.linspace(3.02, 6.0001, 6))).flatten()
+
+    exp_phi_grid = np.hstack((np.linspace(0.0, 0.25, 2, endpoint=False),
+                              np.linspace(0.25, 1.5707, 1, endpoint=False),
+                              np.linspace(1.5707, 3.1415, 2, endpoint=False),
+                              np.linspace(3.1415, 4.7124, 4))).flatten()
+
+    exp_z_grid = np.hstack((np.linspace(0.0, 8.008, 4, endpoint=False),
+                            np.linspace(8.008, 14.002, 4))).flatten()
+
+    assert isinstance(mesh, openmc.CylindricalMesh)
+
+    np.testing.assert_equal(mesh.r_grid, exp_r_grid)
+    np.testing.assert_equal(mesh.phi_grid, exp_phi_grid)
+    np.testing.assert_equal(mesh.z_grid, exp_z_grid)
+    np.testing.assert_equal(mesh.origin, (0, 0, -9.0001))
+    assert ww.lower_ww_bounds.flat[0] == 0.0
+    assert ww.lower_ww_bounds.flat[-1] == np.prod(mesh.dimension) - 1
+
+
+def test_wwinp_spherical():
+
+    ww = openmc.wwinp_to_wws('ww_n_sph.txt')[0]
+
+    mesh = ww.mesh
+
+    assert mesh.dimension == (8, 7, 8)
+
+    # make sure that the mesh grids are correct
+    exp_r_grid = np.hstack((np.linspace(0.0, 3.02, 3, endpoint=False),
+                            np.linspace(3.02, 6.0001, 6))).flatten()
+
+    exp_theta_grid = np.hstack((np.linspace(0.0, 0.25, 2, endpoint=False),
+                              np.linspace(0.25, 0.5, 1, endpoint=False),
+                              np.linspace(0.5, 0.75, 2, endpoint=False),
+                              np.linspace(0.75, 1.5707, 3))).flatten()
+
+    exp_phi_grid = np.hstack((np.linspace(0.0, 0.25, 2, endpoint=False),
+                              np.linspace(0.25, 0.5, 1, endpoint=False),
+                              np.linspace(0.5, 1.5707, 2, endpoint=False),
+                              np.linspace(1.5707, 3.1415, 4))).flatten()
+
+    assert isinstance(mesh, openmc.SphericalMesh)
+
+    np.testing.assert_equal(mesh.r_grid, exp_r_grid)
+    np.testing.assert_equal(mesh.theta_grid, exp_theta_grid)
+    np.testing.assert_equal(mesh.phi_grid, exp_phi_grid)
+    np.testing.assert_equal(mesh.origin, (0, 0, -9.0001))
+    assert ww.lower_ww_bounds.flat[0] == 0.0
+    assert ww.lower_ww_bounds.flat[-1] == np.prod(mesh.dimension) - 1

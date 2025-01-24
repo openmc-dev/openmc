@@ -19,6 +19,7 @@
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
 #include "openmc/tallies/tally.h"
+#include "openmc/weight_windows.h"
 
 namespace openmc {
 
@@ -26,6 +27,9 @@ void collision_mg(Particle& p)
 {
   // Add to the collision counter for the particle
   p.n_collision()++;
+
+  if (settings::weight_window_checkpoint_collision)
+    apply_weight_windows(p);
 
   // Sample the reaction type
   sample_reaction(p);
@@ -43,7 +47,7 @@ void sample_reaction(Particle& p)
   // change when sampling fission sites. The following block handles all
   // absorption (including fission)
 
-  if (model::materials[p.material()]->fissionable_) {
+  if (model::materials[p.material()]->fissionable()) {
     if (settings::run_mode == RunMode::EIGENVALUE ||
         (settings::run_mode == RunMode::FIXED_SOURCE &&
           settings::create_fission_neutrons)) {
@@ -72,8 +76,8 @@ void sample_reaction(Particle& p)
 
 void scatter(Particle& p)
 {
-  data::mg.macro_xs_[p.material()].sample_scatter(
-    p.g_last(), p.g(), p.mu(), p.wgt(), p.current_seed());
+  data::mg.macro_xs_[p.material()].sample_scatter(p.g_last(), p.g(), p.mu(),
+    p.wgt(), p.current_seed(), p.mg_xs_cache().t, p.mg_xs_cache().a);
 
   // Rotate the angle
   p.u() = rotate_angle(p.u(), p.mu(), nullptr, p.current_seed());
@@ -145,7 +149,7 @@ void create_fission_sites(Particle& p)
     int dg;
     int gout;
     data::mg.macro_xs_[p.material()].sample_fission_energy(
-      p.g(), dg, gout, p.current_seed());
+      p.g(), dg, gout, p.current_seed(), p.mg_xs_cache().t, p.mg_xs_cache().a);
 
     // Store the energy and delayed groups on the fission bank
     site.E = gout;

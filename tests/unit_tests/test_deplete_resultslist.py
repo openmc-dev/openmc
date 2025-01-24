@@ -15,6 +15,27 @@ def res():
                 / 'test_reference.h5')
     return openmc.deplete.Results(filename)
 
+def test_get_activity(res):
+    """Tests evaluating activity"""
+    t, a = res.get_activity("1")
+
+    t_ref = np.array([0.0, 1296000.0, 2592000.0, 3888000.0])
+    a_ref = np.array(
+        [1.25167956e+06, 3.71938527e+11, 4.43264300e+11, 3.55547176e+11])
+
+    np.testing.assert_allclose(t, t_ref)
+    np.testing.assert_allclose(a, a_ref)
+
+    # Check by_nuclide
+    a_xe135_ref = np.array(
+        [2.106574218e+05, 1.227519888e+11, 1.177491828e+11, 1.031986176e+11])
+    t_nuc, a_nuc = res.get_activity("1", by_nuclide=True)
+
+    a_xe135 = np.array([a_nuc_i["Xe135"] for a_nuc_i in a_nuc])
+
+    np.testing.assert_allclose(t_nuc, t_ref)
+    np.testing.assert_allclose(a_xe135, a_xe135_ref)
+
 
 def test_get_atoms(res):
     """Tests evaluating single nuclide concentration."""
@@ -40,6 +61,60 @@ def test_get_atoms(res):
     assert t_min == pytest.approx(t_ref / 60)
 
     t_hour, _n = res.get_atoms("1", "Xe135", time_units="h")
+    assert t_hour == pytest.approx(t_ref / (60 * 60))
+
+
+def test_get_decay_heat(res):
+    """Tests evaluating decay heat."""
+    # Set chain file for testing
+    openmc.config['chain_file'] = Path(__file__).parents[1] / 'chain_simple.xml'
+
+    t_ref = np.array([0.0, 1296000.0, 2592000.0, 3888000.0])
+    dh_ref = np.array(
+        [1.27933813e-09, 5.85347232e-03, 7.38773010e-03, 5.79954067e-03])
+
+    t, dh = res.get_decay_heat("1")
+
+    np.testing.assert_allclose(t, t_ref)
+    np.testing.assert_allclose(dh, dh_ref)
+
+    # Check by nuclide
+    dh_xe135_ref = np.array(
+        [1.27933813e-09, 7.45481920e-04, 7.15099509e-04, 6.26732849e-04])
+    t_nuc, dh_nuc = res.get_decay_heat("1", by_nuclide=True)
+
+    dh_nuc_xe135 = np.array([dh_nuc_i["Xe135"] for dh_nuc_i in dh_nuc])
+
+    np.testing.assert_allclose(t_nuc, t_ref)
+    np.testing.assert_allclose(dh_nuc_xe135, dh_xe135_ref)
+
+
+def test_get_mass(res):
+    """Tests evaluating single nuclide concentration."""
+    t, n = res.get_mass("1", "Xe135")
+
+    t_ref = np.array([0.0, 1296000.0, 2592000.0, 3888000.0])
+    n_ref = np.array(
+        [6.67473282e+08, 3.88942731e+14, 3.73091215e+14, 3.26987387e+14])
+
+    # Get g
+    n_ref *= openmc.data.atomic_mass('Xe135') / openmc.data.AVOGADRO
+
+    np.testing.assert_allclose(t, t_ref)
+    np.testing.assert_allclose(n, n_ref)
+
+    # Check alternate units
+    volume = res[0].volume["1"]
+    t_days, n_cm3 = res.get_mass("1", "Xe135", mass_units="g/cm3", time_units="d")
+
+    assert t_days == pytest.approx(t_ref / (60 * 60 * 24))
+    assert n_cm3 == pytest.approx(n_ref / volume)
+
+    t_min, n_bcm = res.get_mass("1", "Xe135", mass_units="kg", time_units="min")
+    assert n_bcm == pytest.approx(n_ref / 1e3)
+    assert t_min == pytest.approx(t_ref / 60)
+
+    t_hour, _n = res.get_mass("1", "Xe135", time_units="h")
     assert t_hour == pytest.approx(t_ref / (60 * 60))
 
 
@@ -74,7 +149,7 @@ def test_get_keff(res):
 def test_get_steps(unit):
     # Make a Results full of near-empty Result instances
     # Just fill out a time schedule
-    results = openmc.deplete.Results()
+    results = openmc.deplete.Results(filename=None)
     # Time in units of unit
     times = np.linspace(0, 100, num=5)
     if unit == "a":

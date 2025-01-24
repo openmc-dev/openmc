@@ -55,9 +55,9 @@ protected:
   //----------------------------------------------------------------------------
   // Data members
 
-  int32_t mesh_;
-  bool translated_ {false};
-  Position translation_ {0.0, 0.0, 0.0};
+  int32_t mesh_;            //!< Index of the mesh
+  bool translated_ {false}; //!< Whether or not the filter is translated
+  Position translation_ {0.0, 0.0, 0.0}; //!< Filter translation
 };
 
 } // namespace openmc

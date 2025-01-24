@@ -7,6 +7,7 @@ import pytest
 import openmc
 
 from tests.testing_harness import PyAPITestHarness
+from tests.regression_tests import config
 
 
 @pytest.fixture
@@ -44,7 +45,7 @@ def model(request):
 
     if surf_source_op == 'write':
         point = openmc.stats.Point((0, 0, 0))
-        pt_src = openmc.Source(space=point)
+        pt_src = openmc.IndependentSource(space=point)
         openmc_model.settings.source = pt_src
 
         openmc_model.settings.surf_source_write = {'surface_ids': [1],
@@ -117,7 +118,9 @@ class SurfaceSourceTestHarness(PyAPITestHarness):
 
 
 @pytest.mark.surf_source_op('write')
-def test_surface_source_write(model):
+def test_surface_source_write(model, monkeypatch):
+    # Test result is based on 1 MPI process
+    monkeypatch.setitem(config, "mpi_np", "1")
     harness = SurfaceSourceTestHarness('statepoint.10.h5',
                                        model,
                                        'inputs_true_write.dat')

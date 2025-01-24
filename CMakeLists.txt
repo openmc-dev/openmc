@@ -1,10 +1,10 @@
-cmake_minimum_required(VERSION 3.10 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.16 FATAL_ERROR)
 project(openmc C CXX)
 
 # Set version numbers
 set(OPENMC_VERSION_MAJOR 0)
-set(OPENMC_VERSION_MINOR 13)
-set(OPENMC_VERSION_RELEASE 3)
+set(OPENMC_VERSION_MINOR 15)
+set(OPENMC_VERSION_RELEASE 1)
 set(OPENMC_VERSION ${OPENMC_VERSION_MAJOR}.${OPENMC_VERSION_MINOR}.${OPENMC_VERSION_RELEASE})
 configure_file(include/openmc/version.h.in "${CMAKE_BINARY_DIR}/include/openmc/version.h" @ONLY)
 
@@ -15,11 +15,6 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 # Set module path
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules)
-
-# Allow user to specify <project>_ROOT variables
-if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.12)
-  cmake_policy(SET CMP0074 NEW)
-endif()
 
 # Enable correct usage of CXX_EXTENSIONS
 if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.22)
@@ -39,6 +34,7 @@ option(OPENMC_USE_LIBMESH     "Enable support for libMesh unstructured mesh tall
 option(OPENMC_USE_MPI         "Enable MPI"                                           OFF)
 option(OPENMC_USE_MCPL        "Enable MCPL"                                          OFF)
 option(OPENMC_USE_NCRYSTAL    "Enable support for NCrystal scattering"               OFF)
+option(OPENMC_USE_UWUW        "Enable UWUW"                                          OFF)
 
 # Warnings for deprecated options
 foreach(OLD_OPT IN ITEMS "openmp" "profile" "coverage" "dagmc" "libmesh")
@@ -81,6 +77,14 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 #===============================================================================
+# OpenMP for shared-memory parallelism (and GPU support some day!)
+#===============================================================================
+
+if(OPENMC_USE_OPENMP)
+  find_package(OpenMP REQUIRED)
+endif()
+
+#===============================================================================
 # MPI for distributed-memory parallelism
 #===============================================================================
 
@@ -117,8 +121,14 @@ endif()
 if(OPENMC_USE_DAGMC)
   find_package(DAGMC REQUIRED PATH_SUFFIXES lib/cmake)
   if (${DAGMC_VERSION} VERSION_LESS 3.2.0)
-    message(FATAL_ERROR "Discovered DAGMC Version: ${DAGMC_VERSION}. \
-    Please update DAGMC to version 3.2.0 or greater.")
+    message(FATAL_ERROR "Discovered DAGMC Version: ${DAGMC_VERSION}."
+      "Please update DAGMC to version 3.2.0 or greater.")
+  endif()
+  message(STATUS "Found DAGMC: ${DAGMC_DIR} (version ${DAGMC_VERSION})")
+
+  # Check if UWUW is needed and available
+  if(OPENMC_USE_UWUW AND NOT DAGMC_BUILD_UWUW)
+    message(FATAL_ERROR "UWUW is enabled but DAGMC was not configured with UWUW.")
   endif()
 endif()
 
@@ -154,6 +164,11 @@ if(NOT DEFINED HDF5_PREFER_PARALLEL)
 endif()
 
 find_package(HDF5 REQUIRED COMPONENTS C HL)
+
+# Remove HDF5 transitive dependencies that are system libraries
+list(FILTER HDF5_LIBRARIES EXCLUDE REGEX ".*lib(pthread|dl|m).*")
+message(STATUS "HDF5 Libraries: ${HDF5_LIBRARIES}")
+
 if(HDF5_IS_PARALLEL)
   if(NOT OPENMC_USE_MPI)
     message(FATAL_ERROR "Parallel HDF5 was detected, but MPI was not enabled.\
@@ -185,15 +200,6 @@ endif()
 
 # Skip for Visual Studio which has its own configurations through GUI
 if(NOT MSVC)
-
-if(OPENMC_USE_OPENMP)
-  find_package(OpenMP)
-  if(OPENMP_FOUND)
-    # In CMake 3.9+, can use the OpenMP::OpenMP_CXX imported target
-    list(APPEND cxxflags ${OpenMP_CXX_FLAGS})
-    list(APPEND ldflags ${OpenMP_CXX_FLAGS})
-  endif()
-endif()
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
@@ -261,11 +267,6 @@ endif()
 # xtensor header-only library
 #===============================================================================
 
-# CMake 3.13+ will complain about policy CMP0079 unless it is set explicitly
-if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.13)
-  cmake_policy(SET CMP0079 NEW)
-endif()
-
 find_package_write_status(xtensor)
 if (NOT xtensor_FOUND)
   add_subdirectory(vendor/xtl)
@@ -292,7 +293,7 @@ endif()
 
 if(OPENMC_BUILD_TESTS)
   find_package_write_status(Catch2)
-  if (NOT Catch2)
+  if (NOT Catch2_FOUND)
     add_subdirectory(vendor/Catch2)
   endif()
 endif()
@@ -334,10 +335,10 @@ list(APPEND libopenmc_SOURCES
   src/bank.cpp
   src/boundary_condition.cpp
   src/bremsstrahlung.cpp
-  src/dagmc.cpp
   src/cell.cpp
   src/cmfd_solver.cpp
   src/cross_sections.cpp
+  src/dagmc.cpp
   src/distribution.cpp
   src/distribution_angle.cpp
   src/distribution_energy.cpp
@@ -347,11 +348,12 @@ list(APPEND libopenmc_SOURCES
   src/endf.cpp
   src/error.cpp
   src/event.cpp
-  src/initialize.cpp
+  src/file_utils.cpp
   src/finalize.cpp
   src/geometry.cpp
   src/geometry_aux.cpp
   src/hdf5_interface.cpp
+  src/initialize.cpp
   src/lattice.cpp
   src/material.cpp
   src/math_functions.cpp
@@ -375,6 +377,11 @@ list(APPEND libopenmc_SOURCES
   src/progress_bar.cpp
   src/random_dist.cpp
   src/random_lcg.cpp
+  src/random_ray/random_ray_simulation.cpp
+  src/random_ray/random_ray.cpp
+  src/random_ray/flat_source_domain.cpp
+  src/random_ray/linear_source_domain.cpp
+  src/random_ray/moment_matrix.cpp
   src/reaction.cpp
   src/reaction_product.cpp
   src/scattdata.cpp
@@ -393,20 +400,23 @@ list(APPEND libopenmc_SOURCES
   src/tallies/derivative.cpp
   src/tallies/filter.cpp
   src/tallies/filter_azimuthal.cpp
-  src/tallies/filter_cellborn.cpp
-  src/tallies/filter_cellfrom.cpp
   src/tallies/filter_cell.cpp
   src/tallies/filter_cell_instance.cpp
+  src/tallies/filter_cellborn.cpp
+  src/tallies/filter_cellfrom.cpp
+  src/tallies/filter_collision.cpp
   src/tallies/filter_delayedgroup.cpp
   src/tallies/filter_distribcell.cpp
-  src/tallies/filter_energyfunc.cpp
   src/tallies/filter_energy.cpp
-  src/tallies/filter_collision.cpp
+  src/tallies/filter_energyfunc.cpp
   src/tallies/filter_legendre.cpp
   src/tallies/filter_material.cpp
+  src/tallies/filter_materialfrom.cpp
   src/tallies/filter_mesh.cpp
+  src/tallies/filter_meshborn.cpp
   src/tallies/filter_meshsurface.cpp
   src/tallies/filter_mu.cpp
+  src/tallies/filter_musurface.cpp
   src/tallies/filter_particle.cpp
   src/tallies/filter_polar.cpp
   src/tallies/filter_sph_harm.cpp
@@ -418,8 +428,8 @@ list(APPEND libopenmc_SOURCES
   src/tallies/tally.cpp
   src/tallies/tally_scoring.cpp
   src/tallies/trigger.cpp
-  src/timer.cpp
   src/thermal.cpp
+  src/timer.cpp
   src/track_output.cpp
   src/universe.cpp
   src/urr.cpp
@@ -489,7 +499,7 @@ endif()
 # target_link_libraries treats any arguments starting with - but not -l as
 # linker flags. Thus, we can pass both linker flags and libraries together.
 target_link_libraries(libopenmc ${ldflags} ${HDF5_LIBRARIES} ${HDF5_HL_LIBRARIES}
-                      xtensor gsl::gsl-lite-v1 fmt::fmt)
+                      xtensor gsl::gsl-lite-v1 fmt::fmt ${CMAKE_DL_LIBS})
 
 if(TARGET pugixml::pugixml)
   target_link_libraries(libopenmc pugixml::pugixml)
@@ -499,7 +509,15 @@ endif()
 
 if(OPENMC_USE_DAGMC)
   target_compile_definitions(libopenmc PRIVATE DAGMC)
-  target_link_libraries(libopenmc dagmc-shared uwuw-shared)
+  target_link_libraries(libopenmc dagmc-shared)
+
+  if(OPENMC_USE_UWUW)
+    target_compile_definitions(libopenmc PRIVATE OPENMC_UWUW)
+    target_link_libraries(libopenmc uwuw-shared)
+  endif()
+elseif(OPENMC_USE_UWUW)
+  set(OPENMC_USE_UWUW OFF)
+  message(FATAL_ERROR "DAGMC must be enabled when UWUW is enabled.")
 endif()
 
 if(OPENMC_USE_LIBMESH)
@@ -510,6 +528,10 @@ endif()
 if (PNG_FOUND)
   target_compile_definitions(libopenmc PRIVATE USE_LIBPNG)
   target_link_libraries(libopenmc PNG::PNG)
+endif()
+
+if (OPENMC_USE_OPENMP)
+  target_link_libraries(libopenmc OpenMP::OpenMP_CXX)
 endif()
 
 if (OPENMC_USE_MPI)
@@ -554,9 +576,9 @@ target_compile_options(openmc PRIVATE ${cxxflags})
 target_include_directories(openmc PRIVATE ${CMAKE_BINARY_DIR}/include)
 target_link_libraries(openmc libopenmc)
 
-# Ensure C++14 standard is used and turn off GNU extensions
-target_compile_features(openmc PUBLIC cxx_std_14)
-target_compile_features(libopenmc PUBLIC cxx_std_14)
+# Ensure C++17 standard is used and turn off GNU extensions
+target_compile_features(openmc PUBLIC cxx_std_17)
+target_compile_features(libopenmc PUBLIC cxx_std_17)
 set_target_properties(openmc libopenmc PROPERTIES CXX_EXTENSIONS OFF)
 
 #===============================================================================

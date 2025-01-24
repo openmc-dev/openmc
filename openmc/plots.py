@@ -1,17 +1,19 @@
 from collections.abc import Iterable, Mapping
-from numbers import Real, Integral
+from numbers import Integral, Real
 from pathlib import Path
-from xml.etree import ElementTree as ET
 
+import h5py
+import lxml.etree as ET
 import numpy as np
 
 import openmc
 import openmc.checkvalue as cv
-from ._xml import clean_indentation, reorder_attributes
+from openmc.checkvalue import PathLike
+
+from ._xml import clean_indentation, get_elem_tuple, reorder_attributes, get_text
 from .mixin import IDManagerMixin
 
-
-_BASES = ['xy', 'xz', 'yz']
+_BASES = {'xy', 'xz', 'yz'}
 
 _SVG_COLORS = {
     'aliceblue': (240, 248, 255),
@@ -168,8 +170,14 @@ def _get_plot_image(plot, cwd):
     from IPython.display import Image
 
     # Make sure .png file was created
-    stem = plot.filename if plot.filename is not None else f'plot_{plot.id}'
-    png_file = Path(cwd) / f'{stem}.png'
+    png_filename = plot.filename if plot.filename is not None else f'plot_{plot.id}'
+
+    # Add file extension if not already present. The C++ code added it
+    # automatically if it wasn't present.
+    if Path(png_filename).suffix != ".png":
+        png_filename += ".png"
+
+    png_file = Path(cwd) / png_filename
     if not png_file.exists():
         raise FileNotFoundError(
             f"Could not find .png image for plot {plot.id}. Your version of "
@@ -178,11 +186,348 @@ def _get_plot_image(plot, cwd):
     return Image(str(png_file))
 
 
-class Plot(IDManagerMixin):
+def voxel_to_vtk(voxel_file: PathLike, output: PathLike = 'plot.vti'):
+    """Converts a voxel HDF5 file to a VTK file
+
+    .. versionadded:: 0.14.0
+
+    Parameters
+    ----------
+    voxel_file : path-like
+        Path of the input h5 to convert
+    output : path-like
+        Path of the output vti file produced
+
+    Returns
+    -------
+    Path
+        Path of the .vti file produced
+    """
+
+    # imported vtk only if used as vtk is an option dependency
+    import vtk
+
+    _min_version = (2, 0)
+
+    # Read data from voxel file
+    with h5py.File(voxel_file, "r") as fh:
+        # check version
+        version = tuple(fh.attrs["version"])
+        if version < _min_version:
+            old_version = ".".join(map(str, version))
+            min_version = ".".join(map(str, _min_version))
+            err_msg = (
+                f"This voxel file's version is {old_version}. This function only "
+                f" supports voxel files with version {min_version} or higher. "
+                "Please generate a new voxel file using a newer version of OpenMC."
+            )
+            raise ValueError(err_msg)
+
+        dimension = fh.attrs["num_voxels"]
+        width = fh.attrs["voxel_width"]
+        lower_left = fh.attrs["lower_left"]
+
+        nx, ny, nz = dimension
+
+        grid = vtk.vtkImageData()
+        grid.SetDimensions(nx + 1, ny + 1, nz + 1)
+        grid.SetOrigin(*lower_left)
+        grid.SetSpacing(*width)
+
+        # transpose data from OpenMC ordering (zyx) to VTK ordering (xyz)
+        # and flatten to 1-D array
+        h5data = fh["data"][...]
+
+    data = vtk.vtkIntArray()
+    data.SetName("id")
+    # set the array using the h5data array
+    data.SetArray(h5data, h5data.size, True)
+    # add data to image grid
+    grid.GetCellData().AddArray(data)
+
+    writer = vtk.vtkXMLImageDataWriter()
+    if vtk.vtkVersion.GetVTKMajorVersion() > 5:
+        writer.SetInputData(grid)
+    else:
+        writer.SetInput(grid)
+    output = str(output)
+    if not output.endswith(".vti"):
+        output += ".vti"
+    writer.SetFileName(output)
+    writer.Write()
+
+    return output
+
+
+class PlotBase(IDManagerMixin):
+    """
+    Parameters
+    ----------
+    plot_id : int
+        Unique identifier for the plot
+    name : str
+        Name of the plot
+
+    Attributes
+    ----------
+    id : int
+        Unique identifier
+    name : str
+        Name of the plot
+    pixels : Iterable of int
+        Number of pixels to use in each direction
+    filename : str
+        Path to write the plot to
+    color_by : {'cell', 'material'}
+        Indicate whether the plot should be colored by cell or by material
+    background : Iterable of int or str
+        Color of the background
+    mask_components : Iterable of openmc.Cell or openmc.Material or int
+        The cells or materials (or corresponding IDs) to mask
+    mask_background : Iterable of int or str
+        Color to apply to all cells/materials listed in mask_components
+    show_overlaps : bool
+        Indicate whether or not overlapping regions are shown
+    overlap_color : Iterable of int or str
+        Color to apply to overlapping regions
+    colors : dict
+        Dictionary indicating that certain cells/materials should be
+        displayed with a particular color. The keys can be of type
+        :class:`~openmc.Cell`, :class:`~openmc.Material`, or int (ID for a
+        cell/material).
+    level : int
+        Universe depth to plot at
+    """
+
+    next_id = 1
+    used_ids = set()
+
+    def __init__(self, plot_id=None, name=''):
+        # Initialize Plot class attributes
+        self.id = plot_id
+        self.name = name
+        self._pixels = [400, 400]
+        self._filename = None
+        self._color_by = 'cell'
+        self._background = None
+        self._mask_components = None
+        self._mask_background = None
+        self._show_overlaps = False
+        self._overlap_color = None
+        self._colors = {}
+        self._level = None
+
+    @property
+    def name(self):
+        return self._name
+
+    @name.setter
+    def name(self, name):
+        cv.check_type('plot name', name, str)
+        self._name = name
+
+    @property
+    def pixels(self):
+        return self._pixels
+
+    @pixels.setter
+    def pixels(self, pixels):
+        cv.check_type('plot pixels', pixels, Iterable, Integral)
+        cv.check_length('plot pixels', pixels, 2, 3)
+        for dim in pixels:
+            cv.check_greater_than('plot pixels', dim, 0)
+        self._pixels = pixels
+
+    @property
+    def filename(self):
+        return self._filename
+
+    @filename.setter
+    def filename(self, filename):
+        cv.check_type('filename', filename, str)
+        self._filename = filename
+
+    @property
+    def color_by(self):
+        return self._color_by
+
+    @color_by.setter
+    def color_by(self, color_by):
+        cv.check_value('plot color_by', color_by, ['cell', 'material'])
+        self._color_by = color_by
+
+    @property
+    def background(self):
+        return self._background
+
+    @background.setter
+    def background(self, background):
+        self._check_color('plot background', background)
+        self._background = background
+
+    @property
+    def mask_components(self):
+        return self._mask_components
+
+    @mask_components.setter
+    def mask_components(self, mask_components):
+        cv.check_type('plot mask components', mask_components, Iterable,
+                      (openmc.Cell, openmc.Material, Integral))
+        self._mask_components = mask_components
+
+    @property
+    def mask_background(self):
+        return self._mask_background
+
+    @mask_background.setter
+    def mask_background(self, mask_background):
+        self._check_color('plot mask background', mask_background)
+        self._mask_background = mask_background
+
+    @property
+    def show_overlaps(self):
+        return self._show_overlaps
+
+    @show_overlaps.setter
+    def show_overlaps(self, show_overlaps):
+        cv.check_type(f'Show overlaps flag for Plot ID="{self.id}"',
+                      show_overlaps, bool)
+        self._show_overlaps = show_overlaps
+
+    @property
+    def overlap_color(self):
+        return self._overlap_color
+
+    @overlap_color.setter
+    def overlap_color(self, overlap_color):
+        self._check_color('plot overlap color', overlap_color)
+        self._overlap_color = overlap_color
+
+    @property
+    def colors(self):
+        return self._colors
+
+    @colors.setter
+    def colors(self, colors):
+        cv.check_type('plot colors', colors, Mapping)
+        for key, value in colors.items():
+            cv.check_type('plot color key', key,
+                          (openmc.Cell, openmc.Material, Integral))
+            self._check_color('plot color value', value)
+        self._colors = colors
+
+    @property
+    def level(self):
+        return self._level
+
+    @level.setter
+    def level(self, plot_level):
+        cv.check_type('plot level', plot_level, Integral)
+        cv.check_greater_than('plot level', plot_level, 0, equality=True)
+        self._level = plot_level
+
+    @staticmethod
+    def _check_color(err_string, color):
+        cv.check_type(err_string, color, Iterable)
+        if isinstance(color, str):
+            if color.lower() not in _SVG_COLORS:
+                raise ValueError(f"'{color}' is not a valid color.")
+        else:
+            cv.check_length(err_string, color, 3)
+            for rgb in color:
+                cv.check_type(err_string, rgb, Real)
+                cv.check_greater_than('RGB component', rgb, 0, True)
+                cv.check_less_than('RGB component', rgb, 256)
+
+    # Helper function that returns the domain ID given either a
+    # Cell/Material object or the domain ID itself
+    @staticmethod
+    def _get_id(domain):
+        return domain if isinstance(domain, Integral) else domain.id
+
+    def colorize(self, geometry, seed=1):
+        """Generate a color scheme for each domain in the plot.
+
+        This routine may be used to generate random, reproducible color schemes.
+        The colors generated are based upon cell/material IDs in the geometry.
+
+        Parameters
+        ----------
+        geometry : openmc.Geometry
+            The geometry for which the plot is defined
+        seed : Integral
+            The random number seed used to generate the color scheme
+
+        """
+
+        cv.check_type('geometry', geometry, openmc.Geometry)
+        cv.check_type('seed', seed, Integral)
+        cv.check_greater_than('seed', seed, 1, equality=True)
+
+        # Get collections of the domains which will be plotted
+        if self.color_by == 'material':
+            domains = geometry.get_all_materials().values()
+        else:
+            domains = geometry.get_all_cells().values()
+
+        # Set the seed for the random number generator
+        rng = np.random.RandomState(seed)
+
+        # Generate random colors for each feature
+        for domain in domains:
+            self.colors[domain] = rng.randint(0, 256, (3,))
+
+    def to_xml_element(self):
+        """Save common plot attributes to XML element
+
+        Returns
+        -------
+        element : lxml.etree._Element
+            XML element containing plot data
+
+        """
+
+        element = ET.Element("plot")
+        element.set("id", str(self._id))
+        if len(self._name) > 0:
+            element.set("name", str(self.name))
+        if self._filename is not None:
+            element.set("filename", self._filename)
+        element.set("color_by", self._color_by)
+
+        subelement = ET.SubElement(element, "pixels")
+        subelement.text = ' '.join(map(str, self._pixels))
+
+        if self._background is not None:
+            subelement = ET.SubElement(element, "background")
+            color = self._background
+            if isinstance(color, str):
+                color = _SVG_COLORS[color.lower()]
+            subelement.text = ' '.join(str(x) for x in color)
+
+        if self._mask_components is not None:
+            subelement = ET.SubElement(element, "mask")
+            subelement.set("components", ' '.join(
+                str(PlotBase._get_id(d)) for d in self._mask_components))
+            color = self._mask_background
+            if color is not None:
+                if isinstance(color, str):
+                    color = _SVG_COLORS[color.lower()]
+                subelement.set("background", ' '.join(
+                    str(x) for x in color))
+
+        if self._level is not None:
+            subelement = ET.SubElement(element, "level")
+            subelement.text = str(self._level)
+
+        return element
+
+
+class Plot(PlotBase):
     """Definition of a finite region of space to be plotted.
 
-    OpenMC is capable of generating two-dimensional slice plots and
-    three-dimensional voxel plots. Colors that are used in plots can be given as
+    OpenMC is capable of generating two-dimensional slice plots, or
+    three-dimensional voxel or projection plots. Colors that are used in plots can be given as
     RGB tuples, e.g. (255, 255, 255) would be white, or by a string indicating a
     valid `SVG color <https://www.w3.org/TR/SVG11/types.html#ColorKeywords>`_.
 
@@ -199,26 +544,18 @@ class Plot(IDManagerMixin):
         Unique identifier
     name : str
         Name of the plot
-    width : Iterable of float
-        Width of the plot in each basis direction
     pixels : Iterable of int
-        Number of pixels to use in each basis direction
-    origin : tuple or list of ndarray
-        Origin (center) of the plot
-    filename :
+        Number of pixels to use in each direction
+    filename : str
         Path to write the plot to
     color_by : {'cell', 'material'}
         Indicate whether the plot should be colored by cell or by material
-    type : {'slice', 'voxel'}
-        The type of the plot
-    basis : {'xy', 'xz', 'yz'}
-        The basis directions for the plot
     background : Iterable of int or str
         Color of the background
     mask_components : Iterable of openmc.Cell or openmc.Material or int
         The cells or materials (or corresponding IDs) to mask
     mask_background : Iterable of int or str
-        Color to apply to all cells/materials not listed in mask_components
+        Color to apply to all cells/materials listed in mask_components
     show_overlaps : bool
         Indicate whether or not overlapping regions are shown
     overlap_color : Iterable of int or str
@@ -230,103 +567,31 @@ class Plot(IDManagerMixin):
         cell/material).
     level : int
         Universe depth to plot at
+    width : Iterable of float
+        Width of the plot in each basis direction
+    origin : tuple or list of ndarray
+        Origin (center) of the plot
+    type : {'slice', 'voxel'}
+        The type of the plot
+    basis : {'xy', 'xz', 'yz'}
+        The basis directions for the plot
     meshlines : dict
         Dictionary defining type, id, linewidth and color of a mesh to be
         plotted on top of a plot
 
     """
 
-    next_id = 1
-    used_ids = set()
-
     def __init__(self, plot_id=None, name=''):
-        # Initialize Plot class attributes
-        self.id = plot_id
-        self.name = name
+        super().__init__(plot_id, name)
         self._width = [4.0, 4.0]
-        self._pixels = [400, 400]
         self._origin = [0., 0., 0.]
-        self._filename = None
-        self._color_by = 'cell'
         self._type = 'slice'
         self._basis = 'xy'
-        self._background = None
-        self._mask_components = None
-        self._mask_background = None
-        self._show_overlaps = False
-        self._overlap_color = None
-        self._colors = {}
-        self._level = None
         self._meshlines = None
-
-    @property
-    def name(self):
-        return self._name
 
     @property
     def width(self):
         return self._width
-
-    @property
-    def pixels(self):
-        return self._pixels
-
-    @property
-    def origin(self):
-        return self._origin
-
-    @property
-    def filename(self):
-        return self._filename
-
-    @property
-    def color_by(self):
-        return self._color_by
-
-    @property
-    def type(self):
-        return self._type
-
-    @property
-    def basis(self):
-        return self._basis
-
-    @property
-    def background(self):
-        return self._background
-
-    @property
-    def mask_components(self):
-        return self._mask_components
-
-    @property
-    def mask_background(self):
-        return self._mask_background
-
-    @property
-    def show_overlaps(self):
-        return self._show_overlaps
-
-    @property
-    def overlap_color(self):
-        return self._overlap_color
-
-    @property
-    def colors(self):
-        return self._colors
-
-    @property
-    def level(self):
-        return self._level
-
-    @property
-    def meshlines(self):
-        return self._meshlines
-
-    @name.setter
-    def name(self, name):
-        cv.check_type('plot name', name, str)
-        self._name = name
 
     @width.setter
     def width(self, width):
@@ -334,93 +599,48 @@ class Plot(IDManagerMixin):
         cv.check_length('plot width', width, 2, 3)
         self._width = width
 
+    @property
+    def origin(self):
+        return self._origin
+
     @origin.setter
     def origin(self, origin):
         cv.check_type('plot origin', origin, Iterable, Real)
         cv.check_length('plot origin', origin, 3)
         self._origin = origin
 
-    @pixels.setter
-    def pixels(self, pixels):
-        cv.check_type('plot pixels', pixels, Iterable, Integral)
-        cv.check_length('plot pixels', pixels, 2, 3)
-        for dim in pixels:
-            cv.check_greater_than('plot pixels', dim, 0)
-        self._pixels = pixels
-
-    @filename.setter
-    def filename(self, filename):
-        cv.check_type('filename', filename, str)
-        self._filename = filename
-
-    @color_by.setter
-    def color_by(self, color_by):
-        cv.check_value('plot color_by', color_by, ['cell', 'material'])
-        self._color_by = color_by
+    @property
+    def type(self):
+        return self._type
 
     @type.setter
     def type(self, plottype):
         cv.check_value('plot type', plottype, ['slice', 'voxel'])
         self._type = plottype
 
+    @property
+    def basis(self):
+        return self._basis
+
     @basis.setter
     def basis(self, basis):
         cv.check_value('plot basis', basis, _BASES)
         self._basis = basis
 
-    @background.setter
-    def background(self, background):
-        self._check_color('plot background', background)
-        self._background = background
-
-    @colors.setter
-    def colors(self, colors):
-        cv.check_type('plot colors', colors, Mapping)
-        for key, value in colors.items():
-            cv.check_type('plot color key', key,
-                          (openmc.Cell, openmc.Material, Integral))
-            self._check_color('plot color value', value)
-        self._colors = colors
-
-    @mask_components.setter
-    def mask_components(self, mask_components):
-        cv.check_type('plot mask components', mask_components, Iterable,
-                      (openmc.Cell, openmc.Material, Integral))
-        self._mask_components = mask_components
-
-    @mask_background.setter
-    def mask_background(self, mask_background):
-        self._check_color('plot mask background', mask_background)
-        self._mask_background = mask_background
-
-    @show_overlaps.setter
-    def show_overlaps(self, show_overlaps):
-        cv.check_type(f'Show overlaps flag for Plot ID="{self.id}"',
-                      show_overlaps, bool)
-        self._show_overlaps = show_overlaps
-
-    @overlap_color.setter
-    def overlap_color(self, overlap_color):
-        self._check_color('plot overlap color', overlap_color)
-        self._overlap_color = overlap_color
-
-    @level.setter
-    def level(self, plot_level):
-        cv.check_type('plot level', plot_level, Integral)
-        cv.check_greater_than('plot level', plot_level, 0, equality=True)
-        self._level = plot_level
+    @property
+    def meshlines(self):
+        return self._meshlines
 
     @meshlines.setter
     def meshlines(self, meshlines):
         cv.check_type('plot meshlines', meshlines, dict)
         if 'type' not in meshlines:
             msg = f'Unable to set the meshlines to "{meshlines}" which ' \
-                  'does not have a "type" key'
+                'does not have a "type" key'
             raise ValueError(msg)
 
         elif meshlines['type'] not in ['tally', 'entropy', 'ufs', 'cmfd']:
-            msg = 'Unable to set the meshlines with ' \
-                  'type "{}"'.format(meshlines['type'])
+            msg = f"Unable to set the meshlines with type \"{meshlines['type']}\""
             raise ValueError(msg)
 
         if 'id' in meshlines:
@@ -429,7 +649,8 @@ class Plot(IDManagerMixin):
                                   equality=True)
 
         if 'linewidth' in meshlines:
-            cv.check_type('plot mesh linewidth', meshlines['linewidth'], Integral)
+            cv.check_type('plot mesh linewidth',
+                          meshlines['linewidth'], Integral)
             cv.check_greater_than('plot mesh linewidth', meshlines['linewidth'],
                                   0, equality=True)
 
@@ -437,19 +658,6 @@ class Plot(IDManagerMixin):
             self._check_color('plot meshlines color', meshlines['color'])
 
         self._meshlines = meshlines
-
-    @staticmethod
-    def _check_color(err_string, color):
-        cv.check_type(err_string, color, Iterable)
-        if isinstance(color, str):
-            if color.lower() not in _SVG_COLORS:
-                raise ValueError(f"'{color}' is not a valid color.")
-        else:
-            cv.check_length(err_string, color, 3)
-            for rgb in color:
-                cv.check_type(err_string, rgb, Real)
-                cv.check_greater_than('RGB component', rgb, 0, True)
-                cv.check_less_than('RGB component', rgb, 256)
 
     def __repr__(self):
         string = 'Plot\n'
@@ -520,38 +728,6 @@ class Plot(IDManagerMixin):
         plot.basis = basis
         return plot
 
-    def colorize(self, geometry, seed=1):
-        """Generate a color scheme for each domain in the plot.
-
-        This routine may be used to generate random, reproducible color schemes.
-        The colors generated are based upon cell/material IDs in the geometry.
-
-        Parameters
-        ----------
-        geometry : openmc.Geometry
-            The geometry for which the plot is defined
-        seed : Integral
-            The random number seed used to generate the color scheme
-
-        """
-
-        cv.check_type('geometry', geometry, openmc.Geometry)
-        cv.check_type('seed', seed, Integral)
-        cv.check_greater_than('seed', seed, 1, equality=True)
-
-        # Get collections of the domains which will be plotted
-        if self.color_by == 'material':
-            domains = geometry.get_all_materials().values()
-        else:
-            domains = geometry.get_all_cells().values()
-
-        # Set the seed for the random number generator
-        np.random.seed(seed)
-
-        # Generate random colors for each feature
-        for domain in domains:
-            self.colors[domain] = np.random.randint(0, 256, (3,))
-
     def highlight_domains(self, geometry, domains, seed=1,
                           alpha=0.5, background='gray'):
         """Use alpha compositing to highlight one or more domains in the plot.
@@ -604,20 +780,16 @@ class Plot(IDManagerMixin):
                 self._colors[domain] = (r, g, b)
 
     def to_xml_element(self):
-        """Return XML representation of the plot
+        """Return XML representation of the slice/voxel plot
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing plot data
 
         """
 
-        element = ET.Element("plot")
-        element.set("id", str(self._id))
-        if self._filename is not None:
-            element.set("filename", self._filename)
-        element.set("color_by", self._color_by)
+        element = super().to_xml_element()
         element.set("type", self._type)
 
         if self._type == 'slice':
@@ -629,40 +801,14 @@ class Plot(IDManagerMixin):
         subelement = ET.SubElement(element, "width")
         subelement.text = ' '.join(map(str, self._width))
 
-        subelement = ET.SubElement(element, "pixels")
-        subelement.text = ' '.join(map(str, self._pixels))
-
-        if self._background is not None:
-            subelement = ET.SubElement(element, "background")
-            color = self._background
-            if isinstance(color, str):
-                color = _SVG_COLORS[color.lower()]
-            subelement.text = ' '.join(str(x) for x in color)
-
-        # Helper function that returns the domain ID given either a
-        # Cell/Material object or the domain ID itself
-        def get_id(domain):
-            return domain if isinstance(domain, Integral) else domain.id
-
         if self._colors:
             for domain, color in sorted(self._colors.items(),
-                                        key=lambda x: get_id(x[0])):
+                                        key=lambda x: PlotBase._get_id(x[0])):
                 subelement = ET.SubElement(element, "color")
-                subelement.set("id", str(get_id(domain)))
+                subelement.set("id", str(PlotBase._get_id(domain)))
                 if isinstance(color, str):
                     color = _SVG_COLORS[color.lower()]
                 subelement.set("rgb", ' '.join(str(x) for x in color))
-
-        if self._mask_components is not None:
-            subelement = ET.SubElement(element, "mask")
-            subelement.set("components", ' '.join(
-                str(get_id(d)) for d in self._mask_components))
-            color = self._mask_background
-            if color is not None:
-                if isinstance(color, str):
-                    color = _SVG_COLORS[color.lower()]
-                subelement.set("background", ' '.join(
-                    str(x) for x in color))
 
         if self._show_overlaps:
             subelement = ET.SubElement(element, "show_overlaps")
@@ -675,19 +821,14 @@ class Plot(IDManagerMixin):
                 subelement = ET.SubElement(element, "overlap_color")
                 subelement.text = ' '.join(str(x) for x in color)
 
-
-        if self._level is not None:
-            subelement = ET.SubElement(element, "level")
-            subelement.text = str(self._level)
-
         if self._meshlines is not None:
             subelement = ET.SubElement(element, "meshlines")
             subelement.set("meshtype", self._meshlines['type'])
-            if self._meshlines['id'] is not None:
+            if 'id' in self._meshlines:
                 subelement.set("id", str(self._meshlines['id']))
-            if self._meshlines['linewidth'] is not None:
+            if 'linewidth' in self._meshlines:
                 subelement.set("linewidth", str(self._meshlines['linewidth']))
-            if self._meshlines['color'] is not None:
+            if 'color' in self._meshlines:
                 subelement.set("color", ' '.join(map(
                     str, self._meshlines['color'])))
 
@@ -699,7 +840,7 @@ class Plot(IDManagerMixin):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -709,44 +850,43 @@ class Plot(IDManagerMixin):
 
         """
         plot_id = int(elem.get("id"))
-        plot = cls(plot_id)
+        name = get_text(elem, 'name', '')
+        plot = cls(plot_id, name)
         if "filename" in elem.keys():
             plot.filename = elem.get("filename")
         plot.color_by = elem.get("color_by")
         plot.type = elem.get("type")
-        plot.basis = elem.get("basis")
+        if plot.type == 'slice':
+            plot.basis = elem.get("basis")
 
-        # Helper function to get a tuple of values
-        def get_tuple(elem, name, dtype=int):
-            subelem = elem.find(name)
-            if subelem is not None:
-                return tuple([dtype(x) for x in subelem.text.split()])
-
-        plot.origin = get_tuple(elem, "origin", float)
-        plot.width = get_tuple(elem, "width", float)
-        plot.pixels = get_tuple(elem, "pixels")
-        plot._background = get_tuple(elem, "background")
+        plot.origin = get_elem_tuple(elem, "origin", float)
+        plot.width = get_elem_tuple(elem, "width", float)
+        plot.pixels = get_elem_tuple(elem, "pixels")
+        plot._background = get_elem_tuple(elem, "background")
 
         # Set plot colors
         colors = {}
         for color_elem in elem.findall("color"):
             uid = int(color_elem.get("id"))
-            colors[uid] = tuple([int(x) for x in color_elem.get("rgb").split()])
+            colors[uid] = tuple([int(x)
+                                for x in color_elem.get("rgb").split()])
         plot.colors = colors
 
         # Set masking information
         mask_elem = elem.find("mask")
         if mask_elem is not None:
-            plot.mask_components = [int(x) for x in mask_elem.get("components").split()]
+            plot.mask_components = [
+                int(x) for x in mask_elem.get("components").split()]
             background = mask_elem.get("background")
             if background is not None:
-                plot.mask_background = tuple([int(x) for x in background.split()])
+                plot.mask_background = tuple(
+                    [int(x) for x in background.split()])
 
         # show overlaps
         overlap_elem = elem.find("show_overlaps")
         if overlap_elem is not None:
             plot.show_overlaps = (overlap_elem.text in ('true', '1'))
-        overlap_color = get_tuple(elem, "overlap_color")
+        overlap_color = get_elem_tuple(elem, "overlap_color")
         if overlap_color is not None:
             plot.overlap_color = overlap_color
 
@@ -802,13 +942,403 @@ class Plot(IDManagerMixin):
         # Return produced image
         return _get_plot_image(self, cwd)
 
+    def to_vtk(self, output: PathLike | None = None,
+               openmc_exec: str = 'openmc', cwd: str = '.'):
+        """Render plot as an voxel image
+
+        This method runs OpenMC in plotting mode to produce a .vti file.
+
+        .. versionadded:: 0.14.0
+
+        Parameters
+        ----------
+        output : path-like
+            Path of the output .vti file produced
+        openmc_exec : str
+            Path to OpenMC executable
+        cwd : str, optional
+            Path to working directory to run in
+
+        Returns
+        -------
+        Path
+            Path of the .vti file produced
+
+        """
+        if self.type != 'voxel':
+            raise ValueError('Generating a VTK file only works for voxel plots')
+
+        # Create plots.xml
+        Plots([self]).export_to_xml(cwd)
+
+        # Run OpenMC in geometry plotting mode and produces a h5 file
+        openmc.plot_geometry(False, openmc_exec, cwd)
+
+        h5_voxel_filename = self.filename if self.filename is not None else f'plot_{self.id}'
+
+        # Add file extension if not already present
+        if Path(h5_voxel_filename).suffix != ".h5":
+            h5_voxel_filename += ".h5"
+
+        h5_voxel_file = Path(cwd) / h5_voxel_filename
+        if output is None:
+            output = h5_voxel_file.with_suffix('.vti')
+
+        return voxel_to_vtk(h5_voxel_file, output)
+
+
+class ProjectionPlot(PlotBase):
+    """Definition of a camera's view of OpenMC geometry
+
+    Colors are defined in the same manner as the Plot class, but with the addition
+    of a coloring parameter resembling a macroscopic cross section in units of inverse
+    centimeters. The volume rendering technique is used to color regions of the model.
+    An infinite cross section denotes a fully opaque region, and zero represents a
+    transparent region which will expose the color of the regions behind it.
+
+    The camera projection may either by orthographic or perspective. Perspective
+    projections are more similar to a pinhole camera, and orthographic projections
+    preserve parallel lines and distances.
+
+    .. versionadded:: 0.14.0
+
+    Parameters
+    ----------
+    plot_id : int
+        Unique identifier for the plot
+    name : str
+        Name of the plot
+
+    Attributes
+    ----------
+    horizontal_field_of_view : float
+        Field of view horizontally, in units of degrees, defaults to 70.
+    camera_position : tuple or list of ndarray
+        Position of the camera in 3D space. Defaults to (1, 0, 0).
+    look_at : tuple or list of ndarray
+        The center of the camera's image points to this place in 3D space.
+        Set to (0, 0, 0) by default.
+    up : tuple or list of ndarray
+        Which way is up for the camera. Must not be parallel to the
+        line between look_at and camera_position. Set to (0, 0, 1) by default.
+    orthographic_width : float
+        If set to a nonzero value, an orthographic projection is used.
+        All rays traced from the orthographic pixel array travel in the
+        same direction. The width of the starting array must be specified,
+        unlike with the default perspective projection. The height of the
+        array is deduced from the ratio of pixel dimensions for the image.
+        Defaults to zero, i.e. using perspective projection.
+    wireframe_thickness : int
+        Line thickness employed for drawing wireframes around cells or
+        material regions. Can be set to zero for no wireframes at all.
+        Defaults to one pixel.
+    wireframe_color : tuple of ints
+        RGB color of the wireframe lines. Defaults to black.
+    wireframe_domains : iterable of either Material or Cells
+        If provided, the wireframe is only drawn around these.
+        If color_by is by material, it must be a list of materials, else cells.
+    xs : dict
+        A mapping from cell/material IDs to floats. The floating point values
+        are macroscopic cross sections influencing the volume rendering opacity
+        of each geometric region. Zero corresponds to perfect transparency, and
+        infinity equivalent to opaque. These must be set by the user, but default
+        values can be obtained using the set_transparent method.
+    """
+
+    def __init__(self, plot_id=None, name=''):
+        # Initialize Plot class attributes
+        super().__init__(plot_id, name)
+        self._horizontal_field_of_view = 70.0
+        self._camera_position = (1.0, 0.0, 0.0)
+        self._look_at = (0.0, 0.0, 0.0)
+        self._up = (0.0, 0.0, 1.0)
+        self._orthographic_width = 0.0
+        self._wireframe_thickness = 1
+        self._wireframe_color = _SVG_COLORS['black']
+        self._wireframe_domains = []
+        self._xs = {}
+
+    @property
+    def horizontal_field_of_view(self):
+        return self._horizontal_field_of_view
+
+    @horizontal_field_of_view.setter
+    def horizontal_field_of_view(self, horizontal_field_of_view):
+        cv.check_type('plot horizontal field of view', horizontal_field_of_view,
+                      Real)
+        assert horizontal_field_of_view > 0.0
+        assert horizontal_field_of_view < 180.0
+        self._horizontal_field_of_view = horizontal_field_of_view
+
+    @property
+    def camera_position(self):
+        return self._camera_position
+
+    @camera_position.setter
+    def camera_position(self, camera_position):
+        cv.check_type('plot camera position', camera_position, Iterable, Real)
+        cv.check_length('plot camera position', camera_position, 3)
+        self._camera_position = camera_position
+
+    @property
+    def look_at(self):
+        return self._look_at
+
+    @look_at.setter
+    def look_at(self, look_at):
+        cv.check_type('plot look at', look_at, Iterable, Real)
+        cv.check_length('plot look at', look_at, 3)
+        self._look_at = look_at
+
+    @property
+    def up(self):
+        return self._up
+
+    @up.setter
+    def up(self, up):
+        cv.check_type('plot up', up, Iterable, Real)
+        cv.check_length('plot up', up, 3)
+        self._up = up
+
+    @property
+    def orthographic_width(self):
+        return self._orthographic_width
+
+    @orthographic_width.setter
+    def orthographic_width(self, orthographic_width):
+        cv.check_type('plot orthographic width', orthographic_width, Real)
+        assert orthographic_width >= 0.0
+        self._orthographic_width = orthographic_width
+
+    @property
+    def wireframe_thickness(self):
+        return self._wireframe_thickness
+
+    @wireframe_thickness.setter
+    def wireframe_thickness(self, wireframe_thickness):
+        cv.check_type('plot wireframe thickness',
+                      wireframe_thickness, Integral)
+        assert wireframe_thickness >= 0
+        self._wireframe_thickness = wireframe_thickness
+
+    @property
+    def wireframe_color(self):
+        return self._wireframe_color
+
+    @wireframe_color.setter
+    def wireframe_color(self, wireframe_color):
+        self._check_color('plot wireframe color', wireframe_color)
+        self._wireframe_color = wireframe_color
+
+    @property
+    def wireframe_domains(self):
+        return self._wireframe_domains
+
+    @wireframe_domains.setter
+    def wireframe_domains(self, wireframe_domains):
+        for region in wireframe_domains:
+            if self._color_by == 'material':
+                if not isinstance(region, openmc.Material):
+                    raise Exception('Must provide a list of materials for \
+                            wireframe_region if color_by=Material')
+            else:
+                if not isinstance(region, openmc.Cell):
+                    raise Exception('Must provide a list of cells for \
+                            wireframe_region if color_by=cell')
+        self._wireframe_domains = wireframe_domains
+
+    @property
+    def xs(self):
+        return self._xs
+
+    @xs.setter
+    def xs(self, xs):
+        cv.check_type('plot xs', xs, Mapping)
+        for key, value in xs.items():
+            cv.check_type('plot xs key', key, (openmc.Cell, openmc.Material))
+            cv.check_type('plot xs value', value, Real)
+            assert value >= 0.0
+        self._xs = xs
+
+    def set_transparent(self, geometry):
+        """Sets all volume rendering XS to zero for the model
+
+        Parameters
+        ----------
+        geometry : openmc.Geometry
+            The geometry for which the plot is defined
+        """
+
+        cv.check_type('geometry', geometry, openmc.Geometry)
+
+        # Get collections of the domains which will be plotted
+        if self.color_by == 'material':
+            domains = geometry.get_all_materials().values()
+        else:
+            domains = geometry.get_all_cells().values()
+
+        # Generate random colors for each feature
+        for domain in domains:
+            self.xs[domain] = 0.0
+
+    def to_xml_element(self):
+        """Return XML representation of the projection plot
+
+        Returns
+        -------
+        element : lxml.etree._Element
+            XML element containing plot data
+
+        """
+
+        element = super().to_xml_element()
+        element.set("type", "projection")
+
+        subelement = ET.SubElement(element, "camera_position")
+        subelement.text = ' '.join(map(str, self._camera_position))
+
+        subelement = ET.SubElement(element, "look_at")
+        subelement.text = ' '.join(map(str, self._look_at))
+
+        subelement = ET.SubElement(element, "wireframe_thickness")
+        subelement.text = str(self._wireframe_thickness)
+
+        subelement = ET.SubElement(element, "wireframe_color")
+        color = self._wireframe_color
+        if isinstance(color, str):
+            color = _SVG_COLORS[color.lower()]
+        subelement.text = ' '.join(str(x) for x in color)
+
+        if self._wireframe_domains:
+            id_list = [x.id for x in self._wireframe_domains]
+            subelement = ET.SubElement(element, "wireframe_ids")
+            subelement.text = ' '.join([str(x) for x in id_list])
+
+        # note that this differs from the slice plot colors
+        # in that "xs" must also be specified
+        if self._colors:
+            for domain, color in sorted(self._colors.items(),
+                                        key=lambda x: x[0].id):
+                subelement = ET.SubElement(element, "color")
+                subelement.set("id", str(domain.id))
+                if isinstance(color, str):
+                    color = _SVG_COLORS[color.lower()]
+                subelement.set("rgb", ' '.join(str(x) for x in color))
+                subelement.set("xs", str(self._xs[domain]))
+
+        subelement = ET.SubElement(element, "horizontal_field_of_view")
+        subelement.text = str(self._horizontal_field_of_view)
+
+        # do not need to write if orthographic_width == 0.0
+        if self._orthographic_width > 0.0:
+            subelement = ET.SubElement(element, "orthographic_width")
+            subelement.text = str(self._orthographic_width)
+
+        return element
+
+    def __repr__(self):
+        string = 'Projection Plot\n'
+        string += '{: <16}=\t{}\n'.format('\tID', self._id)
+        string += '{: <16}=\t{}\n'.format('\tName', self._name)
+        string += '{: <16}=\t{}\n'.format('\tFilename', self._filename)
+        string += '{: <16}=\t{}\n'.format('\tHorizontal FOV',
+                                          self._horizontal_field_of_view)
+        string += '{: <16}=\t{}\n'.format('\tOrthographic width',
+                                          self._orthographic_width)
+        string += '{: <16}=\t{}\n'.format('\tWireframe thickness',
+                                          self._wireframe_thickness)
+        string += '{: <16}=\t{}\n'.format('\tWireframe color',
+                                          self._wireframe_color)
+        string += '{: <16}=\t{}\n'.format('\tWireframe domains',
+                                          self._wireframe_domains)
+        string += '{: <16}=\t{}\n'.format('\tCamera position',
+                                          self._camera_position)
+        string += '{: <16}=\t{}\n'.format('\tLook at', self._look_at)
+        string += '{: <16}=\t{}\n'.format('\tUp', self._up)
+        string += '{: <16}=\t{}\n'.format('\tPixels', self._pixels)
+        string += '{: <16}=\t{}\n'.format('\tColor by', self._color_by)
+        string += '{: <16}=\t{}\n'.format('\tBackground', self._background)
+        string += '{: <16}=\t{}\n'.format('\tColors', self._colors)
+        string += '{: <16}=\t{}\n'.format('\tTransparencies', self._xs)
+        string += '{: <16}=\t{}\n'.format('\tLevel', self._level)
+        return string
+
+    @classmethod
+    def from_xml_element(cls, elem):
+        """Generate plot object from an XML element
+
+        Parameters
+        ----------
+        elem : lxml.etree._Element
+            XML element
+
+        Returns
+        -------
+        openmc.ProjectionPlot
+            ProjectionPlot object
+
+        """
+        plot_id = int(elem.get("id"))
+        plot = cls(plot_id)
+        if "filename" in elem.keys():
+            plot.filename = elem.get("filename")
+        plot.color_by = elem.get("color_by")
+        plot.type = "projection"
+
+        horizontal_fov = elem.find("horizontal_field_of_view")
+        if horizontal_fov is not None:
+            plot.horizontal_field_of_view = float(horizontal_fov.text)
+
+        tmp = elem.find("orthographic_width")
+        if tmp is not None:
+            plot.orthographic_width = float(tmp)
+
+        plot.pixels = get_elem_tuple(elem, "pixels")
+        plot.camera_position = get_elem_tuple(elem, "camera_position", float)
+        plot.look_at = get_elem_tuple(elem, "look_at", float)
+
+        # Attempt to get wireframe thickness. May not be present
+        wireframe_thickness = elem.get("wireframe_thickness")
+        if wireframe_thickness:
+            plot.wireframe_thickness = int(wireframe_thickness)
+        wireframe_color = elem.get("wireframe_color")
+        if wireframe_color:
+            plot.wireframe_color = [int(item) for item in wireframe_color]
+
+        # Set plot colors
+        colors = {}
+        xs = {}
+        for color_elem in elem.findall("color"):
+            uid = color_elem.get("id")
+            colors[uid] = get_elem_tuple(color_elem, "rgb")
+            xs[uid] = float(color_elem.get("xs"))
+
+        # Set masking information
+        mask_elem = elem.find("mask")
+        if mask_elem is not None:
+            mask_components = [int(x)
+                               for x in mask_elem.get("components").split()]
+            # TODO: set mask components (needs geometry information)
+            background = mask_elem.get("background")
+            if background is not None:
+                plot.mask_background = tuple(
+                    [int(x) for x in background.split()])
+
+        # Set universe level
+        level = elem.find("level")
+        if level is not None:
+            plot.level = int(level.text)
+
+        return plot
+
 
 class Plots(cv.CheckedList):
     """Collection of Plots used for an OpenMC simulation.
 
     This class corresponds directly to the plots.xml input file. It can be
-    thought of as a normal Python list where each member is a :class:`Plot`. It
-    behaves like a list as the following example demonstrates:
+    thought of as a normal Python list where each member is inherits from
+    :class:`PlotBase`. It behaves like a list as the following example
+    demonstrates:
 
     >>> xz_plot = openmc.Plot()
     >>> big_plot = openmc.Plot()
@@ -819,13 +1349,13 @@ class Plots(cv.CheckedList):
 
     Parameters
     ----------
-    plots : Iterable of openmc.Plot
-        Plots to add to the collection
+    plots : Iterable of openmc.Plot or openmc.ProjectionPlot
+        plots to add to the collection
 
     """
 
     def __init__(self, plots=None):
-        super().__init__(Plot, 'plots collection')
+        super().__init__((Plot, ProjectionPlot), 'plots collection')
         self._plots_file = ET.Element("plots")
         if plots is not None:
             self += plots
@@ -835,7 +1365,7 @@ class Plots(cv.CheckedList):
 
         Parameters
         ----------
-        plot : openmc.Plot
+        plot : openmc.Plot or openmc.ProjectionPlot
             Plot to append
 
         """
@@ -872,7 +1402,6 @@ class Plots(cv.CheckedList):
 
         for plot in self:
             plot.colorize(geometry, seed)
-
 
     def highlight_domains(self, geometry, domains, seed=1,
                           alpha=0.5, background='gray'):
@@ -914,7 +1443,7 @@ class Plots(cv.CheckedList):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing all plot elements
 
         """
@@ -925,7 +1454,8 @@ class Plots(cv.CheckedList):
 
         # Clean the indentation in the file to be user-readable
         clean_indentation(self._plots_file)
-        reorder_attributes(self._plots_file)  # TODO: Remove when support is Python 3.8+
+        # TODO: Remove when support is Python 3.8+
+        reorder_attributes(self._plots_file)
 
         return self._plots_file
 
@@ -954,7 +1484,7 @@ class Plots(cv.CheckedList):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -966,7 +1496,11 @@ class Plots(cv.CheckedList):
         # Generate each plot
         plots = cls()
         for e in elem.findall('plot'):
-            plots.append(Plot.from_xml_element(e))
+            plot_type = e.get('type')
+            if plot_type == 'projection':
+                plots.append(ProjectionPlot.from_xml_element(e))
+            else:
+                plots.append(Plot.from_xml_element(e))
         return plots
 
     @classmethod
@@ -984,8 +1518,7 @@ class Plots(cv.CheckedList):
             Plots collection
 
         """
-        tree = ET.parse(path)
+        parser = ET.XMLParser(huge_tree=True)
+        tree = ET.parse(path, parser=parser)
         root = tree.getroot()
         return cls.from_xml_element(root)
-
-

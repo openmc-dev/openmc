@@ -135,7 +135,7 @@ class CMFDMesh:
         return outstr
 
     def _get_repr(self, list_var, label):
-        outstr = "\t{:<11} = ".format(label)
+        outstr = f"\t{label:<11} = "
         if list(list_var):
             outstr += ", ".join(str(i) for i in list_var)
         return outstr
@@ -242,9 +242,9 @@ class CMFDMesh:
 
         check_length('CMFD mesh grid', grid, grid_length)
         for i in range(grid_length):
-            check_type('CMFD mesh {}-grid'.format(dims[i]), grid[i], Iterable,
+            check_type(f'CMFD mesh {dims[i]}-grid', grid[i], Iterable,
                        Real)
-            check_greater_than('CMFD mesh {}-grid length'.format(dims[i]),
+            check_greater_than(f'CMFD mesh {dims[i]}-grid length',
                                len(grid[i]), 1)
         self._grid = [np.array(g) for g in grid]
         self._display_mesh_warning('rectilinear', 'CMFD mesh grid')
@@ -612,7 +612,7 @@ class CMFDRun:
         for key, value in display.items():
             check_value('display key', key,
                         ('balance', 'entropy', 'dominance', 'source'))
-            check_type("display['{}']".format(key), value, bool)
+            check_type(f"display['{key}']", value, bool)
             self._display[key] = value
 
     @downscatter.setter
@@ -928,7 +928,7 @@ class CMFDRun:
             with h5py.File(filename, 'a') as f:
                 if 'cmfd' not in f:
                     if openmc.lib.settings.verbosity >= 5:
-                        print(' Writing CMFD data to {}...'.format(filename))
+                        print(f' Writing CMFD data to {filename}...')
                         sys.stdout.flush()
                     cmfd_group = f.create_group("cmfd")
                     cmfd_group.attrs['cmfd_on'] = self._cmfd_on
@@ -982,14 +982,16 @@ class CMFDRun:
         temp_data = np.ones(len(loss_row))
         temp_loss = sparse.csr_matrix((temp_data, (loss_row, loss_col)),
                                       shape=(n, n))
+        temp_loss.sort_indices()
 
         # Pass coremap as 1-d array of 32-bit integers
         coremap = np.swapaxes(self._coremap, 0, 2).flatten().astype(np.int32)
 
-        args = temp_loss.indptr, len(temp_loss.indptr), \
-            temp_loss.indices, len(temp_loss.indices), n, \
+        return openmc.lib._dll.openmc_initialize_linsolver(
+            temp_loss.indptr.astype(np.int32), len(temp_loss.indptr),
+            temp_loss.indices.astype(np.int32), len(temp_loss.indices), n,
             self._spectral, coremap, self._use_all_threads
-        return openmc.lib._dll.openmc_initialize_linsolver(*args)
+        )
 
     def _write_cmfd_output(self):
         """Write CMFD output to buffer at the end of each batch"""
@@ -1074,13 +1076,12 @@ class CMFDRun:
         # Get acceleration map, otherwise set all regions to be accelerated
         if self._mesh.map is not None:
             check_length('CMFD coremap', self._mesh.map,
-                         np.product(self._indices[0:3]))
+                         np.prod(self._indices[:3]))
             if openmc.lib.master():
                 self._coremap = np.array(self._mesh.map)
         else:
             if openmc.lib.master():
-                self._coremap = np.ones((np.product(self._indices[0:3])),
-                                        dtype=int)
+                self._coremap = np.ones(np.prod(self._indices[:3]), dtype=int)
 
         # Check CMFD tallies accummulated before feedback turned on
         if self._feedback and self._solver_begin < self._tally_begin:
@@ -1133,12 +1134,12 @@ class CMFDRun:
         with h5py.File(filename, 'r') as f:
             if 'cmfd' not in f:
                 raise OpenMCError('Could not find CMFD parameters in ',
-                                  'file {}'.format(filename))
+                                  f'file {filename}')
             else:
                 # Overwrite CMFD values from statepoint
                 if (openmc.lib.master() and
                         openmc.lib.settings.verbosity >= 5):
-                    print(' Loading CMFD data from {}...'.format(filename))
+                    print(f' Loading CMFD data from {filename}...')
                     sys.stdout.flush()
                 cmfd_group = f['cmfd']
 
@@ -1309,9 +1310,6 @@ class CMFDRun:
             Whether or not to run an adjoint calculation
 
         """
-        # Check for physical adjoint
-        physical_adjoint = adjoint and self._adjoint_type == 'physical'
-
         # Start timer for build
         time_start_buildcmfd = time.time()
 
@@ -1411,8 +1409,7 @@ class CMFDRun:
                 # Get all data entries for particular row in matrix
                 data = matrix.data[matrix.indptr[row]:matrix.indptr[row+1]]
                 for i in range(len(cols)):
-                    fh.write('{:3d}, {:3d}, {:0.8f}\n'.format(
-                        row, cols[i], data[i]))
+                    fh.write(f'{row:3d}, {cols[i]:3d}, {data[i]:0.8f}\n')
 
         # Save matrix in scipy format
         sparse.save_npz(base_filename, matrix)
@@ -1432,9 +1429,6 @@ class CMFDRun:
         # Compute cmfd_src in a vectorized manner by phi to the spatial
         # indices of the actual problem so that cmfd_flux can be multiplied by
         # nfissxs
-
-        # Calculate volume
-        vol = np.product(self._hxyz, axis=3)
 
         # Reshape phi by number of groups
         phi = self._phi.reshape((n, ng))
@@ -1592,6 +1586,7 @@ class CMFDRun:
         loss_row = self._loss_row
         loss_col = self._loss_col
         loss = sparse.csr_matrix((data, (loss_row, loss_col)), shape=(n, n))
+        loss.sort_indices()
         return loss
 
     def _build_prod_matrix(self, adjoint):
@@ -1618,6 +1613,7 @@ class CMFDRun:
         prod_row = self._prod_row
         prod_col = self._prod_col
         prod = sparse.csr_matrix((data, (prod_row, prod_col)), shape=(n, n))
+        prod.sort_indices()
         return prod
 
     def _execute_power_iter(self, loss, prod):
@@ -2149,7 +2145,6 @@ class CMFDRun:
         is_accel = self._coremap != _CMFD_NOACCEL
         # Logical for determining whether a zero flux "albedo" b.c. should be
         # applied
-        is_zero_flux_alb = abs(self._albedo - _ZERO_FLUX) < _TINY_BIT
         x_inds, y_inds, z_inds = np.indices((nx, ny, nz))
 
         # Define slice equivalent to is_accel[0,:,:]
@@ -2315,8 +2310,8 @@ class CMFDRun:
                                    constant_values=_CMFD_NOACCEL)[:,:,1:]
 
         # Create empty row and column vectors to store for loss matrix
-        row = np.array([])
-        col = np.array([])
+        row = np.array([], dtype=int)
+        col = np.array([], dtype=int)
 
         # Store all indices used to populate production and loss matrix
         is_accel = self._coremap != _CMFD_NOACCEL
@@ -2726,8 +2721,6 @@ class CMFDRun:
 
         # Define flux in each cell
         cell_flux = self._flux / dxdydz
-        # Extract indices of coremap that are accelerated
-        is_accel = self._coremap != _CMFD_NOACCEL
 
         # Define dhat at left surface for all mesh cells on left boundary
         boundary = self._first_x_accel

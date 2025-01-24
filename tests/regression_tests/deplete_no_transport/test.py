@@ -1,12 +1,16 @@
 """ Transport-free depletion test suite """
 
 from pathlib import Path
+import shutil
 
 import numpy as np
 import pytest
 import openmc
 import openmc.deplete
 from openmc.deplete import IndependentOperator, MicroXS
+
+from tests.regression_tests import config, assert_atoms_equal, \
+    assert_reaction_rates_equal, assert_same_mats
 
 
 @pytest.fixture(scope="module")
@@ -32,13 +36,16 @@ def chain_file():
     return Path(__file__).parents[2] / 'chain_simple.xml'
 
 
-@pytest.mark.parametrize("multiproc, from_nuclides, normalization_mode, power, flux", [
-    (True, True, 'source-rate', None, 1164719970082145.0),
-    (False, True, 'source-rate', None, 1164719970082145.0),
+neutron_per_cm2_sec = 1164719970082145.0
+
+
+@pytest.mark.parametrize("multiproc, from_nuclides, normalization_mode, power, source_rate", [
+    (True, True, 'source-rate', None, 1.0),
+    (False, True, 'source-rate', None, 1.0),
     (True, True, 'fission-q', 174, None),
     (False, True, 'fission-q', 174, None),
-    (True, False, 'source-rate', None, 1164719970082145.0),
-    (False, False, 'source-rate', None, 1164719970082145.0),
+    (True, False, 'source-rate', None, 1.0),
+    (False, False, 'source-rate', None, 1.0),
     (True, False, 'fission-q', 174, None),
     (False, False, 'fission-q', 174, None)])
 def test_against_self(run_in_tmpdir,
@@ -49,7 +56,7 @@ def test_against_self(run_in_tmpdir,
                       from_nuclides,
                       normalization_mode,
                       power,
-                      flux):
+                      source_rate):
     """Transport free system test suite.
 
     Runs an OpenMC transport-free depletion calculation and verifies
@@ -57,8 +64,10 @@ def test_against_self(run_in_tmpdir,
 
     """
     # Create operator
+    flux = neutron_per_cm2_sec * fuel.volume
     op = _create_operator(from_nuclides,
                           fuel,
+                          flux,
                           micro_xs,
                           chain_file,
                           normalization_mode)
@@ -71,27 +80,32 @@ def test_against_self(run_in_tmpdir,
     openmc.deplete.PredictorIntegrator(op,
                                        dt,
                                        power=power,
-                                       source_rates=flux,
+                                       source_rates=source_rate,
                                        timestep_units='s').integrate()
 
     # Get path to test and reference results
     path_test = op.output_dir / 'depletion_results.h5'
-    if flux is not None:
+    if power is None:
         ref_path = 'test_reference_source_rate.h5'
     else:
         ref_path = 'test_reference_fission_q.h5'
     path_reference = Path(__file__).with_name(ref_path)
+
+    # If updating results, do so and return
+    if config['update']:
+        shutil.copyfile(str(path_test), str(path_reference))
+        return
 
     # Load the reference/test results
     res_test = openmc.deplete.Results(path_test)
     res_ref = openmc.deplete.Results(path_reference)
 
     # Assert same mats
-    _assert_same_mats(res_test, res_ref)
+    assert_same_mats(res_ref, res_test)
 
     tol = 1.0e-14
-    _assert_atoms_equal(res_test, res_ref, tol)
-    _assert_reaction_rates_equal(res_test, res_ref, tol)
+    assert_atoms_equal(res_ref, res_test, tol)
+    assert_reaction_rates_equal(res_ref, res_test, tol)
 
 
 @pytest.mark.parametrize("multiproc, dt, time_units, time_type, atom_tol, rx_tol ", [
@@ -114,7 +128,8 @@ def test_against_coupled(run_in_tmpdir,
                          atom_tol,
                          rx_tol):
     # Create operator
-    op = _create_operator(False, fuel, micro_xs, chain_file, 'fission-q')
+    flux = neutron_per_cm2_sec * fuel.volume
+    op = _create_operator(False, fuel, flux, micro_xs, chain_file, 'fission-q')
 
     # Power and timesteps
     dt = [dt]  # single step
@@ -130,19 +145,25 @@ def test_against_coupled(run_in_tmpdir,
     ref_path = f'test_reference_coupled_{time_type}.h5'
     path_reference = Path(__file__).with_name(ref_path)
 
+    # If updating results, do so and return
+    if config['update']:
+        shutil.copyfile(str(path_test), str(path_reference))
+        return
+
     # Load the reference/test results
     res_test = openmc.deplete.Results(path_test)
     res_ref = openmc.deplete.Results(path_reference)
 
     # Assert same mats
-    _assert_same_mats(res_test, res_ref)
+    assert_same_mats(res_test, res_ref)
 
-    _assert_atoms_equal(res_test, res_ref, atom_tol)
-    _assert_reaction_rates_equal(res_test, res_ref, rx_tol)
+    assert_atoms_equal(res_ref, res_test, atom_tol)
+    assert_reaction_rates_equal(res_ref, res_test, rx_tol)
 
 
 def _create_operator(from_nuclides,
                      fuel,
+                     flux,
                      micro_xs,
                      chain_file,
                      normalization_mode):
@@ -151,75 +172,19 @@ def _create_operator(from_nuclides,
         for nuc, dens in fuel.get_nuclide_atom_densities().items():
             nuclides[nuc] = dens
 
+        openmc.reset_auto_ids()
         op = IndependentOperator.from_nuclides(fuel.volume,
                                                nuclides,
+                                               flux,
                                                micro_xs,
                                                chain_file,
                                                normalization_mode=normalization_mode)
 
     else:
         op = IndependentOperator(openmc.Materials([fuel]),
-                                 micro_xs,
+                                 [flux],
+                                 [micro_xs],
                                  chain_file,
                                  normalization_mode=normalization_mode)
 
     return op
-
-
-def _assert_same_mats(res_ref, res_test):
-    for mat in res_ref[0].index_mat:
-        assert mat in res_test[0].index_mat, \
-            f"Material {mat} not in new results."
-    for nuc in res_ref[0].index_nuc:
-        assert nuc in res_test[0].index_nuc, \
-            f"Nuclide {nuc} not in new results."
-
-    for mat in res_test[0].index_mat:
-        assert mat in res_ref[0].index_mat, \
-            f"Material {mat} not in old results."
-    for nuc in res_test[0].index_nuc:
-        assert nuc in res_ref[0].index_nuc, \
-            f"Nuclide {nuc} not in old results."
-
-
-def _assert_atoms_equal(res_ref, res_test, tol):
-    for mat in res_test[0].index_mat:
-        for nuc in res_test[0].index_nuc:
-            _, y_test = res_test.get_atoms(mat, nuc)
-            _, y_old = res_ref.get_atoms(mat, nuc)
-
-            # Test each point
-            correct = True
-            for i, ref in enumerate(y_old):
-                if ref != y_test[i]:
-                    if ref != 0.0:
-                        correct = np.abs(y_test[i] - ref) / ref <= tol
-                    else:
-                        correct = False
-
-            assert correct, "Discrepancy in mat {} and nuc {}\n{}\n{}".format(
-                mat, nuc, y_old, y_test)
-
-
-def _assert_reaction_rates_equal(res_ref, res_test, tol):
-    for reactions in res_test[0].rates:
-        for mat in reactions.index_mat:
-            for nuc in reactions.index_nuc:
-                for rx in reactions.index_rx:
-                    y_test = res_test.get_reaction_rate(mat, nuc, rx)[1] / \
-                        res_test.get_atoms(mat, nuc)[1]
-                    y_old = res_ref.get_reaction_rate(mat, nuc, rx)[1] / \
-                        res_ref.get_atoms(mat, nuc)[1]
-
-                    # Test each point
-                    correct = True
-                    for i, ref in enumerate(y_old):
-                        if ref != y_test[i]:
-                            if ref != 0.0:
-                                correct = np.abs(y_test[i] - ref) / ref <= tol
-                            else:
-                                if y_test[i] != 0.0:
-                                    correct = False
-
-                    assert correct, "Discrepancy in mat {}, nuc {}, and rx {}\n{}\n{}".format(
-                        mat, nuc, rx, y_old, y_test)

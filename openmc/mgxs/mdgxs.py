@@ -1,4 +1,3 @@
-from collections import OrderedDict
 import copy
 import itertools
 from numbers import Integral
@@ -21,7 +20,7 @@ MDGXS_TYPES = (
     'delayed-nu-fission matrix'
 )
 
-# Maximum number of delayed groups, from src/constants.F90
+# Maximum number of delayed groups, from include/openmc/constants.h
 MAX_DELAYED_GROUPS = 8
 
 
@@ -90,7 +89,7 @@ class MDGXS(MGXS):
         the multi-group cross section
     estimator : {'tracklength', 'analog'}
         The tally estimator used to compute the multi-group cross section
-    tallies : collections.OrderedDict
+    tallies : dict
         OpenMC tallies needed to compute the multi-group cross section
     rxn_rate_tally : openmc.Tally
         Derived tally for the reaction rate tally used in the numerator to
@@ -161,7 +160,7 @@ class MDGXS(MGXS):
             clone._sparse = self.sparse
             clone._derived = self.derived
 
-            clone._tallies = OrderedDict()
+            clone._tallies = {}
             for tally_type, tally in self.tallies.items():
                 clone.tallies[tally_type] = copy.deepcopy(tally, memo)
 
@@ -187,13 +186,6 @@ class MDGXS(MGXS):
     def delayed_groups(self):
         return self._delayed_groups
 
-    @property
-    def num_delayed_groups(self):
-        if self.delayed_groups is None:
-            return 1
-        else:
-            return len(self.delayed_groups)
-
     @delayed_groups.setter
     def delayed_groups(self, delayed_groups):
 
@@ -211,13 +203,20 @@ class MDGXS(MGXS):
         self._delayed_groups = delayed_groups
 
     @property
+    def num_delayed_groups(self):
+        if self.delayed_groups is None:
+            return 1
+        else:
+            return len(self.delayed_groups)
+
+    @property
     def filters(self):
 
         # Create the non-domain specific Filters for the Tallies
         group_edges = self.energy_groups.group_edges
         energy_filter = openmc.EnergyFilter(group_edges)
 
-        if self.delayed_groups != None:
+        if self.delayed_groups is not None:
             delayed_filter = openmc.DelayedGroupFilter(self.delayed_groups)
             filters = [[energy_filter], [delayed_filter, energy_filter]]
         else:
@@ -613,7 +612,7 @@ class MDGXS(MGXS):
         string += '{0: <16}=\t{1}\n'.format('\tDomain ID', self.domain.id)
 
         # Generate the header for an individual XS
-        xs_header = '\tCross Sections [{0}]:'.format(self.get_units(xs_type))
+        xs_header = f'\tCross Sections [{self.get_units(xs_type)}]:'
 
         # If cross section data has not been computed, only print string header
         if self.tallies is None:
@@ -642,7 +641,7 @@ class MDGXS(MGXS):
                     string += '{0: <16}=\t{1}\n'.format('\tNuclide', nuclide)
 
                 # Add the cross section header
-                string += '{0: <16}\n'.format(xs_header)
+                string += f'{xs_header: <16}\n'
 
                 for delayed_group in self.delayed_groups:
 
@@ -744,9 +743,9 @@ class MDGXS(MGXS):
             df.to_csv(filename + '.csv', index=False)
         elif format == 'excel':
             if self.domain_type == 'mesh':
-                df.to_excel(filename + '.xls')
+                df.to_excel(filename + '.xlsx')
             else:
-                df.to_excel(filename + '.xls', index=False)
+                df.to_excel(filename + '.xlsx', index=False)
         elif format == 'pickle':
             df.to_pickle(filename + '.pkl')
         elif format == 'latex':
@@ -876,7 +875,7 @@ class MDGXS(MGXS):
         # Sort the dataframe by domain type id (e.g., distribcell id) and
         # energy groups such that data is from fast to thermal
         if self.domain_type == 'mesh':
-            mesh_str = 'mesh {0}'.format(self.domain.id)
+            mesh_str = f'mesh {self.domain.id}'
             df.sort_values(by=[(mesh_str, 'x'), (mesh_str, 'y'),
                                (mesh_str, 'z')] + columns, inplace=True)
         else:
@@ -972,7 +971,7 @@ class ChiDelayed(MDGXS):
         the multi-group cross section
     estimator : 'analog'
         The tally estimator used to compute the multi-group cross section
-    tallies : collections.OrderedDict
+    tallies : dict
         OpenMC tallies needed to compute the multi-group cross section. The keys
         are strings listed in the :attr:`ChiDelayed.tally_keys` property and
         values are instances of :class:`openmc.Tally`.
@@ -1491,7 +1490,7 @@ class DelayedNuFissionXS(MDGXS):
         the multi-group cross section
     estimator : {'tracklength', 'analog'}
         The tally estimator used to compute the multi-group cross section
-    tallies : collections.OrderedDict
+    tallies : dict
         OpenMC tallies needed to compute the multi-group cross section. The keys
         are strings listed in the :attr:`DelayedNuFissionXS.tally_keys` property
         and values are instances of :class:`openmc.Tally`.
@@ -1630,7 +1629,7 @@ class Beta(MDGXS):
         the multi-group cross section
     estimator : {'tracklength', 'analog'}
         The tally estimator used to compute the multi-group cross section
-    tallies : collections.OrderedDict
+    tallies : dict
         OpenMC tallies needed to compute the multi-group cross section. The keys
         are strings listed in the :attr:`Beta.tally_keys` property and
         values are instances of :class:`openmc.Tally`.
@@ -1823,7 +1822,7 @@ class DecayRate(MDGXS):
         the multi-group cross section
     estimator : {'tracklength', 'analog'}
         The tally estimator used to compute the multi-group cross section
-    tallies : collections.OrderedDict
+    tallies : dict
         OpenMC tallies needed to compute the multi-group cross section. The keys
         are strings listed in the :attr:`DecayRate.tally_keys` property and
         values are instances of :class:`openmc.Tally`.
@@ -1884,9 +1883,6 @@ class DecayRate(MDGXS):
 
     @property
     def filters(self):
-
-        # Create the non-domain specific Filters for the Tallies
-        group_edges = self.energy_groups.group_edges
 
         if self.delayed_groups is not None:
             delayed_filter = openmc.DelayedGroupFilter(self.delayed_groups)
@@ -2137,7 +2133,7 @@ class MatrixMDGXS(MDGXS):
         the multi-group cross section
     estimator : {'tracklength', 'collision', 'analog'}
         The tally estimator used to compute the multi-group cross section
-    tallies : collections.OrderedDict
+    tallies : dict
         OpenMC tallies needed to compute the multi-group cross section
     rxn_rate_tally : openmc.Tally
         Derived tally for the reaction rate tally used in the numerator to
@@ -2500,7 +2496,7 @@ class MatrixMDGXS(MDGXS):
         string += '{0: <16}=\t{1}\n'.format('\tDomain ID', self.domain.id)
 
         # Generate the header for an individual XS
-        xs_header = '\tCross Sections [{0}]:'.format(self.get_units(xs_type))
+        xs_header = f'\tCross Sections [{self.get_units(xs_type)}]:'
 
         # If cross section data has not been computed, only print string header
         if self.tallies is None:
@@ -2536,7 +2532,7 @@ class MatrixMDGXS(MDGXS):
                     string += '{: <16}=\t{}\n'.format('\tNuclide', nuclide)
 
                 # Build header for cross section type
-                string += '{: <16}\n'.format(xs_header)
+                string += f'{xs_header: <16}\n'
 
                 if self.delayed_groups is not None:
 
@@ -2735,7 +2731,7 @@ class DelayedNuFissionMatrixXS(MatrixMDGXS):
         the multi-group cross section
     estimator : 'analog'
         The tally estimator used to compute the multi-group cross section
-    tallies : collections.OrderedDict
+    tallies : dict
         OpenMC tallies needed to compute the multi-group cross section. The keys
         are strings listed in the :attr:`DelayedNuFissionXS.tally_keys` property
         and values are instances of :class:`openmc.Tally`.

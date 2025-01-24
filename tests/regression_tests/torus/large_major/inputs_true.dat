@@ -1,37 +1,36 @@
 <?xml version='1.0' encoding='utf-8'?>
-<geometry>
-  <cell id="1" material="void" region="-1" universe="1" />
-  <cell id="2" material="1" region="1 -2" universe="1" />
-  <cell id="3" material="2" region="2 -3" universe="1" />
-  <surface coeffs="0.0 0.0 0.0 1000.0 30.0 30.0" id="1" type="z-torus" />
-  <surface coeffs="0.0 0.0 0.0 1000.0 35.0 35.0" id="2" type="z-torus" />
-  <surface boundary="vacuum" coeffs="0.0 0.0 0.0 1000.0 40.0 40.0" id="3" type="z-torus" />
-</geometry>
-<?xml version='1.0' encoding='utf-8'?>
-<materials>
-  <material id="1">
-    <density units="g/cm3" value="1.0" />
-    <nuclide ao="1.0" name="W184" />
-  </material>
-  <material id="2">
-    <density units="g/cm3" value="5.0" />
-    <nuclide ao="1.0" name="Fe56" />
-  </material>
-</materials>
-<?xml version='1.0' encoding='utf-8'?>
-<settings>
-  <run_mode>fixed source</run_mode>
-  <particles>1000</particles>
-  <batches>10</batches>
-  <source strength="1.0">
-    <space type="point">
-      <parameters>-1000.0 0 0</parameters>
-    </space>
-  </source>
-</settings>
-<?xml version='1.0' encoding='utf-8'?>
-<tallies>
-  <tally id="1">
-    <scores>flux</scores>
-  </tally>
-</tallies>
+<model>
+  <materials>
+    <material id="1">
+      <density units="g/cm3" value="1.0"/>
+      <nuclide ao="1.0" name="W184"/>
+    </material>
+    <material id="2">
+      <density units="g/cm3" value="5.0"/>
+      <nuclide ao="1.0" name="Fe56"/>
+    </material>
+  </materials>
+  <geometry>
+    <cell id="1" material="void" region="-1" universe="1"/>
+    <cell id="2" material="1" region="1 -2" universe="1"/>
+    <cell id="3" material="2" region="2 -3" universe="1"/>
+    <surface coeffs="0.0 0.0 0.0 1000.0 30.0 30.0" id="1" type="z-torus"/>
+    <surface coeffs="0.0 0.0 0.0 1000.0 35.0 35.0" id="2" type="z-torus"/>
+    <surface boundary="vacuum" coeffs="0.0 0.0 0.0 1000.0 40.0 40.0" id="3" type="z-torus"/>
+  </geometry>
+  <settings>
+    <run_mode>fixed source</run_mode>
+    <particles>1000</particles>
+    <batches>10</batches>
+    <source particle="neutron" strength="1.0" type="independent">
+      <space type="point">
+        <parameters>-1000.0 0 0</parameters>
+      </space>
+    </source>
+  </settings>
+  <tallies>
+    <tally id="1">
+      <scores>flux</scores>
+    </tally>
+  </tallies>
+</model>

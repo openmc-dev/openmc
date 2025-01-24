@@ -63,6 +63,9 @@ using namespace openmc;
 
 int openmc_finalize()
 {
+  if (simulation::initialized)
+    openmc_simulation_finalize();
+
   // Clear results
   openmc_reset();
 
@@ -78,22 +81,35 @@ int openmc_finalize()
   settings::electron_treatment = ElectronTreatment::LED;
   settings::delayed_photon_scaling = true;
   settings::energy_cutoff = {0.0, 1000.0, 0.0, 0.0};
+  settings::time_cutoff = {INFTY, INFTY, INFTY, INFTY};
   settings::entropy_on = false;
   settings::event_based = false;
   settings::gen_per_batch = 1;
   settings::legendre_to_tabular = true;
   settings::legendre_to_tabular_points = -1;
   settings::material_cell_offsets = true;
+  settings::max_lost_particles = 10;
+  settings::max_order = 0;
   settings::max_particles_in_flight = 100000;
-  settings::max_splits = 1000;
+  settings::max_particle_events = 1'000'000;
+  settings::max_history_splits = 10'000'000;
   settings::max_tracks = 1000;
+  settings::max_write_lost_particles = -1;
+  settings::n_log_bins = 8000;
   settings::n_inactive = 0;
   settings::n_particles = -1;
   settings::output_summary = true;
   settings::output_tallies = true;
   settings::particle_restart_run = false;
+  settings::path_cross_sections.clear();
+  settings::path_input.clear();
+  settings::path_output.clear();
+  settings::path_particle_restart.clear();
+  settings::path_sourcepoint.clear();
+  settings::path_statepoint.clear();
   settings::photon_transport = false;
   settings::reduce_tallies = true;
+  settings::rel_max_lost_particles = 1.0e-6;
   settings::res_scat_on = false;
   settings::res_scat_method = ResScatMethod::rvs;
   settings::res_scat_energy_min = 0.01;
@@ -104,6 +120,10 @@ int openmc_finalize()
   settings::source_latest = false;
   settings::source_separate = false;
   settings::source_write = true;
+  settings::ssw_cell_id = C_NONE;
+  settings::ssw_cell_type = SSWCellType::None;
+  settings::ssw_max_particles = 0;
+  settings::ssw_max_files = 1;
   settings::survival_biasing = false;
   settings::temperature_default = 293.6;
   settings::temperature_method = TemperatureMethod::NEAREST;
@@ -113,17 +133,20 @@ int openmc_finalize()
   settings::trigger_on = false;
   settings::trigger_predict = false;
   settings::trigger_batch_interval = 1;
+  settings::uniform_source_sampling = false;
   settings::ufs_on = false;
   settings::urr_ptables_on = true;
   settings::verbosity = 7;
   settings::weight_cutoff = 0.25;
   settings::weight_survive = 1.0;
+  settings::weight_windows_file.clear();
   settings::weight_windows_on = false;
   settings::write_all_tracks = false;
   settings::write_initial_source = false;
 
   simulation::keff = 1.0;
   simulation::need_depletion_rx = false;
+  simulation::ssw_current_file = 1;
   simulation::total_gen = 0;
 
   simulation::entropy_mesh = nullptr;

@@ -10,18 +10,16 @@
 #include "openmc/message_passing.h"
 #include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
+#include "openmc/openmp_interface.h"
 #include "openmc/output.h"
 #include "openmc/random_lcg.h"
 #include "openmc/settings.h"
 #include "openmc/timer.h"
 #include "openmc/xml_interface.h"
 
-#include <fmt/core.h>
-#ifdef _OPENMP
-#include <omp.h>
-#endif
 #include "xtensor/xadapt.hpp"
 #include "xtensor/xview.hpp"
+#include <fmt/core.h>
 
 #include <algorithm> // for copy
 #include <cmath>     // for pow, sqrt
@@ -97,6 +95,31 @@ VolumeCalculation::VolumeCalculation(pugi::xml_node node)
 
 vector<VolumeCalculation::Result> VolumeCalculation::execute() const
 {
+  // Check to make sure domain IDs are valid
+  for (auto uid : domain_ids_) {
+    switch (domain_type_) {
+    case TallyDomain::CELL:
+      if (model::cell_map.find(uid) == model::cell_map.end()) {
+        throw std::runtime_error {fmt::format(
+          "Cell {} in volume calculation does not exist in geometry.", uid)};
+      }
+      break;
+    case TallyDomain::MATERIAL:
+      if (model::material_map.find(uid) == model::material_map.end()) {
+        throw std::runtime_error {fmt::format(
+          "Material {} in volume calculation does not exist in geometry.",
+          uid)};
+      }
+      break;
+    case TallyDomain::UNIVERSE:
+      if (model::universe_map.find(uid) == model::universe_map.end()) {
+        throw std::runtime_error {fmt::format(
+          "Universe {} in volume calculation does not exist in geometry.",
+          uid)};
+      }
+    }
+  }
+
   // Shared data that is collected from all threads
   int n = domain_ids_.size();
   vector<vector<uint64_t>> master_indices(
@@ -136,7 +159,7 @@ vector<VolumeCalculation::Result> VolumeCalculation::execute() const
         p.n_coord() = 1;
         Position xi {prn(&seed), prn(&seed), prn(&seed)};
         p.r() = lower_left_ + xi * (upper_right_ - lower_left_);
-        p.u() = {0.5, 0.5, 0.5};
+        p.u() = {1. / std::sqrt(3.), 1. / std::sqrt(3.), 1. / std::sqrt(3.)};
 
         // If this location is not in the geometry at all, move on to next block
         if (!exhaustive_find_cell(p))
@@ -180,37 +203,9 @@ vector<VolumeCalculation::Result> VolumeCalculation::execute() const
       // At this point, each thread has its own pair of index/hits lists and we
       // now need to reduce them. OpenMP is not nearly smart enough to do this
       // on its own, so we have to manually reduce them
-
-#ifdef _OPENMP
-      int n_threads = omp_get_num_threads();
-#else
-      int n_threads = 1;
-#endif
-
-#pragma omp for ordered schedule(static)
-      for (int i = 0; i < n_threads; ++i) {
-#pragma omp ordered
-        for (int i_domain = 0; i_domain < n; ++i_domain) {
-          for (int j = 0; j < indices[i_domain].size(); ++j) {
-            // Check if this material has been added to the master list and if
-            // so, accumulate the number of hits
-            bool already_added = false;
-            for (int k = 0; k < master_indices[i_domain].size(); k++) {
-              if (indices[i_domain][j] == master_indices[i_domain][k]) {
-                master_hits[i_domain][k] += hits[i_domain][j];
-                already_added = true;
-                break;
-              }
-            }
-            if (!already_added) {
-              // If we made it here, the material hasn't yet been added to the
-              // master list, so add entries to the master indices and master
-              // hits lists
-              master_indices[i_domain].push_back(indices[i_domain][j]);
-              master_hits[i_domain].push_back(hits[i_domain][j]);
-            }
-          }
-        }
+      for (int i_domain = 0; i_domain < n; ++i_domain) {
+        reduce_indices_hits(indices[i_domain], hits[i_domain],
+          master_indices[i_domain], master_hits[i_domain]);
       }
     } // omp parallel
 
@@ -519,7 +514,13 @@ int openmc_calculate_volumes()
 
     // Run volume calculation
     const auto& vol_calc {model::volume_calcs[i]};
-    auto results = vol_calc.execute();
+    std::vector<VolumeCalculation::Result> results;
+    try {
+      results = vol_calc.execute();
+    } catch (const std::exception& e) {
+      set_errmsg(e.what());
+      return OPENMC_E_UNASSIGNED;
+    }
 
     if (mpi::master) {
       std::string domain_type;
@@ -534,8 +535,21 @@ int openmc_calculate_volumes()
 
       // Display domain volumes
       for (int j = 0; j < vol_calc.domain_ids_.size(); j++) {
-        write_message(4, "{}{}: {} +/- {} cm^3", domain_type,
-          vol_calc.domain_ids_[j], results[j].volume[0], results[j].volume[1]);
+        std::string region_name {""};
+        if (vol_calc.domain_type_ == VolumeCalculation::TallyDomain::CELL) {
+          int cell_idx = model::cell_map[vol_calc.domain_ids_[j]];
+          region_name = model::cells[cell_idx]->name();
+        } else if (vol_calc.domain_type_ ==
+                   VolumeCalculation::TallyDomain::MATERIAL) {
+          int mat_idx = model::material_map[vol_calc.domain_ids_[j]];
+          region_name = model::materials[mat_idx]->name();
+        }
+        if (region_name.size())
+          region_name.insert(0, " "); // prepend space for formatting
+
+        write_message(4, "{}{}{}: {} +/- {} cm^3", domain_type,
+          vol_calc.domain_ids_[j], region_name, results[j].volume[0],
+          results[j].volume[1]);
       }
 
       // Write volumes to HDF5 file

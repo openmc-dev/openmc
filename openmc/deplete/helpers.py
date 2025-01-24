@@ -15,7 +15,7 @@ from openmc.mpi import comm
 from openmc.checkvalue import check_type, check_greater_than
 from openmc.data import JOULE_PER_EV, REACTION_MT
 from openmc.lib import (
-    Tally, MaterialFilter, EnergyFilter, EnergyFunctionFilter)
+    Tally, MaterialFilter, EnergyFilter, EnergyFunctionFilter, load_nuclide)
 import openmc.lib
 from .abc import (
     ReactionRateHelper, NormalizationHelper, FissionYieldHelper)
@@ -25,6 +25,7 @@ __all__ = (
     "SourceRateHelper", "TalliedFissionYieldHelper",
     "ConstantFissionYieldHelper", "FissionYieldCutoffHelper",
     "AveragedFissionYieldHelper", "FluxCollapseHelper")
+
 
 class TalliedFissionYieldHelper(FissionYieldHelper):
     """Abstract class for computing fission yields with tallies
@@ -159,22 +160,23 @@ class DirectReactionRateHelper(ReactionRateHelper):
     def generate_tallies(self, materials, scores):
         """Produce one-group reaction rate tally
 
-        Uses the :mod:`openmc.lib` to generate a tally
-        of relevant reactions across all burnable materials.
+        Uses the :mod:`openmc.lib` to generate a tally of relevant reactions
+        across all burnable materials.
 
         Parameters
         ----------
-        materials : iterable of :class:`openmc.Material`
-            Burnable materials in the problem. Used to
-            construct a :class:`openmc.MaterialFilter`
+        materials : iterable of :class:`openmc.lib.Material`
+            Burnable materials in the problem. Used to construct a
+            :class:`openmc.lib.MaterialFilter`
         scores : iterable of str
-            Reaction identifiers, e.g. ``"(n, fission)"``,
-            ``"(n, gamma)"``, needed for the reaction rate tally.
+            Reaction identifiers, e.g. ``"(n, fission)"``, ``"(n, gamma)"``,
+            needed for the reaction rate tally.
         """
         self._rate_tally = Tally()
         self._rate_tally.writable = False
         self._rate_tally.scores = scores
         self._rate_tally.filters = [MaterialFilter(materials)]
+        self._rate_tally.multiply_density = False
         self._rate_tally_means_cache = None
 
     @property
@@ -189,22 +191,22 @@ class DirectReactionRateHelper(ReactionRateHelper):
     def reset_tally_means(self):
         """Reset the cached mean rate tallies.
         .. note::
-            
+
                 This step must be performed after each transport cycle
         """
         self._rate_tally_means_cache = None
 
-    def get_material_rates(self, mat_id, nuc_index, react_index):
+    def get_material_rates(self, mat_index, nuc_index, rx_index):
         """Return an array of reaction rates for a material
 
         Parameters
         ----------
-        mat_id : int
-            Unique ID for the requested material
+        mat_index : int
+            Index for the material
         nuc_index : iterable of int
             Index for each nuclide in :attr:`nuclides` in the
             desired reaction rate matrix
-        react_index : iterable of int
+        rx_index : iterable of int
             Index for each reaction scored in the tally
 
         Returns
@@ -214,10 +216,9 @@ class DirectReactionRateHelper(ReactionRateHelper):
             reaction rates in this material
         """
         self._results_cache.fill(0.0)
-        full_tally_res = self.rate_tally_means[mat_id]
-        for i_tally, (i_nuc, i_react) in enumerate(
-                product(nuc_index, react_index)):
-            self._results_cache[i_nuc, i_react] = full_tally_res[i_tally]
+        full_tally_res = self.rate_tally_means[mat_index]
+        for i_tally, (i_nuc, i_rx) in enumerate(product(nuc_index, rx_index)):
+            self._results_cache[i_nuc, i_rx] = full_tally_res[i_tally]
 
         return self._results_cache
 
@@ -267,6 +268,11 @@ class FluxCollapseHelper(ReactionRateHelper):
         if self._reactions_direct and self._nuclides_direct is None:
             self._rate_tally.nuclides = nuclides
 
+        # Make sure nuclide data is loaded
+        for nuclide in self.nuclides:
+            if nuclide not in openmc.lib.nuclides:
+                openmc.lib.load_nuclide(nuclide)
+
     def generate_tallies(self, materials, scores):
         """Produce multigroup flux spectrum tally
 
@@ -304,8 +310,15 @@ class FluxCollapseHelper(ReactionRateHelper):
             self._rate_tally.writable = False
             self._rate_tally.scores = self._reactions_direct
             self._rate_tally.filters = [MaterialFilter(materials)]
+            self._rate_tally.multiply_density = False
             self._rate_tally_means_cache = None
             if self._nuclides_direct is not None:
+                # check if any direct tally nuclides are requested that are not
+                # already loaded with the materials. Load separately if so.
+                mat_nuclides = {n for mat in materials for n in mat.nuclides}
+                extra_nuclides = set(self._nuclides_direct) - mat_nuclides
+                for nuc in extra_nuclides:
+                    load_nuclide(nuc)
                 self._rate_tally.nuclides = self._nuclides_direct
 
     @property
@@ -327,7 +340,7 @@ class FluxCollapseHelper(ReactionRateHelper):
     def reset_tally_means(self):
         """Reset the cached mean rate and flux tallies.
         .. note::
-            
+
                 This step must be performed after each transport cycle
         """
         self._flux_tally_means_cache = None
@@ -369,13 +382,7 @@ class FluxCollapseHelper(ReactionRateHelper):
 
         mat = self._materials[mat_index]
 
-        # Build nucname: density mapping to enable O(1) lookup in loop below
-        densities = dict(zip(mat.nuclides, mat.densities))
-
         for name, i_nuc in zip(self.nuclides, nuc_index):
-            # Determine density of nuclide
-            density = densities[name]
-
             for mt, score, i_rx in zip(self._mts, self._scores, react_index):
                 if score in self._reactions_direct and name in nuclides_direct:
                     # Determine index in rx_rates
@@ -390,8 +397,7 @@ class FluxCollapseHelper(ReactionRateHelper):
                     rate_per_nuc = nuc.collapse_rate(
                         mt, mat.temperature, self._energies, flux)
 
-                    # Multiply by density to get absolute reaction rate
-                    self._results_cache[i_nuc, i_rx] = rate_per_nuc * density
+                    self._results_cache[i_nuc, i_rx] = rate_per_nuc
 
         return self._results_cache
 
@@ -588,7 +594,6 @@ class ConstantFissionYieldHelper(FissionYieldHelper):
                 self._constant_yields[name] = yield_data
                 continue
             # Specific energy not found, use closest energy
-            distances = [abs(energy - ene) for ene in nuc.yield_energies]
             min_E = min(nuc.yield_energies, key=lambda e: abs(e - energy))
             self._constant_yields[name] = nuc.yield_data[min_E]
 

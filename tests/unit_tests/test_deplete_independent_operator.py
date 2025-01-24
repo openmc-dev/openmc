@@ -5,12 +5,13 @@
 from pathlib import Path
 
 import pytest
+
+from openmc import Material
 from openmc.deplete import IndependentOperator, MicroXS
-from openmc import Material, Materials
-import numpy as np
 
 CHAIN_PATH = Path(__file__).parents[1] / "chain_simple.xml"
 ONE_GROUP_XS = Path(__file__).parents[1] / "micro_xs_simple.csv"
+
 
 def test_operator_init():
     """The test uses a temporary dummy chain. This file will be removed
@@ -22,15 +23,32 @@ def test_operator_init():
                 'U236': 4.5724195495061115e+18,
                 'O16': 4.639065406771322e+22,
                 'O17': 1.7588724018066158e+19}
+    flux = 1.0
     micro_xs = MicroXS.from_csv(ONE_GROUP_XS)
     IndependentOperator.from_nuclides(
-        volume, nuclides, micro_xs, CHAIN_PATH, nuc_units='atom/cm3')
+        volume, nuclides, flux, micro_xs, CHAIN_PATH, nuc_units='atom/cm3')
 
     fuel = Material(name="uo2")
     fuel.add_element("U", 1, percent_type="ao", enrichment=4.25)
     fuel.add_element("O", 2)
     fuel.set_density("g/cc", 10.4)
-    fuel.depletable=True
+    fuel.depletable = True
     fuel.volume = 1
-    materials = Materials([fuel])
-    IndependentOperator(materials, micro_xs, CHAIN_PATH)
+    materials = [fuel]
+    fluxes = [1.0]
+    micros = [micro_xs]
+    IndependentOperator(materials, fluxes, micros, CHAIN_PATH)
+
+
+def test_error_handling():
+    micro_xs = MicroXS.from_csv(ONE_GROUP_XS)
+    fuel = Material(name="oxygen")
+    fuel.add_element("O", 2)
+    fuel.set_density("g/cc", 1)
+    fuel.depletable = True
+    fuel.volume = 1
+    materials = [fuel]
+    fluxes = [1.0, 2.0]
+    micros = [micro_xs]
+    with pytest.raises(ValueError, match=r"The length of fluxes \(2\)"):
+        IndependentOperator(materials, fluxes, micros, CHAIN_PATH)

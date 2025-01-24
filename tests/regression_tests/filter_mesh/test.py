@@ -19,12 +19,12 @@ def model():
     zr.add_nuclide('Zr90', 1.0)
     model.materials.extend([fuel, zr])
 
-    box1 = openmc.model.rectangular_prism(10.0, 10.0)
-    box2 = openmc.model.rectangular_prism(20.0, 20.0, boundary_type='reflective')
+    box1 = openmc.model.RectangularPrism(10.0, 10.0)
+    box2 = openmc.model.RectangularPrism(20.0, 20.0, boundary_type='reflective')
     top = openmc.ZPlane(z0=10.0, boundary_type='vacuum')
     bottom = openmc.ZPlane(z0=-10.0, boundary_type='vacuum')
-    cell1 = openmc.Cell(fill=fuel, region=box1 & +bottom & -top)
-    cell2 = openmc.Cell(fill=zr, region=~box1 & box2 & +bottom & -top)
+    cell1 = openmc.Cell(fill=fuel, region=-box1 & +bottom & -top)
+    cell2 = openmc.Cell(fill=zr, region=+box1 & -box2 & +bottom & -top)
     model.geometry = openmc.Geometry([cell1, cell2])
 
     model.settings.batches = 5
@@ -60,11 +60,11 @@ def model():
     recti_mesh_exp_vols = np.multiply.outer(dxdy, dz)
     np.testing.assert_allclose(recti_mesh.volumes, recti_mesh_exp_vols)
 
-    cyl_mesh = openmc.CylindricalMesh()
-    cyl_mesh.r_grid = np.linspace(0, 7.5, 18)
-    cyl_mesh.phi_grid = np.linspace(0, 2*pi, 19)
-    cyl_mesh.z_grid = np.linspace(-7.5, 7.5, 17)
-
+    cyl_mesh = openmc.CylindricalMesh(
+        r_grid=np.linspace(0, 7.5, 18),
+        phi_grid=np.linspace(0, 2*pi, 19),
+        z_grid=np.linspace(-7.5, 7.5, 17),
+    )
     dr = 0.5 * np.diff(np.linspace(0, 7.5, 18)**2)
     dp = np.full(cyl_mesh.dimension[1], 2*pi / 18)
     dz = np.full(cyl_mesh.dimension[2], 15 / 16)
@@ -72,10 +72,11 @@ def model():
     cyl_mesh_exp_vols = np.multiply.outer(drdp, dz)
     np.testing.assert_allclose(cyl_mesh.volumes, cyl_mesh_exp_vols)
 
-    sph_mesh = openmc.SphericalMesh()
-    sph_mesh.r_grid = np.linspace(0, 7.5, 18)
-    sph_mesh.theta_grid = np.linspace(0, pi, 9)
-    sph_mesh.phi_grid = np.linspace(0, 2*pi, 19)
+    sph_mesh = openmc.SphericalMesh(
+        r_grid=np.linspace(0, 7.5, 18),
+        theta_grid=np.linspace(0, pi, 9),
+        phi_grid=np.linspace(0, 2*pi, 19)
+    )
     dr = np.diff(np.linspace(0, 7.5, 18)**3) / 3
     dt = np.diff(-np.cos(np.linspace(0, pi, 9)))
     dp = np.full(sph_mesh.dimension[2], 2*pi / 18)

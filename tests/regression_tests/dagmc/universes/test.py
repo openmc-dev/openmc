@@ -12,9 +12,8 @@ pytestmark = pytest.mark.skipif(
 
 
 class DAGMCUniverseTest(PyAPITestHarness):
-
-    def _build_inputs(self):
-        model = openmc.model.Model()
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
         ### MATERIALS ###
         fuel = openmc.Material(name='no-void fuel')
@@ -40,7 +39,7 @@ class DAGMCUniverseTest(PyAPITestHarness):
         water.add_nuclide('B11', 3.2218e-05)
         water.add_s_alpha_beta('c_H_in_H2O')
 
-        model.materials = openmc.Materials([fuel, cladding, water])
+        self._model.materials = openmc.Materials([fuel, cladding, water])
 
         ### GEOMETRY ###
         # create the DAGMC universe
@@ -51,7 +50,7 @@ class DAGMCUniverseTest(PyAPITestHarness):
         # uses the bound_dag_cell as the root argument to test the type checks in openmc.Geometry
         bound_pincell_geometry = openmc.Geometry(root=bound_pincell_universe)
         # assigns the bound_dag_geometry to the model to test the type checks in model.Geometry setter
-        model.Geometry = bound_pincell_geometry
+        self._model.geometry = bound_pincell_geometry
 
         # create a 2 x 2 lattice using the DAGMC pincell
         pitch = np.asarray((24.0, 24.0))
@@ -71,17 +70,22 @@ class DAGMCUniverseTest(PyAPITestHarness):
         bounding_region = +left & -right & +front & -back & +bottom & -top
         bounding_cell = openmc.Cell(fill=lattice, region=bounding_region)
 
-        model.geometry = openmc.Geometry([bounding_cell])
+        self._model.geometry = openmc.Geometry([bounding_cell])
+
+        # add a cell instance tally
+        tally = openmc.Tally(name='cell instance tally')
+        # using scattering
+        cell_instance_filter = openmc.CellInstanceFilter(((4, 0), (4, 1), (4, 2), (4, 3), (4, 4)))
+        tally.filters = [cell_instance_filter]
+        tally.scores = ['scatter']
+        self._model.tallies = [tally]
 
         # settings
-        model.settings.particles = 100
-        model.settings.batches = 10
-        model.settings.inactive = 2
-        model.settings.output = {'summary' : False}
-
-        model.export_to_xml()
-
+        self._model.settings.particles = 100
+        self._model.settings.batches = 10
+        self._model.settings.inactive = 5
+        self._model.settings.output = {'summary' : False}
 
 def test_univ():
-    harness = DAGMCUniverseTest('statepoint.10.h5')
+    harness = DAGMCUniverseTest('statepoint.10.h5', model=openmc.Model())
     harness.main()

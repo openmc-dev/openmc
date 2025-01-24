@@ -91,7 +91,7 @@ class Nuclide(_FortranObject):
         energy : iterable of float
             Energy group boundaries in [eV]
         flux : iterable of float
-            Flux in each energt group (not normalized per eV)
+            Flux in each energy group (not normalized per eV)
 
         Returns
         -------

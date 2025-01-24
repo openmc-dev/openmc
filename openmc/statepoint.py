@@ -7,6 +7,7 @@ import warnings
 import h5py
 import numpy as np
 from uncertainties import ufloat
+from uncertainties.unumpy import uarray
 
 import openmc
 import openmc.checkvalue as cv
@@ -119,7 +120,7 @@ class StatePoint:
         Version of OpenMC
     summary : None or openmc.Summary
         A summary object if the statepoint has been linked with a summary file
-
+    
     """
 
     def __init__(self, filepath, autolink=True):
@@ -691,3 +692,48 @@ class StatePoint:
                     tally_filter.paths = cell.paths
 
         self._summary = summary
+
+    def ifp_results(self,param):
+        """
+        Calculates kinetics parameters from Iterated Fission Probablity tallies.
+
+        Parameters
+        ----------
+        param : string
+            A string specifying which parameter to return. Selection of
+            'both', 'beta_effective', or 'generation_time'.
+
+        Returns
+        -------
+        result : dict of np.ndarray
+            A dictionary with 'Generation Time' and 'Beta Effective' keys holding arrays 
+            with their respective values.
+
+        Raises
+        ------
+        LookupError
+            An error for when the IFP tallies are not in the StatePoint file.
+        """       
+        result = {}
+        try:
+            denom_tally = self.get_tally(scores = ['ifp-denominator'],exact_scores = True)
+        except LookupError:
+            raise LookupError('Iterated Fission Probability tally not found.') from None
+        denom_values = uarray(denom_tally.get_reshaped_data(),
+                              denom_tally.get_reshaped_data(value = 'rel_err'))
+            
+        if param == 'both' or param == 'generation_time':
+            gen_time_tally = self.get_tally(scores = ['ifp-time-numerator'],exact_scores = True)
+            gen_time_values = uarray(gen_time_tally.get_reshaped_data(),
+                                     gen_time_tally.get_reshaped_data(value = 'rel_err'))
+            gen_time_values /= denom_values
+            result['Generation Time'] = gen_time_values.flatten()
+        
+        if param == 'both' or param == 'beta_effective':
+            beta_tally = self.get_tally(scores = ['ifp-beta-numerator'],exact_scores = True)
+            beta_values = uarray(beta_tally.get_reshaped_data(),
+                                 beta_tally.get_reshaped_data(value = 'rel_err'))
+            beta_values /= denom_values
+            result['Beta Effective'] = beta_values.flatten()
+
+        return result

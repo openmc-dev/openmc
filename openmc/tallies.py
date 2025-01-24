@@ -179,8 +179,6 @@ class Tally(IDManagerMixin):
         parts.append('{: <15}=\t{}'.format('Multiply dens.', self.multiply_density))
         return '\n\t'.join(parts)
 
-
-
     @property
     def name(self):
         return self._name

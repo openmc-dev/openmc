@@ -950,11 +950,7 @@ class Model:
         statepoint : PathLike or openmc.StatePoint
             Statepoint file used to update tally results
         """
-        if isinstance(statepoint, openmc.StatePoint):
-            self.tallies.add_results(statepoint)
-        else:
-            with openmc.StatePoint(statepoint) as sp:
-                self.tallies.add_results(sp)
+        self.tallies.add_results(statepoint)
 
     def plot_geometry(self, output=True, cwd='.', openmc_exec='openmc',
                       export_model_xml=True, **export_kwargs):

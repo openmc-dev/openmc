@@ -340,8 +340,16 @@ class Tally(IDManagerMixin):
 
         # Open the HDF5 statepoint file
         with h5py.File(self._sp_filename, 'r') as f:
+            # Set number of realizations
+            group = f[f'tallies/tally {self.id}']
+            self.num_realizations = int(group['n_realizations'][()])
+
+            # Update nuclides
+            nuclide_names = group['nuclides'][()]
+            self.nuclides = [name.decode().strip() for name in nuclide_names]
+
             # Extract Tally data from the file
-            data = f[f'tallies/tally {self.id}/results']
+            data = group['results']
             sum_ = data[:, :, 0]
             sum_sq = data[:, :, 1]
 
@@ -930,12 +938,9 @@ class Tally(IDManagerMixin):
             Statepoint used to update tally results
         """
         if isinstance(statepoint, openmc.StatePoint):
-            if self in statepoint.tallies.values():
-                statepoint._populate_tally(self)
+            self._sp_filename = statepoint._f.filename
         else:
-            with openmc.StatePoint(statepoint) as sp:
-                if self in sp.tallies.values():
-                    sp._populate_tally(self)
+            self._sp_filename = str(statepoint)
 
     @classmethod
     def from_xml_element(cls, elem, **kwargs):
@@ -3233,13 +3238,8 @@ class Tallies(cv.CheckedList):
         """
         if not self:
             return
-        if isinstance(statepoint, openmc.StatePoint):
-            for tally in self:
-                tally.add_results(statepoint)
-        else:
-            with openmc.StatePoint(statepoint) as sp:
-                for tally in self:
-                    tally.add_results(sp)
+        for tally in self:
+            tally.add_results(statepoint)
 
     def _create_tally_subelements(self, root_element):
         for tally in self:

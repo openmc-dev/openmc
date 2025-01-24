@@ -231,9 +231,26 @@ to false.
   *Default*: true
 
 ----------------------------------------
-``<max_particles_in_flight>`` Element
+``<max_lost_particles>`` Element
 ----------------------------------------
 
+This element indicates the maximum number of lost particles.
+
+  *Default*: 10
+
+----------------------------------------
+``<rel_max_lost_particles>`` Element
+----------------------------------------
+
+This element indicates the maximum number of lost particles, relative to the 
+total number of particles. 
+
+  *Default*: 1.0e-6
+
+----------------------------------------
+``<max_particles_in_flight>`` Element
+----------------------------------------
+    
 This element indicates the number of neutrons to run in flight concurrently
 when using event-based parallelism. A higher value uses more memory, but
 may be more efficient computationally.

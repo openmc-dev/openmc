@@ -239,11 +239,10 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
     }
 
     // Write fission particles to nuBank
-    p.nu_bank().emplace_back();
-    NuBank* nu_bank_entry = &p.nu_bank().back();
-    nu_bank_entry->wgt = site.wgt;
-    nu_bank_entry->E = site.E;
-    nu_bank_entry->delayed_group = site.delayed_group;
+    NuBank& nu_bank_entry = p.nu_bank().emplace_back();
+    nu_bank_entry.wgt = site.wgt;
+    nu_bank_entry.E = site.E;
+    nu_bank_entry.delayed_group = site.delayed_group;
   }
 
   // If shared fission bank was full, and no fissions could be added,

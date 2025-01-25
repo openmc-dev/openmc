@@ -1582,7 +1582,7 @@ class Material(IDManagerMixin):
 
         if 'volume' in elem.attrib:
             mat.volume = float(elem.get('volume'))
-        mat.depletable = bool(elem.get('depletable'))
+        mat.depletable = elem.get('depletable')=="ture"
 
         # Get each nuclide
         for nuclide in elem.findall('nuclide'):

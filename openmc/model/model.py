@@ -1262,8 +1262,9 @@ class Model:
                 if diff_volume_method != 'match cell':
                     cell.fill = [mat.clone() for _ in range(cell.num_instances)]
                 elif diff_volume_method == 'match cell':
-                    cell.fill = mat.clone()
-                    cell.fill.volume = cell.volume
+                    cell.fill = [mat.clone() for _ in range(cell.num_instances)]
+                    for  clone_mat in cell.fill:
+                        clone_mat.volume = cell.volume
 
         if self.materials is not None:
             self.materials = openmc.Materials(

@@ -144,17 +144,13 @@ inline bool atomic_cas_int32(int32_t* ptr, int32_t expected, int32_t desired)
 void MaterialVolumes::add_volume(
   int index_elem, int index_material, double volume)
 {
-  constexpr int EMPTY = -2;
-
-  // Simple hash
-  const size_t start_slot = index_material % table_size_;
-
   // Loop for linear probing
   for (int attempt = 0; attempt < table_size_; ++attempt) {
-    int slot = (start_slot + attempt) % table_size_;
+    // Determine slot to check
+    int slot = (index_material + attempt) % table_size_;
 
     // Non-atomic read of current material
-    int32_t current_val = this->materials(index_elem, slot);
+    int32_t& current_val = this->materials(index_elem, slot);
 
     // Found the desired material; accumulate volume
     if (current_val == index_material) {
@@ -166,39 +162,28 @@ void MaterialVolumes::add_volume(
     // Slot appears to be empty; attempt to claim
     if (current_val == EMPTY) {
       // Attempt compare-and-swap from EMPTY to index_material
-      bool claimed_slot = atomic_cas_int32(
-        &this->materials(index_elem, slot), EMPTY, index_material);
-      if (claimed_slot) {
+      bool claimed_slot = atomic_cas_int32(&current_val, EMPTY, index_material);
+
+      // If we claimed the slot or another thread claimed it but they inserted
+      // the same material, proceed to accumulate
+      if (claimed_slot || (current_val == index_material)) {
 #pragma omp atomic
         this->volumes(index_elem, slot) += volume;
         return;
-      } else {
-        // Another thread claimed it; check if they inserted the same material
-        int32_t new_val = this->materials(index_elem, slot);
-        if (new_val == index_material) {
-#pragma omp atomic
-          this->volumes(index_elem, slot) += volume;
-          return;
-        }
       }
     }
   }
 
-  // If we get here, the table is full
+  // If table is full, set a flag that can be checked later
   too_many_mats_ = true;
 }
 
 void MaterialVolumes::add_volume_unsafe(
   int index_elem, int index_material, double volume)
 {
-  constexpr int EMPTY = -2;
-
-  // A simple hash
-  const size_t start_slot = index_material % table_size_;
-
   // Linear probe
   for (int attempt = 0; attempt < table_size_; ++attempt) {
-    int slot = (start_slot + attempt) % table_size_;
+    int slot = (index_material + attempt) % table_size_;
 
     // Read current material
     int32_t current_val = this->materials(index_elem, slot);
@@ -209,7 +194,7 @@ void MaterialVolumes::add_volume_unsafe(
       return;
     }
 
-    // Slot appears to be empty; attempt to claim
+    // Claim empty slot
     if (current_val == EMPTY) {
       this->materials(index_elem, slot) = index_material;
       this->volumes(index_elem, slot) += volume;
@@ -217,7 +202,7 @@ void MaterialVolumes::add_volume_unsafe(
     }
   }
 
-  // If we get here, the table is full
+  // If table is full, set a flag that can be checked later
   too_many_mats_ = true;
 }
 

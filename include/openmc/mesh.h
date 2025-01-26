@@ -110,6 +110,8 @@ private:
   int table_size_;     //!< Maximum number of materials in a single mesh element
   bool too_many_mats_ = false; //!< Whether the maximum number of materials has
                                //!< been exceeded
+
+  static constexpr int EMPTY = -2;
 };
 
 } // namespace detail

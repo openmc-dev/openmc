@@ -116,6 +116,12 @@ inline bool check_intersection_point(double x1, double x0, double y1, double y0,
 
 namespace detail {
 
+//! Atomic compare-and-swap for signed 32-bit integer
+//
+//! \param[in,out] ptr Pointer to value to update
+//! \param[in] expected Value to compare to
+//! \param[in] desired If comparison is successful, value to update to
+//! \return True if the comparison was successful and the value was updated
 inline bool atomic_cas_int32(int32_t* ptr, int32_t expected, int32_t desired)
 {
 #if defined(__GNUC__) || defined(__clang__)
@@ -138,58 +144,54 @@ inline bool atomic_cas_int32(int32_t* ptr, int32_t expected, int32_t desired)
 void MaterialVolumes::add_volume(
   int index_elem, int index_material, double volume)
 {
-  const int base_offset = index_elem * table_size_;
+  constexpr int EMPTY = -2;
 
   // Simple hash
   const size_t start_slot = index_material % table_size_;
 
+  // Loop for linear probing
   for (int attempt = 0; attempt < table_size_; ++attempt) {
     int slot = (start_slot + attempt) % table_size_;
-    int idx = base_offset + slot;
 
-    // Non-atomic read of current occupant
-    int32_t current_val = materials_[idx];
+    // Non-atomic read of current material
+    int32_t current_val = this->materials(index_elem, slot);
 
-    // CASE 1: same material => accumulate volume
+    // Found the desired material; accumulate volume
     if (current_val == index_material) {
 #pragma omp atomic
-      volumes_[idx] += volume;
+      this->volumes(index_elem, slot) += volume;
       return;
     }
 
-    // CASE 2: empty slot => attempt to claim
-    if (current_val == -2) {
-      // Attempt CAS from -2 to index_material
-      bool success = atomic_cas_int32(&materials_[idx], -2, index_material);
-      if (success) {
-// We inserted => accumulate volume
+    // Slot appears to be empty; attempt to claim
+    if (current_val == EMPTY) {
+      // Attempt compare-and-swap from EMPTY to index_material
+      bool claimed_slot = atomic_cas_int32(
+        &this->materials(index_elem, slot), EMPTY, index_material);
+      if (claimed_slot) {
 #pragma omp atomic
-        volumes_[idx] += volume;
+        this->volumes(index_elem, slot) += volume;
         return;
       } else {
-        // Another thread claimed it;
-        // check if they inserted the same material
-        int32_t new_val = materials_[idx]; // re-read
+        // Another thread claimed it; check if they inserted the same material
+        int32_t new_val = this->materials(index_elem, slot);
         if (new_val == index_material) {
 #pragma omp atomic
-          volumes_[idx] += volume;
+          this->volumes(index_elem, slot) += volume;
           return;
         }
-        // else keep probing...
       }
     }
-    // else => belongs to a different material => keep probing
   }
 
-  // If we get here => the table is full for this element
+  // If we get here, the table is full
   too_many_mats_ = true;
 }
 
 void MaterialVolumes::add_volume_unsafe(
   int index_elem, int index_material, double volume)
 {
-  // We assume exactly one thread updates each element => no data races.
-  const int base_offset = index_elem * table_size_;
+  constexpr int EMPTY = -2;
 
   // A simple hash
   const size_t start_slot = index_material % table_size_;
@@ -197,26 +199,25 @@ void MaterialVolumes::add_volume_unsafe(
   // Linear probe
   for (int attempt = 0; attempt < table_size_; ++attempt) {
     int slot = (start_slot + attempt) % table_size_;
-    int idx = base_offset + slot;
 
-    int32_t current_val = materials_[idx];
+    // Read current material
+    int32_t current_val = this->materials(index_elem, slot);
 
-    // CASE 1: We already have this material => accumulate
+    // Found the desired material; accumulate volume
     if (current_val == index_material) {
-      volumes_[idx] += volume;
+      this->volumes(index_elem, slot) += volume;
       return;
     }
 
-    // CASE 2: Empty slot => claim it
-    if (current_val == -2) {
-      materials_[idx] = index_material;
-      volumes_[idx] += volume;
+    // Slot appears to be empty; attempt to claim
+    if (current_val == EMPTY) {
+      this->materials(index_elem, slot) = index_material;
+      this->volumes(index_elem, slot) += volume;
       return;
     }
-    // else => belongs to a different material, keep probing
   }
 
-  // If all slots are filled => set overflow flag
+  // If we get here, the table is full
   too_many_mats_ = true;
 }
 

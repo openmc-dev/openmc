@@ -14,7 +14,7 @@ import openmc
 import openmc._xml as xml
 from openmc.dummy_comm import DummyCommunicator
 from openmc.executor import _process_CLI_arguments
-from openmc.checkvalue import check_type, check_value
+from openmc.checkvalue import check_type, check_value, PathLike
 from openmc.exceptions import InvalidIDError
 from openmc.utility_funcs import change_directory
 
@@ -604,7 +604,8 @@ class Model:
     def run(self, particles=None, threads=None, geometry_debug=False,
             restart_file=None, tracks=False, output=True, cwd='.',
             openmc_exec='openmc', mpi_args=None, event_based=None,
-            export_model_xml=True, **export_kwargs):
+            export_model_xml=True, apply_tally_results=False,
+            **export_kwargs):
         """Run OpenMC
 
         If the C API has been initialized, then the C API is used, otherwise,
@@ -654,6 +655,11 @@ class Model:
             to True.
 
             .. versionadded:: 0.13.3
+        apply_tally_results : bool
+            Whether to apply results of the final statepoint file to the
+            model's tally objects.
+
+            .. versionadded:: 0.15.1
         **export_kwargs
             Keyword arguments passed to either :meth:`Model.export_to_model_xml`
             or :meth:`Model.export_to_xml`.
@@ -725,6 +731,10 @@ class Model:
                 if mtime >= tstart:  # >= allows for poor clock resolution
                     tstart = mtime
                     last_statepoint = sp
+
+        if apply_tally_results:
+            self.apply_tally_results(last_statepoint)
+
         return last_statepoint
 
     def calculate_volumes(self, threads=None, output=True, cwd='.',
@@ -931,6 +941,16 @@ class Model:
                 return openmc.lib.sample_external_source(
                     n_samples=n_samples, prn_seed=prn_seed
                 )
+
+    def apply_tally_results(self, statepoint: PathLike | openmc.StatePoint):
+        """Apply results from a statepoint to tally objects on the Model
+
+        Parameters
+        ----------
+        statepoint : PathLike or openmc.StatePoint
+            Statepoint file used to update tally results
+        """
+        self.tallies.add_results(statepoint)
 
     def plot_geometry(self, output=True, cwd='.', openmc_exec='openmc',
                       export_model_xml=True, **export_kwargs):

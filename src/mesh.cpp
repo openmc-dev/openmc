@@ -425,7 +425,7 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
 #ifdef OPENMC_MPI
   // Combine results from multiple MPI processes
   if (mpi::n_procs > 1) {
-    int total = this->n_bins() * max_materials;
+    int total = this->n_bins() * table_size;
     if (mpi::master) {
       // Allocate temporary buffer for receiving data
       std::vector<int32_t> mats(total);
@@ -442,8 +442,8 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
         // add_volume because each thread is operating on a different element
 #pragma omp for
         for (int index_elem = 0; index_elem < n_bins(); ++index_elem) {
-          for (int k = 0; k < max_materials; ++k) {
-            int index = index_elem * max_materials + k;
+          for (int k = 0; k < table_size; ++k) {
+            int index = index_elem * table_size + k;
             result.add_volume_unsafe(index_elem, mats[index], vols[index]);
           }
         }

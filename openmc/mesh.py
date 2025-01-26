@@ -102,10 +102,10 @@ class MeshMaterialVolumes(Mapping):
         list of tuple of (material ID, volume)
 
         """
-        max_mats = self._volumes.shape[1]
+        table_size = self._volumes.shape[1]
         return [
             (m if m > -1 else None, self._volumes[index_elem, i])
-            for i in range(max_mats)
+            for i in range(table_size)
             if (m := self._materials[index_elem, i]) != -2
         ]
 

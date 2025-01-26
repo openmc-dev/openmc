@@ -6,6 +6,10 @@
 #include <gsl/gsl-lite.hpp>
 #include <string>
 
+#ifdef _MSC_VER
+#include <intrin.h> // for _InterlockedCompareExchange
+#endif
+
 #ifdef OPENMC_MPI
 #include "mpi.h"
 #endif
@@ -112,61 +116,108 @@ inline bool check_intersection_point(double x1, double x0, double y1, double y0,
 
 namespace detail {
 
+inline bool atomic_cas_int32(int32_t* ptr, int32_t expected, int32_t desired)
+{
+#if defined(__GNUC__) || defined(__clang__)
+  // For gcc/clang, use the __atomic_compare_exchange_n intrinsic
+  return __atomic_compare_exchange_n(
+    ptr, &expected, desired, false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
+
+#elif defined(_MSC_VER)
+  // For MSVC, use the _InterlockedCompareExchange intrinsic
+  int32_t old_val =
+    _InterlockedCompareExchange(reinterpret_cast<volatile long*>(ptr),
+      static_cast<long>(desired), static_cast<long>(expected));
+  return (old_val == expected);
+
+#else
+#error "No compare-and-swap implementation available for this compiler."
+#endif
+}
+
 void MaterialVolumes::add_volume(
   int index_elem, int index_material, double volume)
 {
-  int i;
-#pragma omp critical(MeshMatVol)
-  for (i = 0; i < n_mats_; ++i) {
-    // Check whether material already is present
-    if (this->materials(index_elem, i) == index_material)
-      break;
+  const int base_offset = index_elem * table_size_;
 
-    // If not already present, check for unused position (-2)
-    if (this->materials(index_elem, i) == -2) {
-      this->materials(index_elem, i) = index_material;
-      break;
-    }
-  }
+  // Simple hash
+  const size_t start_slot = index_material % table_size_;
 
-  // If maximum number of materials exceeded, set a flag that can be checked
-  // later
-  if (i >= n_mats_) {
-    too_many_mats_ = true;
-    return;
-  }
+  for (int attempt = 0; attempt < table_size_; ++attempt) {
+    int slot = (start_slot + attempt) % table_size_;
+    int idx = base_offset + slot;
 
-  // Accumulate volume
+    // Non-atomic read of current occupant
+    int32_t current_val = materials_[idx];
+
+    // CASE 1: same material => accumulate volume
+    if (current_val == index_material) {
 #pragma omp atomic
-  this->volumes(index_elem, i) += volume;
+      volumes_[idx] += volume;
+      return;
+    }
+
+    // CASE 2: empty slot => attempt to claim
+    if (current_val == -2) {
+      // Attempt CAS from -2 to index_material
+      bool success = atomic_cas_int32(&materials_[idx], -2, index_material);
+      if (success) {
+// We inserted => accumulate volume
+#pragma omp atomic
+        volumes_[idx] += volume;
+        return;
+      } else {
+        // Another thread claimed it;
+        // check if they inserted the same material
+        int32_t new_val = materials_[idx]; // re-read
+        if (new_val == index_material) {
+#pragma omp atomic
+          volumes_[idx] += volume;
+          return;
+        }
+        // else keep probing...
+      }
+    }
+    // else => belongs to a different material => keep probing
+  }
+
+  // If we get here => the table is full for this element
+  too_many_mats_ = true;
 }
 
-// Same as add_volume above, but without the OpenMP critical/atomic section
 void MaterialVolumes::add_volume_unsafe(
   int index_elem, int index_material, double volume)
 {
-  int i;
-  for (i = 0; i < n_mats_; ++i) {
-    // Check whether material already is present
-    if (this->materials(index_elem, i) == index_material)
-      break;
+  // We assume exactly one thread updates each element => no data races.
+  const int base_offset = index_elem * table_size_;
 
-    // If not already present, check for unused position (-2)
-    if (this->materials(index_elem, i) == -2) {
-      this->materials(index_elem, i) = index_material;
-      break;
+  // A simple hash
+  const size_t start_slot = index_material % table_size_;
+
+  // Linear probe
+  for (int attempt = 0; attempt < table_size_; ++attempt) {
+    int slot = (start_slot + attempt) % table_size_;
+    int idx = base_offset + slot;
+
+    int32_t current_val = materials_[idx];
+
+    // CASE 1: We already have this material => accumulate
+    if (current_val == index_material) {
+      volumes_[idx] += volume;
+      return;
     }
+
+    // CASE 2: Empty slot => claim it
+    if (current_val == -2) {
+      materials_[idx] = index_material;
+      volumes_[idx] += volume;
+      return;
+    }
+    // else => belongs to a different material, keep probing
   }
 
-  // If maximum number of materials exceeded, set a flag that can be checked
-  // later
-  if (i >= n_mats_) {
-    too_many_mats_ = true;
-    return;
-  }
-
-  // Accumulate volume
-  this->volumes(index_elem, i) += volume;
+  // If all slots are filled => set overflow flag
+  too_many_mats_ = true;
 }
 
 } // namespace detail
@@ -222,7 +273,7 @@ vector<double> Mesh::volumes() const
   return volumes;
 }
 
-void Mesh::material_volumes(int nx, int ny, int nz, int max_materials,
+void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
   int32_t* materials, double* volumes) const
 {
   if (mpi::master) {
@@ -234,13 +285,13 @@ void Mesh::material_volumes(int nx, int ny, int nz, int max_materials,
   int64_t n_total = nx * ny + ny * nz + nx * nz;
   write_message(7, "Total number of rays = {}", n_total);
   write_message(
-    7, "Maximum number of materials per mesh element = {}", max_materials);
+    7, "Maximum number of materials per mesh element = {}", table_size);
 
   Timer timer;
   timer.start();
 
   // Create object for keeping track of materials/volumes
-  detail::MaterialVolumes result(materials, volumes, max_materials);
+  detail::MaterialVolumes result(materials, volumes, table_size);
 
   // Determine bounding box
   auto bbox = this->bounding_box();
@@ -428,13 +479,13 @@ void Mesh::material_volumes(int nx, int ny, int nz, int max_materials,
   for (int i = 0; i < this->n_bins(); ++i) {
     // Estimated total volume in element i
     double volume = 0.0;
-    for (int j = 0; j < max_materials; ++j) {
+    for (int j = 0; j < table_size; ++j) {
       volume += result.volumes(i, j);
     }
 
     // Renormalize volumes based on known volume of element i
     double norm = this->volume(i) / volume;
-    for (int j = 0; j < max_materials; ++j) {
+    for (int j = 0; j < table_size; ++j) {
       result.volumes(i, j) *= norm;
     }
   }
@@ -2164,14 +2215,14 @@ extern "C" int openmc_mesh_bounding_box(int32_t index, double* ll, double* ur)
 }
 
 extern "C" int openmc_mesh_material_volumes(int32_t index, int nx, int ny,
-  int nz, int max_mats, int32_t* materials, double* volumes)
+  int nz, int table_size, int32_t* materials, double* volumes)
 {
   if (int err = check_mesh(index))
     return err;
 
   try {
     model::meshes[index]->material_volumes(
-      nx, ny, nz, max_mats, materials, volumes);
+      nx, ny, nz, table_size, materials, volumes);
   } catch (const std::exception& e) {
     set_errmsg(e.what());
     if (starts_with(e.what(), "Mesh")) {

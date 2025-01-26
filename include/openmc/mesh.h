@@ -77,8 +77,8 @@ namespace detail {
 
 class MaterialVolumes {
 public:
-  MaterialVolumes(int32_t* mats, double* vols, int max_materials)
-    : materials_(mats), volumes_(vols), n_mats_(max_materials)
+  MaterialVolumes(int32_t* mats, double* vols, int table_size)
+    : materials_(mats), volumes_(vols), table_size_(table_size)
   {}
 
   //! Add volume for a given material in a mesh element
@@ -90,16 +90,16 @@ public:
   void add_volume_unsafe(int index_elem, int index_material, double volume);
 
   // Accessors
-  int32_t& materials(int i, int j) { return materials_[i * n_mats_ + j]; }
+  int32_t& materials(int i, int j) { return materials_[i * table_size_ + j]; }
   const int32_t& materials(int i, int j) const
   {
-    return materials_[i * n_mats_ + j];
+    return materials_[i * table_size_ + j];
   }
 
-  double& volumes(int i, int j) { return volumes_[i * n_mats_ + j]; }
+  double& volumes(int i, int j) { return volumes_[i * table_size_ + j]; }
   const double& volumes(int i, int j) const
   {
-    return volumes_[i * n_mats_ + j];
+    return volumes_[i * table_size_ + j];
   }
 
   bool too_many_mats() const { return too_many_mats_; }
@@ -107,7 +107,7 @@ public:
 private:
   int32_t* materials_; //!< material index (bins, max_mats)
   double* volumes_;    //!< volume in [cm^3] (bins, max_mats)
-  int n_mats_;         //!< Maximum number of materials in a single mesh element
+  int table_size_;     //!< Maximum number of materials in a single mesh element
   bool too_many_mats_ = false; //!< Whether the maximum number of materials has
                                //!< been exceeded
 };

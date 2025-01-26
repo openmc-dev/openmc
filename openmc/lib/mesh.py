@@ -235,20 +235,22 @@ class Mesh(_FortranObjectWithID):
 
         # Preallocate arrays for material indices and volumes
         n = self.n_elements
-        materials = np.full((n, max_materials), -2, dtype=np.int32)
-        volumes = np.zeros((n, max_materials), dtype=np.float64)
+        slot_factor = 2
+        table_size = slot_factor*max_materials
+        materials = np.full((n, table_size), -2, dtype=np.int32)
+        volumes = np.zeros((n, table_size), dtype=np.float64)
 
         # Run material volume calculation
         while True:
             try:
                 with quiet_dll(output):
                     _dll.openmc_mesh_material_volumes(
-                        self._index, nx, ny, nz, max_materials, materials, volumes)
+                        self._index, nx, ny, nz, table_size, materials, volumes)
             except AllocationError:
                 # Increase size of result array and try again
-                max_materials *= 2
-                materials = np.full((n, max_materials), -2, dtype=np.int32)
-                volumes = np.zeros((n, max_materials), dtype=np.float64)
+                table_size *= 2
+                materials = np.full((n, table_size), -2, dtype=np.int32)
+                volumes = np.zeros((n, table_size), dtype=np.float64)
             else:
                 # If no error, break out of loop
                 break

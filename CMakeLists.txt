@@ -1,96 +1,17 @@
 cmake_minimum_required(VERSION 3.16 FATAL_ERROR)
 project(openmc C CXX)
 
-# Find git
-find_package(Git)
+# Set module path
+set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules)
 
-# Try to get the version from git describe
-if(EXISTS "${CMAKE_SOURCE_DIR}/.git" AND GIT_FOUND)
-  message(STATUS "Using git describe for versioning")
-  # Extract the tag
-  execute_process(
-      COMMAND git describe --tags --match "*[0-9]*" --dirty
-      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-      OUTPUT_VARIABLE VERSION_STRING
-      OUTPUT_STRIP_TRAILING_WHITESPACE
-  )
+include(GetVersionFromGit)
 
-  # Extract the commit hash
-  execute_process(
-      COMMAND git rev-parse HEAD
-      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-      OUTPUT_VARIABLE VERSION_COMMIT_HASH
-      OUTPUT_STRIP_TRAILING_WHITESPACE
-  )
-else()
-  message(STATUS "Using .git_archival.txt for versioning")
-  set(GIT_ARCHIVAL_FILE "${CMAKE_SOURCE_DIR}/.git_archival.txt")
-  if(EXISTS "${GIT_ARCHIVAL_FILE}")
-      file(READ "${GIT_ARCHIVAL_FILE}" GIT_ARCHIVAL_CONTENT)
-
-      # Extract the describe-name line
-      string(REGEX MATCH "describe-name: ([^\\n]+)" VERSION_STRING "${GIT_ARCHIVAL_CONTENT}")
-
-      # If a match is found, extract the actual version
-      if(VERSION_STRING MATCHES "describe-name: (.*)")
-          set(VERSION_STRING "${CMAKE_MATCH_1}")
-      else()
-          message(FATAL_ERROR "Could not extract version from .git_archival.txt")
-      endif()
-
-      # Extract the commit hash
-      string(REGEX MATCH "commit: ([a-f0-9]+)" VERSION_COMMIT_HASH "${GIT_ARCHIVAL_CONTENT}")
-
-      # If a commit hash is found, use it
-      if(VERSION_COMMIT_HASH  MATCHES "commit: ([a-f0-9]+)")
-          set(VERSION_COMMIT_HASH "${CMAKE_MATCH_1}")
-      else()
-          message(VERSION_COMMIT_HASH "Could not extract commit hash from .git_archival.txt")
-      endif()
-  else()
-      message(FATAL_ERROR "Neither git describe nor .git_archival.txt is available for versioning.")
-  endif()
-endif()
-
-# Ensure the version string matches the standard format
-# Step 1: Match and extract the base version (major.minor.release)
-if(VERSION_STRING MATCHES "^v?([0-9]+\\.[0-9]+\\.[0-9]+)")
-    set(VERSION_NO_SUFFIX "${CMAKE_MATCH_1}")
-else()
-    message(FATAL_ERROR "Invalid version format: Missing base version in ${VERSION_STRING}")
-endif()
-
-# Step 2: Check for commit count
-if(VERSION_STRING MATCHES "-([0-9]+)-g([0-9a-f]+)")
-    set(VERSION_DEV "true")
-    set(VERSION_COMMIT_COUNT "${CMAKE_MATCH_1}")
-else()
-    set(VERSION_DEV "false")
-endif()
-
-# Step 3: Check for dirty state
-if(VERSION_STRING MATCHES "-dirty")
-    set(VERSION_DIRTY "true")
-else()
-    set(VERSION_DIRTY "false")
-endif()
-
-# Set OpenMC version
-string(REPLACE "." ";" VERSION_LIST "${VERSION_NO_SUFFIX}")
-list(GET VERSION_LIST 0 OPENMC_VERSION_MAJOR)
-list(GET VERSION_LIST 1 OPENMC_VERSION_MINOR)
-list(GET VERSION_LIST 2 OPENMC_VERSION_RELEASE)
-
-# Increment release number for dev versions
-if(VERSION_DEV)
-    math(EXPR OPENMC_VERSION_RELEASE "${OPENMC_VERSION_RELEASE} + 1")
-endif()
-set(OPENMC_VERSION ${OPENMC_VERSION_MAJOR}.${OPENMC_VERSION_MINOR}.${OPENMC_VERSION_RELEASE})
-message(STATUS "OpenMC version: ${OPENMC_VERSION}")
-message(STATUS "OpenMC dev state: ${VERSION_DEV}")
-message(STATUS "OpenMC commit count: ${VERSION_COMMIT_COUNT}")
-message(STATUS "OpenMC commit hash: ${VERSION_COMMIT_HASH}")
-message(STATUS "OpenMC dirty state: ${VERSION_DIRTY}")
+# Output version information
+message(STATUS "OpenMC version: ${PROJECT_VERSION}")
+message(STATUS "OpenMC dev state: ${PROJECT_DEV_STATE}")
+message(STATUS "OpenMC commit hash: ${PROJECT_COMMIT_HASH}")
+message(STATUS "OpenMC commit count: ${PROJECT_COMMIT_COUNT}")
+message(STATUS "OpenMC dirty state: ${PROJECT_DIRTY_STATE}")
 
 # Generate version.h
 configure_file(include/openmc/version.h.in "${CMAKE_BINARY_DIR}/include/openmc/version.h" @ONLY)
@@ -99,9 +20,6 @@ configure_file(include/openmc/version.h.in "${CMAKE_BINARY_DIR}/include/openmc/v
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-
-# Set module path
-set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules)
 
 # Enable correct usage of CXX_EXTENSIONS
 if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.22)

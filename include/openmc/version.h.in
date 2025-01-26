@@ -7,12 +7,12 @@ namespace openmc {
 
 // OpenMC major, minor, and release numbers
 // clang-format off
-constexpr int VERSION_MAJOR {@OPENMC_VERSION_MAJOR@};
-constexpr int VERSION_MINOR {@OPENMC_VERSION_MINOR@};
-constexpr int VERSION_RELEASE {@OPENMC_VERSION_RELEASE@};
-constexpr bool VERSION_DEV {@VERSION_DEV@};
-constexpr const char* VERSION_COMMIT_COUNT = "@VERSION_COMMIT_COUNT@";
-constexpr const char* VERSION_COMMIT_HASH = "@VERSION_COMMIT_HASH@";
+constexpr int VERSION_MAJOR {@PROJECT_VERSION_MAJOR@};
+constexpr int VERSION_MINOR {@PROJECT_VERSION_MINOR@};
+constexpr int VERSION_RELEASE {@PROJECT_VERSION_PATCH@};
+constexpr bool VERSION_DEV {@PROJECT_DEV_STATE@};
+constexpr const char* VERSION_COMMIT_COUNT = "@PROJECT_COMMIT_COUNT@";
+constexpr const char* VERSION_COMMIT_HASH = "@PROJECT_COMMIT_HASH@";
 constexpr std::array<int, 3> VERSION {VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE};
 // clang-format on
 

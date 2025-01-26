@@ -5,8 +5,10 @@
 # Configurable variables (set these in your main CMakeLists.txt if needed):
 #   - VERSION_PREFIX: Prefix for version tags (default: "v").
 #   - VERSION_SURFIX: Suffix for version tags (default: "[~+-]([a-zA-Z0-9]+)").
-#   - VERSION_REGEX: Regex to extract version (default: "[0-9]+\\.[0-9]+\\.[0-9]+").
+#   - VERSION_REGEX: Regex to extract version (default: "(?[0-9]+\\.[0-9]+\\.[0-9]+)").
 #   - ARCHIVAL_FILE: Path to .git_archival.txt (default: "${CMAKE_SOURCE_DIR}/.git_archival.txt").
+
+# Default Format Example: 1.2.3 v1.2.3 v1.2.3-rc1 
 
 set(VERSION_PREFIX "v" CACHE STRING "Prefix used in version tags")
 set(VERSION_SURFIX "[~+-]([a-zA-Z0-9]+)" CACHE STRING "Suffix used in version tags")

@@ -299,6 +299,24 @@ acceptable ray source for a two-dimensional 2x2 lattice would look like:
     provide physical particle fixed sources in addition to the random ray
     source.
 
+--------------------------
+Quasi-Monte Carlo Sampling
+--------------------------
+
+By default OpenMC will use a pseudorandom number generator (PRNG) to sample ray
+starting locations from a uniform distribution in space and angle.
+Alternatively, a randomized Halton sequence may be sampled from, which is a form
+of Randomized Qusi-Monte Carlo (RQMC) sampling. RQMC sampling with random ray
+has been shown to offer reduced variance as compared to regular PRNG sampling,
+as the Halton sequence offers a more uniform distribution of sampled points.
+Randomized halton sampling can be enabled as::
+
+  settings.random_ray['sample_method'] = 'halton'
+
+Default behavior using OpenMC's native PRNG can be manually specified as::
+
+  settings.random_ray['sample_method'] = 'prng'
+
 .. _subdivision_fsr:
 
 ----------------------------------

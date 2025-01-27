@@ -11,7 +11,7 @@
 # Default Format Example: 1.2.3 v1.2.3 v1.2.3-rc1 
 
 set(VERSION_PREFIX "v" CACHE STRING "Prefix used in version tags")
-set(VERSION_SURFIX "[~+-]([a-zA-Z0-9]+)" CACHE STRING "Suffix used in version tags")
+set(VERSION_SUFFIX "[~+-]([a-zA-Z0-9]+)" CACHE STRING "Suffix used in version tags")
 set(VERSION_REGEX "?([0-9]+\\.[0-9]+\\.[0-9]+)" CACHE STRING "Regex for extracting version")
 set(ARCHIVAL_FILE "${CMAKE_SOURCE_DIR}/.git_archival.txt" CACHE STRING "Path to .git_archival.txt")
 

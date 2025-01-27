@@ -155,8 +155,8 @@ solver, the Python input just needs to load the h5 file::
 The :class:`~openmc.WeightWindowGenerator` instance is not needed to load an
 existing ``weight_windows.h5`` file. Inclusion of a
 :class:`~openmc.WeightWindowGenerator` instance will cause OpenMC to generate
-*new* weight windows and thus overwrite any existing ``weight_windows.h5`` file.
-Note that the mesh information is embedded into the weight window file, so the
+*new* weight windows and thus overwrite the existing ``weight_windows.h5`` file.
+Weight window mesh information is embedded into the weight window file, so the
 mesh does not need to be redefined. Monte Carlo solves that load a weight window
-file as above will utilize the weight windows to reduce the variance of the
+file as above will utilize weight windows to reduce the variance of the
 simulation.

@@ -2,20 +2,26 @@
 # Standalone script to retrieve versioning information from Git or .git_archival.txt.
 # Customizable for any project by setting variables before including this file.
 
-# Configurable variables (set these in your main CMakeLists.txt if needed):
+# Configurable variables:
 #   - VERSION_PREFIX: Prefix for version tags (default: "v").
 #   - VERSION_SURFIX: Suffix for version tags (default: "[~+-]([a-zA-Z0-9]+)").
 #   - VERSION_REGEX: Regex to extract version (default: "(?[0-9]+\\.[0-9]+\\.[0-9]+)").
 #   - ARCHIVAL_FILE: Path to .git_archival.txt (default: "${CMAKE_SOURCE_DIR}/.git_archival.txt").
+#   - DESCRIBE_NAME_KEY: Key for describe name in .git_archival.txt (default: "describe-name: ").
+#   - COMMIT_HASH_KEY: Key for commit hash in .git_archival.txt (default: "commit: ").
 
-# Default Format Example: 1.2.3 v1.2.3 v1.2.3-rc1 
+# Default Format Example: 
+#   1.2.3 v1.2.3 v1.2.3-rc1 
 
 set(VERSION_PREFIX "v" CACHE STRING "Prefix used in version tags")
 set(VERSION_SUFFIX "[~+-]([a-zA-Z0-9]+)" CACHE STRING "Suffix used in version tags")
 set(VERSION_REGEX "?([0-9]+\\.[0-9]+\\.[0-9]+)" CACHE STRING "Regex for extracting version")
 set(ARCHIVAL_FILE "${CMAKE_SOURCE_DIR}/.git_archival.txt" CACHE STRING "Path to .git_archival.txt")
+set(DESCRIBE_NAME_KEY "describe-name: " CACHE STRING "Key for describe name in .git_archival.txt")
+set(COMMIT_HASH_KEY "commit: " CACHE STRING "Key for commit hash in .git_archival.txt")
 
 
+# Combine prefix and regex
 set(VERSION_REGEX_WITH_PREFIX "^${VERSION_PREFIX}${VERSION_REGEX}")
 
 # Ensure Git is available
@@ -46,16 +52,16 @@ else()
         file(READ "${ARCHIVAL_FILE}" ARCHIVAL_CONTENT)
 
         # Extract the describe-name line
-        string(REGEX MATCH "describe-name: ([^\\n]+)" VERSION_STRING "${ARCHIVAL_CONTENT}")
-        if(VERSION_STRING MATCHES "describe-name: (.*)")
+        string(REGEX MATCH "${DESCRIBE_NAME_KEY}([^\\n]+)" VERSION_STRING "${ARCHIVAL_CONTENT}")
+        if(VERSION_STRING MATCHES "${DESCRIBE_NAME_KEY}(.*)")
             set(VERSION_STRING "${CMAKE_MATCH_1}")
         else()
             message(FATAL_ERROR "Could not extract version from ${ARCHIVAL_FILE}")
         endif()
 
         # Extract the commit hash
-        string(REGEX MATCH "commit: ([a-f0-9]+)" COMMIT_HASH "${ARCHIVAL_CONTENT}")
-        if(COMMIT_HASH MATCHES "commit: ([a-f0-9]+)")
+        string(REGEX MATCH "${COMMIT_HASH_KEY}([a-f0-9]+)" COMMIT_HASH "${ARCHIVAL_CONTENT}")
+        if(COMMIT_HASH MATCHES "${COMMIT_HASH_KEY}([a-f0-9]+)")
             set(COMMIT_HASH "${CMAKE_MATCH_1}")
         else()
             message(FATAL_ERROR "Could not extract commit hash from ${ARCHIVAL_FILE}")

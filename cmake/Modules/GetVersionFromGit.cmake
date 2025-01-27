@@ -90,7 +90,7 @@ else()
 endif()
 
 # Check for extra version
-if(VERSION_WITHOUT_META MATCHES "${VERSION_SURFIX}")
+if(VERSION_WITHOUT_META MATCHES "${VERSION_SUFFIX}")
     set(VERSION_EXTRA "${CMAKE_MATCH_1}")
 else()
     set(VERSION_EXTRA "")

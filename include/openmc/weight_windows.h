@@ -126,7 +126,8 @@ public:
   //! threshold will be ignored \param[in] ratio Ratio of upper to lower
   //! weight window bounds
   void update_magic(const Tally* tally, const std::string& value = "mean",
-    double threshold = 1.0, double ratio = 5.0);
+    double threshold = 1.0, double ratio = 5.0,
+    WeightWindowUpdateMethod method = WeightWindowUpdateMethod::MAGIC);
 
   // NOTE: This is unused for now but may be used in the future
   //! Write weight window settings to an HDF5 file

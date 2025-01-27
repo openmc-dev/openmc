@@ -483,8 +483,8 @@ void WeightWindows::set_bounds(
   upper_ww_ *= ratio;
 }
 
-void WeightWindows::update_magic(
-  const Tally* tally, const std::string& value, double threshold, double ratio)
+void WeightWindows::update_weights(const Tally* tally, const std::string& value,
+  double threshold, double ratio, WeightWindowUpdateMethod method)
 {
   ///////////////////////////
   // Setup and checks
@@ -626,8 +626,7 @@ void WeightWindows::update_magic(
 
   int e_bins = new_bounds.shape()[0];
 
-  if (settings::solver_type == SolverType::MONTE_CARLO ||
-      !FlatSourceDomain::adjoint_) {
+  if (method == WeightWindowUpdateMethod::MAGIC) {
     // If we are computing weight windows with forward fluxes derived from a
     // Monte Carlo or forward random ray solve, we use the MAGIC algorithm.
     for (int e = 0; e < e_bins; e++) {
@@ -900,7 +899,7 @@ void WeightWindowsGenerator::update() const
       tally->n_realizations_ % update_interval_ != 0)
     return;
 
-  wws->update_magic(tally, tally_value_, threshold_, ratio_);
+  wws->update_weights(tally, tally_value_, threshold_, ratio_, method_);
 
   // if we're not doing on the fly generation, reset the tally results once
   // we're done with the update
@@ -984,7 +983,7 @@ extern "C" int openmc_weight_windows_update_magic(int32_t ww_idx,
   // get the WeightWindows object
   const auto& wws = variance_reduction::weight_windows.at(ww_idx);
 
-  wws->update_magic(tally, value, threshold, ratio);
+  wws->update_weights(tally, value, threshold, ratio);
 
   return 0;
 }

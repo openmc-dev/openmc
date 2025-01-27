@@ -125,7 +125,7 @@ public:
   //! \param[in] threshold Relative error threshold. Results over this
   //! threshold will be ignored \param[in] ratio Ratio of upper to lower
   //! weight window bounds
-  void update_magic(const Tally* tally, const std::string& value = "mean",
+  void update_weights(const Tally* tally, const std::string& value = "mean",
     double threshold = 1.0, double ratio = 5.0,
     WeightWindowUpdateMethod method = WeightWindowUpdateMethod::MAGIC);
 

@@ -79,8 +79,8 @@ public:
   double volume(const MeshIndex& ijk) const override;
 
   // grid accessors
-  double r(int i) const { return grid_[0][i]; }
-  double phi(int i) const { return grid_[1][i]; }
+  double a(int i) const { return grid_[0][i]; }
+  double b(int i) const { return grid_[1][i]; }
   double z(int i) const { return grid_[2][i]; }
 
   int set_grid();

@@ -309,7 +309,7 @@ Alternatively, a randomized Halton sequence may be sampled from, which is a form
 of Randomized Qusi-Monte Carlo (RQMC) sampling. RQMC sampling with random ray
 has been shown to offer reduced variance as compared to regular PRNG sampling,
 as the Halton sequence offers a more uniform distribution of sampled points.
-Randomized halton sampling can be enabled as::
+Randomized Halton sampling can be enabled as::
 
   settings.random_ray['sample_method'] = 'halton'
 

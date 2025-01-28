@@ -76,6 +76,7 @@ void openmc_get_tally_next_id(int32_t* id);
 int openmc_global_tallies(double** ptr);
 int openmc_hard_reset();
 int openmc_init(int argc, char* argv[], const void* intracomm);
+int openmc_reload_model_geometry();
 bool openmc_is_statepoint_batch();
 int openmc_legendre_filter_get_order(int32_t index, int* order);
 int openmc_legendre_filter_set_order(int32_t index, int order);

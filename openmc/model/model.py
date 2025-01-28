@@ -1,5 +1,5 @@
 from __future__ import annotations
-from collections.abc import Iterable
+from collections.abc import Iterable, Callable
 from functools import lru_cache
 from pathlib import Path
 from numbers import Integral
@@ -14,7 +14,7 @@ import openmc
 import openmc._xml as xml
 from openmc.dummy_comm import DummyCommunicator
 from openmc.executor import _process_CLI_arguments
-from openmc.checkvalue import check_type, check_value, PathLike
+from openmc.checkvalue import check_type, check_value, check_iterable_type
 from openmc.exceptions import InvalidIDError
 from openmc.utility_funcs import change_directory
 
@@ -737,6 +737,229 @@ class Model:
 
         return last_statepoint
 
+    def search_for_keff(self, model_updater, updater_static_args=None,
+                        initial_guess=None, target=1.0, bracket=None,
+                        tol=None, bracketed_method='bisect',
+                        print_iterations=False, init_args=None,
+                        started_initialized=False, run_args=None, **kwargs):
+        """Perform an accelerated keff search by modifying the model in
+        memory using the C API.
+
+        .. versionadded:: 0.14.1
+
+        Parameters
+        ----------
+        model_updater : collections.Callable
+            Callable function which updates an `openmc.Model` object passed
+            to it using a single numerical input variable. Cell temperature, rotation
+            and translation updates are allowed, as well as material density and
+            composition updates.
+        updater_static_args : dict, optional
+            Keyword-based arguments to pass to the `model_updater` method
+            which do not change during the reactivity calculation. Defaults
+            to no arguments.
+        initial_guess : Real, optional
+            Initial guess for the parameter to be searched in
+            `model_updater`. One of `guess` or `bracket` must be provided.
+        target : Real, optional
+            keff value to search for, defaults to 1.0.
+        bracket : None or Iterable of Real, optional
+            Bracketing interval to search for the solution; if not provided,
+            a generic non-bracketing method is used. If provided, the brackets
+            are used. Defaults to no brackets provided. One of `guess` or `bracket`
+            must be provided. If both are provided, the bracket will be
+            preferentially used.
+        tol : float
+            Tolerance to pass to the search method
+        bracketed_method : {'brentq', 'brenth', 'ridder', 'bisect'}, optional
+            Solution method to use; only applies if
+            `bracket` is set, otherwise the Secant method is used.
+            Defaults to 'bisect'.
+        print_iterations : bool
+            Whether or not to print the guess and the result during the iteration
+            process. Defaults to False.
+        init_args : dict, optional
+            Keyword arguments to pass to :meth:`openmc.Model.init_lib`. Defaults
+            to no arguments.
+        started_initialized : bool
+            Whether or not to initialize and finalize the C API interface. Defaults
+            to False, which assumes the C API interface was previously inactive.
+        run_args : dict, optional
+            Keyword arguments to pass to :meth:`openmc.Model.run`. Defaults to no
+            arguments.
+        **kwargs
+            All remaining keyword arguments are passed to the root-finding
+            method.
+
+        Returns
+        -------
+        zero_value : float
+            Estimated value of the variable parameter where keff is the
+            targeted value
+        guesses : List of Real
+            List of guesses attempted by the search
+        results : List of 2-tuple of Real
+            List of keffs and uncertainties corresponding to the guess attempted by
+            the search
+
+        """
+
+        if updater_static_args is None:
+            updater_static_args = {}
+        else:
+            check_type('updater_static_args', updater_static_args, dict)
+        if init_args is None:
+            init_args = {}
+        else:
+            check_type('init_args', init_args, dict)
+
+        # Initialize C API and export initial model xml file
+        if not started_initialized:
+            self.init_lib(**init_args)
+
+        # Define dummy function that updates the model and
+        # returns a copy. This function allows reuse of the
+        # openmc.search_for_keff method.
+        def wrapper(guess):
+            model_updater(self, guess, **updater_static_args)
+            return self
+
+        # Call openmc.search_for_keff with dummy function
+        # and pass all other parameters explicitly.
+        zero_value, guesses, results = openmc.search_for_keff(
+            model_builder=wrapper,
+            initial_guess=initial_guess, target=target,
+            bracket=bracket, model_args=None, tol=tol,
+            bracketed_method=bracketed_method,
+            print_iterations=print_iterations,
+            run_args=run_args, **kwargs)
+
+        # Deallocate resources
+        if not started_initialized:
+            self.finalize_lib()
+
+        return zero_value, guesses, results
+
+    def calculate_reactivity_coeffs(self, param_list,
+                                   model_updater, updater_static_args=None,
+                                   print_output=True, init_args=None,
+                                   started_initialized=False, **kwargs):
+        """Perform an accelerated reactivity calculation by modifying the
+        model in memory using the C API.
+
+        .. versionadded:: 0.14.1
+
+        Parameters
+        ----------
+        param_list : collections.Iterable
+            Iterable of floats to pass to the `model_updater` method
+            that serves as the indepedent variable during the reactivity
+            calculation.
+        model_updater : collections.Callable
+            Callable function which updates an `openmc.Model` object passed
+            to it using a single numerical input variable. Cell temperature,
+            rotation and translation updates are allowed,
+            as well as material density and composition updates.
+        updater_static_args : dict, optional
+            Keyword-based arguments to pass to the `model_updater` method
+            which do not change during the reactivity calculation. Defaults
+            to no arguments.
+        print_output : bool
+            Whether or not to output the results during the calculation
+            process. Defaults to True.
+        init_args : dict, optional
+            Keyword arguments to pass to :meth:`openmc.Model.init_lib`. Defaults
+            to no arguments.
+        started_initialized : bool
+            Whether or not to initialize and finalize the C API interface. Defaults
+            to False, which assumes the C API interface was previously inactive.
+        **kwargs
+            All remaining keyword arguments are passed to :meth:`openmc.Model.run`
+
+        Returns
+        -------
+        values : List of float
+            Numerical outputs of the `model_updater` method. Defaults to a
+            duplicate of the param_list input variable if the method returns
+            None.
+        coefficients : List of float
+            List of the calculated reactivity coefficients
+
+        """
+
+        check_iterable_type('param_list', param_list, float)
+
+        if updater_static_args is None:
+            updater_static_args = {}
+        else:
+            check_type('updater_static_args', updater_static_args, dict)
+        check_type('model_updater', model_updater, Callable)
+        check_type('model_updater',
+                   model_updater(self, param_list[0], **updater_static_args),
+                   float, none_ok=True)
+
+        if init_args is None:
+            init_args = {}
+        else:
+            check_type('init_args', init_args, dict)
+
+        check_type('print_output', print_output, bool)
+
+        # Check the return of model_updater method. If there is output,
+        # we need to save the output to return it to the user.
+        if model_updater(self, param_list[0], **updater_static_args) is None:
+            duplicate_input = True
+            values = param_list
+        else:
+            duplicate_input = False
+            values = []
+
+        # Define container for the calculated data
+        coefficients = []
+
+        # Initialize C API and export initial model xml file
+        if not started_initialized:
+            self.init_lib(**init_args)
+
+        # Update model and calculate raw keff for each input value
+        for param in param_list:
+            # Update model and record the input corresponding
+            # to the keff simulation.
+            if duplicate_input is True:
+                input = param
+                model_updater(self, input, **updater_static_args)
+            else:
+                input = model_updater(self, param, **updater_static_args)
+            values.append(input)
+
+            # Run using C API in memory and save raw simulation output
+            sp_filepath = self.run(**kwargs)
+            with openmc.StatePoint(sp_filepath) as sp:
+                raw_output = sp.keff
+                if print_output:
+                    text = 'Input Variable : {:.3f}; Model produced \
+                        a keff of {:1.5f} +/- {:1.5f}'
+                    print(text.format(input,  raw_output.n, raw_output.s))
+                coefficients.append(raw_output)
+
+        # Forward difference raw keff values and calculate reactivity
+        # coefficients.
+        for i in range(0, len(values) - 1):
+            coeff = coefficients[i + 1] - coefficients[i]
+            coeff /= coefficients[i + 1] * coefficients[i]
+            coeff /= values[i + 1] - values[i]
+            coefficients[i] = coeff
+
+        # Discard last data point due to forward differencing
+        del values[-1]
+        del coefficients[-1]
+
+        # Deallocate resources
+        if not started_initialized:
+            self.finalize_lib()
+
+        return values, coefficients
+
     def calculate_volumes(self, threads=None, output=True, cwd='.',
                           openmc_exec='openmc', mpi_args=None,
                           apply_volumes=True, export_model_xml=True,
@@ -995,6 +1218,55 @@ class Model:
                 openmc.plot_geometry(output=output, openmc_exec=openmc_exec,
                                      path_input=path_input)
 
+    def reload_geometry(self, output=False, export_xml=False,\
+                        export_model_xml=False):
+        """Reloads geometry and simulation settings in the C API memory
+        from the xml input files.
+
+        .. versionadded:: 0.14.1
+
+        Parameters
+        ----------
+        output : bool, optional
+            Capture OpenMC output from standard out
+        export_xml : bool, optional
+            Export this model as separate xml input files before
+            loading them into memory. Defaults to not updating
+            the xml files.
+        export_model_xml : bool, optional
+            Export this model as a model xml input file before
+            loading them it into memory. Defaults to not updating
+            the model xml file.
+
+        """
+
+        import openmc.lib
+
+        if self.is_initialized:
+            # Ensure the materials in the current model are
+            # already loaded in the C API's memory.
+            for id in openmc.lib.materials:
+                try:
+                    self.materials.get_material_by_id(id)
+                except IndexError:
+                    msg = "New model geometry " + \
+                          "contains materials not " + \
+                          "already initialized by the " + \
+                          "C API!"
+                    raise IndexError(msg)
+
+            # Update xml input files if it was requested
+            if export_xml is True:
+                self.export_to_xml()
+            if export_model_xml is True:
+                self.export_to_model_xml()
+
+            openmc.lib.reload_model_geometry(output)
+        else:
+            msg = "Model not initialized in memory! " + \
+                  "Ignoring reload request."
+            warnings.warn(msg, UserWarning)
+
     def _change_py_lib_attribs(self, names_or_ids, value, obj_type,
                                attrib_name, density_units='atom/b-cm'):
         # Method to do the same work whether it is a cell or material and
@@ -1005,7 +1277,7 @@ class Model:
         check_value('obj_type', obj_type, ('material', 'cell'))
         check_value('attrib_name', attrib_name,
                     ('temperature', 'volume', 'density', 'rotation',
-                     'translation'))
+                     'translation', 'composition'))
         # The C API only allows setting density units of atom/b-cm and g/cm3
         check_value('density_units', density_units, ('atom/b-cm', 'g/cm3'))
         # The C API has no way to set cell volume or material temperature
@@ -1020,11 +1292,13 @@ class Model:
         # And some items just dont make sense
         if obj_type == 'cell' and attrib_name == 'density':
             raise ValueError('Cannot set a Cell density!')
+        if obj_type == 'cell' and attrib_name == 'composition':
+            raise ValueError('Cannot set a Cell composition!')
         if obj_type == 'material' and attrib_name in ('rotation',
                                                       'translation'):
             raise ValueError('Cannot set a material rotation/translation!')
 
-        # Set the
+        # Load cell and material data
         if obj_type == 'cell':
             by_name = self._cells_by_name
             by_id = self._cells_by_id
@@ -1035,6 +1309,7 @@ class Model:
             by_id = self._materials_by_id
             if self.is_initialized:
                 obj_by_id = openmc.lib.materials
+
         # Get the list of ids to use if converting from names and accepting
         # only values that have actual ids
         ids = []
@@ -1063,8 +1338,12 @@ class Model:
             obj = by_id[id_]
             if attrib_name == 'density':
                 obj.set_density(density_units, value)
+            elif attrib_name == 'composition':
+                obj.set_density(value.density_units, value.density)
+                obj.nuclides = value.nuclides
             else:
                 setattr(obj, attrib_name, value)
+
             # Next lets keep what is in C API memory up to date as well
             if self.is_initialized:
                 lib_obj = obj_by_id[id_]
@@ -1072,6 +1351,23 @@ class Model:
                     lib_obj.set_density(value, density_units)
                 elif attrib_name == 'temperature':
                     lib_obj.set_temperature(value)
+                elif attrib_name == 'composition':
+                    # Retrieve composition data from input material
+                    comp_data = value.get_nuclide_atom_densities()
+                    nuclides = list(comp_data.keys())
+                    densities = list(comp_data.values())
+
+                    # Compile a set of previously loaded nuclides
+                    loaded_nuclides = set(openmc.lib.nuclides.keys())
+                    # Find set of nuclides that need to be loaded
+                    new_nuclides = set(nuclides) - loaded_nuclides
+                    # Load missing nuclides through the C API
+                    for nuclide in new_nuclides:
+                        openmc.lib.load_nuclide(nuclide)
+
+                    # Update target material density and composition in memory
+                    lib_obj.set_density(value.density, value.density_units)
+                    lib_obj.set_densities(nuclides, densities)
                 else:
                     setattr(lib_obj, attrib_name, value)
 
@@ -1120,13 +1416,14 @@ class Model:
         self._change_py_lib_attribs(names_or_ids, vector, 'cell',
                                     'translation')
 
-    def update_densities(self, names_or_ids, density, density_units='atom/b-cm'):
+    def update_material_densities(self, names_or_ids, density,
+                                  density_units='atom/b-cm'):
         """Update the density of a given set of materials to a new value
 
         .. note:: If applying this change to a name that is not unique, then
                   the change will be applied to all objects of that name.
 
-        .. versionadded:: 0.13.0
+        .. versionadded:: 0.14.1
 
         Parameters
         ----------
@@ -1142,6 +1439,14 @@ class Model:
 
         self._change_py_lib_attribs(names_or_ids, density, 'material',
                                     'density', density_units)
+
+    def update_densities(self, names_or_ids, density, density_units='atom/b-cm'):
+        warnings.warn("update_densities(...) has been renamed " + \
+                "update_material_densities(...). " + \
+                "Future versions of OpenMC will not accept update_densities.",
+            FutureWarning)
+
+        self.update_material_densities(names_or_ids, density, density_units)
 
     def update_cell_temperatures(self, names_or_ids, temperature):
         """Update the temperature of a set of cells to the given value
@@ -1163,6 +1468,32 @@ class Model:
 
         self._change_py_lib_attribs(names_or_ids, temperature, 'cell',
                                     'temperature')
+
+    def update_material_compositions(self, names_or_ids, reference):
+        """Update the composition of a given set of materials to match
+        the reference material. The material density is also updated
+        along with the composition.
+
+        .. note:: If applying this change to a name that is not unique, then
+                  the change will be applied to all objects of that name.
+
+        .. versionadded:: 0.14.1
+
+        Parameters
+        ----------
+        names_or_ids : Iterable of str or int
+            The material names (if str) or id (if int) that are to be updated.
+            This parameter can include a mix of names and ids.
+        reference : openmc.Material
+            The reference material whose composition and density is assigned to the
+            target materials.
+
+        """
+
+        check_type('reference', reference, openmc.Material)
+        self._change_py_lib_attribs(names_or_ids, reference,
+                                    'material', 'composition',
+                                    density_units=reference.density_units)
 
     def update_material_volumes(self, names_or_ids, volume):
         """Update the volume of a set of materials to the given value

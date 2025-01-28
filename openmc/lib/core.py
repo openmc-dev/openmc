@@ -51,6 +51,8 @@ _dll.openmc_hard_reset.errcheck = _error_handler
 _dll.openmc_init.argtypes = [c_int, POINTER(POINTER(c_char)), c_void_p]
 _dll.openmc_init.restype = c_int
 _dll.openmc_init.errcheck = _error_handler
+_dll.openmc_reload_model_geometry.restype = c_int
+_dll.openmc_reload_model_geometry.errcheck = _error_handler
 _dll.openmc_get_keff.argtypes = [POINTER(c_double*2)]
 _dll.openmc_get_keff.restype = c_int
 _dll.openmc_get_keff.errcheck = _error_handler
@@ -523,6 +525,26 @@ def simulation_init():
 def simulation_finalize():
     """Finalize simulation"""
     _dll.openmc_simulation_finalize()
+
+
+def reload_model_geometry(output=False):
+    """Reload model geometry and simulation settings from
+    the xml files into memory.
+
+    .. note:: Only the geometry and simulation settings are reloaded,
+              cross sections and materials are kept unchanged.
+
+    .. versionadded:: 0.14.1
+
+    Parameters
+    ----------
+    output : bool, optional
+        Whether or not to show output. Defaults to hiding output
+
+    """
+
+    with quiet_dll(output):
+        _dll.openmc_reload_model_geometry()
 
 
 def source_bank():

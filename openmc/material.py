@@ -2,7 +2,7 @@ from __future__ import annotations
 from collections import defaultdict, namedtuple, Counter
 from collections.abc import Iterable
 from copy import deepcopy
-from numbers import Real
+from numbers import Real, Integral
 from pathlib import Path
 import re
 import sys
@@ -223,6 +223,15 @@ class Material(IDManagerMixin):
     @property
     def nuclides(self) -> list[namedtuple]:
         return self._nuclides
+
+    @nuclides.setter
+    def nuclides(self, nuclides: List[namedtuple]):
+        for nuclide in nuclides:
+            cv.check_type('Name', nuclide.name, str)
+            cv.check_type('Percent', nuclide.percent, Real)
+            cv.check_value('Percent type',
+                           nuclide.percent_type, ['ao', 'wo'])
+        self._nuclides = nuclides
 
     @property
     def isotropic(self) -> list[str]:
@@ -1690,6 +1699,73 @@ class Materials(cv.CheckedList):
     def make_isotropic_in_lab(self):
         for material in self:
             material.make_isotropic_in_lab()
+
+    def get_material_by_id(self, id) -> openmc.Material:
+        """Return material with specified id
+
+        .. versionadded:: 0.14.1
+
+        Parameters
+        ----------
+        id : int
+            The id to match
+
+        Returns
+        -------
+        openmc.Material
+            Material with matching id
+
+        """
+        cv.check_type('id', id, Integral)
+        cv.check_greater_than('id', id, 0, equality=True)
+
+        for mat in self:
+            if mat.id == id:
+                return mat
+
+        msg = f'No material instance exists with id={id}.'
+        raise IndexError(msg)
+
+    def get_materials_by_name(self, name, case_sensitive=False, sort=False) \
+        -> openmc.Materials:
+        """Return a list of materials with matching names.
+
+        .. versionadded:: 0.14.1
+
+        Parameters
+        ----------
+        name : str
+            The name to match
+        case_sensitive : bool
+            Whether to distinguish upper and lower case letters
+            in each material's name. Letter case is not distinguished
+            by default.
+        sort : bool, optional
+            Whether to sort the matched materials by id
+            number to establish a predictable ordering.
+
+        Returns
+        -------
+        openmc.Materials
+            Materials matching the queried name
+
+        """
+        cv.check_type('name', name, str)
+
+        matches = openmc.Materials()
+        match_name = name if case_sensitive else name.lower()
+        for mat in self:
+            mat_name = mat.name if case_sensitive else mat.name.lower()
+            if mat_name == match_name:
+                matches.append(mat)
+        if sort is True:
+            matches.sort(key=lambda x: x.id)
+
+        if len(matches) == 0:
+            msg = f'No materials found with names that match {match_name}.'
+            warnings.warn(msg, UserWarning)
+
+        return matches
 
     def _write_xml(self, file, header=True, level=0, spaces_per_level=2,
                    trailing_indent=True, nuclides_to_ignore=None):

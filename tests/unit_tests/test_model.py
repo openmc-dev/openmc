@@ -352,7 +352,7 @@ def test_py_lib_attributes(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
 
     test_model.init_lib(output=False, intracomm=mpi_intracomm)
 
-    # Now we can call rotate_cells, translate_cells, update_densities,
+    # Now we can call rotate_cells, translate_cells, update_material_densities,
     # and update_cell_temperatures and make sure the changes have taken hold.
     # For each we will first try bad inputs to make sure we get the right
     # errors and then we do a good one which calls the material by name and
@@ -395,12 +395,45 @@ def test_py_lib_attributes(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
         list(test_model.materials[0].get_nuclide_atom_densities().values()))
     assert mat_a_dens == pytest.approx(0.06891296988603757, abs=1e-8)
     # Change the density
-    test_model.update_densities(['UO2'], 2.)
+    test_model.update_material_densities(['UO2'], 2.)
     assert openmc.lib.materials[1].get_density('atom/b-cm') == \
         pytest.approx(2., abs=1e-13)
     mat_a_dens = np.sum(
         list(test_model.materials[0].get_nuclide_atom_densities().values()))
     assert mat_a_dens == pytest.approx(2., abs=1e-8)
+    # Undo density update
+    test_model.update_material_densities(['UO2'], 0.06891296988603757)
+
+    # Now lets do the composition updates.
+    # Check initial conditions and loaded nuclides
+    assert sorted(openmc.lib.materials[1].nuclides) == \
+        sorted(['U234', 'U235', 'U238', 'U236', 'O16', 'O17'])
+    mat_a_dens = np.sum(
+        list(test_model.materials[0].get_nuclide_atom_densities().values()))
+    assert mat_a_dens == pytest.approx(0.06891296988603757, abs=1e-5)
+    assert sorted(set(openmc.lib.nuclides.keys())) == \
+        sorted(['B10', 'B11', 'H1', 'H2', 'O16', 'O17', 'U234', \
+        'U235', 'U236', 'U238', 'Zr90', 'Zr91', 'Zr92', 'Zr94', \
+        'Zr96'])
+    # Change the material to thorium dioxide and verify the changes
+    tho2 = openmc.Material(name='ThO2')
+    tho2.set_density('atom/b-cm', 4.)
+    tho2.add_element('Th', 1.)
+    tho2.add_element('O', 2.)
+    tho2.depletable = True
+    test_model.update_material_compositions(['UO2'], tho2)
+    assert sorted(openmc.lib.materials[1].nuclides) == \
+        sorted(['Th230', 'Th232', 'O16', 'O17'])
+    mat_a_dens = np.sum(
+        list(test_model.materials[0].get_nuclide_atom_densities().values()))
+    assert mat_a_dens == pytest.approx(4., abs=1e-13)
+    assert sorted(set(openmc.lib.nuclides.keys())) == \
+        sorted(['B10', 'B11', 'H1', 'H2', 'O16', 'O17','Th230', \
+        'Th232', 'U234', 'U235', 'U236', 'U238', 'Zr90', 'Zr91', \
+        'Zr92', 'Zr94', 'Zr96'])
+    # Undo material composition update
+    test_model.update_material_compositions(['UO2'],
+        mats.get_materials_by_name('UO2')[0])
 
     # Now lets do the cell temperature updates.
     # Check initial conditions
@@ -432,6 +465,57 @@ def test_py_lib_attributes(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     test_model.finalize_lib()
 
 
+def test_geometry_reload(run_in_tmpdir, mpi_intracomm):
+    # Reset object id numbers
+    openmc.reset_auto_ids()
+
+    # Load initial model definition from examples and initialize C API
+    test_model = openmc.examples.pwr_pin_cell()
+    test_model.init_lib(output=False, intracomm=mpi_intracomm)
+
+    # First check that the API is advertised as initialized
+    assert openmc.lib.is_initialized is True
+    assert test_model.is_initialized is True
+
+    # Check that the geometry in memory is as expected
+    assert len(openmc.lib.cells) == 3
+
+    # Try to update model definition and reload.
+    # It should fail as the example redefines materials
+    # with new ids.
+    with pytest.raises(IndexError):
+        test_model = openmc.examples.pwr_assembly()
+        test_model.reload_geometry(export_xml=True)
+
+    # Reset id tracking, then update and reload model
+    openmc.reset_auto_ids()
+    test_model = openmc.examples.pwr_assembly()
+    test_model.reload_geometry(export_xml=True)
+
+    # Check again that we have a more detailed assembly in memory
+    assert len(openmc.lib.cells) == 7
+
+    # Run the model and save the keff
+    sp_filepath = test_model.run(output=False, intracomm=mpi_intracomm)
+    first_keff = None
+    with openmc.StatePoint(sp_filepath) as sp:
+        first_keff = sp.keff.n
+
+    # Close out simulation and model definition in memory and verify
+    test_model.finalize_lib()
+    assert openmc.lib.is_initialized is False
+    assert test_model.is_initialized is False
+
+    # Now rerun the same model without the C API and save the keff
+    sp_filepath = test_model.run(output=False)
+    second_keff = None
+    with openmc.StatePoint(sp_filepath) as sp:
+        second_keff = sp.keff.n
+
+    # Make sure that the keff values are equal to within tolerance
+    assert (first_keff - second_keff) == pytest.approx(0.0, abs=1e-8)
+
+
 def test_deplete(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     mats, geom, settings, tals, plots, op_kwargs, chain_file_xml = \
         pin_model_attributes
@@ -448,6 +532,7 @@ def test_deplete(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     # In this test we first run without pre-initializing the shared library
     # data and then compare. Then we repeat with the C API already initialized
     # and make sure we get the same answer
+    test_model.finalize_lib()
     test_model.deplete([1e6], 'predictor', final_step=False,
                        operator_kwargs=op_kwargs,
                        power=1., output=False)
@@ -498,6 +583,67 @@ def test_deplete(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     check_tally_output()
 
     test_model.finalize_lib()
+
+
+def test_search_for_keff(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
+    # Load data and build test model
+    mats, geom, settings, tals, plots, _, _ = pin_model_attributes
+    test_model = openmc.Model(geom, mats, settings, tals, plots)
+
+    # Define function to introduce lithium in the borated water of
+    # the model and then vary the lithium content
+    def model_updater(model: openmc.Model, conc):
+        ref = openmc.Material()
+        ref.set_density('g/cm3', 0.740582)
+        ref.add_element('Li', conc)
+        ref.add_element('B', 4.0e-5)
+        ref.add_element('H', 5.0e-2)
+        ref.add_element('O', 2.4e-2 - conc)
+        ref.add_s_alpha_beta('c_H_in_H2O')
+        ref.depletable = False
+        model.update_material_compositions(['Borated water'], ref)
+
+    # Find minimum lithium concentration that makes model subcritical
+    zero_value, _, _ = test_model.search_for_keff(model_updater,
+                                    bracket=[1e-5, 1e-3], tol=1e-3,
+                                    init_args={'output': False, \
+                                        'intracomm': mpi_intracomm},
+                                    run_args={'output': False, \
+                                        'intracomm': mpi_intracomm})
+    # Check the result
+    assert zero_value == pytest.approx(0.0005982958984375, abs=1e-8)
+
+
+def test_calc_reactivity_coeffs(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
+    # Load data and build test model
+    mats, geom, settings, tals, plots, _, _ = pin_model_attributes
+    test_model = openmc.Model(geom, mats, settings, tals, plots)
+
+    # Define density deltas from nominal to find reactivity coefficients
+    deltas = [(float(i)/1000) for i in range(-500, 501, 250)]
+    nominal_dens = test_model.materials.get_materials_by_name(
+                        'Borated water')[0].density
+
+    # Define function that updates the density of the borated water
+    # in the model
+    def model_updater(model: openmc.Model, parameter):
+        new_density = nominal_dens + parameter
+        model.update_material_densities(['Borated water'], new_density, 'g/cm3')
+        return new_density
+
+    # Calculate the reactivity coefficients vs the borated water density
+    values, coefficients = test_model.calculate_reactivity_coeffs(
+                                    deltas, model_updater,
+                                    init_args={'output': False, \
+                                        'intracomm': mpi_intracomm},
+                                    output=False, intracomm=mpi_intracomm)
+
+    # Check the model updater outputs and reactivity coefficients
+    assert (values[0] - deltas[0]) == pytest.approx(nominal_dens, abs=1e-8)
+    assert coefficients[0].n == pytest.approx(0.3786709587781213, abs=1e-8)
+    assert coefficients[1].n == pytest.approx(0.0134753161500282, abs=1e-8)
+    assert coefficients[2].n == pytest.approx(-0.088076331536546, abs=1e-8)
+    assert coefficients[3].n == pytest.approx(-0.126272822945334, abs=1e-8)
 
 
 def test_calc_volumes(run_in_tmpdir, pin_model_attributes, mpi_intracomm):

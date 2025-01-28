@@ -299,6 +299,7 @@ namespace simulation {
 int current_batch;
 int current_gen;
 bool initialized {false};
+bool reloading {false};
 double keff {1.0};
 double keff_std;
 double k_col_abs {0.0};

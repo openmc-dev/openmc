@@ -35,14 +35,16 @@ void free_memory()
 {
   free_memory_geometry();
   free_memory_surfaces();
-  free_memory_material();
   free_memory_volume();
   free_memory_simulation();
-  free_memory_photon();
   free_memory_settings();
-  free_memory_thermal();
-  library_clear();
-  nuclides_clear();
+  if (!simulation::reloading) {
+    free_memory_material();
+    free_memory_photon();
+    free_memory_thermal();
+    library_clear();
+    nuclides_clear();
+  }
   free_memory_source();
   free_memory_mesh();
   free_memory_tally();

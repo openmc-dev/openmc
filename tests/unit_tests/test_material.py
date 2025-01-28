@@ -436,20 +436,26 @@ def test_mass():
 
 
 def test_materials(run_in_tmpdir):
-    m1 = openmc.Material()
+    m1 = openmc.Material(name='UO2')
     m1.add_nuclide('U235', 1.0, 'wo')
     m1.add_nuclide('O16', 2.0, 'wo')
     m1.set_density('g/cm3', 10.0)
     m1.depletable = True
     m1.temperature = 900.0
+    MATID_m1 = m1.id
 
-    m2 = openmc.Material()
+    m2 = openmc.Material(name='H2O')
     m2.add_nuclide('H1', 2.0)
     m2.add_nuclide('O16', 1.0)
     m2.add_s_alpha_beta('c_H_in_H2O')
     m2.set_density('kg/m3', 1000.0)
 
     mats = openmc.Materials([m1, m2])
+
+    assert m1.name == mats.get_material_by_id(MATID_m1).name
+    assert m2.id == mats.get_materials_by_name('H2O',
+                        case_sensitive=True, sort=True)[0].id
+
     mats.cross_sections = '/some/fake/cross_sections.xml'
     mats.export_to_xml()
 

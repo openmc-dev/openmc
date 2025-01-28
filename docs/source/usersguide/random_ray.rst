@@ -487,7 +487,7 @@ two group energy decomposition::
   mgxs_lib = openmc.mgxs.Library(geometry)
 
   # Pick energy group structure
-  groups = mgxs.EnergyGroups(mgxs.GROUP_STRUCTURES['CASMO-2'])
+  groups = openmc.mgxs.EnergyGroups(openmc.mgxs.GROUP_STRUCTURES['CASMO-2'])
   mgxs_lib.energy_groups = groups
 
   # Disable transport correction
@@ -501,7 +501,7 @@ two group energy decomposition::
   mgxs_lib.domain_type = "material"
 
   # Specify the cell domains over which to compute multi-group cross sections
-  mgxs_lib.domains = geom.get_all_materials().values()
+  mgxs_lib.domains = geometry.get_all_materials().values()
 
   # Do not compute cross sections on a nuclide-by-nuclide basis
   mgxs_lib.by_nuclide = False

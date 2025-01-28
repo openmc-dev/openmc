@@ -111,7 +111,7 @@ detector from the core. In this case, rays sampled in the moderator region and
 heading toward the detector will begin life with a highly scattered thermal
 spectrum and will have an inaccurate fast spectrum. If the dead zone length is
 only 20 cm, we might imagine such rays writing to the detector tally within
-their active lengths, despite their innaccurate estimate of the uncollided fast
+their active lengths, despite their inaccurate estimate of the uncollided fast
 angular flux. Thus, an inactive length of 100--200 cm would ensure that any such
 rays would still be within their inactive regions, and only rays that have
 actually traversed through the core (and thus have an accurate representation of

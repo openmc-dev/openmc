@@ -2,7 +2,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 from functools import lru_cache
 from pathlib import Path
-from numbers import Integral
+from numbers import Integral, Real
 from tempfile import NamedTemporaryFile
 import warnings
 
@@ -859,7 +859,7 @@ class Model:
         """
 
         check_type('n_samples', n_samples, int | None)
-        check_type('plane_tolerance', plane_tolerance, float)
+        check_type('plane_tolerance', plane_tolerance, Real)
         if source_kwargs is None:
             source_kwargs = {}
         source_kwargs.setdefault('marker', 'x')

@@ -252,12 +252,12 @@ void Cell::to_hdf5(hid_t cell_group) const
 // default constructor
 CSGCell::CSGCell()
 {
-  geom_type_ = GeometryType::CSG;
+  geom_type() = GeometryType::CSG;
 }
 
 CSGCell::CSGCell(pugi::xml_node cell_node)
 {
-  geom_type_ = GeometryType::CSG;
+  geom_type() = GeometryType::CSG;
 
   if (check_for_node(cell_node, "id")) {
     id_ = std::stoi(get_node_value(cell_node, "id"));

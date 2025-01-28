@@ -114,7 +114,7 @@ void apply_weight_windows(Particle& p)
     // Create secondaries and divide weight among all particles
     int i_split = std::round(n_split);
     for (int l = 0; l < i_split - 1; l++) {
-      p.create_secondary(weight / n_split, p.u(), p.E(), p.type());
+      p.split(weight / n_split);
     }
     // remaining weight is applied to current particle
     p.wgt() = weight / n_split;
@@ -737,7 +737,7 @@ WeightWindowsGenerator::WeightWindowsGenerator(pugi::xml_node node)
   int32_t mesh_idx = model::mesh_map[mesh_id];
   max_realizations_ = std::stoi(get_node_value(node, "max_realizations"));
 
-  int active_batches = settings::n_batches - settings::n_inactive;
+  int32_t active_batches = settings::n_batches - settings::n_inactive;
   if (max_realizations_ > active_batches) {
     auto msg =
       fmt::format("The maximum number of specified tally realizations ({}) is "

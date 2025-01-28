@@ -239,11 +239,10 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
     }
 
     // Write fission particles to nuBank
-    p.nu_bank().emplace_back();
-    NuBank* nu_bank_entry = &p.nu_bank().back();
-    nu_bank_entry->wgt = site.wgt;
-    nu_bank_entry->E = site.E;
-    nu_bank_entry->delayed_group = site.delayed_group;
+    NuBank& nu_bank_entry = p.nu_bank().emplace_back();
+    nu_bank_entry.wgt = site.wgt;
+    nu_bank_entry.E = site.E;
+    nu_bank_entry.delayed_group = site.delayed_group;
   }
 
   // If shared fission bank was full, and no fissions could be added,
@@ -293,8 +292,8 @@ void sample_photon_reaction(Particle& p)
   // Coherent (Rayleigh) scattering
   prob += micro.coherent;
   if (prob > cutoff) {
-    double mu = element.rayleigh_scatter(alpha, p.current_seed());
-    p.u() = rotate_angle(p.u(), mu, nullptr, p.current_seed());
+    p.mu() = element.rayleigh_scatter(alpha, p.current_seed());
+    p.u() = rotate_angle(p.u(), p.mu(), nullptr, p.current_seed());
     p.event() = TallyEvent::SCATTER;
     p.event_mt() = COHERENT;
     return;
@@ -303,10 +302,10 @@ void sample_photon_reaction(Particle& p)
   // Incoherent (Compton) scattering
   prob += micro.incoherent;
   if (prob > cutoff) {
-    double alpha_out, mu;
+    double alpha_out;
     int i_shell;
     element.compton_scatter(
-      alpha, true, &alpha_out, &mu, &i_shell, p.current_seed());
+      alpha, true, &alpha_out, &p.mu(), &i_shell, p.current_seed());
 
     // Determine binding energy of shell. The binding energy is 0.0 if
     // doppler broadening is not used.
@@ -322,9 +321,9 @@ void sample_photon_reaction(Particle& p)
     double E_electron = (alpha - alpha_out) * MASS_ELECTRON_EV - e_b;
     int electron = static_cast<int>(ParticleType::electron);
     if (E_electron >= settings::energy_cutoff[electron]) {
-      double mu_electron = (alpha - alpha_out * mu) /
+      double mu_electron = (alpha - alpha_out * p.mu()) /
                            std::sqrt(alpha * alpha + alpha_out * alpha_out -
-                                     2.0 * alpha * alpha_out * mu);
+                                     2.0 * alpha * alpha_out * p.mu());
       Direction u = rotate_angle(p.u(), mu_electron, &phi, p.current_seed());
       p.create_secondary(p.wgt(), u, E_electron, ParticleType::electron);
     }
@@ -338,7 +337,7 @@ void sample_photon_reaction(Particle& p)
 
     phi += PI;
     p.E() = alpha_out * MASS_ELECTRON_EV;
-    p.u() = rotate_angle(p.u(), mu, &phi, p.current_seed());
+    p.u() = rotate_angle(p.u(), p.mu(), &phi, p.current_seed());
     p.event() = TallyEvent::SCATTER;
     p.event_mt() = INCOHERENT;
     return;

@@ -29,7 +29,6 @@ namespace openmc {
 
 enum class Fill { MATERIAL, UNIVERSE, LATTICE };
 
-// TODO: Convert to enum
 constexpr int32_t OP_LEFT_PAREN {std::numeric_limits<int32_t>::max()};
 constexpr int32_t OP_RIGHT_PAREN {std::numeric_limits<int32_t>::max() - 1};
 constexpr int32_t OP_COMPLEMENT {std::numeric_limits<int32_t>::max() - 2};
@@ -320,7 +319,6 @@ public:
   int32_t universe_;        //!< Universe # this cell is in
   int32_t fill_;            //!< Universe # filling this cell
   int32_t n_instances_ {0}; //!< Number of instances of this cell
-  GeometryType geom_type_;  //!< Geometric representation type (CSG, DAGMC)
 
   //! \brief Index corresponding to this cell in distribcell arrays
   int distribcell_index_ {C_NONE};
@@ -350,6 +348,13 @@ public:
   vector<double> rotation_;
 
   vector<int32_t> offset_; //!< Distribcell offset table
+
+  // Accessors
+  const GeometryType& geom_type() const { return geom_type_; }
+  GeometryType& geom_type() { return geom_type_; }
+
+private:
+  GeometryType geom_type_; //!< Geometric representation type (CSG, DAGMC)
 };
 
 struct CellInstanceItem {

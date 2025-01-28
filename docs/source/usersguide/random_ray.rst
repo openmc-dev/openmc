@@ -531,7 +531,6 @@ a statepoint file (e.g., ``statepoint.100.h5``) file and summary file (e.g.,
 ``summary.h5``) that resulted from running our previous example::
 
   import openmc
-  import openmc.mgxs as mgxs
 
   summary = openmc.Summary('summary.h5')
   geom = summary.geometry
@@ -540,7 +539,7 @@ a statepoint file (e.g., ``statepoint.100.h5``) file and summary file (e.g.,
   statepoint_filename = 'statepoint.100.h5'
   sp = openmc.StatePoint(statepoint_filename)
 
-  groups = mgxs.EnergyGroups(mgxs.GROUP_STRUCTURES['CASMO-2'])
+  groups = openmc.mgxs.EnergyGroups(openmc.mgxs.GROUP_STRUCTURES['CASMO-2'])
   mgxs_lib = openmc.mgxs.Library(geom)
   mgxs_lib.energy_groups = groups
   mgxs_lib.correction = None

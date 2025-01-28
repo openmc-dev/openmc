@@ -2,8 +2,9 @@ from __future__ import annotations
 from collections.abc import Iterable
 from functools import lru_cache
 from pathlib import Path
+import math
 from numbers import Integral, Real
-from tempfile import NamedTemporaryFile
+from tempfile import NamedTemporaryFile, TemporaryDirectory
 import warnings
 
 import h5py
@@ -129,6 +130,10 @@ class Model:
             del self._plots[:]
             for plot in plots:
                 self._plots.append(plot)
+
+    @property
+    def bounding_box(self) -> openmc.BoundingBox:
+        return self.geometry.bounding_box
 
     @property
     def is_initialized(self) -> bool:
@@ -827,8 +832,26 @@ class Model:
                             openmc.lib.materials[domain_id].volume = \
                                 vol_calc.volumes[domain_id].n
 
+    # default kwargs that are passed to plt.legend in the plot method below.
+    _default_legend_kwargs = {
+        'bbox_to_anchor': (1.05, 1), 'loc': 2, 'borderaxespad': 0.0
+    }
+
     def plot(
         self,
+        origin=None,
+        width=None,
+        pixels=40000,
+        basis='xy',
+        color_by='cell',
+        colors=None,
+        seed=None,
+        openmc_exec='openmc',
+        axes=None,
+        legend=False,
+        axis_units='cm',
+        legend_kwargs=_default_legend_kwargs,
+        outline=False,
         n_samples: int | None = None,
         plane_tolerance: float = 1.,
         source_kwargs: dict | None = None,
@@ -840,6 +863,61 @@ class Model:
 
         Parameters
         ----------
+        origin : iterable of float
+            Coordinates at the origin of the plot. If left as None,
+            universe.bounding_box.center will be used to attempt to ascertain
+            the origin with infinite values being replaced by 0.
+        width : iterable of float
+            Width of the plot in each basis direction. If left as none then the
+            universe.bounding_box.width() will be used to attempt to
+            ascertain the plot width.  Defaults to (10, 10) if the bounding_box
+            contains inf values
+        pixels : Iterable of int or int
+            If iterable of ints provided then this directly sets the number of
+            pixels to use in each basis direction. If int provided then this
+            sets the total number of pixels in the plot and the number of
+            pixels in each basis direction is calculated from this total and
+            the image aspect ratio.
+        basis : {'xy', 'xz', 'yz'}
+            The basis directions for the plot
+        color_by : {'cell', 'material'}
+            Indicate whether the plot should be colored by cell or by material
+        colors : dict
+            Assigns colors to specific materials or cells. Keys are instances of
+            :class:`Cell` or :class:`Material` and values are RGB 3-tuples, RGBA
+            4-tuples, or strings indicating SVG color names. Red, green, blue,
+            and alpha should all be floats in the range [0.0, 1.0], for example:
+
+            .. code-block:: python
+
+               # Make water blue
+               water = openmc.Cell(fill=h2o)
+               universe.plot(..., colors={water: (0., 0., 1.))
+        seed : int
+            Seed for the random number generator
+        openmc_exec : str
+            Path to OpenMC executable.
+        axes : matplotlib.Axes
+            Axes to draw to
+
+            .. versionadded:: 0.13.1
+        legend : bool
+            Whether a legend showing material or cell names should be drawn
+
+            .. versionadded:: 0.14.0
+        legend_kwargs : dict
+            Keyword arguments passed to :func:`matplotlib.pyplot.legend`.
+
+            .. versionadded:: 0.14.0
+        outline : bool or str
+            Whether outlines between color boundaries should be drawn. If set to
+            'only', only outlines will be drawn.
+
+            .. versionadded:: 0.14.0
+        axis_units : {'km', 'm', 'cm', 'mm'}
+            Units used on the plot axis
+
+            .. versionadded:: 0.14.0
         n_samples : int, optional
             The number of source particles to sample and add to plot. Defaults
             to None which doesn't plot any particles on the plot.
@@ -850,13 +928,16 @@ class Model:
         source_kwargs : dict, optional
             Keyword arguments passed to :func:`matplotlib.pyplot.scatter`.
         **kwargs
-            Keyword arguments passed to :func:`openmc.Universe.plot`
+            Keyword arguments passed to :func:`matplotlib.pyplot.imshow`
 
         Returns
         -------
         matplotlib.axes.Axes
             Axes containing resulting image
         """
+        import matplotlib.image as mpimg
+        import matplotlib.patches as mpatches
+        import matplotlib.pyplot as plt
 
         check_type('n_samples', n_samples, int | None)
         check_type('plane_tolerance', plane_tolerance, Real)
@@ -864,7 +945,147 @@ class Model:
             source_kwargs = {}
         source_kwargs.setdefault('marker', 'x')
 
-        ax = self.geometry.plot(**kwargs)
+        # Determine extents of plot
+        if basis == 'xy':
+            x, y = 0, 1
+            xlabel, ylabel = f'x [{axis_units}]', f'y [{axis_units}]'
+        elif basis == 'yz':
+            x, y = 1, 2
+            xlabel, ylabel = f'y [{axis_units}]', f'z [{axis_units}]'
+        elif basis == 'xz':
+            x, y = 0, 2
+            xlabel, ylabel = f'x [{axis_units}]', f'z [{axis_units}]'
+
+        bb = self.bounding_box
+        # checks to see if bounding box contains -inf or inf values
+        if np.isinf(bb.extent[basis]).any():
+            if origin is None:
+                origin = (0, 0, 0)
+            if width is None:
+                width = (10, 10)
+        else:
+            if origin is None:
+                # if nan values in the bb.center they get replaced with 0.0
+                # this happens when the bounding_box contains inf values
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore", RuntimeWarning)
+                    origin = np.nan_to_num(bb.center)
+            if width is None:
+                bb_width = bb.width
+                x_width = bb_width['xyz'.index(basis[0])]
+                y_width = bb_width['xyz'.index(basis[1])]
+                width = (x_width, y_width)
+
+        if isinstance(pixels, int):
+            aspect_ratio = width[0] / width[1]
+            pixels_y = math.sqrt(pixels / aspect_ratio)
+            pixels = (int(pixels / pixels_y), int(pixels_y))
+
+        axis_scaling_factor = {'km': 0.00001, 'm': 0.01, 'cm': 1, 'mm': 10}
+
+        x_min = (origin[x] - 0.5*width[0]) * axis_scaling_factor[axis_units]
+        x_max = (origin[x] + 0.5*width[0]) * axis_scaling_factor[axis_units]
+        y_min = (origin[y] - 0.5*width[1]) * axis_scaling_factor[axis_units]
+        y_max = (origin[y] + 0.5*width[1]) * axis_scaling_factor[axis_units]
+
+        with TemporaryDirectory() as tmpdir:
+            if seed is not None:
+                self.settings.plot_seed = seed
+
+            # Create plot object matching passed arguments
+            plot = openmc.Plot()
+            plot.origin = origin
+            plot.width = width
+            plot.pixels = pixels
+            plot.basis = basis
+            plot.color_by = color_by
+            if colors is not None:
+                plot.colors = colors
+            self.plots.append(plot)
+
+            # Run OpenMC in geometry plotting mode
+            self.plot_geometry(False, cwd=tmpdir, openmc_exec=openmc_exec)
+
+            # Read image from file
+            img_path = Path(tmpdir) / f'plot_{plot.id}.png'
+            if not img_path.is_file():
+                img_path = img_path.with_suffix('.ppm')
+            img = mpimg.imread(str(img_path))
+
+            # Create a figure sized such that the size of the axes within
+            # exactly matches the number of pixels specified
+            if axes is None:
+                px = 1/plt.rcParams['figure.dpi']
+                fig, axes = plt.subplots()
+                axes.set_xlabel(xlabel)
+                axes.set_ylabel(ylabel)
+                params = fig.subplotpars
+                width = pixels[0]*px/(params.right - params.left)
+                height = pixels[1]*px/(params.top - params.bottom)
+                fig.set_size_inches(width, height)
+
+            if outline:
+                # Combine R, G, B values into a single int
+                rgb = (img * 256).astype(int)
+                image_value = (rgb[..., 0] << 16) + \
+                    (rgb[..., 1] << 8) + (rgb[..., 2])
+
+                axes.contour(
+                    image_value,
+                    origin="upper",
+                    colors="k",
+                    linestyles="solid",
+                    levels=np.unique(image_value),
+                    extent=(x_min, x_max, y_min, y_max),
+                    algorithm='serial',
+                )
+
+            # add legend showing which colors represent which material
+            # or cell if that was requested
+            if legend:
+                if plot.colors == {}:
+                    raise ValueError("Must pass 'colors' dictionary if you "
+                                     "are adding a legend via legend=True.")
+
+                if color_by == "cell":
+                    expected_key_type = openmc.Cell
+                else:
+                    expected_key_type = openmc.Material
+
+                patches = []
+                for key, color in plot.colors.items():
+
+                    if isinstance(key, int):
+                        raise TypeError(
+                            "Cannot use IDs in colors dict for auto legend.")
+                    elif not isinstance(key, expected_key_type):
+                        raise TypeError(
+                            "Color dict key type does not match color_by")
+
+                    # this works whether we're doing cells or materials
+                    label = key.name if key.name != '' else key.id
+
+                    # matplotlib takes RGB on 0-1 scale rather than 0-255. at
+                    # this point PlotBase has already checked that 3-tuple
+                    # based colors are already valid, so if the length is three
+                    # then we know it just needs to be converted to the 0-1
+                    # format.
+                    if len(color) == 3 and not isinstance(color, str):
+                        scaled_color = (
+                            color[0]/255, color[1]/255, color[2]/255)
+                    else:
+                        scaled_color = color
+
+                    key_patch = mpatches.Patch(color=scaled_color, label=label)
+                    patches.append(key_patch)
+
+                axes.legend(handles=patches, **legend_kwargs)
+
+            # Plot image and return the axes
+            if outline != 'only':
+                axes.imshow(img, extent=(x_min, x_max, y_min, y_max), **kwargs)
+
+
         if n_samples:
             # Sample external source particles
             particles = self.sample_external_source(n_samples)
@@ -897,8 +1118,9 @@ class Model:
                 if (slice_value - tol < particle.r[slice_index] < slice_value + tol):
                     xs.append(particle.r[indices[0]])
                     ys.append(particle.r[indices[1]])
-            ax.scatter(xs, ys, **source_kwargs)
-        return ax
+            axes.scatter(xs, ys, **source_kwargs)
+
+        return axes
 
     def sample_external_source(
             self,

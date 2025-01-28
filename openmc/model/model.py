@@ -875,13 +875,13 @@ class Model:
 
         # Determine extents of plot
         if basis == 'xy':
-            x, y = 0, 1
+            x, y, z = 0, 1, 2
             xlabel, ylabel = f'x [{axis_units}]', f'y [{axis_units}]'
         elif basis == 'yz':
-            x, y = 1, 2
+            x, y, z = 1, 2, 0
             xlabel, ylabel = f'y [{axis_units}]', f'z [{axis_units}]'
         elif basis == 'xz':
-            x, y = 0, 2
+            x, y, z = 0, 2, 1
             xlabel, ylabel = f'x [{axis_units}]', f'z [{axis_units}]'
 
         bb = self.bounding_box
@@ -1018,34 +1018,15 @@ class Model:
             # Sample external source particles
             particles = self.sample_external_source(n_samples)
 
-            # Determine plotting parameters and bounding box of geometry
-            bbox = self.geometry.bounding_box
-            origin = kwargs.get('origin', None)
-            basis = kwargs.get('basis', 'xy')
-            indices = {'xy': (0, 1, 2), 'xz': (0, 2, 1), 'yz': (1, 2, 0)}[basis]
-
-            # Infer origin if not provided
-            if np.isinf(bbox.extent[basis]).any():
-                if origin is None:
-                    origin = (0, 0, 0)
-            else:
-                if origin is None:
-                    # if nan values in the bbox.center they get replaced with 0.0
-                    # this happens when the bounding_box contains inf values
-                    with warnings.catch_warnings():
-                        warnings.simplefilter("ignore", RuntimeWarning)
-                        origin = np.nan_to_num(bbox.center)
-
-            slice_index = indices[2]
-            slice_value = origin[slice_index]
-
+            # Get points within tolerance of the slice plane
+            slice_value = origin[z]
             xs = []
             ys = []
             tol = plane_tolerance
             for particle in particles:
-                if (slice_value - tol < particle.r[slice_index] < slice_value + tol):
-                    xs.append(particle.r[indices[0]])
-                    ys.append(particle.r[indices[1]])
+                if (slice_value - tol < particle.r[z] < slice_value + tol):
+                    xs.append(particle.r[x])
+                    ys.append(particle.r[y])
             axes.scatter(xs, ys, **source_kwargs)
 
         return axes

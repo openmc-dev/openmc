@@ -852,6 +852,7 @@ class Model:
         plane_tolerance: float = 1.,
         legend_kwargs: dict | None = None,
         source_kwargs: dict | None = None,
+        contour_kwargs: dict | None = None,
         **kwargs,
     ):
         """Display a slice plot of the model.
@@ -958,14 +959,19 @@ class Model:
                 image_value = (rgb[..., 0] << 16) + \
                     (rgb[..., 1] << 8) + (rgb[..., 2])
 
+                # Set default arguments for contour()
+                if contour_kwargs is None:
+                    contour_kwargs = {}
+                contour_kwargs.setdefault('colors', 'k')
+                contour_kwargs.setdefault('linestyles', 'solid')
+                contour_kwargs.setdefault('algorithm', 'serial')
+
                 axes.contour(
                     image_value,
                     origin="upper",
-                    colors="k",
-                    linestyles="solid",
                     levels=np.unique(image_value),
                     extent=(x_min, x_max, y_min, y_max),
-                    algorithm='serial',
+                    **contour_kwargs
                 )
 
             # add legend showing which colors represent which material

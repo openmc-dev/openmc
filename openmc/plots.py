@@ -232,8 +232,10 @@ _PLOT_PARAMS = """
             .. versionadded:: 0.14.0
         source_kwargs : dict, optional
             Keyword arguments passed to :func:`matplotlib.pyplot.scatter`.
+        contour_kwargs : dict, optional
+            Keyword arguments passed to :func:`matplotlib.pyplot.contour`.
         **kwargs
-            Keyword arguments passed to :func:`matplotlib.pyplot.imshow`
+            Keyword arguments passed to :func:`matplotlib.pyplot.imshow`.
 
         Returns
         -------

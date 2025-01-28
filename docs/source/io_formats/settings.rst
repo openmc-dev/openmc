@@ -1398,7 +1398,7 @@ mesh-based weight windows.
     *Default*: true
 
   :method:
-    Method used to update weight window values (currently only 'magic' is supported)
+    Method used to update weight window values (one of 'magic' or 'fw_cadis')
 
     *Default*: magic
 

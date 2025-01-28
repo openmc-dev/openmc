@@ -572,6 +572,18 @@ class Integrator(ABC):
         :attr:`solver`.
 
         .. versionadded:: 0.12
+    continue_timesteps : bool, optional
+        Whether or not to treat the current solve as a continuation of a
+        previous simulation. Defaults to `False`. If `True`, the timesteps
+        provided to the `Integrator` must match exactly those that exist
+        in the `prev_results` passed to the `Opereator`. The `power`,
+        `power_density`, or `source_rates` must match as well. It
+        is the user's responsibility to make sure that the continue
+        solve uses the same method of specifying `power`, `power_density`,
+        or `source_rates`.
+
+        .. versionadded:: 0.15.1
+
     Attributes
     ----------
     operator : openmc.deplete.abc.TransportOperator
@@ -933,6 +945,17 @@ class SIIntegrator(Integrator):
         :attr:`solver`.
 
         .. versionadded:: 0.12
+    continue_timesteps : bool, optional
+        Whether or not to treat the current solve as a continuation of a
+        previous simulation. Defaults to `False`. If `True`, the timesteps
+        provided to the `Integrator` must match exactly those that exist
+        in the `prev_results` passed to the `Opereator`. The `power`,
+        `power_density`, or `source_rates` must match as well. It
+        is the user's responsibility to make sure that the continue
+        solve uses the same method of specifying `power`, `power_density`,
+        or `source_rates`.
+
+        .. versionadded:: 0.15.1
 
     Attributes
     ----------
@@ -974,13 +997,14 @@ class SIIntegrator(Integrator):
             source_rates: Optional[Sequence[float]] = None,
             timestep_units: str = 's',
             n_steps: int = 10,
-            solver: str = "cram48"
+            solver: str = "cram48",
+            continue_timesteps: bool = False,
         ):
         check_type("n_steps", n_steps, Integral)
         check_greater_than("n_steps", n_steps, 0)
         super().__init__(
             operator, timesteps, power, power_density, source_rates,
-            timestep_units=timestep_units, solver=solver)
+            timestep_units=timestep_units, solver=solver, continue_timesteps=continue_timesteps)
         self.n_steps = n_steps
 
     def _get_bos_data_from_operator(self, step_index, step_power, n_bos):

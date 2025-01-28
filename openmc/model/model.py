@@ -1,5 +1,5 @@
 from __future__ import annotations
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from functools import lru_cache
 from pathlib import Path
 import math
@@ -17,6 +17,7 @@ from openmc.dummy_comm import DummyCommunicator
 from openmc.executor import _process_CLI_arguments
 from openmc.checkvalue import check_type, check_value, PathLike
 from openmc.exceptions import InvalidIDError
+from openmc.plots import add_plot_params
 from openmc.utility_funcs import change_directory
 
 
@@ -832,108 +833,30 @@ class Model:
                             openmc.lib.materials[domain_id].volume = \
                                 vol_calc.volumes[domain_id].n
 
-    # default kwargs that are passed to plt.legend in the plot method below.
-    _default_legend_kwargs = {
-        'bbox_to_anchor': (1.05, 1), 'loc': 2, 'borderaxespad': 0.0
-    }
-
+    @add_plot_params
     def plot(
         self,
-        origin=None,
-        width=None,
-        pixels=40000,
-        basis='xy',
-        color_by='cell',
-        colors=None,
-        seed=None,
-        openmc_exec='openmc',
+        origin: Sequence[float] | None = None,
+        width: Sequence[float] | None = None,
+        pixels: int | Sequence[int] = 40000,
+        basis: str = 'xy',
+        color_by: str = 'cell',
+        colors: dict | None = None,
+        seed: int | None = None,
+        openmc_exec: PathLike = 'openmc',
         axes=None,
-        legend=False,
-        axis_units='cm',
-        legend_kwargs=_default_legend_kwargs,
-        outline=False,
+        legend: bool = False,
+        axis_units: str = 'cm',
+        outline: bool | str = False,
         n_samples: int | None = None,
         plane_tolerance: float = 1.,
+        legend_kwargs: dict | None = None,
         source_kwargs: dict | None = None,
         **kwargs,
     ):
-        """Display a slice plot of the geometry.
+        """Display a slice plot of the model.
 
         .. versionadded:: 0.15.1
-
-        Parameters
-        ----------
-        origin : iterable of float
-            Coordinates at the origin of the plot. If left as None,
-            universe.bounding_box.center will be used to attempt to ascertain
-            the origin with infinite values being replaced by 0.
-        width : iterable of float
-            Width of the plot in each basis direction. If left as none then the
-            universe.bounding_box.width() will be used to attempt to
-            ascertain the plot width.  Defaults to (10, 10) if the bounding_box
-            contains inf values
-        pixels : Iterable of int or int
-            If iterable of ints provided then this directly sets the number of
-            pixels to use in each basis direction. If int provided then this
-            sets the total number of pixels in the plot and the number of
-            pixels in each basis direction is calculated from this total and
-            the image aspect ratio.
-        basis : {'xy', 'xz', 'yz'}
-            The basis directions for the plot
-        color_by : {'cell', 'material'}
-            Indicate whether the plot should be colored by cell or by material
-        colors : dict
-            Assigns colors to specific materials or cells. Keys are instances of
-            :class:`Cell` or :class:`Material` and values are RGB 3-tuples, RGBA
-            4-tuples, or strings indicating SVG color names. Red, green, blue,
-            and alpha should all be floats in the range [0.0, 1.0], for example:
-
-            .. code-block:: python
-
-               # Make water blue
-               water = openmc.Cell(fill=h2o)
-               universe.plot(..., colors={water: (0., 0., 1.))
-        seed : int
-            Seed for the random number generator
-        openmc_exec : str
-            Path to OpenMC executable.
-        axes : matplotlib.Axes
-            Axes to draw to
-
-            .. versionadded:: 0.13.1
-        legend : bool
-            Whether a legend showing material or cell names should be drawn
-
-            .. versionadded:: 0.14.0
-        legend_kwargs : dict
-            Keyword arguments passed to :func:`matplotlib.pyplot.legend`.
-
-            .. versionadded:: 0.14.0
-        outline : bool or str
-            Whether outlines between color boundaries should be drawn. If set to
-            'only', only outlines will be drawn.
-
-            .. versionadded:: 0.14.0
-        axis_units : {'km', 'm', 'cm', 'mm'}
-            Units used on the plot axis
-
-            .. versionadded:: 0.14.0
-        n_samples : int, optional
-            The number of source particles to sample and add to plot. Defaults
-            to None which doesn't plot any particles on the plot.
-        plane_tolerance: float
-            When plotting a plane the source locations within the plane +/-
-            the plane_tolerance will be included and those outside of the
-            plane_tolerance will not be shown
-        source_kwargs : dict, optional
-            Keyword arguments passed to :func:`matplotlib.pyplot.scatter`.
-        **kwargs
-            Keyword arguments passed to :func:`matplotlib.pyplot.imshow`
-
-        Returns
-        -------
-        matplotlib.axes.Axes
-            Axes containing resulting image
         """
         import matplotlib.image as mpimg
         import matplotlib.patches as mpatches
@@ -941,6 +864,11 @@ class Model:
 
         check_type('n_samples', n_samples, int | None)
         check_type('plane_tolerance', plane_tolerance, Real)
+        if legend_kwargs is None:
+            legend_kwargs = {}
+        legend_kwargs.setdefault('bbox_to_anchor', (1.05, 1))
+        legend_kwargs.setdefault('loc', 2)
+        legend_kwargs.setdefault('borderaxespad', 0.0)
         if source_kwargs is None:
             source_kwargs = {}
         source_kwargs.setdefault('marker', 'x')

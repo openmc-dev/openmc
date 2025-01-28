@@ -1,17 +1,14 @@
 from __future__ import annotations
-import math
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from numbers import Real
-from pathlib import Path
-from tempfile import TemporaryDirectory
-import warnings
 
 import numpy as np
 
 import openmc
 import openmc.checkvalue as cv
 from .mixin import IDManagerMixin
+from .plots import add_plot_params
 
 
 class UniverseBase(ABC, IDManagerMixin):
@@ -334,75 +331,9 @@ class UniverseBase(ABC, IDManagerMixin):
                     return [self, cell] + cell.fill.find(p)
         return []
 
-
+    @add_plot_params
     def plot(self, *args, **kwargs):
         """Display a slice plot of the universe.
-
-        Parameters
-        ----------
-        origin : iterable of float
-            Coordinates at the origin of the plot. If left as None,
-            universe.bounding_box.center will be used to attempt to ascertain
-            the origin with infinite values being replaced by 0.
-        width : iterable of float
-            Width of the plot in each basis direction. If left as none then the
-            universe.bounding_box.width() will be used to attempt to
-            ascertain the plot width.  Defaults to (10, 10) if the bounding_box
-            contains inf values
-        pixels : Iterable of int or int
-            If iterable of ints provided then this directly sets the number of
-            pixels to use in each basis direction. If int provided then this
-            sets the total number of pixels in the plot and the number of
-            pixels in each basis direction is calculated from this total and
-            the image aspect ratio.
-        basis : {'xy', 'xz', 'yz'}
-            The basis directions for the plot
-        color_by : {'cell', 'material'}
-            Indicate whether the plot should be colored by cell or by material
-        colors : dict
-            Assigns colors to specific materials or cells. Keys are instances of
-            :class:`Cell` or :class:`Material` and values are RGB 3-tuples, RGBA
-            4-tuples, or strings indicating SVG color names. Red, green, blue,
-            and alpha should all be floats in the range [0.0, 1.0], for example:
-
-            .. code-block:: python
-
-               # Make water blue
-               water = openmc.Cell(fill=h2o)
-               universe.plot(..., colors={water: (0., 0., 1.))
-        seed : int
-            Seed for the random number generator
-        openmc_exec : str
-            Path to OpenMC executable.
-        axes : matplotlib.Axes
-            Axes to draw to
-
-            .. versionadded:: 0.13.1
-        legend : bool
-            Whether a legend showing material or cell names should be drawn
-
-            .. versionadded:: 0.14.0
-        legend_kwargs : dict
-            Keyword arguments passed to :func:`matplotlib.pyplot.legend`.
-
-            .. versionadded:: 0.14.0
-        outline : bool or str
-            Whether outlines between color boundaries should be drawn. If set to
-            'only', only outlines will be drawn.
-
-            .. versionadded:: 0.14.0
-        axis_units : {'km', 'm', 'cm', 'mm'}
-            Units used on the plot axis
-
-            .. versionadded:: 0.14.0
-        **kwargs
-            Keyword arguments passed to :func:`matplotlib.pyplot.imshow`
-
-        Returns
-        -------
-        matplotlib.axes.Axes
-            Axes containing resulting image
-
         """
         model = openmc.Model()
         model.geometry = openmc.Geometry(self)

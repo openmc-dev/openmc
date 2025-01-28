@@ -393,8 +393,9 @@ class UniverseBase(ABC, IDManagerMixin):
             Keyword arguments passed to :func:`matplotlib.pyplot.legend`.
 
             .. versionadded:: 0.14.0
-        outline : bool
-            Whether outlines between color boundaries should be drawn
+        outline : bool or str
+            Whether outlines between color boundaries should be drawn. If set to
+            'only', only outlines will be drawn.
 
             .. versionadded:: 0.14.0
         axis_units : {'km', 'm', 'cm', 'mm'}
@@ -513,9 +514,9 @@ class UniverseBase(ABC, IDManagerMixin):
                     origin="upper",
                     colors="k",
                     linestyles="solid",
-                    linewidths=1,
                     levels=np.unique(image_value),
                     extent=(x_min, x_max, y_min, y_max),
+                    algorithm='serial',
                 )
 
             # add legend showing which colors represent which material
@@ -560,7 +561,8 @@ class UniverseBase(ABC, IDManagerMixin):
                 axes.legend(handles=patches, **legend_kwargs)
 
             # Plot image and return the axes
-            axes.imshow(img, extent=(x_min, x_max, y_min, y_max), **kwargs)
+            if outline != 'only':
+                axes.imshow(img, extent=(x_min, x_max, y_min, y_max), **kwargs)
             return axes
 
     def get_nuclides(self):

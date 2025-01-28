@@ -576,7 +576,7 @@ class Integrator(ABC):
         Whether or not to treat the current solve as a continuation of a
         previous simulation. Defaults to `False`. If `True`, the timesteps
         provided to the `Integrator` must match exactly those that exist
-        in the `prev_results` passed to the `Opereator`. The `power`,
+        in the `prev_results` passed to the `Operator`. The `power`,
         `power_density`, or `source_rates` must match as well. It
         is the user's responsibility to make sure that the continue
         solve uses the same method of specifying `power`, `power_density`,

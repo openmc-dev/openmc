@@ -1199,7 +1199,7 @@ class Model:
         diff_volume_method : str
             Specifies how the volumes of the new materials should be found.
             - None: Do not assign volumes to the new materials (Default)
-            - 'divide_equally': Divide the original material volume equally between the new materials
+            - 'divide equally': Divide the original material volume equally between the new materials
             - 'match cell': Set the volume of the material to the volume of the cell they fill
         """
         self.differentiate_mats(diff_volume_method, depletable_only=True)
@@ -1214,7 +1214,7 @@ class Model:
         diff_volume_method : str
             Specifies how the volumes of the new materials should be found.
             - None: Do not assign volumes to the new materials (Default)
-            - 'divide_equally': Divide the original material volume equally between the new materials
+            - 'divide equally': Divide the original material volume equally between the new materials
             - 'match cell': Set the volume of the material to the volume of the cell they fill
         depletable_only : bool
             Default is True, only depletable materials will be differentiated. If False, all materials will be
@@ -1225,9 +1225,15 @@ class Model:
         # Count the number of instances for each cell and material
         self.geometry.determine_paths(instances_only=True)
 
+        # Get list of materials
+        if self.materials:
+            materials = self.materials
+        else:
+            materials = list(self.geometry.get_all_materials().values())
+
         # Find all or depletable_only materials which have multiple instance
         distribmats = set()
-        for mat in self.materials:
+        for mat in materials:
             # Differentiate all materials with multiple instances
             diff_mat = mat.num_instances > 1
             # If depletable_only is True, differentiate only depletable materials
@@ -1259,10 +1265,20 @@ class Model:
         for cell in self.geometry.get_all_material_cells().values():
             if cell.fill in distribmats:
                 mat = cell.fill
-                cell.fill = [mat.clone() for _ in range(cell.num_instances)]
+
+                # Clone materials
+                if cell.num_instances > 1:
+                    cell.fill = [mat.clone() for _ in range(cell.num_instances)]
+                else:
+                    cell.fill = mat.clone()
+
+                # For 'match cell', assign volumes based on the cells
                 if diff_volume_method == 'match cell':
-                    for clone_mat in cell.fill:
-                        clone_mat.volume = cell.volume
+                    if cell.fill_type == 'distribmat':
+                        for clone_mat in cell.fill:
+                            clone_mat.volume = cell.volume
+                    else:
+                        cell.fill.volume = cell.volume
 
         if self.materials is not None:
             self.materials = openmc.Materials(

@@ -345,7 +345,7 @@ class UniverseBase(ABC, IDManagerMixin):
                 model.settings.energy_mode = 'multi-group'
                 break
 
-        model.plot(*args, **kwargs)
+        return model.plot(*args, **kwargs)
 
     def get_nuclides(self):
         """Returns all nuclides in the universe

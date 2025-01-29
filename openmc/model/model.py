@@ -901,9 +901,7 @@ class Model:
                     origin = np.nan_to_num(bb.center)
             if width is None:
                 bb_width = bb.width
-                x_width = bb_width['xyz'.index(basis[0])]
-                y_width = bb_width['xyz'.index(basis[1])]
-                width = (x_width, y_width)
+                width = (bb_width[x], bb_width[y])
 
         if isinstance(pixels, int):
             aspect_ratio = width[0] / width[1]

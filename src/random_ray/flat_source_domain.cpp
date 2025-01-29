@@ -47,7 +47,8 @@ FlatSourceDomain::FlatSourceDomain() : negroups_(data::mg.num_energy_groups_)
 
   // Initialize cell-wise arrays
   volume_task_.resize(n_source_regions_);
-  source_regions_.resize(n_source_regions_, SourceRegion(negroups_));
+  bool is_linear = RandomRay::source_shape_ != RandomRaySourceShape::FLAT;
+  source_regions_.resize(n_source_regions_, SourceRegion(negroups_, is_linear));
 
   // Initialize material array
   int64_t source_region_id = 0;
@@ -1119,6 +1120,19 @@ void FlatSourceDomain::transpose_scattering_matrix()
         // Swap the elements to transpose the matrix
         std::swap(sigma_s_[idx1], sigma_s_[idx2]);
       }
+    }
+  }
+}
+
+void FlatSourceDomain::serialize_final_fluxes(vector<double>& flux)
+{
+  // Ensure array is correct size
+  flux.resize(n_source_regions_ * negroups_);
+  // Serialize the final fluxes for output
+  for (int sr = 0; sr < n_source_regions_; sr++) {
+    SourceRegion& region = source_regions_[sr];
+    for (int g = 0; g < negroups_; g++) {
+      flux[sr * negroups_ + g] = region.scalar_flux_final_[g];
     }
   }
 }

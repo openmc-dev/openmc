@@ -4,8 +4,8 @@
 #include "openmc/constants.h"
 #include "openmc/openmp_interface.h"
 #include "openmc/position.h"
-#include "openmc/source.h"
 #include "openmc/random_ray/source_region.h"
+#include "openmc/source.h"
 #include <unordered_set>
 
 namespace openmc {
@@ -46,6 +46,7 @@ public:
   double compute_fixed_source_normalization_factor() const;
   void flatten_xs();
   void transpose_scattering_matrix();
+  void serialize_final_fluxes(vector<double>& flux);
 
   //----------------------------------------------------------------------------
   // Static Data members
@@ -58,7 +59,6 @@ public:
 
   //----------------------------------------------------------------------------
   // Public Data members
-
   bool mapped_all_tallies_ {false}; // If all source regions have been visited
 
   int64_t n_source_regions_ {0}; // Total number of source regions in the model
@@ -100,8 +100,7 @@ protected:
     const vector<int32_t>& instances);
   void apply_external_source_to_cell_and_children(int32_t i_cell,
     Discrete* discrete, double strength_factor, int32_t target_material_id);
-  virtual void set_flux_to_flux_plus_source(
-    int sr, double volume, int g);
+  virtual void set_flux_to_flux_plus_source(int sr, double volume, int g);
   void set_flux_to_source(int sr, int g);
   virtual void set_flux_to_old_flux(int sr, int g);
 

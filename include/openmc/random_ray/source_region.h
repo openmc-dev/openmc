@@ -4,7 +4,7 @@
 #include "openmc/openmp_interface.h"
 #include "openmc/position.h"
 #include "openmc/random_ray/moment_matrix.h"
-#include "openmc/random_ray/random_ray.h"
+#include "openmc/settings.h"
 
 namespace openmc {
 
@@ -85,7 +85,7 @@ class SourceRegion {
 public:
   //----------------------------------------------------------------------------
   // Constructors
-  SourceRegion(int negroups)
+  SourceRegion(int negroups, bool is_linear)
   {
     if (settings::run_mode == RunMode::EIGENVALUE) {
       // If in eigenvalue mode, set starting flux to guess of 1
@@ -103,7 +103,7 @@ public:
 
     tally_task_.resize(negroups);
 
-    if (RandomRay::source_shape_ != RandomRaySourceShape::FLAT) {
+    if (is_linear) {
       source_gradients_.resize(negroups);
       flux_moments_old_.resize(negroups);
       flux_moments_new_.resize(negroups);

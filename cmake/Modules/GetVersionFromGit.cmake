@@ -4,7 +4,7 @@
 
 # Configurable variables:
 #   - VERSION_PREFIX: Prefix for version tags (default: "v").
-#   - VERSION_SURFIX: Suffix for version tags (default: "[~+-]([a-zA-Z0-9]+)").
+#   - VERSION_SUFFIX: Suffix for version tags (default: "[~+-]([a-zA-Z0-9]+)").
 #   - VERSION_REGEX: Regex to extract version (default: "(?[0-9]+\\.[0-9]+\\.[0-9]+)").
 #   - ARCHIVAL_FILE: Path to .git_archival.txt (default: "${CMAKE_SOURCE_DIR}/.git_archival.txt").
 #   - DESCRIBE_NAME_KEY: Key for describe name in .git_archival.txt (default: "describe-name: ").

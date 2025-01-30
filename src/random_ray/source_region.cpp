@@ -1,5 +1,6 @@
 #include "openmc/random_ray/source_region.h"
 
+#include "openmc/error.h"
 #include "openmc/message_passing.h"
 
 namespace openmc {
@@ -174,8 +175,8 @@ void SourceRegionContainer::mpi_sync_ranks(bool reduce_position)
 
       // Receive all data into gather vector
       for (int i = 1; i < mpi::n_procs; i++) {
-        MPI_Recv(all_position[i].data(), n_source_regions_ * 3, MPI_DOUBLE, i,
-          0, mpi::intracomm, MPI_STATUS_IGNORE);
+        MPI_Recv(all_position[i].data(), num_regions_ * 3, MPI_DOUBLE, i, 0,
+          mpi::intracomm, MPI_STATUS_IGNORE);
       }
 
       // Scan through gathered data and pick first valid cell posiiton
@@ -220,11 +221,11 @@ void SourceRegionContainer::mpi_sync_ranks(bool reduce_position)
     }
 
     MPI_Allreduce(MPI_IN_PLACE, static_cast<void*>(flux_moments_new_.data()),
-      n_source_elements_ * 3, MPI_DOUBLE, MPI_SUM, mpi::intracomm);
+      num_regions_ * negroups_ * 3, MPI_DOUBLE, MPI_SUM, mpi::intracomm);
     MPI_Allreduce(MPI_IN_PLACE, static_cast<void*>(mom_matrix_.data()),
-      n_source_regions_ * 6, MPI_DOUBLE, MPI_SUM, mpi::intracomm);
+      num_regions_ * 6, MPI_DOUBLE, MPI_SUM, mpi::intracomm);
     MPI_Allreduce(MPI_IN_PLACE, static_cast<void*>(centroid_iteration_.data()),
-      n_source_regions_ * 3, MPI_DOUBLE, MPI_SUM, mpi::intracomm);
+      num_regions_ * 3, MPI_DOUBLE, MPI_SUM, mpi::intracomm);
   }
 
 #endif

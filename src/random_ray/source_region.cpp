@@ -63,7 +63,9 @@ void SourceRegionContainer::push_back(const SourceRegion& sr)
     scalar_flux_new_.push_back(sr.scalar_flux_new_[g]);
     scalar_flux_final_.push_back(sr.scalar_flux_final_[g]);
     source_.push_back(sr.source_[g]);
-    external_source_.push_back(sr.external_source_[g]);
+    if (settings::run_mode == RunMode::FIXED_SOURCE) {
+      external_source_.push_back(sr.external_source_[g]);
+    }
 
     // Only store these fields if is_linear_ is true
     if (is_linear_) {

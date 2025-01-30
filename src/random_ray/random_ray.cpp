@@ -310,7 +310,6 @@ void RandomRay::attenuate_flux_flat_source(double distance, bool is_active)
 
   // The source region is the spatial region index
   int sr = domain_->source_region_offsets_[i_cell] + cell_instance();
-  SourceRegion& region = domain_->source_regions_[sr];
 
   // The source element is the energy-specific region index
   int material = this->material();
@@ -340,14 +339,14 @@ void RandomRay::attenuate_flux_flat_source(double distance, bool is_active)
 
     // Accomulate volume (ray distance) into this iteration's estimate
     // of the source region's volume
-    region.volume_ += distance;
+    domain_->source_regions_.volume(sr) += distance;
 
     // Tally valid position inside the source region (e.g., midpoint of
     // the ray) if not done already
-    if (!region.position_recorded_) {
+    if (!domain_->source_regions_.position_recorded(sr)) {
       Position midpoint = r() + u() * (distance / 2.0);
-      region.position_ = midpoint;
-      region.position_recorded_ = 1;
+      domain_->source_regions_.position(sr) = midpoint;
+      domain_->source_regions_.position_recorded(sr) = 1;
     }
 
     // Release lock

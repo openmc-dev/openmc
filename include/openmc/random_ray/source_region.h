@@ -85,31 +85,8 @@ class SourceRegion {
 public:
   //----------------------------------------------------------------------------
   // Constructors
-  SourceRegion(int negroups, bool is_linear)
-  {
-    if (settings::run_mode == RunMode::EIGENVALUE) {
-      // If in eigenvalue mode, set starting flux to guess of 1
-      scalar_flux_old_.assign(negroups, 1.0);
-    } else {
-      // If in fixed source mode, set starting flux to guess of zero
-      // and initialize external source arrays
-      scalar_flux_old_.assign(negroups, 0.0);
-      external_source_.assign(negroups, 0.0);
-    }
-
-    scalar_flux_new_.assign(negroups, 0.0);
-    source_.resize(negroups);
-    scalar_flux_final_.assign(negroups, 0.0);
-
-    tally_task_.resize(negroups);
-
-    if (is_linear) {
-      source_gradients_.resize(negroups);
-      flux_moments_old_.resize(negroups);
-      flux_moments_new_.resize(negroups);
-      flux_moments_t_.resize(negroups);
-    }
-  }
+  SourceRegion(int negroups, bool is_linear);
+  SourceRegion() = default;
 
   //----------------------------------------------------------------------------
   // Public Data members
@@ -154,6 +131,7 @@ public:
   SourceRegionContainer(int negroups, bool is_linear)
     : negroups_(negroups), is_linear_(is_linear)
   {}
+  SourceRegionContainer() = default;
 
   //----------------------------------------------------------------------------
   // Public Accessors
@@ -348,8 +326,8 @@ public:
 private:
   //----------------------------------------------------------------------------
   // Private Data Members
-  int negroups_;
-  bool is_linear_;
+  int negroups_ {0};
+  bool is_linear_ {false};
 
   // SoA storage for scalar fields
   vector<int> material_;

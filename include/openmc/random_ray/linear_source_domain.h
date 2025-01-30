@@ -32,8 +32,8 @@ public:
 protected:
   //----------------------------------------------------------------------------
   // Methods
-  void set_flux_to_flux_plus_source(int sr, double volume, int g) override;
-  void set_flux_to_old_flux(int sr, int g) override;
+  void set_flux_to_flux_plus_source(int64_t sr, double volume, int g) override;
+  void set_flux_to_old_flux(int64_t sr, int g) override;
 
 }; // class LinearSourceDomain
 

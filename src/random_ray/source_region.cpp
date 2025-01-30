@@ -180,7 +180,7 @@ void SourceRegionContainer::mpi_sync_ranks(bool reduce_position)
       }
 
       // Scan through gathered data and pick first valid cell posiiton
-      for (int sr = 0; sr < num_regions_; sr++) {
+      for (int64_t sr = 0; sr < num_regions_; sr++) {
         if (position_recorded_[sr] == 1) {
           for (int i = 0; i < mpi::n_procs; i++) {
             if (all_position[i][sr].x != 0.0 || all_position[i][sr].y != 0.0 ||

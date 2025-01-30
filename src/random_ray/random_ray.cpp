@@ -309,7 +309,7 @@ void RandomRay::attenuate_flux_flat_source(double distance, bool is_active)
   int i_cell = lowest_coord().cell;
 
   // The source region is the spatial region index
-  int sr = domain_->source_region_offsets_[i_cell] + cell_instance();
+  int64_t sr = domain_->source_region_offsets_[i_cell] + cell_instance();
 
   // The source element is the energy-specific region index
   int material = this->material();
@@ -370,7 +370,7 @@ void RandomRay::attenuate_flux_linear_source(double distance, bool is_active)
   int i_cell = lowest_coord().cell;
 
   // The source region is the spatial region index
-  int sr = domain_->source_region_offsets_[i_cell] + cell_instance();
+  int64_t sr = domain_->source_region_offsets_[i_cell] + cell_instance();
 
   // The source element is the energy-specific region index
   int material = this->material();

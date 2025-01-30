@@ -24,12 +24,12 @@ void LinearSourceDomain::batch_reset()
 {
   FlatSourceDomain::batch_reset();
 #pragma omp parallel for
-  for (int sr = 0; sr < n_source_regions_; sr++) {
+  for (int64_t sr = 0; sr < n_source_regions_; sr++) {
     source_regions_.centroid_iteration(sr) = {0.0, 0.0, 0.0};
     source_regions_.mom_matrix(sr) = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
   }
 #pragma omp parallel for
-  for (int se = 0; se < n_source_elements_; se++) {
+  for (int64_t se = 0; se < n_source_elements_; se++) {
     source_regions_.flux_moments_new(se) = {0.0, 0.0, 0.0};
   }
 }
@@ -41,7 +41,7 @@ void LinearSourceDomain::update_neutron_source(double k_eff)
   double inverse_k_eff = 1.0 / k_eff;
 
 #pragma omp parallel for
-  for (int sr = 0; sr < n_source_regions_; sr++) {
+  for (int64_t sr = 0; sr < n_source_regions_; sr++) {
     int material = source_regions_.material(sr);
     MomentMatrix invM = source_regions_.mom_matrix(sr).inverse();
 
@@ -89,7 +89,7 @@ void LinearSourceDomain::update_neutron_source(double k_eff)
   if (settings::run_mode == RunMode::FIXED_SOURCE) {
 // Add external source to flat source term if in fixed source mode
 #pragma omp parallel for
-    for (int se = 0; se < n_source_elements_; se++) {
+    for (int64_t se = 0; se < n_source_elements_; se++) {
       source_regions_.source(se) += source_regions_.external_source(se);
     }
   }
@@ -106,7 +106,7 @@ void LinearSourceDomain::normalize_scalar_flux_and_volumes(
 
 // Normalize flux to total distance travelled by all rays this iteration
 #pragma omp parallel for
-  for (int se = 0; se < n_source_elements_; se++) {
+  for (int64_t se = 0; se < n_source_elements_; se++) {
     source_regions_.scalar_flux_new(se) *= normalization_factor;
     source_regions_.flux_moments_new(se) *= normalization_factor;
   }
@@ -133,14 +133,14 @@ void LinearSourceDomain::normalize_scalar_flux_and_volumes(
 }
 
 void LinearSourceDomain::set_flux_to_flux_plus_source(
-  int sr, double volume, int g)
+  int64_t sr, double volume, int g)
 {
   source_regions_.scalar_flux_new(sr, g) /= volume;
   source_regions_.scalar_flux_new(sr,g) += source_regions_.source(sr,g);
   source_regions_.flux_moments_new(sr,g) *= (1.0 / volume);
 }
 
-void LinearSourceDomain::set_flux_to_old_flux(int sr, int g)
+void LinearSourceDomain::set_flux_to_old_flux(int64_t sr, int g)
 {
   source_regions_.scalar_flux_new(g) = source_regions_.scalar_flux_old(g);
   source_regions_.flux_moments_new(g) = source_regions_.flux_moments_old(g);
@@ -153,7 +153,7 @@ void LinearSourceDomain::accumulate_iteration_flux()
 
   // Accumulate scalar flux moments
 #pragma omp parallel for
-  for (int se = 0; se < n_source_elements_; se++) {
+  for (int64_t se = 0; se < n_source_elements_; se++) {
       source_regions_.flux_moments_t(se) += source_regions_.flux_moments_new(se);
   }
 }

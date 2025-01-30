@@ -135,57 +135,57 @@ public:
 
   //----------------------------------------------------------------------------
   // Public Accessors
-  int& material(int sr) { return material_[sr]; }
-  const int& material(int sr) const { return material_[sr]; }
+  int& material(int64_t sr) { return material_[sr]; }
+  const int& material(int64_t sr) const { return material_[sr]; }
 
-  OpenMPMutex& lock(int sr) { return lock_[sr]; }
-  const OpenMPMutex& lock(int sr) const { return lock_[sr]; }
+  OpenMPMutex& lock(int64_t sr) { return lock_[sr]; }
+  const OpenMPMutex& lock(int64_t sr) const { return lock_[sr]; }
 
-  double& volume(int sr) { return volume_[sr]; }
-  const double& volume(int sr) const { return volume_[sr]; }
+  double& volume(int64_t sr) { return volume_[sr]; }
+  const double& volume(int64_t sr) const { return volume_[sr]; }
 
-  double& volume_t(int sr) { return volume_t_[sr]; }
-  const double& volume_t(int sr) const { return volume_t_[sr]; }
+  double& volume_t(int64_t sr) { return volume_t_[sr]; }
+  const double& volume_t(int64_t sr) const { return volume_t_[sr]; }
 
-  double& volume_naive(int sr) { return volume_naive_[sr]; }
-  const double& volume_naive(int sr) const { return volume_naive_[sr]; }
+  double& volume_naive(int64_t sr) { return volume_naive_[sr]; }
+  const double& volume_naive(int64_t sr) const { return volume_naive_[sr]; }
 
-  int& position_recorded(int sr) { return position_recorded_[sr]; }
-  const int& position_recorded(int sr) const { return position_recorded_[sr]; }
+  int& position_recorded(int64_t sr) { return position_recorded_[sr]; }
+  const int& position_recorded(int64_t sr) const { return position_recorded_[sr]; }
 
-  int& external_source_present(int sr) { return external_source_present_[sr]; }
-  const int& external_source_present(int sr) const
+  int& external_source_present(int64_t sr) { return external_source_present_[sr]; }
+  const int& external_source_present(int64_t sr) const
   {
     return external_source_present_[sr];
   }
 
-  Position& position(int sr) { return position_[sr]; }
-  const Position& position(int sr) const { return position_[sr]; }
+  Position& position(int64_t sr) { return position_[sr]; }
+  const Position& position(int64_t sr) const { return position_[sr]; }
 
   // Conditional field accessors (only if is_linear_)
-  Position& centroid(int sr) { return centroid_[sr]; }
-  const Position& centroid(int sr) const { return centroid_[sr]; }
+  Position& centroid(int64_t sr) { return centroid_[sr]; }
+  const Position& centroid(int64_t sr) const { return centroid_[sr]; }
 
-  Position& centroid_iteration(int sr) { return centroid_iteration_[sr]; }
-  const Position& centroid_iteration(int sr) const
+  Position& centroid_iteration(int64_t sr) { return centroid_iteration_[sr]; }
+  const Position& centroid_iteration(int64_t sr) const
   {
     return centroid_iteration_[sr];
   }
 
-  Position& centroid_t(int sr) { return centroid_t_[sr]; }
-  const Position& centroid_t(int sr) const { return centroid_t_[sr]; }
+  Position& centroid_t(int64_t sr) { return centroid_t_[sr]; }
+  const Position& centroid_t(int64_t sr) const { return centroid_t_[sr]; }
 
-  MomentMatrix& mom_matrix(int sr) { return mom_matrix_[sr]; }
-  const MomentMatrix& mom_matrix(int sr) const { return mom_matrix_[sr]; }
+  MomentMatrix& mom_matrix(int64_t sr) { return mom_matrix_[sr]; }
+  const MomentMatrix& mom_matrix(int64_t sr) const { return mom_matrix_[sr]; }
 
-  MomentMatrix& mom_matrix_t(int sr) { return mom_matrix_t_[sr]; }
-  const MomentMatrix& mom_matrix_t(int sr) const { return mom_matrix_t_[sr]; }
+  MomentMatrix& mom_matrix_t(int64_t sr) { return mom_matrix_t_[sr]; }
+  const MomentMatrix& mom_matrix_t(int64_t sr) const { return mom_matrix_t_[sr]; }
 
-  MomentArray& source_gradients(int sr, int g)
+  MomentArray& source_gradients(int64_t sr, int g)
   {
     return source_gradients_[index(sr, g)];
   }
-  const MomentArray& source_gradients(int sr, int g) const
+  const MomentArray& source_gradients(int64_t sr, int g) const
   {
     return source_gradients_[index(sr, g)];
   }
@@ -195,11 +195,11 @@ public:
     return source_gradients_[se];
   }
 
-  MomentArray& flux_moments_old(int sr, int g)
+  MomentArray& flux_moments_old(int64_t sr, int g)
   {
     return flux_moments_old_[index(sr, g)];
   }
-  const MomentArray& flux_moments_old(int sr, int g) const
+  const MomentArray& flux_moments_old(int64_t sr, int g) const
   {
     return flux_moments_old_[index(sr, g)];
   }
@@ -209,11 +209,11 @@ public:
     return flux_moments_old_[se];
   }
 
-  MomentArray& flux_moments_new(int sr, int g)
+  MomentArray& flux_moments_new(int64_t sr, int g)
   {
     return flux_moments_new_[index(sr, g)];
   }
-  const MomentArray& flux_moments_new(int sr, int g) const
+  const MomentArray& flux_moments_new(int64_t sr, int g) const
   {
     return flux_moments_new_[index(sr, g)];
   }
@@ -223,11 +223,11 @@ public:
     return flux_moments_new_[se];
   }
 
-  MomentArray& flux_moments_t(int sr, int g)
+  MomentArray& flux_moments_t(int64_t sr, int g)
   {
     return flux_moments_t_[index(sr, g)];
   }
-  const MomentArray& flux_moments_t(int sr, int g) const
+  const MomentArray& flux_moments_t(int64_t sr, int g) const
   {
     return flux_moments_t_[index(sr, g)];
   }
@@ -237,11 +237,11 @@ public:
     return flux_moments_t_[se];
   }
 
-  double& scalar_flux_old(int sr, int g)
+  double& scalar_flux_old(int64_t sr, int g)
   {
     return scalar_flux_old_[index(sr, g)];
   }
-  const double& scalar_flux_old(int sr, int g) const
+  const double& scalar_flux_old(int64_t sr, int g) const
   {
     return scalar_flux_old_[index(sr, g)];
   }
@@ -251,11 +251,11 @@ public:
     return scalar_flux_old_[se];
   }
 
-  double& scalar_flux_new(int sr, int g)
+  double& scalar_flux_new(int64_t sr, int g)
   {
     return scalar_flux_new_[index(sr, g)];
   }
-  const double& scalar_flux_new(int sr, int g) const
+  const double& scalar_flux_new(int64_t sr, int g) const
   {
     return scalar_flux_new_[index(sr, g)];
   }
@@ -265,11 +265,11 @@ public:
     return scalar_flux_new_[se];
   }
 
-  double& scalar_flux_final(int sr, int g)
+  double& scalar_flux_final(int64_t sr, int g)
   {
     return scalar_flux_final_[index(sr, g)];
   }
-  const double& scalar_flux_final(int sr, int g) const
+  const double& scalar_flux_final(int64_t sr, int g) const
   {
     return scalar_flux_final_[index(sr, g)];
   }
@@ -279,16 +279,16 @@ public:
     return scalar_flux_final_[se];
   }
 
-  float& source(int sr, int g) { return source_[index(sr, g)]; }
-  const float& source(int sr, int g) const { return source_[index(sr, g)]; }
+  float& source(int64_t sr, int g) { return source_[index(sr, g)]; }
+  const float& source(int64_t sr, int g) const { return source_[index(sr, g)]; }
   float& source(int64_t se) { return source_[se]; }
   const float& source(int64_t se) const { return source_[se]; }
 
-  float& external_source(int sr, int g)
+  float& external_source(int64_t sr, int g)
   {
     return external_source_[index(sr, g)];
   }
-  const float& external_source(int sr, int g) const
+  const float& external_source(int64_t sr, int g) const
   {
     return external_source_[index(sr, g)];
   }
@@ -298,11 +298,11 @@ public:
     return external_source_[se];
   }
 
-  vector<TallyTask>& tally_task(int sr, int g)
+  vector<TallyTask>& tally_task(int64_t sr, int g)
   {
     return tally_task_[index(sr, g)];
   }
-  const vector<TallyTask>& tally_task(int sr, int g) const
+  const vector<TallyTask>& tally_task(int64_t sr, int g) const
   {
     return tally_task_[index(sr, g)];
   }
@@ -363,7 +363,7 @@ private:
   // Private Methods
 
   // Helper function for indexing
-  inline int index(int sr, int g) const { return sr * negroups_ + g; }
+  inline int index(int64_t sr, int g) const { return sr * negroups_ + g; }
 };
 
 } // namespace openmc

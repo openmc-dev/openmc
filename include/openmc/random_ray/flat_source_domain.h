@@ -157,15 +157,6 @@ T convert_to_big_endian(T in)
   return out;
 }
 
-template<typename T>
-void parallel_fill(vector<T>& arr, T value)
-{
-#pragma omp parallel for schedule(static)
-  for (int i = 0; i < arr.size(); i++) {
-    arr[i] = value;
-  }
-}
-
 } // namespace openmc
 
 #endif // OPENMC_RANDOM_RAY_FLAT_SOURCE_DOMAIN_H

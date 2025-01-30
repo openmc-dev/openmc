@@ -183,6 +183,7 @@ void FlatSourceDomain::normalize_scalar_flux_and_volumes(
 
   // Normalize scalar flux to total distance travelled by all rays this
   // iteration
+  #pragma omp parallel for
   for (int sr = 0; sr < n_source_regions_; sr++) {
     for (int64_t g = 0; g < negroups_; g++) {
       source_regions_[sr].scalar_flux_new_[g] *= normalization_factor;
@@ -1129,6 +1130,7 @@ void FlatSourceDomain::serialize_final_fluxes(vector<double>& flux)
   // Ensure array is correct size
   flux.resize(n_source_regions_ * negroups_);
   // Serialize the final fluxes for output
+  #pragma omp parallel for
   for (int sr = 0; sr < n_source_regions_; sr++) {
     SourceRegion& region = source_regions_[sr];
     for (int g = 0; g < negroups_; g++) {

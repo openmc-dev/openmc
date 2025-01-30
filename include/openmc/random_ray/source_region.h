@@ -151,9 +151,15 @@ public:
   const double& volume_naive(int64_t sr) const { return volume_naive_[sr]; }
 
   int& position_recorded(int64_t sr) { return position_recorded_[sr]; }
-  const int& position_recorded(int64_t sr) const { return position_recorded_[sr]; }
+  const int& position_recorded(int64_t sr) const
+  {
+    return position_recorded_[sr];
+  }
 
-  int& external_source_present(int64_t sr) { return external_source_present_[sr]; }
+  int& external_source_present(int64_t sr)
+  {
+    return external_source_present_[sr];
+  }
   const int& external_source_present(int64_t sr) const
   {
     return external_source_present_[sr];
@@ -179,7 +185,10 @@ public:
   const MomentMatrix& mom_matrix(int64_t sr) const { return mom_matrix_[sr]; }
 
   MomentMatrix& mom_matrix_t(int64_t sr) { return mom_matrix_t_[sr]; }
-  const MomentMatrix& mom_matrix_t(int64_t sr) const { return mom_matrix_t_[sr]; }
+  const MomentMatrix& mom_matrix_t(int64_t sr) const
+  {
+    return mom_matrix_t_[sr];
+  }
 
   MomentArray& source_gradients(int64_t sr, int g)
   {
@@ -320,13 +329,10 @@ public:
   void flux_swap();
   void mpi_sync_ranks(bool reduce_position);
 
-  //----------------------------------------------------------------------------
-  // Public Data Members
-  int num_regions_ {0};
-
 private:
   //----------------------------------------------------------------------------
   // Private Data Members
+  int64_t n_source_regions_ {0};
   int negroups_ {0};
   bool is_linear_ {false};
 

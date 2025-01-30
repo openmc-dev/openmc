@@ -39,7 +39,7 @@ SourceRegion::SourceRegion(int negroups, bool is_linear)
 //==============================================================================
 void SourceRegionContainer::push_back(const SourceRegion& sr)
 {
-  num_regions_++;
+  n_source_regions_++;
 
   // Scalar fields
   material_.push_back(sr.material_);
@@ -87,7 +87,7 @@ void SourceRegionContainer::assign(
   int n_source_regions, const SourceRegion& source_region)
 {
   // Clear existing data
-  num_regions_ = 0;
+  n_source_regions_ = 0;
   material_.clear();
   lock_.clear();
   volume_.clear();
@@ -167,7 +167,7 @@ void SourceRegionContainer::mpi_sync_ranks(bool reduce_position)
       vector<vector<Position>> all_position;
       all_position.resize(mpi::n_procs);
       for (int i = 0; i < mpi::n_procs; i++) {
-        all_position[i].resize(num_regions_);
+        all_position[i].resize(n_source_regions_);
       }
 
       // Copy master rank data into gathered vector for convenience
@@ -175,12 +175,12 @@ void SourceRegionContainer::mpi_sync_ranks(bool reduce_position)
 
       // Receive all data into gather vector
       for (int i = 1; i < mpi::n_procs; i++) {
-        MPI_Recv(all_position[i].data(), num_regions_ * 3, MPI_DOUBLE, i, 0,
+        MPI_Recv(all_position[i].data(), n_source_regions_ * 3, MPI_DOUBLE, i, 0,
           mpi::intracomm, MPI_STATUS_IGNORE);
       }
 
       // Scan through gathered data and pick first valid cell posiiton
-      for (int64_t sr = 0; sr < num_regions_; sr++) {
+      for (int64_t sr = 0; sr < n_source_regions_; sr++) {
         if (position_recorded_[sr] == 1) {
           for (int i = 0; i < mpi::n_procs; i++) {
             if (all_position[i][sr].x != 0.0 || all_position[i][sr].y != 0.0 ||
@@ -194,17 +194,17 @@ void SourceRegionContainer::mpi_sync_ranks(bool reduce_position)
     } else {
       // Other ranks just send in their data
       MPI_Send(
-        position_.data(), num_regions_ * 3, MPI_DOUBLE, 0, 0, mpi::intracomm);
+        position_.data(), n_source_regions_ * 3, MPI_DOUBLE, 0, 0, mpi::intracomm);
     }
   }
 
   // For the rest of the source region data, we simply perform an all reduce,
   // as these values will be needed on all ranks for transport during the
   // next iteration.
-  MPI_Allreduce(MPI_IN_PLACE, volume_.data(), num_regions_, MPI_DOUBLE, MPI_SUM,
+  MPI_Allreduce(MPI_IN_PLACE, volume_.data(), n_source_regions_, MPI_DOUBLE, MPI_SUM,
     mpi::intracomm);
 
-  MPI_Allreduce(MPI_IN_PLACE, scalar_flux_new_.data(), num_regions_ * negroups_,
+  MPI_Allreduce(MPI_IN_PLACE, scalar_flux_new_.data(), n_source_regions_ * negroups_,
     MPI_DOUBLE, MPI_SUM, mpi::intracomm);
 
   if (is_linear_) {
@@ -221,11 +221,11 @@ void SourceRegionContainer::mpi_sync_ranks(bool reduce_position)
     }
 
     MPI_Allreduce(MPI_IN_PLACE, static_cast<void*>(flux_moments_new_.data()),
-      num_regions_ * negroups_ * 3, MPI_DOUBLE, MPI_SUM, mpi::intracomm);
+      n_source_regions_ * negroups_ * 3, MPI_DOUBLE, MPI_SUM, mpi::intracomm);
     MPI_Allreduce(MPI_IN_PLACE, static_cast<void*>(mom_matrix_.data()),
-      num_regions_ * 6, MPI_DOUBLE, MPI_SUM, mpi::intracomm);
+      n_source_regions_ * 6, MPI_DOUBLE, MPI_SUM, mpi::intracomm);
     MPI_Allreduce(MPI_IN_PLACE, static_cast<void*>(centroid_iteration_.data()),
-      num_regions_ * 3, MPI_DOUBLE, MPI_SUM, mpi::intracomm);
+      n_source_regions_ * 3, MPI_DOUBLE, MPI_SUM, mpi::intracomm);
   }
 
 #endif

@@ -713,16 +713,16 @@ void FlatSourceDomain::all_reduce_replicated_source_regions()
         all_position.resize(mpi::n_procs);
 
         // Copy master rank data into gathered vector for convenience
-        all_position[0] = position_;
+        all_position[0] = region.position_;
 
         // Receive all data into gather vector
         for (int i = 1; i < mpi::n_procs; i++) {
-          MPI_Recv(all_position[i].data(), 3, MPI_DOUBLE, i, 0, mpi::intracomm,
+          MPI_Recv(&all_position[i], 3, MPI_DOUBLE, i, 0, mpi::intracomm,
             MPI_STATUS_IGNORE);
         }
 
         // Scan through gathered data and pick first valid cell posiiton
-        if (position_recorded_ == 1) {
+        if (region.position_recorded_ == 1) {
           for (int i = 0; i < mpi::n_procs; i++) {
             if (all_position[i].x != 0.0 || all_position[i].y != 0.0 ||
                 all_position[i].z != 0.0) {
@@ -740,7 +740,7 @@ void FlatSourceDomain::all_reduce_replicated_source_regions()
     // For the rest of the source region data, we simply perform an all reduce,
     // as these values will be needed on all ranks for transport during the
     // next iteration.
-    MPI_Allreduce(MPI_IN_PLACE, &region.volume_, n_source_regions_, MPI_DOUBLE,
+    MPI_Allreduce(MPI_IN_PLACE, &region.volume_, 1, MPI_DOUBLE,
       MPI_SUM, mpi::intracomm);
 
     MPI_Allreduce(MPI_IN_PLACE, region.scalar_flux_new_.data(), negroups_,

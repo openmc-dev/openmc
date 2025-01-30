@@ -147,6 +147,300 @@ public:
 
 }; // class SourceRegion
 
+class SourceRegionContainer {
+public:
+  //----------------------------------------------------------------------------
+  // Constructors
+  SourceRegionContainer(int negroups, bool is_linear)
+    : negroups_(negroups), is_linear_(is_linear)
+  {}
+
+  //----------------------------------------------------------------------------
+  // Accessors
+  int& material(int sr) { return material_[sr]; }
+  const int& material(int sr) const { return material_[sr]; }
+
+  OpenMPMutex& lock(int sr) { return lock_[sr]; }
+  const OpenMPMutex& lock(int sr) const { return lock_[sr]; }
+
+  double& volume(int sr) { return volume_[sr]; }
+  const double& volume(int sr) const { return volume_[sr]; }
+
+  double& volume_t(int sr) { return volume_t_[sr]; }
+  const double& volume_t(int sr) const { return volume_t_[sr]; }
+
+  double& volume_naive(int sr) { return volume_naive_[sr]; }
+  const double& volume_naive(int sr) const
+  {
+    return volume_naive_[sr];
+  }
+
+  int& position_recorded(int sr) { return position_recorded_[sr]; }
+  const int& position_recorded(int sr) const
+  {
+    return position_recorded_[sr];
+  }
+
+  bool& external_source_present(int sr)
+  {
+    return external_source_present_[sr];
+  }
+  const bool& external_source_present(int sr) const
+  {
+    return external_source_present_[sr];
+  }
+
+  Position& position(int sr) { return position_[sr]; }
+  const Position& position(int sr) const { return position_[sr]; }
+
+  // Conditional field accessors (only if is_linear_)
+  Position& centroid(int sr) { return centroid_[sr]; }
+  const Position& centroid(int sr) const { return centroid_[sr]; }
+
+  Position& centroid_iteration(int sr)
+  {
+    return centroid_iteration_[sr];
+  }
+  const Position& centroid_iteration(int sr) const
+  {
+    return centroid_iteration_[sr];
+  }
+
+  Position& centroid_t(int sr) { return centroid_t_[sr]; }
+  const Position& centroid_t(int sr) const { return centroid_t_[sr]; }
+
+  MomentMatrix& mom_matrix(int sr) { return mom_matrix_[sr]; }
+  const MomentMatrix& mom_matrix(int sr) const
+  {
+    return mom_matrix_[sr];
+  }
+
+  MomentMatrix& mom_matrix_t(int sr) { return mom_matrix_t_[sr]; }
+  const MomentMatrix& mom_matrix_t(int sr) const
+  {
+    return mom_matrix_t_[sr];
+  }
+
+  MomentArray& source_gradients(int sr, int g)
+  {
+    return source_gradients_[index(sr, g)];
+  }
+  const MomentArray& source_gradients(int sr, int g) const
+  {
+    return source_gradients_[index(sr, g)];
+  }
+
+  MomentArray& flux_moments_old(int sr, int g)
+  {
+    return flux_moments_old_[index(sr, g)];
+  }
+  const MomentArray& flux_moments_old(int sr, int g) const
+  {
+    return flux_moments_old_[index(sr, g)];
+  }
+
+  MomentArray& flux_moments_new(int sr, int g)
+  {
+    return flux_moments_new_[index(sr, g)];
+  }
+  const MomentArray& flux_moments_new(int sr, int g) const
+  {
+    return flux_moments_new_[index(sr, g)];
+  }
+
+  MomentArray& flux_moments_t(int sr, int g)
+  {
+    return flux_moments_t_[index(sr, g)];
+  }
+  const MomentArray& flux_moments_t(int sr, int g) const
+  {
+    return flux_moments_t_[index(sr, g)];
+  }
+
+  // Energy-dependent field accessors
+  double& scalar_flux_old(int sr, int g)
+  {
+    return scalar_flux_old_[index(sr, g)];
+  }
+  const double& scalar_flux_old(int sr, int g) const
+  {
+    return scalar_flux_old_[index(sr, g)];
+  }
+
+  double& scalar_flux_new(int sr, int g)
+  {
+    return scalar_flux_new_[index(sr, g)];
+  }
+  const double& scalar_flux_new(int sr, int g) const
+  {
+    return scalar_flux_new_[index(sr, g)];
+  }
+
+  double& scalar_flux_final(int sr, int g)
+  {
+    return scalar_flux_final_[index(sr, g)];
+  }
+  const double& scalar_flux_final(int sr, int g) const
+  {
+    return scalar_flux_final_[index(sr, g)];
+  }
+
+  float& source(int sr, int g) { return source_[index(sr, g)]; }
+  const float& source(int sr, int g) const
+  {
+    return source_[index(sr, g)];
+  }
+
+  float& external_source(int sr, int g)
+  {
+    return external_source_[index(sr, g)];
+  }
+  const float& external_source(int sr, int g) const
+  {
+    return external_source_[index(sr, g)];
+  }
+
+  // Tally task accessors
+  vector<TallyTask>& tally_task(int sr, int g)
+  {
+    return tally_task_[index(sr, g)];
+  }
+  const vector<TallyTask>& tally_task(int sr, int g) const
+  {
+    return tally_task_[index(sr, g)];
+  }
+
+  //----------------------------------------------------------------------------
+  // Public Methods
+
+  void push_back(const SourceRegion& sr)
+  {
+    int sr = num_regions_++;
+
+    // Scalar fields
+    material_.push_back(sr.material_);
+    lock_.push_back(sr.lock_);
+    volume_.push_back(sr.volume_);
+    volume_t_.push_back(sr.volume_t_);
+    volume_naive_.push_back(sr.volume_naive_);
+    position_recorded_.push_back(sr.position_recorded_);
+    external_source_present_.push_back(sr.external_source_present_);
+    position_.push_back(sr.position_);
+
+    // Only store these fields if is_linear_ is true
+    if (is_linear_) {
+      centroid_.push_back(sr.centroid_);
+      centroid_iteration_.push_back(sr.centroid_iteration_);
+      centroid_t_.push_back(sr.centroid_t_);
+      mom_matrix_.push_back(sr.mom_matrix_);
+      mom_matrix_t_.push_back(sr.mom_matrix_t_);
+    }
+
+    // Energy-dependent fields
+    for (int g = 0; g < negroups_; ++g) {
+      scalar_flux_old_.push_back(sr.scalar_flux_old_[g]);
+      scalar_flux_new_.push_back(sr.scalar_flux_new_[g]);
+      scalar_flux_final_.push_back(sr.scalar_flux_final_[g]);
+      source_.push_back(sr.source_[g]);
+      external_source_.push_back(sr.external_source_[g]);
+
+      // Only store these fields if is_linear_ is true
+      if (is_linear_) {
+        source_gradients_.push_back(sr.source_gradients_[g]);
+        flux_moments_old_.push_back(sr.flux_moments_old_[g]);
+        flux_moments_new_.push_back(sr.flux_moments_new_[g]);
+        flux_moments_t_.push_back(sr.flux_moments_t_[g]);
+      }
+
+      // Tally tasks
+      tally_task_.emplace_back(sr.tally_task_[g]);
+    }
+  }
+
+  void resize(int n_source_regions, const SourceRegion& source_region)
+  {
+    // Clear existing data
+    num_regions_ = 0;
+
+    // Reserve space for efficiency
+    material_.reserve(n_source_regions);
+    lock_.reserve(n_source_regions);
+    volume_.reserve(n_source_regions);
+    volume_t_.reserve(n_source_regions);
+    volume_naive_.reserve(n_source_regions);
+    position_recorded_.reserve(n_source_regions);
+    external_source_present_.reserve(n_source_regions);
+    position_.reserve(n_source_regions);
+
+    if (is_linear_) {
+      centroid_.reserve(n_source_regions);
+      centroid_iteration_.reserve(n_source_regions);
+      centroid_t_.reserve(n_source_regions);
+      mom_matrix_.reserve(n_source_regions);
+      mom_matrix_t_.reserve(n_source_regions);
+    }
+
+    scalar_flux_old_.reserve(n_source_regions * negroups_);
+    scalar_flux_new_.reserve(n_source_regions * negroups_);
+    scalar_flux_final_.reserve(n_source_regions * negroups_);
+    source_.reserve(n_source_regions * negroups_);
+    external_source_.reserve(n_source_regions * negroups_);
+
+    if (is_linear_) {
+      source_gradients_.reserve(n_source_regions * negroups_);
+      flux_moments_old_.reserve(n_source_regions * negroups_);
+      flux_moments_new_.reserve(n_source_regions * negroups_);
+      flux_moments_t_.reserve(n_source_regions * negroups_);
+    }
+
+    tally_task_.reserve(n_source_regions * negroups_);
+
+    // Fill with copies of source_region
+    for (int i = 0; i < n_source_regions; ++i) {
+      push_back(source_region);
+    }
+  }
+
+private:
+  //----------------------------------------------------------------------------
+  // Private Data Members
+  int negroups_;
+  bool is_linear_;
+  int num_regions_ = 0;
+
+  // SoA storage for scalar fields
+  vector<int> material_;
+  vector<OpenMPMutex> lock_;
+  vector<double> volume_;
+  vector<double> volume_t_;
+  vector<double> volume_naive_;
+  vector<int> position_recorded_;
+  vector<bool> external_source_present_;
+  vector<Position> position_;
+  vector<Position> centroid_;
+  vector<Position> centroid_iteration_;
+  vector<Position> centroid_t_;
+  vector<MomentMatrix> mom_matrix_;
+  vector<MomentMatrix> mom_matrix_t_;
+
+  // Flattened 1D storage for energy-dependent fields
+  vector<double> scalar_flux_old_;
+  vector<double> scalar_flux_new_;
+  vector<double> scalar_flux_final_;
+  vector<float> source_;
+  vector<float> external_source_;
+  vector<MomentArray> source_gradients_;
+  vector<MomentArray> flux_moments_old_;
+  vector<MomentArray> flux_moments_new_;
+  vector<MomentArray> flux_moments_t_;
+
+  // Tally tasks
+  vector<vector<TallyTask>> tally_task_;
+
+  // Helper function for indexing
+  inline int index(int sr, int g) const { return sr * negroups_ + g; }
+};
+
 } // namespace openmc
 
 #endif // OPENMC_RANDOM_RAY_SOURCE_REGION_H

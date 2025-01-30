@@ -50,7 +50,7 @@ FlatSourceDomain::FlatSourceDomain() : negroups_(data::mg.num_energy_groups_)
   bool is_linear = RandomRay::source_shape_ != RandomRaySourceShape::FLAT;
   source_regions_.resize(n_source_regions_, SourceRegion(negroups_, is_linear));
 
-  // Initialize material array
+  // Initialize materials
   int64_t source_region_id = 0;
   for (int i = 0; i < model::cells.size(); i++) {
     Cell& cell = *model::cells[i];

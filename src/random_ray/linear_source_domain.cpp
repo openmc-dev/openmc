@@ -201,10 +201,11 @@ void LinearSourceDomain::all_reduce_replicated_source_regions()
   for (int sr = 0; sr < n_source_regions_; sr++) {
     SourceRegion& region = source_regions_[sr];
 
-    MPI_Allreduce(MPI_IN_PLACE, static_cast<void*>(region.flux_moments_new_.data()),
-      negroups_ * 3, MPI_DOUBLE, MPI_SUM, mpi::intracomm);
-    MPI_Allreduce(MPI_IN_PLACE, static_cast<void*>(&region.mom_matrix_),
-      6, MPI_DOUBLE, MPI_SUM, mpi::intracomm);
+    MPI_Allreduce(MPI_IN_PLACE,
+      static_cast<void*>(region.flux_moments_new_.data()), negroups_ * 3,
+      MPI_DOUBLE, MPI_SUM, mpi::intracomm);
+    MPI_Allreduce(MPI_IN_PLACE, static_cast<void*>(&region.mom_matrix_), 6,
+      MPI_DOUBLE, MPI_SUM, mpi::intracomm);
     MPI_Allreduce(MPI_IN_PLACE, static_cast<void*>(&region.centroid_iteration_),
       3, MPI_DOUBLE, MPI_SUM, mpi::intracomm);
   }

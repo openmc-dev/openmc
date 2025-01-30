@@ -18,7 +18,6 @@ namespace openmc {
 
 class LinearSourceDomain : public FlatSourceDomain {
 public:
-
   //----------------------------------------------------------------------------
   // Methods
   void update_neutron_source(double k_eff) override;
@@ -35,8 +34,7 @@ public:
 protected:
   //----------------------------------------------------------------------------
   // Methods
-  void set_flux_to_flux_plus_source(
-    int sr, double volume, int g) override;
+  void set_flux_to_flux_plus_source(int sr, double volume, int g) override;
   void set_flux_to_old_flux(int sr, int g) override;
 
 }; // class LinearSourceDomain

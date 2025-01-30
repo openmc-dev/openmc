@@ -740,8 +740,8 @@ void FlatSourceDomain::all_reduce_replicated_source_regions()
     // For the rest of the source region data, we simply perform an all reduce,
     // as these values will be needed on all ranks for transport during the
     // next iteration.
-    MPI_Allreduce(MPI_IN_PLACE, &region.volume_, 1, MPI_DOUBLE,
-      MPI_SUM, mpi::intracomm);
+    MPI_Allreduce(
+      MPI_IN_PLACE, &region.volume_, 1, MPI_DOUBLE, MPI_SUM, mpi::intracomm);
 
     MPI_Allreduce(MPI_IN_PLACE, region.scalar_flux_new_.data(), negroups_,
       MPI_DOUBLE, MPI_SUM, mpi::intracomm);

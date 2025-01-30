@@ -156,7 +156,7 @@ public:
   {}
 
   //----------------------------------------------------------------------------
-  // Accessors
+  // Public Accessors
   int& material(int sr) { return material_[sr]; }
   const int& material(int sr) const { return material_[sr]; }
 
@@ -300,7 +300,6 @@ public:
     return external_source_[index(sr, g)];
   }
 
-  // Tally task accessors
   vector<TallyTask>& tally_task(int sr, int g)
   {
     return tally_task_[index(sr, g)];
@@ -313,100 +312,18 @@ public:
   //----------------------------------------------------------------------------
   // Public Methods
 
-  void push_back(const SourceRegion& sr)
-  {
-    int sr = num_regions_++;
+  void push_back(const SourceRegion& sr);
+  void assign(int n_source_regions, const SourceRegion& source_region);
 
-    // Scalar fields
-    material_.push_back(sr.material_);
-    lock_.push_back(sr.lock_);
-    volume_.push_back(sr.volume_);
-    volume_t_.push_back(sr.volume_t_);
-    volume_naive_.push_back(sr.volume_naive_);
-    position_recorded_.push_back(sr.position_recorded_);
-    external_source_present_.push_back(sr.external_source_present_);
-    position_.push_back(sr.position_);
-
-    // Only store these fields if is_linear_ is true
-    if (is_linear_) {
-      centroid_.push_back(sr.centroid_);
-      centroid_iteration_.push_back(sr.centroid_iteration_);
-      centroid_t_.push_back(sr.centroid_t_);
-      mom_matrix_.push_back(sr.mom_matrix_);
-      mom_matrix_t_.push_back(sr.mom_matrix_t_);
-    }
-
-    // Energy-dependent fields
-    for (int g = 0; g < negroups_; ++g) {
-      scalar_flux_old_.push_back(sr.scalar_flux_old_[g]);
-      scalar_flux_new_.push_back(sr.scalar_flux_new_[g]);
-      scalar_flux_final_.push_back(sr.scalar_flux_final_[g]);
-      source_.push_back(sr.source_[g]);
-      external_source_.push_back(sr.external_source_[g]);
-
-      // Only store these fields if is_linear_ is true
-      if (is_linear_) {
-        source_gradients_.push_back(sr.source_gradients_[g]);
-        flux_moments_old_.push_back(sr.flux_moments_old_[g]);
-        flux_moments_new_.push_back(sr.flux_moments_new_[g]);
-        flux_moments_t_.push_back(sr.flux_moments_t_[g]);
-      }
-
-      // Tally tasks
-      tally_task_.emplace_back(sr.tally_task_[g]);
-    }
-  }
-
-  void resize(int n_source_regions, const SourceRegion& source_region)
-  {
-    // Clear existing data
-    num_regions_ = 0;
-
-    // Reserve space for efficiency
-    material_.reserve(n_source_regions);
-    lock_.reserve(n_source_regions);
-    volume_.reserve(n_source_regions);
-    volume_t_.reserve(n_source_regions);
-    volume_naive_.reserve(n_source_regions);
-    position_recorded_.reserve(n_source_regions);
-    external_source_present_.reserve(n_source_regions);
-    position_.reserve(n_source_regions);
-
-    if (is_linear_) {
-      centroid_.reserve(n_source_regions);
-      centroid_iteration_.reserve(n_source_regions);
-      centroid_t_.reserve(n_source_regions);
-      mom_matrix_.reserve(n_source_regions);
-      mom_matrix_t_.reserve(n_source_regions);
-    }
-
-    scalar_flux_old_.reserve(n_source_regions * negroups_);
-    scalar_flux_new_.reserve(n_source_regions * negroups_);
-    scalar_flux_final_.reserve(n_source_regions * negroups_);
-    source_.reserve(n_source_regions * negroups_);
-    external_source_.reserve(n_source_regions * negroups_);
-
-    if (is_linear_) {
-      source_gradients_.reserve(n_source_regions * negroups_);
-      flux_moments_old_.reserve(n_source_regions * negroups_);
-      flux_moments_new_.reserve(n_source_regions * negroups_);
-      flux_moments_t_.reserve(n_source_regions * negroups_);
-    }
-
-    tally_task_.reserve(n_source_regions * negroups_);
-
-    // Fill with copies of source_region
-    for (int i = 0; i < n_source_regions; ++i) {
-      push_back(source_region);
-    }
-  }
+  //----------------------------------------------------------------------------
+  // Public Data Members
+  int num_regions_ {0};
 
 private:
   //----------------------------------------------------------------------------
   // Private Data Members
   int negroups_;
   bool is_linear_;
-  int num_regions_ = 0;
 
   // SoA storage for scalar fields
   vector<int> material_;
@@ -436,6 +353,9 @@ private:
 
   // Tally tasks
   vector<vector<TallyTask>> tally_task_;
+
+  //----------------------------------------------------------------------------
+  // Private Methods
 
   // Helper function for indexing
   inline int index(int sr, int g) const { return sr * negroups_ + g; }

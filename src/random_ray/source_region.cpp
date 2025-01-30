@@ -50,6 +50,7 @@ void SourceRegionContainer::push_back(const SourceRegion& sr)
   position_recorded_.push_back(sr.position_recorded_);
   external_source_present_.push_back(sr.external_source_present_);
   position_.push_back(sr.position_);
+  volume_task_.push_back(sr.volume_task_);
 
   // Only store these fields if is_linear_ is true
   if (is_linear_) {
@@ -119,6 +120,7 @@ void SourceRegionContainer::assign(
   }
 
   tally_task_.clear();
+  volume_task_.clear();
 
   // Fill with copies of source_region
   for (int i = 0; i < n_source_regions; ++i) {

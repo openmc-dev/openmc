@@ -122,6 +122,11 @@ public:
   // tasks
   vector<vector<TallyTask>> tally_task_;
 
+  // A set of volume tally tasks. This more complicated data structure is
+  // convenient for ensuring that volumes are only tallied once per source
+  // region, regardless of how many energy groups are used for tallying.
+  std::unordered_set<TallyTask, TallyTask::HashFunctor> volume_task_;
+
 }; // class SourceRegion
 
 class SourceRegionContainer {
@@ -168,7 +173,6 @@ public:
   Position& position(int64_t sr) { return position_[sr]; }
   const Position& position(int64_t sr) const { return position_[sr]; }
 
-  // Conditional field accessors (only if is_linear_)
   Position& centroid(int64_t sr) { return centroid_[sr]; }
   const Position& centroid(int64_t sr) const { return centroid_[sr]; }
 
@@ -321,6 +325,16 @@ public:
     return tally_task_[se];
   }
 
+  std::unordered_set<TallyTask, TallyTask::HashFunctor>& volume_task(int64_t sr)
+  {
+    return volume_task_[sr];
+  }
+  const std::unordered_set<TallyTask, TallyTask::HashFunctor>& volume_task(
+    int64_t sr) const
+  {
+    return volume_task_[sr];
+  }
+
   //----------------------------------------------------------------------------
   // Public Methods
 
@@ -364,6 +378,12 @@ private:
 
   // Tally tasks
   vector<vector<TallyTask>> tally_task_;
+
+  // A 1D array over all source regions, with each source region having a set of
+  // volume tally tasks. This more complicated data structure is convenient for
+  // ensuring that volumes are only tallied once per source region, regardless
+  // of how many energy groups are used for tallying.
+  vector<std::unordered_set<TallyTask, TallyTask::HashFunctor>> volume_task_;
 
   //----------------------------------------------------------------------------
   // Private Methods

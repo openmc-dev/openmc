@@ -46,7 +46,6 @@ FlatSourceDomain::FlatSourceDomain() : negroups_(data::mg.num_energy_groups_)
   }
 
   // Initialize cell-wise arrays
-  volume_task_.resize(n_source_regions_);
   bool is_linear = RandomRay::source_shape_ != RandomRaySourceShape::FLAT;
   source_regions_ = SourceRegionContainer(negroups_, is_linear);
   source_regions_.assign(n_source_regions_, SourceRegion(negroups_, is_linear));
@@ -465,7 +464,7 @@ void FlatSourceDomain::convert_source_regions_to_tallies()
 
             // Also add this task to the list of volume tasks for this source
             // region.
-            volume_task_[sr].insert(task);
+            source_regions_.volume_task(sr).insert(task);
           }
         }
       }
@@ -619,7 +618,7 @@ void FlatSourceDomain::random_ray_tally()
     // for normalizing the flux. We store this volume in a separate tensor.
     // We only contribute to each volume tally bin once per FSR.
     if (volume_normalized_flux_tallies_) {
-      for (const auto& task : volume_task_[sr]) {
+      for (const auto& task : source_regions_.volume_task(sr)) {
         if (task.score_type == SCORE_FLUX) {
 #pragma omp atomic
           tally_volumes_[task.tally_idx](task.filter_idx, task.score_idx) +=

@@ -81,12 +81,6 @@ public:
   // groups x energy groups
   vector<double> sigma_s_;
 
-  // A 1D array over all source regions, with each source region having a set of
-  // volume tally tasks. This more complicated data structure is convenient for
-  // ensuring that volumes are only tallied once per source region, regardless
-  // of how many energy groups are used for tallying.
-  vector<std::unordered_set<TallyTask, TallyTask::HashFunctor>> volume_task_;
-
   // The abstract container holding all source region-specific data
   SourceRegionContainer source_regions_;
 

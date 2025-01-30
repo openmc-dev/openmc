@@ -25,12 +25,12 @@ void LinearSourceDomain::batch_reset()
   FlatSourceDomain::batch_reset();
 #pragma omp parallel for
   for (int sr = 0; sr < n_source_regions_; sr++) {
-    SourceRegion& region = source_regions_[sr];
-    region.centroid_iteration_ = {0.0, 0.0, 0.0};
-    region.mom_matrix_ = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
-    for (int g = 0; g < negroups_; g++) {
-      region.flux_moments_new_[g] = {0.0, 0.0, 0.0};
-    }
+    source_regions_.centroid_iteration(sr) = {0.0, 0.0, 0.0};
+    source_regions_.mom_matrix(sr) = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+  }
+#pragma omp parallel for
+  for (int se = 0; se < n_source_elements_; se++) {
+    source_regions_.flux_moments_new(se) = {0.0, 0.0, 0.0};
   }
 }
 
@@ -42,10 +42,8 @@ void LinearSourceDomain::update_neutron_source(double k_eff)
 
 #pragma omp parallel for
   for (int sr = 0; sr < n_source_regions_; sr++) {
-    SourceRegion& region = source_regions_[sr];
-
-    int material = region.material_;
-    MomentMatrix invM = region.mom_matrix_.inverse();
+    int material = source_regions_.material(sr);
+    MomentMatrix invM = source_regions_.mom_matrix(sr).inverse();
 
     for (int g_out = 0; g_out < negroups_; g_out++) {
       double sigma_t = sigma_t_[material * negroups_ + g_out];
@@ -57,8 +55,8 @@ void LinearSourceDomain::update_neutron_source(double k_eff)
 
       for (int g_in = 0; g_in < negroups_; g_in++) {
         // Handles for the flat and linear components of the flux
-        double flux_flat = region.scalar_flux_old_[g_in];
-        MomentArray flux_linear = region.flux_moments_old_[g_in];
+        double flux_flat = source_regions_.scalar_flux_old(sr, g_in);
+        MomentArray flux_linear = source_regions_.flux_moments_old(sr, g_in);
 
         // Handles for cross sections
         double sigma_s =
@@ -74,7 +72,7 @@ void LinearSourceDomain::update_neutron_source(double k_eff)
       }
 
       // Compute the flat source term
-      region.source_[g_out] =
+      source_regions_.source(sr, g_out) =
         (scatter_flat + fission_flat * inverse_k_eff) / sigma_t;
 
       // Compute the linear source terms
@@ -82,7 +80,7 @@ void LinearSourceDomain::update_neutron_source(double k_eff)
       // are not well known, we will leave the source gradients as zero
       // so as to avoid causing any numerical instability.
       if (simulation::current_batch > 10) {
-        region.source_gradients_[g_out] =
+        source_regions_.source_gradients(sr, g_out) =
           invM * ((scatter_linear + fission_linear * inverse_k_eff) / sigma_t);
       }
     }
@@ -91,11 +89,8 @@ void LinearSourceDomain::update_neutron_source(double k_eff)
   if (settings::run_mode == RunMode::FIXED_SOURCE) {
 // Add external source to flat source term if in fixed source mode
 #pragma omp parallel for
-    for (int sr = 0; sr < n_source_regions_; sr++) {
-      SourceRegion& region = source_regions_[sr];
-      for (int g = 0; g < negroups_; g++) {
-        region.source_[g] += region.external_source_[g];
-      }
+    for (int se = 0; se < n_source_elements_; se++) {
+      source_regions_.source(se) += source_regions_.external_source(se);
     }
   }
 
@@ -111,30 +106,28 @@ void LinearSourceDomain::normalize_scalar_flux_and_volumes(
 
 // Normalize flux to total distance travelled by all rays this iteration
 #pragma omp parallel for
-  for (int sr = 0; sr < n_source_regions_; sr++) {
-    SourceRegion& region = source_regions_[sr];
-    for (int g = 0; g < negroups_; g++) {
-      region.scalar_flux_new_[g] *= normalization_factor;
-      region.flux_moments_new_[g] *= normalization_factor;
-    }
+  for (int se = 0; se < n_source_elements_; se++) {
+    source_regions_.scalar_flux_new(se) *= normalization_factor;
+    source_regions_.flux_moments_new(se) *= normalization_factor;
   }
 
 // Accumulate cell-wise ray length tallies collected this iteration, then
 // update the simulation-averaged cell-wise volume estimates
 #pragma omp parallel for
   for (int64_t sr = 0; sr < n_source_regions_; sr++) {
-    SourceRegion& region = source_regions_[sr];
-    region.centroid_t_ += region.centroid_iteration_;
-    region.mom_matrix_t_ += region.mom_matrix_;
-    region.volume_t_ += region.volume_;
-    region.volume_naive_ = region.volume_ * normalization_factor;
-    region.volume_ = region.volume_t_ * volume_normalization_factor;
-    if (region.volume_t_ > 0.0) {
-      double inv_volume = 1.0 / region.volume_t_;
-      region.centroid_ = region.centroid_t_;
-      region.centroid_ *= inv_volume;
-      region.mom_matrix_ = region.mom_matrix_t_;
-      region.mom_matrix_ *= inv_volume;
+    source_regions_.centroid_t(sr) += source_regions_.centroid_iteration(sr);
+    source_regions_.mom_matrix_t(sr) += source_regions_.mom_matrix(sr);
+    source_regions_.volume_t(sr) += source_regions_.volume(sr);
+    source_regions_.volume_naive(sr) =
+      source_regions_.volume(sr) * normalization_factor;
+    source_regions_.volume(sr) =
+      source_regions_.volume_t(sr) * volume_normalization_factor;
+    if (source_regions_.volume_t(sr) > 0.0) {
+      double inv_volume = 1.0 / source_regions_.volume_t(sr);
+      source_regions_.centroid(sr) = source_regions_.centroid_t(sr);
+      source_regions_.centroid(sr) *= inv_volume;
+      source_regions_.mom_matrix(sr) = source_regions_.mom_matrix_t(sr);
+      source_regions_.mom_matrix(sr) *= inv_volume;
     }
   }
 }
@@ -142,27 +135,15 @@ void LinearSourceDomain::normalize_scalar_flux_and_volumes(
 void LinearSourceDomain::set_flux_to_flux_plus_source(
   int sr, double volume, int g)
 {
-  SourceRegion& region = source_regions_[sr];
-  region.scalar_flux_new_[g] /= volume;
-  region.scalar_flux_new_[g] += region.source_[g];
-  region.flux_moments_new_[g] *= (1.0 / volume);
+  source_regions_.scalar_flux_new(sr, g) /= volume;
+  source_regions_.scalar_flux_new(sr,g) += source_regions_.source(sr,g);
+  source_regions_.flux_moments_new(sr,g) *= (1.0 / volume);
 }
 
 void LinearSourceDomain::set_flux_to_old_flux(int sr, int g)
 {
-  SourceRegion& region = source_regions_[sr];
-  region.scalar_flux_new_[g] = region.scalar_flux_old_[g];
-  region.flux_moments_new_[g] = region.flux_moments_old_[g];
-}
-
-void LinearSourceDomain::flux_swap()
-{
-  FlatSourceDomain::flux_swap();
-#pragma omp parallel for
-  for (int sr = 0; sr < n_source_regions_; sr++) {
-    SourceRegion& region = source_regions_[sr];
-    region.flux_moments_old_.swap(region.flux_moments_new_);
-  }
+  source_regions_.scalar_flux_new(g) = source_regions_.scalar_flux_old(g);
+  source_regions_.flux_moments_new(g) = source_regions_.flux_moments_old(g);
 }
 
 void LinearSourceDomain::accumulate_iteration_flux()
@@ -172,11 +153,8 @@ void LinearSourceDomain::accumulate_iteration_flux()
 
   // Accumulate scalar flux moments
 #pragma omp parallel for
-  for (int sr = 0; sr < n_source_regions_; sr++) {
-    SourceRegion& region = source_regions_[sr];
-    for (int g = 0; g < negroups_; g++) {
-      region.flux_moments_t_[g] += region.flux_moments_new_[g];
-    }
+  for (int se = 0; se < n_source_elements_; se++) {
+      source_regions_.flux_moments_t(se) += source_regions_.flux_moments_new(se);
   }
 }
 
@@ -217,14 +195,13 @@ void LinearSourceDomain::all_reduce_replicated_source_regions()
 double LinearSourceDomain::evaluate_flux_at_point(
   Position r, int64_t sr, int g) const
 {
-  const SourceRegion& region = source_regions_[sr];
   double phi_flat = FlatSourceDomain::evaluate_flux_at_point(r, sr, g);
 
-  Position local_r = r - region.centroid_;
-  MomentArray phi_linear = region.flux_moments_t_[g];
+  Position local_r = r - source_regions_.centroid(sr);
+  MomentArray phi_linear = source_regions_.flux_moments_t(sr,g);
   phi_linear *= 1.0 / (settings::n_batches - settings::n_inactive);
 
-  MomentMatrix invM = region.mom_matrix_.inverse();
+  MomentMatrix invM = source_regions_.mom_matrix(sr).inverse();
   MomentArray phi_solved = invM * phi_linear;
 
   return phi_flat + phi_solved.dot(local_r);

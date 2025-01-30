@@ -121,7 +121,7 @@ public:
   double volume_t_ {0.0};
   double volume_naive_ {0.0};
   int position_recorded_ {0};
-  bool external_source_present_ {false};
+  int external_source_present_ {0};
   Position position_ {0.0, 0.0, 0.0};
   Position centroid_ {0.0, 0.0, 0.0};
   Position centroid_iteration_ {0.0, 0.0, 0.0};
@@ -170,22 +170,13 @@ public:
   const double& volume_t(int sr) const { return volume_t_[sr]; }
 
   double& volume_naive(int sr) { return volume_naive_[sr]; }
-  const double& volume_naive(int sr) const
-  {
-    return volume_naive_[sr];
-  }
+  const double& volume_naive(int sr) const { return volume_naive_[sr]; }
 
   int& position_recorded(int sr) { return position_recorded_[sr]; }
-  const int& position_recorded(int sr) const
-  {
-    return position_recorded_[sr];
-  }
+  const int& position_recorded(int sr) const { return position_recorded_[sr]; }
 
-  bool& external_source_present(int sr)
-  {
-    return external_source_present_[sr];
-  }
-  const bool& external_source_present(int sr) const
+  int& external_source_present(int sr) { return external_source_present_[sr]; }
+  const int& external_source_present(int sr) const
   {
     return external_source_present_[sr];
   }
@@ -197,10 +188,7 @@ public:
   Position& centroid(int sr) { return centroid_[sr]; }
   const Position& centroid(int sr) const { return centroid_[sr]; }
 
-  Position& centroid_iteration(int sr)
-  {
-    return centroid_iteration_[sr];
-  }
+  Position& centroid_iteration(int sr) { return centroid_iteration_[sr]; }
   const Position& centroid_iteration(int sr) const
   {
     return centroid_iteration_[sr];
@@ -210,16 +198,10 @@ public:
   const Position& centroid_t(int sr) const { return centroid_t_[sr]; }
 
   MomentMatrix& mom_matrix(int sr) { return mom_matrix_[sr]; }
-  const MomentMatrix& mom_matrix(int sr) const
-  {
-    return mom_matrix_[sr];
-  }
+  const MomentMatrix& mom_matrix(int sr) const { return mom_matrix_[sr]; }
 
   MomentMatrix& mom_matrix_t(int sr) { return mom_matrix_t_[sr]; }
-  const MomentMatrix& mom_matrix_t(int sr) const
-  {
-    return mom_matrix_t_[sr];
-  }
+  const MomentMatrix& mom_matrix_t(int sr) const { return mom_matrix_t_[sr]; }
 
   MomentArray& source_gradients(int sr, int g)
   {
@@ -228,6 +210,11 @@ public:
   const MomentArray& source_gradients(int sr, int g) const
   {
     return source_gradients_[index(sr, g)];
+  }
+  MomentArray& source_gradients(int64_t se) { return source_gradients_[se]; }
+  const MomentArray& source_gradients(int64_t se) const
+  {
+    return source_gradients_[se];
   }
 
   MomentArray& flux_moments_old(int sr, int g)
@@ -238,6 +225,11 @@ public:
   {
     return flux_moments_old_[index(sr, g)];
   }
+  MomentArray& flux_moments_old(int64_t se) { return flux_moments_old_[se]; }
+  const MomentArray& flux_moments_old(int64_t se) const
+  {
+    return flux_moments_old_[se];
+  }
 
   MomentArray& flux_moments_new(int sr, int g)
   {
@@ -246,6 +238,11 @@ public:
   const MomentArray& flux_moments_new(int sr, int g) const
   {
     return flux_moments_new_[index(sr, g)];
+  }
+  MomentArray& flux_moments_new(int64_t se) { return flux_moments_new_[se]; }
+  const MomentArray& flux_moments_new(int64_t se) const
+  {
+    return flux_moments_new_[se];
   }
 
   MomentArray& flux_moments_t(int sr, int g)
@@ -256,8 +253,12 @@ public:
   {
     return flux_moments_t_[index(sr, g)];
   }
+  MomentArray& flux_moments_t(int64_t se) { return flux_moments_t_[se]; }
+  const MomentArray& flux_moments_t(int64_t se) const
+  {
+    return flux_moments_t_[se];
+  }
 
-  // Energy-dependent field accessors
   double& scalar_flux_old(int sr, int g)
   {
     return scalar_flux_old_[index(sr, g)];
@@ -265,6 +266,11 @@ public:
   const double& scalar_flux_old(int sr, int g) const
   {
     return scalar_flux_old_[index(sr, g)];
+  }
+  double& scalar_flux_old(int64_t se) { return scalar_flux_old_[se]; }
+  const double& scalar_flux_old(int64_t se) const
+  {
+    return scalar_flux_old_[se];
   }
 
   double& scalar_flux_new(int sr, int g)
@@ -275,6 +281,11 @@ public:
   {
     return scalar_flux_new_[index(sr, g)];
   }
+  double& scalar_flux_new(int64_t se) { return scalar_flux_new_[se]; }
+  const double& scalar_flux_new(int64_t se) const
+  {
+    return scalar_flux_new_[se];
+  }
 
   double& scalar_flux_final(int sr, int g)
   {
@@ -284,12 +295,16 @@ public:
   {
     return scalar_flux_final_[index(sr, g)];
   }
+  double& scalar_flux_final(int64_t se) { return scalar_flux_final_[se]; }
+  const double& scalar_flux_final(int64_t se) const
+  {
+    return scalar_flux_final_[se];
+  }
 
   float& source(int sr, int g) { return source_[index(sr, g)]; }
-  const float& source(int sr, int g) const
-  {
-    return source_[index(sr, g)];
-  }
+  const float& source(int sr, int g) const { return source_[index(sr, g)]; }
+  float& source(int64_t se) { return source_[se]; }
+  const float& source(int64_t se) const { return source_[se]; }
 
   float& external_source(int sr, int g)
   {
@@ -298,6 +313,11 @@ public:
   const float& external_source(int sr, int g) const
   {
     return external_source_[index(sr, g)];
+  }
+  float& external_source(int64_t se) { return external_source_[se]; }
+  const float& external_source(int64_t se) const
+  {
+    return external_source_[se];
   }
 
   vector<TallyTask>& tally_task(int sr, int g)
@@ -308,12 +328,18 @@ public:
   {
     return tally_task_[index(sr, g)];
   }
+  vector<TallyTask>& tally_task(int64_t se) { return tally_task_[se]; }
+  const vector<TallyTask>& tally_task(int64_t se) const
+  {
+    return tally_task_[se];
+  }
 
   //----------------------------------------------------------------------------
   // Public Methods
 
   void push_back(const SourceRegion& sr);
   void assign(int n_source_regions, const SourceRegion& source_region);
+  void flux_swap();
 
   //----------------------------------------------------------------------------
   // Public Data Members
@@ -332,7 +358,7 @@ private:
   vector<double> volume_t_;
   vector<double> volume_naive_;
   vector<int> position_recorded_;
-  vector<bool> external_source_present_;
+  vector<int> external_source_present_;
   vector<Position> position_;
   vector<Position> centroid_;
   vector<Position> centroid_iteration_;

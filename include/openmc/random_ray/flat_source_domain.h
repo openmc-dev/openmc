@@ -41,7 +41,7 @@ public:
   void convert_external_sources();
   void count_external_source_regions();
   void set_adjoint_sources(const vector<double>& forward_flux);
-  virtual void flux_swap();
+  void flux_swap();
   virtual double evaluate_flux_at_point(Position r, int64_t sr, int g) const;
   double compute_fixed_source_normalization_factor() const;
   void flatten_xs();
@@ -87,14 +87,14 @@ public:
   // of how many energy groups are used for tallying.
   vector<std::unordered_set<TallyTask, TallyTask::HashFunctor>> volume_task_;
 
-  // A 1D array of source regions
-  vector<SourceRegion> source_regions_;
+  // The abstract container holding all source region-specific data
+  SourceRegionContainer source_regions_;
 
 protected:
   //----------------------------------------------------------------------------
   // Methods
   void apply_external_source_to_source_region(
-    Discrete* discrete, double strength_factor, int64_t source_region);
+    Discrete* discrete, double strength_factor, int64_t sr);
   void apply_external_source_to_cell_instances(int32_t i_cell,
     Discrete* discrete, double strength_factor, int target_material_id,
     const vector<int32_t>& instances);

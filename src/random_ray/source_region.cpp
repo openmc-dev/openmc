@@ -1,5 +1,7 @@
 #include "openmc/random_ray/source_region.h"
 
+#include "openmc/message_passing.h"
+
 namespace openmc {
 
 //==============================================================================
@@ -129,6 +131,103 @@ void SourceRegionContainer::flux_swap()
   if (is_linear_) {
     flux_moments_old_.swap(flux_moments_new_);
   }
+}
+
+void SourceRegionContainer::mpi_sync_ranks(bool reduce_position)
+{
+#ifdef OPENMC_MPI
+
+  // The "position_recorded" variable needs to be allreduced (and maxed),
+  // as whether or not a cell was hit will affect some decisions in how the
+  // source is calculated in the next iteration so as to avoid dividing
+  // by zero. We take the max rather than the sum as the hit values are
+  // expected to be zero or 1.
+  MPI_Allreduce(MPI_IN_PLACE, position_recorded_.data(), 1, MPI_INT, MPI_MAX,
+    mpi::intracomm);
+
+  // The position variable is more complicated to reduce than the others,
+  // as we do not want the sum of all positions in each cell, rather, we
+  // want to just pick any single valid position. Thus, we perform a gather
+  // and then pick the first valid position we find for all source regions
+  // that have had a position recorded. This operation does not need to
+  // be broadcast back to other ranks, as this value is only used for the
+  // tally conversion operation, which is only performed on the master rank.
+  // While this is expensive, it only needs to be done for active batches,
+  // and only if we have not mapped all the tallies yet. Once tallies are
+  // fully mapped, then the position vector is fully populated, so this
+  // operation can be skipped.
+
+  // Then, we perform the gather of position data, if needed
+  if (reduce_position) {
+
+    // Master rank will gather results and pick valid positions
+    if (mpi::master) {
+      // Initialize temporary vector for receiving positions
+      vector<vector<Position>> all_position;
+      all_position.resize(mpi::n_procs);
+      for (int i = 0; i < mpi::n_procs; i++) {
+        all_position[i].resize(num_regions_);
+      }
+
+      // Copy master rank data into gathered vector for convenience
+      all_position[0] = position_;
+
+      // Receive all data into gather vector
+      for (int i = 1; i < mpi::n_procs; i++) {
+        MPI_Recv(all_position[i].data(), n_source_regions_ * 3, MPI_DOUBLE, i,
+          0, mpi::intracomm, MPI_STATUS_IGNORE);
+      }
+
+      // Scan through gathered data and pick first valid cell posiiton
+      for (int sr = 0; sr < num_regions_; sr++) {
+        if (position_recorded_[sr] == 1) {
+          for (int i = 0; i < mpi::n_procs; i++) {
+            if (all_position[i][sr].x != 0.0 || all_position[i][sr].y != 0.0 ||
+                all_position[i][sr].z != 0.0) {
+              position_[sr] = all_position[i][sr];
+              break;
+            }
+          }
+        }
+      }
+    } else {
+      // Other ranks just send in their data
+      MPI_Send(
+        position_.data(), num_regions_ * 3, MPI_DOUBLE, 0, 0, mpi::intracomm);
+    }
+  }
+
+  // For the rest of the source region data, we simply perform an all reduce,
+  // as these values will be needed on all ranks for transport during the
+  // next iteration.
+  MPI_Allreduce(MPI_IN_PLACE, volume_.data(), num_regions_, MPI_DOUBLE, MPI_SUM,
+    mpi::intracomm);
+
+  MPI_Allreduce(MPI_IN_PLACE, scalar_flux_new_.data(), num_regions_ * negroups_,
+    MPI_DOUBLE, MPI_SUM, mpi::intracomm);
+
+  if (is_linear_) {
+    // We are going to assume we can safely cast Position, MomentArray,
+    // and MomentMatrix to contiguous arrays of doubles for the MPI
+    // allreduce operation. This is a safe assumption as typically
+    // compilers will at most pad to 8 byte boundaries. If a new FP32
+    // MomentArray type is introduced, then there will likely be padding, in
+    // which case this function will need to become more complex.
+    if (sizeof(MomentArray) != 3 * sizeof(double) ||
+        sizeof(MomentMatrix) != 6 * sizeof(double)) {
+      fatal_error(
+        "Unexpected buffer padding in linear source domain reduction.");
+    }
+
+    MPI_Allreduce(MPI_IN_PLACE, static_cast<void*>(flux_moments_new_.data()),
+      n_source_elements_ * 3, MPI_DOUBLE, MPI_SUM, mpi::intracomm);
+    MPI_Allreduce(MPI_IN_PLACE, static_cast<void*>(mom_matrix_.data()),
+      n_source_regions_ * 6, MPI_DOUBLE, MPI_SUM, mpi::intracomm);
+    MPI_Allreduce(MPI_IN_PLACE, static_cast<void*>(centroid_iteration_.data()),
+      n_source_regions_ * 3, MPI_DOUBLE, MPI_SUM, mpi::intracomm);
+  }
+
+#endif
 }
 
 } // namespace openmc

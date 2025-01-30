@@ -658,7 +658,6 @@ void FlatSourceDomain::random_ray_tally()
 void FlatSourceDomain::all_reduce_replicated_source_regions()
 {
 #ifdef OPENMC_MPI
-
   // If we only have 1 MPI rank, no need
   // to reduce anything.
   if (mpi::n_procs <= 1)
@@ -671,74 +670,10 @@ void FlatSourceDomain::all_reduce_replicated_source_regions()
   int mapped_all_tallies_i = static_cast<int>(mapped_all_tallies_);
   MPI_Bcast(&mapped_all_tallies_i, 1, MPI_INT, 0, mpi::intracomm);
 
-  // Perform separate set of all reductions for each source region
-  for (int sr = 0; sr < n_source_regions_; sr++) {
-    SourceRegion& region = source_regions_[sr];
+  bool reduce_position =
+    simulation::current_batch > settings::n_inactive && !mapped_all_tallies_i;
 
-    // The "position_recorded" variable needs to be allreduced (and maxed),
-    // as whether or not a cell was hit will affect some decisions in how the
-    // source is calculated in the next iteration so as to avoid dividing
-    // by zero. We take the max rather than the sum as the hit values are
-    // expected to be zero or 1.
-    MPI_Allreduce(MPI_IN_PLACE, &region.position_recorded_, 1, MPI_INT, MPI_MAX,
-      mpi::intracomm);
-
-    // The position variable is more complicated to reduce than the others,
-    // as we do not want the sum of all positions in each cell, rather, we
-    // want to just pick any single valid position. Thus, we perform a gather
-    // and then pick the first valid position we find for all source regions
-    // that have had a position recorded. This operation does not need to
-    // be broadcast back to other ranks, as this value is only used for the
-    // tally conversion operation, which is only performed on the master rank.
-    // While this is expensive, it only needs to be done for active batches,
-    // and only if we have not mapped all the tallies yet. Once tallies are
-    // fully mapped, then the position vector is fully populated, so this
-    // operation can be skipped.
-
-    // Then, we perform the gather of position data, if needed
-    if (simulation::current_batch > settings::n_inactive &&
-        !mapped_all_tallies_i) {
-
-      // Master rank will gather results and pick valid positions
-      if (mpi::master) {
-        // Initialize temporary vector for receiving positions
-        vector<Position> all_position;
-        all_position.resize(mpi::n_procs);
-
-        // Copy master rank data into gathered vector for convenience
-        all_position[0] = region.position_;
-
-        // Receive all data into gather vector
-        for (int i = 1; i < mpi::n_procs; i++) {
-          MPI_Recv(&all_position[i], 3, MPI_DOUBLE, i, 0, mpi::intracomm,
-            MPI_STATUS_IGNORE);
-        }
-
-        // Scan through gathered data and pick first valid cell posiiton
-        if (region.position_recorded_ == 1) {
-          for (int i = 0; i < mpi::n_procs; i++) {
-            if (all_position[i].x != 0.0 || all_position[i].y != 0.0 ||
-                all_position[i].z != 0.0) {
-              region.position_ = all_position[i];
-              break;
-            }
-          }
-        }
-      } else {
-        // Other ranks just send in their data
-        MPI_Send(&region.position_, 3, MPI_DOUBLE, 0, 0, mpi::intracomm);
-      }
-    }
-
-    // For the rest of the source region data, we simply perform an all reduce,
-    // as these values will be needed on all ranks for transport during the
-    // next iteration.
-    MPI_Allreduce(
-      MPI_IN_PLACE, &region.volume_, 1, MPI_DOUBLE, MPI_SUM, mpi::intracomm);
-
-    MPI_Allreduce(MPI_IN_PLACE, region.scalar_flux_new_.data(), negroups_,
-      MPI_DOUBLE, MPI_SUM, mpi::intracomm);
-  }
+  source_regions_.mpi_sync_ranks(reduce_position);
 
   simulation::time_bank_sendrecv.stop();
 #endif

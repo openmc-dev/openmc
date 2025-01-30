@@ -27,7 +27,6 @@ public:
   void batch_reset() override;
   void accumulate_iteration_flux() override;
   void output_to_vtk() const;
-  void all_reduce_replicated_source_regions() override;
   double evaluate_flux_at_point(Position r, int64_t sr, int g) const override;
 
 protected:

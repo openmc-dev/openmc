@@ -318,6 +318,7 @@ public:
   void push_back(const SourceRegion& sr);
   void assign(int n_source_regions, const SourceRegion& source_region);
   void flux_swap();
+  void mpi_sync_ranks(bool reduce_position);
 
   //----------------------------------------------------------------------------
   // Public Data Members

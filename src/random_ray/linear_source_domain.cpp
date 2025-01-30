@@ -158,40 +158,6 @@ void LinearSourceDomain::accumulate_iteration_flux()
   }
 }
 
-void LinearSourceDomain::all_reduce_replicated_source_regions()
-{
-#ifdef OPENMC_MPI
-  FlatSourceDomain::all_reduce_replicated_source_regions();
-  simulation::time_bank_sendrecv.start();
-
-  // We are going to assume we can safely cast Position, MomentArray,
-  // and MomentMatrix to contiguous arrays of doubles for the MPI
-  // allreduce operation. This is a safe assumption as typically
-  // compilers will at most pad to 8 byte boundaries. If a new FP32 MomentArray
-  // type is introduced, then there will likely be padding, in which case this
-  // function will need to become more complex.
-  if (sizeof(MomentArray) != 3 * sizeof(double) ||
-      sizeof(MomentMatrix) != 6 * sizeof(double)) {
-    fatal_error("Unexpected buffer padding in linear source domain reduction.");
-  }
-
-  // Perform separate all reductions for each source region
-  for (int sr = 0; sr < n_source_regions_; sr++) {
-    SourceRegion& region = source_regions_[sr];
-
-    MPI_Allreduce(MPI_IN_PLACE,
-      static_cast<void*>(region.flux_moments_new_.data()), negroups_ * 3,
-      MPI_DOUBLE, MPI_SUM, mpi::intracomm);
-    MPI_Allreduce(MPI_IN_PLACE, static_cast<void*>(&region.mom_matrix_), 6,
-      MPI_DOUBLE, MPI_SUM, mpi::intracomm);
-    MPI_Allreduce(MPI_IN_PLACE, static_cast<void*>(&region.centroid_iteration_),
-      3, MPI_DOUBLE, MPI_SUM, mpi::intracomm);
-  }
-
-  simulation::time_bank_sendrecv.stop();
-#endif
-}
-
 double LinearSourceDomain::evaluate_flux_at_point(
   Position r, int64_t sr, int g) const
 {

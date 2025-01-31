@@ -319,7 +319,8 @@ void RandomRay::attenuate_flux_flat_source(double distance, bool is_active)
     float sigma_t = domain_->sigma_t_[material * negroups_ + g];
     float tau = sigma_t * distance;
     float exponential = cjosey_exponential(tau); // exponential = 1 - exp(-tau)
-    float new_delta_psi = (angular_flux_[g] - domain_->source_regions_.source(sr,g)) * exponential;
+    float new_delta_psi =
+      (angular_flux_[g] - domain_->source_regions_.source(sr, g)) * exponential;
     delta_psi_[g] = new_delta_psi;
     angular_flux_[g] -= new_delta_psi;
   }
@@ -334,7 +335,7 @@ void RandomRay::attenuate_flux_flat_source(double distance, bool is_active)
     // Accumulate delta psi into new estimate of source region flux for
     // this iteration
     for (int g = 0; g < negroups_; g++) {
-      domain_->source_regions_.scalar_flux_new(sr,g) += delta_psi_[g];
+      domain_->source_regions_.scalar_flux_new(sr, g) += delta_psi_[g];
     }
 
     // Accomulate volume (ray distance) into this iteration's estimate
@@ -415,8 +416,10 @@ void RandomRay::attenuate_flux_linear_source(double distance, bool is_active)
     // calculated from the source gradients dot product with local centroid
     // and direction, respectively.
     float spatial_source =
-      domain_->source_regions_.source(sr,g) + rm_local.dot(domain_->source_regions_.source_gradients(sr,g));
-    float dir_source = u().dot(domain_->source_regions_.source_gradients(sr,g));
+      domain_->source_regions_.source(sr, g) +
+      rm_local.dot(domain_->source_regions_.source_gradients(sr, g));
+    float dir_source =
+      u().dot(domain_->source_regions_.source_gradients(sr, g));
 
     float gn = exponentialG(tau);
     float f1 = 1.0f - tau * gn;
@@ -464,8 +467,8 @@ void RandomRay::attenuate_flux_linear_source(double distance, bool is_active)
     // Accumulate deltas into the new estimate of source region flux for this
     // iteration
     for (int g = 0; g < negroups_; g++) {
-      domain_->source_regions_.scalar_flux_new(sr,g) += delta_psi_[g];
-      domain_->source_regions_.flux_moments_new(sr,g) += delta_moments_[g];
+      domain_->source_regions_.scalar_flux_new(sr, g) += delta_psi_[g];
+      domain_->source_regions_.flux_moments_new(sr, g) += delta_moments_[g];
     }
 
     // Accumulate the volume (ray segment distance), centroid, and spatial
@@ -534,7 +537,7 @@ void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
   int64_t sr = domain_->source_region_offsets_[i_cell] + cell_instance();
 
   for (int g = 0; g < negroups_; g++) {
-    angular_flux_[g] = domain_->source_regions_.source(sr,g);
+    angular_flux_[g] = domain_->source_regions_.source(sr, g);
   }
 }
 

@@ -177,8 +177,8 @@ void SourceRegionContainer::mpi_sync_ranks(bool reduce_position)
 
       // Receive all data into gather vector
       for (int i = 1; i < mpi::n_procs; i++) {
-        MPI_Recv(all_position[i].data(), n_source_regions_ * 3, MPI_DOUBLE, i, 0,
-          mpi::intracomm, MPI_STATUS_IGNORE);
+        MPI_Recv(all_position[i].data(), n_source_regions_ * 3, MPI_DOUBLE, i,
+          0, mpi::intracomm, MPI_STATUS_IGNORE);
       }
 
       // Scan through gathered data and pick first valid cell posiiton
@@ -195,19 +195,19 @@ void SourceRegionContainer::mpi_sync_ranks(bool reduce_position)
       }
     } else {
       // Other ranks just send in their data
-      MPI_Send(
-        position_.data(), n_source_regions_ * 3, MPI_DOUBLE, 0, 0, mpi::intracomm);
+      MPI_Send(position_.data(), n_source_regions_ * 3, MPI_DOUBLE, 0, 0,
+        mpi::intracomm);
     }
   }
 
   // For the rest of the source region data, we simply perform an all reduce,
   // as these values will be needed on all ranks for transport during the
   // next iteration.
-  MPI_Allreduce(MPI_IN_PLACE, volume_.data(), n_source_regions_, MPI_DOUBLE, MPI_SUM,
-    mpi::intracomm);
+  MPI_Allreduce(MPI_IN_PLACE, volume_.data(), n_source_regions_, MPI_DOUBLE,
+    MPI_SUM, mpi::intracomm);
 
-  MPI_Allreduce(MPI_IN_PLACE, scalar_flux_new_.data(), n_source_regions_ * negroups_,
-    MPI_DOUBLE, MPI_SUM, mpi::intracomm);
+  MPI_Allreduce(MPI_IN_PLACE, scalar_flux_new_.data(),
+    n_source_regions_ * negroups_, MPI_DOUBLE, MPI_SUM, mpi::intracomm);
 
   if (is_linear_) {
     // We are going to assume we can safely cast Position, MomentArray,

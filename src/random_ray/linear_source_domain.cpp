@@ -136,8 +136,8 @@ void LinearSourceDomain::set_flux_to_flux_plus_source(
   int64_t sr, double volume, int g)
 {
   source_regions_.scalar_flux_new(sr, g) /= volume;
-  source_regions_.scalar_flux_new(sr,g) += source_regions_.source(sr,g);
-  source_regions_.flux_moments_new(sr,g) *= (1.0 / volume);
+  source_regions_.scalar_flux_new(sr, g) += source_regions_.source(sr, g);
+  source_regions_.flux_moments_new(sr, g) *= (1.0 / volume);
 }
 
 void LinearSourceDomain::set_flux_to_old_flux(int64_t sr, int g)
@@ -154,7 +154,7 @@ void LinearSourceDomain::accumulate_iteration_flux()
   // Accumulate scalar flux moments
 #pragma omp parallel for
   for (int64_t se = 0; se < n_source_elements_; se++) {
-      source_regions_.flux_moments_t(se) += source_regions_.flux_moments_new(se);
+    source_regions_.flux_moments_t(se) += source_regions_.flux_moments_new(se);
   }
 }
 
@@ -164,7 +164,7 @@ double LinearSourceDomain::evaluate_flux_at_point(
   double phi_flat = FlatSourceDomain::evaluate_flux_at_point(r, sr, g);
 
   Position local_r = r - source_regions_.centroid(sr);
-  MomentArray phi_linear = source_regions_.flux_moments_t(sr,g);
+  MomentArray phi_linear = source_regions_.flux_moments_t(sr, g);
   phi_linear *= 1.0 / (settings::n_batches - settings::n_inactive);
 
   MomentMatrix invM = source_regions_.mom_matrix(sr).inverse();

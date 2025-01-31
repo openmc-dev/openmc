@@ -363,6 +363,19 @@ void RandomRaySimulation::prepare_fixed_sources_adjoint(
 
 void RandomRaySimulation::simulate()
 {
+
+  /*
+  for (const auto& [region, meshes] : FlatSourceDomain::source_region_meshes_) {
+    std::cout << "Source Region " << region << ":\n";
+    for (const auto& [domain, id] : meshes) {
+        std::cout << "  (" 
+                  << (domain == Source::DomainType::UNIVERSE ? "UNIVERSE" :
+                      domain == Source::DomainType::MATERIAL ? "MATERIAL" : "CELL") 
+                  << ", " << id << ")\n";
+    }
+}
+*/
+
   // Random ray power iteration loop
   while (simulation::current_batch < settings::n_batches) {
 

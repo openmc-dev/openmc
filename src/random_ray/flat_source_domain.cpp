@@ -29,7 +29,7 @@ RandomRayVolumeEstimator FlatSourceDomain::volume_estimator_ {
 bool FlatSourceDomain::volume_normalized_flux_tallies_ {false};
 bool FlatSourceDomain::adjoint_ {false};
 std::unordered_map<int, vector<std::pair<Source::DomainType, int>>>
-  FlatSourceDomain::source_region_meshes_;
+  FlatSourceDomain::mesh_domain_map_;
 
 FlatSourceDomain::FlatSourceDomain() : negroups_(data::mg.num_energy_groups_)
 {

@@ -324,7 +324,7 @@ void get_run_parameters(pugi::xml_node node_base)
           } else {
             throw std::runtime_error("Unknown domain type: " + domain_type);
           }
-          FlatSourceDomain::source_region_meshes_[mesh_id].emplace_back(type, domain_id);
+          FlatSourceDomain::mesh_domain_map_[mesh_id].emplace_back(type, domain_id);
         }
       }
     }

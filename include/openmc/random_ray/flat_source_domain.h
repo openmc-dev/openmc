@@ -56,7 +56,7 @@ public:
 
   // Static variables to store source region meshes and domains
   static std::unordered_map<int, vector<std::pair<Source::DomainType, int>>>
-    source_region_meshes_;
+    mesh_domain_map_;
 
   //----------------------------------------------------------------------------
   // Static data members

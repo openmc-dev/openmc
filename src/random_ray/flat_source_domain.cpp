@@ -1055,4 +1055,111 @@ void FlatSourceDomain::serialize_final_fluxes(vector<double>& flux)
   }
 }
 
+void FlatSourceDomain::apply_mesh_to_cell_instances(int32_t i_cell,
+  int32_t mesh_idx, int target_material_id, const vector<int32_t>& instances,
+  bool is_target_void)
+{
+  Cell& cell = *model::cells[i_cell];
+  if (cell.type_ != Fill::MATERIAL)
+    return;
+  for (int32_t j : instances) {
+    // printf("applying to cell id %d instance %d of %d in found instances, %d
+    // in "
+    //        "actual cell instances\n",
+    //   cell.id_, j, instances.size(), cell.n_instances_);
+    int cell_material_idx = cell.material(j);
+    int cell_material_id;
+    if (cell_material_idx == C_NONE) {
+      cell_material_id = C_NONE;
+    } else {
+      cell_material_id = model::materials[cell_material_idx]->id();
+    }
+
+    if ((target_material_id == C_NONE && !is_target_void) ||
+        cell_material_id == target_material_id) {
+      int64_t sr = source_region_offsets_[i_cell] + j;
+      if (source_regions_.mesh(sr) != C_NONE) {
+        // print out the source region that is broken:
+        fatal_error(fmt::format("Source region {} already has mesh idx {} "
+                                "applied, but trying to apply mesh idx {}",
+          sr, source_regions_.mesh(sr),
+          mesh_idx));
+      }
+      source_regions_.mesh(sr) = mesh_idx;
+    }
+  }
+}
+
+void FlatSourceDomain::apply_mesh_to_cell_and_children(int32_t i_cell,
+  int32_t mesh_idx, int32_t target_material_id, bool is_target_void)
+{
+  Cell& cell = *model::cells[i_cell];
+
+  if (cell.type_ == Fill::MATERIAL) {
+    vector<int> instances(cell.n_instances_);
+    std::iota(instances.begin(), instances.end(), 0);
+    apply_mesh_to_cell_instances(
+      i_cell, mesh_idx, target_material_id, instances, is_target_void);
+  } else if (target_material_id == C_NONE && !is_target_void) {
+    // printf("cell id %d, n instances %d\n", cell.id_, cell.n_instances_);
+    for (int j = 0; j < cell.n_instances_; j++) {
+      //   printf(
+      //     "getting contained cells for cell id %d instance %d\n", cell.id_,
+      //     j);
+      std::unordered_map<int32_t, vector<int32_t>> cell_instance_list =
+        cell.get_contained_cells(j, nullptr);
+      for (const auto& pair : cell_instance_list) {
+        int32_t i_child_cell = pair.first;
+        apply_mesh_to_cell_instances(i_child_cell, mesh_idx, target_material_id,
+          pair.second, is_target_void);
+      }
+    }
+  }
+}
+
+// Problem: my logic breaks if I am trying to apply things to a void region,
+// where the target material ID is C_NONE. Might be worth making a different
+// argument to pass through that indicates the presence of void.
+void FlatSourceDomain::apply_meshes()
+{
+  // Skip if there are no mappings between mesh IDs and domains
+  if (mesh_domain_map_.empty())
+    return;
+
+  // Loop over meshes
+  for (int mesh_idx = 0; mesh_idx < model::meshes.size(); mesh_idx++) {
+    Mesh* mesh = model::meshes[mesh_idx].get();
+    int mesh_id = mesh->id();
+
+    // Skip if mesh id is not present in the map
+    if (mesh_domain_map_.find(mesh_id) == mesh_domain_map_.end())
+      continue;
+
+    // Loop over domains associated with the mesh
+    for (auto& domain : mesh_domain_map_[mesh_id]) {
+      Source::DomainType domain_type = domain.first;
+      int domain_id = domain.second;
+
+      if (domain_type == Source::DomainType::MATERIAL) {
+        for (int i_cell = 0; i_cell < model::cells.size(); i_cell++) {
+          if (domain_id == C_NONE) {
+            apply_mesh_to_cell_and_children(i_cell, mesh_idx, domain_id, true);
+          } else {
+            apply_mesh_to_cell_and_children(i_cell, mesh_idx, domain_id, false);
+          }
+        }
+      } else if (domain_type == Source::DomainType::CELL) {
+        int32_t i_cell = model::cell_map[domain_id];
+        apply_mesh_to_cell_and_children(i_cell, mesh_idx, C_NONE, false);
+      } else if (domain_type == Source::DomainType::UNIVERSE) {
+        int32_t i_universe = model::universe_map[domain_id];
+        Universe& universe = *model::universes[i_universe];
+        for (int32_t i_cell : universe.cells_) {
+          apply_mesh_to_cell_and_children(i_cell, mesh_idx, C_NONE, false);
+        }
+      }
+    }
+  }
+}
+
 } // namespace openmc

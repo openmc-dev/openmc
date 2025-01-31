@@ -51,6 +51,7 @@ void SourceRegionContainer::push_back(const SourceRegion& sr)
   external_source_present_.push_back(sr.external_source_present_);
   position_.push_back(sr.position_);
   volume_task_.push_back(sr.volume_task_);
+  mesh_.push_back(sr.mesh_);
 
   // Only store these fields if is_linear_ is true
   if (is_linear_) {
@@ -97,6 +98,7 @@ void SourceRegionContainer::assign(
   position_recorded_.clear();
   external_source_present_.clear();
   position_.clear();
+  mesh_.clear();
 
   if (is_linear_) {
     centroid_.clear();

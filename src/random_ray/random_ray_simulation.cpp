@@ -351,6 +351,7 @@ void RandomRaySimulation::prepare_fixed_sources()
     domain_->convert_external_sources();
     domain_->count_external_source_regions();
   }
+  domain_->apply_meshes();
 }
 
 void RandomRaySimulation::prepare_fixed_sources_adjoint(

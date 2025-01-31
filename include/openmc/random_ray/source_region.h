@@ -110,6 +110,9 @@ public:
   // region, regardless of how many energy groups are used for tallying.
   std::unordered_set<TallyTask, TallyTask::HashFunctor> volume_task_;
 
+  // Mesh that subdivides this source region
+  int mesh_ {C_NONE};
+
   // Energy group-wise 1D arrays
   vector<double> scalar_flux_old_;
   vector<double> scalar_flux_new_;
@@ -335,6 +338,9 @@ public:
     return volume_task_[sr];
   }
 
+  int& mesh(int64_t sr) { return mesh_[sr]; }
+  const int& mesh(int64_t sr) const { return mesh_[sr]; } 
+
   //----------------------------------------------------------------------------
   // Public Methods
 
@@ -368,6 +374,8 @@ private:
   // convenient for ensuring that volumes are only tallied once per source
   // region, regardless of how many energy groups are used for tallying.
   vector<std::unordered_set<TallyTask, TallyTask::HashFunctor>> volume_task_;
+
+  vector<int> mesh_;
 
   // SoA energy group-wise 2D arrays flattened to 1D
   vector<double> scalar_flux_old_;

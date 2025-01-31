@@ -28,6 +28,8 @@ RandomRayVolumeEstimator FlatSourceDomain::volume_estimator_ {
   RandomRayVolumeEstimator::HYBRID};
 bool FlatSourceDomain::volume_normalized_flux_tallies_ {false};
 bool FlatSourceDomain::adjoint_ {false};
+std::unordered_map<int, vector<std::pair<Source::DomainType, int>>>
+  FlatSourceDomain::source_region_meshes_;
 
 FlatSourceDomain::FlatSourceDomain() : negroups_(data::mg.num_energy_groups_)
 {
@@ -455,7 +457,7 @@ void FlatSourceDomain::convert_source_regions_to_tallies()
 
           // Loop over scores
           for (auto score_index = 0; score_index < tally.scores_.size();
-               score_index++) {
+            score_index++) {
             auto score_bin = tally.scores_[score_index];
             // If a valid tally, filter, and score combination has been found,
             // then add it to the list of tally tasks for this source element.

@@ -6,6 +6,7 @@
 #include "openmc/position.h"
 #include "openmc/random_ray/source_region.h"
 #include "openmc/source.h"
+#include <unordered_map>
 #include <unordered_set>
 
 namespace openmc {
@@ -52,6 +53,10 @@ public:
   // Static Data members
   static bool volume_normalized_flux_tallies_;
   static bool adjoint_; // If the user wants outputs based on the adjoint flux
+
+  // Static variables to store source region meshes and domains
+  static std::unordered_map<int, vector<std::pair<Source::DomainType, int>>>
+    source_region_meshes_;
 
   //----------------------------------------------------------------------------
   // Static data members

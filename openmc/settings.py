@@ -1582,9 +1582,8 @@ class Settings:
                     for mesh, domains in value:
                         mesh_elem = ET.SubElement(subelement, 'mesh')
                         mesh_elem.set('id', str(mesh.id))
-                        domains_elem = ET.SubElement(mesh_elem, 'domains')
                         for domain in domains:
-                            domain_elem = ET.SubElement(domains_elem, 'domain')
+                            domain_elem = ET.SubElement(mesh_elem, 'domain')
                             domain_elem.set('id', str(domain.id))
                             domain_elem.set('type', domain.__class__.__name__.lower())
                         if mesh_memo is not None and mesh.id not in mesh_memo:
@@ -1979,9 +1978,8 @@ class Settings:
                     self.random_ray['source_region_meshes'] = []
                     for mesh_elem in child.findall('mesh'):
                         mesh = MeshBase.from_xml_element(mesh_elem)
-                        domains_elem = mesh_elem.find('domains')
                         domains = []
-                        for domain_elem in domains_elem.findall('domain'):
+                        for domain_elem in mesh_elem.findall('domain'):
                             domain_id = int(domain_elem.get('id'))
                             domain_type = domain_elem.get('type')
                             if domain_type == 'material':

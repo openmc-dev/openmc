@@ -308,13 +308,10 @@ void get_run_parameters(pugi::xml_node node_base)
         get_node_value_bool(random_ray_node, "adjoint");
     }
     if (check_for_node(random_ray_node, "source_region_meshes")) {
-      pugi::xml_node node_source_region_meshes =
-        random_ray_node.child("source_region_meshes");
-      for (pugi::xml_node node_mesh :
-        node_source_region_meshes.children("mesh")) {
+      pugi::xml_node node_source_region_meshes = random_ray_node.child("source_region_meshes");
+      for (pugi::xml_node node_mesh : node_source_region_meshes.children("mesh")) {
         int mesh_id = std::stoi(node_mesh.attribute("id").value());
-        for (pugi::xml_node node_domain :
-          node_mesh.child("domains").children("domain")) {
+        for (pugi::xml_node node_domain : node_mesh.children("domain")) {
           int domain_id = std::stoi(node_domain.attribute("id").value());
           std::string domain_type = node_domain.attribute("type").value();
           Source::DomainType type;
@@ -327,8 +324,7 @@ void get_run_parameters(pugi::xml_node node_base)
           } else {
             throw std::runtime_error("Unknown domain type: " + domain_type);
           }
-          FlatSourceDomain::source_region_meshes_[mesh_id].emplace_back(
-            type, domain_id);
+          FlatSourceDomain::source_region_meshes_[mesh_id].emplace_back(type, domain_id);
         }
       }
     }

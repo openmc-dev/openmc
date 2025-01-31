@@ -91,7 +91,7 @@ public:
   //----------------------------------------------------------------------------
   // Public Data members
 
-  // Scalar fields specific to this source region
+  // Scalar fields
   int material_ {0};
   OpenMPMutex lock_;
   double volume_ {0.0};
@@ -105,8 +105,12 @@ public:
   Position centroid_t_ {0.0, 0.0, 0.0};
   MomentMatrix mom_matrix_ {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
   MomentMatrix mom_matrix_t_ {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+  // A set of volume tally tasks. This more complicated data structure is
+  // convenient for ensuring that volumes are only tallied once per source
+  // region, regardless of how many energy groups are used for tallying.
+  std::unordered_set<TallyTask, TallyTask::HashFunctor> volume_task_;
 
-  // 1D arrays storing energy group-wise values
+  // Energy group-wise 1D arrays
   vector<double> scalar_flux_old_;
   vector<double> scalar_flux_new_;
   vector<float> source_;
@@ -119,13 +123,9 @@ public:
   vector<MomentArray> flux_moments_t_;
 
   // 2D array representing values for all energy groups x tally
-  // tasks
+  // tasks. Each group may have a different number of tally tasks
+  // associated with it, necessitating the use of a jagged array.
   vector<vector<TallyTask>> tally_task_;
-
-  // A set of volume tally tasks. This more complicated data structure is
-  // convenient for ensuring that volumes are only tallied once per source
-  // region, regardless of how many energy groups are used for tallying.
-  std::unordered_set<TallyTask, TallyTask::HashFunctor> volume_task_;
 
 }; // class SourceRegion
 
@@ -350,7 +350,7 @@ private:
   int negroups_ {0};
   bool is_linear_ {false};
 
-  // SoA storage for scalar fields
+  // SoA storage for scalar fields (one item per source region)
   vector<int> material_;
   vector<OpenMPMutex> lock_;
   vector<double> volume_;
@@ -364,26 +364,29 @@ private:
   vector<Position> centroid_t_;
   vector<MomentMatrix> mom_matrix_;
   vector<MomentMatrix> mom_matrix_t_;
+  // A set of volume tally tasks. This more complicated data structure is
+  // convenient for ensuring that volumes are only tallied once per source
+  // region, regardless of how many energy groups are used for tallying.
+  vector<std::unordered_set<TallyTask, TallyTask::HashFunctor>> volume_task_;
 
-  // Flattened 1D storage for energy-dependent fields
+  // SoA energy group-wise 2D arrays flattened to 1D
   vector<double> scalar_flux_old_;
   vector<double> scalar_flux_new_;
   vector<double> scalar_flux_final_;
   vector<float> source_;
   vector<float> external_source_;
+
   vector<MomentArray> source_gradients_;
   vector<MomentArray> flux_moments_old_;
   vector<MomentArray> flux_moments_new_;
   vector<MomentArray> flux_moments_t_;
 
-  // Tally tasks
+  // SoA 3D array representing values for all source regions x energy groups x
+  // tally tasks. The outer two dimensions (source regions and energy groups)
+  // are flattened to 1D. Each group may have a different number of tally tasks
+  // associated with it, necessitating the use of a jagged array for the inner
+  // dimension.
   vector<vector<TallyTask>> tally_task_;
-
-  // A 1D array over all source regions, with each source region having a set of
-  // volume tally tasks. This more complicated data structure is convenient for
-  // ensuring that volumes are only tallied once per source region, regardless
-  // of how many energy groups are used for tallying.
-  vector<std::unordered_set<TallyTask, TallyTask::HashFunctor>> volume_task_;
 
   //----------------------------------------------------------------------------
   // Private Methods

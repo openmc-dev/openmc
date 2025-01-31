@@ -112,15 +112,16 @@ public:
     return volumes_[i * table_size_ + j];
   }
 
-  bool too_many_mats() const { return too_many_mats_; }
+  bool table_full() const { return table_full_; }
 
 private:
-  int32_t* materials_; //!< material index (bins, max_mats)
-  double* volumes_;    //!< volume in [cm^3] (bins, max_mats)
-  int table_size_;     //!< Maximum number of materials in a single mesh element
-  bool too_many_mats_ = false; //!< Whether the maximum number of materials has
-                               //!< been exceeded
+  int32_t* materials_;      //!< material index (bins, table_size)
+  double* volumes_;         //!< volume in [cm^3] (bins, table_size)
+  int table_size_;          //!< Size of hash table for each mesh element
+  bool table_full_ = false; //!< Whether the hash table is full
 
+  // Value used to indicate an empty slot in the hash table. We use -2 because
+  // the value -1 is used to indicate a void material.
   static constexpr int EMPTY = -2;
 };
 
@@ -132,8 +133,6 @@ private:
 
 class Mesh {
 public:
-  // Types, aliases
-
   // Constructors and destructor
   Mesh() = default;
   Mesh(pugi::xml_node node);

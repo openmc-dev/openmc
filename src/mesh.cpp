@@ -181,7 +181,7 @@ void MaterialVolumes::add_volume(
   }
 
   // If table is full, set a flag that can be checked later
-  too_many_mats_ = true;
+  table_full_ = true;
 }
 
 void MaterialVolumes::add_volume_unsafe(
@@ -209,7 +209,7 @@ void MaterialVolumes::add_volume_unsafe(
   }
 
   // If table is full, set a flag that can be checked later
-  too_many_mats_ = true;
+  table_full_ = true;
 }
 
 } // namespace detail
@@ -420,7 +420,7 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
   // Check for errors
   if (out_of_model) {
     throw std::runtime_error("Mesh not fully contained in geometry.");
-  } else if (result.too_many_mats()) {
+  } else if (result.table_full()) {
     throw std::runtime_error("Maximum number of materials for mesh material "
                              "volume calculation insufficient.");
   }

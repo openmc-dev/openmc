@@ -110,12 +110,6 @@ inline bool check_intersection_point(double x1, double x0, double y1, double y0,
   return false;
 }
 
-//==============================================================================
-// MaterialVolumes implementation
-//==============================================================================
-
-namespace detail {
-
 //! Atomic compare-and-swap for signed 32-bit integer
 //
 //! \param[in,out] ptr Pointer to value to update
@@ -141,9 +135,21 @@ inline bool atomic_cas_int32(int32_t* ptr, int32_t expected, int32_t desired)
 #endif
 }
 
+namespace detail {
+
+//==============================================================================
+// MaterialVolumes implementation
+//==============================================================================
+
 void MaterialVolumes::add_volume(
   int index_elem, int index_material, double volume)
 {
+  // This method handles adding elements to the materials hash table,
+  // implementing open addressing with linear probing. Consistency across
+  // multiple threads is handled by with an atomic compare-and-swap operation.
+  // Ideally, we would use #pragma omp atomic compare, but it was introduced in
+  // OpenMP 5.1 and is not widely supported yet.
+
   // Loop for linear probing
   for (int attempt = 0; attempt < table_size_; ++attempt) {
     // Determine slot to check

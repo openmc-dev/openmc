@@ -71,6 +71,16 @@ extern const libMesh::Parallel::Communicator* libmesh_comm;
 
 //==============================================================================
 //! Helper class for keeping track of volume for each material in a mesh element
+//
+//! This class is used in Mesh::material_volumes to manage for each mesh element
+//! a list of (material, volume) pairs. The openmc.lib.Mesh class allocates two
+//! 2D arrays, one for materials and one for volumes. Because we don't know a
+//! priori how many materials there are in each element but at the same time we
+//! can't dynamically size an array at runtime for performance reasons, we
+//! assume a maximum number of materials per element. For each element, the set
+//! of material indices are stored in a hash table with twice as many slots as
+//! the assumed maximum number of materials per element. Collision resolution is
+//! handled by open addressing with linear probing.
 //==============================================================================
 
 namespace detail {

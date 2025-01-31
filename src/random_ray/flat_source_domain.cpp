@@ -1085,6 +1085,7 @@ void FlatSourceDomain::apply_mesh_to_cell_instances(int32_t i_cell,
           sr, source_regions_.mesh(sr),
           mesh_idx));
       }
+      //fmt::print("Applying mesh idx {} to source region {}\n", mesh_idx, sr);
       source_regions_.mesh(sr) = mesh_idx;
     }
   }

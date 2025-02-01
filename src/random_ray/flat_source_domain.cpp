@@ -8,6 +8,7 @@
 #include "openmc/mgxs_interface.h"
 #include "openmc/output.h"
 #include "openmc/plot.h"
+#include "openmc/random_ray/parallel_map.h"
 #include "openmc/random_ray/random_ray.h"
 #include "openmc/simulation.h"
 #include "openmc/tallies/filter.h"
@@ -1082,10 +1083,9 @@ void FlatSourceDomain::apply_mesh_to_cell_instances(int32_t i_cell,
         // print out the source region that is broken:
         fatal_error(fmt::format("Source region {} already has mesh idx {} "
                                 "applied, but trying to apply mesh idx {}",
-          sr, source_regions_.mesh(sr),
-          mesh_idx));
+          sr, source_regions_.mesh(sr), mesh_idx));
       }
-      //fmt::print("Applying mesh idx {} to source region {}\n", mesh_idx, sr);
+      // fmt::print("Applying mesh idx {} to source region {}\n", mesh_idx, sr);
       source_regions_.mesh(sr) = mesh_idx;
     }
   }

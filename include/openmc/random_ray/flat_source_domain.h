@@ -4,6 +4,7 @@
 #include "openmc/constants.h"
 #include "openmc/openmp_interface.h"
 #include "openmc/position.h"
+#include "openmc/random_ray/parallel_map.h"
 #include "openmc/random_ray/source_region.h"
 #include "openmc/source.h"
 #include <unordered_map>
@@ -94,6 +95,27 @@ public:
 
   // The abstract container holding all source region-specific data
   SourceRegionContainer source_regions_;
+
+  // Base source region container. When source region subdivision via mesh
+  // is in use, this container holds the original (non-subdivided) material
+  // filled cell instance source regions. These are useful as they can be
+  // initialized with external source and mesh domain information ahead of time.
+  // Then, dynamically discovered source regions can be initialized by cloning
+  // their base region.
+  SourceRegionContainer base_source_regions_;
+
+  // Parallel hash map holding all source regions discovered during
+  // a single iteration. This is a threadsafe data structure that is cleaned
+  // out after each iteration and stored in the "source_regions_" container.
+  // It is keyed with a SourceRegionKey, which combines the base source
+  // region index and the mesh bin.
+  ParallelMap<SourceRegionKey, SourceRegion, SourceRegionKey::HashFunctor>
+    discovered_source_regions_;
+
+  // Map that relates a SourceRegionKey to the index at which the source
+  // region can be found in the "source_regions_" container.
+  std::unordered_map<SourceRegionKey, int64_t, SourceRegionKey::HashFunctor>
+    source_region_map_;
 
 protected:
   //----------------------------------------------------------------------------

@@ -54,7 +54,7 @@ void openmc_run_random_ray()
     RandomRaySimulation sim;
 
     // Initialize fixed sources, if present
-    sim.prepare_fixed_sources();
+    sim.apply_fixed_sources_and_mesh_domains();
 
     // Begin main simulation timer
     simulation::time_total.start();
@@ -344,7 +344,7 @@ RandomRaySimulation::RandomRaySimulation()
   domain_->flatten_xs();
 }
 
-void RandomRaySimulation::prepare_fixed_sources()
+void RandomRaySimulation::apply_fixed_sources_and_mesh_domains()
 {
   if (settings::run_mode == RunMode::FIXED_SOURCE) {
     // Transfer external source user inputs onto random ray source regions
@@ -360,6 +360,7 @@ void RandomRaySimulation::prepare_fixed_sources_adjoint(
   if (settings::run_mode == RunMode::FIXED_SOURCE) {
     domain_->set_adjoint_sources(forward_flux);
   }
+  domain_->apply_meshes();
 }
 
 void RandomRaySimulation::simulate()

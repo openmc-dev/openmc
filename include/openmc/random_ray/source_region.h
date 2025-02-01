@@ -44,7 +44,7 @@ inline void hash_combine(size_t& seed, const size_t v)
 }
 
 //----------------------------------------------------------------------------
-// Helper Structs
+// Helper Structs and Classes
 
 // A mapping object that is used to map between a specific random ray
 // source region and an OpenMC native tally bin that it should score to
@@ -76,6 +76,38 @@ struct TallyTask {
       hash_combine(seed, task.filter_idx);
       hash_combine(seed, task.score_idx);
       hash_combine(seed, task.score_type);
+      return seed;
+    }
+  };
+};
+
+// The SourceRegionKey combines a base source region (i.e., a material
+// filled cell instance) with a mesh bin. This key is used as a handle
+// for dynamically discovered source regions when subdividing source
+// regions with meshes.
+class SourceRegionKey {
+public:
+  int64_t base_source_region_id;
+  int64_t mesh_bin;
+  SourceRegionKey() = default;
+  SourceRegionKey(int64_t source_region, int64_t bin)
+    : base_source_region_id(source_region), mesh_bin(bin)
+  {}
+
+  // Equality operator required by the unordered_map
+  bool operator==(const SourceRegionKey& other) const
+  {
+    return base_source_region_id == other.base_source_region_id &&
+           mesh_bin == other.mesh_bin;
+  }
+
+  // Hashing functor required by the unordered_map
+  struct HashFunctor {
+    size_t operator()(const SourceRegionKey& key) const
+    {
+      size_t seed = 0;
+      hash_combine(seed, key.base_source_region_id);
+      hash_combine(seed, key.mesh_bin);
       return seed;
     }
   };
@@ -339,7 +371,7 @@ public:
   }
 
   int& mesh(int64_t sr) { return mesh_[sr]; }
-  const int& mesh(int64_t sr) const { return mesh_[sr]; } 
+  const int& mesh(int64_t sr) const { return mesh_[sr]; }
 
   //----------------------------------------------------------------------------
   // Public Methods

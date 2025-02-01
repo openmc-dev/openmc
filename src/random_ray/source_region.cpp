@@ -37,6 +37,7 @@ SourceRegion::SourceRegion(int negroups, bool is_linear)
 //==============================================================================
 // SourceRegionContainer implementation
 //==============================================================================
+
 void SourceRegionContainer::push_back(const SourceRegion& sr)
 {
   n_source_regions_++;
@@ -233,6 +234,29 @@ void SourceRegionContainer::mpi_sync_ranks(bool reduce_position)
   }
 
 #endif
+}
+
+void SourceRegionContainer::reduce_to_base()
+{
+  lock_.clear();
+  volume_.clear();
+  volume_t_.clear();
+  volume_naive_.clear();
+  position_recorded_.clear();
+  position_.clear();
+  centroid_.clear();
+  centroid_iteration_.clear();
+  centroid_t_.clear();
+  mom_matrix_.clear();
+  mom_matrix_t_.clear();
+  volume_task_.clear();
+  scalar_flux_new_.clear();
+  scalar_flux_final_.clear();
+  source_gradients_.clear();
+  flux_moments_old_.clear();
+  flux_moments_new_.clear();
+  flux_moments_t_.clear();
+  tally_task_.clear();
 }
 
 } // namespace openmc

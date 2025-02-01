@@ -55,6 +55,7 @@ public:
     bool is_target_void);
   void apply_mesh_to_cell_and_children(int32_t i_cell, int32_t mesh_idx,
     int32_t target_material_id, bool is_target_void);
+  void prepare_base_source_regions();
 
   //----------------------------------------------------------------------------
   // Static Data members

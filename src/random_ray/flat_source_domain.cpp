@@ -8,7 +8,6 @@
 #include "openmc/mgxs_interface.h"
 #include "openmc/output.h"
 #include "openmc/plot.h"
-#include "openmc/random_ray/parallel_map.h"
 #include "openmc/random_ray/random_ray.h"
 #include "openmc/simulation.h"
 #include "openmc/tallies/filter.h"
@@ -48,7 +47,7 @@ FlatSourceDomain::FlatSourceDomain() : negroups_(data::mg.num_energy_groups_)
     }
   }
 
-  // Initialize cell-wise arrays
+  // Initialize source regions.
   bool is_linear = RandomRay::source_shape_ != RandomRaySourceShape::FLAT;
   source_regions_ = SourceRegionContainer(negroups_, is_linear);
   source_regions_.assign(n_source_regions_, SourceRegion(negroups_, is_linear));
@@ -123,7 +122,7 @@ void FlatSourceDomain::update_neutron_source(double k_eff)
 
   // Add scattering source
 #pragma omp parallel for
-  for (int64_t sr = 0; sr < n_source_regions_; sr++) {
+  for (int64_t sr = 0; sr < source_regions_.n_source_regions(); sr++) {
     int material = source_regions_.material(sr);
 
     for (int g_out = 0; g_out < negroups_; g_out++) {
@@ -143,7 +142,7 @@ void FlatSourceDomain::update_neutron_source(double k_eff)
 
   // Add fission source
 #pragma omp parallel for
-  for (int64_t sr = 0; sr < n_source_regions_; sr++) {
+  for (int64_t sr = 0; sr < source_regions_.n_source_regions(); sr++) {
     int material = source_regions_.material(sr);
 
     for (int g_out = 0; g_out < negroups_; g_out++) {
@@ -164,7 +163,7 @@ void FlatSourceDomain::update_neutron_source(double k_eff)
   // Add external source if in fixed source mode
   if (settings::run_mode == RunMode::FIXED_SOURCE) {
 #pragma omp parallel for
-    for (int64_t se = 0; se < n_source_elements_; se++) {
+    for (int64_t se = 0; se < source_regions_.n_source_elements(); se++) {
       source_regions_.source(se) += source_regions_.external_source(se);
     }
   }
@@ -1161,6 +1160,16 @@ void FlatSourceDomain::apply_meshes()
       }
     }
   }
+}
+
+void FlatSourceDomain::prepare_base_source_regions()
+{
+  std::swap(source_regions_, base_source_regions_);
+  source_regions_.negroups() = base_source_regions_.negroups();
+  source_regions_.is_linear() = base_source_regions_.is_linear();
+  // TODO: For now we leave this as full sized, but can call
+  // this function to reduce the memory usage if needed.
+  //base_source_regions_.reduce_to_base();
 }
 
 } // namespace openmc

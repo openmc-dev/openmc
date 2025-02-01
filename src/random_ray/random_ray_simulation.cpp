@@ -370,9 +370,10 @@ void RandomRaySimulation::simulate()
   for (const auto& [region, meshes] : FlatSourceDomain::source_region_meshes_) {
     std::cout << "Source Region " << region << ":\n";
     for (const auto& [domain, id] : meshes) {
-        std::cout << "  (" 
+        std::cout << "  ("
                   << (domain == Source::DomainType::UNIVERSE ? "UNIVERSE" :
-                      domain == Source::DomainType::MATERIAL ? "MATERIAL" : "CELL") 
+                      domain == Source::DomainType::MATERIAL ? "MATERIAL" :
+"CELL")
                   << ", " << id << ")\n";
     }
 }
@@ -380,7 +381,6 @@ void RandomRaySimulation::simulate()
 
   // Random ray power iteration loop
   while (simulation::current_batch < settings::n_batches) {
-
     // Initialize the current batch
     initialize_batch();
     initialize_generation();
@@ -394,6 +394,19 @@ void RandomRaySimulation::simulate()
     // Reset scalar fluxes, iteration volume tallies, and region hit flags to
     // zero
     domain_->batch_reset();
+
+    // At the beginning of the simulation, if mesh subvivision is in use, we
+    // need to swap the main source region container into the base container, as
+    // the main source region container will be used to hold the true subdivided
+    // source regions. The base container will therefore only contain the
+    // external source region information, the mesh indices, material
+    // properties, and initial guess values for the flux/source.
+    if (!FlatSourceDomain::mesh_domain_map_.empty() &&
+        simulation::current_batch == 1) {
+      domain_->prepare_base_source_regions();
+      // TODO: PLACEHOLDER FOR MESH SUBDIVISION - JUST COPY FROM BASE
+      domain_->source_regions_ = domain_->base_source_regions_;
+    }
 
     // Start timer for transport
     simulation::time_transport.start();

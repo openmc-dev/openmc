@@ -380,6 +380,13 @@ public:
   void assign(int n_source_regions, const SourceRegion& source_region);
   void flux_swap();
   void mpi_sync_ranks(bool reduce_position);
+  void reduce_to_base();
+  int64_t n_source_regions() const { return n_source_regions_; }
+  int64_t n_source_elements() const { return n_source_regions_ * negroups_; }
+  int& negroups() { return negroups_; }
+  const int& negroups() const { return negroups_; }
+  bool& is_linear() { return is_linear_; }
+  const bool& is_linear() const { return is_linear_; }
 
 private:
   //----------------------------------------------------------------------------
@@ -387,6 +394,7 @@ private:
   int64_t n_source_regions_ {0};
   int negroups_ {0};
   bool is_linear_ {false};
+
 
   // SoA storage for scalar fields (one item per source region)
   vector<int> material_;

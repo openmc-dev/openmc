@@ -41,7 +41,7 @@ void LinearSourceDomain::update_neutron_source(double k_eff)
   double inverse_k_eff = 1.0 / k_eff;
 
 #pragma omp parallel for
-  for (int64_t sr = 0; sr < n_source_regions_; sr++) {
+  for (int64_t sr = 0; sr < source_regions_.n_source_regions(); sr++) {
     int material = source_regions_.material(sr);
     MomentMatrix invM = source_regions_.mom_matrix(sr).inverse();
 
@@ -89,7 +89,7 @@ void LinearSourceDomain::update_neutron_source(double k_eff)
   if (settings::run_mode == RunMode::FIXED_SOURCE) {
 // Add external source to flat source term if in fixed source mode
 #pragma omp parallel for
-    for (int64_t se = 0; se < n_source_elements_; se++) {
+    for (int64_t se = 0; se < source_regions_.n_source_elements(); se++) {
       source_regions_.source(se) += source_regions_.external_source(se);
     }
   }

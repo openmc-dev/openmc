@@ -1210,10 +1210,9 @@ SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
   // occurs the first time the source region is discovered (typically in the
   // first power iteration). In this case, we need to handle creation of the new
   // source region and its storage into the temporary map. The new source region
-  // is created by copying the base source region and then setting the mesh bin.
+  // is created by copying the base source region.
   SourceRegion* sr_ptr = discovered_source_regions_.emplace(
     sr_key, {base_source_regions_.get_source_region_handle(sr)});
-  sr_ptr->mesh_ = mesh_bin;
   discovered_source_regions_.unlock(sr_key);
   return sr_ptr->get_source_region_handle();
 }

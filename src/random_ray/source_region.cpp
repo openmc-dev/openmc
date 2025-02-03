@@ -34,36 +34,18 @@ SourceRegion::SourceRegion(int negroups, bool is_linear)
   }
 }
 
-// New constructor
 SourceRegion::SourceRegion(const SourceRegionHandle& handle)
-  : material_(handle.material()), lock_(handle.lock()),
-    volume_(handle.volume()), volume_t_(handle.volume_t()),
-    volume_naive_(handle.volume_naive()),
-    position_recorded_(handle.position_recorded()),
-    external_source_present_(handle.external_source_present()),
-    position_(handle.position()), centroid_(handle.centroid()),
-    centroid_iteration_(handle.centroid_iteration()),
-    centroid_t_(handle.centroid_t()), mom_matrix_(handle.mom_matrix()),
-    mom_matrix_t_(handle.mom_matrix_t()), volume_task_(handle.volume_task()),
-    mesh_(handle.mesh()), scalar_flux_old_(handle.scalar_flux_old_,
-                            handle.scalar_flux_old_ + handle.negroups_),
-    scalar_flux_new_(
-      handle.scalar_flux_new_, handle.scalar_flux_new_ + handle.negroups_),
-    scalar_flux_final_(
-      handle.scalar_flux_final_, handle.scalar_flux_final_ + handle.negroups_),
-    source_(handle.source_, handle.source_ + handle.negroups_),
-    external_source_(
-      handle.external_source_, handle.external_source_ + handle.negroups_),
-    source_gradients_(
-      handle.source_gradients_, handle.source_gradients_ + handle.negroups_),
-    flux_moments_old_(
-      handle.flux_moments_old_, handle.flux_moments_old_ + handle.negroups_),
-    flux_moments_new_(
-      handle.flux_moments_new_, handle.flux_moments_new_ + handle.negroups_),
-    flux_moments_t_(
-      handle.flux_moments_t_, handle.flux_moments_t_ + handle.negroups_),
-    tally_task_(handle.tally_task_, handle.tally_task_ + handle.negroups_)
-{}
+  : SourceRegion(handle.negroups_, handle.mom_matrix_ != nullptr)
+{
+  material_ = handle.material();
+  external_source_present_ = handle.external_source_present();
+  mesh_ = handle.mesh();
+  for (int g = 0; g < scalar_flux_new_.size(); g++) {
+    scalar_flux_old_[g] = handle.scalar_flux_old_[g];
+    source_[g] = handle.source_[g];
+    external_source_[g] = handle.external_source_[g];
+  }
+}
 
 SourceRegionHandle SourceRegion::get_source_region_handle()
 {
@@ -334,11 +316,6 @@ SourceRegionHandle SourceRegionContainer::get_source_region_handle(int64_t sr)
   handle.position_recorded_ = &position_recorded(sr);
   handle.external_source_present_ = &external_source_present(sr);
   handle.position_ = &position(sr);
-  handle.centroid_ = &centroid(sr);
-  handle.centroid_iteration_ = &centroid_iteration(sr);
-  handle.centroid_t_ = &centroid_t(sr);
-  handle.mom_matrix_ = &mom_matrix(sr);
-  handle.mom_matrix_t_ = &mom_matrix_t(sr);
   handle.volume_task_ = &volume_task(sr);
   handle.mesh_ = &mesh(sr);
   handle.scalar_flux_old_ = &scalar_flux_old(sr, 0);
@@ -346,11 +323,20 @@ SourceRegionHandle SourceRegionContainer::get_source_region_handle(int64_t sr)
   handle.source_ = &source(sr, 0);
   handle.external_source_ = &external_source(sr, 0);
   handle.scalar_flux_final_ = &scalar_flux_final(sr, 0);
-  handle.source_gradients_ = &source_gradients(sr, 0);
-  handle.flux_moments_old_ = &flux_moments_old(sr, 0);
-  handle.flux_moments_new_ = &flux_moments_new(sr, 0);
-  handle.flux_moments_t_ = &flux_moments_t(sr, 0);
   handle.tally_task_ = &tally_task(sr, 0);
+
+  if (is_linear_) {
+    handle.centroid_ = &centroid(sr);
+    handle.centroid_iteration_ = &centroid_iteration(sr);
+    handle.centroid_t_ = &centroid_t(sr);
+    handle.mom_matrix_ = &mom_matrix(sr);
+    handle.mom_matrix_t_ = &mom_matrix_t(sr);
+    handle.source_gradients_ = &source_gradients(sr, 0);
+    handle.flux_moments_old_ = &flux_moments_old(sr, 0);
+    handle.flux_moments_new_ = &flux_moments_new(sr, 0);
+    handle.flux_moments_t_ = &flux_moments_t(sr, 0);
+  }
+
   return handle;
 }
 

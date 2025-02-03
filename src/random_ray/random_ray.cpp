@@ -283,8 +283,9 @@ void RandomRay::attenuate_flux(double distance, bool is_active)
 
   SourceRegionHandle srh;
   if (mesh_subdivision_enabled_) {
-    // TODO: Check map, then dynamic map
-    srh = domain_->source_regions_.get_source_region_handle(sr);
+    // TODO: supply correct mesh bin
+    int mesh_bin = 0;
+    srh = domain_->get_subdivided_source_region_handle(sr, mesh_bin);
   } else {
     srh = domain_->source_regions_.get_source_region_handle(sr);
   }

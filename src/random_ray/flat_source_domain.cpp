@@ -1197,22 +1197,25 @@ SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
   // on which key is used.
   discovered_source_regions_.lock(sr_key);
 
-  // If the key is found in the temporary map, then we return a handle to the 
+  // If the key is found in the temporary map, then we return a handle to the
   // source region that is stored in the temporary map.
   if (discovered_source_regions_.contains(sr_key)) {
-    SourceRegionHandle handle = discovered_source_regions_[sr_key].get_source_region_handle();
+    SourceRegionHandle handle =
+      discovered_source_regions_[sr_key].get_source_region_handle();
     discovered_source_regions_.unlock(sr_key);
     return handle;
-  } 
+  }
 
   // Case 3: The source region key is not present anywhere. This condition only
-  // occurs the first time the source region is discovered (typically in the first power iteration).
-  // In this case, we need to handle creation of the new source region and its storage into the
-  // temporary map.
-
-  SourceRegion sr_new = base_source_regions_.get_source_region(sr);
-
-  
+  // occurs the first time the source region is discovered (typically in the
+  // first power iteration). In this case, we need to handle creation of the new
+  // source region and its storage into the temporary map. The new source region
+  // is created by copying the base source region and then setting the mesh bin.
+  SourceRegion* sr_ptr = discovered_source_regions_.emplace(
+    sr_key, {base_source_regions_.get_source_region_handle(sr)});
+  sr_ptr->mesh_ = mesh_bin;
+  discovered_source_regions_.unlock(sr_key);
+  return sr_ptr->get_source_region_handle();
 }
 
 } // namespace openmc

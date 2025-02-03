@@ -51,7 +51,7 @@ public:
     return *bucket.map_[key].get();
   }
 
-  ValueType* emplace(KeyType& key, ValueType& value)
+  ValueType* emplace(KeyType& key, const ValueType& value)
   {
     Bucket& bucket = get_bucket(key);
     // Attempt to emplace the new element into the unordered_map within the

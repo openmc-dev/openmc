@@ -34,9 +34,41 @@ SourceRegion::SourceRegion(int negroups, bool is_linear)
   }
 }
 
+// New constructor
+SourceRegion::SourceRegion(const SourceRegionHandle& handle)
+  : material_(handle.material()), lock_(handle.lock()),
+    volume_(handle.volume()), volume_t_(handle.volume_t()),
+    volume_naive_(handle.volume_naive()),
+    position_recorded_(handle.position_recorded()),
+    external_source_present_(handle.external_source_present()),
+    position_(handle.position()), centroid_(handle.centroid()),
+    centroid_iteration_(handle.centroid_iteration()),
+    centroid_t_(handle.centroid_t()), mom_matrix_(handle.mom_matrix()),
+    mom_matrix_t_(handle.mom_matrix_t()), volume_task_(handle.volume_task()),
+    mesh_(handle.mesh()), scalar_flux_old_(handle.scalar_flux_old_,
+                            handle.scalar_flux_old_ + handle.negroups_),
+    scalar_flux_new_(
+      handle.scalar_flux_new_, handle.scalar_flux_new_ + handle.negroups_),
+    scalar_flux_final_(
+      handle.scalar_flux_final_, handle.scalar_flux_final_ + handle.negroups_),
+    source_(handle.source_, handle.source_ + handle.negroups_),
+    external_source_(
+      handle.external_source_, handle.external_source_ + handle.negroups_),
+    source_gradients_(
+      handle.source_gradients_, handle.source_gradients_ + handle.negroups_),
+    flux_moments_old_(
+      handle.flux_moments_old_, handle.flux_moments_old_ + handle.negroups_),
+    flux_moments_new_(
+      handle.flux_moments_new_, handle.flux_moments_new_ + handle.negroups_),
+    flux_moments_t_(
+      handle.flux_moments_t_, handle.flux_moments_t_ + handle.negroups_),
+    tally_task_(handle.tally_task_, handle.tally_task_ + handle.negroups_)
+{}
+
 SourceRegionHandle SourceRegion::get_source_region_handle()
 {
   SourceRegionHandle handle;
+  handle.negroups_ = scalar_flux_old_.size();
   handle.material_ = &material_;
   handle.lock_ = &lock_;
   handle.volume_ = &volume_;
@@ -293,6 +325,7 @@ void SourceRegionContainer::reduce_to_base()
 SourceRegionHandle SourceRegionContainer::get_source_region_handle(int64_t sr)
 {
   SourceRegionHandle handle;
+  handle.negroups_ = negroups();
   handle.material_ = &material(sr);
   handle.lock_ = &lock(sr);
   handle.volume_ = &volume(sr);

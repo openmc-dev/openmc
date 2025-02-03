@@ -441,6 +441,40 @@ class TolerantPyAPITestHarness(PyAPITestHarness):
         assert compare, 'Results do not agree'
 
 
+class WeightWindowPyAPITestHarness(PyAPITestHarness):
+    def _get_results(self):
+        """Digest info in the weight window file and return as a string."""
+        ww = openmc.hdf5_to_wws()[0]
+
+        # Access the weight window bounds
+        lower_bound = ww.lower_ww_bounds
+        upper_bound = ww.upper_ww_bounds
+
+        # Flatten both arrays
+        flattened_lower_bound = lower_bound.flatten()
+        flattened_upper_bound = upper_bound.flatten()
+
+        # Convert each element to a string in scientific notation with 2 decimal places
+        formatted_lower_bound = [f'{x:.2e}' for x in flattened_lower_bound]
+        formatted_upper_bound = [f'{x:.2e}' for x in flattened_upper_bound]
+
+        # Concatenate the formatted arrays
+        concatenated_strings = ["Lower Bounds"] + formatted_lower_bound + \
+            ["Upper Bounds"] + formatted_upper_bound
+
+        # Join the concatenated strings into a single string with newline characters
+        final_string = '\n'.join(concatenated_strings)
+
+        # Prepend the mesh text description and return final string
+        return str(ww.mesh) + final_string
+
+    def _cleanup(self):
+        super()._cleanup()
+        f = 'weight_windows.h5'
+        if os.path.exists(f):
+            os.remove(f)
+
+
 class PlotTestHarness(TestHarness):
     """Specialized TestHarness for running OpenMC plotting tests."""
     def __init__(self, plot_names, voxel_convert_checks=[]):

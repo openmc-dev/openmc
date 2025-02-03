@@ -1,9 +1,10 @@
 from __future__ import annotations
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from functools import lru_cache
 from pathlib import Path
-from numbers import Integral
-from tempfile import NamedTemporaryFile
+import math
+from numbers import Integral, Real
+from tempfile import NamedTemporaryFile, TemporaryDirectory
 import warnings
 
 import h5py
@@ -14,8 +15,9 @@ import openmc
 import openmc._xml as xml
 from openmc.dummy_comm import DummyCommunicator
 from openmc.executor import _process_CLI_arguments
-from openmc.checkvalue import check_type, check_value
+from openmc.checkvalue import check_type, check_value, PathLike
 from openmc.exceptions import InvalidIDError
+from openmc.plots import add_plot_params
 from openmc.utility_funcs import change_directory
 
 
@@ -64,22 +66,11 @@ class Model:
 
     def __init__(self, geometry=None, materials=None, settings=None,
                  tallies=None, plots=None):
-        self.geometry = openmc.Geometry()
-        self.materials = openmc.Materials()
-        self.settings = openmc.Settings()
-        self.tallies = openmc.Tallies()
-        self.plots = openmc.Plots()
-
-        if geometry is not None:
-            self.geometry = geometry
-        if materials is not None:
-            self.materials = materials
-        if settings is not None:
-            self.settings = settings
-        if tallies is not None:
-            self.tallies = tallies
-        if plots is not None:
-            self.plots = plots
+        self.geometry = openmc.Geometry() if geometry is None else geometry
+        self.materials = openmc.Materials() if materials is None else materials
+        self.settings = openmc.Settings() if settings is None else settings
+        self.tallies = openmc.Tallies() if tallies is None else tallies
+        self.plots = openmc.Plots() if plots is None else plots
 
     @property
     def geometry(self) -> openmc.Geometry | None:
@@ -140,6 +131,10 @@ class Model:
             del self._plots[:]
             for plot in plots:
                 self._plots.append(plot)
+
+    @property
+    def bounding_box(self) -> openmc.BoundingBox:
+        return self.geometry.bounding_box
 
     @property
     def is_initialized(self) -> bool:
@@ -615,7 +610,8 @@ class Model:
     def run(self, particles=None, threads=None, geometry_debug=False,
             restart_file=None, tracks=False, output=True, cwd='.',
             openmc_exec='openmc', mpi_args=None, event_based=None,
-            export_model_xml=True, **export_kwargs):
+            export_model_xml=True, apply_tally_results=False,
+            **export_kwargs):
         """Run OpenMC
 
         If the C API has been initialized, then the C API is used, otherwise,
@@ -665,6 +661,11 @@ class Model:
             to True.
 
             .. versionadded:: 0.13.3
+        apply_tally_results : bool
+            Whether to apply results of the final statepoint file to the
+            model's tally objects.
+
+            .. versionadded:: 0.15.1
         **export_kwargs
             Keyword arguments passed to either :meth:`Model.export_to_model_xml`
             or :meth:`Model.export_to_xml`.
@@ -736,6 +737,10 @@ class Model:
                 if mtime >= tstart:  # >= allows for poor clock resolution
                     tstart = mtime
                     last_statepoint = sp
+
+        if apply_tally_results:
+            self.apply_tally_results(last_statepoint)
+
         return last_statepoint
 
     def calculate_volumes(self, threads=None, output=True, cwd='.',
@@ -828,78 +833,207 @@ class Model:
                             openmc.lib.materials[domain_id].volume = \
                                 vol_calc.volumes[domain_id].n
 
+    @add_plot_params
     def plot(
         self,
+        origin: Sequence[float] | None = None,
+        width: Sequence[float] | None = None,
+        pixels: int | Sequence[int] = 40000,
+        basis: str = 'xy',
+        color_by: str = 'cell',
+        colors: dict | None = None,
+        seed: int | None = None,
+        openmc_exec: PathLike = 'openmc',
+        axes=None,
+        legend: bool = False,
+        axis_units: str = 'cm',
+        outline: bool | str = False,
         n_samples: int | None = None,
         plane_tolerance: float = 1.,
+        legend_kwargs: dict | None = None,
         source_kwargs: dict | None = None,
+        contour_kwargs: dict | None = None,
         **kwargs,
     ):
-        """Display a slice plot of the geometry.
+        """Display a slice plot of the model.
 
         .. versionadded:: 0.15.1
-
-        Parameters
-        ----------
-        n_samples : int, optional
-            The number of source particles to sample and add to plot. Defaults
-            to None which doesn't plot any particles on the plot.
-        plane_tolerance: float
-            When plotting a plane the source locations within the plane +/-
-            the plane_tolerance will be included and those outside of the
-            plane_tolerance will not be shown
-        source_kwargs : dict, optional
-            Keyword arguments passed to :func:`matplotlib.pyplot.scatter`.
-        **kwargs
-            Keyword arguments passed to :func:`openmc.Universe.plot`
-
-        Returns
-        -------
-        matplotlib.axes.Axes
-            Axes containing resulting image
         """
+        import matplotlib.image as mpimg
+        import matplotlib.patches as mpatches
+        import matplotlib.pyplot as plt
 
         check_type('n_samples', n_samples, int | None)
-        check_type('plane_tolerance', plane_tolerance, float)
+        check_type('plane_tolerance', plane_tolerance, Real)
+        if legend_kwargs is None:
+            legend_kwargs = {}
+        legend_kwargs.setdefault('bbox_to_anchor', (1.05, 1))
+        legend_kwargs.setdefault('loc', 2)
+        legend_kwargs.setdefault('borderaxespad', 0.0)
         if source_kwargs is None:
             source_kwargs = {}
         source_kwargs.setdefault('marker', 'x')
 
-        ax = self.geometry.plot(**kwargs)
+        # Determine extents of plot
+        if basis == 'xy':
+            x, y, z = 0, 1, 2
+            xlabel, ylabel = f'x [{axis_units}]', f'y [{axis_units}]'
+        elif basis == 'yz':
+            x, y, z = 1, 2, 0
+            xlabel, ylabel = f'y [{axis_units}]', f'z [{axis_units}]'
+        elif basis == 'xz':
+            x, y, z = 0, 2, 1
+            xlabel, ylabel = f'x [{axis_units}]', f'z [{axis_units}]'
+
+        bb = self.bounding_box
+        # checks to see if bounding box contains -inf or inf values
+        if np.isinf(bb.extent[basis]).any():
+            if origin is None:
+                origin = (0, 0, 0)
+            if width is None:
+                width = (10, 10)
+        else:
+            if origin is None:
+                # if nan values in the bb.center they get replaced with 0.0
+                # this happens when the bounding_box contains inf values
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore", RuntimeWarning)
+                    origin = np.nan_to_num(bb.center)
+            if width is None:
+                bb_width = bb.width
+                width = (bb_width[x], bb_width[y])
+
+        if isinstance(pixels, int):
+            aspect_ratio = width[0] / width[1]
+            pixels_y = math.sqrt(pixels / aspect_ratio)
+            pixels = (int(pixels / pixels_y), int(pixels_y))
+
+        axis_scaling_factor = {'km': 0.00001, 'm': 0.01, 'cm': 1, 'mm': 10}
+
+        x_min = (origin[x] - 0.5*width[0]) * axis_scaling_factor[axis_units]
+        x_max = (origin[x] + 0.5*width[0]) * axis_scaling_factor[axis_units]
+        y_min = (origin[y] - 0.5*width[1]) * axis_scaling_factor[axis_units]
+        y_max = (origin[y] + 0.5*width[1]) * axis_scaling_factor[axis_units]
+
+        with TemporaryDirectory() as tmpdir:
+            if seed is not None:
+                self.settings.plot_seed = seed
+
+            # Create plot object matching passed arguments
+            plot = openmc.Plot()
+            plot.origin = origin
+            plot.width = width
+            plot.pixels = pixels
+            plot.basis = basis
+            plot.color_by = color_by
+            if colors is not None:
+                plot.colors = colors
+            self.plots.append(plot)
+
+            # Run OpenMC in geometry plotting mode
+            self.plot_geometry(False, cwd=tmpdir, openmc_exec=openmc_exec)
+
+            # Read image from file
+            img_path = Path(tmpdir) / f'plot_{plot.id}.png'
+            if not img_path.is_file():
+                img_path = img_path.with_suffix('.ppm')
+            img = mpimg.imread(str(img_path))
+
+            # Create a figure sized such that the size of the axes within
+            # exactly matches the number of pixels specified
+            if axes is None:
+                px = 1/plt.rcParams['figure.dpi']
+                fig, axes = plt.subplots()
+                axes.set_xlabel(xlabel)
+                axes.set_ylabel(ylabel)
+                params = fig.subplotpars
+                width = pixels[0]*px/(params.right - params.left)
+                height = pixels[1]*px/(params.top - params.bottom)
+                fig.set_size_inches(width, height)
+
+            if outline:
+                # Combine R, G, B values into a single int
+                rgb = (img * 256).astype(int)
+                image_value = (rgb[..., 0] << 16) + \
+                    (rgb[..., 1] << 8) + (rgb[..., 2])
+
+                # Set default arguments for contour()
+                if contour_kwargs is None:
+                    contour_kwargs = {}
+                contour_kwargs.setdefault('colors', 'k')
+                contour_kwargs.setdefault('linestyles', 'solid')
+                contour_kwargs.setdefault('algorithm', 'serial')
+
+                axes.contour(
+                    image_value,
+                    origin="upper",
+                    levels=np.unique(image_value),
+                    extent=(x_min, x_max, y_min, y_max),
+                    **contour_kwargs
+                )
+
+            # add legend showing which colors represent which material
+            # or cell if that was requested
+            if legend:
+                if plot.colors == {}:
+                    raise ValueError("Must pass 'colors' dictionary if you "
+                                     "are adding a legend via legend=True.")
+
+                if color_by == "cell":
+                    expected_key_type = openmc.Cell
+                else:
+                    expected_key_type = openmc.Material
+
+                patches = []
+                for key, color in plot.colors.items():
+
+                    if isinstance(key, int):
+                        raise TypeError(
+                            "Cannot use IDs in colors dict for auto legend.")
+                    elif not isinstance(key, expected_key_type):
+                        raise TypeError(
+                            "Color dict key type does not match color_by")
+
+                    # this works whether we're doing cells or materials
+                    label = key.name if key.name != '' else key.id
+
+                    # matplotlib takes RGB on 0-1 scale rather than 0-255. at
+                    # this point PlotBase has already checked that 3-tuple
+                    # based colors are already valid, so if the length is three
+                    # then we know it just needs to be converted to the 0-1
+                    # format.
+                    if len(color) == 3 and not isinstance(color, str):
+                        scaled_color = (
+                            color[0]/255, color[1]/255, color[2]/255)
+                    else:
+                        scaled_color = color
+
+                    key_patch = mpatches.Patch(color=scaled_color, label=label)
+                    patches.append(key_patch)
+
+                axes.legend(handles=patches, **legend_kwargs)
+
+            # Plot image and return the axes
+            if outline != 'only':
+                axes.imshow(img, extent=(x_min, x_max, y_min, y_max), **kwargs)
+
+
         if n_samples:
             # Sample external source particles
             particles = self.sample_external_source(n_samples)
 
-            # Determine plotting parameters and bounding box of geometry
-            bbox = self.geometry.bounding_box
-            origin = kwargs.get('origin', None)
-            basis = kwargs.get('basis', 'xy')
-            indices = {'xy': (0, 1, 2), 'xz': (0, 2, 1), 'yz': (1, 2, 0)}[basis]
-
-            # Infer origin if not provided
-            if np.isinf(bbox.extent[basis]).any():
-                if origin is None:
-                    origin = (0, 0, 0)
-            else:
-                if origin is None:
-                    # if nan values in the bbox.center they get replaced with 0.0
-                    # this happens when the bounding_box contains inf values
-                    with warnings.catch_warnings():
-                        warnings.simplefilter("ignore", RuntimeWarning)
-                        origin = np.nan_to_num(bbox.center)
-
-            slice_index = indices[2]
-            slice_value = origin[slice_index]
-
+            # Get points within tolerance of the slice plane
+            slice_value = origin[z]
             xs = []
             ys = []
             tol = plane_tolerance
             for particle in particles:
-                if (slice_value - tol < particle.r[slice_index] < slice_value + tol):
-                    xs.append(particle.r[indices[0]])
-                    ys.append(particle.r[indices[1]])
-            ax.scatter(xs, ys, **source_kwargs)
-        return ax
+                if (slice_value - tol < particle.r[z] < slice_value + tol):
+                    xs.append(particle.r[x])
+                    ys.append(particle.r[y])
+            axes.scatter(xs, ys, **source_kwargs)
+
+        return axes
 
     def sample_external_source(
             self,
@@ -942,6 +1076,16 @@ class Model:
                 return openmc.lib.sample_external_source(
                     n_samples=n_samples, prn_seed=prn_seed
                 )
+
+    def apply_tally_results(self, statepoint: PathLike | openmc.StatePoint):
+        """Apply results from a statepoint to tally objects on the Model
+
+        Parameters
+        ----------
+        statepoint : PathLike or openmc.StatePoint
+            Statepoint file used to update tally results
+        """
+        self.tallies.add_results(statepoint)
 
     def plot_geometry(self, output=True, cwd='.', openmc_exec='openmc',
                       export_model_xml=True, **export_kwargs):
@@ -1190,7 +1334,7 @@ class Model:
         diff_volume_method : str
             Specifies how the volumes of the new materials should be found.
             - None: Do not assign volumes to the new materials (Default)
-            - 'divide_equally': Divide the original material volume equally between the new materials
+            - 'divide equally': Divide the original material volume equally between the new materials
             - 'match cell': Set the volume of the material to the volume of the cell they fill
         """
         self.differentiate_mats(diff_volume_method, depletable_only=True)
@@ -1205,7 +1349,7 @@ class Model:
         diff_volume_method : str
             Specifies how the volumes of the new materials should be found.
             - None: Do not assign volumes to the new materials (Default)
-            - 'divide_equally': Divide the original material volume equally between the new materials
+            - 'divide equally': Divide the original material volume equally between the new materials
             - 'match cell': Set the volume of the material to the volume of the cell they fill
         depletable_only : bool
             Default is True, only depletable materials will be differentiated. If False, all materials will be
@@ -1216,9 +1360,15 @@ class Model:
         # Count the number of instances for each cell and material
         self.geometry.determine_paths(instances_only=True)
 
+        # Get list of materials
+        if self.materials:
+            materials = self.materials
+        else:
+            materials = list(self.geometry.get_all_materials().values())
+
         # Find all or depletable_only materials which have multiple instance
         distribmats = set()
-        for mat in self.materials:
+        for mat in materials:
             # Differentiate all materials with multiple instances
             diff_mat = mat.num_instances > 1
             # If depletable_only is True, differentiate only depletable materials
@@ -1250,11 +1400,20 @@ class Model:
         for cell in self.geometry.get_all_material_cells().values():
             if cell.fill in distribmats:
                 mat = cell.fill
-                if diff_volume_method != 'match cell':
+
+                # Clone materials
+                if cell.num_instances > 1:
                     cell.fill = [mat.clone() for _ in range(cell.num_instances)]
-                elif diff_volume_method == 'match cell':
+                else:
                     cell.fill = mat.clone()
-                    cell.fill.volume = cell.volume
+
+                # For 'match cell', assign volumes based on the cells
+                if diff_volume_method == 'match cell':
+                    if cell.fill_type == 'distribmat':
+                        for clone_mat in cell.fill:
+                            clone_mat.volume = cell.volume
+                    else:
+                        cell.fill.volume = cell.volume
 
         if self.materials is not None:
             self.materials = openmc.Materials(

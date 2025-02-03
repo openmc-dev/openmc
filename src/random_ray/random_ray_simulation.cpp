@@ -173,6 +173,7 @@ void validate_random_ray_inputs()
       case FilterType::MATERIAL:
       case FilterType::MESH:
       case FilterType::UNIVERSE:
+      case FilterType::PARTICLE:
         break;
       default:
         fatal_error("Invalid filter specified. Only cell, cell_instance, "

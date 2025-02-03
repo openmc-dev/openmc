@@ -446,10 +446,9 @@ void finalize_batch()
 
     // Write a continously-overwritten source point if requested.
     if (settings::source_latest) {
-      // note: correct file extension appended automatically
       auto filename = settings::path_output + "source";
       gsl::span<SourceSite> bankspan(simulation::source_bank);
-      write_source_point(filename.c_str(), bankspan, simulation::work_index,
+      write_source_point(filename, bankspan, simulation::work_index,
         settings::source_mcpl_write);
     }
   }

@@ -185,10 +185,14 @@ struct CacheDataMG {
 
 struct BoundaryInfo {
   double distance {INFINITY}; //!< distance to nearest boundary
-  int surface_index {0}; //!< if boundary is surface, index in surfaces vector
-  int coord_level;       //!< coordinate level after crossing boundary
+  int surface {
+    SURFACE_NONE}; //!< surface token, non-zero if boundary is surface
+  int coord_level; //!< coordinate level after crossing boundary
   array<int, 3>
     lattice_translation {}; //!< which way lattice indices will change
+
+  // TODO: off-by-one
+  int surface_index() const { return std::abs(surface) - 1; }
 };
 
 /*
@@ -226,7 +230,7 @@ public:
   void init_from_r_u(Position r_a, Direction u_a)
   {
     clear();
-    surface() = 0;
+    surface() = SURFACE_NONE;
     material() = C_NONE;
     r() = r_a;
     u() = u_a;
@@ -296,9 +300,16 @@ public:
   Direction& u_local() { return coord_[n_coord_ - 1].u; }
   const Direction& u_local() const { return coord_[n_coord_ - 1].u; }
 
-  // Surface that the particle is on
+  // Surface token for the surface that the particle is currently on
   int& surface() { return surface_; }
   const int& surface() const { return surface_; }
+
+  // Surface index based on the current value of the surface_ attribute
+  int surface_index() const
+  {
+    // TODO: off-by-one
+    return std::abs(surface_) - 1;
+  }
 
   // Boundary information
   BoundaryInfo& boundary() { return boundary_; }
@@ -337,7 +348,8 @@ private:
   Position r_last_;         //!< previous coordinates
   Direction u_last_;        //!< previous direction coordinates
 
-  int surface_ {0}; //!< index for surface particle is on
+  int surface_ {
+    SURFACE_NONE}; //!< surface token for surface the particle is currently on
 
   BoundaryInfo boundary_; //!< Info about the next intersection
 
@@ -418,7 +430,7 @@ private:
   int delayed_group_ {0};
 
   int n_bank_ {0};
-  int n_bank_second_ {0};
+  double bank_second_E_ {0.0};
   double wgt_bank_ {0.0};
   int n_delayed_bank_[MAX_DELAYED_GROUPS];
 
@@ -532,11 +544,13 @@ public:
   int& delayed_group() { return delayed_group_; } // delayed group
 
   // Post-collision data
-  int& n_bank() { return n_bank_; } // number of banked fission sites
-  int& n_bank_second()
+  double& bank_second_E()
   {
-    return n_bank_second_;
-  }                                        // number of secondaries banked
+    return bank_second_E_;
+  } // energy of last reaction secondaries
+  const double& bank_second_E() const { return bank_second_E_; }
+
+  int& n_bank() { return n_bank_; }        // number of banked fission sites
   double& wgt_bank() { return wgt_bank_; } // weight of banked fission sites
   int* n_delayed_bank()
   {

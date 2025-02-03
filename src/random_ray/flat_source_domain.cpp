@@ -50,7 +50,8 @@ FlatSourceDomain::FlatSourceDomain() : negroups_(data::mg.num_energy_groups_)
   // Initialize source regions.
   bool is_linear = RandomRay::source_shape_ != RandomRaySourceShape::FLAT;
   source_regions_ = SourceRegionContainer(negroups_, is_linear);
-  source_regions_.assign(base_source_regions, SourceRegion(negroups_, is_linear));
+  source_regions_.assign(
+    base_source_regions, SourceRegion(negroups_, is_linear));
 
   // Initialize materials
   int64_t source_region_id = 0;
@@ -228,8 +229,8 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
 
     double volume_simulation_avg = source_regions_.volume(sr);
     double volume_iteration = source_regions_.volume_naive(sr);
-    //fmt::print("Volume Simulation Avg: {}\n", volume_simulation_avg);
-    //fmt::print("Volume Iteration: {}\n", volume_iteration);
+    // fmt::print("Volume Simulation Avg: {}\n", volume_simulation_avg);
+    // fmt::print("Volume Iteration: {}\n", volume_iteration);
 
     // Increment the number of hits if cell was hit this iteration
     if (volume_iteration) {
@@ -1171,11 +1172,11 @@ void FlatSourceDomain::prepare_base_source_regions()
   source_regions_.is_linear() = base_source_regions_.is_linear();
   // TODO: For now we leave this as full sized, but can call
   // this function to reduce the memory usage if needed.
-  // base_source_regions_.reduce_to_base();
+  base_source_regions_.reduce_to_base();
 }
 
 SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
-  int64_t sr, int mesh_bin)
+  int64_t sr, int mesh_bin, Position r)
 {
   SourceRegionKey sr_key {sr, mesh_bin};
 
@@ -1208,11 +1209,47 @@ SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
     return handle;
   }
 
-  // Case 3: The source region key is not present anywhere. This condition only
-  // occurs the first time the source region is discovered (typically in the
-  // first power iteration). In this case, we need to handle creation of the new
-  // source region and its storage into the temporary map. The new source region
-  // is created by copying the base source region.
+  // Case 3: The source region key is not present anywhere, but it is only
+  // due to floating point roundoff differences. To filter out this case, before
+  // we create the new source region, wedouble check that the actual starting
+  // point of this segment (r) is exactly where we expect. In some cases, the
+  // expected location may not be the actual location due to floating point
+  // roundoff when computing the segment lengths through the base source region.
+  GeometryState gs;
+  gs.r() = r;
+  exhaustive_find_cell(gs);
+  int gs_i_cell = gs.lowest_coord().cell;
+  int64_t sr_found = source_region_offsets_[gs_i_cell] + gs.cell_instance();
+  if (sr_found != sr) {
+    warning(fmt::format(
+      "Observed Source Region Mismatch! Expected sr {}, found sr {}", sr,
+      sr_found));
+    discovered_source_regions_.unlock(sr_key);
+    return get_subdivided_source_region_handle(sr_found, mesh_bin, r);
+  }
+  int mesh_idx = base_source_regions_.mesh(sr);
+  if (mesh_idx == C_NONE) {
+    if (mesh_bin != 0) {
+      discovered_source_regions_.unlock(sr_key);
+      return get_subdivided_source_region_handle(sr, 0, r);
+    }
+  } else {
+    Mesh* mesh = model::meshes[mesh_idx].get();
+    int bin_found = mesh->get_bin(r);
+    if (bin_found != mesh_bin) {
+      warning(
+        fmt::format("Observed Bin Mismatch! Expected bin {}, found bin {}",
+          mesh_bin, bin_found));
+      discovered_source_regions_.unlock(sr_key);
+      return get_subdivided_source_region_handle(sr, bin_found, r);
+    }
+  }
+
+  // Case 4: The source region key is valid, but is not present anywhere. This
+  // condition only occurs the first time the source region is discovered
+  // (typically in the first power iteration). In this case, we need to handle
+  // creation of the new source region and its storage into the temporary map.
+  // The new source region is created by copying the base source region.
   SourceRegion* sr_ptr = discovered_source_regions_.emplace(
     sr_key, {base_source_regions_.get_source_region_handle(sr)});
   discovered_source_regions_.unlock(sr_key);

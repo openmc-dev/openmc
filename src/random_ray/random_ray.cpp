@@ -259,7 +259,7 @@ void RandomRay::event_advance_ray()
         wgt() = 0.0;
       }
 
-      attenuate_flux(distance_alive, true);
+      attenuate_flux(distance_alive, true, distance_dead);
       distance_travelled_ = distance_alive;
     } else {
       distance_travelled_ += distance;
@@ -273,19 +273,68 @@ void RandomRay::event_advance_ray()
   }
 }
 
-void RandomRay::attenuate_flux(double distance, bool is_active)
+void RandomRay::attenuate_flux(double distance, bool is_active, double offset)
 {
+  if (distance < 2.0 * TINY_BIT) {
+    return;
+  }
   // Determine source region index etc.
   int i_cell = lowest_coord().cell;
 
   // The source region is the spatial region index
   int64_t sr = domain_->source_region_offsets_[i_cell] + cell_instance();
 
+  // Perform ray tracing across mesh
+  if (mesh_subdivision_enabled_) {
+    // Determine the mesh index for the base source region, if any
+    int mesh_idx = domain_->base_source_regions_.mesh(sr);
+
+    if (mesh_idx == C_NONE) {
+      // If there's no mesh being applied to this cell, then
+      // we just attenuate the flux as normal, and set
+      // the mesh bin to 0
+      attenuate_flux_inner(distance, is_active, sr, 0, r());
+    } else {
+      // If there is a mesh being applied to this cell, then
+      // we loop over all the bin crossings and attenuate
+      // separately.
+      Mesh* mesh = model::meshes[mesh_idx].get();
+      vector<int> bins;
+      vector<double> fractional_lengths;
+      Position start = r() + offset * u();
+      start = start + TINY_BIT * u();
+
+      Position end = r() + (offset + distance) * u();
+      end = end - TINY_BIT * u();
+      // Position start = r() + (offset) * u();
+      // Position end = r() + (offset + distance) * u();
+      mesh->bins_crossed(start, end, u(), bins, fractional_lengths);
+      for (int b = 0; b < bins.size(); b++) {
+        int bin = bins[b];
+
+        // Only validate/adjust bins if finding a new FSR.
+        // Otherwise, we just accept the data as valid.
+        // For now though, let's see if this trips...
+
+       
+
+        double physical_length = distance * fractional_lengths[b];
+        attenuate_flux_inner(physical_length, is_active, sr, bin, start);
+        offset += physical_length;
+        start = r() + (offset + TINY_BIT) * u();
+      }
+    }
+  } else {
+    attenuate_flux_inner(distance, is_active, sr, C_NONE, r());
+  }
+}
+
+void RandomRay::attenuate_flux_inner(
+  double distance, bool is_active, int64_t sr, int mesh_bin, Position r)
+{
   SourceRegionHandle srh;
   if (mesh_subdivision_enabled_) {
-    // TODO: supply correct mesh bin
-    int mesh_bin = 0;
-    srh = domain_->get_subdivided_source_region_handle(sr, mesh_bin);
+    srh = domain_->get_subdivided_source_region_handle(sr, mesh_bin, r);
   } else {
     srh = domain_->source_regions_.get_source_region_handle(sr);
   }
@@ -541,9 +590,15 @@ void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
 
   SourceRegionHandle srh;
   if (mesh_subdivision_enabled_) {
-    // TODO: supply correct mesh bin
-    int mesh_bin = 0;
-    srh = domain_->get_subdivided_source_region_handle(sr, mesh_bin);
+    int mesh_idx = domain_->base_source_regions_.mesh(sr);
+    int mesh_bin;
+    if (mesh_idx == C_NONE) {
+      mesh_bin = 0;
+    } else {
+      Mesh* mesh = model::meshes[mesh_idx].get();
+      mesh_bin = mesh->get_bin(r());
+    }
+    srh = domain_->get_subdivided_source_region_handle(sr, mesh_bin, r());
   } else {
     srh = domain_->source_regions_.get_source_region_handle(sr);
   }

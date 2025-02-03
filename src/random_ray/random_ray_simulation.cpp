@@ -401,11 +401,11 @@ void RandomRaySimulation::simulate()
     // source regions. The base container will therefore only contain the
     // external source region information, the mesh indices, material
     // properties, and initial guess values for the flux/source.
-    if (!FlatSourceDomain::mesh_domain_map_.empty() &&
+    if (RandomRay::mesh_subdivision_enabled_ &&
         simulation::current_batch == 1) {
       domain_->prepare_base_source_regions();
       // TODO: PLACEHOLDER FOR MESH SUBDIVISION - JUST COPY FROM BASE
-      domain_->source_regions_ = domain_->base_source_regions_;
+      //domain_->source_regions_ = domain_->base_source_regions_;
     }
 
     // Start timer for transport
@@ -421,6 +421,12 @@ void RandomRaySimulation::simulate()
     }
 
     simulation::time_transport.stop();
+
+    // If using mesh subdivision, add any newly discovered source regions
+    // to the main source region container.
+    if (RandomRay::mesh_subdivision_enabled_) {
+      domain_->finalize_discovered_source_regions();
+    }
 
     // If using multiple MPI ranks, perform all reduce on all transport results
     domain_->all_reduce_replicated_source_regions();
@@ -489,7 +495,7 @@ void RandomRaySimulation::output_simulation_results() const
   if (mpi::master) {
     print_results_random_ray(total_geometric_intersections_,
       avg_miss_rate_ / settings::n_batches, negroups_,
-      domain_->n_source_regions_, domain_->n_external_source_regions_);
+      domain_->n_source_regions(), domain_->n_external_source_regions_);
     if (model::plots.size() > 0) {
       domain_->output_to_vtk();
     }
@@ -501,8 +507,10 @@ void RandomRaySimulation::output_simulation_results() const
 void RandomRaySimulation::instability_check(
   int64_t n_hits, double k_eff, double& avg_miss_rate) const
 {
-  double percent_missed = ((domain_->n_source_regions_ - n_hits) /
-                            static_cast<double>(domain_->n_source_regions_)) *
+  fmt::print("Hits: {}\n", n_hits);
+  fmt::print("Num Source Regions: {}\n", domain_->n_source_regions());
+  double percent_missed = ((domain_->n_source_regions() - n_hits) /
+                            static_cast<double>(domain_->n_source_regions())) *
                           100.0;
   avg_miss_rate += percent_missed;
 

@@ -56,7 +56,17 @@ public:
   void apply_mesh_to_cell_and_children(int32_t i_cell, int32_t mesh_idx,
     int32_t target_material_id, bool is_target_void);
   void prepare_base_source_regions();
-  SourceRegionHandle get_subdivided_source_region_handle(int64_t sr, int mesh_bin);
+  SourceRegionHandle get_subdivided_source_region_handle(
+    int64_t sr, int mesh_bin);
+  void finalize_discovered_source_regions();
+  int64_t n_source_regions() const
+  {
+    return source_regions_.n_source_regions();
+  }
+  int64_t n_source_elements() const
+  {
+    return source_regions_.n_source_regions() * negroups_;
+  }
 
   //----------------------------------------------------------------------------
   // Static Data members
@@ -75,7 +85,6 @@ public:
   // Public Data members
   bool mapped_all_tallies_ {false}; // If all source regions have been visited
 
-  int64_t n_source_regions_ {0}; // Total number of source regions in the model
   int64_t n_external_source_regions_ {0}; // Total number of source regions with
                                           // non-zero external source terms
 
@@ -135,9 +144,7 @@ protected:
 
   //----------------------------------------------------------------------------
   // Private data members
-  int negroups_;                  // Number of energy groups in simulation
-  int64_t n_source_elements_ {0}; // Total number of source regions in the model
-                                  // times the number of energy groups
+  int negroups_; // Number of energy groups in simulation
 
   double
     simulation_volume_; // Total physical volume of the simulation domain, as

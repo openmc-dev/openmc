@@ -539,8 +539,17 @@ void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
   int i_cell = lowest_coord().cell;
   int64_t sr = domain_->source_region_offsets_[i_cell] + cell_instance();
 
+  SourceRegionHandle srh;
+  if (mesh_subdivision_enabled_) {
+    // TODO: supply correct mesh bin
+    int mesh_bin = 0;
+    srh = domain_->get_subdivided_source_region_handle(sr, mesh_bin);
+  } else {
+    srh = domain_->source_regions_.get_source_region_handle(sr);
+  }
+
   for (int g = 0; g < negroups_; g++) {
-    angular_flux_[g] = domain_->source_regions_.source(sr, g);
+    angular_flux_[g] = srh.source(g);
   }
 }
 

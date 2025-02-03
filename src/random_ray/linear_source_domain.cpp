@@ -24,12 +24,12 @@ void LinearSourceDomain::batch_reset()
 {
   FlatSourceDomain::batch_reset();
 #pragma omp parallel for
-  for (int64_t sr = 0; sr < n_source_regions_; sr++) {
+  for (int64_t sr = 0; sr < n_source_regions(); sr++) {
     source_regions_.centroid_iteration(sr) = {0.0, 0.0, 0.0};
     source_regions_.mom_matrix(sr) = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
   }
 #pragma omp parallel for
-  for (int64_t se = 0; se < n_source_elements_; se++) {
+  for (int64_t se = 0; se < n_source_elements(); se++) {
     source_regions_.flux_moments_new(se) = {0.0, 0.0, 0.0};
   }
 }
@@ -106,7 +106,7 @@ void LinearSourceDomain::normalize_scalar_flux_and_volumes(
 
 // Normalize flux to total distance travelled by all rays this iteration
 #pragma omp parallel for
-  for (int64_t se = 0; se < n_source_elements_; se++) {
+  for (int64_t se = 0; se < n_source_elements(); se++) {
     source_regions_.scalar_flux_new(se) *= normalization_factor;
     source_regions_.flux_moments_new(se) *= normalization_factor;
   }
@@ -114,7 +114,7 @@ void LinearSourceDomain::normalize_scalar_flux_and_volumes(
 // Accumulate cell-wise ray length tallies collected this iteration, then
 // update the simulation-averaged cell-wise volume estimates
 #pragma omp parallel for
-  for (int64_t sr = 0; sr < n_source_regions_; sr++) {
+  for (int64_t sr = 0; sr < n_source_regions(); sr++) {
     source_regions_.centroid_t(sr) += source_regions_.centroid_iteration(sr);
     source_regions_.mom_matrix_t(sr) += source_regions_.mom_matrix(sr);
     source_regions_.volume_t(sr) += source_regions_.volume(sr);
@@ -153,7 +153,7 @@ void LinearSourceDomain::accumulate_iteration_flux()
 
   // Accumulate scalar flux moments
 #pragma omp parallel for
-  for (int64_t se = 0; se < n_source_elements_; se++) {
+  for (int64_t se = 0; se < n_source_elements(); se++) {
     source_regions_.flux_moments_t(se) += source_regions_.flux_moments_new(se);
   }
 }

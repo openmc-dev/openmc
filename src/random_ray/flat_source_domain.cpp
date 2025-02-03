@@ -1176,7 +1176,7 @@ void FlatSourceDomain::prepare_base_source_regions()
 }
 
 SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
-  int64_t sr, int mesh_bin, Position r)
+  int64_t sr, int mesh_bin, Position r, double dist, Direction u)
 {
   SourceRegionKey sr_key {sr, mesh_bin};
 
@@ -1210,38 +1210,64 @@ SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
   }
 
   // Case 3: The source region key is not present anywhere, but it is only
-  // due to floating point roundoff differences. To filter out this case, before
-  // we create the new source region, wedouble check that the actual starting
-  // point of this segment (r) is exactly where we expect. In some cases, the
-  // expected location may not be the actual location due to floating point
-  // roundoff when computing the segment lengths through the base source region.
+  // due to floating point artifacts. These artifacts occur when the overlaid
+  // mesh confirms to actual geometry surfaces. In these cases, roundoff error
+  // may result in the ray tracer detecting an additional (very short) segment
+  // though a mesh bin that is actually past the physical source region
+  // boundary. To filter out this case, before we create the new source region,
+  // we double check that the actual starting point of this segment (r) is still
+  // in the same geometry source region that we started in. If an artifact is
+  // detected, we discard the segment (and attenuation through it) as it is not
+  // a valid source region. It is invalid because in the next ray trace, the ray
+  // will cross the source region boundary and we will process that first
+  // segment correctly. We might consider using the correctly looked up
+  // information below, but this would basically "double count" the segment,
+  // leading to an overestimate of the flux in the source region. It would
+  // probably be hard to detect the bias, given the small size of such segments,
+  // but nonetheless it is worthwhile to just skip this source region since it
+  // is unphysical.
   GeometryState gs;
   gs.r() = r;
   exhaustive_find_cell(gs);
   int gs_i_cell = gs.lowest_coord().cell;
   int64_t sr_found = source_region_offsets_[gs_i_cell] + gs.cell_instance();
   if (sr_found != sr) {
-    warning(fmt::format(
-      "Observed Source Region Mismatch! Expected sr {}, found sr {}", sr,
-      sr_found));
+    // warning(fmt::format("Observed Source Region Mismatch! Expected sr {}, "
+    //                    "found sr {}, distance {}, position {}, direction {}",
+    //  sr, sr_found, dist, r, u));
+    warning("Source Region Numerical Artifact Detected...");
+
     discovered_source_regions_.unlock(sr_key);
-    return get_subdivided_source_region_handle(sr_found, mesh_bin, r);
+
+    SourceRegionHandle handle;
+    handle.is_numerical_fp_artifact_ = true;
+    return handle;
+    // return get_subdivided_source_region_handle(sr_found, mesh_bin, r, dist,
+    // u);
   }
   int mesh_idx = base_source_regions_.mesh(sr);
   if (mesh_idx == C_NONE) {
     if (mesh_bin != 0) {
       discovered_source_regions_.unlock(sr_key);
-      return get_subdivided_source_region_handle(sr, 0, r);
+      // return get_subdivided_source_region_handle(sr, 0, r, dist, u);
+      SourceRegionHandle handle;
+      handle.is_numerical_fp_artifact_ = true;
+      return handle;
     }
   } else {
     Mesh* mesh = model::meshes[mesh_idx].get();
     int bin_found = mesh->get_bin(r);
     if (bin_found != mesh_bin) {
-      warning(
-        fmt::format("Observed Bin Mismatch! Expected bin {}, found bin {}",
-          mesh_bin, bin_found));
+      // warning(fmt::format("Observed Bin Mismatch! Expected bin {}, found bin
+      // "
+      //                     "{}, distance {}, position {}, direction {}",
+      //   mesh_bin, bin_found, dist, r, u));
+      warning("Mesh Bin Numerical Artifact Detected...");
       discovered_source_regions_.unlock(sr_key);
-      return get_subdivided_source_region_handle(sr, bin_found, r);
+      // return get_subdivided_source_region_handle(sr, bin_found, r, dist, u);
+      SourceRegionHandle handle;
+      handle.is_numerical_fp_artifact_ = true;
+      return handle;
     }
   }
 
@@ -1268,7 +1294,6 @@ void FlatSourceDomain::finalize_discovered_source_regions()
     source_region_map_[it.first] = source_regions_.n_source_regions() - 1;
     new_source_regions++;
   }
-  fmt::print("Discovered {} new source regions\n", new_source_regions);
 
   discovered_source_regions_.clear();
 }

@@ -507,7 +507,6 @@ void RandomRaySimulation::output_simulation_results() const
 void RandomRaySimulation::instability_check(
   int64_t n_hits, double k_eff, double& avg_miss_rate) const
 {
-  fmt::print("Hits: {}\n", n_hits);
   fmt::print("Num Source Regions: {}\n", domain_->n_source_regions());
   double percent_missed = ((domain_->n_source_regions() - n_hits) /
                             static_cast<double>(domain_->n_source_regions())) *

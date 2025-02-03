@@ -301,23 +301,12 @@ void RandomRay::attenuate_flux(double distance, bool is_active, double offset)
       Mesh* mesh = model::meshes[mesh_idx].get();
       vector<int> bins;
       vector<double> fractional_lengths;
-      Position start = r() + offset * u();
-      start = start + TINY_BIT * u();
+      Position start = r() + (offset + TINY_BIT) * u();
+      Position end = r() + (offset + distance - TINY_BIT) * u();
 
-      Position end = r() + (offset + distance) * u();
-      end = end - TINY_BIT * u();
-      // Position start = r() + (offset) * u();
-      // Position end = r() + (offset + distance) * u();
       mesh->bins_crossed(start, end, u(), bins, fractional_lengths);
       for (int b = 0; b < bins.size(); b++) {
         int bin = bins[b];
-
-        // Only validate/adjust bins if finding a new FSR.
-        // Otherwise, we just accept the data as valid.
-        // For now though, let's see if this trips...
-
-       
-
         double physical_length = distance * fractional_lengths[b];
         attenuate_flux_inner(physical_length, is_active, sr, bin, start);
         offset += physical_length;
@@ -334,7 +323,10 @@ void RandomRay::attenuate_flux_inner(
 {
   SourceRegionHandle srh;
   if (mesh_subdivision_enabled_) {
-    srh = domain_->get_subdivided_source_region_handle(sr, mesh_bin, r);
+    srh = domain_->get_subdivided_source_region_handle(sr, mesh_bin, r, distance, u());
+    if (srh.is_numerical_fp_artifact_) {
+      return;
+    }
   } else {
     srh = domain_->source_regions_.get_source_region_handle(sr);
   }
@@ -598,7 +590,7 @@ void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
       Mesh* mesh = model::meshes[mesh_idx].get();
       mesh_bin = mesh->get_bin(r());
     }
-    srh = domain_->get_subdivided_source_region_handle(sr, mesh_bin, r());
+    srh = domain_->get_subdivided_source_region_handle(sr, mesh_bin, r(), 0.0, u());
   } else {
     srh = domain_->source_regions_.get_source_region_handle(sr);
   }

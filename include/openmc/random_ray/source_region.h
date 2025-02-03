@@ -113,62 +113,6 @@ public:
   };
 };
 
-class SourceRegion {
-public:
-  //----------------------------------------------------------------------------
-  // Constructors
-  SourceRegion(int negroups, bool is_linear);
-  SourceRegion() = default;
-
-  //----------------------------------------------------------------------------
-  // Public Data members
-
-  // Scalar fields
-  int material_ {0};
-  OpenMPMutex lock_;
-  double volume_ {0.0};
-  double volume_t_ {0.0};
-  double volume_naive_ {0.0};
-  int position_recorded_ {0};
-  int external_source_present_ {0};
-  Position position_ {0.0, 0.0, 0.0};
-  Position centroid_ {0.0, 0.0, 0.0};
-  Position centroid_iteration_ {0.0, 0.0, 0.0};
-  Position centroid_t_ {0.0, 0.0, 0.0};
-  MomentMatrix mom_matrix_ {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
-  MomentMatrix mom_matrix_t_ {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
-  // A set of volume tally tasks. This more complicated data structure is
-  // convenient for ensuring that volumes are only tallied once per source
-  // region, regardless of how many energy groups are used for tallying.
-  std::unordered_set<TallyTask, TallyTask::HashFunctor> volume_task_;
-
-  // Mesh that subdivides this source region
-  int mesh_ {C_NONE};
-
-  // Energy group-wise 1D arrays
-  vector<double> scalar_flux_old_;
-  vector<double> scalar_flux_new_;
-  vector<float> source_;
-  vector<float> external_source_;
-  vector<double> scalar_flux_final_;
-
-  vector<MomentArray> source_gradients_;
-  vector<MomentArray> flux_moments_old_;
-  vector<MomentArray> flux_moments_new_;
-  vector<MomentArray> flux_moments_t_;
-
-  // 2D array representing values for all energy groups x tally
-  // tasks. Each group may have a different number of tally tasks
-  // associated with it, necessitating the use of a jagged array.
-  vector<vector<TallyTask>> tally_task_;
-
-  //----------------------------------------------------------------------------
-  // Public Methods
-
-  SourceRegionHandle get_source_region_handle();
-
-}; // class SourceRegion
-
 class SourceRegionHandle {
 public:
   //----------------------------------------------------------------------------
@@ -311,6 +255,62 @@ public:
   const vector<TallyTask>& tally_task(int g) const { return tally_task_[g]; }
 
 }; // class SourceRegionHandle
+
+class SourceRegion {
+public:
+  //----------------------------------------------------------------------------
+  // Constructors
+  SourceRegion(int negroups, bool is_linear);
+  SourceRegion() = default;
+
+  //----------------------------------------------------------------------------
+  // Public Data members
+
+  // Scalar fields
+  int material_ {0};
+  OpenMPMutex lock_;
+  double volume_ {0.0};
+  double volume_t_ {0.0};
+  double volume_naive_ {0.0};
+  int position_recorded_ {0};
+  int external_source_present_ {0};
+  Position position_ {0.0, 0.0, 0.0};
+  Position centroid_ {0.0, 0.0, 0.0};
+  Position centroid_iteration_ {0.0, 0.0, 0.0};
+  Position centroid_t_ {0.0, 0.0, 0.0};
+  MomentMatrix mom_matrix_ {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+  MomentMatrix mom_matrix_t_ {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+  // A set of volume tally tasks. This more complicated data structure is
+  // convenient for ensuring that volumes are only tallied once per source
+  // region, regardless of how many energy groups are used for tallying.
+  std::unordered_set<TallyTask, TallyTask::HashFunctor> volume_task_;
+
+  // Mesh that subdivides this source region
+  int mesh_ {C_NONE};
+
+  // Energy group-wise 1D arrays
+  vector<double> scalar_flux_old_;
+  vector<double> scalar_flux_new_;
+  vector<float> source_;
+  vector<float> external_source_;
+  vector<double> scalar_flux_final_;
+
+  vector<MomentArray> source_gradients_;
+  vector<MomentArray> flux_moments_old_;
+  vector<MomentArray> flux_moments_new_;
+  vector<MomentArray> flux_moments_t_;
+
+  // 2D array representing values for all energy groups x tally
+  // tasks. Each group may have a different number of tally tasks
+  // associated with it, necessitating the use of a jagged array.
+  vector<vector<TallyTask>> tally_task_;
+
+  //----------------------------------------------------------------------------
+  // Public Methods
+
+  SourceRegionHandle get_source_region_handle();
+
+}; // class SourceRegion
 
 class SourceRegionContainer {
 public:

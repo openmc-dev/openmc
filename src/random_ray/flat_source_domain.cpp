@@ -1169,7 +1169,50 @@ void FlatSourceDomain::prepare_base_source_regions()
   source_regions_.is_linear() = base_source_regions_.is_linear();
   // TODO: For now we leave this as full sized, but can call
   // this function to reduce the memory usage if needed.
-  //base_source_regions_.reduce_to_base();
+  // base_source_regions_.reduce_to_base();
+}
+
+SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
+  int64_t sr, int mesh_bin)
+{
+  SourceRegionKey sr_key {sr, mesh_bin};
+
+  // Case 1: Check if the source region key is already present in the permanent
+  // map. This is the most common condition, as any source region visited in a
+  // previous power iteration will already be present in the permanent map. If
+  // the source region key is found, we translate the key into a specific 1D
+  // sourc region index and return a handle its position in the  source_regions_
+  // vector.
+  auto it = source_region_map_.find(sr_key);
+  if (it != source_region_map_.end()) {
+    int64_t sr = it->second;
+    return source_regions_.get_source_region_handle(sr);
+  }
+
+  // Case 2: Check if the source region key is present in the temporary
+  // (thread safe) map. This is a common occurrence in the first power iteration
+  // when the source region has already been visited already by some other ray.
+  // We begin by locking the temporary map before any operations are performed.
+  // The lock is not global over the full data structure -- it will be dependent
+  // on which key is used.
+  discovered_source_regions_.lock(sr_key);
+
+  // If the key is found in the temporary map, then we return a handle to the 
+  // source region that is stored in the temporary map.
+  if (discovered_source_regions_.contains(sr_key)) {
+    SourceRegionHandle handle = discovered_source_regions_[sr_key].get_source_region_handle();
+    discovered_source_regions_.unlock(sr_key);
+    return handle;
+  } 
+
+  // Case 3: The source region key is not present anywhere. This condition only
+  // occurs the first time the source region is discovered (typically in the first power iteration).
+  // In this case, we need to handle creation of the new source region and its storage into the
+  // temporary map.
+
+  SourceRegion sr_new = base_source_regions_.get_source_region(sr);
+
+  
 }
 
 } // namespace openmc

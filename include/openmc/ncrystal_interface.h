@@ -57,19 +57,10 @@ public:
 
   //----------------------------------------------------------------------------
   // Trivial methods when compiling without NCRYSTAL
-  std::string cfg() const
-  {
-    return "";
-  }
-  double xs(const Particle& p) const
-  {
-    return -1.0;
-  }
+  std::string cfg() const { return ""; }
+  double xs(const Particle& p) const { return -1.0; }
   void scatter(Particle& p) const {}
-  operator bool() const
-  {
-    return false;
-  }
+  operator bool() const { return false; }
 #endif
 
 private:

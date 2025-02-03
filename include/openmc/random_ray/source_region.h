@@ -162,7 +162,155 @@ public:
   // associated with it, necessitating the use of a jagged array.
   vector<vector<TallyTask>> tally_task_;
 
+  //----------------------------------------------------------------------------
+  // Public Methods
+
+  SourceRegionHandle get_source_region_handle();
+
 }; // class SourceRegion
+
+class SourceRegionHandle {
+public:
+  //----------------------------------------------------------------------------
+  // Public Data members
+
+  // Scalar fields
+  int* material_;
+  OpenMPMutex* lock_;
+  double* volume_;
+  double* volume_t_;
+  double* volume_naive_;
+  int* position_recorded_;
+  int* external_source_present_;
+  Position* position_;
+  Position* centroid_;
+  Position* centroid_iteration_;
+  Position* centroid_t_;
+  MomentMatrix* mom_matrix_;
+  MomentMatrix* mom_matrix_t_;
+  // A set of volume tally tasks. This more complicated data structure is
+  // convenient for ensuring that volumes are only tallied once per source
+  // region, regardless of how many energy groups are used for tallying.
+  std::unordered_set<TallyTask, TallyTask::HashFunctor>* volume_task_;
+
+  // Mesh that subdivides this source region
+  int* mesh_;
+
+  // Energy group-wise 1D arrays
+  double* scalar_flux_old_;
+  double* scalar_flux_new_;
+  float* source_;
+  float* external_source_;
+  double* scalar_flux_final_;
+
+  MomentArray* source_gradients_;
+  MomentArray* flux_moments_old_;
+  MomentArray* flux_moments_new_;
+  MomentArray* flux_moments_t_;
+
+  // 2D array representing values for all energy groups x tally
+  // tasks. Each group may have a different number of tally tasks
+  // associated with it, necessitating the use of a jagged array.
+  vector<TallyTask>* tally_task_;
+
+  //----------------------------------------------------------------------------
+  // Public Accessors
+
+  int& material() { return *material_; }
+  const int& material() const { return *material_; }
+
+  OpenMPMutex& lock() { return *lock_; }
+  const OpenMPMutex& lock() const { return *lock_; }
+
+  double& volume() { return *volume_; }
+  const double& volume() const { return *volume_; }
+
+  double& volume_t() { return *volume_t_; }
+  const double& volume_t() const { return *volume_t_; }
+
+  double& volume_naive() { return *volume_naive_; }
+  const double& volume_naive() const { return *volume_naive_; }
+
+  int& position_recorded() { return *position_recorded_; }
+  const int& position_recorded() const { return *position_recorded_; }
+
+  int& external_source_present() { return *external_source_present_; }
+  const int& external_source_present() const
+  {
+    return *external_source_present_;
+  }
+
+  Position& position() { return *position_; }
+  const Position& position() const { return *position_; }
+
+  Position& centroid() { return *centroid_; }
+  const Position& centroid() const { return *centroid_; }
+
+  Position& centroid_iteration() { return *centroid_iteration_; }
+  const Position& centroid_iteration() const { return *centroid_iteration_; }
+
+  Position& centroid_t() { return *centroid_t_; }
+  const Position& centroid_t() const { return *centroid_t_; }
+
+  MomentMatrix& mom_matrix() { return *mom_matrix_; }
+  const MomentMatrix& mom_matrix() const { return *mom_matrix_; }
+
+  MomentMatrix& mom_matrix_t() { return *mom_matrix_t_; }
+  const MomentMatrix& mom_matrix_t() const { return *mom_matrix_t_; }
+
+  std::unordered_set<TallyTask, TallyTask::HashFunctor>& volume_task()
+  {
+    return *volume_task_;
+  }
+  const std::unordered_set<TallyTask, TallyTask::HashFunctor>& volume_task()
+    const
+  {
+    return *volume_task_;
+  }
+
+  int& mesh() { return *mesh_; }
+  const int& mesh() const { return *mesh_; }
+
+  double& scalar_flux_old(int g) { return scalar_flux_old_[g]; }
+  const double& scalar_flux_old(int g) const { return scalar_flux_old_[g]; }
+
+  double& scalar_flux_new(int g) { return scalar_flux_new_[g]; }
+  const double& scalar_flux_new(int g) const { return scalar_flux_new_[g]; }
+
+  double& scalar_flux_final(int g) { return scalar_flux_final_[g]; }
+  const double& scalar_flux_final(int g) const { return scalar_flux_final_[g]; }
+
+  float& source(int g) { return source_[g]; }
+  const float& source(int g) const { return source_[g]; }
+
+  float& external_source(int g) { return external_source_[g]; }
+  const float& external_source(int g) const { return external_source_[g]; }
+
+  MomentArray& source_gradients(int g) { return source_gradients_[g]; }
+  const MomentArray& source_gradients(int g) const
+  {
+    return source_gradients_[g];
+  }
+
+  MomentArray& flux_moments_old(int g) { return flux_moments_old_[g]; }
+  const MomentArray& flux_moments_old(int g) const
+  {
+    return flux_moments_old_[g];
+  }
+
+  MomentArray& flux_moments_new(int g) { return flux_moments_new_[g]; }
+  const MomentArray& flux_moments_new(int g) const
+  {
+    return flux_moments_new_[g];
+  }
+
+  MomentArray& flux_moments_t(int g) { return flux_moments_t_[g]; }
+  const MomentArray& flux_moments_t(int g) const { return flux_moments_t_[g]; }
+
+  vector<TallyTask>& tally_task(int g) { return tally_task_[g]; }
+  const vector<TallyTask>& tally_task(int g) const { return tally_task_[g]; }
+
+}; // class SourceRegionHandle
 
 class SourceRegionContainer {
 public:
@@ -387,6 +535,7 @@ public:
   const int& negroups() const { return negroups_; }
   bool& is_linear() { return is_linear_; }
   const bool& is_linear() const { return is_linear_; }
+  SourceRegionHandle get_source_region_handle(int64_t sr);
 
 private:
   //----------------------------------------------------------------------------
@@ -394,7 +543,6 @@ private:
   int64_t n_source_regions_ {0};
   int negroups_ {0};
   bool is_linear_ {false};
-
 
   // SoA storage for scalar fields (one item per source region)
   vector<int> material_;

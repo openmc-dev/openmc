@@ -26,8 +26,8 @@ public:
   // Methods
   void event_advance_ray();
   void attenuate_flux(double distance, bool is_active);
-  void attenuate_flux_flat_source(double distance, bool is_active);
-  void attenuate_flux_linear_source(double distance, bool is_active);
+  void attenuate_flux_flat_source(SourceRegionHandle& srh, double distance, bool is_active);
+  void attenuate_flux_linear_source(SourceRegionHandle& srh, double distance, bool is_active);
 
   void initialize_ray(uint64_t ray_id, FlatSourceDomain* domain);
   uint64_t transport_history_based_single_ray();
@@ -38,6 +38,7 @@ public:
   static double distance_active_;            // Active ray length
   static unique_ptr<Source> ray_source_;     // Starting source for ray sampling
   static RandomRaySourceShape source_shape_; // Flag for linear source
+  static bool mesh_subdivision_enabled_;     // Flag for mesh subdivision
 
   //----------------------------------------------------------------------------
   // Public data members

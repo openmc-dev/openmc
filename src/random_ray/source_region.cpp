@@ -34,6 +34,37 @@ SourceRegion::SourceRegion(int negroups, bool is_linear)
   }
 }
 
+SourceRegionHandle SourceRegion::get_source_region_handle()
+{
+  SourceRegionHandle handle;
+  handle.material_ = &material_;
+  handle.lock_ = &lock_;
+  handle.volume_ = &volume_;
+  handle.volume_t_ = &volume_t_;
+  handle.volume_naive_ = &volume_naive_;
+  handle.position_recorded_ = &position_recorded_;
+  handle.external_source_present_ = &external_source_present_;
+  handle.position_ = &position_;
+  handle.centroid_ = &centroid_;
+  handle.centroid_iteration_ = &centroid_iteration_;
+  handle.centroid_t_ = &centroid_t_;
+  handle.mom_matrix_ = &mom_matrix_;
+  handle.mom_matrix_t_ = &mom_matrix_t_;
+  handle.volume_task_ = &volume_task_;
+  handle.mesh_ = &mesh_;
+  handle.scalar_flux_old_ = scalar_flux_old_.data();
+  handle.scalar_flux_new_ = scalar_flux_new_.data();
+  handle.source_ = source_.data();
+  handle.external_source_ = external_source_.data();
+  handle.scalar_flux_final_ = scalar_flux_final_.data();
+  handle.source_gradients_ = source_gradients_.data();
+  handle.flux_moments_old_ = flux_moments_old_.data();
+  handle.flux_moments_new_ = flux_moments_new_.data();
+  handle.flux_moments_t_ = flux_moments_t_.data();
+  handle.tally_task_ = tally_task_.data();
+  return handle;
+}
+
 //==============================================================================
 // SourceRegionContainer implementation
 //==============================================================================
@@ -257,6 +288,37 @@ void SourceRegionContainer::reduce_to_base()
   flux_moments_new_.clear();
   flux_moments_t_.clear();
   tally_task_.clear();
+}
+
+SourceRegionHandle SourceRegionContainer::get_source_region_handle(int64_t sr)
+{
+  SourceRegionHandle handle;
+  handle.material_ = &material(sr);
+  handle.lock_ = &lock(sr);
+  handle.volume_ = &volume(sr);
+  handle.volume_t_ = &volume_t(sr);
+  handle.volume_naive_ = &volume_naive(sr);
+  handle.position_recorded_ = &position_recorded(sr);
+  handle.external_source_present_ = &external_source_present(sr);
+  handle.position_ = &position(sr);
+  handle.centroid_ = &centroid(sr);
+  handle.centroid_iteration_ = &centroid_iteration(sr);
+  handle.centroid_t_ = &centroid_t(sr);
+  handle.mom_matrix_ = &mom_matrix(sr);
+  handle.mom_matrix_t_ = &mom_matrix_t(sr);
+  handle.volume_task_ = &volume_task(sr);
+  handle.mesh_ = &mesh(sr);
+  handle.scalar_flux_old_ = &scalar_flux_old(sr, 0);
+  handle.scalar_flux_new_ = &scalar_flux_new(sr, 0);
+  handle.source_ = &source(sr, 0);
+  handle.external_source_ = &external_source(sr, 0);
+  handle.scalar_flux_final_ = &scalar_flux_final(sr, 0);
+  handle.source_gradients_ = &source_gradients(sr, 0);
+  handle.flux_moments_old_ = &flux_moments_old(sr, 0);
+  handle.flux_moments_new_ = &flux_moments_new(sr, 0);
+  handle.flux_moments_t_ = &flux_moments_t(sr, 0);
+  handle.tally_task_ = &tally_task(sr, 0);
+  return handle;
 }
 
 } // namespace openmc

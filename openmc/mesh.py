@@ -2383,6 +2383,8 @@ class UnstructuredMesh(MeshBase):
 
         if Path(filename).suffix == ".vtkhdf":
 
+            print('Writing VTKHDF file')
+
             def append_dataset(dset, array):
                 """Convenience function to append data to an HDF5 dataset"""
                 origLen = dset.shape[0]
@@ -2415,6 +2417,15 @@ class UnstructuredMesh(MeshBase):
             offsets = np.arange(
                 0, self.n_elements * points_per_cell + 1, points_per_cell
             )
+
+            for name, data in datasets.items():
+
+                if data.shape != self.dimension:
+                    raise ValueError(
+                        f'Cannot apply dataset "{name}" with '
+                        f"shape {data.shape} to mesh {self.id} "
+                        f"with dimensions {self.dimension}"
+                    )
 
             with h5py.File(filename, "w") as f:
 
@@ -2458,13 +2469,6 @@ class UnstructuredMesh(MeshBase):
                 cell_data_group = root.create_group("CellData")
 
                 for name, data in datasets.items():
-
-                    if data.shape != self.dimension:
-                        raise ValueError(
-                            f'Cannot apply dataset "{name}" with '
-                            f"shape {data.shape} to mesh {self.id} "
-                            f"with dimensions {self.dimension}"
-                        )
 
                     cell_data_group.create_dataset(
                         name, (0,), maxshape=(None,), dtype="float64", chunks=True

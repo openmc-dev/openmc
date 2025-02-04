@@ -456,7 +456,7 @@ skip_if_no_dagmc = pytest.mark.skipif(
     reason="DAGMC CAD geometry is not enabled.")
 
 @skip_if_no_dagmc
-def test_umesh(run_in_tmpdir, request):
+def test_umesh(request):
     """Performs a minimal UnstructuredMesh simulation, reads in the resulting
     statepoint file and writes the mesh data to vtk and vtkhdf files. It is
     necessary to read in the unstructured mesh from a statepoint file to ensure
@@ -508,8 +508,8 @@ def test_umesh(run_in_tmpdir, request):
         "std_dev": my_tally.std_dev.flatten()
     }
 
-    umesh_from_sp.write_data_to_vtk(datasets=datasets, filename="test_mesh.vtk")
     umesh_from_sp.write_data_to_vtk(datasets=datasets, filename="test_mesh.vtkhdf")
+    umesh_from_sp.write_data_to_vtk(datasets=datasets, filename="test_mesh.vtk")
 
     with pytest.raises(ValueError, match="Unsupported file extension"):
         # Supported file extensions are vtk or vtkhdf, not hdf5, so this should raise an error
@@ -521,7 +521,7 @@ def test_umesh(run_in_tmpdir, request):
         # The shape of the data should match the shape of the mesh, so this should raise an error
         umesh_from_sp.write_data_to_vtk(
             datasets={'incorrectly_shaped_data': np.array(([1,2,3]))},
-            filename="test_mesh.vtkhdf",
+            filename="test_mesh_incorrect_shape.vtkhdf",
         )
 
     assert Path("test_mesh.vtk").exists()

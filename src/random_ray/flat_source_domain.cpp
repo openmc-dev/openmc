@@ -812,10 +812,11 @@ void FlatSourceDomain::output_to_vtk() const
         int64_t fsr = voxel_indices[i];
         int64_t source_element = fsr * negroups_ + g;
         float flux = evaluate_flux_at_point(voxel_positions[i], fsr, g);
-        if (flux < 0.0)
-        {
-          fmt::print("Negative flux detected: {} in group {} at position ({}, {}, {})\n",
-            flux, g, voxel_positions[i].x, voxel_positions[i].y, voxel_positions[i].z);
+        if (flux < 0.0) {
+          fmt::print(
+            "Negative flux detected: {} in group {} at position ({}, {}, {})\n",
+            flux, g, voxel_positions[i].x, voxel_positions[i].y,
+            voxel_positions[i].z);
         }
         flux = convert_to_big_endian<float>(flux);
         std::fwrite(&flux, sizeof(float), 1, plot);
@@ -1192,7 +1193,11 @@ void FlatSourceDomain::prepare_base_source_regions()
   std::swap(source_regions_, base_source_regions_);
   source_regions_.negroups() = base_source_regions_.negroups();
   source_regions_.is_linear() = base_source_regions_.is_linear();
-  base_source_regions_.reduce_to_base();
+
+  // TODO: Base source regions are left large for now
+  // to allow for projection and accumulation experimentation
+  // for stability improvements for small source regions
+  // base_source_regions_.reduce_to_base();
 }
 
 SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
@@ -1300,9 +1305,11 @@ SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
   // (typically in the first power iteration). In this case, we need to handle
   // creation of the new source region and its storage into the parallel map.
   // The new source region is created by copying the base source region, so as
-  // to inherit material, external source, and some flux properties etc.
+  // to inherit material, external source, and some flux properties etc. We
+  // also pass the base source region id to allow the new source region to
+  // know which base source region it is derived from.
   SourceRegion* sr_ptr = discovered_source_regions_.emplace(
-    sr_key, {base_source_regions_.get_source_region_handle(sr)});
+    sr_key, {base_source_regions_.get_source_region_handle(sr), sr});
   // print out all elements of the sr_ptr
   discovered_source_regions_.unlock(sr_key);
   return sr_ptr->get_source_region_handle();
@@ -1322,6 +1329,69 @@ void FlatSourceDomain::finalize_discovered_source_regions()
   }
 
   discovered_source_regions_.clear();
+}
+
+void FlatSourceDomain::handle_small_subdivided_source_regions()
+{
+// Now we'd like to sweep through the source_regions_ and accumulate each
+// subdivided source region into its parent base source region. Then, we want
+// to project the base source region back down into any missed source
+// regions in the source_regions_ vector.
+
+// Let's begin by resetting the base source regions new flux and volume
+#pragma omp parallel for
+  for (int64_t sr = 0; sr < base_source_regions_.n_source_regions(); sr++) {
+    base_source_regions_.volume_t(sr) = 0.0;
+    for (int g = 0; g < negroups_; g++) {
+      base_source_regions_.scalar_flux_new(sr, g) = 0.0;
+    }
+  }
+
+  // Accumulate the volume and flux of each subdivided source region into its
+  // parent base source region.
+  vector<int> n_children(base_source_regions_.n_source_regions(), 0);
+#pragma omp parallel for
+  for (int64_t sr = 0; sr < n_source_regions(); sr++) {
+    SourceRegionHandle srh = source_regions_.get_source_region_handle(sr);
+    int64_t base_sr = srh.parent_sr();
+    SourceRegionHandle parent_srh =
+      base_source_regions_.get_source_region_handle(base_sr);
+    parent_srh.lock().lock();
+    parent_srh.volume_t() += srh.volume_t();
+    for (int g = 0; g < negroups_; g++) {
+      parent_srh.scalar_flux_new(g) += srh.scalar_flux_new(g) * srh.volume_t();
+    }
+    n_children[base_sr]++;
+    parent_srh.lock().unlock();
+  }
+
+// Project the base source region fluxes back down into any "small" source
+// regions in the source_regions_ vector. We are going to define a "small"
+// subdivided source region as one that is less than 1% of the size of an
+// average subdivided source region generated within that base source region.
+// This metric is nice as it is insensitive to the overall size of the source
+// region as well as being insensitive to the aspect ratio. I.e., thin shell
+// source regions will have a very low volume, but may not be considered "small"
+// here if their subdivision by a mesh results in subregions of approximately
+// similar sizes. A result of this projection is that any "small" source regions
+// will regress to flat, even in linear source mode, which is probably a safe
+// approximation given their small size.
+#pragma omp parallel for
+  for (int64_t sr = 0; sr < source_regions_.n_source_regions(); sr++) {
+    SourceRegionHandle srh = source_regions_.get_source_region_handle(sr);
+    int64_t base_sr = srh.parent_sr();
+    SourceRegionHandle parent_srh =
+      base_source_regions_.get_source_region_handle(base_sr);
+    double avg_vol = parent_srh.volume_t() / n_children[base_sr];
+    double vol = srh.volume_t();
+    bool sufficient_vol = vol > 0.01 * avg_vol;
+    if (!sufficient_vol) {
+      for (int g = 0; g < negroups_; g++) {
+        srh.scalar_flux_new(g) =
+          parent_srh.scalar_flux_new(g) / parent_srh.volume_t();
+      }
+    }
+  }
 }
 
 } // namespace openmc

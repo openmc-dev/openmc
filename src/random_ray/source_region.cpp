@@ -34,11 +34,12 @@ SourceRegion::SourceRegion(int negroups, bool is_linear)
   }
 }
 
-SourceRegion::SourceRegion(const SourceRegionHandle& handle)
+SourceRegion::SourceRegion(const SourceRegionHandle& handle, int64_t parent_sr)
   : SourceRegion(handle.negroups_, handle.is_linear_)
 {
   material_ = handle.material();
   mesh_ = handle.mesh();
+  parent_sr_ = parent_sr;
   for (int g = 0; g < scalar_flux_new_.size(); g++) {
     scalar_flux_old_[g] = handle.scalar_flux_old_[g];
     source_[g] = handle.source_[g];
@@ -72,6 +73,7 @@ SourceRegionHandle SourceRegion::get_source_region_handle()
   handle.mom_matrix_t_ = &mom_matrix_t_;
   handle.volume_task_ = &volume_task_;
   handle.mesh_ = &mesh_;
+  handle.parent_sr_ = &parent_sr_;
   handle.scalar_flux_old_ = scalar_flux_old_.data();
   handle.scalar_flux_new_ = scalar_flux_new_.data();
   handle.source_ = source_.data();
@@ -104,6 +106,7 @@ void SourceRegionContainer::push_back(const SourceRegion& sr)
   position_.push_back(sr.position_);
   volume_task_.push_back(sr.volume_task_);
   mesh_.push_back(sr.mesh_);
+  parent_sr_.push_back(sr.parent_sr_);
 
   // Only store these fields if is_linear_ is true
   if (is_linear_) {
@@ -151,6 +154,7 @@ void SourceRegionContainer::assign(
   external_source_present_.clear();
   position_.clear();
   mesh_.clear();
+  parent_sr_.clear();
 
   if (is_linear_) {
     centroid_.clear();
@@ -325,6 +329,7 @@ SourceRegionHandle SourceRegionContainer::get_source_region_handle(int64_t sr)
   handle.position_ = &position(sr);
   handle.volume_task_ = &volume_task(sr);
   handle.mesh_ = &mesh(sr);
+  handle.parent_sr_ = &parent_sr(sr);
   handle.scalar_flux_old_ = &scalar_flux_old(sr, 0);
   handle.scalar_flux_new_ = &scalar_flux_new(sr, 0);
   handle.source_ = &source(sr, 0);

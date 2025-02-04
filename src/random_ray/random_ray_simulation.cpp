@@ -405,7 +405,7 @@ void RandomRaySimulation::simulate()
         simulation::current_batch == 1) {
       domain_->prepare_base_source_regions();
       // TODO: PLACEHOLDER FOR MESH SUBDIVISION - JUST COPY FROM BASE
-      //domain_->source_regions_ = domain_->base_source_regions_;
+      // domain_->source_regions_ = domain_->base_source_regions_;
     }
 
     // Start timer for transport
@@ -437,6 +437,10 @@ void RandomRaySimulation::simulate()
 
     // Add source to scalar flux, compute number of FSR hits
     int64_t n_hits = domain_->add_source_to_scalar_flux();
+
+    if (RandomRay::mesh_subdivision_enabled_) {
+      domain_->handle_small_subdivided_source_regions();
+    }
 
     if (settings::run_mode == RunMode::EIGENVALUE) {
       // Compute random ray k-eff

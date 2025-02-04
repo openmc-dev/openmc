@@ -59,6 +59,7 @@ public:
   SourceRegionHandle get_subdivided_source_region_handle(
     int64_t sr, int mesh_bin, Position r, double dist, Direction u);
   void finalize_discovered_source_regions();
+  void handle_small_subdivided_source_regions();
   int64_t n_source_regions() const
   {
     return source_regions_.n_source_regions();

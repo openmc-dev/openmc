@@ -142,6 +142,7 @@ public:
 
   // Mesh that subdivides this source region
   int* mesh_;
+  int64_t* parent_sr_;
 
   // Energy group-wise 1D arrays
   double* scalar_flux_old_;
@@ -218,6 +219,9 @@ public:
   int& mesh() { return *mesh_; }
   const int& mesh() const { return *mesh_; }
 
+  int64_t& parent_sr() { return *parent_sr_; }
+  const int64_t& parent_sr() const { return *parent_sr_; }
+
   double& scalar_flux_old(int g) { return scalar_flux_old_[g]; }
   const double& scalar_flux_old(int g) const { return scalar_flux_old_[g]; }
 
@@ -264,7 +268,7 @@ public:
   //----------------------------------------------------------------------------
   // Constructors
   SourceRegion(int negroups, bool is_linear);
-  SourceRegion(const SourceRegionHandle& handle);
+  SourceRegion(const SourceRegionHandle& handle, int64_t parent_sr);
   SourceRegion() = default;
 
   //----------------------------------------------------------------------------
@@ -291,6 +295,7 @@ public:
 
   // Mesh that subdivides this source region
   int mesh_ {C_NONE};
+  int64_t parent_sr_ {C_NONE};
 
   // Energy group-wise 1D arrays
   vector<double> scalar_flux_old_;
@@ -525,6 +530,9 @@ public:
   int& mesh(int64_t sr) { return mesh_[sr]; }
   const int& mesh(int64_t sr) const { return mesh_[sr]; }
 
+  int64_t& parent_sr(int64_t sr) { return parent_sr_[sr]; }
+  const int64_t& parent_sr(int64_t sr) const { return parent_sr_[sr]; }
+
   //----------------------------------------------------------------------------
   // Public Methods
 
@@ -568,6 +576,7 @@ private:
   vector<std::unordered_set<TallyTask, TallyTask::HashFunctor>> volume_task_;
 
   vector<int> mesh_;
+  vector<int64_t> parent_sr_;
 
   // SoA energy group-wise 2D arrays flattened to 1D
   vector<double> scalar_flux_old_;

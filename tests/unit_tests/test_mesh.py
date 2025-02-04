@@ -3,6 +3,9 @@ from math import pi
 import numpy as np
 import pytest
 import openmc
+from pathlib import Path
+import tempfile
+from vtkmodules import vtkIOLegacy, vtkIOXML
 
 
 @pytest.mark.parametrize("val_left,val_right", [(0, 0), (-1., -1.), (2.0, 2)])
@@ -396,6 +399,81 @@ def test_umesh_roundtrip(run_in_tmpdir, request):
     xml_mesh = xml_tally.filters[0].mesh
 
     assert umesh.id == xml_mesh.id
+
+
+@pytest.mark.parametrize('export_type', ('.vtk','.vtu'))
+def test_umesh(request, export_type):
+    """Performs a minimal UnstructuredMesh simulation, reads in the resulting
+    statepoint file and writes the mesh data to vtk and vtkhdf files. It is
+    necessary to read in the unstructured mesh from a statepoint file to ensure
+    it has all the required attributes
+    """
+    surf1 = openmc.Sphere(r=1.0, boundary_type="vacuum")
+    material1 = openmc.Material()
+    material1.add_components(components={"H" : 1.0})
+    material1.set_density('g/cm3', 1.0)
+
+    materials = openmc.Materials([material1])
+    cell1 = openmc.Cell(region=-surf1, fill=material1)
+    geometry = openmc.Geometry([cell1])
+
+    umesh = openmc.UnstructuredMesh(
+       filename= request.path.parent.parent
+        / "regression_tests/unstructured_mesh/test_mesh_dagmc_tets.vtk",
+       library= "moab",
+       mesh_id = 1
+    )
+    # setting ID to make it easier to get the mesh from the statepoint later
+    mesh_filter = openmc.MeshFilter(umesh)
+
+    # Create flux mesh tally to score alpha production
+    mesh_tally = openmc.Tally(name="test_tally")
+    mesh_tally.filters = [mesh_filter]
+    mesh_tally.scores = ["total"]
+
+    tallies = openmc.Tallies([mesh_tally])
+
+    source = openmc.IndependentSource()
+
+    settings = openmc.Settings()
+    settings.run_mode = "fixed source"
+    settings.batches = 2
+    settings.particles = 100
+    settings.source = source
+
+    model = openmc.Model(
+        materials=materials, geometry=geometry, settings=settings, tallies=tallies
+    )
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+
+        statepoint_file = model.run(cwd=tmpdir)
+
+        statepoint = openmc.StatePoint(statepoint_file)
+        tally: openmc.Tally = statepoint.get_tally(name="test_tally")
+        umesh_from_sp: openmc.UnstructuredMesh = statepoint.meshes[1]
+
+        datasets={
+            "mean": tally.mean.squeeze(),
+            "std_dev": tally.std_dev.squeeze()
+        }
+
+        filename = Path(tmpdir) / ("test_mesh" + export_type)
+        umesh_from_sp.write_data_to_vtk(datasets=datasets, filename=filename)
+
+        assert Path(filename).exists()
+
+        if export_type == ".vtk":
+            reader = vtkIOLegacy.vtkGenericDataObjectReader()
+            reader.SetFileName(str(filename))
+            reader.Update()
+            assert reader.GetOutput().GetCellData().GetArray("mean")
+
+        elif export_type == ".vtk":
+            reader = vtkIOXML.vtkGenericDataObjectReader()
+            reader.SetFileName(str(filename))
+            reader.Update()
+            assert reader.GetOutput().GetCellData().GetArray("mean")
 
 
 def test_mesh_get_homogenized_materials():

@@ -167,46 +167,68 @@ std::string HexgonalMesh::get_mesh_type() const
   return mesh_type;
 }
 
-int HexagonalMesh::get_index_in_direction(double, r, int i) const
+int HexagonalMesh::get_index_in_direction(const Position& r, int i) const
 {
-  double range
   switch (i){
     case 0:
-      return (0.5 * r.x - 1.0/(2*sqrt(3)) * r.y) / this->abs_a;
+      return std::ceil( (0.5 * r.x - 1.0/(2*sqrt(3)) * r.y) / this->abs_a );
     case 1:
-      return (1.0/sqrt(3)) * r.y) / this->abs_a;
+      return std::ceil( (1.0/sqrt(3) * r.y) / this->abs_a );
     case 2:
+      return std::ceil( ( (0.5 * r.x - 1.0/(2*sqrt(3)) * r.y) - (1.0/sqrt(3) * r.y) )/ this->abs_a );
+    case 3:
+      // z
       return std::ceil((r - lower_left_[i]) / width_[i]);
   }
+}
+
+Position HexagonalMesh::get_positition_of_hexindex(HexMeshIndex ijkl) const
+{
+  //return the cartesian position of a hex indexed by abcz
+  Position r;
+  r.x = ijkl[0]*basis_[0][0]*width_[0] + ijkl[1]*basis_[1][0]*width_[0];
+  r.y = ijkl[0]*basis_[0][1]*width_[0] + ijkl[1]*basis_[1][1]*width_[0];;
+  r.z = ijkl[3]*width_[1];
 }
 
 StructuredMesh::MeshIndex HexgonalMesh::get_indices(
   Position r, bool& in_mesh) const
 {
   //return index of mesh element in hexes
-  //possibly good idea to first narrow it down by means of raidus (i.e. hypot)
-  //should exist fast patterns in literature for doing this
   local_coords(r);
 
-  MeshIndex idx;
-  idx[0] = (0.5 * r.x - 1.0/(2*sqrt(3)) * r.y);
-  idx[1] = 1.0/sqrt(3) * r.y;
+  HexMeshIndex idx;
+  idx[0] = get_index_in_direction(r,0);
+  idx[1] = get_index_in_direction(r,1);
+  idx[2] = -idx[0] -idx[1];
+  idx[3] = get_index_in_direction(r, 3);
 
-  idx[2] = get_index_in_direction(r, 2);
+  //check if either index is out of bounds
+  in_mesh = in_bounds();
   return idx;
 }
 
+bool HexagonalMesh::in_bounds(HexMeshIndex& ijkl) const
+{
+  for (auto it=ijkl.begin(); it<ijkl.end(); it++){
+    auto elem = *it;
+    if (abs(elem)>max_a_) return false;
+  }
+  return true;
+}
+
+
 Position HexgonalMesh::sample_element(
-  const MeshIndex& ijk, uint64_t* seed) const
+  const HexMeshIndex& ijk, uint64_t* seed) const
 {
   //return random position inside mesh element
   double a_r = uniform_distribution();
   double b_r = uniform_distribution();
 
-  x = this->a_x * (a_r + (ijk[0]-1) ) + this->b_x * (b_r + (ijk[1]-1) );
-  y = this->a_y * (a_r + (ijk[0]-1) ) + this->b_y * (b_r + (ijk[1]-1) );
+  x = this->basis_[0][0] * (a_r + (ijk[0]-1) ) + this->basis_[1][0] * (b_r + (ijk[1]-1) );
+  y = this->basis_[0][1] * (a_r + (ijk[0]-1) ) + this->basis_[1][1] * (b_r + (ijk[1]-1) );
 
-  double z = uniform_distribution(z_min, z_max, seed);
+  double z = uniform_distribution(-width_[1]/2.0, width_[1]/2.0, seed);
 
   return origin_ + Position(x, y, z);
 }

@@ -812,6 +812,11 @@ void FlatSourceDomain::output_to_vtk() const
         int64_t fsr = voxel_indices[i];
         int64_t source_element = fsr * negroups_ + g;
         float flux = evaluate_flux_at_point(voxel_positions[i], fsr, g);
+        if (flux < 0.0)
+        {
+          fmt::print("Negative flux detected: {} in group {} at position ({}, {}, {})\n",
+            flux, g, voxel_positions[i].x, voxel_positions[i].y, voxel_positions[i].z);
+        }
         flux = convert_to_big_endian<float>(flux);
         std::fwrite(&flux, sizeof(float), 1, plot);
       }

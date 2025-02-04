@@ -410,6 +410,9 @@ void FlatSourceDomain::convert_source_regions_to_tallies()
     // If this source region has not been hit by a ray yet, then
     // we aren't going to be able to map it, so skip it.
     if (!source_regions_.position_recorded(sr)) {
+      if (simulation::current_batch > 1) {
+        fmt::print("sr no position = {}\n", sr);
+      }
       all_source_regions_mapped = false;
       continue;
     }
@@ -1328,6 +1331,10 @@ void FlatSourceDomain::finalize_discovered_source_regions()
     new_source_regions++;
   }
 
+  if (new_source_regions > 0) {
+    mapped_all_tallies_ = false;
+  }
+
   discovered_source_regions_.clear();
 }
 
@@ -1402,7 +1409,7 @@ void FlatSourceDomain::handle_small_subdivided_source_regions()
   // As such, its flux is not actually used for anything.
   // HOWEVER - now that I think about it, the first ray that passes
   // through it will see a very old (and potentially really bad) source
-  // term. Rays in future iterations will see sources based on the 
+  // term. Rays in future iterations will see sources based on the
   // parent average flux so will be ok, but all rays passing through that
   // first iteration will be very bad. That said, for super small FSRs,
   // only 1 ray will be likely to pass through it, and so the error should

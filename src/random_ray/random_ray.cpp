@@ -383,11 +383,11 @@ void RandomRay::attenuate_flux_flat_source(
 
   // If ray is in the active phase (not in dead zone), make contributions to
   // source region bookkeeping
+
+  // Aquire lock for source region
+  srh.lock().lock();
+
   if (is_active) {
-
-    // Aquire lock for source region
-    srh.lock().lock();
-
     // Accumulate delta psi into new estimate of source region flux for
     // this iteration
     for (int g = 0; g < negroups_; g++) {
@@ -397,18 +397,18 @@ void RandomRay::attenuate_flux_flat_source(
     // Accomulate volume (ray distance) into this iteration's estimate
     // of the source region's volume
     srh.volume() += distance;
-
-    // Tally valid position inside the source region (e.g., midpoint of
-    // the ray) if not done already
-    if (!srh.position_recorded()) {
-      Position midpoint = r + u() * (distance / 2.0);
-      srh.position() = midpoint;
-      srh.position_recorded() = 1;
-    }
-
-    // Release lock
-    srh.lock().unlock();
   }
+
+  // Tally valid position inside the source region (e.g., midpoint of
+  // the ray) if not done already
+  if (!srh.position_recorded()) {
+    Position midpoint = r + u() * (distance / 2.0);
+    srh.position() = midpoint;
+    srh.position_recorded() = 1;
+  }
+
+  // Release lock
+  srh.lock().unlock();
 }
 
 void RandomRay::attenuate_flux_linear_source(
@@ -503,16 +503,17 @@ void RandomRay::attenuate_flux_linear_source(
 
   // If ray is in the active phase (not in dead zone), make contributions to
   // source region bookkeeping
+
+  // Compute an estimate of the spatial moments matrix for the source
+  // region based on parameters from this ray's crossing
+  MomentMatrix moment_matrix_estimate;
+  moment_matrix_estimate.compute_spatial_moments_matrix(
+    rm_local, u(), distance);
+
+  // Aquire lock for source region
+  srh.lock().lock();
+
   if (is_active) {
-    // Compute an estimate of the spatial moments matrix for the source
-    // region based on parameters from this ray's crossing
-    MomentMatrix moment_matrix_estimate;
-    moment_matrix_estimate.compute_spatial_moments_matrix(
-      rm_local, u(), distance);
-
-    // Aquire lock for source region
-    srh.lock().lock();
-
     // Accumulate deltas into the new estimate of source region flux for this
     // iteration
     for (int g = 0; g < negroups_; g++) {
@@ -528,17 +529,17 @@ void RandomRay::attenuate_flux_linear_source(
     srh.centroid_iteration() += midpoint * distance;
     moment_matrix_estimate *= distance;
     srh.mom_matrix() += moment_matrix_estimate;
-
-    // Tally valid position inside the source region (e.g., midpoint of
-    // the ray) if not done already
-    if (!srh.position_recorded()) {
-      srh.position() = midpoint;
-      srh.position_recorded() = 1;
-    }
-
-    // Release lock
-    srh.lock().unlock();
   }
+
+  // Tally valid position inside the source region (e.g., midpoint of
+  // the ray) if not done already
+  if (!srh.position_recorded()) {
+    srh.position() = midpoint;
+    srh.position_recorded() = 1;
+  }
+
+  // Release lock
+  srh.lock().unlock();
 }
 
 void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)

@@ -9,6 +9,7 @@ from numbers import Integral, Real
 import h5py
 import lxml.etree as ET
 import numpy as np
+from pathlib import Path
 
 import openmc
 import openmc.checkvalue as cv
@@ -2358,17 +2359,21 @@ class UnstructuredMesh(MeshBase):
         self.write_data_to_vtk(**kwargs)
 
     def write_data_to_vtk(
-            self,
-            filename: PathLike | None  = None,
-            datasets: dict | None = None,
-            volume_normalization: bool = True
+        self,
+        filename: PathLike | None = None,
+        datasets: dict | None = None,
+        volume_normalization: bool = True,
     ):
         """Map data to unstructured VTK mesh elements.
+
+        If filename is None, then a filename will be generated based on the mesh ID,
+        and exported to VTK format.
 
         Parameters
         ----------
         filename : str or pathlib.Path
-            Name of the VTK file to write
+            Name of the VTK file to write. If the filename ends in '.vtu' then a VTU
+            format file will be written, if the filename ends in '.vtk' then a legacy VTK file will be written.
         datasets : dict
             Dictionary whose keys are the data labels
             and values are numpy appropriately sized arrays
@@ -2377,36 +2382,48 @@ class UnstructuredMesh(MeshBase):
             Whether or not to normalize the data by the
             volume of the mesh elements
         """
-        import vtk
-        from vtk.util import numpy_support as nps
+        from vtkmodules.util import numpy_support
+        from vtkmodules import vtkCommonCore
+        from vtkmodules import vtkCommonDataModel
+        from vtkmodules import vtkIOLegacy
+        from vtkmodules import vtkIOXML
 
         if self.connectivity is None or self.vertices is None:
-            raise RuntimeError('This mesh has not been '
-                               'loaded from a statepoint file.')
+            raise RuntimeError(
+                "This mesh has not been " "loaded from a statepoint file."
+            )
 
         if filename is None:
-            filename = f'mesh_{self.id}.vtk'
+            filename = f"mesh_{self.id}.vtk"
 
-        writer = vtk.vtkUnstructuredGridWriter()
+        if Path(filename).suffix == ".vtk":
+            writer = vtkIOLegacy.vtkUnstructuredGridWriter()
+
+        elif Path(filename).suffix == ".vtu":
+            writer = vtkIOXML.vtkXMLUnstructuredGridWriter()
+            writer.SetCompressorTypeToZLib()
+            writer.SetDataModeToBinary()
 
         writer.SetFileName(str(filename))
 
-        grid = vtk.vtkUnstructuredGrid()
+        grid = vtkCommonDataModel.vtkUnstructuredGrid()
 
-        vtk_pnts = vtk.vtkPoints()
-        vtk_pnts.SetData(nps.numpy_to_vtk(self.vertices))
-        grid.SetPoints(vtk_pnts)
+        points = vtkCommonCore.vtkPoints()
+        points.SetData(numpy_support.numpy_to_vtk(self.vertices))
+        grid.SetPoints(points)
 
         n_skipped = 0
         for elem_type, conn in zip(self.element_types, self.connectivity):
             if elem_type == self._LINEAR_TET:
-                elem = vtk.vtkTetra()
+                elem = vtkCommonDataModel.vtkTetra()
             elif elem_type == self._LINEAR_HEX:
-                elem = vtk.vtkHexahedron()
+                elem = vtkCommonDataModel.vtkHexahedron()
             elif elem_type == self._UNSUPPORTED_ELEM:
                 n_skipped += 1
+                continue
             else:
-                raise RuntimeError(f'Invalid element type {elem_type} found')
+                raise RuntimeError(f"Invalid element type {elem_type} found")
+
             for i, c in enumerate(conn):
                 if c == -1:
                     break
@@ -2415,30 +2432,36 @@ class UnstructuredMesh(MeshBase):
             grid.InsertNextCell(elem.GetCellType(), elem.GetPointIds())
 
         if n_skipped > 0:
-            warnings.warn(f'{n_skipped} elements were not written because '
-                          'they are not of type linear tet/hex')
+            warnings.warn(
+                f"{n_skipped} elements were not written because "
+                "they are not of type linear tet/hex"
+            )
 
         # check that datasets are the correct size
         datasets_out = []
         if datasets is not None:
             for name, data in datasets.items():
                 if data.shape != self.dimension:
-                    raise ValueError(f'Cannot apply dataset "{name}" with '
-                                     f'shape {data.shape} to mesh {self.id} '
-                                     f'with dimensions {self.dimension}')
+                    raise ValueError(
+                        f'Cannot apply dataset "{name}" with '
+                        f"shape {data.shape} to mesh {self.id} "
+                        f"with dimensions {self.dimension}"
+                    )
 
             if volume_normalization:
                 for name, data in datasets.items():
                     if np.issubdtype(data.dtype, np.integer):
-                        warnings.warn(f'Integer data set "{name}" will '
-                                      'not be volume-normalized.')
+                        warnings.warn(
+                            f'Integer data set "{name}" will '
+                            "not be volume-normalized."
+                        )
                         continue
                     data /= self.volumes
 
             # add data to the mesh
             for name, data in datasets.items():
                 datasets_out.append(data)
-                arr = vtk.vtkDoubleArray()
+                arr = vtkCommonCore.vtkDoubleArray()
                 arr.SetName(name)
                 arr.SetNumberOfTuples(data.size)
 

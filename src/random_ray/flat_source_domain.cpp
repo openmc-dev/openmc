@@ -1392,6 +1392,23 @@ void FlatSourceDomain::handle_small_subdivided_source_regions()
       }
     }
   }
+
+  // TODO: It would be nice to update the base source region fluxes, to
+  // allow for better starting estimates when a new source region is
+  // discovered late in the simulation.
+  // HOWEVER - I think we are actually covering that case currently,
+  // as any late-to-be-discovered region will have an extremely small
+  // volume, so should fall into the "small" source region category.
+  // As such, its flux is not actually used for anything.
+  // HOWEVER - now that I think about it, the first ray that passes
+  // through it will see a very old (and potentially really bad) source
+  // term. Rays in future iterations will see sources based on the 
+  // parent average flux so will be ok, but all rays passing through that
+  // first iteration will be very bad. That said, for super small FSRs,
+  // only 1 ray will be likely to pass through it, and so the error should
+  // decay very quickly. Still - it would be nice to recompute base source
+  // region sources for any newly discovered SRs, after the above flux
+  // smoothing has been done.
 }
 
 } // namespace openmc

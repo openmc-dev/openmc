@@ -281,41 +281,6 @@ double HexgonalMesh::find_r_crossing(
   return INFTY;
 }
 
-double HexgonalMesh::find_phi_crossing(
-  const Position& r, const Direction& u, double l, int shell) const
-{
-  // Phi grid is [0, 2π], thus there is no real surface to cross
-  // finds the crossing of boundary in phi (azimuthal angle)
-  // likely not relevant - must reformulate
-  if (full_phi_ && (shape_[1] == 1))
-    return INFTY;
-
-  shell = sanitize_phi(shell);
-
-  const double p0 = grid_[1][shell];
-
-  // solve y(s)/x(s) = tan(p0) = sin(p0)/cos(p0)
-  // => x(s) * cos(p0) = y(s) * sin(p0)
-  // => (y + s * v) * cos(p0) = (x + s * u) * sin(p0)
-  // = s * (v * cos(p0) - u * sin(p0)) = - (y * cos(p0) - x * sin(p0))
-
-  const double c0 = std::cos(p0);
-  const double s0 = std::sin(p0);
-
-  const double denominator = (u.x * s0 - u.y * c0);
-
-  // Check if direction of flight is not parallel to phi surface
-  if (std::abs(denominator) > FP_PRECISION) {
-    const double s = -(r.x * s0 - r.y * c0) / denominator;
-    // Check if solution is in positive direction of flight and crosses the
-    // correct phi surface (not -phi)
-    if ((s > l) && ((c0 * (r.x + s * u.x) + s0 * (r.y + s * u.y)) > 0.0))
-      return s;
-  }
-
-  return INFTY;
-}
-
 StructuredMesh::MeshDistance HexgonalMesh::find_z_crossing(
   const Position& r, const Direction& u, double l, int shell) const
 {
@@ -343,22 +308,21 @@ StructuredMesh::MeshDistance HexgonalMesh::distance_to_grid_boundary(
   const MeshIndex& ijk, int i, const Position& r0, const Direction& u,
   double l) const
 {
-  //not clear what this does right now.
-
+  // Compute the distance to the element boundary of index i
+  // Since MeshIndex is defined to have 3 and only 3 numbers (can we override?) we need to do a bit of gymnastics to
+  // convert to a HexMeshIndex
+  //
   Position r = r0 - origin_;
 
-  if (i == 0) {
+  if (i < 4) {
+    //get_index in direction i
+    int abc_i = get_index_in_direction(r0,i);
+    //get_position_of_hex_at_index
 
+    //get_distance to hex boundary of difference
     return std::min(
-      MeshDistance(ijk[i] + 1, true, find_r_crossing(r, u, l, ijk[i])),
-      MeshDistance(ijk[i] - 1, false, find_r_crossing(r, u, l, ijk[i] - 1)));
-
-  } else if (i == 1) {
-
-    return std::min(MeshDistance(sanitize_phi(ijk[i] + 1), true,
-                      find_phi_crossing(r, u, l, ijk[i])),
-      MeshDistance(sanitize_phi(ijk[i] - 1), false,
-        find_phi_crossing(r, u, l, ijk[i] - 1)));
+      MeshDistance(ijk[i] + 1, true, find_hex_crossing(r, u, l, ijk[i])),
+      MeshDistance(ijk[i] - 1, false, find_hex_crossing(r, u, l, ijk[i] - 1)));
 
   } else {
     return find_z_crossing(r, u, l, ijk[i]);

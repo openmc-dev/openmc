@@ -105,6 +105,10 @@ Tally::Tally(pugi::xml_node node)
     vov_ = get_node_value_bool(node, "VOV");
   }
 
+  if (check_for_node(node, "FOM")) {
+    fom_ = get_node_value_bool(node, "FOM");
+  }
+
   // =======================================================================
   // READ DATA FOR FILTERS
 
@@ -962,8 +966,14 @@ void reduce_tally_results()
 
       // Make copy of tally values in contiguous array
       // TO DO: allocate the correct size for the values array during initialization
-      xt::xtensor<double, 4> values = values_view;
-      xt::xtensor<double, 4> values_reduced = xt::empty_like(values);
+
+      if (tally->vov_){
+        xt::xtensor<double, 4> values = values_view;
+        xt::xtensor<double, 4> values_reduced = xt::empty_like(values);
+      } else {
+        xt::xtensor<double, 2> values = values_view;
+        xt::xtensor<double, 2> values_reduced = xt::empty_like(values);
+      }
 
       // Reduce contiguous set of tally results
       MPI_Reduce(values.data(), values_reduced.data(), values.size(),
@@ -1321,29 +1331,6 @@ extern "C" int openmc_tally_set_multiply_density(int32_t index, bool value)
 
   return 0;
 }
-
-/*extern "C" int openmc_tally_get_vov(int32_t index, bool* vov)
-{
-  if (index < 0 || index >= model::tallies.size()) {
-    set_errmsg("Index in tallies array is out of bounds.");
-    return OPENMC_E_OUT_OF_BOUNDS;
-  }
-
-  *vov = model::tallies[index]->vov_;
-  return 0;
-}
-
-extern "C" int openmc_tally_set_vov(int32_t index, bool vov)
-{
-  if (index < 0 || index >= model::tallies.size()) {
-    set_errmsg("Index in tallies array is out of bounds.");
-    return OPENMC_E_OUT_OF_BOUNDS;
-  }
-
-  model::tallies[index]->vov_ = vov;
-
-  return 0;
-}*/
 
 extern "C" int openmc_tally_get_scores(int32_t index, int** scores, int* n)
 {

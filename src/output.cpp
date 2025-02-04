@@ -525,29 +525,6 @@ double variance_of_variance(const double* x, int n)
   return vov;
 }
 
-double figure_of_merit(const double* x, int n)
-{
-  using namespace simulation;
-  // choose a bin for each tally
-  double mean = x[static_cast<int>(TallyResult::SUM)] / n;
-  double stdev =
-    n > 1 ? std::sqrt(std::max(0.0,
-              (x[static_cast<int>(TallyResult::SUM_SQ)] / n - mean * mean) /
-                (n - 1)))
-          : 0.0;
-          
-  // relative error = standard deviation / mean
-  double relative_error = stdev / mean;
-
-  // total time of the simulation multiplied by the number of threads used  
-  double computer_time = time_total.elapsed() * omp_get_max_threads(); 
-  
-  double fom = 1/(relative_error*relative_error*computer_time);
-
-  return fom;
-
-}
-
 std::pair<double, double> mean_stdev(const double* x, int n)
 {
   double mean = x[static_cast<int>(TallyResult::SUM)] / n;
@@ -560,6 +537,23 @@ std::pair<double, double> mean_stdev(const double* x, int n)
 }
 
 
+double figure_of_merit(const double* x, int n)
+{
+  using namespace simulation;
+  
+  // relative error = standard deviation / mean
+  double mean,stdev;
+  std::tie(mean, stdev) = mean_stdev(x, n);
+  double relative_error = stdev / mean;
+
+  // total time of the simulation multiplied by the number of threads used  
+  double computer_time = time_total.elapsed() * omp_get_max_threads(); 
+  
+  double fom = 1/(relative_error*relative_error*computer_time);
+
+  return fom;
+
+}
 
 //==============================================================================
 
@@ -754,14 +748,19 @@ void write_tallies()
         for (auto score : tally.scores_) {
           std::string score_name =
             score > 0 ? reaction_name(score) : score_names.at(score);
-          double mean, stdev, vov;
+          double mean, stdev;
           std::tie(mean, stdev) =
             mean_stdev(&tally.results_(filter_index, score_index, 0),
               tally.n_realizations_);
           if (tally.vov_) {
-            vov = variance_of_variance(&tally.results_(filter_index, score_index, 0),tally.n_realizations_);
+            double vov = variance_of_variance(&tally.results_(filter_index, score_index, 0),tally.n_realizations_);
             fmt::print(tallies_out, "{0:{1}}{2:<36} {3:.6} +/- {4:.6} -- VOV: {5:.6}\n", "",
               indent + 1, score_name, mean, stdev / mean, vov);
+          }
+          if (tally.fom_){
+            double fom = figure_of_merit(&tally.results_(filter_index, score_index, 0), tally.n_realizations_);
+            fmt::print(tallies_out, "{0:{1}}{2:<36} {3:.6} +/- {4:.6} -- FOM: {5:.6}\n", "",
+              indent + 1, score_name, mean, stdev / mean, fom); 
           } else {
             fmt::print(tallies_out, "{0:{1}}{2:<36} {3:.6} +/- {4:.6}\n", "",
             indent + 1, score_name, mean, t_value * stdev);

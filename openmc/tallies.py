@@ -59,6 +59,8 @@ class Tally(IDManagerMixin):
         Whether reaction rates should be multiplied by atom density
     VOV : bool
         Whether the tally will accumulate sum third and sum fourth for each tally bin
+    FOM : bool
+        Whether the tally will accumulate compute the figure of merit for each tally bin
     
         .. versionadded:: 0.14.0
     filters : list of openmc.Filter
@@ -122,6 +124,7 @@ class Tally(IDManagerMixin):
         self._derivative = None
         self._multiply_density = True
         self._vov = None
+        self._fom = None
 
         self._num_realizations = 0
         self._with_summary = False
@@ -181,6 +184,7 @@ class Tally(IDManagerMixin):
         parts.append('{: <15}=\t{}'.format('Estimator', self.estimator))
         parts.append('{: <15}=\t{}'.format('Multiply dens.', self.multiply_density))
         parts.append('{: <15}=\t{}'.format('VOV', self.vov))
+        parts.append('{: <15}=\t{}'.format('FOM', self.fom))
         return '\n\t'.join(parts)
 
     @property
@@ -209,6 +213,15 @@ class Tally(IDManagerMixin):
     def vov(self, value):
         cv.check_type('VOV', value, bool)
         self._vov = value
+
+    @property
+    def fom(self):
+        return self._fom
+    
+    @fom.setter
+    def fom(self, value):
+        cv.check_type('FOM', value, bool)
+        self._fom = value
 
     @property
     def filters(self):
@@ -941,6 +954,11 @@ class Tally(IDManagerMixin):
             vov_element = ET.SubElement(element, "VOV")
             vov_element.text = str(self.vov).lower()
 
+        # Optional FOM
+        if self.fom:
+            fom_element = ET.SubElement(element, "FOM")
+            fom_element.text = str(self.fom).lower()
+
         return element
 
     def add_results(self, statepoint: cv.PathLike | openmc.StatePoint):
@@ -986,6 +1004,10 @@ class Tally(IDManagerMixin):
         text = get_text(elem, 'VOV')
         if text is None:
             tally.vov = text in ('true', '1')
+
+        text = get_text(elem, 'FOM')
+        if text is None:
+            tally.fom = text in ('true', '1')
 
         # Read filters
         filters_elem = elem.find('filters')

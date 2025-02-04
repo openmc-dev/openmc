@@ -702,7 +702,7 @@ void StructuredMesh::raytrace_mesh(
         tally.surface(ijk, k, !distances[k].max_surface, true);
 
     } else { // not inside mesh
-
+      fmt::print("Not inside mesh\n");
       // For all directions outside the mesh, find the distance that we need to
       // travel to reach the next surface. Use the largest distance, as only
       // this will cross all outer surfaces.

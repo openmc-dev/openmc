@@ -302,15 +302,37 @@ void RandomRay::attenuate_flux(double distance, bool is_active, double offset)
       vector<int> bins;
       vector<double> fractional_lengths;
       Position start = r() + (offset + TINY_BIT) * u();
-      Position end = r() + (offset + distance - TINY_BIT) * u();
+      Position end = start + (distance - 2.0 * TINY_BIT) * u();
+      double rt_length = (end-start).norm();
 
       mesh->bins_crossed(start, end, u(), bins, fractional_lengths);
+      //fmt::print("Ray {} crossing sr {} from {} to {} with {} bins. SR Length: {}, RT Length: {}\n", id(), sr, start, end, bins.size(), distance, rt_length);
+      //fmt::print("TRUE{} crossing sr {} from {} to {} with {} bins. SR Length: {}, RT Length: {}\n", id(), sr, r(), r() + (offset + distance)*u(), bins.size(), distance, rt_length);
+
+      double tot_length = 0.0;
       for (int b = 0; b < bins.size(); b++) {
         int bin = bins[b];
-        double physical_length = distance * fractional_lengths[b];
+        double physical_length = rt_length * fractional_lengths[b];
+        if (id() == 7419)
+        {
+        // PRINT THESE to 20 units of precision with scientific notation!
+        int true_bin = mesh->get_bin(start + TINY_BIT * u());
+        //fmt::print("\tPosition x {:.20e}: y {:.20e}: z {:.20e}: RT Bin {}: True Bin {}: Length Fraction: {:.20e}, Physical Length: {:.20e}, Total Length: {:.20e}\n", start.x, start.y, start.z, bin, true_bin, fractional_lengths[b], physical_length, tot_length);
+
+        GeometryState gs;
+        gs.r() = start;
+        exhaustive_find_cell(gs);
+        int gs_i_cell = gs.lowest_coord().cell;
+        int64_t sr_found = domain_->source_region_offsets_[gs_i_cell] + gs.cell_instance();
+        if (sr_found != sr) {
+          //fmt::print("direction {}\n", u());
+          //fatal_error(fmt::format("Expected SR {}, found SR {} at position {} with bin {} and true bin {}", sr, sr_found, start, bin, true_bin));
+        }
+        }
+
         attenuate_flux_inner(physical_length, is_active, sr, bin, start);
-        offset += physical_length;
-        start = r() + (offset + TINY_BIT) * u();
+        start += physical_length * u();
+        tot_length += physical_length;
       }
     }
   } else {
@@ -323,7 +345,8 @@ void RandomRay::attenuate_flux_inner(
 {
   SourceRegionHandle srh;
   if (mesh_subdivision_enabled_) {
-    srh = domain_->get_subdivided_source_region_handle(sr, mesh_bin, r, distance, u());
+    srh = domain_->get_subdivided_source_region_handle(
+      sr, mesh_bin, r, distance, u());
     if (srh.is_numerical_fp_artifact_) {
       return;
     }
@@ -590,7 +613,8 @@ void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
       Mesh* mesh = model::meshes[mesh_idx].get();
       mesh_bin = mesh->get_bin(r());
     }
-    srh = domain_->get_subdivided_source_region_handle(sr, mesh_bin, r(), 0.0, u());
+    srh =
+      domain_->get_subdivided_source_region_handle(sr, mesh_bin, r(), 0.0, u());
   } else {
     srh = domain_->source_regions_.get_source_region_handle(sr);
   }

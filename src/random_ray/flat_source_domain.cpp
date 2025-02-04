@@ -1227,7 +1227,8 @@ SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
   // but nonetheless it is worthwhile to just skip this source region since it
   // is unphysical.
   GeometryState gs;
-  gs.r() = r;
+  //gs.r() = r;
+  gs.r() = r + TINY_BIT * u;
   exhaustive_find_cell(gs);
   int gs_i_cell = gs.lowest_coord().cell;
   int64_t sr_found = source_region_offsets_[gs_i_cell] + gs.cell_instance();
@@ -1256,7 +1257,7 @@ SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
     }
   } else {
     Mesh* mesh = model::meshes[mesh_idx].get();
-    int bin_found = mesh->get_bin(r);
+    int bin_found = mesh->get_bin(r + TINY_BIT * u);
     if (bin_found != mesh_bin) {
       // warning(fmt::format("Observed Bin Mismatch! Expected bin {}, found bin
       // "

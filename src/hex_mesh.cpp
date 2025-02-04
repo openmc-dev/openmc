@@ -332,7 +332,9 @@ StructuredMesh::MeshDistance HexgonalMesh::distance_to_grid_boundary(
 
 
 
-  return 0;
+int HexagonalMesh::set_grid()
+{
+  // not necessary to do this - since it is a regular mesh we can do it on the fly
 }
 
 int HexagonalMesh::get_index_in_direction(double r, int i) const
@@ -341,6 +343,7 @@ int HexagonalMesh::get_index_in_direction(double r, int i) const
   //defined in openmc/search.h - basically an offset call to std::lower_bound
   return lower_bound_index(grid_[i].begin(), grid_[i].end(), r) + 1;
 }
+
 
 std::pair<vector<double>, vector<double>> HexagonalMesh::plot(
   Position plot_ll, Position plot_ur) const

@@ -329,47 +329,8 @@ StructuredMesh::MeshDistance HexgonalMesh::distance_to_grid_boundary(
   }
 }
 
-int HexagonalMesh::set_grid()
-{
-  // init the mesh grid, and check boundaries.
-  shape_ = {static_cast<int>(grid_[0].size()) - 1,
-    static_cast<int>(grid_[1].size()) - 1,
-    static_cast<int>(grid_[2].size()) - 1};
 
-  for (const auto& g : grid_) {
-    if (g.size() < 2) {
-      set_errmsg("r-, phi-, and z- grids for cylindrical meshes "
-                 "must each have at least 2 points");
-      return OPENMC_E_INVALID_ARGUMENT;
-    }
-    if (std::adjacent_find(g.begin(), g.end(), std::greater_equal<>()) !=
-        g.end()) {
-      set_errmsg("Values in for r-, phi-, and z- grids for "
-                 "cylindrical meshes must be sorted and unique.");
-      return OPENMC_E_INVALID_ARGUMENT;
-    }
-  }
-  if (grid_[0].front() < 0.0) {
-    set_errmsg("r-grid for "
-               "cylindrical meshes must start at r >= 0.");
-    return OPENMC_E_INVALID_ARGUMENT;
-  }
-  if (grid_[1].front() < 0.0) {
-    set_errmsg("phi-grid for "
-               "cylindrical meshes must start at phi >= 0.");
-    return OPENMC_E_INVALID_ARGUMENT;
-  }
-  if (grid_[1].back() > 2.0 * PI) {
-    set_errmsg("phi-grids for "
-               "cylindrical meshes must end with theta <= 2*pi.");
 
-    return OPENMC_E_INVALID_ARGUMENT;
-  }
-
-  full_phi_ = (grid_[1].front() == 0.0) && (grid_[1].back() == 2.0 * PI);
-
-  lower_left_ = {grid_[0].front(), grid_[1].front(), grid_[2].front()};
-  upper_right_ = {grid_[0].back(), grid_[1].back(), grid_[2].back()};
 
   return 0;
 }

@@ -38,6 +38,72 @@
 #include "libmesh/point.h"
 #endif
 
+/*
+class CylindricalMesh : public PeriodicStructuredMesh {
+public:
+  // Constructors
+  CylindricalMesh() = default;
+  CylindricalMesh(pugi::xml_node node);
+
+  // Overridden methods
+  virtual MeshIndex get_indices(Position r, bool& in_mesh) const override;
+
+  int get_index_in_direction(double r, int i) const override;
+
+  virtual std::string get_mesh_type() const override;
+
+  static const std::string mesh_type;
+
+  Position sample_element(const MeshIndex& ijk, uint64_t* seed) const override;
+
+  MeshDistance distance_to_grid_boundary(const MeshIndex& ijk, int i,
+    const Position& r0, const Direction& u, double l) const override;
+
+  std::pair<vector<double>, vector<double>> plot(
+    Position plot_ll, Position plot_ur) const override;
+
+  void to_hdf5_inner(hid_t group) const override;
+
+  double volume(const MeshIndex& ijk) const override;
+
+  // grid accessors
+  double r(int i) const { return grid_[0][i]; }
+  double phi(int i) const { return grid_[1][i]; }
+  double z(int i) const { return grid_[2][i]; }
+
+  int set_grid();
+
+  // Data members
+  array<vector<double>, 3> grid_;
+
+private:
+  double find_r_crossing(
+    const Position& r, const Direction& u, double l, int shell) const;
+  double find_phi_crossing(
+    const Position& r, const Direction& u, double l, int shell) const;
+  StructuredMesh::MeshDistance find_z_crossing(
+    const Position& r, const Direction& u, double l, int shell) const;
+
+  bool full_phi_ {false};
+
+  inline int sanitize_angular_index(int idx, bool full, int N) const
+  {
+    if ((idx > 0) and (idx <= N)) {
+      return idx;
+    } else if (full) {
+      return (idx + N - 1) % N + 1;
+    } else {
+      return 0;
+    }
+  }
+
+  inline int sanitize_phi(int idx) const
+  {
+    return sanitize_angular_index(idx, full_phi_, shape_[1]);
+  }
+};
+*/
+
 namespace openmc {
 
 //==============================================================================
@@ -89,28 +155,10 @@ public:
   array<vector<double>, 3> grid_;
 
 private:
-  double find_r_crossing(
-    const Position& r, const Direction& u, double l, int shell) const;
-  double find_phi_crossing(
-    const Position& r, const Direction& u, double l, int shell) const;
-  StructuredMesh::MeshDistance find_z_crossing(
-    const Position& r, const Direction& u, double l, int shell) const;
+  double find surface_crossing(
+     const Position& r, const Direction& u) const;
 
-  bool full_phi_ {false};
+  int find_surface_crossing_index(const Position& r, const Direction& u) const;
 
-  inline int sanitize_angular_index(int idx, bool full, int N) const
-  {
-    if ((idx > 0) and (idx <= N)) {
-      return idx;
-    } else if (full) {
-      return (idx + N - 1) % N + 1;
-    } else {
-      return 0;
-    }
-  }
-
-  inline int sanitize_phi(int idx) const
-  {
-    return sanitize_angular_index(idx, full_phi_, shape_[1]);
-  }
+  double abs_a_ {0};
 };

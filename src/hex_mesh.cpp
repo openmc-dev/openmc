@@ -67,20 +67,97 @@ vector<unique_ptr<Mesh>> meshes;
 
 } // namespace model
 
-HexagonalMesh::HexagonalMesh(pugi::xml_node node)
-  : PeriodicStructuredMesh {node}
+HexagonalMesh::HexagonalMesh(pugi::xml_node node) : StructuredMesh {node}
 {
-  //contructor from xml
-  n_dimension_ = 4;
-  grid_[0] = get_node_array<double>(node, "a_grid");
-  grid_[1] = copy(grid_[0]);
-  grid_[2] = copy(grid_[0]);
-  grid_[3] = get_node_array<double>(node, "z_grid");
-  origin_ = get_node_position(node, "origin");
-
-  if (int err = set_grid()) {
-    fatal_error(openmc_err_msg);
+  // Determine number of dimensions for mesh
+  if (!check_for_node(node, "dimension")) {
+    fatal_error("Must specify <dimension> on a regular mesh.");
   }
+
+  xt::xtensor<int, 1> shape = get_node_xarray<int>(node, "dimension");
+  int n = n_dimension_ = shape.size();
+  if (n != 1 && n != 2) {
+    fatal_error("Mesh must be one or two dimensions.");
+  }
+  std::copy(shape.begin(), shape.end(), shape_.begin());
+
+  // Check that dimensions are all greater than zero
+  if (xt::any(shape <= 0)) {
+    fatal_error("All entries on the <dimension> element for a tally "
+                "mesh must be positive.");
+  }
+
+  // Check for lower-left coordinates
+  if (check_for_node(node, "lower_left")) {
+    // Read mesh lower-left corner location
+    lower_left_ = get_node_xarray<double>(node, "lower_left");
+  } else {
+    fatal_error("Must specify <lower_left> on a hexagonal mesh.");
+  }
+
+  // Make sure lower_left and dimension match
+  if (shape.size() != lower_left_.size()) {
+    fatal_error("Number of entries on <lower_left> must be the same "
+                "as the number of entries on <dimension>.");
+  }
+
+  if (check_for_node(node, "width")) {
+    // Make sure one of upper-right or width were specified
+    if (check_for_node(node, "upper_right")) {
+      fatal_error("Cannot specify both <upper_right> and <width> on a hexgonal mesh.");
+    }
+
+    width_ = get_node_xarray<double>(node, "width");
+
+    // Check to ensure width has same dimensions
+    auto n = width_.size();
+    if (n != lower_left_.size()) {
+      fatal_error("Number of entries on <width> must be the same as "
+                  "the number of entries on <lower_left>.");
+    }
+
+    // Check for negative widths
+    if (xt::any(width_ < 0.0)) {
+      fatal_error("Cannot have a negative <width> on a tally hexgonal mesh.");
+    }
+
+    // Set width and upper right coordinate
+    upper_right_ = xt::eval(lower_left_ + shape * width_);
+
+  } else if (check_for_node(node, "upper_right")) {
+    upper_right_ = get_node_xarray<double>(node, "upper_right");
+
+    // Check to ensure width has same dimensions
+    auto n = upper_right_.size();
+    if (n != lower_left_.size()) {
+      fatal_error("Number of entries on <upper_right> must be the "
+                  "same as the number of entries on <lower_left>.");
+    }
+
+    // Check that upper-right is above lower-left
+    if (xt::any(upper_right_ < lower_left_)) {
+      fatal_error("The <upper_right> coordinates must be greater than "
+                  "the <lower_left> coordinates on a tally hexgonal mesh.");
+    }
+
+    // Set width
+    width_ = xt::eval((upper_right_ - lower_left_) / shape);
+  } else {
+    fatal_error("Must specify either <upper_right> or <width> on a hexagonal mesh.");
+  }
+
+  // n.b. must check that the number of hexes is odd
+  //   or allow a parameter crown/ring
+  int max_a_ = (shape[0] - 1) / 2;
+  hex_count_ = 1+ 6/2*(a_max+1)*(a_max);
+
+  element_volume_ = width_[1] * width_[0] * width_[0] * sqrt(3);
+  // Set material volumes
+  volume_frac_ = 1.0 / hex_count_;
+
+  //size of hex is defined as the radius of the circumscribed circle
+  size_ = (width_[0]/shape[0])/sqrt(3.0);
+
 }
 
 const std::string Hegagonal::mesh_type = "hexagonal";

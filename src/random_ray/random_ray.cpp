@@ -180,12 +180,12 @@ float exponentialG2(float tau)
 // Implementation of the Fisher-Yates shuffle algorithm.
 // Algorithm adapted from:
 //    https://en.cppreference.com/w/cpp/algorithm/random_shuffle#Version_3
-void fisher_yates_shuffle(vector<int>& arr, uint64_t* seed)
+void fisher_yates_shuffle(vector<int64_t>& arr, uint64_t* seed)
 {
   // Loop over the array from the last element down to the second
-  for (size_t i = arr.size() - 1; i > 0; --i) {
+  for (int i = arr.size() - 1; i > 0; --i) {
     // Generate a random index in the range [0, i]
-    size_t j = uniform_int_distribution(0, i, seed);
+    int j = uniform_int_distribution(0, i, seed);
     // Swap arr[i] with arr[j]
     std::swap(arr[i], arr[j]);
   }
@@ -196,27 +196,27 @@ void fisher_yates_shuffle(vector<int>& arr, uint64_t* seed)
 // Algorithm adapted from:
 //      A. B. Owen. A randomized halton algorithm in r. Arxiv, 6 2017.
 //      URL https://arxiv.org/abs/1706.02808
-vector<vector<float>> rhalton(int N, int dim, uint64_t* seed, int64_t skip = 0)
+vector<vector<double>> rhalton(int64_t N, int dim, uint64_t* seed, int64_t skip = 0)
 {
-  int b;
+  int64_t b;
   double b2r;
   vector<double> ans(N);
-  vector<int> ind(N);
-  vector<int> primes = {2, 3, 5, 7, 11, 13, 17, 19, 23, 29};
-  vector<vector<float>> halton(N, vector<float>(dim, 0.0));
+  vector<int64_t> ind(N);
+  vector<int64_t> primes = {2, 3, 5, 7, 11, 13, 17, 19, 23, 29};
+  vector<vector<double>> halton(N, vector<double>(dim, 0.0));
 
   std::iota(ind.begin(), ind.end(), skip);
 
   for (int D = 0; D < dim; ++D) {
     b = primes[D];
     b2r = 1.0 / b;
-    vector<int> res(ind);
+    vector<int64_t> res(ind);
     std::fill(ans.begin(), ans.end(), 0.0);
 
     while ((1.0 - b2r) < 1.0) {
-      vector<int> dig(N);
+      vector<int64_t> dig(N);
       // randomaly permute a sequence from skip to skip+N
-      vector<int> perm(b);
+      vector<int64_t> perm(b);
       std::iota(perm.begin(), perm.end(), 0);
       fisher_yates_shuffle(perm, seed);
 
@@ -638,7 +638,7 @@ SourceSite RandomRay::sample_halton()
   stream() = STREAM_TRACKING;
 
   // Calculate next samples in LDS
-  vector<vector<float>> samples = rhalton(1, 5, current_seed(), skip = skip);
+  vector<vector<double>> samples = rhalton(1, 5, current_seed(), skip = skip);
 
   // Get spatial box of ray_source_
   SpatialBox* sb = dynamic_cast<SpatialBox*>(
@@ -651,10 +651,10 @@ SourceSite RandomRay::sample_halton()
            xi * ((sb->upper_right() - shift) - (sb->lower_left() + shift));
 
   // Sample Polar cosine and azimuthal angles
-  float mu = 2.0 * samples[0][3] - 1.0;
-  float azi = 2.0 * PI * samples[0][4];
+  double mu = 2.0 * samples[0][3] - 1.0;
+  double azi = 2.0 * PI * samples[0][4];
   // Convert to Cartesian coordinates
-  float c = std::sqrt(1.0 - mu * mu);
+  double c = std::sqrt(1.0 - mu * mu);
   site.u.x = mu;
   site.u.y = std::cos(azi) * c;
   site.u.z = std::sin(azi) * c;

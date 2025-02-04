@@ -400,7 +400,11 @@ def test_umesh_roundtrip(run_in_tmpdir, request):
 
     assert umesh.id == xml_mesh.id
 
+skip_if_no_dagmc = pytest.mark.skipif(
+    not openmc.lib._dagmc_enabled(),
+    reason="DAGMC CAD geometry is not enabled.")
 
+@skip_if_no_dagmc
 @pytest.mark.parametrize('export_type', ('.vtk','.vtu'))
 def test_umesh(request, export_type):
     """Performs a minimal UnstructuredMesh simulation, reads in the resulting

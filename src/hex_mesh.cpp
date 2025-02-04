@@ -337,11 +337,12 @@ int HexagonalMesh::set_grid()
   // not necessary to do this - since it is a regular mesh we can do it on the fly
 }
 
-int HexagonalMesh::get_index_in_direction(double r, int i) const
+MeshDistance find_hex_crossing(const Position& r0, const direction& u,double l, int i) const
 {
-  //what does lower bound index mean?
-  //defined in openmc/search.h - basically an offset call to std::lower_bound
-  return lower_bound_index(grid_[i].begin(), grid_[i].end(), r) + 1;
+  // return the distance to the hex-plane in the desired direction
+  // i:  {0:a, 1:b, 2:c}
+  ijk =
+
 }
 
 

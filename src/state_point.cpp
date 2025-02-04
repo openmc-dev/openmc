@@ -52,9 +52,7 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
 
   // If a file name was specified, ensure it has .h5 file extension
   const auto extension = get_file_extension(filename_);
-  if (extension == "") {
-    filename_.append(".h5");
-  } else if (extension != "h5") {
+  if (extension != "h5") {
     warning("openmc_statepoint_write was passed a file extension differing "
             "from .h5, but an hdf5 file will be written.");
   }
@@ -578,8 +576,10 @@ void write_source_point(std::string filename, gsl::span<SourceSite> source_bank,
 
   // Dispatch to appropriate function based on file type
   if (use_mcpl) {
+    filename.append(".mcpl");
     write_mcpl_source_point(filename.c_str(), source_bank, bank_index);
   } else {
+    filename.append(".h5");
     write_h5_source_point(filename.c_str(), source_bank, bank_index);
   }
 }
@@ -602,9 +602,7 @@ void write_h5_source_point(const char* filename,
 
   std::string filename_(filename);
   const auto extension = get_file_extension(filename_);
-  if (extension == "") {
-    filename_.append(".h5");
-  } else if (extension != "h5") {
+  if (extension != "h5") {
     warning("write_source_point was passed a file extension differing "
             "from .h5, but an hdf5 file will be written.");
   }

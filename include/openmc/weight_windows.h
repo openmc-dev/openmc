@@ -17,9 +17,7 @@
 
 namespace openmc {
 
-enum class WeightWindowUpdateMethod {
-  MAGIC,
-};
+enum class WeightWindowUpdateMethod { MAGIC, FW_CADIS };
 
 //==============================================================================
 // Constants
@@ -127,8 +125,9 @@ public:
   //! \param[in] threshold Relative error threshold. Results over this
   //! threshold will be ignored \param[in] ratio Ratio of upper to lower
   //! weight window bounds
-  void update_magic(const Tally* tally, const std::string& value = "mean",
-    double threshold = 1.0, double ratio = 5.0);
+  void update_weights(const Tally* tally, const std::string& value = "mean",
+    double threshold = 1.0, double ratio = 5.0,
+    WeightWindowUpdateMethod method = WeightWindowUpdateMethod::MAGIC);
 
   // NOTE: This is unused for now but may be used in the future
   //! Write weight window settings to an HDF5 file
@@ -221,12 +220,11 @@ public:
   void create_tally();
 
   // Data members
-  int32_t tally_idx_;  //!< Index of the tally used to update the weight windows
-  int32_t ww_idx_;     //!< Index of the weight windows object being generated
-  std::string method_; //!< Method used to update weight window. Only "magic"
-                       //!< is valid for now.
-  int32_t max_realizations_; //!< Maximum number of tally realizations
-  int32_t update_interval_;  //!< Determines how often updates occur
+  int32_t tally_idx_; //!< Index of the tally used to update the weight windows
+  int32_t ww_idx_;    //!< Index of the weight windows object being generated
+  WeightWindowUpdateMethod method_; //!< Method used to update weight window.
+  int32_t max_realizations_;        //!< Maximum number of tally realizations
+  int32_t update_interval_;         //!< Determines how often updates occur
   bool on_the_fly_; //!< Whether or not to keep tally results between batches or
                     //!< realizations
 

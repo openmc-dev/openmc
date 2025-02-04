@@ -338,11 +338,11 @@ void RandomRay::attenuate_flux_inner(
 
   switch (source_shape_) {
   case RandomRaySourceShape::FLAT:
-    attenuate_flux_flat_source(srh, distance, is_active);
+    attenuate_flux_flat_source(srh, distance, is_active, r);
     break;
   case RandomRaySourceShape::LINEAR:
   case RandomRaySourceShape::LINEAR_XY:
-    attenuate_flux_linear_source(srh, distance, is_active);
+    attenuate_flux_linear_source(srh, distance, is_active, r);
     break;
   default:
     fatal_error("Unknown source shape for random ray transport.");
@@ -363,7 +363,7 @@ void RandomRay::attenuate_flux_inner(
 // individually (at least on CPU). Several other bookkeeping tasks are also
 // performed when inside the lock.
 void RandomRay::attenuate_flux_flat_source(
-  SourceRegionHandle& srh, double distance, bool is_active)
+  SourceRegionHandle& srh, double distance, bool is_active, Position r)
 {
   // The number of geometric intersections is counted for reporting purposes
   n_event()++;
@@ -401,7 +401,7 @@ void RandomRay::attenuate_flux_flat_source(
     // Tally valid position inside the source region (e.g., midpoint of
     // the ray) if not done already
     if (!srh.position_recorded()) {
-      Position midpoint = r() + u() * (distance / 2.0);
+      Position midpoint = r + u() * (distance / 2.0);
       srh.position() = midpoint;
       srh.position_recorded() = 1;
     }
@@ -412,7 +412,7 @@ void RandomRay::attenuate_flux_flat_source(
 }
 
 void RandomRay::attenuate_flux_linear_source(
-  SourceRegionHandle& srh, double distance, bool is_active)
+  SourceRegionHandle& srh, double distance, bool is_active, Position r)
 {
   // Cast domain to LinearSourceDomain
   LinearSourceDomain* domain = dynamic_cast<LinearSourceDomain*>(domain_);
@@ -428,7 +428,7 @@ void RandomRay::attenuate_flux_linear_source(
   int material = this->material();
 
   Position& centroid = srh.centroid();
-  Position midpoint = r() + u() * (distance / 2.0);
+  Position midpoint = r + u() * (distance / 2.0);
 
   // Determine the local position of the midpoint and the ray origin
   // relative to the source region's centroid
@@ -442,7 +442,7 @@ void RandomRay::attenuate_flux_linear_source(
   // of the ray as the region's centroid.
   if (srh.volume_t()) {
     rm_local = midpoint - centroid;
-    r0_local = r() - centroid;
+    r0_local = r - centroid;
   } else {
     rm_local = {0.0, 0.0, 0.0};
     r0_local = -u() * 0.5 * distance;

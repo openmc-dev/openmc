@@ -35,7 +35,7 @@ SourceRegion::SourceRegion(int negroups, bool is_linear)
 }
 
 SourceRegion::SourceRegion(const SourceRegionHandle& handle)
-  : SourceRegion(handle.negroups_, handle.mom_matrix_ != nullptr)
+  : SourceRegion(handle.negroups_, handle.is_linear_)
 {
   material_ = handle.material();
   mesh_ = handle.mesh();
@@ -57,6 +57,7 @@ SourceRegionHandle SourceRegion::get_source_region_handle()
   SourceRegionHandle handle;
   handle.negroups_ = scalar_flux_old_.size();
   handle.material_ = &material_;
+  handle.is_linear_ = source_gradients_.size() > 0;
   handle.lock_ = &lock_;
   handle.volume_ = &volume_;
   handle.volume_t_ = &volume_t_;
@@ -314,6 +315,7 @@ SourceRegionHandle SourceRegionContainer::get_source_region_handle(int64_t sr)
   SourceRegionHandle handle;
   handle.negroups_ = negroups();
   handle.material_ = &material(sr);
+  handle.is_linear_ = is_linear();
   handle.lock_ = &lock(sr);
   handle.volume_ = &volume(sr);
   handle.volume_t_ = &volume_t(sr);

@@ -119,6 +119,7 @@ public:
   // Public Data members
   int negroups_;
   bool is_numerical_fp_artifact_ {false};
+  bool is_linear_ {false};
 
   // Scalar fields
   int* material_;

@@ -229,8 +229,6 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
 
     double volume_simulation_avg = source_regions_.volume(sr);
     double volume_iteration = source_regions_.volume_naive(sr);
-    // fmt::print("Volume Simulation Avg: {}\n", volume_simulation_avg);
-    // fmt::print("Volume Iteration: {}\n", volume_iteration);
 
     // Increment the number of hits if cell was hit this iteration
     if (volume_iteration) {
@@ -1300,6 +1298,7 @@ SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
   // to inherit material, external source, and some flux properties etc.
   SourceRegion* sr_ptr = discovered_source_regions_.emplace(
     sr_key, {base_source_regions_.get_source_region_handle(sr)});
+  // print out all elements of the sr_ptr
   discovered_source_regions_.unlock(sr_key);
   return sr_ptr->get_source_region_handle();
 }

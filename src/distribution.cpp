@@ -258,8 +258,12 @@ Tabular::Tabular(pugi::xml_node node)
     interp_ = Interpolation::histogram;
   }
 
-  // Read and initialize tabular distribution
+  // Read and initialize tabular distribution. If number of parameters is odd,
+  // add an extra zero for the 'p' array.
   auto params = get_node_array<double>(node, "parameters");
+  if (params.size() % 2 != 0) {
+    params.push_back(0.0);
+  }
   std::size_t n = params.size() / 2;
   const double* x = params.data();
   const double* p = x + n;

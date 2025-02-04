@@ -634,7 +634,8 @@ SourceSite RandomRay::sample_halton()
 
   // Sample spatial distribution
   Position xi {samples[0], samples[1], samples[2]};
-  Position shift {1e-9, 1e-9, 1e-9};
+  // make a small shift in position to avoid geometry floating point issues
+  Position shift {FP_COINCIDENT , FP_COINCIDENT , FP_COINCIDENT};
   site.r = (sb->lower_left() + shift) +
            xi * ((sb->upper_right() - shift) - (sb->lower_left() + shift));
 

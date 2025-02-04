@@ -275,13 +275,10 @@ void RandomRay::event_advance_ray()
 
 void RandomRay::attenuate_flux(double distance, bool is_active, double offset)
 {
-  if (distance < 2.0 * TINY_BIT) {
-    return;
-  }
   // Determine source region index etc.
   int i_cell = lowest_coord().cell;
 
-  // The source region is the spatial region index
+  // The base source region is the spatial region index
   int64_t sr = domain_->source_region_offsets_[i_cell] + cell_instance();
 
   // Perform ray tracing across mesh
@@ -301,38 +298,23 @@ void RandomRay::attenuate_flux(double distance, bool is_active, double offset)
       Mesh* mesh = model::meshes[mesh_idx].get();
       vector<int> bins;
       vector<double> fractional_lengths;
+
+      // We adjust the start and end positions of the ray slightly
+      // to accomodate for floating point precision issues that tend
+      // to occur at mesh boundaries that overlap with geometry lattice
+      // boundaries.
       Position start = r() + (offset + TINY_BIT) * u();
       Position end = start + (distance - 2.0 * TINY_BIT) * u();
-      double rt_length = (end-start).norm();
+      double reduced_distance = (end - start).norm();
 
+      // Ray trace through the mesh and record bins and lengths
       mesh->bins_crossed(start, end, u(), bins, fractional_lengths);
-      //fmt::print("Ray {} crossing sr {} from {} to {} with {} bins. SR Length: {}, RT Length: {}\n", id(), sr, start, end, bins.size(), distance, rt_length);
-      //fmt::print("TRUE{} crossing sr {} from {} to {} with {} bins. SR Length: {}, RT Length: {}\n", id(), sr, r(), r() + (offset + distance)*u(), bins.size(), distance, rt_length);
 
-      double tot_length = 0.0;
+      // Loop over all mesh bins and attenuate flux
       for (int b = 0; b < bins.size(); b++) {
-        int bin = bins[b];
-        double physical_length = rt_length * fractional_lengths[b];
-        if (id() == 7419)
-        {
-        // PRINT THESE to 20 units of precision with scientific notation!
-        int true_bin = mesh->get_bin(start + TINY_BIT * u());
-        //fmt::print("\tPosition x {:.20e}: y {:.20e}: z {:.20e}: RT Bin {}: True Bin {}: Length Fraction: {:.20e}, Physical Length: {:.20e}, Total Length: {:.20e}\n", start.x, start.y, start.z, bin, true_bin, fractional_lengths[b], physical_length, tot_length);
-
-        GeometryState gs;
-        gs.r() = start;
-        exhaustive_find_cell(gs);
-        int gs_i_cell = gs.lowest_coord().cell;
-        int64_t sr_found = domain_->source_region_offsets_[gs_i_cell] + gs.cell_instance();
-        if (sr_found != sr) {
-          //fmt::print("direction {}\n", u());
-          //fatal_error(fmt::format("Expected SR {}, found SR {} at position {} with bin {} and true bin {}", sr, sr_found, start, bin, true_bin));
-        }
-        }
-
-        attenuate_flux_inner(physical_length, is_active, sr, bin, start);
+        double physical_length = reduced_distance * fractional_lengths[b];
+        attenuate_flux_inner(physical_length, is_active, sr, bins[b], start);
         start += physical_length * u();
-        tot_length += physical_length;
       }
     }
   } else {

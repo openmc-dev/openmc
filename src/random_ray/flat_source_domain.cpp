@@ -1170,8 +1170,6 @@ void FlatSourceDomain::prepare_base_source_regions()
   std::swap(source_regions_, base_source_regions_);
   source_regions_.negroups() = base_source_regions_.negroups();
   source_regions_.is_linear() = base_source_regions_.is_linear();
-  // TODO: For now we leave this as full sized, but can call
-  // this function to reduce the memory usage if needed.
   base_source_regions_.reduce_to_base();
 }
 
@@ -1211,46 +1209,52 @@ SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
 
   // Case 3: The source region key is not present anywhere, but it is only
   // due to floating point artifacts. These artifacts occur when the overlaid
-  // mesh confirms to actual geometry surfaces. In these cases, roundoff error
+  // mesh overlaps with actual geometry surfaces. In these cases, roundoff error
   // may result in the ray tracer detecting an additional (very short) segment
   // though a mesh bin that is actually past the physical source region
-  // boundary. To filter out this case, before we create the new source region,
-  // we double check that the actual starting point of this segment (r) is still
-  // in the same geometry source region that we started in. If an artifact is
-  // detected, we discard the segment (and attenuation through it) as it is not
-  // a valid source region. It is invalid because in the next ray trace, the ray
-  // will cross the source region boundary and we will process that first
-  // segment correctly. We might consider using the correctly looked up
-  // information below, but this would basically "double count" the segment,
-  // leading to an overestimate of the flux in the source region. It would
-  // probably be hard to detect the bias, given the small size of such segments,
-  // but nonetheless it is worthwhile to just skip this source region since it
-  // is unphysical.
+  // boundary. This is a result of the the multi-level ray tracing treatment in
+  // OpenMC, which depending on the number of universes in the hierarchy etc can
+  // result in the wrong surface being selected as the nearest. This can happen
+  // in a lattice when there are two directions that both are very close in
+  // distance, within the tolerance of FP_REL_PRECISION, and the are thus
+  // treated as being equivalent so alternative logic is used. However, when we
+  // go and ray trace on this with the mesh tracer we may go past the surface
+  // bounding the current source region.
+  //
+  // To filter out this case, before we create the new source region, we double
+  // check that the actual starting point of this segment (r) is still in the
+  // same geometry source region that we started in. If an artifact is detected,
+  // we discard the segment (and attenuation through it) as it is not really a
+  // valid source region and will have only an infinitessimally small cell
+  // combined with the mesh bin. Thankfully, this is a fairly rare condition,
+  // and only triggers for very short ray lengths. It can be fixed by decreasing
+  // the value of FP_REL_PRECISION in constants.h, but this may have unknown
+  // consequences for the general ray tracer, so for now we do the below sanity
+  // checks before generating phantom source regions. A significant extra cost
+  // is incurred in instantiating the GeometryState object and doing a cell
+  // lookup, but again, this is going to be an extremely rare thing to check
+  // after the first power iteration has completed.
+
+  // Sanity check on source region id
   GeometryState gs;
-  //gs.r() = r;
   gs.r() = r + TINY_BIT * u;
   exhaustive_find_cell(gs);
   int gs_i_cell = gs.lowest_coord().cell;
   int64_t sr_found = source_region_offsets_[gs_i_cell] + gs.cell_instance();
   if (sr_found != sr) {
-    // warning(fmt::format("Observed Source Region Mismatch! Expected sr {}, "
-    //                    "found sr {}, distance {}, position {}, direction {}",
-    //  sr, sr_found, dist, r, u));
     warning("Source Region Numerical Artifact Detected...");
 
     discovered_source_regions_.unlock(sr_key);
-
     SourceRegionHandle handle;
     handle.is_numerical_fp_artifact_ = true;
     return handle;
-    // return get_subdivided_source_region_handle(sr_found, mesh_bin, r, dist,
-    // u);
   }
+
+  // Sanity check on mesh bin
   int mesh_idx = base_source_regions_.mesh(sr);
   if (mesh_idx == C_NONE) {
     if (mesh_bin != 0) {
       discovered_source_regions_.unlock(sr_key);
-      // return get_subdivided_source_region_handle(sr, 0, r, dist, u);
       SourceRegionHandle handle;
       handle.is_numerical_fp_artifact_ = true;
       return handle;
@@ -1259,13 +1263,8 @@ SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
     Mesh* mesh = model::meshes[mesh_idx].get();
     int bin_found = mesh->get_bin(r + TINY_BIT * u);
     if (bin_found != mesh_bin) {
-      // warning(fmt::format("Observed Bin Mismatch! Expected bin {}, found bin
-      // "
-      //                     "{}, distance {}, position {}, direction {}",
-      //   mesh_bin, bin_found, dist, r, u));
       warning("Mesh Bin Numerical Artifact Detected...");
       discovered_source_regions_.unlock(sr_key);
-      // return get_subdivided_source_region_handle(sr, bin_found, r, dist, u);
       SourceRegionHandle handle;
       handle.is_numerical_fp_artifact_ = true;
       return handle;
@@ -1275,8 +1274,9 @@ SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
   // Case 4: The source region key is valid, but is not present anywhere. This
   // condition only occurs the first time the source region is discovered
   // (typically in the first power iteration). In this case, we need to handle
-  // creation of the new source region and its storage into the temporary map.
-  // The new source region is created by copying the base source region.
+  // creation of the new source region and its storage into the parallel map.
+  // The new source region is created by copying the base source region, so as
+  // to inherit material, external source, and some flux properties etc.
   SourceRegion* sr_ptr = discovered_source_regions_.emplace(
     sr_key, {base_source_regions_.get_source_region_handle(sr)});
   discovered_source_regions_.unlock(sr_key);

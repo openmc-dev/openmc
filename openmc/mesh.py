@@ -2390,7 +2390,7 @@ class UnstructuredMesh(MeshBase):
 
         if self.connectivity is None or self.vertices is None:
             raise RuntimeError(
-                "This mesh has not been " "loaded from a statepoint file."
+                "This mesh has not been loaded from a statepoint file."
             )
 
         if filename is None:

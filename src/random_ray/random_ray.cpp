@@ -186,7 +186,6 @@ void fisher_yates_shuffle(vector<int64_t>& arr, uint64_t* seed)
   for (int i = arr.size() - 1; i > 0; --i) {
     // Generate a random index in the range [0, i]
     int j = uniform_int_distribution(0, i, seed);
-    // Swap arr[i] with arr[j]
     std::swap(arr[i], arr[j]);
   }
 }
@@ -196,41 +195,30 @@ void fisher_yates_shuffle(vector<int64_t>& arr, uint64_t* seed)
 // Algorithm adapted from:
 //      A. B. Owen. A randomized halton algorithm in r. Arxiv, 6 2017.
 //      URL https://arxiv.org/abs/1706.02808
-vector<vector<double>> rhalton(int64_t N, int dim, uint64_t* seed, int64_t skip = 0)
+vector<double> rhalton(int dim, uint64_t* seed, int64_t skip = 0)
 {
-  int64_t b;
-  double b2r;
-  vector<double> ans(N);
-  vector<int64_t> ind(N);
+  int64_t b, res, dig;
+  double b2r, ans;
   vector<int64_t> primes = {2, 3, 5, 7, 11, 13, 17, 19, 23, 29};
-  vector<vector<double>> halton(N, vector<double>(dim, 0.0));
-
-  std::iota(ind.begin(), ind.end(), skip);
+  vector<double> halton(dim, 0.0);
 
   for (int D = 0; D < dim; ++D) {
     b = primes[D];
+    vector<int64_t> perm(b);
     b2r = 1.0 / b;
-    vector<int64_t> res(ind);
-    std::fill(ans.begin(), ans.end(), 0.0);
+    res = skip;
+    ans = 0.0;
 
     while ((1.0 - b2r) < 1.0) {
-      vector<int64_t> dig(N);
-      // randomaly permute a sequence from skip to skip+N
-      vector<int64_t> perm(b);
       std::iota(perm.begin(), perm.end(), 0);
       fisher_yates_shuffle(perm, seed);
-
-      for (int i = 0; i < N; ++i) {
-        dig[i] = res[i] % b;
-        ans[i] += perm[dig[i]] * b2r;
-        res[i] = (res[i] - dig[i]) / b;
-      }
+      dig = res % b;
+      ans += perm[dig] * b2r;
+      res = (res - dig) / b;
       b2r /= b;
     }
 
-    for (int i = 0; i < N; ++i) {
-      halton[i][D] = ans[i];
-    }
+    halton[D] = ans;
   }
 
   return halton;
@@ -637,22 +625,22 @@ SourceSite RandomRay::sample_halton()
   init_particle_seeds(batch_seed, seeds());
   stream() = STREAM_TRACKING;
 
-  // Calculate next samples in LDS
-  vector<vector<double>> samples = rhalton(1, 5, current_seed(), skip = skip);
+  // Calculate next samples in LDS across 5 dimensions
+  vector<double> samples = rhalton(5, current_seed(), skip = skip);
 
   // Get spatial box of ray_source_
   SpatialBox* sb = dynamic_cast<SpatialBox*>(
     dynamic_cast<IndependentSource*>(RandomRay::ray_source_.get())->space());
 
   // Sample spatial distribution
-  Position xi {samples[0][0], samples[0][1], samples[0][2]};
+  Position xi {samples[0], samples[1], samples[2]};
   Position shift {1e-9, 1e-9, 1e-9};
   site.r = (sb->lower_left() + shift) +
            xi * ((sb->upper_right() - shift) - (sb->lower_left() + shift));
 
   // Sample Polar cosine and azimuthal angles
-  double mu = 2.0 * samples[0][3] - 1.0;
-  double azi = 2.0 * PI * samples[0][4];
+  double mu = 2.0 * samples[3] - 1.0;
+  double azi = 2.0 * PI * samples[4];
   // Convert to Cartesian coordinates
   double c = std::sqrt(1.0 - mu * mu);
   site.u.x = mu;

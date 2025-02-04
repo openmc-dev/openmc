@@ -403,6 +403,8 @@ void FlatSourceDomain::convert_source_regions_to_tallies()
   // Tracks if we've generated a mapping yet for all source regions.
   bool all_source_regions_mapped = true;
 
+  fmt::print("Converting source regions to tallies...\n");
+
 // Attempt to generate mapping for all source regions
 #pragma omp parallel for
   for (int64_t sr = 0; sr < n_source_regions(); sr++) {
@@ -764,9 +766,25 @@ void FlatSourceDomain::output_to_vtk() const
           p.r() = sample;
           bool found = exhaustive_find_cell(p);
           int i_cell = p.lowest_coord().cell;
-          int64_t source_region_idx =
-            source_region_offsets_[i_cell] + p.cell_instance();
-          voxel_indices[z * Ny * Nx + y * Nx + x] = source_region_idx;
+          int64_t sr = source_region_offsets_[i_cell] + p.cell_instance();
+
+          if (RandomRay::mesh_subdivision_enabled_) {
+            int mesh_idx = base_source_regions_.mesh(sr);
+            int mesh_bin;
+            if (mesh_idx == C_NONE) {
+              mesh_bin = 0;
+            } else {
+              Mesh* mesh = model::meshes[mesh_idx].get();
+              mesh_bin = mesh->get_bin(p.r());
+            }
+            SourceRegionKey sr_key {sr, mesh_bin};
+            auto it = source_region_map_.find(sr_key);
+            if (it != source_region_map_.end()) {
+              sr = it->second;
+            }
+          }
+
+          voxel_indices[z * Ny * Nx + y * Nx + x] = sr;
           voxel_positions[z * Ny * Nx + y * Nx + x] = sample;
         }
       }
@@ -1087,7 +1105,8 @@ void FlatSourceDomain::apply_mesh_to_cell_instances(int32_t i_cell,
                                 "applied, but trying to apply mesh idx {}",
           sr, source_regions_.mesh(sr), mesh_idx));
       }
-      // fmt::print("Applying mesh idx {} to source region {}\n", mesh_idx, sr);
+      // fmt::print("Applying mesh idx {} to source region {}\n", mesh_idx,
+      // sr);
       source_regions_.mesh(sr) = mesh_idx;
     }
   }
@@ -1178,12 +1197,12 @@ SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
 {
   SourceRegionKey sr_key {sr, mesh_bin};
 
-  // Case 1: Check if the source region key is already present in the permanent
-  // map. This is the most common condition, as any source region visited in a
-  // previous power iteration will already be present in the permanent map. If
-  // the source region key is found, we translate the key into a specific 1D
-  // sourc region index and return a handle its position in the  source_regions_
-  // vector.
+  // Case 1: Check if the source region key is already present in the
+  // permanent map. This is the most common condition, as any source region
+  // visited in a previous power iteration will already be present in the
+  // permanent map. If the source region key is found, we translate the key
+  // into a specific 1D sourc region index and return a handle its position in
+  // the  source_regions_ vector.
   auto it = source_region_map_.find(sr_key);
   if (it != source_region_map_.end()) {
     int64_t sr = it->second;
@@ -1191,11 +1210,11 @@ SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
   }
 
   // Case 2: Check if the source region key is present in the temporary
-  // (thread safe) map. This is a common occurrence in the first power iteration
-  // when the source region has already been visited already by some other ray.
-  // We begin by locking the temporary map before any operations are performed.
-  // The lock is not global over the full data structure -- it will be dependent
-  // on which key is used.
+  // (thread safe) map. This is a common occurrence in the first power
+  // iteration when the source region has already been visited already by some
+  // other ray. We begin by locking the temporary map before any operations
+  // are performed. The lock is not global over the full data structure -- it
+  // will be dependent on which key is used.
   discovered_source_regions_.lock(sr_key);
 
   // If the key is found in the temporary map, then we return a handle to the
@@ -1209,31 +1228,33 @@ SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
 
   // Case 3: The source region key is not present anywhere, but it is only
   // due to floating point artifacts. These artifacts occur when the overlaid
-  // mesh overlaps with actual geometry surfaces. In these cases, roundoff error
-  // may result in the ray tracer detecting an additional (very short) segment
-  // though a mesh bin that is actually past the physical source region
-  // boundary. This is a result of the the multi-level ray tracing treatment in
-  // OpenMC, which depending on the number of universes in the hierarchy etc can
-  // result in the wrong surface being selected as the nearest. This can happen
-  // in a lattice when there are two directions that both are very close in
-  // distance, within the tolerance of FP_REL_PRECISION, and the are thus
-  // treated as being equivalent so alternative logic is used. However, when we
-  // go and ray trace on this with the mesh tracer we may go past the surface
-  // bounding the current source region.
+  // mesh overlaps with actual geometry surfaces. In these cases, roundoff
+  // error may result in the ray tracer detecting an additional (very short)
+  // segment though a mesh bin that is actually past the physical source
+  // region boundary. This is a result of the the multi-level ray tracing
+  // treatment in OpenMC, which depending on the number of universes in the
+  // hierarchy etc can result in the wrong surface being selected as the
+  // nearest. This can happen in a lattice when there are two directions that
+  // both are very close in distance, within the tolerance of
+  // FP_REL_PRECISION, and the are thus treated as being equivalent so
+  // alternative logic is used. However, when we go and ray trace on this with
+  // the mesh tracer we may go past the surface bounding the current source
+  // region.
   //
-  // To filter out this case, before we create the new source region, we double
-  // check that the actual starting point of this segment (r) is still in the
-  // same geometry source region that we started in. If an artifact is detected,
-  // we discard the segment (and attenuation through it) as it is not really a
-  // valid source region and will have only an infinitessimally small cell
-  // combined with the mesh bin. Thankfully, this is a fairly rare condition,
-  // and only triggers for very short ray lengths. It can be fixed by decreasing
-  // the value of FP_REL_PRECISION in constants.h, but this may have unknown
-  // consequences for the general ray tracer, so for now we do the below sanity
-  // checks before generating phantom source regions. A significant extra cost
-  // is incurred in instantiating the GeometryState object and doing a cell
-  // lookup, but again, this is going to be an extremely rare thing to check
-  // after the first power iteration has completed.
+  // To filter out this case, before we create the new source region, we
+  // double check that the actual starting point of this segment (r) is still
+  // in the same geometry source region that we started in. If an artifact is
+  // detected, we discard the segment (and attenuation through it) as it is
+  // not really a valid source region and will have only an infinitessimally
+  // small cell combined with the mesh bin. Thankfully, this is a fairly rare
+  // condition, and only triggers for very short ray lengths. It can be fixed
+  // by decreasing the value of FP_REL_PRECISION in constants.h, but this may
+  // have unknown consequences for the general ray tracer, so for now we do
+  // the below sanity checks before generating phantom source regions. A
+  // significant extra cost is incurred in instantiating the GeometryState
+  // object and doing a cell lookup, but again, this is going to be an
+  // extremely rare thing to check after the first power iteration has
+  // completed.
 
   // Sanity check on source region id
   GeometryState gs;

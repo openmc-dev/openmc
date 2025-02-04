@@ -38,12 +38,17 @@ SourceRegion::SourceRegion(const SourceRegionHandle& handle)
   : SourceRegion(handle.negroups_, handle.mom_matrix_ != nullptr)
 {
   material_ = handle.material();
-  external_source_present_ = handle.external_source_present();
   mesh_ = handle.mesh();
   for (int g = 0; g < scalar_flux_new_.size(); g++) {
     scalar_flux_old_[g] = handle.scalar_flux_old_[g];
     source_[g] = handle.source_[g];
-    external_source_[g] = handle.external_source_[g];
+  }
+
+  if (settings::run_mode == RunMode::FIXED_SOURCE) {
+    external_source_present_ = handle.external_source_present();
+    for (int g = 0; g < scalar_flux_new_.size(); g++) {
+      external_source_[g] = handle.external_source_[g];
+    }
   }
 }
 

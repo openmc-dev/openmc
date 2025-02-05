@@ -4,7 +4,7 @@ from copy import deepcopy
 import math
 from numbers import Real
 from warnings import warn, catch_warnings, simplefilter
-from typing import Callable
+from typing import Callable, Literal
 
 import lxml.etree as ET
 import numpy as np
@@ -2290,21 +2290,21 @@ class TPMS(Surface):
     surface_list = ['Gyroid','Diamond','Schwarz_P',]
     
     _type = 'tpms'
-    _coeff_keys = ('cst', 'pitch', 'x0', 'y0', 'z0', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i')
+    _coeff_keys = ('isovalue', 'pitch', 'x0', 'y0', 'z0', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i')
 
-    def __init__(self, surface_type: str, cst: float = 0., pitch: float = 2., x0: float = 0., y0: float = 0., z0: float = 0., a=1., b=0., c=0., d=0., e=1., f=0., g=0., h=0., i=1., *args, **kwargs):
+    def __init__(self, surface_type: str, isovalue: float = 0., pitch: float = 2., x0: float = 0., y0: float = 0., z0: float = 0., a=1., b=0., c=0., d=0., e=1., f=0., g=0., h=0., i=1., *args, **kwargs):
         kwargs = _future_kwargs_warning_helper(type(self), *args, **kwargs)
         super().__init__(**kwargs)
         assert surface_type in TPMS.surface_list
         self.surface_type = surface_type
-        self.cst = cst
+        self.isovalue = isovalue
         self.pitch = pitch
         self.a, self.b, self.c = a, b, c
         self.d, self.e, self.f = d, e, f
         self.g, self.h, self.i = g, h, i
         self.x0, self.y0, self.z0 = x0, y0, z0
 
-    cst = SurfaceCoefficient('cst')
+    isovalue = SurfaceCoefficient('isovalue')
     pitch = SurfaceCoefficient('pitch')
     x0 = SurfaceCoefficient('x0')
     y0 = SurfaceCoefficient('y0')
@@ -2323,7 +2323,7 @@ class TPMS(Surface):
         raise AttributeError( "'TPMS' object has no attribute 'normalize'" )
     
     def _get_base_coeffs(self):
-        return (self.cst, self.pitch, self.x0, self.y0, self.z0, self.a, self.b, self.c, self.d, self.e, self.f, self.g, self.h, self.i)
+        return (self.isovalue, self.pitch, self.x0, self.y0, self.z0, self.a, self.b, self.c, self.d, self.e, self.f, self.g, self.h, self.i)
     
     def evaluate(self, point):
         x, y, z = point
@@ -2332,11 +2332,11 @@ class TPMS(Surface):
         yy = self.d*(x-self.x0) + self.e*(y-self.y0) + self.f*(z-self.z0)
         zz = self.g*(x-self.x0) + self.h*(y-self.y0) + self.i*(z-self.z0)
         if self.surface_type == "Schwarz_P":
-            return cos(l*xx) + cos(l*yy) + cos(l*zz) - self.cst
+            return cos(l*xx) + cos(l*yy) + cos(l*zz) - self.isovalue
         elif self.surface_type == "Gyroid":
-            return sin(l*xx)*cos(l*zz) + sin(l*yy)*cos(l*xx) + sin(l*zz)*cos(l*yy) - self.cst
+            return sin(l*xx)*cos(l*zz) + sin(l*yy)*cos(l*xx) + sin(l*zz)*cos(l*yy) - self.isovalue
         elif self.surface_type == "Diamond":
-            return sin(l*xx)*sin(l*yy)*sin(l*zz) + sin(l*xx)*cos(l*yy)*cos(l*zz) + cos(l*xx)*sin(l*yy)*cos(l*zz) + cos(l*xx)*cos(l*yy)*sin(l*zz) - self.cst
+            return sin(l*xx)*sin(l*yy)*sin(l*zz) + sin(l*xx)*cos(l*yy)*cos(l*zz) + cos(l*xx)*sin(l*yy)*cos(l*zz) + cos(l*xx)*cos(l*yy)*sin(l*zz) - self.isovalue
         else:
             raise NotImplementedError(f"'{self.surface_type}' surface_type is not yet implemented.")
     
@@ -2376,57 +2376,55 @@ class TPMS(Surface):
         element.set("surface_type", self.surface_type)
         return element
 
+    @staticmethod
+    def _get_relative_density_vs_isovalue(surface_type:str, _resolution:int=100, *args, **kwargs):
+        # building a spacephase matrix
+        x = np.linspace(-1/2, +1/2,_resolution+1,endpoint=True)
+        y = np.linspace(-1/2, +1/2,_resolution+1,endpoint=True)
+        z = np.linspace(-1/2, +1/2,_resolution+1,endpoint=True)
+        x,y,z = 0.5*(x[:-1]+x[1:]),0.5*(y[:-1]+y[1:]),0.5*(z[:-1]+z[1:])
+        x,y,z = np.meshgrid(x,y,z)
+        x = x.flatten()
+        y = y.flatten()
+        z = z.flatten()
+        f = np.zeros_like(x)
+        length = np.shape(f)[0]
+        temporary = TPMS(surface_type, 0., 1., *args, **kwargs)
+        for i in range(0, length):
+            point = (x[i],y[i],z[i])
+            f[i] = temporary.evaluate(point)
+        # function to find the zero value
+        isovalues = np.sort(f)
+        relative_densities = np.arange(1, length+1) / (length+1)
+        return relative_densities, isovalues
+
     @classmethod
     def from_thickness(cls, surface_type: str, thickness: float = 0., pitch: float = 2., *args, **kwargs):
-        cst = thickness * 2*pi/pitch
-        return cls(surface_type, cst, pitch, *args, **kwargs)
+        isovalue = thickness * 2*pi/pitch
+        return cls(surface_type, isovalue, pitch, *args, **kwargs)
     
     @classmethod
     def from_relative_density(cls, surface_type: str, relative_density: float = 0.5, pitch: float = 2., _resolution: int = 100, *args, **kwargs):
-        # building a spacephase matrix
-        x = np.linspace(-pitch/2, +pitch/2,_resolution+1,endpoint=True)
-        y = np.linspace(-pitch/2, +pitch/2,_resolution+1,endpoint=True)
-        z = np.linspace(-pitch/2, +pitch/2,_resolution+1,endpoint=True)
-        x,y,z = 0.5*(x[:-1]+x[1:]),0.5*(y[:-1]+y[1:]),0.5*(z[:-1]+z[1:])
-        x,y,z = np.meshgrid(x,y,z)
-        x = x.flatten()
-        y = y.flatten()
-        z = z.flatten()
-        f = np.zeros_like(x)
-        length = np.shape(f)[0]
-        temporary = cls(surface_type, 0., pitch, *args, **kwargs)
-        for i in range(0, length):
-            point = (x[i],y[i],z[i])
-            f[i] = temporary.evaluate(point)
-        # function to find the zero value
-        isovalues = np.sort(f)
-        isocounts = np.arange(1, length+1) / (length+1)
-        cst = np.interp(relative_density, isocounts, isovalues)
-        return cls(surface_type, cst, pitch, *args, **kwargs)
+        pRelDensity, pIsovalues = TPMS._get_relative_density_vs_isovalue(surface_type, _resolution)
+        isovalue = np.interp(relative_density, pRelDensity, pIsovalues)
+        return cls(surface_type, isovalue, pitch, *args, **kwargs)
+
+    @classmethod
+    def from_porosity(cls, surface_type: str, porosity: float = 0.5, pitch: float = 2., _resolution: int = 100, *args, **kwargs):
+        relative_density = 1 - porosity
+        return cls.from_relative_density(surface_type, relative_density, pitch, _resolution, *args, **kwargs)
 
     @staticmethod
     def from_relative_densities(surface_type: str, relative_densities: list, pitch: float = 2., _resolution: int = 100, *args, **kwargs):
-        # building a spacephase matrix
-        x = np.linspace(-pitch/2, +pitch/2,_resolution+1,endpoint=True)
-        y = np.linspace(-pitch/2, +pitch/2,_resolution+1,endpoint=True)
-        z = np.linspace(-pitch/2, +pitch/2,_resolution+1,endpoint=True)
-        x,y,z = 0.5*(x[:-1]+x[1:]),0.5*(y[:-1]+y[1:]),0.5*(z[:-1]+z[1:])
-        x,y,z = np.meshgrid(x,y,z)
-        x = x.flatten()
-        y = y.flatten()
-        z = z.flatten()
-        f = np.zeros_like(x)
-        length = np.shape(f)[0]
-        temporary = TPMS(surface_type, 0., pitch, *args, **kwargs)
-        for i in range(0, length):
-            point = (x[i],y[i],z[i])
-            f[i] = temporary.evaluate(point)
-        # function to find the zero value
-        isovalues = np.sort(f)
-        isocounts = np.arange(1, length+1) / (length+1)
-        csts = np.interp(relative_densities, isocounts, isovalues).tolist()
-        listOfTPMS = [TPMS(surface_type, cst, pitch, *args, **kwargs) for cst in csts]
+        pRelDensity, pIsovalues = TPMS._get_relative_density_vs_isovalue(surface_type, _resolution)
+        isovalues = np.interp(relative_densities, pRelDensity, pIsovalues).tolist()
+        listOfTPMS = [TPMS(surface_type, isovalue, pitch, *args, **kwargs) for isovalue in isovalues]
         return listOfTPMS
+
+    @staticmethod
+    def from_porosities(surface_type: str, porosities: list, pitch: float = 2., _resolution: int = 100, *args, **kwargs):
+        relative_densities = [1-x for x in porosities]
+        return TPMS.from_relative_densities(surface_type, relative_densities, pitch, _resolution, *args, **kwargs)
 
 class FunctionTPMS(Surface):
 
@@ -2435,14 +2433,14 @@ class FunctionTPMS(Surface):
     _type = 'function-tpms'
     _coeff_keys = ('x0', 'y0', 'z0', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i')
 
-    def __init__(self, surface_type: str, function_type: str, fThickness: FunctionForTPMS, fPitch: FunctionForTPMS, 
+    def __init__(self, surface_type: str, function_type: str, fIsovalue: FunctionForTPMS, fPitch: FunctionForTPMS, 
                  x0: float = 0., y0: float = 0., z0: float = 0., a=1., b=0., c=0., d=0., e=1., f=0., g=0., h=0., i=1., *args, **kwargs):
         kwargs = _future_kwargs_warning_helper(type(self), *args, **kwargs)
         super().__init__(**kwargs)
         assert surface_type in FunctionTPMS.surface_list
         self.surface_type = surface_type
         self.function_type = function_type
-        self.fThickness = fThickness
+        self.fIsovalue = fIsovalue
         self.fPitch = fPitch
         self.a, self.b, self.c = a, b, c
         self.d, self.e, self.f = d, e, f
@@ -2471,24 +2469,23 @@ class FunctionTPMS(Surface):
     def get_pitch(self, x, y, z):
         return self.fPitch.evaluate(x, y, z)
 
-    def get_thickness(self, x, y, z):
-        return self.fThickness.evaluate(x, y, z)
+    def get_isovalue(self, x, y, z):
+        return self.fIsovalue.evaluate(x, y, z)
 
     def evaluate(self, point):
         x, y, z = point
         xx = self.a*(x-self.x0) + self.b*(y-self.y0) + self.c*(z-self.z0) 
         yy = self.d*(x-self.x0) + self.e*(y-self.y0) + self.f*(z-self.z0)
         zz = self.g*(x-self.x0) + self.h*(y-self.y0) + self.i*(z-self.z0)
-        pitch = self.get_pitch(xx, yy, zz) # Pitch and thickness are computed based on the coordinates of the TPMS 
-        thickness = self.get_thickness(xx, yy, zz)
+        pitch = self.get_pitch(xx, yy, zz) # Pitch and isovalue are computed based on the coordinates of the TPMS 
+        isovalue = self.get_isovalue(xx, yy, zz)
         l = 2*pi/pitch
-        cst = l*thickness
         if self.surface_type == "Schwarz_P":
-            return cos(l*xx) + cos(l*yy) + cos(l*zz) - cst
+            return cos(l*xx) + cos(l*yy) + cos(l*zz) - isovalue
         elif self.surface_type == "Gyroid":
-            return sin(l*xx)*cos(l*zz) + sin(l*yy)*cos(l*xx) + sin(l*zz)*cos(l*yy) - cst
+            return sin(l*xx)*cos(l*zz) + sin(l*yy)*cos(l*xx) + sin(l*zz)*cos(l*yy) - isovalue
         elif self.surface_type == "Diamond":
-            return sin(l*xx)*sin(l*yy)*sin(l*zz) + sin(l*xx)*cos(l*yy)*cos(l*zz) + cos(l*xx)*sin(l*yy)*cos(l*zz) + cos(l*xx)*cos(l*yy)*sin(l*zz) - cst
+            return sin(l*xx)*sin(l*yy)*sin(l*zz) + sin(l*xx)*cos(l*yy)*cos(l*zz) + cos(l*xx)*sin(l*yy)*cos(l*zz) + cos(l*xx)*cos(l*yy)*sin(l*zz) - isovalue
         else:
             raise NotImplementedError(f"'{self.surface_type}' surface_type is not yet implemented.")
     
@@ -2542,31 +2539,50 @@ class FunctionTPMS(Surface):
         element.set("surface_type", self.surface_type)
         element.set("function_type", self.function_type)
         if self.function_type=="interpolation":
-            assert np.allclose(self.fPitch.x_grid, self.fThickness.x_grid, 1.e-8)
-            assert np.allclose(self.fPitch.y_grid, self.fThickness.y_grid, 1.e-8)
-            assert np.allclose(self.fPitch.z_grid, self.fThickness.z_grid, 1.e-8)
+            assert np.allclose(self.fPitch.x_grid, self.fIsovalue.x_grid, 1.e-8)
+            assert np.allclose(self.fPitch.y_grid, self.fIsovalue.y_grid, 1.e-8)
+            assert np.allclose(self.fPitch.z_grid, self.fIsovalue.z_grid, 1.e-8)
             element.set("x_grid", _array_to_string(self.fPitch.x_grid))
             element.set("y_grid", _array_to_string(self.fPitch.y_grid))
             element.set("z_grid", _array_to_string(self.fPitch.z_grid))
             element.set("m_pitch", _array_to_string(self.fPitch.matrix))
-            element.set("m_thickness", _array_to_string(self.fThickness.matrix))
+            element.set("m_isovalue", _array_to_string(self.fIsovalue.matrix))
         else:
             raise ValueError(f"Function type '{self.function_type}' is not recognized.")
         return element
 
+    def offset_interpolated_tpms(self, thickness_function, newIsovalueDirection:Literal["LOWER","HIGHER"], *args, **kwargs):
+        assert isinstance(self.fIsovalue, InterpolationForTPMS)
+        assert isinstance(self.fPitch, InterpolationForTPMS)
+        x_grid = self.fIsovalue.x_grid
+        y_grid = self.fIsovalue.y_grid
+        z_grid = self.fIsovalue.z_grid
+        m_isovalue = self.fIsovalue.matrix
+        m_pitch = self.fPitch.matrix
+        mX, mY, mZ = np.meshgrid(x_grid, y_grid, z_grid, indexing="ij")
+        thickness_matrix = thickness_function(mX, mY, mZ)
+        if newIsovalueDirection=="LOWER":
+            new_isovalue_matrix = m_isovalue - 2*pi * thickness_matrix / m_pitch
+        elif newIsovalueDirection=="HIGHER":
+            new_isovalue_matrix = m_isovalue + 2*pi * thickness_matrix / m_pitch
+        else:
+            raise ValueError(f"newIsovalueDirection is a 'Literal' and must be either 'LOWER' or 'HIGHER' but is: '{newIsovalueDirection}'")
+        newIsovalue = InterpolationForTPMS(np.array(x_grid), np.array(y_grid), np.array(z_grid), new_isovalue_matrix)
+        return FunctionTPMS(self.surface_type, "interpolation", newIsovalue, self.fPitch, self.x0, self.y0, self.z0, self.a, self.b, self.c, self.d, self.e, self.f, self.g, self.h, self.i, *args, **kwargs)
+
     @classmethod
-    def from_interpolated_functions_and_grids(cls, surface_type: str, thickness_function: Callable, pitch_function: Callable, x_grid, y_grid, z_grid,
+    def from_interpolated_functions_and_grids(cls, surface_type: str, isovalue_function: Callable, pitch_function: Callable, x_grid, y_grid, z_grid,
                                  x0: float = 0., y0: float = 0., z0: float = 0., a=1., b=0., c=0., d=0., e=1., f=0., g=0., h=0., i=1., *args, **kwargs):
         mX, mY, mZ = np.meshgrid(x_grid, y_grid, z_grid, indexing="ij")
         m_pitch = pitch_function(mX, mY, mZ)
-        m_thickness = thickness_function(mX, mY, mZ)
+        m_isovalue = isovalue_function(mX, mY, mZ)
         assert np.any(m_pitch <= 0.) == False
         fPitch = InterpolationForTPMS(np.array(x_grid), np.array(y_grid), np.array(z_grid), m_pitch)
-        fThickness = InterpolationForTPMS(np.array(x_grid), np.array(y_grid), np.array(z_grid), m_thickness)
-        return cls(surface_type, "interpolation", fThickness, fPitch, x0, y0, z0, a, b, c, d, e, f, g, h, i, *args, **kwargs)
+        fIsovalue = InterpolationForTPMS(np.array(x_grid), np.array(y_grid), np.array(z_grid), m_isovalue)
+        return cls(surface_type, "interpolation", fIsovalue, fPitch, x0, y0, z0, a, b, c, d, e, f, g, h, i, *args, **kwargs)
 
     @classmethod
-    def from_interpolated_functions(cls, surface_type: str, pitch_function: Callable, thickness_function: Callable, xlim=(-1.,+1.), ylim=(-1.,+1), zlim=(-1.,+1.), shape=(5,5,5),
+    def from_interpolated_functions(cls, surface_type: str, isovalue_function: Callable, pitch_function: Callable, xlim=(-1.,+1.), ylim=(-1.,+1), zlim=(-1.,+1.), shape=(5,5,5),
                                  x0: float = 0., y0: float = 0., z0: float = 0., a=1., b=0., c=0., d=0., e=1., f=0., g=0., h=0., i=1., *args, **kwargs):
         if shape[0] > 1:
             x_grid = np.linspace(xlim[0], xlim[1], shape[0], endpoint=True)
@@ -2580,7 +2596,47 @@ class FunctionTPMS(Surface):
             z_grid = np.linspace(zlim[0], zlim[1], shape[2], endpoint=True) 
         else: 
             z_grid = np.array([0.5*(zlim[0]+zlim[1])])
-        return cls.from_interpolated_functions_and_grids(surface_type, pitch_function, thickness_function, x_grid, y_grid, z_grid, x0, y0, z0, a, b, c, d, e, f, g, h, i, *args, **kwargs)
+        return cls.from_interpolated_functions_and_grids(surface_type, isovalue_function, pitch_function, x_grid, y_grid, z_grid, x0, y0, z0, a, b, c, d, e, f, g, h, i, *args, **kwargs)
+
+    @classmethod
+    def from_solid_fuel_relative_density(cls, surface_type: str, relative_density_function: Callable, pitch_function: Callable, _resolution=100, xlim=(-1.,+1.), ylim=(-1.,+1), zlim=(-1.,+1.), shape=(5,5,5),
+                                         x0: float = 0., y0: float = 0., z0: float = 0., a=1., b=0., c=0., d=0., e=1., f=0., g=0., h=0., i=1., *args, **kwargs):
+        pRelDensity, pIsovalues = TPMS._get_relative_density_vs_isovalue(surface_type, _resolution)
+        def ISOVALUEFUNC(x,y,z):
+            return np.interp(relative_density_function(x,y,z), pRelDensity, pIsovalues).tolist()
+        return cls.from_interpolated_functions(surface_type, ISOVALUEFUNC, pitch_function, xlim, ylim, zlim, shape, x0, y0, z0, a, b, c, d, e, f, g, h, i, *args, **kwargs)
+
+    @classmethod
+    def from_solid_fuel_porosity(cls, surface_type: str, porosity_function: Callable, pitch_function: Callable, _resolution=100, xlim=(-1.,+1.), ylim=(-1.,+1), zlim=(-1.,+1.), shape=(5,5,5),
+                                         x0: float = 0., y0: float = 0., z0: float = 0., a=1., b=0., c=0., d=0., e=1., f=0., g=0., h=0., i=1., *args, **kwargs):
+        pRelDensity, pIsovalues = TPMS._get_relative_density_vs_isovalue(surface_type, _resolution)
+        def ISOVALUEFUNC(x,y,z):
+            return np.interp(1.-porosity_function(x,y,z), pRelDensity, pIsovalues).tolist()
+        return cls.from_interpolated_functions(surface_type, ISOVALUEFUNC, pitch_function, xlim, ylim, zlim, shape, x0, y0, z0, a, b, c, d, e, f, g, h, i, *args, **kwargs)
+    
+    @staticmethod
+    def from_sheet_fuel_relative_density(surface_type: str, relative_density_function: Callable, pitch_function: Callable, _resolution=100, xlim=(-1.,+1.), ylim=(-1.,+1), zlim=(-1.,+1.), shape=(5,5,5),
+                                         x0: float = 0., y0: float = 0., z0: float = 0., a=1., b=0., c=0., d=0., e=1., f=0., g=0., h=0., i=1., *args, **kwargs):
+        pRelDensity, pIsovalues = TPMS._get_relative_density_vs_isovalue(surface_type, _resolution)
+        def ISOVALUEFUNC1(x,y,z):
+            return np.interp(0.5-relative_density_function(x,y,z)/2, pRelDensity, pIsovalues).tolist()
+        def ISOVALUEFUNC2(x,y,z):
+            return np.interp(0.5+relative_density_function(x,y,z)/2, pRelDensity, pIsovalues).tolist()
+        tpms1 = FunctionTPMS.from_interpolated_functions(surface_type, ISOVALUEFUNC1, pitch_function, xlim, ylim, zlim, shape, x0, y0, z0, a, b, c, d, e, f, g, h, i, *args, **kwargs)
+        tpms2 = FunctionTPMS.from_interpolated_functions(surface_type, ISOVALUEFUNC2, pitch_function, xlim, ylim, zlim, shape, x0, y0, z0, a, b, c, d, e, f, g, h, i, *args, **kwargs)
+        return (tpms1, tpms2) 
+
+    @classmethod
+    def from_sheet_fuel_porosity(surface_type: str, porosity_function: Callable, pitch_function: Callable, _resolution=100, xlim=(-1.,+1.), ylim=(-1.,+1), zlim=(-1.,+1.), shape=(5,5,5),
+                                         x0: float = 0., y0: float = 0., z0: float = 0., a=1., b=0., c=0., d=0., e=1., f=0., g=0., h=0., i=1., *args, **kwargs):
+        pRelDensity, pIsovalues = TPMS._get_relative_density_vs_isovalue(surface_type, _resolution)
+        def ISOVALUEFUNC1(x,y,z):
+            return np.interp(porosity_function(x,y,z)/2, pRelDensity, pIsovalues).tolist()
+        def ISOVALUEFUNC2(x,y,z):
+            return np.interp(1-porosity_function(x,y,z)/2, pRelDensity, pIsovalues).tolist()
+        tpms1 = FunctionTPMS.from_interpolated_functions(surface_type, ISOVALUEFUNC1, pitch_function, xlim, ylim, zlim, shape, x0, y0, z0, a, b, c, d, e, f, g, h, i, *args, **kwargs)
+        tpms2 = FunctionTPMS.from_interpolated_functions(surface_type, ISOVALUEFUNC2, pitch_function, xlim, ylim, zlim, shape, x0, y0, z0, a, b, c, d, e, f, g, h, i, *args, **kwargs)
+        return (tpms1, tpms2) 
 
 class TorusMixin:
     """A Mixin class implementing common functionality for torus surfaces"""

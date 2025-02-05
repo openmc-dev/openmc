@@ -1,4 +1,5 @@
 import openmc
+import numpy as np
 
 def Box(c:float, boundary_type="transmission"):
     xP0 = openmc.XPlane(-c/2, boundary_type=boundary_type)
@@ -33,8 +34,9 @@ def fPitch(x, y, z):
     r = (x**2+y**2)**0.5
     return 1. + 0.1*r
 
-def fThickness(x, y, z):
-    return 0. + 0.05*z**2
+def fIsovalue(x, y, z):
+    thickness = (0. + 0.05*z**2)
+    return 2*np.pi*thickness/fPitch(x, y, z)
 
 materials = openmc.Materials()
 mColors = {}
@@ -43,7 +45,7 @@ mCool, materials, mColors = make_cool(materials, mColors)
 materials.export_to_xml()
 
 region1 = Box(5.00, "reflective")
-tpms1 = openmc.FunctionTPMS.from_interpolated_functions("Diamond", fThickness, fPitch, (-2.5,+2.5), (-2.5,+2.5), (-2.5,+2.5))
+tpms1 = openmc.FunctionTPMS.from_interpolated_functions("Diamond", fIsovalue, fPitch, (-2.5,+2.5), (-2.5,+2.5), (-2.5,+2.5))
 
 cell1 = openmc.Cell(0, "cFuel", mFuel, region1 & +tpms1) # good practice : always put the tpms in the box
 cell2 = openmc.Cell(2, "cCool", mCool, region1 & -tpms1)

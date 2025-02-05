@@ -79,7 +79,7 @@ materials.export_to_xml()
 
 region1 = Box(1.00, "reflective")
 fueldens, cooldens = 0.2, 0.7
-tpms_clad1, tpms_fuel1, tpms_fuel2, tpms_clad2 = openmc.TPMS.from_relative_density("Gyroid", [cooldens/2,0.5-fueldens/2,0.5+fueldens/2,1-cooldens/2], pitch=1.)
+tpms_clad1, tpms_fuel1, tpms_fuel2, tpms_clad2 = openmc.TPMS.from_relative_densities("Schwarz_P", [cooldens/2,0.5-fueldens/2,0.5+fueldens/2,1-cooldens/2], pitch=1/2)
 cell1 = openmc.Cell(0, "cFuel", mFuel, region1 & +tpms_fuel1 & -tpms_fuel2 )
 cell2 = openmc.Cell(1, "cClad", mClad, region1 & +tpms_clad1 & -tpms_fuel1 )
 cell3 = openmc.Cell(2, "cClad", mClad, region1 & +tpms_fuel2 & -tpms_clad2)
@@ -105,17 +105,17 @@ plot.colors = mColors
 plot.color_by = 'material'
 plot.origin = (0.,0.,0.)
 plot.width = (1., 1.)
-plot.pixels = (400, 400)
+plot.pixels = (1600, 1600)
 plots.append(plot)
 plots.export_to_xml()
 
-# plots = openmc.Plots()
-# plot = openmc.Plot.from_geometry(geometry)
-# plot.type = 'voxel'
-# plot.colors = mColors
-# plot.color_by = 'material'
-# plot.origin = (0.,0.,0.)
-# plot.width = (1., 1., 1.)
-# plot.pixels = (400, 400, 400)
-# plots.append(plot)
-# plots.export_to_xml()
+#plots = openmc.Plots()
+plot = openmc.Plot.from_geometry(geometry)
+plot.type = 'voxel'
+plot.colors = mColors
+plot.color_by = 'material'
+plot.origin = (0.,0.,0.)
+plot.width = (1., 1., 1.)
+plot.pixels = (1000, 1000, 1000)
+plots.append(plot)
+plots.export_to_xml()

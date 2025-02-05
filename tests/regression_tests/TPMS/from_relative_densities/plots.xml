@@ -1,9 +1,17 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <plots>
   <plot basis="xy" color_by="material" id="1" type="slice">
-    <pixels>400 400</pixels>
+    <pixels>1600 1600</pixels>
     <origin>0.0 0.0 0.0</origin>
     <width>1.0 1.0</width>
+    <color id="0" rgb="208 52 52"/>
+    <color id="1" rgb="163 163 163"/>
+    <color id="2" rgb="12 12 252"/>
+  </plot>
+  <plot color_by="material" id="2" type="voxel">
+    <pixels>1000 1000 1000</pixels>
+    <origin>0.0 0.0 0.0</origin>
+    <width>1.0 1.0 1.0</width>
     <color id="0" rgb="208 52 52"/>
     <color id="1" rgb="163 163 163"/>
     <color id="2" rgb="12 12 252"/>

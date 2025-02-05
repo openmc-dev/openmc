@@ -340,7 +340,7 @@ public:
   Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
 
-  double cst, pitch;
+  double isovalue, pitch;
   double x0, y0, z0;
   double a, b, c, d, e, f, g, h, i;
   std::string surface_type;
@@ -364,7 +364,7 @@ public:
   void to_hdf5_inner(hid_t group_id) const;
 
   FunctionForTPMS* fPitch;
-  FunctionForTPMS* fThickness;
+  FunctionForTPMS* fIsovalue;
   double x0, y0, z0;
   double a, b, c, d, e, f, g, h, i;
   std::string surface_type;

@@ -27,19 +27,27 @@ TPMS::rootFinding TPMS::root_in_interval(double L0, double L1, Position r, Direc
         solution.xa = xa;
         solution.xb = xb;
         double fa   = this->fk(xa, r, u);
-        double fpa  = this->fpk(xa, r, u);
-        double fppa = this->fppk(xa, r, u);
         double fb   = this->fk(xb, r, u);
-        double fpb  = this->fpk(xb, r, u);
-        double fppb = this->fppk(xb, r, u);
+        double fpa, fpb, fppa, fppb;
         //std::cout << "[" << L0 << "-" << L1 <<"] XA: " << xa <<" XB: " << xb << " - FA " << fa << " FPA " << fpa << " FPPA " << fppa << " FB " << fb << " FPB " << fpb << " FPPB " << fppb << " " << solFound << std::endl;
-        if (std::signbit(fa) != std::signbit(fb)) {solFound=true; solution.isRoot = true;solution.status=1;} // if the two sampled point are of different sign, there is a root in the interval
-        else if (std::signbit(fpa) == std::signbit(fpb)) // if the two root are of same sign and the two derivative are of same sign, there is no root in the interval
+        if (std::signbit(fa) != std::signbit(fb)) 
+        {
+        solFound=true; 
+        solution.isRoot = true;
+        solution.status=1;
+        } // if the two sampled point are of different sign, there is a root in the interval
+        else {
+        fpa  = this->fpk(xa, r, u);
+        fpb  = this->fpk(xb, r, u);
+        if (std::signbit(fpa) == std::signbit(fpb)) // if the two root are of same sign and the two derivative are of same sign, there is no root in the interval
         {
             solFound=true; 
             solution.isRoot = false;
         }
-        else if (std::signbit(fppa) != std::signbit(fppb)) // If inflexion change, split the interval in half to study root existance. (rare case)
+        else {
+        fppa = this->fppk(xa, r, u);
+        fppb = this->fppk(xb, r, u);
+        if (std::signbit(fppa) != std::signbit(fppb)) // If inflexion change, split the interval in half to study root existance. (rare case)
         {
             TPMS::rootFinding firstInterval = this->root_in_interval(L0, 0.5*(L0+L1), r, u);
             if (firstInterval.isRoot == true) 
@@ -85,6 +93,8 @@ TPMS::rootFinding TPMS::root_in_interval(double L0, double L1, Position r, Direc
                 else {xa = xn;}
             }
         }
+        }
+        }
     }
     return solution;
 }
@@ -117,19 +127,19 @@ double TPMS::ray_tracing(Position r, Direction u, double max_range)
 }
 
 // *****************************************************************************
-// *   TPMS CLASSIC DEFINITION WITH CONSTANT PITCH AND THICKNESS
+// *   TPMS CLASSIC DEFINITION WITH CONSTANT PITCH AND ISOVALUE
 // *****************************************************************************
 
-TPMSClassic::TPMSClassic(double _cst, double _pitch, double _x0, double _y0, double _z0, double _a, double _b, double _c, double _d, double _e, double _f, double _g, double _h, double _i)
-: TPMS( _x0, _y0, _z0, _a, _b, _c, _d, _e, _f, _g, _h, _i), cst(_cst), pitch(_pitch)
+TPMSClassic::TPMSClassic(double _isovalue, double _pitch, double _x0, double _y0, double _z0, double _a, double _b, double _c, double _d, double _e, double _f, double _g, double _h, double _i)
+: TPMS( _x0, _y0, _z0, _a, _b, _c, _d, _e, _f, _g, _h, _i), isovalue(_isovalue), pitch(_pitch)
 {}
 
 // *****************************************************************************
-// *   TPMS FUNCTION DEFINITION WITH NON-CONSTANT PITCH AND THICKNESS
+// *   TPMS FUNCTION DEFINITION WITH NON-CONSTANT PITCH AND ISOVALUE
 // *****************************************************************************
 
-TPMSFunction::TPMSFunction(const FunctionForTPMS& _fThickness, const FunctionForTPMS& _fPitch, double _x0, double _y0, double _z0, double _a, double _b, double _c, double _d, double _e, double _f, double _g, double _h, double _i)
-: fThickness(_fThickness), fPitch(_fPitch), TPMS(_x0, _y0, _z0, _a, _b, _c, _d, _e, _f, _g, _h, _i)
+TPMSFunction::TPMSFunction(const FunctionForTPMS& _fIsovalue, const FunctionForTPMS& _fPitch, double _x0, double _y0, double _z0, double _a, double _b, double _c, double _d, double _e, double _f, double _g, double _h, double _i)
+: fIsovalue(_fIsovalue), fPitch(_fPitch), TPMS(_x0, _y0, _z0, _a, _b, _c, _d, _e, _f, _g, _h, _i)
 {}
 
 double TPMSFunction::get_pitch(Position r) const
@@ -138,10 +148,10 @@ double TPMSFunction::get_pitch(Position r) const
     return pitch;
 }
 
-double TPMSFunction::get_thickness(Position r) const
+double TPMSFunction::get_isovalue(Position r) const
 {
-    double thickness = fThickness.fxyz(r.x, r.y, r.z);
-    return thickness;
+    double isovalue = fIsovalue.fxyz(r.x, r.y, r.z);
+    return isovalue;
 }
 
 std::vector<double> TPMSFunction::get_pitch_first_partial_derivatives(Position r) const
@@ -150,9 +160,9 @@ std::vector<double> TPMSFunction::get_pitch_first_partial_derivatives(Position r
     return derivatives;
 }
 
-std::vector<double> TPMSFunction::get_thickness_first_partial_derivatives(Position r) const
+std::vector<double> TPMSFunction::get_isovalue_first_partial_derivatives(Position r) const
 {
-    std::vector<double> derivatives = fThickness.first_partial_derivatives(r.x, r.y, r.z);
+    std::vector<double> derivatives = fIsovalue.first_partial_derivatives(r.x, r.y, r.z);
     return derivatives;
 }
 
@@ -162,9 +172,9 @@ std::vector<std::vector<double>> TPMSFunction::get_pitch_second_partial_derivati
     return derivatives;
 }
 
-std::vector<std::vector<double>> TPMSFunction::get_thickness_second_partial_derivatives(Position r) const
+std::vector<std::vector<double>> TPMSFunction::get_isovalue_second_partial_derivatives(Position r) const
 {
-    std::vector<std::vector<double>> derivatives = fThickness.second_partial_derivatives(r.x, r.y, r.z);
+    std::vector<std::vector<double>> derivatives = fIsovalue.second_partial_derivatives(r.x, r.y, r.z);
     return derivatives;
 }
 
@@ -181,7 +191,7 @@ double SchwarzP::evaluate(Position r) const
     const double xx = a*(x-x0) + b*(y-y0) + c*(z-z0);
     const double yy = d*(x-x0) + e*(y-y0) + f*(z-z0);
     const double zz = g*(x-x0) + h*(y-y0) + i*(z-z0);
-    return cos(l*xx) + cos(l*yy) + cos(l*zz) - cst;
+    return cos(l*xx) + cos(l*yy) + cos(l*zz) - isovalue;
 }
 
 Direction SchwarzP::normal(Position r) const
@@ -266,7 +276,7 @@ double Gyroid::evaluate(Position r) const
     const double xx = a*(x-x0) + b*(y-y0) + c*(z-z0);
     const double yy = d*(x-x0) + e*(y-y0) + f*(z-z0);
     const double zz = g*(x-x0) + h*(y-y0) + i*(z-z0);
-    return sin(l*xx)*cos(l*zz) + sin(l*yy)*cos(l*xx) + sin(l*zz)*cos(l*yy) - cst;
+    return sin(l*xx)*cos(l*zz) + sin(l*yy)*cos(l*xx) + sin(l*zz)*cos(l*yy) - isovalue;
 }
 
 Direction Gyroid::normal(Position r) const
@@ -357,7 +367,7 @@ double Diamond::evaluate(Position r) const
     const double xx = a*(x-x0) + b*(y-y0) + c*(z-z0);
     const double yy = d*(x-x0) + e*(y-y0) + f*(z-z0);
     const double zz = g*(x-x0) + h*(y-y0) + i*(z-z0);
-    return 0.5*sin(l*(-xx+yy+zz)) + 0.5*sin(l*(+xx-yy+zz)) + 0.5*sin(l*(+xx+yy-zz)) + 0.5*sin(l*(+xx+yy+zz)) - cst;
+    return 0.5*sin(l*(-xx+yy+zz)) + 0.5*sin(l*(+xx-yy+zz)) + 0.5*sin(l*(+xx+yy-zz)) + 0.5*sin(l*(+xx+yy+zz)) - isovalue;
 }
 
 Direction Diamond::normal(Position r) const
@@ -432,7 +442,7 @@ double Diamond::sampling_frequency(Direction u) const
 }
 
 // *****************************************************************************
-// *   FUNCTION PITCH & THICKNESS SCHWARZ P DEFINITION
+// *   FUNCTION PITCH & ISOVALUE SCHWARZ P DEFINITION
 // *****************************************************************************
 
 double FunctionSchwarzP::evaluate(Position r) const
@@ -445,10 +455,9 @@ double FunctionSchwarzP::evaluate(Position r) const
     const double zz = g*(x-x0) + h*(y-y0) + i*(z-z0);
     Position rr = Position(xx,yy,zz);
     const double local_pitch = this->get_pitch(rr);
-    const double local_thickness = this->get_thickness(rr);
+    const double local_isovalue = this->get_isovalue(rr);
     const double l = 2*M_PI/local_pitch;
-    const double local_cst = l*local_thickness;
-    return cos(l*xx) + cos(l*yy) + cos(l*zz) - local_cst;
+    return cos(l*xx) + cos(l*yy) + cos(l*zz) - local_isovalue;
 }
 
 Direction FunctionSchwarzP::normal(Position r) const
@@ -461,9 +470,9 @@ Direction FunctionSchwarzP::normal(Position r) const
     const double zz = g*(x-x0) + h*(y-y0) + i*(z-z0);
     Position rr = Position(xx,yy,zz);
     const double local_pitch = this->get_pitch(rr);
-    const double local_thickness = this->get_thickness(rr);
+    const double local_isovalue = this->get_isovalue(rr);
     const std::vector<double> der_pitch = this->get_pitch_first_partial_derivatives(rr);
-    const std::vector<double> der_thick = this->get_thickness_first_partial_derivatives(rr);
+    const std::vector<double> der_isovalue = this->get_isovalue_first_partial_derivatives(rr);
     const double l = 2*M_PI/local_pitch;
     const double dxx_l = -l*der_pitch[0]/local_pitch;
     const double dyy_l = -l*der_pitch[1]/local_pitch;
@@ -471,15 +480,15 @@ Direction FunctionSchwarzP::normal(Position r) const
     const double dx_l = a*dxx_l + d*dyy_l + g*dzz_l;
     const double dy_l = b*dxx_l + e*dyy_l + h*dzz_l;
     const double dz_l = c*dxx_l + f*dyy_l + i*dzz_l;
-    const double dxx_cst = dxx_l*local_thickness + l * der_thick[0];
-    const double dyy_cst = dyy_l*local_thickness + l * der_thick[1];
-    const double dzz_cst = dzz_l*local_thickness + l * der_thick[2];
-    const double dx_cst = a*dxx_cst + d*dyy_cst + g*dzz_cst;
-    const double dy_cst = b*dxx_cst + e*dyy_cst + h*dzz_cst;
-    const double dz_cst = c*dxx_cst + f*dyy_cst + i*dzz_cst;    
-    const double dx = -(xx*dx_l + a*l)*sin(l*xx) -(yy*dx_l + d*l)*sin(l*yy) -(zz*dx_l + g*l)*sin(l*zz) - dx_cst;
-    const double dy = -(xx*dy_l + b*l)*sin(l*xx) -(yy*dy_l + e*l)*sin(l*yy) -(zz*dy_l + h*l)*sin(l*zz) - dy_cst;
-    const double dz = -(xx*dz_l + c*l)*sin(l*xx) -(yy*dz_l + f*l)*sin(l*yy) -(zz*dz_l + i*l)*sin(l*zz) - dz_cst;
+    const double dxx_isovalue = der_isovalue[0];
+    const double dyy_isovalue = der_isovalue[1];
+    const double dzz_isovalue = der_isovalue[2];
+    const double dx_isovalue = a*dxx_isovalue + d*dyy_isovalue + g*dzz_isovalue;
+    const double dy_isovalue = b*dxx_isovalue + e*dyy_isovalue + h*dzz_isovalue;
+    const double dz_isovalue = c*dxx_isovalue + f*dyy_isovalue + i*dzz_isovalue;    
+    const double dx = -(xx*dx_l + a*l)*sin(l*xx) -(yy*dx_l + d*l)*sin(l*yy) -(zz*dx_l + g*l)*sin(l*zz) - dx_isovalue;
+    const double dy = -(xx*dy_l + b*l)*sin(l*xx) -(yy*dy_l + e*l)*sin(l*yy) -(zz*dy_l + h*l)*sin(l*zz) - dy_isovalue;
+    const double dz = -(xx*dz_l + c*l)*sin(l*xx) -(yy*dz_l + f*l)*sin(l*yy) -(zz*dz_l + i*l)*sin(l*zz) - dz_isovalue;
     const double norm = pow(pow(dx,2)+pow(dy,2)+pow(dz,2),0.5);
     Direction grad = Direction(dx/norm, dy/norm, dz/norm);
     return grad;
@@ -542,7 +551,7 @@ double FunctionSchwarzP::sampling_frequency(Direction u) const
 }
 
 // *****************************************************************************
-// *   FUNCTION PITCH & THICKNESS GYROID DEFINITION
+// *   FUNCTION PITCH & ISOVALUE GYROID DEFINITION
 // *****************************************************************************
 
 double FunctionGyroid::evaluate(Position r) const
@@ -555,10 +564,9 @@ double FunctionGyroid::evaluate(Position r) const
     const double zz = g*(x-x0) + h*(y-y0) + i*(z-z0);
     Position rr = Position(xx,yy,zz);
     const double local_pitch = this->get_pitch(rr);
-    const double local_thickness = this->get_thickness(rr);
+    const double local_isovalue = this->get_isovalue(rr);
     const double l = 2*M_PI/local_pitch;
-    const double local_cst = l*local_thickness;
-    return sin(l*xx)*cos(l*zz) + sin(l*yy)*cos(l*xx) + sin(l*zz)*cos(l*yy) - local_cst;
+    return sin(l*xx)*cos(l*zz) + sin(l*yy)*cos(l*xx) + sin(l*zz)*cos(l*yy) - local_isovalue;
 }
 
 Direction FunctionGyroid::normal(Position r) const
@@ -624,7 +632,7 @@ double FunctionGyroid::sampling_frequency(Direction u) const
 }
 
 // *****************************************************************************
-// *   FUNCTION PITCH & THICKNESS DIAMOND DEFINITION
+// *   FUNCTION PITCH & ISOVALUE DIAMOND DEFINITION
 // *****************************************************************************
 
 double FunctionDiamond::evaluate(Position r) const
@@ -637,10 +645,9 @@ double FunctionDiamond::evaluate(Position r) const
     const double zz = g*(x-x0) + h*(y-y0) + i*(z-z0);
     Position rr = Position(xx,yy,zz);
     const double local_pitch = this->get_pitch(rr);
-    const double local_thickness = this->get_thickness(rr);
+    const double local_isovalue = this->get_isovalue(rr);
     const double l = 2*M_PI/local_pitch;
-    const double local_cst = l*local_thickness;
-    return 0.5*sin(l*(-xx+yy+zz)) + 0.5*sin(l*(+xx-yy+zz)) + 0.5*sin(l*(+xx+yy-zz)) + 0.5*sin(l*(+xx+yy+zz)) - local_cst;
+    return 0.5*sin(l*(-xx+yy+zz)) + 0.5*sin(l*(+xx-yy+zz)) + 0.5*sin(l*(+xx+yy-zz)) + 0.5*sin(l*(+xx+yy+zz)) - local_isovalue;
 }
 
 Direction FunctionDiamond::normal(Position r) const

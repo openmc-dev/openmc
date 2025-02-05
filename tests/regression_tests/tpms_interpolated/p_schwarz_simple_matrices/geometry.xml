@@ -9,5 +9,5 @@
   <surface boundary="reflective" coeffs="0.5" id="4" type="y-plane"/>
   <surface boundary="reflective" coeffs="-0.5" id="5" type="z-plane"/>
   <surface boundary="reflective" coeffs="0.5" id="6" type="z-plane"/>
-  <surface coeffs="0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0" function_type="interpolation" id="7" m_pitch="[[[1.0]]]" m_thickness="[[[0.0]]]" surface_type="Schwarz_P" type="function-tpms" x_grid="[0.0]" y_grid="[0.0]" z_grid="[0.0]"/>
+  <surface coeffs="0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0" function_type="interpolation" id="7" m_isovalue="[[[0.0]]]" m_pitch="[[[1.0]]]" surface_type="Schwarz_P" type="function-tpms" x_grid="[0.0]" y_grid="[0.0]" z_grid="[0.0]"/>
 </geometry>

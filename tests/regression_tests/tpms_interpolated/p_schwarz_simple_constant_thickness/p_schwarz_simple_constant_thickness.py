@@ -33,9 +33,9 @@ def make_cool(materials:openmc.Materials, mColors:dict) -> tuple[openmc.Material
 def fPitch(x, y, z):
     return 1. - 0.1 * (z+2.5)
 
-def fThickness(x, y, z):
-    constant_thickness = 0.
-    return np.full_like(x, constant_thickness)
+def fIsovalue(x, y, z):
+    thickness = 0.
+    return 2*np.pi*thickness/fPitch(x, y, z)
 
 materials = openmc.Materials()
 mColors = {}
@@ -44,7 +44,7 @@ mCool, materials, mColors = make_cool(materials, mColors)
 materials.export_to_xml()
 
 region1 = Box(5.00, "reflective")
-tpms1 = openmc.FunctionTPMS.from_interpolated_functions("Schwarz_P", fThickness, fPitch, (-2.5,+2.5), (-2.5,+2.5), (-2.5,+2.5))
+tpms1 = openmc.FunctionTPMS.from_interpolated_functions("Schwarz_P", fIsovalue, fPitch, (-2.5,+2.5), (-2.5,+2.5), (-2.5,+2.5))
 
 cell1 = openmc.Cell(0, "cFuel", mFuel, region1 & +tpms1) # good practice : always put the tpms in the box
 cell2 = openmc.Cell(2, "cCool", mCool, region1 & -tpms1)

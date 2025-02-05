@@ -11,8 +11,8 @@
   <surface boundary="reflective" coeffs="0.5" id="4" type="y-plane"/>
   <surface boundary="reflective" coeffs="-0.5" id="5" type="z-plane"/>
   <surface boundary="reflective" coeffs="0.5" id="6" type="z-plane"/>
-  <surface coeffs="-0.4623341606609371 1.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0" id="8" surface_type="Gyroid" type="tpms"/>
-  <surface coeffs="-0.3097329456343053 1.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0" id="9" surface_type="Gyroid" type="tpms"/>
-  <surface coeffs="0.30973294563430537 1.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0" id="10" surface_type="Gyroid" type="tpms"/>
-  <surface coeffs="0.462334160660937 1.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0" id="11" surface_type="Gyroid" type="tpms"/>
+  <surface coeffs="-0.5240755816822876 0.5 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0" id="8" surface_type="Schwarz_P" type="tpms"/>
+  <surface coeffs="-0.34843922091783186 0.5 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0" id="9" surface_type="Schwarz_P" type="tpms"/>
+  <surface coeffs="0.3484392209178319 0.5 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0" id="10" surface_type="Schwarz_P" type="tpms"/>
+  <surface coeffs="0.5240755816822895 0.5 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0" id="11" surface_type="Schwarz_P" type="tpms"/>
 </geometry>

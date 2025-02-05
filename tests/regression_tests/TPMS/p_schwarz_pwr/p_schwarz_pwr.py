@@ -96,7 +96,7 @@ geometry.export_to_xml()
 
 volCalc = openmc.volume.VolumeCalculation([cell1, cell2, cell3, cell4], 1000000000)
 settings = openmc.Settings()
-settings.batches = 1000
+settings.batches = 100
 settings.particles = 1000
 settings.inactive = 10
 settings.volume_calculations = [volCalc]

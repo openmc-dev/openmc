@@ -34,23 +34,23 @@ public:
 class TPMSClassic : public TPMS
 {
 public:
-    TPMSClassic(double _cst, double _pitch, double _x0, double _y0, double _z0, double _a, double _b, double _c, double _d, double _e, double _f, double _g, double _h, double _i);
+    TPMSClassic(double _isovalue, double _pitch, double _x0, double _y0, double _z0, double _a, double _b, double _c, double _d, double _e, double _f, double _g, double _h, double _i);
 public:
-    double cst, pitch;
+    double isovalue, pitch;
 };
 
 class TPMSFunction : public TPMS
 {
 public:
-    TPMSFunction(const FunctionForTPMS& _fThickness, const FunctionForTPMS& _fPitch, double _x0, double _y0, double _z0, double _a, double _b, double _c, double _d, double _e, double _f, double _g, double _h, double _i);
+    TPMSFunction(const FunctionForTPMS& _fIsovalue, const FunctionForTPMS& _fPitch, double _x0, double _y0, double _z0, double _a, double _b, double _c, double _d, double _e, double _f, double _g, double _h, double _i);
     double get_pitch(Position r) const;
-    double get_thickness(Position r) const;
+    double get_isovalue(Position r) const;
     std::vector<double> get_pitch_first_partial_derivatives(Position r) const;
-    std::vector<double> get_thickness_first_partial_derivatives(Position r) const;
+    std::vector<double> get_isovalue_first_partial_derivatives(Position r) const;
     std::vector<std::vector<double>> get_pitch_second_partial_derivatives(Position r) const;
-    std::vector<std::vector<double>> get_thickness_second_partial_derivatives(Position r) const;
+    std::vector<std::vector<double>> get_isovalue_second_partial_derivatives(Position r) const;
 public:
-    const FunctionForTPMS& fThickness;
+    const FunctionForTPMS& fIsovalue;
     const FunctionForTPMS& fPitch;
 };
 

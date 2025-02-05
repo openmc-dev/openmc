@@ -1024,7 +1024,7 @@ void SurfaceQuadric::to_hdf5_inner(hid_t group_id) const
 
 SurfaceTPMS::SurfaceTPMS(pugi::xml_node surf_node) : CSGSurface(surf_node)
 {
-  read_coeffs(surf_node, id_, {&cst, &pitch, &x0, &y0, &z0, &a, &b, &c, &d, &e, &f, &g, &h, &i});
+  read_coeffs(surf_node, id_, {&isovalue, &pitch, &x0, &y0, &z0, &a, &b, &c, &d, &e, &f, &g, &h, &i});
   surface_type = get_node_value(surf_node, "surface_type");
   if (std::find(tpms_types.begin(), tpms_types.end(), surface_type)==tpms_types.end())
   {
@@ -1039,17 +1039,17 @@ double SurfaceTPMS::evaluate(Position r) const
   double value;
   if(surface_type == "Schwarz_P")
   {
-    SchwarzP laTpms = SchwarzP(cst, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
+    SchwarzP laTpms = SchwarzP(isovalue, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
     value = laTpms.evaluate(r);
   }
   else if(surface_type == "Gyroid")
   {
-    Gyroid laTpms = Gyroid(cst, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
+    Gyroid laTpms = Gyroid(isovalue, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
     value = laTpms.evaluate(r);
   }
   else if(surface_type == "Diamond")
   {
-    Diamond laTpms = Diamond(cst, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
+    Diamond laTpms = Diamond(isovalue, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
     value = laTpms.evaluate(r);
   }
   else {fatal_error(fmt::format("Surface type {} is not implemented in SurfaceTPMS::evaluate.", surface_type));}
@@ -1061,17 +1061,17 @@ double SurfaceTPMS::distance(Position r, Direction ang, bool coincident, double 
   double raylength = 0.;
   if(surface_type == "Schwarz_P")
   {
-    SchwarzP laTpms = SchwarzP(cst, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
+    SchwarzP laTpms = SchwarzP(isovalue, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
     raylength = laTpms.ray_tracing(r, ang, max_range);
   }
   else if(surface_type == "Gyroid")
   {
-    Gyroid laTpms = Gyroid(cst, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
+    Gyroid laTpms = Gyroid(isovalue, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
     raylength = laTpms.ray_tracing(r, ang, max_range);
   }
   else if(surface_type == "Diamond")
   {
-    Diamond laTpms = Diamond(cst, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
+    Diamond laTpms = Diamond(isovalue, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
     raylength = laTpms.ray_tracing(r, ang, max_range);
   }
   else {fatal_error(fmt::format("Surface type {} is not implemented in SurfaceTPMS::distance.", surface_type));}
@@ -1083,17 +1083,17 @@ Direction SurfaceTPMS::normal(Position r) const
   Direction grad;
   if(surface_type == "Schwarz_P")
   {
-    SchwarzP laTpms = SchwarzP(cst, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
+    SchwarzP laTpms = SchwarzP(isovalue, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
     grad = laTpms.normal(r);
   }
   else if(surface_type == "Gyroid")
   {
-    Gyroid laTpms = Gyroid(cst, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
+    Gyroid laTpms = Gyroid(isovalue, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
     grad = laTpms.normal(r);
   }
   else if(surface_type == "Diamond")
   {
-    Diamond laTpms = Diamond(cst, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
+    Diamond laTpms = Diamond(isovalue, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
     grad = laTpms.normal(r);
   }
   else {fatal_error(fmt::format("Surface type {} is not implemented in SurfaceTPMS::normal.", surface_type));}
@@ -1104,7 +1104,7 @@ void SurfaceTPMS::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "tpms", false);
   write_string(group_id, "surface_type", surface_type, false);
-  array<double, 14> coeffs {{cst, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i}};
+  array<double, 14> coeffs {{isovalue, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i}};
   write_dataset(group_id, "coefficients", coeffs);
 }
 
@@ -1132,11 +1132,11 @@ SurfaceFunctionTPMS::SurfaceFunctionTPMS(pugi::xml_node surf_node) : CSGSurface(
     std::vector<double> y_grid = convertStringToVector(y_grid_str);
     std::vector<double> z_grid = convertStringToVector(z_grid_str);
     std::string m_pitch_str = get_node_value(surf_node, "m_pitch");
-    std::string m_thickness_str = get_node_value(surf_node, "m_thickness");
+    std::string m_isovalue_str = get_node_value(surf_node, "m_isovalue");
     std::vector<std::vector<std::vector<double>>> m_pitch = convertStringTo3DMatrix(m_pitch_str);
-    std::vector<std::vector<std::vector<double>>> m_thickness = convertStringTo3DMatrix(m_thickness_str);
+    std::vector<std::vector<std::vector<double>>> m_isovalue = convertStringTo3DMatrix(m_isovalue_str);
     fPitch = new InterpolationForTPMS(x_grid, y_grid, z_grid, m_pitch);
-    fThickness = new InterpolationForTPMS(x_grid, y_grid, z_grid, m_thickness);
+    fIsovalue = new InterpolationForTPMS(x_grid, y_grid, z_grid, m_isovalue);
   }
   else {fatal_error(fmt::format("Function type {} is not recognized.", function_type));}
 }
@@ -1144,7 +1144,7 @@ SurfaceFunctionTPMS::SurfaceFunctionTPMS(pugi::xml_node surf_node) : CSGSurface(
 SurfaceFunctionTPMS::~SurfaceFunctionTPMS()
 {
   delete fPitch;
-  delete fThickness;
+  delete fIsovalue;
 }
 
 double SurfaceFunctionTPMS::evaluate(Position r) const
@@ -1152,17 +1152,17 @@ double SurfaceFunctionTPMS::evaluate(Position r) const
   double value;
   if(surface_type == "Schwarz_P")
   {
-    FunctionSchwarzP laTpms = FunctionSchwarzP(*fThickness, *fPitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
+    FunctionSchwarzP laTpms = FunctionSchwarzP(*fIsovalue, *fPitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
     value = laTpms.evaluate(r);
   }
   else if(surface_type == "Gyroid")
   {
-    FunctionGyroid laTpms = FunctionGyroid(*fThickness, *fPitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
+    FunctionGyroid laTpms = FunctionGyroid(*fIsovalue, *fPitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
     value = laTpms.evaluate(r);
   }
   else if(surface_type == "Diamond")
   {
-    FunctionDiamond laTpms = FunctionDiamond(*fThickness, *fPitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
+    FunctionDiamond laTpms = FunctionDiamond(*fIsovalue, *fPitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
     value = laTpms.evaluate(r);
   }
   else {fatal_error(fmt::format("Surface type {} is not implemented in SurfaceTPMS::evaluate.", surface_type));}
@@ -1174,17 +1174,17 @@ double SurfaceFunctionTPMS::distance(Position r, Direction ang, bool coincident,
   double raylength;
   if(surface_type == "Schwarz_P")
   {
-    FunctionSchwarzP laTpms = FunctionSchwarzP(*fThickness, *fPitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
+    FunctionSchwarzP laTpms = FunctionSchwarzP(*fIsovalue, *fPitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
     raylength = laTpms.ray_tracing(r, ang, max_range);
   }
   else if(surface_type == "Gyroid")
   {
-    FunctionGyroid laTpms = FunctionGyroid(*fThickness, *fPitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
+    FunctionGyroid laTpms = FunctionGyroid(*fIsovalue, *fPitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
     raylength = laTpms.ray_tracing(r, ang, max_range);
   }
   else if(surface_type == "Diamond")
   {
-    FunctionDiamond laTpms = FunctionDiamond(*fThickness, *fPitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
+    FunctionDiamond laTpms = FunctionDiamond(*fIsovalue, *fPitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
     raylength = laTpms.ray_tracing(r, ang, max_range);
   }
   else {fatal_error(fmt::format("Surface type {} is not implemented in SurfaceFunctionTPMS::distance.", surface_type));}
@@ -1196,17 +1196,17 @@ Direction SurfaceFunctionTPMS::normal(Position r) const
   Direction grad;
   if(surface_type == "Schwarz_P")
   {
-    FunctionSchwarzP laTpms = FunctionSchwarzP(*fThickness, *fPitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
+    FunctionSchwarzP laTpms = FunctionSchwarzP(*fIsovalue, *fPitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
     grad = laTpms.normal(r);
   }
   else if(surface_type == "Gyroid")
   {
-    FunctionGyroid laTpms = FunctionGyroid(*fThickness, *fPitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
+    FunctionGyroid laTpms = FunctionGyroid(*fIsovalue, *fPitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
     grad = laTpms.normal(r);
   }
   else if(surface_type == "Diamond")
   {
-    FunctionDiamond laTpms = FunctionDiamond(*fThickness, *fPitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
+    FunctionDiamond laTpms = FunctionDiamond(*fIsovalue, *fPitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
     grad = laTpms.normal(r);
   }
   else {fatal_error(fmt::format("Surface type {} is not implemented in SurfaceFunctionTPMS::normal.", surface_type));}

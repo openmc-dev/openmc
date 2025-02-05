@@ -802,41 +802,43 @@ std::pair<double, int32_t> Region::distance(
     if (surface->is_tpms()) // Add token to tpms_token vector if SurfaceTPMS
     {
       tpms_token.push_back(token);
-      continue;  // Skip distance calculation for tpms surfaces
-    }
-    else 
-    {
+      continue; // Skip distance calculation for tpms surfaces
+    } else {
       double d {surface->distance(r, u, coincident)};
       // Check if this distance is the new minimum.
-      if (d < min_dist) { if (min_dist - d >= FP_PRECISION * min_dist) 
-      {
+      if (d < min_dist) {
+        if (min_dist - d >= FP_PRECISION * min_dist) {
           min_dist = d;
           i_surf = -token;
-      }}
+        }
+      }
     }
   }
   // The TPMS must be put in a box. Throw an error if min_dist is still INFTY.
-  if (min_dist == INFTY && tpms_token.empty()==false) 
-  {
-    fatal_error(
-      fmt::format("Region of cell with ID: {} contains unbounded TPMS. Please ensure that the TPMS region is enclosed within a finite volume in all directions. You can achieve this by placing the TPMS surfaces inside a bounded volume, such as a box or a cylindrical can.", this->cell_id()));
+  if (min_dist == INFTY && tpms_token.empty() == false) {
+    fatal_error(fmt::format(
+      "Region of cell with ID: {} contains unbounded TPMS. Please ensure that "
+      "the TPMS region is enclosed within a finite volume in all directions. "
+      "You can achieve this by placing the TPMS surfaces inside a bounded "
+      "volume, such as a box or a cylindrical can.",
+      this->cell_id()));
   }
   // Second loop: Process TPMS surfaces
   for (int32_t token : tpms_token) {
-      // Get the surface object
-      const auto& surface = model::surfaces[abs(token) - 1];
+    // Get the surface object
+    const auto& surface = model::surfaces[abs(token) - 1];
 
-      // Calculate the distance to this TPMS surface.
-      bool coincident {std::abs(token) == std::abs(on_surface)};
-      double d {surface->distance(r, u, coincident, min_dist)};
+    // Calculate the distance to this TPMS surface.
+    bool coincident {std::abs(token) == std::abs(on_surface)};
+    double d {surface->distance(r, u, coincident, min_dist)};
 
-      // Check if this distance is the new minimum.
-      if (d < min_dist) {
-          if (min_dist - d >= FP_PRECISION * min_dist) {
-              min_dist = d;
-              i_surf = -token;
-          }
+    // Check if this distance is the new minimum.
+    if (d < min_dist) {
+      if (min_dist - d >= FP_PRECISION * min_dist) {
+        min_dist = d;
+        i_surf = -token;
       }
+    }
   }
   return {min_dist, i_surf};
 }

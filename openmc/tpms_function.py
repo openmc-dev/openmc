@@ -1,7 +1,8 @@
 import numpy as np
 
 class FunctionForTPMS:
-
+    """Base class for TPMS functions.
+    """
     def __init__(self):
         pass
 
@@ -9,6 +10,30 @@ class FunctionForTPMS:
         return 0.
 
 class InterpolationForTPMS(FunctionForTPMS):
+    """Class for interpolating values on a 3D grid.
+
+    Parameters
+    ----------
+    x_grid : numpy.ndarray, optional
+        1D array of x-coordinates defining the grid. Defaults to array([0.]).
+    y_grid : numpy.ndarray, optional
+        1D array of y-coordinates defining the grid. Defaults to array([0.]).
+    z_grid : numpy.ndarray, optional
+        1D array of z-coordinates defining the grid. Defaults to array([0.]).
+    matrix : numpy.ndarray, optional
+        3D array of values at the grid points. Defaults to array([[[0.]]]).
+
+    Attributes
+    ----------
+    x_grid : numpy.ndarray
+        1D array of x-coordinates defining the grid.
+    y_grid : numpy.ndarray
+        1D array of y-coordinates defining the grid.
+    z_grid : numpy.ndarray
+        1D array of z-coordinates defining the grid.
+    matrix : numpy.ndarray
+        3D array of values at the grid points.
+    """
 
     def __init__(self, x_grid = np.array([0.]), y_grid = np.array([0.]), z_grid = np.array([0.]), matrix = np.array([[[0.]]])):
         assert np.ndim(x_grid) == 1
@@ -20,6 +45,22 @@ class InterpolationForTPMS(FunctionForTPMS):
         self.matrix = np.array(matrix)
 
     def evaluate(self, x, y, z):
+        """Evaluates the interpolated value at the given coordinates.
+
+        Parameters
+        ----------
+        x : float
+            x-coordinate at which to evaluate the interpolated value.
+        y : float
+            y-coordinate at which to evaluate the interpolated value.
+        z : float
+            z-coordinate at which to evaluate the interpolated value.
+
+        Returns
+        -------
+        float
+            The interpolated value at the given coordinates.
+        """
         def _interp_1d(coord, grid_coords):
             num_points = np.shape(grid_coords)[0]
             grid_indices = np.arange(num_points)

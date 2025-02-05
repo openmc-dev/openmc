@@ -29,68 +29,63 @@
 
 #include <iostream>
 
-template <class F, class Tol>
-std::pair<double, double> bisect(F f, double min, double max, Tol tol, std::uintmax_t& max_iter)
+template<class F, class Tol>
+std::pair<double, double> bisect(
+  F f, double min, double max, Tol tol, std::uintmax_t& max_iter)
 {
-   double fmin = f(min);
-   double fmax = f(max);
-   if (fmin == 0)
-   {
-      max_iter = 2;
-      return std::make_pair(min, min);
-   }
-   if (fmax == 0)
-   {
-      max_iter = 2;
-      return std::make_pair(max, max);
-   }
+  double fmin = f(min);
+  double fmax = f(max);
+  if (fmin == 0) {
+    max_iter = 2;
+    return std::make_pair(min, min);
+  }
+  if (fmax == 0) {
+    max_iter = 2;
+    return std::make_pair(max, max);
+  }
 
-   //
-   // Error checking:
-   //
-   if (min >= max)
-   {
-      throw std::invalid_argument("Arguments min and max in wrong order");
-   }
-   if (fmin * fmax >= 0)
-   {
-      throw std::invalid_argument("No change of sign, either there is no root to find, or there are multiple roots in the interval");
-   }
+  //
+  // Error checking:
+  //
+  if (min >= max) {
+    throw std::invalid_argument("Arguments min and max in wrong order");
+  }
+  if (fmin * fmax >= 0) {
+    throw std::invalid_argument(
+      "No change of sign, either there is no root to find, or there are "
+      "multiple roots in the interval");
+  }
 
-   //
-   // Three function invocations so far:
-   //
-   std::uintmax_t count = max_iter;
-   if (count < 3) {count = 0;}
-   else {count -= 3;}
-      
+  //
+  // Three function invocations so far:
+  //
+  std::uintmax_t count = max_iter;
+  if (count < 3) {
+    count = 0;
+  } else {
+    count -= 3;
+  }
 
-   while (count && (0 == tol(min, max)))
-   {
-      double mid = (min + max) / 2;
-      double fmid = f(mid);
-      if ((mid == max) || (mid == min))
-         break;
-      if (fmid == 0)
-      {
-         min = max = mid;
-         break;
-      }
-      else if (std::signbit(fmid) != std::signbit(fmin))
-      {
-         max = mid;
-      }
-      else
-      {
-         min = mid;
-         fmin = fmid;
-      }
-      --count;
-   }
+  while (count && (0 == tol(min, max))) {
+    double mid = (min + max) / 2;
+    double fmid = f(mid);
+    if ((mid == max) || (mid == min))
+      break;
+    if (fmid == 0) {
+      min = max = mid;
+      break;
+    } else if (std::signbit(fmid) != std::signbit(fmin)) {
+      max = mid;
+    } else {
+      min = mid;
+      fmin = fmid;
+    }
+    --count;
+  }
 
-   max_iter -= count;
+  max_iter -= count;
 
-   return std::make_pair(min, max);
+  return std::make_pair(min, max);
 }
 
 #endif

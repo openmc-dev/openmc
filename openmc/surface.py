@@ -2288,6 +2288,42 @@ class Quadric(QuadricMixin, Surface):
 
 
 class TPMS(Surface):
+    """Class representing a Triply Periodic Minimal Surface (TPMS).
+
+    Parameters
+    ----------
+    surface_type : str
+        Type of the TPMS surface. Must be one of ['Gyroid', 'Diamond', 'Schwarz_P'].
+    isovalue : float, optional
+        Isovalue of the TPMS function. Defaults to 0.
+    pitch : float, optional
+        Pitch of the TPMS surface in [cm]. Defaults to 2.
+    x0 : float, optional
+        x-coordinate of the center of the surface in [cm]. Defaults to 0.
+    y0 : float, optional
+        y-coordinate of the center of the surface in [cm]. Defaults to 0.
+    z0 : float, optional
+        z-coordinate of the center of the surface in [cm]. Defaults to 0.
+    a, b, c, d, e, f, g, h, i : float, optional
+        Coefficients for the transformation matrix. Defaults to 1, 0, 0, 0, 1, 0, 0, 0, 1 respectively.
+
+    Attributes
+    ----------
+    surface_type : str
+        Type of the TPMS surface.
+    isovalue : float
+        Isovalue of the TPMS function.
+    pitch : float
+        Pitch of the TPMS surface in [cm].
+    x0 : float
+        x-coordinate of the center of the surface in [cm].
+    y0 : float
+        y-coordinate of the center of the surface in [cm].
+    z0 : float
+        z-coordinate of the center of the surface in [cm].
+    a, b, c, d, e, f, g, h, i : float
+        Coefficients for the transformation matrix.
+    """
 
     surface_list = ['Gyroid','Diamond','Schwarz_P',]
     
@@ -2325,9 +2361,33 @@ class TPMS(Surface):
         raise AttributeError( "'TPMS' object has no attribute 'normalize'" )
     
     def _get_base_coeffs(self):
+        """Get the base coefficients of the TPMS surface.
+
+        Returns
+        -------
+        tuple
+            Tuple of base coefficients.
+        """
         return (self.isovalue, self.pitch, self.x0, self.y0, self.z0, self.a, self.b, self.c, self.d, self.e, self.f, self.g, self.h, self.i)
     
     def evaluate(self, point):
+        """Evaluate the TPMS function at a given point.
+
+        Parameters
+        ----------
+        point : tuple of float
+            Coordinates (x, y, z) at which to evaluate the function.
+
+        Returns
+        -------
+        float
+            The value of the TPMS function at the given point.
+
+        Raises
+        ------
+        NotImplementedError
+            If the surface type is not implemented.
+        """
         x, y, z = point
         l = 2*pi/self.pitch
         xx = self.a*(x-self.x0) + self.b*(y-self.y0) + self.c*(z-self.z0) 
@@ -2343,6 +2403,20 @@ class TPMS(Surface):
             raise NotImplementedError(f"'{self.surface_type}' surface_type is not yet implemented.")
     
     def translate(self, vector, inplace=False):
+        """Translate the TPMS surface by a given vector.
+
+        Parameters
+        ----------
+        vector : tuple of float
+            Translation vector (x, y, z).
+        inplace : bool, optional
+            If True, modify the object in place. Otherwise, return a new translated object. Defaults to False.
+
+        Returns
+        -------
+        TPMS
+            Translated TPMS surface.
+        """
         x1, y1, z1 = vector
         x0, y0, z0 = self.x0, self.y0, self.z0
         surf = self if inplace else self.clone()
@@ -2352,6 +2426,24 @@ class TPMS(Surface):
         return surf
 
     def rotate(self, rotation, pivot=(0., 0., 0.), order='xyz', inplace=False):
+        """Rotate the TPMS surface around a given pivot point.
+
+        Parameters
+        ----------
+        rotation : numpy.ndarray or list of float
+            Rotation matrix or angles for the rotation.
+        pivot : tuple of float, optional
+            Pivot point (x, y, z) for the rotation. Defaults to (0., 0., 0.).
+        order : str, optional
+            Order of the rotation axes. Defaults to 'xyz'.
+        inplace : bool, optional
+            If True, modify the object in place. Otherwise, return a new rotated object. Defaults to False.
+
+        Returns
+        -------
+        TPMS
+            Rotated TPMS surface.
+        """
         # Get pivot and rotation matrix
         pivot = np.asarray(pivot)
         rotation = np.asarray(rotation, dtype=float)
@@ -2374,12 +2466,38 @@ class TPMS(Surface):
         return surf.translate(pivot, inplace=inplace)
 
     def to_xml_element(self):
+        """Return XML representation of the surface
+
+        Returns
+        -------
+        element : lxml.etree._Element
+            XML element containing source data
+
+        """
         element = super().to_xml_element()
         element.set("surface_type", self.surface_type)
         return element
 
     @staticmethod
     def _get_relative_density_vs_isovalue(surface_type:str, _resolution:int=100, *args, **kwargs):
+        """Get relative density versus isovalue for a given surface type.
+
+        Parameters
+        ----------
+        surface_type : str
+            Type of the TPMS surface.
+        _resolution : int, optional
+            Resolution for the grid. Defaults to 100.
+        *args : tuple, optional
+            Additional arguments to pass to the TPMS constructor.
+        **kwargs : dict, optional
+            Additional keyword arguments to pass to the TPMS constructor.
+
+        Returns
+        -------
+        tuple
+            Tuple containing relative densities and corresponding isovalues.
+        """
         # building a spacephase matrix
         x = np.linspace(-1/2, +1/2,_resolution+1,endpoint=True)
         y = np.linspace(-1/2, +1/2,_resolution+1,endpoint=True)
@@ -2402,22 +2520,108 @@ class TPMS(Surface):
 
     @classmethod
     def from_thickness(cls, surface_type: str, thickness: float = 0., pitch: float = 2., *args, **kwargs):
+        """Create a TPMS surface from thickness.
+
+        Parameters
+        ----------
+        surface_type : str
+            Type of the TPMS surface.
+        thickness : float, optional
+            Thickness of the TPMS surface. Defaults to 0.
+        pitch : float, optional
+            Pitch of the TPMS surface. Defaults to 2.
+        *args : tuple, optional
+            Additional arguments to pass to the TPMS constructor.
+        **kwargs : dict, optional
+            Additional keyword arguments to pass to the TPMS constructor.
+
+        Returns
+        -------
+        TPMS
+            TPMS surface object.
+        """
         isovalue = thickness * 2*pi/pitch
         return cls(surface_type, isovalue, pitch, *args, **kwargs)
     
     @classmethod
     def from_relative_density(cls, surface_type: str, relative_density: float = 0.5, pitch: float = 2., _resolution: int = 100, *args, **kwargs):
+        """Create a TPMS surface from relative density.
+
+        Parameters
+        ----------
+        surface_type : str
+            Type of the TPMS surface.
+        relative_density : float, optional
+            Relative density of the TPMS surface. Defaults to 0.5.
+        pitch : float, optional
+            Pitch of the TPMS surface. Defaults to 2.
+        _resolution : int, optional
+            Resolution for the grid. Defaults to 100.
+        *args : tuple, optional
+            Additional arguments to pass to the TPMS constructor.
+        **kwargs : dict, optional
+            Additional keyword arguments to pass to the TPMS constructor.
+
+        Returns
+        -------
+        TPMS
+            TPMS surface object.
+        """
         pRelDensity, pIsovalues = TPMS._get_relative_density_vs_isovalue(surface_type, _resolution)
         isovalue = np.interp(relative_density, pRelDensity, pIsovalues)
         return cls(surface_type, isovalue, pitch, *args, **kwargs)
 
     @classmethod
     def from_porosity(cls, surface_type: str, porosity: float = 0.5, pitch: float = 2., _resolution: int = 100, *args, **kwargs):
+        """Create a TPMS surface from porosity.
+
+        Parameters
+        ----------
+        surface_type : str
+            Type of the TPMS surface.
+        porosity : float, optional
+            Porosity of the TPMS surface. Defaults to 0.5.
+        pitch : float, optional
+            Pitch of the TPMS surface. Defaults to 2.
+        _resolution : int, optional
+            Resolution for the grid. Defaults to 100.
+        *args : tuple, optional
+            Additional arguments to pass to the TPMS constructor.
+        **kwargs : dict, optional
+            Additional keyword arguments to pass to the TPMS constructor.
+
+        Returns
+        -------
+        TPMS
+            TPMS surface object.
+        """
         relative_density = 1 - porosity
         return cls.from_relative_density(surface_type, relative_density, pitch, _resolution, *args, **kwargs)
 
     @staticmethod
     def from_relative_densities(surface_type: str, relative_densities: list, pitch: float = 2., _resolution: int = 100, *args, **kwargs):
+        """Create multiple TPMS surfaces from relative densities.
+
+        Parameters
+        ----------
+        surface_type : str
+            Type of the TPMS surface.
+        relative_densities : list
+            List of relative densities for the TPMS surfaces.
+        pitch : float, optional
+            Pitch of the TPMS surfaces. Defaults to 2.
+        _resolution : int, optional
+            Resolution for the grid. Defaults to 100.
+        *args : tuple, optional
+            Additional arguments to pass to the TPMS constructor.
+        **kwargs : dict, optional
+            Additional keyword arguments to pass to the TPMS constructor.
+
+        Returns
+        -------
+        list
+            List of TPMS surface objects.
+        """
         pRelDensity, pIsovalues = TPMS._get_relative_density_vs_isovalue(surface_type, _resolution)
         isovalues = np.interp(relative_densities, pRelDensity, pIsovalues).tolist()
         listOfTPMS = [TPMS(surface_type, isovalue, pitch, *args, **kwargs) for isovalue in isovalues]
@@ -2425,11 +2629,73 @@ class TPMS(Surface):
 
     @staticmethod
     def from_porosities(surface_type: str, porosities: list, pitch: float = 2., _resolution: int = 100, *args, **kwargs):
+        """Create multiple TPMS surfaces from porosities.
+
+        Parameters
+        ----------
+        surface_type : str
+            Type of the TPMS surface.
+        porosities : list
+            List of porosities for the TPMS surfaces.
+        pitch : float, optional
+            Pitch of the TPMS surfaces. Defaults to 2.
+        _resolution : int, optional
+            Resolution for the grid. Defaults to 100.
+        *args : tuple, optional
+            Additional arguments to pass to the TPMS constructor.
+        **kwargs : dict, optional
+            Additional keyword arguments to pass to the TPMS constructor.
+
+        Returns
+        -------
+        list
+            List of TPMS surface objects.
+        """
         relative_densities = [1-x for x in porosities]
         return TPMS.from_relative_densities(surface_type, relative_densities, pitch, _resolution, *args, **kwargs)
 
-class FunctionTPMS(Surface):
 
+class FunctionTPMS(Surface):
+    """Class representing a Function-based Triply Periodic Minimal Surface (FunctionTPMS).
+
+    Parameters
+    ----------
+    surface_type : str
+        Type of the TPMS surface. Must be one of ['Gyroid', 'Diamond', 'Schwarz_P'].
+    function_type : str
+        Type of function to be used.
+    fIsovalue : FunctionForTPMS
+        Function for evaluating the isovalue.
+    fPitch : FunctionForTPMS
+        Function for evaluating the pitch.
+    x0 : float, optional
+        x-coordinate of the center of the surface in [cm]. Defaults to 0.
+    y0 : float, optional
+        y-coordinate of the center of the surface in [cm]. Defaults to 0.
+    z0 : float, optional
+        z-coordinate of the center of the surface in [cm]. Defaults to 0.
+    a, b, c, d, e, f, g, h, i : float, optional
+        Coefficients for the transformation matrix. Defaults to 1, 0, 0, 0, 1, 0, 0, 0, 1 respectively.
+
+    Attributes
+    ----------
+    surface_type : str
+        Type of the TPMS surface.
+    function_type : str
+        Type of function to be used.
+    fIsovalue : FunctionForTPMS
+        Function for evaluating the isovalue.
+    fPitch : FunctionForTPMS
+        Function for evaluating the pitch.
+    x0 : float
+        x-coordinate of the center of the surface in [cm].
+    y0 : float
+        y-coordinate of the center of the surface in [cm].
+    z0 : float
+        z-coordinate of the center of the surface in [cm].
+    a, b, c, d, e, f, g, h, i : float
+        Coefficients for the transformation matrix.
+    """
     surface_list = ['Gyroid','Diamond','Schwarz_P',]
     
     _type = 'function-tpms'
@@ -2466,15 +2732,71 @@ class FunctionTPMS(Surface):
         raise AttributeError( "'FunctionTPMS' object has no attribute 'normalize'" )
     
     def _get_base_coeffs(self):
+        """Get the base coefficients of the FunctionTPMS surface.
+
+        Returns
+        -------
+        tuple
+            Tuple of base coefficients.
+        """
         return (self.x0, self.y0, self.z0, self.a, self.b, self.c, self.d, self.e, self.f, self.g, self.h, self.i)
 
     def get_pitch(self, x, y, z):
+        """Get the pitch value at a given point.
+
+        Parameters
+        ----------
+        x : float
+            x-coordinate.
+        y : float
+            y-coordinate.
+        z : float
+            z-coordinate.
+
+        Returns
+        -------
+        float
+            Pitch value at the given point.
+        """
         return self.fPitch.evaluate(x, y, z)
 
     def get_isovalue(self, x, y, z):
+        """Get the isovalue at a given point.
+
+        Parameters
+        ----------
+        x : float
+            x-coordinate.
+        y : float
+            y-coordinate.
+        z : float
+            z-coordinate.
+
+        Returns
+        -------
+        float
+            Isovalue at the given point.
+        """
         return self.fIsovalue.evaluate(x, y, z)
 
     def evaluate(self, point):
+        """Evaluate the FunctionTPMS function at a given point.
+
+        Parameters
+        ----------
+        point : tuple of float
+            Coordinates (x, y, z) at which to evaluate the function.
+
+        Returns
+        -------
+        float
+            The value of the FunctionTPMS function at the given point.
+
+        Raises
+        ------
+        NotImplementedError
+            If the surface type is not implemented.
+        """
         x, y, z = point
         xx = self.a*(x-self.x0) + self.b*(y-self.y0) + self.c*(z-self.z0) 
         yy = self.d*(x-self.x0) + self.e*(y-self.y0) + self.f*(z-self.z0)
@@ -2492,6 +2814,20 @@ class FunctionTPMS(Surface):
             raise NotImplementedError(f"'{self.surface_type}' surface_type is not yet implemented.")
     
     def translate(self, vector, inplace=False):
+        """Translate the FunctionTPMS surface by a given vector.
+
+        Parameters
+        ----------
+        vector : tuple of float
+            Translation vector (x, y, z).
+        inplace : bool, optional
+            If True, modify the object in place. Otherwise, return a new translated object. Defaults to False.
+
+        Returns
+        -------
+        FunctionTPMS
+            Translated FunctionTPMS surface.
+        """
         x1, y1, z1 = vector
         x0, y0, z0 = self.x0, self.y0, self.z0
         surf = self if inplace else self.clone()
@@ -2501,6 +2837,24 @@ class FunctionTPMS(Surface):
         return surf
 
     def rotate(self, rotation, pivot=(0., 0., 0.), order='xyz', inplace=False):
+        """Rotate the FunctionTPMS surface around a given pivot point.
+
+        Parameters
+        ----------
+        rotation : numpy.ndarray or list of float
+            Rotation matrix or angles for the rotation.
+        pivot : tuple of float, optional
+            Pivot point (x, y, z) for the rotation. Defaults to (0., 0., 0.).
+        order : str, optional
+            Order of the rotation axes. Defaults to 'xyz'.
+        inplace : bool, optional
+            If True, modify the object in place. Otherwise, return a new rotated object. Defaults to False.
+
+        Returns
+        -------
+        FunctionTPMS
+            Rotated FunctionTPMS surface.
+        """
         # Get pivot and rotation matrix
         pivot = np.asarray(pivot)
         rotation = np.asarray(rotation, dtype=float)
@@ -2523,6 +2877,14 @@ class FunctionTPMS(Surface):
         return surf.translate(pivot, inplace=inplace)
 
     def to_xml_element(self):
+        """Return XML representation of the surface
+
+        Returns
+        -------
+        element : lxml.etree._Element
+            XML element containing source data
+
+        """
         def _array_to_string(myArray: np.ndarray, separators=[",",";","|"]):
             dim = myArray.ndim
             sep = separators[dim-1]
@@ -2554,6 +2916,29 @@ class FunctionTPMS(Surface):
         return element
 
     def offset_interpolated_tpms(self, thickness_function, newIsovalueDirection:Literal["LOWER","HIGHER"], *args, **kwargs):
+        """Offset the interpolated TPMS surface by a given thickness function.
+
+        Parameters
+        ----------
+        thickness_function : callable
+            Function to calculate the thickness at given points.
+        newIsovalueDirection : {'LOWER', 'HIGHER'}
+            Direction to adjust the isovalue. Must be either 'LOWER' or 'HIGHER'.
+        *args : tuple, optional
+            Additional arguments to pass to the FunctionTPMS constructor.
+        **kwargs : dict, optional
+            Additional keyword arguments to pass to the FunctionTPMS constructor.
+
+        Returns
+        -------
+        FunctionTPMS
+            Offset FunctionTPMS surface.
+
+        Raises
+        ------
+        ValueError
+            If the newIsovalueDirection is not 'LOWER' or 'HIGHER'.
+        """
         assert isinstance(self.fIsovalue, InterpolationForTPMS)
         assert isinstance(self.fPitch, InterpolationForTPMS)
         x_grid = self.fIsovalue.x_grid
@@ -2575,6 +2960,40 @@ class FunctionTPMS(Surface):
     @classmethod
     def from_interpolated_functions_and_grids(cls, surface_type: str, isovalue_function: Callable, pitch_function: Callable, x_grid, y_grid, z_grid,
                                  x0: float = 0., y0: float = 0., z0: float = 0., a=1., b=0., c=0., d=0., e=1., f=0., g=0., h=0., i=1., *args, **kwargs):
+        """Create a FunctionTPMS surface from interpolated functions and grids.
+
+        Parameters
+        ----------
+        surface_type : str
+            Type of the TPMS surface.
+        isovalue_function : Callable
+            Function to evaluate the isovalue.
+        pitch_function : Callable
+            Function to evaluate the pitch.
+        x_grid : array-like
+            x-coordinates of the grid points.
+        y_grid : array-like
+            y-coordinates of the grid points.
+        z_grid : array-like
+            z-coordinates of the grid points.
+        x0 : float, optional
+            x-coordinate of the center of the surface in [cm]. Defaults to 0.
+        y0 : float, optional
+            y-coordinate of the center of the surface in [cm]. Defaults to 0.
+        z0 : float, optional
+            z-coordinate of the center of the surface in [cm]. Defaults to 0.
+        a, b, c, d, e, f, g, h, i : float, optional
+            Coefficients for the transformation matrix. Defaults to 1, 0, 0, 0, 1, 0, 0, 0, 1 respectively.
+        *args : tuple, optional
+            Additional arguments to pass to the FunctionTPMS constructor.
+        **kwargs : dict, optional
+            Additional keyword arguments to pass to the FunctionTPMS constructor.
+
+        Returns
+        -------
+        FunctionTPMS
+            FunctionTPMS surface object.
+        """
         mX, mY, mZ = np.meshgrid(x_grid, y_grid, z_grid, indexing="ij")
         m_pitch = pitch_function(mX, mY, mZ)
         m_isovalue = isovalue_function(mX, mY, mZ)
@@ -2586,6 +3005,42 @@ class FunctionTPMS(Surface):
     @classmethod
     def from_interpolated_functions(cls, surface_type: str, isovalue_function: Callable, pitch_function: Callable, xlim=(-1.,+1.), ylim=(-1.,+1), zlim=(-1.,+1.), shape=(5,5,5),
                                  x0: float = 0., y0: float = 0., z0: float = 0., a=1., b=0., c=0., d=0., e=1., f=0., g=0., h=0., i=1., *args, **kwargs):
+        """Create a FunctionTPMS surface from interpolated functions.
+
+        Parameters
+        ----------
+        surface_type : str
+            Type of the TPMS surface.
+        isovalue_function : Callable
+            Function to evaluate the isovalue.
+        pitch_function : Callable
+            Function to evaluate the pitch.
+        xlim : tuple of float, optional
+            Limits for the x-coordinates. Defaults to (-1., +1.).
+        ylim : tuple of float, optional
+            Limits for the y-coordinates. Defaults to (-1., +1.).
+        zlim : tuple of float, optional
+            Limits for the z-coordinates. Defaults to (-1., +1.).
+        shape : tuple of int, optional
+            Shape of the grid. Defaults to (5, 5, 5).
+        x0 : float, optional
+            x-coordinate of the center of the surface in [cm]. Defaults to 0.
+        y0 : float, optional
+            y-coordinate of the center of the surface in [cm]. Defaults to 0.
+        z0 : float, optional
+            z-coordinate of the center of the surface in [cm]. Defaults to 0.
+        a, b, c, d, e, f, g, h, i : float, optional
+            Coefficients for the transformation matrix. Defaults to 1, 0, 0, 0, 1, 0, 0, 0, 1 respectively.
+        *args : tuple, optional
+            Additional arguments to pass to the FunctionTPMS constructor.
+        **kwargs : dict, optional
+            Additional keyword arguments to pass to the FunctionTPMS constructor.
+
+        Returns
+        -------
+        FunctionTPMS
+            FunctionTPMS surface object.
+        """
         if shape[0] > 1:
             x_grid = np.linspace(xlim[0], xlim[1], shape[0], endpoint=True)
         else:
@@ -2603,6 +3058,44 @@ class FunctionTPMS(Surface):
     @classmethod
     def from_solid_fuel_relative_density(cls, surface_type: str, relative_density_function: Callable, pitch_function: Callable, _resolution=100, xlim=(-1.,+1.), ylim=(-1.,+1), zlim=(-1.,+1.), shape=(5,5,5),
                                          x0: float = 0., y0: float = 0., z0: float = 0., a=1., b=0., c=0., d=0., e=1., f=0., g=0., h=0., i=1., *args, **kwargs):
+        """Create a FunctionTPMS surface from solid fuel relative density.
+
+        Parameters
+        ----------
+        surface_type : str
+            Type of the TPMS surface.
+        relative_density_function : Callable
+            Function to evaluate the relative density.
+        pitch_function : Callable
+            Function to evaluate the pitch.
+        _resolution : int, optional
+            Resolution for the grid. Defaults to 100.
+        xlim : tuple of float, optional
+            Limits for the x-coordinates. Defaults to (-1., +1.).
+        ylim : tuple of float, optional
+            Limits for the y-coordinates. Defaults to (-1., +1.).
+        zlim : tuple of float, optional
+            Limits for the z-coordinates. Defaults to (-1., +1.).
+        shape : tuple of int, optional
+            Shape of the grid. Defaults to (5, 5, 5).
+        x0 : float, optional
+            x-coordinate of the center of the surface in [cm]. Defaults to 0.
+        y0 : float, optional
+            y-coordinate of the center of the surface in [cm]. Defaults to 0.
+        z0 : float, optional
+            z-coordinate of the center of the surface in [cm]. Defaults to 0.
+        a, b, c, d, e, f, g, h, i : float, optional
+            Coefficients for the transformation matrix. Defaults to 1, 0, 0, 0, 1, 0, 0, 0, 1 respectively.
+        *args : tuple, optional
+            Additional arguments to pass to the FunctionTPMS constructor.
+        **kwargs : dict, optional
+            Additional keyword arguments to pass to the FunctionTPMS constructor.
+
+        Returns
+        -------
+        FunctionTPMS
+            FunctionTPMS surface object.
+        """
         pRelDensity, pIsovalues = TPMS._get_relative_density_vs_isovalue(surface_type, _resolution)
         def ISOVALUEFUNC(x,y,z):
             return np.interp(relative_density_function(x,y,z), pRelDensity, pIsovalues).tolist()
@@ -2631,6 +3124,44 @@ class FunctionTPMS(Surface):
     @classmethod
     def from_sheet_fuel_porosity(surface_type: str, porosity_function: Callable, pitch_function: Callable, _resolution=100, xlim=(-1.,+1.), ylim=(-1.,+1), zlim=(-1.,+1.), shape=(5,5,5),
                                          x0: float = 0., y0: float = 0., z0: float = 0., a=1., b=0., c=0., d=0., e=1., f=0., g=0., h=0., i=1., *args, **kwargs):
+        """Create two FunctionTPMS surfaces from sheet fuel porosity.
+
+        Parameters
+        ----------
+        surface_type : str
+            Type of the TPMS surface.
+        porosity_function : Callable
+            Function to evaluate the porosity.
+        pitch_function : Callable
+            Function to evaluate the pitch.
+        _resolution : int, optional
+            Resolution for the grid. Defaults to 100.
+        xlim : tuple of float, optional
+            Limits for the x-coordinates. Defaults to (-1., +1.).
+        ylim : tuple of float, optional
+            Limits for the y-coordinates. Defaults to (-1., +1.).
+        zlim : tuple of float, optional
+            Limits for the z-coordinates. Defaults to (-1., +1.).
+        shape : tuple of int, optional
+            Shape of the grid. Defaults to (5, 5, 5).
+        x0 : float, optional
+            x-coordinate of the center of the surface in [cm]. Defaults to 0.
+        y0 : float, optional
+            y-coordinate of the center of the surface in [cm]. Defaults to 0.
+        z0 : float, optional
+            z-coordinate of the center of the surface in [cm]. Defaults to 0.
+        a, b, c, d, e, f, g, h, i : float, optional
+            Coefficients for the transformation matrix. Defaults to 1, 0, 0, 0, 1, 0, 0, 0, 1 respectively.
+        *args : tuple, optional
+            Additional arguments to pass to the FunctionTPMS constructor.
+        **kwargs : dict, optional
+            Additional keyword arguments to pass to the FunctionTPMS constructor.
+
+        Returns
+        -------
+        tuple of FunctionTPMS
+            Two FunctionTPMS surface objects.
+        """
         pRelDensity, pIsovalues = TPMS._get_relative_density_vs_isovalue(surface_type, _resolution)
         def ISOVALUEFUNC1(x,y,z):
             return np.interp(porosity_function(x,y,z)/2, pRelDensity, pIsovalues).tolist()
@@ -2639,6 +3170,7 @@ class FunctionTPMS(Surface):
         tpms1 = FunctionTPMS.from_interpolated_functions(surface_type, ISOVALUEFUNC1, pitch_function, xlim, ylim, zlim, shape, x0, y0, z0, a, b, c, d, e, f, g, h, i, *args, **kwargs)
         tpms2 = FunctionTPMS.from_interpolated_functions(surface_type, ISOVALUEFUNC2, pitch_function, xlim, ylim, zlim, shape, x0, y0, z0, a, b, c, d, e, f, g, h, i, *args, **kwargs)
         return (tpms1, tpms2) 
+
 
 class TorusMixin:
     """A Mixin class implementing common functionality for torus surfaces"""

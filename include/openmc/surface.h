@@ -2,8 +2,8 @@
 #define OPENMC_SURFACE_H
 
 #include <limits> // For numeric_limits
-#include <string>
 #include <list>
+#include <string>
 #include <unordered_map>
 
 #include "hdf5.h"
@@ -56,7 +56,7 @@ public:
   //! \return true if the point is on the "positive" side of the surface and
   //!   false otherwise.
   bool sense(Position r, Direction u) const;
-  virtual bool is_tpms() const {return false;};
+  virtual bool is_tpms() const { return false; };
 
   //! Determine the direction of a ray reflected from the surface.
   //! \param[in] r The point at which the ray is incident.
@@ -81,8 +81,15 @@ public:
   //! \param u The direction of the ray.
   //! \param coincident A hint to the code that the given point should lie
   //!   exactly on the surface.
-  virtual double distance(Position r, Direction u, bool coincident) const {return 0.;};
-  virtual double distance(Position r, Direction u, bool coincident, double max_range) const {return 0.;};
+  virtual double distance(Position r, Direction u, bool coincident) const
+  {
+    return 0.;
+  };
+  virtual double distance(
+    Position r, Direction u, bool coincident, double max_range) const
+  {
+    return 0.;
+  };
 
   //! Compute the local outward normal direction of the surface.
   //! \param r A 3D Cartesian coordinate.
@@ -340,9 +347,10 @@ public:
 class SurfaceTPMS : public CSGSurface {
 public:
   explicit SurfaceTPMS(pugi::xml_node surf_node);
-  bool is_tpms() const {return true;};
+  bool is_tpms() const { return true; };
   double evaluate(Position r) const;
-  double distance(Position r, Direction u, bool coincident, double max_range) const;
+  double distance(
+    Position r, Direction u, bool coincident, double max_range) const;
   Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
 
@@ -363,9 +371,10 @@ class SurfaceFunctionTPMS : public CSGSurface {
 public:
   explicit SurfaceFunctionTPMS(pugi::xml_node surf_node);
   ~SurfaceFunctionTPMS();
-  bool is_tpms() const {return true;};
+  bool is_tpms() const { return true; };
   double evaluate(Position r) const;
-  double distance(Position r, Direction u, bool coincident, double max_range) const;
+  double distance(
+    Position r, Direction u, bool coincident, double max_range) const;
   Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
 

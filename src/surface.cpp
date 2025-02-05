@@ -58,63 +58,70 @@ void read_coeffs(
 //==============================================================================
 
 // Helper function to trim whitespace from a string
-std::string trim(const std::string& str) 
+std::string trim(const std::string& str)
 {
   size_t first = str.find_first_not_of(' ');
-  if (first == std::string::npos) {return "";};
+  if (first == std::string::npos) {
+    return "";
+  };
   size_t last = str.find_last_not_of(' ');
   return str.substr(first, last - first + 1);
 }
 
-// Helper function to split a string by a delimiter and return a vector of substrings
-std::vector<std::string> split(const std::string& str, char delimiter) 
+// Helper function to split a string by a delimiter and return a vector of
+// substrings
+std::vector<std::string> split(const std::string& str, char delimiter)
 {
   std::vector<std::string> tokens;
   std::string token;
   std::stringstream tokenStream(str);
-  while (std::getline(tokenStream, token, delimiter)) 
-  {
+  while (std::getline(tokenStream, token, delimiter)) {
     tokens.push_back(trim(token));
   }
   return tokens;
 }
 
 // Function to convert a string to a vector of doubles
-std::vector<double> convertStringToVector(const std::string& input) 
+std::vector<double> convertStringToVector(const std::string& input)
 {
   std::vector<double> result;
-  std::string cleaned_str = input.substr(1, input.size() - 2); // Remove brackets
+  std::string cleaned_str =
+    input.substr(1, input.size() - 2); // Remove brackets
   std::vector<std::string> elements = split(cleaned_str, ',');
-  for (const std::string& elem : elements) 
-  {
+  for (const std::string& elem : elements) {
     double value = std::stod(elem);
     result.push_back(value);
   }
-  if (result.size() == 0) {fatal_error(fmt::format("Impossible to convert string '{}' into a vector.", input));}
+  if (result.size() == 0) {
+    fatal_error(
+      fmt::format("Impossible to convert string '{}' into a vector.", input));
+  }
   return result;
 }
 
 // Function to convert a string to a matrix of doubles
-std::vector<std::vector<double>> convertStringToMatrix(const std::string& input) 
+std::vector<std::vector<double>> convertStringToMatrix(const std::string& input)
 {
   std::vector<std::vector<double>> result;
-  std::string cleaned_str = input.substr(1, input.size() - 2); // Remove outer brackets
+  std::string cleaned_str =
+    input.substr(1, input.size() - 2); // Remove outer brackets
   std::vector<std::string> rows = split(cleaned_str, ';'); // Split by rows
-  for (const std::string& row : rows)
-  {
+  for (const std::string& row : rows) {
     result.push_back(convertStringToVector(row));
   }
   return result;
 }
 
 // Function to convert a string to a 3D matrix of doubles
-std::vector<std::vector<std::vector<double>>> convertStringTo3DMatrix(const std::string& input)
+std::vector<std::vector<std::vector<double>>> convertStringTo3DMatrix(
+  const std::string& input)
 {
   std::vector<std::vector<std::vector<double>>> result;
-  std::string cleaned_str = input.substr(1, input.size() - 2); // Remove outer brackets
-  std::vector<std::string> matrices = split(cleaned_str, '|'); // Split by matrices
-  for (const std::string& matrix : matrices)
-  {
+  std::string cleaned_str =
+    input.substr(1, input.size() - 2); // Remove outer brackets
+  std::vector<std::string> matrices =
+    split(cleaned_str, '|'); // Split by matrices
+  for (const std::string& matrix : matrices) {
     result.push_back(convertStringToMatrix(matrix));
   }
   return result;
@@ -1024,79 +1031,84 @@ void SurfaceQuadric::to_hdf5_inner(hid_t group_id) const
 
 SurfaceTPMS::SurfaceTPMS(pugi::xml_node surf_node) : CSGSurface(surf_node)
 {
-  read_coeffs(surf_node, id_, {&isovalue, &pitch, &x0, &y0, &z0, &a, &b, &c, &d, &e, &f, &g, &h, &i});
+  read_coeffs(surf_node, id_,
+    {&isovalue, &pitch, &x0, &y0, &z0, &a, &b, &c, &d, &e, &f, &g, &h, &i});
   surface_type = get_node_value(surf_node, "surface_type");
-  if (std::find(tpms_types.begin(), tpms_types.end(), surface_type)==tpms_types.end())
-  {
+  if (std::find(tpms_types.begin(), tpms_types.end(), surface_type) ==
+      tpms_types.end()) {
     fatal_error(
-      fmt::format("Surface {} is surface_type {} but it is not implemented.", id_,
-        surface_type));
+      fmt::format("Surface {} is surface_type {} but it is not implemented.",
+        id_, surface_type));
   }
 }
 
 double SurfaceTPMS::evaluate(Position r) const
 {
   double value;
-  if(surface_type == "Schwarz_P")
-  {
-    SchwarzP laTpms = SchwarzP(isovalue, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
+  if (surface_type == "Schwarz_P") {
+    SchwarzP laTpms =
+      SchwarzP(isovalue, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
     value = laTpms.evaluate(r);
-  }
-  else if(surface_type == "Gyroid")
-  {
-    Gyroid laTpms = Gyroid(isovalue, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
+  } else if (surface_type == "Gyroid") {
+    Gyroid laTpms =
+      Gyroid(isovalue, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
     value = laTpms.evaluate(r);
-  }
-  else if(surface_type == "Diamond")
-  {
-    Diamond laTpms = Diamond(isovalue, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
+  } else if (surface_type == "Diamond") {
+    Diamond laTpms =
+      Diamond(isovalue, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
     value = laTpms.evaluate(r);
+  } else {
+    fatal_error(fmt::format(
+      "Surface type {} is not implemented in SurfaceTPMS::evaluate.",
+      surface_type));
   }
-  else {fatal_error(fmt::format("Surface type {} is not implemented in SurfaceTPMS::evaluate.", surface_type));}
   return value;
 }
 
-double SurfaceTPMS::distance(Position r, Direction ang, bool coincident, double max_range) const
+double SurfaceTPMS::distance(
+  Position r, Direction ang, bool coincident, double max_range) const
 {
   double raylength = 0.;
-  if(surface_type == "Schwarz_P")
-  {
-    SchwarzP laTpms = SchwarzP(isovalue, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
+  if (surface_type == "Schwarz_P") {
+    SchwarzP laTpms =
+      SchwarzP(isovalue, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
     raylength = laTpms.ray_tracing(r, ang, max_range);
-  }
-  else if(surface_type == "Gyroid")
-  {
-    Gyroid laTpms = Gyroid(isovalue, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
+  } else if (surface_type == "Gyroid") {
+    Gyroid laTpms =
+      Gyroid(isovalue, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
     raylength = laTpms.ray_tracing(r, ang, max_range);
-  }
-  else if(surface_type == "Diamond")
-  {
-    Diamond laTpms = Diamond(isovalue, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
+  } else if (surface_type == "Diamond") {
+    Diamond laTpms =
+      Diamond(isovalue, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
     raylength = laTpms.ray_tracing(r, ang, max_range);
+  } else {
+    fatal_error(fmt::format(
+      "Surface type {} is not implemented in SurfaceTPMS::distance.",
+      surface_type));
   }
-  else {fatal_error(fmt::format("Surface type {} is not implemented in SurfaceTPMS::distance.", surface_type));}
   return raylength; // le ray tracing avec la bonne TPMS, frero !
 }
 
 Direction SurfaceTPMS::normal(Position r) const
 {
   Direction grad;
-  if(surface_type == "Schwarz_P")
-  {
-    SchwarzP laTpms = SchwarzP(isovalue, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
+  if (surface_type == "Schwarz_P") {
+    SchwarzP laTpms =
+      SchwarzP(isovalue, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
     grad = laTpms.normal(r);
-  }
-  else if(surface_type == "Gyroid")
-  {
-    Gyroid laTpms = Gyroid(isovalue, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
+  } else if (surface_type == "Gyroid") {
+    Gyroid laTpms =
+      Gyroid(isovalue, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
     grad = laTpms.normal(r);
-  }
-  else if(surface_type == "Diamond")
-  {
-    Diamond laTpms = Diamond(isovalue, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
+  } else if (surface_type == "Diamond") {
+    Diamond laTpms =
+      Diamond(isovalue, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
     grad = laTpms.normal(r);
+  } else {
+    fatal_error(
+      fmt::format("Surface type {} is not implemented in SurfaceTPMS::normal.",
+        surface_type));
   }
-  else {fatal_error(fmt::format("Surface type {} is not implemented in SurfaceTPMS::normal.", surface_type));}
   return grad;
 }
 
@@ -1104,7 +1116,8 @@ void SurfaceTPMS::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "tpms", false);
   write_string(group_id, "surface_type", surface_type, false);
-  array<double, 14> coeffs {{isovalue, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i}};
+  array<double, 14> coeffs {
+    {isovalue, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i}};
   write_dataset(group_id, "coefficients", coeffs);
 }
 
@@ -1112,19 +1125,20 @@ void SurfaceTPMS::to_hdf5_inner(hid_t group_id) const
 // SurfaceFunctionTPMS implementation
 //==============================================================================
 
-SurfaceFunctionTPMS::SurfaceFunctionTPMS(pugi::xml_node surf_node) : CSGSurface(surf_node)
+SurfaceFunctionTPMS::SurfaceFunctionTPMS(pugi::xml_node surf_node)
+  : CSGSurface(surf_node)
 {
-  read_coeffs(surf_node, id_, {&x0, &y0, &z0, &a, &b, &c, &d, &e, &f, &g, &h, &i});
+  read_coeffs(
+    surf_node, id_, {&x0, &y0, &z0, &a, &b, &c, &d, &e, &f, &g, &h, &i});
   surface_type = get_node_value(surf_node, "surface_type");
-  if (std::find(tpms_types.begin(), tpms_types.end(), surface_type)==tpms_types.end())
-  {
+  if (std::find(tpms_types.begin(), tpms_types.end(), surface_type) ==
+      tpms_types.end()) {
     fatal_error(
-      fmt::format("Surface {} is surface_type {} but it is not implemented.", id_,
-        surface_type));
+      fmt::format("Surface {} is surface_type {} but it is not implemented.",
+        id_, surface_type));
   }
   function_type = get_node_value(surf_node, "function_type");
-  if (function_type=="interpolation")
-  {
+  if (function_type == "interpolation") {
     std::string x_grid_str = get_node_value(surf_node, "x_grid");
     std::string y_grid_str = get_node_value(surf_node, "y_grid");
     std::string z_grid_str = get_node_value(surf_node, "z_grid");
@@ -1133,12 +1147,16 @@ SurfaceFunctionTPMS::SurfaceFunctionTPMS(pugi::xml_node surf_node) : CSGSurface(
     std::vector<double> z_grid = convertStringToVector(z_grid_str);
     std::string m_pitch_str = get_node_value(surf_node, "m_pitch");
     std::string m_isovalue_str = get_node_value(surf_node, "m_isovalue");
-    std::vector<std::vector<std::vector<double>>> m_pitch = convertStringTo3DMatrix(m_pitch_str);
-    std::vector<std::vector<std::vector<double>>> m_isovalue = convertStringTo3DMatrix(m_isovalue_str);
+    std::vector<std::vector<std::vector<double>>> m_pitch =
+      convertStringTo3DMatrix(m_pitch_str);
+    std::vector<std::vector<std::vector<double>>> m_isovalue =
+      convertStringTo3DMatrix(m_isovalue_str);
     fPitch = new InterpolationForTPMS(x_grid, y_grid, z_grid, m_pitch);
     fIsovalue = new InterpolationForTPMS(x_grid, y_grid, z_grid, m_isovalue);
+  } else {
+    fatal_error(
+      fmt::format("Function type {} is not recognized.", function_type));
   }
-  else {fatal_error(fmt::format("Function type {} is not recognized.", function_type));}
 }
 
 SurfaceFunctionTPMS::~SurfaceFunctionTPMS()
@@ -1150,66 +1168,70 @@ SurfaceFunctionTPMS::~SurfaceFunctionTPMS()
 double SurfaceFunctionTPMS::evaluate(Position r) const
 {
   double value;
-  if(surface_type == "Schwarz_P")
-  {
-    FunctionSchwarzP laTpms = FunctionSchwarzP(*fIsovalue, *fPitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
+  if (surface_type == "Schwarz_P") {
+    FunctionSchwarzP laTpms = FunctionSchwarzP(
+      *fIsovalue, *fPitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
     value = laTpms.evaluate(r);
-  }
-  else if(surface_type == "Gyroid")
-  {
-    FunctionGyroid laTpms = FunctionGyroid(*fIsovalue, *fPitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
+  } else if (surface_type == "Gyroid") {
+    FunctionGyroid laTpms = FunctionGyroid(
+      *fIsovalue, *fPitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
     value = laTpms.evaluate(r);
-  }
-  else if(surface_type == "Diamond")
-  {
-    FunctionDiamond laTpms = FunctionDiamond(*fIsovalue, *fPitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
+  } else if (surface_type == "Diamond") {
+    FunctionDiamond laTpms = FunctionDiamond(
+      *fIsovalue, *fPitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
     value = laTpms.evaluate(r);
+  } else {
+    fatal_error(fmt::format(
+      "Surface type {} is not implemented in SurfaceTPMS::evaluate.",
+      surface_type));
   }
-  else {fatal_error(fmt::format("Surface type {} is not implemented in SurfaceTPMS::evaluate.", surface_type));}
   return value;
 }
 
-double SurfaceFunctionTPMS::distance(Position r, Direction ang, bool coincident, double max_range) const
+double SurfaceFunctionTPMS::distance(
+  Position r, Direction ang, bool coincident, double max_range) const
 {
   double raylength;
-  if(surface_type == "Schwarz_P")
-  {
-    FunctionSchwarzP laTpms = FunctionSchwarzP(*fIsovalue, *fPitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
+  if (surface_type == "Schwarz_P") {
+    FunctionSchwarzP laTpms = FunctionSchwarzP(
+      *fIsovalue, *fPitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
     raylength = laTpms.ray_tracing(r, ang, max_range);
-  }
-  else if(surface_type == "Gyroid")
-  {
-    FunctionGyroid laTpms = FunctionGyroid(*fIsovalue, *fPitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
+  } else if (surface_type == "Gyroid") {
+    FunctionGyroid laTpms = FunctionGyroid(
+      *fIsovalue, *fPitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
     raylength = laTpms.ray_tracing(r, ang, max_range);
-  }
-  else if(surface_type == "Diamond")
-  {
-    FunctionDiamond laTpms = FunctionDiamond(*fIsovalue, *fPitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
+  } else if (surface_type == "Diamond") {
+    FunctionDiamond laTpms = FunctionDiamond(
+      *fIsovalue, *fPitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
     raylength = laTpms.ray_tracing(r, ang, max_range);
+  } else {
+    fatal_error(fmt::format(
+      "Surface type {} is not implemented in SurfaceFunctionTPMS::distance.",
+      surface_type));
   }
-  else {fatal_error(fmt::format("Surface type {} is not implemented in SurfaceFunctionTPMS::distance.", surface_type));}
   return raylength; // le ray tracing avec la bonne TPMS, frero !
 }
 
 Direction SurfaceFunctionTPMS::normal(Position r) const
 {
   Direction grad;
-  if(surface_type == "Schwarz_P")
-  {
-    FunctionSchwarzP laTpms = FunctionSchwarzP(*fIsovalue, *fPitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
+  if (surface_type == "Schwarz_P") {
+    FunctionSchwarzP laTpms = FunctionSchwarzP(
+      *fIsovalue, *fPitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
     grad = laTpms.normal(r);
-  }
-  else if(surface_type == "Gyroid")
-  {
-    FunctionGyroid laTpms = FunctionGyroid(*fIsovalue, *fPitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
+  } else if (surface_type == "Gyroid") {
+    FunctionGyroid laTpms = FunctionGyroid(
+      *fIsovalue, *fPitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
     grad = laTpms.normal(r);
-  }
-  else if(surface_type == "Diamond")
-  {
-    FunctionDiamond laTpms = FunctionDiamond(*fIsovalue, *fPitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
+  } else if (surface_type == "Diamond") {
+    FunctionDiamond laTpms = FunctionDiamond(
+      *fIsovalue, *fPitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
     grad = laTpms.normal(r);
+  } else {
+    fatal_error(fmt::format(
+      "Surface type {} is not implemented in SurfaceFunctionTPMS::normal.",
+      surface_type));
   }
-  else {fatal_error(fmt::format("Surface type {} is not implemented in SurfaceFunctionTPMS::normal.", surface_type));}
   return grad;
 }
 
@@ -1454,7 +1476,7 @@ void read_surfaces(pugi::xml_node node)
     pugi::xml_node surf_node;
     int i_surf;
     for (surf_node = node.child("surface"), i_surf = 0; surf_node;
-         surf_node = surf_node.next_sibling("surface"), i_surf++) {
+      surf_node = surf_node.next_sibling("surface"), i_surf++) {
       std::string surf_type = get_node_value(surf_node, "type", true, true);
 
       // Allocate and initialize the new surface

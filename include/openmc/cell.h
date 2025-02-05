@@ -99,6 +99,7 @@ public:
 
   //! Get Boolean of if the cell is simple or not
   bool is_simple() const { return simple_; }
+  int32_t cell_id() const { return cell_id_; }
 
 private:
   //----------------------------------------------------------------------------
@@ -144,6 +145,7 @@ private:
   // TODO: Should this be a vector of some other type
   vector<int32_t> expression_;
   bool simple_; //!< Does the region contain only intersections?
+  int32_t cell_id_;
 };
 
 //==============================================================================

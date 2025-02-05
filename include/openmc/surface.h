@@ -3,6 +3,7 @@
 
 #include <limits> // For numeric_limits
 #include <string>
+#include <list>
 #include <unordered_map>
 
 #include "hdf5.h"
@@ -15,6 +16,9 @@
 #include "openmc/particle.h"
 #include "openmc/position.h"
 #include "openmc/vector.h"
+
+#include "tpms.h"
+#include "tpms_functions.h"
 
 namespace openmc {
 
@@ -52,6 +56,7 @@ public:
   //! \return true if the point is on the "positive" side of the surface and
   //!   false otherwise.
   bool sense(Position r, Direction u) const;
+  virtual bool is_tpms() const {return false;};
 
   //! Determine the direction of a ray reflected from the surface.
   //! \param[in] r The point at which the ray is incident.
@@ -76,7 +81,8 @@ public:
   //! \param u The direction of the ray.
   //! \param coincident A hint to the code that the given point should lie
   //!   exactly on the surface.
-  virtual double distance(Position r, Direction u, bool coincident) const = 0;
+  virtual double distance(Position r, Direction u, bool coincident) const {return 0.;};
+  virtual double distance(Position r, Direction u, bool coincident, double max_range) const {return 0.;};
 
   //! Compute the local outward normal direction of the surface.
   //! \param r A 3D Cartesian coordinate.
@@ -325,6 +331,53 @@ public:
 
   // Ax^2 + By^2 + Cz^2 + Dxy + Eyz + Fxz + Gx + Hy + Jz + K = 0
   double A_, B_, C_, D_, E_, F_, G_, H_, J_, K_;
+};
+
+//==============================================================================
+// TPMS surfaces
+//==============================================================================
+
+class SurfaceTPMS : public CSGSurface {
+public:
+  explicit SurfaceTPMS(pugi::xml_node surf_node);
+  bool is_tpms() const {return true;};
+  double evaluate(Position r) const;
+  double distance(Position r, Direction u, bool coincident, double max_range) const;
+  Direction normal(Position r) const;
+  void to_hdf5_inner(hid_t group_id) const;
+
+  double isovalue, pitch;
+  double x0, y0, z0;
+  double a, b, c, d, e, f, g, h, i;
+  std::string surface_type;
+
+private:
+  std::list<std::string> tpms_types = {"Schwarz_P", "Gyroid", "Diamond"};
+};
+
+//==============================================================================
+// Interpolated TPMS surfaces
+//==============================================================================
+
+class SurfaceFunctionTPMS : public CSGSurface {
+public:
+  explicit SurfaceFunctionTPMS(pugi::xml_node surf_node);
+  ~SurfaceFunctionTPMS();
+  bool is_tpms() const {return true;};
+  double evaluate(Position r) const;
+  double distance(Position r, Direction u, bool coincident, double max_range) const;
+  Direction normal(Position r) const;
+  void to_hdf5_inner(hid_t group_id) const;
+
+  FunctionForTPMS* fPitch;
+  FunctionForTPMS* fIsovalue;
+  double x0, y0, z0;
+  double a, b, c, d, e, f, g, h, i;
+  std::string surface_type;
+  std::string function_type;
+
+private:
+  std::list<std::string> tpms_types = {"Schwarz_P", "Gyroid", "Diamond"};
 };
 
 //==============================================================================

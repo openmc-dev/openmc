@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<settings>
+  <run_mode>eigenvalue</run_mode>
+  <particles>100</particles>
+  <batches>100</batches>
+  <inactive>10</inactive>
+</settings>

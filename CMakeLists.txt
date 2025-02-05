@@ -45,7 +45,7 @@ message(STATUS "OPENMC_USE_LIBMESH ${OPENMC_USE_LIBMESH}")
 message(STATUS "OPENMC_USE_MPI ${OPENMC_USE_MPI}")
 message(STATUS "OPENMC_USE_MCPL ${OPENMC_USE_MCPL}")
 message(STATUS "OPENMC_USE_NCRYSTAL ${OPENMC_USE_NCRYSTAL}")
-message(STATUS "OPENMC_USE_UWUW ${OPENMC_USE_UWUW}")OFF)
+message(STATUS "OPENMC_USE_UWUW ${OPENMC_USE_UWUW}")
 
 # Warnings for deprecated options
 foreach(OLD_OPT IN ITEMS "openmp" "profile" "coverage" "dagmc" "libmesh")

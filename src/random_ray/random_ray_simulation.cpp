@@ -48,9 +48,10 @@ void openmc_run_random_ray()
 
   // Declare forward flux so that it can be saved for later adjoint simulation
   vector<double> forward_flux;
-  SourceRegionContainer forward_source_regions_;
+  SourceRegionContainer forward_source_regions;
+  SourceRegionContainer forward_base_source_regions;
   std::unordered_map<SourceRegionKey, int64_t, SourceRegionKey::HashFunctor>
-    forward_source_region_map_;
+    forward_source_region_map;
 
   {
     // Initialize Random Ray Simulation Object
@@ -80,8 +81,9 @@ void openmc_run_random_ray()
       forward_flux[i] *= source_normalization_factor;
     }
 
-    forward_source_regions_ = sim.domain()->source_regions_;
-    forward_source_region_map_ = sim.domain()->source_region_map_;
+    forward_source_regions = sim.domain()->source_regions_;
+    forward_source_region_map = sim.domain()->source_region_map_;
+    forward_base_source_regions = sim.domain()->base_source_regions_;
 
     // Finalize OpenMC
     openmc_simulation_finalize();
@@ -113,8 +115,9 @@ void openmc_run_random_ray()
     RandomRaySimulation adjoint_sim;
 
     // Initialize adjoint fixed sources, if present
-    adjoint_sim.prepare_fixed_sources_adjoint(
-      forward_flux, forward_source_regions_, forward_source_region_map_);
+    adjoint_sim.prepare_fixed_sources_adjoint(forward_flux,
+      forward_source_regions, forward_base_source_regions,
+      forward_source_region_map);
 
     // Transpose scattering matrix
     adjoint_sim.domain()->transpose_scattering_matrix();
@@ -362,33 +365,25 @@ void RandomRaySimulation::apply_fixed_sources_and_mesh_domains()
 }
 
 void RandomRaySimulation::prepare_fixed_sources_adjoint(
-  vector<double>& forward_flux, SourceRegionContainer& forward_source_regions_,
+  vector<double>& forward_flux, SourceRegionContainer& forward_source_regions,
+  SourceRegionContainer& forward_base_source_regions,
   std::unordered_map<SourceRegionKey, int64_t, SourceRegionKey::HashFunctor>&
-    source_region_map_)
+    forward_source_region_map)
 {
   if (settings::run_mode == RunMode::FIXED_SOURCE) {
-    
+    if (RandomRay::mesh_subdivision_enabled_) {
+      domain_->source_regions_ = forward_source_regions;
+      domain_->source_region_map_ = forward_source_region_map;
+      domain_->base_source_regions_ = forward_base_source_regions;
+      domain_->source_regions_.adjoint_reset();
+    }
     domain_->set_adjoint_sources(forward_flux);
   }
-  //domain_->apply_meshes();
+  // domain_->apply_meshes();
 }
 
 void RandomRaySimulation::simulate()
 {
-
-  /*
-  for (const auto& [region, meshes] : FlatSourceDomain::source_region_meshes_) {
-    std::cout << "Source Region " << region << ":\n";
-    for (const auto& [domain, id] : meshes) {
-        std::cout << "  ("
-                  << (domain == Source::DomainType::UNIVERSE ? "UNIVERSE" :
-                      domain == Source::DomainType::MATERIAL ? "MATERIAL" :
-"CELL")
-                  << ", " << id << ")\n";
-    }
-}
-*/
-
   // Random ray power iteration loop
   while (simulation::current_batch < settings::n_batches) {
     // Initialize the current batch
@@ -412,7 +407,7 @@ void RandomRaySimulation::simulate()
     // external source region information, the mesh indices, material
     // properties, and initial guess values for the flux/source.
     if (RandomRay::mesh_subdivision_enabled_ &&
-        simulation::current_batch == 1) {
+        simulation::current_batch == 1 && !FlatSourceDomain::adjoint_) {
       domain_->prepare_base_source_regions();
       // TODO: PLACEHOLDER FOR MESH SUBDIVISION - JUST COPY FROM BASE
       // domain_->source_regions_ = domain_->base_source_regions_;

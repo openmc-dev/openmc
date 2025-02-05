@@ -22,9 +22,10 @@ public:
   void compute_segment_correction_factors();
   void apply_fixed_sources_and_mesh_domains();
   void prepare_fixed_sources_adjoint(vector<double>& forward_flux,
-    SourceRegionContainer& forward_source_regions_,
+    SourceRegionContainer& forward_source_regions,
+    SourceRegionContainer& forward_base_source_regions,
     std::unordered_map<SourceRegionKey, int64_t, SourceRegionKey::HashFunctor>&
-      source_region_map_);
+      forward_source_region_map);
   void simulate();
   void reduce_simulation_statistics();
   void output_simulation_results() const;

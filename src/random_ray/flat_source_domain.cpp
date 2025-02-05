@@ -1039,8 +1039,13 @@ void FlatSourceDomain::set_adjoint_sources(const vector<double>& forward_flux)
   // The forward flux is given in terms of total for the forward simulation
   // so we must convert it to a "per batch" quantity
 #pragma omp parallel for
-  for (int64_t se = 0; se < n_source_elements(); se++) {
-    source_regions_.external_source(se) = 1.0 / forward_flux[se];
+  for (int64_t sr = 0; sr < n_source_regions(); sr++) {
+    for (int g = 0; g < negroups_; g++) {
+      source_regions_.external_source(sr, g) = 1.0 / forward_flux[sr * negroups_ + g];
+      if (source_regions_.external_source(sr, g) > 0.0) {
+        source_regions_.external_source_present(sr) = 1;
+      }
+    }
   }
 
   // Divide the fixed source term by sigma t (to save time when applying each
@@ -1200,6 +1205,7 @@ void FlatSourceDomain::prepare_base_source_regions()
   // TODO: Base source regions are left large for now
   // to allow for projection and accumulation experimentation
   // for stability improvements for small source regions
+  // NOTE: I use the locks from base too
   // base_source_regions_.reduce_to_base();
 }
 

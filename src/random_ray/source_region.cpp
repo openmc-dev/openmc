@@ -97,7 +97,7 @@ void SourceRegionContainer::push_back(const SourceRegion& sr)
 
   // Scalar fields
   material_.push_back(sr.material_);
-  lock_.push_back(sr.lock_);
+  lock_.emplace_back();
   volume_.push_back(sr.volume_);
   volume_t_.push_back(sr.volume_t_);
   volume_naive_.push_back(sr.volume_naive_);
@@ -350,6 +350,45 @@ SourceRegionHandle SourceRegionContainer::get_source_region_handle(int64_t sr)
   }
 
   return handle;
+}
+
+void SourceRegionContainer::adjoint_reset()
+{
+  std::fill(volume_.begin(), volume_.end(), 0.0);
+  std::fill(volume_t_.begin(), volume_t_.end(), 0.0);
+  std::fill(volume_naive_.begin(), volume_naive_.end(), 0.0);
+  std::fill(
+    external_source_present_.begin(), external_source_present_.end(), 0);
+  std::fill(external_source_.begin(), external_source_.end(), 0.0);
+  std::fill(centroid_.begin(), centroid_.end(), Position {0.0, 0.0, 0.0});
+  std::fill(centroid_iteration_.begin(), centroid_iteration_.end(),
+    Position {0.0, 0.0, 0.0});
+  std::fill(centroid_t_.begin(), centroid_t_.end(), Position {0.0, 0.0, 0.0});
+  std::fill(mom_matrix_.begin(), mom_matrix_.end(),
+    MomentMatrix {0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
+  std::fill(mom_matrix_t_.begin(), mom_matrix_t_.end(),
+    MomentMatrix {0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
+  for (auto& task_set : volume_task_) {
+    task_set.clear();
+  }
+  std::fill(scalar_flux_old_.begin(), scalar_flux_old_.end(), 0.0);
+  std::fill(scalar_flux_new_.begin(), scalar_flux_new_.end(), 0.0);
+  std::fill(scalar_flux_final_.begin(), scalar_flux_final_.end(), 0.0);
+  std::fill(source_.begin(), source_.end(), 0.0f);
+  std::fill(external_source_.begin(), external_source_.end(), 0.0f);
+
+  std::fill(source_gradients_.begin(), source_gradients_.end(),
+    MomentArray {0.0, 0.0, 0.0});
+  std::fill(flux_moments_old_.begin(), flux_moments_old_.end(),
+    MomentArray {0.0, 0.0, 0.0});
+  std::fill(flux_moments_new_.begin(), flux_moments_new_.end(),
+    MomentArray {0.0, 0.0, 0.0});
+  std::fill(flux_moments_t_.begin(), flux_moments_t_.end(),
+    MomentArray {0.0, 0.0, 0.0});
+
+  for (auto& task_set : tally_task_) {
+    task_set.clear();
+  }
 }
 
 } // namespace openmc

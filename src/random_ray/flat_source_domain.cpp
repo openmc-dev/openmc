@@ -807,6 +807,9 @@ void FlatSourceDomain::output_to_vtk() const
     std::fprintf(plot, "SPACING %lf %lf %lf\n", x_delta, y_delta, z_delta);
     std::fprintf(plot, "POINT_DATA %d\n", Nx * Ny * Nz);
 
+    int64_t num_neg = 0;
+    int64_t num_samples = 0;
+    float min_flux = 0.0;
     // Plot multigroup flux data
     for (int g = 0; g < negroups_; g++) {
       std::fprintf(plot, "SCALARS flux_group_%d float\n", g);
@@ -816,14 +819,24 @@ void FlatSourceDomain::output_to_vtk() const
         int64_t source_element = fsr * negroups_ + g;
         float flux = evaluate_flux_at_point(voxel_positions[i], fsr, g);
         if (flux < 0.0) {
-          fmt::print(
-            "Negative flux detected: {} in group {} at position ({}, {}, {})\n",
-            flux, g, voxel_positions[i].x, voxel_positions[i].y,
-            voxel_positions[i].z);
+          num_neg++;
+          if (flux < min_flux) {
+            min_flux = flux;
+          }
         }
+        num_samples++;
         flux = convert_to_big_endian<float>(flux);
         std::fwrite(&flux, sizeof(float), 1, plot);
       }
+    }
+
+    // Slightly negative fluxes can be normal when sampling corners of linear
+    // source regions. However, very common and high magnitude negative fluxes
+    // may indicate numerical instability.
+    if (num_neg > 0) {
+      warning(fmt::format(
+        "{} plot samples ({:.4f}%) contained negative fluxes (minumum found = {:.2e})",
+        num_neg, (100.0 *num_neg)/num_samples, min_flux));
     }
 
     // Plot FSRs
@@ -1041,7 +1054,8 @@ void FlatSourceDomain::set_adjoint_sources(const vector<double>& forward_flux)
 #pragma omp parallel for
   for (int64_t sr = 0; sr < n_source_regions(); sr++) {
     for (int g = 0; g < negroups_; g++) {
-      source_regions_.external_source(sr, g) = 1.0 / forward_flux[sr * negroups_ + g];
+      source_regions_.external_source(sr, g) =
+        1.0 / forward_flux[sr * negroups_ + g];
       if (source_regions_.external_source(sr, g) > 0.0) {
         source_regions_.external_source_present(sr) = 1;
       }

@@ -103,7 +103,7 @@ int max_particle_events {1000000};
 ElectronTreatment electron_treatment {ElectronTreatment::TTB};
 array<double, 4> energy_cutoff {0.0, 1000.0, 0.0, 0.0};
 array<double, 4> time_cutoff {INFTY, INFTY, INFTY, INFTY};
-int ifp_n_generation {0};
+int ifp_n_generation {-1};
 IFPParameter ifp_parameter {IFPParameter::None};
 int legendre_to_tabular_points {C_NONE};
 int max_order {0};
@@ -979,36 +979,19 @@ void read_settings_xml(pugi::xml_node root)
     temperature_range[1] = range.at(1);
   }
 
-  // Check for Iterated Fission Probability (IFP)
-  if (check_for_node(root, "iterated_fission_probability")) {
-
-    // IFP only works with eigenvalue calculations
-    if (run_mode == RunMode::EIGENVALUE) {
-      ifp = true;
-
-      // Get iterated_fission_probability write node
-      xml_node node_ifp = root.child("iterated_fission_probability");
-
-      // Number of generation
-      if (check_for_node(node_ifp, "n_generation")) {
-        ifp_n_generation = std::stoi(get_node_value(node_ifp, "n_generation"));
-        if (ifp_n_generation <= 0) {
-          fatal_error("<n_generation> must be greater than 0.");
-        }
-        // Avoid tallying 0 if IFP logs are not complete when active cycles
-        // start
-        if (ifp_n_generation > n_inactive) {
-          fatal_error("<n_generation> must be lower than or equal to the "
-                      "number of inactive cycles.");
-        }
-      } else {
-        fatal_error("<n_generation> must be specified as a subelement of "
-                    "<iterated_fission_probability>.");
-      }
-    } else {
-      fatal_error(
-        "Iterated Fission Probability can only be used in an eigenvalue "
-        "calculation.");
+  // Check for user value for the number of generation of the Iterated Fission
+  // Probability (IFP) method
+  if (check_for_node(root, "ifp_n_generation")) {
+    ifp_n_generation = std::stoi(get_node_value(root, "ifp_n_generation"));
+    warning(fmt::format("{}", ifp_n_generation));
+    warning(fmt::format("{}", n_inactive));
+    if (ifp_n_generation <= 0) {
+      fatal_error("'ifp_n_generation' must be greater than 0.");
+    }
+    // Avoid tallying 0 if IFP logs are not complete when active cycles start
+    if (ifp_n_generation > n_inactive) {
+      fatal_error("'ifp_n_generation' must be lower than or equal to the "
+                  "number of inactive cycles.");
     }
   }
 

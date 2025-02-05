@@ -79,11 +79,9 @@ class Settings:
         .. versionadded:: 0.12
     generations_per_batch : int
         Number of generations per batch
-    iterated_fission_probability : dict
-        Dictionary indicating the Iterated Fission Probability parameters.
-        Acceptable keys are:
-
-        :n_generation: Number of generation (int)
+    ifp_n_generation : int
+        Number of generations to consider for the Iterated Fission Probability
+        method.
     max_lost_particles : int
         Maximum number of lost particles
 
@@ -341,7 +339,7 @@ class Settings:
         self._output = None
 
         # Iterated Fission Probability
-        self._iterated_fission_probability = {}
+        self._ifp_n_generation = None
 
         # Output options
         self._statepoint = {}
@@ -769,23 +767,15 @@ class Settings:
         self._verbosity = verbosity
 
     @property
-    def iterated_fission_probability(self) -> dict:
-        return self._iterated_fission_probability
+    def ifp_n_generation(self) -> int:
+        return self._ifp_n_generation
 
-    @iterated_fission_probability.setter
-    def iterated_fission_probability(self, iterated_fission_probability: dict):
-        cv.check_type(
-            "Iterated Fission Probability options",
-            iterated_fission_probability,
-            Mapping,
-        )
-        for key, value in iterated_fission_probability.items():
-            cv.check_value("Iterated Fission Probability key", key, {"n_generation"})
-            if key == "n_generation":
-                cv.check_type("number of generations", value, Integral)
-                cv.check_greater_than("number of generations", value, 0)
-
-        self._iterated_fission_probability = iterated_fission_probability
+    @ifp_n_generation.setter
+    def ifp_n_generation(self, ifp_n_generation: int):
+        if ifp_n_generation is not None:
+            cv.check_type("number of generations", ifp_n_generation, Integral)
+            cv.check_greater_than("number of generations", ifp_n_generation, 0)
+        self._ifp_n_generation = ifp_n_generation
 
     @property
     def tabular_legendre(self) -> dict:
@@ -1374,12 +1364,10 @@ class Settings:
             element = ET.SubElement(root, "no_reduce")
             element.text = str(self._no_reduce).lower()
 
-    def _create_iterated_fission_probability_subelements(self, root):
-        if self.iterated_fission_probability:
-            element = ET.SubElement(root, "iterated_fission_probability")
-            if 'n_generation' in self._iterated_fission_probability:
-                subelement = ET.SubElement(element, "n_generation")
-                subelement.text = str(self._iterated_fission_probability['n_generation'])
+    def _create_ifp_n_generation_subelement(self, root):
+        if self._ifp_n_generation is not None:
+            element = ET.SubElement(root, "ifp_n_generation")
+            element.text = str(self._ifp_n_generation)
 
     def _create_tabular_legendre_subelements(self, root):
         if self.tabular_legendre:
@@ -1781,14 +1769,10 @@ class Settings:
         if text is not None:
             self.verbosity = int(text)
 
-    def _iterated_fission_probability_from_xml_element(self, root):
-        elem = root.find('iterated_fission_probability')
-        if elem is not None:
-            ifp = {}
-            text = get_text(elem, 'n_generation')
-            if text is not None:
-                ifp['n_generation'] = int(text)
-            self.iterated_fission_probability = ifp
+    def _ifp_n_generation_from_xml_element(self, root):
+        text = get_text(root, 'ifp_n_generation')
+        if text is not None:
+            self.ifp_n_generation = int(text)
 
     def _tabular_legendre_from_xml_element(self, root):
         elem = root.find('tabular_legendre')
@@ -1989,7 +1973,7 @@ class Settings:
         self._create_trigger_subelement(element)
         self._create_no_reduce_subelement(element)
         self._create_verbosity_subelement(element)
-        self._create_iterated_fission_probability_subelements(element)
+        self._create_ifp_n_generation_subelement(element)
         self._create_tabular_legendre_subelements(element)
         self._create_temperature_subelements(element)
         self._create_trace_subelement(element)
@@ -2096,7 +2080,7 @@ class Settings:
         settings._trigger_from_xml_element(elem)
         settings._no_reduce_from_xml_element(elem)
         settings._verbosity_from_xml_element(elem)
-        settings._iterated_fission_probability_from_xml_element(elem)
+        settings._ifp_n_generation_from_xml_element(elem)
         settings._tabular_legendre_from_xml_element(elem)
         settings._temperature_from_xml_element(elem)
         settings._trace_from_xml_element(elem)

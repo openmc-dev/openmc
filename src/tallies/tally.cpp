@@ -179,7 +179,39 @@ Tally::Tally(pugi::xml_node node)
     fatal_error(fmt::format("No scores specified on tally {}.", id_));
   }
 
-  // Set the IFP parameters if needed
+  // Set IFP if needed
+  if (!settings::ifp) {
+    for (int score : scores_) {
+      switch (score) {
+      case SCORE_IFP_TIME_NUM:
+      case SCORE_IFP_BETA_NUM:
+      case SCORE_IFP_DENOM:
+        if (settings::run_mode == RunMode::EIGENVALUE) {
+          if (settings::ifp_n_generation < 0) {
+            settings::ifp_n_generation = DEFAULT_IFP_N_GENERATION;
+            warning(fmt::format(
+              "{} generations will be used for IFP (default value). It can be "
+              "changed using the 'ifp_n_generation' settings.",
+              settings::ifp_n_generation));
+          }
+          if (settings::ifp_n_generation > settings::n_inactive) {
+            fatal_error("'ifp_n_generation' must be lower than or equal to the "
+                        "number of inactive cycles.");
+          }
+          settings::ifp = true;
+        } else {
+          fatal_error(
+            "Iterated Fission Probability can only be used in an eigenvalue "
+            "calculation.");
+        }
+        goto exit_for_loop;
+        break;
+      }
+    }
+  }
+exit_for_loop:;
+
+  // Set IFP parameters if needed
   if (settings::ifp) {
     for (int score : scores_) {
       switch (score) {

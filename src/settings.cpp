@@ -985,25 +985,9 @@ void read_settings_xml(pugi::xml_node root)
     // IFP only works with eigenvalue calculations
     if (run_mode == RunMode::EIGENVALUE) {
       ifp = true;
+
       // Get iterated_fission_probability write node
       xml_node node_ifp = root.child("iterated_fission_probability");
-
-      // Parameter to compute
-      if (check_for_node(node_ifp, "parameter")) {
-        std::string temp_str =
-          get_node_value(node_ifp, "parameter", true, true);
-        if (temp_str == "beta_effective") {
-          ifp_parameter = IFPParameter::BetaEffective;
-        } else if (temp_str == "generation_time") {
-          ifp_parameter = IFPParameter::GenerationTime;
-        } else if (temp_str == "both") {
-          ifp_parameter = IFPParameter::Both;
-        } else {
-          fatal_error("Unrecognized parameter for IFP: " + temp_str);
-        }
-      } else {
-        fatal_error("<parameter> should be declared for ifp.");
-      }
 
       // Number of generation
       if (check_for_node(node_ifp, "n_generation")) {

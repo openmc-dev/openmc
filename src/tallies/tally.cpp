@@ -179,6 +179,29 @@ Tally::Tally(pugi::xml_node node)
     fatal_error(fmt::format("No scores specified on tally {}.", id_));
   }
 
+  // Set the IFP parameters if needed
+  if (settings::ifp) {
+    for (int score : scores_) {
+      switch (score) {
+      case SCORE_IFP_TIME_NUM:
+        if (settings::ifp_parameter == IFPParameter::None) {
+          settings::ifp_parameter = IFPParameter::GenerationTime;
+        } else if (settings::ifp_parameter == IFPParameter::BetaEffective) {
+          settings::ifp_parameter = IFPParameter::Both;
+        }
+        break;
+      case SCORE_IFP_BETA_NUM:
+      case SCORE_IFP_DENOM:
+        if (settings::ifp_parameter == IFPParameter::None) {
+          settings::ifp_parameter = IFPParameter::BetaEffective;
+        } else if (settings::ifp_parameter == IFPParameter::GenerationTime) {
+          settings::ifp_parameter = IFPParameter::Both;
+        }
+        break;
+      }
+    }
+  }
+
   // Check if tally is compatible with particle type
   if (!settings::photon_transport) {
     for (int score : scores_) {

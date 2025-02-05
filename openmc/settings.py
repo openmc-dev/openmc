@@ -83,8 +83,6 @@ class Settings:
         Dictionary indicating the Iterated Fission Probability parameters.
         Acceptable keys are:
 
-        :parameter: Kinetics parameter to calculate between 'beta_effective' and
-                    'generation_time', or 'both' (str)
         :n_generation: Number of generation (int)
     max_lost_particles : int
         Maximum number of lost particles
@@ -782,10 +780,8 @@ class Settings:
             Mapping,
         )
         for key, value in iterated_fission_probability.items():
-            cv.check_value("Iterated Fission Probability key", key, {"parameter", "n_generation"})
-            if key == "parameter":
-                cv.check_value("parameter", value, {"beta_effective", "generation_time", "both"})
-            elif key == "n_generation":
+            cv.check_value("Iterated Fission Probability key", key, {"n_generation"})
+            if key == "n_generation":
                 cv.check_type("number of generations", value, Integral)
                 cv.check_greater_than("number of generations", value, 0)
 
@@ -1381,9 +1377,6 @@ class Settings:
     def _create_iterated_fission_probability_subelements(self, root):
         if self.iterated_fission_probability:
             element = ET.SubElement(root, "iterated_fission_probability")
-            if 'parameter' in self._iterated_fission_probability:
-                subelement = ET.SubElement(element, "parameter")
-                subelement.text = str(self._iterated_fission_probability['parameter'])
             if 'n_generation' in self._iterated_fission_probability:
                 subelement = ET.SubElement(element, "n_generation")
                 subelement.text = str(self._iterated_fission_probability['n_generation'])
@@ -1791,10 +1784,7 @@ class Settings:
     def _iterated_fission_probability_from_xml_element(self, root):
         elem = root.find('iterated_fission_probability')
         if elem is not None:
-            text = get_text(elem, 'parameter')
             ifp = {}
-            if text is not None:
-                ifp['parameter'] = text
             text = get_text(elem, 'n_generation')
             if text is not None:
                 ifp['n_generation'] = int(text)

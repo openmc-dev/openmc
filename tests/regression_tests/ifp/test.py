@@ -30,7 +30,7 @@ def ifp_model():
     settings.batches = 20
     settings.inactive = 5
     settings.photon_transport = False
-    settings.iterated_fission_probability = {"parameter": "both", "n_generation": 5}
+    settings.iterated_fission_probability = {"n_generation": 5}
 
     bounds = [
         -radius, -radius, -radius,

@@ -22,7 +22,6 @@
     </source>
     <photon_transport>false</photon_transport>
     <iterated_fission_probability>
-      <parameter>both</parameter>
       <n_generation>5</n_generation>
     </iterated_fission_probability>
   </settings>

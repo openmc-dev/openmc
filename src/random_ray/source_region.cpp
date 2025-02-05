@@ -97,7 +97,7 @@ void SourceRegionContainer::push_back(const SourceRegion& sr)
 
   // Scalar fields
   material_.push_back(sr.material_);
-  lock_.emplace_back();
+  lock_.push_back(sr.lock_);
   volume_.push_back(sr.volume_);
   volume_t_.push_back(sr.volume_t_);
   volume_naive_.push_back(sr.volume_naive_);

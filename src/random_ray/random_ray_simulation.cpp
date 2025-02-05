@@ -379,7 +379,6 @@ void RandomRaySimulation::prepare_fixed_sources_adjoint(
     }
     domain_->set_adjoint_sources(forward_flux);
   }
-  // domain_->apply_meshes();
 }
 
 void RandomRaySimulation::simulate()

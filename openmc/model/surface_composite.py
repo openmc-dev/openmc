@@ -67,7 +67,125 @@ class CompositeSurface(ABC):
 class CylinderSector(CompositeSurface):
     """Infinite cylindrical sector composite surface.
 
-    A cylinder sector is composed of two cylindrical and two planar surfaces.
+    A cylinder sector is composed of two half cylinder sectors with apertures
+    angles less than 180°.
+
+    This class acts as a proper surface, meaning that unary `+` and `-`
+    operators applied to it will produce a half-space. The negative
+    side is defined to be the region inside of the cylinder sector.
+
+    .. versionadded:: 0.13.1
+
+    Parameters
+    ----------
+    r1 : float
+        Inner radius of sector. Must be less than r2.
+    r2 : float
+        Outer radius of sector. Must be greater than r1.
+    theta1 : float
+        Clockwise-most bound of sector in degrees. Assumed to be in the
+        counterclockwise direction with respect to the first basis axis
+        (+y, +z, or +x). Must be less than :attr:`theta2`.
+    theta2 : float
+        Counterclockwise-most bound of sector in degrees. Assumed to be in the
+        counterclockwise direction with respect to the first basis axis
+        (+y, +z, or +x). Must be greater than :attr:`theta1`.
+    center : iterable of float
+        Coordinate for central axes of cylinders in the (y, z), (x, z), or (x, y)
+        basis. Defaults to (0,0).
+    axis : {'x', 'y', 'z'}
+        Central axis of the cylinders defining the inner and outer surfaces of
+        the sector. Defaults to 'z'.
+    **kwargs : dict
+        Keyword arguments passed to the :class:`Cylinder` and
+        :class:`Plane` constructors.
+
+    Attributes
+    ----------
+    left_sector : openmc.model._HalfCylinderSector
+        An cylinder sector with an aperture angle less than 180°
+    right_sector : openmc.model._HalfCylinderSector
+        An cylinder sector with an aperture angle less than 180°
+
+    """
+    _surface_names = ("left_sector", "right_sector")
+
+    def __init__(self,
+                 r1,
+                 r2,
+                 theta1,
+                 theta2,
+                 center=(0., 0.),
+                 axis='z',
+                 **kwargs):
+        theta_mid = theta1 + (theta2 - theta1) / 2
+        self.left_sector = _HalfCylinderSector(r1, r2, theta1, theta_mid, center, axis, **kwargs)
+        self.right_sector = _HalfCylinderSector(r1, r2, theta_mid, theta2, center, axis, **kwargs)
+
+    @classmethod
+    def from_theta_alpha(cls,
+                         r1,
+                         r2,
+                         theta,
+                         alpha,
+                         center = (0.,0.),
+                         axis='z',
+                         **kwargs):
+        r"""Alternate constructor for :class:`CylinderSector`. Returns a
+        :class:`CylinderSector` object based on a central angle :math:`\theta`
+        and an angular offset :math:`\alpha`. Note that
+        :math:`\theta_1 = \alpha` and :math:`\theta_2 = \alpha + \theta`.
+
+        Parameters
+        ----------
+        r1 : float
+            Inner radius of sector. Must be less than r2.
+        r2 : float
+            Outer radius of sector. Must be greater than r1.
+        theta : float
+            Central angle, :math:`\theta`, of the sector in degrees. Must be
+            greater that 0 and less than 360.
+        alpha : float
+            Angular offset, :math:`\alpha`, of sector in degrees.
+            The offset is in the counter-clockwise direction
+            with respect to the first basis axis (+y, +z, or +x). Note that
+            negative values translate to an offset in the clockwise direction.
+        center : iterable of float
+            Coordinate for central axes of cylinders in the (y, z), (x, z), or
+            (x, y) basis. Defaults to (0,0).
+        axis : {'x', 'y', 'z'}
+            Central axis of the cylinders defining the inner and outer surfaces
+            of the sector. Defaults to 'z'.
+        **kwargs : dict
+            Keyword arguments passed to the :class:`Cylinder` and
+            :class:`Plane` constructors.
+
+        Returns
+        -------
+        CylinderSector
+            CylinderSector with the given central angle at the given
+            offset.
+        """
+        if theta >= 360. or theta <= 0:
+            raise ValueError('theta must be less than 360 and greater than 0.')
+
+        theta1 = alpha
+        theta2 = alpha + theta
+
+        return cls(r1, r2, theta1, theta2, center=center, axis=axis, **kwargs)
+
+    def __neg__(self):
+        return -self.left_sector | -self.right_sector
+    
+    def __pos__(self):
+        return +self.left_sector & +self.right_sector
+
+
+class _HalfCylinderSector(CompositeSurface):
+    """Infinite cylindrical sector composite surface, with a maximum aperture of
+    180°.
+
+    A half cylinder sector is composed of two cylindrical and two planar surfaces.
     The cylindrical surfaces are concentric, and the planar surfaces intersect
     the central axis of the cylindrical surfaces.
 
@@ -165,58 +283,6 @@ class CylinderSector(CompositeSurface):
                                                **kwargs)
         self.plane2 = openmc.Plane.from_points(p1, p2_plane2, p3_plane2,
                                                **kwargs)
-
-    @classmethod
-    def from_theta_alpha(cls,
-                         r1,
-                         r2,
-                         theta,
-                         alpha,
-                         center = (0.,0.),
-                         axis='z',
-                         **kwargs):
-        r"""Alternate constructor for :class:`CylinderSector`. Returns a
-        :class:`CylinderSector` object based on a central angle :math:`\theta`
-        and an angular offset :math:`\alpha`. Note that
-        :math:`\theta_1 = \alpha` and :math:`\theta_2 = \alpha + \theta`.
-
-        Parameters
-        ----------
-        r1 : float
-            Inner radius of sector. Must be less than r2.
-        r2 : float
-            Outer radius of sector. Must be greater than r1.
-        theta : float
-            Central angle, :math:`\theta`, of the sector in degrees. Must be
-            greater that 0 and less than 360.
-        alpha : float
-            Angular offset, :math:`\alpha`, of sector in degrees.
-            The offset is in the counter-clockwise direction
-            with respect to the first basis axis (+y, +z, or +x). Note that
-            negative values translate to an offset in the clockwise direction.
-        center : iterable of float
-            Coordinate for central axes of cylinders in the (y, z), (x, z), or
-            (x, y) basis. Defaults to (0,0).
-        axis : {'x', 'y', 'z'}
-            Central axis of the cylinders defining the inner and outer surfaces
-            of the sector. Defaults to 'z'.
-        **kwargs : dict
-            Keyword arguments passed to the :class:`Cylinder` and
-            :class:`Plane` constructors.
-
-        Returns
-        -------
-        CylinderSector
-            CylinderSector with the given central angle at the given
-            offset.
-        """
-        if theta >= 360. or theta <= 0:
-            raise ValueError('theta must be less than 360 and greater than 0.')
-
-        theta1 = alpha
-        theta2 = alpha + theta
-
-        return cls(r1, r2, theta1, theta2, center=center, axis=axis, **kwargs)
 
     def __neg__(self):
         if isinstance(self.inner_cyl, openmc.YCylinder):

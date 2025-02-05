@@ -16,14 +16,15 @@
     <batches>20</batches>
     <inactive>5</inactive>
     <source particle="neutron" strength="1.0" type="independent">
-      <space type="fission">
+      <space type="box">
         <parameters>-10.0 -10.0 -10.0 10.0 10.0 10.0</parameters>
       </space>
+      <constraints>
+        <fissionable>true</fissionable>
+      </constraints>
     </source>
     <photon_transport>false</photon_transport>
-    <iterated_fission_probability>
-      <n_generation>5</n_generation>
-    </iterated_fission_probability>
+    <ifp_n_generation>5</ifp_n_generation>
   </settings>
   <tallies>
     <tally id="1" name="ifp-scores">

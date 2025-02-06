@@ -149,9 +149,15 @@ HexagonalMesh::HexagonalMesh(pugi::xml_node node) : StructuredMesh {node}
   // n.b. must check that the number of hexes is odd
   //   or allow a parameter crown/ring
   int max_a_ = (shape[0] - 1) / 2;
-  hex_count_ = 1+ 6/2*(a_max+1)*(a_max);
+  if (max_a == 0)
+    hex_count_ = 1;
+  else
+    hex_count_ = 1 + 3 * (max_a) * (max_a-1);
 
+  //width[1] is the height of the mesh block, width[0] is the width of
+  //the mesh block at its widest
   element_volume_ = width_[1] * width_[0] * width_[0] * sqrt(3);
+
   // Set material volumes
   volume_frac_ = 1.0 / hex_count_;
 

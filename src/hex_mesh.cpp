@@ -218,7 +218,7 @@ Position HexagonalMesh::get_positition_of_hexindex(HexMeshIndex ijkl) const
   r.z = ijkl[3]*width_[1];
 }
 
-StructuredMesh::MeshIndex HexgonalMesh::get_indices(
+HexagonalMesh::HexMeshIndex HexgonalMesh::get_indices(
   Position r, bool& in_mesh) const
 {
   //return index of mesh element in hexes

@@ -72,7 +72,7 @@ ENV TZ=America/Chicago
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 # Set Home directory
-ENV HOME /root
+ENV HOME=/root
 WORKDIR $HOME
 
 # Setup Epel repository and install build dependencies

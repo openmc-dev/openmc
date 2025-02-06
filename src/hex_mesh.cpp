@@ -167,6 +167,27 @@ std::string HexgonalMesh::get_mesh_type() const
   return mesh_type;
 }
 
+int HexagonalMesh::hex_distance(const HexMesIndex& ijkl0, const HexMesIndex& ijkl1) const
+{
+  // return the integer lateral hex-distance between two hexes (ignores z)
+  return std::max( std::max(std::abs(ijkl0[0]-ijkl1[0]), std::abs(ijkl0[1]-ijkl1[1])), std::abs(ijkl0[2]-ijkl1[2]) );
+}
+
+int HexagonalMesh::hex_radius(const HexMeshIndex &ijkl) const
+{
+  //return the integer hex-radius of a hex. (ignores z)
+  return std::max( std::max(std::abs(ijkl[0]), std::abs(ijkl[1])), std::abs(ijkl[2]) );
+}
+
+int HexgonalMesh::get_bin_from_indices(const HexMeshIndex& ijkl) const
+{
+  //get linear index from the HexMeshIndex
+  auto r_0 = hex_radius();
+  auto azim = 6 * (r_0-1);
+  return ijkl[3] * hex_count_ + (1 + 3*r0*(r0-1)) + azim;
+}
+
+
 int HexagonalMesh::get_index_in_direction(const Position& r, int i) const
 {
   switch (i){

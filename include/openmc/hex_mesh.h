@@ -161,4 +161,8 @@ private:
   int find_surface_crossing_index(const Position& r, const Direction& u) const;
 
   double abs_a_ {0};
+
+  int hex_radius(const HexMeshIndex &ijkl) const;
+
+  int hex_distance(const HexMeshIndex &ijkl0, const HexMeshIndex &ijkl1) const;
 };

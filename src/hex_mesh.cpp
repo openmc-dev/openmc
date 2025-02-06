@@ -356,9 +356,6 @@ StructuredMesh::MeshDistance HexgonalMesh::distance_to_grid_boundary(
   }
 }
 
-
-
-
 int HexagonalMesh::set_grid()
 {
   // not necessary to do this - since it is a regular mesh we can do it on the fly

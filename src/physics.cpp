@@ -7,6 +7,7 @@
 #include "openmc/eigenvalue.h"
 #include "openmc/endf.h"
 #include "openmc/error.h"
+#include "openmc/ifp.h"
 #include "openmc/material.h"
 #include "openmc/math_functions.h"
 #include "openmc/message_passing.h"
@@ -209,59 +210,6 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
     // Sample delayed group and angle/energy for fission reaction
     sample_fission_neutron(i_nuclide, rx, &site, p);
 
-    // Iterated Fission Probability (IFP) method
-    // Needs to be done after the delayed group is found
-
-    vector<int> updated_ifp_delayed_groups;
-    vector<double> updated_ifp_lifetimes;
-
-    if (settings::ifp) {
-
-      if (settings::ifp_parameter == IFPParameter::BetaEffective ||
-          settings::ifp_parameter == IFPParameter::Both) {
-
-        const auto& ifp_delayed_groups =
-          simulation::ifp_source_delayed_group_bank[p.current_work() - 1];
-        size_t idx = ifp_delayed_groups.size();
-
-        if (idx < settings::ifp_n_generation) {
-          updated_ifp_delayed_groups.resize(idx + 1);
-          for (size_t i = 0; i < idx; i++) {
-            updated_ifp_delayed_groups[i] = ifp_delayed_groups[i];
-          }
-          updated_ifp_delayed_groups[idx] = site.delayed_group;
-        } else if (idx == settings::ifp_n_generation) {
-          updated_ifp_delayed_groups.resize(idx);
-          for (size_t i = 0; i < idx - 1; i++) {
-            updated_ifp_delayed_groups[i] = ifp_delayed_groups[i + 1];
-          }
-          updated_ifp_delayed_groups[idx - 1] = site.delayed_group;
-        }
-      }
-
-      if (settings::ifp_parameter == IFPParameter::GenerationTime ||
-          settings::ifp_parameter == IFPParameter::Both) {
-
-        const auto& ifp_lifetimes =
-          simulation::ifp_source_lifetime_bank[p.current_work() - 1];
-        size_t idx = ifp_lifetimes.size();
-
-        if (idx < settings::ifp_n_generation) {
-          updated_ifp_lifetimes.resize(idx + 1);
-          for (size_t i = 0; i < idx; i++) {
-            updated_ifp_lifetimes[i] = ifp_lifetimes[i];
-          }
-          updated_ifp_lifetimes[idx] = p.lifetime();
-        } else if (idx == settings::ifp_n_generation) {
-          updated_ifp_lifetimes.resize(idx);
-          for (size_t i = 0; i < idx - 1; i++) {
-            updated_ifp_lifetimes[i] = ifp_lifetimes[i + 1];
-          }
-          updated_ifp_lifetimes[idx - 1] = p.lifetime();
-        }
-      }
-    }
-
     // Store fission site in bank
     if (use_fission_bank) {
       int64_t idx = simulation::fission_bank.thread_safe_append(site);
@@ -279,20 +227,9 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
         // Break out of loop as no more sites can be added to fission bank
         break;
       }
-      // If IFP, add the IFP information in the IFP banks using the same index
-      // as the one used to append the fission site to the fission bank.
-      // Multithreading protection is guaranteed by the index returned by the
-      // previous thread_safe_append call.
+      // Iterated Fission Probability (IFP) method
       if (settings::ifp) {
-        if (settings::ifp_parameter == IFPParameter::BetaEffective ||
-            settings::ifp_parameter == IFPParameter::Both) {
-          simulation::ifp_fission_delayed_group_bank[idx] =
-            updated_ifp_delayed_groups;
-        }
-        if (settings::ifp_parameter == IFPParameter::GenerationTime ||
-            settings::ifp_parameter == IFPParameter::Both) {
-          simulation::ifp_fission_lifetime_bank[idx] = updated_ifp_lifetimes;
-        }
+        ifp(p, site, idx);
       }
     } else {
       p.secondary_bank().push_back(site);

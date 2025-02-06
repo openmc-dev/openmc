@@ -30,14 +30,14 @@ def ifp_model():
     settings.batches = 20
     settings.inactive = 5
     settings.photon_transport = False
-    settings.iterated_fission_probability = {"parameter": "both", "n_generation": 5}
+    settings.ifp_n_generation = 5
 
     bounds = [
         -radius, -radius, -radius,
         radius, radius, radius
     ]
-    distribution = openmc.stats.Box(bounds[:3], bounds[3:], only_fissionable=True)
-    settings.source = openmc.source.IndependentSource(space=distribution)
+    space = openmc.stats.Box(bounds[:3], bounds[3:])
+    settings.source = openmc.IndependentSource(space=space, constraints={'fissionable': True})
 
     model.settings = settings
 

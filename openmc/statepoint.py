@@ -726,7 +726,7 @@ class StatePoint:
             gen_time_tally = self.get_tally(scores = ['ifp-time-numerator'],exact_scores = True)
             gen_time_values = uarray(gen_time_tally.get_reshaped_data(),
                                      gen_time_tally.get_reshaped_data(value = 'rel_err'))
-            gen_time_values /= denom_values
+            gen_time_values /= denom_values*self.keff
             result['Generation Time'] = gen_time_values.flatten()
         
         if param == 'both' or param == 'beta_effective':

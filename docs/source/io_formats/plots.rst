@@ -14,11 +14,11 @@ in openMC:
   file.
 * ``voxel``  3D voxel data dump. Produces an HDF5 file containing voxel xyz
   position and cell or material id.
-* ``projection``  2D pixel plot of a three-dimensional view of a geometry
-  using wireframes around cells or materials and coloring by depth through
-  each material.
-* ``phong``  2D pixel plot of a three-dimensional view of a geometry
-  with solid colored surfaces of a set of cells or materials.
+* ``projection``  2D pixel plot of a three-dimensional view of a geometry using
+  wireframes around cells or materials and coloring by depth through each
+  material.
+* ``phong``  2D pixel plot of a three-dimensional view of a geometry with solid
+  colored surfaces of a set of cells or materials.
 
 
 ------------------
@@ -72,14 +72,14 @@ sub-elements:
 
   :type:
     Keyword for type of plot to be produced. Currently "slice", "voxel",
-    "projection", and "phong" 
-    plots are implemented. The "slice" plot type creates 2D pixel maps saved in
-    the PNG file format. The "voxel" plot type produces a binary datafile
-    containing voxel grid positioning and the cell or material (specified by the
-    ``color`` tag) at the center of each voxel. Voxel plot files can be
-    processed into VTK files using the :ref:`scripts_voxel` script provided with
-    OpenMC and subsequently viewed with a 3D viewer such as VISIT or Paraview.
-    See :ref:`io_voxel` for information about the datafile structure.
+    "projection", and "phong" plots are implemented. The "slice" plot type
+    creates 2D pixel maps saved in the PNG file format. The "voxel" plot type
+    produces a binary datafile containing voxel grid positioning and the cell or
+    material (specified by the ``color`` tag) at the center of each voxel. Voxel
+    plot files can be processed into VTK files using the :ref:`scripts_voxel`
+    script provided with OpenMC and subsequently viewed with a 3D viewer such as
+    VISIT or Paraview. See :ref:`io_voxel` for information about the datafile
+    structure.
 
     .. note:: High-resolution voxel files produced by OpenMC can be quite large,
               but the equivalent VTK files will be significantly smaller.
@@ -132,9 +132,9 @@ attributes or sub-elements.  These are not used in "voxel" plots:
       separated by spaces.
 
     :xs:
-      Only for plot type "projection", the attenuation coefficient
-      for volume rendering of color in units of inverse
-      centimeters. Zero corresponds to transparency.
+      The attenuation coefficient for volume rendering of color in units of
+      inverse centimeters. Zero corresponds to transparency. Only for plot type
+      "projection".
 
     As an example, if your plot is colored by material and you want material 23
     to be blue, the corresponding ``color`` element would look like:
@@ -163,17 +163,17 @@ attributes or sub-elements.  These are not used in "voxel" plots:
     *Default*: 255 255 255 (white)
 
   :show_overlaps:
-    Indicates whether overlapping regions of different cells are shown. 
+    Indicates whether overlapping regions of different cells are shown.
 
     *Default*: None
 
   :overlap_color:
-    Specifies the RGB color of overlapping regions of different cells. Does not 
-    do anything if ``show_overlaps`` is "false" or not specified. Should be 3 
+    Specifies the RGB color of overlapping regions of different cells. Does not
+    do anything if ``show_overlaps`` is "false" or not specified. Should be 3
     integers separated by spaces.
 
     *Default*: 255 0 0 (red)
-  
+
   :meshlines:
     The ``meshlines`` sub-element allows for plotting the boundaries of a
     regular mesh on top of a plot. Only one ``meshlines`` element is allowed per
@@ -203,61 +203,58 @@ attributes or sub-elements.  These are not used in "voxel" plots:
 
     *Default*: None
 
-``<plot>`` elements of ``type`` "projection" or "phong" can contain the following
-attributes or sub-elements.
+``<plot>`` elements of ``type`` "projection" or "phong" can contain the
+following attributes or sub-elements.
 
   :camera_position:
     Location in 3D Cartesian space the camera is at.
-    
+
 
     *Default*: None - Required for all phong or projection plots
 
   :look_at:
     Location in 3D Cartesian space the camera is looking at.
-    
+
 
     *Default*: None - Required for all phong or projection plots
 
   :field_of_view:
-    The horizontal field of view in degrees. Defaults to roughly
-    the same value as for the human eye.
+    The horizontal field of view in degrees. Defaults to roughly the same value
+    as for the human eye.
 
     *Default*: 70
 
   :orthographic_width:
-    If set to a nonzero value, an orthographic rather than
-    perspective projection for the camera is employed.
-    An orthographic projection puts out parallel rays from
-    the camera of a width prescribed here in the horizontal
-    direction, with the width in the vertical direction decided
-    by the pixel aspect ratio.
+    If set to a nonzero value, an orthographic rather than perspective
+    projection for the camera is employed. An orthographic projection puts out
+    parallel rays from the camera of a width prescribed here in the horizontal
+    direction, with the width in the vertical direction decided by the pixel
+    aspect ratio.
 
     *Default*: 0
 
-``<plot>`` elements of ``type`` "phong" can contain the following
-attributes or sub-elements.
+``<plot>`` elements of ``type`` "phong" can contain the following attributes or
+sub-elements.
 
   :opaque_ids:
-    List of integer IDs of cells or materials to be treated
-    as visible in the plot. Whether the integers are interpreted
-    as cell or material IDs depends on ``color_by``.
-    
+    List of integer IDs of cells or materials to be treated as visible in the
+    plot. Whether the integers are interpreted as cell or material IDs depends
+    on ``color_by``.
 
-    *Default*: None - Required for all Phong plots
+
+    *Default*: None - Required for all phong plots
 
   :light_position:
     Location in 3D Cartesian space of the light.
-    
+
 
     *Default*: Same location as ``camera_position``
 
   :diffuse_fraction:
-    Fraction of light originating from non-directional
-    sources. If set to one, the coloring is not influenced
-    by surface curvature, and no shadows appear. If set to
-    zero, only regions illuminated by the light are not
-    black.
-    
+    Fraction of light originating from non-directional sources. If set to one,
+    the coloring is not influenced by surface curvature, and no shadows appear.
+    If set to zero, only regions illuminated by the light are not black.
+
 
     *Default*: 0.1
 
@@ -266,19 +263,18 @@ attributes or sub-elements.
 
   :wireframe_color:
     RGB value of the wireframe's color
-    
+
     *Default*: 0, 0, 0 (black)
 
   :wireframe_thickness:
-    Integer number of pixels that the wireframe takes up.
-    The value is a radius of the wireframe. Setting to zero
-    removes any wireframing.
-    
+    Integer number of pixels that the wireframe takes up. The value is a radius
+    of the wireframe. Setting to zero removes any wireframing.
+
     *Default*: 0
 
   :wireframe_ids:
-    Integer IDs of cells or materials of regions to draw
-    wireframes around. Whether the integers are interpreted
-    as cell or material IDs depends on ``color_by``.
+    Integer IDs of cells or materials of regions to draw wireframes around.
+    Whether the integers are interpreted as cell or material IDs depends on
+    ``color_by``.
 
     *Default*: None

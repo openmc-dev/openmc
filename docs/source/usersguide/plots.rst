@@ -129,36 +129,33 @@ Phong Plots
 .. image:: ../_images/phong_triso.png
    :width: 300px
 
-The :class:`openmc.PhongPlot` class allows three dimensional
-visualization of detailed geometric features without voxelization.
-The plot above visualizes a geometry created by :class:`openmc.TRISO`,
-with the materials in the fuel kernel distinguished by color. It was
-enclosed in a bounding box such that some kernels are cut off,
-revealing the inner structure of the kernel.
+The :class:`openmc.PhongPlot` class allows three dimensional visualization of
+detailed geometric features without voxelization. The plot above visualizes a
+geometry created by :class:`openmc.TRISO`, with the materials in the fuel kernel
+distinguished by color. It was enclosed in a bounding box such that some kernels
+are cut off, revealing the inner structure of the kernel.
 
-The `Phong reflection model <https://en.wikipedia.org/wiki/Phong_reflection_model>`_
-approximates how light reflects off of a surface. On a diffusely
-light-scattering material, the Phong model prescribes the amount of light 
-reflected from a surface as proportional to the dot product between
-the normal vector of the surface and the vector between that point on
-the surface and the light. With this assumption, visually appealing
-plots of simulation geometries can be created.
+The `Phong reflection model
+<https://en.wikipedia.org/wiki/Phong_reflection_model>`_ approximates how light
+reflects off of a surface. On a diffusely light-scattering material, the Phong
+model prescribes the amount of light reflected from a surface as proportional to
+the dot product between the normal vector of the surface and the vector between
+that point on the surface and the light. With this assumption, visually
+appealing plots of simulation geometries can be created.
 
-Phong plots use the same ray tracing functions that neutrons
-and photons do in OpenMC, so any input that does not leak
-particles can be visualized in 3D using a Phong plot.
-That being said, these plots are not useful for detecting
-overlap or undefined regions, so we recommend the slice
-plot approach for geometry debugging.
+Phong plots use the same ray tracing functions that neutrons and photons do in
+OpenMC, so any input that does not leak particles can be visualized in 3D using
+a Phong plot. That being said, these plots are not useful for detecting overlap
+or undefined regions, so it is recommended to use the slice plot approach for
+geometry debugging.
 
-Only a few inputs are required for a Phong plot. The camera
-location, where it's looking, and a set of opaque material or
-cell  IDs are required. The colors of materials or cells are
-prescribed in the same way as slice plots. The set of IDs
-which are opaque in the Phong plot must correspond to materials
-if coloring by material, or cells if coloring by cell.
+Only a few inputs are required for a Phong plot. The camera location, where the
+camera is looking, and a set of opaque material or cell IDs are required. The
+colors of materials or cells are prescribed in the same way as slice plots. The
+set of IDs that are opaque in the Phong plot must correspond to materials if
+coloring by material, or cells if coloring by cell.
 
-A minimal Phong plot input could be: ::
+A minimal Phong plot input could be::
 
   plot = openmc.PhongPlot()
   plot.pixels = (600, 600)
@@ -167,14 +164,14 @@ A minimal Phong plot input could be: ::
   plot.color_by = 'cell'
 
   # optional. defaults to camera_position
-  plot.light_position = (10, 20, 30) 
+  plot.light_position = (10, 20, 30)
 
   # controls ambient lighting. Defaults to 10%
   plot.diffuse_fraction = 0.1
   plot.opaque_domains = [cell2, cell3]
 
-These plots are then stored into a :class:`openmc.Plots` instance,
-just like the slice plots.
+These plots are then stored into a :class:`openmc.Plots` instance, just like the
+slice plots.
 
 ----------------
 Projection Plots
@@ -185,29 +182,18 @@ Projection Plots
    .. image:: ../_images/hexlat_anim.gif
      :width: 200px
 
-The :class:`openmc.ProjectionPlot` class also
-produces 3D visualizations of OpenMC geometries without voxelization,
-but is intended to show the inside of a model using wireframing
-of cell or material boundaries in addition to cell coloring based
-on path length of camera rays through the model. The coloring
-in these plots is a bit like turning the model into partially
-transparent colored glass that can be seen through, without any
-refractive effects. This is called volume rendering. The colors
-are specified in exactly the same interface employed by slice
-plots.
+The :class:`openmc.ProjectionPlot` class also produces 3D visualizations of
+OpenMC geometries without voxelization but is intended to show the inside of a
+model using wireframing of cell or material boundaries in addition to cell
+coloring based on the path length of camera rays through the model. The coloring
+in these plots is a bit like turning the model into partially transparent
+colored glass that can be seen through, without any refractive effects. This is
+called volume rendering. The colors are specified in exactly the same interface
+employed by slice plots.
 
 Similar to Phong plots, these use the native ray tracing capabilities within
-OpenMC, so any geometry in which particles successfully run without overlaps
-or leaks will work with projection plots.
-
-The :class:`openmc.ProjectionPlot` class presents an alternative method of
-producing 3D visualizations of OpenMC geometries. It was developed to overcome
-the primary shortcoming of voxel plots, that an enormous number of voxels must
-be employed to capture detailed geometric features. Projection plots perform
-volume rendering on material or cell volumes, with colors specified in the same
-manner as slice plots. This is done using the native ray tracing capabilities
-within OpenMC, so any geometry in which particles successfully run without
-overlaps or leaks will work with projection plots.
+OpenMC, so any geometry in which particles successfully run without overlaps or
+leaks will work with projection plots.
 
 One drawback of projection plots is that particle tracks cannot be overlaid on
 them at present. Moreover, checking for overlap regions is not currently
@@ -255,13 +241,13 @@ Two camera projections are available when using these plots, perspective and
 orthographic. The default, perspective projection, is a cone of rays passing
 through each pixel which radiate from the camera position and span the field of
 view in the x and y positions. The horizontal field of view can be set with the
-:attr: `ProjectionPlot.horizontal_field_of_view` attribute, which is to be
+:attr:`ProjectionPlot.horizontal_field_of_view` attribute, which is to be
 specified in units of degrees. The field of view only influences behavior in
 perspective projection mode.
 
 In the orthographic projection, rays follow the same angle but originate from
 different points. The horizontal width of this plane of ray starting points may
-be set with the :attr: `ProjectionPlot.orthographic_width` element. If this
+be set with the :attr:`ProjectionPlot.orthographic_width` attribute. If this
 element is nonzero, the orthographic projection is employed. Left to its default
 value of zero, the perspective projection is employed.
 
@@ -269,8 +255,8 @@ Lastly, projection plots come packaged with wireframe generation that can target
 either all surface/cell/material boundaries in the geometry, or only wireframing
 around specific regions. In the above example, we have set only the fuel region
 from the hexagonal lattice example to have a wireframe drawn around it. This is
-accomplished by setting the :attr: `ProjectionPlot.wireframe_domains`, which may
-be set to either material IDs or cell IDs. The
+accomplished by setting the :attr:`ProjectionPlot.wireframe_domains` attribute,
+which may be set to either material IDs or cell IDs. The
 :attr:`ProjectionPlot.wireframe_thickness` attribute sets the wireframe
 thickness in units of pixels.
 

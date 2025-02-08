@@ -390,6 +390,7 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
 
             if (distance == max_distance)
               break;
+
             // cross next geometric surface
             for (int j = 0; j < p.n_coord(); ++j) {
               p.cell_last(j) = p.coord(j).cell;
@@ -404,7 +405,6 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
                 boundary.lattice_translation[1] != 0 ||
                 boundary.lattice_translation[2] != 0) {
               // Particle crosses lattice boundary
-
               cross_lattice(p, boundary);
             } else {
               // Particle crosses surface

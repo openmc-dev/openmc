@@ -94,7 +94,7 @@ public:
   //! Add volume for a given material in a mesh element
   //
   //! \param[in] index_elem Index of the mesh element
-  //! \param[in] index_material Index of the material
+  //! \param[in] index_material Index of the material within the model
   //! \param[in] volume Volume to add
   void add_volume(int index_elem, int index_material, double volume);
   void add_volume_unsafe(int index_elem, int index_material, double volume);
@@ -118,11 +118,11 @@ private:
   int32_t* materials_;      //!< material index (bins, table_size)
   double* volumes_;         //!< volume in [cm^3] (bins, table_size)
   int table_size_;          //!< Size of hash table for each mesh element
-  bool table_full_ = false; //!< Whether the hash table is full
+  bool table_full_ {false}; //!< Whether the hash table is full
 
   // Value used to indicate an empty slot in the hash table. We use -2 because
   // the value -1 is used to indicate a void material.
-  static constexpr int EMPTY = -2;
+  static constexpr int EMPTY {-2};
 };
 
 } // namespace detail

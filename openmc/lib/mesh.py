@@ -216,8 +216,9 @@ class Mesh(_FortranObjectWithID):
 
         Returns
         -------
-        Dictionary-like object that maps material IDs to an array of volumes
-        equal in size to the number of mesh elements.
+        MeshMaterialVolumes
+            Dictionary-like object that maps material IDs to an array of volumes
+            equal in size to the number of mesh elements.
 
         """
         if isinstance(n_samples, int):
@@ -233,11 +234,14 @@ class Mesh(_FortranObjectWithID):
         else:
             nx, ny, nz = n_samples
 
+        # Value indicating an empty slot in the hash table (matches C++)
+        EMPTY_SLOT = -2
+
         # Preallocate arrays for material indices and volumes
         n = self.n_elements
         slot_factor = 2
         table_size = slot_factor*max_materials
-        materials = np.full((n, table_size), -2, dtype=np.int32)
+        materials = np.full((n, table_size), EMPTY_SLOT, dtype=np.int32)
         volumes = np.zeros((n, table_size), dtype=np.float64)
 
         # Run material volume calculation
@@ -249,7 +253,7 @@ class Mesh(_FortranObjectWithID):
             except AllocationError:
                 # Increase size of result array and try again
                 table_size *= 2
-                materials = np.full((n, table_size), -2, dtype=np.int32)
+                materials = np.full((n, table_size), EMPTY_SLOT, dtype=np.int32)
                 volumes = np.zeros((n, table_size), dtype=np.float64)
             else:
                 # If no error, break out of loop
@@ -320,7 +324,7 @@ class RegularMesh(Mesh):
         The lower-left corner of the structured mesh. If only two coordinate are
         given, it is assumed that the mesh is an x-y mesh.
     upper_right : numpy.ndarray
-        The upper-right corner of the structrued mesh. If only two coordinate
+        The upper-right corner of the structured mesh. If only two coordinate
         are given, it is assumed that the mesh is an x-y mesh.
     width : numpy.ndarray
         The width of mesh cells in each direction.
@@ -409,7 +413,7 @@ class RectilinearMesh(Mesh):
     lower_left : numpy.ndarray
         The lower-left corner of the structured mesh.
     upper_right : numpy.ndarray
-        The upper-right corner of the structrued mesh.
+        The upper-right corner of the structured mesh.
     width : numpy.ndarray
         The width of mesh cells in each direction.
     n_elements : int
@@ -514,7 +518,7 @@ class CylindricalMesh(Mesh):
     lower_left : numpy.ndarray
         The lower-left corner of the structured mesh.
     upper_right : numpy.ndarray
-        The upper-right corner of the structrued mesh.
+        The upper-right corner of the structured mesh.
     width : numpy.ndarray
         The width of mesh cells in each direction.
     n_elements : int
@@ -619,7 +623,7 @@ class SphericalMesh(Mesh):
     lower_left : numpy.ndarray
         The lower-left corner of the structured mesh.
     upper_right : numpy.ndarray
-        The upper-right corner of the structrued mesh.
+        The upper-right corner of the structured mesh.
     width : numpy.ndarray
         The width of mesh cells in each direction.
     n_elements : int

@@ -170,8 +170,8 @@ void MaterialVolumes::add_volume(
       // Attempt compare-and-swap from EMPTY to index_material
       bool claimed_slot = atomic_cas_int32(&current_val, EMPTY, index_material);
 
-      // If we claimed the slot or another thread claimed it but they inserted
-      // the same material, proceed to accumulate
+      // If we claimed the slot or another thread claimed it but the same
+      // material was inserted, proceed to accumulate
       if (claimed_slot || (current_val == index_material)) {
 #pragma omp atomic
         this->volumes(index_elem, slot) += volume;
@@ -299,7 +299,7 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
 
 #pragma omp parallel
   {
-    // Preallocate vector for mesh indices and lenght fractions and p
+    // Preallocate vector for mesh indices and length fractions and particle
     std::vector<int> bins;
     std::vector<double> length_fractions;
     Particle p;
@@ -390,7 +390,7 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
 
             if (distance == max_distance)
               break;
-
+            // cross next geometric surface
             for (int j = 0; j < p.n_coord(); ++j) {
               p.cell_last(j) = p.coord(j).cell;
             }

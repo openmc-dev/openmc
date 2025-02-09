@@ -349,12 +349,8 @@ public:
 
   vector<int32_t> offset_; //!< Distribcell offset table
 
-  // Accessors
-  const GeometryType& geom_type() const { return geom_type_; }
-  GeometryType& geom_type() { return geom_type_; }
-
-private:
-  GeometryType geom_type_; //!< Geometric representation type (CSG, DAGMC)
+  // Right now, either CSG or DAGMC cells are used.
+  virtual GeometryType geom_type() const = 0;
 };
 
 struct CellInstanceItem {
@@ -368,7 +364,7 @@ class CSGCell : public Cell {
 public:
   //----------------------------------------------------------------------------
   // Constructors
-  CSGCell();
+  CSGCell() = default;
   explicit CSGCell(pugi::xml_node cell_node);
 
   //----------------------------------------------------------------------------
@@ -394,6 +390,8 @@ public:
   void to_hdf5_inner(hid_t group_id) const override;
 
   bool is_simple() const override { return region_.is_simple(); }
+
+  virtual GeometryType geom_type() const override { return GeometryType::CSG; }
 
 protected:
   //! Returns the beginning position of a parenthesis block (immediately before

@@ -129,8 +129,6 @@ void DAGUniverse::set_id()
 
 void DAGUniverse::initialize()
 {
-  geom_type() = GeometryType::DAG;
-
 #ifdef OPENMC_UWUW
   // read uwuw materials from the .h5m file if present
   read_uwuw_materials();
@@ -661,10 +659,7 @@ void DAGUniverse::override_assign_material(std::unique_ptr<DAGCell>& c) const
 //==============================================================================
 
 DAGCell::DAGCell(std::shared_ptr<moab::DagMC> dag_ptr, int32_t dag_idx)
-  : Cell {}, dagmc_ptr_(dag_ptr), dag_index_(dag_idx)
-{
-  geom_type() = GeometryType::DAG;
-};
+  : Cell {}, dagmc_ptr_(dag_ptr), dag_index_(dag_idx) {};
 
 std::pair<double, int32_t> DAGCell::distance(
   Position r, Direction u, int32_t on_surface, GeometryState* p) const
@@ -765,9 +760,7 @@ BoundingBox DAGCell::bounding_box() const
 
 DAGSurface::DAGSurface(std::shared_ptr<moab::DagMC> dag_ptr, int32_t dag_idx)
   : Surface {}, dagmc_ptr_(dag_ptr), dag_index_(dag_idx)
-{
-  geom_type() = GeometryType::DAG;
-} // empty constructor
+{} // empty constructor
 
 moab::EntityHandle DAGSurface::mesh_handle() const
 {

@@ -186,8 +186,8 @@ void synchronize_bank()
       for (int64_t j = 1; j <= settings::n_particles / total; ++j) {
         temp_sites[index_temp] = site;
         if (settings::ifp) {
-          add_ifp_data_to_temp(index_temp, temp_delayed_groups,
-            delayed_groups_ptr, temp_lifetimes, lifetimes_ptr);
+          add_ifp_data(index_temp, temp_delayed_groups, delayed_groups_ptr,
+            temp_lifetimes, lifetimes_ptr);
         }
         ++index_temp;
       }
@@ -197,8 +197,8 @@ void synchronize_bank()
     if (prn(&seed) < p_sample) {
       temp_sites[index_temp] = site;
       if (settings::ifp) {
-        add_ifp_data_to_temp(index_temp, temp_delayed_groups,
-            delayed_groups_ptr, temp_lifetimes, lifetimes_ptr);
+        add_ifp_data(index_temp, temp_delayed_groups, delayed_groups_ptr,
+          temp_lifetimes, lifetimes_ptr);
       }
       ++index_temp;
     }
@@ -247,7 +247,7 @@ void synchronize_bank()
         int i_bank = simulation::fission_bank.size() - sites_needed + i;
         temp_sites[index_temp] = simulation::fission_bank[i_bank];
         if (settings::ifp) {
-          copy_ifp_data_to_temp_from_fission_banks(
+          retrieve_ifp_data_from_fission_banks(
             index_temp, i_bank, temp_delayed_groups, temp_lifetimes);
         }
         ++index_temp;
@@ -389,7 +389,7 @@ void synchronize_bank()
         &simulation::source_bank[index_local]);
 
       if (settings::ifp) {
-        copy_ifp_temp_to_source_banks_partial(
+        copy_partial_ifp_data_to_source_banks(
           index_temp, n, index_local, temp_delayed_groups, temp_lifetimes);
       }
     }
@@ -423,7 +423,7 @@ void synchronize_bank()
   std::copy(temp_sites.data(), temp_sites.data() + settings::n_particles,
     simulation::source_bank.begin());
   if (settings::ifp) {
-    copy_ifp_temp_to_source_banks(temp_delayed_groups, temp_lifetimes);
+    copy_complete_ifp_data_to_source_banks(temp_delayed_groups, temp_lifetimes);
   }
 #endif
   temp_sites.clear();

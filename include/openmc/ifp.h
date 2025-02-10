@@ -21,7 +21,8 @@ bool is_generation_time_or_both();
 // ---------------------------------------------------------
 
 template<typename T>
-vector<T> _ifp(const T& site_value, const vector<T>& data) {
+vector<T> _ifp(const T& value, const vector<T>& data)
+{
   vector<T> updated_data;
   size_t ifp_idx = data.size();
   if (ifp_idx < settings::ifp_n_generation) {
@@ -29,13 +30,13 @@ vector<T> _ifp(const T& site_value, const vector<T>& data) {
     for (size_t i = 0; i < ifp_idx; i++) {
       updated_data[i] = data[i];
     }
-    updated_data[ifp_idx] = site_value;
+    updated_data[ifp_idx] = value;
   } else if (ifp_idx == settings::ifp_n_generation) {
     updated_data.resize(ifp_idx);
     for (size_t i = 0; i < ifp_idx - 1; i++) {
       updated_data[i] = data[i + 1];
     }
-    updated_data[ifp_idx - 1] = site_value;
+    updated_data[ifp_idx - 1] = value;
   }
   return updated_data;
 }
@@ -48,7 +49,7 @@ vector<T> _ifp(const T& site_value, const vector<T>& data) {
 //! as the one used to append the fission site to the fission bank.
 //! Multithreading protection is guaranteed by the index returned by the
 //! thread_safe_append call in physics.cpp.
-void ifp(Particle& p, SourceSite& site, int64_t idx);
+void ifp(const Particle& p, const SourceSite& site, int64_t idx);
 
 // ---------------------------------------------------------
 // simulation.cpp functions
@@ -74,17 +75,15 @@ void resize_ifp_data(
   }
 }
 
-void initialize_ifp_pointers(int64_t i, const vector<int>*& delayed_groups_ptr,
-  const vector<double>*& lifetimes_ptr);
+void initialize_ifp_pointers(int64_t i_bank,
+  const vector<int>*& delayed_groups_ptr, const vector<double>*& lifetimes_ptr);
 
-void add_ifp_data_to_temp(int64_t index_temp,
-  vector<vector<int>>& temp_delayed_groups,
-  const vector<int>* delayed_groups_ptr, vector<vector<double>>& temp_lifetimes,
+void add_ifp_data(int64_t idx, vector<vector<int>>& delayed_groups,
+  const vector<int>* delayed_groups_ptr, vector<vector<double>>& lifetimes,
   const vector<double>* lifetimes_ptr);
 
-void copy_ifp_data_to_temp_from_fission_banks(int64_t index_temp, int i_bank,
-  vector<vector<int>>& temp_delayed_groups,
-  vector<vector<double>>& temp_lifetimes);
+void retrieve_ifp_data_from_fission_banks(int64_t idx, int i_bank,
+  vector<vector<int>>& delayed_groups, vector<vector<double>>& lifetimes);
 
 #ifdef OPENMC_MPI
 
@@ -95,36 +94,36 @@ struct DeserializationInfo {
 };
 
 //! Broadcast the number of generation from the size of the first element
-void broadcast_ifp_n_generation(int& ifp_n_generation,
-  vector<vector<int>>& temp_delayed_groups,
-  vector<vector<double>>& temp_lifetimes);
+void broadcast_ifp_n_generation(int& n_generation,
+  const vector<vector<int>>& delayed_groups,
+  const vector<vector<double>>& lifetimes);
 
 //! Send IFP info via MPI
-void send_ifp_info(int64_t index_local, int64_t n, int ifp_n_generation,
-  int neighbor, vector<MPI_Request>& requests,
-  vector<vector<int>> temp_delayed_groups, vector<int> send_delayed_groups,
-  vector<vector<double>> temp_lifetimes, vector<double> send_lifetimes);
+void send_ifp_info(int64_t idx, int64_t n, int n_generation, int neighbor,
+  vector<MPI_Request>& requests, const vector<vector<int>> delayed_groups,
+  vector<int> send_delayed_groups, const vector<vector<double>> lifetimes,
+  vector<double> send_lifetimes);
 
 //! Receive IFP info through MPI
-void receive_ifp_data(int64_t index_local, int64_t n, int ifp_n_generation,
-  int neighbor, vector<MPI_Request>& requests, vector<int>& recv_delayed_groups,
-  vector<double>& recv_lifetimes,
-  vector<DeserializationInfo>& deserialization_info);
+void receive_ifp_data(int64_t idx, int64_t n, int n_generation, int neighbor,
+  vector<MPI_Request>& requests, vector<int>& delayed_groups,
+  vector<double>& lifetimes, vector<DeserializationInfo>& deserialization);
 
-void copy_ifp_temp_to_source_banks_partial(int64_t index_temp, int n,
-  int64_t index_local, const vector<vector<int>>& temp_delayed_groups,
-  const vector<vector<double>>& temp_lifetimes);
+void copy_partial_ifp_data_to_source_banks(int64_t idx, int n, int64_t i_bank,
+  const vector<vector<int>>& delayed_groups,
+  const vector<vector<double>>& lifetimes);
 
 //! Deserialize IFP information
-void deserialize_ifp_info(int ifp_n_generation,
-  vector<DeserializationInfo>& deserialization_info,
-  vector<int>& recv_delayed_groups, vector<double>& recv_lifetimes);
+void deserialize_ifp_info(int n_generation,
+  const vector<DeserializationInfo>& deserialization,
+  const vector<int>& delayed_groups, const vector<double>& lifetimes);
 
 #endif
 
 //! Copy IFP temporary vector to source banks
-void copy_ifp_temp_to_source_banks(vector<vector<int>>& temp_delayed_groups,
-  vector<vector<double>>& temp_lifetimes);
+void copy_complete_ifp_data_to_source_banks(
+  const vector<vector<int>>& delayed_groups,
+  const vector<vector<double>>& lifetimes);
 
 // ---------------------------------------------------------
 // bank.cpp functions
@@ -135,11 +134,11 @@ void allocate_temporary_vector_ifp(
   vector<int>*& delayed_group_bank,
   vector<vector<double>>& lifetime_bank_holder, vector<double>*& lifetime_bank);
 
-void sort_ifp_banks(int64_t i, int64_t idx, vector<int>*& delayed_group_bank,
-  vector<double>*& lifetime_bank);
-
-void copy_ifp_banks_to_fission_banks(
+void sort_ifp_data_from_fission_banks(int64_t i_bank, int64_t idx,
   vector<int>*& delayed_group_bank, vector<double>*& lifetime_bank);
+
+void copy_ifp_data_to_fission_banks(
+  vector<int>* const& delayed_group_bank, vector<double>* const& lifetime_bank);
 
 } // namespace openmc
 

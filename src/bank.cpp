@@ -122,7 +122,7 @@ void sort_fission_bank()
     }
     sorted_bank[idx] = site;
     if (settings::ifp) {
-      sort_ifp_banks(
+      sort_ifp_data_from_fission_banks(
         i, idx, sorted_ifp_delayed_group_bank, sorted_ifp_lifetime_bank);
     }
   }
@@ -131,7 +131,7 @@ void sort_fission_bank()
   std::copy(sorted_bank, sorted_bank + simulation::fission_bank.size(),
     simulation::fission_bank.data());
   if (settings::ifp) {
-    copy_ifp_banks_to_fission_banks(
+    copy_ifp_data_to_fission_banks(
       sorted_ifp_delayed_group_bank, sorted_ifp_lifetime_bank);
   }
 }

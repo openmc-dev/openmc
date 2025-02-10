@@ -16,7 +16,9 @@ fi
 
 # Install NCrystal if needed
 if [[ $NCRYSTAL = 'y' ]]; then
-    ./tools/ci/gha-install-ncrystal.sh
+    pip install ncrystal
+    #Basic verification:
+    nctool --test
 fi
 
 # Install vectfit for WMP generation if needed

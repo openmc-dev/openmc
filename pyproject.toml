@@ -1,5 +1,5 @@
 [build-system]
-requires = ["scikit-build-core", "ncrystal"]
+requires = ["scikit-build-core"]
 build-backend = "scikit_build_core.build"
 
 [project]

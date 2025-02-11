@@ -44,7 +44,7 @@ def install(omp=False, mpi=False, phdf5=False, dagmc=False, libmesh=False, ncrys
     os.environ['SKBUILD_cmake_args'] = ';'.join(cmake_args)
 
     # Run pip to build and install
-    pip_suffix = '--config-settings=cmake.args="' + ';'.join(cmake_args) + '"'
+    pip_suffix = '--no-build-isolation --config-settings=cmake.args="' + ';'.join(cmake_args) + '"'
     subprocess.check_call(['pip', '-v', 'install', '.[test,vtk,ci,ncrystal]', pip_suffix])
 
     # Using standard CMake method

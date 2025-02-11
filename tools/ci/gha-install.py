@@ -45,7 +45,7 @@ def install(omp=False, mpi=False, phdf5=False, dagmc=False, libmesh=False, ncrys
 
     # Run pip to build and install
     pip_suffix = '--config-settings=cmake.args="' + ';'.join(cmake_args) + '"'
-    subprocess.check_call(['pip', '-v', 'install', '.[test,vtk,ci]', pip_suffix])
+    subprocess.check_call(['pip', '-v', 'install', '.[test,vtk,ci,ncrystal]', pip_suffix])
 
     # Using standard CMake method
     # Create build directory and change to it

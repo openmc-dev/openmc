@@ -1116,8 +1116,9 @@ class Tabular(Univariate):
         """
         interpolation = get_text(elem, 'interpolation')
         params = [float(x) for x in get_text(elem, 'parameters').split()]
-        x = params[:len(params)//2]
-        p = params[len(params)//2:]
+        m = (len(params) + 1)//2  # +1 for when len(params) is odd
+        x = params[:m]
+        p = params[m:]
         return cls(x, p, interpolation)
 
     def integral(self):

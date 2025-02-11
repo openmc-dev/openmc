@@ -774,23 +774,25 @@ void FlatSourceDomain::output_to_vtk() const
 
           int i_cell = p.lowest_coord().cell;
           int64_t sr = source_region_offsets_[i_cell] + p.cell_instance();
-          if (sr >= base_source_regions_.n_source_regions() || sr < 0)
-            fmt::print("Base sr = {}\n", sr);
           if (RandomRay::mesh_subdivision_enabled_) {
-            int mesh_idx = base_source_regions_.mesh(sr);
-            int mesh_bin;
-            if (mesh_idx == C_NONE) {
-              mesh_bin = 0;
-            } else {
-              Mesh* mesh = model::meshes[mesh_idx].get();
-              mesh_bin = mesh->get_bin(p.r());
-            }
-            SourceRegionKey sr_key {sr, mesh_bin};
-            auto it = source_region_map_.find(sr_key);
-            if (it != source_region_map_.end()) {
-              sr = it->second;
-            } else {
-              sr = -1;
+            if (sr >= base_source_regions_.n_source_regions() || sr < 0)
+              fmt::print("Base sr = {}\n", sr);
+            if (RandomRay::mesh_subdivision_enabled_) {
+              int mesh_idx = base_source_regions_.mesh(sr);
+              int mesh_bin;
+              if (mesh_idx == C_NONE) {
+                mesh_bin = 0;
+              } else {
+                Mesh* mesh = model::meshes[mesh_idx].get();
+                mesh_bin = mesh->get_bin(p.r());
+              }
+              SourceRegionKey sr_key {sr, mesh_bin};
+              auto it = source_region_map_.find(sr_key);
+              if (it != source_region_map_.end()) {
+                sr = it->second;
+              } else {
+                sr = -1;
+              }
             }
           }
 
@@ -1383,6 +1385,12 @@ void FlatSourceDomain::finalize_discovered_source_regions()
 
 void FlatSourceDomain::handle_small_subdivided_source_regions()
 {
+  // If we're using the naive volume estimator, then we don't
+  // need to worry about small source regions, as there is no possibility
+  // of mismatch between iteration volume and simulation avg volume
+  if (volume_estimator_ == RandomRayVolumeEstimator::NAIVE) {
+    return;
+  }
 // Now we'd like to sweep through the source_regions_ and accumulate each
 // subdivided source region into its parent base source region. Then, we want
 // to project the base source region back down into any missed source
@@ -1394,6 +1402,9 @@ void FlatSourceDomain::handle_small_subdivided_source_regions()
     base_source_regions_.volume_t(sr) = 0.0;
     for (int g = 0; g < negroups_; g++) {
       base_source_regions_.scalar_flux_new(sr, g) = 0.0;
+      if (base_source_regions_.is_linear()) {
+        base_source_regions_.flux_moments_new(sr, g) = {0.0, 0.0, 0.0};
+      }
     }
   }
 
@@ -1409,12 +1420,13 @@ void FlatSourceDomain::handle_small_subdivided_source_regions()
     parent_srh.lock().lock();
     parent_srh.volume_t() += srh.volume_t();
     for (int g = 0; g < negroups_; g++) {
-      if (srh.scalar_flux_new(g) < 0.0) {
-        //  fmt::print("Negative flux detected. flux: {}, volume_t: {}\n",
-        //    srh.scalar_flux_new(g), srh.volume_t());
-      } else {
+      if (srh.scalar_flux_new(g) > 0.0) {
         parent_srh.scalar_flux_new(g) +=
           srh.scalar_flux_new(g) * srh.volume_t();
+        if (base_source_regions_.is_linear()) {
+          parent_srh.flux_moments_new(g) +=
+            srh.flux_moments_new(g) * srh.volume_t();
+        }
       }
     }
     n_children[base_sr]++;
@@ -1441,50 +1453,56 @@ void FlatSourceDomain::handle_small_subdivided_source_regions()
       base_source_regions_.get_source_region_handle(base_sr);
     double avg_vol = parent_srh.volume_t() / n_children[base_sr];
     double vol = srh.volume_t();
-    bool sufficient_vol = vol > 0.01 * avg_vol;
-    
+    bool sufficient_vol = vol > 0.25 * avg_vol;
+
     /*
     for (int g = 0; g < negroups_; g++) {
       if (srh.scalar_flux_new(g) < 0.0) {
-        fmt::print("Flux = {:.2e}, True volume percent vs avg = {:.9f}%, Iter volume "
-                   "ratio vs. true = {}\n",
-          srh.scalar_flux_new(g),
-          srh.volume_t() * 100.0 / parent_srh.volume_t(),
-          srh.volume_naive() / srh.volume());
+        fmt::print("Flux = {:.2e}, True volume percent vs avg = {:.9f}%, Iter
+    volume " "ratio vs. true = {}\n", srh.scalar_flux_new(g), srh.volume_t() *
+    100.0 / parent_srh.volume_t(), srh.volume_naive() / srh.volume());
       }
     }
       */
-     for (int g = 0; g < negroups_; g++) {
-        if(srh.volume() == 0.0 || srh.scalar_flux_new(g) < 0.0 )
-        {
-          double alpha = 0.5;
-          double flux = parent_srh.scalar_flux_new(g) / parent_srh.volume_t();
-          srh.scalar_flux_new(g) = alpha * flux + (1.0 - alpha) * srh.scalar_flux_old(g);
-        }
-     }
-    
-
-    if (!sufficient_vol) {
-      n_insufficient++;
-      for (int g = 0; g < negroups_; g++) {
+    for (int g = 0; g < negroups_; g++) {
+      if (srh.volume() == 0.0 || srh.scalar_flux_new(g) < 0.0 ||
+          !sufficient_vol) {
+        double alpha = 0.5;
         double flux = parent_srh.scalar_flux_new(g) / parent_srh.volume_t();
-        if (flux < 0) {
-          flux = 0.0;
-          fmt::print("flux is somehow negative: {}, vol: {}, avg vol: {}, sr "
-                     "flux {}, parent flux {}\n",
-            flux, vol, avg_vol, srh.scalar_flux_new(g),
-            parent_srh.scalar_flux_new(g));
+        srh.scalar_flux_new(g) =
+          alpha * flux + (1.0 - alpha) * srh.scalar_flux_old(g);
+        if (srh.is_linear_) {
+          MomentArray flux_moments =
+            parent_srh.flux_moments_new(g) / parent_srh.volume_t();
+          // srh.flux_moments_new(g) =
+          //   alpha * flux_moments + (1.0 - alpha) * srh.flux_moments_old(g);
+          srh.flux_moments_new(g) = {0.0, 0.0, 0.0};
         }
-        srh.scalar_flux_new(g) = flux;
       }
     }
 
+    /*
+        if (!sufficient_vol) {
+          n_insufficient++;
+          for (int g = 0; g < negroups_; g++) {
+            double flux = parent_srh.scalar_flux_new(g) / parent_srh.volume_t();
+            if (flux < 0) {
+              flux = 0.0;
+              fmt::print("flux is somehow negative: {}, vol: {}, avg vol: {}, sr
+       " "flux {}, parent flux {}\n", flux, vol, avg_vol,
+       srh.scalar_flux_new(g), parent_srh.scalar_flux_new(g));
+            }
+            srh.scalar_flux_new(g) = flux;
+          }
+        }
+          */
+
     for (int g = 0; g < negroups_; g++) {
       if (srh.scalar_flux_new(g) < 0.0) {
-        fmt::print("Flux = {:.2e}, True volume percent vs avg = {:.9f}%, Iter volume "
-                   "ratio vs. true = {}, sufficient vol = {}\n",
-          srh.scalar_flux_new(g),
-          vol * 100.0 / avg_vol,
+        fmt::print(
+          "Flux = {:.2e}, True volume percent vs avg = {:.9f}%, Iter volume "
+          "ratio vs. true = {}, sufficient vol = {}\n",
+          srh.scalar_flux_new(g), vol * 100.0 / avg_vol,
           srh.volume_naive() / srh.volume(), sufficient_vol);
       }
     }

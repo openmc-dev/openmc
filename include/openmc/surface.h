@@ -59,7 +59,7 @@ public:
   //! \param[inout] p Pointer to the particle. Only DAGMC uses this.
   //! \return Outgoing direction of the ray
   virtual Direction reflect(
-    Position r, Direction, GeometryState* p = nullptr) const;
+    Position r, Direction u, GeometryState* p = nullptr) const;
 
   virtual Direction diffuse_reflect(
     Position r, Direction u, uint64_t* seed) const;

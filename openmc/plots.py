@@ -234,8 +234,8 @@ def voxel_to_vtk(voxel_file: PathLike, output: PathLike = 'plot.vti'):
         grid.SetOrigin(*lower_left)
         grid.SetSpacing(*width)
 
-        # transpose data from OpenMC ordering(zyx) to VTK ordering(xyz)
-        # and flatten to 1 - D array
+        # transpose data from OpenMC ordering (zyx) to VTK ordering (xyz)
+        # and flatten to 1-D array
         h5data = fh["data"][...]
 
     data = vtk.vtkIntArray()
@@ -440,7 +440,7 @@ class PlotBase(IDManagerMixin):
                 cv.check_less_than('RGB component', rgb, 256)
 
     # Helper function that returns the domain ID given either a
-    # Cell / Material object or the domain ID itself
+    # Cell/Material object or the domain ID itself
     @staticmethod
     def _get_id(domain):
         return domain if isinstance(domain, Integral) else domain.id
@@ -720,7 +720,7 @@ class Plot(PlotBase):
             pick_index = (0, 2)
             slice_index = 1
 
-        # Get lower - left and upper - right coordinates for desired axes
+        # Get lower-left and upper-right coordinates for desired axes
         lower_left, upper_right = geometry.bounding_box
         lower_left = lower_left[np.array(pick_index)]
         upper_right = upper_right[np.array(pick_index)]
@@ -766,7 +766,7 @@ class Plot(PlotBase):
         cv.check_less_than('alpha', alpha, 1., equality=True)
         cv.check_type('background', background, Iterable)
 
-        # Get a background(R, G, B) tuple to apply in alpha compositing
+        # Get a background (R,G,B) tuple to apply in alpha compositing
         if isinstance(background, str):
             if background.lower() not in _SVG_COLORS:
                 raise ValueError(f"'{background}' is not a valid color.")
@@ -1092,11 +1092,9 @@ class RayTracePlot(PlotBase):
         self._orthographic_width = orthographic_width
 
     def _check_domains_consistent_with_color_by(self, domains):
-        """Check domains are the same as the type we are coloring by
-        """
+        """Check domains are the same as the type we are coloring by"""
         for region in domains:
-            # if an integer is passed, we have to assume
-            # it was a valid ID
+            # if an integer is passed, we have to assume it was a valid ID
             if isinstance(region, int):
                 continue
 
@@ -1176,8 +1174,7 @@ class RayTracePlot(PlotBase):
         if horizontal_fov is not None:
             self.horizontal_field_of_view = float(horizontal_fov.text)
 
-        tmp = elem.find("orthographic_width")
-        if tmp is not None:
+        if (tmp := elem.find("orthographic_width")) is not None:
             self.orthographic_width = float(tmp)
 
         self.pixels = get_elem_tuple(elem, "pixels")
@@ -1188,15 +1185,12 @@ class RayTracePlot(PlotBase):
             self.background = get_elem_tuple(elem, "background")
 
         # Set masking information
-        mask_elem = elem.find("mask")
-        if mask_elem is not None:
-            mask_components = [int(x)
-                               for x in mask_elem.get("components").split()]
-            # TODO : set mask components(needs geometry information)
+        if (mask_elem := elem.find("mask")) is not None:
+            mask_components = [int(x) for x in mask_elem.get("components").split()]
+            # TODO: set mask components(needs geometry information)
             background = mask_elem.get("background")
             if background is not None:
-                self.mask_background = tuple(
-                    [int(x) for x in background.split()])
+                self.mask_background = tuple([int(x) for x in background.split()])
 
         # Set universe level
         level = elem.find("level")
@@ -1207,27 +1201,37 @@ class RayTracePlot(PlotBase):
 class ProjectionPlot(RayTracePlot):
     """Plots wireframes of geometry with volume rendered colors
 
-    Colors are defined in the same manner as the Plot class, but with the addition
-    of a coloring parameter resembling a macroscopic cross section in units of inverse
-    centimeters. The volume rendering technique is used to color regions of the model.
-    An infinite cross section denotes a fully opaque region, and zero represents a
-    transparent region which will expose the color of the regions behind it.
+    Colors are defined in the same manner as the Plot class, but with the
+    addition of a coloring parameter resembling a macroscopic cross section in
+    units of inverse centimeters. The volume rendering technique is used to
+    color regions of the model. An infinite cross section denotes a fully opaque
+    region, and zero represents a transparent region which will expose the color
+    of the regions behind it.
 
+    Parameters
+    ----------
+    plot_id : int
+        Unique identifier for the plot
+    name : str
+        Name of the plot
+
+    Attributes
+    ----------
     wireframe_thickness : int
-        Line thickness employed for drawing wireframes around cells or
-        material regions. Can be set to zero for no wireframes at all.
-        Defaults to one pixel.
+        Line thickness employed for drawing wireframes around cells or material
+        regions. Can be set to zero for no wireframes at all. Defaults to one
+        pixel.
     wireframe_color : tuple of ints
         RGB color of the wireframe lines. Defaults to black.
     wireframe_domains : iterable of either Material or Cells
-        If provided, the wireframe is only drawn around these.
-        If color_by is by material, it must be a list of materials, else cells.
+        If provided, the wireframe is only drawn around these. If color_by is by
+        material, it must be a list of materials, else cells.
     xs : dict
         A mapping from cell/material IDs to floats. The floating point values
         are macroscopic cross sections influencing the volume rendering opacity
         of each geometric region. Zero corresponds to perfect transparency, and
-        infinity equivalent to opaque. These must be set by the user, but default
-        values can be obtained using the :meth:`set_transparent` method.
+        infinity equivalent to opaque. These must be set by the user, but
+        default values can be obtained using the :meth:`set_transparent` method.
     """
 
     def __init__(self, plot_id=None, name=''):
@@ -1392,6 +1396,7 @@ class ProjectionPlot(RayTracePlot):
 
         return plot
 
+
 class PhongPlot(RayTracePlot):
 
     def __init__(self, plot_id=None, name=''):
@@ -1482,12 +1487,7 @@ class PhongPlot(RayTracePlot):
         return element
 
     def _read_phong_attributes(self, elem):
-        """Read attributes specific to the Phong plot
-        from an XML element
-        Returns
-        -------
-        None
-        """
+        """Read attributes specific to the Phong plot from an XML element"""
         if elem.find('light_position') is not None:
             self.light_position = get_elem_tuple(elem, 'light_position', float)
 
@@ -1548,14 +1548,13 @@ class Plots(cv.CheckedList):
 
     Parameters
     ----------
-    plots : Iterable of openmc.Plot, openmc.ProjectionPlot,
-              or openmc.PhongPlot
+    plots : Iterable of openmc.PlotBase
         plots to add to the collection
 
     """
 
     def __init__(self, plots=None):
-        super().__init__((Plot, ProjectionPlot, PhongPlot), 'plots collection')
+        super().__init__(PlotBase, 'plots collection')
         self._plots_file = ET.Element("plots")
         if plots is not None:
             self += plots
@@ -1565,8 +1564,7 @@ class Plots(cv.CheckedList):
 
         Parameters
         ----------
-        plot : openmc.Plot, openmc.ProjectionPlot, or
-                 openmc.PhongPlot
+        plot : openmc.PlotBase
             Plot to append
 
         """
@@ -1653,9 +1651,9 @@ class Plots(cv.CheckedList):
 
         self._create_plot_subelements()
 
-        # Clean the indentation in the file to be user - readable
+        # Clean the indentation in the file to be user-readable
         clean_indentation(self._plots_file)
-        # TODO : Remove when support is Python 3.8 +
+        # TODO: Remove when support is Python 3.8+
         reorder_attributes(self._plots_file)
 
         return self._plots_file

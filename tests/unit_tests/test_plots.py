@@ -4,7 +4,7 @@ import openmc
 import openmc.examples
 import pytest
 
-import openmc.plots
+from openmc.plots import _SVG_COLORS
 
 
 @pytest.fixture(scope='module')
@@ -119,13 +119,14 @@ def test_repr_proj(myprojectionplot):
     r = repr(myprojectionplot)
     assert isinstance(r, str)
 
+
 def test_projection_plot_roundtrip(myprojectionplot):
 
     elem = myprojectionplot.to_xml_element()
 
     xml_plot = openmc.ProjectionPlot.from_xml_element(elem)
 
-    svg_colors = openmc.plots._SVG_COLORS
+    svg_colors = _SVG_COLORS
 
     assert xml_plot.name == myprojectionplot.name
     assert xml_plot.look_at == myprojectionplot.look_at

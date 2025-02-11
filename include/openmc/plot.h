@@ -80,8 +80,8 @@ const RGBColor RED {255, 0, 0};
 const RGBColor BLACK {0, 0, 0};
 
 /**
- * @class PlottableInterface
- * @brief Interface for plottable objects.
+ * \class PlottableInterface
+ * \brief Interface for plottable objects.
  *
  * PlottableInterface classes must have a unique ID in the plots.xml file.
  * They guarantee the ability to create output in some form. This interface
@@ -283,8 +283,8 @@ public:
 };
 
 /**
- * @class RaytracePlot
- * @brief Base class for plots that generate images through ray tracing.
+ * \class RaytracePlot
+ * \brief Base class for plots that generate images through ray tracing.
  *
  * This class serves as a base for plots that create their visuals by tracing
  * rays from a camera through the problem geometry. It inherits from
@@ -362,8 +362,8 @@ private:
 class ProjectionRay;
 
 /**
- * @class ProjectionPlot
- * @brief Creates plots that are like colorful x-ray imaging
+ * \class ProjectionPlot
+ * \brief Creates plots that are like colorful x-ray imaging
  *
  * ProjectionPlot is a specialized form of RayTracePlot designed for creating
  * projection plots. This involves tracing rays from a camera through the
@@ -423,12 +423,12 @@ private:
 };
 
 /**
- * @class PhongPlot
- * @brief Plots 3D objects as the eye might see them.
+ * \class PhongPlot
+ * \brief Plots 3D objects as the eye might see them.
  *
- * Plots a geometry with single-scattered Phong lighting
- * plus a diffuse lighting contribution. The result is a
- * physically reasonable, aesthetic 3D view of a geometry.
+ * Plots a geometry with single-scattered Phong lighting plus a diffuse lighting
+ * contribution. The result is a physically reasonable, aesthetic 3D view of a
+ * geometry.
  */
 class PhongPlot : public RayTracePlot {
   friend class PhongRay;

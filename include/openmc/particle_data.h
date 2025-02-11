@@ -233,8 +233,8 @@ public:
     n_coord_last_ = 1;
   }
 
-  //! moves the particle by the distance length to its next location
-  //! \param length the distance the particle is moved
+  //! moves the particle by the specified distance to its next location
+  //! \param distance the distance the particle is moved
   void move_distance(double distance);
 
   void advance_to_boundary_from_void();

@@ -204,20 +204,20 @@ void read_plots_xml(pugi::xml_node root)
     int id = std::stoi(id_string);
     if (check_for_node(node, "type")) {
       std::string type_str = get_node_value(node, "type", true);
-      if (type_str == "slice")
+      if (type_str == "slice") {
         model::plots.emplace_back(
           std::make_unique<Plot>(node, Plot::PlotType::slice));
-      else if (type_str == "voxel")
+      } else if (type_str == "voxel") {
         model::plots.emplace_back(
           std::make_unique<Plot>(node, Plot::PlotType::voxel));
-      else if (type_str == "projection")
+      } else if (type_str == "projection") {
         model::plots.emplace_back(std::make_unique<ProjectionPlot>(node));
-      else if (type_str == "phong")
+      } else if (type_str == "phong") {
         model::plots.emplace_back(std::make_unique<PhongPlot>(node));
-      else
+      } else {
         fatal_error(
           fmt::format("Unsupported plot type '{}' in plot {}", type_str, id));
-
+      }
       model::plot_map[model::plots.back()->id()] = model::plots.size() - 1;
     } else {
       fatal_error(fmt::format("Must specify plot type in plot {}", id));
@@ -1223,9 +1223,9 @@ void ProjectionPlot::create_output() const
   size_t height = pixels_[1];
   ImageData data({width, height}, not_found_);
 
-  // This array marks where the initial wireframe was drawn.
-  // We convolve it with a filter that gets adjusted with the
-  // wireframe thickness in order to thicken the lines.
+  // This array marks where the initial wireframe was drawn. We convolve it with
+  // a filter that gets adjusted with the wireframe thickness in order to
+  // thicken the lines.
   xt::xtensor<int, 2> wireframe_initial({width, height}, 0);
 
   /* Holds all of the track segments for the current rendered line of pixels.
@@ -1257,10 +1257,10 @@ void ProjectionPlot::create_output() const
     int vert = tid;
     for (int iter = 0; iter <= pixels_[1] / n_threads; iter++) {
 
-      // Save bottom line of current work chunk to compare against later
-      // I used to have this inside the below if block, but it causes a
-      // spurious line to be drawn at the bottom of the image. Not sure
-      // why, but moving it here fixes things.
+      // Save bottom line of current work chunk to compare against later. This
+      // used to be inside the below if block, but it causes a spurious line to
+      // be drawn at the bottom of the image. Not sure why, but moving it here
+      // fixes things.
       if (tid == n_threads - 1)
         old_segments = this_line_segments[n_threads - 1];
 
@@ -1283,11 +1283,10 @@ void ProjectionPlot::create_output() const
             not_found_.red, not_found_.green, not_found_.blue);
           const auto& segments = this_line_segments[tid][horiz];
 
-          // There must be at least two cell intersections to color,
-          // front and back of the cell. Maybe an infinitely thick
-          // cell could be present with no back, but why would you
-          // want to color that? It's easier to just skip that edge
-          // case and not even color it.
+          // There must be at least two cell intersections to color, front and
+          // back of the cell. Maybe an infinitely thick cell could be present
+          // with no back, but why would you want to color that? It's easier to
+          // just skip that edge case and not even color it.
           if (segments.size() <= 1)
             continue;
 
@@ -1586,7 +1585,7 @@ void PhongPlot::set_diffuse_fraction(pugi::xml_node node)
   if (check_for_node(node, "diffuse_fraction")) {
     diffuse_fraction_ = std::stod(get_node_value(node, "diffuse_fraction"));
     if (diffuse_fraction_ < 0.0 || diffuse_fraction_ > 1.0) {
-      fatal_error("Must have 0<=diffuse fraction<= 1");
+      fatal_error("Must have 0 <= diffuse fraction <= 1");
     }
   }
 }
@@ -1616,7 +1615,6 @@ void Ray::trace()
   // Advance to the boundary of the model
   while (!inside_cell) {
     advance_to_boundary_from_void();
-    //
     inside_cell = exhaustive_find_cell(*this, settings::verbosity >= 10);
 
     // If true this means no surface was intersected. See cell.cpp and search

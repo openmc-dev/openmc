@@ -51,7 +51,6 @@ docs = [
 test = ["packaging", "pytest", "pytest-cov", "colorama", "openpyxl"]
 ci = ["cpp-coveralls", "coveralls"]
 vtk = ["vtk"]
-ncrystal = ["ncrystal>=4.0.0"]
 
 [project.urls]
 Homepage = "https://openmc.org"

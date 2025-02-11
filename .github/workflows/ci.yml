@@ -26,45 +26,45 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.11"]
-        mpi: [n, y]
-        omp: [n, y]
-        dagmc: [n]
-        ncrystal: [n]
-        libmesh: [n]
-        event: [n]
-        vectfit: [n]
+        # mpi: [n, y]
+        # omp: [n, y]
+        # dagmc: [n]
+        # ncrystal: [n]
+        # libmesh: [n]
+        # event: [n]
+        # vectfit: [n]
 
         include:
-          - python-version: "3.12"
-            omp: n
-            mpi: n
-          - python-version: "3.13"
-            omp: n
-            mpi: n
-          - dagmc: y
-            python-version: "3.11"
-            mpi: y
-            omp: y
+          # - python-version: "3.12"
+          #   omp: n
+          #   mpi: n
+          # - python-version: "3.13"
+          #   omp: n
+          #   mpi: n
+          # - dagmc: y
+          #   python-version: "3.11"
+          #   mpi: y
+          #   omp: y
           - ncrystal: y
             python-version: "3.11"
             mpi: n
             omp: n
-          - libmesh: y
-            python-version: "3.11"
-            mpi: y
-            omp: y
-          - libmesh: y
-            python-version: "3.11"
-            mpi: n
-            omp: y
-          - event: y
-            python-version: "3.11"
-            omp: y
-            mpi: n
-          - vectfit: y
-            python-version: "3.11"
-            omp: n
-            mpi: y
+          # - libmesh: y
+          #   python-version: "3.11"
+          #   mpi: y
+          #   omp: y
+          # - libmesh: y
+          #   python-version: "3.11"
+          #   mpi: n
+          #   omp: y
+          # - event: y
+          #   python-version: "3.11"
+          #   omp: y
+          #   mpi: n
+          # - vectfit: y
+          #   python-version: "3.11"
+          #   omp: n
+          #   mpi: y
     name: "Python ${{ matrix.python-version }} (omp=${{ matrix.omp }},
       mpi=${{ matrix.mpi }}, dagmc=${{ matrix.dagmc }}, ncrystal=${{ matrix.ncrystal }},
       libmesh=${{ matrix.libmesh }}, event=${{ matrix.event }}

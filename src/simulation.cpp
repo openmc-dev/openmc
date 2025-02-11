@@ -7,6 +7,7 @@
 #include "openmc/error.h"
 #include "openmc/event.h"
 #include "openmc/geometry_aux.h"
+#include "openmc/ifp.h"
 #include "openmc/material.h"
 #include "openmc/mcpl_interface.h"
 #include "openmc/message_passing.h"
@@ -336,19 +337,7 @@ void allocate_banks()
 
     // Allocate IFP bank
     if (settings::ifp) {
-      if (settings::ifp_parameter == IFPParameter::BetaEffective ||
-          settings::ifp_parameter == IFPParameter::Both) {
-        simulation::ifp_source_delayed_group_bank.resize(
-          simulation::work_per_rank);
-        simulation::ifp_fission_delayed_group_bank.resize(
-          3 * simulation::work_per_rank);
-      }
-      if (settings::ifp_parameter == IFPParameter::GenerationTime ||
-          settings::ifp_parameter == IFPParameter::Both) {
-        simulation::ifp_source_lifetime_bank.resize(simulation::work_per_rank);
-        simulation::ifp_fission_lifetime_bank.resize(
-          3 * simulation::work_per_rank);
-      }
+      resize_simulation_ifp_banks();
     }
   }
 

@@ -1,6 +1,7 @@
 #include "openmc/bank.h"
 #include "openmc/capi.h"
 #include "openmc/error.h"
+#include "openmc/ifp.h"
 #include "openmc/message_passing.h"
 #include "openmc/simulation.h"
 #include "openmc/vector.h"
@@ -105,18 +106,9 @@ void sort_fission_bank()
   }
 
   if (settings::ifp) {
-    if (settings::ifp_parameter == IFPParameter::BetaEffective ||
-        settings::ifp_parameter == IFPParameter::Both) {
-      sorted_ifp_delayed_group_bank_holder.resize(
-        simulation::fission_bank.size());
-      sorted_ifp_delayed_group_bank =
-        sorted_ifp_delayed_group_bank_holder.data();
-    }
-    if (settings::ifp_parameter == IFPParameter::GenerationTime ||
-        settings::ifp_parameter == IFPParameter::Both) {
-      sorted_ifp_lifetime_bank_holder.resize(simulation::fission_bank.size());
-      sorted_ifp_lifetime_bank = sorted_ifp_lifetime_bank_holder.data();
-    }
+    allocate_temporary_vector_ifp(sorted_ifp_delayed_group_bank_holder,
+      sorted_ifp_delayed_group_bank, sorted_ifp_lifetime_bank_holder,
+      sorted_ifp_lifetime_bank);
   }
 
   // Use parent and progeny indices to sort fission bank
@@ -130,17 +122,8 @@ void sort_fission_bank()
     }
     sorted_bank[idx] = site;
     if (settings::ifp) {
-      if (settings::ifp_parameter == IFPParameter::BetaEffective ||
-          settings::ifp_parameter == IFPParameter::Both) {
-        const auto& ifp_delayed_groups =
-          simulation::ifp_fission_delayed_group_bank[i];
-        sorted_ifp_delayed_group_bank[idx] = ifp_delayed_groups;
-      }
-      if (settings::ifp_parameter == IFPParameter::GenerationTime ||
-          settings::ifp_parameter == IFPParameter::Both) {
-        const auto& ifp_lifetimes = simulation::ifp_fission_lifetime_bank[i];
-        sorted_ifp_lifetime_bank[idx] = ifp_lifetimes;
-      }
+      sort_ifp_data_from_fission_banks(
+        i, idx, sorted_ifp_delayed_group_bank, sorted_ifp_lifetime_bank);
     }
   }
 
@@ -148,18 +131,8 @@ void sort_fission_bank()
   std::copy(sorted_bank, sorted_bank + simulation::fission_bank.size(),
     simulation::fission_bank.data());
   if (settings::ifp) {
-    if (settings::ifp_parameter == IFPParameter::BetaEffective ||
-        settings::ifp_parameter == IFPParameter::Both) {
-      std::copy(sorted_ifp_delayed_group_bank,
-        sorted_ifp_delayed_group_bank + simulation::fission_bank.size(),
-        simulation::ifp_fission_delayed_group_bank.data());
-    }
-    if (settings::ifp_parameter == IFPParameter::GenerationTime ||
-        settings::ifp_parameter == IFPParameter::Both) {
-      std::copy(sorted_ifp_lifetime_bank,
-        sorted_ifp_lifetime_bank + simulation::fission_bank.size(),
-        simulation::ifp_fission_lifetime_bank.data());
-    }
+    copy_ifp_data_to_fission_banks(
+      sorted_ifp_delayed_group_bank, sorted_ifp_lifetime_bank);
   }
 }
 

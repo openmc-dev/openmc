@@ -4,6 +4,7 @@
 #include "openmc/capi.h"
 #include "openmc/constants.h"
 #include "openmc/error.h"
+#include "openmc/ifp.h"
 #include "openmc/material.h"
 #include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
@@ -893,8 +894,7 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
     case SCORE_IFP_TIME_NUM:
       if (settings::ifp) {
         if ((p.type() == Type::neutron) && (p.fission())) {
-          if (settings::ifp_parameter == IFPParameter::GenerationTime ||
-              settings::ifp_parameter == IFPParameter::Both) {
+          if (is_generation_time_or_both()) {
             const auto& lifetimes =
               simulation::ifp_source_lifetime_bank[p.current_work() - 1];
             int n_generation = static_cast<int>(lifetimes.size());
@@ -909,8 +909,7 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
     case SCORE_IFP_BETA_NUM:
       if (settings::ifp) {
         if ((p.type() == Type::neutron) && (p.fission())) {
-          if (settings::ifp_parameter == IFPParameter::BetaEffective ||
-              settings::ifp_parameter == IFPParameter::Both) {
+          if (is_beta_effective_or_both()) {
             const auto& delayed_groups =
               simulation::ifp_source_delayed_group_bank[p.current_work() - 1];
             int n_generation = static_cast<int>(delayed_groups.size());
@@ -931,8 +930,7 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
       if (settings::ifp) {
         if ((p.type() == Type::neutron) && (p.fission())) {
           int n_generation;
-          if (settings::ifp_parameter == IFPParameter::BetaEffective ||
-              settings::ifp_parameter == IFPParameter::Both) {
+          if (is_beta_effective_or_both()) {
             n_generation = static_cast<int>(
               simulation::ifp_source_delayed_group_bank[p.current_work() - 1]
                 .size());

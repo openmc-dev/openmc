@@ -7,30 +7,52 @@ pip install --upgrade pytest
 pip install --upgrade numpy
 
 # Install NJOY 2016
-./tools/ci/gha-install-njoy.sh
+if [[ ! -d "$HOME/NJOY2016" ]]; then
+    ./tools/ci/gha-install-njoy.sh
+fi
+echo "$HOME/NJOY2016/bin" >> $GITHUB_PATH
 
 # Install DAGMC if needed
 if [[ $DAGMC = 'y' ]]; then
-    ./tools/ci/gha-install-dagmc.sh
+    if [ ! -d "$HOME/DAGMC" ] || [ ! -d "$HOME/MOAB" ]
+    then
+        ./tools/ci/gha-install-dagmc.sh
+    fi
 fi
 
 # Install NCrystal if needed
 if [[ $NCRYSTAL = 'y' ]]; then
-    ./tools/ci/gha-install-ncrystal.sh
+    if [ ! -d "$HOME/ncrystal_bld" ]
+    then
+        ./tools/ci/gha-install-ncrystal.sh
+    else
+        cd $HOME/ncrystal_bld
+        eval $( "$HOME/ncrystal_inst/bin/ncrystal-config" --setup )
+        cd $GITHUB_WORKSPACE
+    fi
 fi
 
 # Install vectfit for WMP generation if needed
 if [[ $VECTFIT = 'y' ]]; then
-    ./tools/ci/gha-install-vectfit.sh
+    if [ ! -d "$HOME/vectfit" ]
+    then
+        ./tools/ci/gha-install-vectfit.sh
+    fi
 fi
 
 # Install libMesh if needed
 if [[ $LIBMESH = 'y' ]]; then
-    ./tools/ci/gha-install-libmesh.sh
+    if [ ! -d "$HOME/libmesh" ]
+    then
+        ./tools/ci/gha-install-libmesh.sh
+    fi
 fi
 
 # Install MCPL
-./tools/ci/gha-install-mcpl.sh
+if [[ ! -d "$HOME/mcpl" ]]; then
+    ./tools/ci/gha-install-mcpl.sh
+fi
+
 
 # For MPI configurations, make sure mpi4py and h5py are built against the
 # correct version of MPI

@@ -264,6 +264,7 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
         // from rays passing through the source region (computed during the
         // transport sweep)
         set_flux_to_flux_plus_source(sr, volume, g);
+
       } else if (volume_simulation_avg > 0.0) {
         // 2. If the FSR was not hit this iteration, but has been hit some
         // previous iteration, then we need to make a choice about what
@@ -410,9 +411,6 @@ void FlatSourceDomain::convert_source_regions_to_tallies()
     // If this source region has not been hit by a ray yet, then
     // we aren't going to be able to map it, so skip it.
     if (!source_regions_.position_recorded(sr)) {
-      if (simulation::current_batch > 1) {
-        fmt::print("sr no position = {}\n", sr);
-      }
       all_source_regions_mapped = false;
       continue;
     }
@@ -765,10 +763,19 @@ void FlatSourceDomain::output_to_vtk() const
           sample.x = ll.x + x_delta / 2.0 + x * x_delta;
           Particle p;
           p.r() = sample;
+          p.r_last() = sample;
+
           bool found = exhaustive_find_cell(p);
+          if (!found) {
+            voxel_indices[z * Ny * Nx + y * Nx + x] = -1;
+            voxel_positions[z * Ny * Nx + y * Nx + x] = sample;
+            continue;
+          }
+
           int i_cell = p.lowest_coord().cell;
           int64_t sr = source_region_offsets_[i_cell] + p.cell_instance();
-
+          if (sr >= base_source_regions_.n_source_regions() || sr < 0)
+            fmt::print("Base sr = {}\n", sr);
           if (RandomRay::mesh_subdivision_enabled_) {
             int mesh_idx = base_source_regions_.mesh(sr);
             int mesh_bin;
@@ -782,6 +789,8 @@ void FlatSourceDomain::output_to_vtk() const
             auto it = source_region_map_.find(sr_key);
             if (it != source_region_map_.end()) {
               sr = it->second;
+            } else {
+              sr = -1;
             }
           }
 
@@ -803,7 +812,7 @@ void FlatSourceDomain::output_to_vtk() const
     std::fprintf(plot, "BINARY\n");
     std::fprintf(plot, "DATASET STRUCTURED_POINTS\n");
     std::fprintf(plot, "DIMENSIONS %d %d %d\n", Nx, Ny, Nz);
-    std::fprintf(plot, "ORIGIN 0 0 0\n");
+    std::fprintf(plot, "ORIGIN %lf %lf %lf\n", ll.x, ll.y, ll.z);
     std::fprintf(plot, "SPACING %lf %lf %lf\n", x_delta, y_delta, z_delta);
     std::fprintf(plot, "POINT_DATA %d\n", Nx * Ny * Nz);
 
@@ -817,7 +826,10 @@ void FlatSourceDomain::output_to_vtk() const
       for (int i = 0; i < Nx * Ny * Nz; i++) {
         int64_t fsr = voxel_indices[i];
         int64_t source_element = fsr * negroups_ + g;
-        float flux = evaluate_flux_at_point(voxel_positions[i], fsr, g);
+        float flux = 0;
+        if (fsr > 0) {
+          flux = evaluate_flux_at_point(voxel_positions[i], fsr, g);
+        }
         if (flux < 0.0) {
           num_neg++;
           if (flux < min_flux) {
@@ -834,9 +846,9 @@ void FlatSourceDomain::output_to_vtk() const
     // source regions. However, very common and high magnitude negative fluxes
     // may indicate numerical instability.
     if (num_neg > 0) {
-      warning(fmt::format(
-        "{} plot samples ({:.4f}%) contained negative fluxes (minumum found = {:.2e})",
-        num_neg, (100.0 *num_neg)/num_samples, min_flux));
+      warning(fmt::format("{} plot samples ({:.4f}%) contained negative fluxes "
+                          "(minumum found = {:.2e})",
+        num_neg, (100.0 * num_neg) / num_samples, min_flux));
     }
 
     // Plot FSRs
@@ -852,7 +864,9 @@ void FlatSourceDomain::output_to_vtk() const
     std::fprintf(plot, "SCALARS Materials int\n");
     std::fprintf(plot, "LOOKUP_TABLE default\n");
     for (int fsr : voxel_indices) {
-      int mat = source_regions_.material(fsr);
+      int mat = -1;
+      if (fsr > 0)
+        mat = source_regions_.material(fsr);
       mat = convert_to_big_endian<int>(mat);
       std::fwrite(&mat, sizeof(int), 1, plot);
     }
@@ -864,12 +878,14 @@ void FlatSourceDomain::output_to_vtk() const
       int64_t fsr = voxel_indices[i];
 
       float total_fission = 0.0;
-      int mat = source_regions_.material(fsr);
-      for (int g = 0; g < negroups_; g++) {
-        int64_t source_element = fsr * negroups_ + g;
-        float flux = evaluate_flux_at_point(voxel_positions[i], fsr, g);
-        double sigma_f = sigma_f_[mat * negroups_ + g];
-        total_fission += sigma_f * flux;
+      if (fsr > 0) {
+        int mat = source_regions_.material(fsr);
+        for (int g = 0; g < negroups_; g++) {
+          int64_t source_element = fsr * negroups_ + g;
+          float flux = evaluate_flux_at_point(voxel_positions[i], fsr, g);
+          double sigma_f = sigma_f_[mat * negroups_ + g];
+          total_fission += sigma_f * flux;
+        }
       }
       total_fission = convert_to_big_endian<float>(total_fission);
       std::fwrite(&total_fission, sizeof(float), 1, plot);
@@ -1346,9 +1362,16 @@ void FlatSourceDomain::finalize_discovered_source_regions()
   for (const auto& it : discovered_source_regions_) {
     const SourceRegionKey& sr_key = it.first;
     SourceRegion& sr = it.second;
-    source_regions_.push_back(sr);
-    source_region_map_[it.first] = source_regions_.n_source_regions() - 1;
-    new_source_regions++;
+
+    // Source regions are generated when a ray first crosses them. However,
+    // if the new region is only crossed by an inactive (dead length) ray,
+    // then it will not have a volume. We discard this type of source region
+    // as it is still volumeless, so we aren't losing any information.
+    if (sr.volume_ > 0.0) {
+      source_regions_.push_back(sr);
+      source_region_map_[it.first] = source_regions_.n_source_regions() - 1;
+      new_source_regions++;
+    }
   }
 
   if (new_source_regions > 0) {
@@ -1386,24 +1409,31 @@ void FlatSourceDomain::handle_small_subdivided_source_regions()
     parent_srh.lock().lock();
     parent_srh.volume_t() += srh.volume_t();
     for (int g = 0; g < negroups_; g++) {
-      parent_srh.scalar_flux_new(g) += srh.scalar_flux_new(g) * srh.volume_t();
+      if (srh.scalar_flux_new(g) < 0.0) {
+        //  fmt::print("Negative flux detected. flux: {}, volume_t: {}\n",
+        //    srh.scalar_flux_new(g), srh.volume_t());
+      } else {
+        parent_srh.scalar_flux_new(g) +=
+          srh.scalar_flux_new(g) * srh.volume_t();
+      }
     }
     n_children[base_sr]++;
     parent_srh.lock().unlock();
   }
 
-// Project the base source region fluxes back down into any "small" source
-// regions in the source_regions_ vector. We are going to define a "small"
-// subdivided source region as one that is less than 1% of the size of an
-// average subdivided source region generated within that base source region.
-// This metric is nice as it is insensitive to the overall size of the source
-// region as well as being insensitive to the aspect ratio. I.e., thin shell
-// source regions will have a very low volume, but may not be considered "small"
-// here if their subdivision by a mesh results in subregions of approximately
-// similar sizes. A result of this projection is that any "small" source regions
-// will regress to flat, even in linear source mode, which is probably a safe
-// approximation given their small size.
-#pragma omp parallel for
+  // Project the base source region fluxes back down into any "small" source
+  // regions in the source_regions_ vector. We are going to define a "small"
+  // subdivided source region as one that is less than 1% of the size of an
+  // average subdivided source region generated within that base source region.
+  // This metric is nice as it is insensitive to the overall size of the source
+  // region as well as being insensitive to the aspect ratio. I.e., thin shell
+  // source regions will have a very low volume, but may not be considered
+  // "small" here if their subdivision by a mesh results in subregions of
+  // approximately similar sizes. A result of this projection is that any
+  // "small" source regions will regress to flat, even in linear source mode,
+  // which is probably a safe approximation given their small size.
+  int64_t n_insufficient = 0;
+#pragma omp parallel for reduction(+ : n_insufficient)
   for (int64_t sr = 0; sr < source_regions_.n_source_regions(); sr++) {
     SourceRegionHandle srh = source_regions_.get_source_region_handle(sr);
     int64_t base_sr = srh.parent_sr();
@@ -1412,13 +1442,56 @@ void FlatSourceDomain::handle_small_subdivided_source_regions()
     double avg_vol = parent_srh.volume_t() / n_children[base_sr];
     double vol = srh.volume_t();
     bool sufficient_vol = vol > 0.01 * avg_vol;
+    
+    /*
+    for (int g = 0; g < negroups_; g++) {
+      if (srh.scalar_flux_new(g) < 0.0) {
+        fmt::print("Flux = {:.2e}, True volume percent vs avg = {:.9f}%, Iter volume "
+                   "ratio vs. true = {}\n",
+          srh.scalar_flux_new(g),
+          srh.volume_t() * 100.0 / parent_srh.volume_t(),
+          srh.volume_naive() / srh.volume());
+      }
+    }
+      */
+     for (int g = 0; g < negroups_; g++) {
+        if(srh.volume() == 0.0 || srh.scalar_flux_new(g) < 0.0 )
+        {
+          double alpha = 0.5;
+          double flux = parent_srh.scalar_flux_new(g) / parent_srh.volume_t();
+          srh.scalar_flux_new(g) = alpha * flux + (1.0 - alpha) * srh.scalar_flux_old(g);
+        }
+     }
+    
+
     if (!sufficient_vol) {
+      n_insufficient++;
       for (int g = 0; g < negroups_; g++) {
-        srh.scalar_flux_new(g) =
-          parent_srh.scalar_flux_new(g) / parent_srh.volume_t();
+        double flux = parent_srh.scalar_flux_new(g) / parent_srh.volume_t();
+        if (flux < 0) {
+          flux = 0.0;
+          fmt::print("flux is somehow negative: {}, vol: {}, avg vol: {}, sr "
+                     "flux {}, parent flux {}\n",
+            flux, vol, avg_vol, srh.scalar_flux_new(g),
+            parent_srh.scalar_flux_new(g));
+        }
+        srh.scalar_flux_new(g) = flux;
+      }
+    }
+
+    for (int g = 0; g < negroups_; g++) {
+      if (srh.scalar_flux_new(g) < 0.0) {
+        fmt::print("Flux = {:.2e}, True volume percent vs avg = {:.9f}%, Iter volume "
+                   "ratio vs. true = {}, sufficient vol = {}\n",
+          srh.scalar_flux_new(g),
+          vol * 100.0 / avg_vol,
+          srh.volume_naive() / srh.volume(), sufficient_vol);
       }
     }
   }
+  fmt::print("Number of insufficient {}, total {}, percent = {}%\n",
+    n_insufficient, source_regions_.n_source_regions(),
+    100.0 * n_insufficient / source_regions_.n_source_regions());
 
   // TODO: It would be nice to update the base source region fluxes, to
   // allow for better starting estimates when a new source region is

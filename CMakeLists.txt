@@ -124,7 +124,15 @@ endmacro()
 #===============================================================================
 
 if(OPENMC_USE_NCRYSTAL)
-  find_package(NCrystal REQUIRED)
+  if(NOT DEFINED "NCrystal_DIR")
+    #Invocation of "ncrystal-config --show cmakedir" is needed to find NCrystal
+    #when it is installed from Python wheels:
+    execute_process(
+      COMMAND "ncrystal-config" "--show" "cmakedir"
+      OUTPUT_VARIABLE "NCrystal_DIR" OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+  endif()
+  find_package(NCrystal 3.8.0 REQUIRED)
   message(STATUS "Found NCrystal: ${NCrystal_DIR} (version ${NCrystal_VERSION})")
 endif()
 

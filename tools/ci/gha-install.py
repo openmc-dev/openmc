@@ -43,7 +43,7 @@ def install(omp=False, mpi=False, phdf5=False, dagmc=False, libmesh=False, ncrys
     cmake_args.append('-DOPENMC_ENABLE_COVERAGE=on')
 
     # Set environment variable for SKBUILD
-    os.environ['SKBUILD_CMAKE_ARGS'] = ';'.join(cmake_args)
+    os.environ['SKBUILD_cmake_args'] = ';'.join(cmake_args)
 
     # Run pip to build and install
     pip_suffix = '--config-settings=cmake.args="' + ';'.join(cmake_args) + '"'

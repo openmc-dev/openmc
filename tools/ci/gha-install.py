@@ -42,8 +42,6 @@ def install(omp=False, mpi=False, phdf5=False, dagmc=False, libmesh=False, ncrys
 
     if ncrystal:
         cmake_cmd.append('-DOPENMC_USE_NCRYSTAL=ON')
-        ncrystal_path = os.environ.get('HOME') + '/ncrystal_inst'
-        cmake_cmd.append(f'-DCMAKE_PREFIX_PATH={ncrystal_path}')
 
     # Build in coverage mode for coverage testing
     cmake_cmd.append('-DOPENMC_ENABLE_COVERAGE=on')

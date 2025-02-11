@@ -2366,21 +2366,21 @@ class UnstructuredMesh(MeshBase):
     ):
         """Map data to unstructured VTK mesh elements.
 
-        If filename is None, then a filename will be generated based on the mesh ID,
-        and exported to VTK format.
+        If filename is None, then a filename will be generated based on the mesh
+        ID, and exported to VTK format.
 
         Parameters
         ----------
         filename : str or pathlib.Path
-            Name of the VTK file to write. If the filename ends in '.vtu' then a VTU
-            format file will be written, if the filename ends in '.vtk' then a legacy VTK file will be written.
+            Name of the VTK file to write. If the filename ends in '.vtu' then a
+            binary VTU format file will be written, if the filename ends in
+            '.vtk' then a legacy VTK file will be written.
         datasets : dict
-            Dictionary whose keys are the data labels
-            and values are numpy appropriately sized arrays
-            of the data
+            Dictionary whose keys are the data labels and values are numpy
+            appropriately sized arrays of the data
         volume_normalization : bool
-            Whether or not to normalize the data by the
-            volume of the mesh elements
+            Whether or not to normalize the data by the volume of the mesh
+            elements
         """
         from vtkmodules.util import numpy_support
         from vtkmodules import vtkCommonCore

@@ -1,11 +1,10 @@
 from math import pi
+from pathlib import Path
 
 import numpy as np
 import pytest
 import openmc
-from pathlib import Path
-import tempfile
-from vtkmodules import vtkIOLegacy, vtkIOXML
+import openmc.lib
 
 
 @pytest.mark.parametrize("val_left,val_right", [(0, 0), (-1., -1.), (2.0, 2)])
@@ -400,21 +399,22 @@ def test_umesh_roundtrip(run_in_tmpdir, request):
 
     assert umesh.id == xml_mesh.id
 
-skip_if_no_dagmc = pytest.mark.skipif(
-    not openmc.lib._dagmc_enabled(),
-    reason="DAGMC CAD geometry is not enabled.")
 
-@skip_if_no_dagmc
-@pytest.mark.parametrize('export_type', ('.vtk','.vtu'))
-def test_umesh(request, export_type):
+@pytest.mark.skipif(not openmc.lib._dagmc_enabled(), reason="DAGMC not enabled.")
+@pytest.mark.parametrize('export_type', ('.vtk', '.vtu'))
+def test_umesh(request, run_in_tmpdir, export_type):
     """Performs a minimal UnstructuredMesh simulation, reads in the resulting
     statepoint file and writes the mesh data to vtk and vtkhdf files. It is
     necessary to read in the unstructured mesh from a statepoint file to ensure
     it has all the required attributes
     """
+    # Get VTK modules
+    vtkIOLegacy = pytest.importorskip("vtkmodules.vtkIOLegacy")
+    vtkIOXML = pytest.importorskip("vtkmodules.vtkIOXML")
+
     surf1 = openmc.Sphere(r=1.0, boundary_type="vacuum")
     material1 = openmc.Material()
-    material1.add_components(components={"H" : 1.0})
+    material1.add_element("H", 1.0)
     material1.set_density('g/cm3', 1.0)
 
     materials = openmc.Materials([material1])
@@ -422,10 +422,10 @@ def test_umesh(request, export_type):
     geometry = openmc.Geometry([cell1])
 
     umesh = openmc.UnstructuredMesh(
-       filename= request.path.parent.parent
+       filename=request.path.parent.parent
         / "regression_tests/unstructured_mesh/test_mesh_dagmc_tets.vtk",
-       library= "moab",
-       mesh_id = 1
+       library="moab",
+       mesh_id=1
     )
     # setting ID to make it easier to get the mesh from the statepoint later
     mesh_filter = openmc.MeshFilter(umesh)
@@ -437,47 +437,43 @@ def test_umesh(request, export_type):
 
     tallies = openmc.Tallies([mesh_tally])
 
-    source = openmc.IndependentSource()
-
     settings = openmc.Settings()
     settings.run_mode = "fixed source"
     settings.batches = 2
     settings.particles = 100
-    settings.source = source
+    settings.source = openmc.IndependentSource()
 
     model = openmc.Model(
         materials=materials, geometry=geometry, settings=settings, tallies=tallies
     )
 
-    with tempfile.TemporaryDirectory() as tmpdir:
+    statepoint_file = model.run()
 
-        statepoint_file = model.run(cwd=tmpdir)
-
-        statepoint = openmc.StatePoint(statepoint_file)
+    with openmc.StatePoint(statepoint_file) as statepoint:
         tally: openmc.Tally = statepoint.get_tally(name="test_tally")
         umesh_from_sp: openmc.UnstructuredMesh = statepoint.meshes[1]
 
-        datasets={
-            "mean": tally.mean.squeeze(),
-            "std_dev": tally.std_dev.squeeze()
-        }
+    datasets = {
+        "mean": tally.mean.squeeze(),
+        "std_dev": tally.std_dev.squeeze()
+    }
 
-        filename = Path(tmpdir) / ("test_mesh" + export_type)
-        umesh_from_sp.write_data_to_vtk(datasets=datasets, filename=filename)
+    filename = f"test_mesh{export_type}"
+    umesh_from_sp.write_data_to_vtk(datasets=datasets, filename=filename)
 
-        assert Path(filename).exists()
+    assert Path(filename).exists()
 
-        if export_type == ".vtk":
-            reader = vtkIOLegacy.vtkGenericDataObjectReader()
-            reader.SetFileName(str(filename))
-            reader.Update()
-            assert reader.GetOutput().GetCellData().GetArray("mean")
+    if export_type == ".vtk":
+        reader = vtkIOLegacy.vtkGenericDataObjectReader()
+    elif export_type == ".vtu":
+        reader = vtkIOXML.vtkXMLGenericDataObjectReader()
+    reader.SetFileName(str(filename))
+    reader.Update()
 
-        elif export_type == ".vtk":
-            reader = vtkIOXML.vtkGenericDataObjectReader()
-            reader.SetFileName(str(filename))
-            reader.Update()
-            assert reader.GetOutput().GetCellData().GetArray("mean")
+    # Get mean from file and make sure it matches original data
+    arr = reader.GetOutput().GetCellData().GetArray("mean")
+    mean = np.array([arr.GetTuple1(i) for i in range(tally.mean.size)])
+    np.testing.assert_almost_equal(mean, datasets["mean"])
 
 
 def test_mesh_get_homogenized_materials():

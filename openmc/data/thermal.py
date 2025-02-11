@@ -5,7 +5,6 @@ from numbers import Real
 from io import StringIO
 import itertools
 import os
-import re
 import tempfile
 from warnings import warn
 
@@ -804,7 +803,7 @@ class ThermalScattering(EqualityMixin):
     @classmethod
     def from_njoy(cls, filename, filename_thermal, temperatures=None,
                   evaluation=None, evaluation_thermal=None,
-                  use_endf_data=True, nonstandard_endf=True, **kwargs):
+                  use_endf_data=True, divide_incoherent_elastic=False, **kwargs):
         """Generate thermal scattering data by running NJOY.
 
         Parameters
@@ -827,12 +826,13 @@ class ThermalScattering(EqualityMixin):
         use_endf_data : bool
             If the material has incoherent elastic scattering, the ENDF data
             will be used rather than the ACE data.
-        nonstandard_endf: bool
-            Divide incoherent elastic cross section by
-            number of principal atoms. This is not part of the ENDF-6
-            standard but it is how it is processed by NJOY.
+        divide_incoherent_elastic : bool
+            Divide incoherent elastic cross section by number of principal
+            atoms. This is not part of the ENDF-6 standard but it is how it is
+            processed by NJOY.
         **kwargs
-            Keyword arguments passed to :func:`openmc.data.njoy.make_ace_thermal`
+            Keyword arguments passed to
+            :func:`openmc.data.njoy.make_ace_thermal`
 
         Returns
         -------
@@ -857,7 +857,7 @@ class ThermalScattering(EqualityMixin):
 
             # Load ENDF data to replace incoherent elastic
             if use_endf_data:
-                data_endf = cls.from_endf(filename_thermal, nonstandard_endf)
+                data_endf = cls.from_endf(filename_thermal, divide_incoherent_elastic)
                 if data_endf.elastic is not None:
                     # Get appropriate temperatures
                     if temperatures is None:
@@ -875,7 +875,7 @@ class ThermalScattering(EqualityMixin):
         return data
 
     @classmethod
-    def from_endf(cls, ev_or_filename, nonstandard_endf):
+    def from_endf(cls, ev_or_filename, divide_incoherent_elastic=False):
         """Generate thermal scattering data from an ENDF file
 
         Parameters
@@ -883,10 +883,10 @@ class ThermalScattering(EqualityMixin):
         ev_or_filename : openmc.data.endf.Evaluation or str
             ENDF evaluation to read from. If given as a string, it is assumed to
             be the filename for the ENDF file.
-        nonstandard_endf: bool
-            Divide incoherent elastic cross section by
-            number of principal atoms. This is not part of the ENDF-6
-            standard but it is how it is processed by NJOY.
+        divide_incoherent_elastic : bool
+            Divide incoherent elastic cross section by number of principal
+            atoms. This is not part of the ENDF-6 standard but it is how it is
+            processed by NJOY.
 
         Returns
         -------
@@ -913,6 +913,7 @@ class ThermalScattering(EqualityMixin):
         data['A0'] = awr = B[2]
         data['e_max'] = energy_max = B[3]
         data['M0'] = B[5]
+        free_xs = data['free_atom_xs'] / data['M0']
 
         # Get information about non-principal atoms
         n_non_principal = params[5]
@@ -981,6 +982,23 @@ class ThermalScattering(EqualityMixin):
             def get_incoherent_elastic(file_obj, natom):
                 params, W = endf.get_tab1_record(file_obj)
                 bound_xs = params[0]/natom
+
+                # Check whether divide_incoherent_elastic was applied correctly
+                if abs(free_xs - bound_xs/(1 + 1/data['A0'])**2) > 0.5:
+                    if divide_incoherent_elastic:
+                        msg = (
+                            'Thermal scattering evaluation follows ENDF-6 '
+                            'definition of bound cross section but '
+                            'divide_incoherent_elastic=True.'
+                        )
+                    else:
+                        msg = (
+                            'Thermal scattering evaluation follows NJOY '
+                            'definition of bound cross section but '
+                            'divide_incoherent_elastic=False.'
+                        )
+                    warn(msg)
+
                 xs = {}
                 distribution = {}
                 for T, debye_waller in zip(W.x, W.y):
@@ -991,7 +1009,7 @@ class ThermalScattering(EqualityMixin):
 
             file_obj = StringIO(ev.section[7, 2])
             lhtr = endf.get_head_record(file_obj)[2]
-            natom = data['M0'] if nonstandard_endf else 1
+            natom = data['M0'] if divide_incoherent_elastic else 1
             if lhtr == 1:
                 # coherent elastic
                 xs, distribution = get_coherent_elastic(file_obj)

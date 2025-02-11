@@ -56,8 +56,6 @@ def install(omp=False, mpi=False, phdf5=False, dagmc=False, libmesh=False, ncrys
     # Add CMake arguments for standard method
     cmake_cmd = ['cmake', '..'] + cmake_args
     print(' '.join(cmake_cmd))
-
-    # Run CMake and build
     subprocess.check_call(cmake_cmd)
     subprocess.check_call(['make', '-j4'])
     subprocess.check_call(['sudo', 'make', 'install'])

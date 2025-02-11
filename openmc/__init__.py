@@ -51,18 +51,6 @@ try:
 except NameError:
     OPENMC_CORE_BASE_PATH = None
 
-if not OPENMC_CORE_BASE_PATH or not os.path.exists(OPENMC_CORE_BASE_PATH):
-    import sysconfig
-    OPENMC_CORE_BASE_PATH = os.path.join(sysconfig.get_path("platlib"), "openmc", "core")
-    if not os.path.exists(OPENMC_CORE_BASE_PATH):
-        raise ImportError("OpenMC is not installed. Please run 'pip install openmc'.")
-    warnings.warn(
-        "It seems OpenMC is being run from its source directory. "
-        "This setup is not recommended as it may lead to unexpected behavior, "
-        "such as conflicts between source and installed versions. "
-        "Please run your script from outside the OpenMC source tree.",
-        RuntimeWarning
-    )
 
 def get_paths(subdir, pattern="*", recursive=False):
     """

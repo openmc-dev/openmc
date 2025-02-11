@@ -36,6 +36,7 @@ dependencies = [
     "uncertainties",
     "setuptools",
     "endf",
+    "ncrystal",
 ]
 
 [project.optional-dependencies]

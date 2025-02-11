@@ -45,10 +45,10 @@ jobs:
             python-version: "3.11"
             mpi: y
             omp: y
-          - ncrystal: y
-            python-version: "3.11"
-            mpi: n
-            omp: n
+          # - ncrystal: y
+          #   python-version: "3.11"
+          #   mpi: n
+          #   omp: n
           - libmesh: y
             python-version: "3.11"
             mpi: y

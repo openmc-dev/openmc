@@ -328,8 +328,9 @@ class WeightWindows(IDManagerMixin):
         subelement = ET.SubElement(element, 'particle_type')
         subelement.text = self.particle_type
 
-        subelement = ET.SubElement(element, 'energy_bounds')
-        subelement.text = ' '.join(str(e) for e in self.energy_bounds)
+        if self.energy_bounds is not None:
+            subelement = ET.SubElement(element, 'energy_bounds')
+            subelement.text = ' '.join(str(e) for e in self.energy_bounds)
 
         subelement = ET.SubElement(element, 'lower_ww_bounds')
         subelement.text = ' '.join(str(b) for b in self.lower_ww_bounds.ravel('F'))
@@ -659,9 +660,8 @@ class WeightWindowGenerator:
         maximum and minimum energy for the data available at runtime.
     particle_type : {'neutron', 'photon'}
         Particle type the weight windows apply to
-    method : {'magic'}
-        The weight window generation methodology applied during an update. Only
-        'magic' is currently supported.
+    method : {'magic', 'fw_cadis'}
+        The weight window generation methodology applied during an update.
     max_realizations : int
         The upper limit for number of tally realizations when generating weight
         windows.
@@ -679,9 +679,8 @@ class WeightWindowGenerator:
         energies in [eV] for a single bin
     particle_type : {'neutron', 'photon'}
         Particle type the weight windows apply to
-    method : {'magic'}
-        The weight window generation methodology applied during an update. Only
-        'magic' is currently supported.
+    method : {'magic', 'fw_cadis'}
+        The weight window generation methodology applied during an update.
     max_realizations : int
         The upper limit for number of tally realizations when generating weight
         windows.
@@ -766,7 +765,7 @@ class WeightWindowGenerator:
     @method.setter
     def method(self, m: str):
         cv.check_type('generation method', m, str)
-        cv.check_value('generation method', m, {'magic'})
+        cv.check_value('generation method', m, ('magic', 'fw_cadis'))
         self._method = m
         if self._update_parameters is not None:
             try:
@@ -799,7 +798,7 @@ class WeightWindowGenerator:
         return self._update_parameters
 
     def _check_update_parameters(self, params: dict):
-        if self.method == 'magic':
+        if self.method == 'magic' or self.method == 'fw_cadis':
             check_params = self._MAGIC_PARAMS
 
         for key, val in params.items():
@@ -842,7 +841,7 @@ class WeightWindowGenerator:
         update_parameters : dict
             The update parameters as-read from the XML node (keys: str, values: str)
         """
-        if method == 'magic':
+        if method == 'magic' or method == 'fw_cadis':
             check_params = cls._MAGIC_PARAMS
 
         for param, param_type in check_params.items():
@@ -896,7 +895,10 @@ class WeightWindowGenerator:
         mesh_id = int(get_text(elem, 'mesh'))
         mesh = meshes[mesh_id]
 
-        energy_bounds = [float(x) for x in get_text(elem, 'energy_bounds').split()]
+        if (energy_bounds := get_text(elem, 'energy_bounds')) is not None:
+            energy_bounds = [float(x) for x in energy_bounds.split()]
+        else:
+            energy_bounds = None
         particle_type = get_text(elem, 'particle_type')
 
         wwg = cls(mesh, energy_bounds, particle_type)

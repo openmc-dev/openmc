@@ -7,10 +7,9 @@ from pathlib import Path
 import warnings
 import lxml.etree as ET
 
-import numpy as np
-
 import openmc
 import openmc._xml as xml
+from .plots import add_plot_params
 from .checkvalue import check_type, check_less_than, check_greater_than, PathLike
 
 
@@ -67,7 +66,7 @@ class Geometry:
         self._root_universe = root_universe
 
     @property
-    def bounding_box(self) -> np.ndarray:
+    def bounding_box(self) -> openmc.BoundingBox:
         return self.root_universe.bounding_box
 
     @property
@@ -219,7 +218,7 @@ class Geometry:
 
         # Add any DAGMC universes
         for e in elem.findall('dagmc_universe'):
-            dag_univ = openmc.DAGMCUniverse.from_xml_element(e)
+            dag_univ = openmc.DAGMCUniverse.from_xml_element(e, mats)
             universes[dag_univ.id] = dag_univ
 
         # Dictionary that maps each universe to a list of cells/lattices that
@@ -749,61 +748,10 @@ class Geometry:
         clone.root_universe = self.root_universe.clone()
         return clone
 
+    @add_plot_params
     def plot(self, *args, **kwargs):
         """Display a slice plot of the geometry.
 
         .. versionadded:: 0.14.0
-
-        Parameters
-        ----------
-        origin : iterable of float
-            Coordinates at the origin of the plot. If left as None then the
-            bounding box center will be used to attempt to ascertain the origin.
-            Defaults to (0, 0, 0) if the bounding box is not finite
-        width : iterable of float
-            Width of the plot in each basis direction. If left as none then the
-            bounding box width will be used to attempt to ascertain the plot
-            width. Defaults to (10, 10) if the bounding box is not finite
-        pixels : Iterable of int or int
-            If iterable of ints provided, then this directly sets the number of
-            pixels to use in each basis direction. If int provided, then this
-            sets the total number of pixels in the plot and the number of pixels
-            in each basis direction is calculated from this total and the image
-            aspect ratio.
-        basis : {'xy', 'xz', 'yz'}
-            The basis directions for the plot
-        color_by : {'cell', 'material'}
-            Indicate whether the plot should be colored by cell or by material
-        colors : dict
-            Assigns colors to specific materials or cells. Keys are instances of
-            :class:`Cell` or :class:`Material` and values are RGB 3-tuples, RGBA
-            4-tuples, or strings indicating SVG color names. Red, green, blue,
-            and alpha should all be floats in the range [0.0, 1.0], for
-            example::
-
-               # Make water blue
-               water = openmc.Cell(fill=h2o)
-               universe.plot(..., colors={water: (0., 0., 1.))
-        seed : int
-            Seed for the random number generator
-        openmc_exec : str
-            Path to OpenMC executable.
-        axes : matplotlib.Axes
-            Axes to draw to
-        legend : bool
-            Whether a legend showing material or cell names should be drawn
-        legend_kwargs : dict
-            Keyword arguments passed to :func:`matplotlib.pyplot.legend`.
-        outline : bool
-            Whether outlines between color boundaries should be drawn
-        axis_units : {'km', 'm', 'cm', 'mm'}
-            Units used on the plot axis
-        **kwargs
-            Keyword arguments passed to :func:`matplotlib.pyplot.imshow`
-        Returns
-        -------
-        matplotlib.axes.Axes
-            Axes containing resulting image
         """
-
         return self.root_universe.plot(*args, **kwargs)

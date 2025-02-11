@@ -1,6 +1,8 @@
 #include "openmc/plot.h"
 
 #include <algorithm>
+#define _USE_MATH_DEFINES // to make M_PI declared in Intel and MSVC compilers
+#include <cmath>
 #include <cstdio>
 #include <fstream>
 #include <sstream>
@@ -971,10 +973,6 @@ void Plot::create_voxel() const
 
   ProgressBar pb;
   for (int z = 0; z < pixels_[2]; z++) {
-    // update progress bar
-    pb.set_value(
-      100. * static_cast<double>(z) / static_cast<double>((pixels_[2] - 1)));
-
     // update z coordinate
     pltbase.origin_.z = ll.z + z * vox[2];
 
@@ -989,6 +987,10 @@ void Plot::create_voxel() const
 
     // Write to HDF5 dataset
     voxel_write_slice(z, dspace, dset, memspace, data_flipped.data());
+
+    // update progress bar
+    pb.set_value(
+      100. * static_cast<double>(z + 1) / static_cast<double>((pixels_[2])));
   }
 
   voxel_finalize(dspace, dset, memspace);
@@ -1299,9 +1301,9 @@ void ProjectionPlot::create_output() const
           while (intersection_found) {
             bool inside_cell = false;
 
-            int32_t i_surface = std::abs(p.surface()) - 1;
+            int32_t i_surface = p.surface_index();
             if (i_surface > 0 &&
-                model::surfaces[i_surface]->geom_type_ == GeometryType::DAG) {
+                model::surfaces[i_surface]->geom_type() == GeometryType::DAG) {
 #ifdef DAGMC
               int32_t i_cell = next_cell(i_surface,
                 p.cell_last(p.n_coord() - 1), p.lowest_coord().universe);
@@ -1332,13 +1334,13 @@ void ProjectionPlot::create_output() const
               this_line_segments[tid][horiz].emplace_back(
                 color_by_ == PlotColorBy::mats ? p.material()
                                                : p.lowest_coord().cell,
-                dist.distance, std::abs(dist.surface_index));
+                dist.distance, std::abs(dist.surface));
 
               // Advance particle
               for (int lev = 0; lev < p.n_coord(); ++lev) {
                 p.coord(lev).r += dist.distance * p.coord(lev).u;
               }
-              p.surface() = dist.surface_index;
+              p.surface() = dist.surface;
               p.n_coord_last() = p.n_coord();
               p.n_coord() = dist.coord_level;
               if (dist.lattice_translation[0] != 0 ||

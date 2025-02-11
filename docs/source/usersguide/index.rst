@@ -26,6 +26,7 @@ essential aspects of using OpenMC to perform simulations.
     processing
     parallel
     volume
+    variance_reduction
     random_ray
     troubleshoot
     

@@ -36,6 +36,17 @@ option(OPENMC_USE_MCPL        "Enable MCPL"                                     
 option(OPENMC_USE_NCRYSTAL    "Enable support for NCrystal scattering"               OFF)
 option(OPENMC_USE_UWUW        "Enable UWUW"                                          OFF)
 
+message(STATUS "OPENMC_USE_OPENMP ${OPENMC_USE_OPENMP}")
+message(STATUS "OPENMC_BUILD_TESTS ${OPENMC_BUILD_TESTS}")
+message(STATUS "OPENMC_ENABLE_PROFILE ${OPENMC_ENABLE_PROFILE}")
+message(STATUS "OPENMC_ENABLE_COVERAGE ${OPENMC_ENABLE_COVERAGE}")
+message(STATUS "OPENMC_USE_DAGMC ${OPENMC_USE_DAGMC}")
+message(STATUS "OPENMC_USE_LIBMESH ${OPENMC_USE_LIBMESH}")
+message(STATUS "OPENMC_USE_MPI ${OPENMC_USE_MPI}")
+message(STATUS "OPENMC_USE_MCPL ${OPENMC_USE_MCPL}")
+message(STATUS "OPENMC_USE_NCRYSTAL ${OPENMC_USE_NCRYSTAL}")
+message(STATUS "OPENMC_USE_UWUW ${OPENMC_USE_UWUW}")
+
 # Warnings for deprecated options
 foreach(OLD_OPT IN ITEMS "openmp" "profile" "coverage" "dagmc" "libmesh")
   if(DEFINED ${OLD_OPT})
@@ -110,7 +121,15 @@ endmacro()
 #===============================================================================
 
 if(OPENMC_USE_NCRYSTAL)
-  find_package(NCrystal REQUIRED)
+  if(NOT DEFINED "NCrystal_DIR")
+    #Invocation of "ncrystal-config --show cmakedir" is needed to find NCrystal
+    #when it is installed from Python wheels:
+    execute_process(
+      COMMAND "ncrystal-config" "--show" "cmakedir"
+      OUTPUT_VARIABLE "NCrystal_DIR" OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+  endif()
+  find_package(NCrystal 3.8.0 REQUIRED)
   message(STATUS "Found NCrystal: ${NCrystal_DIR} (version ${NCrystal_VERSION})")
 endif()
 
@@ -417,6 +436,7 @@ list(APPEND libopenmc_SOURCES
   src/tallies/filter_meshborn.cpp
   src/tallies/filter_meshsurface.cpp
   src/tallies/filter_mu.cpp
+  src/tallies/filter_musurface.cpp
   src/tallies/filter_particle.cpp
   src/tallies/filter_polar.cpp
   src/tallies/filter_sph_harm.cpp
@@ -510,6 +530,14 @@ endif()
 if(OPENMC_USE_DAGMC)
   target_compile_definitions(libopenmc PRIVATE DAGMC)
   target_link_libraries(libopenmc dagmc-shared)
+
+  if(OPENMC_USE_UWUW)
+    target_compile_definitions(libopenmc PRIVATE OPENMC_UWUW)
+    target_link_libraries(libopenmc uwuw-shared)
+  endif()
+elseif(OPENMC_USE_UWUW)
+  set(OPENMC_USE_UWUW OFF)
+  message(FATAL_ERROR "DAGMC must be enabled when UWUW is enabled.")
 endif()
 
 if(OPENMC_USE_LIBMESH)
@@ -544,11 +572,6 @@ endif()
 if(OPENMC_USE_NCRYSTAL)
   target_compile_definitions(libopenmc PRIVATE NCRYSTAL)
   target_link_libraries(libopenmc NCrystal::NCrystal)
-endif()
-
-if (OPENMC_USE_UWUW)
-  target_compile_definitions(libopenmc PRIVATE UWUW)
-  target_link_libraries(libopenmc uwuw-shared)
 endif()
 
 #===============================================================================

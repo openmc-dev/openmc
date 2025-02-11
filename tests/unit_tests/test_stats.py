@@ -195,19 +195,10 @@ def test_watt():
 
 
 def test_tabular():
+    # test linear-linear sampling
     x = np.array([0.0, 5.0, 7.0, 10.0])
     p = np.array([10.0, 20.0, 5.0, 6.0])
     d = openmc.stats.Tabular(x, p, 'linear-linear')
-    elem = d.to_xml_element('distribution')
-
-    d = openmc.stats.Tabular.from_xml_element(elem)
-    assert all(d.x == x)
-    assert all(d.p == p)
-    assert d.interpolation == 'linear-linear'
-    assert len(d) == len(x)
-
-    # test linear-linear sampling
-    d = openmc.stats.Tabular(x, p)
     n_samples = 100_000
     samples = d.sample(n_samples)
     assert_sample_mean(samples, d.mean())
@@ -242,6 +233,28 @@ def test_tabular():
     d.cdf()
 
 
+def test_tabular_from_xml():
+    x = np.array([0.0, 5.0, 7.0, 10.0])
+    p = np.array([10.0, 20.0, 5.0, 6.0])
+    d = openmc.stats.Tabular(x, p, 'linear-linear')
+    elem = d.to_xml_element('distribution')
+
+    d = openmc.stats.Tabular.from_xml_element(elem)
+    assert all(d.x == x)
+    assert all(d.p == p)
+    assert d.interpolation == 'linear-linear'
+    assert len(d) == len(x)
+
+    # Make sure XML roundtrip works with len(x) == len(p) + 1
+    x = np.array([0.0, 5.0, 7.0, 10.0])
+    p = np.array([10.0, 20.0, 5.0])
+    d = openmc.stats.Tabular(x, p, 'histogram')
+    elem = d.to_xml_element('distribution')
+    d = openmc.stats.Tabular.from_xml_element(elem)
+    assert all(d.x == x)
+    assert all(d.p == p)
+
+
 def test_legendre():
     # Pu239 elastic scattering at 100 keV
     coeffs = [1.000e+0, 1.536e-1, 1.772e-2, 5.945e-4, 3.497e-5, 1.881e-5]
@@ -262,7 +275,7 @@ def test_mixture():
     d2 = openmc.stats.Uniform(3, 7)
     p = [0.5, 0.5]
     mix = openmc.stats.Mixture(p, [d1, d2])
-    assert mix.probability == p
+    np.testing.assert_allclose(mix.probability, p)
     assert mix.distribution == [d1, d2]
     assert len(mix) == 4
 
@@ -274,7 +287,7 @@ def test_mixture():
     elem = mix.to_xml_element('distribution')
 
     d = openmc.stats.Mixture.from_xml_element(elem)
-    assert d.probability == p
+    np.testing.assert_allclose(d.probability, p)
     assert d.distribution == [d1, d2]
     assert len(d) == 4
 
@@ -295,6 +308,20 @@ def test_mixture_clip():
     # Make sure inplace returns same object
     mix_same = mix.clip(1e-6, inplace=True)
     assert mix_same is mix
+
+    # Make sure clip removes low probability distributions
+    d_small = openmc.stats.Uniform(0., 1.)
+    d_large = openmc.stats.Uniform(2., 5.)
+    mix = openmc.stats.Mixture([1e-10, 1.0], [d_small, d_large])
+    mix_clip = mix.clip(1e-3)
+    assert mix_clip.distribution == [d_large]
+
+    # Make sure warning is raised if tolerance is exceeded
+    d1 = openmc.stats.Discrete([1.0, 1.001], [1.0, 0.7e-6])
+    d2 = openmc.stats.Tabular([0.0, 1.0], [0.7e-6], interpolation='histogram')
+    mix = openmc.stats.Mixture([1.0, 1.0], [d1, d2])
+    with pytest.warns(UserWarning):
+        mix_clip = mix.clip(1e-6)
 
 
 def test_polar_azimuthal():

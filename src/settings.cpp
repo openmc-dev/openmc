@@ -73,6 +73,7 @@ bool survival_biasing {false};
 bool temperature_multipole {false};
 bool trigger_on {false};
 bool trigger_predict {false};
+bool uniform_source_sampling {false};
 bool ufs_on {false};
 bool urr_ptables_on {true};
 bool weight_windows_on {false};
@@ -121,7 +122,8 @@ SolverType solver_type {SolverType::MONTE_CARLO};
 std::unordered_set<int> sourcepoint_batch;
 std::unordered_set<int> statepoint_batch;
 std::unordered_set<int> source_write_surf_id;
-int64_t max_surface_particles;
+int64_t ssw_max_particles;
+int64_t ssw_max_files;
 int64_t ssw_cell_id {C_NONE};
 SSWCellType ssw_cell_type {SSWCellType::None};
 TemperatureMethod temperature_method {TemperatureMethod::NEAREST};
@@ -302,6 +304,10 @@ void get_run_parameters(pugi::xml_node node_base)
     if (check_for_node(random_ray_node, "volume_normalized_flux_tallies")) {
       FlatSourceDomain::volume_normalized_flux_tallies_ =
         get_node_value_bool(random_ray_node, "volume_normalized_flux_tallies");
+    }
+    if (check_for_node(random_ray_node, "adjoint")) {
+      FlatSourceDomain::adjoint_ =
+        get_node_value_bool(random_ray_node, "adjoint");
     }
   }
 }
@@ -560,6 +566,13 @@ void read_settings_xml(pugi::xml_node root)
     model::external_sources.push_back(make_unique<FileSource>(path));
   }
 
+  // Build probability mass function for sampling external sources
+  vector<double> source_strengths;
+  for (auto& s : model::external_sources) {
+    source_strengths.push_back(s->strength());
+  }
+  model::external_sources_probability.assign(source_strengths);
+
   // If no source specified, default to isotropic point source at origin with
   // Watt spectrum. No default source is needed in random ray mode.
   if (model::external_sources.empty() &&
@@ -784,6 +797,12 @@ void read_settings_xml(pugi::xml_node root)
     sourcepoint_batch = statepoint_batch;
   }
 
+  // Check is the user specified to convert strength to statistical weight
+  if (check_for_node(root, "uniform_source_sampling")) {
+    uniform_source_sampling =
+      get_node_value_bool(root, "uniform_source_sampling");
+  }
+
   // Check if the user has specified to write surface source
   if (check_for_node(root, "surf_source_write")) {
     surf_source_write = true;
@@ -802,12 +821,18 @@ void read_settings_xml(pugi::xml_node root)
 
     // Get maximum number of particles to be banked per surface
     if (check_for_node(node_ssw, "max_particles")) {
-      max_surface_particles =
-        std::stoll(get_node_value(node_ssw, "max_particles"));
+      ssw_max_particles = std::stoll(get_node_value(node_ssw, "max_particles"));
     } else {
       fatal_error("A maximum number of particles needs to be specified "
                   "using the 'max_particles' parameter to store surface "
                   "source points.");
+    }
+
+    // Get maximum number of surface source files to be created
+    if (check_for_node(node_ssw, "max_source_files")) {
+      ssw_max_files = std::stoll(get_node_value(node_ssw, "max_source_files"));
+    } else {
+      ssw_max_files = 1;
     }
 
     if (check_for_node(node_ssw, "mcpl")) {

@@ -347,10 +347,13 @@ def test_polygon():
         assert any([points_in[i] in reg for reg in star_poly.regions])
         assert points_in[i] not in +star_poly
         assert (0, 0, 0) not in -star_poly
-        if basis != 'rz':
-            offset_star = star_poly.offset(.6)
-            assert (0, 0, 0) in -offset_star
-            assert any([(0, 0, 0) in reg for reg in offset_star.regions])
+        if basis != "rz":
+            for offsets in [0.6, np.array([0.6] * 10), [0.6] * 10]:
+                offset_star = star_poly.offset(offsets)
+                assert (0, 0, 0) in -offset_star
+                assert any([(0, 0, 0) in reg for reg in offset_star.regions])
+            with pytest.raises(ValueError):
+                star_poly.offset([0.6, 0.6])
 
     # check invalid Polygon input points
     # duplicate points not just at start and end
@@ -552,3 +555,96 @@ def test_box():
     assert (0., 0.9, 0.) in -s
     assert (0., 0., -3.) not in +s
     assert (0., 0., 3.) not in +s
+
+
+def test_conical_frustum():
+    center_base = (0.0, 0.0, -3)
+    axis = (0., 0., 3.)
+    r1 = 2.0
+    r2 = 0.5
+    s = openmc.model.ConicalFrustum(center_base, axis, r1, r2)
+    assert isinstance(s.cone, openmc.Cone)
+    assert isinstance(s.plane_bottom, openmc.Plane)
+    assert isinstance(s.plane_top, openmc.Plane)
+
+    # Make sure boundary condition propagates
+    s.boundary_type = 'reflective'
+    assert s.boundary_type == 'reflective'
+    assert s.cone.boundary_type == 'reflective'
+    assert s.plane_bottom.boundary_type == 'reflective'
+    assert s.plane_top.boundary_type == 'reflective'
+
+    # Check bounding box
+    ll, ur = (+s).bounding_box
+    assert np.all(np.isinf(ll))
+    assert np.all(np.isinf(ur))
+    ll, ur = (-s).bounding_box
+    assert ll[2] == pytest.approx(-3.0)
+    assert ur[2] == pytest.approx(0.0)
+
+    # __contains__ on associated half-spaces
+    assert (0., 0., -1.) in -s
+    assert (0., 0., -4.) not in -s
+    assert (0., 0., 1.) not in -s
+    assert (1., 1., -2.99) in -s
+    assert (1., 1., -0.01) in +s
+
+    # translate method
+    s_t = s.translate((1., 1., 0.))
+    assert (1., 1., -0.01) in -s_t
+
+    # Make sure repr works
+    repr(s)
+
+    # Denegenerate case with r1 = r2
+    s = openmc.model.ConicalFrustum(center_base, axis, r1, r1)
+    assert (1., 1., -0.01) in -s
+
+
+def test_vessel():
+    center = (3.0, 2.0)
+    r = 1.0
+    p1, p2 = -5.0, 5.0
+    h1 = h2 = 1.0
+    s = openmc.model.Vessel(r, p1, p2, h1, h2, center)
+    assert isinstance(s.cyl, openmc.Cylinder)
+    assert isinstance(s.plane_bottom, openmc.Plane)
+    assert isinstance(s.plane_top, openmc.Plane)
+    assert isinstance(s.bottom, openmc.Quadric)
+    assert isinstance(s.top, openmc.Quadric)
+
+    # Make sure boundary condition propagates (but not for planes)
+    s.boundary_type = 'reflective'
+    assert s.boundary_type == 'reflective'
+    assert s.cyl.boundary_type == 'reflective'
+    assert s.bottom.boundary_type == 'reflective'
+    assert s.top.boundary_type == 'reflective'
+    assert s.plane_bottom.boundary_type == 'transmission'
+    assert s.plane_top.boundary_type == 'transmission'
+
+    # Check bounding box
+    ll, ur = (+s).bounding_box
+    assert np.all(np.isinf(ll))
+    assert np.all(np.isinf(ur))
+    ll, ur = (-s).bounding_box
+    assert np.all(np.isinf(ll))
+    assert np.all(np.isinf(ur))
+
+    # __contains__ on associated half-spaces
+    assert (3., 2., 0.) in -s
+    assert (3., 2., -5.0) in -s
+    assert (3., 2., 5.0) in -s
+    assert (3., 2., -5.9) in -s
+    assert (3., 2., 5.9) in -s
+    assert (3., 2., -6.1) not in -s
+    assert (3., 2., 6.1) not in -s
+    assert (4.5, 2., 0.) in +s
+    assert (3., 3.2, 0.) in +s
+    assert (3., 2., 7.) in +s
+
+    # translate method
+    s_t = s.translate((0., 0., 1.))
+    assert (3., 2., 6.1) in -s_t
+
+    # Make sure repr works
+    repr(s)

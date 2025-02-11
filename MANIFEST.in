@@ -1,0 +1,48 @@
+include CMakeLists.txt
+include LICENSE
+include CODE_OF_CONDUCT.md
+include CODEOWNERS
+include CONTRIBUTING.md
+include Dockerfile
+include schemas.xml
+include pyproject.toml
+include pytest.ini
+include docs/source/_templates/layout.html
+global-include *.cmake
+global-include *.cmake.in
+global-include *.rst
+recursive-include docs *.css
+recursive-include docs *.dia
+recursive-include docs *.png
+recursive-include docs *.py
+recursive-include docs *.svg
+recursive-include docs *.tex
+recursive-include docs *.txt
+recursive-include docs Makefile
+recursive-include examples *.cpp
+recursive-include examples *.py
+recursive-include examples *.xml
+recursive-include include *.h
+recursive-include include *.h.in
+recursive-include include *.hh
+recursive-include man *.1
+recursive-include src *.cc
+recursive-include src *.cpp
+recursive-include src *.rnc
+recursive-include src *.rng
+recursive-include tests *.dat
+recursive-include tests *.h5
+recursive-include tests *.h5m
+recursive-include tests *.py
+recursive-include tests *.xml
+recursive-include vendor CMakeLists.txt
+recursive-include vendor *.cc
+recursive-include vendor *.cpp
+recursive-include vendor *.h
+recursive-include vendor *.hh
+recursive-include vendor *.hpp
+recursive-include vendor *.pc.in
+recursive-include vendor *.natvis
+include vendor/gsl-lite/include/gsl/gsl
+prune docs/build
+prune docs/source/pythonapi/generated/

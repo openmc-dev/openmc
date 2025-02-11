@@ -16,8 +16,8 @@ fi
 
 # Install NCrystal if needed
 if [[ $NCRYSTAL = 'y' ]]; then
-    pip install ncrystal
-    #Basic verification:
+    pip install 'ncrystal>=4.0.0'
+    #Basic quick verification:
     nctool --test
 fi
 

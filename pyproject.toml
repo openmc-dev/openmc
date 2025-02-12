@@ -36,7 +36,7 @@ dependencies = [
     "uncertainties",
     "setuptools",
     "endf",
-    "ncrystal",
+    "ncrystal>=4.0.0",
 ]
 
 [project.optional-dependencies]
@@ -64,6 +64,7 @@ Issues = "https://github.com/openmc-dev/openmc/issues"
 
 # Scikit-Build Configuration
 [tool.scikit-build]
+cmake.define.OPENMC_USE_NCRYSTAL = "ON"
 build.verbose = true
 logging.level = "INFO"
 wheel.install-dir = "openmc"

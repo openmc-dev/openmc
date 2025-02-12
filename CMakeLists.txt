@@ -207,7 +207,11 @@ if(OPENMC_ENABLE_PROFILE)
   list(APPEND cxxflags -g -fno-omit-frame-pointer)
 endif()
 
-list(APPEND cxxflags -fno-relaxed-template-template-args)
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "20.0")
+    list(APPEND cxxflags -fno-relaxed-template-template-args)
+  endif()
+endif()
 
 if(OPENMC_ENABLE_COVERAGE)
   list(APPEND cxxflags --coverage)

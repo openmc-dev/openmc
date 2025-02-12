@@ -23,19 +23,24 @@ def _parse_args():
     return parser.parse_args()
 
 
-def main():
-    # Parse commandline arguments.
-    args = _parse_args()
+def main(out=None):
+    
+    if out is None:
+        # Parse commandline arguments.
+        args = _parse_args()
+        out = args.out
+        input = args.input
+
 
     # Make sure that the output filename ends with '.pvtp'.
-    if not args.out:
-        args.out = 'tracks.pvtp'
-    elif not args.out.endswith('.pvtp'):
-        args.out += '.pvtp'
+    if not out:
+        out = 'tracks.pvtp'
+    elif not out.endswith('.pvtp'):
+        out += '.pvtp'
 
     # Write coordinate values to points array.
-    track_file = openmc.Tracks(args.input)
-    track_file.write_to_vtk(args.out)
+    track_file = openmc.Tracks(input)
+    track_file.write_to_vtk(out)
 
 if __name__ == '__main__':
     main()

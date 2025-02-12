@@ -286,7 +286,11 @@ def update_materials(root):
     return was_updated
 
 
-def main(filenames):
+def main(filenames=None):
+    
+    if filenames is None:
+        args=parse_args()
+        filenames = args.input
     
     for fname in filenames:
         # Parse the XML data.

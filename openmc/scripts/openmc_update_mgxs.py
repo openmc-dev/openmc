@@ -48,11 +48,14 @@ def get_data(element, entry):
     return value
 
 
-def main():
-    args = parse_args()
+def main(input=None, output=None):
+    if input is None or output is None:
+        args = parse_args()
+        output = args['output']
+        input = args['input']
 
     # Parse the XML data.
-    tree = ET.parse(args['input'])
+    tree = ET.parse(input)
     root = tree.getroot()
 
     # Get old metadata
@@ -205,7 +208,7 @@ def main():
     # Build library as we go, but first we have enough to initialize it
     lib = openmc.MGXSLibrary(energy_groups)
     lib.add_xsdatas(xsd)
-    lib.export_to_hdf5(args['output'])
+    lib.export_to_hdf5(output)
 
 
 if __name__ == '__main__':

@@ -28,7 +28,15 @@ import openmc.data
 from openmc.data.ace import TableType
 
 
-def main(destination, xsdir, xsdata, libraries, metastable, libver):
+def main(destination=None, xsdir=None, xsdata=None, libraries=None, metastable=None, libver=None):
+
+    if destination is None or xsdir is None or libraries is None or metastable is None or libver is None:
+        args = parse_args()
+        destination = args.destination
+        xsdir = args.xsdir
+        libraries = args.libraries
+        metastable = args.metastable
+        libver = args.libver
 
     if not destination.is_dir():
         destination.mkdir(parents=True, exist_ok=True)
@@ -107,8 +115,7 @@ def main(destination, xsdir, xsdata, libraries, metastable, libver):
     library.export_to_xml(destination / "cross_sections.xml")
 
 
-if __name__ == "__main__":
-
+def parse_args():
     class CustomFormatter(
         argparse.ArgumentDefaultsHelpFormatter, argparse.RawDescriptionHelpFormatter
     ):
@@ -145,12 +152,9 @@ if __name__ == "__main__":
         "for performance",
     )
     args = parser.parse_args()
+    
+    return args
 
-    main(
-        destination=args.destination,
-        xsdir=args.xsdir,
-        xsdata=args.xsdata,
-        libraries=args.libraries,
-        metastable=args.metastable,
-        libver=args.libver,
-    )
+
+if __name__ == "__main__":
+    main()

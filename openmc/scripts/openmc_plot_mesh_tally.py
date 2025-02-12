@@ -316,7 +316,7 @@ class MeshPlotter(tk.Frame):
             sys.exit(1)
 
 
-def main(statepoint):
+def main(statepoint=None):
 
     # Hide root window
     root = tk.Tk()

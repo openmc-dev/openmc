@@ -8,18 +8,14 @@
 
 namespace openmc {
 
-// ---------------------------------------------------------
-// Common helpers
-// ---------------------------------------------------------
-
-//! Check if the requested IFP parameters are BetaEffective or Both.
+//! Check the value of the IFP parameter for beta effective or both.
 //!
-//! \return true if BetaEffective or Both, false otherwise.
+//! \return true if "BetaEffective" or "Both", false otherwise.
 bool is_beta_effective_or_both();
 
-//! Check if the requested IFP parameters are GenerationTime or Both.
+//! Check the value of the IFP parameter for generation time or both.
 //!
-//! \return true if GenerationTime or Both, false otherwise.
+//! \return true if "GenerationTime" or "Both", false otherwise.
 bool is_generation_time_or_both();
 
 //! Resize IFP vectors
@@ -39,10 +35,6 @@ void resize_ifp_data(
     lifetimes.resize(n_l);
   }
 }
-
-// ---------------------------------------------------------
-// physics.cpp functions
-// ---------------------------------------------------------
 
 //! Update a list of values by adding a new value if the size
 //! of the list can accomodate the new value or by shifting all
@@ -87,19 +79,11 @@ vector<T> _ifp(const T& value, const vector<T>& data)
 //! \param[in] idx Bank index from the thread_safe_append call in physics.cpp
 void ifp(const Particle& p, const SourceSite& site, int64_t idx);
 
-// ---------------------------------------------------------
-// simulation.cpp functions
-// ---------------------------------------------------------
-
 //! Resize the IFP banks used in the simulation
 void resize_simulation_ifp_banks();
 
-// ---------------------------------------------------------
-// eigenvalue.cpp functions
-// ---------------------------------------------------------
-
-//! Initialize the IFP pointers to point to the i_bank element
-//! in the corresponding IFP fission banks.
+//! Initialize pointers to the i_bank element in the corresponding IFP fission
+//! banks.
 //!
 //! \param[in] i_bank Index in the IFP fission banks
 //! \param[out] delayed_groups_ptr Delayed group numbers data pointer
@@ -107,7 +91,7 @@ void resize_simulation_ifp_banks();
 void initialize_ifp_pointers(int64_t i_bank,
   const vector<int>*& delayed_groups_ptr, const vector<double>*& lifetimes_ptr);
 
-//! Add data to local IFP lists from pointers.
+//! Add data to local IFP lists using pointers.
 //!
 //! \param[in] idx Index in the local lists
 //! \param[in,out] delayed_groups List of delayed group numbers lists
@@ -119,10 +103,10 @@ void add_ifp_data(int64_t idx, vector<vector<int>>& delayed_groups,
   vector<vector<double>>& lifetimes,
   const vector<double>* const& lifetimes_ptr);
 
-//! Retrieve IFP data locally from the IFP fission banks.
+//! Retrieve IFP data from the IFP fission banks.
 //!
 //! \param[in] idx Index in the local lists
-//! \param[in] i_bank Index in the local lists
+//! \param[in] i_bank Index in the fission banks
 //! \param[in,out] delayed_groups List of delayed group numbers lists
 //! \param[in,out] lifetimes List of lifetimes lists
 void retrieve_ifp_data_from_fission_banks(int64_t idx, int i_bank,
@@ -130,7 +114,7 @@ void retrieve_ifp_data_from_fission_banks(int64_t idx, int i_bank,
 
 #ifdef OPENMC_MPI
 
-//! Deserialization information for transfer of IFP data via MPI
+//! Deserialization information for transfer of IFP data using MPI
 struct DeserializationInfo {
   int64_t index_local; //!< local index
   int64_t n;           //!< number of sites sent
@@ -146,12 +130,12 @@ void broadcast_ifp_n_generation(int& n_generation,
   const vector<vector<int>>& delayed_groups,
   const vector<vector<double>>& lifetimes);
 
-//! Send IFP data via MPI.
+//! Send IFP data using MPI.
 //!
 //! \param[in] idx Index of the first site
 //! \param[in] n Number of sites to send
 //! \param[in] n_generation Number of generations
-//! \param[in] neighbor Index of the neighbor processor
+//! \param[in] neighbor Index of the neighboring processor
 //! \param[in] requests MPI requests
 //! \param[in] delayed_groups List of delayed group numbers lists
 //! \param[out] send_delayed_groups Delayed group numbers buffer
@@ -162,12 +146,12 @@ void send_ifp_info(int64_t idx, int64_t n, int n_generation, int neighbor,
   vector<int>& send_delayed_groups, const vector<vector<double>>& lifetimes,
   vector<double>& send_lifetimes);
 
-//! Receive IFP data through MPI.
+//! Receive IFP data using MPI.
 //!
 //! \param[in] idx Index of the first site
 //! \param[in] n Number of sites to receive
 //! \param[in] n_generation Number of generations
-//! \param[in] neighbor Index of the neighbor processor
+//! \param[in] neighbor Index of the neighboring processor
 //! \param[in] requests MPI requests
 //! \param[in] delayed_groups List of delayed group numbers
 //! \param[in] lifetimes List of lifetimes
@@ -179,7 +163,7 @@ void receive_ifp_data(int64_t idx, int64_t n, int n_generation, int neighbor,
 //! Copy partial IFP data from local lists to source banks.
 //!
 //! \param[in] idx Index of the first site
-//! \param[in] n Number of sites to send
+//! \param[in] n Number of sites to copy
 //! \param[in] i_bank Index in the IFP source banks
 //! \param[in] delayed_groups List of delayed group numbers lists
 //! \param[in] lifetimes List of lifetimes lists
@@ -187,7 +171,7 @@ void copy_partial_ifp_data_to_source_banks(int64_t idx, int n, int64_t i_bank,
   const vector<vector<int>>& delayed_groups,
   const vector<vector<double>>& lifetimes);
 
-//! Deserialize IFP information received via MPI and store it in
+//! Deserialize IFP information received using MPI and store it in
 //! the IFP source banks.
 //!
 //! \param[in] n_generation Number of generations
@@ -208,10 +192,6 @@ void copy_complete_ifp_data_to_source_banks(
   const vector<vector<int>>& delayed_groups,
   const vector<vector<double>>& lifetimes);
 
-// ---------------------------------------------------------
-// bank.cpp functions
-// ---------------------------------------------------------
-
 //! Allocate temporary vectors for IFP data.
 //!
 //! \param[in] delayed_groups List of delayed group numbers lists
@@ -222,7 +202,7 @@ void allocate_temporary_vector_ifp(vector<vector<int>>& delayed_groups,
   vector<int>*& delayed_groups_ptr, vector<vector<double>>& lifetimes,
   vector<double>*& lifetimes_ptr);
 
-//! Sort local IFP banks using data from IFP fission banks.
+//! Sort values from IFP fission banks locally.
 //!
 //! \param[in] i_bank Index in the IFP fission banks
 //! \param[in] idx Index in the local IFP banks

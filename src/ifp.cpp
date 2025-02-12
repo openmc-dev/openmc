@@ -10,10 +10,6 @@
 
 namespace openmc {
 
-// ---------------------------------------------------------
-// Common helpers
-// ---------------------------------------------------------
-
 bool is_beta_effective_or_both()
 {
   if (settings::ifp_parameter == IFPParameter::BetaEffective ||
@@ -32,13 +28,8 @@ bool is_generation_time_or_both()
   return false;
 }
 
-// ---------------------------------------------------------
-// physics.cpp functions
-// ---------------------------------------------------------
-
 void ifp(const Particle& p, const SourceSite& site, int64_t idx)
 {
-  // Beta effective
   if (is_beta_effective_or_both()) {
     const auto& delayed_groups =
       simulation::ifp_source_delayed_group_bank[p.current_work() - 1];
@@ -46,7 +37,6 @@ void ifp(const Particle& p, const SourceSite& site, int64_t idx)
       _ifp(site.delayed_group, delayed_groups);
     simulation::ifp_fission_delayed_group_bank[idx] = updated_delayed_groups;
   }
-  // Generation time
   if (is_generation_time_or_both()) {
     const auto& lifetimes =
       simulation::ifp_source_lifetime_bank[p.current_work() - 1];
@@ -54,10 +44,6 @@ void ifp(const Particle& p, const SourceSite& site, int64_t idx)
     simulation::ifp_fission_lifetime_bank[idx] = updated_lifetimes;
   }
 }
-
-// ---------------------------------------------------------
-// simulation.cpp functions
-// ---------------------------------------------------------
 
 void resize_simulation_ifp_banks()
 {
@@ -71,10 +57,6 @@ void resize_simulation_ifp_banks()
     simulation::ifp_fission_lifetime_bank.resize(3 * simulation::work_per_rank);
   }
 }
-
-// ---------------------------------------------------------
-// eigenvalue.cpp functions
-// ---------------------------------------------------------
 
 void initialize_ifp_pointers(int64_t i_bank,
   const vector<int>*& delayed_groups_ptr, const vector<double>*& lifetimes_ptr)
@@ -235,10 +217,6 @@ void copy_complete_ifp_data_to_source_banks(
       simulation::ifp_source_lifetime_bank.begin());
   }
 }
-
-// ---------------------------------------------------------
-// bank.cpp functions
-// ---------------------------------------------------------
 
 void allocate_temporary_vector_ifp(vector<vector<int>>& delayed_groups,
   vector<int>*& delayed_groups_ptr, vector<vector<double>>& lifetimes,

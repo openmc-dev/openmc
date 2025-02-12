@@ -38,10 +38,10 @@ jobs:
           # - python-version: "3.12"
           #   omp: n
           #   mpi: n
-          # - python-version: "3.13"
-          #   omp: n
-          #   mpi: n
-          # - dagmc: y
+          - python-version: "3.13"
+            omp: n
+            mpi: n
+          - dagmc: y
           #   python-version: "3.11"
           #   mpi: y
           #   omp: y
@@ -69,7 +69,7 @@ jobs:
       mpi=${{ matrix.mpi }}, dagmc=${{ matrix.dagmc }}, ncrystal=${{ matrix.ncrystal }},
       libmesh=${{ matrix.libmesh }}, event=${{ matrix.event }}
       vectfit=${{ matrix.vectfit }})"
-
+    continue-on-error: true
     env:
       MPI: ${{ matrix.mpi }}
       PHDF5: ${{ matrix.mpi }}

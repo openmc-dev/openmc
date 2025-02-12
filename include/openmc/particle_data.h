@@ -186,8 +186,8 @@ struct CacheDataMG {
 struct BoundaryInfo {
   double distance {INFINITY}; //!< distance to nearest boundary
   int surface {
-    SURFACE_NONE};          //!< surface token, non-zero if boundary is surface
-  int coord_level;          //!< coordinate level after crossing boundary
+    SURFACE_NONE}; //!< surface token, non-zero if boundary is surface
+  int coord_level; //!< coordinate level after crossing boundary
   array<int, 3>
     lattice_translation {}; //!< which way lattice indices will change
 

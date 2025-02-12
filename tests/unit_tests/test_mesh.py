@@ -441,7 +441,9 @@ def test_umesh(request, run_in_tmpdir, export_type):
     settings.run_mode = "fixed source"
     settings.batches = 2
     settings.particles = 100
-    settings.source = openmc.IndependentSource()
+    settings.source = openmc.IndependentSource(
+        space=openmc.stats.Point((0.1, 0.1, 0.1))
+    )
 
     model = openmc.Model(
         materials=materials, geometry=geometry, settings=settings, tallies=tallies

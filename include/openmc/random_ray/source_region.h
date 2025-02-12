@@ -96,6 +96,8 @@ public:
   OpenMPMutex lock_;
   double volume_ {0.0};
   double volume_t_ {0.0};
+  double volume_sq_ {0.0};
+  double volume_sq_t_ {0.0};
   double volume_naive_ {0.0};
   int position_recorded_ {0};
   int external_source_present_ {0};
@@ -151,6 +153,12 @@ public:
 
   double& volume_t(int64_t sr) { return volume_t_[sr]; }
   const double& volume_t(int64_t sr) const { return volume_t_[sr]; }
+
+  double& volume_sq(int64_t sr) { return volume_sq_[sr]; }
+  const double& volume_sq(int64_t sr) const { return volume_sq_[sr]; }
+
+  double& volume_sq_t(int64_t sr) { return volume_sq_t_[sr]; }
+  const double& volume_sq_t(int64_t sr) const { return volume_sq_t_[sr]; }
 
   double& volume_naive(int64_t sr) { return volume_naive_[sr]; }
   const double& volume_naive(int64_t sr) const { return volume_naive_[sr]; }
@@ -355,6 +363,8 @@ private:
   vector<OpenMPMutex> lock_;
   vector<double> volume_;
   vector<double> volume_t_;
+  vector<double> volume_sq_;
+  vector<double> volume_sq_t_;
   vector<double> volume_naive_;
   vector<int> position_recorded_;
   vector<int> external_source_present_;

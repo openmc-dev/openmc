@@ -68,10 +68,10 @@ exclude = ['tests*']
 "openmc.lib" = ["libopenmc.dylib", "libopenmc.so"]
 
 [project.scripts]
-openmc-ace-to-hdf5 = "scripts.openmc_ace_to_hdf5:main"
-openmc-plot-mesh-tally = "scripts.openmc_plot_mesh_tally:main"
-openmc-track-combine = "scripts.openmc_track_combine:main"
-openmc-track-to-vtk = "scripts.openmc_track_to_vtk:main"
-openmc-update-inputs = "scripts.openmc_update_inputs:main"
-openmc-update-mgxs = "scripts.openmc_update_mgxs:main"
-openmc-voxel-to-vtk = "scripts.openmc_voxel_to_vtk:main"
+openmc-ace-to-hdf5 = "openmc.scripts.openmc_ace_to_hdf5:main"
+openmc-plot-mesh-tally = "openmc.scripts.openmc_plot_mesh_tally:main"
+openmc-track-combine = "openmc.scripts.openmc_track_combine:main"
+openmc-track-to-vtk = "openmc.scripts.openmc_track_to_vtk:main"
+openmc-update-inputs = "openmc.scripts.openmc_update_inputs:main"
+openmc-update-mgxs = "openmc.scripts.openmc_update_mgxs:main"
+openmc-voxel-to-vtk = "openmc.scripts.openmc_voxel_to_vtk:main"

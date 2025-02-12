@@ -56,12 +56,12 @@ void interpolate_1d(double coord, const std::vector<double>& grid_coords,
 
 InterpolationForTPMS::InterpolationForTPMS(std::vector<double> _x_grid,
   std::vector<double> _y_grid, std::vector<double> _z_grid,
-  std::vector<std::vector<std::vector<double>>> _matrix)
+  xt::xarray<double> _matrix)
   : FunctionForTPMS(_x_grid[0], _x_grid[_x_grid.size() - 1], _y_grid[0],
       _y_grid[_y_grid.size() - 1], _z_grid[0], _z_grid[_z_grid.size() - 1]),
     x_grid(_x_grid), y_grid(_y_grid), z_grid(_z_grid), matrix(_matrix)
 {
-  minimalValue = this->get_minimum();
+  minimalValue = xt::amin(matrix)();
   useFirstDerivatives = false;
   useSecondDerivatives = false;
 }
@@ -75,31 +75,14 @@ double InterpolationForTPMS::fxyz(double x, double y, double z) const
   interpolate_1d(y, y_grid, iy0, iy1, wy0, wy1);
   interpolate_1d(z, z_grid, iz0, iz1, wz0, wz1);
 
-  double c00 = matrix[iz0][iy0][ix0] * wx0 + matrix[iz0][iy0][ix1] * wx1;
-  double c01 = matrix[iz1][iy0][ix0] * wx0 + matrix[iz1][iy0][ix1] * wx1;
-  double c10 = matrix[iz0][iy1][ix0] * wx0 + matrix[iz0][iy1][ix1] * wx1;
-  double c11 = matrix[iz1][iy1][ix0] * wx0 + matrix[iz1][iy1][ix1] * wx1;
+  double c00 = matrix(iz0,iy0,ix0) * wx0 + matrix(iz0,iy0,ix1) * wx1;
+  double c01 = matrix(iz1,iy0,ix0) * wx0 + matrix(iz1,iy0,ix1) * wx1;
+  double c10 = matrix(iz0,iy1,ix0) * wx0 + matrix(iz0,iy1,ix1) * wx1;
+  double c11 = matrix(iz1,iy1,ix0) * wx0 + matrix(iz1,iy1,ix1) * wx1;
 
   double c0 = c00 * wy0 + c10 * wy1;
   double c1 = c01 * wy0 + c11 * wy1;
   return c0 * wz0 + c1 * wz1;
-}
-
-double InterpolationForTPMS::get_minimum() const
-{
-  if (matrix.empty()) {
-    return std::numeric_limits<double>::max(); // handle empty vector
-  }
-  double min_value = std::numeric_limits<double>::max();
-  for (const auto& submatrix : matrix) {
-    for (const auto& row : submatrix) {
-      auto it = std::min_element(row.begin(), row.end());
-      if (it != row.end() && *it < min_value) {
-        min_value = *it;
-      }
-    }
-  }
-  return min_value;
 }
 
 } // namespace openmc

@@ -2885,19 +2885,8 @@ class FunctionTPMS(Surface):
             XML element containing source data
 
         """
-        def _array_to_string(myArray: np.ndarray, separators=[",",";","|"]):
-            dim = myArray.ndim
-            sep = separators[dim-1]
-            if dim == 1:
-                myString = f"["
-                for i in range(np.shape(myArray)[-1]):
-                    myString += f"{myArray[i]}{sep}"
-                return myString[:-1]+"]"
-            else:
-                myString = f"["
-                for i in range(np.shape(myArray)[-1]):
-                    myString += f"{_array_to_string(myArray[...,i])}{sep}"
-                return myString[:-1]+"]"
+        def _array_to_string(myArray: np.ndarray):
+            return " ".join([str(x) for x in myArray.flatten().tolist()])
         # Element construction
         element = super().to_xml_element()
         element.set("surface_type", self.surface_type)
@@ -2906,11 +2895,21 @@ class FunctionTPMS(Surface):
             assert np.allclose(self.fPitch.x_grid, self.fIsovalue.x_grid, 1.e-8)
             assert np.allclose(self.fPitch.y_grid, self.fIsovalue.y_grid, 1.e-8)
             assert np.allclose(self.fPitch.z_grid, self.fIsovalue.z_grid, 1.e-8)
-            element.set("x_grid", _array_to_string(self.fPitch.x_grid))
-            element.set("y_grid", _array_to_string(self.fPitch.y_grid))
-            element.set("z_grid", _array_to_string(self.fPitch.z_grid))
-            element.set("m_pitch", _array_to_string(self.fPitch.matrix))
-            element.set("m_isovalue", _array_to_string(self.fIsovalue.matrix))
+            x_grid = ET.Element('x_grid')
+            x_grid.text = _array_to_string(self.fPitch.x_grid)
+            y_grid = ET.Element('y_grid')
+            y_grid.text = _array_to_string(self.fPitch.y_grid)
+            z_grid = ET.Element('z_grid')
+            z_grid.text = _array_to_string(self.fPitch.z_grid)
+            m_pitch = ET.Element('m_pitch')
+            m_pitch.text = _array_to_string(self.fPitch.matrix)
+            m_isovalue = ET.Element('m_isovalue')
+            m_isovalue.text = _array_to_string(self.fIsovalue.matrix)
+            element.append(x_grid)
+            element.append(y_grid)
+            element.append(z_grid)
+            element.append(m_pitch)
+            element.append(m_isovalue)
         else:
             raise ValueError(f"Function type '{self.function_type}' is not recognized.")
         return element

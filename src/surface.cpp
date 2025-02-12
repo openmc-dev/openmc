@@ -54,80 +54,6 @@ void read_coeffs(
 }
 
 //==============================================================================
-// Helper functions for reading TPMS related elements of an XML surface element
-//==============================================================================
-
-// Helper function to trim whitespace from a string
-std::string trim(const std::string& str)
-{
-  size_t first = str.find_first_not_of(' ');
-  if (first == std::string::npos) {
-    return "";
-  };
-  size_t last = str.find_last_not_of(' ');
-  return str.substr(first, last - first + 1);
-}
-
-// Helper function to split a string by a delimiter and return a vector of
-// substrings
-std::vector<std::string> split(const std::string& str, char delimiter)
-{
-  std::vector<std::string> tokens;
-  std::string token;
-  std::stringstream tokenStream(str);
-  while (std::getline(tokenStream, token, delimiter)) {
-    tokens.push_back(trim(token));
-  }
-  return tokens;
-}
-
-// Function to convert a string to a vector of doubles
-std::vector<double> convertStringToVector(const std::string& input)
-{
-  std::vector<double> result;
-  std::string cleaned_str =
-    input.substr(1, input.size() - 2); // Remove brackets
-  std::vector<std::string> elements = split(cleaned_str, ',');
-  for (const std::string& elem : elements) {
-    double value = std::stod(elem);
-    result.push_back(value);
-  }
-  if (result.size() == 0) {
-    fatal_error(
-      fmt::format("Impossible to convert string '{}' into a vector.", input));
-  }
-  return result;
-}
-
-// Function to convert a string to a matrix of doubles
-std::vector<std::vector<double>> convertStringToMatrix(const std::string& input)
-{
-  std::vector<std::vector<double>> result;
-  std::string cleaned_str =
-    input.substr(1, input.size() - 2); // Remove outer brackets
-  std::vector<std::string> rows = split(cleaned_str, ';'); // Split by rows
-  for (const std::string& row : rows) {
-    result.push_back(convertStringToVector(row));
-  }
-  return result;
-}
-
-// Function to convert a string to a 3D matrix of doubles
-std::vector<std::vector<std::vector<double>>> convertStringTo3DMatrix(
-  const std::string& input)
-{
-  std::vector<std::vector<std::vector<double>>> result;
-  std::string cleaned_str =
-    input.substr(1, input.size() - 2); // Remove outer brackets
-  std::vector<std::string> matrices =
-    split(cleaned_str, '|'); // Split by matrices
-  for (const std::string& matrix : matrices) {
-    result.push_back(convertStringToMatrix(matrix));
-  }
-  return result;
-}
-
-//==============================================================================
 // Surface implementation
 //==============================================================================
 
@@ -1139,20 +1065,16 @@ SurfaceFunctionTPMS::SurfaceFunctionTPMS(pugi::xml_node surf_node)
   }
   function_type = get_node_value(surf_node, "function_type");
   if (function_type == "interpolation") {
-    std::string x_grid_str = get_node_value(surf_node, "x_grid");
-    std::string y_grid_str = get_node_value(surf_node, "y_grid");
-    std::string z_grid_str = get_node_value(surf_node, "z_grid");
-    std::vector<double> x_grid = convertStringToVector(x_grid_str);
-    std::vector<double> y_grid = convertStringToVector(y_grid_str);
-    std::vector<double> z_grid = convertStringToVector(z_grid_str);
-    std::string m_pitch_str = get_node_value(surf_node, "m_pitch");
-    std::string m_isovalue_str = get_node_value(surf_node, "m_isovalue");
-    std::vector<std::vector<std::vector<double>>> m_pitch =
-      convertStringTo3DMatrix(m_pitch_str);
-    std::vector<std::vector<std::vector<double>>> m_isovalue =
-      convertStringTo3DMatrix(m_isovalue_str);
-    fPitch = new InterpolationForTPMS(x_grid, y_grid, z_grid, m_pitch);
-    fIsovalue = new InterpolationForTPMS(x_grid, y_grid, z_grid, m_isovalue);
+    std::vector<double> x_grid = get_node_array<double>(surf_node, "x_grid");
+    std::vector<double> y_grid = get_node_array<double>(surf_node, "y_grid");
+    std::vector<double> z_grid = get_node_array<double>(surf_node, "z_grid");
+    std::vector<std::size_t> shape = {x_grid.size(), y_grid.size(), z_grid.size()};
+    xt::xarray<double> m_pitch = get_node_xarray<double>(surf_node, "m_pitch");
+    m_pitch.resize(shape);
+    xt::xarray<double> m_isovalue = get_node_xarray<double>(surf_node, "m_isovalue");
+    m_isovalue.resize(shape);
+    fPitch = std::make_unique<InterpolationForTPMS>(InterpolationForTPMS(x_grid, y_grid, z_grid, m_pitch));
+    fIsovalue = std::make_unique<InterpolationForTPMS>(InterpolationForTPMS(x_grid, y_grid, z_grid, m_isovalue));
   } else {
     fatal_error(
       fmt::format("Function type {} is not recognized.", function_type));
@@ -1161,8 +1083,8 @@ SurfaceFunctionTPMS::SurfaceFunctionTPMS(pugi::xml_node surf_node)
 
 SurfaceFunctionTPMS::~SurfaceFunctionTPMS()
 {
-  delete fPitch;
-  delete fIsovalue;
+  // delete fPitch;
+  // delete fIsovalue;
 }
 
 double SurfaceFunctionTPMS::evaluate(Position r) const

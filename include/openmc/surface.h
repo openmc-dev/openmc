@@ -56,6 +56,9 @@ public:
   //! \return true if the point is on the "positive" side of the surface and
   //!   false otherwise.
   bool sense(Position r, Direction u) const;
+
+  //! Determine if the surface has a special type and needs specific ray-tracing treatment.
+  //! \return the name of the special treatment.
   virtual bool is_tpms() const { return false; };
 
   //! Determine the direction of a ray reflected from the surface.
@@ -341,7 +344,16 @@ public:
 };
 
 //==============================================================================
-// TPMS surfaces
+//! Triply Periodic Minimal Surfaces (TPMS)
+// 
+//! Surfaces defined by an implicit function f(x,y,z) = c with c, an isovalue.
+//! Various equations exists :
+//! * Schwarz-P : cos(l*x) + cos(l*y) + cos(l*z) = c
+//! * Gyroid : sin(l*x)cos(l*z) + sin(l*y)cos(l*x) + sin(l*z)cos(l*y) = c
+//! * Diamond : sin(l*x)sin(l*y)sin(l*z) + sin(l*x)cos(l*y)cos(l*z) +
+//!             cos(l*x)sin(l*y)cos(l*z) + cos(l*x)cos(l*y)sin(l*z) = c
+//! with l=2pi/L, L is defined as the pitch of the TPMS lattice. 
+//! L and c are constants for this class.
 //==============================================================================
 
 class SurfaceTPMS : public CSGSurface {
@@ -360,11 +372,14 @@ public:
   std::string surface_type;
 
 private:
-  std::list<std::string> tpms_types = {"Schwarz_P", "Gyroid", "Diamond"};
+  std::array<std::string, 3> tpms_types = {"Schwarz_P", "Gyroid", "Diamond"};
 };
 
 //==============================================================================
-// Interpolated TPMS surfaces
+//! Interpolated Triply Periodic Minimal Surfaces (TPMS)
+//
+//! Same surfaces as above but with isovalue c and pitch L defined as a function
+//! of x,y and z.
 //==============================================================================
 
 class SurfaceFunctionTPMS : public CSGSurface {
@@ -378,15 +393,15 @@ public:
   Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
 
-  FunctionForTPMS* fPitch;
-  FunctionForTPMS* fIsovalue;
+  unique_ptr<FunctionForTPMS> fPitch;
+  unique_ptr<FunctionForTPMS> fIsovalue;
   double x0, y0, z0;
   double a, b, c, d, e, f, g, h, i;
   std::string surface_type;
   std::string function_type;
 
 private:
-  std::list<std::string> tpms_types = {"Schwarz_P", "Gyroid", "Diamond"};
+  std::array<std::string, 3> tpms_types = {"Schwarz_P", "Gyroid", "Diamond"};
 };
 
 //==============================================================================

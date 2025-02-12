@@ -13,6 +13,11 @@
 
 namespace openmc {
 
+//==============================================================================
+//! Generic Triply Periodic Minimal Surface (TPMS) class to solve that contains 
+//! the ray-tracing algorithm.
+//==============================================================================
+
 class TPMS {
 public:
   struct rootFinding {
@@ -37,6 +42,11 @@ public:
   double a, b, c, d, e, f, g, h, i;
 };
 
+//==============================================================================
+//! TPMS class to define TPMS with constant isovalue and pitch. Simpler and 
+//! Faster has no interpolation of pitch and isovalue are needed. 
+//==============================================================================
+
 class TPMSClassic : public TPMS {
 public:
   TPMSClassic(double _isovalue, double _pitch, double _x0, double _y0,
@@ -46,6 +56,11 @@ public:
 public:
   double isovalue, pitch;
 };
+
+//==============================================================================
+//! TPMS class to define TPMS with isovalue and pitch defined as a function of 
+//! x,y and z. Useful to design heterogeneous lattice.
+//==============================================================================
 
 class TPMSFunction : public TPMS {
 public:
@@ -67,6 +82,11 @@ public:
   const FunctionForTPMS& fPitch;
 };
 
+//==============================================================================
+//! TPMS class with Schwarz-P equations implemented with constant pitch and 
+//! isovalue.
+//==============================================================================
+
 class SchwarzP : public TPMSClassic {
   using TPMSClassic::TPMSClassic;
 
@@ -78,6 +98,11 @@ public:
   double fppk(double k, Position r, Direction u) const;
   double sampling_frequency(Direction u) const;
 };
+
+//==============================================================================
+//! TPMS class with Gyroid equations implemented with constant pitch and 
+//! isovalue.
+//==============================================================================
 
 class Gyroid : public TPMSClassic {
   using TPMSClassic::TPMSClassic;
@@ -91,6 +116,11 @@ public:
   double sampling_frequency(Direction u) const;
 };
 
+//==============================================================================
+//! TPMS class with Diamond equations implemented with constant pitch and 
+//! isovalue.
+//==============================================================================
+
 class Diamond : public TPMSClassic {
   using TPMSClassic::TPMSClassic;
 
@@ -102,6 +132,11 @@ public:
   double fppk(double k, Position r, Direction u) const;
   double sampling_frequency(Direction u) const;
 };
+
+//==============================================================================
+//! TPMS class with Schwarz-P equations implemented with functionalized pitch 
+//! and isovalue.
+//==============================================================================
 
 class FunctionSchwarzP : public TPMSFunction {
   using TPMSFunction::TPMSFunction;
@@ -115,6 +150,11 @@ public:
   double sampling_frequency(Direction u) const;
 };
 
+//==============================================================================
+//! TPMS class with Gyroid equations implemented with functionalized pitch 
+//! and isovalue.
+//==============================================================================
+
 class FunctionGyroid : public TPMSFunction {
   using TPMSFunction::TPMSFunction;
 
@@ -126,6 +166,11 @@ public:
   double fppk(double k, Position r, Direction u) const;
   double sampling_frequency(Direction u) const;
 };
+
+//==============================================================================
+//! TPMS class with Diamond equations implemented with functionalized pitch 
+//! and isovalue.
+//==============================================================================
 
 class FunctionDiamond : public TPMSFunction {
   using TPMSFunction::TPMSFunction;

@@ -36,7 +36,7 @@ dependencies = [
     "uncertainties",
     "setuptools",
     "endf",
-    "ncrystal",
+    "ncrystal>=4.0.0",
 ]
 
 [project.optional-dependencies]
@@ -53,6 +53,9 @@ test = ["packaging", "pytest", "pytest-cov", "colorama", "openpyxl"]
 ci = ["cpp-coveralls", "coveralls"]
 vtk = ["vtk"]
 
+[project.scripts]
+openmc = "openmc._cli_openmc:main"
+
 [project.urls]
 Homepage = "https://openmc.org"
 Documentation = "https://docs.openmc.org"
@@ -61,8 +64,10 @@ Issues = "https://github.com/openmc-dev/openmc/issues"
 
 # Scikit-Build Configuration
 [tool.scikit-build]
+cmake.define.OPENMC_USE_NCRYSTAL = "ON"
 build.verbose = true
 logging.level = "INFO"
 wheel.install-dir = "openmc"
 wheel.packages = ["openmc"]
+wheel.py-api = "py3"
 sdist.include = ["*.h5"]

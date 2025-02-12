@@ -44,7 +44,7 @@ def test_random_ray_void(shape):
         void_cell.fill = None
         source_cell.fill = None
 
-        # We also need to redefine all three tallies to use cel
+        # We also need to redefine all three tallies to use cell
         # filters instead of material ones
         estimator = 'tracklength'
         absorber_filter = openmc.CellFilter(absorber_cell)

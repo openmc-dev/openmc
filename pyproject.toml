@@ -53,6 +53,9 @@ test = ["packaging", "pytest", "pytest-cov", "colorama", "openpyxl"]
 ci = ["cpp-coveralls", "coveralls"]
 vtk = ["vtk"]
 
+[project.scripts]
+openmc = "openmc._cli_openmc:main"
+
 [project.urls]
 Homepage = "https://openmc.org"
 Documentation = "https://docs.openmc.org"

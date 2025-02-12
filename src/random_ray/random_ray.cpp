@@ -355,6 +355,57 @@ void RandomRay::attenuate_flux_flat_source(double distance, bool is_active)
   }
 }
 
+void RandomRay::attenuate_flux_flat_source_void(double distance, bool is_active)
+{
+  // The number of geometric intersections is counted for reporting purposes
+  n_event()++;
+
+  // Determine source region index etc.
+  int i_cell = lowest_coord().cell;
+
+  // The source region is the spatial region index
+  int64_t sr = domain_->source_region_offsets_[i_cell] + cell_instance();
+
+  // The source element is the energy-specific region index
+  int material = this->material();
+
+  // If ray is in the active phase (not in dead zone), make contributions to
+  // source region bookkeeping
+  if (is_active) {
+
+    // Aquire lock for source region
+    domain_->source_regions_.lock(sr).lock();
+
+    // Accumulate delta psi into new estimate of source region flux for
+    // this iteration
+    for (int g = 0; g < negroups_; g++) {
+      domain_->source_regions_.scalar_flux_new(sr, g) +=
+        angular_flux_[g] * distance;
+    }
+
+    // Accomulate volume (ray distance) into this iteration's estimate
+    // of the source region's volume
+    domain_->source_regions_.volume(sr) += distance;
+    domain_->source_regions_.volume_sq(sr) += distance;
+
+    // Tally valid position inside the source region (e.g., midpoint of
+    // the ray) if not done already
+    if (!domain_->source_regions_.position_recorded(sr)) {
+      Position midpoint = r() + u() * (distance / 2.0);
+      domain_->source_regions_.position(sr) = midpoint;
+      domain_->source_regions_.position_recorded(sr) = 1;
+    }
+
+    // Release lock
+    domain_->source_regions_.lock(sr).unlock();
+  }
+
+  // Add source to incoming angular flux
+  for (int g = 0; g < negroups_; g++) {
+    angular_flux_[g] += domain_->source_regions_.external_source(sr, g) * distance;
+  }
+}
+
 void RandomRay::attenuate_flux_linear_source(double distance, bool is_active)
 {
   // Cast domain to LinearSourceDomain

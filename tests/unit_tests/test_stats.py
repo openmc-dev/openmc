@@ -195,19 +195,10 @@ def test_watt():
 
 
 def test_tabular():
+    # test linear-linear sampling
     x = np.array([0.0, 5.0, 7.0, 10.0])
     p = np.array([10.0, 20.0, 5.0, 6.0])
     d = openmc.stats.Tabular(x, p, 'linear-linear')
-    elem = d.to_xml_element('distribution')
-
-    d = openmc.stats.Tabular.from_xml_element(elem)
-    assert all(d.x == x)
-    assert all(d.p == p)
-    assert d.interpolation == 'linear-linear'
-    assert len(d) == len(x)
-
-    # test linear-linear sampling
-    d = openmc.stats.Tabular(x, p)
     n_samples = 100_000
     samples = d.sample(n_samples)
     assert_sample_mean(samples, d.mean())
@@ -240,6 +231,28 @@ def test_tabular():
     # call the CDF method
     d = openmc.stats.Tabular(x, p, interpolation='linear-linear')
     d.cdf()
+
+
+def test_tabular_from_xml():
+    x = np.array([0.0, 5.0, 7.0, 10.0])
+    p = np.array([10.0, 20.0, 5.0, 6.0])
+    d = openmc.stats.Tabular(x, p, 'linear-linear')
+    elem = d.to_xml_element('distribution')
+
+    d = openmc.stats.Tabular.from_xml_element(elem)
+    assert all(d.x == x)
+    assert all(d.p == p)
+    assert d.interpolation == 'linear-linear'
+    assert len(d) == len(x)
+
+    # Make sure XML roundtrip works with len(x) == len(p) + 1
+    x = np.array([0.0, 5.0, 7.0, 10.0])
+    p = np.array([10.0, 20.0, 5.0])
+    d = openmc.stats.Tabular(x, p, 'histogram')
+    elem = d.to_xml_element('distribution')
+    d = openmc.stats.Tabular.from_xml_element(elem)
+    assert all(d.x == x)
+    assert all(d.p == p)
 
 
 def test_legendre():

@@ -36,6 +36,17 @@ option(OPENMC_USE_MCPL        "Enable MCPL"                                     
 option(OPENMC_USE_NCRYSTAL    "Enable support for NCrystal scattering"               OFF)
 option(OPENMC_USE_UWUW        "Enable UWUW"                                          OFF)
 
+message(STATUS "OPENMC_USE_OPENMP ${OPENMC_USE_OPENMP}")
+message(STATUS "OPENMC_BUILD_TESTS ${OPENMC_BUILD_TESTS}")
+message(STATUS "OPENMC_ENABLE_PROFILE ${OPENMC_ENABLE_PROFILE}")
+message(STATUS "OPENMC_ENABLE_COVERAGE ${OPENMC_ENABLE_COVERAGE}")
+message(STATUS "OPENMC_USE_DAGMC ${OPENMC_USE_DAGMC}")
+message(STATUS "OPENMC_USE_LIBMESH ${OPENMC_USE_LIBMESH}")
+message(STATUS "OPENMC_USE_MPI ${OPENMC_USE_MPI}")
+message(STATUS "OPENMC_USE_MCPL ${OPENMC_USE_MCPL}")
+message(STATUS "OPENMC_USE_NCRYSTAL ${OPENMC_USE_NCRYSTAL}")
+message(STATUS "OPENMC_USE_UWUW ${OPENMC_USE_UWUW}")
+
 # Warnings for deprecated options
 foreach(OLD_OPT IN ITEMS "openmp" "profile" "coverage" "dagmc" "libmesh")
   if(DEFINED ${OLD_OPT})
@@ -110,7 +121,15 @@ endmacro()
 #===============================================================================
 
 if(OPENMC_USE_NCRYSTAL)
-  find_package(NCrystal REQUIRED)
+  if(NOT DEFINED "NCrystal_DIR")
+    #Invocation of "ncrystal-config --show cmakedir" is needed to find NCrystal
+    #when it is installed from Python wheels:
+    execute_process(
+      COMMAND "ncrystal-config" "--show" "cmakedir"
+      OUTPUT_VARIABLE "NCrystal_DIR" OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+  endif()
+  find_package(NCrystal 3.8.0 REQUIRED)
   message(STATUS "Found NCrystal: ${NCrystal_DIR} (version ${NCrystal_VERSION})")
 endif()
 
@@ -382,6 +401,7 @@ list(APPEND libopenmc_SOURCES
   src/random_ray/flat_source_domain.cpp
   src/random_ray/linear_source_domain.cpp
   src/random_ray/moment_matrix.cpp
+  src/random_ray/source_region.cpp
   src/reaction.cpp
   src/reaction_product.cpp
   src/scattdata.cpp

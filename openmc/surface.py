@@ -309,7 +309,7 @@ class Surface(IDManagerMixin, ABC):
             coeffs = self._get_base_coeffs()
         coeffs = np.asarray(coeffs)
         nonzeros = ~np.isclose(coeffs, 0., rtol=0., atol=self._atol)
-        norm_factor = np.abs(coeffs[nonzeros][0])
+        norm_factor = coeffs[nonzeros][0]
         return tuple([c/norm_factor for c in coeffs])
 
     def is_equal(self, other):

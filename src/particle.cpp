@@ -91,17 +91,25 @@ void Particle::create_secondary(
     return;
   }
 
-  secondary_bank().emplace_back();
-
-  auto& bank {secondary_bank().back()};
+  auto& bank = secondary_bank().emplace_back();
   bank.particle = type;
   bank.wgt = wgt;
   bank.r = r();
   bank.u = u;
   bank.E = settings::run_CE ? E : g();
   bank.time = time();
+  bank_second_E() += bank.E;
+}
 
-  n_bank_second() += 1;
+void Particle::split(double wgt)
+{
+  auto& bank = secondary_bank().emplace_back();
+  bank.particle = type();
+  bank.wgt = wgt;
+  bank.r = r();
+  bank.u = u();
+  bank.E = settings::run_CE ? E() : g();
+  bank.time = time();
 }
 
 void Particle::from_source(const SourceSite* src)
@@ -356,7 +364,7 @@ void Particle::event_collide()
 
   // Reset banked weight during collision
   n_bank() = 0;
-  n_bank_second() = 0;
+  bank_second_E() = 0.0;
   wgt_bank() = 0.0;
   zero_delayed_bank();
 
@@ -417,6 +425,7 @@ void Particle::event_revive_from_secondary()
     from_source(&secondary_bank().back());
     secondary_bank().pop_back();
     n_event() = 0;
+    bank_second_E() = 0.0;
 
     // Subtract secondary particle energy from interim pulse-height results
     if (!model::active_pulse_height_tallies.empty() &&

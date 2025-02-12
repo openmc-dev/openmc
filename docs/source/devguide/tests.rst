@@ -84,6 +84,30 @@ that, consider the following:
   limit the number of threads that OpenBLAS uses internally; this can be done by
   setting the :envvar:`OPENBLAS_NUM_THREADS` environment variable to 1.
 
+Debugging Tests in CI
+---------------------
+
+.. _tmate: <https://github.com/mxschmitt/action-tmate?tab=readme-ov-file#debug-your-github-actions-by-using-tmate>`_
+
+Tests can be debugged in CI using a feature called `tmate`_. CI debugging can be
+enabled by including "[gha-debug]" in the commit message. When the test fails, a
+link similar to the one shown below will be provided in the GitHub Actions
+output after failure occurs. Logging into the provided link will allow you to
+debug the test in the CI environment. The following is an example of the output
+shown in the CI log that provides the link to the tmate session:
+
+.. code-block:: text
+   :linenos:
+
+   Created new session successfully
+   ssh 2VcykjU7vNdvAzEjQcc839GM2@nyc1.tmate.io
+   https://tmate.io/t/2VcykjU7vNdvAzEjQcc839GM2
+   Entering main loop
+   Web shell: https://tmate.io/t/2VcykjU7vNdvAzEjQcc839GM2
+   SSH: ssh 2VcykjU7vNdvAzEjQcc839GM2@nyc1.tmate.io
+   ...
+
+
 Generating XML Inputs
 ---------------------
 

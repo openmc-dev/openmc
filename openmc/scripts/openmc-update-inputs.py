@@ -286,9 +286,9 @@ def update_materials(root):
     return was_updated
 
 
-if __name__ == '__main__':
-    args = parse_args()
-    for fname in args.input:
+def main(filenames):
+    
+    for fname in filenames:
         # Parse the XML data.
         tree = ET.parse(fname)
         root = tree.getroot()
@@ -305,3 +305,8 @@ if __name__ == '__main__':
 
             # Write a new geometry file.
             tree.write(fname, xml_declaration=True)
+
+if __name__ == '__main__':
+    args = parse_args()
+    main(args.input)
+        

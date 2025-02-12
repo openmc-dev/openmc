@@ -28,7 +28,7 @@ import openmc.data
 from openmc.data.ace import TableType
 
 
-def ace_to_hdf5(destination, xsdir, xsdata, libraries, metastable, libver):
+def main(destination, xsdir, xsdata, libraries, metastable, libver):
 
     if not destination.is_dir():
         destination.mkdir(parents=True, exist_ok=True)
@@ -146,7 +146,7 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    ace_to_hdf5(
+    main(
         destination=args.destination,
         xsdir=args.xsdir,
         xsdata=args.xsdata,

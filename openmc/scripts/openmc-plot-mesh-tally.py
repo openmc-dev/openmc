@@ -316,21 +316,18 @@ class MeshPlotter(tk.Frame):
             sys.exit(1)
 
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('statepoint', nargs='?', help='Statepoint file')
-    args = parser.parse_args()
+def main(statepoint):
 
     # Hide root window
     root = tk.Tk()
     root.withdraw()
 
     # If no filename given as command-line argument, open file dialog
-    if args.statepoint is None:
+    if statepoint is None:
         filename = filedialog.askopenfilename(title='Select statepoint file',
                                               initialdir='.')
     else:
-        filename = args.statepoint
+        filename = statepoint
 
     if filename:
         # Check to make sure file exists
@@ -342,3 +339,11 @@ if __name__ == '__main__':
         app = MeshPlotter(root, filename)
         root.deiconify()
         root.mainloop()
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('statepoint', nargs='?', help='Statepoint file')
+    args = parser.parse_args()
+    main(args.statepoint)
+

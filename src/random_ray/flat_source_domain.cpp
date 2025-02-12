@@ -481,7 +481,7 @@ void FlatSourceDomain::convert_source_regions_to_tallies()
 
           // Loop over scores
           for (auto score_index = 0; score_index < tally.scores_.size();
-            score_index++) {
+               score_index++) {
             auto score_bin = tally.scores_[score_index];
             // If a valid tally, filter, and score combination has been found,
             // then add it to the list of tally tasks for this source element.

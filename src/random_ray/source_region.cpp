@@ -211,8 +211,8 @@ void SourceRegionContainer::mpi_sync_ranks(bool reduce_position)
     MPI_SUM, mpi::intracomm);
   MPI_Allreduce(MPI_IN_PLACE, volume_sq_.data(), n_source_regions_, MPI_DOUBLE,
     MPI_SUM, mpi::intracomm);
-  MPI_Allreduce(MPI_IN_PLACE, volume_sq_t_.data(), n_source_regions_, MPI_DOUBLE,
-    MPI_SUM, mpi::intracomm);
+  MPI_Allreduce(MPI_IN_PLACE, volume_sq_t_.data(), n_source_regions_,
+    MPI_DOUBLE, MPI_SUM, mpi::intracomm);
 
   MPI_Allreduce(MPI_IN_PLACE, scalar_flux_new_.data(),
     n_source_regions_ * negroups_, MPI_DOUBLE, MPI_SUM, mpi::intracomm);

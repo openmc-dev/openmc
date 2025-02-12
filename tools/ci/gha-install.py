@@ -36,6 +36,7 @@ def install(omp=False, mpi=False, phdf5=False, dagmc=False, libmesh=False, ncrys
 
     if ncrystal:
         cmake_args.append('-DOPENMC_USE_NCRYSTAL=ON')
+        subprocess.check_call(['pip', 'install', '"ncrystal>=4.0.0"'])
 
     # Build in coverage mode for coverage testing
     cmake_args.append('-DOPENMC_ENABLE_COVERAGE=on')
@@ -45,7 +46,8 @@ def install(omp=False, mpi=False, phdf5=False, dagmc=False, libmesh=False, ncrys
 
     # Run pip to build and install
     pip_suffix = '--config-settings=cmake.args="' + ';'.join(cmake_args) + '"'
-    subprocess.check_call(['pip', '-v', 'install', '.[test,vtk,ci,ncrystal]', pip_suffix])
+
+    subprocess.check_call(['pip', '-v', 'install', '.[test,vtk,ci]', pip_suffix])
 
     # Using standard CMake method
     # Create build directory and change to it

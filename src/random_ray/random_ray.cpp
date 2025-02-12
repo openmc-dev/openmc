@@ -274,16 +274,20 @@ void RandomRay::event_advance_ray()
 
 void RandomRay::attenuate_flux(double distance, bool is_active)
 {
-  switch (source_shape_) {
-  case RandomRaySourceShape::FLAT:
-    attenuate_flux_flat_source(distance, is_active);
-    break;
-  case RandomRaySourceShape::LINEAR:
-  case RandomRaySourceShape::LINEAR_XY:
-    attenuate_flux_linear_source(distance, is_active);
-    break;
-  default:
-    fatal_error("Unknown source shape for random ray transport.");
+  if (this->material() == MATERIAL_VOID) {
+    attenuate_flux_flat_source_void(distance, is_active);
+  } else {
+    switch (source_shape_) {
+    case RandomRaySourceShape::FLAT:
+      attenuate_flux_flat_source(distance, is_active);
+      break;
+    case RandomRaySourceShape::LINEAR:
+    case RandomRaySourceShape::LINEAR_XY:
+      attenuate_flux_linear_source(distance, is_active);
+      break;
+    default:
+      fatal_error("Unknown source shape for random ray transport.");
+    }
   }
 }
 
@@ -402,7 +406,8 @@ void RandomRay::attenuate_flux_flat_source_void(double distance, bool is_active)
 
   // Add source to incoming angular flux
   for (int g = 0; g < negroups_; g++) {
-    angular_flux_[g] += domain_->source_regions_.external_source(sr, g) * distance;
+    angular_flux_[g] +=
+      domain_->source_regions_.external_source(sr, g) * distance;
   }
 }
 

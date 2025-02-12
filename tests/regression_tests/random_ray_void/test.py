@@ -22,36 +22,30 @@ def test_random_ray_void(shape):
         openmc.reset_auto_ids()
         model = random_ray_three_region_cube()
 
-        # There is some different logic for void depending
-        # on linear vs. flat, so we test both
+        # There is some different logic for void depending on linear
+        # vs. flat, so we test both
         model.settings.random_ray['source_shape'] = shape
 
-        # As we are testing linear sources, need to have
-        # more than 10 inactive batches so the moments
-        # start getting computed
+        # As we are testing linear sources, need to have more than
+        # 10 inactive batches so the moments start getting computed
         model.settings.inactive = 20
         model.settings.batches = 40
 
-        # Begin by getting handles to the cells,
-        # and setting the source and void areas
-        # to have no fill. We leave the absorber
+        # Begin by getting handles to the cells, and setting the
+        # source and void areas to have no fill. We leave the absorber
         # as solid.
-        absorber_cell = None
-        void_cell = None
-        source_cell = None
-        cells = model.geometry.get_all_cells()
-        for key, cell in cells.items():
-            if cell.name == 'infinite source region':
-                cell.fill = None
-                source_cell = cell
-            if  cell.name == 'infinite void region':
-                cell.fill = None
-                void_cell = cell
-            if  cell.name == 'infinite absorber region':
-                absorber_cell = cell
-        
-        # We also need to redefine all three tallies
-        # to use cell filters instead of material ones,
+        absorber_cell = model.geometry.get_cells_by_name(
+            'infinite absorber region', matching=True)[0]
+        void_cell = model.geometry.get_cells_by_name(
+            'infinite void region', matching=True)[0]
+        source_cell = model.geometry.get_cells_by_name(
+            'infinite source region', matching=True)[0]
+
+        void_cell.fill = None
+        source_cell.fill = None
+
+        # We also need to redefine all three tallies to use cel
+        # filters instead of material ones
         estimator = 'tracklength'
         absorber_filter = openmc.CellFilter(absorber_cell)
         absorber_tally = openmc.Tally(name="Absorber Tally")

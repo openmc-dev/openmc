@@ -94,6 +94,7 @@ void FlatSourceDomain::batch_reset()
 #pragma omp parallel for
   for (int64_t sr = 0; sr < n_source_regions_; sr++) {
     source_regions_.volume(sr) = 0.0;
+    source_regions_.volume_sq(sr) = 0.0;
   }
 #pragma omp parallel for
   for (int64_t se = 0; se < n_source_elements_; se++) {
@@ -128,10 +129,10 @@ void FlatSourceDomain::update_neutron_source(double k_eff)
 #pragma omp parallel for
   for (int64_t sr = 0; sr < n_source_regions_; sr++) {
     int material = source_regions_.material(sr);
+    if (material == MATERIAL_VOID) {
+      continue;
+    }
     for (int g_out = 0; g_out < negroups_; g_out++) {
-      if (material == MATERIAL_VOID) {
-        continue;
-      }
       double sigma_t = sigma_t_[material * negroups_ + g_out];
       double scatter_source = 0.0;
 
@@ -215,7 +216,6 @@ void FlatSourceDomain::set_flux_to_flux_plus_source(
 {
   int material = source_regions_.material(sr);
   if (material == MATERIAL_VOID) {
-    // flux = Q/2 * sum(ell^2) / sum(ell) + sum(psi_0 * ell) / sum(ell)
     source_regions_.scalar_flux_new(sr, g) /= volume;
     source_regions_.scalar_flux_new(sr, g) +=
       0.5f * source_regions_.external_source(sr, g) *
@@ -853,23 +853,37 @@ void FlatSourceDomain::output_to_vtk() const
     }
 
     // Plot fission source
-    std::fprintf(plot, "SCALARS total_fission_source float\n");
-    std::fprintf(plot, "LOOKUP_TABLE default\n");
-    for (int i = 0; i < Nx * Ny * Nz; i++) {
-      int64_t fsr = voxel_indices[i];
+    if (settings::run_mode == RunMode::EIGENVALUE) {
+      std::fprintf(plot, "SCALARS total_fission_source float\n");
+      std::fprintf(plot, "LOOKUP_TABLE default\n");
+      for (int i = 0; i < Nx * Ny * Nz; i++) {
+        int64_t fsr = voxel_indices[i];
 
-      float total_fission = 0.0;
-      int mat = source_regions_.material(fsr);
-      if (mat != MATERIAL_VOID) {
-        for (int g = 0; g < negroups_; g++) {
-          int64_t source_element = fsr * negroups_ + g;
-          float flux = evaluate_flux_at_point(voxel_positions[i], fsr, g);
-          double sigma_f = sigma_f_[mat * negroups_ + g];
-          total_fission += sigma_f * flux;
+        float total_fission = 0.0;
+        int mat = source_regions_.material(fsr);
+        if (mat != MATERIAL_VOID) {
+          for (int g = 0; g < negroups_; g++) {
+            int64_t source_element = fsr * negroups_ + g;
+            float flux = evaluate_flux_at_point(voxel_positions[i], fsr, g);
+            double sigma_f = sigma_f_[mat * negroups_ + g];
+            total_fission += sigma_f * flux;
+          }
         }
+        total_fission = convert_to_big_endian<float>(total_fission);
+        std::fwrite(&total_fission, sizeof(float), 1, plot);
       }
-      total_fission = convert_to_big_endian<float>(total_fission);
-      std::fwrite(&total_fission, sizeof(float), 1, plot);
+    } else {
+      std::fprintf(plot, "SCALARS external_source float\n");
+      std::fprintf(plot, "LOOKUP_TABLE default\n");
+      for (int i = 0; i < Nx * Ny * Nz; i++) {
+        int64_t fsr = voxel_indices[i];
+        float total_external = 0.0f;
+        for (int g = 0; g < negroups_; g++) {
+          total_external += source_regions_.external_source(fsr, g);
+        }
+        total_external = convert_to_big_endian<float>(total_external);
+        std::fwrite(&total_external, sizeof(float), 1, plot);
+      }
     }
 
     std::fclose(plot);

@@ -126,7 +126,9 @@ void LinearSourceDomain::normalize_scalar_flux_and_volumes(
       source_regions_.volume(sr) * normalization_factor;
     source_regions_.volume(sr) =
       source_regions_.volume_t(sr) * volume_normalization_factor;
-      source_regions_.volume_sq(sr) = (source_regions_.volume_sq_t(sr) / source_regions_.volume_t(sr)) * volume_normalization_factor;
+    source_regions_.volume_sq(sr) =
+      (source_regions_.volume_sq_t(sr) / source_regions_.volume_t(sr)) *
+      volume_normalization_factor;
     if (source_regions_.volume_t(sr) > 0.0) {
       double inv_volume = 1.0 / source_regions_.volume_t(sr);
       source_regions_.centroid(sr) = source_regions_.centroid_t(sr);
@@ -146,8 +148,8 @@ void LinearSourceDomain::set_flux_to_flux_plus_source(
   } else {
     source_regions_.scalar_flux_new(sr, g) /= volume;
     source_regions_.scalar_flux_new(sr, g) += source_regions_.source(sr, g);
-    source_regions_.flux_moments_new(sr, g) *= (1.0 / volume);
   }
+  source_regions_.flux_moments_new(sr, g) *= (1.0 / volume);
 }
 
 void LinearSourceDomain::set_flux_to_old_flux(int64_t sr, int g)

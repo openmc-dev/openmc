@@ -1074,13 +1074,8 @@ void FlatSourceDomain::set_adjoint_sources(const vector<double>& forward_flux)
 #pragma omp parallel for
   for (int64_t sr = 0; sr < n_source_regions_; sr++) {
     for (int g = 0; g < negroups_; g++) {
-      // Protect against a case where the forward flux is zero or negative.
-      if (forward_flux[sr * negroups_ + g] > 0.0) {
-        source_regions_.external_source(sr, g) =
-          1.0 / forward_flux[sr * negroups_ + g];
-      } else {
-        source_regions_.external_source(sr, g) = 0.0;
-      }
+      source_regions_.external_source(sr, g) =
+        1.0 / forward_flux[sr * negroups_ + g];
     }
   }
 

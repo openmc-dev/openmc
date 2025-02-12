@@ -78,9 +78,6 @@ foreach(OLD_BLD in ITEMS "debug" "optimize")
   endif()
 endforeach()
 
-# Include the GenerateScript.cmake file
-include(cmake/GenerateScript.cmake)
-
 #===============================================================================
 # Set a default build configuration if not explicitly specified
 #===============================================================================
@@ -635,8 +632,6 @@ target_link_libraries(openmc libopenmc)
 target_compile_features(openmc PUBLIC cxx_std_17)
 target_compile_features(libopenmc PUBLIC cxx_std_17)
 set_target_properties(openmc libopenmc PROPERTIES CXX_EXTENSIONS OFF)
-
-generate_and_install_python_script(openmc)
 
 # Set rpath for openmc executable
 if(OPENMC_BINARY_RPATH)

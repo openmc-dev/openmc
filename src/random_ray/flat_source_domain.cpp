@@ -830,7 +830,9 @@ void FlatSourceDomain::output_to_vtk() const
         int64_t source_element = fsr * negroups_ + g;
         float flux = 0;
         if (fsr > 0) {
-          flux = evaluate_flux_at_point(voxel_positions[i], fsr, g);
+          //flux = evaluate_flux_at_point(voxel_positions[i], fsr, g);
+          //if (flux < 0.0)
+            flux = FlatSourceDomain::evaluate_flux_at_point(voxel_positions[i], fsr, g);
         }
         if (flux < 0.0) {
           num_neg++;
@@ -1445,6 +1447,7 @@ void FlatSourceDomain::handle_small_subdivided_source_regions()
   // "small" source regions will regress to flat, even in linear source mode,
   // which is probably a safe approximation given their small size.
   int64_t n_insufficient = 0;
+  int64_t n_mag_flat = 0;
 #pragma omp parallel for reduction(+ : n_insufficient)
   for (int64_t sr = 0; sr < source_regions_.n_source_regions(); sr++) {
     SourceRegionHandle srh = source_regions_.get_source_region_handle(sr);
@@ -1453,7 +1456,13 @@ void FlatSourceDomain::handle_small_subdivided_source_regions()
       base_source_regions_.get_source_region_handle(base_sr);
     double avg_vol = parent_srh.volume_t() / n_children[base_sr];
     double vol = srh.volume_t();
-    bool sufficient_vol = vol > 0.25 * avg_vol;
+    bool sufficient_vol = vol > 0.01 * avg_vol;
+
+    if (!sufficient_vol) {
+      srh.is_small() = 1;
+    }
+    if (srh.is_small())
+      n_insufficient++;
 
     /*
     for (int g = 0; g < negroups_; g++) {
@@ -1464,21 +1473,52 @@ void FlatSourceDomain::handle_small_subdivided_source_regions()
       }
     }
       */
+    /**/
     for (int g = 0; g < negroups_; g++) {
-      if (srh.volume() == 0.0 || srh.scalar_flux_new(g) < 0.0 ||
-          !sufficient_vol) {
-        double alpha = 0.5;
-        double flux = parent_srh.scalar_flux_new(g) / parent_srh.volume_t();
-        srh.scalar_flux_new(g) =
-          alpha * flux + (1.0 - alpha) * srh.scalar_flux_old(g);
-        if (srh.is_linear_) {
-          MomentArray flux_moments =
-            parent_srh.flux_moments_new(g) / parent_srh.volume_t();
-          // srh.flux_moments_new(g) =
-          //   alpha * flux_moments + (1.0 - alpha) * srh.flux_moments_old(g);
-          srh.flux_moments_new(g) = {0.0, 0.0, 0.0};
+      if (true) {
+        if (srh.volume() == 0.0 || srh.scalar_flux_new(g) < 0.0 ||
+            srh.is_small()) {
+          double alpha = 0.5;
+          double flux = parent_srh.scalar_flux_new(g) / parent_srh.volume_t();
+          srh.scalar_flux_new(g) =
+            alpha * flux + (1.0 - alpha) * srh.scalar_flux_old(g);
+          if (srh.is_linear_) {
+            // MomentArray flux_moments =
+            //   parent_srh.flux_moments_new(g) / parent_srh.volume_t();
+            //  srh.flux_moments_new(g) =
+            //    alpha * flux_moments + (1.0 - alpha) *
+            //    srh.flux_moments_old(g);
+            MomentArray arr = srh.flux_moments_new(g);
+            // check size of flux moments to find large ones
+            if (arr[0] > 1.0e2 || arr[1] > 1.0e2 || arr[2] > 1.0e2) {
+              // fmt::print("Setting flux moments of {} to zero\n",
+              // srh.flux_moments_new(g));
+            }
+            srh.flux_moments_new(g) = {0.0, 0.0, 0.0};
+          }
         }
       }
+
+      MomentArray& arr = srh.flux_moments_new(g);
+
+      
+      const double max_magnitude = 1000.0;
+      double mag = std::sqrt(arr.x * arr.x + arr.y * arr.y + arr.z * arr.z);
+      if (mag > max_magnitude) {
+        double scale = max_magnitude / mag;
+        srh.flux_moments_new(g) *= scale;
+        n_mag_flat++;
+      }
+        
+
+
+
+      // check size of flux moments to find large ones
+      // if (std::abs(arr[0]) > 1.0e2 || std::abs(arr[1]) > 1.0e2 ||
+      //    std::abs(arr[2]) > 1.0e2) {
+      //  fmt::print("Leaving flux moments of {} volume = {}, frac of avg =
+      //  {}\n", srh.flux_moments_new(g), vol, vol/avg_vol);
+      // }
     }
 
     /*
@@ -1507,9 +1547,11 @@ void FlatSourceDomain::handle_small_subdivided_source_regions()
       }
     }
   }
-  fmt::print("Number of insufficient {}, total {}, percent = {}%\n",
-    n_insufficient, source_regions_.n_source_regions(),
-    100.0 * n_insufficient / source_regions_.n_source_regions());
+  fmt::print("Number of insufficient {}, Number of mag flat {}, total {}, "
+             "percent insuf = {}%, percent mag fat = {}%\n",
+    n_insufficient, n_mag_flat, source_regions_.n_source_regions(),
+    100.0 * n_insufficient / source_regions_.n_source_regions(),
+    100.0 * n_mag_flat / source_regions_.n_source_regions());
 
   // TODO: It would be nice to update the base source region fluxes, to
   // allow for better starting estimates when a new source region is

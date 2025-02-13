@@ -123,6 +123,7 @@ public:
 
   // Scalar fields
   int* material_;
+  int* is_small_;
   OpenMPMutex* lock_;
   double* volume_;
   double* volume_t_;
@@ -166,6 +167,9 @@ public:
 
   int& material() { return *material_; }
   const int& material() const { return *material_; }
+
+  int& is_small() { return *is_small_; }
+  const int& is_small() const { return *is_small_; }
 
   OpenMPMutex& lock() { return *lock_; }
   const OpenMPMutex& lock() const { return *lock_; }
@@ -282,6 +286,7 @@ public:
   double volume_naive_ {0.0};
   int position_recorded_ {0};
   int external_source_present_ {0};
+  int is_small_ {0};
   Position position_ {0.0, 0.0, 0.0};
   Position centroid_ {0.0, 0.0, 0.0};
   Position centroid_iteration_ {0.0, 0.0, 0.0};
@@ -334,6 +339,9 @@ public:
   // Public Accessors
   int& material(int64_t sr) { return material_[sr]; }
   const int& material(int64_t sr) const { return material_[sr]; }
+
+  int& is_small(int64_t sr) { return is_small_[sr]; }
+  const int& is_small(int64_t sr) const { return is_small_[sr]; }
 
   OpenMPMutex& lock(int64_t sr) { return lock_[sr]; }
   const OpenMPMutex& lock(int64_t sr) const { return lock_[sr]; }
@@ -559,6 +567,7 @@ public:
 
   // SoA storage for scalar fields (one item per source region)
   vector<int> material_;
+  vector<int> is_small_;
   vector<OpenMPMutex> lock_;
   vector<double> volume_;
   vector<double> volume_t_;

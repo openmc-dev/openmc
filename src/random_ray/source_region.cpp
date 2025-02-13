@@ -58,6 +58,7 @@ SourceRegionHandle SourceRegion::get_source_region_handle()
   SourceRegionHandle handle;
   handle.negroups_ = scalar_flux_old_.size();
   handle.material_ = &material_;
+  handle.is_small_ = &is_small_;
   handle.is_linear_ = source_gradients_.size() > 0;
   handle.lock_ = &lock_;
   handle.volume_ = &volume_;
@@ -97,6 +98,7 @@ void SourceRegionContainer::push_back(const SourceRegion& sr)
 
   // Scalar fields
   material_.push_back(sr.material_);
+  is_small_.push_back(sr.is_small_);
   lock_.push_back(sr.lock_);
   volume_.push_back(sr.volume_);
   volume_t_.push_back(sr.volume_t_);
@@ -146,6 +148,7 @@ void SourceRegionContainer::assign(
   // Clear existing data
   n_source_regions_ = 0;
   material_.clear();
+  is_small_.clear();
   lock_.clear();
   volume_.clear();
   volume_t_.clear();
@@ -319,6 +322,7 @@ SourceRegionHandle SourceRegionContainer::get_source_region_handle(int64_t sr)
   SourceRegionHandle handle;
   handle.negroups_ = negroups();
   handle.material_ = &material(sr);
+  handle.is_small_ = &is_small(sr);
   handle.is_linear_ = is_linear();
   handle.lock_ = &lock(sr);
   handle.volume_ = &volume(sr);

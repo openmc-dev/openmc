@@ -830,9 +830,9 @@ void FlatSourceDomain::output_to_vtk() const
         int64_t source_element = fsr * negroups_ + g;
         float flux = 0;
         if (fsr > 0) {
-          //flux = evaluate_flux_at_point(voxel_positions[i], fsr, g);
+          flux = evaluate_flux_at_point(voxel_positions[i], fsr, g);
           //if (flux < 0.0)
-            flux = FlatSourceDomain::evaluate_flux_at_point(voxel_positions[i], fsr, g);
+          //  flux = FlatSourceDomain::evaluate_flux_at_point(voxel_positions[i], fsr, g);
         }
         if (flux < 0.0) {
           num_neg++;

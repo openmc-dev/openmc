@@ -197,6 +197,9 @@ void fisher_yates_shuffle(vector<int64_t>& arr, uint64_t* seed)
 //      URL https://arxiv.org/abs/1706.02808
 vector<double> rhalton(int dim, uint64_t* seed, int64_t skip = 0)
 {
+  if (dim > 10) {
+    fatal_error("Halton sampling dimension too large");
+  }
   int64_t b, res, dig;
   double b2r, ans;
 const std::array<int64_t, 10> primes = {2, 3, 5, 7, 11, 13, 17, 19, 23, 29};

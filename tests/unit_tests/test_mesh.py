@@ -401,7 +401,6 @@ def test_umesh_roundtrip(run_in_tmpdir, request):
     assert umesh.id == xml_mesh.id
 
 
-@pytest.mark.skipif(not openmc.lib._dagmc_enabled(), reason="DAGMC not enabled.")
 @pytest.fixture(scope='module')
 def simple_umesh(request):
     """Fixture returning UnstructuredMesh with all attributes"""
@@ -448,6 +447,7 @@ def simple_umesh(request):
             return sp.meshes[1]
 
 
+@pytest.mark.skipif(not openmc.lib._dagmc_enabled(), reason="DAGMC not enabled.")
 @pytest.mark.parametrize('export_type', ('.vtk', '.vtu'))
 def test_umesh(run_in_tmpdir, simple_umesh, export_type):
     """Performs a minimal UnstructuredMesh simulation, reads in the resulting

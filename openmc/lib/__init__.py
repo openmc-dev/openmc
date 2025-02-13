@@ -16,6 +16,15 @@ from ctypes import CDLL, c_bool, c_int
 import os
 
 if os.environ.get('READTHEDOCS', None) != 'True':
+    # Load libNCrystal first if it exists
+    try:
+        import subprocess
+        ncrystal_path = subprocess.check_output(["ncrystal-config", "--show", "libpath"], text=True).strip()
+        if os.path.isfile(ncrystal_path):
+            CDLL(ncrystal_path, mode=os.RTLD_GLOBAL)
+    except Exception:
+        pass # NCrystal is not installed
+
     # Open shared library
     import openmc
     _filename = openmc.lib[0]

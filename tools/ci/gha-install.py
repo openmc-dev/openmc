@@ -36,7 +36,6 @@ def install(omp=False, mpi=False, phdf5=False, dagmc=False, libmesh=False, ncrys
 
     if ncrystal:
         cmake_args.append('-DOPENMC_USE_NCRYSTAL=ON')
-        subprocess.check_call(['pip', 'install', 'ncrystal'])
 
     # Build in coverage mode for coverage testing
     cmake_args.append('-DOPENMC_ENABLE_COVERAGE=on')

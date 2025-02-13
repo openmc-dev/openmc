@@ -51,6 +51,8 @@ docs = [
 test = ["packaging", "pytest", "pytest-cov", "colorama", "openpyxl"]
 ci = ["cpp-coveralls", "coveralls"]
 vtk = ["vtk"]
+format = ["black~=24.8"]
+develop = ["openmc[test,format]"]
 
 [project.urls]
 Homepage = "https://openmc.org"
@@ -66,6 +68,10 @@ exclude = ['tests*']
 "openmc.data.effective_dose" = ["**/*.txt"]
 "openmc.data" = ["*.txt", "*.DAT", "*.json", "*.h5"]
 "openmc.lib" = ["libopenmc.dylib", "libopenmc.so"]
+
+[tool.black]
+target-version = ["py311", "py312", "py313"]
+line-length = 88
 
 [project.scripts]
 openmc-ace-to-hdf5 = "scripts.openmc_ace_to_hdf5:main"

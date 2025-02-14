@@ -397,6 +397,8 @@ void RandomRay::attenuate_flux_flat_source(
     // Accomulate volume (ray distance) into this iteration's estimate
     // of the source region's volume
     srh.volume() += distance;
+
+    srh.n_hits() += 1;
   }
 
   // Tally valid position inside the source region (e.g., midpoint of
@@ -529,6 +531,8 @@ void RandomRay::attenuate_flux_linear_source(
     srh.centroid_iteration() += midpoint * distance;
     moment_matrix_estimate *= distance;
     srh.mom_matrix() += moment_matrix_estimate;
+
+    srh.n_hits() += 1;
   }
 
   // Tally valid position inside the source region (e.g., midpoint of

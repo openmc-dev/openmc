@@ -2,6 +2,7 @@
 
 #include "openmc/error.h"
 #include "openmc/message_passing.h"
+#include "openmc/simulation.h"
 
 namespace openmc {
 
@@ -40,6 +41,7 @@ SourceRegion::SourceRegion(const SourceRegionHandle& handle, int64_t parent_sr)
   material_ = handle.material();
   mesh_ = handle.mesh();
   parent_sr_ = parent_sr;
+  birthday_ = simulation::current_batch-1;
   for (int g = 0; g < scalar_flux_new_.size(); g++) {
     scalar_flux_old_[g] = handle.scalar_flux_old_[g];
     source_[g] = handle.source_[g];
@@ -59,6 +61,8 @@ SourceRegionHandle SourceRegion::get_source_region_handle()
   handle.negroups_ = scalar_flux_old_.size();
   handle.material_ = &material_;
   handle.is_small_ = &is_small_;
+  handle.n_hits_ = &n_hits_;
+  handle.birthday_ = &birthday_;
   handle.is_linear_ = source_gradients_.size() > 0;
   handle.lock_ = &lock_;
   handle.volume_ = &volume_;
@@ -99,6 +103,8 @@ void SourceRegionContainer::push_back(const SourceRegion& sr)
   // Scalar fields
   material_.push_back(sr.material_);
   is_small_.push_back(sr.is_small_);
+  n_hits_.push_back(sr.n_hits_);
+  birthday_.push_back(sr.birthday_);
   lock_.push_back(sr.lock_);
   volume_.push_back(sr.volume_);
   volume_t_.push_back(sr.volume_t_);
@@ -149,6 +155,8 @@ void SourceRegionContainer::assign(
   n_source_regions_ = 0;
   material_.clear();
   is_small_.clear();
+  n_hits_.clear();
+  birthday_.clear();
   lock_.clear();
   volume_.clear();
   volume_t_.clear();
@@ -323,6 +331,8 @@ SourceRegionHandle SourceRegionContainer::get_source_region_handle(int64_t sr)
   handle.negroups_ = negroups();
   handle.material_ = &material(sr);
   handle.is_small_ = &is_small(sr);
+  handle.n_hits_ = &n_hits(sr);
+  handle.birthday_ = &birthday(sr);
   handle.is_linear_ = is_linear();
   handle.lock_ = &lock(sr);
   handle.volume_ = &volume(sr);

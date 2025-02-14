@@ -4,6 +4,7 @@
 #include "openmc/openmp_interface.h"
 
 #include <memory>
+#include <unordered_map>
 
 namespace openmc {
 

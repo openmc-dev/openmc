@@ -124,6 +124,8 @@ public:
   // Scalar fields
   int* material_;
   int* is_small_;
+  int* n_hits_;
+  int* birthday_;
   OpenMPMutex* lock_;
   double* volume_;
   double* volume_t_;
@@ -170,6 +172,12 @@ public:
 
   int& is_small() { return *is_small_; }
   const int& is_small() const { return *is_small_; }
+
+  int& n_hits() { return *n_hits_; }
+  const int& n_hits() const { return *n_hits_; }
+
+  int& birthday() { return *birthday_; }
+  const int& birthday() const { return *birthday_; }
 
   OpenMPMutex& lock() { return *lock_; }
   const OpenMPMutex& lock() const { return *lock_; }
@@ -287,6 +295,8 @@ public:
   int position_recorded_ {0};
   int external_source_present_ {0};
   int is_small_ {0};
+  int n_hits_ {0};
+  int birthday_ {0};
   Position position_ {0.0, 0.0, 0.0};
   Position centroid_ {0.0, 0.0, 0.0};
   Position centroid_iteration_ {0.0, 0.0, 0.0};
@@ -342,6 +352,12 @@ public:
 
   int& is_small(int64_t sr) { return is_small_[sr]; }
   const int& is_small(int64_t sr) const { return is_small_[sr]; }
+
+  int& n_hits(int64_t sr) { return n_hits_[sr]; }
+  const int& n_hits(int64_t sr) const { return n_hits_[sr]; }
+
+  int& birthday(int64_t sr) { return birthday_[sr]; }
+  const int& birthday(int64_t sr) const { return birthday_[sr]; }
 
   OpenMPMutex& lock(int64_t sr) { return lock_[sr]; }
   const OpenMPMutex& lock(int64_t sr) const { return lock_[sr]; }
@@ -568,6 +584,8 @@ public:
   // SoA storage for scalar fields (one item per source region)
   vector<int> material_;
   vector<int> is_small_;
+  vector<int> n_hits_;
+  vector<int> birthday_;
   vector<OpenMPMutex> lock_;
   vector<double> volume_;
   vector<double> volume_t_;

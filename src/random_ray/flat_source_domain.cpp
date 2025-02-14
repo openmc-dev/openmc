@@ -830,9 +830,10 @@ void FlatSourceDomain::output_to_vtk() const
         int64_t source_element = fsr * negroups_ + g;
         float flux = 0;
         if (fsr > 0) {
-          flux = evaluate_flux_at_point(voxel_positions[i], fsr, g);
-          //if (flux < 0.0)
-          //  flux = FlatSourceDomain::evaluate_flux_at_point(voxel_positions[i], fsr, g);
+          // flux = evaluate_flux_at_point(voxel_positions[i], fsr, g);
+          //  if (flux < 0.0)
+          flux = FlatSourceDomain::evaluate_flux_at_point(
+            voxel_positions[i], fsr, g);
         }
         if (flux < 0.0) {
           num_neg++;
@@ -893,6 +894,37 @@ void FlatSourceDomain::output_to_vtk() const
       }
       total_fission = convert_to_big_endian<float>(total_fission);
       std::fwrite(&total_fission, sizeof(float), 1, plot);
+    }
+
+    // Plot Birthday
+    std::fprintf(plot, "SCALARS Birthday int\n");
+    std::fprintf(plot, "LOOKUP_TABLE default\n");
+    for (int i = 0; i < Nx * Ny * Nz; i++) {
+      int64_t fsr = voxel_indices[i];
+      int birthday = 0;
+      if (fsr > 0) {
+        birthday = source_regions_.birthday(fsr);
+      }
+      birthday = convert_to_big_endian<int>(birthday);
+      std::fwrite(&birthday, sizeof(int), 1, plot);
+    }
+
+    // Plot Flux Moments Magnitude
+    std::fprintf(plot, "SCALARS Flux_Moments_Magnitude float\n");
+    std::fprintf(plot, "LOOKUP_TABLE default\n");
+    for (int i = 0; i < Nx * Ny * Nz; i++) {
+      int64_t fsr = voxel_indices[i];
+      float max_mag = 0.0;
+      if (fsr > 0) {
+        for (int g = 0; g < negroups_; g++) {
+          const MomentArray& arr = source_regions_.flux_moments_new(fsr, g);
+          double mag = std::sqrt(arr.x * arr.x + arr.y * arr.y + arr.z * arr.z);
+          if (mag > max_mag)
+            max_mag = mag;
+        }
+      }
+      max_mag = convert_to_big_endian<float>(max_mag);
+      std::fwrite(&max_mag, sizeof(float), 1, plot);
     }
 
     std::fclose(plot);
@@ -1448,7 +1480,8 @@ void FlatSourceDomain::handle_small_subdivided_source_regions()
   // which is probably a safe approximation given their small size.
   int64_t n_insufficient = 0;
   int64_t n_mag_flat = 0;
-#pragma omp parallel for reduction(+ : n_insufficient)
+  int64_t n_hit_flat = 0;
+#pragma omp parallel for reduction(+ : n_insufficient, n_hit_flat, n_mag_flat)
   for (int64_t sr = 0; sr < source_regions_.n_source_regions(); sr++) {
     SourceRegionHandle srh = source_regions_.get_source_region_handle(sr);
     int64_t base_sr = srh.parent_sr();
@@ -1475,43 +1508,50 @@ void FlatSourceDomain::handle_small_subdivided_source_regions()
       */
     /**/
     for (int g = 0; g < negroups_; g++) {
-      if (true) {
-        if (srh.volume() == 0.0 || srh.scalar_flux_new(g) < 0.0 ||
-            srh.is_small()) {
-          double alpha = 0.5;
-          double flux = parent_srh.scalar_flux_new(g) / parent_srh.volume_t();
-          srh.scalar_flux_new(g) =
-            alpha * flux + (1.0 - alpha) * srh.scalar_flux_old(g);
-          if (srh.is_linear_) {
-            // MomentArray flux_moments =
-            //   parent_srh.flux_moments_new(g) / parent_srh.volume_t();
-            //  srh.flux_moments_new(g) =
-            //    alpha * flux_moments + (1.0 - alpha) *
-            //    srh.flux_moments_old(g);
-            MomentArray arr = srh.flux_moments_new(g);
-            // check size of flux moments to find large ones
-            if (arr[0] > 1.0e2 || arr[1] > 1.0e2 || arr[2] > 1.0e2) {
-              // fmt::print("Setting flux moments of {} to zero\n",
-              // srh.flux_moments_new(g));
-            }
-            srh.flux_moments_new(g) = {0.0, 0.0, 0.0};
+      // if (srh.volume() == 0.0 || srh.scalar_flux_new(g) < 0.0 ||
+      //   srh.is_small()) {
+       // if (srh.scalar_flux_new(g) < 0.0) { // works for shielding, not so hot for c5g7?
+
+     if (srh.is_small() || srh.scalar_flux_new(g) < 0.0) { // works
+        //if (srh.is_small() || srh.volume_naive() == 0.0) { // bad
+        double alpha = 0.5;
+        double flux = parent_srh.scalar_flux_new(g) / parent_srh.volume_t();
+        srh.scalar_flux_new(g) =
+          alpha * flux + (1.0 - alpha) * srh.scalar_flux_old(g);
+        if (srh.is_linear_) {
+          // MomentArray flux_moments =
+          //   parent_srh.flux_moments_new(g) / parent_srh.volume_t();
+          //  srh.flux_moments_new(g) =
+          //    alpha * flux_moments + (1.0 - alpha) *
+          //    srh.flux_moments_old(g);
+          MomentArray arr = srh.flux_moments_new(g);
+          // check size of flux moments to find large ones
+          if (arr[0] > 1.0e2 || arr[1] > 1.0e2 || arr[2] > 1.0e2) {
+            // fmt::print("Setting flux moments of {} to zero\n",
+            // srh.flux_moments_new(g));
           }
+          // srh.flux_moments_new(g) = {0.0, 0.0, 0.0};
         }
       }
-
-      MomentArray& arr = srh.flux_moments_new(g);
-
-      
-      const double max_magnitude = 1000.0;
-      double mag = std::sqrt(arr.x * arr.x + arr.y * arr.y + arr.z * arr.z);
-      if (mag > max_magnitude) {
-        double scale = max_magnitude / mag;
-        srh.flux_moments_new(g) *= scale;
-        n_mag_flat++;
+      if (srh.is_linear_) {
+        MomentArray& arr = srh.flux_moments_new(g);
+        const double max_magnitude = 1000.0;
+        double mag = std::sqrt(arr.x * arr.x + arr.y * arr.y + arr.z * arr.z);
+        if (mag > max_magnitude) {
+          // fmt::print(
+          //  "Scaling flux moments of {} volume = {:.3e}, frac of avg ={:.4f},
+          //  Moments Matrix Mag = {:.3e}, Hits = {}, Birthday = {}\n",
+          //   srh.flux_moments_new(g), vol, vol / avg_vol,
+          //   srh.mom_matrix().magnitude(), srh.n_hits(), srh.birthday());
+          double scale = max_magnitude / mag;
+          // srh.flux_moments_new(g) *= scale;
+          n_mag_flat++;
+        }
+        if (srh.n_hits() < 100) {
+          srh.flux_moments_new(g) = {0.0, 0.0, 0.0};
+          n_hit_flat++;
+        }
       }
-        
-
-
 
       // check size of flux moments to find large ones
       // if (std::abs(arr[0]) > 1.0e2 || std::abs(arr[1]) > 1.0e2 ||
@@ -1548,10 +1588,12 @@ void FlatSourceDomain::handle_small_subdivided_source_regions()
     }
   }
   fmt::print("Number of insufficient {}, Number of mag flat {}, total {}, "
-             "percent insuf = {}%, percent mag fat = {}%\n",
+             "percent insuf = {}%, percent mag fat = {}%, n hit flat = {}, "
+             "percent hit flat = {:.3f}%\n",
     n_insufficient, n_mag_flat, source_regions_.n_source_regions(),
     100.0 * n_insufficient / source_regions_.n_source_regions(),
-    100.0 * n_mag_flat / source_regions_.n_source_regions());
+    100.0 * n_mag_flat / source_regions_.n_source_elements(), n_hit_flat,
+    100.0 * n_hit_flat / (source_regions_.n_source_elements()));
 
   // TODO: It would be nice to update the base source region fluxes, to
   // allow for better starting estimates when a new source region is

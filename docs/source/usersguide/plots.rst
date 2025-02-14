@@ -123,7 +123,7 @@ will depend on the 3D viewer, but should be straightforward.
           smoothly, consider using only one voxel in a certain direction.
 
 -----------
-Phong Plots
+Solid Ray-traced Plots
 -----------
 
 .. image:: ../_images/phong_triso.png
@@ -143,19 +143,19 @@ the dot product between the normal vector of the surface and the vector between
 that point on the surface and the light. With this assumption, visually
 appealing plots of simulation geometries can be created.
 
-Phong plots use the same ray tracing functions that neutrons and photons do in
+Solid ray-traced plots use the same ray tracing functions that neutrons and photons do in
 OpenMC, so any input that does not leak particles can be visualized in 3D using
-a Phong plot. That being said, these plots are not useful for detecting overlap
+a solid ray-traced plot. That being said, these plots are not useful for detecting overlap
 or undefined regions, so it is recommended to use the slice plot approach for
 geometry debugging.
 
-Only a few inputs are required for a Phong plot. The camera location, where the
+Only a few inputs are required for a solid ray-traced plot. The camera location, where the
 camera is looking, and a set of opaque material or cell IDs are required. The
 colors of materials or cells are prescribed in the same way as slice plots. The
-set of IDs that are opaque in the Phong plot must correspond to materials if
+set of IDs that are opaque in the plot must correspond to materials if
 coloring by material, or cells if coloring by cell.
 
-A minimal Phong plot input could be::
+A minimal solid ray-traced plot input could be::
 
   plot = openmc.SolidRayTracePlot()
   plot.pixels = (600, 600)
@@ -174,7 +174,7 @@ These plots are then stored into a :class:`openmc.Plots` instance, just like the
 slice plots.
 
 ----------------
-Projection Plots
+Wireframe Plots
 ----------------
 
 .. only:: html
@@ -191,13 +191,13 @@ colored glass that can be seen through, without any refractive effects. This is
 called volume rendering. The colors are specified in exactly the same interface
 employed by slice plots.
 
-Similar to Phong plots, these use the native ray tracing capabilities within
+Similar to solid ray-traced plots, these use the native ray tracing capabilities within
 OpenMC, so any geometry in which particles successfully run without overlaps or
-leaks will work with projection plots.
+leaks will work with wireframe plots.
 
-One drawback of projection plots is that particle tracks cannot be overlaid on
+One drawback of wireframe plots is that particle tracks cannot be overlaid on
 them at present. Moreover, checking for overlap regions is not currently
-possible with projection plots. The image heading this section can be created by
+possible with wireframe plots. The image heading this section can be created by
 adding the following code to the hexagonal lattice example packaged with OpenMC,
 before exporting to plots.xml.
 
@@ -251,7 +251,7 @@ be set with the :attr:`WireframeRayTracePlot.orthographic_width` attribute. If t
 element is nonzero, the orthographic projection is employed. Left to its default
 value of zero, the perspective projection is employed.
 
-Lastly, projection plots come packaged with wireframe generation that can target
+Most importantly, wireframe plots come packaged with wireframe generation that can target
 either all surface/cell/material boundaries in the geometry, or only wireframing
 around specific regions. In the above example, we have set only the fuel region
 from the hexagonal lattice example to have a wireframe drawn around it. This is

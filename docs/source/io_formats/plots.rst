@@ -72,7 +72,7 @@ sub-elements:
 
   :type:
     Keyword for type of plot to be produced. Currently "slice", "voxel",
-    "projection", and "phong" plots are implemented. The "slice" plot type
+    "wireframe_raytrace", and "solid_raytrace" plots are implemented. The "slice" plot type
     creates 2D pixel maps saved in the PNG file format. The "voxel" plot type
     produces a binary datafile containing voxel grid positioning and the cell or
     material (specified by the ``color`` tag) at the center of each voxel. Voxel
@@ -134,7 +134,7 @@ attributes or sub-elements.  These are not used in "voxel" plots:
     :xs:
       The attenuation coefficient for volume rendering of color in units of
       inverse centimeters. Zero corresponds to transparency. Only for plot type
-      "projection".
+      "wireframe_raytrace".
 
     As an example, if your plot is colored by material and you want material 23
     to be blue, the corresponding ``color`` element would look like:
@@ -203,7 +203,7 @@ attributes or sub-elements.  These are not used in "voxel" plots:
 
     *Default*: None
 
-``<plot>`` elements of ``type`` "projection" or "phong" can contain the
+``<plot>`` elements of ``type`` "wireframe_raytrace" or "solid_raytrace" can contain the
 following attributes or sub-elements.
 
   :camera_position:
@@ -233,7 +233,7 @@ following attributes or sub-elements.
 
     *Default*: 0
 
-``<plot>`` elements of ``type`` "phong" can contain the following attributes or
+``<plot>`` elements of ``type`` "solid_raytrace" can contain the following attributes or
 sub-elements.
 
   :opaque_ids:
@@ -258,7 +258,7 @@ sub-elements.
 
     *Default*: 0.1
 
-``<plot>`` elements of ``type`` "projection" can contain the following
+``<plot>`` elements of ``type`` "wireframe_raytrace" can contain the following
 attributes or sub-elements.
 
   :wireframe_color:

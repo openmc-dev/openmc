@@ -166,6 +166,7 @@ Geometry Plotting
 
    openmc.Plot
    openmc.WireframeRayTracePlot
+   openmc.SolidRayTracePlot
    openmc.Plots
 
 Running OpenMC

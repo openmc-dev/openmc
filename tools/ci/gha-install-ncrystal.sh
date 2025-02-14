@@ -11,7 +11,7 @@ CURRENT_DIR=$(pwd)
 
 # NCrystal Install
 cd $HOME
-git clone -b $NCrystal_BRANCH $NCrystal_REPO ncrystal
+git clone -b $NCRYSTAL_BRANCH $NCRYSTAL_REPO ncrystal
 cd ncrystal
 mkdir build && cd build
 cmake .. \
@@ -25,3 +25,4 @@ cmake .. \
     -DCMAKE_INSTALL_PREFIX="$NCRYSTAL_INSTALL_DIR"
 make -j4 && make install
 rm -rf $HOME/ncrystal
+cd $CURRENT_DIR

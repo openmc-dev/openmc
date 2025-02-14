@@ -1458,33 +1458,26 @@ void FlatSourceDomain::finalize_discovered_source_regions()
   discovered_source_regions_.clear();
 }
 
+// This function is responsible for mitigating numerical instability
+// issues that arise when overlaying a mesh and generating extremely
+// small source regions.
 void FlatSourceDomain::handle_small_subdivided_source_regions()
 {
-  // If we're using the naive volume estimator, then we don't
-  // need to worry about small source regions, as there is no possibility
-  // of mismatch between iteration volume and simulation avg volume
-  if (volume_estimator_ == RandomRayVolumeEstimator::NAIVE) {
-    // return;
-  }
-// Now we'd like to sweep through the source_regions_ and accumulate each
-// subdivided source region into its parent base source region. Then, we want
-// to project the base source region back down into any missed source
-// regions in the source_regions_ vector.
-
-// Let's begin by resetting the base source regions new flux and volume
+// Begin by resetting the base source regions new flux and volume.
 #pragma omp parallel for
   for (int64_t sr = 0; sr < base_source_regions_.n_source_regions(); sr++) {
     base_source_regions_.volume_t(sr) = 0.0;
     for (int g = 0; g < negroups_; g++) {
       base_source_regions_.scalar_flux_new(sr, g) = 0.0;
-      if (base_source_regions_.is_linear()) {
-        base_source_regions_.flux_moments_new(sr, g) = {0.0, 0.0, 0.0};
-      }
     }
   }
 
   // Accumulate the volume and flux of each subdivided source region into its
-  // parent base source region.
+  // parent base source region. The parent source region is not used
+  // in transport, but will be used in this function to provide a semi-localized
+  // surrogate flux estimate to project back down into any "small" or negative
+  // subdivided source regions. We also count the number of children for each
+  // base source region.
   vector<int> n_children(base_source_regions_.n_source_regions(), 0);
 #pragma omp parallel for
   for (int64_t sr = 0; sr < source_regions_.n_source_regions(); sr++) {
@@ -1495,13 +1488,10 @@ void FlatSourceDomain::handle_small_subdivided_source_regions()
     parent_srh.lock().lock();
     parent_srh.volume_t() += srh.volume_t();
     for (int g = 0; g < negroups_; g++) {
+      // Only accumulate positive fluxes into parent
       if (srh.scalar_flux_new(g) > 0.0) {
         parent_srh.scalar_flux_new(g) +=
           srh.scalar_flux_new(g) * srh.volume_t();
-        if (base_source_regions_.is_linear()) {
-          parent_srh.flux_moments_new(g) +=
-            srh.flux_moments_new(g) * srh.volume_t();
-        }
       }
     }
     n_children[base_sr]++;
@@ -1519,156 +1509,57 @@ void FlatSourceDomain::handle_small_subdivided_source_regions()
   // approximately similar sizes. A result of this projection is that any
   // "small" source regions will regress to flat, even in linear source mode,
   // which is probably a safe approximation given their small size.
-  int64_t n_insufficient = 0;
-  int64_t n_mag_flat = 0;
-  int64_t n_hit_flat = 0;
   int64_t n_small = 0;
-  int64_t n_neg = 0;
-#pragma omp parallel for reduction(                                            \
-    + : n_insufficient, n_hit_flat, n_mag_flat, n_small, n_neg)
+#pragma omp parallel for reduction(+ : n_small)
   for (int64_t sr = 0; sr < source_regions_.n_source_regions(); sr++) {
     SourceRegionHandle srh = source_regions_.get_source_region_handle(sr);
     int64_t base_sr = srh.parent_sr();
     SourceRegionHandle parent_srh =
       base_source_regions_.get_source_region_handle(base_sr);
+
+    // Average volume of a the children source regions for the parent
     double avg_vol = parent_srh.volume_t() / n_children[base_sr];
+
+    // Volume of the subdivided source region
     double vol = srh.volume_t();
+
+    // Check if the source region volume is less than 1% of the average
+    // for its parent
     bool sufficient_vol = vol > 0.01 * avg_vol;
 
-    if (!sufficient_vol) {
-      srh.is_small() = 1;
-    }
-    if (srh.is_small())
-      n_insufficient++;
-
-    /*
     for (int g = 0; g < negroups_; g++) {
-      if (srh.scalar_flux_new(g) < 0.0) {
-        fmt::print("Flux = {:.2e}, True volume percent vs avg = {:.9f}%, Iter
-    volume " "ratio vs. true = {}\n", srh.scalar_flux_new(g), srh.volume_t() *
-    100.0 / parent_srh.volume_t(), srh.volume_naive() / srh.volume());
-      }
-    }
-      */
-    /**/
-    for (int g = 0; g < negroups_; g++) {
-      // if (srh.volume() == 0.0 || srh.scalar_flux_new(g) < 0.0 ||
-      //   srh.is_small()) {
-      // if (srh.scalar_flux_new(g) < 0.0) { // works for shielding, not so hot
-      // for c5g7?
-      if (srh.is_small())
-        n_small++;
-      if (srh.scalar_flux_new(g) < 0.0)
-        n_neg++;
-      // if (srh.is_small() || srh.scalar_flux_new(g) < 0.0) { // works
+      // If this is a "small" source region, or if the flux for this iteration
+      // is negative, then we discard its flux estimate. It is replaced by a mix
+      // of the previous iteration for this source region and the flux from the
+      // parent source region. The mix is controlled by the alpha parameter.
       if (!sufficient_vol || srh.scalar_flux_new(g) < 0.0) {
-
-        // if ((srh.is_small() || srh.scalar_flux_new(g) < 0.0) &&
-        // volume_estimator_ != RandomRayVolumeEstimator::NAIVE) {
-
-        // if (srh.is_small() || srh.volume_naive() == 0.0) { // bad
-        //double alpha = 0.01; // This works pretty well
-        //double alpha = 0.025; // Works well, but maybe 50% higher std dev.
-        double alpha = 0.02;
-
-
+        // Low alpha favors the flux estimator for this source
+        // region from the previous iteration. High alpha favors the parent
+        // flux.
+        const double alpha = 0.02;
         double flux = parent_srh.scalar_flux_new(g) / parent_srh.volume_t();
         srh.scalar_flux_new(g) =
           alpha * flux + (1.0 - alpha) * srh.scalar_flux_old(g);
-        if (srh.is_linear_) {
-          // MomentArray flux_moments =
-          //   parent_srh.flux_moments_new(g) / parent_srh.volume_t();
-          //  srh.flux_moments_new(g) =
-          //    alpha * flux_moments + (1.0 - alpha) *
-          //    srh.flux_moments_old(g);
-          MomentArray arr = srh.flux_moments_new(g);
-          // check size of flux moments to find large ones
-          if (arr[0] > 1.0e2 || arr[1] > 1.0e2 || arr[2] > 1.0e2) {
-            // fmt::print("Setting flux moments of {} to zero\n",
-            // srh.flux_moments_new(g));
-          }
-          // srh.flux_moments_new(g) = {0.0, 0.0, 0.0};
-        }
-      }
-      if (srh.is_linear_) {
-        MomentArray& arr = srh.flux_moments_new(g);
-        const double max_magnitude = 1000.0;
-        double mag = std::sqrt(arr.x * arr.x + arr.y * arr.y + arr.z * arr.z);
-        if (mag > max_magnitude) {
-          // fmt::print(
-          //  "Scaling flux moments of {} volume = {:.3e}, frac of avg ={:.4f},
-          //  Moments Matrix Mag = {:.3e}, Hits = {}, Birthday = {}\n",
-          //   srh.flux_moments_new(g), vol, vol / avg_vol,
-          //   srh.mom_matrix().magnitude(), srh.n_hits(), srh.birthday());
-          double scale = max_magnitude / mag;
-          // srh.flux_moments_new(g) *= scale;
-          n_mag_flat++;
-        }
-        if (srh.n_hits() < 100) {
-          srh.flux_moments_new(g) = {0.0, 0.0, 0.0};
-          n_hit_flat++;
-        }
       }
 
-      // check size of flux moments to find large ones
-      // if (std::abs(arr[0]) > 1.0e2 || std::abs(arr[1]) > 1.0e2 ||
-      //    std::abs(arr[2]) > 1.0e2) {
-      //  fmt::print("Leaving flux moments of {} volume = {}, frac of avg =
-      //  {}\n", srh.flux_moments_new(g), vol, vol/avg_vol);
-      // }
-    }
-
-    /*
-        if (!sufficient_vol) {
-          n_insufficient++;
-          for (int g = 0; g < negroups_; g++) {
-            double flux = parent_srh.scalar_flux_new(g) / parent_srh.volume_t();
-            if (flux < 0) {
-              flux = 0.0;
-              fmt::print("flux is somehow negative: {}, vol: {}, avg vol: {}, sr
-       " "flux {}, parent flux {}\n", flux, vol, avg_vol,
-       srh.scalar_flux_new(g), parent_srh.scalar_flux_new(g));
-            }
-            srh.scalar_flux_new(g) = flux;
-          }
-        }
-          */
-
-    for (int g = 0; g < negroups_; g++) {
-      if (srh.scalar_flux_new(g) < 0.0) {
-        fmt::print(
-          "Flux = {:.2e}, True volume percent vs avg = {:.9f}%, Iter volume "
-          "ratio vs. true = {}, sufficient vol = {}\n",
-          srh.scalar_flux_new(g), vol * 100.0 / avg_vol,
-          srh.volume_naive() / srh.volume(), sufficient_vol);
+      // If this source region has only been crossed by a few rays in its
+      // lifetime (usually due to being very small), then its centroid and
+      // spatial moments will likely be highly innacurate and their use
+      // can lead to instability. Thus, until a source region has been
+      // crossed by a minimum number of rays, we zero out the spatial flux
+      // moments for the iteration.
+      if (srh.is_linear_ && srh.n_hits() < 100) {
+        srh.flux_moments_new(g) = {0.0, 0.0, 0.0};
       }
     }
   }
-  fmt::print("Number of insufficient {}, Number of mag flat {}, total {}, "
-             "percent insuf = {}%, percent mag fat = {}%, n hit flat = {}, "
-             "percent hit flat = {:.3f}%\n",
-    n_insufficient, n_mag_flat, source_regions_.n_source_regions(),
-    100.0 * n_insufficient / source_regions_.n_source_regions(),
-    100.0 * n_mag_flat / source_regions_.n_source_elements(), n_hit_flat,
-    100.0 * n_hit_flat / (source_regions_.n_source_elements()));
-  fmt::print("Number of small {}, Number of negative {}\n", n_small, n_neg);
 
-  // TODO: It would be nice to update the base source region fluxes, to
-  // allow for better starting estimates when a new source region is
-  // discovered late in the simulation.
-  // HOWEVER - I think we are actually covering that case currently,
-  // as any late-to-be-discovered region will have an extremely small
-  // volume, so should fall into the "small" source region category.
-  // As such, its flux is not actually used for anything.
-  // HOWEVER - now that I think about it, the first ray that passes
-  // through it will see a very old (and potentially really bad) source
-  // term. Rays in future iterations will see sources based on the
-  // parent average flux so will be ok, but all rays passing through that
-  // first iteration will be very bad. That said, for super small FSRs,
-  // only 1 ray will be likely to pass through it, and so the error should
-  // decay very quickly. Still - it would be nice to recompute base source
-  // region sources for any newly discovered SRs, after the above flux
-  // smoothing has been done.
+  fmt::print("Number of small source regions = {}\n", n_small);
+
+  // TOOD: Handle making better source estimate for SRs discovered in later
+  // iterations. Not a problem for fixed source, as the source will be
+  // either 0 or the external source. For k-eigenvalue, we need to
+  // take the guess as 0 instead of 1.0.
 }
 
 } // namespace openmc

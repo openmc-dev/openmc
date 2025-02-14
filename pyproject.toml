@@ -9,7 +9,7 @@ authors = [
 ]
 description = "OpenMC"
 version = "0.15.1-dev"
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 license = {file = "LICENSE"}
 classifiers = [
     "Development Status :: 4 - Beta",

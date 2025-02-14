@@ -1423,7 +1423,7 @@ void FlatSourceDomain::handle_small_subdivided_source_regions()
   // need to worry about small source regions, as there is no possibility
   // of mismatch between iteration volume and simulation avg volume
   if (volume_estimator_ == RandomRayVolumeEstimator::NAIVE) {
-    return;
+    //return;
   }
 // Now we'd like to sweep through the source_regions_ and accumulate each
 // subdivided source region into its parent base source region. Then, we want

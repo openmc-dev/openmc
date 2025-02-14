@@ -830,10 +830,10 @@ void FlatSourceDomain::output_to_vtk() const
         int64_t source_element = fsr * negroups_ + g;
         float flux = 0;
         if (fsr > 0) {
-          // flux = evaluate_flux_at_point(voxel_positions[i], fsr, g);
+          flux = evaluate_flux_at_point(voxel_positions[i], fsr, g);
           //  if (flux < 0.0)
-          flux = FlatSourceDomain::evaluate_flux_at_point(
-            voxel_positions[i], fsr, g);
+          // flux = FlatSourceDomain::evaluate_flux_at_point(
+          //  voxel_positions[i], fsr, g);
         }
         if (flux < 0.0) {
           num_neg++;
@@ -925,6 +925,47 @@ void FlatSourceDomain::output_to_vtk() const
       }
       max_mag = convert_to_big_endian<float>(max_mag);
       std::fwrite(&max_mag, sizeof(float), 1, plot);
+    }
+
+    // Plot Number of tally tasks in the SR
+    std::fprintf(plot, "SCALARS Tally_SR_id float\n");
+    std::fprintf(plot, "LOOKUP_TABLE default\n");
+    for (int i = 0; i < Nx * Ny * Nz; i++) {
+      int64_t fsr = voxel_indices[i];
+      int n_tasks = 0;
+      if (fsr > 0) {
+        for (int g = 0; g < negroups_; g++) {
+          n_tasks += source_regions_.tally_task(fsr, g).size();
+        }
+      }
+      float value = 0.0;
+      if (n_tasks > 0) {
+        value = future_prn(10, fsr);
+        // fmt::print("Tally SR idx = {}\n", fsr);
+      }
+      value = convert_to_big_endian<float>(value);
+      std::fwrite(&value, sizeof(float), 1, plot);
+    }
+
+    // Plot Number of tally tasks in the SR
+    std::fprintf(plot, "SCALARS Tally_region_flux float\n");
+    std::fprintf(plot, "LOOKUP_TABLE default\n");
+    for (int i = 0; i < Nx * Ny * Nz; i++) {
+      int64_t fsr = voxel_indices[i];
+      int n_tasks = 0;
+      if (fsr > 0) {
+        for (int g = 0; g < negroups_; g++) {
+          n_tasks += source_regions_.tally_task(fsr, g).size();
+        }
+      }
+      float value = 0.0;
+      if (n_tasks > 0) {
+        for (int g = 0; g < negroups_; g++) {
+          value += evaluate_flux_at_point(voxel_positions[i], fsr, g);
+        }
+      }
+      value = convert_to_big_endian<float>(value);
+      std::fwrite(&value, sizeof(float), 1, plot);
     }
 
     std::fclose(plot);
@@ -1423,7 +1464,7 @@ void FlatSourceDomain::handle_small_subdivided_source_regions()
   // need to worry about small source regions, as there is no possibility
   // of mismatch between iteration volume and simulation avg volume
   if (volume_estimator_ == RandomRayVolumeEstimator::NAIVE) {
-    //return;
+    // return;
   }
 // Now we'd like to sweep through the source_regions_ and accumulate each
 // subdivided source region into its parent base source region. Then, we want
@@ -1446,7 +1487,7 @@ void FlatSourceDomain::handle_small_subdivided_source_regions()
   // parent base source region.
   vector<int> n_children(base_source_regions_.n_source_regions(), 0);
 #pragma omp parallel for
-  for (int64_t sr = 0; sr < n_source_regions(); sr++) {
+  for (int64_t sr = 0; sr < source_regions_.n_source_regions(); sr++) {
     SourceRegionHandle srh = source_regions_.get_source_region_handle(sr);
     int64_t base_sr = srh.parent_sr();
     SourceRegionHandle parent_srh =
@@ -1481,7 +1522,10 @@ void FlatSourceDomain::handle_small_subdivided_source_regions()
   int64_t n_insufficient = 0;
   int64_t n_mag_flat = 0;
   int64_t n_hit_flat = 0;
-#pragma omp parallel for reduction(+ : n_insufficient, n_hit_flat, n_mag_flat)
+  int64_t n_small = 0;
+  int64_t n_neg = 0;
+#pragma omp parallel for reduction(                                            \
+    + : n_insufficient, n_hit_flat, n_mag_flat, n_small, n_neg)
   for (int64_t sr = 0; sr < source_regions_.n_source_regions(); sr++) {
     SourceRegionHandle srh = source_regions_.get_source_region_handle(sr);
     int64_t base_sr = srh.parent_sr();
@@ -1510,11 +1554,24 @@ void FlatSourceDomain::handle_small_subdivided_source_regions()
     for (int g = 0; g < negroups_; g++) {
       // if (srh.volume() == 0.0 || srh.scalar_flux_new(g) < 0.0 ||
       //   srh.is_small()) {
-       // if (srh.scalar_flux_new(g) < 0.0) { // works for shielding, not so hot for c5g7?
+      // if (srh.scalar_flux_new(g) < 0.0) { // works for shielding, not so hot
+      // for c5g7?
+      if (srh.is_small())
+        n_small++;
+      if (srh.scalar_flux_new(g) < 0.0)
+        n_neg++;
+      // if (srh.is_small() || srh.scalar_flux_new(g) < 0.0) { // works
+      if (!sufficient_vol || srh.scalar_flux_new(g) < 0.0) {
 
-     if (srh.is_small() || srh.scalar_flux_new(g) < 0.0) { // works
-        //if (srh.is_small() || srh.volume_naive() == 0.0) { // bad
-        double alpha = 0.5;
+        // if ((srh.is_small() || srh.scalar_flux_new(g) < 0.0) &&
+        // volume_estimator_ != RandomRayVolumeEstimator::NAIVE) {
+
+        // if (srh.is_small() || srh.volume_naive() == 0.0) { // bad
+        //double alpha = 0.01; // This works pretty well
+        //double alpha = 0.025; // Works well, but maybe 50% higher std dev.
+        double alpha = 0.02;
+
+
         double flux = parent_srh.scalar_flux_new(g) / parent_srh.volume_t();
         srh.scalar_flux_new(g) =
           alpha * flux + (1.0 - alpha) * srh.scalar_flux_old(g);
@@ -1594,6 +1651,7 @@ void FlatSourceDomain::handle_small_subdivided_source_regions()
     100.0 * n_insufficient / source_regions_.n_source_regions(),
     100.0 * n_mag_flat / source_regions_.n_source_elements(), n_hit_flat,
     100.0 * n_hit_flat / (source_regions_.n_source_elements()));
+  fmt::print("Number of small {}, Number of negative {}\n", n_small, n_neg);
 
   // TODO: It would be nice to update the base source region fluxes, to
   // allow for better starting estimates when a new source region is

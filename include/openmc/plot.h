@@ -2,9 +2,9 @@
 #define OPENMC_PLOT_H
 
 #include <cmath>
-#include <set>
 #include <sstream>
 #include <unordered_map>
+#include <unordered_set>
 
 #include "pugixml.hpp"
 #include "xtensor/xarray.hpp"
@@ -444,7 +444,7 @@ private:
   void set_light_position(pugi::xml_node node);
   void set_diffuse_fraction(pugi::xml_node node);
 
-  std::set<int> opaque_ids_;
+  std::unordered_set<int> opaque_ids_;
 
   double diffuse_fraction_ {0.1};
 

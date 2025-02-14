@@ -1186,11 +1186,13 @@ class RayTracePlot(PlotBase):
 
         # Set masking information
         if (mask_elem := elem.find("mask")) is not None:
-            mask_components = [int(x) for x in mask_elem.get("components").split()]
+            mask_components = [int(x)
+                               for x in mask_elem.get("components").split()]
             # TODO: set mask components(needs geometry information)
             background = mask_elem.get("background")
             if background is not None:
-                self.mask_background = tuple([int(x) for x in background.split()])
+                self.mask_background = tuple(
+                    [int(x) for x in background.split()])
 
         # Set universe level
         level = elem.find("level")
@@ -1391,13 +1393,43 @@ class ProjectionPlot(RayTracePlot):
         # Set plot colors
         for color_elem in elem.findall("color"):
             uid = int(color_elem.get("id"))
-            plot.colors[uid] = tuple(int(i) for i in get_text(color_elem, 'rgb').split())
+            plot.colors[uid] = tuple(int(i)
+                                     for i in get_text(color_elem, 'rgb').split())
             plot.xs[uid] = float(color_elem.get("xs"))
 
         return plot
 
 
 class PhongPlot(RayTracePlot):
+    """Phong shading-based rendering of an OpenMC geometry
+
+    This class defines a plot that uses Phong shading to enhance the 
+    visualization of an OpenMC geometry by incorporating diffuse lighting 
+    and configurable opacity for certain regions. It extends 
+    :class:`RayTracePlot` by adding parameters related to lighting and 
+    transparency.
+
+    .. versionadded:: 0.14.0
+
+    Parameters
+    ----------
+    plot_id : int, optional
+        Unique identifier for the plot
+    name : str, optional
+        Name of the plot
+
+    Attributes
+    ----------
+    light_position : tuple or list of float
+        Position of the light source in 3D space. Defaults to None, which 
+        places the light at the camera position.
+    diffuse_fraction : float
+        Fraction of lighting that is diffuse (non-directional). Defaults to 0.1. 
+        Must be between 0 and 1.
+    opaque_domains : list
+        List of domains (e.g., cells or materials) that should be rendered 
+        as opaque rather than allowing transparency.
+    """
 
     def __init__(self, plot_id=None, name=''):
         super().__init__(plot_id, name)
@@ -1497,7 +1529,6 @@ class PhongPlot(RayTracePlot):
 
         if elem.find('opaque_ids') is not None:
             self.opaque_domains = list(get_elem_tuple(elem, 'opaque_ids', int))
-
 
     @classmethod
     def from_xml_element(cls, elem):

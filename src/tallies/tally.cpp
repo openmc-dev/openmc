@@ -742,7 +742,14 @@ void Tally::init_results()
   // Modifications to the results array size to accumulate sum_third and sum_fourth
   int n_scores = scores_.size() * nuclides_.size();
   // TO DO: allocate the correct size for the results array during initialization
-  results_ = xt::empty<double>({n_filter_bins_, n_scores, 5});
+  if (vov_)
+  {
+    results_ = xt::empty<double>({n_filter_bins_, n_scores, 5});
+  }
+  else
+  {
+    results_ = xt::empty<double>({n_filter_bins_, n_scores, 3});
+  }
 }
 
 void Tally::reset()
@@ -970,20 +977,31 @@ void reduce_tally_results()
       if (tally->vov_){
         xt::xtensor<double, 4> values = values_view;
         xt::xtensor<double, 4> values_reduced = xt::empty_like(values);
+
+        // Reduce contiguous set of tally results
+        MPI_Reduce(values.data(), values_reduced.data(), values.size(),
+          MPI_DOUBLE, MPI_SUM, 0, mpi::intracomm);
+
+        // Transfer values on master and reset on other ranks
+        if (mpi::master) {
+          values_view = values_reduced;
+        } else {
+          values_view = 0.0;
+        }
       } else {
         xt::xtensor<double, 2> values = values_view;
         xt::xtensor<double, 2> values_reduced = xt::empty_like(values);
-      }
 
-      // Reduce contiguous set of tally results
-      MPI_Reduce(values.data(), values_reduced.data(), values.size(),
-        MPI_DOUBLE, MPI_SUM, 0, mpi::intracomm);
+        // Reduce contiguous set of tally results
+        MPI_Reduce(values.data(), values_reduced.data(), values.size(),
+          MPI_DOUBLE, MPI_SUM, 0, mpi::intracomm);
 
-      // Transfer values on master and reset on other ranks
-      if (mpi::master) {
-        values_view = values_reduced;
-      } else {
-        values_view = 0.0;
+        // Transfer values on master and reset on other ranks
+        if (mpi::master) {
+          values_view = values_reduced;
+        } else {
+          values_view = 0.0;
+        }
       }
     }
   }

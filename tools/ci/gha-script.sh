@@ -16,7 +16,7 @@ fi
 
 # Install NCrystal for testing
 if [[ $NCRYSTAL = 'y' ]]; then
-  pip install ncrystal
+  pip install ncrystal-python
 fi
 
 # Run regression and unit tests

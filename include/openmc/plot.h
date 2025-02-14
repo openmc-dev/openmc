@@ -289,8 +289,8 @@ public:
  * This class serves as a base for plots that create their visuals by tracing
  * rays from a camera through the problem geometry. It inherits from
  * PlottableInterface, ensuring that it provides an implementation for
- * generating output specific to ray-traced visualization. ProjectionPlot
- * and PhongPlot provide concrete implementations of this class.
+ * generating output specific to ray-traced visualization. WireframeRayTracePlot
+ * and SolidRayTracePlot provide concrete implementations of this class.
  */
 class RayTracePlot : public PlottableInterface {
 public:
@@ -362,20 +362,20 @@ private:
 class ProjectionRay;
 
 /**
- * \class ProjectionPlot
+ * \class WireframeRayTracePlot
  * \brief Creates plots that are like colorful x-ray imaging
  *
- * ProjectionPlot is a specialized form of RayTracePlot designed for creating
+ * WireframeRayTracePlot is a specialized form of RayTracePlot designed for creating
  * projection plots. This involves tracing rays from a camera through the
  * problem geometry and rendering the results based on depth of penetration
  * through materials or cells and their colors.
  */
-class ProjectionPlot : public RayTracePlot {
+class WireframeRayTracePlot : public RayTracePlot {
 
   friend class ProjectionRay;
 
 public:
-  ProjectionPlot(pugi::xml_node plot);
+  WireframeRayTracePlot(pugi::xml_node plot);
 
   virtual void create_output() const;
   virtual void print_info() const;
@@ -423,18 +423,18 @@ private:
 };
 
 /**
- * \class PhongPlot
+ * \class SolidRayTracePlot
  * \brief Plots 3D objects as the eye might see them.
  *
  * Plots a geometry with single-scattered Phong lighting plus a diffuse lighting
  * contribution. The result is a physically reasonable, aesthetic 3D view of a
  * geometry.
  */
-class PhongPlot : public RayTracePlot {
+class SolidRayTracePlot : public RayTracePlot {
   friend class PhongRay;
 
 public:
-  PhongPlot(pugi::xml_node plot);
+  SolidRayTracePlot(pugi::xml_node plot);
 
   virtual void create_output() const;
   virtual void print_info() const;
@@ -491,8 +491,8 @@ private:
 
 class ProjectionRay : public Ray {
 public:
-  ProjectionRay(Position r, Direction u, const ProjectionPlot& plot,
-    vector<ProjectionPlot::TrackSegment>& line_segments)
+  ProjectionRay(Position r, Direction u, const WireframeRayTracePlot& plot,
+    vector<WireframeRayTracePlot::TrackSegment>& line_segments)
     : Ray(r, u), plot_(plot), line_segments_(line_segments)
   {}
 
@@ -503,17 +503,17 @@ private:
    * to access some of the plot settings which influence the behavior where
    * intersections are.
    */
-  const ProjectionPlot& plot_;
+  const WireframeRayTracePlot& plot_;
 
   /* The ray runs through the geometry, and records the lengths of ray segments
    * and cells they lie in along the way.
    */
-  vector<ProjectionPlot::TrackSegment>& line_segments_;
+  vector<WireframeRayTracePlot::TrackSegment>& line_segments_;
 };
 
 class PhongRay : public Ray {
 public:
-  PhongRay(Position r, Direction u, const PhongPlot& plot)
+  PhongRay(Position r, Direction u, const SolidRayTracePlot& plot)
     : Ray(r, u), plot_(plot)
   {
     result_color_ = plot_.not_found_;
@@ -524,7 +524,7 @@ public:
   const RGBColor& result_color() { return result_color_; }
 
 private:
-  const PhongPlot& plot_;
+  const SolidRayTracePlot& plot_;
 
   /* After the ray is reflected, it is moving towards the
    * camera. It does that in order to see if the exposed surface

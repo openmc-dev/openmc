@@ -165,7 +165,7 @@ Geometry Plotting
    :template: myclass.rst
 
    openmc.Plot
-   openmc.ProjectionPlot
+   openmc.WireframeRayTracePlot
    openmc.Plots
 
 Running OpenMC

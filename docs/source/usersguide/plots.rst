@@ -129,7 +129,7 @@ Phong Plots
 .. image:: ../_images/phong_triso.png
    :width: 300px
 
-The :class:`openmc.PhongPlot` class allows three dimensional visualization of
+The :class:`openmc.SolidRayTracePlot` class allows three dimensional visualization of
 detailed geometric features without voxelization. The plot above visualizes a
 geometry created by :class:`openmc.TRISO`, with the materials in the fuel kernel
 distinguished by color. It was enclosed in a bounding box such that some kernels
@@ -157,7 +157,7 @@ coloring by material, or cells if coloring by cell.
 
 A minimal Phong plot input could be::
 
-  plot = openmc.PhongPlot()
+  plot = openmc.SolidRayTracePlot()
   plot.pixels = (600, 600)
   plot.camera_position = (10.0, 20.0, -30.0)
   plot.look_at = (4.0, 5.0, 1.0)
@@ -182,7 +182,7 @@ Projection Plots
    .. image:: ../_images/hexlat_anim.gif
      :width: 200px
 
-The :class:`openmc.ProjectionPlot` class also produces 3D visualizations of
+The :class:`openmc.WireframeRayTracePlot` class also produces 3D visualizations of
 OpenMC geometries without voxelization but is intended to show the inside of a
 model using wireframing of cell or material boundaries in addition to cell
 coloring based on the path length of camera rays through the model. The coloring
@@ -207,7 +207,7 @@ before exporting to plots.xml.
   import numpy as np
   for i in range(100):
       phi = 2 * np.pi * i/100
-      thisp = openmc.ProjectionPlot(plot_id = 4 + i)
+      thisp = openmc.WireframeRayTracePlot(plot_id = 4 + i)
       thisp.filename = 'frame%s'%(str(i).zfill(3))
       thisp.look_at = [0, 0, 0]
       thisp.camera_position = [r * np.cos(phi), r * np.sin(phi), 6 * np.sin(phi)]
@@ -224,16 +224,16 @@ before exporting to plots.xml.
 
 This generates a sequence of png files which can be joined to form a gif. Each
 image specifies a different camera position using some simple periodic functions
-to create a perfectly looped gif. :attr:`ProjectionPlot.look_at` defines where
-the camera's centerline should point at. :attr:`ProjectionPlot.camera_position`
+to create a perfectly looped gif. :attr:`WireframeRayTracePlot.look_at` defines where
+the camera's centerline should point at. :attr:`WireframeRayTracePlot.camera_position`
 similarly defines where the camera is situated in the universe level we seek to
 plot. The other settings resemble those employed by :class:`openmc.Plot`, with
-the exception of the :class:`ProjectionPlot.set_transparent` method and
-:attr:`ProjectionPlot.xs` dictionary. These are used to control volume rendering
+the exception of the :class:`WireframeRayTracePlot.set_transparent` method and
+:attr:`WireframeRayTracePlot.xs` dictionary. These are used to control volume rendering
 of material volumes. "xs" here stands for cross section, and it defines material
 opacities in units of inverse centimeters. Setting this value to a large number
 would make a material or cell opaque, and setting it to zero makes a material
-transparent. Thus, the :class:`ProjectionPlot.set_transparent` can be used to
+transparent. Thus, the :class:`WireframeRayTracePlot.set_transparent` can be used to
 make all materials in the geometry transparent. From there, individual material
 or cell opacities can be tuned to produce the desired result.
 
@@ -241,13 +241,13 @@ Two camera projections are available when using these plots, perspective and
 orthographic. The default, perspective projection, is a cone of rays passing
 through each pixel which radiate from the camera position and span the field of
 view in the x and y positions. The horizontal field of view can be set with the
-:attr:`ProjectionPlot.horizontal_field_of_view` attribute, which is to be
+:attr:`WireframeRayTracePlot.horizontal_field_of_view` attribute, which is to be
 specified in units of degrees. The field of view only influences behavior in
 perspective projection mode.
 
 In the orthographic projection, rays follow the same angle but originate from
 different points. The horizontal width of this plane of ray starting points may
-be set with the :attr:`ProjectionPlot.orthographic_width` attribute. If this
+be set with the :attr:`WireframeRayTracePlot.orthographic_width` attribute. If this
 element is nonzero, the orthographic projection is employed. Left to its default
 value of zero, the perspective projection is employed.
 
@@ -255,9 +255,9 @@ Lastly, projection plots come packaged with wireframe generation that can target
 either all surface/cell/material boundaries in the geometry, or only wireframing
 around specific regions. In the above example, we have set only the fuel region
 from the hexagonal lattice example to have a wireframe drawn around it. This is
-accomplished by setting the :attr:`ProjectionPlot.wireframe_domains` attribute,
+accomplished by setting the :attr:`WireframeRayTracePlot.wireframe_domains` attribute,
 which may be set to either material IDs or cell IDs. The
-:attr:`ProjectionPlot.wireframe_thickness` attribute sets the wireframe
+:attr:`WireframeRayTracePlot.wireframe_thickness` attribute sets the wireframe
 thickness in units of pixels.
 
 .. note:: When setting specific material or cell regions to have wireframes

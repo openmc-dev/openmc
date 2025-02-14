@@ -210,10 +210,10 @@ void read_plots_xml(pugi::xml_node root)
       } else if (type_str == "voxel") {
         model::plots.emplace_back(
           std::make_unique<Plot>(node, Plot::PlotType::voxel));
-      } else if (type_str == "projection") {
-        model::plots.emplace_back(std::make_unique<ProjectionPlot>(node));
-      } else if (type_str == "phong") {
-        model::plots.emplace_back(std::make_unique<PhongPlot>(node));
+      } else if (type_str == "wireframe_raytrace") {
+        model::plots.emplace_back(std::make_unique<WireframeRayTracePlot>(node));
+      } else if (type_str == "solid_raytrace") {
+        model::plots.emplace_back(std::make_unique<SolidRayTracePlot>(node));
       } else {
         fatal_error(
           fmt::format("Unsupported plot type '{}' in plot {}", type_str, id));
@@ -1071,7 +1071,7 @@ RayTracePlot::RayTracePlot(pugi::xml_node node) : PlottableInterface(node)
     cam_yaxis.z, cam_zaxis.z};
 }
 
-ProjectionPlot::ProjectionPlot(pugi::xml_node node) : RayTracePlot(node)
+WireframeRayTracePlot::WireframeRayTracePlot(pugi::xml_node node) : RayTracePlot(node)
 {
   set_opacities(node);
   set_wireframe_thickness(node);
@@ -1079,7 +1079,7 @@ ProjectionPlot::ProjectionPlot(pugi::xml_node node) : RayTracePlot(node)
   set_wireframe_color(node);
 }
 
-void ProjectionPlot::set_wireframe_color(pugi::xml_node plot_node)
+void WireframeRayTracePlot::set_wireframe_color(pugi::xml_node plot_node)
 {
   // Copy plot background color
   if (check_for_node(plot_node, "wireframe_color")) {
@@ -1113,7 +1113,7 @@ void RayTracePlot::set_output_path(pugi::xml_node node)
   path_plot_ = filename;
 }
 
-bool ProjectionPlot::trackstack_equivalent(
+bool WireframeRayTracePlot::trackstack_equivalent(
   const std::vector<TrackSegment>& track1,
   const std::vector<TrackSegment>& track2) const
 {
@@ -1217,7 +1217,7 @@ std::pair<Position, Direction> RayTracePlot::get_pixel_ray(
   return result;
 }
 
-void ProjectionPlot::create_output() const
+void WireframeRayTracePlot::create_output() const
 {
   size_t width = pixels_[0];
   size_t height = pixels_[1];
@@ -1392,13 +1392,13 @@ void RayTracePlot::print_info() const
   fmt::print("Pixels: {} {}\n", pixels_[0], pixels_[1]);
 }
 
-void ProjectionPlot::print_info() const
+void WireframeRayTracePlot::print_info() const
 {
   fmt::print("Plot Type: Projection\n");
   RayTracePlot::print_info();
 }
 
-void ProjectionPlot::set_opacities(pugi::xml_node node)
+void WireframeRayTracePlot::set_opacities(pugi::xml_node node)
 {
   xs_.resize(colors_.size(), 1e6); // set to large value for opaque by default
 
@@ -1439,7 +1439,7 @@ void RayTracePlot::set_orthographic_width(pugi::xml_node node)
   }
 }
 
-void ProjectionPlot::set_wireframe_thickness(pugi::xml_node node)
+void WireframeRayTracePlot::set_wireframe_thickness(pugi::xml_node node)
 {
   if (check_for_node(node, "wireframe_thickness")) {
     int wireframe_thickness =
@@ -1450,7 +1450,7 @@ void ProjectionPlot::set_wireframe_thickness(pugi::xml_node node)
   }
 }
 
-void ProjectionPlot::set_wireframe_ids(pugi::xml_node node)
+void WireframeRayTracePlot::set_wireframe_ids(pugi::xml_node node)
 {
   if (check_for_node(node, "wireframe_ids")) {
     wireframe_ids_ = get_node_array<int>(node, "wireframe_ids");
@@ -1512,20 +1512,20 @@ void RayTracePlot::set_field_of_view(pugi::xml_node node)
   }
 }
 
-PhongPlot::PhongPlot(pugi::xml_node node) : RayTracePlot(node)
+SolidRayTracePlot::SolidRayTracePlot(pugi::xml_node node) : RayTracePlot(node)
 {
   set_opaque_ids(node);
   set_diffuse_fraction(node);
   set_light_position(node);
 }
 
-void PhongPlot::print_info() const
+void SolidRayTracePlot::print_info() const
 {
   fmt::print("Plot Type: Phong\n");
   RayTracePlot::print_info();
 }
 
-void PhongPlot::create_output() const
+void SolidRayTracePlot::create_output() const
 {
   size_t width = pixels_[0];
   size_t height = pixels_[1];
@@ -1549,7 +1549,7 @@ void PhongPlot::create_output() const
 #endif
 }
 
-void PhongPlot::set_opaque_ids(pugi::xml_node node)
+void SolidRayTracePlot::set_opaque_ids(pugi::xml_node node)
 {
   if (check_for_node(node, "opaque_ids")) {
     auto opaque_ids_tmp = get_node_array<int>(node, "opaque_ids");
@@ -1564,7 +1564,7 @@ void PhongPlot::set_opaque_ids(pugi::xml_node node)
   }
 }
 
-void PhongPlot::set_light_position(pugi::xml_node node)
+void SolidRayTracePlot::set_light_position(pugi::xml_node node)
 {
   if (check_for_node(node, "light_position")) {
     auto light_pos_tmp = get_node_array<double>(node, "light_position");
@@ -1580,7 +1580,7 @@ void PhongPlot::set_light_position(pugi::xml_node node)
   }
 }
 
-void PhongPlot::set_diffuse_fraction(pugi::xml_node node)
+void SolidRayTracePlot::set_diffuse_fraction(pugi::xml_node node)
 {
   if (check_for_node(node, "diffuse_fraction")) {
     diffuse_fraction_ = std::stod(get_node_value(node, "diffuse_fraction"));

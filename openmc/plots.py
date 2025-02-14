@@ -997,8 +997,8 @@ class RayTracePlot(PlotBase):
     projections are more similar to a pinhole camera, and orthographic
     projections preserve parallel lines and distances.
 
-    This is an abstract base class that :class:`ProjectionPlot` and
-    :class:`PhongPlot` finish the implementation of.
+    This is an abstract base class that :class:`WireframeRayTracePlot` and
+    :class:`SolidRayTracePlot` finish the implementation of.
 
     .. versionadded:: 0.14.0
 
@@ -1200,7 +1200,7 @@ class RayTracePlot(PlotBase):
             self.level = int(level.text)
 
 
-class ProjectionPlot(RayTracePlot):
+class WireframeRayTracePlot(RayTracePlot):
     """Plots wireframes of geometry with volume rendered colors
 
     Colors are defined in the same manner as the Plot class, but with the
@@ -1327,7 +1327,7 @@ class ProjectionPlot(RayTracePlot):
 
         """
         element = super().to_xml_element()
-        element.set("type", "projection")
+        element.set("type", "wireframe_raytrace")
 
         subelement = ET.SubElement(element, "wireframe_thickness")
         subelement.text = str(self._wireframe_thickness)
@@ -1370,15 +1370,15 @@ class ProjectionPlot(RayTracePlot):
 
         Returns
         -------
-        openmc.ProjectionPlot
-            ProjectionPlot object
+        openmc.WireframeRayTracePlot
+            WireframeRayTracePlot object
 
         """
 
         plot_id = int(elem.get("id"))
         plot_name = get_text(elem, 'name', '')
         plot = cls(plot_id, plot_name)
-        plot.type = "projection"
+        plot.type = "wireframe_raytrace"
 
         plot._read_xml_attributes(elem)
 
@@ -1400,7 +1400,7 @@ class ProjectionPlot(RayTracePlot):
         return plot
 
 
-class PhongPlot(RayTracePlot):
+class SolidRayTracePlot(RayTracePlot):
     """Phong shading-based rendering of an OpenMC geometry
 
     This class defines a plot that uses Phong shading to enhance the 
@@ -1492,7 +1492,7 @@ class PhongPlot(RayTracePlot):
 
         """
         element = super().to_xml_element()
-        element.set("type", "phong")
+        element.set("type", "solid_raytrace")
 
         # no light position means put it at the camera
         if self._light_position:
@@ -1541,15 +1541,15 @@ class PhongPlot(RayTracePlot):
 
         Returns
         -------
-        openmc.ProjectionPlot
-            ProjectionPlot object
+        openmc.WireframeRayTracePlot
+            WireframeRayTracePlot object
 
         """
 
         plot_id = int(elem.get("id"))
         plot_name = get_text(elem, 'name', '')
         plot = cls(plot_id, plot_name)
-        plot.type = "phong"
+        plot.type = "solid_raytrace"
 
         plot._read_xml_attributes(elem)
         plot._read_phong_attributes(elem)
@@ -1728,9 +1728,9 @@ class Plots(cv.CheckedList):
         for e in elem.findall('plot'):
             plot_type = e.get('type')
             if plot_type == 'projection':
-                plots.append(ProjectionPlot.from_xml_element(e))
+                plots.append(WireframeRayTracePlot.from_xml_element(e))
             elif plot_type == 'phong':
-                plots.append(PhongPlot.from_xml_element(e))
+                plots.append(SolidRayTracePlot.from_xml_element(e))
             elif plot_type in ('slice', 'voxel'):
                 plots.append(Plot.from_xml_element(e))
             else:

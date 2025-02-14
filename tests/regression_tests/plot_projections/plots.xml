@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <plots>
 
-  <plot id="1" type="projection">
+  <plot id="1" type="wireframe_raytrace">
     <look_at>0. 0. 0.</look_at>
     <camera_position>20. 20. 20.</camera_position>
     <pixels>200 200</pixels>
@@ -11,7 +11,7 @@
     <field_of_view>70</field_of_view>
   </plot>
 
-  <plot id="2" type="projection">
+  <plot id="2" type="wireframe_raytrace">
     <look_at>0. 0. 0.</look_at>
     <camera_position>10. 10. 0.</camera_position>
     <width>25 25</width>
@@ -22,7 +22,7 @@
     <filename>example1</filename>
   </plot>
 
-  <plot id="3" color_by="material" type="projection">
+  <plot id="3" color_by="material" type="wireframe_raytrace">
     <look_at>0. 0. 0.</look_at>
     <camera_position>20. 20. 20.</camera_position>
     <pixels>200 200</pixels>
@@ -31,7 +31,7 @@
     <wireframe_ids>2</wireframe_ids>
   </plot>
 
-  <plot id="4" color_by="material" type="projection">
+  <plot id="4" color_by="material" type="wireframe_raytrace">
     <look_at>0. 0. 0.</look_at>
     <camera_position>0. 10.0 20.</camera_position>
     <pixels>200 200</pixels>
@@ -39,7 +39,7 @@
     <filename>example3.png</filename>
   </plot>
 
-  <plot id="5" type="projection">
+  <plot id="5" type="wireframe_raytrace">
     <look_at>0. 0. 0.</look_at>
     <camera_position>10. 10. 10.</camera_position>
     <width>25 25</width>
@@ -52,7 +52,7 @@
     <color id="3" rgb="255 0 0" xs="1.0"/>
   </plot>
 
-  <plot id="6" color_by="material" type="phong">
+  <plot id="6" color_by="material" type="solid_raytrace">
     <look_at>0. 0. 0.</look_at>
     <camera_position>10. 10. 10.</camera_position>
     <pixels>200 200</pixels>
@@ -63,7 +63,7 @@
     <color id="3" rgb="255 0 100"/>
   </plot>
 
-  <plot id="7" color_by="material" type="phong">
+  <plot id="7" color_by="material" type="solid_raytrace">
     <look_at>0. 0. 0.</look_at>
     <camera_position>10. 10. 10.</camera_position>
     <diffuse_fraction>0.5</diffuse_fraction>
@@ -75,7 +75,7 @@
     <color id="3" rgb="255 0 100"/>
   </plot>
 
-  <plot id="8" color_by="material" type="phong">
+  <plot id="8" color_by="material" type="solid_raytrace">
     <look_at>0. 0. 0.</look_at>
     <camera_position>10. 10. 10.</camera_position>
     <light_position>0. 10. 10.</light_position>

@@ -44,7 +44,7 @@ def myplot():
 
 @pytest.fixture(scope='module')
 def myprojectionplot():
-    plot = openmc.ProjectionPlot(name='myprojectionplot')
+    plot = openmc.WireframeRayTracePlot(name='myprojectionplot')
     plot.look_at = (0.0, 0.0, 0.0)
     plot.camera_position = (4.0, 3.0, 0.0)
     plot.pixels = (500, 500)
@@ -124,7 +124,7 @@ def test_projection_plot_roundtrip(myprojectionplot):
 
     elem = myprojectionplot.to_xml_element()
 
-    xml_plot = openmc.ProjectionPlot.from_xml_element(elem)
+    xml_plot = openmc.WireframeRayTracePlot.from_xml_element(elem)
 
     svg_colors = _SVG_COLORS
 
@@ -209,7 +209,7 @@ def test_plots(run_in_tmpdir):
     plots = openmc.Plots([p1, p2])
     assert len(plots) == 2
 
-    p3 = openmc.ProjectionPlot(name='plot3')
+    p3 = openmc.WireframeRayTracePlot(name='plot3')
     plots = openmc.Plots([p1, p2, p3])
     assert len(plots) == 3
 
@@ -251,7 +251,7 @@ def test_voxel_plot_roundtrip():
 
 
 def test_phong_plot_roundtrip():
-    plot = openmc.PhongPlot(name='my phong plot')
+    plot = openmc.SolidRayTracePlot(name='my phong plot')
     plot.id = 2300
     plot.filename = 'phong1'
     plot.pixels = (50, 50)
@@ -267,7 +267,7 @@ def test_phong_plot_roundtrip():
 
     repr(plot)
 
-    new_plot = openmc.PhongPlot.from_xml_element(elem)
+    new_plot = openmc.SolidRayTracePlot.from_xml_element(elem)
 
     assert new_plot.name == plot.name
     assert new_plot.id == plot.id

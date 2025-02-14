@@ -505,35 +505,6 @@ void print_runtime()
 
 //==============================================================================
 
-double variance_of_variance(const double* x, int n, std::vector<double>& numerator_contributions, std::vector<double>& denominator_contributions)
-{
-  // Need to create a double for each sum
-  double sum = (x[static_cast<int>(TallyResult::SUM)]) ; 
-  double sum_sq = (x[static_cast<int>(TallyResult::SUM_SQ)]) ;
-  double sum_rd = (x[static_cast<int>(TallyResult::SUM_THIRD)]) ;
-  double sum_th = (x[static_cast<int>(TallyResult::SUM_FOURTH)]) ;
-
-  double term1 = sum_th;
-  double term2 = (4.0 * sum_rd * sum) / n;
-  double term3 = (6.0 * sum_sq * (pow(sum, 2.0))) / (pow(n, 2.0));
-  double term4 = (3.0 * (pow(sum, 4.0))) / (pow(n, 3.0));
-  double term5 = sum_sq - (1.0 / n) * (pow(sum, 2.0));
-  // Fourth moment of the sample
-  double numerator = sum_th - (4.0*sum_rd*sum) / n  + (6.0*sum_sq*(pow(sum, 2.0))) / (pow(n, 2.0)) - (3.0*(pow(sum, 4.0))) / (pow(n, 3.0));
-
-  // Second moment of the sample
-  double denominator = (sum_sq - (1.0/n)*(pow(sum, 2.0)))*(sum_sq - (1.0/n)*(pow(sum, 2.0)));
-
-  // Equation for variance of variance
-  double vov = numerator/denominator - 1.0/n;
-
-  // Store contributions
-  numerator_contributions = {term1, -term2, term3, -term4};
-  denominator_contributions = {term5};
-
-  return vov;
-}
-
 std::pair<double, double> mean_stdev(const double* x, int n)
 {
   double mean = x[static_cast<int>(TallyResult::SUM)] / n;
@@ -751,7 +722,7 @@ void write_tallies()
           }
         }
 
-        // Write the score, mean, uncertainty and vov.
+        // Write the score, mean, uncertainty and fom.
        indent += 3;
         for (auto score : tally.scores_) {
           std::string score_name =
@@ -762,25 +733,7 @@ void write_tallies()
           std::tie(mean, stdev) =
             mean_stdev(&tally.results_(filter_index, score_index, 0),
               tally.n_realizations_);
-          if (tally.vov_) {
-            double vov = variance_of_variance(&tally.results_(filter_index, score_index, 0),tally.n_realizations_, numerator_contributions, denominator_contributions);
-            fmt::print(tallies_out, "{0:{1}}{2:<36} {3:.6} +/- {4:.6} -- VOV: {5:.6}\n", "",
-              indent + 1, score_name, mean, stdev / mean, vov);
 
-            // Print numerator contributions
-            fmt::print(tallies_out, "{0:{1}}Numerator Contributions: ", "", indent + 1);
-            for (const auto& value : numerator_contributions) {
-              fmt::print(tallies_out, "{:.6} ", value);
-            }
-            fmt::print(tallies_out, "\n");
-
-            // Print denominator contributions
-            fmt::print(tallies_out, "{0:{1}}Denominator Contributions: ", "", indent + 1);
-            for (const auto& value : denominator_contributions) {
-              fmt::print(tallies_out, "{:.6} ", value);
-            }
-            fmt::print(tallies_out, "\n");
-          }
           if (tally.fom_){
             double fom = figure_of_merit(&tally.results_(filter_index, score_index, 0), tally.n_realizations_);
             fmt::print(tallies_out, "{0:{1}}{2:<36} {3:.6} +/- {4:.6} -- FOM: {5:.6}\n", "",

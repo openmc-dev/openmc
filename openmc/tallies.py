@@ -125,10 +125,13 @@ class Tally(IDManagerMixin):
         self._multiply_density = True
         self._vov = None
         self._fom = None
+        self._FOM = None
+        
 
         self._num_realizations = 0
         self._with_summary = False
 
+        self._simulation_time = None
         self._sum = None
         self._sum_sq = None
         self._mean = None
@@ -390,6 +393,9 @@ class Tally(IDManagerMixin):
                 self._sum = sps.lil_matrix(self._sum.flatten(), self._sum.shape)
                 self._sum_sq = sps.lil_matrix(self._sum_sq.flatten(), self._sum_sq.shape)
 
+            runtime_group = f["runtime"]
+            self._simulation_time = runtime_group["simulation"][()]
+
         # Indicate that Tally results have been read
         self._results_read = True
 
@@ -472,6 +478,31 @@ class Tally(IDManagerMixin):
             return np.reshape(self._std_dev.toarray(), self.shape)
         else:
             return self._std_dev
+        
+    @property
+    def FOM(self):
+        if self._FOM is None:
+            if not self._sp_filename:
+                return None
+
+            nonzero = np.abs(self.mean) > 0
+            self._FOM = np.zeros_like(self.mean)
+
+            relative_error = self.std_dev[nonzero] / self.mean[nonzero]
+            self._FOM[nonzero] = 1 / (relative_error * relative_error * self._simulation_time)
+            
+            # Convert NumPy array to SciPy sparse LIL matrix
+            if self.sparse:
+                self._FOM = sps.lil_matrix(self._FOM.flatten(),
+                                               self._std_dev.shape)
+
+            self.with_batch_statistics = True
+
+        if self.sparse:
+            return np.reshape(self._FOM.toarray(), self.shape)
+        else:
+            return self._FOM
+
 
     @property
     def with_batch_statistics(self):

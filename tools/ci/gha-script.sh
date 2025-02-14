@@ -14,5 +14,10 @@ if [[ $EVENT == 'y' ]]; then
   args="${args} --event "
 fi
 
+# Install NCrystal for testing
+if [[ $NCRYSTAL = 'y' ]]; then
+  pip install ncrystal
+fi
+
 # Run regression and unit tests
 pytest --cov=openmc -v $args tests

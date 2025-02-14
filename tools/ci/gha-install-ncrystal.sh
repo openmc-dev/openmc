@@ -1,6 +1,5 @@
 #!/bin/bash
 set -ex
-cd $HOME
 
 # NCrystal Variables
 NCRYSTAL_BRANCH='v4.0.0'

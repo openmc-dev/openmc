@@ -16,6 +16,7 @@ fi
 
 # Install NCrystal if needed
 if [[ $NCRYSTAL = 'y' ]]; then
+    chmod +x ./tools/ci/gha-install-ncrystal.sh
     ./tools/ci/gha-install-ncrystal.sh
 fi
 

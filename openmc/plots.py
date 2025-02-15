@@ -1306,7 +1306,7 @@ class WireframeRayTracePlot(RayTracePlot):
             self.xs[domain] = 0.0
 
     def __repr__(self):
-        string = 'Projection Plot\n'
+        string = 'Wireframe Ray-traced Plot\n'
         string += super().__repr__()
         string += '{: <16}=\t{}\n'.format('\tWireframe thickness',
                                           self._wireframe_thickness)
@@ -1472,7 +1472,7 @@ class SolidRayTracePlot(RayTracePlot):
         self._opaque_domains = x
 
     def __repr__(self):
-        string = 'Phong Plot\n'
+        string = 'Solid Ray-traced Plot\n'
         string += super().__repr__()
         string += '{: <16}=\t{}\n'.format('\tDiffuse Fraction',
                                           self._diffuse_fraction)
@@ -1727,9 +1727,9 @@ class Plots(cv.CheckedList):
         plots = cls()
         for e in elem.findall('plot'):
             plot_type = e.get('type')
-            if plot_type == 'projection':
+            if plot_type == 'wireframe_raytrace':
                 plots.append(WireframeRayTracePlot.from_xml_element(e))
-            elif plot_type == 'phong':
+            elif plot_type == 'solid_raytrace':
                 plots.append(SolidRayTracePlot.from_xml_element(e))
             elif plot_type in ('slice', 'voxel'):
                 plots.append(Plot.from_xml_element(e))

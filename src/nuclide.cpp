@@ -21,7 +21,8 @@
 #include "xtensor/xview.hpp"
 
 #include <algorithm> // for sort, min_element
-#include <string>    // for to_string, stoi
+#include <cassert>
+#include <string> // for to_string, stoi
 
 namespace openmc {
 
@@ -999,19 +1000,19 @@ void Nuclide::calculate_urr_xs(int i_temp, Particle& p) const
   }
 }
 
-std::pair<gsl::index, double> Nuclide::find_temperature(double T) const
+std::pair<int64_t, double> Nuclide::find_temperature(double T) const
 {
-  Expects(T >= 0.0);
+  assert(T >= 0.0);
 
   // Determine temperature index
-  gsl::index i_temp = 0;
+  int64_t i_temp = 0;
   double f = 0.0;
   double kT = K_BOLTZMANN * T;
-  gsl::index n = kTs_.size();
+  int64_t n = kTs_.size();
   switch (settings::temperature_method) {
   case TemperatureMethod::NEAREST: {
     double max_diff = INFTY;
-    for (gsl::index t = 0; t < n; ++t) {
+    for (int64_t t = 0; t < n; ++t) {
       double diff = std::abs(kTs_[t] - kT);
       if (diff < max_diff) {
         i_temp = t;
@@ -1038,17 +1039,17 @@ std::pair<gsl::index, double> Nuclide::find_temperature(double T) const
     f = (kT - kTs_[i_temp]) / (kTs_[i_temp + 1] - kTs_[i_temp]);
   }
 
-  Ensures(i_temp >= 0 && i_temp < n);
+  assert(i_temp >= 0 && i_temp < n);
 
   return {i_temp, f};
 }
 
 double Nuclide::collapse_rate(int MT, double temperature,
-  gsl::span<const double> energy, gsl::span<const double> flux) const
+  span<const double> energy, span<const double> flux) const
 {
-  Expects(MT > 0);
-  Expects(energy.size() > 0);
-  Expects(energy.size() == flux.size() + 1);
+  assert(MT > 0);
+  assert(energy.size() > 0);
+  assert(energy.size() == flux.size() + 1);
 
   int i_rx = reaction_index_[MT];
   if (i_rx < 0)
@@ -1056,7 +1057,7 @@ double Nuclide::collapse_rate(int MT, double temperature,
   const auto& rx = reactions_[i_rx];
 
   // Determine temperature index
-  gsl::index i_temp;
+  int64_t i_temp;
   double f;
   std::tie(i_temp, f) = this->find_temperature(temperature);
 

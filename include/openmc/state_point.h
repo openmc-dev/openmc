@@ -4,13 +4,12 @@
 #include <cstdint>
 #include <string>
 
-#include <gsl/gsl-lite.hpp>
-
 #include "hdf5.h"
 
 #include "openmc/capi.h"
 #include "openmc/particle.h"
 #include "openmc/shared_array.h"
+#include "openmc/span.h"
 #include "openmc/vector.h"
 
 namespace openmc {
@@ -35,14 +34,14 @@ void load_state_point();
 // can be created by calling calculate_parallel_index_vector on
 // source_bank.size() if such a vector is not already available.
 void write_h5_source_point(const char* filename,
-  gsl::span<SourceSite> source_bank, const vector<int64_t>& bank_index);
+  span<const SourceSite> source_bank, const vector<int64_t>& bank_index);
 
-void write_source_point(std::string, gsl::span<SourceSite> source_bank,
+void write_source_point(std::string, span<const SourceSite> source_bank,
   const vector<int64_t>& bank_index, bool use_mcpl);
 
 // This appends a source bank specification to an HDF5 file
 // that's already open. It is used internally by write_source_point.
-void write_source_bank(hid_t group_id, gsl::span<SourceSite> source_bank,
+void write_source_bank(hid_t group_id, span<const SourceSite> source_bank,
   const vector<int64_t>& bank_index);
 
 void read_source_bank(

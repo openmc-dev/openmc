@@ -7,7 +7,6 @@
 #include <utility>
 
 #include <fmt/core.h>
-#include <gsl/gsl-lite.hpp>
 
 #include "openmc/array.h"
 #include "openmc/container_util.h"

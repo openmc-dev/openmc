@@ -1,7 +1,8 @@
 #include "openmc/tallies/filter.h"
 
 #include <algorithm> // for max
-#include <cstring>   // for strcpy
+#include <cassert>
+#include <cstring> // for strcpy
 #include <string>
 
 #include <fmt/core.h>
@@ -162,7 +163,7 @@ Filter* Filter::create(const std::string& type, int32_t id)
 
 void Filter::set_id(int32_t id)
 {
-  Expects(id >= 0 || id == C_NONE);
+  assert(id >= 0 || id == C_NONE);
 
   // Clear entry in filter map if an ID was already assigned before
   if (id_ != C_NONE) {

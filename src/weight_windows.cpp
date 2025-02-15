@@ -1,6 +1,7 @@
 #include "openmc/weight_windows.h"
 
 #include <algorithm>
+#include <cassert>
 #include <cmath>
 #include <set>
 #include <string>
@@ -32,7 +33,6 @@
 #include "openmc/xml_interface.h"
 
 #include <fmt/core.h>
-#include <gsl/gsl-lite.hpp>
 
 namespace openmc {
 
@@ -289,7 +289,7 @@ void WeightWindows::allocate_ww_bounds()
 
 void WeightWindows::set_id(int32_t id)
 {
-  Expects(id >= 0 || id == C_NONE);
+  assert(id >= 0 || id == C_NONE);
 
   // Clear entry in mesh map in case one was already assigned
   if (id_ != C_NONE) {
@@ -317,7 +317,7 @@ void WeightWindows::set_id(int32_t id)
   variance_reduction::ww_map[id] = index_;
 }
 
-void WeightWindows::set_energy_bounds(gsl::span<const double> bounds)
+void WeightWindows::set_energy_bounds(span<const double> bounds)
 {
   energy_bounds_.clear();
   energy_bounds_.insert(energy_bounds_.begin(), bounds.begin(), bounds.end());
@@ -452,7 +452,7 @@ void WeightWindows::set_bounds(
 }
 
 void WeightWindows::set_bounds(
-  gsl::span<const double> lower_bounds, gsl::span<const double> upper_bounds)
+  span<const double> lower_bounds, span<const double> upper_bounds)
 {
   check_bounds(lower_bounds, upper_bounds);
   auto shape = this->bounds_size();
@@ -466,8 +466,7 @@ void WeightWindows::set_bounds(
     xt::adapt(upper_bounds.data(), upper_ww_.shape());
 }
 
-void WeightWindows::set_bounds(
-  gsl::span<const double> lower_bounds, double ratio)
+void WeightWindows::set_bounds(span<const double> lower_bounds, double ratio)
 {
   this->check_bounds(lower_bounds);
 

@@ -365,9 +365,9 @@ class ProjectionRay;
  * \class WireframeRayTracePlot
  * \brief Creates plots that are like colorful x-ray imaging
  *
- * WireframeRayTracePlot is a specialized form of RayTracePlot designed for creating
- * projection plots. This involves tracing rays from a camera through the
- * problem geometry and rendering the results based on depth of penetration
+ * WireframeRayTracePlot is a specialized form of RayTracePlot designed for
+ * creating projection plots. This involves tracing rays from a camera through
+ * the problem geometry and rendering the results based on depth of penetration
  * through materials or cells and their colors.
  */
 class WireframeRayTracePlot : public RayTracePlot {

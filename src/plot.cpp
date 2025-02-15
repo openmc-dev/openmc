@@ -211,7 +211,8 @@ void read_plots_xml(pugi::xml_node root)
         model::plots.emplace_back(
           std::make_unique<Plot>(node, Plot::PlotType::voxel));
       } else if (type_str == "wireframe_raytrace") {
-        model::plots.emplace_back(std::make_unique<WireframeRayTracePlot>(node));
+        model::plots.emplace_back(
+          std::make_unique<WireframeRayTracePlot>(node));
       } else if (type_str == "solid_raytrace") {
         model::plots.emplace_back(std::make_unique<SolidRayTracePlot>(node));
       } else {
@@ -1071,7 +1072,8 @@ RayTracePlot::RayTracePlot(pugi::xml_node node) : PlottableInterface(node)
     cam_yaxis.z, cam_zaxis.z};
 }
 
-WireframeRayTracePlot::WireframeRayTracePlot(pugi::xml_node node) : RayTracePlot(node)
+WireframeRayTracePlot::WireframeRayTracePlot(pugi::xml_node node)
+  : RayTracePlot(node)
 {
   set_opacities(node);
   set_wireframe_thickness(node);

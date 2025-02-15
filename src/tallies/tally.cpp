@@ -105,10 +105,6 @@ Tally::Tally(pugi::xml_node node)
     vov_ = get_node_value_bool(node, "VOV");
   }
 
-  if (check_for_node(node, "FOM")) {
-    fom_ = get_node_value_bool(node, "FOM");
-  }
-
   // =======================================================================
   // READ DATA FOR FILTERS
 

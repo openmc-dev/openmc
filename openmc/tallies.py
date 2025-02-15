@@ -59,8 +59,6 @@ class Tally(IDManagerMixin):
         Whether reaction rates should be multiplied by atom density
     VOV : bool
         Whether the tally will accumulate sum third and sum fourth for each tally bin
-    FOM : bool
-        Whether the tally will accumulate compute the figure of merit for each tally bin
     
         .. versionadded:: 0.14.0
     filters : list of openmc.Filter
@@ -95,6 +93,12 @@ class Tally(IDManagerMixin):
     sum_sq : numpy.ndarray
         An array containing the sum of each independent realization squared for
         each bin
+    sum_rd : numpy.ndarray
+        An array containing the sum of each independent realization tp the third power for
+        each bin
+    sum_th : numpy.ndarray
+        An array containing the sum of each independent realization to the fourth power for
+        each bin
     mean : numpy.ndarray
         An array containing the sample mean for each bin
     std_dev : numpy.ndarray
@@ -124,13 +128,15 @@ class Tally(IDManagerMixin):
         self._derivative = None
         self._multiply_density = True
         self._vov = None
-        self._fom = None
+        self._VOV = None
 
         self._num_realizations = 0
         self._with_summary = False
 
         self._sum = None
         self._sum_sq = None
+        self._sum_rd = None
+        self._sum_th = None
         self._mean = None
         self._std_dev = None
         self._with_batch_statistics = False
@@ -184,7 +190,6 @@ class Tally(IDManagerMixin):
         parts.append('{: <15}=\t{}'.format('Estimator', self.estimator))
         parts.append('{: <15}=\t{}'.format('Multiply dens.', self.multiply_density))
         parts.append('{: <15}=\t{}'.format('VOV', self.vov))
-        parts.append('{: <15}=\t{}'.format('FOM', self.fom))
         return '\n\t'.join(parts)
 
     @property
@@ -213,15 +218,6 @@ class Tally(IDManagerMixin):
     def vov(self, value):
         cv.check_type('VOV', value, bool)
         self._vov = value
-
-    @property
-    def fom(self):
-        return self._fom
-    
-    @fom.setter
-    def fom(self, value):
-        cv.check_type('FOM', value, bool)
-        self._fom = value
 
     @property
     def filters(self):
@@ -376,19 +372,27 @@ class Tally(IDManagerMixin):
             data = group['results']
             sum_ = data[:, :, 0]
             sum_sq = data[:, :, 1]
+            sum_rd = data[:, :, 2]
+            sum_th = data[:, :, 3]
 
             # Reshape the results arrays
             sum_ = np.reshape(sum_, self.shape)
             sum_sq = np.reshape(sum_sq, self.shape)
+            sum_rd = np.reshape(sum_rd, self.shape)
+            sum_th = np.reshape(sum_th, self.shape)
 
             # Set the data for this Tally
             self._sum = sum_
             self._sum_sq = sum_sq
+            self._sum_rd = sum_rd
+            self._sum_th = sum_th
 
             # Convert NumPy arrays to SciPy sparse LIL matrices
             if self.sparse:
                 self._sum = sps.lil_matrix(self._sum.flatten(), self._sum.shape)
                 self._sum_sq = sps.lil_matrix(self._sum_sq.flatten(), self._sum_sq.shape)
+                self._sum_rd = sps.lil_matrix(self._sum_rd.flatten(), self._sum_rd.shape)
+                self._sum_th = sps.lil_matrix(self._sum_th.flatten(), self._sum_th.shape)
 
         # Indicate that Tally results have been read
         self._results_read = True
@@ -428,6 +432,42 @@ class Tally(IDManagerMixin):
     def sum_sq(self, sum_sq):
         cv.check_type('sum_sq', sum_sq, Iterable)
         self._sum_sq = sum_sq
+    
+    @property
+    def sum_rd(self):
+        if not self._sp_filename or self.derived:
+            return None
+
+        # Make sure results have been read
+        self._read_results()
+
+        if self.sparse:
+            return np.reshape(self._sum_rd.toarray(), self.shape)
+        else:
+            return self._sum_rd
+
+    @sum_rd.setter
+    def sum_rd(self, sum_rd):
+        cv.check_type('sum_rd', sum_rd, Iterable)
+        self._sum_rd = sum_rd
+
+    @property
+    def sum_th(self):
+        if not self._sp_filename or self.derived:
+            return None
+
+        # Make sure results have been read
+        self._read_results()
+
+        if self.sparse:
+            return np.reshape(self._sum_th.toarray(), self.shape)
+        else:
+            return self._sum_th
+
+    @sum_th.setter
+    def sum_th(self, sum_th):
+        cv.check_type('sum_th', sum_th, Iterable)
+        self._sum_th = sum_th
 
     @property
     def mean(self):
@@ -472,6 +512,44 @@ class Tally(IDManagerMixin):
             return np.reshape(self._std_dev.toarray(), self.shape)
         else:
             return self._std_dev
+    
+    @property
+    def VOV(self):
+        if self._VOV is None:
+            if not self._sp_filename:
+                return None
+
+            n = self.num_realizations
+
+            nonzero = np.abs(self.mean) > 0
+            self._VOV = np.zeros_like(self.mean)
+            
+            numerator = self.sum_th - ( 4.0* self.sum_rd*self.sum ) / n + (6.0 * self.sum_sq * (self.sum)**2) / (n**2) - (3.0 * (self.sum)**4 ) / (n**3) 
+            denominator = (self.sum_sq - (1.0/n)*(self.sum)**2) **2
+            
+            # Apply the nonzero mask to numerator and denominator
+            numerator = numerator[nonzero]
+            denominator = denominator[nonzero]
+
+            # Ensure the shapes match
+            numerator = np.reshape(numerator, self._VOV[nonzero].shape)
+            denominator = np.reshape(denominator, self._VOV[nonzero].shape)
+
+            
+            
+            print(numerator.shape)
+            print(denominator.shape)
+            print(self._VOV.shape)
+            self._VOV[nonzero] = numerator / denominator - 1.0/n
+
+            # Convert NumPy array to SciPy sparse LIL matrix
+            if self.sparse:
+                self._VOV = sps.lil_matrix(self.VOV.flatten(),
+                                               self._VOV.shape)
+        if self.sparse:
+            return np.reshape(self._VOV.toarray(), self.shape)
+        else:
+            return self._VOV
 
     @property
     def with_batch_statistics(self):
@@ -521,12 +599,21 @@ class Tally(IDManagerMixin):
             if self._sum_sq is not None:
                 self._sum_sq = sps.lil_matrix(self._sum_sq.flatten(),
                                               self._sum_sq.shape)
+            if self._sum_rd is not None:
+                self._sum_rd = sps.lil_matrix(self._sum_rd.flatten(),
+                                              self._sum_rd.shape)
+            if self._sum_th is not None:
+                self._sum_th = sps.lil_matrix(self._sum_th.flatten(),
+                                              self._sum_th.shape)
             if self._mean is not None:
                 self._mean = sps.lil_matrix(self._mean.flatten(),
                                             self._mean.shape)
             if self._std_dev is not None:
                 self._std_dev = sps.lil_matrix(self._std_dev.flatten(),
                                                self._std_dev.shape)
+            if self._VOV is not None:
+                self._VOV = sps.lil_matrix(self._VOV.flatten(),
+                                               self._VOV.shape)
 
             self._sparse = True
 
@@ -536,10 +623,16 @@ class Tally(IDManagerMixin):
                 self._sum = np.reshape(self._sum.toarray(), self.shape)
             if self._sum_sq is not None:
                 self._sum_sq = np.reshape(self._sum_sq.toarray(), self.shape)
+            if self._sum_rd is not None:
+                self._sum_rd = np.reshape(self._sum_rd.toarray(), self.shape)
+            if self._sum_th is not None:
+                self._sum_th = np.reshape(self._sum_th.toarray(), self.shape)
             if self._mean is not None:
                 self._mean = np.reshape(self._mean.toarray(), self.shape)
             if self._std_dev is not None:
                 self._std_dev = np.reshape(self._std_dev.toarray(), self.shape)
+            if self._VOV is not None:
+                self._VOV = np.reshape(self._VOV.toarray(), self.shape)
             self._sparse = False
 
     def remove_score(self, score):
@@ -861,6 +954,34 @@ class Tally(IDManagerMixin):
                                                axis=merge_axis)
 
             merged_tally._sum_sq = np.reshape(merged_sum_sq, merged_tally.shape)
+        
+        # Concatenate sum_rd arrays if present in both tallies
+        if self.sum_rd is not None and other.sum_rd is not None:
+            self_sum_rd = self.get_reshaped_data(value='sum_rd')
+            other_sum_rd = other_copy.get_reshaped_data(value='sum_rd')
+
+            if join_right:
+                merged_sum_rd = np.concatenate((self_sum_rd, other_sum_rd),
+                                               axis=merge_axis)
+            else:
+                merged_sum_rd = np.concatenate((other_sum_rd, self_sum_rd),
+                                               axis=merge_axis)
+
+            merged_tally._sum_rd = np.reshape(merged_sum_rd, merged_tally.shape)
+
+        # Concatenate sum_th arrays if present in both tallies
+        if self.sum_th is not None and other.sum_th is not None:
+            self_sum_th = self.get_reshaped_data(value='sum_th')
+            other_sum_th = other_copy.get_reshaped_data(value='sum_th')
+
+            if join_right:
+                merged_sum_th = np.concatenate((self_sum_th, other_sum_th),
+                                               axis=merge_axis)
+            else:
+                merged_sum_th = np.concatenate((other_sum_th, self_sum_th),
+                                               axis=merge_axis)
+
+            merged_tally._sum_th = np.reshape(merged_sum_th, merged_tally.shape)
 
         # Concatenate mean arrays if present in both tallies
         if self.mean is not None and other.mean is not None:
@@ -956,11 +1077,6 @@ class Tally(IDManagerMixin):
             vov_element = ET.SubElement(element, "VOV")
             vov_element.text = str(self.vov).lower()
 
-        # Optional FOM
-        if self.fom:
-            fom_element = ET.SubElement(element, "FOM")
-            fom_element.text = str(self.fom).lower()
-
         return element
 
     def add_results(self, statepoint: cv.PathLike | openmc.StatePoint):
@@ -1006,10 +1122,6 @@ class Tally(IDManagerMixin):
         text = get_text(elem, 'VOV')
         if text is None:
             tally.vov = text in ('true', '1')
-
-        text = get_text(elem, 'FOM')
-        if text is None:
-            tally.fom = text in ('true', '1')
 
         # Read filters
         filters_elem = elem.find('filters')
@@ -1353,7 +1465,9 @@ class Tally(IDManagerMixin):
            (value == 'std_dev' and self.std_dev is None) or \
            (value == 'rel_err' and self.mean is None) or \
            (value == 'sum' and self.sum is None) or \
-           (value == 'sum_sq' and self.sum_sq is None):
+           (value == 'sum_sq' and self.sum_sq is None) or \
+           (value == 'sum_rd' and self.sum_th is None) or \
+           (value == 'sum_th' and self.sum_rd is None):
             msg = f'The Tally ID="{self.id}" has no data to return'
             raise ValueError(msg)
 
@@ -1376,6 +1490,10 @@ class Tally(IDManagerMixin):
             data = self.sum[indices]
         elif value == 'sum_sq':
             data = self.sum_sq[indices]
+        elif value == 'sum_rd':
+            data = self.sum_rd[indices]
+        elif value == 'sum_th':
+            data = self.sum_th[indices]
         else:
             msg = f'Unable to return results from Tally ID="{value}" since ' \
                   f'the requested value "{self.id}" is not \'mean\', ' \
@@ -2709,6 +2827,15 @@ class Tally(IDManagerMixin):
             new_sum_sq = self.get_values(scores, filters, filter_bins,
                                          nuclides, 'sum_sq')
             new_tally.sum_sq = new_sum_sq
+        if not self.derived and self.sum_rd is not None:
+            new_sum_rd = self.get_values(scores, filters, filter_bins,
+                                         nuclides, 'sum_rd')
+            new_tally.sum_rd = new_sum_rd
+        if not self.derived and self.sum_th is not None:
+            new_sum_th = self.get_values(scores, filters, filter_bins,
+                                         nuclides, 'sum_th')
+            new_tally.sum_th = new_sum_th
+
         if self.mean is not None:
             new_mean = self.get_values(scores, filters, filter_bins,
                                        nuclides, 'mean')
@@ -3149,6 +3276,12 @@ class Tally(IDManagerMixin):
         if not self.derived and self.sum_sq is not None:
             new_tally._sum_sq = np.zeros(new_tally.shape, dtype=np.float64)
             new_tally._sum_sq[diag_indices, :, :] = self.sum_sq
+        if not self.derived and self.sum_rd is not None:
+            new_tally._sum_rd = np.zeros(new_tally.shape, dtype=np.float64)
+            new_tally._sum_rd[diag_indices, :, :] = self.sum_rd
+        if not self.derived and self.sum_th is not None:
+            new_tally._sum_th = np.zeros(new_tally.shape, dtype=np.float64)
+            new_tally._sum_th[diag_indices, :, :] = self.sum_th
         if self.mean is not None:
             new_tally._mean = np.zeros(new_tally.shape, dtype=np.float64)
             new_tally._mean[diag_indices, :, :] = self.mean

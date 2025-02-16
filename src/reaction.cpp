@@ -175,6 +175,7 @@ std::unordered_map<int, std::string> REACTION_NAME_MAP {
   // Normal ENDF-based reactions
   {TOTAL_XS, "(n,total)"},
   {ELASTIC, "(n,elastic)"},
+  {N_NONELASTIC, "(n,nonelastic)"},
   {N_LEVEL, "(n,level)"},
   {N_2ND, "(n,2nd)"},
   {N_2N, "(n,2n)"},

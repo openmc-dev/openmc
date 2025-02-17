@@ -41,12 +41,9 @@ Plotting in 2D
 --------------
 
 The `example notebook`_ also demonstrates how to plot a structured mesh tally in
-two dimensions using the Python API. One can also use the :ref:`scripts_plot`
-script which provides an interactive GUI to explore and plot structured mesh
-tallies for any scores and filter bins.
-
-.. image:: ../_images/plotmeshtally.png
-   :width: 400px
+two dimensions using the Python API. One can also use the `openmc-plotter
+<https://github.com/openmc-dev/plotter/>`_ application that provides an
+interactive GUI to explore and plot a much wider variety of tallies.
 
 .. _usersguide_track:
 
@@ -81,7 +78,7 @@ of three, e.g., if we wanted particles 3 and 4 from batch 1 and generation 2::
 After running OpenMC, the working directory will contain a file of the form
 "track_(batch #)_(generation #)_(particle #).h5" for each particle tracked.
 These track files can be converted into VTK poly data files with the
-:ref:`scripts_track` script.
+:class:`openmc.Tracks` class.
 
 ----------------------
 Source Site Processing

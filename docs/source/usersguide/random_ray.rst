@@ -111,7 +111,7 @@ detector from the core. In this case, rays sampled in the moderator region and
 heading toward the detector will begin life with a highly scattered thermal
 spectrum and will have an inaccurate fast spectrum. If the dead zone length is
 only 20 cm, we might imagine such rays writing to the detector tally within
-their active lengths, despite their innaccurate estimate of the uncollided fast
+their active lengths, despite their inaccurate estimate of the uncollided fast
 angular flux. Thus, an inactive length of 100--200 cm would ensure that any such
 rays would still be within their inactive regions, and only rays that have
 actually traversed through the core (and thus have an accurate representation of
@@ -435,10 +435,11 @@ Inputting Multigroup Cross Sections (MGXS)
 Multigroup cross sections for use with OpenMC's random ray solver are input the
 same way as with OpenMC's traditional multigroup Monte Carlo mode. There is more
 information on generating multigroup cross sections via OpenMC in the
-:ref:`multigroup materials <create_mgxs>` user guide. You may also wish to
-use an existing multigroup library. An example of using OpenMC's Python
-interface to generate a correctly formatted ``mgxs.h5`` input file is given
-in the `OpenMC Jupyter notebook collection
+:ref:`multigroup materials <create_mgxs>` user guide. You may also wish to use
+an existing ``mgxs.h5`` MGXS library file, or define your own given a known set
+of cross section data values (e.g., as taken from a benchmark specification). An
+example of using OpenMC's Python interface to generate a correctly formatted
+``mgxs.h5`` input file is given in the `OpenMC Jupyter notebook collection
 <https://nbviewer.org/github/openmc-dev/openmc-notebooks/blob/main/mg-mode-part-i.ipynb>`_.
 
 .. note::
@@ -446,6 +447,183 @@ in the `OpenMC Jupyter notebook collection
     supported in random ray mode. To represent multiple material temperatures,
     separate materials can be defined each with a separate multigroup dataset
     corresponding to a given temperature.
+
+.. _mgxs_gen:
+
+-------------------------------------------
+Generating Multigroup Cross Sections (MGXS)
+-------------------------------------------
+
+OpenMC is capable of generating multigroup cross sections by way of flux
+collapsing data based on flux solutions obtained from a continuous energy Monte
+Carlo solve. While it is a circular excercise in some respects to use continuous
+energy Monte Carlo to generate cross sections to be used by a reduced-fidelity
+multigroup transport solver, there are many use cases where this is nonetheless
+highly desirable. For instance, generation of a multigroup library may enable
+the same set of approximate multigroup cross section data to be used across a
+variety of problem types (or through a multidimensional parameter sweep of
+design variables) with only modest errors and at greatly reduced cost as
+compared to using only continuous energy Monte Carlo.
+
+We give here a quick summary of how to produce a multigroup cross section data
+file (``mgxs.h5``) from a starting point of a typical continuous energy Monte
+Carlo input file. Notably, continuous energy input files define materials as a
+mixture of nuclides with different densities, whereas multigroup materials are
+simply defined by which name they correspond to in a ``mgxs.h5`` library file.
+
+To generate the cross section data, we begin with a continuous energy Monte
+Carlo input deck and add in the required tallies that will be needed to generate
+our library. In this example, we will specify material-wise cross sections and a
+two group energy decomposition::
+
+  # Define geometry
+  ...
+  ...
+  geometry = openmc.Geometry()
+  ...
+  ...
+
+  # Initialize MGXS library with a finished OpenMC geometry object
+  mgxs_lib = openmc.mgxs.Library(geometry)
+
+  # Pick energy group structure
+  groups = openmc.mgxs.EnergyGroups(openmc.mgxs.GROUP_STRUCTURES['CASMO-2'])
+  mgxs_lib.energy_groups = groups
+
+  # Disable transport correction
+  mgxs_lib.correction = None
+
+  # Specify needed cross sections for random ray
+  mgxs_lib.mgxs_types = ['total', 'absorption', 'nu-fission', 'fission',
+                      'nu-scatter matrix', 'multiplicity matrix', 'chi']
+
+  # Specify a "cell" domain type for the cross section tally filters
+  mgxs_lib.domain_type = "material"
+
+  # Specify the cell domains over which to compute multi-group cross sections
+  mgxs_lib.domains = geometry.get_all_materials().values()
+
+  # Do not compute cross sections on a nuclide-by-nuclide basis
+  mgxs_lib.by_nuclide = False
+
+  # Check the library - if no errors are raised, then the library is satisfactory.
+  mgxs_lib.check_library_for_openmc_mgxs()
+
+  # Construct all tallies needed for the multi-group cross section library
+  mgxs_lib.build_library()
+
+  # Create a "tallies.xml" file for the MGXS Library
+  tallies = openmc.Tallies()
+  mgxs_lib.add_to_tallies_file(tallies, merge=True)
+
+  # Export
+  tallies.export_to_xml()
+
+  ...
+
+When selecting an energy decomposition, you can manually define group boundaries
+or pick out a group structure already known to OpenMC (a list of which can be
+found at :class:`openmc.mgxs.GROUP_STRUCTURES`). Once the above input deck has
+been run, the resulting statepoint file will contain the needed flux and
+reaction rate tally data so that a MGXS library file can be generated. Below is
+the postprocessing script needed to generate the ``mgxs.h5`` library file given
+a statepoint file (e.g., ``statepoint.100.h5``) file and summary file (e.g.,
+``summary.h5``) that resulted from running our previous example::
+
+  import openmc
+
+  summary = openmc.Summary('summary.h5')
+  geom = summary.geometry
+  mats = summary.materials
+
+  statepoint_filename = 'statepoint.100.h5'
+  sp = openmc.StatePoint(statepoint_filename)
+
+  groups = openmc.mgxs.EnergyGroups(openmc.mgxs.GROUP_STRUCTURES['CASMO-2'])
+  mgxs_lib = openmc.mgxs.Library(geom)
+  mgxs_lib.energy_groups = groups
+  mgxs_lib.correction = None
+  mgxs_lib.mgxs_types = ['total', 'absorption', 'nu-fission', 'fission',
+                          'nu-scatter matrix', 'multiplicity matrix', 'chi']
+
+  # Specify a "cell" domain type for the cross section tally filters
+  mgxs_lib.domain_type = "material"
+
+  # Specify the cell domains over which to compute multi-group cross sections
+  mgxs_lib.domains = geom.get_all_materials().values()
+
+  # Do not compute cross sections on a nuclide-by-nuclide basis
+  mgxs_lib.by_nuclide = False
+
+  # Check the library - if no errors are raised, then the library is satisfactory.
+  mgxs_lib.check_library_for_openmc_mgxs()
+
+  # Construct all tallies needed for the multi-group cross section library
+  mgxs_lib.build_library()
+
+  mgxs_lib.load_from_statepoint(sp)
+
+  names = []
+  for mat in mgxs_lib.domains: names.append(mat.name)
+
+  # Create a MGXS File which can then be written to disk
+  mgxs_file = mgxs_lib.create_mg_library(xs_type='macro', xsdata_names=names)
+
+  # Write the file to disk using the default filename of "mgxs.h5"
+  mgxs_file.export_to_hdf5("mgxs.h5")
+
+Notably, the postprocessing script needs to match the same
+:class:`openmc.mgxs.Library` settings that were used to generate the tallies,
+but otherwise is able to discern the rest of the simulation details from the
+statepoint and summary files. Once the postprocessing script is successfully
+run, the ``mgxs.h5`` file can be loaded by subsequent runs of OpenMC.
+
+If you want to convert continuous energy material objects in an OpenMC input
+deck to multigroup ones from a ``mgxs.h5`` library, you can follow the below
+example. Here we begin with the original continuous energy materials we used to
+generate our MGXS library::
+
+    fuel = openmc.Material(name='UO2 (2.4%)')
+    fuel.set_density('g/cm3', 10.29769)
+    fuel.add_nuclide('U234', 4.4843e-6)
+    fuel.add_nuclide('U235', 5.5815e-4)
+    fuel.add_nuclide('U238', 2.2408e-2)
+    fuel.add_nuclide('O16', 4.5829e-2)
+
+    water = openmc.Material(name='Hot borated water')
+    water.set_density('g/cm3', 0.740582)
+    water.add_nuclide('H1', 4.9457e-2)
+    water.add_nuclide('O16', 2.4672e-2)
+    water.add_nuclide('B10', 8.0042e-6)
+    water.add_nuclide('B11', 3.2218e-5)
+    water.add_s_alpha_beta('c_H_in_H2O')
+
+    materials = openmc.Materials([fuel, water])
+
+Once the ``mgxs.h5`` library file has been generated, we can then manually make
+the necessary edits to the material definitions so that they load from the
+multigroup library instead of defining their isotopic contents, as::
+
+    # Instantiate some Macroscopic Data
+    fuel_data = openmc.Macroscopic('UO2 (2.4%)')
+    water_data = openmc.Macroscopic('Hot borated water')
+
+    # Instantiate some Materials and register the appropriate Macroscopic objects
+    fuel= openmc.Material(name='UO2 (2.4%)')
+    fuel.set_density('macro', 1.0)
+    fuel.add_macroscopic(fuel_data)
+
+    water= openmc.Material(name='Hot borated water')
+    water.set_density('macro', 1.0)
+    water.add_macroscopic(water_data)
+
+    # Instantiate a Materials collection and export to XML
+    materials = openmc.Materials([fuel, water])
+    materials.cross_sections = "mgxs.h5"
+
+In the above example, our ``fuel`` and ``water`` materials will now load MGXS
+data from the ``mgxs.h5`` file instead of loading continuous energy isotopic
+cross section data.
 
 --------------
 Linear Sources
@@ -597,9 +775,7 @@ estimator, the following code would be used:
 Adjoint Flux Mode
 -----------------
 
-The adjoint flux random ray solver mode can be enabled as:
-entire
-::
+The adjoint flux random ray solver mode can be enabled as::
 
     settings.random_ray['adjoint'] = True
 

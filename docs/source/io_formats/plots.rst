@@ -71,9 +71,9 @@ sub-elements:
     the PNG file format. The "voxel" plot type produces a binary datafile
     containing voxel grid positioning and the cell or material (specified by the
     ``color`` tag) at the center of each voxel. Voxel plot files can be
-    processed into VTK files using the :ref:`scripts_voxel` script provided with
-    OpenMC and subsequently viewed with a 3D viewer such as VISIT or Paraview.
-    See the :ref:`io_voxel` for information about the datafile structure.
+    processed into VTK files using the :func:`openmc.voxel_to_vtk` function and
+    subsequently viewed with a 3D viewer such as VISIT or Paraview. See the
+    :ref:`io_voxel` for information about the datafile structure.
 
     .. note:: High-resolution voxel files produced by OpenMC can be quite large,
               but the equivalent VTK files will be significantly smaller.
@@ -152,17 +152,17 @@ attributes or sub-elements.  These are not used in "voxel" plots:
     *Default*: 255 255 255 (white)
 
   :show_overlaps:
-    Indicates whether overlapping regions of different cells are shown. 
+    Indicates whether overlapping regions of different cells are shown.
 
     *Default*: None
 
   :overlap_color:
-    Specifies the RGB color of overlapping regions of different cells. Does not 
-    do anything if ``show_overlaps`` is "false" or not specified. Should be 3 
+    Specifies the RGB color of overlapping regions of different cells. Does not
+    do anything if ``show_overlaps`` is "false" or not specified. Should be 3
     integers separated by spaces.
 
     *Default*: 255 0 0 (red)
-  
+
   :meshlines:
     The ``meshlines`` sub-element allows for plotting the boundaries of a
     regular mesh on top of a plot. Only one ``meshlines`` element is allowed per

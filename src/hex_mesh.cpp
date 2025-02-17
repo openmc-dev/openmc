@@ -475,15 +475,15 @@ StructuredMesh::MeshDistance HexgonalMesh::distance_to_grid_boundary(
   const MeshIndex& ijk, int i, const Position& r0, const Direction& u,
   double l) const
 {
-  // Compute the distance to the element boundary of index i
-  // Since MeshIndex is defined to have 3 and only 3 numbers (can we override?) we need to do a bit of gymnastics to
-  // convert to a HexMeshIndex
-  //
-  Position r = r0 - origin_;
+  // Compute the distance to the element boundary of index i \in {0,1,2,3}
+  // i==3 means z
 
+  Position r = r0 - origin_;
   if (i < 4) {
     // we chack the hexagonal planes
-    // have to check them all since we may have a new situtation after a boundary crossing.
+    // have to check all which have positive u.n since we may have a new situtation
+    // after a boundary crossing.
+
   } else {
     // check z-planes
   }

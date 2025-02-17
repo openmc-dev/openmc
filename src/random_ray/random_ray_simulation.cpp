@@ -66,7 +66,7 @@ void openmc_run_random_ray()
     simulation::time_total.stop();
 
     // Normalize and save the final forward flux
-    forward_flux = sim.domain()->scalar_flux_final_;
+    sim.domain()->serialize_final_fluxes(forward_flux);
 
     double source_normalization_factor =
       sim.domain()->compute_fixed_source_normalization_factor() /
@@ -173,6 +173,7 @@ void validate_random_ray_inputs()
       case FilterType::MATERIAL:
       case FilterType::MESH:
       case FilterType::UNIVERSE:
+      case FilterType::PARTICLE:
         break;
       default:
         fatal_error("Invalid filter specified. Only cell, cell_instance, "

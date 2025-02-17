@@ -49,6 +49,12 @@ public:
   //! \param type Particle type
   void create_secondary(double wgt, Direction u, double E, ParticleType type);
 
+  //! split a particle
+  //
+  //! creates a new particle with weight wgt
+  //! \param wgt Weight of the new particle
+  void split(double wgt);
+
   //! initialize from a source site
   //
   //! initializes a particle from data stored in a source site. The source

@@ -12,7 +12,7 @@ Python API. That is, from the root directory of the OpenMC repository:
 
 .. code-block:: sh
 
-    python -m pip install .[docs]
+    python -m pip install ".[docs]"
 
 -----------------------------------
 Building Documentation as a Webpage

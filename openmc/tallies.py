@@ -1,3 +1,4 @@
+from __future__ import annotations
 from collections.abc import Iterable, MutableSequence
 import copy
 from functools import partial, reduce
@@ -33,7 +34,7 @@ _NUCLIDE_CLASSES = (str, openmc.CrossNuclide, openmc.AggregateNuclide)
 _FILTER_CLASSES = (openmc.Filter, openmc.CrossFilter, openmc.AggregateFilter)
 
 # Valid types of estimators
-ESTIMATOR_TYPES = ['tracklength', 'collision', 'analog']
+ESTIMATOR_TYPES = {'tracklength', 'collision', 'analog'}
 
 
 class Tally(IDManagerMixin):
@@ -65,7 +66,9 @@ class Tally(IDManagerMixin):
     scores : list of str
         List of defined scores, e.g. 'flux', 'fission', etc.
     estimator : {'analog', 'tracklength', 'collision'}
-        Type of estimator for the tally
+        Type of estimator for the tally. If unset (None), OpenMC will automatically
+        select an appropriate estimator based on the tally filters and scores
+        with a preference for 'tracklength'.
     triggers : list of openmc.Trigger
         List of tally triggers
     num_scores : int
@@ -130,6 +133,36 @@ class Tally(IDManagerMixin):
 
         self._sp_filename = None
         self._results_read = False
+
+    def __eq__(self, other):
+        if other.id != self.id:
+            return False
+        if other.name != self.name:
+            return False
+        # estimators are automatically set based on the tally filters and scores
+        # during OpenMC initialization if this value is None, so it is not
+        # considered a requirement for equivalence if it is unset on either
+        # tally as it implies that the user is allowing OpenMC to select an
+        # appropriate estimator. If the value is explicitly set on both tallies,
+        # then the values must match for the tallies to be considered equivalent.
+        if self.estimator is not None and other.estimator is not None and other.estimator != self.estimator:
+            return False
+        if other.filters != self.filters:
+            return False
+        # for tallies are loaded from statpoint files
+        # an empty nuclide list is equivalent to a list with 'total'
+        other_nuclides = other.nuclides.copy()
+        self_nuclides = self.nuclides.copy()
+        if 'total' in other_nuclides:
+            other_nuclides.remove('total')
+        if 'total' in self_nuclides:
+            self_nuclides.remove('total')
+        if other_nuclides != self_nuclides:
+            return False
+        for attr in {'scores', 'triggers', 'derivative', 'multiply_density'}:
+            if getattr(other, attr) != getattr(self, attr):
+                return False
+        return True
 
     def __repr__(self):
         parts = ['Tally']
@@ -266,7 +299,8 @@ class Tally(IDManagerMixin):
 
     @estimator.setter
     def estimator(self, estimator):
-        cv.check_value('estimator', estimator, ESTIMATOR_TYPES)
+        # allow the estimator to be set to None (let OpenMC choose the estimator at runtime)
+        cv.check_value('estimator', estimator, ESTIMATOR_TYPES | {None})
         self._estimator = estimator
 
     @property
@@ -304,8 +338,16 @@ class Tally(IDManagerMixin):
 
         # Open the HDF5 statepoint file
         with h5py.File(self._sp_filename, 'r') as f:
+            # Set number of realizations
+            group = f[f'tallies/tally {self.id}']
+            self.num_realizations = int(group['n_realizations'][()])
+
+            # Update nuclides
+            nuclide_names = group['nuclides'][()]
+            self.nuclides = [name.decode().strip() for name in nuclide_names]
+
             # Extract Tally data from the file
-            data = f[f'tallies/tally {self.id}/results']
+            data = group['results']
             sum_ = data[:, :, 0]
             sum_sq = data[:, :, 1]
 
@@ -511,7 +553,7 @@ class Tally(IDManagerMixin):
 
         Parameters
         ----------
-        nuclide : openmc.Nuclide
+        nuclide : str
             Nuclide to remove
 
         """
@@ -883,6 +925,21 @@ class Tally(IDManagerMixin):
 
         return element
 
+    def add_results(self, statepoint: cv.PathLike | openmc.StatePoint):
+        """Add results from the provided statepoint file to this tally instance
+
+        .. versionadded:: 0.15.1
+
+        Parameters
+        ----------
+        statepoint : openmc.PathLike or openmc.StatePoint
+            Statepoint used to update tally results
+        """
+        if isinstance(statepoint, openmc.StatePoint):
+            self._sp_filename = statepoint._f.filename
+        else:
+            self._sp_filename = str(statepoint)
+
     @classmethod
     def from_xml_element(cls, elem, **kwargs):
         """Generate tally object from an XML element
@@ -1020,17 +1077,10 @@ class Tally(IDManagerMixin):
             in the Tally.
 
         """
-        # Look for the user-requested nuclide in all of the Tally's Nuclides
+        # Look for the user-requested nuclide in all of the Tally's nuclides
         for i, test_nuclide in enumerate(self.nuclides):
-            # If the Summary was linked, then values are Nuclide objects
-            if isinstance(test_nuclide, openmc.Nuclide):
-                if test_nuclide.name == nuclide:
-                    return i
-
-            # If the Summary has not been linked, then values are ZAIDs
-            else:
-                if test_nuclide == nuclide:
-                    return i
+            if test_nuclide == nuclide:
+                return i
 
         msg = (f'Unable to get the nuclide index for Tally since "{nuclide}" '
                'is not one of the nuclides')
@@ -1357,9 +1407,7 @@ class Tally(IDManagerMixin):
             column_name = 'nuclide'
 
             for nuclide in self.nuclides:
-                if isinstance(nuclide, openmc.Nuclide):
-                    nuclides.append(nuclide.name)
-                elif isinstance(nuclide, openmc.AggregateNuclide):
+                if isinstance(nuclide, openmc.AggregateNuclide):
                     nuclides.append(nuclide.name)
                     column_name = f'{nuclide.aggregate_op}(nuclide)'
                 else:
@@ -2350,7 +2398,8 @@ class Tally(IDManagerMixin):
             new_tally.name = self.name
             new_tally._mean = self.mean / other
             new_tally._std_dev = self.std_dev * np.abs(1. / other)
-            new_tally.estimator = self.estimator
+            if self.estimator is not None:
+                new_tally.estimator = self.estimator
             new_tally.with_summary = self.with_summary
             new_tally.num_realizations = self.num_realizations
 
@@ -2643,8 +2692,8 @@ class Tally(IDManagerMixin):
 
             # Determine the nuclide indices from any of the requested nuclides
             for nuclide in self.nuclides:
-                if nuclide.name not in nuclides:
-                    nuclide_index = self.get_nuclide_index(nuclide.name)
+                if nuclide not in nuclides:
+                    nuclide_index = self.get_nuclide_index(nuclide)
                     nuclide_indices.append(nuclide_index)
 
             # Loop over indices in reverse to remove excluded Nuclides
@@ -3165,6 +3214,19 @@ class Tallies(cv.CheckedList):
 
                     # Continue iterating from the first loop
                     break
+
+    def add_results(self, statepoint: cv.PathLike | openmc.StatePoint):
+        """Add results from the provided statepoint file
+
+        .. versionadded:: 0.15.1
+
+        Parameters
+        ----------
+        statepoint : openmc.PathLike or openmc.StatePoint
+            Statepoint used to update tally results
+        """
+        for tally in self:
+            tally.add_results(statepoint)
 
     def _create_tally_subelements(self, root_element):
         for tally in self:

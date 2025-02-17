@@ -72,14 +72,14 @@ sub-elements:
 
   :type:
     Keyword for type of plot to be produced. Currently "slice", "voxel",
-    "wireframe_raytrace", and "solid_raytrace" plots are implemented. The "slice" plot type
-    creates 2D pixel maps saved in the PNG file format. The "voxel" plot type
-    produces a binary datafile containing voxel grid positioning and the cell or
-    material (specified by the ``color`` tag) at the center of each voxel. Voxel
-    plot files can be processed into VTK files using the :ref:`scripts_voxel`
-    script provided with OpenMC and subsequently viewed with a 3D viewer such as
-    VISIT or Paraview. See :ref:`io_voxel` for information about the datafile
-    structure.
+    "wireframe_raytrace", and "solid_raytrace" plots are implemented. The
+    "slice" plot type creates 2D pixel maps saved in the PNG file format. The
+    "voxel" plot type produces a binary datafile containing voxel grid
+    positioning and the cell or material (specified by the ``color`` tag) at the
+    center of each voxel. Voxel plot files can be processed into VTK files using
+    the :func:`openmc.voxel_to_vtk` function and subsequently viewed with a 3D
+    viewer such as VISIT or Paraview. See :ref:`io_voxel` for information about
+    the datafile structure.
 
     .. note:: High-resolution voxel files produced by OpenMC can be quite large,
               but the equivalent VTK files will be significantly smaller.

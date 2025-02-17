@@ -1060,6 +1060,8 @@ random ray and Monte Carlo, however.
   develop the scattering source by way of inactive batches before beginning
   active batches.
 
+.. _adjoint:
+
 ------------------------
 Adjoint Flux Solver Mode
 ------------------------

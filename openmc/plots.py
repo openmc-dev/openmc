@@ -165,6 +165,91 @@ _SVG_COLORS = {
     'yellowgreen': (154, 205, 50)
 }
 
+_PLOT_PARAMS = """
+        Parameters
+        ----------
+        origin : iterable of float
+            Coordinates at the origin of the plot. If left as None,
+            the center of the bounding box will be used to attempt to ascertain
+            the origin with infinite values being replaced by 0.
+        width : iterable of float
+            Width of the plot in each basis direction. If left as none then the
+            width of the bounding box will be used to attempt to
+            ascertain the plot width. Defaults to (10, 10) if the bounding box
+            contains inf values.
+        pixels : Iterable of int or int
+            If iterable of ints provided then this directly sets the number of
+            pixels to use in each basis direction. If int provided then this
+            sets the total number of pixels in the plot and the number of
+            pixels in each basis direction is calculated from this total and
+            the image aspect ratio.
+        basis : {'xy', 'xz', 'yz'}
+            The basis directions for the plot
+        color_by : {'cell', 'material'}
+            Indicate whether the plot should be colored by cell or by material
+        colors : dict
+            Assigns colors to specific materials or cells. Keys are instances of
+            :class:`Cell` or :class:`Material` and values are RGB 3-tuples, RGBA
+            4-tuples, or strings indicating SVG color names. Red, green, blue,
+            and alpha should all be floats in the range [0.0, 1.0], for example:
+
+            .. code-block:: python
+
+                # Make water blue
+                water = openmc.Cell(fill=h2o)
+                universe.plot(..., colors={water: (0., 0., 1.))
+        seed : int
+            Seed for the random number generator
+        openmc_exec : str
+            Path to OpenMC executable.
+        axes : matplotlib.Axes
+            Axes to draw to
+
+            .. versionadded:: 0.13.1
+        legend : bool
+            Whether a legend showing material or cell names should be drawn
+
+            .. versionadded:: 0.14.0
+        outline : bool or str
+            Whether outlines between color boundaries should be drawn. If set to
+            'only', only outlines will be drawn.
+
+            .. versionadded:: 0.14.0
+        axis_units : {'km', 'm', 'cm', 'mm'}
+            Units used on the plot axis
+
+            .. versionadded:: 0.14.0
+        n_samples : int, optional
+            The number of source particles to sample and add to plot. Defaults
+            to None which doesn't plot any particles on the plot.
+        plane_tolerance: float
+            When plotting a plane the source locations within the plane +/-
+            the plane_tolerance will be included and those outside of the
+            plane_tolerance will not be shown
+        legend_kwargs : dict
+            Keyword arguments passed to :func:`matplotlib.pyplot.legend`.
+
+            .. versionadded:: 0.14.0
+        source_kwargs : dict, optional
+            Keyword arguments passed to :func:`matplotlib.pyplot.scatter`.
+        contour_kwargs : dict, optional
+            Keyword arguments passed to :func:`matplotlib.pyplot.contour`.
+        **kwargs
+            Keyword arguments passed to :func:`matplotlib.pyplot.imshow`.
+
+        Returns
+        -------
+        matplotlib.axes.Axes
+            Axes containing resulting image
+"""
+
+
+# Decorator for consistently adding plot parameters to docstrings (Model.plot,
+# Geometry.plot, Universe.plot, etc.)
+def add_plot_params(func):
+    func.__doc__ += _PLOT_PARAMS
+    return func
+
 
 def _get_plot_image(plot, cwd):
     from IPython.display import Image

@@ -15,6 +15,7 @@
 #include "xtensor/xsort.hpp"
 #include "xtensor/xtensor.hpp"
 #include "xtensor/xview.hpp"
+#include "xtensor/xnorm.hpp"
 #include <fmt/core.h> // for fmt
 
 #include "openmc/capi.h"
@@ -154,14 +155,14 @@ HexagonalMesh::HexagonalMesh(pugi::xml_node node) : StructuredMesh {node}
   else
     hex_count_ = 1 + 3 * (max_a) * (max_a-1);
 
-  //width[1] is the height of the mesh block, width[0] is the width of
-  //the mesh block at its widest
+  // width[1] is the height of the full mesh block, width[0] is the width of
+  // the full mesh block at its widest
   element_volume_ = width_[1] * width_[0] * width_[0] * sqrt(3);
 
   // Set material volumes
   volume_frac_ = 1.0 / hex_count_;
 
-  //size of hex is defined as the radius of the circumscribed circle
+  // size of hex is defined as the radius of the circumscribed circle
   size_ = (width_[0]/shape[0])/sqrt(3.0);
 
 }

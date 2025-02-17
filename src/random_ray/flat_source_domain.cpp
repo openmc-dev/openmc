@@ -1532,7 +1532,28 @@ void FlatSourceDomain::handle_small_subdivided_source_regions()
       // is negative, then we discard its flux estimate. It is replaced by a mix
       // of the previous iteration for this source region and the flux from the
       // parent source region. The mix is controlled by the alpha parameter.
-      if (!sufficient_vol || srh.scalar_flux_new(g) < 0.0) {
+      // PROBLEM: The < 0.0 part biases c5g7 massively. Must do something else.
+      // I think that the other fluxes are pretty accurate given that the
+      // mesh is so simple. Stealing another sector's flux 1/100 times is not
+      // going to cause 10,000 pcm error. However -- doing this only when the
+      // fluxes are negative is causing an imbalance that is actually in many
+      // ways WORSE than just zeroing it. Zero is at least somewhat close
+      // to whatever slightly negative flux is typically there. But setting
+      // to the (let's say for the sake of argument, true) parent flux is
+      // going to massively shift the mean upwards due to chopping the whole tail.
+      // If you had a way of chopping the high portion of the tail as well, then this
+      // would be fine, but you'd need to know something about the distro I think. I
+      // could potentially restrict sampling to between 0 < mean < 2*mean, but that
+      // seems likely to impart some sort of autocorrelation. But maybe it'd be fine?
+      // The bigger problem is maybe what is the "mean" even referring to? The
+      // fluxes are not stationary, so this would be a moving target. You'd have
+      // to start having a moving window etc and it just gets totally insane. And
+      // there would be some stupid case that would break it.
+
+      // Other ideas:
+      if (!sufficient_vol || (srh.scalar_flux_new(g) < 0.0 && vol < 0.25 * avg_vol)) {
+       // if (!sufficient_vol ) {
+
         // Low alpha favors the flux estimator for this source
         // region from the previous iteration. High alpha favors the parent
         // flux.

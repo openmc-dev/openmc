@@ -111,11 +111,11 @@ The voxel plot data is written to an :ref:`HDF5 file <io_voxel>`. The voxel file
 can subsequently be converted into a standard mesh format that can be viewed in
 `ParaView <https://www.paraview.org/>`_, `VisIt
 <https://wci.llnl.gov/simulation/computer-codes/visit>`_, etc. This typically
-will compress the size of the file significantly. The provided
-:ref:`scripts_voxel` script can convert the HDF5 voxel file to VTK formats. Once
-processed into a standard 3D file format, colors and masks can be defined using
-the stored ID numbers to better explore the geometry. The process for doing this
-will depend on the 3D viewer, but should be straightforward.
+will compress the size of the file significantly. The
+:func:`openmc.voxel_to_vtk` function can convert the HDF5 voxel file to VTK
+formats. Once processed into a standard 3D file format, colors and masks can be
+defined using the stored ID numbers to better explore the geometry. The process
+for doing this will depend on the 3D viewer, but should be straightforward.
 
 .. note:: 3D voxel plotting can be very computer intensive for the viewing
           program (Visit, ParaView, etc.) if the number of voxels is large (>10

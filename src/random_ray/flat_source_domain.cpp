@@ -118,7 +118,7 @@ void FlatSourceDomain::update_neutron_source(double k_eff)
 
   double inverse_k_eff = 1.0 / k_eff;
 
-  // Add scattering source
+  // Add scattering + fission source
 #pragma omp parallel for
   for (int64_t sr = 0; sr < n_source_regions_; sr++) {
     int material = source_regions_.material(sr);
@@ -126,35 +126,20 @@ void FlatSourceDomain::update_neutron_source(double k_eff)
     for (int g_out = 0; g_out < negroups_; g_out++) {
       double sigma_t = sigma_t_[material * negroups_ + g_out];
       double scatter_source = 0.0;
+      double fission_source = 0.0;
 
       for (int g_in = 0; g_in < negroups_; g_in++) {
         double scalar_flux = source_regions_.scalar_flux_old(sr, g_in);
         double sigma_s =
           sigma_s_[material * negroups_ * negroups_ + g_out * negroups_ + g_in];
-        scatter_source += sigma_s * scalar_flux;
-      }
-
-      source_regions_.source(sr, g_out) = scatter_source / sigma_t;
-    }
-  }
-
-  // Add fission source
-#pragma omp parallel for
-  for (int64_t sr = 0; sr < n_source_regions_; sr++) {
-    int material = source_regions_.material(sr);
-
-    for (int g_out = 0; g_out < negroups_; g_out++) {
-      double sigma_t = sigma_t_[material * negroups_ + g_out];
-      double fission_source = 0.0;
-
-      for (int g_in = 0; g_in < negroups_; g_in++) {
-        double scalar_flux = source_regions_.scalar_flux_old(sr, g_in);
         double nu_sigma_f = nu_sigma_f_[material * negroups_ + g_in];
         double chi = chi_[material * negroups_ + g_out];
+
+        scatter_source += sigma_s * scalar_flux;
         fission_source += nu_sigma_f * scalar_flux * chi;
       }
-      source_regions_.source(sr, g_out) +=
-        fission_source * inverse_k_eff / sigma_t;
+      source_regions_.source(sr, g_out) =
+        (scatter_source + fission_source * inverse_k_eff) / sigma_t;
     }
   }
 

@@ -122,18 +122,18 @@ for doing this will depend on the 3D viewer, but should be straightforward.
           million or so).  Thus if you want an accurate picture that renders
           smoothly, consider using only one voxel in a certain direction.
 
------------
+----------------------
 Solid Ray-traced Plots
------------
+----------------------
 
 .. image:: ../_images/phong_triso.png
    :width: 300px
 
-The :class:`openmc.SolidRayTracePlot` class allows three dimensional visualization of
-detailed geometric features without voxelization. The plot above visualizes a
-geometry created by :class:`openmc.TRISO`, with the materials in the fuel kernel
-distinguished by color. It was enclosed in a bounding box such that some kernels
-are cut off, revealing the inner structure of the kernel.
+The :class:`openmc.SolidRayTracePlot` class allows three dimensional
+visualization of detailed geometric features without voxelization. The plot
+above visualizes a geometry created by :class:`openmc.TRISO`, with the materials
+in the fuel kernel distinguished by color. It was enclosed in a bounding box
+such that some kernels are cut off, revealing the inner structure of the kernel.
 
 The `Phong reflection model
 <https://en.wikipedia.org/wiki/Phong_reflection_model>`_ approximates how light
@@ -143,17 +143,17 @@ the dot product between the normal vector of the surface and the vector between
 that point on the surface and the light. With this assumption, visually
 appealing plots of simulation geometries can be created.
 
-Solid ray-traced plots use the same ray tracing functions that neutrons and photons do in
-OpenMC, so any input that does not leak particles can be visualized in 3D using
-a solid ray-traced plot. That being said, these plots are not useful for detecting overlap
-or undefined regions, so it is recommended to use the slice plot approach for
-geometry debugging.
+Solid ray-traced plots use the same ray tracing functions that neutrons and
+photons do in OpenMC, so any input that does not leak particles can be
+visualized in 3D using a solid ray-traced plot. That being said, these plots are
+not useful for detecting overlap or undefined regions, so it is recommended to
+use the slice plot approach for geometry debugging.
 
-Only a few inputs are required for a solid ray-traced plot. The camera location, where the
-camera is looking, and a set of opaque material or cell IDs are required. The
-colors of materials or cells are prescribed in the same way as slice plots. The
-set of IDs that are opaque in the plot must correspond to materials if
-coloring by material, or cells if coloring by cell.
+Only a few inputs are required for a solid ray-traced plot. The camera location,
+where the camera is looking, and a set of opaque material or cell IDs are
+required. The colors of materials or cells are prescribed in the same way as
+slice plots. The set of IDs that are opaque in the plot must correspond to
+materials if coloring by material, or cells if coloring by cell.
 
 A minimal solid ray-traced plot input could be::
 
@@ -173,27 +173,27 @@ A minimal solid ray-traced plot input could be::
 These plots are then stored into a :class:`openmc.Plots` instance, just like the
 slice plots.
 
-----------------
+---------------
 Wireframe Plots
-----------------
+---------------
 
 .. only:: html
 
    .. image:: ../_images/hexlat_anim.gif
      :width: 200px
 
-The :class:`openmc.WireframeRayTracePlot` class also produces 3D visualizations of
-OpenMC geometries without voxelization but is intended to show the inside of a
-model using wireframing of cell or material boundaries in addition to cell
+The :class:`openmc.WireframeRayTracePlot` class also produces 3D visualizations
+of OpenMC geometries without voxelization but is intended to show the inside of
+a model using wireframing of cell or material boundaries in addition to cell
 coloring based on the path length of camera rays through the model. The coloring
 in these plots is a bit like turning the model into partially transparent
 colored glass that can be seen through, without any refractive effects. This is
 called volume rendering. The colors are specified in exactly the same interface
 employed by slice plots.
 
-Similar to solid ray-traced plots, these use the native ray tracing capabilities within
-OpenMC, so any geometry in which particles successfully run without overlaps or
-leaks will work with wireframe plots.
+Similar to solid ray-traced plots, these use the native ray tracing capabilities
+within OpenMC, so any geometry in which particles successfully run without
+overlaps or leaks will work with wireframe plots.
 
 One drawback of wireframe plots is that particle tracks cannot be overlaid on
 them at present. Moreover, checking for overlap regions is not currently
@@ -222,42 +222,45 @@ before exporting to plots.xml.
 
       plot_file.append(thisp)
 
-This generates a sequence of png files which can be joined to form a gif. Each
+This generates a sequence of png files that can be joined to form a gif. Each
 image specifies a different camera position using some simple periodic functions
-to create a perfectly looped gif. :attr:`WireframeRayTracePlot.look_at` defines where
-the camera's centerline should point at. :attr:`WireframeRayTracePlot.camera_position`
-similarly defines where the camera is situated in the universe level we seek to
-plot. The other settings resemble those employed by :class:`openmc.Plot`, with
-the exception of the :class:`WireframeRayTracePlot.set_transparent` method and
-:attr:`WireframeRayTracePlot.xs` dictionary. These are used to control volume rendering
-of material volumes. "xs" here stands for cross section, and it defines material
-opacities in units of inverse centimeters. Setting this value to a large number
-would make a material or cell opaque, and setting it to zero makes a material
-transparent. Thus, the :class:`WireframeRayTracePlot.set_transparent` can be used to
-make all materials in the geometry transparent. From there, individual material
-or cell opacities can be tuned to produce the desired result.
+to create a perfectly looped gif. :attr:`~WireframeRayTracePlot.look_at` defines
+where the camera's centerline should point at.
+:attr:`~WireframeRayTracePlot.camera_position` similarly defines where the
+camera is situated in the universe level we seek to plot. The other settings
+resemble those employed by :class:`openmc.Plot`, with the exception of the
+:meth:`~WireframeRayTracePlot.set_transparent` method and
+:attr:`~WireframeRayTracePlot.xs` dictionary. These are used to control volume
+rendering of material volumes. "xs" here stands for cross section, and it
+defines material opacities in units of inverse centimeters. Setting this value
+to a large number would make a material or cell opaque, and setting it to zero
+makes a material transparent. Thus, the
+:meth:`~WireframeRayTracePlot.set_transparent` method can be used to make all
+materials in the geometry transparent. From there, individual material or cell
+opacities can be tuned to produce the desired result.
 
 Two camera projections are available when using these plots, perspective and
 orthographic. The default, perspective projection, is a cone of rays passing
 through each pixel which radiate from the camera position and span the field of
 view in the x and y positions. The horizontal field of view can be set with the
-:attr:`WireframeRayTracePlot.horizontal_field_of_view` attribute, which is to be
-specified in units of degrees. The field of view only influences behavior in
+:attr:`~WireframeRayTracePlot.horizontal_field_of_view` attribute, which is to
+be specified in units of degrees. The field of view only influences behavior in
 perspective projection mode.
 
 In the orthographic projection, rays follow the same angle but originate from
 different points. The horizontal width of this plane of ray starting points may
-be set with the :attr:`WireframeRayTracePlot.orthographic_width` attribute. If this
-element is nonzero, the orthographic projection is employed. Left to its default
-value of zero, the perspective projection is employed.
+be set with the :attr:`~WireframeRayTracePlot.orthographic_width` attribute. If
+this element is nonzero, the orthographic projection is employed. Left to its
+default value of zero, the perspective projection is employed.
 
-Most importantly, wireframe plots come packaged with wireframe generation that can target
-either all surface/cell/material boundaries in the geometry, or only wireframing
-around specific regions. In the above example, we have set only the fuel region
-from the hexagonal lattice example to have a wireframe drawn around it. This is
-accomplished by setting the :attr:`WireframeRayTracePlot.wireframe_domains` attribute,
-which may be set to either material IDs or cell IDs. The
-:attr:`WireframeRayTracePlot.wireframe_thickness` attribute sets the wireframe
+Most importantly, wireframe plots come packaged with wireframe generation that
+can target either all surface/cell/material boundaries in the geometry, or only
+wireframing around specific regions. In the above example, we have set only the
+fuel region from the hexagonal lattice example to have a wireframe drawn around
+it. This is accomplished by setting the
+:attr:`~WireframeRayTracePlot.wireframe_domains` attribute, which may be set to
+either material IDs or cell IDs. The
+:attr:`~WireframeRayTracePlot.wireframe_thickness` attribute sets the wireframe
 thickness in units of pixels.
 
 .. note:: When setting specific material or cell regions to have wireframes

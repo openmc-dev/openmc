@@ -1085,7 +1085,7 @@ class RayTracePlot(PlotBase):
     This is an abstract base class that :class:`WireframeRayTracePlot` and
     :class:`SolidRayTracePlot` finish the implementation of.
 
-    .. versionadded:: 0.14.0
+    .. versionadded:: 0.15.1
 
     Parameters
     ----------
@@ -1295,6 +1295,9 @@ class WireframeRayTracePlot(RayTracePlot):
     region, and zero represents a transparent region which will expose the color
     of the regions behind it.
 
+    .. versionchanged:: 0.15.1
+        Renamed from ProjectionPlot to WireframeRayTracePlot
+
     Parameters
     ----------
     plot_id : int
@@ -1488,13 +1491,12 @@ class WireframeRayTracePlot(RayTracePlot):
 class SolidRayTracePlot(RayTracePlot):
     """Phong shading-based rendering of an OpenMC geometry
 
-    This class defines a plot that uses Phong shading to enhance the 
-    visualization of an OpenMC geometry by incorporating diffuse lighting 
-    and configurable opacity for certain regions. It extends 
-    :class:`RayTracePlot` by adding parameters related to lighting and 
-    transparency.
+    This class defines a plot that uses Phong shading to enhance the
+    visualization of an OpenMC geometry by incorporating diffuse lighting and
+    configurable opacity for certain regions. It extends :class:`RayTracePlot`
+    by adding parameters related to lighting and transparency.
 
-    .. versionadded:: 0.14.0
+    .. versionadded:: 0.15.1
 
     Parameters
     ----------
@@ -1506,14 +1508,14 @@ class SolidRayTracePlot(RayTracePlot):
     Attributes
     ----------
     light_position : tuple or list of float
-        Position of the light source in 3D space. Defaults to None, which 
-        places the light at the camera position.
+        Position of the light source in 3D space. Defaults to None, which places
+        the light at the camera position.
     diffuse_fraction : float
-        Fraction of lighting that is diffuse (non-directional). Defaults to 0.1. 
+        Fraction of lighting that is diffuse (non-directional). Defaults to 0.1.
         Must be between 0 and 1.
     opaque_domains : list
-        List of domains (e.g., cells or materials) that should be rendered 
-        as opaque rather than allowing transparency.
+        List of domains (e.g., cells or materials) that should be rendered as
+        opaque rather than allowing transparency.
     """
 
     def __init__(self, plot_id=None, name=''):

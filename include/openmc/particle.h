@@ -39,6 +39,30 @@ public:
 
   double speed() const;
 
+  //! get the distance for particle movement
+  //
+  //! sample a distance for next collision based on the xs
+  //! and find the distance to the boundary along the particle's
+  //! direction and return the above two's minimum
+  double get_destination_distance();
+
+  // Advance particle in space and time
+  // Short-term solution until the surface source is revised and we can use
+  // this->move_distance(distance)
+  void is_hit_time_boundary(double distance, bool& hit_time_boundary);
+
+  void set_particle_weight_to_zero_if_it_hit_time_boundary(bool hit_time_boundary);
+
+  void score_non_mesh_track_length_tallies(double distance);
+
+  void event_advance_deprecated();
+
+  //! score tallies corresponding particle movement
+  //
+  //! score tracklength tally, keff tally and differential tallies
+  //! \param distance the distance the particle is moved
+  void score_the_tallies(double distance);
+
   //! moves the particle by the distance length to its next location
   //! \param length the distance the particle is moved
   void move_distance(double length);

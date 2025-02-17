@@ -2329,14 +2329,77 @@ void score_analog_tally_mg(Particle& p)
     match.bins_present_ = false;
 }
 
-void score_tracklength_tally(Particle& p, double distance)
+
+double get_atom_density(
+  Particle& p, int i_log_union, const Tally& tally, int i_nuclide)
 {
-  // Determine the tracklength estimate of the flux
-  double flux = p.wgt() * distance;
+  double atom_density = 0.;
+  if (i_nuclide >= 0) {
+    if (p.material() != MATERIAL_VOID) {
+      const auto& mat = model::materials[p.material()];
+      auto j = mat->mat_nuclide_index_[i_nuclide];
+      if (j == C_NONE) {
+        // Determine log union grid index
+        if (i_log_union == C_NONE) {
+          int neutron = static_cast<int>(ParticleType::neutron);
+          i_log_union = log(p.E() / data::energy_min[neutron]) /
+                        simulation::log_spacing;
+        }
 
-  // Set 'none' value for log union grid index
-  int i_log_union = C_NONE;
+        // Update micro xs cache
+        if (!tally.multiply_density()) {
+          p.update_neutron_xs(i_nuclide, i_log_union);
+          atom_density = 1.0;
+        }
+      } else {
+        atom_density =
+          tally.multiply_density() ? mat->atom_density_(j) : 1.0;
+      }
+    }
+  }
+  return atom_density;
+}
 
+void loop_over_filters(Particle& p, double flux, int i_log_union,
+  int i_tally, const Tally& tally)
+{
+  // Initialize an iterator over valid filter bin combinations.  If there are
+  // no valid combinations, use a continue statement to ensure we skip the
+  // assume_separate break below.
+  auto filter_iter = FilterBinIter(tally, p);
+  auto end = FilterBinIter(tally, true, &p.filter_matches());
+  if (filter_iter == end)
+    return;
+
+  // Loop over filter bins.
+  for (; filter_iter != end; ++filter_iter) {
+    auto filter_index = filter_iter.index_;
+    auto filter_weight = filter_iter.weight_;
+
+    // Loop over nuclide bins.
+    for (auto i = 0; i < tally.nuclides_.size(); ++i) {
+      auto i_nuclide = tally.nuclides_[i];
+
+      double atom_density =
+        get_atom_density(p, i_log_union, tally, i_nuclide);
+
+      // TODO: consider replacing this "if" with pointers or templates
+      // handles all estimators except tracklength estimator
+      // tracklength estimator tallies are done in the FilterBinIterator call above
+      if (settings::run_CE) {
+        score_general_ce_nonanalog(p, i_tally, i * tally.scores_.size(),
+          filter_index, filter_weight, i_nuclide, atom_density, flux);
+      } else {
+        score_general_mg(p, i_tally, i * tally.scores_.size(), filter_index,
+          filter_weight, i_nuclide, atom_density, flux);
+      }
+    }
+  }
+}
+
+// compute all the active tracklength tallies
+void loop_over_all_tallies(Particle& p, double flux, int i_log_union)
+{
   for (auto i_tally : model::active_tracklength_tallies) {
     const Tally& tally {*model::tallies[i_tally]};
 
@@ -2348,50 +2411,7 @@ void score_tracklength_tally(Particle& p, double distance)
     if (filter_iter == end)
       continue;
 
-    // Loop over filter bins.
-    for (; filter_iter != end; ++filter_iter) {
-      auto filter_index = filter_iter.index_;
-      auto filter_weight = filter_iter.weight_;
-
-      // Loop over nuclide bins.
-      for (auto i = 0; i < tally.nuclides_.size(); ++i) {
-        auto i_nuclide = tally.nuclides_[i];
-
-        double atom_density = 0.;
-        if (i_nuclide >= 0) {
-          if (p.material() != MATERIAL_VOID) {
-            const auto& mat = model::materials[p.material()];
-            auto j = mat->mat_nuclide_index_[i_nuclide];
-            if (j == C_NONE) {
-              // Determine log union grid index
-              if (i_log_union == C_NONE) {
-                int neutron = static_cast<int>(ParticleType::neutron);
-                i_log_union = std::log(p.E() / data::energy_min[neutron]) /
-                              simulation::log_spacing;
-              }
-
-              // Update micro xs cache
-              if (!tally.multiply_density()) {
-                p.update_neutron_xs(i_nuclide, i_log_union);
-                atom_density = 1.0;
-              }
-            } else {
-              atom_density =
-                tally.multiply_density() ? mat->atom_density_(j) : 1.0;
-            }
-          }
-        }
-
-        // TODO: consider replacing this "if" with pointers or templates
-        if (settings::run_CE) {
-          score_general_ce_nonanalog(p, i_tally, i * tally.scores_.size(),
-            filter_index, filter_weight, i_nuclide, atom_density, flux);
-        } else {
-          score_general_mg(p, i_tally, i * tally.scores_.size(), filter_index,
-            filter_weight, i_nuclide, atom_density, flux);
-        }
-      }
-    }
+    loop_over_filters(p, flux, i_log_union, i_tally, tally);
 
     // If the user has specified that we can assume all tallies are spatially
     // separate, this implies that once a tally has been scored to, we needn't
@@ -2400,6 +2420,16 @@ void score_tracklength_tally(Particle& p, double distance)
     if (settings::assume_separate)
       break;
   }
+}
+
+void score_tracklength_tally(Particle& p, double distance)
+{
+  // Determine the tracklength estimate of the flux
+  double flux = p.wgt() * distance;
+
+  // Set 'none' value for log union grid index
+  int i_log_union = C_NONE;
+  loop_over_all_tallies(p, flux, i_log_union);
 
   // Reset all the filter matches for the next tally event.
   for (auto& match : p.filter_matches())

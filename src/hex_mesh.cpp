@@ -351,6 +351,126 @@ StructuredMesh::MeshDistance HexgonalMesh::find_z_crossing(
   return d;
 }
 
+template<class T>
+void HexagonalMesh::raytrace_mesh(
+  Position r0, Position r1, const Direction& u, T tally) const
+{
+  // TODO: when c++-17 is available, use "if constexpr ()" to compile-time
+  // enable/disable tally calls for now, T template type needs to provide both
+  // surface and track methods, which might be empty. modern optimizing
+  // compilers will (hopefully) eliminate the complete code (including
+  // calculation of parameters) but for the future: be explicit
+
+  // very similar to to the structured mesh raytrace_mesh but we cannot rely on
+  // simply recomputing only a single distance. Also the distance to the outside of the mesh
+  // is somewhat more complicated
+
+  // Compute the length of the entire track.
+  double total_distance = (r1 - r0).norm();
+  if (total_distance == 0.0 && settings::solver_type != SolverType::RANDOM_RAY)
+    return;
+
+  const int n = n_dimension_;
+
+  // Flag if position is inside the mesh
+  bool in_mesh;
+
+  // Position is r = r0 + u * traveled_distance, start at r0
+  double traveled_distance {0.0};
+
+  // Calculate index of current cell. Offset the position a tiny bit in
+  // direction of flight
+  MeshIndex ijk = get_indices(r0 + TINY_BIT * u, in_mesh);
+
+  // if track is very short, assume that it is completely inside one cell.
+  // Only the current cell will score and no surfaces
+  if (total_distance < 2 * TINY_BIT) {
+    if (in_mesh) {
+      tally.track(ijk, 1.0);
+    }
+    return;
+  }
+
+  // translate start and end positions,
+  // this needs to come after the get_indices call because it does its own
+  // translation
+  local_coords(r0);
+  local_coords(r1);
+
+  // Calculate initial distances to next surfaces in all three dimensions
+  std::array<MeshDistance, 3> distances;
+  for (int k = 0; k < n; ++k) {
+    distances[k] = distance_to_grid_boundary(ijk, k, r0, u, 0.0);
+  }
+
+  // Loop until r = r1 is eventually reached
+  while (true) {
+
+    if (in_mesh) {
+
+      // find surface with minimal distance to current position
+      const auto k = std::min_element(distances.begin(), distances.end()) -
+                     distances.begin();
+
+      // Tally track length delta since last step
+      tally.track(ijk,
+        (std::min(distances[k].distance, total_distance) - traveled_distance) /
+          total_distance);
+
+      // update position and leave, if we have reached end position
+      traveled_distance = distances[k].distance;
+      if (traveled_distance >= total_distance)
+        return;
+
+      // If we have not reached r1, we have hit a surface. Tally outward current
+      tally.surface(ijk, k, distances[k].max_surface, false);
+
+      // Update cell and calculate distance to next surface in k-direction.
+      // The two other directions are still valid!
+      ijk[k] = distances[k].next_index;
+      distances[k] =
+        distance_to_grid_boundary(ijk, k, r0, u, traveled_distance);
+
+      // Check if we have left the interior of the mesh
+      in_mesh = ((ijk[k] >= 1) && (ijk[k] <= shape_[k]));
+
+      // If we are still inside the mesh, tally inward current for the next cell
+      if (in_mesh)
+        tally.surface(ijk, k, !distances[k].max_surface, true);
+
+    } else { // not inside mesh
+
+      // For all directions outside the mesh, find the distance that we need to
+      // travel to reach the next surface. Use the largest distance, as only
+      // this will cross all outer surfaces.
+      int k_max {0};
+      for (int k = 0; k < n; ++k) {
+        if ((ijk[k] < 1 || ijk[k] > shape_[k]) &&
+            (distances[k].distance > traveled_distance)) {
+          traveled_distance = distances[k].distance;
+          k_max = k;
+        }
+      }
+
+      // If r1 is not inside the mesh, exit here
+      if (traveled_distance >= total_distance)
+        return;
+
+      // Calculate the new cell index and update all distances to next surfaces.
+      ijk = get_indices(r0 + (traveled_distance + TINY_BIT) * u, in_mesh);
+      for (int k = 0; k < n; ++k) {
+        distances[k] =
+          distance_to_grid_boundary(ijk, k, r0, u, traveled_distance);
+      }
+
+      // If inside the mesh, Tally inward current
+      if (in_mesh)
+        tally.surface(ijk, k_max, !distances[k_max].max_surface, true);
+    }
+  }
+}
+
+
 StructuredMesh::MeshDistance HexgonalMesh::distance_to_grid_boundary(
   const MeshIndex& ijk, int i, const Position& r0, const Direction& u,
   double l) const
@@ -362,30 +482,40 @@ StructuredMesh::MeshDistance HexgonalMesh::distance_to_grid_boundary(
   Position r = r0 - origin_;
 
   if (i < 4) {
-    //get_index in direction i
-    int abc_i = get_index_in_direction(r0,i);
-    //get_position_of_hex_at_index
-
-    //get_distance to hex boundary of difference
-    return std::min(
-      MeshDistance(ijk[i] + 1, true, find_hex_crossing(r, u, l, ijk[i])),
-      MeshDistance(ijk[i] - 1, false, find_hex_crossing(r, u, l, ijk[i] - 1)));
-
+    // we chack the hexagonal planes
+    // have to check them all since we may have a new situtation after a boundary crossing.
   } else {
-    return find_z_crossing(r, u, l, ijk[i]);
+    // check z-planes
   }
 }
+
+double HaxegonalMesh::distance_to_hex_boundary(HexMeshIndex &ijkl, int i){
+  // return the distance to the hex boundary in direction i
+  // i==0: a, i==1: b, i==2: c
+  // This is not independent of the index triplet ijkl
+  MeshDistance d;
+  switch (i){
+    case 0:
+      d.next_index=i;
+      // next index cannot be used as a single scalar - we need to recompute all distances
+      // compute the distance to the SE/n0_ plane
+    case 1:
+  }
+  //
+}
+
+
 
 int HexagonalMesh::set_grid()
 {
   // not necessary to do this - since it is a regular mesh we can do it on the fly
 }
 
-MeshDistance find_hex_crossing(const Position& r0, const direction& u,double l, int i) const
+MeshDistance find_hex_crossing(const Position& r0, const direction& u, double l, const HexMeshIndex& ijkl, int i) const
 {
   // return the distance to the hex-plane in the desired direction
-  // i:  {0:a, 1:b, 2:c}
-  ijk =
+  // i is the index number in which direction we'll be looking
+
 
 }
 

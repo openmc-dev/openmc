@@ -202,7 +202,7 @@ vector<double> rhalton(int dim, uint64_t* seed, int64_t skip = 0)
   }
   int64_t b, res, dig;
   double b2r, ans;
-const std::array<int64_t, 10> primes = {2, 3, 5, 7, 11, 13, 17, 19, 23, 29};
+  const std::array<int64_t, 10> primes = {2, 3, 5, 7, 11, 13, 17, 19, 23, 29};
   vector<double> halton(dim, 0.0);
 
   std::vector<int64_t> perm;

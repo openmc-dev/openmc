@@ -1396,7 +1396,7 @@ void RayTracePlot::print_info() const
 
 void WireframeRayTracePlot::print_info() const
 {
-  fmt::print("Plot Type: Projection\n");
+  fmt::print("Plot Type: Wireframe ray-traced\n");
   RayTracePlot::print_info();
 }
 
@@ -1523,7 +1523,7 @@ SolidRayTracePlot::SolidRayTracePlot(pugi::xml_node node) : RayTracePlot(node)
 
 void SolidRayTracePlot::print_info() const
 {
-  fmt::print("Plot Type: Phong\n");
+  fmt::print("Plot Type: Solid ray-traced\n");
   RayTracePlot::print_info();
 }
 

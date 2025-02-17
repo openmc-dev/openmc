@@ -1570,7 +1570,7 @@ class SolidRayTracePlot(RayTracePlot):
         return string
 
     def to_xml_element(self):
-        """Return XML representation of the Phong plot
+        """Return XML representation of the solid ray-traced plot
 
         Returns
         -------

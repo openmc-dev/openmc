@@ -14,11 +14,11 @@ in openMC:
   file.
 * ``voxel``  3D voxel data dump. Produces an HDF5 file containing voxel xyz
   position and cell or material id.
-* ``projection``  2D pixel plot of a three-dimensional view of a geometry using
-  wireframes around cells or materials and coloring by depth through each
-  material.
-* ``phong``  2D pixel plot of a three-dimensional view of a geometry with solid
-  colored surfaces of a set of cells or materials.
+* ``wireframe_raytrace``  2D pixel plot of a three-dimensional view of a
+  geometry using wireframes around cells or materials and coloring by depth
+  through each material.
+* ``solid_raytrace``  2D pixel plot of a three-dimensional view of a geometry
+  with solid colored surfaces of a set of cells or materials.
 
 
 ------------------
@@ -210,13 +210,15 @@ following attributes or sub-elements.
     Location in 3D Cartesian space the camera is at.
 
 
-    *Default*: None - Required for all phong or projection plots
+    *Default*: None - Required for all ``wireframe_raytrace`` or
+    ``solid_raytrace`` plots
 
   :look_at:
     Location in 3D Cartesian space the camera is looking at.
 
 
-    *Default*: None - Required for all phong or projection plots
+    *Default*: None - Required for all ``wireframe_raytrace`` or
+    ``solid_raytrace`` plots
 
   :field_of_view:
     The horizontal field of view in degrees. Defaults to roughly the same value
@@ -240,7 +242,6 @@ sub-elements.
     List of integer IDs of cells or materials to be treated as visible in the
     plot. Whether the integers are interpreted as cell or material IDs depends
     on ``color_by``.
-
 
     *Default*: None - Required for all phong plots
 

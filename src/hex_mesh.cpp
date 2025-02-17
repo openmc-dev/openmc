@@ -165,9 +165,29 @@ HexagonalMesh::HexagonalMesh(pugi::xml_node node) : StructuredMesh {node}
   // size of hex is defined as the radius of the circumscribed circle
   size_ = (width_[0]/shape[0])/sqrt(3.0);
 
+  // set the plane normals or 3 principal directions in the hex mash
+  init_plane_normals();
+
+  // scale basis vectors of hexagonal mesh
+  scale_basis_vectors(size_);
 }
 
 const std::string Hegagonal::mesh_type = "hexagonal";
+
+int HexagonalMesh::scale_basis_vectors(double s){
+  // scale basis vectors of hexagonal mesh
+  a_ = a_ * s;
+  b_ = b_ * s;
+  c_ = c_ * s;
+  return 0;
+}
+
+int HaxgonalMesh::init_plane_normals(){
+  n0_ = 0.5 * (a_ - c_);
+  n1_ = 0.5 * (b_ - c_);
+  n2_ = 0.5 * (-a_ + c_);
+  return 0;
+}
 
 std::string HexgonalMesh::get_mesh_type() const
 {
@@ -194,7 +214,6 @@ int HexgonalMesh::get_bin_from_indices(const HexMeshIndex& ijkl) const
   return ijkl[3] * hex_count_ + (1 + 3*r0*(r0-1)) + azim;
 }
 
-
 int HexagonalMesh::get_index_in_direction(const Position& r, int i) const
 {
   switch (i){
@@ -214,8 +233,8 @@ Position HexagonalMesh::get_positition_of_hexindex(HexMeshIndex ijkl) const
 {
   //return the cartesian position of a hex indexed by abcz
   Position r;
-  r.x = ijkl[0]*basis_[0][0]*width_[0] + ijkl[1]*basis_[1][0]*width_[0];
-  r.y = ijkl[0]*basis_[0][1]*width_[0] + ijkl[1]*basis_[1][1]*width_[0];;
+  r.x = ijkl[0]*a_[0]*width_[0] + ijkl[1]*b_[0]*width_[0];
+  r.y = ijkl[0]*a_[1]*width_[0] + ijkl[1]*b_[1]*width_[0];;
   r.z = ijkl[3]*width_[1];
 }
 
@@ -253,8 +272,8 @@ Position HexgonalMesh::sample_element(
   double a_r = uniform_distribution();
   double b_r = uniform_distribution();
 
-  x = this->basis_[0][0] * (a_r + (ijk[0]-1) ) + this->basis_[1][0] * (b_r + (ijk[1]-1) );
-  y = this->basis_[0][1] * (a_r + (ijk[0]-1) ) + this->basis_[1][1] * (b_r + (ijk[1]-1) );
+  x = this->a_[0] * (a_r + (ijk[0]-1) ) + this->b_[0] * (b_r + (ijk[1]-1) );
+  y = this->a_[1] * (a_r + (ijk[0]-1) ) + this->b_[1] * (b_r + (ijk[1]-1) );
 
   double z = uniform_distribution(-width_[1]/2.0, width_[1]/2.0, seed);
 

@@ -162,6 +162,14 @@ private:
 
   double abs_a_ {0};
 
+  xt::xarray<double> a_ {0,-1,0};
+  xt::xarray<double> b_ {sqrt(3.0)*0.5,0.5,0};
+  xt::xarray<double> c_ {-sqrt(3.0)*0.5,0.5,0};
+
+  xt::xarray<double> n0_ {0,0,0};
+  xt::xarray<double> n1_ {0,0,0};
+  xt::xarray<double> n2_ {0,0,0};
+
   int hex_radius(const HexMeshIndex &ijkl) const;
 
   int hex_distance(const HexMeshIndex &ijkl0, const HexMeshIndex &ijkl1) const;

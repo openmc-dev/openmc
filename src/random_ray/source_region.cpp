@@ -46,6 +46,8 @@ void SourceRegionContainer::push_back(const SourceRegion& sr)
   lock_.push_back(sr.lock_);
   volume_.push_back(sr.volume_);
   volume_t_.push_back(sr.volume_t_);
+  volume_sq_.push_back(sr.volume_sq_);
+  volume_sq_t_.push_back(sr.volume_sq_t_);
   volume_naive_.push_back(sr.volume_naive_);
   position_recorded_.push_back(sr.position_recorded_);
   external_source_present_.push_back(sr.external_source_present_);
@@ -93,6 +95,8 @@ void SourceRegionContainer::assign(
   lock_.clear();
   volume_.clear();
   volume_t_.clear();
+  volume_sq_.clear();
+  volume_sq_t_.clear();
   volume_naive_.clear();
   position_recorded_.clear();
   external_source_present_.clear();
@@ -204,6 +208,8 @@ void SourceRegionContainer::mpi_sync_ranks(bool reduce_position)
   // as these values will be needed on all ranks for transport during the
   // next iteration.
   MPI_Allreduce(MPI_IN_PLACE, volume_.data(), n_source_regions_, MPI_DOUBLE,
+    MPI_SUM, mpi::intracomm);
+  MPI_Allreduce(MPI_IN_PLACE, volume_sq_.data(), n_source_regions_, MPI_DOUBLE,
     MPI_SUM, mpi::intracomm);
 
   MPI_Allreduce(MPI_IN_PLACE, scalar_flux_new_.data(),

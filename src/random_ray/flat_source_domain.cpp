@@ -256,6 +256,10 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
       fatal_error("Invalid volume estimator type");
     }
 
+    if (source_regions_.is_small(sr)) {
+      volume = volume_iteration;
+    }
+
     for (int g = 0; g < negroups_; g++) {
       // There are three scenarios we need to consider:
       if (volume_iteration > 0.0) {
@@ -1523,9 +1527,16 @@ void FlatSourceDomain::handle_small_subdivided_source_regions()
     // Volume of the subdivided source region
     double vol = srh.volume_t();
 
-    // Check if the source region volume is less than 1% of the average
+    // Check if the source region volume is less than 25% of the average
     // for its parent
-    bool sufficient_vol = vol > 0.01 * avg_vol;
+    bool sufficient_vol = vol > 0.25 * avg_vol;
+
+    if (!sufficient_vol) {
+      n_small++;
+      srh.is_small() = 1;
+    } else {
+      srh.is_small() = 0;
+    }
 
     for (int g = 0; g < negroups_; g++) {
       // If this is a "small" source region, or if the flux for this iteration
@@ -1551,6 +1562,7 @@ void FlatSourceDomain::handle_small_subdivided_source_regions()
       // there would be some stupid case that would break it.
 
       // Other ideas:
+      /*
       if (!sufficient_vol || (srh.scalar_flux_new(g) < 0.0 && vol < 0.25 * avg_vol)) {
        // if (!sufficient_vol ) {
 
@@ -1562,6 +1574,7 @@ void FlatSourceDomain::handle_small_subdivided_source_regions()
         srh.scalar_flux_new(g) =
           alpha * flux + (1.0 - alpha) * srh.scalar_flux_old(g);
       }
+          */
 
       // If this source region has only been crossed by a few rays in its
       // lifetime (usually due to being very small), then its centroid and

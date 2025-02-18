@@ -442,9 +442,9 @@ void RandomRaySimulation::simulate()
     // Add source to scalar flux, compute number of FSR hits
     int64_t n_hits = domain_->add_source_to_scalar_flux();
 
-    if (RandomRay::mesh_subdivision_enabled_) {
-      domain_->handle_small_subdivided_source_regions();
-    }
+    //if (RandomRay::mesh_subdivision_enabled_) {
+    //  domain_->handle_small_subdivided_source_regions();
+    //}
 
     if (settings::run_mode == RunMode::EIGENVALUE) {
       // Compute random ray k-eff

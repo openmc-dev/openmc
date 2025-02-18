@@ -224,7 +224,11 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
 {
   int64_t n_hits = 0;
 
-#pragma omp parallel for reduction(+ : n_hits)
+  double inverse_batch = 1.0 / simulation::current_batch;
+  fmt::print("batch: {}\n", simulation::current_batch);
+
+  int64_t n_small = 0;
+#pragma omp parallel for reduction(+ : n_hits, n_small)
   for (int64_t sr = 0; sr < n_source_regions(); sr++) {
 
     double volume_simulation_avg = source_regions_.volume(sr);
@@ -233,6 +237,15 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
     // Increment the number of hits if cell was hit this iteration
     if (volume_iteration) {
       n_hits++;
+    }
+
+    // Set the SR to small status if its expected number of hits
+    // per iteration is less than 1.0
+    if (source_regions_.n_hits(sr) * inverse_batch < 1.0) {
+      source_regions_.is_small(sr) = 1;
+      n_small++;
+    } else {
+      source_regions_.is_small(sr) = 0;
     }
 
     // The volume treatment depends on the volume estimator type
@@ -246,7 +259,8 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
       volume = volume_simulation_avg;
       break;
     case RandomRayVolumeEstimator::HYBRID:
-      if (source_regions_.external_source_present(sr)) {
+      if (source_regions_.external_source_present(sr) ||
+          source_regions_.is_small(sr)) {
         volume = volume_iteration;
       } else {
         volume = volume_simulation_avg;
@@ -254,10 +268,6 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
       break;
     default:
       fatal_error("Invalid volume estimator type");
-    }
-
-    if (source_regions_.is_small(sr)) {
-      volume = volume_iteration;
     }
 
     for (int g = 0; g < negroups_; g++) {
@@ -294,7 +304,7 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
       // given that the new scalar flux arrays are set to zero each iteration.
     }
   }
-
+  fmt::print("n_small: {}\n", n_small);
   // Return the number of source regions that were hit this iteration
   return n_hits;
 }
@@ -1551,19 +1561,21 @@ void FlatSourceDomain::handle_small_subdivided_source_regions()
       // ways WORSE than just zeroing it. Zero is at least somewhat close
       // to whatever slightly negative flux is typically there. But setting
       // to the (let's say for the sake of argument, true) parent flux is
-      // going to massively shift the mean upwards due to chopping the whole tail.
-      // If you had a way of chopping the high portion of the tail as well, then this
-      // would be fine, but you'd need to know something about the distro I think. I
-      // could potentially restrict sampling to between 0 < mean < 2*mean, but that
-      // seems likely to impart some sort of autocorrelation. But maybe it'd be fine?
-      // The bigger problem is maybe what is the "mean" even referring to? The
-      // fluxes are not stationary, so this would be a moving target. You'd have
-      // to start having a moving window etc and it just gets totally insane. And
-      // there would be some stupid case that would break it.
+      // going to massively shift the mean upwards due to chopping the whole
+      // tail. If you had a way of chopping the high portion of the tail as
+      // well, then this would be fine, but you'd need to know something about
+      // the distro I think. I could potentially restrict sampling to between 0
+      // < mean < 2*mean, but that seems likely to impart some sort of
+      // autocorrelation. But maybe it'd be fine? The bigger problem is maybe
+      // what is the "mean" even referring to? The fluxes are not stationary, so
+      // this would be a moving target. You'd have to start having a moving
+      // window etc and it just gets totally insane. And there would be some
+      // stupid case that would break it.
 
       // Other ideas:
       /*
-      if (!sufficient_vol || (srh.scalar_flux_new(g) < 0.0 && vol < 0.25 * avg_vol)) {
+      if (!sufficient_vol || (srh.scalar_flux_new(g) < 0.0 && vol < 0.25 *
+      avg_vol)) {
        // if (!sufficient_vol ) {
 
         // Low alpha favors the flux estimator for this source

@@ -137,7 +137,21 @@ void LinearSourceDomain::set_flux_to_flux_plus_source(
 {
   source_regions_.scalar_flux_new(sr, g) /= volume;
   source_regions_.scalar_flux_new(sr, g) += source_regions_.source(sr, g);
-  source_regions_.flux_moments_new(sr, g) *= (1.0 / volume);
+
+  // If this source region has only been crossed by a few rays in its
+  // lifetime (usually due to being very small), then its centroid and
+  // spatial moments will likely be highly innacurate and their use
+  // can lead to instability. Thus, until a source region has been
+  // crossed by a minimum number of rays, we zero out the spatial flux
+  // moments for the iteration. Additionally, if a source region is
+  // small, then the moments are likely noisy, so we zero them. This
+  // is reasonable, given that small regions can get by with a flat
+  // source approximation anyhow.
+  if (source_regions_.n_hits(sr) < 100 || source_regions_.is_small(sr)) {
+    source_regions_.flux_moments_new(sr, g) = {0.0, 0.0, 0.0};
+  } else {
+    source_regions_.flux_moments_new(sr, g) *= (1.0 / volume);
+  }
 }
 
 void LinearSourceDomain::set_flux_to_old_flux(int64_t sr, int g)

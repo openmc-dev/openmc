@@ -91,39 +91,59 @@ public:
   //----------------------------------------------------------------------------
   // Public Data members
 
+  //---------------------------------------
   // Scalar fields
-  int material_ {0};
+
+  int material_ {0}; // Index in openmc::model::materials array
   OpenMPMutex lock_;
-  double volume_ {0.0};
-  double volume_t_ {0.0};
-  double volume_sq_ {0.0};
-  double volume_sq_t_ {0.0};
-  double volume_naive_ {0.0};
-  int position_recorded_ {0};
-  int external_source_present_ {0};
-  Position position_ {0.0, 0.0, 0.0};
-  Position centroid_ {0.0, 0.0, 0.0};
-  Position centroid_iteration_ {0.0, 0.0, 0.0};
-  Position centroid_t_ {0.0, 0.0, 0.0};
-  MomentMatrix mom_matrix_ {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
-  MomentMatrix mom_matrix_t_ {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+  double volume_ {
+    0.0}; // Volume (computed from the sum of ray crossing lengths)
+  double volume_t_ {0.0};     // Volume totaled over all iterations
+  double volume_sq_ {0.0};    // Volume squared
+  double volume_sq_t_ {0.0};  // Volume squared totaled over all iterations
+  double volume_naive_ {0.0}; // Volume as integrated from this iteration only
+  int position_recorded_ {0}; // Has the position been recorded yet?
+  int external_source_present_ {
+    0}; // Is an external source present in this region?
+  Position position_ {0.0, 0.0, 0.0}; // A position somewhere inside the region
+  Position centroid_ {0.0, 0.0, 0.0}; // The centroid
+  Position centroid_iteration_ {
+    0.0, 0.0, 0.0}; // The centroid integrated from this iteration only
+  Position centroid_t_ {
+    0.0, 0.0, 0.0}; // The centroid accumulated over all iterations
+  MomentMatrix mom_matrix_ {
+    0.0, 0.0, 0.0, 0.0, 0.0, 0.0}; // The spatial moment matrix
+  MomentMatrix mom_matrix_t_ {0.0, 0.0, 0.0, 0.0, 0.0,
+    0.0}; // The spatial moment matrix accumulated over all iterations
+
   // A set of volume tally tasks. This more complicated data structure is
   // convenient for ensuring that volumes are only tallied once per source
   // region, regardless of how many energy groups are used for tallying.
   std::unordered_set<TallyTask, TallyTask::HashFunctor> volume_task_;
 
+  //---------------------------------------
   // Energy group-wise 1D arrays
-  vector<double> scalar_flux_old_;
-  vector<double> scalar_flux_new_;
-  vector<float> source_;
-  vector<float> external_source_;
-  vector<double> scalar_flux_final_;
 
-  vector<MomentArray> source_gradients_;
-  vector<MomentArray> flux_moments_old_;
-  vector<MomentArray> flux_moments_new_;
-  vector<MomentArray> flux_moments_t_;
+  vector<double>
+    scalar_flux_old_; // The scalar flux from the previous iteration
+  vector<double> scalar_flux_new_; // The scalar flux from the current iteration
+  vector<float>
+    source_; // The total source term (fission + scattering + external)
+  vector<float> external_source_;    // The external source term
+  vector<double> scalar_flux_final_; // The scalar flux accumulated over all
+                                     // active iterations (used for plotting, or
+                                     // computing adjoint sources)
 
+  vector<MomentArray> source_gradients_; // The linear source gradients
+  vector<MomentArray>
+    flux_moments_old_; // The linear flux moments from the previous iteration
+  vector<MomentArray>
+    flux_moments_new_; // The linear flux moments from the current iteration
+  vector<MomentArray>
+    flux_moments_t_; // The linear flux moments accumulated over all active
+                     // iterations (used for plotting)
+
+  //---------------------------------------
   // 2D array representing values for all energy groups x tally
   // tasks. Each group may have a different number of tally tasks
   // associated with it, necessitating the use of a jagged array.

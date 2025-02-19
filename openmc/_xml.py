@@ -82,7 +82,7 @@ def reorder_attributes(root):
 
 
 def get_elem_tuple(elem, name, dtype=int):
-    '''Helper function to get a tuple of values from an elem
+    """Helper function to get a tuple of values from an elem
 
     Parameters
     ----------
@@ -97,7 +97,7 @@ def get_elem_tuple(elem, name, dtype=int):
     -------
     tuple of dtype
         Data read from the tuple
-    '''
+    """
     subelem = elem.find(name)
     if subelem is not None:
         return tuple([dtype(x) for x in subelem.text.split()])

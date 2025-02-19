@@ -4,6 +4,8 @@ import openmc
 import openmc.examples
 import pytest
 
+from openmc.plots import _SVG_COLORS
+
 
 @pytest.fixture(scope='module')
 def myplot():
@@ -42,7 +44,7 @@ def myplot():
 
 @pytest.fixture(scope='module')
 def myprojectionplot():
-    plot = openmc.ProjectionPlot(name='myprojectionplot')
+    plot = openmc.WireframeRayTracePlot(name='myprojectionplot')
     plot.look_at = (0.0, 0.0, 0.0)
     plot.camera_position = (4.0, 3.0, 0.0)
     plot.pixels = (500, 500)
@@ -118,6 +120,31 @@ def test_repr_proj(myprojectionplot):
     assert isinstance(r, str)
 
 
+def test_projection_plot_roundtrip(myprojectionplot):
+
+    elem = myprojectionplot.to_xml_element()
+
+    xml_plot = openmc.WireframeRayTracePlot.from_xml_element(elem)
+
+    svg_colors = _SVG_COLORS
+
+    assert xml_plot.name == myprojectionplot.name
+    assert xml_plot.look_at == myprojectionplot.look_at
+    assert xml_plot.camera_position == myprojectionplot.camera_position
+    assert xml_plot.pixels == myprojectionplot.pixels
+    assert xml_plot.filename == myprojectionplot.filename
+    assert xml_plot.background == svg_colors[myprojectionplot.background]
+    assert xml_plot.color_by == myprojectionplot.color_by
+    expected_colors = {m.id: svg_colors[c] for m, c in myprojectionplot.colors.items()}
+    assert xml_plot.colors == expected_colors
+    # TODO: needs geometry information
+    # assert xml_plot.mask_components == myprojectionplot.mask_components
+    assert xml_plot.mask_background == svg_colors[myprojectionplot.mask_background]
+    # assert xml_plot.overlap_color == svg_colors[myprojectionplot.overlap_color]
+    assert xml_plot.wireframe_thickness == myprojectionplot.wireframe_thickness
+    assert xml_plot.level == myprojectionplot.level
+
+
 def test_from_geometry():
     width = 25.
     s = openmc.Sphere(r=width/2, boundary_type='vacuum')
@@ -182,7 +209,7 @@ def test_plots(run_in_tmpdir):
     plots = openmc.Plots([p1, p2])
     assert len(plots) == 2
 
-    p3 = openmc.ProjectionPlot(name='plot3')
+    p3 = openmc.WireframeRayTracePlot(name='plot3')
     plots = openmc.Plots([p1, p2, p3])
     assert len(plots) == 3
 
@@ -221,6 +248,41 @@ def test_voxel_plot_roundtrip():
     assert new_plot.origin == plot.origin
     assert new_plot.width == plot.width
     assert new_plot.color_by == plot.color_by
+
+
+def test_phong_plot_roundtrip():
+    plot = openmc.SolidRayTracePlot(name='my phong plot')
+    plot.id = 2300
+    plot.filename = 'phong1'
+    plot.pixels = (50, 50)
+    plot.look_at = (11., 12., 13.)
+    plot.camera_position = (22., 23., 24.)
+    plot.diffuse_fraction = 0.5
+    plot.horizontal_field_of_view = 90.0
+    plot.color_by = 'material'
+    plot.light_position = (8., 9., 10.)
+    plot.opaque_domains = [6, 7, 8]
+
+    elem = plot.to_xml_element()
+
+    repr(plot)
+
+    new_plot = openmc.SolidRayTracePlot.from_xml_element(elem)
+
+    assert new_plot.name == plot.name
+    assert new_plot.id == plot.id
+    assert new_plot.filename == plot.filename
+    assert new_plot.pixels == plot.pixels
+    assert new_plot.look_at == plot.look_at
+    assert new_plot.camera_position == plot.camera_position
+    assert new_plot.diffuse_fraction == plot.diffuse_fraction
+    assert new_plot.horizontal_field_of_view == plot.horizontal_field_of_view
+    assert new_plot.color_by == plot.color_by
+    assert new_plot.light_position == plot.light_position
+    assert new_plot.opaque_domains == plot.opaque_domains
+
+    # ensure the new object is valid to re-write to XML
+    new_elem = new_plot.to_xml_element()
 
 
 def test_plot_directory(run_in_tmpdir):

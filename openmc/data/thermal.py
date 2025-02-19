@@ -5,7 +5,6 @@ from numbers import Real
 from io import StringIO
 import itertools
 import os
-import re
 import tempfile
 from warnings import warn
 
@@ -871,7 +870,7 @@ class ThermalScattering(EqualityMixin):
     @classmethod
     def from_njoy(cls, filename, filename_thermal, temperatures=None,
                   evaluation=None, evaluation_thermal=None,
-                  use_endf_data=True, **kwargs):
+                  use_endf_data=True, divide_incoherent_elastic=False, **kwargs):
         """Generate thermal scattering data by running NJOY.
 
         Parameters
@@ -894,8 +893,13 @@ class ThermalScattering(EqualityMixin):
         use_endf_data : bool
             If the material has incoherent elastic scattering, the ENDF data
             will be used rather than the ACE data.
+        divide_incoherent_elastic : bool
+            Divide incoherent elastic cross section by number of principal
+            atoms. This is not part of the ENDF-6 standard but it is how it is
+            processed by NJOY.
         **kwargs
-            Keyword arguments passed to :func:`openmc.data.njoy.make_ace_thermal`
+            Keyword arguments passed to
+            :func:`openmc.data.njoy.make_ace_thermal`
 
         Returns
         -------
@@ -920,7 +924,7 @@ class ThermalScattering(EqualityMixin):
 
             # Load ENDF data to replace incoherent elastic
             if use_endf_data:
-                data_endf = cls.from_endf(filename_thermal)
+                data_endf = cls.from_endf(filename_thermal, divide_incoherent_elastic)
                 if data_endf.elastic is not None:
                     # Get appropriate temperatures
                     if temperatures is None:
@@ -938,7 +942,7 @@ class ThermalScattering(EqualityMixin):
         return data
 
     @classmethod
-    def from_endf(cls, ev_or_filename):
+    def from_endf(cls, ev_or_filename, divide_incoherent_elastic=False):
         """Generate thermal scattering data from an ENDF file
 
         Parameters
@@ -946,6 +950,10 @@ class ThermalScattering(EqualityMixin):
         ev_or_filename : openmc.data.endf.Evaluation or str
             ENDF evaluation to read from. If given as a string, it is assumed to
             be the filename for the ENDF file.
+        divide_incoherent_elastic : bool
+            Divide incoherent elastic cross section by number of principal
+            atoms. This is not part of the ENDF-6 standard but it is how it is
+            processed by NJOY.
 
         Returns
         -------
@@ -957,56 +965,6 @@ class ThermalScattering(EqualityMixin):
             ev = ev_or_filename
         else:
             ev = endf.Evaluation(ev_or_filename)
-
-        # Read coherent/incoherent elastic data
-        elastic = None
-        if (7, 2) in ev.section:
-            # Define helper functions to avoid duplication
-            def get_coherent_elastic(file_obj):
-                # Get structure factor at first temperature
-                params, S = endf.get_tab1_record(file_obj)
-                strT = _temperature_str(params[0])
-                n_temps = params[2]
-                bragg_edges = S.x
-                xs = {strT: CoherentElastic(bragg_edges, S.y)}
-                distribution = {strT: CoherentElasticAE(xs[strT])}
-
-                # Get structure factor for subsequent temperatures
-                for _ in range(n_temps):
-                    params, S = endf.get_list_record(file_obj)
-                    strT = _temperature_str(params[0])
-                    xs[strT] = CoherentElastic(bragg_edges, S)
-                    distribution[strT] = CoherentElasticAE(xs[strT])
-                return xs, distribution
-
-            def get_incoherent_elastic(file_obj):
-                params, W = endf.get_tab1_record(file_obj)
-                bound_xs = params[0]
-                xs = {}
-                distribution = {}
-                for T, debye_waller in zip(W.x, W.y):
-                    strT = _temperature_str(T)
-                    xs[strT] = IncoherentElastic(bound_xs, debye_waller)
-                    distribution[strT] = IncoherentElasticAE(debye_waller)
-                return xs, distribution
-
-            file_obj = StringIO(ev.section[7, 2])
-            lhtr = endf.get_head_record(file_obj)[2]
-            if lhtr == 1:
-                # coherent elastic
-                xs, distribution = get_coherent_elastic(file_obj)
-            elif lhtr == 2:
-                # incoherent elastic
-                xs, distribution = get_incoherent_elastic(file_obj)
-            elif lhtr == 3:
-                # mixed coherent / incoherent elastic
-                xs_c, dist_c = get_coherent_elastic(file_obj)
-                xs_i, dist_i = get_incoherent_elastic(file_obj)
-                assert sorted(xs_c) == sorted(xs_i)
-                xs = {T: Sum([xs_c[T], xs_i[T]]) for T in xs_c}
-                distribution = {T: MixedElasticAE(dist_c[T], dist_i[T]) for T in dist_c}
-
-            elastic = ThermalScatteringReaction(xs, distribution)
 
         # Read incoherent inelastic data
         assert (7, 4) in ev.section, 'No MF=7, MT=4 found in thermal scattering'
@@ -1022,6 +980,7 @@ class ThermalScattering(EqualityMixin):
         data['A0'] = awr = B[2]
         data['e_max'] = energy_max = B[3]
         data['M0'] = B[5]
+        free_xs = data['free_atom_xs'] / data['M0']
 
         # Get information about non-principal atoms
         n_non_principal = params[5]
@@ -1065,6 +1024,74 @@ class ThermalScattering(EqualityMixin):
             if atom.func == 'SCT':
                 _, Teff = endf.get_tab1_record(file_obj)
                 data['effective_temperature'].append(Teff)
+
+        # Read coherent/incoherent elastic data
+        elastic = None
+        if (7, 2) in ev.section:
+            # Define helper functions to avoid duplication
+            def get_coherent_elastic(file_obj):
+                # Get structure factor at first temperature
+                params, S = endf.get_tab1_record(file_obj)
+                strT = _temperature_str(params[0])
+                n_temps = params[2]
+                bragg_edges = S.x
+                xs = {strT: CoherentElastic(bragg_edges, S.y)}
+                distribution = {strT: CoherentElasticAE(xs[strT])}
+
+                # Get structure factor for subsequent temperatures
+                for _ in range(n_temps):
+                    params, S = endf.get_list_record(file_obj)
+                    strT = _temperature_str(params[0])
+                    xs[strT] = CoherentElastic(bragg_edges, S)
+                    distribution[strT] = CoherentElasticAE(xs[strT])
+                return xs, distribution
+
+            def get_incoherent_elastic(file_obj, natom):
+                params, W = endf.get_tab1_record(file_obj)
+                bound_xs = params[0]/natom
+
+                # Check whether divide_incoherent_elastic was applied correctly
+                if abs(free_xs - bound_xs/(1 + 1/data['A0'])**2) > 0.5:
+                    if divide_incoherent_elastic:
+                        msg = (
+                            'Thermal scattering evaluation follows ENDF-6 '
+                            'definition of bound cross section but '
+                            'divide_incoherent_elastic=True.'
+                        )
+                    else:
+                        msg = (
+                            'Thermal scattering evaluation follows NJOY '
+                            'definition of bound cross section but '
+                            'divide_incoherent_elastic=False.'
+                        )
+                    warn(msg)
+
+                xs = {}
+                distribution = {}
+                for T, debye_waller in zip(W.x, W.y):
+                    strT = _temperature_str(T)
+                    xs[strT] = IncoherentElastic(bound_xs, debye_waller)
+                    distribution[strT] = IncoherentElasticAE(debye_waller)
+                return xs, distribution
+
+            file_obj = StringIO(ev.section[7, 2])
+            lhtr = endf.get_head_record(file_obj)[2]
+            natom = data['M0'] if divide_incoherent_elastic else 1
+            if lhtr == 1:
+                # coherent elastic
+                xs, distribution = get_coherent_elastic(file_obj)
+            elif lhtr == 2:
+                # incoherent elastic
+                xs, distribution = get_incoherent_elastic(file_obj, natom)
+            elif lhtr == 3:
+                # mixed coherent / incoherent elastic
+                xs_c, dist_c = get_coherent_elastic(file_obj)
+                xs_i, dist_i = get_incoherent_elastic(file_obj, natom)
+                assert sorted(xs_c) == sorted(xs_i)
+                xs = {T: Sum([xs_c[T], xs_i[T]]) for T in xs_c}
+                distribution = {T: MixedElasticAE(dist_c[T], dist_i[T]) for T in dist_c}
+
+            elastic = ThermalScatteringReaction(xs, distribution)
 
         name = ev.target['zsymam'].strip()
         instance = cls(name, awr, energy_max, kTs)

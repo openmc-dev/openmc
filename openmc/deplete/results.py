@@ -477,8 +477,8 @@ class Results(list):
         source_rates = np.fromiter(
             (r.source_rate for r in self),
             dtype=self[0].source_rate.dtype,
-            count=len(self),
-        )
+            count=len(self)-1,
+        ) # Results duplicates the final source rate at the final simulation time
 
         return source_rates
 

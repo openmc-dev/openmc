@@ -655,6 +655,30 @@ class Integrator(ABC):
         # Normalize timesteps and source rates
         seconds, source_rates = _normalize_timesteps(
             timesteps, source_rates, timestep_units, operator)
+
+            # validate existing depletion steps are consistent with those passed to operator
+            if continue_timesteps:
+                completed_times = operator.prev_res.get_times(time_units=timestep_units)
+                completed_timesteps = completed_times[1:] - completed_times[:-1] # convert absolute t to dt
+                completed_source_rates = operator.prev_res.get_source_rates()
+                num_previous_steps_run = len(completed_timesteps)
+                if (np.array_equal(completed_timesteps, timesteps[:num_previous_steps_run])):
+                    seconds = seconds[num_previous_steps_run:]
+                else:
+                    raise ValueError(
+                        "You are attempting to continue a run in which the previous timesteps "
+                        "do not have the same initial timesteps as those provided to the "
+                        "Integrator. Please make sure you are using the correct timesteps."
+                    )
+                if(np.array_equal(completed_source_rates, np.asarray(source_rates)[:num_previous_steps_run] )):
+                    source_rates = source_rates[num_previous_steps_run:]
+                else:
+                    raise ValueError(
+                        "You are attempting to continue a run in which the previous results "
+                        "do not have the same initial source rates, powers, or power densities "
+                        "as those provided to the Integrator. Please make sure you are using "
+                        "the correct powers, power densities, or source rates and previous results file."
+                    ) 
         self.timesteps = np.asarray(seconds)
         self.source_rates = np.asarray(source_rates)
 

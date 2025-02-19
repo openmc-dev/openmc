@@ -187,15 +187,6 @@ void Surface::to_hdf5(hid_t group_id) const
   close_group(surf_group);
 }
 
-CSGSurface::CSGSurface() : Surface {}
-{
-  geom_type() = GeometryType::CSG;
-};
-CSGSurface::CSGSurface(pugi::xml_node surf_node) : Surface {surf_node}
-{
-  geom_type() = GeometryType::CSG;
-};
-
 //==============================================================================
 // Generic functions for x-, y-, and z-, planes.
 //==============================================================================
@@ -218,7 +209,7 @@ double axis_aligned_plane_distance(
 // SurfaceXPlane implementation
 //==============================================================================
 
-SurfaceXPlane::SurfaceXPlane(pugi::xml_node surf_node) : CSGSurface(surf_node)
+SurfaceXPlane::SurfaceXPlane(pugi::xml_node surf_node) : Surface(surf_node)
 {
   read_coeffs(surf_node, id_, {&x0_});
 }
@@ -258,7 +249,7 @@ BoundingBox SurfaceXPlane::bounding_box(bool pos_side) const
 // SurfaceYPlane implementation
 //==============================================================================
 
-SurfaceYPlane::SurfaceYPlane(pugi::xml_node surf_node) : CSGSurface(surf_node)
+SurfaceYPlane::SurfaceYPlane(pugi::xml_node surf_node) : Surface(surf_node)
 {
   read_coeffs(surf_node, id_, {&y0_});
 }
@@ -298,7 +289,7 @@ BoundingBox SurfaceYPlane::bounding_box(bool pos_side) const
 // SurfaceZPlane implementation
 //==============================================================================
 
-SurfaceZPlane::SurfaceZPlane(pugi::xml_node surf_node) : CSGSurface(surf_node)
+SurfaceZPlane::SurfaceZPlane(pugi::xml_node surf_node) : Surface(surf_node)
 {
   read_coeffs(surf_node, id_, {&z0_});
 }
@@ -338,7 +329,7 @@ BoundingBox SurfaceZPlane::bounding_box(bool pos_side) const
 // SurfacePlane implementation
 //==============================================================================
 
-SurfacePlane::SurfacePlane(pugi::xml_node surf_node) : CSGSurface(surf_node)
+SurfacePlane::SurfacePlane(pugi::xml_node surf_node) : Surface(surf_node)
 {
   read_coeffs(surf_node, id_, {&A_, &B_, &C_, &D_});
 }
@@ -457,7 +448,7 @@ Direction axis_aligned_cylinder_normal(
 //==============================================================================
 
 SurfaceXCylinder::SurfaceXCylinder(pugi::xml_node surf_node)
-  : CSGSurface(surf_node)
+  : Surface(surf_node)
 {
   read_coeffs(surf_node, id_, {&y0_, &z0_, &radius_});
 }
@@ -500,7 +491,7 @@ BoundingBox SurfaceXCylinder::bounding_box(bool pos_side) const
 //==============================================================================
 
 SurfaceYCylinder::SurfaceYCylinder(pugi::xml_node surf_node)
-  : CSGSurface(surf_node)
+  : Surface(surf_node)
 {
   read_coeffs(surf_node, id_, {&x0_, &z0_, &radius_});
 }
@@ -544,7 +535,7 @@ BoundingBox SurfaceYCylinder::bounding_box(bool pos_side) const
 //==============================================================================
 
 SurfaceZCylinder::SurfaceZCylinder(pugi::xml_node surf_node)
-  : CSGSurface(surf_node)
+  : Surface(surf_node)
 {
   read_coeffs(surf_node, id_, {&x0_, &y0_, &radius_});
 }
@@ -587,7 +578,7 @@ BoundingBox SurfaceZCylinder::bounding_box(bool pos_side) const
 // SurfaceSphere implementation
 //==============================================================================
 
-SurfaceSphere::SurfaceSphere(pugi::xml_node surf_node) : CSGSurface(surf_node)
+SurfaceSphere::SurfaceSphere(pugi::xml_node surf_node) : Surface(surf_node)
 {
   read_coeffs(surf_node, id_, {&x0_, &y0_, &z0_, &radius_});
 }
@@ -753,7 +744,7 @@ Direction axis_aligned_cone_normal(
 // SurfaceXCone implementation
 //==============================================================================
 
-SurfaceXCone::SurfaceXCone(pugi::xml_node surf_node) : CSGSurface(surf_node)
+SurfaceXCone::SurfaceXCone(pugi::xml_node surf_node) : Surface(surf_node)
 {
   read_coeffs(surf_node, id_, {&x0_, &y0_, &z0_, &radius_sq_});
 }
@@ -785,7 +776,7 @@ void SurfaceXCone::to_hdf5_inner(hid_t group_id) const
 // SurfaceYCone implementation
 //==============================================================================
 
-SurfaceYCone::SurfaceYCone(pugi::xml_node surf_node) : CSGSurface(surf_node)
+SurfaceYCone::SurfaceYCone(pugi::xml_node surf_node) : Surface(surf_node)
 {
   read_coeffs(surf_node, id_, {&x0_, &y0_, &z0_, &radius_sq_});
 }
@@ -817,7 +808,7 @@ void SurfaceYCone::to_hdf5_inner(hid_t group_id) const
 // SurfaceZCone implementation
 //==============================================================================
 
-SurfaceZCone::SurfaceZCone(pugi::xml_node surf_node) : CSGSurface(surf_node)
+SurfaceZCone::SurfaceZCone(pugi::xml_node surf_node) : Surface(surf_node)
 {
   read_coeffs(surf_node, id_, {&x0_, &y0_, &z0_, &radius_sq_});
 }
@@ -849,7 +840,7 @@ void SurfaceZCone::to_hdf5_inner(hid_t group_id) const
 // SurfaceQuadric implementation
 //==============================================================================
 
-SurfaceQuadric::SurfaceQuadric(pugi::xml_node surf_node) : CSGSurface(surf_node)
+SurfaceQuadric::SurfaceQuadric(pugi::xml_node surf_node) : Surface(surf_node)
 {
   read_coeffs(
     surf_node, id_, {&A_, &B_, &C_, &D_, &E_, &F_, &G_, &H_, &J_, &K_});
@@ -1009,7 +1000,7 @@ double torus_distance(double x1, double x2, double x3, double u1, double u2,
 // SurfaceXTorus implementation
 //==============================================================================
 
-SurfaceXTorus::SurfaceXTorus(pugi::xml_node surf_node) : CSGSurface(surf_node)
+SurfaceXTorus::SurfaceXTorus(pugi::xml_node surf_node) : Surface(surf_node)
 {
   read_coeffs(surf_node, id_, {&x0_, &y0_, &z0_, &A_, &B_, &C_});
 }
@@ -1062,7 +1053,7 @@ Direction SurfaceXTorus::normal(Position r) const
 // SurfaceYTorus implementation
 //==============================================================================
 
-SurfaceYTorus::SurfaceYTorus(pugi::xml_node surf_node) : CSGSurface(surf_node)
+SurfaceYTorus::SurfaceYTorus(pugi::xml_node surf_node) : Surface(surf_node)
 {
   read_coeffs(surf_node, id_, {&x0_, &y0_, &z0_, &A_, &B_, &C_});
 }
@@ -1115,7 +1106,7 @@ Direction SurfaceYTorus::normal(Position r) const
 // SurfaceZTorus implementation
 //==============================================================================
 
-SurfaceZTorus::SurfaceZTorus(pugi::xml_node surf_node) : CSGSurface(surf_node)
+SurfaceZTorus::SurfaceZTorus(pugi::xml_node surf_node) : Surface(surf_node)
 {
   read_coeffs(surf_node, id_, {&x0_, &y0_, &z0_, &A_, &B_, &C_});
 }

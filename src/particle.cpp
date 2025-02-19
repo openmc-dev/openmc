@@ -75,13 +75,6 @@ double Particle::speed() const
   }
 }
 
-void Particle::move_distance(double length)
-{
-  for (int j = 0; j < n_coord(); ++j) {
-    coord(j).r += length * coord(j).u;
-  }
-}
-
 void Particle::create_secondary(
   double wgt, Direction u, double E, ParticleType type)
 {

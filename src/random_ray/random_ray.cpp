@@ -9,6 +9,9 @@
 #include "openmc/search.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
+
+#include "openmc/distribution_spatial.h"
+#include "openmc/random_dist.h"
 #include "openmc/source.h"
 
 namespace openmc {
@@ -174,6 +177,57 @@ float exponentialG2(float tau)
   return num / den;
 }
 
+// Implementation of the Fisher-Yates shuffle algorithm.
+// Algorithm adapted from:
+//    https://en.cppreference.com/w/cpp/algorithm/random_shuffle#Version_3
+void fisher_yates_shuffle(vector<int64_t>& arr, uint64_t* seed)
+{
+  // Loop over the array from the last element down to the second
+  for (int i = arr.size() - 1; i > 0; --i) {
+    // Generate a random index in the range [0, i]
+    int j = uniform_int_distribution(0, i, seed);
+    std::swap(arr[i], arr[j]);
+  }
+}
+
+// Function to generate randomized Halton sequence samples
+//
+// Algorithm adapted from:
+//      A. B. Owen. A randomized halton algorithm in r. Arxiv, 6 2017.
+//      URL https://arxiv.org/abs/1706.02808
+vector<double> rhalton(int dim, uint64_t* seed, int64_t skip = 0)
+{
+  if (dim > 10) {
+    fatal_error("Halton sampling dimension too large");
+  }
+  int64_t b, res, dig;
+  double b2r, ans;
+  const std::array<int64_t, 10> primes = {2, 3, 5, 7, 11, 13, 17, 19, 23, 29};
+  vector<double> halton(dim, 0.0);
+
+  vector<int64_t> perm;
+  for (int D = 0; D < dim; ++D) {
+    b = primes[D];
+    perm.resize(b);
+    b2r = 1.0 / b;
+    res = skip;
+    ans = 0.0;
+
+    while ((1.0 - b2r) < 1.0) {
+      std::iota(perm.begin(), perm.end(), 0);
+      fisher_yates_shuffle(perm, seed);
+      dig = res % b;
+      ans += perm[dig] * b2r;
+      res = (res - dig) / b;
+      b2r /= b;
+    }
+
+    halton[D] = ans;
+  }
+
+  return halton;
+}
+
 //==============================================================================
 // RandomRay implementation
 //==============================================================================
@@ -183,6 +237,7 @@ double RandomRay::distance_inactive_;
 double RandomRay::distance_active_;
 unique_ptr<Source> RandomRay::ray_source_;
 RandomRaySourceShape RandomRay::source_shape_ {RandomRaySourceShape::FLAT};
+RandomRaySampleMethod RandomRay::sample_method_ {RandomRaySampleMethod::PRNG};
 
 RandomRay::RandomRay()
   : angular_flux_(data::mg.num_energy_groups_),
@@ -274,13 +329,22 @@ void RandomRay::event_advance_ray()
 
 void RandomRay::attenuate_flux(double distance, bool is_active)
 {
+
   switch (source_shape_) {
   case RandomRaySourceShape::FLAT:
-    attenuate_flux_flat_source(distance, is_active);
+    if (this->material() == MATERIAL_VOID) {
+      attenuate_flux_flat_source_void(distance, is_active);
+    } else {
+      attenuate_flux_flat_source(distance, is_active);
+    }
     break;
   case RandomRaySourceShape::LINEAR:
   case RandomRaySourceShape::LINEAR_XY:
-    attenuate_flux_linear_source(distance, is_active);
+    if (this->material() == MATERIAL_VOID) {
+      attenuate_flux_linear_source_void(distance, is_active);
+    } else {
+      attenuate_flux_linear_source(distance, is_active);
+    }
     break;
   default:
     fatal_error("Unknown source shape for random ray transport.");
@@ -352,6 +416,56 @@ void RandomRay::attenuate_flux_flat_source(double distance, bool is_active)
 
     // Release lock
     domain_->source_regions_.lock(sr).unlock();
+  }
+}
+
+// Alternative flux attenuation function for true void regions.
+void RandomRay::attenuate_flux_flat_source_void(double distance, bool is_active)
+{
+  // The number of geometric intersections is counted for reporting purposes
+  n_event()++;
+
+  // Determine source region index etc.
+  int i_cell = lowest_coord().cell;
+
+  // The source region is the spatial region index
+  int64_t sr = domain_->source_region_offsets_[i_cell] + cell_instance();
+
+  // If ray is in the active phase (not in dead zone), make contributions to
+  // source region bookkeeping
+  if (is_active) {
+
+    // Aquire lock for source region
+    domain_->source_regions_.lock(sr).lock();
+
+    // Accumulate delta psi into new estimate of source region flux for
+    // this iteration
+    for (int g = 0; g < negroups_; g++) {
+      domain_->source_regions_.scalar_flux_new(sr, g) +=
+        angular_flux_[g] * distance;
+    }
+
+    // Accomulate volume (ray distance) into this iteration's estimate
+    // of the source region's volume
+    domain_->source_regions_.volume(sr) += distance;
+    domain_->source_regions_.volume_sq(sr) += distance * distance;
+
+    // Tally valid position inside the source region (e.g., midpoint of
+    // the ray) if not done already
+    if (!domain_->source_regions_.position_recorded(sr)) {
+      Position midpoint = r() + u() * (distance / 2.0);
+      domain_->source_regions_.position(sr) = midpoint;
+      domain_->source_regions_.position_recorded(sr) = 1;
+    }
+
+    // Release lock
+    domain_->source_regions_.lock(sr).unlock();
+  }
+
+  // Add source to incoming angular flux, assuming void region
+  for (int g = 0; g < negroups_; g++) {
+    angular_flux_[g] +=
+      domain_->source_regions_.external_source(sr, g) * distance;
   }
 }
 
@@ -492,6 +606,125 @@ void RandomRay::attenuate_flux_linear_source(double distance, bool is_active)
   }
 }
 
+// If traveling through a void region, the source term is either zero
+// or an external source. As all external sources are currently assumed
+// to be flat, we don't really need this function and could instead just call
+// the "attenuate_flux_flat_source_void" function and get the same numerical and
+// tally results. However, computation of the flux moments in void regions is
+// nonetheless useful as this information is still used by the plotter when
+// estimating the flux at specific pixel coordinates. Thus, plots will look
+// nicer/more accurate if we record flux moments, so this function is useful.
+void RandomRay::attenuate_flux_linear_source_void(
+  double distance, bool is_active)
+{
+  // Cast domain to LinearSourceDomain
+  LinearSourceDomain* domain = dynamic_cast<LinearSourceDomain*>(domain_);
+  if (!domain) {
+    fatal_error("RandomRay::attenuate_flux_linear_source() called with "
+                "non-LinearSourceDomain domain.");
+  }
+
+  // The number of geometric intersections is counted for reporting purposes
+  n_event()++;
+
+  // Determine source region index etc.
+  int i_cell = lowest_coord().cell;
+
+  // The source region is the spatial region index
+  int64_t sr = domain_->source_region_offsets_[i_cell] + cell_instance();
+
+  Position& centroid = domain_->source_regions_.centroid(sr);
+  Position midpoint = r() + u() * (distance / 2.0);
+
+  // Determine the local position of the midpoint and the ray origin
+  // relative to the source region's centroid
+  Position rm_local;
+  Position r0_local;
+
+  // In the first few iterations of the simulation, the source region
+  // may not yet have had any ray crossings, in which case there will
+  // be no estimate of its centroid. We detect this by checking if it has
+  // any accumulated volume. If its volume is zero, just use the midpoint
+  // of the ray as the region's centroid.
+  if (domain_->source_regions_.volume_t(sr)) {
+    rm_local = midpoint - centroid;
+    r0_local = r() - centroid;
+  } else {
+    rm_local = {0.0, 0.0, 0.0};
+    r0_local = -u() * 0.5 * distance;
+  }
+  double distance_2 = distance * distance;
+
+  // Compared to linear flux attenuation through solid regions,
+  // transport through a void region is greatly simplified. Here we
+  // compute the updated flux moments.
+  for (int g = 0; g < negroups_; g++) {
+    float spatial_source = domain_->source_regions_.source(sr, g);
+    float new_delta_psi = (angular_flux_[g] - spatial_source) * distance;
+    float h1 = 0.5f;
+    h1 = h1 * angular_flux_[g];
+    h1 = h1 * distance_2;
+    spatial_source = spatial_source * distance + new_delta_psi;
+
+    // Store contributions for this group into arrays, so that they can
+    // be accumulated into the source region's estimates inside of the locked
+    // region.
+    delta_moments_[g] = r0_local * spatial_source + u() * h1;
+
+    // If 2D mode is enabled, the z-component of the flux moments is forced
+    // to zero
+    if (source_shape_ == RandomRaySourceShape::LINEAR_XY) {
+      delta_moments_[g].z = 0.0;
+    }
+  }
+
+  // If ray is in the active phase (not in dead zone), make contributions to
+  // source region bookkeeping
+  if (is_active) {
+    // Compute an estimate of the spatial moments matrix for the source
+    // region based on parameters from this ray's crossing
+    MomentMatrix moment_matrix_estimate;
+    moment_matrix_estimate.compute_spatial_moments_matrix(
+      rm_local, u(), distance);
+
+    // Aquire lock for source region
+    domain_->source_regions_.lock(sr).lock();
+
+    // Accumulate delta psi into new estimate of source region flux for
+    // this iteration, and update flux momements
+    for (int g = 0; g < negroups_; g++) {
+      domain_->source_regions_.scalar_flux_new(sr, g) +=
+        angular_flux_[g] * distance;
+      domain_->source_regions_.flux_moments_new(sr, g) += delta_moments_[g];
+    }
+
+    // Accumulate the volume (ray segment distance), centroid, and spatial
+    // momement estimates into the running totals for the iteration for this
+    // source region. The centroid and spatial momements estimates are scaled by
+    // the ray segment length as part of length averaging of the estimates.
+    domain_->source_regions_.volume(sr) += distance;
+    domain_->source_regions_.centroid_iteration(sr) += midpoint * distance;
+    moment_matrix_estimate *= distance;
+    domain_->source_regions_.mom_matrix(sr) += moment_matrix_estimate;
+
+    // Tally valid position inside the source region (e.g., midpoint of
+    // the ray) if not done already
+    if (!domain_->source_regions_.position_recorded(sr)) {
+      domain_->source_regions_.position(sr) = midpoint;
+      domain_->source_regions_.position_recorded(sr) = 1;
+    }
+
+    // Release lock
+    domain_->source_regions_.lock(sr).unlock();
+  }
+
+  // Add source to incoming angular flux, assuming void region
+  for (int g = 0; g < negroups_; g++) {
+    angular_flux_[g] +=
+      domain_->source_regions_.external_source(sr, g) * distance;
+  }
+}
+
 void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
 {
   domain_ = domain;
@@ -506,14 +739,19 @@ void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
   // set identifier for particle
   id() = simulation::work_index[mpi::rank] + ray_id;
 
-  // set random number seed
-  int64_t particle_seed =
-    (simulation::current_batch - 1) * settings::n_particles + id();
-  init_particle_seeds(particle_seed, seeds());
-  stream() = STREAM_TRACKING;
+  // generate source site using sample method
+  SourceSite site;
+  switch (sample_method_) {
+  case RandomRaySampleMethod::PRNG:
+    site = sample_prng();
+    break;
+  case RandomRaySampleMethod::HALTON:
+    site = sample_halton();
+    break;
+  default:
+    fatal_error("Unknown sample method for random ray transport.");
+  }
 
-  // Sample from ray source distribution
-  SourceSite site {ray_source_->sample(current_seed())};
   site.E = lower_bound_index(
     data::mg.rev_energy_bins_.begin(), data::mg.rev_energy_bins_.end(), site.E);
   site.E = negroups_ - site.E - 1.;
@@ -539,6 +777,56 @@ void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
   for (int g = 0; g < negroups_; g++) {
     angular_flux_[g] = domain_->source_regions_.source(sr, g);
   }
+}
+
+SourceSite RandomRay::sample_prng()
+{
+  // set random number seed
+  int64_t particle_seed =
+    (simulation::current_batch - 1) * settings::n_particles + id();
+  init_particle_seeds(particle_seed, seeds());
+  stream() = STREAM_TRACKING;
+
+  // Sample from ray source distribution
+  SourceSite site {ray_source_->sample(current_seed())};
+
+  return site;
+}
+
+SourceSite RandomRay::sample_halton()
+{
+  SourceSite site;
+
+  // Set random number seed
+  int64_t batch_seed = (simulation::current_batch - 1) * settings::n_particles;
+  int64_t skip = id();
+  init_particle_seeds(batch_seed, seeds());
+  stream() = STREAM_TRACKING;
+
+  // Calculate next samples in LDS across 5 dimensions
+  vector<double> samples = rhalton(5, current_seed(), skip = skip);
+
+  // Get spatial box of ray_source_
+  SpatialBox* sb = dynamic_cast<SpatialBox*>(
+    dynamic_cast<IndependentSource*>(RandomRay::ray_source_.get())->space());
+
+  // Sample spatial distribution
+  Position xi {samples[0], samples[1], samples[2]};
+  // make a small shift in position to avoid geometry floating point issues
+  Position shift {FP_COINCIDENT, FP_COINCIDENT, FP_COINCIDENT};
+  site.r = (sb->lower_left() + shift) +
+           xi * ((sb->upper_right() - shift) - (sb->lower_left() + shift));
+
+  // Sample Polar cosine and azimuthal angles
+  double mu = 2.0 * samples[3] - 1.0;
+  double azi = 2.0 * PI * samples[4];
+  // Convert to Cartesian coordinates
+  double c = std::sqrt(1.0 - mu * mu);
+  site.u.x = mu;
+  site.u.y = std::cos(azi) * c;
+  site.u.z = std::sin(azi) * c;
+
+  return site;
 }
 
 } // namespace openmc

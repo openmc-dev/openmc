@@ -124,7 +124,7 @@ class Model:
 
     @plots.setter
     def plots(self, plots):
-        check_type('plots', plots, Iterable, openmc.Plot)
+        check_type('plots', plots, Iterable, openmc.PlotBase)
         if isinstance(plots, openmc.Plots):
             self._plots = plots
         else:
@@ -220,7 +220,8 @@ class Model:
         materials = openmc.Materials.from_xml(materials)
         geometry = openmc.Geometry.from_xml(geometry, materials)
         settings = openmc.Settings.from_xml(settings)
-        tallies = openmc.Tallies.from_xml(tallies) if Path(tallies).exists() else None
+        tallies = openmc.Tallies.from_xml(
+            tallies) if Path(tallies).exists() else None
         plots = openmc.Plots.from_xml(plots) if Path(plots).exists() else None
         return cls(geometry, materials, settings, tallies, plots)
 
@@ -242,12 +243,16 @@ class Model:
         model = cls()
 
         meshes = {}
-        model.settings = openmc.Settings.from_xml_element(root.find('settings'), meshes)
-        model.materials = openmc.Materials.from_xml_element(root.find('materials'))
-        model.geometry = openmc.Geometry.from_xml_element(root.find('geometry'), model.materials)
+        model.settings = openmc.Settings.from_xml_element(
+            root.find('settings'), meshes)
+        model.materials = openmc.Materials.from_xml_element(
+            root.find('materials'))
+        model.geometry = openmc.Geometry.from_xml_element(
+            root.find('geometry'), model.materials)
 
         if root.find('tallies') is not None:
-            model.tallies = openmc.Tallies.from_xml_element(root.find('tallies'), meshes)
+            model.tallies = openmc.Tallies.from_xml_element(
+                root.find('tallies'), meshes)
 
         if root.find('plots') is not None:
             model.plots = openmc.Plots.from_xml_element(root.find('plots'))
@@ -538,11 +543,13 @@ class Model:
 
             if self.tallies:
                 tallies_element = self.tallies.to_xml_element(mesh_memo)
-                xml.clean_indentation(tallies_element, level=1, trailing_indent=self.plots)
+                xml.clean_indentation(
+                    tallies_element, level=1, trailing_indent=self.plots)
                 fh.write(ET.tostring(tallies_element, encoding="unicode"))
             if self.plots:
                 plots_element = self.plots.to_xml_element()
-                xml.clean_indentation(plots_element, level=1, trailing_indent=False)
+                xml.clean_indentation(
+                    plots_element, level=1, trailing_indent=False)
                 fh.write(ET.tostring(plots_element, encoding="unicode"))
             fh.write("</model>\n")
 

@@ -306,6 +306,17 @@ void get_run_parameters(pugi::xml_node node_base)
       FlatSourceDomain::adjoint_ =
         get_node_value_bool(random_ray_node, "adjoint");
     }
+    if (check_for_node(random_ray_node, "sample_method")) {
+      std::string temp_str =
+        get_node_value(random_ray_node, "sample_method", true, true);
+      if (temp_str == "prng") {
+        RandomRay::sample_method_ = RandomRaySampleMethod::PRNG;
+      } else if (temp_str == "halton") {
+        RandomRay::sample_method_ = RandomRaySampleMethod::HALTON;
+      } else {
+        fatal_error("Unrecognized sample method: " + temp_str);
+      }
+    }
   }
 }
 

@@ -62,7 +62,7 @@ public:
     Position r, Direction u, GeometryState* p = nullptr) const;
 
   virtual Direction diffuse_reflect(
-    Position r, Direction u, uint64_t* seed, GeometryState* p = nullptr) const;
+    Position r, Direction u, uint64_t* seed) const;
 
   //! Evaluate the equation describing the surface.
   //!

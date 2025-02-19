@@ -191,6 +191,13 @@ struct BoundaryInfo {
   array<int, 3>
     lattice_translation {}; //!< which way lattice indices will change
 
+  void reset()
+  {
+    distance = INFINITY;
+    surface = SURFACE_NONE;
+    coord_level = 0;
+    lattice_translation = {0, 0, 0};
+  }
   // TODO: off-by-one
   int surface_index() const { return std::abs(surface) - 1; }
 };
@@ -225,6 +232,12 @@ public:
     }
     n_coord_last_ = 1;
   }
+
+  //! moves the particle by the specified distance to its next location
+  //! \param distance the distance the particle is moved
+  void move_distance(double distance);
+
+  void advance_to_boundary_from_void();
 
   // Initialize all internal state from position and direction
   void init_from_r_u(Position r_a, Direction u_a)
@@ -565,7 +578,6 @@ public:
   int& cell_born() { return cell_born_; }
   const int& cell_born() const { return cell_born_; }
 
-  // index of the current and last material
   // Total number of collisions suffered by particle
   int& n_collision() { return n_collision_; }
   const int& n_collision() const { return n_collision_; }

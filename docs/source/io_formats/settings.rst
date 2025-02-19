@@ -457,6 +457,12 @@ found in the :ref:`random ray user guide <random_ray>`.
 
     *Default*: None
 
+  :sample_method:
+    Specifies the method for sampling the starting ray distribution. This
+    element can be set to "prng" or "halton".
+
+    *Default*: prng
+
 ----------------------------------
 ``<resonance_scattering>`` Element
 ----------------------------------

@@ -33,6 +33,8 @@ public:
 
   void initialize_ray(uint64_t ray_id, FlatSourceDomain* domain);
   uint64_t transport_history_based_single_ray();
+  SourceSite sample_prng();
+  SourceSite sample_halton();
 
   //----------------------------------------------------------------------------
   // Static data members
@@ -40,6 +42,7 @@ public:
   static double distance_active_;            // Active ray length
   static unique_ptr<Source> ray_source_;     // Starting source for ray sampling
   static RandomRaySourceShape source_shape_; // Flag for linear source
+  static RandomRaySampleMethod sample_method_; // Flag for sampling method
 
   //----------------------------------------------------------------------------
   // Public data members

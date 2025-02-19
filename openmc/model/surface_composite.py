@@ -31,14 +31,10 @@ class CompositeSurface(ABC):
             s = getattr(surf, name)
             setattr(surf, name, s.rotate(rotation, pivot, order, inplace))
         return surf
-    
+
     @property
     def component_surfaces(self):
         return [getattr(self, name) for name in self._surface_names]
-    
-    @property
-    def component_surface_ids(self):
-        return [s.id for s in self.component_surfaces]
 
     @property
     def boundary_type(self):

@@ -593,6 +593,24 @@ def test_single_xml_exec(run_in_tmpdir):
     pincell_model.run(path='subdir')
 
 
+def test_nuclides_to_ignore(run_in_tmpdir, pin_model_attributes):
+    """Test nuclides_to_ignore when exporting a model XML"""
+    materials, geometry, settings = pin_model_attributes[:3]
+    model = openmc.Model(geometry=geometry, settings=settings)
+
+    # grab one of the nuclides present in this model as a test
+    test_nuclide = list(materials[0].get_nuclides())[0]
+
+    # exclude the test nuclide from the XML file during export
+    model.export_to_model_xml(nuclides_to_ignore=[test_nuclide])
+
+    # ensure that the nuclide doesn't appear after reading in
+    # the resulting XML model
+    xml_model = openmc.Model.from_model_xml()
+    for material in xml_model.materials:
+        assert test_nuclide not in material.get_nuclides()
+
+
 def test_model_plot():
     # plots the geometry with source location and checks the resulting
     # matplotlib includes the correct coordinates for the scatter plot for all

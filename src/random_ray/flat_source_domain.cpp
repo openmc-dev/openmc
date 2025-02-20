@@ -225,9 +225,35 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
   int64_t n_hits = 0;
 
   double inverse_batch = 1.0 / simulation::current_batch;
-  fmt::print("batch: {}\n", simulation::current_batch);
-
   int64_t n_small = 0;
+
+  double total_volume = 0.0;
+  double unintegrated_volume = 0.0;
+
+#pragma omp parallel for reduction(+ : total_volume, unintegrated_volume, n_hits, n_small)
+  for (int64_t sr = 0; sr < n_source_regions(); sr++) {
+    double volume = source_regions_.volume(sr);
+    double volume_iteration = source_regions_.volume_naive(sr);
+    total_volume += volume;
+    if (volume_iteration == 0.0) {
+      unintegrated_volume += volume;
+    } else {
+      n_hits++;
+    }
+    if (source_regions_.is_small(sr)) {
+      n_small++;
+    }
+  }
+  fmt::print("total_volume: {} Percent Unintegrated: {:.4f}% Percent Small: "
+             "{:.4f}% Missed: {:.4f}  Missed - Small = {:.4f}%\n",
+    total_volume, 100.0 * unintegrated_volume / total_volume,
+    100.0 * n_small / n_source_regions(),
+    100.0 - (100.0 * n_hits / n_source_regions()),
+    100.0 * (n_source_regions() - n_hits) / n_source_regions() -
+      100.0 * n_small / n_source_regions());
+
+  n_small = 0;
+  n_hits = 0;
 #pragma omp parallel for reduction(+ : n_hits, n_small)
   for (int64_t sr = 0; sr < n_source_regions(); sr++) {
 
@@ -241,12 +267,12 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
 
     // Set the SR to small status if its expected number of hits
     // per iteration is less than 1.0
-    if (source_regions_.n_hits(sr) * inverse_batch < 1.0) {
+    if (source_regions_.n_hits(sr) * inverse_batch < 2.0) {
       source_regions_.is_small(sr) = 1;
       n_small++;
-    } else {
-      source_regions_.is_small(sr) = 0;
-    }
+    } //else {
+     // source_regions_.is_small(sr) = 0;
+    //}
 
     // The volume treatment depends on the volume estimator type
     // and whether or not an external source is present in the cell.
@@ -845,9 +871,9 @@ void FlatSourceDomain::output_to_vtk() const
         float flux = 0;
         if (fsr > 0) {
           flux = evaluate_flux_at_point(voxel_positions[i], fsr, g);
-          //  if (flux < 0.0)
-          // flux = FlatSourceDomain::evaluate_flux_at_point(
-          //  voxel_positions[i], fsr, g);
+          if (flux < 0.0)
+            flux = FlatSourceDomain::evaluate_flux_at_point(
+              voxel_positions[i], fsr, g);
         }
         if (flux < 0.0) {
           num_neg++;

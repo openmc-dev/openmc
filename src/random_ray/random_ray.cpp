@@ -472,6 +472,9 @@ void RandomRay::attenuate_flux_linear_source(
       srh.source(g) + rm_local.dot(srh.source_gradients(g));
     float dir_source = u().dot(srh.source_gradients(g));
 
+    //if (spatial_source < 0.0f)
+    //  spatial_source = 0.0f;
+
     float gn = exponentialG(tau);
     float f1 = 1.0f - tau * gn;
     float f2 = (2.0f * gn - f1) * distance_2;
@@ -486,15 +489,44 @@ void RandomRay::attenuate_flux_linear_source(
     h1 = h1 * angular_flux_[g];
     h1 = (g1 + g2 + h1) * distance_2;
     spatial_source = spatial_source * distance + new_delta_psi;
+    // if (spatial_source < 0.0f)
+    //   spatial_source = 0.0f;
 
     // Store contributions for this group into arrays, so that they can
     // be accumulated into the source region's estimates inside of the locked
     // region.
     delta_psi_[g] = new_delta_psi;
-    delta_moments_[g] = r0_local * spatial_source + u() * h1;
+    if (srh.n_hits() < 100 || srh.is_small()) {
+      delta_moments_[g] = {0.0, 0.0, 0.0};
+    } else {
+      delta_moments_[g] = r0_local * spatial_source + u() * h1;
+    }
 
-    // Update the angular flux for this group
-    angular_flux_[g] -= new_delta_psi * sigma_t;
+    if (angular_flux_[g] - new_delta_psi * sigma_t < 0.0) {
+      // if (angular_flux_[g] - new_delta_psi * sigma_t < -1.0e+1)
+      // if (angular_flux_[g] > 0.0 && angular_flux_[g] - new_delta_psi *
+      // sigma_t < -1.0)
+      if (0) {
+        fmt::print("Incoming flux: {:.3e} Proposed Outgoing Flux: {:.3e} "
+                   "Sigma_t: {:.3e} Delta Psi: {:.3e} distance: {:.3e} source: "
+                   "{:.3e} spatial source: {:.3e} volume: {:.3e} is small: {} "
+                   "n_hits: {} Delta Moments (x,y,z): ({:.3e}, {:.3e}, {:.3e}) "
+                   "Source Gradients (x,y,z): ({:.3e}, {:.3e}, {:.3e})\n",
+          angular_flux_[g], angular_flux_[g] - new_delta_psi * sigma_t, sigma_t,
+          delta_psi_[g], distance, srh.source(g),
+          srh.source(g) + rm_local.dot(srh.source_gradients(g)),
+          srh.volume_naive(), srh.is_small(), srh.n_hits(), delta_moments_[g].x,
+          delta_moments_[g].y, delta_moments_[g].z, srh.source_gradients(g).x,
+          srh.source_gradients(g).y, srh.source_gradients(g).z);
+      }
+      //new_delta_psi = angular_flux_[g] / sigma_t;
+      //angular_flux_[g] = 0.0;
+      //delta_psi_[g] = new_delta_psi;
+    } else {
+      // Update the angular flux for this group
+      //angular_flux_[g] -= new_delta_psi * sigma_t;
+    }
+     angular_flux_[g] -= new_delta_psi * sigma_t;
 
     // If 2D mode is enabled, the z-component of the flux moments is forced
     // to zero

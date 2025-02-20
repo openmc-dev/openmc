@@ -10,7 +10,6 @@
 
 #include "hdf5.h"
 #include "pugixml.hpp"
-#include <gsl/gsl-lite.hpp>
 
 #include "openmc/bounding_box.h"
 #include "openmc/constants.h"
@@ -128,7 +127,7 @@ private:
   void add_precedence();
 
   //! Add parenthesis to enforce precedence
-  gsl::index add_parentheses(gsl::index start);
+  int64_t add_parentheses(int64_t start);
 
   //! Remove complement operators from the expression
   void remove_complement_ops();
@@ -418,8 +417,8 @@ struct CellInstance {
     return index_cell == other.index_cell && instance == other.instance;
   }
 
-  gsl::index index_cell;
-  gsl::index instance;
+  int64_t index_cell;
+  int64_t instance;
 };
 
 //! Structure necessary for inserting CellInstance into hashed STL data

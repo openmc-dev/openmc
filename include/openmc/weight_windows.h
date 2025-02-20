@@ -4,7 +4,6 @@
 #include <cstdint>
 #include <unordered_map>
 
-#include <gsl/gsl-lite.hpp>
 #include <hdf5.h>
 #include <pugixml.hpp>
 
@@ -12,6 +11,7 @@
 #include "openmc/memory.h"
 #include "openmc/mesh.h"
 #include "openmc/particle.h"
+#include "openmc/span.h"
 #include "openmc/tallies/tally.h"
 #include "openmc/vector.h"
 
@@ -104,7 +104,7 @@ public:
   //! Set the weight window ID
   void set_id(int32_t id = -1);
 
-  void set_energy_bounds(gsl::span<const double> bounds);
+  void set_energy_bounds(span<const double> bounds);
 
   void set_mesh(const std::unique_ptr<Mesh>& mesh);
 
@@ -148,9 +148,9 @@ public:
   void set_bounds(const xt::xtensor<double, 2>& lower_bounds, double ratio);
 
   void set_bounds(
-    gsl::span<const double> lower_bounds, gsl::span<const double> upper_bounds);
+    span<const double> lower_bounds, span<const double> upper_bounds);
 
-  void set_bounds(gsl::span<const double> lower_bounds, double ratio);
+  void set_bounds(span<const double> lower_bounds, double ratio);
 
   void set_particle_type(ParticleType p_type);
 
@@ -192,8 +192,8 @@ public:
 private:
   //----------------------------------------------------------------------------
   // Data members
-  int32_t id_;       //!< Unique ID
-  gsl::index index_; //!< Index into weight windows vector
+  int32_t id_;    //!< Unique ID
+  int64_t index_; //!< Index into weight windows vector
   ParticleType particle_type_ {
     ParticleType::neutron};      //!< Particle type to apply weight windows to
   vector<double> energy_bounds_; //!< Energy boundaries [eV]

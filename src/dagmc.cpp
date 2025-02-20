@@ -1,5 +1,7 @@
 #include "openmc/dagmc.h"
 
+#include <cassert>
+
 #include "openmc/constants.h"
 #include "openmc/container_util.h"
 #include "openmc/error.h"
@@ -800,7 +802,7 @@ Direction DAGSurface::normal(Position r) const
 
 Direction DAGSurface::reflect(Position r, Direction u, GeometryState* p) const
 {
-  Expects(p);
+  assert(p);
   double pnt[3] = {r.x, r.y, r.z};
   double dir[3];
   moab::ErrorCode rval =

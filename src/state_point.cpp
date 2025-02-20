@@ -567,7 +567,7 @@ hid_t h5banktype()
   return banktype;
 }
 
-void write_source_point(std::string filename, gsl::span<SourceSite> source_bank,
+void write_source_point(std::string filename, span<SourceSite> source_bank,
   const vector<int64_t>& bank_index, bool use_mcpl)
 {
   std::string ext = use_mcpl ? "mcpl" : "h5";
@@ -584,8 +584,8 @@ void write_source_point(std::string filename, gsl::span<SourceSite> source_bank,
   }
 }
 
-void write_h5_source_point(const char* filename,
-  gsl::span<SourceSite> source_bank, const vector<int64_t>& bank_index)
+void write_h5_source_point(const char* filename, span<SourceSite> source_bank,
+  const vector<int64_t>& bank_index)
 {
   // When using parallel HDF5, the file is written to collectively by all
   // processes. With MPI-only, the file is opened and written by the master
@@ -620,7 +620,7 @@ void write_h5_source_point(const char* filename,
     file_close(file_id);
 }
 
-void write_source_bank(hid_t group_id, gsl::span<SourceSite> source_bank,
+void write_source_bank(hid_t group_id, span<SourceSite> source_bank,
   const vector<int64_t>& bank_index)
 {
   hid_t banktype = h5banktype();

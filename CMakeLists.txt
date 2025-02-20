@@ -294,19 +294,6 @@ if (NOT xtensor_FOUND)
 endif()
 
 #===============================================================================
-# GSL header-only library
-#===============================================================================
-
-find_package_write_status(gsl-lite)
-if (NOT gsl-lite_FOUND)
-  add_subdirectory(vendor/gsl-lite)
-
-  # Make sure contract violations throw exceptions
-  target_compile_definitions(gsl-lite-v1 INTERFACE GSL_THROW_ON_CONTRACT_VIOLATION)
-  target_compile_definitions(gsl-lite-v1 INTERFACE gsl_CONFIG_ALLOWS_NONSTRICT_SPAN_COMPARISON=1)
-endif()
-
-#===============================================================================
 # Catch2 library
 #===============================================================================
 
@@ -519,7 +506,7 @@ endif()
 # target_link_libraries treats any arguments starting with - but not -l as
 # linker flags. Thus, we can pass both linker flags and libraries together.
 target_link_libraries(libopenmc ${ldflags} ${HDF5_LIBRARIES} ${HDF5_HL_LIBRARIES}
-                      xtensor gsl::gsl-lite-v1 fmt::fmt ${CMAKE_DL_LIBS})
+                      xtensor fmt::fmt ${CMAKE_DL_LIBS})
 
 if(TARGET pugixml::pugixml)
   target_link_libraries(libopenmc pugixml::pugixml)

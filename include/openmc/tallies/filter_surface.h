@@ -4,8 +4,7 @@
 #include <cstdint>
 #include <unordered_map>
 
-#include <gsl/gsl-lite.hpp>
-
+#include "openmc/span.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/vector.h"
 
@@ -40,7 +39,7 @@ public:
   //----------------------------------------------------------------------------
   // Accessors
 
-  void set_surfaces(gsl::span<int32_t> surfaces);
+  void set_surfaces(span<int32_t> surfaces);
 
 private:
   //----------------------------------------------------------------------------

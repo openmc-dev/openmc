@@ -8,8 +8,6 @@ import pytest
 import openmc
 import openmc.lib
 
-from matplotlib import pyplot as plt
-
 
 @pytest.fixture(scope='function')
 def pin_model_attributes():

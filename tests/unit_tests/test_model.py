@@ -8,6 +8,8 @@ import pytest
 import openmc
 import openmc.lib
 
+from matplotlib import pyplot as plt
+
 
 @pytest.fixture(scope='function')
 def pin_model_attributes():
@@ -620,3 +622,16 @@ def test_model_plot():
     plot = model.plot(n_samples=1, plane_tolerance=0.1, basis="xy")
     coords = plot.axes.collections[0].get_offsets().data.flatten()
     assert (coords == np.array([])).all()
+
+    # modify model to include another cell that overlaps the original cell entirely
+    model.geometry.root_universe.add_cell(openmc.Cell(region=-surface))
+    axes = model.plot(n_samples=1, plane_tolerance=0.1, basis="xz", pixels=(5,5), show_overlaps=True)
+    image = axes.get_images()[0]
+    white = np.array((1.0, 1.0, 1.0))
+    red = np.array((1.0, 0.0, 0.0))
+    # ensure that all of the data in the image data is either white or red
+    try:
+        test_mask = np.isclose(image.get_array(), white) | np.isclose(image.get_array(), red)
+        assert np.all(test_mask)
+    except AssertionError as e:
+        raise AssertionError("Colors other than white or red found in overlap plot image") from e

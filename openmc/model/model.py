@@ -855,6 +855,8 @@ class Model:
         legend: bool = False,
         axis_units: str = 'cm',
         outline: bool | str = False,
+        show_overlaps: bool = False,
+        overlap_color: bool = None,
         n_samples: int | None = None,
         plane_tolerance: float = 1.,
         legend_kwargs: dict | None = None,
@@ -933,6 +935,9 @@ class Model:
             plot.pixels = pixels
             plot.basis = basis
             plot.color_by = color_by
+            plot.show_overlaps = show_overlaps
+            if overlap_color is not None:
+                plot.overlap_color = overlap_color
             if colors is not None:
                 plot.colors = colors
             self.plots.append(plot)

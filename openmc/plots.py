@@ -226,6 +226,11 @@ _PLOT_PARAMS = """
             When plotting a plane the source locations within the plane +/-
             the plane_tolerance will be included and those outside of the
             plane_tolerance will not be shown
+        show_overlaps: bool
+            Indicate whether or not overlapping regions are shown.
+            Default is False.
+        overlap_color: Iterable of int or str
+            Color to apply to overlapping regions. Default is red.
         legend_kwargs : dict
             Keyword arguments passed to :func:`matplotlib.pyplot.legend`.
 

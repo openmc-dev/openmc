@@ -625,13 +625,14 @@ def test_model_plot():
 
     # modify model to include another cell that overlaps the original cell entirely
     model.geometry.root_universe.add_cell(openmc.Cell(region=-surface))
-    axes = model.plot(n_samples=1, plane_tolerance=0.1, basis="xz", pixels=(5,5), show_overlaps=True)
-    image = axes.get_images()[0]
+    axes = model.plot(show_overlaps=True)
     white = np.array((1.0, 1.0, 1.0))
     red = np.array((1.0, 0.0, 0.0))
+    axes_image = axes.get_images()[0]
+    image_data = axes_image.get_array()
     # ensure that all of the data in the image data is either white or red
     try:
-        test_mask = np.isclose(image.get_array(), white) | np.isclose(image.get_array(), red)
+        test_mask = (image_data == white) | (image_data == red)
         assert np.all(test_mask)
     except AssertionError as e:
         raise AssertionError("Colors other than white or red found in overlap plot image") from e

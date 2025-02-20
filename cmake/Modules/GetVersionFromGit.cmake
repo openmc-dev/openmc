@@ -10,8 +10,8 @@
 #   - DESCRIBE_NAME_KEY: Key for describe name in .git_archival.txt (default: "describe-name: ").
 #   - COMMIT_HASH_KEY: Key for commit hash in .git_archival.txt (default: "commit: ").
 
-# Default Format Example: 
-#   1.2.3 v1.2.3 v1.2.3-rc1 
+# Default Format Example:
+#   1.2.3 v1.2.3 v1.2.3-rc1
 
 set(VERSION_PREFIX "v" CACHE STRING "Prefix used in version tags")
 set(VERSION_SUFFIX "[~+-]([a-zA-Z0-9]+)" CACHE STRING "Suffix used in version tags")
@@ -30,7 +30,7 @@ find_package(Git REQUIRED)
 # Attempt to retrieve version from Git
 if(EXISTS "${CMAKE_SOURCE_DIR}/.git" AND GIT_FOUND)
     message(STATUS "Using git describe for versioning")
-    
+
     # Extract the version string
     execute_process(
         COMMAND git describe --tags --dirty
@@ -114,12 +114,12 @@ if(DEV_STATE)
 endif()
 
 # Export variables
-set(PROJECT_VERSION_MAJOR "${VERSION_MAJOR}")
-set(PROJECT_VERSION_MINOR "${VERSION_MINOR}")
-set(PROJECT_VERSION_PATCH "${VERSION_PATCH}")
-set(PROJECT_VERSION_EXTRA "${VERSION_EXTRA}")
-set(PROJECT_VERSION "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}")
-set(PROJECT_COMMIT_HASH "${COMMIT_HASH}")
-set(PROJECT_DIRTY_STATE "${DIRTY_STATE}")
-set(PROJECT_DEV_STATE "${DEV_STATE}")
-set(PROJECT_COMMIT_COUNT "${COMMIT_COUNT}")
+set(OPENMC_VERSION_MAJOR "${VERSION_MAJOR}")
+set(OPENMC_VERSION_MINOR "${VERSION_MINOR}")
+set(OPENMC_VERSION_PATCH "${VERSION_PATCH}")
+set(OPENMC_VERSION_EXTRA "${VERSION_EXTRA}")
+set(OPENMC_VERSION "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}")
+set(OPENMC_COMMIT_HASH "${COMMIT_HASH}")
+set(OPENMC_DIRTY_STATE "${DIRTY_STATE}")
+set(OPENMC_DEV_STATE "${DEV_STATE}")
+set(OPENMC_COMMIT_COUNT "${COMMIT_COUNT}")

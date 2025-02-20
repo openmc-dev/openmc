@@ -267,7 +267,7 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
 
     // Set the SR to small status if its expected number of hits
     // per iteration is less than 1.0
-    if (source_regions_.n_hits(sr) * inverse_batch < 3.0) {
+    if (source_regions_.n_hits(sr) * inverse_batch < 1.5) {
       source_regions_.is_small(sr) = 1;
       //n_small++;
     } //else {

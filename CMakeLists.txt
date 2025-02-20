@@ -11,7 +11,6 @@ message(STATUS "OpenMC version: ${OPENMC_VERSION}")
 message(STATUS "OpenMC dev state: ${OPENMC_DEV_STATE}")
 message(STATUS "OpenMC commit hash: ${OPENMC_COMMIT_HASH}")
 message(STATUS "OpenMC commit count: ${OPENMC_COMMIT_COUNT}")
-message(STATUS "OpenMC dirty state: ${OPENMC_DIRTY_STATE}")
 
 # Generate version.h
 configure_file(include/openmc/version.h.in "${CMAKE_BINARY_DIR}/include/openmc/version.h" @ONLY)

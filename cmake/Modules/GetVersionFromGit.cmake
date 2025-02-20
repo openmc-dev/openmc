@@ -88,20 +88,6 @@ else()
     set(VERSION_WITHOUT_META "${VERSION_STRING}")
 endif()
 
-# Check for dirty state
-if(VERSION_STRING MATCHES "-dirty")
-    set(DIRTY_STATE "true")
-else()
-    set(DIRTY_STATE "false")
-endif()
-
-# Check for extra version
-if(VERSION_WITHOUT_META MATCHES "${VERSION_SUFFIX}")
-    set(VERSION_EXTRA "${CMAKE_MATCH_1}")
-else()
-    set(VERSION_EXTRA "")
-endif()
-
 # Split and set version components
 string(REPLACE "." ";" VERSION_LIST "${VERSION_NO_SUFFIX}")
 list(GET VERSION_LIST 0 VERSION_MAJOR)
@@ -117,9 +103,7 @@ endif()
 set(OPENMC_VERSION_MAJOR "${VERSION_MAJOR}")
 set(OPENMC_VERSION_MINOR "${VERSION_MINOR}")
 set(OPENMC_VERSION_PATCH "${VERSION_PATCH}")
-set(OPENMC_VERSION_EXTRA "${VERSION_EXTRA}")
 set(OPENMC_VERSION "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}")
 set(OPENMC_COMMIT_HASH "${COMMIT_HASH}")
-set(OPENMC_DIRTY_STATE "${DIRTY_STATE}")
 set(OPENMC_DEV_STATE "${DEV_STATE}")
 set(OPENMC_COMMIT_COUNT "${COMMIT_COUNT}")

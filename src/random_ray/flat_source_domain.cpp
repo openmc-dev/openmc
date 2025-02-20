@@ -267,12 +267,15 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
 
     // Set the SR to small status if its expected number of hits
     // per iteration is less than 1.0
-    if (source_regions_.n_hits(sr) * inverse_batch < 2.0) {
+    if (source_regions_.n_hits(sr) * inverse_batch < 3.0) {
       source_regions_.is_small(sr) = 1;
-      n_small++;
+      //n_small++;
     } //else {
      // source_regions_.is_small(sr) = 0;
     //}
+    if (source_regions_.is_small(sr) == 1) {
+      n_small++;
+     }
 
     // The volume treatment depends on the volume estimator type
     // and whether or not an external source is present in the cell.
@@ -318,6 +321,7 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
         // in the cell we will use the previous iteration's flux estimate. This
         // injects a small degree of correlation into the simulation, but this
         // is going to be trivial when the miss rate is a few percent or less.
+        //if (source_regions_.external_source_present(sr) || source_regions_.is_small(sr)) {
         if (source_regions_.external_source_present(sr)) {
           set_flux_to_old_flux(sr, g);
         } else {
@@ -861,6 +865,7 @@ void FlatSourceDomain::output_to_vtk() const
     int64_t num_neg = 0;
     int64_t num_samples = 0;
     float min_flux = 0.0;
+    float max_flux = -1.0e20;
     // Plot multigroup flux data
     for (int g = 0; g < negroups_; g++) {
       std::fprintf(plot, "SCALARS flux_group_%d float\n", g);
@@ -881,6 +886,8 @@ void FlatSourceDomain::output_to_vtk() const
             min_flux = flux;
           }
         }
+        if ( flux > max_flux )
+          max_flux = flux;
         num_samples++;
         flux = convert_to_big_endian<float>(flux);
         std::fwrite(&flux, sizeof(float), 1, plot);
@@ -892,8 +899,8 @@ void FlatSourceDomain::output_to_vtk() const
     // may indicate numerical instability.
     if (num_neg > 0) {
       warning(fmt::format("{} plot samples ({:.4f}%) contained negative fluxes "
-                          "(minumum found = {:.2e})",
-        num_neg, (100.0 * num_neg) / num_samples, min_flux));
+                          "(minumum found = {:.2e} maximum_found = {:.2e})",
+        num_neg, (100.0 * num_neg) / num_samples, min_flux, max_flux));
     }
 
     // Plot FSRs

@@ -91,8 +91,13 @@ void LinearSourceDomain::update_neutron_source(double k_eff)
   if (settings::run_mode == RunMode::FIXED_SOURCE) {
 // Add external source to flat source term if in fixed source mode
 #pragma omp parallel for
-    for (int64_t se = 0; se < source_regions_.n_source_elements(); se++) {
-      source_regions_.source(se) += source_regions_.external_source(se);
+    for (int64_t sr = 0; sr < source_regions_.n_source_regions(); sr++) {
+      for (int64_t g = 0; g < negroups_; g++) {
+        source_regions_.source(sr, g) += source_regions_.external_source(sr, g);
+        //if (source_regions_.source(sr, g) < 0.0 && source_regions_.is_small(sr)) {
+        //  source_regions_.source(sr, g) = 0.f;
+        //}
+      }
     }
   }
 

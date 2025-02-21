@@ -1,10 +1,10 @@
 #ifndef OPENMC_TALLIES_FILTER_PARENT_NUCLIDE_H
 #define OPENMC_TALLIES_FILTER_PARENT_NUCLIDE_H
 
-#include <gsl/gsl-lite.hpp>
 #include <string>
 #include <unordered_map>
 
+#include "openmc/span.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/vector.h"
 
@@ -40,7 +40,7 @@ public:
   // Accessors
 
   const vector<int>& bins() const { return bins_; }
-  void set_bins(gsl::span<const int> bins);
+  void set_bins(span<const int> bins);
 
 protected:
   //----------------------------------------------------------------------------

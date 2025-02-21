@@ -199,6 +199,11 @@ void FlatSourceDomain::normalize_scalar_flux_and_volumes(
   }
 }
 
+void FlatSourceDomain::set_flux_to_zero(int64_t sr, int g)
+{
+  source_regions_.scalar_flux_new(sr, g) = 0.0;
+}
+
 void FlatSourceDomain::set_flux_to_flux_plus_source(
   int64_t sr, double volume, int g)
 {
@@ -270,9 +275,9 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
     if (source_regions_.n_hits(sr) * inverse_batch < 1.5) {
       source_regions_.is_small(sr) = 1;
       //n_small++;
-    } //else {
-     // source_regions_.is_small(sr) = 0;
-    //}
+    } else {
+      source_regions_.is_small(sr) = 0;
+    }
     if (source_regions_.is_small(sr) == 1) {
       n_small++;
      }
@@ -324,6 +329,8 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
         //if (source_regions_.external_source_present(sr) || source_regions_.is_small(sr)) {
         if (source_regions_.external_source_present(sr)) {
           set_flux_to_old_flux(sr, g);
+        //} else if (source_regions_.is_small(sr)) {
+        //  set_flux_to_zero(sr, g);
         } else {
           set_flux_to_source(sr, g);
         }
@@ -944,13 +951,13 @@ void FlatSourceDomain::output_to_vtk() const
     }
 
     // Plot Birthday
-    std::fprintf(plot, "SCALARS Birthday int\n");
+    std::fprintf(plot, "SCALARS is_small int\n");
     std::fprintf(plot, "LOOKUP_TABLE default\n");
     for (int i = 0; i < Nx * Ny * Nz; i++) {
       int64_t fsr = voxel_indices[i];
       int birthday = 0;
       if (fsr > 0) {
-        birthday = source_regions_.birthday(fsr);
+        birthday = source_regions_.is_small(fsr);
       }
       birthday = convert_to_big_endian<int>(birthday);
       std::fwrite(&birthday, sizeof(int), 1, plot);

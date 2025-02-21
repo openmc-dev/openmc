@@ -498,19 +498,24 @@ void RandomRay::attenuate_flux_linear_source(
     // be accumulated into the source region's estimates inside of the locked
     // region.
     delta_psi_[g] = new_delta_psi;
+    /*
     if (srh.n_hits() < 100 || srh.is_small()) {
       delta_moments_[g] = {0.0, 0.0, 0.0};
     } else {
       delta_moments_[g] = r0_local * spatial_source + u() * h1;
     }
+      */
 
-    //if (0) {
-    if (angular_flux_[g] - new_delta_psi * sigma_t < 0.0) {
+      delta_moments_[g] = r0_local * spatial_source + u() * h1;
+
+
+    if (0) {
+    //if (angular_flux_[g] - new_delta_psi * sigma_t < 0.0) {
     //if (angular_flux_[g] - new_delta_psi * sigma_t < 0.0 && srh.is_small()) {
       // if (angular_flux_[g] - new_delta_psi * sigma_t < -1.0e+1)
       // if (angular_flux_[g] > 0.0 && angular_flux_[g] - new_delta_psi *
       // sigma_t < -1.0)
-      if (0) {
+      if (angular_flux_[g] - new_delta_psi * sigma_t < -1.0) {
         fmt::print("Incoming flux: {:.3e} Proposed Outgoing Flux: {:.3e} "
                    "Sigma_t: {:.3e} Delta Psi: {:.3e} distance: {:.3e} source: "
                    "{:.3e} spatial source: {:.3e} volume: {:.3e} is small: {} "

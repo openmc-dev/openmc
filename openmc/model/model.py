@@ -856,7 +856,7 @@ class Model:
         axis_units: str = 'cm',
         outline: bool | str = False,
         show_overlaps: bool = False,
-        overlap_color: bool = None,
+        overlap_color: Sequence[int] | str | None = None,
         n_samples: int | None = None,
         plane_tolerance: float = 1.,
         legend_kwargs: dict | None = None,

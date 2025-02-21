@@ -210,15 +210,20 @@ _PLOT_PARAMS = """
             Whether a legend showing material or cell names should be drawn
 
             .. versionadded:: 0.14.0
+        axis_units : {'km', 'm', 'cm', 'mm'}
+            Units used on the plot axis
+
+            .. versionadded:: 0.14.0
         outline : bool or str
             Whether outlines between color boundaries should be drawn. If set to
             'only', only outlines will be drawn.
 
             .. versionadded:: 0.14.0
-        axis_units : {'km', 'm', 'cm', 'mm'}
-            Units used on the plot axis
-
-            .. versionadded:: 0.14.0
+        show_overlaps: bool
+            Indicate whether or not overlapping regions are shown.
+            Default is False.
+        overlap_color: Iterable of int or str
+            Color to apply to overlapping regions. Default is red.
         n_samples : int, optional
             The number of source particles to sample and add to plot. Defaults
             to None which doesn't plot any particles on the plot.
@@ -226,11 +231,6 @@ _PLOT_PARAMS = """
             When plotting a plane the source locations within the plane +/-
             the plane_tolerance will be included and those outside of the
             plane_tolerance will not be shown
-        show_overlaps: bool
-            Indicate whether or not overlapping regions are shown.
-            Default is False.
-        overlap_color: Iterable of int or str
-            Color to apply to overlapping regions. Default is red.
         legend_kwargs : dict
             Keyword arguments passed to :func:`matplotlib.pyplot.legend`.
 

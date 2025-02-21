@@ -629,8 +629,5 @@ def test_model_plot():
     axes_image = axes.get_images()[0]
     image_data = axes_image.get_array()
     # ensure that all of the data in the image data is either white or red
-    try:
-        test_mask = (image_data == white) | (image_data == red)
-        assert np.all(test_mask)
-    except AssertionError as e:
-        raise AssertionError("Colors other than white or red found in overlap plot image") from e
+    test_mask = (image_data == white) | (image_data == red)
+    assert np.all(test_mask), "Colors other than white or red found in overlap plot image"

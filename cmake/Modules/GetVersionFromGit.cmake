@@ -24,8 +24,8 @@ set(COMMIT_HASH_KEY "commit: " CACHE STRING "Key for commit hash in .git_archiva
 # Combine prefix and regex
 set(VERSION_REGEX_WITH_PREFIX "^${VERSION_PREFIX}${VERSION_REGEX}")
 
-# Ensure Git is available
-find_package(Git REQUIRED)
+# Find Git
+find_package(Git)
 
 # Attempt to retrieve version from Git
 if(EXISTS "${CMAKE_SOURCE_DIR}/.git" AND GIT_FOUND)

@@ -115,6 +115,7 @@ void Particle::from_source(const SourceSite* src)
   n_collision() = 0;
   fission() = false;
   zero_flux_derivs();
+  lifetime() = 0.0;
 
   // Copy attributes from source bank site
   type() = src->particle;
@@ -233,7 +234,9 @@ void Particle::event_advance()
   for (int j = 0; j < n_coord(); ++j) {
     coord(j).r += distance * coord(j).u;
   }
-  this->time() += distance / this->speed();
+  double dt = distance / this->speed();
+  this->time() += dt;
+  this->lifetime() += dt;
 
   // Kill particle if its time exceeds the cutoff
   bool hit_time_boundary = false;
@@ -241,6 +244,7 @@ void Particle::event_advance()
   if (time() > time_cutoff) {
     double dt = time() - time_cutoff;
     time() = time_cutoff;
+    lifetime() = time_cutoff;
 
     double push_back_distance = speed() * dt;
     this->move_distance(-push_back_distance);

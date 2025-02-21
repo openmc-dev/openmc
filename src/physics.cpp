@@ -7,6 +7,7 @@
 #include "openmc/eigenvalue.h"
 #include "openmc/endf.h"
 #include "openmc/error.h"
+#include "openmc/ifp.h"
 #include "openmc/material.h"
 #include "openmc/math_functions.h"
 #include "openmc/message_passing.h"
@@ -225,6 +226,10 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
 
         // Break out of loop as no more sites can be added to fission bank
         break;
+      }
+      // Iterated Fission Probability (IFP) method
+      if (settings::ifp) {
+        ifp(p, site, idx);
       }
     } else {
       p.secondary_bank().push_back(site);

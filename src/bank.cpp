@@ -1,6 +1,7 @@
 #include "openmc/bank.h"
 #include "openmc/capi.h"
 #include "openmc/error.h"
+#include "openmc/ifp.h"
 #include "openmc/message_passing.h"
 #include "openmc/simulation.h"
 #include "openmc/vector.h"
@@ -25,6 +26,14 @@ SharedArray<SourceSite> surf_source_bank;
 // will be added to it by using SharedArray's special thread_safe_append()
 // function.
 SharedArray<SourceSite> fission_bank;
+
+vector<vector<int>> ifp_source_delayed_group_bank;
+
+vector<vector<double>> ifp_source_lifetime_bank;
+
+vector<vector<int>> ifp_fission_delayed_group_bank;
+
+vector<vector<double>> ifp_fission_lifetime_bank;
 
 // Each entry in this vector corresponds to the number of progeny produced
 // this generation for the particle located at that index. This vector is
@@ -82,6 +91,10 @@ void sort_fission_bank()
   // over provisioned, so we can use that as scratch space.
   SourceSite* sorted_bank;
   vector<SourceSite> sorted_bank_holder;
+  vector<int>* sorted_ifp_delayed_group_bank;
+  vector<vector<int>> sorted_ifp_delayed_group_bank_holder;
+  vector<double>* sorted_ifp_lifetime_bank;
+  vector<vector<double>> sorted_ifp_lifetime_bank_holder;
 
   // If there is not enough space, allocate a temporary vector and point to it
   if (simulation::fission_bank.size() >
@@ -90,6 +103,12 @@ void sort_fission_bank()
     sorted_bank = sorted_bank_holder.data();
   } else { // otherwise, point sorted_bank to unused portion of the fission bank
     sorted_bank = &simulation::fission_bank[simulation::fission_bank.size()];
+  }
+
+  if (settings::ifp) {
+    allocate_temporary_vector_ifp(sorted_ifp_delayed_group_bank_holder,
+      sorted_ifp_delayed_group_bank, sorted_ifp_lifetime_bank_holder,
+      sorted_ifp_lifetime_bank);
   }
 
   // Use parent and progeny indices to sort fission bank
@@ -102,11 +121,19 @@ void sort_fission_bank()
                   "shared fission bank size.");
     }
     sorted_bank[idx] = site;
+    if (settings::ifp) {
+      sort_ifp_data_from_fission_banks(
+        i, idx, sorted_ifp_delayed_group_bank, sorted_ifp_lifetime_bank);
+    }
   }
 
   // Copy sorted bank into the fission bank
   std::copy(sorted_bank, sorted_bank + simulation::fission_bank.size(),
     simulation::fission_bank.data());
+  if (settings::ifp) {
+    copy_ifp_data_to_fission_banks(
+      sorted_ifp_delayed_group_bank, sorted_ifp_lifetime_bank);
+  }
 }
 
 //==============================================================================

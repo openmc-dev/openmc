@@ -21,6 +21,7 @@ essential aspects of using OpenMC to perform simulations.
     tallies
     plots
     depletion
+    kinetics
     scripts
     processing
     parallel

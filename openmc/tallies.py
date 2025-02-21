@@ -180,20 +180,22 @@ class Tally(IDManagerMixin):
         return '\n\t'.join(parts)
 
     @staticmethod
-    def check_results(f):
-        """A decorator to be applied to any method that might use tally results
+    def ensure_results(f):
+        """A decorator to be applied to any method that might use tally results.
+           Results will be loaded if appropriate based on the tally properties.
 
         Args:
             f function: Tally method to wrap
 
         Returns:
-            function: Wrapped function that reads tally results before calling the methodif necessary
+            function: Wrapped function that reads tally results before calling
+            the methodif necessary
         """
         @wraps(f)
-        def read(self, *args, **kwargs):
+        def read(self):
             if self._sp_filename is not None and not self.derived:
                 self._read_results()
-            return f(self, *args, **kwargs)
+            return f(self)
         return read
 
     @property
@@ -235,7 +237,7 @@ class Tally(IDManagerMixin):
         self._filters = cv.CheckedList(_FILTER_CLASSES, 'tally filters', filters)
 
     @property
-    @check_results
+    @ensure_results
     def nuclides(self):
         return self._nuclides
 
@@ -332,7 +334,7 @@ class Tally(IDManagerMixin):
                                         triggers)
 
     @property
-    @check_results
+    @ensure_results
     def num_realizations(self):
         return self._num_realizations
 
@@ -387,7 +389,7 @@ class Tally(IDManagerMixin):
         self._results_read = True
 
     @property
-    @check_results
+    @ensure_results
     def sum(self):
         if not self._sp_filename or self.derived:
             return None
@@ -403,7 +405,7 @@ class Tally(IDManagerMixin):
         self._sum = sum
 
     @property
-    @check_results
+    @ensure_results
     def sum_sq(self):
         if not self._sp_filename or self.derived:
             return None
@@ -419,7 +421,7 @@ class Tally(IDManagerMixin):
         self._sum_sq = sum_sq
 
     @property
-    @check_results
+    @ensure_results
     def mean(self):
         if self._mean is None:
             if not self._sp_filename:
@@ -438,7 +440,7 @@ class Tally(IDManagerMixin):
             return self._mean
 
     @property
-    @check_results
+    @ensure_results
     def std_dev(self):
         if self._std_dev is None:
             if not self._sp_filename:

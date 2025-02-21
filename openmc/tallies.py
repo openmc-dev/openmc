@@ -959,6 +959,19 @@ class Tally(IDManagerMixin):
         else:
             self._sp_filename = Path(str(statepoint))
 
+        if self.derived:
+            return
+
+        # reset these properties to ensure that
+        # any results read after this point are from the
+        # current statepoint file
+        self._sum = None
+        self._sum_sq = None
+        self._mean = None
+        self._std_dev = None
+        self._num_realizations = 0
+        self._results_read = False
+
     @classmethod
     def from_xml_element(cls, elem, **kwargs):
         """Generate tally object from an XML element

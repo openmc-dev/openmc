@@ -167,3 +167,6 @@ class FilterEnergyFunHarness(PyAPITestHarness):
 def test_filter_energyfun(model):
     harness = FilterEnergyFunHarness('statepoint.5.h5', model)
     harness.main()
+
+if __name__ == '__main__':
+    pytest.main(['-v', __file__])

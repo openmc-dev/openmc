@@ -191,7 +191,7 @@ class Tally(IDManagerMixin):
         """
         @wraps(f)
         def read(self, *args, **kwargs):
-            if self._sp_filename is not None:
+            if self._sp_filename is not None and not self.derived:
                 self._read_results()
             return f(self, *args, **kwargs)
         return read

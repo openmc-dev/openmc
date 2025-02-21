@@ -72,7 +72,7 @@ def time_correction_factors(
 
     Parameters
     ----------
-    nuclide : str
+    nuclides : list of str
         The name of the nuclide to find the time correction for, e.g., 'Ni65'
     timesteps : iterable of float or iterable of tuple
         Array of timesteps. Note that values are not cumulative. The units are
@@ -204,7 +204,7 @@ def apply_time_correction(
 
 
 def prepare_tallies(
-        model: list[openmc.Tally],
+        model: openmc.Model,
         nuclides: list[str] | None = None,
         chain_file: str | None = None
 ) -> list[str]:
@@ -227,7 +227,7 @@ def prepare_tallies(
     Returns
     -------
     list of str
-        List of possible radionuclides
+        List of parent nuclides being filtered on
 
     """
     if nuclides is None:

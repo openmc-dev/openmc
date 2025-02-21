@@ -43,7 +43,7 @@ _SECONDS_PER_JULIAN_YEAR = 365.25*24*60*60
 
 
 def _normalize_timesteps(
-        timesteps: Sequence[float] | Sequence[tuple[str, float]],
+        timesteps: Sequence[float] | Sequence[tuple[float, str]],
         source_rates: float | Sequence[float],
         timestep_units: str = 's',
         operator: TransportOperator | None = None,

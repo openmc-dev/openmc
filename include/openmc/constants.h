@@ -344,11 +344,16 @@ enum class SolverType { MONTE_CARLO, RANDOM_RAY };
 
 enum class RandomRayVolumeEstimator { NAIVE, SIMULATION_AVERAGED, HYBRID };
 enum class RandomRaySourceShape { FLAT, LINEAR, LINEAR_XY };
+enum class RandomRaySampleMethod { PRNG, HALTON };
 
 //==============================================================================
 // Geometry Constants
 
 enum class GeometryType { CSG, DAG };
+
+// a surface token cannot be zero due to the unsigned nature of zero for integer
+// representations. This value represents no surface.
+constexpr int32_t SURFACE_NONE {0};
 
 } // namespace openmc
 

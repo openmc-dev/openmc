@@ -66,7 +66,7 @@ void openmc_run_random_ray()
     simulation::time_total.stop();
 
     // Normalize and save the final forward flux
-    forward_flux = sim.domain()->scalar_flux_final_;
+    sim.domain()->serialize_final_fluxes(forward_flux);
 
     double source_normalization_factor =
       sim.domain()->compute_fixed_source_normalization_factor() /
@@ -173,6 +173,7 @@ void validate_random_ray_inputs()
       case FilterType::MATERIAL:
       case FilterType::MESH:
       case FilterType::UNIVERSE:
+      case FilterType::PARTICLE:
         break;
       default:
         fatal_error("Invalid filter specified. Only cell, cell_instance, "
@@ -192,6 +193,23 @@ void validate_random_ray_inputs()
     if (material.get_xsdata().size() > 1) {
       fatal_error("Non-isothermal MGXS detected. Only isothermal XS data sets "
                   "supported in random ray mode.");
+    }
+    for (int g = 0; g < data::mg.num_energy_groups_; g++) {
+      if (material.exists_in_model) {
+        // Temperature and angle indices, if using multiple temperature
+        // data sets and/or anisotropic data sets.
+        // TODO: Currently assumes we are only using single temp/single angle
+        // data.
+        const int t = 0;
+        const int a = 0;
+        double sigma_t =
+          material.get_xs(MgxsType::TOTAL, g, NULL, NULL, NULL, t, a);
+        if (sigma_t <= 0.0) {
+          fatal_error("No zero or negative total macroscopic cross sections "
+                      "allowed in random ray mode. If the intention is to make "
+                      "a void material, use a cell fill of 'None' instead.");
+        }
+      }
     }
   }
 

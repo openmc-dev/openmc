@@ -1,5 +1,7 @@
 #include "openmc/tallies/filter_distribcell.h"
 
+#include <cassert>
+
 #include <fmt/core.h>
 
 #include "openmc/cell.h"
@@ -29,8 +31,8 @@ void DistribcellFilter::from_xml(pugi::xml_node node)
 
 void DistribcellFilter::set_cell(int32_t cell)
 {
-  Expects(cell >= 0);
-  Expects(cell < model::cells.size());
+  assert(cell >= 0);
+  assert(cell < model::cells.size());
   cell_ = cell;
   n_bins_ = model::cells[cell]->n_instances_;
 }

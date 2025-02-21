@@ -1583,7 +1583,6 @@ class Material(IDManagerMixin):
 
         if 'volume' in elem.attrib:
             mat.volume = float(elem.get('volume'))
-        mat.depletable = bool(elem.get('depletable'))
 
         # Get each nuclide
         for nuclide in elem.findall('nuclide'):
@@ -1592,6 +1591,9 @@ class Material(IDManagerMixin):
                 mat.add_nuclide(name, float(nuclide.attrib['ao']))
             elif 'wo' in nuclide.attrib:
                 mat.add_nuclide(name, float(nuclide.attrib['wo']), 'wo')
+
+        # Get depletable attribute
+        mat.depletable = elem.get('depletable') in ('true', '1')
 
         # Get each S(a,b) table
         for sab in elem.findall('sab'):

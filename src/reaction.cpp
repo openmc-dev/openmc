@@ -97,8 +97,7 @@ Reaction::Reaction(
   }
 }
 
-double Reaction::xs(
-  gsl::index i_temp, gsl::index i_grid, double interp_factor) const
+double Reaction::xs(int64_t i_temp, int64_t i_grid, double interp_factor) const
 {
   // If energy is below threshold, return 0. Otherwise interpolate between
   // nearest grid points
@@ -114,9 +113,8 @@ double Reaction::xs(const NuclideMicroXS& micro) const
   return this->xs(micro.index_temp, micro.index_grid, micro.interp_factor);
 }
 
-double Reaction::collapse_rate(gsl::index i_temp,
-  gsl::span<const double> energy, gsl::span<const double> flux,
-  const vector<double>& grid) const
+double Reaction::collapse_rate(int64_t i_temp, span<const double> energy,
+  span<const double> flux, const vector<double>& grid) const
 {
   // Find index corresponding to first energy
   const auto& xs = xs_[i_temp].value;
@@ -207,6 +205,7 @@ std::unordered_map<int, std::string> REACTION_NAME_MAP {
   // Normal ENDF-based reactions
   {TOTAL_XS, "(n,total)"},
   {ELASTIC, "(n,elastic)"},
+  {N_NONELASTIC, "(n,nonelastic)"},
   {N_LEVEL, "(n,level)"},
   {N_2ND, "(n,2nd)"},
   {N_2N, "(n,2n)"},

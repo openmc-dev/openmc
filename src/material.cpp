@@ -1,6 +1,7 @@
 #include "openmc/material.h"
 
 #include <algorithm> // for min, max, sort, fill
+#include <cassert>
 #include <cmath>
 #include <iterator>
 #include <sstream>
@@ -933,7 +934,7 @@ void Material::calculate_photon_xs(Particle& p) const
 
 void Material::set_id(int32_t id)
 {
-  Expects(id >= 0 || id == C_NONE);
+  assert(id >= 0 || id == C_NONE);
 
   // Clear entry in material map if an ID was already assigned before
   if (id_ != C_NONE) {
@@ -961,9 +962,9 @@ void Material::set_id(int32_t id)
   model::material_map[id] = index_;
 }
 
-void Material::set_density(double density, gsl::cstring_span units)
+void Material::set_density(double density, const std::string& units)
 {
-  Expects(density >= 0.0);
+  assert(density >= 0.0);
 
   if (nuclide_.empty()) {
     throw std::runtime_error {"No nuclides exist in material yet."};
@@ -1006,8 +1007,8 @@ void Material::set_densities(
   const vector<std::string>& name, const vector<double>& density)
 {
   auto n = name.size();
-  Expects(n > 0);
-  Expects(n == density.size());
+  assert(n > 0);
+  assert(n == density.size());
 
   if (n != nuclide_.size()) {
     nuclide_.resize(n);
@@ -1017,7 +1018,7 @@ void Material::set_densities(
   }
 
   double sum_density = 0.0;
-  for (gsl::index i = 0; i < n; ++i) {
+  for (int64_t i = 0; i < n; ++i) {
     const auto& nuc {name[i]};
     if (data::nuclide_map.find(nuc) == data::nuclide_map.end()) {
       int err = openmc_load_nuclide(nuc.c_str(), nullptr, 0);
@@ -1026,7 +1027,7 @@ void Material::set_densities(
     }
 
     nuclide_[i] = data::nuclide_map.at(nuc);
-    Expects(density[i] > 0.0);
+    assert(density[i] > 0.0);
     atom_density_(i) = density[i];
     sum_density += density[i];
 

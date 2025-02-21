@@ -116,4 +116,3 @@ def test_tally_application(sphere_model, run_in_tmpdir):
     assert (sp_tally.mean == tally.mean).all()
     assert (sp_tally.std_dev == tally.std_dev).all()
     assert sp_tally.nuclides == tally.nuclides
-

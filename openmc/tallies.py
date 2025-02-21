@@ -427,8 +427,9 @@ class Tally(IDManagerMixin):
             if not self._sp_filename:
                 return None
 
-            n = self.num_realizations
+            # Make sure self.mean is read first to trigger _read_results
             nonzero = np.abs(self.mean) > 0
+            n = self.num_realizations
             self._std_dev = np.zeros_like(self.mean)
             self._std_dev[nonzero] = np.sqrt((self.sum_sq[nonzero]/n -
                                               self.mean[nonzero]**2)/(n - 1))

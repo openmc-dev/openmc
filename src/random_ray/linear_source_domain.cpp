@@ -79,8 +79,9 @@ void LinearSourceDomain::update_neutron_source(double k_eff)
       // In the first 10 iterations when the centroids and spatial moments
       // are not well known, we will leave the source gradients as zero
       // so as to avoid causing any numerical instability.
-      if (simulation::current_batch > 10 &&
-          source_regions_.source(sr, g_out) >= 0.0) {
+     // if (simulation::current_batch > 10 &&
+      //    source_regions_.source(sr, g_out) >= 0.0) {
+            if (simulation::current_batch > 10) {
         source_regions_.source_gradients(sr, g_out) =
           invM * ((scatter_linear + fission_linear * inverse_k_eff) / sigma_t);
       } else {
@@ -150,7 +151,8 @@ void LinearSourceDomain::set_flux_to_flux_plus_source(
   // small, then the moments are likely noisy, so we zero them. This
   // is reasonable, given that small regions can get by with a flat
   // source approximation anyhow.
-  if (source_regions_.n_hits(sr) < 100 || source_regions_.is_small(sr)) {
+  //if (source_regions_.n_hits(sr) < 100 || source_regions_.is_small(sr)) {
+  if ( source_regions_.is_small(sr)) {
     source_regions_.flux_moments_new(sr, g) = {0.0, 0.0, 0.0};
   } else {
     source_regions_.flux_moments_new(sr, g) *= (1.0 / volume);

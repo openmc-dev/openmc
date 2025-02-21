@@ -145,6 +145,7 @@ Constructing Tallies
    openmc.TimeFilter
    openmc.ZernikeFilter
    openmc.ZernikeRadialFilter
+   openmc.ParentNuclideFilter
    openmc.ParticleFilter
    openmc.RegularMesh
    openmc.RectilinearMesh

@@ -26,7 +26,9 @@ public:
   //! Construct reaction from HDF5 data
   //! \param[in] group HDF5 group containing reaction data
   //! \param[in] temperatures Desired temperatures for cross sections
-  explicit Reaction(hid_t group, const vector<int>& temperatures);
+  //! \param[in] name Name of the nuclide
+  explicit Reaction(
+    hid_t group, const vector<int>& temperatures, std::string name);
 
   //! Calculate cross section given temperautre/grid index, interpolation factor
   //

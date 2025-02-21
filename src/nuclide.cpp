@@ -248,7 +248,8 @@ Nuclide::Nuclide(hid_t group, const vector<double>& temperature)
   for (auto name : group_names(rxs_group)) {
     if (starts_with(name, "reaction_")) {
       hid_t rx_group = open_group(rxs_group, name.c_str());
-      reactions_.push_back(make_unique<Reaction>(rx_group, temps_to_read));
+      reactions_.push_back(
+        make_unique<Reaction>(rx_group, temps_to_read, name_));
 
       // Check for 0K elastic scattering
       const auto& rx = reactions_.back();
@@ -375,15 +376,15 @@ void Nuclide::create_derived(
       int j = rx->xs_[t].threshold;
       int n = rx->xs_[t].value.size();
       auto xs = xt::adapt(rx->xs_[t].value);
+      auto pprod = xt::view(xs_[t], xt::range(j, j + n), XS_PHOTON_PROD);
 
       for (const auto& p : rx->products_) {
         if (p.particle_ == ParticleType::photon) {
-          auto pprod = xt::view(xs_[t], xt::range(j, j + n), XS_PHOTON_PROD);
           for (int k = 0; k < n; ++k) {
             double E = grid_[t].energy[k + j];
 
-            // For fission, artificially increase the photon yield to account
-            // for delayed photons
+            // For fission, artificially increase the photon yield to
+            // account for delayed photons
             double f = 1.0;
             if (settings::delayed_photon_scaling) {
               if (is_fission(rx->mt_)) {
@@ -469,8 +470,8 @@ void Nuclide::create_derived(
         }
       }
     } else {
-      // Otherwise, assume that any that have 0 K elastic scattering data are
-      // resonant
+      // Otherwise, assume that any that have 0 K elastic scattering data
+      // are resonant
       resonant_ = !energy_0K_.empty();
     }
 
@@ -781,8 +782,8 @@ void Nuclide::calculate_xs(
       }
 
       for (int j = 0; j < DEPLETION_RX.size(); ++j) {
-        // If reaction is present and energy is greater than threshold, set the
-        // reaction xs appropriately
+        // If reaction is present and energy is greater than threshold, set
+        // the reaction xs appropriately
         int i_rx = reaction_index_[DEPLETION_RX[j]];
         if (i_rx >= 0) {
           const auto& rx = reactions_[i_rx];
@@ -819,9 +820,9 @@ void Nuclide::calculate_xs(
   // Initialize URR probability table treatment to false
   micro.use_ptable = false;
 
-  // If there is S(a,b) data for this nuclide, we need to set the sab_scatter
-  // and sab_elastic cross sections and correct the total and elastic cross
-  // sections.
+  // If there is S(a,b) data for this nuclide, we need to set the
+  // sab_scatter and sab_elastic cross sections and correct the total and
+  // elastic cross sections.
 
   if (i_sab >= 0)
     this->calculate_sab_xs(i_sab, sab_frac, p);
@@ -984,8 +985,8 @@ void Nuclide::calculate_urr_xs(int i_temp, Particle& p) const
   }
 
   // Set elastic, absorption, fission, total, and capture x/s. Note that the
-  // total x/s is calculated as a sum of partials instead of the table-provided
-  // value
+  // total x/s is calculated as a sum of partials instead of the
+  // table-provided value
   micro.elastic = elastic;
   micro.absorption = capture + fission;
   micro.fission = fission;

@@ -1,17 +1,20 @@
 #include "openmc/reaction.h"
 
+#include <algorithm> // for remove_if
 #include <string>
 #include <unordered_map>
 #include <utility> // for move
 
 #include <fmt/core.h>
 
+#include "openmc/chain.h"
 #include "openmc/constants.h"
 #include "openmc/endf.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/random_lcg.h"
 #include "openmc/search.h"
 #include "openmc/secondary_uncorrelated.h"
+#include "openmc/settings.h"
 
 namespace openmc {
 
@@ -19,7 +22,8 @@ namespace openmc {
 // Reaction implementation
 //==============================================================================
 
-Reaction::Reaction(hid_t group, const vector<int>& temperatures)
+Reaction::Reaction(
+  hid_t group, const vector<int>& temperatures, std::string name)
 {
   read_attribute(group, "Q_value", q_value_);
   read_attribute(group, "mt", mt_);
@@ -61,6 +65,34 @@ Reaction::Reaction(hid_t group, const vector<int>& temperatures)
       hid_t pgroup = open_group(group, name.c_str());
       products_.emplace_back(pgroup);
       close_group(pgroup);
+    }
+  }
+
+  if (settings::use_decay_photons) {
+    // Remove photon products for D1S method
+    products_.erase(
+      std::remove_if(products_.begin(), products_.end(),
+        [](const auto& p) { return p.particle_ == ParticleType::photon; }),
+      products_.end());
+
+    // Determine product for D1S method
+    auto nuclide_it = data::chain_nuclide_map.find(name);
+    if (nuclide_it != data::chain_nuclide_map.end()) {
+      const auto& chain_nuc = data::chain_nuclides[nuclide_it->second];
+      const auto& rx_products = chain_nuc->reaction_products();
+      auto product_it = rx_products.find(mt_);
+      if (product_it != rx_products.end()) {
+        auto decay_products = product_it->second;
+        for (const auto& decay_product : decay_products) {
+          auto product_it = data::chain_nuclide_map.find(decay_product.name);
+          if (product_it != data::chain_nuclide_map.end()) {
+            const auto& product_nuc = data::chain_nuclides[product_it->second];
+            if (product_nuc->photon_energy()) {
+              products_.emplace_back(decay_product);
+            }
+          }
+        }
+      }
     }
   }
 }

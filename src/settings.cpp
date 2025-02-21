@@ -75,6 +75,7 @@ bool trigger_predict {false};
 bool uniform_source_sampling {false};
 bool ufs_on {false};
 bool urr_ptables_on {true};
+bool use_decay_photons {false};
 bool weight_windows_on {false};
 bool weight_window_checkpoint_surface {false};
 bool weight_window_checkpoint_collision {true};
@@ -1123,6 +1124,11 @@ void read_settings_xml(pugi::xml_node root)
       weight_window_checkpoint_surface =
         get_node_value_bool(ww_checkpoints, "surface");
     }
+  }
+
+  if (check_for_node(root, "use_decay_photons")) {
+    settings::use_decay_photons =
+      get_node_value_bool(root, "use_decay_photons");
   }
 }
 

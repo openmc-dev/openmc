@@ -12,6 +12,7 @@
 #include <fmt/core.h>
 
 #include "openmc/capi.h"
+#include "openmc/chain.h"
 #include "openmc/constants.h"
 #include "openmc/cross_sections.h"
 #include "openmc/error.h"
@@ -164,16 +165,17 @@ void initialize_mpi(MPI_Comm intracomm)
   MPI_Get_address(&b.delayed_group, &disp[5]);
   MPI_Get_address(&b.surf_id, &disp[6]);
   MPI_Get_address(&b.particle, &disp[7]);
-  MPI_Get_address(&b.parent_id, &disp[8]);
-  MPI_Get_address(&b.progeny_id, &disp[9]);
-  for (int i = 9; i >= 0; --i) {
+  MPI_Get_address(&b.parent_nuclide, &disp[8]);
+  MPI_Get_address(&b.parent_id, &disp[9]);
+  MPI_Get_address(&b.progeny_id, &disp[10]);
+  for (int i = 10; i >= 0; --i) {
     disp[i] -= disp[0];
   }
 
-  int blocks[] {3, 3, 1, 1, 1, 1, 1, 1, 1, 1};
+  int blocks[] {3, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1};
   MPI_Datatype types[] {MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE,
-    MPI_DOUBLE, MPI_INT, MPI_INT, MPI_INT, MPI_LONG, MPI_LONG};
-  MPI_Type_create_struct(10, blocks, disp, types, &mpi::source_site);
+    MPI_DOUBLE, MPI_INT, MPI_INT, MPI_INT, MPI_INT, MPI_LONG, MPI_LONG};
+  MPI_Type_create_struct(11, blocks, disp, types, &mpi::source_site);
   MPI_Type_commit(&mpi::source_site);
 }
 #endif // OPENMC_MPI
@@ -371,6 +373,9 @@ bool read_model_xml()
     }
   }
 
+  // Read data from chain file
+  read_chain_file_xml();
+
   // Read materials and cross sections
   if (!check_for_node(root, "materials")) {
     fatal_error(fmt::format(
@@ -423,6 +428,10 @@ void read_separate_xml_files()
   if (settings::run_mode != RunMode::PLOTTING) {
     read_cross_sections_xml();
   }
+
+  // Read data from chain file
+  read_chain_file_xml();
+
   read_materials_xml();
   read_geometry_xml();
 

@@ -1,7 +1,7 @@
 from __future__ import annotations
 from collections.abc import Iterable, MutableSequence
 import copy
-from functools import partial, reduce
+from functools import partial, reduce, wraps
 from itertools import product
 from numbers import Integral, Real
 import operator
@@ -179,6 +179,23 @@ class Tally(IDManagerMixin):
         parts.append('{: <15}=\t{}'.format('Multiply dens.', self.multiply_density))
         return '\n\t'.join(parts)
 
+    @staticmethod
+    def check_results(f):
+        """A decorator to be applied to any method that might use tally results
+
+        Args:
+            f function: Tally method to wrap
+
+        Returns:
+            function: Wrapped function that reads tally results before calling the methodif necessary
+        """
+        @wraps(f)
+        def read(self, *args, **kwargs):
+            if self._sp_filename is not None:
+                self._read_results()
+            return f(self, *args, **kwargs)
+        return read
+
     @property
     def name(self):
         return self._name
@@ -218,6 +235,7 @@ class Tally(IDManagerMixin):
         self._filters = cv.CheckedList(_FILTER_CLASSES, 'tally filters', filters)
 
     @property
+    @check_results
     def nuclides(self):
         return self._nuclides
 
@@ -314,6 +332,7 @@ class Tally(IDManagerMixin):
                                         triggers)
 
     @property
+    @check_results
     def num_realizations(self):
         return self._num_realizations
 
@@ -340,11 +359,11 @@ class Tally(IDManagerMixin):
         with h5py.File(self._sp_filename, 'r') as f:
             # Set number of realizations
             group = f[f'tallies/tally {self.id}']
-            self.num_realizations = int(group['n_realizations'][()])
+            self._num_realizations = int(group['n_realizations'][()])
 
             # Update nuclides
             nuclide_names = group['nuclides'][()]
-            self.nuclides = [name.decode().strip() for name in nuclide_names]
+            self._nuclides = [name.decode().strip() for name in nuclide_names]
 
             # Extract Tally data from the file
             data = group['results']
@@ -368,12 +387,10 @@ class Tally(IDManagerMixin):
         self._results_read = True
 
     @property
+    @check_results
     def sum(self):
         if not self._sp_filename or self.derived:
             return None
-
-        # Make sure results have been read
-        self._read_results()
 
         if self.sparse:
             return np.reshape(self._sum.toarray(), self.shape)
@@ -386,12 +403,10 @@ class Tally(IDManagerMixin):
         self._sum = sum
 
     @property
+    @check_results
     def sum_sq(self):
         if not self._sp_filename or self.derived:
             return None
-
-        # Make sure results have been read
-        self._read_results()
 
         if self.sparse:
             return np.reshape(self._sum_sq.toarray(), self.shape)
@@ -404,6 +419,7 @@ class Tally(IDManagerMixin):
         self._sum_sq = sum_sq
 
     @property
+    @check_results
     def mean(self):
         if self._mean is None:
             if not self._sp_filename:
@@ -422,6 +438,7 @@ class Tally(IDManagerMixin):
             return self._mean
 
     @property
+    @check_results
     def std_dev(self):
         if self._std_dev is None:
             if not self._sp_filename:
@@ -936,9 +953,9 @@ class Tally(IDManagerMixin):
             Statepoint used to update tally results
         """
         if isinstance(statepoint, openmc.StatePoint):
-            self._sp_filename = statepoint._f.filename
+            self._sp_filename = Path(statepoint._f.filename)
         else:
-            self._sp_filename = str(statepoint)
+            self._sp_filename = Path(str(statepoint))
 
     @classmethod
     def from_xml_element(cls, elem, **kwargs):

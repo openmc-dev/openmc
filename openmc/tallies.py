@@ -954,13 +954,15 @@ class Tally(IDManagerMixin):
         statepoint : openmc.PathLike or openmc.StatePoint
             Statepoint used to update tally results
         """
+        # derived tallies are populated with data based on combined tallies
+        # and should not be modified
+        if self.derived:
+            return
+
         if isinstance(statepoint, openmc.StatePoint):
             self._sp_filename = Path(statepoint._f.filename)
         else:
             self._sp_filename = Path(str(statepoint))
-
-        if self.derived:
-            return
 
         # reset these properties to ensure that
         # any results access after this point are

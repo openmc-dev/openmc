@@ -34,6 +34,10 @@ class CompositeSurface(ABC):
         return surf
 
     @property
+    def component_surfaces(self):
+        return [getattr(self, name) for name in self._surface_names]
+
+    @property
     def boundary_type(self):
         return getattr(self, self._surface_names[0]).boundary_type
 

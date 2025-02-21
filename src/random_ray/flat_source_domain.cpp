@@ -199,11 +199,6 @@ void FlatSourceDomain::normalize_scalar_flux_and_volumes(
   }
 }
 
-void FlatSourceDomain::set_flux_to_zero(int64_t sr, int g)
-{
-  source_regions_.scalar_flux_new(sr, g) = 0.0;
-}
-
 void FlatSourceDomain::set_flux_to_flux_plus_source(
   int64_t sr, double volume, int g)
 {
@@ -235,7 +230,8 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
   double total_volume = 0.0;
   double unintegrated_volume = 0.0;
 
-#pragma omp parallel for reduction(+ : total_volume, unintegrated_volume, n_hits, n_small)
+#pragma omp parallel for reduction(                                            \
+    + : total_volume, unintegrated_volume, n_hits, n_small)
   for (int64_t sr = 0; sr < n_source_regions(); sr++) {
     double volume = source_regions_.volume(sr);
     double volume_iteration = source_regions_.volume_naive(sr);
@@ -274,13 +270,13 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
     // per iteration is less than 1.0
     if (source_regions_.n_hits(sr) * inverse_batch < 1.5) {
       source_regions_.is_small(sr) = 1;
-      //n_small++;
+      // n_small++;
     } else {
       source_regions_.is_small(sr) = 0;
     }
     if (source_regions_.is_small(sr) == 1) {
       n_small++;
-     }
+    }
 
     // The volume treatment depends on the volume estimator type
     // and whether or not an external source is present in the cell.
@@ -312,7 +308,6 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
         // from rays passing through the source region (computed during the
         // transport sweep)
         set_flux_to_flux_plus_source(sr, volume, g);
-
       } else if (volume_simulation_avg > 0.0) {
         // 2. If the FSR was not hit this iteration, but has been hit some
         // previous iteration, then we need to make a choice about what
@@ -326,11 +321,8 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
         // in the cell we will use the previous iteration's flux estimate. This
         // injects a small degree of correlation into the simulation, but this
         // is going to be trivial when the miss rate is a few percent or less.
-        //if (source_regions_.external_source_present(sr) || source_regions_.is_small(sr)) {
         if (source_regions_.external_source_present(sr)) {
           set_flux_to_old_flux(sr, g);
-        //} else if (source_regions_.is_small(sr)) {
-        //  set_flux_to_zero(sr, g);
         } else {
           set_flux_to_source(sr, g);
         }
@@ -893,7 +885,7 @@ void FlatSourceDomain::output_to_vtk() const
             min_flux = flux;
           }
         }
-        if ( flux > max_flux )
+        if (flux > max_flux)
           max_flux = flux;
         num_samples++;
         flux = convert_to_big_endian<float>(flux);
@@ -948,78 +940,6 @@ void FlatSourceDomain::output_to_vtk() const
       }
       total_fission = convert_to_big_endian<float>(total_fission);
       std::fwrite(&total_fission, sizeof(float), 1, plot);
-    }
-
-    // Plot Birthday
-    std::fprintf(plot, "SCALARS is_small int\n");
-    std::fprintf(plot, "LOOKUP_TABLE default\n");
-    for (int i = 0; i < Nx * Ny * Nz; i++) {
-      int64_t fsr = voxel_indices[i];
-      int birthday = 0;
-      if (fsr > 0) {
-        birthday = source_regions_.is_small(fsr);
-      }
-      birthday = convert_to_big_endian<int>(birthday);
-      std::fwrite(&birthday, sizeof(int), 1, plot);
-    }
-
-    // Plot Flux Moments Magnitude
-    std::fprintf(plot, "SCALARS Flux_Moments_Magnitude float\n");
-    std::fprintf(plot, "LOOKUP_TABLE default\n");
-    for (int i = 0; i < Nx * Ny * Nz; i++) {
-      int64_t fsr = voxel_indices[i];
-      float max_mag = 0.0;
-      if (fsr > 0) {
-        for (int g = 0; g < negroups_; g++) {
-          const MomentArray& arr = source_regions_.flux_moments_new(fsr, g);
-          double mag = std::sqrt(arr.x * arr.x + arr.y * arr.y + arr.z * arr.z);
-          if (mag > max_mag)
-            max_mag = mag;
-        }
-      }
-      max_mag = convert_to_big_endian<float>(max_mag);
-      std::fwrite(&max_mag, sizeof(float), 1, plot);
-    }
-
-    // Plot Number of tally tasks in the SR
-    std::fprintf(plot, "SCALARS Tally_SR_id float\n");
-    std::fprintf(plot, "LOOKUP_TABLE default\n");
-    for (int i = 0; i < Nx * Ny * Nz; i++) {
-      int64_t fsr = voxel_indices[i];
-      int n_tasks = 0;
-      if (fsr > 0) {
-        for (int g = 0; g < negroups_; g++) {
-          n_tasks += source_regions_.tally_task(fsr, g).size();
-        }
-      }
-      float value = 0.0;
-      if (n_tasks > 0) {
-        value = future_prn(10, fsr);
-        // fmt::print("Tally SR idx = {}\n", fsr);
-      }
-      value = convert_to_big_endian<float>(value);
-      std::fwrite(&value, sizeof(float), 1, plot);
-    }
-
-    // Plot Number of tally tasks in the SR
-    std::fprintf(plot, "SCALARS Tally_region_flux float\n");
-    std::fprintf(plot, "LOOKUP_TABLE default\n");
-    for (int i = 0; i < Nx * Ny * Nz; i++) {
-      int64_t fsr = voxel_indices[i];
-      int n_tasks = 0;
-      if (fsr > 0) {
-        for (int g = 0; g < negroups_; g++) {
-          n_tasks += source_regions_.tally_task(fsr, g).size();
-        }
-      }
-      float value = 0.0;
-      if (n_tasks > 0) {
-        for (int g = 0; g < negroups_; g++) {
-          value += evaluate_flux_at_point(voxel_positions[i], fsr, g);
-        }
-      }
-      value = convert_to_big_endian<float>(value);
-      std::fwrite(&value, sizeof(float), 1, plot);
     }
 
     std::fclose(plot);
@@ -1201,8 +1121,12 @@ void FlatSourceDomain::set_adjoint_sources(const vector<double>& forward_flux)
 #pragma omp parallel for
   for (int64_t sr = 0; sr < n_source_regions(); sr++) {
     for (int g = 0; g < negroups_; g++) {
-      source_regions_.external_source(sr, g) =
-        1.0 / forward_flux[sr * negroups_ + g];
+      if (forward_flux[sr * negroups_ + g] > 0.0) {
+        source_regions_.external_source(sr, g) =
+          1.0 / forward_flux[sr * negroups_ + g];
+      } else {
+        source_regions_.external_source(sr, g) = 0.0;
+      }
       if (source_regions_.external_source(sr, g) > 0.0) {
         source_regions_.external_source_present(sr) = 1;
       }
@@ -1257,10 +1181,6 @@ void FlatSourceDomain::apply_mesh_to_cell_instances(int32_t i_cell,
   if (cell.type_ != Fill::MATERIAL)
     return;
   for (int32_t j : instances) {
-    // printf("applying to cell id %d instance %d of %d in found instances, %d
-    // in "
-    //        "actual cell instances\n",
-    //   cell.id_, j, instances.size(), cell.n_instances_);
     int cell_material_idx = cell.material(j);
     int cell_material_id;
     if (cell_material_idx == C_NONE) {
@@ -1278,8 +1198,6 @@ void FlatSourceDomain::apply_mesh_to_cell_instances(int32_t i_cell,
                                 "applied, but trying to apply mesh idx {}",
           sr, source_regions_.mesh(sr), mesh_idx));
       }
-      // fmt::print("Applying mesh idx {} to source region {}\n", mesh_idx,
-      // sr);
       source_regions_.mesh(sr) = mesh_idx;
     }
   }
@@ -1510,142 +1428,6 @@ void FlatSourceDomain::finalize_discovered_source_regions()
   }
 
   discovered_source_regions_.clear();
-}
-
-// This function is responsible for mitigating numerical instability
-// issues that arise when overlaying a mesh and generating extremely
-// small source regions.
-void FlatSourceDomain::handle_small_subdivided_source_regions()
-{
-// Begin by resetting the base source regions new flux and volume.
-#pragma omp parallel for
-  for (int64_t sr = 0; sr < base_source_regions_.n_source_regions(); sr++) {
-    base_source_regions_.volume_t(sr) = 0.0;
-    for (int g = 0; g < negroups_; g++) {
-      base_source_regions_.scalar_flux_new(sr, g) = 0.0;
-    }
-  }
-
-  // Accumulate the volume and flux of each subdivided source region into its
-  // parent base source region. The parent source region is not used
-  // in transport, but will be used in this function to provide a semi-localized
-  // surrogate flux estimate to project back down into any "small" or negative
-  // subdivided source regions. We also count the number of children for each
-  // base source region.
-  vector<int> n_children(base_source_regions_.n_source_regions(), 0);
-#pragma omp parallel for
-  for (int64_t sr = 0; sr < source_regions_.n_source_regions(); sr++) {
-    SourceRegionHandle srh = source_regions_.get_source_region_handle(sr);
-    int64_t base_sr = srh.parent_sr();
-    SourceRegionHandle parent_srh =
-      base_source_regions_.get_source_region_handle(base_sr);
-    parent_srh.lock().lock();
-    parent_srh.volume_t() += srh.volume_t();
-    for (int g = 0; g < negroups_; g++) {
-      // Only accumulate positive fluxes into parent
-      if (srh.scalar_flux_new(g) > 0.0) {
-        parent_srh.scalar_flux_new(g) +=
-          srh.scalar_flux_new(g) * srh.volume_t();
-      }
-    }
-    n_children[base_sr]++;
-    parent_srh.lock().unlock();
-  }
-
-  // Project the base source region fluxes back down into any "small" source
-  // regions in the source_regions_ vector. We are going to define a "small"
-  // subdivided source region as one that is less than 1% of the size of an
-  // average subdivided source region generated within that base source region.
-  // This metric is nice as it is insensitive to the overall size of the source
-  // region as well as being insensitive to the aspect ratio. I.e., thin shell
-  // source regions will have a very low volume, but may not be considered
-  // "small" here if their subdivision by a mesh results in subregions of
-  // approximately similar sizes. A result of this projection is that any
-  // "small" source regions will regress to flat, even in linear source mode,
-  // which is probably a safe approximation given their small size.
-  int64_t n_small = 0;
-#pragma omp parallel for reduction(+ : n_small)
-  for (int64_t sr = 0; sr < source_regions_.n_source_regions(); sr++) {
-    SourceRegionHandle srh = source_regions_.get_source_region_handle(sr);
-    int64_t base_sr = srh.parent_sr();
-    SourceRegionHandle parent_srh =
-      base_source_regions_.get_source_region_handle(base_sr);
-
-    // Average volume of a the children source regions for the parent
-    double avg_vol = parent_srh.volume_t() / n_children[base_sr];
-
-    // Volume of the subdivided source region
-    double vol = srh.volume_t();
-
-    // Check if the source region volume is less than 25% of the average
-    // for its parent
-    bool sufficient_vol = vol > 0.25 * avg_vol;
-
-    if (!sufficient_vol) {
-      n_small++;
-      srh.is_small() = 1;
-    } else {
-      srh.is_small() = 0;
-    }
-
-    for (int g = 0; g < negroups_; g++) {
-      // If this is a "small" source region, or if the flux for this iteration
-      // is negative, then we discard its flux estimate. It is replaced by a mix
-      // of the previous iteration for this source region and the flux from the
-      // parent source region. The mix is controlled by the alpha parameter.
-      // PROBLEM: The < 0.0 part biases c5g7 massively. Must do something else.
-      // I think that the other fluxes are pretty accurate given that the
-      // mesh is so simple. Stealing another sector's flux 1/100 times is not
-      // going to cause 10,000 pcm error. However -- doing this only when the
-      // fluxes are negative is causing an imbalance that is actually in many
-      // ways WORSE than just zeroing it. Zero is at least somewhat close
-      // to whatever slightly negative flux is typically there. But setting
-      // to the (let's say for the sake of argument, true) parent flux is
-      // going to massively shift the mean upwards due to chopping the whole
-      // tail. If you had a way of chopping the high portion of the tail as
-      // well, then this would be fine, but you'd need to know something about
-      // the distro I think. I could potentially restrict sampling to between 0
-      // < mean < 2*mean, but that seems likely to impart some sort of
-      // autocorrelation. But maybe it'd be fine? The bigger problem is maybe
-      // what is the "mean" even referring to? The fluxes are not stationary, so
-      // this would be a moving target. You'd have to start having a moving
-      // window etc and it just gets totally insane. And there would be some
-      // stupid case that would break it.
-
-      // Other ideas:
-      /*
-      if (!sufficient_vol || (srh.scalar_flux_new(g) < 0.0 && vol < 0.25 *
-      avg_vol)) {
-       // if (!sufficient_vol ) {
-
-        // Low alpha favors the flux estimator for this source
-        // region from the previous iteration. High alpha favors the parent
-        // flux.
-        const double alpha = 0.02;
-        double flux = parent_srh.scalar_flux_new(g) / parent_srh.volume_t();
-        srh.scalar_flux_new(g) =
-          alpha * flux + (1.0 - alpha) * srh.scalar_flux_old(g);
-      }
-          */
-
-      // If this source region has only been crossed by a few rays in its
-      // lifetime (usually due to being very small), then its centroid and
-      // spatial moments will likely be highly innacurate and their use
-      // can lead to instability. Thus, until a source region has been
-      // crossed by a minimum number of rays, we zero out the spatial flux
-      // moments for the iteration.
-      if (srh.is_linear_ && srh.n_hits() < 100) {
-        srh.flux_moments_new(g) = {0.0, 0.0, 0.0};
-      }
-    }
-  }
-
-  fmt::print("Number of small source regions = {}\n", n_small);
-
-  // TOOD: Handle making better source estimate for SRs discovered in later
-  // iterations. Not a problem for fixed source, as the source will be
-  // either 0 or the external source. For k-eigenvalue, we need to
-  // take the guess as 0 instead of 1.0.
 }
 
 } // namespace openmc

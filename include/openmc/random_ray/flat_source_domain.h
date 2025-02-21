@@ -59,7 +59,6 @@ public:
   SourceRegionHandle get_subdivided_source_region_handle(
     int64_t sr, int mesh_bin, Position r, double dist, Direction u);
   void finalize_discovered_source_regions();
-  void handle_small_subdivided_source_regions();
   int64_t n_source_regions() const
   {
     return source_regions_.n_source_regions();
@@ -140,7 +139,6 @@ protected:
   void apply_external_source_to_cell_and_children(int32_t i_cell,
     Discrete* discrete, double strength_factor, int32_t target_material_id);
   virtual void set_flux_to_flux_plus_source(int64_t sr, double volume, int g);
-  virtual void set_flux_to_zero(int64_t sr, int g);
   void set_flux_to_source(int64_t sr, int g);
   virtual void set_flux_to_old_flux(int64_t sr, int g);
 

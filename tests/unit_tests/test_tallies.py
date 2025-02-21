@@ -120,8 +120,8 @@ def test_tally_application(sphere_model, run_in_tmpdir):
     assert tally._sp_filename == sp_file
 
     with openmc.StatePoint(sp_file) as sp:
-       assert tally in sp.tallies.values()
-       sp_tally = sp.tallies[tally.id]
+        assert tally in sp.tallies.values()
+        sp_tally = sp.tallies[tally.id]
 
     # at this point the tally information regarding results should be the same
     assert (sp_tally.std_dev == tally.std_dev).all()
@@ -140,8 +140,8 @@ def test_tally_application(sphere_model, run_in_tmpdir):
     # ensure that the new results match those in
     # the latest statepoint
     with openmc.StatePoint(sp_file) as sp:
-       assert tally in sp.tallies.values()
-       sp_tally = sp.tallies[tally.id]
+        assert tally in sp.tallies.values()
+        sp_tally = sp.tallies[tally.id]
 
     # at this point the tally information regarding results should be the same
     assert (sp_tally.std_dev == tally.std_dev).all()

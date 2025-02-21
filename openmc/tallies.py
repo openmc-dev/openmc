@@ -963,8 +963,8 @@ class Tally(IDManagerMixin):
             return
 
         # reset these properties to ensure that
-        # any results read after this point are from the
-        # current statepoint file
+        # any results access after this point are
+        # based on the current statepoint file
         self._sum = None
         self._sum_sq = None
         self._mean = None

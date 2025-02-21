@@ -14,7 +14,7 @@ class MGXSTestHarness(TolerantPyAPITestHarness):
             os.remove(f)
 
 
-def test_random_ray_basic():
+def test_random_ray_k_eff_mesh():
     model = random_ray_lattice()
 
     # The model already has some geometrical subdivisions

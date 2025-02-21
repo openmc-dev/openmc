@@ -14,7 +14,7 @@ class MGXSTestHarness(WeightWindowPyAPITestHarness):
             os.remove(f)
 
 
-def test_random_ray_adjoint_fixed_source():
+def test_weight_windows_fw_cadis_mesh():
     model = random_ray_three_region_cube()
 
     # The base model has a resolution of 12, so we overlay

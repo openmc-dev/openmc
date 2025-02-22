@@ -39,7 +39,7 @@ void LinearSourceDomain::update_neutron_source(double k_eff)
   simulation::time_update_src.start();
 
   double inverse_k_eff = 1.0 / k_eff;
-  
+
 // Reset all source regions to zero (important for void regions)
 #pragma omp parallel for
   for (int64_t se = 0; se < n_source_elements(); se++) {
@@ -136,8 +136,7 @@ void LinearSourceDomain::normalize_scalar_flux_and_volumes(
     source_regions_.volume(sr) =
       source_regions_.volume_t(sr) * volume_normalization_factor;
     source_regions_.volume_sq(sr) =
-      (source_regions_.volume_sq_t(sr) / source_regions_.volume_t(sr)) *
-      volume_normalization_factor;
+      source_regions_.volume_sq_t(sr) / source_regions_.volume_t(sr);
     if (source_regions_.volume_t(sr) > 0.0) {
       double inv_volume = 1.0 / source_regions_.volume_t(sr);
       source_regions_.centroid(sr) = source_regions_.centroid_t(sr);

@@ -661,9 +661,6 @@ void RandomRay::attenuate_flux_linear_source_void(
   // The number of geometric intersections is counted for reporting purposes
   n_event()++;
 
-  // Determine source region index etc.
-  int i_cell = lowest_coord().cell;
-
   Position& centroid = srh.centroid();
   Position midpoint = r + u() * (distance / 2.0);
 

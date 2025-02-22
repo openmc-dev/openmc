@@ -41,7 +41,6 @@ SourceRegion::SourceRegion(const SourceRegionHandle& handle, int64_t parent_sr)
   material_ = handle.material();
   mesh_ = handle.mesh();
   parent_sr_ = parent_sr;
-  birthday_ = simulation::current_batch-1;
   for (int g = 0; g < scalar_flux_new_.size(); g++) {
     scalar_flux_old_[g] = handle.scalar_flux_old_[g];
     source_[g] = handle.source_[g];
@@ -62,11 +61,12 @@ SourceRegionHandle SourceRegion::get_source_region_handle()
   handle.material_ = &material_;
   handle.is_small_ = &is_small_;
   handle.n_hits_ = &n_hits_;
-  handle.birthday_ = &birthday_;
   handle.is_linear_ = source_gradients_.size() > 0;
   handle.lock_ = &lock_;
   handle.volume_ = &volume_;
   handle.volume_t_ = &volume_t_;
+  handle.volume_sq_ = &volume_sq_;
+  handle.volume_sq_t_ = &volume_sq_t_;
   handle.volume_naive_ = &volume_naive_;
   handle.position_recorded_ = &position_recorded_;
   handle.external_source_present_ = &external_source_present_;
@@ -104,10 +104,11 @@ void SourceRegionContainer::push_back(const SourceRegion& sr)
   material_.push_back(sr.material_);
   is_small_.push_back(sr.is_small_);
   n_hits_.push_back(sr.n_hits_);
-  birthday_.push_back(sr.birthday_);
   lock_.push_back(sr.lock_);
   volume_.push_back(sr.volume_);
   volume_t_.push_back(sr.volume_t_);
+  volume_sq_.push_back(sr.volume_sq_);
+  volume_sq_t_.push_back(sr.volume_sq_t_);
   volume_naive_.push_back(sr.volume_naive_);
   position_recorded_.push_back(sr.position_recorded_);
   external_source_present_.push_back(sr.external_source_present_);
@@ -156,10 +157,11 @@ void SourceRegionContainer::assign(
   material_.clear();
   is_small_.clear();
   n_hits_.clear();
-  birthday_.clear();
   lock_.clear();
   volume_.clear();
   volume_t_.clear();
+  volume_sq_.clear();
+  volume_sq_t_.clear();
   volume_naive_.clear();
   position_recorded_.clear();
   external_source_present_.clear();
@@ -274,6 +276,8 @@ void SourceRegionContainer::mpi_sync_ranks(bool reduce_position)
   // next iteration.
   MPI_Allreduce(MPI_IN_PLACE, volume_.data(), n_source_regions_, MPI_DOUBLE,
     MPI_SUM, mpi::intracomm);
+  MPI_Allreduce(MPI_IN_PLACE, volume_sq_.data(), n_source_regions_, MPI_DOUBLE,
+    MPI_SUM, mpi::intracomm);
 
   MPI_Allreduce(MPI_IN_PLACE, scalar_flux_new_.data(),
     n_source_regions_ * negroups_, MPI_DOUBLE, MPI_SUM, mpi::intracomm);
@@ -307,6 +311,8 @@ void SourceRegionContainer::reduce_to_base()
   lock_.clear();
   volume_.clear();
   volume_t_.clear();
+  volume_sq_.clear();
+  volume_sq_t_.clear();
   volume_naive_.clear();
   position_recorded_.clear();
   position_.clear();
@@ -332,11 +338,12 @@ SourceRegionHandle SourceRegionContainer::get_source_region_handle(int64_t sr)
   handle.material_ = &material(sr);
   handle.is_small_ = &is_small(sr);
   handle.n_hits_ = &n_hits(sr);
-  handle.birthday_ = &birthday(sr);
   handle.is_linear_ = is_linear();
   handle.lock_ = &lock(sr);
   handle.volume_ = &volume(sr);
   handle.volume_t_ = &volume_t(sr);
+  handle.volume_sq_ = &volume_sq(sr);
+  handle.volume_sq_t_ = &volume_sq_t(sr);
   handle.volume_naive_ = &volume_naive(sr);
   handle.position_recorded_ = &position_recorded(sr);
   handle.external_source_present_ = &external_source_present(sr);
@@ -370,6 +377,8 @@ void SourceRegionContainer::adjoint_reset()
 {
   std::fill(volume_.begin(), volume_.end(), 0.0);
   std::fill(volume_t_.begin(), volume_t_.end(), 0.0);
+  std::fill(volume_sq_.begin(), volume_sq_.end(), 0.0);
+  std::fill(volume_sq_t_.begin(), volume_sq_t_.end(), 0.0);
   std::fill(volume_naive_.begin(), volume_naive_.end(), 0.0);
   std::fill(
     external_source_present_.begin(), external_source_present_.end(), 0);

@@ -41,8 +41,11 @@ void LinearSourceDomain::update_neutron_source(double k_eff)
   double inverse_k_eff = 1.0 / k_eff;
 
 #pragma omp parallel for
-  for (int64_t sr = 0; sr < source_regions_.n_source_regions(); sr++) {
+  for (int64_t sr = 0; sr < n_source_regions(); sr++) {
     int material = source_regions_.material(sr);
+    if (material == MATERIAL_VOID) {
+      continue;
+    }
     MomentMatrix invM = source_regions_.mom_matrix(sr).inverse();
 
     for (int g_out = 0; g_out < negroups_; g_out++) {
@@ -92,7 +95,7 @@ void LinearSourceDomain::update_neutron_source(double k_eff)
   if (settings::run_mode == RunMode::FIXED_SOURCE) {
 // Add external source to flat source term if in fixed source mode
 #pragma omp parallel for
-    for (int64_t se = 0; se < source_regions_.n_source_elements(); se++) {
+    for (int64_t se = 0; se < n_source_elements(); se++) {
       source_regions_.source(se) += source_regions_.external_source(se);
     }
   }
@@ -121,10 +124,14 @@ void LinearSourceDomain::normalize_scalar_flux_and_volumes(
     source_regions_.centroid_t(sr) += source_regions_.centroid_iteration(sr);
     source_regions_.mom_matrix_t(sr) += source_regions_.mom_matrix(sr);
     source_regions_.volume_t(sr) += source_regions_.volume(sr);
+    source_regions_.volume_sq_t(sr) += source_regions_.volume_sq(sr);
     source_regions_.volume_naive(sr) =
       source_regions_.volume(sr) * normalization_factor;
     source_regions_.volume(sr) =
       source_regions_.volume_t(sr) * volume_normalization_factor;
+    source_regions_.volume_sq(sr) =
+      (source_regions_.volume_sq_t(sr) / source_regions_.volume_t(sr)) *
+      volume_normalization_factor;
     if (source_regions_.volume_t(sr) > 0.0) {
       double inv_volume = 1.0 / source_regions_.volume_t(sr);
       source_regions_.centroid(sr) = source_regions_.centroid_t(sr);
@@ -138,17 +145,15 @@ void LinearSourceDomain::normalize_scalar_flux_and_volumes(
 void LinearSourceDomain::set_flux_to_flux_plus_source(
   int64_t sr, double volume, int g)
 {
-  source_regions_.scalar_flux_new(sr, g) /= volume;
-  source_regions_.scalar_flux_new(sr, g) += source_regions_.source(sr, g);
-
-  // If this source region has only been crossed by a few rays in its
-  // lifetime (usually due to being very small), then its centroid and
-  // spatial moments will likely be highly innacurate and their use
-  // can lead to instability. Thus, until a source region has been
-  // crossed by a minimum number of rays, we zero out the spatial flux
-  // moments for the iteration. Additionally, if a source region is
-  // small, then the moments are likely noisy, so we zero them. This
-  // is reasonable, given that small regions can get by with a flat
+  int material = source_regions_.material(sr);
+  if (material == MATERIAL_VOID) {
+    FlatSourceDomain::set_flux_to_flux_plus_source(sr, volume, g);
+  } else {
+    source_regions_.scalar_flux_new(sr, g) /= volume;
+    source_regions_.scalar_flux_new(sr, g) += source_regions_.source(sr, g);
+  }
+  // If a source region is small, then the moments are likely noisy, so we zero
+  // them. This is reasonable, given that small regions can get by with a flat
   // source approximation anyhow.
   if (source_regions_.is_small(sr)) {
     source_regions_.flux_moments_new(sr, g) = {0.0, 0.0, 0.0};

@@ -1,7 +1,8 @@
 #include "openmc/tallies/filter.h"
 
 #include <algorithm> // for max
-#include <cstring>   // for strcpy
+#include <cassert>
+#include <cstring> // for strcpy
 #include <string>
 
 #include <fmt/core.h>
@@ -27,6 +28,7 @@
 #include "openmc/tallies/filter_meshsurface.h"
 #include "openmc/tallies/filter_mu.h"
 #include "openmc/tallies/filter_musurface.h"
+#include "openmc/tallies/filter_parent_nuclide.h"
 #include "openmc/tallies/filter_particle.h"
 #include "openmc/tallies/filter_polar.h"
 #include "openmc/tallies/filter_sph_harm.h"
@@ -136,6 +138,8 @@ Filter* Filter::create(const std::string& type, int32_t id)
     return Filter::create<MuFilter>(id);
   } else if (type == "musurface") {
     return Filter::create<MuSurfaceFilter>(id);
+  } else if (type == "parentnuclide") {
+    return Filter::create<ParentNuclideFilter>(id);
   } else if (type == "particle") {
     return Filter::create<ParticleFilter>(id);
   } else if (type == "polar") {
@@ -162,7 +166,7 @@ Filter* Filter::create(const std::string& type, int32_t id)
 
 void Filter::set_id(int32_t id)
 {
-  Expects(id >= 0 || id == C_NONE);
+  assert(id >= 0 || id == C_NONE);
 
   // Clear entry in filter map if an ID was already assigned before
   if (id_ != C_NONE) {

@@ -1,9 +1,9 @@
 #include "openmc/mesh.h"
-#include <algorithm>      // for copy, equal, min, min_element
+#include <algorithm> // for copy, equal, min, min_element
+#include <cassert>
 #define _USE_MATH_DEFINES // to make M_PI declared in Intel and MSVC compilers
 #include <cmath>          // for ceil
 #include <cstddef>        // for size_t
-#include <gsl/gsl-lite.hpp>
 #include <string>
 
 #ifdef OPENMC_MPI
@@ -116,7 +116,7 @@ Mesh::Mesh(pugi::xml_node node)
 
 void Mesh::set_id(int32_t id)
 {
-  Expects(id >= 0 || id == C_NONE);
+  assert(id >= 0 || id == C_NONE);
 
   // Clear entry in mesh map in case one was already assigned
   if (id_ != C_NONE) {
@@ -154,7 +154,7 @@ vector<double> Mesh::volumes() const
 }
 
 int Mesh::material_volumes(
-  int n_sample, int bin, gsl::span<MaterialVolume> result, uint64_t* seed) const
+  int n_sample, int bin, span<MaterialVolume> result, uint64_t* seed) const
 {
   vector<int32_t> materials;
   vector<int64_t> hits;
@@ -3183,13 +3183,13 @@ void LibMesh::set_score_data(const std::string& var_name,
     // set value
     vector<libMesh::dof_id_type> value_dof_indices;
     dof_map.dof_indices(*it, value_dof_indices, value_num);
-    Ensures(value_dof_indices.size() == 1);
+    assert(value_dof_indices.size() == 1);
     eqn_sys.solution->set(value_dof_indices[0], values.at(bin));
 
     // set std dev
     vector<libMesh::dof_id_type> std_dev_dof_indices;
     dof_map.dof_indices(*it, std_dev_dof_indices, std_dev_num);
-    Ensures(std_dev_dof_indices.size() == 1);
+    assert(std_dev_dof_indices.size() == 1);
     eqn_sys.solution->set(std_dev_dof_indices[0], std_dev.at(bin));
   }
 }

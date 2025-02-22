@@ -49,6 +49,9 @@ struct SourceSite {
   int delayed_group {0};
   int surf_id {0};
   ParticleType particle;
+
+  // Extra attributes that don't show up in source written to file
+  int parent_nuclide {-1};
   int64_t parent_id;
   int64_t progeny_id;
 };
@@ -191,6 +194,13 @@ struct BoundaryInfo {
   array<int, 3>
     lattice_translation {}; //!< which way lattice indices will change
 
+  void reset()
+  {
+    distance = INFINITY;
+    surface = SURFACE_NONE;
+    coord_level = 0;
+    lattice_translation = {0, 0, 0};
+  }
   // TODO: off-by-one
   int surface_index() const { return std::abs(surface) - 1; }
 };
@@ -225,6 +235,12 @@ public:
     }
     n_coord_last_ = 1;
   }
+
+  //! moves the particle by the specified distance to its next location
+  //! \param distance the distance the particle is moved
+  void move_distance(double distance);
+
+  void advance_to_boundary_from_void();
 
   // Initialize all internal state from position and direction
   void init_from_r_u(Position r_a, Direction u_a)
@@ -428,6 +444,7 @@ private:
   int event_nuclide_;
   int event_mt_;
   int delayed_group_ {0};
+  int parent_nuclide_ {-1};
 
   int n_bank_ {0};
   double bank_second_E_ {0.0};
@@ -542,6 +559,8 @@ public:
   const int& event_nuclide() const { return event_nuclide_; }
   int& event_mt() { return event_mt_; }           // MT number of collision
   int& delayed_group() { return delayed_group_; } // delayed group
+  const int& parent_nuclide() const { return parent_nuclide_; }
+  int& parent_nuclide() { return parent_nuclide_; } // Parent nuclide
 
   // Post-collision data
   double& bank_second_E()
@@ -565,7 +584,6 @@ public:
   int& cell_born() { return cell_born_; }
   const int& cell_born() const { return cell_born_; }
 
-  // index of the current and last material
   // Total number of collisions suffered by particle
   int& n_collision() { return n_collision_; }
   const int& n_collision() const { return n_collision_; }

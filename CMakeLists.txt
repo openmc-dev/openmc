@@ -36,6 +36,17 @@ option(OPENMC_USE_MCPL        "Enable MCPL"                                     
 option(OPENMC_USE_NCRYSTAL    "Enable support for NCrystal scattering"               OFF)
 option(OPENMC_USE_UWUW        "Enable UWUW"                                          OFF)
 
+message(STATUS "OPENMC_USE_OPENMP ${OPENMC_USE_OPENMP}")
+message(STATUS "OPENMC_BUILD_TESTS ${OPENMC_BUILD_TESTS}")
+message(STATUS "OPENMC_ENABLE_PROFILE ${OPENMC_ENABLE_PROFILE}")
+message(STATUS "OPENMC_ENABLE_COVERAGE ${OPENMC_ENABLE_COVERAGE}")
+message(STATUS "OPENMC_USE_DAGMC ${OPENMC_USE_DAGMC}")
+message(STATUS "OPENMC_USE_LIBMESH ${OPENMC_USE_LIBMESH}")
+message(STATUS "OPENMC_USE_MPI ${OPENMC_USE_MPI}")
+message(STATUS "OPENMC_USE_MCPL ${OPENMC_USE_MCPL}")
+message(STATUS "OPENMC_USE_NCRYSTAL ${OPENMC_USE_NCRYSTAL}")
+message(STATUS "OPENMC_USE_UWUW ${OPENMC_USE_UWUW}")
+
 # Warnings for deprecated options
 foreach(OLD_OPT IN ITEMS "openmp" "profile" "coverage" "dagmc" "libmesh")
   if(DEFINED ${OLD_OPT})
@@ -110,7 +121,15 @@ endmacro()
 #===============================================================================
 
 if(OPENMC_USE_NCRYSTAL)
-  find_package(NCrystal REQUIRED)
+  if(NOT DEFINED "NCrystal_DIR")
+    #Invocation of "ncrystal-config --show cmakedir" is needed to find NCrystal
+    #when it is installed from Python wheels:
+    execute_process(
+      COMMAND "ncrystal-config" "--show" "cmakedir"
+      OUTPUT_VARIABLE "NCrystal_DIR" OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+  endif()
+  find_package(NCrystal 3.8.0 REQUIRED)
   message(STATUS "Found NCrystal: ${NCrystal_DIR} (version ${NCrystal_VERSION})")
 endif()
 
@@ -281,19 +300,6 @@ if (NOT xtensor_FOUND)
 endif()
 
 #===============================================================================
-# GSL header-only library
-#===============================================================================
-
-find_package_write_status(gsl-lite)
-if (NOT gsl-lite_FOUND)
-  add_subdirectory(vendor/gsl-lite)
-
-  # Make sure contract violations throw exceptions
-  target_compile_definitions(gsl-lite-v1 INTERFACE GSL_THROW_ON_CONTRACT_VIOLATION)
-  target_compile_definitions(gsl-lite-v1 INTERFACE gsl_CONFIG_ALLOWS_NONSTRICT_SPAN_COMPARISON=1)
-endif()
-
-#===============================================================================
 # Catch2 library
 #===============================================================================
 
@@ -342,6 +348,7 @@ list(APPEND libopenmc_SOURCES
   src/boundary_condition.cpp
   src/bremsstrahlung.cpp
   src/cell.cpp
+  src/chain.cpp
   src/cmfd_solver.cpp
   src/cross_sections.cpp
   src/dagmc.cpp
@@ -424,6 +431,7 @@ list(APPEND libopenmc_SOURCES
   src/tallies/filter_meshsurface.cpp
   src/tallies/filter_mu.cpp
   src/tallies/filter_musurface.cpp
+  src/tallies/filter_parent_nuclide.cpp
   src/tallies/filter_particle.cpp
   src/tallies/filter_polar.cpp
   src/tallies/filter_sph_harm.cpp
@@ -506,7 +514,7 @@ endif()
 # target_link_libraries treats any arguments starting with - but not -l as
 # linker flags. Thus, we can pass both linker flags and libraries together.
 target_link_libraries(libopenmc ${ldflags} ${HDF5_LIBRARIES} ${HDF5_HL_LIBRARIES}
-                      xtensor gsl::gsl-lite-v1 fmt::fmt ${CMAKE_DL_LIBS})
+                      xtensor fmt::fmt ${CMAKE_DL_LIBS})
 
 if(TARGET pugixml::pugixml)
   target_link_libraries(libopenmc pugixml::pugixml)

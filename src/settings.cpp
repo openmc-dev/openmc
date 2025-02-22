@@ -76,6 +76,7 @@ bool trigger_predict {false};
 bool uniform_source_sampling {false};
 bool ufs_on {false};
 bool urr_ptables_on {true};
+bool use_decay_photons {false};
 bool weight_windows_on {false};
 bool weight_window_checkpoint_surface {false};
 bool weight_window_checkpoint_collision {true};
@@ -307,9 +308,22 @@ void get_run_parameters(pugi::xml_node node_base)
       FlatSourceDomain::adjoint_ =
         get_node_value_bool(random_ray_node, "adjoint");
     }
+    if (check_for_node(random_ray_node, "sample_method")) {
+      std::string temp_str =
+        get_node_value(random_ray_node, "sample_method", true, true);
+      if (temp_str == "prng") {
+        RandomRay::sample_method_ = RandomRaySampleMethod::PRNG;
+      } else if (temp_str == "halton") {
+        RandomRay::sample_method_ = RandomRaySampleMethod::HALTON;
+      } else {
+        fatal_error("Unrecognized sample method: " + temp_str);
+      }
+    }
     if (check_for_node(random_ray_node, "source_region_meshes")) {
-      pugi::xml_node node_source_region_meshes = random_ray_node.child("source_region_meshes");
-      for (pugi::xml_node node_mesh : node_source_region_meshes.children("mesh")) {
+      pugi::xml_node node_source_region_meshes =
+        random_ray_node.child("source_region_meshes");
+      for (pugi::xml_node node_mesh :
+        node_source_region_meshes.children("mesh")) {
         int mesh_id = std::stoi(node_mesh.attribute("id").value());
         for (pugi::xml_node node_domain : node_mesh.children("domain")) {
           int domain_id = std::stoi(node_domain.attribute("id").value());
@@ -324,7 +338,8 @@ void get_run_parameters(pugi::xml_node node_base)
           } else {
             throw std::runtime_error("Unknown domain type: " + domain_type);
           }
-          FlatSourceDomain::mesh_domain_map_[mesh_id].emplace_back(type, domain_id);
+          FlatSourceDomain::mesh_domain_map_[mesh_id].emplace_back(
+            type, domain_id);
           RandomRay::mesh_subdivision_enabled_ = true;
         }
       }
@@ -1135,6 +1150,11 @@ void read_settings_xml(pugi::xml_node root)
       weight_window_checkpoint_surface =
         get_node_value_bool(ww_checkpoints, "surface");
     }
+  }
+
+  if (check_for_node(root, "use_decay_photons")) {
+    settings::use_decay_photons =
+      get_node_value_bool(root, "use_decay_photons");
   }
 }
 

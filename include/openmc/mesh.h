@@ -9,13 +9,13 @@
 #include "hdf5.h"
 #include "pugixml.hpp"
 #include "xtensor/xtensor.hpp"
-#include <gsl/gsl-lite.hpp>
 
 #include "openmc/bounding_box.h"
 #include "openmc/error.h"
 #include "openmc/memory.h" // for unique_ptr
 #include "openmc/particle.h"
 #include "openmc/position.h"
+#include "openmc/span.h"
 #include "openmc/vector.h"
 #include "openmc/xml_interface.h"
 
@@ -179,8 +179,8 @@ public:
   //! \param[out] Array of (material index, volume) for desired element
   //! \param[inout] seed Pseudorandom number seed
   //! \return Number of materials within element
-  int material_volumes(int n_sample, int bin, gsl::span<MaterialVolume> volumes,
-    uint64_t* seed) const;
+  int material_volumes(
+    int n_sample, int bin, span<MaterialVolume> volumes, uint64_t* seed) const;
 
   //! Determine volume of materials within a single mesh elemenet
   //

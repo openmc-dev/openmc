@@ -1,5 +1,7 @@
 #include "openmc/tallies/filter_material.h"
 
+#include <cassert>
+
 #include <fmt/core.h>
 
 #include "openmc/capi.h"
@@ -24,7 +26,7 @@ void MaterialFilter::from_xml(pugi::xml_node node)
   this->set_materials(mats);
 }
 
-void MaterialFilter::set_materials(gsl::span<const int32_t> materials)
+void MaterialFilter::set_materials(span<const int32_t> materials)
 {
   // Clear existing materials
   materials_.clear();
@@ -33,8 +35,8 @@ void MaterialFilter::set_materials(gsl::span<const int32_t> materials)
 
   // Update materials and mapping
   for (auto& index : materials) {
-    Expects(index >= 0);
-    Expects(index < model::materials.size());
+    assert(index >= 0);
+    assert(index < model::materials.size());
     materials_.push_back(index);
     map_[index] = materials_.size() - 1;
   }

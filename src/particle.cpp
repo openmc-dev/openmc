@@ -75,20 +75,13 @@ double Particle::speed() const
   }
 }
 
-void Particle::move_distance(double length)
-{
-  for (int j = 0; j < n_coord(); ++j) {
-    coord(j).r += length * coord(j).u;
-  }
-}
-
-void Particle::create_secondary(
+bool Particle::create_secondary(
   double wgt, Direction u, double E, ParticleType type)
 {
   // If energy is below cutoff for this particle, don't create secondary
   // particle
   if (E < settings::energy_cutoff[static_cast<int>(type)]) {
-    return;
+    return false;
   }
 
   auto& bank = secondary_bank().emplace_back();
@@ -99,6 +92,7 @@ void Particle::create_secondary(
   bank.E = settings::run_CE ? E : g();
   bank.time = time();
   bank_second_E() += bank.E;
+  return true;
 }
 
 void Particle::split(double wgt)
@@ -144,6 +138,7 @@ void Particle::from_source(const SourceSite* src)
   E_last() = E();
   time() = src->time;
   time_last() = src->time;
+  parent_nuclide() = src->parent_nuclide;
 }
 
 void Particle::event_calculate_xs()

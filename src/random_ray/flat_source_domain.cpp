@@ -187,8 +187,7 @@ void FlatSourceDomain::normalize_scalar_flux_and_volumes(
     source_regions_.volume_naive(sr) =
       source_regions_.volume(sr) * normalization_factor;
     source_regions_.volume_sq(sr) =
-      (source_regions_.volume_sq_t(sr) / source_regions_.volume_t(sr)) *
-      volume_normalization_factor;
+      source_regions_.volume_sq_t(sr) / source_regions_.volume_t(sr);
     source_regions_.volume(sr) =
       source_regions_.volume_t(sr) * volume_normalization_factor;
   }
@@ -463,12 +462,11 @@ void FlatSourceDomain::convert_source_regions_to_tallies()
           auto filter_weight = filter_iter.weight_;
 
           // Loop over scores
-          for (auto score_index = 0; score_index < tally.scores_.size();
-               score_index++) {
-            auto score_bin = tally.scores_[score_index];
+          for (int score = 0; score < tally.scores_.size(); score++) {
+            auto score_bin = tally.scores_[score];
             // If a valid tally, filter, and score combination has been found,
             // then add it to the list of tally tasks for this source element.
-            TallyTask task(i_tally, filter_index, score_index, score_bin);
+            TallyTask task(i_tally, filter_index, score, score_bin);
             source_regions_.tally_task(sr, g).push_back(task);
 
             // Also add this task to the list of volume tasks for this source

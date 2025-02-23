@@ -116,7 +116,7 @@ inline bool check_intersection_point(double x1, double x0, double y1, double y0,
 //! \param[in] expected Value to compare to
 //! \param[in] desired If comparison is successful, value to update to
 //! \return True if the comparison was successful and the value was updated
-inline bool atomic_cas_int32(int32_t* ptr, int32_t expected, int32_t desired)
+inline bool atomic_cas_int32(int32_t* ptr, int32_t& expected, int32_t desired)
 {
 #if defined(__GNUC__) || defined(__clang__)
   // For gcc/clang, use the __atomic_compare_exchange_n intrinsic
@@ -154,9 +154,10 @@ void MaterialVolumes::add_volume(
   for (int attempt = 0; attempt < table_size_; ++attempt) {
     // Determine slot to check
     int slot = (index_material + attempt) % table_size_;
+    int32_t* slot_ptr = &this->materials(index_elem, slot);
 
     // Non-atomic read of current material
-    int32_t& current_val = this->materials(index_elem, slot);
+    int32_t current_val = *slot_ptr;
 
     // Found the desired material; accumulate volume
     if (current_val == index_material) {
@@ -168,11 +169,13 @@ void MaterialVolumes::add_volume(
     // Slot appears to be empty; attempt to claim
     if (current_val == EMPTY) {
       // Attempt compare-and-swap from EMPTY to index_material
-      bool claimed_slot = atomic_cas_int32(&current_val, EMPTY, index_material);
+      int32_t expected_val = EMPTY;
+      bool claimed_slot =
+        atomic_cas_int32(&current_val, expected_val, index_material);
 
       // If we claimed the slot or another thread claimed it but the same
       // material was inserted, proceed to accumulate
-      if (claimed_slot || (current_val == index_material)) {
+      if (claimed_slot || (expected_val == index_material)) {
 #pragma omp atomic
         this->volumes(index_elem, slot) += volume;
         return;

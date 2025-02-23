@@ -173,6 +173,9 @@ class Settings:
         :adjoint:
             Whether to run the random ray solver in adjoint mode (bool). The
             default is 'False'.
+        :sample_method:
+            Sampling method for the ray starting location and direction of travel.
+            Options are `prng` (default) or 'halton`.
 
         .. versionadded:: 0.15.0
     resonance_scattering : dict
@@ -272,6 +275,8 @@ class Settings:
     ufs_mesh : openmc.RegularMesh
         Mesh to be used for redistributing source sites via the uniform fission
         site (UFS) method.
+    use_decay_photons : bool
+        Produce decay photons from neutron reactions instead of prompt
     verbosity : int
         Verbosity during simulation between 1 and 10. Verbosity levels are
         described in :ref:`verbosity`.
@@ -390,6 +395,7 @@ class Settings:
         self._weight_window_checkpoints = {}
         self._max_history_splits = None
         self._max_tracks = None
+        self._use_decay_photons = None
 
         self._random_ray = {}
 
@@ -1110,32 +1116,44 @@ class Settings:
         if not isinstance(random_ray, Mapping):
             raise ValueError(f'Unable to set random_ray from "{random_ray}" '
                              'which is not a dict.')
-        for key in random_ray:
+        for key, value in random_ray.items():
             if key == 'distance_active':
-                cv.check_type('active ray length', random_ray[key], Real)
-                cv.check_greater_than('active ray length', random_ray[key], 0.0)
+                cv.check_type('active ray length', value, Real)
+                cv.check_greater_than('active ray length', value, 0.0)
             elif key == 'distance_inactive':
-                cv.check_type('inactive ray length', random_ray[key], Real)
+                cv.check_type('inactive ray length', value, Real)
                 cv.check_greater_than('inactive ray length',
-                                      random_ray[key], 0.0, True)
+                                      value, 0.0, True)
             elif key == 'ray_source':
-                cv.check_type('random ray source', random_ray[key], SourceBase)
+                cv.check_type('random ray source', value, SourceBase)
             elif key == 'volume_estimator':
-                cv.check_value('volume estimator', random_ray[key],
+                cv.check_value('volume estimator', value,
                                ('naive', 'simulation_averaged',
                                 'hybrid'))
             elif key == 'source_shape':
-                cv.check_value('source shape', random_ray[key],
+                cv.check_value('source shape', value,
                                ('flat', 'linear', 'linear_xy'))
             elif key == 'volume_normalized_flux_tallies':
-                cv.check_type('volume normalized flux tallies', random_ray[key], bool)
+                cv.check_type('volume normalized flux tallies', value, bool)
             elif key == 'adjoint':
-                cv.check_type('adjoint', random_ray[key], bool)
+                cv.check_type('adjoint', value, bool)
+            elif key == 'sample_method':
+                cv.check_value('sample method', value,
+                               ('prng', 'halton'))
             else:
                 raise ValueError(f'Unable to set random ray to "{key}" which is '
                                  'unsupported by OpenMC')
 
         self._random_ray = random_ray
+
+    @property
+    def use_decay_photons(self) -> bool:
+        return self._use_decay_photons
+
+    @use_decay_photons.setter
+    def use_decay_photons(self, value):
+        cv.check_type('use decay photons', value, bool)
+        self._use_decay_photons = value
 
     def _create_run_mode_subelement(self, root):
         elem = ET.SubElement(root, "run_mode")
@@ -1424,6 +1442,11 @@ class Settings:
         if root.find(path) is None:
             root.append(self.ufs_mesh.to_xml_element())
             if mesh_memo is not None: mesh_memo.add(self.ufs_mesh.id)
+
+    def _create_use_decay_photons_subelement(self, root):
+        if self._use_decay_photons is not None:
+            element = ET.SubElement(root, "use_decay_photons")
+            element.text = str(self._use_decay_photons).lower()
 
     def _create_resonance_scattering_subelement(self, root):
         res = self.resonance_scattering
@@ -1948,6 +1971,13 @@ class Settings:
                     self.random_ray['adjoint'] = (
                         child.text in ('true', '1')
                     )
+                elif child.tag == 'sample_method':
+                    self.random_ray['sample_method'] = child.text
+
+    def _use_decay_photons_from_xml_element(self, root):
+        text = get_text(root, 'use_decay_photons')
+        if text is not None:
+            self.use_decay_photons = text in ('true', '1')
 
     def to_xml_element(self, mesh_memo=None):
         """Create a 'settings' element to be written to an XML file.
@@ -2013,6 +2043,7 @@ class Settings:
         self._create_max_history_splits_subelement(element)
         self._create_max_tracks_subelement(element)
         self._create_random_ray_subelement(element)
+        self._create_use_decay_photons_subelement(element)
 
         # Clean the indentation in the file to be user-readable
         clean_indentation(element)
@@ -2118,8 +2149,8 @@ class Settings:
         settings._max_history_splits_from_xml_element(elem)
         settings._max_tracks_from_xml_element(elem)
         settings._random_ray_from_xml_element(elem)
+        settings._use_decay_photons_from_xml_element(elem)
 
-        # TODO: Get volume calculations
         return settings
 
     @classmethod

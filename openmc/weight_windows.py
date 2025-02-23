@@ -513,9 +513,19 @@ def wwinp_to_wws(path: PathLike) -> list[WeightWindows]:
             line_arr = np.fromstring(wwinp.readline(), sep=' ')
             xyz2 = line_arr[:3]
 
-            # oriented polar and azimuthal vectors aren't yet supported
-            if np.count_nonzero(xyz1) or np.count_nonzero(xyz2):
-                raise NotImplementedError('Custom sphere/cylinder orientations are not supported')
+            # Get polar and azimuthal axes
+            polar_axis = xyz1 - xyz0
+            azimuthal_axis = xyz2 - xyz0
+
+            # Check for polar axis other than (0, 0, 1)
+            norm = np.linalg.norm(polar_axis)
+            if not np.isclose(polar_axis[2]/norm, 1.0):
+                raise NotImplementedError('Polar axis not aligned to z-axis not supported')
+
+            # Check for azimuthal axis other than (1, 0, 0)
+            norm = np.linalg.norm(azimuthal_axis)
+            if not np.isclose(azimuthal_axis[0]/norm, 1.0):
+                raise NotImplementedError('Azimuthal axis not aligned to x-axis not supported')
 
             # read geometry type
             nwg = int(line_arr[-1])
@@ -660,9 +670,8 @@ class WeightWindowGenerator:
         maximum and minimum energy for the data available at runtime.
     particle_type : {'neutron', 'photon'}
         Particle type the weight windows apply to
-    method : {'magic'}
-        The weight window generation methodology applied during an update. Only
-        'magic' is currently supported.
+    method : {'magic', 'fw_cadis'}
+        The weight window generation methodology applied during an update.
     max_realizations : int
         The upper limit for number of tally realizations when generating weight
         windows.
@@ -680,9 +689,8 @@ class WeightWindowGenerator:
         energies in [eV] for a single bin
     particle_type : {'neutron', 'photon'}
         Particle type the weight windows apply to
-    method : {'magic'}
-        The weight window generation methodology applied during an update. Only
-        'magic' is currently supported.
+    method : {'magic', 'fw_cadis'}
+        The weight window generation methodology applied during an update.
     max_realizations : int
         The upper limit for number of tally realizations when generating weight
         windows.
@@ -767,7 +775,7 @@ class WeightWindowGenerator:
     @method.setter
     def method(self, m: str):
         cv.check_type('generation method', m, str)
-        cv.check_value('generation method', m, {'magic'})
+        cv.check_value('generation method', m, ('magic', 'fw_cadis'))
         self._method = m
         if self._update_parameters is not None:
             try:
@@ -800,7 +808,7 @@ class WeightWindowGenerator:
         return self._update_parameters
 
     def _check_update_parameters(self, params: dict):
-        if self.method == 'magic':
+        if self.method == 'magic' or self.method == 'fw_cadis':
             check_params = self._MAGIC_PARAMS
 
         for key, val in params.items():
@@ -843,7 +851,7 @@ class WeightWindowGenerator:
         update_parameters : dict
             The update parameters as-read from the XML node (keys: str, values: str)
         """
-        if method == 'magic':
+        if method == 'magic' or method == 'fw_cadis':
             check_params = cls._MAGIC_PARAMS
 
         for param, param_type in check_params.items():

@@ -1,5 +1,7 @@
 #include "openmc/dagmc.h"
 
+#include <cassert>
+
 #include "openmc/constants.h"
 #include "openmc/container_util.h"
 #include "openmc/error.h"
@@ -17,6 +19,7 @@
 #include <fmt/core.h>
 
 #include <algorithm>
+#include <filesystem>
 #include <fstream>
 #include <sstream>
 #include <string>
@@ -56,7 +59,8 @@ DAGUniverse::DAGUniverse(pugi::xml_node node)
   if (check_for_node(node, "filename")) {
     filename_ = get_node_value(node, "filename");
     if (!starts_with(filename_, "/")) {
-      filename_ = dir_name(settings::path_input) + filename_;
+      std::filesystem::path d(dir_name(settings::path_input));
+      filename_ = (d / filename_).string();
     }
   } else {
     fatal_error("Must specify a file for the DAGMC universe");
@@ -127,8 +131,6 @@ void DAGUniverse::set_id()
 
 void DAGUniverse::initialize()
 {
-  geom_type() = GeometryType::DAG;
-
 #ifdef OPENMC_UWUW
   // read uwuw materials from the .h5m file if present
   read_uwuw_materials();
@@ -659,10 +661,7 @@ void DAGUniverse::override_assign_material(std::unique_ptr<DAGCell>& c) const
 //==============================================================================
 
 DAGCell::DAGCell(std::shared_ptr<moab::DagMC> dag_ptr, int32_t dag_idx)
-  : Cell {}, dagmc_ptr_(dag_ptr), dag_index_(dag_idx)
-{
-  geom_type() = GeometryType::DAG;
-};
+  : Cell {}, dagmc_ptr_(dag_ptr), dag_index_(dag_idx) {};
 
 std::pair<double, int32_t> DAGCell::distance(
   Position r, Direction u, int32_t on_surface, GeometryState* p) const
@@ -763,9 +762,7 @@ BoundingBox DAGCell::bounding_box() const
 
 DAGSurface::DAGSurface(std::shared_ptr<moab::DagMC> dag_ptr, int32_t dag_idx)
   : Surface {}, dagmc_ptr_(dag_ptr), dag_index_(dag_idx)
-{
-  geom_type() = GeometryType::DAG;
-} // empty constructor
+{} // empty constructor
 
 moab::EntityHandle DAGSurface::mesh_handle() const
 {
@@ -805,16 +802,13 @@ Direction DAGSurface::normal(Position r) const
 
 Direction DAGSurface::reflect(Position r, Direction u, GeometryState* p) const
 {
-  Expects(p);
-  p->history().reset_to_last_intersection();
-  moab::ErrorCode rval;
-  moab::EntityHandle surf = dagmc_ptr_->entity_by_index(2, dag_index_);
+  assert(p);
   double pnt[3] = {r.x, r.y, r.z};
   double dir[3];
-  rval = dagmc_ptr_->get_angle(surf, pnt, dir, &p->history());
+  moab::ErrorCode rval =
+    dagmc_ptr_->get_angle(mesh_handle(), pnt, dir, &p->history());
   MB_CHK_ERR_CONT(rval);
-  p->last_dir() = u.reflect(dir);
-  return p->last_dir();
+  return u.reflect(dir);
 }
 
 //==============================================================================

@@ -1,9 +1,12 @@
 from math import pi
 from tempfile import TemporaryDirectory
+from pathlib import Path
 
 import numpy as np
 import pytest
 import openmc
+import openmc.lib
+from openmc.utility_funcs import change_directory
 
 
 @pytest.mark.parametrize("val_left,val_right", [(0, 0), (-1., -1.), (2.0, 2)])
@@ -397,6 +400,85 @@ def test_umesh_roundtrip(run_in_tmpdir, request):
     xml_mesh = xml_tally.filters[0].mesh
 
     assert umesh.id == xml_mesh.id
+
+
+@pytest.fixture(scope='module')
+def simple_umesh(request):
+    """Fixture returning UnstructuredMesh with all attributes"""
+    surf1 = openmc.Sphere(r=20.0, boundary_type="vacuum")
+    material1 = openmc.Material()
+    material1.add_element("H", 1.0)
+    material1.set_density('g/cm3', 1.0)
+
+    materials = openmc.Materials([material1])
+    cell1 = openmc.Cell(region=-surf1, fill=material1)
+    geometry = openmc.Geometry([cell1])
+
+    umesh = openmc.UnstructuredMesh(
+       filename=request.path.parent.parent
+        / "regression_tests/external_moab/test_mesh_tets.h5m",
+       library="moab",
+       mesh_id=1
+    )
+    # setting ID to make it easier to get the mesh from the statepoint later
+    mesh_filter = openmc.MeshFilter(umesh)
+
+    # Create flux mesh tally to score alpha production
+    mesh_tally = openmc.Tally(name="test_tally")
+    mesh_tally.filters = [mesh_filter]
+    mesh_tally.scores = ["total"]
+
+    tallies = openmc.Tallies([mesh_tally])
+
+    settings = openmc.Settings()
+    settings.run_mode = "fixed source"
+    settings.batches = 2
+    settings.particles = 100
+    settings.source = openmc.IndependentSource(
+        space=openmc.stats.Point((0.1, 0.1, 0.1))
+    )
+
+    model = openmc.Model(
+        materials=materials, geometry=geometry, settings=settings, tallies=tallies
+    )
+
+    with change_directory(tmpdir=True):
+        statepoint_file = model.run()
+        with openmc.StatePoint(statepoint_file) as sp:
+            return sp.meshes[1]
+
+
+@pytest.mark.skipif(not openmc.lib._dagmc_enabled(), reason="DAGMC not enabled.")
+@pytest.mark.parametrize('export_type', ('.vtk', '.vtu'))
+def test_umesh(run_in_tmpdir, simple_umesh, export_type):
+    """Performs a minimal UnstructuredMesh simulation, reads in the resulting
+    statepoint file and writes the mesh data to vtk and vtkhdf files. It is
+    necessary to read in the unstructured mesh from a statepoint file to ensure
+    it has all the required attributes
+    """
+    # Get VTK modules
+    vtkIOLegacy = pytest.importorskip("vtkmodules.vtkIOLegacy")
+    vtkIOXML = pytest.importorskip("vtkmodules.vtkIOXML")
+
+    # Sample some random data and write to VTK
+    rng = np.random.default_rng()
+    ref_data = rng.random(simple_umesh.dimension)
+    filename = f"test_mesh{export_type}"
+    simple_umesh.write_data_to_vtk(datasets={"mean": ref_data}, filename=filename)
+
+    assert Path(filename).exists()
+
+    if export_type == ".vtk":
+        reader = vtkIOLegacy.vtkGenericDataObjectReader()
+    elif export_type == ".vtu":
+        reader = vtkIOXML.vtkXMLGenericDataObjectReader()
+    reader.SetFileName(str(filename))
+    reader.Update()
+
+    # Get mean from file and make sure it matches original data
+    arr = reader.GetOutput().GetCellData().GetArray("mean")
+    mean = np.array([arr.GetTuple1(i) for i in range(ref_data.size)])
+    np.testing.assert_almost_equal(mean, ref_data)
 
 
 def test_mesh_get_homogenized_materials():

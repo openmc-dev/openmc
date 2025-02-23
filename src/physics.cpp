@@ -2,6 +2,7 @@
 
 #include "openmc/bank.h"
 #include "openmc/bremsstrahlung.h"
+#include "openmc/chain.h"
 #include "openmc/constants.h"
 #include "openmc/distribution_multi.h"
 #include "openmc/eigenvalue.h"
@@ -239,11 +240,10 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
     }
 
     // Write fission particles to nuBank
-    p.nu_bank().emplace_back();
-    NuBank* nu_bank_entry = &p.nu_bank().back();
-    nu_bank_entry->wgt = site.wgt;
-    nu_bank_entry->E = site.E;
-    nu_bank_entry->delayed_group = site.delayed_group;
+    NuBank& nu_bank_entry = p.nu_bank().emplace_back();
+    nu_bank_entry.wgt = site.wgt;
+    nu_bank_entry.E = site.E;
+    nu_bank_entry.delayed_group = site.delayed_group;
   }
 
   // If shared fission bank was full, and no fissions could be added,
@@ -1146,9 +1146,21 @@ void sample_secondary_photons(Particle& p, int i_nuclide)
   // Sample the number of photons produced
   double y_t =
     p.neutron_xs(i_nuclide).photon_prod / p.neutron_xs(i_nuclide).total;
-  int y = static_cast<int>(y_t);
-  if (prn(p.current_seed()) <= y_t - y)
-    ++y;
+  double photon_wgt = p.wgt();
+  int y = 1;
+
+  if (settings::use_decay_photons) {
+    // For decay photons, sample a single photon and modify the weight
+    if (y_t <= 0.0)
+      return;
+    photon_wgt *= y_t;
+  } else {
+    // For prompt photons, sample an integral number of photons with weight
+    // equal to the neutron's weight
+    y = static_cast<int>(y_t);
+    if (prn(p.current_seed()) <= y_t - y)
+      ++y;
+  }
 
   // Sample each secondary photon
   for (int i = 0; i < y; ++i) {
@@ -1171,15 +1183,19 @@ void sample_secondary_photons(Particle& p, int i_nuclide)
     // release and deposition. See D. P. Griesheimer, S. J. Douglass, and M. H.
     // Stedry, "Self-consistent energy normalization for quasistatic reactor
     // calculations", Proc. PHYSOR, Cambridge, UK, Mar 29-Apr 2, 2020.
-    double wgt;
+    double wgt = photon_wgt;
     if (settings::run_mode == RunMode::EIGENVALUE && !is_fission(rx->mt_)) {
-      wgt = simulation::keff * p.wgt();
-    } else {
-      wgt = p.wgt();
+      wgt *= simulation::keff;
     }
 
     // Create the secondary photon
-    p.create_secondary(wgt, u, E, ParticleType::photon);
+    bool created_photon = p.create_secondary(wgt, u, E, ParticleType::photon);
+
+    // Tag secondary particle with parent nuclide
+    if (created_photon && settings::use_decay_photons) {
+      p.secondary_bank().back().parent_nuclide =
+        rx->products_[i_product].parent_nuclide_;
+    }
   }
 }
 

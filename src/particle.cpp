@@ -75,33 +75,35 @@ double Particle::speed() const
   }
 }
 
-void Particle::move_distance(double length)
-{
-  for (int j = 0; j < n_coord(); ++j) {
-    coord(j).r += length * coord(j).u;
-  }
-}
-
-void Particle::create_secondary(
+bool Particle::create_secondary(
   double wgt, Direction u, double E, ParticleType type)
 {
   // If energy is below cutoff for this particle, don't create secondary
   // particle
   if (E < settings::energy_cutoff[static_cast<int>(type)]) {
-    return;
+    return false;
   }
 
-  secondary_bank().emplace_back();
-
-  auto& bank {secondary_bank().back()};
+  auto& bank = secondary_bank().emplace_back();
   bank.particle = type;
   bank.wgt = wgt;
   bank.r = r();
   bank.u = u;
   bank.E = settings::run_CE ? E : g();
   bank.time = time();
+  bank_second_E() += bank.E;
+  return true;
+}
 
-  n_bank_second() += 1;
+void Particle::split(double wgt)
+{
+  auto& bank = secondary_bank().emplace_back();
+  bank.particle = type();
+  bank.wgt = wgt;
+  bank.r = r();
+  bank.u = u();
+  bank.E = settings::run_CE ? E() : g();
+  bank.time = time();
 }
 
 void Particle::from_source(const SourceSite* src)
@@ -136,6 +138,7 @@ void Particle::from_source(const SourceSite* src)
   E_last() = E();
   time() = src->time;
   time_last() = src->time;
+  parent_nuclide() = src->parent_nuclide;
 }
 
 void Particle::event_calculate_xs()
@@ -355,7 +358,7 @@ void Particle::event_collide()
 
   // Reset banked weight during collision
   n_bank() = 0;
-  n_bank_second() = 0;
+  bank_second_E() = 0.0;
   wgt_bank() = 0.0;
   zero_delayed_bank();
 
@@ -416,6 +419,7 @@ void Particle::event_revive_from_secondary()
     from_source(&secondary_bank().back());
     secondary_bank().pop_back();
     n_event() = 0;
+    bank_second_E() = 0.0;
 
     // Subtract secondary particle energy from interim pulse-height results
     if (!model::active_pulse_height_tallies.empty() &&

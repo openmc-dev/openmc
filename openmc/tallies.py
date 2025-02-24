@@ -421,7 +421,6 @@ class Tally(IDManagerMixin):
         self._sum_sq = sum_sq
 
     @property
-    @ensure_results
     def mean(self):
         if self._mean is None:
             if not self._sp_filename:
@@ -440,7 +439,6 @@ class Tally(IDManagerMixin):
             return self._mean
 
     @property
-    @ensure_results
     def std_dev(self):
         if self._std_dev is None:
             if not self._sp_filename:
@@ -964,9 +962,8 @@ class Tally(IDManagerMixin):
         else:
             self._sp_filename = Path(str(statepoint))
 
-        # reset these properties to ensure that
-        # any results access after this point are
-        # based on the current statepoint file
+        # reset these properties to ensure that any results access after this
+        # point are based on the current statepoint file
         self._sum = None
         self._sum_sq = None
         self._mean = None

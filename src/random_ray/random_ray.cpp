@@ -703,6 +703,7 @@ void RandomRay::attenuate_flux_linear_source_void(
     // source region. The centroid and spatial momements estimates are scaled by
     // the ray segment length as part of length averaging of the estimates.
     domain_->source_regions_.volume(sr) += distance;
+    domain_->source_regions_.volume_sq(sr) += distance_2;
     domain_->source_regions_.centroid_iteration(sr) += midpoint * distance;
     moment_matrix_estimate *= distance;
     domain_->source_regions_.mom_matrix(sr) += moment_matrix_estimate;

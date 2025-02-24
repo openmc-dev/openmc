@@ -127,8 +127,7 @@ void LinearSourceDomain::normalize_scalar_flux_and_volumes(
     source_regions_.volume(sr) =
       source_regions_.volume_t(sr) * volume_normalization_factor;
     source_regions_.volume_sq(sr) =
-      (source_regions_.volume_sq_t(sr) / source_regions_.volume_t(sr)) *
-      volume_normalization_factor;
+      source_regions_.volume_sq_t(sr) / source_regions_.volume_t(sr);
     if (source_regions_.volume_t(sr) > 0.0) {
       double inv_volume = 1.0 / source_regions_.volume_t(sr);
       source_regions_.centroid(sr) = source_regions_.centroid_t(sr);

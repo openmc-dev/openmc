@@ -14,7 +14,7 @@ GROUP_STRUCTURES = {}
 - "SHEM-361_" designed for LWR analysis to eliminate self-shielding calculations
   of thermal resonances ([HFA2005]_, [SAN2007]_, [HEB2008]_)
 - "SCALE-X" (where X is 44 which is designed for criticality analysis
-  and 252 is designed for thermal reactors) for the SCALE code suite 
+  and 252 is designed for thermal reactors) for the SCALE code suite
   ([ZAL1999]_ and [REARDEN2013]_)
 - "MPACT-X" (where X is 51 (PWR), 60 (BWR), 69 (Magnox)) from the MPACT_ reactor
   physics code ([KIM2019]_ and [KIM2020]_)
@@ -28,12 +28,12 @@ GROUP_STRUCTURES = {}
 .. _SCALE252: https://oecd-nea.org/science/wpncs/amct/workingarea/meeting2013/EGAMCT2013_08.pdf
 .. _MPACT: https://vera.ornl.gov/mpact/
 .. _XMAS-172: https://www-nds.iaea.org/wimsd/energy.htm
-.. _SHEM-361: https://www.polymtl.ca/merlin/downloads/FP214.pdf
+.. _SHEM-361: http://merlin.polymtl.ca/downloads/FP214.pdf
 .. _activation: https://fispact.ukaea.uk/wiki/Keyword:GETXS
 .. _VITAMIN-J-42: https://www.oecd-nea.org/dbdata/nds_jefreports/jefreport-10.pdf
 .. _CCFE-709: https://fispact.ukaea.uk/wiki/CCFE-709_group_structure
 .. _UKAEA-1102: https://fispact.ukaea.uk/wiki/UKAEA-1102_group_structure
-.. _ECCO-1968: http://serpent.vtt.fi/mediawiki/index.php/ECCO_1968-group_structure
+.. _ECCO-1968: https://serpent.vtt.fi/mediawiki/index.php/ECCO_1968-group_structure
 .. [SAR1990] Sartori, E., OECD/NEA Data Bank: Standard Energy Group Structures
    of Cross Section Libraries for Reactor Shielding, Reactor Cell and Fusion
    Neutronics Applications: VITAMIN-J, ECCO-33, ECCO-2000 and XMAS JEF/DOC-315

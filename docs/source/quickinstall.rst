@@ -12,17 +12,17 @@ OpenMC, see :ref:`usersguide_install` in the User's Manual.
 Installing on Linux/Mac with Mamba and conda-forge
 --------------------------------------------------
 
-`Conda <https://conda.io/en/latest/>`_ is an open source package management
+`Conda <https://docs.conda.io/en/latest/>`_ is an open source package management
 system and environments management system for installing multiple versions of
 software packages and their dependencies and switching easily between them.
 `Mamba <https://mamba.readthedocs.io/en/latest/>`_ is a cross-platform package
-manager and is compatible with `conda` packages.
-OpenMC can be installed in a `conda` environment with `mamba`.
-First, `conda` should be installed with one of the following installers:
-`Miniconda <https://docs.conda.io/en/latest/miniconda.html>`_,
-`Anaconda <https://www.anaconda.com/>`_, or `Miniforge <https://github.com/conda-forge/miniforge>`_.
-Once you have `conda` installed on your system, OpenMC can be installed via the
-`conda-forge` channel with `mamba`.
+manager and is compatible with `conda` packages. OpenMC can be installed in a
+`conda` environment with `mamba`. First, `conda` should be installed with one of
+the following installers: `Miniconda
+<https://docs.conda.io/en/latest/miniconda.html>`_, `Anaconda
+<https://www.anaconda.com/>`_, or `Miniforge
+<https://github.com/conda-forge/miniforge>`_. Once you have `conda` installed on
+your system, OpenMC can be installed via the `conda-forge` channel with `mamba`.
 
 First, add the `conda-forge` channel with:
 

@@ -47,7 +47,8 @@ is more difficult to comment out a large section of code that uses C-style
 comments.)
 
 Do not use C-style casting. Always use the C++-style casts ``static_cast``,
-``const_cast``, or ``reinterpret_cast``. (See `ES.49 <http://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#es49-if-you-must-use-a-cast-use-a-named-cast>`_)
+``const_cast``, or ``reinterpret_cast``. (See `ES.49
+<https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#es49-if-you-must-use-a-cast-use-a-named-cast>`_)
 
 Source Files
 ------------
@@ -156,11 +157,11 @@ Prefer pathlib_ when working with filesystem paths over functions in the os_
 module or other standard-library modules. Functions that accept arguments that
 represent a filesystem path should work with both strings and Path_ objects.
 
-.. _C++ Core Guidelines: http://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines
-.. _PEP8: https://www.python.org/dev/peps/pep-0008/
+.. _C++ Core Guidelines: https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines
+.. _PEP8: https://peps.python.org/pep-0008/
 .. _numpydoc: https://numpydoc.readthedocs.io/en/latest/format.html
 .. _numpy: https://numpy.org/
-.. _scipy: https://www.scipy.org/
+.. _scipy: https://scipy.org/
 .. _matplotlib: https://matplotlib.org/
 .. _pandas: https://pandas.pydata.org/
 .. _h5py: https://www.h5py.org/

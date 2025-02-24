@@ -47,14 +47,14 @@ Direct 1-Step (D1S) Calculations
 ================================
 
 OpenMC also includes built-in capability for performing shutdown dose rate
-calculations using the `direct 1-step <https://10.1016/S0920-3796(01)00188-0>`_
-(D1S) method. In this method, a single coupled neutron--photon transport
-calculation is used where the prompt photon production is replaced with photons
-produced from the decay of radionuclides in an activated material. To obtain
-properly scaled results, it is also necessary to apply time correction factors.
-A normal neutron transport calculation can be extended to a D1S calculation with
-a few helper functions. First, import the ``d1s`` submodule, which is part of
-:mod:`openmc.deplete`::
+calculations using the `direct 1-step
+<https://doi.org/10.1016/S0920-3796(01)00188-0>`_ (D1S) method. In this method,
+a single coupled neutron--photon transport calculation is used where the prompt
+photon production is replaced with photons produced from the decay of
+radionuclides in an activated material. To obtain properly scaled results, it is
+also necessary to apply time correction factors. A normal neutron transport
+calculation can be extended to a D1S calculation with a few helper functions.
+First, import the ``d1s`` submodule, which is part of :mod:`openmc.deplete`::
 
     from openmc.deplete import d1s
 

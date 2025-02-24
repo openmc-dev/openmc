@@ -557,7 +557,7 @@ distributions.
       notebook
       <https://nbviewer.jupyter.org/github/openmc-dev/openmc-notebooks/blob/main/pandas-dataframes.ipynb>`_.
 
-   `h5py <http://www.h5py.org/>`_
+   `h5py <https://www.h5py.org/>`_
       h5py provides Python bindings to the HDF5 library. Since OpenMC outputs
       various HDF5 files, h5py is needed to provide access to data within these
       files from Python.

@@ -638,6 +638,9 @@ class Integrator(ABC):
                     "this uses {}".format(
                         self.__class__.__name__, res.data.shape[0],
                         self._num_stages))
+        else:
+            # if the user specifies a continue run without a previous results, set the flag to False for them
+            continue_timesteps = False
         self.operator = operator
         self.chain = operator.chain
 

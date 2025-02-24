@@ -39,6 +39,11 @@ if(EXISTS "${CMAKE_SOURCE_DIR}/.git" AND GIT_FOUND)
         OUTPUT_STRIP_TRAILING_WHITESPACE
     )
 
+    # If no tags are found, instruct user to fetch them
+    if(VERSION_STRING STREQUAL "")
+        message(FATAL_ERROR "No git tags found. Run 'git fetch --tags' and try again.")
+    endif()
+
     # Extract the commit hash
     execute_process(
         COMMAND git rev-parse HEAD

@@ -171,7 +171,7 @@ void MaterialVolumes::add_volume(
       // Attempt compare-and-swap from EMPTY to index_material
       int32_t expected_val = EMPTY;
       bool claimed_slot =
-        atomic_cas_int32(&current_val, expected_val, index_material);
+        atomic_cas_int32(slot_ptr, expected_val, index_material);
 
       // If we claimed the slot or another thread claimed it but the same
       // material was inserted, proceed to accumulate

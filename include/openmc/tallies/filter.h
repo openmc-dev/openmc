@@ -45,7 +45,8 @@ enum class FilterType {
   TIME,
   UNIVERSE,
   ZERNIKE,
-  ZERNIKE_RADIAL
+  ZERNIKE_RADIAL,
+  WEIGHT
 };
 
 //==============================================================================

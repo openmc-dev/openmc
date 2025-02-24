@@ -28,6 +28,7 @@
 #include "openmc/tallies/filter_energy.h"
 #include "openmc/tallies/filter_mesh.h"
 #include "openmc/tallies/filter_particle.h"
+#include "openmc/tallies/filter_weight.h"
 #include "openmc/tallies/tally.h"
 #include "openmc/xml_interface.h"
 
@@ -682,7 +683,7 @@ void WeightWindows::check_tally_update_compatibility(const Tally* tally)
 {
   // define the set of allowed filters for the tally
   const std::set<FilterType> allowed_filters = {
-    FilterType::MESH, FilterType::ENERGY, FilterType::PARTICLE};
+    FilterType::MESH, FilterType::ENERGY, FilterType::PARTICLE, FilterType::WEIGHT};
 
   // retrieve a mapping of filter type to filter index for the tally
   auto filter_indices = tally->filter_indices();

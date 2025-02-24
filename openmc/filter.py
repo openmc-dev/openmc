@@ -25,7 +25,7 @@ _FILTER_TYPES = (
     'energyout', 'mu', 'musurface', 'polar', 'azimuthal', 'distribcell', 'delayedgroup',
     'energyfunction', 'cellfrom', 'materialfrom', 'legendre', 'spatiallegendre',
     'sphericalharmonics', 'zernike', 'zernikeradial', 'particle', 'cellinstance',
-    'collision', 'time'
+    'collision', 'time', 'weight'
 )
 
 _CURRENT_NAMES = (
@@ -2297,6 +2297,154 @@ class EnergyFunctionFilter(Filter):
         out = out[:14]
 
         filter_bins = _repeat_and_tile(out, stride, data_size)
+        df = pd.concat([df, pd.DataFrame(
+            {self.short_name.lower(): filter_bins})])
+
+        return df
+
+class WeightFilter(Filter):
+    """Bins tally events based on their weights.
+
+    .. versionadded:: 0.12.2
+
+    Parameters
+    ----------
+    bins : Iterable of int
+        A list or iterable of the weights, as double values.
+    filter_id : int
+        Unique identifier for the filter
+
+    Attributes
+    ----------
+    id : int
+        Unique identifier for the filter
+    bins : numpy.ndarray
+        An array of integer values representing the weights by which to filter
+    num_bins : int
+        The number of filter bins
+
+    """
+
+    def __init__(self, bins, filter_id=None):
+        self.bins = bins
+        self.id = filter_id
+
+    def check_bins(self, bins):
+        """Make sure given bins are valid for this filter.
+
+        Raises
+        ------
+        TypeError
+        ValueError
+
+        """
+        if not isinstance(bins, Iterable):
+            raise TypeError("Bins must be an iterable of floats.")
+        if not all(isinstance(b, Real) for b in bins):
+            raise TypeError("All bins must be real numbers.")
+        if not all(bins[i] < bins[i + 1] for i in range(len(bins) - 1)):
+            raise ValueError("Bins must be monotonically increasing.")
+        
+    @property
+    def bins(self):
+        return self._bins
+
+    @bins.setter
+    def bins(self, bins):
+        self.check_bins(bins)
+        self._bins = np.asarray(bins)
+
+    @property
+    def num_bins(self):
+        return len(self.bins) - 1
+
+    def to_xml_element(self):
+        """Return XML Element representing the Filter.
+
+        Returns
+        -------
+        element : lxml.etree._Element
+            XML element containing filter data
+
+        """
+        element = ET.Element('filter')
+        element.set('id', str(self.id))
+        element.set('type', self.short_name.lower())
+
+        subelement = ET.SubElement(element, 'bins')
+        subelement.text = ' '.join(str(b) for b in self.bins)
+        return element
+
+    @classmethod
+    def from_xml_element(cls, elem, **kwargs):
+        """Generate filter from an XML element.
+
+        Parameters
+        ----------
+        elem : xml.etree.ElementTree.Element
+            XML element to generate filter from
+
+        Returns
+        -------
+        openmc.WeightFilter
+            Filter generated from XML element
+
+        """
+        bins = [float(x) for x in get_text(elem, 'bins').split()]
+        filter_id = int(elem.get('id'))
+        return cls(bins, filter_id)
+
+    def get_bin_index(self, filter_bin):
+        """Returns the index in the Filter for some bin.
+
+        Parameters
+        ----------
+        filter_bin : float
+            The bin is the weight value for which the index is needed.
+
+        Returns
+        -------
+        filter_index : int
+             The index in the Tally data array for this filter bin.
+
+        """
+        if filter_bin not in self.bins:
+            raise ValueError(f"Bin {filter_bin} not found in filter bins.")
+        return np.searchsorted(self.bins, filter_bin) - 1
+
+    def get_pandas_dataframe(self, data_size, stride, **kwargs):
+        """Builds a Pandas DataFrame for the Filter's bins.
+
+        This method constructs a Pandas DataFrame object for the filter with
+        columns annotated by filter bin information. This is a helper method for
+        :meth:`Tally.get_pandas_dataframe`.
+
+        Parameters
+        ----------
+        data_size : int
+            The total number of bins in the tally corresponding to this filter
+        stride : int
+            Stride in memory for the filter
+
+        Returns
+        -------
+        pandas.DataFrame
+            A Pandas DataFrame with columns of strings that characterize the
+            filter's bins. The number of rows in the DataFrame is the same as
+            the total number of bins in the corresponding tally, with the filter
+            bin appropriately tiled to map to the corresponding tally bins.
+
+        See also
+        --------
+        Tally.get_pandas_dataframe(), CrossFilter.get_pandas_dataframe()
+
+        """
+        # Initialize Pandas DataFrame
+        df = pd.DataFrame()
+
+        filter_bins = np.repeat(self.bins, stride)
+        tile_factor = data_size // len(filter_bins)
+        filter_bins = np.tile(filter_bins, tile_factor)
         df = pd.concat([df, pd.DataFrame(
             {self.short_name.lower(): filter_bins})])
 

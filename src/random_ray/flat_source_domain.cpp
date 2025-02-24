@@ -1076,7 +1076,7 @@ void FlatSourceDomain::set_adjoint_sources(const vector<double>& forward_flux)
       continue;
     }
     for (int g = 0; g < negroups_; g++) {
-      double sigma_t = sigma_t_[source_regions_.material(sr) * negroups_ + g];
+      double sigma_t = sigma_t_[material * negroups_ + g];
       source_regions_.external_source(sr, g) /= sigma_t;
     }
   }

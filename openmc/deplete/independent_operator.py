@@ -1,7 +1,7 @@
 """Transport-independent transport operator for depletion.
 
 This module implements a transport operator that runs independently of any
-transport solver by using user-provided one-group cross sections.
+transport solver by using user-provided multi-group fluxes and cross sections.
 
 """
 
@@ -24,11 +24,11 @@ from .helpers import ChainFissionHelper, ConstantFissionYieldHelper, SourceRateH
 
 
 class IndependentOperator(OpenMCOperator):
-    """Transport-independent transport operator that uses one-group cross
-    sections to calculate reaction rates.
+    """Transport-independent transport operator that uses multi-group cross
+    sections and fluxes to calculate reaction rates.
 
-    Instances of this class can be used to perform depletion using one-group
-    cross sections and constant flux or constant power. Normally, a user needn't
+    Instances of this class can be used to perform depletion using multi-group
+    cross sections and multi-group fluxes. Normally, a user needn't
     call methods of this class directly. Instead, an instance of this class is
     passed to an integrator class, such as
     :class:`openmc.deplete.CECMIntegrator`.
@@ -87,8 +87,8 @@ class IndependentOperator(OpenMCOperator):
     ----------
     materials : openmc.Materials
         All materials present in the model
-    cross_sections : MicroXS
-        Object containing one-group cross-sections in [cm^2].
+    cross_sections : list of MicroXS
+        Object containing milti-group cross-sections in [b] for each material. .
     output_dir : pathlib.Path
         Path to output directory to save results.
     round_number : bool
@@ -279,12 +279,24 @@ class IndependentOperator(OpenMCOperator):
                 self.prev_res.append(new_res)
 
     def _get_nuclides_with_data(self, cross_sections: list[MicroXS]) -> set[str]:
-        """Finds nuclides with cross section data"""
+        """Finds nuclides with cross section data
+
+        Parameters
+        ----------
+        cross_sections : iterable of :class`~openmc.deplete.MicroXS`
+            List of multigroup cross-section data.
+
+        Returns
+        -------
+        nuclides : set of str
+            Set of nuclide names that have cross secton data
+
+        """
         return set(cross_sections[0].nuclides)
 
     class _IndependentRateHelper(ReactionRateHelper):
-        """Class for generating one-group reaction rates with flux and
-        one-group cross sections.
+        """Class for generating  reaction rates with multi-grop fluxes and
+        multi-group cross sections.
 
         This class does not generate tallies, and instead stores cross sections
         for each nuclide and transmutation reaction relevant for a depletion

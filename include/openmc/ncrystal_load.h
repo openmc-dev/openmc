@@ -1,70 +1,78 @@
-#ifndef ncrystal_load
-#define ncrystal_load
+#ifndef OPENMC_NCRYSTAL_LOAD_H
+#define OPENMC_NCRYSTAL_LOAD_H
 
 #include <functional>
 #include <memory>
 
-namespace NCrystalDynamicAPI {
+namespace NCrystalVirtualAPI {
 
-// NOTICE: Do NOT make ANY changes in the NCrystalDynamicAPI::DynAPI_Type1_v1
-// class, it is required to stay exactly constant over time and compatible
-// with the same definition used to compile the NCrystal library! But changes
-// to white space, comments, and formatting is of course allowed.  This API
-// was introduced in NCrystal 4.1.0.
+// NOTICE: Do NOT make ANY changes in the NCrystalVirtualAPI::VirtAPI_Type1_v1
+// class, it is required to stay exactly constant over time and compatible with
+// the same definition used to compile the NCrystal library! But changes to
+// white space, comments, and formatting is of course allowed.  This API was
+// introduced in NCrystal 4.1.0.
 
-class DynAPI_Type1_v1 {
+class VirtAPI_Type1_v1 {
 public:
-  static constexpr unsigned interface_id = 1001; // 1000*typenumber+version
-
   class ScatterProcess;
-  virtual const ScatterProcess* createScatter(const char* cfgstr) const = 0;
-  virtual void deallocateScatter(const ScatterProcess*) const = 0;
-
-  // NB: Cross section units returned are barn/atom:
-  virtual double crossSectionUncached(const ScatterProcess&,
-    double neutron_ekin_eV, double neutron_dir_ux, double neutron_dir_uy,
-    double neutron_dir_uz) const = 0;
-  virtual void sampleScatterUncached(const ScatterProcess&,
-    std::function<double()>& rng, double& neutron_ekin_eV,
-    double& neutron_dir_ux, double& neutron_dir_uy,
-    double& neutron_dir_uz) const = 0;
-
-  virtual ~DynAPI_Type1_v1() = default;
-  DynAPI_Type1_v1() = default;
-  DynAPI_Type1_v1(const DynAPI_Type1_v1&) = delete;
-  DynAPI_Type1_v1& operator=(const DynAPI_Type1_v1&) = delete;
-  DynAPI_Type1_v1(DynAPI_Type1_v1&&) = delete;
-  DynAPI_Type1_v1& operator=(DynAPI_Type1_v1&&) = delete;
+  virtual const ScatterProcess * createScatter( const char * cfgstr ) const = 0;
+  virtual const ScatterProcess * cloneScatter( const ScatterProcess * ) const = 0;
+  virtual void deallocateScatter( const ScatterProcess * ) const = 0;
+  virtual double crossSectionUncached( const ScatterProcess&,
+                                       const double* neutron ) const = 0;
+  virtual void sampleScatterUncached( const ScatterProcess&,
+                                      std::function<double()>& rng,
+                                      double* neutron ) const = 0;
+  //Plumbing:
+  static constexpr unsigned interface_id = 1001;
+  virtual ~VirtAPI_Type1_v1() = default;
+  VirtAPI_Type1_v1() = default;
+  VirtAPI_Type1_v1( const VirtAPI_Type1_v1& ) = delete;
+  VirtAPI_Type1_v1& operator=( const VirtAPI_Type1_v1& ) = delete;
+  VirtAPI_Type1_v1( VirtAPI_Type1_v1&& ) = delete;
+  VirtAPI_Type1_v1& operator=( VirtAPI_Type1_v1&& ) = delete;
 };
 
-} // namespace NCrystalDynamicAPI
+} // namespace NCrystalVirtualAPI
 
 namespace openmc {
 
-using NCrystalAPI = NCrystalDynamicAPI::DynAPI_Type1_v1;
+using NCrystalAPI = NCrystalVirtualAPI::VirtAPI_Type1_v1;
 
 std::shared_ptr<const NCrystalAPI> load_ncrystal_api();
 
 class NCrystalScatProc final {
 public:
+  NCrystalScatProc() {}
+
   NCrystalScatProc(const char* cfgstr)
     : api_(load_ncrystal_api()), p_(api_->createScatter(cfgstr))
   {
   }
 
-  struct NeutronState { double ekin, ux, uy, uz; };
+  //Note: Neutron state array is {ekin,ux,uy,uz}
 
-  double cross_section(const NeutronState& n) const
+  double cross_section(const double* neutron_state) const
   {
-    return api_->crossSectionUncached(*p_, n.ekin, n.ux, n.uy, n.uz);
+    return api_->crossSectionUncached(*p_, neutron_state);
   }
 
-  void scatter(std::function<double()>& rng, NeutronState& n) const
+  void scatter(std::function<double()>& rng, double* neutron_state) const
   {
-    api_->sampleScatterUncached(*p_, rng, n.ekin, n.ux, n.uy, n.uz);
+    api_->sampleScatterUncached(*p_, rng, neutron_state);
   }
 
-  //Plumbing (move-only semantics):
+  NCrystalScatProc clone() const
+  {
+    NCrystalScatProc c;
+    if ( p_ ) {
+      c.api_ = api_;
+      c.p_ = api_->cloneScatter( p_ );
+    }
+    return c;
+  }
+
+  //Plumbing (move-only semantics, but supports explicit clone):
   NCrystalScatProc(const NCrystalScatProc&) = delete;
   NCrystalScatProc& operator=(const NCrystalScatProc&) = delete;
 
@@ -92,7 +100,7 @@ public:
 
 private:
   std::shared_ptr<const NCrystalAPI> api_;
-  const NCrystalAPI::ScatterProcess* p_;
+  const NCrystalAPI::ScatterProcess* p_ = nullptr;
 };
 
 } // namespace openmc

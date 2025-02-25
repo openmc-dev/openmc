@@ -1,4 +1,4 @@
-#include "ncrystal_load.hh"
+#include "openmc/ncrystal_load.h"
 #include <mutex>
 #include <stdexcept>
 #include <stdio.h>
@@ -80,12 +80,12 @@ struct NCrystalAPIDB {
   std::mutex mtx;
   std::shared_ptr<const NCrystalAPI> api;
   typedef void* (*FctSignature)(int);
-  FctSignature ncrystal_access_dynapi_fct = nullptr;
+  FctSignature ncrystal_access_virtapi_fct = nullptr;
 };
 
-void* load_dynapi_raw(unsigned interface_id, NCrystalAPIDB& db)
+void* load_virtapi_raw(unsigned interface_id, NCrystalAPIDB& db)
 {
-  if (!db.ncrystal_access_dynapi_fct) {
+  if (!db.ncrystal_access_virtapi_fct) {
     auto cfg = query_ncrystal_config();
     if (!cfg.intversion >= 4000003)
       throw std::runtime_error("Could not locate a functioning and"
@@ -101,25 +101,25 @@ void* load_dynapi_raw(unsigned interface_id, NCrystalAPIDB& db)
 
     std::string symbol("ncrystal");
     symbol += cfg.symbol_namespace;
-    symbol += "_access_dynamic_api";
+    symbol += "_access_virtual_api";
 
 #ifdef NCLOAD_WINDOWS
     FARPROC fproc;
     void* addr = (void*)(intptr_t)GetProcAddress(handle, symbol.c_str());
     if (!addr)
       throw std::runtime_error("GetProcAddress("
-                               "ncrystal_access_dynamic_api) failed");
+                               "ncrystal_access_virtual_api) failed");
 #else
     dlerror(); // clear previous errors
     void* addr = dlsym(handle, symbol.c_str());
     if (!addr)
-      throw std::runtime_error("dlsym(ncrystal_access_dynamic_api) failed");
+      throw std::runtime_error("dlsym(ncrystal_access_virtual_api) failed");
 #endif
-    db.ncrystal_access_dynapi_fct =
+    db.ncrystal_access_virtapi_fct =
       reinterpret_cast<NCrystalAPIDB::FctSignature>(addr);
   }
 
-  return (*db.ncrystal_access_dynapi_fct)(interface_id);
+  return (*db.ncrystal_access_virtapi_fct)(interface_id);
 }
 
 NCrystalAPIDB& get_ncrystal_api_db()
@@ -134,7 +134,7 @@ std::shared_ptr<const NCrystalAPI> load_ncrystal_api()
   auto& db = get_ncrystal_api_db();
   std::lock_guard<std::mutex> lock(db.mtx);
   if (!db.api) {
-    void* raw_api = load_dynapi_raw(NCrystalAPI::interface_id, db);
+    void* raw_api = load_virtapi_raw(NCrystalAPI::interface_id, db);
     if (!raw_api)
       throw std::runtime_error("Failed to access required NCrystal interface.");
     db.api = *reinterpret_cast<std::shared_ptr<const NCrystalAPI>*>(raw_api);

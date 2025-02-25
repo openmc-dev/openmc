@@ -127,6 +127,7 @@ pygments_style = 'tango'
 import sphinx_rtd_theme
 html_theme = 'sphinx_rtd_theme'
 html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
+html_baseurl = "https://docs.openmc.org/en/stable/"
 
 html_logo = '_images/openmc_logo.png'
 

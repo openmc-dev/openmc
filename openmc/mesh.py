@@ -412,7 +412,7 @@ class MeshBase(IDManagerMixin, ABC):
             model.export_to_model_xml()
 
             # Get material volume fractions
-            kwargs.setdefault('output', False)
+            kwargs.setdefault('output', True)
             kwargs.setdefault('args', '[-c]')
             if 'args' in kwargs:
                 kwargs['args'] = ['-c'] + kwargs['args']

@@ -1,4 +1,5 @@
 #include "openmc/ncrystal_load.h"
+#include "openmc/error.h"
 #include <mutex>
 #include <stdexcept>
 #include <stdio.h>
@@ -87,9 +88,12 @@ void* load_virtapi_raw(unsigned interface_id, NCrystalAPIDB& db)
 {
   if (!db.ncrystal_access_virtapi_fct) {
     auto cfg = query_ncrystal_config();
-    if (!cfg.intversion >= 4000003)
-      throw std::runtime_error("Could not locate a functioning and"
-                               " recent enough NCrystal installation.");
+    if (! (cfg.intversion >= 4000003) ) {
+      //This is the most likely error message people will see:
+      fatal_error("Could not locate a functioning and recent enough"
+                  " NCrystal installation (required since geometry"
+                  " contains NCrystal materials).");
+    }
 #ifdef NCLOAD_WINDOWS
     auto handle = LoadLibrary(cfg.shlibpath.c_str());
 #else
@@ -97,7 +101,7 @@ void* load_virtapi_raw(unsigned interface_id, NCrystalAPIDB& db)
     void* handle = dlopen(cfg.shlibpath.c_str(), RTLD_LOCAL | RTLD_LAZY);
 #endif
     if (!handle)
-      throw std::runtime_error("Loading of the NCrystal library failed");
+      fatal_error("Loading of the NCrystal library failed");
 
     std::string symbol("ncrystal");
     symbol += cfg.symbol_namespace;
@@ -107,19 +111,23 @@ void* load_virtapi_raw(unsigned interface_id, NCrystalAPIDB& db)
     FARPROC fproc;
     void* addr = (void*)(intptr_t)GetProcAddress(handle, symbol.c_str());
     if (!addr)
-      throw std::runtime_error("GetProcAddress("
-                               "ncrystal_access_virtual_api) failed");
+      fatal_error("GetProcAddress("
+                  "ncrystal_access_virtual_api) failed");
 #else
     dlerror(); // clear previous errors
     void* addr = dlsym(handle, symbol.c_str());
     if (!addr)
-      throw std::runtime_error("dlsym(ncrystal_access_virtual_api) failed");
+      fatal_error("dlsym(ncrystal_access_virtual_api) failed");
 #endif
     db.ncrystal_access_virtapi_fct =
       reinterpret_cast<NCrystalAPIDB::FctSignature>(addr);
   }
 
-  return (*db.ncrystal_access_virtapi_fct)(interface_id);
+  void * result = (*db.ncrystal_access_virtapi_fct)(interface_id);
+  if (!result)
+    fatal_error("NCrystal installation does not support required interface.");
+
+  return result;
 }
 
 NCrystalAPIDB& get_ncrystal_api_db()
@@ -136,7 +144,7 @@ std::shared_ptr<const NCrystalAPI> load_ncrystal_api()
   if (!db.api) {
     void* raw_api = load_virtapi_raw(NCrystalAPI::interface_id, db);
     if (!raw_api)
-      throw std::runtime_error("Failed to access required NCrystal interface.");
+      fatal_error("Problems loading NCrystal.");
     db.api = *reinterpret_cast<std::shared_ptr<const NCrystalAPI>*>(raw_api);
   }
   return db.api;

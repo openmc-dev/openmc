@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools", "wheel"]
+requires = ["setuptools", "setuptools-scm", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -8,7 +8,7 @@ authors = [
     {name = "The OpenMC Development Team", email = "openmc@anl.gov"},
 ]
 description = "OpenMC"
-version = "0.15.1-dev"
+dynamic = ["version"]
 requires-python = ">=3.11"
 license = {file = "LICENSE"}
 classifiers = [
@@ -66,3 +66,5 @@ exclude = ['tests*']
 "openmc.data.effective_dose" = ["**/*.txt"]
 "openmc.data" = ["*.txt", "*.DAT", "*.json", "*.h5"]
 "openmc.lib" = ["libopenmc.dylib", "libopenmc.so"]
+
+[tool.setuptools_scm]

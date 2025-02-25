@@ -6,6 +6,7 @@ import warnings
 
 import h5py
 import numpy as np
+from pathlib import Path
 from uncertainties import ufloat
 
 import openmc
@@ -415,7 +416,7 @@ class StatePoint:
 
                     # Create Tally object and assign basic properties
                     tally = openmc.Tally(tally_id)
-                    tally._sp_filename = self._f.filename
+                    tally._sp_filename = Path(self._f.filename)
                     tally.name = group['name'][()].decode() if 'name' in group else ''
 
                     # Check if tally has multiply_density attribute

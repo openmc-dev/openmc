@@ -1,20 +1,24 @@
 cmake_minimum_required(VERSION 3.16 FATAL_ERROR)
 project(openmc C CXX)
 
-# Set version numbers
-set(OPENMC_VERSION_MAJOR 0)
-set(OPENMC_VERSION_MINOR 15)
-set(OPENMC_VERSION_RELEASE 1)
-set(OPENMC_VERSION ${OPENMC_VERSION_MAJOR}.${OPENMC_VERSION_MINOR}.${OPENMC_VERSION_RELEASE})
+# Set module path
+set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules)
+
+include(GetVersionFromGit)
+
+# Output version information
+message(STATUS "OpenMC version: ${OPENMC_VERSION}")
+message(STATUS "OpenMC dev state: ${OPENMC_DEV_STATE}")
+message(STATUS "OpenMC commit hash: ${OPENMC_COMMIT_HASH}")
+message(STATUS "OpenMC commit count: ${OPENMC_COMMIT_COUNT}")
+
+# Generate version.h
 configure_file(include/openmc/version.h.in "${CMAKE_BINARY_DIR}/include/openmc/version.h" @ONLY)
 
 # Setup output directories
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-
-# Set module path
-set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules)
 
 # Enable correct usage of CXX_EXTENSIONS
 if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.22)
@@ -246,8 +250,6 @@ endif()
 #===============================================================================
 # Update git submodules as needed
 #===============================================================================
-
-find_package(Git)
 if(GIT_FOUND AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.git")
   option(GIT_SUBMODULE "Check submodules during build" ON)
   if(GIT_SUBMODULE)
@@ -497,18 +499,6 @@ if (HDF5_IS_PARALLEL)
 endif()
 if (OPENMC_USE_MPI)
   target_compile_definitions(libopenmc PUBLIC -DOPENMC_MPI)
-endif()
-
-# Set git SHA1 hash as a compile definition
-if(GIT_FOUND)
-  execute_process(COMMAND ${GIT_EXECUTABLE} rev-parse HEAD
-                  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-                  RESULT_VARIABLE GIT_SHA1_SUCCESS
-                  OUTPUT_VARIABLE GIT_SHA1
-                  ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
-  if(GIT_SHA1_SUCCESS EQUAL 0)
-    target_compile_definitions(libopenmc PRIVATE -DGIT_SHA1="${GIT_SHA1}")
-  endif()
 endif()
 
 # target_link_libraries treats any arguments starting with - but not -l as

@@ -477,7 +477,6 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
     for (int j = 0; j < table_size; ++j) {
       volume += result.volumes(i, j);
     }
-
     // Renormalize volumes based on known volume of element i
     double norm = this->volume(i) / volume;
     for (int j = 0; j < table_size; ++j) {

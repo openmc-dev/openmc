@@ -14,6 +14,7 @@ namespace NCrystalVirtualAPI {
 
 class VirtAPI_Type1_v1 {
 public:
+  //Note: neutron must be an array of length 4 with values {ekin,ux,uy,uz}
   class ScatterProcess;
   virtual const ScatterProcess* createScatter(const char* cfgstr) const = 0;
   virtual const ScatterProcess* cloneScatter(const ScatterProcess*) const = 0;

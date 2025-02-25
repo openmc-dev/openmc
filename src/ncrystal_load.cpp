@@ -88,7 +88,7 @@ void* load_virtapi_raw(unsigned interface_id, NCrystalAPIDB& db)
 {
   if (!db.ncrystal_access_virtapi_fct) {
     auto cfg = query_ncrystal_config();
-    if (! (cfg.intversion >= 4000003) ) {
+    if (! (cfg.intversion >= 4001000) ) {
       //This is the most likely error message people will see:
       fatal_error("Could not locate a functioning and recent enough"
                   " NCrystal installation (required since geometry"

@@ -25,7 +25,7 @@ class NCrystalMat {
 public:
   //----------------------------------------------------------------------------
   // Constructors
-  NCrystalMat() = default;//empty object
+  NCrystalMat() = default; // empty object
   explicit NCrystalMat(const std::string& cfg);
 
   //----------------------------------------------------------------------------
@@ -59,7 +59,7 @@ public:
 private:
   //----------------------------------------------------------------------------
   // Data members (only present when compiling with NCrystal support)
-  std::string cfg_; //!< NCrystal configuration string
+  std::string cfg_;       //!< NCrystal configuration string
   NCrystalScatProc proc_; //!< NCrystal scatter process
 };
 

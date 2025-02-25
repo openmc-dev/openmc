@@ -15,22 +15,21 @@ namespace NCrystalVirtualAPI {
 class VirtAPI_Type1_v1 {
 public:
   class ScatterProcess;
-  virtual const ScatterProcess * createScatter( const char * cfgstr ) const = 0;
-  virtual const ScatterProcess * cloneScatter( const ScatterProcess * ) const = 0;
-  virtual void deallocateScatter( const ScatterProcess * ) const = 0;
-  virtual double crossSectionUncached( const ScatterProcess&,
-                                       const double* neutron ) const = 0;
-  virtual void sampleScatterUncached( const ScatterProcess&,
-                                      std::function<double()>& rng,
-                                      double* neutron ) const = 0;
-  //Plumbing:
+  virtual const ScatterProcess* createScatter(const char* cfgstr) const = 0;
+  virtual const ScatterProcess* cloneScatter(const ScatterProcess*) const = 0;
+  virtual void deallocateScatter(const ScatterProcess*) const = 0;
+  virtual double crossSectionUncached(
+    const ScatterProcess&, const double* neutron) const = 0;
+  virtual void sampleScatterUncached(const ScatterProcess&,
+    std::function<double()>& rng, double* neutron) const = 0;
+  // Plumbing:
   static constexpr unsigned interface_id = 1001;
   virtual ~VirtAPI_Type1_v1() = default;
   VirtAPI_Type1_v1() = default;
-  VirtAPI_Type1_v1( const VirtAPI_Type1_v1& ) = delete;
-  VirtAPI_Type1_v1& operator=( const VirtAPI_Type1_v1& ) = delete;
-  VirtAPI_Type1_v1( VirtAPI_Type1_v1&& ) = delete;
-  VirtAPI_Type1_v1& operator=( VirtAPI_Type1_v1&& ) = delete;
+  VirtAPI_Type1_v1(const VirtAPI_Type1_v1&) = delete;
+  VirtAPI_Type1_v1& operator=(const VirtAPI_Type1_v1&) = delete;
+  VirtAPI_Type1_v1(VirtAPI_Type1_v1&&) = delete;
+  VirtAPI_Type1_v1& operator=(VirtAPI_Type1_v1&&) = delete;
 };
 
 } // namespace NCrystalVirtualAPI
@@ -47,10 +46,9 @@ public:
 
   NCrystalScatProc(const char* cfgstr)
     : api_(load_ncrystal_api()), p_(api_->createScatter(cfgstr))
-  {
-  }
+  {}
 
-  //Note: Neutron state array is {ekin,ux,uy,uz}
+  // Note: Neutron state array is {ekin,ux,uy,uz}
 
   double cross_section(const double* neutron_state) const
   {
@@ -65,14 +63,14 @@ public:
   NCrystalScatProc clone() const
   {
     NCrystalScatProc c;
-    if ( p_ ) {
+    if (p_) {
       c.api_ = api_;
-      c.p_ = api_->cloneScatter( p_ );
+      c.p_ = api_->cloneScatter(p_);
     }
     return c;
   }
 
-  //Plumbing (move-only semantics, but supports explicit clone):
+  // Plumbing (move-only semantics, but supports explicit clone):
   NCrystalScatProc(const NCrystalScatProc&) = delete;
   NCrystalScatProc& operator=(const NCrystalScatProc&) = delete;
 

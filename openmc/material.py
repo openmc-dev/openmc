@@ -323,7 +323,7 @@ class Material(IDManagerMixin):
         elif units == 'Bq/g':
             multiplier = 1.0 / self.get_mass_density()
         elif units == 'Bq/kg':
-            multiplier = 1.0 / (self.get_mass_density() * 1000.0)
+            multiplier = 1000.0 / self.get_mass_density()
 
         dists = []
         probs = []
@@ -1171,7 +1171,7 @@ class Material(IDManagerMixin):
         elif units == 'Bq/g':
             multiplier = 1.0 / self.get_mass_density()
         elif units == 'Bq/kg':
-            multiplier = 1.0 / (self.get_mass_density() * 1000.0)
+            multiplier = 1000.0 / self.get_mass_density()
 
         activity = {}
         for nuclide, atoms_per_bcm in self.get_nuclide_atom_densities().items():
@@ -1220,7 +1220,7 @@ class Material(IDManagerMixin):
         elif units == 'W/g':
             multiplier = 1.0 / self.get_mass_density()
         elif units == 'W/kg':
-            multiplier = 1.0 / (self.get_mass_density() * 1000.0)
+            multiplier = 1000.0 / self.get_mass_density()
 
         decayheat = {}
         for nuclide, atoms_per_bcm in self.get_nuclide_atom_densities().items():

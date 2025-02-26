@@ -14,6 +14,7 @@
 #include "openmc/tallies/tally.h"
 #include "openmc/tallies/tally_scoring.h"
 #include "openmc/timer.h"
+#include "openmc/weight_windows.h"
 
 #include <cstdio>
 
@@ -110,8 +111,15 @@ void FlatSourceDomain::accumulate_iteration_flux()
 {
 #pragma omp parallel for
   for (int64_t se = 0; se < n_source_elements(); se++) {
+    double flux = source_regions_.scalar_flux_new(se);
+    if (!std::isfinite(flux)) {
+      fatal_error("Encountered non-finite scalar flux");
+    }
     source_regions_.scalar_flux_final(se) +=
       source_regions_.scalar_flux_new(se);
+    if (!std::isfinite(source_regions_.scalar_flux_final(se))) {
+      fatal_error("Encountered non-finite scalar flux in final vector");
+    }
   }
 }
 
@@ -202,6 +210,22 @@ void FlatSourceDomain::set_flux_to_flux_plus_source(
 {
   int material = source_regions_.material(sr);
   if (material == MATERIAL_VOID) {
+    // volume *= settings::n_particles * RandomRay::distance_active_;
+    double val = source_regions_.scalar_flux_new(sr, g) / volume +
+                 0.5 * source_regions_.external_source(sr, g) *
+                   source_regions_.volume_sq(sr);
+    if (!std::isfinite(val) || (sr == 0 && g == 0)) {
+      fmt::print(
+        "flux begin: {:.3e} external source: {:.3e} volume: {:.3e} volume_sq: "
+        "{:.3e} material: {}\n",
+        source_regions_.scalar_flux_new(sr, g),
+        source_regions_.external_source(sr, g), volume,
+        source_regions_.volume_sq(sr), material);
+      // fatal_error("Encountered non-finite scalar flux in set flux to flux
+      // plus "
+      //            "source");
+    }
+
     source_regions_.scalar_flux_new(sr, g) /= volume;
     source_regions_.scalar_flux_new(sr, g) +=
       0.5f * source_regions_.external_source(sr, g) *
@@ -307,6 +331,16 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
     }
 
     for (int g = 0; g < negroups_; g++) {
+      if (!std::isfinite(source_regions_.scalar_flux_new(sr, g))) {
+        int material = source_regions_.material(sr);
+        fmt::print("BEGIN sr: {} g: {} scalar_flux_new: {} volume avg: {:.3e} "
+                   "volume iteration: {:.3e} material: {}\n",
+          sr, g, source_regions_.scalar_flux_new(sr, g), volume_simulation_avg,
+          volume_iteration, material);
+        fatal_error(
+          "BEGIN Encountered non-finite scalar flux in add src to scalar "
+          "flux");
+      }
       // There are three scenarios we need to consider:
       if (volume_iteration > 0.0) {
         // 1. If the FSR was hit this iteration, then the new flux is equal to
@@ -327,7 +361,7 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
         // in the cell we will use the previous iteration's flux estimate. This
         // injects a small degree of correlation into the simulation, but this
         // is going to be trivial when the miss rate is a few percent or less.
-        if (source_regions_.external_source_present(sr)) {
+        if (source_regions_.external_source_present(sr) && !adjoint_) {
           set_flux_to_old_flux(sr, g);
         } else {
           set_flux_to_source(sr, g);
@@ -337,6 +371,15 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
       // any iteration (i.e., volume is zero), then we want to set this to 0
       // to avoid dividing anything by a zero volume. This happens implicitly
       // given that the new scalar flux arrays are set to zero each iteration.
+      if (!std::isfinite(source_regions_.scalar_flux_new(sr, g))) {
+        int material = source_regions_.material(sr);
+        fmt::print("sr: {} g: {} scalar_flux_new: {} volume avg: {:.3e} "
+                   "volume iteration: {:.3e} material: {}\n",
+          sr, g, source_regions_.scalar_flux_new(sr, g), volume_simulation_avg,
+          volume_iteration, material);
+        fatal_error("Encountered non-finite scalar flux in add src to scalar "
+                    "flux");
+      }
     }
   }
   fmt::print("n_small: {}\n", n_small);
@@ -815,8 +858,9 @@ void FlatSourceDomain::output_to_vtk() const
     // Relate voxel spatial locations to random ray source regions
     vector<int> voxel_indices(Nx * Ny * Nz);
     vector<Position> voxel_positions(Nx * Ny * Nz);
-
-#pragma omp parallel for collapse(3)
+    vector<double> weight_windows(Nx * Ny * Nz);
+float min_weight = 1e20;
+#pragma omp parallel for collapse(3) reduction(min: min_weight)
     for (int z = 0; z < Nz; z++) {
       for (int y = 0; y < Ny; y++) {
         for (int x = 0; x < Nx; x++) {
@@ -827,11 +871,14 @@ void FlatSourceDomain::output_to_vtk() const
           Particle p;
           p.r() = sample;
           p.r_last() = sample;
+          p.E() = 1.0;
+          p.E_last() = 1.0;
 
           bool found = exhaustive_find_cell(p);
           if (!found) {
             voxel_indices[z * Ny * Nx + y * Nx + x] = -1;
             voxel_positions[z * Ny * Nx + y * Nx + x] = sample;
+            weight_windows[z * Ny * Nx + y * Nx + x] = 0.0;
             continue;
           }
 
@@ -861,6 +908,16 @@ void FlatSourceDomain::output_to_vtk() const
 
           voxel_indices[z * Ny * Nx + y * Nx + x] = sr;
           voxel_positions[z * Ny * Nx + y * Nx + x] = sample;
+
+          if (variance_reduction::weight_windows.size() == 1) {
+            WeightWindow ww =
+              variance_reduction::weight_windows[0]->get_weight_window(p);
+            float weight = ww.lower_weight;
+            weight_windows[z * Ny * Nx + y * Nx + x] = weight;
+            if (weight < min_weight)
+              min_weight = weight;
+           // fmt::print("Weight window = {}\n", weight);
+          }
         }
       }
     }
@@ -977,6 +1034,32 @@ void FlatSourceDomain::output_to_vtk() const
         total_external = convert_to_big_endian<float>(total_external);
         std::fwrite(&total_external, sizeof(float), 1, plot);
       }
+    }
+
+    // Plot ww data
+    float min = 1.0e20;
+    float max = -1.0e20;
+
+    if (variance_reduction::weight_windows.size() == 1) {
+      std::fprintf(plot, "SCALARS ww_lower float\n");
+      std::fprintf(plot, "LOOKUP_TABLE default\n");
+      for (int i = 0; i < Nx * Ny * Nz; i++) {
+        float weight = weight_windows[i];
+
+        if (weight == 0.0)
+          weight = min_weight;
+        if (weight == 0.0)
+          fmt::print("Zero ww at i = {}\n", i);
+          if (weight < min)
+          min = weight;
+        if (weight > max)
+          max = weight;
+        weight = convert_to_big_endian<float>(weight);
+        std::fwrite(&weight, sizeof(float), 1, plot);
+
+
+      }
+      fmt::print("Min ww = {} Max ww = {}\n", min, max);
     }
 
     std::fclose(plot);
@@ -1164,20 +1247,42 @@ void FlatSourceDomain::set_adjoint_sources(const vector<double>& forward_flux)
   // Set the external source to 1/forward_flux
   // The forward flux is given in terms of total for the forward simulation
   // so we must convert it to a "per batch" quantity
-#pragma omp parallel for
+  int64_t n_pos_src = 0;
+  double min = 1.0e20;
+  double max = -1.0e20;
+  double min_inv = 1.0e20;
+  double max_inv = -1.0e20;
+  // #pragma omp parallel for reduction(+: n_pos_src)
   for (int64_t sr = 0; sr < n_source_regions(); sr++) {
     for (int g = 0; g < negroups_; g++) {
-      if (forward_flux[sr * negroups_ + g] > 0.0) {
-        source_regions_.external_source(sr, g) =
-          1.0 / forward_flux[sr * negroups_ + g];
+      float flux = forward_flux[sr * negroups_ + g];
+      if (flux > 0.0) {
+        source_regions_.external_source(sr, g) = 1.0 / flux;
+        n_pos_src++;
+        if (flux < min) {
+          min = flux;
+        }
+        if (flux > max) {
+          max = flux;
+        }
+        if (1.0 / flux < min_inv) {
+          min_inv = 1.0 / flux;
+        }
+        if (1.0 / flux > max_inv) {
+          max_inv = 1.0 / flux;
+        }
       } else {
         source_regions_.external_source(sr, g) = 0.0;
       }
-      if (source_regions_.external_source(sr, g) > 0.0) {
+      if (flux > 0.0) {
         source_regions_.external_source_present(sr) = 1;
       }
     }
   }
+  fmt::print("N positive src elements {} of {} ({:.3f}%)\n", n_pos_src,
+    n_source_elements(), 100.0 * n_pos_src / n_source_elements());
+  fmt::print("Forward flux min {:.2e} max {:.2e}\n", min, max);
+  fmt::print("Inverse flux min {:.2e} max {:.2e}\n", min_inv, max_inv);
 
   // Divide the fixed source term by sigma t (to save time when applying each
   // iteration)
@@ -1192,6 +1297,8 @@ void FlatSourceDomain::set_adjoint_sources(const vector<double>& forward_flux)
       source_regions_.external_source(sr, g) /= sigma_t;
     }
   }
+  // output_to_vtk();
+  // exit(0);
 }
 
 void FlatSourceDomain::transpose_scattering_matrix()

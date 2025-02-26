@@ -485,6 +485,7 @@ void WeightWindows::set_bounds(span<const double> lower_bounds, double ratio)
 void WeightWindows::update_weights(const Tally* tally, const std::string& value,
   double threshold, double ratio, WeightWindowUpdateMethod method)
 {
+  fmt::print("Updating weight windows for Tally {}\n", tally->id());
   ///////////////////////////
   // Setup and checks
   ///////////////////////////
@@ -657,11 +658,32 @@ void WeightWindows::update_weights(const Tally* tally, const std::string& value,
       }
     }
 
-    xt::noalias(new_bounds) = 1.0 / new_bounds;
+    //xt::noalias(new_bounds) = 1.0 / new_bounds;
 
-    auto max_val = xt::amax(new_bounds)();
+    //auto max_val = xt::amax(new_bounds)();
 
-    xt::noalias(new_bounds) = new_bounds / (2.0 * max_val);
+    //xt::noalias(new_bounds) = new_bounds / (2.0 * max_val);
+
+    //xt::noalias(new_bounds) = xt::where(new_bounds != 0.0, 1.0 / new_bounds, 0);
+    //auto max_val = xt::amax(new_bounds)();
+    //xt::noalias(new_bounds) = new_bounds / (2.0 * max_val);
+
+    // We take the inverse, but are careful not to divide by zero e.g. if some mesh bins
+    // are not reachable in the physical geometry.
+    xt::noalias(new_bounds) = xt::where(xt::not_equal(new_bounds, 0.0), 1.0 / new_bounds, 0.0);
+auto max_val = xt::amax(new_bounds)();
+xt::noalias(new_bounds) = new_bounds / (2.0 * max_val);
+
+// For bins that were missed, we use the minimum weight window value. This shouldn't matter
+// except for plotting.
+auto min_val = xt::amin(new_bounds)();
+xt::noalias(new_bounds) = xt::where(xt::not_equal(new_bounds, 0.0), new_bounds, min_val);
+
+
+
+    
+
+    fmt::print("Updating fw_cadis weights. Max val = {:.3e}\n", max_val);
   }
 
   // make sure that values where the mean is zero are set s.t. the weight window

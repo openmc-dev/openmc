@@ -529,6 +529,9 @@ void RandomRay::attenuate_flux_linear_source(
   n_event()++;
 
   int material = this->material();
+  if (material != srh.material()) {
+    fatal_error("Material mismatch between ray and source region");
+  }
 
   Position& centroid = srh.centroid();
   Position midpoint = r + u() * (distance / 2.0);
@@ -596,6 +599,12 @@ void RandomRay::attenuate_flux_linear_source(
 
     // Update the angular flux for this group
     angular_flux_[g] -= new_delta_psi * sigma_t;
+    if (!std::isfinite(angular_flux_[g])) {
+      fatal_error("Solid Angular flux became infinite or NaN");
+    }
+    if (!std::isfinite(new_delta_psi * sigma_t)) {
+      fatal_error("Solid Delta psi became infinite or NaN");
+    }
 
     // If 2D mode is enabled, the z-component of the flux moments is forced
     // to zero
@@ -721,6 +730,9 @@ void RandomRay::attenuate_flux_linear_source_void(
     // Accumulate delta psi into new estimate of source region flux for
     // this iteration, and update flux momements
     for (int g = 0; g < negroups_; g++) {
+      if (!std::isfinite(angular_flux_[g] * distance)) {
+        fatal_error("Void Angular flux became infinite or NaN");
+      }
       srh.scalar_flux_new(g) += angular_flux_[g] * distance;
       srh.flux_moments_new(g) += delta_moments_[g];
     }
@@ -751,7 +763,11 @@ void RandomRay::attenuate_flux_linear_source_void(
   // Add source to incoming angular flux, assuming void region
   for (int g = 0; g < negroups_; g++) {
     angular_flux_[g] += srh.external_source(g) * distance;
+    if (!std::isfinite(angular_flux_[g])) {
+      fatal_error("Angular flux became infinite or NaN");
+    }
   }
+
 }
 
 void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
@@ -819,8 +835,10 @@ void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
     srh = domain_->source_regions_.get_source_region_handle(sr);
   }
 
-  for (int g = 0; g < negroups_; g++) {
-    angular_flux_[g] = srh.source(g);
+  if (!srh.is_numerical_fp_artifact_) {
+    for (int g = 0; g < negroups_; g++) {
+      angular_flux_[g] = srh.source(g);
+    }
   }
 }
 

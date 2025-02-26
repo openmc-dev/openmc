@@ -293,7 +293,6 @@ void Particle::event_cross_surface()
     event() = TallyEvent::LATTICE;
   } else {
     // Particle crosses surface
-    // TODO: off-by-one
     const auto& surf {model::surfaces[surface_index()].get()};
     // If BC, add particle to surface source before crossing surface
     if (surf->surf_source_ && surf->bc_) {

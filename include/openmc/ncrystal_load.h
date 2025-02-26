@@ -1,3 +1,6 @@
+//! \file ncrystal_load.h
+//! \brief Helper class taking care of loading NCrystal at runtime.
+
 #ifndef OPENMC_NCRYSTAL_LOAD_H
 #define OPENMC_NCRYSTAL_LOAD_H
 
@@ -11,6 +14,9 @@ namespace NCrystalVirtualAPI {
 // the same definition used to compile the NCrystal library! But changes to
 // white space, comments, and formatting is of course allowed.  This API was
 // introduced in NCrystal 4.1.0.
+
+//! Abstract base class for NCrystal interface which must be declared exactly as
+//  it is in NCrystal itself.
 
 class VirtAPI_Type1_v1 {
 public:
@@ -39,28 +45,41 @@ namespace openmc {
 
 using NCrystalAPI = NCrystalVirtualAPI::VirtAPI_Type1_v1;
 
+//! Function which locates and loads NCrystal at runtime using the virtual API
 std::shared_ptr<const NCrystalAPI> load_ncrystal_api();
+
+
+//! Class encapsulating exactly the parts of NCrystal needed by OpenMC
 
 class NCrystalScatProc final {
 public:
+  //! Empty constructor which does not load NCrystal
   NCrystalScatProc() {}
 
+  //! Load NCrystal and instantiate a scattering process
+  //! \param cfgstr NCrystal cfg-string defining the material.
   NCrystalScatProc(const char* cfgstr)
     : api_(load_ncrystal_api()), p_(api_->createScatter(cfgstr))
   {}
 
   // Note: Neutron state array is {ekin,ux,uy,uz}
 
+  //! Returns total scattering cross section in units of barns per atom.
+  //! \param neutron_state array {ekin,ux,uy,uz} with ekin (eV) and direction.
   double cross_section(const double* neutron_state) const
   {
     return api_->crossSectionUncached(*p_, neutron_state);
   }
 
+  //! Returns total scattering cross section in units of barns per atom.
+  //! \param rng function returning random numbers in the unit interval
+  //! \param neutron_state array {ekin,ux,uy,uz} with ekin (eV) and direction.
   void scatter(std::function<double()>& rng, double* neutron_state) const
   {
     api_->sampleScatterUncached(*p_, rng, neutron_state);
   }
 
+  //! Clones the object which is otherwise move-only
   NCrystalScatProc clone() const
   {
     NCrystalScatProc c;

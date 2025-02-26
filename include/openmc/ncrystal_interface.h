@@ -18,7 +18,7 @@ namespace openmc {
 constexpr double NCRYSTAL_MAX_ENERGY {5.0};
 
 //==============================================================================
-// Wrapper class an NCrystal material
+// Wrapper class for an NCrystal material
 //==============================================================================
 
 class NCrystalMat {

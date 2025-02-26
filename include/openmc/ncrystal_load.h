@@ -48,7 +48,6 @@ using NCrystalAPI = NCrystalVirtualAPI::VirtAPI_Type1_v1;
 //! Function which locates and loads NCrystal at runtime using the virtual API
 std::shared_ptr<const NCrystalAPI> load_ncrystal_api();
 
-
 //! Class encapsulating exactly the parts of NCrystal needed by OpenMC
 
 class NCrystalScatProc final {

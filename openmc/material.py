@@ -313,7 +313,7 @@ class Material(IDManagerMixin):
             is the total intensity of the photon source in the requested units.
 
         """
-        cv.check_value('units', units, {'Bq', 'Bq/g', 'Bq/cm3'})
+        cv.check_value('units', units, {'Bq', 'Bq/g', 'Bq/kg', 'Bq/cm3'})
         if units == 'Bq':
             multiplier = volume if volume is not None else self.volume
             if multiplier is None:
@@ -322,6 +322,8 @@ class Material(IDManagerMixin):
             multiplier = 1
         elif units == 'Bq/g':
             multiplier = 1.0 / self.get_mass_density()
+        elif units == 'Bq/kg':
+            multiplier = 1.0 / (self.get_mass_density() * 1000.0)
 
         dists = []
         probs = []
@@ -1159,7 +1161,7 @@ class Material(IDManagerMixin):
             of the material is returned as a float.
         """
 
-        cv.check_value('units', units, {'Bq', 'Bq/g', 'Bq/cm3'})
+        cv.check_value('units', units, {'Bq', 'Bq/g', 'Bq/kg', 'Bq/cm3'})
         cv.check_type('by_nuclide', by_nuclide, bool)
 
         if units == 'Bq':
@@ -1168,6 +1170,8 @@ class Material(IDManagerMixin):
             multiplier = 1
         elif units == 'Bq/g':
             multiplier = 1.0 / self.get_mass_density()
+        elif units == 'Bq/kg':
+            multiplier = 1.0 / (self.get_mass_density() * 1000.0)
 
         activity = {}
         for nuclide, atoms_per_bcm in self.get_nuclide_atom_densities().items():
@@ -1206,7 +1210,7 @@ class Material(IDManagerMixin):
             of the material is returned as a float.
         """
 
-        cv.check_value('units', units, {'W', 'W/g', 'W/cm3'})
+        cv.check_value('units', units, {'W', 'W/g', 'W/kg', 'W/cm3'})
         cv.check_type('by_nuclide', by_nuclide, bool)
 
         if units == 'W':
@@ -1215,6 +1219,8 @@ class Material(IDManagerMixin):
             multiplier = 1
         elif units == 'W/g':
             multiplier = 1.0 / self.get_mass_density()
+        elif units == 'W/kg':
+            multiplier = 1.0 / (self.get_mass_density() * 1000.0)
 
         decayheat = {}
         for nuclide, atoms_per_bcm in self.get_nuclide_atom_densities().items():

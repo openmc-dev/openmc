@@ -88,8 +88,8 @@ void* load_virtapi_raw(unsigned interface_id, NCrystalAPIDB& db)
 {
   if (!db.ncrystal_access_virtapi_fct) {
     auto cfg = query_ncrystal_config();
-    if (! (cfg.intversion >= 4001000) ) {
-      //This is the most likely error message people will see:
+    if (!(cfg.intversion >= 4001000)) {
+      // This is the most likely error message people will see:
       fatal_error("Could not locate a functioning and recent enough"
                   " NCrystal installation (required since geometry"
                   " contains NCrystal materials).");
@@ -123,7 +123,7 @@ void* load_virtapi_raw(unsigned interface_id, NCrystalAPIDB& db)
       reinterpret_cast<NCrystalAPIDB::FctSignature>(addr);
   }
 
-  void * result = (*db.ncrystal_access_virtapi_fct)(interface_id);
+  void* result = (*db.ncrystal_access_virtapi_fct)(interface_id);
   if (!result)
     fatal_error("NCrystal installation does not support required interface.");
 

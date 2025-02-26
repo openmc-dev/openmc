@@ -31,13 +31,13 @@ void WeightFilter::set_bins(gsl::span<const double> bins)
      bins_.push_back(bins[i]);
    }
  
-   n_bins_ = bins_.size();
+   n_bins_ = bins_.size() -1;
 }
 
 void WeightFilter::get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match) const
 {
   // Get particle weight
-  double wgt = p.wgt_last(); // or wgt_last()?
+  double wgt = p.wgt_last(); 
 
   // Bin the weight
   if (wgt >= bins_.front() && wgt <= bins_.back()) {

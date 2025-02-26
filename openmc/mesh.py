@@ -415,7 +415,7 @@ class MeshBase(IDManagerMixin, ABC):
             kwargs.setdefault('output', True)
             if 'args' in kwargs:
                 kwargs['args'] = ['-c'] + kwargs['args']
-            kwargs.setdefault('args', '[-c]')
+            kwargs.setdefault('args', ['-c'])
             openmc.lib.init(**kwargs)
             mesh = openmc.lib.tallies[new_tally.id].filters[0].mesh
             volumes = mesh.material_volumes(

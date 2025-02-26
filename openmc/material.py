@@ -431,7 +431,7 @@ class Material(IDManagerMixin):
 
         try:
             import NCrystal
-        except ModuleNotFoundError as e
+        except ModuleNotFoundError as e:
             raise RuntimeError('The .from_ncrystal method requires'
                                ' NCrystal to be installed.') from e
         nc_mat = NCrystal.createInfo(cfg)

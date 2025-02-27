@@ -459,6 +459,8 @@ void RandomRaySimulation::simulate()
 
     // Add source to scalar flux, compute number of FSR hits
     int64_t n_hits = domain_->add_source_to_scalar_flux();
+    
+    fmt::print("SIM flux after add_source_to_scalar_flux: {}\n", domain_->source_regions_.scalar_flux_new(0));
 
     //if (RandomRay::mesh_subdivision_enabled_) {
     //  domain_->handle_small_subdivided_source_regions();
@@ -491,6 +493,9 @@ void RandomRaySimulation::simulate()
 
     // Set phi_old = phi_new
     domain_->flux_swap();
+
+    fmt::print("SIM flux after swap: {}\n", domain_->source_regions_.scalar_flux_new(0));
+
 
     // Check for any obvious insabilities/nans/infs
     instability_check(n_hits, k_eff_, avg_miss_rate_);

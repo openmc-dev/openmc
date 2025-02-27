@@ -304,10 +304,10 @@ public:
   double volume_naive_ {0.0}; //!< Volume as integrated from this iteration only
   int position_recorded_ {0}; //!< Has the position been recorded yet?
   int external_source_present_ {
-    0}; //!< Is an external source present in this region?
-    int is_small_ {0}; //!< Is it "small", receiving < 1.5 hits per iteration?
-    int n_hits_ {0}; //!< NUmber of total hits (ray crossings)
-      // Mesh that subdivides this source region
+    0};               //!< Is an external source present in this region?
+  int is_small_ {0};  //!< Is it "small", receiving < 1.5 hits per iteration?
+  int n_hits_ {0};    //!< Number of total hits (ray crossings)
+                      // Mesh that subdivides this source region
   int mesh_ {C_NONE}; //!< Index in openmc::model::meshes array that subdivides
                       //!< this source region
   int64_t parent_sr_ {C_NONE}; //!< Index of a parent source region
@@ -605,9 +605,9 @@ public:
   SourceRegionHandle get_source_region_handle(int64_t sr);
   void adjoint_reset();
 
-//private:
+  // private:
   //----------------------------------------------------------------------------
-  // Private Data Members
+  //  Private Data Members
   int64_t n_source_regions_ {0};
   int negroups_ {0};
   bool is_linear_ {false};

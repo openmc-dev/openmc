@@ -32,6 +32,8 @@ void LinearSourceDomain::batch_reset()
   for (int64_t se = 0; se < n_source_elements(); se++) {
     source_regions_.flux_moments_new(se) = {0.0, 0.0, 0.0};
   }
+
+  fmt::print("First flux value: {:.3e}\n", source_regions_.scalar_flux_new(0));
 }
 
 void LinearSourceDomain::update_neutron_source(double k_eff)
@@ -129,6 +131,9 @@ void LinearSourceDomain::normalize_scalar_flux_and_volumes(
     source_regions_.scalar_flux_new(se) *= normalization_factor;
     source_regions_.flux_moments_new(se) *= normalization_factor;
   }
+
+  fmt::print("After normalization, first flux value: {:.3e}\n",
+    source_regions_.scalar_flux_new(0));
 
 // Accumulate cell-wise ray length tallies collected this iteration, then
 // update the simulation-averaged cell-wise volume estimates

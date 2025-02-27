@@ -42,14 +42,14 @@ SourceRegion::SourceRegion(const SourceRegionHandle& handle, int64_t parent_sr)
   mesh_ = handle.mesh();
   parent_sr_ = parent_sr;
   for (int g = 0; g < scalar_flux_new_.size(); g++) {
-    scalar_flux_old_[g] = handle.scalar_flux_old_[g];
-    source_[g] = handle.source_[g];
+    scalar_flux_old_[g] = handle.scalar_flux_old(g);
+    source_[g] = handle.source(g);
   }
 
   if (settings::run_mode == RunMode::FIXED_SOURCE) {
     external_source_present_ = handle.external_source_present();
     for (int g = 0; g < scalar_flux_new_.size(); g++) {
-      external_source_[g] = handle.external_source_[g];
+      external_source_[g] = handle.external_source(g);
     }
   }
 }
@@ -201,7 +201,14 @@ void SourceRegionContainer::assign(
 
 void SourceRegionContainer::flux_swap()
 {
+  fmt::print("Before swap: scalar_flux_new[0]: {:.3e}\n", scalar_flux_new(0));
+  fmt::print("Before swap: scalar_flux_old[0]: {:.3e}\n", scalar_flux_old(0));
+
   scalar_flux_old_.swap(scalar_flux_new_);
+  fmt::print("After  swap: scalar_flux_new[0]: {:.3e}\n", scalar_flux_new(0));
+  fmt::print("After  swap: scalar_flux_old[0]: {:.3e}\n", scalar_flux_old(0));
+
+
   if (is_linear_) {
     flux_moments_old_.swap(flux_moments_new_);
   }

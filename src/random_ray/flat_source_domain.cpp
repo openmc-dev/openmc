@@ -103,6 +103,10 @@ void FlatSourceDomain::batch_reset()
 
 #pragma omp parallel for
   for (int64_t se = 0; se < n_source_elements(); se++) {
+    if (se == 0) {
+      fmt::print("setting flux {:.3e} to zero\n",
+                 source_regions_.scalar_flux_new(se));
+    }
     source_regions_.scalar_flux_new(se) = 0.0;
   }
 }
@@ -215,12 +219,15 @@ void FlatSourceDomain::set_flux_to_flux_plus_source(
                  0.5 * source_regions_.external_source(sr, g) *
                    source_regions_.volume_sq(sr);
     if (!std::isfinite(val) || (sr == 0 && g == 0)) {
+      fmt::print("first flux inside add src subunit: {:.3e}\n",
+                 source_regions_.scalar_flux_new(0));
       fmt::print(
         "flux begin: {:.3e} external source: {:.3e} volume: {:.3e} volume_sq: "
-        "{:.3e} material: {}\n",
+        "{:.3e} material: {} external source present: {} after flux: {:.3e}\n",
         source_regions_.scalar_flux_new(sr, g),
         source_regions_.external_source(sr, g), volume,
-        source_regions_.volume_sq(sr), material);
+        source_regions_.volume_sq(sr), material,
+      source_regions_.external_source_present(sr), val);
       // fatal_error("Encountered non-finite scalar flux in set flux to flux
       // plus "
       //            "source");
@@ -234,6 +241,11 @@ void FlatSourceDomain::set_flux_to_flux_plus_source(
     double sigma_t = sigma_t_[source_regions_.material(sr) * negroups_ + g];
     source_regions_.scalar_flux_new(sr, g) /= (sigma_t * volume);
     source_regions_.scalar_flux_new(sr, g) += source_regions_.source(sr, g);
+  }
+  if (sr == 0 && g == 0) {
+    fmt::print("new scalar flux 0 idx = {:.3e}\n", source_regions_.scalar_flux_new(0));
+    fmt::print("new scalar flux sr, g idx = {:.3e}\n", source_regions_.scalar_flux_new(sr, g));
+
   }
 }
 
@@ -285,7 +297,10 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
 
   n_small = 0;
   n_hits = 0;
-#pragma omp parallel for reduction(+ : n_hits, n_small)
+
+    // First flux
+    fmt::print("First flux value in add src: {:.3e}\n", source_regions_.scalar_flux_new(0));
+//#pragma omp parallel for reduction(+ : n_hits, n_small)
   for (int64_t sr = 0; sr < n_source_regions(); sr++) {
 
     double volume_simulation_avg = source_regions_.volume(sr);
@@ -307,6 +322,9 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
     if (source_regions_.is_small(sr) == 1) {
       n_small++;
     }
+
+    if (sr == 0)
+    fmt::print("Now in the loop flux value in add src: {:.3e}\n", source_regions_.scalar_flux_new(0));
 
     // The volume treatment depends on the volume estimator type
     // and whether or not an external source is present in the cell.
@@ -347,7 +365,10 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
         // the flat source from the previous iteration plus the contributions
         // from rays passing through the source region (computed during the
         // transport sweep)
-        set_flux_to_flux_plus_source(sr, volume, g);
+        if (sr == 0 && g == 0)
+          fmt::print("setting flux to flux plus source\n");
+        //set_flux_to_flux_plus_source(sr, volume, g);
+        FlatSourceDomain::set_flux_to_flux_plus_source(sr, volume, g);
       } else if (volume_simulation_avg > 0.0) {
         // 2. If the FSR was not hit this iteration, but has been hit some
         // previous iteration, then we need to make a choice about what
@@ -363,8 +384,12 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
         // is going to be trivial when the miss rate is a few percent or less.
         if (source_regions_.external_source_present(sr) && !adjoint_) {
           set_flux_to_old_flux(sr, g);
+          if (sr == 0 && g == 0)
+          fmt::print("setting flux to old flux\n");
         } else {
           set_flux_to_source(sr, g);
+          if (sr == 0 && g == 0)
+          fmt::print("setting flux to source\n");
         }
       }
       // If the FSR was not hit this iteration, and it has never been hit in

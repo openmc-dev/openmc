@@ -401,7 +401,7 @@ void prepare_distribcell(const std::vector<int32_t>* user_distribcells)
   }
 
 // Fill the cell and lattice offset tables.
-#pragma omp parallel for
+//#pragma omp parallel for
   for (int map = 0; map < target_univ_ids.size(); map++) {
     auto target_univ_id = target_univ_ids[map];
     std::unordered_map<int32_t, int32_t> univ_count_memo;

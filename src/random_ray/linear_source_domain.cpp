@@ -181,8 +181,8 @@ void LinearSourceDomain::set_flux_to_flux_plus_source(
 
 void LinearSourceDomain::set_flux_to_old_flux(int64_t sr, int g)
 {
-  source_regions_.scalar_flux_new(g) = source_regions_.scalar_flux_old(g);
-  source_regions_.flux_moments_new(g) = source_regions_.flux_moments_old(g);
+  source_regions_.scalar_flux_new(sr, g) = source_regions_.scalar_flux_old(sr, g);
+  source_regions_.flux_moments_new(sr, g) = source_regions_.flux_moments_old(sr, g);
 }
 
 void LinearSourceDomain::accumulate_iteration_flux()

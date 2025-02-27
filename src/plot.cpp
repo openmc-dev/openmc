@@ -1083,7 +1083,7 @@ WireframeRayTracePlot::WireframeRayTracePlot(pugi::xml_node node)
 
 void WireframeRayTracePlot::set_wireframe_color(pugi::xml_node plot_node)
 {
-  // Copy plot background color
+  // Copy plot wireframe color
   if (check_for_node(plot_node, "wireframe_color")) {
     vector<int> w_rgb = get_node_array<int>(plot_node, "wireframe_color");
     if (w_rgb.size() == 3) {
@@ -1503,8 +1503,9 @@ void RayTracePlot::set_look_at(pugi::xml_node node)
 void RayTracePlot::set_field_of_view(pugi::xml_node node)
 {
   // Defaults to 70 degree horizontal field of view (see .h file)
-  if (check_for_node(node, "field_of_view")) {
-    double fov = std::stod(get_node_value(node, "field_of_view", true));
+  if (check_for_node(node, "horizontal_field_of_view")) {
+    double fov =
+      std::stod(get_node_value(node, "horizontal_field_of_view", true));
     if (fov < 180.0 && fov > 0.0) {
       horizontal_field_of_view_ = fov;
     } else {

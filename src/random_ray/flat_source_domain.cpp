@@ -111,15 +111,8 @@ void FlatSourceDomain::accumulate_iteration_flux()
 {
 #pragma omp parallel for
   for (int64_t se = 0; se < n_source_elements(); se++) {
-    double flux = source_regions_.scalar_flux_new(se);
-    if (!std::isfinite(flux)) {
-      fatal_error("Encountered non-finite scalar flux");
-    }
     source_regions_.scalar_flux_final(se) +=
       source_regions_.scalar_flux_new(se);
-    if (!std::isfinite(source_regions_.scalar_flux_final(se))) {
-      fatal_error("Encountered non-finite scalar flux in final vector");
-    }
   }
 }
 
@@ -210,22 +203,6 @@ void FlatSourceDomain::set_flux_to_flux_plus_source(
 {
   int material = source_regions_.material(sr);
   if (material == MATERIAL_VOID) {
-    // volume *= settings::n_particles * RandomRay::distance_active_;
-    double val = source_regions_.scalar_flux_new(sr, g) / volume +
-                 0.5 * source_regions_.external_source(sr, g) *
-                   source_regions_.volume_sq(sr);
-    if (!std::isfinite(val)) {
-      fmt::print("first flux inside add src subunit: {:.3e}\n",
-        source_regions_.scalar_flux_new(0));
-      fmt::print(
-        "flux begin: {:.3e} external source: {:.3e} volume: {:.3e} volume_sq: "
-        "{:.3e} material: {} external source present: {} after flux: {:.3e}\n",
-        source_regions_.scalar_flux_new(sr, g),
-        source_regions_.external_source(sr, g), volume,
-        source_regions_.volume_sq(sr), material,
-        source_regions_.external_source_present(sr), val);
-    }
-
     source_regions_.scalar_flux_new(sr, g) /= volume;
     source_regions_.scalar_flux_new(sr, g) +=
       0.5f * source_regions_.external_source(sr, g) *
@@ -253,41 +230,9 @@ void FlatSourceDomain::set_flux_to_source(int64_t sr, int g)
 int64_t FlatSourceDomain::add_source_to_scalar_flux()
 {
   int64_t n_hits = 0;
-
   double inverse_batch = 1.0 / simulation::current_batch;
-  int64_t n_small = 0;
 
-  double total_volume = 0.0;
-  double unintegrated_volume = 0.0;
-
-#pragma omp parallel for reduction(                                            \
-    + : total_volume, unintegrated_volume, n_hits, n_small)
-  for (int64_t sr = 0; sr < n_source_regions(); sr++) {
-    double volume = source_regions_.volume(sr);
-    double volume_iteration = source_regions_.volume_naive(sr);
-    total_volume += volume;
-    if (volume_iteration == 0.0) {
-      unintegrated_volume += volume;
-    } else {
-      n_hits++;
-    }
-    if (source_regions_.is_small(sr)) {
-      n_small++;
-    }
-  }
-
-  fmt::print("total_volume: {} Percent Unintegrated: {:.4f}% Percent Small: "
-             "{:.4f}% Missed: {:.4f}  Missed - Small = {:.4f}%\n",
-    total_volume, 100.0 * unintegrated_volume / total_volume,
-    100.0 * n_small / n_source_regions(),
-    100.0 - (100.0 * n_hits / n_source_regions()),
-    100.0 * (n_source_regions() - n_hits) / n_source_regions() -
-      100.0 * n_small / n_source_regions());
-
-  n_small = 0;
-  n_hits = 0;
-
-#pragma omp parallel for reduction(+ : n_hits, n_small)
+#pragma omp parallel for reduction(+ : n_hits)
   for (int64_t sr = 0; sr < n_source_regions(); sr++) {
 
     double volume_simulation_avg = source_regions_.volume(sr);
@@ -299,15 +244,12 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
     }
 
     // Set the SR to small status if its expected number of hits
-    // per iteration is less than 1.0
-    if (source_regions_.n_hits(sr) * inverse_batch < 1.5) {
+    // per iteration is less than 1.5
+    const double min_hits_per_batch = 1.5;
+    if (source_regions_.n_hits(sr) * inverse_batch < min_hits_per_batch) {
       source_regions_.is_small(sr) = 1;
-      // n_small++;
     } else {
       source_regions_.is_small(sr) = 0;
-    }
-    if (source_regions_.is_small(sr) == 1) {
-      n_small++;
     }
 
     // The volume treatment depends on the volume estimator type
@@ -333,16 +275,6 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
     }
 
     for (int g = 0; g < negroups_; g++) {
-      if (!std::isfinite(source_regions_.scalar_flux_new(sr, g))) {
-        int material = source_regions_.material(sr);
-        fmt::print("BEGIN sr: {} g: {} scalar_flux_new: {} volume avg: {:.3e} "
-                   "volume iteration: {:.3e} material: {}\n",
-          sr, g, source_regions_.scalar_flux_new(sr, g), volume_simulation_avg,
-          volume_iteration, material);
-        fatal_error(
-          "BEGIN Encountered non-finite scalar flux in add src to scalar "
-          "flux");
-      }
       // There are three scenarios we need to consider:
       if (volume_iteration > 0.0) {
         // 1. If the FSR was hit this iteration, then the new flux is equal to
@@ -371,7 +303,6 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
       }
     }
   }
-  fmt::print("n_small: {}\n", n_small);
 
   // Return the number of source regions that were hit this iteration
   return n_hits;
@@ -486,8 +417,6 @@ void FlatSourceDomain::convert_source_regions_to_tallies()
 
   // Tracks if we've generated a mapping yet for all source regions.
   bool all_source_regions_mapped = true;
-
-  fmt::print("Converting source regions to tallies...\n");
 
 // Attempt to generate mapping for all source regions
 #pragma omp parallel for
@@ -794,42 +723,6 @@ double FlatSourceDomain::evaluate_flux_at_point(
 // is checked and flipped if necessary.
 void FlatSourceDomain::output_to_vtk() const
 {
-  // Plot the max and min flat source values
-  double max_flux = 0.0;
-  double min_flux = 1.0e20;
-  int64_t n_neg = 0;
-  double neg_vol = 0.0;
-  double tot_vol = 0.0;
-  int64_t n_void = 0;
-  int64_t n_small = 0;
-  for (int64_t sr = 0; sr < n_source_regions(); sr++) {
-
-    for (int g = 0; g < negroups_; g++) {
-      double flux = source_regions_.scalar_flux_final(sr, g);
-      if (flux > max_flux) {
-        max_flux = flux;
-      }
-      if (flux < min_flux && flux > 0.0) {
-        min_flux = flux;
-      }
-      if (flux < 0.0) {
-        n_neg++;
-        neg_vol += source_regions_.volume(sr);
-        if (source_regions_.material(sr) == MATERIAL_VOID) {
-          n_void++;
-        }
-        if (source_regions_.is_small(sr)) {
-          n_small++;
-        }
-      }
-      tot_vol += source_regions_.volume(sr);
-    }
-  }
-  fmt::print("Max flux: {:.3e} Min flux: {:.3e} # Negative fluxes: {} "
-             "Fractional Neg Volume: {:.3e} Fraction neg void: {:.3e} Fraction "
-             "neg small: {:.3e}\n",
-    max_flux, min_flux, n_neg, neg_vol / tot_vol, 1.0 * n_void / n_neg,
-    1.0 * n_small / n_neg);
 
   // Rename .h5 plot filename(s) to .vtk filenames
   for (int p = 0; p < model::plots.size(); p++) {
@@ -912,24 +805,20 @@ void FlatSourceDomain::output_to_vtk() const
           int i_cell = p.lowest_coord().cell;
           int64_t sr = source_region_offsets_[i_cell] + p.cell_instance();
           if (RandomRay::mesh_subdivision_enabled_) {
-            if (sr >= base_source_regions_.n_source_regions() || sr < 0)
-              fmt::print("Base sr = {}\n", sr);
-            if (RandomRay::mesh_subdivision_enabled_) {
-              int mesh_idx = base_source_regions_.mesh(sr);
-              int mesh_bin;
-              if (mesh_idx == C_NONE) {
-                mesh_bin = 0;
-              } else {
-                Mesh* mesh = model::meshes[mesh_idx].get();
-                mesh_bin = mesh->get_bin(p.r());
-              }
-              SourceRegionKey sr_key {sr, mesh_bin};
-              auto it = source_region_map_.find(sr_key);
-              if (it != source_region_map_.end()) {
-                sr = it->second;
-              } else {
-                sr = -1;
-              }
+            int mesh_idx = base_source_regions_.mesh(sr);
+            int mesh_bin;
+            if (mesh_idx == C_NONE) {
+              mesh_bin = 0;
+            } else {
+              Mesh* mesh = model::meshes[mesh_idx].get();
+              mesh_bin = mesh->get_bin(p.r());
+            }
+            SourceRegionKey sr_key {sr, mesh_bin};
+            auto it = source_region_map_.find(sr_key);
+            if (it != source_region_map_.end()) {
+              sr = it->second;
+            } else {
+              sr = -1;
             }
           }
 
@@ -943,7 +832,6 @@ void FlatSourceDomain::output_to_vtk() const
             weight_windows[z * Ny * Nx + y * Nx + x] = weight;
             if (weight < min_weight)
               min_weight = weight;
-            // fmt::print("Weight window = {}\n", weight);
           }
         }
       }
@@ -1063,7 +951,7 @@ void FlatSourceDomain::output_to_vtk() const
       }
     }
 
-    // Plot ww data
+    // Plot weight window data
     float min = 1.0e20;
     float max = -1.0e20;
 
@@ -1072,11 +960,8 @@ void FlatSourceDomain::output_to_vtk() const
       std::fprintf(plot, "LOOKUP_TABLE default\n");
       for (int i = 0; i < Nx * Ny * Nz; i++) {
         float weight = weight_windows[i];
-
         if (weight == 0.0)
           weight = min_weight;
-        if (weight == 0.0)
-          fmt::print("Zero ww at i = {}\n", i);
         if (weight < min)
           min = weight;
         if (weight > max)
@@ -1272,30 +1157,13 @@ void FlatSourceDomain::set_adjoint_sources(const vector<double>& forward_flux)
   // Set the external source to 1/forward_flux
   // The forward flux is given in terms of total for the forward simulation
   // so we must convert it to a "per batch" quantity
-  int64_t n_pos_src = 0;
-  double min = 1.0e20;
-  double max = -1.0e20;
-  double min_inv = 1.0e20;
-  double max_inv = -1.0e20;
-  // #pragma omp parallel for reduction(+: n_pos_src)
+
+#pragma omp parallel for
   for (int64_t sr = 0; sr < n_source_regions(); sr++) {
     for (int g = 0; g < negroups_; g++) {
       float flux = forward_flux[sr * negroups_ + g];
       if (flux > 0.0) {
         source_regions_.external_source(sr, g) = 1.0 / flux;
-        n_pos_src++;
-        if (flux < min) {
-          min = flux;
-        }
-        if (flux > max) {
-          max = flux;
-        }
-        if (1.0 / flux < min_inv) {
-          min_inv = 1.0 / flux;
-        }
-        if (1.0 / flux > max_inv) {
-          max_inv = 1.0 / flux;
-        }
       } else {
         source_regions_.external_source(sr, g) = 0.0;
       }
@@ -1304,10 +1172,6 @@ void FlatSourceDomain::set_adjoint_sources(const vector<double>& forward_flux)
       }
     }
   }
-  fmt::print("N positive src elements {} of {} ({:.3f}%)\n", n_pos_src,
-    n_source_elements(), 100.0 * n_pos_src / n_source_elements());
-  fmt::print("Forward flux min {:.2e} max {:.2e}\n", min, max);
-  fmt::print("Inverse flux min {:.2e} max {:.2e}\n", min_inv, max_inv);
 
   // Divide the fixed source term by sigma t (to save time when applying each
   // iteration)
@@ -1322,8 +1186,6 @@ void FlatSourceDomain::set_adjoint_sources(const vector<double>& forward_flux)
       source_regions_.external_source(sr, g) /= sigma_t;
     }
   }
-  // output_to_vtk();
-  // exit(0);
 }
 
 void FlatSourceDomain::transpose_scattering_matrix()
@@ -1396,11 +1258,7 @@ void FlatSourceDomain::apply_mesh_to_cell_and_children(int32_t i_cell,
     apply_mesh_to_cell_instances(
       i_cell, mesh_idx, target_material_id, instances, is_target_void);
   } else if (target_material_id == C_NONE && !is_target_void) {
-    // printf("cell id %d, n instances %d\n", cell.id_, cell.n_instances_);
     for (int j = 0; j < cell.n_instances_; j++) {
-      //   printf(
-      //     "getting contained cells for cell id %d instance %d\n", cell.id_,
-      //     j);
       std::unordered_map<int32_t, vector<int32_t>> cell_instance_list =
         cell.get_contained_cells(j, nullptr);
       for (const auto& pair : cell_instance_list) {
@@ -1541,8 +1399,7 @@ SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
   int gs_i_cell = gs.lowest_coord().cell;
   int64_t sr_found = source_region_offsets_[gs_i_cell] + gs.cell_instance();
   if (sr_found != sr) {
-    warning("Source Region Numerical Artifact Detected...");
-
+    // warning("Source Region Numerical Artifact Detected...");
     discovered_source_regions_.unlock(sr_key);
     SourceRegionHandle handle;
     handle.is_numerical_fp_artifact_ = true;
@@ -1562,7 +1419,7 @@ SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
     Mesh* mesh = model::meshes[mesh_idx].get();
     int bin_found = mesh->get_bin(r + TINY_BIT * u);
     if (bin_found != mesh_bin) {
-      warning("Mesh Bin Numerical Artifact Detected...");
+      // warning("Mesh Bin Numerical Artifact Detected...");
       discovered_source_regions_.unlock(sr_key);
       SourceRegionHandle handle;
       handle.is_numerical_fp_artifact_ = true;

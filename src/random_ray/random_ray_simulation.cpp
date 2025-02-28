@@ -75,7 +75,6 @@ void openmc_run_random_ray()
     double source_normalization_factor =
       sim.domain()->compute_fixed_source_normalization_factor() /
       (settings::n_batches - settings::n_inactive);
-    fmt::print("Source Normalization Factor: {}\n", source_normalization_factor);
 
 #pragma omp parallel for
     for (uint64_t i = 0; i < forward_flux.size(); i++) {
@@ -533,7 +532,6 @@ void RandomRaySimulation::output_simulation_results() const
 void RandomRaySimulation::instability_check(
   int64_t n_hits, double k_eff, double& avg_miss_rate) const
 {
-  fmt::print("Num Source Regions: {}\n", domain_->n_source_regions());
   double percent_missed = ((domain_->n_source_regions() - n_hits) /
                             static_cast<double>(domain_->n_source_regions())) *
                           100.0;

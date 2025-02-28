@@ -1059,13 +1059,13 @@ emitted photon.
 
 .. _anomalous scattering: http://pd.chem.ucl.ac.uk/pdnn/diff1/anomscat.htm
 
-.. _Kahn's rejection method: https://laws.lanl.gov/vhosts/mcnp.lanl.gov/pdf_files/aecu-3259_kahn.pdf
+.. _Kahn's rejection method: https://mcnp.lanl.gov/pdf_files/TechReport_1956_RC_AECU-3259RM-1237-AEC_Kahn.pdf
 
 .. _Klein-Nishina: https://en.wikipedia.org/wiki/Klein%E2%80%93Nishina_formula
 
-.. _LA-UR-04-0487: https://laws.lanl.gov/vhosts/mcnp.lanl.gov/pdf_files/la-ur-04-0487.pdf
+.. _LA-UR-04-0487: https://mcnp.lanl.gov/pdf_files/TechReport_2004_LANL_LA-UR-04-0487_Sood.pdf
 
-.. _LA-UR-04-0488: https://laws.lanl.gov/vhosts/mcnp.lanl.gov/pdf_files/la-ur-04-0488.pdf
+.. _LA-UR-04-0488: https://mcnp.lanl.gov/pdf_files/TechReport_2004_LANL_LA-UR-04-0488_SoodWhite.pdf
 
 .. _Kaltiaisenaho: https://aaltodoc.aalto.fi/bitstream/handle/123456789/21004/master_Kaltiaisenaho_Toni_2016.pdf
 

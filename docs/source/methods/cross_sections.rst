@@ -295,11 +295,11 @@ or even isotropic scattering.
 .. _Josey: https://doi.org/10.1016/j.jcp.2015.08.013
 .. _WMP Library: https://github.com/mit-crpg/WMP_Library
 .. _MCNP: https://mcnp.lanl.gov
-.. _Serpent: http://montecarlo.vtt.fi
+.. _Serpent: https://serpent.vtt.fi/serpent/
 .. _NJOY: https://www.njoy21.io/NJOY21/
 .. _ENDF/B data: https://www.nndc.bnl.gov/endf-b8.0/
 .. _Leppanen: https://doi.org/10.1016/j.anucene.2009.03.019
-.. _algorithms: http://ab-initio.mit.edu/wiki/index.php/Faddeeva_Package
+.. _algorithms: http://ab-initio.mit.edu/faddeeva/
 .. _NCrystal: https://github.com/mctools/ncrystal
 .. _NCrystal paper: https://doi.org/10.1016/j.cpc.2019.07.015
 .. _using plugins: https://doi.org/10.1016/j.cpc.2021.108082

@@ -12,7 +12,7 @@ responsible for specifying one or more of the following:
   file (commonly named ``cross_sections.xml``) contains a listing of other data
   files, in particular neutron cross sections, photon cross sections, and
   windowed multipole data. Each of those files, in turn, uses a `HDF5
-  <https://support.hdfgroup.org/HDF5/>`_ format (see :ref:`io_nuclear_data`). In
+  <https://support.hdfgroup.org/documentation/index.html>`_ format (see :ref:`io_nuclear_data`). In
   order to run transport simulations with continuous-energy cross sections, you
   need to specify this file.
 
@@ -291,7 +291,7 @@ distributed with any pre-existing multigroup cross section libraries. However,
 if a multigroup library file is downloaded or generated, the path to the file
 needs to be specified as described in :ref:`usersguide_data_runtime`. For an
 example of how to create a multigroup library, see the `example notebook
-<../examples/mg-mode-part-i.ipynb>`__.
+<https://nbviewer.org/github/openmc-dev/openmc-notebooks/blob/main/mgxs-part-i.ipynb>`_.
 
 .. _NJOY: http://www.njoy21.io/
 .. _NNDC: https://www.nndc.bnl.gov/endf

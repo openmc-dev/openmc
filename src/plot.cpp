@@ -1509,8 +1509,9 @@ void RayTracePlot::set_field_of_view(pugi::xml_node node)
     if (fov < 180.0 && fov > 0.0) {
       horizontal_field_of_view_ = fov;
     } else {
-      fatal_error(fmt::format(
-        "Horizontal field of view for plot {} out-of-range. Must be in (0, 180) degrees.", id()));
+      fatal_error(fmt::format("Horizontal field of view for plot {} "
+                              "out-of-range. Must be in (0, 180) degrees.",
+        id()));
     }
   }
 }

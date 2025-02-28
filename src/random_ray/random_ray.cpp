@@ -783,10 +783,9 @@ void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
     fatal_error("Unknown sample method for random ray transport.");
   }
 
-  //site.E = lower_bound_index(
-  //  data::mg.rev_energy_bins_.begin(), data::mg.rev_energy_bins_.end(), site.E);
-  //site.E = negroups_ - site.E - 1.;
-  site.E = 0;
+  site.E = lower_bound_index(
+    data::mg.rev_energy_bins_.begin(), data::mg.rev_energy_bins_.end(), site.E);
+  site.E = negroups_ - site.E - 1.;
   this->from_source(&site);
 
   // Locate ray

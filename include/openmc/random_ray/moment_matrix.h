@@ -83,17 +83,6 @@ public:
     return {a * rhs.x + b * rhs.y + c * rhs.z,
       b * rhs.x + d * rhs.y + e * rhs.z, c * rhs.x + e * rhs.y + f * rhs.z};
   }
-
-  // Returns a string representing the moment matrix
-  std::string to_string() const{
-    return fmt::format(
-      "[[{}, {}, {}], [{}, {}, {}], [{}, {}, {}]]", a, b, c, b, d, e, c, e, f);
-  }
-
-  double magnitude() const
-  {
-    return std::sqrt(a * a + 2 * b * b + 2 * c * c + d * d + 2 * e * e + f * f);
-  }
 };
 
 } // namespace openmc

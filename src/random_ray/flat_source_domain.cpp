@@ -723,7 +723,6 @@ double FlatSourceDomain::evaluate_flux_at_point(
 // is checked and flipped if necessary.
 void FlatSourceDomain::output_to_vtk() const
 {
-
   // Rename .h5 plot filename(s) to .vtk filenames
   for (int p = 0; p < model::plots.size(); p++) {
     PlottableInterface* plot = model::plots[p].get();

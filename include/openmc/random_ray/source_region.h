@@ -623,7 +623,6 @@ public:
   vector<double> volume_t_;
   vector<double> volume_sq_;
   vector<double> volume_sq_t_;
-
   vector<double> volume_naive_;
   vector<int> position_recorded_;
   vector<int> external_source_present_;

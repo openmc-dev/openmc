@@ -10,7 +10,7 @@ int64_t master_seed {1};
 // LCG parameters
 constexpr uint64_t prn_mult {6364136223846793005ULL}; // multiplication
 constexpr uint64_t prn_add {1442695040888963407ULL};  // additive factor, c
-uint64_t prn_stride {152917LL};
+uint64_t prn_stride {DEFAULT_STRIDE}; // stride between particles
 
 //==============================================================================
 // PRN

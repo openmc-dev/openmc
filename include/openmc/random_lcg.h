@@ -15,7 +15,7 @@ constexpr int STREAM_SOURCE {1};
 constexpr int STREAM_URR_PTABLE {2};
 constexpr int STREAM_VOLUME {3};
 constexpr int64_t DEFAULT_SEED {1};
-constexpr uint64_t DEFAULT_STRIDE {152917};
+constexpr uint64_t DEFAULT_STRIDE {152917ULL};
 
 //==============================================================================
 //! Generate a pseudo-random number using a linear congruential generator.

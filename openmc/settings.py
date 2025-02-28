@@ -175,7 +175,7 @@ class Settings:
     seed : int
         Seed for the linear congruential pseudorandom number generator
     stride : int
-        Number of random numbers allocated for each particle history
+        Number of random numbers allocated for each source particle history
     source : Iterable of openmc.SourceBase
         Distribution of source sites in space, angle, and energy
     sourcepoint : dict

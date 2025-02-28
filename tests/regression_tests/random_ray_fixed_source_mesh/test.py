@@ -44,5 +44,8 @@ def test_random_ray_fixed_source_mesh(shape):
         # working correctly with the mesh overlay logic
         model.settings.random_ray['source_shape'] = shape
 
-        harness = MGXSTestHarness('statepoint.10.h5', model)
+        model.settings.inactive = 15
+        model.settings.batches = 30
+
+        harness = MGXSTestHarness('statepoint.30.h5', model)
         harness.main()

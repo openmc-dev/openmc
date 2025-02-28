@@ -191,7 +191,7 @@
   </geometry>
   <settings>
     <run_mode>fixed source</run_mode>
-    <particles>90</particles>
+    <particles>400</particles>
     <batches>30</batches>
     <inactive>15</inactive>
     <source particle="neutron" strength="3.14" type="independent">
@@ -204,6 +204,21 @@
       </constraints>
     </source>
     <energy_mode>multi-group</energy_mode>
+    <weight_window_generators>
+      <weight_windows_generator>
+        <mesh>1</mesh>
+        <particle_type>neutron</particle_type>
+        <max_realizations>10</max_realizations>
+        <update_interval>1</update_interval>
+        <on_the_fly>true</on_the_fly>
+        <method>fw_cadis</method>
+      </weight_windows_generator>
+    </weight_window_generators>
+    <mesh id="1">
+      <dimension>15 15 15</dimension>
+      <lower_left>0.0 0.0 0.0</lower_left>
+      <upper_right>30.0 30.0 30.0</upper_right>
+    </mesh>
     <random_ray>
       <distance_active>500.0</distance_active>
       <distance_inactive>100.0</distance_inactive>
@@ -215,32 +230,11 @@
       <volume_normalized_flux_tallies>True</volume_normalized_flux_tallies>
       <source_region_meshes>
         <mesh id="1">
-          <domain id="1" type="universe"/>
-        </mesh>
-        <mesh id="2">
-          <domain id="2" type="cell"/>
-        </mesh>
-        <mesh id="3">
-          <domain id="3" type="material"/>
+          <domain id="6" type="universe"/>
         </mesh>
       </source_region_meshes>
       <source_shape>linear</source_shape>
     </random_ray>
-    <mesh id="1">
-      <dimension>24 24 24</dimension>
-      <lower_left>0.0 0.0 0.0</lower_left>
-      <upper_right>30.0 30.0 30.0</upper_right>
-    </mesh>
-    <mesh id="2">
-      <dimension>36 36 36</dimension>
-      <lower_left>0.0 0.0 0.0</lower_left>
-      <upper_right>30.0 30.0 30.0</upper_right>
-    </mesh>
-    <mesh id="3">
-      <dimension>30 30 30</dimension>
-      <lower_left>0.0 0.0 0.0</lower_left>
-      <upper_right>30.0 30.0 30.0</upper_right>
-    </mesh>
   </settings>
   <tallies>
     <filter id="3" type="material">

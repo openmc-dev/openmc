@@ -1,7 +1,9 @@
 import os
 
 import openmc
+from openmc.utility_funcs import change_directory
 from openmc.examples import random_ray_three_region_cube
+import pytest
 
 from tests.testing_harness import WeightWindowPyAPITestHarness
 
@@ -14,27 +16,34 @@ class MGXSTestHarness(WeightWindowPyAPITestHarness):
             os.remove(f)
 
 
-def test_weight_windows_fw_cadis_mesh():
-    model = random_ray_three_region_cube()
+@pytest.mark.parametrize("shape", ["flat", "linear"])
+def test_weight_windows_fw_cadis_mesh(shape):
+    with change_directory(shape):
+        openmc.reset_auto_ids()
 
-    # The base model has a resolution of 12, so we overlay
-    # something else for FW-CADIS
-    n = 15
-    width = 30.0
-    ww_mesh = openmc.RegularMesh()
-    ww_mesh.dimension = (n, n, n)
-    ww_mesh.lower_left = (0.0, 0.0, 0.0)
-    ww_mesh.upper_right = (width, width, width)
+        model = random_ray_three_region_cube()
 
-    wwg = openmc.WeightWindowGenerator(
-        method="fw_cadis", mesh=ww_mesh, max_realizations=model.settings.batches)
-    model.settings.weight_window_generators = wwg
-    model.settings.random_ray['volume_estimator'] = 'naive'
-    
-    root = model.geometry.root_universe
-    model.settings.random_ray['source_region_meshes'] = [(ww_mesh, [root])]
+        # The base model has a resolution of 12, so we overlay
+        # something else for FW-CADIS
+        n = 15
+        width = 30.0
+        ww_mesh = openmc.RegularMesh()
+        ww_mesh.dimension = (n, n, n)
+        ww_mesh.lower_left = (0.0, 0.0, 0.0)
+        ww_mesh.upper_right = (width, width, width)
 
-    model.settings.particles = 400
+        wwg = openmc.WeightWindowGenerator(
+            method="fw_cadis", mesh=ww_mesh, max_realizations=model.settings.batches)
+        model.settings.weight_window_generators = wwg
+        
+        root = model.geometry.root_universe
+        model.settings.random_ray['source_region_meshes'] = [(ww_mesh, [root])]
 
-    harness = MGXSTestHarness('statepoint.10.h5', model)
-    harness.main()
+        model.settings.particles = 400
+        model.settings.batches = 30
+        model.settings.inactive = 15
+
+        model.settings.random_ray['source_shape'] = shape
+
+        harness = MGXSTestHarness('statepoint.30.h5', model)
+        harness.main()

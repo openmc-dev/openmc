@@ -238,7 +238,7 @@ based on the recommended value in LA-UR-14-24530_.
 
   .. note:: This element is not used in the multi-group :ref:`energy_mode`.
 
-.. _LA-UR-14-24530: https://laws.lanl.gov/vhosts/mcnp.lanl.gov/pdf_files/la-ur-14-24530.pdf
+.. _LA-UR-14-24530: https://mcnp.lanl.gov/pdf_files/TechReport_2014_LANL_LA-UR-14-24530_Brown.pdf
 
 ---------------------------
 ``<material_cell_offsets>``

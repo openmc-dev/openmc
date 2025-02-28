@@ -110,8 +110,8 @@ int openmc_mesh_get_id(int32_t index, int32_t* id);
 int openmc_mesh_set_id(int32_t index, int32_t id);
 int openmc_mesh_get_n_elements(int32_t index, size_t* n);
 int openmc_mesh_get_volumes(int32_t index, double* volumes);
-int openmc_mesh_material_volumes(int32_t index, int n_sample, int bin,
-  int result_size, void* result, int* hits, uint64_t* seed);
+int openmc_mesh_material_volumes(int32_t index, int nx, int ny, int nz,
+  int max_mats, int32_t* materials, double* volumes);
 int openmc_meshsurface_filter_get_mesh(int32_t index, int32_t* index_mesh);
 int openmc_meshsurface_filter_set_mesh(int32_t index, int32_t index_mesh);
 int openmc_new_filter(const char* type, int32_t* index);

@@ -16,5 +16,7 @@ class MGXSTestHarness(TolerantPyAPITestHarness):
 def test_random_ray_adjoint_fixed_source():
     model = random_ray_three_region_cube()
     model.settings.random_ray['adjoint'] = True
+    model.settings.random_ray['volume_estimator'] = 'naive'
+    model.settings.particles = 500
     harness = MGXSTestHarness('statepoint.10.h5', model)
     harness.main()

@@ -192,8 +192,8 @@
   <settings>
     <run_mode>fixed source</run_mode>
     <particles>400</particles>
-    <batches>10</batches>
-    <inactive>5</inactive>
+    <batches>30</batches>
+    <inactive>15</inactive>
     <source particle="neutron" strength="3.14" type="independent">
       <energy type="discrete">
         <parameters>100.0 1.0</parameters>
@@ -228,12 +228,12 @@
         </space>
       </source>
       <volume_normalized_flux_tallies>True</volume_normalized_flux_tallies>
-      <volume_estimator>naive</volume_estimator>
       <source_region_meshes>
         <mesh id="1">
           <domain id="6" type="universe"/>
         </mesh>
       </source_region_meshes>
+      <source_shape>flat</source_shape>
     </random_ray>
   </settings>
   <tallies>

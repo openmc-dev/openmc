@@ -374,9 +374,8 @@ class Model:
 
         # Check if the model is DAGMC
         universes = self.geometry.get_all_universes()
-        is_dagmc = any(isinstance(u, openmc.DAGMCUniverse) for u in universes.values())
 
-        if is_dagmc:
+        if any(isinstance(u, openmc.DAGMCUniverse) for u in universes.values()):
             if self.materials:
                 materials = {m.id: m for m in self.materials if m is not None}
         else:

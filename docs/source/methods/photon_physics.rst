@@ -1069,6 +1069,6 @@ emitted photon.
 
 .. _Kaltiaisenaho: https://aaltodoc.aalto.fi/bitstream/handle/123456789/21004/master_Kaltiaisenaho_Toni_2016.pdf
 
-.. _Salvat: https://www.oecd-nea.org/globalsearch/download.php?doc=77434
+.. _Salvat: https://doi.org/10.1787/32da5043-en
 
 .. _Sternheimer: https://doi.org/10.1103/PhysRevB.26.6067

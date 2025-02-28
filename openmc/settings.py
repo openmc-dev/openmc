@@ -50,15 +50,18 @@ class Settings:
         Indicate whether fission neutrons should be created or not.
     cutoff : dict
         Dictionary defining weight cutoff, energy cutoff and time cutoff. The
-        dictionary may have ten keys, 'weight', 'weight_avg', 'energy_neutron',
-        'energy_photon', 'energy_electron', 'energy_positron', 'time_neutron',
-        'time_photon', 'time_electron', and 'time_positron'. Value for 'weight'
-        should be a float indicating weight cutoff below which particle undergo
-        Russian roulette. Value for 'weight_avg' should be a float indicating
-        weight assigned to particles that are not killed after Russian roulette.
-        Value of energy should be a float indicating energy in eV below which
-        particle type will be killed. Value of time should be a float in
-        seconds. Particles will be killed exactly at the specified time.
+        dictionary may have the following keys, 'weight', 'weight_avg',
+        'survival_normalization', 'energy_neutron', 'energy_photon',
+        'energy_electron', 'energy_positron', 'time_neutron', 'time_photon',
+        'time_electron', and 'time_positron'. Value for 'weight' should be a
+        float indicating weight cutoff below which particle undergo Russian
+        roulette. Value for 'weight_avg' should be a float indicating weight
+        assigned to particles that are not killed after Russian roulette. Value
+        of energy should be a float indicating energy in eV below which particle
+        type will be killed. Value of time should be a float in seconds.
+        Particles will be killed exactly at the specified time. 'survival_normalization'
+        is a Boolean value indicating whether or not the weight cutoff parameters will
+        be applied relative to the particle's starting weight or to its current weight.
     delayed_photon_scaling : bool
         Indicate whether to scale the fission photon yield by (EGP + EGD)/EGP
         where EGP is the energy release of prompt photons and EGD is the energy
@@ -886,6 +889,8 @@ class Settings:
                 cv.check_type('average survival weight', cutoff[key], Real)
                 cv.check_greater_than('average survival weight',
                                       cutoff[key], 0.0)
+            elif key == 'survival_normalization':
+                cv.check_type('survival normalization', cutoff[key], bool)
             elif key in ['energy_neutron', 'energy_photon', 'energy_electron',
                          'energy_positron']:
                 cv.check_type('energy cutoff', cutoff[key], Real)
@@ -1773,11 +1778,15 @@ class Settings:
         if elem is not None:
             self.cutoff = {}
             for key in ('energy_neutron', 'energy_photon', 'energy_electron',
-                        'energy_positron', 'weight', 'weight_avg', 'time_neutron',
-                        'time_photon', 'time_electron', 'time_positron'):
+                        'energy_positron', 'weight', 'weight_avg', 'survival_normalization',
+                        'time_neutron', 'time_photon', 'time_electron',
+                        'time_positron'):
                 value = get_text(elem, key)
                 if value is not None:
-                    self.cutoff[key] = float(value)
+                    if key == 'survival_normalization':
+                        self.cutoff[key] = bool(value)
+                    else:
+                        self.cutoff[key] = float(value)
 
     def _entropy_mesh_from_xml_element(self, root, meshes):
         text = get_text(root, 'entropy_mesh')

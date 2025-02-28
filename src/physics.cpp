@@ -156,8 +156,8 @@ void sample_neutron_reaction(Particle& p)
     // if survival normalization is on, use normalized weight cutoff and
     // normalized weight survive
     if (settings::survival_normalization) {
-      if (p.wgt() < settings::weight_cutoff * p.wgt0()) {
-        russian_roulette(p, settings::weight_survive * p.wgt0());
+      if (p.wgt() < settings::weight_cutoff * p.wgt_born()) {
+        russian_roulette(p, settings::weight_survive * p.wgt_born());
       }
     } else if (p.wgt() < settings::weight_cutoff) {
       russian_roulette(p, settings::weight_survive);

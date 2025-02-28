@@ -896,8 +896,6 @@ class Settings:
                          'energy_positron']:
                 cv.check_type('energy cutoff', cutoff[key], Real)
                 cv.check_greater_than('energy cutoff', cutoff[key], 0.0)
-            elif key == 'survival_normalization':
-                cv.check_type('survival normalization', cutoff[key], bool)
             else:
                 msg = f'Unable to set cutoff to "{key}" which is unsupported ' \
                       'by OpenMC'

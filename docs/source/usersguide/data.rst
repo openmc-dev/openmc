@@ -296,7 +296,7 @@ example of how to create a multigroup library, see the `example notebook
 .. _NJOY: http://www.njoy21.io/
 .. _NNDC: https://www.nndc.bnl.gov/endf
 .. _MCNP: https://mcnp.lanl.gov
-.. _Serpent: http://montecarlo.vtt.fi
+.. _Serpent: https://serpent.vtt.fi/serpent/
 .. _ENDF/B: https://www.nndc.bnl.gov/endf-b7.1/acefiles.html
 .. _JEFF: https://www.oecd-nea.org/dbdata/jeff/jeff33/
 .. _TENDL: https://tendl.web.psi.ch/tendl_2017/tendl2017.html

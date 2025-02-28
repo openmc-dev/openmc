@@ -59,9 +59,10 @@ class Settings:
         assigned to particles that are not killed after Russian roulette. Value
         of energy should be a float indicating energy in eV below which particle
         type will be killed. Value of time should be a float in seconds.
-        Particles will be killed exactly at the specified time. 'survival_normalization'
-        is a Boolean value indicating whether or not the weight cutoff parameters will
-        be applied relative to the particle's starting weight or to its current weight.
+        Particles will be killed exactly at the specified time. Value for
+        'survival_normalization' is a bool indicating whether or not the weight
+        cutoff parameters will be applied relative to the particle's starting
+        weight or to its current weight.
     delayed_photon_scaling : bool
         Indicate whether to scale the fission photon yield by (EGP + EGD)/EGP
         where EGP is the energy release of prompt photons and EGD is the energy
@@ -165,20 +166,20 @@ class Settings:
             'naive', 'simulation_averaged', or 'hybrid'.
             The default is 'hybrid'.
         :source_shape:
-            Assumed shape of the source distribution within each source
-            region. Options are 'flat' (default), 'linear', or 'linear_xy'.
+            Assumed shape of the source distribution within each source region.
+            Options are 'flat' (default), 'linear', or 'linear_xy'.
         :volume_normalized_flux_tallies:
-            Whether to normalize flux tallies by volume (bool). The default
-            is 'False'. When enabled, flux tallies will be reported in units of
-            cm/cm^3. When disabled, flux tallies will be reported in units
-            of cm (i.e., total distance traveled by neutrons in the spatial
-            tally region).
+            Whether to normalize flux tallies by volume (bool). The default is
+            'False'. When enabled, flux tallies will be reported in units of
+            cm/cm^3. When disabled, flux tallies will be reported in units of cm
+            (i.e., total distance traveled by neutrons in the spatial tally
+            region).
         :adjoint:
             Whether to run the random ray solver in adjoint mode (bool). The
             default is 'False'.
         :sample_method:
-            Sampling method for the ray starting location and direction of travel.
-            Options are `prng` (default) or 'halton`.
+            Sampling method for the ray starting location and direction of
+            travel. Options are `prng` (default) or 'halton`.
 
         .. versionadded:: 0.15.0
     resonance_scattering : dict
@@ -895,6 +896,8 @@ class Settings:
                          'energy_positron']:
                 cv.check_type('energy cutoff', cutoff[key], Real)
                 cv.check_greater_than('energy cutoff', cutoff[key], 0.0)
+            elif key == 'survival_normalization':
+                cv.check_type('survival normalization', cutoff[key], bool)
             else:
                 msg = f'Unable to set cutoff to "{key}" which is unsupported ' \
                       'by OpenMC'
@@ -1351,7 +1354,8 @@ class Settings:
             element = ET.SubElement(root, "cutoff")
             for key, value in self._cutoff.items():
                 subelement = ET.SubElement(element, key)
-                subelement.text = str(value)
+                subelement.text = str(value) if key != 'survival_normalization' \
+                    else str(value).lower()
 
     def _create_entropy_mesh_subelement(self, root, mesh_memo=None):
         if self.entropy_mesh is None:
@@ -1778,13 +1782,13 @@ class Settings:
         if elem is not None:
             self.cutoff = {}
             for key in ('energy_neutron', 'energy_photon', 'energy_electron',
-                        'energy_positron', 'weight', 'weight_avg', 'survival_normalization',
-                        'time_neutron', 'time_photon', 'time_electron',
-                        'time_positron'):
+                        'energy_positron', 'weight', 'weight_avg', 'time_neutron',
+                        'time_photon', 'time_electron', 'time_positron',
+                        'survival_normalization'):
                 value = get_text(elem, key)
                 if value is not None:
                     if key == 'survival_normalization':
-                        self.cutoff[key] = bool(value)
+                        self.cutoff[key] = value in ('true', '1')
                     else:
                         self.cutoff[key] = float(value)
 

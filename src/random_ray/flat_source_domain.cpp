@@ -54,9 +54,6 @@ FlatSourceDomain::FlatSourceDomain() : negroups_(data::mg.num_energy_groups_)
   source_regions_.assign(
     base_source_regions, SourceRegion(negroups_, is_linear));
 
-  fmt::print(
-    "finished making base source regions. is_linear = {}\n", is_linear);
-
   // Initialize materials
   int64_t source_region_id = 0;
   for (int i = 0; i < model::cells.size(); i++) {
@@ -106,10 +103,6 @@ void FlatSourceDomain::batch_reset()
 
 #pragma omp parallel for
   for (int64_t se = 0; se < n_source_elements(); se++) {
-    if (se == 0) {
-      fmt::print(
-        "setting flux {:.3e} to zero\n", source_regions_.scalar_flux_new(se));
-    }
     source_regions_.scalar_flux_new(se) = 0.0;
   }
 }
@@ -221,7 +214,7 @@ void FlatSourceDomain::set_flux_to_flux_plus_source(
     double val = source_regions_.scalar_flux_new(sr, g) / volume +
                  0.5 * source_regions_.external_source(sr, g) *
                    source_regions_.volume_sq(sr);
-    if (!std::isfinite(val) || (sr == 0 && g == 0)) {
+    if (!std::isfinite(val)) {
       fmt::print("first flux inside add src subunit: {:.3e}\n",
         source_regions_.scalar_flux_new(0));
       fmt::print(
@@ -231,9 +224,6 @@ void FlatSourceDomain::set_flux_to_flux_plus_source(
         source_regions_.external_source(sr, g), volume,
         source_regions_.volume_sq(sr), material,
         source_regions_.external_source_present(sr), val);
-      // fatal_error("Encountered non-finite scalar flux in set flux to flux
-      // plus "
-      //            "source");
     }
 
     source_regions_.scalar_flux_new(sr, g) /= volume;
@@ -244,12 +234,6 @@ void FlatSourceDomain::set_flux_to_flux_plus_source(
     double sigma_t = sigma_t_[source_regions_.material(sr) * negroups_ + g];
     source_regions_.scalar_flux_new(sr, g) /= (sigma_t * volume);
     source_regions_.scalar_flux_new(sr, g) += source_regions_.source(sr, g);
-  }
-  if (sr == 0 && g == 0) {
-    fmt::print(
-      "new scalar flux 0 idx = {:.3e}\n", source_regions_.scalar_flux_new(0));
-    fmt::print("new scalar flux sr, g idx = {:.3e}\n",
-      source_regions_.scalar_flux_new(sr, g));
   }
 }
 
@@ -276,7 +260,6 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
   double total_volume = 0.0;
   double unintegrated_volume = 0.0;
 
-  /*
 #pragma omp parallel for reduction(                                            \
     + : total_volume, unintegrated_volume, n_hits, n_small)
   for (int64_t sr = 0; sr < n_source_regions(); sr++) {
@@ -292,7 +275,7 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
       n_small++;
     }
   }
-    */
+
   fmt::print("total_volume: {} Percent Unintegrated: {:.4f}% Percent Small: "
              "{:.4f}% Missed: {:.4f}  Missed - Small = {:.4f}%\n",
     total_volume, 100.0 * unintegrated_volume / total_volume,
@@ -304,10 +287,7 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
   n_small = 0;
   n_hits = 0;
 
-  // First flux
-  fmt::print("First flux value in add src: {:.3e}\n",
-    source_regions_.scalar_flux_new(0));
-  // #pragma omp parallel for reduction(+ : n_hits, n_small)
+#pragma omp parallel for reduction(+ : n_hits, n_small)
   for (int64_t sr = 0; sr < n_source_regions(); sr++) {
 
     double volume_simulation_avg = source_regions_.volume(sr);
@@ -329,10 +309,6 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
     if (source_regions_.is_small(sr) == 1) {
       n_small++;
     }
-
-    if (sr == 0)
-      fmt::print("Now in the loop flux value in add src: {:.3e}\n",
-        source_regions_.scalar_flux_new(0));
 
     // The volume treatment depends on the volume estimator type
     // and whether or not an external source is present in the cell.
@@ -373,16 +349,7 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
         // the flat source from the previous iteration plus the contributions
         // from rays passing through the source region (computed during the
         // transport sweep)
-        if (sr == 0 && g == 0)
-          fmt::print("setting flux to flux plus source. BEFORE: {:.3e}\n",
-            source_regions_.scalar_flux_new(sr, g));
-        // set_flux_to_flux_plus_source(sr, volume, g);
-        FlatSourceDomain::set_flux_to_flux_plus_source(sr, volume, g);
-        if (sr == 0 && g == 0) {
-        fmt::print("setting flux to flux plus source. AFTER: {:.3e}\n",
-          source_regions_.scalar_flux_new(sr, g));
-        fmt::print("POINTER VALUE AFTER SETTING: {}\n", reinterpret_cast<uint64_t> (&source_regions_.scalar_flux_new(sr, g)));
-        }
+        set_flux_to_flux_plus_source(sr, volume, g);
       } else if (volume_simulation_avg > 0.0) {
         // 2. If the FSR was not hit this iteration, but has been hit some
         // previous iteration, then we need to make a choice about what
@@ -398,31 +365,13 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
         // is going to be trivial when the miss rate is a few percent or less.
         if (source_regions_.external_source_present(sr) && !adjoint_) {
           set_flux_to_old_flux(sr, g);
-          if (sr == 0 && g == 0)
-            fmt::print("setting flux to old flux\n");
         } else {
           set_flux_to_source(sr, g);
-          if (sr == 0 && g == 0)
-            fmt::print("setting flux to source\n");
         }
-      }
-      // If the FSR was not hit this iteration, and it has never been hit in
-      // any iteration (i.e., volume is zero), then we want to set this to 0
-      // to avoid dividing anything by a zero volume. This happens implicitly
-      // given that the new scalar flux arrays are set to zero each iteration.
-      if (!std::isfinite(source_regions_.scalar_flux_new(sr, g))) {
-        int material = source_regions_.material(sr);
-        fmt::print("sr: {} g: {} scalar_flux_new: {} volume avg: {:.3e} "
-                   "volume iteration: {:.3e} material: {}\n",
-          sr, g, source_regions_.scalar_flux_new(sr, g), volume_simulation_avg,
-          volume_iteration, material);
-        fatal_error("Encountered non-finite scalar flux in add src to scalar "
-                    "flux");
       }
     }
   }
   fmt::print("n_small: {}\n", n_small);
-  fmt::print("POINTER VALUE AND END OF ADD SRC: {}\n", reinterpret_cast<uint64_t> (&source_regions_.scalar_flux_new(0)));
 
   // Return the number of source regions that were hit this iteration
   return n_hits;
@@ -845,6 +794,43 @@ double FlatSourceDomain::evaluate_flux_at_point(
 // is checked and flipped if necessary.
 void FlatSourceDomain::output_to_vtk() const
 {
+  // Plot the max and min flat source values
+  double max_flux = 0.0;
+  double min_flux = 1.0e20;
+  int64_t n_neg = 0;
+  double neg_vol = 0.0;
+  double tot_vol = 0.0;
+  int64_t n_void = 0;
+  int64_t n_small = 0;
+  for (int64_t sr = 0; sr < n_source_regions(); sr++) {
+
+    for (int g = 0; g < negroups_; g++) {
+      double flux = source_regions_.scalar_flux_final(sr, g);
+      if (flux > max_flux) {
+        max_flux = flux;
+      }
+      if (flux < min_flux && flux > 0.0) {
+        min_flux = flux;
+      }
+      if (flux < 0.0) {
+        n_neg++;
+        neg_vol += source_regions_.volume(sr);
+        if (source_regions_.material(sr) == MATERIAL_VOID) {
+          n_void++;
+        }
+        if (source_regions_.is_small(sr)) {
+          n_small++;
+        }
+      }
+      tot_vol += source_regions_.volume(sr);
+    }
+  }
+  fmt::print("Max flux: {:.3e} Min flux: {:.3e} # Negative fluxes: {} "
+             "Fractional Neg Volume: {:.3e} Fraction neg void: {:.3e} Fraction "
+             "neg small: {:.3e}\n",
+    max_flux, min_flux, n_neg, neg_vol / tot_vol, 1.0 * n_void / n_neg,
+    1.0 * n_small / n_neg);
+
   // Rename .h5 plot filename(s) to .vtk filenames
   for (int p = 0; p < model::plots.size(); p++) {
     PlottableInterface* plot = model::plots[p].get();
@@ -1607,9 +1593,6 @@ void FlatSourceDomain::finalize_discovered_source_regions()
   for (const auto& it : discovered_source_regions_) {
     const SourceRegionKey& sr_key = it.first;
     SourceRegion& sr = it.second;
-    if (sr.source_gradients_.size() != 2) {
-      fatal_error("pulling flat source region from parallel map");
-    }
 
     // Source regions are generated when a ray first crosses them. However,
     // if the new region is only crossed by an inactive (dead length) ray,

@@ -26,8 +26,6 @@ SourceRegion::SourceRegion(int negroups, bool is_linear)
   scalar_flux_final_.assign(negroups, 0.0);
 
   tally_task_.resize(negroups);
-  if( !is_linear)
-    fatal_error("flat source flag found even though this is linear source");
   if (is_linear) {
     source_gradients_.resize(negroups);
     flux_moments_old_.resize(negroups);
@@ -129,7 +127,6 @@ void SourceRegionContainer::push_back(const SourceRegion& sr)
 
   // Energy-dependent fields
   for (int g = 0; g < negroups_; ++g) {
-    fmt::print("Piushing back # fields\n");
     scalar_flux_old_.push_back(sr.scalar_flux_old_[g]);
     scalar_flux_new_.push_back(sr.scalar_flux_new_[g]);
     scalar_flux_final_.push_back(sr.scalar_flux_final_[g]);
@@ -140,7 +137,6 @@ void SourceRegionContainer::push_back(const SourceRegion& sr)
 
     // Only store these fields if is_linear_ is true
     if (is_linear_) {
-      fmt::print("Pushing back linear E fields\n");
       source_gradients_.push_back(sr.source_gradients_[g]);
       flux_moments_old_.push_back(sr.flux_moments_old_[g]);
       flux_moments_new_.push_back(sr.flux_moments_new_[g]);
@@ -204,14 +200,7 @@ void SourceRegionContainer::assign(
 
 void SourceRegionContainer::flux_swap()
 {
-  fmt::print("Before swap: scalar_flux_new[0]: {:.3e}\n", scalar_flux_new(0));
-  fmt::print("Before swap: scalar_flux_old[0]: {:.3e}\n", scalar_flux_old(0));
-
   scalar_flux_old_.swap(scalar_flux_new_);
-  fmt::print("After  swap: scalar_flux_new[0]: {:.3e}\n", scalar_flux_new(0));
-  fmt::print("After  swap: scalar_flux_old[0]: {:.3e}\n", scalar_flux_old(0));
-
-
   if (is_linear_) {
     flux_moments_old_.swap(flux_moments_new_);
   }
@@ -378,8 +367,6 @@ SourceRegionHandle SourceRegionContainer::get_source_region_handle(int64_t sr)
     handle.flux_moments_old_ = &flux_moments_old(sr, 0);
     handle.flux_moments_new_ = &flux_moments_new(sr, 0);
     handle.flux_moments_t_ = &flux_moments_t(sr, 0);
-  } else {
-    fatal_error("Handle not linear");
   }
 
   return handle;

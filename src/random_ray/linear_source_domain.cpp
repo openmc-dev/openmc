@@ -84,10 +84,6 @@ void LinearSourceDomain::update_neutron_source(double k_eff)
       source_regions_.source(sr, g_out) =
         (scatter_flat + fission_flat * inverse_k_eff) / sigma_t;
 
-      if (!std::isfinite(source_regions_.source(sr, g_out))) {
-        fatal_error("Encountered non-finite source term");
-      }
-
       // Compute the linear source terms. In the first 10 iterations when the
       // centroids and spatial moments are not well known, we will leave the
       // source gradients as zero so as to avoid causing any numerical
@@ -96,7 +92,7 @@ void LinearSourceDomain::update_neutron_source(double k_eff)
       // the source gradients (effectively making this a flat source region
       // temporarily), so as to improve stability.
       if (simulation::current_batch > 10 &&
-          source_regions_.source(sr, g_out) >= 0.0 && source_regions_.n_hits(sr) > 100) {
+          source_regions_.source(sr, g_out) >= 0.0) {
         source_regions_.source_gradients(sr, g_out) =
           invM * ((scatter_linear + fission_linear * inverse_k_eff) / sigma_t);
       } else {
@@ -176,8 +172,10 @@ void LinearSourceDomain::set_flux_to_flux_plus_source(
 
 void LinearSourceDomain::set_flux_to_old_flux(int64_t sr, int g)
 {
-  source_regions_.scalar_flux_new(sr, g) = source_regions_.scalar_flux_old(sr, g);
-  source_regions_.flux_moments_new(sr, g) = source_regions_.flux_moments_old(sr, g);
+  source_regions_.scalar_flux_new(sr, g) =
+    source_regions_.scalar_flux_old(sr, g);
+  source_regions_.flux_moments_new(sr, g) =
+    source_regions_.flux_moments_old(sr, g);
 }
 
 void LinearSourceDomain::accumulate_iteration_flux()

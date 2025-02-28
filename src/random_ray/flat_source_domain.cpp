@@ -1400,7 +1400,6 @@ SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
   int gs_i_cell = gs.lowest_coord().cell;
   int64_t sr_found = source_region_offsets_[gs_i_cell] + gs.cell_instance();
   if (sr_found != sr) {
-    // warning("Source Region Numerical Artifact Detected...");
     discovered_source_regions_.unlock(sr_key);
     SourceRegionHandle handle;
     handle.is_numerical_fp_artifact_ = true;
@@ -1420,7 +1419,6 @@ SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
     Mesh* mesh = model::meshes[mesh_idx].get();
     int bin_found = mesh->get_bin(r + TINY_BIT * u);
     if (bin_found != mesh_bin) {
-      // warning("Mesh Bin Numerical Artifact Detected...");
       discovered_source_regions_.unlock(sr_key);
       SourceRegionHandle handle;
       handle.is_numerical_fp_artifact_ = true;

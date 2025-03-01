@@ -61,6 +61,7 @@ src/random_ray/ @jtramm
 
 # NCrystal interface
 src/ncrystal_interface.cpp @marquezj @tkittel
+src/ncrystal_load.cpp @marquezj @tkittel
 
 # MCPL interface
 src/mcpl_interface.cpp @ebknudsen

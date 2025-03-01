@@ -89,9 +89,6 @@ void openmc_run_random_ray()
     // Finalize OpenMC
     openmc_simulation_finalize();
 
-    // Reduce variables across MPI ranks
-    sim.reduce_simulation_statistics();
-
     // Output all simulation results
     sim.output_simulation_results();
   }
@@ -137,9 +134,6 @@ void openmc_run_random_ray()
 
     // Finalize OpenMC
     openmc_simulation_finalize();
-
-    // Reduce variables across MPI ranks
-    adjoint_sim.reduce_simulation_statistics();
 
     // Output all simulation results
     adjoint_sim.output_simulation_results();
@@ -332,10 +326,9 @@ void validate_random_ray_inputs()
 #ifdef OPENMC_MPI
   if (mpi::n_procs > 1) {
     warning(
-      "Domain replication in random ray is supported, but suffers from poor "
-      "scaling of source all-reduce operations. Performance may severely "
-      "degrade beyond just a few MPI ranks. Domain decomposition may be "
-      "implemented in the future to provide efficient scaling.");
+      "MPI parallelism is not supported by the random ray solver. All work "
+      "will be performed by rank 0. Domain decomposition may be implemented in "
+      "the future to provide efficient MPI scaling.");
   }
 #endif
 
@@ -414,6 +407,12 @@ void RandomRaySimulation::prepare_fixed_sources_adjoint(
 
 void RandomRaySimulation::simulate()
 {
+  // MPI not supported in random ray solver, so all work is done by rank 0
+  // TODO: Implement domain decomposition for MPI parallelism
+  if (!mpi::master) {
+    return;
+  }
+
   // Random ray power iteration loop
   while (simulation::current_batch < settings::n_batches) {
     // Initialize the current batch
@@ -461,9 +460,6 @@ void RandomRaySimulation::simulate()
       domain_->finalize_discovered_source_regions();
     }
 
-    // If using multiple MPI ranks, perform all reduce on all transport results
-    domain_->all_reduce_replicated_source_regions();
-
     // Normalize scalar flux and update volumes
     domain_->normalize_scalar_flux_and_volumes(
       settings::n_particles * RandomRay::distance_active_);
@@ -506,20 +502,6 @@ void RandomRaySimulation::simulate()
     finalize_generation();
     finalize_batch();
   } // End random ray power iteration loop
-}
-
-void RandomRaySimulation::reduce_simulation_statistics()
-{
-  // Reduce number of intersections
-#ifdef OPENMC_MPI
-  if (mpi::n_procs > 1) {
-    uint64_t total_geometric_intersections_reduced = 0;
-    MPI_Reduce(&total_geometric_intersections_,
-      &total_geometric_intersections_reduced, 1, MPI_UNSIGNED_LONG, MPI_SUM, 0,
-      mpi::intracomm);
-    total_geometric_intersections_ = total_geometric_intersections_reduced;
-  }
-#endif
 }
 
 void RandomRaySimulation::output_simulation_results() const

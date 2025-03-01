@@ -685,30 +685,6 @@ void FlatSourceDomain::random_ray_tally()
   openmc::simulation::time_tallies.stop();
 }
 
-void FlatSourceDomain::all_reduce_replicated_source_regions()
-{
-#ifdef OPENMC_MPI
-  // If we only have 1 MPI rank, no need
-  // to reduce anything.
-  if (mpi::n_procs <= 1)
-    return;
-
-  simulation::time_bank_sendrecv.start();
-
-  // First, we broadcast the fully mapped tally status variable so that
-  // all ranks are on the same page
-  int mapped_all_tallies_i = static_cast<int>(mapped_all_tallies_);
-  MPI_Bcast(&mapped_all_tallies_i, 1, MPI_INT, 0, mpi::intracomm);
-
-  bool reduce_position =
-    simulation::current_batch > settings::n_inactive && !mapped_all_tallies_i;
-
-  source_regions_.mpi_sync_ranks(reduce_position);
-
-  simulation::time_bank_sendrecv.stop();
-#endif
-}
-
 double FlatSourceDomain::evaluate_flux_at_point(
   Position r, int64_t sr, int g) const
 {
@@ -1321,12 +1297,6 @@ void FlatSourceDomain::prepare_base_source_regions()
   std::swap(source_regions_, base_source_regions_);
   source_regions_.negroups() = base_source_regions_.negroups();
   source_regions_.is_linear() = base_source_regions_.is_linear();
-
-  // TODO: Base source regions are left large for now
-  // to allow for projection and accumulation experimentation
-  // for stability improvements for small source regions
-  // NOTE: I use the locks from base too
-  // base_source_regions_.reduce_to_base();
 }
 
 SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(

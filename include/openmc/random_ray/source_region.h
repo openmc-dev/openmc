@@ -594,8 +594,6 @@ public:
   void push_back(const SourceRegion& sr);
   void assign(int n_source_regions, const SourceRegion& source_region);
   void flux_swap();
-  void mpi_sync_ranks(bool reduce_position);
-  void reduce_to_base();
   int64_t n_source_regions() const { return n_source_regions_; }
   int64_t n_source_elements() const { return n_source_regions_ * negroups_; }
   int& negroups() { return negroups_; }

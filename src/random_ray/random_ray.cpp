@@ -766,7 +766,7 @@ void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
   wgt() = 1.0;
 
   // set identifier for particle
-  id() = simulation::work_index[mpi::rank] + ray_id;
+  id() = ray_id;
 
   // generate source site using sample method
   SourceSite site;

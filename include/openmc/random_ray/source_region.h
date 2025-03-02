@@ -337,7 +337,7 @@ public:
     scalar_flux_new_; //!< The scalar flux from the current iteration
   vector<double>
     source_; //!< The total source term (fission + scattering + external)
-  vector<double> external_source_;    //!< The external source term
+  vector<double> external_source_;   //!< The external source term
   vector<double> scalar_flux_final_; //!< The scalar flux accumulated over all
                                      //!< active iterations (used for plotting,
                                      //!< or computing adjoint sources)
@@ -540,7 +540,10 @@ public:
   }
 
   double& source(int64_t sr, int g) { return source_[index(sr, g)]; }
-  const double& source(int64_t sr, int g) const { return source_[index(sr, g)]; }
+  const double& source(int64_t sr, int g) const
+  {
+    return source_[index(sr, g)];
+  }
   double& source(int64_t se) { return source_[se]; }
   const double& source(int64_t se) const { return source_[se]; }
 

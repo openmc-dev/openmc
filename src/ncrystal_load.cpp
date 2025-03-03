@@ -110,7 +110,6 @@ void* load_virtapi_raw(unsigned interface_id, NCrystalAPIDB& db)
       fmt::format("ncrystal{}_access_virtual_api", cfg.symbol_namespace);
 
 #ifdef NCLOAD_WINDOWS
-    FARPROC fproc;
     void* addr = (void*)(intptr_t)GetProcAddress(handle, symbol.c_str());
     if (!addr)
       fatal_error("GetProcAddress("

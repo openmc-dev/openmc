@@ -357,7 +357,7 @@ class Model:
         all_nuclides = set()
         for material in self.get_all_materials().values():
             all_nuclides |= set(material.get_nuclides())
-        return sorted(all_nuclides)
+        return list(sorted(all_nuclides))
         
     def get_all_materials(self) -> dict[int, openmc.Material]:
         """Return all materials within the geometry.

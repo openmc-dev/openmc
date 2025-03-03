@@ -33,8 +33,15 @@ def get_radionuclides(model: openmc.Model, chain_file: str | None = None) -> lis
     List of nuclide names
 
     """
-    # Determine what nuclides appear in model
-    model_nuclides = set(model.geometry.get_all_nuclides())
+    # # Determine what nuclides appear in the model
+    # model_nuclides = set(model.geometry.get_all_nuclides())
+
+    # # If no nuclides were found, gather them from materials
+    # if not model_nuclides:
+    #     model_nuclides = [nuclide for m in model.materials for nuclide in m.get_nuclides()]
+
+    # Determine what nuclides appear in the model
+    model_nuclides = set(model.get_all_nuclides())
 
     # Load chain file
     if chain_file is None:
@@ -46,7 +53,9 @@ def get_radionuclides(model: openmc.Model, chain_file: str | None = None) -> lis
         # Restrict to set of nuclides present in model
         if nuclide.name not in model_nuclides:
             continue
-
+        
+        if nuclide.half_life is not None:
+            radionuclides.add(nuclide.name)
         # Loop over reactions and add any targets that are unstable
         for rx_tuple in nuclide.reactions:
             target = rx_tuple.target

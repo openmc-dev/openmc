@@ -215,7 +215,7 @@
       </weight_windows_generator>
     </weight_window_generators>
     <mesh id="1">
-      <dimension>14 14 14</dimension>
+      <dimension>15 15 15</dimension>
       <lower_left>0.0 0.0 0.0</lower_left>
       <upper_right>30.0 30.0 30.0</upper_right>
     </mesh>

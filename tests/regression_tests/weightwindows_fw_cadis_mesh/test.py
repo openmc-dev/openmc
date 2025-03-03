@@ -25,7 +25,7 @@ def test_weight_windows_fw_cadis_mesh(shape):
 
         # The base model has a resolution of 12, so we overlay
         # something else for FW-CADIS
-        n = 14
+        n = 15
         width = 30.0
         ww_mesh = openmc.RegularMesh()
         ww_mesh.dimension = (n, n, n)

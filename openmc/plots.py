@@ -1312,6 +1312,50 @@ class WireframeRayTracePlot(RayTracePlot):
 
     Attributes
     ----------
+    id : int
+        Unique identifier
+    name : str
+        Name of the plot
+    pixels : Iterable of int
+        Number of pixels to use in each direction
+    filename : str
+        Path to write the plot to
+    color_by : {'cell', 'material'}
+        Indicate whether the plot should be colored by cell or by material
+    background : Iterable of int or str
+        Color of the background
+    mask_components : Iterable of openmc.Cell or openmc.Material or int
+        The cells or materials (or corresponding IDs) to mask
+    mask_background : Iterable of int or str
+        Color to apply to all cells/materials listed in mask_components
+    show_overlaps : bool
+        Indicate whether or not overlapping regions are shown
+    overlap_color : Iterable of int or str
+        Color to apply to overlapping regions
+    colors : dict
+        Dictionary indicating that certain cells/materials should be
+        displayed with a particular color. The keys can be of type
+        :class:`~openmc.Cell`, :class:`~openmc.Material`, or int (ID for a
+        cell/material).
+    level : int
+        Universe depth to plot at
+    horizontal_field_of_view : float
+        Field of view horizontally, in units of degrees, defaults to 70.
+    camera_position : tuple or list of ndarray
+        Position of the camera in 3D space. Defaults to (1, 0, 0).
+    look_at : tuple or list of ndarray
+        The center of the camera's image points to this place in 3D space.
+        Set to (0, 0, 0) by default.
+    up : tuple or list of ndarray
+        Which way is up for the camera. Must not be parallel to the
+        line between look_at and camera_position. Set to (0, 0, 1) by default.
+    orthographic_width : float
+        If set to a nonzero value, an orthographic projection is used.
+        All rays traced from the orthographic pixel array travel in the
+        same direction. The width of the starting array must be specified,
+        unlike with the default perspective projection. The height of the
+        array is deduced from the ratio of pixel dimensions for the image.
+        Defaults to zero, i.e. using perspective projection.
     wireframe_thickness : int
         Line thickness employed for drawing wireframes around cells or material
         regions. Can be set to zero for no wireframes at all. Defaults to one
@@ -1512,6 +1556,40 @@ class SolidRayTracePlot(RayTracePlot):
 
     Attributes
     ----------
+    id : int
+        Unique identifier
+    name : str
+        Name of the plot
+    pixels : Iterable of int
+        Number of pixels to use in each direction
+    filename : str
+        Path to write the plot to
+    color_by : {'cell', 'material'}
+        Indicate whether the plot should be colored by cell or by material
+    overlap_color : Iterable of int or str
+        Color to apply to overlapping regions
+    colors : dict
+        Dictionary indicating that certain cells/materials should be
+        displayed with a particular color. The keys can be of type
+        :class:`~openmc.Cell`, :class:`~openmc.Material`, or int (ID for a
+        cell/material).
+    horizontal_field_of_view : float
+        Field of view horizontally, in units of degrees, defaults to 70.
+    camera_position : tuple or list of ndarray
+        Position of the camera in 3D space. Defaults to (1, 0, 0).
+    look_at : tuple or list of ndarray
+        The center of the camera's image points to this place in 3D space.
+        Set to (0, 0, 0) by default.
+    up : tuple or list of ndarray
+        Which way is up for the camera. Must not be parallel to the
+        line between look_at and camera_position. Set to (0, 0, 1) by default.
+    orthographic_width : float
+        If set to a nonzero value, an orthographic projection is used.
+        All rays traced from the orthographic pixel array travel in the
+        same direction. The width of the starting array must be specified,
+        unlike with the default perspective projection. The height of the
+        array is deduced from the ratio of pixel dimensions for the image.
+        Defaults to zero, i.e. using perspective projection.
     light_position : tuple or list of float
         Position of the light source in 3D space. Defaults to None, which places
         the light at the camera position.

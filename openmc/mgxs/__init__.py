@@ -23,7 +23,7 @@ GROUP_STRUCTURES = {}
 - activation_ energy group structures "VITAMIN-J-42", "VITAMIN-J-175",
   "TRIPOLI-315", "CCFE-709_" and "UKAEA-1102_"
 
-.. _CASMO: https://www.studsvik.com/SharepointFiles/CASMO-5%20Development%20and%20Applications.pdf
+.. _CASMO: http://large.stanford.edu/courses/2013/ph241/dalvi1/docs/c5.physor2006.pdf
 .. _SCALE44: https://www-nds.iaea.org/publications/indc/indc-czr-0001.pdf
 .. _SCALE252: https://oecd-nea.org/science/wpncs/amct/workingarea/meeting2013/EGAMCT2013_08.pdf
 .. _MPACT: https://vera.ornl.gov/mpact/

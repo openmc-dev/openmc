@@ -577,6 +577,7 @@ def test_get_activity():
     m4.add_nuclide("H3", 1)
     m4.set_density('g/cm3', 1.5)
     assert pytest.approx(m4.get_activity(units='Bq/g')) == 355978108155965.94  # [Bq/g]
+    assert pytest.approx(m4.get_activity(units='Bq/kg')) == 355978108155965940  # [Bq/kg]
     assert pytest.approx(m4.get_activity(units='Bq/g', by_nuclide=True)["H3"]) == 355978108155965.94  # [Bq/g]
     assert pytest.approx(m4.get_activity(units='Bq/cm3')) == 355978108155965.94*3/2 # [Bq/cc]
     assert pytest.approx(m4.get_activity(units='Bq/cm3', by_nuclide=True)["H3"]) == 355978108155965.94*3/2 # [Bq/cc]
@@ -626,6 +627,7 @@ def test_get_decay_heat():
     m4.add_nuclide("I135", 1)
     m4.set_density('g/cm3', 1.5)
     assert pytest.approx(m4.get_decay_heat(units='W/g')) == 40175.15720273193 # [W/g]
+    assert pytest.approx(m4.get_decay_heat(units='W/kg')) == 40175157.20273193 # [W/kg]
     assert pytest.approx(m4.get_decay_heat(units='W/g', by_nuclide=True)["I135"]) == 40175.15720273193 # [W/g]
     assert pytest.approx(m4.get_decay_heat(units='W/cm3')) == 40175.15720273193*3/2 # [W/cc]
     assert pytest.approx(m4.get_decay_heat(units='W/cm3', by_nuclide=True)["I135"]) == 40175.15720273193*3/2 #[W/cc]
@@ -656,6 +658,9 @@ def test_decay_photon_energy():
     assert src.p * 2.0 == pytest.approx(src_v2.p)
     src_per_cm3 = m.get_decay_photon_energy(units='Bq/cm3', volume=100.0)
     assert (src.p == src_per_cm3.p).all()
+    src_per_bqg = m.get_decay_photon_energy(units='Bq/g')
+    src_per_bqkg = m.get_decay_photon_energy(units='Bq/kg')
+    assert pytest.approx(src_per_bqg.integral()) == src_per_bqkg.integral() / 1000.
 
     # If we add Xe135 (which has a tabular distribution), the photon source
     # should be a mixture distribution

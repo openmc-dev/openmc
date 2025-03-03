@@ -126,7 +126,7 @@ reinstalling it). While the same effect can be achieved using the
 :envvar:`PYTHONPATH` environment variable, this is generally discouraged as it
 can interfere with virtual environments.
 
-.. _git: http://git-scm.com/
+.. _git: https://git-scm.com/
 .. _GitHub: https://github.com/
 .. _git flow: https://nvie.com/git-model
 .. _valgrind: https://www.valgrind.org/

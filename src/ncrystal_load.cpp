@@ -8,7 +8,7 @@
 #include <stdio.h>
 #include <string>
 
-#if !defined(NCLOAD_WINDOWS) && (defined(_WIN32) || defined(WIN32))
+#if !defined(NCLOAD_WINDOWS) && defined(_WIN32)
 #define NCLOAD_WINDOWS
 #endif
 #ifdef NCLOAD_WINDOWS

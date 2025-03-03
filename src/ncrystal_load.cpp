@@ -1,5 +1,8 @@
 #include "openmc/ncrystal_load.h"
 #include "openmc/error.h"
+
+#include <fmt/core.h>
+
 #include <mutex>
 #include <stdexcept>
 #include <stdio.h>
@@ -103,9 +106,8 @@ void* load_virtapi_raw(unsigned interface_id, NCrystalAPIDB& db)
     if (!handle)
       fatal_error("Loading of the NCrystal library failed");
 
-    std::string symbol("ncrystal");
-    symbol += cfg.symbol_namespace;
-    symbol += "_access_virtual_api";
+    std::string symbol =
+      fmt::format("ncrystal{}_access_virtual_api", cfg.symbol_namespace);
 
 #ifdef NCLOAD_WINDOWS
     FARPROC fproc;

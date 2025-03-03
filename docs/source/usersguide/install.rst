@@ -393,12 +393,6 @@ OPENMC_USE_MCPL
   Turns on support for reading MCPL_ source files and writing MCPL source points
   and surface sources. (Default: off)
 
-OPENMC_USE_NCRYSTAL
-  Turns on support for NCrystal materials. NCrystal must be `installed
-  <https://github.com/mctools/ncrystal/wiki/Get-NCrystal>`_ and `initialized
-  <https://github.com/mctools/ncrystal/wiki/Using-NCrystal#setting-up>`_.
-  (Default: off)
-
 OPENMC_USE_LIBMESH
   Enables the use of unstructured mesh tallies with libMesh_. (Default: off)
 

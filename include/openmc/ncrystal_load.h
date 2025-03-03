@@ -4,8 +4,10 @@
 #ifndef OPENMC_NCRYSTAL_LOAD_H
 #define OPENMC_NCRYSTAL_LOAD_H
 
-#include <functional>
-#include <memory>
+#include <algorithm>  // for swap
+#include <functional> // for function
+#include <memory>     // for shared_ptr
+#include <utility>    // for move
 
 namespace NCrystalVirtualAPI {
 

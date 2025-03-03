@@ -577,7 +577,7 @@ void RandomRay::attenuate_flux_linear_source(
     double f1 = 1.0 - tau * gn;
     double f2 = (2.0 * gn - f1) * distance_2;
     double new_delta_psi = (angular_flux_[g] - spatial_source) * f1 * distance -
-                          0.5 * dir_source * f2;
+                           0.5 * dir_source * f2;
 
     double h1 = f1 - gn;
     double g1 = 0.5 - h1;

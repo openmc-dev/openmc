@@ -1421,19 +1421,21 @@ void FlatSourceDomain::finalize_discovered_source_regions()
     }
   }
 
-  // Sort the keys, so as to ensure reproducible ordering
-  // given that source regions may have been added to discovered_source_regions_
-  // in an arbitrary order due to shared memory threading.
-  std::sort(keys.begin(), keys.end());
-
-  // Append the source regions in the sorted key order.
-  for (const auto& key : keys) {
-    const SourceRegion& sr = discovered_source_regions_[key];
-    source_region_map_[key] = source_regions_.n_source_regions();
-    source_regions_.push_back(sr);
-  }
-
   if (!keys.empty()) {
+    // Sort the keys, so as to ensure reproducible ordering given that source
+    // regions may have been added to discovered_source_regions_ in an arbitrary
+    // order due to shared memory threading.
+    std::sort(keys.begin(), keys.end());
+
+    // Append the source regions in the sorted key order.
+    for (const auto& key : keys) {
+      const SourceRegion& sr = discovered_source_regions_[key];
+      source_region_map_[key] = source_regions_.n_source_regions();
+      source_regions_.push_back(sr);
+    }
+
+    // If any new source regions were discovered, we need to update the
+    // tally mapping between source regions and tally bins.
     mapped_all_tallies_ = false;
   }
 

@@ -101,6 +101,18 @@ public:
            mesh_bin == other.mesh_bin;
   }
 
+  // Less than operator required by std::sort
+  bool operator<(const SourceRegionKey& other) const
+  {
+    if (base_source_region_id < other.base_source_region_id) {
+      return true;
+    } else if (base_source_region_id > other.base_source_region_id) {
+      return false;
+    } else {
+      return mesh_bin < other.mesh_bin;
+    }
+  }
+
   // Hashing functor required by the unordered_map
   struct HashFunctor {
     size_t operator()(const SourceRegionKey& key) const

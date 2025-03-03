@@ -436,10 +436,10 @@ void RandomRay::attenuate_flux_flat_source(
 
   // MOC incoming flux attenuation + source contribution/attenuation equation
   for (int g = 0; g < negroups_; g++) {
-    float sigma_t = domain_->sigma_t_[material * negroups_ + g];
-    float tau = sigma_t * distance;
-    float exponential = cjosey_exponential(tau); // exponential = 1 - exp(-tau)
-    float new_delta_psi = (angular_flux_[g] - srh.source(g)) * exponential;
+    double sigma_t = domain_->sigma_t_[material * negroups_ + g];
+    double tau = sigma_t * distance;
+    double exponential = cjosey_exponential(tau); // exponential = 1 - exp(-tau)
+    double new_delta_psi = (angular_flux_[g] - srh.source(g)) * exponential;
     delta_psi_[g] = new_delta_psi;
     angular_flux_[g] -= new_delta_psi;
   }
@@ -557,33 +557,33 @@ void RandomRay::attenuate_flux_linear_source(
   for (int g = 0; g < negroups_; g++) {
 
     // Compute tau, the optical thickness of the ray segment
-    float sigma_t = domain_->sigma_t_[material * negroups_ + g];
-    float tau = sigma_t * distance;
+    double sigma_t = domain_->sigma_t_[material * negroups_ + g];
+    double tau = sigma_t * distance;
 
     // If tau is very small, set it to zero to avoid numerical issues.
     // The following computations will still work with tau = 0.
-    if (tau < 1.0e-8f) {
-      tau = 0.0f;
+    if (tau < 1.0e-8) {
+      tau = 0.0;
     }
 
     // Compute linear source terms, spatial and directional (dir),
     // calculated from the source gradients dot product with local centroid
     // and direction, respectively.
-    float spatial_source =
+    double spatial_source =
       srh.source(g) + rm_local.dot(srh.source_gradients(g));
-    float dir_source = u().dot(srh.source_gradients(g));
+    double dir_source = u().dot(srh.source_gradients(g));
 
-    float gn = exponentialG(tau);
-    float f1 = 1.0f - tau * gn;
-    float f2 = (2.0f * gn - f1) * distance_2;
-    float new_delta_psi = (angular_flux_[g] - spatial_source) * f1 * distance -
+    double gn = exponentialG(tau);
+    double f1 = 1.0 - tau * gn;
+    double f2 = (2.0 * gn - f1) * distance_2;
+    double new_delta_psi = (angular_flux_[g] - spatial_source) * f1 * distance -
                           0.5 * dir_source * f2;
 
-    float h1 = f1 - gn;
-    float g1 = 0.5f - h1;
-    float g2 = exponentialG2(tau);
+    double h1 = f1 - gn;
+    double g1 = 0.5 - h1;
+    double g2 = exponentialG2(tau);
     g1 = g1 * spatial_source;
-    g2 = g2 * dir_source * distance * 0.5f;
+    g2 = g2 * dir_source * distance * 0.5;
     h1 = h1 * angular_flux_[g];
     h1 = (g1 + g2 + h1) * distance_2;
     spatial_source = spatial_source * distance + new_delta_psi;
@@ -687,9 +687,9 @@ void RandomRay::attenuate_flux_linear_source_void(
   // transport through a void region is greatly simplified. Here we
   // compute the updated flux moments.
   for (int g = 0; g < negroups_; g++) {
-    float spatial_source = srh.external_source(g);
-    float new_delta_psi = (angular_flux_[g] - spatial_source) * distance;
-    float h1 = 0.5f;
+    double spatial_source = srh.external_source(g);
+    double new_delta_psi = (angular_flux_[g] - spatial_source) * distance;
+    double h1 = 0.5;
     h1 = h1 * angular_flux_[g];
     h1 = h1 * distance_2;
     spatial_source = spatial_source * distance + new_delta_psi;

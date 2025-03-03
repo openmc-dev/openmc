@@ -23,7 +23,7 @@ template<typename KeyType, typename ValueType, typename HashFunctor>
 class ParallelMap {
 
   //----------------------------------------------------------------------------
-  // Helper structes and classes
+  // Helper structs and classes
 
   struct Bucket {
     OpenMPMutex lock_;

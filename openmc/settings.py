@@ -7,6 +7,7 @@ from pathlib import Path
 
 import lxml.etree as ET
 
+import openmc
 import openmc.checkvalue as cv
 from openmc.checkvalue import PathLike
 from openmc.stats.multivariate import MeshSpatial
@@ -1147,10 +1148,12 @@ class Settings:
                 for mesh, domains in value:
                     cv.check_type('mesh', mesh, MeshBase)
                     cv.check_type('domains', domains, Iterable)
+                    valid_types = (openmc.Material, openmc.Cell, openmc.Universe)
                     for domain in domains:
-                        if not isinstance(domain, (openmc.Material, openmc.Cell, openmc.Universe)):
-                            raise ValueError(f'Invalid domain type: {type(domain)}. '
-                                             'Expected openmc.Material, openmc.Cell, or openmc.Universe.')
+                        if not isinstance(domain, valid_types):
+                            raise ValueError(
+                                f'Invalid domain type: {type(domain)}. Expected '
+                                'openmc.Material, openmc.Cell, or openmc.Universe.')
                 cv.check_type('adjoint', value, bool)
             elif key == 'sample_method':
                 cv.check_value('sample method', value,

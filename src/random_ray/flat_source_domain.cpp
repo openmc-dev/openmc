@@ -785,8 +785,7 @@ void FlatSourceDomain::output_to_vtk() const
             if (mesh_idx == C_NONE) {
               mesh_bin = 0;
             } else {
-              Mesh* mesh = model::meshes[mesh_idx].get();
-              mesh_bin = mesh->get_bin(p.r());
+              mesh_bin = model::meshes[mesh_idx]->get_bin(p.r());
             }
             SourceRegionKey sr_key {sr, mesh_bin};
             auto it = source_region_map_.find(sr_key);
@@ -1203,12 +1202,9 @@ void FlatSourceDomain::apply_mesh_to_cell_instances(int32_t i_cell,
     return;
   for (int32_t j : instances) {
     int cell_material_idx = cell.material(j);
-    int cell_material_id;
-    if (cell_material_idx == C_NONE) {
-      cell_material_id = C_NONE;
-    } else {
-      cell_material_id = model::materials[cell_material_idx]->id();
-    }
+    int cell_material_id = (cell_material_idx == C_NONE)
+                             ? C_NONE
+                             : model::materials[cell_material_idx]->id();
 
     if ((target_material_id == C_NONE && !is_target_void) ||
         cell_material_id == target_material_id) {
@@ -1304,24 +1300,24 @@ SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
 {
   SourceRegionKey sr_key {sr, mesh_bin};
 
-  // Case 1: Check if the source region key is already present in the
-  // permanent map. This is the most common condition, as any source region
-  // visited in a previous power iteration will already be present in the
-  // permanent map. If the source region key is found, we translate the key
-  // into a specific 1D sourc region index and return a handle its position in
-  // the  source_regions_ vector.
+  // Case 1: Check if the source region key is already present in the permanent
+  // map. This is the most common condition, as any source region visited in a
+  // previous power iteration will already be present in the permanent map. If
+  // the source region key is found, we translate the key into a specific 1D
+  // source region index and return a handle its position in the
+  // source_regions_ vector.
   auto it = source_region_map_.find(sr_key);
   if (it != source_region_map_.end()) {
     int64_t sr = it->second;
     return source_regions_.get_source_region_handle(sr);
   }
 
-  // Case 2: Check if the source region key is present in the temporary
-  // (thread safe) map. This is a common occurrence in the first power
-  // iteration when the source region has already been visited already by some
-  // other ray. We begin by locking the temporary map before any operations
-  // are performed. The lock is not global over the full data structure -- it
-  // will be dependent on which key is used.
+  // Case 2: Check if the source region key is present in the temporary (thread
+  // safe) map. This is a common occurrence in the first power iteration when
+  // the source region has already been visited already by some other ray. We
+  // begin by locking the temporary map before any operations are performed. The
+  // lock is not global over the full data structure -- it will be dependent on
+  // which key is used.
   discovered_source_regions_.lock(sr_key);
 
   // If the key is found in the temporary map, then we return a handle to the
@@ -1333,35 +1329,33 @@ SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
     return handle;
   }
 
-  // Case 3: The source region key is not present anywhere, but it is only
-  // due to floating point artifacts. These artifacts occur when the overlaid
-  // mesh overlaps with actual geometry surfaces. In these cases, roundoff
-  // error may result in the ray tracer detecting an additional (very short)
-  // segment though a mesh bin that is actually past the physical source
-  // region boundary. This is a result of the the multi-level ray tracing
-  // treatment in OpenMC, which depending on the number of universes in the
-  // hierarchy etc can result in the wrong surface being selected as the
-  // nearest. This can happen in a lattice when there are two directions that
-  // both are very close in distance, within the tolerance of
-  // FP_REL_PRECISION, and the are thus treated as being equivalent so
-  // alternative logic is used. However, when we go and ray trace on this with
-  // the mesh tracer we may go past the surface bounding the current source
-  // region.
+  // Case 3: The source region key is not present anywhere, but it is only due
+  // to floating point artifacts. These artifacts occur when the overlaid mesh
+  // overlaps with actual geometry surfaces. In these cases, roundoff error may
+  // result in the ray tracer detecting an additional (very short) segment
+  // though a mesh bin that is actually past the physical source region
+  // boundary. This is a result of the the multi-level ray tracing treatment in
+  // OpenMC, which depending on the number of universes in the hierarchy etc can
+  // result in the wrong surface being selected as the nearest. This can happen
+  // in a lattice when there are two directions that both are very close in
+  // distance, within the tolerance of FP_REL_PRECISION, and the are thus
+  // treated as being equivalent so alternative logic is used. However, when we
+  // go and ray trace on this with the mesh tracer we may go past the surface
+  // bounding the current source region.
   //
-  // To filter out this case, before we create the new source region, we
-  // double check that the actual starting point of this segment (r) is still
-  // in the same geometry source region that we started in. If an artifact is
-  // detected, we discard the segment (and attenuation through it) as it is
-  // not really a valid source region and will have only an infinitessimally
-  // small cell combined with the mesh bin. Thankfully, this is a fairly rare
-  // condition, and only triggers for very short ray lengths. It can be fixed
-  // by decreasing the value of FP_REL_PRECISION in constants.h, but this may
-  // have unknown consequences for the general ray tracer, so for now we do
-  // the below sanity checks before generating phantom source regions. A
-  // significant extra cost is incurred in instantiating the GeometryState
-  // object and doing a cell lookup, but again, this is going to be an
-  // extremely rare thing to check after the first power iteration has
-  // completed.
+  // To filter out this case, before we create the new source region, we double
+  // check that the actual starting point of this segment (r) is still in the
+  // same geometry source region that we started in. If an artifact is detected,
+  // we discard the segment (and attenuation through it) as it is not really a
+  // valid source region and will have only an infinitessimally small cell
+  // combined with the mesh bin. Thankfully, this is a fairly rare condition,
+  // and only triggers for very short ray lengths. It can be fixed by decreasing
+  // the value of FP_REL_PRECISION in constants.h, but this may have unknown
+  // consequences for the general ray tracer, so for now we do the below sanity
+  // checks before generating phantom source regions. A significant extra cost
+  // is incurred in instantiating the GeometryState object and doing a cell
+  // lookup, but again, this is going to be an extremely rare thing to check
+  // after the first power iteration has completed.
 
   // Sanity check on source region id
   GeometryState gs;

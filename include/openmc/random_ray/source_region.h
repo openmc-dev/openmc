@@ -608,7 +608,7 @@ public:
 
   // private:
   //----------------------------------------------------------------------------
-  //  Private Data Members
+  // Private Data Members
   int64_t n_source_regions_ {0};
   int negroups_ {0};
   bool is_linear_ {false};

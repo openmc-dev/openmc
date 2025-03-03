@@ -39,11 +39,11 @@ def test_weight_windows_fw_cadis_mesh(shape):
         root = model.geometry.root_universe
         model.settings.random_ray['source_region_meshes'] = [(ww_mesh, [root])]
 
-        model.settings.particles = 150
-        model.settings.batches = 14
-        model.settings.inactive = 12
+        model.settings.particles = 1000
+        model.settings.batches = 30
+        model.settings.inactive = 20
 
         model.settings.random_ray['source_shape'] = shape
 
-        harness = MGXSTestHarness('statepoint.14.h5', model)
+        harness = MGXSTestHarness('statepoint.30.h5', model)
         harness.main()

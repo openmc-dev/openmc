@@ -286,11 +286,10 @@ private:
 };
 
 class CLS_Media : public Stochastic_Media {
-private:
+public:
   explicit CLS_Media(pugi::xml_node cell_node);
   CLS_Media() {};
 
-public:
   double sample_chord_length(uint64_t* seed_ptr) override
   {
     double matrix_mean_chord = 4 / 3 * radius_ * (1 - pf_) / pf_;

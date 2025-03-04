@@ -1194,7 +1194,7 @@ Stochastic_Media::~Stochastic_Media()
   model::stochastic_media_map.erase(id_);
 }
 
-Stochastic_Media::Stochastic_Media(pugi::xml_node node)
+CLS_Media::CLS_Media(pugi::xml_node node)
 {
   if (check_for_node(node, "id")) {
     this->set_id(std::stoi(get_node_value(node, "id")));
@@ -1447,6 +1447,13 @@ void read_materials_xml(pugi::xml_node root)
     model::materials.push_back(make_unique<Material>(material_node));
   }
   model::materials.shrink_to_fit();
+  // read stochastic media
+  if (check_for_node(root, "CLS_media")) {
+    for (pugi::xml_node media_node : root.children("CLS_media")) {
+      model::stochastic_media.push_back(make_unique<CLS_Media>(media_node));
+    }
+    model::stochastic_media.shrink_to_fit();
+  }
 }
 
 void free_memory_material()

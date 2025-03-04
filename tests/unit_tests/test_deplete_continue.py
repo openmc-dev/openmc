@@ -9,7 +9,6 @@ import openmc.deplete
 
 from tests import dummy_operator
 
-# test that the continue timesteps works when the second integrate call contains all previous timesteps
 @pytest.mark.parametrize("scheme", dummy_operator.SCHEMES)
 def test_continue(run_in_tmpdir, scheme):
     """Test to ensure that a properly defined continue run works"""

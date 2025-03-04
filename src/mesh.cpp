@@ -274,13 +274,15 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
   if (mpi::master) {
     header("MESH MATERIAL VOLUMES CALCULATION", 7);
   }
+  write_message(7, "Number of mesh elements = {}", n_bins());
   write_message(7, "Number of rays (x) = {}", nx);
   write_message(7, "Number of rays (y) = {}", ny);
   write_message(7, "Number of rays (z) = {}", nz);
-  int64_t n_total = nx * ny + ny * nz + nx * nz;
+  int64_t n_total = static_cast<int64_t>(nx) * ny +
+                    static_cast<int64_t>(ny) * nz +
+                    static_cast<int64_t>(nx) * nz;
   write_message(7, "Total number of rays = {}", n_total);
-  write_message(
-    7, "Maximum number of materials per mesh element = {}", table_size);
+  write_message(7, "Table size per mesh element = {}", table_size);
 
   Timer timer;
   timer.start();

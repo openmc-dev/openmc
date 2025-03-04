@@ -1463,7 +1463,7 @@ class Material(IDManagerMixin):
 
     @classmethod
     def mix_materials(cls, materials, fracs: Iterable[float],
-                      percent_type: str = 'ao', name: str | None = None) -> Material:
+                      percent_type: str = 'ao', **kwargs) -> Material:
         """Mix materials together based on atom, weight, or volume fractions
 
         .. versionadded:: 0.12
@@ -1478,10 +1478,8 @@ class Material(IDManagerMixin):
             Type of percentage, must be one of 'ao', 'wo', or 'vo', to signify atom
             percent (molar percent), weight percent, or volume percent,
             optional. Defaults to 'ao'
-        name : str
-            The name for the new material, optional. Defaults to concatenated
-            names of input materials with percentages indicated inside
-            parentheses.
+        **kwargs
+            Keyword arguments passed to :class:`openmc.Material`
 
         Returns
         -------
@@ -1540,10 +1538,10 @@ class Material(IDManagerMixin):
                                     openmc.data.AVOGADRO
 
         # Create the new material with the desired name
-        if name is None:
-            name = '-'.join([f'{m.name}({f})' for m, f in
+        if cls.name is None:
+            cls.name = '-'.join([f'{m.name}({f})' for m, f in
                              zip(materials, fracs)])
-        new_mat = cls(name=name)
+        new_mat = cls(**kwargs)
 
         # Compute atom fractions of nuclides and add them to the new material
         tot_nuclides_per_cc = np.sum([dens for dens in nuclides_per_cc.values()])

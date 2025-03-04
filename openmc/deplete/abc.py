@@ -662,7 +662,7 @@ class Integrator(ABC):
         # validate existing depletion steps are consistent with those passed to operator
         # if the timesteps retrieved from operator.prev_res.get_times match the first set
         # of time steps provided to the continue run, and the same is true for the source_rates
-        # retrieved from operator.prev_res.get_source_rates(), then run a depletion simulations
+        # retrieved from operator.prev_res.get_source_rates(), then run a depletion simulation
         # with only the new time steps and source rates provided
         if continue_timesteps:
             completed_times = operator.prev_res.get_times(time_units=timestep_units)
@@ -978,13 +978,14 @@ class SIIntegrator(Integrator):
         .. versionadded:: 0.12
     continue_timesteps : bool, optional
         Whether or not to treat the current solve as a continuation of a
-        previous simulation. Defaults to `False`. If `True`, the timesteps
+        previous simulation. Defaults to `False`. If `False`, all time
+        steps and source rates will be run in an append fashion and will run
+        after whatever time steps exist, if any. If `True`, the timesteps
         provided to the `Integrator` must match exactly those that exist
         in the `prev_results` passed to the `Opereator`. The `power`,
-        `power_density`, or `source_rates` must match as well. It
-        is the user's responsibility to make sure that the continue
-        solve uses the same method of specifying `power`, `power_density`,
-        or `source_rates`.
+        `power_density`, or `source_rates` must match as well. The 
+        method of specifying `power`, `power_density`, or 
+        `source_rates` should be the same as the initial run.
 
         .. versionadded:: 0.15.1
 

@@ -52,7 +52,7 @@ def test_mismatched_initial_times(run_in_tmpdir, scheme):
 
     operator = dummy_operator.DummyOperator()
 
-    # take first step
+    # perform initial steps
     bundle.solver(operator, [0.75, 0.75], [1.0, 1.0]).integrate()
 
     # restart
@@ -80,7 +80,7 @@ def test_mismatched_initial_source_rates(run_in_tmpdir, scheme):
 
     operator = dummy_operator.DummyOperator()
 
-    # take first step
+    # perform initial steps
     bundle.solver(operator, [0.75, 0.75], [1.0, 1.0]).integrate()
 
     # restart

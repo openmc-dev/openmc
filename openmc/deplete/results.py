@@ -20,7 +20,7 @@ __all__ = ["Results", "ResultsList"]
 _SECONDS_PER_MINUTE = 60
 _SECONDS_PER_HOUR = 60*60
 _SECONDS_PER_DAY = 24*60*60
-_SECONDS_PER_JULIAN_YEAR = 365.25*24*60*60
+_SECONDS_PER_JULIAN_YEAR = 365.25*24*60*60 # 365.25 due to the leap year
 
 def _get_time_as(seconds: float, units: str) -> float:
     """Converts the time in seconds to time in different units
@@ -474,11 +474,12 @@ class Results(list):
             with the units originally defined by the user.
 
         """
+        # Results duplicate the final source rate at the final simulation time
         source_rates = np.fromiter(
             (r.source_rate for r in self),
             dtype=self[0].source_rate.dtype,
             count=len(self)-1,
-        ) # Results duplicates the final source rate at the final simulation time
+        )
 
         return source_rates
 

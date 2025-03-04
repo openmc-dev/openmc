@@ -1,23 +1,23 @@
 #include "openmc/ncrystal_load.h"
-#include "openmc/error.h"
 
-#include <fmt/core.h>
-
-#include <mutex>
-#include <stdexcept>
-#include <stdio.h>
+#include <cctype>  // for isspace
+#include <cstdlib> // for strtoul
+#include <memory>  // for shared_ptr
+#include <mutex>   // for mutex, lock_guard
 #include <string>
 
-#if !defined(NCLOAD_WINDOWS) && defined(_WIN32)
-#define NCLOAD_WINDOWS
-#endif
-#ifdef NCLOAD_WINDOWS
+#include <fmt/core.h>
+#include <stdio.h> // for popen, pclose
+
+#include "openmc/error.h"
+
+#ifdef _WIN32
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
-#include <windows.h>
+#include <windows.h> // for LoadLibrary, GetProcAddress
 #else
-#include <dlfcn.h>
+#include <dlfcn.h> // for dlopen, dlsym, dlerror
 #endif
 
 namespace openmc {
@@ -31,8 +31,7 @@ struct NCrystalConfig {
 
 NCrystalConfig query_ncrystal_config()
 {
-  char buffer[4096];
-#ifdef NCLOAD_WINDOWS
+#ifdef _WIN32
   FILE* pipe = _popen("ncrystal-config --show "
                       "intversion shlibpath namespace",
     "r");
@@ -70,7 +69,7 @@ NCrystalConfig query_ncrystal_config()
     res.intversion = 0; // failure
   }
 
-#ifdef NCLOAD_WINDOWS
+#ifdef _WIN32
   auto returnCode = _pclose(pipe);
 #else
   auto returnCode = pclose(pipe);
@@ -83,7 +82,7 @@ NCrystalConfig query_ncrystal_config()
 struct NCrystalAPIDB {
   std::mutex mtx;
   std::shared_ptr<const NCrystalAPI> api;
-  typedef void* (*FctSignature)(int);
+  using FctSignature = void* (*)(int);
   FctSignature ncrystal_access_virtapi_fct = nullptr;
 };
 
@@ -97,7 +96,7 @@ void* load_virtapi_raw(unsigned interface_id, NCrystalAPIDB& db)
                   " NCrystal installation (required since geometry"
                   " contains NCrystal materials).");
     }
-#ifdef NCLOAD_WINDOWS
+#ifdef _WIN32
     auto handle = LoadLibrary(cfg.shlibpath.c_str());
 #else
     dlerror(); // clear previous errors
@@ -109,7 +108,7 @@ void* load_virtapi_raw(unsigned interface_id, NCrystalAPIDB& db)
     std::string symbol =
       fmt::format("ncrystal{}_access_virtual_api", cfg.symbol_namespace);
 
-#ifdef NCLOAD_WINDOWS
+#ifdef _WIN32
     void* addr = (void*)(intptr_t)GetProcAddress(handle, symbol.c_str());
     if (!addr)
       fatal_error("GetProcAddress("

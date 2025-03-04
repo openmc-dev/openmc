@@ -121,8 +121,6 @@ void Particle::from_source(const SourceSite* src)
   type() = src->particle;
   wgt() = src->wgt;
   wgt_last() = src->wgt;
-  // set particle history start weight
-  wgt_born() = src->wgt;
   r() = src->r;
   u() = src->u;
   r_born() = src->r;

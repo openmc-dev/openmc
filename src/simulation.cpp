@@ -586,6 +586,9 @@ void initialize_history(Particle& p, int64_t index_source)
   // Reset weight window ratio
   p.ww_factor() = 0.0;
 
+  // set particle history start weight
+  p.wgt_born() = p.wgt();
+
   // Reset pulse_height_storage
   std::fill(p.pht_storage().begin(), p.pht_storage().end(), 0);
 

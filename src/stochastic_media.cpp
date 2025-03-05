@@ -128,7 +128,8 @@ void Stochastic_Media::set_id(int32_t id)
   }
 
   // Make sure no other material has same ID
-  if (model::stochastic_media_map.find(id) != model::stochastic_media_map.end()) {
+  if (model::stochastic_media_map.find(id) !=
+      model::stochastic_media_map.end()) {
     throw std::runtime_error {
       "Two stochastic media have the same ID: " + std::to_string(id)};
   }

@@ -20,7 +20,8 @@ __all__ = ["Results", "ResultsList"]
 _SECONDS_PER_MINUTE = 60
 _SECONDS_PER_HOUR = 60*60
 _SECONDS_PER_DAY = 24*60*60
-_SECONDS_PER_JULIAN_YEAR = 365.25*24*60*60 # 365.25 due to the leap year
+_SECONDS_PER_JULIAN_YEAR = 365.25*24*60*60  # 365.25 due to the leap year
+
 
 def _get_time_as(seconds: float, units: str) -> float:
     """Converts the time in seconds to time in different units

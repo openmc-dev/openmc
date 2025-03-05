@@ -1,6 +1,7 @@
 """abc module.
 
-This module contains Abstract Base Classes for implementing operator, integrator, depletion system solver, and operator helper classes
+This module contains Abstract Base Classes for implementing operator,
+integrator, depletion system solver, and operator helper classes
 """
 
 from __future__ import annotations
@@ -24,7 +25,8 @@ from openmc.utility_funcs import change_directory
 from openmc import Material
 from .stepresult import StepResult
 from .chain import Chain
-from .results import Results
+from .results import Results, _SECONDS_PER_MINUTE, _SECONDS_PER_HOUR, \
+    _SECONDS_PER_DAY, _SECONDS_PER_JULIAN_YEAR
 from .pool import deplete
 from .reaction_rates import ReactionRates
 from .transfer_rates import TransferRates
@@ -34,12 +36,6 @@ __all__ = [
     "OperatorResult", "TransportOperator",
     "ReactionRateHelper", "NormalizationHelper", "FissionYieldHelper",
     "Integrator", "SIIntegrator", "DepSystemSolver", "add_params"]
-
-
-_SECONDS_PER_MINUTE = 60
-_SECONDS_PER_HOUR = 60*60
-_SECONDS_PER_DAY = 24*60*60
-_SECONDS_PER_JULIAN_YEAR = 365.25*24*60*60
 
 
 def _normalize_timesteps(
@@ -578,8 +574,8 @@ class Integrator(ABC):
         steps provided are appended to any previous steps. If `True`, the
         timesteps provided to the `Integrator` must exacly match any that
         exist in the `prev_results` passed to the `Operator`. The `power`,
-        `power_density`, or `source_rates` must match as well. The 
-        method of specifying `power`, `power_density`, or 
+        `power_density`, or `source_rates` must match as well. The
+        method of specifying `power`, `power_density`, or
         `source_rates` should be the same as the initial run.
 
         .. versionadded:: 0.15.1
@@ -638,9 +634,8 @@ class Integrator(ABC):
                     "this uses {}".format(
                         self.__class__.__name__, res.data.shape[0],
                         self._num_stages))
-        else:
-            # if the user specifies a continue run without a previous results, set the flag to False for them
-            continue_timesteps = False
+        elif continue_timesteps:
+            raise ValueError("Continuation run requires passing prev_results.")
         self.operator = operator
         self.chain = operator.chain
 
@@ -659,33 +654,34 @@ class Integrator(ABC):
         seconds, source_rates = _normalize_timesteps(
             timesteps, source_rates, timestep_units, operator)
 
-        # validate existing depletion steps are consistent with those passed to operator
-        # if the timesteps retrieved from operator.prev_res.get_times match the first set
-        # of time steps provided to the continue run, and the same is true for the source_rates
-        # retrieved from operator.prev_res.get_source_rates(), then run a depletion simulation
-        # with only the new time steps and source rates provided
         if continue_timesteps:
-            completed_times = operator.prev_res.get_times(time_units=timestep_units)
-            completed_timesteps = completed_times[1:] - completed_times[:-1] # convert absolute t to dt
-            num_previous_steps_run = len(completed_timesteps)
-            if (np.array_equal(completed_timesteps, timesteps[:num_previous_steps_run])):
-                seconds = seconds[num_previous_steps_run:]
-            else:
+            # Get timesteps and source rates from previous results
+            prev_times = operator.prev_res.get_times(timestep_units)
+            prev_source_rates = operator.prev_res.get_source_rates()
+            prev_timesteps = np.diff(prev_times)
+
+            # Make sure parameters from the previous results are consistent with
+            # those passed to operator
+            num_prev = len(prev_timesteps)
+            if not np.array_equal(prev_timesteps, timesteps[:num_prev]):
                 raise ValueError(
                     "You are attempting to continue a run in which the previous timesteps "
                     "do not have the same initial timesteps as those provided to the "
                     "Integrator. Please make sure you are using the correct timesteps."
                 )
-            completed_source_rates = operator.prev_res.get_source_rates()
-            if(np.array_equal(completed_source_rates, np.asarray(source_rates)[:num_previous_steps_run] )):
-                source_rates = source_rates[num_previous_steps_run:]
-            else:
+            if not np.array_equal(prev_source_rates, source_rates[:num_prev]):
                 raise ValueError(
                     "You are attempting to continue a run in which the previous results "
                     "do not have the same initial source rates, powers, or power densities "
                     "as those provided to the Integrator. Please make sure you are using "
-                    "the correct powers, power densities, or source rates and previous results file."
-                ) 
+                    "the correct powers, power densities, or source rates and previous "
+                    "results file."
+                )
+
+            # Run with only the new time steps and source rates provided
+            seconds = seconds[num_prev:]
+            source_rates = source_rates[num_prev:]
+
         self.timesteps = np.asarray(seconds)
         self.source_rates = np.asarray(source_rates)
 
@@ -983,8 +979,8 @@ class SIIntegrator(Integrator):
         after whatever time steps exist, if any. If `True`, the timesteps
         provided to the `Integrator` must match exactly those that exist
         in the `prev_results` passed to the `Opereator`. The `power`,
-        `power_density`, or `source_rates` must match as well. The 
-        method of specifying `power`, `power_density`, or 
+        `power_density`, or `source_rates` must match as well. The
+        method of specifying `power`, `power_density`, or
         `source_rates` should be the same as the initial run.
 
         .. versionadded:: 0.15.1

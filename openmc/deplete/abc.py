@@ -667,7 +667,6 @@ class Integrator(ABC):
         if continue_timesteps:
             completed_times = operator.prev_res.get_times(time_units=timestep_units)
             completed_timesteps = completed_times[1:] - completed_times[:-1] # convert absolute t to dt
-            completed_source_rates = operator.prev_res.get_source_rates()
             num_previous_steps_run = len(completed_timesteps)
             if (np.array_equal(completed_timesteps, timesteps[:num_previous_steps_run])):
                 seconds = seconds[num_previous_steps_run:]
@@ -677,6 +676,7 @@ class Integrator(ABC):
                     "do not have the same initial timesteps as those provided to the "
                     "Integrator. Please make sure you are using the correct timesteps."
                 )
+            completed_source_rates = operator.prev_res.get_source_rates()
             if(np.array_equal(completed_source_rates, np.asarray(source_rates)[:num_previous_steps_run] )):
                 source_rates = source_rates[num_previous_steps_run:]
             else:

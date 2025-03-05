@@ -61,7 +61,6 @@ NCrystalConfig query_ncrystal_config()
   };
 
   NCrystalConfig res;
-  bool all_ok(true);
   if (!readLine(res.shlibpath) ||
       !(res.intversion = parseIntVersion(res.shlibpath)) ||
       !readLine(res.shlibpath) || res.shlibpath.empty() ||

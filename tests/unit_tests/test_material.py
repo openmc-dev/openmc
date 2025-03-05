@@ -533,8 +533,8 @@ def test_mix_materials():
     dens4 = 1. / (f0 / m1dens + f1 / m2dens)
     dens5 = f0*m1dens + f1*m2dens
     m3 = openmc.Material.mix_materials([m1, m2], [f0, f1], percent_type='ao')
-    m4 = openmc.Material.mix_materials([m1, m2], [f0, f1], percent_type='wo')
-    m5 = openmc.Material.mix_materials([m1, m2], [f0, f1], percent_type='vo')
+    m4 = openmc.Material.mix_materials([m1, m2], [f0, f1], percent_type='wo', material_id=999)
+    m5 = openmc.Material.mix_materials([m1, m2], [f0, f1], percent_type='vo', name='m5')
     assert m3.density == pytest.approx(dens3)
     assert m4.density == pytest.approx(dens4)
     assert m5.density == pytest.approx(dens5)

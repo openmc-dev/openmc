@@ -1538,9 +1538,10 @@ class Material(IDManagerMixin):
                                     openmc.data.AVOGADRO
 
         # Create the new material with the desired name
-        if cls.name is None:
-            cls.name = '-'.join([f'{m.name}({f})' for m, f in
+        if "name" not in kwargs:
+            kwargs["name"] = '-'.join([f'{m.name}({f})' for m, f in
                              zip(materials, fracs)])
+
         new_mat = cls(**kwargs)
 
         # Compute atom fractions of nuclides and add them to the new material

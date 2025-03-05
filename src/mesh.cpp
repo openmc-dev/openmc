@@ -501,19 +501,24 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
     }
   }
 
-  // Show elapsed time
+  // Get total time and normalization time
   timer.stop();
   double t_total = timer.elapsed();
-  double t_normalize = t_total - t_raytrace - t_mpi;
-  if (mpi::master) {
-    header("Timing Statistics", 7);
-    show_time("Total time elapsed", t_total);
-    show_time("Ray tracing", t_raytrace, 1);
-    show_time("Ray tracing (per ray)", t_raytrace / n_total, 1);
-    show_time("MPI communication", t_mpi, 1);
-    show_time("Normalization", t_normalize, 1);
-    std::fflush(stdout);
-  }
+  double t_norm = t_total - t_raytrace - t_mpi;
+
+  // Show timing statistics
+  if (settings::verbosity < 7 || !mpi::master)
+    return;
+  header("Timing Statistics", 7);
+  fmt::print(" Total time elapsed            = {:.4e} seconds\n", t_total);
+  fmt::print("   Ray tracing                 = {:.4e} seconds\n", t_raytrace);
+  fmt::print("   MPI communication           = {:.4e} seconds\n", t_mpi);
+  fmt::print("   Normalization               = {:.4e} seconds\n", t_norm);
+  fmt::print(" Calculation rate              = {:.4e} rays/seconds\n",
+    n_total / t_raytrace);
+  fmt::print(" Calculation rate (per thread) = {:.4e} rays/seconds\n",
+    n_total / (t_raytrace * mpi::n_procs * num_threads()));
+  std::fflush(stdout);
 }
 
 void Mesh::to_hdf5(hid_t group) const

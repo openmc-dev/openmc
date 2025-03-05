@@ -119,10 +119,6 @@ private:
   double* volumes_;         //!< volume in [cm^3] (bins, table_size)
   int table_size_;          //!< Size of hash table for each mesh element
   bool table_full_ {false}; //!< Whether the hash table is full
-
-  // Value used to indicate an empty slot in the hash table. We use -2 because
-  // the value -1 is used to indicate a void material.
-  static constexpr int EMPTY {-2};
 };
 
 } // namespace detail

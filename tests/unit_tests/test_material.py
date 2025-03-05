@@ -538,6 +538,8 @@ def test_mix_materials():
     assert m3.density == pytest.approx(dens3)
     assert m4.density == pytest.approx(dens4)
     assert m5.density == pytest.approx(dens5)
+    assert m4.id == 999
+    assert m5.name == 'm5'
 
 
 def test_get_activity():

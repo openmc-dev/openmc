@@ -125,7 +125,7 @@ pip_. From the root directory of the OpenMC repository, run:
 This feature allows for rebuilding on initial import, providing 
 flexibility for iterative development or testing changes to the codebase.
 
-.. _git: http://git-scm.com/
+.. _git: https://git-scm.com/
 .. _GitHub: https://github.com/
 .. _git flow: https://nvie.com/git-model
 .. _valgrind: https://www.valgrind.org/

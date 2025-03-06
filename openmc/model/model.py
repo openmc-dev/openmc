@@ -124,7 +124,7 @@ class Model:
 
     @plots.setter
     def plots(self, plots):
-        check_type('plots', plots, Iterable, openmc.Plot)
+        check_type('plots', plots, Iterable, openmc.PlotBase)
         if isinstance(plots, openmc.Plots):
             self._plots = plots
         else:
@@ -220,7 +220,8 @@ class Model:
         materials = openmc.Materials.from_xml(materials)
         geometry = openmc.Geometry.from_xml(geometry, materials)
         settings = openmc.Settings.from_xml(settings)
-        tallies = openmc.Tallies.from_xml(tallies) if Path(tallies).exists() else None
+        tallies = openmc.Tallies.from_xml(
+            tallies) if Path(tallies).exists() else None
         plots = openmc.Plots.from_xml(plots) if Path(plots).exists() else None
         return cls(geometry, materials, settings, tallies, plots)
 
@@ -242,12 +243,16 @@ class Model:
         model = cls()
 
         meshes = {}
-        model.settings = openmc.Settings.from_xml_element(root.find('settings'), meshes)
-        model.materials = openmc.Materials.from_xml_element(root.find('materials'))
-        model.geometry = openmc.Geometry.from_xml_element(root.find('geometry'), model.materials)
+        model.settings = openmc.Settings.from_xml_element(
+            root.find('settings'), meshes)
+        model.materials = openmc.Materials.from_xml_element(
+            root.find('materials'))
+        model.geometry = openmc.Geometry.from_xml_element(
+            root.find('geometry'), model.materials)
 
         if root.find('tallies') is not None:
-            model.tallies = openmc.Tallies.from_xml_element(root.find('tallies'), meshes)
+            model.tallies = openmc.Tallies.from_xml_element(
+                root.find('tallies'), meshes)
 
         if root.find('plots') is not None:
             model.plots = openmc.Plots.from_xml_element(root.find('plots'))
@@ -436,7 +441,8 @@ class Model:
                 depletion_operator.cleanup_when_done = True
                 depletion_operator.finalize()
 
-    def export_to_xml(self, directory='.', remove_surfs=False):
+    def export_to_xml(self, directory: PathLike = '.', remove_surfs: bool = False,
+                      nuclides_to_ignore: Iterable[str] | None = None):
         """Export model to separate XML files.
 
         Parameters
@@ -449,6 +455,9 @@ class Model:
             exporting.
 
             .. versionadded:: 0.13.1
+        nuclides_to_ignore : list of str
+            Nuclides to ignore when exporting to XML.
+
         """
         # Create directory if required
         d = Path(directory)
@@ -462,18 +471,19 @@ class Model:
         # for all materials in the geometry and use that to automatically build
         # a collection.
         if self.materials:
-            self.materials.export_to_xml(d)
+            self.materials.export_to_xml(d, nuclides_to_ignore=nuclides_to_ignore)
         else:
             materials = openmc.Materials(self.geometry.get_all_materials()
                                          .values())
-            materials.export_to_xml(d)
+            materials.export_to_xml(d, nuclides_to_ignore=nuclides_to_ignore)
 
         if self.tallies:
             self.tallies.export_to_xml(d)
         if self.plots:
             self.plots.export_to_xml(d)
 
-    def export_to_model_xml(self, path='model.xml', remove_surfs=False):
+    def export_to_model_xml(self, path: PathLike = 'model.xml', remove_surfs: bool = False,
+                            nuclides_to_ignore: Iterable[str] | None = None):
         """Export model to a single XML file.
 
         .. versionadded:: 0.13.3
@@ -486,6 +496,8 @@ class Model:
         remove_surfs : bool
             Whether or not to remove redundant surfaces from the geometry when
             exporting.
+        nuclides_to_ignore : list of str
+            Nuclides to ignore when exporting to XML.
 
         """
         xml_path = Path(path)
@@ -531,18 +543,21 @@ class Model:
             fh.write("<model>\n")
             # Write the materials collection to the open XML file first.
             # This will write the XML header also
-            materials._write_xml(fh, False, level=1)
+            materials._write_xml(fh, False, level=1,
+                                 nuclides_to_ignore=nuclides_to_ignore)
             # Write remaining elements as a tree
             fh.write(ET.tostring(geometry_element, encoding="unicode"))
             fh.write(ET.tostring(settings_element, encoding="unicode"))
 
             if self.tallies:
                 tallies_element = self.tallies.to_xml_element(mesh_memo)
-                xml.clean_indentation(tallies_element, level=1, trailing_indent=self.plots)
+                xml.clean_indentation(
+                    tallies_element, level=1, trailing_indent=self.plots)
                 fh.write(ET.tostring(tallies_element, encoding="unicode"))
             if self.plots:
                 plots_element = self.plots.to_xml_element()
-                xml.clean_indentation(plots_element, level=1, trailing_indent=False)
+                xml.clean_indentation(
+                    plots_element, level=1, trailing_indent=False)
                 fh.write(ET.tostring(plots_element, encoding="unicode"))
             fh.write("</model>\n")
 
@@ -848,6 +863,8 @@ class Model:
         legend: bool = False,
         axis_units: str = 'cm',
         outline: bool | str = False,
+        show_overlaps: bool = False,
+        overlap_color: Sequence[int] | str | None = None,
         n_samples: int | None = None,
         plane_tolerance: float = 1.,
         legend_kwargs: dict | None = None,
@@ -926,6 +943,9 @@ class Model:
             plot.pixels = pixels
             plot.basis = basis
             plot.color_by = color_by
+            plot.show_overlaps = show_overlaps
+            if overlap_color is not None:
+                plot.overlap_color = overlap_color
             if colors is not None:
                 plot.colors = colors
             self.plots.append(plot)

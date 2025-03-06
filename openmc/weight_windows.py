@@ -513,9 +513,19 @@ def wwinp_to_wws(path: PathLike) -> list[WeightWindows]:
             line_arr = np.fromstring(wwinp.readline(), sep=' ')
             xyz2 = line_arr[:3]
 
-            # oriented polar and azimuthal vectors aren't yet supported
-            if np.count_nonzero(xyz1) or np.count_nonzero(xyz2):
-                raise NotImplementedError('Custom sphere/cylinder orientations are not supported')
+            # Get polar and azimuthal axes
+            polar_axis = xyz1 - xyz0
+            azimuthal_axis = xyz2 - xyz0
+
+            # Check for polar axis other than (0, 0, 1)
+            norm = np.linalg.norm(polar_axis)
+            if not np.isclose(polar_axis[2]/norm, 1.0):
+                raise NotImplementedError('Polar axis not aligned to z-axis not supported')
+
+            # Check for azimuthal axis other than (1, 0, 0)
+            norm = np.linalg.norm(azimuthal_axis)
+            if not np.isclose(azimuthal_axis[0]/norm, 1.0):
+                raise NotImplementedError('Azimuthal axis not aligned to x-axis not supported')
 
             # read geometry type
             nwg = int(line_arr[-1])

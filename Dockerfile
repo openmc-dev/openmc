@@ -194,7 +194,7 @@ ENV LIBMESH_INSTALL_DIR=$HOME/LIBMESH
 
 # clone and install openmc
 RUN mkdir -p ${HOME}/OpenMC && cd ${HOME}/OpenMC \
-    && git clone --shallow-submodules --recurse-submodules --single-branch -b ${openmc_branch} --depth=1 ${OPENMC_REPO} \
+    && git clone --shallow-submodules --recurse-submodules --single-branch -b ${openmc_branch} ${OPENMC_REPO} \
     && cd openmc ; \
     export SKBUILD_CMAKE_ARGS="-DCMAKE_CXX_COMPILER=mpicxx; \
                                 -DOPENMC_USE_MPI=on; \

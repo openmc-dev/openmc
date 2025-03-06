@@ -1,5 +1,5 @@
 [build-system]
-requires = ["scikit-build-core"]
+requires = ["scikit-build-core", "setuptools-scm"]
 build-backend = "scikit_build_core.build"
 
 [project]
@@ -8,7 +8,7 @@ authors = [
     {name = "The OpenMC Development Team", email = "openmc@anl.gov"},
 ]
 description = "OpenMC"
-version = "0.15.1-dev"
+dynamic = ["version"]
 requires-python = ">=3.11"
 license = {file = "LICENSE"}
 classifiers = [
@@ -65,3 +65,5 @@ logging.level = "INFO"
 wheel.install-dir = "openmc"
 wheel.packages = ["openmc"]
 sdist.include = ["*.h5"]
+
+[tool.setuptools_scm]

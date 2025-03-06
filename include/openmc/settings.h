@@ -67,6 +67,7 @@ extern bool trigger_predict;         //!< predict batches for triggers?
 extern bool uniform_source_sampling; //!< sample sources uniformly?
 extern bool ufs_on;                  //!< uniform fission site method on?
 extern bool urr_ptables_on;          //!< use unresolved resonance prob. tables?
+extern bool use_decay_photons;       //!< use decay photons for D1S
 extern "C" bool weight_windows_on;   //!< are weight windows are enabled?
 extern bool weight_window_checkpoint_surface;   //!< enable weight window check
                                                 //!< upon surface crossing?

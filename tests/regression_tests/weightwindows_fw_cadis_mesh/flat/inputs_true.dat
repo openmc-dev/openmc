@@ -191,8 +191,8 @@
   </geometry>
   <settings>
     <run_mode>fixed source</run_mode>
-    <particles>600</particles>
-    <batches>25</batches>
+    <particles>750</particles>
+    <batches>30</batches>
     <inactive>20</inactive>
     <source particle="neutron" strength="3.14" type="independent">
       <energy type="discrete">

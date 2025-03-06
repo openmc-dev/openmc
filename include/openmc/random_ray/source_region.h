@@ -101,6 +101,18 @@ public:
            mesh_bin == other.mesh_bin;
   }
 
+  // Less than operator required by std::sort
+  bool operator<(const SourceRegionKey& other) const
+  {
+    if (base_source_region_id < other.base_source_region_id) {
+      return true;
+    } else if (base_source_region_id > other.base_source_region_id) {
+      return false;
+    } else {
+      return mesh_bin < other.mesh_bin;
+    }
+  }
+
   // Hashing functor required by the unordered_map
   struct HashFunctor {
     size_t operator()(const SourceRegionKey& key) const
@@ -152,8 +164,8 @@ public:
   // Energy group-wise 1D arrays
   double* scalar_flux_old_;
   double* scalar_flux_new_;
-  double* source_;
-  double* external_source_;
+  float* source_;
+  float* external_source_;
   double* scalar_flux_final_;
 
   MomentArray* source_gradients_;
@@ -248,11 +260,11 @@ public:
   double& scalar_flux_final(int g) { return scalar_flux_final_[g]; }
   const double& scalar_flux_final(int g) const { return scalar_flux_final_[g]; }
 
-  double& source(int g) { return source_[g]; }
-  const double& source(int g) const { return source_[g]; }
+  float& source(int g) { return source_[g]; }
+  const float& source(int g) const { return source_[g]; }
 
-  double& external_source(int g) { return external_source_[g]; }
-  const double& external_source(int g) const { return external_source_[g]; }
+  float& external_source(int g) { return external_source_[g]; }
+  const float& external_source(int g) const { return external_source_[g]; }
 
   MomentArray& source_gradients(int g) { return source_gradients_[g]; }
   const MomentArray& source_gradients(int g) const
@@ -335,9 +347,9 @@ public:
     scalar_flux_old_; //!< The scalar flux from the previous iteration
   vector<double>
     scalar_flux_new_; //!< The scalar flux from the current iteration
-  vector<double>
+  vector<float>
     source_; //!< The total source term (fission + scattering + external)
-  vector<double> external_source_;   //!< The external source term
+  vector<float> external_source_;    //!< The external source term
   vector<double> scalar_flux_final_; //!< The scalar flux accumulated over all
                                      //!< active iterations (used for plotting,
                                      //!< or computing adjoint sources)
@@ -539,24 +551,21 @@ public:
     return scalar_flux_final_[se];
   }
 
-  double& source(int64_t sr, int g) { return source_[index(sr, g)]; }
-  const double& source(int64_t sr, int g) const
-  {
-    return source_[index(sr, g)];
-  }
-  double& source(int64_t se) { return source_[se]; }
-  const double& source(int64_t se) const { return source_[se]; }
+  float& source(int64_t sr, int g) { return source_[index(sr, g)]; }
+  const float& source(int64_t sr, int g) const { return source_[index(sr, g)]; }
+  float& source(int64_t se) { return source_[se]; }
+  const float& source(int64_t se) const { return source_[se]; }
 
-  double& external_source(int64_t sr, int g)
+  float& external_source(int64_t sr, int g)
   {
     return external_source_[index(sr, g)];
   }
-  const double& external_source(int64_t sr, int g) const
+  const float& external_source(int64_t sr, int g) const
   {
     return external_source_[index(sr, g)];
   }
-  double& external_source(int64_t se) { return external_source_[se]; }
-  const double& external_source(int64_t se) const
+  float& external_source(int64_t se) { return external_source_[se]; }
+  const float& external_source(int64_t se) const
   {
     return external_source_[se];
   }
@@ -642,8 +651,8 @@ public:
   vector<double> scalar_flux_old_;
   vector<double> scalar_flux_new_;
   vector<double> scalar_flux_final_;
-  vector<double> source_;
-  vector<double> external_source_;
+  vector<float> source_;
+  vector<float> external_source_;
 
   vector<MomentArray> source_gradients_;
   vector<MomentArray> flux_moments_old_;

@@ -250,6 +250,7 @@ SourceRegionHandle SourceRegionContainer::get_source_region_handle(int64_t sr)
 
 void SourceRegionContainer::adjoint_reset()
 {
+  std::fill(n_hits_.begin(), n_hits_.end(), 0);
   std::fill(volume_.begin(), volume_.end(), 0.0);
   std::fill(volume_t_.begin(), volume_t_.end(), 0.0);
   std::fill(volume_sq_.begin(), volume_sq_.end(), 0.0);

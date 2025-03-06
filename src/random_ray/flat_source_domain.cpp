@@ -1407,25 +1407,29 @@ SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
 
 void FlatSourceDomain::finalize_discovered_source_regions()
 {
-  // Loop over all discovered source regions and copy them into the permanent
-  // source region map. This must be done serially.
-  int new_source_regions = 0;
-  for (const auto& it : discovered_source_regions_) {
-    const SourceRegionKey& sr_key = it.first;
-    SourceRegion& sr = it.second;
-
-    // Source regions are generated when a ray first crosses them. However,
-    // if the new region is only crossed by an inactive (dead length) ray,
-    // then it will not have a volume. We discard this type of source region
-    // as it is still volumeless, so we aren't losing any information.
-    if (sr.volume_ > 0.0) {
-      source_regions_.push_back(sr);
-      source_region_map_[it.first] = source_regions_.n_source_regions() - 1;
-      new_source_regions++;
+  // Extract keys for entries with a valid volume.
+  vector<SourceRegionKey> keys;
+  for (const auto& pair : discovered_source_regions_) {
+    if (pair.second.volume_ > 0.0) {
+      keys.push_back(pair.first);
     }
   }
 
-  if (new_source_regions > 0) {
+  if (!keys.empty()) {
+    // Sort the keys, so as to ensure reproducible ordering given that source
+    // regions may have been added to discovered_source_regions_ in an arbitrary
+    // order due to shared memory threading.
+    std::sort(keys.begin(), keys.end());
+
+    // Append the source regions in the sorted key order.
+    for (const auto& key : keys) {
+      const SourceRegion& sr = discovered_source_regions_[key];
+      source_region_map_[key] = source_regions_.n_source_regions();
+      source_regions_.push_back(sr);
+    }
+
+    // If any new source regions were discovered, we need to update the
+    // tally mapping between source regions and tally bins.
     mapped_all_tallies_ = false;
   }
 

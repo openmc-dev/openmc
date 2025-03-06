@@ -191,9 +191,9 @@
   </geometry>
   <settings>
     <run_mode>fixed source</run_mode>
-    <particles>300</particles>
-    <batches>20</batches>
-    <inactive>15</inactive>
+    <particles>750</particles>
+    <batches>30</batches>
+    <inactive>20</inactive>
     <source particle="neutron" strength="3.14" type="independent">
       <energy type="discrete">
         <parameters>100.0 1.0</parameters>
@@ -215,7 +215,7 @@
       </weight_windows_generator>
     </weight_window_generators>
     <mesh id="1">
-      <dimension>13 13 13</dimension>
+      <dimension>15 15 15</dimension>
       <lower_left>0.0 0.0 0.0</lower_left>
       <upper_right>30.0 30.0 30.0</upper_right>
     </mesh>

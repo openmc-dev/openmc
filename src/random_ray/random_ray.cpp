@@ -352,7 +352,6 @@ void RandomRay::attenuate_flux(double distance, bool is_active, double offset)
       // separately.
       Mesh* mesh = model::meshes[mesh_idx].get();
 
-
       // We adjust the start and end positions of the ray slightly
       // to accomodate for floating point precision issues that tend
       // to occur at mesh boundaries that overlap with geometry lattice
@@ -369,7 +368,8 @@ void RandomRay::attenuate_flux(double distance, bool is_active, double offset)
       // Loop over all mesh bins and attenuate flux
       for (int b = 0; b < mesh_bins_.size(); b++) {
         double physical_length = reduced_distance * mesh_fractional_lengths_[b];
-        attenuate_flux_inner(physical_length, is_active, sr, mesh_bins_[b], start);
+        attenuate_flux_inner(
+          physical_length, is_active, sr, mesh_bins_[b], start);
         start += physical_length * u();
       }
     }

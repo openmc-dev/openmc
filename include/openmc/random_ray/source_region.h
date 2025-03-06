@@ -614,7 +614,7 @@ public:
   SourceRegionHandle get_source_region_handle(int64_t sr);
   void adjoint_reset();
 
-  private:
+private:
   //----------------------------------------------------------------------------
   // Private Data Members
   int64_t n_source_regions_ {0};

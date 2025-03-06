@@ -344,46 +344,6 @@ class Model:
         else:
             raise ValueError("The model must be initialized before calling "
                              "this method")
-        
-    def get_all_nuclides(self) -> list[str]:
-        """Return all nuclides within the geometry.
-
-        Returns
-        -------
-        list
-            Sorted list of all nuclides in materials appearing in the geometry
-
-        """
-        all_nuclides = set()
-        for material in self.get_all_materials().values():
-            all_nuclides |= set(material.get_nuclides())
-        return list(sorted(all_nuclides))
-        
-    def get_all_materials(self) -> dict[int, openmc.Material]:
-        """Return all materials within the geometry.
-
-        Returns
-        -------
-        dict
-            Dictionary mapping material IDs to :class:`openmc.Material`
-            instances
-
-        """
-
-        materials = {}
-
-        # Check if the model is DAGMC
-        universes = self.geometry.get_all_universes()
-
-        if any(isinstance(u, openmc.DAGMCUniverse) for u in universes.values()):
-            if self.materials:
-                materials = {m.id: m for m in self.materials if m is not None}
-        else:
-            root_universe = self.geometry.root_universe
-            if root_universe:
-                return root_universe.get_all_materials()
-
-        return materials
 
     def finalize_lib(self):
         """Finalize simulation and free memory allocated for the C API

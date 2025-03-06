@@ -245,6 +245,10 @@ class Chain:
         Reactions that are tracked in the depletion chain
     nuclide_dict : dict of str to int
         Maps a nuclide name to an index in nuclides.
+    stable_nuclides : list of openmc.deplete.Nuclide
+        List of stable nuclides available in the chain.
+    unstable_nuclides : list of openmc.deplete.Nuclide
+        List of unstable nuclides available in the chain.
     fission_yields : None or iterable of dict
         List of effective fission yields for materials. Each dictionary
         should be of the form ``{parent: {product: yield}}`` with
@@ -257,7 +261,7 @@ class Chain:
     """
 
     def __init__(self):
-        self.nuclides = []
+        self.nuclides: List[Nuclide] = []
         self.reactions = []
         self.nuclide_dict = {}
         self._fission_yields = None
@@ -274,31 +278,17 @@ class Chain:
         return len(self.nuclides)
 
 
-    def get_stable_nuclides(self) -> List[Nuclide]:
-        """Return a list of stable nuclides in available the Chain
+    @property
+    def stable_nuclides(self) -> List[Nuclide]:
+        """List of stable nuclides available in the chain"""
+        return [nuc for nuc in self.nuclides if nuc.half_life is None]
 
-        Returns
-        -------
-        nuclides: openmc.deplete.Nuclide
-            List of stable nuclides in the chain
-        """
+    @property
+    def unstable_nuclides(self) -> List[Nuclide]:
+        """List of unstable nuclides available in the chain"""
+        return [nuc for nuc in self.nuclides if nuc.half_life is not None]
 
-        return [nuclide for nuclide in self.nuclides if nuclide.n_decay_modes == 0]
-
-
-    def get_unstable_nuclides(self) -> List[Nuclide]:
-        """Return a list of unstable nuclides in available the Chain
-
-        Returns
-        -------
-        nuclides: openmc.deplete.Nuclide
-            List of unstable nuclides in the chain
-        """
-
-        return [nuclide for nuclide in self.nuclides if nuclide.n_decay_modes != 0]
-
-
-    def add_nuclide(self, nuclide):
+    def add_nuclide(self, nuclide: Nuclide):
         """Add a nuclide to the depletion chain
 
         Parameters

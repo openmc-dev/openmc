@@ -86,12 +86,12 @@ def test_from_endf(endf_chain):
         assert nuc == chain[nuc.name]
 
 
-def test_unstable_nuclides(simple_chain):
-    assert [nuc.name for nuc in simple_chain.get_unstable_nuclides()] == ["A", "B"]
+def test_unstable_nuclides(simple_chain: Chain):
+    assert [nuc.name for nuc in simple_chain.unstable_nuclides] == ["A", "B"]
 
 
-def test_stable_nuclides(simple_chain):
-    assert [nuc.name for nuc in simple_chain.get_stable_nuclides()] == ["H1", "C"]
+def test_stable_nuclides(simple_chain: Chain):
+    assert [nuc.name for nuc in simple_chain.stable_nuclides] == ["H1", "C"]
 
 
 def test_from_xml(simple_chain):

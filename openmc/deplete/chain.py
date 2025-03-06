@@ -12,6 +12,7 @@ from collections import defaultdict, namedtuple
 from collections.abc import Mapping, Iterable
 from numbers import Real, Integral
 from warnings import warn
+from typing import List
 
 import lxml.etree as ET
 import scipy.sparse as sp
@@ -271,6 +272,31 @@ class Chain:
     def __len__(self):
         """Number of nuclides in chain."""
         return len(self.nuclides)
+
+
+    def get_stable_nuclides(self) -> List[Nuclide]:
+        """Return a list of stable nuclides in available the Chain
+
+        Returns
+        -------
+        nuclides: openmc.deplete.Nuclide
+            List of stable nuclides in the chain
+        """
+
+        return [nuclide for nuclide in self.nuclides if nuclide.n_decay_modes == 0]
+
+
+    def get_unstable_nuclides(self) -> List[Nuclide]:
+        """Return a list of unstable nuclides in available the Chain
+
+        Returns
+        -------
+        nuclides: openmc.deplete.Nuclide
+            List of unstable nuclides in the chain
+        """
+
+        return [nuclide for nuclide in self.nuclides if nuclide.n_decay_modes != 0]
+
 
     def add_nuclide(self, nuclide):
         """Add a nuclide to the depletion chain

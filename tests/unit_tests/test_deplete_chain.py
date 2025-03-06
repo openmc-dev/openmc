@@ -86,6 +86,14 @@ def test_from_endf(endf_chain):
         assert nuc == chain[nuc.name]
 
 
+def test_unstable_nuclides(simple_chain):
+    assert [nuc.name for nuc in simple_chain.get_unstable_nuclides()] == ["A", "B"]
+
+
+def test_stable_nuclides(simple_chain):
+    assert [nuc.name for nuc in simple_chain.get_stable_nuclides()] == ["H1", "C"]
+
+
 def test_from_xml(simple_chain):
     """Read chain_test.xml and ensure all values are correct."""
     # Unfortunately, this routine touches a lot of the code, but most of

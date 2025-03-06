@@ -37,7 +37,6 @@ option(OPENMC_USE_DAGMC       "Enable support for DAGMC (CAD) geometry"         
 option(OPENMC_USE_LIBMESH     "Enable support for libMesh unstructured mesh tallies" OFF)
 option(OPENMC_USE_MPI         "Enable MPI"                                           OFF)
 option(OPENMC_USE_MCPL        "Enable MCPL"                                          OFF)
-option(OPENMC_USE_NCRYSTAL    "Enable support for NCrystal scattering"               OFF)
 option(OPENMC_USE_UWUW        "Enable UWUW"                                          OFF)
 
 message(STATUS "OPENMC_USE_OPENMP ${OPENMC_USE_OPENMP}")
@@ -48,7 +47,6 @@ message(STATUS "OPENMC_USE_DAGMC ${OPENMC_USE_DAGMC}")
 message(STATUS "OPENMC_USE_LIBMESH ${OPENMC_USE_LIBMESH}")
 message(STATUS "OPENMC_USE_MPI ${OPENMC_USE_MPI}")
 message(STATUS "OPENMC_USE_MCPL ${OPENMC_USE_MCPL}")
-message(STATUS "OPENMC_USE_NCRYSTAL ${OPENMC_USE_NCRYSTAL}")
 message(STATUS "OPENMC_USE_UWUW ${OPENMC_USE_UWUW}")
 
 # Warnings for deprecated options
@@ -119,23 +117,6 @@ macro(find_package_write_status pkg)
     message(STATUS "Did not find ${pkg}, will use submodule instead")
   endif()
 endmacro()
-
-#===============================================================================
-# NCrystal Scattering Support
-#===============================================================================
-
-if(OPENMC_USE_NCRYSTAL)
-  if(NOT DEFINED "NCrystal_DIR")
-    #Invocation of "ncrystal-config --show cmakedir" is needed to find NCrystal
-    #when it is installed from Python wheels:
-    execute_process(
-      COMMAND "ncrystal-config" "--show" "cmakedir"
-      OUTPUT_VARIABLE "NCrystal_DIR" OUTPUT_STRIP_TRAILING_WHITESPACE
-    )
-  endif()
-  find_package(NCrystal 3.8.0 REQUIRED)
-  message(STATUS "Found NCrystal: ${NCrystal_DIR} (version ${NCrystal_VERSION})")
-endif()
 
 #===============================================================================
 # DAGMC Geometry Support - need DAGMC/MOAB
@@ -372,6 +353,7 @@ list(APPEND libopenmc_SOURCES
   src/mgxs.cpp
   src/mgxs_interface.cpp
   src/ncrystal_interface.cpp
+  src/ncrystal_load.cpp
   src/nuclide.cpp
   src/output.cpp
   src/particle.cpp
@@ -546,11 +528,6 @@ endif()
 if (OPENMC_USE_MCPL)
   target_compile_definitions(libopenmc PUBLIC OPENMC_MCPL)
   target_link_libraries(libopenmc MCPL::mcpl)
-endif()
-
-if(OPENMC_USE_NCRYSTAL)
-  target_compile_definitions(libopenmc PRIVATE NCRYSTAL)
-  target_link_libraries(libopenmc NCrystal::NCrystal)
 endif()
 
 #===============================================================================

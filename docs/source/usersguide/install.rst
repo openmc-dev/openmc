@@ -284,13 +284,13 @@ Prerequisites
 
     * NCrystal_ library for defining materials with enhanced thermal neutron transport
 
-      Adding this option allows the creation of materials from NCrystal, which
-      replaces the scattering kernel treatment of ACE files with a modular,
-      on-the-fly approach. To use it `install
-      <https://github.com/mctools/ncrystal/wiki/Get-NCrystal>`_ NCrystal and
-      turn on the option in the CMake configuration step::
-
-          cmake -DOPENMC_USE_NCRYSTAL=on ..
+      OpenMC supports the creation of materials from NCrystal, which replaces
+      the scattering kernel treatment of ACE files with a modular, on-the-fly
+      approach. OpenMC does not need any particular build option to use this,
+      but NCrystal must be installed on the system. Refer to `NCrystal
+      documentation
+      <https://github.com/mctools/ncrystal/wiki/Get-NCrystal>`_ for how this is
+      achieved.
 
     * libMesh_ mesh library framework for numerical simulations of partial differential equations
 
@@ -392,12 +392,6 @@ OPENMC_USE_DAGMC
 OPENMC_USE_MCPL
   Turns on support for reading MCPL_ source files and writing MCPL source points
   and surface sources. (Default: off)
-
-OPENMC_USE_NCRYSTAL
-  Turns on support for NCrystal materials. NCrystal must be `installed
-  <https://github.com/mctools/ncrystal/wiki/Get-NCrystal>`_ and `initialized
-  <https://github.com/mctools/ncrystal/wiki/Using-NCrystal#setting-up>`_.
-  (Default: off)
 
 OPENMC_USE_LIBMESH
   Enables the use of unstructured mesh tallies with libMesh_. (Default: off)

@@ -368,7 +368,7 @@ Material& Material::clone()
   mat->name_ = name_;
   mat->nuclide_ = nuclide_;
   mat->element_ = element_;
-  mat->ncrystal_mat_ = ncrystal_mat_;
+  mat->ncrystal_mat_ = ncrystal_mat_.clone();
   mat->atom_density_ = atom_density_;
   mat->density_ = density_;
   mat->density_gpcc_ = density_gpcc_;

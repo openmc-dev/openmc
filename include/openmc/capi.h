@@ -71,6 +71,7 @@ int openmc_get_nuclide_index(const char name[], int* index);
 int openmc_add_unstructured_mesh(
   const char filename[], const char library[], int* id);
 int64_t openmc_get_seed();
+uint64_t openmc_get_stride();
 int openmc_get_tally_index(int32_t id, int32_t* index);
 void openmc_get_tally_next_id(int32_t* id);
 int openmc_global_tallies(double** ptr);
@@ -137,6 +138,7 @@ int openmc_reset_timers();
 int openmc_run();
 int openmc_sample_external_source(size_t n, uint64_t* seed, void* sites);
 void openmc_set_seed(int64_t new_seed);
+void openmc_set_stride(uint64_t new_stride);
 int openmc_set_n_batches(
   int32_t n_batches, bool set_max_batches, bool add_statepoint_batch);
 int openmc_simulation_finalize();

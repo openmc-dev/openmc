@@ -193,6 +193,8 @@ class Settings:
         The type of calculation to perform (default is 'eigenvalue')
     seed : int
         Seed for the linear congruential pseudorandom number generator
+    stride : int
+        Number of random numbers allocated for each source particle history
     source : Iterable of openmc.SourceBase
         Distribution of source sites in space, angle, and energy
     sourcepoint : dict
@@ -338,6 +340,7 @@ class Settings:
         self._ptables = None
         self._uniform_source_sampling = None
         self._seed = None
+        self._stride = None
         self._survival_biasing = None
 
         # Shannon entropy mesh
@@ -613,6 +616,16 @@ class Settings:
         cv.check_type('random number generator seed', seed, Integral)
         cv.check_greater_than('random number generator seed', seed, 0)
         self._seed = seed
+
+    @property
+    def stride(self) -> int:
+        return self._stride
+
+    @stride.setter
+    def stride(self, stride: int):
+        cv.check_type('random number generator stride', stride, Integral)
+        cv.check_greater_than('random number generator stride', stride, 0)
+        self._stride = stride
 
     @property
     def survival_biasing(self) -> bool:
@@ -1336,6 +1349,11 @@ class Settings:
             element = ET.SubElement(root, "seed")
             element.text = str(self._seed)
 
+    def _create_stride_subelement(self, root):
+        if self._stride is not None:
+            element = ET.SubElement(root, "stride")
+            element.text = str(self._stride)
+
     def _create_survival_biasing_subelement(self, root):
         if self._survival_biasing is not None:
             element = ET.SubElement(root, "survival_biasing")
@@ -1763,6 +1781,11 @@ class Settings:
         if text is not None:
             self.seed = int(text)
 
+    def _stride_from_xml_element(self, root):
+        text = get_text(root, 'stride')
+        if text is not None:
+            self.stride = int(text)
+
     def _survival_biasing_from_xml_element(self, root):
         text = get_text(root, 'survival_biasing')
         if text is not None:
@@ -2014,6 +2037,7 @@ class Settings:
         self._create_plot_seed_subelement(element)
         self._create_ptables_subelement(element)
         self._create_seed_subelement(element)
+        self._create_stride_subelement(element)
         self._create_survival_biasing_subelement(element)
         self._create_cutoff_subelement(element)
         self._create_entropy_mesh_subelement(element, mesh_memo)
@@ -2122,6 +2146,7 @@ class Settings:
         settings._plot_seed_from_xml_element(elem)
         settings._ptables_from_xml_element(elem)
         settings._seed_from_xml_element(elem)
+        settings._stride_from_xml_element(elem)
         settings._survival_biasing_from_xml_element(elem)
         settings._cutoff_from_xml_element(elem)
         settings._entropy_mesh_from_xml_element(elem, meshes)

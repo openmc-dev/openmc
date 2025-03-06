@@ -538,6 +538,15 @@ pseudo-random number generator.
 
   *Default*: 1
 
+--------------------
+``<stride>`` Element
+--------------------
+
+The ``stride`` element is used to specify how many random numbers are allocated
+for each source particle history.
+
+  *Default*: 152,917
+
 .. _source_element:
 
 --------------------

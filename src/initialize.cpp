@@ -99,9 +99,10 @@ int openmc_init(int argc, char* argv[], const void* intracomm)
   }
 #endif
 
-  // Initialize random number generator -- if the user specifies a seed, it
-  // will be re-initialized later
+  // Initialize random number generator -- if the user specifies a seed and/or
+  // stride, it will be re-initialized later
   openmc::openmc_set_seed(DEFAULT_SEED);
+  openmc::openmc_set_stride(DEFAULT_STRIDE);
 
   // Copy previous locale and set locale to C. This is a workaround for an issue
   // whereby when openmc_init is called from the plotter, the Qt application

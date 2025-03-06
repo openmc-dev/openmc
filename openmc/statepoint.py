@@ -99,6 +99,8 @@ class StatePoint:
         and whose values are time values in seconds.
     seed : int
         Pseudorandom number generator seed
+    stride : int
+        Number of random numbers allocated for each particle history
     source : numpy.ndarray of compound datatype
         Array of source sites. The compound datatype has fields 'r', 'u',
         'E', 'wgt', 'delayed_group', 'surf_id', and 'particle', corresponding to
@@ -355,6 +357,10 @@ class StatePoint:
     @property
     def seed(self):
         return self._f['seed'][()]
+
+    @property
+    def stride(self):
+        return self._f['stride'][()]
 
     @property
     def source(self):

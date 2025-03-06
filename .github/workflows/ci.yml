@@ -29,7 +29,6 @@ jobs:
         mpi: [n, y]
         omp: [n, y]
         dagmc: [n]
-        ncrystal: [n]
         libmesh: [n]
         event: [n]
         vectfit: [n]
@@ -45,10 +44,6 @@ jobs:
             python-version: "3.11"
             mpi: y
             omp: y
-          - ncrystal: y
-            python-version: "3.11"
-            mpi: n
-            omp: n
           - libmesh: y
             python-version: "3.11"
             mpi: y
@@ -66,7 +61,7 @@ jobs:
             omp: n
             mpi: y
     name: "Python ${{ matrix.python-version }} (omp=${{ matrix.omp }},
-      mpi=${{ matrix.mpi }}, dagmc=${{ matrix.dagmc }}, ncrystal=${{ matrix.ncrystal }},
+      mpi=${{ matrix.mpi }}, dagmc=${{ matrix.dagmc }},
       libmesh=${{ matrix.libmesh }}, event=${{ matrix.event }}
       vectfit=${{ matrix.vectfit }})"
 
@@ -75,7 +70,6 @@ jobs:
       PHDF5: ${{ matrix.mpi }}
       OMP: ${{ matrix.omp }}
       DAGMC: ${{ matrix.dagmc }}
-      NCRYSTAL: ${{ matrix.ncrystal }}
       EVENT: ${{ matrix.event }}
       VECTFIT: ${{ matrix.vectfit }}
       LIBMESH: ${{ matrix.libmesh }}

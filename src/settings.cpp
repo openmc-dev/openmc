@@ -514,6 +514,12 @@ void read_settings_xml(pugi::xml_node root)
     openmc_set_seed(seed);
   }
 
+  // Copy random number stride if specified
+  if (check_for_node(root, "stride")) {
+    auto stride = std::stoull(get_node_value(root, "stride"));
+    openmc_set_stride(stride);
+  }
+
   // Check for electron treatment
   if (check_for_node(root, "electron_treatment")) {
     auto temp_str = get_node_value(root, "electron_treatment", true, true);

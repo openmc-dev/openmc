@@ -48,9 +48,6 @@ def get_radionuclides(model: openmc.Model, chain_file: str | None = None) -> lis
         if nuclide.name not in model_nuclides:
             continue
         
-        # Add naturally occuring radionuclides
-        if nuclide.half_life is not None:
-            radionuclides.add(nuclide.name)
         # Loop over reactions and add any targets that are unstable
         for rx_tuple in nuclide.reactions:
             target = rx_tuple.target

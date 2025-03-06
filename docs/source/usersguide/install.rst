@@ -425,13 +425,16 @@ OpenMC can be configured for debug, release, or release with debug info by setti
 the `CMAKE_BUILD_TYPE` option.
 
 Debug
-  Enable debug compiler flags with no optimization `-O0 -g`.
+  Enable debug compiler flags with no optimization. On most platforms/compilers,
+  this is equivalent to `-O0 -g`.
 
 Release
-  Disable debug and enable optimization `-O3 -DNDEBUG`.
+  Disable debug and enable optimization. On most platforms/compilers, this is
+  equivalent to `-O3 -DNDEBUG`.
 
 RelWithDebInfo
-  (Default if no type is specified.) Enable optimization and debug `-O2 -g`.
+  (Default if no type is specified.) Enable optimization and debug. On most
+  platforms/compilers, this is equivalent to `-O2 -g`.
 
 Example of configuring for Debug mode:
 

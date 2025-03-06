@@ -769,7 +769,7 @@ void FlatSourceDomain::output_to_vtk() const
           p.r_last() = sample;
           p.E() = 1.0;
           p.E_last() = 1.0;
-          p.u() = {0.0, 0.0, 0.0};
+          p.u() = {1.0, 0.0, 0.0};
 
           bool found = exhaustive_find_cell(p);
           if (!found) {
@@ -1350,7 +1350,7 @@ SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
   // Sanity check on source region id
   GeometryState gs;
   gs.r() = r + TINY_BIT * u;
-  gs.u() = {0.0, 0.0, 0.0};
+  gs.u() = {1.0, 0.0, 0.0};
   exhaustive_find_cell(gs);
   int gs_i_cell = gs.lowest_coord().cell;
   int64_t sr_found = source_region_offsets_[gs_i_cell] + gs.cell_instance();

@@ -16,7 +16,13 @@ namespace openmc {
  * the object (using the key) before accessing or modifying the map. The object
  * is locked by bucket, allowing for multiple threads to manipulate different
  * keys simultaneously, though sometimes threads will need to wait if keys
- * happen to be in the same bucket.
+ * happen to be in the same bucket. The ParallelMap will generate pointers to
+ * hold values, rather than direct storage of values, so as to allow for
+ * pointers to values to remain valid even after the lock has been released
+ * (though locking of those values is then left to the user). Iterators to the
+ * class are provided but are not threadsafe, and are meant to be used only in a
+ * serial context (e.g., to dump the contents of the map to another data
+ * structure).
  */
 
 template<typename KeyType, typename ValueType, typename HashFunctor>
@@ -139,27 +145,13 @@ public:
     return *bucket.map_[key].get();
   }
 
-  ValueType* emplace(KeyType& key, const ValueType& value)
+  ValueType* emplace(KeyType key, const ValueType& value)
   {
     Bucket& bucket = get_bucket(key);
     // Attempt to emplace the new element into the unordered_map within the
     auto result = bucket.map_.emplace(key, std::make_unique<ValueType>(value));
     auto it = result.first;
     return it->second.get();
-  }
-
-  // Copies everything into a vector, clears all buckets
-  int64_t move_contents_into_vector(vector<ValueType>& v)
-  {
-    int64_t n_new = 0;
-    for (auto& bucket : buckets_) {
-      for (auto& pair : bucket.map_) {
-        v.push_back(*pair.second.get());
-        n_new++;
-      }
-      bucket.map_.clear();
-    }
-    return n_new;
   }
 
   // Return iterator to first element.

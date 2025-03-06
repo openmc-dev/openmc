@@ -1,6 +1,7 @@
 #include "openmc/random_ray/flat_source_domain.h"
 
 #include "openmc/cell.h"
+#include "openmc/constants.h"
 #include "openmc/eigenvalue.h"
 #include "openmc/geometry.h"
 #include "openmc/material.h"
@@ -245,8 +246,7 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
 
     // Set the SR to small status if its expected number of hits
     // per iteration is less than 1.5
-    const double min_hits_per_batch = 1.5;
-    if (source_regions_.n_hits(sr) * inverse_batch < min_hits_per_batch) {
+    if (source_regions_.n_hits(sr) * inverse_batch < MIN_HITS_PER_BATCH) {
       source_regions_.is_small(sr) = 1;
     } else {
       source_regions_.is_small(sr) = 0;
@@ -435,6 +435,7 @@ void FlatSourceDomain::convert_source_regions_to_tallies()
     Particle p;
     p.r() = source_regions_.position(sr);
     p.r_last() = source_regions_.position(sr);
+    p.u() = {1.0, 0.0, 0.0};
     bool found = exhaustive_find_cell(p);
 
     // Loop over energy groups (so as to support energy filters)
@@ -768,6 +769,7 @@ void FlatSourceDomain::output_to_vtk() const
           p.r_last() = sample;
           p.E() = 1.0;
           p.E_last() = 1.0;
+          p.u() = {0.0, 0.0, 0.0};
 
           bool found = exhaustive_find_cell(p);
           if (!found) {
@@ -926,24 +928,16 @@ void FlatSourceDomain::output_to_vtk() const
     }
 
     // Plot weight window data
-    float min = 1.0e20;
-    float max = -1.0e20;
-
     if (variance_reduction::weight_windows.size() == 1) {
-      std::fprintf(plot, "SCALARS ww_lower float\n");
+      std::fprintf(plot, "SCALARS weight_window_lower float\n");
       std::fprintf(plot, "LOOKUP_TABLE default\n");
       for (int i = 0; i < Nx * Ny * Nz; i++) {
         float weight = weight_windows[i];
         if (weight == 0.0)
           weight = min_weight;
-        if (weight < min)
-          min = weight;
-        if (weight > max)
-          max = weight;
         weight = convert_to_big_endian<float>(weight);
         std::fwrite(&weight, sizeof(float), 1, plot);
       }
-      fmt::print("Min ww = {} Max ww = {}\n", min, max);
     }
 
     std::fclose(plot);
@@ -1243,9 +1237,6 @@ void FlatSourceDomain::apply_mesh_to_cell_and_children(int32_t i_cell,
   }
 }
 
-// Problem: my logic breaks if I am trying to apply things to a void region,
-// where the target material ID is C_NONE. Might be worth making a different
-// argument to pass through that indicates the presence of void.
 void FlatSourceDomain::apply_meshes()
 {
   // Skip if there are no mappings between mesh IDs and domains
@@ -1323,8 +1314,7 @@ SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
   // If the key is found in the temporary map, then we return a handle to the
   // source region that is stored in the temporary map.
   if (discovered_source_regions_.contains(sr_key)) {
-    SourceRegionHandle handle =
-      discovered_source_regions_[sr_key].get_source_region_handle();
+    SourceRegionHandle handle {discovered_source_regions_[sr_key]};
     discovered_source_regions_.unlock(sr_key);
     return handle;
   }
@@ -1360,6 +1350,7 @@ SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
   // Sanity check on source region id
   GeometryState gs;
   gs.r() = r + TINY_BIT * u;
+  gs.u() = {0.0, 0.0, 0.0};
   exhaustive_find_cell(gs);
   int gs_i_cell = gs.lowest_coord().cell;
   int64_t sr_found = source_region_offsets_[gs_i_cell] + gs.cell_instance();
@@ -1400,9 +1391,9 @@ SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
   // know which base source region it is derived from.
   SourceRegion* sr_ptr = discovered_source_regions_.emplace(
     sr_key, {base_source_regions_.get_source_region_handle(sr), sr});
-  // print out all elements of the sr_ptr
   discovered_source_regions_.unlock(sr_key);
-  return sr_ptr->get_source_region_handle();
+  SourceRegionHandle handle {*sr_ptr};
+  return handle;
 }
 
 void FlatSourceDomain::finalize_discovered_source_regions()

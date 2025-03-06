@@ -62,6 +62,8 @@ private:
   // Private data members
   vector<float> delta_psi_;
   vector<MomentArray> delta_moments_;
+  vector<int> mesh_bins_;
+  vector<double> mesh_fractional_lengths_;
 
   int negroups_;
   FlatSourceDomain* domain_ {nullptr}; // pointer to domain that has flat source

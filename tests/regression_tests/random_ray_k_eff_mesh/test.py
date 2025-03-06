@@ -19,7 +19,8 @@ def test_random_ray_k_eff_mesh():
 
     # The model already has some geometrical subdivisions
     # up to a 10x10 grid in the moderator region. So, we
-    # double thee re
+    # increase the resolution 40x40 applied over the full
+    # 2x2 lattice.
     pitch = 1.26
     dim = 40
     mesh = openmc.RegularMesh()

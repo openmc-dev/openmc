@@ -7,6 +7,44 @@
 namespace openmc {
 
 //==============================================================================
+// SourceRegionHandle implementation
+//==============================================================================
+SourceRegionHandle::SourceRegionHandle(SourceRegion& sr)
+    : negroups_(sr.scalar_flux_old_.size()),
+      material_(&sr.material_),
+      is_small_(&sr.is_small_),
+      n_hits_(&sr.n_hits_),
+      is_linear_(sr.source_gradients_.size() > 0),
+      lock_(&sr.lock_),
+      volume_(&sr.volume_),
+      volume_t_(&sr.volume_t_),
+      volume_sq_(&sr.volume_sq_),
+      volume_sq_t_(&sr.volume_sq_t_),
+      volume_naive_(&sr.volume_naive_),
+      position_recorded_(&sr.position_recorded_),
+      external_source_present_(&sr.external_source_present_),
+      position_(&sr.position_),
+      centroid_(&sr.centroid_),
+      centroid_iteration_(&sr.centroid_iteration_),
+      centroid_t_(&sr.centroid_t_),
+      mom_matrix_(&sr.mom_matrix_),
+      mom_matrix_t_(&sr.mom_matrix_t_),
+      volume_task_(&sr.volume_task_),
+      mesh_(&sr.mesh_),
+      parent_sr_(&sr.parent_sr_),
+      scalar_flux_old_(sr.scalar_flux_old_.data()),
+      scalar_flux_new_(sr.scalar_flux_new_.data()),
+      source_(sr.source_.data()),
+      external_source_(sr.external_source_.data()),
+      scalar_flux_final_(sr.scalar_flux_final_.data()),
+      source_gradients_(sr.source_gradients_.data()),
+      flux_moments_old_(sr.flux_moments_old_.data()),
+      flux_moments_new_(sr.flux_moments_new_.data()),
+      flux_moments_t_(sr.flux_moments_t_.data()),
+      tally_task_(sr.tally_task_.data())
+{}
+
+//==============================================================================
 // SourceRegion implementation
 //==============================================================================
 SourceRegion::SourceRegion(int negroups, bool is_linear)
@@ -51,44 +89,6 @@ SourceRegion::SourceRegion(const SourceRegionHandle& handle, int64_t parent_sr)
       external_source_[g] = handle.external_source(g);
     }
   }
-}
-
-SourceRegionHandle SourceRegion::get_source_region_handle()
-{
-  SourceRegionHandle handle;
-  handle.negroups_ = scalar_flux_old_.size();
-  handle.material_ = &material_;
-  handle.is_small_ = &is_small_;
-  handle.n_hits_ = &n_hits_;
-  handle.is_linear_ = source_gradients_.size() > 0;
-  handle.lock_ = &lock_;
-  handle.volume_ = &volume_;
-  handle.volume_t_ = &volume_t_;
-  handle.volume_sq_ = &volume_sq_;
-  handle.volume_sq_t_ = &volume_sq_t_;
-  handle.volume_naive_ = &volume_naive_;
-  handle.position_recorded_ = &position_recorded_;
-  handle.external_source_present_ = &external_source_present_;
-  handle.position_ = &position_;
-  handle.centroid_ = &centroid_;
-  handle.centroid_iteration_ = &centroid_iteration_;
-  handle.centroid_t_ = &centroid_t_;
-  handle.mom_matrix_ = &mom_matrix_;
-  handle.mom_matrix_t_ = &mom_matrix_t_;
-  handle.volume_task_ = &volume_task_;
-  handle.mesh_ = &mesh_;
-  handle.parent_sr_ = &parent_sr_;
-  handle.scalar_flux_old_ = scalar_flux_old_.data();
-  handle.scalar_flux_new_ = scalar_flux_new_.data();
-  handle.source_ = source_.data();
-  handle.external_source_ = external_source_.data();
-  handle.scalar_flux_final_ = scalar_flux_final_.data();
-  handle.source_gradients_ = source_gradients_.data();
-  handle.flux_moments_old_ = flux_moments_old_.data();
-  handle.flux_moments_new_ = flux_moments_new_.data();
-  handle.flux_moments_t_ = flux_moments_t_.data();
-  handle.tally_task_ = tally_task_.data();
-  return handle;
 }
 
 //==============================================================================

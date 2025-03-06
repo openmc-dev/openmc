@@ -128,6 +128,14 @@ public:
 class SourceRegionHandle {
 public:
   //----------------------------------------------------------------------------
+  // Constructors
+  SourceRegionHandle(SourceRegion& sr);
+  SourceRegionHandle() = default;
+
+  // All fields are commented/described in the SourceRegion class definition
+  // below
+
+  //----------------------------------------------------------------------------
   // Public Data members
   int negroups_;
   bool is_numerical_fp_artifact_ {false};
@@ -182,58 +190,58 @@ public:
   // Public Accessors
 
   int& material() { return *material_; }
-  const int& material() const { return *material_; }
+  const int material() const { return *material_; }
 
   int& is_small() { return *is_small_; }
-  const int& is_small() const { return *is_small_; }
+  const int is_small() const { return *is_small_; }
 
   int& n_hits() { return *n_hits_; }
-  const int& n_hits() const { return *n_hits_; }
+  const int n_hits() const { return *n_hits_; }
 
-  OpenMPMutex& lock() { return *lock_; }
-  const OpenMPMutex& lock() const { return *lock_; }
+  void lock() { lock_->lock(); }
+  void unlock() { lock_->unlock(); }
 
   double& volume() { return *volume_; }
-  const double& volume() const { return *volume_; }
+  const double volume() const { return *volume_; }
 
   double& volume_t() { return *volume_t_; }
-  const double& volume_t() const { return *volume_t_; }
+  const double volume_t() const { return *volume_t_; }
 
   double& volume_sq() { return *volume_sq_; }
-  const double& volume_sq() const { return *volume_sq_; }
+  const double volume_sq() const { return *volume_sq_; }
 
   double& volume_sq_t() { return *volume_sq_t_; }
-  const double& volume_sq_t() const { return *volume_sq_t_; }
+  const double volume_sq_t() const { return *volume_sq_t_; }
 
   double& volume_naive() { return *volume_naive_; }
-  const double& volume_naive() const { return *volume_naive_; }
+  const double volume_naive() const { return *volume_naive_; }
 
   int& position_recorded() { return *position_recorded_; }
-  const int& position_recorded() const { return *position_recorded_; }
+  const int position_recorded() const { return *position_recorded_; }
 
   int& external_source_present() { return *external_source_present_; }
-  const int& external_source_present() const
+  const int external_source_present() const
   {
     return *external_source_present_;
   }
 
   Position& position() { return *position_; }
-  const Position& position() const { return *position_; }
+  const Position position() const { return *position_; }
 
   Position& centroid() { return *centroid_; }
-  const Position& centroid() const { return *centroid_; }
+  const Position centroid() const { return *centroid_; }
 
   Position& centroid_iteration() { return *centroid_iteration_; }
-  const Position& centroid_iteration() const { return *centroid_iteration_; }
+  const Position centroid_iteration() const { return *centroid_iteration_; }
 
   Position& centroid_t() { return *centroid_t_; }
-  const Position& centroid_t() const { return *centroid_t_; }
+  const Position centroid_t() const { return *centroid_t_; }
 
   MomentMatrix& mom_matrix() { return *mom_matrix_; }
-  const MomentMatrix& mom_matrix() const { return *mom_matrix_; }
+  const MomentMatrix mom_matrix() const { return *mom_matrix_; }
 
   MomentMatrix& mom_matrix_t() { return *mom_matrix_t_; }
-  const MomentMatrix& mom_matrix_t() const { return *mom_matrix_t_; }
+  const MomentMatrix mom_matrix_t() const { return *mom_matrix_t_; }
 
   std::unordered_set<TallyTask, TallyTask::HashFunctor>& volume_task()
   {
@@ -246,46 +254,46 @@ public:
   }
 
   int& mesh() { return *mesh_; }
-  const int& mesh() const { return *mesh_; }
+  const int mesh() const { return *mesh_; }
 
   int64_t& parent_sr() { return *parent_sr_; }
-  const int64_t& parent_sr() const { return *parent_sr_; }
+  const int64_t parent_sr() const { return *parent_sr_; }
 
   double& scalar_flux_old(int g) { return scalar_flux_old_[g]; }
-  const double& scalar_flux_old(int g) const { return scalar_flux_old_[g]; }
+  const double scalar_flux_old(int g) const { return scalar_flux_old_[g]; }
 
   double& scalar_flux_new(int g) { return scalar_flux_new_[g]; }
-  const double& scalar_flux_new(int g) const { return scalar_flux_new_[g]; }
+  const double scalar_flux_new(int g) const { return scalar_flux_new_[g]; }
 
   double& scalar_flux_final(int g) { return scalar_flux_final_[g]; }
-  const double& scalar_flux_final(int g) const { return scalar_flux_final_[g]; }
+  const double scalar_flux_final(int g) const { return scalar_flux_final_[g]; }
 
   float& source(int g) { return source_[g]; }
-  const float& source(int g) const { return source_[g]; }
+  const float source(int g) const { return source_[g]; }
 
   float& external_source(int g) { return external_source_[g]; }
-  const float& external_source(int g) const { return external_source_[g]; }
+  const float external_source(int g) const { return external_source_[g]; }
 
   MomentArray& source_gradients(int g) { return source_gradients_[g]; }
-  const MomentArray& source_gradients(int g) const
+  const MomentArray source_gradients(int g) const
   {
     return source_gradients_[g];
   }
 
   MomentArray& flux_moments_old(int g) { return flux_moments_old_[g]; }
-  const MomentArray& flux_moments_old(int g) const
+  const MomentArray flux_moments_old(int g) const
   {
     return flux_moments_old_[g];
   }
 
   MomentArray& flux_moments_new(int g) { return flux_moments_new_[g]; }
-  const MomentArray& flux_moments_new(int g) const
+  const MomentArray flux_moments_new(int g) const
   {
     return flux_moments_new_[g];
   }
 
   MomentArray& flux_moments_t(int g) { return flux_moments_t_[g]; }
-  const MomentArray& flux_moments_t(int g) const { return flux_moments_t_[g]; }
+  const MomentArray flux_moments_t(int g) const { return flux_moments_t_[g]; }
 
   vector<TallyTask>& tally_task(int g) { return tally_task_[g]; }
   const vector<TallyTask>& tally_task(int g) const { return tally_task_[g]; }
@@ -368,12 +376,6 @@ public:
   // tasks. Each group may have a different number of tally tasks
   // associated with it, necessitating the use of a jagged array.
   vector<vector<TallyTask>> tally_task_;
-
-  //----------------------------------------------------------------------------
-  // Public Methods
-
-  SourceRegionHandle get_source_region_handle();
-
 }; // class SourceRegion
 
 class SourceRegionContainer {
@@ -388,34 +390,34 @@ public:
   //----------------------------------------------------------------------------
   // Public Accessors
   int& material(int64_t sr) { return material_[sr]; }
-  const int& material(int64_t sr) const { return material_[sr]; }
+  const int material(int64_t sr) const { return material_[sr]; }
 
   int& is_small(int64_t sr) { return is_small_[sr]; }
-  const int& is_small(int64_t sr) const { return is_small_[sr]; }
+  const int is_small(int64_t sr) const { return is_small_[sr]; }
 
   int& n_hits(int64_t sr) { return n_hits_[sr]; }
-  const int& n_hits(int64_t sr) const { return n_hits_[sr]; }
+  const int n_hits(int64_t sr) const { return n_hits_[sr]; }
 
   OpenMPMutex& lock(int64_t sr) { return lock_[sr]; }
   const OpenMPMutex& lock(int64_t sr) const { return lock_[sr]; }
 
   double& volume(int64_t sr) { return volume_[sr]; }
-  const double& volume(int64_t sr) const { return volume_[sr]; }
+  const double volume(int64_t sr) const { return volume_[sr]; }
 
   double& volume_t(int64_t sr) { return volume_t_[sr]; }
-  const double& volume_t(int64_t sr) const { return volume_t_[sr]; }
+  const double volume_t(int64_t sr) const { return volume_t_[sr]; }
 
   double& volume_sq(int64_t sr) { return volume_sq_[sr]; }
-  const double& volume_sq(int64_t sr) const { return volume_sq_[sr]; }
+  const double volume_sq(int64_t sr) const { return volume_sq_[sr]; }
 
   double& volume_sq_t(int64_t sr) { return volume_sq_t_[sr]; }
-  const double& volume_sq_t(int64_t sr) const { return volume_sq_t_[sr]; }
+  const double volume_sq_t(int64_t sr) const { return volume_sq_t_[sr]; }
 
   double& volume_naive(int64_t sr) { return volume_naive_[sr]; }
-  const double& volume_naive(int64_t sr) const { return volume_naive_[sr]; }
+  const double volume_naive(int64_t sr) const { return volume_naive_[sr]; }
 
   int& position_recorded(int64_t sr) { return position_recorded_[sr]; }
-  const int& position_recorded(int64_t sr) const
+  const int position_recorded(int64_t sr) const
   {
     return position_recorded_[sr];
   }
@@ -424,31 +426,31 @@ public:
   {
     return external_source_present_[sr];
   }
-  const int& external_source_present(int64_t sr) const
+  const int external_source_present(int64_t sr) const
   {
     return external_source_present_[sr];
   }
 
   Position& position(int64_t sr) { return position_[sr]; }
-  const Position& position(int64_t sr) const { return position_[sr]; }
+  const Position position(int64_t sr) const { return position_[sr]; }
 
   Position& centroid(int64_t sr) { return centroid_[sr]; }
-  const Position& centroid(int64_t sr) const { return centroid_[sr]; }
+  const Position centroid(int64_t sr) const { return centroid_[sr]; }
 
   Position& centroid_iteration(int64_t sr) { return centroid_iteration_[sr]; }
-  const Position& centroid_iteration(int64_t sr) const
+  const Position centroid_iteration(int64_t sr) const
   {
     return centroid_iteration_[sr];
   }
 
   Position& centroid_t(int64_t sr) { return centroid_t_[sr]; }
-  const Position& centroid_t(int64_t sr) const { return centroid_t_[sr]; }
+  const Position centroid_t(int64_t sr) const { return centroid_t_[sr]; }
 
   MomentMatrix& mom_matrix(int64_t sr) { return mom_matrix_[sr]; }
-  const MomentMatrix& mom_matrix(int64_t sr) const { return mom_matrix_[sr]; }
+  const MomentMatrix mom_matrix(int64_t sr) const { return mom_matrix_[sr]; }
 
   MomentMatrix& mom_matrix_t(int64_t sr) { return mom_matrix_t_[sr]; }
-  const MomentMatrix& mom_matrix_t(int64_t sr) const
+  const MomentMatrix mom_matrix_t(int64_t sr) const
   {
     return mom_matrix_t_[sr];
   }
@@ -457,12 +459,12 @@ public:
   {
     return source_gradients_[index(sr, g)];
   }
-  const MomentArray& source_gradients(int64_t sr, int g) const
+  const MomentArray source_gradients(int64_t sr, int g) const
   {
     return source_gradients_[index(sr, g)];
   }
   MomentArray& source_gradients(int64_t se) { return source_gradients_[se]; }
-  const MomentArray& source_gradients(int64_t se) const
+  const MomentArray source_gradients(int64_t se) const
   {
     return source_gradients_[se];
   }
@@ -471,12 +473,12 @@ public:
   {
     return flux_moments_old_[index(sr, g)];
   }
-  const MomentArray& flux_moments_old(int64_t sr, int g) const
+  const MomentArray flux_moments_old(int64_t sr, int g) const
   {
     return flux_moments_old_[index(sr, g)];
   }
   MomentArray& flux_moments_old(int64_t se) { return flux_moments_old_[se]; }
-  const MomentArray& flux_moments_old(int64_t se) const
+  const MomentArray flux_moments_old(int64_t se) const
   {
     return flux_moments_old_[se];
   }
@@ -485,12 +487,12 @@ public:
   {
     return flux_moments_new_[index(sr, g)];
   }
-  const MomentArray& flux_moments_new(int64_t sr, int g) const
+  const MomentArray flux_moments_new(int64_t sr, int g) const
   {
     return flux_moments_new_[index(sr, g)];
   }
   MomentArray& flux_moments_new(int64_t se) { return flux_moments_new_[se]; }
-  const MomentArray& flux_moments_new(int64_t se) const
+  const MomentArray flux_moments_new(int64_t se) const
   {
     return flux_moments_new_[se];
   }
@@ -499,12 +501,12 @@ public:
   {
     return flux_moments_t_[index(sr, g)];
   }
-  const MomentArray& flux_moments_t(int64_t sr, int g) const
+  const MomentArray flux_moments_t(int64_t sr, int g) const
   {
     return flux_moments_t_[index(sr, g)];
   }
   MomentArray& flux_moments_t(int64_t se) { return flux_moments_t_[se]; }
-  const MomentArray& flux_moments_t(int64_t se) const
+  const MomentArray flux_moments_t(int64_t se) const
   {
     return flux_moments_t_[se];
   }
@@ -513,12 +515,12 @@ public:
   {
     return scalar_flux_old_[index(sr, g)];
   }
-  const double& scalar_flux_old(int64_t sr, int g) const
+  const double scalar_flux_old(int64_t sr, int g) const
   {
     return scalar_flux_old_[index(sr, g)];
   }
   double& scalar_flux_old(int64_t se) { return scalar_flux_old_[se]; }
-  const double& scalar_flux_old(int64_t se) const
+  const double scalar_flux_old(int64_t se) const
   {
     return scalar_flux_old_[se];
   }
@@ -527,12 +529,12 @@ public:
   {
     return scalar_flux_new_[index(sr, g)];
   }
-  const double& scalar_flux_new(int64_t sr, int g) const
+  const double scalar_flux_new(int64_t sr, int g) const
   {
     return scalar_flux_new_[index(sr, g)];
   }
   double& scalar_flux_new(int64_t se) { return scalar_flux_new_[se]; }
-  const double& scalar_flux_new(int64_t se) const
+  const double scalar_flux_new(int64_t se) const
   {
     return scalar_flux_new_[se];
   }
@@ -541,34 +543,31 @@ public:
   {
     return scalar_flux_final_[index(sr, g)];
   }
-  const double& scalar_flux_final(int64_t sr, int g) const
+  const double scalar_flux_final(int64_t sr, int g) const
   {
     return scalar_flux_final_[index(sr, g)];
   }
   double& scalar_flux_final(int64_t se) { return scalar_flux_final_[se]; }
-  const double& scalar_flux_final(int64_t se) const
+  const double scalar_flux_final(int64_t se) const
   {
     return scalar_flux_final_[se];
   }
 
   float& source(int64_t sr, int g) { return source_[index(sr, g)]; }
-  const float& source(int64_t sr, int g) const { return source_[index(sr, g)]; }
+  const float source(int64_t sr, int g) const { return source_[index(sr, g)]; }
   float& source(int64_t se) { return source_[se]; }
-  const float& source(int64_t se) const { return source_[se]; }
+  const float source(int64_t se) const { return source_[se]; }
 
   float& external_source(int64_t sr, int g)
   {
     return external_source_[index(sr, g)];
   }
-  const float& external_source(int64_t sr, int g) const
+  const float external_source(int64_t sr, int g) const
   {
     return external_source_[index(sr, g)];
   }
   float& external_source(int64_t se) { return external_source_[se]; }
-  const float& external_source(int64_t se) const
-  {
-    return external_source_[se];
-  }
+  const float external_source(int64_t se) const { return external_source_[se]; }
 
   vector<TallyTask>& tally_task(int64_t sr, int g)
   {
@@ -595,10 +594,10 @@ public:
   }
 
   int& mesh(int64_t sr) { return mesh_[sr]; }
-  const int& mesh(int64_t sr) const { return mesh_[sr]; }
+  const int mesh(int64_t sr) const { return mesh_[sr]; }
 
   int64_t& parent_sr(int64_t sr) { return parent_sr_[sr]; }
-  const int64_t& parent_sr(int64_t sr) const { return parent_sr_[sr]; }
+  const int64_t parent_sr(int64_t sr) const { return parent_sr_[sr]; }
 
   //----------------------------------------------------------------------------
   // Public Methods
@@ -609,13 +608,13 @@ public:
   int64_t n_source_regions() const { return n_source_regions_; }
   int64_t n_source_elements() const { return n_source_regions_ * negroups_; }
   int& negroups() { return negroups_; }
-  const int& negroups() const { return negroups_; }
+  const int negroups() const { return negroups_; }
   bool& is_linear() { return is_linear_; }
-  const bool& is_linear() const { return is_linear_; }
+  const bool is_linear() const { return is_linear_; }
   SourceRegionHandle get_source_region_handle(int64_t sr);
   void adjoint_reset();
 
-  // private:
+  private:
   //----------------------------------------------------------------------------
   // Private Data Members
   int64_t n_source_regions_ {0};

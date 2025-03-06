@@ -346,6 +346,18 @@ void validate_random_ray_inputs()
   }
 }
 
+void openmc_reset_random_ray()
+{
+  FlatSourceDomain::volume_estimator_ = RandomRayVolumeEstimator::HYBRID;
+  FlatSourceDomain::volume_normalized_flux_tallies_ = false;
+  FlatSourceDomain::adjoint_ = false;
+  FlatSourceDomain::mesh_domain_map_.clear();
+  RandomRay::ray_source_.reset();
+  RandomRay::source_shape_ = RandomRaySourceShape::FLAT;
+  RandomRay::mesh_subdivision_enabled_ = false;
+  RandomRay::sample_method_ = RandomRaySampleMethod::PRNG;
+}
+
 //==============================================================================
 // RandomRaySimulation implementation
 //==============================================================================

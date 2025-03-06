@@ -351,8 +351,7 @@ void RandomRay::attenuate_flux(double distance, bool is_active, double offset)
       // we loop over all the bin crossings and attenuate
       // separately.
       Mesh* mesh = model::meshes[mesh_idx].get();
-      vector<int> bins;
-      vector<double> fractional_lengths;
+
 
       // We adjust the start and end positions of the ray slightly
       // to accomodate for floating point precision issues that tend
@@ -363,12 +362,14 @@ void RandomRay::attenuate_flux(double distance, bool is_active, double offset)
       double reduced_distance = (end - start).norm();
 
       // Ray trace through the mesh and record bins and lengths
-      mesh->bins_crossed(start, end, u(), bins, fractional_lengths);
+      mesh_bins_.resize(0);
+      mesh_fractional_lengths_.resize(0);
+      mesh->bins_crossed(start, end, u(), mesh_bins_, mesh_fractional_lengths_);
 
       // Loop over all mesh bins and attenuate flux
-      for (int b = 0; b < bins.size(); b++) {
-        double physical_length = reduced_distance * fractional_lengths[b];
-        attenuate_flux_inner(physical_length, is_active, sr, bins[b], start);
+      for (int b = 0; b < mesh_bins_.size(); b++) {
+        double physical_length = reduced_distance * mesh_fractional_lengths_[b];
+        attenuate_flux_inner(physical_length, is_active, sr, mesh_bins_[b], start);
         start += physical_length * u();
       }
     }
@@ -448,7 +449,7 @@ void RandomRay::attenuate_flux_flat_source(
   // source region bookkeeping
 
   // Aquire lock for source region
-  srh.lock().lock();
+  srh.lock();
 
   if (is_active) {
     // Accumulate delta psi into new estimate of source region flux for
@@ -473,7 +474,7 @@ void RandomRay::attenuate_flux_flat_source(
   }
 
   // Release lock
-  srh.lock().unlock();
+  srh.unlock();
 }
 
 // Alternative flux attenuation function for true void regions.
@@ -490,7 +491,7 @@ void RandomRay::attenuate_flux_flat_source_void(
   if (is_active) {
 
     // Aquire lock for source region
-    srh.lock().lock();
+    srh.lock();
 
     // Accumulate delta psi into new estimate of source region flux for
     // this iteration
@@ -513,7 +514,7 @@ void RandomRay::attenuate_flux_flat_source_void(
     }
 
     // Release lock
-    srh.lock().unlock();
+    srh.unlock();
   }
 
   // Add source to incoming angular flux, assuming void region
@@ -611,7 +612,7 @@ void RandomRay::attenuate_flux_linear_source(
     rm_local, u(), distance);
 
   // Aquire lock for source region
-  srh.lock().lock();
+  srh.lock();
 
   // If ray is in the active phase (not in dead zone), make contributions to
   // source region bookkeeping
@@ -644,7 +645,7 @@ void RandomRay::attenuate_flux_linear_source(
   }
 
   // Release lock
-  srh.lock().unlock();
+  srh.unlock();
 }
 
 // If traveling through a void region, the source term is either zero
@@ -716,7 +717,7 @@ void RandomRay::attenuate_flux_linear_source_void(
       rm_local, u(), distance);
 
     // Aquire lock for source region
-    srh.lock().lock();
+    srh.lock();
 
     // Accumulate delta psi into new estimate of source region flux for
     // this iteration, and update flux momements
@@ -745,7 +746,7 @@ void RandomRay::attenuate_flux_linear_source_void(
     srh.n_hits() += 1;
 
     // Release lock
-    srh.lock().unlock();
+    srh.unlock();
   }
 
   // Add source to incoming angular flux, assuming void region

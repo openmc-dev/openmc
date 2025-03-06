@@ -125,6 +125,9 @@ public:
   };
 };
 
+// Forward declaration of SourceRegion
+class SourceRegion;
+
 class SourceRegionHandle {
 public:
   //----------------------------------------------------------------------------

@@ -39,7 +39,7 @@ def test_weight_windows_fw_cadis_mesh(shape):
         root = model.geometry.root_universe
         model.settings.random_ray['source_region_meshes'] = [(ww_mesh, [root])]
 
-        model.settings.particles = 1000
+        model.settings.particles = 750
         model.settings.batches = 30
         model.settings.inactive = 20
 

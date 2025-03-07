@@ -207,6 +207,42 @@ the change-in-angle), we must use an analog estimator.
 
 .. TODO: Add description of surface current tallies
 
+.. _methods_geb:
+
+--------------------------
+Gaussian Energy Broadening
+--------------------------
+
+Radiation detectors are only able to resolve energies with a finite accuracy,
+which is inherent to each individual detector and depends on the incident energy
+of the particle. A detector's energy resolution :math:`R(E)` is the ratio of the
+Full Width at Half Maximum (FWHM) to the energy of the incident particle,
+:math:`E`:
+
+.. math::
+  R(E) = \frac{\text{FWHM}(E)}{E} = \frac{a + b\sqrt{E + cE^2}}{E}.
+
+The parameters :math:`a`, :math:`b`, and :math:`c` have units of eV,
+eV\ :sup:`1/2`, and eV\ :sup:`-1`, respectively. In general, these parameters
+are detector dependent, and are determined for a particular detector by fitting
+the peaks of known radioactive sources.
+
+To simulate the effect of finite detector resolution in a Monte Carlo
+simulation, we can use a technique known as Gaussian Energy Broadening. With
+this method, the particle's incident energy, :math:`E`, is used to sample a
+new energy, :math:`E'`, which is sampled from a `normal distribution`_ with
+an average of :math:`\mu = E` and a standard deviation of
+
+.. math::
+    \sigma(E) = \frac{\text{FWHM}(E)}{2\sqrt{2\ln{2}}} =
+    \frac{a + b\sqrt{E + cE^2}}{2\sqrt{2\ln{2}}}.
+
+:math:`E'` is only used for tallying, and will therefore only affect tally
+results which have an energy filter or an energy function filter. At each
+collision where a particle contributes to a tally with Gaussian Energy
+Broadening, a new effective energy is sampled for the purposes of tallying. The
+particle is never assigned this sampled energy.
+
 .. _tallies_statistics:
 
 ----------

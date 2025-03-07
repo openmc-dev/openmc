@@ -12,7 +12,7 @@ Installation and Configuration
 Installing on Linux/Mac with Conda
 ----------------------------------
 
-`Conda <https://docs.conda.io/en/latest/>`_ is an open source package management
+`Conda`_ is an open source package management
 system and environments management system for installing multiple versions of
 software packages and their dependencies and switching easily between them.
 OpenMC can be installed in a `conda` environment. First, `conda` should be

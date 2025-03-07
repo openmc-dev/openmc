@@ -35,8 +35,30 @@ you wish) with OpenMC installed.
     conda create --name openmc-env openmc
     conda activate openmc-env
 
+To list the versions of OpenMC that are available on the `conda-forge` channel,
+in your terminal window or an Anaconda prompt run:
+
+.. code-block:: sh
+
+    conda search openmc
+
+OpenMC can then be installed with:
+
+.. code-block:: sh
+
+    conda install openmc
+
 You are now in a conda environment called `openmc-env` that has OpenMC
 installed.
+
+Similar instructions apply using `mamba` as a replacement for `conda` in the
+commands above provided it has been installed through one of its distribution
+channels (see `Mamba`_) or with:
+
+.. code-block:: sh
+
+    conda install mamba
+
 -------------------------------------------
 Installing on Linux/Mac/Windows with Docker
 -------------------------------------------
@@ -588,5 +610,6 @@ wrapper is used when installing h5py:
 
     CC=<path to mpicc> HDF5_MPI=ON HDF5_DIR=<path to HDF5> python -m pip install --no-binary=h5py h5py
 
+.. _Mamba: https://mamba.readthedocs.io/en/latest/
 .. _Conda: https://conda.io/en/latest/
 .. _pip: https://pip.pypa.io/en/stable/

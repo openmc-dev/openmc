@@ -35,21 +35,9 @@ you wish) with OpenMC installed.
     conda create --name openmc-env openmc
     conda activate openmc-env
 
-To list the versions of OpenMC that are available on the `conda-forge` channel,
-in your terminal window or an Anaconda prompt run:
-
-.. code-block:: sh
-
-    conda search openmc
-
-OpenMC can then be installed with:
-
-.. code-block:: sh
-
-    conda install openmc
-
 You are now in a conda environment called `openmc-env` that has OpenMC
 installed.
+
 -------------------------------------------
 Installing on Linux/Mac/Windows with Docker
 -------------------------------------------

@@ -1,0 +1,18 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<geometry>
+  <cell id="0" material="0" name="cFuel" region="1 -2 3 -4 5 -6 7 -8" universe="0"/>
+  <cell id="1" material="1" name="cClad" region="1 -2 3 -4 5 -6 9 -7" universe="0"/>
+  <cell id="2" material="1" name="cClad" region="1 -2 3 -4 5 -6 8 -10" universe="0"/>
+  <cell id="3" material="2" name="cCool" region="1 -2 3 -4 5 -6 (-9 | 10)" universe="0"/>
+  <cell fill="0" id="4" name="root" region="1 -2 3 -4 5 -6" universe="1"/>
+  <surface boundary="reflective" coeffs="-0.5" id="1" type="x-plane"/>
+  <surface boundary="reflective" coeffs="0.5" id="2" type="x-plane"/>
+  <surface boundary="reflective" coeffs="-0.5" id="3" type="y-plane"/>
+  <surface boundary="reflective" coeffs="0.5" id="4" type="y-plane"/>
+  <surface boundary="reflective" coeffs="-0.5" id="5" type="z-plane"/>
+  <surface boundary="reflective" coeffs="0.5" id="6" type="z-plane"/>
+  <surface coeffs="-0.3141592653589793 1.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0" id="7" surface_type="Schwarz_P" type="tpms"/>
+  <surface coeffs="0.3141592653589793 1.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0" id="8" surface_type="Schwarz_P" type="tpms"/>
+  <surface coeffs="-0.471238898038469 1.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0" id="9" surface_type="Schwarz_P" type="tpms"/>
+  <surface coeffs="0.471238898038469 1.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0" id="10" surface_type="Schwarz_P" type="tpms"/>
+</geometry>

@@ -1,0 +1,24 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<plots>
+  <plot basis="xy" color_by="material" id="1" type="slice">
+    <pixels>600 600</pixels>
+    <origin>0.0 0.0 0.0</origin>
+    <width>5.0 5.0</width>
+    <color id="0" rgb="208 52 52"/>
+    <color id="2" rgb="12 12 252"/>
+  </plot>
+  <plot basis="xz" color_by="material" id="2" type="slice">
+    <pixels>600 600</pixels>
+    <origin>0.0 0.0 0.0</origin>
+    <width>5.0 5.0</width>
+    <color id="0" rgb="208 52 52"/>
+    <color id="2" rgb="12 12 252"/>
+  </plot>
+  <plot color_by="material" id="3" type="voxel">
+    <pixels>600 600 600</pixels>
+    <origin>0.0 0.0 0.0</origin>
+    <width>5.0 5.0 5.0</width>
+    <color id="0" rgb="208 52 52"/>
+    <color id="2" rgb="12 12 252"/>
+  </plot>
+</plots>

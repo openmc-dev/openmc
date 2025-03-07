@@ -1,3 +1,67 @@
+# TPMS branch specific (INL developers)
+
+<img src="https://media1.tenor.com/m/98dCgWDs4rsAAAAC/epic-sax-guy-sax.gif" width="100px" align="center">
+
+## Installation
+
+##### create a new conda env:
+```
+conda create -n openmc-TPMS moose-dev=2024.10.01=mpich
+conda deactivate
+conda activate openmc-TPMS
+# conda install boost=1.85.0 # not needed anymore
+```
+##### clone the project to your local repo:
+```
+git clone git@github.inl.gov:paul-ferney/openmc.git
+cd openmc
+git checkout TPMS
+```
+##### install openmc python API in dev mode:
+```
+python -m pip install -e .[test]
+```
+##### check that your compilers are from your conda env:
+```
+which $CC && which $CXX
+>>> /opt/anaconda3/envs/openmc-TPMS/bin/mpicc
+>>> /opt/anaconda3/envs/openmc-TPMS/bin/mpicxx
+```
+##### create a build directory and make your project:
+```
+mkdir ./build && cd ./build
+cmake .. && make -j 12
+cd ..
+```
+##### test openmc:
+```
+cd tests/regression_tests/TPMS/base_no_tpms
+python base_no_tpms.py
+../../../build/bin/openmc
+```
+
+## Trouble shooting
+### Shared libraries conflict
+When running cmake, you might get: 
+Warning Cannot generate a safe runtime search path for target libopenmc because files in some directories may conflict with libraries in implicit directories:
+```
+CMake Warning at CMakeLists.txt:463 (add_library):
+  Cannot generate a safe runtime search path for target libopenmc because
+  files in some directories may conflict with libraries in implicit
+  directories:
+
+    runtime library [libpng.dylib] in /opt/anaconda3/envs/openmc-TPMS/lib may be hidden by files in:
+      /opt/homebrew/lib
+    runtime library [libpugixml.1.dylib] in /opt/anaconda3/envs/openmc-TPMS/lib may be hidden by files in:
+      /opt/homebrew/lib
+
+  Some of these libraries may not be found correctly.
+```
+There is a conflict between your conda env shared libraries and shared libraries installed somewhere else. You want cmake to strictly use your conda libs. Run instead:
+```
+cmake .. -DCMAKE_PREFIX_PATH=/opt/anaconda3/envs/openmc-TPMS/ -DOPENMC_USE_MPI=ON -DCMAKE_FIND_USE_CMAKE_SYSTEM_PATH=FALSE -DCMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH=FALSE 
+```
+
 # OpenMC Monte Carlo Particle Transport Code
 
 [![License](https://img.shields.io/badge/license-MIT-green)](https://docs.openmc.org/en/latest/license.html)

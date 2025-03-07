@@ -1,0 +1,15 @@
+<?xml version='1.0' encoding='utf-8'?>
+<materials>
+  <material depletable="true" id="0" name="mFuel" temperature="300.0">
+    <density units="g/cm3" value="10.5"/>
+    <nuclide ao="0.3116666666666667" name="U235"/>
+    <nuclide ao="0.021666666666666667" name="U238"/>
+    <nuclide ao="0.6666666666666666" name="O16"/>
+  </material>
+  <material id="2" name="mCool" temperature="300.0">
+    <density units="g/cm3" value="0.995"/>
+    <nuclide ao="0.6666666666666666" name="H1"/>
+    <nuclide ao="0.3333333333333333" name="O16"/>
+    <sab name="c_H_in_H2O"/>
+  </material>
+</materials>

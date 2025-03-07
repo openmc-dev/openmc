@@ -319,20 +319,24 @@ Default behavior using OpenMC's native PRNG can be manually specified as::
 
 .. _subdivision_fsr:
 
-----------------------------------
-Subdivision of Flat Source Regions
-----------------------------------
+-----------------------------
+Subdivision of Source Regions
+-----------------------------
 
-While the scattering and fission sources in Monte Carlo
-are treated continuously, they are assumed to be invariant (flat) within a
-MOC or random ray flat source region (FSR). This introduces bias into the
-simulation, which can be remedied by reducing the physical size of the FSR
-to dimensions below that of typical mean free paths of particles.
+While the scattering and fission sources in Monte Carlo are treated
+continuously, they are assumed to have a shape (flat or linear) within a MOC or
+random ray source region (SR). This introduces bias into the simulation that can
+be remedied by reducing the physical size of the SR to be smaller than the
+typical mean free paths of particles. While use of linear sources in OpenMC
+greatly reduces the error stemming from this approximation, subdivision is still
+typically required.
 
-In OpenMC, this subdivision currently must be done manually. The level of
+In OpenMC, this subdivision can be done either manually by the user (by defining
+additional surfaces and cells in the geometry) or automatically by assigning a
+mesh to one or more cells, universes, or material types. The level of
 subdivision needed will be dependent on the fidelity the user requires. For
-typical light water reactor analysis, consider the following example subdivision
-of a two-dimensional 2x2 reflective pincell lattice:
+typical light water reactor analysis, consider the following example of manual
+subdivision of a two-dimensional 2x2 reflective pincell lattice:
 
 .. figure:: ../_images/2x2_materials.jpeg
     :class: with-border
@@ -344,9 +348,79 @@ of a two-dimensional 2x2 reflective pincell lattice:
     :class: with-border
     :width: 400
 
-    FSR decomposition for an asymmetrical 2x2 lattice (1.26 cm pitch)
+    Manual decomposition for an asymmetrical 2x2 lattice (1.26 cm pitch)
 
-In the future, automated subdivision of FSRs via mesh overlay may be supported.
+Geometry cells can also be subdivided into small source regions by assigning a
+mesh to a list of domains, with each domain being of type
+:class:`openmc.Material`, :class:`openmc.Cell`, or :class:`openmc.Universe`. The
+idea of defining a source region as a combination of a base geometry cell and a
+mesh element is known as "cell-under-voxel" style geometry, although in OpenMC
+the mesh can be any kind and is not restricted to 3D regular voxels. An example
+of overlaying a simple 2D mesh over a geometry is given as::
+
+  sr_mesh = openmc.RegularMesh()
+  sr_mesh.dimension = (n, n)
+  sr_mesh.lower_left = (0.0, 0.0)
+  sr_mesh.upper_right = (x, y)
+  domain = geometry.root_universe
+  settings.random_ray['source_region_meshes'] = [(sr_mesh, [domain])]
+
+In the above example, we apply a single :math:`n \times n` uniform mesh over the
+entire domain by assigning it to the root universe of the geometry.
+Alternatively, we might want to apply a finer or coarser mesh to different
+regions of a 3D problem, for instance, as::
+
+  fuel = openmc.Material(name='UO2 fuel')
+  ...
+  water = openmc.Material(name='hot borated water')
+  ...
+  clad = openmc.Material(name='Zr cladding')
+  ...
+
+  coarse_mesh = openmc.RegularMesh()
+  coarse_mesh.dimension = (n, n, n)
+  coarse_mesh.lower_left = (0.0, 0.0, 0.0)
+  coarse_mesh.upper_right = (x, y, z)
+
+  fine_mesh = openmc.RegularMesh()
+  fine_mesh.dimension = (2*n, 2*n, 2*n)
+  fine_mesh.lower_left = (0.0, 0.0, 0.0)
+  fine_mesh.upper_right = (x, y, z)
+
+  settings.random_ray['source_region_meshes'] = [(fine_mesh, [fuel, clad]), (coarse_mesh, [water])]
+
+Note that we don't need to adjust the outer bounds of the mesh to tightly wrap
+the domain we assign the mesh to. Rather, OpenMC will dynamically generate
+source regions based on the mesh bins rays actually visit, such that no
+additional memory is wasted even if a domain only intersects a few mesh bins.
+Going back to our 2x2 lattice example, if using a mesh-based subdivision, this
+might look as below:
+
+.. figure:: ../_images/2x2_sr_mesh.png
+    :class: with-border
+    :width: 400
+
+    20x20 overlaid "cell-under-voxel" mesh decomposition for an asymmetrical 2x2 lattice (1.26 cm pitch)
+
+Note that mesh-bashed subdivision is much easier for a user to implement but
+does have a few downsides compared to manual subdivision. Manual subdivision can
+be done with the specifics of the geometry in mind. As in the pincell example,
+it is more efficient to subdivide the fuel region into azimuthal sectors and
+radial rings as opposed to a Cartesian mesh. This is more efficient because the
+regions are a more uniform size and follow the material boundaries closer,
+resulting in the need for fewer source regions. Fewer source regions tends to
+equate to a faster computational speed and/or the need for fewer rays per batch
+to achieve good statistics. Additionally, applying a mesh often tends to create
+a few very small source regions, as shown in the above picture where corners of
+the mesh happen to intersect close to the actual fuel-moderator interface. These
+small regions are rarely visited by rays, which can result in inaccurate
+estimates of the source within those small regions and, thereby, numerical
+instability. However, OpenMC utilizes several techniques to detect these small
+source regions and mitigate instabilities that are associated with them. In
+conclusion, mesh overlay is a great way to subdivide any geometry into smaller
+source regions. It can be used while retaining stability, though typically at
+the cost of generating more source regions relative to an optimal manual
+subdivision.
 
 .. _usersguide_flux_norm:
 

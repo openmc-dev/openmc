@@ -586,6 +586,9 @@ void initialize_history(Particle& p, int64_t index_source)
   // Reset weight window ratio
   p.ww_factor() = 0.0;
 
+  // set particle history start weight
+  p.wgt_born() = p.wgt();
+
   // Reset pulse_height_storage
   std::fill(p.pht_storage().begin(), p.pht_storage().end(), 0);
 
@@ -610,7 +613,7 @@ void initialize_history(Particle& p, int64_t index_source)
     write_message("Simulating Particle {}", p.id());
   }
 
-// Add paricle's starting weight to count for normalizing tallies later
+// Add particle's starting weight to count for normalizing tallies later
 #pragma omp atomic
   simulation::total_weight += p.wgt();
 

@@ -1,4 +1,5 @@
 #include "openmc/settings.h"
+#include "openmc/random_ray/flat_source_domain.h"
 
 #include <cmath>  // for ceil, pow
 #include <limits> // for numeric_limits
@@ -69,6 +70,7 @@ bool surf_source_write {false};
 bool surf_mcpl_write {false};
 bool surf_source_read {false};
 bool survival_biasing {false};
+bool survival_normalization {false};
 bool temperature_multipole {false};
 bool trigger_on {false};
 bool trigger_predict {false};
@@ -316,6 +318,31 @@ void get_run_parameters(pugi::xml_node node_base)
         RandomRay::sample_method_ = RandomRaySampleMethod::HALTON;
       } else {
         fatal_error("Unrecognized sample method: " + temp_str);
+      }
+    }
+    if (check_for_node(random_ray_node, "source_region_meshes")) {
+      pugi::xml_node node_source_region_meshes =
+        random_ray_node.child("source_region_meshes");
+      for (pugi::xml_node node_mesh :
+        node_source_region_meshes.children("mesh")) {
+        int mesh_id = std::stoi(node_mesh.attribute("id").value());
+        for (pugi::xml_node node_domain : node_mesh.children("domain")) {
+          int domain_id = std::stoi(node_domain.attribute("id").value());
+          std::string domain_type = node_domain.attribute("type").value();
+          Source::DomainType type;
+          if (domain_type == "material") {
+            type = Source::DomainType::MATERIAL;
+          } else if (domain_type == "cell") {
+            type = Source::DomainType::CELL;
+          } else if (domain_type == "universe") {
+            type = Source::DomainType::UNIVERSE;
+          } else {
+            throw std::runtime_error("Unknown domain type: " + domain_type);
+          }
+          FlatSourceDomain::mesh_domain_map_[mesh_id].emplace_back(
+            type, domain_id);
+          RandomRay::mesh_subdivision_enabled_ = true;
+        }
       }
     }
   }
@@ -623,6 +650,10 @@ void read_settings_xml(pugi::xml_node root)
     }
     if (check_for_node(node_cutoff, "weight_avg")) {
       weight_survive = std::stod(get_node_value(node_cutoff, "weight_avg"));
+    }
+    if (check_for_node(node_cutoff, "survival_normalization")) {
+      survival_normalization =
+        get_node_value_bool(node_cutoff, "survival_normalization");
     }
     if (check_for_node(node_cutoff, "energy_neutron")) {
       energy_cutoff[0] =

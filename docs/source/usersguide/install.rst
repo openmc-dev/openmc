@@ -9,7 +9,7 @@ Installation and Configuration
 .. _install_conda:
 
 --------------------------------------------------
-Installing on Linux/Mac with Mamba and conda-forge
+Installing on Linux with Mamba and conda-forge
 --------------------------------------------------
 
 `Conda <https://conda.io/en/latest/>`_ is an open source package management
@@ -23,6 +23,9 @@ First, `conda` should be installed with one of the following installers:
 `Anaconda <https://www.anaconda.com/>`_, or `Miniforge <https://github.com/conda-forge/miniforge>`_.
 Once you have `conda` installed on your system, OpenMC can be installed via the
 `conda-forge` channel with `mamba`.
+
+Note: Conda will not find OpenMC. If you want to use OpenMC on Mac, 
+we recommend installing from source.
 
 First, add the `conda-forge` channel with:
 
@@ -60,7 +63,7 @@ OpenMC can then be installed with:
 You are now in a conda environment called `openmc-env` that has OpenMC installed.
 
 -------------------------------------------
-Installing on Linux/Mac/Windows with Docker
+Installing on Linux/Windows with Docker
 -------------------------------------------
 
 OpenMC can be easily deployed using `Docker <https://www.docker.com/>`_ on any
@@ -87,11 +90,17 @@ container`_ with OpenMC installed.
 
 .. _install-spack:
 
+OpenMC does not currently support a Mac Docker image.
+
 ----------------------------------
-Installing from Source using Spack
+Installing from Source using Spack (recommended for Mac)
 ----------------------------------
 
-Spack_ is a package management tool designed to support multiple versions and
+Though Spack might take longer to install OpenMC than Mamba and Code-Forge, 
+it is currently the recommended way to install OpenMC on Mac. You can also install
+OpenMC from Source as outlined in the next section.
+
+Spack is a package management tool designed to support multiple versions and
 configurations of software on a wide variety of platforms and environments.
 Please follow Spack's `setup guide`_ to configure the Spack system.
 

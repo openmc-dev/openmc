@@ -1502,7 +1502,7 @@ class Tally(IDManagerMixin):
                 df.columns = pd.MultiIndex.from_tuples(columns)
 
         # Modify the df.to_string method so that it prints formatted strings.
-        # Credit to http://stackoverflow.com/users/3657742/chrisb for this trick
+        # Credit to https://stackoverflow.com/users/3657742/chrisb for this trick
         df.to_string = partial(df.to_string, float_format=float_format.format)
 
         return df

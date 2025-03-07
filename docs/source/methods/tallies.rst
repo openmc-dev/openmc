@@ -522,4 +522,4 @@ improve the estimate of the percentile.
 
 .. _unpublished rational approximation: https://stackedboxes.org/2017/05/01/acklams-normal-quantile-function/
 
-.. _MC21: http://www.osti.gov/bridge/servlets/purl/903083-HT5p1o/903083.pdf
+.. _MC21: https://www.osti.gov/servlets/purl/903083

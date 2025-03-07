@@ -26,7 +26,7 @@ provided to obtain reaction rates from cross-section data. Several classes are
 provided that implement different time-integration algorithms for depletion
 calculations, which are described in detail in Colin Josey's thesis,
 `Development and analysis of high order neutron transport-depletion coupling
-algorithms <http://hdl.handle.net/1721.1/113721>`_.
+algorithms <https://dspace.mit.edu/handle/1721.1/113721>`_.
 
 .. autosummary::
     :toctree: generated

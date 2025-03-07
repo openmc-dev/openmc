@@ -129,7 +129,7 @@ can interfere with virtual environments.
 .. _git: https://git-scm.com/
 .. _GitHub: https://github.com/
 .. _git flow: https://nvie.com/git-model
-.. _valgrind: https://www.valgrind.org/
+.. _valgrind: https://valgrind.org/
 .. _style guide: https://docs.openmc.org/en/latest/devguide/styleguide.html
 .. _pull request: https://docs.github.com/en/github/collaborating-with-issues-and-pull-requests/about-pull-requests
 .. _openmc-dev/openmc: https://github.com/openmc-dev/openmc

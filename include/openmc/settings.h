@@ -135,6 +135,7 @@ extern std::unordered_set<int>
 
 extern int
   max_history_splits; //!< maximum number of particle splits for weight windows
+extern int max_secondaries; //!< maximum number of secondaries in the bank
 extern int64_t ssw_max_particles; //!< maximum number of particles to be
                                   //!< banked on surfaces per process
 extern int64_t ssw_max_files;     //!< maximum number of surface source files

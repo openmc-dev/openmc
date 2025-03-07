@@ -66,8 +66,8 @@ def test_export_to_xml(run_in_tmpdir):
             space=openmc.stats.Box((-1., -1., -1.), (1., 1., 1.))
         )
     }
-
     s.max_particle_events = 100
+    s.max_secondaries = 1_000_000
 
     # Make sure exporting XML works
     s.export_to_xml()
@@ -144,3 +144,4 @@ def test_export_to_xml(run_in_tmpdir):
     assert s.random_ray['distance_active'] == 100.0
     assert s.random_ray['ray_source'].space.lower_left == [-1., -1., -1.]
     assert s.random_ray['ray_source'].space.upper_right == [1., 1., 1.]
+    assert s.max_secondaries == 1_000_000

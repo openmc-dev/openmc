@@ -23,6 +23,7 @@ from openmc.filter import *
 from openmc.filter_expansion import *
 from openmc.trigger import *
 from openmc.tally_derivative import *
+from openmc.sensitivity import *
 from openmc.tallies import *
 from openmc.mgxs_library import *
 from openmc.executor import *

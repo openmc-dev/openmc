@@ -97,6 +97,10 @@ void score_tracklength_tally(Particle& p, double distance);
 //! \param tallies A vector of the indices of the tallies to score to
 void score_surface_tally(Particle& p, const vector<int>& tallies);
 
+//! Function to handle the special case when the tally is a sensitivity tally.
+void score_collision_sensitivity_tally(Particle& p, int i_tally, int start_index, int filter_index,
+  double filter_weight, int i_nuclide, double atom_density, double flux);
+  
 //! Score the pulse-height tally
 //! This is triggered at the end of every particle history
 //

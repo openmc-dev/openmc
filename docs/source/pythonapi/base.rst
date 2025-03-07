@@ -129,6 +129,7 @@ Constructing Tallies
    openmc.SurfaceFilter
    openmc.MeshFilter
    openmc.MeshBornFilter
+   openmc.ImportanceFilter
    openmc.MeshSurfaceFilter
    openmc.EnergyFilter
    openmc.EnergyoutFilter
@@ -155,6 +156,8 @@ Constructing Tallies
    openmc.MeshMaterialVolumes
    openmc.Trigger
    openmc.TallyDerivative
+   openmc.SensitivityTally
+   openmc.Sensitivity
    openmc.Tally
    openmc.Tallies
 

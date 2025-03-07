@@ -40,7 +40,7 @@ def _load_dose_icrp(data_source: str, particle: str):
     _DOSE_TABLES[data_source, particle] = data
 
 
-def dose_coefficients(particle, geometry='AP', data_source='icrp116'):
+def effective_dose_coefficients(particle, geometry='AP', data_source='icrp116'):
     """Return effective dose conversion coefficients.
 
     This function provides fluence (and air kerma) to effective or ambient dose

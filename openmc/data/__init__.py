@@ -34,4 +34,5 @@ from .multipole import *
 from .grid import *
 from .function import *
 
-from .effective_dose.dose import dose_coefficients
+from .effective_dose.dose import effective_dose_coefficients
+from .ambient_dose.dose import ambient_dose_coefficients

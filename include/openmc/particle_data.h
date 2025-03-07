@@ -51,6 +51,9 @@ struct SourceSite {
   int surf_id {0};
   int fission_nuclide;
   ParticleType particle;
+
+  // Extra attributes that don't show up in source written to file
+  int parent_nuclide {-1};
   int64_t parent_id;
   int64_t progeny_id;
 };
@@ -187,10 +190,21 @@ struct CacheDataMG {
 
 struct BoundaryInfo {
   double distance {INFINITY}; //!< distance to nearest boundary
-  int surface_index {0}; //!< if boundary is surface, index in surfaces vector
-  int coord_level;       //!< coordinate level after crossing boundary
+  int surface {
+    SURFACE_NONE}; //!< surface token, non-zero if boundary is surface
+  int coord_level; //!< coordinate level after crossing boundary
   array<int, 3>
     lattice_translation {}; //!< which way lattice indices will change
+
+  void reset()
+  {
+    distance = INFINITY;
+    surface = SURFACE_NONE;
+    coord_level = 0;
+    lattice_translation = {0, 0, 0};
+  }
+  // TODO: off-by-one
+  int surface_index() const { return std::abs(surface) - 1; }
 };
 
 /*
@@ -224,11 +238,17 @@ public:
     n_coord_last_ = 1;
   }
 
+  //! moves the particle by the specified distance to its next location
+  //! \param distance the distance the particle is moved
+  void move_distance(double distance);
+
+  void advance_to_boundary_from_void();
+
   // Initialize all internal state from position and direction
   void init_from_r_u(Position r_a, Direction u_a)
   {
     clear();
-    surface() = 0;
+    surface() = SURFACE_NONE;
     material() = C_NONE;
     r() = r_a;
     u() = u_a;
@@ -298,9 +318,16 @@ public:
   Direction& u_local() { return coord_[n_coord_ - 1].u; }
   const Direction& u_local() const { return coord_[n_coord_ - 1].u; }
 
-  // Surface that the particle is on
+  // Surface token for the surface that the particle is currently on
   int& surface() { return surface_; }
   const int& surface() const { return surface_; }
+
+  // Surface index based on the current value of the surface_ attribute
+  int surface_index() const
+  {
+    // TODO: off-by-one
+    return std::abs(surface_) - 1;
+  }
 
   // Boundary information
   BoundaryInfo& boundary() { return boundary_; }
@@ -339,7 +366,8 @@ private:
   Position r_last_;         //!< previous coordinates
   Direction u_last_;        //!< previous direction coordinates
 
-  int surface_ {0}; //!< index for surface particle is on
+  int surface_ {
+    SURFACE_NONE}; //!< surface token for surface the particle is currently on
 
   BoundaryInfo boundary_; //!< Info about the next intersection
 
@@ -413,6 +441,7 @@ private:
   // a double for fission cross section at birth? if so, I need to also add it to the bank...
 
   double wgt_ {1.0};
+  double wgt_born_ {1.0};
   double mu_;
   double time_ {0.0};
   double time_last_ {0.0};
@@ -423,9 +452,10 @@ private:
   int event_nuclide_;
   int event_mt_;
   int delayed_group_ {0};
+  int parent_nuclide_ {-1};
 
   int n_bank_ {0};
-  int n_bank_second_ {0};
+  double bank_second_E_ {0.0};
   double wgt_bank_ {0.0};
   int n_delayed_bank_[MAX_DELAYED_GROUPS];
 
@@ -514,12 +544,20 @@ public:
   int& g_last() { return g_last_; }
   const int& g_last() const { return g_last_; }
 
-  // Statistic weight of particle. Setting to zero
-  // indicates that the particle is dead.
+  // Statistic weight of particle. Setting to zero indicates that the particle
+  // is dead.
   double& wgt() { return wgt_; }
   double wgt() const { return wgt_; }
+
+  // Statistic weight of particle at birth
+  double& wgt_born() { return wgt_born_; }
+  double wgt_born() const { return wgt_born_; }
+
+  // Statistic weight of particle at last collision
   double& wgt_last() { return wgt_last_; }
   const double& wgt_last() const { return wgt_last_; }
+
+  // Whether particle is alive
   bool alive() const { return wgt_ != 0.0; }
 
   // Polar scattering angle after a collision
@@ -541,13 +579,17 @@ public:
   const int& event_nuclide() const { return event_nuclide_; }
   int& event_mt() { return event_mt_; }           // MT number of collision
   int& delayed_group() { return delayed_group_; } // delayed group
+  const int& parent_nuclide() const { return parent_nuclide_; }
+  int& parent_nuclide() { return parent_nuclide_; } // Parent nuclide
 
   // Post-collision data
-  int& n_bank() { return n_bank_; } // number of banked fission sites
-  int& n_bank_second()
+  double& bank_second_E()
   {
-    return n_bank_second_;
-  }                                        // number of secondaries banked
+    return bank_second_E_;
+  } // energy of last reaction secondaries
+  const double& bank_second_E() const { return bank_second_E_; }
+
+  int& n_bank() { return n_bank_; }        // number of banked fission sites
   double& wgt_bank() { return wgt_bank_; } // weight of banked fission sites
   int* n_delayed_bank()
   {
@@ -562,7 +604,6 @@ public:
   int& cell_born() { return cell_born_; }
   const int& cell_born() const { return cell_born_; }
 
-  // index of the current and last material
   // Total number of collisions suffered by particle
   int& n_collision() { return n_collision_; }
   const int& n_collision() const { return n_collision_; }

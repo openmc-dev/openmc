@@ -44,29 +44,32 @@ extern "C" bool entropy_on; //!< calculate Shannon entropy?
 extern "C" bool
   event_based; //!< use event-based mode (instead of history-based)
 extern bool legendre_to_tabular; //!< convert Legendre distributions to tabular?
-extern bool material_cell_offsets; //!< create material cells offsets?
-extern "C" bool output_summary;    //!< write summary.h5?
-extern bool output_tallies;        //!< write tallies.out?
-extern bool particle_restart_run;  //!< particle restart run?
-extern "C" bool photon_transport;  //!< photon transport turned on?
-extern "C" bool reduce_tallies;    //!< reduce tallies at end of batch?
-extern bool res_scat_on;           //!< use resonance upscattering method?
-extern "C" bool restart_run;       //!< restart run?
-extern "C" bool run_CE;            //!< run with continuous-energy data?
-extern bool source_latest;         //!< write latest source at each batch?
-extern bool source_separate;       //!< write source to separate file?
-extern bool source_write;          //!< write source in HDF5 files?
-extern bool source_mcpl_write;     //!< write source in mcpl files?
-extern bool surf_source_write;     //!< write surface source file?
-extern bool surf_mcpl_write;       //!< write surface mcpl file?
-extern bool surf_source_read;      //!< read surface source file?
-extern bool survival_biasing;      //!< use survival biasing?
-extern bool temperature_multipole; //!< use multipole data?
-extern "C" bool trigger_on;        //!< tally triggers enabled?
-extern bool trigger_predict;       //!< predict batches for triggers?
-extern bool ufs_on;                //!< uniform fission site method on?
-extern bool urr_ptables_on;        //!< use unresolved resonance prob. tables?
-extern "C" bool weight_windows_on; //!< are weight windows are enabled?
+extern bool material_cell_offsets;   //!< create material cells offsets?
+extern "C" bool output_summary;      //!< write summary.h5?
+extern bool output_tallies;          //!< write tallies.out?
+extern bool particle_restart_run;    //!< particle restart run?
+extern "C" bool photon_transport;    //!< photon transport turned on?
+extern "C" bool reduce_tallies;      //!< reduce tallies at end of batch?
+extern bool res_scat_on;             //!< use resonance upscattering method?
+extern "C" bool restart_run;         //!< restart run?
+extern "C" bool run_CE;              //!< run with continuous-energy data?
+extern bool source_latest;           //!< write latest source at each batch?
+extern bool source_separate;         //!< write source to separate file?
+extern bool source_write;            //!< write source in HDF5 files?
+extern bool source_mcpl_write;       //!< write source in mcpl files?
+extern bool surf_source_write;       //!< write surface source file?
+extern bool surf_mcpl_write;         //!< write surface mcpl file?
+extern bool surf_source_read;        //!< read surface source file?
+extern bool survival_biasing;        //!< use survival biasing?
+extern bool survival_normalization;  //!< use survival normalization?
+extern bool temperature_multipole;   //!< use multipole data?
+extern "C" bool trigger_on;          //!< tally triggers enabled?
+extern bool trigger_predict;         //!< predict batches for triggers?
+extern bool uniform_source_sampling; //!< sample sources uniformly?
+extern bool ufs_on;                  //!< uniform fission site method on?
+extern bool urr_ptables_on;          //!< use unresolved resonance prob. tables?
+extern bool use_decay_photons;       //!< use decay photons for D1S
+extern "C" bool weight_windows_on;   //!< are weight windows are enabled?
 extern bool weight_window_checkpoint_surface;   //!< enable weight window check
                                                 //!< upon surface crossing?
 extern bool weight_window_checkpoint_collision; //!< enable weight window check

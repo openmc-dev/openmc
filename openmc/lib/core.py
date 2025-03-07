@@ -27,6 +27,7 @@ class _SourceSite(Structure):
                 ('fission_nuclide', c_int),
                 ('surf_id', c_int),
                 ('particle', c_int),
+                ('parent_nuclide', c_int),
                 ('parent_id', c_int64),
                 ('progeny_id', c_int64)]
 

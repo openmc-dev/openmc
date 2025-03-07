@@ -89,6 +89,9 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
     // Write out random number seed
     write_dataset(file_id, "seed", openmc_get_seed());
 
+    // Write out random number stride
+    write_dataset(file_id, "stride", openmc_get_stride());
+
     // Write run information
     write_dataset(file_id, "energy_mode",
       settings::run_CE ? "continuous-energy" : "multi-group");
@@ -398,6 +401,11 @@ extern "C" int openmc_statepoint_load(const char* filename)
   int64_t seed;
   read_dataset(file_id, "seed", seed);
   openmc_set_seed(seed);
+
+  // Read and overwrite random number stride
+  uint64_t stride;
+  read_dataset(file_id, "stride", stride);
+  openmc_set_stride(stride);
 
   // It is not impossible for a state point to be generated from a CE run but
   // to be loaded in to an MG run (or vice versa), check to prevent that.

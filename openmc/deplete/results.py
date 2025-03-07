@@ -17,6 +17,11 @@ from openmc.checkvalue import PathLike
 
 __all__ = ["Results", "ResultsList"]
 
+_SECONDS_PER_MINUTE = 60
+_SECONDS_PER_HOUR = 60*60
+_SECONDS_PER_DAY = 24*60*60
+_SECONDS_PER_JULIAN_YEAR = 365.25*24*60*60  # 365.25 due to the leap year
+
 
 def _get_time_as(seconds: float, units: str) -> float:
     """Converts the time in seconds to time in different units
@@ -31,13 +36,13 @@ def _get_time_as(seconds: float, units: str) -> float:
 
     """
     if units == "a":
-        return seconds / (60 * 60 * 24 * 365.25)  # 365.25 due to the leap year
+        return seconds / _SECONDS_PER_JULIAN_YEAR
     if units == "d":
-        return seconds / (60 * 60 * 24)
+        return seconds / _SECONDS_PER_DAY
     elif units == "h":
-        return seconds / (60 * 60)
+        return seconds / _SECONDS_PER_HOUR
     elif units == "min":
-        return seconds / 60
+        return seconds / _SECONDS_PER_MINUTE
     else:
         return seconds
 
@@ -70,7 +75,6 @@ class Results(list):
                 for i in range(n):
                     data.append(StepResult.from_hdf5(fh, i))
         super().__init__(data)
-
 
     @classmethod
     def from_hdf5(cls, filename: PathLike):
@@ -459,6 +463,26 @@ class Results(list):
         )
 
         return _get_time_as(times, time_units)
+
+    def get_source_rates(self) -> np.ndarray:
+        """
+        .. versionadded:: 0.15.1
+
+        Returns
+        -------
+        numpy.ndarray
+            1-D vector of source rates at each point in the depletion simulation
+            with the units originally defined by the user.
+
+        """
+        # Results duplicate the final source rate at the final simulation time
+        source_rates = np.fromiter(
+            (r.source_rate for r in self),
+            dtype=self[0].source_rate.dtype,
+            count=len(self)-1,
+        )
+
+        return source_rates
 
     def get_step_where(
         self, time, time_units: str = "d", atol: float = 1e-6, rtol: float = 1e-3

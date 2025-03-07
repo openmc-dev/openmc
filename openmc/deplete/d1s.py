@@ -33,8 +33,10 @@ def get_radionuclides(model: openmc.Model, chain_file: str | None = None) -> lis
     List of nuclide names
 
     """
-    # Determine what nuclides appear in model
-    model_nuclides = set(model.geometry.get_all_nuclides())
+
+    # Determine what nuclides appear in the model
+    model_nuclides = {nuc for mat in model._materials_by_id.values()
+                      for nuc in mat.get_nuclides()}
 
     # Load chain file
     if chain_file is None:

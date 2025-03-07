@@ -69,6 +69,10 @@ const bool LIBMESH_ENABLED = true;
 const bool LIBMESH_ENABLED = false;
 #endif
 
+// Value used to indicate an empty slot in the hash table. We use -2 because
+// the value -1 is used to indicate a void material.
+constexpr int32_t EMPTY = -2;
+
 namespace model {
 
 std::unordered_map<int32_t, int32_t> mesh_map;
@@ -113,7 +117,7 @@ inline bool check_intersection_point(double x1, double x0, double y1, double y0,
 //! Atomic compare-and-swap for signed 32-bit integer
 //
 //! \param[in,out] ptr Pointer to value to update
-//! \param[in] expected Value to compare to
+//! \param[in,out] expected Value to compare to
 //! \param[in] desired If comparison is successful, value to update to
 //! \return True if the comparison was successful and the value was updated
 inline bool atomic_cas_int32(int32_t* ptr, int32_t& expected, int32_t desired)
@@ -152,8 +156,10 @@ void MaterialVolumes::add_volume(
 
   // Loop for linear probing
   for (int attempt = 0; attempt < table_size_; ++attempt) {
-    // Determine slot to check
+    // Determine slot to check, making sure it is positive
     int slot = (index_material + attempt) % table_size_;
+    if (slot < 0)
+      slot += table_size_;
     int32_t* slot_ptr = &this->materials(index_elem, slot);
 
     // Non-atomic read of current material
@@ -192,7 +198,10 @@ void MaterialVolumes::add_volume_unsafe(
 {
   // Linear probe
   for (int attempt = 0; attempt < table_size_; ++attempt) {
+    // Determine slot to check, making sure it is positive
     int slot = (index_material + attempt) % table_size_;
+    if (slot < 0)
+      slot += table_size_;
 
     // Read current material
     int32_t current_val = this->materials(index_elem, slot);
@@ -274,13 +283,15 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
   if (mpi::master) {
     header("MESH MATERIAL VOLUMES CALCULATION", 7);
   }
+  write_message(7, "Number of mesh elements = {}", n_bins());
   write_message(7, "Number of rays (x) = {}", nx);
   write_message(7, "Number of rays (y) = {}", ny);
   write_message(7, "Number of rays (z) = {}", nz);
-  int64_t n_total = nx * ny + ny * nz + nx * nz;
+  int64_t n_total = static_cast<int64_t>(nx) * ny +
+                    static_cast<int64_t>(ny) * nz +
+                    static_cast<int64_t>(nx) * nz;
   write_message(7, "Total number of rays = {}", n_total);
-  write_message(
-    7, "Maximum number of materials per mesh element = {}", table_size);
+  write_message(7, "Table size per mesh element = {}", table_size);
 
   Timer timer;
   timer.start();
@@ -294,8 +305,9 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
   std::array<int, 3> n_rays = {nx, ny, nz};
 
   // Determine effective width of rays
-  Position width((bbox.xmax - bbox.xmin) / nx, (bbox.ymax - bbox.ymin) / ny,
-    (bbox.zmax - bbox.zmin) / nz);
+  Position width((nx > 0) ? (bbox.xmax - bbox.xmin) / nx : 0.0,
+    (ny > 0) ? (bbox.ymax - bbox.ymin) / ny : 0.0,
+    (nz > 0) ? (bbox.zmax - bbox.zmin) / nz : 0.0);
 
   // Set flag for mesh being contained within model
   bool out_of_model = false;
@@ -327,6 +339,9 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
       double d2 = width[ax2];
       int n1 = n_rays[ax1];
       int n2 = n_rays[ax2];
+      if (n1 == 0 || n2 == 0) {
+        continue;
+      }
 
       // Divide rays in first direction over MPI processes by computing starting
       // and ending indices
@@ -442,8 +457,8 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
 
       for (int i = 1; i < mpi::n_procs; ++i) {
         // Receive material indices and volumes from process i
-        MPI_Recv(
-          mats.data(), total, MPI_INT, i, i, mpi::intracomm, MPI_STATUS_IGNORE);
+        MPI_Recv(mats.data(), total, MPI_INT32_T, i, i, mpi::intracomm,
+          MPI_STATUS_IGNORE);
         MPI_Recv(vols.data(), total, MPI_DOUBLE, i, i, mpi::intracomm,
           MPI_STATUS_IGNORE);
 
@@ -453,13 +468,15 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
         for (int index_elem = 0; index_elem < n_bins(); ++index_elem) {
           for (int k = 0; k < table_size; ++k) {
             int index = index_elem * table_size + k;
-            result.add_volume_unsafe(index_elem, mats[index], vols[index]);
+            if (mats[index] != EMPTY) {
+              result.add_volume_unsafe(index_elem, mats[index], vols[index]);
+            }
           }
         }
       }
     } else {
       // Send material indices and volumes to process 0
-      MPI_Send(materials, total, MPI_INT, 0, mpi::rank, mpi::intracomm);
+      MPI_Send(materials, total, MPI_INT32_T, 0, mpi::rank, mpi::intracomm);
       MPI_Send(volumes, total, MPI_DOUBLE, 0, mpi::rank, mpi::intracomm);
     }
   }
@@ -484,19 +501,24 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
     }
   }
 
-  // Show elapsed time
+  // Get total time and normalization time
   timer.stop();
   double t_total = timer.elapsed();
-  double t_normalize = t_total - t_raytrace - t_mpi;
-  if (mpi::master) {
-    header("Timing Statistics", 7);
-    show_time("Total time elapsed", t_total);
-    show_time("Ray tracing", t_raytrace, 1);
-    show_time("Ray tracing (per ray)", t_raytrace / n_total, 1);
-    show_time("MPI communication", t_mpi, 1);
-    show_time("Normalization", t_normalize, 1);
-    std::fflush(stdout);
-  }
+  double t_norm = t_total - t_raytrace - t_mpi;
+
+  // Show timing statistics
+  if (settings::verbosity < 7 || !mpi::master)
+    return;
+  header("Timing Statistics", 7);
+  fmt::print(" Total time elapsed            = {:.4e} seconds\n", t_total);
+  fmt::print("   Ray tracing                 = {:.4e} seconds\n", t_raytrace);
+  fmt::print("   MPI communication           = {:.4e} seconds\n", t_mpi);
+  fmt::print("   Normalization               = {:.4e} seconds\n", t_norm);
+  fmt::print(" Calculation rate              = {:.4e} rays/seconds\n",
+    n_total / t_raytrace);
+  fmt::print(" Calculation rate (per thread) = {:.4e} rays/seconds\n",
+    n_total / (t_raytrace * mpi::n_procs * num_threads()));
+  std::fflush(stdout);
 }
 
 void Mesh::to_hdf5(hid_t group) const

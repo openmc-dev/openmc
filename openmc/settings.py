@@ -51,15 +51,19 @@ class Settings:
         Indicate whether fission neutrons should be created or not.
     cutoff : dict
         Dictionary defining weight cutoff, energy cutoff and time cutoff. The
-        dictionary may have ten keys, 'weight', 'weight_avg', 'energy_neutron',
-        'energy_photon', 'energy_electron', 'energy_positron', 'time_neutron',
-        'time_photon', 'time_electron', and 'time_positron'. Value for 'weight'
-        should be a float indicating weight cutoff below which particle undergo
-        Russian roulette. Value for 'weight_avg' should be a float indicating
-        weight assigned to particles that are not killed after Russian roulette.
-        Value of energy should be a float indicating energy in eV below which
-        particle type will be killed. Value of time should be a float in
-        seconds. Particles will be killed exactly at the specified time.
+        dictionary may have the following keys, 'weight', 'weight_avg',
+        'survival_normalization', 'energy_neutron', 'energy_photon',
+        'energy_electron', 'energy_positron', 'time_neutron', 'time_photon',
+        'time_electron', and 'time_positron'. Value for 'weight' should be a
+        float indicating weight cutoff below which particle undergo Russian
+        roulette. Value for 'weight_avg' should be a float indicating weight
+        assigned to particles that are not killed after Russian roulette. Value
+        of energy should be a float indicating energy in eV below which particle
+        type will be killed. Value of time should be a float in seconds.
+        Particles will be killed exactly at the specified time. Value for
+        'survival_normalization' is a bool indicating whether or not the weight
+        cutoff parameters will be applied relative to the particle's starting
+        weight or to its current weight.
     delayed_photon_scaling : bool
         Indicate whether to scale the fission photon yield by (EGP + EGD)/EGP
         where EGP is the energy release of prompt photons and EGD is the energy
@@ -163,25 +167,26 @@ class Settings:
             'naive', 'simulation_averaged', or 'hybrid'.
             The default is 'hybrid'.
         :source_shape:
-            Assumed shape of the source distribution within each source
-            region. Options are 'flat' (default), 'linear', or 'linear_xy'.
+            Assumed shape of the source distribution within each source region.
+            Options are 'flat' (default), 'linear', or 'linear_xy'.
         :volume_normalized_flux_tallies:
-            Whether to normalize flux tallies by volume (bool). The default
-            is 'False'. When enabled, flux tallies will be reported in units of
-            cm/cm^3. When disabled, flux tallies will be reported in units
-            of cm (i.e., total distance traveled by neutrons in the spatial
-            tally region).
+            Whether to normalize flux tallies by volume (bool). The default is
+            'False'. When enabled, flux tallies will be reported in units of
+            cm/cm^3. When disabled, flux tallies will be reported in units of cm
+            (i.e., total distance traveled by neutrons in the spatial tally
+            region).
         :adjoint:
             Whether to run the random ray solver in adjoint mode (bool). The
             default is 'False'.
         :sample_method:
-            Sampling method for the ray starting location and direction of travel.
-            Options are `prng` (default) or 'halton`.
+            Sampling method for the ray starting location and direction of
+            travel. Options are `prng` (default) or 'halton`.
         :source_region_meshes:
-            List of tuples where each tuple contains a mesh and a list of domains.
-            Each domain is an instance of openmc.Material, openmc.Cell, or openmc.Universe.
-            The mesh will be applied to the listed domains to subdivide source regions
-            so as to improve accuracy and/or conform with tally meshes.
+            List of tuples where each tuple contains a mesh and a list of
+            domains. Each domain is an instance of openmc.Material, openmc.Cell,
+            or openmc.Universe. The mesh will be applied to the listed domains
+            to subdivide source regions so as to improve accuracy and/or conform
+            with tally meshes.
 
         .. versionadded:: 0.15.0
     resonance_scattering : dict
@@ -199,6 +204,8 @@ class Settings:
         The type of calculation to perform (default is 'eigenvalue')
     seed : int
         Seed for the linear congruential pseudorandom number generator
+    stride : int
+        Number of random numbers allocated for each source particle history
     source : Iterable of openmc.SourceBase
         Distribution of source sites in space, angle, and energy
     sourcepoint : dict
@@ -344,6 +351,7 @@ class Settings:
         self._ptables = None
         self._uniform_source_sampling = None
         self._seed = None
+        self._stride = None
         self._survival_biasing = None
 
         # Shannon entropy mesh
@@ -621,6 +629,16 @@ class Settings:
         self._seed = seed
 
     @property
+    def stride(self) -> int:
+        return self._stride
+
+    @stride.setter
+    def stride(self, stride: int):
+        cv.check_type('random number generator stride', stride, Integral)
+        cv.check_greater_than('random number generator stride', stride, 0)
+        self._stride = stride
+
+    @property
     def survival_biasing(self) -> bool:
         return self._survival_biasing
 
@@ -892,6 +910,8 @@ class Settings:
                 cv.check_type('average survival weight', cutoff[key], Real)
                 cv.check_greater_than('average survival weight',
                                       cutoff[key], 0.0)
+            elif key == 'survival_normalization':
+                cv.check_type('survival normalization', cutoff[key], bool)
             elif key in ['energy_neutron', 'energy_photon', 'energy_electron',
                          'energy_positron']:
                 cv.check_type('energy cutoff', cutoff[key], Real)
@@ -1354,6 +1374,11 @@ class Settings:
             element = ET.SubElement(root, "seed")
             element.text = str(self._seed)
 
+    def _create_stride_subelement(self, root):
+        if self._stride is not None:
+            element = ET.SubElement(root, "stride")
+            element.text = str(self._stride)
+
     def _create_survival_biasing_subelement(self, root):
         if self._survival_biasing is not None:
             element = ET.SubElement(root, "survival_biasing")
@@ -1364,7 +1389,8 @@ class Settings:
             element = ET.SubElement(root, "cutoff")
             for key, value in self._cutoff.items():
                 subelement = ET.SubElement(element, key)
-                subelement.text = str(value)
+                subelement.text = str(value) if key != 'survival_normalization' \
+                    else str(value).lower()
 
     def _create_entropy_mesh_subelement(self, root, mesh_memo=None):
         if self.entropy_mesh is None:
@@ -1793,6 +1819,11 @@ class Settings:
         if text is not None:
             self.seed = int(text)
 
+    def _stride_from_xml_element(self, root):
+        text = get_text(root, 'stride')
+        if text is not None:
+            self.stride = int(text)
+
     def _survival_biasing_from_xml_element(self, root):
         text = get_text(root, 'survival_biasing')
         if text is not None:
@@ -1804,10 +1835,14 @@ class Settings:
             self.cutoff = {}
             for key in ('energy_neutron', 'energy_photon', 'energy_electron',
                         'energy_positron', 'weight', 'weight_avg', 'time_neutron',
-                        'time_photon', 'time_electron', 'time_positron'):
+                        'time_photon', 'time_electron', 'time_positron',
+                        'survival_normalization'):
                 value = get_text(elem, key)
                 if value is not None:
-                    self.cutoff[key] = float(value)
+                    if key == 'survival_normalization':
+                        self.cutoff[key] = value in ('true', '1')
+                    else:
+                        self.cutoff[key] = float(value)
 
     def _entropy_mesh_from_xml_element(self, root, meshes):
         text = get_text(root, 'entropy_mesh')
@@ -2060,6 +2095,7 @@ class Settings:
         self._create_plot_seed_subelement(element)
         self._create_ptables_subelement(element)
         self._create_seed_subelement(element)
+        self._create_stride_subelement(element)
         self._create_survival_biasing_subelement(element)
         self._create_cutoff_subelement(element)
         self._create_entropy_mesh_subelement(element, mesh_memo)
@@ -2168,6 +2204,7 @@ class Settings:
         settings._plot_seed_from_xml_element(elem)
         settings._ptables_from_xml_element(elem)
         settings._seed_from_xml_element(elem)
+        settings._stride_from_xml_element(elem)
         settings._survival_biasing_from_xml_element(elem)
         settings._cutoff_from_xml_element(elem)
         settings._entropy_mesh_from_xml_element(elem, meshes)

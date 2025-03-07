@@ -50,15 +50,6 @@ OpenMC can then be installed with:
 
 You are now in a conda environment called `openmc-env` that has OpenMC
 installed.
-
-Similar instructions apply using `mamba` as a replacement for `conda` in the
-commands above provided it has been installed through one of its distribution
-channels (see `Mamba`_) or with:
-
-.. code-block:: sh
-
-    conda install mamba
-
 -------------------------------------------
 Installing on Linux/Mac/Windows with Docker
 -------------------------------------------

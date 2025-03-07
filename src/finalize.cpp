@@ -17,6 +17,7 @@
 #include "openmc/photon.h"
 #include "openmc/plot.h"
 #include "openmc/random_lcg.h"
+#include "openmc/random_ray/random_ray_simulation.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
 #include "openmc/source.h"
@@ -173,6 +174,8 @@ int openmc_finalize()
   if (mpi::source_site != MPI_DATATYPE_NULL)
     MPI_Type_free(&mpi::source_site);
 #endif
+
+  openmc_reset_random_ray();
 
   return 0;
 }

@@ -7,11 +7,12 @@ from pathlib import Path
 
 import lxml.etree as ET
 
+import openmc
 import openmc.checkvalue as cv
 from openmc.checkvalue import PathLike
 from openmc.stats.multivariate import MeshSpatial
 from ._xml import clean_indentation, get_text, reorder_attributes
-from .mesh import _read_meshes, RegularMesh
+from .mesh import _read_meshes, RegularMesh, MeshBase
 from .source import SourceBase, MeshSource, IndependentSource
 from .utility_funcs import input_path
 from .volume import VolumeCalculation
@@ -180,6 +181,12 @@ class Settings:
         :sample_method:
             Sampling method for the ray starting location and direction of
             travel. Options are `prng` (default) or 'halton`.
+        :source_region_meshes:
+            List of tuples where each tuple contains a mesh and a list of
+            domains. Each domain is an instance of openmc.Material, openmc.Cell,
+            or openmc.Universe. The mesh will be applied to the listed domains
+            to subdivide source regions so as to improve accuracy and/or conform
+            with tally meshes.
 
         .. versionadded:: 0.15.0
     resonance_scattering : dict
@@ -1156,6 +1163,18 @@ class Settings:
                 cv.check_type('volume normalized flux tallies', value, bool)
             elif key == 'adjoint':
                 cv.check_type('adjoint', value, bool)
+            elif key == 'source_region_meshes':
+                cv.check_type('source region meshes', value, Iterable)
+                for mesh, domains in value:
+                    cv.check_type('mesh', mesh, MeshBase)
+                    cv.check_type('domains', domains, Iterable)
+                    valid_types = (openmc.Material, openmc.Cell, openmc.Universe)
+                    for domain in domains:
+                        if not isinstance(domain, valid_types):
+                            raise ValueError(
+                                f'Invalid domain type: {type(domain)}. Expected '
+                                'openmc.Material, openmc.Cell, or openmc.Universe.')
+                cv.check_type('adjoint', value, bool)
             elif key == 'sample_method':
                 cv.check_value('sample method', value,
                                ('prng', 'halton'))
@@ -1573,7 +1592,7 @@ class Settings:
 
             root.append(wwg.mesh.to_xml_element())
             if mesh_memo is not None:
-                mesh_memo.add(wwg.mesh)
+                mesh_memo.add(wwg.mesh.id)
 
     def _create_weight_windows_file_element(self, root):
         if self.weight_windows_file is not None:
@@ -1604,13 +1623,25 @@ class Settings:
             elem = ET.SubElement(root, "max_tracks")
             elem.text = str(self._max_tracks)
 
-    def _create_random_ray_subelement(self, root):
+    def _create_random_ray_subelement(self, root, mesh_memo=None):
         if self._random_ray:
             element = ET.SubElement(root, "random_ray")
             for key, value in self._random_ray.items():
                 if key == 'ray_source' and isinstance(value, SourceBase):
                     source_element = value.to_xml_element()
                     element.append(source_element)
+                elif key == 'source_region_meshes':
+                    subelement = ET.SubElement(element, 'source_region_meshes')
+                    for mesh, domains in value:
+                        mesh_elem = ET.SubElement(subelement, 'mesh')
+                        mesh_elem.set('id', str(mesh.id))
+                        for domain in domains:
+                            domain_elem = ET.SubElement(mesh_elem, 'domain')
+                            domain_elem.set('id', str(domain.id))
+                            domain_elem.set('type', domain.__class__.__name__.lower())
+                        if mesh_memo is not None and mesh.id not in mesh_memo:
+                            root.append(mesh.to_xml_element())
+                            mesh_memo.add(mesh.id)
                 else:
                     subelement = ET.SubElement(element, key)
                     subelement.text = str(value)
@@ -2007,6 +2038,22 @@ class Settings:
                     )
                 elif child.tag == 'sample_method':
                     self.random_ray['sample_method'] = child.text
+                elif child.tag == 'source_region_meshes':
+                    self.random_ray['source_region_meshes'] = []
+                    for mesh_elem in child.findall('mesh'):
+                        mesh = MeshBase.from_xml_element(mesh_elem)
+                        domains = []
+                        for domain_elem in mesh_elem.findall('domain'):
+                            domain_id = int(domain_elem.get('id'))
+                            domain_type = domain_elem.get('type')
+                            if domain_type == 'material':
+                                domain = openmc.Material(domain_id)
+                            elif domain_type == 'cell':
+                                domain = openmc.Cell(domain_id)
+                            elif domain_type == 'universe':
+                                domain = openmc.Universe(domain_id)
+                            domains.append(domain)
+                        self.random_ray['source_region_meshes'].append((mesh, domains))
 
     def _use_decay_photons_from_xml_element(self, root):
         text = get_text(root, 'use_decay_photons')
@@ -2077,7 +2124,7 @@ class Settings:
         self._create_weight_window_checkpoints_subelement(element)
         self._create_max_history_splits_subelement(element)
         self._create_max_tracks_subelement(element)
-        self._create_random_ray_subelement(element)
+        self._create_random_ray_subelement(element, mesh_memo)
         self._create_use_decay_photons_subelement(element)
 
         # Clean the indentation in the file to be user-readable

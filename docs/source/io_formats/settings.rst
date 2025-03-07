@@ -470,6 +470,24 @@ found in the :ref:`random ray user guide <random_ray>`.
 
     *Default*: prng
 
+  :source_region_meshes:
+    Relates meshes to spatial domains for subdividing source regions with each domain.
+
+    :mesh:
+      Contains an ``id`` attribute and one or more ``<domain>`` sub-elements.
+
+      :id:
+        The unique identifier for the mesh.
+
+      :domain:
+        Each domain element has an ``id`` attribute and a ``type`` attribute.
+
+        :id:
+          The unique identifier for the domain.
+
+        :type:
+          The type of the domain. Can be ``material``, ``cell``, or ``universe``.
+
 ----------------------------------
 ``<resonance_scattering>`` Element
 ----------------------------------

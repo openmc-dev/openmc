@@ -2576,7 +2576,6 @@ class UnstructuredMesh(MeshBase):
             )
 
             for name, data in datasets.items():
-
                 if data.shape != self.dimension:
                     raise ValueError(
                         f'Cannot apply dataset "{name}" with '

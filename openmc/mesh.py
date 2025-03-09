@@ -2540,8 +2540,6 @@ class UnstructuredMesh(MeshBase):
 
         if Path(filename).suffix == ".vtkhdf":
 
-            print('Writing VTKHDF file')
-
             def append_dataset(dset, array):
                 """Convenience function to append data to an HDF5 dataset"""
                 origLen = dset.shape[0]

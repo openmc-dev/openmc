@@ -37,20 +37,10 @@ void ScattData::base_init(int order, const xt::xtensor<int, 1>& in_gmin,
     mult[gin] = in_mult[gin];
 
     // Make sure the multiplicity does not have 0s
-    unsigned long int num_converted = 0;
     for (int go = 0; go < mult[gin].size(); go++) {
       if (mult[gin][go] == 0.) {
-        num_converted += 1;
         mult[gin][go] = 1.;
       }
-    }
-
-    if (num_converted > 0) {
-      // Raise a warning to the user if we did have to do the conversion
-      std::string msg =
-        std::to_string(num_converted) +
-        " entries in the Multiplicity Matrix were changed from 0 to 1";
-      warning(msg);
     }
 
     // Make sure the energy is normalized

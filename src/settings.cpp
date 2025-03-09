@@ -75,6 +75,7 @@ bool trigger_predict {false};
 bool uniform_source_sampling {false};
 bool ufs_on {false};
 bool urr_ptables_on {true};
+bool use_decay_photons {false};
 bool weight_windows_on {false};
 bool weight_window_checkpoint_surface {false};
 bool weight_window_checkpoint_collision {true};
@@ -306,6 +307,17 @@ void get_run_parameters(pugi::xml_node node_base)
       FlatSourceDomain::adjoint_ =
         get_node_value_bool(random_ray_node, "adjoint");
     }
+    if (check_for_node(random_ray_node, "sample_method")) {
+      std::string temp_str =
+        get_node_value(random_ray_node, "sample_method", true, true);
+      if (temp_str == "prng") {
+        RandomRay::sample_method_ = RandomRaySampleMethod::PRNG;
+      } else if (temp_str == "halton") {
+        RandomRay::sample_method_ = RandomRaySampleMethod::HALTON;
+      } else {
+        fatal_error("Unrecognized sample method: " + temp_str);
+      }
+    }
   }
 }
 
@@ -500,6 +512,12 @@ void read_settings_xml(pugi::xml_node root)
   if (check_for_node(root, "seed")) {
     auto seed = std::stoll(get_node_value(root, "seed"));
     openmc_set_seed(seed);
+  }
+
+  // Copy random number stride if specified
+  if (check_for_node(root, "stride")) {
+    auto stride = std::stoull(get_node_value(root, "stride"));
+    openmc_set_stride(stride);
   }
 
   // Check for electron treatment
@@ -1112,6 +1130,11 @@ void read_settings_xml(pugi::xml_node root)
       weight_window_checkpoint_surface =
         get_node_value_bool(ww_checkpoints, "surface");
     }
+  }
+
+  if (check_for_node(root, "use_decay_photons")) {
+    settings::use_decay_photons =
+      get_node_value_bool(root, "use_decay_photons");
   }
 }
 

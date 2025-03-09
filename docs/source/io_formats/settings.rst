@@ -238,7 +238,7 @@ based on the recommended value in LA-UR-14-24530_.
 
   .. note:: This element is not used in the multi-group :ref:`energy_mode`.
 
-.. _LA-UR-14-24530: https://laws.lanl.gov/vhosts/mcnp.lanl.gov/pdf_files/la-ur-14-24530.pdf
+.. _LA-UR-14-24530: https://mcnp.lanl.gov/pdf_files/TechReport_2014_LANL_LA-UR-14-24530_Brown.pdf
 
 ---------------------------
 ``<material_cell_offsets>``
@@ -252,11 +252,29 @@ to false.
 
   *Default*: true
 
+--------------------------------
+``<max_lost_particles>`` Element
+--------------------------------
+
+This element indicates the maximum number of lost particles.
+
+  *Default*: 10
+
+------------------------------------
+``<rel_max_lost_particles>`` Element
+------------------------------------
+
+
+This element indicates the maximum number of lost particles, relative to the
+total number of particles.
+
+  *Default*: 1.0e-6
+
 -------------------------------------
 ``<max_particles_in_flight>`` Element
 -------------------------------------
 
-This element indicates the number of neutrons to run in flight concurrently
+This element indicates the number of particles to run in flight concurrently
 when using event-based parallelism. A higher value uses more memory, but
 may be more efficient computationally.
 
@@ -439,6 +457,12 @@ found in the :ref:`random ray user guide <random_ray>`.
 
     *Default*: None
 
+  :sample_method:
+    Specifies the method for sampling the starting ray distribution. This
+    element can be set to "prng" or "halton".
+
+    *Default*: prng
+
 ----------------------------------
 ``<resonance_scattering>`` Element
 ----------------------------------
@@ -513,6 +537,15 @@ The ``seed`` element is used to set the seed used for the linear congruential
 pseudo-random number generator.
 
   *Default*: 1
+
+--------------------
+``<stride>`` Element
+--------------------
+
+The ``stride`` element is used to specify how many random numbers are allocated
+for each source particle history.
+
+  *Default*: 152,917
 
 .. _source_element:
 
@@ -1380,7 +1413,7 @@ mesh-based weight windows.
     *Default*: true
 
   :method:
-    Method used to update weight window values (currently only 'magic' is supported)
+    Method used to update weight window values (one of 'magic' or 'fw_cadis')
 
     *Default*: magic
 

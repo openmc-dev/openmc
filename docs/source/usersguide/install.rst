@@ -284,14 +284,13 @@ Prerequisites
 
     * NCrystal_ library for defining materials with enhanced thermal neutron transport
 
-      Adding this option allows the creation of materials from NCrystal, which
-      replaces the scattering kernel treatment of ACE files with a modular,
-      on-the-fly approach. To use it `install
-      <https://github.com/mctools/ncrystal/wiki/Get-NCrystal>`_ and `initialize
-      <https://github.com/mctools/ncrystal/wiki/Using-NCrystal#setting-up>`_
-      NCrystal and turn on the option in the CMake configuration step::
-
-          cmake -DOPENMC_USE_NCRYSTAL=on ..
+      OpenMC supports the creation of materials from NCrystal, which replaces
+      the scattering kernel treatment of ACE files with a modular, on-the-fly
+      approach. OpenMC does not need any particular build option to use this,
+      but NCrystal must be installed on the system. Refer to `NCrystal
+      documentation
+      <https://github.com/mctools/ncrystal/wiki/Get-NCrystal>`_ for how this is
+      achieved.
 
     * libMesh_ mesh library framework for numerical simulations of partial differential equations
 
@@ -394,12 +393,6 @@ OPENMC_USE_MCPL
   Turns on support for reading MCPL_ source files and writing MCPL source points
   and surface sources. (Default: off)
 
-OPENMC_USE_NCRYSTAL
-  Turns on support for NCrystal materials. NCrystal must be `installed
-  <https://github.com/mctools/ncrystal/wiki/Get-NCrystal>`_ and `initialized
-  <https://github.com/mctools/ncrystal/wiki/Using-NCrystal#setting-up>`_.
-  (Default: off)
-
 OPENMC_USE_LIBMESH
   Enables the use of unstructured mesh tallies with libMesh_. (Default: off)
 
@@ -426,13 +419,16 @@ OpenMC can be configured for debug, release, or release with debug info by setti
 the `CMAKE_BUILD_TYPE` option.
 
 Debug
-  Enable debug compiler flags with no optimization `-O0 -g`.
+  Enable debug compiler flags with no optimization. On most platforms/compilers,
+  this is equivalent to `-O0 -g`.
 
 Release
-  Disable debug and enable optimization `-O3 -DNDEBUG`.
+  Disable debug and enable optimization. On most platforms/compilers, this is
+  equivalent to `-O3 -DNDEBUG`.
 
 RelWithDebInfo
-  (Default if no type is specified.) Enable optimization and debug `-O2 -g`.
+  (Default if no type is specified.) Enable optimization and debug. On most
+  platforms/compilers, this is equivalent to `-O2 -g`.
 
 Example of configuring for Debug mode:
 

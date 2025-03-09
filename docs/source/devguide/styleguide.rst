@@ -55,7 +55,7 @@ Source Files
 Use a ``.cpp`` suffix for code files and ``.h`` for header files.
 
 Header files should always use include guards with the following style (See
-`SF.8 <http://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#sf8-use-include-guards-for-all-h-files>`_):
+`SF.8 <https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#Rs-guards>`_):
 
 .. code-block:: C++
 

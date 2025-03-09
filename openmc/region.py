@@ -8,6 +8,7 @@ import numpy as np
 
 import openmc
 from .bounding_box import BoundingBox
+from .plots import add_plot_params
 
 
 class Region(ABC):
@@ -343,47 +344,11 @@ class Region(ABC):
         return type(self)(n.rotate(rotation, pivot=pivot, order=order,
                                    inplace=inplace, memo=memo) for n in self)
 
+    @add_plot_params
     def plot(self, *args, **kwargs):
         """Display a slice plot of the region.
 
         .. versionadded:: 0.15.0
-
-        Parameters
-        ----------
-        origin : iterable of float
-            Coordinates at the origin of the plot. If left as None then the
-            bounding box center will be used to attempt to ascertain the origin.
-            Defaults to (0, 0, 0) if the bounding box is not finite
-        width : iterable of float
-            Width of the plot in each basis direction. If left as none then the
-            bounding box width will be used to attempt to ascertain the plot
-            width. Defaults to (10, 10) if the bounding box is not finite
-        pixels : Iterable of int or int
-            If iterable of ints provided, then this directly sets the number of
-            pixels to use in each basis direction. If int provided, then this
-            sets the total number of pixels in the plot and the number of pixels
-            in each basis direction is calculated from this total and the image
-            aspect ratio.
-        basis : {'xy', 'xz', 'yz'}
-            The basis directions for the plot
-        seed : int
-            Seed for the random number generator
-        openmc_exec : str
-            Path to OpenMC executable.
-        axes : matplotlib.Axes
-            Axes to draw to
-        outline : bool
-            Whether outlines between color boundaries should be drawn
-        axis_units : {'km', 'm', 'cm', 'mm'}
-            Units used on the plot axis
-        **kwargs
-            Keyword arguments passed to :func:`matplotlib.pyplot.imshow`
-
-        Returns
-        -------
-        matplotlib.axes.Axes
-            Axes containing resulting image
-
         """
         for key in ('color_by', 'colors', 'legend', 'legend_kwargs'):
             if key in kwargs:

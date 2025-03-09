@@ -197,8 +197,8 @@ RUN mkdir -p ${HOME}/OpenMC && cd ${HOME}/OpenMC \
     && git clone --shallow-submodules --recurse-submodules --single-branch -b ${openmc_branch} ${OPENMC_REPO} \
     && cd openmc ; \
     export SKBUILD_CMAKE_ARGS="-DCMAKE_CXX_COMPILER=mpicxx; \
-                                -DOPENMC_USE_MPI=on; \
-                                -DHDF5_PREFER_PARALLEL=on" \
+                               -DOPENMC_USE_MPI=on; \
+                               -DHDF5_PREFER_PARALLEL=on" \
     if [ ${build_dagmc} = "on" ]; then \
         SKBUILD_CMAKE_ARGS="${SKBUILD_CMAKE_ARGS}; \
                             -DOPENMC_USE_DAGMC=on; \

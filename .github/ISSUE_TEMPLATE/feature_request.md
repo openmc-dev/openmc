@@ -1,5 +1,5 @@
 ---
-name: Feature request
+name: Feature or enhancement request
 about: Suggest a new feature or enhancement to existing capabilities
 title: ''
 labels: ''

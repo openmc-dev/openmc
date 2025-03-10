@@ -1,6 +1,7 @@
 #include "openmc/weight_windows.h"
 
 #include <algorithm>
+#include <cassert>
 #include <cmath>
 #include <set>
 #include <string>
@@ -22,6 +23,7 @@
 #include "openmc/particle.h"
 #include "openmc/particle_data.h"
 #include "openmc/physics_common.h"
+#include "openmc/random_ray/flat_source_domain.h"
 #include "openmc/search.h"
 #include "openmc/settings.h"
 #include "openmc/tallies/filter_energy.h"
@@ -31,7 +33,6 @@
 #include "openmc/xml_interface.h"
 
 #include <fmt/core.h>
-#include <gsl/gsl-lite.hpp>
 
 namespace openmc {
 
@@ -114,7 +115,7 @@ void apply_weight_windows(Particle& p)
     // Create secondaries and divide weight among all particles
     int i_split = std::round(n_split);
     for (int l = 0; l < i_split - 1; l++) {
-      p.create_secondary(weight / n_split, p.u(), p.E(), p.type());
+      p.split(weight / n_split);
     }
     // remaining weight is applied to current particle
     p.wgt() = weight / n_split;
@@ -147,8 +148,8 @@ WeightWindows::WeightWindows(int32_t id)
 WeightWindows::WeightWindows(pugi::xml_node node)
 {
   // Make sure required elements are present
-  const vector<std::string> required_elems {"id", "particle_type",
-    "energy_bounds", "lower_ww_bounds", "upper_ww_bounds"};
+  const vector<std::string> required_elems {
+    "id", "particle_type", "lower_ww_bounds", "upper_ww_bounds"};
   for (const auto& elem : required_elems) {
     if (!check_for_node(node, elem.c_str())) {
       fatal_error(fmt::format("Must specify <{}> for weight windows.", elem));
@@ -165,7 +166,7 @@ WeightWindows::WeightWindows(pugi::xml_node node)
 
   // Determine associated mesh
   int32_t mesh_id = std::stoi(get_node_value(node, "mesh"));
-  mesh_idx_ = model::mesh_map.at(mesh_id);
+  set_mesh(model::mesh_map.at(mesh_id));
 
   // energy bounds
   if (check_for_node(node, "energy_bounds"))
@@ -288,7 +289,7 @@ void WeightWindows::allocate_ww_bounds()
 
 void WeightWindows::set_id(int32_t id)
 {
-  Expects(id >= 0 || id == C_NONE);
+  assert(id >= 0 || id == C_NONE);
 
   // Clear entry in mesh map in case one was already assigned
   if (id_ != C_NONE) {
@@ -316,7 +317,7 @@ void WeightWindows::set_id(int32_t id)
   variance_reduction::ww_map[id] = index_;
 }
 
-void WeightWindows::set_energy_bounds(gsl::span<const double> bounds)
+void WeightWindows::set_energy_bounds(span<const double> bounds)
 {
   energy_bounds_.clear();
   energy_bounds_.insert(energy_bounds_.begin(), bounds.begin(), bounds.end());
@@ -340,6 +341,7 @@ void WeightWindows::set_mesh(int32_t mesh_idx)
     fatal_error(fmt::format("Could not find a mesh for index {}", mesh_idx));
 
   mesh_idx_ = mesh_idx;
+  model::meshes[mesh_idx_]->prepare_for_point_location();
   allocate_ww_bounds();
 }
 
@@ -450,7 +452,7 @@ void WeightWindows::set_bounds(
 }
 
 void WeightWindows::set_bounds(
-  gsl::span<const double> lower_bounds, gsl::span<const double> upper_bounds)
+  span<const double> lower_bounds, span<const double> upper_bounds)
 {
   check_bounds(lower_bounds, upper_bounds);
   auto shape = this->bounds_size();
@@ -464,8 +466,7 @@ void WeightWindows::set_bounds(
     xt::adapt(upper_bounds.data(), upper_ww_.shape());
 }
 
-void WeightWindows::set_bounds(
-  gsl::span<const double> lower_bounds, double ratio)
+void WeightWindows::set_bounds(span<const double> lower_bounds, double ratio)
 {
   this->check_bounds(lower_bounds);
 
@@ -481,8 +482,8 @@ void WeightWindows::set_bounds(
   upper_ww_ *= ratio;
 }
 
-void WeightWindows::update_magic(
-  const Tally* tally, const std::string& value, double threshold, double ratio)
+void WeightWindows::update_weights(const Tally* tally, const std::string& value,
+  double threshold, double ratio, WeightWindowUpdateMethod method)
 {
   ///////////////////////////
   // Setup and checks
@@ -623,20 +624,51 @@ void WeightWindows::update_magic(
   auto mesh_vols = this->mesh()->volumes();
 
   int e_bins = new_bounds.shape()[0];
-  for (int e = 0; e < e_bins; e++) {
-    // select all
-    auto group_view = xt::view(new_bounds, e);
 
-    // divide by volume of mesh elements
-    for (int i = 0; i < group_view.size(); i++) {
-      group_view[i] /= mesh_vols[i];
+  if (method == WeightWindowUpdateMethod::MAGIC) {
+    // If we are computing weight windows with forward fluxes derived from a
+    // Monte Carlo or forward random ray solve, we use the MAGIC algorithm.
+    for (int e = 0; e < e_bins; e++) {
+      // select all
+      auto group_view = xt::view(new_bounds, e);
+
+      // divide by volume of mesh elements
+      for (int i = 0; i < group_view.size(); i++) {
+        group_view[i] /= mesh_vols[i];
+      }
+
+      double group_max =
+        *std::max_element(group_view.begin(), group_view.end());
+      // normalize values in this energy group by the maximum value for this
+      // group
+      if (group_max > 0.0)
+        group_view /= 2.0 * group_max;
+    }
+  } else {
+    // If we are computing weight windows with adjoint fluxes derived from an
+    // adjoint random ray solve, we use the FW-CADIS algorithm.
+    for (int e = 0; e < e_bins; e++) {
+      // select all
+      auto group_view = xt::view(new_bounds, e);
+
+      // divide by volume of mesh elements
+      for (int i = 0; i < group_view.size(); i++) {
+        group_view[i] /= mesh_vols[i];
+      }
     }
 
-    double group_max = *std::max_element(group_view.begin(), group_view.end());
-    // normalize values in this energy group by the maximum value for this
-    // group
-    if (group_max > 0.0)
-      group_view /= 2.0 * group_max;
+    // We take the inverse, but are careful not to divide by zero e.g. if some
+    // mesh bins are not reachable in the physical geometry.
+    xt::noalias(new_bounds) =
+      xt::where(xt::not_equal(new_bounds, 0.0), 1.0 / new_bounds, 0.0);
+    auto max_val = xt::amax(new_bounds)();
+    xt::noalias(new_bounds) = new_bounds / (2.0 * max_val);
+
+    // For bins that were missed, we use the minimum weight window value. This
+    // shouldn't matter except for plotting.
+    auto min_val = xt::amin(new_bounds)();
+    xt::noalias(new_bounds) =
+      xt::where(xt::not_equal(new_bounds, 0.0), new_bounds, min_val);
   }
 
   // make sure that values where the mean is zero are set s.t. the weight window
@@ -736,7 +768,7 @@ WeightWindowsGenerator::WeightWindowsGenerator(pugi::xml_node node)
   int32_t mesh_idx = model::mesh_map[mesh_id];
   max_realizations_ = std::stoi(get_node_value(node, "max_realizations"));
 
-  int active_batches = settings::n_batches - settings::n_inactive;
+  int32_t active_batches = settings::n_batches - settings::n_inactive;
   if (max_realizations_ > active_batches) {
     auto msg =
       fmt::format("The maximum number of specified tally realizations ({}) is "
@@ -759,37 +791,51 @@ WeightWindowsGenerator::WeightWindowsGenerator(pugi::xml_node node)
     e_bounds.push_back(data::energy_max[p_type]);
   }
 
-  // set method and parameters for updates
-  method_ = get_node_value(node, "method");
-  if (method_ == "magic") {
-    // parse non-default update parameters if specified
-    if (check_for_node(node, "update_parameters")) {
-      pugi::xml_node params_node = node.child("update_parameters");
-      if (check_for_node(params_node, "value"))
-        tally_value_ = get_node_value(params_node, "value");
-      if (check_for_node(params_node, "threshold"))
-        threshold_ = std::stod(get_node_value(params_node, "threshold"));
-      if (check_for_node(params_node, "ratio")) {
-        ratio_ = std::stod(get_node_value(params_node, "ratio"));
-      }
+  // set method
+  std::string method_string = get_node_value(node, "method");
+  if (method_string == "magic") {
+    method_ = WeightWindowUpdateMethod::MAGIC;
+    if (settings::solver_type == SolverType::RANDOM_RAY &&
+        FlatSourceDomain::adjoint_) {
+      fatal_error("Random ray weight window generation with MAGIC cannot be "
+                  "done in adjoint mode.");
     }
-    // check update parameter values
-    if (tally_value_ != "mean" && tally_value_ != "rel_err") {
-      fatal_error(fmt::format("Unsupported tally value '{}' specified for "
-                              "weight window generation.",
-        tally_value_));
+  } else if (method_string == "fw_cadis") {
+    method_ = WeightWindowUpdateMethod::FW_CADIS;
+    if (settings::solver_type != SolverType::RANDOM_RAY) {
+      fatal_error("FW-CADIS can only be run in random ray solver mode.");
     }
-    if (threshold_ <= 0.0)
-      fatal_error(fmt::format("Invalid relative error threshold '{}' (<= 0.0) "
-                              "specified for weight window generation",
-        ratio_));
-    if (ratio_ <= 1.0)
-      fatal_error(fmt::format("Invalid weight window ratio '{}' (<= 1.0) "
-                              "specified for weight window generation"));
+    FlatSourceDomain::adjoint_ = true;
   } else {
     fatal_error(fmt::format(
-      "Unknown weight window update method '{}' specified", method_));
+      "Unknown weight window update method '{}' specified", method_string));
   }
+
+  // parse non-default update parameters if specified
+  if (check_for_node(node, "update_parameters")) {
+    pugi::xml_node params_node = node.child("update_parameters");
+    if (check_for_node(params_node, "value"))
+      tally_value_ = get_node_value(params_node, "value");
+    if (check_for_node(params_node, "threshold"))
+      threshold_ = std::stod(get_node_value(params_node, "threshold"));
+    if (check_for_node(params_node, "ratio")) {
+      ratio_ = std::stod(get_node_value(params_node, "ratio"));
+    }
+  }
+
+  // check update parameter values
+  if (tally_value_ != "mean" && tally_value_ != "rel_err") {
+    fatal_error(fmt::format("Unsupported tally value '{}' specified for "
+                            "weight window generation.",
+      tally_value_));
+  }
+  if (threshold_ <= 0.0)
+    fatal_error(fmt::format("Invalid relative error threshold '{}' (<= 0.0) "
+                            "specified for weight window generation",
+      ratio_));
+  if (ratio_ <= 1.0)
+    fatal_error(fmt::format("Invalid weight window ratio '{}' (<= 1.0) "
+                            "specified for weight window generation"));
 
   // create a matching weight windows object
   auto wws = WeightWindows::create();
@@ -859,7 +905,7 @@ void WeightWindowsGenerator::update() const
       tally->n_realizations_ % update_interval_ != 0)
     return;
 
-  wws->update_magic(tally, tally_value_, threshold_, ratio_);
+  wws->update_weights(tally, tally_value_, threshold_, ratio_, method_);
 
   // if we're not doing on the fly generation, reset the tally results once
   // we're done with the update
@@ -943,7 +989,7 @@ extern "C" int openmc_weight_windows_update_magic(int32_t ww_idx,
   // get the WeightWindows object
   const auto& wws = variance_reduction::weight_windows.at(ww_idx);
 
-  wws->update_magic(tally, value, threshold, ratio);
+  wws->update_weights(tally, value, threshold, ratio);
 
   return 0;
 }

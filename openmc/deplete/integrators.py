@@ -446,7 +446,7 @@ class SICELIIntegrator(SIIntegrator):
     <https://doi.org/10.1137/05063042>`_.
 
     Detailed algorithm can be found in section 3.2 in `Colin Josey's thesis
-    <http://hdl.handle.net/1721.1/113721>`_.
+    <https://dspace.mit.edu/handle/1721.1/113721>`_.
     """
     _num_stages = 2
 
@@ -512,7 +512,7 @@ class SILEQIIntegrator(SIIntegrator):
     <https://doi.org/10.1137/05063042>`_.
 
     Detailed algorithm can be found in Section 3.2 in `Colin Josey's thesis
-    <http://hdl.handle.net/1721.1/113721>`_.
+    <https://dspace.mit.edu/handle/1721.1/113721>`_.
     """
     _num_stages = 2
 

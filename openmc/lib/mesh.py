@@ -1,7 +1,8 @@
 from collections.abc import Mapping, Sequence
-from ctypes import (c_int, c_int32, c_char_p, c_double, POINTER, Structure,
-                    create_string_buffer, c_uint64, c_size_t)
-from random import getrandbits
+from ctypes import (c_int, c_int32, c_char_p, c_double, POINTER,
+                    create_string_buffer, c_size_t)
+from math import sqrt
+import sys
 from weakref import WeakValueDictionary
 
 import numpy as np
@@ -9,23 +10,20 @@ from numpy.ctypeslib import as_array
 
 from ..exceptions import AllocationError, InvalidIDError
 from . import _dll
-from .core import _FortranObjectWithID
+from .core import _FortranObjectWithID, quiet_dll
 from .error import _error_handler
-from .material import Material
 from .plot import _Position
+from ..bounding_box import BoundingBox
+from ..mesh import MeshMaterialVolumes
 
 __all__ = [
     'Mesh', 'RegularMesh', 'RectilinearMesh', 'CylindricalMesh',
-    'SphericalMesh', 'UnstructuredMesh', 'meshes'
+    'SphericalMesh', 'UnstructuredMesh', 'meshes', 'MeshMaterialVolumes'
 ]
 
 
-class _MaterialVolume(Structure):
-    _fields_ = [
-        ("material", c_int32),
-        ("volume", c_double)
-    ]
-
+arr_2d_int32 = np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='CONTIGUOUS')
+arr_2d_double = np.ctypeslib.ndpointer(dtype=np.double, ndim=2, flags='CONTIGUOUS')
 
 # Mesh functions
 _dll.openmc_extend_meshes.argtypes = [c_int32, c_char_p, POINTER(c_int32),
@@ -44,9 +42,12 @@ _dll.openmc_mesh_get_n_elements.errcheck = _error_handler
 _dll.openmc_mesh_get_volumes.argtypes = [c_int32, POINTER(c_double)]
 _dll.openmc_mesh_get_volumes.restype = c_int
 _dll.openmc_mesh_get_volumes.errcheck = _error_handler
+_dll.openmc_mesh_bounding_box.argtypes = [
+    c_int32, POINTER(c_double), POINTER(c_double)]
+_dll.openmc_mesh_bounding_box.restype = c_int
+_dll.openmc_mesh_bounding_box.errcheck = _error_handler
 _dll.openmc_mesh_material_volumes.argtypes = [
-    c_int32, c_int, c_int, c_int, POINTER(_MaterialVolume),
-    POINTER(c_int), POINTER(c_uint64)]
+    c_int32, c_int, c_int, c_int, c_int, arr_2d_int32, arr_2d_double]
 _dll.openmc_mesh_material_volumes.restype = c_int
 _dll.openmc_mesh_material_volumes.errcheck = _error_handler
 _dll.openmc_mesh_get_plot_bins.argtypes = [
@@ -166,60 +167,99 @@ class Mesh(_FortranObjectWithID):
             self._index, volumes.ctypes.data_as(POINTER(c_double)))
         return volumes
 
+    @property
+    def bounding_box(self) -> BoundingBox:
+        inf = sys.float_info.max
+        ll = np.zeros(3)
+        ur = np.zeros(3)
+        _dll.openmc_mesh_bounding_box(
+            self._index,
+            ll.ctypes.data_as(POINTER(c_double)),
+            ur.ctypes.data_as(POINTER(c_double))
+        )
+        ll[ll == inf] = np.inf
+        ur[ur == inf] = np.inf
+        ll[ll == -inf] = -np.inf
+        ur[ur == -inf] = -np.inf
+        return BoundingBox(ll, ur)
+
     def material_volumes(
             self,
-            n_samples: int = 10_000,
-            prn_seed: int | None = None
-    ) -> list[list[tuple[Material, float]]]:
-        """Determine volume of materials in each mesh element
+            n_samples: int | tuple[int, int, int] = 10_000,
+            max_materials: int = 4,
+            output: bool = True,
+    ) -> MeshMaterialVolumes:
+        """Determine volume of materials in each mesh element.
+
+        This method works by raytracing repeatedly through the mesh to count the
+        estimated volume of each material in all mesh elements. Three sets of
+        rays are used: one set parallel to the x-axis, one parallel to the
+        y-axis, and one parallel to the z-axis.
 
         .. versionadded:: 0.15.0
 
+        .. versionchanged:: 0.15.1
+            Material volumes are now determined by raytracing rather than by
+            point sampling.
+
         Parameters
         ----------
-        n_samples : int
-            Number of samples in each mesh element
-        prn_seed : int
-            Pseudorandom number generator (PRNG) seed; if None, one will be
-            generated randomly.
+        n_samples : int or 3-tuple of int
+            Total number of rays to sample. The number of rays in each direction
+            is determined by the aspect ratio of the mesh bounding box. When
+            specified as a 3-tuple, it is interpreted as the number of rays in
+            the x, y, and z dimensions.
+        max_materials : int, optional
+            Estimated maximum number of materials in any given mesh element.
+        output : bool, optional
+            Whether or not to show output.
 
         Returns
         -------
-        List of tuple of (material, volume) for each mesh element. Void volume
-        is represented by having a value of None in the first element of a
-        tuple.
+        MeshMaterialVolumes
+            Dictionary-like object that maps material IDs to an array of volumes
+            equal in size to the number of mesh elements.
 
         """
-        if n_samples <= 0:
-            raise ValueError("Number of samples must be positive")
-        if prn_seed is None:
-            prn_seed = getrandbits(63)
-        prn_seed = c_uint64(prn_seed)
+        if isinstance(n_samples, int):
+            # Determine number of rays in each direction based on aspect ratios
+            # and using the relation (nx*ny + ny*nz + nx*nz) = n_samples
+            width_x, width_y, width_z = self.bounding_box.width
+            ax = width_x / width_z
+            ay = width_y / width_z
+            f = sqrt(n_samples/(ax*ay + ax + ay))
+            nx = round(f * ax)
+            ny = round(f * ay)
+            nz = round(f)
+        else:
+            nx, ny, nz = n_samples
 
-        # Preallocate space for MaterialVolume results
-        size = 16
-        result = (_MaterialVolume * size)()
+        # Value indicating an empty slot in the hash table (matches C++)
+        EMPTY_SLOT = -2
 
-        hits = c_int()  # Number of materials hit in a given element
-        volumes = []
-        for i_element in range(self.n_elements):
-            while True:
-                try:
+        # Preallocate arrays for material indices and volumes
+        n = self.n_elements
+        slot_factor = 2
+        table_size = slot_factor*max_materials
+        materials = np.full((n, table_size), EMPTY_SLOT, dtype=np.int32)
+        volumes = np.zeros((n, table_size), dtype=np.float64)
+
+        # Run material volume calculation
+        while True:
+            try:
+                with quiet_dll(output):
                     _dll.openmc_mesh_material_volumes(
-                        self._index, n_samples, i_element, size, result, hits, prn_seed)
-                except AllocationError:
-                    # Increase size of result array and try again
-                    size *= 2
-                    result = (_MaterialVolume * size)()
-                else:
-                    # If no error, break out of loop
-                    break
+                        self._index, nx, ny, nz, table_size, materials, volumes)
+            except AllocationError:
+                # Increase size of result array and try again
+                table_size *= 2
+                materials = np.full((n, table_size), EMPTY_SLOT, dtype=np.int32)
+                volumes = np.zeros((n, table_size), dtype=np.float64)
+            else:
+                # If no error, break out of loop
+                break
 
-            volumes.append([
-                (Material(index=r.material), r.volume)
-                for r in result[:hits.value]
-            ])
-        return volumes
+        return MeshMaterialVolumes(materials, volumes)
 
     def get_plot_bins(
             self,
@@ -284,7 +324,7 @@ class RegularMesh(Mesh):
         The lower-left corner of the structured mesh. If only two coordinate are
         given, it is assumed that the mesh is an x-y mesh.
     upper_right : numpy.ndarray
-        The upper-right corner of the structrued mesh. If only two coordinate
+        The upper-right corner of the structured mesh. If only two coordinate
         are given, it is assumed that the mesh is an x-y mesh.
     width : numpy.ndarray
         The width of mesh cells in each direction.
@@ -292,6 +332,8 @@ class RegularMesh(Mesh):
         Total number of mesh elements.
     volumes : numpy.ndarray
         Volume of each mesh element in [cm^3]
+    bounding_box : openmc.BoundingBox
+        Axis-aligned bounding box of the mesh
 
     """
     mesh_type = 'regular'
@@ -371,13 +413,15 @@ class RectilinearMesh(Mesh):
     lower_left : numpy.ndarray
         The lower-left corner of the structured mesh.
     upper_right : numpy.ndarray
-        The upper-right corner of the structrued mesh.
+        The upper-right corner of the structured mesh.
     width : numpy.ndarray
         The width of mesh cells in each direction.
     n_elements : int
         Total number of mesh elements.
     volumes : numpy.ndarray
         Volume of each mesh element in [cm^3]
+    bounding_box : openmc.BoundingBox
+        Axis-aligned bounding box of the mesh
 
     """
     mesh_type = 'rectilinear'
@@ -474,13 +518,15 @@ class CylindricalMesh(Mesh):
     lower_left : numpy.ndarray
         The lower-left corner of the structured mesh.
     upper_right : numpy.ndarray
-        The upper-right corner of the structrued mesh.
+        The upper-right corner of the structured mesh.
     width : numpy.ndarray
         The width of mesh cells in each direction.
     n_elements : int
         Total number of mesh elements.
     volumes : numpy.ndarray
         Volume of each mesh element in [cm^3]
+    bounding_box : openmc.BoundingBox
+        Axis-aligned bounding box of the mesh
 
     """
     mesh_type = 'cylindrical'
@@ -577,13 +623,15 @@ class SphericalMesh(Mesh):
     lower_left : numpy.ndarray
         The lower-left corner of the structured mesh.
     upper_right : numpy.ndarray
-        The upper-right corner of the structrued mesh.
+        The upper-right corner of the structured mesh.
     width : numpy.ndarray
         The width of mesh cells in each direction.
     n_elements : int
         Total number of mesh elements.
     volumes : numpy.ndarray
         Volume of each mesh element in [cm^3]
+    bounding_box : openmc.BoundingBox
+        Axis-aligned bounding box of the mesh
 
     """
     mesh_type = 'spherical'
@@ -688,7 +736,6 @@ class _MeshMapping(Mapping):
             # __contains__ expects a KeyError to work correctly
             raise KeyError(str(e))
         return _get_mesh(index.value)
-
 
     def __iter__(self):
         for i in range(len(self)):

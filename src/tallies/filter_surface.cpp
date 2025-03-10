@@ -1,5 +1,7 @@
 #include "openmc/tallies/filter_surface.h"
 
+#include <cassert>
+
 #include <fmt/core.h>
 
 #include "openmc/error.h"
@@ -26,7 +28,7 @@ void SurfaceFilter::from_xml(pugi::xml_node node)
   this->set_surfaces(surfaces);
 }
 
-void SurfaceFilter::set_surfaces(gsl::span<int32_t> surfaces)
+void SurfaceFilter::set_surfaces(span<int32_t> surfaces)
 {
   // Clear existing surfaces
   surfaces_.clear();
@@ -35,8 +37,8 @@ void SurfaceFilter::set_surfaces(gsl::span<int32_t> surfaces)
 
   // Update surfaces and mapping
   for (auto& index : surfaces) {
-    Expects(index >= 0);
-    Expects(index < model::surfaces.size());
+    assert(index >= 0);
+    assert(index < model::surfaces.size());
     surfaces_.push_back(index);
     map_[index] = surfaces_.size() - 1;
   }
@@ -47,7 +49,7 @@ void SurfaceFilter::set_surfaces(gsl::span<int32_t> surfaces)
 void SurfaceFilter::get_all_bins(
   const Particle& p, TallyEstimator estimator, FilterMatch& match) const
 {
-  auto search = map_.find(std::abs(p.surface()) - 1);
+  auto search = map_.find(p.surface_index());
   if (search != map_.end()) {
     match.bins_.push_back(search->second);
     if (p.surface() < 0) {

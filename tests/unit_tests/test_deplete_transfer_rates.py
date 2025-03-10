@@ -72,6 +72,7 @@ def model():
 def test_get_set(model, case_name, transfer_rates, timesteps):
     """Tests the get/set methods"""
 
+    openmc.reset_auto_ids()
     op = CoupledOperator(model, CHAIN_PATH)
     number_of_timesteps = 2
     transfer = TransferRates(op, model, number_of_timesteps)

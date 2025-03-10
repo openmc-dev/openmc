@@ -21,7 +21,8 @@
 #include "xtensor/xview.hpp"
 
 #include <algorithm> // for sort, min_element
-#include <string>    // for to_string, stoi
+#include <cassert>
+#include <string> // for to_string, stoi
 
 namespace openmc {
 
@@ -86,7 +87,7 @@ Nuclide::Nuclide(hid_t group, const vector<double>& temperature)
   for (const auto& name : dset_names) {
     double T;
     read_dataset(kT_group, name.c_str(), T);
-    temps_available.push_back(T / K_BOLTZMANN);
+    temps_available.push_back(std::round(T / K_BOLTZMANN));
   }
   std::sort(temps_available.begin(), temps_available.end());
 
@@ -158,9 +159,12 @@ Nuclide::Nuclide(hid_t group, const vector<double>& temperature)
           }
         }
       } else {
-        fatal_error(
-          "Nuclear data library does not contain cross sections for " + name_ +
-          " at or near " + std::to_string(T_desired) + " K.");
+        fatal_error(fmt::format(
+          "Nuclear data library does not contain cross sections "
+          "for {}  at or near {} K. Available temperatures "
+          "are {} K. Consider making use of openmc.Settings.temperature "
+          "to specify how intermediate temperatures are treated.",
+          name_, std::to_string(T_desired), concatenate(temps_available)));
       }
     }
     break;
@@ -173,8 +177,8 @@ Nuclide::Nuclide(hid_t group, const vector<double>& temperature)
       for (int j = 0; j < temps_available.size() - 1; ++j) {
         if (temps_available[j] <= T_desired &&
             T_desired < temps_available[j + 1]) {
-          int T_j = std::round(temps_available[j]);
-          int T_j1 = std::round(temps_available[j + 1]);
+          int T_j = temps_available[j];
+          int T_j1 = temps_available[j + 1];
           if (!contains(temps_to_read, T_j)) {
             temps_to_read.push_back(T_j);
           }
@@ -191,14 +195,14 @@ Nuclide::Nuclide(hid_t group, const vector<double>& temperature)
         if (std::abs(T_desired - temps_available.front()) <=
             settings::temperature_tolerance) {
           if (!contains(temps_to_read, temps_available.front())) {
-            temps_to_read.push_back(std::round(temps_available.front()));
+            temps_to_read.push_back(temps_available.front());
           }
           continue;
         }
         if (std::abs(T_desired - temps_available.back()) <=
             settings::temperature_tolerance) {
           if (!contains(temps_to_read, temps_available.back())) {
-            temps_to_read.push_back(std::round(temps_available.back()));
+            temps_to_read.push_back(temps_available.back());
           }
           continue;
         }
@@ -244,7 +248,8 @@ Nuclide::Nuclide(hid_t group, const vector<double>& temperature)
   for (auto name : group_names(rxs_group)) {
     if (starts_with(name, "reaction_")) {
       hid_t rx_group = open_group(rxs_group, name.c_str());
-      reactions_.push_back(make_unique<Reaction>(rx_group, temps_to_read));
+      reactions_.push_back(
+        make_unique<Reaction>(rx_group, temps_to_read, name_));
 
       // Check for 0K elastic scattering
       const auto& rx = reactions_.back();
@@ -371,15 +376,15 @@ void Nuclide::create_derived(
       int j = rx->xs_[t].threshold;
       int n = rx->xs_[t].value.size();
       auto xs = xt::adapt(rx->xs_[t].value);
+      auto pprod = xt::view(xs_[t], xt::range(j, j + n), XS_PHOTON_PROD);
 
       for (const auto& p : rx->products_) {
         if (p.particle_ == ParticleType::photon) {
-          auto pprod = xt::view(xs_[t], xt::range(j, j + n), XS_PHOTON_PROD);
           for (int k = 0; k < n; ++k) {
             double E = grid_[t].energy[k + j];
 
-            // For fission, artificially increase the photon yield to account
-            // for delayed photons
+            // For fission, artificially increase the photon yield to
+            // account for delayed photons
             double f = 1.0;
             if (settings::delayed_photon_scaling) {
               if (is_fission(rx->mt_)) {
@@ -465,8 +470,8 @@ void Nuclide::create_derived(
         }
       }
     } else {
-      // Otherwise, assume that any that have 0 K elastic scattering data are
-      // resonant
+      // Otherwise, assume that any that have 0 K elastic scattering data
+      // are resonant
       resonant_ = !energy_0K_.empty();
     }
 
@@ -777,8 +782,8 @@ void Nuclide::calculate_xs(
       }
 
       for (int j = 0; j < DEPLETION_RX.size(); ++j) {
-        // If reaction is present and energy is greater than threshold, set the
-        // reaction xs appropriately
+        // If reaction is present and energy is greater than threshold, set
+        // the reaction xs appropriately
         int i_rx = reaction_index_[DEPLETION_RX[j]];
         if (i_rx >= 0) {
           const auto& rx = reactions_[i_rx];
@@ -815,9 +820,9 @@ void Nuclide::calculate_xs(
   // Initialize URR probability table treatment to false
   micro.use_ptable = false;
 
-  // If there is S(a,b) data for this nuclide, we need to set the sab_scatter
-  // and sab_elastic cross sections and correct the total and elastic cross
-  // sections.
+  // If there is S(a,b) data for this nuclide, we need to set the
+  // sab_scatter and sab_elastic cross sections and correct the total and
+  // elastic cross sections.
 
   if (i_sab >= 0)
     this->calculate_sab_xs(i_sab, sab_frac, p);
@@ -980,8 +985,8 @@ void Nuclide::calculate_urr_xs(int i_temp, Particle& p) const
   }
 
   // Set elastic, absorption, fission, total, and capture x/s. Note that the
-  // total x/s is calculated as a sum of partials instead of the table-provided
-  // value
+  // total x/s is calculated as a sum of partials instead of the
+  // table-provided value
   micro.elastic = elastic;
   micro.absorption = capture + fission;
   micro.fission = fission;
@@ -996,19 +1001,19 @@ void Nuclide::calculate_urr_xs(int i_temp, Particle& p) const
   }
 }
 
-std::pair<gsl::index, double> Nuclide::find_temperature(double T) const
+std::pair<int64_t, double> Nuclide::find_temperature(double T) const
 {
-  Expects(T >= 0.0);
+  assert(T >= 0.0);
 
   // Determine temperature index
-  gsl::index i_temp = 0;
+  int64_t i_temp = 0;
   double f = 0.0;
   double kT = K_BOLTZMANN * T;
-  gsl::index n = kTs_.size();
+  int64_t n = kTs_.size();
   switch (settings::temperature_method) {
   case TemperatureMethod::NEAREST: {
     double max_diff = INFTY;
-    for (gsl::index t = 0; t < n; ++t) {
+    for (int64_t t = 0; t < n; ++t) {
       double diff = std::abs(kTs_[t] - kT);
       if (diff < max_diff) {
         i_temp = t;
@@ -1035,17 +1040,17 @@ std::pair<gsl::index, double> Nuclide::find_temperature(double T) const
     f = (kT - kTs_[i_temp]) / (kTs_[i_temp + 1] - kTs_[i_temp]);
   }
 
-  Ensures(i_temp >= 0 && i_temp < n);
+  assert(i_temp >= 0 && i_temp < n);
 
   return {i_temp, f};
 }
 
 double Nuclide::collapse_rate(int MT, double temperature,
-  gsl::span<const double> energy, gsl::span<const double> flux) const
+  span<const double> energy, span<const double> flux) const
 {
-  Expects(MT > 0);
-  Expects(energy.size() > 0);
-  Expects(energy.size() == flux.size() + 1);
+  assert(MT > 0);
+  assert(energy.size() > 0);
+  assert(energy.size() == flux.size() + 1);
 
   int i_rx = reaction_index_[MT];
   if (i_rx < 0)
@@ -1053,7 +1058,7 @@ double Nuclide::collapse_rate(int MT, double temperature,
   const auto& rx = reactions_[i_rx];
 
   // Determine temperature index
-  gsl::index i_temp;
+  int64_t i_temp;
   double f;
   std::tie(i_temp, f) = this->find_temperature(temperature);
 

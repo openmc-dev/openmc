@@ -1,3 +1,4 @@
+from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from copy import deepcopy
@@ -118,7 +119,7 @@ class Surface(IDManagerMixin, ABC):
     surface_id : int, optional
         Unique identifier for the surface. If not specified, an identifier will
         automatically be assigned.
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic', 'white'}, optional
+    boundary_type : {'transmission', 'vacuum', 'reflective', 'periodic', 'white'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
         freely pass through the surface. Note that periodic boundary conditions
@@ -134,7 +135,7 @@ class Surface(IDManagerMixin, ABC):
 
     Attributes
     ----------
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic', 'white'}
+    boundary_type : {'transmission', 'vacuum', 'reflective', 'periodic', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
     albedo : float
@@ -308,7 +309,7 @@ class Surface(IDManagerMixin, ABC):
             coeffs = self._get_base_coeffs()
         coeffs = np.asarray(coeffs)
         nonzeros = ~np.isclose(coeffs, 0., rtol=0., atol=self._atol)
-        norm_factor = np.abs(coeffs[nonzeros][0])
+        norm_factor = coeffs[nonzeros][0]
         return tuple([c/norm_factor for c in coeffs])
 
     def is_equal(self, other):
@@ -682,7 +683,7 @@ class Plane(PlaneMixin, Surface):
         The 'C' parameter for the plane. Defaults to 0.
     d : float, optional
         The 'D' parameter for the plane. Defaults to 0.
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic', 'white'}, optional
+    boundary_type : {'transmission', 'vacuum', 'reflective', 'periodic', 'white'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
         freely pass through the surface.
@@ -706,7 +707,7 @@ class Plane(PlaneMixin, Surface):
         The 'C' parameter for the plane
     d : float
         The 'D' parameter for the plane
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic', 'white'}
+    boundary_type : {'transmission', 'vacuum', 'reflective', 'periodic', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
     albedo : float
@@ -802,6 +803,13 @@ class Plane(PlaneMixin, Surface):
         d = np.dot(n, p1)
         return cls(a=a, b=b, c=c, d=d, **kwargs)
 
+    def flip_normal(self):
+        """Modify plane coefficients to reverse the normal vector."""
+        self.a = -self.a
+        self.b = -self.b
+        self.c = -self.c
+        self.d = -self.d
+
 
 class XPlane(PlaneMixin, Surface):
     """A plane perpendicular to the x axis of the form :math:`x - x_0 = 0`
@@ -810,7 +818,7 @@ class XPlane(PlaneMixin, Surface):
     ----------
     x0 : float, optional
         Location of the plane in [cm]. Defaults to 0.
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic', 'white'}, optional
+    boundary_type : {'transmission', 'vacuum', 'reflective', 'periodic', 'white'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
         freely pass through the surface. Only axis-aligned periodicity is
@@ -829,7 +837,7 @@ class XPlane(PlaneMixin, Surface):
     ----------
     x0 : float
         Location of the plane in [cm]
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic', 'white'}
+    boundary_type : {'transmission', 'vacuum', 'reflective', 'periodic', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
     albedo : float
@@ -875,7 +883,7 @@ class YPlane(PlaneMixin, Surface):
     ----------
     y0 : float, optional
         Location of the plane in [cm]
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic', 'white'}, optional
+    boundary_type : {'transmission', 'vacuum', 'reflective', 'periodic', 'white'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
         freely pass through the surface. Only axis-aligned periodicity is
@@ -894,7 +902,7 @@ class YPlane(PlaneMixin, Surface):
     ----------
     y0 : float
         Location of the plane in [cm]
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic', 'white'}
+    boundary_type : {'transmission', 'vacuum', 'reflective', 'periodic', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
     albedo : float
@@ -940,7 +948,7 @@ class ZPlane(PlaneMixin, Surface):
     ----------
     z0 : float, optional
         Location of the plane in [cm]. Defaults to 0.
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic', 'white'}, optional
+    boundary_type : {'transmission', 'vacuum', 'reflective', 'periodic', 'white'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
         freely pass through the surface. Only axis-aligned periodicity is
@@ -959,7 +967,7 @@ class ZPlane(PlaneMixin, Surface):
     ----------
     z0 : float
         Location of the plane in [cm]
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic', 'white'}
+    boundary_type : {'transmission', 'vacuum', 'reflective', 'periodic', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
     albedo : float
@@ -1189,7 +1197,7 @@ class Cylinder(QuadricMixin, Surface):
     dz : float, optional
         z-component of the vector representing the axis of the cylinder.
         Defaults to 1.
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}, optional
+    boundary_type : {'transmission', 'vacuum', 'reflective', 'white'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
         freely pass through the surface.
@@ -1220,7 +1228,7 @@ class Cylinder(QuadricMixin, Surface):
         y-component of the vector representing the axis of the cylinder
     dz : float
         z-component of the vector representing the axis of the cylinder
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}
+    boundary_type : {'transmission', 'vacuum', 'reflective', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
     albedo : float
@@ -1364,7 +1372,7 @@ class XCylinder(QuadricMixin, Surface):
         z-coordinate for the origin of the Cylinder in [cm]. Defaults to 0
     r : float, optional
         Radius of the cylinder in [cm]. Defaults to 1.
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}, optional
+    boundary_type : {'transmission', 'vacuum', 'reflective', 'white'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
         freely pass through the surface.
@@ -1387,7 +1395,7 @@ class XCylinder(QuadricMixin, Surface):
         z-coordinate for the origin of the Cylinder in [cm]
     r : float
         Radius of the cylinder in [cm]
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}
+    boundary_type : {'transmission', 'vacuum', 'reflective', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
     albedo : float
@@ -1462,7 +1470,7 @@ class YCylinder(QuadricMixin, Surface):
         z-coordinate for the origin of the Cylinder in [cm]. Defaults to 0
     r : float, optional
         Radius of the cylinder in [cm]. Defaults to 1.
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}, optional
+    boundary_type : {'transmission', 'vacuum', 'reflective', 'white'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
         freely pass through the surface.
@@ -1485,7 +1493,7 @@ class YCylinder(QuadricMixin, Surface):
         z-coordinate for the origin of the Cylinder in [cm]
     r : float
         Radius of the cylinder in [cm]
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}
+    boundary_type : {'transmission', 'vacuum', 'reflective', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
     albedo : float
@@ -1560,7 +1568,7 @@ class ZCylinder(QuadricMixin, Surface):
         y-coordinate for the origin of the Cylinder in [cm]. Defaults to 0
     r : float, optional
         Radius of the cylinder in [cm]. Defaults to 1.
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}, optional
+    boundary_type : {'transmission', 'vacuum', 'reflective', 'white'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
         freely pass through the surface.
@@ -1583,7 +1591,7 @@ class ZCylinder(QuadricMixin, Surface):
         y-coordinate for the origin of the Cylinder in [cm]
     r : float
         Radius of the cylinder in [cm]
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}
+    boundary_type : {'transmission', 'vacuum', 'reflective', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
     albedo : float
@@ -1659,7 +1667,7 @@ class Sphere(QuadricMixin, Surface):
         z-coordinate of the center of the sphere in [cm]. Defaults to 0.
     r : float, optional
         Radius of the sphere in [cm]. Defaults to 1.
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}, optional
+    boundary_type : {'transmission', 'vacuum', 'reflective', 'white'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
         freely pass through the surface.
@@ -1683,7 +1691,7 @@ class Sphere(QuadricMixin, Surface):
         z-coordinate of the center of the sphere in [cm]
     r : float
         Radius of the sphere in [cm]
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}
+    boundary_type : {'transmission', 'vacuum', 'reflective', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
     albedo : float
@@ -1745,7 +1753,7 @@ class Sphere(QuadricMixin, Surface):
 
 
 class Cone(QuadricMixin, Surface):
-    """A conical surface parallel to the x-, y-, or z-axis.
+    r"""A conical surface parallel to the x-, y-, or z-axis.
 
     .. Note::
         This creates a double cone, which is two one-sided cones that meet at their apex.
@@ -1755,28 +1763,26 @@ class Cone(QuadricMixin, Surface):
     Parameters
     ----------
     x0 : float, optional
-        x-coordinate of the apex in [cm]. Defaults to 0.
+        x-coordinate of the apex in [cm].
     y0 : float, optional
-        y-coordinate of the apex in [cm]. Defaults to 0.
+        y-coordinate of the apex in [cm].
     z0 : float, optional
-        z-coordinate of the apex in [cm]. Defaults to 0.
+        z-coordinate of the apex in [cm].
     r2 : float, optional
-        Parameter related to the aperture [:math:`\\rm cm^2`].
-        It can be interpreted as the increase in the radius squared per cm along 
-        the cone's axis of revolution.
+        The square of the slope of the cone. It is defined as
+        :math:`\left(\frac{r}{h}\right)^2` for a radius, :math:`r` and an axial
+        distance :math:`h` from the apex. An easy way to define this quantity is
+        to take the square of the radius of the cone (in cm) 1 cm from the apex.
     dx : float, optional
         x-component of the vector representing the axis of the cone.
-        Defaults to 0.
     dy : float, optional
         y-component of the vector representing the axis of the cone.
-        Defaults to 0.
     dz : float, optional
         z-component of the vector representing the axis of the cone.
-        Defaults to 1.
     surface_id : int, optional
         Unique identifier for the surface. If not specified, an identifier will
         automatically be assigned.
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}, optional
+    boundary_type : {'transmission', 'vacuum', 'reflective', 'white'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
         freely pass through the surface.
@@ -1797,14 +1803,14 @@ class Cone(QuadricMixin, Surface):
     z0 : float
         z-coordinate of the apex in [cm]
     r2 : float
-        Parameter related to the aperature [cm^2]
+        Parameter related to the aperture
     dx : float
         x-component of the vector representing the axis of the cone.
     dy : float
         y-component of the vector representing the axis of the cone.
     dz : float
         z-component of the vector representing the axis of the cone.
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}
+    boundary_type : {'transmission', 'vacuum', 'reflective', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
     albedo : float
@@ -1903,7 +1909,7 @@ class Cone(QuadricMixin, Surface):
 
 
 class XCone(QuadricMixin, Surface):
-    """A cone parallel to the x-axis of the form :math:`(y - y_0)^2 + (z - z_0)^2 =
+    r"""A cone parallel to the x-axis of the form :math:`(y - y_0)^2 + (z - z_0)^2 =
     r^2 (x - x_0)^2`.
 
     .. Note::
@@ -1913,16 +1919,17 @@ class XCone(QuadricMixin, Surface):
     Parameters
     ----------
     x0 : float, optional
-        x-coordinate of the apex in [cm]. Defaults to 0.
+        x-coordinate of the apex in [cm].
     y0 : float, optional
-        y-coordinate of the apex in [cm]. Defaults to 0.
+        y-coordinate of the apex in [cm].
     z0 : float, optional
-        z-coordinate of the apex in [cm]. Defaults to 0.
+        z-coordinate of the apex in [cm].
     r2 : float, optional
-        Parameter related to the aperture [:math:`\\rm cm^2`].
-        It can be interpreted as the increase in the radius squared per cm along 
-        the cone's axis of revolution.
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}, optional
+        The square of the slope of the cone. It is defined as
+        :math:`\left(\frac{r}{h}\right)^2` for a radius, :math:`r` and an axial
+        distance :math:`h` from the apex. An easy way to define this quantity is
+        to take the square of the radius of the cone (in cm) 1 cm from the apex.
+    boundary_type : {'transmission', 'vacuum', 'reflective', 'white'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
         freely pass through the surface.
@@ -1945,8 +1952,8 @@ class XCone(QuadricMixin, Surface):
     z0 : float
         z-coordinate of the apex in [cm]
     r2 : float
-        Parameter related to the aperature
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}
+        Parameter related to the aperture
+    boundary_type : {'transmission', 'vacuum', 'reflective', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
     albedo : float
@@ -2004,7 +2011,7 @@ class XCone(QuadricMixin, Surface):
 
 
 class YCone(QuadricMixin, Surface):
-    """A cone parallel to the y-axis of the form :math:`(x - x_0)^2 + (z - z_0)^2 =
+    r"""A cone parallel to the y-axis of the form :math:`(x - x_0)^2 + (z - z_0)^2 =
     r^2 (y - y_0)^2`.
 
     .. Note::
@@ -2014,16 +2021,17 @@ class YCone(QuadricMixin, Surface):
     Parameters
     ----------
     x0 : float, optional
-        x-coordinate of the apex in [cm]. Defaults to 0.
+        x-coordinate of the apex in [cm].
     y0 : float, optional
-        y-coordinate of the apex in [cm]. Defaults to 0.
+        y-coordinate of the apex in [cm].
     z0 : float, optional
-        z-coordinate of the apex in [cm]. Defaults to 0.
+        z-coordinate of the apex in [cm].
     r2 : float, optional
-        Parameter related to the aperture [:math:`\\rm cm^2`].
-        It can be interpreted as the increase in the radius squared per cm along 
-        the cone's axis of revolution.
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}, optional
+        The square of the slope of the cone. It is defined as
+        :math:`\left(\frac{r}{h}\right)^2` for a radius, :math:`r` and an axial
+        distance :math:`h` from the apex. An easy way to define this quantity is
+        to take the square of the radius of the cone (in cm) 1 cm from the apex.
+    boundary_type : {'transmission', 'vacuum', 'reflective', 'white'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
         freely pass through the surface.
@@ -2046,8 +2054,8 @@ class YCone(QuadricMixin, Surface):
     z0 : float
         z-coordinate of the apex in [cm]
     r2 : float
-        Parameter related to the aperature
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}
+        Parameter related to the aperture
+    boundary_type : {'transmission', 'vacuum', 'reflective', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
     albedo : float
@@ -2105,7 +2113,7 @@ class YCone(QuadricMixin, Surface):
 
 
 class ZCone(QuadricMixin, Surface):
-    """A cone parallel to the z-axis of the form :math:`(x - x_0)^2 + (y - y_0)^2 =
+    r"""A cone parallel to the z-axis of the form :math:`(x - x_0)^2 + (y - y_0)^2 =
     r^2 (z - z_0)^2`.
 
     .. Note::
@@ -2115,16 +2123,17 @@ class ZCone(QuadricMixin, Surface):
     Parameters
     ----------
     x0 : float, optional
-        x-coordinate of the apex in [cm]. Defaults to 0.
+        x-coordinate of the apex in [cm].
     y0 : float, optional
-        y-coordinate of the apex in [cm]. Defaults to 0.
+        y-coordinate of the apex in [cm].
     z0 : float, optional
-        z-coordinate of the apex in [cm]. Defaults to 0.
+        z-coordinate of the apex in [cm].
     r2 : float, optional
-        Parameter related to the aperature [cm^2].
-        This is the square of the radius of the cone 1 cm from.
-        This can also be treated as the square of the slope of the cone relative to its axis.
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}, optional
+        The square of the slope of the cone. It is defined as
+        :math:`\left(\frac{r}{h}\right)^2` for a radius, :math:`r` and an axial
+        distance :math:`h` from the apex. An easy way to define this quantity is
+        to take the square of the radius of the cone (in cm) 1 cm from the apex.
+    boundary_type : {'transmission', 'vacuum', 'reflective', 'white'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
         freely pass through the surface.
@@ -2147,8 +2156,8 @@ class ZCone(QuadricMixin, Surface):
     z0 : float
         z-coordinate of the apex in [cm]
     r2 : float
-        Parameter related to the aperature
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}
+        Parameter related to the aperture.
+    boundary_type : {'transmission', 'vacuum', 'reflective', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
     albedo : float
@@ -2213,7 +2222,7 @@ class Quadric(QuadricMixin, Surface):
     ----------
     a, b, c, d, e, f, g, h, j, k : float, optional
         coefficients for the surface. All default to 0.
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}, optional
+    boundary_type : {'transmission', 'vacuum', 'reflective', 'white'}, optional
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
         freely pass through the surface.
@@ -2231,7 +2240,7 @@ class Quadric(QuadricMixin, Surface):
     ----------
     a, b, c, d, e, f, g, h, j, k : float
         coefficients for the surface
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}
+    boundary_type : {'transmission', 'vacuum', 'reflective', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
     albedo : float
@@ -2383,7 +2392,7 @@ class XTorus(TorusMixin, Surface):
         Minor radius of the torus in [cm] (parallel to axis of revolution)
     c : float
         Minor radius of the torus in [cm] (perpendicular to axis of revolution)
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}
+    boundary_type : {'transmission', 'vacuum', 'reflective', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
     albedo : float
@@ -2458,7 +2467,7 @@ class YTorus(TorusMixin, Surface):
         Minor radius of the torus in [cm] (parallel to axis of revolution)
     c : float
         Minor radius of the torus (perpendicular to axis of revolution)
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}
+    boundary_type : {'transmission', 'vacuum', 'reflective', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
     albedo : float
@@ -2533,7 +2542,7 @@ class ZTorus(TorusMixin, Surface):
         Minor radius of the torus in [cm] (parallel to axis of revolution)
     c : float
         Minor radius of the torus in [cm] (perpendicular to axis of revolution)
-    boundary_type : {'transmission, 'vacuum', 'reflective', 'white'}
+    boundary_type : {'transmission', 'vacuum', 'reflective', 'white'}
         Boundary condition that defines the behavior for particles hitting the
         surface.
     albedo : float
@@ -2624,7 +2633,7 @@ class Halfspace(Region):
         else:
             return Union((self, other))
 
-    def __invert__(self):
+    def __invert__(self) -> Halfspace:
         return -self.surface if self.side == '+' else +self.surface
 
     def __contains__(self, point):

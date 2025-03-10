@@ -549,7 +549,18 @@ def gnds_name(Z, A, m=0):
     return f'{ATOMIC_SYMBOL[Z]}{A}'
 
 
-def isotopes(element):
+
+def _get_element_symbol(element: str) -> str:
+    if len(element) > 2:
+        symbol = ELEMENT_SYMBOL.get(element.lower())
+        if symbol is None:
+            raise ValueError(f'Element name "{element}" not recognized')
+        return symbol
+    else:
+        return element
+
+
+def isotopes(element: str) -> list[tuple[str, float]]:
     """Return naturally occurring isotopes and their abundances
 
     .. versionadded:: 0.12.1
@@ -570,12 +581,7 @@ def isotopes(element):
         If the element name is not recognized
 
     """
-    # Convert name to symbol if needed
-    if len(element) > 2:
-        symbol = ELEMENT_SYMBOL.get(element.lower())
-        if symbol is None:
-            raise ValueError(f'Element name "{element}" not recognised')
-        element = symbol
+    element = _get_element_symbol(element)
 
     # Get the nuclides present in nature
     result = []

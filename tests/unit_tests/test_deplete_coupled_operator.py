@@ -114,7 +114,7 @@ def test_diff_volume_method_divide_equally(model_with_volumes):
     )
 
     all_cells = list(operator.model.geometry.get_all_cells().values())
-    assert all_cells[0].fill[0].volume == 51
-    assert all_cells[1].fill[0].volume == 51
+    assert all_cells[0].fill.volume == 51
+    assert all_cells[1].fill.volume == 51
     # mat2 is not depletable
     assert all_cells[2].fill.volume is None

@@ -21,6 +21,7 @@ import openmc
 from .chain import Chain, REACTIONS
 from .coupled_operator import _find_cross_sections, _get_nuclides_with_data
 import openmc.lib
+from openmc.mpi import comm
 
 _valid_rxns = list(REACTIONS)
 _valid_rxns.append('fission')
@@ -124,6 +125,15 @@ def get_microxs_and_flux(
     flux_tally.scores = ['flux']
     model.tallies = openmc.Tallies([rr_tally, flux_tally])
 
+    if openmc.lib.is_initialized:
+        openmc.lib.finalize()
+
+        if comm.rank == 0:
+            model.export_to_model_xml()
+        comm.barrier()
+        # Reinitialize with tallies
+        openmc.lib.init(intracomm=comm)
+
     # create temporary run
     with TemporaryDirectory() as temp_dir:
         if run_kwargs is None:
@@ -133,12 +143,15 @@ def get_microxs_and_flux(
         run_kwargs.setdefault('cwd', temp_dir)
         statepoint_path = model.run(**run_kwargs)
 
-        with StatePoint(statepoint_path) as sp:
-            rr_tally = sp.tallies[rr_tally.id]
-            rr_tally._read_results()
-            flux_tally = sp.tallies[flux_tally.id]
-            flux_tally._read_results()
+        if comm.rank == 0:
+            with StatePoint(statepoint_path) as sp:
+                rr_tally = sp.tallies[rr_tally.id]
+                rr_tally._read_results()
+                flux_tally = sp.tallies[flux_tally.id]
+                flux_tally._read_results()
 
+    rr_tally = comm.bcast(rr_tally)
+    flux_tally = comm.bcast(flux_tally)
     # Get reaction rates and flux values
     reaction_rates = rr_tally.get_reshaped_data()  # (domains, groups, nuclides, reactions)
     flux = flux_tally.get_reshaped_data()  # (domains, groups, 1, 1)
@@ -185,6 +198,8 @@ class MicroXS:
     """
     def __init__(self, data: np.ndarray, nuclides: list[str], reactions: list[str]):
         # Validate inputs
+        if len(data.shape) != 3:
+            raise ValueError('Data array must be 3D.')
         if data.shape[:2] != (len(nuclides), len(reactions)):
             raise ValueError(
                 f'Nuclides list of length {len(nuclides)} and '
@@ -278,11 +293,11 @@ class MicroXS:
         mts = [REACTION_MT[name] for name in reactions]
 
         # Normalize multigroup flux
-        multigroup_flux = np.asarray(multigroup_flux)
+        multigroup_flux = np.array(multigroup_flux)
         multigroup_flux /= multigroup_flux.sum()
 
-        # Create 2D array for microscopic cross sections
-        microxs_arr = np.zeros((len(nuclides), len(mts)))
+        # Create 3D array for microscopic cross sections
+        microxs_arr = np.zeros((len(nuclides), len(mts), 1))
 
         # Create a material with all nuclides
         mat_all_nucs = openmc.Material()
@@ -314,7 +329,7 @@ class MicroXS:
                         xs = lib_nuc.collapse_rate(
                             mt, temperature, energies, multigroup_flux
                         )
-                        microxs_arr[nuc_index, mt_index] = xs
+                        microxs_arr[nuc_index, mt_index, 0] = xs
 
         return cls(microxs_arr, nuclides, reactions)
 
@@ -371,4 +386,3 @@ class MicroXS:
         )
         df = pd.DataFrame({'xs': self.data.flatten()}, index=multi_index)
         df.to_csv(*args, **kwargs)
-

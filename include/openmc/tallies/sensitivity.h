@@ -34,7 +34,7 @@ public:
   //----------------------------------------------------------------------------
   // Accessors
 
-  void set_filters(gsl::span<Filter*> filters) override;
+  void set_filters(span<Filter*> filters) override;
 
   //----------------------------------------------------------------------------
   // Other methods.
@@ -78,7 +78,7 @@ struct TallySensitivity {
   TallySensitivity() {}
   explicit TallySensitivity(pugi::xml_node node);
 
-  void set_bins(gsl::span<const double> bins);
+  void set_bins(span<const double> bins);
 };
 
 //==============================================================================

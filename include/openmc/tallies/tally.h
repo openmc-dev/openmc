@@ -94,7 +94,7 @@ public:
   //! \brief Check if this tally has a specified type of filter
   bool has_filter(FilterType filter_type) const;
 
-  virtual void set_filters(gsl::span<Filter*> filters);
+  virtual void set_filters(span<Filter*> filters);
 
   //! Given already-set filters, set the stride lengths
   void set_strides();

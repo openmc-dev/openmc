@@ -422,7 +422,7 @@ bool Tally::has_filter(FilterType filter_type) const
 //   }
 // }
 
-void Tally::set_filters(gsl::span<Filter*> filters)
+void Tally::set_filters(span<Filter*> filters)
 {
   // Clear old data.
   filters_.clear();

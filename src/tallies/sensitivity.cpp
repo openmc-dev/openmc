@@ -198,7 +198,7 @@ SensitivityTally::~SensitivityTally()
 //}
 
 void
-SensitivityTally::set_filters(gsl::span<Filter*> filters)
+SensitivityTally::set_filters(span<Filter*> filters)
 {
   // Clear old data.
   clearFiltersStrides();
@@ -367,7 +367,7 @@ TallySensitivity::TallySensitivity(pugi::xml_node node)
 }
 
 void
-TallySensitivity::set_bins(gsl::span<const double> bins)
+TallySensitivity::set_bins(span<const double> bins)
 {
   // Clear existing bins
   energy_bins_.clear();

@@ -3269,7 +3269,7 @@ void score_collision_sensitivity_tally(Particle& p, int i_tally, int start_index
         // ...less the energy of any secondary particles since they will be
         // transported individually later
         const auto& bank = p.secondary_bank();
-        for (auto it = bank.end() - p.n_bank_second(); it < bank.end(); ++it) {
+        for (auto it = bank.end() - p.bank_second_E(); it < bank.end(); ++it) {
           score -= it->E;
         }
 

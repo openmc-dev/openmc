@@ -1,12 +1,9 @@
 #include <string>
 #include <unordered_map>
 
-#include "openmc/span.h"
 #include "pugixml.hpp"
 #include "xtensor/xtensor.hpp"
-#include <hdf5.h>
 
-#include "openmc/bremsstrahlung.h"
 #include "openmc/constants.h"
 #include "openmc/memory.h" // for unique_ptr
 #include "openmc/vector.h"
@@ -55,10 +52,13 @@ public:
   double pf() const { return pf_; }
 
   //! Get the material of the particle
+  int32_t particle_mat(int32_t i) const { return particle_mat_[i]; }
   vector<int32_t> particle_mat() const { return particle_mat_; }
 
+
   //! Get the material of the matrix
-  vector<int32_t> matrix_mat() const { return matrix_mat_; }
+  int32_t matrix_mat() const { return matrix_mat_; }
+
 
   //----------------------------------------------------------------------------
   // Data
@@ -71,10 +71,12 @@ public:
   // The material of the particle
   vector<int32_t> particle_mat_;
   // The material of the matrix
-  vector<int32_t> matrix_mat_;
+  int32_t matrix_mat_;
   //----------------------------------------------------------------------------
 
-  virtual double sample_chord_length(uint64_t* seed_ptr) = 0;
+  virtual void sample_material(Particle& p) = 0;
+  virtual double distance_to_stochamedia(Particle& p) = 0;
+  virtual void adjust_indices();
 
 protected:
   // Protected data members
@@ -86,16 +88,10 @@ public:
   explicit CLS_Media(pugi::xml_node cell_node);
   CLS_Media() {};
 
-  double sample_chord_length(uint64_t* seed_ptr) override
-  {
-    double matrix_mean_chord = 4 / 3 * radius_ * (1 - pf_) / pf_;
-    return -matrix_mean_chord * std::log(prn(seed_ptr));
-  }
-  double sample_particle_length(uint64_t* seed_ptr)
-  {
-    double cos_value = sqrt(prn(seed_ptr));
-    return 2 * radius_ * cos_value;
-  }
+  void sample_material(Particle& p) override;
+  double distance_to_stochamedia(Particle& p) override;
+
+
 };
 //==============================================================================
 // Non-member functions

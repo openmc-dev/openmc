@@ -2,31 +2,15 @@
 #include <cassert>
 #include <cmath>
 #include <iterator>
-#include <sstream>
-#include <string>
-#include <unordered_set>
 
-#include "xtensor/xbuilder.hpp"
-#include "xtensor/xoperation.hpp"
-#include "xtensor/xview.hpp"
-
-#include "openmc/capi.h"
+#include "openmc/cell.h"
 #include "openmc/container_util.h"
-#include "openmc/cross_sections.h"
 #include "openmc/error.h"
-#include "openmc/file_utils.h"
-#include "openmc/hdf5_interface.h"
+#include "openmc/material.h"
 #include "openmc/math_functions.h"
-#include "openmc/message_passing.h"
-#include "openmc/mgxs_interface.h"
-#include "openmc/nuclide.h"
-#include "openmc/photon.h"
-#include "openmc/search.h"
-#include "openmc/settings.h"
 #include "openmc/simulation.h"
 #include "openmc/stochastic_media.h"
 #include "openmc/string_utils.h"
-#include "openmc/thermal.h"
 #include "openmc/xml_interface.h"
 
 namespace openmc {
@@ -45,6 +29,31 @@ vector<unique_ptr<Stochastic_Media>> stochastic_media;
 Stochastic_Media::~Stochastic_Media()
 {
   model::stochastic_media_map.erase(id_);
+}
+
+void Stochastic_Media::adjust_indices()
+{
+  // Adjust the indices for the materials array.
+  for (auto& mat : particle_mat_) {
+
+    auto search = model::material_map.find(mat);
+    if (search != model::universe_map.end()) {
+      mat = search->second;
+    } else {
+      fatal_error(fmt::format("Invalid material number {} specified on the "
+                              "particle for stochastic media {}",
+        mat, id_));
+    }
+  }
+
+  auto search = model::material_map.find(matrix_mat_);
+  if (search != model::universe_map.end()) {
+    matrix_mat_ = search->second;
+  } else {
+    fatal_error(fmt::format("Invalid material number {} specified on the "
+                            "matrix for stochastic media {}",
+      matrix_mat_, id_));
+  }
 }
 
 CLS_Media::CLS_Media(pugi::xml_node node)
@@ -87,33 +96,66 @@ CLS_Media::CLS_Media(pugi::xml_node node)
   if (matrix_mat_present) {
     vector<std::string> mats {
       get_node_array<std::string>(node, "matrix_material", true)};
-    if (mats.size() > 0) {
-      matrix_mat_.reserve(mats.size());
-      for (std::string mat : mats) {
-        if (mat.compare("void") == 0) {
-          matrix_mat_.push_back(MATERIAL_VOID);
-        } else {
-          matrix_mat_.push_back(std::stoi(mat));
-        }
-      }
+    matrix_mat_ = std::stoi(mats[0]);
+    if (mats.size() > 1) {
+      fatal_error(fmt::format(
+        "Only one matrix material can be specified for stochastic media {}",
+        id_));
     }
   } else {
     fatal_error(fmt::format(
-      "An empty material element was specified for stochastic media {}", id_));
+      "An empty matrix material was specified for stochastic media {}", id_));
   }
 
   if (check_for_node(node, "radius")) {
-    radius_ = std::stoi(get_node_value(node, "radius"));
+    radius_ = node.attribute("radius").as_double();
   } else {
     fatal_error(fmt::format(
       "An empty particle radius was specified for stochastic media {}", id_));
   }
 
   if (check_for_node(node, "pack_fraction")) {
-    pf_ = std::stoi(get_node_value(node, "pack_fraction"));
+    pf_ = node.attribute("pack_fraction").as_double();
   } else {
     fatal_error(fmt::format(
       "An empty pack fraction was specified for stochastic media {}", id_));
+  }
+}
+
+double CLS_Media::distance_to_stochamedia(Particle& p)
+{ // Sample the distance to the stochastic media
+  double distance = INFINITY;
+  if (p.status() == ParticleStatus::IN_STOCHASTIC_MEDIA) {
+    // Designed for a randomized medium only for the time
+    // being, to be upgraded subsequently
+    double cos_value = sqrt(prn(p.current_seed()));
+    distance = 2 * radius_ * cos_value;
+    p.status() = ParticleStatus::IN_STOCHASTIC_MEDIA;
+  } else if (p.status() == ParticleStatus::IN_MATRIX) {
+    double matrix_mean_chord = 4 / 3 * radius_ * (1 - pf_) / pf_;
+    distance = -matrix_mean_chord * std::log(prn(p.current_seed()));
+  }
+  return distance;
+}
+void CLS_Media::sample_material(Particle& p)
+{
+  p.material_last() = p.material();
+  p.sqrtkT_last() = p.sqrtkT();
+
+  // Sample the material based on the packing fraction
+  auto i_cell = p.lowest_coord().cell;
+  Cell& c {*model::cells[i_cell]};
+  if (p.status() == ParticleStatus::OUTSIDE) {
+    double rand = openmc::prn(p.current_seed());
+    if (rand < pf_) {
+      p.status() = ParticleStatus::IN_STOCHASTIC_MEDIA;
+
+      p.material() = this->particle_mat(0);
+
+      p.sqrtkT() = c.sqrtkT(p.cell_instance());
+    } else {
+      p.status() = ParticleStatus::IN_MATRIX;
+    }
   }
 }
 

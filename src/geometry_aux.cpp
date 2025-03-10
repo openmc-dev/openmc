@@ -113,7 +113,7 @@ void adjust_indices()
         c->type_ = Fill::LATTICE;
         c->fill_ = search_lat->second;
       } else if (search_media != model::stochastic_media_map.end()) {
-        c->type_ = Fill::Stochastic_Media;
+        c->type_ = Fill::STOCHASTIC_MEDIA;
         c->fill_ = search_media->second;
       } else {
         fatal_error(fmt::format("Specified fill {} on cell {} must be one of  "
@@ -193,8 +193,16 @@ void assign_temperatures()
 {
   for (auto& c : model::cells) {
     // Ignore non-material cells and cells with defined temperature.
-    if (c->material_.size() == 0)
-      continue;
+    if (c->material_.size() == 0) {
+      if (c->type_ != Fill::STOCHASTIC_MEDIA)
+        continue;
+      c->sqrtkT_.reserve(1);
+
+      auto fill_idx = model::stochastic_media_map[c->fill_];
+      auto mat_id {model::stochastic_media[fill_idx]->particle_mat()[0]};
+      const auto& mat {model::materials[mat_id]};
+      c->sqrtkT_.push_back(std::sqrt(K_BOLTZMANN * mat->temperature()));
+    }
     if (c->sqrtkT_.size() > 0)
       continue;
 
@@ -644,6 +652,9 @@ void free_memory_geometry()
 
   model::lattices.clear();
   model::lattice_map.clear();
+
+  model::stochastic_media.clear();
+  model::stochastic_media_map.clear();
 
   model::overlap_check_count.clear();
 }

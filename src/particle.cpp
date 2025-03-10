@@ -25,6 +25,7 @@
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
 #include "openmc/source.h"
+#include "openmc/stochastic_media.h"
 #include "openmc/surface.h"
 #include "openmc/tallies/derivative.h"
 #include "openmc/tallies/tally.h"
@@ -605,6 +606,37 @@ void Particle::cross_surface(const Surface& surf)
       return;
     }
   }
+}
+
+void Particle::cross_surface_in_stochmedia()
+{
+  double i_cell = this->lowest_coord().cell;
+  Cell& c {*model::cells[i_cell]};
+
+  this->cell_instance() = 0;
+  // Find the distribcell instance number.
+  if (c.distribcell_index_ >= 0) {
+    this->cell_instance() = cell_instance_at_level(*this, this->n_coord() - 1);
+  }
+
+  // If the Particle is in a cell containing a stochastic medium, update the
+  // status of particle based on the current stochastic medium.
+  Stochastic_Media& media {*model::stochastic_media[c.fill_]};
+  int32_t material;
+  if (this->status() == ParticleStatus::IN_STOCHASTIC_MEDIA) {
+
+    material = media.matrix_mat();
+    this->status() = ParticleStatus::IN_MATRIX;
+
+  } else if (this->status() == ParticleStatus::IN_MATRIX) {
+    // short time implementation, only one particle type in matrix
+    material = media.particle_mat(0);
+    this->status() = ParticleStatus::IN_STOCHASTIC_MEDIA;
+  }
+  this->material_last() = this->material();
+  this->material() = material;
+  this->sqrtkT_last() = this->sqrtkT();
+  this->sqrtkT() = c.sqrtkT(this->cell_instance());
 }
 
 void Particle::cross_vacuum_bc(const Surface& surf)

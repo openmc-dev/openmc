@@ -17,10 +17,8 @@ class ExternalRates:
     ----------
     operator : openmc.TransportOperator
         Depletion operator
-    model : openmc.Model
-        OpenMC model containing materials and geometry. If using
-        :class:`openmc.deplete.CoupledOperator`, the model must also contain
-        a :class:`opnemc.Settings` object.
+    materials : openmc.Model
+        OpenMC materials.
     number_of_timesteps : int
         Total number of depletion timesteps
 
@@ -39,9 +37,9 @@ class ExternalRates:
         Container of all timesteps indeces with an external rate defined.
     """
 
-    def __init__(self, operator, model, number_of_timesteps):
+    def __init__(self, operator, materials, number_of_timesteps):
 
-        self.materials = model.materials
+        self.materials = materials
         self.burnable_mats = operator.burnable_mats
         self.local_mats = operator.local_mats
         self.number_of_timesteps = number_of_timesteps
@@ -101,16 +99,14 @@ class ExternalRates:
 
         """
         material_id = self._get_material_id(material)
-
+        check_type('component', component, str)
         if destination_material is not None:
             dest_mat_id = self._get_material_id(destination_material)
-        else:
-            dest_mat_id = None
-
-        check_type('component', component, str)
-
-        return [i[1] for i in self.external_rates[material_id][component]
+            return [i[1] for i in self.external_rates[material_id][component]
                 if timestep in i[0] and dest_mat_id==i[2]]
+        else:
+            return [i[1] for i in self.external_rates[material_id][component]
+                if timestep in i[0]]
 
     def get_components(self, material, timestep, destination_material=None):
         """Extract removing elements and/or nuclides for a given material at a
@@ -133,7 +129,6 @@ class ExternalRates:
 
         """
         material_id = self._get_material_id(material)
-
         if destination_material is not None:
             dest_mat_id = self._get_material_id(destination_material)
         else:
@@ -142,14 +137,21 @@ class ExternalRates:
         all_components = []
         if material_id in self.external_rates:
             mat_components = self.external_rates[material_id]
+
             for component in mat_components:
-                if np.isin(timestep, [val[0] for val in mat_components[component]]):
-                if np.isin(timestep,
-                           [val[0] for val in mat_components[component]]) and \
-                   np.isin(dest_mat_id,
-                           [val[2] for val in mat_components[component]]):
-                    all_components.append(component)
-        return components
+                if dest_mat_id:
+                    #check for both timestep and destination material ids
+                    if np.isin(timestep,
+                            [val[0] for val in mat_components[component]]) and \
+                       np.isin(dest_mat_id,
+                            [val[2] for val in mat_components[component]]):
+                        all_components.append(component)
+                else:
+                    #check only for timesteps
+                    if np.isin(timestep,
+                            [val[0] for val in mat_components[component]]):
+                        all_components.append(component)
+        return all_components
 
 class TransferRates(ExternalRates):
     """Class for defining continuous removals and feeds.
@@ -167,10 +169,8 @@ class TransferRates(ExternalRates):
     ----------
     operator : openmc.TransportOperator
         Depletion operator
-    model : openmc.Model
-        OpenMC model containing materials and geometry. If using
-        :class:`openmc.deplete.CoupledOperator`, the model must also contain
-        a :class:`opnemc.Settings` object.
+    materials : openmc.Model
+        OpenMC materials.
     number_of_timesteps : int
         Total number of depletion timesteps
 
@@ -189,15 +189,16 @@ class TransferRates(ExternalRates):
         Pair of strings needed to build final matrix (destination_material, mat)
     """
 
-    def __init__(self, operator, model, number_of_timesteps):
+    def __init__(self, operator, materials, number_of_timesteps):
 
         super().__init__(
             operator,
-            model,
+            materials,
             number_of_timesteps
         )
 
         self.index_transfer = dict()
+        self.chain_nuclides = [nuc.name for nuc in operator.chain.nuclides]
 
     def set_transfer_rate(self, material, components, transfer_rate,
                           transfer_rate_units='1/s', timesteps=None,
@@ -323,10 +324,8 @@ class ExternalSourceRates(ExternalRates):
     ----------
     operator : openmc.TransportOperator
         Depletion operator
-    model : openmc.Model
-        OpenMC model containing materials and geometry. If using
-        :class:`openmc.deplete.CoupledOperator`, the model must also contain
-        a :class:`opnemc.Settings` object.
+    materials : openmc.Model
+        OpenMC materials.
     number_of_timesteps : int
         Total number of depletion timesteps
 
@@ -343,11 +342,11 @@ class ExternalSourceRates(ExternalRates):
         (elements and/or nuclides)
     """
 
-    def __init__(self, operator, model, number_of_timesteps):
+    def __init__(self, operator, materials, number_of_timesteps):
 
         super().__init__(
             operator,
-            model,
+            materials,
             number_of_timesteps
         )
 

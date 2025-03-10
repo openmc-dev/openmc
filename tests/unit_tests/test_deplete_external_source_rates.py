@@ -17,6 +17,7 @@ CHAIN_PATH = Path(__file__).parents[1] / "chain_simple.xml"
 
 @pytest.fixture
 def model():
+    openmc.reset_auto_ids()
     f = openmc.Material(name="f")
     f.add_element("U", 1, percent_type="ao", enrichment=4.25)
     f.add_element("O", 2)
@@ -73,7 +74,7 @@ def test_get_set(model, case_name, external_source_vectors, external_source_rate
 
     op = CoupledOperator(model, CHAIN_PATH)
     number_of_timesteps = 2
-    transfer = ExternalSourceRates(op, model, number_of_timesteps)
+    transfer = ExternalSourceRates(op, model.materials, number_of_timesteps)
 
     if timesteps is None:
         timesteps = np.arange(number_of_timesteps)
@@ -106,7 +107,7 @@ def test_get_set(model, case_name, external_source_vectors, external_source_rate
                     if len(split_component) == 1:
                         for nuc,frac in openmc.data.isotopes(component):
                             assert transfer.get_external_rate(
-                                material_input, nuc)[0] == pytest.approx(
+                                material_input, nuc, timesteps)[0] == pytest.approx(
                                                     external_source_rate \
                                                     * percent \
                                                     * frac \
@@ -114,14 +115,13 @@ def test_get_set(model, case_name, external_source_vectors, external_source_rate
                                                     / openmc.data.atomic_mass(nuc))
                     else:
                         assert transfer.get_external_rate(
-                            material_input, component)[0] == pytest.approx(
+                            material_input, component, timesteps)[0] == pytest.approx(
                                                     external_source_rate \
                                                     * percent \
                                                     * openmc.data.AVOGADRO \
                                                     / openmc.data.atomic_mass(component))
-                        assert component in transfer.get_components(material_input)
-                assert np.all(transfer.get_material_timesteps(
-                        material_input) == timesteps)
+
+                assert np.all(transfer.external_timesteps == timesteps)
 
 
 @pytest.mark.parametrize("external_source_rate_units, unit_conv", [
@@ -144,7 +144,8 @@ def test_units(external_source_rate_units, unit_conv, model):
     external_source_rate = 1.0
     number_of_timesteps = 2
     op = CoupledOperator(model, CHAIN_PATH)
-    transfer = ExternalSourceRates(op, model, number_of_timesteps)
+    transfer = ExternalSourceRates(op, model.materials, number_of_timesteps)
+    timesteps = np.arange(number_of_timesteps)
 
     for component in components:
         transfer.set_external_source_rate('f', {component:1},
@@ -152,7 +153,7 @@ def test_units(external_source_rate_units, unit_conv, model):
                                 * openmc.data.atomic_mass(component) \
                                 /openmc.data.AVOGADRO ,
                                 external_source_rate_units=external_source_rate_units)
-        assert transfer.get_external_rate('f', component)[0] == pytest.approx(
+        assert transfer.get_external_rate('f', component, timesteps)[0] == pytest.approx(
                                                         external_source_rate)
 
 

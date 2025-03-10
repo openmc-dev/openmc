@@ -919,7 +919,11 @@ class Integrator(ABC):
 
         """
         if self.transfer_rates is None:
-            self.transfer_rates = TransferRates(self.operator, self.operator.model,
+            if hasattr(self.operator, 'model'):
+                materials = self.operator.model.materials
+            elif hasattr(self.operator, 'materials'):
+                materials = self.operator.materials
+            self.transfer_rates = TransferRates(self.operator, materials,
                                       len(self.timesteps))
 
         if self.external_source_rates is not None and destination_material:
@@ -957,8 +961,12 @@ class Integrator(ABC):
 
         """
         if self.external_source_rates is None:
+            if hasattr(self.operator, 'model'):
+                materials = self.operator.model.materials
+            elif hasattr(self.operator, 'materials'):
+                materials = self.operator.materials
             self.external_source_rates = ExternalSourceRates(self.operator,
-                                    self.operator.model, len(self.timesteps))
+                                    materials, len(self.timesteps))
 
         if self.transfer_rates is not None and self.transfer_rates.index_transfer:
             raise ValueError('Currently is not possible to set an external '

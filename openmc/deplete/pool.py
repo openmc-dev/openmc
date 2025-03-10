@@ -119,12 +119,12 @@ def deplete(func, chain, n, rates, dt, current_timestep=None, matrix_func=None,
                 n = [n_elm for n_mat in n for  n_elm in n_mat]
 
                 # Calculate transfer rate terms as diagonal matrices
-                transfer_pair = {
-                    mat_pair: chain.form_rr_term(transfer_rates, current_timestep,
-                                                mat_pair)
-                    for mat_pair in transfer_rates.index_transfer[current_timestep]:
-                }
-
+                transfer_pair = dict()
+                for mat_pair in transfer_rates.index_transfer[current_timestep]:
+                    transfer_matrix = chain.form_rr_term(transfer_rates,
+                                                         current_timestep,
+                                                         mat_pair)
+                    transfer_pair[mat_pair] = transfer_matrix
 
                 # Combine all matrices together in a single matrix of matrices
                 # to be solved in one go

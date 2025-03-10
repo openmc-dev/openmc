@@ -2632,7 +2632,7 @@ class UnstructuredMesh(MeshBase):
                         data /= self.volumes
                     append_dataset(cell_data_group[name], data)
 
-        else:
+        elif Path(filename).suffix == ".vtk" or Path(filename).suffix == ".vtu":
             
             from vtkmodules.util import numpy_support
             from vtkmodules import vtkCommonCore
@@ -2724,6 +2724,12 @@ class UnstructuredMesh(MeshBase):
             writer.SetInputData(grid)
 
             writer.Write()
+        
+        else:
+            raise ValueError(
+                "Unsupported file extension, The filename must end with "
+                "'.vtkhdf', '.vtu' or '.vtk'"
+            )
 
     @classmethod
     def from_hdf5(cls, group: h5py.Group, mesh_id: int, name: str):

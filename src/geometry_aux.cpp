@@ -152,6 +152,11 @@ void adjust_indices()
   for (auto& l : model::lattices) {
     l->adjust_indices();
   }
+
+  for (auto& media : model::stochastic_media)
+  {
+    media->adjust_indices();
+  }
 }
 
 //==============================================================================

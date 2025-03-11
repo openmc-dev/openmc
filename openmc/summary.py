@@ -91,6 +91,7 @@ class Summary:
             names = self._f['nuclides/names'][()]
             awrs = self._f['nuclides/awrs'][()]
             for name, awr in zip(names, awrs):
+                print(name, awr)
                 self._nuclides[name.decode()] = awr
 
     def _read_macroscopics(self):
@@ -246,3 +247,8 @@ class Summary:
                     material.add_volume_information(volume_calc)
         else:
             self.geometry.add_volume_information(volume_calc)
+    
+    def close(self):
+        if self._f is not None:
+            self._f.close()
+            self._f = None

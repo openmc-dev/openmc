@@ -151,6 +151,7 @@ class StatePoint:
             if os.path.exists(path_summary):
                 su = openmc.Summary(path_summary)
                 self.link_with_summary(su)
+                su.close()
 
             path_volume = os.path.join(os.path.dirname(filename), 'volume_*.h5')
             for path_i in glob.glob(path_volume):

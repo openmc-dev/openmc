@@ -32,6 +32,7 @@ Composite Surfaces
    openmc.model.RectangularParallelepiped
    openmc.model.RectangularPrism
    openmc.model.RightCircularCylinder
+   openmc.model.Vessel
    openmc.model.XConeOneSided
    openmc.model.YConeOneSided
    openmc.model.ZConeOneSided

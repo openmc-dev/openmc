@@ -14,7 +14,6 @@
 
 #include "pugixml.hpp"
 #include "xtensor/xtensor.hpp"
-#include <gsl/gsl-lite.hpp>
 #ifdef _OPENMP
 #include <omp.h>
 #endif

@@ -368,7 +368,7 @@ class LEQIIntegrator(Integrator):
     """
     _num_stages = 2
 
-    def __call__(self, n_bos, bos_rates, dt, source_rate, _i=None):
+    def __call__(self, n_bos, bos_rates, dt, source_rate, i):
         """Perform the integration across one time step
 
         Parameters
@@ -382,8 +382,8 @@ class LEQIIntegrator(Integrator):
             Time in [s] for the entire depletion interval
         source_rate : float
             Power in [W] or source rate in [neutron/sec]
-        _i : int, optional
-            Current depletion step index, unused.
+        i : int
+            Current depletion step index
 
         Returns
         -------
@@ -400,7 +400,7 @@ class LEQIIntegrator(Integrator):
             if self._i_res < 1:  # need at least previous transport solution
                 self._prev_rates = bos_rates
                 return CELIIntegrator.__call__(
-                    self, n_bos, bos_rates, dt, source_rate, _i)
+                    self, n_bos, bos_rates, dt, source_rate, i)
             prev_res = self.operator.prev_res[-2]
             prev_dt = self.timesteps[i] - prev_res.time[0]
             self._prev_rates = prev_res.rates[0]
@@ -414,9 +414,9 @@ class LEQIIntegrator(Integrator):
             self._prev_rates, bos_res.rates, repeat(prev_dt), repeat(dt)))
 
         time1, n_inter = self._timed_deplete(
-            n_bos, le_inputs, dt, _i, matrix_func=leqi_f1)
+            n_bos, le_inputs, dt, i, matrix_func=leqi_f1)
         time2, n_eos0 = self._timed_deplete(
-            n_inter, le_inputs, dt, _i, matrix_func=leqi_f2)
+            n_inter, le_inputs, dt, i, matrix_func=leqi_f2)
 
         res_inter = self.operator(n_eos0, source_rate)
 
@@ -425,9 +425,9 @@ class LEQIIntegrator(Integrator):
             repeat(prev_dt), repeat(dt)))
 
         time3, n_inter = self._timed_deplete(
-            n_bos, qi_inputs, dt, _i, matrix_func=leqi_f3)
+            n_bos, qi_inputs, dt, i, matrix_func=leqi_f3)
         time4, n_eos1 = self._timed_deplete(
-            n_inter, qi_inputs, dt, _i, matrix_func=leqi_f4)
+            n_inter, qi_inputs, dt, i, matrix_func=leqi_f4)
 
         # store updated rates
         self._prev_rates = copy.deepcopy(bos_res.rates)
@@ -516,7 +516,7 @@ class SILEQIIntegrator(SIIntegrator):
     """
     _num_stages = 2
 
-    def __call__(self, n_bos, bos_rates, dt, source_rate, _i=None):
+    def __call__(self, n_bos, bos_rates, dt, source_rate, i):
         """Perform the integration across one time step
 
         Parameters
@@ -530,8 +530,8 @@ class SILEQIIntegrator(SIIntegrator):
             Time in [s] for the entire depletion interval
         source_rate : float
             Power in [W] or source rate in [neutron/sec]
-        _i : int, optional
-            Current depletion step index. Not used
+        i : int
+            Current depletion step index
 
         Returns
         -------
@@ -549,7 +549,7 @@ class SILEQIIntegrator(SIIntegrator):
                 self._prev_rates = bos_rates
                 # Perform CELI for initial steps
                 return SICELIIntegrator.__call__(
-                    self, n_bos, bos_rates, dt, source_rate, _i)
+                    self, n_bos, bos_rates, dt, source_rate, i)
             prev_res = self.operator.prev_res[-2]
             prev_dt = self.timesteps[i] - prev_res.time[0]
             self._prev_rates = prev_res.rates[0]
@@ -560,9 +560,9 @@ class SILEQIIntegrator(SIIntegrator):
         inputs = list(zip(self._prev_rates, bos_rates,
                           repeat(prev_dt), repeat(dt)))
         proc_time, n_inter = self._timed_deplete(
-            n_bos, inputs, dt, _i, matrix_func=leqi_f1)
+            n_bos, inputs, dt, i, matrix_func=leqi_f1)
         time1, n_eos = self._timed_deplete(
-            n_inter, inputs, dt, _i, matrix_func=leqi_f2)
+            n_inter, inputs, dt, i, matrix_func=leqi_f2)
 
         proc_time += time1
         n_inter = copy.deepcopy(n_eos)
@@ -580,9 +580,9 @@ class SILEQIIntegrator(SIIntegrator):
             inputs = list(zip(self._prev_rates, bos_rates, res_bar.rates,
                               repeat(prev_dt), repeat(dt)))
             time1, n_inter = self._timed_deplete(
-                n_bos, inputs, dt, _i, matrix_func=leqi_f3)
+                n_bos, inputs, dt, i, matrix_func=leqi_f3)
             time2, n_inter = self._timed_deplete(
-                n_inter, inputs, dt, _i, matrix_func=leqi_f4)
+                n_inter, inputs, dt, i, matrix_func=leqi_f4)
             proc_time += time1 + time2
 
         return proc_time, [n_eos, n_inter], [res_bar]

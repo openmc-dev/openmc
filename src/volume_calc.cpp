@@ -10,18 +10,16 @@
 #include "openmc/message_passing.h"
 #include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
+#include "openmc/openmp_interface.h"
 #include "openmc/output.h"
 #include "openmc/random_lcg.h"
 #include "openmc/settings.h"
 #include "openmc/timer.h"
 #include "openmc/xml_interface.h"
 
-#include <fmt/core.h>
-#ifdef _OPENMP
-#include <omp.h>
-#endif
 #include "xtensor/xadapt.hpp"
 #include "xtensor/xview.hpp"
+#include <fmt/core.h>
 
 #include <algorithm> // for copy
 #include <cmath>     // for pow, sqrt
@@ -161,7 +159,7 @@ vector<VolumeCalculation::Result> VolumeCalculation::execute() const
         p.n_coord() = 1;
         Position xi {prn(&seed), prn(&seed), prn(&seed)};
         p.r() = lower_left_ + xi * (upper_right_ - lower_left_);
-        p.u() = {0.5, 0.5, 0.5};
+        p.u() = {1. / std::sqrt(3.), 1. / std::sqrt(3.), 1. / std::sqrt(3.)};
 
         // If this location is not in the geometry at all, move on to next block
         if (!exhaustive_find_cell(p))
@@ -205,37 +203,9 @@ vector<VolumeCalculation::Result> VolumeCalculation::execute() const
       // At this point, each thread has its own pair of index/hits lists and we
       // now need to reduce them. OpenMP is not nearly smart enough to do this
       // on its own, so we have to manually reduce them
-
-#ifdef _OPENMP
-      int n_threads = omp_get_num_threads();
-#else
-      int n_threads = 1;
-#endif
-
-#pragma omp for ordered schedule(static)
-      for (int i = 0; i < n_threads; ++i) {
-#pragma omp ordered
-        for (int i_domain = 0; i_domain < n; ++i_domain) {
-          for (int j = 0; j < indices[i_domain].size(); ++j) {
-            // Check if this material has been added to the master list and if
-            // so, accumulate the number of hits
-            bool already_added = false;
-            for (int k = 0; k < master_indices[i_domain].size(); k++) {
-              if (indices[i_domain][j] == master_indices[i_domain][k]) {
-                master_hits[i_domain][k] += hits[i_domain][j];
-                already_added = true;
-                break;
-              }
-            }
-            if (!already_added) {
-              // If we made it here, the material hasn't yet been added to the
-              // master list, so add entries to the master indices and master
-              // hits lists
-              master_indices[i_domain].push_back(indices[i_domain][j]);
-              master_hits[i_domain].push_back(hits[i_domain][j]);
-            }
-          }
-        }
+      for (int i_domain = 0; i_domain < n; ++i_domain) {
+        reduce_indices_hits(indices[i_domain], hits[i_domain],
+          master_indices[i_domain], master_hits[i_domain]);
       }
     } // omp parallel
 

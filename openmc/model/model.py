@@ -1,16 +1,15 @@
 from __future__ import annotations
-from collections.abc import Iterable
-from contextlib import contextmanager
+from collections.abc import Iterable, Sequence
 from functools import lru_cache
-import os
 from pathlib import Path
-from numbers import Integral
-from tempfile import NamedTemporaryFile
+import math
+from numbers import Integral, Real
+from tempfile import NamedTemporaryFile, TemporaryDirectory
 import warnings
-import lxml.etree as ET
-from typing import Optional, Dict
 
 import h5py
+import lxml.etree as ET
+import numpy as np
 
 import openmc
 import openmc._xml as xml
@@ -18,18 +17,8 @@ from openmc.dummy_comm import DummyCommunicator
 from openmc.executor import _process_CLI_arguments
 from openmc.checkvalue import check_type, check_value, PathLike
 from openmc.exceptions import InvalidIDError
-
-
-@contextmanager
-def _change_directory(working_dir):
-    """A context manager for executing in a provided working directory"""
-    start_dir = Path.cwd()
-    Path.mkdir(working_dir, parents=True, exist_ok=True)
-    os.chdir(working_dir)
-    try:
-        yield
-    finally:
-        os.chdir(start_dir)
+from openmc.plots import add_plot_params
+from openmc.utility_funcs import change_directory
 
 
 class Model:
@@ -77,25 +66,14 @@ class Model:
 
     def __init__(self, geometry=None, materials=None, settings=None,
                  tallies=None, plots=None):
-        self.geometry = openmc.Geometry()
-        self.materials = openmc.Materials()
-        self.settings = openmc.Settings()
-        self.tallies = openmc.Tallies()
-        self.plots = openmc.Plots()
-
-        if geometry is not None:
-            self.geometry = geometry
-        if materials is not None:
-            self.materials = materials
-        if settings is not None:
-            self.settings = settings
-        if tallies is not None:
-            self.tallies = tallies
-        if plots is not None:
-            self.plots = plots
+        self.geometry = openmc.Geometry() if geometry is None else geometry
+        self.materials = openmc.Materials() if materials is None else materials
+        self.settings = openmc.Settings() if settings is None else settings
+        self.tallies = openmc.Tallies() if tallies is None else tallies
+        self.plots = openmc.Plots() if plots is None else plots
 
     @property
-    def geometry(self) -> Optional[openmc.Geometry]:
+    def geometry(self) -> openmc.Geometry | None:
         return self._geometry
 
     @geometry.setter
@@ -104,7 +82,7 @@ class Model:
         self._geometry = geometry
 
     @property
-    def materials(self) -> Optional[openmc.Materials]:
+    def materials(self) -> openmc.Materials | None:
         return self._materials
 
     @materials.setter
@@ -118,7 +96,7 @@ class Model:
                 self._materials.append(mat)
 
     @property
-    def settings(self) -> Optional[openmc.Settings]:
+    def settings(self) -> openmc.Settings | None:
         return self._settings
 
     @settings.setter
@@ -127,7 +105,7 @@ class Model:
         self._settings = settings
 
     @property
-    def tallies(self) -> Optional[openmc.Tallies]:
+    def tallies(self) -> openmc.Tallies | None:
         return self._tallies
 
     @tallies.setter
@@ -141,18 +119,22 @@ class Model:
                 self._tallies.append(tally)
 
     @property
-    def plots(self) -> Optional[openmc.Plots]:
+    def plots(self) -> openmc.Plots | None:
         return self._plots
 
     @plots.setter
     def plots(self, plots):
-        check_type('plots', plots, Iterable, openmc.Plot)
+        check_type('plots', plots, Iterable, openmc.PlotBase)
         if isinstance(plots, openmc.Plots):
             self._plots = plots
         else:
             del self._plots[:]
             for plot in plots:
                 self._plots.append(plot)
+
+    @property
+    def bounding_box(self) -> openmc.BoundingBox:
+        return self.geometry.bounding_box
 
     @property
     def is_initialized(self) -> bool:
@@ -181,7 +163,7 @@ class Model:
 
     @property
     @lru_cache(maxsize=None)
-    def _cells_by_name(self) -> Dict[int, openmc.Cell]:
+    def _cells_by_name(self) -> dict[int, openmc.Cell]:
         # Get the names maps, but since names are not unique, store a set for
         # each name key. In this way when the user requests a change by a name,
         # the change will be applied to all of the same name.
@@ -194,7 +176,7 @@ class Model:
 
     @property
     @lru_cache(maxsize=None)
-    def _materials_by_name(self) -> Dict[int, openmc.Material]:
+    def _materials_by_name(self) -> dict[int, openmc.Material]:
         if self.materials is None:
             mats = self.geometry.get_all_materials().values()
         else:
@@ -238,7 +220,8 @@ class Model:
         materials = openmc.Materials.from_xml(materials)
         geometry = openmc.Geometry.from_xml(geometry, materials)
         settings = openmc.Settings.from_xml(settings)
-        tallies = openmc.Tallies.from_xml(tallies) if Path(tallies).exists() else None
+        tallies = openmc.Tallies.from_xml(
+            tallies) if Path(tallies).exists() else None
         plots = openmc.Plots.from_xml(plots) if Path(plots).exists() else None
         return cls(geometry, materials, settings, tallies, plots)
 
@@ -253,18 +236,23 @@ class Model:
         path : str or PathLike
             Path to model.xml file
         """
-        tree = ET.parse(path)
+        parser = ET.XMLParser(huge_tree=True)
+        tree = ET.parse(path, parser=parser)
         root = tree.getroot()
 
         model = cls()
 
         meshes = {}
-        model.settings = openmc.Settings.from_xml_element(root.find('settings'), meshes)
-        model.materials = openmc.Materials.from_xml_element(root.find('materials'))
-        model.geometry = openmc.Geometry.from_xml_element(root.find('geometry'), model.materials)
+        model.settings = openmc.Settings.from_xml_element(
+            root.find('settings'), meshes)
+        model.materials = openmc.Materials.from_xml_element(
+            root.find('materials'))
+        model.geometry = openmc.Geometry.from_xml_element(
+            root.find('geometry'), model.materials)
 
         if root.find('tallies') is not None:
-            model.tallies = openmc.Tallies.from_xml_element(root.find('tallies'), meshes)
+            model.tallies = openmc.Tallies.from_xml_element(
+                root.find('tallies'), meshes)
 
         if root.find('plots') is not None:
             model.plots = openmc.Plots.from_xml_element(root.find('plots'))
@@ -335,6 +323,28 @@ class Model:
         # communicator
         openmc.lib.init(args=args, intracomm=intracomm, output=output)
 
+    def sync_dagmc_universes(self):
+        """Synchronize all DAGMC universes in the current geometry.
+
+        This method iterates over all DAGMC universes in the geometry and
+        synchronizes their cells with the current material assignments. Requires
+        that the model has been initialized via :meth:`Model.init_lib`.
+
+        .. versionadded:: 0.15.1
+
+        """
+        if self.is_initialized:
+            if self.materials:
+                materials = self.materials
+            else:
+                materials = list(self.geometry.get_all_materials().values())
+            for univ in self.geometry.get_all_universes().values():
+                if isinstance(univ, openmc.DAGMCUniverse):
+                    univ.sync_dagmc_cells(materials)
+        else:
+            raise ValueError("The model must be initialized before calling "
+                             "this method")
+
     def finalize_lib(self):
         """Finalize simulation and free memory allocated for the C API
 
@@ -394,7 +404,7 @@ class Model:
         # Store whether or not the library was initialized when we started
         started_initialized = self.is_initialized
 
-        with _change_directory(Path(directory)):
+        with change_directory(directory):
             with openmc.lib.quiet_dll(output):
                 # TODO: Support use of IndependentOperator too
                 depletion_operator = dep.CoupledOperator(self, **op_kwargs)
@@ -431,7 +441,8 @@ class Model:
                 depletion_operator.cleanup_when_done = True
                 depletion_operator.finalize()
 
-    def export_to_xml(self, directory='.', remove_surfs=False):
+    def export_to_xml(self, directory: PathLike = '.', remove_surfs: bool = False,
+                      nuclides_to_ignore: Iterable[str] | None = None):
         """Export model to separate XML files.
 
         Parameters
@@ -444,11 +455,14 @@ class Model:
             exporting.
 
             .. versionadded:: 0.13.1
+        nuclides_to_ignore : list of str
+            Nuclides to ignore when exporting to XML.
+
         """
         # Create directory if required
         d = Path(directory)
         if not d.is_dir():
-            d.mkdir(parents=True)
+            d.mkdir(parents=True, exist_ok=True)
 
         self.settings.export_to_xml(d)
         self.geometry.export_to_xml(d, remove_surfs=remove_surfs)
@@ -457,18 +471,19 @@ class Model:
         # for all materials in the geometry and use that to automatically build
         # a collection.
         if self.materials:
-            self.materials.export_to_xml(d)
+            self.materials.export_to_xml(d, nuclides_to_ignore=nuclides_to_ignore)
         else:
             materials = openmc.Materials(self.geometry.get_all_materials()
                                          .values())
-            materials.export_to_xml(d)
+            materials.export_to_xml(d, nuclides_to_ignore=nuclides_to_ignore)
 
         if self.tallies:
             self.tallies.export_to_xml(d)
         if self.plots:
             self.plots.export_to_xml(d)
 
-    def export_to_model_xml(self, path='model.xml', remove_surfs=False):
+    def export_to_model_xml(self, path: PathLike = 'model.xml', remove_surfs: bool = False,
+                            nuclides_to_ignore: Iterable[str] | None = None):
         """Export model to a single XML file.
 
         .. versionadded:: 0.13.3
@@ -481,19 +496,24 @@ class Model:
         remove_surfs : bool
             Whether or not to remove redundant surfaces from the geometry when
             exporting.
+        nuclides_to_ignore : list of str
+            Nuclides to ignore when exporting to XML.
 
         """
         xml_path = Path(path)
         # if the provided path doesn't end with the XML extension, assume the
         # input path is meant to be a directory. If the directory does not
         # exist, create it and place a 'model.xml' file there.
-        if not str(xml_path).endswith('.xml') and not xml_path.exists():
-            os.mkdir(xml_path)
+        if not str(xml_path).endswith('.xml'):
+            if not xml_path.exists():
+                xml_path.mkdir(parents=True, exist_ok=True)
+            elif not xml_path.is_dir():
+                raise FileExistsError(f"File exists and is not a directory: '{xml_path}'")
             xml_path /= 'model.xml'
         # if this is an XML file location and the file's parent directory does
         # not exist, create it before continuing
         elif not xml_path.parent.exists():
-            os.mkdir(xml_path.parent)
+            xml_path.parent.mkdir(parents=True, exist_ok=True)
 
         if remove_surfs:
             warnings.warn("remove_surfs kwarg will be deprecated soon, please "
@@ -523,18 +543,21 @@ class Model:
             fh.write("<model>\n")
             # Write the materials collection to the open XML file first.
             # This will write the XML header also
-            materials._write_xml(fh, False, level=1)
+            materials._write_xml(fh, False, level=1,
+                                 nuclides_to_ignore=nuclides_to_ignore)
             # Write remaining elements as a tree
             fh.write(ET.tostring(geometry_element, encoding="unicode"))
             fh.write(ET.tostring(settings_element, encoding="unicode"))
 
             if self.tallies:
                 tallies_element = self.tallies.to_xml_element(mesh_memo)
-                xml.clean_indentation(tallies_element, level=1, trailing_indent=self.plots)
+                xml.clean_indentation(
+                    tallies_element, level=1, trailing_indent=self.plots)
                 fh.write(ET.tostring(tallies_element, encoding="unicode"))
             if self.plots:
                 plots_element = self.plots.to_xml_element()
-                xml.clean_indentation(plots_element, level=1, trailing_indent=False)
+                xml.clean_indentation(
+                    plots_element, level=1, trailing_indent=False)
                 fh.write(ET.tostring(plots_element, encoding="unicode"))
             fh.write("</model>\n")
 
@@ -602,7 +625,8 @@ class Model:
     def run(self, particles=None, threads=None, geometry_debug=False,
             restart_file=None, tracks=False, output=True, cwd='.',
             openmc_exec='openmc', mpi_args=None, event_based=None,
-            export_model_xml=True, **export_kwargs):
+            export_model_xml=True, apply_tally_results=False,
+            **export_kwargs):
         """Run OpenMC
 
         If the C API has been initialized, then the C API is used, otherwise,
@@ -652,6 +676,11 @@ class Model:
             to True.
 
             .. versionadded:: 0.13.3
+        apply_tally_results : bool
+            Whether to apply results of the final statepoint file to the
+            model's tally objects.
+
+            .. versionadded:: 0.15.1
         **export_kwargs
             Keyword arguments passed to either :meth:`Model.export_to_model_xml`
             or :meth:`Model.export_to_xml`.
@@ -673,7 +702,7 @@ class Model:
         last_statepoint = None
 
         # Operate in the provided working directory
-        with _change_directory(Path(cwd)):
+        with change_directory(cwd):
             if self.is_initialized:
                 # Handle the run options as applicable
                 # First dont allow ones that must be set via init
@@ -708,9 +737,10 @@ class Model:
                     self.export_to_model_xml(**export_kwargs)
                 else:
                     self.export_to_xml(**export_kwargs)
+                path_input = export_kwargs.get("path", None)
                 openmc.run(particles, threads, geometry_debug, restart_file,
                            tracks, output, Path('.'), openmc_exec, mpi_args,
-                           event_based)
+                           event_based, path_input)
 
             # Get output directory and return the last statepoint written
             if self.settings.output and 'path' in self.settings.output:
@@ -722,11 +752,16 @@ class Model:
                 if mtime >= tstart:  # >= allows for poor clock resolution
                     tstart = mtime
                     last_statepoint = sp
+
+        if apply_tally_results:
+            self.apply_tally_results(last_statepoint)
+
         return last_statepoint
 
     def calculate_volumes(self, threads=None, output=True, cwd='.',
                           openmc_exec='openmc', mpi_args=None,
-                          apply_volumes=True):
+                          apply_volumes=True, export_model_xml=True,
+                          **export_kwargs):
         """Runs an OpenMC stochastic volume calculation and, if requested,
         applies volumes to the model
 
@@ -755,6 +790,13 @@ class Model:
         apply_volumes : bool, optional
             Whether apply the volume calculation results from this calculation
             to the model. Defaults to applying the volumes.
+        export_model_xml : bool, optional
+            Exports a single model.xml file rather than separate files. Defaults
+            to True.
+        **export_kwargs
+            Keyword arguments passed to either :meth:`Model.export_to_model_xml`
+            or :meth:`Model.export_to_xml`.
+
         """
 
         if len(self.settings.volume_calculations) == 0:
@@ -762,7 +804,7 @@ class Model:
             raise ValueError("The Settings.volume_calculations attribute must"
                              " be specified before executing this method!")
 
-        with _change_directory(Path(cwd)):
+        with change_directory(cwd):
             if self.is_initialized:
                 if threads is not None:
                     msg = "Threads must be set via Model.is_initialized(...)"
@@ -776,10 +818,15 @@ class Model:
                 openmc.lib.calculate_volumes(output)
 
             else:
-                self.export_to_xml()
-                openmc.calculate_volumes(threads=threads, output=output,
-                                         openmc_exec=openmc_exec,
-                                         mpi_args=mpi_args)
+                if export_model_xml:
+                    self.export_to_model_xml(**export_kwargs)
+                else:
+                    self.export_to_xml(**export_kwargs)
+                path_input = export_kwargs.get("path", None)
+                openmc.calculate_volumes(
+                    threads=threads, output=output, openmc_exec=openmc_exec,
+                    mpi_args=mpi_args, path_input=path_input
+                )
 
             # Now we apply the volumes
             if apply_volumes:
@@ -787,7 +834,12 @@ class Model:
                 for i, vol_calc in enumerate(self.settings.volume_calculations):
                     vol_calc.load_results(f"volume_{i + 1}.h5")
                     # First add them to the Python side
-                    self.geometry.add_volume_information(vol_calc)
+                    if vol_calc.domain_type == "material" and self.materials:
+                        for material in self.materials:
+                            if material.id in vol_calc.volumes:
+                                material.add_volume_information(vol_calc)
+                    else:
+                        self.geometry.add_volume_information(vol_calc)
 
                     # And now repeat for the C API
                     if self.is_initialized and vol_calc.domain_type == 'material':
@@ -796,7 +848,267 @@ class Model:
                             openmc.lib.materials[domain_id].volume = \
                                 vol_calc.volumes[domain_id].n
 
-    def plot_geometry(self, output=True, cwd='.', openmc_exec='openmc'):
+    @add_plot_params
+    def plot(
+        self,
+        origin: Sequence[float] | None = None,
+        width: Sequence[float] | None = None,
+        pixels: int | Sequence[int] = 40000,
+        basis: str = 'xy',
+        color_by: str = 'cell',
+        colors: dict | None = None,
+        seed: int | None = None,
+        openmc_exec: PathLike = 'openmc',
+        axes=None,
+        legend: bool = False,
+        axis_units: str = 'cm',
+        outline: bool | str = False,
+        show_overlaps: bool = False,
+        overlap_color: Sequence[int] | str | None = None,
+        n_samples: int | None = None,
+        plane_tolerance: float = 1.,
+        legend_kwargs: dict | None = None,
+        source_kwargs: dict | None = None,
+        contour_kwargs: dict | None = None,
+        **kwargs,
+    ):
+        """Display a slice plot of the model.
+
+        .. versionadded:: 0.15.1
+        """
+        import matplotlib.image as mpimg
+        import matplotlib.patches as mpatches
+        import matplotlib.pyplot as plt
+
+        check_type('n_samples', n_samples, int | None)
+        check_type('plane_tolerance', plane_tolerance, Real)
+        if legend_kwargs is None:
+            legend_kwargs = {}
+        legend_kwargs.setdefault('bbox_to_anchor', (1.05, 1))
+        legend_kwargs.setdefault('loc', 2)
+        legend_kwargs.setdefault('borderaxespad', 0.0)
+        if source_kwargs is None:
+            source_kwargs = {}
+        source_kwargs.setdefault('marker', 'x')
+
+        # Determine extents of plot
+        if basis == 'xy':
+            x, y, z = 0, 1, 2
+            xlabel, ylabel = f'x [{axis_units}]', f'y [{axis_units}]'
+        elif basis == 'yz':
+            x, y, z = 1, 2, 0
+            xlabel, ylabel = f'y [{axis_units}]', f'z [{axis_units}]'
+        elif basis == 'xz':
+            x, y, z = 0, 2, 1
+            xlabel, ylabel = f'x [{axis_units}]', f'z [{axis_units}]'
+
+        bb = self.bounding_box
+        # checks to see if bounding box contains -inf or inf values
+        if np.isinf(bb.extent[basis]).any():
+            if origin is None:
+                origin = (0, 0, 0)
+            if width is None:
+                width = (10, 10)
+        else:
+            if origin is None:
+                # if nan values in the bb.center they get replaced with 0.0
+                # this happens when the bounding_box contains inf values
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore", RuntimeWarning)
+                    origin = np.nan_to_num(bb.center)
+            if width is None:
+                bb_width = bb.width
+                width = (bb_width[x], bb_width[y])
+
+        if isinstance(pixels, int):
+            aspect_ratio = width[0] / width[1]
+            pixels_y = math.sqrt(pixels / aspect_ratio)
+            pixels = (int(pixels / pixels_y), int(pixels_y))
+
+        axis_scaling_factor = {'km': 0.00001, 'm': 0.01, 'cm': 1, 'mm': 10}
+
+        x_min = (origin[x] - 0.5*width[0]) * axis_scaling_factor[axis_units]
+        x_max = (origin[x] + 0.5*width[0]) * axis_scaling_factor[axis_units]
+        y_min = (origin[y] - 0.5*width[1]) * axis_scaling_factor[axis_units]
+        y_max = (origin[y] + 0.5*width[1]) * axis_scaling_factor[axis_units]
+
+        with TemporaryDirectory() as tmpdir:
+            if seed is not None:
+                self.settings.plot_seed = seed
+
+            # Create plot object matching passed arguments
+            plot = openmc.Plot()
+            plot.origin = origin
+            plot.width = width
+            plot.pixels = pixels
+            plot.basis = basis
+            plot.color_by = color_by
+            plot.show_overlaps = show_overlaps
+            if overlap_color is not None:
+                plot.overlap_color = overlap_color
+            if colors is not None:
+                plot.colors = colors
+            self.plots.append(plot)
+
+            # Run OpenMC in geometry plotting mode
+            self.plot_geometry(False, cwd=tmpdir, openmc_exec=openmc_exec)
+
+            # Read image from file
+            img_path = Path(tmpdir) / f'plot_{plot.id}.png'
+            if not img_path.is_file():
+                img_path = img_path.with_suffix('.ppm')
+            img = mpimg.imread(str(img_path))
+
+            # Create a figure sized such that the size of the axes within
+            # exactly matches the number of pixels specified
+            if axes is None:
+                px = 1/plt.rcParams['figure.dpi']
+                fig, axes = plt.subplots()
+                axes.set_xlabel(xlabel)
+                axes.set_ylabel(ylabel)
+                params = fig.subplotpars
+                width = pixels[0]*px/(params.right - params.left)
+                height = pixels[1]*px/(params.top - params.bottom)
+                fig.set_size_inches(width, height)
+
+            if outline:
+                # Combine R, G, B values into a single int
+                rgb = (img * 256).astype(int)
+                image_value = (rgb[..., 0] << 16) + \
+                    (rgb[..., 1] << 8) + (rgb[..., 2])
+
+                # Set default arguments for contour()
+                if contour_kwargs is None:
+                    contour_kwargs = {}
+                contour_kwargs.setdefault('colors', 'k')
+                contour_kwargs.setdefault('linestyles', 'solid')
+                contour_kwargs.setdefault('algorithm', 'serial')
+
+                axes.contour(
+                    image_value,
+                    origin="upper",
+                    levels=np.unique(image_value),
+                    extent=(x_min, x_max, y_min, y_max),
+                    **contour_kwargs
+                )
+
+            # add legend showing which colors represent which material
+            # or cell if that was requested
+            if legend:
+                if plot.colors == {}:
+                    raise ValueError("Must pass 'colors' dictionary if you "
+                                     "are adding a legend via legend=True.")
+
+                if color_by == "cell":
+                    expected_key_type = openmc.Cell
+                else:
+                    expected_key_type = openmc.Material
+
+                patches = []
+                for key, color in plot.colors.items():
+
+                    if isinstance(key, int):
+                        raise TypeError(
+                            "Cannot use IDs in colors dict for auto legend.")
+                    elif not isinstance(key, expected_key_type):
+                        raise TypeError(
+                            "Color dict key type does not match color_by")
+
+                    # this works whether we're doing cells or materials
+                    label = key.name if key.name != '' else key.id
+
+                    # matplotlib takes RGB on 0-1 scale rather than 0-255. at
+                    # this point PlotBase has already checked that 3-tuple
+                    # based colors are already valid, so if the length is three
+                    # then we know it just needs to be converted to the 0-1
+                    # format.
+                    if len(color) == 3 and not isinstance(color, str):
+                        scaled_color = (
+                            color[0]/255, color[1]/255, color[2]/255)
+                    else:
+                        scaled_color = color
+
+                    key_patch = mpatches.Patch(color=scaled_color, label=label)
+                    patches.append(key_patch)
+
+                axes.legend(handles=patches, **legend_kwargs)
+
+            # Plot image and return the axes
+            if outline != 'only':
+                axes.imshow(img, extent=(x_min, x_max, y_min, y_max), **kwargs)
+
+
+        if n_samples:
+            # Sample external source particles
+            particles = self.sample_external_source(n_samples)
+
+            # Get points within tolerance of the slice plane
+            slice_value = origin[z]
+            xs = []
+            ys = []
+            tol = plane_tolerance
+            for particle in particles:
+                if (slice_value - tol < particle.r[z] < slice_value + tol):
+                    xs.append(particle.r[x])
+                    ys.append(particle.r[y])
+            axes.scatter(xs, ys, **source_kwargs)
+
+        return axes
+
+    def sample_external_source(
+            self,
+            n_samples: int = 1000,
+            prn_seed: int | None = None,
+            **init_kwargs
+    ) -> openmc.ParticleList:
+        """Sample external source and return source particles.
+
+        .. versionadded:: 0.15.1
+
+        Parameters
+        ----------
+        n_samples : int
+            Number of samples
+        prn_seed : int
+            Pseudorandom number generator (PRNG) seed; if None, one will be
+            generated randomly.
+        **init_kwargs
+            Keyword arguments passed to :func:`openmc.lib.init`
+
+        Returns
+        -------
+        openmc.ParticleList
+            List of samples source particles
+        """
+        import openmc.lib
+
+        # Silence output by default. Also set arguments to start in volume
+        # calculation mode to avoid loading cross sections
+        init_kwargs.setdefault('output', False)
+        init_kwargs.setdefault('args', ['-c'])
+
+        with change_directory(tmpdir=True):
+            # Export model within temporary directory
+            self.export_to_model_xml()
+
+            # Sample external source sites
+            with openmc.lib.run_in_memory(**init_kwargs):
+                return openmc.lib.sample_external_source(
+                    n_samples=n_samples, prn_seed=prn_seed
+                )
+
+    def apply_tally_results(self, statepoint: PathLike | openmc.StatePoint):
+        """Apply results from a statepoint to tally objects on the Model
+
+        Parameters
+        ----------
+        statepoint : PathLike or openmc.StatePoint
+            Statepoint file used to update tally results
+        """
+        self.tallies.add_results(statepoint)
+
+    def plot_geometry(self, output=True, cwd='.', openmc_exec='openmc',
+                      export_model_xml=True, **export_kwargs):
         """Creates plot images as specified by the Model.plots attribute
 
         .. versionadded:: 0.13.0
@@ -811,6 +1123,12 @@ class Model:
         openmc_exec : str, optional
             Path to OpenMC executable. Defaults to 'openmc'.
             This only applies to the case when not using the C API.
+        export_model_xml : bool, optional
+            Exports a single model.xml file rather than separate files. Defaults
+            to True.
+        **export_kwargs
+            Keyword arguments passed to either :meth:`Model.export_to_model_xml`
+            or :meth:`Model.export_to_xml`.
 
         """
 
@@ -819,13 +1137,18 @@ class Model:
             raise ValueError("The Model.plots attribute must be specified "
                              "before executing this method!")
 
-        with _change_directory(Path(cwd)):
+        with change_directory(cwd):
             if self.is_initialized:
                 # Compute the volumes
                 openmc.lib.plot_geometry(output)
             else:
-                self.export_to_xml()
-                openmc.plot_geometry(output=output, openmc_exec=openmc_exec)
+                if export_model_xml:
+                    self.export_to_model_xml(**export_kwargs)
+                else:
+                    self.export_to_xml(**export_kwargs)
+                path_input = export_kwargs.get("path", None)
+                openmc.plot_geometry(output=output, openmc_exec=openmc_exec,
+                                     path_input=path_input)
 
     def _change_py_lib_attribs(self, names_or_ids, value, obj_type,
                                attrib_name, density_units='atom/b-cm'):
@@ -1016,51 +1339,101 @@ class Model:
 
         self._change_py_lib_attribs(names_or_ids, volume, 'material', 'volume')
 
-    def differentiate_depletable_mats(self, diff_volume_method: str):
+    def differentiate_depletable_mats(self, diff_volume_method: str = None):
         """Assign distribmats for each depletable material
 
         .. versionadded:: 0.14.0
+
+        .. versionchanged:: 0.15.1
+            diff_volume_method default is None, do not set volumes on the new
+            material ovjects. Is now a convenience method for
+            differentiate_mats(diff_volume_method, depletable_only=True)
 
         Parameters
         ----------
         diff_volume_method : str
             Specifies how the volumes of the new materials should be found.
-            Default is to 'divide equally' which divides the original material
-            volume equally between the new materials, 'match cell' sets the
-            volume of the material to volume of the cell they fill.
+            - None: Do not assign volumes to the new materials (Default)
+            - 'divide equally': Divide the original material volume equally between the new materials
+            - 'match cell': Set the volume of the material to the volume of the cell they fill
         """
+        self.differentiate_mats(diff_volume_method, depletable_only=True)
+
+    def differentiate_mats(self, diff_volume_method: str = None, depletable_only: bool = True):
+        """Assign distribmats for each material
+
+        .. versionadded:: 0.15.1
+
+        Parameters
+        ----------
+        diff_volume_method : str
+            Specifies how the volumes of the new materials should be found.
+            - None: Do not assign volumes to the new materials (Default)
+            - 'divide equally': Divide the original material volume equally between the new materials
+            - 'match cell': Set the volume of the material to the volume of the cell they fill
+        depletable_only : bool
+            Default is True, only depletable materials will be differentiated. If False, all materials will be
+            differentiated.
+        """
+        check_value('volume differentiation method', diff_volume_method, ("divide equally", "match cell", None))
+
         # Count the number of instances for each cell and material
         self.geometry.determine_paths(instances_only=True)
 
-        # Extract all depletable materials which have multiple instances
-        distribmats = set(
-            [mat for mat in self.materials
-                if mat.depletable and mat.num_instances > 1])
+        # Get list of materials
+        if self.materials:
+            materials = self.materials
+        else:
+            materials = list(self.geometry.get_all_materials().values())
 
-        if diff_volume_method == 'divide equally':
-            for mat in distribmats:
-                if mat.volume is None:
-                    raise RuntimeError("Volume not specified for depletable "
-                                        f"material with ID={mat.id}.")
-                mat.volume /= mat.num_instances
-
-        if distribmats:
-            # Assign distribmats to cells
-            for cell in self.geometry.get_all_material_cells().values():
-                if cell.fill in distribmats:
-                    mat = cell.fill
-                    if diff_volume_method == 'divide equally':
-                        cell.fill = [mat.clone() for _ in range(cell.num_instances)]
-                    elif diff_volume_method == 'match cell':
-                        for _ in range(cell.num_instances):
-                            cell.fill = mat.clone()
+        # Find all or depletable_only materials which have multiple instance
+        distribmats = set()
+        for mat in materials:
+            # Differentiate all materials with multiple instances
+            diff_mat = mat.num_instances > 1
+            # If depletable_only is True, differentiate only depletable materials
+            if depletable_only:
+                diff_mat = diff_mat and mat.depletable
+            if diff_mat:
+                # Assign volumes to the materials according to requirements
+                if diff_volume_method == "divide equally":
+                    if mat.volume is None:
+                        raise RuntimeError(
+                            "Volume not specified for "
+                            f"material with ID={mat.id}.")
+                    else:
+                        mat.volume /= mat.num_instances
+                elif diff_volume_method == "match cell":
+                    for cell in self.geometry.get_all_material_cells().values():
+                        if cell.fill == mat:
                             if not cell.volume:
                                 raise ValueError(
                                     f"Volume of cell ID={cell.id} not specified. "
                                     "Set volumes of cells prior to using "
-                                    "diff_volume_method='match cell'."
-                                )
-                            cell.fill.volume = cell.volume
+                                    "diff_volume_method='match cell'.")
+                distribmats.add(mat)
+
+        if not distribmats:
+            return
+
+        # Assign distribmats to cells
+        for cell in self.geometry.get_all_material_cells().values():
+            if cell.fill in distribmats:
+                mat = cell.fill
+
+                # Clone materials
+                if cell.num_instances > 1:
+                    cell.fill = [mat.clone() for _ in range(cell.num_instances)]
+                else:
+                    cell.fill = mat.clone()
+
+                # For 'match cell', assign volumes based on the cells
+                if diff_volume_method == 'match cell':
+                    if cell.fill_type == 'distribmat':
+                        for clone_mat in cell.fill:
+                            clone_mat.volume = cell.volume
+                    else:
+                        cell.fill.volume = cell.volume
 
         if self.materials is not None:
             self.materials = openmc.Materials(

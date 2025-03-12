@@ -25,6 +25,7 @@ Simulation Settings
    openmc.IndependentSource
    openmc.FileSource
    openmc.CompiledSource
+   openmc.MeshSource
    openmc.SourceParticle
    openmc.VolumeCalculation
    openmc.Settings
@@ -34,6 +35,7 @@ Simulation Settings
    :nosignatures:
    :template: myfunction.rst
 
+   openmc.read_source_file
    openmc.write_source_file
    openmc.wwinp_to_wws
 
@@ -126,10 +128,12 @@ Constructing Tallies
    openmc.CollisionFilter
    openmc.SurfaceFilter
    openmc.MeshFilter
+   openmc.MeshBornFilter
    openmc.MeshSurfaceFilter
    openmc.EnergyFilter
    openmc.EnergyoutFilter
    openmc.MuFilter
+   openmc.MuSurfaceFilter
    openmc.PolarFilter
    openmc.AzimuthalFilter
    openmc.DistribcellFilter
@@ -141,12 +145,14 @@ Constructing Tallies
    openmc.TimeFilter
    openmc.ZernikeFilter
    openmc.ZernikeRadialFilter
+   openmc.ParentNuclideFilter
    openmc.ParticleFilter
    openmc.RegularMesh
    openmc.RectilinearMesh
    openmc.CylindricalMesh
    openmc.SphericalMesh
    openmc.UnstructuredMesh
+   openmc.MeshMaterialVolumes
    openmc.Trigger
    openmc.TallyDerivative
    openmc.Tally
@@ -161,7 +167,8 @@ Geometry Plotting
    :template: myclass.rst
 
    openmc.Plot
-   openmc.ProjectionPlot
+   openmc.WireframeRayTracePlot
+   openmc.SolidRayTracePlot
    openmc.Plots
 
 Running OpenMC
@@ -187,6 +194,7 @@ Post-processing
    :template: myclass.rst
 
    openmc.Particle
+   openmc.ParticleList
    openmc.ParticleTrack
    openmc.StatePoint
    openmc.Summary

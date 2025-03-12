@@ -21,8 +21,11 @@ essential aspects of using OpenMC to perform simulations.
     tallies
     plots
     depletion
+    decay_sources
     scripts
     processing
     parallel
     volume
+    variance_reduction
+    random_ray
     troubleshoot

@@ -1,6 +1,7 @@
 #ifndef OPENMC_UNIVERSE_H
 #define OPENMC_UNIVERSE_H
 
+#include "openmc/bounding_box.h"
 #include "openmc/cell.h"
 
 namespace openmc {
@@ -9,6 +10,7 @@ namespace openmc {
 class DAGUniverse;
 #endif
 
+class GeometryState;
 class Universe;
 class UniversePartitioner;
 
@@ -32,17 +34,17 @@ public:
   //! \param group_id An HDF5 group id.
   virtual void to_hdf5(hid_t group_id) const;
 
-  virtual bool find_cell(Particle& p) const;
+  virtual bool find_cell(GeometryState& p) const;
 
   BoundingBox bounding_box() const;
 
-  const GeometryType& geom_type() const { return geom_type_; }
-  GeometryType& geom_type() { return geom_type_; }
+  /* By default, universes are CSG universes. The DAGMC
+   * universe overrides standard behaviors, and in the future,
+   * other things might too.
+   */
+  virtual GeometryType geom_type() const { return GeometryType::CSG; }
 
   unique_ptr<UniversePartitioner> partitioner_;
-
-private:
-  GeometryType geom_type_ = GeometryType::CSG;
 };
 
 //==============================================================================

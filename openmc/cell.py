@@ -1,8 +1,8 @@
 from collections.abc import Iterable
 from math import cos, sin, pi
 from numbers import Real
-import lxml.etree as ET
 
+import lxml.etree as ET
 import numpy as np
 from uncertainties import UFloat
 
@@ -10,6 +10,7 @@ import openmc
 import openmc.checkvalue as cv
 from ._xml import get_text
 from .mixin import IDManagerMixin
+from .plots import add_plot_params
 from .region import Region, Complement
 from .surface import Halfspace
 from .bounding_box import BoundingBox
@@ -343,8 +344,7 @@ class Cell(IDManagerMixin):
         if self.region is not None:
             return self.region.bounding_box
         else:
-            return BoundingBox(np.array([-np.inf, -np.inf, -np.inf]),
-                               np.array([np.inf, np.inf, np.inf]))
+            return BoundingBox.infinite()
 
     @property
     def num_instances(self):
@@ -404,9 +404,8 @@ class Cell(IDManagerMixin):
             if self._atoms is not None:
                 volume = self.volume
                 for name, atoms in self._atoms.items():
-                    nuclide = openmc.Nuclide(name)
                     density = 1.0e-24 * atoms.n/volume  # density in atoms/b-cm
-                    nuclides[name] = (nuclide, density)
+                    nuclides[name] = (name, density)
             else:
                 raise RuntimeError(
                     'Volume information is needed to calculate microscopic '
@@ -427,15 +426,13 @@ class Cell(IDManagerMixin):
             instances
 
         """
+        if memo is None:
+            memo = set()
+        elif self in memo:
+            return {}
+        memo.add(self)
 
         cells = {}
-
-        if memo and self in memo:
-            return cells
-
-        if memo is not None:
-            memo.add(self)
-
         if self.fill_type in ('universe', 'lattice'):
             cells.update(self.fill.get_all_cells(memo))
 
@@ -466,7 +463,7 @@ class Cell(IDManagerMixin):
 
         return materials
 
-    def get_all_universes(self):
+    def get_all_universes(self, memo=None):
         """Return all universes that are contained within this one if any of
         its cells are filled with a universe or lattice.
 
@@ -477,18 +474,22 @@ class Cell(IDManagerMixin):
             :class:`Universe` instances
 
         """
+        if memo is None:
+            memo = set()
+        if self in memo:
+            return {}
+        memo.add(self)
 
         universes = {}
-
         if self.fill_type == 'universe':
             universes[self.fill.id] = self.fill
-            universes.update(self.fill.get_all_universes())
+            universes.update(self.fill.get_all_universes(memo))
         elif self.fill_type == 'lattice':
-            universes.update(self.fill.get_all_universes())
+            universes.update(self.fill.get_all_universes(memo))
 
         return universes
 
-    def clone(self, clone_materials=True, clone_regions=True,  memo=None):
+    def clone(self, clone_materials=True, clone_regions=True, memo=None):
         """Create a copy of this cell with a new unique ID, and clones
         the cell's region and fill.
 
@@ -559,68 +560,17 @@ class Cell(IDManagerMixin):
 
         return memo[self]
 
+    @add_plot_params
     def plot(self, *args, **kwargs):
         """Display a slice plot of the cell.
 
         .. versionadded:: 0.14.0
-
-        Parameters
-        ----------
-        origin : iterable of float
-            Coordinates at the origin of the plot. If left as None then the
-            bounding box center will be used to attempt to ascertain the origin.
-            Defaults to (0, 0, 0) if the bounding box is not finite
-        width : iterable of float
-            Width of the plot in each basis direction. If left as none then the
-            bounding box width will be used to attempt to ascertain the plot
-            width. Defaults to (10, 10) if the bounding box is not finite
-        pixels : Iterable of int or int
-            If iterable of ints provided, then this directly sets the number of
-            pixels to use in each basis direction. If int provided, then this
-            sets the total number of pixels in the plot and the number of pixels
-            in each basis direction is calculated from this total and the image
-            aspect ratio.
-        basis : {'xy', 'xz', 'yz'}
-            The basis directions for the plot
-        color_by : {'cell', 'material'}
-            Indicate whether the plot should be colored by cell or by material
-        colors : dict
-            Assigns colors to specific materials or cells. Keys are instances of
-            :class:`Cell` or :class:`Material` and values are RGB 3-tuples, RGBA
-            4-tuples, or strings indicating SVG color names. Red, green, blue,
-            and alpha should all be floats in the range [0.0, 1.0], for example:
-
-            .. code-block:: python
-
-               # Make water blue
-               water = openmc.Cell(fill=h2o)
-               universe.plot(..., colors={water: (0., 0., 1.))
-        seed : int
-            Seed for the random number generator
-        openmc_exec : str
-            Path to OpenMC executable.
-        axes : matplotlib.Axes
-            Axes to draw to
-        legend : bool
-            Whether a legend showing material or cell names should be drawn
-        legend_kwargs : dict
-            Keyword arguments passed to :func:`matplotlib.pyplot.legend`.
-        outline : bool
-            Whether outlines between color boundaries should be drawn
-        axis_units : {'km', 'm', 'cm', 'mm'}
-            Units used on the plot axis
-        **kwargs
-            Keyword arguments passed to :func:`matplotlib.pyplot.imshow`
-
-        Returns
-        -------
-        matplotlib.axes.Axes
-            Axes containing resulting image
-
         """
         # Create dummy universe but preserve used_ids
-        u = openmc.Universe(cells=[self], universe_id=openmc.Universe.next_id + 1)
+        next_id = openmc.Universe.next_id
+        u = openmc.Universe(cells=[self])
         openmc.Universe.used_ids.remove(u.id)
+        openmc.Universe.next_id = next_id
         return u.plot(*args, **kwargs)
 
     def create_xml_subelement(self, xml_element, memo=None):
@@ -677,10 +627,11 @@ class Cell(IDManagerMixin):
             # thus far.
             def create_surface_elements(node, element, memo=None):
                 if isinstance(node, Halfspace):
-                    if memo and node.surface in memo:
+                    if memo is None:
+                        memo = set()
+                    elif node.surface in memo:
                         return
-                    if memo is not None:
-                        memo.add(node.surface)
+                    memo.add(node.surface)
                     xml_element.append(node.surface.to_xml_element())
 
                 elif isinstance(node, Complement):
@@ -722,7 +673,7 @@ class Cell(IDManagerMixin):
             Dictionary mapping surface IDs to :class:`openmc.Surface` instances
         materials : dict
             Dictionary mapping material ID strings to :class:`openmc.Material`
-            instances (defined in :math:`openmc.Geometry.from_xml`)
+            instances (defined in :meth:`openmc.Geometry.from_xml`)
         get_universe : function
             Function returning universe (defined in
             :meth:`openmc.Geometry.from_xml`)

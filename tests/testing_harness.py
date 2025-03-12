@@ -1,5 +1,4 @@
 from difflib import unified_diff
-from subprocess import check_call
 import filecmp
 import glob
 import h5py
@@ -384,6 +383,97 @@ class HashedPyAPITestHarness(PyAPITestHarness):
         return super()._get_results(True)
 
 
+class TolerantPyAPITestHarness(PyAPITestHarness):
+    """Specialized harness for running tests that involve significant levels
+    of floating point non-associativity when using shared memory parallelism
+    due to single precision usage (e.g., as in the random ray solver).
+
+    """
+    def _are_files_equal(self, actual_path, expected_path, tolerance):
+        def isfloat(value):
+            try:
+                float(value)
+                return True
+            except ValueError:
+                return False
+
+        def tokenize(line):
+            return line.strip().split()
+
+        def compare_tokens(token1, token2):
+            if isfloat(token1) and isfloat(token2):
+                float1, float2 = float(token1), float(token2)
+                return abs(float1 - float2) <= tolerance * max(abs(float1), abs(float2))
+            else:
+                return token1 == token2
+
+        expected = open(expected_path).readlines()
+        actual = open(actual_path).readlines()
+
+        if len(expected) != len(actual):
+            return False
+
+        for line1, line2 in zip(expected, actual):
+            tokens1 = tokenize(line1)
+            tokens2 = tokenize(line2)
+
+            if len(tokens1) != len(tokens2):
+                return False
+
+            for token1, token2 in zip(tokens1, tokens2):
+                if not compare_tokens(token1, token2):
+                    return False
+
+        return True
+
+    def _compare_results(self):
+        """Make sure the current results agree with the reference."""
+        compare = self._are_files_equal('results_test.dat', 'results_true.dat', 1e-6)
+        if not compare:
+            expected = open('results_true.dat').readlines()
+            actual = open('results_test.dat').readlines()
+            diff = unified_diff(expected, actual, 'results_true.dat',
+                                'results_test.dat')
+            print('Result differences:')
+            print(''.join(colorize(diff)))
+            os.rename('results_test.dat', 'results_error.dat')
+        assert compare, 'Results do not agree'
+
+
+class WeightWindowPyAPITestHarness(PyAPITestHarness):
+    def _get_results(self):
+        """Digest info in the weight window file and return as a string."""
+        ww = openmc.hdf5_to_wws()[0]
+
+        # Access the weight window bounds
+        lower_bound = ww.lower_ww_bounds
+        upper_bound = ww.upper_ww_bounds
+
+        # Flatten both arrays
+        flattened_lower_bound = lower_bound.flatten()
+        flattened_upper_bound = upper_bound.flatten()
+
+        # Convert each element to a string in scientific notation with 2 decimal places
+        formatted_lower_bound = [f'{x:.2e}' for x in flattened_lower_bound]
+        formatted_upper_bound = [f'{x:.2e}' for x in flattened_upper_bound]
+
+        # Concatenate the formatted arrays
+        concatenated_strings = ["Lower Bounds"] + formatted_lower_bound + \
+            ["Upper Bounds"] + formatted_upper_bound
+
+        # Join the concatenated strings into a single string with newline characters
+        final_string = '\n'.join(concatenated_strings)
+
+        # Prepend the mesh text description and return final string
+        return str(ww.mesh) + final_string
+
+    def _cleanup(self):
+        super()._cleanup()
+        f = 'weight_windows.h5'
+        if os.path.exists(f):
+            os.remove(f)
+
+
 class PlotTestHarness(TestHarness):
     """Specialized TestHarness for running OpenMC plotting tests."""
     def __init__(self, plot_names, voxel_convert_checks=[]):
@@ -396,8 +486,7 @@ class PlotTestHarness(TestHarness):
 
         # Check that voxel h5 can be converted to vtk
         for voxel_h5_filename in self._voxel_convert_checks:
-            check_call(['../../../scripts/openmc-voxel-to-vtk'] +
-                       glob.glob(voxel_h5_filename))
+            openmc.voxel_to_vtk(voxel_h5_filename)
 
     def _test_output_created(self):
         """Make sure *.png has been created."""

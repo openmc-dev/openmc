@@ -4,6 +4,7 @@ import numpy as np
 import pytest
 import openmc
 import openmc.stats
+from scipy.integrate import trapezoid
 
 
 def assert_sample_mean(samples, expected_mean):
@@ -49,6 +50,13 @@ def test_discrete():
     assert_sample_mean(samples, exp_mean)
 
 
+def test_delta_function():
+    d = openmc.stats.delta_function(14.1e6)
+    assert isinstance(d, openmc.stats.Discrete)
+    np.testing.assert_array_equal(d.x, [14.1e6])
+    np.testing.assert_array_equal(d.p, [1.0])
+
+
 def test_merge_discrete():
     x1 = [0.0, 1.0, 10.0]
     p1 = [0.3, 0.2, 0.5]
@@ -88,6 +96,12 @@ def test_clip_discrete():
     # Make sure inplace returns same object
     d_same = d.clip(1e-6, inplace=True)
     assert d_same is d
+
+    with pytest.raises(ValueError):
+        d.clip(-1.)
+
+    with pytest.raises(ValueError):
+        d.clip(5)
 
 
 def test_uniform():
@@ -181,19 +195,10 @@ def test_watt():
 
 
 def test_tabular():
-    x = np.array([0.0, 5.0, 7.0])
-    p = np.array([10.0, 20.0, 5.0])
-    d = openmc.stats.Tabular(x, p, 'linear-linear')
-    elem = d.to_xml_element('distribution')
-
-    d = openmc.stats.Tabular.from_xml_element(elem)
-    assert all(d.x == x)
-    assert all(d.p == p)
-    assert d.interpolation == 'linear-linear'
-    assert len(d) == len(x)
-
     # test linear-linear sampling
-    d = openmc.stats.Tabular(x, p)
+    x = np.array([0.0, 5.0, 7.0, 10.0])
+    p = np.array([10.0, 20.0, 5.0, 6.0])
+    d = openmc.stats.Tabular(x, p, 'linear-linear')
     n_samples = 100_000
     samples = d.sample(n_samples)
     assert_sample_mean(samples, d.mean())
@@ -210,6 +215,45 @@ def test_tabular():
     d.normalize()
     assert d.integral() == pytest.approx(1.0)
 
+    # ensure that passing a set of probabilities shorter than x works
+    # for histogram interpolation
+    d = openmc.stats.Tabular(x, p[:-1], interpolation='histogram')
+    d.cdf()
+    d.mean()
+    assert_sample_mean(d.sample(n_samples), d.mean())
+
+    # passing a shorter probability set should raise an error for linear-linear
+    with pytest.raises(ValueError):
+        d = openmc.stats.Tabular(x, p[:-1], interpolation='linear-linear')
+        d.cdf()
+
+    # Use probabilities of correct length for linear-linear interpolation and
+    # call the CDF method
+    d = openmc.stats.Tabular(x, p, interpolation='linear-linear')
+    d.cdf()
+
+
+def test_tabular_from_xml():
+    x = np.array([0.0, 5.0, 7.0, 10.0])
+    p = np.array([10.0, 20.0, 5.0, 6.0])
+    d = openmc.stats.Tabular(x, p, 'linear-linear')
+    elem = d.to_xml_element('distribution')
+
+    d = openmc.stats.Tabular.from_xml_element(elem)
+    assert all(d.x == x)
+    assert all(d.p == p)
+    assert d.interpolation == 'linear-linear'
+    assert len(d) == len(x)
+
+    # Make sure XML roundtrip works with len(x) == len(p) + 1
+    x = np.array([0.0, 5.0, 7.0, 10.0])
+    p = np.array([10.0, 20.0, 5.0])
+    d = openmc.stats.Tabular(x, p, 'histogram')
+    elem = d.to_xml_element('distribution')
+    d = openmc.stats.Tabular.from_xml_element(elem)
+    assert all(d.x == x)
+    assert all(d.p == p)
+
 
 def test_legendre():
     # Pu239 elastic scattering at 100 keV
@@ -220,7 +264,7 @@ def test_legendre():
 
     # Integrating distribution should yield one
     mu = np.linspace(-1., 1., 1000)
-    assert np.trapz(d(mu), mu) == pytest.approx(1.0, rel=1e-4)
+    assert trapezoid(d(mu), mu) == pytest.approx(1.0, rel=1e-4)
 
     with pytest.raises(NotImplementedError):
         d.to_xml_element('distribution')
@@ -231,7 +275,7 @@ def test_mixture():
     d2 = openmc.stats.Uniform(3, 7)
     p = [0.5, 0.5]
     mix = openmc.stats.Mixture(p, [d1, d2])
-    assert mix.probability == p
+    np.testing.assert_allclose(mix.probability, p)
     assert mix.distribution == [d1, d2]
     assert len(mix) == 4
 
@@ -243,7 +287,7 @@ def test_mixture():
     elem = mix.to_xml_element('distribution')
 
     d = openmc.stats.Mixture.from_xml_element(elem)
-    assert d.probability == p
+    np.testing.assert_allclose(d.probability, p)
     assert d.distribution == [d1, d2]
     assert len(d) == 4
 
@@ -264,6 +308,20 @@ def test_mixture_clip():
     # Make sure inplace returns same object
     mix_same = mix.clip(1e-6, inplace=True)
     assert mix_same is mix
+
+    # Make sure clip removes low probability distributions
+    d_small = openmc.stats.Uniform(0., 1.)
+    d_large = openmc.stats.Uniform(2., 5.)
+    mix = openmc.stats.Mixture([1e-10, 1.0], [d_small, d_large])
+    mix_clip = mix.clip(1e-3)
+    assert mix_clip.distribution == [d_large]
+
+    # Make sure warning is raised if tolerance is exceeded
+    d1 = openmc.stats.Discrete([1.0, 1.001], [1.0, 0.7e-6])
+    d2 = openmc.stats.Tabular([0.0, 1.0], [0.7e-6], interpolation='histogram')
+    mix = openmc.stats.Mixture([1.0, 1.0], [d1, d2])
+    with pytest.warns(UserWarning):
+        mix_clip = mix.clip(1e-6)
 
 
 def test_polar_azimuthal():
@@ -352,15 +410,6 @@ def test_box():
     d = openmc.stats.Box.from_xml_element(elem)
     assert d.lower_left == pytest.approx(lower_left)
     assert d.upper_right == pytest.approx(upper_right)
-    assert not d.only_fissionable
-
-    # only fissionable parameter
-    d2 = openmc.stats.Box(lower_left, upper_right, True)
-    assert d2.only_fissionable
-    elem = d2.to_xml_element()
-    assert elem.attrib['type'] == 'fission'
-    d = openmc.stats.Spatial.from_xml_element(elem)
-    assert isinstance(d, openmc.stats.Box)
 
 
 def test_point():

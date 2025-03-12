@@ -23,6 +23,7 @@
 #include "pugixml.hpp"
 
 #include <cstdlib> // for getenv
+#include <filesystem>
 #include <unordered_set>
 
 namespace openmc {
@@ -282,10 +283,15 @@ void read_ce_cross_sections(const vector<vector<double>>& nuc_temps,
 void read_ce_cross_sections_xml()
 {
   // Check if cross_sections.xml exists
-  const auto& filename = settings::path_cross_sections;
-  if (!file_exists(filename)) {
-    // Could not find cross_sections.xml file
-    fatal_error("Cross sections XML file '" + filename + "' does not exist.");
+  std::filesystem::path filename(settings::path_cross_sections);
+  if (!std::filesystem::exists(filename)) {
+    fatal_error(
+      "Cross sections XML file '" + filename.string() + "' does not exist.");
+  }
+
+  if (std::filesystem::is_directory(filename)) {
+    fatal_error("OPENMC_CROSS_SECTIONS is set to a directory. "
+                "It should be set to an XML file.");
   }
 
   write_message("Reading cross sections XML file...", 5);
@@ -305,15 +311,10 @@ void read_ce_cross_sections_xml()
   } else {
     // If no directory is listed in cross_sections.xml, by default select the
     // directory in which the cross_sections.xml file resides
-
-    // TODO: Use std::filesystem functionality when C++17 is adopted
-    auto pos = filename.rfind("/");
-    if (pos == std::string::npos) {
-      // No '\\' found, so the file must be in the same directory as
-      // materials.xml
-      directory = settings::path_input;
+    if (filename.has_parent_path()) {
+      directory = filename.parent_path().string();
     } else {
-      directory = filename.substr(0, pos);
+      directory = settings::path_input;
     }
   }
 

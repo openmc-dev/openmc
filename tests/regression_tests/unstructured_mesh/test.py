@@ -277,6 +277,8 @@ def test_unstructured_mesh_tets(model, test_opts):
 
     # add analagous unstructured mesh tally
     uscd_mesh = openmc.UnstructuredMesh(mesh_filename, test_opts['library'])
+    if test_opts['library'] == 'moab':
+        uscd_mesh.options = 'MAX_DEPTH=15;PLANE_SET=2'
     uscd_filter = openmc.MeshFilter(mesh=uscd_mesh)
 
     # create tallies

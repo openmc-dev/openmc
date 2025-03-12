@@ -5,6 +5,7 @@ from itertools import product
 from math import log
 import os
 from pathlib import Path
+import warnings
 
 import numpy as np
 from openmc.mpi import comm
@@ -83,6 +84,14 @@ def test_from_endf(endf_chain):
     assert len(chain) == len(chain.nuclides) == len(chain.nuclide_dict) == 3820
     for nuc in chain.nuclides:
         assert nuc == chain[nuc.name]
+
+
+def test_unstable_nuclides(simple_chain: Chain):
+    assert [nuc.name for nuc in simple_chain.unstable_nuclides] == ["A", "B"]
+
+
+def test_stable_nuclides(simple_chain: Chain):
+    assert [nuc.name for nuc in simple_chain.stable_nuclides] == ["H1", "C"]
 
 
 def test_from_xml(simple_chain):
@@ -438,9 +447,9 @@ def test_validate(simple_chain):
     simple_chain["C"].yield_data = {0.0253: {"A": 1.4, "B": 0.6}}
 
     assert simple_chain.validate(strict=True, tolerance=0.0)
-    with pytest.warns(None) as record:
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
         assert simple_chain.validate(strict=False, quiet=False, tolerance=0.0)
-    assert len(record) == 0
 
     # Mess up "earlier" nuclide's reactions
     decay_mode = simple_chain["A"].decay_modes.pop()

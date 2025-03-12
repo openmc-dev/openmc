@@ -1,6 +1,7 @@
 #include "openmc/material.h"
 
 #include <algorithm> // for min, max, sort, fill
+#include <cassert>
 #include <cmath>
 #include <iterator>
 #include <sstream>
@@ -367,13 +368,13 @@ Material& Material::clone()
   mat->name_ = name_;
   mat->nuclide_ = nuclide_;
   mat->element_ = element_;
-  mat->ncrystal_mat_ = ncrystal_mat_;
+  mat->ncrystal_mat_ = ncrystal_mat_.clone();
   mat->atom_density_ = atom_density_;
   mat->density_ = density_;
   mat->density_gpcc_ = density_gpcc_;
   mat->volume_ = volume_;
-  mat->fissionable_ = fissionable_;
-  mat->depletable_ = depletable_;
+  mat->fissionable() = fissionable_;
+  mat->depletable() = depletable_;
   mat->p0_ = p0_;
   mat->mat_nuclide_index_ = mat_nuclide_index_;
   mat->thermal_tables_ = thermal_tables_;
@@ -933,7 +934,7 @@ void Material::calculate_photon_xs(Particle& p) const
 
 void Material::set_id(int32_t id)
 {
-  Expects(id >= 0 || id == C_NONE);
+  assert(id >= 0 || id == C_NONE);
 
   // Clear entry in material map if an ID was already assigned before
   if (id_ != C_NONE) {
@@ -961,9 +962,9 @@ void Material::set_id(int32_t id)
   model::material_map[id] = index_;
 }
 
-void Material::set_density(double density, gsl::cstring_span units)
+void Material::set_density(double density, const std::string& units)
 {
-  Expects(density >= 0.0);
+  assert(density >= 0.0);
 
   if (nuclide_.empty()) {
     throw std::runtime_error {"No nuclides exist in material yet."};
@@ -1006,8 +1007,8 @@ void Material::set_densities(
   const vector<std::string>& name, const vector<double>& density)
 {
   auto n = name.size();
-  Expects(n > 0);
-  Expects(n == density.size());
+  assert(n > 0);
+  assert(n == density.size());
 
   if (n != nuclide_.size()) {
     nuclide_.resize(n);
@@ -1017,7 +1018,7 @@ void Material::set_densities(
   }
 
   double sum_density = 0.0;
-  for (gsl::index i = 0; i < n; ++i) {
+  for (int64_t i = 0; i < n; ++i) {
     const auto& nuc {name[i]};
     if (data::nuclide_map.find(nuc) == data::nuclide_map.end()) {
       int err = openmc_load_nuclide(nuc.c_str(), nullptr, 0);
@@ -1026,7 +1027,7 @@ void Material::set_densities(
     }
 
     nuclide_[i] = data::nuclide_map.at(nuc);
-    Expects(density[i] > 0.0);
+    assert(density[i] > 0.0);
     atom_density_(i) = density[i];
     sum_density += density[i];
 
@@ -1068,7 +1069,7 @@ void Material::to_hdf5(hid_t group) const
 {
   hid_t material_group = create_group(group, "material " + std::to_string(id_));
 
-  write_attribute(material_group, "depletable", static_cast<int>(depletable_));
+  write_attribute(material_group, "depletable", static_cast<int>(depletable()));
   if (volume_ > 0.0) {
     write_attribute(material_group, "volume", volume_);
   }
@@ -1548,6 +1549,30 @@ extern "C" int openmc_material_set_volume(int32_t index, double volume)
     set_errmsg("Index in materials array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
+}
+
+extern "C" int openmc_material_get_depletable(int32_t index, bool* depletable)
+{
+  if (index < 0 || index >= model::materials.size()) {
+    set_errmsg("Index in materials array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
+  *depletable = model::materials[index]->depletable();
+
+  return 0;
+}
+
+extern "C" int openmc_material_set_depletable(int32_t index, bool depletable)
+{
+  if (index < 0 || index >= model::materials.size()) {
+    set_errmsg("Index in materials array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
+  model::materials[index]->depletable() = depletable;
+
+  return 0;
 }
 
 extern "C" int openmc_extend_materials(

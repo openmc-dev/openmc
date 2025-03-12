@@ -6,6 +6,7 @@
 
 #include "openmc/constants.h"
 #include "openmc/error.h"
+#include "openmc/random_ray/random_ray.h"
 #include "openmc/surface.h"
 
 namespace openmc {
@@ -16,7 +17,18 @@ namespace openmc {
 
 void VacuumBC::handle_particle(Particle& p, const Surface& surf) const
 {
-  p.cross_vacuum_bc(surf);
+  // Random ray and Monte Carlo need different treatments at vacuum BCs
+  if (settings::solver_type == SolverType::RANDOM_RAY) {
+    // Reflect ray off of the surface
+    ReflectiveBC().handle_particle(p, surf);
+
+    // Set ray's angular flux spectrum to vacuum conditions (zero)
+    RandomRay* r = static_cast<RandomRay*>(&p);
+    std::fill(r->angular_flux_.begin(), r->angular_flux_.end(), 0.0);
+
+  } else {
+    p.cross_vacuum_bc(surf);
+  }
 }
 
 //==============================================================================
@@ -117,8 +129,7 @@ TranslationalPeriodicBC::TranslationalPeriodicBC(int i_surf, int j_surf)
 void TranslationalPeriodicBC::handle_particle(
   Particle& p, const Surface& surf) const
 {
-  // TODO: off-by-one on surface indices throughout this function.
-  int i_particle_surf = std::abs(p.surface()) - 1;
+  int i_particle_surf = p.surface_index();
 
   // Figure out which of the two BC surfaces were struck then find the
   // particle's new location and surface.
@@ -243,8 +254,7 @@ RotationalPeriodicBC::RotationalPeriodicBC(int i_surf, int j_surf)
 void RotationalPeriodicBC::handle_particle(
   Particle& p, const Surface& surf) const
 {
-  // TODO: off-by-one on surface indices throughout this function.
-  int i_particle_surf = std::abs(p.surface()) - 1;
+  int i_particle_surf = p.surface_index();
 
   // Figure out which of the two BC surfaces were struck to figure out if a
   // forward or backward rotation is required.  Specify the other surface as

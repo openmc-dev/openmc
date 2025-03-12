@@ -57,9 +57,9 @@ def pin_model_attributes():
 
     # Create a uniform spatial source distribution over fissionable zones
     bounds = [-0.62992, -0.62992, -1, 0.62992, 0.62992, 1]
-    uniform_dist = openmc.stats.Box(
-        bounds[:3], bounds[3:], only_fissionable=True)
-    settings.source = openmc.IndependentSource(space=uniform_dist)
+    uniform_dist = openmc.stats.Box(bounds[:3], bounds[3:])
+    settings.source = openmc.IndependentSource(
+        space=uniform_dist, constraints={'fissionable': True})
 
     entropy_mesh = openmc.RegularMesh()
     entropy_mesh.lower_left = [-0.39218, -0.39218, -1.e50]
@@ -457,6 +457,20 @@ def test_deplete(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     assert after_xe + after_u == pytest.approx(initial_u, abs=1e-15)
     assert test_model.is_initialized is False
 
+    # check the tally output
+    def check_tally_output():
+        with openmc.StatePoint('openmc_simulation_n0.h5') as sp:
+            flux = sp.get_tally(id=1).get_values(scores=['flux'])[0, 0, 0]
+            fission = sp.get_tally(id=1).get_values(
+                scores=['fission'])[0, 0, 0]
+
+            # we're mainly just checking that the result was produced,
+            # so a rough numerical comparison doesn't hurt to have.
+            assert flux == pytest.approx(13.1, abs=0.2)
+            assert fission == pytest.approx(0.47, abs=0.2)
+
+    check_tally_output()
+
     # Reset the initial material densities
     mats[0].nuclides.clear()
     densities = initial_mat.get_nuclide_atom_densities()
@@ -480,6 +494,8 @@ def test_deplete(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     # And end by comparing to the previous case
     assert after_xe == pytest.approx(after_lib_xe, abs=1e-15)
     assert after_u == pytest.approx(after_lib_u, abs=1e-15)
+
+    check_tally_output()
 
     test_model.finalize_lib()
 
@@ -531,6 +547,7 @@ def test_calc_volumes(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
 
     test_model.finalize_lib()
 
+
 def test_model_xml(run_in_tmpdir):
 
     # load a model from examples
@@ -548,6 +565,7 @@ def test_model_xml(run_in_tmpdir):
     # make sure we can also export this again to separate
     # XML files
     new_model.export_to_xml()
+
 
 def test_single_xml_exec(run_in_tmpdir):
 
@@ -567,3 +585,67 @@ def test_single_xml_exec(run_in_tmpdir):
 
     with pytest.raises(RuntimeError, match='input_dir'):
         openmc.run(path_input='input_dir/pincell.xml')
+
+    # Make sure path can be specified with run
+    pincell_model.run(path='my_model.xml')
+
+    os.mkdir('subdir')
+    pincell_model.run(path='subdir')
+
+
+def test_nuclides_to_ignore(run_in_tmpdir, pin_model_attributes):
+    """Test nuclides_to_ignore when exporting a model XML"""
+    materials, geometry, settings = pin_model_attributes[:3]
+    model = openmc.Model(geometry=geometry, settings=settings)
+
+    # grab one of the nuclides present in this model as a test
+    test_nuclide = list(materials[0].get_nuclides())[0]
+
+    # exclude the test nuclide from the XML file during export
+    model.export_to_model_xml(nuclides_to_ignore=[test_nuclide])
+
+    # ensure that the nuclide doesn't appear after reading in
+    # the resulting XML model
+    xml_model = openmc.Model.from_model_xml()
+    for material in xml_model.materials:
+        assert test_nuclide not in material.get_nuclides()
+
+
+def test_model_plot():
+    # plots the geometry with source location and checks the resulting
+    # matplotlib includes the correct coordinates for the scatter plot for all
+    # basis.
+
+    surface = openmc.Sphere(r=600, boundary_type="vacuum")
+    cell = openmc.Cell(region=-surface)
+    geometry = openmc.Geometry([cell])
+    source = openmc.IndependentSource(space=openmc.stats.Point((1, 2, 3)))
+    settings = openmc.Settings(particles=1, batches=1, source=source)
+    model = openmc.Model(geometry, settings=settings)
+
+    plot = model.plot(n_samples=1, plane_tolerance=4.0, basis="xy")
+    coords = plot.axes.collections[0].get_offsets().data.flatten()
+    assert (coords == np.array([1.0, 2.0])).all()
+
+    plot = model.plot(n_samples=1, plane_tolerance=4.0, basis="xz")
+    coords = plot.axes.collections[0].get_offsets().data.flatten()
+    assert (coords == np.array([1.0, 3.0])).all()
+
+    plot = model.plot(n_samples=1, plane_tolerance=4.0, basis="yz")
+    coords = plot.axes.collections[0].get_offsets().data.flatten()
+    assert (coords == np.array([2.0, 3.0])).all()
+
+    plot = model.plot(n_samples=1, plane_tolerance=0.1, basis="xy")
+    coords = plot.axes.collections[0].get_offsets().data.flatten()
+    assert (coords == np.array([])).all()
+
+    # modify model to include another cell that overlaps the original cell entirely
+    model.geometry.root_universe.add_cell(openmc.Cell(region=-surface))
+    axes = model.plot(show_overlaps=True)
+    white = np.array((1.0, 1.0, 1.0))
+    red = np.array((1.0, 0.0, 0.0))
+    axes_image = axes.get_images()[0]
+    image_data = axes_image.get_array()
+    # ensure that all of the data in the image data is either white or red
+    test_mask = (image_data == white) | (image_data == red)
+    assert np.all(test_mask), "Colors other than white or red found in overlap plot image"

@@ -1,11 +1,11 @@
 from collections.abc import Iterable, Mapping
 from numbers import Real, Integral
-import lxml.etree as ET
 import warnings
 
+import h5py
+import lxml.etree as ET
 import numpy as np
 import pandas as pd
-import h5py
 from uncertainties import ufloat
 
 import openmc

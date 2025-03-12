@@ -6,6 +6,7 @@ import warnings
 
 import h5py
 import numpy as np
+from pathlib import Path
 from uncertainties import ufloat
 
 import openmc
@@ -98,6 +99,8 @@ class StatePoint:
         and whose values are time values in seconds.
     seed : int
         Pseudorandom number generator seed
+    stride : int
+        Number of random numbers allocated for each particle history
     source : numpy.ndarray of compound datatype
         Array of source sites. The compound datatype has fields 'r', 'u',
         'E', 'wgt', 'delayed_group', 'surf_id', and 'particle', corresponding to
@@ -235,7 +238,7 @@ class StatePoint:
         if self._global_tallies is None:
             data = self._f['global_tallies'][()]
             gt = np.zeros(data.shape[0], dtype=[
-                ('name', 'a14'), ('sum', 'f8'), ('sum_sq', 'f8'),
+                ('name', 'S14'), ('sum', 'f8'), ('sum_sq', 'f8'),
                 ('mean', 'f8'), ('std_dev', 'f8')])
             gt['name'] = ['k-collision', 'k-absorption', 'k-tracklength',
                           'leakage']
@@ -356,6 +359,10 @@ class StatePoint:
         return self._f['seed'][()]
 
     @property
+    def stride(self):
+        return self._f['stride'][()]
+
+    @property
     def source(self):
         return self._f['source_bank'][()] if self.source_present else None
 
@@ -415,7 +422,7 @@ class StatePoint:
 
                     # Create Tally object and assign basic properties
                     tally = openmc.Tally(tally_id)
-                    tally._sp_filename = self._f.filename
+                    tally._sp_filename = Path(self._f.filename)
                     tally.name = group['name'][()].decode() if 'name' in group else ''
 
                     # Check if tally has multiply_density attribute
@@ -448,14 +455,11 @@ class StatePoint:
                     nuclide_names = group['nuclides'][()]
 
                     # Add all nuclides to the Tally
-                    for name in nuclide_names:
-                        nuclide = openmc.Nuclide(name.decode().strip())
-                        tally.nuclides.append(nuclide)
+                    tally.nuclides = [name.decode().strip() for name in nuclide_names]
 
                     # Add the scores to the Tally
                     scores = group['score_bins'][()]
-                    for score in scores:
-                        tally.scores.append(score.decode())
+                    tally.scores = [score.decode() for score in scores]
 
                     # Add Tally to the global dictionary of all Tallies
                     tally.sparse = self.sparse
@@ -526,15 +530,16 @@ class StatePoint:
 
     def get_tally(self, scores=[], filters=[], nuclides=[],
                   name=None, id=None, estimator=None, exact_filters=False,
-                  exact_nuclides=False, exact_scores=False):
+                  exact_nuclides=False, exact_scores=False,
+                  multiply_density=None, derivative=None):
         """Finds and returns a Tally object with certain properties.
 
         This routine searches the list of Tallies and returns the first Tally
         found which satisfies all of the input parameters.
 
         NOTE: If any of the "exact" parameters are False (default), the input
-        parameters do not need to match the complete Tally specification and
-        may only represent a subset of the Tally's properties. If an "exact"
+        parameters do not need to match the complete Tally specification and may
+        only represent a subset of the Tally's properties. If an "exact"
         parameter is True then number of scores, filters, or nuclides in the
         parameters must precisely match those of any matching Tally.
 
@@ -561,9 +566,15 @@ class StatePoint:
             to those in the matching Tally. If False (default), the nuclides in
             the parameters may be a subset of those in the matching Tally.
         exact_scores : bool
-            If True, the number of scores in the parameters must be identical
-            to those in the matching Tally. If False (default), the scores
-            in the parameters may be a subset of those in the matching Tally.
+            If True, the number of scores in the parameters must be identical to
+            those in the matching Tally. If False (default), the scores in the
+            parameters may be a subset of those in the matching Tally. Default
+            is None (no check).
+        multiply_density : bool, optional
+            If not None, the Tally must have the multiply_density attribute set
+            to the same value as this parameter.
+        derivative : openmc.TallyDerivative, optional
+            TallyDerivative object to match.
 
         Returns
         -------
@@ -591,16 +602,24 @@ class StatePoint:
             if id and id != test_tally.id:
                 continue
 
-            # Determine if Tally has queried estimator
-            if estimator and estimator != test_tally.estimator:
+            # Determine if Tally has queried estimator, only move on to next tally
+            # if the estimator is both specified and the tally estimtor does not
+            # match
+            if estimator is not None and estimator != test_tally.estimator:
                 continue
 
             # The number of filters, nuclides and scores must exactly match
             if exact_scores and len(scores) != test_tally.num_scores:
                 continue
-            if exact_nuclides and len(nuclides) != test_tally.num_nuclides:
+            if exact_nuclides and nuclides and len(nuclides) != test_tally.num_nuclides:
+                continue
+            if exact_nuclides and not nuclides and test_tally.nuclides != ['total']:
                 continue
             if exact_filters and len(filters) != test_tally.num_filters:
+                continue
+            if derivative is not None and derivative != test_tally.derivative:
+                continue
+            if multiply_density is not None and multiply_density != test_tally.multiply_density:
                 continue
 
             # Determine if Tally has the queried score(s)

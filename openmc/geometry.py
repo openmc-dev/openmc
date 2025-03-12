@@ -1,6 +1,5 @@
 from __future__ import annotations
 import os
-import typing
 from collections import defaultdict
 from copy import deepcopy
 from collections.abc import Iterable
@@ -8,10 +7,9 @@ from pathlib import Path
 import warnings
 import lxml.etree as ET
 
-import numpy as np
-
 import openmc
 import openmc._xml as xml
+from .plots import add_plot_params
 from .checkvalue import check_type, check_less_than, check_greater_than, PathLike
 
 
@@ -41,7 +39,7 @@ class Geometry:
 
     def __init__(
         self,
-        root: typing.Optional[openmc.UniverseBase] = None,
+        root: openmc.UniverseBase | Iterable[openmc.Cell] | None = None,
         merge_surfaces: bool = False,
         surface_precision: int = 10
     ):
@@ -68,7 +66,7 @@ class Geometry:
         self._root_universe = root_universe
 
     @property
-    def bounding_box(self) -> np.ndarray:
+    def bounding_box(self) -> openmc.BoundingBox:
         return self.root_universe.bounding_box
 
     @property
@@ -134,7 +132,7 @@ class Geometry:
 
         # Create XML representation
         element = ET.Element("geometry")
-        self.root_universe.create_xml_subelement(element, memo=set())
+        self.root_universe.create_xml_subelement(element)
 
         # Sort the elements in the file
         element[:] = sorted(element, key=lambda x: (
@@ -220,7 +218,7 @@ class Geometry:
 
         # Add any DAGMC universes
         for e in elem.findall('dagmc_universe'):
-            dag_univ = openmc.DAGMCUniverse.from_xml_element(e)
+            dag_univ = openmc.DAGMCUniverse.from_xml_element(e, mats)
             universes[dag_univ.id] = dag_univ
 
         # Dictionary that maps each universe to a list of cells/lattices that
@@ -267,7 +265,7 @@ class Geometry:
     def from_xml(
         cls,
         path: PathLike = 'geometry.xml',
-        materials: typing.Optional[typing.Union[PathLike, 'openmc.Materials']] = 'materials.xml'
+        materials: PathLike | 'openmc.Materials' | None = 'materials.xml'
     ) -> Geometry:
         """Generate geometry from XML file
 
@@ -293,7 +291,8 @@ class Geometry:
         if isinstance(materials, (str, os.PathLike)):
             materials = openmc.Materials.from_xml(materials)
 
-        tree = ET.parse(path)
+        parser = ET.XMLParser(huge_tree=True)
+        tree = ET.parse(path, parser=parser)
         root = tree.getroot()
 
         return cls.from_xml_element(root, materials)
@@ -315,7 +314,7 @@ class Geometry:
         """
         return self.root_universe.find(point)
 
-    def get_instances(self, paths) -> typing.Union[int, typing.List[int]]:
+    def get_instances(self, paths) -> int | list[int]:
         """Return the instance number(s) for a cell/material in a geometry path.
 
         The instance numbers are used as indices into distributed
@@ -362,7 +361,7 @@ class Geometry:
 
         return indices if return_list else indices[0]
 
-    def get_all_cells(self) -> typing.Dict[int, openmc.Cell]:
+    def get_all_cells(self) -> dict[int, openmc.Cell]:
         """Return all cells in the geometry.
 
         Returns
@@ -372,11 +371,11 @@ class Geometry:
 
         """
         if self.root_universe is not None:
-            return self.root_universe.get_all_cells(memo=set())
+            return self.root_universe.get_all_cells()
         else:
             return {}
 
-    def get_all_universes(self) -> typing.Dict[int, openmc.Universe]:
+    def get_all_universes(self) -> dict[int, openmc.Universe]:
         """Return all universes in the geometry.
 
         Returns
@@ -391,7 +390,21 @@ class Geometry:
         universes.update(self.root_universe.get_all_universes())
         return universes
 
-    def get_all_materials(self) -> typing.Dict[int, openmc.Material]:
+    def get_all_nuclides(self) -> list[str]:
+        """Return all nuclides within the geometry.
+
+        Returns
+        -------
+        list
+            Sorted list of all nuclides in materials appearing in the geometry
+
+        """
+        all_nuclides = set()
+        for material in self.get_all_materials().values():
+            all_nuclides |= set(material.get_nuclides())
+        return sorted(all_nuclides)
+
+    def get_all_materials(self) -> dict[int, openmc.Material]:
         """Return all materials within the geometry.
 
         Returns
@@ -402,11 +415,11 @@ class Geometry:
 
         """
         if self.root_universe is not None:
-            return self.root_universe.get_all_materials(memo=set())
+            return self.root_universe.get_all_materials()
         else:
             return {}
 
-    def get_all_material_cells(self) -> typing.Dict[int, openmc.Cell]:
+    def get_all_material_cells(self) -> dict[int, openmc.Cell]:
         """Return all cells filled by a material
 
         Returns
@@ -425,7 +438,7 @@ class Geometry:
 
         return material_cells
 
-    def get_all_material_universes(self) -> typing.Dict[int, openmc.Universe]:
+    def get_all_material_universes(self) -> dict[int, openmc.Universe]:
         """Return all universes having at least one material-filled cell.
 
         This method can be used to find universes that have at least one cell
@@ -448,7 +461,7 @@ class Geometry:
 
         return material_universes
 
-    def get_all_lattices(self) -> typing.Dict[int, openmc.Lattice]:
+    def get_all_lattices(self) -> dict[int, openmc.Lattice]:
         """Return all lattices defined
 
         Returns
@@ -466,7 +479,7 @@ class Geometry:
 
         return lattices
 
-    def get_all_surfaces(self) -> typing.Dict[int, openmc.Surface]:
+    def get_all_surfaces(self) -> dict[int, openmc.Surface]:
         """
         Return all surfaces used in the geometry
 
@@ -502,7 +515,7 @@ class Geometry:
 
     def get_materials_by_name(
         self, name, case_sensitive=False, matching=False
-    ) -> typing.List[openmc.Material]:
+    ) -> list[openmc.Material]:
         """Return a list of materials with matching names.
 
         Parameters
@@ -525,7 +538,7 @@ class Geometry:
 
     def get_cells_by_name(
         self, name, case_sensitive=False, matching=False
-    ) -> typing.List[openmc.Cell]:
+    ) -> list[openmc.Cell]:
         """Return a list of cells with matching names.
 
         Parameters
@@ -548,7 +561,7 @@ class Geometry:
 
     def get_surfaces_by_name(
         self, name, case_sensitive=False, matching=False
-    ) -> typing.List[openmc.Surface]:
+    ) -> list[openmc.Surface]:
         """Return a list of surfaces with matching names.
 
         .. versionadded:: 0.13.3
@@ -573,7 +586,7 @@ class Geometry:
 
     def get_cells_by_fill_name(
         self, name, case_sensitive=False, matching=False
-    ) -> typing.List[openmc.Cell]:
+    ) -> list[openmc.Cell]:
         """Return a list of cells with fills with matching names.
 
         Parameters
@@ -620,7 +633,7 @@ class Geometry:
 
     def get_universes_by_name(
         self, name, case_sensitive=False, matching=False
-    ) -> typing.List[openmc.Universe]:
+    ) -> list[openmc.Universe]:
         """Return a list of universes with matching names.
 
         Parameters
@@ -643,7 +656,7 @@ class Geometry:
 
     def get_lattices_by_name(
         self, name, case_sensitive=False, matching=False
-    ) -> typing.List[openmc.Lattice]:
+    ) -> list[openmc.Lattice]:
         """Return a list of lattices with matching names.
 
         Parameters
@@ -664,7 +677,7 @@ class Geometry:
         """
         return self._get_domains_by_name(name, case_sensitive, matching, 'lattice')
 
-    def remove_redundant_surfaces(self) -> typing.Dict[int, openmc.Surface]:
+    def remove_redundant_surfaces(self) -> dict[int, openmc.Surface]:
         """Remove and return all of the redundant surfaces.
 
         Uses surface_precision attribute of Geometry instance for rounding and
@@ -686,7 +699,7 @@ class Geometry:
             coeffs = tuple(round(surf._coefficients[k],
                                  self.surface_precision)
                            for k in surf._coeff_keys)
-            key = (surf._type,) + coeffs
+            key = (surf._type, surf._boundary_type) + coeffs
             redundancies[key].append(surf)
 
         redundant_surfaces = {replace.id: keep
@@ -735,61 +748,10 @@ class Geometry:
         clone.root_universe = self.root_universe.clone()
         return clone
 
+    @add_plot_params
     def plot(self, *args, **kwargs):
         """Display a slice plot of the geometry.
 
         .. versionadded:: 0.14.0
-
-        Parameters
-        ----------
-        origin : iterable of float
-            Coordinates at the origin of the plot. If left as None then the
-            bounding box center will be used to attempt to ascertain the origin.
-            Defaults to (0, 0, 0) if the bounding box is not finite
-        width : iterable of float
-            Width of the plot in each basis direction. If left as none then the
-            bounding box width will be used to attempt to ascertain the plot
-            width. Defaults to (10, 10) if the bounding box is not finite
-        pixels : Iterable of int or int
-            If iterable of ints provided, then this directly sets the number of
-            pixels to use in each basis direction. If int provided, then this
-            sets the total number of pixels in the plot and the number of pixels
-            in each basis direction is calculated from this total and the image
-            aspect ratio.
-        basis : {'xy', 'xz', 'yz'}
-            The basis directions for the plot
-        color_by : {'cell', 'material'}
-            Indicate whether the plot should be colored by cell or by material
-        colors : dict
-            Assigns colors to specific materials or cells. Keys are instances of
-            :class:`Cell` or :class:`Material` and values are RGB 3-tuples, RGBA
-            4-tuples, or strings indicating SVG color names. Red, green, blue,
-            and alpha should all be floats in the range [0.0, 1.0], for
-            example::
-
-               # Make water blue
-               water = openmc.Cell(fill=h2o)
-               universe.plot(..., colors={water: (0., 0., 1.))
-        seed : int
-            Seed for the random number generator
-        openmc_exec : str
-            Path to OpenMC executable.
-        axes : matplotlib.Axes
-            Axes to draw to
-        legend : bool
-            Whether a legend showing material or cell names should be drawn
-        legend_kwargs : dict
-            Keyword arguments passed to :func:`matplotlib.pyplot.legend`.
-        outline : bool
-            Whether outlines between color boundaries should be drawn
-        axis_units : {'km', 'm', 'cm', 'mm'}
-            Units used on the plot axis
-        **kwargs
-            Keyword arguments passed to :func:`matplotlib.pyplot.imshow`
-        Returns
-        -------
-        matplotlib.axes.Axes
-            Axes containing resulting image
         """
-
         return self.root_universe.plot(*args, **kwargs)

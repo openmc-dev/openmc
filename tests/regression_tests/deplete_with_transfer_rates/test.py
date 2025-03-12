@@ -11,11 +11,12 @@ import openmc.deplete
 from openmc.deplete import CoupledOperator
 
 from tests.regression_tests import config, assert_reaction_rates_equal, \
-    assert_atoms_equal
+    assert_atoms_equal, assert_same_mats
 
 
 @pytest.fixture
 def model():
+    openmc.reset_auto_ids()
     f = openmc.Material(name="f")
     f.add_element("U", 1, percent_type="ao", enrichment=4.25)
     f.add_element("O", 2)
@@ -46,7 +47,6 @@ def model():
 
     return openmc.Model(geometry, materials, settings)
 
-@pytest.mark.skipif(sys.version_info < (3, 9), reason="Requires Python 3.9+")
 @pytest.mark.parametrize("rate, dest_mat, power, ref_result", [
     (1e-5, None, 0.0, 'no_depletion_only_removal'),
     (-1e-5, None, 0.0, 'no_depletion_only_feed'),
@@ -75,6 +75,7 @@ def test_transfer_rates(run_in_tmpdir, model, rate, dest_mat, power, ref_result)
                                     destination_material=dest_mat)
     if 'redox' in ref_result.split('_'):
         integrator.add_redox('f', {'Gd157':1}, ox)
+
     integrator.integrate()
 
     # Get path to test and reference results
@@ -89,6 +90,6 @@ def test_transfer_rates(run_in_tmpdir, model, rate, dest_mat, power, ref_result)
     # Load the reference/test results
     res_ref = openmc.deplete.Results(path_reference)
     res_test = openmc.deplete.Results(path_test)
-
+    
     assert_atoms_equal(res_ref, res_test, 1e-6)
     assert_reaction_rates_equal(res_ref, res_test)

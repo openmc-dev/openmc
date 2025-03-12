@@ -20,3 +20,5 @@ Theory and Methodology
     energy_deposition
     parallelization
     cmfd
+    variance_reduction
+    random_ray

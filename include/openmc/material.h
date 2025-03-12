@@ -4,9 +4,9 @@
 #include <string>
 #include <unordered_map>
 
+#include "openmc/span.h"
 #include "pugixml.hpp"
 #include "xtensor/xtensor.hpp"
-#include <gsl/gsl-lite.hpp>
 #include <hdf5.h>
 
 #include "openmc/bremsstrahlung.h"
@@ -94,7 +94,7 @@ public:
   //  which will get auto-assigned to the next available ID. After creating
   //  the new material, it is added to openmc::model::materials.
   //! \return reference to the cloned material
-  Material & clone();
+  Material& clone();
 
   //----------------------------------------------------------------------------
   // Accessors
@@ -118,21 +118,21 @@ public:
   //
   //! \param[in] density Density value
   //! \param[in] units Units of density
-  void set_density(double density, gsl::cstring_span units);
+  void set_density(double density, const std::string& units);
 
   //! Set temperature of the material
   void set_temperature(double temperature) { temperature_ = temperature; };
 
   //! Get nuclides in material
   //! \return Indices into the global nuclides vector
-  gsl::span<const int> nuclides() const
+  span<const int> nuclides() const
   {
     return {nuclide_.data(), nuclide_.size()};
   }
 
   //! Get densities of each nuclide in material
   //! \return Densities in [atom/b-cm]
-  gsl::span<const double> densities() const
+  span<const double> densities() const
   {
     return {atom_density_.data(), atom_density_.size()};
   }
@@ -149,6 +149,7 @@ public:
   //! Get whether material is fissionable
   //! \return Whether material is fissionable
   bool fissionable() const { return fissionable_; }
+  bool& fissionable() { return fissionable_; }
 
   //! Get volume of material
   //! \return Volume in [cm^3]
@@ -157,6 +158,10 @@ public:
   //! Get temperature of material
   //! \return Temperature in [K]
   double temperature() const;
+
+  //! Whether or not the material is depletable
+  bool depletable() const { return depletable_; }
+  bool& depletable() { return depletable_; }
 
   //! Get pointer to NCrystal material object
   //! \return Pointer to NCrystal material object
@@ -173,11 +178,8 @@ public:
   double density_;                      //!< Total atom density in [atom/b-cm]
   double density_gpcc_;                 //!< Total atom density in [g/cm^3]
   double volume_ {-1.0};                //!< Volume in [cm^3]
-  bool fissionable_ {
-    false};                 //!< Does this material contain fissionable nuclides
-  bool depletable_ {false}; //!< Is the material depletable?
-  vector<bool> p0_;         //!< Indicate which nuclides are to be treated with
-                            //!< iso-in-lab scattering
+  vector<bool> p0_; //!< Indicate which nuclides are to be treated with
+                    //!< iso-in-lab scattering
 
   // To improve performance of tallying, we store an array (direct address
   // table) that indicates for each nuclide in data::nuclides the index of the
@@ -208,8 +210,11 @@ private:
 
   //----------------------------------------------------------------------------
   // Private data members
-  gsl::index index_;
+  int64_t index_;
 
+  bool depletable_ {false}; //!< Is the material depletable?
+  bool fissionable_ {
+    false}; //!< Does this material contain fissionable nuclides
   //! \brief Default temperature for cells containing this material.
   //!
   //! A negative value indicates no default temperature was specified.

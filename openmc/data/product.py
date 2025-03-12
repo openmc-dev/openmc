@@ -124,8 +124,8 @@ class Product(EqualityMixin):
             HDF5 group to write to
 
         """
-        group.attrs['particle'] = np.string_(self.particle)
-        group.attrs['emission_mode'] = np.string_(self.emission_mode)
+        group.attrs['particle'] = np.bytes_(self.particle)
+        group.attrs['emission_mode'] = np.bytes_(self.emission_mode)
         if self.decay_rate > 0.0:
             group.attrs['decay_rate'] = self.decay_rate
 
@@ -135,7 +135,7 @@ class Product(EqualityMixin):
         # Write applicability/distribution
         group.attrs['n_distribution'] = len(self.distribution)
         for i, d in enumerate(self.distribution):
-            dgroup = group.create_group('distribution_{}'.format(i))
+            dgroup = group.create_group(f'distribution_{i}')
             if self.applicability:
                 self.applicability[i].to_hdf5(dgroup, 'applicability')
             d.to_hdf5(dgroup)
@@ -170,7 +170,7 @@ class Product(EqualityMixin):
         distribution = []
         applicability = []
         for i in range(n_distribution):
-            dgroup = group['distribution_{}'.format(i)]
+            dgroup = group[f'distribution_{i}']
             if 'applicability' in dgroup:
                 applicability.append(Tabulated1D.from_hdf5(
                     dgroup['applicability']))

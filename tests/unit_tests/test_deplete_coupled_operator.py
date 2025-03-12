@@ -38,7 +38,8 @@ def model():
 
     pin_surfaces = [openmc.ZCylinder(r=r) for r in radii]
     pin_univ = openmc.model.pin(pin_surfaces, materials)
-    bound_box = openmc.model.RectangularPrism(1.24, 1.24, boundary_type="reflective")
+    bound_box = openmc.model.RectangularPrism(
+        1.24, 1.24, boundary_type="reflective")
     root_cell = openmc.Cell(fill=pin_univ, region=-bound_box)
     geometry = openmc.Geometry([root_cell])
 
@@ -95,7 +96,7 @@ def test_diff_volume_method_match_cell(model_with_volumes):
         chain_file=CHAIN_PATH
     )
 
-    all_cells = list(operator.geometry.get_all_cells().values())
+    all_cells = list(operator.model.geometry.get_all_cells().values())
     assert all_cells[0].fill.volume == 4.19
     assert all_cells[1].fill.volume == 33.51
     # mat2 is not depletable
@@ -112,9 +113,8 @@ def test_diff_volume_method_divide_equally(model_with_volumes):
         chain_file=CHAIN_PATH
     )
 
-    all_cells = list(operator.geometry.get_all_cells().values())
-    assert all_cells[0].fill[0].volume == 51
-    assert all_cells[1].fill[0].volume == 51
+    all_cells = list(operator.model.geometry.get_all_cells().values())
+    assert all_cells[0].fill.volume == 51
+    assert all_cells[1].fill.volume == 51
     # mat2 is not depletable
     assert all_cells[2].fill.volume is None
-

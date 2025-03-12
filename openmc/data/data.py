@@ -5,7 +5,6 @@ import re
 from pathlib import Path
 from math import sqrt, log
 from warnings import warn
-from typing import Dict
 
 # Isotopic abundances from Meija J, Coplen T B, et al, "Isotopic compositions
 # of the elements 2013 (IUPAC Technical Report)", Pure. Appl. Chem. 88 (3),
@@ -179,6 +178,93 @@ ATOMIC_SYMBOL = {0: 'n', 1: 'H', 2: 'He', 3: 'Li', 4: 'Be', 5: 'B', 6: 'C',
                  118: 'Og'}
 ATOMIC_NUMBER = {value: key for key, value in ATOMIC_SYMBOL.items()}
 
+DADZ = {
+    '(n,2nd)': (-3, -1),
+    '(n,2n)': (-1, 0),
+    '(n,3n)': (-2, 0),
+    '(n,na)': (-4, -2),
+    '(n,n3a)': (-12, -6),
+    '(n,2na)': (-5, -2),
+    '(n,3na)': (-6, -2),
+    '(n,np)': (-1, -1),
+    '(n,n2a)': (-8, -4),
+    '(n,2n2a)': (-9, -4),
+    '(n,nd)': (-2, -1),
+    '(n,nt)': (-3, -1),
+    '(n,n3He)': (-3, -2),
+    '(n,nd2a)': (-10, -5),
+    '(n,nt2a)': (-11, -5),
+    '(n,4n)': (-3, 0),
+    '(n,2np)': (-2, -1),
+    '(n,3np)': (-3, -1),
+    '(n,n2p)': (-2, -2),
+    '(n,npa)': (-5, -3),
+    '(n,gamma)': (1, 0),
+    '(n,p)': (0, -1),
+    '(n,d)': (-1, -1),
+    '(n,t)': (-2, -1),
+    '(n,3He)': (-2, -2),
+    '(n,a)': (-3, -2),
+    '(n,2a)': (-7, -4),
+    '(n,3a)': (-11, -6),
+    '(n,2p)': (-1, -2),
+    '(n,pa)': (-4, -3),
+    '(n,t2a)': (-10, -5),
+    '(n,d2a)': (-9, -5),
+    '(n,pd)': (-2, -2),
+    '(n,pt)': (-3, -2),
+    '(n,da)': (-5, -3),
+    '(n,5n)': (-4, 0),
+    '(n,6n)': (-5, 0),
+    '(n,2nt)': (-4, -1),
+    '(n,ta)': (-6, -3),
+    '(n,4np)': (-4, -1),
+    '(n,3nd)': (-4, -1),
+    '(n,nda)': (-6, -3),
+    '(n,2npa)': (-6, -3),
+    '(n,7n)': (-6, 0),
+    '(n,8n)': (-7, 0),
+    '(n,5np)': (-5, -1),
+    '(n,6np)': (-6, -1),
+    '(n,7np)': (-7, -1),
+    '(n,4na)': (-7, -2),
+    '(n,5na)': (-8, -2),
+    '(n,6na)': (-9, -2),
+    '(n,7na)': (-10, -2),
+    '(n,4nd)': (-5, -1),
+    '(n,5nd)': (-6, -1),
+    '(n,6nd)': (-7, -1),
+    '(n,3nt)': (-5, -1),
+    '(n,4nt)': (-6, -1),
+    '(n,5nt)': (-7, -1),
+    '(n,6nt)': (-8, -1),
+    '(n,2n3He)': (-4, -2),
+    '(n,3n3He)': (-5, -2),
+    '(n,4n3He)': (-6, -2),
+    '(n,3n2p)': (-4, -2),
+    '(n,3n2a)': (-10, -4),
+    '(n,3npa)': (-7, -3),
+    '(n,dt)': (-4, -2),
+    '(n,npd)': (-3, -2),
+    '(n,npt)': (-4, -2),
+    '(n,ndt)': (-5, -2),
+    '(n,np3He)': (-4, -3),
+    '(n,nd3He)': (-5, -3),
+    '(n,nt3He)': (-6, -3),
+    '(n,nta)': (-7, -3),
+    '(n,2n2p)': (-3, -2),
+    '(n,p3He)': (-4, -3),
+    '(n,d3He)': (-5, -3),
+    '(n,3Hea)': (-6, -4),
+    '(n,4n2p)': (-5, -2),
+    '(n,4n2a)': (-11, -4),
+    '(n,4npa)': (-8, -3),
+    '(n,3p)': (-2, -3),
+    '(n,n3p)': (-3, -3),
+    '(n,3n2pa)': (-8, -4),
+    '(n,5n2p)': (-6, -2),
+}
+
 # Values here are from the Committee on Data for Science and Technology
 # (CODATA) 2018 recommendation (https://physics.nist.gov/cuu/Constants/).
 
@@ -196,13 +282,13 @@ AVOGADRO = 6.02214076e23
 NEUTRON_MASS = 1.00866491595
 
 # Used in atomic_mass function as a cache
-_ATOMIC_MASS: Dict[str, float] = {}
+_ATOMIC_MASS: dict[str, float] = {}
 
 # Regex for GNDS nuclide names (used in zam function)
 _GNDS_NAME_RE = re.compile(r'([A-Zn][a-z]*)(\d+)((?:_[em]\d+)?)')
 
 # Used in half_life function as a cache
-_HALF_LIFE: Dict[str, float] = {}
+_HALF_LIFE: dict[str, float] = {}
 _LOG_TWO = log(2.0)
 
 def atomic_mass(isotope):
@@ -463,7 +549,18 @@ def gnds_name(Z, A, m=0):
     return f'{ATOMIC_SYMBOL[Z]}{A}'
 
 
-def isotopes(element):
+
+def _get_element_symbol(element: str) -> str:
+    if len(element) > 2:
+        symbol = ELEMENT_SYMBOL.get(element.lower())
+        if symbol is None:
+            raise ValueError(f'Element name "{element}" not recognized')
+        return symbol
+    else:
+        return element
+
+
+def isotopes(element: str) -> list[tuple[str, float]]:
     """Return naturally occurring isotopes and their abundances
 
     .. versionadded:: 0.12.1
@@ -484,12 +581,7 @@ def isotopes(element):
         If the element name is not recognized
 
     """
-    # Convert name to symbol if needed
-    if len(element) > 2:
-        symbol = ELEMENT_SYMBOL.get(element.lower())
-        if symbol is None:
-            raise ValueError(f'Element name "{element}" not recognised')
-        element = symbol
+    element = _get_element_symbol(element)
 
     # Get the nuclides present in nature
     result = []

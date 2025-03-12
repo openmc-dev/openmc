@@ -91,7 +91,7 @@ class NBodyPhaseSpace(AngleEnergy):
             HDF5 group to write to
 
         """
-        group.attrs['type'] = np.string_('nbody')
+        group.attrs['type'] = np.bytes_('nbody')
         group.attrs['total_mass'] = self.total_mass
         group.attrs['n_particles'] = self.n_particles
         group.attrs['atomic_weight_ratio'] = self.atomic_weight_ratio

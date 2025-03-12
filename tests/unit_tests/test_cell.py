@@ -1,10 +1,8 @@
 import lxml.etree as ET
-
 import numpy as np
 from uncertainties import ufloat
 import openmc
 import pytest
-
 
 from tests.unit_tests import assert_unbounded
 from openmc.data import atomic_mass, AVOGADRO

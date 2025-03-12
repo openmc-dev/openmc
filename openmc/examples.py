@@ -3,24 +3,25 @@ from numbers import Integral
 import numpy as np
 
 import openmc
-import openmc.model
 
 
-def pwr_pin_cell():
+
+def pwr_pin_cell() -> openmc.Model:
     """Create a PWR pin-cell model.
 
     This model is a single fuel pin with 2.4 w/o enriched UO2 corresponding to a
     beginning-of-cycle condition and borated water. The specifications are from
-    the `BEAVRS <http://crpg.mit.edu/research/beavrs>`_ benchmark. Note that the
-    number of particles/batches is initially set very low for testing purposes.
+    the `BEAVRS <https://crpg.mit.edu/research/beavrs>`_ benchmark. Note that
+    the number of particles/batches is initially set very low for testing
+    purposes.
 
     Returns
     -------
-    model : openmc.model.Model
+    model : openmc.Model
         A PWR pin-cell model
 
     """
-    model = openmc.model.Model()
+    model = openmc.Model()
 
     # Define materials.
     fuel = openmc.Material(name='UO2 (2.4%)')
@@ -76,8 +77,11 @@ def pwr_pin_cell():
     model.settings.batches = 10
     model.settings.inactive = 5
     model.settings.particles = 100
-    model.settings.source = openmc.IndependentSource(space=openmc.stats.Box(
-        [-pitch/2, -pitch/2, -1], [pitch/2, pitch/2, 1], only_fissionable=True))
+    model.settings.source = openmc.IndependentSource(
+        space=openmc.stats.Box([-pitch/2, -pitch/2, -1],
+                               [pitch/2, pitch/2, 1]),
+        constraints={'fissionable': True}
+    )
 
     plot = openmc.Plot.from_geometry(model.geometry)
     plot.pixels = (300, 300)
@@ -87,7 +91,7 @@ def pwr_pin_cell():
     return model
 
 
-def pwr_core():
+def pwr_core() -> openmc.Model:
     """Create a PWR full-core model.
 
     This model is the OECD/NEA Monte Carlo Performance benchmark which is a
@@ -97,11 +101,11 @@ def pwr_core():
 
     Returns
     -------
-    model : openmc.model.Model
+    model : openmc.Model
         Full-core PWR model
 
     """
-    model = openmc.model.Model()
+    model = openmc.Model()
 
     # Define materials.
     fuel = openmc.Material(1, name='UOX fuel')
@@ -164,7 +168,8 @@ def pwr_core():
     lower_rad_ref.add_nuclide('Cr52', 0.145407678031, 'wo')
     lower_rad_ref.add_s_alpha_beta('c_H_in_H2O')
 
-    upper_rad_ref = openmc.Material(7, name='Upper radial reflector / Top plate region')
+    upper_rad_ref = openmc.Material(
+        7, name='Upper radial reflector / Top plate region')
     upper_rad_ref.set_density('g/cm3', 4.28)
     upper_rad_ref.add_nuclide('H1', 0.0086117, 'wo')
     upper_rad_ref.add_nuclide('O16', 0.0683369, 'wo')
@@ -311,13 +316,15 @@ def pwr_core():
                        11, 11, 11, 11, 11, 13, 13, 14, 14, 14])
 
     # Define fuel lattices.
-    l100 = openmc.RectLattice(name='Fuel assembly (lower half)', lattice_id=100)
+    l100 = openmc.RectLattice(
+        name='Fuel assembly (lower half)', lattice_id=100)
     l100.lower_left = (-10.71, -10.71)
     l100.pitch = (1.26, 1.26)
     l100.universes = np.tile(fuel_cold, (17, 17))
     l100.universes[tube_x, tube_y] = tube_cold
 
-    l101 = openmc.RectLattice(name='Fuel assembly (upper half)', lattice_id=101)
+    l101 = openmc.RectLattice(
+        name='Fuel assembly (upper half)', lattice_id=101)
     l101.lower_left = (-10.71, -10.71)
     l101.pitch = (1.26, 1.26)
     l101.universes = np.tile(fuel_hot, (17, 17))
@@ -403,10 +410,14 @@ def pwr_core():
     c6 = openmc.Cell(cell_id=6, fill=top_fa, region=-s5 & +s36 & -s37)
     c7 = openmc.Cell(cell_id=7, fill=top_nozzle, region=-s5 & +s37 & -s38)
     c8 = openmc.Cell(cell_id=8, fill=upper_rad_ref, region=-s7 & +s38 & -s39)
-    c9 = openmc.Cell(cell_id=9, fill=bot_nozzle, region=+s6 & -s7 & +s32 & -s38)
-    c10 = openmc.Cell(cell_id=10, fill=rpv_steel, region=+s7 & -s8 & +s31 & -s39)
-    c11 = openmc.Cell(cell_id=11, fill=lower_rad_ref, region=+s5 & -s6 & +s32 & -s34)
-    c12 = openmc.Cell(cell_id=12, fill=upper_rad_ref, region=+s5 & -s6 & +s36 & -s38)
+    c9 = openmc.Cell(cell_id=9, fill=bot_nozzle,
+                     region=+s6 & -s7 & +s32 & -s38)
+    c10 = openmc.Cell(cell_id=10, fill=rpv_steel,
+                      region=+s7 & -s8 & +s31 & -s39)
+    c11 = openmc.Cell(cell_id=11, fill=lower_rad_ref,
+                      region=+s5 & -s6 & +s32 & -s34)
+    c12 = openmc.Cell(cell_id=12, fill=upper_rad_ref,
+                      region=+s5 & -s6 & +s36 & -s38)
     root.add_cells((c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12))
 
     # Assign root universe to geometry
@@ -428,22 +439,22 @@ def pwr_core():
     return model
 
 
-def pwr_assembly():
+def pwr_assembly() -> openmc.Model:
     """Create a PWR assembly model.
 
     This model is a reflected 17x17 fuel assembly from the the `BEAVRS
-    <http://crpg.mit.edu/research/beavrs>`_ benchmark. The fuel is 2.4 w/o
+    <https://crpg.mit.edu/research/beavrs>`_ benchmark. The fuel is 2.4 w/o
     enriched UO2 corresponding to a beginning-of-cycle condition. Note that the
     number of particles/batches is initially set very low for testing purposes.
 
     Returns
     -------
-    model : openmc.model.Model
+    model : openmc.Model
         A PWR assembly model
 
     """
 
-    model = openmc.model.Model()
+    model = openmc.Model()
 
     # Define materials.
     fuel = openmc.Material(name='Fuel')
@@ -487,9 +498,9 @@ def pwr_assembly():
     fuel_pin_universe = openmc.Universe(name='Fuel Pin')
     fuel_cell = openmc.Cell(name='fuel', fill=fuel, region=-fuel_or)
     clad_cell = openmc.Cell(name='clad', fill=clad, region=+fuel_or & -clad_or)
-    hot_water_cell = openmc.Cell(name='hot water', fill=hot_water, region=+clad_or)
+    hot_water_cell = openmc.Cell(
+        name='hot water', fill=hot_water, region=+clad_or)
     fuel_pin_universe.add_cells([fuel_cell, clad_cell, hot_water_cell])
-
 
     # Create a control rod guide tube universe
     guide_tube_universe = openmc.Universe(name='Guide Tube')
@@ -527,8 +538,11 @@ def pwr_assembly():
     model.settings.batches = 10
     model.settings.inactive = 5
     model.settings.particles = 100
-    model.settings.source = openmc.IndependentSource(space=openmc.stats.Box(
-        [-pitch/2, -pitch/2, -1], [pitch/2, pitch/2, 1], only_fissionable=True))
+    model.settings.source = openmc.IndependentSource(
+        space=openmc.stats.Box([-pitch/2, -pitch/2, -1],
+                               [pitch/2, pitch/2, 1]),
+        constraints={'fissionable': True}
+    )
 
     plot = openmc.Plot()
     plot.origin = (0.0, 0.0, 0)
@@ -540,7 +554,7 @@ def pwr_assembly():
     return model
 
 
-def slab_mg(num_regions=1, mat_names=None, mgxslib_name='2g.h5'):
+def slab_mg(num_regions=1, mat_names=None, mgxslib_name='2g.h5') -> openmc.Model:
     """Create a 1D slab model.
 
     Parameters
@@ -557,7 +571,7 @@ def slab_mg(num_regions=1, mat_names=None, mgxslib_name='2g.h5'):
 
     Returns
     -------
-    model : openmc.model.Model
+    model : openmc.Model
         One-group, 1D slab model
 
     """
@@ -633,10 +647,482 @@ def slab_mg(num_regions=1, mat_names=None, mgxslib_name='2g.h5'):
 
     settings_file.output = {'summary': False}
 
-    model = openmc.model.Model()
+    model = openmc.Model()
     model.geometry = geometry_file
     model.materials = materials_file
     model.settings = settings_file
     model.xs_data = macros
+
+    return model
+
+
+def random_ray_lattice() -> openmc.Model:
+    """Create a 2x2 PWR pincell asymmetrical lattic eexample.
+
+    This model is a 2x2 reflective lattice of fuel pins with one of the lattice
+    locations having just moderator instead of a fuel pin. It uses 7 group
+    cross section data.
+
+    Returns
+    -------
+    model : openmc.Model
+        A PWR 2x2 lattice model
+
+    """
+    model = openmc.Model()
+
+    ###########################################################################
+    # Create MGXS data for the problem
+
+    # Instantiate the energy group data
+    group_edges = [1e-5, 0.0635, 10.0, 1.0e2, 1.0e3, 0.5e6, 1.0e6, 20.0e6]
+    groups = openmc.mgxs.EnergyGroups(group_edges)
+
+    # Instantiate the 7-group (C5G7) cross section data
+    uo2_xsdata = openmc.XSdata('UO2', groups)
+    uo2_xsdata.order = 0
+    uo2_xsdata.set_total(
+        [0.1779492, 0.3298048, 0.4803882, 0.5543674, 0.3118013, 0.3951678,
+         0.5644058])
+    uo2_xsdata.set_absorption([8.0248e-03, 3.7174e-03, 2.6769e-02, 9.6236e-02,
+                               3.0020e-02, 1.1126e-01, 2.8278e-01])
+    scatter_matrix = np.array(
+        [[[0.1275370, 0.0423780, 0.0000094, 0.0000000, 0.0000000, 0.0000000, 0.0000000],
+          [0.0000000, 0.3244560, 0.0016314, 0.0000000,
+              0.0000000, 0.0000000, 0.0000000],
+          [0.0000000, 0.0000000, 0.4509400, 0.0026792,
+              0.0000000, 0.0000000, 0.0000000],
+          [0.0000000, 0.0000000, 0.0000000, 0.4525650,
+              0.0055664, 0.0000000, 0.0000000],
+          [0.0000000, 0.0000000, 0.0000000, 0.0001253,
+              0.2714010, 0.0102550, 0.0000000],
+          [0.0000000, 0.0000000, 0.0000000, 0.0000000,
+              0.0012968, 0.2658020, 0.0168090],
+          [0.0000000, 0.0000000, 0.0000000, 0.0000000, 0.0000000, 0.0085458, 0.2730800]]])
+    scatter_matrix = np.rollaxis(scatter_matrix, 0, 3)
+    uo2_xsdata.set_scatter_matrix(scatter_matrix)
+    uo2_xsdata.set_fission([7.21206e-03, 8.19301e-04, 6.45320e-03,
+                            1.85648e-02, 1.78084e-02, 8.30348e-02,
+                            2.16004e-01])
+    uo2_xsdata.set_nu_fission([2.005998e-02, 2.027303e-03, 1.570599e-02,
+                               4.518301e-02, 4.334208e-02, 2.020901e-01,
+                               5.257105e-01])
+    uo2_xsdata.set_chi([5.8791e-01, 4.1176e-01, 3.3906e-04, 1.1761e-07, 0.0000e+00,
+                        0.0000e+00, 0.0000e+00])
+
+    h2o_xsdata = openmc.XSdata('LWTR', groups)
+    h2o_xsdata.order = 0
+    h2o_xsdata.set_total([0.15920605, 0.412969593, 0.59030986, 0.58435,
+                          0.718, 1.2544497, 2.650379])
+    h2o_xsdata.set_absorption([6.0105e-04, 1.5793e-05, 3.3716e-04,
+                               1.9406e-03, 5.7416e-03, 1.5001e-02,
+                               3.7239e-02])
+    scatter_matrix = np.array(
+        [[[0.0444777, 0.1134000, 0.0007235, 0.0000037, 0.0000001, 0.0000000, 0.0000000],
+          [0.0000000, 0.2823340, 0.1299400, 0.0006234,
+              0.0000480, 0.0000074, 0.0000010],
+          [0.0000000, 0.0000000, 0.3452560, 0.2245700,
+              0.0169990, 0.0026443, 0.0005034],
+          [0.0000000, 0.0000000, 0.0000000, 0.0910284,
+              0.4155100, 0.0637320, 0.0121390],
+          [0.0000000, 0.0000000, 0.0000000, 0.0000714,
+              0.1391380, 0.5118200, 0.0612290],
+          [0.0000000, 0.0000000, 0.0000000, 0.0000000,
+              0.0022157, 0.6999130, 0.5373200],
+          [0.0000000, 0.0000000, 0.0000000, 0.0000000, 0.0000000, 0.1324400, 2.4807000]]])
+    scatter_matrix = np.rollaxis(scatter_matrix, 0, 3)
+    h2o_xsdata.set_scatter_matrix(scatter_matrix)
+
+    mg_cross_sections = openmc.MGXSLibrary(groups)
+    mg_cross_sections.add_xsdatas([uo2_xsdata, h2o_xsdata])
+    mg_cross_sections.export_to_hdf5('mgxs.h5')
+
+    ###########################################################################
+    # Create materials for the problem
+
+    # Instantiate some Materials and register the appropriate macroscopic data
+    uo2 = openmc.Material(name='UO2 fuel')
+    uo2.set_density('macro', 1.0)
+    uo2.add_macroscopic('UO2')
+
+    water = openmc.Material(name='Water')
+    water.set_density('macro', 1.0)
+    water.add_macroscopic('LWTR')
+
+    # Instantiate a Materials collection and export to XML
+    materials = openmc.Materials([uo2, water])
+    materials.cross_sections = "mgxs.h5"
+
+    ###########################################################################
+    # Define problem geometry
+
+    ########################################
+    # Define an unbounded pincell universe
+
+    pitch = 1.26
+
+    # Create a surface for the fuel outer radius
+    fuel_or = openmc.ZCylinder(r=0.54, name='Fuel OR')
+    inner_ring_a = openmc.ZCylinder(r=0.33, name='inner ring a')
+    inner_ring_b = openmc.ZCylinder(r=0.45, name='inner ring b')
+    outer_ring_a = openmc.ZCylinder(r=0.60, name='outer ring a')
+    outer_ring_b = openmc.ZCylinder(r=0.69, name='outer ring b')
+
+    # Instantiate Cells
+    fuel_a = openmc.Cell(fill=uo2, region=-inner_ring_a, name='fuel inner a')
+    fuel_b = openmc.Cell(fill=uo2, region=+inner_ring_a & -
+                         inner_ring_b, name='fuel inner b')
+    fuel_c = openmc.Cell(fill=uo2, region=+inner_ring_b & -
+                         fuel_or, name='fuel inner c')
+    moderator_a = openmc.Cell(
+        fill=water, region=+fuel_or & -outer_ring_a, name='moderator inner a')
+    moderator_b = openmc.Cell(
+        fill=water, region=+outer_ring_a & -outer_ring_b, name='moderator outer b')
+    moderator_c = openmc.Cell(
+        fill=water, region=+outer_ring_b, name='moderator outer c')
+
+    # Create pincell universe
+    pincell_base = openmc.Universe()
+
+    # Register Cells with Universe
+    pincell_base.add_cells(
+        [fuel_a, fuel_b, fuel_c, moderator_a, moderator_b, moderator_c])
+
+    # Create planes for azimuthal sectors
+    azimuthal_planes = []
+    for i in range(8):
+        angle = 2 * i * openmc.pi / 8
+        normal_vector = (-openmc.sin(angle), openmc.cos(angle), 0)
+        azimuthal_planes.append(openmc.Plane(
+            a=normal_vector[0], b=normal_vector[1], c=normal_vector[2], d=0))
+
+    # Create a cell for each azimuthal sector
+    azimuthal_cells = []
+    for i in range(8):
+        azimuthal_cell = openmc.Cell(name=f'azimuthal_cell_{i}')
+        azimuthal_cell.fill = pincell_base
+        azimuthal_cell.region = +azimuthal_planes[i] & -azimuthal_planes[(i+1) % 8]
+        azimuthal_cells.append(azimuthal_cell)
+
+    # Create a geometry with the azimuthal universes
+    pincell = openmc.Universe(cells=azimuthal_cells, name='pincell')
+
+    ########################################
+    # Define a moderator lattice universe
+
+    moderator_infinite = openmc.Cell(fill=water, name='moderator infinite')
+    mu = openmc.Universe()
+    mu.add_cells([moderator_infinite])
+
+    lattice = openmc.RectLattice()
+    lattice.lower_left = [-pitch/2.0, -pitch/2.0]
+    lattice.pitch = [pitch/10.0, pitch/10.0]
+    lattice.universes = np.full((10, 10), mu)
+
+    mod_lattice_cell = openmc.Cell(fill=lattice)
+
+    mod_lattice_uni = openmc.Universe()
+
+    mod_lattice_uni.add_cells([mod_lattice_cell])
+
+    ########################################
+    # Define 2x2 outer lattice
+    lattice2x2 = openmc.RectLattice()
+    lattice2x2.lower_left = (-pitch, -pitch)
+    lattice2x2.pitch = (pitch, pitch)
+    lattice2x2.universes = [
+        [pincell, pincell],
+        [pincell, mod_lattice_uni]
+    ]
+
+    ########################################
+    # Define cell containing lattice and other stuff
+    box = openmc.model.RectangularPrism(
+        pitch*2, pitch*2, boundary_type='reflective')
+
+    assembly = openmc.Cell(fill=lattice2x2, region=-box, name='assembly')
+
+    # Create a geometry with the top-level cell
+    geometry = openmc.Geometry([assembly])
+
+    ###########################################################################
+    # Define problem settings
+
+    # Instantiate a Settings object, set all runtime parameters, and export to XML
+    settings = openmc.Settings()
+    settings.energy_mode = "multi-group"
+    settings.batches = 10
+    settings.inactive = 5
+    settings.particles = 100
+
+    # Create an initial uniform spatial source distribution over fissionable zones
+    lower_left = (-pitch, -pitch, -1)
+    upper_right = (pitch, pitch, 1)
+    uniform_dist = openmc.stats.Box(lower_left, upper_right)
+    rr_source = openmc.IndependentSource(space=uniform_dist)
+
+    settings.random_ray['distance_active'] = 100.0
+    settings.random_ray['distance_inactive'] = 20.0
+    settings.random_ray['ray_source'] = rr_source
+    settings.random_ray['volume_normalized_flux_tallies'] = True
+
+    ###########################################################################
+    # Define tallies
+
+    # Create a mesh that will be used for tallying
+    mesh = openmc.RegularMesh()
+    mesh.dimension = (2, 2)
+    mesh.lower_left = (-pitch, -pitch)
+    mesh.upper_right = (pitch, pitch)
+
+    # Create a mesh filter that can be used in a tally
+    mesh_filter = openmc.MeshFilter(mesh)
+
+    # Create an energy group filter as well
+    group_edges = [1e-5, 0.0635, 10.0, 1.0e2, 1.0e3, 0.5e6, 1.0e6, 20.0e6]
+    energy_filter = openmc.EnergyFilter(group_edges)
+
+    # Now use the mesh filter in a tally and indicate what scores are desired
+    tally = openmc.Tally(name="Mesh tally")
+    tally.filters = [mesh_filter, energy_filter]
+    tally.scores = ['flux', 'fission', 'nu-fission']
+    tally.estimator = 'analog'
+
+    # Instantiate a Tallies collection and export to XML
+    tallies = openmc.Tallies([tally])
+
+    ###########################################################################
+    #                   Exporting to OpenMC model
+    ###########################################################################
+
+    model.geometry = geometry
+    model.materials = materials
+    model.settings = settings
+    model.tallies = tallies
+    return model
+
+
+def random_ray_three_region_cube() -> openmc.Model:
+    """Create a three region cube model.
+
+    This is a simple monoenergetic problem of a cube with three concentric cubic
+    regions. The innermost region is near void (with Sigma_t around 10^-5) and
+    contains an external isotropic source term, the middle region is void (with
+    Sigma_t around 10^-4), and the outer region of the cube is an absorber
+    (with Sigma_t around 1).
+
+    Returns
+    -------
+    model : openmc.Model
+        A three region cube model
+
+    """
+
+    model = openmc.Model()
+
+    ###########################################################################
+    # Helper function creates a 3 region cube with different fills in each region
+    def fill_cube(N, n_1, n_2, fill_1, fill_2, fill_3):
+        cube = [[[0 for _ in range(N)] for _ in range(N)] for _ in range(N)]
+        for i in range(N):
+            for j in range(N):
+                for k in range(N):
+                    if i < n_1 and j >= (N-n_1) and k < n_1:
+                        cube[i][j][k] = fill_1
+                    elif i < n_2 and j >= (N-n_2) and k < n_2:
+                        cube[i][j][k] = fill_2
+                    else:
+                        cube[i][j][k] = fill_3
+        return cube
+
+    ###########################################################################
+    # Create multigroup data
+
+    # Instantiate the energy group data
+    ebins = [1e-5, 20.0e6]
+    groups = openmc.mgxs.EnergyGroups(group_edges=ebins)
+
+    void_sigma_a = 4.0e-6
+    void_sigma_s = 3.0e-4
+    void_mat_data = openmc.XSdata('void', groups)
+    void_mat_data.order = 0
+    void_mat_data.set_total([void_sigma_a + void_sigma_s])
+    void_mat_data.set_absorption([void_sigma_a])
+    void_mat_data.set_scatter_matrix(
+        np.rollaxis(np.array([[[void_sigma_s]]]), 0, 3))
+
+    absorber_sigma_a = 0.75
+    absorber_sigma_s = 0.25
+    absorber_mat_data = openmc.XSdata('absorber', groups)
+    absorber_mat_data.order = 0
+    absorber_mat_data.set_total([absorber_sigma_a + absorber_sigma_s])
+    absorber_mat_data.set_absorption([absorber_sigma_a])
+    absorber_mat_data.set_scatter_matrix(
+        np.rollaxis(np.array([[[absorber_sigma_s]]]), 0, 3))
+
+    multiplier = 0.1
+    source_sigma_a = void_sigma_a * multiplier
+    source_sigma_s = void_sigma_s * multiplier
+    source_mat_data = openmc.XSdata('source', groups)
+    source_mat_data.order = 0
+    source_mat_data.set_total([source_sigma_a + source_sigma_s])
+    source_mat_data.set_absorption([source_sigma_a])
+    source_mat_data.set_scatter_matrix(
+        np.rollaxis(np.array([[[source_sigma_s]]]), 0, 3))
+
+    mg_cross_sections_file = openmc.MGXSLibrary(groups)
+    mg_cross_sections_file.add_xsdatas(
+        [source_mat_data, void_mat_data, absorber_mat_data])
+    mg_cross_sections_file.export_to_hdf5()
+
+    ###########################################################################
+    # Create materials for the problem
+
+    # Instantiate some Macroscopic Data
+    source_data = openmc.Macroscopic('source')
+    void_data = openmc.Macroscopic('void')
+    absorber_data = openmc.Macroscopic('absorber')
+
+    # Instantiate some Materials and register the appropriate Macroscopic objects
+    source_mat = openmc.Material(name='source')
+    source_mat.set_density('macro', 1.0)
+    source_mat.add_macroscopic(source_data)
+
+    void_mat = openmc.Material(name='void')
+    void_mat.set_density('macro', 1.0)
+    void_mat.add_macroscopic(void_data)
+
+    absorber_mat = openmc.Material(name='absorber')
+    absorber_mat.set_density('macro', 1.0)
+    absorber_mat.add_macroscopic(absorber_data)
+
+    # Instantiate a Materials collection and export to XML
+    materials_file = openmc.Materials([source_mat, void_mat, absorber_mat])
+    materials_file.cross_sections = "mgxs.h5"
+
+    ###########################################################################
+    # Define problem geometry
+
+    source_cell = openmc.Cell(fill=source_mat, name='infinite source region')
+    void_cell = openmc.Cell(fill=void_mat, name='infinite void region')
+    absorber_cell = openmc.Cell(
+        fill=absorber_mat, name='infinite absorber region')
+
+    source_universe = openmc.Universe(name='source universe')
+    source_universe.add_cells([source_cell])
+
+    void_universe = openmc.Universe()
+    void_universe.add_cells([void_cell])
+
+    absorber_universe = openmc.Universe()
+    absorber_universe.add_cells([absorber_cell])
+
+    absorber_width = 30.0
+    n_base = 6
+
+    # This variable can be increased above 1 to refine the FSR mesh resolution further
+    refinement_level = 2
+
+    n = n_base * refinement_level
+    pitch = absorber_width / n
+
+    pattern = fill_cube(n, 1*refinement_level, 5*refinement_level,
+                        source_universe, void_universe, absorber_universe)
+
+    lattice = openmc.RectLattice()
+    lattice.lower_left = [0.0, 0.0, 0.0]
+    lattice.pitch = [pitch, pitch, pitch]
+    lattice.universes = pattern
+
+    lattice_cell = openmc.Cell(fill=lattice)
+
+    lattice_uni = openmc.Universe()
+    lattice_uni.add_cells([lattice_cell])
+
+    x_low = openmc.XPlane(x0=0.0, boundary_type='reflective')
+    x_high = openmc.XPlane(x0=absorber_width, boundary_type='vacuum')
+
+    y_low = openmc.YPlane(y0=0.0, boundary_type='reflective')
+    y_high = openmc.YPlane(y0=absorber_width, boundary_type='vacuum')
+
+    z_low = openmc.ZPlane(z0=0.0, boundary_type='reflective')
+    z_high = openmc.ZPlane(z0=absorber_width, boundary_type='vacuum')
+
+    full_domain = openmc.Cell(fill=lattice_uni, region=+x_low & -
+                              x_high & +y_low & -y_high & +z_low & -z_high, name='full domain')
+
+    root = openmc.Universe(name='root universe')
+    root.add_cell(full_domain)
+
+    # Create a geometry with the two cells and export to XML
+    geometry = openmc.Geometry(root)
+
+    ###########################################################################
+    # Define problem settings
+
+    # Instantiate a Settings object, set all runtime parameters, and export to XML
+    settings = openmc.Settings()
+    settings.energy_mode = "multi-group"
+    settings.inactive = 5
+    settings.batches = 10
+    settings.particles = 90
+    settings.run_mode = 'fixed source'
+
+    # Create an initial uniform spatial source for ray integration
+    lower_left_ray = [0.0, 0.0, 0.0]
+    upper_right_ray = [absorber_width, absorber_width, absorber_width]
+    uniform_dist_ray = openmc.stats.Box(
+        lower_left_ray, upper_right_ray, only_fissionable=False)
+    rr_source = openmc.IndependentSource(space=uniform_dist_ray)
+
+    settings.random_ray['distance_active'] = 500.0
+    settings.random_ray['distance_inactive'] = 100.0
+    settings.random_ray['ray_source'] = rr_source
+    settings.random_ray['volume_normalized_flux_tallies'] = True
+
+    # Create the neutron source in the bottom right of the moderator
+    # Good - fast group appears largest (besides most thermal)
+    strengths = [1.0]
+    midpoints = [100.0]
+    energy_distribution = openmc.stats.Discrete(x=midpoints, p=strengths)
+
+    source = openmc.IndependentSource(energy=energy_distribution, constraints={
+                                      'domains': [source_universe]}, strength=3.14)
+
+    settings.source = [source]
+
+    ###########################################################################
+    # Define tallies
+
+    estimator = 'tracklength'
+
+    absorber_filter = openmc.MaterialFilter(absorber_mat)
+    absorber_tally = openmc.Tally(name="Absorber Tally")
+    absorber_tally.filters = [absorber_filter]
+    absorber_tally.scores = ['flux']
+    absorber_tally.estimator = estimator
+
+    void_filter = openmc.MaterialFilter(void_mat)
+    void_tally = openmc.Tally(name="Void Tally")
+    void_tally.filters = [void_filter]
+    void_tally.scores = ['flux']
+    void_tally.estimator = estimator
+
+    source_filter = openmc.MaterialFilter(source_mat)
+    source_tally = openmc.Tally(name="Source Tally")
+    source_tally.filters = [source_filter]
+    source_tally.scores = ['flux']
+    source_tally.estimator = estimator
+
+    # Instantiate a Tallies collection and export to XML
+    tallies = openmc.Tallies([source_tally, void_tally, absorber_tally])
+
+    ###########################################################################
+    # Assmble Model
+
+    model.geometry = geometry
+    model.materials = materials_file
+    model.settings = settings
+    model.tallies = tallies
 
     return model

@@ -12,9 +12,9 @@ responsible for specifying one or more of the following:
   file (commonly named ``cross_sections.xml``) contains a listing of other data
   files, in particular neutron cross sections, photon cross sections, and
   windowed multipole data. Each of those files, in turn, uses a `HDF5
-  <https://support.hdfgroup.org/HDF5/>`_ format (see :ref:`io_nuclear_data`). In
-  order to run transport simulations with continuous-energy cross sections, you
-  need to specify this file.
+  <https://www.hdfgroup.org/solutions/hdf5/>`_ format (see
+  :ref:`io_nuclear_data`). In order to run transport simulations with
+  continuous-energy cross sections, you need to specify this file.
 
 - **Depletion chain (XML)** -- A :ref:`depletion chain XML <io_depletion_chain>`
   file contains decay data, fission product yields, and information on what
@@ -69,7 +69,7 @@ If you want to persistently set the environment variables used to initialized
 the configuration, export them from your shell profile (``.profile`` or
 ``.bashrc`` in bash_).
 
-.. _bash: http://www.linuxfromscratch.org/blfs/view/6.3/postlfs/profile.html
+.. _bash: https://www.linuxfromscratch.org/blfs/view/6.3/postlfs/profile.html
 
 --------------------------------
 Continuous-Energy Cross Sections
@@ -279,6 +279,8 @@ The `official ENDF/B-VII.1 HDF5 library
 multipole library, so if you are using this library, the windowed multipole data
 will already be available to you.
 
+.. _create_mgxs:
+
 -------------------------
 Multigroup Cross Sections
 -------------------------
@@ -288,16 +290,16 @@ calculation to be performed.  Therefore, at this point in time, OpenMC is not
 distributed with any pre-existing multigroup cross section libraries. However,
 if a multigroup library file is downloaded or generated, the path to the file
 needs to be specified as described in :ref:`usersguide_data_runtime`. For an
-example of how to create a multigroup library, see the `example notebook
-<../examples/mg-mode-part-i.ipynb>`__.
+example of how to create a multigroup library, see this `MG mode notebook
+<https://nbviewer.org/github/openmc-dev/openmc-notebooks/blob/main/mg-mode-part-i.ipynb>`_.
 
-.. _NJOY: http://www.njoy21.io/
+.. _NJOY: https://www.njoy21.io/
 .. _NNDC: https://www.nndc.bnl.gov/endf
 .. _MCNP: https://mcnp.lanl.gov
-.. _Serpent: http://montecarlo.vtt.fi
+.. _Serpent: https://serpent.vtt.fi
 .. _ENDF/B: https://www.nndc.bnl.gov/endf-b7.1/acefiles.html
 .. _JEFF: https://www.oecd-nea.org/dbdata/jeff/jeff33/
-.. _TENDL: https://tendl.web.psi.ch/tendl_2017/tendl2017.html
+.. _TENDL: https://tendl.web.psi.ch/tendl_2023/tendl2023.html
 .. _Seltzer and Berger: https://doi.org/10.1016/0092-640X(86)90014-8
 .. _NIST ESTAR database: https://physics.nist.gov/PhysRefData/Star/Text/ESTAR.html
 .. _Biggs et al.: https://doi.org/10.1016/0092-640X(75)90030-3

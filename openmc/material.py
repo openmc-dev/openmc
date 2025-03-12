@@ -1844,6 +1844,7 @@ class Materials(cv.CheckedList):
         mgxs_sets = []
         if not Path(mgxs_fname).is_file():
             groups = openmc.mgxs.EnergyGroups(openmc.mgxs.GROUP_STRUCTURES['CASMO-2'])
+            print(groups)
 
             # Create an infinite medium problem based on the current material specifications
             for material in self:
@@ -1860,15 +1861,27 @@ class Materials(cv.CheckedList):
                 model.materials = [material]
 
                 # Settings
-                model.settings.batches = 10
-                model.settings.inactive = 0
+                model.settings.batches = 20
+                model.settings.inactive = 10
                 model.settings.particles = 10000
                 model.settings.run_mode = 'fixed source'
-                model.settings.source = [openmc.IndependentSource(space=openmc.stats.Point(), energy=openmc.stats.Watt(), strength=1.0)]
+
+                # Make a discrete source that is uniform over the bins of the group structure
+                n_groups = groups.num_groups
+                midpoints = []
+                strengths = []
+                for i in range(n_groups):
+                    bounds = groups.get_group_bounds(i+1)
+                    #midpoints.append((bounds[0] + bounds[1]) / 2.0)
+                    midpoints.append(bounds[1])
+                    strengths.append(1.0)
+
+                energy_distribution = openmc.stats.Discrete(x=midpoints, p=strengths)
+                model.settings.source = [openmc.IndependentSource(space=openmc.stats.Point(), energy=energy_distribution, strength=1.0)]
                 model.settings.output = {'summary': True, 'tallies': False}
 
                 # Geometry
-                box = openmc.model.RectangularPrism(1000.0, 1000.0, boundary_type='reflective')
+                box = openmc.model.RectangularPrism(100000.0, 100000.0, boundary_type='reflective')
                 infinite_cell = openmc.Cell(name=name, fill=material, region=-box)
                 infinite_universe = openmc.Universe(name=name, cells=[infinite_cell])
                 model.geometry.root_universe = infinite_universe
@@ -1920,6 +1933,11 @@ class Materials(cv.CheckedList):
                 #mgxs_file = mgxs_lib.create_mg_library(xs_type='macro', xsdata_names=names)
                 mgxs_set = mgxs_lib.get_xsdata(domain=material, xsdata_name=name)
                 mgxs_sets.append(mgxs_set)
+                sp.close()
+                #material.set_density('macro', 1.0)
+                #material._nuclides = []
+                #material._sab = []
+                #material.add_macroscopic(name)
             
             # Write the file to disk using the default filename of "mgxs.h5"
             mgxs_file = openmc.MGXSLibrary(energy_groups=groups)
@@ -1929,7 +1947,13 @@ class Materials(cv.CheckedList):
 
         
         self.cross_sections = mgxs_fname
-        
+
         for material in self:
+            material.set_density('macro', 1.0)
             material._nuclides = []
             material._sab = []
+            name = material.name
+            if name is None:
+                raise ValueError("Material name not set")
+            material.add_macroscopic(name) 
+        

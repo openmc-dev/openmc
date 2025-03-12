@@ -513,9 +513,10 @@ class StatePoint:
         """Close the statepoint HDF5 file and the corresponding
         summary HDF5 file if present.
         """
-        self._f.close()
+        if self._f is not None:
+            self._f.close()
         if self._summary is not None:
-            self._summary._f.close()
+            self._summary.close()
 
     def add_volume_information(self, volume_calc):
         """Add volume information to the geometry within the file

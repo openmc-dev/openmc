@@ -753,7 +753,7 @@ class Chain:
             gains = np.concatenate((array[:i,i], array[i+1:,i])) * np.delete(ox, i)
             # Loss: multiply the i-th term by its corresponding oxidation state value
             loss = array[i,i] * ox[i]
-            # Calculte the redox term
+            # Calculate the redox term
             redox = np.append(redox, loss + sum(gains))
 
         # Subtract redox vector to the buffer nuclides in the matrix scaling by

@@ -1,3 +1,4 @@
+from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import MutableSequence
 from copy import deepcopy
@@ -7,6 +8,7 @@ import numpy as np
 
 import openmc
 from .bounding_box import BoundingBox
+from .plots import add_plot_params
 
 
 class Region(ABC):
@@ -30,8 +32,9 @@ class Region(ABC):
     def __or__(self, other):
         return Union((self, other))
 
-    def __invert__(self):
-        return Complement(self)
+    @abstractmethod
+    def __invert__(self) -> Region:
+        pass
 
     @abstractmethod
     def __contains__(self, point):
@@ -341,47 +344,11 @@ class Region(ABC):
         return type(self)(n.rotate(rotation, pivot=pivot, order=order,
                                    inplace=inplace, memo=memo) for n in self)
 
+    @add_plot_params
     def plot(self, *args, **kwargs):
         """Display a slice plot of the region.
 
-        .. versionadded:: 0.14.1
-
-        Parameters
-        ----------
-        origin : iterable of float
-            Coordinates at the origin of the plot. If left as None then the
-            bounding box center will be used to attempt to ascertain the origin.
-            Defaults to (0, 0, 0) if the bounding box is not finite
-        width : iterable of float
-            Width of the plot in each basis direction. If left as none then the
-            bounding box width will be used to attempt to ascertain the plot
-            width. Defaults to (10, 10) if the bounding box is not finite
-        pixels : Iterable of int or int
-            If iterable of ints provided, then this directly sets the number of
-            pixels to use in each basis direction. If int provided, then this
-            sets the total number of pixels in the plot and the number of pixels
-            in each basis direction is calculated from this total and the image
-            aspect ratio.
-        basis : {'xy', 'xz', 'yz'}
-            The basis directions for the plot
-        seed : int
-            Seed for the random number generator
-        openmc_exec : str
-            Path to OpenMC executable.
-        axes : matplotlib.Axes
-            Axes to draw to
-        outline : bool
-            Whether outlines between color boundaries should be drawn
-        axis_units : {'km', 'm', 'cm', 'mm'}
-            Units used on the plot axis
-        **kwargs
-            Keyword arguments passed to :func:`matplotlib.pyplot.imshow`
-
-        Returns
-        -------
-        matplotlib.axes.Axes
-            Axes containing resulting image
-
+        .. versionadded:: 0.15.0
         """
         for key in ('color_by', 'colors', 'legend', 'legend_kwargs'):
             if key in kwargs:
@@ -441,6 +408,9 @@ class Intersection(Region, MutableSequence):
         else:
             self.append(other)
         return self
+
+    def __invert__(self) -> Union:
+        return Union(~n for n in self)
 
     # Implement mutable sequence protocol by delegating to list
     def __getitem__(self, key):
@@ -530,6 +500,9 @@ class Union(Region, MutableSequence):
             self.append(other)
         return self
 
+    def __invert__(self) -> Intersection:
+        return Intersection(~n for n in self)
+
     # Implement mutable sequence protocol by delegating to list
     def __getitem__(self, key):
         return self._nodes[key]
@@ -603,7 +576,7 @@ class Complement(Region):
 
     """
 
-    def __init__(self, node):
+    def __init__(self, node: Region):
         self.node = node
 
     def __contains__(self, point):
@@ -622,6 +595,9 @@ class Complement(Region):
         """
         return point not in self.node
 
+    def __invert__(self) -> Region:
+        return self.node
+
     def __str__(self):
         return '~' + str(self.node)
 
@@ -637,18 +613,7 @@ class Complement(Region):
 
     @property
     def bounding_box(self) -> BoundingBox:
-        # Use De Morgan's laws to distribute the complement operator so that it
-        # only applies to surface half-spaces, thus allowing us to calculate the
-        # bounding box in the usual recursive manner.
-        if isinstance(self.node, Union):
-            temp_region = Intersection(~n for n in self.node)
-        elif isinstance(self.node, Intersection):
-            temp_region = Union(~n for n in self.node)
-        elif isinstance(self.node, Complement):
-            temp_region = self.node.node
-        else:
-            temp_region = ~self.node
-        return temp_region.bounding_box
+        return (~self.node).bounding_box
 
     def get_surfaces(self, surfaces=None):
         """Recursively find and return all the surfaces referenced by the node

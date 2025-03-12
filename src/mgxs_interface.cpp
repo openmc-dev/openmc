@@ -15,6 +15,7 @@
 #include "openmc/material.h"
 #include "openmc/math_functions.h"
 #include "openmc/nuclide.h"
+#include "openmc/search.h"
 #include "openmc/settings.h"
 
 namespace openmc {
@@ -145,7 +146,7 @@ void MgxsInterface::create_macro_xs()
         num_energy_groups_, num_delayed_groups_);
     } else {
       // Preserve the ordering of materials by including a blank entry
-      macro_xs_.emplace_back();
+      macro_xs_.emplace_back(false);
     }
   }
 }
@@ -179,6 +180,15 @@ vector<vector<double>> MgxsInterface::get_mat_kTs()
     }
   }
   return kTs;
+}
+
+//==============================================================================
+
+int MgxsInterface::get_group_index(double E)
+{
+  int g =
+    lower_bound_index(rev_energy_bins_.begin(), rev_energy_bins_.end(), E);
+  return num_energy_groups_ - g - 1.;
 }
 
 //==============================================================================

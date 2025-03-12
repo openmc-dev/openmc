@@ -7,7 +7,6 @@ transport-independent transport operators.
 
 from abc import abstractmethod
 from warnings import warn
-from typing import List, Tuple, Dict
 
 import numpy as np
 
@@ -142,12 +141,11 @@ class OpenMCOperator(TransportOperator):
 
         if diff_burnable_mats:
             self._differentiate_burnable_mats()
+            self.materials = self.model.materials
 
         # Determine which nuclides have cross section data
         # This nuclides variables contains every nuclides
         # for which there is an entry in the micro_xs parameter
-        openmc.reset_auto_ids()
-
         self.nuclides_with_data = self._get_nuclides_with_data(
             self.cross_sections)
 
@@ -184,7 +182,7 @@ class OpenMCOperator(TransportOperator):
         """Assign distribmats for each burnable material"""
         pass
 
-    def _get_burnable_mats(self) -> Tuple[List[str], Dict[str, float], List[str]]:
+    def _get_burnable_mats(self) -> tuple[list[str], dict[str, float], list[str]]:
         """Determine depletable materials, volumes, and nuclides
 
         Returns
@@ -210,7 +208,7 @@ class OpenMCOperator(TransportOperator):
                 if nuclide in self.nuclides_with_data or self._decay_nucs:
                     model_nuclides.add(nuclide)
                 else:
-                    msg = (f"Nuclilde {nuclide} in material {mat.id} is not "
+                    msg = (f"Nuclide {nuclide} in material {mat.id} is not "
                            "present in the depletion chain and has no cross "
                            "section data.")
                     warn(msg)
@@ -249,20 +247,7 @@ class OpenMCOperator(TransportOperator):
 
     @abstractmethod
     def _get_nuclides_with_data(self, cross_sections):
-        """Find nuclides with cross section data
-
-        Parameters
-        ----------
-        cross_sections : str or pandas.DataFrame
-            Path to continuous energy cross section library, or object
-            containing one-group cross-sections.
-
-        Returns
-        -------
-        nuclides : set of str
-            Set of nuclide names that have cross secton data
-
-        """
+        """Find nuclides with cross section data."""
 
     def _extract_number(self, local_mats, volume, all_nuclides, prev_res=None):
         """Construct AtomNumber using geometry
@@ -395,9 +380,6 @@ class OpenMCOperator(TransportOperator):
         # Update the number densities regardless of the source rate
         self.number.set_density(vec)
         self._update_materials()
-
-        # Prevent OpenMC from complaining about re-creating tallies
-        openmc.reset_auto_ids()
 
         # Update tally nuclides data in preparation for transport solve
         nuclides = self._get_reaction_nuclides()

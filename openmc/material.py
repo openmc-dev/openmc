@@ -5,9 +5,8 @@ from copy import deepcopy
 from numbers import Real
 from pathlib import Path
 import re
-import typing  # imported separately as py3.8 requires typing.Iterable
+import sys
 import warnings
-from typing import Optional, List, Union, Dict
 
 import lxml.etree as ET
 import numpy as np
@@ -18,13 +17,18 @@ import openmc.data
 import openmc.checkvalue as cv
 from ._xml import clean_indentation, reorder_attributes
 from .mixin import IDManagerMixin
+from .utility_funcs import input_path
 from openmc.checkvalue import PathLike
 from openmc.stats import Univariate, Discrete, Mixture
+from openmc.data.data import _get_element_symbol
 
 
 # Units for density supported by OpenMC
 DENSITY_UNITS = ('g/cm3', 'g/cc', 'kg/m3', 'atom/b-cm', 'atom/cm3', 'sum',
                  'macro')
+
+# Smallest normalized floating point number
+_SMALLEST_NORMAL = sys.float_info.min
 
 
 NuclideTuple = namedtuple('NuclideTuple', ['name', 'percent', 'percent_type'])
@@ -161,11 +165,11 @@ class Material(IDManagerMixin):
         return string
 
     @property
-    def name(self) -> Optional[str]:
+    def name(self) -> str | None:
         return self._name
 
     @name.setter
-    def name(self, name: Optional[str]):
+    def name(self, name: str | None):
         if name is not None:
             cv.check_type(f'name for Material ID="{self._id}"',
                           name, str)
@@ -174,17 +178,17 @@ class Material(IDManagerMixin):
             self._name = ''
 
     @property
-    def temperature(self) -> Optional[float]:
+    def temperature(self) -> float | None:
         return self._temperature
 
     @temperature.setter
-    def temperature(self, temperature: Optional[Real]):
+    def temperature(self, temperature: Real | None):
         cv.check_type(f'Temperature for Material ID="{self._id}"',
                       temperature, (Real, type(None)))
         self._temperature = temperature
 
     @property
-    def density(self) -> Optional[float]:
+    def density(self) -> float | None:
         return self._density
 
     @property
@@ -202,7 +206,7 @@ class Material(IDManagerMixin):
         self._depletable = depletable
 
     @property
-    def paths(self) -> List[str]:
+    def paths(self) -> list[str]:
         if self._paths is None:
             raise ValueError('Material instance paths have not been determined. '
                              'Call the Geometry.determine_paths() method.')
@@ -217,15 +221,15 @@ class Material(IDManagerMixin):
         return self._num_instances
 
     @property
-    def nuclides(self) -> List[namedtuple]:
+    def nuclides(self) -> list[namedtuple]:
         return self._nuclides
 
     @property
-    def isotropic(self) -> List[str]:
+    def isotropic(self) -> list[str]:
         return self._isotropic
 
     @isotropic.setter
-    def isotropic(self, isotropic: typing.Iterable[str]):
+    def isotropic(self, isotropic: Iterable[str]):
         cv.check_iterable_type('Isotropic scattering nuclides', isotropic,
                                str)
         self._isotropic = list(isotropic)
@@ -248,7 +252,7 @@ class Material(IDManagerMixin):
         return mass / moles
 
     @property
-    def volume(self) -> Optional[float]:
+    def volume(self) -> float | None:
         return self._volume
 
     @volume.setter
@@ -258,7 +262,7 @@ class Material(IDManagerMixin):
         self._volume = volume
 
     @property
-    def ncrystal_cfg(self) -> Optional[str]:
+    def ncrystal_cfg(self) -> str | None:
         return self._ncrystal_cfg
 
     @property
@@ -274,7 +278,7 @@ class Material(IDManagerMixin):
         return density*self.volume
 
     @property
-    def decay_photon_energy(self) -> Optional[Univariate]:
+    def decay_photon_energy(self) -> Univariate | None:
         warnings.warn(
             "The 'decay_photon_energy' property has been replaced by the "
             "get_decay_photon_energy() method and will be removed in a future "
@@ -285,8 +289,8 @@ class Material(IDManagerMixin):
             self,
             clip_tolerance: float = 1e-6,
             units: str = 'Bq',
-            volume: Optional[float] = None
-        ) -> Optional[Univariate]:
+            volume: float | None = None
+        ) -> Univariate | None:
         r"""Return energy distribution of decay photons from unstable nuclides.
 
         .. versionadded:: 0.14.0
@@ -296,7 +300,7 @@ class Material(IDManagerMixin):
         clip_tolerance : float
             Maximum fraction of :math:`\sum_i x_i p_i` for discrete
             distributions that will be discarded.
-        units : {'Bq', 'Bq/g', 'Bq/cm3'}
+        units : {'Bq', 'Bq/g', 'Bq/kg', 'Bq/cm3'}
             Specifies the units on the integral of the distribution.
         volume : float, optional
             Volume of the material. If not passed, defaults to using the
@@ -304,11 +308,12 @@ class Material(IDManagerMixin):
 
         Returns
         -------
-        Decay photon energy distribution. The integral of this distribution is
-        the total intensity of the photon source in the requested units.
+        Univariate or None
+            Decay photon energy distribution. The integral of this distribution
+            is the total intensity of the photon source in the requested units.
 
         """
-        cv.check_value('units', units, {'Bq', 'Bq/g', 'Bq/cm3'})
+        cv.check_value('units', units, {'Bq', 'Bq/g', 'Bq/kg', 'Bq/cm3'})
         if units == 'Bq':
             multiplier = volume if volume is not None else self.volume
             if multiplier is None:
@@ -317,12 +322,14 @@ class Material(IDManagerMixin):
             multiplier = 1
         elif units == 'Bq/g':
             multiplier = 1.0 / self.get_mass_density()
+        elif units == 'Bq/kg':
+            multiplier = 1000.0 / self.get_mass_density()
 
         dists = []
         probs = []
         for nuc, atoms_per_bcm in self.get_nuclide_atom_densities().items():
             source_per_atom = openmc.data.decay_photon_energy(nuc)
-            if source_per_atom is not None:
+            if source_per_atom is not None and atoms_per_bcm > 0.0:
                 dists.append(source_per_atom)
                 probs.append(1e24 * atoms_per_bcm * multiplier)
 
@@ -334,6 +341,11 @@ class Material(IDManagerMixin):
         combined = openmc.data.combine_distributions(dists, probs)
         if isinstance(combined, (Discrete, Mixture)):
             combined.clip(clip_tolerance, inplace=True)
+
+        # If clipping resulted in a single distribution within a mixture, pick
+        # out that single distribution
+        if isinstance(combined, Mixture) and len(combined.distribution) == 1:
+            combined = combined.distribution[0]
 
         return combined
 
@@ -417,7 +429,11 @@ class Material(IDManagerMixin):
 
         """
 
-        import NCrystal
+        try:
+            import NCrystal
+        except ModuleNotFoundError as e:
+            raise RuntimeError('The .from_ncrystal method requires'
+                               ' NCrystal to be installed.') from e
         nc_mat = NCrystal.createInfo(cfg)
 
         def openmc_natabund(Z):
@@ -471,7 +487,7 @@ class Material(IDManagerMixin):
         else:
             raise ValueError(f'No volume information found for material ID={self.id}.')
 
-    def set_density(self, units: str, density: Optional[float] = None):
+    def set_density(self, units: str, density: float | None = None):
         """Set the density of the material
 
         Parameters
@@ -519,6 +535,7 @@ class Material(IDManagerMixin):
         cv.check_type('nuclide', nuclide, str)
         cv.check_type('percent', percent, Real)
         cv.check_value('percent type', percent_type, {'ao', 'wo'})
+        cv.check_greater_than('percent', percent, 0, equality=True)
 
         if self._macroscopic is not None:
             msg = 'Unable to add a Nuclide to Material ID="{}" as a ' \
@@ -684,10 +701,10 @@ class Material(IDManagerMixin):
             self._macroscopic = None
 
     def add_element(self, element: str, percent: float, percent_type: str = 'ao',
-                    enrichment: Optional[float] = None,
-                    enrichment_target: Optional[str] = None,
-                    enrichment_type: Optional[str] = None,
-                    cross_sections: Optional[str] = None):
+                    enrichment: float | None = None,
+                    enrichment_target: str | None = None,
+                    enrichment_type: str | None = None,
+                    cross_sections: str | None = None):
         """Add a natural element to the material
 
         Parameters
@@ -727,6 +744,7 @@ class Material(IDManagerMixin):
 
         cv.check_type('nuclide', element, str)
         cv.check_type('percent', percent, Real)
+        cv.check_greater_than('percent', percent, 0, equality=True)
         cv.check_value('percent type', percent_type, {'ao', 'wo'})
 
         # Make sure element name is just that
@@ -797,9 +815,9 @@ class Material(IDManagerMixin):
             self.add_nuclide(*nuclide)
 
     def add_elements_from_formula(self, formula: str, percent_type: str = 'ao',
-                                  enrichment: Optional[float] = None,
-                                  enrichment_target: Optional[str] = None,
-                                  enrichment_type: Optional[str] = None):
+                                  enrichment: float | None = None,
+                                  enrichment_target: str | None = None,
+                                  enrichment_type: str | None = None):
         """Add a elements from a chemical formula to the material.
 
         .. versionadded:: 0.12
@@ -928,7 +946,7 @@ class Material(IDManagerMixin):
     def make_isotropic_in_lab(self):
         self.isotropic = [x.name for x in self._nuclides]
 
-    def get_elements(self) -> List[str]:
+    def get_elements(self) -> list[str]:
         """Returns all elements in the material
 
         .. versionadded:: 0.12
@@ -942,7 +960,7 @@ class Material(IDManagerMixin):
 
         return sorted({re.split(r'(\d+)', i)[0] for i in self.get_nuclides()})
 
-    def get_nuclides(self, element: Optional[str] = None) -> List[str]:
+    def get_nuclides(self, element: str | None = None) -> list[str]:
         """Returns a list of all nuclides in the material, if the element
         argument is specified then just nuclides of that element are returned.
 
@@ -972,7 +990,7 @@ class Material(IDManagerMixin):
 
         return matching_nuclides
 
-    def get_nuclide_densities(self) -> Dict[str, tuple]:
+    def get_nuclide_densities(self) -> dict[str, tuple]:
         """Returns all nuclides in the material and their densities
 
         Returns
@@ -990,7 +1008,7 @@ class Material(IDManagerMixin):
 
         return nuclides
 
-    def get_nuclide_atom_densities(self, nuclide: Optional[str] = None) -> Dict[str, float]:
+    def get_nuclide_atom_densities(self, nuclide: str | None = None) -> dict[str, float]:
         """Returns one or all nuclides in the material and their atomic
         densities in units of atom/b-cm
 
@@ -1075,19 +1093,61 @@ class Material(IDManagerMixin):
 
         return nuclides
 
+    def get_element_atom_densities(self, element: str | None = None) -> dict[str, float]:
+        """Returns one or all elements in the material and their atomic
+        densities in units of atom/b-cm
+
+        .. versionadded:: 0.15.1
+
+        Parameters
+        ----------
+        element : str, optional
+            Element for which atom density is desired. If not specified, the
+            atom density for each element in the material is given.
+
+        Returns
+        -------
+        elements : dict
+            Dictionary whose keys are element names and values are densities in
+            [atom/b-cm]
+
+        """
+        if element is not None:
+            element = _get_element_symbol(element)
+
+        nuc_densities = self.get_nuclide_atom_densities()
+
+        # Initialize an empty dictionary for summed values
+        densities = {}
+
+        # Accumulate densities for each nuclide
+        for nuclide, density in nuc_densities.items():
+            nuc_element = openmc.data.ATOMIC_SYMBOL[openmc.data.zam(nuclide)[0]]
+            if element is None or element == nuc_element:
+                if nuc_element not in densities:
+                    densities[nuc_element] = 0.0
+                densities[nuc_element] += float(density)
+
+        # If specific element was requested, make sure it is present
+        if element is not None and element not in densities:
+                raise ValueError(f'Element {element} not found in material.')
+
+        return densities
+
+
     def get_activity(self, units: str = 'Bq/cm3', by_nuclide: bool = False,
-                     volume: Optional[float] = None) -> Union[Dict[str, float], float]:
+                     volume: float | None = None) -> dict[str, float] | float:
         """Returns the activity of the material or for each nuclide in the
-        material in units of [Bq], [Bq/g] or [Bq/cm3].
+        material in units of [Bq], [Bq/g], [Bq/kg] or [Bq/cm3].
 
         .. versionadded:: 0.13.1
 
         Parameters
         ----------
-        units : {'Bq', 'Bq/g', 'Bq/cm3'}
+        units : {'Bq', 'Bq/g', 'Bq/kg', 'Bq/cm3'}
             Specifies the type of activity to return, options include total
-            activity [Bq], specific [Bq/g] or volumetric activity [Bq/cm3].
-            Default is volumetric activity [Bq/cm3].
+            activity [Bq], specific [Bq/g, Bq/kg] or volumetric activity
+            [Bq/cm3]. Default is volumetric activity [Bq/cm3].
         by_nuclide : bool
             Specifies if the activity should be returned for the material as a
             whole or per nuclide. Default is False.
@@ -1099,13 +1159,13 @@ class Material(IDManagerMixin):
 
         Returns
         -------
-        typing.Union[dict, float]
+        Union[dict, float]
             If by_nuclide is True then a dictionary whose keys are nuclide
             names and values are activity is returned. Otherwise the activity
             of the material is returned as a float.
         """
 
-        cv.check_value('units', units, {'Bq', 'Bq/g', 'Bq/cm3'})
+        cv.check_value('units', units, {'Bq', 'Bq/g', 'Bq/kg', 'Bq/cm3'})
         cv.check_type('by_nuclide', by_nuclide, bool)
 
         if units == 'Bq':
@@ -1114,6 +1174,8 @@ class Material(IDManagerMixin):
             multiplier = 1
         elif units == 'Bq/g':
             multiplier = 1.0 / self.get_mass_density()
+        elif units == 'Bq/kg':
+            multiplier = 1000.0 / self.get_mass_density()
 
         activity = {}
         for nuclide, atoms_per_bcm in self.get_nuclide_atom_densities().items():
@@ -1123,17 +1185,17 @@ class Material(IDManagerMixin):
         return activity if by_nuclide else sum(activity.values())
 
     def get_decay_heat(self, units: str = 'W', by_nuclide: bool = False,
-                       volume: Optional[float] = None) -> Union[Dict[str, float], float]:
+                       volume: float | None = None) -> dict[str, float] | float:
         """Returns the decay heat of the material or for each nuclide in the
-        material in units of [W], [W/g] or [W/cm3].
+        material in units of [W], [W/g], [W/kg] or [W/cm3].
 
         .. versionadded:: 0.13.3
 
         Parameters
         ----------
-        units : {'W', 'W/g', 'W/cm3'}
+        units : {'W', 'W/g', 'W/kg', 'W/cm3'}
             Specifies the units of decay heat to return. Options include total
-            heat [W], specific [W/g] or volumetric heat [W/cm3].
+            heat [W], specific [W/g, W/kg] or volumetric heat [W/cm3].
             Default is total heat [W].
         by_nuclide : bool
             Specifies if the decay heat should be returned for the material as a
@@ -1152,7 +1214,7 @@ class Material(IDManagerMixin):
             of the material is returned as a float.
         """
 
-        cv.check_value('units', units, {'W', 'W/g', 'W/cm3'})
+        cv.check_value('units', units, {'W', 'W/g', 'W/kg', 'W/cm3'})
         cv.check_type('by_nuclide', by_nuclide, bool)
 
         if units == 'W':
@@ -1161,6 +1223,8 @@ class Material(IDManagerMixin):
             multiplier = 1
         elif units == 'W/g':
             multiplier = 1.0 / self.get_mass_density()
+        elif units == 'W/kg':
+            multiplier = 1000.0 / self.get_mass_density()
 
         decayheat = {}
         for nuclide, atoms_per_bcm in self.get_nuclide_atom_densities().items():
@@ -1171,7 +1235,7 @@ class Material(IDManagerMixin):
 
         return decayheat if by_nuclide else sum(decayheat.values())
 
-    def get_nuclide_atoms(self, volume: Optional[float] = None) -> Dict[str, float]:
+    def get_nuclide_atoms(self, volume: float | None = None) -> dict[str, float]:
         """Return number of atoms of each nuclide in the material
 
         .. versionadded:: 0.13.1
@@ -1200,7 +1264,7 @@ class Material(IDManagerMixin):
             atoms[nuclide] = 1.0e24 * atom_per_bcm * volume
         return atoms
 
-    def get_mass_density(self, nuclide: Optional[str] = None) -> float:
+    def get_mass_density(self, nuclide: str | None = None) -> float:
         """Return mass density of one or all nuclides
 
         Parameters
@@ -1222,7 +1286,7 @@ class Material(IDManagerMixin):
             mass_density += density_i
         return mass_density
 
-    def get_mass(self, nuclide: Optional[str] = None, volume: Optional[float] = None) -> float:
+    def get_mass(self, nuclide: str | None = None, volume: float | None = None) -> float:
         """Return mass of one or all nuclides.
 
         Note that this method requires that the :attr:`Material.volume` has
@@ -1252,7 +1316,7 @@ class Material(IDManagerMixin):
             raise ValueError("Volume must be set in order to determine mass.")
         return volume*self.get_mass_density(nuclide)
 
-    def clone(self, memo: Optional[dict] = None) -> Material:
+    def clone(self, memo: dict | None = None) -> Material:
         """Create a copy of this material with a new unique ID.
 
         Parameters
@@ -1295,10 +1359,16 @@ class Material(IDManagerMixin):
         xml_element = ET.Element("nuclide")
         xml_element.set("name", nuclide.name)
 
+        # Prevent subnormal numbers from being written to XML, which causes an
+        # exception on the C++ side when calling std::stod
+        val = nuclide.percent
+        if abs(val) < _SMALLEST_NORMAL:
+            val = 0.0
+
         if nuclide.percent_type == 'ao':
-            xml_element.set("ao", str(nuclide.percent))
+            xml_element.set("ao", str(val))
         else:
-            xml_element.set("wo", str(nuclide.percent))
+            xml_element.set("wo", str(val))
 
         return xml_element
 
@@ -1309,8 +1379,8 @@ class Material(IDManagerMixin):
         return xml_element
 
     def _get_nuclides_xml(
-            self, nuclides: typing.Iterable[NuclideTuple],
-            nuclides_to_ignore: Optional[typing.Iterable[str]] = None)-> List[ET.Element]:
+            self, nuclides: Iterable[NuclideTuple],
+            nuclides_to_ignore: Iterable[str] | None = None)-> list[ET.Element]:
         xml_elements = []
 
         # Remove any nuclides to ignore from the XML export
@@ -1322,7 +1392,7 @@ class Material(IDManagerMixin):
         return xml_elements
 
     def to_xml_element(
-            self, nuclides_to_ignore: Optional[typing.Iterable[str]] = None) -> ET.Element:
+            self, nuclides_to_ignore: Iterable[str] | None = None) -> ET.Element:
         """Return XML representation of the material
 
         Parameters
@@ -1396,8 +1466,8 @@ class Material(IDManagerMixin):
         return element
 
     @classmethod
-    def mix_materials(cls, materials, fracs: typing.Iterable[float],
-                      percent_type: str = 'ao', name: Optional[str] = None) -> Material:
+    def mix_materials(cls, materials, fracs: Iterable[float],
+                      percent_type: str = 'ao', **kwargs) -> Material:
         """Mix materials together based on atom, weight, or volume fractions
 
         .. versionadded:: 0.12
@@ -1412,10 +1482,8 @@ class Material(IDManagerMixin):
             Type of percentage, must be one of 'ao', 'wo', or 'vo', to signify atom
             percent (molar percent), weight percent, or volume percent,
             optional. Defaults to 'ao'
-        name : str
-            The name for the new material, optional. Defaults to concatenated
-            names of input materials with percentages indicated inside
-            parentheses.
+        **kwargs
+            Keyword arguments passed to :class:`openmc.Material`
 
         Returns
         -------
@@ -1474,10 +1542,11 @@ class Material(IDManagerMixin):
                                     openmc.data.AVOGADRO
 
         # Create the new material with the desired name
-        if name is None:
-            name = '-'.join([f'{m.name}({f})' for m, f in
+        if "name" not in kwargs:
+            kwargs["name"] = '-'.join([f'{m.name}({f})' for m, f in
                              zip(materials, fracs)])
-        new_mat = openmc.Material(name=name)
+
+        new_mat = cls(**kwargs)
 
         # Compute atom fractions of nuclides and add them to the new material
         tot_nuclides_per_cc = np.sum([dens for dens in nuclides_per_cc.values()])
@@ -1523,7 +1592,6 @@ class Material(IDManagerMixin):
 
         if 'volume' in elem.attrib:
             mat.volume = float(elem.get('volume'))
-        mat.depletable = bool(elem.get('depletable'))
 
         # Get each nuclide
         for nuclide in elem.findall('nuclide'):
@@ -1532,6 +1600,9 @@ class Material(IDManagerMixin):
                 mat.add_nuclide(name, float(nuclide.attrib['ao']))
             elif 'wo' in nuclide.attrib:
                 mat.add_nuclide(name, float(nuclide.attrib['wo']), 'wo')
+
+        # Get depletable attribute
+        mat.depletable = elem.get('depletable') in ('true', '1')
 
         # Get each S(a,b) table
         for sab in elem.findall('sab'):
@@ -1594,13 +1665,13 @@ class Materials(cv.CheckedList):
             self += materials
 
     @property
-    def cross_sections(self) -> Optional[Path]:
+    def cross_sections(self) -> Path | None:
         return self._cross_sections
 
     @cross_sections.setter
     def cross_sections(self, cross_sections):
         if cross_sections is not None:
-            self._cross_sections = Path(cross_sections)
+            self._cross_sections = input_path(cross_sections)
 
     def append(self, material):
         """Append material to collection
@@ -1684,7 +1755,7 @@ class Materials(cv.CheckedList):
             file.write(indentation)
 
     def export_to_xml(self, path: PathLike = 'materials.xml',
-                      nuclides_to_ignore: Optional[typing.Iterable[str]] = None):
+                      nuclides_to_ignore: Iterable[str] | None = None):
         """Export material collection to an XML file.
 
         Parameters

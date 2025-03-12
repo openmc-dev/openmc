@@ -40,13 +40,15 @@ Carlo, **inactive batches are required for both eigenvalue and fixed source
 solves in random ray mode** due to this additional need to converge the
 scattering source.
 
+.. warning::
+    Unlike Monte Carlo, the random ray solver still requires usage of inactive
+    batches when in fixed source mode so as to develop the scattering source.
+
 The additional burden of converging the scattering source generally results in a
 higher requirement for the number of inactive batches---often by an order of
 magnitude or more. For instance, it may be reasonable to only use 50 inactive
 batches for a light water reactor simulation with Monte Carlo, but random ray
-might require 500 or more inactive batches. Similar to Monte Carlo,
-:ref:`Shannon entropy <usersguide_entropy>` can be used to gauge whether the
-combined scattering and fission source has fully developed.
+might require 500 or more inactive batches.
 
 Similar to Monte Carlo, active batches are used in the random ray solver mode to
 accumulate and converge statistics on unknown quantities (i.e., the random ray
@@ -59,6 +61,17 @@ solver::
     settings.energy_mode = "multi-group"
     settings.batches = 1200
     settings.inactive = 600
+
+---------------
+Shannon Entropy
+---------------
+
+Similar to Monte Carlo, :ref:`Shannon entropy
+<methods-shannon-entropy-random-ray>` can be used to gauge whether the fission
+source has fully developed. The Shannon entropy is calculated automatically
+after each batch and is printed to the statepoint file. Unlike Monte Carlo, an
+entropy mesh does not need to be defined, as the Shannon entropy is calculated
+over FSRs using a volume-weighted approach.
 
 -------------------------------
 Inactive Ray Length (Dead Zone)
@@ -98,7 +111,7 @@ detector from the core. In this case, rays sampled in the moderator region and
 heading toward the detector will begin life with a highly scattered thermal
 spectrum and will have an inaccurate fast spectrum. If the dead zone length is
 only 20 cm, we might imagine such rays writing to the detector tally within
-their active lengths, despite their innaccurate estimate of the uncollided fast
+their active lengths, despite their inaccurate estimate of the uncollided fast
 angular flux. Thus, an inactive length of 100--200 cm would ensure that any such
 rays would still be within their inactive regions, and only rays that have
 actually traversed through the core (and thus have an accurate representation of
@@ -248,6 +261,8 @@ a larger value until the "low ray density" messages go away.
     ray lengths are sufficiently long to allow for transport to occur between
     source and target regions of interest.
 
+.. _usersguide_ray_source:
+
 ----------
 Ray Source
 ----------
@@ -261,7 +276,7 @@ that the source must not be limited to only fissionable regions. Additionally,
 the source box must cover the entire simulation domain. In the case of a
 simulation domain that is not box shaped, a box source should still be used to
 bound the domain but with the source limited to rejection sampling the actual
-simulation universe (which can be specified via the ``domains`` field of the
+simulation universe (which can be specified via the ``domains`` constraint of the
 :class:`openmc.IndependentSource` Python class). Similar to Monte Carlo sources,
 for two-dimensional problems (e.g., a 2D pincell) it is desirable to make the
 source bounded near the origin of the infinite dimension. An example of an
@@ -284,22 +299,44 @@ acceptable ray source for a two-dimensional 2x2 lattice would look like:
     provide physical particle fixed sources in addition to the random ray
     source.
 
+--------------------------
+Quasi-Monte Carlo Sampling
+--------------------------
+
+By default OpenMC will use a pseudorandom number generator (PRNG) to sample ray
+starting locations from a uniform distribution in space and angle.
+Alternatively, a randomized Halton sequence may be sampled from, which is a form
+of Randomized Qusi-Monte Carlo (RQMC) sampling. RQMC sampling with random ray
+has been shown to offer reduced variance as compared to regular PRNG sampling,
+as the Halton sequence offers a more uniform distribution of sampled points.
+Randomized Halton sampling can be enabled as::
+
+  settings.random_ray['sample_method'] = 'halton'
+
+Default behavior using OpenMC's native PRNG can be manually specified as::
+
+  settings.random_ray['sample_method'] = 'prng'
+
 .. _subdivision_fsr:
 
-----------------------------------
-Subdivision of Flat Source Regions
-----------------------------------
+-----------------------------
+Subdivision of Source Regions
+-----------------------------
 
-While the scattering and fission sources in Monte Carlo
-are treated continuously, they are assumed to be invariant (flat) within a
-MOC or random ray flat source region (FSR). This introduces bias into the
-simulation, which can be remedied by reducing the physical size of the FSR
-to dimensions below that of typical mean free paths of particles.
+While the scattering and fission sources in Monte Carlo are treated
+continuously, they are assumed to have a shape (flat or linear) within a MOC or
+random ray source region (SR). This introduces bias into the simulation that can
+be remedied by reducing the physical size of the SR to be smaller than the
+typical mean free paths of particles. While use of linear sources in OpenMC
+greatly reduces the error stemming from this approximation, subdivision is still
+typically required.
 
-In OpenMC, this subdivision currently must be done manually. The level of
+In OpenMC, this subdivision can be done either manually by the user (by defining
+additional surfaces and cells in the geometry) or automatically by assigning a
+mesh to one or more cells, universes, or material types. The level of
 subdivision needed will be dependent on the fidelity the user requires. For
-typical light water reactor analysis, consider the following example subdivision
-of a two-dimensional 2x2 reflective pincell lattice:
+typical light water reactor analysis, consider the following example of manual
+subdivision of a two-dimensional 2x2 reflective pincell lattice:
 
 .. figure:: ../_images/2x2_materials.jpeg
     :class: with-border
@@ -311,9 +348,81 @@ of a two-dimensional 2x2 reflective pincell lattice:
     :class: with-border
     :width: 400
 
-    FSR decomposition for an asymmetrical 2x2 lattice (1.26 cm pitch)
+    Manual decomposition for an asymmetrical 2x2 lattice (1.26 cm pitch)
 
-In the future, automated subdivision of FSRs via mesh overlay may be supported.
+Geometry cells can also be subdivided into small source regions by assigning a
+mesh to a list of domains, with each domain being of type
+:class:`openmc.Material`, :class:`openmc.Cell`, or :class:`openmc.Universe`. The
+idea of defining a source region as a combination of a base geometry cell and a
+mesh element is known as "cell-under-voxel" style geometry, although in OpenMC
+the mesh can be any kind and is not restricted to 3D regular voxels. An example
+of overlaying a simple 2D mesh over a geometry is given as::
+
+  sr_mesh = openmc.RegularMesh()
+  sr_mesh.dimension = (n, n)
+  sr_mesh.lower_left = (0.0, 0.0)
+  sr_mesh.upper_right = (x, y)
+  domain = geometry.root_universe
+  settings.random_ray['source_region_meshes'] = [(sr_mesh, [domain])]
+
+In the above example, we apply a single :math:`n \times n` uniform mesh over the
+entire domain by assigning it to the root universe of the geometry.
+Alternatively, we might want to apply a finer or coarser mesh to different
+regions of a 3D problem, for instance, as::
+
+  fuel = openmc.Material(name='UO2 fuel')
+  ...
+  water = openmc.Material(name='hot borated water')
+  ...
+  clad = openmc.Material(name='Zr cladding')
+  ...
+
+  coarse_mesh = openmc.RegularMesh()
+  coarse_mesh.dimension = (n, n, n)
+  coarse_mesh.lower_left = (0.0, 0.0, 0.0)
+  coarse_mesh.upper_right = (x, y, z)
+
+  fine_mesh = openmc.RegularMesh()
+  fine_mesh.dimension = (2*n, 2*n, 2*n)
+  fine_mesh.lower_left = (0.0, 0.0, 0.0)
+  fine_mesh.upper_right = (x, y, z)
+
+  settings.random_ray['source_region_meshes'] = [(fine_mesh, [fuel, clad]), (coarse_mesh, [water])]
+
+Note that we don't need to adjust the outer bounds of the mesh to tightly wrap
+the domain we assign the mesh to. Rather, OpenMC will dynamically generate
+source regions based on the mesh bins rays actually visit, such that no
+additional memory is wasted even if a domain only intersects a few mesh bins.
+Going back to our 2x2 lattice example, if using a mesh-based subdivision, this
+might look as below:
+
+.. figure:: ../_images/2x2_sr_mesh.png
+    :class: with-border
+    :width: 400
+
+    20x20 overlaid "cell-under-voxel" mesh decomposition for an asymmetrical 2x2 lattice (1.26 cm pitch)
+
+Note that mesh-bashed subdivision is much easier for a user to implement but
+does have a few downsides compared to manual subdivision. Manual subdivision can
+be done with the specifics of the geometry in mind. As in the pincell example,
+it is more efficient to subdivide the fuel region into azimuthal sectors and
+radial rings as opposed to a Cartesian mesh. This is more efficient because the
+regions are a more uniform size and follow the material boundaries closer,
+resulting in the need for fewer source regions. Fewer source regions tends to
+equate to a faster computational speed and/or the need for fewer rays per batch
+to achieve good statistics. Additionally, applying a mesh often tends to create
+a few very small source regions, as shown in the above picture where corners of
+the mesh happen to intersect close to the actual fuel-moderator interface. These
+small regions are rarely visited by rays, which can result in inaccurate
+estimates of the source within those small regions and, thereby, numerical
+instability. However, OpenMC utilizes several techniques to detect these small
+source regions and mitigate instabilities that are associated with them. In
+conclusion, mesh overlay is a great way to subdivide any geometry into smaller
+source regions. It can be used while retaining stability, though typically at
+the cost of generating more source regions relative to an optimal manual
+subdivision.
+
+.. _usersguide_flux_norm:
 
 -------
 Tallies
@@ -351,6 +460,25 @@ Supported Filters:
 Note that there is no difference between the analog, tracklength, and collision
 estimators in random ray mode as individual particles are not being simulated.
 Tracklength-style tally estimation is inherent to the random ray method.
+
+As discussed in the random ray theory section on :ref:`Random Ray
+Tallies<methods_random_tallies>`, by default flux tallies in the random ray mode
+are not normalized by the spatial tally volumes such that flux tallies are in
+units of cm. While the volume information is readily available as a byproduct of
+random ray integration, the flux value is reported in unnormalized units of cm
+so that the user will be able to compare "apples to apples" with the default
+flux tallies from the Monte Carlo solver (also reported by default in units of
+cm). If volume normalized flux tallies (in units of cm\ :sup:`-2`) are desired,
+then the user can set the ``volume_normalized_flux_tallies`` field in the
+:attr:`openmc.Settings.random_ray` dictionary to ``True``. An example is given
+below:
+
+::
+
+    settings.random_ray['volume_normalized_flux_tallies'] = True
+
+Note that MC mode flux tallies can also be normalized by volume, as discussed in
+the :ref:`Volume Calculation Section<usersguide_volume>` of the user guide.
 
 --------
 Plotting
@@ -399,10 +527,11 @@ Inputting Multigroup Cross Sections (MGXS)
 Multigroup cross sections for use with OpenMC's random ray solver are input the
 same way as with OpenMC's traditional multigroup Monte Carlo mode. There is more
 information on generating multigroup cross sections via OpenMC in the
-:ref:`multigroup materials <create_mgxs>` user guide. You may also wish to
-use an existing multigroup library. An example of using OpenMC's Python
-interface to generate a correctly formatted ``mgxs.h5`` input file is given
-in the `OpenMC Jupyter notebook collection
+:ref:`multigroup materials <create_mgxs>` user guide. You may also wish to use
+an existing ``mgxs.h5`` MGXS library file, or define your own given a known set
+of cross section data values (e.g., as taken from a benchmark specification). An
+example of using OpenMC's Python interface to generate a correctly formatted
+``mgxs.h5`` input file is given in the `OpenMC Jupyter notebook collection
 <https://nbviewer.org/github/openmc-dev/openmc-notebooks/blob/main/mg-mode-part-i.ipynb>`_.
 
 .. note::
@@ -411,11 +540,366 @@ in the `OpenMC Jupyter notebook collection
     separate materials can be defined each with a separate multigroup dataset
     corresponding to a given temperature.
 
+.. _mgxs_gen:
+
+-------------------------------------------
+Generating Multigroup Cross Sections (MGXS)
+-------------------------------------------
+
+OpenMC is capable of generating multigroup cross sections by way of flux
+collapsing data based on flux solutions obtained from a continuous energy Monte
+Carlo solve. While it is a circular excercise in some respects to use continuous
+energy Monte Carlo to generate cross sections to be used by a reduced-fidelity
+multigroup transport solver, there are many use cases where this is nonetheless
+highly desirable. For instance, generation of a multigroup library may enable
+the same set of approximate multigroup cross section data to be used across a
+variety of problem types (or through a multidimensional parameter sweep of
+design variables) with only modest errors and at greatly reduced cost as
+compared to using only continuous energy Monte Carlo.
+
+We give here a quick summary of how to produce a multigroup cross section data
+file (``mgxs.h5``) from a starting point of a typical continuous energy Monte
+Carlo input file. Notably, continuous energy input files define materials as a
+mixture of nuclides with different densities, whereas multigroup materials are
+simply defined by which name they correspond to in a ``mgxs.h5`` library file.
+
+To generate the cross section data, we begin with a continuous energy Monte
+Carlo input deck and add in the required tallies that will be needed to generate
+our library. In this example, we will specify material-wise cross sections and a
+two group energy decomposition::
+
+  # Define geometry
+  ...
+  ...
+  geometry = openmc.Geometry()
+  ...
+  ...
+
+  # Initialize MGXS library with a finished OpenMC geometry object
+  mgxs_lib = openmc.mgxs.Library(geometry)
+
+  # Pick energy group structure
+  groups = openmc.mgxs.EnergyGroups(openmc.mgxs.GROUP_STRUCTURES['CASMO-2'])
+  mgxs_lib.energy_groups = groups
+
+  # Disable transport correction
+  mgxs_lib.correction = None
+
+  # Specify needed cross sections for random ray
+  mgxs_lib.mgxs_types = ['total', 'absorption', 'nu-fission', 'fission',
+                      'nu-scatter matrix', 'multiplicity matrix', 'chi']
+
+  # Specify a "cell" domain type for the cross section tally filters
+  mgxs_lib.domain_type = "material"
+
+  # Specify the cell domains over which to compute multi-group cross sections
+  mgxs_lib.domains = geometry.get_all_materials().values()
+
+  # Do not compute cross sections on a nuclide-by-nuclide basis
+  mgxs_lib.by_nuclide = False
+
+  # Check the library - if no errors are raised, then the library is satisfactory.
+  mgxs_lib.check_library_for_openmc_mgxs()
+
+  # Construct all tallies needed for the multi-group cross section library
+  mgxs_lib.build_library()
+
+  # Create a "tallies.xml" file for the MGXS Library
+  tallies = openmc.Tallies()
+  mgxs_lib.add_to_tallies_file(tallies, merge=True)
+
+  # Export
+  tallies.export_to_xml()
+
+  ...
+
+When selecting an energy decomposition, you can manually define group boundaries
+or pick out a group structure already known to OpenMC (a list of which can be
+found at :class:`openmc.mgxs.GROUP_STRUCTURES`). Once the above input deck has
+been run, the resulting statepoint file will contain the needed flux and
+reaction rate tally data so that a MGXS library file can be generated. Below is
+the postprocessing script needed to generate the ``mgxs.h5`` library file given
+a statepoint file (e.g., ``statepoint.100.h5``) file and summary file (e.g.,
+``summary.h5``) that resulted from running our previous example::
+
+  import openmc
+
+  summary = openmc.Summary('summary.h5')
+  geom = summary.geometry
+  mats = summary.materials
+
+  statepoint_filename = 'statepoint.100.h5'
+  sp = openmc.StatePoint(statepoint_filename)
+
+  groups = openmc.mgxs.EnergyGroups(openmc.mgxs.GROUP_STRUCTURES['CASMO-2'])
+  mgxs_lib = openmc.mgxs.Library(geom)
+  mgxs_lib.energy_groups = groups
+  mgxs_lib.correction = None
+  mgxs_lib.mgxs_types = ['total', 'absorption', 'nu-fission', 'fission',
+                          'nu-scatter matrix', 'multiplicity matrix', 'chi']
+
+  # Specify a "cell" domain type for the cross section tally filters
+  mgxs_lib.domain_type = "material"
+
+  # Specify the cell domains over which to compute multi-group cross sections
+  mgxs_lib.domains = geom.get_all_materials().values()
+
+  # Do not compute cross sections on a nuclide-by-nuclide basis
+  mgxs_lib.by_nuclide = False
+
+  # Check the library - if no errors are raised, then the library is satisfactory.
+  mgxs_lib.check_library_for_openmc_mgxs()
+
+  # Construct all tallies needed for the multi-group cross section library
+  mgxs_lib.build_library()
+
+  mgxs_lib.load_from_statepoint(sp)
+
+  names = []
+  for mat in mgxs_lib.domains: names.append(mat.name)
+
+  # Create a MGXS File which can then be written to disk
+  mgxs_file = mgxs_lib.create_mg_library(xs_type='macro', xsdata_names=names)
+
+  # Write the file to disk using the default filename of "mgxs.h5"
+  mgxs_file.export_to_hdf5("mgxs.h5")
+
+Notably, the postprocessing script needs to match the same
+:class:`openmc.mgxs.Library` settings that were used to generate the tallies,
+but otherwise is able to discern the rest of the simulation details from the
+statepoint and summary files. Once the postprocessing script is successfully
+run, the ``mgxs.h5`` file can be loaded by subsequent runs of OpenMC.
+
+If you want to convert continuous energy material objects in an OpenMC input
+deck to multigroup ones from a ``mgxs.h5`` library, you can follow the below
+example. Here we begin with the original continuous energy materials we used to
+generate our MGXS library::
+
+    fuel = openmc.Material(name='UO2 (2.4%)')
+    fuel.set_density('g/cm3', 10.29769)
+    fuel.add_nuclide('U234', 4.4843e-6)
+    fuel.add_nuclide('U235', 5.5815e-4)
+    fuel.add_nuclide('U238', 2.2408e-2)
+    fuel.add_nuclide('O16', 4.5829e-2)
+
+    water = openmc.Material(name='Hot borated water')
+    water.set_density('g/cm3', 0.740582)
+    water.add_nuclide('H1', 4.9457e-2)
+    water.add_nuclide('O16', 2.4672e-2)
+    water.add_nuclide('B10', 8.0042e-6)
+    water.add_nuclide('B11', 3.2218e-5)
+    water.add_s_alpha_beta('c_H_in_H2O')
+
+    materials = openmc.Materials([fuel, water])
+
+Once the ``mgxs.h5`` library file has been generated, we can then manually make
+the necessary edits to the material definitions so that they load from the
+multigroup library instead of defining their isotopic contents, as::
+
+    # Instantiate some Macroscopic Data
+    fuel_data = openmc.Macroscopic('UO2 (2.4%)')
+    water_data = openmc.Macroscopic('Hot borated water')
+
+    # Instantiate some Materials and register the appropriate Macroscopic objects
+    fuel= openmc.Material(name='UO2 (2.4%)')
+    fuel.set_density('macro', 1.0)
+    fuel.add_macroscopic(fuel_data)
+
+    water= openmc.Material(name='Hot borated water')
+    water.set_density('macro', 1.0)
+    water.add_macroscopic(water_data)
+
+    # Instantiate a Materials collection and export to XML
+    materials = openmc.Materials([fuel, water])
+    materials.cross_sections = "mgxs.h5"
+
+In the above example, our ``fuel`` and ``water`` materials will now load MGXS
+data from the ``mgxs.h5`` file instead of loading continuous energy isotopic
+cross section data.
+
+--------------
+Linear Sources
+--------------
+
+Linear Sources (LS), are supported with the eigenvalue and fixed source random
+ray solvers. General 3D LS can be toggled by setting the ``source_shape`` field
+in the :attr:`openmc.Settings.random_ray` dictionary to ``'linear'`` as::
+
+    settings.random_ray['source_shape'] = 'linear'
+
+LS enables the use of coarser mesh discretizations and lower ray populations,
+offsetting the increased computation per ray.
+
+While OpenMC has no specific mode for 2D simulations, such simulations can be
+performed implicitly by leaving one of the dimensions of the geometry unbounded
+or by imposing reflective boundary conditions with no variation in between them
+in that dimension. When 3D linear sources are used in a 2D random ray
+simulation, the extremely long (or potentially infinite) spatial dimension along
+one of the axes can cause the linear source to become noisy, leading to
+potentially large increases in variance. To mitigate this, the user can force
+the z-terms of the linear source to zero by setting the ``source_shape`` field
+as::
+
+    settings.random_ray['source_shape'] = 'linear_xy'
+
+which will greatly improve the quality of the linear source term in 2D
+simulations.
+
+---------------------------------
+Fixed Source and Eigenvalue Modes
+---------------------------------
+
+Both fixed source and eigenvalue modes are supported with the random ray solver
+in OpenMC. Modes can be selected as described in the :ref:`run modes section
+<usersguide_run_modes>`. In both modes, a ray source must be provided to let
+OpenMC know where to sample ray starting locations from, as discussed in the
+:ref:`ray source section <usersguide_ray_source>`. In fixed source mode, at
+least one regular source must be provided as well that represents the physical
+particle fixed source. As discussed in the :ref:`fixed source methodology
+section <usersguide_fixed_source_methods>`, the types of fixed sources supported
+in the random ray solver mode are limited compared to what is possible with the
+Monte Carlo solver.
+
+Currently, all of the following conditions must be met for the particle source
+to be valid in random ray mode:
+
+- One or more domain ids must be specified that indicate which cells, universes,
+  or materials the source applies to. This implicitly limits the source type to
+  being volumetric. This is specified via the ``domains`` constraint placed on the
+  :class:`openmc.IndependentSource` Python class.
+- The source must be isotropic (default for a source)
+- The source must use a discrete (i.e., multigroup) energy distribution. The
+  discrete energy distribution is input by defining a
+  :class:`openmc.stats.Discrete` Python class, and passed as the ``energy``
+  field of the :class:`openmc.IndependentSource` Python class.
+
+Any other spatial distribution information contained in a particle source will
+be ignored. Only the specified cell, material, or universe domains will be used
+to define the spatial location of the source, as the source will be applied
+during a pre-processing stage of OpenMC to all source regions that are contained
+within the specified domains for the source.
+
+When defining a :class:`openmc.stats.Discrete` object, note that the ``x`` field
+will correspond to the discrete energy points, and the ``p`` field will
+correspond to the discrete probabilities. It is recommended to select energy
+points that fall within energy groups rather than on boundaries between the
+groups. That is, if the problem contains two energy groups (with bin edges of
+1.0e-5, 1.0e-1, 1.0e7), then a good selection for the ``x`` field might be
+points of 1.0e-2 and 1.0e1.
+
+::
+
+    # Define geometry, etc.
+    ...
+    source_cell = openmc.Cell(fill=source_mat, name='cell where fixed source will be')
+    ...
+    # Define physical neutron fixed source
+    energy_points = [1.0e-2, 1.0e1]
+    strengths = [0.25, 0.75]
+    energy_distribution = openmc.stats.Discrete(x=energy_points, p=strengths)
+    neutron_source = openmc.IndependentSource(
+        energy=energy_distribution,
+        constraints={'domains': [source_cell]}
+    )
+
+    # Add fixed source and ray sampling source to settings file
+    settings.source = [neutron_source]
+
+.. _usersguide_vol_estimators:
+
+-----------------------------
+Alternative Volume Estimators
+-----------------------------
+
+As discussed in the random ray theory section on :ref:`volume estimators
+<methods_random_ray_vol>`, there are several possible derivations for the scalar
+flux estimate. These options deal with different ways of treating the
+accumulation over ray lengths crossing each FSR (a quantity directly
+proportional to volume), which can be computed using several methods. The
+following methods are currently available in OpenMC:
+
+.. list-table:: Comparison of Estimators
+   :header-rows: 1
+   :widths: 10 30 30 30
+
+   * - Estimator
+     - Description
+     - Pros
+     - Cons
+   * - ``simulation_averaged``
+     - Accumulates total active ray lengths in each FSR over all iterations,
+       improving the estimate of the volume in each cell each iteration.
+     - * Virtually unbiased after several iterations
+       * Asymptotically approaches the true analytical volume
+       * Typically most efficient in terms of speed vs. accuracy
+     - * Higher variance
+       * Can lead to negative fluxes and numerical instability in pathological
+         cases
+   * - ``naive``
+     - Treats the volume as composed only of the active ray length through each
+       FSR per iteration, being a biased but numerically consistent ratio
+       estimator.
+     - * Low variance
+       * Unlikely to result in negative fluxes
+       * Recommended in cases where the simulation averaged estimator is
+         unstable
+     - * Biased estimator
+       * Requires more rays or longer active ray length to mitigate bias
+   * - ``hybrid`` (default)
+     - Applies the naive estimator to all cells that contain an external (fixed)
+       source contribution. Applies the simulation averaged estimator to all
+       other cells.
+     - * High accuracy/low bias of the simulation averaged estimator in most
+         cells
+       * Stability of the naive estimator in cells with fixed sources
+     - * Can lead to slightly negative fluxes in cells where the simulation
+         averaged estimator is used
+
+These estimators can be selected by setting the ``volume_estimator`` field in the
+:attr:`openmc.Settings.random_ray` dictionary. For example, to use the naive
+estimator, the following code would be used:
+
+::
+
+    settings.random_ray['volume_estimator'] = 'naive'
+
+-----------------
+Adjoint Flux Mode
+-----------------
+
+The adjoint flux random ray solver mode can be enabled as::
+
+    settings.random_ray['adjoint'] = True
+
+When enabled, OpenMC will first run a forward transport simulation followed by
+an adjoint transport simulation. The purpose of the forward solve is to compute
+the adjoint external source when an external source is present in the
+simulation. Simulation settings (e.g., number of rays, batches, etc.) will be
+identical for both simulations. At the conclusion of the run, all results (e.g.,
+tallies, plots, etc.) will be derived from the adjoint flux rather than the
+forward flux but are not labeled any differently. The initial forward flux
+solution will not be stored or available in the final statepoint file. Those
+wishing to do analysis requiring both the forward and adjoint solutions will
+need to run two separate simulations and load both statepoint files.
+
+.. note::
+    When adjoint mode is selected, OpenMC will always perform a full forward
+    solve and then run a full adjoint solve immediately afterwards. Statepoint
+    and tally results will be derived from the adjoint flux, but will not be
+    labeled any differently.
+
 ---------------------------------------
 Putting it All Together: Example Inputs
 ---------------------------------------
 
-An example of a settings definition for random ray is given below::
+~~~~~~~~~~~~~~~~~~
+Eigenvalue Example
+~~~~~~~~~~~~~~~~~~
+
+An example of a settings definition for an eigenvalue random ray simulation is
+given below:
+
+::
 
     # Geometry and MGXS material definition of 2x2 lattice (not shown)
     pitch = 1.26
@@ -478,3 +962,84 @@ Monte Carlo run (see the :ref:`geometry <usersguide_geometry>` and
 
 There is also a complete example of a pincell available in the
 ``openmc/examples/pincell_random_ray`` folder.
+
+~~~~~~~~~~~~~~~~~~~~
+Fixed Source Example
+~~~~~~~~~~~~~~~~~~~~
+
+An example of a settings definition for a fixed source random ray simulation is
+given below:
+
+::
+
+    # Geometry and MGXS material definition of 2x2 lattice (not shown)
+    pitch = 1.26
+    source_cell = openmc.Cell(fill=source_mat, name='cell where fixed source will be')
+    ebins = [1e-5, 1e-1, 20.0e6]
+    ...
+
+    # Instantiate a settings object for a random ray solve
+    settings = openmc.Settings()
+    settings.energy_mode = "multi-group"
+    settings.batches = 1200
+    settings.inactive = 600
+    settings.particles = 2000
+    settings.run_mode = 'fixed source'
+    settings.random_ray['distance_inactive'] = 40.0
+    settings.random_ray['distance_active'] = 400.0
+
+    # Create an initial uniform spatial source distribution for sampling rays
+    lower_left  = (-pitch, -pitch, -pitch)
+    upper_right = ( pitch,  pitch,  pitch)
+    uniform_dist = openmc.stats.Box(lower_left, upper_right)
+    settings.random_ray['ray_source'] = openmc.IndependentSource(space=uniform_dist)
+
+    # Define physical neutron fixed source
+    energy_points = [1.0e-2, 1.0e1]
+    strengths = [0.25, 0.75]
+    energy_distribution = openmc.stats.Discrete(x=energy_points, p=strengths)
+    neutron_source = openmc.IndependentSource(
+        energy=energy_distribution,
+        constraints={'domains': [source_cell]}
+    )
+
+    # Add fixed source and ray sampling source to settings file
+    settings.source = [neutron_source]
+
+    settings.export_to_xml()
+
+    # Define tallies
+
+    # Create a mesh filter
+    mesh = openmc.RegularMesh()
+    mesh.dimension = (2, 2)
+    mesh.lower_left = (-pitch/2, -pitch/2)
+    mesh.upper_right = (pitch/2, pitch/2)
+    mesh_filter = openmc.MeshFilter(mesh)
+
+    # Create a multigroup energy filter
+    energy_filter = openmc.EnergyFilter(ebins)
+
+    # Create tally using our two filters and add scores
+    tally = openmc.Tally()
+    tally.filters = [mesh_filter, energy_filter]
+    tally.scores = ['flux']
+
+    # Instantiate a Tallies collection and export to XML
+    tallies = openmc.Tallies([tally])
+    tallies.export_to_xml()
+
+    # Create voxel plot
+    plot = openmc.Plot()
+    plot.origin = [0, 0, 0]
+    plot.width = [2*pitch, 2*pitch, 1]
+    plot.pixels = [1000, 1000, 1]
+    plot.type = 'voxel'
+
+    # Instantiate a Plots collection and export to XML
+    plots = openmc.Plots([plot])
+    plots.export_to_xml()
+
+All other inputs (e.g., geometry, material) will be unchanged from a typical
+Monte Carlo run (see the :ref:`geometry <usersguide_geometry>` and
+:ref:`multigroup materials <create_mgxs>` user guides for more information).

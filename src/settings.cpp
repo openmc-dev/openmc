@@ -1,4 +1,5 @@
 #include "openmc/settings.h"
+#include "openmc/random_ray/flat_source_domain.h"
 
 #include <cmath>  // for ceil, pow
 #include <limits> // for numeric_limits
@@ -69,11 +70,14 @@ bool surf_source_write {false};
 bool surf_mcpl_write {false};
 bool surf_source_read {false};
 bool survival_biasing {false};
+bool survival_normalization {false};
 bool temperature_multipole {false};
 bool trigger_on {false};
 bool trigger_predict {false};
+bool uniform_source_sampling {false};
 bool ufs_on {false};
 bool urr_ptables_on {true};
+bool use_decay_photons {false};
 bool weight_windows_on {false};
 bool weight_window_checkpoint_surface {false};
 bool weight_window_checkpoint_collision {true};
@@ -107,7 +111,7 @@ int max_order {0};
 int n_log_bins {8000};
 int n_batches;
 int n_max_batches;
-int max_splits {1000};
+int max_history_splits {10'000'000};
 int max_tracks {1000};
 ResScatMethod res_scat_method {ResScatMethod::rvs};
 double res_scat_energy_min {0.01};
@@ -118,7 +122,10 @@ SolverType solver_type {SolverType::MONTE_CARLO};
 std::unordered_set<int> sourcepoint_batch;
 std::unordered_set<int> statepoint_batch;
 std::unordered_set<int> source_write_surf_id;
-int64_t max_surface_particles;
+int64_t ssw_max_particles;
+int64_t ssw_max_files;
+int64_t ssw_cell_id {C_NONE};
+SSWCellType ssw_cell_type {SSWCellType::None};
 TemperatureMethod temperature_method {TemperatureMethod::NEAREST};
 double temperature_tolerance {10.0};
 double temperature_default {293.6};
@@ -191,7 +198,8 @@ void get_run_parameters(pugi::xml_node node_base)
   }
 
   // Get number of inactive batches
-  if (run_mode == RunMode::EIGENVALUE) {
+  if (run_mode == RunMode::EIGENVALUE ||
+      solver_type == SolverType::RANDOM_RAY) {
     if (check_for_node(node_base, "inactive")) {
       n_inactive = std::stoi(get_node_value(node_base, "inactive"));
     }
@@ -265,6 +273,77 @@ void get_run_parameters(pugi::xml_node node_base)
       RandomRay::ray_source_ = Source::create(source_node);
     } else {
       fatal_error("Specify random ray source in settings XML");
+    }
+    if (check_for_node(random_ray_node, "volume_estimator")) {
+      std::string temp_str =
+        get_node_value(random_ray_node, "volume_estimator", true, true);
+      if (temp_str == "simulation_averaged") {
+        FlatSourceDomain::volume_estimator_ =
+          RandomRayVolumeEstimator::SIMULATION_AVERAGED;
+      } else if (temp_str == "naive") {
+        FlatSourceDomain::volume_estimator_ = RandomRayVolumeEstimator::NAIVE;
+      } else if (temp_str == "hybrid") {
+        FlatSourceDomain::volume_estimator_ = RandomRayVolumeEstimator::HYBRID;
+      } else {
+        fatal_error("Unrecognized volume estimator: " + temp_str);
+      }
+    }
+    if (check_for_node(random_ray_node, "source_shape")) {
+      std::string temp_str =
+        get_node_value(random_ray_node, "source_shape", true, true);
+      if (temp_str == "flat") {
+        RandomRay::source_shape_ = RandomRaySourceShape::FLAT;
+      } else if (temp_str == "linear") {
+        RandomRay::source_shape_ = RandomRaySourceShape::LINEAR;
+      } else if (temp_str == "linear_xy") {
+        RandomRay::source_shape_ = RandomRaySourceShape::LINEAR_XY;
+      } else {
+        fatal_error("Unrecognized source shape: " + temp_str);
+      }
+    }
+    if (check_for_node(random_ray_node, "volume_normalized_flux_tallies")) {
+      FlatSourceDomain::volume_normalized_flux_tallies_ =
+        get_node_value_bool(random_ray_node, "volume_normalized_flux_tallies");
+    }
+    if (check_for_node(random_ray_node, "adjoint")) {
+      FlatSourceDomain::adjoint_ =
+        get_node_value_bool(random_ray_node, "adjoint");
+    }
+    if (check_for_node(random_ray_node, "sample_method")) {
+      std::string temp_str =
+        get_node_value(random_ray_node, "sample_method", true, true);
+      if (temp_str == "prng") {
+        RandomRay::sample_method_ = RandomRaySampleMethod::PRNG;
+      } else if (temp_str == "halton") {
+        RandomRay::sample_method_ = RandomRaySampleMethod::HALTON;
+      } else {
+        fatal_error("Unrecognized sample method: " + temp_str);
+      }
+    }
+    if (check_for_node(random_ray_node, "source_region_meshes")) {
+      pugi::xml_node node_source_region_meshes =
+        random_ray_node.child("source_region_meshes");
+      for (pugi::xml_node node_mesh :
+        node_source_region_meshes.children("mesh")) {
+        int mesh_id = std::stoi(node_mesh.attribute("id").value());
+        for (pugi::xml_node node_domain : node_mesh.children("domain")) {
+          int domain_id = std::stoi(node_domain.attribute("id").value());
+          std::string domain_type = node_domain.attribute("type").value();
+          Source::DomainType type;
+          if (domain_type == "material") {
+            type = Source::DomainType::MATERIAL;
+          } else if (domain_type == "cell") {
+            type = Source::DomainType::CELL;
+          } else if (domain_type == "universe") {
+            type = Source::DomainType::UNIVERSE;
+          } else {
+            throw std::runtime_error("Unknown domain type: " + domain_type);
+          }
+          FlatSourceDomain::mesh_domain_map_[mesh_id].emplace_back(
+            type, domain_id);
+          RandomRay::mesh_subdivision_enabled_ = true;
+        }
+      }
     }
   }
 }
@@ -462,6 +541,12 @@ void read_settings_xml(pugi::xml_node root)
     openmc_set_seed(seed);
   }
 
+  // Copy random number stride if specified
+  if (check_for_node(root, "stride")) {
+    auto stride = std::stoull(get_node_value(root, "stride"));
+    openmc_set_stride(stride);
+  }
+
   // Check for electron treatment
   if (check_for_node(root, "electron_treatment")) {
     auto temp_str = get_node_value(root, "electron_treatment", true, true);
@@ -523,9 +608,17 @@ void read_settings_xml(pugi::xml_node root)
     model::external_sources.push_back(make_unique<FileSource>(path));
   }
 
+  // Build probability mass function for sampling external sources
+  vector<double> source_strengths;
+  for (auto& s : model::external_sources) {
+    source_strengths.push_back(s->strength());
+  }
+  model::external_sources_probability.assign(source_strengths);
+
   // If no source specified, default to isotropic point source at origin with
-  // Watt spectrum
-  if (model::external_sources.empty()) {
+  // Watt spectrum. No default source is needed in random ray mode.
+  if (model::external_sources.empty() &&
+      settings::solver_type != SolverType::RANDOM_RAY) {
     double T[] {0.0};
     double p[] {1.0};
     model::external_sources.push_back(make_unique<IndependentSource>(
@@ -557,6 +650,10 @@ void read_settings_xml(pugi::xml_node root)
     }
     if (check_for_node(node_cutoff, "weight_avg")) {
       weight_survive = std::stod(get_node_value(node_cutoff, "weight_avg"));
+    }
+    if (check_for_node(node_cutoff, "survival_normalization")) {
+      survival_normalization =
+        get_node_value_bool(node_cutoff, "survival_normalization");
     }
     if (check_for_node(node_cutoff, "energy_neutron")) {
       energy_cutoff[0] =
@@ -623,30 +720,37 @@ void read_settings_xml(pugi::xml_node root)
     }
   }
 
-  // Shannon Entropy mesh
-  if (check_for_node(root, "entropy_mesh")) {
-    int temp = std::stoi(get_node_value(root, "entropy_mesh"));
-    if (model::mesh_map.find(temp) == model::mesh_map.end()) {
-      fatal_error(fmt::format(
-        "Mesh {} specified for Shannon entropy does not exist.", temp));
+  // Shannon entropy
+  if (solver_type == SolverType::RANDOM_RAY) {
+    if (check_for_node(root, "entropy_mesh")) {
+      fatal_error("Random ray uses FSRs to compute the Shannon entropy. "
+                  "No user-defined entropy mesh is supported.");
     }
-
-    auto* m =
-      dynamic_cast<RegularMesh*>(model::meshes[model::mesh_map.at(temp)].get());
-    if (!m)
-      fatal_error("Only regular meshes can be used as an entropy mesh");
-    simulation::entropy_mesh = m;
-
-    // Turn on Shannon entropy calculation
     entropy_on = true;
+  } else if (solver_type == SolverType::MONTE_CARLO) {
+    if (check_for_node(root, "entropy_mesh")) {
+      int temp = std::stoi(get_node_value(root, "entropy_mesh"));
+      if (model::mesh_map.find(temp) == model::mesh_map.end()) {
+        fatal_error(fmt::format(
+          "Mesh {} specified for Shannon entropy does not exist.", temp));
+      }
 
-  } else if (check_for_node(root, "entropy")) {
-    fatal_error(
-      "Specifying a Shannon entropy mesh via the <entropy> element "
-      "is deprecated. Please create a mesh using <mesh> and then reference "
-      "it by specifying its ID in an <entropy_mesh> element.");
+      auto* m = dynamic_cast<RegularMesh*>(
+        model::meshes[model::mesh_map.at(temp)].get());
+      if (!m)
+        fatal_error("Only regular meshes can be used as an entropy mesh");
+      simulation::entropy_mesh = m;
+
+      // Turn on Shannon entropy calculation
+      entropy_on = true;
+
+    } else if (check_for_node(root, "entropy")) {
+      fatal_error(
+        "Specifying a Shannon entropy mesh via the <entropy> element "
+        "is deprecated. Please create a mesh using <mesh> and then reference "
+        "it by specifying its ID in an <entropy_mesh> element.");
+    }
   }
-
   // Uniform fission source weighting mesh
   if (check_for_node(root, "ufs_mesh")) {
     auto temp = std::stoi(get_node_value(root, "ufs_mesh"));
@@ -739,13 +843,21 @@ void read_settings_xml(pugi::xml_node root)
     sourcepoint_batch = statepoint_batch;
   }
 
+  // Check is the user specified to convert strength to statistical weight
+  if (check_for_node(root, "uniform_source_sampling")) {
+    uniform_source_sampling =
+      get_node_value_bool(root, "uniform_source_sampling");
+  }
+
   // Check if the user has specified to write surface source
   if (check_for_node(root, "surf_source_write")) {
     surf_source_write = true;
     // Get surface source write node
     xml_node node_ssw = root.child("surf_source_write");
 
-    // Determine surface ids at which crossing particles are to be banked
+    // Determine surface ids at which crossing particles are to be banked.
+    // If no surfaces are specified, all surfaces in the model will be used
+    // to bank source points.
     if (check_for_node(node_ssw, "surface_ids")) {
       auto temp = get_node_array<int>(node_ssw, "surface_ids");
       for (const auto& b : temp) {
@@ -755,9 +867,20 @@ void read_settings_xml(pugi::xml_node root)
 
     // Get maximum number of particles to be banked per surface
     if (check_for_node(node_ssw, "max_particles")) {
-      max_surface_particles =
-        std::stoll(get_node_value(node_ssw, "max_particles"));
+      ssw_max_particles = std::stoll(get_node_value(node_ssw, "max_particles"));
+    } else {
+      fatal_error("A maximum number of particles needs to be specified "
+                  "using the 'max_particles' parameter to store surface "
+                  "source points.");
     }
+
+    // Get maximum number of surface source files to be created
+    if (check_for_node(node_ssw, "max_source_files")) {
+      ssw_max_files = std::stoll(get_node_value(node_ssw, "max_source_files"));
+    } else {
+      ssw_max_files = 1;
+    }
+
     if (check_for_node(node_ssw, "mcpl")) {
       surf_mcpl_write = get_node_value_bool(node_ssw, "mcpl");
 
@@ -766,6 +889,27 @@ void read_settings_xml(pugi::xml_node root)
         fatal_error("Your build of OpenMC does not support writing MCPL "
                     "surface source files.");
       }
+    }
+    // Get cell information
+    if (check_for_node(node_ssw, "cell")) {
+      ssw_cell_id = std::stoll(get_node_value(node_ssw, "cell"));
+      ssw_cell_type = SSWCellType::Both;
+    }
+    if (check_for_node(node_ssw, "cellfrom")) {
+      if (ssw_cell_id != C_NONE) {
+        fatal_error(
+          "'cell', 'cellfrom' and 'cellto' cannot be used at the same time.");
+      }
+      ssw_cell_id = std::stoll(get_node_value(node_ssw, "cellfrom"));
+      ssw_cell_type = SSWCellType::From;
+    }
+    if (check_for_node(node_ssw, "cellto")) {
+      if (ssw_cell_id != C_NONE) {
+        fatal_error(
+          "'cell', 'cellfrom' and 'cellto' cannot be used at the same time.");
+      }
+      ssw_cell_id = std::stoll(get_node_value(node_ssw, "cellto"));
+      ssw_cell_type = SSWCellType::To;
     }
   }
 
@@ -979,8 +1123,9 @@ void read_settings_xml(pugi::xml_node root)
     weight_windows_on = get_node_value_bool(root, "weight_windows_on");
   }
 
-  if (check_for_node(root, "max_splits")) {
-    settings::max_splits = std::stoi(get_node_value(root, "max_splits"));
+  if (check_for_node(root, "max_history_splits")) {
+    settings::max_history_splits =
+      std::stoi(get_node_value(root, "max_history_splits"));
   }
 
   if (check_for_node(root, "max_tracks")) {
@@ -1016,6 +1161,11 @@ void read_settings_xml(pugi::xml_node root)
       weight_window_checkpoint_surface =
         get_node_value_bool(ww_checkpoints, "surface");
     }
+  }
+
+  if (check_for_node(root, "use_decay_photons")) {
+    settings::use_decay_photons =
+      get_node_value_bool(root, "use_decay_photons");
   }
 }
 

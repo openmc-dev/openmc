@@ -14,8 +14,8 @@ if(DEFINED ENV{METHOD})
   message(STATUS "Using environment variable METHOD to determine libMesh build: ${LIBMESH_PC_FILE}")
 endif()
 
-include(FindPkgConfig)
-set(ENV{PKG_CONFIG_PATH} "$ENV{PKG_CONFIG_PATH}:${LIBMESH_PC}")
-set(PKG_CONFIG_USE_CMAKE_PREFIX_PATH True)
+find_package(PkgConfig REQUIRED)
+
+set(PKG_CONFIG_USE_CMAKE_PREFIX_PATH TRUE)
 pkg_check_modules(LIBMESH REQUIRED ${LIBMESH_PC_FILE}>=1.7.0 IMPORTED_TARGET)
 pkg_get_variable(LIBMESH_PREFIX ${LIBMESH_PC_FILE} prefix)

@@ -1,7 +1,6 @@
 #include "openmc/tallies/filter_mesh.h"
 
 #include <fmt/core.h>
-#include <gsl/gsl-lite.hpp>
 
 #include "openmc/capi.h"
 #include "openmc/constants.h"
@@ -80,7 +79,7 @@ void MeshFilter::set_mesh(int32_t mesh)
   // perform any additional perparation for mesh tallies here
   mesh_ = mesh;
   n_bins_ = model::meshes[mesh_]->n_bins();
-  model::meshes[mesh_]->prepare_for_tallies();
+  model::meshes[mesh_]->prepare_for_point_location();
 }
 
 void MeshFilter::set_translation(const Position& translation)

@@ -2,6 +2,7 @@
 #include "openmc/cell.h"
 
 #include <algorithm>
+#include <cassert>
 #include <cctype>
 #include <cmath>
 #include <iterator>
@@ -10,7 +11,6 @@
 #include <string>
 
 #include <fmt/core.h>
-#include <gsl/gsl-lite.hpp>
 
 #include "openmc/capi.h"
 #include "openmc/constants.h"
@@ -137,7 +137,7 @@ void Cell::set_temperature(double T, int32_t instance, bool set_contained)
     auto contained_cells = this->get_contained_cells(instance);
     for (const auto& entry : contained_cells) {
       auto& cell = model::cells[entry.first];
-      Expects(cell->type_ == Fill::MATERIAL);
+      assert(cell->type_ == Fill::MATERIAL);
       auto& instances = entry.second;
       for (auto instance : instances) {
         cell->set_temperature(T, instance);
@@ -179,7 +179,7 @@ void Cell::import_properties_hdf5(hid_t group)
   // Modify temperatures for the cell
   sqrtkT_.clear();
   sqrtkT_.resize(temps.size());
-  for (gsl::index i = 0; i < temps.size(); ++i) {
+  for (int64_t i = 0; i < temps.size(); ++i) {
     this->set_temperature(temps[i], i);
   }
 
@@ -249,16 +249,8 @@ void Cell::to_hdf5(hid_t cell_group) const
 // CSGCell implementation
 //==============================================================================
 
-// default constructor
-CSGCell::CSGCell()
-{
-  geom_type_ = GeometryType::CSG;
-}
-
 CSGCell::CSGCell(pugi::xml_node cell_node)
 {
-  geom_type_ = GeometryType::CSG;
-
   if (check_for_node(cell_node, "id")) {
     id_ = std::stoi(get_node_value(cell_node, "id"));
   } else {
@@ -578,17 +570,14 @@ void Region::apply_demorgan(
 //! precedence than unions using parentheses.
 //==============================================================================
 
-std::vector<int32_t>::iterator Region::add_parentheses(
-  std::vector<int32_t>::iterator start)
+int64_t Region::add_parentheses(int64_t start)
 {
-  int32_t start_token = *start;
-  // Add left parenthesis
-  if (start_token == OP_INTERSECTION) {
-    start = expression_.insert(start - 1, OP_LEFT_PAREN);
-  } else {
-    start = expression_.insert(start + 1, OP_LEFT_PAREN);
+  int32_t start_token = expression_[start];
+  // Add left parenthesis and set new position to be after parenthesis
+  if (start_token == OP_UNION) {
+    start += 2;
   }
-  start++;
+  expression_.insert(expression_.begin() + start - 1, OP_LEFT_PAREN);
 
   // Keep track of return iterator distance. If we don't encounter a left
   // parenthesis, we return an iterator corresponding to wherever the right
@@ -600,23 +589,23 @@ std::vector<int32_t>::iterator Region::add_parentheses(
 
   // Add right parenthesis
   // While the start iterator is within the bounds of infix
-  while (start < expression_.end()) {
+  while (start + 1 < expression_.size()) {
     start++;
 
     // If the current token is an operator and is different than the start token
-    if (*start >= OP_UNION && *start != start_token) {
+    if (expression_[start] >= OP_UNION && expression_[start] != start_token) {
       // Skip wrapped regions but save iterator position to check precedence and
       // add right parenthesis, right parenthesis position depends on the
       // operator, when the operator is a union then do not include the operator
       // in the region, when the operator is an intersection then include the
       // operator and next surface
-      if (*start == OP_LEFT_PAREN) {
-        return_it_dist = std::distance(expression_.begin(), start);
+      if (expression_[start] == OP_LEFT_PAREN) {
+        return_it_dist = start;
         int depth = 1;
         do {
           start++;
-          if (*start > OP_COMPLEMENT) {
-            if (*start == OP_RIGHT_PAREN) {
+          if (expression_[start] > OP_COMPLEMENT) {
+            if (expression_[start] == OP_RIGHT_PAREN) {
               depth--;
             } else {
               depth++;
@@ -624,10 +613,12 @@ std::vector<int32_t>::iterator Region::add_parentheses(
           }
         } while (depth > 0);
       } else {
-        start = expression_.insert(
-          start_token == OP_UNION ? start - 1 : start, OP_RIGHT_PAREN);
+        if (start_token == OP_UNION) {
+          --start;
+        }
+        expression_.insert(expression_.begin() + start, OP_RIGHT_PAREN);
         if (return_it_dist > 0) {
-          return expression_.begin() + return_it_dist;
+          return return_it_dist;
         } else {
           return start - 1;
         }
@@ -638,7 +629,7 @@ std::vector<int32_t>::iterator Region::add_parentheses(
   // return iterator
   expression_.push_back(OP_RIGHT_PAREN);
   if (return_it_dist > 0) {
-    return expression_.begin() + return_it_dist;
+    return return_it_dist;
   } else {
     return start - 1;
   }
@@ -651,21 +642,21 @@ void Region::add_precedence()
   int32_t current_op = 0;
   std::size_t current_dist = 0;
 
-  for (auto it = expression_.begin(); it != expression_.end(); it++) {
-    int32_t token = *it;
+  for (int64_t i = 0; i < expression_.size(); i++) {
+    int32_t token = expression_[i];
 
     if (token == OP_UNION || token == OP_INTERSECTION) {
       if (current_op == 0) {
         // Set the current operator if is hasn't been set
         current_op = token;
-        current_dist = std::distance(expression_.begin(), it);
+        current_dist = i;
       } else if (token != current_op) {
         // If the current operator doesn't match the token, add parenthesis to
         // assert precedence
         if (current_op == OP_INTERSECTION) {
-          it = add_parentheses(expression_.begin() + current_dist);
+          i = add_parentheses(current_dist);
         } else {
-          it = add_parentheses(it);
+          i = add_parentheses(i);
         }
         current_op = 0;
         current_dist = 0;
@@ -947,7 +938,7 @@ BoundingBox Region::bounding_box_complex(vector<int32_t> postfix) const
     }
   }
 
-  Ensures(i_stack == 0);
+  assert(i_stack == 0);
   return stack.front();
 }
 
@@ -1219,8 +1210,8 @@ struct ParentCell {
              lattice_index < other.lattice_index);
   }
 
-  gsl::index cell_index;
-  gsl::index lattice_index;
+  int64_t cell_index;
+  int64_t lattice_index;
 };
 
 //! Structure used to insert ParentCell into hashed STL data structures

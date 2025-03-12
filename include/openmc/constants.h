@@ -59,6 +59,10 @@ constexpr double RADIAL_MESH_TOL {1e-10};
 // Maximum number of random samples per history
 constexpr int MAX_SAMPLE {100000};
 
+// Avg. number of hits per batch to be defined as a "small"
+// source region in the random ray solver
+constexpr double MIN_HITS_PER_BATCH {1.5};
+
 // ============================================================================
 // MATH AND PHYSICAL CONSTANTS
 
@@ -342,10 +346,18 @@ enum class RunMode {
 
 enum class SolverType { MONTE_CARLO, RANDOM_RAY };
 
+enum class RandomRayVolumeEstimator { NAIVE, SIMULATION_AVERAGED, HYBRID };
+enum class RandomRaySourceShape { FLAT, LINEAR, LINEAR_XY };
+enum class RandomRaySampleMethod { PRNG, HALTON };
+
 //==============================================================================
 // Geometry Constants
 
 enum class GeometryType { CSG, DAG };
+
+// a surface token cannot be zero due to the unsigned nature of zero for integer
+// representations. This value represents no surface.
+constexpr int32_t SURFACE_NONE {0};
 
 } // namespace openmc
 

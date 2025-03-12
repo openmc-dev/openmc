@@ -55,7 +55,7 @@ def model():
         run_mode='fixed source',
         particles=100,
         batches=10,
-        max_splits=10,
+        max_history_splits=10,
         survival_biasing=False
     )
 
@@ -101,7 +101,7 @@ def labels(params):
 
 
 @pytest.mark.parametrize("filters", test_cases, ids=labels)
-def test_ww_gen(filters, model):
+def test_ww_gen(filters, run_in_tmpdir, model):
 
     tally = openmc.Tally()
     tally.filters = list(filters)

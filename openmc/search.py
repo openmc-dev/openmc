@@ -9,7 +9,7 @@ import openmc.model
 import openmc.checkvalue as cv
 
 
-_SCALAR_BRACKETED_METHODS = ['brentq', 'brenth', 'ridder', 'bisect']
+_SCALAR_BRACKETED_METHODS = {'brentq', 'brenth', 'ridder', 'bisect'}
 
 
 def _search_keff(guess, target, model_builder, model_args, print_iterations,

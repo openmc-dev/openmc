@@ -26,6 +26,7 @@ def test_export_to_xml(run_in_tmpdir):
     s.plot_seed = 100
     s.survival_biasing = True
     s.cutoff = {'weight': 0.25, 'weight_avg': 0.5, 'energy_neutron': 1.0e-5,
+                'survival_normalization': True,
                 'energy_photon': 1000.0, 'energy_electron': 1.0e-5,
                 'energy_positron': 1.0e-5, 'time_neutron': 1.0e-5,
                 'time_photon': 1.0e-5, 'time_electron': 1.0e-5,
@@ -91,7 +92,7 @@ def test_export_to_xml(run_in_tmpdir):
     assert s.sourcepoint == {'batches': [50, 150, 500, 1000], 'separate': True,
                              'write': True, 'overwrite': True, 'mcpl': True}
     assert s.statepoint == {'batches': [50, 150, 500, 1000]}
-    assert s.surf_source_read == {'path': 'surface_source_1.h5'}
+    assert s.surf_source_read['path'].name == 'surface_source_1.h5'
     assert s.surf_source_write == {'surface_ids': [2], 'max_particles': 200}
     assert s.confidence_intervals
     assert s.ptables
@@ -99,6 +100,7 @@ def test_export_to_xml(run_in_tmpdir):
     assert s.seed == 17
     assert s.survival_biasing
     assert s.cutoff == {'weight': 0.25, 'weight_avg': 0.5,
+                        'survival_normalization': True,
                         'energy_neutron': 1.0e-5, 'energy_photon': 1000.0,
                         'energy_electron': 1.0e-5, 'energy_positron': 1.0e-5,
                         'time_neutron': 1.0e-5, 'time_photon': 1.0e-5,

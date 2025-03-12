@@ -1,8 +1,14 @@
 #ifndef OPENMC_RANDOM_RAY_FLAT_SOURCE_DOMAIN_H
 #define OPENMC_RANDOM_RAY_FLAT_SOURCE_DOMAIN_H
 
+#include "openmc/constants.h"
 #include "openmc/openmp_interface.h"
 #include "openmc/position.h"
+#include "openmc/random_ray/parallel_map.h"
+#include "openmc/random_ray/source_region.h"
+#include "openmc/source.h"
+#include <unordered_map>
+#include <unordered_set>
 
 namespace openmc {
 
@@ -15,82 +21,141 @@ namespace openmc {
 class FlatSourceDomain {
 public:
   //----------------------------------------------------------------------------
-  // Helper Structs
-
-  // A mapping object that is used to map between a specific random ray
-  // source region and an OpenMC native tally bin that it should score to
-  // every iteration.
-  struct TallyTask {
-    int tally_idx;
-    int filter_idx;
-    int score_idx;
-    int score_type;
-    TallyTask(int tally_idx, int filter_idx, int score_idx, int score_type)
-      : tally_idx(tally_idx), filter_idx(filter_idx), score_idx(score_idx),
-        score_type(score_type)
-    {}
-  };
-
-  //----------------------------------------------------------------------------
-  // Constructors
+  // Constructors and Destructors
   FlatSourceDomain();
+  virtual ~FlatSourceDomain() = default;
 
   //----------------------------------------------------------------------------
   // Methods
-  void update_neutron_source(double k_eff);
+  virtual void update_neutron_source(double k_eff);
   double compute_k_eff(double k_eff_old) const;
-  void normalize_scalar_flux_and_volumes(
+  virtual void normalize_scalar_flux_and_volumes(
     double total_active_distance_per_iteration);
+
   int64_t add_source_to_scalar_flux();
-  void batch_reset();
+  virtual void batch_reset();
   void convert_source_regions_to_tallies();
-  void random_ray_tally() const;
-  void accumulate_iteration_flux();
+  void reset_tally_volumes();
+  void random_ray_tally();
+  virtual void accumulate_iteration_flux();
   void output_to_vtk() const;
-  void all_reduce_replicated_source_regions();
+  void convert_external_sources();
+  void count_external_source_regions();
+  void set_adjoint_sources(const vector<double>& forward_flux);
+  void flux_swap();
+  virtual double evaluate_flux_at_point(Position r, int64_t sr, int g) const;
+  double compute_fixed_source_normalization_factor() const;
+  void flatten_xs();
+  void transpose_scattering_matrix();
+  void serialize_final_fluxes(vector<double>& flux);
+  void apply_meshes();
+  void apply_mesh_to_cell_instances(int32_t i_cell, int32_t mesh_idx,
+    int target_material_id, const vector<int32_t>& instances,
+    bool is_target_void);
+  void apply_mesh_to_cell_and_children(int32_t i_cell, int32_t mesh_idx,
+    int32_t target_material_id, bool is_target_void);
+  void prepare_base_source_regions();
+  SourceRegionHandle get_subdivided_source_region_handle(
+    int64_t sr, int mesh_bin, Position r, double dist, Direction u);
+  void finalize_discovered_source_regions();
+  int64_t n_source_regions() const
+  {
+    return source_regions_.n_source_regions();
+  }
+  int64_t n_source_elements() const
+  {
+    return source_regions_.n_source_regions() * negroups_;
+  }
+
+  //----------------------------------------------------------------------------
+  // Static Data members
+  static bool volume_normalized_flux_tallies_;
+  static bool adjoint_; // If the user wants outputs based on the adjoint flux
+
+  // Static variables to store source region meshes and domains
+  static std::unordered_map<int, vector<std::pair<Source::DomainType, int>>>
+    mesh_domain_map_;
+
+  //----------------------------------------------------------------------------
+  // Static data members
+  static RandomRayVolumeEstimator volume_estimator_;
 
   //----------------------------------------------------------------------------
   // Public Data members
-
   bool mapped_all_tallies_ {false}; // If all source regions have been visited
 
-  int64_t n_source_regions_ {0}; // Total number of source regions in the model
+  int64_t n_external_source_regions_ {0}; // Total number of source regions with
+                                          // non-zero external source terms
 
   // 1D array representing source region starting offset for each OpenMC Cell
   // in model::cells
   vector<int64_t> source_region_offsets_;
 
-  // 1D arrays representing values for all source regions
-  vector<OpenMPMutex> lock_;
-  vector<int> was_hit_;
-  vector<double> volume_;
-  vector<int> position_recorded_;
-  vector<Position> position_;
-
-  // 2D arrays stored in 1D representing values for all source regions x energy
+  // 2D arrays stored in 1D representing values for all materials x energy
   // groups
-  vector<float> scalar_flux_old_;
-  vector<float> scalar_flux_new_;
-  vector<float> source_;
+  int n_materials_;
+  vector<double> sigma_t_;
+  vector<double> nu_sigma_f_;
+  vector<double> sigma_f_;
+  vector<double> chi_;
+
+  // 3D arrays stored in 1D representing values for all materials x energy
+  // groups x energy groups
+  vector<double> sigma_s_;
+
+  // The abstract container holding all source region-specific data
+  SourceRegionContainer source_regions_;
+
+  // Base source region container. When source region subdivision via mesh
+  // is in use, this container holds the original (non-subdivided) material
+  // filled cell instance source regions. These are useful as they can be
+  // initialized with external source and mesh domain information ahead of time.
+  // Then, dynamically discovered source regions can be initialized by cloning
+  // their base region.
+  SourceRegionContainer base_source_regions_;
+
+  // Parallel hash map holding all source regions discovered during
+  // a single iteration. This is a threadsafe data structure that is cleaned
+  // out after each iteration and stored in the "source_regions_" container.
+  // It is keyed with a SourceRegionKey, which combines the base source
+  // region index and the mesh bin.
+  ParallelMap<SourceRegionKey, SourceRegion, SourceRegionKey::HashFunctor>
+    discovered_source_regions_;
+
+  // Map that relates a SourceRegionKey to the index at which the source
+  // region can be found in the "source_regions_" container.
+  std::unordered_map<SourceRegionKey, int64_t, SourceRegionKey::HashFunctor>
+    source_region_map_;
+
+protected:
+  //----------------------------------------------------------------------------
+  // Methods
+  void apply_external_source_to_source_region(
+    Discrete* discrete, double strength_factor, int64_t sr);
+  void apply_external_source_to_cell_instances(int32_t i_cell,
+    Discrete* discrete, double strength_factor, int target_material_id,
+    const vector<int32_t>& instances);
+  void apply_external_source_to_cell_and_children(int32_t i_cell,
+    Discrete* discrete, double strength_factor, int32_t target_material_id);
+  virtual void set_flux_to_flux_plus_source(int64_t sr, double volume, int g);
+  void set_flux_to_source(int64_t sr, int g);
+  virtual void set_flux_to_old_flux(int64_t sr, int g);
 
   //----------------------------------------------------------------------------
   // Private data members
-private:
-  int negroups_;                  // Number of energy groups in simulation
-  int64_t n_source_elements_ {0}; // Total number of source regions in the model
-                                  // times the number of energy groups
+  int negroups_; // Number of energy groups in simulation
 
-  // 2D array representing values for all source regions x energy groups x tally
-  // tasks
-  vector<vector<TallyTask>> tally_task_;
+  double
+    simulation_volume_; // Total physical volume of the simulation domain, as
+                        // defined by the 3D box of the random ray source
 
-  // 1D arrays representing values for all source regions
-  vector<int> material_;
-  vector<double> volume_t_;
-
-  // 2D arrays stored in 1D representing values for all source regions x energy
-  // groups
-  vector<float> scalar_flux_final_;
+  // Volumes for each tally and bin/score combination. This intermediate data
+  // structure is used when tallying quantities that must be normalized by
+  // volume (i.e., flux). The vector is index by tally index, while the inner 2D
+  // xtensor is indexed by bin index and score index in a similar manner to the
+  // results tensor in the Tally class, though without the third dimension, as
+  // SUM and SUM_SQ do not need to be tracked.
+  vector<xt::xtensor<double, 2>> tally_volumes_;
 
 }; // class FlatSourceDomain
 
@@ -125,15 +190,6 @@ T convert_to_big_endian(T in)
   }
   T out = *reinterpret_cast<T*>(&swapper);
   return out;
-}
-
-template<typename T>
-void parallel_fill(vector<T>& arr, T value)
-{
-#pragma omp parallel for schedule(static)
-  for (int i = 0; i < arr.size(); i++) {
-    arr[i] = value;
-  }
 }
 
 } // namespace openmc

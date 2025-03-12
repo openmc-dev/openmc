@@ -570,6 +570,12 @@ def test_regular_mesh(lib_init):
 
     np.testing.assert_allclose(mesh.volumes, 1.0)
 
+    # bounding box
+    mesh.set_parameters(lower_left=ll, upper_right=ur)
+    bbox = mesh.bounding_box
+    np.testing.assert_allclose(bbox.lower_left, ll)
+    np.testing.assert_allclose(bbox.upper_right, ur)
+
     meshes = openmc.lib.meshes
     assert isinstance(meshes, Mapping)
     assert len(meshes) == 1
@@ -595,18 +601,18 @@ def test_regular_mesh(lib_init):
     mesh.set_parameters(lower_left=(-0.63, -0.63, -0.5),
                         upper_right=(0.63, 0.63, 0.5))
     vols = mesh.material_volumes()
-    assert len(vols) == 4
-    for elem_vols in vols:
+    assert vols.num_elements == 4
+    for i in range(vols.num_elements):
+        elem_vols = vols.by_element(i)
         assert sum(f[1] for f in elem_vols) == pytest.approx(1.26 * 1.26 / 4)
 
-    # If the mesh extends beyond the boundaries of the model, the volumes should
-    # still be reported correctly
+    # If the mesh extends beyond the boundaries of the model, we should get a
+    # GeometryError
     mesh.dimension = (1, 1, 1)
     mesh.set_parameters(lower_left=(-1.0, -1.0, -0.5),
                         upper_right=(1.0, 1.0, 0.5))
-    vols = mesh.material_volumes(100_000)
-    for elem_vols in vols:
-        assert sum(f[1] for f in elem_vols) == pytest.approx(1.26 * 1.26, 1e-2)
+    with pytest.raises(exc.GeometryError, match="not fully contained"):
+        vols = mesh.material_volumes()
 
 
 def test_regular_mesh_get_plot_bins(lib_init):
@@ -650,6 +656,11 @@ def test_rectilinear_mesh(lib_init):
 
     np.testing.assert_allclose(mesh.volumes, 1000.0)
 
+    # bounding box
+    bbox = mesh.bounding_box
+    np.testing.assert_allclose(bbox.lower_left, (-10., 0., 10.))
+    np.testing.assert_allclose(bbox.upper_right, (10., 20., 30.))
+
     with pytest.raises(exc.AllocationError):
         mesh2 = openmc.lib.RectilinearMesh(mesh.id)
 
@@ -672,11 +683,11 @@ def test_rectilinear_mesh(lib_init):
     mesh.set_grid([-w/2, -w/4, w/2], [-w/2, -w/4, w/2], [-0.5, 0.5])
 
     vols = mesh.material_volumes()
-    assert len(vols) == 4
-    assert sum(f[1] for f in vols[0]) == pytest.approx(w/4 * w/4)
-    assert sum(f[1] for f in vols[1]) == pytest.approx(w/4 * 3*w/4)
-    assert sum(f[1] for f in vols[2]) == pytest.approx(3*w/4 * w/4)
-    assert sum(f[1] for f in vols[3]) == pytest.approx(3*w/4 * 3*w/4)
+    assert vols.num_elements == 4
+    assert sum(f[1] for f in vols.by_element(0)) == pytest.approx(w/4 * w/4)
+    assert sum(f[1] for f in vols.by_element(1)) == pytest.approx(w/4 * 3*w/4)
+    assert sum(f[1] for f in vols.by_element(2)) == pytest.approx(3*w/4 * w/4)
+    assert sum(f[1] for f in vols.by_element(3)) == pytest.approx(3*w/4 * 3*w/4)
 
 
 def test_cylindrical_mesh(lib_init):
@@ -696,6 +707,11 @@ def test_cylindrical_mesh(lib_init):
 
     np.testing.assert_allclose(mesh.volumes[::2], 10/360 * pi * 5**2 * 10)
     np.testing.assert_allclose(mesh.volumes[1::2], 10/360 * pi * (10**2 - 5**2) * 10)
+
+    # bounding box
+    bbox = mesh.bounding_box
+    np.testing.assert_allclose(bbox.lower_left, (-10., -10., 10.))
+    np.testing.assert_allclose(bbox.upper_right, (10., 10., 30.))
 
     with pytest.raises(exc.AllocationError):
         mesh2 = openmc.lib.CylindricalMesh(mesh.id)
@@ -721,11 +737,11 @@ def test_cylindrical_mesh(lib_init):
     mesh.set_grid(r_grid, phi_grid, z_grid)
 
     vols = mesh.material_volumes()
-    assert len(vols) == 6
+    assert vols.num_elements == 6
     for i in range(0, 6, 2):
-        assert sum(f[1] for f in vols[i]) == pytest.approx(pi * 0.25**2 / 3)
+        assert sum(f[1] for f in vols.by_element(i)) == pytest.approx(pi * 0.25**2 / 3)
     for i in range(1, 6, 2):
-        assert sum(f[1] for f in vols[i]) == pytest.approx(pi * (0.5**2 - 0.25**2) / 3)
+        assert sum(f[1] for f in vols.by_element(i)) == pytest.approx(pi * (0.5**2 - 0.25**2) / 3)
 
 
 def test_spherical_mesh(lib_init):
@@ -749,6 +765,11 @@ def test_spherical_mesh(lib_init):
     np.testing.assert_allclose(mesh.volumes[1::4], f * (10**3 - 5**3) * dtheta(0., 10.))
     np.testing.assert_allclose(mesh.volumes[2::4], f * 5**3 * dtheta(10., 20.))
     np.testing.assert_allclose(mesh.volumes[3::4], f * (10**3 - 5**3) * dtheta(10., 20.))
+
+    # bounding box
+    bbox = mesh.bounding_box
+    np.testing.assert_allclose(bbox.lower_left, (-10., -10., -10.))
+    np.testing.assert_allclose(bbox.upper_right, (10., 10., 10.))
 
     with pytest.raises(exc.AllocationError):
         mesh2 = openmc.lib.SphericalMesh(mesh.id)
@@ -774,14 +795,14 @@ def test_spherical_mesh(lib_init):
     mesh.set_grid(r_grid, theta_grid, phi_grid)
 
     vols = mesh.material_volumes()
-    assert len(vols) == 12
+    assert vols.num_elements == 12
     d_theta = theta_grid[1] - theta_grid[0]
     d_phi = phi_grid[1] - phi_grid[0]
     for i in range(0, 12, 2):
-        assert sum(f[1] for f in vols[i]) == pytest.approx(
+        assert sum(f[1] for f in vols.by_element(i)) == pytest.approx(
             0.25**3 / 3 * d_theta * d_phi * 2/pi)
     for i in range(1, 12, 2):
-        assert sum(f[1] for f in vols[i]) == pytest.approx(
+        assert sum(f[1] for f in vols.by_element(i)) == pytest.approx(
             (0.5**3 - 0.25**3) / 3 * d_theta * d_phi * 2/pi)
 
 
@@ -963,7 +984,8 @@ def test_sample_external_source(run_in_tmpdir, mpi_intracomm):
     model.settings.source = openmc.IndependentSource(
         space=openmc.stats.Box([-5., -5., -5.], [5., 5., 5.]),
         angle=openmc.stats.Monodirectional((0., 0., 1.)),
-        energy=openmc.stats.Discrete([1.0e5], [1.0])
+        energy=openmc.stats.Discrete([1.0e5], [1.0]),
+        constraints={'fissionable': True}
     )
     model.settings.particles = 1000
     model.settings.batches = 10
@@ -992,4 +1014,9 @@ def test_sample_external_source(run_in_tmpdir, mpi_intracomm):
         assert p1.time == p2.time
         assert p1.wgt == p2.wgt
 
+    openmc.lib.finalize()
+
+    # Make sure sampling works in volume calculation mode
+    openmc.lib.init(["-c"])
+    openmc.lib.sample_external_source(100)
     openmc.lib.finalize()

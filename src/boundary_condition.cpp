@@ -129,8 +129,7 @@ TranslationalPeriodicBC::TranslationalPeriodicBC(int i_surf, int j_surf)
 void TranslationalPeriodicBC::handle_particle(
   Particle& p, const Surface& surf) const
 {
-  // TODO: off-by-one on surface indices throughout this function.
-  int i_particle_surf = std::abs(p.surface()) - 1;
+  int i_particle_surf = p.surface_index();
 
   // Figure out which of the two BC surfaces were struck then find the
   // particle's new location and surface.
@@ -255,8 +254,7 @@ RotationalPeriodicBC::RotationalPeriodicBC(int i_surf, int j_surf)
 void RotationalPeriodicBC::handle_particle(
   Particle& p, const Surface& surf) const
 {
-  // TODO: off-by-one on surface indices throughout this function.
-  int i_particle_surf = std::abs(p.surface()) - 1;
+  int i_particle_surf = p.surface_index();
 
   // Figure out which of the two BC surfaces were struck to figure out if a
   // forward or backward rotation is required.  Specify the other surface as

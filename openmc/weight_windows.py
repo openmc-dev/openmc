@@ -1,6 +1,6 @@
 from __future__ import annotations
 from numbers import Real, Integral
-from typing import Iterable, List, Optional, Dict, Sequence
+from collections.abc import Iterable, Sequence
 import warnings
 
 import lxml.etree as ET
@@ -110,15 +110,15 @@ class WeightWindows(IDManagerMixin):
         self,
         mesh: MeshBase,
         lower_ww_bounds: Iterable[float],
-        upper_ww_bounds: Optional[Iterable[float]] = None,
-        upper_bound_ratio: Optional[float] = None,
-        energy_bounds: Optional[Iterable[Real]] = None,
+        upper_ww_bounds: Iterable[float] | None = None,
+        upper_bound_ratio: float | None = None,
+        energy_bounds: Iterable[Real] | None = None,
         particle_type: str = 'neutron',
         survival_ratio: float = 3,
-        max_lower_bound_ratio: Optional[float] = None,
+        max_lower_bound_ratio: float | None = None,
         max_split: int = 10,
         weight_cutoff: float = 1.e-38,
-        id: Optional[int] = None
+        id: int | None = None
     ):
         self.mesh = mesh
         self.id = id
@@ -328,8 +328,9 @@ class WeightWindows(IDManagerMixin):
         subelement = ET.SubElement(element, 'particle_type')
         subelement.text = self.particle_type
 
-        subelement = ET.SubElement(element, 'energy_bounds')
-        subelement.text = ' '.join(str(e) for e in self.energy_bounds)
+        if self.energy_bounds is not None:
+            subelement = ET.SubElement(element, 'energy_bounds')
+            subelement.text = ' '.join(str(e) for e in self.energy_bounds)
 
         subelement = ET.SubElement(element, 'lower_ww_bounds')
         subelement.text = ' '.join(str(b) for b in self.lower_ww_bounds.ravel('F'))
@@ -353,7 +354,7 @@ class WeightWindows(IDManagerMixin):
         return element
 
     @classmethod
-    def from_xml_element(cls, elem: ET.Element, meshes: Dict[int, MeshBase]) -> WeightWindows:
+    def from_xml_element(cls, elem: ET.Element, meshes: dict[int, MeshBase]) -> WeightWindows:
         """Generate weight window settings from an XML element
 
         Parameters
@@ -407,7 +408,7 @@ class WeightWindows(IDManagerMixin):
         )
 
     @classmethod
-    def from_hdf5(cls, group: h5py.Group, meshes: Dict[int, MeshBase]) -> WeightWindows:
+    def from_hdf5(cls, group: h5py.Group, meshes: dict[int, MeshBase]) -> WeightWindows:
         """Create weight windows from HDF5 group
 
         Parameters
@@ -457,7 +458,7 @@ class WeightWindows(IDManagerMixin):
         )
 
 
-def wwinp_to_wws(path: PathLike) -> List[WeightWindows]:
+def wwinp_to_wws(path: PathLike) -> list[WeightWindows]:
     """Create WeightWindows instances from a wwinp file
 
     .. versionadded:: 0.13.1
@@ -512,9 +513,19 @@ def wwinp_to_wws(path: PathLike) -> List[WeightWindows]:
             line_arr = np.fromstring(wwinp.readline(), sep=' ')
             xyz2 = line_arr[:3]
 
-            # oriented polar and azimuthal vectors aren't yet supported
-            if np.count_nonzero(xyz1) or np.count_nonzero(xyz2):
-                raise NotImplementedError('Custom sphere/cylinder orientations are not supported')
+            # Get polar and azimuthal axes
+            polar_axis = xyz1 - xyz0
+            azimuthal_axis = xyz2 - xyz0
+
+            # Check for polar axis other than (0, 0, 1)
+            norm = np.linalg.norm(polar_axis)
+            if not np.isclose(polar_axis[2]/norm, 1.0):
+                raise NotImplementedError('Polar axis not aligned to z-axis not supported')
+
+            # Check for azimuthal axis other than (1, 0, 0)
+            norm = np.linalg.norm(azimuthal_axis)
+            if not np.isclose(azimuthal_axis[0]/norm, 1.0):
+                raise NotImplementedError('Azimuthal axis not aligned to x-axis not supported')
 
             # read geometry type
             nwg = int(line_arr[-1])
@@ -659,9 +670,8 @@ class WeightWindowGenerator:
         maximum and minimum energy for the data available at runtime.
     particle_type : {'neutron', 'photon'}
         Particle type the weight windows apply to
-    method : {'magic'}
-        The weight window generation methodology applied during an update. Only
-        'magic' is currently supported.
+    method : {'magic', 'fw_cadis'}
+        The weight window generation methodology applied during an update.
     max_realizations : int
         The upper limit for number of tally realizations when generating weight
         windows.
@@ -679,9 +689,8 @@ class WeightWindowGenerator:
         energies in [eV] for a single bin
     particle_type : {'neutron', 'photon'}
         Particle type the weight windows apply to
-    method : {'magic'}
-        The weight window generation methodology applied during an update. Only
-        'magic' is currently supported.
+    method : {'magic', 'fw_cadis'}
+        The weight window generation methodology applied during an update.
     max_realizations : int
         The upper limit for number of tally realizations when generating weight
         windows.
@@ -698,7 +707,7 @@ class WeightWindowGenerator:
     def __init__(
         self,
         mesh: openmc.MeshBase,
-        energy_bounds: Optional[Sequence[float]] = None,
+        energy_bounds: Sequence[float] | None = None,
         particle_type: str = 'neutron',
         method: str = 'magic',
         max_realizations: int = 1,
@@ -766,7 +775,7 @@ class WeightWindowGenerator:
     @method.setter
     def method(self, m: str):
         cv.check_type('generation method', m, str)
-        cv.check_value('generation method', m, {'magic'})
+        cv.check_value('generation method', m, ('magic', 'fw_cadis'))
         self._method = m
         if self._update_parameters is not None:
             try:
@@ -799,7 +808,7 @@ class WeightWindowGenerator:
         return self._update_parameters
 
     def _check_update_parameters(self, params: dict):
-        if self.method == 'magic':
+        if self.method == 'magic' or self.method == 'fw_cadis':
             check_params = self._MAGIC_PARAMS
 
         for key, val in params.items():
@@ -842,7 +851,7 @@ class WeightWindowGenerator:
         update_parameters : dict
             The update parameters as-read from the XML node (keys: str, values: str)
         """
-        if method == 'magic':
+        if method == 'magic' or method == 'fw_cadis':
             check_params = cls._MAGIC_PARAMS
 
         for param, param_type in check_params.items():
@@ -896,7 +905,10 @@ class WeightWindowGenerator:
         mesh_id = int(get_text(elem, 'mesh'))
         mesh = meshes[mesh_id]
 
-        energy_bounds = [float(x) for x in get_text(elem, 'energy_bounds').split()]
+        if (energy_bounds := get_text(elem, 'energy_bounds')) is not None:
+            energy_bounds = [float(x) for x in energy_bounds.split()]
+        else:
+            energy_bounds = None
         particle_type = get_text(elem, 'particle_type')
 
         wwg = cls(mesh, energy_bounds, particle_type)

@@ -1,9 +1,8 @@
 from __future__ import annotations
 import math
-import typing
 from abc import ABC, abstractmethod
 from collections import defaultdict
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from copy import deepcopy
 from numbers import Real
 from warnings import warn
@@ -16,13 +15,13 @@ import openmc.checkvalue as cv
 from .._xml import get_text
 from ..mixin import EqualityMixin
 
-_INTERPOLATION_SCHEMES = [
+_INTERPOLATION_SCHEMES = {
     'histogram',
     'linear-linear',
     'linear-log',
     'log-linear',
     'log-log'
-]
+}
 
 
 class Univariate(EqualityMixin, ABC):
@@ -68,7 +67,7 @@ class Univariate(EqualityMixin, ABC):
             return Mixture.from_xml_element(elem)
 
     @abstractmethod
-    def sample(n_samples: int = 1, seed: typing.Optional[int] = None):
+    def sample(n_samples: int = 1, seed: int | None = None):
         """Sample the univariate distribution
 
         Parameters
@@ -96,6 +95,45 @@ class Univariate(EqualityMixin, ABC):
             Integral of distribution
         """
         return 1.0
+
+
+def _intensity_clip(intensity: Sequence[float], tolerance: float = 1e-6) -> np.ndarray:
+    """Clip low-importance points from an array of intensities.
+
+    Given an array of intensities, this function returns an array of indices for
+    points that contribute non-negligibly to the total sum of intensities.
+
+    Parameters
+    ----------
+    intensity : sequence of float
+        Intensities in arbitrary units.
+    tolerance : float
+        Maximum fraction of intensities that will be discarded.
+
+    Returns
+    -------
+    Array of indices
+
+    """
+    # Get indices of intensities from largest to smallest
+    index_sort = np.argsort(intensity)[::-1]
+
+    # Get intensities from largest to smallest
+    sorted_intensity = np.asarray(intensity)[index_sort]
+
+    # Determine cumulative sum of probabilities
+    cumsum = np.cumsum(sorted_intensity)
+    cumsum /= cumsum[-1]
+
+    # Find index that satisfies cutoff
+    index_cutoff = np.searchsorted(cumsum, 1.0 - tolerance)
+
+    # Now get indices up to cutoff
+    new_indices = index_sort[:index_cutoff + 1]
+
+    # Put back in the order of the original array and return
+    new_indices.sort()
+    return new_indices
 
 
 class Discrete(Univariate):
@@ -210,8 +248,8 @@ class Discrete(Univariate):
     @classmethod
     def merge(
         cls,
-        dists: typing.Sequence[Discrete],
-        probs: typing.Sequence[int]
+        dists: Sequence[Discrete],
+        probs: Sequence[int]
     ):
         """Merge multiple discrete distributions into a single distribution
 
@@ -284,33 +322,42 @@ class Discrete(Univariate):
         cv.check_less_than("tolerance", tolerance, 1.0, equality=True)
         cv.check_greater_than("tolerance", tolerance, 0.0, equality=True)
 
-        # Determine (reversed) sorted order of probabilities
+        # Compute intensities
         intensity = self.p * self.x
-        index_sort = np.argsort(intensity)[::-1]
 
-        # Get probabilities in above order
-        sorted_intensity = intensity[index_sort]
-
-        # Determine cumulative sum of probabilities
-        cumsum = np.cumsum(sorted_intensity)
-        cumsum /= cumsum[-1]
-
-        # Find index which satisfies cutoff
-        index_cutoff = np.searchsorted(cumsum, 1.0 - tolerance)
-
-        # Now get indices up to cutoff
-        new_indices = index_sort[:index_cutoff + 1]
-        new_indices.sort()
+        # Get indices for intensities above threshold
+        indices = _intensity_clip(intensity, tolerance=tolerance)
 
         # Create new discrete distribution
         if inplace:
-            self.x = self.x[new_indices]
-            self.p = self.p[new_indices]
+            self.x = self.x[indices]
+            self.p = self.p[indices]
             return self
         else:
-            new_x = self.x[new_indices]
-            new_p = self.p[new_indices]
+            new_x = self.x[indices]
+            new_p = self.p[indices]
             return type(self)(new_x, new_p)
+
+
+def delta_function(value: float, intensity: float = 1.0) -> Discrete:
+    """Return a discrete distribution with a single point.
+
+    .. versionadded:: 0.15.1
+
+    Parameters
+    ----------
+    value : float
+        Value of the random variable.
+    intensity : float, optional
+        When used for an energy distribution, this can be used to assign an
+        intensity.
+
+    Returns
+    -------
+    Discrete distribution with a single point
+
+    """
+    return Discrete([value], [intensity])
 
 
 class Uniform(Univariate):
@@ -838,7 +885,8 @@ class Tabular(Univariate):
         Tabulated values of the random variable
     p : Iterable of float
         Tabulated probabilities. For histogram interpolation, if the length of
-        `p` is the same as `x`, the last value is ignored.
+        `p` is the same as `x`, the last value is ignored. Probabilities `p` are
+        given per unit of `x`.
     interpolation : {'histogram', 'linear-linear', 'linear-log', 'log-linear', 'log-log'}, optional
         Indicates how the density function is interpolated between tabulated
         points. Defaults to 'linear-linear'.
@@ -855,12 +903,21 @@ class Tabular(Univariate):
         Indicates how the density function is interpolated between tabulated
         points. Defaults to 'linear-linear'.
 
+    Notes
+    -----
+    The probabilities `p` are interpreted per unit of the corresponding
+    independent variable `x`. This follows the definition of a probability
+    density function (PDF) in probability theory, where the PDF represents the
+    relative likelihood of the random variable taking on a particular value per
+    unit of the variable. For example, if `x` represents energy in eV, then `p`
+    should represent probabilities per eV.
+
     """
 
     def __init__(
             self,
-            x: typing.Sequence[float],
-            p: typing.Sequence[float],
+            x: Sequence[float],
+            p: Sequence[float],
             interpolation: str = 'linear-linear',
             ignore_negative: bool = False
         ):
@@ -958,7 +1015,7 @@ class Tabular(Univariate):
         """Normalize the probabilities stored on the distribution"""
         self._p /= self.cdf().max()
 
-    def sample(self, n_samples: int = 1, seed: typing.Optional[int] = None):
+    def sample(self, n_samples: int = 1, seed: int | None = None):
         rng = np.random.RandomState(seed)
         xi = rng.random(n_samples)
 
@@ -1059,8 +1116,9 @@ class Tabular(Univariate):
         """
         interpolation = get_text(elem, 'interpolation')
         params = [float(x) for x in get_text(elem, 'parameters').split()]
-        x = params[:len(params)//2]
-        p = params[len(params)//2:]
+        m = (len(params) + 1)//2  # +1 for when len(params) is odd
+        x = params[:m]
+        p = params[m:]
         return cls(x, p, interpolation)
 
     def integral(self):
@@ -1100,7 +1158,7 @@ class Legendre(Univariate):
 
     """
 
-    def __init__(self, coefficients: typing.Sequence[float]):
+    def __init__(self, coefficients: Sequence[float]):
         self.coefficients = coefficients
         self._legendre_poly = None
 
@@ -1156,8 +1214,8 @@ class Mixture(Univariate):
 
     def __init__(
         self,
-        probability: typing.Sequence[float],
-        distribution: typing.Sequence[Univariate]
+        probability: Sequence[float],
+        distribution: Sequence[Univariate]
     ):
         self.probability = probability
         self.distribution = distribution
@@ -1176,7 +1234,7 @@ class Mixture(Univariate):
         for p in probability:
             cv.check_greater_than('mixture distribution probabilities',
                                   p, 0.0, True)
-        self._probability = probability
+        self._probability = np.array(probability, dtype=float)
 
     @property
     def distribution(self):
@@ -1282,45 +1340,68 @@ class Mixture(Univariate):
         ])
 
     def clip(self, tolerance: float = 1e-6, inplace: bool = False) -> Mixture:
-        r"""Remove low-importance points from contained discrete distributions.
+        r"""Remove low-importance points / distributions
 
-        Given a probability mass function :math:`p(x)` with :math:`\{x_1, x_2,
-        x_3, \dots\}` the possible values of the random variable with
-        corresponding probabilities :math:`\{p_1, p_2, p_3, \dots\}`, this
-        function will remove any low-importance points such that :math:`\sum_i
-        x_i p_i` is preserved to within some threshold.
+        Like :meth:`Discrete.clip`, this method will remove low-importance
+        points from discrete distributions contained within the mixture but it
+        will also clip any distributions that have negligible contributions to
+        the overall intensity.
 
         .. versionadded:: 0.14.0
 
         Parameters
         ----------
         tolerance : float
-            Maximum fraction of :math:`\sum_i x_i p_i` that will be discarded
-            for any discrete distributions within the mixture distribution.
+            Maximum fraction of intensities that will be discarded.
         inplace : bool
             Whether to modify the current object in-place or return a new one.
 
         Returns
         -------
-        Discrete distribution with low-importance points removed
+        Distribution with low-importance points / distributions removed
 
         """
+        # Determine integral of original distribution to compare later
+        original_integral = self.integral()
+
+        # Determine indices for any distributions that contribute non-negligibly
+        # to overall intensity
+        intensities = [prob*dist.integral() for prob, dist in
+                       zip(self.probability, self.distribution)]
+        indices = _intensity_clip(intensities, tolerance=tolerance)
+
+        # Clip mixture of distributions
+        probability = self.probability[indices]
+        distribution = [self.distribution[i] for i in indices]
+
+        # Clip points from Discrete distributions
+        distribution = [
+            dist.clip(tolerance, inplace) if isinstance(dist, Discrete) else dist
+            for dist in distribution
+        ]
+
         if inplace:
-            for dist in self.distribution:
-                if isinstance(dist, Discrete):
-                    dist.clip(tolerance, inplace=True)
-            return self
+            # Set attributes of current object and return
+            self.probability = probability
+            self.distribution = distribution
+            new_dist = self
         else:
-            distribution = [
-                dist.clip(tolerance) if isinstance(dist, Discrete) else dist
-                for dist in self.distribution
-            ]
-            return type(self)(self.probability, distribution)
+            # Create new distribution
+            new_dist = type(self)(probability, distribution)
+
+        # Show warning if integral of new distribution is not within
+        # tolerance of original
+        diff = (original_integral - new_dist.integral())/original_integral
+        if diff > tolerance:
+            warn("Clipping mixture distribution resulted in an integral that is "
+                    f"lower by a fraction of {diff} when tolerance={tolerance}.")
+
+        return new_dist
 
 
 def combine_distributions(
-    dists: typing.Sequence[Univariate],
-    probs: typing.Sequence[float]
+    dists: Sequence[Univariate],
+    probs: Sequence[float]
 ):
     """Combine distributions with specified probabilities
 

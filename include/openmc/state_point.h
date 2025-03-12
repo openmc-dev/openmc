@@ -2,14 +2,14 @@
 #define OPENMC_STATE_POINT_H
 
 #include <cstdint>
-
-#include <gsl/gsl-lite.hpp>
+#include <string>
 
 #include "hdf5.h"
 
 #include "openmc/capi.h"
 #include "openmc/particle.h"
 #include "openmc/shared_array.h"
+#include "openmc/span.h"
 #include "openmc/vector.h"
 
 namespace openmc {
@@ -33,12 +33,18 @@ void load_state_point();
 // values on each rank, used to create global indexing. This vector
 // can be created by calling calculate_parallel_index_vector on
 // source_bank.size() if such a vector is not already available.
-void write_source_point(const char* filename, gsl::span<SourceSite> source_bank,
+//
+// The source_bank variable is used as work space if MPI is used,
+// so it cannot be given as a const span.
+void write_h5_source_point(const char* filename, span<SourceSite> source_bank,
   const vector<int64_t>& bank_index);
+
+void write_source_point(std::string, span<SourceSite> source_bank,
+  const vector<int64_t>& bank_index, bool use_mcpl);
 
 // This appends a source bank specification to an HDF5 file
 // that's already open. It is used internally by write_source_point.
-void write_source_bank(hid_t group_id, gsl::span<SourceSite> source_bank,
+void write_source_bank(hid_t group_id, span<SourceSite> source_bank,
   const vector<int64_t>& bank_index);
 
 void read_source_bank(

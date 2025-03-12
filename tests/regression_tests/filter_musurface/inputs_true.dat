@@ -1,0 +1,37 @@
+<?xml version='1.0' encoding='utf-8'?>
+<model>
+  <materials>
+    <material depletable="true" id="1">
+      <density units="g/cm3" value="10.0"/>
+      <nuclide ao="1.0" name="U235"/>
+    </material>
+    <material id="2">
+      <density units="g/cm3" value="1.0"/>
+      <nuclide ao="1.0" name="Zr90"/>
+    </material>
+  </materials>
+  <geometry>
+    <cell id="1" material="1" region="-1" universe="1"/>
+    <cell id="2" material="2" region="1 -2" universe="1"/>
+    <surface coeffs="0.0 0.0 1.0" id="1" type="z-cylinder"/>
+    <surface boundary="vacuum" coeffs="0.0 0.0 3.0" id="2" type="z-cylinder"/>
+  </geometry>
+  <settings>
+    <run_mode>eigenvalue</run_mode>
+    <particles>1000</particles>
+    <batches>5</batches>
+    <inactive>0</inactive>
+  </settings>
+  <tallies>
+    <filter id="1" type="surface">
+      <bins>1</bins>
+    </filter>
+    <filter id="2" type="musurface">
+      <bins>-1.0 -0.5 0.0 0.5 1.0</bins>
+    </filter>
+    <tally id="1">
+      <filters>1 2</filters>
+      <scores>current</scores>
+    </tally>
+  </tallies>
+</model>

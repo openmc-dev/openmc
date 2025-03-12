@@ -7,6 +7,7 @@
 #include "hdf5.h"
 
 #include "openmc/angle_energy.h"
+#include "openmc/chain.h"
 #include "openmc/endf.h"
 #include "openmc/memory.h" // for unique_ptr
 #include "openmc/particle.h"
@@ -37,6 +38,10 @@ public:
   //! \param[in] group HDF5 group containing data
   explicit ReactionProduct(hid_t group);
 
+  //! Construct reaction product for decay photon from chain nuclide product
+  //! \param[in] product Chain nuclide product
+  explicit ReactionProduct(const ChainNuclide::Product& product);
+
   //! Sample an outgoing angle and energy
   //! \param[in] E_in Incoming energy in [eV]
   //! \param[out] E_out Outgoing energy in [eV]
@@ -50,6 +55,7 @@ public:
   unique_ptr<Function1D> yield_;      //!< Yield as a function of energy
   vector<Tabulated1D> applicability_; //!< Applicability of distribution
   vector<Secondary> distribution_;    //!< Secondary angle-energy distribution
+  int parent_nuclide_ = -1;           //!< Index of chain nuclide that is parent
 };
 
 } // namespace openmc

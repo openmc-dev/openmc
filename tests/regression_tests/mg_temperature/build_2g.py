@@ -289,8 +289,9 @@ def build_inf_model(xsnames, xslibname, temperature, tempmethod='nearest'):
     settings_file.output = {'summary': False}
     # Create an initial uniform spatial source distribution over fissionable zones
     bounds = [-INF, -INF, -INF, INF, INF, INF]
-    uniform_dist = openmc.stats.Box(bounds[:3], bounds[3:], only_fissionable=True)
+    uniform_dist = openmc.stats.Box(bounds[:3], bounds[3:])
     settings_file.temperature = {'method': tempmethod}
-    settings_file.source = openmc.IndependentSource(space=uniform_dist)
+    settings_file.source = openmc.IndependentSource(
+        space=uniform_dist, constraints={'fissionable': True})
     model.settings = settings_file
     model.export_to_model_xml()

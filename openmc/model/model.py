@@ -1573,29 +1573,37 @@ class Model:
             if not materials:
                 raise ValueError("At least one material must be provided.")
             
+
             num_materials = len(materials)
             total_cells = num_materials * num_repeats
-            total_width = total_cells * cell_thickness  # Domain extent in x, y, and z
+            total_width = total_cells * cell_thickness 
             
-            # Build a list with each material repeated num_repeats times; then shuffle it.
-            material_assignments = materials * num_repeats
-            import random
-            random.shuffle(material_assignments)
-            
-            # Create a universe for each lattice cell. Each universe contains a single cell filled with the assigned material.
+            # Generate an infinite cell/universe for each material.
+            cells = []
             universes = []
-            for m in material_assignments:
-                cell = openmc.Cell(fill=m)
-                uni = openmc.Universe(cells=[cell])
-                universes.append(uni)
+            for i in range(num_materials):
+                cell = openmc.Cell(fill=materials[i])
+                cells.append(cell)
+                universe = openmc.Universe(cells=[cell])
+                universes.append(universe)
+
+            # Make a list of randomized material idx assignments for the stochastic slab
+            assignments = list(range(num_materials)) * num_repeats
+            import random
+            random.shuffle(assignments)
+
+            # Create a list of the (randomized) universe assignments to be used
+            # when defining the problem lattice.
+            lattice_entries = []
+            for m in assignments:
+                lattice_entries.append(universes[m])
             
             # Create the RectLattice for the 1D material variation in x.
             lattice = openmc.RectLattice()
             lattice.pitch = (cell_thickness, total_width, total_width)
             lattice.lower_left = (0.0, 0.0, 0.0)
-            lattice.universes = [[universes]]
-            #lattice.outer = universes[0]
-
+            lattice.universes = [[lattice_entries]]
+            lattice.outer = universes[0]
             
             # Define the six outer surfaces with reflective boundary conditions.
             x_min = openmc.XPlane(x0=0.0, boundary_type='reflective')

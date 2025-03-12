@@ -1541,79 +1541,85 @@ class Model:
 
         def create_stochastic_slab_geometry(materials, cell_thickness=1.0, num_repeats=100):
             """
-            Create a 1D slab geometry with a stochastic arrangement of materials and
-            a corresponding full-phase-space spatial distribution (openmc.stats.Box).
+            Create a 3D geometry that embeds a 1D stochastic lattice in a large cubic domain.
             
-            The slab is divided into (number of materials) * num_repeats cells, each of
-            thickness cell_thickness (default 1 cm). For example, if there are 10 materials,
-            the slab will have 1000 cells and be 1000 cm wide.
+            The 1D material variation is achieved with a RectLattice that has:
+            - total_cells = (number of materials) * num_repeats lattice cells in the x direction,
+            - each lattice cell is cell_thickness wide in x,
+            - a single cell in y and z whose pitch is set to cover the entire outer domain.
             
-            The materials are randomly assigned to the cells such that each material
-            appears approximately equally often.
+            The outer domain is defined to be a cube with sides of length:
+                total_width = total_cells * cell_thickness.
+            Reflective boundary conditions are applied on all faces using a
+            RectangularPrism (for x-y) and ZPlanes.
             
             Parameters
             ----------
             materials : list of openmc.Material
-                List of materials to be used. Must contain at least one material.
+                List of materials to assign. Each material will appear exactly num_repeats times,
+                then the ordering is randomly shuffled.
             cell_thickness : float, optional
-                Thickness of each cell in cm (default is 1.0 cm).
+                Thickness of each lattice cell in x (default 1.0 cm).
             num_repeats : int, optional
-                Number of times each material is repeated (default is 100).
+                Number of repeats for each material (default 100).
                 
             Returns
             -------
             geometry : openmc.Geometry
-                The constructed 1D slab geometry with reflective boundaries.
+                The constructed geometry.
             box : openmc.stats.Box
-                A spatial distribution covering the full phase space of the slab.
+                A spatial distribution covering the full cubic domain.
             """
             if not materials:
                 raise ValueError("At least one material must be provided.")
             
             num_materials = len(materials)
             total_cells = num_materials * num_repeats
-            total_width = total_cells * cell_thickness  # Total width in cm
-
-            # Create a list with each material repeated num_repeats times.
-            material_list = materials * num_repeats
-            # Randomly shuffle the list to produce a stochastic arrangement.
+            total_width = total_cells * cell_thickness  # Domain extent in x, y, and z
+            
+            # Build a list with each material repeated num_repeats times; then shuffle it.
+            material_assignments = materials * num_repeats
             import random
-            random.shuffle(material_list)
+            random.shuffle(material_assignments)
             
-            cells = []
-            # Each cell is defined to span 1 cm in x.
-            # For cell i, x ranges from i*cell_thickness to (i+1)*cell_thickness.
-            for i in range(total_cells):
-                x_left = i * cell_thickness
-                x_right = (i + 1) * cell_thickness
-                # Define the surfaces at the left and right of the cell.
-                left_plane = openmc.XPlane(x0=x_left)
-                right_plane = openmc.XPlane(x0=x_right)
-                region = +left_plane & -right_plane
-                cell = openmc.Cell(region=region, fill=material_list[i])
-                cells.append(cell)
+            # Create a universe for each lattice cell. Each universe contains a single cell filled with the assigned material.
+            universes = []
+            for m in material_assignments:
+                cell = openmc.Cell(fill=m)
+                uni = openmc.Universe(cells=[cell])
+                universes.append(uni)
             
-            # Define reflective boundary surfaces on the left and right.
-            # (In the cell regions above the inner surfaces are defined, but for the outermost cells
-            # we want to enforce reflective boundaries.)
-            left_boundary = openmc.XPlane(x0=0.0, boundary_type='reflective')
-            right_boundary = openmc.XPlane(x0=total_width, boundary_type='reflective')
-            # Replace the surfaces in the first and last cells' regions.
-            # For the first cell, force the left surface to be the left boundary.
-            first_region = +left_boundary & -openmc.XPlane(x0=cell_thickness)
-            cells[0].region = first_region
-            # For the last cell, force the right surface to be the right boundary.
-            last_region = +openmc.XPlane(x0=(total_cells - 1) * cell_thickness) & -right_boundary
-            cells[-1].region = last_region
+            # Create the RectLattice for the 1D material variation in x.
+            lattice = openmc.RectLattice()
+            lattice.pitch = (cell_thickness, total_width, total_width)
+            lattice.lower_left = (0.0, 0.0, 0.0)
+            lattice.universes = [[universes]]
+            #lattice.outer = universes[0]
 
-            # Create the root universe and geometry.
-            root_universe = openmc.Universe(cells=cells)
+            
+            # Define the six outer surfaces with reflective boundary conditions.
+            x_min = openmc.XPlane(x0=0.0, boundary_type='reflective')
+            x_max = openmc.XPlane(x0=total_width, boundary_type='reflective')
+            y_min = openmc.YPlane(y0=0.0, boundary_type='reflective')
+            y_max = openmc.YPlane(y0=total_width, boundary_type='reflective')
+            z_min = openmc.ZPlane(z0=0.0, boundary_type='reflective')
+            z_max = openmc.ZPlane(z0=total_width, boundary_type='reflective')
+            
+            # Build the outer region as the intersection of the half-spaces defined by these surfaces.
+            outer_region = +x_min & -x_max & +y_min & -y_max & +z_min & -z_max
+            
+            # Create an outer cell that fills with the lattice.
+            outer_cell = openmc.Cell(fill=lattice, region=outer_region)
+            
+            # Build the root universe and geometry.
+            root_universe = openmc.Universe(cells=[outer_cell])
             geometry = openmc.Geometry(root_universe)
             
-            # Define a Box distribution that spans the full domain.
-            spatial_distribution = openmc.stats.Box(lower_left=(0.0, 0.0, 0.0), upper_right=(total_width, 1.0, 1.0))
+            # Define the spatial distribution (Box) that covers the full cubic domain.
+            box = openmc.stats.Box(lower_left=(0.0, 0.0, 0.0),
+                                upper_right=(total_width, total_width, total_width))
             
-            return geometry, spatial_distribution
+            return geometry, box
         
         openmc.reset_auto_ids()
         model = openmc.Model()
@@ -1623,9 +1629,9 @@ class Model:
         # Settings
         model.settings.batches = 20
         model.settings.inactive = 10
-        model.settings.particles = 100000
+        model.settings.particles = 10000
         model.settings.output = {'summary': True, 'tallies': False}
-        model.settings.run_mode = 'fixed source'
+        model.settings.run_mode = self.settings.run_mode
 
         # Geometry
         # Make a 1D slab geometry with a 1cm slab of each material type in the model
@@ -1645,6 +1651,7 @@ class Model:
 
         energy_distribution = openmc.stats.Discrete(x=midpoints, p=strengths)
         model.settings.source = [openmc.IndependentSource(space=spatial_distribution, energy=energy_distribution, strength=1.0)]
+       
         model.settings.output = {'summary': True, 'tallies': False}
 
         # Add MGXS Tallies

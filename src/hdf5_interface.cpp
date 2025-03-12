@@ -218,7 +218,6 @@ hid_t open_group(hid_t group_id, const std::string& name)
 
 void file_close(hid_t file_id)
 {
-  write_message("CLOSING summary.h5 file...", 5);
   H5Fclose(file_id);
 }
 

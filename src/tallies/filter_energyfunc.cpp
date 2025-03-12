@@ -36,7 +36,7 @@ void EnergyFunctionFilter::from_xml(pugi::xml_node node)
 }
 
 void EnergyFunctionFilter::set_data(
-  gsl::span<const double> energy, gsl::span<const double> y)
+  span<const double> energy, span<const double> y)
 {
   // Check for consistent sizes with new data
   if (energy.size() != y.size()) {
@@ -48,7 +48,7 @@ void EnergyFunctionFilter::set_data(
   y_.reserve(y.size());
 
   // Copy over energy values, ensuring they are valid
-  for (gsl::index i = 0; i < energy.size(); ++i) {
+  for (int64_t i = 0; i < energy.size(); ++i) {
     if (i > 0 && energy[i] <= energy[i - 1]) {
       throw std::runtime_error {
         "Energy bins must be monotonically increasing."};

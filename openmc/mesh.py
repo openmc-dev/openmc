@@ -1,7 +1,7 @@
 from __future__ import annotations
 import warnings
 from abc import ABC, abstractmethod
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Sequence, Mapping
 from functools import wraps
 from math import pi, sqrt, atan2
 from numbers import Integral, Real
@@ -9,6 +9,7 @@ from numbers import Integral, Real
 import h5py
 import lxml.etree as ET
 import numpy as np
+from pathlib import Path
 
 import openmc
 import openmc.checkvalue as cv
@@ -18,6 +19,120 @@ from ._xml import get_text
 from .mixin import IDManagerMixin
 from .surface import _BOUNDARY_TYPES
 from .utility_funcs import input_path
+
+
+class MeshMaterialVolumes(Mapping):
+    """Results from a material volume in mesh calculation.
+
+    This class provides multiple ways of accessing information about material
+    volumes in individual mesh elements. First, the class behaves like a
+    dictionary that maps material IDs to an array of volumes equal in size to
+    the number of mesh elements. Second, the class provides a :meth:`by_element`
+    method that gives all the material volumes for a specific mesh element.
+
+    .. versionadded:: 0.15.1
+
+    Parameters
+    ----------
+    materials : numpy.ndarray
+        Array of shape (elements, max_materials) storing material IDs
+    volumes : numpy.ndarray
+        Array of shape (elements, max_materials) storing material volumes
+
+    See Also
+    --------
+    openmc.MeshBase.material_volumes
+
+    Examples
+    --------
+    If you want to get the volume of a specific material in every mesh element,
+    index the object with the material ID:
+
+    >>> volumes = mesh.material_volumes(...)
+    >>> volumes
+    {1: <32121 nonzero volumes>
+     2: <338186 nonzero volumes>
+     3: <49120 nonzero volumes>}
+
+    If you want the volume of all materials in a specific mesh element, use the
+    :meth:`by_element` method:
+
+    >>> volumes = mesh.material_volumes(...)
+    >>> volumes.by_element(42)
+    [(2, 31.87963824195591), (1, 6.129949130817542)]
+
+    """
+    def __init__(self, materials: np.ndarray, volumes: np.ndarray):
+        self._materials = materials
+        self._volumes = volumes
+
+    @property
+    def num_elements(self) -> int:
+        return self._volumes.shape[0]
+
+    def __iter__(self):
+        for mat in np.unique(self._materials):
+            if mat > 0:
+                yield mat
+
+    def __len__(self) -> int:
+        return (np.unique(self._materials) > 0).sum()
+
+    def __repr__(self) -> str:
+        ids, counts = np.unique(self._materials, return_counts=True)
+        return '{' + '\n '.join(
+            f'{id}: <{count} nonzero volumes>' for id, count in zip(ids, counts) if id > 0) + '}'
+
+    def __getitem__(self, material_id: int) -> np.ndarray:
+        volumes = np.zeros(self.num_elements)
+        for i in range(self._volumes.shape[1]):
+            indices = (self._materials[:, i] == material_id)
+            volumes[indices] = self._volumes[indices, i]
+        return volumes
+
+    def by_element(self, index_elem: int) -> list[tuple[int | None, float]]:
+        """Get a list of volumes for each material within a specific element.
+
+        Parameters
+        ----------
+        index_elem : int
+            Mesh element index
+
+        Returns
+        -------
+        list of tuple of (material ID, volume)
+
+        """
+        table_size = self._volumes.shape[1]
+        return [
+            (m if m > -1 else None, self._volumes[index_elem, i])
+            for i in range(table_size)
+            if (m := self._materials[index_elem, i]) != -2
+        ]
+
+    def save(self, filename: PathLike):
+        """Save material volumes to a .npz file.
+
+        Parameters
+        ----------
+        filename : path-like
+            Filename where data will be saved
+        """
+        np.savez_compressed(
+            filename, materials=self._materials, volumes=self._volumes)
+
+    @classmethod
+    def from_npz(cls, filename: PathLike) -> MeshMaterialVolumes:
+        """Generate material volumes from a .npz file
+
+        Parameters
+        ----------
+        filename : path-like
+            File where data will be read from
+
+        """
+        filedata = np.load(filename)
+        return cls(filedata['materials'], filedata['volumes'])
 
 
 class MeshBase(IDManagerMixin, ABC):
@@ -99,20 +214,39 @@ class MeshBase(IDManagerMixin, ABC):
             Instance of a MeshBase subclass
 
         """
+        mesh_type = 'regular' if 'type' not in group.keys() else group['type'][()].decode()
+        mesh_id = int(group.name.split('/')[-1].lstrip('mesh '))
+        mesh_name = '' if not 'name' in group else group['name'][()].decode()
 
-        mesh_type = group['type'][()].decode()
         if mesh_type == 'regular':
-            return RegularMesh.from_hdf5(group)
+            return RegularMesh.from_hdf5(group, mesh_id, mesh_name)
         elif mesh_type == 'rectilinear':
-            return RectilinearMesh.from_hdf5(group)
+            return RectilinearMesh.from_hdf5(group, mesh_id, mesh_name)
         elif mesh_type == 'cylindrical':
-            return CylindricalMesh.from_hdf5(group)
+            return CylindricalMesh.from_hdf5(group, mesh_id, mesh_name)
         elif mesh_type == 'spherical':
-            return SphericalMesh.from_hdf5(group)
+            return SphericalMesh.from_hdf5(group, mesh_id, mesh_name)
         elif mesh_type == 'unstructured':
-            return UnstructuredMesh.from_hdf5(group)
+            return UnstructuredMesh.from_hdf5(group, mesh_id, mesh_name)
         else:
             raise ValueError('Unrecognized mesh type: "' + mesh_type + '"')
+
+    def to_xml_element(self):
+        """Return XML representation of the mesh
+
+        Returns
+        -------
+        element : lxml.etree._Element
+            XML element containing mesh data
+
+        """
+        elem = ET.Element("mesh")
+
+        elem.set("id", str(self._id))
+        if self.name:
+            elem.set("name", self.name)
+
+        return elem
 
     @classmethod
     def from_xml_element(cls, elem: ET.Element):
@@ -132,23 +266,25 @@ class MeshBase(IDManagerMixin, ABC):
         mesh_type = get_text(elem, 'type')
 
         if mesh_type == 'regular' or mesh_type is None:
-            return RegularMesh.from_xml_element(elem)
+            mesh = RegularMesh.from_xml_element(elem)
         elif mesh_type == 'rectilinear':
-            return RectilinearMesh.from_xml_element(elem)
+            mesh = RectilinearMesh.from_xml_element(elem)
         elif mesh_type == 'cylindrical':
-            return CylindricalMesh.from_xml_element(elem)
+            mesh = CylindricalMesh.from_xml_element(elem)
         elif mesh_type == 'spherical':
-            return SphericalMesh.from_xml_element(elem)
+            mesh = SphericalMesh.from_xml_element(elem)
         elif mesh_type == 'unstructured':
-            return UnstructuredMesh.from_xml_element(elem)
+            mesh = UnstructuredMesh.from_xml_element(elem)
         else:
             raise ValueError(f'Unrecognized mesh type "{mesh_type}" found.')
+
+        mesh.name = get_text(elem, 'name', default='')
+        return mesh
 
     def get_homogenized_materials(
             self,
             model: openmc.Model,
-            n_samples: int = 10_000,
-            prn_seed: int | None = None,
+            n_samples: int | tuple[int, int, int] = 10_000,
             include_void: bool = True,
             **kwargs
     ) -> list[openmc.Material]:
@@ -161,15 +297,15 @@ class MeshBase(IDManagerMixin, ABC):
         model : openmc.Model
             Model containing materials to be homogenized and the associated
             geometry.
-        n_samples : int
-            Number of samples in each mesh element.
-        prn_seed : int, optional
-            Pseudorandom number generator (PRNG) seed; if None, one will be
-            generated randomly.
+        n_samples : int or 2-tuple of int
+            Total number of rays to sample. The number of rays in each direction
+            is determined by the aspect ratio of the mesh bounding box. When
+            specified as a 3-tuple, it is interpreted as the number of rays in
+            the x, y, and z dimensions.
         include_void : bool, optional
             Whether homogenization should include voids.
         **kwargs
-            Keyword-arguments passed to :func:`openmc.lib.init`.
+            Keyword-arguments passed to :meth:`MeshBase.material_volumes`.
 
         Returns
         -------
@@ -177,34 +313,8 @@ class MeshBase(IDManagerMixin, ABC):
             Homogenized material in each mesh element
 
         """
-        import openmc.lib
-
-        with change_directory(tmpdir=True):
-            # In order to get mesh into model, we temporarily replace the
-            # tallies with a single mesh tally using the current mesh
-            original_tallies = model.tallies
-            new_tally = openmc.Tally()
-            new_tally.filters = [openmc.MeshFilter(self)]
-            new_tally.scores = ['flux']
-            model.tallies = [new_tally]
-
-            # Export model to XML
-            model.export_to_model_xml()
-
-            # Get material volume fractions
-            openmc.lib.init(**kwargs)
-            mesh = openmc.lib.tallies[new_tally.id].filters[0].mesh
-            mat_volume_by_element = [
-                [
-                    (mat.id if mat is not None else None, volume)
-                    for mat, volume in mat_volume_list
-                ]
-                for mat_volume_list in mesh.material_volumes(n_samples, prn_seed)
-            ]
-            openmc.lib.finalize()
-
-            # Restore original tallies
-            model.tallies = original_tallies
+        vols = self.material_volumes(model, n_samples, **kwargs)
+        mat_volume_by_element = [vols.by_element(i) for i in range(vols.num_elements)]
 
         # Create homogenized material for each element
         materials = model.geometry.get_all_materials()
@@ -250,6 +360,72 @@ class MeshBase(IDManagerMixin, ABC):
             homogenized_materials.append(homogenized_mat)
 
         return homogenized_materials
+
+    def material_volumes(
+            self,
+            model: openmc.Model,
+            n_samples: int | tuple[int, int, int] = 10_000,
+            max_materials: int = 4,
+            **kwargs
+    ) -> MeshMaterialVolumes:
+        """Determine volume of materials in each mesh element.
+
+        This method works by raytracing repeatedly through the mesh to count the
+        estimated volume of each material in all mesh elements. Three sets of
+        rays are used: one set parallel to the x-axis, one parallel to the
+        y-axis, and one parallel to the z-axis.
+
+        .. versionadded:: 0.15.1
+
+        Parameters
+        ----------
+        model : openmc.Model
+            Model containing materials.
+        n_samples : int or 3-tuple of int
+            Total number of rays to sample. The number of rays in each direction
+            is determined by the aspect ratio of the mesh bounding box. When
+            specified as a 3-tuple, it is interpreted as the number of rays in
+            the x, y, and z dimensions.
+        max_materials : int, optional
+            Estimated maximum number of materials in any given mesh element.
+        **kwargs : dict
+            Keyword arguments passed to :func:`openmc.lib.init`
+
+        Returns
+        -------
+        Dictionary-like object that maps material IDs to an array of volumes
+        equal in size to the number of mesh elements.
+
+        """
+        import openmc.lib
+
+        with change_directory(tmpdir=True):
+            # In order to get mesh into model, we temporarily replace the
+            # tallies with a single mesh tally using the current mesh
+            original_tallies = model.tallies
+            new_tally = openmc.Tally()
+            new_tally.filters = [openmc.MeshFilter(self)]
+            new_tally.scores = ['flux']
+            model.tallies = [new_tally]
+
+            # Export model to XML
+            model.export_to_model_xml()
+
+            # Get material volume fractions
+            kwargs.setdefault('output', True)
+            if 'args' in kwargs:
+                kwargs['args'] = ['-c'] + kwargs['args']
+            kwargs.setdefault('args', ['-c'])
+            openmc.lib.init(**kwargs)
+            mesh = openmc.lib.tallies[new_tally.id].filters[0].mesh
+            volumes = mesh.material_volumes(
+                n_samples, max_materials, output=kwargs['output'])
+            openmc.lib.finalize()
+
+            # Restore original tallies
+            model.tallies = original_tallies
+
+        return volumes
 
 
 class StructuredMesh(MeshBase):
@@ -791,11 +967,9 @@ class RegularMesh(StructuredMesh):
         return string
 
     @classmethod
-    def from_hdf5(cls, group: h5py.Group):
-        mesh_id = int(group.name.split('/')[-1].lstrip('mesh '))
-
+    def from_hdf5(cls, group: h5py.Group, mesh_id: int, name: str):
         # Read and assign mesh properties
-        mesh = cls(mesh_id)
+        mesh = cls(mesh_id=mesh_id, name=name)
         mesh.dimension = group['dimension'][()]
         mesh.lower_left = group['lower_left'][()]
         if 'width' in group:
@@ -899,9 +1073,7 @@ class RegularMesh(StructuredMesh):
             XML element containing mesh data
 
         """
-
-        element = ET.Element("mesh")
-        element.set("id", str(self._id))
+        element = super().to_xml_element()
 
         if self._dimension is not None:
             subelement = ET.SubElement(element, "dimension")
@@ -936,10 +1108,6 @@ class RegularMesh(StructuredMesh):
         """
         mesh_id = int(get_text(elem, 'id'))
         mesh = cls(mesh_id=mesh_id)
-
-        mesh_type = get_text(elem, 'type')
-        if mesh_type is not None:
-            mesh.type = mesh_type
 
         dimension = get_text(elem, 'dimension')
         if dimension is not None:
@@ -1235,11 +1403,9 @@ class RectilinearMesh(StructuredMesh):
         return string
 
     @classmethod
-    def from_hdf5(cls, group: h5py.Group):
-        mesh_id = int(group.name.split('/')[-1].lstrip('mesh '))
-
+    def from_hdf5(cls, group: h5py.Group, mesh_id: int, name: str):
         # Read and assign mesh properties
-        mesh = cls(mesh_id=mesh_id)
+        mesh = cls(mesh_id=mesh_id, name=name)
         mesh.x_grid = group['x_grid'][()]
         mesh.y_grid = group['y_grid'][()]
         mesh.z_grid = group['z_grid'][()]
@@ -1279,8 +1445,7 @@ class RectilinearMesh(StructuredMesh):
 
         """
 
-        element = ET.Element("mesh")
-        element.set("id", str(self._id))
+        element = super().to_xml_element()
         element.set("type", "rectilinear")
 
         subelement = ET.SubElement(element, "x_grid")
@@ -1541,12 +1706,11 @@ class CylindricalMesh(StructuredMesh):
         return (r_index, phi_index, z_index)
 
     @classmethod
-    def from_hdf5(cls, group: h5py.Group):
-        mesh_id = int(group.name.split('/')[-1].lstrip('mesh '))
-
+    def from_hdf5(cls, group: h5py.Group, mesh_id: int, name: str):
         # Read and assign mesh properties
         mesh = cls(
             mesh_id=mesh_id,
+            name=name,
             r_grid = group['r_grid'][()],
             phi_grid = group['phi_grid'][()],
             z_grid = group['z_grid'][()],
@@ -1647,8 +1811,7 @@ class CylindricalMesh(StructuredMesh):
 
         """
 
-        element = ET.Element("mesh")
-        element.set("id", str(self._id))
+        element = super().to_xml_element()
         element.set("type", "cylindrical")
 
         subelement = ET.SubElement(element, "r_grid")
@@ -1926,15 +2089,14 @@ class SphericalMesh(StructuredMesh):
         return string
 
     @classmethod
-    def from_hdf5(cls, group: h5py.Group):
-        mesh_id = int(group.name.split('/')[-1].lstrip('mesh '))
-
+    def from_hdf5(cls, group: h5py.Group, mesh_id: int, name: str):
         # Read and assign mesh properties
         mesh = cls(
             r_grid = group['r_grid'][()],
             theta_grid = group['theta_grid'][()],
             phi_grid = group['phi_grid'][()],
             mesh_id=mesh_id,
+            name=name
         )
         if 'origin' in group:
             mesh.origin = group['origin'][()]
@@ -1951,8 +2113,7 @@ class SphericalMesh(StructuredMesh):
 
         """
 
-        element = ET.Element("mesh")
-        element.set("id", str(self._id))
+        element = super().to_xml_element()
         element.set("type", "spherical")
 
         subelement = ET.SubElement(element, "r_grid")
@@ -2072,7 +2233,9 @@ class UnstructuredMesh(MeshBase):
     Parameters
     ----------
     filename : path-like
-        Location of the unstructured mesh file
+        Location of the unstructured mesh file. Supported files for 'moab'
+        library are .h5 and .vtk. Supported files for 'libmesh' library are
+        exodus mesh files .exo.
     library : {'moab', 'libmesh'}
         Mesh library used for the unstructured mesh tally
     mesh_id : int
@@ -2349,55 +2512,71 @@ class UnstructuredMesh(MeshBase):
         self.write_data_to_vtk(**kwargs)
 
     def write_data_to_vtk(
-            self,
-            filename: PathLike | None  = None,
-            datasets: dict | None = None,
-            volume_normalization: bool = True
+        self,
+        filename: PathLike | None = None,
+        datasets: dict | None = None,
+        volume_normalization: bool = True,
     ):
         """Map data to unstructured VTK mesh elements.
+
+        If filename is None, then a filename will be generated based on the mesh
+        ID, and exported to VTK format.
 
         Parameters
         ----------
         filename : str or pathlib.Path
-            Name of the VTK file to write
+            Name of the VTK file to write. If the filename ends in '.vtu' then a
+            binary VTU format file will be written, if the filename ends in
+            '.vtk' then a legacy VTK file will be written.
         datasets : dict
-            Dictionary whose keys are the data labels
-            and values are numpy appropriately sized arrays
-            of the data
+            Dictionary whose keys are the data labels and values are numpy
+            appropriately sized arrays of the data
         volume_normalization : bool
-            Whether or not to normalize the data by the
-            volume of the mesh elements
+            Whether or not to normalize the data by the volume of the mesh
+            elements
         """
-        import vtk
-        from vtk.util import numpy_support as nps
+        from vtkmodules.util import numpy_support
+        from vtkmodules import vtkCommonCore
+        from vtkmodules import vtkCommonDataModel
+        from vtkmodules import vtkIOLegacy
+        from vtkmodules import vtkIOXML
 
         if self.connectivity is None or self.vertices is None:
-            raise RuntimeError('This mesh has not been '
-                               'loaded from a statepoint file.')
+            raise RuntimeError(
+                "This mesh has not been loaded from a statepoint file."
+            )
 
         if filename is None:
-            filename = f'mesh_{self.id}.vtk'
+            filename = f"mesh_{self.id}.vtk"
 
-        writer = vtk.vtkUnstructuredGridWriter()
+        if Path(filename).suffix == ".vtk":
+            writer = vtkIOLegacy.vtkUnstructuredGridWriter()
+
+        elif Path(filename).suffix == ".vtu":
+            writer = vtkIOXML.vtkXMLUnstructuredGridWriter()
+            writer.SetCompressorTypeToZLib()
+            writer.SetDataModeToBinary()
 
         writer.SetFileName(str(filename))
 
-        grid = vtk.vtkUnstructuredGrid()
+        grid = vtkCommonDataModel.vtkUnstructuredGrid()
 
-        vtk_pnts = vtk.vtkPoints()
-        vtk_pnts.SetData(nps.numpy_to_vtk(self.vertices))
-        grid.SetPoints(vtk_pnts)
+        points = vtkCommonCore.vtkPoints()
+        points.SetData(numpy_support.numpy_to_vtk(self.vertices))
+        grid.SetPoints(points)
 
         n_skipped = 0
         for elem_type, conn in zip(self.element_types, self.connectivity):
             if elem_type == self._LINEAR_TET:
-                elem = vtk.vtkTetra()
+                elem = vtkCommonDataModel.vtkTetra()
             elif elem_type == self._LINEAR_HEX:
-                elem = vtk.vtkHexahedron()
+                elem = vtkCommonDataModel.vtkHexahedron()
             elif elem_type == self._UNSUPPORTED_ELEM:
                 n_skipped += 1
+                continue
             else:
-                raise RuntimeError(f'Invalid element type {elem_type} found')
+                raise RuntimeError(f"Invalid element type {elem_type} found")
+
             for i, c in enumerate(conn):
                 if c == -1:
                     break
@@ -2406,30 +2585,36 @@ class UnstructuredMesh(MeshBase):
             grid.InsertNextCell(elem.GetCellType(), elem.GetPointIds())
 
         if n_skipped > 0:
-            warnings.warn(f'{n_skipped} elements were not written because '
-                          'they are not of type linear tet/hex')
+            warnings.warn(
+                f"{n_skipped} elements were not written because "
+                "they are not of type linear tet/hex"
+            )
 
         # check that datasets are the correct size
         datasets_out = []
         if datasets is not None:
             for name, data in datasets.items():
                 if data.shape != self.dimension:
-                    raise ValueError(f'Cannot apply dataset "{name}" with '
-                                     f'shape {data.shape} to mesh {self.id} '
-                                     f'with dimensions {self.dimension}')
+                    raise ValueError(
+                        f'Cannot apply dataset "{name}" with '
+                        f"shape {data.shape} to mesh {self.id} "
+                        f"with dimensions {self.dimension}"
+                    )
 
             if volume_normalization:
                 for name, data in datasets.items():
                     if np.issubdtype(data.dtype, np.integer):
-                        warnings.warn(f'Integer data set "{name}" will '
-                                      'not be volume-normalized.')
+                        warnings.warn(
+                            f'Integer data set "{name}" will '
+                            "not be volume-normalized."
+                        )
                         continue
                     data /= self.volumes
 
             # add data to the mesh
             for name, data in datasets.items():
                 datasets_out.append(data)
-                arr = vtk.vtkDoubleArray()
+                arr = vtkCommonCore.vtkDoubleArray()
                 arr.SetName(name)
                 arr.SetNumberOfTuples(data.size)
 
@@ -2442,8 +2627,7 @@ class UnstructuredMesh(MeshBase):
         writer.Write()
 
     @classmethod
-    def from_hdf5(cls, group: h5py.Group):
-        mesh_id = int(group.name.split('/')[-1].lstrip('mesh '))
+    def from_hdf5(cls, group: h5py.Group, mesh_id: int, name: str):
         filename = group['filename'][()].decode()
         library = group['library'][()].decode()
         if 'options' in group.attrs:
@@ -2451,7 +2635,7 @@ class UnstructuredMesh(MeshBase):
         else:
             options = None
 
-        mesh = cls(filename=filename, library=library, mesh_id=mesh_id, options=options)
+        mesh = cls(filename=filename, library=library, mesh_id=mesh_id, name=name, options=options)
         mesh._has_statepoint_data = True
         vol_data = group['volumes'][()]
         mesh.volumes = np.reshape(vol_data, (vol_data.shape[0],))
@@ -2478,9 +2662,9 @@ class UnstructuredMesh(MeshBase):
 
         """
 
-        element = ET.Element("mesh")
-        element.set("id", str(self._id))
+        element = super().to_xml_element()
         element.set("type", "unstructured")
+
         element.set("library", self._library)
         if self.options is not None:
             element.set('options', self.options)

@@ -7,11 +7,12 @@ from pathlib import Path
 
 import lxml.etree as ET
 
+import openmc
 import openmc.checkvalue as cv
 from openmc.checkvalue import PathLike
 from openmc.stats.multivariate import MeshSpatial
 from ._xml import clean_indentation, get_text, reorder_attributes
-from .mesh import _read_meshes, RegularMesh
+from .mesh import _read_meshes, RegularMesh, MeshBase
 from .source import SourceBase, MeshSource, IndependentSource
 from .utility_funcs import input_path
 from .volume import VolumeCalculation
@@ -50,15 +51,19 @@ class Settings:
         Indicate whether fission neutrons should be created or not.
     cutoff : dict
         Dictionary defining weight cutoff, energy cutoff and time cutoff. The
-        dictionary may have ten keys, 'weight', 'weight_avg', 'energy_neutron',
-        'energy_photon', 'energy_electron', 'energy_positron', 'time_neutron',
-        'time_photon', 'time_electron', and 'time_positron'. Value for 'weight'
-        should be a float indicating weight cutoff below which particle undergo
-        Russian roulette. Value for 'weight_avg' should be a float indicating
-        weight assigned to particles that are not killed after Russian roulette.
-        Value of energy should be a float indicating energy in eV below which
-        particle type will be killed. Value of time should be a float in
-        seconds. Particles will be killed exactly at the specified time.
+        dictionary may have the following keys, 'weight', 'weight_avg',
+        'survival_normalization', 'energy_neutron', 'energy_photon',
+        'energy_electron', 'energy_positron', 'time_neutron', 'time_photon',
+        'time_electron', and 'time_positron'. Value for 'weight' should be a
+        float indicating weight cutoff below which particle undergo Russian
+        roulette. Value for 'weight_avg' should be a float indicating weight
+        assigned to particles that are not killed after Russian roulette. Value
+        of energy should be a float indicating energy in eV below which particle
+        type will be killed. Value of time should be a float in seconds.
+        Particles will be killed exactly at the specified time. Value for
+        'survival_normalization' is a bool indicating whether or not the weight
+        cutoff parameters will be applied relative to the particle's starting
+        weight or to its current weight.
     delayed_photon_scaling : bool
         Indicate whether to scale the fission photon yield by (EGP + EGD)/EGP
         where EGP is the energy release of prompt photons and EGD is the energy
@@ -162,14 +167,26 @@ class Settings:
             'naive', 'simulation_averaged', or 'hybrid'.
             The default is 'hybrid'.
         :source_shape:
-            Assumed shape of the source distribution within each source
-            region. Options are 'flat' (default), 'linear', or 'linear_xy'.
+            Assumed shape of the source distribution within each source region.
+            Options are 'flat' (default), 'linear', or 'linear_xy'.
         :volume_normalized_flux_tallies:
-            Whether to normalize flux tallies by volume (bool). The default
-            is 'False'. When enabled, flux tallies will be reported in units of
-            cm/cm^3. When disabled, flux tallies will be reported in units
-            of cm (i.e., total distance traveled by neutrons in the spatial
-            tally region).
+            Whether to normalize flux tallies by volume (bool). The default is
+            'False'. When enabled, flux tallies will be reported in units of
+            cm/cm^3. When disabled, flux tallies will be reported in units of cm
+            (i.e., total distance traveled by neutrons in the spatial tally
+            region).
+        :adjoint:
+            Whether to run the random ray solver in adjoint mode (bool). The
+            default is 'False'.
+        :sample_method:
+            Sampling method for the ray starting location and direction of
+            travel. Options are `prng` (default) or 'halton`.
+        :source_region_meshes:
+            List of tuples where each tuple contains a mesh and a list of
+            domains. Each domain is an instance of openmc.Material, openmc.Cell,
+            or openmc.Universe. The mesh will be applied to the listed domains
+            to subdivide source regions so as to improve accuracy and/or conform
+            with tally meshes.
 
         .. versionadded:: 0.15.0
     resonance_scattering : dict
@@ -187,6 +204,8 @@ class Settings:
         The type of calculation to perform (default is 'eigenvalue')
     seed : int
         Seed for the linear congruential pseudorandom number generator
+    stride : int
+        Number of random numbers allocated for each source particle history
     source : Iterable of openmc.SourceBase
         Distribution of source sites in space, angle, and energy
     sourcepoint : dict
@@ -263,9 +282,14 @@ class Settings:
         Maximum number of batches simulated. If this is set, the number of
         batches specified via ``batches`` is interpreted as the minimum number
         of batches
+    uniform_source_sampling : bool
+        Whether to sampling among multiple sources uniformly, applying their
+        strengths as weights to sampled particles.
     ufs_mesh : openmc.RegularMesh
         Mesh to be used for redistributing source sites via the uniform fission
         site (UFS) method.
+    use_decay_photons : bool
+        Produce decay photons from neutron reactions instead of prompt
     verbosity : int
         Verbosity during simulation between 1 and 10. Verbosity levels are
         described in :ref:`verbosity`.
@@ -325,7 +349,9 @@ class Settings:
         self._photon_transport = None
         self._plot_seed = None
         self._ptables = None
+        self._uniform_source_sampling = None
         self._seed = None
+        self._stride = None
         self._survival_biasing = None
 
         # Shannon entropy mesh
@@ -383,6 +409,7 @@ class Settings:
         self._weight_window_checkpoints = {}
         self._max_history_splits = None
         self._max_tracks = None
+        self._use_decay_photons = None
 
         self._random_ray = {}
 
@@ -573,6 +600,15 @@ class Settings:
         self._photon_transport = photon_transport
 
     @property
+    def uniform_source_sampling(self) -> bool:
+        return self._uniform_source_sampling
+
+    @uniform_source_sampling.setter
+    def uniform_source_sampling(self, uniform_source_sampling: bool):
+        cv.check_type('strength as weights', uniform_source_sampling, bool)
+        self._uniform_source_sampling = uniform_source_sampling
+
+    @property
     def plot_seed(self):
         return self._plot_seed
 
@@ -591,6 +627,16 @@ class Settings:
         cv.check_type('random number generator seed', seed, Integral)
         cv.check_greater_than('random number generator seed', seed, 0)
         self._seed = seed
+
+    @property
+    def stride(self) -> int:
+        return self._stride
+
+    @stride.setter
+    def stride(self, stride: int):
+        cv.check_type('random number generator stride', stride, Integral)
+        cv.check_greater_than('random number generator stride', stride, 0)
+        self._stride = stride
 
     @property
     def survival_biasing(self) -> bool:
@@ -864,6 +910,8 @@ class Settings:
                 cv.check_type('average survival weight', cutoff[key], Real)
                 cv.check_greater_than('average survival weight',
                                       cutoff[key], 0.0)
+            elif key == 'survival_normalization':
+                cv.check_type('survival normalization', cutoff[key], bool)
             elif key in ['energy_neutron', 'energy_photon', 'energy_electron',
                          'energy_positron']:
                 cv.check_type('energy cutoff', cutoff[key], Real)
@@ -1094,30 +1142,56 @@ class Settings:
         if not isinstance(random_ray, Mapping):
             raise ValueError(f'Unable to set random_ray from "{random_ray}" '
                              'which is not a dict.')
-        for key in random_ray:
+        for key, value in random_ray.items():
             if key == 'distance_active':
-                cv.check_type('active ray length', random_ray[key], Real)
-                cv.check_greater_than('active ray length', random_ray[key], 0.0)
+                cv.check_type('active ray length', value, Real)
+                cv.check_greater_than('active ray length', value, 0.0)
             elif key == 'distance_inactive':
-                cv.check_type('inactive ray length', random_ray[key], Real)
+                cv.check_type('inactive ray length', value, Real)
                 cv.check_greater_than('inactive ray length',
-                                      random_ray[key], 0.0, True)
+                                      value, 0.0, True)
             elif key == 'ray_source':
-                cv.check_type('random ray source', random_ray[key], SourceBase)
+                cv.check_type('random ray source', value, SourceBase)
             elif key == 'volume_estimator':
-                cv.check_value('volume estimator', random_ray[key],
+                cv.check_value('volume estimator', value,
                                ('naive', 'simulation_averaged',
                                 'hybrid'))
             elif key == 'source_shape':
-                cv.check_value('source shape', random_ray[key],
+                cv.check_value('source shape', value,
                                ('flat', 'linear', 'linear_xy'))
             elif key == 'volume_normalized_flux_tallies':
-                cv.check_type('volume normalized flux tallies', random_ray[key], bool)
+                cv.check_type('volume normalized flux tallies', value, bool)
+            elif key == 'adjoint':
+                cv.check_type('adjoint', value, bool)
+            elif key == 'source_region_meshes':
+                cv.check_type('source region meshes', value, Iterable)
+                for mesh, domains in value:
+                    cv.check_type('mesh', mesh, MeshBase)
+                    cv.check_type('domains', domains, Iterable)
+                    valid_types = (openmc.Material, openmc.Cell, openmc.Universe)
+                    for domain in domains:
+                        if not isinstance(domain, valid_types):
+                            raise ValueError(
+                                f'Invalid domain type: {type(domain)}. Expected '
+                                'openmc.Material, openmc.Cell, or openmc.Universe.')
+                cv.check_type('adjoint', value, bool)
+            elif key == 'sample_method':
+                cv.check_value('sample method', value,
+                               ('prng', 'halton'))
             else:
                 raise ValueError(f'Unable to set random ray to "{key}" which is '
                                  'unsupported by OpenMC')
 
         self._random_ray = random_ray
+
+    @property
+    def use_decay_photons(self) -> bool:
+        return self._use_decay_photons
+
+    @use_decay_photons.setter
+    def use_decay_photons(self, value):
+        cv.check_type('use decay photons', value, bool)
+        self._use_decay_photons = value
 
     def _create_run_mode_subelement(self, root):
         elem = ET.SubElement(root, "run_mode")
@@ -1216,6 +1290,11 @@ class Settings:
                 subelement.text = ' '.join(
                     str(x) for x in self._statepoint['batches'])
 
+    def _create_uniform_source_sampling_subelement(self, root):
+        if self._uniform_source_sampling is not None:
+            element = ET.SubElement(root, "uniform_source_sampling")
+            element.text = str(self._uniform_source_sampling).lower()
+
     def _create_sourcepoint_subelement(self, root):
         if self._sourcepoint:
             element = ET.SubElement(root, "source_point")
@@ -1295,6 +1374,11 @@ class Settings:
             element = ET.SubElement(root, "seed")
             element.text = str(self._seed)
 
+    def _create_stride_subelement(self, root):
+        if self._stride is not None:
+            element = ET.SubElement(root, "stride")
+            element.text = str(self._stride)
+
     def _create_survival_biasing_subelement(self, root):
         if self._survival_biasing is not None:
             element = ET.SubElement(root, "survival_biasing")
@@ -1305,7 +1389,8 @@ class Settings:
             element = ET.SubElement(root, "cutoff")
             for key, value in self._cutoff.items():
                 subelement = ET.SubElement(element, key)
-                subelement.text = str(value)
+                subelement.text = str(value) if key != 'survival_normalization' \
+                    else str(value).lower()
 
     def _create_entropy_mesh_subelement(self, root, mesh_memo=None):
         if self.entropy_mesh is None:
@@ -1401,6 +1486,11 @@ class Settings:
         if root.find(path) is None:
             root.append(self.ufs_mesh.to_xml_element())
             if mesh_memo is not None: mesh_memo.add(self.ufs_mesh.id)
+
+    def _create_use_decay_photons_subelement(self, root):
+        if self._use_decay_photons is not None:
+            element = ET.SubElement(root, "use_decay_photons")
+            element.text = str(self._use_decay_photons).lower()
 
     def _create_resonance_scattering_subelement(self, root):
         res = self.resonance_scattering
@@ -1502,7 +1592,7 @@ class Settings:
 
             root.append(wwg.mesh.to_xml_element())
             if mesh_memo is not None:
-                mesh_memo.add(wwg.mesh)
+                mesh_memo.add(wwg.mesh.id)
 
     def _create_weight_windows_file_element(self, root):
         if self.weight_windows_file is not None:
@@ -1533,13 +1623,25 @@ class Settings:
             elem = ET.SubElement(root, "max_tracks")
             elem.text = str(self._max_tracks)
 
-    def _create_random_ray_subelement(self, root):
+    def _create_random_ray_subelement(self, root, mesh_memo=None):
         if self._random_ray:
             element = ET.SubElement(root, "random_ray")
             for key, value in self._random_ray.items():
                 if key == 'ray_source' and isinstance(value, SourceBase):
                     source_element = value.to_xml_element()
                     element.append(source_element)
+                elif key == 'source_region_meshes':
+                    subelement = ET.SubElement(element, 'source_region_meshes')
+                    for mesh, domains in value:
+                        mesh_elem = ET.SubElement(subelement, 'mesh')
+                        mesh_elem.set('id', str(mesh.id))
+                        for domain in domains:
+                            domain_elem = ET.SubElement(mesh_elem, 'domain')
+                            domain_elem.set('id', str(domain.id))
+                            domain_elem.set('type', domain.__class__.__name__.lower())
+                        if mesh_memo is not None and mesh.id not in mesh_memo:
+                            root.append(mesh.to_xml_element())
+                            mesh_memo.add(mesh.id)
                 else:
                     subelement = ET.SubElement(element, key)
                     subelement.text = str(value)
@@ -1697,6 +1799,11 @@ class Settings:
         if text is not None:
             self.photon_transport = text in ('true', '1')
 
+    def _uniform_source_sampling_from_xml_element(self, root):
+        text = get_text(root, 'uniform_source_sampling')
+        if text is not None:
+            self.uniform_source_sampling = text in ('true', '1')
+
     def _plot_seed_from_xml_element(self, root):
         text = get_text(root, 'plot_seed')
         if text is not None:
@@ -1712,6 +1819,11 @@ class Settings:
         if text is not None:
             self.seed = int(text)
 
+    def _stride_from_xml_element(self, root):
+        text = get_text(root, 'stride')
+        if text is not None:
+            self.stride = int(text)
+
     def _survival_biasing_from_xml_element(self, root):
         text = get_text(root, 'survival_biasing')
         if text is not None:
@@ -1723,10 +1835,14 @@ class Settings:
             self.cutoff = {}
             for key in ('energy_neutron', 'energy_photon', 'energy_electron',
                         'energy_positron', 'weight', 'weight_avg', 'time_neutron',
-                        'time_photon', 'time_electron', 'time_positron'):
+                        'time_photon', 'time_electron', 'time_positron',
+                        'survival_normalization'):
                 value = get_text(elem, key)
                 if value is not None:
-                    self.cutoff[key] = float(value)
+                    if key == 'survival_normalization':
+                        self.cutoff[key] = value in ('true', '1')
+                    else:
+                        self.cutoff[key] = float(value)
 
     def _entropy_mesh_from_xml_element(self, root, meshes):
         text = get_text(root, 'entropy_mesh')
@@ -1916,6 +2032,33 @@ class Settings:
                     self.random_ray['volume_normalized_flux_tallies'] = (
                         child.text in ('true', '1')
                     )
+                elif child.tag == 'adjoint':
+                    self.random_ray['adjoint'] = (
+                        child.text in ('true', '1')
+                    )
+                elif child.tag == 'sample_method':
+                    self.random_ray['sample_method'] = child.text
+                elif child.tag == 'source_region_meshes':
+                    self.random_ray['source_region_meshes'] = []
+                    for mesh_elem in child.findall('mesh'):
+                        mesh = MeshBase.from_xml_element(mesh_elem)
+                        domains = []
+                        for domain_elem in mesh_elem.findall('domain'):
+                            domain_id = int(domain_elem.get('id'))
+                            domain_type = domain_elem.get('type')
+                            if domain_type == 'material':
+                                domain = openmc.Material(domain_id)
+                            elif domain_type == 'cell':
+                                domain = openmc.Cell(domain_id)
+                            elif domain_type == 'universe':
+                                domain = openmc.Universe(domain_id)
+                            domains.append(domain)
+                        self.random_ray['source_region_meshes'].append((mesh, domains))
+
+    def _use_decay_photons_from_xml_element(self, root):
+        text = get_text(root, 'use_decay_photons')
+        if text is not None:
+            self.use_decay_photons = text in ('true', '1')
 
     def to_xml_element(self, mesh_memo=None):
         """Create a 'settings' element to be written to an XML file.
@@ -1948,9 +2091,11 @@ class Settings:
         self._create_energy_mode_subelement(element)
         self._create_max_order_subelement(element)
         self._create_photon_transport_subelement(element)
+        self._create_uniform_source_sampling_subelement(element)
         self._create_plot_seed_subelement(element)
         self._create_ptables_subelement(element)
         self._create_seed_subelement(element)
+        self._create_stride_subelement(element)
         self._create_survival_biasing_subelement(element)
         self._create_cutoff_subelement(element)
         self._create_entropy_mesh_subelement(element, mesh_memo)
@@ -1979,7 +2124,8 @@ class Settings:
         self._create_weight_window_checkpoints_subelement(element)
         self._create_max_history_splits_subelement(element)
         self._create_max_tracks_subelement(element)
-        self._create_random_ray_subelement(element)
+        self._create_random_ray_subelement(element, mesh_memo)
+        self._create_use_decay_photons_subelement(element)
 
         # Clean the indentation in the file to be user-readable
         clean_indentation(element)
@@ -2054,9 +2200,11 @@ class Settings:
         settings._energy_mode_from_xml_element(elem)
         settings._max_order_from_xml_element(elem)
         settings._photon_transport_from_xml_element(elem)
+        settings._uniform_source_sampling_from_xml_element(elem)
         settings._plot_seed_from_xml_element(elem)
         settings._ptables_from_xml_element(elem)
         settings._seed_from_xml_element(elem)
+        settings._stride_from_xml_element(elem)
         settings._survival_biasing_from_xml_element(elem)
         settings._cutoff_from_xml_element(elem)
         settings._entropy_mesh_from_xml_element(elem, meshes)
@@ -2084,8 +2232,8 @@ class Settings:
         settings._max_history_splits_from_xml_element(elem)
         settings._max_tracks_from_xml_element(elem)
         settings._random_ray_from_xml_element(elem)
+        settings._use_decay_photons_from_xml_element(elem)
 
-        # TODO: Get volume calculations
         return settings
 
     @classmethod

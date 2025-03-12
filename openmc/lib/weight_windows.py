@@ -276,7 +276,7 @@ class WeightWindows(_FortranObjectWithID):
     def update_magic(self, tally, value='mean', threshold=1.0, ratio=5.0):
         """Update weight window values using the MAGIC method
 
-        Reference: https://inis.iaea.org/search/48022314
+        Reference: https://inis.iaea.org/records/231pm-zzy35
 
         Parameters
         ----------

@@ -1442,7 +1442,7 @@ class Model:
                 self.geometry.get_all_materials().values()
             )
     
-    def generate_discrete_infinite_medium_mgxs(self, groups, mgxs_fname) -> None:
+    def _generate_discrete_infinite_medium_mgxs(self, groups, nparticles, mgxs_fname) -> None:
         """
         Generate MGXS for an infinite medium.
 
@@ -1469,7 +1469,7 @@ class Model:
 
             # Settings
             model.settings.batches = 100
-            model.settings.particles = 2000
+            model.settings.particles = nparticles
             model.settings.run_mode = 'fixed source'
 
             # Make a discrete source that is uniform over the bins of the group structure
@@ -1543,12 +1543,12 @@ class Model:
         mgxs_file = openmc.MGXSLibrary(energy_groups=groups)
         for mgxs_set in mgxs_sets:
             mgxs_file.add_xsdata(mgxs_set)
-        mgxs_file.export_to_hdf5("mgxs.h5")
+        mgxs_file.export_to_hdf5(mgxs_fname)
 
 
 
     # Generate MIXED infinite medium MGXS
-    def generate_stochastic_slab_mgxs(self, groups, mgxs_fname) -> None:
+    def _generate_stochastic_slab_mgxs(self, groups, nparticles, mgxs_fname) -> None:
         """
         Generate MGXS assuming a stochastic "sandwich" of materials in a
         layered slab geometry.
@@ -1561,7 +1561,7 @@ class Model:
             Filename for the MGXS HDF5 file.
         """
 
-        def create_stochastic_slab_geometry(materials, cell_thickness=1.0, num_repeats=100):
+        def _create_stochastic_slab_geometry(materials, cell_thickness=1.0, num_repeats=100):
             """
             Create a 3D geometry that embeds a 1D stochastic lattice in a large cubic domain.
             
@@ -1658,12 +1658,12 @@ class Model:
         # Settings
         model.settings.batches = 200
         model.settings.inactive = 100
-        model.settings.particles = 2000 
+        model.settings.particles = nparticles 
         model.settings.output = {'summary': True, 'tallies': False}
         model.settings.run_mode = self.settings.run_mode
 
         # Stochastic slab geometry
-        model.geometry, spatial_distribution = create_stochastic_slab_geometry(model.materials)
+        model.geometry, spatial_distribution = _create_stochastic_slab_geometry(model.materials)
 
         # Make a discrete source that is uniform over the bins of the group structure
         n_groups = groups.num_groups
@@ -1724,12 +1724,12 @@ class Model:
 
         # Create a MGXS File which can then be written to disk
         mgxs_file = mgxs_lib.create_mg_library(xs_type='macro', xsdata_names=names)
-        mgxs_file.export_to_hdf5("mgxs.h5")
+        mgxs_file.export_to_hdf5(mgxs_fname)
         sp.close()
 
     # Generate material-wise MGXS based on the real geometry, thus 
     # capturing both resonance and spatial self shielding
-    def generate_material_wise_mgxs(self, groups, mgxs_fname) -> None:
+    def _generate_material_wise_mgxs(self, groups, nparticles, mgxs_fname) -> None:
         """
         Generate MGXS for each material in the model. Calculates MGXS separately
         for each material, assuming each is an independent infinite medium.
@@ -1748,7 +1748,7 @@ class Model:
         # Settings
         model.settings.batches = 200
         model.settings.inactive = 100
-        model.settings.particles = 2000 
+        model.settings.particles = nparticles 
         model.settings.output = {'summary': True, 'tallies': False}
 
         # Add MGXS Tallies
@@ -1796,10 +1796,10 @@ class Model:
 
         # Create a MGXS File which can then be written to disk
         mgxs_file = mgxs_lib.create_mg_library(xs_type='macro', xsdata_names=names)
-        mgxs_file.export_to_hdf5("mgxs.h5")
+        mgxs_file.export_to_hdf5(mgxs_fname)
         sp.close()
 
-    def convert_all_to_mg(self, method = "discrete infinite medium", groups = openmc.mgxs.EnergyGroups(openmc.mgxs.GROUP_STRUCTURES['CASMO-2']), mgxs_fname: str = "mgxs.h5") -> None:
+    def convert_to_multigroup(self, method = "discrete infinite medium", groups = openmc.mgxs.EnergyGroups(openmc.mgxs.GROUP_STRUCTURES['CASMO-2']), nparticles = 2000, mgxs_fname: str = "mgxs.h5") -> None:
         """Convert all materials to multigroup using a given MGXS library file.
         
         Parameters
@@ -1827,11 +1827,11 @@ class Model:
         from pathlib import Path
         if not Path(mgxs_fname).is_file():
             if method == "discrete infinite medium":
-                self.generate_discrete_infinite_medium_mgxs(groups, mgxs_fname)
+                self._generate_discrete_infinite_medium_mgxs(groups, nparticles, mgxs_fname)
             elif method == "material-wise":
-                self.generate_material_wise_mgxs(groups, mgxs_fname)
+                self._generate_material_wise_mgxs(groups, nparticles, mgxs_fname)
             elif method == "stochastic slab":
-                self.generate_stochastic_slab_mgxs(groups, mgxs_fname)
+                self._generate_stochastic_slab_mgxs(groups, nparticles, mgxs_fname)
             else:
                 raise ValueError("MGXS generation method not recognized")
 
@@ -1841,26 +1841,47 @@ class Model:
             material.set_density('macro', 1.0)
             material._nuclides = []
             material._sab = []
-            name = material.name
-            if name is None:
-                raise ValueError("Material name not set")
-            material.add_macroscopic(name) 
+            material.add_macroscopic(material.name) 
         
         self.settings.energy_mode = 'multi-group'
     
     def convert_to_random_ray(self) -> None:
-        """Convert model to use random ray, with reasonable defaults.
-        """
-
-        def replace_infinity(value):
-            if np.isinf(value):  # Works for both Python floats and NumPy floats
-                return 1.0 if value > 0 else -1.0
-            return value  # Keep original value if not infinite
+        """Convert a multigroup model to use random ray. This function determines values for the needed
+        settings and adds them to the settings.random_ray dictionary so as to enable random ray mode. The
+        settings that are populated are:
         
+        - 'ray_source' (openmc.IndependentSource): The source of the rays.
+        - 'distance_inactive' (float): The "dead zone" distance at the beginning of the ray.
+        - 'distance_active' (float): The "active" distance of the ray
+        - 'particles' (int): Number of rays to simulate
+        
+        The function will determine reasonable defaults for each of the above variables based
+        on analysis of the model's geometry. The function will have no effect if the random ray dictionary
+        is already defined in the model settings.
+        """
+        # If the random ray dictionary is already set, don't overwrite it
+        if self.settings.random_ray is not None:
+            warnings.warn("Random ray conversion skipped as settings.random_ray dictionary is already set.")
+            return
+
+        if self.settings.energy_mode != 'multi-group':
+            raise ValueError("Random ray conversion failed: energy mode must be 'multi-group'. Use convert_to_multigroup() first.")
+
+        # Helper function for detecting infinity
+        def _replace_infinity(value):
+            if np.isinf(value):
+                return 1.0 if value > 0 else -1.0
+            return value 
+        
+        # Get a bounding box for sampling rays. We can utilize the geometry's bounding box
+        # though for 2D problems we need to detect the infinities and replace them with an
+        # arbitrary finite value.
         bounding_box = self.geometry.bounding_box
-        lower_left = [replace_infinity(v) for v in bounding_box.lower_left] 
-        upper_right = [replace_infinity(v) for v in bounding_box.upper_right] 
-        print(f"Bounding box: {lower_left}, {upper_right}")
+        lower_left = [_replace_infinity(v) for v in bounding_box.lower_left] 
+        upper_right = [_replace_infinity(v) for v in bounding_box.upper_right]
+        uniform_dist_ray = openmc.stats.Box(lower_left, upper_right)
+        rr_source = openmc.IndependentSource(space=uniform_dist_ray)
+        self.settings.random_ray['ray_source'] = rr_source
 
         # For the dead zone and active length, a reasonable guess is the larger of either:
         # 1) The maximum chord length through the geometry (as defined by its bounding box) 
@@ -1869,7 +1890,6 @@ class Model:
         x_min, y_min, z_min = lower_left
         x_max, y_max, z_max = upper_right
         max_length = math.sqrt((x_max - x_min) ** 2 + (y_max - y_min) ** 2 + (z_max - z_min) ** 2)
-        print(f"Max length: {max_length}")
  
         if max_length < 30.0:
             self.settings.random_ray['distance_inactive'] = 30.0
@@ -1877,10 +1897,5 @@ class Model:
             self.settings.random_ray['distance_inactive'] = max_length
         self.settings.random_ray['distance_active'] = 5 * self.settings.random_ray['distance_inactive']
         
-        # Assume that the geometry's bounding box will work as the sampling space for rays
-        uniform_dist_ray = openmc.stats.Box(lower_left, upper_right)
-        rr_source = openmc.IndependentSource(space=uniform_dist_ray)
-        self.settings.random_ray['ray_source'] = rr_source
-
         # Take a wild guess as to how many rays are needed
-        self.settings.particles = int(self.settings.random_ray['distance_inactive'])
+        self.settings.particles = 2 * int(self.settings.random_ray['distance_inactive'])

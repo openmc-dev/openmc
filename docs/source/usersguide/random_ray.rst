@@ -47,16 +47,32 @@ functions in OpenMC's python interface::
   model.settings.particles = 500
 
 The above strategy first converts the continuous energy model to a multigroup
-one. By default, this will internally run a coarsely converged continuous energy
-Monte Carlo simulation to produce an estimated multigroup macroscopic cross
-sections for each material specified in the model, and store this data into a
-multigroup cross section library file (``mgxs.h5``) that can be used by the
-random ray solver. The :attr:`model.convert_to_random_ray()` function enables
-random ray mode and performs an analysis of the model geometry to determine
-reasonable values for all required parameters. If default behavior is not
-satisfactory, the user can manually adjust the settings in the
-:attr:`~openmc.Settings.random_ray` dictionary as described in the sections
-below.
+one using the :attr:`openmc.model.Model.convert_to_multigroup()` function. By
+default, this will internally run a coarsely converged continuous energy Monte
+Carlo simulation to produce an estimated multigroup macroscopic cross sections
+for each material specified in the model, and store this data into a multigroup
+cross section library file (``mgxs.h5``) that can be used by the random ray
+solver.
+
+The :attr:`openmc.model.Model.convert_to_random_ray()` function enables random
+ray mode and performs an analysis of the model geometry to determine reasonable
+values for all required parameters. If default behavior is not satisfactory, the
+user can manually adjust the settings in the :attr:`~openmc.Settings.random_ray`
+dictionary in the :class:`openmc.Settings` as described in the sections below.
+
+Finally a few optional steps are shown. The first (recommended) step overlays a
+mesh over the geometry to create smaller source regions so that source
+bookkeeping resolution improves and the random ray solver becomes more accurate.
+Varying the mesh resolution can be used to trade off between accuracy and
+runtime. High-fidelity fission reactor simulation may require source region
+sizes below 1 cm, while larger fixed source problems with some tolerance for
+error may be able to use source regions of 10 or 100 cm.
+
+We also enable linear sources, which can improve the accuracy of the random ray
+solver and/or allow for a much coarser mesh resolution to be overlaid. Finally,
+the number of rays per batch is adjusted. The goal here is to ensure that the
+source region miss rate is below 1%, which is reported by OpenMC at the end of
+the simulation (or before via warning if it is very high).
 
 ------------------------
 Enabling Random Ray Mode

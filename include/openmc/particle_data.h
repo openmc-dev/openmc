@@ -193,6 +193,7 @@ struct BoundaryInfo {
   int coord_level; //!< coordinate level after crossing boundary
   array<int, 3>
     lattice_translation {}; //!< which way lattice indices will change
+  bool if_stochastic_surface {false}; //!< is the surface in stochastic media?
 
   void reset()
   {

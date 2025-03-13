@@ -51,6 +51,8 @@ public:
   //! Get the packing fraction of the particle material
   double pf() const { return pf_; }
 
+  uint64_t* current_seed() { return &seed_; }
+
   //! Get the material of the particle
   int32_t particle_mat(int32_t i) const { return particle_mat_[i]; }
   vector<int32_t> particle_mat() const { return particle_mat_; }
@@ -74,13 +76,13 @@ public:
   int32_t matrix_mat_;
   //----------------------------------------------------------------------------
 
-  virtual void sample_material(Particle& p) = 0;
-  virtual double distance_to_stochamedia(Particle& p) = 0;
+  virtual void sample_material(GeometryState& p) = 0;
   virtual void adjust_indices();
 
 protected:
   // Protected data members
   int64_t index_;
+  uint64_t seed_ {init_seed(id_, STREAM_SOURCE)};
 };
 
 class CLS_Media : public Stochastic_Media {
@@ -88,8 +90,7 @@ public:
   explicit CLS_Media(pugi::xml_node cell_node);
   CLS_Media() {};
 
-  void sample_material(Particle& p) override;
-  double distance_to_stochamedia(Particle& p) override;
+  void sample_material(GeometryState& p) override;
 
 
 };
@@ -99,6 +100,8 @@ public:
 //! Read stochastic media data XML node
 //! \param[in] root node of stochastic_media XML element
 void read_stochastic_media(pugi::xml_node root);
+
+double distance_to_stochamedia(Particle& p);
 
 void free_memory_stochastic_media();
 

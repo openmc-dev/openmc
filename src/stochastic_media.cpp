@@ -122,22 +122,26 @@ CLS_Media::CLS_Media(pugi::xml_node node)
   }
 }
 
-double CLS_Media::distance_to_stochamedia(Particle& p)
+double distance_to_stochamedia(Particle& p)
 { // Sample the distance to the stochastic media
+  auto i_cell = p.lowest_coord().cell;
+  Cell& c {*model::cells[i_cell]};
+  auto& media = *model::stochastic_media[c.fill_];
+
   double distance = INFINITY;
   if (p.status() == ParticleStatus::IN_STOCHASTIC_MEDIA) {
     // Designed for a randomized medium only for the time
     // being, to be upgraded subsequently
     double cos_value = sqrt(prn(p.current_seed()));
-    distance = 2 * radius_ * cos_value;
+    distance = 2 * media.radius() * cos_value;
     p.status() = ParticleStatus::IN_STOCHASTIC_MEDIA;
   } else if (p.status() == ParticleStatus::IN_MATRIX) {
-    double matrix_mean_chord = 4 / 3 * radius_ * (1 - pf_) / pf_;
+    double matrix_mean_chord = 4 / 3 * media.radius() * (1 - media.pf()) / media.pf();
     distance = -matrix_mean_chord * std::log(prn(p.current_seed()));
   }
   return distance;
 }
-void CLS_Media::sample_material(Particle& p)
+void CLS_Media::sample_material(GeometryState& p)
 {
   p.material_last() = p.material();
   p.sqrtkT_last() = p.sqrtkT();
@@ -145,17 +149,18 @@ void CLS_Media::sample_material(Particle& p)
   // Sample the material based on the packing fraction
   auto i_cell = p.lowest_coord().cell;
   Cell& c {*model::cells[i_cell]};
-  if (p.status() == ParticleStatus::OUTSIDE) {
-    double rand = openmc::prn(p.current_seed());
+  if (p.status() == ParticleStatus::INSIDE) {
+    double rand = openmc::prn(this->current_seed());
     if (rand < pf_) {
       p.status() = ParticleStatus::IN_STOCHASTIC_MEDIA;
 
       p.material() = this->particle_mat(0);
 
-      p.sqrtkT() = c.sqrtkT(p.cell_instance());
     } else {
       p.status() = ParticleStatus::IN_MATRIX;
+      p.material() = this->matrix_mat();
     }
+    p.sqrtkT() = c.sqrtkT(p.cell_instance());
   }
 }
 

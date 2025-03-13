@@ -1799,7 +1799,7 @@ class Model:
         mgxs_file.export_to_hdf5(mgxs_fname)
         sp.close()
 
-    def convert_to_multigroup(self, method = "discrete infinite medium", groups = openmc.mgxs.EnergyGroups(openmc.mgxs.GROUP_STRUCTURES['CASMO-2']), nparticles = 2000, mgxs_fname: str = "mgxs.h5") -> None:
+    def convert_to_multigroup(self, method = "discrete infinite medium", groups = openmc.mgxs.EnergyGroups(openmc.mgxs.GROUP_STRUCTURES['CASMO-2']), nparticles = 2000, overwrite_mgxs_library = False, mgxs_fname: str = "mgxs.h5") -> None:
         """Convert all materials to multigroup using a given MGXS library file.
         
         Parameters
@@ -1825,7 +1825,7 @@ class Model:
                 material.name = f"material {material.id}"
 
         from pathlib import Path
-        if not Path(mgxs_fname).is_file():
+        if not Path(mgxs_fname).is_file() or overwrite_mgxs_library:
             if method == "discrete infinite medium":
                 self._generate_discrete_infinite_medium_mgxs(groups, nparticles, mgxs_fname)
             elif method == "material-wise":
@@ -1860,7 +1860,7 @@ class Model:
         is already defined in the model settings.
         """
         # If the random ray dictionary is already set, don't overwrite it
-        if self.settings.random_ray is not None:
+        if self.settings.random_ray:
             warnings.warn("Random ray conversion skipped as settings.random_ray dictionary is already set.")
             return
 

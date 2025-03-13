@@ -91,7 +91,6 @@ class Summary:
             names = self._f['nuclides/names'][()]
             awrs = self._f['nuclides/awrs'][()]
             for name, awr in zip(names, awrs):
-                print(name, awr)
                 self._nuclides[name.decode()] = awr
 
     def _read_macroscopics(self):

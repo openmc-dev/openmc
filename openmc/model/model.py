@@ -1460,9 +1460,6 @@ class Model:
 
             # Name
             name = material.name
-            if name is None:
-                # return error
-                raise ValueError("Material name not set")
             print(f"Converting {name} to MGXS")
             # Material
             model.materials = [material]
@@ -1545,13 +1542,98 @@ class Model:
             mgxs_file.add_xsdata(mgxs_set)
         mgxs_file.export_to_hdf5(mgxs_fname)
 
+    @staticmethod
+    def _create_stochastic_slab_geometry(materials, cell_thickness=1.0, num_repeats=100):
+        """
+        Create a geometry representing a stochastic "sandwich" of materials in a
+        layered slab geometry. To reduce the impact of the order of materials in the slab,
+        the materials are applied to 'num_repeats' different randomly positioned layers
+        of 'cell_thickness' each.
+        
+        Parameters
+        ----------
+        materials : list of openmc.Material
+            List of materials to assign. Each material will appear exactly num_repeats times,
+            then the ordering is randomly shuffled.
+        cell_thickness : float, optional
+            Thickness of each lattice cell in x (default 1.0 cm).
+        num_repeats : int, optional
+            Number of repeats for each material (default 100).
+            
+        Returns
+        -------
+        geometry : openmc.Geometry
+            The constructed geometry.
+        box : openmc.stats.Box
+            A spatial sampling distribution covering the full slab domain.
+        """
+        if not materials:
+            raise ValueError("At least one material must be provided.")
+        
+        num_materials = len(materials)
+        total_cells = num_materials * num_repeats
+        total_width = total_cells * cell_thickness 
+        
+        # Generate an infinite cell/universe for each material.
+        cells = []
+        universes = []
+        for i in range(num_materials):
+            cell = openmc.Cell(fill=materials[i])
+            cells.append(cell)
+            universe = openmc.Universe(cells=[cell])
+            universes.append(universe)
 
+        # Make a list of randomized material idx assignments for the stochastic slab
+        assignments = list(range(num_materials)) * num_repeats
+        random.shuffle(assignments)
 
-    # Generate MIXED infinite medium MGXS
+        # Create a list of the (randomized) universe assignments to be used
+        # when defining the problem lattice.
+        lattice_entries = []
+        for m in assignments:
+            lattice_entries.append(universes[m])
+        
+        # Create the RectLattice for the 1D material variation in x.
+        lattice = openmc.RectLattice()
+        lattice.pitch = (cell_thickness, total_width, total_width)
+        lattice.lower_left = (0.0, 0.0, 0.0)
+        lattice.universes = [[lattice_entries]]
+        lattice.outer = universes[0]
+        
+        # Define the six outer surfaces with reflective boundary conditions.
+        x_min = openmc.XPlane(x0=0.0, boundary_type='reflective')
+        x_max = openmc.XPlane(x0=total_width, boundary_type='reflective')
+        y_min = openmc.YPlane(y0=0.0, boundary_type='reflective')
+        y_max = openmc.YPlane(y0=total_width, boundary_type='reflective')
+        z_min = openmc.ZPlane(z0=0.0, boundary_type='reflective')
+        z_max = openmc.ZPlane(z0=total_width, boundary_type='reflective')
+        
+        # Build the outer region as the intersection of the half-spaces defined by these surfaces.
+        outer_region = +x_min & -x_max & +y_min & -y_max & +z_min & -z_max
+        
+        # Create an outer cell that fills with the lattice.
+        outer_cell = openmc.Cell(fill=lattice, region=outer_region)
+        
+        # Build the root universe and geometry.
+        root_universe = openmc.Universe(cells=[outer_cell])
+        geometry = openmc.Geometry(root_universe)
+        
+        # Define the spatial distribution (Box) that covers the full cubic domain.
+        box = openmc.stats.Box(lower_left=(0.0, 0.0, 0.0),
+                            upper_right=(total_width, total_width, total_width))
+        
+        return geometry, box
+
     def _generate_stochastic_slab_mgxs(self, groups, nparticles, mgxs_fname) -> None:
         """
         Generate MGXS assuming a stochastic "sandwich" of materials in a
-        layered slab geometry.
+        layered slab geometry. While geometry-specific spatial shielding effects
+        are not captured, this method can be useful when the geometry has materials
+        only found far from the source region that the "material-wise" method would
+        not be capable of generating cross sections for. Conversely, this method
+        will generate cross sections for all materials in the problem regardless of
+        type. If this is a fixed source problem, a discrete source is used to sample
+        particles, with an equal strength spread across each of the energy groups.
 
         Parameters
         ----------
@@ -1560,96 +1642,6 @@ class Model:
         mgxs_fname : str
             Filename for the MGXS HDF5 file.
         """
-
-        def _create_stochastic_slab_geometry(materials, cell_thickness=1.0, num_repeats=100):
-            """
-            Create a 3D geometry that embeds a 1D stochastic lattice in a large cubic domain.
-            
-            The 1D material variation is achieved with a RectLattice that has:
-            - total_cells = (number of materials) * num_repeats lattice cells in the x direction,
-            - each lattice cell is cell_thickness wide in x,
-            - a single cell in y and z whose pitch is set to cover the entire outer domain.
-            
-            The outer domain is defined to be a cube with sides of length:
-                total_width = total_cells * cell_thickness.
-            Reflective boundary conditions are applied on all faces using a
-            RectangularPrism (for x-y) and ZPlanes.
-            
-            Parameters
-            ----------
-            materials : list of openmc.Material
-                List of materials to assign. Each material will appear exactly num_repeats times,
-                then the ordering is randomly shuffled.
-            cell_thickness : float, optional
-                Thickness of each lattice cell in x (default 1.0 cm).
-            num_repeats : int, optional
-                Number of repeats for each material (default 100).
-                
-            Returns
-            -------
-            geometry : openmc.Geometry
-                The constructed geometry.
-            box : openmc.stats.Box
-                A spatial distribution covering the full cubic domain.
-            """
-            if not materials:
-                raise ValueError("At least one material must be provided.")
-            
-
-            num_materials = len(materials)
-            total_cells = num_materials * num_repeats
-            total_width = total_cells * cell_thickness 
-            
-            # Generate an infinite cell/universe for each material.
-            cells = []
-            universes = []
-            for i in range(num_materials):
-                cell = openmc.Cell(fill=materials[i])
-                cells.append(cell)
-                universe = openmc.Universe(cells=[cell])
-                universes.append(universe)
-
-            # Make a list of randomized material idx assignments for the stochastic slab
-            assignments = list(range(num_materials)) * num_repeats
-            random.shuffle(assignments)
-
-            # Create a list of the (randomized) universe assignments to be used
-            # when defining the problem lattice.
-            lattice_entries = []
-            for m in assignments:
-                lattice_entries.append(universes[m])
-            
-            # Create the RectLattice for the 1D material variation in x.
-            lattice = openmc.RectLattice()
-            lattice.pitch = (cell_thickness, total_width, total_width)
-            lattice.lower_left = (0.0, 0.0, 0.0)
-            lattice.universes = [[lattice_entries]]
-            lattice.outer = universes[0]
-            
-            # Define the six outer surfaces with reflective boundary conditions.
-            x_min = openmc.XPlane(x0=0.0, boundary_type='reflective')
-            x_max = openmc.XPlane(x0=total_width, boundary_type='reflective')
-            y_min = openmc.YPlane(y0=0.0, boundary_type='reflective')
-            y_max = openmc.YPlane(y0=total_width, boundary_type='reflective')
-            z_min = openmc.ZPlane(z0=0.0, boundary_type='reflective')
-            z_max = openmc.ZPlane(z0=total_width, boundary_type='reflective')
-            
-            # Build the outer region as the intersection of the half-spaces defined by these surfaces.
-            outer_region = +x_min & -x_max & +y_min & -y_max & +z_min & -z_max
-            
-            # Create an outer cell that fills with the lattice.
-            outer_cell = openmc.Cell(fill=lattice, region=outer_region)
-            
-            # Build the root universe and geometry.
-            root_universe = openmc.Universe(cells=[outer_cell])
-            geometry = openmc.Geometry(root_universe)
-            
-            # Define the spatial distribution (Box) that covers the full cubic domain.
-            box = openmc.stats.Box(lower_left=(0.0, 0.0, 0.0),
-                                upper_right=(total_width, total_width, total_width))
-            
-            return geometry, box
-        
         openmc.reset_auto_ids()
         model = openmc.Model()
         model.materials = self.materials
@@ -1663,7 +1655,7 @@ class Model:
         model.settings.run_mode = self.settings.run_mode
 
         # Stochastic slab geometry
-        model.geometry, spatial_distribution = _create_stochastic_slab_geometry(model.materials)
+        model.geometry, spatial_distribution = Model._create_stochastic_slab_geometry(model.materials)
 
         # Make a discrete source that is uniform over the bins of the group structure
         n_groups = groups.num_groups
@@ -1850,7 +1842,7 @@ class Model:
         settings and adds them to the settings.random_ray dictionary so as to enable random ray mode. The
         settings that are populated are:
         
-        - 'ray_source' (openmc.IndependentSource): The source of the rays.
+        - 'ray_source' (openmc.IndependentSource): Where random ray starting points are sampled from.
         - 'distance_inactive' (float): The "dead zone" distance at the beginning of the ray.
         - 'distance_active' (float): The "active" distance of the ray
         - 'particles' (int): Number of rays to simulate

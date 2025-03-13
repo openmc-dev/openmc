@@ -1,9 +1,11 @@
 from __future__ import annotations
 from collections.abc import Iterable, Sequence
+import copy
 from functools import lru_cache
 from pathlib import Path
 import math
 from numbers import Integral, Real
+import random
 from tempfile import NamedTemporaryFile, TemporaryDirectory
 import warnings
 
@@ -1441,6 +1443,16 @@ class Model:
             )
     
     def generate_discrete_infinite_medium_mgxs(self, groups, mgxs_fname) -> None:
+        """
+        Generate MGXS for an infinite medium.
+
+        Parameters
+        ----------
+        groups : openmc.mgxs.EnergyGroups
+            Energy group structure for the MGXS.
+        mgxs_fname : str
+            Filename for the MGXS HDF5 file.
+        """
         mgxs_sets = []
         for material in self.materials:
             openmc.reset_auto_ids()
@@ -1538,6 +1550,17 @@ class Model:
 
     # Generate MIXED infinite medium MGXS
     def generate_stochastic_slab_mgxs(self, groups, mgxs_fname) -> None:
+        """
+        Generate MGXS assuming a stochastic "sandwich" of materials in a
+        layered slab geometry.
+
+        Parameters
+        ----------
+        groups : openmc.mgxs.EnergyGroups
+            Energy group structure for the MGXS.
+        mgxs_fname : str
+            Filename for the MGXS HDF5 file.
+        """
 
         def create_stochastic_slab_geometry(materials, cell_thickness=1.0, num_repeats=100):
             """
@@ -1589,7 +1612,6 @@ class Model:
 
             # Make a list of randomized material idx assignments for the stochastic slab
             assignments = list(range(num_materials)) * num_repeats
-            import random
             random.shuffle(assignments)
 
             # Create a list of the (randomized) universe assignments to be used
@@ -1641,11 +1663,7 @@ class Model:
         model.settings.output = {'summary': True, 'tallies': False}
         model.settings.run_mode = self.settings.run_mode
 
-        # Geometry
-        # Make a 1D slab geometry with a 1cm slab of each material type in the model
-        # The slab has reflective boundaries on each end
-        # The first and last material cells (on each end before the reflective BC) should be half as thick, such that physically all material
-        # cells are the same thickness
+        # Stochastic slab geometry
         model.geometry, spatial_distribution = create_stochastic_slab_geometry(model.materials)
 
         # Make a discrete source that is uniform over the bins of the group structure
@@ -1713,15 +1731,25 @@ class Model:
     # Generate material-wise MGXS based on the real geometry, thus 
     # capturing both resonance and spatial self shielding
     def generate_material_wise_mgxs(self, groups, mgxs_fname) -> None:
-        
+        """
+        Generate MGXS for each material in the model. Calculates MGXS separately
+        for each material, assuming each is an independent infinite medium.
+
+        Parameters
+        ----------
+        groups : openmc.mgxs.EnergyGroups
+            Energy group structure for the MGXS.
+        mgxs_fname : str
+            Filename for the MGXS HDF5 file.
+        """
         openmc.reset_auto_ids()
-        model = self
+        model = copy.deepcopy(self)
         model.tallies = openmc.Tallies()
 
         # Settings
         model.settings.batches = 20
         model.settings.inactive = 10
-        model.settings.particles = 100000
+        model.settings.particles = 10000
         model.settings.output = {'summary': True, 'tallies': False}
 
         # Add MGXS Tallies
@@ -1777,6 +1805,12 @@ class Model:
         
         Parameters
         ----------
+        method : str, optional
+            Method to generate the MGXS. Options are "discrete infinite medium",
+            "material-wise", and "stochastic slab". Defaults to "discrete infinite medium".
+        groups : openmc.mgxs.EnergyGroups, optional
+            Energy group structure for the MGXS. Defaults to
+            openmc.mgxs.GROUP_STRUCTURES['CASMO-2'].
         mgxs_fname : str, optional
             Filename of the mgxs.h5 library file. Defaults to "mgxs.h5".
         
@@ -1808,3 +1842,39 @@ class Model:
             material.add_macroscopic(name) 
         
         self.settings.energy_mode = 'multi-group'
+    
+    def convert_to_random_ray(self) -> None:
+        """Convert model to use random ray, with reasonable defaults.
+        """
+
+        def replace_infinity(value):
+            if np.isinf(value):  # Works for both Python floats and NumPy floats
+                return 1.0 if value > 0 else -1.0
+            return value  # Keep original value if not infinite
+        
+        bounding_box = self.geometry.bounding_box
+        lower_left = [replace_infinity(v) for v in bounding_box.lower_left] 
+        upper_right = [replace_infinity(v) for v in bounding_box.upper_right] 
+        print(f"Bounding box: {lower_left}, {upper_right}")
+
+        # For the dead zone and active length, a reasonable guess is the larger of either:
+        # 1) The maximum chord length through the geometry (as defined by its bounding box) 
+        # 2) 30 cm 
+        # Then, set the active length to be 5x longer than the dead zone length, for the sake of efficiency.
+        x_min, y_min, z_min = lower_left
+        x_max, y_max, z_max = upper_right
+        max_length = math.sqrt((x_max - x_min) ** 2 + (y_max - y_min) ** 2 + (z_max - z_min) ** 2)
+ 
+        if max_length < 30.0:
+            self.settings.random_ray['distance_inactive'] = 30.0
+        else:
+            self.settings.random_ray['distance_inactive'] = max_length
+        self.settings.random_ray['distance_active'] = 5 * self.settings.random_ray['distance_inactive']
+        
+        # Assume that the geometry's bounding box will work as the sampling space for rays
+        uniform_dist_ray = openmc.stats.Box(lower_left, upper_right)
+        rr_source = openmc.IndependentSource(space=uniform_dist_ray)
+        self.settings.random_ray['ray_source'] = rr_source
+
+        # Take a wild guess as to how many rays are needed
+        self.settings.particles = int(self.settings.random_ray['distance_inactive'])

@@ -1468,9 +1468,8 @@ class Model:
             model.materials = [material]
 
             # Settings
-            model.settings.batches = 20
-            model.settings.inactive = 10
-            model.settings.particles = 20000
+            model.settings.batches = 100
+            model.settings.particles = 2000
             model.settings.run_mode = 'fixed source'
 
             # Make a discrete source that is uniform over the bins of the group structure

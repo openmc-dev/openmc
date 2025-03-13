@@ -178,13 +178,15 @@ bool find_cell_inner(
       p.material() = c.material(p.cell_instance());
       p.sqrtkT_last() = p.sqrtkT();
       p.sqrtkT() = c.sqrtkT(p.cell_instance());
+      p.status()=ParticleStatus::OUTSIDE;
 
       return true;
 
     } else if (c.type_ == Fill::STOCHASTIC_MEDIA) {
       //========================================================================
       //! Found stochastic media cell, means this is the lowest coord level.
-      p.status()=ParticleStatus::INSIDE;
+      p.status() = ParticleStatus::INSIDE;
+      model::stochastic_media[c.fill_]->sample_material(p);
       return true;
 
     } else if (c.type_ == Fill::UNIVERSE) {

@@ -1470,7 +1470,7 @@ class Model:
             # Settings
             model.settings.batches = 20
             model.settings.inactive = 10
-            model.settings.particles = 10000
+            model.settings.particles = 20000
             model.settings.run_mode = 'fixed source'
 
             # Make a discrete source that is uniform over the bins of the group structure
@@ -1657,9 +1657,9 @@ class Model:
         model.tallies = openmc.Tallies()
 
         # Settings
-        model.settings.batches = 20
-        model.settings.inactive = 10
-        model.settings.particles = 10000
+        model.settings.batches = 200
+        model.settings.inactive = 100
+        model.settings.particles = 2000 
         model.settings.output = {'summary': True, 'tallies': False}
         model.settings.run_mode = self.settings.run_mode
 
@@ -1747,9 +1747,9 @@ class Model:
         model.tallies = openmc.Tallies()
 
         # Settings
-        model.settings.batches = 20
-        model.settings.inactive = 10
-        model.settings.particles = 10000
+        model.settings.batches = 200
+        model.settings.inactive = 100
+        model.settings.particles = 2000 
         model.settings.output = {'summary': True, 'tallies': False}
 
         # Add MGXS Tallies
@@ -1819,6 +1819,12 @@ class Model:
         FileNotFoundError
             If the MGXS file is not found.
         """
+
+        # Make sure all materials have a name
+        for material in self.materials:
+            if material.name is None:
+                material.name = f"material {material.id}"
+
         from pathlib import Path
         if not Path(mgxs_fname).is_file():
             if method == "discrete infinite medium":
@@ -1864,6 +1870,7 @@ class Model:
         x_min, y_min, z_min = lower_left
         x_max, y_max, z_max = upper_right
         max_length = math.sqrt((x_max - x_min) ** 2 + (y_max - y_min) ** 2 + (z_max - z_min) ** 2)
+        print(f"Max length: {max_length}")
  
         if max_length < 30.0:
             self.settings.random_ray['distance_inactive'] = 30.0

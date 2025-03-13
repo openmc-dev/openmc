@@ -11,6 +11,53 @@ active batches <usersguide_batches>`. However, there are a couple of settings
 that are unique to the random ray solver and a few areas that the random ray
 run strategy differs, both of which will be described in this section.
 
+-----------
+Quick Start
+-----------
+
+While this page contains a comprehensive guide to the random ray solver and
+its various parameters, the process of converting an existing continuous energy
+Monte Carlo model to a random ray model can be largely automated via convenience
+functions in OpenMC's python interface::
+
+  # Define regular openmc continuous energy model as normal
+  model = openmc.Model()
+  ...
+
+  # Convert model to multigroup (will auto-generate MGXS library if needed)
+  model.convert_to_multigroup()
+
+  # Convert model to random ray and initialize random ray parameters
+  # to reasonable defaults based on the specifics of the geometry
+  model.convert_to_random_ray()
+
+  # (Optional) Overlay 3D source region decomposition mesh to improve fidelity of the
+  # random ray solver. Adjust 'n' improve fidelity. Reduce 'n' to reduce runtime.
+  n = 100
+  mesh = openmc.RegularMesh()
+  mesh.dimension = (n, n, n)
+  mesh.lower_left = model.geometry.bounding_box.lower_left
+  mesh.upper_right = model.geometry.bounding_box.upper_right
+  model.settings.random_ray['source_region_meshes'] = [(mesh, [model.geometry.root_universe])]
+
+  # (Optional) Improve fidelity of the random ray solver by enabling linear sources
+  model.settings.random_ray['source_shape'] = 'linear'
+
+  # (Optional) Increase the number of rays/batch, to reduce uncertainty
+  model.settings.particles = 500
+
+The above strategy first converts the continuous energy model to a multigroup
+one. By default, this will internally run a coarsely converged continuous energy
+Monte Carlo simulation to produce an estimated multigroup macroscopic cross
+sections for each material specified in the model, and store this data into a
+multigroup cross section library file (``mgxs.h5``) that can be used by the
+random ray solver. The :attr:`model.convert_to_random_ray()` function enables
+random ray mode and performs an analysis of the model geometry to determine
+reasonable values for all required parameters. If default behavior is not
+satisfactory, the user can manually adjust the settings in the
+:attr:`~openmc.Settings.random_ray` dictionary as described in the sections
+below.
+
 ------------------------
 Enabling Random Ray Mode
 ------------------------
@@ -556,6 +603,81 @@ the same set of approximate multigroup cross section data to be used across a
 variety of problem types (or through a multidimensional parameter sweep of
 design variables) with only modest errors and at greatly reduced cost as
 compared to using only continuous energy Monte Carlo.
+
+~~~~~~~~~~~~
+The Easy Way
+~~~~~~~~~~~~
+
+The easiest way to generate a multigroup cross section library is to use the
+:attr:`openmc.model.Model.convert_to_multigroup()` method. This method will
+automatically output a multigroup cross section library file (``mgxs.h5``) from
+a continuous energy Monte Carlo model as well as automatically alter the 
+material definitions in the model to use these multigroup cross sections. An
+example is given below::
+
+  # Assume we already have a working continuous energy model
+  method = "material-wise"
+  groups = openmc.mgxs.EnergyGroups(openmc.mgxs.GROUP_STRUCTURES['CASMO-2'])
+
+  model.convert_to_multigroup(method=method, groups=groups, nparticles=2000,
+                              overwrite_mgxs_library=False, mgxs_fname="mgxs.h5")
+
+The most important parameter to set is the ``method`` parameter, which can be
+either "stochastic slab", "material-wise", or "discrete infinite medium". An overview
+of these methods is given below:
+
+.. list-table:: Comparison of Automatic MGXS Generation Methods
+   :header-rows: 1
+   :widths: 10 30 30 30
+
+   * - Method
+     - Description
+     - Pros
+     - Cons
+   * - ``material-wise`` (default)
+     - * Higher Fidelity
+       * Runs a CE simulation with the original geometry and source, tallying
+         cross sections with a material filter. 
+     - * Typically the most accurate of the three methods
+       * Accurately captures (averaged over the full problem domain)
+         both spatial and resonance self shielding effects
+     - * Potentially slower as the full geometry must be run
+       * If a material is only present far from the source and doesn't get tallied
+         to in the CE simulation, the MGXS will be zero for that material.
+   * - ``stochastic slab``
+     - * Medium Fidelity
+       * Runs a CE simulation with a greatly simplified geometry, where materials
+         are randomly assigned to layers in a 1D "stochastic slab sandwich" geometry
+     - * Still captures resonant self shielding and resonance effects between materials
+       * Fast due to the simplified geometry
+       * Able to produce cross section data for all materials, regardless of how
+         far they are from the source in the original geometry
+     - * Does not capture most spatial self shielding effects, e.g., no lattice physics.
+   * - ``discrete infinite medium``
+     - * Lower Fidelity
+       * Runs one CE simulation per material independently. Each simulation is just
+         an infinite medium slowing down problem, with an assumed external source term.
+     - * Simple
+     - * Poor accuracy (no spatial information, no lattice physics, no resonance effects between materials)
+       * May hang if a material has a k-infinity greater than 1.0
+
+When selecting a non-default energy group structure, you can manually define
+group boundaries or pick out a group structure already known to OpenMC (a list
+of which can be found at :class:`openmc.mgxs.GROUP_STRUCTURES`). The
+:attr:`nparticles` parameter can be adjusted upward to improve the fidelity of
+the generated cross section library.
+
+Ultimately, the methods described above are all just approximations.
+Approximations in the generated MGXS data will fundamentally limit the potential
+accuracy of the random ray solver. However, the methods described above are all
+useful in that they can provide a good starting point for a random ray
+simulation, and if more fidelity is needed the user may wish to follow the
+instructions below or experiment with transport correction techniques to improve
+the fidelity of the generated MGXS data.
+
+~~~~~~~~~~~~
+The Hard Way
+~~~~~~~~~~~~
 
 We give here a quick summary of how to produce a multigroup cross section data
 file (``mgxs.h5``) from a starting point of a typical continuous energy Monte

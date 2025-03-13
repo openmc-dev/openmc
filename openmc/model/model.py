@@ -1813,7 +1813,7 @@ class Model:
         mgxs_file.export_to_hdf5(mgxs_fname)
         sp.close()
 
-    def convert_to_multigroup(self, method="discrete infinite medium", groups=openmc.mgxs.EnergyGroups(openmc.mgxs.GROUP_STRUCTURES['CASMO-2']), nparticles=2000, overwrite_mgxs_library=False, mgxs_fname: str = "mgxs.h5") -> None:
+    def convert_to_multigroup(self, method="stochastic slab", groups=openmc.mgxs.EnergyGroups(openmc.mgxs.GROUP_STRUCTURES['CASMO-2']), nparticles=2000, overwrite_mgxs_library=False, mgxs_fname: str = "mgxs.h5") -> None:
         """Convert all materials from continuous energy materials to multigroup materials.
         If no MGXS data library file is found, generate one using one or more continuous energy Monte Carlo simulations.
         

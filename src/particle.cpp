@@ -230,6 +230,16 @@ void Particle::event_advance()
   // Select smaller of the two distances
   double distance = std::min(boundary().distance, collision_distance());
 
+  if (this->status() != ParticleStatus::OUTSIDE) {
+    double stocha_media_distance = distance_to_stochamedia(*this);
+    distance = std::min(distance, stocha_media_distance);
+    if (stocha_media_distance < boundary().distance &&
+        stocha_media_distance < collision_distance()) {
+
+      boundary().if_stochastic_surface = true;
+    }
+  }
+
   // Advance particle in space and time
   // Short-term solution until the surface source is revised and we can use
   // this->move_distance(distance)
@@ -610,6 +620,9 @@ void Particle::cross_surface(const Surface& surf)
 
 void Particle::cross_surface_in_stochmedia()
 {
+  surface() = SURFACE_NONE;
+  bool verbose = settings::verbosity >= 10 || trace();
+
   double i_cell = this->lowest_coord().cell;
   Cell& c {*model::cells[i_cell]};
 
@@ -627,11 +640,21 @@ void Particle::cross_surface_in_stochmedia()
 
     material = media.matrix_mat();
     this->status() = ParticleStatus::IN_MATRIX;
+    if (verbose) {
+      write_message(1,
+        "    Crossing surface in stochasitic media {} from particle to matrix",
+        media.id_);
+    }
 
   } else if (this->status() == ParticleStatus::IN_MATRIX) {
     // short time implementation, only one particle type in matrix
     material = media.particle_mat(0);
     this->status() = ParticleStatus::IN_STOCHASTIC_MEDIA;
+    if (verbose) {
+      write_message(1,
+        "    Crossing surface in stochasitic media {} from matrix to particle",
+        media.id_);
+    }
   }
   this->material_last() = this->material();
   this->material() = material;

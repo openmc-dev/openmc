@@ -774,10 +774,14 @@ void transport_history_based_single_particle(Particle& p)
       p.event_advance();
     }
     if (p.alive()) {
-      if (p.collision_distance() > p.boundary().distance) {
-        p.event_cross_surface();
-      } else if (p.alive()) {
-        p.event_collide();
+      if (p.boundary().if_stochastic_surface) {
+        p.cross_surface_in_stochmedia();
+      } else {
+        if (p.collision_distance() > p.boundary().distance) {
+          p.event_cross_surface();
+        } else if (p.alive()) {
+          p.event_collide();
+        }
       }
     }
     p.event_revive_from_secondary();

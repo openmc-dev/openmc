@@ -1444,7 +1444,10 @@ class Model:
     
     def _generate_discrete_infinite_medium_mgxs(self, groups, nparticles, mgxs_fname) -> None:
         """
-        Generate MGXS for an infinite medium.
+        Generate a MGXS library by running multiple OpenMC simulations, each representing
+        an infinite medium simulation of a single isolated material. A discrete source is used to sample
+        particles, with an equal strength spread across each of the energy groups. This is a highly
+        naive method that ignores all spatial self shielding effects and all resonance shielding effects between materials.
 
         Parameters
         ----------
@@ -1453,6 +1456,7 @@ class Model:
         mgxs_fname : str
             Filename for the MGXS HDF5 file.
         """
+        warnings.warn("The infinite medium method of generating MGXS may hang if a material has a k-infinity > 1.0.")
         mgxs_sets = []
         for material in self.materials:
             openmc.reset_auto_ids()
@@ -1460,7 +1464,7 @@ class Model:
 
             # Name
             name = material.name
-            print(f"Converting {name} to MGXS")
+            print(f"Running infinite medium calculation for material: {name}")
             # Material
             model.materials = [material]
 
@@ -1723,8 +1727,14 @@ class Model:
     # capturing both resonance and spatial self shielding
     def _generate_material_wise_mgxs(self, groups, nparticles, mgxs_fname) -> None:
         """
-        Generate MGXS for each material in the model. Calculates MGXS separately
-        for each material, assuming each is an independent infinite medium.
+        Generate a material-wise MGXS library for the model by running the original
+        continuous energy OpenMC simulation of the full material geometry and source,
+        and tally MGXS data for each material. This method accurately conserves reaction
+        rates totaled over the entire simulation domain. However, when the geometry has materials
+        only found far from the source region, it is possible the Monte Carlo solver may
+        not be able to score any tallies to these material types, thus resulting in zero
+        cross section values for these materials. For such cases, the "stochastic slab" method
+        may be more appropriate.
 
         Parameters
         ----------
@@ -1792,7 +1802,8 @@ class Model:
         sp.close()
 
     def convert_to_multigroup(self, method = "discrete infinite medium", groups = openmc.mgxs.EnergyGroups(openmc.mgxs.GROUP_STRUCTURES['CASMO-2']), nparticles = 2000, overwrite_mgxs_library = False, mgxs_fname: str = "mgxs.h5") -> None:
-        """Convert all materials to multigroup using a given MGXS library file.
+        """Convert all materials from continuous energy materials to multigroup materials.
+        If no MGXS data library file is found, generate one using one or more continuous energy Monte Carlo simulations.
         
         Parameters
         ----------
@@ -1804,11 +1815,6 @@ class Model:
             openmc.mgxs.GROUP_STRUCTURES['CASMO-2'].
         mgxs_fname : str, optional
             Filename of the mgxs.h5 library file. Defaults to "mgxs.h5".
-        
-        Raises
-        ------
-        FileNotFoundError
-            If the MGXS file is not found.
         """
 
         # Make sure all materials have a name
@@ -1816,6 +1822,7 @@ class Model:
             if material.name is None:
                 material.name = f"material {material.id}"
 
+        # If needed, generate the needed MGXS data library file
         from pathlib import Path
         if not Path(mgxs_fname).is_file() or overwrite_mgxs_library:
             if method == "discrete infinite medium":
@@ -1827,8 +1834,8 @@ class Model:
             else:
                 raise ValueError("MGXS generation method not recognized")
 
+        # Convert all continuous energy materials to multigroup
         self.materials.cross_sections = mgxs_fname
-
         for material in self.materials:
             material.set_density('macro', 1.0)
             material._nuclides = []

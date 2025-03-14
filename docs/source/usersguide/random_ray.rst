@@ -11,6 +11,8 @@ active batches <usersguide_batches>`. However, there are a couple of settings
 that are unique to the random ray solver and a few areas that the random ray
 run strategy differs, both of which will be described in this section.
 
+.. _quick_start:
+
 -----------
 Quick Start
 -----------
@@ -31,8 +33,8 @@ functions in OpenMC's python interface::
   # to reasonable defaults based on the specifics of the geometry
   model.convert_to_random_ray()
 
-  # (Optional) Overlay 3D source region decomposition mesh to improve fidelity of the
-  # random ray solver. Adjust 'n' improve fidelity. Reduce 'n' to reduce runtime.
+  # (Optional) Overlay source region decomposition mesh to improve fidelity of the
+  # random ray solver. Adjust 'n' for fidelity vs runtime.
   n = 100
   mesh = openmc.RegularMesh()
   mesh.dimension = (n, n, n)

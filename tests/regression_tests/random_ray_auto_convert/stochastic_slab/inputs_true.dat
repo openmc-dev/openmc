@@ -2,17 +2,17 @@
 <model>
   <materials>
     <cross_sections>mgxs.h5</cross_sections>
-    <material depletable="true" id="1" name="UO2  2 4  ">
+    <material depletable="true" id="1" name="UO2__2_4__">
       <density units="macro" value="1.0"/>
-      <macroscopic name="UO2  2 4  "/>
+      <macroscopic name="UO2__2_4__"/>
     </material>
     <material id="2" name="Zircaloy">
       <density units="macro" value="1.0"/>
       <macroscopic name="Zircaloy"/>
     </material>
-    <material id="3" name="Hot borated water">
+    <material id="3" name="Hot_borated_water">
       <density units="macro" value="1.0"/>
-      <macroscopic name="Hot borated water"/>
+      <macroscopic name="Hot_borated_water"/>
     </material>
   </materials>
   <geometry>

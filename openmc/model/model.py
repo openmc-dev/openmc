@@ -1838,7 +1838,7 @@ class Model:
         for material in self.materials:
             if material.name is None:
                 material.name = f"material {material.id}"
-            material.name = re.sub(r'[^a-zA-Z0-9]', ' ', material.name)
+            material.name = re.sub(r'[^a-zA-Z0-9]', '_', material.name)
 
         # If needed, generate the needed MGXS data library file
         from pathlib import Path

@@ -1595,6 +1595,7 @@ class Model:
 
         # Make a list of randomized material idx assignments for the stochastic slab
         assignments = list(range(num_materials)) * num_repeats
+        random.seed(42)
         random.shuffle(assignments)
 
         # Create a list of the (randomized) universe assignments to be used

@@ -6,6 +6,7 @@ from pathlib import Path
 import math
 from numbers import Integral, Real
 import random
+import re
 from tempfile import NamedTemporaryFile, TemporaryDirectory
 import warnings
 
@@ -1832,10 +1833,12 @@ class Model:
             Filename of the mgxs.h5 library file. Defaults to "mgxs.h5".
         """
 
-        # Make sure all materials have a name
+        # Make sure all materials have a name, and that the name
+        # is a valid HDF5 dataset name
         for material in self.materials:
             if material.name is None:
                 material.name = f"material {material.id}"
+            material.name = re.sub(r'[^a-zA-Z0-9]', ' ', material.name)
 
         # If needed, generate the needed MGXS data library file
         from pathlib import Path

@@ -232,10 +232,8 @@ void Particle::event_advance()
 
   if (this->status() != ParticleStatus::OUTSIDE) {
     double stocha_media_distance = distance_to_stochamedia(*this);
-    distance = std::min(distance, stocha_media_distance);
-    if (stocha_media_distance < boundary().distance &&
-        stocha_media_distance < collision_distance()) {
-
+    if (stocha_media_distance < distance) {
+      distance = stocha_media_distance;
       boundary().if_stochastic_surface = true;
     }
   }

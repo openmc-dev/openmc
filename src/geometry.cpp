@@ -185,7 +185,6 @@ bool find_cell_inner(
     } else if (c.type_ == Fill::STOCHASTIC_MEDIA) {
       //========================================================================
       //! Found stochastic media cell, means this is the lowest coord level.
-      p.status() = ParticleStatus::INSIDE;
       model::stochastic_media[c.fill_]->sample_material(p);
       return true;
 

@@ -357,7 +357,6 @@ constexpr int32_t SURFACE_NONE {0};
 
 enum class ParticleStatus {
   OUTSIDE,   //  Particle is outside the cell containing stochastic media
-  INSIDE,    //  Particle is inside the cell containing stochastic media
   IN_MATRIX, //  Particle is inside the matrix but not in the stochastic media
   IN_STOCHASTIC_MEDIA, //  Particle is inside the stochastic media
 };

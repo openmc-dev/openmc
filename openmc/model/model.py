@@ -1850,7 +1850,10 @@ class Model:
                 self._generate_stochastic_slab_mgxs(
                     groups, nparticles, mgxs_fname)
             else:
-                raise ValueError("MGXS generation method not recognized")
+                raise ValueError(
+                    f"MGXS generation method \"{method}\" not recognized")
+        else:
+            print(f"Exisiting MGXS library file \"{mgxs_fname}\" will be used")
 
         # Convert all continuous energy materials to multigroup
         self.materials.cross_sections = mgxs_fname

@@ -51,7 +51,7 @@ functions in OpenMC's python interface::
 The above strategy first converts the continuous energy model to a multigroup
 one using the :attr:`openmc.model.Model.convert_to_multigroup()` function. By
 default, this will internally run a coarsely converged continuous energy Monte
-Carlo simulation to produce an estimated multigroup macroscopic cross sections
+Carlo simulation to produce an estimated multigroup macroscopic cross section set
 for each material specified in the model, and store this data into a multigroup
 cross section library file (``mgxs.h5``) that can be used by the random ray
 solver.

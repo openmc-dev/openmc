@@ -515,6 +515,7 @@ class StatePoint:
         """
         if self._f is not None:
             self._f.close()
+            self._f = None
         if self._summary is not None:
             self._summary.close()
 

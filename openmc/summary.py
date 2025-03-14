@@ -248,6 +248,8 @@ class Summary:
             self.geometry.add_volume_information(volume_calc)
     
     def close(self):
+        """Close the summary HDF5 file
+        """
         if self._f is not None:
             self._f.close()
             self._f = None

@@ -6,7 +6,6 @@ from numbers import Real
 from pathlib import Path
 import re
 import sys
-import time
 import warnings
 
 import lxml.etree as ET

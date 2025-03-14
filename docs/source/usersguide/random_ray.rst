@@ -681,7 +681,8 @@ of these methods is given below:
        * Runs one CE simulation per material independently. Each simulation is just
          an infinite medium slowing down problem, with an assumed external source term.
      - * Simple
-     - * Poor accuracy (no spatial information, no lattice physics, no resonance effects between materials)
+     - * Poor accuracy (no spatial information, no lattice physics, no resonance effects
+         between materials)
        * May hang if a material has a k-infinity greater than 1.0
 
 When selecting a non-default energy group structure, you can manually define

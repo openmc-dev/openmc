@@ -2,9 +2,9 @@
 <model>
   <materials>
     <cross_sections>mgxs.h5</cross_sections>
-    <material depletable="true" id="1" name="UO2 (2.4%)">
+    <material depletable="true" id="1" name="UO2  2 4  ">
       <density units="macro" value="1.0"/>
-      <macroscopic name="UO2 (2.4%)"/>
+      <macroscopic name="UO2  2 4  "/>
     </material>
     <material id="2" name="Zircaloy">
       <density units="macro" value="1.0"/>

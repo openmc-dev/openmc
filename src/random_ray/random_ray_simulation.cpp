@@ -576,17 +576,23 @@ void RandomRaySimulation::print_results_random_ray(
     header("Simulation Statistics", 4);
     fmt::print(
       " Total Iterations                  = {}\n", settings::n_batches);
-    fmt::print(" Flat Source Regions (FSRs)        = {}\n", n_source_regions);
     fmt::print(
-      " FSRs Containing External Sources  = {}\n", n_external_source_regions);
+      " Number of Rays per Iteration      = {}\n", settings::n_particles);
+    fmt::print(" Inactive Distance                 = {} cm\n",
+      RandomRay::distance_inactive_);
+    fmt::print(" Active Distance                   = {} cm\n",
+      RandomRay::distance_active_);
+    fmt::print(" Source Regions (SRs)              = {}\n", n_source_regions);
+    fmt::print(
+      " SRs Containing External Sources   = {}\n", n_external_source_regions);
     fmt::print(" Total Geometric Intersections     = {:.4e}\n",
       static_cast<double>(total_geometric_intersections));
     fmt::print("   Avg per Iteration               = {:.4e}\n",
       static_cast<double>(total_geometric_intersections) / settings::n_batches);
-    fmt::print("   Avg per Iteration per FSR       = {:.2f}\n",
+    fmt::print("   Avg per Iteration per SR        = {:.2f}\n",
       static_cast<double>(total_geometric_intersections) /
         static_cast<double>(settings::n_batches) / n_source_regions);
-    fmt::print(" Avg FSR Miss Rate per Iteration   = {:.4f}%\n", avg_miss_rate);
+    fmt::print(" Avg SR Miss Rate per Iteration    = {:.4f}%\n", avg_miss_rate);
     fmt::print(" Energy Groups                     = {}\n", negroups);
     fmt::print(
       " Total Integrations                = {:.4e}\n", total_integrations);
@@ -611,6 +617,26 @@ void RandomRaySimulation::print_results_random_ray(
 
     std::string adjoint_true = (FlatSourceDomain::adjoint_) ? "ON" : "OFF";
     fmt::print(" Adjoint Flux Mode                 = {}\n", adjoint_true);
+
+    std::string shape;
+    switch (RandomRay::source_shape_) {
+    case RandomRaySourceShape::FLAT:
+      shape = "Flat";
+      break;
+    case RandomRaySourceShape::LINEAR:
+      shape = "Linear";
+      break;
+    case RandomRaySourceShape::LINEAR_XY:
+      shape = "Linear XY";
+      break;
+    default:
+      fatal_error("Invalid random ray source shape");
+    }
+    fmt::print(" Source Shape                      = {}\n", shape);
+    std::string sample_method =
+      (RandomRay::sample_method_ == RandomRaySampleMethod::PRNG) ? "PRNG"
+                                                                 : "Halton";
+    fmt::print(" Sample Method                     = {}\n", sample_method);
 
     header("Timing Statistics", 4);
     show_time("Total time for initialization", time_initialize.elapsed());

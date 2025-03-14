@@ -1,0 +1,64 @@
+<?xml version='1.0' encoding='utf-8'?>
+<model>
+  <materials>
+    <cross_sections>mgxs.h5</cross_sections>
+    <material depletable="true" id="1" name="UO2 (2.4%)">
+      <density units="macro" value="1.0"/>
+      <macroscopic name="UO2 (2.4%)"/>
+    </material>
+    <material id="2" name="Zircaloy">
+      <density units="macro" value="1.0"/>
+      <macroscopic name="Zircaloy"/>
+    </material>
+    <material id="3" name="Hot borated water">
+      <density units="macro" value="1.0"/>
+      <macroscopic name="Hot borated water"/>
+    </material>
+  </materials>
+  <geometry>
+    <cell id="1" material="1" name="Fuel" region="-1" universe="0"/>
+    <cell id="2" material="2" name="Cladding" region="1 -2" universe="0"/>
+    <cell id="3" material="3" name="Water" region="2 3 -4 5 -6" universe="0"/>
+    <surface coeffs="0 0 0.39218" id="1" name="Fuel OR" type="z-cylinder"/>
+    <surface coeffs="0 0 0.4572" id="2" name="Clad OR" type="z-cylinder"/>
+    <surface boundary="reflective" coeffs="-0.63" id="3" name="left" type="x-plane"/>
+    <surface boundary="reflective" coeffs="0.63" id="4" name="right" type="x-plane"/>
+    <surface boundary="reflective" coeffs="-0.63" id="5" name="bottom" type="y-plane"/>
+    <surface boundary="reflective" coeffs="0.63" id="6" name="top" type="y-plane"/>
+  </geometry>
+  <settings>
+    <run_mode>eigenvalue</run_mode>
+    <particles>100</particles>
+    <batches>10</batches>
+    <inactive>5</inactive>
+    <source particle="neutron" strength="1.0" type="independent">
+      <space type="box">
+        <parameters>-0.63 -0.63 -1 0.63 0.63 1</parameters>
+      </space>
+      <constraints>
+        <fissionable>true</fissionable>
+      </constraints>
+    </source>
+    <energy_mode>multi-group</energy_mode>
+    <random_ray>
+      <source particle="neutron" strength="1.0" type="independent">
+        <space type="box">
+          <parameters>-0.63 -0.63 -1.0 0.63 0.63 1.0</parameters>
+        </space>
+      </source>
+      <distance_inactive>30.0</distance_inactive>
+      <distance_active>150.0</distance_active>
+      <source_region_meshes>
+        <mesh id="1">
+          <domain id="0" type="universe"/>
+        </mesh>
+      </source_region_meshes>
+      <source_shape>linear</source_shape>
+    </random_ray>
+    <mesh id="1">
+      <dimension>2 2</dimension>
+      <lower_left>-0.63 -0.63</lower_left>
+      <upper_right>0.63 0.63</upper_right>
+    </mesh>
+  </settings>
+  </model>

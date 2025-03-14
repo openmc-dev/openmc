@@ -1442,12 +1442,13 @@ class Model:
                 self.geometry.get_all_materials().values()
             )
 
-    def _generate_discrete_infinite_medium_mgxs(self, groups, nparticles, mgxs_fname) -> None:
-        """
-        Generate a MGXS library by running multiple OpenMC simulations, each representing
-        an infinite medium simulation of a single isolated material. A discrete source is used to sample
-        particles, with an equal strength spread across each of the energy groups. This is a highly
-        naive method that ignores all spatial self shielding effects and all resonance shielding effects between materials.
+    def _generate_infinite_medium_mgxs(self, groups, nparticles, mgxs_fname) -> None:
+        """Generate a MGXS library by running multiple OpenMC simulations, each
+        representing an infinite medium simulation of a single isolated
+        material. A discrete source is used to sample particles, with an equal
+        strength spread across each of the energy groups. This is a highly naive
+        method that ignores all spatial self shielding effects and all resonance
+        shielding effects between materials.
 
         Parameters
         ----------
@@ -1554,11 +1555,10 @@ class Model:
 
     @staticmethod
     def _create_stochastic_slab_geometry(materials, cell_thickness=1.0, num_repeats=100):
-        """
-        Create a geometry representing a stochastic "sandwich" of materials in a
-        layered slab geometry. To reduce the impact of the order of materials in the slab,
-        the materials are applied to 'num_repeats' different randomly positioned layers
-        of 'cell_thickness' each.
+        """Create a geometry representing a stochastic "sandwich" of materials in a
+        layered slab geometry. To reduce the impact of the order of materials in
+        the slab, the materials are applied to 'num_repeats' different randomly
+        positioned layers of 'cell_thickness' each.
         
         Parameters
         ----------
@@ -1635,15 +1635,15 @@ class Model:
         return geometry, box
 
     def _generate_stochastic_slab_mgxs(self, groups, nparticles, mgxs_fname) -> None:
-        """
-        Generate MGXS assuming a stochastic "sandwich" of materials in a
-        layered slab geometry. While geometry-specific spatial shielding effects
-        are not captured, this method can be useful when the geometry has materials
-        only found far from the source region that the "material-wise" method would
+        """Generate MGXS assuming a stochastic "sandwich" of materials in a layered
+        slab geometry. While geometry-specific spatial shielding effects are not
+        captured, this method can be useful when the geometry has materials only
+        found far from the source region that the "material-wise" method would
         not be capable of generating cross sections for. Conversely, this method
-        will generate cross sections for all materials in the problem regardless of
-        type. If this is a fixed source problem, a discrete source is used to sample
-        particles, with an equal strength spread across each of the energy groups.
+        will generate cross sections for all materials in the problem regardless
+        of type. If this is a fixed source problem, a discrete source is used to
+        sample particles, with an equal strength spread across each of the
+        energy groups.
 
         Parameters
         ----------
@@ -1733,18 +1733,16 @@ class Model:
         mgxs_file.export_to_hdf5(mgxs_fname)
         sp.close()
 
-    # Generate material-wise MGXS based on the real geometry, thus
-    # capturing both resonance and spatial self shielding
     def _generate_material_wise_mgxs(self, groups, nparticles, mgxs_fname) -> None:
-        """
-        Generate a material-wise MGXS library for the model by running the original
-        continuous energy OpenMC simulation of the full material geometry and source,
-        and tally MGXS data for each material. This method accurately conserves reaction
-        rates totaled over the entire simulation domain. However, when the geometry has materials
-        only found far from the source region, it is possible the Monte Carlo solver may
-        not be able to score any tallies to these material types, thus resulting in zero
-        cross section values for these materials. For such cases, the "stochastic slab" method
-        may be more appropriate.
+        """Generate a material-wise MGXS library for the model by running the
+        original continuous energy OpenMC simulation of the full material
+        geometry and source, and tally MGXS data for each material. This method
+        accurately conserves reaction rates totaled over the entire simulation
+        domain. However, when the geometry has materials only found far from the
+        source region, it is possible the Monte Carlo solver may not be able to
+        score any tallies to these material types, thus resulting in zero cross
+        section values for these materials. For such cases, the "stochastic
+        slab" method may be more appropriate.
 
         Parameters
         ----------
@@ -1813,15 +1811,19 @@ class Model:
         mgxs_file.export_to_hdf5(mgxs_fname)
         sp.close()
 
-    def convert_to_multigroup(self, method="stochastic slab", groups=openmc.mgxs.EnergyGroups(openmc.mgxs.GROUP_STRUCTURES['CASMO-2']), nparticles=2000, overwrite_mgxs_library=False, mgxs_fname: str = "mgxs.h5") -> None:
-        """Convert all materials from continuous energy materials to multigroup materials.
-        If no MGXS data library file is found, generate one using one or more continuous energy Monte Carlo simulations.
+    def convert_to_multigroup(self, method="material-wise",
+                              groups=openmc.mgxs.EnergyGroups(openmc.mgxs.GROUP_STRUCTURES['CASMO-2']),
+                              nparticles=2000, overwrite_mgxs_library=False,
+                              mgxs_fname: str = "mgxs.h5") -> None:
+        """Convert all materials from continuous energy materials to multigroup
+        materials. If no MGXS data library file is found, generate one using one
+        or more continuous energy Monte Carlo simulations.
         
         Parameters
         ----------
         method : str, optional
-            Method to generate the MGXS. Options are "discrete infinite medium",
-            "material-wise", and "stochastic slab". Defaults to "discrete infinite medium".
+            Method to generate the MGXS. Options are "infinite_medium",
+            "material_wise", and "stochastic_slab". Defaults to "material_wise".
         groups : openmc.mgxs.EnergyGroups, optional
             Energy group structure for the MGXS. Defaults to
             openmc.mgxs.GROUP_STRUCTURES['CASMO-2'].
@@ -1837,13 +1839,13 @@ class Model:
         # If needed, generate the needed MGXS data library file
         from pathlib import Path
         if not Path(mgxs_fname).is_file() or overwrite_mgxs_library:
-            if method == "discrete infinite medium":
-                self._generate_discrete_infinite_medium_mgxs(
+            if method == "infinite_medium":
+                self._generate_infinite_medium_mgxs(
                     groups, nparticles, mgxs_fname)
-            elif method == "material-wise":
+            elif method == "material_wise":
                 self._generate_material_wise_mgxs(
                     groups, nparticles, mgxs_fname)
-            elif method == "stochastic slab":
+            elif method == "stochastic_slab":
                 self._generate_stochastic_slab_mgxs(
                     groups, nparticles, mgxs_fname)
             else:
@@ -1860,18 +1862,22 @@ class Model:
         self.settings.energy_mode = 'multi-group'
 
     def convert_to_random_ray(self) -> None:
-        """Convert a multigroup model to use random ray. This function determines values for the needed
-        settings and adds them to the settings.random_ray dictionary so as to enable random ray mode. The
-        settings that are populated are:
+        """Convert a multigroup model to use random ray. This function determines
+        values for the needed settings and adds them to the settings.random_ray
+        dictionary so as to enable random ray mode. The settings that are
+        populated are:
         
-        - 'ray_source' (openmc.IndependentSource): Where random ray starting points are sampled from.
-        - 'distance_inactive' (float): The "dead zone" distance at the beginning of the ray.
+        - 'ray_source' (openmc.IndependentSource): Where random ray starting
+          points are sampled from.
+        - 'distance_inactive' (float): The "dead zone" distance at the beginning
+          of the ray.
         - 'distance_active' (float): The "active" distance of the ray
         - 'particles' (int): Number of rays to simulate
         
-        The function will determine reasonable defaults for each of the above variables based
-        on analysis of the model's geometry. The function will have no effect if the random ray dictionary
-        is already defined in the model settings.
+        The function will determine reasonable defaults for each of the above
+        variables based on analysis of the model's geometry. The function will
+        have no effect if the random ray dictionary is already defined in the
+        model settings.
         """
         # If the random ray dictionary is already set, don't overwrite it
         if self.settings.random_ray:

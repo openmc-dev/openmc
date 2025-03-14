@@ -632,14 +632,14 @@ material definitions in the model to use these multigroup cross sections. An
 example is given below::
 
   # Assume we already have a working continuous energy model
-  method = "material-wise"
+  method = "material_wise"
   groups = openmc.mgxs.EnergyGroups(openmc.mgxs.GROUP_STRUCTURES['CASMO-2'])
 
   model.convert_to_multigroup(method=method, groups=groups, nparticles=2000,
                               overwrite_mgxs_library=False, mgxs_fname="mgxs.h5")
 
 The most important parameter to set is the ``method`` parameter, which can be
-either "stochastic slab", "material-wise", or "discrete infinite medium". An overview
+either "stochastic_slab", "material_wise", or "infinite_medium". An overview
 of these methods is given below:
 
 .. list-table:: Comparison of Automatic MGXS Generation Methods
@@ -650,7 +650,7 @@ of these methods is given below:
      - Description
      - Pros
      - Cons
-   * - ``material-wise`` (default)
+   * - ``material_wise`` (default)
      - * Higher Fidelity
        * Runs a CE simulation with the original geometry and source, tallying
          cross sections with a material filter. 
@@ -660,7 +660,7 @@ of these methods is given below:
      - * Potentially slower as the full geometry must be run
        * If a material is only present far from the source and doesn't get tallied
          to in the CE simulation, the MGXS will be zero for that material.
-   * - ``stochastic slab``
+   * - ``stochastic_slab``
      - * Medium Fidelity
        * Runs a CE simulation with a greatly simplified geometry, where materials
          are randomly assigned to layers in a 1D "stochastic slab sandwich" geometry
@@ -669,7 +669,7 @@ of these methods is given below:
        * Able to produce cross section data for all materials, regardless of how
          far they are from the source in the original geometry
      - * Does not capture most spatial self shielding effects, e.g., no lattice physics.
-   * - ``discrete infinite medium``
+   * - ``infinite_medium``
      - * Lower Fidelity
        * Runs one CE simulation per material independently. Each simulation is just
          an infinite medium slowing down problem, with an assumed external source term.
@@ -680,7 +680,7 @@ of these methods is given below:
 When selecting a non-default energy group structure, you can manually define
 group boundaries or pick out a group structure already known to OpenMC (a list
 of which can be found at :class:`openmc.mgxs.GROUP_STRUCTURES`). The
-:attr:`nparticles` parameter can be adjusted upward to improve the fidelity of
+``nparticles`` parameter can be adjusted upward to improve the fidelity of
 the generated cross section library.
 
 Ultimately, the methods described above are all just approximations.

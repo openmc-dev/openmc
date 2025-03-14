@@ -57,8 +57,7 @@ class MGXSTestHarness(PyAPITestHarness):
 
         # Enforce closing statepoint and summary files so HDF5
         # does not throw an error during the next OpenMC execution
-        sp._f.close()
-        sp._summary._f.close()
+        sp.close()
 
         # Re-run MG mode.
         if config['mpi']:

@@ -76,6 +76,11 @@ the number of rays per batch is adjusted. The goal here is to ensure that the
 source region miss rate is below 1%, which is reported by OpenMC at the end of
 the simulation (or before via warning if it is very high).
 
+.. warning::
+    If using a mesh filter for tallying or weight window generation, ensure that
+    the same mesh is used for source region decomposition via 
+    ``model.settings.random_ray['source_region_meshes']``.
+
 ------------------------
 Enabling Random Ray Mode
 ------------------------

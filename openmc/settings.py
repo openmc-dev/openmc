@@ -1174,7 +1174,6 @@ class Settings:
                             raise ValueError(
                                 f'Invalid domain type: {type(domain)}. Expected '
                                 'openmc.Material, openmc.Cell, or openmc.Universe.')
-                cv.check_type('adjoint', value, bool)
             elif key == 'sample_method':
                 cv.check_value('sample method', value,
                                ('prng', 'halton'))

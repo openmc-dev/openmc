@@ -25,7 +25,7 @@ _FILTER_TYPES = (
     'energyout', 'mu', 'musurface', 'polar', 'azimuthal', 'distribcell', 'delayedgroup',
     'energyfunction', 'cellfrom', 'materialfrom', 'legendre', 'spatiallegendre',
     'sphericalharmonics', 'zernike', 'zernikeradial', 'particle', 'cellinstance',
-    'collision', 'time', 'weight'
+    'collision', 'time', 'parentnuclide', 'weight'
 )
 
 _CURRENT_NAMES = (
@@ -732,7 +732,7 @@ class SurfaceFilter(WithIDFilter):
 
 
 class ParticleFilter(Filter):
-    """Bins tally events based on the Particle type.
+    """Bins tally events based on the particle type.
 
     Parameters
     ----------
@@ -786,6 +786,33 @@ class ParticleFilter(Filter):
         filter_id = int(elem.get('id'))
         bins = get_text(elem, 'bins').split()
         return cls(bins, filter_id=filter_id)
+
+
+class ParentNuclideFilter(ParticleFilter):
+    """Bins tally events based on the parent nuclide
+
+    Parameters
+    ----------
+    bins : str, or iterable of str
+        Names of nuclides (e.g., 'Ni65')
+    filter_id : int
+        Unique identifier for the filter
+
+    Attributes
+    ----------
+    bins : iterable of str
+        Names of nuclides
+    id : int
+        Unique identifier for the filter
+    num_bins : Integral
+        The number of filter bins
+
+    """
+    @Filter.bins.setter
+    def bins(self, bins):
+        bins = np.atleast_1d(bins)
+        cv.check_iterable_type('filter bins', bins, str)
+        self._bins = bins
 
 
 class MeshFilter(Filter):

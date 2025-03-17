@@ -145,12 +145,14 @@ Constructing Tallies
    openmc.TimeFilter
    openmc.ZernikeFilter
    openmc.ZernikeRadialFilter
+   openmc.ParentNuclideFilter
    openmc.ParticleFilter
    openmc.RegularMesh
    openmc.RectilinearMesh
    openmc.CylindricalMesh
    openmc.SphericalMesh
    openmc.UnstructuredMesh
+   openmc.MeshMaterialVolumes
    openmc.Trigger
    openmc.TallyDerivative
    openmc.Tally

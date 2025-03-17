@@ -10,7 +10,6 @@
 
 #include "hdf5.h"
 #include "pugixml.hpp"
-#include <gsl/gsl-lite.hpp>
 
 #include "openmc/bounding_box.h"
 #include "openmc/constants.h"
@@ -128,7 +127,7 @@ private:
   void add_precedence();
 
   //! Add parenthesis to enforce precedence
-  gsl::index add_parentheses(gsl::index start);
+  int64_t add_parentheses(int64_t start);
 
   //! Remove complement operators from the expression
   void remove_complement_ops();
@@ -349,12 +348,8 @@ public:
 
   vector<int32_t> offset_; //!< Distribcell offset table
 
-  // Accessors
-  const GeometryType& geom_type() const { return geom_type_; }
-  GeometryType& geom_type() { return geom_type_; }
-
-private:
-  GeometryType geom_type_; //!< Geometric representation type (CSG, DAGMC)
+  // Right now, either CSG or DAGMC cells are used.
+  virtual GeometryType geom_type() const = 0;
 };
 
 struct CellInstanceItem {
@@ -368,7 +363,7 @@ class CSGCell : public Cell {
 public:
   //----------------------------------------------------------------------------
   // Constructors
-  CSGCell();
+  CSGCell() = default;
   explicit CSGCell(pugi::xml_node cell_node);
 
   //----------------------------------------------------------------------------
@@ -395,6 +390,8 @@ public:
 
   bool is_simple() const override { return region_.is_simple(); }
 
+  virtual GeometryType geom_type() const override { return GeometryType::CSG; }
+
 protected:
   //! Returns the beginning position of a parenthesis block (immediately before
   //! two surface tokens) in the RPN given a starting position at the end of
@@ -420,8 +417,8 @@ struct CellInstance {
     return index_cell == other.index_cell && instance == other.instance;
   }
 
-  gsl::index index_cell;
-  gsl::index instance;
+  int64_t index_cell;
+  int64_t instance;
 };
 
 //! Structure necessary for inserting CellInstance into hashed STL data

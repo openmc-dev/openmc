@@ -2331,13 +2331,11 @@ class EnergyFunctionFilter(Filter):
 
 class WeightFilter(Filter):
     """Bins tally events based on their weights.
-
-    .. versionadded:: 0.12.2
-
+    
     Parameters
     ----------
-    bins : Iterable of int
-        A list or iterable of the weights, as double values.
+    bins : Iterable of float
+        A list or iterable of the weights, as float values.
     filter_id : int
         Unique identifier for the filter
 

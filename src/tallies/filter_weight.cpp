@@ -20,7 +20,7 @@ void WeightFilter::from_xml(pugi::xml_node node)
   this->set_bins(bins);
 }
 
-void WeightFilter::set_bins(gsl::span<const double> bins)
+void WeightFilter::set_bins(span<const double> bins)
 {
    // Clear existing bins
    bins_.clear();
@@ -30,7 +30,9 @@ void WeightFilter::set_bins(gsl::span<const double> bins)
    for (gsl::index i = 0; i < bins.size(); ++i) {
      bins_.push_back(bins[i]);
    }
- 
+   
+   assert(std::is_sorted(bins_.begin(), bins_.end()));
+
    n_bins_ = bins_.size() -1;
 }
 

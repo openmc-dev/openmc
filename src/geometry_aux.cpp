@@ -153,8 +153,7 @@ void adjust_indices()
     l->adjust_indices();
   }
 
-  for (auto& media : model::stochastic_media)
-  {
+  for (auto& media : model::stochastic_media) {
     media->adjust_indices();
   }
 }

@@ -37,7 +37,7 @@ void Stochastic_Media::adjust_indices()
   for (auto& mat : particle_mat_) {
 
     auto search = model::material_map.find(mat);
-    if (search != model::universe_map.end()) {
+    if (search != model::material_map.end()) {
       mat = search->second;
     } else {
       fatal_error(fmt::format("Invalid material number {} specified on the "
@@ -47,7 +47,7 @@ void Stochastic_Media::adjust_indices()
   }
 
   auto search = model::material_map.find(matrix_mat_);
-  if (search != model::universe_map.end()) {
+  if (search != model::material_map.end()) {
     matrix_mat_ = search->second;
   } else {
     fatal_error(fmt::format("Invalid material number {} specified on the "
@@ -136,7 +136,7 @@ double distance_to_stochamedia(Particle& p)
     distance = 2 * media.radius() * cos_value;
   } else if (p.status() == ParticleStatus::IN_MATRIX) {
     double matrix_mean_chord =
-      4 / 3 * media.radius() * (1 - media.pf()) / media.pf();
+      4 * media.radius() * (1 - media.pf()) / (media.pf() * 3);
     distance = -matrix_mean_chord * std::log(prn(p.current_seed()));
   }
   return distance;

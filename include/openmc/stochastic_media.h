@@ -57,10 +57,8 @@ public:
   int32_t particle_mat(int32_t i) const { return particle_mat_[i]; }
   vector<int32_t> particle_mat() const { return particle_mat_; }
 
-
   //! Get the material of the matrix
   int32_t matrix_mat() const { return matrix_mat_; }
-
 
   //----------------------------------------------------------------------------
   // Data
@@ -91,8 +89,6 @@ public:
   CLS_Media() {};
 
   void sample_material(GeometryState& p) override;
-
-
 };
 //==============================================================================
 // Non-member functions

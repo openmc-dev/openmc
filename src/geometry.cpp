@@ -178,7 +178,7 @@ bool find_cell_inner(
       p.material() = c.material(p.cell_instance());
       p.sqrtkT_last() = p.sqrtkT();
       p.sqrtkT() = c.sqrtkT(p.cell_instance());
-      p.status()=ParticleStatus::OUTSIDE;
+      p.status() = ParticleStatus::OUTSIDE;
 
       return true;
 

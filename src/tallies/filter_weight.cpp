@@ -27,10 +27,10 @@ void WeightFilter::set_bins(span<const double> bins)
    bins_.reserve(bins.size());
  
    // Copy bins
-   for (gsl::index i = 0; i < bins.size(); ++i) {
+   for (int64_t i = 0; i < bins.size(); ++i) {
      bins_.push_back(bins[i]);
    }
-   
+
    assert(std::is_sorted(bins_.begin(), bins_.end()));
 
    n_bins_ = bins_.size() -1;

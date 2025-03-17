@@ -1,11 +1,9 @@
 #ifndef OPENMC_TALLIES_FILTER_WEIGHTS_H
 #define OPENMC_TALLIES_FILTER_WEIGHTS_H
 
-#include <gsl/gsl-lite.hpp>
-#include <unordered_map>
-
 #include "openmc/tallies/filter.h"
 #include "openmc/vector.h"
+#include "openmc/span.h"
 
 namespace openmc {
 
@@ -39,7 +37,7 @@ public:
     // Accessors
 
     const vector<double>& bins() const { return bins_; }
-    void set_bins(gsl::span<const double> bins);
+    void set_bins(span<const double> bins);
 
 protected:
     //----------------------------------------------------------------------------

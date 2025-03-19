@@ -328,29 +328,6 @@ double HexgonalMesh::find_r_crossing(
   return INFTY;
 }
 
-StructuredMesh::MeshDistance HexgonalMesh::find_z_crossing(
-  const Position& r, const Direction& u, double l, int shell) const
-{
-  //finds plane-crossing in z - should be the same as for Cylindrical.
-
-  MeshDistance d;
-  d.next_index = shell;
-
-  // Direction of flight is within xy-plane. Will never intersect z.
-  if (std::abs(u.z) < FP_PRECISION)
-    return d;
-
-  d.max_surface = (u.z > 0.0);
-  if (d.max_surface && (shell <= shape_[2])) {
-    d.next_index += 1;
-    d.distance = (grid_[2][shell] - r.z) / u.z;
-  } else if (!d.max_surface && (shell > 0)) {
-    d.next_index -= 1;
-    d.distance = (grid_[2][shell - 1] - r.z) / u.z;
-  }
-  return d;
-}
-
 template<class T>
 void HexagonalMesh::raytrace_mesh(
   Position r0, Position r1, const Direction& u, T tally) const

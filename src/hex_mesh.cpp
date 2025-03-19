@@ -234,7 +234,7 @@ Position HexagonalMesh::get_positition_of_hexindex(HexMeshIndex ijkl) const
   //return the cartesian position of a hex indexed by abcz
   Position r;
   r.x = ijkl[0]*a_[0]*width_[0] + ijkl[1]*b_[0]*width_[0];
-  r.y = ijkl[0]*a_[1]*width_[0] + ijkl[1]*b_[1]*width_[0];;
+  r.y = ijkl[0]*a_[1]*width_[0] + ijkl[1]*b_[1]*width_[0];
   r.z = ijkl[3]*width_[1];
 }
 

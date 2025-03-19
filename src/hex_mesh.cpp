@@ -441,16 +441,22 @@ void HexagonalMesh::raytrace_mesh(
       }
       // Check if we have left the interior of the mesh
       // Do this by getting new index
-      //TODO update this
-      in_mesh = std::all_of(ijkl.begin(); ijkl.end(); [](int i){return i>=1}) &&
-        std::all_of(ijkl.begin(); ijkl.end(); [](int i){return i <= shape_[k]; ));
+      in_mesh = true;
+      for ( auto i =0; i<ijkl.size(); i++){
+        if ( ijkl[i]<1 || ijkl[i] > shape_[i] ){
+          in_mesh = false;
+          break;
+      }
 
       // If we are still inside the mesh, tally inward current for the next cell
       if (in_mesh)
-        tally.surface(ijk, k, !distances[k].max_surface, true);
+        tally.surface(ijkl, k, !distances[k].max_surface, true);
 
     } else { // not inside mesh
-             // TODO This has to be completely rethought
+      // TODO This has to be completely rethought
+
+
+
       // For all directions outside the mesh, find the distance that we need to
       // travel to reach the next surface. Use the largest distance, as only
       // this will cross all outer surfaces.

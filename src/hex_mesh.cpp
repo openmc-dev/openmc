@@ -370,7 +370,7 @@ void HexagonalMesh::raytrace_mesh(
   if (total_distance == 0.0 && settings::solver_type != SolverType::RANDOM_RAY)
     return;
 
-  const int n = n_dimension_;
+  const int n = n_dimension_*2;
 
   // Flag if position is inside the mesh
   bool in_mesh;
@@ -380,7 +380,7 @@ void HexagonalMesh::raytrace_mesh(
 
   // Calculate index of current cell. Offset the position a tiny bit in
   // direction of flight
-  MeshIndex ijk = get_indices(r0 + TINY_BIT * u, in_mesh);
+  HexMeshIndex ijkl = get_indices(r0 + TINY_BIT * u, in_mesh);
 
   // if track is very short, assume that it is completely inside one cell.
   // Only the current cell will score and no surfaces
@@ -398,9 +398,9 @@ void HexagonalMesh::raytrace_mesh(
   local_coords(r1);
 
   // Calculate initial distances to next surfaces in all three dimensions
-  std::array<MeshDistance, 3> distances;
+  std::array<MeshDistance, 8> distances;
   for (int k = 0; k < n; ++k) {
-    distances[k] = distance_to_grid_boundary(ijk, k, r0, u, 0.0);
+    distances[k] = distance_to_grid_boundary(ijkl, k, r0, u, 0.0);
   }
 
   // Loop until r = r1 is eventually reached
@@ -413,7 +413,7 @@ void HexagonalMesh::raytrace_mesh(
                      distances.begin();
 
       // Tally track length delta since last step
-      tally.track(ijk,
+      tally.track(ijkl,
         (std::min(distances[k].distance, total_distance) - traveled_distance) /
           total_distance);
 
@@ -423,23 +423,34 @@ void HexagonalMesh::raytrace_mesh(
         return;
 
       // If we have not reached r1, we have hit a surface. Tally outward current
-      tally.surface(ijk, k, distances[k].max_surface, false);
+      tally.surface(ijkl, k, distances[k].max_surface, false);
 
       // Update cell and calculate distance to next surface in k-direction.
-      // The two other directions are still valid!
-      ijk[k] = distances[k].next_index;
-      distances[k] =
-        distance_to_grid_boundary(ijk, k, r0, u, traveled_distance);
+      ijkl = distances[k].next_index;
+      // now the index has been updated recompute the distances - unfortunately
+      // we have to do more than one again (as opposed to for cartesian mesh)
 
+      if (k<6){
+        for ( int j = 0; j < 6; ++j){
+          distances[j] =
+            distance_to_grid_boundary(ijkl, j, r0, u, traveled_distance);
+        }
+      } else {
+        distances[6] =
+          distance_to_grid_boundary(ijkl, 6, r0, u, traveled_distance);
+      }
       // Check if we have left the interior of the mesh
-      in_mesh = ((ijk[k] >= 1) && (ijk[k] <= shape_[k]));
+      // Do this by getting new index
+      //TODO update this
+      in_mesh = std::all_of(ijkl.begin(); ijkl.end(); [](int i){return i>=1}) &&
+        std::all_of(ijkl.begin(); ijkl.end(); [](int i){return i <= shape_[k]; ));
 
       // If we are still inside the mesh, tally inward current for the next cell
       if (in_mesh)
         tally.surface(ijk, k, !distances[k].max_surface, true);
 
     } else { // not inside mesh
-
+             // TODO This has to be completely rethought
       // For all directions outside the mesh, find the distance that we need to
       // travel to reach the next surface. Use the largest distance, as only
       // this will cross all outer surfaces.
@@ -471,54 +482,70 @@ void HexagonalMesh::raytrace_mesh(
 }
 
 
-StructuredMesh::MeshDistance HexgonalMesh::distance_to_grid_boundary(
-  const MeshIndex& ijk, int i, const Position& r0, const Direction& u,
+HexagonalMesh::HexMeshDistance HexgonalMesh::distance_to_hex_boundary(
+  const HexMeshIndex& ijkl, int i, const Position& r0, const Direction& u,
   double l) const
 {
-  // Compute the distance to the element boundary of index i \in {0,1,2,3}
-  // i==3 means z
+  // Compute the distance to the element boundary of index i \in {0, ..., 6}
+  // i==6 means z
 
   Position r = r0 - origin_;
-  if (i < 4) {
-    // we chack the hexagonal planes
-    // have to check all which have positive u.n since we may have a new situtation
-    // after a boundary crossing.
+  if (i < 6) {
+    // Given the hex index - we now find the distance from r0 to the 0:q, 1:r, 2:s plane(s)
+    // successively, given that the hex-center is given by the index triplet and hence also
+    // the planes.
+    // center of Hex
+    Position rh = get_hex_center(ijkl);
+    // local position relative to hex center
+    Position rloc = r0 + l*u -rh;
+    HexMeshDistance d;
+    d.next_index = ijkl;
 
+    switch(i){
+      case 0:
+        d.distance = (this->r - rloc).dot(this->n0) / u.dot(this->n0);
+        d.ijkl[0]++;
+        d.ijkl[2]--
+        break;
+      case 1:
+        d.distance = (-this->s - rloc).dot(this->n1) / u.dot(this->n1);
+        d.ijkl[1]++;
+        d.ijkl[2]--
+        break;
+      case 2:
+        d.distance = (this->q - rloc).dot(this->n2) / u.dot(this->n2);
+        d.ijkl[0]--;
+        d.ijkl[1]++;
+        break;
+      case 3:
+        d.distance = (-this->r - rloc).dot(this->n0) / u.dot(this->n0);
+        d.ijkl[0]--
+        d.ijkl[2]++;
+        break;
+      case 4:
+        d.distance = (this->s - rloc).dot(this->n1) / u.dot(this->n1);
+        d.ijkl[1]--
+        d.ijkl[2]++;
+        break;
+      case 5:
+        d.distance = (-this->q - rloc).dot(this->n2) / u.dot(this->n2);
+        d.ijkl[0]++;
+        d.ijkl[1]--;
+        break;
+    };
   } else {
-    // check z-planes
+    // Z-planes z-index has index 3 (nr 4) in ijkl.
+    d.max_surface = (u[2]>0);
+    if (d.max_surface){
+      d.ijkl[3]++;
+      d.distance = ( (lower_left[2] + ijkl[3]*width_[2] ) -r0[2] ) / u[2];
+    } else {
+      d.ijkl[3]--;
+      d.distance = ( (lower_left[2] + (ijkl[3] - 1) * width_[2] ) - r0[2] ) / u[2];
+    }
   }
+  return d;
 }
-
-double HaxegonalMesh::distance_to_hex_boundary(HexMeshIndex &ijkl, int i){
-  // return the distance to the hex boundary in direction i
-  // i==0: a, i==1: b, i==2: c
-  // This is not independent of the index triplet ijkl
-  MeshDistance d;
-  switch (i){
-    case 0:
-      d.next_index=i;
-      // next index cannot be used as a single scalar - we need to recompute all distances
-      // compute the distance to the SE/n0_ plane
-    case 1:
-  }
-  //
-}
-
-
-
-int HexagonalMesh::set_grid()
-{
-  // not necessary to do this - since it is a regular mesh we can do it on the fly
-}
-
-MeshDistance find_hex_crossing(const Position& r0, const direction& u, double l, const HexMeshIndex& ijkl, int i) const
-{
-  // return the distance to the hex-plane in the desired direction
-  // i is the index number in which direction we'll be looking
-
-
-}
-
 
 std::pair<vector<double>, vector<double>> HexagonalMesh::plot(
   Position plot_ll, Position plot_ur) const

@@ -453,20 +453,29 @@ void HexagonalMesh::raytrace_mesh(
         tally.surface(ijkl, k, !distances[k].max_surface, true);
 
     } else { // not inside mesh
-      // TODO This has to be completely rethought
-
-
+      // we do this by the following algorithm:
+      // 1. find a cylinder that completely circumscribes the hex-mesh region
+      // 2. find the largest distance to the cylinder or to the z-plane
+      // 3. add this to distance travelled
+      //
+      // If cylinder is used then do a single step minimal boundary find - this would be enough
+      // to move us in-mesh.
 
       // For all directions outside the mesh, find the distance that we need to
       // travel to reach the next surface. Use the largest distance, as only
       // this will cross all outer surfaces.
-      int k_max {0};
-      for (int k = 0; k < n; ++k) {
-        if ((ijk[k] < 1 || ijk[k] > shape_[k]) &&
-            (distances[k].distance > traveled_distance)) {
-          traveled_distance = distances[k].distance;
-          k_max = k;
+      double dist_to_enclosing_cyl = find_r_crossing(r0,u,traveled_distance);
+      //check this against z-distance
+      if (distances[6]>dist_to_enclosing_cyl){
+        traveled_distance=distances[6].distance;
+      } else {
+        traveled_distance=dist_to_enclosing_cyl;
+        //we need now to make yet another hop to actually hit the mesh boundary
+        for (int k = 0; k < n; ++k) {
+          distances[k] =
+            distance_to_grid_boundary(ijkl, k, r0, u, traveled_distance);
         }
+        traveled_distance = std::max(distances.begin(),distances.end());
       }
 
       // If r1 is not inside the mesh, exit here
@@ -474,7 +483,7 @@ void HexagonalMesh::raytrace_mesh(
         return;
 
       // Calculate the new cell index and update all distances to next surfaces.
-      ijk = get_indices(r0 + (traveled_distance + TINY_BIT) * u, in_mesh);
+      ijkl = get_indices(r0 + (traveled_distance + TINY_BIT) * u, in_mesh);
       for (int k = 0; k < n; ++k) {
         distances[k] =
           distance_to_grid_boundary(ijk, k, r0, u, traveled_distance);
@@ -551,6 +560,50 @@ HexagonalMesh::HexMeshDistance HexgonalMesh::distance_to_hex_boundary(
     }
   }
   return d;
+}
+
+double HexagonalMesh::find_r_crossing(
+  const Position& r, const Direction& u, double l) const
+{
+
+  if ((shell < 0) || (shell > shape_[0]))
+    return INFTY;
+
+  // solve r.x^2 + r.y^2 == r0^2
+  // x^2 + 2*s*u*x + s^2*u^2 + s^2*v^2+2*s*v*y + y^2 -r0^2 = 0
+  // s^2 * (u^2 + v^2) + 2*s*(u*x+v*y) + x^2+y^2-r0^2 = 0
+
+  if (r_encl_ == 0.0)
+    return INFTY;
+
+  const double denominator = u.x * u.x + u.y * u.y;
+
+  // Direction of flight is in z-direction. Will never intersect r.
+  if (std::abs(denominator) < FP_PRECISION)
+    return INFTY;
+
+  // inverse of dominator to help the compiler to speed things up
+  const double inv_denominator = 1.0 / denominator;
+
+  const double p = (u.x * r.x + u.y * r.y) * inv_denominator;
+  double c = r.x * r.x + r.y * r.y - r_encl_ * r_encl_;
+  double D = p * p - c * inv_denominator;
+
+  if (D < 0.0)
+    return INFTY;
+
+  D = std::sqrt(D);
+
+  // the solution -p - D is always smaller as -p + D : Check this one first
+  if (std::abs(c) <= TINY_BIT)
+    return INFTY;
+
+  if (-p - D > l)
+    return -p - D;
+  if (-p + D > l)
+    return -p + D;
+
+  return INFTY;
 }
 
 std::pair<vector<double>, vector<double>> HexagonalMesh::plot(

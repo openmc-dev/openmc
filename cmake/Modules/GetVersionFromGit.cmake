@@ -37,11 +37,13 @@ if(EXISTS "${CMAKE_SOURCE_DIR}/.git" AND GIT_FOUND)
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
         OUTPUT_VARIABLE VERSION_STRING
         OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
     )
 
-    # If no tags are found, instruct user to fetch them
+    # If no tags are found, set version to 0 and show a warning
     if(VERSION_STRING STREQUAL "")
-        message(FATAL_ERROR "No git tags found. Run 'git fetch --tags' and try again.")
+        set(VERSION_STRING "0.0.0")
+        message(WARNING "No git tags found. Version set to 0. Run 'git fetch --tags' to ensure proper versioning.")
     endif()
 
     # Extract the commit hash

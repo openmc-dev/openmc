@@ -127,11 +127,16 @@ public:
   std::unordered_map<SourceRegionKey, int64_t, SourceRegionKey::HashFunctor>
     source_region_map_;
 
+  // Map that relates a SourceRegionKey to the extern source index
+  // that contains a point source that is located within the source region.
+  std::unordered_map<SourceRegionKey, int64_t, SourceRegionKey::HashFunctor>
+    point_source_map_;
+
 protected:
   //----------------------------------------------------------------------------
   // Methods
   void apply_external_source_to_source_region(
-    Discrete* discrete, double strength_factor, int64_t sr);
+    Discrete* discrete, double strength_factor, SourceRegionHandle& srh);
   void apply_external_source_to_cell_instances(int32_t i_cell,
     Discrete* discrete, double strength_factor, int target_material_id,
     const vector<int32_t>& instances);

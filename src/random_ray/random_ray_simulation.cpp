@@ -282,8 +282,10 @@ void validate_random_ray_inputs()
       }
 
       // Validate that a domain ID was specified
-      if (is->domain_ids().size() == 0) {
-        fatal_error("Fixed sources must be specified by domain "
+      SpatialDistribution* space_dist = is->space();
+      SpatialPoint* sp = dynamic_cast<SpatialPoint*>(space_dist);
+      if (is->domain_ids().size() == 0 && !sp) {
+        fatal_error("Fixed sources must be point source or spatially constrained by domain "
                     "id (cell, material, or universe) in random ray mode.");
       }
 
@@ -392,12 +394,12 @@ RandomRaySimulation::RandomRaySimulation()
 
 void RandomRaySimulation::apply_fixed_sources_and_mesh_domains()
 {
+  domain_->apply_meshes();
   if (settings::run_mode == RunMode::FIXED_SOURCE) {
     // Transfer external source user inputs onto random ray source regions
     domain_->convert_external_sources();
     domain_->count_external_source_regions();
   }
-  domain_->apply_meshes();
 }
 
 void RandomRaySimulation::prepare_fixed_sources_adjoint(
@@ -513,6 +515,7 @@ void RandomRaySimulation::simulate()
     finalize_generation();
     finalize_batch();
   } // End random ray power iteration loop
+  domain_->count_external_source_regions();
 }
 
 void RandomRaySimulation::output_simulation_results() const

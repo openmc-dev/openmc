@@ -201,12 +201,12 @@ acer / %%%%%%%%%%%%%%%%%%%%%%%% Write out in ACE format %%%%%%%%%%%%%%%%%%%%%%%%
 _THERMAL_TEMPLATE_THERMR = """
 thermr / %%%%%%%%%%%%%%%% Add thermal scattering data (free gas) %%%%%%%%%%%%%%%
 0 {nthermr1_in} {nthermr1}
-0 {mat} {no_angles} {num_temp} 1 0 {iform} 1 221 1/
+0 {mat} {nbin} {num_temp} 1 0 {iform} 1 221 1/
 {temps}
 {error} {energy_max}
 thermr / %%%%%%%%%%%%%%%% Add thermal scattering data (bound) %%%%%%%%%%%%%%%%%%
 {nthermal_endf} {nthermr2_in} {nthermr2}
-{mat_thermal} {mat} {no_angles} {num_temp} {inelastic} {elastic} {iform} {natom} 222 1/
+{mat_thermal} {mat} {nbin} {num_temp} {inelastic} {elastic} {iform} {natom} 222 1/
 {temps}
 {error} {energy_max}
 """
@@ -495,7 +495,7 @@ def make_ace(filename, temperatures=None, acer=True, xsdir=None,
 def make_ace_thermal(filename, filename_thermal, temperatures=None,
                      ace=None, xsdir=None, output_dir=None, error=0.001,
                      iwt=2, evaluation=None, evaluation_thermal=None,
-                     table_name=None, zaids=None, nmix=None, no_angles=12, **kwargs):
+                     table_name=None, zaids=None, nmix=None, nbin=16, **kwargs):
     """Generate thermal scattering ACE file from ENDF files
 
     Parameters
@@ -532,6 +532,8 @@ def make_ace_thermal(filename, filename_thermal, temperatures=None,
         ZAIDs that the thermal scattering data applies to
     nmix : int, optional
         Number of atom types in mixed moderator
+    nbin : int, optional
+        Number of equi-probable angles
     **kwargs
         Keyword arguments passed to :func:`openmc.data.njoy.run`
 

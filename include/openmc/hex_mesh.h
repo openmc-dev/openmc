@@ -18,6 +18,7 @@
 #include "openmc/position.h"
 #include "openmc/vector.h"
 #include "openmc/xml_interface.h"
+#include "openmc/mesh.h"
 
 #ifdef DAGMC
 #include "moab/AdaptiveKDTree.hpp"
@@ -38,79 +39,12 @@
 #include "libmesh/point.h"
 #endif
 
-/*
-class CylindricalMesh : public PeriodicStructuredMesh {
-public:
-  // Constructors
-  CylindricalMesh() = default;
-  CylindricalMesh(pugi::xml_node node);
-
-  // Overridden methods
-  virtual MeshIndex get_indices(Position r, bool& in_mesh) const override;
-
-  int get_index_in_direction(double r, int i) const override;
-
-  virtual std::string get_mesh_type() const override;
-
-  static const std::string mesh_type;
-
-  Position sample_element(const MeshIndex& ijk, uint64_t* seed) const override;
-
-  MeshDistance distance_to_grid_boundary(const MeshIndex& ijk, int i,
-    const Position& r0, const Direction& u, double l) const override;
-
-  std::pair<vector<double>, vector<double>> plot(
-    Position plot_ll, Position plot_ur) const override;
-
-  void to_hdf5_inner(hid_t group) const override;
-
-  double volume(const MeshIndex& ijk) const override;
-
-  // grid accessors
-  double r(int i) const { return grid_[0][i]; }
-  double phi(int i) const { return grid_[1][i]; }
-  double z(int i) const { return grid_[2][i]; }
-
-  int set_grid();
-
-  // Data members
-  array<vector<double>, 3> grid_;
-
-private:
-  double find_r_crossing(
-    const Position& r, const Direction& u, double l, int shell) const;
-  double find_phi_crossing(
-    const Position& r, const Direction& u, double l, int shell) const;
-  StructuredMesh::MeshDistance find_z_crossing(
-    const Position& r, const Direction& u, double l, int shell) const;
-
-  bool full_phi_ {false};
-
-  inline int sanitize_angular_index(int idx, bool full, int N) const
-  {
-    if ((idx > 0) and (idx <= N)) {
-      return idx;
-    } else if (full) {
-      return (idx + N - 1) % N + 1;
-    } else {
-      return 0;
-    }
-  }
-
-  inline int sanitize_phi(int idx) const
-  {
-    return sanitize_angular_index(idx, full_phi_, shape_[1]);
-  }
-};
-*/
-
 namespace openmc {
 
 //==============================================================================
 // Constants
 //==============================================================================
 
-enum class ElementType { UNSUPPORTED = -1, LINEAR_TET, LINEAR_HEX };
 
 //==============================================================================
 // Global variables
@@ -121,56 +55,117 @@ extern "C" const bool LIBMESH_ENABLED;
 class HexagonalMesh : public PeriodicStructuredMesh {
 public:
   //Constructors
-  HegagonalMesh() = default;
+  HexagonalMesh() = default;
   HexagonalMesh(pugi::xml_node node);
 
-  //Overridden methods
-  //directly copied in from cylmesh from hereon in - go through
-  int get_index_in_direction(double r, int i) const override;
+  using HexMeshIndex = std::array<int,4>;
+
+  using SpiralHexMeshIndex = std::array<int,3>;
+
+  struct HexMeshDistance {
+    HexMeshDistance() = default;
+    HexMeshDistance(int _index, bool _max_surface, double _distance)
+      : next_index {_index}, max_surface {_max_surface}, distance {_distance}
+    {}
+    HexMeshIndex next_index {0,0,0,0};
+    bool max_surface {true};
+    double distance {INFTY};
+    bool operator<(const HexMeshDistance& o) const
+    {
+      return distance < o.distance;
+    }
+  };
+
+  HexMeshIndex get_hexindices_from_bin(const int32_t) const;
+
+  int32_t get_bin_from_hexindices(const HexMeshIndex& ijkl) const;
+
+  HexMeshIndex rotate_hexindex(const HexMeshIndex& ijkl, int steps) const;
+
+  int get_index_in_direction(const Position& r, int i) const;
 
   virtual std::string get_mesh_type() const override;
 
   static const std::string mesh_type;
 
-  Position sample_element(const MeshIndex& ijk, uint64_t* seed) const override;
+  Position sample_element(int32_t bin, uint64_t* seed) const override
+  {
+    return sample_element(get_hexindices_from_bin(bin), seed);
+  };
 
-  MeshDistance distance_to_grid_boundary(const MeshIndex& ijk, int i,
-    const Position& r0, const Direction& u, double l) const override;
+  Position sample_element(const HexMeshIndex& ijkl, uint64_t* seed) const;
+
+  HexMeshDistance distance_to_grid_boundary(const HexMeshIndex& ijk, int i,
+    const Position& r0, const Direction& u, double l) const;
 
   std::pair<vector<double>, vector<double>> plot(
     Position plot_ll, Position plot_ur) const override;
 
-  void to_hdf5(hid_t group) const override;
+  void to_hdf5_inner(hid_t group) const override;
 
-  double volume(const MeshIndex& ijk) const override;
+  Position get_positition_of_hexindex(HexMeshIndex ijkl) const;
 
-  // grid accessors
-  double a(int i) const { return grid_[0][i]; }
-  double b(int i) const { return grid_[1][i]; }
-  double z(int i) const { return grid_[2][i]; }
+  HexMeshIndex get_hexindices(Position r, bool& in_mesh) const;
 
-  int set_grid();
+  bool in_hexmesh(HexMeshIndex& ijkl) const;
 
   // Data members
-  array<vector<double>, 3> grid_;
+  double size_ {0};
+  int hex_radius_ {0};
+  int hex_count_ {0};
+  double r_encl_ {0};
 
-private:
-  double find surface_crossing(
+  double element_volume_ {0};
+  double volume_frac_ {0};
+
+  xt::xtensor<double, 1> width_;
+
+  template<class T>
+  void raytrace_mesh(
+    Position r0, Position r1, const Direction& u, T tally) const;
+
+  double find_surface_crossing(
      const Position& r, const Direction& u) const;
 
-  int find_surface_crossing_index(const Position& r, const Direction& u) const;
+  int find_surface_crossing_index(const Position& r, const Direction& u, double l) const;
 
-  double abs_a_ {0};
+  double find_r_crossing(const Position& r, const Direction& u, double l) const;
 
-  xt::xarray<double> a_ {0,-1,0};
-  xt::xarray<double> b_ {sqrt(3.0)*0.5,0.5,0};
-  xt::xarray<double> c_ {-sqrt(3.0)*0.5,0.5,0};
+  HexMeshDistance distance_to_hex_boundary(
+      const HexMeshIndex& ijkl, int i, const Position& r0, const Direction& u,
+      double l) const;
 
-  xt::xarray<double> n0_ {0,0,0};
-  xt::xarray<double> n1_ {0,0,0};
-  xt::xarray<double> n2_ {0,0,0};
+
+  Position get_hex_center(HexMeshIndex ijkl) const;
+
+  double volume(const HexMeshIndex& ijkl) const;
+
+private:
+
+
+  int init_plane_normals();
+
+  int scale_basis_vectors(double s);
+  // needed data members:
+  // size_ length of basis vectors
+  // hex-basis vectors r_,q_,s_
+  // surface normal vectors n0_, n1_, n2_
+  // max-index of hex-rings meaning indices run from -max,...,0,...,max
+  // - this means:
+  // the width of a hexagon is sqrt(3)*size_
+
+  Position r_ {0,-1,0};
+  Position q_ {sqrt(3.0)*0.5,0.5,0};
+  Position s_ {-sqrt(3.0)*0.5,0.5,0};
+
+  Position n0_ {0,0,0};
+  Position n1_ {0,0,0};
+  Position n2_ {0,0,0};
 
   int hex_radius(const HexMeshIndex &ijkl) const;
 
   int hex_distance(const HexMeshIndex &ijkl0, const HexMeshIndex &ijkl1) const;
 };
+
+} // namespace openmc
+#endif // OPENMC_HEX_MESH_H

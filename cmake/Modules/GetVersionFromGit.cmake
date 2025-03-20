@@ -43,7 +43,11 @@ if(EXISTS "${CMAKE_SOURCE_DIR}/.git" AND GIT_FOUND)
     # If no tags are found, set version to 0 and show a warning
     if(VERSION_STRING STREQUAL "")
         set(VERSION_STRING "0.0.0")
-        message(WARNING "No git tags found. Version set to 0. Run 'git fetch --tags' to ensure proper versioning.")
+        message(WARNING 
+            "No git tags found. Version set to 0.0.0.\n"
+            "Run 'git fetch --tags' to ensure proper versioning.\n"
+            "For more information, see OpenMC developer documentation."
+        )
     endif()
 
     # Extract the commit hash

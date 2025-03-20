@@ -95,7 +95,7 @@ Setting Up Upstream Tracking (Required for Versioning)
 ------------------------------------------------------
 
 By default, your fork **does not** include tags from the upstream OpenMC repository.  
-OpenMC relies on `git describe --tags` for versioning, and missing tags can lead  
+OpenMC relies on `git describe --tags` for versioning in source builds, and missing tags can lead  
 to incorrect version detection (i.e., ``0.0.0``). To ensure proper versioning, follow these steps:
 
 1. **Add the Upstream Repository**  

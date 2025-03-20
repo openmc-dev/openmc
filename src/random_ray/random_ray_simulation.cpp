@@ -281,12 +281,21 @@ void validate_random_ray_inputs()
           "allowed in random ray mode.");
       }
 
-      // Validate that a domain ID was specified
+      // Validate that a domain ID was specified OR that it is a point source
       SpatialDistribution* space_dist = is->space();
       SpatialPoint* sp = dynamic_cast<SpatialPoint*>(space_dist);
       if (is->domain_ids().size() == 0 && !sp) {
-        fatal_error("Fixed sources must be point source or spatially constrained by domain "
+        fatal_error("Fixed sources must be point source or spatially "
+                    "constrained by domain "
                     "id (cell, material, or universe) in random ray mode.");
+      } else if (is->domain_ids().size() > 0 && sp) {
+
+        warning(fmt::format(
+          "External source id {} has both a domain constraint and "
+          "a point type spatial distribution. The domain constraint takes "
+          "precedence in random ray mode -- point source location information "
+          "will be ignored.",
+          i));
       }
 
       // Check that a discrete energy distribution was used

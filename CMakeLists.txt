@@ -371,6 +371,7 @@ list(APPEND libopenmc_SOURCES
   src/finalize.cpp
   src/geometry.cpp
   src/geometry_aux.cpp
+  src/hex_mesh.cpp
   src/hdf5_interface.cpp
   src/ifp.cpp
   src/initialize.cpp

@@ -103,7 +103,7 @@ public:
 
   void to_hdf5_inner(hid_t group) const override;
 
-  Position get_positition_of_hexindex(HexMeshIndex ijkl) const;
+  Position get_position_from_hexindex(HexMeshIndex ijkl) const;
 
   HexMeshIndex get_hexindices(Position r, bool& in_mesh) const;
 

@@ -240,9 +240,9 @@ int HexagonalMesh::get_index_in_direction(const Position& r, int i) const
   return -1;
 }
 
-Position HexagonalMesh::get_positition_of_hexindex(HexMeshIndex ijkl) const
+Position HexagonalMesh::get_position_from_hexindex(HexMeshIndex ijkl) const
 {
-  //return the cartesian position of a hex indexed by abcz
+  //return the cartesian position of center of a hexagon indexed by ijkl
   Position r;
   r.x = ijkl[0]*r_[0]*width_[0] + ijkl[1]*q_[0]*width_[0];
   r.y = ijkl[0]*r_[1]*width_[0] + ijkl[1]*q_[1]*width_[0];
@@ -501,7 +501,7 @@ HexagonalMesh::HexMeshDistance HexagonalMesh::distance_to_hex_boundary(
   // successively, given that the hex-center is given by the index triplet and hence also
   // the planes.
   // center of Hex
-  Position rh = get_hex_center(ijkl);
+  Position rh = get_position_from_hexindex(ijkl);
   // local position relative to hex center
   Position rloc = r0 + l*u -rh;
   HexMeshDistance d;

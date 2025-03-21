@@ -4,8 +4,8 @@
 #ifndef OPENMC_HEX_MESH_H
 #define OPENMC_HEX_MESH_H
 
-#include <unordered_map>
 #include <cmath>
+#include <unordered_map>
 
 #include "hdf5.h"
 #include "pugixml.hpp"
@@ -14,11 +14,11 @@
 
 #include "openmc/error.h"
 #include "openmc/memory.h" // for unique_ptr
+#include "openmc/mesh.h"
 #include "openmc/particle.h"
 #include "openmc/position.h"
 #include "openmc/vector.h"
 #include "openmc/xml_interface.h"
-#include "openmc/mesh.h"
 
 #ifdef DAGMC
 #include "moab/AdaptiveKDTree.hpp"
@@ -45,7 +45,6 @@ namespace openmc {
 // Constants
 //==============================================================================
 
-
 //==============================================================================
 // Global variables
 //==============================================================================
@@ -54,20 +53,20 @@ extern "C" const bool LIBMESH_ENABLED;
 
 class HexagonalMesh : public PeriodicStructuredMesh {
 public:
-  //Constructors
+  // Constructors
   HexagonalMesh() = default;
   HexagonalMesh(pugi::xml_node node);
 
-  using HexMeshIndex = std::array<int,4>;
+  using HexMeshIndex = std::array<int, 4>;
 
-  using SpiralHexMeshIndex = std::array<int,3>;
+  using SpiralHexMeshIndex = std::array<int, 3>;
 
   struct HexMeshDistance {
     HexMeshDistance() = default;
     HexMeshDistance(int _index, bool _max_surface, double _distance)
       : next_index {_index}, max_surface {_max_surface}, distance {_distance}
     {}
-    HexMeshIndex next_index {0,0,0,0};
+    HexMeshIndex next_index {0, 0, 0, 0};
     bool max_surface {true};
     double distance {INFTY};
     bool operator<(const HexMeshDistance& o) const
@@ -124,25 +123,21 @@ public:
   void raytrace_mesh(
     Position r0, Position r1, const Direction& u, T tally) const;
 
-  double find_surface_crossing(
-     const Position& r, const Direction& u) const;
+  double find_surface_crossing(const Position& r, const Direction& u) const;
 
-  int find_surface_crossing_index(const Position& r, const Direction& u, double l) const;
+  int find_surface_crossing_index(
+    const Position& r, const Direction& u, double l) const;
 
   double find_r_crossing(const Position& r, const Direction& u, double l) const;
 
-  HexMeshDistance distance_to_hex_boundary(
-      const HexMeshIndex& ijkl, int i, const Position& r0, const Direction& u,
-      double l) const;
-
+  HexMeshDistance distance_to_hex_boundary(const HexMeshIndex& ijkl, int i,
+    const Position& r0, const Direction& u, double l) const;
 
   Position get_hex_center(HexMeshIndex ijkl) const;
 
   double volume(const HexMeshIndex& ijkl) const;
 
 private:
-
-
   int init_plane_normals();
 
   int scale_basis_vectors(double s);
@@ -154,17 +149,17 @@ private:
   // - this means:
   // the width of a hexagon is sqrt(3)*size_
 
-  Position r_ {0,-1,0};
-  Position q_ {sqrt(3.0)*0.5,0.5,0};
-  Position s_ {-sqrt(3.0)*0.5,0.5,0};
+  Position r_ {0, -1, 0};
+  Position q_ {sqrt(3.0) * 0.5, 0.5, 0};
+  Position s_ {-sqrt(3.0) * 0.5, 0.5, 0};
 
-  Position n0_ {0,0,0};
-  Position n1_ {0,0,0};
-  Position n2_ {0,0,0};
+  Position n0_ {0, 0, 0};
+  Position n1_ {0, 0, 0};
+  Position n2_ {0, 0, 0};
 
-  int hex_radius(const HexMeshIndex &ijkl) const;
+  int hex_radius(const HexMeshIndex& ijkl) const;
 
-  int hex_distance(const HexMeshIndex &ijkl0, const HexMeshIndex &ijkl1) const;
+  int hex_distance(const HexMeshIndex& ijkl0, const HexMeshIndex& ijkl1) const;
 };
 
 } // namespace openmc

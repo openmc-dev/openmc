@@ -12,10 +12,10 @@
 #include "xtensor/xbuilder.hpp"
 #include "xtensor/xeval.hpp"
 #include "xtensor/xmath.hpp"
+#include "xtensor/xnorm.hpp"
 #include "xtensor/xsort.hpp"
 #include "xtensor/xtensor.hpp"
 #include "xtensor/xview.hpp"
-#include "xtensor/xnorm.hpp"
 #include <fmt/core.h> // for fmt
 
 #include "openmc/capi.h"
@@ -55,7 +55,8 @@ namespace openmc {
 // Global variables
 //==============================================================================
 
-HexagonalMesh::HexagonalMesh(pugi::xml_node node) : PeriodicStructuredMesh {node}
+HexagonalMesh::HexagonalMesh(pugi::xml_node node)
+  : PeriodicStructuredMesh {node}
 {
   // Determine number of dimensions for mesh
   if (!check_for_node(node, "dimension")) {
@@ -92,7 +93,8 @@ HexagonalMesh::HexagonalMesh(pugi::xml_node node) : PeriodicStructuredMesh {node
   if (check_for_node(node, "width")) {
     // Make sure one of upper-right or width were specified
     if (check_for_node(node, "upper_right")) {
-      fatal_error("Cannot specify both <upper_right> and <width> on a hexgonal mesh.");
+      fatal_error(
+        "Cannot specify both <upper_right> and <width> on a hexgonal mesh.");
     }
 
     // Check to ensure width has same dimensions
@@ -129,7 +131,8 @@ HexagonalMesh::HexagonalMesh(pugi::xml_node node) : PeriodicStructuredMesh {node
     // Set width
     width_ = xt::eval((upper_right_ - lower_left_) / shape);
   } else {
-    fatal_error("Must specify either <upper_right> or <width> on a hexagonal mesh.");
+    fatal_error(
+      "Must specify either <upper_right> or <width> on a hexagonal mesh.");
   }
 
   // n.b. must check that the number of hexes is odd
@@ -138,7 +141,7 @@ HexagonalMesh::HexagonalMesh(pugi::xml_node node) : PeriodicStructuredMesh {node
   if (max_a == 0)
     hex_count_ = 1;
   else
-    hex_count_ = 1 + 3 * (max_a) * (max_a-1);
+    hex_count_ = 1 + 3 * (max_a) * (max_a - 1);
 
   // width[1] is the height of the full mesh block, width[0] is the width of
   // the full mesh block at its widest
@@ -148,7 +151,7 @@ HexagonalMesh::HexagonalMesh(pugi::xml_node node) : PeriodicStructuredMesh {node
   volume_frac_ = 1.0 / hex_count_;
 
   // size of hex is defined as the radius of the circumscribed circle
-  size_ = (width_[0]/shape[0])/sqrt(3.0);
+  size_ = (width_[0] / shape[0]) / sqrt(3.0);
 
   // set the plane normals or 3 principal directions in the hex mash
   init_plane_normals();
@@ -159,7 +162,8 @@ HexagonalMesh::HexagonalMesh(pugi::xml_node node) : PeriodicStructuredMesh {node
 
 const std::string HexagonalMesh::mesh_type = "hexagonal";
 
-int HexagonalMesh::scale_basis_vectors(double s){
+int HexagonalMesh::scale_basis_vectors(double s)
+{
   // scale basis vectors of hexagonal mesh
   r_ = r_ * s;
   q_ = q_ * s;
@@ -167,10 +171,11 @@ int HexagonalMesh::scale_basis_vectors(double s){
   return 0;
 }
 
-int HexagonalMesh::init_plane_normals(){
-  n0_ = 0.5 * (r_ + q_*0.5);
-  n1_ = 0.5 * (-s_ - r_*0.5);
-  n2_ = 0.5 * (q_ + s_*0.5);
+int HexagonalMesh::init_plane_normals()
+{
+  n0_ = 0.5 * (r_ + q_ * 0.5);
+  n1_ = 0.5 * (-s_ - r_ * 0.5);
+  n2_ = 0.5 * (q_ + s_ * 0.5);
   return 0;
 }
 
@@ -179,74 +184,81 @@ std::string HexagonalMesh::get_mesh_type() const
   return mesh_type;
 }
 
-int HexagonalMesh::hex_distance(const HexMeshIndex& ijkl0, const HexMeshIndex& ijkl1) const
+int HexagonalMesh::hex_distance(
+  const HexMeshIndex& ijkl0, const HexMeshIndex& ijkl1) const
 {
   // return the integer lateral hex-distance between two hexes (ignores z)
-  return std::max( std::max(std::abs(ijkl0[0]-ijkl1[0]), std::abs(ijkl0[1]-ijkl1[1])), std::abs(ijkl0[2]-ijkl1[2]) );
+  return std::max(
+    std::max(std::abs(ijkl0[0] - ijkl1[0]), std::abs(ijkl0[1] - ijkl1[1])),
+    std::abs(ijkl0[2] - ijkl1[2]));
 }
 
-int HexagonalMesh::hex_radius(const HexMeshIndex &ijkl) const
+int HexagonalMesh::hex_radius(const HexMeshIndex& ijkl) const
 {
-  //return the integer hex-radius of a hex. (ignores z)
-  return std::max( std::max(std::abs(ijkl[0]), std::abs(ijkl[1])), std::abs(ijkl[2]) );
+  // return the integer hex-radius of a hex. (ignores z)
+  return std::max(
+    std::max(std::abs(ijkl[0]), std::abs(ijkl[1])), std::abs(ijkl[2]));
 }
 
 int32_t HexagonalMesh::get_bin_from_hexindices(const HexMeshIndex& ijkl) const
 {
-  //get linear index from the HexMeshIndex
+  // get linear index from the HexMeshIndex
   int32_t r_0 = shape_[0];
-  int32_t azim = 6 * (r_0-1);
-  return ijkl[3] * hex_count_ + (1 + 3*r_0*(r_0-1)) + azim;
+  int32_t azim = 6 * (r_0 - 1);
+  return ijkl[3] * hex_count_ + (1 + 3 * r_0 * (r_0 - 1)) + azim;
 }
 
-HexagonalMesh::HexMeshIndex HexagonalMesh::rotate_hexindex(const HexMeshIndex& ijkl, int steps) const
+HexagonalMesh::HexMeshIndex HexagonalMesh::rotate_hexindex(
+  const HexMeshIndex& ijkl, int steps) const
 {
   HexMeshIndex new_ijkl {ijkl};
-  for (int i; i<steps; i++){
+  for (int i; i < steps; i++) {
     int r = -new_ijkl[2];
     int q = -new_ijkl[0];
     int s = -new_ijkl[1];
-    new_ijkl[0]=r;
-    new_ijkl[1]=q;
-    new_ijkl[2]=s;
+    new_ijkl[0] = r;
+    new_ijkl[1] = q;
+    new_ijkl[2] = s;
   }
   return new_ijkl;
 }
 
-HexagonalMesh::HexMeshIndex HexagonalMesh::get_hexindices_from_bin(const int32_t bin) const
+HexagonalMesh::HexMeshIndex HexagonalMesh::get_hexindices_from_bin(
+  const int32_t bin) const
 {
   // This does not yet take more than 1 z-slice into account
-  int ring = (int) floor( (sqrt(12 * bin - 3) + 3) / 6);
+  int ring = (int)floor((sqrt(12 * bin - 3) + 3) / 6);
 
-  int diff = bin - ( 1 + 3*(ring-1)*ring);
-  HexMeshIndex ijkl {ring,0,-ring,0};
-  return rotate_hexindex(ijkl,diff);
+  int diff = bin - (1 + 3 * (ring - 1) * ring);
+  HexMeshIndex ijkl {ring, 0, -ring, 0};
+  return rotate_hexindex(ijkl, diff);
 }
-
 
 int HexagonalMesh::get_index_in_direction(const Position& r, int i) const
 {
-  switch (i){
-    case 0:
-      return std::ceil( (0.5 * r.x - 1.0/(2*sqrt(3)) * r.y) / this->size_ );
-    case 1:
-      return std::ceil( (1.0/sqrt(3) * r.y) / this->size_ );
-    case 2:
-      return std::ceil( ( (0.5 * r.x - 1.0/(2*sqrt(3)) * r.y) - (1.0/sqrt(3) * r.y) )/ this->size_ );
-    case 3:
-      // z
-      return std::ceil((r.z - lower_left_[i]) / width_[i]);
+  switch (i) {
+  case 0:
+    return std::ceil((0.5 * r.x - 1.0 / (2 * sqrt(3)) * r.y) / this->size_);
+  case 1:
+    return std::ceil((1.0 / sqrt(3) * r.y) / this->size_);
+  case 2:
+    return std::ceil(
+      ((0.5 * r.x - 1.0 / (2 * sqrt(3)) * r.y) - (1.0 / sqrt(3) * r.y)) /
+      this->size_);
+  case 3:
+    // z
+    return std::ceil((r.z - lower_left_[i]) / width_[i]);
   }
   return -1;
 }
 
 Position HexagonalMesh::get_position_from_hexindex(HexMeshIndex ijkl) const
 {
-  //return the cartesian position of center of a hexagon indexed by ijkl
+  // return the cartesian position of center of a hexagon indexed by ijkl
   Position r;
-  r.x = ijkl[0]*r_[0]*width_[0] + ijkl[1]*q_[0]*width_[0];
-  r.y = ijkl[0]*r_[1]*width_[0] + ijkl[1]*q_[1]*width_[0];
-  r.z = ijkl[3]*width_[1];
+  r.x = ijkl[0] * r_[0] * width_[0] + ijkl[1] * q_[0] * width_[0];
+  r.y = ijkl[0] * r_[1] * width_[0] + ijkl[1] * q_[1] * width_[0];
+  r.z = ijkl[3] * width_[1];
 
   return r;
 }
@@ -254,45 +266,46 @@ Position HexagonalMesh::get_position_from_hexindex(HexMeshIndex ijkl) const
 HexagonalMesh::HexMeshIndex HexagonalMesh::get_hexindices(
   Position r, bool& in_mesh) const
 {
-  //return index of mesh element in hexes
+  // return index of mesh element in hexes
   local_coords(r);
 
   HexMeshIndex idx;
-  idx[0] = get_index_in_direction(r,0);
-  idx[1] = get_index_in_direction(r,1);
-  idx[2] = -idx[0] -idx[1];
+  idx[0] = get_index_in_direction(r, 0);
+  idx[1] = get_index_in_direction(r, 1);
+  idx[2] = -idx[0] - idx[1];
   idx[3] = get_index_in_direction(r, 3);
 
-  //check if either index is out of bounds
+  // check if either index is out of bounds
   in_mesh = in_hexmesh(idx);
   return idx;
 }
 
 bool HexagonalMesh::in_hexmesh(HexMeshIndex& ijkl) const
 {
-  for (auto it=ijkl.begin(); it<ijkl.end(); it++){
+  for (auto it = ijkl.begin(); it < ijkl.end(); it++) {
     auto elem = *it;
-    if (abs(elem)>shape_[0]) return false;
+    if (abs(elem) > shape_[0])
+      return false;
   }
   return true;
 }
 
-
 Position HexagonalMesh::sample_element(
   const HexMeshIndex& ijkl, uint64_t* seed) const
 {
-  //return random position inside mesh element
-  double r_r = uniform_distribution(0,1,seed);
-  double q_r = uniform_distribution(0,1,seed);
+  // return random position inside mesh element
+  double r_r = uniform_distribution(0, 1, seed);
+  double q_r = uniform_distribution(0, 1, seed);
 
-  double x = this->r_[0] * (r_r + (ijkl[0]-1) ) + this->q_[0] * (q_r + (ijkl[1]-1) );
-  double y = this->r_[1] * (r_r + (ijkl[0]-1) ) + this->q_[1] * (q_r + (ijkl[1]-1) );
+  double x =
+    this->r_[0] * (r_r + (ijkl[0] - 1)) + this->q_[0] * (q_r + (ijkl[1] - 1));
+  double y =
+    this->r_[1] * (r_r + (ijkl[0] - 1)) + this->q_[1] * (q_r + (ijkl[1] - 1));
 
-  double z = uniform_distribution(-width_[1]/2.0, width_[1]/2.0, seed);
+  double z = uniform_distribution(-width_[1] / 2.0, width_[1] / 2.0, seed);
 
   return origin_ + Position(x, y, z);
 }
-
 
 double HexagonalMesh::find_r_crossing(
   const Position& r, const Direction& u, double l) const
@@ -346,15 +359,15 @@ void HexagonalMesh::raytrace_mesh(
   // calculation of parameters) but for the future: be explicit
 
   // very similar to to the structured mesh raytrace_mesh but we cannot rely on
-  // simply recomputing only a single distance. Also the distance to the outside of the mesh
-  // is somewhat more complicated
+  // simply recomputing only a single distance. Also the distance to the outside
+  // of the mesh is somewhat more complicated
 
   // Compute the length of the entire track.
   double total_distance = (r1 - r0).norm();
   if (total_distance == 0.0 && settings::solver_type != SolverType::RANDOM_RAY)
     return;
 
-  const int n = n_dimension_*2;
+  const int n = n_dimension_ * 2;
 
   // Flag if position is inside the mesh
   bool in_mesh;
@@ -414,8 +427,8 @@ void HexagonalMesh::raytrace_mesh(
       // now the index has been updated recompute the distances - unfortunately
       // we have to do more than one again (as opposed to for cartesian mesh)
 
-      if (k<6){
-        for ( int j = 0; j < 6; ++j){
+      if (k < 6) {
+        for (int j = 0; j < 6; ++j) {
           distances[j] =
             distance_to_grid_boundary(ijkl, j, r0, u, traveled_distance);
         }
@@ -426,8 +439,8 @@ void HexagonalMesh::raytrace_mesh(
       // Check if we have left the interior of the mesh
       // Do this by getting new index
       in_mesh = true;
-      for ( auto i =0; i<ijkl.size(); i++){
-        if ( ijkl[i]<1 || ijkl[i] > shape_[i] ){
+      for (auto i = 0; i < ijkl.size(); i++) {
+        if (ijkl[i] < 1 || ijkl[i] > shape_[i]) {
           in_mesh = false;
           break;
         }
@@ -443,14 +456,14 @@ void HexagonalMesh::raytrace_mesh(
       // 2. find the largest distance to the cylinder or to the z-plane
       // 3. add this to distance travelled
       //
-      // If cylinder is used then do a single step minimal boundary find - this would be enough
-      // to move us in-mesh.
+      // If cylinder is used then do a single step minimal boundary find - this
+      // would be enough to move us in-mesh.
 
       // For all directions outside the mesh, find the distance that we need to
       // travel to reach the next surface. Use the largest distance, as only
       // this will cross all outer surfaces.
-      double dist_to_enclosing_cyl = find_r_crossing(r0,u,traveled_distance);
-      for (int k = 0; k < n-1; ++k) {
+      double dist_to_enclosing_cyl = find_r_crossing(r0, u, traveled_distance);
+      for (int k = 0; k < n - 1; ++k) {
         distances[k] =
           distance_to_grid_boundary(ijkl, k, r0, u, dist_to_enclosing_cyl);
       }
@@ -458,12 +471,12 @@ void HexagonalMesh::raytrace_mesh(
       // the z-surface distance and pick the longest of the two.
       int k_hex_min {0};
       int k_max {0};
-      for (int k = 0; k < n-1; ++k){
-        if (distances[k_hex_min].distance>distances[k].distance){
-          k_hex_min=k;
+      for (int k = 0; k < n - 1; ++k) {
+        if (distances[k_hex_min].distance > distances[k].distance) {
+          k_hex_min = k;
         }
       }
-      if (distances[6].distance > distances[k_hex_min].distance){
+      if (distances[6].distance > distances[k_hex_min].distance) {
         k_max = 6;
       } else {
         k_max = k_hex_min;
@@ -488,7 +501,6 @@ void HexagonalMesh::raytrace_mesh(
   }
 }
 
-
 HexagonalMesh::HexMeshDistance HexagonalMesh::distance_to_hex_boundary(
   const HexMeshIndex& ijkl, int i, const Position& r0, const Direction& u,
   double l) const
@@ -497,59 +509,59 @@ HexagonalMesh::HexMeshDistance HexagonalMesh::distance_to_hex_boundary(
   // i==6 means z
 
   Position r = r0 - origin_;
-  // Given the hex index - we now find the distance from r0 to the 0:q, 1:r, 2:s plane(s)
-  // successively, given that the hex-center is given by the index triplet and hence also
-  // the planes.
-  // center of Hex
+  // Given the hex index - we now find the distance from r0 to the 0:q, 1:r, 2:s
+  // plane(s) successively, given that the hex-center is given by the index
+  // triplet and hence also the planes.
   Position rh = get_position_from_hexindex(ijkl);
   // local position relative to hex center
-  Position rloc = r0 + l*u -rh;
+  Position rloc = r0 + l * u - rh;
   HexMeshDistance d;
   d.next_index = ijkl;
 
   if (i < 6) {
 
-    switch(i){
-      case 0:
-        d.distance = (this->r_ - rloc).dot(this->n0_) / u.dot(this->n0_);
-        d.next_index[0]++;
-        d.next_index[2]--;
-        break;
-      case 1:
-        d.distance = (-this->s_ - rloc).dot(this->n1_) / u.dot(this->n1_);
-        d.next_index[1]++;
-        d.next_index[2]--;
-        break;
-      case 2:
-        d.distance = (this->q_ - rloc).dot(this->n2_) / u.dot(this->n2_);
-        d.next_index[0]--;
-        d.next_index[1]++;
-        break;
-      case 3:
-        d.distance = (-this->r_ - rloc).dot(this->n0_) / u.dot(this->n0_);
-        d.next_index[0]--;
-        d.next_index[2]++;
-        break;
-      case 4:
-        d.distance = (this->s_ - rloc).dot(this->n1_) / u.dot(this->n1_);
-        d.next_index[1]--;
-        d.next_index[2]++;
-        break;
-      case 5:
-        d.distance = (-this->q_ - rloc).dot(this->n2_) / u.dot(this->n2_);
-        d.next_index[0]++;
-        d.next_index[1]--;
-        break;
+    switch (i) {
+    case 0:
+      d.distance = (this->r_ - rloc).dot(this->n0_) / u.dot(this->n0_);
+      d.next_index[0]++;
+      d.next_index[2]--;
+      break;
+    case 1:
+      d.distance = (-this->s_ - rloc).dot(this->n1_) / u.dot(this->n1_);
+      d.next_index[1]++;
+      d.next_index[2]--;
+      break;
+    case 2:
+      d.distance = (this->q_ - rloc).dot(this->n2_) / u.dot(this->n2_);
+      d.next_index[0]--;
+      d.next_index[1]++;
+      break;
+    case 3:
+      d.distance = (-this->r_ - rloc).dot(this->n0_) / u.dot(this->n0_);
+      d.next_index[0]--;
+      d.next_index[2]++;
+      break;
+    case 4:
+      d.distance = (this->s_ - rloc).dot(this->n1_) / u.dot(this->n1_);
+      d.next_index[1]--;
+      d.next_index[2]++;
+      break;
+    case 5:
+      d.distance = (-this->q_ - rloc).dot(this->n2_) / u.dot(this->n2_);
+      d.next_index[0]++;
+      d.next_index[1]--;
+      break;
     };
   } else {
     // Z-planes z-index has index 3 (nr 4) in ijkl.
-    d.max_surface = (u[2]>0);
-    if (d.max_surface){
+    d.max_surface = (u[2] > 0);
+    if (d.max_surface) {
       d.next_index[3]++;
-      d.distance = ( (lower_left_[2] + ijkl[3]*width_[2] ) -r0[2] ) / u[2];
+      d.distance = ((lower_left_[2] + ijkl[3] * width_[2]) - r0[2]) / u[2];
     } else {
       d.next_index[3]--;
-      d.distance = ( (lower_left_[2] + (ijkl[3] - 1) * width_[2] ) - r0[2] ) / u[2];
+      d.distance =
+        ((lower_left_[2] + (ijkl[3] - 1) * width_[2]) - r0[2]) / u[2];
     }
   }
   return d;
@@ -574,8 +586,8 @@ void HexagonalMesh::to_hdf5_inner(hid_t group) const
 
 double HexagonalMesh::volume(const HexMeshIndex& ijkl) const
 {
-  double zdiff = (upper_right_[2]-lower_left_[2])/shape_[2];
-  return 6 * sqrt(3.0) * 0.25 * (size_)*(size_) * zdiff;
+  double zdiff = (upper_right_[2] - lower_left_[2]) / shape_[2];
+  return 6 * sqrt(3.0) * 0.25 * size_ * size_ * zdiff;
 }
 
-}
+} // namespace openmc

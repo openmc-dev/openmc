@@ -58,6 +58,7 @@ public:
   SourceRegionHandle get_subdivided_source_region_handle(
     int64_t sr, int mesh_bin, Position r, double dist, Direction u);
   void finalize_discovered_source_regions();
+  void apply_transport_stabilization();
   int64_t n_source_regions() const
   {
     return source_regions_.n_source_regions();
@@ -156,6 +157,12 @@ protected:
   // results tensor in the Tally class, though without the third dimension, as
   // SUM and SUM_SQ do not need to be tracked.
   vector<xt::xtensor<double, 2>> tally_volumes_;
+
+  // If transport corrected MGXS data is being used, there may be negative
+  // in-group scattering cross sections which can result in instability in MOC
+  // and random ray if used naively. This flag enables a stabilization
+  // technique.
+  bool is_transport_stabilization_needed_ {false};
 
 }; // class FlatSourceDomain
 

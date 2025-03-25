@@ -477,6 +477,9 @@ void RandomRaySimulation::simulate()
       // Add source to scalar flux, compute number of FSR hits
       int64_t n_hits = domain_->add_source_to_scalar_flux();
 
+      // Apply transport stabilization factors
+      domain_->apply_transport_stabilization();
+
       if (settings::run_mode == RunMode::EIGENVALUE) {
         // Compute random ray k-eff
         k_eff_ = domain_->compute_k_eff(k_eff_);

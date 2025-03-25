@@ -1106,6 +1106,11 @@ void FlatSourceDomain::flatten_xs()
           double sigma_s =
             m.get_xs(MgxsType::NU_SCATTER, g_in, &g_out, NULL, NULL, t, a);
           sigma_s_.push_back(sigma_s);
+          // For transport corrected XS data, diagonal elements may be negative.
+          // In this case, set a flag to enable transport stabilization for the
+          // simulation.
+          if (g_out == g_in && sigma_s < 0.0)
+            is_transport_stabilization_needed_ = true;
         }
       } else {
         sigma_t_.push_back(0);
@@ -1425,6 +1430,33 @@ void FlatSourceDomain::finalize_discovered_source_regions()
   }
 
   discovered_source_regions_.clear();
+}
+
+void FlatSourceDomain::apply_transport_stabilization()
+{
+  if (!is_transport_stabilization_needed_) {
+    return;
+  }
+
+  // Apply the stabilization factors for each source region
+  for (int64_t sr = 0; sr < n_source_regions(); sr++) {
+    int material = source_regions_.material(sr);
+    if (material == MATERIAL_VOID) {
+      continue;
+    }
+    for (int g = 0; g < negroups_; g++) {
+      double sigma_s =
+        sigma_s_[material * negroups_ * negroups_ + g * negroups_ + g];
+      // Only apply stabilization if the diagonal scattering XS is negative
+      if (sigma_s < 0.0) {
+        double sigma_t = sigma_t_[material * negroups_ + g];
+        double ratio = sigma_s / sigma_t;
+        source_regions_.scalar_flux_new(sr, g) -=
+          ratio * source_regions_.scalar_flux_old(sr, g);
+        source_regions_.scalar_flux_new(sr, g) /= (1.0 - ratio);
+      }
+    }
+  }
 }
 
 } // namespace openmc

@@ -1443,7 +1443,7 @@ class Model:
                 self.geometry.get_all_materials().values()
             )
 
-    def _generate_infinite_medium_mgxs(self, groups, nparticles, mgxs_fname) -> None:
+    def _generate_infinite_medium_mgxs(self, groups, nparticles, mgxs_fname, correction) -> None:
         """Generate a MGXS library by running multiple OpenMC simulations, each
         representing an infinite medium simulation of a single isolated
         material. A discrete source is used to sample particles, with an equal
@@ -1508,11 +1508,15 @@ class Model:
             mgxs_lib.energy_groups = groups
 
             # Disable transport correction
-            mgxs_lib.correction = None
+            mgxs_lib.correction = correction
 
             # Specify needed cross sections for random ray
-            mgxs_lib.mgxs_types = ['total', 'absorption', 'nu-fission', 'fission',
-                                   'nu-scatter matrix', 'multiplicity matrix', 'chi']
+            if correction == 'P0':
+                mgxs_lib.mgxs_types = ['nu-transport', 'absorption', 'nu-fission', 'fission',
+                                    'consistent nu-scatter matrix', 'multiplicity matrix', 'chi']
+            elif correction is None:
+                mgxs_lib.mgxs_types = ['total', 'absorption', 'nu-fission', 'fission',
+                                    'consistent nu-scatter matrix', 'multiplicity matrix', 'chi']
 
             # Specify a "cell" domain type for the cross section tally filters
             mgxs_lib.domain_type = "material"
@@ -1636,7 +1640,7 @@ class Model:
 
         return geometry, box
 
-    def _generate_stochastic_slab_mgxs(self, groups, nparticles, mgxs_fname) -> None:
+    def _generate_stochastic_slab_mgxs(self, groups, nparticles, mgxs_fname, correction) -> None:
         """Generate MGXS assuming a stochastic "sandwich" of materials in a layered
         slab geometry. While geometry-specific spatial shielding effects are not
         captured, this method can be useful when the geometry has materials only
@@ -1694,11 +1698,15 @@ class Model:
         mgxs_lib.energy_groups = groups
 
         # Disable transport correction
-        mgxs_lib.correction = None
+        mgxs_lib.correction = correction
 
-        # Specify needed cross sections for random ray
-        mgxs_lib.mgxs_types = ['total', 'absorption', 'nu-fission', 'fission',
-                               'nu-scatter matrix', 'multiplicity matrix', 'chi']
+       # Specify needed cross sections for random ray
+        if correction == 'P0':
+            mgxs_lib.mgxs_types = ['nu-transport', 'absorption', 'nu-fission', 'fission',
+                                   'consistent nu-scatter matrix', 'multiplicity matrix', 'chi']
+        elif correction is None:
+            mgxs_lib.mgxs_types = ['total', 'absorption', 'nu-fission', 'fission',
+                                   'consistent nu-scatter matrix', 'multiplicity matrix', 'chi']
 
         # Specify a "cell" domain type for the cross section tally filters
         mgxs_lib.domain_type = "material"
@@ -1735,7 +1743,7 @@ class Model:
         mgxs_file.export_to_hdf5(mgxs_fname)
         sp.close()
 
-    def _generate_material_wise_mgxs(self, groups, nparticles, mgxs_fname) -> None:
+    def _generate_material_wise_mgxs(self, groups, nparticles, mgxs_fname, correction) -> None:
         """Generate a material-wise MGXS library for the model by running the
         original continuous energy OpenMC simulation of the full material
         geometry and source, and tally MGXS data for each material. This method
@@ -1772,11 +1780,15 @@ class Model:
         mgxs_lib.energy_groups = groups
 
         # Disable transport correction
-        mgxs_lib.correction = None
+        mgxs_lib.correction = correction
 
         # Specify needed cross sections for random ray
-        mgxs_lib.mgxs_types = ['total', 'absorption', 'nu-fission', 'fission',
-                               'nu-scatter matrix', 'multiplicity matrix', 'chi']
+        if correction == 'P0':
+            mgxs_lib.mgxs_types = ['nu-transport', 'absorption', 'nu-fission', 'fission',
+                                   'consistent nu-scatter matrix', 'multiplicity matrix', 'chi']
+        elif correction is None:
+            mgxs_lib.mgxs_types = ['total', 'absorption', 'nu-fission', 'fission',
+                                   'consistent nu-scatter matrix', 'multiplicity matrix', 'chi']
 
         # Specify a "cell" domain type for the cross section tally filters
         mgxs_lib.domain_type = "material"
@@ -1816,7 +1828,7 @@ class Model:
     def convert_to_multigroup(self, method="material-wise",
                               groups=openmc.mgxs.EnergyGroups(openmc.mgxs.GROUP_STRUCTURES['CASMO-2']),
                               nparticles=2000, overwrite_mgxs_library=False,
-                              mgxs_fname: str = "mgxs.h5") -> None:
+                              mgxs_fname: str = "mgxs.h5", correction=None) -> None:
         """Convert all materials from continuous energy materials to multigroup
         materials. If no MGXS data library file is found, generate one using one
         or more continuous energy Monte Carlo simulations.
@@ -1831,6 +1843,9 @@ class Model:
             openmc.mgxs.GROUP_STRUCTURES['CASMO-2'].
         mgxs_fname : str, optional
             Filename of the mgxs.h5 library file. Defaults to "mgxs.h5".
+        correction : str, optional
+            Transport correction to apply to the MGXS. Options are None and "P0".
+            Defaults to None.
         """
 
         # Make sure all materials have a name, and that the name
@@ -1848,7 +1863,7 @@ class Model:
                     groups, nparticles, mgxs_fname)
             elif method == "material_wise":
                 self._generate_material_wise_mgxs(
-                    groups, nparticles, mgxs_fname)
+                    groups, nparticles, mgxs_fname, correction)
             elif method == "stochastic_slab":
                 self._generate_stochastic_slab_mgxs(
                     groups, nparticles, mgxs_fname)

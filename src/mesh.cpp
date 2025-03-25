@@ -30,6 +30,7 @@
 #include "openmc/file_utils.h"
 #include "openmc/geometry.h"
 #include "openmc/hdf5_interface.h"
+#include "openmc/hex_mesh.h"
 #include "openmc/material.h"
 #include "openmc/memory.h"
 #include "openmc/message_passing.h"
@@ -3605,6 +3606,8 @@ void read_meshes(pugi::xml_node root)
       model::meshes.push_back(make_unique<CylindricalMesh>(node));
     } else if (mesh_type == SphericalMesh::mesh_type) {
       model::meshes.push_back(make_unique<SphericalMesh>(node));
+    } else if (mesh_type == HexagonalMesh::mesh_type) {
+      model::meshes.push_back(make_unique<HexagonalMesh>(node));
 #ifdef DAGMC
     } else if (mesh_type == UnstructuredMesh::mesh_type &&
                mesh_lib == MOABMesh::mesh_lib_type) {

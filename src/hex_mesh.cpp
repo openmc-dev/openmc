@@ -162,6 +162,11 @@ HexagonalMesh::HexagonalMesh(pugi::xml_node node)
 
 const std::string HexagonalMesh::mesh_type = "hexagonal";
 
+double HexagonalMesh::volume(const StructuredMesh::MeshIndex& ijk) const
+{
+  return element_volume_;
+}
+
 int HexagonalMesh::scale_basis_vectors(double s)
 {
   // scale basis vectors of hexagonal mesh
@@ -246,10 +251,15 @@ int HexagonalMesh::get_index_in_direction(const Position& r, int i) const
       ((0.5 * r.x - 1.0 / (2 * sqrt(3)) * r.y) - (1.0 / sqrt(3) * r.y)) /
       this->size_);
   case 3:
-    // z
-    return std::ceil((r.z - lower_left_[i]) / width_[i]);
+    // z is idx 1 in width_ and lower_left_ / upper_right_
+    return std::ceil((r.z - lower_left_[1]) / width_[1]);
   }
   return -1;
+}
+
+int HexagonalMesh::get_index_in_direction(double r, int i) const
+{
+  return 0;
 }
 
 Position HexagonalMesh::get_position_from_hexindex(HexMeshIndex ijkl) const
@@ -564,6 +574,13 @@ HexagonalMesh::HexMeshDistance HexagonalMesh::distance_to_hex_boundary(
         ((lower_left_[2] + (ijkl[3] - 1) * width_[2]) - r0[2]) / u[2];
     }
   }
+  return d;
+}
+
+StructuredMesh::MeshDistance HexagonalMesh::distance_to_grid_boundary(const MeshIndex& ijk, int i, const Position& r0, const Direction& u, double l) const
+{
+  MeshDistance d;
+  d.distance = INFTY;
   return d;
 }
 

@@ -81,7 +81,9 @@ public:
 
   HexMeshIndex rotate_hexindex(const HexMeshIndex& ijkl, int steps) const;
 
-  int get_index_in_direction(const Position& r, int i) const;
+  int get_hexindex_in_direction(const Position& r, int i) const;
+
+  int get_index_in_direction(double r, int i) const;
 
   virtual std::string get_mesh_type() const override;
 
@@ -97,6 +99,9 @@ public:
   HexMeshDistance distance_to_grid_boundary(const HexMeshIndex& ijk, int i,
     const Position& r0, const Direction& u, double l) const;
 
+  StructuredMesh::MeshDistance distance_to_grid_boundary(const MeshIndex& ijk, int i,
+    const Position& r0, const Direction& u, double l) const override;
+
   std::pair<vector<double>, vector<double>> plot(
     Position plot_ll, Position plot_ur) const override;
 
@@ -107,6 +112,8 @@ public:
   HexMeshIndex get_hexindices(Position r, bool& in_mesh) const;
 
   bool in_hexmesh(HexMeshIndex& ijkl) const;
+
+  double volume(const StructuredMesh::MeshIndex& ijk) const;
 
   // Data members
   double size_ {0};

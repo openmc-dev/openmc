@@ -1439,6 +1439,7 @@ void FlatSourceDomain::apply_transport_stabilization()
   }
 
   // Apply the stabilization factors for each source region
+  #pragma omp parallel for
   for (int64_t sr = 0; sr < n_source_regions(); sr++) {
     int material = source_regions_.material(sr);
     if (material == MATERIAL_VOID) {

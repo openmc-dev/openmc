@@ -303,20 +303,21 @@ void validate_random_ray_inputs()
   for (int p = 0; p < model::plots.size(); p++) {
 
     // Get handle to OpenMC plot object
-    Plot* openmc_plot = dynamic_cast<Plot*>(model::plots[p].get());
+    const auto& openmc_plottable = model::plots[p];
+    Plot* openmc_plot = dynamic_cast<Plot*>(openmc_plottable.get());
 
     // Random ray plots only support voxel plots
     if (!openmc_plot) {
       warning(fmt::format(
         "Plot {} will not be used for end of simulation data plotting -- only "
         "voxel plotting is allowed in random ray mode.",
-        p));
+        openmc_plottable->id()));
       continue;
     } else if (openmc_plot->type_ != Plot::PlotType::voxel) {
       warning(fmt::format(
         "Plot {} will not be used for end of simulation data plotting -- only "
         "voxel plotting is allowed in random ray mode.",
-        p));
+        openmc_plottable->id()));
       continue;
     }
   }

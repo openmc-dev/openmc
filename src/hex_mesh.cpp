@@ -239,7 +239,7 @@ HexagonalMesh::HexMeshIndex HexagonalMesh::get_hexindices_from_bin(
   return rotate_hexindex(ijkl, diff);
 }
 
-int HexagonalMesh::get_index_in_direction(const Position& r, int i) const
+int HexagonalMesh::get_hexindex_in_direction(const Position& r, int i) const
 {
   switch (i) {
   case 0:
@@ -280,10 +280,10 @@ HexagonalMesh::HexMeshIndex HexagonalMesh::get_hexindices(
   local_coords(r);
 
   HexMeshIndex idx;
-  idx[0] = get_index_in_direction(r, 0);
-  idx[1] = get_index_in_direction(r, 1);
+  idx[0] = get_hexindex_in_direction(r, 0);
+  idx[1] = get_hexindex_in_direction(r, 1);
   idx[2] = -idx[0] - idx[1];
-  idx[3] = get_index_in_direction(r, 3);
+  idx[3] = get_hexindex_in_direction(r, 3);
 
   // check if either index is out of bounds
   in_mesh = in_hexmesh(idx);
@@ -292,11 +292,13 @@ HexagonalMesh::HexMeshIndex HexagonalMesh::get_hexindices(
 
 bool HexagonalMesh::in_hexmesh(HexMeshIndex& ijkl) const
 {
-  for (auto it = ijkl.begin(); it < ijkl.end(); it++) {
+  for (auto it = ijkl.begin(); it != std::prev(ijkl.end()); it++) {
     auto elem = *it;
     if (abs(elem) > shape_[0])
       return false;
   }
+  if (ijkl[3] > shape_[1])
+    return false;
   return true;
 }
 
@@ -387,7 +389,7 @@ void HexagonalMesh::raytrace_mesh(
 
   // Calculate index of current cell. Offset the position a tiny bit in
   // direction of flight
-  HexMeshIndex ijkl = get_indices(r0 + TINY_BIT * u, in_mesh);
+  HexMeshIndex ijkl = get_hexindices(r0 + TINY_BIT * u, in_mesh);
 
   // if track is very short, assume that it is completely inside one cell.
   // Only the current cell will score and no surfaces
@@ -399,15 +401,15 @@ void HexagonalMesh::raytrace_mesh(
   }
 
   // translate start and end positions,
-  // this needs to come after the get_indices call because it does its own
+  // this needs to come after the get_hexindices call because it does its own
   // translation
   local_coords(r0);
   local_coords(r1);
 
   // Calculate initial distances to next surfaces in all three dimensions
-  std::array<MeshDistance, 8> distances;
+  std::array<HexMeshDistance, 8> distances;
   for (int k = 0; k < n; ++k) {
-    distances[k] = distance_to_grid_boundary(ijkl, k, r0, u, 0.0);
+    distances[k] = distance_to_hex_boundary(ijkl, k, r0, u, 0.0);
   }
 
   // Loop until r = r1 is eventually reached
@@ -440,11 +442,11 @@ void HexagonalMesh::raytrace_mesh(
       if (k < 6) {
         for (int j = 0; j < 6; ++j) {
           distances[j] =
-            distance_to_grid_boundary(ijkl, j, r0, u, traveled_distance);
+            distance_to_hex_boundary(ijkl, j, r0, u, traveled_distance);
         }
       } else {
         distances[6] =
-          distance_to_grid_boundary(ijkl, 6, r0, u, traveled_distance);
+          distance_to_hex_boundary(ijkl, 6, r0, u, traveled_distance);
       }
       // Check if we have left the interior of the mesh
       // Do this by getting new index
@@ -475,7 +477,7 @@ void HexagonalMesh::raytrace_mesh(
       double dist_to_enclosing_cyl = find_r_crossing(r0, u, traveled_distance);
       for (int k = 0; k < n - 1; ++k) {
         distances[k] =
-          distance_to_grid_boundary(ijkl, k, r0, u, dist_to_enclosing_cyl);
+          distance_to_hex_boundary(ijkl, k, r0, u, dist_to_enclosing_cyl);
       }
       // we now need to compare the minimum of the 6 hex surface distances with
       // the z-surface distance and pick the longest of the two.
@@ -498,10 +500,10 @@ void HexagonalMesh::raytrace_mesh(
         return;
 
       // Calculate the new cell index and update all distances to next surfaces.
-      ijkl = get_indices(r0 + (traveled_distance + TINY_BIT) * u, in_mesh);
+      ijkl = get_hexindices(r0 + (traveled_distance + TINY_BIT) * u, in_mesh);
       for (int k = 0; k < n; ++k) {
         distances[k] =
-          distance_to_grid_boundary(ijkl, k, r0, u, traveled_distance);
+          distance_to_hex_boundary(ijkl, k, r0, u, traveled_distance);
       }
 
       // If inside the mesh, Tally inward current

@@ -144,6 +144,12 @@ public:
 
   double volume(const HexMeshIndex& ijkl) const;
 
+  void bins_crossed(Position r0, Position r1, const Direction& u,
+    vector<int>& bins, vector<double>& lengths) const override;
+
+  void surface_bins_crossed(Position r0, Position r1, const Direction& u,
+    vector<int>& bins) const override;
+
 private:
   int init_plane_normals();
 

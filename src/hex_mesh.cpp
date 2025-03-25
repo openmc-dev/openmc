@@ -607,4 +607,65 @@ double HexagonalMesh::volume(const HexMeshIndex& ijkl) const
   return 6 * sqrt(3.0) * 0.25 * size_ * size_ * zdiff;
 }
 
+void HexagonalMesh::bins_crossed(Position r0, Position r1, const Direction& u,
+  vector<int>& bins, vector<double>& lengths) const
+{
+
+  // Helper tally class.
+  // stores a pointer to the mesh class and references to bins and lengths
+  // parameters. Performs the actual tally through the track method.
+  struct TrackAggregator {
+    TrackAggregator(
+      const HexagonalMesh* _mesh, vector<int>& _bins, vector<double>& _lengths)
+      : mesh(_mesh), bins(_bins), lengths(_lengths)
+    {}
+    void surface(const HexMeshIndex& ijkl, int k, bool max, bool inward) const {}
+    void track(const HexMeshIndex& ijkl, double l) const
+    {
+      bins.push_back(mesh->get_bin_from_hexindices(ijkl));
+      lengths.push_back(l);
+    }
+
+    const HexagonalMesh* mesh;
+    vector<int>& bins;
+    vector<double>& lengths;
+  };
+
+  // Perform the mesh raytrace with the helper class.
+  raytrace_mesh(r0, r1, u, TrackAggregator(this, bins, lengths));
+}
+
+void HexagonalMesh::surface_bins_crossed(
+  Position r0, Position r1, const Direction& u, vector<int>& bins) const
+{
+
+  // Helper tally class.
+  // stores a pointer to the mesh class and a reference to the bins parameter.
+  // Performs the actual tally through the surface method.
+  struct SurfaceAggregator {
+    SurfaceAggregator(const HexagonalMesh* _mesh, vector<int>& _bins)
+      : mesh(_mesh), bins(_bins)
+    {}
+    void surface(const HexMeshIndex& ijkl, int k, bool max, bool inward) const
+    {
+      int i_bin =
+        4 * mesh->n_dimension_ * mesh->get_bin_from_hexindices(ijkl) + 4 * k;
+      if (max)
+        i_bin += 2;
+      if (inward)
+        i_bin += 1;
+      bins.push_back(i_bin);
+    }
+    void track(const HexMeshIndex& idx, double l) const {}
+
+    const HexagonalMesh* mesh;
+    vector<int>& bins;
+  };
+
+  // Perform the mesh raytrace with the helper class.
+  raytrace_mesh(r0, r1, u, SurfaceAggregator(this, bins));
+}
+
+
+
 } // namespace openmc

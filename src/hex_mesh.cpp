@@ -156,8 +156,8 @@ HexagonalMesh::HexagonalMesh(pugi::xml_node node)
   // set the plane normals or 3 principal directions in the hex mash
   init_plane_normals();
 
-  // scale basis vectors of hexagonal mesh
-  scale_basis_vectors(size_);
+  // scale grid vectors of hexagonal mesh
+  scale_grid_vectors(size_);
 }
 
 const std::string HexagonalMesh::mesh_type = "hexagonal";
@@ -167,7 +167,7 @@ double HexagonalMesh::volume(const StructuredMesh::MeshIndex& ijk) const
   return element_volume_;
 }
 
-int HexagonalMesh::scale_basis_vectors(double s)
+int HexagonalMesh::scale_grid_vectors(double s)
 {
   // scale basis vectors of hexagonal mesh
   r_ = r_ * s;

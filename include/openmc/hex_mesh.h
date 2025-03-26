@@ -153,7 +153,7 @@ public:
 private:
   int init_plane_normals();
 
-  int scale_basis_vectors(double s);
+  int scale_grid_vectors(double s);
   // needed data members:
   // size_ length of basis vectors
   // hex-basis vectors r_,q_,s_

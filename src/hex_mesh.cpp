@@ -407,7 +407,7 @@ void HexagonalMesh::raytrace_mesh(
   local_coords(r1);
 
   // Calculate initial distances to next surfaces in all three dimensions
-  std::array<HexMeshDistance, 8> distances;
+  std::array<HexMeshDistance, 4> distances;
   for (int k = 0; k < n; ++k) {
     distances[k] = distance_to_hex_boundary(ijkl, k, r0, u, 0.0);
   }
@@ -439,14 +439,14 @@ void HexagonalMesh::raytrace_mesh(
       // now the index has been updated recompute the distances - unfortunately
       // we have to do more than one again (as opposed to for cartesian mesh)
 
-      if (k < 6) {
-        for (int j = 0; j < 6; ++j) {
+      if (k < 3) {
+        for (int j = 0; j < 3; ++j) {
           distances[j] =
             distance_to_hex_boundary(ijkl, j, r0, u, traveled_distance);
         }
       } else {
-        distances[6] =
-          distance_to_hex_boundary(ijkl, 6, r0, u, traveled_distance);
+        distances[3] =
+          distance_to_hex_boundary(ijkl, 3, r0, u, traveled_distance);
       }
       // Check if we have left the interior of the mesh
       // Do this by getting new index
@@ -522,49 +522,59 @@ HexagonalMesh::HexMeshDistance HexagonalMesh::distance_to_hex_boundary(
 
   Position r = r0 - origin_;
   // Given the hex index - we now find the distance from r0 to the 0:q, 1:r, 2:s
-  // plane(s) successively, given that the hex-center is given by the index
-  // triplet and hence also the planes.
+  // plane(s) successively, given that the hex-center is given by the hexindex
+  // quadruplet and hence also the planes.
   Position rh = get_position_from_hexindex(ijkl);
   // local position relative to hex center
   Position rloc = r0 + l * u - rh;
   HexMeshDistance d;
   d.next_index = ijkl;
 
-  if (i < 6) {
-
+  if (i < 3) {
+    if(std::abs(u[0]) + std::abs(u[1]) < FP_PRECISION)
+      return d;
     switch (i) {
     case 0:
-      d.distance = (this->r_ - rloc).dot(this->n0_) / u.dot(this->n0_);
-      d.next_index[0]++;
-      d.next_index[2]--;
+      d.max_surface = n0_.dot(u);
+      if (d.max_surface){
+        d.distance = l + (this->r_ - rloc).dot(this->n0_) / u.dot(this->n0_);
+        d.next_index[0]++;
+        d.next_index[2]--;
+      } else {
+        d.distance = l + (-this->r_ - rloc).dot(this->n0_) / u.dot(this->n0_);
+        d.next_index[0]--;
+        d.next_index[2]++;
+      }
       break;
     case 1:
-      d.distance = (-this->s_ - rloc).dot(this->n1_) / u.dot(this->n1_);
-      d.next_index[1]++;
-      d.next_index[2]--;
+      d.max_surface = n1_.dot(u);
+      if (d.max_surface){
+        d.distance = l + (-this->s_ - rloc).dot(this->n1_) / u.dot(this->n1_);
+        d.next_index[1]++;
+        d.next_index[2]--;
+      } else {
+        d.distance = l + (this->s_ - rloc).dot(this->n1_) / u.dot(this->n1_);
+        d.next_index[1]--;
+        d.next_index[2]++;
+      }
       break;
     case 2:
-      d.distance = (this->q_ - rloc).dot(this->n2_) / u.dot(this->n2_);
-      d.next_index[0]--;
-      d.next_index[1]++;
+      d.max_surface = n2_.dot(u);
+      if (d.max_surface){
+        d.distance = l + (this->q_ - rloc).dot(this->n2_) / u.dot(this->n2_);
+        d.next_index[0]--;
+        d.next_index[1]++;
+      } else {
+        d.distance = l + (-this->q_ - rloc).dot(this->n2_) / u.dot(this->n2_);
+        d.next_index[0]++;
+        d.next_index[1]--;
+      }
       break;
-    case 3:
-      d.distance = (-this->r_ - rloc).dot(this->n0_) / u.dot(this->n0_);
-      d.next_index[0]--;
-      d.next_index[2]++;
-      break;
-    case 4:
-      d.distance = (this->s_ - rloc).dot(this->n1_) / u.dot(this->n1_);
-      d.next_index[1]--;
-      d.next_index[2]++;
-      break;
-    case 5:
-      d.distance = (-this->q_ - rloc).dot(this->n2_) / u.dot(this->n2_);
-      d.next_index[0]++;
-      d.next_index[1]--;
-      break;
-    };
+    }
   } else {
+    if (std::abs(u[2])<FP_PRECISION){
+      return d;
+    }
     // Z-planes z-index has index 3 (nr 4) in ijkl.
     d.max_surface = (u[2] > 0);
     if (d.max_surface) {

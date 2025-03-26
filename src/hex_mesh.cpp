@@ -181,6 +181,11 @@ int HexagonalMesh::init_plane_normals()
   n0_ = 0.5 * (r_ + q_ * 0.5);
   n1_ = 0.5 * (-s_ - r_ * 0.5);
   n2_ = 0.5 * (q_ + s_ * 0.5);
+
+  n0_ /= n0_.norm();
+  n1_ /= n1_.norm();
+  n2_ /= n2_.norm();
+
   return 0;
 }
 
@@ -265,9 +270,11 @@ int HexagonalMesh::get_index_in_direction(double r, int i) const
 Position HexagonalMesh::get_position_from_hexindex(HexMeshIndex ijkl) const
 {
   // return the cartesian position of center of a hexagon indexed by ijkl
+  // Note thet we have to use the plane normals as basis vectors, as opposed to the
+  // grid vectors (r, q, s)
   Position r;
-  r.x = ijkl[0] * r_[0] * width_[0] + ijkl[1] * q_[0] * width_[0];
-  r.y = ijkl[0] * r_[1] * width_[0] + ijkl[1] * q_[1] * width_[0];
+  r.x = ijkl[0] * n0_[0] * size_*sqrt(3) + ijkl[1] * n1_[0] * size_*sqrt(3);
+  r.y = ijkl[0] * n0_[1] * size_*sqrt(3) + ijkl[1] * n1_[1] * size_*sqrt(3);
   r.z = ijkl[3] * width_[1];
 
   return r;
@@ -310,9 +317,9 @@ Position HexagonalMesh::sample_element(
   double q_r = uniform_distribution(0, 1, seed);
 
   double x =
-    this->r_[0] * (r_r + (ijkl[0] - 1)) + this->q_[0] * (q_r + (ijkl[1] - 1));
+    this->n0_[0] * (r_r + (ijkl[0] - 1)) * width_[0] + this->n1_[0] * (q_r + (ijkl[1] - 1)) * width_[0];
   double y =
-    this->r_[1] * (r_r + (ijkl[0] - 1)) + this->q_[1] * (q_r + (ijkl[1] - 1));
+    this->n0_[1] * (r_r + (ijkl[0] - 1)) * width_[0] + this->n1_[1] * (q_r + (ijkl[1] - 1)) * width_[0];
 
   double z = uniform_distribution(-width_[1] / 2.0, width_[1] / 2.0, seed);
 

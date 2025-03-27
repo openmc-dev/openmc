@@ -403,7 +403,7 @@ of the population of a tally decreases with the number of particles simulated:
 .. math::
     :label: figure_of_merit
 
-    FOM = \frac{1}{t \cdot r^2} = \frac{N}{t \cdot S^2} \cdot \bar{x}^2 .
+    FOM = \frac{1}{t \cdot r^2} = \frac{N}{t \cdot s^2} \cdot \bar{x}^2 .
 
 where t corresponds to the computer time of the simulation. It is defined as the simulation 
 time multiplied by the number of threads used in the simulation. It is important to note that 

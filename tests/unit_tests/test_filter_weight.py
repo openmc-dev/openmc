@@ -44,7 +44,7 @@ def test_weightfilter():
 
     # Get current binned by mu
     with openmc.StatePoint(sp_filename) as sp:
-        neutron_flux = sp.tallies[tally.id].mean.reshape(48, 8)
+        neutron_flux = sp.tallies[tally.id].mean[:,0,0].reshape(48, 8)
 
     # All contributions should show up in last bin
     for i in range(48):

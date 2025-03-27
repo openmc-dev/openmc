@@ -20,7 +20,7 @@ def test_random_ray_diagonal_stabilization():
     # Start with a normal continuous energy model
     model = pwr_pin_cell()
 
-    # Convert to a multi-group model, with 40 group XS
+    # Convert to a multi-group model, with 70 group XS
     # and transport correction enabled. This will generate
     # MGXS data with some negatives on the diagonal, in order
     # to trigger diagonal correction.

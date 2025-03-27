@@ -87,9 +87,9 @@ that, consider the following:
 Debugging Tests in CI
 ---------------------
 
-.. _tmate: <https://github.com/mxschmitt/action-tmate?tab=readme-ov-file#debug-your-github-actions-by-using-tmate>`_
-
-Tests can be debugged in CI using a feature called `tmate`_. CI debugging can be
+Tests can be debugged in CI using a feature called 
+`tmate <https://github.com/mxschmitt/action-tmate?tab=readme-ov-file#debug-your-github-actions-by-using-tmate>`_. 
+CI debugging can be
 enabled by including "[gha-debug]" in the commit message. When the test fails, a
 link similar to the one shown below will be provided in the GitHub Actions
 output after failure occurs. Logging into the provided link will allow you to

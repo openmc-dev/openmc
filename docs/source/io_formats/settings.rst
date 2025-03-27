@@ -81,6 +81,13 @@ time.
 
     *Default*: 1.0
 
+  :survival_normalization:
+    If this element is set to "true", this will enable the use of survival
+    biasing source normalization, whereby the weight parameters, weight and
+    weight_avg, are multiplied per history by the start weight of said history.
+
+    *Default*: false
+
   :energy_neutron:
     The energy under which neutrons will be killed.
 
@@ -238,7 +245,7 @@ based on the recommended value in LA-UR-14-24530_.
 
   .. note:: This element is not used in the multi-group :ref:`energy_mode`.
 
-.. _LA-UR-14-24530: https://laws.lanl.gov/vhosts/mcnp.lanl.gov/pdf_files/la-ur-14-24530.pdf
+.. _LA-UR-14-24530: https://mcnp.lanl.gov/pdf_files/TechReport_2014_LANL_LA-UR-14-24530_Brown.pdf
 
 ---------------------------
 ``<material_cell_offsets>``
@@ -463,6 +470,24 @@ found in the :ref:`random ray user guide <random_ray>`.
 
     *Default*: prng
 
+  :source_region_meshes:
+    Relates meshes to spatial domains for subdividing source regions with each domain.
+
+    :mesh:
+      Contains an ``id`` attribute and one or more ``<domain>`` sub-elements.
+
+      :id:
+        The unique identifier for the mesh.
+
+      :domain:
+        Each domain element has an ``id`` attribute and a ``type`` attribute.
+
+        :id:
+          The unique identifier for the domain.
+
+        :type:
+          The type of the domain. Can be ``material``, ``cell``, or ``universe``.
+
 ----------------------------------
 ``<resonance_scattering>`` Element
 ----------------------------------
@@ -537,6 +562,15 @@ The ``seed`` element is used to set the seed used for the linear congruential
 pseudo-random number generator.
 
   *Default*: 1
+
+--------------------
+``<stride>`` Element
+--------------------
+
+The ``stride`` element is used to specify how many random numbers are allocated
+for each source particle history.
+
+  *Default*: 152,917
 
 .. _source_element:
 

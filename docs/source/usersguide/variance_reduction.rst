@@ -130,9 +130,15 @@ random ray mode can be found in the :ref:`Random Ray User Guide <random_ray>`.
 
 .. warning::
     If using FW-CADIS weight window generation, ensure that the selected weight
-    window mesh does not subdivide any cells in the problem. In the future, this
-    restriction is intended to be relaxed, but for now subdivision of cells by a
-    mesh tally will result in undefined behavior.
+    window mesh does not subdivide any source regions in the problem. This can
+    be ensured by assigning the weight window tally mesh to the root universe so
+    as to create source region boundaries that conform to the mesh, as in the
+    example below.
+
+::
+    
+    root = model.geometry.root_universe    
+    settings.random_ray['source_region_meshes'] = [(ww_mesh, [root])]
 
 6. When running your multigroup random ray input deck, OpenMC will automatically
    run a forward solve followed by an adjoint solve, with a

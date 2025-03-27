@@ -23,6 +23,7 @@ The current version of the statepoint file format is 18.1.
                bank is present (1) or not (0).
 
 :Datasets: - **seed** (*int8_t*) -- Pseudo-random number generator seed.
+           - **stride** (*uint64_t*) -- Pseudo-random number generator stride.
            - **energy_mode** (*char[]*) -- Energy mode of the run, either
              'continuous-energy' or 'multi-group'.
            - **run_mode** (*char[]*) -- Run mode used, either 'eigenvalue' or

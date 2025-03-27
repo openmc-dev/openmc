@@ -381,7 +381,6 @@ class Settings:
         self._tabular_legendre = {}
 
         self._temperature = {}
-        self._random_sample_xs = {}
 
         # Cutoff subelement
         self._cutoff = None
@@ -1114,32 +1113,6 @@ class Settings:
         cv.check_type('maximum particle tracks', value, Integral)
         cv.check_greater_than('maximum particle tracks', value, 0, True)
         self._max_tracks = value
-    
-    @property
-    def EMC(self) -> bool:
-        return self._EMC
-
-    @EMC.setter
-    def EMC(self, value):
-        self._EMC = bool(value)
-
-    @property
-    def random_sample_xs(self):
-        return self._random_sample_xs
-
-    @random_sample_xs.setter
-    def random_sample_xs(self, value):
-        if not isinstance(value, dict):
-            raise TypeError('random_sample_xs must be a dictionary')
-        for key, val in value.items():
-            if not isinstance(key, str):
-                raise TypeError('Nuclide names must be strings')
-            if not isinstance(val, list):
-                raise TypeError('Cross section types must be provided as a list')
-            for xs_type in val:
-                if not isinstance(xs_type, str):
-                    raise TypeError('Cross section types must be strings')
-        self._random_sample_xs = value
 
     @property
     def weight_windows_file(self) -> PathLike | None:
@@ -1649,16 +1622,7 @@ class Settings:
             elem = ET.SubElement(root, "max_tracks")
             elem.text = str(self._max_tracks)
 
-<<<<<<< HEAD
-    def _create_EMC_subelement(self, root):
-        if self._EMC is not None:
-            elem = ET.SubElement(root, "EMC")
-            elem.text = str(self._EMC)
-
-    def _create_random_ray_subelement(self, root):
-=======
     def _create_random_ray_subelement(self, root, mesh_memo=None):
->>>>>>> upstream/develop
         if self._random_ray:
             element = ET.SubElement(root, "random_ray")
             for key, value in self._random_ray.items():
@@ -2048,23 +2012,7 @@ class Settings:
         text = get_text(root, 'max_tracks')
         if text is not None:
             self.max_tracks = int(text)
-
-    def _EMC_from_xml_element(self,root):
-        text = get_text(root, 'EMC')
-        if text is not None:
-            self.EMC = text in ('true', '1')
-    
-    def _create_random_sample_xs_subelement(self, root):
-        if self.random_sample_xs:
-            element = ET.SubElement(root, "random_sample_xs")
-            for nuclide, xs_types in self.random_sample_xs.items():
-                nuclide_element = ET.SubElement(element, "nuclide")
-                name_element = ET.SubElement(nuclide_element, "name")
-                name_element.text = nuclide
-                for xs_type in xs_types:
-                    xs_element = ET.SubElement(nuclide_element, "xs")
-                    xs_element.text = xs_type
-
+            
     def _random_ray_from_xml_element(self, root):
         elem = root.find('random_ray')
         if elem is not None:

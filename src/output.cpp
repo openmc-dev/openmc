@@ -500,7 +500,7 @@ void print_runtime()
 std::pair<double, double> mean_stdev(const double* x, int n)
 {
   double mean = x[static_cast<int>(TallyResult::SUM)] / n;
-  double stdev = 
+  double stdev =
     n > 1 ? std::sqrt(std::max(0.0,
               (x[static_cast<int>(TallyResult::SUM_SQ)] / n - mean * mean) /
                 (n - 1)))

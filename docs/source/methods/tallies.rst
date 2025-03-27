@@ -395,7 +395,7 @@ possible to obtain the estimated relative error which is given by the following 
 .. math::
     :label: relative_error
 
-    r = \frac{s_{\bar{X}}^2}{\bar{x}} = \frac{s^2}{N (\bar{x})^2}.
+    r = \frac{s_{\bar{X}}^2}{\bar{x}} = \frac{s^2}{N \bar{x}^2}.
 
 The figure of merit is a tally reliability indicator that represents how quickly the variance
 of the population of a tally decreases with the number of particles simulated:
@@ -403,9 +403,9 @@ of the population of a tally decreases with the number of particles simulated:
 .. math::
     :label: figure_of_merit
 
-    FOM = \frac{1}{t \cdot r^2} = \frac{N}{t \cdot S^2} \cdot (\bar{x})^2 .
+    FOM = \frac{1}{t \cdot r^2} = \frac{N}{t \cdot S^2} \cdot \bar{x}^2 .
 
-where $t$ corresponds to the computer time of the simulation. It is defined as the simulation 
+where t corresponds to the computer time of the simulation. It is defined as the simulation 
 time multiplied by the number of threads used in the simulation. It is important to note that 
 in this case N corresponds to the number of independent realizations (batches) and not the
 number of particles simulated. If the FOM is not approximately constant, the confidence intervals 

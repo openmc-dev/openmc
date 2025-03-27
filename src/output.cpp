@@ -516,24 +516,6 @@ std::pair<double, double> mean_stdev(const double* x, int n)
   return {mean, stdev};
 }
 
-
-double figure_of_merit(const double* x, int n)
-{
-  using namespace simulation;
-  
-  double mean,stdev;
-  std::tie(mean, stdev) = mean_stdev(x, n);
-  double relative_error = stdev / mean;
-
-  // total time of the simulation multiplied by the number of threads used  
-  double computer_time = (time_inactive.elapsed() + time_active.elapsed())*omp_get_max_threads(); 
-  
-  double fom = 1.0 / (computer_time*relative_error*relative_error);
-
-  return fom;
-
-}
-
 //==============================================================================
 
 void print_results()
@@ -629,8 +611,7 @@ void write_tallies()
     return;
 
   // Set filename for tallies_out
-  //std::string filename = fmt::format("{}tallies.out", settings::path_output);
-  std::string filename = fmt::format("{}tallies_{}_{}.out", settings::path_output, settings::n_batches, settings::n_particles);
+  std::string filename = fmt::format("{}tallies.out", settings::path_output);
   // Open the tallies.out file.
   std::ofstream tallies_out;
   tallies_out.open(filename, std::ios::out | std::ios::trunc);
@@ -722,29 +703,20 @@ void write_tallies()
           }
         }
 
-        // Write the score, mean, uncertainty and fom.
-       indent += 3;
+        // Write the score, mean, and uncertainty.
+        indent += 2;
         for (auto score : tally.scores_) {
           std::string score_name =
             score > 0 ? reaction_name(score) : score_names.at(score);
           double mean, stdev;
-          std::vector<double> numerator_contributions;
-          std::vector<double> denominator_contributions;
           std::tie(mean, stdev) =
             mean_stdev(&tally.results_(filter_index, score_index, 0),
               tally.n_realizations_);
-
-          if (tally.fom_){
-            double fom = figure_of_merit(&tally.results_(filter_index, score_index, 0), tally.n_realizations_);
-            fmt::print(tallies_out, "{0:{1}}{2:<36} {3:.6} +/- {4:.6} -- FOM: {5:.6}\n", "",
-              indent + 1, score_name, mean, stdev / mean, fom); 
-          } else {
-            fmt::print(tallies_out, "{0:{1}}{2:<36} {3:.6} +/- {4:.6}\n", "",
+          fmt::print(tallies_out, "{0:{1}}{2:<36} {3:.6} +/- {4:.6}\n", "",
             indent + 1, score_name, mean, t_value * stdev);
-          }
           score_index += 1;
         }
-        indent -= 3;
+        indent -= 2;
       }
     }
   }

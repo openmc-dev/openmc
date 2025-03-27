@@ -57,8 +57,6 @@ class Tally(IDManagerMixin):
         Name of the tally
     multiply_density : bool
         Whether reaction rates should be multiplied by atom density
-    VOV : bool
-        Whether the tally will accumulate sum third and sum fourth for each tally bin
     FOM : bool
         Whether the tally will accumulate compute the figure of merit for each tally bin
     
@@ -123,15 +121,14 @@ class Tally(IDManagerMixin):
         self._triggers = cv.CheckedList(openmc.Trigger, 'tally triggers')
         self._derivative = None
         self._multiply_density = True
-        self._vov = None
         self._fom = None
         self._FOM = None
-        
-
+    
         self._num_realizations = 0
         self._with_summary = False
 
         self._simulation_time = None
+        self._number_of_threads = None
         self._sum = None
         self._sum_sq = None
         self._mean = None
@@ -186,7 +183,6 @@ class Tally(IDManagerMixin):
         parts.append('{: <15}=\t{}'.format('Scores', self.scores))
         parts.append('{: <15}=\t{}'.format('Estimator', self.estimator))
         parts.append('{: <15}=\t{}'.format('Multiply dens.', self.multiply_density))
-        parts.append('{: <15}=\t{}'.format('VOV', self.vov))
         parts.append('{: <15}=\t{}'.format('FOM', self.fom))
         return '\n\t'.join(parts)
 
@@ -207,15 +203,6 @@ class Tally(IDManagerMixin):
     def multiply_density(self, value):
         cv.check_type('multiply density', value, bool)
         self._multiply_density = value
-
-    @property
-    def vov(self):
-        return self._vov
-    
-    @vov.setter
-    def vov(self, value):
-        cv.check_type('VOV', value, bool)
-        self._vov = value
 
     @property
     def fom(self):
@@ -395,6 +382,8 @@ class Tally(IDManagerMixin):
 
             runtime_group = f["runtime"]
             self._simulation_time = runtime_group["simulation"][()]
+            self._number_of_threads = runtime_group["threads"][()]
+
 
         # Indicate that Tally results have been read
         self._results_read = True
@@ -489,8 +478,11 @@ class Tally(IDManagerMixin):
             self._FOM = np.zeros_like(self.mean)
 
             relative_error = self.std_dev[nonzero] / self.mean[nonzero]
-            self._FOM[nonzero] = 1 / (relative_error * relative_error * self._simulation_time)
-            
+            print('Relative error:', f"{relative_error[0]:.15f}")
+            print('Simulation time:', self._simulation_time)
+            print(' Number of threads used:', self._number_of_threads)
+            self._FOM[nonzero] = 1 / (relative_error * relative_error * self._simulation_time * self._number_of_threads)
+            print('Figure of merit',self._FOM[nonzero])
             # Convert NumPy array to SciPy sparse LIL matrix
             if self.sparse:
                 self._FOM = sps.lil_matrix(self._FOM.flatten(),
@@ -982,15 +974,10 @@ class Tally(IDManagerMixin):
             subelement = ET.SubElement(element, "derivative")
             subelement.text = str(self.derivative.id)
 
-        # Optional VOV
-        if self.vov:
-            vov_element = ET.SubElement(element, "VOV")
-            vov_element.text = str(self.vov).lower()
-
         # Optional FOM
         if self.fom:
-            fom_element = ET.SubElement(element, "FOM")
-            fom_element.text = str(self.fom).lower()
+            FOM_element = ET.SubElement(element, "FOM")
+            FOM_element.text = str(self.fom).lower()
 
         return element
 
@@ -1033,10 +1020,6 @@ class Tally(IDManagerMixin):
         text = get_text(elem, 'multiply_density')
         if text is not None:
             tally.multiply_density = text in ('true', '1')
-
-        text = get_text(elem, 'VOV')
-        if text is None:
-            tally.vov = text in ('true', '1')
 
         text = get_text(elem, 'FOM')
         if text is None:

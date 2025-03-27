@@ -101,14 +101,6 @@ Tally::Tally(pugi::xml_node node)
     multiply_density_ = get_node_value_bool(node, "multiply_density");
   }
 
-  if (check_for_node(node, "VOV")) {
-    vov_ = get_node_value_bool(node, "VOV");
-  }
-
-  if (check_for_node(node, "FOM")) {
-    fom_ = get_node_value_bool(node, "FOM");
-  }
-
   // =======================================================================
   // READ DATA FOR FILTERS
 

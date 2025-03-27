@@ -43,10 +43,6 @@ public:
 
   void set_writable(bool writable) { writable_ = writable; }
 
-  void set_vov(bool vov) { vov_ = vov; }
-
-  void set_fom(bool fom) { fom_ = fom; }
-
   void set_scores(pugi::xml_node node);
 
   void set_scores(const vector<std::string>& scores);
@@ -168,13 +164,7 @@ public:
 
   //! True if this tally should be written to statepoint files
   bool writable_ {true};
-
-  //! Whether to calculate variance of variance and accumulate sum third and sum fourth
-  bool vov_ {false};
-
-  //! Whether to calculate figure of merit
-  bool fom_ {false};
-
+  
   //----------------------------------------------------------------------------
   // Miscellaneous public members.
 

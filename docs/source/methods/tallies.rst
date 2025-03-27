@@ -387,6 +387,31 @@ of this is that the longer you run a simulation, the better you know your
 results. Therefore, by running a simulation long enough, it is possible to
 reduce the stochastic uncertainty to arbitrarily low levels.
 
+Figure of merit
+++++++++++++++++++++
+Using the unbiased variance of the estimated mean and the mean of a sample, it is 
+possible to obtain the estimated relative error which is given by the following formula:
+
+.. math::
+    :label: relative_error
+
+    r = \frac{s_{\bar{X}}^2}{\bar{x}} = \frac{s^2}{N (\bar{x})^2}.
+
+The figure of merit is a tally reliability indicator that represents how quickly the variance
+of the population of a tally decreases with the number of particles simulated:
+
+.. math::
+    :label: figure_of_merit
+
+    FOM = \frac{1}{t \cdot r^2} = \frac{N}{t \cdot S^2} \cdot (\bar{x})^2 .
+
+where $t$ corresponds to the computer time of the simulation. It is defined as the simulation 
+time multiplied by the number of threads used in the simulation. It is important to note that 
+in this case N corresponds to the number of independent realizations (batches) and not the
+number of particles simulated. If the FOM is not approximately constant, the confidence intervals 
+may not overlap the expected value of the tally.
+
+
 Confidence Intervals
 ++++++++++++++++++++
 

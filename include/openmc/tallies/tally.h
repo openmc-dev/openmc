@@ -162,7 +162,6 @@ public:
 
   //! True if this tally should be written to statepoint files
   bool writable_ {true};
-  
   //----------------------------------------------------------------------------
   // Miscellaneous public members.
 

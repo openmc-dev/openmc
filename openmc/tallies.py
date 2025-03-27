@@ -405,7 +405,6 @@ class Tally(IDManagerMixin):
             self._simulation_time = runtime_group["simulation"][()]
             self._number_of_threads = runtime_group["threads"][()]
 
-
         # Indicate that Tally results have been read
         self._results_read = True
 

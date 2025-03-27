@@ -928,7 +928,6 @@ void reduce_tally_results()
       } else {
         values_view = 0.0;
       }
-      
     }
   }
 

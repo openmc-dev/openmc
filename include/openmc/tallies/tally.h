@@ -118,9 +118,7 @@ public:
   void reset();
 
   void accumulate();
-
-  void accumulate_vov();
-
+  
   //! return the index of a score specified by name
   int score_index(const std::string& score) const;
 

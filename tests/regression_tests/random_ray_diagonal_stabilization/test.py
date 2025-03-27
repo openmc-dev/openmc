@@ -27,14 +27,14 @@ def test_random_ray_diagonal_stabilization():
     model.convert_to_multigroup(method='material_wise',
                                 groups=EnergyGroups(
                                     GROUP_STRUCTURES['CASMO-70']),
-                                nparticles=14, overwrite_mgxs_library=True,
+                                nparticles=30, overwrite_mgxs_library=True,
                                 mgxs_fname="mgxs.h5", correction='P0')
 
     # Convert to a random ray model
     model.convert_to_random_ray()
 
     # Set the number of particles
-    model.settings.particles = 40
+    model.settings.particles = 100
 
     # Overlay a basic 2x2 mesh
     n = 2

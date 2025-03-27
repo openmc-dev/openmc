@@ -1860,13 +1860,13 @@ class Model:
         if not Path(mgxs_fname).is_file() or overwrite_mgxs_library:
             if method == "infinite_medium":
                 self._generate_infinite_medium_mgxs(
-                    groups, nparticles, mgxs_fname)
+                    groups, nparticles, mgxs_fname, correction)
             elif method == "material_wise":
                 self._generate_material_wise_mgxs(
                     groups, nparticles, mgxs_fname, correction)
             elif method == "stochastic_slab":
                 self._generate_stochastic_slab_mgxs(
-                    groups, nparticles, mgxs_fname)
+                    groups, nparticles, mgxs_fname, correction)
             else:
                 raise ValueError(
                     f"MGXS generation method \"{method}\" not recognized")

@@ -30,6 +30,7 @@ RandomRayVolumeEstimator FlatSourceDomain::volume_estimator_ {
   RandomRayVolumeEstimator::HYBRID};
 bool FlatSourceDomain::volume_normalized_flux_tallies_ {false};
 bool FlatSourceDomain::adjoint_ {false};
+double diagonal_stabilization_rho_ {1.0};
 std::unordered_map<int, vector<std::pair<Source::DomainType, int>>>
   FlatSourceDomain::mesh_domain_map_;
 
@@ -1463,15 +1464,15 @@ void FlatSourceDomain::apply_transport_stabilization()
         double phi_new = source_regions_.scalar_flux_new(sr, g);
         double phi_old = source_regions_.scalar_flux_old(sr, g);
 
-        // Equation 18 in the above Gunow et al. 2019 paper. We hard code
-        // rho to 1.0 as this ensures there are no negative diagonal elements
+        // Equation 18 in the above Gunow et al. 2019 paper. For a default
+        // rho of 1.0, this ensures there are no negative diagonal elements
         // in the iteration matrix. A lesser rho could be used (or exposed
-        // as a user input parameter) to reduce the negative impact on convergence
-        // rate though would need to be experimentally tested to see if it doesn't
-        // become unstable. rho = 1.0 is good as it gives the highest assurance of
-        // stability, and the impacts on convergence rate are pretty mild. 
-        constexpr double rho = 1.0;
-        double D = rho * sigma_s / sigma_t;
+        // as a user input parameter) to reduce the negative impact on
+        // convergence rate though would need to be experimentally tested to see
+        // if it doesn't become unstable. rho = 1.0 is good as it gives the
+        // highest assurance of stability, and the impacts on convergence rate
+        // are pretty mild.
+        double D = diagonal_stabilization_rho_ * sigma_s / sigma_t;
 
         // Equation 16 in the above Gunow et al. 2019 paper
         source_regions_.scalar_flux_new(sr, g) =

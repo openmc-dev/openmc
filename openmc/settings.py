@@ -187,6 +187,17 @@ class Settings:
             or openmc.Universe. The mesh will be applied to the listed domains
             to subdivide source regions so as to improve accuracy and/or conform
             with tally meshes.
+        :diagonal_stabilization_rho:
+            The rho factor for use with diagonal stabilization. This technique is
+            applied when negative diagonal (in-group) elements are detected in
+            the scattering matrix of input MGXS data, which is a common feature
+            of transport corrected MGXS data. The default is 1.0, which ensures
+            no negative diagonal elements are present in the iteration matrix and
+            thus stabilizes the simulation. A value of 0.0 will disable diagonal
+            stabilization. Values between 0.0 and 1.0 will apply a degree of
+            stabilization, which may be desirable as stronger diagonal stabilization
+            also tends to dampen the convergence rate of the solver, thus requiring
+            more iterations to converge.
 
         .. versionadded:: 0.15.0
     resonance_scattering : dict
@@ -1178,6 +1189,10 @@ class Settings:
             elif key == 'sample_method':
                 cv.check_value('sample method', value,
                                ('prng', 'halton'))
+            elif key == 'diagonal_stabilization_rho':
+                cv.check_type('diagonal stabilization rho', value, Real)
+                cv.check_greater_than('diagonal stabilization rho',
+                                      value, 0.0, True)
             else:
                 raise ValueError(f'Unable to set random ray to "{key}" which is '
                                  'unsupported by OpenMC')
@@ -2019,7 +2034,7 @@ class Settings:
         if elem is not None:
             self.random_ray = {}
             for child in elem:
-                if child.tag in ('distance_inactive', 'distance_active'):
+                if child.tag in ('distance_inactive', 'distance_active', 'diagonal_stabilization_rho'):
                     self.random_ray[child.tag] = float(child.text)
                 elif child.tag == 'source':
                     source = SourceBase.from_xml_element(child)

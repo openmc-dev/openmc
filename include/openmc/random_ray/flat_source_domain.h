@@ -72,6 +72,9 @@ public:
   // Static Data members
   static bool volume_normalized_flux_tallies_;
   static bool adjoint_; // If the user wants outputs based on the adjoint flux
+  static double
+    diagonal_stabilization_rho_; // Adjusts strength of diagonal stabilization
+                                 // for transport corrected MGXS data
 
   // Static variables to store source region meshes and domains
   static std::unordered_map<int, vector<std::pair<Source::DomainType, int>>>
@@ -128,6 +131,12 @@ public:
   std::unordered_map<SourceRegionKey, int64_t, SourceRegionKey::HashFunctor>
     source_region_map_;
 
+  // If transport corrected MGXS data is being used, there may be negative
+  // in-group scattering cross sections which can result in instability in MOC
+  // and random ray if used naively. This flag enables a stabilization
+  // technique.
+  bool is_transport_stabilization_needed_ {false};
+
 protected:
   //----------------------------------------------------------------------------
   // Methods
@@ -157,13 +166,7 @@ protected:
   // results tensor in the Tally class, though without the third dimension, as
   // SUM and SUM_SQ do not need to be tracked.
   vector<xt::xtensor<double, 2>> tally_volumes_;
-
-  // If transport corrected MGXS data is being used, there may be negative
-  // in-group scattering cross sections which can result in instability in MOC
-  // and random ray if used naively. This flag enables a stabilization
-  // technique.
-  bool is_transport_stabilization_needed_ {false};
-
+  
 }; // class FlatSourceDomain
 
 //============================================================================

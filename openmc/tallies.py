@@ -16,7 +16,7 @@ import scipy.sparse as sps
 import openmc
 import openmc.checkvalue as cv
 from ._xml import clean_indentation, reorder_attributes, get_text
-from .mixin import IDManagerMixin
+from .mixin import IDManagerMixinf
 from .mesh import MeshBase
 
 
@@ -551,8 +551,6 @@ class Tally(IDManagerMixin):
             # Ensure the shapes match
             numerator = np.reshape(numerator, self._VOV[nonzero].shape)
             denominator = np.reshape(denominator, self._VOV[nonzero].shape)
-
-            
             
             print(numerator.shape)
             print(denominator.shape)

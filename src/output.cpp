@@ -729,7 +729,7 @@ void write_tallies()
           double mean, stdev;
             mean_stdev(&tally.results_(filter_index, score_index, 0),
               tally.n_realizations_);
-          if (tally.vov_) {
+          if (openmc::model::vov_) {
             double vov = variance_of_variance(&tally.results_(filter_index, score_index, 0),tally.n_realizations_);
             fmt::print(tallies_out, "{0:{1}}{2:<36} {3:.6} +/- {4:.6} -- VOV: {5:.6}\n", "",
               indent + 1, score_name, mean, stdev / mean, vov);

@@ -61,6 +61,7 @@ vector<int> active_meshsurf_tallies;
 vector<int> active_surface_tallies;
 vector<int> active_pulse_height_tallies;
 vector<int> pulse_height_cells;
+bool vov_ = false;
 } // namespace model
 
 namespace simulation {
@@ -103,7 +104,7 @@ Tally::Tally(pugi::xml_node node)
   }
 
   if (check_for_node(node, "VOV")) {
-    vov_ = get_node_value_bool(node, "VOV");
+    openmc::model::vov_ = get_node_value_bool(node, "VOV");
   }
 
   // =======================================================================
@@ -739,7 +740,7 @@ void Tally::init_results()
   // Modifications to the results array size to accumulate sum_third and sum_fourth
   int n_scores = scores_.size() * nuclides_.size();
   // TO DO: allocate the correct size for the results array during initialization
-  if (vov_)
+  if (openmc::model::vov_)
   {
     results_ = xt::empty<double>({n_filter_bins_, n_scores, 5});
   }
@@ -971,7 +972,7 @@ void reduce_tally_results()
       // Make copy of tally values in contiguous array
       // TO DO: allocate the correct size for the values array during initialization
 
-      if (tally->vov_){
+      if (openmc::model::vov_){
         xt::xtensor<double, 4> values = values_view;
         xt::xtensor<double, 4> values_reduced = xt::empty_like(values);
 
@@ -1079,7 +1080,7 @@ void accumulate_tallies()
   // Accumulate results for each tally
   for (int i_tally : model::active_tallies) {
     auto& tally {model::tallies[i_tally]};
-    if (tally->vov_){
+    if (openmc::model::vov_){
       tally->accumulate_vov();
     } else {
       tally->accumulate();

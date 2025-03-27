@@ -643,7 +643,8 @@ example is given below::
   groups = openmc.mgxs.EnergyGroups(openmc.mgxs.GROUP_STRUCTURES['CASMO-2'])
 
   model.convert_to_multigroup(method=method, groups=groups, nparticles=2000,
-                              overwrite_mgxs_library=False, mgxs_fname="mgxs.h5")
+                              overwrite_mgxs_library=False, mgxs_fname="mgxs.h5",
+                              correction=None)
 
 The most important parameter to set is the ``method`` parameter, which can be
 either "stochastic_slab", "material_wise", or "infinite_medium". An overview
@@ -688,8 +689,21 @@ of these methods is given below:
 When selecting a non-default energy group structure, you can manually define
 group boundaries or pick out a group structure already known to OpenMC (a list
 of which can be found at :class:`openmc.mgxs.GROUP_STRUCTURES`). The
-``nparticles`` parameter can be adjusted upward to improve the fidelity of
-the generated cross section library.
+``nparticles`` parameter can be adjusted upward to improve the fidelity of the
+generated cross section library. The ``correction`` parameter can be set to
+``"P0"`` to enable P0 transport correction. The ``overwrite_mgxs_library``
+parameter can be set to ``True`` to overwrite an existing MGXS library file, or
+``False`` to skip generation and use an existing library file. 
+
+.. note::
+    MGXS transport correction (via setting the ``correction`` parameter in the
+    :attr:`openmc.model.Model.convert_to_multigroup()` method to ``"P0"``) may
+    result in negative in-group scattering cross sections, which can cause
+    numerical instability. To mitigate this, during a random ray solve OpenMC
+    will automatically apply 
+    `diagonal stabilization <https://doi.org/10.1016/j.anucene.2018.10.036>`_
+    with a :math:`\rho` default value of 1.0, which can be adjusted with the
+    ``settings.random_ray['diagonal_stabilization_rho']`` parameter.
 
 Ultimately, the methods described above are all just approximations.
 Approximations in the generated MGXS data will fundamentally limit the potential

@@ -107,15 +107,45 @@ def test_tally_application(sphere_model, run_in_tmpdir):
     tally.fom = True
     sphere_model.tallies = [tally]
 
+    # FIRST RUN
     # run the simulation and apply results
     sp_file = sphere_model.run(apply_tally_results=True)
+    # before calling for any property requiring results (including the equivalence check below),
+    # the following internal attributes of the original should be unset
+    assert tally._mean is None
+    assert tally._std_dev is None
+    assert tally._sum is None
+    assert tally._sum_sq is None
+    assert tally._num_realizations == 0
+    # the statepoint file property should be set, however
+    assert tally._sp_filename == sp_file
+
     with openmc.StatePoint(sp_file) as sp:
         assert tally in sp.tallies.values()
         sp_tally = sp.tallies[tally.id]
 
     # at this point the tally information regarding results should be the same
-    assert (sp_tally.mean == tally.mean).all()
     assert (sp_tally.std_dev == tally.std_dev).all()
+    assert (sp_tally.mean == tally.mean).all()
     assert (sp_tally.fom == tally.fom).all()
     assert sp_tally.nuclides == tally.nuclides
 
+    # SECOND RUN
+    # change the number of particles and ensure that the results are different
+    sphere_model.settings.particles += 1
+    sp_file = sphere_model.run(apply_tally_results=True)
+
+    assert (sp_tally.std_dev != tally.std_dev).any()
+    assert (sp_tally.mean != tally.mean).any()
+
+    # now re-read data from the new stateopint file and
+    # ensure that the new results match those in
+    # the latest statepoint
+    with openmc.StatePoint(sp_file) as sp:
+        assert tally in sp.tallies.values()
+        sp_tally = sp.tallies[tally.id]
+
+    # at this point the tally information regarding results should be the same
+    assert (sp_tally.std_dev == tally.std_dev).all()
+    assert (sp_tally.mean == tally.mean).all()
+    assert sp_tally.nuclides == tally.nuclides

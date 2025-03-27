@@ -7,7 +7,6 @@
 #include "openmc/vector.h"
 
 #include "xtensor/xtensor.hpp"
-#include <gsl/gsl-lite.hpp>
 #include <hdf5.h>
 
 #include <string>
@@ -61,7 +60,7 @@ public:
   // Data members
   std::string name_; //!< Name of element, e.g. "Zr"
   int Z_;            //!< Atomic number
-  gsl::index index_; //!< Index in global elements vector
+  int64_t index_;    //!< Index in global elements vector
 
   // Microscopic cross sections
   xt::xtensor<double, 1> energy_;

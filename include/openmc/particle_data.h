@@ -49,6 +49,9 @@ struct SourceSite {
   int delayed_group {0};
   int surf_id {0};
   ParticleType particle;
+
+  // Extra attributes that don't show up in source written to file
+  int parent_nuclide {-1};
   int64_t parent_id;
   int64_t progeny_id;
 };
@@ -431,6 +434,7 @@ private:
   int g_last_;
 
   double wgt_ {1.0};
+  double wgt_born_ {1.0};
   double mu_;
   double time_ {0.0};
   double time_last_ {0.0};
@@ -441,6 +445,7 @@ private:
   int event_nuclide_;
   int event_mt_;
   int delayed_group_ {0};
+  int parent_nuclide_ {-1};
 
   int n_bank_ {0};
   double bank_second_E_ {0.0};
@@ -528,12 +533,20 @@ public:
   int& g_last() { return g_last_; }
   const int& g_last() const { return g_last_; }
 
-  // Statistic weight of particle. Setting to zero
-  // indicates that the particle is dead.
+  // Statistic weight of particle. Setting to zero indicates that the particle
+  // is dead.
   double& wgt() { return wgt_; }
   double wgt() const { return wgt_; }
+
+  // Statistic weight of particle at birth
+  double& wgt_born() { return wgt_born_; }
+  double wgt_born() const { return wgt_born_; }
+
+  // Statistic weight of particle at last collision
   double& wgt_last() { return wgt_last_; }
   const double& wgt_last() const { return wgt_last_; }
+
+  // Whether particle is alive
   bool alive() const { return wgt_ != 0.0; }
 
   // Polar scattering angle after a collision
@@ -555,6 +568,8 @@ public:
   const int& event_nuclide() const { return event_nuclide_; }
   int& event_mt() { return event_mt_; }           // MT number of collision
   int& delayed_group() { return delayed_group_; } // delayed group
+  const int& parent_nuclide() const { return parent_nuclide_; }
+  int& parent_nuclide() { return parent_nuclide_; } // Parent nuclide
 
   // Post-collision data
   double& bank_second_E()

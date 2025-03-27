@@ -25,6 +25,9 @@ void SphericalHarmonicsFilter::set_order(int order)
   if (order < 0) {
     throw std::invalid_argument {
       "Spherical harmonics order must be non-negative."};
+  } else if (order > 10) {
+    throw std::invalid_argument {"Spherical harmonics orders greater than 10 "
+                                 "are currently not supported!"};
   }
   order_ = order;
   n_bins_ = (order_ + 1) * (order_ + 1);

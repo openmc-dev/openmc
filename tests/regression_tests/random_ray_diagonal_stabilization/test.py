@@ -27,7 +27,7 @@ def test_random_ray_diagonal_stabilization():
     model.convert_to_multigroup(method='material_wise',
                                 groups=EnergyGroups(
                                     GROUP_STRUCTURES['CASMO-70']),
-                                nparticles=13, overwrite_mgxs_library=True,
+                                nparticles=100, overwrite_mgxs_library=True,
                                 mgxs_fname="mgxs.h5", correction='P0')
 
     # Convert to a random ray model

@@ -294,3 +294,23 @@ def test_tabular_from_energyfilter():
 
     tab = efilter.get_tabular(values=np.array([10, 10, 5]), interpolation='linear-linear')
     assert tab.interpolation == 'linear-linear'
+
+def test_weight():
+    f = openmc.WeightFilter([0.01, 0.1, 1.0, 10.0])
+    assert f.bins[0] == 0.01
+    assert f.bins[1] == 0.1
+    assert f.bins[-1] == 10.0
+    assert len(f.bins) == 4
+
+    # Make sure __repr__ works
+    repr(f)
+
+    # to_xml_element()
+    elem = f.to_xml_element()
+    assert elem.tag == 'filter'
+    assert elem.attrib['type'] == 'weight'
+
+    # from_xml_element()
+    new_f = openmc.Filter.from_xml_element(elem)
+    assert new_f.id == f.id
+    assert np.all(new_f.bins == f.bins)

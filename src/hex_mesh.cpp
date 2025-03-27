@@ -457,13 +457,7 @@ void HexagonalMesh::raytrace_mesh(
       }
       // Check if we have left the interior of the mesh
       // Do this by getting new index
-      in_mesh = true;
-      for (auto i = 0; i < ijkl.size(); i++) {
-        if (ijkl[i] < 1 || ijkl[i] > shape_[i]) {
-          in_mesh = false;
-          break;
-        }
-      }
+      in_mesh = in_hexmesh(ijkl);
 
       // If we are still inside the mesh, tally inward current for the next cell
       if (in_mesh)

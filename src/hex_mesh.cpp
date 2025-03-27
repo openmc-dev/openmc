@@ -531,42 +531,47 @@ HexagonalMesh::HexMeshDistance HexagonalMesh::distance_to_hex_boundary(
   HexMeshDistance d;
   d.next_index = ijkl;
 
+  double dh = 0;
+
   if (i < 3) {
     if(std::abs(u[0]) + std::abs(u[1]) < FP_PRECISION)
       return d;
     switch (i) {
     case 0:
-      d.max_surface = n0_.dot(u);
+      dh = rh.dot(n0_) / u.dot(n0_);
+      d.max_surface = n0_.dot(u) > 0;
       if (d.max_surface){
-        d.distance = l + (this->r_ - rloc).dot(this->n0_) / u.dot(this->n0_);
+        d.distance = dh + (this->r_ - r0).dot(this->n0_) / u.dot(this->n0_);
         d.next_index[0]++;
         d.next_index[2]--;
       } else {
-        d.distance = l + (-this->r_ - rloc).dot(this->n0_) / u.dot(this->n0_);
+        d.distance = dh + (-this->r_ - r0).dot(this->n0_) / u.dot(this->n0_);
         d.next_index[0]--;
         d.next_index[2]++;
       }
       break;
     case 1:
-      d.max_surface = n1_.dot(u);
+      dh = rh.dot(n1_) / u.dot(n1_);
+      d.max_surface = n1_.dot(u) > 0;
       if (d.max_surface){
-        d.distance = l + (-this->s_ - rloc).dot(this->n1_) / u.dot(this->n1_);
+        d.distance = dh + (-this->s_ - r0).dot(this->n1_) / u.dot(this->n1_);
         d.next_index[1]++;
         d.next_index[2]--;
       } else {
-        d.distance = l + (this->s_ - rloc).dot(this->n1_) / u.dot(this->n1_);
+        d.distance = dh + (this->s_ - r0).dot(this->n1_) / u.dot(this->n1_);
         d.next_index[1]--;
         d.next_index[2]++;
       }
       break;
     case 2:
-      d.max_surface = n2_.dot(u);
+      dh = rh.dot(n2_) / u.dot(n2_);
+      d.max_surface = n2_.dot(u) > 0;
       if (d.max_surface){
-        d.distance = l + (this->q_ - rloc).dot(this->n2_) / u.dot(this->n2_);
+        d.distance = dh + (this->q_ - r0).dot(this->n2_) / u.dot(this->n2_);
         d.next_index[0]--;
         d.next_index[1]++;
       } else {
-        d.distance = l + (-this->q_ - rloc).dot(this->n2_) / u.dot(this->n2_);
+        d.distance = dh + (-this->q_ - r0).dot(this->n2_) / u.dot(this->n2_);
         d.next_index[0]++;
         d.next_index[1]--;
       }

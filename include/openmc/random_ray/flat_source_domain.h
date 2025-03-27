@@ -166,7 +166,7 @@ protected:
   // results tensor in the Tally class, though without the third dimension, as
   // SUM and SUM_SQ do not need to be tracked.
   vector<xt::xtensor<double, 2>> tally_volumes_;
-  
+
 }; // class FlatSourceDomain
 
 //============================================================================

@@ -462,7 +462,6 @@ class Tally(IDManagerMixin):
                 return None
 
             n = self.num_realizations
-            
             nonzero = np.abs(self.mean) > 0
             
             self._std_dev = np.zeros_like(self.mean)

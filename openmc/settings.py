@@ -2123,16 +2123,9 @@ class Settings:
         self._create_weight_window_checkpoints_subelement(element)
         self._create_max_history_splits_subelement(element)
         self._create_max_tracks_subelement(element)
-<<<<<<< HEAD
-        self._create_random_ray_subelement(element)
-        self._create_EMC_subelement(element)
-        self._create_random_sample_xs_subelement(element)
-        
-=======
         self._create_random_ray_subelement(element, mesh_memo)
         self._create_use_decay_photons_subelement(element)
 
->>>>>>> upstream/develop
         # Clean the indentation in the file to be user-readable
         clean_indentation(element)
         reorder_attributes(element)  # TODO: Remove when support is Python 3.8+

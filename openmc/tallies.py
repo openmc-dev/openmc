@@ -182,7 +182,6 @@ class Tally(IDManagerMixin):
         parts.append('{: <15}=\t{}'.format('Scores', self.scores))
         parts.append('{: <15}=\t{}'.format('Estimator', self.estimator))
         parts.append('{: <15}=\t{}'.format('Multiply dens.', self.multiply_density))
-        parts.append('{: <15}=\t{}'.format('FOM', self.fom))
         return '\n\t'.join(parts)
 
     @staticmethod

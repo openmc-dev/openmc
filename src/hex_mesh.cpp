@@ -601,11 +601,11 @@ HexagonalMesh::HexMeshDistance HexagonalMesh::distance_to_hex_boundary(
     d.max_surface = (u[2] > 0);
     if (d.max_surface) {
       d.next_index[3]++;
-      d.distance = ((lower_left_[2] + ijkl[3] * width_[2]) - r0[2]) / u[2];
+      d.distance = ((lower_left_[1] + ijkl[3] * width_[1]) - r0[2]) / u[2];
     } else {
       d.next_index[3]--;
       d.distance =
-        ((lower_left_[2] + (ijkl[3] - 1) * width_[2]) - r0[2]) / u[2];
+        ((lower_left_[1] + (ijkl[3] - 1) * width_[1]) - r0[2]) / u[2];
     }
   }
   return d;

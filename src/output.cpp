@@ -604,6 +604,7 @@ void write_tallies()
 
   // Set filename for tallies_out
   std::string filename = fmt::format("{}tallies.out", settings::path_output);
+  
   // Open the tallies.out file.
   std::ofstream tallies_out;
   tallies_out.open(filename, std::ios::out | std::ios::trunc);

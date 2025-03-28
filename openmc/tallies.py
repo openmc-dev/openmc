@@ -57,9 +57,8 @@ class Tally(IDManagerMixin):
         Name of the tally
     multiply_density : bool
         Whether reaction rates should be multiplied by atom density
-    FOM : bool
-        Whether the tally will accumulate compute the figure of merit for each tally bin
-    
+    fom : float
+        Figure of merit for each tally bin
         .. versionadded:: 0.14.0
     filters : list of openmc.Filter
         List of specified filters for the tally

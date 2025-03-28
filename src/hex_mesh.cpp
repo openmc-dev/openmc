@@ -255,14 +255,12 @@ HexagonalMesh::HexMeshIndex HexagonalMesh::get_hexindices_from_bin(
 int HexagonalMesh::get_hexindex_in_direction(const Position& r, int i) const
 {
   switch (i) {
-  case 0:
-    return std::round((0.5 * r.x - 1.0 / (2 * sqrt(3)) * r.y) / this->size_);
   case 1:
-    return std::round((1.0 / sqrt(3) * r.y) / this->size_);
+    return std::round((sqrt(3.0)/3.0 * r.x - 1.0 / 3.0 * r.y) / this->size_);
+  case 0:
+    return std::round((2.0 / 3.0 * r.y) / this->size_);
   case 2:
-    return std::ceil(
-      ((0.5 * r.x - 1.0 / (2 * sqrt(3)) * r.y) - (1.0 / sqrt(3) * r.y)) /
-      this->size_);
+    return -std::round((0.5 * r.x - 1.0 / (2 * sqrt(3)) * r.y) / this->size_) - std::round((1.0 / sqrt(3) * r.y) / this->size_);
   case 3:
     // z is idx 1 in width_ and lower_left_ / upper_right_
     return std::ceil((r.z - lower_left_[1]) / width_[1]);

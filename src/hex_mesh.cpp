@@ -482,10 +482,20 @@ void HexagonalMesh::raytrace_mesh(
       // travel to reach the next surface. Use the largest distance, as only
       // this will cross all outer surfaces.
       double dist_to_enclosing_cyl = find_r_crossing(r0, u, traveled_distance);
-      for (int k = 0; k < n - 1; ++k) {
+
+      //exit early if already past end point?
+      if (dist_to_enclosing_cyl >= total_distance)
+        return;
+
+      //get the hexindex here
+
+
+      //find new set of distances to hex boundaries
+      for (int k = 0; k < n; ++k) {
         distances[k] =
           distance_to_hex_boundary(ijkl, k, r0, u, dist_to_enclosing_cyl);
       }
+
       // we now need to compare the minimum of the 6 hex surface distances with
       // the z-surface distance and pick the longest of the two.
       int k_hex_min {0};
@@ -495,8 +505,8 @@ void HexagonalMesh::raytrace_mesh(
           k_hex_min = k;
         }
       }
-      if (distances[6].distance > distances[k_hex_min].distance) {
-        k_max = 6;
+      if (distances[3].distance > distances[k_hex_min].distance) {
+        k_max = 3;
       } else {
         k_max = k_hex_min;
       }

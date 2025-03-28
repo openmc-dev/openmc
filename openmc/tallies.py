@@ -1031,10 +1031,6 @@ class Tally(IDManagerMixin):
         if text is not None:
             tally.multiply_density = text in ('true', '1')
 
-        text = get_text(elem, 'FOM')
-        if text is None:
-            tally.fom = text in ('true', '1')
-
         # Read filters
         filters_elem = elem.find('filters')
         if filters_elem is not None:

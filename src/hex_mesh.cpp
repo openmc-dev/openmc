@@ -158,6 +158,9 @@ HexagonalMesh::HexagonalMesh(pugi::xml_node node)
   // size of hex is defined as the radius of the circumscribed circle
   size_ = (width_[0] / shape[0]) / sqrt(3.0);
 
+  // radius of enclosing cylinder
+  r_encl_ = (hex_radius_ - 0.5) * sqrt(3) * size_ + (1 - sqrt(3) * 0.5) * size_;
+
   // set the plane normals or 3 principal directions in the hex mash
   init_plane_normals();
 

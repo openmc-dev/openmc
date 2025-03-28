@@ -480,32 +480,17 @@ class Tally(IDManagerMixin):
             return self._std_dev
         
     @property
-    def FOM(self):
-        if self._FOM is None:
-            if not self._sp_filename:
-                return None
+    def fom(self):
+        if self.cpu_time is None:
+            return None
 
-            nonzero = np.abs(self.mean) > 0
-            self._FOM = np.zeros_like(self.mean)
-
-            relative_error = self.std_dev[nonzero] / self.mean[nonzero]
-            print('Relative error:', f"{relative_error[0]:.15f}")
-            print('Simulation time:', self._simulation_time)
-            print(' Number of threads used:', self._number_of_threads)
-            self._FOM[nonzero] = 1 / (relative_error * relative_error * self._simulation_time * self._number_of_threads)
-            print('Figure of merit',self._FOM[nonzero])
-            # Convert NumPy array to SciPy sparse LIL matrix
-            if self.sparse:
-                self._FOM = sps.lil_matrix(self._FOM.flatten(),
-                                               self._std_dev.shape)
-
-            self.with_batch_statistics = True
-
-        if self.sparse:
-            return np.reshape(self._FOM.toarray(), self.shape)
-        else:
-            return self._FOM
-
+        mean = self.mean
+        std_dev = self.std_dev
+        fom = np.zeros_like(mean)
+        nonzero = np.abs(mean) > 0
+        fom[nonzero] = 1 / self.cpu_time * (mean[nonzero]**2 / std_dev[nonzero]**2)
+        
+        return fom
 
     @property
     def with_batch_statistics(self):

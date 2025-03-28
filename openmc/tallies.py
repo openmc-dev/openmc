@@ -969,11 +969,6 @@ class Tally(IDManagerMixin):
             subelement = ET.SubElement(element, "derivative")
             subelement.text = str(self.derivative.id)
 
-        # Optional FOM
-        if self.fom:
-            FOM_element = ET.SubElement(element, "FOM")
-            FOM_element.text = str(self.fom).lower()
-
         return element
 
     def add_results(self, statepoint: cv.PathLike | openmc.StatePoint):

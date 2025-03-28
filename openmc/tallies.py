@@ -120,8 +120,6 @@ class Tally(IDManagerMixin):
         self._triggers = cv.CheckedList(openmc.Trigger, 'tally triggers')
         self._derivative = None
         self._multiply_density = True
-        self._fom = None
-        self._FOM = None
     
         self._num_realizations = 0
         self._with_summary = False
@@ -132,6 +130,7 @@ class Tally(IDManagerMixin):
         self._sum_sq = None
         self._mean = None
         self._std_dev = None
+        self._fom = None
         self._with_batch_statistics = False
         self._derived = False
         self._sparse = False

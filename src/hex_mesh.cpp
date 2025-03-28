@@ -75,6 +75,11 @@ HexagonalMesh::HexagonalMesh(pugi::xml_node node)
     fatal_error("All entries on the <dimension> element for a tally "
                 "mesh must be positive.");
   }
+  if (shape_[0] % 2 == 0 ) {
+    fatal_error("First shape coordinate must be odd to avoid non-integer "
+        "ring count.");
+  }
+  hex_radius_ = (shape_[0] - 1) / 2;
 
   // Check for lower-left coordinates
   if (check_for_node(node, "lower_left")) {

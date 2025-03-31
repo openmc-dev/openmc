@@ -1825,7 +1825,7 @@ class Model:
         mgxs_file.export_to_hdf5(mgxs_fname)
         sp.close()
 
-    def convert_to_multigroup(self, method="material-wise",
+    def convert_to_multigroup(self, method="material_wise",
                               groups=openmc.mgxs.EnergyGroups(openmc.mgxs.GROUP_STRUCTURES['CASMO-2']),
                               nparticles=2000, overwrite_mgxs_library=False,
                               mgxs_fname: str = "mgxs.h5", correction=None) -> None:

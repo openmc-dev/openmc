@@ -307,7 +307,7 @@ bool HexagonalMesh::in_hexmesh(HexMeshIndex& ijkl) const
 {
   for (auto it = ijkl.begin(); it != std::prev(ijkl.end()); it++) {
     auto elem = *it;
-    if (abs(elem) > shape_[0])
+    if (abs(elem) > hex_radius_)
       return false;
   }
   if (ijkl[3] > shape_[1])
@@ -427,7 +427,6 @@ void HexagonalMesh::raytrace_mesh(
 
   // Loop until r = r1 is eventually reached
   while (true) {
-
     if (in_mesh) {
 
       // find surface with minimal distance to current position
@@ -556,6 +555,9 @@ HexagonalMesh::HexMeshDistance HexagonalMesh::distance_to_hex_boundary(
     case 0:
       dh = rh.dot(n0_) / u.dot(n0_);
       d.max_surface = n0_.dot(u) > 0;
+      if (abs(ijkl[0])>hex_radius_+1){
+        return d;
+      }
       if (d.max_surface){
         d.distance = dh + (this->r_ - r0).dot(this->n0_) / u.dot(this->n0_);
         d.next_index[0]++;
@@ -569,6 +571,9 @@ HexagonalMesh::HexMeshDistance HexagonalMesh::distance_to_hex_boundary(
     case 1:
       dh = rh.dot(n1_) / u.dot(n1_);
       d.max_surface = n1_.dot(u) > 0;
+      if (abs(ijkl[1])>hex_radius_+1 ){
+        return d;
+      }
       if (d.max_surface){
         d.distance = dh + (-this->s_ - r0).dot(this->n1_) / u.dot(this->n1_);
         d.next_index[1]++;
@@ -582,6 +587,9 @@ HexagonalMesh::HexMeshDistance HexagonalMesh::distance_to_hex_boundary(
     case 2:
       dh = rh.dot(n2_) / u.dot(n2_);
       d.max_surface = n2_.dot(u) > 0;
+      if (abs(ijkl[2])>hex_radius_+1){
+        return d;
+      }
       if (d.max_surface){
         d.distance = dh + (this->q_ - r0).dot(this->n2_) / u.dot(this->n2_);
         d.next_index[0]--;

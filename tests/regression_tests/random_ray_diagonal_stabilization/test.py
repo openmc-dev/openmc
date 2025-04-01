@@ -1,7 +1,6 @@
 import os
-import openmc
+
 from openmc.examples import pwr_pin_cell
-from openmc.mgxs import EnergyGroups, GROUP_STRUCTURES
 from openmc import RegularMesh
 
 from tests.testing_harness import TolerantPyAPITestHarness
@@ -16,7 +15,6 @@ class MGXSTestHarness(TolerantPyAPITestHarness):
 
 
 def test_random_ray_diagonal_stabilization():
-
     # Start with a normal continuous energy model
     model = pwr_pin_cell()
 
@@ -24,11 +22,10 @@ def test_random_ray_diagonal_stabilization():
     # and transport correction enabled. This will generate
     # MGXS data with some negatives on the diagonal, in order
     # to trigger diagonal correction.
-    model.convert_to_multigroup(method='material_wise',
-                                groups=EnergyGroups(
-                                    GROUP_STRUCTURES['CASMO-70']),
-                                nparticles=30, overwrite_mgxs_library=True,
-                                mgxs_fname="mgxs.h5", correction='P0')
+    model.convert_to_multigroup(
+        method='material_wise', groups='CASMO-70', nparticles=30,
+        overwrite_mgxs_library=True, mgxs_path="mgxs.h5", correction='P0'
+    )
 
     # Convert to a random ray model
     model.convert_to_random_ray()
@@ -40,10 +37,9 @@ def test_random_ray_diagonal_stabilization():
     n = 2
     mesh = RegularMesh()
     mesh.dimension = (n, n)
-    mesh.lower_left = (
-        model.geometry.bounding_box.lower_left[0], model.geometry.bounding_box.lower_left[1])
-    mesh.upper_right = (
-        model.geometry.bounding_box.upper_right[0], model.geometry.bounding_box.upper_right[1])
+    bbox = model.geometry.bounding_box
+    mesh.lower_left = (bbox.lower_left[0], bbox.lower_left[1])
+    mesh.upper_right = (bbox.upper_right[0], bbox.upper_right[1])
     model.settings.random_ray['source_region_meshes'] = [
         (mesh, [model.geometry.root_universe])]
 

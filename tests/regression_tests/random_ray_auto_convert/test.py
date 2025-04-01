@@ -1,7 +1,7 @@
 import os
+
 import openmc
 from openmc.examples import pwr_pin_cell
-from openmc.mgxs import EnergyGroups, GROUP_STRUCTURES
 from openmc import RegularMesh
 from openmc.utility_funcs import change_directory
 import pytest
@@ -16,6 +16,7 @@ class MGXSTestHarness(TolerantPyAPITestHarness):
         if os.path.exists(f):
             os.remove(f)
 
+
 @pytest.mark.parametrize("method", ["material_wise", "stochastic_slab", "infinite_medium"])
 def test_random_ray_auto_convert(method):
     with change_directory(method):
@@ -25,11 +26,10 @@ def test_random_ray_auto_convert(method):
         model = pwr_pin_cell()
 
         # Convert to a multi-group model
-        model.convert_to_multigroup(method=method,
-                                    groups=EnergyGroups(
-                                        GROUP_STRUCTURES['CASMO-2']),
-                                    nparticles=30, overwrite_mgxs_library=False,
-                                    mgxs_fname="mgxs.h5")
+        model.convert_to_multigroup(
+            method=method, groups='CASMO-2', nparticles=30,
+            overwrite_mgxs_library=False, mgxs_path="mgxs.h5"
+        )
 
         # Convert to a random ray model
         model.convert_to_random_ray()
@@ -41,10 +41,9 @@ def test_random_ray_auto_convert(method):
         n = 2
         mesh = RegularMesh()
         mesh.dimension = (n, n)
-        mesh.lower_left = (
-            model.geometry.bounding_box.lower_left[0], model.geometry.bounding_box.lower_left[1])
-        mesh.upper_right = (
-            model.geometry.bounding_box.upper_right[0], model.geometry.bounding_box.upper_right[1])
+        bbox = model.geometry.bounding_box
+        mesh.lower_left = (bbox.lower_left[0], bbox.lower_left[1])
+        mesh.upper_right = (bbox.upper_right[0], bbox.upper_right[1])
         model.settings.random_ray['source_region_meshes'] = [
             (mesh, [model.geometry.root_universe])]
 

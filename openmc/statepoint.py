@@ -151,7 +151,6 @@ class StatePoint:
             if os.path.exists(path_summary):
                 su = openmc.Summary(path_summary)
                 self.link_with_summary(su)
-                su.close()
 
             path_volume = os.path.join(os.path.dirname(filename), 'volume_*.h5')
             for path_i in glob.glob(path_volume):
@@ -513,11 +512,9 @@ class StatePoint:
         """Close the statepoint HDF5 file and the corresponding
         summary HDF5 file if present.
         """
-        if self._f is not None:
-            self._f.close()
-            self._f = None
+        self._f.close()
         if self._summary is not None:
-            self._summary.close()
+            self._summary._f.close()
 
     def add_volume_information(self, volume_calc):
         """Add volume information to the geometry within the file

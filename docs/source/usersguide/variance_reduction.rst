@@ -88,12 +88,12 @@ random ray mode can be found in the :ref:`Random Ray User Guide <random_ray>`.
     ray solver. A high level overview of the current workflow for generation of
     weight windows with FW-CADIS using random ray is given below.
 
-1. Begin by making a deepy copy of your continuous energy Python model and then 
-   convert the copy to be multigroup and use the random ray transport solver. The
-   conversion process can largely be automatically done as described in more
-   detail in the :ref:`random ray quick start guide <quick_start>`, summarized below::
+1. Begin by making a deepy copy of your continuous energy Python model and then
+   convert the copy to be multigroup and use the random ray transport solver.
+   The conversion process can largely be automated as described in more detail
+   in the :ref:`random ray quick start guide <quick_start>`, summarized below::
 
-    # Define regular openmc continuous energy model as normal
+    # Define continuous energy model
     ce_model = openmc.pwr_pin_cell() # example, replace with your model
 
     # Make a copy to convert to multigroup and random ray

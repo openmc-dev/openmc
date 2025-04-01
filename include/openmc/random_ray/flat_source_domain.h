@@ -132,7 +132,7 @@ public:
     source_region_map_;
 
   // If transport corrected MGXS data is being used, there may be negative
-  // in-group scattering cross sections which can result in instability in MOC
+  // in-group scattering cross sections that can result in instability in MOC
   // and random ray if used naively. This flag enables a stabilization
   // technique.
   bool is_transport_stabilization_needed_ {false};

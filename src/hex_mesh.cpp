@@ -156,7 +156,7 @@ HexagonalMesh::HexagonalMesh(pugi::xml_node node)
   volume_frac_ = 1.0 / hex_count_;
 
   // size of hex is defined as the radius of the circumscribed circle
-  size_ = (width_[0] / shape[0]) / sqrt(3.0);
+  size_ = width_[0] / sqrt(3.0);
 
   // radius of enclosing cylinder
   r_encl_ = (hex_radius_ - 0.5) * sqrt(3) * size_ + (1 - sqrt(3) * 0.5) * size_;
@@ -307,7 +307,7 @@ int HexagonalMesh::get_hexindex_in_direction(const Position& r, int i) const
 {
   switch (i) {
   case 0:
-    return std::round((2.0 / 3.0 * r.y) / this->size_);
+    return std::round((2.0 / 3.0 * -r.y) / this->size_);
   case 1:
     return std::round((sqrt(3.0)/3.0 * r.x + 1.0 / 3.0 * r.y) / this->size_);
   case 2:

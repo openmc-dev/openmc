@@ -221,36 +221,87 @@ int HexagonalMesh::hex_radius(const HexMeshIndex& ijkl) const
 int32_t HexagonalMesh::get_bin_from_hexindices(const HexMeshIndex& ijkl) const
 {
   // get linear index from the HexMeshIndex
-  int32_t r_0 = shape_[0];
-  int32_t azim = 6 * (r_0 - 1);
-  return ijkl[3] * hex_count_ + (1 + 3 * r_0 * (r_0 - 1)) + azim;
+  int32_t r_0 = hex_radius(ijkl);
+  int32_t start_of_ring = (1 + 3 * r_0 * (r_0 - 1));
+  int32_t bin_no = (ijkl[3]-1) * hex_count_ + (1 + 3 * r_0 * (r_0 - 1)) + offset_in_ring(ijkl,r_0);
+  return bin_no;
+}
+
+int32_t HexagonalMesh::offset_in_ring(const HexMeshIndex& ijkl,int32_t r) const
+{
+  //find the offset within a ring
+  if ( r==0 )
+    return 0;
+  HexMeshIndex corner {r,0,-r,0};
+  for (int k = 0; k < 6; k++)
+  {
+    int32_t hexd = hex_distance(corner,ijkl);
+    if (hexd<r)
+      return k;
+    corner = rotate_hexindex(corner);
+  }
 }
 
 HexagonalMesh::HexMeshIndex HexagonalMesh::rotate_hexindex(
-  const HexMeshIndex& ijkl, int steps) const
+  const HexMeshIndex& ijkl) const
 {
   HexMeshIndex new_ijkl {ijkl};
-  for (int i; i < steps; i++) {
-    int r = -new_ijkl[2];
-    int q = -new_ijkl[0];
-    int s = -new_ijkl[1];
-    new_ijkl[0] = r;
-    new_ijkl[1] = q;
-    new_ijkl[2] = s;
-  }
+  new_ijkl[0] = -ijkl[2];
+  new_ijkl[1] = -ijkl[0];
+  new_ijkl[2] = -ijkl[1];
   return new_ijkl;
 }
 
 HexagonalMesh::HexMeshIndex HexagonalMesh::get_hexindices_from_bin(
   const int32_t bin) const
 {
-  // This does not yet take more than 1 z-slice into account
-  int ring = (int)floor((sqrt(12 * bin - 3) + 3) / 6);
-
-  int diff = bin - (1 + 3 * (ring - 1) * ring);
-  HexMeshIndex ijkl {ring, 0, -ring, 0};
-  return rotate_hexindex(ijkl, diff);
+  HexMeshIndex ijkl = {0,0,0,1};
+  ijkl[3] = (int) floor(bin / hex_count_) + 1;
+  int spiral_index = bin % hex_count_;
+  if (spiral_index == 0){
+    return ijkl;
+  }
+  int ring = (int) floor((sqrt(12 * spiral_index - 3) +3) / 6);
+  int32_t start_of_ring = (1 + 3 * ring * (ring - 1));
+  ijkl[0]=ring; ijkl[2]=-ring;
+  if (ring>0)
+  {
+    for (int k=0; k<spiral_index-start_of_ring; k++)
+    {
+      ijkl = rotate_hexindex(ijkl);
+    }
+  }
+  return ijkl;
 }
+
+int HexagonalMesh::n_bins() const
+{
+  return hex_count_ * shape_[1];
+}
+
+int HexagonalMesh::n_surface_bins() const
+{
+  return 4 * 3 * n_bins();
+}
+
+xt::xtensor<int, 1> HexagonalMesh::get_x_shape() const
+{
+  // because method is const, shape_ is const as well and can't be adapted
+  auto tmp_shape = shape_;
+  tmp_shape[0] = hex_count_;
+  return xt::adapt(tmp_shape, {2});
+}
+
+std::string HexagonalMesh::bin_label(int bin) const
+{
+  HexMeshIndex ijkl = get_hexindices_from_bin(bin);
+  int hr = hex_radius(ijkl);
+  int ofr = offset_in_ring(ijkl,hr);
+  return fmt::format("Mesh Index ({}, {}, {})", hr,offset_in_ring(ijkl,hr),ijkl[3]);
+  //return fmt::format("Mesh Index ({}, {}, {})", ijkl[0], ijkl[1], ijkl[2]);
+ // hex_radius_, offset_in_ring(ijkl,hex_radius_), ijkl[3]);
+}
+
 
 int HexagonalMesh::get_hexindex_in_direction(const Position& r, int i) const
 {

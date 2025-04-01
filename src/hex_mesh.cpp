@@ -437,7 +437,7 @@ void HexagonalMesh::raytrace_mesh(
   // very similar to to the structured mesh raytrace_mesh but we cannot rely on
   // simply recomputing only a single distance. Also the distance to the outside
   // of the mesh is somewhat more complicated
-
+  int iteration {0};
   // Compute the length of the entire track.
   double total_distance = (r1 - r0).norm();
   if (total_distance == 0.0 && settings::solver_type != SolverType::RANDOM_RAY)
@@ -454,6 +454,18 @@ void HexagonalMesh::raytrace_mesh(
   // Calculate index of current cell. Offset the position a tiny bit in
   // direction of flight
   HexMeshIndex ijkl = get_hexindices(r0 + TINY_BIT * u, in_mesh);
+
+  // If outside mesh and not on the way towards it (i.e. missing the
+  // circumscribed cylinder) exit early.
+  double dist_to_enclosing_cyl = find_r_crossing(r0, u, traveled_distance);
+
+  if (!in_mesh) {
+    if (dist_to_enclosing_cyl < INFTY &&
+        dist_to_enclosing_cyl < total_distance) {
+      traveled_distance = dist_to_enclosing_cyl;
+    } else
+      return;
+  }
 
   // if track is very short, assume that it is completely inside one cell.
   // Only the current cell will score and no surfaces
@@ -473,111 +485,56 @@ void HexagonalMesh::raytrace_mesh(
   // Calculate initial distances to next surfaces in all three dimensions
   std::array<HexMeshDistance, 4> distances;
   for (int k = 0; k < n; ++k) {
-    distances[k] = distance_to_hex_boundary(ijkl, k, r0, u, 0.0);
+    distances[k] = distance_to_hex_boundary(ijkl, k, r0, u, traveled_distance);
   }
 
   // Loop until r = r1 is eventually reached
   while (true) {
+    iteration++;
+    // std::cout << iteration << std::endl;
+    //  find surface with minimal distance to current position
+    const auto k =
+      std::min_element(distances.begin(), distances.end()) - distances.begin();
+
     if (in_mesh) {
-
-      // find surface with minimal distance to current position
-      const auto k = std::min_element(distances.begin(), distances.end()) -
-                     distances.begin();
-
       // Tally track length delta since last step
       tally.track(ijkl,
         (std::min(distances[k].distance, total_distance) - traveled_distance) /
           total_distance);
+    }
 
-      // update position and leave, if we have reached end position
-      traveled_distance = distances[k].distance;
-      if (traveled_distance >= total_distance)
-        return;
+    // update position and leave, if we have reached end position
+    traveled_distance = distances[k].distance;
+    if (traveled_distance >= total_distance)
+      return;
 
+    if (in_mesh) {
       // If we have not reached r1, we have hit a surface. Tally outward current
       tally.surface(ijkl, k, distances[k].max_surface, false);
-
-      // Update cell and calculate distance to next surface in k-direction.
-      ijkl = distances[k].next_index;
-      // now the index has been updated recompute the distances - unfortunately
-      // we have to do more than one again (as opposed to for cartesian mesh)
-
-      if (k < 3) {
-        for (int j = 0; j < 4; ++j) {
-          distances[j] =
-            distance_to_hex_boundary(ijkl, j, r0, u, traveled_distance);
-        }
-      } else {
-        distances[3] =
-          distance_to_hex_boundary(ijkl, 3, r0, u, traveled_distance);
-      }
-      // Check if we have left the interior of the mesh
-      // Do this by getting new index
-      in_mesh = in_hexmesh(ijkl);
-
-      // If we are still inside the mesh, tally inward current for the next cell
-      if (in_mesh)
-        tally.surface(ijkl, k, !distances[k].max_surface, true);
-
-    } else { // not inside mesh
-      // we do this by the following algorithm:
-      // 1. find a cylinder that completely circumscribes the hex-mesh region
-      // 2. find the largest distance to the cylinder or to the z-plane
-      // 3. add this to distance travelled
-      //
-      // If cylinder is used then find hex-boundaries until inside mesh
-      double dist_to_enclosing_cyl = find_r_crossing(r0, u, traveled_distance);
-      int k_surface = 0;
-      bool target_inmesh;
-      HexMeshIndex target_ijkl = get_hexindices(r1, target_inmesh);
-      // Exit early if the enclosing cylinder is missed completely
-      // or target is not in mesh
-      if (dist_to_enclosing_cyl >= INFTY || !target_inmesh)
-        return;
-
-      if (dist_to_enclosing_cyl > distances[3].distance) {
-        // We hit a bounding z-plane before the cylinder
-        traveled_distance = distances[3].distance;
-        k_surface = 3;
-      } else {
-        traveled_distance = dist_to_enclosing_cyl;
-        // The enclosing cylinder is not inside mesh - therefore we must
-        // hex-step to enter
-
-        while (!in_mesh) {
-
-          ijkl =
-            get_hexindices(r0 + (traveled_distance + TINY_BIT) * u, in_mesh);
-
-          for (int k = 0; k < n; ++k) {
-            distances[k] =
-              distance_to_hex_boundary(ijkl, k, r0, u, traveled_distance);
-          }
-
-          const auto k = std::min_element(distances.begin(), distances.end()) -
-                         distances.begin();
-          traveled_distance = distances[k].distance;
-          ijkl = distances[k].next_index;
-          k_surface = k;
-        }
-      }
-
-      // exit early if already past end point?
-      if (traveled_distance >= total_distance)
-        return;
-
-      ijkl = get_hexindices(r0 + (traveled_distance + TINY_BIT) * u, in_mesh);
-
-      // If inside the mesh, Tally inward current
-      if (in_mesh)
-        tally.surface(ijkl, k_surface, !distances[k_surface].max_surface, true);
-
-      // Calculate the new cell index and update all distances to next surfaces.
-      for (int k = 0; k < n; ++k) {
-        distances[k] =
-          distance_to_hex_boundary(ijkl, k, r0, u, traveled_distance);
-      }
     }
+
+    // Update cell and calculate distance to next surface in k-direction.
+    ijkl = distances[k].next_index;
+    // now the index has been updated recompute the distances - unfortunately
+    // we have to do more than one again (as opposed to for cartesian mesh)
+
+    if (k < 3) {
+      for (int j = 0; j < 4; ++j) {
+        distances[j] =
+          distance_to_hex_boundary(ijkl, j, r0, u, traveled_distance);
+      }
+    } else {
+      distances[3] =
+        distance_to_hex_boundary(ijkl, 3, r0, u, traveled_distance);
+    }
+
+    // Check if we have left the interior of the mesh
+    // Do this by getting new index
+    in_mesh = in_hexmesh(ijkl);
+
+    // If we are still inside the mesh, tally inward current for the next cell
+    if (in_mesh)
+      tally.surface(ijkl, k, !distances[k].max_surface, true);
   }
 }
 
@@ -688,11 +645,12 @@ std::pair<vector<double>, vector<double>> HexagonalMesh::plot(
   return {axis_lines[0], axis_lines[1]};
 }
 
-void HexagonalMesh::to_hdf5_inner(hid_t group) const
+void HexagonalMesh::to_hdf5_inner(hid_t mesh_group) const
 {
-  hid_t mesh_group = create_group(group, "mesh " + std::to_string(id_));
-
-  close_group(mesh_group);
+  write_dataset(mesh_group, "dimension", get_x_shape());
+  write_dataset(mesh_group, "lower_left", lower_left_);
+  write_dataset(mesh_group, "upper_right", upper_right_);
+  write_dataset(mesh_group, "width", width_);
 }
 
 double HexagonalMesh::volume(const HexMeshIndex& ijkl) const
@@ -743,7 +701,7 @@ void HexagonalMesh::surface_bins_crossed(
     void surface(const HexMeshIndex& ijkl, int k, bool max, bool inward) const
     {
       int i_bin =
-        4 * mesh->n_dimension_ * mesh->get_bin_from_hexindices(ijkl) + 4 * k;
+        4 * mesh->hex_count_ * mesh->get_bin_from_hexindices(ijkl) + 4 * k;
       if (max)
         i_bin += 2;
       if (inward)

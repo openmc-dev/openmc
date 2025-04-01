@@ -79,7 +79,17 @@ public:
 
   int32_t get_bin_from_hexindices(const HexMeshIndex& ijkl) const;
 
-  HexMeshIndex rotate_hexindex(const HexMeshIndex& ijkl, int steps) const;
+  int n_bins() const override;
+
+  int n_surface_bins() const override;
+
+  xt::xtensor<int, 1> get_x_shape() const;
+
+  std::string bin_label(int bin) const;
+
+  int32_t offset_in_ring(const HexMeshIndex& ijkl,int32_t r) const;
+
+  HexMeshIndex rotate_hexindex(const HexMeshIndex& ijkl) const;
 
   int get_hexindex_in_direction(const Position& r, int i) const;
 

@@ -295,8 +295,8 @@ or even isotropic scattering.
 .. _Josey: https://doi.org/10.1016/j.jcp.2015.08.013
 .. _WMP Library: https://github.com/mit-crpg/WMP_Library
 .. _MCNP: https://mcnp.lanl.gov
-.. _Serpent: https://serpent.vtt.fi/serpent/
-.. _NJOY: https://www.njoy21.io/NJOY21/
+.. _Serpent: https://serpent.vtt.fi
+.. _NJOY: https://www.njoy21.io/
 .. _ENDF/B data: https://www.nndc.bnl.gov/endf-b8.0/
 .. _Leppanen: https://doi.org/10.1016/j.anucene.2009.03.019
 .. _algorithms: http://ab-initio.mit.edu/faddeeva/

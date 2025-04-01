@@ -8,56 +8,35 @@ This quick install guide outlines the basic steps needed to install OpenMC on
 your computer. For more detailed instructions on configuring and installing
 OpenMC, see :ref:`usersguide_install` in the User's Manual.
 
---------------------------------------------------
-Installing on Linux/Mac with Mamba and conda-forge
---------------------------------------------------
+----------------------------------
+Installing on Linux/Mac with Conda
+----------------------------------
 
-`Conda <https://conda.io/en/latest/>`_ is an open source package management
+`Conda <https://docs.conda.io/en/latest/>`_ is an open source package management
 system and environments management system for installing multiple versions of
 software packages and their dependencies and switching easily between them.
-`Mamba <https://mamba.readthedocs.io/en/latest/>`_ is a cross-platform package
-manager and is compatible with `conda` packages.
-OpenMC can be installed in a `conda` environment with `mamba`.
-First, `conda` should be installed with one of the following installers:
-`Miniconda <https://docs.conda.io/en/latest/miniconda.html>`_,
-`Anaconda <https://www.anaconda.com/>`_, or `Miniforge <https://github.com/conda-forge/miniforge>`_.
-Once you have `conda` installed on your system, OpenMC can be installed via the
-`conda-forge` channel with `mamba`.
+OpenMC can be installed in a `conda` environment. First, `conda` should be
+`installed <https://www.anaconda.com/docs/getting-started/getting-started>`_
+with either Anaconda Distribution or Miniconda. Once you have `conda` installed
+on your system, OpenMC can be installed via the `conda-forge` channel.
 
 First, add the `conda-forge` channel with:
 
 .. code-block:: sh
 
     conda config --add channels conda-forge
+    conda config --set channel_priority strict
 
-Then create and activate a new conda enviroment called `openmc-env` in
-which to install OpenMC.
+Then create and activate a new conda enviroment called `openmc-env` (or whatever
+you wish) with OpenMC installed.
 
 .. code-block:: sh
 
-    conda create -n openmc-env
+    conda create --name openmc-env openmc
     conda activate openmc-env
 
-Then install `mamba`, which will be used to install OpenMC.
-
-.. code-block:: sh
-
-    conda install mamba
-
-To list the versions of OpenMC that are available on the `conda-forge` channel,
-in your terminal window or an Anaconda Prompt run:
-
-.. code-block:: sh
-
-    mamba search openmc
-
-OpenMC can then be installed with:
-
-.. code-block:: sh
-
-    mamba install openmc
-
-You are now in a conda environment called `openmc-env` that has OpenMC installed.
+You are now in a conda environment called `openmc-env` that has OpenMC
+installed.
 
 -------------------------------------------
 Installing on Linux/Mac/Windows with Docker

@@ -64,8 +64,8 @@ extern "C" double watt_spectrum(double a, double b, uint64_t* seed);
 //! Samples from a normal distribution with a given mean and standard deviation
 //! The PDF is defined as s(x) = (1/2*sigma*sqrt(2) * e-((mu-x)/2*sigma)^2
 //! Its sampled according to
-//! http://www-pdg.lbl.gov/2009/reviews/rpp2009-rev-monte-carlo-techniques.pdf
-//! section 33.4.4
+//! https://pdg.lbl.gov/2023/reviews/rpp2023-rev-monte-carlo-techniques.pdf
+//! section 42.4.4
 //!
 //! \param mean mean of the Gaussian distribution
 //! \param std_dev standard deviation of the Gaussian distribution

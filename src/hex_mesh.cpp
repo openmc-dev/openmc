@@ -75,9 +75,9 @@ HexagonalMesh::HexagonalMesh(pugi::xml_node node)
     fatal_error("All entries on the <dimension> element for a tally "
                 "mesh must be positive.");
   }
-  if (shape_[0] % 2 == 0 ) {
+  if (shape_[0] % 2 == 0) {
     fatal_error("First shape coordinate must be odd to avoid non-integer "
-        "ring count.");
+                "ring count.");
   }
   hex_radius_ = (shape_[0] - 1) / 2;
 
@@ -223,20 +223,20 @@ int32_t HexagonalMesh::get_bin_from_hexindices(const HexMeshIndex& ijkl) const
   // get linear index from the HexMeshIndex
   int32_t r_0 = hex_radius(ijkl);
   int32_t start_of_ring = (1 + 3 * r_0 * (r_0 - 1));
-  int32_t bin_no = (ijkl[3]-1) * hex_count_ + (1 + 3 * r_0 * (r_0 - 1)) + offset_in_ring(ijkl,r_0);
+  int32_t bin_no = (ijkl[3] - 1) * hex_count_ + (1 + 3 * r_0 * (r_0 - 1)) +
+                   offset_in_ring(ijkl, r_0);
   return bin_no;
 }
 
-int32_t HexagonalMesh::offset_in_ring(const HexMeshIndex& ijkl,int32_t r) const
+int32_t HexagonalMesh::offset_in_ring(const HexMeshIndex& ijkl, int32_t r) const
 {
-  //find the offset within a ring
-  if ( r==0 )
+  // find the offset within a ring
+  if (r == 0)
     return 0;
-  HexMeshIndex corner {r,0,-r,0};
-  for (int k = 0; k < 6; k++)
-  {
-    int32_t hexd = hex_distance(corner,ijkl);
-    if (hexd<r)
+  HexMeshIndex corner {r, 0, -r, 0};
+  for (int k = 0; k < 6; k++) {
+    int32_t hexd = hex_distance(corner, ijkl);
+    if (hexd < r)
       return k;
     corner = rotate_hexindex(corner);
   }
@@ -255,19 +255,18 @@ HexagonalMesh::HexMeshIndex HexagonalMesh::rotate_hexindex(
 HexagonalMesh::HexMeshIndex HexagonalMesh::get_hexindices_from_bin(
   const int32_t bin) const
 {
-  HexMeshIndex ijkl = {0,0,0,1};
-  ijkl[3] = (int) floor(bin / hex_count_) + 1;
+  HexMeshIndex ijkl = {0, 0, 0, 1};
+  ijkl[3] = (int)floor(bin / hex_count_) + 1;
   int spiral_index = bin % hex_count_;
-  if (spiral_index == 0){
+  if (spiral_index == 0) {
     return ijkl;
   }
-  int ring = (int) floor((sqrt(12 * spiral_index - 3) +3) / 6);
+  int ring = (int)floor((sqrt(12 * spiral_index - 3) + 3) / 6);
   int32_t start_of_ring = (1 + 3 * ring * (ring - 1));
-  ijkl[0]=ring; ijkl[2]=-ring;
-  if (ring>0)
-  {
-    for (int k=0; k<spiral_index-start_of_ring; k++)
-    {
+  ijkl[0] = ring;
+  ijkl[2] = -ring;
+  if (ring > 0) {
+    for (int k = 0; k < spiral_index - start_of_ring; k++) {
       ijkl = rotate_hexindex(ijkl);
     }
   }
@@ -296,12 +295,12 @@ std::string HexagonalMesh::bin_label(int bin) const
 {
   HexMeshIndex ijkl = get_hexindices_from_bin(bin);
   int hr = hex_radius(ijkl);
-  int ofr = offset_in_ring(ijkl,hr);
-  return fmt::format("Mesh Index ({}, {}, {})", hr,offset_in_ring(ijkl,hr),ijkl[3]);
-  //return fmt::format("Mesh Index ({}, {}, {})", ijkl[0], ijkl[1], ijkl[2]);
- // hex_radius_, offset_in_ring(ijkl,hex_radius_), ijkl[3]);
+  int ofr = offset_in_ring(ijkl, hr);
+  return fmt::format(
+    "Mesh Index ({}, {}, {})", hr, offset_in_ring(ijkl, hr), ijkl[3]);
+  // return fmt::format("Mesh Index ({}, {}, {})", ijkl[0], ijkl[1], ijkl[2]);
+  // hex_radius_, offset_in_ring(ijkl,hex_radius_), ijkl[3]);
 }
-
 
 int HexagonalMesh::get_hexindex_in_direction(const Position& r, int i) const
 {
@@ -309,9 +308,10 @@ int HexagonalMesh::get_hexindex_in_direction(const Position& r, int i) const
   case 0:
     return std::round((2.0 / 3.0 * -r.y) / this->size_);
   case 1:
-    return std::round((sqrt(3.0)/3.0 * r.x + 1.0 / 3.0 * r.y) / this->size_);
+    return std::round((sqrt(3.0) / 3.0 * r.x + 1.0 / 3.0 * r.y) / this->size_);
   case 2:
-    return -std::round((0.5 * r.x - 1.0 / (2 * sqrt(3)) * r.y) / this->size_) - std::round((1.0 / sqrt(3) * r.y) / this->size_);
+    return -std::round((0.5 * r.x - 1.0 / (2 * sqrt(3)) * r.y) / this->size_) -
+           std::round((1.0 / sqrt(3) * r.y) / this->size_);
   case 3:
     // z is idx 1 in width_ and lower_left_ / upper_right_
     return std::ceil((r.z - lower_left_[1]) / width_[1]);
@@ -327,11 +327,11 @@ int HexagonalMesh::get_index_in_direction(double r, int i) const
 Position HexagonalMesh::get_position_from_hexindex(HexMeshIndex ijkl) const
 {
   // return the cartesian position of center of a hexagon indexed by ijkl
-  // Note thet we have to use the plane normals as basis vectors, as opposed to the
-  // grid vectors (r, q, s)
+  // Note thet we have to use the plane normals as basis vectors, as opposed to
+  // the grid vectors (r, q, s)
   Position r;
-  r.x = ijkl[0] * n0_[0] * size_*sqrt(3) + ijkl[1] * n1_[0] * size_*sqrt(3);
-  r.y = ijkl[0] * n0_[1] * size_*sqrt(3) + ijkl[1] * n1_[1] * size_*sqrt(3);
+  r.x = ijkl[0] * n0_[0] * size_ * sqrt(3) + ijkl[1] * n1_[0] * size_ * sqrt(3);
+  r.y = ijkl[0] * n0_[1] * size_ * sqrt(3) + ijkl[1] * n1_[1] * size_ * sqrt(3);
   r.z = ijkl[3] * width_[1];
 
   return r;
@@ -373,10 +373,10 @@ Position HexagonalMesh::sample_element(
   double r_r = uniform_distribution(0, 1, seed);
   double q_r = uniform_distribution(0, 1, seed);
 
-  double x =
-    this->n0_[0] * (r_r + (ijkl[0] - 1)) * width_[0] + this->n1_[0] * (q_r + (ijkl[1] - 1)) * width_[0];
-  double y =
-    this->n0_[1] * (r_r + (ijkl[0] - 1)) * width_[0] + this->n1_[1] * (q_r + (ijkl[1] - 1)) * width_[0];
+  double x = this->n0_[0] * (r_r + (ijkl[0] - 1)) * width_[0] +
+             this->n1_[0] * (q_r + (ijkl[1] - 1)) * width_[0];
+  double y = this->n0_[1] * (r_r + (ijkl[0] - 1)) * width_[0] +
+             this->n1_[1] * (q_r + (ijkl[1] - 1)) * width_[0];
 
   double z = uniform_distribution(-width_[1] / 2.0, width_[1] / 2.0, seed);
 
@@ -558,16 +558,16 @@ HexagonalMesh::HexMeshDistance HexagonalMesh::distance_to_hex_boundary(
   double dh = 0;
 
   if (i < 3) {
-    if(std::abs(u[0]) + std::abs(u[1]) < FP_PRECISION)
+    if (std::abs(u[0]) + std::abs(u[1]) < FP_PRECISION)
       return d;
     switch (i) {
     case 0:
       dh = rh.dot(n0_) / u.dot(n0_);
       d.max_surface = n0_.dot(u) > 0;
-      if (abs(ijkl[0])>hex_radius_+1){
+      if (abs(ijkl[0]) > hex_radius_ + 1) {
         return d;
       }
-      if (d.max_surface){
+      if (d.max_surface) {
         d.distance = dh + (this->r_ - r0).dot(this->n0_) / u.dot(this->n0_);
         d.next_index[0]++;
         d.next_index[2]--;
@@ -580,10 +580,10 @@ HexagonalMesh::HexMeshDistance HexagonalMesh::distance_to_hex_boundary(
     case 1:
       dh = rh.dot(n1_) / u.dot(n1_);
       d.max_surface = n1_.dot(u) > 0;
-      if (abs(ijkl[1])>hex_radius_+1 ){
+      if (abs(ijkl[1]) > hex_radius_ + 1) {
         return d;
       }
-      if (d.max_surface){
+      if (d.max_surface) {
         d.distance = dh + (-this->s_ - r0).dot(this->n1_) / u.dot(this->n1_);
         d.next_index[1]++;
         d.next_index[2]--;
@@ -596,10 +596,10 @@ HexagonalMesh::HexMeshDistance HexagonalMesh::distance_to_hex_boundary(
     case 2:
       dh = rh.dot(n2_) / u.dot(n2_);
       d.max_surface = n2_.dot(u) > 0;
-      if (abs(ijkl[2])>hex_radius_+1){
+      if (abs(ijkl[2]) > hex_radius_ + 1) {
         return d;
       }
-      if (d.max_surface){
+      if (d.max_surface) {
         d.distance = dh + (this->q_ - r0).dot(this->n2_) / u.dot(this->n2_);
         d.next_index[0]--;
         d.next_index[1]++;
@@ -611,7 +611,7 @@ HexagonalMesh::HexMeshDistance HexagonalMesh::distance_to_hex_boundary(
       break;
     }
   } else {
-    if (std::abs(u[2])<FP_PRECISION){
+    if (std::abs(u[2]) < FP_PRECISION) {
       return d;
     }
     // Z-planes z-index has index 3 (nr 4) in ijkl.
@@ -628,7 +628,9 @@ HexagonalMesh::HexMeshDistance HexagonalMesh::distance_to_hex_boundary(
   return d;
 }
 
-StructuredMesh::MeshDistance HexagonalMesh::distance_to_grid_boundary(const MeshIndex& ijk, int i, const Position& r0, const Direction& u, double l) const
+StructuredMesh::MeshDistance HexagonalMesh::distance_to_grid_boundary(
+  const MeshIndex& ijk, int i, const Position& r0, const Direction& u,
+  double l) const
 {
   MeshDistance d;
   d.distance = INFTY;
@@ -671,7 +673,8 @@ void HexagonalMesh::bins_crossed(Position r0, Position r1, const Direction& u,
       const HexagonalMesh* _mesh, vector<int>& _bins, vector<double>& _lengths)
       : mesh(_mesh), bins(_bins), lengths(_lengths)
     {}
-    void surface(const HexMeshIndex& ijkl, int k, bool max, bool inward) const {}
+    void surface(const HexMeshIndex& ijkl, int k, bool max, bool inward) const
+    {}
     void track(const HexMeshIndex& ijkl, double l) const
     {
       bins.push_back(mesh->get_bin_from_hexindices(ijkl));
@@ -717,7 +720,5 @@ void HexagonalMesh::surface_bins_crossed(
   // Perform the mesh raytrace with the helper class.
   raytrace_mesh(r0, r1, u, SurfaceAggregator(this, bins));
 }
-
-
 
 } // namespace openmc

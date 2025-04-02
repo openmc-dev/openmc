@@ -30,6 +30,7 @@ RandomRayVolumeEstimator FlatSourceDomain::volume_estimator_ {
   RandomRayVolumeEstimator::HYBRID};
 bool FlatSourceDomain::volume_normalized_flux_tallies_ {false};
 bool FlatSourceDomain::adjoint_ {false};
+double FlatSourceDomain::diagonal_stabilization_rho_ {1.0};
 std::unordered_map<int, vector<std::pair<Source::DomainType, int>>>
   FlatSourceDomain::mesh_domain_map_;
 
@@ -1161,6 +1162,11 @@ void FlatSourceDomain::flatten_xs()
           double sigma_s =
             m.get_xs(MgxsType::NU_SCATTER, g_in, &g_out, NULL, NULL, t, a);
           sigma_s_.push_back(sigma_s);
+          // For transport corrected XS data, diagonal elements may be negative.
+          // In this case, set a flag to enable transport stabilization for the
+          // simulation.
+          if (g_out == g_in && sigma_s < 0.0)
+            is_transport_stabilization_needed_ = true;
         }
       } else {
         sigma_t_.push_back(0);
@@ -1499,6 +1505,55 @@ void FlatSourceDomain::finalize_discovered_source_regions()
   }
 
   discovered_source_regions_.clear();
+}
+
+// This is the "diagonal stabilization" technique developed by Gunow et al. in:
+//
+// Geoffrey Gunow, Benoit Forget, Kord Smith, Stabilization of multi-group
+// neutron transport with transport-corrected cross-sections, Annals of Nuclear
+// Energy, Volume 126, 2019, Pages 211-219, ISSN 0306-4549,
+// https://doi.org/10.1016/j.anucene.2018.10.036.
+void FlatSourceDomain::apply_transport_stabilization()
+{
+  // Don't do anything if all in-group scattering
+  // cross sections are positive
+  if (!is_transport_stabilization_needed_) {
+    return;
+  }
+
+  // Apply the stabilization factor to all source elements
+#pragma omp parallel for
+  for (int64_t sr = 0; sr < n_source_regions(); sr++) {
+    int material = source_regions_.material(sr);
+    if (material == MATERIAL_VOID) {
+      continue;
+    }
+    for (int g = 0; g < negroups_; g++) {
+      // Only apply stabilization if the diagonal (in-group) scattering XS is
+      // negative
+      double sigma_s =
+        sigma_s_[material * negroups_ * negroups_ + g * negroups_ + g];
+      if (sigma_s < 0.0) {
+        double sigma_t = sigma_t_[material * negroups_ + g];
+        double phi_new = source_regions_.scalar_flux_new(sr, g);
+        double phi_old = source_regions_.scalar_flux_old(sr, g);
+
+        // Equation 18 in the above Gunow et al. 2019 paper. For a default
+        // rho of 1.0, this ensures there are no negative diagonal elements
+        // in the iteration matrix. A lesser rho could be used (or exposed
+        // as a user input parameter) to reduce the negative impact on
+        // convergence rate though would need to be experimentally tested to see
+        // if it doesn't become unstable. rho = 1.0 is good as it gives the
+        // highest assurance of stability, and the impacts on convergence rate
+        // are pretty mild.
+        double D = diagonal_stabilization_rho_ * sigma_s / sigma_t;
+
+        // Equation 16 in the above Gunow et al. 2019 paper
+        source_regions_.scalar_flux_new(sr, g) =
+          (phi_new - D * phi_old) / (1.0 - D);
+      }
+    }
+  }
 }
 
 } // namespace openmc

@@ -11,6 +11,76 @@ active batches <usersguide_batches>`. However, there are a couple of settings
 that are unique to the random ray solver and a few areas that the random ray
 run strategy differs, both of which will be described in this section.
 
+.. _quick_start:
+
+-----------
+Quick Start
+-----------
+
+While this page contains a comprehensive guide to the random ray solver and
+its various parameters, the process of converting an existing continuous energy
+Monte Carlo model to a random ray model can be largely automated via convenience
+functions in OpenMC's Python interface::
+
+  # Define continuous energy model as normal
+  model = openmc.Model()
+  ...
+
+  # Convert model to multigroup (will auto-generate MGXS library if needed)
+  model.convert_to_multigroup()
+
+  # Convert model to random ray and initialize random ray parameters
+  # to reasonable defaults based on the specifics of the geometry
+  model.convert_to_random_ray()
+
+  # (Optional) Overlay source region decomposition mesh to improve fidelity of the
+  # random ray solver. Adjust 'n' for fidelity vs runtime.
+  n = 100
+  mesh = openmc.RegularMesh()
+  mesh.dimension = (n, n, n)
+  mesh.lower_left = model.geometry.bounding_box.lower_left
+  mesh.upper_right = model.geometry.bounding_box.upper_right
+  model.settings.random_ray['source_region_meshes'] = [(mesh, [model.geometry.root_universe])]
+
+  # (Optional) Improve fidelity of the random ray solver by enabling linear sources
+  model.settings.random_ray['source_shape'] = 'linear'
+
+  # (Optional) Increase the number of rays/batch, to reduce uncertainty
+  model.settings.particles = 500
+
+The above strategy first converts the continuous energy model to a multigroup
+one using the :meth:`openmc.Model.convert_to_multigroup` method. By default,
+this will internally run a coarsely converged continuous energy Monte Carlo
+simulation to produce an estimated multigroup macroscopic cross section set for
+each material specified in the model, and store this data into a multigroup
+cross section library file (``mgxs.h5``) that can be used by the random ray
+solver.
+
+The :meth:`openmc.Model.convert_to_random_ray` method enables random ray mode
+and performs an analysis of the model geometry to determine reasonable values
+for all required parameters. If default behavior is not satisfactory, the user
+can manually adjust the settings in the :attr:`~openmc.Settings.random_ray`
+dictionary in the :class:`openmc.Settings` as described in the sections below.
+
+Finally a few optional steps are shown. The first (recommended) step overlays a
+mesh over the geometry to create smaller source regions so that source
+resolution improves and the random ray solver becomes more accurate. Varying the
+mesh resolution can be used to trade off between accuracy and runtime.
+High-fidelity fission reactor simulation may require source region sizes below 1
+cm, while larger fixed source problems with some tolerance for error may be able
+to use source regions of 10 or 100 cm.
+
+We also enable linear sources, which can improve the accuracy of the random ray
+solver and/or allow for a much coarser mesh resolution to be overlaid. Finally,
+the number of rays per batch is adjusted. The goal here is to ensure that the
+source region miss rate is below 1%, which is reported by OpenMC at the end of
+the simulation (or before via a warning if it is very high).
+
+.. warning::
+    If using a mesh filter for tallying or weight window generation, ensure that
+    the same mesh is used for source region decomposition via
+    ``model.settings.random_ray['source_region_meshes']``.
+
 ------------------------
 Enabling Random Ray Mode
 ------------------------
@@ -557,29 +627,118 @@ variety of problem types (or through a multidimensional parameter sweep of
 design variables) with only modest errors and at greatly reduced cost as
 compared to using only continuous energy Monte Carlo.
 
+~~~~~~~~~~~~
+The Easy Way
+~~~~~~~~~~~~
+
+The easiest way to generate a multigroup cross section library is to use the
+:meth:`openmc.Model.convert_to_multigroup` method. This method will
+automatically output a multigroup cross section library file (``mgxs.h5``) from
+a continuous energy Monte Carlo model and alter the material definitions in the
+model to use these multigroup cross sections. An example is given below::
+
+  # Assume we already have a working continuous energy model
+  model.convert_to_multigroup(
+      method="material_wise",
+      groups="CASMO-2",
+      nparticles=2000,
+      overwrite_mgxs_library=False,
+      mgxs_path="mgxs.h5",
+      correction=None
+  )
+
+The most important parameter to set is the ``method`` parameter, which can be
+either "stochastic_slab", "material_wise", or "infinite_medium". An overview
+of these methods is given below:
+
+.. list-table:: Comparison of Automatic MGXS Generation Methods
+   :header-rows: 1
+   :widths: 10 30 30 30
+
+   * - Method
+     - Description
+     - Pros
+     - Cons
+   * - ``material_wise`` (default)
+     - * Higher Fidelity
+       * Runs a CE simulation with the original geometry and source, tallying
+         cross sections with a material filter.
+     - * Typically the most accurate of the three methods
+       * Accurately captures (averaged over the full problem domain)
+         both spatial and resonance self shielding effects
+     - * Potentially slower as the full geometry must be run
+       * If a material is only present far from the source and doesn't get tallied
+         to in the CE simulation, the MGXS will be zero for that material.
+   * - ``stochastic_slab``
+     - * Medium Fidelity
+       * Runs a CE simulation with a greatly simplified geometry, where materials
+         are randomly assigned to layers in a 1D "stochastic slab sandwich" geometry
+     - * Still captures resonant self shielding and resonance effects between materials
+       * Fast due to the simplified geometry
+       * Able to produce cross section data for all materials, regardless of how
+         far they are from the source in the original geometry
+     - * Does not capture most spatial self shielding effects, e.g., no lattice physics.
+   * - ``infinite_medium``
+     - * Lower Fidelity
+       * Runs one CE simulation per material independently. Each simulation is just
+         an infinite medium slowing down problem, with an assumed external source term.
+     - * Simple
+     - * Poor accuracy (no spatial information, no lattice physics, no resonance effects
+         between materials)
+       * May hang if a material has a k-infinity greater than 1.0
+
+When selecting a non-default energy group structure, you can manually define
+group boundaries or specify the name of a known group structure (a list of which
+can be found at :data:`openmc.mgxs.GROUP_STRUCTURES`). The ``nparticles``
+parameter can be adjusted upward to improve the fidelity of the generated cross
+section library. The ``correction`` parameter can be set to ``"P0"`` to enable
+P0 transport correction. The ``overwrite_mgxs_library`` parameter can be set to
+``True`` to overwrite an existing MGXS library file, or ``False`` to skip
+generation and use an existing library file.
+
+.. note::
+    MGXS transport correction (via setting the ``correction`` parameter in the
+    :meth:`openmc.Model.convert_to_multigroup` method to ``"P0"``) may
+    result in negative in-group scattering cross sections, which can cause
+    numerical instability. To mitigate this, during a random ray solve OpenMC
+    will automatically apply
+    `diagonal stabilization <https://doi.org/10.1016/j.anucene.2018.10.036>`_
+    with a :math:`\rho` default value of 1.0, which can be adjusted with the
+    ``settings.random_ray['diagonal_stabilization_rho']`` parameter.
+
+Ultimately, the methods described above are all just approximations.
+Approximations in the generated MGXS data will fundamentally limit the potential
+accuracy of the random ray solver. However, the methods described above are all
+useful in that they can provide a good starting point for a random ray
+simulation, and if more fidelity is needed the user may wish to follow the
+instructions below or experiment with transport correction techniques to improve
+the fidelity of the generated MGXS data.
+
+~~~~~~~~~~~~
+The Hard Way
+~~~~~~~~~~~~
+
 We give here a quick summary of how to produce a multigroup cross section data
 file (``mgxs.h5``) from a starting point of a typical continuous energy Monte
-Carlo input file. Notably, continuous energy input files define materials as a
-mixture of nuclides with different densities, whereas multigroup materials are
-simply defined by which name they correspond to in a ``mgxs.h5`` library file.
+Carlo model. Notably, continuous energy models define materials as a mixture of
+nuclides with different densities, whereas multigroup materials are simply
+defined by which name they correspond to in a ``mgxs.h5`` library file.
 
 To generate the cross section data, we begin with a continuous energy Monte
-Carlo input deck and add in the required tallies that will be needed to generate
-our library. In this example, we will specify material-wise cross sections and a
-two group energy decomposition::
+Carlo model and add in the tallies that are needed to generate our library. In
+this example, we will specify material-wise cross sections and a two-group
+energy decomposition::
 
   # Define geometry
   ...
-  ...
   geometry = openmc.Geometry()
-  ...
   ...
 
   # Initialize MGXS library with a finished OpenMC geometry object
   mgxs_lib = openmc.mgxs.Library(geometry)
 
   # Pick energy group structure
-  groups = openmc.mgxs.EnergyGroups(openmc.mgxs.GROUP_STRUCTURES['CASMO-2'])
+  groups = openmc.mgxs.EnergyGroups('CASMO-2')
   mgxs_lib.energy_groups = groups
 
   # Disable transport correction
@@ -587,7 +746,7 @@ two group energy decomposition::
 
   # Specify needed cross sections for random ray
   mgxs_lib.mgxs_types = ['total', 'absorption', 'nu-fission', 'fission',
-                      'nu-scatter matrix', 'multiplicity matrix', 'chi']
+                         'nu-scatter matrix', 'multiplicity matrix', 'chi']
 
   # Specify a "cell" domain type for the cross section tally filters
   mgxs_lib.domain_type = "material"
@@ -614,13 +773,13 @@ two group energy decomposition::
   ...
 
 When selecting an energy decomposition, you can manually define group boundaries
-or pick out a group structure already known to OpenMC (a list of which can be
-found at :class:`openmc.mgxs.GROUP_STRUCTURES`). Once the above input deck has
-been run, the resulting statepoint file will contain the needed flux and
-reaction rate tally data so that a MGXS library file can be generated. Below is
-the postprocessing script needed to generate the ``mgxs.h5`` library file given
-a statepoint file (e.g., ``statepoint.100.h5``) file and summary file (e.g.,
-``summary.h5``) that resulted from running our previous example::
+or specify the name of known group structure (a list of which can be found at
+:data:`openmc.mgxs.GROUP_STRUCTURES`). Once the above model has been run, the
+resulting statepoint file will contain the needed flux and reaction rate tally
+data so that a MGXS library file can be generated. Below is the postprocessing
+script needed to generate the ``mgxs.h5`` library file given a statepoint file
+(e.g., ``statepoint.100.h5``) file and summary file (e.g., ``summary.h5``) that
+resulted from running our previous example::
 
   import openmc
 
@@ -628,10 +787,7 @@ a statepoint file (e.g., ``statepoint.100.h5``) file and summary file (e.g.,
   geom = summary.geometry
   mats = summary.materials
 
-  statepoint_filename = 'statepoint.100.h5'
-  sp = openmc.StatePoint(statepoint_filename)
-
-  groups = openmc.mgxs.EnergyGroups(openmc.mgxs.GROUP_STRUCTURES['CASMO-2'])
+  groups = openmc.mgxs.EnergyGroups('CASMO-2')
   mgxs_lib = openmc.mgxs.Library(geom)
   mgxs_lib.energy_groups = groups
   mgxs_lib.correction = None
@@ -653,10 +809,10 @@ a statepoint file (e.g., ``statepoint.100.h5``) file and summary file (e.g.,
   # Construct all tallies needed for the multi-group cross section library
   mgxs_lib.build_library()
 
-  mgxs_lib.load_from_statepoint(sp)
+  with openmc.StatePoint('statepoint.100.h5') as sp:
+      mgxs_lib.load_from_statepoint(sp)
 
-  names = []
-  for mat in mgxs_lib.domains: names.append(mat.name)
+  names = [mat.name for mat in mgxs_lib.domains]
 
   # Create a MGXS File which can then be written to disk
   mgxs_file = mgxs_lib.create_mg_library(xs_type='macro', xsdata_names=names)
@@ -665,8 +821,8 @@ a statepoint file (e.g., ``statepoint.100.h5``) file and summary file (e.g.,
   mgxs_file.export_to_hdf5("mgxs.h5")
 
 Notably, the postprocessing script needs to match the same
-:class:`openmc.mgxs.Library` settings that were used to generate the tallies,
-but otherwise is able to discern the rest of the simulation details from the
+:class:`openmc.mgxs.Library` settings that were used to generate the tallies but
+is otherwise  able to discern the rest of the simulation details from the
 statepoint and summary files. Once the postprocessing script is successfully
 run, the ``mgxs.h5`` file can be loaded by subsequent runs of OpenMC.
 
@@ -701,11 +857,11 @@ multigroup library instead of defining their isotopic contents, as::
     water_data = openmc.Macroscopic('Hot borated water')
 
     # Instantiate some Materials and register the appropriate Macroscopic objects
-    fuel= openmc.Material(name='UO2 (2.4%)')
+    fuel = openmc.Material(name='UO2 (2.4%)')
     fuel.set_density('macro', 1.0)
     fuel.add_macroscopic(fuel_data)
 
-    water= openmc.Material(name='Hot borated water')
+    water = openmc.Material(name='Hot borated water')
     water.set_density('macro', 1.0)
     water.add_macroscopic(water_data)
 

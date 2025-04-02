@@ -81,6 +81,11 @@ jobs:
       RDMAV_FORK_SAFE: 1
 
     steps:
+      - name: Setup cmake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: '3.31'
+
       - name: Checkout repository
         uses: actions/checkout@v4
         with:

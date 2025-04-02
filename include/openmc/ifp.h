@@ -56,9 +56,7 @@ void _ifp(const T& value, const vector<T>& data, vector<T>& destination)
     }
     destination[source_idx] = value;
   } else if (source_idx == settings::ifp_n_generation) {
-    if (destination.size() < source_idx) {
-      destination.resize(source_idx);
-    }
+    destination.resize(source_idx);
     for (size_t i = 0; i < source_idx - 1; i++) {
       destination[i] = data[i + 1];
     }

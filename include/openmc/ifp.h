@@ -43,26 +43,27 @@ void resize_ifp_data(
 //!
 //! \param[in] value Value to add to the list
 //! \param[in] data Initial version of the list
-//! \return Updated list
+//! \param[in,out] destination Updated list
 template<typename T>
-vector<T> _ifp(const T& value, const vector<T>& data)
+void _ifp(const T& value, const vector<T>& data, vector<T>& destination)
 {
-  vector<T> updated_data;
   size_t ifp_idx = data.size();
-  if (ifp_idx < settings::ifp_n_generation) {
-    updated_data.resize(ifp_idx + 1);
-    for (size_t i = 0; i < ifp_idx; i++) {
-      updated_data[i] = data[i];
-    }
-    updated_data[ifp_idx] = value;
-  } else if (ifp_idx == settings::ifp_n_generation) {
-    updated_data.resize(ifp_idx);
-    for (size_t i = 0; i < ifp_idx - 1; i++) {
-      updated_data[i] = data[i + 1];
-    }
-    updated_data[ifp_idx - 1] = value;
+  if (destination.size() < ifp_idx) {
+    destination.resize(ifp_idx);
   }
-  return updated_data;
+
+  if (ifp_idx < settings::ifp_n_generation) {
+    for (size_t i = 0; i < ifp_idx; i++) {
+      destination[i] = data[i];
+    }
+    destination.push_back(value);
+  } else if (ifp_idx == settings::ifp_n_generation) {
+    for (size_t i = 0; i < ifp_idx - 1; i++) {
+      destination[i] = data[i + 1];
+    }
+    destination[ifp_idx - 1] = value;
+  }
+  return;
 }
 
 //! \brief Iterated Fission Probability (IFP) method.

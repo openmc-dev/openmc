@@ -52,6 +52,10 @@ void free_memory_bank()
   simulation::surf_source_bank.clear();
   simulation::fission_bank.clear();
   simulation::progeny_per_particle.clear();
+  simulation::ifp_source_delayed_group_bank.clear();
+  simulation::ifp_source_lifetime_bank.clear();
+  simulation::ifp_fission_delayed_group_bank.clear();
+  simulation::ifp_fission_lifetime_bank.clear();
 }
 
 void init_fission_bank(int64_t max)

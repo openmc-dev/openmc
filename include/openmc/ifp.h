@@ -43,27 +43,27 @@ void resize_ifp_data(
 //!
 //! \param[in] value Value to add to the list
 //! \param[in] data Initial version of the list
-//! \param[in,out] destination Updated list
+//! \return Updated list
 template<typename T>
 vector<T> _ifp(const T& value, const vector<T>& data)
 {
-  vector<T> destination;
+  vector<T> updated;
   size_t source_idx = data.size();
 
   if (source_idx < settings::ifp_n_generation) {
-    destination.resize(source_idx + 1);
+    updated.resize(source_idx + 1);
     for (size_t i = 0; i < source_idx; i++) {
-      destination[i] = data[i];
+      updated[i] = data[i];
     }
-    destination[source_idx] = value;
+    updated[source_idx] = value;
   } else if (source_idx == settings::ifp_n_generation) {
-    destination.resize(source_idx);
+    updated.resize(source_idx);
     for (size_t i = 0; i < source_idx - 1; i++) {
-      destination[i] = data[i + 1];
+      updated[i] = data[i + 1];
     }
-    destination[source_idx - 1] = value;
+    updated[source_idx - 1] = value;
   }
-  return destination;
+  return updated;
 }
 
 //! \brief Iterated Fission Probability (IFP) method.

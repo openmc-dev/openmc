@@ -47,21 +47,22 @@ void resize_ifp_data(
 template<typename T>
 void _ifp(const T& value, const vector<T>& data, vector<T>& destination)
 {
-  size_t ifp_idx = data.size();
-  if (destination.size() < ifp_idx) {
-    destination.resize(ifp_idx);
-  }
+  size_t source_idx = data.size();
 
-  if (ifp_idx < settings::ifp_n_generation) {
-    for (size_t i = 0; i < ifp_idx; i++) {
+  if (source_idx < settings::ifp_n_generation) {
+    destination.resize(source_idx + 1);
+    for (size_t i = 0; i < source_idx; i++) {
       destination[i] = data[i];
     }
-    destination.push_back(value);
-  } else if (ifp_idx == settings::ifp_n_generation) {
-    for (size_t i = 0; i < ifp_idx - 1; i++) {
+    destination[source_idx] = value;
+  } else if (source_idx == settings::ifp_n_generation) {
+    if (destination.size() < source_idx) {
+      destination.resize(source_idx);
+    }
+    for (size_t i = 0; i < source_idx - 1; i++) {
       destination[i] = data[i + 1];
     }
-    destination[ifp_idx - 1] = value;
+    destination[source_idx - 1] = value;
   }
   return;
 }

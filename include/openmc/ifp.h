@@ -45,8 +45,9 @@ void resize_ifp_data(
 //! \param[in] data Initial version of the list
 //! \param[in,out] destination Updated list
 template<typename T>
-void _ifp(const T& value, const vector<T>& data, vector<T>& destination)
+vector<T> _ifp(const T& value, const vector<T>& data)
 {
+  vector<T> destination;
   size_t source_idx = data.size();
 
   if (source_idx < settings::ifp_n_generation) {
@@ -62,7 +63,7 @@ void _ifp(const T& value, const vector<T>& data, vector<T>& destination)
     }
     destination[source_idx - 1] = value;
   }
-  return;
+  return destination;
 }
 
 //! \brief Iterated Fission Probability (IFP) method.

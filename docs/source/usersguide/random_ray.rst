@@ -919,9 +919,12 @@ Monte Carlo solver.
 Currently, all of the following conditions must be met for the particle source
 to be valid in random ray mode:
 
-- One or more domain ids must be specified that indicate which cells, universes,
-  or materials the source applies to. This implicitly limits the source type to
-  being volumetric. This is specified via the ``domains`` constraint placed on the
+- Either a point source must be used, or a domain constraint must be specified
+  that indicates which cells, universes, or materials the source applies to. In
+  either case, this implicitly limits the source type to being volumetric, as
+  even in the point source case the source will be "smeared" throughout the
+  source region that contains the point source coordinate. A source domain is
+  specified via the ``domains`` constraint placed on the
   :class:`openmc.IndependentSource` Python class.
 - The source must be isotropic (default for a source)
 - The source must use a discrete (i.e., multigroup) energy distribution. The

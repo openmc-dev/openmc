@@ -281,10 +281,21 @@ void validate_random_ray_inputs()
           "allowed in random ray mode.");
       }
 
-      // Validate that a domain ID was specified
-      if (is->domain_ids().size() == 0) {
-        fatal_error("Fixed sources must be specified by domain "
-                    "id (cell, material, or universe) in random ray mode.");
+      // Validate that a domain ID was specified OR that it is a point source
+      auto sp = dynamic_cast<SpatialPoint*>(is->space());
+      if (is->domain_ids().size() == 0 && !sp) {
+        fatal_error("Fixed sources must be point source or spatially "
+                    "constrained by domain id (cell, material, or universe) in "
+                    "random ray mode.");
+      } else if (is->domain_ids().size() > 0 && sp) {
+        // If both a domain constraint and a non-default point source location
+        // are specified, notify user that domain constraint takes precedence.
+        if (sp->r().x == 0.0 && sp->r().y == 0.0 && sp->r().z == 0.0) {
+          warning("Fixed source has both a domain constraint and a point "
+                  "type spatial distribution. The domain constraint takes "
+                  "precedence in random ray mode -- point source coordinate "
+                  "will be ignored.");
+        }
       }
 
       // Check that a discrete energy distribution was used
@@ -393,12 +404,12 @@ RandomRaySimulation::RandomRaySimulation()
 
 void RandomRaySimulation::apply_fixed_sources_and_mesh_domains()
 {
+  domain_->apply_meshes();
   if (settings::run_mode == RunMode::FIXED_SOURCE) {
     // Transfer external source user inputs onto random ray source regions
     domain_->convert_external_sources();
     domain_->count_external_source_regions();
   }
-  domain_->apply_meshes();
 }
 
 void RandomRaySimulation::prepare_fixed_sources_adjoint(
@@ -517,6 +528,8 @@ void RandomRaySimulation::simulate()
     finalize_generation();
     finalize_batch();
   } // End random ray power iteration loop
+
+  domain_->count_external_source_regions();
 }
 
 void RandomRaySimulation::output_simulation_results() const

@@ -33,7 +33,8 @@ void ifp(const Particle& p, const SourceSite& site, int64_t idx)
   if (is_beta_effective_or_both()) {
     const auto& delayed_groups =
       simulation::ifp_source_delayed_group_bank[p.current_work() - 1];
-    _ifp(site.delayed_group, delayed_groups, simulation::ifp_fission_delayed_group_bank[idx]);
+    _ifp(site.delayed_group, delayed_groups,
+      simulation::ifp_fission_delayed_group_bank[idx]);
   }
   if (is_generation_time_or_both()) {
     const auto& lifetimes =

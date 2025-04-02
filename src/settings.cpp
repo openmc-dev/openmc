@@ -1008,8 +1008,6 @@ void read_settings_xml(pugi::xml_node root)
   // Probability (IFP) method
   if (check_for_node(root, "ifp_n_generation")) {
     ifp_n_generation = std::stoi(get_node_value(root, "ifp_n_generation"));
-    warning(fmt::format("{}", ifp_n_generation));
-    warning(fmt::format("{}", n_inactive));
     if (ifp_n_generation <= 0) {
       fatal_error("'ifp_n_generation' must be greater than 0.");
     }

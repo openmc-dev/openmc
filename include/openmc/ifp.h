@@ -80,11 +80,6 @@ void _ifp(const T& value, const vector<T>& data, vector<T>& destination)
 //! \param[in] idx Bank index from the thread_safe_append call in physics.cpp
 void ifp(const Particle& p, const SourceSite& site, int64_t idx);
 
-//! Initialize the IFP source banks for a given index.
-//!
-//! \param[in] i Index in the IFP source banks
-void initialize_ifp_source_banks(int64_t i);
-
 //! Resize the IFP banks used in the simulation
 void resize_simulation_ifp_banks();
 

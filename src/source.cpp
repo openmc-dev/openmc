@@ -34,7 +34,6 @@
 #include "openmc/state_point.h"
 #include "openmc/string_utils.h"
 #include "openmc/xml_interface.h"
-#include "openmc/ifp.h"
 
 namespace openmc {
 
@@ -598,11 +597,6 @@ void initialize_source()
 
     // sample external source distribution
     simulation::source_bank[i] = sample_external_source(&seed);
-
-    // Initialize IFP source banks
-    if (settings::ifp) {
-      initialize_ifp_source_banks(i);
-    }
   }
 
   // Write out initial source

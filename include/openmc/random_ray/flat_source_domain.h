@@ -131,6 +131,12 @@ public:
   std::unordered_map<SourceRegionKey, int64_t, SourceRegionKey::HashFunctor>
     source_region_map_;
 
+  // Map that relates a SourceRegionKey to the external source index. This map
+  // is used to check if there are any point sources within a subdivided source
+  // region at the time it is discovered.
+  std::unordered_map<SourceRegionKey, int64_t, SourceRegionKey::HashFunctor>
+    point_source_map_;
+
   // If transport corrected MGXS data is being used, there may be negative
   // in-group scattering cross sections that can result in instability in MOC
   // and random ray if used naively. This flag enables a stabilization
@@ -141,7 +147,7 @@ protected:
   //----------------------------------------------------------------------------
   // Methods
   void apply_external_source_to_source_region(
-    Discrete* discrete, double strength_factor, int64_t sr);
+    Discrete* discrete, double strength_factor, SourceRegionHandle& srh);
   void apply_external_source_to_cell_instances(int32_t i_cell,
     Discrete* discrete, double strength_factor, int target_material_id,
     const vector<int32_t>& instances);

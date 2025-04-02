@@ -946,17 +946,16 @@ void FlatSourceDomain::output_to_vtk() const
 }
 
 void FlatSourceDomain::apply_external_source_to_source_region(
-  Discrete* discrete, double strength_factor, int64_t sr)
+  Discrete* discrete, double strength_factor, SourceRegionHandle& srh)
 {
-  source_regions_.external_source_present(sr) = 1;
+  srh.external_source_present() = 1;
 
   const auto& discrete_energies = discrete->x();
   const auto& discrete_probs = discrete->prob();
 
   for (int i = 0; i < discrete_energies.size(); i++) {
     int g = data::mg.get_group_index(discrete_energies[i]);
-    source_regions_.external_source(sr, g) +=
-      discrete_probs[i] * strength_factor;
+    srh.external_source(g) += discrete_probs[i] * strength_factor;
   }
 }
 
@@ -980,8 +979,9 @@ void FlatSourceDomain::apply_external_source_to_cell_instances(int32_t i_cell,
     if (target_material_id == C_NONE ||
         cell_material_id == target_material_id) {
       int64_t source_region = source_region_offsets_[i_cell] + j;
-      apply_external_source_to_source_region(
-        discrete, strength_factor, source_region);
+      SourceRegionHandle srh =
+        source_regions_.get_source_region_handle(source_region);
+      apply_external_source_to_source_region(discrete, strength_factor, srh);
     }
   }
 }
@@ -1023,33 +1023,87 @@ void FlatSourceDomain::convert_external_sources()
 {
   // Loop over external sources
   for (int es = 0; es < model::external_sources.size(); es++) {
+
+    // Extract source information
     Source* s = model::external_sources[es].get();
     IndependentSource* is = dynamic_cast<IndependentSource*>(s);
     Discrete* energy = dynamic_cast<Discrete*>(is->energy());
     const std::unordered_set<int32_t>& domain_ids = is->domain_ids();
-
     double strength_factor = is->strength();
 
-    if (is->domain_type() == Source::DomainType::MATERIAL) {
-      for (int32_t material_id : domain_ids) {
-        for (int i_cell = 0; i_cell < model::cells.size(); i_cell++) {
-          apply_external_source_to_cell_and_children(
-            i_cell, energy, strength_factor, material_id);
+    // If there is no domain constraint specified, then this must be a point
+    // source. In this case, we need to find the source region that contains the
+    // point source and apply or relate it to the external source.
+    if (is->domain_ids().size() == 0) {
+
+      // Extract the point source coordinate and find the base source region at
+      // that point
+      auto sp = dynamic_cast<SpatialPoint*>(is->space());
+      GeometryState gs;
+      gs.r() = sp->r();
+      gs.r_last() = sp->r();
+      gs.u() = {1.0, 0.0, 0.0};
+      bool found = exhaustive_find_cell(gs);
+      if (!found) {
+        fatal_error(fmt::format("Could not find cell containing external "
+                                "point source at {}",
+          sp->r()));
+      }
+      int i_cell = gs.lowest_coord().cell;
+      int64_t sr = source_region_offsets_[i_cell] + gs.cell_instance();
+
+      if (RandomRay::mesh_subdivision_enabled_) {
+        // If mesh subdivision is enabled, we need to determine which subdivided
+        // mesh bin the point source coordinate is in as well
+        int mesh_idx = source_regions_.mesh(sr);
+        int mesh_bin;
+        if (mesh_idx == C_NONE) {
+          mesh_bin = 0;
+        } else {
+          mesh_bin = model::meshes[mesh_idx]->get_bin(gs.r());
         }
+        // With the source region and mesh bin known, we can use the
+        // accompanying SourceRegionKey as a key into a map that stores the
+        // corresponding external source index for the point source. Notably, we
+        // do not actually apply the external source to any source regions here,
+        // as if mesh subdivision is enabled, they haven't actually been
+        // discovered & initilized yet. When discovered, they will read from the
+        // point_source_map to determine if there are any point source terms
+        // that should be applied.
+        SourceRegionKey key {sr, mesh_bin};
+        point_source_map_[key] = es;
+      } else {
+        // If we are not using mesh subdivision, we can apply the external
+        // source directly to the source region as we do for volumetric domain
+        // constraint sources.
+        SourceRegionHandle srh = source_regions_.get_source_region_handle(sr);
+        apply_external_source_to_source_region(energy, strength_factor, srh);
       }
-    } else if (is->domain_type() == Source::DomainType::CELL) {
-      for (int32_t cell_id : domain_ids) {
-        int32_t i_cell = model::cell_map[cell_id];
-        apply_external_source_to_cell_and_children(
-          i_cell, energy, strength_factor, C_NONE);
-      }
-    } else if (is->domain_type() == Source::DomainType::UNIVERSE) {
-      for (int32_t universe_id : domain_ids) {
-        int32_t i_universe = model::universe_map[universe_id];
-        Universe& universe = *model::universes[i_universe];
-        for (int32_t i_cell : universe.cells_) {
+
+    } else {
+      // If not a point source, then use the volumetric domain constraints to
+      // determine which source regions to apply the external source to.
+      if (is->domain_type() == Source::DomainType::MATERIAL) {
+        for (int32_t material_id : domain_ids) {
+          for (int i_cell = 0; i_cell < model::cells.size(); i_cell++) {
+            apply_external_source_to_cell_and_children(
+              i_cell, energy, strength_factor, material_id);
+          }
+        }
+      } else if (is->domain_type() == Source::DomainType::CELL) {
+        for (int32_t cell_id : domain_ids) {
+          int32_t i_cell = model::cell_map[cell_id];
           apply_external_source_to_cell_and_children(
             i_cell, energy, strength_factor, C_NONE);
+        }
+      } else if (is->domain_type() == Source::DomainType::UNIVERSE) {
+        for (int32_t universe_id : domain_ids) {
+          int32_t i_universe = model::universe_map[universe_id];
+          Universe& universe = *model::universes[i_universe];
+          for (int32_t i_cell : universe.cells_) {
+            apply_external_source_to_cell_and_children(
+              i_cell, energy, strength_factor, C_NONE);
+          }
         }
       }
     }
@@ -1399,6 +1453,25 @@ SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
     sr_key, {base_source_regions_.get_source_region_handle(sr), sr});
   discovered_source_regions_.unlock(sr_key);
   SourceRegionHandle handle {*sr_ptr};
+
+  // Check if the new source region contains a point source and apply it if so
+  auto it2 = point_source_map_.find(sr_key);
+  if (it2 != point_source_map_.end()) {
+    int es = it2->second;
+    auto s = model::external_sources[es].get();
+    auto is = dynamic_cast<IndependentSource*>(s);
+    auto energy = dynamic_cast<Discrete*>(is->energy());
+    double strength_factor = is->strength();
+    apply_external_source_to_source_region(energy, strength_factor, handle);
+    int material = handle.material();
+    if (material != MATERIAL_VOID) {
+      for (int g = 0; g < negroups_; g++) {
+        double sigma_t = sigma_t_[material * negroups_ + g];
+        handle.external_source(g) /= sigma_t;
+      }
+    }
+  }
+
   return handle;
 }
 

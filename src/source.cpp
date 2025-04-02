@@ -34,6 +34,7 @@
 #include "openmc/state_point.h"
 #include "openmc/string_utils.h"
 #include "openmc/xml_interface.h"
+#include "openmc/ifp.h"
 
 namespace openmc {
 
@@ -598,18 +599,9 @@ void initialize_source()
     // sample external source distribution
     simulation::source_bank[i] = sample_external_source(&seed);
 
-    // Initialize IFP data
+    // Initialize IFP source banks
     if (settings::ifp) {
-      if (settings::ifp_parameter == IFPParameter::BetaEffective ||
-          settings::ifp_parameter == IFPParameter::Both) {
-        vector<int> ifp_delayed_groups;
-        simulation::ifp_source_delayed_group_bank[i] = ifp_delayed_groups;
-      }
-      if (settings::ifp_parameter == IFPParameter::GenerationTime ||
-          settings::ifp_parameter == IFPParameter::Both) {
-        vector<double> ifp_lifetimes;
-        simulation::ifp_source_lifetime_bank[i] = ifp_lifetimes;
-      }
+      initialize_ifp_source_banks(i);
     }
   }
 

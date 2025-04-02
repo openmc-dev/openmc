@@ -45,6 +45,16 @@ void ifp(const Particle& p, const SourceSite& site, int64_t idx)
   }
 }
 
+void initialize_ifp_source_banks(int64_t i)
+{
+  if (is_beta_effective_or_both()) {
+    simulation::ifp_source_delayed_group_bank[i] = vector<int>();
+  }
+  if (is_generation_time_or_both()) {
+    simulation::ifp_source_lifetime_bank[i] = vector<double>();
+  }
+}
+
 void resize_simulation_ifp_banks()
 {
   if (is_beta_effective_or_both()) {

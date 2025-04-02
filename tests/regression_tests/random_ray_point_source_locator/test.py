@@ -13,6 +13,7 @@ class MGXSTestHarness(TolerantPyAPITestHarness):
         if os.path.exists(f):
             os.remove(f)
 
+
 def test_random_ray_point_source_locator():
     model = random_ray_three_region_cube()
 
@@ -30,7 +31,7 @@ def test_random_ray_point_source_locator():
     strengths = [1.0]
     midpoints = [100.0]
     energy_distribution = openmc.stats.Discrete(x=midpoints, p=strengths)
-    spatial_distribution = openmc.stats.Point(xyz=[2.5, 2.5, 2.5])
+    spatial_distribution = openmc.stats.Point([2.5, 2.5, 2.5])
     source = openmc.IndependentSource(
         energy=energy_distribution, space=spatial_distribution, strength=3.14)
     model.settings.source = [source]

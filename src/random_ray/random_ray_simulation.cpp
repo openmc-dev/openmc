@@ -282,8 +282,7 @@ void validate_random_ray_inputs()
       }
 
       // Validate that a domain ID was specified OR that it is a point source
-      SpatialDistribution* space_dist = is->space();
-      SpatialPoint* sp = dynamic_cast<SpatialPoint*>(space_dist);
+      auto sp = dynamic_cast<SpatialPoint*>(is->space());
       if (is->domain_ids().size() == 0 && !sp) {
         fatal_error("Fixed sources must be point source or spatially "
                     "constrained by domain id (cell, material, or universe) in "
@@ -529,6 +528,7 @@ void RandomRaySimulation::simulate()
     finalize_generation();
     finalize_batch();
   } // End random ray power iteration loop
+
   domain_->count_external_source_regions();
 }
 

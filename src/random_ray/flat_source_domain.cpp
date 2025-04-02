@@ -1032,14 +1032,13 @@ void FlatSourceDomain::convert_external_sources()
     double strength_factor = is->strength();
 
     // If there is no domain constraint specified, then this must be a point
-    // source. In this case, we need to find the source region that
-    // contains the point source and apply or relate it to the external source.
+    // source. In this case, we need to find the source region that contains the
+    // point source and apply or relate it to the external source.
     if (is->domain_ids().size() == 0) {
 
-      // Extract the point source coordinate and find the base source region
-      // at that point
-      SpatialDistribution* space_dist = is->space();
-      SpatialPoint* sp = dynamic_cast<SpatialPoint*>(space_dist);
+      // Extract the point source coordinate and find the base source region at
+      // that point
+      auto sp = dynamic_cast<SpatialPoint*>(is->space());
       GeometryState gs;
       gs.r() = sp->r();
       gs.r_last() = sp->r();
@@ -1047,15 +1046,15 @@ void FlatSourceDomain::convert_external_sources()
       bool found = exhaustive_find_cell(gs);
       if (!found) {
         fatal_error(fmt::format("Could not find cell containing external "
-                                "point source at ({}, {}, {})",
-          sp->r().x, sp->r().y, sp->r().z));
+                                "point source at {}",
+          sp->r()));
       }
       int i_cell = gs.lowest_coord().cell;
       int64_t sr = source_region_offsets_[i_cell] + gs.cell_instance();
 
       if (RandomRay::mesh_subdivision_enabled_) {
-        // If mesh subdivision is enabled, we need to determine which
-        // subdivided mesh bin the point source coordinate is in as well
+        // If mesh subdivision is enabled, we need to determine which subdivided
+        // mesh bin the point source coordinate is in as well
         int mesh_idx = source_regions_.mesh(sr);
         int mesh_bin;
         if (mesh_idx == C_NONE) {
@@ -1064,26 +1063,26 @@ void FlatSourceDomain::convert_external_sources()
           mesh_bin = model::meshes[mesh_idx]->get_bin(gs.r());
         }
         // With the source region and mesh bin known, we can use the
-        // accompanying SourceRegionKey as a key into a map that stores
-        // the corresponding external source index for the point source.
-        // Notably, we do not actually apply the external source to any
-        // source regions here, as if mesh subdivision is enabled, they
-        // haven't actually been discovered & initilized yet. When discovered,
-        // they will read from the point_source_map to determine if there
-        // are any point source terms that should be applied.
+        // accompanying SourceRegionKey as a key into a map that stores the
+        // corresponding external source index for the point source. Notably, we
+        // do not actually apply the external source to any source regions here,
+        // as if mesh subdivision is enabled, they haven't actually been
+        // discovered & initilized yet. When discovered, they will read from the
+        // point_source_map to determine if there are any point source terms
+        // that should be applied.
         SourceRegionKey key {sr, mesh_bin};
         point_source_map_[key] = es;
       } else {
         // If we are not using mesh subdivision, we can apply the external
-        // source directly to the source region as we do for volumetric
-        // domain constraint sources.
+        // source directly to the source region as we do for volumetric domain
+        // constraint sources.
         SourceRegionHandle srh = source_regions_.get_source_region_handle(sr);
         apply_external_source_to_source_region(energy, strength_factor, srh);
       }
 
-      // If not a point source, then use the volumetric domain constraints
-      // to determine which source regions to apply the external source to.
     } else {
+      // If not a point source, then use the volumetric domain constraints to
+      // determine which source regions to apply the external source to.
       if (is->domain_type() == Source::DomainType::MATERIAL) {
         for (int32_t material_id : domain_ids) {
           for (int i_cell = 0; i_cell < model::cells.size(); i_cell++) {
@@ -1459,9 +1458,9 @@ SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
   auto it2 = point_source_map_.find(sr_key);
   if (it2 != point_source_map_.end()) {
     int es = it2->second;
-    Source* s = model::external_sources[es].get();
-    IndependentSource* is = dynamic_cast<IndependentSource*>(s);
-    Discrete* energy = dynamic_cast<Discrete*>(is->energy());
+    auto s = model::external_sources[es].get();
+    auto is = dynamic_cast<IndependentSource*>(s);
+    auto energy = dynamic_cast<Discrete*>(is->energy());
     double strength_factor = is->strength();
     apply_external_source_to_source_region(energy, strength_factor, handle);
     int material = handle.material();

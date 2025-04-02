@@ -131,9 +131,9 @@ public:
   std::unordered_map<SourceRegionKey, int64_t, SourceRegionKey::HashFunctor>
     source_region_map_;
 
-  // Map that relates a SourceRegionKey to an the external source index.
-  // This map is used to check if there are any point sources within a
-  // subdivided source region at the time when it is discovered.
+  // Map that relates a SourceRegionKey to the external source index. This map
+  // is used to check if there are any point sources within a subdivided source
+  // region at the time it is discovered.
   std::unordered_map<SourceRegionKey, int64_t, SourceRegionKey::HashFunctor>
     point_source_map_;
 

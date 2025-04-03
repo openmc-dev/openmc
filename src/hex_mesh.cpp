@@ -237,18 +237,18 @@ int32_t HexagonalMesh::offset_in_ring(const HexMeshIndex& ijkl, int32_t r) const
   HexMeshIndex corner {r, 0, -r, 0};
 
   int segment {0};
-  if (abs(i[2]) >= abs(i[1]) && abs(i[2]) >= abs(i[0]) ){
-    if (i[2]<0)
+  if (abs(i[2]) >= abs(i[1]) && abs(i[2]) >= abs(i[0])) {
+    if (i[2] < 0)
       segment = 0;
     else
       segment = 3;
   } else if (abs(i[1]) >= abs(i[0])) {
-    if (i[1]>0)
+    if (i[1] > 0)
       segment = 1;
     else
       segment = 4;
   } else {
-    if (i[0]< 0)
+    if (i[0] < 0)
       segment = 2;
     else
       segment = 5;
@@ -275,13 +275,13 @@ HexagonalMesh::HexMeshIndex HexagonalMesh::rotate_hexindex(
 HexagonalMesh::HexMeshIndex HexagonalMesh::get_hexindices_from_bin(
   const int32_t bin) const
 {
-  std::array<HexMeshIndex,6> directions;
-  directions[0] = {-1,1,0,0};
-  directions[1] = {-1,0,1,0};
-  directions[2] = {0,-1,1,0};
-  directions[3] = {1,-1,0,0};
-  directions[4] = {1,0,-1,0};
-  directions[5] = {0,1,-1,0};
+  std::array<HexMeshIndex, 6> directions;
+  directions[0] = {-1, 1, 0, 0};
+  directions[1] = {-1, 0, 1, 0};
+  directions[2] = {0, -1, 1, 0};
+  directions[3] = {1, -1, 0, 0};
+  directions[4] = {1, 0, -1, 0};
+  directions[5] = {0, 1, -1, 0};
 
   HexMeshIndex ijkl = {0, 0, 0, 1};
   ijkl[3] = (int)floor(bin / hex_count_) + 1;
@@ -293,15 +293,15 @@ HexagonalMesh::HexMeshIndex HexagonalMesh::get_hexindices_from_bin(
   int start_of_ring = (1 + 3 * ring * (ring - 1));
 
   if (ring > 0) {
-    int segment = (spiral_index-start_of_ring) / ring;
+    int segment = (spiral_index - start_of_ring) / ring;
 
     ijkl[0] = ring;
     ijkl[2] = -ring;
 
-    for (int k=0; k < segment; k++)
+    for (int k = 0; k < segment; k++)
       ijkl = rotate_hexindex(ijkl);
 
-    for (int k = 0; k < spiral_index - start_of_ring - ring*segment; k++) {
+    for (int k = 0; k < spiral_index - start_of_ring - ring * segment; k++) {
       for (int l = 0; l < ijkl.size(); l++)
         ijkl[l] = ijkl[l] + directions[segment][l];
     }

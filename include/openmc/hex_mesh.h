@@ -87,7 +87,7 @@ public:
 
   std::string bin_label(int bin) const;
 
-  int32_t offset_in_ring(const HexMeshIndex& ijkl,int32_t r) const;
+  int32_t offset_in_ring(const HexMeshIndex& ijkl, int32_t r) const;
 
   HexMeshIndex rotate_hexindex(const HexMeshIndex& ijkl) const;
 
@@ -109,8 +109,8 @@ public:
   HexMeshDistance distance_to_grid_boundary(const HexMeshIndex& ijk, int i,
     const Position& r0, const Direction& u, double l) const;
 
-  StructuredMesh::MeshDistance distance_to_grid_boundary(const MeshIndex& ijk, int i,
-    const Position& r0, const Direction& u, double l) const override;
+  StructuredMesh::MeshDistance distance_to_grid_boundary(const MeshIndex& ijk,
+    int i, const Position& r0, const Direction& u, double l) const override;
 
   std::pair<vector<double>, vector<double>> plot(
     Position plot_ll, Position plot_ur) const override;

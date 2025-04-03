@@ -298,8 +298,6 @@ std::string HexagonalMesh::bin_label(int bin) const
   int ofr = offset_in_ring(ijkl, hr);
   return fmt::format(
     "Mesh Index ({}, {}, {})", hr, offset_in_ring(ijkl, hr), ijkl[3]);
-  // return fmt::format("Mesh Index ({}, {}, {})", ijkl[0], ijkl[1], ijkl[2]);
-  // hex_radius_, offset_in_ring(ijkl,hex_radius_), ijkl[3]);
 }
 
 int HexagonalMesh::get_hexindex_in_direction(const Position& r, int i) const

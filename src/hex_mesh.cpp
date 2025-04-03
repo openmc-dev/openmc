@@ -233,28 +233,56 @@ int32_t HexagonalMesh::offset_in_ring(const HexMeshIndex& ijkl, int32_t r) const
   // find the offset within a ring
   if (r == 0)
     return 0;
+  HexMeshIndex i {ijkl};
   HexMeshIndex corner {r, 0, -r, 0};
-  for (int k = 0; k < 6; k++) {
-    int32_t hexd = hex_distance(corner, ijkl);
-    if (hexd < r)
-      return k;
-    corner = rotate_hexindex(corner);
+
+  int segment {0};
+  if (abs(i[2]) >= abs(i[1]) && abs(i[2]) >= abs(i[0]) ){
+    if (i[2]<0)
+      segment = 0;
+    else
+      segment = 3;
+  } else if (abs(i[1]) >= abs(i[0])) {
+    if (i[1]>0)
+      segment = 1;
+    else
+      segment = 4;
+  } else {
+    if (i[0]< 0)
+      segment = 2;
+    else
+      segment = 5;
   }
+
+  for (int k = 0; k < segment; k++)
+    corner = rotate_hexindex(corner);
+
+  int32_t hexd = hex_distance(corner, i);
+  int ii = r * segment + hexd;
+  return ii;
 }
 
 HexagonalMesh::HexMeshIndex HexagonalMesh::rotate_hexindex(
   const HexMeshIndex& ijkl) const
 {
   HexMeshIndex new_ijkl {ijkl};
-  new_ijkl[0] = -ijkl[2];
-  new_ijkl[1] = -ijkl[0];
-  new_ijkl[2] = -ijkl[1];
+  new_ijkl[0] = -ijkl[1];
+  new_ijkl[1] = -ijkl[2];
+  new_ijkl[2] = -ijkl[0];
   return new_ijkl;
 }
 
 HexagonalMesh::HexMeshIndex HexagonalMesh::get_hexindices_from_bin(
   const int32_t bin) const
 {
+  std::array<HexMeshIndex,6> directions;
+  directions[0] = {-1,1,0,0};
+  directions[1] = {-1,0,1,0};
+  directions[2] = {0,-1,1,0};
+  directions[3] = {1,-1,0,0};
+  directions[4] = {1,0,-1,0};
+  directions[5] = {0,1,-1,0};
+
   HexMeshIndex ijkl = {0, 0, 0, 1};
   ijkl[3] = (int)floor(bin / hex_count_) + 1;
   int spiral_index = bin % hex_count_;
@@ -262,12 +290,20 @@ HexagonalMesh::HexMeshIndex HexagonalMesh::get_hexindices_from_bin(
     return ijkl;
   }
   int ring = (int)floor((sqrt(12 * spiral_index - 3) + 3) / 6);
-  int32_t start_of_ring = (1 + 3 * ring * (ring - 1));
-  ijkl[0] = ring;
-  ijkl[2] = -ring;
+  int start_of_ring = (1 + 3 * ring * (ring - 1));
+
   if (ring > 0) {
-    for (int k = 0; k < spiral_index - start_of_ring; k++) {
+    int segment = (spiral_index-start_of_ring) / ring;
+
+    ijkl[0] = ring;
+    ijkl[2] = -ring;
+
+    for (int k=0; k < segment; k++)
       ijkl = rotate_hexindex(ijkl);
+
+    for (int k = 0; k < spiral_index - start_of_ring - ring*segment; k++) {
+      for (int l = 0; l < ijkl.size(); l++)
+        ijkl[l] = ijkl[l] + directions[segment][l];
     }
   }
   return ijkl;

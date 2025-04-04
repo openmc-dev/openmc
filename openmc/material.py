@@ -18,6 +18,7 @@ import openmc.checkvalue as cv
 from ._xml import clean_indentation, reorder_attributes
 from .mixin import IDManagerMixin
 from .utility_funcs import input_path
+from . import waste
 from openmc.checkvalue import PathLike
 from openmc.stats import Univariate, Discrete, Mixture
 from openmc.data.data import _get_element_symbol
@@ -1058,7 +1059,6 @@ class Material(IDManagerMixin):
             nuc_densities.append(nuc.percent)
             nuc_density_types.append(nuc.percent_type)
 
-        nucs = np.array(nucs)
         nuc_densities = np.array(nuc_densities)
         nuc_density_types = np.array(nuc_density_types)
 
@@ -1137,17 +1137,16 @@ class Material(IDManagerMixin):
 
     def get_activity(self, units: str = 'Bq/cm3', by_nuclide: bool = False,
                      volume: float | None = None) -> dict[str, float] | float:
-        """Returns the activity of the material or for each nuclide in the
-        material in units of [Bq], [Bq/g], [Bq/kg] or [Bq/cm3].
+        """Returns the activity of the material or of each nuclide within.
 
         .. versionadded:: 0.13.1
 
         Parameters
         ----------
-        units : {'Bq', 'Bq/g', 'Bq/kg', 'Bq/cm3'}
+        units : {'Bq', 'Bq/g', 'Bq/kg', 'Bq/cm3', 'Ci', 'Ci/m3'}
             Specifies the type of activity to return, options include total
-            activity [Bq], specific [Bq/g, Bq/kg] or volumetric activity
-            [Bq/cm3]. Default is volumetric activity [Bq/cm3].
+            activity [Bq,Ci], specific [Bq/g, Bq/kg] or volumetric activity
+            [Bq/cm3,Ci/m3]. Default is volumetric activity [Bq/cm3].
         by_nuclide : bool
             Specifies if the activity should be returned for the material as a
             whole or per nuclide. Default is False.
@@ -1165,7 +1164,7 @@ class Material(IDManagerMixin):
             of the material is returned as a float.
         """
 
-        cv.check_value('units', units, {'Bq', 'Bq/g', 'Bq/kg', 'Bq/cm3'})
+        cv.check_value('units', units, {'Bq', 'Bq/g', 'Bq/kg', 'Bq/cm3', 'Ci', 'Ci/m3'})
         cv.check_type('by_nuclide', by_nuclide, bool)
 
         if units == 'Bq':
@@ -1176,6 +1175,10 @@ class Material(IDManagerMixin):
             multiplier = 1.0 / self.get_mass_density()
         elif units == 'Bq/kg':
             multiplier = 1000.0 / self.get_mass_density()
+        elif units == 'Ci':
+            multiplier = 1.0 / 3.7e10
+        elif units == 'Ci/m3':
+            multiplier = 1e6 / 3.7e10
 
         activity = {}
         for nuclide, atoms_per_bcm in self.get_nuclide_atom_densities().items():
@@ -1315,6 +1318,40 @@ class Material(IDManagerMixin):
         if volume is None:
             raise ValueError("Volume must be set in order to determine mass.")
         return volume*self.get_mass_density(nuclide)
+
+    def waste_classification(self, metal: bool = False, method: str = 'NRC') -> str:
+        """Classify a material for near-surface waste disposal.
+
+        This method determines a waste classification for the material based on
+        either NRC regulations (10 CFR 61.55) or Fetter et al., "Long-term
+        radioactive waste from fusion reactors: Part II", Fusion Eng. Des., 13,
+        239-246 (1990). https://doi.org/10.1016/0920-3796(90)90104-E. The NRC
+        regulations do not consider many long-lived radionuclides relevant to
+        fusion systems; the paper by Fetter applies the NRC methodology to
+        calculate specific activity limits for an expanded set of radionuclides.
+
+        Parameters
+        ----------
+        metal : bool, optional
+            Whether or not the material is in metal form.
+        method : {'NRC', 'Fetter'}, optional
+            The method to use for classification. The 'NRC' method uses specific
+            activity limits based on 10 CFR 61.55, while the 'Fetter' method
+            uses specific activity limits from the paper by Fetter et al.
+
+        Returns
+        -------
+        str
+            The waste disposal classification, which can be "Class A", "Class
+            B", "Class B", or "GTCC" (greater than class C).
+
+        """
+        if method == 'NRC':
+            return waste._waste_classification_nrc(self, metal=metal)
+        elif method == 'Fetter':
+            return waste._waste_classification_fetter(self)
+        else:
+            raise ValueError(f'Invalid method "{method}" specified for waste classification.')
 
     def clone(self, memo: dict | None = None) -> Material:
         """Create a copy of this material with a new unique ID.

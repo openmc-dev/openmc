@@ -2,7 +2,6 @@
 #include <algorithm> // for copy, equal, min, min_element
 #include <cmath>     // for ceil, sqrt
 #include <cstddef>   // for size_t
-#include <gsl/gsl-lite.hpp>
 #include <string>
 
 #ifdef OPENMC_MPI

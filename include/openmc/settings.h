@@ -173,6 +173,11 @@ void read_settings_xml();
 //! \param[in] root XML node for <settings>
 void read_settings_xml(pugi::xml_node root);
 
+//! Select temperatures to read based on what is needed and available
+void select_temperatures(std::string& object_name,
+  const vector<double>& available_temperatures,
+  const vector<double>& requested_temperatures, vector<int>& temps_to_read);
+
 void free_memory_settings();
 
 } // namespace openmc

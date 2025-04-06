@@ -4,7 +4,7 @@
 #
 # Arguments:
 #   SCRIPT_NAME - The name of the script to be generated (e.g., 'my_script').
-#
+
 function(generate_and_install_python_script SCRIPT_NAME)
     if(SKBUILD)
         # Strip any leading/trailing whitespace from the script name

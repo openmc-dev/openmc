@@ -1167,8 +1167,11 @@ class Material(IDManagerMixin):
         cv.check_value('units', units, {'Bq', 'Bq/g', 'Bq/kg', 'Bq/cm3', 'Ci', 'Ci/m3'})
         cv.check_type('by_nuclide', by_nuclide, bool)
 
+        if volume is None:
+            volume = self.volume
+
         if units == 'Bq':
-            multiplier = volume if volume is not None else self.volume
+            multiplier = volume
         elif units == 'Bq/cm3':
             multiplier = 1
         elif units == 'Bq/g':
@@ -1176,7 +1179,7 @@ class Material(IDManagerMixin):
         elif units == 'Bq/kg':
             multiplier = 1000.0 / self.get_mass_density()
         elif units == 'Ci':
-            multiplier = 1.0 / 3.7e10
+            multiplier = volume / 3.7e10
         elif units == 'Ci/m3':
             multiplier = 1e6 / 3.7e10
 

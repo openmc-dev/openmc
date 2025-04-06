@@ -1,3 +1,5 @@
+import random
+
 import openmc
 import pytest
 
@@ -83,3 +85,14 @@ def test_waste_classification_fetter():
     mat.add_nuclide('Tc99', 5.0e-2*density)
     assert mat.waste_classification(method='NRC') == 'Class A'
     assert mat.waste_classification(method='Fetter') == 'Class C'
+
+
+def test_waste_classification_limits():
+    """Test override of specific activity limits"""
+    mat = openmc.Material()
+    mat.add_nuclide('K40', random.random())
+
+    # Check for correct classification based on actual activity
+    ci_m3 = mat.get_activity('Ci/m3')
+    assert mat.waste_classification('Fetter', limits={'K40': 2*ci_m3}) == 'Class C'
+    assert mat.waste_classification('Fetter', limits={'K40': 0.5*ci_m3}) == 'GTCC'

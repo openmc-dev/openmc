@@ -31,6 +31,7 @@ DENSITY_UNITS = ('g/cm3', 'g/cc', 'kg/m3', 'atom/b-cm', 'atom/cm3', 'sum',
 # Smallest normalized floating point number
 _SMALLEST_NORMAL = sys.float_info.min
 
+_BECQUEREL_PER_CURIE = 3.7e10
 
 NuclideTuple = namedtuple('NuclideTuple', ['name', 'percent', 'percent_type'])
 
@@ -1179,9 +1180,9 @@ class Material(IDManagerMixin):
         elif units == 'Bq/kg':
             multiplier = 1000.0 / self.get_mass_density()
         elif units == 'Ci':
-            multiplier = volume / 3.7e10
+            multiplier = volume / _BECQUEREL_PER_CURIE
         elif units == 'Ci/m3':
-            multiplier = 1e6 / 3.7e10
+            multiplier = 1e6 / _BECQUEREL_PER_CURIE
 
         activity = {}
         for nuclide, atoms_per_bcm in self.get_nuclide_atom_densities().items():
@@ -1322,37 +1323,50 @@ class Material(IDManagerMixin):
             raise ValueError("Volume must be set in order to determine mass.")
         return volume*self.get_mass_density(nuclide)
 
-    def waste_classification(self, metal: bool = False, method: str = 'NRC') -> str:
+    def waste_classification(
+            self,
+            method: str = 'NRC',
+            metal: bool = False,
+            limits: dict[str, float] | None = None,
+        ) -> str:
         """Classify a material for near-surface waste disposal.
 
         This method determines a waste classification for the material based on
-        either NRC regulations (10 CFR 61.55) or Fetter et al., "Long-term
-        radioactive waste from fusion reactors: Part II", Fusion Eng. Des., 13,
-        239-246 (1990). https://doi.org/10.1016/0920-3796(90)90104-E. The NRC
-        regulations do not consider many long-lived radionuclides relevant to
-        fusion systems; the paper by Fetter applies the NRC methodology to
-        calculate specific activity limits for an expanded set of radionuclides.
+        either NRC regulations (10 CFR 61.55) or an arbitrary set of specific
+        activity limits, which by default uses the limits from Fetter et al.,
+        "Long-term radioactive waste from fusion reactors: Part II", Fusion Eng.
+        Des., 13, 239-246 (1990). https://doi.org/10.1016/0920-3796(90)90104-E.
+        The NRC regulations do not consider many long-lived radionuclides
+        relevant to fusion systems; the paper by Fetter applies the NRC
+        methodology to calculate specific activity limits for an expanded set of
+        radionuclides.
 
         Parameters
         ----------
-        metal : bool, optional
-            Whether or not the material is in metal form.
         method : {'NRC', 'Fetter'}, optional
             The method to use for classification. The 'NRC' method uses specific
             activity limits based on 10 CFR 61.55, while the 'Fetter' method
             uses specific activity limits from the paper by Fetter et al.
+        metal : bool, optional
+            Whether or not the material is in metal form (only applicable when
+            method is 'NRC')
+        limits : dict, optional
+            A dictionary of specific activity limits for radionuclides, where
+            keys are nuclide names and values are activities in units of [Ci/m3]
+            (only applicable when method is 'Fetter'). If provided, this
+            dictionary will be used instead of the default Fetter limits.
 
         Returns
         -------
         str
             The waste disposal classification, which can be "Class A", "Class
-            B", "Class B", or "GTCC" (greater than class C).
+            B", "Class C", or "GTCC" (greater than class C).
 
         """
         if method == 'NRC':
             return waste._waste_classification_nrc(self, metal=metal)
         elif method == 'Fetter':
-            return waste._waste_classification_fetter(self)
+            return waste._waste_classification_fetter(self, limits=limits)
         else:
             raise ValueError(f'Invalid method "{method}" specified for waste classification.')
 

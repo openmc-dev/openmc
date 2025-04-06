@@ -130,21 +130,118 @@ def _waste_classification_nrc(mat: openmc.Material, metal: bool = True) -> str:
         return "Class A"
 
 
-def _waste_classification_fetter(mat: openmc.Material) -> str:
-    """Classify a material according to specific activity limits from Fetter.
+# Specific activity limits for class C disposal for all radionuclides with
+# half-lives between 5 years and 1e12 years from Table 2 in Fetter
+_FETTER_LIMITS = {
+    "Be10": 5.0e3,
+    "C14": 6.0e2,
+    "Al26": 9.0e-2,
+    "Si32": 6.0e2,
+    "Cl36": 1.0e1,
+    "Ar39": 2.0e4,
+    "Ar42": 2.0e4,
+    "K40": 2.0e0,
+    "Ca41": 1.0e4,
+    "Ti44": 2.0e2,
+    "Fe60": 1.0e-1,
+    "Co60": 3.0e8,
+    "Ni59": 9.0e2,
+    "Ni63": 7.0e5,
+    "Se79": 5.0e1,
+    "Kr81": 3.0e1,
+    "Sr90": 8.0e5,
+    "Nb91": 2.0e2,
+    "Nb92": 2.0e-1,
+    "Nb94": 2.0e-1,
+    "Mo93": 4.0e3,
+    "Tc97": 4.0e-1,
+    "Tc98": 1.0e-2,
+    "Tc99": 6.0e-2,
+    "Pb107": 9.0e2,
+    "Ag108_m1": 3.0e0,
+    "Sn121_m1": 7.0e5,
+    "Sn126": 1.0e-1,
+    "I129": 2.0e0,
+    "Cs137": 5.0e4,
+    "Ba133": 2.0e8,
+    "La137": 2.0e2,
+    "Sm151": 5.0e7,
+    "Eu150_m1": 3.0e3,
+    "Eu152": 3.0e5,
+    "Eu154": 5.0e6,
+    "Gd148": 2.0e5,
+    "Gd150": 2.0e3,
+    "Tb157": 5.0e3,
+    "Tb158": 4.0e0,
+    "Dy154": 1.0e3,
+    "Ho166_m1": 2.0e-1,
+    "Hf178_m1": 9.0e3,
+    "Hf182": 2.0e-1,
+    "Re186_m1": 2.0e1,
+    "Ir192_m1": 1.0e0,
+    "Pt193": 2.0e8,
+    "Hg194": 5.0e-1,
+    "Pb202": 6.0e-1,
+    "Pb210": 3.0e7,
+    "Bi207": 9.0e3,
+    "Bi208": 8.0e-2,
+    "Bi210_m1": 1.0e0,
+    "Po209": 3.0e3,
+    "Ra226": 1.0e-1,
+    "Ra228": 3.0e7,
+    "Ac227": 5.0e5,
+    "Th229": 2.0e0,
+    "Th230": 3.0e-1,
+    "Th232": 1.0e-1,
+    "Pa231": 7.0e-1,
+    "U232": 3.0e1,
+    "U233": 2.0e1,
+    "U234": 9.0e1,
+    "U235": 2.0e0,
+    "Np236": 1.0e0,
+    "Np237": 1.0e0,
+    "Pu238": 7.0e4,
+    "Pu239": 1.0e3,
+    "Pu240": 1.0e3,
+    "Pu241": 2.0e3,
+    "Pu242": 1.0e3,
+    "Pu244": 9.0e-1,
+    "Am241": 5.0e1,
+    "Am242_m1": 3.0e2,
+    "Am243": 2.0e0,
+    "Cm243": 6.0e2,
+    "Cm244": 5.0e5,
+    "Cm245": 5.0e0,
+    "Cm246": 8.0e2,
+    "Cm248": 8.0e2,
+}
 
-    This function classifies a material based on the specific activity limits
-    provided in the paper S. Fetter, E. T. Chang, and F. M. Mann, "Long-term
-    radioactive waste from fusion reactors: Part II", Fusion Eng. Des., 13,
-    239-246 (1990). https://doi.org/10.1016/0920-3796(90)90104-E. Because the
-    NRC regulations in 10 CFR 61.55 do not cover all long-lived radionuclides
-    relevant to fusion applications, this paper used the NRC methodology to
-    calculate specific activity limits for an expanded set of radionuclides.
+
+def _waste_classification_fetter(
+        mat: openmc.Material,
+        limits: dict[str, float] | None = None
+    ) -> str:
+    """Classify a material according to specific activity limits.
+
+    This function classifies a material based on a dictionary of specific
+    activity limits. If the ``limits`` argument is not provided, specific
+    activity limits will be used from S. Fetter, E. T. Chang, and F. M. Mann,
+    "Long-term radioactive waste from fusion reactors: Part II", Fusion Eng.
+    Des., 13, 239-246 (1990). https://doi.org/10.1016/0920-3796(90)90104-E.
+    Because the NRC regulations in 10 CFR 61.55 do not cover all long-lived
+    radionuclides relevant to fusion applications, this paper used the NRC
+    methodology to calculate specific activity limits for an expanded set of
+    radionuclides.
 
     Parameters
     ----------
     mat : openmc.Material
         The material to classify.
+    limits : dict, optional
+        A dictionary of specific activity limits for radionuclides, where keys
+        are nuclide names and values are activities in units of [Ci/m3]. If
+        provided, this dictionary will be used instead of the default Fetter
+        limits.
 
     Returns
     -------
@@ -153,98 +250,15 @@ def _waste_classification_fetter(mat: openmc.Material) -> str:
         "GTCC" (greater than class C).
 
     """
-    # Specific activity limits for class C disposal for all radionuclides with
-    # half-lives between 5 years and 1e12 years from Table 2 in Fetter
-    fetter_limit = {
-        "Be10": 5.0e3,
-        "C14": 6.0e2,
-        "Al26": 9.0e-2,
-        "Si32": 6.0e2,
-        "Cl36": 1.0e1,
-        "Ar39": 2.0e4,
-        "Ar42": 2.0e4,
-        "K40": 2.0e0,
-        "Ca41": 1.0e4,
-        "Ti44": 2.0e2,
-        "Fe60": 1.0e-1,
-        "Co60": 3.0e8,
-        "Ni59": 9.0e2,
-        "Ni63": 7.0e5,
-        "Se79": 5.0e1,
-        "Kr81": 3.0e1,
-        "Sr90": 8.0e5,
-        "Nb91": 2.0e2,
-        "Nb92": 2.0e-1,
-        "Nb94": 2.0e-1,
-        "Mo93": 4.0e3,
-        "Tc97": 4.0e-1,
-        "Tc98": 1.0e-2,
-        "Tc99": 6.0e-2,
-        "Pb107": 9.0e2,
-        "Ag108_m1": 3.0e0,
-        "Sn121_m1": 7.0e5,
-        "Sn126": 1.0e-1,
-        "I129": 2.0e0,
-        "Cs137": 5.0e4,
-        "Ba133": 2.0e8,
-        "La137": 2.0e2,
-        "Sm151": 5.0e7,
-        "Eu150_m1": 3.0e3,
-        "Eu152": 3.0e5,
-        "Eu154": 5.0e6,
-        "Gd148": 2.0e5,
-        "Gd150": 2.0e3,
-        "Tb157": 5.0e3,
-        "Tb158": 4.0e0,
-        "Dy154": 1.0e3,
-        "Ho166_m1": 2.0e-1,
-        "Hf178_m1": 9.0e3,
-        "Hf182": 2.0e-1,
-        "Re186_m1": 2.0e1,
-        "Ir192_m1": 1.0e0,
-        "Pt193": 2.0e8,
-        "Hg194": 5.0e-1,
-        "Pb202": 6.0e-1,
-        "Pb210": 3.0e7,
-        "Bi207": 9.0e3,
-        "Bi208": 8.0e-2,
-        "Bi210_m1": 1.0e0,
-        "Po209": 3.0e3,
-        "Ra226": 1.0e-1,
-        "Ra228": 3.0e7,
-        "Ac227": 5.0e5,
-        "Th229": 2.0e0,
-        "Th230": 3.0e-1,
-        "Th232": 1.0e-1,
-        "Pa231": 7.0e-1,
-        "U232": 3.0e1,
-        "U233": 2.0e1,
-        "U234": 9.0e1,
-        "U235": 2.0e0,
-        "Np236": 1.0e0,
-        "Np237": 1.0e0,
-        "Pu238": 7.0e4,
-        "Pu239": 1.0e3,
-        "Pu240": 1.0e3,
-        "Pu241": 2.0e3,
-        "Pu242": 1.0e3,
-        "Pu244": 9.0e-1,
-        "Am241": 5.0e1,
-        "Am242_m1": 3.0e2,
-        "Am243": 2.0e0,
-        "Cm243": 6.0e2,
-        "Cm244": 5.0e5,
-        "Cm245": 5.0e0,
-        "Cm246": 8.0e2,
-        "Cm248": 8.0e2,
-    }
+    if limits is None:
+        limits = _FETTER_LIMITS
 
     # Calculate the sum of the fractions of the activity of each radionuclide
-    # compared to the Fetter limits
+    # compared to the specified limits
     ratio = 0.0
     for nuc, ci_m3 in mat.get_activity(units="Ci/m3", by_nuclide=True).items():
-        if nuc in fetter_limit:
-            ratio += ci_m3 / fetter_limit[nuc]
+        if nuc in limits:
+            ratio += ci_m3 / limits[nuc]
 
     # Classify based on the activity fraction
     return "Class C" if ratio < 1.0 else "GTCC"

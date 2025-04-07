@@ -65,10 +65,10 @@ def test_waste_classification_mix():
     assert activity['Cs137'] == pytest.approx(22.0, 0.01)
 
     # According to example, the waste should be class B
-    assert mat.waste_classification(method='NRC') == 'Class B'
+    assert mat.waste_classification() == 'Class B'
 
 
-def test_waste_classification_fetter():
+def test_waste_rating_fetter():
     """Test waste classification using the Fetter limits"""
     # For Tc99, Fetter has a more strict limit. Here, we create a material with
     # Tc99 at 1 Ci/m3 which exceeds Fetter but not NRC
@@ -76,23 +76,23 @@ def test_waste_classification_fetter():
     mat = openmc.Material()
     mat.add_nuclide('Tc99', density)
     assert mat.get_activity('Ci/m3') == pytest.approx(1.0, 1e-3)
-    assert mat.waste_classification(method='NRC') == 'Class C'
-    assert mat.waste_classification(method='Fetter') == 'GTCC'
+    assert mat.waste_disposal_rating(limits='NRC_short_C') < 1.0
+    assert mat.waste_disposal_rating(limits='Fetter') > 1.0
 
     # With a lower density, it should be Class C under Fetter limits and Class A
     # under NRC limits
     mat = openmc.Material()
     mat.add_nuclide('Tc99', 5.0e-2*density)
-    assert mat.waste_classification(method='NRC') == 'Class A'
-    assert mat.waste_classification(method='Fetter') == 'Class C'
+    assert mat.waste_disposal_rating(limits='NRC_short_A') < 1.0
+    assert mat.waste_disposal_rating(limits='Fetter') < 1.0
 
 
-def test_waste_classification_limits():
-    """Test override of specific activity limits"""
+def test_waste_disposal_rating():
+    """Test waste_disposal_rating method"""
     mat = openmc.Material()
     mat.add_nuclide('K40', random.random())
 
     # Check for correct classification based on actual activity
     ci_m3 = mat.get_activity('Ci/m3')
-    assert mat.waste_classification('Fetter', limits={'K40': 2*ci_m3}) == 'Class C'
-    assert mat.waste_classification('Fetter', limits={'K40': 0.5*ci_m3}) == 'GTCC'
+    assert mat.waste_disposal_rating(limits={'K40': 2*ci_m3}) < 1.0
+    assert mat.waste_disposal_rating(limits={'K40': 0.5*ci_m3}) > 1.0

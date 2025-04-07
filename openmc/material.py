@@ -1323,38 +1323,20 @@ class Material(IDManagerMixin):
             raise ValueError("Volume must be set in order to determine mass.")
         return volume*self.get_mass_density(nuclide)
 
-    def waste_classification(
-            self,
-            method: str = 'NRC',
-            metal: bool = False,
-            limits: dict[str, float] | None = None,
-        ) -> str:
-        """Classify a material for near-surface waste disposal.
+    def waste_classification(self, metal: bool = False) -> str:
+        """Classify the material for near-surface waste disposal.
 
         This method determines a waste classification for the material based on
-        either NRC regulations (10 CFR 61.55) or an arbitrary set of specific
-        activity limits, which by default uses the limits from Fetter et al.,
-        "Long-term radioactive waste from fusion reactors: Part II", Fusion Eng.
-        Des., 13, 239-246 (1990). https://doi.org/10.1016/0920-3796(90)90104-E.
-        The NRC regulations do not consider many long-lived radionuclides
-        relevant to fusion systems; the paper by Fetter applies the NRC
-        methodology to calculate specific activity limits for an expanded set of
-        radionuclides.
+        the NRC regulations (10 CFR 61.55). Note that the NRC regulations do not
+        consider many long-lived radionuclides relevant to fusion systems; for
+        fusion applications, it is recommended to calculate a waste disposal
+        rating based on limits by Fetter et al. using the
+        :meth:`~openmc.Material.waste_disposal_rating` method.
 
         Parameters
         ----------
-        method : {'NRC', 'Fetter'}, optional
-            The method to use for classification. The 'NRC' method uses specific
-            activity limits based on 10 CFR 61.55, while the 'Fetter' method
-            uses specific activity limits from the paper by Fetter et al.
         metal : bool, optional
-            Whether or not the material is in metal form (only applicable when
-            method is 'NRC')
-        limits : dict, optional
-            A dictionary of specific activity limits for radionuclides, where
-            keys are nuclide names and values are activities in units of [Ci/m3]
-            (only applicable when method is 'Fetter'). If provided, this
-            dictionary will be used instead of the default Fetter limits.
+            Whether or not the material is in metal form.
 
         Returns
         -------
@@ -1363,12 +1345,60 @@ class Material(IDManagerMixin):
             B", "Class C", or "GTCC" (greater than class C).
 
         """
-        if method == 'NRC':
-            return waste._waste_classification_nrc(self, metal=metal)
-        elif method == 'Fetter':
-            return waste._waste_classification_fetter(self, limits=limits)
-        else:
-            raise ValueError(f'Invalid method "{method}" specified for waste classification.')
+        return waste._waste_classification(self, metal=metal)
+
+    def waste_disposal_rating(
+            self,
+            limits: str | dict[str, float] = 'Fetter',
+            metal: bool = False,
+        ) -> float:
+        """Return the waste disposal rating for the material.
+
+        This method returns a waste disposal rating for the material based on a
+        set of specific activity limits. The waste disposal rating is a single
+        number that represents the sum of the ratios of the specific activity
+        for each radionuclide in the material against a nuclide-specific limit.
+        A value less than 1.0 indicates that the material "meets" the limits
+        whereas a value greater than 1.0 exceeds the limits.
+
+        Note that the limits for NRC do not consider many long-lived
+        radionuclides relevant to fusion systems. A paper by `Fetter et al.
+        <https://doi.org/10.1016/0920-3796(90)90104-E>`_ applies the NRC
+        methodology to calculate specific activity limits for an expanded set of
+        radionuclides.
+
+        Parameters
+        ----------
+        limits : str or dict, optional
+            The name of a predefined set of specific activity limits or a
+            dictionary that contains specific activity limits for radionuclides,
+            where keys are nuclide names and values are activities in units of
+            [Ci/m3]. The predefined options are:
+
+            - 'Fetter': Uses limits from Fetter et al. (1990)
+            - 'NRC_long': Uses the 10 CFR 61.55 limits for long-lived
+              radionuclides
+            - 'NRC_short_A': Uses the 10 CFR 61.55 class A limits for
+              short-lived radionuclides
+            - 'NRC_short_B': Uses the 10 CFR 61.55 class B limits for
+              short-lived radionuclides
+            - 'NRC_short_C': Uses the 10 CFR 61.55 class C limits for
+              short-lived radionuclides
+        metal : bool, optional
+            Whether or not the material is in metal form (only applicable for
+            NRC based limits)
+
+        Returns
+        -------
+        float
+            The waste disposal rating for the material.
+
+        See also
+        --------
+        Material.waste_classification()
+
+        """
+        return waste._waste_disposal_rating(self, limits, metal)
 
     def clone(self, memo: dict | None = None) -> Material:
         """Create a copy of this material with a new unique ID.

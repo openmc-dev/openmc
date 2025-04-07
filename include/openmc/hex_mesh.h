@@ -19,25 +19,6 @@
 #include "openmc/vector.h"
 #include "openmc/xml_interface.h"
 
-#ifdef DAGMC
-#include "moab/AdaptiveKDTree.hpp"
-#include "moab/Core.hpp"
-#include "moab/GeomUtil.hpp"
-#include "moab/Matrix3.hpp"
-#endif
-
-#ifdef LIBMESH
-#include "libmesh/bounding_box.h"
-#include "libmesh/dof_map.h"
-#include "libmesh/elem.h"
-#include "libmesh/equation_systems.h"
-#include "libmesh/exodusII_io.h"
-#include "libmesh/explicit_system.h"
-#include "libmesh/libmesh.h"
-#include "libmesh/mesh.h"
-#include "libmesh/point.h"
-#endif
-
 namespace openmc {
 
 //==============================================================================
@@ -47,8 +28,6 @@ namespace openmc {
 //==============================================================================
 // Global variables
 //==============================================================================
-
-extern "C" const bool LIBMESH_ENABLED;
 
 class HexagonalMesh : public PeriodicStructuredMesh {
 public:

@@ -345,6 +345,15 @@ void get_run_parameters(pugi::xml_node node_base)
         }
       }
     }
+    if (check_for_node(random_ray_node, "diagonal_stabilization_rho")) {
+      FlatSourceDomain::diagonal_stabilization_rho_ = std::stod(
+        get_node_value(random_ray_node, "diagonal_stabilization_rho"));
+      if (FlatSourceDomain::diagonal_stabilization_rho_ < 0.0 ||
+          FlatSourceDomain::diagonal_stabilization_rho_ > 1.0) {
+        fatal_error("Random ray diagonal stabilization rho factor must be "
+                    "between 0 and 1");
+      }
+    }
   }
 }
 

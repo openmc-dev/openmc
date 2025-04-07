@@ -331,6 +331,7 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
     write_dataset(runtime_group, "threads",
       1); // Default to 1 thread if OpenMP is not available
 #endif
+
     close_group(runtime_group);
 
     file_close(file_id);

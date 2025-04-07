@@ -771,9 +771,7 @@ void Tally::accumulate()
 
 // Accumulate each result
 #pragma omp parallel for
-// filter bins (specific cell, energy bins)
     for (int i = 0; i < results_.shape()[0]; ++i) {
-      // score bins (flux, total reaction rate, fission reaction rate, etc.)
       for (int j = 0; j < results_.shape()[1]; ++j) {
         double val = results_(i, j, TallyResult::VALUE) * norm;
         results_(i, j, TallyResult::VALUE) = 0.0;
@@ -914,7 +912,6 @@ void reduce_tally_results()
         static_cast<int>(TallyResult::VALUE));
 
       // Make copy of tally values in contiguous array
-      // TO DO: allocate the correct size for the values array during initialization
       xt::xtensor<double, 2> values = values_view;
       xt::xtensor<double, 2> values_reduced = xt::empty_like(values);
 

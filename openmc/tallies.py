@@ -477,7 +477,13 @@ class Tally(IDManagerMixin):
             return np.reshape(self._std_dev.toarray(), self.shape)
         else:
             return self._std_dev
-        
+    
+    @property
+    def cpu_time(self):
+        if self._simulation_time is None or self._number_of_threads is None:
+            return None
+        return self._simulation_time * self._number_of_threads
+
     @property
     def fom(self):
         if self.cpu_time is None:

@@ -133,8 +133,7 @@ After all particles have been simulated, there are a few final tasks that must
 be performed before the run is finished. This include the following:
 
   - With the accumulated sum and sum of squares for each tally, the sample mean
-    and its variance is calculated. The FOM can also be calculated if the user
-    has requested it.
+    and its variance is calculated.
     
   - All tallies and other results are written to disk.
 

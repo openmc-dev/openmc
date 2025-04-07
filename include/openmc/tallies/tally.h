@@ -118,7 +118,7 @@ public:
   void reset();
 
   void accumulate();
-  
+
   //! return the index of a score specified by name
   int score_index(const std::string& score) const;
 

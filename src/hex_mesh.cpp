@@ -38,16 +38,6 @@
 #include "openmc/volume_calc.h"
 #include "openmc/xml_interface.h"
 
-/*#ifdef LIBMESH*/
-/*#include "libmesh/mesh_modification.h"*/
-/*#include "libmesh/mesh_tools.h"*/
-/*#include "libmesh/numeric_vector.h"*/
-/*#endif*/
-
-#ifdef DAGMC
-#include "moab/FileOptions.hpp"
-#endif
-
 namespace openmc {
 
 //==============================================================================

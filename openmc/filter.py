@@ -2335,7 +2335,7 @@ class WeightFilter(RealFilter):
     Parameters
     ----------
     Values : Iterable of float
-        A list or iterable of the weights, as float values.
+        A list or iterable of the weight boundaries, as float values.
     filter_id : int
         Unique identifier for the filter
 

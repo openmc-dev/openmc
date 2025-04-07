@@ -328,7 +328,8 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
 #ifdef _OPENMP
     write_dataset(runtime_group, "threads", omp_get_max_threads());
 #else
-    write_dataset(runtime_group, "threads", 1); // Default to 1 thread if OpenMP is not available
+    write_dataset(runtime_group, "threads",
+      1); // Default to 1 thread if OpenMP is not available
 #endif
     close_group(runtime_group);
 

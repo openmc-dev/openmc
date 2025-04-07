@@ -47,9 +47,8 @@ def test_weightfilter():
         neutron_flux = sp.tallies[tally.id].mean[:,0,0].reshape(48, 8)
 
     # All contributions should show up in last bin
-    for i in range(48):
-        for j in range(8):
-            if (j != 3):
-                assert neutron_flux[i][j] == 0.0
+    assert np.all(neutron_flux[:, 3] != 0.0)
+    neutron_flux[:, 3] = 0.0
+    assert np.all(neutron_flux == 0.0)
 
 

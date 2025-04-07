@@ -689,7 +689,7 @@ void WeightWindows::check_tally_update_compatibility(const Tally* tally)
 {
   // define the set of allowed filters for the tally
   const std::set<FilterType> allowed_filters = {
-    FilterType::MESH, FilterType::ENERGY, FilterType::PARTICLE, FilterType::WEIGHT};
+    FilterType::MESH, FilterType::ENERGY, FilterType::PARTICLE};
 
   // retrieve a mapping of filter type to filter index for the tally
   auto filter_indices = tally->filter_indices();

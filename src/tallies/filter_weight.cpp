@@ -2,10 +2,7 @@
 
 #include <fmt/core.h>
 
-#include "openmc/capi.h"
 #include "openmc/search.h"
-#include "openmc/constants.h"
-#include "openmc/settings.h"
 #include "openmc/xml_interface.h"
 
 namespace openmc {

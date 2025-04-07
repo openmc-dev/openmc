@@ -36,8 +36,8 @@
 #include "openmc/tallies/filter_surface.h"
 #include "openmc/tallies/filter_time.h"
 #include "openmc/tallies/filter_universe.h"
-#include "openmc/tallies/filter_zernike.h"
 #include "openmc/tallies/filter_weight.h"
+#include "openmc/tallies/filter_zernike.h"
 #include "openmc/xml_interface.h"
 
 // explicit template instantiation definition

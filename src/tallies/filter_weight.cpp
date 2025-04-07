@@ -19,24 +19,25 @@ void WeightFilter::from_xml(pugi::xml_node node)
 
 void WeightFilter::set_bins(span<const double> bins)
 {
-   // Clear existing bins
-   bins_.clear();
-   bins_.reserve(bins.size());
- 
-   // Copy bins
-   for (int64_t i = 0; i < bins.size(); ++i) {
-     bins_.push_back(bins[i]);
-   }
+  // Clear existing bins
+  bins_.clear();
+  bins_.reserve(bins.size());
 
-   assert(std::is_sorted(bins_.begin(), bins_.end()));
+  // Copy bins
+  for (int64_t i = 0; i < bins.size(); ++i) {
+    bins_.push_back(bins[i]);
+  }
 
-   n_bins_ = bins_.size() -1;
+  assert(std::is_sorted(bins_.begin(), bins_.end()));
+
+  n_bins_ = bins_.size() - 1;
 }
 
-void WeightFilter::get_all_bins(const Particle& p, TallyEstimator estimator, FilterMatch& match) const
+void WeightFilter::get_all_bins(
+  const Particle& p, TallyEstimator estimator, FilterMatch& match) const
 {
   // Get particle weight
-  double wgt = p.wgt_last(); 
+  double wgt = p.wgt_last();
 
   // Bin the weight
   if (wgt >= bins_.front() && wgt <= bins_.back()) {
@@ -54,7 +55,7 @@ void WeightFilter::to_statepoint(hid_t filter_group) const
 
 std::string WeightFilter::text_label(int bin) const
 {
-  return fmt::format("Weight bin [{}, {}]", bins_[bin], bins_[bin+1]);
+  return fmt::format("Weight bin [{}, {}]", bins_[bin], bins_[bin + 1]);
 }
 
 } // namespace openmc

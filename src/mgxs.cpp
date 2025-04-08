@@ -106,7 +106,7 @@ void Mgxs::metadata_from_hdf5(hid_t xs_id, const vector<double>& temperature,
       // auto i_closest = xt::argmin(xt::abs(temps_available - T))[0];
       double closest = std::numeric_limits<double>::max();
       int i_closest = 0;
-      for (int i = 0; i < num_temps; i++) {
+      for (int i = 0; i < temps_available.size(); i++) {
         double diff = std::fabs(temps_available[i] - T);
         if (diff < closest) {
           closest = diff;

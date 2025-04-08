@@ -104,7 +104,7 @@ def test_tally_application(sphere_model, run_in_tmpdir):
     mf = openmc.MeshFilter(mesh)
     tally.filters = [ef, mf]
     tally.scores = ['flux', 'absorption', 'fission', 'scatter']
-    tally.fom = True
+    tally.FOM = True
     sphere_model.tallies = [tally]
 
     # FIRST RUN

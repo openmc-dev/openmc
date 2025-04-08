@@ -99,7 +99,21 @@ void Mgxs::metadata_from_hdf5(hid_t xs_id, const vector<double>& temperature,
   case TemperatureMethod::NEAREST:
     // Determine actual temperatures to read
     for (const auto& T : temperature) {
-      auto i_closest = xt::argmin(xt::abs(temps_available - T))[0];
+      // Determine the closest temperature value
+      // NOTE: the below block could be replaced with the following line,
+      // though this gives a runtime error if using LLVM 20 or newer,
+      // likely due to a bug in xtensor.
+      // auto i_closest = xt::argmin(xt::abs(temps_available - T))[0];
+      double closest = std::numeric_limits<double>::max();
+      int i_closest = 0;
+      for (int i = 0; i < num_temps; i++) {
+        double diff = std::fabs(temps_available[i] - T);
+        if (diff < closest) {
+          closest = diff;
+          i_closest = i;
+        }
+      }
+
       double temp_actual = temps_available[i_closest];
       if (std::fabs(temp_actual - T) < settings::temperature_tolerance) {
         if (std::find(temps_to_read.begin(), temps_to_read.end(),

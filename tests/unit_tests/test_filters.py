@@ -297,10 +297,10 @@ def test_tabular_from_energyfilter():
 
 def test_weight():
     f = openmc.WeightFilter([0.01, 0.1, 1.0, 10.0])
-    assert f.bins[0] == 0.01
-    assert f.bins[1] == 0.1
-    assert f.bins[-1] == 10.0
-    assert len(f.bins) == 4
+    expected_bins = [[0.01, 0.1], [0.1, 1.0], [1.0, 10.0]]
+    
+    assert np.allclose(f.bins, expected_bins)
+    assert len(f.bins) == 3
 
     # Make sure __repr__ works
     repr(f)
@@ -313,4 +313,4 @@ def test_weight():
     # from_xml_element()
     new_f = openmc.Filter.from_xml_element(elem)
     assert new_f.id == f.id
-    assert np.all(new_f.bins == f.bins)
+    assert np.allclose(new_f.bins, f.bins)

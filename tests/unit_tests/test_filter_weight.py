@@ -1,4 +1,5 @@
 import openmc
+import numpy as np
 
 def test_weightfilter():
     steel = openmc.Material(name='Stainless Steel')

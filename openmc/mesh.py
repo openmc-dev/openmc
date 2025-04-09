@@ -773,7 +773,7 @@ class StructuredMesh(MeshBase):
                 if not dataset.size == self.num_mesh_cells:
                     raise ValueError(errmsg)
             else:
-                if len(dataset) == self.num_mesh_cells:
+                if not len(dataset) == self.num_mesh_cells:
                     raise ValueError(errmsg)
             cv.check_type('data label', label, str)
 

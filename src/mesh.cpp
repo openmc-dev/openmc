@@ -925,6 +925,7 @@ void StructuredMesh::raytrace_mesh(
 
   // Calculate index of current cell. Offset the position a tiny bit in
   // direction of flight
+  local_coords(r0);
   MeshIndex ijk = get_indices(r0 + TINY_BIT * u, in_mesh);
 
   // if track is very short, assume that it is completely inside one cell.
@@ -939,7 +940,7 @@ void StructuredMesh::raytrace_mesh(
   // translate start and end positions,
   // this needs to come after the get_indices call because it does its own
   // translation
-  local_coords(r0);
+  // local_coords(r0);
   local_coords(r1);
 
   // Calculate initial distances to next surfaces in all three dimensions

@@ -22,7 +22,7 @@ def _waste_classification(mat: openmc.Material, metal: bool = True) -> str:
     -------
     str
         The waste disposal classification, which can be "Class A", "Class B",
-        "Class B", or "GTCC" (greater than class C).
+        "Class C", or "GTCC" (greater than class C).
 
     """
     # Determine metrics based on Tables 1 and 2 using sum of fractions rule for
@@ -109,8 +109,8 @@ def _waste_disposal_rating(
         - 'NRC_short_C': Uses the 10 CFR 61.55 class C limits for short-lived
           radionuclides
     metal : bool, optional
-        Whether or not the material is in metal form (only applicable when
-        method is 'NRC')
+        Whether or not the material is in metal form (only applicable for NRC
+        based limits)
 
     Returns
     -------

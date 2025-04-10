@@ -772,8 +772,8 @@ class StructuredMesh(MeshBase):
 
             if dataset.shape != self.dimension:
                 raise ValueError(
-                    f'Cannot apply dataset "{name}" with '
-                    f"shape {data.shape} to mesh {self.id} "
+                    f'Cannot apply dataset "{label}" with '
+                    f"shape {dataset.shape} to mesh {self.id} "
                     f"with dimensions {self.dimension}"
                 )
 

@@ -8,56 +8,35 @@ Installation and Configuration
 
 .. _install_conda:
 
---------------------------------------------------
-Installing on Linux/Mac with Mamba and conda-forge
---------------------------------------------------
+----------------------------------
+Installing on Linux/Mac with Conda
+----------------------------------
 
-`Conda <https://conda.io/en/latest/>`_ is an open source package management
-systems and environments management system for installing multiple versions of
+`Conda`_ is an open source package management
+system and environments management system for installing multiple versions of
 software packages and their dependencies and switching easily between them.
-`Mamba <https://mamba.readthedocs.io/en/latest/>`_ is a cross-platform package
-manager and is compatible with `conda` packages.
-OpenMC can be installed in a `conda` environment with `mamba`.
-First, `conda` should be installed with one of the following installers:
-`Miniconda <https://docs.conda.io/en/latest/miniconda.html>`_,
-`Anaconda <https://www.anaconda.com/>`_, or `Miniforge <https://github.com/conda-forge/miniforge>`_.
-Once you have `conda` installed on your system, OpenMC can be installed via the
-`conda-forge` channel with `mamba`.
+OpenMC can be installed in a `conda` environment. First, `conda` should be
+`installed <https://www.anaconda.com/docs/getting-started/getting-started>`_
+with either Anaconda Distribution or Miniconda. Once you have `conda` installed
+on your system, OpenMC can be installed via the `conda-forge` channel.
 
 First, add the `conda-forge` channel with:
 
 .. code-block:: sh
 
     conda config --add channels conda-forge
+    conda config --set channel_priority strict
 
-Then create and activate a new conda enviroment called `openmc-env` in
-which to install OpenMC.
+Then create and activate a new conda enviroment called `openmc-env` (or whatever
+you wish) with OpenMC installed.
 
 .. code-block:: sh
 
-    conda create -n openmc-env
+    conda create --name openmc-env openmc
     conda activate openmc-env
 
-Then install `mamba`, which will be used to install OpenMC.
-
-.. code-block:: sh
-
-    conda install mamba
-
-To list the versions of OpenMC that are available on the `conda-forge` channel,
-in your terminal window or an Anaconda Prompt run:
-
-.. code-block:: sh
-
-    mamba search openmc
-
-OpenMC can then be installed with:
-
-.. code-block:: sh
-
-    mamba install openmc
-
-You are now in a conda environment called `openmc-env` that has OpenMC installed.
+You are now in a conda environment called `openmc-env` that has OpenMC
+installed.
 
 -------------------------------------------
 Installing on Linux/Mac/Windows with Docker
@@ -284,13 +263,13 @@ Prerequisites
 
     * NCrystal_ library for defining materials with enhanced thermal neutron transport
 
-      Adding this option allows the creation of materials from NCrystal, which
-      replaces the scattering kernel treatment of ACE files with a modular,
-      on-the-fly approach. To use it `install
-      <https://github.com/mctools/ncrystal/wiki/Get-NCrystal>`_ NCrystal and
-      turn on the option in the CMake configuration step::
-
-          cmake -DOPENMC_USE_NCRYSTAL=on ..
+      OpenMC supports the creation of materials from NCrystal, which replaces
+      the scattering kernel treatment of ACE files with a modular, on-the-fly
+      approach. OpenMC does not need any particular build option to use this,
+      but NCrystal must be installed on the system. Refer to `NCrystal
+      documentation
+      <https://github.com/mctools/ncrystal/wiki/Get-NCrystal>`_ for how this is
+      achieved.
 
     * libMesh_ mesh library framework for numerical simulations of partial differential equations
 
@@ -393,12 +372,6 @@ OPENMC_USE_MCPL
   Turns on support for reading MCPL_ source files and writing MCPL source points
   and surface sources. (Default: off)
 
-OPENMC_USE_NCRYSTAL
-  Turns on support for NCrystal materials. NCrystal must be `installed
-  <https://github.com/mctools/ncrystal/wiki/Get-NCrystal>`_ and `initialized
-  <https://github.com/mctools/ncrystal/wiki/Using-NCrystal#setting-up>`_.
-  (Default: off)
-
 OPENMC_USE_LIBMESH
   Enables the use of unstructured mesh tallies with libMesh_. (Default: off)
 
@@ -425,13 +398,16 @@ OpenMC can be configured for debug, release, or release with debug info by setti
 the `CMAKE_BUILD_TYPE` option.
 
 Debug
-  Enable debug compiler flags with no optimization `-O0 -g`.
+  Enable debug compiler flags with no optimization. On most platforms/compilers,
+  this is equivalent to `-O0 -g`.
 
 Release
-  Disable debug and enable optimization `-O3 -DNDEBUG`.
+  Disable debug and enable optimization. On most platforms/compilers, this is
+  equivalent to `-O3 -DNDEBUG`.
 
 RelWithDebInfo
-  (Default if no type is specified.) Enable optimization and debug `-O2 -g`.
+  (Default if no type is specified.) Enable optimization and debug. On most
+  platforms/compilers, this is equivalent to `-O2 -g`.
 
 Example of configuring for Debug mode:
 
@@ -560,7 +536,7 @@ distributions.
       notebook
       <https://nbviewer.jupyter.org/github/openmc-dev/openmc-notebooks/blob/main/pandas-dataframes.ipynb>`_.
 
-   `h5py <http://www.h5py.org/>`_
+   `h5py <https://www.h5py.org/>`_
       h5py provides Python bindings to the HDF5 library. Since OpenMC outputs
       various HDF5 files, h5py is needed to provide access to data within these
       files from Python.
@@ -613,5 +589,6 @@ wrapper is used when installing h5py:
 
     CC=<path to mpicc> HDF5_MPI=ON HDF5_DIR=<path to HDF5> python -m pip install --no-binary=h5py h5py
 
+.. _Mamba: https://mamba.readthedocs.io/en/latest/
 .. _Conda: https://conda.io/en/latest/
 .. _pip: https://pip.pypa.io/en/stable/

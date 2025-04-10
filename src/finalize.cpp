@@ -17,6 +17,7 @@
 #include "openmc/photon.h"
 #include "openmc/plot.h"
 #include "openmc/random_lcg.h"
+#include "openmc/random_ray/random_ray_simulation.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
 #include "openmc/source.h"
@@ -159,6 +160,7 @@ int openmc_finalize()
   model::root_universe = -1;
   model::plotter_seed = 1;
   openmc::openmc_set_seed(DEFAULT_SEED);
+  openmc::openmc_set_stride(DEFAULT_STRIDE);
 
   // Deallocate arrays
   free_memory();
@@ -173,6 +175,8 @@ int openmc_finalize()
     MPI_Type_free(&mpi::source_site);
   }
 #endif
+
+  openmc_reset_random_ray();
 
   return 0;
 }
@@ -222,5 +226,6 @@ int openmc_hard_reset()
 
   // Reset the random number generator state
   openmc::openmc_set_seed(DEFAULT_SEED);
+  openmc::openmc_set_stride(DEFAULT_STRIDE);
   return 0;
 }

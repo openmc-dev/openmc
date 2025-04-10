@@ -39,7 +39,8 @@
 #include <fmt/core.h>
 
 #include <algorithm> // for max
-#include <cstddef>   // for size_t
+#include <cassert>
+#include <cstddef> // for size_t
 #include <string>
 
 namespace openmc {
@@ -140,7 +141,7 @@ Tally::Tally(pugi::xml_node node)
   // Check for the presence of certain filter types
   bool has_energyout = energyout_filter_ >= 0;
   int particle_filter_index = C_NONE;
-  for (gsl::index j = 0; j < filters_.size(); ++j) {
+  for (int64_t j = 0; j < filters_.size(); ++j) {
     int i_filter = filters_[j];
     const auto& f = model::tally_filters[i_filter].get();
 
@@ -400,7 +401,7 @@ Tally* Tally::create(int32_t id)
 
 void Tally::set_id(int32_t id)
 {
-  Expects(id >= 0 || id == C_NONE);
+  assert(id >= 0 || id == C_NONE);
 
   // Clear entry in tally map if an ID was already assigned before
   if (id_ != C_NONE) {
@@ -456,7 +457,7 @@ bool Tally::has_filter(FilterType filter_type) const
   return false;
 }
 
-void Tally::set_filters(gsl::span<Filter*> filters)
+void Tally::set_filters(span<Filter*> filters)
 {
   // Clear old data.
   filters_.clear();
@@ -1430,7 +1431,7 @@ extern "C" int openmc_tally_set_filters(
   try {
     // Convert indices to filter pointers
     vector<Filter*> filters;
-    for (gsl::index i = 0; i < n; ++i) {
+    for (int64_t i = 0; i < n; ++i) {
       int32_t i_filt = indices[i];
       filters.push_back(model::tally_filters.at(i_filt).get());
     }

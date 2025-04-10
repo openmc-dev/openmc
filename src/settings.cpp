@@ -1,4 +1,5 @@
 #include "openmc/settings.h"
+#include "openmc/random_ray/flat_source_domain.h"
 
 #include <cmath>  // for ceil, pow
 #include <limits> // for numeric_limits
@@ -70,12 +71,14 @@ bool surf_source_write {false};
 bool surf_mcpl_write {false};
 bool surf_source_read {false};
 bool survival_biasing {false};
+bool survival_normalization {false};
 bool temperature_multipole {false};
 bool trigger_on {false};
 bool trigger_predict {false};
 bool uniform_source_sampling {false};
 bool ufs_on {false};
 bool urr_ptables_on {true};
+bool use_decay_photons {false};
 bool weight_windows_on {false};
 bool weight_window_checkpoint_surface {false};
 bool weight_window_checkpoint_collision {true};
@@ -309,6 +312,51 @@ void get_run_parameters(pugi::xml_node node_base)
       FlatSourceDomain::adjoint_ =
         get_node_value_bool(random_ray_node, "adjoint");
     }
+    if (check_for_node(random_ray_node, "sample_method")) {
+      std::string temp_str =
+        get_node_value(random_ray_node, "sample_method", true, true);
+      if (temp_str == "prng") {
+        RandomRay::sample_method_ = RandomRaySampleMethod::PRNG;
+      } else if (temp_str == "halton") {
+        RandomRay::sample_method_ = RandomRaySampleMethod::HALTON;
+      } else {
+        fatal_error("Unrecognized sample method: " + temp_str);
+      }
+    }
+    if (check_for_node(random_ray_node, "source_region_meshes")) {
+      pugi::xml_node node_source_region_meshes =
+        random_ray_node.child("source_region_meshes");
+      for (pugi::xml_node node_mesh :
+        node_source_region_meshes.children("mesh")) {
+        int mesh_id = std::stoi(node_mesh.attribute("id").value());
+        for (pugi::xml_node node_domain : node_mesh.children("domain")) {
+          int domain_id = std::stoi(node_domain.attribute("id").value());
+          std::string domain_type = node_domain.attribute("type").value();
+          Source::DomainType type;
+          if (domain_type == "material") {
+            type = Source::DomainType::MATERIAL;
+          } else if (domain_type == "cell") {
+            type = Source::DomainType::CELL;
+          } else if (domain_type == "universe") {
+            type = Source::DomainType::UNIVERSE;
+          } else {
+            throw std::runtime_error("Unknown domain type: " + domain_type);
+          }
+          FlatSourceDomain::mesh_domain_map_[mesh_id].emplace_back(
+            type, domain_id);
+          RandomRay::mesh_subdivision_enabled_ = true;
+        }
+      }
+    }
+    if (check_for_node(random_ray_node, "diagonal_stabilization_rho")) {
+      FlatSourceDomain::diagonal_stabilization_rho_ = std::stod(
+        get_node_value(random_ray_node, "diagonal_stabilization_rho"));
+      if (FlatSourceDomain::diagonal_stabilization_rho_ < 0.0 ||
+          FlatSourceDomain::diagonal_stabilization_rho_ > 1.0) {
+        fatal_error("Random ray diagonal stabilization rho factor must be "
+                    "between 0 and 1");
+      }
+    }
   }
 }
 
@@ -505,6 +553,12 @@ void read_settings_xml(pugi::xml_node root)
     openmc_set_seed(seed);
   }
 
+  // Copy random number stride if specified
+  if (check_for_node(root, "stride")) {
+    auto stride = std::stoull(get_node_value(root, "stride"));
+    openmc_set_stride(stride);
+  }
+
   // Check for electron treatment
   if (check_for_node(root, "electron_treatment")) {
     auto temp_str = get_node_value(root, "electron_treatment", true, true);
@@ -608,6 +662,10 @@ void read_settings_xml(pugi::xml_node root)
     }
     if (check_for_node(node_cutoff, "weight_avg")) {
       weight_survive = std::stod(get_node_value(node_cutoff, "weight_avg"));
+    }
+    if (check_for_node(node_cutoff, "survival_normalization")) {
+      survival_normalization =
+        get_node_value_bool(node_cutoff, "survival_normalization");
     }
     if (check_for_node(node_cutoff, "energy_neutron")) {
       energy_cutoff[0] =
@@ -1129,6 +1187,11 @@ void read_settings_xml(pugi::xml_node root)
       weight_window_checkpoint_surface =
         get_node_value_bool(ww_checkpoints, "surface");
     }
+  }
+
+  if (check_for_node(root, "use_decay_photons")) {
+    settings::use_decay_photons =
+      get_node_value_bool(root, "use_decay_photons");
   }
 }
 

@@ -445,7 +445,7 @@ void finalize_batch()
       int w = std::to_string(settings::n_max_batches).size();
       std::string source_point_filename = fmt::format("{0}source.{1:0{2}}",
         settings::path_output, simulation::current_batch, w);
-      gsl::span<SourceSite> bankspan(simulation::source_bank);
+      span<SourceSite> bankspan(simulation::source_bank);
       write_source_point(source_point_filename, bankspan,
         simulation::work_index, settings::source_mcpl_write);
     }
@@ -453,7 +453,7 @@ void finalize_batch()
     // Write a continously-overwritten source point if requested.
     if (settings::source_latest) {
       auto filename = settings::path_output + "source";
-      gsl::span<SourceSite> bankspan(simulation::source_bank);
+      span<SourceSite> bankspan(simulation::source_bank);
       write_source_point(filename, bankspan, simulation::work_index,
         settings::source_mcpl_write);
     }
@@ -475,7 +475,7 @@ void finalize_batch()
       // Get span of source bank and calculate parallel index vector
       auto surf_work_index = mpi::calculate_parallel_index_vector(
         simulation::surf_source_bank.size());
-      gsl::span<SourceSite> surfbankspan(simulation::surf_source_bank.begin(),
+      span<SourceSite> surfbankspan(simulation::surf_source_bank.begin(),
         simulation::surf_source_bank.size());
 
       // Write surface source file
@@ -592,6 +592,9 @@ void initialize_history(Particle& p, int64_t index_source)
   // Reset weight window ratio
   p.ww_factor() = 0.0;
 
+  // set particle history start weight
+  p.wgt_born() = p.wgt();
+
   // Reset pulse_height_storage
   std::fill(p.pht_storage().begin(), p.pht_storage().end(), 0);
 
@@ -616,7 +619,7 @@ void initialize_history(Particle& p, int64_t index_source)
     write_message("Simulating Particle {}", p.id());
   }
 
-// Add paricle's starting weight to count for normalizing tallies later
+// Add particle's starting weight to count for normalizing tallies later
 #pragma omp atomic
   simulation::total_weight += p.wgt();
 

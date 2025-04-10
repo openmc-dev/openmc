@@ -8,8 +8,6 @@
 #include <stdexcept> // for runtime_error
 #include <string>    // for string, stod
 
-#include <gsl/gsl-lite.hpp>
-
 #include "openmc/error.h"
 #include "openmc/math_functions.h"
 #include "openmc/random_dist.h"
@@ -30,12 +28,12 @@ DiscreteIndex::DiscreteIndex(pugi::xml_node node)
   assign({params.data() + n, n});
 }
 
-DiscreteIndex::DiscreteIndex(gsl::span<const double> p)
+DiscreteIndex::DiscreteIndex(span<const double> p)
 {
   assign(p);
 }
 
-void DiscreteIndex::assign(gsl::span<const double> p)
+void DiscreteIndex::assign(span<const double> p)
 {
   prob_.assign(p.begin(), p.end());
 
@@ -417,7 +415,7 @@ double Mixture::sample(uint64_t* seed) const
     p, [](const DistPair& pair, double p) { return pair.first < p; });
 
   // This should not happen. Catch it
-  Ensures(it != distribution_.cend());
+  assert(it != distribution_.cend());
 
   // Sample the chosen distribution
   return it->second->sample(seed);

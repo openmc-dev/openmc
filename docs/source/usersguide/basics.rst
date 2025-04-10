@@ -53,7 +53,7 @@ eXtensible Markup Language (XML)
 Unlike many other Monte Carlo codes which use an arbitrary-format ASCII file
 with "cards" to specify a particular geometry, materials, and associated run
 settings, the input files for OpenMC are structured in a set of `XML
-<http://www.w3.org/XML/>`_ files. XML, which stands for eXtensible Markup
+<https://www.w3.org/XML/>`_ files. XML, which stands for eXtensible Markup
 Language, is a simple format that allows data to be exchanged efficiently
 between different programs and interfaces.
 

@@ -485,7 +485,7 @@ class Tally(IDManagerMixin):
         return self._simulation_time * self._number_of_threads
 
     @property
-    def fom(self):
+    def FOM(self):
         if self.cpu_time is None:
             return None
 

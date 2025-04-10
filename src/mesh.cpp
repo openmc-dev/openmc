@@ -910,11 +910,10 @@ void StructuredMesh::raytrace_mesh(
   // compilers will (hopefully) eliminate the complete code (including
   // calculation of parameters) but for the future: be explicit
 
-
   // Compute the length of the entire track.
   double total_distance = (r1 - r0).norm();
   if (total_distance == 0.0 && settings::solver_type != SolverType::RANDOM_RAY)
-  return;
+    return;
 
   // keep a copy of the original global position to pass to get_indices,
   // which performs its own transformation to local coordinates

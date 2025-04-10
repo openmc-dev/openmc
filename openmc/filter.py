@@ -1238,7 +1238,7 @@ class RealFilter(Filter):
             cv.check_type('filter value', v1, Real)
 
             # Make sure that each tuple has values that are increasing
-            if v1 < v0:
+            if v1 <= v0:
                 raise ValueError(f'Values {v0} and {v1} appear to be out of '
                                  'order')
 

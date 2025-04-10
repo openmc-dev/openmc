@@ -1384,7 +1384,7 @@ class EnergyFilter(RealFilter):
     ----------
     values : Iterable of Real
         A list of values for which each successive pair constitutes a range of
-        energies in [eV] for a single bin
+        energies in [eV] for a single bin. Entries must be positive and ascending.
     filter_id : int
         Unique identifier for the filter
 

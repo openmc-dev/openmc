@@ -13,7 +13,6 @@
 #ifdef OPENMC_MPI
 #include "mpi.h"
 #include "openmc/message_passing.h"
-#include "openmc/tallies/tally.h"
 #endif
 
 #include "openmc/array.h"
@@ -93,7 +92,7 @@ void get_shape_attr(hid_t obj_id, const char* name, hsize_t* dims)
   H5Aclose(attr);
 }
 
-hid_t create_group(hid_t parent_id, char const* name)
+hid_t create_group(hid_t parent_id, const char* name)
 {
   hid_t out = H5Gcreate(parent_id, name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   if (out < 0) {
@@ -538,18 +537,18 @@ void read_complex(
   H5Tclose(complex_id);
 }
 
-void read_tally_results(
-  hid_t group_id, hsize_t n_filter, hsize_t n_score, double* results)
+void read_tally_results(hid_t group_id, hsize_t n_filter, hsize_t n_score,
+  double* results, bool vov_results)
 {
   // Create dataspace for hyperslab in memory
   constexpr int ndim = 3;
-  if (openmc::model::vov_)
-  {
+  if (vov_results) {
     hsize_t dims[ndim] {n_filter, n_score, 5};
     hsize_t start[ndim] {0, 0, 1};
     hsize_t count[ndim] {n_filter, n_score, 4};
     hid_t memspace = H5Screate_simple(ndim, dims, nullptr);
-    H5Sselect_hyperslab(memspace, H5S_SELECT_SET, start, nullptr, count, nullptr);
+    H5Sselect_hyperslab(
+      memspace, H5S_SELECT_SET, start, nullptr, count, nullptr);
 
     // Read the dataset
     read_dataset_lowlevel(
@@ -564,7 +563,8 @@ void read_tally_results(
     hsize_t start[ndim] {0, 0, 1};
     hsize_t count[ndim] {n_filter, n_score, 2};
     hid_t memspace = H5Screate_simple(ndim, dims, nullptr);
-    H5Sselect_hyperslab(memspace, H5S_SELECT_SET, start, nullptr, count, nullptr);
+    H5Sselect_hyperslab(
+      memspace, H5S_SELECT_SET, start, nullptr, count, nullptr);
 
     // Read the dataset
     read_dataset_lowlevel(
@@ -706,21 +706,20 @@ void write_string(
     group_id, 0, nullptr, buffer.length(), name, buffer.c_str(), indep);
 }
 
-void write_tally_results(
-  hid_t group_id, hsize_t n_filter, hsize_t n_score, const double* results)
+void write_tally_results(hid_t group_id, hsize_t n_filter, hsize_t n_score,
+  const double* results, bool vov_results)
 {
   // Set dimensions of sum/sum_sq hyperslab to store
-  if (openmc::model::vov_)
-  {
-    constexpr int ndim = 3;
+  constexpr int ndim = 3;
+  if (vov_results) {
     hsize_t count[ndim] {n_filter, n_score, 4};
     // Set dimensions of results array
     hsize_t dims[ndim] {n_filter, n_score, 5};
-    
 
     hsize_t start[ndim] {0, 0, 1};
     hid_t memspace = H5Screate_simple(ndim, dims, nullptr);
-    H5Sselect_hyperslab(memspace, H5S_SELECT_SET, start, nullptr, count, nullptr);
+    H5Sselect_hyperslab(
+      memspace, H5S_SELECT_SET, start, nullptr, count, nullptr);
 
     // Create and write dataset
     write_dataset_lowlevel(group_id, ndim, count, "results", H5T_NATIVE_DOUBLE,
@@ -728,16 +727,15 @@ void write_tally_results(
 
     // Free resources
     H5Sclose(memspace);
-  } else{
-    constexpr int ndim = 3;
+  } else {
     hsize_t count[ndim] {n_filter, n_score, 2};
     // Set dimensions of results array
     hsize_t dims[ndim] {n_filter, n_score, 3};
-    
 
     hsize_t start[ndim] {0, 0, 1};
     hid_t memspace = H5Screate_simple(ndim, dims, nullptr);
-    H5Sselect_hyperslab(memspace, H5S_SELECT_SET, start, nullptr, count, nullptr);
+    H5Sselect_hyperslab(
+      memspace, H5S_SELECT_SET, start, nullptr, count, nullptr);
 
     // Create and write dataset
     write_dataset_lowlevel(group_id, ndim, count, "results", H5T_NATIVE_DOUBLE,

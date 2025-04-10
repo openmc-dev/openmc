@@ -158,7 +158,7 @@ extern vector<array<int, 3>>
 extern int trigger_batch_interval; //!< Batch interval for triggers
 extern "C" int verbosity;          //!< How verbose to make output
 extern double weight_cutoff;       //!< Weight cutoff for Russian roulette
-extern double weight_survive;      //!< Survival weight after Russian roulette 
+extern double weight_survive;      //!< Survival weight after Russian roulette
 
 } // namespace settings
 

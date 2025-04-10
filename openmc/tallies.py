@@ -16,7 +16,7 @@ import scipy.sparse as sps
 import openmc
 import openmc.checkvalue as cv
 from ._xml import clean_indentation, reorder_attributes, get_text
-from .mixin import IDManagerMixinf
+from .mixin import IDManagerMixin
 from .mesh import MeshBase
 
 
@@ -57,7 +57,7 @@ class Tally(IDManagerMixin):
         Name of the tally
     multiply_density : bool
         Whether reaction rates should be multiplied by atom density
-    VOV : bool
+    vov : bool
         Whether the tally will accumulate sum third and sum fourth for each tally bin
     
         .. versionadded:: 0.14.0
@@ -127,8 +127,6 @@ class Tally(IDManagerMixin):
         self._triggers = cv.CheckedList(openmc.Trigger, 'tally triggers')
         self._derivative = None
         self._multiply_density = True
-        self._vov = None
-        self._VOV = None
 
         self._num_realizations = 0
         self._with_summary = False
@@ -139,6 +137,7 @@ class Tally(IDManagerMixin):
         self._sum_th = None
         self._mean = None
         self._std_dev = None
+        self._vov = None
         self._with_batch_statistics = False
         self._derived = False
         self._sparse = False
@@ -189,7 +188,6 @@ class Tally(IDManagerMixin):
         parts.append('{: <15}=\t{}'.format('Scores', self.scores))
         parts.append('{: <15}=\t{}'.format('Estimator', self.estimator))
         parts.append('{: <15}=\t{}'.format('Multiply dens.', self.multiply_density))
-        parts.append('{: <15}=\t{}'.format('VOV', self.vov))
         return '\n\t'.join(parts)
 
     @staticmethod
@@ -235,8 +233,9 @@ class Tally(IDManagerMixin):
     
     @vov.setter
     def vov(self, value):
-        cv.check_type('VOV', value, bool)
+        cv.check_type('vov', value, bool)
         self._vov = value
+        print("vov setting=", self._vov)
 
     @property
     def filters(self):
@@ -388,32 +387,37 @@ class Tally(IDManagerMixin):
             # Update nuclides
             nuclide_names = group['nuclides'][()]
             self._nuclides = [name.decode().strip() for name in nuclide_names]
-
+            self._vov = 'vov_results' in group.attrs
+            
             # Extract Tally data from the file
             data = group['results']
+            print("data shape", data.shape)
+            if self._vov:
+                if (data.shape[2] != 4):
+                    raise ValueError("Tally results data does not have the expected number of columns.")
+                sum_rd = data[:, :, 2]
+                sum_th = data[:, :, 3]
+                sum_rd = np.reshape(sum_rd, self.shape)
+                sum_th = np.reshape(sum_th, self.shape)
+                self._sum_rd = sum_rd
+                self._sum_th = sum_th
+            
             sum_ = data[:, :, 0]
             sum_sq = data[:, :, 1]
-            sum_rd = data[:, :, 2]
-            sum_th = data[:, :, 3]
-
+        
             # Reshape the results arrays
             sum_ = np.reshape(sum_, self.shape)
             sum_sq = np.reshape(sum_sq, self.shape)
-            sum_rd = np.reshape(sum_rd, self.shape)
-            sum_th = np.reshape(sum_th, self.shape)
-
+        
             # Set the data for this Tally
             self._sum = sum_
             self._sum_sq = sum_sq
-            self._sum_rd = sum_rd
-            self._sum_th = sum_th
-
+            
+        
             # Convert NumPy arrays to SciPy sparse LIL matrices
             if self.sparse:
                 self._sum = sps.lil_matrix(self._sum.flatten(), self._sum.shape)
                 self._sum_sq = sps.lil_matrix(self._sum_sq.flatten(), self._sum_sq.shape)
-                self._sum_rd = sps.lil_matrix(self._sum_rd.flatten(), self._sum_rd.shape)
-                self._sum_th = sps.lil_matrix(self._sum_th.flatten(), self._sum_th.shape)
 
         # Indicate that Tally results have been read
         self._results_read = True
@@ -455,9 +459,6 @@ class Tally(IDManagerMixin):
         if not self._sp_filename or self.derived:
             return None
 
-        # Make sure results have been read
-        self._read_results()
-
         if self.sparse:
             return np.reshape(self._sum_rd.toarray(), self.shape)
         else:
@@ -472,9 +473,6 @@ class Tally(IDManagerMixin):
     def sum_th(self):
         if not self._sp_filename or self.derived:
             return None
-
-        # Make sure results have been read
-        self._read_results()
 
         if self.sparse:
             return np.reshape(self._sum_th.toarray(), self.shape)
@@ -532,39 +530,27 @@ class Tally(IDManagerMixin):
     
     @property
     def VOV(self):
-        if self._VOV is None:
-            if not self._sp_filename:
-                return None
+        if not self._sp_filename:
+            return None
+        
+        n = self.num_realizations
+        nonzero = np.abs(self.mean) > 0
+        vov = np.zeros_like(self.mean)
+        
+        numerator = self.sum_th - ( 4.0* self.sum_rd*self.sum ) / n + (6.0 * self.sum_sq * (self.sum)**2) / (n**2) - (3.0 * (self.sum)**4 ) / (n**3) 
+        denominator = (self.sum_sq - (1.0/n)*(self.sum)**2) **2
+        
+        # Apply the nonzero mask to numerator and denominator
+        numerator = numerator[nonzero]
+        denominator = denominator[nonzero]
 
-            n = self.num_realizations
+        # Ensure the shapes match
+        numerator = np.reshape(numerator, vov[nonzero].shape)
+        denominator = np.reshape(denominator, vov[nonzero].shape)
+        
+        vov[nonzero] = numerator / denominator - 1.0 / n
 
-            nonzero = np.abs(self.mean) > 0
-            self._VOV = np.zeros_like(self.mean)
-            
-            numerator = self.sum_th - ( 4.0* self.sum_rd*self.sum ) / n + (6.0 * self.sum_sq * (self.sum)**2) / (n**2) - (3.0 * (self.sum)**4 ) / (n**3) 
-            denominator = (self.sum_sq - (1.0/n)*(self.sum)**2) **2
-            
-            # Apply the nonzero mask to numerator and denominator
-            numerator = numerator[nonzero]
-            denominator = denominator[nonzero]
-
-            # Ensure the shapes match
-            numerator = np.reshape(numerator, self._VOV[nonzero].shape)
-            denominator = np.reshape(denominator, self._VOV[nonzero].shape)
-            
-            print(numerator.shape)
-            print(denominator.shape)
-            print(self._VOV.shape)
-            self._VOV[nonzero] = numerator / denominator - 1.0/n
-
-            # Convert NumPy array to SciPy sparse LIL matrix
-            if self.sparse:
-                self._VOV = sps.lil_matrix(self.VOV.flatten(),
-                                               self._VOV.shape)
-        if self.sparse:
-            return np.reshape(self._VOV.toarray(), self.shape)
-        else:
-            return self._VOV
+        return vov
 
     @property
     def with_batch_statistics(self):
@@ -626,9 +612,6 @@ class Tally(IDManagerMixin):
             if self._std_dev is not None:
                 self._std_dev = sps.lil_matrix(self._std_dev.flatten(),
                                                self._std_dev.shape)
-            if self._VOV is not None:
-                self._VOV = sps.lil_matrix(self._VOV.flatten(),
-                                               self._VOV.shape)
 
             self._sparse = True
 
@@ -646,8 +629,6 @@ class Tally(IDManagerMixin):
                 self._mean = np.reshape(self._mean.toarray(), self.shape)
             if self._std_dev is not None:
                 self._std_dev = np.reshape(self._std_dev.toarray(), self.shape)
-            if self._VOV is not None:
-                self._VOV = np.reshape(self._VOV.toarray(), self.shape)
             self._sparse = False
 
     def remove_score(self, score):
@@ -1086,11 +1067,11 @@ class Tally(IDManagerMixin):
         if self.derivative is not None:
             subelement = ET.SubElement(element, "derivative")
             subelement.text = str(self.derivative.id)
-
+        
         # Optional VOV
         if self.vov:
-            vov_element = ET.SubElement(element, "VOV")
-            vov_element.text = str(self.vov).lower()
+            subelement = ET.SubElement(element, "vov")
+            subelement.text = str(self.vov).lower() 
 
         return element
 
@@ -1147,10 +1128,6 @@ class Tally(IDManagerMixin):
         text = get_text(elem, 'multiply_density')
         if text is not None:
             tally.multiply_density = text in ('true', '1')
-
-        text = get_text(elem, 'VOV')
-        if text is None:
-            tally.vov = text in ('true', '1')
 
         # Read filters
         filters_elem = elem.find('filters')
@@ -3511,6 +3488,8 @@ class Tallies(cv.CheckedList):
         # Write the XML Tree to the tallies.xml file
         tree = ET.ElementTree(root_element)
         tree.write(str(p), xml_declaration=True, encoding='utf-8')
+    
+    
 
     @classmethod
     def from_xml_element(cls, elem, meshes=None):
@@ -3578,3 +3557,5 @@ class Tallies(cv.CheckedList):
         tree = ET.parse(path, parser=parser)
         root = tree.getroot()
         return cls.from_xml_element(root)
+
+   

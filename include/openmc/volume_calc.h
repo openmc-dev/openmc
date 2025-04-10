@@ -34,7 +34,7 @@ public:
     vector<double> atoms;       //!< Number of atoms for each nuclide
     vector<double> uncertainty; //!< Uncertainty on number of atoms
     int iterations; //!< Number of iterations needed to obtain the results
-  };                // Results for a single domain
+  }; // Results for a single domain
 
   // Constructors
   VolumeCalculation(pugi::xml_node node);

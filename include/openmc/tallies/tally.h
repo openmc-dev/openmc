@@ -106,6 +106,8 @@ public:
 
   bool writable() const { return writable_; }
 
+  bool vov_results() const { return vov_; }
+
   //----------------------------------------------------------------------------
   // Other methods.
 
@@ -194,6 +196,8 @@ private:
   //! Whether to multiply by atom density for reaction rates
   bool multiply_density_ {true};
 
+  bool vov_ = false;
+
   int64_t index_;
 };
 
@@ -212,7 +216,6 @@ extern vector<int> active_meshsurf_tallies;
 extern vector<int> active_surface_tallies;
 extern vector<int> active_pulse_height_tallies;
 extern vector<int> pulse_height_cells;
-extern bool vov_;
 } // namespace model
 
 namespace simulation {

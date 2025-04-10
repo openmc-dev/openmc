@@ -500,10 +500,10 @@ void print_runtime()
 double variance_of_variance(const double* x, int n)
 {
   // Need to create a double for each sum
-  double sum = (x[static_cast<int>(TallyResult::SUM)]) ; 
-  double sum_sq = (x[static_cast<int>(TallyResult::SUM_SQ)]) ;
-  double sum_rd = (x[static_cast<int>(TallyResult::SUM_THIRD)]) ;
-  double sum_th = (x[static_cast<int>(TallyResult::SUM_FOURTH)]) ;
+  double sum = (x[static_cast<int>(TallyResult::SUM)]);
+  double sum_sq = (x[static_cast<int>(TallyResult::SUM_SQ)]);
+  double sum_rd = (x[static_cast<int>(TallyResult::SUM_THIRD)]);
+  double sum_th = (x[static_cast<int>(TallyResult::SUM_FOURTH)]);
 
   double term1 = sum_th;
   double term2 = (4.0 * sum_rd * sum) / n;
@@ -511,13 +511,16 @@ double variance_of_variance(const double* x, int n)
   double term4 = (3.0 * (pow(sum, 4.0))) / (pow(n, 3.0));
   double term5 = sum_sq - (1.0 / n) * (pow(sum, 2.0));
   // Fourth moment of the sample
-  double numerator = sum_th - (4.0*sum_rd*sum) / n  + (6.0*sum_sq*(pow(sum, 2.0))) / (pow(n, 2.0)) - (3.0*(pow(sum, 4.0))) / (pow(n, 3.0));
+  double numerator = sum_th - (4.0 * sum_rd * sum) / n +
+                     (6.0 * sum_sq * (pow(sum, 2.0))) / (pow(n, 2.0)) -
+                     (3.0 * (pow(sum, 4.0))) / (pow(n, 3.0));
 
   // Second moment of the sample
-  double denominator = (sum_sq - (1.0/n)*(pow(sum, 2.0)))*(sum_sq - (1.0/n)*(pow(sum, 2.0)));
+  double denominator = (sum_sq - (1.0 / n) * (pow(sum, 2.0))) *
+                       (sum_sq - (1.0 / n) * (pow(sum, 2.0)));
 
   // Equation for variance of variance
-  double vov = numerator/denominator - 1.0/n;
+  double vov = numerator / denominator - 1.0 / n;
 
   return vov;
 }
@@ -525,7 +528,7 @@ double variance_of_variance(const double* x, int n)
 std::pair<double, double> mean_stdev(const double* x, int n)
 {
   double mean = x[static_cast<int>(TallyResult::SUM)] / n;
-  double stdev = 
+  double stdev =
     n > 1 ? std::sqrt(std::max(0.0,
               (x[static_cast<int>(TallyResult::SUM_SQ)] / n - mean * mean) /
                 (n - 1)))
@@ -628,8 +631,9 @@ void write_tallies()
     return;
 
   // Set filename for tallies_out
-  //std::string filename = fmt::format("{}tallies.out", settings::path_output);
-  std::string filename = fmt::format("{}tallies_{}_{}.out", settings::path_output, settings::n_batches, settings::n_particles);
+  // std::string filename = fmt::format("{}tallies.out", settings::path_output);
+  std::string filename = fmt::format("{}tallies_{}_{}.out",
+    settings::path_output, settings::n_batches, settings::n_particles);
   // Open the tallies.out file.
   std::ofstream tallies_out;
   tallies_out.open(filename, std::ios::out | std::ios::trunc);
@@ -722,20 +726,23 @@ void write_tallies()
         }
 
         // Write the score, mean, uncertainty and vov.
-       indent += 3;
+        indent += 3;
         for (auto score : tally.scores_) {
           std::string score_name =
             score > 0 ? reaction_name(score) : score_names.at(score);
           double mean, stdev;
-            mean_stdev(&tally.results_(filter_index, score_index, 0),
+          mean_stdev(&tally.results_(filter_index, score_index, 0),
+            tally.n_realizations_);
+          if (tally.vov_results()) {
+            double vov = variance_of_variance(
+              &tally.results_(filter_index, score_index, 0),
               tally.n_realizations_);
-          if (openmc::model::vov_) {
-            double vov = variance_of_variance(&tally.results_(filter_index, score_index, 0),tally.n_realizations_);
-            fmt::print(tallies_out, "{0:{1}}{2:<36} {3:.6} +/- {4:.6} -- VOV: {5:.6}\n", "",
+            fmt::print(tallies_out,
+              "{0:{1}}{2:<36} {3:.6} +/- {4:.6} -- VOV: {5:.6}\n", "",
               indent + 1, score_name, mean, stdev / mean, vov);
           } else {
             fmt::print(tallies_out, "{0:{1}}{2:<36} {3:.6} +/- {4:.6}\n", "",
-            indent + 1, score_name, mean, t_value * stdev);
+              indent + 1, score_name, mean, t_value * stdev);
           }
           score_index += 1;
         }

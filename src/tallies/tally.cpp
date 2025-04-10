@@ -61,7 +61,6 @@ vector<int> active_meshsurf_tallies;
 vector<int> active_surface_tallies;
 vector<int> active_pulse_height_tallies;
 vector<int> pulse_height_cells;
-bool vov_ = false;
 } // namespace model
 
 namespace simulation {
@@ -103,10 +102,9 @@ Tally::Tally(pugi::xml_node node)
     multiply_density_ = get_node_value_bool(node, "multiply_density");
   }
 
-  if (check_for_node(node, "VOV")) {
-    openmc::model::vov_ = get_node_value_bool(node, "VOV");
+  if (check_for_node(node, "vov")) {
+    vov_ = get_node_value_bool(node, "vov");
   }
-
   // =======================================================================
   // READ DATA FOR FILTERS
 
@@ -737,15 +735,10 @@ void Tally::init_triggers(pugi::xml_node node)
 
 void Tally::init_results()
 {
-  // Modifications to the results array size to accumulate sum_third and sum_fourth
   int n_scores = scores_.size() * nuclides_.size();
-  // TO DO: allocate the correct size for the results array during initialization
-  if (openmc::model::vov_)
-  {
+  if (vov_) {
     results_ = xt::empty<double>({n_filter_bins_, n_scores, 5});
-  }
-  else
-  {
+  } else {
     results_ = xt::empty<double>({n_filter_bins_, n_scores, 3});
   }
 }
@@ -785,7 +778,7 @@ void Tally::accumulate()
 
 // Accumulate each result
 #pragma omp parallel for
-// filter bins (specific cell, energy bins)
+    // filter bins (specific cell, energy bins)
     for (int i = 0; i < results_.shape()[0]; ++i) {
       // score bins (flux, total reaction rate, fission reaction rate, etc.)
       for (int j = 0; j < results_.shape()[1]; ++j) {
@@ -824,7 +817,7 @@ void Tally::accumulate_vov()
 
 // Accumulate each result
 #pragma omp parallel for
-// filter bins (specific cell, energy bins)
+    // filter bins (specific cell, energy bins)
     for (int i = 0; i < results_.shape()[0]; ++i) {
       // score bins (flux, total reaction rate, fission reaction rate, etc.)
       for (int j = 0; j < results_.shape()[1]; ++j) {
@@ -838,7 +831,6 @@ void Tally::accumulate_vov()
     }
   }
 }
-
 
 int Tally::score_index(const std::string& score) const
 {
@@ -970,9 +962,10 @@ void reduce_tally_results()
         static_cast<int>(TallyResult::VALUE));
 
       // Make copy of tally values in contiguous array
-      // TO DO: allocate the correct size for the values array during initialization
+      // TO DO: allocate the correct size for the values array during
+      // initialization
 
-      if (openmc::model::vov_){
+      if (vov_) {
         xt::xtensor<double, 4> values = values_view;
         xt::xtensor<double, 4> values_reduced = xt::empty_like(values);
 
@@ -1080,7 +1073,7 @@ void accumulate_tallies()
   // Accumulate results for each tally
   for (int i_tally : model::active_tallies) {
     auto& tally {model::tallies[i_tally]};
-    if (openmc::model::vov_){
+    if (tally->vov_results()) {
       tally->accumulate_vov();
     } else {
       tally->accumulate();

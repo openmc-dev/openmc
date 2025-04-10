@@ -910,16 +910,17 @@ void StructuredMesh::raytrace_mesh(
   // compilers will (hopefully) eliminate the complete code (including
   // calculation of parameters) but for the future: be explicit
 
-  // keep a copy of the original global position to pass to get_indices,
-  // which performs its own transformation to local coordinates
-  Position global_r = r0;
-  local_coords(r0);
-  local_coords(r1);
 
   // Compute the length of the entire track.
   double total_distance = (r1 - r0).norm();
   if (total_distance == 0.0 && settings::solver_type != SolverType::RANDOM_RAY)
-    return;
+  return;
+
+  // keep a copy of the original global position to pass to get_indices,
+  // which performs its own transformation to local coordinates
+  Position global_r = r0;
+
+  const Position& local_r = local_coords(r0);
 
   const int n = n_dimension_;
 
@@ -945,7 +946,7 @@ void StructuredMesh::raytrace_mesh(
   // Calculate initial distances to next surfaces in all three dimensions
   std::array<MeshDistance, 3> distances;
   for (int k = 0; k < n; ++k) {
-    distances[k] = distance_to_grid_boundary(ijk, k, r0, u, 0.0);
+    distances[k] = distance_to_grid_boundary(ijk, k, local_r, u, 0.0);
   }
 
   // Loop until r = r1 is eventually reached
@@ -975,7 +976,7 @@ void StructuredMesh::raytrace_mesh(
       // The two other directions are still valid!
       ijk[k] = distances[k].next_index;
       distances[k] =
-        distance_to_grid_boundary(ijk, k, r0, u, traveled_distance);
+        distance_to_grid_boundary(ijk, k, local_r, u, traveled_distance);
 
       // Check if we have left the interior of the mesh
       in_mesh = ((ijk[k] >= 1) && (ijk[k] <= shape_[k]));
@@ -1008,7 +1009,7 @@ void StructuredMesh::raytrace_mesh(
       ijk = get_indices(global_r + (traveled_distance + TINY_BIT) * u, in_mesh);
       for (int k = 0; k < n; ++k) {
         distances[k] =
-          distance_to_grid_boundary(ijk, k, r0, u, traveled_distance);
+          distance_to_grid_boundary(ijk, k, local_r, u, traveled_distance);
       }
 
       // If inside the mesh, Tally inward current

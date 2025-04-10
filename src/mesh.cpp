@@ -910,6 +910,12 @@ void StructuredMesh::raytrace_mesh(
   // compilers will (hopefully) eliminate the complete code (including
   // calculation of parameters) but for the future: be explicit
 
+  // keep a copy of the original global position to pass to get_indices,
+  // which performs its own transformation to local coordinates
+  Position global_r = r0;
+  local_coords(r0);
+  local_coords(r1);
+
   // Compute the length of the entire track.
   double total_distance = (r1 - r0).norm();
   if (total_distance == 0.0 && settings::solver_type != SolverType::RANDOM_RAY)
@@ -925,8 +931,7 @@ void StructuredMesh::raytrace_mesh(
 
   // Calculate index of current cell. Offset the position a tiny bit in
   // direction of flight
-  local_coords(r0);
-  MeshIndex ijk = get_indices(r0 + TINY_BIT * u, in_mesh);
+  MeshIndex ijk = get_indices(global_r + TINY_BIT * u, in_mesh);
 
   // if track is very short, assume that it is completely inside one cell.
   // Only the current cell will score and no surfaces
@@ -936,12 +941,6 @@ void StructuredMesh::raytrace_mesh(
     }
     return;
   }
-
-  // translate start and end positions,
-  // this needs to come after the get_indices call because it does its own
-  // translation
-  // local_coords(r0);
-  local_coords(r1);
 
   // Calculate initial distances to next surfaces in all three dimensions
   std::array<MeshDistance, 3> distances;
@@ -1006,7 +1005,7 @@ void StructuredMesh::raytrace_mesh(
 
       // Calculate the new cell index and update all distances to next
       // surfaces.
-      ijk = get_indices(r0 + (traveled_distance + TINY_BIT) * u, in_mesh);
+      ijk = get_indices(global_r + (traveled_distance + TINY_BIT) * u, in_mesh);
       for (int k = 0; k < n; ++k) {
         distances[k] =
           distance_to_grid_boundary(ijk, k, r0, u, traveled_distance);
@@ -1631,23 +1630,21 @@ StructuredMesh::MeshDistance CylindricalMesh::distance_to_grid_boundary(
   const MeshIndex& ijk, int i, const Position& r0, const Direction& u,
   double l) const
 {
-  Position r = r0 - origin_;
-
   if (i == 0) {
 
     return std::min(
-      MeshDistance(ijk[i] + 1, true, find_r_crossing(r, u, l, ijk[i])),
-      MeshDistance(ijk[i] - 1, false, find_r_crossing(r, u, l, ijk[i] - 1)));
+      MeshDistance(ijk[i] + 1, true, find_r_crossing(r0, u, l, ijk[i])),
+      MeshDistance(ijk[i] - 1, false, find_r_crossing(r0, u, l, ijk[i] - 1)));
 
   } else if (i == 1) {
 
     return std::min(MeshDistance(sanitize_phi(ijk[i] + 1), true,
-                      find_phi_crossing(r, u, l, ijk[i])),
+                      find_phi_crossing(r0, u, l, ijk[i])),
       MeshDistance(sanitize_phi(ijk[i] - 1), false,
-        find_phi_crossing(r, u, l, ijk[i] - 1)));
+        find_phi_crossing(r0, u, l, ijk[i] - 1)));
 
   } else {
-    return find_z_crossing(r, u, l, ijk[i]);
+    return find_z_crossing(r0, u, l, ijk[i]);
   }
 }
 

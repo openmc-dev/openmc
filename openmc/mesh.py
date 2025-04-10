@@ -765,17 +765,17 @@ class StructuredMesh(MeshBase):
 
         """
         for label, dataset in datasets.items():
-            errmsg = (
-                f"The size of the dataset '{label}' ({dataset.size}) should be"
-                f" equal to the number of mesh cells ({self.num_mesh_cells})"
-            )
-            if isinstance(dataset, np.ndarray):
-                if not dataset.size == self.num_mesh_cells:
-                    raise ValueError(errmsg)
-            else:
-                if not len(dataset) == self.num_mesh_cells:
-                    raise ValueError(errmsg)
             cv.check_type('data label', label, str)
+
+            if not isinstance(dataset, np.ndarray):
+                datasets[label] = np.asarray(dataset)
+
+            if dataset.shape != self.dimension:
+                raise ValueError(
+                    f'Cannot apply dataset "{name}" with '
+                    f"shape {data.shape} to mesh {self.id} "
+                    f"with dimensions {self.dimension}"
+                )
 
 
 class RegularMesh(StructuredMesh):

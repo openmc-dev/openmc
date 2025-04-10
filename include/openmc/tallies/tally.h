@@ -196,7 +196,7 @@ private:
   //! Whether to multiply by atom density for reaction rates
   bool multiply_density_ {true};
 
-  bool vov_ = false;
+  bool vov_ = {false};
 
   int64_t index_;
 };

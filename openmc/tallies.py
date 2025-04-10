@@ -413,7 +413,6 @@ class Tally(IDManagerMixin):
             self._sum = sum_
             self._sum_sq = sum_sq
             
-        
             # Convert NumPy arrays to SciPy sparse LIL matrices
             if self.sparse:
                 self._sum = sps.lil_matrix(self._sum.flatten(), self._sum.shape)
@@ -509,9 +508,7 @@ class Tally(IDManagerMixin):
                 return None
 
             n = self.num_realizations
-            
             nonzero = np.abs(self.mean) > 0
-            
             self._std_dev = np.zeros_like(self.mean)
             self._std_dev[nonzero] = np.sqrt((self.sum_sq[nonzero]/n -
                                               self.mean[nonzero]**2)/(n - 1))
@@ -1067,7 +1064,7 @@ class Tally(IDManagerMixin):
         if self.derivative is not None:
             subelement = ET.SubElement(element, "derivative")
             subelement.text = str(self.derivative.id)
-        
+
         # Optional VOV
         if self.vov:
             subelement = ET.SubElement(element, "vov")
@@ -3299,7 +3296,6 @@ class Tally(IDManagerMixin):
         new_tally.sparse = self.sparse
         return new_tally
 
-
 class Tallies(cv.CheckedList):
     """Collection of Tallies used for an OpenMC simulation.
 
@@ -3489,8 +3485,6 @@ class Tallies(cv.CheckedList):
         tree = ET.ElementTree(root_element)
         tree.write(str(p), xml_declaration=True, encoding='utf-8')
     
-    
-
     @classmethod
     def from_xml_element(cls, elem, meshes=None):
         """Generate tallies from an XML element
@@ -3557,5 +3551,3 @@ class Tallies(cv.CheckedList):
         tree = ET.parse(path, parser=parser)
         root = tree.getroot()
         return cls.from_xml_element(root)
-
-   

@@ -1,4 +1,10 @@
+import pytest
 import openmc
+
+
+pytestmark = pytest.mark.skipif(
+    not openmc.lib._dagmc_enabled(), reason="DAGMC CAD geometry is not enabled."
+)
 
 def test_ploting_dagmc_geometry():
     """Test plotting a DAGMC geometry with OpenMC. This is different to CSG

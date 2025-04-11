@@ -956,7 +956,7 @@ class MGXS:
             self.xs_tally._nuclides = []
             nuclides = self.get_nuclides()
             for nuclide in nuclides:
-                self.xs_tally.nuclides.append(openmc.Nuclide(nuclide))
+                self.xs_tally.nuclides.append(nuclide)
 
         # Remove NaNs which may have resulted from divide-by-zero operations
         self.xs_tally._mean = np.nan_to_num(self.xs_tally.mean)

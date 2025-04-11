@@ -12,6 +12,7 @@ from collections import defaultdict, namedtuple
 from collections.abc import Mapping, Iterable
 from numbers import Real, Integral
 from warnings import warn
+from typing import List
 
 import lxml.etree as ET
 import scipy.sparse as sp
@@ -244,6 +245,10 @@ class Chain:
         Reactions that are tracked in the depletion chain
     nuclide_dict : dict of str to int
         Maps a nuclide name to an index in nuclides.
+    stable_nuclides : list of openmc.deplete.Nuclide
+        List of stable nuclides available in the chain.
+    unstable_nuclides : list of openmc.deplete.Nuclide
+        List of unstable nuclides available in the chain.
     fission_yields : None or iterable of dict
         List of effective fission yields for materials. Each dictionary
         should be of the form ``{parent: {product: yield}}`` with
@@ -256,7 +261,7 @@ class Chain:
     """
 
     def __init__(self):
-        self.nuclides = []
+        self.nuclides: List[Nuclide] = []
         self.reactions = []
         self.nuclide_dict = {}
         self._fission_yields = None
@@ -272,7 +277,18 @@ class Chain:
         """Number of nuclides in chain."""
         return len(self.nuclides)
 
-    def add_nuclide(self, nuclide):
+
+    @property
+    def stable_nuclides(self) -> List[Nuclide]:
+        """List of stable nuclides available in the chain"""
+        return [nuc for nuc in self.nuclides if nuc.half_life is None]
+
+    @property
+    def unstable_nuclides(self) -> List[Nuclide]:
+        """List of unstable nuclides available in the chain"""
+        return [nuc for nuc in self.nuclides if nuc.half_life is not None]
+
+    def add_nuclide(self, nuclide: Nuclide):
         """Add a nuclide to the depletion chain
 
         Parameters

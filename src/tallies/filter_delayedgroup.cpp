@@ -11,7 +11,7 @@ void DelayedGroupFilter::from_xml(pugi::xml_node node)
   this->set_groups(groups);
 }
 
-void DelayedGroupFilter::set_groups(gsl::span<int> groups)
+void DelayedGroupFilter::set_groups(span<int> groups)
 {
   // Clear existing groups
   groups_.clear();

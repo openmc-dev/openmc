@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools", "wheel"]
+requires = ["setuptools", "setuptools-scm", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -8,7 +8,7 @@ authors = [
     {name = "The OpenMC Development Team", email = "openmc@anl.gov"},
 ]
 description = "OpenMC"
-version = "0.15.1-dev"
+dynamic = ["version"]
 requires-python = ">=3.11"
 license = {file = "LICENSE"}
 classifiers = [
@@ -59,7 +59,7 @@ Repository = "https://github.com/openmc-dev/openmc"
 Issues = "https://github.com/openmc-dev/openmc/issues"
 
 [tool.setuptools.packages.find]
-include = ['openmc*', 'scripts*']
+include = ['openmc*']
 exclude = ['tests*']
 
 [tool.setuptools.package-data]
@@ -67,11 +67,4 @@ exclude = ['tests*']
 "openmc.data" = ["*.txt", "*.DAT", "*.json", "*.h5"]
 "openmc.lib" = ["libopenmc.dylib", "libopenmc.so"]
 
-[project.scripts]
-openmc-ace-to-hdf5 = "scripts.openmc_ace_to_hdf5:main"
-openmc-plot-mesh-tally = "scripts.openmc_plot_mesh_tally:main"
-openmc-track-combine = "scripts.openmc_track_combine:main"
-openmc-track-to-vtk = "scripts.openmc_track_to_vtk:main"
-openmc-update-inputs = "scripts.openmc_update_inputs:main"
-openmc-update-mgxs = "scripts.openmc_update_mgxs:main"
-openmc-voxel-to-vtk = "scripts.openmc_voxel_to_vtk:main"
+[tool.setuptools_scm]

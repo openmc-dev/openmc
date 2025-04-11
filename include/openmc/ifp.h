@@ -22,17 +22,15 @@ bool is_generation_time_or_both();
 //!
 //! \param[in,out] delayed_groups List of delayed group numbers
 //! \param[in,out] lifetimes List of lifetimes
-//! \param[in] n_dg Dimension to resize the delayed group numbers
-//! \param[in] n_l Dimension to resize the lifetimes
+//! \param[in] n  Dimension to resize vectors
 template<typename T, typename U>
-void resize_ifp_data(
-  vector<T>& delayed_groups, vector<U>& lifetimes, int64_t n_dg, int64_t n_l)
+void resize_ifp_data(vector<T>& delayed_groups, vector<U>& lifetimes, int64_t n)
 {
   if (is_beta_effective_or_both()) {
-    delayed_groups.resize(n_dg);
+    delayed_groups.resize(n);
   }
   if (is_generation_time_or_both()) {
-    lifetimes.resize(n_l);
+    lifetimes.resize(n);
   }
 }
 
@@ -83,35 +81,13 @@ void ifp(const Particle& p, const SourceSite& site, int64_t idx);
 //! Resize the IFP banks used in the simulation
 void resize_simulation_ifp_banks();
 
-//! Initialize pointers to the i_bank element in the corresponding IFP fission
-//! banks.
-//!
-//! \param[in] i_bank Index in the IFP fission banks
-//! \param[out] delayed_groups_ptr Delayed group numbers data pointer
-//! \param[out] lifetimes_ptr Lifetimes data pointer
-void initialize_ifp_pointers(int64_t i_bank,
-  const vector<int>*& delayed_groups_ptr, const vector<double>*& lifetimes_ptr);
-
-//! Add data to local IFP lists using pointers.
-//!
-//! \param[in] idx Index in the local lists
-//! \param[in,out] delayed_groups List of delayed group numbers lists
-//! \param[in] delayed_groups_ptr Delayed group numbers data pointer
-//! \param[in,out] lifetimes List of lifetimes lists
-//! \param[in] lifetimes_ptr Lifetimes data pointer
-void add_ifp_data(int64_t idx, vector<vector<int>>& delayed_groups,
-  const vector<int>* const& delayed_groups_ptr,
-  vector<vector<double>>& lifetimes,
-  const vector<double>* const& lifetimes_ptr);
-
 //! Retrieve IFP data from the IFP fission banks.
 //!
-//! \param[in] idx Index in the local lists
 //! \param[in] i_bank Index in the fission banks
-//! \param[in,out] delayed_groups List of delayed group numbers lists
-//! \param[in,out] lifetimes List of lifetimes lists
-void retrieve_ifp_data_from_fission_banks(int64_t idx, int i_bank,
-  vector<vector<int>>& delayed_groups, vector<vector<double>>& lifetimes);
+//! \param[in,out] delayed_groups Delayed group numbers
+//! \param[in,out] lifetimes Lifetimes lists
+void copy_ifp_data_from_fission_banks(
+  int i_bank, vector<int>& delayed_groups, vector<double>& lifetimes);
 
 #ifdef OPENMC_MPI
 
@@ -195,29 +171,17 @@ void copy_complete_ifp_data_to_source_banks(
 
 //! Allocate temporary vectors for IFP data.
 //!
-//! \param[in] delayed_groups List of delayed group numbers lists
-//! \param[out] delayed_groups_ptr Pointer to delayed group numbers
-//! \param[in] lifetimes List of delayed group numbers lists
-//! \param[out] lifetimes_ptr Pointer to lifetimes
-void allocate_temporary_vector_ifp(vector<vector<int>>& delayed_groups,
-  vector<int>*& delayed_groups_ptr, vector<vector<double>>& lifetimes,
-  vector<double>*& lifetimes_ptr);
-
-//! Sort values from IFP fission banks locally.
-//!
-//! \param[in] i_bank Index in the IFP fission banks
-//! \param[in] idx Index in the local IFP banks
-//! \param[out] delayed_groups_ptr Pointer to delayed group numbers
-//! \param[out] lifetimes_ptr Pointer to lifetimes
-void sort_ifp_data_from_fission_banks(int64_t i_bank, int64_t idx,
-  vector<int>*& delayed_groups_ptr, vector<double>*& lifetimes_ptr);
+//! \param[in,out] delayed_groups List of delayed group numbers lists
+//! \param[in,out] lifetimes List of delayed group numbers lists
+void allocate_temporary_vector_ifp(
+  vector<vector<int>>& delayed_groups, vector<vector<double>>& lifetimes);
 
 //! Copy local IFP data to IFP fission banks.
 //!
 //! \param[in] delayed_groups_ptr Pointer to delayed group numbers
 //! \param[in] lifetimes_ptr Pointer to lifetimes
 void copy_ifp_data_to_fission_banks(
-  vector<int>* const& delayed_groups_ptr, vector<double>* const& lifetimes_ptr);
+  const vector<int>* delayed_groups_ptr, const vector<double>* lifetimes_ptr);
 
 } // namespace openmc
 

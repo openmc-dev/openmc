@@ -161,22 +161,12 @@ void synchronize_bank()
   vector<vector<int>> temp_delayed_groups;
   vector<vector<double>> temp_lifetimes;
   if (settings::ifp) {
-    resize_ifp_data(temp_delayed_groups, temp_lifetimes,
-      3 * simulation::work_per_rank, 3 * simulation::work_per_rank);
+    resize_ifp_data(
+      temp_delayed_groups, temp_lifetimes, 3 * simulation::work_per_rank);
   }
 
   for (int64_t i = 0; i < simulation::fission_bank.size(); i++) {
     const auto& site = simulation::fission_bank[i];
-
-    // Declare pointer to constant IFP data that will be initialized if
-    // ifp is requested by the user.
-    const vector<int>* delayed_groups_ptr;
-    const vector<double>* lifetimes_ptr;
-
-    // Initialize IFP data pointer
-    if (settings::ifp) {
-      initialize_ifp_pointers(i, delayed_groups_ptr, lifetimes_ptr);
-    }
 
     // If there are less than n_particles particles banked, automatically add
     // int(n_particles/total) sites to temp_sites. For example, if you need
@@ -186,8 +176,8 @@ void synchronize_bank()
       for (int64_t j = 1; j <= settings::n_particles / total; ++j) {
         temp_sites[index_temp] = site;
         if (settings::ifp) {
-          add_ifp_data(index_temp, temp_delayed_groups, delayed_groups_ptr,
-            temp_lifetimes, lifetimes_ptr);
+          copy_ifp_data_from_fission_banks(
+            i, temp_delayed_groups[index_temp], temp_lifetimes[index_temp]);
         }
         ++index_temp;
       }
@@ -197,8 +187,8 @@ void synchronize_bank()
     if (prn(&seed) < p_sample) {
       temp_sites[index_temp] = site;
       if (settings::ifp) {
-        add_ifp_data(index_temp, temp_delayed_groups, delayed_groups_ptr,
-          temp_lifetimes, lifetimes_ptr);
+        copy_ifp_data_from_fission_banks(
+          i, temp_delayed_groups[index_temp], temp_lifetimes[index_temp]);
       }
       ++index_temp;
     }
@@ -247,8 +237,8 @@ void synchronize_bank()
         int i_bank = simulation::fission_bank.size() - sites_needed + i;
         temp_sites[index_temp] = simulation::fission_bank[i_bank];
         if (settings::ifp) {
-          retrieve_ifp_data_from_fission_banks(
-            index_temp, i_bank, temp_delayed_groups, temp_lifetimes);
+          copy_ifp_data_from_fission_banks(i_bank,
+            temp_delayed_groups[index_temp], temp_lifetimes[index_temp]);
         }
         ++index_temp;
       }
@@ -288,7 +278,6 @@ void synchronize_bank()
     // Resize IFP send buffers
     if (settings::ifp && mpi::n_procs > 1) {
       resize_ifp_data(send_delayed_groups, send_lifetimes,
-        ifp_n_generation * 3 * simulation::work_per_rank,
         ifp_n_generation * 3 * simulation::work_per_rank);
     }
 
@@ -351,7 +340,6 @@ void synchronize_bank()
   // Resize IFP receive buffers
   if (settings::ifp && mpi::n_procs > 1) {
     resize_ifp_data(recv_delayed_groups, recv_lifetimes,
-      ifp_n_generation * simulation::work_per_rank,
       ifp_n_generation * simulation::work_per_rank);
   }
 

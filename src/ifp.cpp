@@ -45,48 +45,20 @@ void ifp(const Particle& p, const SourceSite& site, int64_t idx)
 
 void resize_simulation_ifp_banks()
 {
-  if (is_beta_effective_or_both()) {
-    simulation::ifp_source_delayed_group_bank.resize(simulation::work_per_rank);
-    simulation::ifp_fission_delayed_group_bank.resize(
-      3 * simulation::work_per_rank);
-  }
-  if (is_generation_time_or_both()) {
-    simulation::ifp_source_lifetime_bank.resize(simulation::work_per_rank);
-    simulation::ifp_fission_lifetime_bank.resize(3 * simulation::work_per_rank);
-  }
+  resize_ifp_data(simulation::ifp_source_delayed_group_bank,
+    simulation::ifp_source_lifetime_bank, simulation::work_per_rank);
+  resize_ifp_data(simulation::ifp_fission_delayed_group_bank,
+    simulation::ifp_fission_lifetime_bank, 3 * simulation::work_per_rank);
 }
 
-void initialize_ifp_pointers(int64_t i_bank,
-  const vector<int>*& delayed_groups_ptr, const vector<double>*& lifetimes_ptr)
+void copy_ifp_data_from_fission_banks(
+  int i_bank, vector<int>& delayed_groups, vector<double>& lifetimes)
 {
   if (is_beta_effective_or_both()) {
-    delayed_groups_ptr = &simulation::ifp_fission_delayed_group_bank[i_bank];
+    delayed_groups = simulation::ifp_fission_delayed_group_bank[i_bank];
   }
   if (is_generation_time_or_both()) {
-    lifetimes_ptr = &simulation::ifp_fission_lifetime_bank[i_bank];
-  }
-}
-
-void add_ifp_data(int64_t idx, vector<vector<int>>& delayed_groups,
-  const vector<int>* const& delayed_groups_ptr,
-  vector<vector<double>>& lifetimes, const vector<double>* const& lifetimes_ptr)
-{
-  if (is_beta_effective_or_both()) {
-    delayed_groups[idx] = *delayed_groups_ptr;
-  }
-  if (is_generation_time_or_both()) {
-    lifetimes[idx] = *lifetimes_ptr;
-  }
-}
-
-void retrieve_ifp_data_from_fission_banks(int64_t idx, int i_bank,
-  vector<vector<int>>& delayed_groups, vector<vector<double>>& lifetimes)
-{
-  if (is_beta_effective_or_both()) {
-    delayed_groups[idx] = simulation::ifp_fission_delayed_group_bank[i_bank];
-  }
-  if (is_generation_time_or_both()) {
-    lifetimes[idx] = simulation::ifp_fission_lifetime_bank[i_bank];
+    lifetimes = simulation::ifp_fission_lifetime_bank[i_bank];
   }
 }
 
@@ -216,36 +188,19 @@ void copy_complete_ifp_data_to_source_banks(
   }
 }
 
-void allocate_temporary_vector_ifp(vector<vector<int>>& delayed_groups,
-  vector<int>*& delayed_groups_ptr, vector<vector<double>>& lifetimes,
-  vector<double>*& lifetimes_ptr)
+void allocate_temporary_vector_ifp(
+  vector<vector<int>>& delayed_groups, vector<vector<double>>& lifetimes)
 {
   if (is_beta_effective_or_both()) {
     delayed_groups.resize(simulation::fission_bank.size());
-    delayed_groups_ptr = delayed_groups.data();
   }
   if (is_generation_time_or_both()) {
     lifetimes.resize(simulation::fission_bank.size());
-    lifetimes_ptr = lifetimes.data();
   }
 }
 
-void sort_ifp_data_from_fission_banks(int64_t i_bank, int64_t idx,
-  vector<int>*& delayed_groups_ptr, vector<double>*& lifetimes_ptr)
-{
-  if (is_beta_effective_or_both()) {
-    const auto& delayed_groups =
-      simulation::ifp_fission_delayed_group_bank[i_bank];
-    delayed_groups_ptr[idx] = delayed_groups;
-  }
-  if (is_generation_time_or_both()) {
-    const auto& lifetimes = simulation::ifp_fission_lifetime_bank[i_bank];
-    lifetimes_ptr[idx] = lifetimes;
-  }
-}
-
-void copy_ifp_data_to_fission_banks(
-  vector<int>* const& delayed_groups_ptr, vector<double>* const& lifetimes_ptr)
+void copy_ifp_data_to_fission_banks(const vector<int>* const delayed_groups_ptr,
+  const vector<double>* lifetimes_ptr)
 {
   if (is_beta_effective_or_both()) {
     std::copy(delayed_groups_ptr,

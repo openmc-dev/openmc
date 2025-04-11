@@ -95,10 +95,8 @@ void sort_fission_bank()
   // over provisioned, so we can use that as scratch space.
   SourceSite* sorted_bank;
   vector<SourceSite> sorted_bank_holder;
-  vector<int>* sorted_ifp_delayed_group_bank;
-  vector<vector<int>> sorted_ifp_delayed_group_bank_holder;
-  vector<double>* sorted_ifp_lifetime_bank;
-  vector<vector<double>> sorted_ifp_lifetime_bank_holder;
+  vector<vector<int>> sorted_ifp_delayed_group_bank;
+  vector<vector<double>> sorted_ifp_lifetime_bank;
 
   // If there is not enough space, allocate a temporary vector and point to it
   if (simulation::fission_bank.size() >
@@ -110,9 +108,8 @@ void sort_fission_bank()
   }
 
   if (settings::ifp) {
-    allocate_temporary_vector_ifp(sorted_ifp_delayed_group_bank_holder,
-      sorted_ifp_delayed_group_bank, sorted_ifp_lifetime_bank_holder,
-      sorted_ifp_lifetime_bank);
+    allocate_temporary_vector_ifp(
+      sorted_ifp_delayed_group_bank, sorted_ifp_lifetime_bank);
   }
 
   // Use parent and progeny indices to sort fission bank
@@ -126,8 +123,8 @@ void sort_fission_bank()
     }
     sorted_bank[idx] = site;
     if (settings::ifp) {
-      sort_ifp_data_from_fission_banks(
-        i, idx, sorted_ifp_delayed_group_bank, sorted_ifp_lifetime_bank);
+      copy_ifp_data_from_fission_banks(
+        i, sorted_ifp_delayed_group_bank[idx], sorted_ifp_lifetime_bank[idx]);
     }
   }
 
@@ -136,7 +133,7 @@ void sort_fission_bank()
     simulation::fission_bank.data());
   if (settings::ifp) {
     copy_ifp_data_to_fission_banks(
-      sorted_ifp_delayed_group_bank, sorted_ifp_lifetime_bank);
+      sorted_ifp_delayed_group_bank.data(), sorted_ifp_lifetime_bank.data());
   }
 }
 

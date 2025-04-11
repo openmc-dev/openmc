@@ -338,7 +338,7 @@ void allocate_banks()
     init_fission_bank(3 * simulation::work_per_rank);
 
     // Allocate IFP bank
-    if (settings::ifp) {
+    if (settings::ifp_on) {
       resize_simulation_ifp_banks();
     }
   }

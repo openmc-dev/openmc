@@ -181,7 +181,7 @@ Tally::Tally(pugi::xml_node node)
   }
 
   // Set IFP if needed
-  if (!settings::ifp) {
+  if (!settings::ifp_on) {
     for (int score : scores_) {
       switch (score) {
       case SCORE_IFP_TIME_NUM:
@@ -199,7 +199,7 @@ Tally::Tally(pugi::xml_node node)
             fatal_error("'ifp_n_generation' must be lower than or equal to the "
                         "number of inactive cycles.");
           }
-          settings::ifp = true;
+          settings::ifp_on = true;
         } else {
           fatal_error(
             "Iterated Fission Probability can only be used in an eigenvalue "
@@ -213,7 +213,7 @@ Tally::Tally(pugi::xml_node node)
 exit_for_loop:;
 
   // Set IFP parameters if needed
-  if (settings::ifp) {
+  if (settings::ifp_on) {
     for (int score : scores_) {
       switch (score) {
       case SCORE_IFP_TIME_NUM:

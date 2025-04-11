@@ -23,7 +23,6 @@
         <fissionable>true</fissionable>
       </constraints>
     </source>
-    <photon_transport>false</photon_transport>
     <ifp_n_generation>5</ifp_n_generation>
   </settings>
   <tallies>

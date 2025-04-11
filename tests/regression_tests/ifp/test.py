@@ -9,8 +9,7 @@ from tests.testing_harness import PyAPITestHarness
 
 @pytest.fixture()
 def ifp_model():
-    openmc.reset_auto_ids()
-    model = openmc.model.Model()
+    model = openmc.Model()
 
     # Material
     material = openmc.Material(name="core")
@@ -24,29 +23,19 @@ def ifp_model():
     model.geometry = openmc.Geometry([cell])
 
     # Settings
-    settings = openmc.Settings()
-    settings.run_mode = 'eigenvalue'
-    settings.particles = 1000
-    settings.batches = 20
-    settings.inactive = 5
-    settings.photon_transport = False
-    settings.ifp_n_generation = 5
+    model.settings.particles = 1000
+    model.settings.batches = 20
+    model.settings.inactive = 5
+    model.settings.ifp_n_generation = 5
 
-    bounds = [
-        -radius, -radius, -radius,
-        radius, radius, radius
-    ]
-    space = openmc.stats.Box(bounds[:3], bounds[3:])
-    settings.source = openmc.IndependentSource(space=space, constraints={'fissionable': True})
-
-    model.settings = settings
+    space = openmc.stats.Box(*cell.bounding_box)
+    model.settings.source = openmc.IndependentSource(
+        space=space, constraints={'fissionable': True})
 
     # Tally IFP scores
     tally = openmc.Tally(name="ifp-scores")
     tally.scores = ["ifp-time-numerator", "ifp-beta-numerator", "ifp-denominator"]
-
-    tallies = openmc.Tallies([tally])
-    model.tallies = tallies
+    model.tallies = [tally]
 
     return model
 

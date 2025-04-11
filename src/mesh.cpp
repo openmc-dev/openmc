@@ -918,7 +918,6 @@ void StructuredMesh::raytrace_mesh(
   // keep a copy of the original global position to pass to get_indices,
   // which performs its own transformation to local coordinates
   Position global_r = r0;
-
   const Position& local_r = local_coords(r0);
 
   const int n = n_dimension_;

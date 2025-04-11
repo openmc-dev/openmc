@@ -197,7 +197,7 @@ void validate_random_ray_inputs()
     }
     if (material.get_xsdata().size() > 1) {
       warning("Non-isothermal MGXS detected. Only isothermal XS data sets "
-                  "supported in random ray mode. Using lowest temperature.");
+              "supported in random ray mode. Using lowest temperature.");
     }
     for (int g = 0; g < data::mg.num_energy_groups_; g++) {
       if (material.exists_in_model) {

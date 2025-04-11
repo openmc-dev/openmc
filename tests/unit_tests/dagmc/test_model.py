@@ -290,7 +290,14 @@ def test_dagmc_vacuum(run_in_tmpdir, request):
     # Set the Model
     daguniv = openmc.DAGMCUniverse(na_vacuum_h5.absolute(),
                                    auto_geom_ids=True).bounded_universe()
+    # Update the model geometry
     model.geometry = openmc.Geometry(root=daguniv)
+
+    model.export_to_model_xml()
+    with openmc.lib.run_in_memory():
+        material = openmc.lib.find_material((0, 0, 0))
+        assert material is not None
+
 
     # Vacuum material
     vacuum_str = "vacuum"
@@ -298,7 +305,6 @@ def test_dagmc_vacuum(run_in_tmpdir, request):
     # Tweaking the h5m file to change the material assignment
     vacuum_h5 = Path(f"dagmc_{vacuum_str}.h5m")
     shutil.copy(orig_h5m, vacuum_h5)
-    hf = h5py.File(vacuum_h5, 'r+')
     hf = h5py.File(vacuum_h5, 'r+')
     new_assignment = 'mat:vacuum'.encode('utf-8')
     hf['/tstt/tags/NAME']['values'][1] = new_assignment

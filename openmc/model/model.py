@@ -1828,6 +1828,16 @@ class Model:
         if isinstance(groups, str):
             groups = openmc.mgxs.EnergyGroups(groups)
 
+        # Determine if this is a DAGMC geometry. If so, we need to syncronize
+        # the dagmc materials with cells.
+        # TODO: Can this be done without having to init/finalize?
+        for univ in self.geometry.get_all_universes().values():
+            if isinstance(univ, openmc.DAGMCUniverse):
+                self.init_lib()
+                self.sync_dagmc_universes()
+                self.finalize_lib()
+                break
+           
         # Make sure all materials have a name, and that the name is a valid HDF5
         # dataset name
         for material in self.materials:

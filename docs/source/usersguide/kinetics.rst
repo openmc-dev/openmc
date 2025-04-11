@@ -4,13 +4,13 @@
 Kinetics parameters
 ===================
 
-OpenMC has the capability to estimate the following adjoint-weighted kinetics
-parameters: the effective generation time :math:`\Lambda_{\text{eff}}` and the
-effective delayed neutron fraction :math:`\beta_{\text{eff}}`. These parameters
-are calculated using the Iterated Fission Probability (IFP) method [Hurwitz_1964]_
-based on a similar approach as Serpent 2 [Leppänen_2014]_. The implementation
-in OpenMC is limited to eigenvalue calculations and is described in more
-details in [Dorville_2025]_.
+OpenMC has the capability to estimate the following adjoint-weighted effective
+generation time :math:`\Lambda_{\text{eff}}` and the effective delayed neutron
+fraction :math:`\beta_{\text{eff}}`. These parameters are calculated using the
+iterated fission probability (IFP) method [Hurwitz_1964]_ based on a similar
+approach as in `Serpent 2 <https://doi.org/10.1016/j.anucene.2013.10.032>`_. The
+implementation in OpenMC is limited to eigenvalue calculations and is described
+in more details in [Dorville_2025]_.
 
 ----------------------------------
 Iterated Fission Probability (IFP)
@@ -102,9 +102,7 @@ for ``ifp-denominator``:
 .. [Hurwitz_1964] H. Hurwitz Jr., "Naval Reactors Physics Handbook", volume 1, p. 864.
     Radkowsky, A. (Ed.), Naval Reactors, Division of Reactor Development, U.S.
     Atomic Energy Commission (1964).
-.. [Leppänen_2014] J. Leppänen, M. Aufiero, E. Fridman, R. Rachamin, and S. van der Marck,
-    "Calculation of effective point kinetics parameters in the Serpent 2 Monte Carlo code",
-    Annals of Nuclear Energy, vol. 65, pp. 272-279, Mar. 2014, doi:10.1016/j.anucene.2013.10.032
+
 .. [Dorville_2025] J. Dorville, L. Labrie-Cleary, and P. K. Romano, "Implementation
     of the Iterated Fission Probability Method in OpenMC to Compute Adjoint-Weighted
     Kinetics Parameters", International Conference on Mathematics and Computational

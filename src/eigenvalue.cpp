@@ -398,13 +398,6 @@ void synchronize_bank()
   if (settings::ifp) {
     deserialize_ifp_info(ifp_n_generation, deserialization_info,
       recv_delayed_groups, recv_lifetimes);
-
-    // Clear IFP buffers
-    send_delayed_groups.clear();
-    send_lifetimes.clear();
-    recv_delayed_groups.clear();
-    recv_lifetimes.clear();
-    deserialization_info.clear();
   }
 
 #else
@@ -414,11 +407,6 @@ void synchronize_bank()
     copy_complete_ifp_data_to_source_banks(temp_delayed_groups, temp_lifetimes);
   }
 #endif
-  temp_sites.clear();
-
-  // Clear IFP buffers
-  temp_delayed_groups.clear();
-  temp_lifetimes.clear();
 
   simulation::time_bank_sendrecv.stop();
   simulation::time_bank.stop();

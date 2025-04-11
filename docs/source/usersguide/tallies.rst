@@ -322,23 +322,23 @@ The following tables show all valid scores:
     |                      |particle. Note that this score can only be combined|
     |                      |with a cell filter and an energy filter.           |
     +----------------------+---------------------------------------------------+
-    |ifp-time-numerator    |Adjoint-weighted life time of neutron produced by  |
+    |ifp-time-numerator    |Adjoint-weighted lifetime of neutron produced by   |
     |                      |fission in units of seconds per source particle.   |
     |                      |This score is used to compute kinetics parameters  |
-    |                      |using the Iterated Fission Probability (IFP)       |
+    |                      |using the iterated fission probability (IFP)       |
     |                      |method.                                            |
     +----------------------+---------------------------------------------------+
     |ifp-beta-numerator    |Adjoint-weighted number of delayed fission events  |
     |                      |in units of number of delayed fission event per    |
     |                      |source particle. This score is used to compute     |
-    |                      |kinetics parameters using the Iterated Fission     |
-    |                      |Probability (IFP) method.                          |
+    |                      |kinetics parameters using the iterated fission     |
+    |                      |probability (IFP) method.                          |
     +----------------------+---------------------------------------------------+
     |ifp-denominator       |Weights corresponding to the number of fission     |
     |                      |events in units of number of fission event per     |
     |                      |source particle. This score is used to compute     |
-    |                      |kinetics parameters using the Iterated Fission     |
-    |                      |Probability (IFP) method.                          |
+    |                      |kinetics parameters using the iterated fission     |
+    |                      |probability (IFP) method.                          |
     +----------------------+---------------------------------------------------+
 
 .. _usersguide_tally_normalization:

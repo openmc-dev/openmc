@@ -116,6 +116,8 @@ def test_tally_application(sphere_model, run_in_tmpdir):
     assert tally._std_dev is None
     assert tally._sum is None
     assert tally._sum_sq is None
+    assert tally._sum_rd is None
+    assert tally._sum_th is None
     assert tally._num_realizations == 0
     # the statepoint file property should be set, however
     assert tally._sp_filename == sp_file
@@ -127,7 +129,7 @@ def test_tally_application(sphere_model, run_in_tmpdir):
     # at this point the tally information regarding results should be the same
     assert (sp_tally.std_dev == tally.std_dev).all()
     assert (sp_tally.mean == tally.mean).all()
-    assert (sp_tally.vov == tally.vov).all()
+    assert (sp_tally.VOV == tally.VOV).all()
     assert sp_tally.nuclides == tally.nuclides
 
     # SECOND RUN
@@ -148,5 +150,5 @@ def test_tally_application(sphere_model, run_in_tmpdir):
     # at this point the tally information regarding results should be the same
     assert (sp_tally.std_dev == tally.std_dev).all()
     assert (sp_tally.mean == tally.mean).all()
-    assert (sp_tally.vov == tally.vov).all()
+    assert (sp_tally.VOV == tally.VOV).all()
     assert sp_tally.nuclides == tally.nuclides

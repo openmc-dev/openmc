@@ -13,12 +13,13 @@ import numpy as np
 import pandas as pd
 import scipy.sparse as sps
 
+
 import openmc
 import openmc.checkvalue as cv
 from ._xml import clean_indentation, reorder_attributes, get_text
 from .mixin import IDManagerMixin
 from .mesh import MeshBase
-
+from . import tally_stats
 
 # The tally arithmetic product types. The tensor product performs the full
 # cross product of the data in two tallies with respect to a specified axis
@@ -57,8 +58,6 @@ class Tally(IDManagerMixin):
         Name of the tally
     multiply_density : bool
         Whether reaction rates should be multiplied by atom density
-    vov : bool
-        Whether the tally will accumulate sum third and sum fourth for each tally bin
     
         .. versionadded:: 0.14.0
     filters : list of openmc.Filter
@@ -103,6 +102,10 @@ class Tally(IDManagerMixin):
         An array containing the sample mean for each bin
     std_dev : numpy.ndarray
         An array containing the sample standard deviation for each bin
+    vov : bool
+        Whether the tally will accumulate sum third and sum fourth for each tally bin
+    normality_tests = None
+        Whether normality tests will be performed on the tally results
     derived : bool
         Whether or not the tally is derived from one or more other tallies
     sparse : bool
@@ -138,6 +141,7 @@ class Tally(IDManagerMixin):
         self._mean = None
         self._std_dev = None
         self._vov = None
+        self._normality_tests = None
         self._with_batch_statistics = False
         self._derived = False
         self._sparse = False
@@ -235,7 +239,15 @@ class Tally(IDManagerMixin):
     def vov(self, value):
         cv.check_type('vov', value, bool)
         self._vov = value
-        print("vov setting=", self._vov)
+
+    @property
+    def normality_tests(self):
+        return self._normality_tests
+    
+    @normality_tests.setter
+    def normality_tests(self, value):
+        cv.check_type('normality tests', value, bool)
+        self._normality_tests = value 
 
     @property
     def filters(self):
@@ -391,7 +403,7 @@ class Tally(IDManagerMixin):
             
             # Extract Tally data from the file
             data = group['results']
-            print("data shape", data.shape)
+            
             if self._vov:
                 if (data.shape[2] != 4):
                     raise ValueError("Tally results data does not have the expected number of columns.")
@@ -548,6 +560,19 @@ class Tally(IDManagerMixin):
         vov[nonzero] = numerator / denominator - 1.0 / n
 
         return vov
+
+    @property
+    def normality_test(self):
+        if not self._sp_filename:
+            return None
+
+        n = self.num_realizations
+        if n < 8:
+            raise ValueError("D’Agostino skewness test is not well-defined for n < 8.")
+        elif n < 20:
+            raise ValueError("D’Agostino kurtosis test is typically recommended for n >= 20.")
+        else:
+            tally_stats.print_normality_tests_summary(n, self.mean, self.sum_sq, self.sum_rd, self.sum_th)
 
     @property
     def with_batch_statistics(self):

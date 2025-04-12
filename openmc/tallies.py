@@ -225,7 +225,7 @@ class Tally(IDManagerMixin):
     
     @fom.setter
     def fom(self, value):
-        cv.check_type('FOM', value, bool)
+        cv.check_type('fom', value, bool)
         self._fom = value
 
     @property
@@ -485,7 +485,7 @@ class Tally(IDManagerMixin):
         return self._simulation_time * self._number_of_threads
 
     @property
-    def fom(self):
+    def FOM(self):
         if self.cpu_time is None:
             return None
 
@@ -493,7 +493,7 @@ class Tally(IDManagerMixin):
         std_dev = self.std_dev
         fom = np.zeros_like(mean)
         nonzero = np.abs(mean) > 0
-        fom[nonzero] = 1 / self.cpu_time * (mean[nonzero]**2 / std_dev[nonzero]**2)
+        fom[nonzero] = 1.0 / self.cpu_time * (mean[nonzero]**2 / std_dev[nonzero]**2)
         
         return fom
 

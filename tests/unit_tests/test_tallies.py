@@ -104,7 +104,7 @@ def test_tally_application(sphere_model, run_in_tmpdir):
     mf = openmc.MeshFilter(mesh)
     tally.filters = [ef, mf]
     tally.scores = ['flux', 'absorption', 'fission', 'scatter']
-    tally.FOM = True
+    tally.fom = True
     sphere_model.tallies = [tally]
 
     # FIRST RUN
@@ -127,7 +127,7 @@ def test_tally_application(sphere_model, run_in_tmpdir):
     # at this point the tally information regarding results should be the same
     assert (sp_tally.std_dev == tally.std_dev).all()
     assert (sp_tally.mean == tally.mean).all()
-    assert (sp_tally.fom == tally.fom).all()
+    assert (sp_tally.FOM == tally.FOM).all()
     assert sp_tally.nuclides == tally.nuclides
 
     # SECOND RUN
@@ -148,4 +148,5 @@ def test_tally_application(sphere_model, run_in_tmpdir):
     # at this point the tally information regarding results should be the same
     assert (sp_tally.std_dev == tally.std_dev).all()
     assert (sp_tally.mean == tally.mean).all()
+    assert (sp_tally.FOM == tally.FOM).all()
     assert sp_tally.nuclides == tally.nuclides

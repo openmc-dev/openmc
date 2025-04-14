@@ -296,6 +296,24 @@ def test_tabular_from_energyfilter():
     assert tab.interpolation == 'linear-linear'
 
 
+def test_energy_filter():
+
+    # testing that bins descending value raises error
+    msg = "Values 1.0 and 0.5 appear to be out of order"
+    with raises(ValueError, match=msg):
+        openmc.EnergyFilter([0.0, 1.0, 0.5])
+
+    # testing that bins with same value raises error
+    msg = "Values 0.25 and 0.25 appear to be out of order"
+    with raises(ValueError, match=msg):
+        openmc.EnergyFilter([0.0, 0.25, 0.25])
+
+    # testing that negative bins values raises error
+    msg = 'Unable to set "filter value" to "-1.2" since it is less than "0.0"'
+    with raises(ValueError, match=msg):
+        openmc.EnergyFilter([-1.2, 0.25, 0.5])
+
+
 def test_weight():
     f = openmc.WeightFilter([0.01, 0.1, 1.0, 10.0])
     expected_bins = [[0.01, 0.1], [0.1, 1.0], [1.0, 10.0]]

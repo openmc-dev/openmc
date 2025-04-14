@@ -2331,7 +2331,7 @@ class EnergyFunctionFilter(Filter):
 
 
 class WeightFilter(RealFilter):
-    """Bins tally events based on their weights.
+    """Bins tally events based on the incoming particle weight.
 
     Parameters
     ----------

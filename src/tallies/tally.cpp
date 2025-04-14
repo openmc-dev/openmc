@@ -193,23 +193,25 @@ Tally::Tally(pugi::xml_node node)
     }
 
     // Check for errors
-    if (settings::run_mode == RunMode::EIGENVALUE) {
-      if (settings::ifp_n_generation < 0) {
-        settings::ifp_n_generation = DEFAULT_IFP_N_GENERATION;
-        warning(fmt::format(
-          "{} generations will be used for IFP (default value). It can be "
-          "changed using the 'ifp_n_generation' settings.",
-          settings::ifp_n_generation));
+    if (has_ifp_score) {
+      if (settings::run_mode == RunMode::EIGENVALUE) {
+        if (settings::ifp_n_generation < 0) {
+          settings::ifp_n_generation = DEFAULT_IFP_N_GENERATION;
+          warning(fmt::format(
+            "{} generations will be used for IFP (default value). It can be "
+            "changed using the 'ifp_n_generation' settings.",
+            settings::ifp_n_generation));
+        }
+        if (settings::ifp_n_generation > settings::n_inactive) {
+          fatal_error("'ifp_n_generation' must be lower than or equal to the "
+                      "number of inactive cycles.");
+        }
+        settings::ifp_on = true;
+      } else {
+        fatal_error(
+          "Iterated Fission Probability can only be used in an eigenvalue "
+          "calculation.");
       }
-      if (settings::ifp_n_generation > settings::n_inactive) {
-        fatal_error("'ifp_n_generation' must be lower than or equal to the "
-                    "number of inactive cycles.");
-      }
-      settings::ifp_on = true;
-    } else {
-      fatal_error(
-        "Iterated Fission Probability can only be used in an eigenvalue "
-        "calculation.");
     }
   }
 

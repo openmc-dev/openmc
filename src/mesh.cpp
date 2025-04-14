@@ -918,7 +918,7 @@ void StructuredMesh::raytrace_mesh(
   // keep a copy of the original global position to pass to get_indices,
   // which performs its own transformation to local coordinates
   Position global_r = r0;
-  const Position& local_r = local_coords(r0);
+  Position local_r = local_coords(r0);
 
   const int n = n_dimension_;
 
@@ -1481,7 +1481,7 @@ std::string CylindricalMesh::get_mesh_type() const
 StructuredMesh::MeshIndex CylindricalMesh::get_indices(
   Position r, bool& in_mesh) const
 {
-  local_coords(r);
+  r = local_coords(r);
 
   Position mapped_r;
   mapped_r[0] = std::hypot(r.x, r.y);
@@ -1759,7 +1759,7 @@ std::string SphericalMesh::get_mesh_type() const
 StructuredMesh::MeshIndex SphericalMesh::get_indices(
   Position r, bool& in_mesh) const
 {
-  local_coords(r);
+  r = local_coords(r);
 
   Position mapped_r;
   mapped_r[0] = r.norm();

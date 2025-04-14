@@ -768,7 +768,7 @@ class StructuredMesh(MeshBase):
             cv.check_type('data label', label, str)
 
             if not isinstance(dataset, np.ndarray):
-                datasets[label] = np.asarray(dataset)
+                dataset = np.asarray(dataset)
 
             if dataset.shape != self.dimension:
                 raise ValueError(

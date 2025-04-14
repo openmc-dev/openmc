@@ -1,5 +1,7 @@
-#ifndef OPENMC_TALLIES_FILTER_WEIGHTS_H
-#define OPENMC_TALLIES_FILTER_WEIGHTS_H
+#ifndef OPENMC_TALLIES_FILTER_WEIGHT_H
+#define OPENMC_TALLIES_FILTER_WEIGHT_H
+
+#include <string>
 
 #include "openmc/span.h"
 #include "openmc/tallies/filter.h"
@@ -46,4 +48,4 @@ protected:
 };
 
 } // namespace openmc
-#endif // OPENMC_TALLIES_FILTER_WEIGHTS_H
+#endif // OPENMC_TALLIES_FILTER_WEIGHT_H

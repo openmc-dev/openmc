@@ -29,7 +29,6 @@
 #include "openmc/tallies/filter_energy.h"
 #include "openmc/tallies/filter_mesh.h"
 #include "openmc/tallies/filter_particle.h"
-#include "openmc/tallies/filter_weight.h"
 #include "openmc/tallies/tally.h"
 #include "openmc/xml_interface.h"
 

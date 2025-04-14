@@ -155,12 +155,12 @@ Filter* Filter::create(const std::string& type, int32_t id)
     return Filter::create<TimeFilter>(id);
   } else if (type == "universe") {
     return Filter::create<UniverseFilter>(id);
+  } else if (type == "weight") {
+    return Filter::create<WeightFilter>(id);
   } else if (type == "zernike") {
     return Filter::create<ZernikeFilter>(id);
   } else if (type == "zernikeradial") {
     return Filter::create<ZernikeRadialFilter>(id);
-  } else if (type == "weight") {
-    return Filter::create<WeightFilter>(id);
   } else {
     throw std::runtime_error {fmt::format("Unknown filter type: {}", type)};
   }

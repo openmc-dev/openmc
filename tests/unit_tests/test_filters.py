@@ -295,10 +295,11 @@ def test_tabular_from_energyfilter():
     tab = efilter.get_tabular(values=np.array([10, 10, 5]), interpolation='linear-linear')
     assert tab.interpolation == 'linear-linear'
 
+
 def test_weight():
     f = openmc.WeightFilter([0.01, 0.1, 1.0, 10.0])
     expected_bins = [[0.01, 0.1], [0.1, 1.0], [1.0, 10.0]]
-    
+
     assert np.allclose(f.bins, expected_bins)
     assert len(f.bins) == 3
 

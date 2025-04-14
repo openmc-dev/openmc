@@ -2329,6 +2329,7 @@ class EnergyFunctionFilter(Filter):
 
         return df
 
+
 class WeightFilter(RealFilter):
     """Bins tally events based on their weights.
 
@@ -2350,6 +2351,3 @@ class WeightFilter(RealFilter):
     values : numpy.ndarray
         Array of weight boundaries
     """
-    
-    def __init__(self, values, filter_id=None):
-        super().__init__(values, filter_id)

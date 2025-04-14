@@ -1,5 +1,8 @@
 #include "openmc/tallies/filter_weight.h"
 
+#include <algorithm> // for is_sorted
+#include <stdexcept> // for runtime_error
+
 #include <fmt/core.h>
 
 #include "openmc/search.h"
@@ -19,17 +22,16 @@ void WeightFilter::from_xml(pugi::xml_node node)
 
 void WeightFilter::set_bins(span<const double> bins)
 {
+  if (!std::is_sorted(bins.begin(), bins.end())) {
+    throw std::runtime_error {"Weight bins must be monotonically increasing."};
+  }
+
   // Clear existing bins
   bins_.clear();
   bins_.reserve(bins.size());
 
   // Copy bins
-  for (int64_t i = 0; i < bins.size(); ++i) {
-    bins_.push_back(bins[i]);
-  }
-
-  assert(std::is_sorted(bins_.begin(), bins_.end()));
-
+  bins_.insert(bins_.end(), bins.begin(), bins.end());
   n_bins_ = bins_.size() - 1;
 }
 
@@ -55,7 +57,7 @@ void WeightFilter::to_statepoint(hid_t filter_group) const
 
 std::string WeightFilter::text_label(int bin) const
 {
-  return fmt::format("Weight bin [{}, {}]", bins_[bin], bins_[bin + 1]);
+  return fmt::format("Weight [{}, {}]", bins_[bin], bins_[bin + 1]);
 }
 
 } // namespace openmc

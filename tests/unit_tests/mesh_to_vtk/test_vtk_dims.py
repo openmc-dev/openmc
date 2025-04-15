@@ -90,7 +90,7 @@ def test_write_data_to_vtk(mesh, tmpdir):
     # kji (i changing fastest) orering is expected for input data
     # by using the volumes transposed as the data here, we can ensure the
     # normalization is happening correctly
-    data = mesh.volumes.T.reshape(mesh.dimension)
+    data = mesh.volumes
 
     # RUN
     mesh.write_data_to_vtk(filename=filename, datasets={"label1": data, "label2": data})
@@ -138,7 +138,8 @@ def test_write_data_to_vtk_size_mismatch(mesh):
     # by regex. These are needed to make the test string match the error message
     # string when using the match argument as that uses regular expression
     expected_error_msg = (
-        fr'Cannot apply dataset "label" with shape'
+        fr"The size of the dataset 'label' \({len(data)}\) should be equal to "
+        fr"the number of mesh cells \({mesh.num_mesh_cells}\)"
     )
     with pytest.raises(ValueError, match=expected_error_msg):
         mesh.write_data_to_vtk(filename="out.vtk", datasets={"label": data})
@@ -164,7 +165,6 @@ def test_write_data_to_vtk_round_trip(run_in_tmpdir):
 
         filename = "mesh.vtk"
         data = np.array([1.0] * 12)  # there are 12 voxels in each mesh
-        data = data.reshape(mesh.dimension)
         mesh.write_data_to_vtk(
             filename=filename,
             datasets={"normalized": data},
@@ -182,7 +182,7 @@ def test_write_data_to_vtk_round_trip(run_in_tmpdir):
         vtk_values = [uniform_array.GetValue(i) for i in range(num_tuples)]
 
         # checks that the vtk cell values are equal to the data / mesh volumes
-        assert np.allclose(vtk_values, data.flatten() / mesh.volumes.T.flatten())
+        assert np.allclose(vtk_values, data / mesh.volumes.T.flatten())
 
         mesh.write_data_to_vtk(
             filename=filename,
@@ -201,7 +201,7 @@ def test_write_data_to_vtk_round_trip(run_in_tmpdir):
         vtk_values = [uniform_array.GetValue(i) for i in range(num_tuples)]
 
         # checks that the vtk cell values are equal to the data
-        assert np.array_equal(vtk_values, data.flatten())
+        assert np.array_equal(vtk_values, data)
 
 def mesh_surf_id(param):
     if isinstance(param, openmc.MeshBase):
@@ -226,8 +226,10 @@ def test_vtk_write_ordering(run_in_tmpdir, model, mesh, surface):
     model.tallies = openmc.Tallies([tally])
 
     # run the problem
-    sp_filename = model.run(apply_tally_results=True)
-    mean = tally.get_reshaped_data('mean', expand_dims=True).squeeze()
+    sp_filename = model.run()
+
+    with openmc.StatePoint(sp_filename) as sp:
+        mean = sp.tallies[tally.id].mean
 
     # write the data to a VTK file
     vtk_filename = 'test.vtk'

@@ -49,7 +49,9 @@ sphere_mesh = openmc.SphericalMesh(
 
 def mesh_data(mesh_dims):
     data = 100 * np.arange(np.prod(mesh_dims), dtype=float)
-    return data.reshape(*mesh_dims)
+    # data is returned reshaped with order 'F' to ensure that
+    # the resulting data
+    return data.reshape(*mesh_dims, order='F')
 
 test_data = ((reg_mesh, False, 'regular'),
              (rect_mesh, False, 'rectilinear'),

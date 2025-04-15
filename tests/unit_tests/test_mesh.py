@@ -481,7 +481,7 @@ def test_umesh(run_in_tmpdir, simple_umesh, export_type):
     np.testing.assert_almost_equal(mean, ref_data)
 
     # attempt to apply a dataset with an improper size to a VTK write
-    with pytest.raises(ValueError, match='Cannot apply dataset "mean"') as e:
+    with pytest.raises(ValueError, match='Cannot apply multidimensional dataset "mean"') as e:
         simple_umesh.write_data_to_vtk(datasets={'mean': ref_data[:-2]}, filename=filename)
 
 def test_mesh_get_homogenized_materials():

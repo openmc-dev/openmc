@@ -576,11 +576,15 @@ class StructuredMesh(MeshBase):
         filename : str
             Name of the VTK file to write.
         datasets : dict
-            Dictionary whose keys are the data labels
-            and values are the data sets.
+            Dictionary whose keys are the data labels and values are the data
+            sets. 1D datasets are expected to have Fortran ("F") ordering -- the
+            ordering written to the statepoitn file after a run.
+            Multidimensional datasets are expected to have the same dimensions
+            as the mesh itself with structured indexing in "C" ordering.
+
         volume_normalization : bool, optional
-            Whether or not to normalize the data by
-            the volume of the mesh elements.
+            Whether or not to normalize the data by the volume of the mesh
+            elements.
         curvilinear : bool
             Whether or not to write curvilinear elements. Only applies to
             ``SphericalMesh`` and ``CylindricalMesh``.
@@ -594,6 +598,23 @@ class StructuredMesh(MeshBase):
         -------
         vtk.StructuredGrid or vtk.UnstructuredGrid
             a VTK grid object representing the mesh
+
+        Examples
+        --------
+        1D data from a tally with only a mesh filter and heating score:
+
+            # pass the tally mean property of shape (N, 1, 1) directly to this method;
+            # dimensions of size 1 will automatically removed
+            >>> heating = tally.mean
+            >>> mesh.write_data_to_vtk({'heating': heating})
+
+        Multidimensional data from a tally with only a mesh
+
+           # retrieve a data array with the mesh filter expanded into
+           # three dimensions, ijk; additional dimensions of size one
+           # will automatically be removed
+           >>> heating = tally.get_reshaped_data(expand_dims=True)
+           >>> mesh.write_data_to_vtk({'heating': heating})
         """
         import vtk
         from vtk.util import numpy_support as nps
@@ -617,7 +638,18 @@ class StructuredMesh(MeshBase):
             # in memory until the file is written
             datasets_out = []
             for label, dataset in datasets.items():
-                dataset = np.asarray(dataset).flatten()
+                dataset = np.asarray(dataset)
+                # if the array data is flattened, accept
+                # it as it is
+                if dataset.ndim == 1:
+                    dataset = dataset.flatten()
+                # if the array data is 3D, assume is in C ordering
+                # and transpose before flattening to match the
+                # ordering expected by the VTK array based
+                # on the way mesh indices are ordered in the Python API
+                # TODO: update to "C" ordering throughout
+                elif dataset.ndim == 3:
+                    dataset = dataset.T.flatten()
                 datasets_out.append(dataset)
 
                 if volume_normalization:
@@ -770,9 +802,28 @@ class StructuredMesh(MeshBase):
             if not isinstance(dataset, np.ndarray):
                 dataset = np.asarray(dataset)
 
+            if dataset.size != self.num_mesh_cells:
+                raise ValueError(
+                    f"The size of the dataset '{label}' ({dataset.size}) should be"
+                    f" equal to the number of mesh cells ({self.num_mesh_cells})"
+                )
+
+            # detect flat array with extra dims
+            if all(d == 1 for d in dataset.shape[1:]):
+                dataset = dataset.squeeze()
+
+            # accept a flat array as-is, assuming it is in
+            # the correct order
+            if dataset.ndim == 1:
+                return
+
+            # remove any higher dimensions with size 1
+            if dataset.ndim > 3 and all(d == 1 for d in dataset.shape[3:]):
+                dataset = dataset.reshape(dataset.shape[:3])
+
             if dataset.shape != self.dimension:
                 raise ValueError(
-                    f'Cannot apply dataset "{label}" with '
+                    f'Cannot apply multidimensional dataset "{label}" with '
                     f"shape {dataset.shape} to mesh {self.id} "
                     f"with dimensions {self.dimension}"
                 )

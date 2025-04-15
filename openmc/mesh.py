@@ -619,10 +619,6 @@ class StructuredMesh(MeshBase):
         import vtk
         from vtk.util import numpy_support as nps
 
-        # check that the data sets are appropriately sized
-        if datasets is not None:
-            self._check_vtk_datasets(datasets)
-
         # write linear elements using a structured grid
         if not curvilinear or isinstance(self, (RegularMesh, RectilinearMesh)):
             vtk_grid = self._create_vtk_structured_grid()
@@ -638,7 +634,8 @@ class StructuredMesh(MeshBase):
             # in memory until the file is written
             datasets_out = []
             for label, dataset in datasets.items():
-                dataset = np.asarray(dataset)
+                dataset = self._reshape_vtk_dataset(dataset)
+                self._check_vtk_dataset(label, dataset)
                 # if the array data is flattened, accept
                 # it as it is
                 if dataset.ndim == 1:
@@ -786,47 +783,71 @@ class StructuredMesh(MeshBase):
 
         return vtk_grid
 
-    def _check_vtk_datasets(self, datasets: dict):
-        """Perform some basic checks that the datasets are valid for this mesh
+    @staticmethod
+    def _reshape_vtk_dataset(dataset):
+        """Reshape a dataset to be compatible with VTK output
+
+        This method performs the following operations on a dataset:
+        1. Convert to numpy array if not already
+        2. Remove any trailing dimensions of size 1
+        3. Squeeze out any extra dimensions of size 1 beyond the first 3
 
         Parameters
         ----------
-        datasets : dict
-            Dictionary whose keys are the data labels
-            and values are the data sets.
+        dataset : array-like
+            The dataset to reshape
+
+        Returns
+        -------
+        numpy.ndarray
+            The reshaped dataset
+        """
+
+        if not isinstance(dataset, np.ndarray):
+            dataset = np.asarray(dataset)
+
+
+        # detect flat array with extra dims
+        if all(d == 1 for d in dataset.shape[1:]):
+            dataset = dataset.squeeze()
+
+        # remove any higher dimensions with size 1
+        if dataset.ndim > 3 and all(d == 1 for d in dataset.shape[3:]):
+            dataset = dataset.reshape(dataset.shape[:3])
+
+        return dataset
+
+
+    def _check_vtk_dataset(self, label: str, dataset: np.ndarray):
+        """Perform some basic checks that a dataset is valid for this Mesh
+
+        Parameters
+        ----------
+        label : str
+            The label for the dataset being checked
+        dataset : numpy.ndarray
+            The dataset array to check against this mesh's dimensions
 
         """
-        for label, dataset in datasets.items():
-            cv.check_type('data label', label, str)
+        cv.check_type('data label', label, str)
 
-            if not isinstance(dataset, np.ndarray):
-                dataset = np.asarray(dataset)
+        if dataset.size != self.num_mesh_cells:
+            raise ValueError(
+                f"The size of the dataset '{label}' ({dataset.size}) should be"
+                f" equal to the number of mesh cells ({self.num_mesh_cells})"
+            )
 
-            if dataset.size != self.num_mesh_cells:
-                raise ValueError(
-                    f"The size of the dataset '{label}' ({dataset.size}) should be"
-                    f" equal to the number of mesh cells ({self.num_mesh_cells})"
-                )
+        # accept a flat array as-is, assuming it is in
+        # the correct order
+        if dataset.ndim == 1:
+            return
 
-            # detect flat array with extra dims
-            if all(d == 1 for d in dataset.shape[1:]):
-                dataset = dataset.squeeze()
-
-            # accept a flat array as-is, assuming it is in
-            # the correct order
-            if dataset.ndim == 1:
-                return
-
-            # remove any higher dimensions with size 1
-            if dataset.ndim > 3 and all(d == 1 for d in dataset.shape[3:]):
-                dataset = dataset.reshape(dataset.shape[:3])
-
-            if dataset.shape != self.dimension:
-                raise ValueError(
-                    f'Cannot apply multidimensional dataset "{label}" with '
-                    f"shape {dataset.shape} to mesh {self.id} "
-                    f"with dimensions {self.dimension}"
-                )
+        if dataset.shape != self.dimension:
+            raise ValueError(
+                f'Cannot apply multidimensional dataset "{label}" with '
+                f"shape {dataset.shape} to mesh {self.id} "
+                f"with dimensions {self.dimension}"
+            )
 
 
 class RegularMesh(StructuredMesh):

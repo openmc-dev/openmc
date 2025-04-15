@@ -86,7 +86,6 @@ def test_mesh_write_vtk(mesh_params, run_in_tmpdir):
 
 # check data writing
 def test_mesh_write_vtk_data(run_in_tmpdir):
-
     data = {'ascending_data': mesh_data(cyl_mesh.dimension)}
     filename_expected = full_path('cyl-data.vtk')
     filename_actual = full_path('cyl-data-actual.vtk')

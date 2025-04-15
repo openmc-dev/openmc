@@ -306,7 +306,8 @@ class Model:
         args = _process_CLI_arguments(
             volume=False, geometry_debug=geometry_debug,
             restart_file=restart_file, threads=threads, tracks=tracks,
-            event_based=event_based)
+            event_based=event_based, path_input=directory)
+
         # Args adds the openmc_exec command in the first entry; remove it
         args = args[1:]
 
@@ -1857,13 +1858,13 @@ class Model:
         # Do all work (including MGXS generation) in a temporary directory
         # to avoid polluting the working directory with residual XML files
         with TemporaryDirectory() as tmpdir:
-            
+
             # Determine if this is a DAGMC geometry. If so, we need to syncronize
             # the dagmc materials with cells.
             # TODO: Can this be done without having to init/finalize?
             for univ in self.geometry.get_all_universes().values():
                 if isinstance(univ, openmc.DAGMCUniverse):
-                    self.init_lib(tmpdir)
+                    self.init_lib(directory=tmpdir)
                     self.sync_dagmc_universes()
                     self.finalize_lib()
                     break

@@ -50,7 +50,8 @@ sphere_mesh = openmc.SphericalMesh(
 def mesh_data(mesh_dims):
     data = 100 * np.arange(np.prod(mesh_dims), dtype=float)
     # data is returned reshaped with order 'F' to ensure that
-    # the resulting data
+    # the resulting data is interpreted correctly by the
+    # write_data_to_vtk method
     return data.reshape(*mesh_dims, order='F')
 
 test_data = ((reg_mesh, False, 'regular'),

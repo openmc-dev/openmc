@@ -263,7 +263,7 @@ class Model:
         return model
 
     def init_lib(self, threads=None, geometry_debug=False, restart_file=None,
-                 tracks=False, output=True, event_based=None, intracomm=None):
+                 tracks=False, output=True, event_based=None, intracomm=None, directory=None):
         """Initializes the model in memory via the C API
 
         .. versionadded:: 0.13.0
@@ -291,6 +291,8 @@ class Model:
             the Settings will be used.
         intracomm : mpi4py.MPI.Intracomm or None, optional
             MPI intracommunicator
+        directory : str or None, optional
+            Directory to write XML files to. Defaults to None.
         """
 
         import openmc.lib
@@ -318,7 +320,10 @@ class Model:
             self._intracomm = DummyCommunicator()
 
         if self._intracomm.rank == 0:
-            self.export_to_xml()
+            if directory is not None:
+                self.export_to_xml(directory=directory)
+            else:
+                self.export_to_xml()
         self._intracomm.barrier()
 
         # We cannot pass DummyCommunicator to openmc.lib.init so pass instead
@@ -1443,7 +1448,7 @@ class Model:
                 self.geometry.get_all_materials().values()
             )
 
-    def _generate_infinite_medium_mgxs(self, groups, nparticles, mgxs_path, correction):
+    def _generate_infinite_medium_mgxs(self, groups, nparticles, mgxs_path, correction, directory):
         """Generate a MGXS library by running multiple OpenMC simulations, each
         representing an infinite medium simulation of a single isolated
         material. A discrete source is used to sample particles, with an equal
@@ -1455,8 +1460,15 @@ class Model:
         ----------
         groups : openmc.mgxs.EnergyGroups
             Energy group structure for the MGXS.
-        mgxs_path : path-like
+        nparticles : int
+            Number of particles to simulate per batch when generating MGXS.
+        mgxs_path : str
             Filename for the MGXS HDF5 file.
+        correction : str
+            Transport correction to apply to the MGXS. Options are None and
+            "P0".
+        directory : str
+            Directory to run the simulation in, so as to contain XML files.
         """
         warnings.warn("The infinite medium method of generating MGXS may hang "
                       "if a material has a k-infinity > 1.0.")
@@ -1537,7 +1549,7 @@ class Model:
             mgxs_lib.add_to_tallies_file(model.tallies, merge=True)
 
             # Run
-            statepoint_filename = model.run()
+            statepoint_filename = model.run(cwd=directory)
 
             # Load MGXS
             with openmc.StatePoint(statepoint_filename) as sp:
@@ -1623,7 +1635,7 @@ class Model:
 
         return geometry, box
 
-    def _generate_stochastic_slab_mgxs(self, groups, nparticles, mgxs_path, correction) -> None:
+    def _generate_stochastic_slab_mgxs(self, groups, nparticles, mgxs_path, correction, directory) -> None:
         """Generate MGXS assuming a stochastic "sandwich" of materials in a layered
         slab geometry. While geometry-specific spatial shielding effects are not
         captured, this method can be useful when the geometry has materials only
@@ -1638,8 +1650,15 @@ class Model:
         ----------
         groups : openmc.mgxs.EnergyGroups
             Energy group structure for the MGXS.
-        mgxs_path : path-like
+        nparticles : int
+            Number of particles to simulate per batch when generating MGXS.
+        mgxs_path : str
             Filename for the MGXS HDF5 file.
+        correction : str
+            Transport correction to apply to the MGXS. Options are None and
+            "P0".
+        directory : str
+            Directory to run the simulation in, so as to contain XML files.
         """
         openmc.reset_auto_ids()
         model = openmc.Model()
@@ -1709,7 +1728,7 @@ class Model:
         mgxs_lib.add_to_tallies_file(model.tallies, merge=True)
 
         # Run
-        statepoint_filename = model.run()
+        statepoint_filename = model.run(cwd=directory)
 
         # Load MGXS
         with openmc.StatePoint(statepoint_filename) as sp:
@@ -1721,7 +1740,7 @@ class Model:
         mgxs_file = mgxs_lib.create_mg_library(xs_type='macro', xsdata_names=names)
         mgxs_file.export_to_hdf5(mgxs_path)
 
-    def _generate_material_wise_mgxs(self, groups, nparticles, mgxs_path, correction) -> None:
+    def _generate_material_wise_mgxs(self, groups, nparticles, mgxs_path, correction, directory) -> None:
         """Generate a material-wise MGXS library for the model by running the
         original continuous energy OpenMC simulation of the full material
         geometry and source, and tally MGXS data for each material. This method
@@ -1736,8 +1755,15 @@ class Model:
         ----------
         groups : openmc.mgxs.EnergyGroups
             Energy group structure for the MGXS.
+        nparticles : int
+            Number of particles to simulate per batch when generating MGXS.
         mgxs_path : str
             Filename for the MGXS HDF5 file.
+        correction : str
+            Transport correction to apply to the MGXS. Options are None and
+            "P0".
+        directory : str
+            Directory to run the simulation in, so as to contain XML files.
         """
         openmc.reset_auto_ids()
         model = copy.deepcopy(self)
@@ -1791,7 +1817,7 @@ class Model:
         mgxs_lib.add_to_tallies_file(model.tallies, merge=True)
 
         # Run
-        statepoint_filename = model.run()
+        statepoint_filename = model.run(cwd=directory)
 
         # Load MGXS
         with openmc.StatePoint(statepoint_filename) as sp:
@@ -1828,49 +1854,53 @@ class Model:
         if isinstance(groups, str):
             groups = openmc.mgxs.EnergyGroups(groups)
 
-        # Determine if this is a DAGMC geometry. If so, we need to syncronize
-        # the dagmc materials with cells.
-        # TODO: Can this be done without having to init/finalize?
-        for univ in self.geometry.get_all_universes().values():
-            if isinstance(univ, openmc.DAGMCUniverse):
-                self.init_lib()
-                self.sync_dagmc_universes()
-                self.finalize_lib()
-                break
-           
-        # Make sure all materials have a name, and that the name is a valid HDF5
-        # dataset name
-        for material in self.materials:
-            if material.name is None:
-                material.name = f"material {material.id}"
-            material.name = re.sub(r'[^a-zA-Z0-9]', '_', material.name)
+        # Do all work (including MGXS generation) in a temporary directory
+        # to avoid polluting the working directory with residual XML files
+        with TemporaryDirectory() as tmpdir:
+            
+            # Determine if this is a DAGMC geometry. If so, we need to syncronize
+            # the dagmc materials with cells.
+            # TODO: Can this be done without having to init/finalize?
+            for univ in self.geometry.get_all_universes().values():
+                if isinstance(univ, openmc.DAGMCUniverse):
+                    self.init_lib(tmpdir)
+                    self.sync_dagmc_universes()
+                    self.finalize_lib()
+                    break
+            
+            # Make sure all materials have a name, and that the name is a valid HDF5
+            # dataset name
+            for material in self.materials:
+                if material.name is None:
+                    material.name = f"material {material.id}"
+                material.name = re.sub(r'[^a-zA-Z0-9]', '_', material.name)
 
-        # If needed, generate the needed MGXS data library file
-        if not Path(mgxs_path).is_file() or overwrite_mgxs_library:
-            if method == "infinite_medium":
-                self._generate_infinite_medium_mgxs(
-                    groups, nparticles, mgxs_path, correction)
-            elif method == "material_wise":
-                self._generate_material_wise_mgxs(
-                    groups, nparticles, mgxs_path, correction)
-            elif method == "stochastic_slab":
-                self._generate_stochastic_slab_mgxs(
-                    groups, nparticles, mgxs_path, correction)
+            # If needed, generate the needed MGXS data library file
+            if not Path(mgxs_path).is_file() or overwrite_mgxs_library:
+                if method == "infinite_medium":
+                    self._generate_infinite_medium_mgxs(
+                        groups, nparticles, mgxs_path, correction, tmpdir)
+                elif method == "material_wise":
+                    self._generate_material_wise_mgxs(
+                        groups, nparticles, mgxs_path, correction, tmpdir)
+                elif method == "stochastic_slab":
+                    self._generate_stochastic_slab_mgxs(
+                        groups, nparticles, mgxs_path, correction, tmpdir)
+                else:
+                    raise ValueError(
+                        f'MGXS generation method "{method}" not recognized')
             else:
-                raise ValueError(
-                    f'MGXS generation method "{method}" not recognized')
-        else:
-            print(f'Existing MGXS library file "{mgxs_path}" will be used')
+                print(f'Existing MGXS library file "{mgxs_path}" will be used')
 
-        # Convert all continuous energy materials to multigroup
-        self.materials.cross_sections = mgxs_path
-        for material in self.materials:
-            material.set_density('macro', 1.0)
-            material._nuclides = []
-            material._sab = []
-            material.add_macroscopic(material.name)
+            # Convert all continuous energy materials to multigroup
+            self.materials.cross_sections = mgxs_path
+            for material in self.materials:
+                material.set_density('macro', 1.0)
+                material._nuclides = []
+                material._sab = []
+                material.add_macroscopic(material.name)
 
-        self.settings.energy_mode = 'multi-group'
+            self.settings.energy_mode = 'multi-group'
 
     def convert_to_random_ray(self):
         """Convert a multigroup model to use random ray.

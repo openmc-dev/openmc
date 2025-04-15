@@ -183,6 +183,64 @@ Tally::Tally(pugi::xml_node node)
     fatal_error(fmt::format("No scores specified on tally {}.", id_));
   }
 
+  // Set IFP if needed
+  if (!settings::ifp_on) {
+    // Determine if this tally has an IFP score
+    bool has_ifp_score = false;
+    for (int score : scores_) {
+      if (score == SCORE_IFP_TIME_NUM || score == SCORE_IFP_BETA_NUM ||
+          score == SCORE_IFP_DENOM) {
+        has_ifp_score = true;
+        break;
+      }
+    }
+
+    // Check for errors
+    if (has_ifp_score) {
+      if (settings::run_mode == RunMode::EIGENVALUE) {
+        if (settings::ifp_n_generation < 0) {
+          settings::ifp_n_generation = DEFAULT_IFP_N_GENERATION;
+          warning(fmt::format(
+            "{} generations will be used for IFP (default value). It can be "
+            "changed using the 'ifp_n_generation' settings.",
+            settings::ifp_n_generation));
+        }
+        if (settings::ifp_n_generation > settings::n_inactive) {
+          fatal_error("'ifp_n_generation' must be lower than or equal to the "
+                      "number of inactive cycles.");
+        }
+        settings::ifp_on = true;
+      } else {
+        fatal_error(
+          "Iterated Fission Probability can only be used in an eigenvalue "
+          "calculation.");
+      }
+    }
+  }
+
+  // Set IFP parameters if needed
+  if (settings::ifp_on) {
+    for (int score : scores_) {
+      switch (score) {
+      case SCORE_IFP_TIME_NUM:
+        if (settings::ifp_parameter == IFPParameter::None) {
+          settings::ifp_parameter = IFPParameter::GenerationTime;
+        } else if (settings::ifp_parameter == IFPParameter::BetaEffective) {
+          settings::ifp_parameter = IFPParameter::Both;
+        }
+        break;
+      case SCORE_IFP_BETA_NUM:
+      case SCORE_IFP_DENOM:
+        if (settings::ifp_parameter == IFPParameter::None) {
+          settings::ifp_parameter = IFPParameter::BetaEffective;
+        } else if (settings::ifp_parameter == IFPParameter::GenerationTime) {
+          settings::ifp_parameter = IFPParameter::Both;
+        }
+        break;
+      }
+    }
+  }
+
   // Check if tally is compatible with particle type
   if (!settings::photon_transport) {
     for (int score : scores_) {
@@ -588,7 +646,12 @@ void Tally::set_scores(const vector<std::string>& scores)
           }
         }
       }
+      break;
 
+    case SCORE_IFP_TIME_NUM:
+    case SCORE_IFP_BETA_NUM:
+    case SCORE_IFP_DENOM:
+      estimator_ = TallyEstimator::COLLISION;
       break;
     }
 

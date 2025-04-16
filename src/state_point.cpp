@@ -30,10 +30,6 @@
 #include "openmc/timer.h"
 #include "openmc/vector.h"
 
-#ifdef _OPENMP
-#include <omp.h>
-#endif
-
 namespace openmc {
 
 extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
@@ -325,12 +321,6 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
     write_dataset(
       runtime_group, "writing statepoints", time_statepoint.elapsed());
     // Write out number of threads used
-#ifdef _OPENMP
-    write_dataset(runtime_group, "threads", omp_get_max_threads());
-#else
-    write_dataset(runtime_group, "threads",
-      1); // Default to 1 thread if OpenMP is not available
-#endif
 
     close_group(runtime_group);
 

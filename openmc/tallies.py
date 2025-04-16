@@ -125,7 +125,6 @@ class Tally(IDManagerMixin):
         self._with_summary = False
 
         self._simulation_time = None
-        self._number_of_threads = None
         self._sum = None
         self._sum_sq = None
         self._mean = None
@@ -399,7 +398,6 @@ class Tally(IDManagerMixin):
 
             runtime_group = f["runtime"]
             self._simulation_time = runtime_group["simulation"][()]
-            self._number_of_threads = runtime_group["threads"][()]
 
         # Indicate that Tally results have been read
         self._results_read = True
@@ -479,21 +477,15 @@ class Tally(IDManagerMixin):
             return self._std_dev
     
     @property
-    def cpu_time(self):
-        if self._simulation_time is None or self._number_of_threads is None:
-            return None
-        return self._simulation_time * self._number_of_threads
-
-    @property
     def FOM(self):
-        if self.cpu_time is None:
+        if self._simulation_time is None:
             return None
 
         mean = self.mean
         std_dev = self.std_dev
         fom = np.zeros_like(mean)
         nonzero = np.abs(mean) > 0
-        fom[nonzero] = 1.0 / self.cpu_time * (mean[nonzero]**2 / std_dev[nonzero]**2)
+        fom[nonzero] = 1.0 / self._simulation_time * (mean[nonzero]**2 / std_dev[nonzero]**2)
         
         return fom
 

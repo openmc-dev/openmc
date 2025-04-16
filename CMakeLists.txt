@@ -343,6 +343,7 @@ list(APPEND libopenmc_SOURCES
   src/geometry.cpp
   src/geometry_aux.cpp
   src/hdf5_interface.cpp
+  src/ifp.cpp
   src/initialize.cpp
   src/lattice.cpp
   src/material.cpp

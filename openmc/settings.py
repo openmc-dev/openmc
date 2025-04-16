@@ -86,6 +86,9 @@ class Settings:
         .. versionadded:: 0.12
     generations_per_batch : int
         Number of generations per batch
+    ifp_n_generation : int
+        Number of generations to consider for the Iterated Fission Probability
+        method.
     max_lost_particles : int
         Maximum number of lost particles
 
@@ -374,6 +377,9 @@ class Settings:
         self._trigger_batch_interval = None
 
         self._output = None
+
+        # Iterated Fission Probability
+        self._ifp_n_generation = None
 
         # Output options
         self._statepoint = {}
@@ -825,6 +831,17 @@ class Settings:
         cv.check_greater_than('verbosity', verbosity, 1, True)
         cv.check_less_than('verbosity', verbosity, 10, True)
         self._verbosity = verbosity
+
+    @property
+    def ifp_n_generation(self) -> int:
+        return self._ifp_n_generation
+
+    @ifp_n_generation.setter
+    def ifp_n_generation(self, ifp_n_generation: int):
+        if ifp_n_generation is not None:
+            cv.check_type("number of generations", ifp_n_generation, Integral)
+            cv.check_greater_than("number of generations", ifp_n_generation, 0)
+        self._ifp_n_generation = ifp_n_generation
 
     @property
     def tabular_legendre(self) -> dict:
@@ -1455,6 +1472,11 @@ class Settings:
             element = ET.SubElement(root, "no_reduce")
             element.text = str(self._no_reduce).lower()
 
+    def _create_ifp_n_generation_subelement(self, root):
+        if self._ifp_n_generation is not None:
+            element = ET.SubElement(root, "ifp_n_generation")
+            element.text = str(self._ifp_n_generation)
+
     def _create_tabular_legendre_subelements(self, root):
         if self.tabular_legendre:
             element = ET.SubElement(root, "tabular_legendre")
@@ -1888,6 +1910,11 @@ class Settings:
         if text is not None:
             self.verbosity = int(text)
 
+    def _ifp_n_generation_from_xml_element(self, root):
+        text = get_text(root, 'ifp_n_generation')
+        if text is not None:
+            self.ifp_n_generation = int(text)
+
     def _tabular_legendre_from_xml_element(self, root):
         elem = root.find('tabular_legendre')
         if elem is not None:
@@ -2116,6 +2143,7 @@ class Settings:
         self._create_trigger_subelement(element)
         self._create_no_reduce_subelement(element)
         self._create_verbosity_subelement(element)
+        self._create_ifp_n_generation_subelement(element)
         self._create_tabular_legendre_subelements(element)
         self._create_temperature_subelements(element)
         self._create_trace_subelement(element)
@@ -2225,6 +2253,7 @@ class Settings:
         settings._trigger_from_xml_element(elem)
         settings._no_reduce_from_xml_element(elem)
         settings._verbosity_from_xml_element(elem)
+        settings._ifp_n_generation_from_xml_element(elem)
         settings._tabular_legendre_from_xml_element(elem)
         settings._temperature_from_xml_element(elem)
         settings._trace_from_xml_element(elem)

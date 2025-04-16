@@ -405,8 +405,7 @@ of the population of a tally decreases with the number of particles simulated:
 
     FOM = \frac{1}{t \cdot r^2} = \frac{N}{t \cdot s^2} \cdot \bar{x}^2 .
 
-where t corresponds to the computer time of the simulation. It is defined as the simulation 
-time multiplied by the number of threads used in the simulation. It is important to note that 
+where t corresponds to the total time of the simulation. It is important to note that 
 in this case N corresponds to the number of independent realizations (batches) and not the
 number of particles simulated. If the FOM is not approximately constant, the confidence intervals 
 may not overlap the expected value of the tally.

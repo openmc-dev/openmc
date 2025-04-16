@@ -320,7 +320,6 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
     write_dataset(runtime_group, "total", time_total.elapsed());
     write_dataset(
       runtime_group, "writing statepoints", time_statepoint.elapsed());
-    // Write out number of threads used
 
     close_group(runtime_group);
 

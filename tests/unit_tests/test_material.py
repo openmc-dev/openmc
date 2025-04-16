@@ -590,6 +590,12 @@ def test_get_activity():
     # Test with volume specified as argument
     assert pytest.approx(m4.get_activity(units='Bq', volume=1.0)) == 355978108155965.94*3/2
 
+    # Test units based on Ci
+    bq = m4.get_activity(units='Bq')
+    m3 = m4.volume * 1e-6
+    assert (ci := m4.get_activity(units='Ci')) == pytest.approx(bq/3.7e10)
+    assert m4.get_activity(units='Ci/m3') == pytest.approx(ci/m3)
+
 
 def test_get_decay_heat():
     # Set chain file for testing

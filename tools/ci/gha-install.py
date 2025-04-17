@@ -41,23 +41,7 @@ def install(omp=False, mpi=False, phdf5=False, dagmc=False, libmesh=False):
     os.environ['SKBUILD_CMAKE_ARGS'] = ';'.join(cmake_args)
 
     # Run pip to build and install
-    pip_suffix = '--config-settings=cmake.args="' + ';'.join(cmake_args) + '"'
-    subprocess.check_call(['pip', '-v', 'install', '.[test,vtk,ci]', pip_suffix])
-
-    # Using standard CMake method
-    # Create build directory and change to it
-    shutil.rmtree('build', ignore_errors=True)
-    os.mkdir('build')
-    os.chdir('build')
-
-    # Add CMake arguments for standard method
-    cmake_cmd = ['cmake', '..'] + cmake_args
-    print(' '.join(cmake_cmd))
-
-    # Run CMake and build
-    subprocess.check_call(cmake_cmd)
-    subprocess.check_call(['make', '-j4'])
-    subprocess.check_call(['sudo', 'make', 'install'])
+    subprocess.check_call(['pip', '-v', 'install', '.[test,vtk,ci]'])
 
 def main():
     # Convert Travis matrix environment variables into arguments for install()

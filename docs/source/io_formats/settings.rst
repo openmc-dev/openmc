@@ -81,6 +81,13 @@ time.
 
     *Default*: 1.0
 
+  :survival_normalization:
+    If this element is set to "true", this will enable the use of survival
+    biasing source normalization, whereby the weight parameters, weight and
+    weight_avg, are multiplied per history by the start weight of said history.
+
+    *Default*: false
+
   :energy_neutron:
     The energy under which neutrons will be killed.
 
@@ -462,6 +469,32 @@ found in the :ref:`random ray user guide <random_ray>`.
     element can be set to "prng" or "halton".
 
     *Default*: prng
+
+  :source_region_meshes:
+    Relates meshes to spatial domains for subdividing source regions with each domain.
+
+    :mesh:
+      Contains an ``id`` attribute and one or more ``<domain>`` sub-elements.
+
+      :id:
+        The unique identifier for the mesh.
+
+      :domain:
+        Each domain element has an ``id`` attribute and a ``type`` attribute.
+
+        :id:
+          The unique identifier for the domain.
+
+        :type:
+          The type of the domain. Can be ``material``, ``cell``, or ``universe``.
+  
+  :diagonal_stabilization_rho:
+    The rho factor for use with diagonal stabilization. This technique is
+    applied when negative diagonal (in-group) elements are detected in
+    the scattering matrix of input MGXS data, which is a common feature
+    of transport corrected MGXS data.
+
+    *Default*: 1.0
 
 ----------------------------------
 ``<resonance_scattering>`` Element

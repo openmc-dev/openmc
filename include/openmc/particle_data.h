@@ -434,6 +434,7 @@ private:
   int g_last_;
 
   double wgt_ {1.0};
+  double wgt_born_ {1.0};
   double mu_;
   double time_ {0.0};
   double time_last_ {0.0};
@@ -452,6 +453,9 @@ private:
   int n_delayed_bank_[MAX_DELAYED_GROUPS];
 
   int cell_born_ {-1};
+
+  // Iterated Fission Probability
+  double lifetime_ {0.0}; //!< neutron lifetime [s]
 
   int n_collision_ {0};
 
@@ -532,12 +536,20 @@ public:
   int& g_last() { return g_last_; }
   const int& g_last() const { return g_last_; }
 
-  // Statistic weight of particle. Setting to zero
-  // indicates that the particle is dead.
+  // Statistic weight of particle. Setting to zero indicates that the particle
+  // is dead.
   double& wgt() { return wgt_; }
   double wgt() const { return wgt_; }
+
+  // Statistic weight of particle at birth
+  double& wgt_born() { return wgt_born_; }
+  double wgt_born() const { return wgt_born_; }
+
+  // Statistic weight of particle at last collision
   double& wgt_last() { return wgt_last_; }
   const double& wgt_last() const { return wgt_last_; }
+
+  // Whether particle is alive
   bool alive() const { return wgt_ != 0.0; }
 
   // Polar scattering angle after a collision
@@ -550,6 +562,10 @@ public:
   const double& time() const { return time_; }
   double& time_last() { return time_last_; }
   const double& time_last() const { return time_last_; }
+
+  // Particle lifetime
+  double& lifetime() { return lifetime_; }
+  const double& lifetime() const { return lifetime_; }
 
   // What event took place, described in greater detail below
   TallyEvent& event() { return event_; }

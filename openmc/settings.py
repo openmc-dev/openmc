@@ -7,11 +7,12 @@ from pathlib import Path
 
 import lxml.etree as ET
 
+import openmc
 import openmc.checkvalue as cv
 from openmc.checkvalue import PathLike
 from openmc.stats.multivariate import MeshSpatial
 from ._xml import clean_indentation, get_text, reorder_attributes
-from .mesh import _read_meshes, RegularMesh
+from .mesh import _read_meshes, RegularMesh, MeshBase
 from .source import SourceBase, MeshSource, IndependentSource
 from .utility_funcs import input_path
 from .volume import VolumeCalculation
@@ -50,15 +51,19 @@ class Settings:
         Indicate whether fission neutrons should be created or not.
     cutoff : dict
         Dictionary defining weight cutoff, energy cutoff and time cutoff. The
-        dictionary may have ten keys, 'weight', 'weight_avg', 'energy_neutron',
-        'energy_photon', 'energy_electron', 'energy_positron', 'time_neutron',
-        'time_photon', 'time_electron', and 'time_positron'. Value for 'weight'
-        should be a float indicating weight cutoff below which particle undergo
-        Russian roulette. Value for 'weight_avg' should be a float indicating
-        weight assigned to particles that are not killed after Russian roulette.
-        Value of energy should be a float indicating energy in eV below which
-        particle type will be killed. Value of time should be a float in
-        seconds. Particles will be killed exactly at the specified time.
+        dictionary may have the following keys, 'weight', 'weight_avg',
+        'survival_normalization', 'energy_neutron', 'energy_photon',
+        'energy_electron', 'energy_positron', 'time_neutron', 'time_photon',
+        'time_electron', and 'time_positron'. Value for 'weight' should be a
+        float indicating weight cutoff below which particle undergo Russian
+        roulette. Value for 'weight_avg' should be a float indicating weight
+        assigned to particles that are not killed after Russian roulette. Value
+        of energy should be a float indicating energy in eV below which particle
+        type will be killed. Value of time should be a float in seconds.
+        Particles will be killed exactly at the specified time. Value for
+        'survival_normalization' is a bool indicating whether or not the weight
+        cutoff parameters will be applied relative to the particle's starting
+        weight or to its current weight.
     delayed_photon_scaling : bool
         Indicate whether to scale the fission photon yield by (EGP + EGD)/EGP
         where EGP is the energy release of prompt photons and EGD is the energy
@@ -81,6 +86,9 @@ class Settings:
         .. versionadded:: 0.12
     generations_per_batch : int
         Number of generations per batch
+    ifp_n_generation : int
+        Number of generations to consider for the Iterated Fission Probability
+        method.
     max_lost_particles : int
         Maximum number of lost particles
 
@@ -162,20 +170,37 @@ class Settings:
             'naive', 'simulation_averaged', or 'hybrid'.
             The default is 'hybrid'.
         :source_shape:
-            Assumed shape of the source distribution within each source
-            region. Options are 'flat' (default), 'linear', or 'linear_xy'.
+            Assumed shape of the source distribution within each source region.
+            Options are 'flat' (default), 'linear', or 'linear_xy'.
         :volume_normalized_flux_tallies:
-            Whether to normalize flux tallies by volume (bool). The default
-            is 'False'. When enabled, flux tallies will be reported in units of
-            cm/cm^3. When disabled, flux tallies will be reported in units
-            of cm (i.e., total distance traveled by neutrons in the spatial
-            tally region).
+            Whether to normalize flux tallies by volume (bool). The default is
+            'False'. When enabled, flux tallies will be reported in units of
+            cm/cm^3. When disabled, flux tallies will be reported in units of cm
+            (i.e., total distance traveled by neutrons in the spatial tally
+            region).
         :adjoint:
             Whether to run the random ray solver in adjoint mode (bool). The
             default is 'False'.
         :sample_method:
-            Sampling method for the ray starting location and direction of travel.
-            Options are `prng` (default) or 'halton`.
+            Sampling method for the ray starting location and direction of
+            travel. Options are `prng` (default) or 'halton`.
+        :source_region_meshes:
+            List of tuples where each tuple contains a mesh and a list of
+            domains. Each domain is an instance of openmc.Material, openmc.Cell,
+            or openmc.Universe. The mesh will be applied to the listed domains
+            to subdivide source regions so as to improve accuracy and/or conform
+            with tally meshes.
+        :diagonal_stabilization_rho:
+            The rho factor for use with diagonal stabilization. This technique is
+            applied when negative diagonal (in-group) elements are detected in
+            the scattering matrix of input MGXS data, which is a common feature
+            of transport corrected MGXS data. The default is 1.0, which ensures
+            no negative diagonal elements are present in the iteration matrix and
+            thus stabilizes the simulation. A value of 0.0 will disable diagonal
+            stabilization. Values between 0.0 and 1.0 will apply a degree of
+            stabilization, which may be desirable as stronger diagonal stabilization
+            also tends to dampen the convergence rate of the solver, thus requiring
+            more iterations to converge.
 
         .. versionadded:: 0.15.0
     resonance_scattering : dict
@@ -352,6 +377,9 @@ class Settings:
         self._trigger_batch_interval = None
 
         self._output = None
+
+        # Iterated Fission Probability
+        self._ifp_n_generation = None
 
         # Output options
         self._statepoint = {}
@@ -805,6 +833,17 @@ class Settings:
         self._verbosity = verbosity
 
     @property
+    def ifp_n_generation(self) -> int:
+        return self._ifp_n_generation
+
+    @ifp_n_generation.setter
+    def ifp_n_generation(self, ifp_n_generation: int):
+        if ifp_n_generation is not None:
+            cv.check_type("number of generations", ifp_n_generation, Integral)
+            cv.check_greater_than("number of generations", ifp_n_generation, 0)
+        self._ifp_n_generation = ifp_n_generation
+
+    @property
     def tabular_legendre(self) -> dict:
         return self._tabular_legendre
 
@@ -899,6 +938,8 @@ class Settings:
                 cv.check_type('average survival weight', cutoff[key], Real)
                 cv.check_greater_than('average survival weight',
                                       cutoff[key], 0.0)
+            elif key == 'survival_normalization':
+                cv.check_type('survival normalization', cutoff[key], bool)
             elif key in ['energy_neutron', 'energy_photon', 'energy_electron',
                          'energy_positron']:
                 cv.check_type('energy cutoff', cutoff[key], Real)
@@ -1150,9 +1191,24 @@ class Settings:
                 cv.check_type('volume normalized flux tallies', value, bool)
             elif key == 'adjoint':
                 cv.check_type('adjoint', value, bool)
+            elif key == 'source_region_meshes':
+                cv.check_type('source region meshes', value, Iterable)
+                for mesh, domains in value:
+                    cv.check_type('mesh', mesh, MeshBase)
+                    cv.check_type('domains', domains, Iterable)
+                    valid_types = (openmc.Material, openmc.Cell, openmc.Universe)
+                    for domain in domains:
+                        if not isinstance(domain, valid_types):
+                            raise ValueError(
+                                f'Invalid domain type: {type(domain)}. Expected '
+                                'openmc.Material, openmc.Cell, or openmc.Universe.')
             elif key == 'sample_method':
                 cv.check_value('sample method', value,
                                ('prng', 'halton'))
+            elif key == 'diagonal_stabilization_rho':
+                cv.check_type('diagonal stabilization rho', value, Real)
+                cv.check_greater_than('diagonal stabilization rho',
+                                      value, 0.0, True)
             else:
                 raise ValueError(f'Unable to set random ray to "{key}" which is '
                                  'unsupported by OpenMC')
@@ -1364,7 +1420,8 @@ class Settings:
             element = ET.SubElement(root, "cutoff")
             for key, value in self._cutoff.items():
                 subelement = ET.SubElement(element, key)
-                subelement.text = str(value)
+                subelement.text = str(value) if key != 'survival_normalization' \
+                    else str(value).lower()
 
     def _create_entropy_mesh_subelement(self, root, mesh_memo=None):
         if self.entropy_mesh is None:
@@ -1414,6 +1471,11 @@ class Settings:
         if self._no_reduce is not None:
             element = ET.SubElement(root, "no_reduce")
             element.text = str(self._no_reduce).lower()
+
+    def _create_ifp_n_generation_subelement(self, root):
+        if self._ifp_n_generation is not None:
+            element = ET.SubElement(root, "ifp_n_generation")
+            element.text = str(self._ifp_n_generation)
 
     def _create_tabular_legendre_subelements(self, root):
         if self.tabular_legendre:
@@ -1566,7 +1628,7 @@ class Settings:
 
             root.append(wwg.mesh.to_xml_element())
             if mesh_memo is not None:
-                mesh_memo.add(wwg.mesh)
+                mesh_memo.add(wwg.mesh.id)
 
     def _create_weight_windows_file_element(self, root):
         if self.weight_windows_file is not None:
@@ -1597,13 +1659,25 @@ class Settings:
             elem = ET.SubElement(root, "max_tracks")
             elem.text = str(self._max_tracks)
 
-    def _create_random_ray_subelement(self, root):
+    def _create_random_ray_subelement(self, root, mesh_memo=None):
         if self._random_ray:
             element = ET.SubElement(root, "random_ray")
             for key, value in self._random_ray.items():
                 if key == 'ray_source' and isinstance(value, SourceBase):
                     source_element = value.to_xml_element()
                     element.append(source_element)
+                elif key == 'source_region_meshes':
+                    subelement = ET.SubElement(element, 'source_region_meshes')
+                    for mesh, domains in value:
+                        mesh_elem = ET.SubElement(subelement, 'mesh')
+                        mesh_elem.set('id', str(mesh.id))
+                        for domain in domains:
+                            domain_elem = ET.SubElement(mesh_elem, 'domain')
+                            domain_elem.set('id', str(domain.id))
+                            domain_elem.set('type', domain.__class__.__name__.lower())
+                        if mesh_memo is not None and mesh.id not in mesh_memo:
+                            root.append(mesh.to_xml_element())
+                            mesh_memo.add(mesh.id)
                 else:
                     subelement = ET.SubElement(element, key)
                     subelement.text = str(value)
@@ -1797,10 +1871,14 @@ class Settings:
             self.cutoff = {}
             for key in ('energy_neutron', 'energy_photon', 'energy_electron',
                         'energy_positron', 'weight', 'weight_avg', 'time_neutron',
-                        'time_photon', 'time_electron', 'time_positron'):
+                        'time_photon', 'time_electron', 'time_positron',
+                        'survival_normalization'):
                 value = get_text(elem, key)
                 if value is not None:
-                    self.cutoff[key] = float(value)
+                    if key == 'survival_normalization':
+                        self.cutoff[key] = value in ('true', '1')
+                    else:
+                        self.cutoff[key] = float(value)
 
     def _entropy_mesh_from_xml_element(self, root, meshes):
         text = get_text(root, 'entropy_mesh')
@@ -1831,6 +1909,11 @@ class Settings:
         text = get_text(root, 'verbosity')
         if text is not None:
             self.verbosity = int(text)
+
+    def _ifp_n_generation_from_xml_element(self, root):
+        text = get_text(root, 'ifp_n_generation')
+        if text is not None:
+            self.ifp_n_generation = int(text)
 
     def _tabular_legendre_from_xml_element(self, root):
         elem = root.find('tabular_legendre')
@@ -1977,7 +2060,7 @@ class Settings:
         if elem is not None:
             self.random_ray = {}
             for child in elem:
-                if child.tag in ('distance_inactive', 'distance_active'):
+                if child.tag in ('distance_inactive', 'distance_active', 'diagonal_stabilization_rho'):
                     self.random_ray[child.tag] = float(child.text)
                 elif child.tag == 'source':
                     source = SourceBase.from_xml_element(child)
@@ -1996,6 +2079,22 @@ class Settings:
                     )
                 elif child.tag == 'sample_method':
                     self.random_ray['sample_method'] = child.text
+                elif child.tag == 'source_region_meshes':
+                    self.random_ray['source_region_meshes'] = []
+                    for mesh_elem in child.findall('mesh'):
+                        mesh = MeshBase.from_xml_element(mesh_elem)
+                        domains = []
+                        for domain_elem in mesh_elem.findall('domain'):
+                            domain_id = int(domain_elem.get('id'))
+                            domain_type = domain_elem.get('type')
+                            if domain_type == 'material':
+                                domain = openmc.Material(domain_id)
+                            elif domain_type == 'cell':
+                                domain = openmc.Cell(domain_id)
+                            elif domain_type == 'universe':
+                                domain = openmc.Universe(domain_id)
+                            domains.append(domain)
+                        self.random_ray['source_region_meshes'].append((mesh, domains))
 
     def _use_decay_photons_from_xml_element(self, root):
         text = get_text(root, 'use_decay_photons')
@@ -2044,6 +2143,7 @@ class Settings:
         self._create_trigger_subelement(element)
         self._create_no_reduce_subelement(element)
         self._create_verbosity_subelement(element)
+        self._create_ifp_n_generation_subelement(element)
         self._create_tabular_legendre_subelements(element)
         self._create_temperature_subelements(element)
         self._create_trace_subelement(element)
@@ -2066,7 +2166,7 @@ class Settings:
         self._create_weight_window_checkpoints_subelement(element)
         self._create_max_history_splits_subelement(element)
         self._create_max_tracks_subelement(element)
-        self._create_random_ray_subelement(element)
+        self._create_random_ray_subelement(element, mesh_memo)
         self._create_use_decay_photons_subelement(element)
 
         # Clean the indentation in the file to be user-readable
@@ -2153,6 +2253,7 @@ class Settings:
         settings._trigger_from_xml_element(elem)
         settings._no_reduce_from_xml_element(elem)
         settings._verbosity_from_xml_element(elem)
+        settings._ifp_n_generation_from_xml_element(elem)
         settings._tabular_legendre_from_xml_element(elem)
         settings._temperature_from_xml_element(elem)
         settings._trace_from_xml_element(elem)

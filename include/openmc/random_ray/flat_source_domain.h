@@ -4,8 +4,10 @@
 #include "openmc/constants.h"
 #include "openmc/openmp_interface.h"
 #include "openmc/position.h"
+#include "openmc/random_ray/parallel_map.h"
 #include "openmc/random_ray/source_region.h"
 #include "openmc/source.h"
+#include <unordered_map>
 #include <unordered_set>
 
 namespace openmc {
@@ -37,7 +39,6 @@ public:
   void random_ray_tally();
   virtual void accumulate_iteration_flux();
   void output_to_vtk() const;
-  void all_reduce_replicated_source_regions();
   void convert_external_sources();
   void count_external_source_regions();
   void set_adjoint_sources(const vector<double>& forward_flux);
@@ -47,11 +48,37 @@ public:
   void flatten_xs();
   void transpose_scattering_matrix();
   void serialize_final_fluxes(vector<double>& flux);
+  void apply_meshes();
+  void apply_mesh_to_cell_instances(int32_t i_cell, int32_t mesh_idx,
+    int target_material_id, const vector<int32_t>& instances,
+    bool is_target_void);
+  void apply_mesh_to_cell_and_children(int32_t i_cell, int32_t mesh_idx,
+    int32_t target_material_id, bool is_target_void);
+  void prepare_base_source_regions();
+  SourceRegionHandle get_subdivided_source_region_handle(
+    int64_t sr, int mesh_bin, Position r, double dist, Direction u);
+  void finalize_discovered_source_regions();
+  void apply_transport_stabilization();
+  int64_t n_source_regions() const
+  {
+    return source_regions_.n_source_regions();
+  }
+  int64_t n_source_elements() const
+  {
+    return source_regions_.n_source_regions() * negroups_;
+  }
 
   //----------------------------------------------------------------------------
   // Static Data members
   static bool volume_normalized_flux_tallies_;
   static bool adjoint_; // If the user wants outputs based on the adjoint flux
+  static double
+    diagonal_stabilization_rho_; // Adjusts strength of diagonal stabilization
+                                 // for transport corrected MGXS data
+
+  // Static variables to store source region meshes and domains
+  static std::unordered_map<int, vector<std::pair<Source::DomainType, int>>>
+    mesh_domain_map_;
 
   //----------------------------------------------------------------------------
   // Static data members
@@ -61,7 +88,6 @@ public:
   // Public Data members
   bool mapped_all_tallies_ {false}; // If all source regions have been visited
 
-  int64_t n_source_regions_ {0}; // Total number of source regions in the model
   int64_t n_external_source_regions_ {0}; // Total number of source regions with
                                           // non-zero external source terms
 
@@ -84,11 +110,44 @@ public:
   // The abstract container holding all source region-specific data
   SourceRegionContainer source_regions_;
 
+  // Base source region container. When source region subdivision via mesh
+  // is in use, this container holds the original (non-subdivided) material
+  // filled cell instance source regions. These are useful as they can be
+  // initialized with external source and mesh domain information ahead of time.
+  // Then, dynamically discovered source regions can be initialized by cloning
+  // their base region.
+  SourceRegionContainer base_source_regions_;
+
+  // Parallel hash map holding all source regions discovered during
+  // a single iteration. This is a threadsafe data structure that is cleaned
+  // out after each iteration and stored in the "source_regions_" container.
+  // It is keyed with a SourceRegionKey, which combines the base source
+  // region index and the mesh bin.
+  ParallelMap<SourceRegionKey, SourceRegion, SourceRegionKey::HashFunctor>
+    discovered_source_regions_;
+
+  // Map that relates a SourceRegionKey to the index at which the source
+  // region can be found in the "source_regions_" container.
+  std::unordered_map<SourceRegionKey, int64_t, SourceRegionKey::HashFunctor>
+    source_region_map_;
+
+  // Map that relates a SourceRegionKey to the external source index. This map
+  // is used to check if there are any point sources within a subdivided source
+  // region at the time it is discovered.
+  std::unordered_map<SourceRegionKey, int64_t, SourceRegionKey::HashFunctor>
+    point_source_map_;
+
+  // If transport corrected MGXS data is being used, there may be negative
+  // in-group scattering cross sections that can result in instability in MOC
+  // and random ray if used naively. This flag enables a stabilization
+  // technique.
+  bool is_transport_stabilization_needed_ {false};
+
 protected:
   //----------------------------------------------------------------------------
   // Methods
   void apply_external_source_to_source_region(
-    Discrete* discrete, double strength_factor, int64_t sr);
+    Discrete* discrete, double strength_factor, SourceRegionHandle& srh);
   void apply_external_source_to_cell_instances(int32_t i_cell,
     Discrete* discrete, double strength_factor, int target_material_id,
     const vector<int32_t>& instances);
@@ -100,9 +159,7 @@ protected:
 
   //----------------------------------------------------------------------------
   // Private data members
-  int negroups_;                  // Number of energy groups in simulation
-  int64_t n_source_elements_ {0}; // Total number of source regions in the model
-                                  // times the number of energy groups
+  int negroups_; // Number of energy groups in simulation
 
   double
     simulation_volume_; // Total physical volume of the simulation domain, as

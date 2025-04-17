@@ -24,6 +24,14 @@ enum class SSWCellType {
   To,
 };
 
+// Type of IFP parameters
+enum class IFPParameter {
+  None,
+  Both,
+  BetaEffective,
+  GenerationTime,
+};
+
 //==============================================================================
 // Global variable declarations
 //==============================================================================
@@ -42,7 +50,8 @@ extern bool
   delayed_photon_scaling;   //!< Scale fission photon yield to include delayed
 extern "C" bool entropy_on; //!< calculate Shannon entropy?
 extern "C" bool
-  event_based; //!< use event-based mode (instead of history-based)
+  event_based;      //!< use event-based mode (instead of history-based)
+extern bool ifp_on; //!< Use IFP for kinetics parameters?
 extern bool legendre_to_tabular; //!< convert Legendre distributions to tabular?
 extern bool material_cell_offsets;   //!< create material cells offsets?
 extern "C" bool output_summary;      //!< write summary.h5?
@@ -61,6 +70,7 @@ extern bool surf_source_write;       //!< write surface source file?
 extern bool surf_mcpl_write;         //!< write surface mcpl file?
 extern bool surf_source_read;        //!< read surface source file?
 extern bool survival_biasing;        //!< use survival biasing?
+extern bool survival_normalization;  //!< use survival normalization?
 extern bool temperature_multipole;   //!< use multipole data?
 extern "C" bool trigger_on;          //!< tally triggers enabled?
 extern bool trigger_predict;         //!< predict batches for triggers?
@@ -111,6 +121,10 @@ extern array<double, 4>
   energy_cutoff; //!< Energy cutoff in [eV] for each particle type
 extern array<double, 4>
   time_cutoff; //!< Time cutoff in [s] for each particle type
+extern int
+  ifp_n_generation; //!< Number of generation for Iterated Fission Probability
+extern IFPParameter
+  ifp_parameter; //!< Parameter to calculate for Iterated Fission Probability
 extern int
   legendre_to_tabular_points; //!< number of points to convert Legendres
 extern int max_order;         //!< Maximum Legendre order for multigroup data

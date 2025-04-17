@@ -1,4 +1,5 @@
 #include "openmc/settings.h"
+#include "openmc/random_ray/flat_source_domain.h"
 
 #include <cmath>  // for ceil, pow
 #include <limits> // for numeric_limits
@@ -51,6 +52,7 @@ bool create_fission_neutrons {true};
 bool delayed_photon_scaling {true};
 bool entropy_on {false};
 bool event_based {false};
+bool ifp_on {false};
 bool legendre_to_tabular {true};
 bool material_cell_offsets {true};
 bool output_summary {true};
@@ -69,6 +71,7 @@ bool surf_source_write {false};
 bool surf_mcpl_write {false};
 bool surf_source_read {false};
 bool survival_biasing {false};
+bool survival_normalization {false};
 bool temperature_multipole {false};
 bool trigger_on {false};
 bool trigger_predict {false};
@@ -104,6 +107,8 @@ int max_particle_events {1000000};
 ElectronTreatment electron_treatment {ElectronTreatment::TTB};
 array<double, 4> energy_cutoff {0.0, 1000.0, 0.0, 0.0};
 array<double, 4> time_cutoff {INFTY, INFTY, INFTY, INFTY};
+int ifp_n_generation {-1};
+IFPParameter ifp_parameter {IFPParameter::None};
 int legendre_to_tabular_points {C_NONE};
 int max_order {0};
 int n_log_bins {8000};
@@ -316,6 +321,40 @@ void get_run_parameters(pugi::xml_node node_base)
         RandomRay::sample_method_ = RandomRaySampleMethod::HALTON;
       } else {
         fatal_error("Unrecognized sample method: " + temp_str);
+      }
+    }
+    if (check_for_node(random_ray_node, "source_region_meshes")) {
+      pugi::xml_node node_source_region_meshes =
+        random_ray_node.child("source_region_meshes");
+      for (pugi::xml_node node_mesh :
+        node_source_region_meshes.children("mesh")) {
+        int mesh_id = std::stoi(node_mesh.attribute("id").value());
+        for (pugi::xml_node node_domain : node_mesh.children("domain")) {
+          int domain_id = std::stoi(node_domain.attribute("id").value());
+          std::string domain_type = node_domain.attribute("type").value();
+          Source::DomainType type;
+          if (domain_type == "material") {
+            type = Source::DomainType::MATERIAL;
+          } else if (domain_type == "cell") {
+            type = Source::DomainType::CELL;
+          } else if (domain_type == "universe") {
+            type = Source::DomainType::UNIVERSE;
+          } else {
+            throw std::runtime_error("Unknown domain type: " + domain_type);
+          }
+          FlatSourceDomain::mesh_domain_map_[mesh_id].emplace_back(
+            type, domain_id);
+          RandomRay::mesh_subdivision_enabled_ = true;
+        }
+      }
+    }
+    if (check_for_node(random_ray_node, "diagonal_stabilization_rho")) {
+      FlatSourceDomain::diagonal_stabilization_rho_ = std::stod(
+        get_node_value(random_ray_node, "diagonal_stabilization_rho"));
+      if (FlatSourceDomain::diagonal_stabilization_rho_ < 0.0 ||
+          FlatSourceDomain::diagonal_stabilization_rho_ > 1.0) {
+        fatal_error("Random ray diagonal stabilization rho factor must be "
+                    "between 0 and 1");
       }
     }
   }
@@ -623,6 +662,10 @@ void read_settings_xml(pugi::xml_node root)
     }
     if (check_for_node(node_cutoff, "weight_avg")) {
       weight_survive = std::stod(get_node_value(node_cutoff, "weight_avg"));
+    }
+    if (check_for_node(node_cutoff, "survival_normalization")) {
+      survival_normalization =
+        get_node_value_bool(node_cutoff, "survival_normalization");
     }
     if (check_for_node(node_cutoff, "energy_neutron")) {
       energy_cutoff[0] =
@@ -1017,6 +1060,20 @@ void read_settings_xml(pugi::xml_node root)
     auto range = get_node_array<double>(root, "temperature_range");
     temperature_range[0] = range.at(0);
     temperature_range[1] = range.at(1);
+  }
+
+  // Check for user value for the number of generation of the Iterated Fission
+  // Probability (IFP) method
+  if (check_for_node(root, "ifp_n_generation")) {
+    ifp_n_generation = std::stoi(get_node_value(root, "ifp_n_generation"));
+    if (ifp_n_generation <= 0) {
+      fatal_error("'ifp_n_generation' must be greater than 0.");
+    }
+    // Avoid tallying 0 if IFP logs are not complete when active cycles start
+    if (ifp_n_generation > n_inactive) {
+      fatal_error("'ifp_n_generation' must be lower than or equal to the "
+                  "number of inactive cycles.");
+    }
   }
 
   // Check for tabular_legendre options

@@ -1,10 +1,3 @@
-get_filename_component(OpenMC_CMAKE_DIR "${CMAKE_CURRENT_LIST_FILE}" DIRECTORY)
-
-find_package(fmt REQUIRED HINTS ${OpenMC_CMAKE_DIR}/../fmt)
-find_package(pugixml REQUIRED HINTS ${OpenMC_CMAKE_DIR}/../pugixml)
-find_package(xtl REQUIRED HINTS ${OpenMC_CMAKE_DIR}/../xtl)
-find_package(xtensor REQUIRED HINTS ${OpenMC_CMAKE_DIR}/../xtensor)
-
 find_package(HDF5 REQUIRED COMPONENTS C HL)
 
 if(@OPENMC_USE_DAGMC@)
@@ -23,6 +16,12 @@ find_package(PNG)
 if(@SKBUILD@)
   # Find the Python interpreter and ensure it's available.
   find_package(Python COMPONENTS Interpreter REQUIRED)
+
+  # TODO: Need to implement ExternalProject_Add for OpenMC
+  find_package(fmt REQUIRED HINTS ${Python_SITELIB}/openmc)
+  find_package(pugixml REQUIRED HINTS ${Python_SITELIB}/openmc)
+  find_package(xtl REQUIRED HINTS ${Python_SITELIB}/openmc)
+  find_package(xtensor REQUIRED HINTS ${Python_SITELIB}/openmc)
 
   # Function to run Python commands and validate their execution.
   function(run_python_command output_var command)
@@ -61,7 +60,12 @@ if(@SKBUILD@)
   # Add OpenMC targets
   file(TO_CMAKE_PATH "${OpenMC_LIBRARY_DIRS}/cmake/OpenMC/OpenMCTargets.cmake" OpenMC_TARGETS_FILE)
   include(${OpenMC_TARGETS_FILE})
-elseif(NOT TARGET OpenMC::libopenmc)
+else()
+  get_filename_component(OpenMC_CMAKE_DIR "${CMAKE_CURRENT_LIST_FILE}" DIRECTORY)
+  find_package(fmt REQUIRED HINTS ${OpenMC_CMAKE_DIR}/../fmt)
+  find_package(pugixml REQUIRED HINTS ${OpenMC_CMAKE_DIR}/../pugixml)
+  find_package(xtl REQUIRED HINTS ${OpenMC_CMAKE_DIR}/../xtl)
+  find_package(xtensor REQUIRED HINTS ${OpenMC_CMAKE_DIR}/../xtensor)
   include("${OpenMC_CMAKE_DIR}/OpenMCTargets.cmake")
 endif()
 

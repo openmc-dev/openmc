@@ -11,6 +11,8 @@ if not os.path.exists(OPENMC_CORE_BASE_PATH):
     OPENMC_CORE_BASE_PATH = os.path.join(sysconfig.get_path("platlib"), "openmc", "core")
     if not os.path.exists(OPENMC_CORE_BASE_PATH):
         raise ImportError("OpenMC is not installed. Please run 'pip install openmc'.")
+    if os.environ.get("OPENMC_DEV_MODE", "0") == "1" or os.environ.get("OPENMC_DEV_MODE", "0").lower() == "true":
+        return
     warnings.warn(
         "It seems OpenMC is being run from its source directory. "
         "This setup is not recommended as it may lead to unexpected behavior, "

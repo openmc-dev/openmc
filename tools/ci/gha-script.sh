@@ -14,11 +14,9 @@ if [[ $EVENT == 'y' ]]; then
   args="${args} --event "
 fi
 
-# Rename openmc to openmc-test
-mv openmc openmc-test
+# Skip source directory warning
+export OPENMC_DEV_MODE=1
 
 # Run regression and unit tests
 pytest --cov=openmc -v $args tests
 
-# Rename to openmc back
-mv openmc-test openmc

@@ -1,9 +1,27 @@
 import sys
 import pytest
+import importlib
 from unittest import mock
 from pathlib import Path
 from openmc import paths
 
+
+def test_openmc_core_base_path_nameerror(monkeypatch):
+    """Test fallback logic when __path__ is not defined."""
+    monkeypatch.setitem(sys.modules["openmc.paths"].__dict__, '__path__', None)
+
+    with mock.patch("os.path.exists", return_value=False), \
+         mock.patch("sysconfig.get_path", return_value="/mock/path"):
+        with pytest.raises(ImportError, match="OpenMC is not installed"):
+            importlib.reload(paths)
+
+def test_openmc_core_base_path_importerror(monkeypatch):
+    """Test ImportError raised when OpenMC is not installed and no core path is found."""
+    monkeypatch.setitem(sys.modules['openmc.paths'].__dict__, '__path__', None)
+    with mock.patch("os.path.exists", return_value=False), \
+         mock.patch("sysconfig.get_path", return_value="/mock/path"):
+        with pytest.raises(ImportError, match="OpenMC is not installed. Please run 'pip install openmc'."):
+            importlib.reload(paths)
 
 def test_get_paths_non_recursive():
     """Test get_paths with non-recursive file search."""
@@ -48,7 +66,6 @@ def test_get_extra_libraries_cross_platform(tmp_path, platform_value, expected_d
                 assert dummy_file in map(Path, extra_libs)
                 assert extra_lib_path == str(lib_dir)
             else:
-                # This may occur if platform detection logic fails or is stricter
                 assert extra_libs == []
 
 def test_get_extra_libraries_missing_dir():

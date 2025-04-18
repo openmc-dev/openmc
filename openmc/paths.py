@@ -4,12 +4,9 @@ import glob
 import warnings
 from . import __path__
 
-try:
-    OPENMC_CORE_BASE_PATH = os.path.join(__path__[0], "core")
-except NameError:
-    OPENMC_CORE_BASE_PATH = None
+OPENMC_CORE_BASE_PATH = os.path.join(__path__[0], "core")
 
-if not OPENMC_CORE_BASE_PATH or not os.path.exists(OPENMC_CORE_BASE_PATH):
+if not os.path.exists(OPENMC_CORE_BASE_PATH):
     import sysconfig
     OPENMC_CORE_BASE_PATH = os.path.join(sysconfig.get_path("platlib"), "openmc", "core")
     if not os.path.exists(OPENMC_CORE_BASE_PATH):

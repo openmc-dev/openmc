@@ -121,8 +121,8 @@ class OpenMCOperator(TransportOperator):
 
         check_value('diff volume method', diff_volume_method,
                     {'divide equally', 'match cell'})
-        check_type('reduce_chain_level', reduce_chain_level, [None, int])
         if reduce_chain_level:
+            check_type('reduce_chain_level', reduce_chain_level, int)
             check_greater_than('reduce_chain_level', reduce_chain_level, 0)
         self.diff_volume_method = diff_volume_method
 

@@ -23,6 +23,17 @@ def test_openmc_core_base_path_importerror(monkeypatch):
         with pytest.raises(ImportError, match="OpenMC is not installed. Please run 'pip install openmc'."):
             importlib.reload(paths)
 
+def test_openmc_core_base_path_warning(monkeypatch):
+    """Test warning when running OpenMC from source directory without dev mode enabled."""
+
+    monkeypatch.setitem(sys.modules["openmc.paths"].__dict__, '__path__', ["/mock/source/openmc"])
+    monkeypatch.delenv("OPENMC_DEV_MODE", raising=False)
+
+    with mock.patch("os.path.exists", side_effect=[False, True, True]), \
+         mock.patch("sysconfig.get_path", return_value="/mock/source"), \
+         pytest.warns(RuntimeWarning, match="It seems OpenMC is being run from its source directory"):
+        importlib.reload(paths)
+
 def test_get_paths_non_recursive():
     """Test get_paths with non-recursive file search."""
     result = paths.get_paths("include", "*", recursive=False)

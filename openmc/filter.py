@@ -1064,6 +1064,26 @@ class MeshMaterialFilter(MeshFilter):
         self.id = filter_id
         self._translation = None
 
+    @classmethod
+    def from_volumes(cls, mesh: openmc.MeshBase, volumes: openmc.MeshMaterialVolumes):
+        """Construct a MeshMaterialFilter from a MeshMaterialVolumes object.
+
+        Parameters
+        ----------
+        mesh : openmc.MeshBase
+            The mesh object that events will be tallied onto
+        volumes : openmc.MeshMaterialVolumes
+            The mesh material volumes to use for the filter
+
+        Returns
+        -------
+        MeshMaterialFilter
+            A new MeshMaterialFilter instance
+
+        """
+        bins = list(zip(*np.where(volumes._materials > -1)))
+        return cls(mesh, bins)
+
     def __hash__(self):
         string = type(self).__name__ + '\n'
         string += '{: <16}=\t{}\n'.format('\tMesh ID', self.mesh.id)
@@ -1090,10 +1110,10 @@ class MeshMaterialFilter(MeshFilter):
     def bins(self, bins):
         pairs = np.empty((len(bins), 2), dtype=int)
         for i, (elem, mat) in enumerate(bins):
-            cv.check_type('element', elem, int)
-            cv.check_type('material', mat, (int, openmc.Material))
+            cv.check_type('element', elem, Integral)
+            cv.check_type('material', mat, (Integral, openmc.Material))
             pairs[i, 0] = elem
-            pairs[i, 1] = mat if isinstance(mat, int) else mat.id
+            pairs[i, 1] = mat if isinstance(mat, Integral) else mat.id
         self._bins = pairs
 
     def to_xml_element(self):

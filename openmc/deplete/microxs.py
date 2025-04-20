@@ -56,8 +56,8 @@ def get_microxs_and_flux(
     ----------
     model : openmc.Model
         OpenMC model object. Must contain geometry, materials, and settings.
-    domains : list of openmc.Material or openmc.Cell or openmc.Universe, or openmc.MeshBase
-        Domains in which to tally reaction rates.
+    domains : list of openmc.Material or openmc.Cell or openmc.Universe, or openmc.MeshBase, or openmc.Filter
+        Domains in which to tally reaction rates, or a spatial tally filter.
     nuclides : list of str
         Nuclides to get cross sections for. If not specified, all burnable
         nuclides from the depletion chain file are used.
@@ -103,7 +103,10 @@ def get_microxs_and_flux(
         energy_filter = openmc.EnergyFilter.from_group_structure(energies)
     else:
         energy_filter = openmc.EnergyFilter(energies)
-    if isinstance(domains, openmc.MeshBase):
+
+    if isinstance(domains, openmc.Filter):
+        domain_filter = domains
+    elif isinstance(domains, openmc.MeshBase):
         domain_filter = openmc.MeshFilter(domains)
     elif isinstance(domains[0], openmc.Material):
         domain_filter = openmc.MaterialFilter(domains)

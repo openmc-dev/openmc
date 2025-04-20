@@ -1,38 +1,97 @@
-#include "openmc/tallies/filter_mesh.h"
+#include "openmc/tallies/filter_meshmaterial.h"
 
 #include <fmt/core.h>
 
 #include "openmc/capi.h"
 #include "openmc/constants.h"
 #include "openmc/error.h"
+#include "openmc/material.h"
 #include "openmc/mesh.h"
 #include "openmc/xml_interface.h"
 
 namespace openmc {
 
-void MeshFilter::from_xml(pugi::xml_node node)
+void MeshMaterialFilter::from_xml(pugi::xml_node node)
 {
-  auto bins_ = get_node_array<int32_t>(node, "bins");
-  if (bins_.size() != 1) {
+  // Get mesh ID
+  auto mesh = get_node_array<int32_t>(node, "mesh");
+  if (mesh.size() != 1) {
     fatal_error(
       "Only one mesh can be specified per " + type_str() + " mesh filter.");
   }
 
-  auto id = bins_[0];
+  auto id = mesh[0];
   auto search = model::mesh_map.find(id);
-  if (search != model::mesh_map.end()) {
-    set_mesh(search->second);
-  } else {
+  if (search == model::mesh_map.end()) {
     fatal_error(
       fmt::format("Could not find mesh {} specified on tally filter.", id));
   }
+  set_mesh(search->second);
+
+  // Get pairs of (element index, material)
+  auto bins = get_node_array<int32_t>(node, "bins");
+  assert(bins.size() % 2 == 0);
+
+  // Convert into vector of ElementMat
+  vector<ElementMat> element_mats;
+  for (int64_t i = 0; i < bins.size() / 2; ++i) {
+    int32_t element = bins[2 * i];
+    int32_t mat_id = bins[2 * i + 1];
+    auto search = model::material_map.find(mat_id);
+    if (search == model::material_map.end()) {
+      throw std::runtime_error {fmt::format(
+        "Could not find material {} specified on tally filter.", mat_id)};
+    }
+    int32_t mat_index = search->second;
+    element_mats.push_back({element, mat_index});
+  }
+
+  this->set_bins(element_mats);
 
   if (check_for_node(node, "translation")) {
     set_translation(get_node_array<double>(node, "translation"));
   }
 }
 
-void MeshFilter::get_all_bins(
+void MeshMaterialFilter::set_bins(span<ElementMat> bins)
+{
+  // Clear existing cells
+  bins_.clear();
+  bins_.reserve(bins.size());
+  materials_.clear();
+  map_.clear();
+
+  // Update cells and mapping
+  for (auto& x : bins) {
+    assert(x.index_mat >= 0);
+    assert(x.index_mat < model::materials.size());
+    bins_.push_back(x);
+    materials_.insert(x.index_mat);
+    map_[x] = bins_.size() - 1;
+  }
+
+  n_bins_ = bins_.size();
+}
+
+void MeshMaterialFilter::set_mesh(int32_t mesh)
+{
+  // perform any additional perparation for mesh tallies here
+  mesh_ = mesh;
+  model::meshes[mesh_]->prepare_for_point_location();
+}
+
+void MeshMaterialFilter::set_translation(const Position& translation)
+{
+  translated_ = true;
+  translation_ = translation;
+}
+
+void MeshMaterialFilter::set_translation(const double translation[3])
+{
+  this->set_translation({translation[0], translation[1], translation[2]});
+}
+
+void MeshMaterialFilter::get_all_bins(
   const Particle& p, TallyEstimator estimator, FilterMatch& match) const
 {
 
@@ -47,158 +106,71 @@ void MeshFilter::get_all_bins(
   }
 
   if (estimator != TallyEstimator::TRACKLENGTH) {
-    auto bin = model::meshes[mesh_]->get_bin(r);
-    if (bin >= 0) {
-      match.bins_.push_back(bin);
-      match.weights_.push_back(1.0);
+    int32_t index_element = model::meshes[mesh_]->get_bin(r);
+    if (index_element >= 0) {
+      auto search = map_.find({index_element, p.material()});
+      if (search != map_.end()) {
+        match.bins_.push_back(search->second);
+        match.weights_.push_back(1.0);
+      }
     }
   } else {
+    // If current material is not in any bins, don't bother checking
+    if (materials_.find(p.material()) == materials_.end()) {
+      return;
+    }
+
+    // First determine which elements the particle crosses (may or may not
+    // actually match bins so we have to adjust bins_/weight_ after)
+    int32_t n_start = match.bins_.size();
     model::meshes[mesh_]->bins_crossed(
       last_r, r, u, match.bins_, match.weights_);
+    int32_t n_end = match.bins_.size();
+
+    // Go through bins and weights and check which ones are actually a match
+    // based on the (element, material) pair. For matches, overwrite the bin.
+    int i = 0;
+    for (int j = n_start; j < n_end; ++j) {
+      int32_t index_element = match.bins_[j];
+      double weight = match.weights_[j];
+      auto search = map_.find({index_element, p.material()});
+      if (search != map_.end()) {
+        match.bins_[n_start + i] = search->second;
+        match.weights_[n_start + i] = weight;
+        ++i;
+      }
+    }
+
+    // Resize the vectors to remove the unmatched bins
+    match.bins_.resize(n_start + i);
   }
 }
 
-void MeshFilter::to_statepoint(hid_t filter_group) const
+void MeshMaterialFilter::to_statepoint(hid_t filter_group) const
 {
   Filter::to_statepoint(filter_group);
-  write_dataset(filter_group, "bins", model::meshes[mesh_]->id_);
+  write_dataset(filter_group, "mesh", model::meshes[mesh_]->id_);
+
+  size_t n = bins_.size();
+  xt::xtensor<size_t, 2> data({n, 2});
+  for (int64_t i = 0; i < n; ++i) {
+    const auto& x = bins_[i];
+    data(i, 0) = x.index_element;
+    data(i, 1) = model::materials[x.index_mat]->id_;
+  }
+  write_dataset(filter_group, "bins", data);
+
   if (translated_) {
     write_dataset(filter_group, "translation", translation_);
   }
 }
 
-std::string MeshFilter::text_label(int bin) const
+std::string MeshMaterialFilter::text_label(int bin) const
 {
+  auto& x = bins_[bin];
   auto& mesh = *model::meshes.at(mesh_);
-  std::string label = mesh.bin_label(bin);
-  return label;
-}
-
-void MeshFilter::set_mesh(int32_t mesh)
-{
-  // perform any additional perparation for mesh tallies here
-  mesh_ = mesh;
-  n_bins_ = model::meshes[mesh_]->n_bins();
-  model::meshes[mesh_]->prepare_for_point_location();
-}
-
-void MeshFilter::set_translation(const Position& translation)
-{
-  translated_ = true;
-  translation_ = translation;
-}
-
-void MeshFilter::set_translation(const double translation[3])
-{
-  this->set_translation({translation[0], translation[1], translation[2]});
-}
-
-//==============================================================================
-// C-API functions
-//==============================================================================
-
-extern "C" int openmc_mesh_filter_get_mesh(int32_t index, int32_t* index_mesh)
-{
-  if (!index_mesh) {
-    set_errmsg("Mesh index argument is a null pointer.");
-    return OPENMC_E_INVALID_ARGUMENT;
-  }
-
-  // Make sure this is a valid index to an allocated filter.
-  if (int err = verify_filter(index))
-    return err;
-
-  // Get a pointer to the filter and downcast.
-  const auto& filt_base = model::tally_filters[index].get();
-  auto* filt = dynamic_cast<MeshFilter*>(filt_base);
-
-  // Check the filter type.
-  if (!filt) {
-    set_errmsg("Tried to get mesh on a non-mesh filter.");
-    return OPENMC_E_INVALID_TYPE;
-  }
-
-  // Output the mesh.
-  *index_mesh = filt->mesh();
-  return 0;
-}
-
-extern "C" int openmc_mesh_filter_set_mesh(int32_t index, int32_t index_mesh)
-{
-  // Make sure this is a valid index to an allocated filter.
-  if (int err = verify_filter(index))
-    return err;
-
-  // Get a pointer to the filter and downcast.
-  const auto& filt_base = model::tally_filters[index].get();
-  auto* filt = dynamic_cast<MeshFilter*>(filt_base);
-
-  // Check the filter type.
-  if (!filt) {
-    set_errmsg("Tried to set mesh on a non-mesh filter.");
-    return OPENMC_E_INVALID_TYPE;
-  }
-
-  // Check the mesh index.
-  if (index_mesh < 0 || index_mesh >= model::meshes.size()) {
-    set_errmsg("Index in 'meshes' array is out of bounds.");
-    return OPENMC_E_OUT_OF_BOUNDS;
-  }
-
-  // Update the filter.
-  filt->set_mesh(index_mesh);
-  return 0;
-}
-
-extern "C" int openmc_mesh_filter_get_translation(
-  int32_t index, double translation[3])
-{
-  // Make sure this is a valid index to an allocated filter
-  if (int err = verify_filter(index))
-    return err;
-
-  // Check the filter type
-  const auto& filter = model::tally_filters[index];
-  if (filter->type() != FilterType::MESH &&
-      filter->type() != FilterType::MESHBORN &&
-      filter->type() != FilterType::MESH_SURFACE) {
-    set_errmsg("Tried to get a translation from a non-mesh-based filter.");
-    return OPENMC_E_INVALID_TYPE;
-  }
-
-  // Get translation from the mesh filter and set value
-  auto mesh_filter = dynamic_cast<MeshFilter*>(filter.get());
-  const auto& t = mesh_filter->translation();
-  for (int i = 0; i < 3; i++) {
-    translation[i] = t[i];
-  }
-
-  return 0;
-}
-
-extern "C" int openmc_mesh_filter_set_translation(
-  int32_t index, double translation[3])
-{
-  // Make sure this is a valid index to an allocated filter
-  if (int err = verify_filter(index))
-    return err;
-
-  const auto& filter = model::tally_filters[index];
-  // Check the filter type
-  if (filter->type() != FilterType::MESH &&
-      filter->type() != FilterType::MESHBORN &&
-      filter->type() != FilterType::MESH_SURFACE) {
-    set_errmsg("Tried to set mesh on a non-mesh-based filter.");
-    return OPENMC_E_INVALID_TYPE;
-  }
-
-  // Get a pointer to the filter and downcast
-  auto mesh_filter = dynamic_cast<MeshFilter*>(filter.get());
-
-  // Set the translation
-  mesh_filter->set_translation(translation);
-
-  return 0;
+  return fmt::format("Mesh {}, {}, Material {}", mesh.id(),
+    mesh.bin_label(x.index_element), model::materials[x.index_mat]->id_);
 }
 
 } // namespace openmc

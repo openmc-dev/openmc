@@ -2,16 +2,49 @@
 #define OPENMC_TALLIES_FILTER_MESHMATERIAL_H
 
 #include <cstdint>
+#include <string>
+#include <unordered_map>
+#include <unordered_set>
 
 #include "openmc/position.h"
+#include "openmc/random_ray/source_region.h"
+#include "openmc/span.h"
 #include "openmc/tallies/filter.h"
+#include "openmc/vector.h"
 
 namespace openmc {
 
 //==============================================================================
-//! Indexes the location of particle events to a regular mesh.  For tracklength
-//! tallies, it will produce multiple valid bins and the bin weight will
-//! correspond to the fraction of the track length that lies in that bin.
+//! Helper structs that define a combination of a mesh element index and a
+//! material index and a functor for hashing to place in an unordered_map
+//==============================================================================
+
+struct ElementMat {
+  //! Check for equality
+  bool operator==(const ElementMat& other) const
+  {
+    return index_element == other.index_element && index_mat == other.index_mat;
+  }
+
+  int32_t index_element;
+  int32_t index_mat;
+};
+
+struct ElementMatHash {
+  std::size_t operator()(const ElementMat& k) const
+  {
+    size_t seed = 0;
+    hash_combine(seed, k.index_element);
+    hash_combine(seed, k.index_mat);
+    return seed;
+  }
+};
+
+//==============================================================================
+//! Indexes the location of particle events to combinations of mesh element
+//! index and material.  For tracklength tallies, it will produce multiple valid
+//! bins and the bin weight will correspond to the fraction of the track length
+//! that lies in that bin.
 //==============================================================================
 
 class MeshMaterialFilter : public Filter {
@@ -39,9 +72,11 @@ public:
   //----------------------------------------------------------------------------
   // Accessors
 
-  virtual int32_t mesh() const { return mesh_; }
+  int32_t mesh() const { return mesh_; }
 
-  virtual void set_mesh(int32_t mesh);
+  void set_mesh(int32_t mesh);
+
+  void set_bins(span<ElementMat> bins);
 
   virtual void set_translation(const Position& translation);
 
@@ -51,13 +86,22 @@ public:
 
   virtual bool translated() const { return translated_; }
 
-protected:
+private:
   //----------------------------------------------------------------------------
   // Data members
 
   int32_t mesh_;            //!< Index of the mesh
   bool translated_ {false}; //!< Whether or not the filter is translated
   Position translation_ {0.0, 0.0, 0.0}; //!< Filter translation
+
+  //! The indices of the cells binned by this filter.
+  vector<ElementMat> bins_;
+
+  //! The set of materials used in this filter
+  std::unordered_set<int32_t> materials_;
+
+  //! A map from cell/instance indices to filter bin indices.
+  std::unordered_map<ElementMat, int32_t, ElementMatHash> map_;
 };
 
 } // namespace openmc

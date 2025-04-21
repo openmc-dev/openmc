@@ -91,3 +91,81 @@ from a statepoint file, the ``openmc.statepoint`` module can be used. An
 `example notebook`_ demontrates how to analyze and plot source information.
 
 .. _example notebook: https://nbviewer.jupyter.org/github/openmc-dev/openmc-notebooks/blob/main/post-processing.ipynb
+
+------------------------
+VTK Mesh File Generation
+------------------------
+
+VTK files of OpenMC meshes can be created using the
+:meth:`openmc.Mesh.write_data_to_vtk`  method. Data can be applied to the elements
+of the resulting mesh from mesh filter objects. This data can be provided either
+as a flat array or, in the case of structured meshes (i.e. ``Regular``,
+``Rectilinear``, ``Cylindrical``, and ``Spherical`` meshes), the data can be
+shaped with dimensions that match the dimensions of the mesh itself.
+
+
+.. image:: ../_images/sphere-mesh-vtk.png
+   :width: 400px
+   :align: center
+   :alt: OpenMC spherical mesh exported to VTK
+
+
+For all mesh types, if a flat data array is provided to the mesh, it is expected
+that the data is ordered in the same ordering as the :meth:`openmc.Mesh.indices`
+for that mesh object. When providing data directly from a tally, as shown below,
+a flat array for a given dataset can be passed directly to this method.
+
+::
+
+    # create model above
+
+    # create a mesh tally
+    mesh = openmc.RegularMesh()
+    mesh.dimension = [10, 20, 30]
+    mesh.lower_left = [-5, -10, -15]
+    mesh.upper_right = [5, 10, 15]
+    mesh_filter = openmc.MeshFilter(mesh)
+    tally = openmc.Tally()
+    tally.filters = [mesh_filter]
+    tally.scores = ['flux']
+
+    model.tallies = [tally]
+    model.run(apply_tally_results=True)
+
+    # provide the data as-is to the method
+    mesh.write_data_to_vtk('flux.vtk', {'flux-mean': tally.mean})
+
+The :class:`openmc.Tally` object also provides a way to expand the dimensions of
+the mesh filter into a meaningful form where indexing the mesh filter
+dimensions results in intuitive slicing of structured meshes by setting
+``expand_dims=True`` when using :meth:`openmc.Tally.get_reshaped_data`. This
+reshaping does cause flat indexing of the data to change, however. As noted
+above, provided datasets are allowed to be shaped so long as such datasets have
+shapes that match the mesh dimensions. The ability to pass datasets in this way
+is useful when additional filters are applied to a tally. The example below
+demonstrates such a case for tally with both a :class:`openmc.MeshFilter` and
+:class:`openmc.EnergyFilter` applied.
+
+::
+
+    # create model above
+
+    # create a mesh tally with energy filter
+    mesh = openmc.RegularMesh()
+    mesh.dimension = [10, 20, 30]
+    mesh.lower_left = [-5, -10, -15]
+    mesh.upper_right = [5, 10, 15]
+    mesh_filter = openmc.MeshFilter(mesh)
+    energy_filter = openmc.EnergyFilter([0.0, 1.0, 20.0e6])
+    tally = openmc.Tally()
+    tally.filters = [mesh_filter, energy_filter]
+    tally.scores = ['flux']
+
+    model.tallies = [tally]
+    model.run(apply_tally_results=True)
+
+    # get the data with mesh dimensions expanded, squeeze out length-one dimensions (nuclides, scores)
+    flux = tally.get_reshaped_data(expand_dims=True).squeeze() # shape: (10, 20, 30, 2)
+
+    # write the lowest energy group to a VTK file
+    mesh.write_data_to_vtk('flux-group1.vtk', datasets={'flux-mean': flux[..., 0]})

@@ -1859,7 +1859,7 @@ class Model:
         # to avoid polluting the working directory with residual XML files
         with TemporaryDirectory() as tmpdir:
 
-            # Determine if this is a DAGMC geometry. If so, we need to syncronize
+            # Determine if there are DAGMC universes in the model. If so, we need to synchronize
             # the dagmc materials with cells.
             # TODO: Can this be done without having to init/finalize?
             for univ in self.geometry.get_all_universes().values():

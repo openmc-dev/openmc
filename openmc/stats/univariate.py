@@ -95,7 +95,22 @@ class Univariate(EqualityMixin, ABC):
             Integral of distribution
         """
         return 1.0
-
+    
+    @abstractmethod
+    def evaluate(self,x):
+        """Evaluate the probability density at the provided value.
+        
+        Parameters
+        ----------
+        x : int
+            Location to evaluate p(x)
+            
+        Returns
+        -------
+        int
+            Value of p(x)
+        """
+        pass
 
 def _intensity_clip(intensity: Sequence[float], tolerance: float = 1e-6) -> np.ndarray:
     """Clip low-importance points from an array of intensities.
@@ -468,6 +483,8 @@ class PowerLaw(Univariate):
     n : float, optional
         Power law exponent. Defaults to zero, which is equivalent to a uniform
         distribution.
+    bias : openmc.stats.Univariate, optional
+        Distribution for biased sampling. Defaults to None for unbiased sampling.
 
     Attributes
     ----------
@@ -477,13 +494,17 @@ class PowerLaw(Univariate):
         Upper bound of the sampling interval
     n : float
         Power law exponent
+    bias : openmc.stats.Univariate or None
+        Distribution for biased sampling
 
     """
 
-    def __init__(self, a: float = 0.0, b: float = 1.0, n: float = 0.):
+    def __init__(self, a: float = 0.0, b: float = 1.0, n: float = 0., 
+                 bias: Univariate = None):
         self.a = a
         self.b = b
         self.n = n
+        self.bias = bias
 
     def __len__(self):
         return 3
@@ -515,13 +536,44 @@ class PowerLaw(Univariate):
         cv.check_type('power law exponent', n, Real)
         self._n = n
 
+    @property
+    def bias(self):
+        return self._bias
+    
+    @bias.setter
+    def bias(self, bias):
+        # cv.check_type('biasing distribution', bias, Univariate)
+        self._bias = bias
+
     def sample(self, n_samples=1, seed=None):
-        rng = np.random.RandomState(seed)
-        xi = rng.random(n_samples)
-        pwr = self.n + 1
-        offset = self.a**pwr
-        span = self.b**pwr - offset
-        return np.power(offset + xi * span, 1/pwr)
+        if self.bias is None:
+            rng = np.random.RandomState(seed)
+            xi = rng.random(n_samples)
+            pwr = self.n + 1
+            offset = self.a**pwr
+            span = self.b**pwr - offset
+            result = np.power(offset + xi * span, 1/pwr)
+            return result, np.ones_like(result)
+        else:
+            if self.bias.bias is not None:
+                raise RuntimeError('Biasing distributions should not have their own bias!')
+            samples = n_samples
+            sd = seed
+            biased_sample,weights = self.bias.sample(n_samples=samples,seed=sd)
+            wgt = [self.evaluate(s)/self.bias.evaluate(s) for s in biased_sample]
+            return biased_sample, wgt
+
+    
+    def evaluate(self, x):
+        if x <= self.a:
+            return 0
+        elif x >= self.b:
+            return 1
+        else:
+            pwr = self.n + 1
+            normalization_factor = pwr/(self.b**pwr - self.a**pwr)
+            return normalization_factor*(np.abs(x)**self.n)
+
 
     def to_xml_element(self, element_name: str):
         """Return XML representation of the power law distribution

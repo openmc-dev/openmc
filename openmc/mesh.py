@@ -229,6 +229,8 @@ class MeshBase(IDManagerMixin, ABC):
             return SphericalMesh.from_hdf5(group, mesh_id, mesh_name)
         elif mesh_type == 'unstructured':
             return UnstructuredMesh.from_hdf5(group, mesh_id, mesh_name)
+        elif mesh_type == 'hexagonal':
+            return HexagonalMesh.from_hdf5(group, mesh_id, mesh_name)
         else:
             raise ValueError('Unrecognized mesh type: "' + mesh_type + '"')
 
@@ -276,6 +278,8 @@ class MeshBase(IDManagerMixin, ABC):
             mesh = SphericalMesh.from_xml_element(elem)
         elif mesh_type == 'unstructured':
             mesh = UnstructuredMesh.from_xml_element(elem)
+        elif mesh_type == 'hexagonal':
+            mesh = HexagonalMesh.from_xml_element(elem)
         else:
             raise ValueError(f'Unrecognized mesh type "{mesh_type}" found.')
 
@@ -2885,3 +2889,282 @@ _HEX_MIDPOINT_CONN += ((2, (0, 0, 0)),
                        (2, (1, 0, 0)),
                        (2, (1, 1, 0)),
                        (2, (0, 1, 0)))
+
+
+class HexagonalMesh(StructuredMesh):
+    """A regular hexagonal mesh in 2/3D. The mesh consists of hexagons in the XY-plane cut by planes along the Z-axis.
+
+    Parameters
+    ----------'
+    mesh_id : int
+        Unique identfier for the mesh
+    name : str
+        Name of the mesh
+
+    Attributes
+    ----------
+    id : int
+        Unique identfier for the mesh
+    name : str
+        Name of the mesh
+    dimension : Iterable of int
+        The number of hexagons in (x,y) and z.
+    lower_left : Iterable of float
+        The bottom left coordinate of the mesh. Only two coordinates must be given.
+    upper_right :
+        The upper-right coordinate of the mesh. Only two coordinates must be given.
+    bounding_box : openmc.BoundingBox
+        Axis aligned bounding box that fully contains the mesh.
+    width : Iterable of float
+        The width of the mesh cells in (x,y) and z
+    """
+
+    def __init__(self, mesh_id : int | None = None, name = ''):
+        super().__init__(mesh_id,name)
+
+        self._dimension = None
+        self._lower_left = None
+        self._upper_right = None
+        self._width = None
+
+    @property
+    def dimension(self):
+        return tuple(self._dimension)
+
+    @dimension.setter
+    def dimension(self, dimension: Iterable[int]):
+        cv.check_type('mesh dimension', dimension, Iterable, Integral)
+        cv.check_length('mesh dimension', dimension, 1, 2)
+        if dimension[0] % 2 == 0:
+            raise ValueError(f"For hexagonal mesh, 1st dimension must be odd. Got {dimension[0]}")
+        self._dimension = dimension
+
+    @property
+    def lower_left(self):
+        return self._lower_left
+
+    @lower_left.setter
+    def lower_left(self, lower_left: Iterable[Real]):
+        cv.check_type('mesh lower_left', lower_left, Iterable, Real)
+        cv.check_length('mesh lower_left', lower_left, 1, 2)
+        self._lower_left = lower_left
+
+        if self.upper_right is not None and any(np.isclose(self.upper_right, lower_left)):
+            raise ValueError("Mesh cannot have zero thickness in any dimension")
+
+    @property
+    def upper_right(self):
+        if self._upper_right is not None:
+            return self._upper_right
+        elif self._width is not None:
+            if self._lower_left is not None and self._dimension is not None:
+                ls = self._lower_left
+                ws = self._width
+                dims = self._dimension
+                return [l + w * d for l, w, d in zip(ls, ws, dims)]
+
+    @upper_right.setter
+    def upper_right(self, upper_right: Iterable[Real]):
+        cv.check_type('mesh upper_right', upper_right, Iterable, Real)
+        cv.check_length('mesh upper_right', upper_right, 1, 3)
+        self._upper_right = upper_right
+
+        if self._width is not None:
+            self._width = None
+            warnings.warn("Unsetting width attribute.")
+
+        if self.lower_left is not None and any(np.isclose(self.lower_left, upper_right)):
+            raise ValueError("Mesh cannot have zero thickness in any dimension")
+
+    @property
+    def width(self):
+        if self._width is not None:
+            return self._width
+        elif self._upper_right is not None:
+            if self._lower_left is not None and self._dimension is not None:
+                us = self._upper_right
+                ls = self._lower_left
+                dims =  self._dimension
+                return [(u - l) / d for u, l, d in zip(us, ls, dims)]
+
+    @width.setter
+    def width(self, width: Iterable[Real]):
+        cv.check_type('mesh width', width, Iterable, Real)
+        cv.check_length('mesh width', width, 1, 2)
+        self._width = width
+
+        if self._upper_right is not None:
+            self._upper_right = None
+            warnings.warn("Unsetting upper_right attribute.")
+
+    @property
+    def hex_radius(self):
+        return int((self.dimension[0] - 1) / 2)
+
+    @property
+    def hex_count(self):
+        if (self.hex_radius == 0):
+            return 1
+        else:
+            return 1 + 3 * (self.hex_radius + 1) * self.hex_radius
+
+    @property
+    def n_dimension(self):
+        return 2
+
+    @property
+    def hex_volume(self):
+        return self.hex_area * self.width[1]
+
+    @property
+    def hex_area(self):
+        return math.sqrt(3) * self.width[0] * self.width[0]
+
+    @property
+    def volumes(self):
+        """Return Volumes for every hex mesh cell
+
+        Returns
+        -------
+        volumes : numpy.array
+            Volumes
+        """
+        return np.full((self.hex_count, self.dimension[1]), self.hex_volume)
+
+    @property
+    def total_volume(self):
+        return self.hex_count * self.dimension * self.hex_volume
+
+    @property
+    def indices(self):
+        nz = self.dimension[1]
+        return ((xy,z) for z in range(1,nz + 1)
+                        for xy in range(1, self.hex_count + 1))
+
+    @property
+    def _grids(self):
+        pass
+
+    def __repr__(self):
+        string = super().__repr__()
+        string += '{0: <16}{1}{2}\n'.format('\tVoxels', '=\t', self._dimension)
+        string += '{0: <16}{1}{2}\n'.format('\tLower left', '=\t', self._lower_left)
+        string += '{0: <16}{1}{2}\n'.format('\tUpper Right', '=\t', self.upper_right)
+        string += '{0: <16}{1}{2}\n'.format('\tWidth', '=\t', self.width)
+        return string
+
+    def to_xml_element(self):
+        """Return XML representation of the mesh
+
+        Returns
+        -------
+        element : lxml.etree._Element
+            XML element containing mesh data
+
+        """
+        element = super().to_xml_element()
+        element.set("type", "hexagonal")
+
+        if self._dimension is not None:
+            subelement = ET.SubElement(element, "dimension")
+            subelement.text = ' '.join(map(str, self._dimension))
+
+        subelement = ET.SubElement(element, "lower_left")
+        subelement.text = ' '.join(map(str, self._lower_left))
+
+        if self._upper_right is not None:
+            subelement = ET.SubElement(element, "upper_right")
+            subelement.text = ' '.join(map(str, self._upper_right))
+        if self._width is not None:
+            subelement = ET.SubElement(element, "width")
+            subelement.text = ' '.join(map(str, self._width))
+
+        return element
+
+    @classmethod
+    def from_xml_element(cls, elem: ET.Element):
+        """Generate hexagonal mesh from an XML element
+
+        Parameters
+        ----------
+        elem : lxml.etree._Element
+            XML element
+
+        Returns
+        -------
+        openmc.HexagonalMesh
+            Hexagonal mesh generated from XML element
+
+        """
+        mesh_id = int(get_text(elem, 'id'))
+        mesh = cls(mesh_id=mesh_id)
+
+        dimension = get_text(elem, 'dimension')
+        if dimension is not None:
+            mesh.dimension = [int(x) for x in dimension.split()]
+
+        lower_left = get_text(elem, 'lower_left')
+        if lower_left is not None:
+            mesh.lower_left = [float(x) for x in lower_left.split()]
+
+        upper_right = get_text(elem, 'upper_right')
+        if upper_right is not None:
+            mesh.upper_right = [float(x) for x in upper_right.split()]
+
+        width = get_text(elem, 'width')
+        if width is not None:
+            mesh.width = [float(x) for x in width.split()]
+
+        return mesh
+
+    @classmethod
+    def from_hexgonal_lattice(cls):
+        """Create hexagonal mesh from an existing heaxgonal lattice
+
+        Not implemented yet
+        """
+        pass
+
+    @classmethod
+    def from_domain(
+        cls,
+        domain: 'openmc.Cell' | 'openmc.Region' | 'openmc.Universe' | 'openmc.Geometry',
+        dimension: Sequence[int] = (10, 10, 10),
+        mesh_id: int | None = None,
+        name: str = ''
+    ):
+        """Create a hexagonal mesh from an existing openmc cell, region, universe or
+        geometry by making use of the objects bounding box property. The mesh is sized
+        fully enclose the bounding box of the domain
+
+        Parameters
+        ----------
+        domain : {openmc.Cell, openmc.Region, openmc.Universe, openmc.Geometry}
+            The object passed in will be used as a template for this mesh. The
+            bounding box of the property of the object passed will be used to
+            set the lower_left and upper_right and of the mesh instance
+        dimension : Iterable of int
+            The width of hexagonal lattice and the numer of layers in z.
+        mesh_id : int
+            Unique identifier for the mesh
+        name : str
+            Name of the mesh
+
+        Returns
+        -------
+        openmc.HexagonalMesh
+            HexagonalMesh instance
+
+        """
+        cv.check_type(
+            "domain",
+            domain,
+            (openmc.Cell, openmc.Region, openmc.Universe, openmc.Geometry),
+        )
+
+        mesh = cls(mesh_id=mesh_id, name=name)
+        mesh.lower_left = [ np.min(domain.bounding_box[0][0:2]), domain.bouding_box[0][2] ]
+        mesh.upper_right = [ np.max(domain.bounding_box[0][0:2]), domain.bouding_box[1][2] ]
+        mesh.dimension = dimension
+
+        return mesh

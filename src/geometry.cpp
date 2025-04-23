@@ -372,10 +372,12 @@ BoundaryInfo distance_to_boundary(GeometryState& p)
     const auto& coord {p.coord(i)};
     const Position& r {coord.r};
     const Direction& u {coord.u};
+    const double t {p.time()};
+    const double speed {p.speed()};
     Cell& c {*model::cells[coord.cell]};
 
     // Find the oncoming surface in this cell and the distance to it.
-    auto surface_distance = c.distance(r, u, p.surface(), &p);
+    auto surface_distance = c.distance(r, u, t, speed, p.surface(), &p);
     d_surf = surface_distance.first;
     level_surf_cross = surface_distance.second;
 

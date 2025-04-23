@@ -306,6 +306,68 @@ double CSGSurface::dot_normal(
   return u_relative.dot(normal(r_moved));
 }
 
+double CSGSurface::distance(Position r, Direction u, double t, double speed, bool coincident) const
+{
+  if (!moving_) {
+    return _distance(r, u, coincident);
+  }
+  // The surface moves
+
+  // Store the origin coordinate
+  Position r_origin {r};
+  Position u_origin {u};
+  double t_origin {t};
+
+  // Get moving interval index
+  int idx =
+    lower_bound_index(moving_time_grid_.begin(), moving_time_grid_.end(), t);
+
+  // Distance accumulator
+  double distance_total = 0.0;
+
+  // Evaluate the current and the subsequent intervals until intersecting
+  while (idx < moving_velocities_.size()) {
+    // Get moving translation, velocity, and starting time
+    Position translation = moving_translations_[idx];
+    double time_0 = moving_time_grid_[idx];
+    Position velocity = moving_velocities_[idx];
+
+    // Adjust the position based on the surface movement
+    double t_local = t - time_0;
+    r -= (translation + velocity * t_local);
+
+    // Adjust to relative direction
+    u -= velocity / speed;
+        
+    // Get distance using the static function based on the adjusted position
+    // and direction
+    double distance = _distance(r, u, coincident);
+        
+    // Intersection within the interval?
+    double t_distance = distance / speed;
+    double t_interval = moving_time_grid_[idx + 1] - t;
+    if (t_distance < t_interval) {
+      // Return the total distance
+      return distance_total + distance;
+    }
+    // Not intersecting. 
+    // Prepare to check the next interval.
+
+    // Accumulate distance
+    distance_total += t_interval * speed;
+
+    // March forward the coordinate
+    r = r_origin + distance_total * u_origin;
+    u = u_origin;
+    t = moving_time_grid_[idx + 1];
+
+    idx++;
+  }
+
+  // No intersection
+  return INFTY;
+}
+
 //==============================================================================
 // Generic functions for x-, y-, and z-, planes.
 //==============================================================================
@@ -338,7 +400,7 @@ double SurfaceXPlane::_evaluate(Position r) const
   return r.x - x0_;
 }
 
-double SurfaceXPlane::distance(Position r, Direction u, bool coincident) const
+double SurfaceXPlane::_distance(Position r, Direction u, bool coincident) const
 {
   return axis_aligned_plane_distance<0>(r, u, coincident, x0_);
 }
@@ -378,7 +440,7 @@ double SurfaceYPlane::_evaluate(Position r) const
   return r.y - y0_;
 }
 
-double SurfaceYPlane::distance(Position r, Direction u, bool coincident) const
+double SurfaceYPlane::_distance(Position r, Direction u, bool coincident) const
 {
   return axis_aligned_plane_distance<1>(r, u, coincident, y0_);
 }
@@ -418,7 +480,7 @@ double SurfaceZPlane::_evaluate(Position r) const
   return r.z - z0_;
 }
 
-double SurfaceZPlane::distance(Position r, Direction u, bool coincident) const
+double SurfaceZPlane::_distance(Position r, Direction u, bool coincident) const
 {
   return axis_aligned_plane_distance<2>(r, u, coincident, z0_);
 }
@@ -458,7 +520,7 @@ double SurfacePlane::_evaluate(Position r) const
   return A_ * r.x + B_ * r.y + C_ * r.z - D_;
 }
 
-double SurfacePlane::distance(Position r, Direction u, bool coincident) const
+double SurfacePlane::_distance(Position r, Direction u, bool coincident) const
 {
   const double f = A_ * r.x + B_ * r.y + C_ * r.z - D_;
   const double projection = A_ * u.x + B_ * u.y + C_ * u.z;
@@ -577,7 +639,7 @@ double SurfaceXCylinder::_evaluate(Position r) const
   return axis_aligned_cylinder_evaluate<1, 2>(r, y0_, z0_, radius_);
 }
 
-double SurfaceXCylinder::distance(
+double SurfaceXCylinder::_distance(
   Position r, Direction u, bool coincident) const
 {
   return axis_aligned_cylinder_distance<0, 1, 2>(
@@ -620,7 +682,7 @@ double SurfaceYCylinder::_evaluate(Position r) const
   return axis_aligned_cylinder_evaluate<0, 2>(r, x0_, z0_, radius_);
 }
 
-double SurfaceYCylinder::distance(
+double SurfaceYCylinder::_distance(
   Position r, Direction u, bool coincident) const
 {
   return axis_aligned_cylinder_distance<1, 0, 2>(
@@ -664,7 +726,7 @@ double SurfaceZCylinder::_evaluate(Position r) const
   return axis_aligned_cylinder_evaluate<0, 1>(r, x0_, y0_, radius_);
 }
 
-double SurfaceZCylinder::distance(
+double SurfaceZCylinder::_distance(
   Position r, Direction u, bool coincident) const
 {
   return axis_aligned_cylinder_distance<2, 0, 1>(
@@ -710,7 +772,7 @@ double SurfaceSphere::_evaluate(Position r) const
   return x * x + y * y + z * z - radius_ * radius_;
 }
 
-double SurfaceSphere::distance(Position r, Direction u, bool coincident) const
+double SurfaceSphere::_distance(Position r, Direction u, bool coincident) const
 {
   const double x = r.x - x0_;
   const double y = r.y - y0_;
@@ -873,7 +935,7 @@ double SurfaceXCone::_evaluate(Position r) const
   return axis_aligned_cone_evaluate<0, 1, 2>(r, x0_, y0_, z0_, radius_sq_);
 }
 
-double SurfaceXCone::distance(Position r, Direction u, bool coincident) const
+double SurfaceXCone::_distance(Position r, Direction u, bool coincident) const
 {
   return axis_aligned_cone_distance<0, 1, 2>(
     r, u, coincident, x0_, y0_, z0_, radius_sq_);
@@ -905,7 +967,7 @@ double SurfaceYCone::_evaluate(Position r) const
   return axis_aligned_cone_evaluate<1, 0, 2>(r, y0_, x0_, z0_, radius_sq_);
 }
 
-double SurfaceYCone::distance(Position r, Direction u, bool coincident) const
+double SurfaceYCone::_distance(Position r, Direction u, bool coincident) const
 {
   return axis_aligned_cone_distance<1, 0, 2>(
     r, u, coincident, y0_, x0_, z0_, radius_sq_);
@@ -937,7 +999,7 @@ double SurfaceZCone::_evaluate(Position r) const
   return axis_aligned_cone_evaluate<2, 0, 1>(r, z0_, x0_, y0_, radius_sq_);
 }
 
-double SurfaceZCone::distance(Position r, Direction u, bool coincident) const
+double SurfaceZCone::_distance(Position r, Direction u, bool coincident) const
 {
   return axis_aligned_cone_distance<2, 0, 1>(
     r, u, coincident, z0_, x0_, y0_, radius_sq_);
@@ -974,7 +1036,7 @@ double SurfaceQuadric::_evaluate(Position r) const
          z * (C_ * z + F_ * x + J_) + K_;
 }
 
-double SurfaceQuadric::distance(
+double SurfaceQuadric::_distance(
   Position r, Direction ang, bool coincident) const
 {
   const double& x = r.x;
@@ -1140,7 +1202,7 @@ double SurfaceXTorus::_evaluate(Position r) const
          std::pow(std::sqrt(y * y + z * z) - A_, 2) / (C_ * C_) - 1.;
 }
 
-double SurfaceXTorus::distance(Position r, Direction u, bool coincident) const
+double SurfaceXTorus::_distance(Position r, Direction u, bool coincident) const
 {
   double x = r.x - x0_;
   double y = r.y - y0_;
@@ -1193,7 +1255,7 @@ double SurfaceYTorus::_evaluate(Position r) const
          std::pow(std::sqrt(x * x + z * z) - A_, 2) / (C_ * C_) - 1.;
 }
 
-double SurfaceYTorus::distance(Position r, Direction u, bool coincident) const
+double SurfaceYTorus::_distance(Position r, Direction u, bool coincident) const
 {
   double x = r.x - x0_;
   double y = r.y - y0_;
@@ -1246,7 +1308,7 @@ double SurfaceZTorus::_evaluate(Position r) const
          std::pow(std::sqrt(x * x + y * y) - A_, 2) / (C_ * C_) - 1.;
 }
 
-double SurfaceZTorus::distance(Position r, Direction u, bool coincident) const
+double SurfaceZTorus::_distance(Position r, Direction u, bool coincident) const
 {
   double x = r.x - x0_;
   double y = r.y - y0_;

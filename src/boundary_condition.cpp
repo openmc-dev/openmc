@@ -103,9 +103,9 @@ TranslationalPeriodicBC::TranslationalPeriodicBC(int i_surf, int j_surf)
   double d1;
   double e1 = surf1.evaluate(origin, 0.0); // Time = 0.0
   if (e1 > FP_COINCIDENT) {
-    d1 = -surf1.distance(origin, -u, false);
+    d1 = -surf1.distance(origin, -u, 0.0, 0.0, false); // Time = speed = 0.0
   } else if (e1 < -FP_COINCIDENT) {
-    d1 = surf1.distance(origin, u, false);
+    d1 = surf1.distance(origin, u, 0.0, 0.0, false); // Time = speed = 0.0
   } else {
     d1 = 0.0;
   }
@@ -114,9 +114,9 @@ TranslationalPeriodicBC::TranslationalPeriodicBC(int i_surf, int j_surf)
   double d2;
   double e2 = surf2.evaluate(origin, 0.0); // Time = 0.0
   if (e2 > FP_COINCIDENT) {
-    d2 = -surf2.distance(origin, -u, false);
+    d2 = -surf2.distance(origin, -u, 0.0, 0.0, false); // Time = speed = 0.0
   } else if (e2 < -FP_COINCIDENT) {
-    d2 = surf2.distance(origin, u, false);
+    d2 = surf2.distance(origin, u, 0.0, 0.0, false); // Time = speed = 0.0
   } else {
     d2 = 0.0;
   }

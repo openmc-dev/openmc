@@ -783,7 +783,7 @@ std::string Region::str() const
 //==============================================================================
 
 std::pair<double, int32_t> Region::distance(
-  Position r, Direction u, int32_t on_surface) const
+  Position r, Direction u, double t, double speed, int32_t on_surface) const
 {
   double min_dist {INFTY};
   int32_t i_surf {std::numeric_limits<int32_t>::max()};
@@ -796,7 +796,7 @@ std::pair<double, int32_t> Region::distance(
     // Calculate the distance to this surface.
     // Note the off-by-one indexing
     bool coincident {std::abs(token) == std::abs(on_surface)};
-    double d {model::surfaces[abs(token) - 1]->distance(r, u, coincident)};
+    double d {model::surfaces[abs(token) - 1]->distance(r, u, t, speed, coincident)};
 
     // Check if this distance is the new minimum.
     if (d < min_dist) {

@@ -79,9 +79,11 @@ public:
   //! Compute the distance between a point and the surface along a ray.
   //! \param r A 3D Cartesian coordinate.
   //! \param u The direction of the ray.
+  //! \param t The time of the moving point (for moving surface).
+  //! \param speed The speed of moving point (for moving surface).
   //! \param coincident A hint to the code that the given point should lie
   //!   exactly on the surface.
-  virtual double distance(Position r, Direction u, bool coincident) const = 0;
+  virtual double distance(Position r, Direction u, double time, double speed, bool coincident) const = 0;
 
   //! Compute the local outward normal direction of the surface.
   //! \param r A 3D Cartesian coordinate.
@@ -122,10 +124,12 @@ public:
   double evaluate(Position r, double t) const override;
   double dot_normal(
     Position r, Direction u, double t, double speed) const override;
+  double distance(Position r, Direction u, double time, double speed, bool coincident) const override;
 
 protected:
-  //! Static CSG surface evaluation.
+  //! Static CSG surface functions
   virtual double _evaluate(Position r) const = 0;
+  virtual double _distance(Position r, Direction u, bool coincident) const = 0;
 };
 
 //==============================================================================
@@ -137,7 +141,6 @@ protected:
 class SurfaceXPlane : public CSGSurface {
 public:
   explicit SurfaceXPlane(pugi::xml_node surf_node);
-  double distance(Position r, Direction u, bool coincident) const override;
   Direction normal(Position r) const override;
   void to_hdf5_inner(hid_t group_id) const override;
   BoundingBox bounding_box(bool pos_side) const override;
@@ -146,6 +149,7 @@ public:
 
 protected:
   double _evaluate(Position r) const override;
+  double _distance(Position r, Direction u, bool coincident) const override;
 };
 
 //==============================================================================
@@ -157,7 +161,6 @@ protected:
 class SurfaceYPlane : public CSGSurface {
 public:
   explicit SurfaceYPlane(pugi::xml_node surf_node);
-  double distance(Position r, Direction u, bool coincident) const override;
   Direction normal(Position r) const override;
   void to_hdf5_inner(hid_t group_id) const override;
   BoundingBox bounding_box(bool pos_side) const override;
@@ -166,6 +169,7 @@ public:
 
 protected:
   double _evaluate(Position r) const override;
+  double _distance(Position r, Direction u, bool coincident) const override;
 };
 
 //==============================================================================
@@ -177,7 +181,6 @@ protected:
 class SurfaceZPlane : public CSGSurface {
 public:
   explicit SurfaceZPlane(pugi::xml_node surf_node);
-  double distance(Position r, Direction u, bool coincident) const override;
   Direction normal(Position r) const override;
   void to_hdf5_inner(hid_t group_id) const override;
   BoundingBox bounding_box(bool pos_side) const override;
@@ -186,6 +189,7 @@ public:
 
 protected:
   double _evaluate(Position r) const override;
+  double _distance(Position r, Direction u, bool coincident) const override;
 };
 
 //==============================================================================
@@ -197,7 +201,6 @@ protected:
 class SurfacePlane : public CSGSurface {
 public:
   explicit SurfacePlane(pugi::xml_node surf_node);
-  double distance(Position r, Direction u, bool coincident) const override;
   Direction normal(Position r) const override;
   void to_hdf5_inner(hid_t group_id) const override;
 
@@ -205,6 +208,7 @@ public:
 
 protected:
   double _evaluate(Position r) const override;
+  double _distance(Position r, Direction u, bool coincident) const override;
 };
 
 //==============================================================================
@@ -217,7 +221,6 @@ protected:
 class SurfaceXCylinder : public CSGSurface {
 public:
   explicit SurfaceXCylinder(pugi::xml_node surf_node);
-  double distance(Position r, Direction u, bool coincident) const override;
   Direction normal(Position r) const override;
   void to_hdf5_inner(hid_t group_id) const override;
   BoundingBox bounding_box(bool pos_side) const override;
@@ -226,6 +229,7 @@ public:
 
 protected:
   double _evaluate(Position r) const override;
+  double _distance(Position r, Direction u, bool coincident) const override;
 };
 
 //==============================================================================
@@ -238,7 +242,6 @@ protected:
 class SurfaceYCylinder : public CSGSurface {
 public:
   explicit SurfaceYCylinder(pugi::xml_node surf_node);
-  double distance(Position r, Direction u, bool coincident) const override;
   Direction normal(Position r) const override;
   void to_hdf5_inner(hid_t group_id) const override;
   BoundingBox bounding_box(bool pos_side) const override;
@@ -247,6 +250,7 @@ public:
 
 protected:
   double _evaluate(Position r) const override;
+  double _distance(Position r, Direction u, bool coincident) const override;
 };
 
 //==============================================================================
@@ -259,7 +263,6 @@ protected:
 class SurfaceZCylinder : public CSGSurface {
 public:
   explicit SurfaceZCylinder(pugi::xml_node surf_node);
-  double distance(Position r, Direction u, bool coincident) const override;
   Direction normal(Position r) const override;
   void to_hdf5_inner(hid_t group_id) const override;
   BoundingBox bounding_box(bool pos_side) const override;
@@ -268,6 +271,7 @@ public:
 
 protected:
   double _evaluate(Position r) const override;
+  double _distance(Position r, Direction u, bool coincident) const override;
 };
 
 //==============================================================================
@@ -280,7 +284,6 @@ protected:
 class SurfaceSphere : public CSGSurface {
 public:
   explicit SurfaceSphere(pugi::xml_node surf_node);
-  double distance(Position r, Direction u, bool coincident) const override;
   Direction normal(Position r) const override;
   void to_hdf5_inner(hid_t group_id) const override;
   BoundingBox bounding_box(bool pos_side) const override;
@@ -289,6 +292,7 @@ public:
 
 protected:
   double _evaluate(Position r) const override;
+  double _distance(Position r, Direction u, bool coincident) const override;
 };
 
 //==============================================================================
@@ -301,7 +305,6 @@ protected:
 class SurfaceXCone : public CSGSurface {
 public:
   explicit SurfaceXCone(pugi::xml_node surf_node);
-  double distance(Position r, Direction u, bool coincident) const override;
   Direction normal(Position r) const override;
   void to_hdf5_inner(hid_t group_id) const override;
 
@@ -309,6 +312,7 @@ public:
 
 protected:
   double _evaluate(Position r) const override;
+  double _distance(Position r, Direction u, bool coincident) const override;
 };
 
 //==============================================================================
@@ -321,7 +325,6 @@ protected:
 class SurfaceYCone : public CSGSurface {
 public:
   explicit SurfaceYCone(pugi::xml_node surf_node);
-  double distance(Position r, Direction u, bool coincident) const override;
   Direction normal(Position r) const override;
   void to_hdf5_inner(hid_t group_id) const override;
 
@@ -329,6 +332,7 @@ public:
 
 protected:
   double _evaluate(Position r) const override;
+  double _distance(Position r, Direction u, bool coincident) const override;
 };
 
 //==============================================================================
@@ -341,7 +345,6 @@ protected:
 class SurfaceZCone : public CSGSurface {
 public:
   explicit SurfaceZCone(pugi::xml_node surf_node);
-  double distance(Position r, Direction u, bool coincident) const override;
   Direction normal(Position r) const override;
   void to_hdf5_inner(hid_t group_id) const override;
 
@@ -349,6 +352,7 @@ public:
 
 protected:
   double _evaluate(Position r) const override;
+  double _distance(Position r, Direction u, bool coincident) const override;
 };
 
 //==============================================================================
@@ -361,7 +365,6 @@ protected:
 class SurfaceQuadric : public CSGSurface {
 public:
   explicit SurfaceQuadric(pugi::xml_node surf_node);
-  double distance(Position r, Direction u, bool coincident) const override;
   Direction normal(Position r) const override;
   void to_hdf5_inner(hid_t group_id) const override;
 
@@ -370,6 +373,7 @@ public:
 
 protected:
   double _evaluate(Position r) const override;
+  double _distance(Position r, Direction u, bool coincident) const override;
 };
 
 //==============================================================================
@@ -381,7 +385,6 @@ protected:
 class SurfaceXTorus : public CSGSurface {
 public:
   explicit SurfaceXTorus(pugi::xml_node surf_node);
-  double distance(Position r, Direction u, bool coincident) const override;
   Direction normal(Position r) const override;
   void to_hdf5_inner(hid_t group_id) const override;
 
@@ -389,6 +392,7 @@ public:
 
 protected:
   double _evaluate(Position r) const override;
+  double _distance(Position r, Direction u, bool coincident) const override;
 };
 
 //==============================================================================
@@ -400,7 +404,6 @@ protected:
 class SurfaceYTorus : public CSGSurface {
 public:
   explicit SurfaceYTorus(pugi::xml_node surf_node);
-  double distance(Position r, Direction u, bool coincident) const override;
   Direction normal(Position r) const override;
   void to_hdf5_inner(hid_t group_id) const override;
 
@@ -408,6 +411,7 @@ public:
 
 protected:
   double _evaluate(Position r) const override;
+  double _distance(Position r, Direction u, bool coincident) const override;
 };
 
 //==============================================================================
@@ -419,7 +423,6 @@ protected:
 class SurfaceZTorus : public CSGSurface {
 public:
   explicit SurfaceZTorus(pugi::xml_node surf_node);
-  double distance(Position r, Direction u, bool coincident) const override;
   Direction normal(Position r) const override;
   void to_hdf5_inner(hid_t group_id) const override;
 
@@ -427,6 +430,7 @@ public:
 
 protected:
   double _evaluate(Position r) const override;
+  double _distance(Position r, Direction u, bool coincident) const override;
 };
 
 //==============================================================================

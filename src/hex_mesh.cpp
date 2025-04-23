@@ -131,14 +131,13 @@ HexagonalMesh::HexagonalMesh(pugi::xml_node node)
 
   // n.b. must check that the number of hexes is odd
   //   or allow a parameter crown/ring
-  int max_a = (shape[0] - 1) / 2;
-  if (max_a == 0)
+  if (hex_radius_ == 0)
     hex_count_ = 1;
   else
-    hex_count_ = 1 + 3 * (max_a) * (max_a - 1);
+    hex_count_ = 1 + 3 * (hex_radius_ + 1) * hex_radius_;
 
   // width[1] is the height of the full mesh block, width[0] is the width of
-  // the full mesh block at its widest
+  // the hexagon from flat end to flat end
   element_volume_ = width_[1] * width_[0] * width_[0] * sqrt(3);
 
   // Set material volumes

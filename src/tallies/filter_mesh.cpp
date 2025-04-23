@@ -77,7 +77,7 @@ std::string MeshFilter::text_label(int bin) const
 
 void MeshFilter::set_mesh(int32_t mesh)
 {
-  // perform any additional perparation for mesh tallies here
+  // perform any additional preparation for mesh tallies here
   mesh_ = mesh;
   n_bins_ = model::meshes[mesh_]->n_bins();
   model::meshes[mesh_]->prepare_for_point_location();

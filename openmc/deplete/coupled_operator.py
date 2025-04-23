@@ -153,7 +153,7 @@ class CoupledOperator(OpenMCOperator):
         :class:`~openmc.deplete.helpers.FluxCollapseHelper` class for all
         options.
 
-        .. versionadded:: 0.12
+        .. versionadded:: 0.12.1
     reduce_chain_level : int, optional
         Depth of the search when reducing the depletion chain. The default
         value of ``None`` implies no limit on the depth.

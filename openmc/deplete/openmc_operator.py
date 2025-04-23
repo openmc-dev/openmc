@@ -127,7 +127,7 @@ class OpenMCOperator(TransportOperator):
         self.diff_volume_method = diff_volume_method
 
         # Reduce the chain to only those nuclides present
-        if bool(reduce_chain_level):
+        if reduce_chain_level is not None:
             init_nuclides = set()
             for material in self.materials:
                 if not material.depletable:

@@ -88,53 +88,66 @@ random ray mode can be found in the :ref:`Random Ray User Guide <random_ray>`.
     ray solver. A high level overview of the current workflow for generation of
     weight windows with FW-CADIS using random ray is given below.
 
-1. Produce approximate multigroup cross section data (stored in a ``mgxs.h5``
-   library). There is more information on generating multigroup cross sections
-   via OpenMC in the :ref:`multigroup materials <create_mgxs>` user guide, and a
-   specific example of generating cross section data for use with random ray in
-   the :ref:`random ray MGXS guide <mgxs_gen>`.
+1. Begin by making a deepy copy of your continuous energy Python model and then
+   convert the copy to be multigroup and use the random ray transport solver.
+   The conversion process can largely be automated as described in more detail
+   in the :ref:`random ray quick start guide <quick_start>`, summarized below::
 
-2. Make a copy of your continuous energy Python input file. You'll edit the new
-   file to work in multigroup mode with random ray for producing weight windows.
+    # Define continuous energy model
+    ce_model = openmc.pwr_pin_cell() # example, replace with your model
 
-3. Adjust the material definitions in your new multigroup Python file to utilize
-   the multigroup cross sections instead of nuclide-wise continuous energy data.
-   There is a specific example of making this conversion in the :ref:`random ray
-   MGXS guide <mgxs_gen>`.
+    # Make a copy to convert to multigroup and random ray
+    model = copy.deepcopy(ce_model)
 
-4. Configure OpenMC to run in random ray mode (by adding several standard random
-   ray input flags and settings to the :attr:`openmc.Settings.random_ray`
-   dictionary). More information can be found in the  :ref:`Random Ray User
-   Guide <random_ray>`.
+    # Convert model to multigroup (will auto-generate MGXS library if needed)
+    model.convert_to_multigroup()
 
-5. Add in a :class:`~openmc.WeightWindowGenerator` in a similar manner as for
+    # Convert model to random ray and initialize random ray parameters
+    # to reasonable defaults based on the specifics of the geometry
+    model.convert_to_random_ray()
+
+    # (Optional) Overlay source region decomposition mesh to improve fidelity of the
+    # random ray solver. Adjust 'n' for fidelity vs runtime.
+    n = 10
+    mesh = openmc.RegularMesh()
+    mesh.dimension = (n, n, n)
+    mesh.lower_left = model.geometry.bounding_box.lower_left
+    mesh.upper_right = model.geometry.bounding_box.upper_right
+    model.settings.random_ray['source_region_meshes'] = [(mesh, [model.geometry.root_universe])]
+
+    # (Optional) Improve fidelity of the random ray solver by enabling linear sources
+    model.settings.random_ray['source_shape'] = 'linear'
+
+    # (Optional) Increase the number of rays/batch, to reduce uncertainty
+    model.settings.particles = 500
+
+   If you need to improve the fidelity of the MGXS library, there is more
+   information on generating multigroup cross sections via OpenMC in the
+   :ref:`random ray MGXS guide <mgxs_gen>`.
+
+2. Add in a :class:`~openmc.WeightWindowGenerator` in a similar manner as for
    MAGIC generation with Monte Carlo and set the :attr:`method` attribute set to
    ``"fw_cadis"``::
 
-       # Define weight window spatial mesh
-       ww_mesh = openmc.RegularMesh()
-       ww_mesh.dimension = (10, 10, 10)
-       ww_mesh.lower_left = (0.0, 0.0, 0.0)
-       ww_mesh.upper_right = (100.0, 100.0, 100.0)
-
-       # Create weight window object and adjust parameters
+       # Create weight window object and adjust parameters, using the same mesh
+       # we used for source region decomposition
        wwg = openmc.WeightWindowGenerator(
            method='fw_cadis',
-           mesh=ww_mesh,
+           mesh=mesh,
            max_realizations=settings.batches
        )
 
        # Add generator to openmc.settings object
        settings.weight_window_generators = wwg
 
-
 .. warning::
     If using FW-CADIS weight window generation, ensure that the selected weight
-    window mesh does not subdivide any cells in the problem. In the future, this
-    restriction is intended to be relaxed, but for now subdivision of cells by a
-    mesh tally will result in undefined behavior.
+    window mesh does not subdivide any source regions in the problem. This can
+    be ensured by using the same mesh for both source region subdivision (i.e.,
+    assigning to ``model.settings.random_ray['source_region_meshes']``) and for
+    weight window generation.
 
-6. When running your multigroup random ray input deck, OpenMC will automatically
+3. When running your multigroup random ray input deck, OpenMC will automatically
    run a forward solve followed by an adjoint solve, with a
    ``weight_windows.h5`` file generated at the end. The ``weight_windows.h5``
    file will contain FW-CADIS generated weight windows. This file can be used in

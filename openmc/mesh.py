@@ -1,7 +1,7 @@
 from __future__ import annotations
 import warnings
 from abc import ABC, abstractmethod
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Sequence, Mapping
 from functools import wraps
 from math import pi, sqrt, atan2
 from numbers import Integral, Real
@@ -9,6 +9,7 @@ from numbers import Integral, Real
 import h5py
 import lxml.etree as ET
 import numpy as np
+from pathlib import Path
 
 import openmc
 import openmc.checkvalue as cv
@@ -18,6 +19,120 @@ from ._xml import get_text
 from .mixin import IDManagerMixin
 from .surface import _BOUNDARY_TYPES
 from .utility_funcs import input_path
+
+
+class MeshMaterialVolumes(Mapping):
+    """Results from a material volume in mesh calculation.
+
+    This class provides multiple ways of accessing information about material
+    volumes in individual mesh elements. First, the class behaves like a
+    dictionary that maps material IDs to an array of volumes equal in size to
+    the number of mesh elements. Second, the class provides a :meth:`by_element`
+    method that gives all the material volumes for a specific mesh element.
+
+    .. versionadded:: 0.15.1
+
+    Parameters
+    ----------
+    materials : numpy.ndarray
+        Array of shape (elements, max_materials) storing material IDs
+    volumes : numpy.ndarray
+        Array of shape (elements, max_materials) storing material volumes
+
+    See Also
+    --------
+    openmc.MeshBase.material_volumes
+
+    Examples
+    --------
+    If you want to get the volume of a specific material in every mesh element,
+    index the object with the material ID:
+
+    >>> volumes = mesh.material_volumes(...)
+    >>> volumes
+    {1: <32121 nonzero volumes>
+     2: <338186 nonzero volumes>
+     3: <49120 nonzero volumes>}
+
+    If you want the volume of all materials in a specific mesh element, use the
+    :meth:`by_element` method:
+
+    >>> volumes = mesh.material_volumes(...)
+    >>> volumes.by_element(42)
+    [(2, 31.87963824195591), (1, 6.129949130817542)]
+
+    """
+    def __init__(self, materials: np.ndarray, volumes: np.ndarray):
+        self._materials = materials
+        self._volumes = volumes
+
+    @property
+    def num_elements(self) -> int:
+        return self._volumes.shape[0]
+
+    def __iter__(self):
+        for mat in np.unique(self._materials):
+            if mat > 0:
+                yield mat
+
+    def __len__(self) -> int:
+        return (np.unique(self._materials) > 0).sum()
+
+    def __repr__(self) -> str:
+        ids, counts = np.unique(self._materials, return_counts=True)
+        return '{' + '\n '.join(
+            f'{id}: <{count} nonzero volumes>' for id, count in zip(ids, counts) if id > 0) + '}'
+
+    def __getitem__(self, material_id: int) -> np.ndarray:
+        volumes = np.zeros(self.num_elements)
+        for i in range(self._volumes.shape[1]):
+            indices = (self._materials[:, i] == material_id)
+            volumes[indices] = self._volumes[indices, i]
+        return volumes
+
+    def by_element(self, index_elem: int) -> list[tuple[int | None, float]]:
+        """Get a list of volumes for each material within a specific element.
+
+        Parameters
+        ----------
+        index_elem : int
+            Mesh element index
+
+        Returns
+        -------
+        list of tuple of (material ID, volume)
+
+        """
+        table_size = self._volumes.shape[1]
+        return [
+            (m if m > -1 else None, self._volumes[index_elem, i])
+            for i in range(table_size)
+            if (m := self._materials[index_elem, i]) != -2
+        ]
+
+    def save(self, filename: PathLike):
+        """Save material volumes to a .npz file.
+
+        Parameters
+        ----------
+        filename : path-like
+            Filename where data will be saved
+        """
+        np.savez_compressed(
+            filename, materials=self._materials, volumes=self._volumes)
+
+    @classmethod
+    def from_npz(cls, filename: PathLike) -> MeshMaterialVolumes:
+        """Generate material volumes from a .npz file
+
+        Parameters
+        ----------
+        filename : path-like
+            File where data will be read from
+
+        """
+        filedata = np.load(filename)
+        return cls(filedata['materials'], filedata['volumes'])
 
 
 class MeshBase(IDManagerMixin, ABC):
@@ -169,8 +284,7 @@ class MeshBase(IDManagerMixin, ABC):
     def get_homogenized_materials(
             self,
             model: openmc.Model,
-            n_samples: int = 10_000,
-            prn_seed: int | None = None,
+            n_samples: int | tuple[int, int, int] = 10_000,
             include_void: bool = True,
             **kwargs
     ) -> list[openmc.Material]:
@@ -183,15 +297,15 @@ class MeshBase(IDManagerMixin, ABC):
         model : openmc.Model
             Model containing materials to be homogenized and the associated
             geometry.
-        n_samples : int
-            Number of samples in each mesh element.
-        prn_seed : int, optional
-            Pseudorandom number generator (PRNG) seed; if None, one will be
-            generated randomly.
+        n_samples : int or 2-tuple of int
+            Total number of rays to sample. The number of rays in each direction
+            is determined by the aspect ratio of the mesh bounding box. When
+            specified as a 3-tuple, it is interpreted as the number of rays in
+            the x, y, and z dimensions.
         include_void : bool, optional
             Whether homogenization should include voids.
         **kwargs
-            Keyword-arguments passed to :func:`openmc.lib.init`.
+            Keyword-arguments passed to :meth:`MeshBase.material_volumes`.
 
         Returns
         -------
@@ -199,34 +313,8 @@ class MeshBase(IDManagerMixin, ABC):
             Homogenized material in each mesh element
 
         """
-        import openmc.lib
-
-        with change_directory(tmpdir=True):
-            # In order to get mesh into model, we temporarily replace the
-            # tallies with a single mesh tally using the current mesh
-            original_tallies = model.tallies
-            new_tally = openmc.Tally()
-            new_tally.filters = [openmc.MeshFilter(self)]
-            new_tally.scores = ['flux']
-            model.tallies = [new_tally]
-
-            # Export model to XML
-            model.export_to_model_xml()
-
-            # Get material volume fractions
-            openmc.lib.init(**kwargs)
-            mesh = openmc.lib.tallies[new_tally.id].filters[0].mesh
-            mat_volume_by_element = [
-                [
-                    (mat.id if mat is not None else None, volume)
-                    for mat, volume in mat_volume_list
-                ]
-                for mat_volume_list in mesh.material_volumes(n_samples, prn_seed)
-            ]
-            openmc.lib.finalize()
-
-            # Restore original tallies
-            model.tallies = original_tallies
+        vols = self.material_volumes(model, n_samples, **kwargs)
+        mat_volume_by_element = [vols.by_element(i) for i in range(vols.num_elements)]
 
         # Create homogenized material for each element
         materials = model.geometry.get_all_materials()
@@ -272,6 +360,72 @@ class MeshBase(IDManagerMixin, ABC):
             homogenized_materials.append(homogenized_mat)
 
         return homogenized_materials
+
+    def material_volumes(
+            self,
+            model: openmc.Model,
+            n_samples: int | tuple[int, int, int] = 10_000,
+            max_materials: int = 4,
+            **kwargs
+    ) -> MeshMaterialVolumes:
+        """Determine volume of materials in each mesh element.
+
+        This method works by raytracing repeatedly through the mesh to count the
+        estimated volume of each material in all mesh elements. Three sets of
+        rays are used: one set parallel to the x-axis, one parallel to the
+        y-axis, and one parallel to the z-axis.
+
+        .. versionadded:: 0.15.1
+
+        Parameters
+        ----------
+        model : openmc.Model
+            Model containing materials.
+        n_samples : int or 3-tuple of int
+            Total number of rays to sample. The number of rays in each direction
+            is determined by the aspect ratio of the mesh bounding box. When
+            specified as a 3-tuple, it is interpreted as the number of rays in
+            the x, y, and z dimensions.
+        max_materials : int, optional
+            Estimated maximum number of materials in any given mesh element.
+        **kwargs : dict
+            Keyword arguments passed to :func:`openmc.lib.init`
+
+        Returns
+        -------
+        Dictionary-like object that maps material IDs to an array of volumes
+        equal in size to the number of mesh elements.
+
+        """
+        import openmc.lib
+
+        with change_directory(tmpdir=True):
+            # In order to get mesh into model, we temporarily replace the
+            # tallies with a single mesh tally using the current mesh
+            original_tallies = model.tallies
+            new_tally = openmc.Tally()
+            new_tally.filters = [openmc.MeshFilter(self)]
+            new_tally.scores = ['flux']
+            model.tallies = [new_tally]
+
+            # Export model to XML
+            model.export_to_model_xml()
+
+            # Get material volume fractions
+            kwargs.setdefault('output', True)
+            if 'args' in kwargs:
+                kwargs['args'] = ['-c'] + kwargs['args']
+            kwargs.setdefault('args', ['-c'])
+            openmc.lib.init(**kwargs)
+            mesh = openmc.lib.tallies[new_tally.id].filters[0].mesh
+            volumes = mesh.material_volumes(
+                n_samples, max_materials, output=kwargs['output'])
+            openmc.lib.finalize()
+
+            # Restore original tallies
+            model.tallies = original_tallies
+
+        return volumes
 
 
 class StructuredMesh(MeshBase):
@@ -2358,55 +2512,71 @@ class UnstructuredMesh(MeshBase):
         self.write_data_to_vtk(**kwargs)
 
     def write_data_to_vtk(
-            self,
-            filename: PathLike | None  = None,
-            datasets: dict | None = None,
-            volume_normalization: bool = True
+        self,
+        filename: PathLike | None = None,
+        datasets: dict | None = None,
+        volume_normalization: bool = True,
     ):
         """Map data to unstructured VTK mesh elements.
+
+        If filename is None, then a filename will be generated based on the mesh
+        ID, and exported to VTK format.
 
         Parameters
         ----------
         filename : str or pathlib.Path
-            Name of the VTK file to write
+            Name of the VTK file to write. If the filename ends in '.vtu' then a
+            binary VTU format file will be written, if the filename ends in
+            '.vtk' then a legacy VTK file will be written.
         datasets : dict
-            Dictionary whose keys are the data labels
-            and values are numpy appropriately sized arrays
-            of the data
+            Dictionary whose keys are the data labels and values are numpy
+            appropriately sized arrays of the data
         volume_normalization : bool
-            Whether or not to normalize the data by the
-            volume of the mesh elements
+            Whether or not to normalize the data by the volume of the mesh
+            elements
         """
-        import vtk
-        from vtk.util import numpy_support as nps
+        from vtkmodules.util import numpy_support
+        from vtkmodules import vtkCommonCore
+        from vtkmodules import vtkCommonDataModel
+        from vtkmodules import vtkIOLegacy
+        from vtkmodules import vtkIOXML
 
         if self.connectivity is None or self.vertices is None:
-            raise RuntimeError('This mesh has not been '
-                               'loaded from a statepoint file.')
+            raise RuntimeError(
+                "This mesh has not been loaded from a statepoint file."
+            )
 
         if filename is None:
-            filename = f'mesh_{self.id}.vtk'
+            filename = f"mesh_{self.id}.vtk"
 
-        writer = vtk.vtkUnstructuredGridWriter()
+        if Path(filename).suffix == ".vtk":
+            writer = vtkIOLegacy.vtkUnstructuredGridWriter()
+
+        elif Path(filename).suffix == ".vtu":
+            writer = vtkIOXML.vtkXMLUnstructuredGridWriter()
+            writer.SetCompressorTypeToZLib()
+            writer.SetDataModeToBinary()
 
         writer.SetFileName(str(filename))
 
-        grid = vtk.vtkUnstructuredGrid()
+        grid = vtkCommonDataModel.vtkUnstructuredGrid()
 
-        vtk_pnts = vtk.vtkPoints()
-        vtk_pnts.SetData(nps.numpy_to_vtk(self.vertices))
-        grid.SetPoints(vtk_pnts)
+        points = vtkCommonCore.vtkPoints()
+        points.SetData(numpy_support.numpy_to_vtk(self.vertices))
+        grid.SetPoints(points)
 
         n_skipped = 0
         for elem_type, conn in zip(self.element_types, self.connectivity):
             if elem_type == self._LINEAR_TET:
-                elem = vtk.vtkTetra()
+                elem = vtkCommonDataModel.vtkTetra()
             elif elem_type == self._LINEAR_HEX:
-                elem = vtk.vtkHexahedron()
+                elem = vtkCommonDataModel.vtkHexahedron()
             elif elem_type == self._UNSUPPORTED_ELEM:
                 n_skipped += 1
+                continue
             else:
-                raise RuntimeError(f'Invalid element type {elem_type} found')
+                raise RuntimeError(f"Invalid element type {elem_type} found")
+
             for i, c in enumerate(conn):
                 if c == -1:
                     break
@@ -2415,30 +2585,36 @@ class UnstructuredMesh(MeshBase):
             grid.InsertNextCell(elem.GetCellType(), elem.GetPointIds())
 
         if n_skipped > 0:
-            warnings.warn(f'{n_skipped} elements were not written because '
-                          'they are not of type linear tet/hex')
+            warnings.warn(
+                f"{n_skipped} elements were not written because "
+                "they are not of type linear tet/hex"
+            )
 
         # check that datasets are the correct size
         datasets_out = []
         if datasets is not None:
             for name, data in datasets.items():
                 if data.shape != self.dimension:
-                    raise ValueError(f'Cannot apply dataset "{name}" with '
-                                     f'shape {data.shape} to mesh {self.id} '
-                                     f'with dimensions {self.dimension}')
+                    raise ValueError(
+                        f'Cannot apply dataset "{name}" with '
+                        f"shape {data.shape} to mesh {self.id} "
+                        f"with dimensions {self.dimension}"
+                    )
 
             if volume_normalization:
                 for name, data in datasets.items():
                     if np.issubdtype(data.dtype, np.integer):
-                        warnings.warn(f'Integer data set "{name}" will '
-                                      'not be volume-normalized.')
+                        warnings.warn(
+                            f'Integer data set "{name}" will '
+                            "not be volume-normalized."
+                        )
                         continue
                     data /= self.volumes
 
             # add data to the mesh
             for name, data in datasets.items():
                 datasets_out.append(data)
-                arr = vtk.vtkDoubleArray()
+                arr = vtkCommonCore.vtkDoubleArray()
                 arr.SetName(name)
                 arr.SetNumberOfTuples(data.size)
 

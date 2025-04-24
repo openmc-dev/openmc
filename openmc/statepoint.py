@@ -6,6 +6,7 @@ import warnings
 
 import h5py
 import numpy as np
+from pathlib import Path
 from uncertainties import ufloat
 
 import openmc
@@ -98,6 +99,8 @@ class StatePoint:
         and whose values are time values in seconds.
     seed : int
         Pseudorandom number generator seed
+    stride : int
+        Number of random numbers allocated for each particle history
     source : numpy.ndarray of compound datatype
         Array of source sites. The compound datatype has fields 'r', 'u',
         'E', 'wgt', 'delayed_group', 'surf_id', and 'particle', corresponding to
@@ -356,6 +359,10 @@ class StatePoint:
         return self._f['seed'][()]
 
     @property
+    def stride(self):
+        return self._f['stride'][()]
+
+    @property
     def source(self):
         return self._f['source_bank'][()] if self.source_present else None
 
@@ -415,7 +422,7 @@ class StatePoint:
 
                     # Create Tally object and assign basic properties
                     tally = openmc.Tally(tally_id)
-                    tally._sp_filename = self._f.filename
+                    tally._sp_filename = Path(self._f.filename)
                     tally.name = group['name'][()].decode() if 'name' in group else ''
 
                     # Check if tally has multiply_density attribute

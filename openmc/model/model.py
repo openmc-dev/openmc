@@ -1,9 +1,12 @@
 from __future__ import annotations
 from collections.abc import Iterable, Sequence
+import copy
 from functools import lru_cache
 from pathlib import Path
 import math
 from numbers import Integral, Real
+import random
+import re
 from tempfile import NamedTemporaryFile, TemporaryDirectory
 import warnings
 
@@ -124,7 +127,7 @@ class Model:
 
     @plots.setter
     def plots(self, plots):
-        check_type('plots', plots, Iterable, openmc.Plot)
+        check_type('plots', plots, Iterable, openmc.PlotBase)
         if isinstance(plots, openmc.Plots):
             self._plots = plots
         else:
@@ -220,7 +223,8 @@ class Model:
         materials = openmc.Materials.from_xml(materials)
         geometry = openmc.Geometry.from_xml(geometry, materials)
         settings = openmc.Settings.from_xml(settings)
-        tallies = openmc.Tallies.from_xml(tallies) if Path(tallies).exists() else None
+        tallies = openmc.Tallies.from_xml(
+            tallies) if Path(tallies).exists() else None
         plots = openmc.Plots.from_xml(plots) if Path(plots).exists() else None
         return cls(geometry, materials, settings, tallies, plots)
 
@@ -242,12 +246,16 @@ class Model:
         model = cls()
 
         meshes = {}
-        model.settings = openmc.Settings.from_xml_element(root.find('settings'), meshes)
-        model.materials = openmc.Materials.from_xml_element(root.find('materials'))
-        model.geometry = openmc.Geometry.from_xml_element(root.find('geometry'), model.materials)
+        model.settings = openmc.Settings.from_xml_element(
+            root.find('settings'), meshes)
+        model.materials = openmc.Materials.from_xml_element(
+            root.find('materials'))
+        model.geometry = openmc.Geometry.from_xml_element(
+            root.find('geometry'), model.materials)
 
         if root.find('tallies') is not None:
-            model.tallies = openmc.Tallies.from_xml_element(root.find('tallies'), meshes)
+            model.tallies = openmc.Tallies.from_xml_element(
+                root.find('tallies'), meshes)
 
         if root.find('plots') is not None:
             model.plots = openmc.Plots.from_xml_element(root.find('plots'))
@@ -255,7 +263,7 @@ class Model:
         return model
 
     def init_lib(self, threads=None, geometry_debug=False, restart_file=None,
-                 tracks=False, output=True, event_based=None, intracomm=None):
+                 tracks=False, output=True, event_based=None, intracomm=None, directory=None):
         """Initializes the model in memory via the C API
 
         .. versionadded:: 0.13.0
@@ -283,6 +291,8 @@ class Model:
             the Settings will be used.
         intracomm : mpi4py.MPI.Intracomm or None, optional
             MPI intracommunicator
+        directory : str or None, optional
+            Directory to write XML files to. Defaults to None.
         """
 
         import openmc.lib
@@ -296,7 +306,8 @@ class Model:
         args = _process_CLI_arguments(
             volume=False, geometry_debug=geometry_debug,
             restart_file=restart_file, threads=threads, tracks=tracks,
-            event_based=event_based)
+            event_based=event_based, path_input=directory)
+
         # Args adds the openmc_exec command in the first entry; remove it
         args = args[1:]
 
@@ -310,7 +321,10 @@ class Model:
             self._intracomm = DummyCommunicator()
 
         if self._intracomm.rank == 0:
-            self.export_to_xml()
+            if directory is not None:
+                self.export_to_xml(directory=directory)
+            else:
+                self.export_to_xml()
         self._intracomm.barrier()
 
         # We cannot pass DummyCommunicator to openmc.lib.init so pass instead
@@ -436,7 +450,8 @@ class Model:
                 depletion_operator.cleanup_when_done = True
                 depletion_operator.finalize()
 
-    def export_to_xml(self, directory='.', remove_surfs=False):
+    def export_to_xml(self, directory: PathLike = '.', remove_surfs: bool = False,
+                      nuclides_to_ignore: Iterable[str] | None = None):
         """Export model to separate XML files.
 
         Parameters
@@ -449,6 +464,9 @@ class Model:
             exporting.
 
             .. versionadded:: 0.13.1
+        nuclides_to_ignore : list of str
+            Nuclides to ignore when exporting to XML.
+
         """
         # Create directory if required
         d = Path(directory)
@@ -462,18 +480,19 @@ class Model:
         # for all materials in the geometry and use that to automatically build
         # a collection.
         if self.materials:
-            self.materials.export_to_xml(d)
+            self.materials.export_to_xml(d, nuclides_to_ignore=nuclides_to_ignore)
         else:
             materials = openmc.Materials(self.geometry.get_all_materials()
                                          .values())
-            materials.export_to_xml(d)
+            materials.export_to_xml(d, nuclides_to_ignore=nuclides_to_ignore)
 
         if self.tallies:
             self.tallies.export_to_xml(d)
         if self.plots:
             self.plots.export_to_xml(d)
 
-    def export_to_model_xml(self, path='model.xml', remove_surfs=False):
+    def export_to_model_xml(self, path: PathLike = 'model.xml', remove_surfs: bool = False,
+                            nuclides_to_ignore: Iterable[str] | None = None):
         """Export model to a single XML file.
 
         .. versionadded:: 0.13.3
@@ -486,6 +505,8 @@ class Model:
         remove_surfs : bool
             Whether or not to remove redundant surfaces from the geometry when
             exporting.
+        nuclides_to_ignore : list of str
+            Nuclides to ignore when exporting to XML.
 
         """
         xml_path = Path(path)
@@ -531,18 +552,21 @@ class Model:
             fh.write("<model>\n")
             # Write the materials collection to the open XML file first.
             # This will write the XML header also
-            materials._write_xml(fh, False, level=1)
+            materials._write_xml(fh, False, level=1,
+                                 nuclides_to_ignore=nuclides_to_ignore)
             # Write remaining elements as a tree
             fh.write(ET.tostring(geometry_element, encoding="unicode"))
             fh.write(ET.tostring(settings_element, encoding="unicode"))
 
             if self.tallies:
                 tallies_element = self.tallies.to_xml_element(mesh_memo)
-                xml.clean_indentation(tallies_element, level=1, trailing_indent=self.plots)
+                xml.clean_indentation(
+                    tallies_element, level=1, trailing_indent=self.plots)
                 fh.write(ET.tostring(tallies_element, encoding="unicode"))
             if self.plots:
                 plots_element = self.plots.to_xml_element()
-                xml.clean_indentation(plots_element, level=1, trailing_indent=False)
+                xml.clean_indentation(
+                    plots_element, level=1, trailing_indent=False)
                 fh.write(ET.tostring(plots_element, encoding="unicode"))
             fh.write("</model>\n")
 
@@ -848,6 +872,8 @@ class Model:
         legend: bool = False,
         axis_units: str = 'cm',
         outline: bool | str = False,
+        show_overlaps: bool = False,
+        overlap_color: Sequence[int] | str | None = None,
         n_samples: int | None = None,
         plane_tolerance: float = 1.,
         legend_kwargs: dict | None = None,
@@ -926,6 +952,9 @@ class Model:
             plot.pixels = pixels
             plot.basis = basis
             plot.color_by = color_by
+            plot.show_overlaps = show_overlaps
+            if overlap_color is not None:
+                plot.overlap_color = overlap_color
             if colors is not None:
                 plot.colors = colors
             self.plots.append(plot)
@@ -1419,3 +1448,517 @@ class Model:
             self.materials = openmc.Materials(
                 self.geometry.get_all_materials().values()
             )
+
+    def _generate_infinite_medium_mgxs(self, groups, nparticles, mgxs_path, correction, directory):
+        """Generate a MGXS library by running multiple OpenMC simulations, each
+        representing an infinite medium simulation of a single isolated
+        material. A discrete source is used to sample particles, with an equal
+        strength spread across each of the energy groups. This is a highly naive
+        method that ignores all spatial self shielding effects and all resonance
+        shielding effects between materials.
+
+        Parameters
+        ----------
+        groups : openmc.mgxs.EnergyGroups
+            Energy group structure for the MGXS.
+        nparticles : int
+            Number of particles to simulate per batch when generating MGXS.
+        mgxs_path : str
+            Filename for the MGXS HDF5 file.
+        correction : str
+            Transport correction to apply to the MGXS. Options are None and
+            "P0".
+        directory : str
+            Directory to run the simulation in, so as to contain XML files.
+        """
+        warnings.warn("The infinite medium method of generating MGXS may hang "
+                      "if a material has a k-infinity > 1.0.")
+        mgxs_sets = []
+        for material in self.materials:
+            openmc.reset_auto_ids()
+            model = openmc.Model()
+
+            # Set materials on the model
+            model.materials = [material]
+
+            # Settings
+            model.settings.batches = 100
+            model.settings.particles = nparticles
+            model.settings.run_mode = 'fixed source'
+
+            # Make a discrete source that is uniform over the bins of the group structure
+            n_groups = groups.num_groups
+            midpoints = []
+            strengths = []
+            for i in range(n_groups):
+                bounds = groups.get_group_bounds(i+1)
+                midpoints.append((bounds[0] + bounds[1]) / 2.0)
+                strengths.append(1.0)
+
+            energy_distribution = openmc.stats.Discrete(x=midpoints, p=strengths)
+            model.settings.source = openmc.IndependentSource(
+                space=openmc.stats.Point(), energy=energy_distribution)
+            model.settings.output = {'summary': True, 'tallies': False}
+
+            # Geometry
+            box = openmc.model.RectangularPrism(
+                100000.0, 100000.0, boundary_type='reflective')
+            name = material.name
+            infinite_cell = openmc.Cell(name=name, fill=material, region=-box)
+            infinite_universe = openmc.Universe(name=name, cells=[infinite_cell])
+            model.geometry.root_universe = infinite_universe
+
+            # Add MGXS Tallies
+
+            # Initialize MGXS library with a finished OpenMC geometry object
+            mgxs_lib = openmc.mgxs.Library(model.geometry)
+
+            # Pick energy group structure
+            mgxs_lib.energy_groups = groups
+
+            # Disable transport correction
+            mgxs_lib.correction = correction
+
+            # Specify needed cross sections for random ray
+            if correction == 'P0':
+                mgxs_lib.mgxs_types = [
+                    'nu-transport', 'absorption', 'nu-fission', 'fission',
+                    'consistent nu-scatter matrix', 'multiplicity matrix', 'chi'
+                ]
+            elif correction is None:
+                mgxs_lib.mgxs_types = [
+                    'total', 'absorption', 'nu-fission', 'fission',
+                    'consistent nu-scatter matrix', 'multiplicity matrix', 'chi'
+                ]
+
+            # Specify a "cell" domain type for the cross section tally filters
+            mgxs_lib.domain_type = "material"
+
+            # Specify the cell domains over which to compute multi-group cross sections
+            mgxs_lib.domains = model.geometry.get_all_materials().values()
+
+            # Do not compute cross sections on a nuclide-by-nuclide basis
+            mgxs_lib.by_nuclide = False
+
+            # Check the library - if no errors are raised, then the library is satisfactory.
+            mgxs_lib.check_library_for_openmc_mgxs()
+
+            # Construct all tallies needed for the multi-group cross section library
+            mgxs_lib.build_library()
+
+            # Create a "tallies.xml" file for the MGXS Library
+            mgxs_lib.add_to_tallies_file(model.tallies, merge=True)
+
+            # Run
+            statepoint_filename = model.run(cwd=directory)
+
+            # Load MGXS
+            with openmc.StatePoint(statepoint_filename) as sp:
+                mgxs_lib.load_from_statepoint(sp)
+
+            # Create a MGXS File which can then be written to disk
+            mgxs_set = mgxs_lib.get_xsdata(domain=material, xsdata_name=name)
+            mgxs_sets.append(mgxs_set)
+
+        # Write the file to disk
+        mgxs_file = openmc.MGXSLibrary(energy_groups=groups)
+        for mgxs_set in mgxs_sets:
+            mgxs_file.add_xsdata(mgxs_set)
+        mgxs_file.export_to_hdf5(mgxs_path)
+
+    @staticmethod
+    def _create_stochastic_slab_geometry(materials, cell_thickness=1.0, num_repeats=100):
+        """Create a geometry representing a stochastic "sandwich" of materials in a
+        layered slab geometry. To reduce the impact of the order of materials in
+        the slab, the materials are applied to 'num_repeats' different randomly
+        positioned layers of 'cell_thickness' each.
+
+        Parameters
+        ----------
+        materials : list of openmc.Material
+            List of materials to assign. Each material will appear exactly num_repeats times,
+            then the ordering is randomly shuffled.
+        cell_thickness : float, optional
+            Thickness of each lattice cell in x (default 1.0 cm).
+        num_repeats : int, optional
+            Number of repeats for each material (default 100).
+
+        Returns
+        -------
+        geometry : openmc.Geometry
+            The constructed geometry.
+        box : openmc.stats.Box
+            A spatial sampling distribution covering the full slab domain.
+        """
+        if not materials:
+            raise ValueError("At least one material must be provided.")
+
+        num_materials = len(materials)
+        total_cells = num_materials * num_repeats
+        total_width = total_cells * cell_thickness
+
+        # Generate an infinite cell/universe for each material
+        universes = []
+        for i in range(num_materials):
+            cell = openmc.Cell(fill=materials[i])
+            universes.append(openmc.Universe(cells=[cell]))
+
+        # Make a list of randomized material idx assignments for the stochastic slab
+        assignments = list(range(num_materials)) * num_repeats
+        random.seed(42)
+        random.shuffle(assignments)
+
+        # Create a list of the (randomized) universe assignments to be used
+        # when defining the problem lattice.
+        lattice_entries = [universes[m] for m in assignments]
+
+        # Create the RectLattice for the 1D material variation in x.
+        lattice = openmc.RectLattice()
+        lattice.pitch = (cell_thickness, total_width, total_width)
+        lattice.lower_left = (0.0, 0.0, 0.0)
+        lattice.universes = [[lattice_entries]]
+        lattice.outer = universes[0]
+
+        # Define the six outer surfaces with reflective boundary conditions
+        rpp = openmc.model.RectangularParallelepiped(
+            0.0, total_width, 0.0, total_width, 0.0, total_width,
+            boundary_type='reflective'
+        )
+
+        # Create an outer cell that fills with the lattice.
+        outer_cell = openmc.Cell(fill=lattice, region=-rpp)
+
+        # Build the geometry
+        geometry = openmc.Geometry([outer_cell])
+
+        # Define the spatial distribution that covers the full cubic domain
+        box = openmc.stats.Box(*outer_cell.bounding_box)
+
+        return geometry, box
+
+    def _generate_stochastic_slab_mgxs(self, groups, nparticles, mgxs_path, correction, directory) -> None:
+        """Generate MGXS assuming a stochastic "sandwich" of materials in a layered
+        slab geometry. While geometry-specific spatial shielding effects are not
+        captured, this method can be useful when the geometry has materials only
+        found far from the source region that the "material_wise" method would
+        not be capable of generating cross sections for. Conversely, this method
+        will generate cross sections for all materials in the problem regardless
+        of type. If this is a fixed source problem, a discrete source is used to
+        sample particles, with an equal strength spread across each of the
+        energy groups.
+
+        Parameters
+        ----------
+        groups : openmc.mgxs.EnergyGroups
+            Energy group structure for the MGXS.
+        nparticles : int
+            Number of particles to simulate per batch when generating MGXS.
+        mgxs_path : str
+            Filename for the MGXS HDF5 file.
+        correction : str
+            Transport correction to apply to the MGXS. Options are None and
+            "P0".
+        directory : str
+            Directory to run the simulation in, so as to contain XML files.
+        """
+        openmc.reset_auto_ids()
+        model = openmc.Model()
+        model.materials = self.materials
+
+        # Settings
+        model.settings.batches = 200
+        model.settings.inactive = 100
+        model.settings.particles = nparticles
+        model.settings.output = {'summary': True, 'tallies': False}
+        model.settings.run_mode = self.settings.run_mode
+
+        # Stochastic slab geometry
+        model.geometry, spatial_distribution = Model._create_stochastic_slab_geometry(
+            model.materials)
+
+        # Make a discrete source that is uniform over the bins of the group structure
+        n_groups = groups.num_groups
+        midpoints = []
+        strengths = []
+        for i in range(n_groups):
+            bounds = groups.get_group_bounds(i+1)
+            midpoints.append((bounds[0] + bounds[1]) / 2.0)
+            strengths.append(1.0)
+
+        energy_distribution = openmc.stats.Discrete(x=midpoints, p=strengths)
+        model.settings.source = [openmc.IndependentSource(
+            space=spatial_distribution, energy=energy_distribution, strength=1.0)]
+
+        model.settings.output = {'summary': True, 'tallies': False}
+
+        # Add MGXS Tallies
+
+        # Initialize MGXS library with a finished OpenMC geometry object
+        mgxs_lib = openmc.mgxs.Library(model.geometry)
+
+        # Pick energy group structure
+        mgxs_lib.energy_groups = groups
+
+        # Disable transport correction
+        mgxs_lib.correction = correction
+
+       # Specify needed cross sections for random ray
+        if correction == 'P0':
+            mgxs_lib.mgxs_types = ['nu-transport', 'absorption', 'nu-fission', 'fission',
+                                   'consistent nu-scatter matrix', 'multiplicity matrix', 'chi']
+        elif correction is None:
+            mgxs_lib.mgxs_types = ['total', 'absorption', 'nu-fission', 'fission',
+                                   'consistent nu-scatter matrix', 'multiplicity matrix', 'chi']
+
+        # Specify a "cell" domain type for the cross section tally filters
+        mgxs_lib.domain_type = "material"
+
+        # Specify the cell domains over which to compute multi-group cross sections
+        mgxs_lib.domains = model.geometry.get_all_materials().values()
+
+        # Do not compute cross sections on a nuclide-by-nuclide basis
+        mgxs_lib.by_nuclide = False
+
+        # Check the library - if no errors are raised, then the library is satisfactory.
+        mgxs_lib.check_library_for_openmc_mgxs()
+
+        # Construct all tallies needed for the multi-group cross section library
+        mgxs_lib.build_library()
+
+        # Create a "tallies.xml" file for the MGXS Library
+        mgxs_lib.add_to_tallies_file(model.tallies, merge=True)
+
+        # Run
+        statepoint_filename = model.run(cwd=directory)
+
+        # Load MGXS
+        with openmc.StatePoint(statepoint_filename) as sp:
+            mgxs_lib.load_from_statepoint(sp)
+
+        names = [mat.name for mat in mgxs_lib.domains]
+
+        # Create a MGXS File which can then be written to disk
+        mgxs_file = mgxs_lib.create_mg_library(xs_type='macro', xsdata_names=names)
+        mgxs_file.export_to_hdf5(mgxs_path)
+
+    def _generate_material_wise_mgxs(self, groups, nparticles, mgxs_path, correction, directory) -> None:
+        """Generate a material-wise MGXS library for the model by running the
+        original continuous energy OpenMC simulation of the full material
+        geometry and source, and tally MGXS data for each material. This method
+        accurately conserves reaction rates totaled over the entire simulation
+        domain. However, when the geometry has materials only found far from the
+        source region, it is possible the Monte Carlo solver may not be able to
+        score any tallies to these material types, thus resulting in zero cross
+        section values for these materials. For such cases, the "stochastic
+        slab" method may be more appropriate.
+
+        Parameters
+        ----------
+        groups : openmc.mgxs.EnergyGroups
+            Energy group structure for the MGXS.
+        nparticles : int
+            Number of particles to simulate per batch when generating MGXS.
+        mgxs_path : str
+            Filename for the MGXS HDF5 file.
+        correction : str
+            Transport correction to apply to the MGXS. Options are None and
+            "P0".
+        directory : str
+            Directory to run the simulation in, so as to contain XML files.
+        """
+        openmc.reset_auto_ids()
+        model = copy.deepcopy(self)
+        model.tallies = openmc.Tallies()
+
+        # Settings
+        model.settings.batches = 200
+        model.settings.inactive = 100
+        model.settings.particles = nparticles
+        model.settings.output = {'summary': True, 'tallies': False}
+
+        # Add MGXS Tallies
+
+        # Initialize MGXS library with a finished OpenMC geometry object
+        mgxs_lib = openmc.mgxs.Library(model.geometry)
+
+        # Pick energy group structure
+        mgxs_lib.energy_groups = groups
+
+        # Disable transport correction
+        mgxs_lib.correction = correction
+
+        # Specify needed cross sections for random ray
+        if correction == 'P0':
+            mgxs_lib.mgxs_types = [
+                'nu-transport', 'absorption', 'nu-fission', 'fission',
+                'consistent nu-scatter matrix', 'multiplicity matrix', 'chi'
+            ]
+        elif correction is None:
+            mgxs_lib.mgxs_types = [
+                'total', 'absorption', 'nu-fission', 'fission',
+                'consistent nu-scatter matrix', 'multiplicity matrix', 'chi'
+            ]
+
+        # Specify a "cell" domain type for the cross section tally filters
+        mgxs_lib.domain_type = "material"
+
+        # Specify the cell domains over which to compute multi-group cross sections
+        mgxs_lib.domains = model.geometry.get_all_materials().values()
+
+        # Do not compute cross sections on a nuclide-by-nuclide basis
+        mgxs_lib.by_nuclide = False
+
+        # Check the library - if no errors are raised, then the library is satisfactory.
+        mgxs_lib.check_library_for_openmc_mgxs()
+
+        # Construct all tallies needed for the multi-group cross section library
+        mgxs_lib.build_library()
+
+        # Create a "tallies.xml" file for the MGXS Library
+        mgxs_lib.add_to_tallies_file(model.tallies, merge=True)
+
+        # Run
+        statepoint_filename = model.run(cwd=directory)
+
+        # Load MGXS
+        with openmc.StatePoint(statepoint_filename) as sp:
+            mgxs_lib.load_from_statepoint(sp)
+
+        names = [mat.name for mat in mgxs_lib.domains]
+
+        # Create a MGXS File which can then be written to disk
+        mgxs_file = mgxs_lib.create_mg_library(
+            xs_type='macro', xsdata_names=names)
+        mgxs_file.export_to_hdf5(mgxs_path)
+
+    def convert_to_multigroup(self, method="material_wise", groups='CASMO-2',
+                              nparticles=2000, overwrite_mgxs_library=False,
+                              mgxs_path: PathLike = "mgxs.h5", correction=None):
+        """Convert all materials from continuous energy to multigroup.
+
+        If no MGXS data library file is found, generate one using one or more
+        continuous energy Monte Carlo simulations.
+
+        Parameters
+        ----------
+        method : {"material_wise", "stochastic_slab", "infinite_medium"}, optional
+            Method to generate the MGXS.
+        groups : openmc.mgxs.EnergyGroups or str, optional
+            Energy group structure for the MGXS or the name of the group
+            structure (based on keys from openmc.mgxs.GROUP_STRUCTURES).
+        mgxs_path : str, optional
+            Filename of the mgxs.h5 library file.
+        correction : str, optional
+            Transport correction to apply to the MGXS. Options are None and
+            "P0".
+        """
+        if isinstance(groups, str):
+            groups = openmc.mgxs.EnergyGroups(groups)
+
+        # Do all work (including MGXS generation) in a temporary directory
+        # to avoid polluting the working directory with residual XML files
+        with TemporaryDirectory() as tmpdir:
+
+            # Determine if there are DAGMC universes in the model. If so, we need to synchronize
+            # the dagmc materials with cells.
+            # TODO: Can this be done without having to init/finalize?
+            for univ in self.geometry.get_all_universes().values():
+                if isinstance(univ, openmc.DAGMCUniverse):
+                    self.init_lib(directory=tmpdir)
+                    self.sync_dagmc_universes()
+                    self.finalize_lib()
+                    break
+            
+            # Make sure all materials have a name, and that the name is a valid HDF5
+            # dataset name
+            for material in self.materials:
+                if material.name is None:
+                    material.name = f"material {material.id}"
+                material.name = re.sub(r'[^a-zA-Z0-9]', '_', material.name)
+
+            # If needed, generate the needed MGXS data library file
+            if not Path(mgxs_path).is_file() or overwrite_mgxs_library:
+                if method == "infinite_medium":
+                    self._generate_infinite_medium_mgxs(
+                        groups, nparticles, mgxs_path, correction, tmpdir)
+                elif method == "material_wise":
+                    self._generate_material_wise_mgxs(
+                        groups, nparticles, mgxs_path, correction, tmpdir)
+                elif method == "stochastic_slab":
+                    self._generate_stochastic_slab_mgxs(
+                        groups, nparticles, mgxs_path, correction, tmpdir)
+                else:
+                    raise ValueError(
+                        f'MGXS generation method "{method}" not recognized')
+            else:
+                print(f'Existing MGXS library file "{mgxs_path}" will be used')
+
+            # Convert all continuous energy materials to multigroup
+            self.materials.cross_sections = mgxs_path
+            for material in self.materials:
+                material.set_density('macro', 1.0)
+                material._nuclides = []
+                material._sab = []
+                material.add_macroscopic(material.name)
+
+            self.settings.energy_mode = 'multi-group'
+
+    def convert_to_random_ray(self):
+        """Convert a multigroup model to use random ray.
+
+        This method determines values for the needed settings and adds them to
+        the settings.random_ray dictionary so as to enable random ray mode. The
+        settings that are populated are:
+
+        - 'ray_source' (openmc.IndependentSource): Where random ray starting
+          points are sampled from.
+        - 'distance_inactive' (float): The "dead zone" distance at the beginning
+          of the ray.
+        - 'distance_active' (float): The "active" distance of the ray
+        - 'particles' (int): Number of rays to simulate
+
+        The method will determine reasonable defaults for each of the above
+        variables based on analysis of the model's geometry. The function will
+        have no effect if the random ray dictionary is already defined in the
+        model settings.
+        """
+        # If the random ray dictionary is already set, don't overwrite it
+        if self.settings.random_ray:
+            warnings.warn("Random ray conversion skipped as "
+                          "settings.random_ray dictionary is already set.")
+            return
+
+        if self.settings.energy_mode != 'multi-group':
+            raise ValueError(
+                "Random ray conversion failed: energy mode must be "
+                "'multi-group'. Use convert_to_multigroup() first."
+            )
+
+        # Helper function for detecting infinity
+        def _replace_infinity(value):
+            if np.isinf(value):
+                return 1.0 if value > 0 else -1.0
+            return value
+
+        # Get a bounding box for sampling rays. We can utilize the geometry's bounding box
+        # though for 2D problems we need to detect the infinities and replace them with an
+        # arbitrary finite value.
+        bounding_box = self.geometry.bounding_box
+        lower_left = [_replace_infinity(v) for v in bounding_box.lower_left]
+        upper_right = [_replace_infinity(v) for v in bounding_box.upper_right]
+        uniform_dist_ray = openmc.stats.Box(lower_left, upper_right)
+        rr_source = openmc.IndependentSource(space=uniform_dist_ray)
+        self.settings.random_ray['ray_source'] = rr_source
+
+        # For the dead zone and active length, a reasonable guess is the larger of either:
+        # 1) The maximum chord length through the geometry (as defined by its bounding box)
+        # 2) 30 cm
+        # Then, set the active length to be 5x longer than the dead zone length, for the sake of efficiency.
+        chord_length = np.array(upper_right) - np.array(lower_left)
+        max_length = max(np.linalg.norm(chord_length), 30.0)
+
+        self.settings.random_ray['distance_inactive'] = max_length
+        self.settings.random_ray['distance_active'] = 5 * max_length
+
+        # Take a wild guess as to how many rays are needed
+        self.settings.particles = 2 * int(max_length)

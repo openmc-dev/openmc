@@ -1,5 +1,7 @@
 #include "openmc/tallies/filter_universe.h"
 
+#include <cassert>
+
 #include <fmt/core.h>
 
 #include "openmc/cell.h"
@@ -24,7 +26,7 @@ void UniverseFilter::from_xml(pugi::xml_node node)
   this->set_universes(universes);
 }
 
-void UniverseFilter::set_universes(gsl::span<int32_t> universes)
+void UniverseFilter::set_universes(span<int32_t> universes)
 {
   // Clear existing universes
   universes_.clear();
@@ -33,8 +35,8 @@ void UniverseFilter::set_universes(gsl::span<int32_t> universes)
 
   // Update universes and mapping
   for (auto& index : universes) {
-    Expects(index >= 0);
-    Expects(index < model::universes.size());
+    assert(index >= 0);
+    assert(index < model::universes.size());
     universes_.push_back(index);
     map_[index] = universes_.size() - 1;
   }

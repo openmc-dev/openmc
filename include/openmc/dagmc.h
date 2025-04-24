@@ -49,9 +49,12 @@ public:
   double evaluate(Position r) const override;
   double distance(Position r, Direction u, bool coincident) const override;
   Direction normal(Position r) const override;
-  Direction reflect(Position r, Direction u, GeometryState* p) const override;
+  Direction reflect(
+    Position r, Direction u, GeometryState* p = nullptr) const override;
 
   inline void to_hdf5_inner(hid_t group_id) const override {};
+
+  virtual GeometryType geom_type() const override { return GeometryType::DAG; }
 
   // Accessor methods
   moab::DagMC* dagmc_ptr() const { return dagmc_ptr_.get(); }
@@ -76,6 +79,8 @@ public:
   BoundingBox bounding_box() const override;
 
   void to_hdf5_inner(hid_t group_id) const override;
+
+  virtual GeometryType geom_type() const override { return GeometryType::DAG; }
 
   // Accessor methods
   moab::DagMC* dagmc_ptr() const { return dagmc_ptr_.get(); }
@@ -163,6 +168,8 @@ public:
   bool find_cell(GeometryState& p) const override;
 
   void to_hdf5(hid_t universes_group) const override;
+
+  virtual GeometryType geom_type() const override { return GeometryType::DAG; }
 
   // Data Members
   std::shared_ptr<moab::DagMC>

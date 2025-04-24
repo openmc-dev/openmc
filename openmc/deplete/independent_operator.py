@@ -1,7 +1,7 @@
 """Transport-independent transport operator for depletion.
 
 This module implements a transport operator that runs independently of any
-transport solver by using user-provided one-group cross sections.
+transport solver by using user-provided multigroup fluxes and cross sections.
 
 """
 
@@ -24,14 +24,12 @@ from .helpers import ChainFissionHelper, ConstantFissionYieldHelper, SourceRateH
 
 
 class IndependentOperator(OpenMCOperator):
-    """Transport-independent transport operator that uses one-group cross
-    sections to calculate reaction rates.
+    """Transport-independent transport operator based on multigroup data.
 
-    Instances of this class can be used to perform depletion using one-group
-    cross sections and constant flux or constant power. Normally, a user needn't
-    call methods of this class directly. Instead, an instance of this class is
-    passed to an integrator class, such as
-    :class:`openmc.deplete.CECMIntegrator`.
+    Instances of this class can be used to perform depletion using multigroup
+    cross sections and multigroup fluxes. Normally, a user needn't call methods
+    of this class directly. Instead, an instance of this class is passed to an
+    integrator class, such as :class:`openmc.deplete.CECMIntegrator`.
 
     Note that passing an empty :class:`~openmc.deplete.MicroXS` instance to the
     ``micro_xs`` argument allows a decay-only calculation to be run.
@@ -57,43 +55,37 @@ class IndependentOperator(OpenMCOperator):
         ``openmc.config['chain_file']``.
     keff : 2-tuple of float, optional
        keff eigenvalue and uncertainty from transport calculation.
-       Default is None.
     prev_results : Results, optional
         Results from a previous depletion calculation.
     normalization_mode : {"fission-q", "source-rate"}
-        Indicate how reaction rates should be calculated.
-        ``"fission-q"`` uses the fission Q values from the depletion chain to
-        compute the flux based on the power. ``"source-rate"`` uses a the
-        source rate (assumed to be neutron flux) to calculate the
-        reaction rates.
+        Indicate how reaction rates should be calculated. ``"fission-q"`` uses
+        the fission Q values from the depletion chain to compute the flux based
+        on the power. ``"source-rate"`` uses a the source rate (assumed to be
+        neutron flux) to calculate the reaction rates.
     fission_q : dict, optional
         Dictionary of nuclides and their fission Q values [eV]. If not given,
-        values will be pulled from the ``chain_file``. Only applicable
-        if ``"normalization_mode" == "fission-q"``.
-    reduce_chain : bool, optional
-        If True, use :meth:`openmc.deplete.Chain.reduce` to reduce the
-        depletion chain up to ``reduce_chain_level``.
+        values will be pulled from the ``chain_file``. Only applicable if
+        ``"normalization_mode" == "fission-q"``.
     reduce_chain_level : int, optional
-        Depth of the search when reducing the depletion chain. Only used
-        if ``reduce_chain`` evaluates to true. The default value of
-        ``None`` implies no limit on the depth.
+        Depth of the search when reducing the depletion chain. The default
+        value of ``None`` implies no limit on the depth.
     fission_yield_opts : dict of str to option, optional
         Optional arguments to pass to the
         :class:`openmc.deplete.helpers.FissionYieldHelper` object. Will be
-        passed directly on to the helper. Passing a value of None will use
-        the defaults for the associated helper.
+        passed directly on to the helper. Passing a value of None will use the
+        defaults for the associated helper.
 
     Attributes
     ----------
     materials : openmc.Materials
         All materials present in the model
-    cross_sections : MicroXS
-        Object containing one-group cross-sections in [cm^2].
+    cross_sections : list of MicroXS
+        Object containing multigroup cross-sections in [b] for each material.
     output_dir : pathlib.Path
         Path to output directory to save results.
     round_number : bool
-        Whether or not to round output to OpenMC to 8 digits.
-        Useful in testing, as OpenMC is incredibly sensitive to exact values.
+        Whether or not to round output to OpenMC to 8 digits. Useful in testing,
+        as OpenMC is incredibly sensitive to exact values.
     number : openmc.deplete.AtomNumber
         Total number of atoms in simulation.
     nuclides_with_data : set of str
@@ -109,8 +101,8 @@ class IndependentOperator(OpenMCOperator):
     local_mats : list of str
         All burnable material IDs being managed by a single process
     prev_res : Results or None
-        Results from a previous depletion calculation. ``None`` if no
-        results are to be used.
+        Results from a previous depletion calculation. ``None`` if no results
+        are to be used.
 
     """
 
@@ -123,7 +115,6 @@ class IndependentOperator(OpenMCOperator):
                  normalization_mode='fission-q',
                  fission_q=None,
                  prev_results=None,
-                 reduce_chain=False,
                  reduce_chain_level=None,
                  fission_yield_opts=None):
         # Validate micro-xs parameters
@@ -161,7 +152,6 @@ class IndependentOperator(OpenMCOperator):
             prev_results=prev_results,
             fission_q=fission_q,
             helper_kwargs=helper_kwargs,
-            reduce_chain=reduce_chain,
             reduce_chain_level=reduce_chain_level)
 
     @classmethod
@@ -174,7 +164,6 @@ class IndependentOperator(OpenMCOperator):
                       normalization_mode='fission-q',
                       fission_q=None,
                       prev_results=None,
-                      reduce_chain=False,
                       reduce_chain_level=None,
                       fission_yield_opts=None):
         """
@@ -210,13 +199,9 @@ class IndependentOperator(OpenMCOperator):
             applicable if ``"normalization_mode" == "fission-q"``.
         prev_results : Results, optional
             Results from a previous depletion calculation.
-        reduce_chain : bool, optional
-            If True, use :meth:`openmc.deplete.Chain.reduce` to reduce the
-            depletion chain up to ``reduce_chain_level``. Default is False.
         reduce_chain_level : int, optional
-            Depth of the search when reducing the depletion chain. Only used
-            if ``reduce_chain`` evaluates to true. The default value of
-            ``None`` implies no limit on the depth.
+            Depth of the search when reducing the depletion chain. The default
+            value of ``None`` implies no limit on the depth.
         fission_yield_opts : dict of str to option, optional
             Optional arguments to pass to the
             :class:`openmc.deplete.helpers.FissionYieldHelper` class. Will be
@@ -236,7 +221,6 @@ class IndependentOperator(OpenMCOperator):
                    normalization_mode=normalization_mode,
                    fission_q=fission_q,
                    prev_results=prev_results,
-                   reduce_chain=reduce_chain,
                    reduce_chain_level=reduce_chain_level,
                    fission_yield_opts=fission_yield_opts)
 
@@ -279,14 +263,26 @@ class IndependentOperator(OpenMCOperator):
                 self.prev_res.append(new_res)
 
     def _get_nuclides_with_data(self, cross_sections: list[MicroXS]) -> set[str]:
-        """Finds nuclides with cross section data"""
+        """Finds nuclides with cross section data
+
+        Parameters
+        ----------
+        cross_sections : iterable of :class`~openmc.deplete.MicroXS`
+            List of multigroup cross-section data.
+
+        Returns
+        -------
+        nuclides : set of str
+            Set of nuclide names that have cross secton data
+
+        """
         return set(cross_sections[0].nuclides)
 
     class _IndependentRateHelper(ReactionRateHelper):
-        """Class for generating one-group reaction rates with flux and
-        one-group cross sections.
+        """Class for generating reaction rates with multigroup fluxes and
+        multigroup cross sections.
 
-        This class does not generate tallies, and instead stores cross sections
+        This class does not generate tallies and instead stores cross sections
         for each nuclide and transmutation reaction relevant for a depletion
         calculation. The reaction rate is calculated by multiplying the flux by
         the cross sections.

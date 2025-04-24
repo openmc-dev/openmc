@@ -900,8 +900,6 @@ class MeshFilter(Filter):
 
     @property
     def shape(self):
-        if isinstance(self, MeshSurfaceFilter):
-            return (self.num_bins,)
         return self.mesh.dimension
 
     @property
@@ -1045,6 +1043,8 @@ class MeshBornFilter(MeshFilter):
 class MeshMaterialFilter(MeshFilter):
     """Filter events by combinations of mesh elements and materials.
 
+    .. versionadded:: 0.15.3
+
     Parameters
     ----------
     mesh : openmc.MeshBase
@@ -1096,6 +1096,10 @@ class MeshMaterialFilter(MeshFilter):
         string += '{: <16}=\t{}\n'.format('\tBins', self.bins)
         string += '{: <16}=\t{}\n'.format('\tTranslation', self.translation)
         return string
+
+    @property
+    def shape(self):
+        return (self.num_bins,)
 
     @property
     def mesh(self):
@@ -1238,6 +1242,9 @@ class MeshSurfaceFilter(MeshFilter):
         The number of filter bins
 
     """
+    @property
+    def shape(self):
+        return (self.num_bins,)
 
     @MeshFilter.mesh.setter
     def mesh(self, mesh):

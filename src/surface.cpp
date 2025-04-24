@@ -1068,13 +1068,17 @@ SurfaceFunctionTPMS::SurfaceFunctionTPMS(pugi::xml_node surf_node)
     std::vector<double> x_grid = get_node_array<double>(surf_node, "x_grid");
     std::vector<double> y_grid = get_node_array<double>(surf_node, "y_grid");
     std::vector<double> z_grid = get_node_array<double>(surf_node, "z_grid");
-    std::vector<std::size_t> shape = {x_grid.size(), y_grid.size(), z_grid.size()};
+    std::vector<std::size_t> shape = {
+      x_grid.size(), y_grid.size(), z_grid.size()};
     xt::xarray<double> m_pitch = get_node_xarray<double>(surf_node, "m_pitch");
     m_pitch.resize(shape);
-    xt::xarray<double> m_isovalue = get_node_xarray<double>(surf_node, "m_isovalue");
+    xt::xarray<double> m_isovalue =
+      get_node_xarray<double>(surf_node, "m_isovalue");
     m_isovalue.resize(shape);
-    fPitch = std::make_unique<InterpolationForTPMS>(InterpolationForTPMS(x_grid, y_grid, z_grid, m_pitch));
-    fIsovalue = std::make_unique<InterpolationForTPMS>(InterpolationForTPMS(x_grid, y_grid, z_grid, m_isovalue));
+    fPitch = std::make_unique<InterpolationForTPMS>(
+      InterpolationForTPMS(x_grid, y_grid, z_grid, m_pitch));
+    fIsovalue = std::make_unique<InterpolationForTPMS>(
+      InterpolationForTPMS(x_grid, y_grid, z_grid, m_isovalue));
   } else {
     fatal_error(
       fmt::format("Function type {} is not recognized.", function_type));

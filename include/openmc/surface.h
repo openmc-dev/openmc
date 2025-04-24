@@ -57,8 +57,8 @@ public:
   //!   false otherwise.
   bool sense(Position r, Direction u) const;
 
-  //! Determine if the surface has a special type and needs specific ray-tracing treatment.
-  //! \return the name of the special treatment.
+  //! Determine if the surface has a special type and needs specific ray-tracing
+  //! treatment. \return the name of the special treatment.
   virtual bool is_tpms() const { return false; };
 
   //! Determine the direction of a ray reflected from the surface.
@@ -345,14 +345,14 @@ public:
 
 //==============================================================================
 //! Triply Periodic Minimal Surfaces (TPMS)
-// 
+//
 //! Surfaces defined by an implicit function f(x,y,z) = c with c, an isovalue.
 //! Various equations exists :
 //! * Schwarz-P : cos(l*x) + cos(l*y) + cos(l*z) = c
 //! * Gyroid : sin(l*x)cos(l*z) + sin(l*y)cos(l*x) + sin(l*z)cos(l*y) = c
 //! * Diamond : sin(l*x)sin(l*y)sin(l*z) + sin(l*x)cos(l*y)cos(l*z) +
 //!             cos(l*x)sin(l*y)cos(l*z) + cos(l*x)cos(l*y)sin(l*z) = c
-//! with l=2pi/L, L is defined as the pitch of the TPMS lattice. 
+//! with l=2pi/L, L is defined as the pitch of the TPMS lattice.
 //! L and c are constants for this class.
 //==============================================================================
 

@@ -1,8 +1,8 @@
 #ifndef TPMS_FUNCTIONS
 #define TPMS_FUNCTIONS
 
-#include "xtensor/xtensor.hpp"
 #include "xtensor/xarray.hpp"
+#include "xtensor/xtensor.hpp"
 
 #include "openmc/vector.h"
 
@@ -10,7 +10,7 @@ namespace openmc {
 
 //==============================================================================
 //! Generic Function class to defined pitch and isovalue as function of x,y
-//! and z. 
+//! and z.
 //==============================================================================
 
 class FunctionForTPMS {

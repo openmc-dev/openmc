@@ -14,7 +14,7 @@
 namespace openmc {
 
 //==============================================================================
-//! Generic Triply Periodic Minimal Surface (TPMS) class to solve that contains 
+//! Generic Triply Periodic Minimal Surface (TPMS) class to solve that contains
 //! the ray-tracing algorithm.
 //==============================================================================
 
@@ -43,8 +43,8 @@ public:
 };
 
 //==============================================================================
-//! TPMS class to define TPMS with constant isovalue and pitch. Simpler and 
-//! Faster has no interpolation of pitch and isovalue are needed. 
+//! TPMS class to define TPMS with constant isovalue and pitch. Simpler and
+//! Faster has no interpolation of pitch and isovalue are needed.
 //==============================================================================
 
 class TPMSClassic : public TPMS {
@@ -58,7 +58,7 @@ public:
 };
 
 //==============================================================================
-//! TPMS class to define TPMS with isovalue and pitch defined as a function of 
+//! TPMS class to define TPMS with isovalue and pitch defined as a function of
 //! x,y and z. Useful to design heterogeneous lattice.
 //==============================================================================
 
@@ -83,7 +83,7 @@ public:
 };
 
 //==============================================================================
-//! TPMS class with Schwarz-P equations implemented with constant pitch and 
+//! TPMS class with Schwarz-P equations implemented with constant pitch and
 //! isovalue.
 //==============================================================================
 
@@ -100,7 +100,7 @@ public:
 };
 
 //==============================================================================
-//! TPMS class with Gyroid equations implemented with constant pitch and 
+//! TPMS class with Gyroid equations implemented with constant pitch and
 //! isovalue.
 //==============================================================================
 
@@ -117,7 +117,7 @@ public:
 };
 
 //==============================================================================
-//! TPMS class with Diamond equations implemented with constant pitch and 
+//! TPMS class with Diamond equations implemented with constant pitch and
 //! isovalue.
 //==============================================================================
 
@@ -134,7 +134,7 @@ public:
 };
 
 //==============================================================================
-//! TPMS class with Schwarz-P equations implemented with functionalized pitch 
+//! TPMS class with Schwarz-P equations implemented with functionalized pitch
 //! and isovalue.
 //==============================================================================
 
@@ -151,7 +151,7 @@ public:
 };
 
 //==============================================================================
-//! TPMS class with Gyroid equations implemented with functionalized pitch 
+//! TPMS class with Gyroid equations implemented with functionalized pitch
 //! and isovalue.
 //==============================================================================
 
@@ -168,7 +168,7 @@ public:
 };
 
 //==============================================================================
-//! TPMS class with Diamond equations implemented with functionalized pitch 
+//! TPMS class with Diamond equations implemented with functionalized pitch
 //! and isovalue.
 //==============================================================================
 

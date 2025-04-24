@@ -10,6 +10,17 @@ from tests.testing_harness import PyAPITestHarness
 from tests.regression_tests import config
 
 
+def assert_structured_arrays_close(arr1, arr2, rtol=1e-5, atol=1e-8):
+    assert arr1.dtype == arr2.dtype
+
+    for field in arr1.dtype.names:
+        data1, data2 = arr1[field], arr2[field]
+        if data1.dtype.names:
+            assert_structured_arrays_close(data1, data2, rtol=rtol, atol=atol)
+        else:
+            np.testing.assert_allclose(data1, data2, rtol=rtol, atol=atol)
+
+
 @pytest.fixture
 def model(request):
     openmc.reset_auto_ids()
@@ -76,16 +87,10 @@ class SurfaceSourceTestHarness(PyAPITestHarness):
         """Make sure the current surface_source.h5 agree with the reference."""
         if self._model.settings.surf_source_write:
             with h5py.File("surface_source_true.h5", 'r') as f:
-                source_true = f['source_bank'][()]
-                # Convert dtye from mixed to a float for comparison assertion
-                source_true.dtype = 'float64'
+                source_true = np.sort(f['source_bank'][()])
             with h5py.File("surface_source.h5", 'r') as f:
-                source_test = f['source_bank'][()]
-                # Convert dtye from mixed to a float for comparison assertion
-                source_test.dtype = 'float64'
-            np.testing.assert_allclose(np.sort(source_true),
-                                       np.sort(source_test),
-                                       atol=1e-07)
+                source_test = np.sort(f['source_bank'][()])
+            assert_structured_arrays_close(source_true, source_test, atol=1e-07)
 
     def execute_test(self):
         """Build input XMLs, run OpenMC, check output and results."""

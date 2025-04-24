@@ -281,14 +281,15 @@ void read_ce_cross_sections(const vector<vector<double>>& nuc_temps,
 void read_ce_cross_sections_xml()
 {
   // Check if cross_sections.xml exists
-  const auto& filename = settings::path_cross_sections;
-  if (dir_exists(filename)) {
+  std::filesystem::path filename(settings::path_cross_sections);
+  if (!std::filesystem::exists(filename)) {
+    fatal_error(
+      "Cross sections XML file '" + filename.string() + "' does not exist.");
+  }
+
+  if (std::filesystem::is_directory(filename)) {
     fatal_error("OPENMC_CROSS_SECTIONS is set to a directory. "
                 "It should be set to an XML file.");
-  }
-  if (!file_exists(filename)) {
-    // Could not find cross_sections.xml file
-    fatal_error("Cross sections XML file '" + filename + "' does not exist.");
   }
 
   write_message("Reading cross sections XML file...", 5);
@@ -308,7 +309,11 @@ void read_ce_cross_sections_xml()
   } else {
     // If no directory is listed in cross_sections.xml, by default select the
     // directory in which the cross_sections.xml file resides
-    directory = std::filesystem::path(filename).parent_path().string();
+    if (filename.has_parent_path()) {
+      directory = filename.parent_path().string();
+    } else {
+      directory = settings::path_input;
+    }
   }
 
   for (const auto& node_library : root.children("library")) {

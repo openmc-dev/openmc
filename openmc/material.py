@@ -5,6 +5,7 @@ from copy import deepcopy
 from numbers import Real
 from pathlib import Path
 import re
+import sys
 import warnings
 
 import lxml.etree as ET
@@ -16,14 +17,21 @@ import openmc.data
 import openmc.checkvalue as cv
 from ._xml import clean_indentation, reorder_attributes
 from .mixin import IDManagerMixin
+from .utility_funcs import input_path
+from . import waste
 from openmc.checkvalue import PathLike
 from openmc.stats import Univariate, Discrete, Mixture
+from openmc.data.data import _get_element_symbol
 
 
 # Units for density supported by OpenMC
 DENSITY_UNITS = ('g/cm3', 'g/cc', 'kg/m3', 'atom/b-cm', 'atom/cm3', 'sum',
                  'macro')
 
+# Smallest normalized floating point number
+_SMALLEST_NORMAL = sys.float_info.min
+
+_BECQUEREL_PER_CURIE = 3.7e10
 
 NuclideTuple = namedtuple('NuclideTuple', ['name', 'percent', 'percent_type'])
 
@@ -294,7 +302,7 @@ class Material(IDManagerMixin):
         clip_tolerance : float
             Maximum fraction of :math:`\sum_i x_i p_i` for discrete
             distributions that will be discarded.
-        units : {'Bq', 'Bq/g', 'Bq/cm3'}
+        units : {'Bq', 'Bq/g', 'Bq/kg', 'Bq/cm3'}
             Specifies the units on the integral of the distribution.
         volume : float, optional
             Volume of the material. If not passed, defaults to using the
@@ -302,11 +310,12 @@ class Material(IDManagerMixin):
 
         Returns
         -------
-        Decay photon energy distribution. The integral of this distribution is
-        the total intensity of the photon source in the requested units.
+        Univariate or None
+            Decay photon energy distribution. The integral of this distribution
+            is the total intensity of the photon source in the requested units.
 
         """
-        cv.check_value('units', units, {'Bq', 'Bq/g', 'Bq/cm3'})
+        cv.check_value('units', units, {'Bq', 'Bq/g', 'Bq/kg', 'Bq/cm3'})
         if units == 'Bq':
             multiplier = volume if volume is not None else self.volume
             if multiplier is None:
@@ -315,12 +324,14 @@ class Material(IDManagerMixin):
             multiplier = 1
         elif units == 'Bq/g':
             multiplier = 1.0 / self.get_mass_density()
+        elif units == 'Bq/kg':
+            multiplier = 1000.0 / self.get_mass_density()
 
         dists = []
         probs = []
         for nuc, atoms_per_bcm in self.get_nuclide_atom_densities().items():
             source_per_atom = openmc.data.decay_photon_energy(nuc)
-            if source_per_atom is not None:
+            if source_per_atom is not None and atoms_per_bcm > 0.0:
                 dists.append(source_per_atom)
                 probs.append(1e24 * atoms_per_bcm * multiplier)
 
@@ -332,6 +343,11 @@ class Material(IDManagerMixin):
         combined = openmc.data.combine_distributions(dists, probs)
         if isinstance(combined, (Discrete, Mixture)):
             combined.clip(clip_tolerance, inplace=True)
+
+        # If clipping resulted in a single distribution within a mixture, pick
+        # out that single distribution
+        if isinstance(combined, Mixture) and len(combined.distribution) == 1:
+            combined = combined.distribution[0]
 
         return combined
 
@@ -415,7 +431,11 @@ class Material(IDManagerMixin):
 
         """
 
-        import NCrystal
+        try:
+            import NCrystal
+        except ModuleNotFoundError as e:
+            raise RuntimeError('The .from_ncrystal method requires'
+                               ' NCrystal to be installed.') from e
         nc_mat = NCrystal.createInfo(cfg)
 
         def openmc_natabund(Z):
@@ -1040,7 +1060,6 @@ class Material(IDManagerMixin):
             nuc_densities.append(nuc.percent)
             nuc_density_types.append(nuc.percent_type)
 
-        nucs = np.array(nucs)
         nuc_densities = np.array(nuc_densities)
         nuc_density_types = np.array(nuc_density_types)
 
@@ -1075,19 +1094,60 @@ class Material(IDManagerMixin):
 
         return nuclides
 
+    def get_element_atom_densities(self, element: str | None = None) -> dict[str, float]:
+        """Returns one or all elements in the material and their atomic
+        densities in units of atom/b-cm
+
+        .. versionadded:: 0.15.1
+
+        Parameters
+        ----------
+        element : str, optional
+            Element for which atom density is desired. If not specified, the
+            atom density for each element in the material is given.
+
+        Returns
+        -------
+        elements : dict
+            Dictionary whose keys are element names and values are densities in
+            [atom/b-cm]
+
+        """
+        if element is not None:
+            element = _get_element_symbol(element)
+
+        nuc_densities = self.get_nuclide_atom_densities()
+
+        # Initialize an empty dictionary for summed values
+        densities = {}
+
+        # Accumulate densities for each nuclide
+        for nuclide, density in nuc_densities.items():
+            nuc_element = openmc.data.ATOMIC_SYMBOL[openmc.data.zam(nuclide)[0]]
+            if element is None or element == nuc_element:
+                if nuc_element not in densities:
+                    densities[nuc_element] = 0.0
+                densities[nuc_element] += float(density)
+
+        # If specific element was requested, make sure it is present
+        if element is not None and element not in densities:
+                raise ValueError(f'Element {element} not found in material.')
+
+        return densities
+
+
     def get_activity(self, units: str = 'Bq/cm3', by_nuclide: bool = False,
                      volume: float | None = None) -> dict[str, float] | float:
-        """Returns the activity of the material or for each nuclide in the
-        material in units of [Bq], [Bq/g] or [Bq/cm3].
+        """Returns the activity of the material or of each nuclide within.
 
         .. versionadded:: 0.13.1
 
         Parameters
         ----------
-        units : {'Bq', 'Bq/g', 'Bq/cm3'}
+        units : {'Bq', 'Bq/g', 'Bq/kg', 'Bq/cm3', 'Ci', 'Ci/m3'}
             Specifies the type of activity to return, options include total
-            activity [Bq], specific [Bq/g] or volumetric activity [Bq/cm3].
-            Default is volumetric activity [Bq/cm3].
+            activity [Bq,Ci], specific [Bq/g, Bq/kg] or volumetric activity
+            [Bq/cm3,Ci/m3]. Default is volumetric activity [Bq/cm3].
         by_nuclide : bool
             Specifies if the activity should be returned for the material as a
             whole or per nuclide. Default is False.
@@ -1105,15 +1165,24 @@ class Material(IDManagerMixin):
             of the material is returned as a float.
         """
 
-        cv.check_value('units', units, {'Bq', 'Bq/g', 'Bq/cm3'})
+        cv.check_value('units', units, {'Bq', 'Bq/g', 'Bq/kg', 'Bq/cm3', 'Ci', 'Ci/m3'})
         cv.check_type('by_nuclide', by_nuclide, bool)
 
+        if volume is None:
+            volume = self.volume
+
         if units == 'Bq':
-            multiplier = volume if volume is not None else self.volume
+            multiplier = volume
         elif units == 'Bq/cm3':
             multiplier = 1
         elif units == 'Bq/g':
             multiplier = 1.0 / self.get_mass_density()
+        elif units == 'Bq/kg':
+            multiplier = 1000.0 / self.get_mass_density()
+        elif units == 'Ci':
+            multiplier = volume / _BECQUEREL_PER_CURIE
+        elif units == 'Ci/m3':
+            multiplier = 1e6 / _BECQUEREL_PER_CURIE
 
         activity = {}
         for nuclide, atoms_per_bcm in self.get_nuclide_atom_densities().items():
@@ -1125,15 +1194,15 @@ class Material(IDManagerMixin):
     def get_decay_heat(self, units: str = 'W', by_nuclide: bool = False,
                        volume: float | None = None) -> dict[str, float] | float:
         """Returns the decay heat of the material or for each nuclide in the
-        material in units of [W], [W/g] or [W/cm3].
+        material in units of [W], [W/g], [W/kg] or [W/cm3].
 
         .. versionadded:: 0.13.3
 
         Parameters
         ----------
-        units : {'W', 'W/g', 'W/cm3'}
+        units : {'W', 'W/g', 'W/kg', 'W/cm3'}
             Specifies the units of decay heat to return. Options include total
-            heat [W], specific [W/g] or volumetric heat [W/cm3].
+            heat [W], specific [W/g, W/kg] or volumetric heat [W/cm3].
             Default is total heat [W].
         by_nuclide : bool
             Specifies if the decay heat should be returned for the material as a
@@ -1152,7 +1221,7 @@ class Material(IDManagerMixin):
             of the material is returned as a float.
         """
 
-        cv.check_value('units', units, {'W', 'W/g', 'W/cm3'})
+        cv.check_value('units', units, {'W', 'W/g', 'W/kg', 'W/cm3'})
         cv.check_type('by_nuclide', by_nuclide, bool)
 
         if units == 'W':
@@ -1161,6 +1230,8 @@ class Material(IDManagerMixin):
             multiplier = 1
         elif units == 'W/g':
             multiplier = 1.0 / self.get_mass_density()
+        elif units == 'W/kg':
+            multiplier = 1000.0 / self.get_mass_density()
 
         decayheat = {}
         for nuclide, atoms_per_bcm in self.get_nuclide_atom_densities().items():
@@ -1252,6 +1323,83 @@ class Material(IDManagerMixin):
             raise ValueError("Volume must be set in order to determine mass.")
         return volume*self.get_mass_density(nuclide)
 
+    def waste_classification(self, metal: bool = False) -> str:
+        """Classify the material for near-surface waste disposal.
+
+        This method determines a waste classification for the material based on
+        the NRC regulations (10 CFR 61.55). Note that the NRC regulations do not
+        consider many long-lived radionuclides relevant to fusion systems; for
+        fusion applications, it is recommended to calculate a waste disposal
+        rating based on limits by Fetter et al. using the
+        :meth:`~openmc.Material.waste_disposal_rating` method.
+
+        Parameters
+        ----------
+        metal : bool, optional
+            Whether or not the material is in metal form.
+
+        Returns
+        -------
+        str
+            The waste disposal classification, which can be "Class A", "Class
+            B", "Class C", or "GTCC" (greater than class C).
+
+        """
+        return waste._waste_classification(self, metal=metal)
+
+    def waste_disposal_rating(
+            self,
+            limits: str | dict[str, float] = 'Fetter',
+            metal: bool = False,
+        ) -> float:
+        """Return the waste disposal rating for the material.
+
+        This method returns a waste disposal rating for the material based on a
+        set of specific activity limits. The waste disposal rating is a single
+        number that represents the sum of the ratios of the specific activity
+        for each radionuclide in the material against a nuclide-specific limit.
+        A value less than 1.0 indicates that the material "meets" the limits
+        whereas a value greater than 1.0 exceeds the limits.
+
+        Note that the limits for NRC do not consider many long-lived
+        radionuclides relevant to fusion systems. A paper by `Fetter et al.
+        <https://doi.org/10.1016/0920-3796(90)90104-E>`_ applies the NRC
+        methodology to calculate specific activity limits for an expanded set of
+        radionuclides.
+
+        Parameters
+        ----------
+        limits : str or dict, optional
+            The name of a predefined set of specific activity limits or a
+            dictionary that contains specific activity limits for radionuclides,
+            where keys are nuclide names and values are activities in units of
+            [Ci/m3]. The predefined options are:
+
+            - 'Fetter': Uses limits from Fetter et al. (1990)
+            - 'NRC_long': Uses the 10 CFR 61.55 limits for long-lived
+              radionuclides
+            - 'NRC_short_A': Uses the 10 CFR 61.55 class A limits for
+              short-lived radionuclides
+            - 'NRC_short_B': Uses the 10 CFR 61.55 class B limits for
+              short-lived radionuclides
+            - 'NRC_short_C': Uses the 10 CFR 61.55 class C limits for
+              short-lived radionuclides
+        metal : bool, optional
+            Whether or not the material is in metal form (only applicable for
+            NRC based limits)
+
+        Returns
+        -------
+        float
+            The waste disposal rating for the material.
+
+        See also
+        --------
+        Material.waste_classification()
+
+        """
+        return waste._waste_disposal_rating(self, limits, metal)
+
     def clone(self, memo: dict | None = None) -> Material:
         """Create a copy of this material with a new unique ID.
 
@@ -1295,10 +1443,16 @@ class Material(IDManagerMixin):
         xml_element = ET.Element("nuclide")
         xml_element.set("name", nuclide.name)
 
+        # Prevent subnormal numbers from being written to XML, which causes an
+        # exception on the C++ side when calling std::stod
+        val = nuclide.percent
+        if abs(val) < _SMALLEST_NORMAL:
+            val = 0.0
+
         if nuclide.percent_type == 'ao':
-            xml_element.set("ao", str(nuclide.percent))
+            xml_element.set("ao", str(val))
         else:
-            xml_element.set("wo", str(nuclide.percent))
+            xml_element.set("wo", str(val))
 
         return xml_element
 
@@ -1397,7 +1551,7 @@ class Material(IDManagerMixin):
 
     @classmethod
     def mix_materials(cls, materials, fracs: Iterable[float],
-                      percent_type: str = 'ao', name: str | None = None) -> Material:
+                      percent_type: str = 'ao', **kwargs) -> Material:
         """Mix materials together based on atom, weight, or volume fractions
 
         .. versionadded:: 0.12
@@ -1412,10 +1566,8 @@ class Material(IDManagerMixin):
             Type of percentage, must be one of 'ao', 'wo', or 'vo', to signify atom
             percent (molar percent), weight percent, or volume percent,
             optional. Defaults to 'ao'
-        name : str
-            The name for the new material, optional. Defaults to concatenated
-            names of input materials with percentages indicated inside
-            parentheses.
+        **kwargs
+            Keyword arguments passed to :class:`openmc.Material`
 
         Returns
         -------
@@ -1474,10 +1626,11 @@ class Material(IDManagerMixin):
                                     openmc.data.AVOGADRO
 
         # Create the new material with the desired name
-        if name is None:
-            name = '-'.join([f'{m.name}({f})' for m, f in
+        if "name" not in kwargs:
+            kwargs["name"] = '-'.join([f'{m.name}({f})' for m, f in
                              zip(materials, fracs)])
-        new_mat = openmc.Material(name=name)
+
+        new_mat = cls(**kwargs)
 
         # Compute atom fractions of nuclides and add them to the new material
         tot_nuclides_per_cc = np.sum([dens for dens in nuclides_per_cc.values()])
@@ -1523,7 +1676,6 @@ class Material(IDManagerMixin):
 
         if 'volume' in elem.attrib:
             mat.volume = float(elem.get('volume'))
-        mat.depletable = bool(elem.get('depletable'))
 
         # Get each nuclide
         for nuclide in elem.findall('nuclide'):
@@ -1532,6 +1684,9 @@ class Material(IDManagerMixin):
                 mat.add_nuclide(name, float(nuclide.attrib['ao']))
             elif 'wo' in nuclide.attrib:
                 mat.add_nuclide(name, float(nuclide.attrib['wo']), 'wo')
+
+        # Get depletable attribute
+        mat.depletable = elem.get('depletable') in ('true', '1')
 
         # Get each S(a,b) table
         for sab in elem.findall('sab'):
@@ -1600,7 +1755,7 @@ class Materials(cv.CheckedList):
     @cross_sections.setter
     def cross_sections(self, cross_sections):
         if cross_sections is not None:
-            self._cross_sections = Path(cross_sections)
+            self._cross_sections = input_path(cross_sections)
 
     def append(self, material):
         """Append material to collection

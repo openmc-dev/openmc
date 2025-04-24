@@ -448,7 +448,7 @@ def test_deplete(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     # In this test we first run without pre-initializing the shared library
     # data and then compare. Then we repeat with the C API already initialized
     # and make sure we get the same answer
-    test_model.deplete([1e6], 'predictor', final_step=False,
+    test_model.deplete(timesteps=[1e6], method='predictor', final_step=False,
                        operator_kwargs=op_kwargs,
                        power=1., output=False)
     # Get the new Xe136 and U235 atom densities
@@ -482,7 +482,7 @@ def test_deplete(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
 
     # Now we can re-run with the pre-initialized API
     test_model.init_lib(output=False, intracomm=mpi_intracomm)
-    test_model.deplete([1e6], 'predictor', final_step=False,
+    test_model.deplete(timesteps=[1e6], method='predictor', final_step=False,
                        operator_kwargs=op_kwargs,
                        power=1., output=False)
     # Get the new Xe136 and U235 atom densities
@@ -591,3 +591,61 @@ def test_single_xml_exec(run_in_tmpdir):
 
     os.mkdir('subdir')
     pincell_model.run(path='subdir')
+
+
+def test_nuclides_to_ignore(run_in_tmpdir, pin_model_attributes):
+    """Test nuclides_to_ignore when exporting a model XML"""
+    materials, geometry, settings = pin_model_attributes[:3]
+    model = openmc.Model(geometry=geometry, settings=settings)
+
+    # grab one of the nuclides present in this model as a test
+    test_nuclide = list(materials[0].get_nuclides())[0]
+
+    # exclude the test nuclide from the XML file during export
+    model.export_to_model_xml(nuclides_to_ignore=[test_nuclide])
+
+    # ensure that the nuclide doesn't appear after reading in
+    # the resulting XML model
+    xml_model = openmc.Model.from_model_xml()
+    for material in xml_model.materials:
+        assert test_nuclide not in material.get_nuclides()
+
+
+def test_model_plot():
+    # plots the geometry with source location and checks the resulting
+    # matplotlib includes the correct coordinates for the scatter plot for all
+    # basis.
+
+    surface = openmc.Sphere(r=600, boundary_type="vacuum")
+    cell = openmc.Cell(region=-surface)
+    geometry = openmc.Geometry([cell])
+    source = openmc.IndependentSource(space=openmc.stats.Point((1, 2, 3)))
+    settings = openmc.Settings(particles=1, batches=1, source=source)
+    model = openmc.Model(geometry, settings=settings)
+
+    plot = model.plot(n_samples=1, plane_tolerance=4.0, basis="xy")
+    coords = plot.axes.collections[0].get_offsets().data.flatten()
+    assert (coords == np.array([1.0, 2.0])).all()
+
+    plot = model.plot(n_samples=1, plane_tolerance=4.0, basis="xz")
+    coords = plot.axes.collections[0].get_offsets().data.flatten()
+    assert (coords == np.array([1.0, 3.0])).all()
+
+    plot = model.plot(n_samples=1, plane_tolerance=4.0, basis="yz")
+    coords = plot.axes.collections[0].get_offsets().data.flatten()
+    assert (coords == np.array([2.0, 3.0])).all()
+
+    plot = model.plot(n_samples=1, plane_tolerance=0.1, basis="xy")
+    coords = plot.axes.collections[0].get_offsets().data.flatten()
+    assert (coords == np.array([])).all()
+
+    # modify model to include another cell that overlaps the original cell entirely
+    model.geometry.root_universe.add_cell(openmc.Cell(region=-surface))
+    axes = model.plot(show_overlaps=True)
+    white = np.array((1.0, 1.0, 1.0))
+    red = np.array((1.0, 0.0, 0.0))
+    axes_image = axes.get_images()[0]
+    image_data = axes_image.get_array()
+    # ensure that all of the data in the image data is either white or red
+    test_mask = (image_data == white) | (image_data == red)
+    assert np.all(test_mask), "Colors other than white or red found in overlap plot image"

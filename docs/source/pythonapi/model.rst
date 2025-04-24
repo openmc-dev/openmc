@@ -22,6 +22,7 @@ Composite Surfaces
    :nosignatures:
    :template: myclass.rst
 
+   openmc.model.ConicalFrustum
    openmc.model.CruciformPrism
    openmc.model.CylinderSector
    openmc.model.HexagonalPrism
@@ -31,6 +32,7 @@ Composite Surfaces
    openmc.model.RectangularParallelepiped
    openmc.model.RectangularPrism
    openmc.model.RightCircularCylinder
+   openmc.model.Vessel
    openmc.model.XConeOneSided
    openmc.model.YConeOneSided
    openmc.model.ZConeOneSided

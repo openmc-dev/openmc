@@ -71,8 +71,7 @@ def model():
     model.tallies = openmc.Tallies([tally])
 
     # custom source from shared library
-    source = openmc.CompiledSource()
-    source.library = 'build/libsource.so'
+    source = openmc.CompiledSource('build/libsource.so')
     source.parameters = '1e3'
     model.settings.source = source
 

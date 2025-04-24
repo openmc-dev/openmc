@@ -56,3 +56,12 @@ TEST_CASE("Test file_exists")
   REQUIRE(!file_exists("./should_not_exist/really_do_not_make_this_please"));
 #endif
 }
+
+TEST_CASE("Test dir_name")
+{
+  REQUIRE(dir_name("") == "");
+  REQUIRE(dir_name("/") == "/");
+  REQUIRE(dir_name("hello") == "");
+  REQUIRE(dir_name("hello/world") == "hello");
+  REQUIRE(dir_name("/path/to/dir/") == "/path/to/dir");
+}

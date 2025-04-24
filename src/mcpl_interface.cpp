@@ -112,7 +112,7 @@ vector<SourceSite> mcpl_source_sites(std::string path)
 
 #ifdef OPENMC_MCPL
 void write_mcpl_source_bank(mcpl_outfile_t file_id,
-  gsl::span<SourceSite> source_bank, const vector<int64_t>& bank_index)
+  span<SourceSite> source_bank, const vector<int64_t>& bank_index)
 {
   int64_t dims_size = settings::n_particles;
   int64_t count_size = simulation::work_per_rank;
@@ -188,8 +188,8 @@ void write_mcpl_source_bank(mcpl_outfile_t file_id,
 
 //==============================================================================
 
-void write_mcpl_source_point(const char* filename,
-  gsl::span<SourceSite> source_bank, const vector<int64_t>& bank_index)
+void write_mcpl_source_point(const char* filename, span<SourceSite> source_bank,
+  const vector<int64_t>& bank_index)
 {
   std::string filename_(filename);
   const auto extension = get_file_extension(filename_);
@@ -207,8 +207,8 @@ void write_mcpl_source_point(const char* filename,
   if (mpi::master) {
     file_id = mcpl_create_outfile(filename_.c_str());
     if (VERSION_DEV) {
-      line = fmt::format("OpenMC {0}.{1}.{2}-development", VERSION_MAJOR,
-        VERSION_MINOR, VERSION_RELEASE);
+      line = fmt::format("OpenMC {0}.{1}.{2}-dev{3}", VERSION_MAJOR,
+        VERSION_MINOR, VERSION_RELEASE, VERSION_COMMIT_COUNT);
     } else {
       line = fmt::format(
         "OpenMC {0}.{1}.{2}", VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE);

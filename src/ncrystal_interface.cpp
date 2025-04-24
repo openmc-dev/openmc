@@ -7,88 +7,33 @@
 namespace openmc {
 
 //==============================================================================
-// Constants
+// NCrystalMat implementation
 //==============================================================================
 
-#ifdef NCRYSTAL
-const bool OPENMC_API NCRYSTAL_ENABLED = true;
-#else
-const bool OPENMC_API NCRYSTAL_ENABLED = false;
-#endif
-
-//==============================================================================
-// NCrystal wrapper class for the OpenMC random number generator
-//==============================================================================
-
-#ifdef NCRYSTAL
-class NCrystalRNGWrapper : public NCrystal::RNGStream {
-public:
-  constexpr NCrystalRNGWrapper(uint64_t* seed) noexcept : openmc_seed_(seed) {}
-
-protected:
-  double actualGenerate() override
-  {
-    return std::max<double>(
-      std::numeric_limits<double>::min(), prn(openmc_seed_));
-  }
-
-private:
-  uint64_t* openmc_seed_;
-};
-#endif
-
-//==============================================================================
-// NCrystal implementation
-//==============================================================================
-
-NCrystalMat::NCrystalMat(const std::string& cfg)
-{
-#ifdef NCRYSTAL
-  cfg_ = cfg;
-  ptr_ = NCrystal::FactImpl::createScatter(cfg);
-#else
-  fatal_error("Your build of OpenMC does not support NCrystal materials.");
-#endif
-}
-
-#ifdef NCRYSTAL
-std::string NCrystalMat::cfg() const
-{
-  return cfg_;
-}
+NCrystalMat::NCrystalMat(const std::string& cfg) : cfg_(cfg), proc_(cfg.c_str())
+{}
 
 double NCrystalMat::xs(const Particle& p) const
 {
   // Calculate scattering XS per atom with NCrystal, only once per material
-  NCrystal::CachePtr dummy_cache;
-  auto nc_energy = NCrystal::NeutronEnergy {p.E()};
-  return ptr_->crossSection(dummy_cache, nc_energy, {p.u().x, p.u().y, p.u().z})
-    .get();
+  double neutron_state[4] = {p.E(), p.u().x, p.u().y, p.u().z};
+  return proc_.cross_section(neutron_state);
 }
 
 void NCrystalMat::scatter(Particle& p) const
 {
-  NCrystalRNGWrapper rng(p.current_seed()); // Initialize RNG
-  // create a cache pointer for multi thread physics
-  NCrystal::CachePtr dummy_cache;
-  auto nc_energy = NCrystal::NeutronEnergy {p.E()};
-  auto outcome = ptr_->sampleScatter(
-    dummy_cache, rng, nc_energy, {p.u().x, p.u().y, p.u().z});
-
+  // Scatter with NCrystal, using the OpenMC RNG stream:
+  uint64_t* seed = p.current_seed();
+  std::function<double()> rng = [&seed]() { return prn(seed); };
+  double neutron_state[4] = {p.E(), p.u().x, p.u().y, p.u().z};
+  proc_.scatter(rng, neutron_state);
   // Modify attributes of particle
-  p.E() = outcome.ekin.get();
+  p.E() = neutron_state[0];
   Direction u_old {p.u()};
-  p.u() =
-    Direction(outcome.direction[0], outcome.direction[1], outcome.direction[2]);
+  p.u() = Direction(neutron_state[1], neutron_state[2], neutron_state[3]);
   p.mu() = u_old.dot(p.u());
   p.event_mt() = ELASTIC;
 }
-
-NCrystalMat::operator bool() const
-{
-  return ptr_.get();
-}
-#endif
 
 //==============================================================================
 // Functions

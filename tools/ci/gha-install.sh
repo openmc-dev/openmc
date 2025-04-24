@@ -14,10 +14,9 @@ if [[ $DAGMC = 'y' ]]; then
     ./tools/ci/gha-install-dagmc.sh
 fi
 
-# Install NCrystal if needed
-if [[ $NCRYSTAL = 'y' ]]; then
-    ./tools/ci/gha-install-ncrystal.sh
-fi
+# Install NCrystal and verify installation
+pip install 'ncrystal>=4.1.0'
+nctool --test
 
 # Install vectfit for WMP generation if needed
 if [[ $VECTFIT = 'y' ]]; then

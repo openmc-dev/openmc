@@ -1,0 +1,25 @@
+<?xml version='1.0' encoding='utf-8'?>
+<model>
+  <materials>
+    <material depletable="true" id="1">
+      <density units="g/cm3" value="4.5"/>
+      <nuclide ao="1.0" name="U235"/>
+    </material>
+  </materials>
+  <geometry>
+    <cell id="1" material="1" region="-1" universe="1"/>
+    <surface boundary="vacuum" coeffs="0.0 0.0 0.0 10.0" id="1" type="sphere"/>
+  </geometry>
+  <settings>
+    <run_mode>eigenvalue</run_mode>
+    <particles>1000</particles>
+    <batches>10</batches>
+    <inactive>5</inactive>
+    <source particle="neutron" strength="1.0" type="independent">
+      <space type="box">
+        <parameters>-4 -4 -4 4 4 4</parameters>
+      </space>
+    </source>
+    <stride>1529170</stride>
+  </settings>
+  </model>

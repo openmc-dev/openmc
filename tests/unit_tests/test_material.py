@@ -380,6 +380,28 @@ def test_get_nuclide_atom_densities_specific(uo2):
     assert all_nuc['O16'] == one_nuc['O16']
 
 
+def test_get_element_atom_densities(uo2):
+    for element, density in uo2.get_element_atom_densities().items():
+        assert element in ('U', 'O')
+        assert density > 0
+
+
+def test_get_element_atom_densities_specific(uo2):
+    one_nuc = uo2.get_element_atom_densities('O')
+    assert list(one_nuc.keys()) == ['O']
+    assert list(one_nuc.values())[0] > 0
+
+    one_nuc = uo2.get_element_atom_densities('uranium')
+    assert list(one_nuc.keys()) == ['U']
+    assert list(one_nuc.values())[0] > 0
+
+    with pytest.raises(ValueError, match='not found'):
+        uo2.get_element_atom_densities('Li')
+
+    with pytest.raises(ValueError, match='not recognized'):
+        uo2.get_element_atom_densities('proximium')
+
+
 def test_get_nuclide_atoms():
     mat = openmc.Material()
     mat.add_nuclide('Li6', 1.0)
@@ -511,11 +533,13 @@ def test_mix_materials():
     dens4 = 1. / (f0 / m1dens + f1 / m2dens)
     dens5 = f0*m1dens + f1*m2dens
     m3 = openmc.Material.mix_materials([m1, m2], [f0, f1], percent_type='ao')
-    m4 = openmc.Material.mix_materials([m1, m2], [f0, f1], percent_type='wo')
-    m5 = openmc.Material.mix_materials([m1, m2], [f0, f1], percent_type='vo')
+    m4 = openmc.Material.mix_materials([m1, m2], [f0, f1], percent_type='wo', material_id=999)
+    m5 = openmc.Material.mix_materials([m1, m2], [f0, f1], percent_type='vo', name='m5')
     assert m3.density == pytest.approx(dens3)
     assert m4.density == pytest.approx(dens4)
     assert m5.density == pytest.approx(dens5)
+    assert m4.id == 999
+    assert m5.name == 'm5'
 
 
 def test_get_activity():
@@ -555,6 +579,7 @@ def test_get_activity():
     m4.add_nuclide("H3", 1)
     m4.set_density('g/cm3', 1.5)
     assert pytest.approx(m4.get_activity(units='Bq/g')) == 355978108155965.94  # [Bq/g]
+    assert pytest.approx(m4.get_activity(units='Bq/kg')) == 355978108155965940  # [Bq/kg]
     assert pytest.approx(m4.get_activity(units='Bq/g', by_nuclide=True)["H3"]) == 355978108155965.94  # [Bq/g]
     assert pytest.approx(m4.get_activity(units='Bq/cm3')) == 355978108155965.94*3/2 # [Bq/cc]
     assert pytest.approx(m4.get_activity(units='Bq/cm3', by_nuclide=True)["H3"]) == 355978108155965.94*3/2 # [Bq/cc]
@@ -564,6 +589,12 @@ def test_get_activity():
 
     # Test with volume specified as argument
     assert pytest.approx(m4.get_activity(units='Bq', volume=1.0)) == 355978108155965.94*3/2
+
+    # Test units based on Ci
+    bq = m4.get_activity(units='Bq')
+    m3 = m4.volume * 1e-6
+    assert (ci := m4.get_activity(units='Ci')) == pytest.approx(bq/3.7e10)
+    assert m4.get_activity(units='Ci/m3') == pytest.approx(ci/m3)
 
 
 def test_get_decay_heat():
@@ -604,6 +635,7 @@ def test_get_decay_heat():
     m4.add_nuclide("I135", 1)
     m4.set_density('g/cm3', 1.5)
     assert pytest.approx(m4.get_decay_heat(units='W/g')) == 40175.15720273193 # [W/g]
+    assert pytest.approx(m4.get_decay_heat(units='W/kg')) == 40175157.20273193 # [W/kg]
     assert pytest.approx(m4.get_decay_heat(units='W/g', by_nuclide=True)["I135"]) == 40175.15720273193 # [W/g]
     assert pytest.approx(m4.get_decay_heat(units='W/cm3')) == 40175.15720273193*3/2 # [W/cc]
     assert pytest.approx(m4.get_decay_heat(units='W/cm3', by_nuclide=True)["I135"]) == 40175.15720273193*3/2 #[W/cc]
@@ -634,6 +666,9 @@ def test_decay_photon_energy():
     assert src.p * 2.0 == pytest.approx(src_v2.p)
     src_per_cm3 = m.get_decay_photon_energy(units='Bq/cm3', volume=100.0)
     assert (src.p == src_per_cm3.p).all()
+    src_per_bqg = m.get_decay_photon_energy(units='Bq/g')
+    src_per_bqkg = m.get_decay_photon_energy(units='Bq/kg')
+    assert pytest.approx(src_per_bqg.integral()) == src_per_bqkg.integral() / 1000.
 
     # If we add Xe135 (which has a tabular distribution), the photon source
     # should be a mixture distribution
@@ -661,3 +696,17 @@ def test_decay_photon_energy():
     stable.add_nuclide('Gd156', 1.0)
     stable.volume = 1.0
     assert stable.get_decay_photon_energy() is None
+
+
+def test_avoid_subnormal(run_in_tmpdir):
+    # Write a materials.xml with a material that has a nuclide density that is
+    # represented as a subnormal floating point value
+    mat = openmc.Material()
+    mat.add_nuclide('H1', 1.0)
+    mat.add_nuclide('H2', 1.0e-315)
+    mats = openmc.Materials([mat])
+    mats.export_to_xml()
+
+    # When read back in, the density should be zero
+    mats = openmc.Materials.from_xml()
+    assert mats[0].get_nuclide_atom_densities()['H2'] == 0.0

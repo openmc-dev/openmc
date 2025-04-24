@@ -11,7 +11,7 @@ from warnings import warn
 import numpy as np
 
 import openmc
-from openmc.checkvalue import check_value
+from openmc.checkvalue import check_value, check_type, check_greater_than
 from openmc.exceptions import DataError
 from openmc.mpi import comm
 from .abc import TransportOperator, OperatorResult
@@ -49,13 +49,9 @@ class OpenMCOperator(TransportOperator):
         Dictionary of nuclides and their fission Q values [eV].
     helper_kwargs : dict
         Keyword arguments for helper classes
-    reduce_chain : bool, optional
-        If True, use :meth:`openmc.deplete.Chain.reduce()` to reduce the
-        depletion chain up to ``reduce_chain_level``.
     reduce_chain_level : int, optional
-        Depth of the search when reducing the depletion chain. Only used
-        if ``reduce_chain`` evaluates to true. The default value of
-        ``None`` implies no limit on the depth.
+        Depth of the search when reducing the depletion chain. The default
+        value of ``None`` implies no limit on the depth.
 
     diff_volume_method : str
         Specifies how the volumes of the new materials should be found. Default
@@ -107,7 +103,6 @@ class OpenMCOperator(TransportOperator):
             diff_volume_method='divide equally',
             fission_q=None,
             helper_kwargs=None,
-            reduce_chain=False,
             reduce_chain_level=None):
 
         # If chain file was not specified, try to get it from global config
@@ -126,10 +121,13 @@ class OpenMCOperator(TransportOperator):
 
         check_value('diff volume method', diff_volume_method,
                     {'divide equally', 'match cell'})
+        if reduce_chain_level:
+            check_type('reduce_chain_level', reduce_chain_level, int)
+            check_greater_than('reduce_chain_level', reduce_chain_level, 0)
         self.diff_volume_method = diff_volume_method
 
         # Reduce the chain to only those nuclides present
-        if reduce_chain:
+        if reduce_chain_level is not None:
             init_nuclides = set()
             for material in self.materials:
                 if not material.depletable:
@@ -146,8 +144,6 @@ class OpenMCOperator(TransportOperator):
         # Determine which nuclides have cross section data
         # This nuclides variables contains every nuclides
         # for which there is an entry in the micro_xs parameter
-        openmc.reset_auto_ids()
-
         self.nuclides_with_data = self._get_nuclides_with_data(
             self.cross_sections)
 
@@ -210,7 +206,7 @@ class OpenMCOperator(TransportOperator):
                 if nuclide in self.nuclides_with_data or self._decay_nucs:
                     model_nuclides.add(nuclide)
                 else:
-                    msg = (f"Nuclilde {nuclide} in material {mat.id} is not "
+                    msg = (f"Nuclide {nuclide} in material {mat.id} is not "
                            "present in the depletion chain and has no cross "
                            "section data.")
                     warn(msg)
@@ -249,20 +245,7 @@ class OpenMCOperator(TransportOperator):
 
     @abstractmethod
     def _get_nuclides_with_data(self, cross_sections):
-        """Find nuclides with cross section data
-
-        Parameters
-        ----------
-        cross_sections : str or pandas.DataFrame
-            Path to continuous energy cross section library, or object
-            containing one-group cross-sections.
-
-        Returns
-        -------
-        nuclides : set of str
-            Set of nuclide names that have cross secton data
-
-        """
+        """Find nuclides with cross section data."""
 
     def _extract_number(self, local_mats, volume, all_nuclides, prev_res=None):
         """Construct AtomNumber using geometry
@@ -395,9 +378,6 @@ class OpenMCOperator(TransportOperator):
         # Update the number densities regardless of the source rate
         self.number.set_density(vec)
         self._update_materials()
-
-        # Prevent OpenMC from complaining about re-creating tallies
-        openmc.reset_auto_ids()
 
         # Update tally nuclides data in preparation for transport solve
         nuclides = self._get_reaction_nuclides()

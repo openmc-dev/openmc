@@ -29,6 +29,9 @@ int openmc_cell_set_temperature(
   int32_t index, double T, const int32_t* instance, bool set_contained = false);
 int openmc_cell_set_translation(int32_t index, const double xyz[]);
 int openmc_cell_set_rotation(int32_t index, const double rot[], size_t rot_len);
+int openmc_dagmc_universe_get_cell_ids(
+  int32_t univ_id, int32_t* ids, size_t* n);
+int openmc_dagmc_universe_get_num_cells(int32_t univ_id, size_t* n);
 int openmc_energy_filter_get_bins(
   int32_t index, const double** energies, size_t* n);
 int openmc_energy_filter_set_bins(
@@ -68,6 +71,7 @@ int openmc_get_nuclide_index(const char name[], int* index);
 int openmc_add_unstructured_mesh(
   const char filename[], const char library[], int* id);
 int64_t openmc_get_seed();
+uint64_t openmc_get_stride();
 int openmc_get_tally_index(int32_t id, int32_t* index);
 void openmc_get_tally_next_id(int32_t* id);
 int openmc_global_tallies(double** ptr);
@@ -107,8 +111,8 @@ int openmc_mesh_get_id(int32_t index, int32_t* id);
 int openmc_mesh_set_id(int32_t index, int32_t id);
 int openmc_mesh_get_n_elements(int32_t index, size_t* n);
 int openmc_mesh_get_volumes(int32_t index, double* volumes);
-int openmc_mesh_material_volumes(int32_t index, int n_sample, int bin,
-  int result_size, void* result, int* hits, uint64_t* seed);
+int openmc_mesh_material_volumes(int32_t index, int nx, int ny, int nz,
+  int max_mats, int32_t* materials, double* volumes);
 int openmc_meshsurface_filter_get_mesh(int32_t index, int32_t* index_mesh);
 int openmc_meshsurface_filter_set_mesh(int32_t index, int32_t index_mesh);
 int openmc_new_filter(const char* type, int32_t* index);
@@ -134,6 +138,7 @@ int openmc_reset_timers();
 int openmc_run();
 int openmc_sample_external_source(size_t n, uint64_t* seed, void* sites);
 void openmc_set_seed(int64_t new_seed);
+void openmc_set_stride(uint64_t new_stride);
 int openmc_set_n_batches(
   int32_t n_batches, bool set_max_batches, bool add_statepoint_batch);
 int openmc_simulation_finalize();

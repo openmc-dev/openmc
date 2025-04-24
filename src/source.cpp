@@ -4,7 +4,7 @@
 #define HAS_DYNAMIC_LINKING
 #endif
 
-#include <algorithm> // for move
+#include <utility> // for move
 
 #ifdef HAS_DYNAMIC_LINKING
 #include <dlfcn.h> // for dlopen, dlsym, dlclose, dlerror
@@ -44,7 +44,10 @@ namespace openmc {
 namespace model {
 
 vector<unique_ptr<Source>> external_sources;
-}
+
+DiscreteIndex external_sources_probability;
+
+} // namespace model
 
 //==============================================================================
 // Source implementation
@@ -608,25 +611,23 @@ void initialize_source()
 
 SourceSite sample_external_source(uint64_t* seed)
 {
-  // Determine total source strength
-  double total_strength = 0.0;
-  for (auto& s : model::external_sources)
-    total_strength += s->strength();
-
   // Sample from among multiple source distributions
   int i = 0;
   if (model::external_sources.size() > 1) {
-    double xi = prn(seed) * total_strength;
-    double c = 0.0;
-    for (; i < model::external_sources.size(); ++i) {
-      c += model::external_sources[i]->strength();
-      if (xi < c)
-        break;
+    if (settings::uniform_source_sampling) {
+      i = prn(seed) * model::external_sources.size();
+    } else {
+      i = model::external_sources_probability.sample(seed);
     }
   }
 
   // Sample source site from i-th source distribution
   SourceSite site {model::external_sources[i]->sample_with_constraints(seed)};
+
+  // Set particle creation weight
+  if (settings::uniform_source_sampling) {
+    site.wgt *= model::external_sources[i]->strength();
+  }
 
   // If running in MG, convert site.E to group
   if (!settings::run_CE) {

@@ -4,7 +4,6 @@ from pathlib import Path
 import numpy as np
 import pytest
 from uncertainties import ufloat
-
 import openmc
 import openmc.lib
 from openmc.stats import Discrete, Point
@@ -224,6 +223,47 @@ def test_lower_ww_bounds_shape():
     assert ww.lower_ww_bounds.shape == (2, 3, 4, 1)
 
 
+def test_photon_heating(run_in_tmpdir):
+    water = openmc.Material()
+    water.add_nuclide('H1', 1.0)
+    water.add_nuclide('O16', 2.0)
+    water.set_density('g/cm3', 1.0)
+
+    box = openmc.model.RectangularParallelepiped(
+        -300, 300, -300, 300, -300, 300, boundary_type='reflective')
+    cell = openmc.Cell(region=-box, fill=water)
+    model = openmc.Model()
+    model.geometry = openmc.Geometry([cell])
+
+    mesh = openmc.RegularMesh.from_domain(model.geometry, dimension=(5, 5, 5))
+    wwg = openmc.WeightWindowGenerator(mesh, particle_type='photon')
+    model.settings.weight_window_generators = [wwg]
+
+    space = openmc.stats.Point((0, 0, 0))
+    energy = openmc.stats.delta_function(5e6)
+    model.settings.source = openmc.IndependentSource(
+        space=space, energy=energy, particle='photon')
+
+    model.settings.run_mode = 'fixed source'
+    model.settings.batches = 5
+    model.settings.particles = 100
+
+    tally = openmc.Tally()
+    tally.scores = ['heating']
+    tally.filters = [
+        openmc.ParticleFilter(['photon']),
+        openmc.MeshFilter(mesh)
+    ]
+    model.tallies = [tally]
+
+    sp_file = model.run()
+    with openmc.StatePoint(sp_file) as sp:
+        tally_mean = sp.tallies[tally.id].mean
+
+    # these values should be nearly identical
+    assert np.all(tally_mean >= 0)
+
+
 def test_roundtrip(run_in_tmpdir, model, wws):
     model.settings.weight_windows = wws
 
@@ -249,11 +289,11 @@ def test_ww_attrs_python(model):
     # is successful
     wws = openmc.WeightWindows(mesh, lower_bounds, upper_bound_ratio=10.0)
 
-    assert wws.energy_bounds == None
+    assert wws.energy_bounds is None
 
     wwg = openmc.WeightWindowGenerator(mesh)
 
-    assert wwg.energy_bounds == None
+    assert wwg.energy_bounds is None
 
 def test_ww_attrs_capi(run_in_tmpdir, model):
     model.export_to_xml()
@@ -297,3 +337,39 @@ def test_ww_attrs_capi(run_in_tmpdir, model):
     assert wws.particle == openmc.ParticleType.PHOTON
 
     openmc.lib.finalize()
+
+
+@pytest.mark.parametrize('library', ('libmesh', 'moab'))
+def test_unstructured_mesh_applied_wws(request, run_in_tmpdir, library):
+    """
+    Ensure that weight windows on unstructured mesh work when
+    they aren't part of a tally or weight window generator
+    """
+
+    if library == 'libmesh' and not openmc.lib._libmesh_enabled():
+        pytest.skip('LibMesh not enabled in this build.')
+    if library == 'moab' and not openmc.lib._dagmc_enabled():
+        pytest.skip('DAGMC (and MOAB) mesh not enabled in this build.')
+
+    water = openmc.Material(name='water')
+    water.add_nuclide('H1', 2.0)
+    water.add_nuclide('O16', 1.0)
+    water.set_density('g/cc', 1.0)
+    box = openmc.model.RectangularParallelepiped(*(3*[-10, 10]), boundary_type='vacuum')
+    cell = openmc.Cell(region=-box, fill=water)
+
+    geometry = openmc.Geometry([cell])
+    mesh_file = str(request.fspath.dirpath() / 'test_mesh_tets.exo')
+    mesh = openmc.UnstructuredMesh(mesh_file, library)
+
+    dummy_wws = np.ones((12_000,))
+
+    wws = openmc.WeightWindows(mesh, dummy_wws, upper_bound_ratio=5.0)
+
+    model = openmc.Model(geometry)
+    model.settings.weight_windows = wws
+    model.settings.weight_windows_on = True
+    model.settings.run_mode = 'fixed source'
+    model.settings.particles = 100
+    model.settings.batches = 2
+    model.run()

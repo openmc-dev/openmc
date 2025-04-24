@@ -1,12 +1,7 @@
 #ifndef OPENMC_NCRYSTAL_INTERFACE_H
 #define OPENMC_NCRYSTAL_INTERFACE_H
 
-#ifdef NCRYSTAL
-#include "NCrystal/NCRNG.hh"
-#include "NCrystal/NCrystal.hh"
-#endif
-
-#include "openmc/constants.h" // Needed for OPENMC_API
+#include "openmc/ncrystal_load.h"
 #include "openmc/particle.h"
 
 #include <cstdint> // for uint64_t
@@ -19,28 +14,25 @@ namespace openmc {
 // Constants
 //==============================================================================
 
-extern "C" const bool OPENMC_API NCRYSTAL_ENABLED;
-
 //! Energy in [eV] to switch between NCrystal and ENDF
 constexpr double NCRYSTAL_MAX_ENERGY {5.0};
 
 //==============================================================================
-// Wrapper class an NCrystal material
+// Wrapper class for an NCrystal material
 //==============================================================================
 
 class NCrystalMat {
 public:
   //----------------------------------------------------------------------------
   // Constructors
-  NCrystalMat() = default;
+  NCrystalMat() = default; // empty object
   explicit NCrystalMat(const std::string& cfg);
 
   //----------------------------------------------------------------------------
   // Methods
 
-#ifdef NCRYSTAL
-  //! Return configuration string
-  std::string cfg() const;
+  //! Return configuration string:
+  const std::string& cfg() const { return cfg_; }
 
   //! Get cross section from NCrystal material
   //
@@ -54,25 +46,21 @@ public:
   void scatter(Particle& p) const;
 
   //! Whether the object holds a valid NCrystal material
-  operator bool() const;
-#else
+  operator bool() const { return !cfg_.empty(); }
 
-  //----------------------------------------------------------------------------
-  // Trivial methods when compiling without NCRYSTAL
-  std::string cfg() const { return ""; }
-  double xs(const Particle& p) const { return -1.0; }
-  void scatter(Particle& p) const {}
-  operator bool() const { return false; }
-#endif
+  NCrystalMat clone() const
+  {
+    NCrystalMat c;
+    c.cfg_ = cfg_;
+    c.proc_ = proc_.clone();
+    return c;
+  }
 
 private:
   //----------------------------------------------------------------------------
   // Data members (only present when compiling with NCrystal support)
-#ifdef NCRYSTAL
-  std::string cfg_; //!< NCrystal configuration string
-  std::shared_ptr<const NCrystal::ProcImpl::Process>
-    ptr_; //!< Pointer to NCrystal material object
-#endif
+  std::string cfg_;       //!< NCrystal configuration string
+  NCrystalScatProc proc_; //!< NCrystal scatter process
 };
 
 //==============================================================================

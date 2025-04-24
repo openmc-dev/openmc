@@ -945,7 +945,7 @@ void SurfaceQuadric::to_hdf5_inner(hid_t group_id) const
 // SurfaceTPMS implementation
 //==============================================================================
 
-SurfaceTPMS::SurfaceTPMS(pugi::xml_node surf_node) : CSGSurface(surf_node)
+SurfaceTPMS::SurfaceTPMS(pugi::xml_node surf_node) : Surface(surf_node)
 {
   read_coeffs(surf_node, id_,
     {&isovalue, &pitch, &x0, &y0, &z0, &a, &b, &c, &d, &e, &f, &g, &h, &i});
@@ -1042,7 +1042,7 @@ void SurfaceTPMS::to_hdf5_inner(hid_t group_id) const
 //==============================================================================
 
 SurfaceFunctionTPMS::SurfaceFunctionTPMS(pugi::xml_node surf_node)
-  : CSGSurface(surf_node)
+  : Surface(surf_node)
 {
   read_coeffs(
     surf_node, id_, {&x0, &y0, &z0, &a, &b, &c, &d, &e, &f, &g, &h, &i});

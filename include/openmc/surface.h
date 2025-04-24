@@ -352,7 +352,7 @@ public:
 //! L and c are constants for this class.
 //==============================================================================
 
-class SurfaceTPMS : public CSGSurface {
+class SurfaceTPMS : public Surface {
 public:
   explicit SurfaceTPMS(pugi::xml_node surf_node);
   bool is_tpms() const { return true; };
@@ -378,7 +378,7 @@ private:
 //! of x,y and z.
 //==============================================================================
 
-class SurfaceFunctionTPMS : public CSGSurface {
+class SurfaceFunctionTPMS : public Surface {
 public:
   explicit SurfaceFunctionTPMS(pugi::xml_node surf_node);
   ~SurfaceFunctionTPMS();

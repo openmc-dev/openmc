@@ -1,4 +1,4 @@
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from ctypes import c_int, c_int32, c_double, c_char_p, POINTER, \
     create_string_buffer, c_size_t
 from weakref import WeakValueDictionary
@@ -14,6 +14,7 @@ from .core import _FortranObjectWithID
 from .error import _error_handler
 from .material import Material
 from .mesh import _get_mesh
+from .plot import _Position
 
 
 __all__ = [
@@ -69,6 +70,11 @@ _dll.openmc_filter_get_type.errcheck = _error_handler
 _dll.openmc_filter_set_id.argtypes = [c_int32, c_int32]
 _dll.openmc_filter_set_id.restype = c_int
 _dll.openmc_filter_set_id.errcheck = _error_handler
+_dll.openmc_filter_get_plot_bins.argtypes = [
+    c_int32, _Position, _Position, c_int, POINTER(c_int), POINTER(c_int32)
+]
+_dll.openmc_filter_get_plot_bins.restype = c_int
+_dll.openmc_filter_get_plot_bins.errcheck = _error_handler
 _dll.openmc_get_filter_index.argtypes = [c_int32, POINTER(c_int32)]
 _dll.openmc_get_filter_index.restype = c_int
 _dll.openmc_get_filter_index.errcheck = _error_handler
@@ -155,6 +161,7 @@ _dll.openmc_zernike_filter_set_order.restype = c_int
 _dll.openmc_zernike_filter_set_order.errcheck = _error_handler
 _dll.tally_filters_size.restype = c_size_t
 
+
 class Filter(_FortranObjectWithID):
     __instances = WeakValueDictionary()
 
@@ -202,6 +209,46 @@ class Filter(_FortranObjectWithID):
         n = c_int()
         _dll.openmc_filter_get_num_bins(self._index, n)
         return n.value
+
+    def get_plot_bins(
+            self,
+            origin: Sequence[float],
+            width: Sequence[float],
+            basis: str,
+            pixels: Sequence[int]
+    ) -> np.ndarray:
+        """Get filter bin indices for a rasterized plot.
+
+        .. versionadded:: 0.15.3
+
+        Parameters
+        ----------
+        origin : iterable of float
+            Origin of the plotting view. Should have length 3.
+        width : iterable of float
+            Width of the plotting view. Should have length 2.
+        basis : {'xy', 'xz', 'yz'}
+            Plotting basis.
+        pixels : iterable of int
+            Number of pixels in each direction. Should have length 2.
+
+        Returns
+        -------
+        2D numpy array with mesh bin indices corresponding to each pixel within
+        the plotting view.
+
+        """
+        origin = _Position(*origin)
+        width = _Position(*width)
+        basis = {'xy': 1, 'xz': 2, 'yz': 3}[basis]
+        pixel_array = (c_int*2)(*pixels)
+        img_data = np.zeros((pixels[1], pixels[0]), dtype=np.dtype('int32'))
+
+        _dll.openmc_filter_get_plot_bins(
+            self._index, origin, width, basis, pixel_array,
+            img_data.ctypes.data_as(POINTER(c_int32))
+        )
+        return img_data
 
 
 class EnergyFilter(Filter):

@@ -85,6 +85,7 @@ HexagonalMesh::HexagonalMesh(pugi::xml_node node)
   }
 
   if (check_for_node(node, "width")) {
+    width_ = get_node_xarray<double>(node, "width");
     // Make sure one of upper-right or width were specified
     if (check_for_node(node, "upper_right")) {
       fatal_error(

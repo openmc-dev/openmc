@@ -381,12 +381,21 @@ def half_life(isotope):
     float
         Half-life of isotope in [s]
 
+    Raises
+    ------
+    ValueError
+        If the isotope is stable and has no half-life, or if the isotope
+        is not found in the decay sublibrary.
+
     """
     global _HALF_LIFE
     if not _HALF_LIFE:
         # Load ENDF/B-VIII.0 data from JSON file
         half_life_path = Path(__file__).with_name('half_life.json')
         _HALF_LIFE = json.loads(half_life_path.read_text())
+
+    if isotope.lower() not in _HALF_LIFE.keys():
+        raise ValueError(f"Isotope: {isotope} is stable and has no half-life.")
 
     return _HALF_LIFE.get(isotope.lower())
 

@@ -134,7 +134,8 @@ def test_zam():
 
 
 def test_half_life():
-    assert openmc.data.half_life('H2') is None
+    with pytest.raises(ValueError):
+        openmc.data.half_life('H2')
     assert openmc.data.half_life('U235') == pytest.approx(2.22102e16)
     assert openmc.data.half_life('Am242') == pytest.approx(57672.0)
     assert openmc.data.half_life('Am242_m1') == pytest.approx(4449622000.0)

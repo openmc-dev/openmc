@@ -134,12 +134,13 @@ def test_zam():
 
 
 def test_half_life():
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Isotope: H2 is stable"):
         openmc.data.half_life('H2')
     assert openmc.data.half_life('U235') == pytest.approx(2.22102e16)
     assert openmc.data.half_life('Am242') == pytest.approx(57672.0)
     assert openmc.data.half_life('Am242_m1') == pytest.approx(4449622000.0)
-    assert openmc.data.decay_constant('H2') == 0.0
+    with pytest.raises(ValueError, match="Isotope: H1 is stable"):
+        openmc.data.decay_constant('H1')
     assert openmc.data.decay_constant('U235') == pytest.approx(log(2.0)/2.22102e16)
     assert openmc.data.decay_constant('Am242') == pytest.approx(log(2.0)/57672.0)
     assert openmc.data.decay_constant('Am242_m1') == pytest.approx(log(2.0)/4449622000.0)

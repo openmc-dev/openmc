@@ -18,7 +18,7 @@ import lxml.etree as ET
 import scipy.sparse as sp
 
 from openmc.checkvalue import check_type, check_greater_than
-from openmc.data import gnds_name, zam
+from openmc.data import gnds_name, zam, DADZ
 from .nuclide import FissionYieldDistribution, Nuclide
 import openmc.data
 
@@ -765,6 +765,36 @@ class Chain:
 
         # Return CSC instead of DOK
         return matrix.tocsc()
+
+    def get_reaction_pathways_to_target(self):
+        """Return a dictionary with reaction pathways to targets.
+
+        Returns
+        -------
+        pathways : dict
+            dict of targets nuclide as keys with a list of reactions and nuclides
+            as the dictionary value. For example the reaction pathways for Gold
+
+                chain.get_reaction_pathways_to_target()["Au197"]
+                    [('Hg197', '(n,p)'), ('Hg197_m1', '(n,p)'),
+                    ('Hg198', '(n,np)'), ('Hg198', '(n,d)')]
+        """
+
+        reaction_pathways = {}
+        for nuclide in self.nuclides:
+            for reaction in nuclide.reactions:
+                # if the reaction changes the A or Z number.
+                if reaction.type in DADZ.keys():
+                    secondaries  = openmc.deplete.REACTIONS[reaction.type].secondaries
+                    # includes secondary such as H1, H2, H3, He3 and He4
+                    for secondary in secondaries:
+                        reaction_pathways.setdefault(
+                            secondary, []
+                        ).append((nuclide.name, reaction.type))
+                    reaction_pathways.setdefault(
+                        reaction.target, []
+                    ).append((nuclide.name, reaction.type))
+        return reaction_pathways
 
     def get_branch_ratios(self, reaction="(n,gamma)"):
         """Return a dictionary with reaction branching ratios

@@ -674,8 +674,9 @@ void calculate_work()
 void initialize_data()
 {
   // Determine minimum/maximum energy for incident neutron/photon data
-  data::energy_max = {INFTY, INFTY};
-  data::energy_min = {0.0, 0.0};
+  data::energy_max = {INFTY, INFTY, INFTY, INFTY};
+  data::energy_min = {0.0, 0.0, 0.0, 0.0};
+
   for (const auto& nuc : data::nuclides) {
     if (nuc->grid_.size() >= 1) {
       int neutron = static_cast<int>(ParticleType::neutron);
@@ -703,11 +704,20 @@ void initialize_data()
       // than the current minimum/maximum
       if (data::ttb_e_grid.size() >= 1) {
         int photon = static_cast<int>(ParticleType::photon);
+        int electron = static_cast<int>(ParticleType::electron);
         int n_e = data::ttb_e_grid.size();
-        data::energy_min[photon] =
-          std::max(data::energy_min[photon], std::exp(data::ttb_e_grid(1)));
+
+        const std::vector<int> charged = {electron, static_cast<int>(ParticleType::positron)};
+        for (auto t: charged) {
+          data::energy_min[t] = std::exp(data::ttb_e_grid(1));
+          data::energy_max[t] = std::exp(data::ttb_e_grid(n_e-1));    
+        }
+
+        data::energy_min[photon] = std::max(
+        data::energy_min[photon], data::energy_min[electron]);
+        
         data::energy_max[photon] = std::min(
-          data::energy_max[photon], std::exp(data::ttb_e_grid(n_e - 1)));
+          data::energy_max[photon], data::energy_max[electron]);
       }
     }
   }

@@ -167,6 +167,7 @@ Meshes
    openmc.CylindricalMesh
    openmc.SphericalMesh
    openmc.UnstructuredMesh
+   openmc.HexgonalMesh
 
 Geometry Plotting
 -----------------

@@ -2807,8 +2807,8 @@ class HexagonalMesh(StructuredMesh):
         return mesh
 
     @classmethod
-    def from_hexgonal_lattice(cls):
-        """Create hexagonal mesh from an existing heaxgonal lattice
+    def from_hexgaonal_lattice(cls):
+        """Create hexagonal mesh from an existing hexagonal lattice
 
         Not implemented yet
         """
@@ -2824,14 +2824,14 @@ class HexagonalMesh(StructuredMesh):
     ):
         """Create a hexagonal mesh from an existing openmc cell, region, universe or
         geometry by making use of the objects bounding box property. The mesh is sized
-        fully enclose the bounding box of the domain
+        to fully enclose the bounding box of the domain
 
         Parameters
         ----------
         domain : {openmc.Cell, openmc.Region, openmc.Universe, openmc.Geometry}
             The object passed in will be used as a template for this mesh. The
             bounding box of the property of the object passed will be used to
-            set the lower_left and upper_right and of the mesh instance
+            set the lower_left and upper_right of the mesh instance.
         dimension : Iterable of int
             The width of hexagonal lattice and the numer of layers in z.
         mesh_id : int

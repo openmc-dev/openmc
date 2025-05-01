@@ -3001,6 +3001,9 @@ class HexagonalMesh(StructuredMesh):
     def hex_radius(self):
         return int((self.dimension[0] - 1) / 2)
 
+    def hexes_in_ring(self, radius: int):
+        return 1 if radius == 0 else 6 * radius
+
     @property
     def hex_count(self):
         if (self.hex_radius == 0):

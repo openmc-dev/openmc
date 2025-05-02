@@ -123,6 +123,7 @@ class Tally(IDManagerMixin):
         self._triggers = cv.CheckedList(openmc.Trigger, 'tally triggers')
         self._derivative = None
         self._multiply_density = True
+
         self._num_realizations = 0
         self._with_summary = False
 
@@ -214,6 +215,7 @@ class Tally(IDManagerMixin):
     @property
     def multiply_density(self):
         return self._multiply_density
+
     @multiply_density.setter
     def multiply_density(self, value):
         cv.check_type('multiply density', value, bool)

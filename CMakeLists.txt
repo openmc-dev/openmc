@@ -194,6 +194,13 @@ endif()
 #===============================================================================
 
 if (OPENMC_USE_MCPL)
+  if (NOT DEFINED MCPL_DIR)
+    execute_process(
+      COMMAND mcpl-config --show cmakedir
+      OUTPUT_VARIABLE MCPL_DIR
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+  endif()
   find_package(MCPL REQUIRED)
   message(STATUS "Found MCPL: ${MCPL_DIR} (found version \"${MCPL_VERSION}\")")
 endif()

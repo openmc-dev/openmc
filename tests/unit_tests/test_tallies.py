@@ -1,5 +1,5 @@
 import numpy as np
-
+import pytest
 import openmc
 
 
@@ -96,6 +96,22 @@ def test_tally_equivalence():
     assert tally_a == tally_b
 
 
+def test_figure_of_merit(sphere_model, run_in_tmpdir):
+    # Run model with a few simple tally scores
+    tally = openmc.Tally()
+    tally.scores = ['total', 'absorption', 'scatter']
+    sphere_model.tallies = [tally]
+    sp_path = sphere_model.run(apply_tally_results=True)
+
+    # Get execution time and relative error
+    with openmc.StatePoint(sp_path) as sp:
+        time = sp.runtime['simulation']
+    rel_err = tally.std_dev / tally.mean
+
+    # Check that figure of merit is calculated correctly
+    assert tally.figure_of_merit == pytest.approx(1 / (rel_err**2 * time))
+
+
 def test_tally_application(sphere_model, run_in_tmpdir):
     # Create a tally with most possible gizmos
     tally = openmc.Tally(name='test tally')
@@ -104,7 +120,6 @@ def test_tally_application(sphere_model, run_in_tmpdir):
     mf = openmc.MeshFilter(mesh)
     tally.filters = [ef, mf]
     tally.scores = ['flux', 'absorption', 'fission', 'scatter']
-    tally.fom = True
     sphere_model.tallies = [tally]
 
     # FIRST RUN
@@ -127,7 +142,6 @@ def test_tally_application(sphere_model, run_in_tmpdir):
     # at this point the tally information regarding results should be the same
     assert (sp_tally.std_dev == tally.std_dev).all()
     assert (sp_tally.mean == tally.mean).all()
-    assert (sp_tally.FOM == tally.FOM).all()
     assert sp_tally.nuclides == tally.nuclides
 
     # SECOND RUN
@@ -148,5 +162,4 @@ def test_tally_application(sphere_model, run_in_tmpdir):
     # at this point the tally information regarding results should be the same
     assert (sp_tally.std_dev == tally.std_dev).all()
     assert (sp_tally.mean == tally.mean).all()
-    assert (sp_tally.FOM == tally.FOM).all()
     assert sp_tally.nuclides == tally.nuclides

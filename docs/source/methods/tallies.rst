@@ -387,29 +387,32 @@ of this is that the longer you run a simulation, the better you know your
 results. Therefore, by running a simulation long enough, it is possible to
 reduce the stochastic uncertainty to arbitrarily low levels.
 
-Figure of merit
-++++++++++++++++++++
-Using the unbiased variance of the estimated mean and the mean of a sample, it is 
-possible to obtain the estimated relative error which is given by the following formula:
+Figure of Merit
++++++++++++++++
 
-.. math::
-    :label: relative_error
-
-    r = \frac{s_{\bar{X}}^2}{\bar{x}} = \frac{s^2}{N \bar{x}^2}.
-
-The figure of merit is a tally reliability indicator that represents how quickly the variance
-of the population of a tally decreases with the number of particles simulated:
+The figure of merit (FOM) is an indicator that accounts for both the statistical
+uncertainty and the execution time and represents how much information is
+obtained per unit time in the simulation. The FOM is defined as
 
 .. math::
     :label: figure_of_merit
 
-    FOM = \frac{1}{t \cdot r^2} = \frac{N}{t \cdot s^2} \cdot \bar{x}^2 .
+    FOM = \frac{1}{r^2 t},
 
-where t corresponds to the total time of the simulation. It is important to note that 
-in this case N corresponds to the number of independent realizations (batches) and not the
-number of particles simulated. If the FOM is not approximately constant, the confidence intervals 
-may not overlap the expected value of the tally.
+where :math:`t` is the total execution time and :math:`r` is the relative error
+defined as
 
+.. math::
+    :label: relative_error
+
+    r = \frac{s_\bar{X}}{\bar{x}}.
+
+Based on this definition, one can see that a higher FOM is desirable. The FOM is
+useful as a comparative tool. For example, if a variance reduction technique is
+being applied to a simulation, the FOM with variance reduction can be compared
+to the FOM without variance reduction to ascertain whether the reduction in
+variance outweighs the potential increase in execution time (e.g., due to
+particle splitting).
 
 Confidence Intervals
 ++++++++++++++++++++

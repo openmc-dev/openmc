@@ -1681,7 +1681,7 @@ class Settings:
                 else:
                     subelement = ET.SubElement(element, key)
                     subelement.text = str(value)
-                    
+
     def _eigenvalue_from_xml_element(self, root):
         elem = root.find('eigenvalue')
         if elem is not None:

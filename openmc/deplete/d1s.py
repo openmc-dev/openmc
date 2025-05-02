@@ -141,7 +141,9 @@ def apply_time_correction(
     time_correction_factors : dict
         Time correction factors as returned by :func:`time_correction_factors`
     index : int, optional
-        Index to use for the correction factors
+        Index of the time of interest. If N timesteps are provided in
+        :func:`time_correction_factors`, there are N + 1 times to select from.
+        The default is -1 which corresponds to the final time.
     sum_nuclides : bool
         Whether to sum over the parent nuclides
 

@@ -578,10 +578,9 @@ class StructuredMesh(MeshBase):
         datasets : dict
             Dictionary whose keys are the data labels and values are the data
             sets. 1D datasets are expected to have Fortran ("F") ordering -- the
-            ordering written to the statepoitn file after a run.
+            ordering written to the statepoint file after a run.
             Multidimensional datasets are expected to have the same dimensions
             as the mesh itself with structured indexing in "C" ordering.
-
         volume_normalization : bool, optional
             Whether or not to normalize the data by the volume of the mesh
             elements.
@@ -603,16 +602,16 @@ class StructuredMesh(MeshBase):
         --------
         1D data from a tally with only a mesh filter and heating score:
 
-            # pass the tally mean property of shape (N, 1, 1) directly to this method;
-            # dimensions of size 1 will automatically removed
+            # pass the tally mean property of shape (N, 1, 1) directly to this
+            # method; dimensions of size 1 will automatically removed
             >>> heating = tally.mean
             >>> mesh.write_data_to_vtk({'heating': heating})
 
         Multidimensional data from a tally with only a mesh
 
-           # retrieve a data array with the mesh filter expanded into
-           # three dimensions, ijk; additional dimensions of size one
-           # will automatically be removed
+           # retrieve a data array with the mesh filter expanded into three
+           # dimensions, ijk; additional dimensions of size one will
+           # automatically be removed
            >>> heating = tally.get_reshaped_data(expand_dims=True)
            >>> mesh.write_data_to_vtk({'heating': heating})
         """
@@ -629,21 +628,19 @@ class StructuredMesh(MeshBase):
             writer = vtk.vtkUnstructuredGridWriter()
 
         if datasets is not None:
-            # maintain a list of the datasets as added
-            # to the VTK arrays to ensure they persist
-            # in memory until the file is written
+            # maintain a list of the datasets as added to the VTK arrays to
+            # ensure they persist in memory until the file is written
             datasets_out = []
             for label, dataset in datasets.items():
                 dataset = self._reshape_vtk_dataset(dataset)
                 self._check_vtk_dataset(label, dataset)
-                # if the array data is flattened, accept
-                # it as it is
+                # If the array data is flattened, accept it as it is
                 if dataset.ndim == 1:
                     dataset = dataset.flatten()
-                # if the array data is 3D, assume is in C ordering
-                # and transpose before flattening to match the
-                # ordering expected by the VTK array based
-                # on the way mesh indices are ordered in the Python API
+                # If the array data is 3D, assume is in C ordering and transpose
+                # before flattening to match the ordering expected by the VTK
+                # array based on the way mesh indices are ordered in the Python
+                # API
                 # TODO: update to "C" ordering throughout
                 elif dataset.ndim == 3:
                     dataset = dataset.T.flatten()
@@ -654,9 +651,7 @@ class StructuredMesh(MeshBase):
 
                 dataset_array = vtk.vtkDoubleArray()
                 dataset_array.SetName(label)
-                dataset_array.SetArray(nps.numpy_to_vtk(dataset),
-                                    dataset.size,
-                                    True)
+                dataset_array.SetArray(nps.numpy_to_vtk(dataset), dataset.size, True)
                 vtk_grid.GetCellData().AddArray(dataset_array)
 
         writer.SetFileName(str(filename))
@@ -802,10 +797,7 @@ class StructuredMesh(MeshBase):
         numpy.ndarray
             The reshaped dataset
         """
-
-        if not isinstance(dataset, np.ndarray):
-            dataset = np.asarray(dataset)
-
+        dataset = np.asarray(dataset)
 
         # detect flat array with extra dims
         if all(d == 1 for d in dataset.shape[1:]):
@@ -816,7 +808,6 @@ class StructuredMesh(MeshBase):
             dataset = dataset.reshape(dataset.shape[:3])
 
         return dataset
-
 
     def _check_vtk_dataset(self, label: str, dataset: np.ndarray):
         """Perform some basic checks that a dataset is valid for this Mesh
@@ -837,8 +828,7 @@ class StructuredMesh(MeshBase):
                 f" equal to the number of mesh cells ({self.num_mesh_cells})"
             )
 
-        # accept a flat array as-is, assuming it is in
-        # the correct order
+        # accept a flat array as-is, assuming it is in the correct order
         if dataset.ndim == 1:
             return
 

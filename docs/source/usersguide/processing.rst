@@ -97,10 +97,11 @@ VTK Mesh File Generation
 ------------------------
 
 VTK files of OpenMC meshes can be created using the
-:meth:`openmc.Mesh.write_data_to_vtk`  method. Data can be applied to the elements
-of the resulting mesh from mesh filter objects. This data can be provided either
-as a flat array or, in the case of structured meshes (i.e. ``Regular``,
-``Rectilinear``, ``Cylindrical``, and ``Spherical`` meshes), the data can be
+:meth:`openmc.Mesh.write_data_to_vtk`  method. Data can be applied to the
+elements of the resulting mesh from mesh filter objects. This data can be
+provided either as a flat array or, in the case of structured meshes
+(:class:`~openmc.RegularMesh`, :class:`~openmc.RectilinearMesh`,
+:class:`~openmc.CylindricalMesh`, or :class:`SphericalMesh`), the data can be
 shaped with dimensions that match the dimensions of the mesh itself.
 
 
@@ -111,7 +112,7 @@ shaped with dimensions that match the dimensions of the mesh itself.
 
 
 For all mesh types, if a flat data array is provided to the mesh, it is expected
-that the data is ordered in the same ordering as the :meth:`openmc.Mesh.indices`
+that the data is ordered in the same ordering as the :attr:`openmc.Mesh.indices`
 for that mesh object. When providing data directly from a tally, as shown below,
 a flat array for a given dataset can be passed directly to this method.
 
@@ -135,16 +136,16 @@ a flat array for a given dataset can be passed directly to this method.
     # provide the data as-is to the method
     mesh.write_data_to_vtk('flux.vtk', {'flux-mean': tally.mean})
 
-The :class:`openmc.Tally` object also provides a way to expand the dimensions of
-the mesh filter into a meaningful form where indexing the mesh filter
+The :class:`~openmc.Tally` object also provides a way to expand the dimensions
+of the mesh filter into a meaningful form where indexing the mesh filter
 dimensions results in intuitive slicing of structured meshes by setting
 ``expand_dims=True`` when using :meth:`openmc.Tally.get_reshaped_data`. This
 reshaping does cause flat indexing of the data to change, however. As noted
 above, provided datasets are allowed to be shaped so long as such datasets have
 shapes that match the mesh dimensions. The ability to pass datasets in this way
 is useful when additional filters are applied to a tally. The example below
-demonstrates such a case for tally with both a :class:`openmc.MeshFilter` and
-:class:`openmc.EnergyFilter` applied.
+demonstrates such a case for tally with both a :class:`~openmc.MeshFilter` and
+:class:`~openmc.EnergyFilter` applied.
 
 ::
 

@@ -77,10 +77,11 @@ def _waste_classification(mat: openmc.Material, metal: bool = True) -> str:
 
 
 def _waste_disposal_rating(
-        mat: openmc.Material,
-        limits: str | dict[str, float] = 'Fetter',
-        metal: bool = False,
-    ) -> float:
+    mat: openmc.Material,
+    limits: str | dict[str, float] = 'Fetter',
+    metal: bool = False,
+    by_nuclide: bool = False,
+) -> float | dict[str, float]:
     """Return the waste disposal rating for a material.
 
     This method returns a waste disposal rating for the material based on a set
@@ -111,11 +112,17 @@ def _waste_disposal_rating(
     metal : bool, optional
         Whether or not the material is in metal form (only applicable for NRC
         based limits)
+    by_nuclide : bool, optional
+        Whether to return the waste disposal rating for each nuclide in the
+        material. If True, a dictionary is returned where the keys are the
+        nuclide names and the values are the waste disposal ratings for each
+        nuclide. If False, a single float value is returned that represents the
+        overall waste disposal rating for the material.
 
     Returns
     -------
-    float
-        The waste disposal rating for the material.
+    float or dict
+        The waste disposal rating for the material or its constituent nuclides.
 
     """
     if limits == 'Fetter':
@@ -272,8 +279,8 @@ def _waste_disposal_rating(
 
     # Calculate the sum of the fractions of the activity of each radionuclide
     # compared to the specified limits
-    ratio = 0.0
+    ratio = {}
     for nuc, ci_m3 in mat.get_activity(units="Ci/m3", by_nuclide=True).items():
         if nuc in limits:
-            ratio += ci_m3 / limits[nuc]
-    return ratio
+            ratio[nuc] = ci_m3 / limits[nuc]
+    return ratio if by_nuclide else sum(ratio.values())

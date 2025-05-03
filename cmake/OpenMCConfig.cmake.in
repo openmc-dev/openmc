@@ -78,7 +78,7 @@ if(@OPENMC_USE_OPENMP@)
 endif()
 
 if(@OPENMC_USE_MCPL@)
-  find_package(MCPL REQUIRED)
+  find_package(MCPL REQUIRED HINTS @MCPL_DIR@)
 endif()
 
 if(@OPENMC_USE_UWUW@ AND NOT ${DAGMC_BUILD_UWUW})

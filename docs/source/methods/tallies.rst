@@ -387,6 +387,33 @@ of this is that the longer you run a simulation, the better you know your
 results. Therefore, by running a simulation long enough, it is possible to
 reduce the stochastic uncertainty to arbitrarily low levels.
 
+Figure of Merit
++++++++++++++++
+
+The figure of merit (FOM) is an indicator that accounts for both the statistical
+uncertainty and the execution time and represents how much information is
+obtained per unit time in the simulation. The FOM is defined as
+
+.. math::
+    :label: figure_of_merit
+
+    FOM = \frac{1}{r^2 t},
+
+where :math:`t` is the total execution time and :math:`r` is the relative error
+defined as
+
+.. math::
+    :label: relative_error
+
+    r = \frac{s_\bar{X}}{\bar{x}}.
+
+Based on this definition, one can see that a higher FOM is desirable. The FOM is
+useful as a comparative tool. For example, if a variance reduction technique is
+being applied to a simulation, the FOM with variance reduction can be compared
+to the FOM without variance reduction to ascertain whether the reduction in
+variance outweighs the potential increase in execution time (e.g., due to
+particle splitting).
+
 Confidence Intervals
 ++++++++++++++++++++
 

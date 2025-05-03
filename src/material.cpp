@@ -640,7 +640,7 @@ void Material::init_bremsstrahlung()
     // Allocate arrays for TTB data
     ttb->pdf = xt::zeros<double>({n_e, n_e});
     ttb->cdf = xt::zeros<double>({n_e, n_e});
-    ttb->yield = xt::empty<double>({n_e});
+    ttb->yield = xt::zeros<double>({n_e});
 
     // Allocate temporary arrays
     xt::xtensor<double, 1> stopping_power_collision({n_e}, 0.0);

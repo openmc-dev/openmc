@@ -88,5 +88,5 @@ relevant tallies. This can be done with the aid of the
         dose_tally = sp.get_tally(name='dose tally')
 
     # Apply time correction factors
-    tally = d1s.apply_time_correction(tally, factors, time_index)
+    tally = d1s.apply_time_correction(dose_tally, factors, time_index)
 

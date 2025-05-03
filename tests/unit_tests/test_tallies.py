@@ -1,5 +1,5 @@
 import numpy as np
-
+import pytest
 import openmc
 
 
@@ -94,6 +94,22 @@ def test_tally_equivalence():
     assert tally_a != tally_b
     tally_b.triggers = [trigger_b]
     assert tally_a == tally_b
+
+
+def test_figure_of_merit(sphere_model, run_in_tmpdir):
+    # Run model with a few simple tally scores
+    tally = openmc.Tally()
+    tally.scores = ['total', 'absorption', 'scatter']
+    sphere_model.tallies = [tally]
+    sp_path = sphere_model.run(apply_tally_results=True)
+
+    # Get execution time and relative error
+    with openmc.StatePoint(sp_path) as sp:
+        time = sp.runtime['simulation']
+    rel_err = tally.std_dev / tally.mean
+
+    # Check that figure of merit is calculated correctly
+    assert tally.figure_of_merit == pytest.approx(1 / (rel_err**2 * time))
 
 
 def test_tally_application(sphere_model, run_in_tmpdir):

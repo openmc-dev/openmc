@@ -13,7 +13,7 @@ def install(omp=False, mpi=False, phdf5=False, dagmc=False, libmesh=False):
     # Build in debug mode by default with support for MCPL
     if sys.platform == 'win32':
         work_dir = os.environ.get('GITHUB_WORKSPACE')
-        cmake_cmd = ['cmake', '-DCMAKE_BUILD_TYPE=Debug', '-DCMAKE_TOOLCHAIN_FILE='+work_dir+'\\vcpkg\\scripts\\buildsystems\\vcpkg.cmake', '-DVCPKG_TARGET_TRIPLET=x64-windows-static']
+        cmake_cmd = ['cmake', '-DCMAKE_BUILD_TYPE=Release', '-DCMAKE_TOOLCHAIN_FILE='+work_dir+'\\vcpkg\\scripts\\buildsystems\\vcpkg.cmake', '-DVCPKG_TARGET_TRIPLET=x64-windows-static']
     else:
         cmake_cmd = ['cmake', '-DCMAKE_BUILD_TYPE=Debug', '-DOPENMC_USE_MCPL=on']
 
@@ -55,7 +55,8 @@ def install(omp=False, mpi=False, phdf5=False, dagmc=False, libmesh=False):
     subprocess.check_call(cmake_cmd)
 
     if sys.platform == 'win32':
-        subprocess.check_call(['cmake', '--install', '.', '--config=Debug'])
+        subprocess.check_call(['cmake', '--build', '.', '--config=Release'])
+        subprocess.check_call(['cmake', '--install', '.', '--config=Release'])
     else:
         subprocess.check_call(['make', '-j4'])
         subprocess.check_call(['sudo', 'make', 'install'])

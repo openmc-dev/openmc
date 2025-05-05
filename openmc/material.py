@@ -1348,10 +1348,11 @@ class Material(IDManagerMixin):
         return waste._waste_classification(self, metal=metal)
 
     def waste_disposal_rating(
-            self,
-            limits: str | dict[str, float] = 'Fetter',
-            metal: bool = False,
-        ) -> float:
+        self,
+        limits: str | dict[str, float] = 'Fetter',
+        metal: bool = False,
+        by_nuclide: bool = False,
+    ) -> float | dict[str, float]:
         """Return the waste disposal rating for the material.
 
         This method returns a waste disposal rating for the material based on a
@@ -1387,18 +1388,25 @@ class Material(IDManagerMixin):
         metal : bool, optional
             Whether or not the material is in metal form (only applicable for
             NRC based limits)
+        by_nuclide : bool, optional
+            Whether to return the waste disposal rating for each nuclide in the
+            material. If True, a dictionary is returned where the keys are the
+            nuclide names and the values are the waste disposal ratings for each
+            nuclide. If False, a single float value is returned that represents
+            the overall waste disposal rating for the material.
 
         Returns
         -------
-        float
-            The waste disposal rating for the material.
+        float or dict
+            The waste disposal rating for the material or its constituent
+            nuclides.
 
         See also
         --------
         Material.waste_classification()
 
         """
-        return waste._waste_disposal_rating(self, limits, metal)
+        return waste._waste_disposal_rating(self, limits, metal, by_nuclide)
 
     def clone(self, memo: dict | None = None) -> Material:
         """Create a copy of this material with a new unique ID.

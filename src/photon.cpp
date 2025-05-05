@@ -770,8 +770,9 @@ void PhotonInteraction::pair_production(double alpha, double* E_electron,
 
 void PhotonInteraction::atomic_relaxation(int i_shell, Particle& p) const
 {
-  // Return if no atomic relaxation data is present
-  if (!has_atomic_relaxation_)
+  // Return if no atomic relaxation data is present or if the binding energy is
+  // larger than the incident particle energy
+  if (!has_atomic_relaxation_ || shells_[i_shell].binding_energy > p.E())
     return;
 
   // Stack for unprocessed holes left by transitioning electrons

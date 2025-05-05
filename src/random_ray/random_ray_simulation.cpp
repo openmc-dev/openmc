@@ -465,9 +465,9 @@ void RandomRaySimulation::simulate()
       // Start timer for transport
       simulation::time_transport.start();
 
-    // Transport sweep over all random rays for the iteration
-    // Must use temporary accumulator variable for OpenMP on Windows
-    uint64_t tmp_total_geometric_intersections {0};
+      // Transport sweep over all random rays for the iteration
+      // Must use temporary accumulator variable for OpenMP on Windows
+      uint64_t tmp_total_geometric_intersections {0};
 #pragma omp parallel for schedule(dynamic)                                     \
   reduction(+ : tmp_total_geometric_intersections)
       for (int i = 0; i < settings::n_particles; i++) {

@@ -10,8 +10,8 @@
 #include "pugixml.hpp"
 #include "xtensor/xtensor.hpp"
 
-#include "openmc/constants.h" // for OPENMC_API
 #include "openmc/bounding_box.h"
+#include "openmc/constants.h" // for OPENMC_API
 #include "openmc/error.h"
 #include "openmc/memory.h" // for unique_ptr
 #include "openmc/particle.h"

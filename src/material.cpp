@@ -777,15 +777,15 @@ void Material::init_bremsstrahlung()
       // Loop over photon energies
       double c = 0.0;
       for (int i = 0; i < j; ++i) {
-        // Integrate the CDF from the PDF using the fact that the PDF is linear in log-log
-        // space
+        // Integrate the CDF from the PDF using the fact that the PDF is linear
+        // in log-log space
         double w_l = std::log(data::ttb_e_grid(i));
         double w_r = std::log(data::ttb_e_grid(i + 1));
         double x_l = std::log(ttb->pdf(j, i));
         double x_r = std::log(ttb->pdf(j, i + 1));
-        double a = (x_r-x_l)/(w_r-w_l)+1.0;
-        
-        c += std::exp(w_l + x_l)/a*(std::exp(a*(w_r-w_l))-1.0);
+        double beta = (x_r - x_l) / (w_r - w_l);
+        double a = beta + 1.0;
+        c += std::exp(w_l + x_l) / a * std::expm1(a * (w_r - w_l));
         ttb->cdf(j, i + 1) = c;
       }
 

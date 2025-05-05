@@ -181,13 +181,13 @@ jobs:
     runs-on: windows-latest
     strategy:
       matrix:
-        python-version: ["3.10"]
+        python-version: ["3.11"]
         omp: [n, y]
 
         include:
-          - python-version: "3.10"
+          - python-version: "3.11"
             omp: n
-          - python-version: "3.10"
+          - python-version: "3.11"
             omp: y
     name: "Windows Python ${{ matrix.python-version }} (omp=${{ matrix.omp }})"
 

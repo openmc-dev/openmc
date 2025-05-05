@@ -577,10 +577,12 @@ class StructuredMesh(MeshBase):
             Name of the VTK file to write.
         datasets : dict
             Dictionary whose keys are the data labels and values are the data
-            sets. 1D datasets are expected to have Fortran ("F") ordering -- the
-            ordering written to the statepoint file after a run.
-            Multidimensional datasets are expected to have the same dimensions
-            as the mesh itself with structured indexing in "C" ordering.
+            sets. 1D datasets are expected to be extracted directly from
+            statepoint data without reordering/reshaping. Multidimensional
+            datasets are expected to have the same dimensions as the mesh itself
+            with structured indexing in "C" ordering. See the "expand_dims" flag
+            of :meth:`~openmc.Tally.get_reshaped_data` on reshaping tally data when using
+            :class:`~openmc.MeshFilter`'s.
         volume_normalization : bool, optional
             Whether or not to normalize the data by the volume of the mesh
             elements.

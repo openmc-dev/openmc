@@ -239,7 +239,7 @@ PhotonInteraction::PhotonInteraction(hid_t group)
       return std::abs(a - b) / a < FP_REL_PRECISION;
     };
     subshell_map_ = xt::full_like(binding_energy_, -1);
-    for (int i = 0; i < binding_energy_.shape(0); ++i) {
+    for (int i = 0; i < binding_energy_.size(); ++i) {
       double E_b = binding_energy_[i];
       if (i < n_shell && is_close(E_b, shells_[i].binding_energy)) {
         subshell_map_[i] = i;

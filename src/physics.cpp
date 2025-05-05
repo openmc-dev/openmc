@@ -340,7 +340,7 @@ void sample_photon_reaction(Particle& p)
       p.create_secondary(p.wgt(), u, E_electron, ParticleType::electron);
     }
 
-    // Allow electrons to fill orbital and produce auger electrons and
+    // Allow electrons to fill orbital and produce Auger electrons and
     // fluorescent photons. Since Compton subshell data does not match atomic
     // relaxation data, use the mapping between the data to find the subshell
     if (i_shell >= 0 && element.subshell_map_[i_shell] >= 0) {

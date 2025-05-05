@@ -250,7 +250,7 @@ jobs:
           ${{github.workspace}}\tools\ci\gha-script.ps1
 
   finish:
-    needs: main
+    needs: [win, main]
     runs-on: ubuntu-latest
     steps:
       - name: Coveralls Finished

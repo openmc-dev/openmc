@@ -314,7 +314,10 @@ enum TallyScore {
   SCORE_FISS_Q_PROMPT = -14,      // prompt fission Q-value
   SCORE_FISS_Q_RECOV = -15,       // recoverable fission Q-value
   SCORE_DECAY_RATE = -16,         // delayed neutron precursor decay rate
-  SCORE_PULSE_HEIGHT = -17        // pulse-height
+  SCORE_PULSE_HEIGHT = -17,       // pulse-height
+  SCORE_IFP_TIME_NUM = -18,       // IFP lifetime numerator
+  SCORE_IFP_BETA_NUM = -19,       // IFP delayed fraction numerator
+  SCORE_IFP_DENOM = -20           // IFP common denominator
 };
 
 // Global tally parameters
@@ -323,6 +326,9 @@ enum class GlobalTally { K_COLLISION, K_ABSORPTION, K_TRACKLENGTH, LEAKAGE };
 
 // Miscellaneous
 constexpr int C_NONE {-1};
+
+// Default value of generation for IFP
+constexpr int DEFAULT_IFP_N_GENERATION {10};
 
 // Interpolation rules
 enum class Interpolation {

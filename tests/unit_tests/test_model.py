@@ -448,7 +448,7 @@ def test_deplete(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
     # In this test we first run without pre-initializing the shared library
     # data and then compare. Then we repeat with the C API already initialized
     # and make sure we get the same answer
-    test_model.deplete([1e6], 'predictor', final_step=False,
+    test_model.deplete(timesteps=[1e6], method='predictor', final_step=False,
                        operator_kwargs=op_kwargs,
                        power=1., output=False)
     # Get the new Xe136 and U235 atom densities
@@ -482,7 +482,7 @@ def test_deplete(run_in_tmpdir, pin_model_attributes, mpi_intracomm):
 
     # Now we can re-run with the pre-initialized API
     test_model.init_lib(output=False, intracomm=mpi_intracomm)
-    test_model.deplete([1e6], 'predictor', final_step=False,
+    test_model.deplete(timesteps=[1e6], method='predictor', final_step=False,
                        operator_kwargs=op_kwargs,
                        power=1., output=False)
     # Get the new Xe136 and U235 atom densities

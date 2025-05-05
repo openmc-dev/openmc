@@ -7,6 +7,7 @@
 #include "openmc/error.h"
 #include "openmc/event.h"
 #include "openmc/geometry_aux.h"
+#include "openmc/ifp.h"
 #include "openmc/material.h"
 #include "openmc/mcpl_interface.h"
 #include "openmc/message_passing.h"
@@ -336,6 +337,11 @@ void allocate_banks()
 
     // Allocate fission bank
     init_fission_bank(3 * simulation::work_per_rank);
+
+    // Allocate IFP bank
+    if (settings::ifp_on) {
+      resize_simulation_ifp_banks();
+    }
   }
 
   if (settings::surf_source_write) {

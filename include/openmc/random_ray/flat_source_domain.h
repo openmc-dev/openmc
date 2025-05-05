@@ -58,6 +58,7 @@ public:
   SourceRegionHandle get_subdivided_source_region_handle(
     int64_t sr, int mesh_bin, Position r, double dist, Direction u);
   void finalize_discovered_source_regions();
+  void apply_transport_stabilization();
   int64_t n_source_regions() const
   {
     return source_regions_.n_source_regions();
@@ -71,6 +72,9 @@ public:
   // Static Data members
   static bool volume_normalized_flux_tallies_;
   static bool adjoint_; // If the user wants outputs based on the adjoint flux
+  static double
+    diagonal_stabilization_rho_; // Adjusts strength of diagonal stabilization
+                                 // for transport corrected MGXS data
 
   // Static variables to store source region meshes and domains
   static std::unordered_map<int, vector<std::pair<Source::DomainType, int>>>
@@ -127,11 +131,23 @@ public:
   std::unordered_map<SourceRegionKey, int64_t, SourceRegionKey::HashFunctor>
     source_region_map_;
 
+  // Map that relates a SourceRegionKey to the external source index. This map
+  // is used to check if there are any point sources within a subdivided source
+  // region at the time it is discovered.
+  std::unordered_map<SourceRegionKey, int64_t, SourceRegionKey::HashFunctor>
+    point_source_map_;
+
+  // If transport corrected MGXS data is being used, there may be negative
+  // in-group scattering cross sections that can result in instability in MOC
+  // and random ray if used naively. This flag enables a stabilization
+  // technique.
+  bool is_transport_stabilization_needed_ {false};
+
 protected:
   //----------------------------------------------------------------------------
   // Methods
   void apply_external_source_to_source_region(
-    Discrete* discrete, double strength_factor, int64_t sr);
+    Discrete* discrete, double strength_factor, SourceRegionHandle& srh);
   void apply_external_source_to_cell_instances(int32_t i_cell,
     Discrete* discrete, double strength_factor, int target_material_id,
     const vector<int32_t>& instances);

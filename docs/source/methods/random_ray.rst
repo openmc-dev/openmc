@@ -1052,7 +1052,8 @@ random ray and Monte Carlo, however.
   regions. Thus, in the OpenMC implementation of random ray, particle sources
   are restricted to being volumetric and isotropic, although different energy
   spectrums are supported. Fixed sources can be applied to specific materials,
-  cells, or universes.
+  cells, or universes. Point sources are "smeared" to fill the volume of the
+  source region that contains the point source coordinate.
 
 - **Inactive batches:** In Monte Carlo, use of a fixed source implies that all
   batches are active batches, as there is no longer a need to develop a fission

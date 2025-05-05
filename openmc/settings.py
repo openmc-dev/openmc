@@ -86,6 +86,9 @@ class Settings:
         .. versionadded:: 0.12
     generations_per_batch : int
         Number of generations per batch
+    ifp_n_generation : int
+        Number of generations to consider for the Iterated Fission Probability
+        method.
     max_lost_particles : int
         Maximum number of lost particles
 
@@ -187,6 +190,17 @@ class Settings:
             or openmc.Universe. The mesh will be applied to the listed domains
             to subdivide source regions so as to improve accuracy and/or conform
             with tally meshes.
+        :diagonal_stabilization_rho:
+            The rho factor for use with diagonal stabilization. This technique is
+            applied when negative diagonal (in-group) elements are detected in
+            the scattering matrix of input MGXS data, which is a common feature
+            of transport corrected MGXS data. The default is 1.0, which ensures
+            no negative diagonal elements are present in the iteration matrix and
+            thus stabilizes the simulation. A value of 0.0 will disable diagonal
+            stabilization. Values between 0.0 and 1.0 will apply a degree of
+            stabilization, which may be desirable as stronger diagonal stabilization
+            also tends to dampen the convergence rate of the solver, thus requiring
+            more iterations to converge.
 
         .. versionadded:: 0.15.0
     resonance_scattering : dict
@@ -363,6 +377,9 @@ class Settings:
         self._trigger_batch_interval = None
 
         self._output = None
+
+        # Iterated Fission Probability
+        self._ifp_n_generation = None
 
         # Output options
         self._statepoint = {}
@@ -816,6 +833,17 @@ class Settings:
         self._verbosity = verbosity
 
     @property
+    def ifp_n_generation(self) -> int:
+        return self._ifp_n_generation
+
+    @ifp_n_generation.setter
+    def ifp_n_generation(self, ifp_n_generation: int):
+        if ifp_n_generation is not None:
+            cv.check_type("number of generations", ifp_n_generation, Integral)
+            cv.check_greater_than("number of generations", ifp_n_generation, 0)
+        self._ifp_n_generation = ifp_n_generation
+
+    @property
     def tabular_legendre(self) -> dict:
         return self._tabular_legendre
 
@@ -1174,10 +1202,13 @@ class Settings:
                             raise ValueError(
                                 f'Invalid domain type: {type(domain)}. Expected '
                                 'openmc.Material, openmc.Cell, or openmc.Universe.')
-                cv.check_type('adjoint', value, bool)
             elif key == 'sample_method':
                 cv.check_value('sample method', value,
                                ('prng', 'halton'))
+            elif key == 'diagonal_stabilization_rho':
+                cv.check_type('diagonal stabilization rho', value, Real)
+                cv.check_greater_than('diagonal stabilization rho',
+                                      value, 0.0, True)
             else:
                 raise ValueError(f'Unable to set random ray to "{key}" which is '
                                  'unsupported by OpenMC')
@@ -1440,6 +1471,11 @@ class Settings:
         if self._no_reduce is not None:
             element = ET.SubElement(root, "no_reduce")
             element.text = str(self._no_reduce).lower()
+
+    def _create_ifp_n_generation_subelement(self, root):
+        if self._ifp_n_generation is not None:
+            element = ET.SubElement(root, "ifp_n_generation")
+            element.text = str(self._ifp_n_generation)
 
     def _create_tabular_legendre_subelements(self, root):
         if self.tabular_legendre:
@@ -1874,6 +1910,11 @@ class Settings:
         if text is not None:
             self.verbosity = int(text)
 
+    def _ifp_n_generation_from_xml_element(self, root):
+        text = get_text(root, 'ifp_n_generation')
+        if text is not None:
+            self.ifp_n_generation = int(text)
+
     def _tabular_legendre_from_xml_element(self, root):
         elem = root.find('tabular_legendre')
         if elem is not None:
@@ -2019,7 +2060,7 @@ class Settings:
         if elem is not None:
             self.random_ray = {}
             for child in elem:
-                if child.tag in ('distance_inactive', 'distance_active'):
+                if child.tag in ('distance_inactive', 'distance_active', 'diagonal_stabilization_rho'):
                     self.random_ray[child.tag] = float(child.text)
                 elif child.tag == 'source':
                     source = SourceBase.from_xml_element(child)
@@ -2102,6 +2143,7 @@ class Settings:
         self._create_trigger_subelement(element)
         self._create_no_reduce_subelement(element)
         self._create_verbosity_subelement(element)
+        self._create_ifp_n_generation_subelement(element)
         self._create_tabular_legendre_subelements(element)
         self._create_temperature_subelements(element)
         self._create_trace_subelement(element)
@@ -2211,6 +2253,7 @@ class Settings:
         settings._trigger_from_xml_element(elem)
         settings._no_reduce_from_xml_element(elem)
         settings._verbosity_from_xml_element(elem)
+        settings._ifp_n_generation_from_xml_element(elem)
         settings._tabular_legendre_from_xml_element(elem)
         settings._temperature_from_xml_element(elem)
         settings._trace_from_xml_element(elem)

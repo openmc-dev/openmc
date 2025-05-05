@@ -52,6 +52,7 @@ bool create_fission_neutrons {true};
 bool delayed_photon_scaling {true};
 bool entropy_on {false};
 bool event_based {false};
+bool ifp_on {false};
 bool legendre_to_tabular {true};
 bool material_cell_offsets {true};
 bool output_summary {true};
@@ -106,6 +107,8 @@ int max_particle_events {1000000};
 ElectronTreatment electron_treatment {ElectronTreatment::TTB};
 array<double, 4> energy_cutoff {0.0, 1000.0, 0.0, 0.0};
 array<double, 4> time_cutoff {INFTY, INFTY, INFTY, INFTY};
+int ifp_n_generation {-1};
+IFPParameter ifp_parameter {IFPParameter::None};
 int legendre_to_tabular_points {C_NONE};
 int max_order {0};
 int n_log_bins {8000};
@@ -343,6 +346,15 @@ void get_run_parameters(pugi::xml_node node_base)
             type, domain_id);
           RandomRay::mesh_subdivision_enabled_ = true;
         }
+      }
+    }
+    if (check_for_node(random_ray_node, "diagonal_stabilization_rho")) {
+      FlatSourceDomain::diagonal_stabilization_rho_ = std::stod(
+        get_node_value(random_ray_node, "diagonal_stabilization_rho"));
+      if (FlatSourceDomain::diagonal_stabilization_rho_ < 0.0 ||
+          FlatSourceDomain::diagonal_stabilization_rho_ > 1.0) {
+        fatal_error("Random ray diagonal stabilization rho factor must be "
+                    "between 0 and 1");
       }
     }
   }
@@ -1048,6 +1060,20 @@ void read_settings_xml(pugi::xml_node root)
     auto range = get_node_array<double>(root, "temperature_range");
     temperature_range[0] = range.at(0);
     temperature_range[1] = range.at(1);
+  }
+
+  // Check for user value for the number of generation of the Iterated Fission
+  // Probability (IFP) method
+  if (check_for_node(root, "ifp_n_generation")) {
+    ifp_n_generation = std::stoi(get_node_value(root, "ifp_n_generation"));
+    if (ifp_n_generation <= 0) {
+      fatal_error("'ifp_n_generation' must be greater than 0.");
+    }
+    // Avoid tallying 0 if IFP logs are not complete when active cycles start
+    if (ifp_n_generation > n_inactive) {
+      fatal_error("'ifp_n_generation' must be lower than or equal to the "
+                  "number of inactive cycles.");
+    }
   }
 
   // Check for tabular_legendre options

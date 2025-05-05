@@ -1059,7 +1059,7 @@ emitted photon.
 
 .. _anomalous scattering: http://pd.chem.ucl.ac.uk/pdnn/diff1/anomscat.htm
 
-.. _Kahn's rejection method: https://mcnp.lanl.gov/pdf_files/TechReport_1956_RC_AECU-3259RM-1237-AEC_Kahn.pdf
+.. _Kahn's rejection method: https://doi.org/10.2172/4353680
 
 .. _Klein-Nishina: https://en.wikipedia.org/wiki/Klein%E2%80%93Nishina_formula
 

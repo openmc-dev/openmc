@@ -630,7 +630,8 @@ SourceSite sample_external_source(uint64_t* seed)
   // source i, which is (strength_i / total_strength) / (1 / n)
   if (n_sources > 1 && settings::uniform_source_sampling) {
     double total_strength = model::external_sources_probability.integral();
-    site.wgt *= model::external_sources[i]->strength() * n_sources / total_strength;
+    site.wgt *=
+      model::external_sources[i]->strength() * n_sources / total_strength;
   }
 
   // If running in MG, convert site.E to group

@@ -634,20 +634,17 @@ class StructuredMesh(MeshBase):
             for label, dataset in datasets.items():
                 dataset = self._reshape_vtk_dataset(dataset)
                 self._check_vtk_dataset(label, dataset)
-                # If the array data is flattened, accept it as it is
-                if dataset.ndim == 1:
-                    dataset = dataset.flatten()
                 # If the array data is 3D, assume is in C ordering and transpose
                 # before flattening to match the ordering expected by the VTK
                 # array based on the way mesh indices are ordered in the Python
                 # API
                 # TODO: update to "C" ordering throughout
-                elif dataset.ndim == 3:
-                    dataset = dataset.T.flatten()
+                if dataset.ndim == 3:
+                    dataset = dataset.T.ravel()
                 datasets_out.append(dataset)
 
                 if volume_normalization:
-                    dataset /= self.volumes.T.flatten()
+                    dataset /= self.volumes.T.ravel()
 
                 dataset_array = vtk.vtkDoubleArray()
                 dataset_array.SetName(label)
@@ -797,17 +794,20 @@ class StructuredMesh(MeshBase):
         numpy.ndarray
             The reshaped dataset
         """
-        dataset = np.asarray(dataset)
+        reshaped_data = np.asarray(dataset)
 
         # detect flat array with extra dims
-        if all(d == 1 for d in dataset.shape[1:]):
-            dataset = dataset.squeeze()
+        if all(d == 1 for d in reshaped_data.shape[1:]):
+            reshaped_data = reshaped_data.squeeze()
 
         # remove any higher dimensions with size 1
-        if dataset.ndim > 3 and all(d == 1 for d in dataset.shape[3:]):
-            dataset = dataset.reshape(dataset.shape[:3])
+        if reshaped_data.ndim > 3 and all(d == 1 for d in reshaped_data.shape[3:]):
+            reshaped_data = reshaped_data.reshape(reshaped_data.shape[:3])
 
-        return dataset
+        if np.shares_memory(reshaped_data, dataset):
+            return np.copy(reshaped_data)
+        else:
+            return reshaped_data
 
     def _check_vtk_dataset(self, label: str, dataset: np.ndarray):
         """Perform some basic checks that a dataset is valid for this Mesh

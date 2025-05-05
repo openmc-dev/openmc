@@ -290,4 +290,19 @@ void RotationalPeriodicBC::handle_particle(
   p.cross_periodic_bc(surf, new_r, new_u, new_surface);
 }
 
+//==============================================================================
+// TransformationBC implementation
+//==============================================================================
+
+void TransformationBC::handle_particle(array<double, 9> m, Particle& p, const Surface& surf) const
+{
+  Direction u = surf.transform(m, p.u(), &p);
+  u /= u.norm();
+
+  // Handle the effects of the surface albedo on the particle's weight.
+  BoundaryCondition::handle_albedo(p, surf);
+
+  p.cross_transformation_bc(surf, u);
+}
+
 } // namespace openmc

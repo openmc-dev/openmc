@@ -152,5 +152,16 @@ protected:
   double angle_;
 };
 
+//==============================================================================
+//! A BC that transforms particle trajectory by a matrix.
+//==============================================================================
+
+class TransformationBC : public BoundaryCondition {
+  public:
+    void handle_particle(Particle& p, const Surface& surf) const override;
+  
+    std::string type() const override { return "transformation"; }
+  };
+
 } // namespace openmc
 #endif // OPENMC_BOUNDARY_CONDITION_H

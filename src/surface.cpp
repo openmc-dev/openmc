@@ -88,6 +88,8 @@ Surface::Surface(pugi::xml_node surf_node)
       bc_ = make_unique<WhiteBC>();
     } else if (surf_bc == "periodic") {
       // Periodic BCs are handled separately
+    } else if (surf_bc == "transformation" || surf_bc == "transform" ) {
+      bc_ = make_unique<TransformationBC>();
     } else {
       fatal_error(fmt::format("Unknown boundary condition \"{}\" specified "
                               "on surface {}",
@@ -158,6 +160,12 @@ Direction Surface::diffuse_reflect(
 
   // normalize the direction
   return u / u.norm();
+}
+
+Direction Surface::transform(array<double, 9> m, Direction u, GeometryState* p) const
+{
+  // Tranform direction according to transformation matrix.
+  return u.transform(m);
 }
 
 void Surface::to_hdf5(hid_t group_id) const

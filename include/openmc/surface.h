@@ -64,6 +64,14 @@ public:
   virtual Direction diffuse_reflect(
     Position r, Direction u, uint64_t* seed) const;
 
+  //! Determine the direction of a ray transformed from the surface.
+  //! \param[in] r The point at which the ray is incident.
+  //! \param[in] u Incident direction of the ray
+  //! \param[inout] p Pointer to the particle. Only DAGMC uses this.
+  //! \return Outgoing direction of the ray
+  virtual Direction transform(
+    array<double, 9> m, Direction u, GeometryState* p = nullptr) const;
+
   //! Evaluate the equation describing the surface.
   //!
   //! Surfaces can be described by some function f(x, y, z) = 0.  This member

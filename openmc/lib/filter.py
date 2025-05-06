@@ -660,6 +660,10 @@ class UniverseFilter(Filter):
     filter_type = 'universe'
 
 
+class WeightFilter(Filter):
+    filter_type = 'weight'
+
+
 class ZernikeFilter(Filter):
     filter_type = 'zernike'
 

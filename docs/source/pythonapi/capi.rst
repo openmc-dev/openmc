@@ -93,6 +93,7 @@ Classes
    SensitivityTally
    UniverseFilter
    UnstructuredMesh
+   WeightFilter
    WeightWindows
    ZernikeFilter
    ZernikeRadialFilter

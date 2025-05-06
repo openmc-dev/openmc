@@ -25,7 +25,7 @@ _FILTER_TYPES = (
     'energyout', 'mu', 'musurface', 'polar', 'azimuthal', 'distribcell', 'delayedgroup',
     'energyfunction', 'cellfrom', 'materialfrom', 'legendre', 'spatiallegendre',
     'sphericalharmonics', 'zernike', 'zernikeradial', 'particle', 'cellinstance',
-    'collision', 'time', 'importance', 'parentnuclide'
+    'collision', 'time', 'importance', 'parentnuclide', 'weight'
 )
 
 _CURRENT_NAMES = (
@@ -2518,3 +2518,26 @@ class EnergyFunctionFilter(Filter):
             {self.short_name.lower(): filter_bins})])
 
         return df
+
+
+class WeightFilter(RealFilter):
+    """Bins tally events based on the incoming particle weight.
+
+    Parameters
+    ----------
+    Values : Iterable of float
+        A list or iterable of the weight boundaries, as float values.
+    filter_id : int
+        Unique identifier for the filter
+
+    Attributes
+    ----------
+    id : int
+        Unique identifier for the filter
+    bins : numpy.ndarray
+        An array of integer values representing the weights by which to filter
+    num_bins : int
+        The number of filter bins
+    values : numpy.ndarray
+        Array of weight boundaries
+    """

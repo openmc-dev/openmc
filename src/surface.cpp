@@ -89,7 +89,7 @@ Surface::Surface(pugi::xml_node surf_node)
     } else if (surf_bc == "periodic") {
       // Periodic BCs are handled separately
     } else if (surf_bc == "transformation" || surf_bc == "transform" ) {
-      bc_ = make_unique<TransformationBC>();
+      // Transformation BCs are handled separately
     } else {
       fatal_error(fmt::format("Unknown boundary condition \"{}\" specified "
                               "on surface {}",
@@ -111,6 +111,19 @@ Surface::Surface(pugi::xml_node surf_node)
           id_, surf_alb));
 
       bc_->set_albedo(surf_alb);
+    }
+  }
+
+  if (check_for_node(surf_node, "transformation_matrix")) {
+    array<double, 9> m = std::stod(get_node_value(surf_node,
+                                                  "transformation_matrix"));
+    
+    if (surf_bc != "transformation") {
+      bc_ = make_unique<TransformationBC>(m);
+    } else {
+        warning(fmt::format("Surface {} has a {} boundary condition. The "
+                            "specified transformation matrix will be ignored.",
+          id_, surf_bc));
     }
   }
 }

@@ -158,9 +158,15 @@ protected:
 
 class TransformationBC : public BoundaryCondition {
   public:
+    TransformationBC(array<double, 9> m);
+  
     void handle_particle(Particle& p, const Surface& surf) const override;
   
     std::string type() const override { return "transformation"; }
+  
+  protected:
+    //! Transformation matrix by which particle trajectories are transformed
+    array<double, 9> transformation_;
   };
 
 } // namespace openmc

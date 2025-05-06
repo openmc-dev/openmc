@@ -294,9 +294,15 @@ void RotationalPeriodicBC::handle_particle(
 // TransformationBC implementation
 //==============================================================================
 
-void TransformationBC::handle_particle(array<double, 9> m, Particle& p, const Surface& surf) const
+TransformationBC::TransformationBC(array<double, 9> m)
 {
-  Direction u = surf.transform(m, p.u(), &p);
+  // Set the transformation matrix
+  transformation_ = m
+}
+
+void TransformationBC::handle_particle(Particle& p, const Surface& surf) const
+{
+  Direction u = surf.transform(transformation_, p.u(), &p);
   u /= u.norm();
 
   // Handle the effects of the surface albedo on the particle's weight.

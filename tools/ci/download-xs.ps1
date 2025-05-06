@@ -9,6 +9,6 @@ if (-not (Test-Path "$Env:GITHUB_WORKSPACE\nndc_hdf5")) {
 # Download ENDF/B-VII.1 distribution
 $Env:ENDF = "$Env:GITHUB_WORKSPACE\endf-b-vii.1"
 if (-not (Test-Path $Env:ENDF)) {
-  Invoke-WebRequest https://anl.box.com/shared/static/4kd2gxnf4gtk4w1c8eua5fsua22kvgjb.xz -OutFile endf.xs -UseBasicParsing
+  Invoke-WebRequest https://anl.box.com/shared/static/4kd2gxnf4gtk4w1c8eua5fsua22kvgjb.xz -OutFile endf.xz -UseBasicParsing
   tar -xvzf endf.xz
 }

@@ -7,4 +7,4 @@ if ($Env:EVENT) {
 }
 
 # Run regression and unit tests
-python --cov=openmc -v $Env:args tests
+pytest --cov=openmc -v $Env:args tests

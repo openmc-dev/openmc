@@ -215,11 +215,6 @@ jobs:
           [Environment]::SetEnvironmentVariable("OPENMC_CROSS_SECTIONS", "$Env:GITHUB_WORKSPACE\nndc_hdf5\cross_sections.xml", 'Machine')
           [Environment]::SetEnvironmentVariable("OPENMC_ENDF_DATA", "$Env:GITHUB_WORKSPACE\endf-b-vii.1", 'Machine')
 
-      - name: HDF5 Dependency
-        shell: pwsh
-        run: |
-          ${{github.workspace}}\tools\ci\hdf5_install.ps1
-
       - name: Cache XS
         uses: actions/cache@v4
         with:
@@ -233,12 +228,6 @@ jobs:
         run: |
           ${{github.workspace}}\tools\ci\gha-install.ps1
 
-      - name: Breakpoint For Debugging
-        uses: namespacelabs/breakpoint-action@v0
-        with:
-          duration: 30m
-          authorized-users: HunterBelanger
-
       - name: Before
         shell: pwsh
         run: ${{github.workspace}}\tools\ci\download-xs.ps1
@@ -246,8 +235,14 @@ jobs:
       - name: Test
         shell: pwsh
         run: |
-          ctest --output-on-failure -C Debug ${{ github.workspace }}\build\
+          ctest --output-on-failure -C Release ${{ github.workspace }}\build\
           ${{github.workspace}}\tools\ci\gha-script.ps1
+
+      - name: Setup tmate debug session
+        continue-on-error: true
+        if: ${{ contains(env.COMMIT_MESSAGE, '[gha-debug]') }}
+        uses: mxschmitt/action-tmate@v3
+        timeout-minutes: 10
 
   finish:
     needs: [win, main]

@@ -60,8 +60,8 @@ def test_from_model(model, domain_type):
                 'Xe136', 'Cs135', 'Gd157', 'Gd156']
     _, test_xs = get_microxs_and_flux(model, domains, nuclides, chain_file=CHAIN_FILE)
     if config['update']:
-        test_xs[0].to_csv(f'test_reference_{domain_type}.csv')
+        test_xs[0].to_csv(f'test_reference_{domain_type}.csv', lineterminator='\n')
 
-    ref_xs = MicroXS.from_csv(f'test_reference_{domain_type}.csv')
+    ref_xs = MicroXS.from_csv(f'test_reference_{domain_type}.csv', lineterminator='\n')
 
     np.testing.assert_allclose(test_xs[0].data, ref_xs.data, rtol=1e-11)

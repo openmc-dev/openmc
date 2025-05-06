@@ -24,7 +24,7 @@ def test_operator_init():
                 'O16': 4.639065406771322e+22,
                 'O17': 1.7588724018066158e+19}
     flux = 1.0
-    micro_xs = MicroXS.from_csv(ONE_GROUP_XS)
+    micro_xs = MicroXS.from_csv(ONE_GROUP_XS, lineterminator='\n')
     IndependentOperator.from_nuclides(
         volume, nuclides, flux, micro_xs, CHAIN_PATH, nuc_units='atom/cm3')
 
@@ -41,7 +41,7 @@ def test_operator_init():
 
 
 def test_error_handling():
-    micro_xs = MicroXS.from_csv(ONE_GROUP_XS)
+    micro_xs = MicroXS.from_csv(ONE_GROUP_XS, lineterminator='\n')
     fuel = Material(name="oxygen")
     fuel.add_element("O", 2)
     fuel.set_density("g/cc", 1)

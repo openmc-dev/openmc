@@ -50,7 +50,7 @@ def model():
 @pytest.fixture(scope="module")
 def micro_xs():
     micro_xs_file = Path(__file__).parents[2] / 'micro_xs_simple.csv'
-    return MicroXS.from_csv(micro_xs_file)
+    return MicroXS.from_csv(micro_xs_file, lineterminator='\n')
 
 
 @pytest.fixture(scope="module")

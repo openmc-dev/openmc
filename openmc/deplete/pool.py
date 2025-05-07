@@ -66,13 +66,13 @@ def deplete(func, chain, n, rates, dt, current_timestep=None, matrix_func=None,
         yield_frac}}`` Expected to return the depletion matrix required by
         ``func``
     transfer_rates : openmc.deplete.TransferRates, Optional
-        Object to perform continuous reprocessing.
+        Transfer rates for continuous removal/feed.
 
         .. versionadded:: 0.14.0
     external_source_rates : openmc.deplete.ExternalSourceRates, Optional
-        Instance of ExternalSourceRates class to add an external source term.
+        External source rates for continuous removal/feed.
 
-        .. versionadded:: 0.15.1
+        .. versionadded:: 0.15.3
     matrix_args: Any, optional
         Additional arguments passed to matrix_func
 
@@ -104,6 +104,7 @@ def deplete(func, chain, n, rates, dt, current_timestep=None, matrix_func=None,
         # Calculate transfer rate terms as diagonal matrices
         transfers = map(chain.form_rr_term, repeat(transfer_rates),
                         repeat(current_timestep), transfer_rates.local_mats)
+
         # Subtract transfer rate terms from Bateman matrices
         matrices = [matrix - transfer for (matrix, transfer) in zip(matrices,
                                                                     transfers)]
@@ -119,7 +120,7 @@ def deplete(func, chain, n, rates, dt, current_timestep=None, matrix_func=None,
                 n = [n_elm for n_mat in n for  n_elm in n_mat]
 
                 # Calculate transfer rate terms as diagonal matrices
-                transfer_pair = dict()
+                transfer_pair = {}
                 for mat_pair in transfer_rates.index_transfer[current_timestep]:
                     transfer_matrix = chain.form_rr_term(transfer_rates,
                                                          current_timestep,
@@ -169,16 +170,18 @@ def deplete(func, chain, n, rates, dt, current_timestep=None, matrix_func=None,
         # Calculate external source term vectors
         sources = map(chain.form_ext_source_term, repeat(external_source_rates),
                       repeat(current_timestep), external_source_rates.local_mats)
-        #stack vector column at the end of the matrix
-        matrices = [hstack([matrix, source]) for (matrix, source) in zip(matrices,
-                                                                    sources)]
 
-        for i in range(len(matrices)):
-            if not np.equal(*matrices[i].shape):
-                # add a last row of zeroes to the matrices
-                matrices[i] = vstack(
-                        [matrices[i], csc_matrix([0]*matrices[i].shape[1])])
-                # add 1 to the last row of n vector
+        # stack vector column at the end of the matrix
+        matrices = [
+            hstack([matrix, source])
+            for matrix, source in zip(matrices, sources)
+        ]
+
+        # Add a last row of zeroes to the matrices and append 1 to the last row
+        # of the nuclide vectors
+        for i, matrix in enumerate(matrices):
+            if not np.equal(*matrix.shape):
+                matrices[i] = vstack([matrix, csc_matrix([0]*matrix.shape[1])])
                 n[i] = np.append(n[i], 1.0)
 
     inputs = zip(matrices, n, repeat(dt))
@@ -189,9 +192,10 @@ def deplete(func, chain, n, rates, dt, current_timestep=None, matrix_func=None,
     else:
         n_result = list(starmap(func, inputs))
 
+    # Remove extra value at the end of the nuclide vectors
     if (external_source_rates is not None and
         current_timestep in external_source_rates.external_timesteps):
-        n = external_source_rates.reformat_nuclide_vectors(n)
-        n_result = external_source_rates.reformat_nuclide_vectors(n_result)
+        external_source_rates.reformat_nuclide_vectors(n)
+        external_source_rates.reformat_nuclide_vectors(n_result)
 
     return n_result

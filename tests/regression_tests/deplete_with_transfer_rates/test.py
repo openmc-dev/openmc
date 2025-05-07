@@ -2,7 +2,6 @@
 
 from pathlib import Path
 import shutil
-import sys
 
 import numpy as np
 import pytest
@@ -11,7 +10,7 @@ import openmc.deplete
 from openmc.deplete import CoupledOperator
 
 from tests.regression_tests import config, assert_reaction_rates_equal, \
-    assert_atoms_equal, assert_same_mats
+    assert_atoms_equal
 
 
 @pytest.fixture
@@ -47,6 +46,7 @@ def model():
     settings.seed = 1
 
     return openmc.Model(geometry, materials, settings)
+
 
 @pytest.mark.parametrize("rate, dest_mat, power, ref_result", [
     (1e-5, None, 0.0, 'no_depletion_only_removal'),
@@ -87,21 +87,22 @@ def test_transfer_rates(run_in_tmpdir, model, rate, dest_mat, power, ref_result)
     assert_atoms_equal(res_ref, res_test)
     assert_reaction_rates_equal(res_ref, res_test)
 
+
 @pytest.mark.parametrize("rate, power, ref_result", [
     (1e-1, 0.0, 'no_depletion_with_ext_source'),
     (1e-1, 174., 'depletion_with_ext_source'),
-    ])
+])
 def test_external_source_rates(run_in_tmpdir, model, rate, power, ref_result):
     """Tests external_rates depletion class with external source rates"""
 
     chain_file = Path(__file__).parents[2] / 'chain_simple.xml'
 
-    external_source_vector = {'U':1}
+    external_source_vector = {'U': 1}
 
     op = CoupledOperator(model, chain_file)
     op.round_number = True
     integrator = openmc.deplete.PredictorIntegrator(
-        op, [1], power, timestep_units = 'd')
+        op, [1], power, timestep_units='d')
     integrator.add_external_source_rate('f', external_source_vector, rate)
     integrator.integrate()
 

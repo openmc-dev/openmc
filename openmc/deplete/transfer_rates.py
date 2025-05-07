@@ -1,23 +1,28 @@
+from collections import defaultdict
 from numbers import Real
 import re
+from typing import Sequence
+
+import numpy as np
 
 from openmc.checkvalue import check_type, check_value
 from openmc import Material
 from openmc.data import ELEMENT_SYMBOL, isotopes, AVOGADRO, atomic_mass
+from .results import _SECONDS_PER_MINUTE, _SECONDS_PER_HOUR, \
+    _SECONDS_PER_DAY, _SECONDS_PER_JULIAN_YEAR
 
-from math import isclose
-import numpy as np
+
 
 class ExternalRates:
     """External rates class for defining addition terms of depletion equation.
 
-    .. versionadded:: 0.15.1
+    .. versionadded:: 0.15.3
 
     Parameters
     ----------
     operator : openmc.TransportOperator
         Depletion operator
-    materials : openmc.Model
+    materials : openmc.Materials
         OpenMC materials.
     number_of_timesteps : int
         Total number of depletion timesteps
@@ -44,9 +49,9 @@ class ExternalRates:
         self.local_mats = operator.local_mats
         self.number_of_timesteps = number_of_timesteps
 
-        #initialize transfer rates container dict
-        self.external_rates = {mat: {} for mat in self.burnable_mats}
-        self.external_timesteps =  []
+        # initialize transfer rates container dict
+        self.external_rates = {mat: defaultdict(list) for mat in self.burnable_mats}
+        self.external_timesteps = []
 
     def _get_material_id(self, val):
         """Helper method for getting material id from Material obj or name.
@@ -69,7 +74,7 @@ class ExternalRates:
                 check_value('Material ID', str(val), self.burnable_mats)
             else:
                 check_value('Material name', val,
-                        [mat.name for mat in self.materials if mat.depletable])
+                            [mat.name for mat in self.materials if mat.depletable])
                 val = [mat.id for mat in self.materials if mat.name == val][0]
 
         elif isinstance(val, int):
@@ -77,8 +82,13 @@ class ExternalRates:
 
         return str(val)
 
-    def get_external_rate(self, material, component, timestep,
-                          destination_material=None):
+    def get_external_rate(
+        self,
+        material: str | int | Material,
+        component: str,
+        timestep: int,
+        destination_material: str | int | Material | None = None
+    ):
         """Return transfer rate for given material and element.
 
         Parameters
@@ -103,10 +113,10 @@ class ExternalRates:
         if destination_material is not None:
             dest_mat_id = self._get_material_id(destination_material)
             return [i[1] for i in self.external_rates[material_id][component]
-                if timestep in i[0] and dest_mat_id==i[2]]
+                    if timestep in i[0] and dest_mat_id == i[2]]
         else:
             return [i[1] for i in self.external_rates[material_id][component]
-                if timestep in i[0]]
+                    if timestep in i[0]]
 
     def get_components(self, material, timestep, destination_material=None):
         """Extract removing elements and/or nuclides for a given material at a
@@ -140,18 +150,16 @@ class ExternalRates:
 
             for component in mat_components:
                 if dest_mat_id:
-                    #check for both timestep and destination material ids
-                    if np.isin(timestep,
-                            [val[0] for val in mat_components[component]]) and \
-                       np.isin(dest_mat_id,
-                            [val[2] for val in mat_components[component]]):
+                    # check for both timestep and destination material ids
+                    if np.isin(timestep, [val[0] for val in mat_components[component]]) and \
+                       np.isin(dest_mat_id, [val[2] for val in mat_components[component]]):
                         all_components.append(component)
                 else:
-                    #check only for timesteps
-                    if np.isin(timestep,
-                            [val[0] for val in mat_components[component]]):
+                    # check only for timesteps
+                    if np.isin(timestep, [val[0] for val in mat_components[component]]):
                         all_components.append(component)
         return all_components
+
 
 class TransferRates(ExternalRates):
     """Class for defining continuous removals and feeds.
@@ -169,7 +177,7 @@ class TransferRates(ExternalRates):
     ----------
     operator : openmc.TransportOperator
         Depletion operator
-    materials : openmc.Model
+    materials : openmc.Materials
         OpenMC materials.
     number_of_timesteps : int
         Total number of depletion timesteps
@@ -190,14 +198,8 @@ class TransferRates(ExternalRates):
     """
 
     def __init__(self, operator, materials, number_of_timesteps):
-
-        super().__init__(
-            operator,
-            materials,
-            number_of_timesteps
-        )
-
-        self.index_transfer = dict()
+        super().__init__(operator, materials, number_of_timesteps)
+        self.index_transfer = defaultdict(list)
         self.chain_nuclides = [nuc.name for nuc in operator.chain.nuclides]
 
     def set_transfer_rate(self, material, components, transfer_rate,
@@ -245,16 +247,15 @@ class TransferRates(ExternalRates):
         if transfer_rate_units in ('1/s', '1/sec'):
             unit_conv = 1
         elif transfer_rate_units in ('1/min', '1/minute'):
-            unit_conv = 60
+            unit_conv = _SECONDS_PER_MINUTE
         elif transfer_rate_units in ('1/h', '1/hr', '1/hour'):
-            unit_conv = 60*60
+            unit_conv = _SECONDS_PER_HOUR
         elif transfer_rate_units in ('1/d', '1/day'):
-            unit_conv = 24*60*60
+            unit_conv = _SECONDS_PER_DAY
         elif transfer_rate_units in ('1/a', '1/year'):
-            unit_conv = 365.25*24*60*60
+            unit_conv = _SECONDS_PER_JULIAN_YEAR
         else:
-            raise ValueError('Invalid transfer rate unit '
-                             f'"{transfer_rate_units}"')
+            raise ValueError(f'Invalid transfer rate unit "{transfer_rate_units}"')
 
         if timesteps is not None:
             for timestep in timesteps:
@@ -288,25 +289,13 @@ class TransferRates(ExternalRates):
                                          f'where element {element} already has '
                                          'a transfer rate.')
 
-            if component in self.external_rates[material_id]:
-                self.external_rates[material_id][component].append(
-                    (timesteps,
-                     transfer_rate / unit_conv,
-                     destination_material_id))
-            else:
-                self.external_rates[material_id][component] = [
-                    (timesteps,
-                     transfer_rate / unit_conv,
-                     destination_material_id)]
+            self.external_rates[material_id][component].append(
+                (timesteps, transfer_rate/unit_conv, destination_material_id))
 
             if destination_material_id is not None:
                 for timestep in timesteps:
-                    if timestep not in self.index_transfer:
-                        self.index_transfer[timestep] = [(destination_material_id,
-                                                        material_id)]
-                    else:
-                        self.index_transfer[timestep].append((destination_material_id,
-                                                        material_id))
+                    self.index_transfer[timestep].append(
+                        (destination_material_id, material_id))
 
             self.external_timesteps = np.unique(np.concatenate(
                     [self.external_timesteps, timesteps]))
@@ -318,13 +307,13 @@ class ExternalSourceRates(ExternalRates):
     An instance of this class can be passed directly to an instance of one of
     the :class:`openmc.deplete.Integrator` classes.
 
-    .. versionadded:: 0.15.1
+    .. versionadded:: 0.15.3
 
     Parameters
     ----------
     operator : openmc.TransportOperator
         Depletion operator
-    materials : openmc.Model
+    materials : openmc.Materials
         OpenMC materials.
     number_of_timesteps : int
         Total number of depletion timesteps
@@ -342,39 +331,28 @@ class ExternalSourceRates(ExternalRates):
         (elements and/or nuclides)
     """
 
-    def __init__(self, operator, materials, number_of_timesteps):
-
-        super().__init__(
-            operator,
-            materials,
-            number_of_timesteps
-        )
-
     def reformat_nuclide_vectors(self, vectors):
-        """Remove last element of nuclide vector that was added for homogenize
-        the vector by the depletion solver.
+        """Remove last element of nuclide vector that was added for handling
+        external source rates by the depletion solver.
 
         Parameters
         ----------
         vectors : list of array
             List of nuclides vector to reformat
 
-        Returns
-        -------
-        vectors : list of array
-            Updated list of nuclides vector
-
         """
-        mat_indeces = [idx for idx,i in enumerate(self.local_mats) \
-                        if self.external_rates[i]]
+        for mat_index, i in enumerate(self.local_mats):
+            if self.external_rates[i]:
+                vectors[mat_index] = vectors[mat_index][:-1]
 
-        for mat_index in mat_indeces:
-            vectors[mat_index] = vectors[mat_index][:-1]
-
-        return vectors
-
-    def set_external_source_rate(self, material, external_source_vector,
-            external_source_rate, external_source_rate_units='g/s', timesteps=None):
+    def set_external_source_rate(
+        self,
+        material: str | int | Material,
+        composition: dict[str, float],
+        rate: float,
+        rate_units: str = 'g/s',
+        timesteps: Sequence[int] | None = None
+    ):
         """Set element and/or nuclide composition vector external source rates
         to a depletable material.
 
@@ -382,84 +360,73 @@ class ExternalSourceRates(ExternalRates):
         ----------
         material : openmc.Material or str or int
             Depletable material
-        external_source_vector : dict of str to float
+        composition : dict of str to float
             External source rate composition vector, where key can be an element
-            or a nuclide and value the corresponding weigth percent.
-        external_source_rate : float
-            External source rate in unit of grams per time. A positive or
+            or a nuclide and value the corresponding weight percent.
+        rate : float
+            External source rate in units of mass per time. A positive or
             negative value corresponds to a feed or removal rate, respectively.
-        external_source_rate_units : {'g/s', 'g/min', 'g/h', 'g/d', 'g/a'}
-            Units for values specified in the external_source_rate argument.
-            's' for seconds, 'min' for minutes, 'h' for hours, 'a' for
-            Julian years.
-        timesteps : list of int, Optional
-            List of timestep indeces where to set external source rates.
-            Default to None means the external source rate is set for all
+        units : {'g/s', 'g/min', 'g/h', 'g/d', 'g/a'}
+            Units for values specified in the `rate` argument. 's' for seconds,
+            'min' for minutes, 'h' for hours, 'a' for Julian years.
+        timesteps : list of int, optional
+            List of timestep indices where to set external source rates. Default
+            to None, which means the external source rate is set for all
             timesteps.
 
         """
 
         material_id = self._get_material_id(material)
-        check_type('external_source_rate', external_source_rate, Real)
-        check_type('external_source_vector', external_source_vector, dict,
-                        expected_iter_type=str)
+        check_type('rate', rate, Real)
+        check_type('composition', composition, dict, str)
 
-        if external_source_rate_units in ('g/s', 'g/sec'):
+        if rate_units in ('g/s', 'g/sec'):
             unit_conv = 1
-        elif external_source_rate_units in ('g/min', 'g/minute'):
-            unit_conv = 60
-        elif external_source_rate_units in ('g/h', 'g/hr', 'g/hour'):
-            unit_conv = 60*60
-        elif external_source_rate_units in ('g/d', 'g/day'):
-            unit_conv = 24*60*60
-        elif external_source_rate_units in ('g/a', 'g/year'):
-            unit_conv = 365.25*24*60*60
+        elif rate_units in ('g/min', 'g/minute'):
+            unit_conv = _SECONDS_PER_MINUTE
+        elif rate_units in ('g/h', 'g/hr', 'g/hour'):
+            unit_conv = _SECONDS_PER_HOUR
+        elif rate_units in ('g/d', 'g/day'):
+            unit_conv = _SECONDS_PER_DAY
+        elif rate_units in ('g/a', 'g/year'):
+            unit_conv = _SECONDS_PER_JULIAN_YEAR
         else:
-            raise ValueError('Invalid external source rate unit '
-                             f'"{external_source_rate_units}"')
+            raise ValueError(f'Invalid external source rate unit "{rate_units}"')
 
         if timesteps is not None:
             for timestep in timesteps:
                 check_value('timestep', timestep, range(self.number_of_timesteps))
-            timesteps = np.array(timesteps)
+            timesteps = np.asarray(timesteps)
         else:
             timesteps = np.arange(self.number_of_timesteps)
 
-
-        percents = external_source_vector.values()
+        components = composition.keys()
+        percents = composition.values()
         norm_percents = [float(i) / sum(percents) for i in percents]
-        components = external_source_vector.keys()
 
         atoms_per_nuc = {}
         for component, percent in zip(components, norm_percents):
             split_component = re.split(r'\d+', component)
             element = split_component[0]
             if element not in ELEMENT_SYMBOL.values():
-                raise ValueError(f'{component} is not a valid nuclide or '
-                                 'element.')
-            else:
-                if len(split_component) == 1:
-                    if not isotopes(component):
-                        raise ValueError(f'Cannot add element {component} '
-                                         'as it is not naturally abundant. '
-                                         'Specify a nuclide vector instead. ')
-                    else:
-                        for nuc, frac in isotopes(component):
-                            atoms_per_nuc[nuc] = \
-                                external_source_rate / atomic_mass(nuc) \
-                                * AVOGADRO * frac * percent \
-                                / unit_conv
+                raise ValueError(f'{component} is not a valid nuclide or element.')
 
-                else:
-                    atoms_per_nuc[component] = \
-                            external_source_rate / atomic_mass(component) \
-                            * AVOGADRO * percent / unit_conv
+            if len(split_component) == 1:
+                if not isotopes(component):
+                    raise ValueError(f'Cannot add element {component} '
+                                     'as it is not naturally abundant. '
+                                     'Specify a nuclide vector instead.')
+                for nuc, frac in isotopes(component):
+                    atoms_per_nuc[nuc] = (rate / atomic_mass(nuc) * AVOGADRO *
+                                          frac * percent / unit_conv)
+
+            else:
+                atoms_per_nuc[component] = (rate / atomic_mass(component) *
+                                            AVOGADRO * percent / unit_conv)
 
         for nuc, val in atoms_per_nuc.items():
-            if nuc in self.external_rates[material_id]:
-                self.external_rates[material_id][nuc].append((timesteps, val, None))
-            else:
-                self.external_rates[material_id][nuc] = [(timesteps, val, None)]
+            self.external_rates[material_id][nuc].append((timesteps, val, None))
 
         self.external_timesteps = np.unique(np.concatenate(
-                    [self.external_timesteps, timesteps]))
+            [self.external_timesteps, timesteps]
+        ))

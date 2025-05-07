@@ -9,7 +9,7 @@ from warnings import warn, catch_warnings, simplefilter
 import lxml.etree as ET
 import numpy as np
 
-from .checkvalue import check_type, check_iterable_type, check_value, check_length, check_greater_than
+from .checkvalue import check_type, check_value, check_length, check_greater_than
 from .mixin import IDManagerMixin, IDWarning
 from .region import Region, Intersection, Union
 from .bounding_box import BoundingBox
@@ -247,8 +247,9 @@ class Surface(IDManagerMixin, ABC):
 
     @transformation_matrix.setter
     def transformation_matrix(self, transformation_matrix):
-        check_iterable_type('transformation matrix', transformation_matrix, float)
-        check_length('transformation matrix', transformation_matrix, 9)
+        if transformation_matrix is not None:
+            check_type('transformation matrix', transformation_matrix, Iterable, Real)
+            check_length('transformation matrix', transformation_matrix, 9)
         self._transformation_matrix = transformation_matrix
 
     @property

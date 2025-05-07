@@ -142,13 +142,6 @@ private:
   int init_plane_normals();
 
   int scale_grid_vectors(double s);
-  // needed data members:
-  // size_ length of basis vectors
-  // hex-basis vectors r_,q_,s_
-  // surface normal vectors n0_, n1_, n2_
-  // max-index of hex-rings meaning indices run from -max,...,0,...,max
-  // - this means:
-  // the width of a hexagon is sqrt(3)*size_
 
   Position r_ {0, -1, 0};
   Position q_ {sqrt(3.0) * 0.5, 0.5, 0};

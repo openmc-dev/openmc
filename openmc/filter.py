@@ -984,7 +984,6 @@ class MeshFilter(Filter):
             filter_dict[mesh_key, 'z'] = _repeat_and_tile(
                 np.arange(1, nz + 1), nx * ny * stride, data_size)
         else:
-            np.arange(1, nz + 1), nx * ny * stride, data_size)
             nrphi , nz = self.mesh.dimension
             radius = self._mesh.hex_radius
             filter_dict[mesh_key, 'r'] = np.tile(

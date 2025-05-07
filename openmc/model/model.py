@@ -387,7 +387,6 @@ class Model:
 
     def deplete(
         self,
-        timesteps: Iterable[float],
         method: str = "cecm",
         final_step: bool = True,
         operator_kwargs: dict | None = None,
@@ -403,9 +402,11 @@ class Model:
 
         Parameters
         ----------
-        timesteps : iterable of float
-            Array of timesteps in units of [s]. Note that values are not
-            cumulative.
+        timesteps : iterable of float or iterable of tuple
+            Array of timesteps. Note that values are not cumulative. The units are
+            specified by the `timestep_units` argument when `timesteps` is an
+            iterable of float. Alternatively, units can be specified for each step
+            by passing an iterable of (value, unit) tuples.
         method : str
              Integration method used for depletion (e.g., 'cecm', 'predictor').
              Defaults to 'cecm'.
@@ -421,8 +422,8 @@ class Model:
         output : bool
             Capture OpenMC output from standard out
         integrator_kwargs : dict
-            Remaining keyword arguments passed to the depletion Integrator
-            initializer (e.g., :func:`openmc.deplete.integrator.cecm`).
+            Remaining keyword arguments passed to the depletion integrator
+            (e.g., :class:`openmc.deplete.CECMIntegrator`).
 
         """
 
@@ -811,7 +812,7 @@ class Model:
         output: bool = True,
         cwd: PathLike = ".",
         openmc_exec: PathLike = "openmc",
-        mpi_args: Iterable[str] | None = None,
+        mpi_args: list[str] | None = None,
         apply_volumes: bool = True,
         export_model_xml: bool = True,
         **export_kwargs,
@@ -1212,8 +1213,8 @@ class Model:
 
     def _change_py_lib_attribs(
         self,
-        names_or_ids: Iterable[str],
-        value: float,
+        names_or_ids: Iterable[str] | Iterable[int],
+        value: float | Iterable[float],
         obj_type: str,
         attrib_name: str,
         density_units: str = "atom/b-cm",
@@ -1969,7 +1970,7 @@ class Model:
                     self.sync_dagmc_universes()
                     self.finalize_lib()
                     break
-            
+
             # Make sure all materials have a name, and that the name is a valid HDF5
             # dataset name
             for material in self.materials:

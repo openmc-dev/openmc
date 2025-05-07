@@ -10,7 +10,8 @@ def test_ploting_dagmc_geometry():
     """Test plotting a DAGMC geometry with OpenMC. This is different to CSG
     geometry plotting as the path to the DAGMC file needs handling."""
 
-    dag_universe = openmc.DAGMCUniverse(filename='dagmc.h5m')
+    with openmc.config.patch('resolve_paths', True):
+        dag_universe = openmc.DAGMCUniverse(filename='dagmc.h5m')
     csg_with_dag_inside = dag_universe.bounded_universe()
     my_geometry = openmc.Geometry(csg_with_dag_inside)
 

@@ -88,6 +88,12 @@ def test_finite_bounding_boxes(model):
         assert all(np.isfinite(cell.bounding_box.upper_right))
 
 
+def test_cell_temperature_warning(model):
+    c = list(model.geometry.get_all_material_cells().values())[0]
+    with pytest.warns(UserWarning):
+        c.temperature = 800
+
+
 def test_dagmc_replace_material_assignment(model):
     mats = {}
 

@@ -61,7 +61,10 @@ class SurfaceCoefficient:
 
 def _future_kwargs_warning_helper(cls, *args, **kwargs):
     # Warn if Surface parameters are passed by position, not by keyword
-    argsdict = dict(zip(('boundary_type', 'name', 'surface_id'), args))
+    argsdict = dict(zip(
+        ('boundary_type', 'name', 'surface_id', 'transformation_matrix'),
+        args
+    ))
     for k in argsdict:
         warn(_WARNING_KWARGS.format(cls.__name__, k), FutureWarning)
     kwargs.update(argsdict)
@@ -154,7 +157,8 @@ class Surface(IDManagerMixin, ABC):
         Name of the surface
     type : str
         Type of the surface
-
+    transformation_matrix : iterable of float
+        Transformation matrix by which particle trajectories are transformed
     """
 
     next_id = 1
@@ -448,6 +452,10 @@ class Surface(IDManagerMixin, ABC):
                 element.set("albedo", str(self.albedo))
         element.set("coeffs", ' '.join([str(self._coefficients.setdefault(key, 0.0))
                                         for key in self._coeff_keys]))
+        
+        if self.boundary_type == 'transformation':
+            element.set("transformation_matrix",
+                        ' '.join([str(elem) for elem in self.transformation_matrix]))
 
         return element
 
@@ -480,6 +488,10 @@ class Surface(IDManagerMixin, ABC):
         kwargs['name'] = get_text(elem, "name")
         coeffs = get_elem_list(elem, "coeffs", float)
         kwargs.update(dict(zip(cls._coeff_keys, coeffs)))
+        if kwargs['boundary_type'] == 'transformation':
+            kwargs['transformation_matrix'] = [
+                float(x) for x in elem.get('transformation_matrix').split()
+            ]
 
         return cls(**kwargs)
 
@@ -512,9 +524,13 @@ class Surface(IDManagerMixin, ABC):
             bc_alb = float(group['albedo'][()].decode())
         else:
             bc_alb = 1.0
+        if 'transformation_matrix' in group:
+            string_array = group['transformation_matrix'][()].decode()
+            transformation_matrix = [float(x) for x in string_array]
         coeffs = group['coefficients'][...]
         kwargs = {'boundary_type': bc, 'albedo': bc_alb, 'name': name,
-                  'surface_id': surface_id}
+                  'surface_id': surface_id,
+                  'transformation_matrix': transformation_matrix}
 
         surf_type = group['type'][()].decode()
         cls = _SURFACE_CLASSES[surf_type]
@@ -660,7 +676,8 @@ class PlaneMixin:
 
         kwargs = {'boundary_type': surf.boundary_type,
                   'albedo': surf.albedo,
-                  'name': surf.name}
+                  'name': surf.name,
+                  'transformation_matrix': surf.transformation_matrix}
         if inplace:
             kwargs['surface_id'] = surf.id
 
@@ -1165,7 +1182,8 @@ class QuadricMixin:
             base_cls = type(tsurf)._virtual_base
             # Copy necessary surface attributes to new kwargs dictionary
             kwargs = {'boundary_type': tsurf.boundary_type,
-                      'albedo': tsurf.albedo, 'name': tsurf.name}
+                      'albedo': tsurf.albedo, 'name': tsurf.name,
+                      'transformation_matrix': tsurf.transformation_matrix}
             if inplace:
                 kwargs['surface_id'] = tsurf.id
             kwargs.update({k: getattr(tsurf, k) for k in base_cls._coeff_keys})
@@ -1377,7 +1395,8 @@ class Cylinder(QuadricMixin, Surface):
         with catch_warnings():
             simplefilter('ignore', IDWarning)
             kwargs = {'boundary_type': self.boundary_type, 'albedo': self.albedo,
-                      'name': self.name, 'surface_id': self.id}
+                      'name': self.name, 'surface_id': self.id,
+                      'transformation_matrix': self.transformation_matrix}
             quad_rep = Quadric(*self._get_base_coeffs(), **kwargs)
         return quad_rep.to_xml_element()
 
@@ -1930,7 +1949,8 @@ class Cone(QuadricMixin, Surface):
             kwargs = {'boundary_type': self.boundary_type,
                       'albedo': self.albedo,
                       'name': self.name,
-                      'surface_id': self.id}
+                      'surface_id': self.id,
+                      'transformation_matrix': self.transformation_matrix}
             quad_rep = Quadric(*self._get_base_coeffs(), **kwargs)
         return quad_rep.to_xml_element()
 
@@ -2374,7 +2394,8 @@ class TorusMixin:
             'boundary_type': surf.boundary_type,
             'albedo': surf.albedo,
             'name': surf.name,
-            'a': surf.a, 'b': surf.b, 'c': surf.c
+            'a': surf.a, 'b': surf.b, 'c': surf.c,
+            'transformation_matrix': surf.transformation_matrix
         }
         if inplace:
             kwargs['surface_id'] = surf.id

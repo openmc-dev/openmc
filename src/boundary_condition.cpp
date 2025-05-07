@@ -297,7 +297,7 @@ void RotationalPeriodicBC::handle_particle(
 TransformationBC::TransformationBC(array<double, 9> m)
 {
   // Set the transformation matrix
-  transformation_ = m
+  transformation_ = m;
 }
 
 void TransformationBC::handle_particle(Particle& p, const Surface& surf) const

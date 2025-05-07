@@ -115,10 +115,28 @@ Surface::Surface(pugi::xml_node surf_node)
   }
 
   if (check_for_node(surf_node, "transformation_matrix")) {
-    array<double, 9> m = std::stod(get_node_value(surf_node,
-                                                  "transformation_matrix"));
+    std::string str_m = get_node_value(surf_node, "transformation_matrix");
+    std::stringstream ss(str_m);
     
-    if (surf_bc != "transformation") {
+    array<double, 9> m;
+
+    std::string token;
+    char delimiter = ' ';
+    int i = 0;
+
+    while (std::getline(ss, token, delimiter) && i < 9) {
+      try {
+        m[i] = std::stod(token);
+        i++;
+      } catch (std::invalid_argument& e) {
+        throw std::invalid_argument("Invalid argument: " + token);
+      } catch (std::out_of_range& e) {
+          throw std::out_of_range("Out of range: " + token);
+      }
+    }
+    
+    std::string surf_bc = get_node_value(surf_node, "boundary", true, true);
+    if (surf_bc == "transformation") {
       bc_ = make_unique<TransformationBC>(m);
     } else {
         warning(fmt::format("Surface {} has a {} boundary condition. The "

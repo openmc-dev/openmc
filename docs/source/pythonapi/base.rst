@@ -143,20 +143,30 @@ Constructing Tallies
    openmc.SpatialLegendreFilter
    openmc.SphericalHarmonicsFilter
    openmc.TimeFilter
+   openmc.WeightFilter
    openmc.ZernikeFilter
    openmc.ZernikeRadialFilter
    openmc.ParentNuclideFilter
    openmc.ParticleFilter
-   openmc.RegularMesh
-   openmc.RectilinearMesh
-   openmc.CylindricalMesh
-   openmc.SphericalMesh
-   openmc.UnstructuredMesh
    openmc.MeshMaterialVolumes
    openmc.Trigger
    openmc.TallyDerivative
    openmc.Tally
    openmc.Tallies
+
+Meshes
+------
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myclassinherit.rst
+
+   openmc.RegularMesh
+   openmc.RectilinearMesh
+   openmc.CylindricalMesh
+   openmc.SphericalMesh
+   openmc.UnstructuredMesh
 
 Geometry Plotting
 -----------------

@@ -312,3 +312,24 @@ def test_energy_filter():
     msg = 'Unable to set "filter value" to "-1.2" since it is less than "0.0"'
     with raises(ValueError, match=msg):
         openmc.EnergyFilter([-1.2, 0.25, 0.5])
+
+
+def test_weight():
+    f = openmc.WeightFilter([0.01, 0.1, 1.0, 10.0])
+    expected_bins = [[0.01, 0.1], [0.1, 1.0], [1.0, 10.0]]
+
+    assert np.allclose(f.bins, expected_bins)
+    assert len(f.bins) == 3
+
+    # Make sure __repr__ works
+    repr(f)
+
+    # to_xml_element()
+    elem = f.to_xml_element()
+    assert elem.tag == 'filter'
+    assert elem.attrib['type'] == 'weight'
+
+    # from_xml_element()
+    new_f = openmc.Filter.from_xml_element(elem)
+    assert new_f.id == f.id
+    assert np.allclose(new_f.bins, f.bins)

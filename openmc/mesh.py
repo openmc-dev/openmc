@@ -576,11 +576,16 @@ class StructuredMesh(MeshBase):
         filename : str
             Name of the VTK file to write.
         datasets : dict
-            Dictionary whose keys are the data labels
-            and values are the data sets.
+            Dictionary whose keys are the data labels and values are the data
+            sets. 1D datasets are expected to be extracted directly from
+            statepoint data without reordering/reshaping. Multidimensional
+            datasets are expected to have the same dimensions as the mesh itself
+            with structured indexing in "C" ordering. See the "expand_dims" flag
+            of :meth:`~openmc.Tally.get_reshaped_data` on reshaping tally data when using
+            :class:`~openmc.MeshFilter`'s.
         volume_normalization : bool, optional
-            Whether or not to normalize the data by
-            the volume of the mesh elements.
+            Whether or not to normalize the data by the volume of the mesh
+            elements.
         curvilinear : bool
             Whether or not to write curvilinear elements. Only applies to
             ``SphericalMesh`` and ``CylindricalMesh``.
@@ -594,13 +599,26 @@ class StructuredMesh(MeshBase):
         -------
         vtk.StructuredGrid or vtk.UnstructuredGrid
             a VTK grid object representing the mesh
+
+        Examples
+        --------
+        1D data from a tally with only a mesh filter and heating score:
+
+            # pass the tally mean property of shape (N, 1, 1) directly to this
+            # method; dimensions of size 1 will automatically removed
+            >>> heating = tally.mean
+            >>> mesh.write_data_to_vtk({'heating': heating})
+
+        Multidimensional data from a tally with only a mesh
+
+           # retrieve a data array with the mesh filter expanded into three
+           # dimensions, ijk; additional dimensions of size one will
+           # automatically be removed
+           >>> heating = tally.get_reshaped_data(expand_dims=True)
+           >>> mesh.write_data_to_vtk({'heating': heating})
         """
         import vtk
         from vtk.util import numpy_support as nps
-
-        # check that the data sets are appropriately sized
-        if datasets is not None:
-            self._check_vtk_datasets(datasets)
 
         # write linear elements using a structured grid
         if not curvilinear or isinstance(self, (RegularMesh, RectilinearMesh)):
@@ -612,22 +630,27 @@ class StructuredMesh(MeshBase):
             writer = vtk.vtkUnstructuredGridWriter()
 
         if datasets is not None:
-            # maintain a list of the datasets as added
-            # to the VTK arrays to ensure they persist
-            # in memory until the file is written
+            # maintain a list of the datasets as added to the VTK arrays to
+            # ensure they persist in memory until the file is written
             datasets_out = []
             for label, dataset in datasets.items():
-                dataset = np.asarray(dataset).flatten()
+                dataset = self._reshape_vtk_dataset(dataset)
+                self._check_vtk_dataset(label, dataset)
+                # If the array data is 3D, assume is in C ordering and transpose
+                # before flattening to match the ordering expected by the VTK
+                # array based on the way mesh indices are ordered in the Python
+                # API
+                # TODO: update to "C" ordering throughout
+                if dataset.ndim == 3:
+                    dataset = dataset.T.ravel()
                 datasets_out.append(dataset)
 
                 if volume_normalization:
-                    dataset /= self.volumes.T.flatten()
+                    dataset /= self.volumes.T.ravel()
 
                 dataset_array = vtk.vtkDoubleArray()
                 dataset_array.SetName(label)
-                dataset_array.SetArray(nps.numpy_to_vtk(dataset),
-                                    dataset.size,
-                                    True)
+                dataset_array.SetArray(nps.numpy_to_vtk(dataset), dataset.size, True)
                 vtk_grid.GetCellData().AddArray(dataset_array)
 
         writer.SetFileName(str(filename))
@@ -754,28 +777,69 @@ class StructuredMesh(MeshBase):
 
         return vtk_grid
 
-    def _check_vtk_datasets(self, datasets: dict):
-        """Perform some basic checks that the datasets are valid for this mesh
+    @staticmethod
+    def _reshape_vtk_dataset(dataset):
+        """Reshape a dataset to be compatible with VTK output
+
+        This method performs the following operations on a dataset:
+        1. Convert to numpy array if not already
+        2. Remove any trailing dimensions of size 1
+        3. Squeeze out any extra dimensions of size 1 beyond the first 3
 
         Parameters
         ----------
-        datasets : dict
-            Dictionary whose keys are the data labels
-            and values are the data sets.
+        dataset : array-like
+            The dataset to reshape
+
+        Returns
+        -------
+        numpy.ndarray
+            The reshaped dataset
+        """
+        reshaped_data = np.asarray(dataset)
+
+        # detect flat array with extra dims
+        if all(d == 1 for d in reshaped_data.shape[1:]):
+            reshaped_data = reshaped_data.squeeze()
+
+        # remove any higher dimensions with size 1
+        if reshaped_data.ndim > 3 and all(d == 1 for d in reshaped_data.shape[3:]):
+            reshaped_data = reshaped_data.reshape(reshaped_data.shape[:3])
+
+        if np.shares_memory(reshaped_data, dataset):
+            return np.copy(reshaped_data)
+        else:
+            return reshaped_data
+
+    def _check_vtk_dataset(self, label: str, dataset: np.ndarray):
+        """Perform some basic checks that a dataset is valid for this Mesh
+
+        Parameters
+        ----------
+        label : str
+            The label for the dataset being checked
+        dataset : numpy.ndarray
+            The dataset array to check against this mesh's dimensions
 
         """
-        for label, dataset in datasets.items():
-            errmsg = (
+        cv.check_type('data label', label, str)
+
+        if dataset.size != self.num_mesh_cells:
+            raise ValueError(
                 f"The size of the dataset '{label}' ({dataset.size}) should be"
                 f" equal to the number of mesh cells ({self.num_mesh_cells})"
             )
-            if isinstance(dataset, np.ndarray):
-                if not dataset.size == self.num_mesh_cells:
-                    raise ValueError(errmsg)
-            else:
-                if len(dataset) == self.num_mesh_cells:
-                    raise ValueError(errmsg)
-            cv.check_type('data label', label, str)
+
+        # accept a flat array as-is, assuming it is in the correct order
+        if dataset.ndim == 1:
+            return
+
+        if dataset.shape != self.dimension:
+            raise ValueError(
+                f'Cannot apply multidimensional dataset "{label}" with '
+                f"shape {dataset.shape} to mesh {self.id} "
+                f"with dimensions {self.dimension}"
+            )
 
 
 class RegularMesh(StructuredMesh):

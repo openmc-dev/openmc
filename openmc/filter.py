@@ -1163,7 +1163,7 @@ class MeshSurfaceFilter(MeshFilter):
 
             # Generate multi-index sub-column for z-axis
             filter_dict[mesh_key, 'z'] = np.tile(
-                np.repeat(np.arange(1, nz + 1), self._mesh.hex_count * stride * n_surfs), data_size // self._mesh.hex_count))
+                np.repeat(np.arange(1, nz + 1), self._mesh.hex_count * stride * n_surfs), data_size // self._mesh.hex_count)
 
             # Generate multi-index sub-column for surface
             filter_dict[mesh_key, 'surf'] = _repeat_and_tile(

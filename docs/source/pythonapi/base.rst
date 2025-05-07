@@ -151,7 +151,7 @@ Constructing Tallies
    openmc.CylindricalMesh
    openmc.SphericalMesh
    openmc.UnstructuredMesh
-   openmc.HexgonalMesh
+   openmc.HexagonalMesh
    openmc.Trigger
    openmc.TallyDerivative
    openmc.Tally

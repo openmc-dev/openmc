@@ -628,7 +628,7 @@ class DAGMCCell(openmc.Cell):
 
     @openmc.Cell.temperature.setter
     def temperature(self, val):
-        warnings.warn('Changed to temperatures on DAGMCCell\'s will not be reflected in transport')
+        warnings.warn('Changes to temperatures on DAGMCCell\'s will not be reflected in transport')
         openmc.Cell.temperature.fset(self, val)
 
     def get_all_cells(self, memo=None):

@@ -997,7 +997,7 @@ class MeshFilter(Filter):
                     data_size // self._mesh.hex_count)
 
             filter_dict[mesh_key, 'z'] = np.tile(
-                np.repeat(np.arange(1, nz + 1), nx * ny * stride), data_size // self._mesh.hex_count))
+                np.repeat(np.arange(1, nz + 1), nx * ny * stride), data_size // self._mesh.hex_count)
 
         # Initialize a Pandas DataFrame from the mesh dictionary
         df = pd.concat([df, pd.DataFrame(filter_dict)])

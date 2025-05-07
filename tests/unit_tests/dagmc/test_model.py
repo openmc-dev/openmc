@@ -4,6 +4,7 @@ import lxml.etree as ET
 import numpy as np
 import pytest
 import openmc
+import openmc.lib
 from openmc.utility_funcs import change_directory
 
 pytestmark = pytest.mark.skipif(
@@ -67,6 +68,24 @@ def model(request):
         finally:
             model.finalize_lib()
             openmc.reset_auto_ids()
+
+
+def test_temperature_read(model):
+    # because the DAGMC unvierse is repeated, all cells will have more than one
+    # instance and in turn more than one temperature
+    for cell in model.geometry.get_all_material_cells().values():
+        cell_temps = cell.temperature
+        for t in cell_temps:
+            if cell.id == 3:
+                assert t == 300.0
+            else:
+                assert t == pytest.approx(293.6)
+
+
+def test_finite_bounding_boxes(model):
+    for cell in model.geometry.get_all_material_cells().values():
+        assert all(np.isfinite(cell.bounding_box.lower_left))
+        assert all(np.isfinite(cell.bounding_box.upper_right))
 
 
 def test_dagmc_replace_material_assignment(model):

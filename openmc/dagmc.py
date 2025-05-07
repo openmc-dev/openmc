@@ -557,14 +557,27 @@ class DAGMCUniverse(openmc.UniverseBase):
                 f"the number of cells in the Python universe."
             )
 
-        mats_per_id = {mat.id: mat for mat in mats}
-        for dag_cell_id in dagmc_cell_ids:
-            dag_cell = openmc.lib.cells[dag_cell_id]
-            if isinstance(dag_cell.fill, Iterable):
-                fill = [mats_per_id[mat.id] for mat in dag_cell.fill if mat]
-            else:
-                fill = mats_per_id[dag_cell.fill.id] if dag_cell.fill else None
-            self.add_cell(openmc.DAGMCCell(cell_id=dag_cell_id, fill=fill))
+        with warnings.catch_warnings():
+            warnings.filterwarnings('ignore', category=UserWarning)
+
+            mats_per_id = {mat.id: mat for mat in mats}
+            for dag_cell_id in dagmc_cell_ids:
+                dag_cell = openmc.lib.cells[dag_cell_id]
+                if isinstance(dag_cell.fill, Iterable):
+                    fill = [mats_per_id[mat.id] for mat in dag_cell.fill if mat]
+                else:
+                    fill = mats_per_id[dag_cell.fill.id] if dag_cell.fill else None
+                cell = openmc.DAGMCCell(cell_id=int(dag_cell_id), fill=fill)
+
+                n_instances = dag_cell.num_instances
+                if n_instances > 1:
+                    cell.temperature = [dag_cell.get_temperature(i) for i in range(n_instances)]
+                else:
+                    cell.temperature = dag_cell.get_temperature()
+
+                cell.bounding_box = dag_cell.bounding_box
+
+                self.add_cell(cell)
 
 
 class DAGMCCell(openmc.Cell):
@@ -590,6 +603,9 @@ class DAGMCCell(openmc.Cell):
     """
     def __init__(self, cell_id=None, name='', fill=None):
         super().__init__(cell_id, name, fill, None)
+        # unlike CSG cells, the bounding boxes of DAGMC cells are retrieved from
+        # the C API and are stored on the object
+        self._bounding_box = None
 
     @property
     def DAG_parent_universe(self):
@@ -601,8 +617,19 @@ class DAGMCCell(openmc.Cell):
         """Set the parent universe of the cell."""
         self._parent_universe = universe.id
 
+    @property
     def bounding_box(self):
-        return BoundingBox.infinite()
+        return self._bounding_box
+
+    @bounding_box.setter
+    def bounding_box(self, box):
+        cv.check_type('bounding box', box, BoundingBox)
+        self._bounding_box = box
+
+    @openmc.Cell.temperature.setter
+    def temperature(self, val):
+        warnings.warn('Changed to temperatures on DAGMCCell\'s will not be reflected in transport')
+        openmc.Cell.temperature.fset(self, val)
 
     def get_all_cells(self, memo=None):
         return {}

@@ -525,13 +525,14 @@ class Surface(IDManagerMixin, ABC):
             bc_alb = float(group['albedo'][()].decode())
         else:
             bc_alb = 1.0
+        coeffs = group['coefficients'][...]
+        kwargs = {'boundary_type': bc, 'albedo': bc_alb, 'name': name,
+                  'surface_id': surface_id}
+        
         if 'transformation_matrix' in group:
             string_array = group['transformation_matrix'][()].decode()
             transformation_matrix = [float(x) for x in string_array]
-        coeffs = group['coefficients'][...]
-        kwargs = {'boundary_type': bc, 'albedo': bc_alb, 'name': name,
-                  'surface_id': surface_id,
-                  'transformation_matrix': transformation_matrix}
+            kwargs['transformation_matrix'] = transformation_matrix
 
         surf_type = group['type'][()].decode()
         cls = _SURFACE_CLASSES[surf_type]

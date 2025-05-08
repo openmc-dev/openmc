@@ -294,3 +294,42 @@ def test_tabular_from_energyfilter():
 
     tab = efilter.get_tabular(values=np.array([10, 10, 5]), interpolation='linear-linear')
     assert tab.interpolation == 'linear-linear'
+
+
+def test_energy_filter():
+
+    # testing that bins descending value raises error
+    msg = "Values 1.0 and 0.5 appear to be out of order"
+    with raises(ValueError, match=msg):
+        openmc.EnergyFilter([0.0, 1.0, 0.5])
+
+    # testing that bins with same value raises error
+    msg = "Values 0.25 and 0.25 appear to be out of order"
+    with raises(ValueError, match=msg):
+        openmc.EnergyFilter([0.0, 0.25, 0.25])
+
+    # testing that negative bins values raises error
+    msg = 'Unable to set "filter value" to "-1.2" since it is less than "0.0"'
+    with raises(ValueError, match=msg):
+        openmc.EnergyFilter([-1.2, 0.25, 0.5])
+
+
+def test_weight():
+    f = openmc.WeightFilter([0.01, 0.1, 1.0, 10.0])
+    expected_bins = [[0.01, 0.1], [0.1, 1.0], [1.0, 10.0]]
+
+    assert np.allclose(f.bins, expected_bins)
+    assert len(f.bins) == 3
+
+    # Make sure __repr__ works
+    repr(f)
+
+    # to_xml_element()
+    elem = f.to_xml_element()
+    assert elem.tag == 'filter'
+    assert elem.attrib['type'] == 'weight'
+
+    # from_xml_element()
+    new_f = openmc.Filter.from_xml_element(elem)
+    assert new_f.id == f.id
+    assert np.allclose(new_f.bins, f.bins)

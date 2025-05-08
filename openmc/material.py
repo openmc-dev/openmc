@@ -18,6 +18,7 @@ import openmc.checkvalue as cv
 from ._xml import clean_indentation, reorder_attributes
 from .mixin import IDManagerMixin
 from .utility_funcs import input_path
+from . import waste
 from openmc.checkvalue import PathLike
 from openmc.stats import Univariate, Discrete, Mixture
 from openmc.data.data import _get_element_symbol
@@ -30,6 +31,7 @@ DENSITY_UNITS = ('g/cm3', 'g/cc', 'kg/m3', 'atom/b-cm', 'atom/cm3', 'sum',
 # Smallest normalized floating point number
 _SMALLEST_NORMAL = sys.float_info.min
 
+_BECQUEREL_PER_CURIE = 3.7e10
 
 NuclideTuple = namedtuple('NuclideTuple', ['name', 'percent', 'percent_type'])
 
@@ -1058,7 +1060,6 @@ class Material(IDManagerMixin):
             nuc_densities.append(nuc.percent)
             nuc_density_types.append(nuc.percent_type)
 
-        nucs = np.array(nucs)
         nuc_densities = np.array(nuc_densities)
         nuc_density_types = np.array(nuc_density_types)
 
@@ -1137,17 +1138,16 @@ class Material(IDManagerMixin):
 
     def get_activity(self, units: str = 'Bq/cm3', by_nuclide: bool = False,
                      volume: float | None = None) -> dict[str, float] | float:
-        """Returns the activity of the material or for each nuclide in the
-        material in units of [Bq], [Bq/g], [Bq/kg] or [Bq/cm3].
+        """Returns the activity of the material or of each nuclide within.
 
         .. versionadded:: 0.13.1
 
         Parameters
         ----------
-        units : {'Bq', 'Bq/g', 'Bq/kg', 'Bq/cm3'}
+        units : {'Bq', 'Bq/g', 'Bq/kg', 'Bq/cm3', 'Ci', 'Ci/m3'}
             Specifies the type of activity to return, options include total
-            activity [Bq], specific [Bq/g, Bq/kg] or volumetric activity
-            [Bq/cm3]. Default is volumetric activity [Bq/cm3].
+            activity [Bq,Ci], specific [Bq/g, Bq/kg] or volumetric activity
+            [Bq/cm3,Ci/m3]. Default is volumetric activity [Bq/cm3].
         by_nuclide : bool
             Specifies if the activity should be returned for the material as a
             whole or per nuclide. Default is False.
@@ -1165,17 +1165,24 @@ class Material(IDManagerMixin):
             of the material is returned as a float.
         """
 
-        cv.check_value('units', units, {'Bq', 'Bq/g', 'Bq/kg', 'Bq/cm3'})
+        cv.check_value('units', units, {'Bq', 'Bq/g', 'Bq/kg', 'Bq/cm3', 'Ci', 'Ci/m3'})
         cv.check_type('by_nuclide', by_nuclide, bool)
 
+        if volume is None:
+            volume = self.volume
+
         if units == 'Bq':
-            multiplier = volume if volume is not None else self.volume
+            multiplier = volume
         elif units == 'Bq/cm3':
             multiplier = 1
         elif units == 'Bq/g':
             multiplier = 1.0 / self.get_mass_density()
         elif units == 'Bq/kg':
             multiplier = 1000.0 / self.get_mass_density()
+        elif units == 'Ci':
+            multiplier = volume / _BECQUEREL_PER_CURIE
+        elif units == 'Ci/m3':
+            multiplier = 1e6 / _BECQUEREL_PER_CURIE
 
         activity = {}
         for nuclide, atoms_per_bcm in self.get_nuclide_atom_densities().items():
@@ -1315,6 +1322,91 @@ class Material(IDManagerMixin):
         if volume is None:
             raise ValueError("Volume must be set in order to determine mass.")
         return volume*self.get_mass_density(nuclide)
+
+    def waste_classification(self, metal: bool = False) -> str:
+        """Classify the material for near-surface waste disposal.
+
+        This method determines a waste classification for the material based on
+        the NRC regulations (10 CFR 61.55). Note that the NRC regulations do not
+        consider many long-lived radionuclides relevant to fusion systems; for
+        fusion applications, it is recommended to calculate a waste disposal
+        rating based on limits by Fetter et al. using the
+        :meth:`~openmc.Material.waste_disposal_rating` method.
+
+        Parameters
+        ----------
+        metal : bool, optional
+            Whether or not the material is in metal form.
+
+        Returns
+        -------
+        str
+            The waste disposal classification, which can be "Class A", "Class
+            B", "Class C", or "GTCC" (greater than class C).
+
+        """
+        return waste._waste_classification(self, metal=metal)
+
+    def waste_disposal_rating(
+        self,
+        limits: str | dict[str, float] = 'Fetter',
+        metal: bool = False,
+        by_nuclide: bool = False,
+    ) -> float | dict[str, float]:
+        """Return the waste disposal rating for the material.
+
+        This method returns a waste disposal rating for the material based on a
+        set of specific activity limits. The waste disposal rating is a single
+        number that represents the sum of the ratios of the specific activity
+        for each radionuclide in the material against a nuclide-specific limit.
+        A value less than 1.0 indicates that the material "meets" the limits
+        whereas a value greater than 1.0 exceeds the limits.
+
+        Note that the limits for NRC do not consider many long-lived
+        radionuclides relevant to fusion systems. A paper by `Fetter et al.
+        <https://doi.org/10.1016/0920-3796(90)90104-E>`_ applies the NRC
+        methodology to calculate specific activity limits for an expanded set of
+        radionuclides.
+
+        Parameters
+        ----------
+        limits : str or dict, optional
+            The name of a predefined set of specific activity limits or a
+            dictionary that contains specific activity limits for radionuclides,
+            where keys are nuclide names and values are activities in units of
+            [Ci/m3]. The predefined options are:
+
+            - 'Fetter': Uses limits from Fetter et al. (1990)
+            - 'NRC_long': Uses the 10 CFR 61.55 limits for long-lived
+              radionuclides
+            - 'NRC_short_A': Uses the 10 CFR 61.55 class A limits for
+              short-lived radionuclides
+            - 'NRC_short_B': Uses the 10 CFR 61.55 class B limits for
+              short-lived radionuclides
+            - 'NRC_short_C': Uses the 10 CFR 61.55 class C limits for
+              short-lived radionuclides
+        metal : bool, optional
+            Whether or not the material is in metal form (only applicable for
+            NRC based limits)
+        by_nuclide : bool, optional
+            Whether to return the waste disposal rating for each nuclide in the
+            material. If True, a dictionary is returned where the keys are the
+            nuclide names and the values are the waste disposal ratings for each
+            nuclide. If False, a single float value is returned that represents
+            the overall waste disposal rating for the material.
+
+        Returns
+        -------
+        float or dict
+            The waste disposal rating for the material or its constituent
+            nuclides.
+
+        See also
+        --------
+        Material.waste_classification()
+
+        """
+        return waste._waste_disposal_rating(self, limits, metal, by_nuclide)
 
     def clone(self, memo: dict | None = None) -> Material:
         """Create a copy of this material with a new unique ID.

@@ -62,7 +62,8 @@ class SurfaceCoefficient:
 def _future_kwargs_warning_helper(cls, *args, **kwargs):
     # Warn if Surface parameters are passed by position, not by keyword
     argsdict = dict(zip(
-        ('boundary_type', 'name', 'surface_id', 'transformation_matrix'),
+        ('boundary_type', 'name', 'surface_id', 'transformation_matrix',
+         'translation_vector', 'relative_translation_vector'),
         args
     ))
     for k in argsdict:
@@ -138,10 +139,16 @@ class Surface(IDManagerMixin, ABC):
         Name of the surface. If not specified, the name will be the empty
         string.
     transformation_matrix : iterable of float, optional
-        If a transformation boundary condition is used, the transformation
-        matrix by which particle trajectories are transformed. Should be a 3x3
-        matrix given in row-major order.
-
+        If a transformation boundary condition is used, the matrix by which
+        particle trajectories are transformed. Should be a 3x3 matrix given in
+        row-major order (i.e., have a length of 9).
+    translation_vector: iterable of float, optional
+        If a transformation boundary condition is used, the vector by which
+        particle positions are translated. Should have a length of 3.
+    relative_translation_vector: iterable of float, optional
+        If a transformation boundary condition is used, the coordinates against
+        which particle positions are relatively translated. Should have a
+        length of 3.
     Attributes
     ----------
     boundary_type : {'transmission', 'vacuum', 'reflective', 'periodic', 'white', 'transformation'}
@@ -158,7 +165,11 @@ class Surface(IDManagerMixin, ABC):
     type : str
         Type of the surface
     transformation_matrix : iterable of float
-        Transformation matrix by which particle trajectories are transformed
+        Matrix by which particle trajectories are transformed
+    translation_vector : iterable of float
+        Vector by which particle positions are translated
+    relative_translation_vector : iterable of float
+        Coordinates against which particle positions are relatively translated
     """
 
     next_id = 1
@@ -166,12 +177,15 @@ class Surface(IDManagerMixin, ABC):
     _atol = 1.e-12
 
     def __init__(self, surface_id=None, boundary_type='transmission',
-                 albedo=1., name='', transformation_matrix=None):
+                 albedo=1., name='', transformation_matrix=None,
+                 translation_vector=None, relatvie_translation_vector=None):
         self.id = surface_id
         self.name = name
         self.boundary_type = boundary_type
         self.albedo = albedo
         self.transformation_matrix = transformation_matrix
+        self.translation_vector = translation_vector
+        self.relatvie_translation_vector = relatvie_translation_vector
 
         # A dictionary of the quadratic surface coefficients
         # Key      - coefficient name
@@ -251,6 +265,28 @@ class Surface(IDManagerMixin, ABC):
             check_type('transformation matrix', transformation_matrix, Iterable, Real)
             check_length('transformation matrix', transformation_matrix, 9)
         self._transformation_matrix = transformation_matrix
+
+    @property
+    def translation_vector(self):
+        return self._translation_vector
+
+    @translation_vector.setter
+    def translation_vector(self, translation_vector):
+        if translation_vector is not None:
+            check_type('transformation matrix', translation_vector, Iterable, Real)
+            check_length('transformation matrix', translation_vector, 3)
+        self._translation_vector = translation_vector
+
+    @property
+    def relative_translation_vector(self):
+        return self._relative_translation_vector
+
+    @relative_translation_vector.setter
+    def relative_translation_vector(self, relative_translation_vector):
+        if relative_translation_vector is not None:
+            check_type('transformation matrix', relative_translation_vector, Iterable, Real)
+            check_length('transformation matrix', relative_translation_vector, 3)
+        self._relative_translation_vector = relative_translation_vector
 
     @property
     def coefficients(self):
@@ -455,8 +491,15 @@ class Surface(IDManagerMixin, ABC):
                                         for key in self._coeff_keys]))
         
         if self.boundary_type == 'transformation':
-            element.set("transformation_matrix",
-                        ' '.join([str(elem) for elem in self.transformation_matrix]))
+            if self.transformation_matrix:
+                element.set("transformation_matrix",
+                            ' '.join([str(elem) for elem in self.transformation_matrix]))
+            if self.translation_vector:
+                element.set("translation_vector",
+                            ' '.join([str(elem) for elem in self.translation_vector]))
+            if self.relative_translation_vector:
+                element.set("relative_translation_vector",
+                            ' '.join([str(elem) for elem in self.relative_translation_vector]))
 
         return element
 
@@ -490,9 +533,18 @@ class Surface(IDManagerMixin, ABC):
         coeffs = get_elem_list(elem, "coeffs", float)
         kwargs.update(dict(zip(cls._coeff_keys, coeffs)))
         if kwargs['boundary_type'] == 'transformation':
-            kwargs['transformation_matrix'] = [
-                float(x) for x in elem.get('transformation_matrix').split()
-            ]
+            if elem.get('transformation_matrix'):
+                kwargs['transformation_matrix'] = [
+                    float(x) for x in elem.get('transformation_matrix').split()
+                ]
+            if elem.get('translation_vector'):
+                kwargs['translation_vector'] = [
+                    float(x) for x in elem.get('translation_vector').split()
+                ]
+            if elem.get('relative_translation_vector'):
+                kwargs['relative_translation_vector'] = [
+                    float(x) for x in elem.get('relative_translation_vector').split()
+                ]
 
         return cls(**kwargs)
 
@@ -533,6 +585,16 @@ class Surface(IDManagerMixin, ABC):
             string_array = group['transformation_matrix'][()].decode()
             transformation_matrix = [float(x) for x in string_array]
             kwargs['transformation_matrix'] = transformation_matrix
+        
+        if 'translation_vector' in group:
+            string_array = group['translation_vector'][()].decode()
+            translation_vector = [float(x) for x in string_array]
+            kwargs['translation_vector'] = translation_vector
+
+        if 'relative_translation_vector' in group:
+            string_array = group['relative_translation_vector'][()].decode()
+            relative_translation_vector = [float(x) for x in string_array]
+            kwargs['relative_translation_vector'] = relative_translation_vector
 
         surf_type = group['type'][()].decode()
         cls = _SURFACE_CLASSES[surf_type]
@@ -679,7 +741,9 @@ class PlaneMixin:
         kwargs = {'boundary_type': surf.boundary_type,
                   'albedo': surf.albedo,
                   'name': surf.name,
-                  'transformation_matrix': surf.transformation_matrix}
+                  'transformation_matrix': surf.transformation_matrix,
+                  'translation_vector': surf.translation_vector,
+                  'relative_translation_vector': surf.relative_translation_vector}
         if inplace:
             kwargs['surface_id'] = surf.id
 
@@ -1185,7 +1249,9 @@ class QuadricMixin:
             # Copy necessary surface attributes to new kwargs dictionary
             kwargs = {'boundary_type': tsurf.boundary_type,
                       'albedo': tsurf.albedo, 'name': tsurf.name,
-                      'transformation_matrix': tsurf.transformation_matrix}
+                      'transformation_matrix': tsurf.transformation_matrix,
+                      'translation_vector': tsurf.translation_vector,
+                      'relative_translation_vector': tsurf.relative_translation_vector}
             if inplace:
                 kwargs['surface_id'] = tsurf.id
             kwargs.update({k: getattr(tsurf, k) for k in base_cls._coeff_keys})
@@ -1398,7 +1464,9 @@ class Cylinder(QuadricMixin, Surface):
             simplefilter('ignore', IDWarning)
             kwargs = {'boundary_type': self.boundary_type, 'albedo': self.albedo,
                       'name': self.name, 'surface_id': self.id,
-                      'transformation_matrix': self.transformation_matrix}
+                      'transformation_matrix': self.transformation_matrix,
+                      'translation_vector': self.translation_vector,
+                      'relative_translation_vector': self.relative_translation_vector}
             quad_rep = Quadric(*self._get_base_coeffs(), **kwargs)
         return quad_rep.to_xml_element()
 
@@ -1952,7 +2020,9 @@ class Cone(QuadricMixin, Surface):
                       'albedo': self.albedo,
                       'name': self.name,
                       'surface_id': self.id,
-                      'transformation_matrix': self.transformation_matrix}
+                      'transformation_matrix': self.transformation_matrix,
+                      'translation_vector': self.translation_vector,
+                      'relative_translation_vector': self.relative_translation_vector}
             quad_rep = Quadric(*self._get_base_coeffs(), **kwargs)
         return quad_rep.to_xml_element()
 
@@ -2397,7 +2467,9 @@ class TorusMixin:
             'albedo': surf.albedo,
             'name': surf.name,
             'a': surf.a, 'b': surf.b, 'c': surf.c,
-            'transformation_matrix': surf.transformation_matrix
+            'transformation_matrix': surf.transformation_matrix,
+            'translation_vector': surf.translation_vector,
+            'relative_translation_vector': surf.relative_translation_vector
         }
         if inplace:
             kwargs['surface_id'] = surf.id

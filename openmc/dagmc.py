@@ -575,8 +575,6 @@ class DAGMCUniverse(openmc.UniverseBase):
                 else:
                     cell.temperature = dag_cell.get_temperature()
 
-                cell.bounding_box = dag_cell.bounding_box
-
                 self.add_cell(cell)
 
 
@@ -619,12 +617,7 @@ class DAGMCCell(openmc.Cell):
 
     @property
     def bounding_box(self):
-        return self._bounding_box
-
-    @bounding_box.setter
-    def bounding_box(self, box):
-        cv.check_type('bounding box', box, BoundingBox)
-        self._bounding_box = box
+        return BoundingBox.infinite()
 
     @openmc.Cell.temperature.setter
     def temperature(self, val):

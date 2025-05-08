@@ -14,6 +14,7 @@ pytestmark = pytest.mark.skipif(
 
 @pytest.fixture()
 def model(request):
+    openmc.reset_auto_ids()
     pitch = 1.26
 
     mats = {}
@@ -80,12 +81,6 @@ def test_temperature_read(model):
                 assert t == 300.0
             else:
                 assert t == pytest.approx(293.6)
-
-
-def test_finite_bounding_boxes(model):
-    for cell in model.geometry.get_all_material_cells().values():
-        assert all(np.isfinite(cell.bounding_box.lower_left))
-        assert all(np.isfinite(cell.bounding_box.upper_right))
 
 
 def test_cell_temperature_warning(model):

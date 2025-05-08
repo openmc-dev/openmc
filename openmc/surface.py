@@ -178,14 +178,14 @@ class Surface(IDManagerMixin, ABC):
 
     def __init__(self, surface_id=None, boundary_type='transmission',
                  albedo=1., name='', transformation_rotation=None,
-                 transformation_translation=None, relatvie_transformation_translation=None):
+                 transformation_translation=None, transformation_offset=None):
         self.id = surface_id
         self.name = name
         self.boundary_type = boundary_type
         self.albedo = albedo
         self.transformation_rotation = transformation_rotation
         self.transformation_translation = transformation_translation
-        self.relatvie_transformation_translation = relatvie_transformation_translation
+        self.transformation_offset = transformation_offset
 
         # A dictionary of the quadratic surface coefficients
         # Key      - coefficient name

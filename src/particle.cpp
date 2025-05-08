@@ -750,7 +750,8 @@ void Particle::cross_periodic_bc(
   }
 }
 
-void Particle::cross_transformation_bc(const Surface& surf, Direction new_u)
+void Particle::cross_transformation_bc(
+  const Surface& surf, Position new_r, Direction new_u)
 {
   // Do not handle transformation boundary conditions on lower universes
   if (n_coord() != 1) {
@@ -777,7 +778,8 @@ void Particle::cross_transformation_bc(const Surface& surf, Direction new_u)
     this->r() = r;
   }
 
-  // Set the new particle direction
+  // Adjust the particle's location and direction.
+  r() = new_r;
   u() = new_u;
 
   // Reassign particle's cell and surface

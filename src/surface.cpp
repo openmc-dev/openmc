@@ -89,7 +89,77 @@ Surface::Surface(pugi::xml_node surf_node)
     } else if (surf_bc == "periodic") {
       // Periodic BCs are handled separately
     } else if (surf_bc == "transformation" || surf_bc == "transform" ) {
-      // Transformation BCs are handled separately
+      array<double, 9> tr;
+      array<double, 9> tt;
+      array<double, 3> to;
+
+      if (check_for_node(surf_node, "transformation_rotation")) {
+        std::string str_tr = get_node_value(surf_node, "transformation_rotation");
+        std::stringstream ss(str_tr);        
+        std::string token;
+        char delimiter = ' ';
+        int i = 0;
+    
+        while (std::getline(ss, token, delimiter) && i < 9) {
+          try {
+            tr[i] = std::stod(token);
+            i++;
+          } catch (std::invalid_argument& e) {
+            throw std::invalid_argument(
+              "Invalid argument for transformation_rotation: " + token);
+          } catch (std::out_of_range& e) {
+            throw std::out_of_range(
+              "Out of range for transformation_rotation: " + token);
+          }
+        }
+      } else {
+        tr = {1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0};
+      }
+      if (check_for_node(surf_node, "transformation_translation")) {
+        std::string str_tt = get_node_value(surf_node, "transformation_translation");
+        std::stringstream ss(str_tt);
+        std::string token;
+        char delimiter = ' ';
+        int i = 0;
+    
+        while (std::getline(ss, token, delimiter) && i < 9) {
+          try {
+            tt[i] = std::stod(token);
+            i++;
+          } catch (std::invalid_argument& e) {
+            throw std::invalid_argument(
+              "Invalid argument for transformation_translation: " + token);
+          } catch (std::out_of_range& e) {
+            throw std::out_of_range(
+              "Out of range for transformation_translation: " + token);
+          }
+        }
+      } else {
+        tt = {1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0};
+      }
+      if (check_for_node(surf_node, "transformation_offset")) {
+        std::string str_to = get_node_value(surf_node, "transformation_offset");
+        std::stringstream ss(str_to);
+        std::string token;
+        char delimiter = ' ';
+        int i = 0;
+    
+        while (std::getline(ss, token, delimiter) && i < 3) {
+          try {
+            to[i] = std::stod(token);
+            i++;
+          } catch (std::invalid_argument& e) {
+            throw std::invalid_argument(
+              "Invalid argument for transformation_offset: " + token);
+          } catch (std::out_of_range& e) {
+            throw std::out_of_range(
+              "Out of range for transformation_offset: " + token);
+          }
+        }
+      } else {
+        to = {0.0, 0.0, 0.0};
+      }
+      bc_ = make_unique<TransformationBC>(tr, tt, to);
     } else {
       fatal_error(fmt::format("Unknown boundary condition \"{}\" specified "
                               "on surface {}",
@@ -111,37 +181,6 @@ Surface::Surface(pugi::xml_node surf_node)
           id_, surf_alb));
 
       bc_->set_albedo(surf_alb);
-    }
-  }
-
-  if (check_for_node(surf_node, "transformation_matrix")) {
-    std::string str_m = get_node_value(surf_node, "transformation_matrix");
-    std::stringstream ss(str_m);
-    
-    array<double, 9> m;
-
-    std::string token;
-    char delimiter = ' ';
-    int i = 0;
-
-    while (std::getline(ss, token, delimiter) && i < 9) {
-      try {
-        m[i] = std::stod(token);
-        i++;
-      } catch (std::invalid_argument& e) {
-        throw std::invalid_argument("Invalid argument: " + token);
-      } catch (std::out_of_range& e) {
-          throw std::out_of_range("Out of range: " + token);
-      }
-    }
-    
-    std::string surf_bc = get_node_value(surf_node, "boundary", true, true);
-    if (surf_bc == "transformation") {
-      bc_ = make_unique<TransformationBC>(m);
-    } else {
-        warning(fmt::format("Surface {} has a {} boundary condition. The "
-                            "specified transformation matrix will be ignored.",
-          id_, surf_bc));
     }
   }
 }
@@ -191,12 +230,6 @@ Direction Surface::diffuse_reflect(
 
   // normalize the direction
   return u / u.norm();
-}
-
-Direction Surface::transform(array<double, 9> m, Direction u, GeometryState* p) const
-{
-  // Tranform direction according to transformation matrix.
-  return u.transform(m);
 }
 
 void Surface::to_hdf5(hid_t group_id) const

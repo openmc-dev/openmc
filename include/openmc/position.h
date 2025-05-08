@@ -113,15 +113,6 @@ struct Position {
       x * rotation[2] + y * rotation[5] + z * rotation[8]};
   }
 
-  //! Transform a direction by applying a transformation matrix
-  template<typename T>
-  Position transform(const T& transformation) const
-  {
-    return {x * transformation[0] + y * transformation[1] + z * transformation[2],
-      x * transformation[3] + y * transformation[4] + z * transformation[5],
-      x * transformation[6] + y * transformation[7] + z * transformation[8]};
-  }
-
   // Data members
   double x = 0.;
   double y = 0.;

@@ -157,21 +157,22 @@ protected:
 //==============================================================================
 
 class TransformationBC : public BoundaryCondition {
-  public:
-    TransformationBC(array<double, 9> tr, array<double, 9> tt, array<double, 3> to);
-  
-    void handle_particle(Particle& p, const Surface& surf) const override;
-  
-    std::string type() const override { return "transformation"; }
-  
-  protected:
-    //! Matrix by which particle trajectories are transformed
-    array<double, 9> rotation_;
-    //! Matrix by which particle positions are translated
-    array<double, 9> translation_;
-    //! Vector by which particle positons are offset
-    array<double, 3> offset_;
-  };
+public:
+  TransformationBC(
+    array<double, 9> tr, array<double, 9> tt, array<double, 3> to);
+
+  void handle_particle(Particle& p, const Surface& surf) const override;
+
+  std::string type() const override { return "transformation"; }
+
+protected:
+  //! Matrix by which particle trajectories are transformed
+  array<double, 9> rotation_;
+  //! Matrix by which particle positions are translated
+  array<double, 9> translation_;
+  //! Vector by which particle positons are offset
+  array<double, 3> offset_;
+};
 
 } // namespace openmc
 #endif // OPENMC_BOUNDARY_CONDITION_H

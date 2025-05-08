@@ -88,18 +88,19 @@ Surface::Surface(pugi::xml_node surf_node)
       bc_ = make_unique<WhiteBC>();
     } else if (surf_bc == "periodic") {
       // Periodic BCs are handled separately
-    } else if (surf_bc == "transformation" || surf_bc == "transform" ) {
+    } else if (surf_bc == "transformation" || surf_bc == "transform") {
       array<double, 9> tr;
       array<double, 9> tt;
       array<double, 3> to;
 
       if (check_for_node(surf_node, "transformation_rotation")) {
-        std::string str_tr = get_node_value(surf_node, "transformation_rotation");
-        std::stringstream ss(str_tr);        
+        std::string str_tr =
+          get_node_value(surf_node, "transformation_rotation");
+        std::stringstream ss(str_tr);
         std::string token;
         char delimiter = ' ';
         int i = 0;
-    
+
         while (std::getline(ss, token, delimiter) && i < 9) {
           try {
             tr[i] = std::stod(token);
@@ -116,12 +117,13 @@ Surface::Surface(pugi::xml_node surf_node)
         tr = {1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0};
       }
       if (check_for_node(surf_node, "transformation_translation")) {
-        std::string str_tt = get_node_value(surf_node, "transformation_translation");
+        std::string str_tt =
+          get_node_value(surf_node, "transformation_translation");
         std::stringstream ss(str_tt);
         std::string token;
         char delimiter = ' ';
         int i = 0;
-    
+
         while (std::getline(ss, token, delimiter) && i < 9) {
           try {
             tt[i] = std::stod(token);
@@ -143,7 +145,7 @@ Surface::Surface(pugi::xml_node surf_node)
         std::string token;
         char delimiter = ' ';
         int i = 0;
-    
+
         while (std::getline(ss, token, delimiter) && i < 3) {
           try {
             to[i] = std::stod(token);
@@ -1258,7 +1260,7 @@ void read_surfaces(pugi::xml_node node)
     pugi::xml_node surf_node;
     int i_surf;
     for (surf_node = node.child("surface"), i_surf = 0; surf_node;
-         surf_node = surf_node.next_sibling("surface"), i_surf++) {
+      surf_node = surf_node.next_sibling("surface"), i_surf++) {
       std::string surf_type = get_node_value(surf_node, "type", true, true);
 
       // Allocate and initialize the new surface

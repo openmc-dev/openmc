@@ -294,7 +294,8 @@ void RotationalPeriodicBC::handle_particle(
 // TransformationBC implementation
 //==============================================================================
 
-TransformationBC::TransformationBC(array<double, 9> tr, array<double, 9> tt, array<double, 3> to)
+TransformationBC::TransformationBC(
+  array<double, 9> tr, array<double, 9> tt, array<double, 3> to)
 {
   // Set the transformation matrix
   rotation_ = tr;
@@ -307,10 +308,12 @@ void TransformationBC::handle_particle(Particle& p, const Surface& surf) const
   Position r = p.r();
   Direction u = p.u();
 
-  Position new_r = {
-    r.x * translation_[0] + r.y * translation_[1] + r.z * translation_[2] + offset_[0],
-    r.x * translation_[3] + r.y * translation_[4] + r.z * translation_[5] + offset_[1],
-    r.x * translation_[6] + r.y * translation_[7] + r.z * translation_[8] + offset_[2]};
+  Position new_r = {r.x * translation_[0] + r.y * translation_[1] +
+                      r.z * translation_[2] + offset_[0],
+    r.x * translation_[3] + r.y * translation_[4] + r.z * translation_[5] +
+      offset_[1],
+    r.x * translation_[6] + r.y * translation_[7] + r.z * translation_[8] +
+      offset_[2]};
 
   Position new_u = {
     u.x * rotation_[0] + u.y * rotation_[1] + u.z * rotation_[2],

@@ -491,13 +491,13 @@ class Surface(IDManagerMixin, ABC):
                                         for key in self._coeff_keys]))
         
         if self.boundary_type == 'transformation':
-            if self.transformation_rotation:
+            if self.transformation_rotation is not None:
                 element.set("transformation_rotation",
                             ' '.join([str(elem) for elem in self.transformation_rotation]))
-            if self.transformation_translation:
+            if self.transformation_translation is not None:
                 element.set("transformation_translation",
                             ' '.join([str(elem) for elem in self.transformation_translation]))
-            if self.transformation_offset:
+            if self.transformation_offset is not None:
                 element.set("transformation_offset",
                             ' '.join([str(elem) for elem in self.transformation_offset]))
 

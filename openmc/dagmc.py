@@ -601,9 +601,6 @@ class DAGMCCell(openmc.Cell):
     """
     def __init__(self, cell_id=None, name='', fill=None):
         super().__init__(cell_id, name, fill, None)
-        # unlike CSG cells, the bounding boxes of DAGMC cells are retrieved from
-        # the C API and are stored on the object
-        self._bounding_box = None
 
     @property
     def DAG_parent_universe(self):

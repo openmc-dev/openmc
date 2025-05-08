@@ -454,8 +454,7 @@ class Model:
             check_value('method', method,
                         dep.integrators.integrator_by_name.keys())
             integrator_class = dep.integrators.integrator_by_name[method]
-            integrator = integrator_class(depletion_operator, timesteps,
-                                          **integrator_kwargs)
+            integrator = integrator_class(depletion_operator, **integrator_kwargs)
 
             # Now perform the depletion
             with openmc.lib.quiet_dll(output):

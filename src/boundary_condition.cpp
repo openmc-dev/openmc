@@ -308,8 +308,9 @@ void TransformationBC::handle_particle(Particle& p, const Surface& surf) const
   Position r = p.r();
   Direction u = p.u();
 
-  Position new_r = {r.x * translation_[0] + r.y * translation_[1] +
-                      r.z * translation_[2] + offset_[0],
+  Position new_r = {
+    r.x * translation_[0] + r.y * translation_[1] + r.z * translation_[2] +
+      offset_[0],
     r.x * translation_[3] + r.y * translation_[4] + r.z * translation_[5] +
       offset_[1],
     r.x * translation_[6] + r.y * translation_[7] + r.z * translation_[8] +

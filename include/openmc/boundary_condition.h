@@ -166,7 +166,7 @@ public:
   std::string type() const override { return "transformation"; }
 
 protected:
-  //! Matrix by which particle trajectories are transformed
+  //! Matrix by which particle trajectories are rotated
   array<double, 9> rotation_;
   //! Matrix by which particle positions are translated
   array<double, 9> translation_;

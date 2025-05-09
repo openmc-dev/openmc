@@ -518,8 +518,10 @@ void RandomRay::attenuate_flux_flat_source_void(
   }
 
   // Add source to incoming angular flux, assuming void region
-  for (int g = 0; g < negroups_; g++) {
-    angular_flux_[g] += srh.external_source(g) * distance;
+  if (settings::run_mode == RunMode::FIXED_SOURCE) {
+    for (int g = 0; g < negroups_; g++) {
+      angular_flux_[g] += srh.external_source(g) * distance;
+    }
   }
 }
 
@@ -688,7 +690,12 @@ void RandomRay::attenuate_flux_linear_source_void(
   // transport through a void region is greatly simplified. Here we
   // compute the updated flux moments.
   for (int g = 0; g < negroups_; g++) {
-    float spatial_source = srh.external_source(g);
+    float spatial_source;
+    if (settings::run_mode == RunMode::FIXED_SOURCE) {
+      spatial_source = srh.external_source(g);
+    } else {
+      spatial_source = 0.f;
+    }
     float new_delta_psi = (angular_flux_[g] - spatial_source) * distance;
     float h1 = 0.5f;
     h1 = h1 * angular_flux_[g];
@@ -750,8 +757,10 @@ void RandomRay::attenuate_flux_linear_source_void(
   }
 
   // Add source to incoming angular flux, assuming void region
-  for (int g = 0; g < negroups_; g++) {
-    angular_flux_[g] += srh.external_source(g) * distance;
+  if (settings::run_mode == RunMode::FIXED_SOURCE) {
+    for (int g = 0; g < negroups_; g++) {
+      angular_flux_[g] += srh.external_source(g) * distance;
+    }
   }
 }
 
@@ -782,9 +791,7 @@ void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
     fatal_error("Unknown sample method for random ray transport.");
   }
 
-  site.E = lower_bound_index(
-    data::mg.rev_energy_bins_.begin(), data::mg.rev_energy_bins_.end(), site.E);
-  site.E = negroups_ - site.E - 1.;
+  site.E = 0.0;
   this->from_source(&site);
 
   // Locate ray

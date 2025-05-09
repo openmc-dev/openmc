@@ -690,11 +690,9 @@ void RandomRay::attenuate_flux_linear_source_void(
   // transport through a void region is greatly simplified. Here we
   // compute the updated flux moments.
   for (int g = 0; g < negroups_; g++) {
-    float spatial_source;
+    float spatial_source = 0.f;
     if (settings::run_mode == RunMode::FIXED_SOURCE) {
       spatial_source = srh.external_source(g);
-    } else {
-      spatial_source = 0.f;
     }
     float new_delta_psi = (angular_flux_[g] - spatial_source) * distance;
     float h1 = 0.5f;

@@ -707,17 +707,18 @@ void initialize_data()
         int electron = static_cast<int>(ParticleType::electron);
         int n_e = data::ttb_e_grid.size();
 
-        const std::vector<int> charged = {electron, static_cast<int>(ParticleType::positron)};
-        for (auto t: charged) {
+        const std::vector<int> charged = {
+          electron, static_cast<int>(ParticleType::positron)};
+        for (auto t : charged) {
           data::energy_min[t] = std::exp(data::ttb_e_grid(1));
-          data::energy_max[t] = std::exp(data::ttb_e_grid(n_e-1));    
+          data::energy_max[t] = std::exp(data::ttb_e_grid(n_e - 1));
         }
 
-        data::energy_min[photon] = std::max(
-        data::energy_min[photon], data::energy_min[electron]);
-        
-        data::energy_max[photon] = std::min(
-          data::energy_max[photon], data::energy_max[electron]);
+        data::energy_min[photon] =
+          std::max(data::energy_min[photon], data::energy_min[electron]);
+
+        data::energy_max[photon] =
+          std::min(data::energy_max[photon], data::energy_max[electron]);
       }
     }
   }

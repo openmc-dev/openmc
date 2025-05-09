@@ -261,40 +261,43 @@ class Surface(IDManagerMixin, ABC):
 
     @transformation.setter
     def transformation(self, transformation):
-        if transformation and self.boundary_type != "transformation":
-            warn(
-                f"boundary_type of surface {self.id} is set to "
-                f"{self.boundary_type}; transformation dictionary will have no"
-                " effect."
-            )
-        else:
-            if "rotation" in transformation.keys():
-                check_type(
-                    'transformation', transformation["rotation"],
-                    Iterable,
-                    Real)
-                check_length(
-                    'transformation', transformation["rotation"], 9)
+        if transformation:
+            if self.boundary_type != "transformation":
+                warn(
+                    f"boundary_type of surface {self.id} is set to "
+                    f"{self.boundary_type}; transformation dictionary will "
+                    "have no effect."
+                )
             else:
-                transformation["rotation"] = [
-                    1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.1]
-            if "translation" in transformation.keys():
-                check_type(
-                    'transformation', transformation["translation"],
-                    Iterable,
-                    Real)
-                check_length(
-                    'transformation', transformation["translation"], 9)
-            else:
-                transformation["translation"] = [
-                    1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.1]
-            if "offset" in transformation.keys():
-                check_type(
-                    'transformation', transformation["offset"], Iterable, Real)
-                check_length(
-                    'transformation', transformation["offset"], 3)
-            else:
-                transformation["offset"] = [0.0, 0.0, 0.0]
+                if "rotation" in transformation.keys():
+                    check_type(
+                        'transformation', transformation["rotation"],
+                        Iterable,
+                        Real)
+                    check_length(
+                        'transformation', transformation["rotation"], 9)
+                else:
+                    transformation["rotation"] = [
+                        1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.1]
+                if "translation" in transformation.keys():
+                    check_type(
+                        'transformation', transformation["translation"],
+                        Iterable,
+                        Real)
+                    check_length(
+                        'transformation', transformation["translation"], 9)
+                else:
+                    transformation["translation"] = [
+                        1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.1]
+                if "offset" in transformation.keys():
+                    check_type(
+                        'transformation', transformation["offset"],
+                        Iterable,
+                        Real)
+                    check_length(
+                        'transformation', transformation["offset"], 3)
+                else:
+                    transformation["offset"] = [0.0, 0.0, 0.0]
         
         self._transformation = transformation
 

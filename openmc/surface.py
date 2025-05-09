@@ -261,7 +261,7 @@ class Surface(IDManagerMixin, ABC):
 
     @transformation.setter
     def transformation(self, transformation):
-        if self.boundary_type != "transformation":
+        if transformation and self.boundary_type != "transformation":
             warn(
                 f"boundary_type of surface {self.id} is set to "
                 f"{self.boundary_type}; transformation dictionary will have no"

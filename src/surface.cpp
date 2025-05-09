@@ -102,16 +102,8 @@ Surface::Surface(pugi::xml_node surf_node)
         int i = 0;
 
         while (std::getline(ss, token, delimiter) && i < 9) {
-          try {
-            tr[i] = std::stod(token);
-            i++;
-          } catch (std::invalid_argument& e) {
-            throw std::invalid_argument(
-              "Invalid argument for transformation_rotation: " + token);
-          } catch (std::out_of_range& e) {
-            throw std::out_of_range(
-              "Out of range for transformation_rotation: " + token);
-          }
+          tr[i] = std::stod(token);
+          i++;
         }
       } else {
         tr = {1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0};
@@ -125,16 +117,8 @@ Surface::Surface(pugi::xml_node surf_node)
         int i = 0;
 
         while (std::getline(ss, token, delimiter) && i < 9) {
-          try {
-            tt[i] = std::stod(token);
-            i++;
-          } catch (std::invalid_argument& e) {
-            throw std::invalid_argument(
-              "Invalid argument for transformation_translation: " + token);
-          } catch (std::out_of_range& e) {
-            throw std::out_of_range(
-              "Out of range for transformation_translation: " + token);
-          }
+          tt[i] = std::stod(token);
+          i++;
         }
       } else {
         tt = {1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0};
@@ -147,16 +131,8 @@ Surface::Surface(pugi::xml_node surf_node)
         int i = 0;
 
         while (std::getline(ss, token, delimiter) && i < 3) {
-          try {
-            to[i] = std::stod(token);
-            i++;
-          } catch (std::invalid_argument& e) {
-            throw std::invalid_argument(
-              "Invalid argument for transformation_offset: " + token);
-          } catch (std::out_of_range& e) {
-            throw std::out_of_range(
-              "Out of range for transformation_offset: " + token);
-          }
+          to[i] = std::stod(token);
+          i++;
         }
       } else {
         to = {0.0, 0.0, 0.0};

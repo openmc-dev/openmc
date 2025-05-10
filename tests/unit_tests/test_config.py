@@ -1,5 +1,6 @@
 from collections.abc import Mapping
 import os
+from pathlib import Path
 
 import openmc
 import pytest
@@ -34,6 +35,12 @@ def test_config_basics():
     # Can't use any key
     with pytest.raises(KeyError):
         openmc.config['🐖'] = '/like/to/eat/bacon'
+
+    # ensure relative paths are expanded into absolute
+    # paths
+    chain_path = Path('./chain.xml')
+    openmc.config['chain_file'] = chain_path
+    assert openmc.config['chain_file'] == chain_path.resolve()
 
 
 def test_config_patch():

@@ -206,9 +206,11 @@ void FlatSourceDomain::set_flux_to_flux_plus_source(
   int material = source_regions_.material(sr);
   if (material == MATERIAL_VOID) {
     source_regions_.scalar_flux_new(sr, g) /= volume;
-    source_regions_.scalar_flux_new(sr, g) +=
-      0.5f * source_regions_.external_source(sr, g) *
-      source_regions_.volume_sq(sr);
+    if (settings::run_mode == RunMode::FIXED_SOURCE) {
+      source_regions_.scalar_flux_new(sr, g) +=
+        0.5f * source_regions_.external_source(sr, g) *
+        source_regions_.volume_sq(sr);
+    }
   } else {
     double sigma_t = sigma_t_[source_regions_.material(sr) * negroups_ + g];
     source_regions_.scalar_flux_new(sr, g) /= (sigma_t * volume);

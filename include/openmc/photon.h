@@ -33,7 +33,6 @@ public:
 
   int index_subshell; //!< index in SUBSHELLS
   int threshold;
-  double n_electrons;
   double binding_energy;
   vector<Transition> transitions;
 };
@@ -89,6 +88,11 @@ public:
   xt::xtensor<double, 2> profile_cdf_;
   xt::xtensor<double, 1> binding_energy_;
   xt::xtensor<double, 1> electron_pdf_;
+
+  // Map subshells from Compton profile data obtained from Biggs et al,
+  // "Hartree-Fock Compton profiles for the elements" to ENDF/B atomic
+  // relaxation data
+  xt::xtensor<int, 1> subshell_map_;
 
   // Stopping power data
   double I_; // mean excitation energy

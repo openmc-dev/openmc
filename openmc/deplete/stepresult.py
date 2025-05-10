@@ -56,6 +56,8 @@ class StepResult:
         Number of stages in simulation.
     data : numpy.ndarray
         Atom quantity, stored by stage, mat, then by nuclide.
+    reac_cont : float
+        The root returned by the reactivity controller.
     proc_time : int
         Average time spent depleting a material across all
         materials and processes
@@ -74,6 +76,7 @@ class StepResult:
         self.mat_to_hdf5_ind = None
 
         self.data = None
+        self.reac_cont = None
 
     def __repr__(self):
         t = self.time[0]
@@ -349,6 +352,10 @@ class StepResult:
             "depletion time", (1,), maxshape=(None,),
             dtype="float64")
 
+        handle.create_dataset(
+            "reac_cont_root", (1,), maxshape=(None,),
+            dtype="float64")
+
     def _to_hdf5(self, handle, index, parallel=False):
         """Converts results object into an hdf5 object.
 
@@ -379,6 +386,7 @@ class StepResult:
         time_dset = handle["/time"]
         source_rate_dset = handle["/source_rate"]
         proc_time_dset = handle["/depletion time"]
+        root_dset = handle["/reac_cont_root"]
 
         # Get number of results stored
         number_shape = list(number_dset.shape)
@@ -412,6 +420,10 @@ class StepResult:
             proc_shape[0] = new_shape
             proc_time_dset.resize(proc_shape)
 
+            root_shape = list(root_dset.shape)
+            root_shape[0] = new_shape
+            root_dset.resize(root_shape)
+
         # If nothing to write, just return
         if len(self.index_mat) == 0:
             return
@@ -435,6 +447,7 @@ class StepResult:
                 proc_time_dset[index] = (
                     self.proc_time / (comm.size * self.n_hdf5_mats)
                 )
+            root_dset[index] = self.reac_cont
 
     @classmethod
     def from_hdf5(cls, handle, step):
@@ -468,6 +481,10 @@ class StepResult:
             proc_time_dset = handle["/depletion time"]
             if step < proc_time_dset.shape[0]:
                 results.proc_time = proc_time_dset[step]
+
+        if "reac_cont_root" in handle:
+            root_dset = handle["/reac_cont_root"]
+            results.reac_cont = root_dset[step]
 
         if results.proc_time is None:
             results.proc_time = np.array([np.nan])
@@ -509,7 +526,7 @@ class StepResult:
 
     @staticmethod
     def save(op, x, op_results, t, source_rate, step_ind, proc_time=None,
-             path: PathLike = "depletion_results.h5"):
+             root=None, path: PathLike = "depletion_results.h5"):
         """Creates and writes depletion results to disk
 
         Parameters
@@ -530,7 +547,8 @@ class StepResult:
             Total process time spent depleting materials. This may
             be process-dependent and will be reduced across MPI
             processes.
-
+        root : float
+            The root returned by the reactivity controller.
         path : PathLike
             Path to file to write. Defaults to 'depletion_results.h5'.
 
@@ -564,6 +582,7 @@ class StepResult:
         results.proc_time = proc_time
         if results.proc_time is not None:
             results.proc_time = comm.reduce(proc_time, op=MPI.SUM)
+        results.reac_cont = root
 
         if not Path(path).is_file():
             Path(path).parent.mkdir(parents=True, exist_ok=True)

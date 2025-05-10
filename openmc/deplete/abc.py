@@ -19,7 +19,7 @@ from warnings import warn
 import numpy as np
 from uncertainties import ufloat
 
-from openmc.checkvalue import check_type, check_greater_than, PathLike
+from openmc.checkvalue import check_value, check_type, check_greater_than, PathLike
 from openmc.mpi import comm
 from openmc.utility_funcs import change_directory
 from openmc import Material
@@ -30,7 +30,12 @@ from .results import Results, _SECONDS_PER_MINUTE, _SECONDS_PER_HOUR, \
 from .pool import deplete
 from .reaction_rates import ReactionRates
 from .transfer_rates import TransferRates
-
+from openmc import Material, Cell
+from .reactivity_control import (
+    ReactivityController,
+    CellReactivityController,
+    MaterialReactivityController
+)
 
 __all__ = [
     "OperatorResult", "TransportOperator",
@@ -608,6 +613,9 @@ class Integrator(ABC):
 
     transfer_rates : openmc.deplete.TransferRates
         Instance of TransferRates class to perform continuous transfer during depletion
+    reactivity_control : openmc.deplete.ReactivityController
+        Instance of ReactivityController class to perform reactivity control during
+        transport-depletion simulation.
 
         .. versionadded:: 0.14.0
 
@@ -686,6 +694,7 @@ class Integrator(ABC):
         self.source_rates = np.asarray(source_rates)
 
         self.transfer_rates = None
+        self._reactivity_control = None
 
         if isinstance(solver, str):
             # Delay importing of cram module, which requires this file
@@ -730,6 +739,15 @@ class Integrator(ABC):
                     f"Keyword arguments like {ix} at position {param} are not allowed")
 
         self._solver = func
+
+    @property
+    def reactivity_control(self):
+        return self._reactivity_control
+
+    @reactivity_control.setter
+    def reactivity_control(self, reactivity_control):
+        check_type('reactivity control', reactivity_control, ReactivityController)
+        self._reactivity_control = reactivity_control
 
     def _timed_deplete(self, n, rates, dt, matrix_func=None):
         start = time.time()
@@ -818,6 +836,13 @@ class Integrator(ABC):
         return (self.operator.prev_res[-1].time[-1],
                 len(self.operator.prev_res) - 1)
 
+    def _get_bos_from_reactivity_control(self, step_index, bos_conc):
+        """Get BOS from reactivity control."""
+        x = deepcopy(bos_conc)
+        # Get new vector after keff criticality control
+        x, root = self._reactivity_control.search_for_keff(x, step_index)
+        return x, root
+
     def integrate(
             self,
             final_step: bool = True,
@@ -852,10 +877,18 @@ class Integrator(ABC):
 
                 # Solve transport equation (or obtain result from restart)
                 if i > 0 or self.operator.prev_res is None:
+                    # Update geometry/material according to reactivity control
+                    if self._reactivity_control is not None and source_rate != 0.0:
+                        n, root = self._get_bos_from_reactivity_control(i, n)
+                    else:
+                        root = None
                     n, res = self._get_bos_data_from_operator(i, source_rate, n)
                 else:
                     n, res = self._get_bos_data_from_restart(source_rate, n)
-
+                    if self._reactivity_control:
+                        root = self.operator.prev_res[-1].reac_cont
+                    else:
+                        root = None
                 # Solve Bateman equations over time interval
                 proc_time, n_list, res_list = self(n, res.rates, dt, source_rate, i)
 
@@ -865,9 +898,8 @@ class Integrator(ABC):
 
                 # Remove actual EOS concentration for next step
                 n = n_list.pop()
-
                 StepResult.save(self.operator, n_list, res_list, [t, t + dt],
-                                source_rate, self._i_res + i, proc_time, path)
+                            source_rate, self._i_res + i, proc_time, root, path)
 
                 t += dt
 
@@ -877,9 +909,13 @@ class Integrator(ABC):
             # solve)
             if output and final_step and comm.rank == 0:
                 print(f"[openmc.deplete] t={t} (final operator evaluation)")
+            if self._reactivity_control is not None and source_rate != 0.0:
+                n, root = self._get_bos_from_reactivity_control(i+1, n)
+            else:
+                root = None
             res_list = [self.operator(n, source_rate if final_step else 0.0)]
             StepResult.save(self.operator, [n], res_list, [t, t],
-                         source_rate, self._i_res + len(self), proc_time, path)
+                    source_rate, self._i_res + len(self), proc_time, root, path)
             self.operator.write_bos_data(len(self) + self._i_res)
 
         self.operator.finalize()
@@ -917,6 +953,29 @@ class Integrator(ABC):
 
         self.transfer_rates.set_transfer_rate(material, components, transfer_rate,
                                       transfer_rate_units, destination_material)
+
+    def add_reactivity_control(
+            self,
+            obj: Union[Cell, Material],
+            **kwargs):
+        """Add pre-defined Cell based or Material bases reactivity control to
+        integrator scheme.
+
+        Parameters
+        ----------
+        obj : openmc.Cell or openmc.Material
+            Cell or Material identifier to where add reactivity control
+        **kwargs
+            keyword arguments that are passed to the specific ReactivityController
+            class.
+
+        """
+        if isinstance(obj, Cell):
+            reactivity_control = CellReactivityController
+        elif isinstance(obj, Material):
+            reactivity_control = MaterialReactivityController
+        self._reactivity_control = reactivity_control.from_params(obj,
+                                        self.operator, **kwargs)
 
 @add_params
 class SIIntegrator(Integrator):
@@ -1090,13 +1149,13 @@ class SIIntegrator(Integrator):
                 n = n_list.pop()
 
                 StepResult.save(self.operator, n_list, res_list, [t, t + dt],
-                             p, self._i_res + i, proc_time, path)
+                             p, self._i_res + i, proc_time, path=path)
 
                 t += dt
 
             # No final simulation for SIE, use last iteration results
             StepResult.save(self.operator, [n], [res_list[-1]], [t, t],
-                         p, self._i_res + len(self), proc_time, path)
+                         p, self._i_res + len(self), proc_time, path=path)
             self.operator.write_bos_data(self._i_res + len(self))
 
         self.operator.finalize()

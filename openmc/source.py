@@ -404,7 +404,9 @@ class IndependentSource(SourceBase):
 
     @particle.setter
     def particle(self, particle):
-        cv.check_value('source particle', particle, ['neutron', 'photon', 'electron', 'positron'])
+        cv.check_value('source particle',
+                       particle,
+                       ['neutron', 'photon', 'electron', 'positron'])
         self._particle = particle
 
     def populate_xml_element(self, element):

@@ -25,7 +25,8 @@ _FILTER_TYPES = (
     'energyout', 'mu', 'musurface', 'polar', 'azimuthal', 'distribcell', 'delayedgroup',
     'energyfunction', 'cellfrom', 'materialfrom', 'legendre', 'spatiallegendre',
     'sphericalharmonics', 'zernike', 'zernikeradial', 'particle', 'cellinstance',
-    'collision', 'time', 'parentnuclide', 'weight'
+    'collision', 'time', 'parentnuclide', 'weight', 'meshborn', 'meshsurface',
+    'meshmaterial',
 )
 
 _CURRENT_NAMES = (

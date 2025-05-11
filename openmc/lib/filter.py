@@ -480,6 +480,10 @@ class MeshBornFilter(Filter):
         _dll.openmc_meshborn_filter_set_translation(self._index, (c_double*3)(*translation))
 
 
+class MeshMaterialFilter(Filter):
+    filter_type = 'meshmaterial'
+
+
 class MeshSurfaceFilter(Filter):
     """MeshSurface filter stored internally.
 
@@ -606,6 +610,10 @@ class SurfaceFilter(Filter):
     filter_type = 'surface'
 
 
+class TimeFilter(Filter):
+    filter_type = 'time'
+
+
 class UniverseFilter(Filter):
     filter_type = 'universe'
 
@@ -653,6 +661,7 @@ _FILTER_TYPE_MAP = {
     'materialfrom': MaterialFromFilter,
     'mesh': MeshFilter,
     'meshborn': MeshBornFilter,
+    'meshmaterial': MeshMaterialFilter,
     'meshsurface': MeshSurfaceFilter,
     'mu': MuFilter,
     'musurface': MuSurfaceFilter,
@@ -662,7 +671,9 @@ _FILTER_TYPE_MAP = {
     'sphericalharmonics': SphericalHarmonicsFilter,
     'spatiallegendre': SpatialLegendreFilter,
     'surface': SurfaceFilter,
+    'time': TimeFilter,
     'universe': UniverseFilter,
+    'weight': WeightFilter,
     'zernike': ZernikeFilter,
     'zernikeradial': ZernikeRadialFilter
 }

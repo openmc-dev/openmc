@@ -1085,9 +1085,8 @@ class MeshMaterialFilter(MeshFilter):
         return cls(mesh, bins)
 
     def __hash__(self):
-        string = type(self).__name__ + '\n'
-        string += '{: <16}=\t{}\n'.format('\tMesh ID', self.mesh.id)
-        return hash(string)
+        data = (type(self).__name__, self.mesh.id, tuple(self.bins.ravel()))
+        return hash(data)
 
     def __repr__(self):
         string = type(self).__name__ + '\n'

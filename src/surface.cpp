@@ -89,55 +89,20 @@ Surface::Surface(pugi::xml_node surf_node)
     } else if (surf_bc == "periodic") {
       // Periodic BCs are handled separately
     } else if (surf_bc == "transformation" || surf_bc == "transform") {
-      array<double, 9> tr;
-      array<double, 9> tt;
-      array<double, 3> to;
+      vector<double, 12> dir_trans;
+      vector<double, 12> pos_trans;
 
-      if (check_for_node(surf_node, "transformation_rotation")) {
-        std::string str_tr =
-          get_node_value(surf_node, "transformation_rotation");
-        std::stringstream ss(str_tr);
-        std::string token;
-        char delimiter = ' ';
-        int i = 0;
-
-        while (std::getline(ss, token, delimiter) && i < 9) {
-          tr[i] = std::stod(token);
-          i++;
-        }
+      if (check_for_node(surf_node, "direction_transformation")) {
+        dir_trans = get_node_array<double>(surf_node, "direction_transformation");
       } else {
-        tr = {1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0};
+        dir_trans = {1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0};
       }
-      if (check_for_node(surf_node, "transformation_translation")) {
-        std::string str_tt =
-          get_node_value(surf_node, "transformation_translation");
-        std::stringstream ss(str_tt);
-        std::string token;
-        char delimiter = ' ';
-        int i = 0;
-
-        while (std::getline(ss, token, delimiter) && i < 9) {
-          tt[i] = std::stod(token);
-          i++;
-        }
+      if (check_for_node(surf_node, "position_transformation")) {
+        pos_trans = get_node_array<double>(surf_node, "position_transformation");
       } else {
-        tt = {1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0};
+        pos_trans = {1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0};
       }
-      if (check_for_node(surf_node, "transformation_offset")) {
-        std::string str_to = get_node_value(surf_node, "transformation_offset");
-        std::stringstream ss(str_to);
-        std::string token;
-        char delimiter = ' ';
-        int i = 0;
-
-        while (std::getline(ss, token, delimiter) && i < 3) {
-          to[i] = std::stod(token);
-          i++;
-        }
-      } else {
-        to = {0.0, 0.0, 0.0};
-      }
-      bc_ = make_unique<TransformationBC>(tr, tt, to);
+      bc_ = make_unique<TransformationBC>(dir_trans, pos_trans);
     } else {
       fatal_error(fmt::format("Unknown boundary condition \"{}\" specified "
                               "on surface {}",

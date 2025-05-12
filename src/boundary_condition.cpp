@@ -123,7 +123,7 @@ TranslationalPeriodicBC::TranslationalPeriodicBC(int i_surf, int j_surf)
 
   // Set the translation vector; it's length is the difference in the two
   // distances.
-  translation_ = u * (d2 - d1);
+  pos_trans_ = u * (d2 - d1);
 }
 
 void TranslationalPeriodicBC::handle_particle(
@@ -136,10 +136,10 @@ void TranslationalPeriodicBC::handle_particle(
   Position new_r;
   int new_surface;
   if (i_particle_surf == i_surf_) {
-    new_r = p.r() + translation_;
+    new_r = p.r() + pos_trans_;
     new_surface = p.surface() > 0 ? j_surf_ + 1 : -(j_surf_ + 1);
   } else if (i_particle_surf == j_surf_) {
-    new_r = p.r() - translation_;
+    new_r = p.r() - pos_trans_;
     new_surface = p.surface() > 0 ? i_surf_ + 1 : -(i_surf_ + 1);
   } else {
     throw std::runtime_error(
@@ -295,12 +295,11 @@ void RotationalPeriodicBC::handle_particle(
 //==============================================================================
 
 TransformationBC::TransformationBC(
-  array<double, 9> tr, array<double, 9> tt, array<double, 3> to)
+  vector<double, 12> dir_trans, vector<double, 12> pos_trans)
 {
-  // Set the transformation matrix
-  rotation_ = tr;
-  translation_ = tt;
-  offset_ = to;
+  // Set the transformation matrices
+  dir_trans_ = dir_trans;
+  pos_trans_ = pos_trans;
 }
 
 void TransformationBC::handle_particle(Particle& p, const Surface& surf) const
@@ -309,17 +308,20 @@ void TransformationBC::handle_particle(Particle& p, const Surface& surf) const
   Direction u = p.u();
 
   Position new_r = {
-    r.x * translation_[0] + r.y * translation_[1] + r.z * translation_[2] +
-      offset_[0],
-    r.x * translation_[3] + r.y * translation_[4] + r.z * translation_[5] +
-      offset_[1],
-    r.x * translation_[6] + r.y * translation_[7] + r.z * translation_[8] +
-      offset_[2]};
+    r.x * pos_trans_[0] + r.y * pos_trans_[1] + r.z * pos_trans_[2] +
+    pos_trans_[3],
+    r.x * pos_trans_[4] + r.y * pos_trans_[5] + r.z * pos_trans_[6] +
+    pos_trans_[7],
+    r.x * pos_trans_[8] + r.y * pos_trans_[9] + r.z * pos_trans_[10] +
+    pos_trans_[11]};
 
   Position new_u = {
-    u.x * rotation_[0] + u.y * rotation_[1] + u.z * rotation_[2],
-    u.x * rotation_[3] + u.y * rotation_[4] + u.z * rotation_[5],
-    u.x * rotation_[6] + u.y * rotation_[7] + u.z * rotation_[8]};
+    u.x * dir_trans_[0] + u.y * dir_trans_[1] + u.z * dir_trans_[2] +
+    dir_trans_[3],
+    u.x * dir_trans_[4] + u.y * dir_trans_[5] + u.z * dir_trans_[6] +
+    dir_trans_[7],
+    u.x * dir_trans_[8] + u.y * dir_trans_[9] + u.z * dir_trans_[10] +
+    dir_trans_[11]};
 
   // Handle the effects of the surface albedo on the particle's weight.
   BoundaryCondition::handle_albedo(p, surf);

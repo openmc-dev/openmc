@@ -1,6 +1,6 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from copy import deepcopy
 import math
 from numbers import Real
@@ -139,21 +139,26 @@ class Surface(IDManagerMixin, ABC):
         string.
     transformation : dict, optional
         If a transformation boundary condition is used, the dictionary
-        describing the linear transfomation by which particle positions and
-        directions are modified. Valid keys are:
-            'rotation' : iterable of float, optional
-                The matrix by which particle directions are transformed via
-                matrix-vector multiplication. Should be a 3x3 matrix given in
-                row-major order (i.e., have a length of 9). Defaults to
-                identity matrix.
-            'translation' : iterable of float, optional
-                The matrix by which particle positions are translated via
-                matrix-vector multiplication. Should be a 3x3 matrix given in
-                row-major order (i.e., have a length of 9). Defaults to
-                identity matrix.
-            'offset': iterable of float, optional
-                The vector by which particle positions are offset via vector
-                addition. Should have a length of 3. Defaults to zero vector.
+        describing the affine transfomations by which particle position and
+        direction are modified. Valid keys are:
+            'direction' : iterable of float, optional
+                The affine transformation matrix by which particle directions
+                are transformed. Should be a 3x4 matrix given in row-major
+                order (i.e., a flat array with a length of 12). In matrix
+                representation, the first three columns correspond to a linear
+                map affecting direction via matrix multiplication and the
+                fourth column corresponds to a translation affecting direction
+                via vector addition. Defaults to the 3x3 identity matrix with
+                an additional zero vector column.
+            'position' : iterable of float, optional
+                The affine transformation matrix by which particle positions
+                are transformed. Should be a 3x4 matrix given in row-major
+                order (i.e., a flat array with a length of 12). In matrix
+                representation, the first three columns correspond to a linear
+                map affecting position via matrix multiplication and the fourth
+                column corresponds to a translation affecting position via
+                vector addition. Defaults to the 3x3 identity matrix with an
+                additional zero vector column.
     
     Attributes
     ----------
@@ -171,7 +176,7 @@ class Surface(IDManagerMixin, ABC):
     type : str
         Type of the surface
     transformation : dict
-        Dictionary describing linear transformation of particle positions and
+        Dictionary describing affine transformation of particle positions and
         directions
     """
 
@@ -261,6 +266,12 @@ class Surface(IDManagerMixin, ABC):
 
     @transformation.setter
     def transformation(self, transformation):
+        if not isinstance(transformation, Mapping):
+            msg = (
+                f'Unable to set transformation from "{transformation}", which '
+                'is not a Python dictionary')
+            raise ValueError(msg)
+        
         if transformation:
             if self.boundary_type != "transformation":
                 warn(
@@ -269,35 +280,34 @@ class Surface(IDManagerMixin, ABC):
                     "have no effect."
                 )
             else:
-                if "rotation" in transformation.keys():
+                for key in transformation:
+                    if key not in ["direction", "position"]:
+                        msg = (
+                            f'Unable to set transformation parameter "{key}", '
+                            'which is unsupported by OpenMC'
+                        )
+                
+                if "direction" in transformation.keys():
                     check_type(
-                        'transformation', transformation["rotation"],
+                        'transformation', transformation["direction"],
                         Iterable,
                         Real)
                     check_length(
-                        'transformation', transformation["rotation"], 9)
+                        'transformation', transformation["direction"], 12)
                 else:
-                    transformation["rotation"] = [
-                        1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.1]
-                if "translation" in transformation.keys():
+                    transformation["direction"] = np.append(
+                        np.identity(3).flatten(), np.zeros(3))
+                
+                if "position" in transformation.keys():
                     check_type(
-                        'transformation', transformation["translation"],
+                        'transformation', transformation["position"],
                         Iterable,
                         Real)
                     check_length(
-                        'transformation', transformation["translation"], 9)
+                        'transformation', transformation["position"], 12)
                 else:
-                    transformation["translation"] = [
-                        1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.1]
-                if "offset" in transformation.keys():
-                    check_type(
-                        'transformation', transformation["offset"],
-                        Iterable,
-                        Real)
-                    check_length(
-                        'transformation', transformation["offset"], 3)
-                else:
-                    transformation["offset"] = [0.0, 0.0, 0.0]
+                    transformation["position"] = np.append(
+                        np.identity(3).flatten(), np.zeros(3))
         
         self._transformation = transformation
 
@@ -505,17 +515,13 @@ class Surface(IDManagerMixin, ABC):
         
         if self.boundary_type == 'transformation':
             element.set(
-                "transformation_rotation",
+                "direction_transformation",
                 ' '.join([str(elem)
-                          for elem in self.transformation["rotation"]]))
+                          for elem in self.transformation["direction"]]))
             element.set(
-                "transformation_translation",
+                "position_transformation",
                 ' '.join([str(elem)
-                          for elem in self.transformation["translation"]]))
-            element.set(
-                "transformation_offset",
-                ' '.join([str(elem)
-                          for elem in self.transformation["offset"]]))
+                          for elem in self.transformation["position"]]))
 
         return element
 
@@ -550,17 +556,13 @@ class Surface(IDManagerMixin, ABC):
         kwargs.update(dict(zip(cls._coeff_keys, coeffs)))
         if kwargs['boundary_type'] == 'transformation':
             transformation = {}
-            if elem.get('transformation_rotation'):
-                transformation['rotation'] = [
-                    float(x) for x in elem.get('transformation_rotation').split()
+            if elem.get('direction_transformation'):
+                transformation['direction'] = [
+                    float(x) for x in elem.get('direction_transformation').split()
                 ]
-            if elem.get('transformation_translation'):
-                transformation['translation'] = [
-                    float(x) for x in elem.get('transformation_translation').split()
-                ]
-            if elem.get('transformation_offset'):
-                transformation['offset'] = [
-                    float(x) for x in elem.get('transformation_offset').split()
+            if elem.get('position_transformation'):
+                transformation['position'] = [
+                    float(x) for x in elem.get('position_transformation').split()
                 ]
             kwargs['transformation'] = transformation
 
@@ -601,18 +603,14 @@ class Surface(IDManagerMixin, ABC):
         
         transformation = {}
         
-        if 'transformation_rotation' in group:
-            string_array = group['transformation_rotation'][()].decode()
-            transformation_rotation = [float(x) for x in string_array]
-            transformation['rotation'] = transformation_rotation
-        if 'transformation_translation' in group:
-            string_array = group['transformation_translation'][()].decode()
-            transformation_translation = [float(x) for x in string_array]
-            transformation['translation'] = transformation_translation
-        if 'transformation_offset' in group:
-            string_array = group['transformation_offset'][()].decode()
-            transformation_offset = [float(x) for x in string_array]
-            transformation['offset'] = transformation_offset
+        if 'direction_transformation' in group:
+            string_array = group['direction_transformation'][()].decode()
+            direction_transformation = [float(x) for x in string_array]
+            transformation['direction'] = direction_transformation
+        if 'position_transformation' in group:
+            string_array = group['position_transformation'][()].decode()
+            position_transformation = [float(x) for x in string_array]
+            transformation['position'] = position_transformation
         
         kwargs['transformation'] = transformation
 

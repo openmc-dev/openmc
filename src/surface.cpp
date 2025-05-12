@@ -89,31 +89,35 @@ Surface::Surface(pugi::xml_node surf_node)
     } else if (surf_bc == "periodic") {
       // Periodic BCs are handled separately
     } else if (surf_bc == "transformation" || surf_bc == "transform") {
-      int vector_size_exp = 12;      
+      int vector_size_exp = 12;
       vector<double> dir_trans(vector_size_exp);
       vector<double> pos_trans(vector_size_exp);
 
       if (check_for_node(surf_node, "direction_transformation")) {
-        dir_trans = get_node_array<double>(surf_node, "direction_transformation");
+        dir_trans =
+          get_node_array<double>(surf_node, "direction_transformation");
         if (dir_trans.size() != vector_size_exp) {
           fatal_error(
-            fmt::format(
-              "Transformation on surface {} expects direction matrix size {} but was given size {}",
+            fmt::format("Transformation on surface {} expects direction matrix "
+                        "size {} but was given size {}",
               id_, vector_size_exp, dir_trans.size()));
         }
       } else {
-        dir_trans = {1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0};
+        dir_trans = {
+          1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0};
       }
       if (check_for_node(surf_node, "position_transformation")) {
-        pos_trans = get_node_array<double>(surf_node, "position_transformation");
+        pos_trans =
+          get_node_array<double>(surf_node, "position_transformation");
         if (pos_trans.size() != vector_size_exp) {
           fatal_error(
-            fmt::format(
-              "Transformation on surface {} expects position matrix size {} but was given size {}",
+            fmt::format("Transformation on surface {} expects position matrix "
+                        "size {} but was given size {}",
               id_, vector_size_exp, pos_trans.size()));
         }
       } else {
-        pos_trans = {1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0};
+        pos_trans = {
+          1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0};
       }
       bc_ = make_unique<TransformationBC>(dir_trans, pos_trans);
     } else {

@@ -307,21 +307,19 @@ void TransformationBC::handle_particle(Particle& p, const Surface& surf) const
   Position r = p.r();
   Direction u = p.u();
 
-  Position new_r = {
-    r.x * pos_trans_[0] + r.y * pos_trans_[1] + r.z * pos_trans_[2] +
-    pos_trans_[3],
+  Position new_r = {r.x * pos_trans_[0] + r.y * pos_trans_[1] +
+                      r.z * pos_trans_[2] + pos_trans_[3],
     r.x * pos_trans_[4] + r.y * pos_trans_[5] + r.z * pos_trans_[6] +
-    pos_trans_[7],
+      pos_trans_[7],
     r.x * pos_trans_[8] + r.y * pos_trans_[9] + r.z * pos_trans_[10] +
-    pos_trans_[11]};
+      pos_trans_[11]};
 
-  Position new_u = {
-    u.x * dir_trans_[0] + u.y * dir_trans_[1] + u.z * dir_trans_[2] +
-    dir_trans_[3],
+  Position new_u = {u.x * dir_trans_[0] + u.y * dir_trans_[1] +
+                      u.z * dir_trans_[2] + dir_trans_[3],
     u.x * dir_trans_[4] + u.y * dir_trans_[5] + u.z * dir_trans_[6] +
-    dir_trans_[7],
+      dir_trans_[7],
     u.x * dir_trans_[8] + u.y * dir_trans_[9] + u.z * dir_trans_[10] +
-    dir_trans_[11]};
+      dir_trans_[11]};
 
   // Handle the effects of the surface albedo on the particle's weight.
   BoundaryCondition::handle_albedo(p, surf);

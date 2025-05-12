@@ -158,8 +158,7 @@ protected:
 
 class TransformationBC : public BoundaryCondition {
 public:
-  TransformationBC(
-    vector<double> dir_trans, vector<double> pos_trans);
+  TransformationBC(vector<double> dir_trans, vector<double> pos_trans);
 
   void handle_particle(Particle& p, const Surface& surf) const override;
 

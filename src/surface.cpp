@@ -102,7 +102,7 @@ Surface::Surface(pugi::xml_node surf_node)
               id_, vector_size_exp, dir_trans.size()));
         }
       } else {
-        dir_trans = {1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0};
+        dir_trans = {1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0};
       }
       if (check_for_node(surf_node, "position_transformation")) {
         pos_trans = get_node_array<double>(surf_node, "position_transformation");
@@ -113,7 +113,7 @@ Surface::Surface(pugi::xml_node surf_node)
               id_, vector_size_exp, pos_trans.size()));
         }
       } else {
-        pos_trans = {1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0};
+        pos_trans = {1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0};
       }
       bc_ = make_unique<TransformationBC>(dir_trans, pos_trans);
     } else {

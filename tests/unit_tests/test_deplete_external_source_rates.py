@@ -1,13 +1,13 @@
 """ Tests for ExternalSourceRates class """
 
 from pathlib import Path
-from math import exp
 
 import pytest
 import numpy as np
 import re
 
 import openmc
+from openmc.data import AVOGADRO, atomic_mass
 from openmc.deplete import CoupledOperator
 from openmc.deplete.transfer_rates import ExternalSourceRates
 from openmc.deplete.abc import (_SECONDS_PER_MINUTE, _SECONDS_PER_HOUR,
@@ -19,20 +19,20 @@ CHAIN_PATH = Path(__file__).parents[1] / "chain_simple.xml"
 def model():
     openmc.reset_auto_ids()
     f = openmc.Material(name="f")
-    f.add_element("U", 1, percent_type="ao", enrichment=4.25)
+    f.add_element("U", 1, enrichment=4.25)
     f.add_element("O", 2)
-    f.set_density("g/cc", 10.4)
+    f.set_density("g/cm3", 10.4)
 
     w = openmc.Material(name="w")
     w.add_element("O", 1)
     w.add_element("H", 2)
-    w.set_density("g/cc", 1.0)
+    w.set_density("g/cm3", 1.0)
     w.depletable = True
 
     # material just to test multiple destination material
     h = openmc.Material(name="h")
     h.add_element("He", 1)
-    h.set_density("g/cc", 1.78e-4)
+    h.set_density("g/cm3", 1.78e-4)
 
     radii = [0.42, 0.45]
     f.volume = np.pi * radii[0] ** 2
@@ -54,6 +54,7 @@ def model():
     settings.batches = 50
 
     return openmc.Model(geometry, materials, settings)
+
 
 @pytest.mark.parametrize(
 "case_name, external_source_vectors, external_source_rate, timesteps", [
@@ -91,9 +92,7 @@ def test_get_set(model, case_name, external_source_vectors, external_source_rate
                                                external_source_vector,
                                                external_source_rate)
             elif case_name == 'rates_invalid_2':
-                with pytest.raises(ValueError, match='Cannot add element Pu '
-                                             'as it is not naturally abundant. '
-                                             'Specify a nuclide vector instead. '):
+                with pytest.raises(ValueError, match='Cannot add element Pu'):
                     transfer.set_external_source_rate(material_input,
                                                external_source_vector,
                                                external_source_rate)
@@ -105,26 +104,20 @@ def test_get_set(model, case_name, external_source_vectors, external_source_rate
                 for component, percent in external_source_vector.items():
                     split_component = re.split(r'\d+', component)
                     if len(split_component) == 1:
-                        for nuc,frac in openmc.data.isotopes(component):
+                        for nuc, frac in openmc.data.isotopes(component):
+                            val = external_source_rate * percent * frac * \
+                                AVOGADRO / atomic_mass(nuc)
                             assert transfer.get_external_rate(
-                                material_input, nuc, timesteps)[0] == pytest.approx(
-                                                    external_source_rate \
-                                                    * percent \
-                                                    * frac \
-                                                    * openmc.data.AVOGADRO \
-                                                    / openmc.data.atomic_mass(nuc))
+                                material_input, nuc, timesteps)[0] == pytest.approx(val)
                     else:
+                        val = external_source_rate * percent * AVOGADRO / atomic_mass(component)
                         assert transfer.get_external_rate(
-                            material_input, component, timesteps)[0] == pytest.approx(
-                                                    external_source_rate \
-                                                    * percent \
-                                                    * openmc.data.AVOGADRO \
-                                                    / openmc.data.atomic_mass(component))
+                            material_input, component, timesteps)[0] == pytest.approx(val)
 
                 assert np.all(transfer.external_timesteps == timesteps)
 
 
-@pytest.mark.parametrize("external_source_rate_units, unit_conv", [
+@pytest.mark.parametrize("units, unit_conv", [
     ('g/s', 1),
     ('g/sec', 1),
     ('g/min', _SECONDS_PER_MINUTE),
@@ -137,7 +130,7 @@ def test_get_set(model, case_name, external_source_vectors, external_source_rate
     ('g/a', _SECONDS_PER_JULIAN_YEAR),
     ('g/year', _SECONDS_PER_JULIAN_YEAR),
     ])
-def test_units(external_source_rate_units, unit_conv, model):
+def test_units(units, unit_conv, model):
     """ Units testing"""
     # create external rate Xe
     components = ['Xe135', 'U235']
@@ -148,24 +141,21 @@ def test_units(external_source_rate_units, unit_conv, model):
     timesteps = np.arange(number_of_timesteps)
 
     for component in components:
-        transfer.set_external_source_rate('f', {component:1},
-                                external_source_rate * unit_conv \
-                                * openmc.data.atomic_mass(component) \
-                                /openmc.data.AVOGADRO ,
-                                external_source_rate_units=external_source_rate_units)
-        assert transfer.get_external_rate('f', component, timesteps)[0] == pytest.approx(
-                                                        external_source_rate)
+        rate = external_source_rate * unit_conv * atomic_mass(component) / AVOGADRO
+        transfer.set_external_source_rate('f', {component: 1}, rate, rate_units=units)
+        assert transfer.get_external_rate(
+            'f', component, timesteps)[0] == pytest.approx(external_source_rate)
 
 
 def test_external_source(run_in_tmpdir, model):
     """Tests external source depletion class without neither reaction rates nor
     decay but only external source rates"""
     # create transfer rate for U
-    vector = {'U235':1}
-    external_source = 10 #grams
+    vector = {'U235': 1}
+    external_source = 10  # grams
     op = CoupledOperator(model, CHAIN_PATH)
     integrator = openmc.deplete.PredictorIntegrator(
-        op, [1,1], 0.0, timestep_units = 'd')
+        op, [1, 1], 0.0, timestep_units = 'd')
     integrator.add_external_source_rate('f', vector, external_source/(24*3600))
     integrator.integrate()
 
@@ -174,9 +164,7 @@ def test_external_source(run_in_tmpdir, model):
     _, atoms = results.get_atoms(model.materials[0], "U235")
 
     # Ensure number of atoms equal external source
-    assert atoms[1]-atoms[0] == pytest.approx(external_source \
-                                             *openmc.data.AVOGADRO \
-                                             /openmc.data.atomic_mass('U235'))
-    assert atoms[2]-atoms[1] == pytest.approx(external_source \
-                                             *openmc.data.AVOGADRO \
-                                             /openmc.data.atomic_mass('U235'))
+    assert atoms[1] - atoms[0] == pytest.approx(
+        external_source * AVOGADRO / atomic_mass('U235'))
+    assert atoms[2] - atoms[1] == pytest.approx(
+        external_source * AVOGADRO / atomic_mass('U235'))

@@ -97,10 +97,10 @@ Surface::Surface(pugi::xml_node surf_node)
         dir_trans =
           get_node_array<double>(surf_node, "direction_transformation");
         if (dir_trans.size() != vector_size_exp) {
-          fatal_error(
-            fmt::format("Transformation on surface {} expects direction matrix "
-                        "size {} but was given size {}",
-              id_, vector_size_exp, dir_trans.size()));
+          fatal_error(fmt::format(
+            "Transformation on surface {} expects direction matrix size {} "
+            "but was given size {}",
+            id_, vector_size_exp, dir_trans.size()));
         }
       } else {
         dir_trans = {

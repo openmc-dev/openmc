@@ -296,7 +296,7 @@ class Surface(IDManagerMixin, ABC):
                         'transformation', transformation["direction"], 12)
                 else:
                     transformation["direction"] = np.append(
-                        np.identity(3).flatten(), np.zeros(3))
+                        np.identity(3), np.zeros(3,1), axis=1).flatten()
                 
                 if "position" in transformation.keys():
                     check_type(
@@ -307,7 +307,7 @@ class Surface(IDManagerMixin, ABC):
                         'transformation', transformation["position"], 12)
                 else:
                     transformation["position"] = np.append(
-                        np.identity(3).flatten(), np.zeros(3))
+                        np.identity(3), np.zeros(3,1), axis=1).flatten()
         
         self._transformation = transformation
 

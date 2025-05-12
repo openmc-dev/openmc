@@ -123,7 +123,7 @@ TranslationalPeriodicBC::TranslationalPeriodicBC(int i_surf, int j_surf)
 
   // Set the translation vector; it's length is the difference in the two
   // distances.
-  pos_trans_ = u * (d2 - d1);
+  translation_ = u * (d2 - d1);
 }
 
 void TranslationalPeriodicBC::handle_particle(
@@ -136,10 +136,10 @@ void TranslationalPeriodicBC::handle_particle(
   Position new_r;
   int new_surface;
   if (i_particle_surf == i_surf_) {
-    new_r = p.r() + pos_trans_;
+    new_r = p.r() + translation_;
     new_surface = p.surface() > 0 ? j_surf_ + 1 : -(j_surf_ + 1);
   } else if (i_particle_surf == j_surf_) {
-    new_r = p.r() - pos_trans_;
+    new_r = p.r() - translation_;
     new_surface = p.surface() > 0 ? i_surf_ + 1 : -(i_surf_ + 1);
   } else {
     throw std::runtime_error(
@@ -295,7 +295,7 @@ void RotationalPeriodicBC::handle_particle(
 //==============================================================================
 
 TransformationBC::TransformationBC(
-  vector<double, 12> dir_trans, vector<double, 12> pos_trans)
+  vector<double> dir_trans, vector<double> pos_trans)
 {
   // Set the transformation matrices
   dir_trans_ = dir_trans;

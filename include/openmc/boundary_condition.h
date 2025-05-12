@@ -159,7 +159,7 @@ protected:
 class TransformationBC : public BoundaryCondition {
 public:
   TransformationBC(
-    vector<double, 12> dir_trans, vector<double, 12> pos_trans);
+    vector<double> dir_trans, vector<double> pos_trans);
 
   void handle_particle(Particle& p, const Surface& surf) const override;
 
@@ -167,9 +167,9 @@ public:
 
 protected:
   //! Matrix by which particle trajectories are rotated
-  vector<double, 12> dir_trans_;
+  vector<double> dir_trans_;
   //! Matrix by which particle positions are translated
-  vector<double, 12> pos_trans_;
+  vector<double> pos_trans_;
 };
 
 } // namespace openmc

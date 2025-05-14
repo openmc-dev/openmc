@@ -385,7 +385,7 @@ bool HexagonalMesh::in_hexmesh(HexMeshIndex& ijkl) const
     if (abs(elem) > hex_radius_)
       return false;
   }
-  if (ijkl[3] > shape_[1])
+  if (ijkl[3] > shape_[1] || ijkl[3] <= 0)
     return false;
   return true;
 }

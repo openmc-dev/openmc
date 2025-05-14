@@ -182,6 +182,28 @@ private:
 };
 
 //==============================================================================
+//! Uniform distribution of points over a ball
+//==============================================================================
+
+class SpatialBall : public SpatialDistribution {
+public:
+  explicit SpatialBall(pugi::xml_node node);
+
+  //! Sample a position from the distribution
+  //! \param seed Pseudorandom number seed pointer
+  //! \return Sampled position
+  Position sample(uint64_t* seed) const override;
+
+  // Properties
+  Position origin() const { return origin_; }
+  double radius() const { return radius_; }
+
+private:
+  Position origin_; //!< Origin coordinates of ball
+  double radius_;   //!< Radius of ball
+};
+
+//==============================================================================
 //! Distribution at a single point
 //==============================================================================
 

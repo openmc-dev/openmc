@@ -984,6 +984,91 @@ class Box(Spatial):
         upper_right = params[len(params)//2:]
         return cls(lower_left, upper_right, only_fissionable)
 
+class Ball(Spatial):
+    """Uniform distribution of coordinates in a closed ball.
+
+    Parameters
+    ----------
+    origin : Iterable of float
+        Origin coordinates of ball
+    radius : float
+        Radius of ball
+
+    Attributes
+    ----------
+    origin : Iterable of float
+        Origin coordinates of ball
+    radius : float
+        Radius of ball
+
+    """
+
+    def __init__(
+        self,
+        origin: Sequence[float],
+        radius: float,
+    ):
+        self.origin = origin
+        self.radius = radius
+
+    @property
+    def origin(self):
+        return self._origin
+
+    @origin.setter
+    def origin(self, origin):
+        cv.check_type('origin coordinates', origin, Iterable, Real)
+        cv.check_length('origin coordinates', origin, 3)
+        self._origin = origin
+
+    @property
+    def radius(self):
+        return self._radius
+
+    @radius.setter
+    def radius(self, radius):
+        cv.check_type('radius', radius, Real)
+        self._radius = radius
+
+    def to_xml_element(self):
+        """Return XML representation of the ball distribution
+
+
+        Returns
+        -------
+        element : lxml.etree._Element
+            XML element containing ball distribution data
+
+        """
+        element = ET.Element('space')
+        element.set("type", "ball")
+        params = ET.SubElement(element, "parameters")
+        params.text = ' '.join(map(str, self.origin)) + ' ' + \
+                      str(self.radius)
+        return element
+
+    @classmethod
+    def from_xml_element(cls, elem: ET.Element):
+        """Generate ball distribution from an XML element
+
+        Parameters
+        ----------
+        elem : lxml.etree._Element
+
+            XML element
+
+        Returns
+        -------
+        openmc.stats.Ball
+            Ball distribution generated from XML element
+
+
+        """
+        params = [float(x) for x in get_text(elem, 'parameters').split()]
+        origin = params[:-1]
+        radius = params[-1]
+        return cls(origin, radius)
+
 
 class Point(Spatial):
     """Delta function in three dimensions.

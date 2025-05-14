@@ -34,6 +34,8 @@ unique_ptr<SpatialDistribution> SpatialDistribution::create(pugi::xml_node node)
     return UPtrSpace {new SpatialBox(node, true)};
   } else if (type == "point") {
     return UPtrSpace {new SpatialPoint(node)};
+  } else if (type == "ball") {
+    return UPtrSpace {new SpatialBall(node)};
   } else {
     fatal_error(fmt::format(
       "Invalid spatial distribution for external source: {}", type));
@@ -364,6 +366,33 @@ Position SpatialBox::sample(uint64_t* seed) const
 {
   Position xi {prn(seed), prn(seed), prn(seed)};
   return lower_left_ + xi * (upper_right_ - lower_left_);
+}
+
+//==============================================================================
+// SpatialBall implementation
+//==============================================================================
+
+SpatialBall::SpatialBall(pugi::xml_node node)
+{
+  // Read origin coordinates and radius
+  auto params = get_node_array<double>(node, "parameters");
+  if (params.size() != 4)
+    openmc::fatal_error("Ball spatial source must have four "
+                        "parameters specified.");
+
+  origin_ = Position {params[0], params[1], params[2]};
+  radius_ = params[3];
+}
+
+Position SpatialBall::sample(uint64_t* seed) const
+{
+  const double pi = 3.14159265358979323846264338327950288419716939937510582;
+  double u = 2.0 * prn(seed) - 1.0;
+  double phi = 2 * pi * prn(seed);
+  double r = std::cbrt(prn(seed));
+  Position xi {std::cos(phi) * std::sqrt(1 - u * u),
+    std::sin(phi) * std::sqrt(1 - u * u), u};
+  return origin_ + xi * (radius_ * r);
 }
 
 //==============================================================================

@@ -211,6 +211,7 @@ int32_t HexagonalMesh::get_bin_from_hexindices(const HexMeshIndex& ijkl) const
 {
   // get linear index from the HexMeshIndex
   int32_t r_0 = hex_radius(ijkl);
+  if (r_0 == 0) return 0;
   int32_t start_of_ring = (1 + 3 * r_0 * (r_0 - 1));
   int32_t bin_no = (ijkl[3] - 1) * hex_count_ + (1 + 3 * r_0 * (r_0 - 1)) +
                    offset_in_ring(ijkl, r_0);

@@ -1,0 +1,101 @@
+cff-version: "1.2.0"
+authors:
+- affiliation: Argonne National Laboratory
+  family-names: Paul Romano
+  orcid: "https://orcid.org/0000-0002-1147-045X"
+- affiliation: '@Argonne-National-Laboratory'
+  family-names: Patrick Shriwise
+- affiliation: MIT
+  family-names: Sterling Harper
+- family-names: Adam Nelson
+- family-names: Jonathan Shimwell
+- family-names: Andrew Johnson
+- affiliation: Argonne National Laboratory
+  family-names: John Tramm
+- family-names: Olek
+- affiliation: Tsinghua University
+  family-names: Jingang Liang
+- family-names: Gavin Ridley
+- affiliation: Argonne National Laboratory
+  family-names: Amanda Lund
+- family-names: Ethan Peterson
+- affiliation: MIT Plasma Science and Fusion Center (PSFC)
+  family-names: "R\xE9mi Delaporte-Mathurin"
+- affiliation: '@idaholab'
+  family-names: Guillaume Giudicelli
+- affiliation: University of Wisconsin - Madison
+  family-names: YoungHui Park
+- family-names: sam
+- affiliation: United Kingdom Atomic Energy Authority @ukaea
+  family-names: Andrew Davis
+- affiliation: United Neux
+  family-names: Erik B Knudsen
+- family-names: Miriam Kreher
+- family-names: Isaac Meyer
+- affiliation: University of Illinois
+  family-names: April Novak
+- affiliation: Fraunhofer INT
+  family-names: Olaf Schumann
+- affiliation: Argonne National Laboratory
+  family-names: Kalin Kiesling
+- family-names: Jiankai
+- affiliation: University of Michigan
+  family-names: Patrick Myers
+- affiliation: MIT
+  family-names: Nicholas Horelik
+- family-names: Lewis Gross
+- affiliation: MIT
+  family-names: Zhuoran Han
+- family-names: dryuri92
+- affiliation: Radiant Industries, Inc.
+  family-names: Josh May
+cff-version: 1.2.0
+date-released: '2025-03-19'
+doi: 10.5281/zenodo.15052864
+identifiers:
+- type: swh
+  value: swh:1:dir:77c02edb8a18e2e6121ee277c7a72b9dd4db1dad;origin=https://doi.org/10.5281/zenodo.591748;visit=swh:1:snp:1b4f6611f831d1109b2cc71777ec245f49ea6691;anchor=swh:1:rel:3e6c3d4979df3341b269618c45716733d4915e52;path=openmc-dev-openmc-e23760b
+license:
+- cc-by-4.0
+- MIT
+message: If you use this software, please cite it using the metadata from this file.
+repository-code: https://github.com/openmc-dev/openmc/tree/v0.15.2
+title: 'OpenMC Monte Carlo Code'
+type: software
+version: v0.15.2
+doi: 10.5281/zenodo.15185507
+message: If you use this software, please cite our article in the
+  Journal of Open Source Software.
+preferred-citation:
+  authors:
+  - family-names: Romano
+    given-names: Paul K.
+    orcid: "https://orcid.org/0000-0002-1147-045X"
+  - final-names: Horelik
+    given-names: Nicholas E.
+  - family-names: Herman
+    given-names: Bryan R.
+  - family-names: Nelson
+    given-names: Adam G.
+  - family-names: Forget
+    given-names: Benoit
+    orcid: "https://orcid.org/0000-0003-1459-7672"
+  - family-names: Smith
+    given-names: Kord
+  contact:
+  - family-names: Romano
+    given-names: Paul K.
+    orcid: "https://orcid.org/0000-0002-1147-045X"
+  date-published: 2015-08
+  doi: 10.1016/j.anucene.2014.07.048
+  issn: 1873-2100
+  volume: 82
+  journal: Annals of Nuclear Energy
+  publisher:
+    name: Elsevier
+  start: 90
+  title: "OpenMC: A state-of-the-art Monte Carlo code for research and development"
+  type: article
+  url: "https://www.sciencedirect.com/science/article/pii/S030645491400379X"
+  volume: 10
+

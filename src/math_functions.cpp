@@ -1,8 +1,10 @@
 #include "openmc/math_functions.h"
 
 #include "openmc/external/Faddeeva.hh"
+#include "openmc/external/LambertW.hpp"
 
 #include "openmc/constants.h"
+#include "openmc/error.h"
 #include "openmc/random_lcg.h"
 
 namespace openmc {
@@ -917,6 +919,23 @@ std::complex<double> w_derivative(std::complex<double> z, int order)
     return -2.0 * z * w_derivative(z, order - 1) -
            2.0 * (order - 1) * w_derivative(z, order - 2);
   }
+}
+
+double exprel(double x)
+{
+  if (std::abs(x) < 1e-16)
+    return x;
+  return std::expm1(x) / x;
+}
+
+double lambert_w0(double x)
+{
+  return LambertW::lambert_w0(x);
+}
+
+double lambert_wm1(double x)
+{
+  return LambertW::lambert_wm1(x);
 }
 
 } // namespace openmc

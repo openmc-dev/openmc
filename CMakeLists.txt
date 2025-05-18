@@ -445,7 +445,8 @@ list(APPEND libopenmc_SOURCES
 # Add bundled external dependencies
 list(APPEND libopenmc_SOURCES
   src/external/quartic_solver.cpp
-  src/external/Faddeeva.cc)
+  src/external/Faddeeva.cc
+  src/external/LambertW.cpp)
 
 # For Visual Studio compilers
 if(MSVC)

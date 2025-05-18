@@ -200,5 +200,33 @@ std::complex<double> faddeeva(std::complex<double> z);
 //! \return Derivative of Faddeeva function evaluated at z
 std::complex<double> w_derivative(std::complex<double> z, int order);
 
+//! Evaluate polynomial at a point
+//!
+//! \param degree integer argument
+//! \param coeffs Values of the coefficients of the polynomial
+//! \param x Real polynomial argument
+//! \return Value of polynomial with degree d
+//! and coefficients coeffs evaluated at point x
+double evaluate_polynomial(
+  const int degree, const double coeffs[], const double x);
+
+//! Evaluate relative exponential function
+//!
+//! \param x Real argument
+//! \return (exp(x)-1)/x without loss of precision near 0
+double exprel(double x);
+
+//! Evaluate principal branch of lambert_w function
+//!
+//! \param x Real argument
+//! \return principal branch of lambert_w function
+double lambert_w0(double x);
+
+//! Evaluate secondary branch of lambert_w function
+//!
+//! \param x Real argument
+//! \return principal branch of lambert_w function
+double lambert_wm1(double x);
+
 } // namespace openmc
 #endif // OPENMC_MATH_FUNCTIONS_H

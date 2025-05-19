@@ -4,7 +4,6 @@
 #include "openmc/external/LambertW.hpp"
 
 #include "openmc/constants.h"
-#include "openmc/error.h"
 #include "openmc/random_lcg.h"
 
 namespace openmc {

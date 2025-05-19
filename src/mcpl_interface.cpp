@@ -224,4 +224,145 @@ void write_mcpl_source_point(const char* filename, span<SourceSite> source_bank,
 #endif
 }
 
+// Collision track feature with MCPL
+#ifdef OPENMC_MCPL
+void write_mcpl_collision_track_bank(mcpl_outfile_t file_id,
+  span<CollisionTrackSite> collision_track_bank,
+  const vector<int64_t>& bank_index)
+{
+  int64_t dims_size = settings::n_particles;
+  int64_t count_size = simulation::work_per_rank;
+
+  if (mpi::master) {
+    // Particles are writeen to disk from the master node only
+
+    // Save collision track bank sites since the array is overwritten below
+#ifdef OPENMC_MPI
+    vector<CollisionTrackSite> temp_source {
+      collision_track_bank.begin(), collision_track_bank.end()};
+#endif
+
+    // loop over the other nodes and receive data - then write those.
+    for (int i = 0; i < mpi::n_procs; ++i) {
+      // number of particles for node node i
+      size_t count[] {static_cast<size_t>(bank_index[i + 1] - bank_index[i])};
+
+#ifdef OPENMC_MPI
+      if (i > 0)
+        MPI_Recv(collision_track_bank.data(), count[0],
+          mpi::collision_track_site, i, i, mpi::intracomm, MPI_STATUS_IGNORE);
+#endif
+      int index = 0;
+      for (const auto& site : collision_track_bank) {
+        // Binary blob should be added before the mcpl_add_particle function
+        std::ostringstream custom_data_stream;
+        custom_data_stream << " dE : " << site.dE
+                           << " ; event_mt : " << site.event_mt
+                           << " ; delayed_group : " << site.delayed_group
+                           << " ; cell_id : " << site.cell_id
+                           << " ; nuclide_id : " << site.nuclide_id
+                           << " ; mat_id : " << site.mat_id
+                           << " ; univ_id : " << site.univ_id
+                           << " ; parent_id : " << site.parent_id
+                           << " ; progeny_id : " << site.progeny_id;
+
+        std::string custom_data_str = custom_data_stream.str();
+        std::ostringstream custom_key;
+        custom_key << "blob_" << index;
+        std::string CK = custom_key.str();
+        mcpl_hdr_add_data(
+          file_id, CK.c_str(), custom_data_str.size(), custom_data_str.c_str());
+        index++;
+      }
+
+      for (const auto& site : collision_track_bank) {
+        // particle is now at the iterator
+        // write it to the mcpl-file
+        mcpl_particle_t p;
+        p.position[0] = site.r.x;
+        p.position[1] = site.r.y;
+        p.position[2] = site.r.z;
+
+        // mcpl requires that the direction vector is unit length
+        // which is also the case in openmc
+        p.direction[0] = site.u.x;
+        p.direction[1] = site.u.y;
+        p.direction[2] = site.u.z;
+
+        // MCPL stores kinetic energy in [MeV], time in [ms]
+        p.ekin = site.E * 1e-6;
+        p.time = site.time * 1e3;
+        p.weight = site.wgt;
+
+        switch (site.particle) {
+        case ParticleType::neutron:
+          p.pdgcode = 2112;
+          break;
+        case ParticleType::photon:
+          p.pdgcode = 22;
+          break;
+        case ParticleType::electron:
+          p.pdgcode = 11;
+          break;
+        case ParticleType::positron:
+          p.pdgcode = -11;
+          break;
+        }
+
+        mcpl_add_particle(file_id, &p);
+      }
+    }
+#ifdef OPENMC_MPI
+    // Restore state of collision track bank
+    std::copy(
+      temp_source.begin(), temp_source.end(), collision_track_bank.begin());
+#endif
+  } else {
+#ifdef OPENMC_MPI
+    MPI_Send(collision_track_bank.data(), count_size, mpi::collision_track_site,
+      0, mpi::rank, mpi::intracomm);
+#endif
+  }
+}
+#endif
+
+//==============================================================================
+
+void write_mcpl_collision_track(const char* filename,
+  span<CollisionTrackSite> collision_track_bank,
+  const vector<int64_t>& bank_index)
+{
+  std::string filename_(filename);
+  const auto extension = get_file_extension(filename_);
+  if (extension == "") {
+    filename_.append(".mcpl");
+  } else if (extension != "mcpl") {
+    warning("write_mcpl_collision_track was passed a file extension differing "
+            "from .mcpl, but an mcpl file will be written.");
+  }
+
+#ifdef OPENMC_MCPL
+  mcpl_outfile_t file_id;
+
+  std::string line;
+  if (mpi::master) {
+    file_id = mcpl_create_outfile(filename_.c_str());
+    if (VERSION_DEV) {
+      line = fmt::format("OpenMC {0}.{1}.{2}-development", VERSION_MAJOR,
+        VERSION_MINOR, VERSION_RELEASE);
+    } else {
+      line = fmt::format(
+        "OpenMC {0}.{1}.{2}", VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE);
+    }
+    mcpl_hdr_set_srcname(file_id, line.c_str());
+  }
+
+  write_mcpl_collision_track_bank(file_id, retina_bank, bank_index);
+
+  if (mpi::master) {
+    mcpl_close_outfile(file_id);
+  }
+#endif
+}
+
 } // namespace openmc

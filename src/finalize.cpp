@@ -174,6 +174,8 @@ int openmc_finalize()
   if (mpi::source_site != MPI_DATATYPE_NULL) {
     MPI_Type_free(&mpi::source_site);
   }
+  if (mpi::collision_track_site != MPI_DATATYPE_NULL)
+    MPI_Type_free(&mpi::collision_track_site);
 #endif
 
   openmc_reset_random_ray();

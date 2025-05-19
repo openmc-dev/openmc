@@ -342,6 +342,42 @@ void Particle::event_collide()
     collision_mg(*this);
   }
 
+  // Collision track feature to recording particle interaction
+  if (settings::collision_track) {
+
+    if (fission()) {
+      event_mt() = 18;
+    }
+    int cell_id = model::cells[this->lowest_coord().cell]->id_;
+    int nuclide_zaid = 1000 * data::nuclides[event_nuclide()]->Z_ +
+                       data::nuclides[event_nuclide()]->A_;
+    int universe_id = model::universes[this->lowest_coord().universe]->id_;
+    double delta_E = E_last() - E();
+    int material_id = model::materials[material()]->id_;
+
+    // ADD THOSE INFORMATION TO CollisionTrackSite
+    if (collision_track_conditions(cell_id, event_mt(), nuclide_zaid,
+          universe_id, material_id, delta_E)) {
+      CollisionTrackSite site;
+      site.r = r();
+      site.u = u();
+      site.E = E_last();
+      site.dE = delta_E;
+      site.time = time();
+      site.wgt = wgt();
+      site.event_mt = event_mt();
+      site.delayed_group = delayed_group();
+      site.cell_id = cell_id;
+      site.nuclide_id = nuclide_zaid;
+      site.material_id = material_id;
+      site.universe_id = universe_id;
+      site.particle = type();
+      site.parent_id = id();
+      site.progeny_id = n_progeny();
+      int64_t idx = simulation::collision_track_bank.thread_safe_append(site);
+    }
+  }
+
   // Score collision estimator tallies -- this is done after a collision
   // has occurred rather than before because we need information on the
   // outgoing energy for any tallies with an outgoing energy filter
@@ -975,6 +1011,41 @@ void add_surf_source_to_bank(Particle& p, const Surface& surf)
   site.parent_id = p.id();
   site.progeny_id = p.n_progeny();
   int64_t idx = simulation::surf_source_bank.thread_safe_append(site);
+}
+
+bool collision_track_conditions(int id_cell, int mt_event, int zaid_nuclide,
+  int id_universe, int id_material, double difference_E)
+{
+
+  bool condition = true;
+  // Condition if the particle is in an Active Batch
+  condition = condition && (simulation::current_batch > settings::n_inactive);
+  // Condition if maximum number of particle is met
+  condition = condition && (!simulation::collision_track_bank.full());
+  // Condition if the particle is in targeted cell
+  condition = condition && (settings::ct_cell_id.empty() ||
+                             settings::ct_cell_id.find(id_cell) !=
+                               settings::ct_cell_id.end());
+  // Condition if the particle undergo the targeted MT reaction
+  condition = condition && (settings::ct_mt_number.empty() ||
+                             settings::ct_mt_number.find(mt_event) !=
+                               settings::ct_mt_number.end());
+  // Condition if the particle is in the targeted universe
+  condition = condition && (settings::ct_universe_id.empty() ||
+                             settings::ct_universe_id.find(id_universe) !=
+                               settings::ct_universe_id.end());
+  // Condition if the particle is in the targeted material
+  condition = condition && (settings::ct_material_id.empty() ||
+                             settings::ct_material_id.find(id_material) !=
+                               settings::ct_material_id.end());
+  condition = condition && (settings::ct_nuclide_id.empty() ||
+                             settings::ct_nuclide_id.find(zaid_nuclide) !=
+                               settings::ct_nuclide_id.end());
+  // Energy deposited should be superior to a threshold. Used heavily in Scatter
+  // Detectors
+  condition = condition && (settings::ct_delta_E_threshold == 0 ||
+                             settings::ct_delta_E_threshold < difference_E);
+  return condition;
 }
 
 } // namespace openmc

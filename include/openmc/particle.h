@@ -132,6 +132,9 @@ ParticleType str_to_particle_type(std::string str);
 
 void add_surf_source_to_bank(Particle& p, const Surface& surf);
 
+bool collision_track_conditions(int id_cell, int mt_event, int zaid_nuclide,
+  int id_universe, int id_material, double difference_E);
+
 } // namespace openmc
 
 #endif // OPENMC_PARTICLE_H

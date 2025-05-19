@@ -41,10 +41,12 @@ namespace settings {
 // Boolean flags
 extern bool assume_separate;      //!< assume tallies are spatially separate?
 extern bool check_overlaps;       //!< check overlaps in geometry?
+extern bool collision_track;      //!< flag to use collision track feature?
 extern bool confidence_intervals; //!< use confidence intervals for results?
 extern bool
   create_fission_neutrons; //!< create fission neutrons (fixed source)?
 extern bool create_delayed_neutrons; //!< create delayed fission neutrons?
+extern bool ct_mcpl_write;           //!< flag for mcpl in collision track?
 extern "C" bool cmfd_run;            //!< is a CMFD run?
 extern bool
   delayed_photon_scaling;   //!< Scale fission photon yield to include delayed
@@ -145,6 +147,18 @@ extern std::unordered_set<int>
   statepoint_batch; //!< Batches when state should be written
 extern std::unordered_set<int>
   source_write_surf_id; //!< Surface ids where sources will be written
+extern std::unordered_set<int>
+  ct_cell_id; //!< Cell ids where collisions will be written
+extern std::unordered_set<int>
+  ct_mt_number; //!< MT Numbers where collisions will be written
+extern std::unordered_set<int>
+  ct_universe_id; //!< Universe IDs where collisions will be written
+extern std::unordered_set<int>
+  ct_material_id; //!< Material IDs where collisions will be written
+extern std::unordered_set<int>
+  ct_nuclide_id;       //!< Nuclide IDs where collisions will be written
+extern double ct_delta_E_threshold; // Threshold deposited energy to recrod the collisions 
+extern int64_t ct_max_collisions; //!< Maximum events recoreded by Collision track?
 
 extern int
   max_history_splits; //!< maximum number of particle splits for weight windows

@@ -347,6 +347,11 @@ void allocate_banks()
     // Allocate surface source bank
     simulation::surf_source_bank.reserve(settings::ssw_max_particles);
   }
+
+  if (settings::collision_track) {
+    // Allocate collision track bank
+    simulation::collision_track_bank.reserve(settings::ct_max_collisions);
+  }
 }
 
 void initialize_batch()
@@ -488,6 +493,27 @@ void finalize_batch()
         simulation::surf_source_bank.reserve(settings::ssw_max_particles);
       }
       ++simulation::ssw_current_file;
+    }
+  }
+  // Write collision track file if requested
+  if (settings::collision_track &&
+      simulation::current_batch == settings::n_batches) {
+    auto filename = settings::path_output + "collision_track";
+    auto collision_track_work_index = mpi::calculate_parallel_index_vector(
+      simulation::collision_track_bank.size());
+    span<CollisionTrackSite> collisiontrackbankspan(
+      simulation::collision_track_bank.begin(),
+      simulation::collision_track_bank.size());
+    std::string ext = settings::ct_mcpl_write ? "mcpl" : "h5";
+    write_message(
+      "Creating collision_track.{} file with {} recorded collisions ...", ext,
+      simulation::collision_track_bank.size(), 4);
+    if (settings::ct_mcpl_write) {
+      write_mcpl_collision_track(
+        filename.c_str(), collisiontrackbankspan, collision_track_work_index);
+    } else {
+      write_h5_collision_track(
+        filename.c_str(), collisiontrackbankspan, collision_track_work_index);
     }
   }
 }

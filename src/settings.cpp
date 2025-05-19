@@ -45,11 +45,13 @@ namespace settings {
 // Default values for boolean flags
 bool assume_separate {false};
 bool check_overlaps {false};
+bool collision_track {false};
 bool cmfd_run {false};
 bool confidence_intervals {false};
 bool create_delayed_neutrons {true};
 bool create_fission_neutrons {true};
 bool delayed_photon_scaling {true};
+bool ct_mcpl_write {false};
 bool entropy_on {false};
 bool event_based {false};
 bool ifp_on {false};
@@ -125,6 +127,13 @@ SolverType solver_type {SolverType::MONTE_CARLO};
 std::unordered_set<int> sourcepoint_batch;
 std::unordered_set<int> statepoint_batch;
 std::unordered_set<int> source_write_surf_id;
+std::unordered_set<int> ct_cell_id;
+std::unordered_set<int> ct_mt_number;
+std::unordered_set<int> ct_universe_id;
+std::unordered_set<int> ct_material_id;
+std::unordered_set<int> ct_nuclide_id;
+double ct_delta_E_threshold {0};
+int64_t ct_max_collisions;
 int64_t ssw_max_particles;
 int64_t ssw_max_files;
 int64_t ssw_cell_id {C_NONE};
@@ -925,6 +934,63 @@ void read_settings_xml(pugi::xml_node root)
     }
   }
 
+  // Check if the user has specified to write specific collisions
+  if (check_for_node(root, "collision_track")) {
+    collision_track = true;
+    // Get collision track node
+    xml_node node_ct = root.child("collision_track");
+    // Determine cell ids at which crossing particles are to be banked
+    if (check_for_node(node_ct, "cell_ids")) {
+      auto temp = get_node_array<int>(node_ct, "cell_ids");
+      for (const auto& b : temp) {
+        ct_cell_id.insert(b);
+      }
+    }
+    if (check_for_node(node_ct, "mt_numbers")) {
+      auto temp = get_node_array<int>(node_ct, "mt_numbers");
+      for (const auto& b : temp) {
+        ct_mt_number.insert(b);
+      }
+    }
+    if (check_for_node(node_ct, "universe_ids")) {
+      auto temp = get_node_array<int>(node_ct, "universe_ids");
+      for (const auto& b : temp) {
+        ct_universe_id.insert(b);
+      }
+    }
+    if (check_for_node(node_ct, "material_ids")) {
+      auto temp = get_node_array<int>(node_ct, "material_ids");
+      for (const auto& b : temp) {
+        ct_material_id.insert(b);
+      }
+    }
+    if (check_for_node(node_ct, "nuclide_ids")) {
+      auto temp = get_node_array<int>(node_ct, "nuclide_ids");
+      for (const auto& b : temp) {
+        ct_nuclide_id.insert(b);
+      }
+    }
+    if (check_for_node(node_ct, "delta_E_threshold")) {
+      ct_delta_E_threshold = std::stoll(get_node_value(node_ct, "delta_E_threshold"));
+    }
+    // Get maximum number of particles to be banked per collision
+    if (check_for_node(node_ct, "max_collisions")) {
+      ct_max_collisions = std::stoll(get_node_value(node_ct, "max_collisions"));
+    } else {
+      fatal_error("A maximum number of collisions needs to be specified "
+                  "using the 'max_collisions' parameter to store wanted "
+                  "collision events.");
+    }
+    if (check_for_node(node_ct, "mcpl")) {
+      ct_mcpl_write = get_node_value_bool(node_ct, "mcpl");
+      // Make sure MCPL support is enabled
+      if (ct_mcpl_write && !MCPL_ENABLED) {
+        fatal_error("Your build of OpenMC does not support writing MCPL "
+                    "surface source files.");
+      }
+    }
+  }
+
   // If source is not separate and is to be written out in the statepoint file,
   // make sure that the sourcepoint batch numbers are contained in the
   // statepoint list
@@ -1201,6 +1267,11 @@ void free_memory_settings()
   settings::sourcepoint_batch.clear();
   settings::source_write_surf_id.clear();
   settings::res_scat_nuclides.clear();
+  settings::ct_cell_id.clear();
+  settings::ct_mt_number.clear();
+  settings::ct_universe_id.clear();
+  settings::ct_material_id.clear();
+  settings::ct_nuclide_id.clear();
 }
 
 //==============================================================================

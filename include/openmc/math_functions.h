@@ -200,16 +200,6 @@ std::complex<double> faddeeva(std::complex<double> z);
 //! \return Derivative of Faddeeva function evaluated at z
 std::complex<double> w_derivative(std::complex<double> z, int order);
 
-//! Evaluate polynomial at a point
-//!
-//! \param degree integer argument
-//! \param coeffs Values of the coefficients of the polynomial
-//! \param x Real polynomial argument
-//! \return Value of polynomial with degree d
-//! and coefficients coeffs evaluated at point x
-double evaluate_polynomial(
-  const int degree, const double coeffs[], const double x);
-
 //! Evaluate relative exponential function
 //!
 //! \param x Real argument

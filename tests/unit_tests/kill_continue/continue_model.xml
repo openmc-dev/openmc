@@ -1,0 +1,35 @@
+<?xml version='1.0' encoding='utf-8'?>
+<model>
+  <materials>
+    <material depletable="true" id="1" name="fuel" volume="3.14159265">
+      <density units="g/cm3" value="10.744"/>
+      <nuclide ao="5.1724" name="O16"/>
+      <nuclide ao="0.068794" name="U235"/>
+      <nuclide ao="0.27604" name="U238"/>
+      <nuclide ao="0.13640201146" name="C12"/>
+      <nuclide ao="0.0015279885399999999" name="C13"/>
+    </material>
+  </materials>
+  <geometry>
+    <cell id="1" material="1" region="-3 1 -2" universe="1"/>
+    <surface boundary="reflective" coeffs="0.0" id="1" type="z-plane"/>
+    <surface boundary="reflective" coeffs="1.0" id="2" type="z-plane"/>
+    <surface boundary="reflective" coeffs="0.0 0.0 1.0" id="3" type="z-cylinder"/>
+  </geometry>
+  <settings>
+    <run_mode>eigenvalue</run_mode>
+    <particles>250</particles>
+    <batches>30</batches>
+    <inactive>10</inactive>
+    <source particle="neutron" strength="1.0" type="independent">
+      <space type="box">
+        <parameters>-0.5 -0.5 0.0 1.0 1.0 1.0</parameters>
+      </space>
+    </source>
+    <output>
+      <summary>false</summary>
+      <tallies>false</tallies>
+    </output>
+    <temperature_default>900.0</temperature_default>
+  </settings>
+  </model>

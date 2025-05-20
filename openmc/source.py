@@ -107,10 +107,12 @@ class SourceBase(ABC):
                 cv.check_type('fissionable', value, bool)
                 self._constraints['fissionable'] = value
             elif key == 'rejection_strategy':
-                cv.check_value('rejection strategy', value, ('resample', 'kill'))
+                cv.check_value('rejection strategy',
+                               value, ('resample', 'kill'))
                 self._constraints['rejection_strategy'] = value
             else:
-                raise ValueError(f'Unknown key in constraints dictionary: {key}')
+                raise ValueError(
+                    f'Unknown key in constraints dictionary: {key}')
 
     @abstractmethod
     def populate_xml_element(self, element):
@@ -144,13 +146,16 @@ class SourceBase(ABC):
                 dt_elem = ET.SubElement(constraints_elem, "domain_type")
                 dt_elem.text = constraints["domain_type"]
                 id_elem = ET.SubElement(constraints_elem, "domain_ids")
-                id_elem.text = ' '.join(str(uid) for uid in constraints["domain_ids"])
+                id_elem.text = ' '.join(str(uid)
+                                        for uid in constraints["domain_ids"])
             if "time_bounds" in constraints:
                 dt_elem = ET.SubElement(constraints_elem, "time_bounds")
-                dt_elem.text = ' '.join(str(t) for t in constraints["time_bounds"])
+                dt_elem.text = ' '.join(str(t)
+                                        for t in constraints["time_bounds"])
             if "energy_bounds" in constraints:
                 dt_elem = ET.SubElement(constraints_elem, "energy_bounds")
-                dt_elem.text = ' '.join(str(E) for E in constraints["energy_bounds"])
+                dt_elem.text = ' '.join(str(E)
+                                        for E in constraints["energy_bounds"])
             if "fissionable" in constraints:
                 dt_elem = ET.SubElement(constraints_elem, "fissionable")
                 dt_elem.text = str(constraints["fissionable"]).lower()
@@ -199,7 +204,8 @@ class SourceBase(ABC):
             elif source_type == 'mesh':
                 return MeshSource.from_xml_element(elem, meshes)
             else:
-                raise ValueError(f'Source type {source_type} is not recognized')
+                raise ValueError(
+                    f'Source type {source_type} is not recognized')
 
     @staticmethod
     def _get_constraints(elem: ET.Element) -> dict[str, Any]:
@@ -226,11 +232,13 @@ class SourceBase(ABC):
 
         time_bounds = get_text(elem, "time_bounds")
         if time_bounds is not None:
-            constraints['time_bounds'] = [float(x) for x in time_bounds.split()]
+            constraints['time_bounds'] = [
+                float(x) for x in time_bounds.split()]
 
         energy_bounds = get_text(elem, "energy_bounds")
         if energy_bounds is not None:
-            constraints['energy_bounds'] = [float(x) for x in energy_bounds.split()]
+            constraints['energy_bounds'] = [
+                float(x) for x in energy_bounds.split()]
 
         fissionable = get_text(elem, "fissionable")
         if fissionable is not None:
@@ -316,7 +324,8 @@ class IndependentSource(SourceBase):
         time: openmc.stats.Univariate | None = None,
         strength: float = 1.0,
         particle: str = 'neutron',
-        domains: Sequence[openmc.Cell | openmc.Material | openmc.Universe] | None = None,
+        domains: Sequence[openmc.Cell | openmc.Material |
+                          openmc.Universe] | None = None,
         constraints: dict[str, Any] | None = None
     ):
         if domains is not None:
@@ -526,11 +535,12 @@ class MeshSource(SourceBase):
         'fissionable', and 'rejection_strategy'.
 
     """
+
     def __init__(
             self,
             mesh: MeshBase,
             sources: Sequence[SourceBase],
-            constraints: dict[str, Any] | None  = None,
+            constraints: dict[str, Any] | None = None,
     ):
         super().__init__(strength=None, constraints=constraints)
         self.mesh = mesh
@@ -576,7 +586,8 @@ class MeshSource(SourceBase):
 
         elif isinstance(self.mesh, UnstructuredMesh):
             if s.ndim > 1:
-                raise ValueError('Sources must be a 1-D array for unstructured mesh')
+                raise ValueError(
+                    'Sources must be a 1-D array for unstructured mesh')
 
         self._sources = s
         for src in self._sources:
@@ -645,7 +656,8 @@ class MeshSource(SourceBase):
         mesh_id = int(get_text(elem, 'mesh'))
         mesh = meshes[mesh_id]
 
-        sources = [SourceBase.from_xml_element(e) for e in elem.iterchildren('source')]
+        sources = [SourceBase.from_xml_element(
+            e) for e in elem.iterchildren('source')]
         constraints = cls._get_constraints(elem)
         return cls(mesh, sources, constraints=constraints)
 
@@ -655,7 +667,8 @@ def Source(*args, **kwargs):
     A function for backward compatibility of sources. Will be removed in the
     future. Please update to IndependentSource.
     """
-    warnings.warn("This class is deprecated in favor of 'IndependentSource'", FutureWarning)
+    warnings.warn(
+        "This class is deprecated in favor of 'IndependentSource'", FutureWarning)
     return openmc.IndependentSource(*args, **kwargs)
 
 
@@ -702,6 +715,7 @@ class CompiledSource(SourceBase):
         'fissionable', and 'rejection_strategy'.
 
     """
+
     def __init__(
         self,
         library: PathLike,
@@ -913,7 +927,8 @@ class ParticleType(IntEnum):
         try:
             return cls[value.upper()]
         except KeyError:
-            raise ValueError(f"Invalid string for creation of {cls.__name__}: {value}")
+            raise ValueError(
+                f"Invalid string for creation of {cls.__name__}: {value}")
 
     @classmethod
     def from_pdg_number(cls, pdg_number: int) -> ParticleType:
@@ -983,6 +998,7 @@ class SourceParticle:
         Type of the particle
 
     """
+
     def __init__(
         self,
         r: Iterable[float] = (0., 0., 0.),
@@ -1041,7 +1057,8 @@ def write_source_file(
     openmc.SourceParticle
 
     """
-    cv.check_iterable_type("source particles", source_particles, SourceParticle)
+    cv.check_iterable_type(
+        "source particles", source_particles, SourceParticle)
     pl = ParticleList(source_particles)
     pl.export_to_hdf5(filename, **kwargs)
 
@@ -1103,7 +1120,8 @@ class ParticleList(list):
             for particle in f.particles:
                 # Determine particle type based on the PDG number
                 try:
-                    particle_type = ParticleType.from_pdg_number(particle.pdgcode)
+                    particle_type = ParticleType.from_pdg_number(
+                        particle.pdgcode)
                 except ValueError:
                     particle_type = "UNKNOWN"
 
@@ -1240,3 +1258,77 @@ def read_source_file(filename: PathLike) -> ParticleList:
         return ParticleList.from_hdf5(filename)
     else:
         return ParticleList.from_mcpl(filename)
+
+
+def read_collision_track_hdf5(filename):
+
+    with h5py.File(filename, 'r') as file:
+        data = file['collision_track_bank'][:]
+
+    return data
+
+
+def read_collision_track_mcpl(file_path):
+    import mcpl
+    myfile = mcpl.MCPLFile(file_path)
+    data = {
+        'r': [],  # for position (x, y, z)
+        'u': [],  # for direction (ux, uy, uz)
+        'E': [], 'dE': [], 'time': [], 'wgt': [],
+        'event_mt': [], 'delayed_group': [], 'cell_id': [],
+        'nuclide_id': [], 'material_id': [], 'universe_id': [],
+        'particle': [], 'parent_id': [], 'progeny_id': []
+    }
+
+    # Read and collect data from the MCPL file
+    for i, p in enumerate(myfile.particles):
+        if 'blob_' + str(i) in myfile.blobs:
+            blob_data = myfile.blobs['blob_' + str(i)]
+            decoded_str = blob_data.decode('utf-8')
+            pairs = decoded_str.split(';')
+            values_dict = {k.strip(): v.strip()
+                           for k, v in (pair.split(':') for pair in pairs if pair.strip())}
+
+            data['r'].append((p.x, p.y, p.z))  # Append as tuple
+            data['u'].append((p.ux, p.uy, p.uz))  # Append as tuple
+            data['E'].append(p.ekin * 1e6)
+            data['dE'].append(float(values_dict.get('dE', 0)))
+            data['time'].append(p.time * 1e-3)
+            data['wgt'].append(p.weight)
+            data['event_mt'].append(int(values_dict.get('event_mt', 0)))
+            data['delayed_group'].append(
+                int(values_dict.get('delayed_group', 0)))
+            data['cell_id'].append(int(values_dict.get('cell_id', 0)))
+            data['nuclide_id'].append(int(values_dict.get('nuclide_id', 0)))
+            data['mat_id'].append(int(values_dict.get('mat_id', 0)))
+            data['univ_id'].append(int(values_dict.get('univ_id', 0)))
+            data['particle'].append(p.pdgcode)
+            data['parent_id'].append(int(values_dict.get('parent_id', 0)))
+            data['progeny_id'].append(int(values_dict.get('progeny_id', 0)))
+
+    dtypes = [
+        ('r', [('x', 'f8'), ('y', 'f8'), ('z', 'f8')]),
+        ('u', [('x', 'f8'), ('y', 'f8'), ('z', 'f8')]),
+        ('E', 'f8'), ('dE', 'f8'), ('time', 'f8'), ('wgt', 'f8'),
+        ('event_mt', 'f8'), ('delayed_group', 'i4'), ('cell_id', 'i4'),
+        ('nuclide_id', 'i4'), ('mat_id', 'i4'), ('univ_id', 'i4'),
+        ('particle', 'i4'), ('parent_id', 'i8'), ('progeny_id', 'i8')
+    ]
+
+    structured_array = np.zeros(len(data['r']), dtype=dtypes)
+    for key in data:
+        structured_array[key] = data[key]  # Assign data
+
+    return structured_array
+
+
+def read_collision_track_file(filename):
+
+    filename = Path(filename)
+    if filename.suffix not in ('.h5', '.mcpl'):
+        raise ValueError('Retina file must have a .h5 or .mcpl extension.')
+
+    if filename.suffix == '.h5':
+        return read_collision_track_hdf5(filename)
+    else:
+        return read_collision_track_mcpl(filename)

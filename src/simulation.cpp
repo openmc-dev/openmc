@@ -497,7 +497,8 @@ void finalize_batch()
   }
   // Write collision track file if requested
   if (settings::collision_track &&
-      simulation::current_batch == settings::n_batches) {
+      (simulation::current_batch == settings::n_batches ||
+        simulation::collision_track_bank.full())) {
     auto filename = settings::path_output + "collision_track";
     auto collision_track_work_index = mpi::calculate_parallel_index_vector(
       simulation::collision_track_bank.size());
@@ -515,6 +516,7 @@ void finalize_batch()
       write_h5_collision_track(
         filename.c_str(), collisiontrackbankspan, collision_track_work_index);
     }
+    settings::collision_track = false;
   }
 }
 

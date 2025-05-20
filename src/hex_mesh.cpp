@@ -357,7 +357,7 @@ Position HexagonalMesh::get_position_from_hexindex(HexMeshIndex ijkl) const
   Position r;
   r.x = ijkl[0] * n0_[0] * size_ * sqrt(3) + ijkl[1] * n1_[0] * size_ * sqrt(3);
   r.y = ijkl[0] * n0_[1] * size_ * sqrt(3) + ijkl[1] * n1_[1] * size_ * sqrt(3);
-  r.z = ijkl[3] * width_[1];
+  r.z = ijkl[3] * width_[1] + lower_left_[1];
 
   return r;
 }

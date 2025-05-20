@@ -65,20 +65,21 @@ def test_killed_and_continue(run_in_tmpdir):
     The previous state is provided in the form of a few local files:
 
     continue_model.xml contains the necessary XML information
-    simple_chain.xml contians a simplified version of the CASL chain
+    chain_simple.xml contians a simplified version of the CASL chain
 
     continue_depletion_results.h5 contains the results output by
     an OpenMC (v0.15.2) depletion simulation that was killed in
     the middle of the third step
     """
     base_path = Path(__file__).parents[0]
+    chain_path = Path(__file__).parents[1]/'chain_simple.xml'
     model = openmc.Model.from_model_xml(f"{base_path}/kill_continue/continue_model.xml")
     power = 35000 # W
 
     time_steps = [1.0,2.0,3.0,4.0] # days
     prev_results = openmc.deplete.Results(f"{base_path}/kill_continue/continue_depletion_results.h5")
     operator = openmc.deplete.CoupledOperator(
-        model, prev_results=prev_results, chain_file=f"{base_path}/kill_continue/simple_chain.xml"
+        model, prev_results=prev_results, chain_file=chain_path
     )
     integrator = openmc.deplete.CECMIntegrator(
         operator,

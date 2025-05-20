@@ -551,6 +551,9 @@ void HexagonalMesh::raytrace_mesh(
     } else {
       distances[3] =
         distance_to_hex_boundary(ijkl, 3, r0, u, traveled_distance);
+      for (int j = 0; j<3; ++j) {
+        distances[k].next_index[3]=ijkl[3];
+      }
     }
 
     // Check if we have left the interior of the mesh

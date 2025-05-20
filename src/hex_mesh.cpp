@@ -367,12 +367,37 @@ HexagonalMesh::HexMeshIndex HexagonalMesh::get_hexindices(
 {
   // return index of mesh element in hexes
   local_coords(r);
+  vector<double> frac_cds;
+  vector<int> rd_cds;
+  vector<double> diff_cds;
 
+  // r coordinate
+  frac_cds.push_back((2.0 / 3.0 * -r.y) / this->size_);
+  // q coordinate
+  frac_cds.push_back((sqrt(3.0) / 3.0 * r.x + 1.0 / 3.0 * r.y) / this->size_);
+  // s coordinate
+  frac_cds.push_back( -frac_cds[0] - frac_cds[1]);
+  
+  for (auto it = frac_cds.begin(); it != frac_cds.end(); it++) {
+    rd_cds.push_back(std::round(*it));
+    diff_cds.push_back(std::abs(std::round(*it)-*it));
+  }
+  if (diff_cds[0] > diff_cds[1] && diff_cds[0] > diff_cds[2]) {
+    rd_cds[0] = -rd_cds[1] - rd_cds[2];
+  } else if (diff_cds[1] > diff_cds[2]) {
+    rd_cds[1] = -rd_cds[0] - rd_cds[2];
+  } else {
+    rd_cds[2] = -rd_cds[1] - rd_cds[2];
+  }
+
+  // z is idx 1 in width_ and lower_left_ / upper_right_
+  rd_cds.push_back(std::ceil((r.z - lower_left_[1]) / width_[1]));
+
+  //transfer to HexMeshIndex
   HexMeshIndex idx;
-  idx[0] = get_hexindex_in_direction(r, 0);
-  idx[1] = get_hexindex_in_direction(r, 1);
-  idx[2] = -idx[0] - idx[1];
-  idx[3] = get_hexindex_in_direction(r, 3);
+  for (int i = 0; i < 4; i++){
+    idx[i] = rd_cds[i];
+  }
 
   // check if either index is out of bounds
   in_mesh = in_hexmesh(idx);

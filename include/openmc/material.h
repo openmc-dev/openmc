@@ -56,6 +56,8 @@ public:
 
   void calculate_xs(Particle& p) const;
 
+  double charge_density();
+
   //! Assign thermal scattering tables to specific nuclides within the material
   //! so the code knows when to apply bound thermal scattering data
   void init_thermal();

@@ -1011,7 +1011,8 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
         score = score_neutron_heating(
           p, tally, flux, HEATING, i_nuclide, atom_density);
       } else {
-        if (i_nuclide == -1 || i_nuclide == p.event_nuclide()) {
+        if (i_nuclide == -1 || i_nuclide == p.event_nuclide() ||
+            p.event_nuclide() == -1) {
           // The energy deposited is the difference between the pre-collision
           // and post-collision energy...
           score = E - p.E();
@@ -1020,6 +1021,17 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
           score -= p.bank_second_E();
 
           score *= p.wgt_last();
+          if (i_nuclide != -1 && p.event_nuclide() == -1) {
+            const auto& mat {model::materials[p.material()]};
+            int n = mat->nuclide_.size();
+            int z = data::nuclides[i_nuclide]->Z_;
+            for (int i = 0; i < n; ++i) {
+              if (mat->nuclide_[i] == i_nuclide) {
+                score *= (z * mat->atom_density_[i] / mat->charge_density());
+                break;
+              }
+            }
+          }
         } else {
           score = 0.0;
         }

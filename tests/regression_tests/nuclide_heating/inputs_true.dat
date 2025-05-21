@@ -1,0 +1,42 @@
+<?xml version='1.0' encoding='utf-8'?>
+<model>
+  <materials>
+    <material id="1">
+      <density units="g/cm3" value="1.0"/>
+      <nuclide ao="0.5" name="Cu63"/>
+      <nuclide ao="0.5" name="Cu65"/>
+    </material>
+  </materials>
+  <geometry>
+    <cell id="1" material="1" region="-1" universe="1"/>
+    <surface boundary="reflective" coeffs="0.0 0.0 0.0 20" id="1" type="sphere"/>
+  </geometry>
+  <settings>
+    <run_mode>fixed source</run_mode>
+    <particles>10000</particles>
+    <batches>1</batches>
+    <source particle="photon" strength="1.0" type="independent">
+      <space type="point">
+        <parameters>0 0 0</parameters>
+      </space>
+      <angle type="isotropic"/>
+      <energy type="discrete">
+        <parameters>10000000.0 1.0</parameters>
+      </energy>
+    </source>
+    <electron_treatment>ttb</electron_treatment>
+    <photon_transport>true</photon_transport>
+    <cutoff>
+      <energy_photon>1000</energy_photon>
+    </cutoff>
+  </settings>
+  <tallies>
+    <tally id="1">
+      <nuclides>Cu63 Cu65</nuclides>
+      <scores>heating</scores>
+    </tally>
+    <tally id="2">
+      <scores>heating</scores>
+    </tally>
+  </tallies>
+</model>

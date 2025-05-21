@@ -933,6 +933,20 @@ void Material::calculate_photon_xs(Particle& p) const
   }
 }
 
+double Material::charge_density()
+{
+  double val = 0.0;
+  // Add contribution from each nuclide in material
+  for (int i = 0; i < nuclide_.size(); ++i) {
+
+    // Get nuclide index
+    int i_nuclide = nuclide_[i];
+    int z = data::nuclides[i_nuclide]->Z_;
+    val += atom_density_(i) * z;
+  }
+  return val;
+}
+
 void Material::set_id(int32_t id)
 {
   assert(id >= 0 || id == C_NONE);

@@ -71,6 +71,10 @@ public:
 
   int get_hexindex_in_direction(const Position& r, int i) const;
 
+  double frac_hexindex_in_direction(const Position& r, int i) const;
+
+  HexMeshIndex round_frac_hexindex(vector<double> frac_ijkl) const;
+
   int get_index_in_direction(double r, int i) const;
 
   virtual std::string get_mesh_type() const override;

@@ -820,14 +820,14 @@ class Integrator(ABC):
 
     def _get_start_data(self):
         """
-        This function fetches the starting state of a simulation in terms of the
-        simulation physical time at which to start and the index at which the
-        depletion simulation should start. When no previous results exist,
-        the time and index are both zero. When previous results do exist, it 
-        returns the time corresponding to beginning the previous results last
-``
-        timestep and the index as N-1 where N is the number of previous StepResults
-        found in the previous Results. (as expected from 0-based indexing)
+        This function fetches the starting state of a depletion simulation
+        in terms of the simulation physical time at which to start and the
+        index at which the depletion simulation should start. When no
+        previous results exist, the time and index are both zero. When 
+        previous results do exist, it returns the time corresponding to
+        beginning the previous results last timestep and the index as 
+        N-1 where N is the number of previous StepResults found in 
+        the previous Results (as expected from 0-based indexing).
         
         Note that the openmc.deplete.Results.time object is a list of float with
         [t,t+dt] where t is the beginning of timestep time and t+dt is the end of
@@ -840,7 +840,7 @@ class Integrator(ABC):
         Returns
         _______
         start_time : float
-        index: index
+        index: int
         """
         if self.operator.prev_res is None:
             return 0.0, 0

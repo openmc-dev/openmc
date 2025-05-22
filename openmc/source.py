@@ -1300,8 +1300,8 @@ def read_collision_track_mcpl(file_path):
                 int(values_dict.get('delayed_group', 0)))
             data['cell_id'].append(int(values_dict.get('cell_id', 0)))
             data['nuclide_id'].append(int(values_dict.get('nuclide_id', 0)))
-            data['mat_id'].append(int(values_dict.get('mat_id', 0)))
-            data['univ_id'].append(int(values_dict.get('univ_id', 0)))
+            data['material_id'].append(int(values_dict.get('material_id', 0)))
+            data['universe_id'].append(int(values_dict.get('universe_id', 0)))
             data['particle'].append(p.pdgcode)
             data['parent_id'].append(int(values_dict.get('parent_id', 0)))
             data['progeny_id'].append(int(values_dict.get('progeny_id', 0)))
@@ -1311,7 +1311,7 @@ def read_collision_track_mcpl(file_path):
         ('u', [('x', 'f8'), ('y', 'f8'), ('z', 'f8')]),
         ('E', 'f8'), ('dE', 'f8'), ('time', 'f8'), ('wgt', 'f8'),
         ('event_mt', 'f8'), ('delayed_group', 'i4'), ('cell_id', 'i4'),
-        ('nuclide_id', 'i4'), ('mat_id', 'i4'), ('univ_id', 'i4'),
+        ('nuclide_id', 'i4'), ('material_id', 'i4'), ('universe_id', 'i4'),
         ('particle', 'i4'), ('parent_id', 'i8'), ('progeny_id', 'i8')
     ]
 

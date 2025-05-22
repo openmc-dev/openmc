@@ -756,6 +756,24 @@ instance, whereas the :meth:`openmc.Track.filter` method returns a new
             track_files = [f"tracks_p{rank}.h5" for rank in range(32)]
             openmc.Tracks.combine(track_files, "tracks.h5")
 
+Collision Track File
+---------------------
+
+OpenMC can generate a collision track file that contains detailed collision information
+(position, direction, energy, deposited energy, time, weight, cell ID, material ID, 
+universe ID, nuclide ZAID, particle type, particle delayed group and particle ID) 
+for each particle collision depending on user defined parameters. To invoke this feature,
+call the collision_track function as shown
+in this example::
+
+  settings.collision_track = {"max_collisions": 300, "mt_numbers" : [18], "material_ids" : [1],
+                     "nuclide_ids": [92238], "cell_ids": [22,33]}
+
+In this example, collision track information would be written in the ``collision_track.h5``
+file at the end of the simulation. The file will contain 300 collisions inside material of id = 1 
+of reaction MT18 (Fission) on the nuclide 92238 that occured in cells with ids 22 and 33.
+The file can be opened using  :meth:`openmc.read_collision_track_file()`
+
 -----------------------
 Restarting a Simulation
 -----------------------

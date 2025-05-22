@@ -261,8 +261,8 @@ void write_mcpl_collision_track_bank(mcpl_outfile_t file_id,
                            << " ; delayed_group : " << site.delayed_group
                            << " ; cell_id : " << site.cell_id
                            << " ; nuclide_id : " << site.nuclide_id
-                           << " ; mat_id : " << site.mat_id
-                           << " ; univ_id : " << site.univ_id
+                           << " ; material_id : " << site.material_id
+                           << " ; universe_id : " << site.universe_id
                            << " ; parent_id : " << site.parent_id
                            << " ; progeny_id : " << site.progeny_id;
 
@@ -357,7 +357,7 @@ void write_mcpl_collision_track(const char* filename,
     mcpl_hdr_set_srcname(file_id, line.c_str());
   }
 
-  write_mcpl_collision_track_bank(file_id, retina_bank, bank_index);
+  write_mcpl_collision_track_bank(file_id, collision_track_bank, bank_index);
 
   if (mpi::master) {
     mcpl_close_outfile(file_id);

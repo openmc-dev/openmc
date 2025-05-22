@@ -770,9 +770,40 @@ in this example::
                      "nuclide_ids": [92238], "cell_ids": [22,33]}
 
 In this example, collision track information would be written in the ``collision_track.h5``
-file at the end of the simulation. The file will contain 300 collisions inside material of id = 1 
-of reaction MT18 (Fission) on the nuclide 92238 that occured in cells with ids 22 and 33.
-The file can be opened using  :meth:`openmc.read_collision_track_file()`
+file at the end of the simulation. The file will contain 300 collisions inside material of which 
+its ID is 1, and with the reaction MT18 (Fission) on the nuclide 92238 that occured in cells with IDs 22 and 33.
+The file can be opened using  :meth:`openmc.read_collision_track_file()`. The example below
+showcase how to use the collision track feature, while displaying the fields obtained from the file
+
+>>> data = openmc.read_collision_track_file('collision_track.h5')
+>>> data.dtype
+dtype({'names': ['r', 'u', 'E', 'dE', 'time', 'wgt', 'event_mt', 
+'delayed_group', 'cell_id', 'nuclide_id', 'material_id', 'universe_id', 
+'particle', 'parent_id', 'progeny_id'], 
+'formats': [[('x', '<f8'), ('y', '<f8'), ('z', '<f8')], 
+[('x', '<f8'), ('y', '<f8'), ('z', '<f8')], '<f8', '<f8', '<f8', '<f8', 
+'<i4', '<i4', '<i4', '<i4', '<i4', '<i4', '<i4', '<i8', '<i8'], 
+'offsets': [0, 24, 48, 56, 64, 72, 80, 84, 88, 92, 96, 100, 104, 112, 120], 
+'itemsize': 128})
+
+
+The full list of fields is as follows:
+
+  :r: Position (each direction in [cm])
+  :u: Direction
+  :E: Energy in [eV]
+  :dE: Deposited Energy during collision [eV]
+  :time: Time in [s]
+  :wgt: Weight
+  :event_mt: Reaction MT number
+  :delayed_group: Delayed Group of the particle
+  :cell_id: Cell ID
+  :nuclide_id: Nuclide ZAID
+  :material_id: Material ID
+  :universe_id: Universe ID
+  :particle: Particle type
+  :parent_id: Source particle ID
+  :progeny_id: Number of progeny produced by this particle
 
 -----------------------
 Restarting a Simulation

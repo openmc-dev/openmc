@@ -58,7 +58,7 @@ class Settings:
         :nuclide_ids: List of nuclide ZAIDs to define nuclides in which collisions should be banked. (list of int)
         :mt_numbers: List of reaction MT numbers to define specific reactions that should be banked 
                     (ex: Fission:18, Sactter:2, Absorption: 101). (list of int)
-        :delta_E_threshold: Number to define the minimum deposited energy during 
+        :deposited_E_threshold: Number to define the minimum deposited energy during 
                      per collision to trigger banking.(float)
     create_fission_neutrons : bool
         Indicate whether fission neutrons should be created or not.
@@ -851,7 +851,7 @@ class Settings:
         for key, value in collision_track.items():
             cv.check_value('collision_track key', key,
                            ('cell_ids', 'mt_numbers', 'universe_ids', 'material_ids', 'nuclide_ids',
-                            'delta_E_threshold', 'max_collisions', 'mcpl'))
+                            'deposited_E_threshold', 'max_collisions', 'mcpl'))
             if key == 'cell_ids':
                 cv.check_type('cell ids for collision tracking data banking', value,
                               Iterable, Integral)
@@ -882,7 +882,7 @@ class Settings:
                 for nuclide_id in value:
                     cv.check_greater_than('nuclide ids for collision  banking',
                                           nuclide_id, 0)
-            elif key == 'delta_E_threshold':
+            elif key == 'deposited_E_threshold':
                 cv.check_type('Deposited Energy Threshold for collision tracking data banking',
                               value, Real)
                 cv.check_greater_than('Deposited Energy Threshold for collision tracking data banking',
@@ -1488,9 +1488,9 @@ class Settings:
                 subelement = ET.SubElement(element, "nuclide_ids")
                 subelement.text = ' '.join(
                     str(x) for x in self._collision_track['nuclide_ids'])
-            if 'delta_E_threshold' in self._collision_track:
-                subelement = ET.SubElement(element, "delta_E_threshold")
-                subelement.text = str(self._collision_track['delta_E_threshold'])
+            if 'deposited_E_threshold' in self._collision_track:
+                subelement = ET.SubElement(element, "deposited_E_threshold")
+                subelement.text = str(self._collision_track['deposited_E_threshold'])
             if 'max_collisions' in self._collision_track:
                 subelement = ET.SubElement(element, "max_collisions")
                 subelement.text = str(self._collision_track['max_collisions'])
@@ -1941,7 +1941,7 @@ class Settings:
         elem = root.find('collision_track')
         if elem is not None:
             for key in ('cell_ids', 'mt_numbers', 'universe_ids', 'material_ids', 'nuclide_ids',
-                        'delta_E_threshold', 'max_collisions', 'mcpl'):
+                        'deposited_E_threshold', 'max_collisions', 'mcpl'):
                 value = get_text(elem, key)
                 if value is not None:
                     if key == 'cell_ids':
@@ -1954,7 +1954,7 @@ class Settings:
                         value = [int(x) for x in value.split()]
                     elif key == 'nuclide_ids':
                         value = [int(x) for x in value.split()]
-                    elif key in ('delta_E_threshold'):
+                    elif key in ('deposited_E_threshold'):
                         value = float(value)
                     elif key in ('max_collisions'):
                         value = int(value)

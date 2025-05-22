@@ -84,7 +84,7 @@ def geometry():
         {"max_collisions": 200, "material_ids": [1]},
         {"max_collisions": 200, "universe_ids": [1]},
         {"max_collisions": 200, "nuclide_ids": [1001]},
-        {"max_collisions": 200, "delta_E_threshold": 200000},
+        {"max_collisions": 200, "deposited_E_threshold": 200000},
         {"max_collisions": 200, "mcpl": True}
 
     ],

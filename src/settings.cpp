@@ -132,7 +132,7 @@ std::unordered_set<int> ct_mt_number;
 std::unordered_set<int> ct_universe_id;
 std::unordered_set<int> ct_material_id;
 std::unordered_set<int> ct_nuclide_id;
-double ct_delta_E_threshold {0};
+double ct_deposited_E_threshold {0};
 int64_t ct_max_collisions;
 int64_t ssw_max_particles;
 int64_t ssw_max_files;
@@ -970,8 +970,8 @@ void read_settings_xml(pugi::xml_node root)
         ct_nuclide_id.insert(b);
       }
     }
-    if (check_for_node(node_ct, "delta_E_threshold")) {
-      ct_delta_E_threshold = std::stoll(get_node_value(node_ct, "delta_E_threshold"));
+    if (check_for_node(node_ct, "deposited_E_threshold")) {
+      ct_deposited_E_threshold = std::stoll(get_node_value(node_ct, "deposited_E_threshold"));
     }
     // Get maximum number of particles to be banked per collision
     if (check_for_node(node_ct, "max_collisions")) {

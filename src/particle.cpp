@@ -1043,8 +1043,8 @@ bool collision_track_conditions(int id_cell, int mt_event, int zaid_nuclide,
                                settings::ct_nuclide_id.end());
   // Energy deposited should be superior to a threshold. Used heavily in Scatter
   // Detectors
-  condition = condition && (settings::ct_delta_E_threshold == 0 ||
-                             settings::ct_delta_E_threshold < difference_E);
+  condition = condition && (settings::ct_deposited_E_threshold == 0 ||
+                             settings::ct_deposited_E_threshold < difference_E);
   return condition;
 }
 

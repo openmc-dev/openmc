@@ -157,7 +157,7 @@ extern std::unordered_set<int>
   ct_material_id; //!< Material IDs where collisions will be written
 extern std::unordered_set<int>
   ct_nuclide_id;       //!< Nuclide IDs where collisions will be written
-extern double ct_delta_E_threshold; // Threshold deposited energy to recrod the collisions 
+extern double ct_deposited_E_threshold; // Threshold deposited energy to recrod the collisions 
 extern int64_t ct_max_collisions; //!< Maximum events recoreded by Collision track?
 
 extern int

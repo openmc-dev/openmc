@@ -36,7 +36,7 @@ of collisions. If no specific collision type, location, or material is designate
 the element defaults to tracking all collisions across the model. Caution: This can 
 be very memory intensive. For more targeted tracking, users can employ a variety of 
 parameters such as ``cell_ids``, ``mt_numbers``, ``universe_ids``, ``material_ids``, 
-``nuclide_ids``, and ``delta_E_threshold`` to refine the selection of particle interactions 
+``nuclide_ids``, and ``deposited_E_threshold`` to refine the selection of particle interactions 
 to be banked. This element can contain one or more of the following attributes or sub-elements:
 
   :max_collisions:
@@ -79,7 +79,7 @@ to be banked. This element can contain one or more of the following attributes o
 
     *Default*: None
 
-  :delta_E_threshold:
+  :deposited_E_threshold:
     A float defining the minimum deposited energy per collision (in eV) 
     to trigger banking.
 

@@ -224,7 +224,7 @@ def model_1():
             "case-06", 
             "model_1", 
             {"max_collisions": 300,"mt_numbers" : [2,18,101], "material_ids" : [1,11],"universe_ids": [77] ,
-                 "nuclide_ids": [92238, 92235,1001,92234], "cell_ids": [22,33], "delta_E_threshold" : 100000.5} 
+                 "nuclide_ids": [92238, 92235,1001,92234], "cell_ids": [22,33], "deposited_E_threshold" : 100000.5} 
         ), #Make a test with all the options of the feature
     ],
 )

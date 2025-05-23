@@ -221,7 +221,7 @@ Prerequisites
       OpenMC's built-in plotting capabilities use the libpng library to produce
       compressed PNG files. In the absence of this library, OpenMC will fallback
       to writing PPM files, which are uncompressed and only supported by select
-      image viewers. libpng can be installed on Ddebian derivates with::
+      image viewers. libpng can be installed on Debian derivates with::
 
           sudo apt install libpng-dev
 

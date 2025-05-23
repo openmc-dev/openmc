@@ -4,6 +4,7 @@ import lxml.etree as ET
 import numpy as np
 import pytest
 import openmc
+import openmc.lib
 from openmc.utility_funcs import change_directory
 
 pytestmark = pytest.mark.skipif(

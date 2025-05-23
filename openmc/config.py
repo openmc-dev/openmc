@@ -60,7 +60,7 @@ class _Config(MutableMapping):
         return repr(self._mapping)
 
     def _set_path(self, key, value):
-        self._mapping[key] = p = Path(value)
+        self._mapping[key] = p = Path(value).resolve()
         if not p.exists():
             warnings.warn(f"'{value}' does not exist.")
 

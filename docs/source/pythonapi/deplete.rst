@@ -206,14 +206,15 @@ total system energy.
 The :class:`openmc.deplete.IndependentOperator` uses inner classes subclassed
 from those listed above to perform similar calculations.
 
-The following classes are used to define transfer rates to model continuous
-removal or feed of nuclides during depletion.
+The following classes are used to define external source rates or transfer rates
+to model continuous removal or feed of nuclides during depletion.
 
 .. autosummary::
    :toctree: generated
    :nosignatures:
    :template: myclass.rst
 
+   transfer_rates.ExternalSourceRates
    transfer_rates.TransferRates
 
 Intermediate Classes

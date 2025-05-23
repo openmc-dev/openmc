@@ -640,7 +640,7 @@ void Material::init_bremsstrahlung()
     // Allocate arrays for TTB data
     ttb->pdf = xt::zeros<double>({n_e, n_e});
     ttb->cdf = xt::zeros<double>({n_e, n_e});
-    ttb->yield = xt::empty<double>({n_e});
+    ttb->yield = xt::zeros<double>({n_e});
 
     // Allocate temporary arrays
     xt::xtensor<double, 1> stopping_power_collision({n_e}, 0.0);
@@ -777,14 +777,15 @@ void Material::init_bremsstrahlung()
       // Loop over photon energies
       double c = 0.0;
       for (int i = 0; i < j; ++i) {
-        // Integrate the CDF from the PDF using the trapezoidal rule in log-log
-        // space
+        // Integrate the CDF from the PDF using the fact that the PDF is linear
+        // in log-log space
         double w_l = std::log(data::ttb_e_grid(i));
         double w_r = std::log(data::ttb_e_grid(i + 1));
         double x_l = std::log(ttb->pdf(j, i));
         double x_r = std::log(ttb->pdf(j, i + 1));
-
-        c += 0.5 * (w_r - w_l) * (std::exp(w_l + x_l) + std::exp(w_r + x_r));
+        double beta = (x_r - x_l) / (w_r - w_l);
+        double a = beta + 1.0;
+        c += std::exp(w_l + x_l) / a * std::expm1(a * (w_r - w_l));
         ttb->cdf(j, i + 1) = c;
       }
 

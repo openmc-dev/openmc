@@ -330,7 +330,7 @@ double score_neutron_heating(const Particle& p, const Tally& tally, double flux,
 double score_particle_heating(const Particle& p, const Tally& tally,
   double flux, int rxn_bin, int i_nuclide, double atom_density)
 {
-  if (p.type() == Type::neutron)
+  if (p.type() == ParticleType::neutron)
     return score_neutron_heating(
       p, tally, flux, rxn_bin, i_nuclide, atom_density);
   if (i_nuclide == -1 || i_nuclide == p.event_nuclide() ||
@@ -345,7 +345,7 @@ double score_particle_heating(const Particle& p, const Tally& tally,
     score -= p.bank_second_E();
     score *= p.wgt_last();
 
-    // if no event nuclide (charged particle) scale energy deposition
+    // if no event_nuclide (charged particle) scale energy deposition
     // by fractional charge density
     if (i_nuclide != -1 && p.event_nuclide() == -1) {
       const auto& mat {model::materials[p.material()]};
@@ -358,6 +358,7 @@ double score_particle_heating(const Particle& p, const Tally& tally,
         }
       }
     }
+    return score;
   }
   return 0.0;
 }

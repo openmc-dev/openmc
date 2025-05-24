@@ -225,21 +225,6 @@ def get_microxs_and_flux(
     return fluxes, micros
 
 
-def get_material_copies(model: openmc.Model, mmv: openmc.MeshMaterialVolumes):
-    mat_ids = mmv._materials[mmv._materials > -1]
-    elems, _ = np.where(mmv._materials > -1)
-    # TODO: Handle DAGMC case
-    material_dict = model.geometry.get_all_materials()
-    materials = []
-    for elem, mat_id in zip(elems, mat_ids):
-        mat = material_dict[mat_id]
-        new_mat = mat.clone()
-        new_mat.depletable = True
-        new_mat.name = 'Element {elem}, Material {mat_id}'
-        materials.append(new_mat)
-    return materials
-
-
 class MicroXS:
     """Microscopic cross section data for use in transport-independent depletion.
 

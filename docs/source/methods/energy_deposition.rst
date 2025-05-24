@@ -81,6 +81,34 @@ NJOY computes the fission KERMA coefficient using this energy-balance method to 
     The energy from delayed neutrons and photons and beta particles is intentionally
     left out from the NJOY calculations.
 
+----------------------------------
+Photon and Charged Particles Kerma
+----------------------------------
+
+In a similar way to neutron heating, the heating rate from photons or charged particles is defined as:
+
+.. math::
+
+    H(E) = \phi(E)\sum_i\rho_i\sum_rk_{i, r}(E),
+
+and has units energy per time, typically eV/s. Here, :math:`k_{i, r}` are the
+KERMA (Kinetic Energy Release in Materials) coefficients for reaction
+:math:`r` of isotope :math:`i`. The KERMA coefficients have units of energy
+:math:`\times` cross-section (e.g., eV-barn) and can be used much like a reaction
+cross section for the purpose of tallying energy deposition.
+
+KERMA coefficients can be computed using the energy-balance method with
+
+.. math::
+
+    k_{i, r}(E) = \left(E - \bar{E}_{i, r, \gamma} - \bar{E}_{i, r, e}\right)\sigma_{i, r}(E),
+
+removing the energy of neutral and charged particles (photons and electrons/positrons) that are
+transported away from the reaction site.
+
+.. note::
+In the KERMA coefficients for photons and charged particles the reaction Q-value is zero.
+
 ---------------------
 OpenMC Implementation
 ---------------------
@@ -137,6 +165,39 @@ Let :math:`N301` represent the total heating number returned from this
 
 This modified heating data is stored as the MT=301 reaction and will be scored
 if ``heating`` is included in :attr:`openmc.Tally.scores`.
+
+Photons and Charged Particles Energy Deposition
+-------------------------------------
+
+In OpenMC, energy deposition from photons or charged particles is scored in the following way:
+After every collision, the kinetic energy of the incident particle is compared before and after the collision and this energy  removing energy of any secondary products particles is scored as deposited. This algorithm is justified by energy balance and the fact that photons and charged particles reaction Q-value is always zero. 
+
++++++++++++++++++++++++++++++++++++
+Charged Particles Energy Deposition
++++++++++++++++++++++++++++++++++++
+
+OpenMC track photons interaction by interaction so the energy deposited in each collision is easily traced back to the nuclide and reaction for which the photon interacted with.
+Charged particles aren't tracked in the same way. For charged particles OpenMC assume that all their energy (less energy of bremsstrahlung radiation) is deposited in the material in which they were born. In this way it is harder to trace how much energy should be deposited in each nuclide.
+
+According to the CSDA approximation the energy deposited by a charged particle with kinetic energy T in the :math:`i`-th element can be calculated as:
+
+.. math::
+
+    E_{i} = \int_{0}^{R(T)} w_{i}S_{\text{col,i}} dx
+
+Where :math:`R(T)` is the CSDA range of the charged particle, :math:`S_{\text{col},i}` is the collision stopping power of the charged particle in the :math:`i`-th element and :math:`w_i` is the mass fraction of the :math:`i`-th element.
+
+According to the Bethe formula the collision stopping power of the :math:`i`-th element is proportional to :math:`\frac{Z_{i}}{A_{i}}`.
+
+So the fractional collision stopping power from the :math:`i`-th element is:
+
+.. math::
+
+    \frac{w_{i}S_{\text{col},i}(T)}{S_{\text{col}}(T)} = \frac{\frac{w_{i}Z_{i}}{A_{i}}}{\sum_{i}\frac{w_{i}Z_{i}}{A_{i}}} = \frac{\gamma_i Z_{i}}{\sum_{i}\gamma_i Z_{i}}.
+
+Where :math:`\gamma_i` is the atomic fraction of the :math:`i`-th element.
+
+So the energy deposited by charged particles should be divided to elements according to the fractional charge density.
 
 ----------
 References

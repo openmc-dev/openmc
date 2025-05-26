@@ -3121,7 +3121,7 @@ class HexagonalMesh(StructuredMesh):
         return mesh
 
     @classmethod
-    def from_hexgaonal_lattice(cls):
+    def from_hexagonal_lattice(cls):
         """Create hexagonal mesh from an existing hexagonal lattice
 
         Not implemented yet

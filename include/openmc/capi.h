@@ -132,6 +132,10 @@ int openmc_regular_mesh_get_params(
 int openmc_regular_mesh_set_dimension(int32_t index, int n, const int* dims);
 int openmc_regular_mesh_set_params(int32_t index, int n, const double* ll,
   const double* ur, const double* width);
+int openmc_hexagonal_mesh_get_params(
+  int32_t index, double** ll, double** ur, double** width, int* n);
+int openmc_hexagonal_mesh_set_params(int32_t index, int n, const double* ll,
+  const double* ur, const double* width);
 int openmc_remove_tally(int32_t index);
 int openmc_reset();
 int openmc_reset_timers();

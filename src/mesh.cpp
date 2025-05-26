@@ -2117,6 +2117,8 @@ extern "C" int openmc_extend_meshes(
       model::meshes.push_back(make_unique<CylindricalMesh>());
     } else if (SphericalMesh::mesh_type == type) {
       model::meshes.push_back(make_unique<SphericalMesh>());
+    } else if (HexagonalMesh::mesh_type == type) {
+      model::meshes.push_back(make_unique<HexagonalMesh>());
     } else {
       throw std::runtime_error {"Unknown mesh type: " + std::string(type)};
     }

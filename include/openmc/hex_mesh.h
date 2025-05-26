@@ -88,6 +88,8 @@ public:
 
   Position sample_element(const HexMeshIndex& ijkl, uint64_t* seed) const;
 
+  Position sample_hexagon(uint64_t* seed) const;
+
   HexMeshDistance distance_to_grid_boundary(const HexMeshIndex& ijk, int i,
     const Position& r0, const Direction& u, double l) const;
 
@@ -106,6 +108,8 @@ public:
   bool in_hexmesh(HexMeshIndex& ijkl) const;
 
   double volume(const StructuredMesh::MeshIndex& ijk) const;
+
+  double volume(int bin) const { return element_volume_; }
 
   // Data members
   double size_ {0};
@@ -142,11 +146,11 @@ public:
   void surface_bins_crossed(Position r0, Position r1, const Direction& u,
     vector<int>& bins) const override;
 
-private:
   int init_plane_normals();
 
   int scale_grid_vectors(double s);
 
+private:
   Position r_ {0, -1, 0};
   Position q_ {sqrt(3.0) * 0.5, 0.5, 0};
   Position s_ {-sqrt(3.0) * 0.5, 0.5, 0};

@@ -139,10 +139,10 @@ HexagonalMesh::HexagonalMesh(pugi::xml_node node)
 
   // width[1] is the height of the full mesh block, width[0] is the width of
   // the hexagon from flat end to flat end
-  element_volume_ = width_[1] * width_[0] * width_[0] * sqrt(3);
+  element_volume_ = width_[1] * width_[0] * width_[0] * sqrt(3) * 0.5;
 
   // Set material volumes
-  volume_frac_ = 1.0 / hex_count_;
+  volume_frac_ = 1.0 / hex_count_ / shape_[1];
 
   // size of hex is defined as the radius of the circumscribed circle
   size_ = width_[0] / sqrt(3.0);
@@ -150,7 +150,7 @@ HexagonalMesh::HexagonalMesh(pugi::xml_node node)
   // radius of enclosing cylinder
   r_encl_ = (hex_radius_ - 0.5) * sqrt(3) * size_ + (1 - sqrt(3) * 0.5) * size_;
 
-  // set the plane normals or 3 principal directions in the hex mash
+  // set the plane normals or 3 principal directions in the hex mesh
   init_plane_normals();
 
   // scale grid vectors of hexagonal mesh
@@ -313,7 +313,6 @@ xt::xtensor<int, 1> HexagonalMesh::get_x_shape() const
 {
   // because method is const, shape_ is const as well and can't be adapted
   auto tmp_shape = shape_;
-  tmp_shape[0] = hex_count_;
   return xt::adapt(tmp_shape, {2});
 }
 
@@ -356,7 +355,7 @@ Position HexagonalMesh::get_position_from_hexindex(HexMeshIndex ijkl) const
   Position r;
   r.x = ijkl[0] * n0_[0] * size_ * sqrt(3) + ijkl[1] * n1_[0] * size_ * sqrt(3);
   r.y = ijkl[0] * n0_[1] * size_ * sqrt(3) + ijkl[1] * n1_[1] * size_ * sqrt(3);
-  r.z = ijkl[3] * width_[1] + lower_left_[1];
+  r.z = (ijkl[3] - 0.5) * width_[1] + lower_left_[1];
 
   return r;
 }
@@ -422,17 +421,29 @@ Position HexagonalMesh::sample_element(
   const HexMeshIndex& ijkl, uint64_t* seed) const
 {
   // return random position inside mesh element
-  double r_r = uniform_distribution(0, 1, seed);
-  double q_r = uniform_distribution(0, 1, seed);
+  Position rh = get_position_from_hexindex(ijkl);
 
-  double x = this->n0_[0] * (r_r + (ijkl[0] - 1)) * width_[0] +
-             this->n1_[0] * (q_r + (ijkl[1] - 1)) * width_[0];
-  double y = this->n0_[1] * (r_r + (ijkl[0] - 1)) * width_[0] +
-             this->n1_[1] * (q_r + (ijkl[1] - 1)) * width_[0];
+  Position xy = sample_hexagon(seed) * size_;
+  Position z(
+    0, 0, uniform_distribution(-width_[1] / 2.0, width_[1] / 2.0, seed));
+  return origin_ + rh + xy + z;
+}
 
-  double z = uniform_distribution(-width_[1] / 2.0, width_[1] / 2.0, seed);
+Position HexagonalMesh::sample_hexagon(uint64_t* seed) const
+{
+  // return a position inside hexagon at (0,0,0)
+  double x = uniform_distribution(-sqrt(3) * 0.5, sqrt(3) * 0.5, seed);
+  double y = uniform_distribution(-0.5, 1.0, seed);
 
-  return origin_ + Position(x, y, z);
+  if (y > 0.5)
+    if (y - 0.5 > 0.5 - std::abs(x) / sqrt(3)) { // reflect the point
+      if (x > 0)
+        x -= sqrt(3) * 0.5;
+      else
+        x += sqrt(3) * 0.5;
+      y -= 1.5;
+    }
+  return Position(x, y, 0);
 }
 
 double HexagonalMesh::find_r_crossing(
@@ -708,6 +719,9 @@ void HexagonalMesh::to_hdf5_inner(hid_t mesh_group) const
   write_dataset(mesh_group, "lower_left", lower_left_);
   write_dataset(mesh_group, "upper_right", upper_right_);
   write_dataset(mesh_group, "width", width_);
+  // hex-mesh specifics
+  write_dataset(mesh_group, "hex_count", hex_count_);
+  write_dataset(mesh_group, "hex_radius", hex_radius_);
 }
 
 double HexagonalMesh::volume(const HexMeshIndex& ijkl) const
@@ -774,6 +788,143 @@ void HexagonalMesh::surface_bins_crossed(
 
   // Perform the mesh raytrace with the helper class.
   raytrace_mesh(r0, r1, u, SurfaceAggregator(this, bins));
+}
+
+//==============================================================================
+// Helper functions for the C API
+//==============================================================================
+
+int check_hex_mesh(int32_t index)
+{
+  if (index < 0 || index >= model::meshes.size()) {
+    set_errmsg("Index in meshes array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+  return 0;
+}
+// This is identical to the one in mesh.cpp
+template<class T>
+int check_mesh_type(int32_t index)
+{
+  if (int err = check_hex_mesh(index))
+    return err;
+
+  T* mesh = dynamic_cast<T*>(model::meshes[index].get());
+  if (!mesh) {
+    set_errmsg("This function is not valid for input mesh.");
+    return OPENMC_E_INVALID_TYPE;
+  }
+  return 0;
+}
+
+// This is identical to the one in mesh.cpp
+template<class T>
+bool is_mesh_type(int32_t index)
+{
+  T* mesh = dynamic_cast<T*>(model::meshes[index].get());
+  return mesh;
+}
+
+//! Get the dimension of a hexagonal mesh
+extern "C" int openmc_hexagonal_mesh_get_dimension(
+  int32_t index, int** dims, int* n)
+{
+  if (int err = check_mesh_type<HexagonalMesh>(index))
+    return err;
+  HexagonalMesh* mesh =
+    dynamic_cast<HexagonalMesh*>(model::meshes[index].get());
+  *dims = mesh->shape_.data();
+  *n = mesh->n_dimension_;
+  return 0;
+}
+
+//! Set the dimension of a hexagonal mesh
+extern "C" int openmc_hexagonal_mesh_set_dimension(
+  int32_t index, int n, const int* dims)
+{
+  if (int err = check_mesh_type<HexagonalMesh>(index))
+    return err;
+  HexagonalMesh* mesh =
+    dynamic_cast<HexagonalMesh*>(model::meshes[index].get());
+
+  // Copy dimension
+  mesh->n_dimension_ = n;
+  std::copy(dims, dims + n, mesh->shape_.begin());
+
+  // TODO: incorporate this bit into method in HexagonalMesh that can be called
+  // from here and from constructor
+  mesh->hex_radius_ = (mesh->shape_[0] - 1) / 2;
+  if (mesh->hex_radius_ == 0)
+    mesh->hex_count_ = 1;
+  else
+    mesh->hex_count_ = 1 + 3 * (mesh->hex_radius_ + 1) * mesh->hex_radius_;
+
+  return 0;
+}
+//! Get the hexagonal mesh parameters
+extern "C" int openmc_hexagonal_mesh_get_params(
+  int32_t index, double** ll, double** ur, double** width, int* n)
+{
+  if (int err = check_mesh_type<HexagonalMesh>(index))
+    return err;
+  HexagonalMesh* m = dynamic_cast<HexagonalMesh*>(model::meshes[index].get());
+
+  if (m->lower_left_.dimension() == 0) {
+    set_errmsg("Mesh parameters have not been set.");
+    return OPENMC_E_ALLOCATE;
+  }
+
+  *ll = m->lower_left_.data();
+  *ur = m->upper_right_.data();
+  *width = m->width_.data();
+  *n = m->n_dimension_;
+  return 0;
+}
+
+//! Set the hexagonal mesh parameters
+extern "C" int openmc_hexagonal_mesh_set_params(
+  int32_t index, int n, const double* ll, const double* ur, const double* width)
+{
+  if (int err = check_mesh_type<HexagonalMesh>(index))
+    return err;
+  HexagonalMesh* m = dynamic_cast<HexagonalMesh*>(model::meshes[index].get());
+
+  if (m->n_dimension_ == -1) {
+    set_errmsg("Need to set mesh dimension before setting parameters.");
+    return OPENMC_E_UNASSIGNED;
+  }
+
+  vector<std::size_t> shape = {static_cast<std::size_t>(n)};
+  if (ll && ur) {
+    m->lower_left_ = xt::adapt(ll, n, xt::no_ownership(), shape);
+    m->upper_right_ = xt::adapt(ur, n, xt::no_ownership(), shape);
+    m->width_ = (m->upper_right_ - m->lower_left_) / m->get_x_shape();
+  } else if (ll && width) {
+    m->lower_left_ = xt::adapt(ll, n, xt::no_ownership(), shape);
+    m->width_ = xt::adapt(width, n, xt::no_ownership(), shape);
+    m->upper_right_ = m->lower_left_ + m->get_x_shape() * m->width_;
+  } else if (ur && width) {
+    m->upper_right_ = xt::adapt(ur, n, xt::no_ownership(), shape);
+    m->width_ = xt::adapt(width, n, xt::no_ownership(), shape);
+    m->lower_left_ = m->upper_right_ - m->get_x_shape() * m->width_;
+  } else {
+    set_errmsg("At least two parameters must be specified.");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  // TODO: incorporate this into method in HexagonalMesh that can be called from
+  // here and from constructor
+
+  // Set material volumes etc.
+  m->size_ = m->width_[0] / sqrt(3.0);
+  m->init_plane_normals();
+  m->scale_grid_vectors(m->size_);
+
+  m->volume_frac_ = 1.0 / m->shape_[1] / m->hex_count_;
+  m->element_volume_ =
+    m->width_[1] * m->width_[0] * m->width_[0] * sqrt(3) * 0.5;
+
+  return 0;
 }
 
 } // namespace openmc

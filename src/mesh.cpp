@@ -175,11 +175,9 @@ int Mesh::material_volumes(
       geom.r() = this->sample_element(bin, &seed_i);
       geom.u() = {1., 0., 0.};
       geom.n_coord() = 1;
-
       // If this location is not in the geometry at all, move on to next block
       if (!exhaustive_find_cell(geom))
         continue;
-
       int i_material = geom.material();
 
       // Check if this material was previously hit and if so, increment count
@@ -196,7 +194,6 @@ int Mesh::material_volumes(
     // Reduce index/hits lists from each thread into a single copy
     reduce_indices_hits(local_materials, local_hits, materials, hits);
   } // omp parallel
-
   // Advance RNG seed
   advance_prn_seed(3 * n_sample, seed);
 
@@ -1827,6 +1824,8 @@ extern "C" int openmc_extend_meshes(
       model::meshes.push_back(make_unique<CylindricalMesh>());
     } else if (SphericalMesh::mesh_type == type) {
       model::meshes.push_back(make_unique<SphericalMesh>());
+    } else if (HexagonalMesh::mesh_type == type) {
+      model::meshes.push_back(make_unique<HexagonalMesh>());
     } else {
       throw std::runtime_error {"Unknown mesh type: " + std::string(type)};
     }
@@ -1958,6 +1957,7 @@ extern "C" int openmc_mesh_material_volumes(int32_t index, int n_sample,
 
   int n = model::meshes[index]->material_volumes(
     n_sample, bin, {result_, result_ + result_size}, seed);
+
   *hits = n;
   return (n == -1) ? OPENMC_E_ALLOCATE : 0;
 }

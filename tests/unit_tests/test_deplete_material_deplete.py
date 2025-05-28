@@ -10,8 +10,6 @@ from openmc.mgxs import GROUP_STRUCTURES
 
 def test_deplete_materials():
 
-    # Ensure the OpenMC data directory is set
-    openmc.data.data_directory = "data"
     mat_ni58 = openmc.Material()
     mat_ni58.add_nuclide("Ni58", 0.95)
     mat_ni58.set_density("g/cm3", 7.87)
@@ -48,7 +46,6 @@ def test_deplete_materials():
         ],
         timestep_units="s",
         chain_file=Path(__file__).parents[1] / "chain_ni.xml",
-        # nuclides=["Ni56", "Ni60"],  # limit to two nuclides to speed up the test
         reactions=None,
     )
 
@@ -108,6 +105,7 @@ def test_deplete_materials_error_handling():
         )
 
     mat_ni.volume = 1.0
+
     with pytest.raises(
         RuntimeError, match="No depletable materials were found in the model"
     ):
@@ -118,6 +116,7 @@ def test_deplete_materials_error_handling():
             reactions=None,
         )
     mat_ni.depletable = True
+
     with pytest.raises(ValueError, match="Number of time steps"):
         deplete_materials(
             activation_data=[
@@ -133,6 +132,7 @@ def test_deplete_materials_error_handling():
             chain_file=Path(__file__).parents[1] / "chain_ni.xml",
             reactions=None,
         )
+
     with pytest.raises(ValueError, match="Length of flux array should be"):
         deplete_materials(
             activation_data=[

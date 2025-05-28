@@ -91,7 +91,7 @@ def deplete_materials(
 
     Returns
     -------
-    Sequence[openmc.Materials]
+    Sequence[openmc.Materials] a list of openmc.Materials containing depleted materials
 
     """
 

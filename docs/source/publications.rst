@@ -138,8 +138,8 @@ Geometry and Visualization
   *Trans. Am. Nucl. Soc.*, **114**, 391-394 (2016).
 
 - Derek M. Lax, "`Memory efficient indexing algorithm for physical properties in
-  OpenMC <http://hdl.handle.net/1721.1/97862>`_," S. M. Thesis, Massachusetts
-  Institute of Technology (2015).
+  OpenMC <https://dspace.mit.edu/handle/1721.1/97862>`_," S. M. Thesis,
+  Massachusetts Institute of Technology (2015).
 
 - Derek Lax, William Boyd, Nicholas Horelik, Benoit Forget, and Kord Smith, "A
   memory efficient algorithm for classifying unique regions in constructive
@@ -399,7 +399,8 @@ Doppler Broadening
 - Jonathan A. Walsh, Benoit Forget, Kord S. Smith, Brian C. Kiedrowski, and
   Forrest B. Brown, "`Direct, on-the-fly calculation of unresolved resonance
   region cross sections in Monte Carlo simulations
-  <http://hdl.handle.net/1721.1/108644>`_," *Proc. Joint Int. Conf. M&C+SNA+MC*,
+  <https://dspace.mit.edu/handle/1721.1/108644>`_," *Proc. Joint Int. Conf.
+  M&C+SNA+MC*,
   Nashville, Tennessee, Apr. 19--23 (2015).
 
 - Colin Josey, Benoit Forget, and Kord Smith, "`Windowed multipole sensitivity
@@ -596,7 +597,8 @@ Depletion
 
 - Matthew S. Ellis, Colin Josey, Benoit Forget, and Kord Smith, "`Spatially
   Continuous Depletion Algorithm for Monte Carlo Simulations
-  <http://hdl.handle.net/1721.1/107880>`_," *Trans. Am. Nucl. Soc.*, **115**,
+  <https://dspace.mit.edu/handle/1721.1/107880>`_," *Trans. Am. Nucl. Soc.*,
+  **115**,
   1221-1224 (2016).
 
 - Anas Gul, K. S. Chaudri, R. Khan, and M. Azeen, "`Development and verification

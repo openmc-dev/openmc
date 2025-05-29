@@ -11,6 +11,7 @@
 #include "openmc/constants.h"
 #include "openmc/error.h"
 #include "openmc/hdf5_interface.h"
+#include "openmc/ifp.h"
 #include "openmc/math_functions.h"
 #include "openmc/mesh.h"
 #include "openmc/message_passing.h"
@@ -128,16 +129,25 @@ void synchronize_bank()
 
   simulation::time_bank_sample.start();
 
+  // Allocate temporary source bank -- we don't really know how many fission
+  // sites were created, so overallocate by a factor of 3
+  int64_t index_temp = 0;
+
+  vector<SourceSite> temp_sites(3 * simulation::work_per_rank);
+  
+  // Temporary banks for IFP
+  vector<vector<int>> temp_delayed_groups;
+  vector<vector<double>> temp_lifetimes;
+  if (settings::ifp_on) {
+    resize_ifp_data(
+      temp_delayed_groups, temp_lifetimes, 3 * simulation::work_per_rank);
+  }
+
   // ==========================================================================
   // SAMPLE N_PARTICLES FROM FISSION BANK AND PLACE IN TEMP_SITES
 
   // We use Uniform Combing method to exactly get the targeted particle size
   // [https://doi.org/10.1080/00295639.2022.2091906]
-
-  // Allocate temporary source bank -- we don't really know how many fission
-  // sites were created, so overallocate by a factor of 3
-  int64_t index_temp = 0;
-  vector<SourceSite> temp_sites(3 * simulation::work_per_rank);
 
   // Make sure all processors use the same random number seed.
   int64_t id = simulation::total_gen + overall_generation();
@@ -175,6 +185,8 @@ void synchronize_bank()
   MPI_Exscan(&index_temp, &start, 1, MPI_INT64_T, MPI_SUM, mpi::intracomm);
   finish = start + index_temp;
 
+  // TODO: protect for MPI_Exscan at rank 0
+
   // Allocate space for bank_position if this hasn't been done yet
   int64_t bank_position[mpi::n_procs];
   MPI_Allgather(
@@ -191,14 +203,31 @@ void synchronize_bank()
   // ==========================================================================
   // SEND BANK SITES TO NEIGHBORS
 
+  // IFP number of generation
+  int ifp_n_generation;
+  if (settings::ifp_on) {
+    broadcast_ifp_n_generation(
+      ifp_n_generation, temp_delayed_groups, temp_lifetimes);
+  }
+
   int64_t index_local = 0;
   vector<MPI_Request> requests;
+
+  // IFP send buffers
+  vector<int> send_delayed_groups;
+  vector<double> send_lifetimes;
 
   if (start < settings::n_particles) {
     // Determine the index of the processor which has the first part of the
     // source_bank for the local processor
     int neighbor = upper_bound_index(
       simulation::work_index.begin(), simulation::work_index.end(), start);
+
+    // Resize IFP send buffers
+    if (settings::ifp_on && mpi::n_procs > 1) {
+      resize_ifp_data(send_delayed_groups, send_lifetimes,
+        ifp_n_generation * 3 * simulation::work_per_rank);
+    }
 
     while (start < finish) {
       // Determine the number of sites to send
@@ -212,6 +241,13 @@ void synchronize_bank()
         MPI_Isend(&temp_sites[index_local], static_cast<int>(n),
           mpi::source_site, neighbor, mpi::rank, mpi::intracomm,
           &requests.back());
+
+        if (settings::ifp_on) {
+          // Send IFP data
+          send_ifp_info(index_local, n, ifp_n_generation, neighbor, requests,
+            temp_delayed_groups, send_delayed_groups, temp_lifetimes,
+            send_lifetimes);
+        }
       }
 
       // Increment all indices
@@ -233,6 +269,11 @@ void synchronize_bank()
   start = simulation::work_index[mpi::rank];
   index_local = 0;
 
+  // IFP receive buffers
+  vector<int> recv_delayed_groups;
+  vector<double> recv_lifetimes;
+  vector<DeserializationInfo> deserialization_info;
+
   // Determine what process has the source sites that will need to be stored at
   // the beginning of this processor's source bank.
 
@@ -242,6 +283,12 @@ void synchronize_bank()
   } else {
     neighbor =
       upper_bound_index(bank_position, bank_position + mpi::n_procs, start);
+  }
+
+  // Resize IFP receive buffers
+  if (settings::ifp_on && mpi::n_procs > 1) {
+    resize_ifp_data(recv_delayed_groups, recv_lifetimes,
+      ifp_n_generation * simulation::work_per_rank);
   }
 
   while (start < simulation::work_index[mpi::rank + 1]) {
@@ -263,13 +310,24 @@ void synchronize_bank()
       MPI_Irecv(&simulation::source_bank[index_local], static_cast<int>(n),
         mpi::source_site, neighbor, neighbor, mpi::intracomm, &requests.back());
 
+      if (settings::ifp_on) {
+        // Receive IFP data
+        receive_ifp_data(index_local, n, ifp_n_generation, neighbor, requests,
+          recv_delayed_groups, recv_lifetimes, deserialization_info);
+      }
+
     } else {
-      // If the source sites are on this procesor, we can simply copy them
+      // If the source sites are on this processor, we can simply copy them
       // from the temp_sites bank
 
       index_temp = start - bank_position[mpi::rank];
       std::copy(&temp_sites[index_temp], &temp_sites[index_temp + n],
         &simulation::source_bank[index_local]);
+
+      if (settings::ifp_on) {
+        copy_partial_ifp_data_to_source_banks(
+          index_temp, n, index_local, temp_delayed_groups, temp_lifetimes);
+      }
     }
 
     // Increment all indices
@@ -285,9 +343,17 @@ void synchronize_bank()
   int n_request = requests.size();
   MPI_Waitall(n_request, requests.data(), MPI_STATUSES_IGNORE);
 
+  if (settings::ifp_on) {
+    deserialize_ifp_info(ifp_n_generation, deserialization_info,
+      recv_delayed_groups, recv_lifetimes);
+  }
+
 #else
   std::copy(temp_sites.data(), temp_sites.data() + settings::n_particles,
     simulation::source_bank.begin());
+  if (settings::ifp_on) {
+    copy_complete_ifp_data_to_source_banks(temp_delayed_groups, temp_lifetimes);
+  }
 #endif
 
   simulation::time_bank_sendrecv.stop();

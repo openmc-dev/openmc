@@ -4,7 +4,7 @@
 #define HAS_DYNAMIC_LINKING
 #endif
 
-#include <algorithm> // for move
+#include <utility> // for move
 
 #ifdef HAS_DYNAMIC_LINKING
 #include <dlfcn.h> // for dlopen, dlsym, dlclose, dlerror
@@ -613,9 +613,10 @@ SourceSite sample_external_source(uint64_t* seed)
 {
   // Sample from among multiple source distributions
   int i = 0;
-  if (model::external_sources.size() > 1) {
+  int n_sources = model::external_sources.size();
+  if (n_sources > 1) {
     if (settings::uniform_source_sampling) {
-      i = prn(seed) * model::external_sources.size();
+      i = prn(seed) * n_sources;
     } else {
       i = model::external_sources_probability.sample(seed);
     }
@@ -624,9 +625,13 @@ SourceSite sample_external_source(uint64_t* seed)
   // Sample source site from i-th source distribution
   SourceSite site {model::external_sources[i]->sample_with_constraints(seed)};
 
-  // Set particle creation weight
-  if (settings::uniform_source_sampling) {
-    site.wgt *= model::external_sources[i]->strength();
+  // For uniform source sampling, multiply the weight by the ratio of the actual
+  // probability of sampling source i to the biased probability of sampling
+  // source i, which is (strength_i / total_strength) / (1 / n)
+  if (n_sources > 1 && settings::uniform_source_sampling) {
+    double total_strength = model::external_sources_probability.integral();
+    site.wgt *=
+      model::external_sources[i]->strength() * n_sources / total_strength;
   }
 
   // If running in MG, convert site.E to group

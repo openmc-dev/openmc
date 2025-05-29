@@ -1,6 +1,7 @@
 #include "openmc/material.h"
 
 #include <algorithm> // for min, max, sort, fill
+#include <cassert>
 #include <cmath>
 #include <iterator>
 #include <sstream>
@@ -367,7 +368,7 @@ Material& Material::clone()
   mat->name_ = name_;
   mat->nuclide_ = nuclide_;
   mat->element_ = element_;
-  mat->ncrystal_mat_ = ncrystal_mat_;
+  mat->ncrystal_mat_ = ncrystal_mat_.clone();
   mat->atom_density_ = atom_density_;
   mat->density_ = density_;
   mat->density_gpcc_ = density_gpcc_;
@@ -639,7 +640,7 @@ void Material::init_bremsstrahlung()
     // Allocate arrays for TTB data
     ttb->pdf = xt::zeros<double>({n_e, n_e});
     ttb->cdf = xt::zeros<double>({n_e, n_e});
-    ttb->yield = xt::empty<double>({n_e});
+    ttb->yield = xt::zeros<double>({n_e});
 
     // Allocate temporary arrays
     xt::xtensor<double, 1> stopping_power_collision({n_e}, 0.0);
@@ -776,14 +777,15 @@ void Material::init_bremsstrahlung()
       // Loop over photon energies
       double c = 0.0;
       for (int i = 0; i < j; ++i) {
-        // Integrate the CDF from the PDF using the trapezoidal rule in log-log
-        // space
+        // Integrate the CDF from the PDF using the fact that the PDF is linear
+        // in log-log space
         double w_l = std::log(data::ttb_e_grid(i));
         double w_r = std::log(data::ttb_e_grid(i + 1));
         double x_l = std::log(ttb->pdf(j, i));
         double x_r = std::log(ttb->pdf(j, i + 1));
-
-        c += 0.5 * (w_r - w_l) * (std::exp(w_l + x_l) + std::exp(w_r + x_r));
+        double beta = (x_r - x_l) / (w_r - w_l);
+        double a = beta + 1.0;
+        c += std::exp(w_l + x_l) / a * std::expm1(a * (w_r - w_l));
         ttb->cdf(j, i + 1) = c;
       }
 
@@ -933,7 +935,7 @@ void Material::calculate_photon_xs(Particle& p) const
 
 void Material::set_id(int32_t id)
 {
-  Expects(id >= 0 || id == C_NONE);
+  assert(id >= 0 || id == C_NONE);
 
   // Clear entry in material map if an ID was already assigned before
   if (id_ != C_NONE) {
@@ -961,9 +963,9 @@ void Material::set_id(int32_t id)
   model::material_map[id] = index_;
 }
 
-void Material::set_density(double density, gsl::cstring_span units)
+void Material::set_density(double density, const std::string& units)
 {
-  Expects(density >= 0.0);
+  assert(density >= 0.0);
 
   if (nuclide_.empty()) {
     throw std::runtime_error {"No nuclides exist in material yet."};
@@ -1006,8 +1008,8 @@ void Material::set_densities(
   const vector<std::string>& name, const vector<double>& density)
 {
   auto n = name.size();
-  Expects(n > 0);
-  Expects(n == density.size());
+  assert(n > 0);
+  assert(n == density.size());
 
   if (n != nuclide_.size()) {
     nuclide_.resize(n);
@@ -1017,7 +1019,7 @@ void Material::set_densities(
   }
 
   double sum_density = 0.0;
-  for (gsl::index i = 0; i < n; ++i) {
+  for (int64_t i = 0; i < n; ++i) {
     const auto& nuc {name[i]};
     if (data::nuclide_map.find(nuc) == data::nuclide_map.end()) {
       int err = openmc_load_nuclide(nuc.c_str(), nullptr, 0);
@@ -1026,7 +1028,7 @@ void Material::set_densities(
     }
 
     nuclide_[i] = data::nuclide_map.at(nuc);
-    Expects(density[i] > 0.0);
+    assert(density[i] > 0.0);
     atom_density_(i) = density[i];
     sum_density += density[i];
 

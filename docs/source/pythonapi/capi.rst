@@ -19,6 +19,7 @@ Functions
    finalize
    find_cell
    find_material
+   dagmc_universe_cell_ids
    global_bounding_box
    global_tallies
    hard_reset
@@ -78,6 +79,7 @@ Classes
    MeshSurfaceFilter
    MuFilter
    Nuclide
+   ParentNuclideFilter
    ParticleFilter
    PolarFilter
    RectilinearMesh
@@ -89,6 +91,7 @@ Classes
    Tally
    UniverseFilter
    UnstructuredMesh
+   WeightFilter
    WeightWindows
    ZernikeFilter
    ZernikeRadialFilter

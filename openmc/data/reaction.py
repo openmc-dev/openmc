@@ -25,11 +25,11 @@ from .product import Product
 from .uncorrelated import UncorrelatedAngleEnergy
 
 
-REACTION_NAME = {1: '(n,total)', 2: '(n,elastic)', 4: '(n,level)',
-                 5: '(n,misc)', 11: '(n,2nd)', 16: '(n,2n)', 17: '(n,3n)',
-                 18: '(n,fission)', 19: '(n,f)', 20: '(n,nf)', 21: '(n,2nf)',
-                 22: '(n,na)', 23: '(n,n3a)', 24: '(n,2na)', 25: '(n,3na)',
-                 27: '(n,absorption)', 28: '(n,np)', 29: '(n,n2a)',
+REACTION_NAME = {1: '(n,total)', 2: '(n,elastic)', 3: "(n,nonelastic)",
+                 4: '(n,level)', 5: '(n,misc)', 11: '(n,2nd)', 16: '(n,2n)',
+                 17: '(n,3n)', 18: '(n,fission)', 19: '(n,f)', 20: '(n,nf)',
+                 21: '(n,2nf)', 22: '(n,na)', 23: '(n,n3a)', 24: '(n,2na)',
+                 25: '(n,3na)', 27: '(n,absorption)', 28: '(n,np)', 29: '(n,n2a)',
                  30: '(n,2n2a)', 32: '(n,nd)', 33: '(n,nt)', 34: '(n,n3He)',
                  35: '(n,nd2a)', 36: '(n,nt2a)', 37: '(n,4n)', 38: '(n,3nf)',
                  41: '(n,2np)', 42: '(n,3np)', 44: '(n,n2p)', 45: '(n,npa)',

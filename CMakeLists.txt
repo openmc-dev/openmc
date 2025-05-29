@@ -1,20 +1,24 @@
 cmake_minimum_required(VERSION 3.16 FATAL_ERROR)
 project(openmc C CXX)
 
-# Set version numbers
-set(OPENMC_VERSION_MAJOR 0)
-set(OPENMC_VERSION_MINOR 15)
-set(OPENMC_VERSION_RELEASE 1)
-set(OPENMC_VERSION ${OPENMC_VERSION_MAJOR}.${OPENMC_VERSION_MINOR}.${OPENMC_VERSION_RELEASE})
+# Set module path
+set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules)
+
+include(GetVersionFromGit)
+
+# Output version information
+message(STATUS "OpenMC version: ${OPENMC_VERSION}")
+message(STATUS "OpenMC dev state: ${OPENMC_DEV_STATE}")
+message(STATUS "OpenMC commit hash: ${OPENMC_COMMIT_HASH}")
+message(STATUS "OpenMC commit count: ${OPENMC_COMMIT_COUNT}")
+
+# Generate version.h
 configure_file(include/openmc/version.h.in "${CMAKE_BINARY_DIR}/include/openmc/version.h" @ONLY)
 
 # Setup output directories
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-
-# Set module path
-set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules)
 
 # Enable correct usage of CXX_EXTENSIONS
 if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.22)
@@ -33,8 +37,17 @@ option(OPENMC_USE_DAGMC       "Enable support for DAGMC (CAD) geometry"         
 option(OPENMC_USE_LIBMESH     "Enable support for libMesh unstructured mesh tallies" OFF)
 option(OPENMC_USE_MPI         "Enable MPI"                                           OFF)
 option(OPENMC_USE_MCPL        "Enable MCPL"                                          OFF)
-option(OPENMC_USE_NCRYSTAL    "Enable support for NCrystal scattering"               OFF)
 option(OPENMC_USE_UWUW        "Enable UWUW"                                          OFF)
+
+message(STATUS "OPENMC_USE_OPENMP ${OPENMC_USE_OPENMP}")
+message(STATUS "OPENMC_BUILD_TESTS ${OPENMC_BUILD_TESTS}")
+message(STATUS "OPENMC_ENABLE_PROFILE ${OPENMC_ENABLE_PROFILE}")
+message(STATUS "OPENMC_ENABLE_COVERAGE ${OPENMC_ENABLE_COVERAGE}")
+message(STATUS "OPENMC_USE_DAGMC ${OPENMC_USE_DAGMC}")
+message(STATUS "OPENMC_USE_LIBMESH ${OPENMC_USE_LIBMESH}")
+message(STATUS "OPENMC_USE_MPI ${OPENMC_USE_MPI}")
+message(STATUS "OPENMC_USE_MCPL ${OPENMC_USE_MCPL}")
+message(STATUS "OPENMC_USE_UWUW ${OPENMC_USE_UWUW}")
 
 # Warnings for deprecated options
 foreach(OLD_OPT IN ITEMS "openmp" "profile" "coverage" "dagmc" "libmesh")
@@ -104,15 +117,6 @@ macro(find_package_write_status pkg)
     message(STATUS "Did not find ${pkg}, will use submodule instead")
   endif()
 endmacro()
-
-#===============================================================================
-# NCrystal Scattering Support
-#===============================================================================
-
-if(OPENMC_USE_NCRYSTAL)
-  find_package(NCrystal REQUIRED)
-  message(STATUS "Found NCrystal: ${NCrystal_DIR} (version ${NCrystal_VERSION})")
-endif()
 
 #===============================================================================
 # DAGMC Geometry Support - need DAGMC/MOAB
@@ -190,6 +194,13 @@ endif()
 #===============================================================================
 
 if (OPENMC_USE_MCPL)
+  if (NOT DEFINED MCPL_DIR)
+    execute_process(
+      COMMAND mcpl-config --show cmakedir
+      OUTPUT_VARIABLE MCPL_DIR
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+  endif()
   find_package(MCPL REQUIRED)
   message(STATUS "Found MCPL: ${MCPL_DIR} (found version \"${MCPL_VERSION}\")")
 endif()
@@ -221,8 +232,6 @@ endif()
 #===============================================================================
 # Update git submodules as needed
 #===============================================================================
-
-find_package(Git)
 if(GIT_FOUND AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.git")
   option(GIT_SUBMODULE "Check submodules during build" ON)
   if(GIT_SUBMODULE)
@@ -275,19 +284,6 @@ if (NOT xtensor_FOUND)
 endif()
 
 #===============================================================================
-# GSL header-only library
-#===============================================================================
-
-find_package_write_status(gsl-lite)
-if (NOT gsl-lite_FOUND)
-  add_subdirectory(vendor/gsl-lite)
-
-  # Make sure contract violations throw exceptions
-  target_compile_definitions(gsl-lite-v1 INTERFACE GSL_THROW_ON_CONTRACT_VIOLATION)
-  target_compile_definitions(gsl-lite-v1 INTERFACE gsl_CONFIG_ALLOWS_NONSTRICT_SPAN_COMPARISON=1)
-endif()
-
-#===============================================================================
 # Catch2 library
 #===============================================================================
 
@@ -336,6 +332,7 @@ list(APPEND libopenmc_SOURCES
   src/boundary_condition.cpp
   src/bremsstrahlung.cpp
   src/cell.cpp
+  src/chain.cpp
   src/cmfd_solver.cpp
   src/cross_sections.cpp
   src/dagmc.cpp
@@ -353,6 +350,7 @@ list(APPEND libopenmc_SOURCES
   src/geometry.cpp
   src/geometry_aux.cpp
   src/hdf5_interface.cpp
+  src/ifp.cpp
   src/initialize.cpp
   src/lattice.cpp
   src/material.cpp
@@ -363,6 +361,7 @@ list(APPEND libopenmc_SOURCES
   src/mgxs.cpp
   src/mgxs_interface.cpp
   src/ncrystal_interface.cpp
+  src/ncrystal_load.cpp
   src/nuclide.cpp
   src/output.cpp
   src/particle.cpp
@@ -382,6 +381,7 @@ list(APPEND libopenmc_SOURCES
   src/random_ray/flat_source_domain.cpp
   src/random_ray/linear_source_domain.cpp
   src/random_ray/moment_matrix.cpp
+  src/random_ray/source_region.cpp
   src/reaction.cpp
   src/reaction_product.cpp
   src/scattdata.cpp
@@ -417,6 +417,7 @@ list(APPEND libopenmc_SOURCES
   src/tallies/filter_meshsurface.cpp
   src/tallies/filter_mu.cpp
   src/tallies/filter_musurface.cpp
+  src/tallies/filter_parent_nuclide.cpp
   src/tallies/filter_particle.cpp
   src/tallies/filter_polar.cpp
   src/tallies/filter_sph_harm.cpp
@@ -425,6 +426,7 @@ list(APPEND libopenmc_SOURCES
   src/tallies/filter_time.cpp
   src/tallies/filter_timed_mesh.cpp
   src/tallies/filter_universe.cpp
+  src/tallies/filter_weight.cpp
   src/tallies/filter_zernike.cpp
   src/tallies/tally.cpp
   src/tallies/tally_scoring.cpp
@@ -485,22 +487,10 @@ if (OPENMC_USE_MPI)
   target_compile_definitions(libopenmc PUBLIC -DOPENMC_MPI)
 endif()
 
-# Set git SHA1 hash as a compile definition
-if(GIT_FOUND)
-  execute_process(COMMAND ${GIT_EXECUTABLE} rev-parse HEAD
-                  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-                  RESULT_VARIABLE GIT_SHA1_SUCCESS
-                  OUTPUT_VARIABLE GIT_SHA1
-                  ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
-  if(GIT_SHA1_SUCCESS EQUAL 0)
-    target_compile_definitions(libopenmc PRIVATE -DGIT_SHA1="${GIT_SHA1}")
-  endif()
-endif()
-
 # target_link_libraries treats any arguments starting with - but not -l as
 # linker flags. Thus, we can pass both linker flags and libraries together.
 target_link_libraries(libopenmc ${ldflags} ${HDF5_LIBRARIES} ${HDF5_HL_LIBRARIES}
-                      xtensor gsl::gsl-lite-v1 fmt::fmt ${CMAKE_DL_LIBS})
+                      xtensor fmt::fmt ${CMAKE_DL_LIBS})
 
 if(TARGET pugixml::pugixml)
   target_link_libraries(libopenmc pugixml::pugixml)
@@ -548,11 +538,6 @@ endif()
 if (OPENMC_USE_MCPL)
   target_compile_definitions(libopenmc PUBLIC OPENMC_MCPL)
   target_link_libraries(libopenmc MCPL::mcpl)
-endif()
-
-if(OPENMC_USE_NCRYSTAL)
-  target_compile_definitions(libopenmc PRIVATE NCRYSTAL)
-  target_link_libraries(libopenmc NCrystal::NCrystal)
 endif()
 
 #===============================================================================

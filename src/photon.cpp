@@ -165,7 +165,6 @@ PhotonInteraction::PhotonInteraction(hid_t group)
     if (attribute_exists(tgroup, "binding_energy")) {
       has_atomic_relaxation_ = true;
       read_attribute(tgroup, "binding_energy", shell.binding_energy);
-      read_attribute(tgroup, "num_electrons", shell.n_electrons);
     }
 
     // Read subshell cross section
@@ -232,6 +231,28 @@ PhotonInteraction::PhotonInteraction(hid_t group)
     read_dataset(rgroup, "pz", data::compton_profile_pz);
   }
   close_group(rgroup);
+
+  // Map Compton subshell data to atomic relaxation data by finding the
+  // subshell with the equivalent binding energy
+  if (has_atomic_relaxation_) {
+    auto is_close = [](double a, double b) {
+      return std::abs(a - b) / a < FP_REL_PRECISION;
+    };
+    subshell_map_ = xt::full_like(binding_energy_, -1);
+    for (int i = 0; i < binding_energy_.size(); ++i) {
+      double E_b = binding_energy_[i];
+      if (i < n_shell && is_close(E_b, shells_[i].binding_energy)) {
+        subshell_map_[i] = i;
+      } else {
+        for (int j = 0; j < n_shell; ++j) {
+          if (is_close(E_b, shells_[j].binding_energy)) {
+            subshell_map_[i] = j;
+            break;
+          }
+        }
+      }
+    }
+  }
 
   // Create Compton profile CDF
   auto n_profile = data::compton_profile_pz.size();
@@ -328,15 +349,19 @@ PhotonInteraction::PhotonInteraction(hid_t group)
   }
 
   // Take logarithm of energies and cross sections since they are log-log
-  // interpolated
+  // interpolated. Note that cross section libraries converted from ACE files
+  // represent zero as exp(-500) to avoid log-log interpolation errors. For
+  // values below exp(-499) we store the log as -900, for which exp(-900)
+  // evaluates to zero.
+  double limit = std::exp(-499.0);
   energy_ = xt::log(energy_);
-  coherent_ = xt::where(coherent_ > 0.0, xt::log(coherent_), -500.0);
-  incoherent_ = xt::where(incoherent_ > 0.0, xt::log(incoherent_), -500.0);
+  coherent_ = xt::where(coherent_ > limit, xt::log(coherent_), -900.0);
+  incoherent_ = xt::where(incoherent_ > limit, xt::log(incoherent_), -900.0);
   photoelectric_total_ = xt::where(
-    photoelectric_total_ > 0.0, xt::log(photoelectric_total_), -500.0);
+    photoelectric_total_ > limit, xt::log(photoelectric_total_), -900.0);
   pair_production_total_ = xt::where(
-    pair_production_total_ > 0.0, xt::log(pair_production_total_), -500.0);
-  heating_ = xt::where(heating_ > 0.0, xt::log(heating_), -500.0);
+    pair_production_total_ > limit, xt::log(pair_production_total_), -900.0);
+  heating_ = xt::where(heating_ > limit, xt::log(heating_), -900.0);
 }
 
 PhotonInteraction::~PhotonInteraction()
@@ -419,13 +444,6 @@ void PhotonInteraction::compton_scatter(double alpha, bool doppler,
         double E_out;
         this->compton_doppler(alpha, *mu, &E_out, i_shell, seed);
         *alpha_out = E_out / MASS_ELECTRON_EV;
-
-        // It's possible for the Compton profile data to have more shells than
-        // there are in the ENDF data. Make sure the shell index doesn't end up
-        // out of bounds.
-        if (*i_shell >= shells_.size()) {
-          *i_shell = -1;
-        }
       } else {
         *i_shell = -1;
       }
@@ -766,8 +784,9 @@ void PhotonInteraction::pair_production(double alpha, double* E_electron,
 
 void PhotonInteraction::atomic_relaxation(int i_shell, Particle& p) const
 {
-  // Return if no atomic relaxation data is present
-  if (!has_atomic_relaxation_)
+  // Return if no atomic relaxation data is present or if the binding energy is
+  // larger than the incident particle energy
+  if (!has_atomic_relaxation_ || shells_[i_shell].binding_energy > p.E())
     return;
 
   // Stack for unprocessed holes left by transitioning electrons

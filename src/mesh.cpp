@@ -989,7 +989,7 @@ void StructuredMesh::raytrace_mesh(
       // For all directions outside the mesh, find the distance that we need
       // to travel to reach the next surface. Use the largest distance, as
       // only this will cross all outer surfaces.
-      int k_max {0};
+      int k_max {-1};
       for (int k = 0; k < n; ++k) {
         if ((ijk[k] < 1 || ijk[k] > shape_[k]) &&
             (distances[k].distance > traveled_distance)) {
@@ -997,7 +997,9 @@ void StructuredMesh::raytrace_mesh(
           k_max = k;
         }
       }
-
+      // Assure some distance is traveled
+      if (k_max == -1)
+        traveled_distance += TINY_BIT;
       // If r1 is not inside the mesh, exit here
       if (traveled_distance >= total_distance)
         return;

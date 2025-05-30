@@ -167,7 +167,7 @@ This modified heating data is stored as the MT=301 reaction and will be scored
 if ``heating`` is included in :attr:`openmc.Tally.scores`.
 
 Photons and Charged Particles Energy Deposition
--------------------------------------
+-----------------------------------------------
 
 In OpenMC, energy deposition from photons or charged particles is scored in the following way:
 After every collision, the kinetic energy of the incident particle is compared before and after the collision and this energy  removing energy of any secondary products particles is scored as deposited. This algorithm is justified by energy balance and the fact that photons and charged particles reaction Q-value is always zero. 
@@ -176,7 +176,7 @@ After every collision, the kinetic energy of the incident particle is compared b
 Charged Particles Energy Deposition
 +++++++++++++++++++++++++++++++++++
 
-OpenMC track photons interaction by interaction so the energy deposited in each collision is easily traced back to the nuclide and reaction for which the photon interacted with.
+OpenMC tracks photons interaction by interaction so the energy deposited in each collision is easily traced back to the nuclide and reaction for which the photon interacted with.
 Charged particles aren't tracked in the same way. For charged particles OpenMC assume that all their energy (less energy of bremsstrahlung radiation) is deposited in the material in which they were born. In this way it is harder to trace how much energy should be deposited in each nuclide.
 
 According to the CSDA approximation the energy deposited by a charged particle with kinetic energy T in the :math:`i`-th element can be calculated as:

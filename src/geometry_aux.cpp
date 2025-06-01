@@ -441,12 +441,10 @@ void prepare_distribcell(const std::vector<int32_t>* user_distribcells)
         Cell& c = *model::cells[idx];
         std::set<std::string> paths;
         for (int32_t i = 0; i < c.n_instances_; i++) {
-          // write_message(7,"442 cell id {} distrib index {} instance {} total
-          // instances {}",c.id_,map,i,c.n_instances_);
-          // warning(distribcell_path(idx, map, i));
           auto path = distribcell_path(idx, map, i);
           if (paths.find(path) != paths.end()) {
-            warning(fmt::format("path {} is already in paths", path));
+            fatal_error(fmt::format(
+              "Two or more cell instances have the same path {}", path));
           } else {
             paths.insert(path);
           }
@@ -541,7 +539,6 @@ std::string distribcell_path_inner(int32_t target_cell, int32_t map,
   // write to the path and return.
   for (int32_t cell_indx : search_univ.cells_) {
     if ((cell_indx == target_cell) && (offset == target_offset)) {
-      // write_message(7,"534 {} {}",offset,target_offset);
       Cell& c = *model::cells[cell_indx];
       path << "c" << c.id_;
       return path.str();
@@ -558,20 +555,17 @@ std::string distribcell_path_inner(int32_t target_cell, int32_t map,
 
     // Material cells don't contain other cells so ignore them.
     if (c.type_ != Fill::MATERIAL) {
-      int32_t temp_offset;
-      if (c.type_ == Fill::UNIVERSE) {
-        temp_offset = offset + c.offset_[map];
-        // write_message(7,"556 {} {} {}",c.id_,temp_offset,target_offset);
-        if (temp_offset <= target_offset)
-          break;
-      } else {
+      int32_t temp_offset = offset + c.offset_[map];
+      if (c.type_ == Fill::LATTICE) {
         Lattice& lat = *model::lattices[c.fill_];
         int32_t indx = lat.universes_.size() * map + lat.begin().indx_;
-        temp_offset = offset + lat.offsets_[indx] + c.offset_[map];
-        // write_message(7,"563 {} {} {}",c.id_,temp_offset,target_offset);
-        if (temp_offset <= target_offset)
-          break;
+        temp_offset += lat.offsets_[indx];
       }
+
+      // The desired cell is the first cell that gives an offset smaller or
+      // equal to the target offset.
+      if (temp_offset <= target_offset)
+        break;
     }
   }
 

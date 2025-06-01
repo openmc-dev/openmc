@@ -94,6 +94,11 @@ int cell_instance_at_level(const GeometryState& p, int level)
       }
     }
   }
+  if (instance >= c.n_instances_ && c.n_instances_ > 0)
+    warning(fmt::format("Cell instance {} must be smaller than number of "
+                        "instances {} for cell id {}",
+      instance, c.n_instances_, c.id_));
+
   return instance;
 }
 

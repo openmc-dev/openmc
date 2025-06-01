@@ -424,7 +424,7 @@ void prepare_distribcell(const std::vector<int32_t>* user_distribcells)
           c.offset_[map] = offset;
           Lattice& lat = *model::lattices[c.fill_];
           offset +=
-            lat.fill_offset_table(offset, target_univ_id, map, univ_count_memo);
+            lat.fill_offset_table(0, target_univ_id, map, univ_count_memo);
         }
       }
     }
@@ -554,13 +554,14 @@ std::string distribcell_path_inner(int32_t target_cell, int32_t map,
       int32_t temp_offset;
       if (c.type_ == Fill::UNIVERSE) {
         temp_offset = offset + c.offset_[map];
-        // write_message(7,"563 {} {} {}",c.id_,temp_offset,target_offset);
-        if (temp_offset == target_offset)
+        // write_message(7,"556 {} {} {}",c.id_,temp_offset,target_offset);
+        if (temp_offset <= target_offset)
           break;
       } else {
         Lattice& lat = *model::lattices[c.fill_];
         int32_t indx = lat.universes_.size() * map + lat.begin().indx_;
         temp_offset = offset + lat.offsets_[indx] + c.offset_[map];
+        // write_message(7,"563 {} {} {}",c.id_,temp_offset,target_offset);
         if (temp_offset <= target_offset)
           break;
       }
@@ -592,12 +593,12 @@ std::string distribcell_path_inner(int32_t target_cell, int32_t map,
     path << "l" << lat.id_;
     for (ReverseLatticeIter it = lat.rbegin(); it != lat.rend(); ++it) {
       int32_t indx = lat.universes_.size() * map + it.indx_;
-      int32_t temp_offset = offset + lat.offsets_[indx];
-      if (temp_offset <= target_offset - c.offset_[map]) {
+      int32_t temp_offset = offset + lat.offsets_[indx] + c.offset_[map];
+      if (temp_offset <= target_offset) {
         offset = temp_offset;
         path << "(" << lat.index_to_string(it.indx_) << ")->";
-        path << distribcell_path_inner(target_cell, map, target_offset,
-          *model::universes[*it], offset + c.offset_[map]);
+        path << distribcell_path_inner(
+          target_cell, map, target_offset, *model::universes[*it], offset);
         return path.str();
       }
     }

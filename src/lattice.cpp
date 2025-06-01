@@ -120,6 +120,7 @@ int32_t Lattice::fill_offset_table(int32_t offset, int32_t target_univ_id,
   }
 
   for (LatticeIter it = begin(); it != end(); ++it) {
+    // write_message(7,"123 {} {} {}",map,it.indx_,offset);
     offsets_[map * universes_.size() + it.indx_] = offset;
     offset += count_universe_instances(*it, target_univ_id, univ_count_memo);
   }

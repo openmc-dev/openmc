@@ -31,7 +31,7 @@ def model():
     model.settings.inactive = 0
     model.settings.particles = 1000
 
-    rotation = np.array((180, 0, 0))
+    rotation = np.array((0, 0, 10))
 
     llc = np.array([-9, -9, -9])
     urc = np.array([9, 9, 9])
@@ -47,7 +47,6 @@ def model():
     reg_mesh.upper_right = urc
 
     filters.append(openmc.MeshFilter(reg_mesh))
-
 
     # rotated meshes
     rotated_reg_mesh = openmc.RegularMesh()

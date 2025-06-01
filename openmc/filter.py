@@ -808,7 +808,7 @@ class MeshFilter(Filter):
         This array specifies a vector that is used to translate (shift) the mesh
         for this filter
     rotation : Iterable of float
-        This array specifies the angles in degrees about the x, y, and z axes 
+        This array specifies the angles in degrees about the x, y, and z axes
         that the mesh should be rotated. The rotation applied is an intrinsic
         rotation with specified Tait-Bryan angles. That is to say, if the angles
         are :math:`(\phi, \theta, \psi)`, then the rotation matrix applied is
@@ -1020,7 +1020,9 @@ class MeshFilter(Filter):
         rotation = elem.get('rotation')
         if rotation:
             values = [float(x) for x in rotation.split()]
-            if len(values) == 9:
+            if len(values) == 3:
+                out.rotation = [float(x) for x in values]
+            elif len(values) == 9:
                 out.rotation = np.array(values).reshape(3, 3)
         return out
 

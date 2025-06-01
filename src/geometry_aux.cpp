@@ -378,13 +378,17 @@ void prepare_distribcell(const std::vector<int32_t>* user_distribcells)
 
   // Search through universes for material cells and assign each one a
   // unique distribcell array index.
-  int distribcell_index = 0;
   vector<int32_t> target_univ_ids;
   for (const auto& u : model::universes) {
     for (auto idx : u->cells_) {
       if (distribcells.find(idx) != distribcells.end()) {
-        model::cells[idx]->distribcell_index_ = distribcell_index++;
-        target_univ_ids.push_back(u->id_);
+        if (std::find(target_univ_ids.begin(), target_univ_ids.end(), u->id_) ==
+            target_univ_ids.end()) {
+          target_univ_ids.push_back(u->id_);
+        }
+        model::cells[idx]->distribcell_index_ =
+          std::find(target_univ_ids.begin(), target_univ_ids.end(), u->id_) -
+          target_univ_ids.begin();
       }
     }
   }
@@ -421,6 +425,24 @@ void prepare_distribcell(const std::vector<int32_t>* user_distribcells)
           Lattice& lat = *model::lattices[c.fill_];
           offset +=
             lat.fill_offset_table(offset, target_univ_id, map, univ_count_memo);
+        }
+      }
+    }
+  }
+
+  // check computable distribcell paths from contiguous cell instances
+  for (const auto& u : model::universes) {
+    for (auto idx : u->cells_) {
+      if (distribcells.find(idx) != distribcells.end()) {
+        int32_t map =
+          std::find(target_univ_ids.begin(), target_univ_ids.end(), u->id_) -
+          target_univ_ids.begin();
+        Cell& c = *model::cells[idx];
+        for (int32_t i = 0; i < c.n_instances_; i++) {
+          // write_message(7,"442 cell id {} distrib index {} instance {} total
+          // instances {}",c.id_,map,i,c.n_instances_);
+          // warning(distribcell_path(idx, map, i));
+          distribcell_path(idx, map, i);
         }
       }
     }
@@ -512,6 +534,7 @@ std::string distribcell_path_inner(int32_t target_cell, int32_t map,
   // write to the path and return.
   for (int32_t cell_indx : search_univ.cells_) {
     if ((cell_indx == target_cell) && (offset == target_offset)) {
+      // write_message(7,"534 {} {}",offset,target_offset);
       Cell& c = *model::cells[cell_indx];
       path << "c" << c.id_;
       return path.str();
@@ -530,18 +553,17 @@ std::string distribcell_path_inner(int32_t target_cell, int32_t map,
     if (c.type_ != Fill::MATERIAL) {
       int32_t temp_offset;
       if (c.type_ == Fill::UNIVERSE) {
-        temp_offset =
-          offset + c.offset_[map]; // TODO: should also apply to lattice fills?
+        temp_offset = offset + c.offset_[map];
+        // write_message(7,"563 {} {} {}",c.id_,temp_offset,target_offset);
+        if (temp_offset == target_offset)
+          break;
       } else {
         Lattice& lat = *model::lattices[c.fill_];
         int32_t indx = lat.universes_.size() * map + lat.begin().indx_;
-        temp_offset = offset + lat.offsets_[indx];
+        temp_offset = offset + lat.offsets_[indx] + c.offset_[map];
+        if (temp_offset <= target_offset)
+          break;
       }
-
-      // The desired cell is the first cell that gives an offset smaller or
-      // equal to the target offset.
-      if (temp_offset <= target_offset - c.offset_[map])
-        break;
     }
   }
 

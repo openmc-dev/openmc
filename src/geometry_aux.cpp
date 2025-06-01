@@ -1,6 +1,7 @@
 #include "openmc/geometry_aux.h"
 
 #include <algorithm> // for std::max
+#include <set>
 #include <sstream>
 #include <unordered_set>
 
@@ -430,7 +431,7 @@ void prepare_distribcell(const std::vector<int32_t>* user_distribcells)
     }
   }
 
-  // check computable distribcell paths from contiguous cell instances
+  // check distinct distribcell paths from contiguous cell instances
   for (const auto& u : model::universes) {
     for (auto idx : u->cells_) {
       if (distribcells.find(idx) != distribcells.end()) {
@@ -438,11 +439,17 @@ void prepare_distribcell(const std::vector<int32_t>* user_distribcells)
           std::find(target_univ_ids.begin(), target_univ_ids.end(), u->id_) -
           target_univ_ids.begin();
         Cell& c = *model::cells[idx];
+        std::set<std::string> paths;
         for (int32_t i = 0; i < c.n_instances_; i++) {
           // write_message(7,"442 cell id {} distrib index {} instance {} total
           // instances {}",c.id_,map,i,c.n_instances_);
           // warning(distribcell_path(idx, map, i));
-          distribcell_path(idx, map, i);
+          auto path = distribcell_path(idx, map, i);
+          if (paths.find(path) != paths.end()) {
+            warning(fmt::format("path {} is already in paths", path));
+          } else {
+            paths.insert(path);
+          }
         }
       }
     }

@@ -1268,7 +1268,7 @@ class TimedMeshFilter(Filter):
 
     @property
     def shape(self):
-        return (self.time_grid - 1,) + self.mesh.dimension
+        return (len(self.time_grid) - 1,) + self.mesh.dimension
 
     @property
     def translation(self):

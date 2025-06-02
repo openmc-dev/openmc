@@ -284,17 +284,16 @@ def get_microxs_from_multigroup(
                 multigroup_flux = np.array(multigroup_flux)
                 multigroup_flux /= multigroup_flux.sum()
 
-                # check_type("temperature", temperature, (int, float))
+                cv.check_type("temperature", temperature, (int, float))
+                if temperature < 0.:
+                    raise ValueError(f"Temperature must be a positive number, not {temperature}")
                 # if energy is string then use group structure of that name
                 if isinstance(energy, str):
                     energy = GROUP_STRUCTURES[energy]
                 else:
                     # if user inputs energy check they are ascending (low to high) as
                     # some depletion codes use high energy to low energy.
-                    if not np.all(np.diff(energy) > 0):
-                        raise ValueError(
-                            "Energy group boundaries must be in ascending order"
-                        )
+                    cv.check_increasing(name="energy", value=energy)
 
                 # check dimension consistency
                 if len(multigroup_flux) != len(energy) - 1:

@@ -280,34 +280,27 @@ class Surface(IDManagerMixin, ABC):
                     "have no effect."
                 )
             else:
-                for key in transformation:
-                    if key not in ["direction", "position"]:
-                        msg = (
-                            f'Unable to set transformation parameter "{key}", '
-                            'which is unsupported by OpenMC'
-                        )
+                valid_keys = {"direction", "position"}
                 
-                if "direction" in transformation.keys():
-                    check_type(
-                        'transformation', transformation["direction"],
-                        Iterable,
-                        Real)
-                    check_length(
-                        'transformation', transformation["direction"], 12)
-                else:
-                    transformation["direction"] = np.append(
-                        np.identity(3), np.zeros(3,1), axis=1).flatten()
+                for key in set(transformation) - valid_keys:
+                    msg = (
+                        f'Unable to set transformation parameter "{key}", '
+                        'which is unsupported by OpenMC'
+                    )
+                    raise ValueError(msg)
                 
-                if "position" in transformation.keys():
-                    check_type(
-                        'transformation', transformation["position"],
-                        Iterable,
-                        Real)
-                    check_length(
-                        'transformation', transformation["position"], 12)
-                else:
-                    transformation["position"] = np.append(
-                        np.identity(3), np.zeros(3,1), axis=1).flatten()
+                for key in valid_keys:
+                    if key in transformation:
+                        check_type(
+                            'transformation',
+                            transformation[key],
+                            Iterable,
+                            Real)
+                        check_length(
+                            'transformation', transformation[key], 12)
+                    else:
+                        transformation[key] = np.append(
+                            np.identity(3), np.zeros(3,1), axis=1).flatten()
         
         self._transformation = transformation
 

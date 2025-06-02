@@ -88,7 +88,7 @@ Surface::Surface(pugi::xml_node surf_node)
       bc_ = make_unique<WhiteBC>();
     } else if (surf_bc == "periodic") {
       // Periodic BCs are handled separately
-    } else if (surf_bc == "transformation" || surf_bc == "transform") {
+    } else if (surf_bc == "transformation") {
       int vector_size_exp = 12;
       vector<double> dir_trans(vector_size_exp);
       vector<double> pos_trans(vector_size_exp);

@@ -8,7 +8,9 @@ from os import remove
 from pathlib import Path
 
 import pytest
-from openmc.deplete import MicroXS
+import openmc
+from openmc.deplete import MicroXS, get_microxs_from_multigroup
+from openmc.mgxs import GROUP_STRUCTURES
 import numpy as np
 
 ONE_GROUP_XS = Path(__file__).parents[1] / "micro_xs_simple.csv"
@@ -111,3 +113,35 @@ def test_multigroup_flux_same():
         energies=energies, multigroup_flux=flux, chain_file=chain_file)
 
     assert microxs_4g.data == pytest.approx(microxs_2g.data)
+
+
+def test_get_microxs_from_multigroup():
+
+    mat_ni58 = openmc.Material()
+    mat_ni58.add_nuclide("Ni58", 0.95)
+    mat_ni58.set_density("g/cm3", 7.87)
+    mat_ni58.depletable = True
+    mat_ni58.temperature = 293.6
+
+    mat_ni60 = openmc.Material()
+    mat_ni60.add_nuclide("Ni60", 1.0)
+    mat_ni60.set_density("g/cm3", 11.34)
+    mat_ni60.depletable = True
+    mat_ni60.temperature = 293.6
+
+    mg_flux = np.array([0.5e11] * 42)
+    multigroup_flux = list(mg_flux / sum(mg_flux))
+
+    all_micro_xs = get_microxs_from_multigroup(
+        materials=openmc.Materials([mat_ni58, mat_ni60]),
+        multigroup_fluxes=[multigroup_flux, multigroup_flux],
+        energy_group_structures=[
+            GROUP_STRUCTURES["VITAMIN-J-42"],
+            "VITAMIN-J-42",
+        ],
+        chain_file=Path(__file__).parents[1] / "chain_ni.xml",
+        reactions=None,
+    )
+
+    for micro_xs in all_micro_xs:
+        assert isinstance(micro_xs, openmc.deplete.MicroXS)

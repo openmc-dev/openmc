@@ -1,7 +1,6 @@
 #include "openmc/tallies/filter_timed_mesh.h"
 
 #include <fmt/core.h>
-#include <gsl/gsl-lite.hpp>
 
 #include "openmc/capi.h"
 #include "openmc/constants.h"
@@ -54,7 +53,7 @@ void TimedMeshFilter::set_mesh(int32_t mesh)
   reset_bins();
 }
 
-void TimedMeshFilter::set_time_grid(gsl::span<const double> time_grid)
+void TimedMeshFilter::set_time_grid(span<const double> time_grid)
 {
   // Clear existing bins
   time_grid_.clear();

@@ -5,6 +5,7 @@
 
 #include "openmc/constants.h"
 #include "openmc/position.h"
+#include "openmc/span.h"
 #include "openmc/tallies/filter.h"
 
 namespace openmc {
@@ -55,7 +56,7 @@ public:
 
   const vector<double>& time_grid() const { return time_grid_; }
 
-  void set_time_grid(gsl::span<const double> time_grid);
+  void set_time_grid(span<const double> time_grid);
 
   void reset_bins();
 

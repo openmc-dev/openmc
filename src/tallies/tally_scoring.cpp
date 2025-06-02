@@ -345,18 +345,13 @@ double score_particle_heating(const Particle& p, const Tally& tally,
     score -= p.bank_second_E();
     score *= p.wgt_last();
 
-    // if no event_nuclide (charged particle) scale energy deposition
-    // by fractional charge density
+    // if no event_nuclide (charged particle) scale energy deposition by
+    // fractional charge density
     if (i_nuclide != -1 && p.event_nuclide() == -1) {
       const auto& mat {model::materials[p.material()]};
-      int n = mat->nuclide_.size();
       int z = data::nuclides[i_nuclide]->Z_;
-      for (int i = 0; i < n; ++i) {
-        if (mat->nuclide_[i] == i_nuclide) {
-          score *= (z * mat->atom_density_[i] / mat->charge_density());
-          break;
-        }
-      }
+      auto i = mat->mat_nuclide_index_[i_nuclide];
+      score *= (z * mat->atom_density_[i] / mat->charge_density());
     }
     return score;
   }

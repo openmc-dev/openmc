@@ -16,10 +16,6 @@
     <particles>10000</particles>
     <batches>1</batches>
     <source particle="photon" strength="1.0" type="independent">
-      <space type="point">
-        <parameters>0 0 0</parameters>
-      </space>
-      <angle type="isotropic"/>
       <energy type="discrete">
         <parameters>10000000.0 1.0</parameters>
       </energy>

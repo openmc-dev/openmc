@@ -454,12 +454,14 @@ void Material::normalize_density()
   // Calculate nuclide atom densities
   atom_density_ *= density_;
 
-  // Calculate density in g/cm^3.
+  // Calculate density in [g/cm^3] and charge density in [e/b-cm]
   density_gpcc_ = 0.0;
+  charge_density_ = 0.0;
   for (int i = 0; i < nuclide_.size(); ++i) {
     int i_nuc = nuclide_[i];
     double awr = settings::run_CE ? data::nuclides[i_nuc]->awr_ : 1.0;
     density_gpcc_ += atom_density_(i) * awr * MASS_NEUTRON / N_AVOGADRO;
+    charge_density_ += atom_density_(i) * data::nuclides[i_nuc]->Z_;
   }
 }
 
@@ -933,20 +935,6 @@ void Material::calculate_photon_xs(Particle& p) const
   }
 }
 
-double Material::charge_density()
-{
-  double val = 0.0;
-  // Add contribution from each nuclide in material
-  for (int i = 0; i < nuclide_.size(); ++i) {
-
-    // Get nuclide index
-    int i_nuclide = nuclide_[i];
-    int z = data::nuclides[i_nuclide]->Z_;
-    val += atom_density_(i) * z;
-  }
-  return val;
-}
-
 void Material::set_id(int32_t id)
 {
   assert(id >= 0 || id == C_NONE);
@@ -996,12 +984,14 @@ void Material::set_density(double density, const std::string& units)
     // Recalculate nuclide atom densities based on given density
     atom_density_ *= density;
 
-    // Calculate density in g/cm^3.
+    // Calculate density in g/cm^3 and charge density in [e/b-cm]
     density_gpcc_ = 0.0;
+    charge_density_ = 0.0;
     for (int i = 0; i < nuclide_.size(); ++i) {
       int i_nuc = nuclide_[i];
       double awr = data::nuclides[i_nuc]->awr_;
       density_gpcc_ += atom_density_(i) * awr * MASS_NEUTRON / N_AVOGADRO;
+      charge_density_ += atom_density_(i) * data::nuclides[i_nuc]->Z_;
     }
   } else if (units == "g/cm3" || units == "g/cc") {
     // Determine factor by which to change densities
@@ -1012,6 +1002,7 @@ void Material::set_density(double density, const std::string& units)
     density_gpcc_ = density;
     density_ *= f;
     atom_density_ *= f;
+    charge_density_ *= f;
   } else {
     throw std::invalid_argument {
       "Invalid units '" + std::string(units.data()) + "' specified."};

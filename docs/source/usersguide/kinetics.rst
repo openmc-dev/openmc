@@ -67,6 +67,21 @@ are needed to compute kinetics parameters in OpenMC:
 Obtaining kinetics parameters
 -----------------------------
 
+The ``Model`` class can be used to automatically generate all IFP tallies using the Python API
+with ``settings.ifp_n_generation`` greater than 0::
+
+    model = openmc.model.Model(settings = settings)
+    model.export_to_xml()
+
+Additionally, each of the tallies can be manually defined individually with group-wise or total 
+:math:`\beta_{\text{eff}}` specified by providing a 6-group ``openmc.DelayedGroupFilter``::
+    
+    beta_tally = openmc.Tally(name="group-beta-score")
+    beta_tally.scores = ["ifp-beta-numerator"]
+    
+    #Add DelayedGroupFilter to enable group-wise tallies
+    beta_tally.filters = [openmc.DelayedGroupFilter(list(range(1, 7)))]
+    
 Here is an example showing how to declare the three available IFP scores in a
 single tally::
 
@@ -95,6 +110,18 @@ for ``ifp-denominator``:
 
     \beta_{\text{eff}} = \frac{S_{\text{ifp-beta-numerator}}}{S_{\text{ifp-denominator}}}
 
+The parameters can be directly retrieved from a statepoint file direction using the ``ifp_results``
+method::
+
+    with openmc.StatePoint(output_path) as sp:
+        results = sp.ifp_results()
+        
+        #Retrieve generation lifetime
+        generation_lifetime = results['Generation Time']
+        
+        #Retrieve 6-group delayed neutron fraction array
+        beta_eff = results['Beta Effective']
+
 .. only:: html
 
    .. rubric:: References
@@ -107,4 +134,4 @@ for ``ifp-denominator``:
     of the Iterated Fission Probability Method in OpenMC to Compute Adjoint-Weighted
     Kinetics Parameters", International Conference on Mathematics and Computational
     Methods Applied to Nuclear Science and Engineering (M&C 2025), Denver, April 27-30,
-    2025 (to be presented).
+    2025.

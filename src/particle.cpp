@@ -766,7 +766,6 @@ void Particle::cross_transformation_bc(
   // once after. For mesh surface filters, we need to artificially move
   // the particle slightly back in case the surface crossing is coincident
   // with a mesh boundary
-
   if (!model::active_surface_tallies.empty()) {
     score_surface_tally(*this, model::active_surface_tallies);
   }
@@ -782,9 +781,9 @@ void Particle::cross_transformation_bc(
   r() = new_r;
   u() = new_u;
 
-  // Reassign particle's cell and surface
-  coord(0).cell = cell_last(0);
-  surface() = -surface();
+  // Note that particle's cell and surface are not strictly assigned upon
+  // surface crossing. The cell will be assigned during the
+  // neighbor_list_find_cell call below.
 
   // If a transformation surface is coincident with a lattice or universe
   // boundary, it is necessary to redetermine the particle's coordinates in

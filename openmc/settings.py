@@ -1626,9 +1626,12 @@ class Settings:
             if mesh_memo is not None and wwg.mesh.id in mesh_memo:
                 continue
 
-            root.append(wwg.mesh.to_xml_element())
-            if mesh_memo is not None:
-                mesh_memo.add(wwg.mesh.id)
+            # See if a <mesh> element already exists -- if not, add it
+            path = f"./mesh[@id='{wwg.mesh.id}']"
+            if root.find(path) is None:
+                root.append(wwg.mesh.to_xml_element())
+                if mesh_memo is not None:
+                    mesh_memo.add(wwg.mesh.id)
 
     def _create_weight_windows_file_element(self, root):
         if self.weight_windows_file is not None:

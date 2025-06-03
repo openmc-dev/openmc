@@ -196,8 +196,7 @@ def get_microxs_from_multigroup(
     ----------
     materials : openmc.Materials
         OpenMC Materials object containing the materials for which to compute
-        microscopic cross sections. Each material must have a temperature and
-        volume set.
+        microscopic cross sections. Each material must have a temperature set.
     multigroup_fluxes: Sequence[float]
         Energy-dependent multigroup flux values, where each sublist corresponds
         to a specific material. Will be normalized so that it sums to 1.
@@ -219,9 +218,9 @@ def get_microxs_from_multigroup(
 
     """
 
-    # default to not print terminal output
-    # if init_kwargs == {}:
-    #     init_kwargs = {"output": False}
+    default to not print terminal output
+    if init_kwargs == {}:
+        init_kwargs = {"output": False}
 
         # Check material field
     for i, material in enumerate(materials):

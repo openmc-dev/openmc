@@ -153,7 +153,7 @@ protected:
 };
 
 //==============================================================================
-//! A BC that transforms particle trajectory by a matrix.
+//! A BC that transforms particle direction and position by matrices.
 //==============================================================================
 
 class TransformationBC : public BoundaryCondition {

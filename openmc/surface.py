@@ -128,7 +128,9 @@ class Surface(IDManagerMixin, ABC):
         surface. Defaults to transmissive boundary condition where particles
         freely pass through the surface. Note that periodic boundary conditions
         can only be applied to x-, y-, and z-planes, and only axis-aligned
-        periodicity is supported.
+        periodicity is supported. In addition, to enable greatest flexibility
+        for transformation boundary conditions, it is up to the user to ensure
+        valid transformations for transport.
     albedo : float, optional
         Albedo of the surfaces as a ratio of particle weight after interaction
         with the surface to the initial weight. Values must be positive. Only

@@ -5,6 +5,7 @@
 #define OPENMC_DISTRIBUTION_H
 
 #include <cstddef> // for size_t
+#include <any> // for std::any
 
 #include "pugixml.hpp"
 
@@ -16,17 +17,44 @@
 namespace openmc {
 
 //==============================================================================
+//! Sample class representing a sample from the distribution and its weight
+//==============================================================================
+
+class Sample {
+public:
+  std::any val;
+  double wgt;
+
+  Sample(double v, double w) : val(v), wgt(w) {}
+};
+
+//==============================================================================
 //! Abstract class representing a univariate probability distribution
 //==============================================================================
 
 class Distribution {
 public:
   virtual ~Distribution() = default;
-  virtual double sample(uint64_t* seed) const = 0;
+  virtual Sample sample(uint64_t* seed) const = 0;
+
+  //! Evaluate pdf at a point
+  //! \return Value of pdf at a point
+  virtual double evaluate(double x) const = 0;
 
   //! Return integral of distribution
   //! \return Integral of distribution
   virtual double integral() const { return 1.0; };
+
+  // Set or get bias distribution
+  void set_bias(std::unique_ptr<Distribution> bias) {
+    bias_ = std::move(bias);
+  }
+
+  const Distribution* bias() const { return bias_.get(); }
+
+protected:
+  // Biasing distribution
+  unique_ptr<Distribution> bias_;
 };
 
 using UPtrDist = unique_ptr<Distribution>;

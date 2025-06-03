@@ -177,9 +177,28 @@ PowerLaw::PowerLaw(pugi::xml_node node)
   ninv_ = 1 / (n + 1);
 }
 
-double PowerLaw::sample(uint64_t* seed) const
+double PowerLaw::evaluate(double x) const
 {
-  return std::pow(offset_ + prn(seed) * span_, ninv_);
+  if (x <= a) {
+    return 0.0;
+  } else if (x >= b) {
+    return 0.0;
+  } else {
+    int pwr = n + 1;
+    double norm = pwr / span_;
+    return norm * std::pow(std::fabs(x),n);
+  }
+}
+
+Sample PowerLaw::sample(uint64_t* seed) const
+{
+  if (bias()) {
+    Sample s = bias()->sample(seed);
+    s.wgt =  this->evaluate(s.val) / bias()->evaluate(s.val);
+  } else {
+    return Sample(std::pow(offset_ + prn(seed) * span_, ninv_), 1.0);
+  }
+  return s;
 }
 
 //==============================================================================
@@ -386,10 +405,10 @@ Mixture::Mixture(pugi::xml_node node)
     if (!pair.child("dist"))
       fatal_error("Mixture pair element does not have a distribution.");
 
-    // cummulative sum of probabilities
+    // cumulative sum of probabilities
     double p = std::stod(pair.attribute("probability").value());
 
-    // Save cummulative probability and distribution
+    // Save cumulative probability and distribution
     auto dist = distribution_from_xml(pair.child("dist"));
     cumsum += p * dist->integral();
 
@@ -399,7 +418,7 @@ Mixture::Mixture(pugi::xml_node node)
   // Save integral of distribution
   integral_ = cumsum;
 
-  // Normalize cummulative probabilities to 1
+  // Normalize cumulative probabilities to 1
   for (auto& pair : distribution_) {
     pair.first /= cumsum;
   }
@@ -458,6 +477,14 @@ UPtrDist distribution_from_xml(pugi::xml_node node)
   } else {
     openmc::fatal_error("Invalid distribution type: " + type);
   }
+  
+  // Check for biasing distribution (maybe C_NONE--see how other areas of the code are checking for non initialized things)
+  if (check_for_node(node, "bias")) {
+    pugi::xml_node bias_node = node.child("bias");
+    UPtrDist bias = distribution_from_xml(bias_node);
+    dist->set_bias(std::move(bias));
+  }
+  
   return dist;
 }
 

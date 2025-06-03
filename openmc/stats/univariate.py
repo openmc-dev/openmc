@@ -270,6 +270,13 @@ class Discrete(Univariate):
         params = ET.SubElement(element, "parameters")
         params.text = ' '.join(map(str, self.x)) + ' ' + ' '.join(map(str, self.p))
 
+        if self.bias is not None:
+            if self.bias.bias is not None:
+                raise RuntimeError('Biasing distributions should not have their own bias!')
+            else:
+                bias_elem = self.bias.to_xml_element("bias")
+                element.append(bias_elem)
+
         return element
 
     @classmethod
@@ -290,7 +297,14 @@ class Discrete(Univariate):
         params = [float(x) for x in get_text(elem, 'parameters').split()]
         x = params[:len(params)//2]
         p = params[len(params)//2:]
-        return cls(x, p)
+        
+        bias_elem = elem.find('bias')
+        if bias_elem is not None:
+            bias_dist = Univariate.from_xml_element(bias_elem)
+        else:
+            bias_dist = None
+
+        return cls(x, p, bias=bias_dist)
 
     @classmethod
     def merge(
@@ -510,6 +524,14 @@ class Uniform(Univariate):
         element = ET.Element(element_name)
         element.set("type", "uniform")
         element.set("parameters", f'{self.a} {self.b}')
+
+        if self.bias is not None:
+            if self.bias.bias is not None:
+                raise RuntimeError('Biasing distributions should not have their own bias!')
+            else:
+                bias_elem = self.bias.to_xml_element("bias")
+                element.append(bias_elem)
+
         return element
 
     @classmethod
@@ -528,7 +550,14 @@ class Uniform(Univariate):
 
         """
         params = get_text(elem, 'parameters').split()
-        return cls(*map(float, params))
+
+        bias_elem = elem.find('bias')
+        if bias_elem is not None:
+            bias_dist = Univariate.from_xml_element(bias_elem)
+        else:
+            bias_dist = None
+
+        return cls(*map(float, params), bias=bias_dist)
 
 
 class PowerLaw(Univariate):
@@ -654,6 +683,14 @@ class PowerLaw(Univariate):
         element = ET.Element(element_name)
         element.set("type", "powerlaw")
         element.set("parameters", f'{self.a} {self.b} {self.n}')
+
+        if self.bias is not None:
+            if self.bias.bias is not None:
+                raise RuntimeError('Biasing distributions should not have their own bias!')
+            else:
+                bias_elem = self.bias.to_xml_element("bias")
+                element.append(bias_elem)
+
         return element
 
     @classmethod
@@ -672,7 +709,14 @@ class PowerLaw(Univariate):
 
         """
         params = get_text(elem, 'parameters').split()
-        return cls(*map(float, params))
+
+        bias_elem = elem.find('bias')
+        if bias_elem is not None:
+            bias_dist = Univariate.from_xml_element(bias_elem)
+        else:
+            bias_dist = None
+
+        return cls(*map(float, params), bias=bias_dist)
 
 
 class Maxwell(Univariate):
@@ -765,6 +809,14 @@ class Maxwell(Univariate):
         element = ET.Element(element_name)
         element.set("type", "maxwell")
         element.set("parameters", str(self.theta))
+
+        if self.bias is not None:
+            if self.bias.bias is not None:
+                raise RuntimeError('Biasing distributions should not have their own bias!')
+            else:
+                bias_elem = self.bias.to_xml_element("bias")
+                element.append(bias_elem)
+
         return element
 
     @classmethod
@@ -783,7 +835,14 @@ class Maxwell(Univariate):
 
         """
         theta = float(get_text(elem, 'parameters'))
-        return cls(theta)
+
+        bias_elem = elem.find('bias')
+        if bias_elem is not None:
+            bias_dist = Univariate.from_xml_element(bias_elem)
+        else:
+            bias_dist = None
+
+        return cls(theta, bias=bias_dist)
 
 
 class Watt(Univariate):
@@ -886,6 +945,14 @@ class Watt(Univariate):
         element = ET.Element(element_name)
         element.set("type", "watt")
         element.set("parameters", f'{self.a} {self.b}')
+
+        if self.bias is not None:
+            if self.bias.bias is not None:
+                raise RuntimeError('Biasing distributions should not have their own bias!')
+            else:
+                bias_elem = self.bias.to_xml_element("bias")
+                element.append(bias_elem)
+
         return element
 
     @classmethod
@@ -904,7 +971,14 @@ class Watt(Univariate):
 
         """
         params = get_text(elem, 'parameters').split()
-        return cls(*map(float, params))
+
+        bias_elem = elem.find('bias')
+        if bias_elem is not None:
+            bias_dist = Univariate.from_xml_element(bias_elem)
+        else:
+            bias_dist = None
+
+        return cls(*map(float, params), bias=bias_dist)
 
 
 class Normal(Univariate):
@@ -1001,6 +1075,14 @@ class Normal(Univariate):
         element = ET.Element(element_name)
         element.set("type", "normal")
         element.set("parameters", f'{self.mean_value} {self.std_dev}')
+
+        if self.bias is not None:
+            if self.bias.bias is not None:
+                raise RuntimeError('Biasing distributions should not have their own bias!')
+            else:
+                bias_elem = self.bias.to_xml_element("bias")
+                element.append(bias_elem)
+
         return element
 
     @classmethod
@@ -1019,7 +1101,14 @@ class Normal(Univariate):
 
         """
         params = get_text(elem, 'parameters').split()
-        return cls(*map(float, params))
+
+        bias_elem = elem.find('bias')
+        if bias_elem is not None:
+            bias_dist = Univariate.from_xml_element(bias_elem)
+        else:
+            bias_dist = None
+
+        return cls(*map(float, params), bias=bias_dist)
 
 
 def muir(e0: float, m_rat: float, kt: float, bias: Univariate = None):
@@ -1333,6 +1422,13 @@ class Tabular(Univariate):
         params = ET.SubElement(element, "parameters")
         params.text = ' '.join(map(str, self.x)) + ' ' + ' '.join(map(str, self.p))
 
+        if self.bias is not None:
+            if self.bias.bias is not None:
+                raise RuntimeError('Biasing distributions should not have their own bias!')
+            else:
+                bias_elem = self.bias.to_xml_element("bias")
+                element.append(bias_elem)
+
         return element
 
     @classmethod
@@ -1355,7 +1451,14 @@ class Tabular(Univariate):
         m = (len(params) + 1)//2  # +1 for when len(params) is odd
         x = params[:m]
         p = params[m:]
-        return cls(x, p, interpolation)
+
+        bias_elem = elem.find('bias')
+        if bias_elem is not None:
+            bias_dist = Univariate.from_xml_element(bias_elem)
+        else:
+            bias_dist = None
+
+        return cls(x, p, interpolation, bias=bias_dist)
 
     def integral(self):
         """Return integral of distribution
@@ -1394,9 +1497,10 @@ class Legendre(Univariate):
 
     """
 
-    def __init__(self, coefficients: Sequence[float]):
+    def __init__(self, coefficients: Sequence[float], bias: Univariate = None):
         self.coefficients = coefficients
         self._legendre_poly = None
+        self.bias = bias
 
     def __call__(self, x):
         # Create Legendre polynomial if we haven't yet
@@ -1418,7 +1522,19 @@ class Legendre(Univariate):
     def coefficients(self, coefficients):
         self._coefficients = np.asarray(coefficients)
 
+    @property
+    def bias(self):
+        return self._bias
+    
+    @bias.setter
+    def bias(self, bias):
+        cv.check_type('Biasing distribution', bias, Univariate)
+        self._bias = bias
+
     def sample(self, n_samples=1, seed=None):
+        raise NotImplementedError
+    
+    def evaluate(self, x):
         raise NotImplementedError
 
     def to_xml_element(self, element_name):
@@ -1503,6 +1619,9 @@ class Mixture(Univariate):
             samples = self.distribution[i].sample(n_dist_samples)
             out[idx == i] = samples
         return out
+    
+    def evaluate(self, x):
+        raise NotImplementedError
 
     def normalize(self):
         """Normalize the probabilities stored on the distribution"""

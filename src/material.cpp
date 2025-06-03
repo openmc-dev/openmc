@@ -460,8 +460,9 @@ void Material::normalize_density()
   for (int i = 0; i < nuclide_.size(); ++i) {
     int i_nuc = nuclide_[i];
     double awr = settings::run_CE ? data::nuclides[i_nuc]->awr_ : 1.0;
+    int z = settings::run_CE ? data::nuclides[i_nuc]->Z_ : 0.0;
     density_gpcc_ += atom_density_(i) * awr * MASS_NEUTRON / N_AVOGADRO;
-    charge_density_ += atom_density_(i) * data::nuclides[i_nuc]->Z_;
+    charge_density_ += atom_density_(i) * z;
   }
 }
 
@@ -990,8 +991,9 @@ void Material::set_density(double density, const std::string& units)
     for (int i = 0; i < nuclide_.size(); ++i) {
       int i_nuc = nuclide_[i];
       double awr = data::nuclides[i_nuc]->awr_;
+      int z = settings::run_CE ? data::nuclides[i_nuc]->Z_ : 0.0;
       density_gpcc_ += atom_density_(i) * awr * MASS_NEUTRON / N_AVOGADRO;
-      charge_density_ += atom_density_(i) * data::nuclides[i_nuc]->Z_;
+      charge_density_ += atom_density_(i) * z;
     }
   } else if (units == "g/cm3" || units == "g/cc") {
     // Determine factor by which to change densities

@@ -8,6 +8,7 @@ import h5py
 import numpy as np
 from pathlib import Path
 from uncertainties import ufloat
+from uncertainties.unumpy import uarray
 
 import openmc
 import openmc.checkvalue as cv
@@ -710,3 +711,60 @@ class StatePoint:
                     tally_filter.paths = cell.paths
 
         self._summary = summary
+
+    def ifp_results(self,param='both'):
+        """
+        Calculates kinetics parameters from Iterated Fission Probablity tallies.
+
+        Parameters
+        ----------
+        param : string
+            A string specifying which parameter to return. Selection of
+            'both', 'beta_effective', or 'generation_time' (default is 'both').
+
+        Returns
+        -------
+        result : dict of np.ndarray
+            A dictionary with 'Generation Time' and 'Beta Effective' keys holding arrays 
+            with their respective values.
+
+        Raises
+        ------
+        LookupError
+            An error for when the IFP tallies are not found in the StatePoint file.
+        """       
+        result = {}
+        
+        denom_tally = None
+        gen_time_tally = None
+        beta_tally = None
+        for tally in self.tallies.values():
+            if 'ifp-denominator' in tally.scores:
+                denom_tally = self.get_tally(scores = ['ifp-denominator'])
+            if 'ifp-time-numerator' in tally.scores:
+                gen_time_tally = self.get_tally(scores = ['ifp-time-numerator'])
+            if 'ifp-beta-numerator' in tally.scores:
+                beta_tally = self.get_tally(scores = ['ifp-beta-numerator'])
+        
+        if denom_tally is None:
+            raise LookupError('Unable to get Denominator Tally')
+        
+        denom_values = uarray(denom_tally.get_values(scores = ['ifp-denominator']),
+                              denom_tally.get_values(scores = ['ifp-denominator'],value = 'rel_err'))    
+        if param == 'both' or param == 'generation_time':
+            if gen_time_tally is None:
+                raise LookupError('Unable to get Generation Time Numerator Tally')
+            gen_time_values = uarray(gen_time_tally.get_values(scores = ['ifp-time-numerator']),
+                                     gen_time_tally.get_values(scores = ['ifp-time-numerator'],value = 'rel_err'))
+            gen_time_values /= denom_values*self.keff
+            result['Generation Time'] = gen_time_values.flatten()[0]
+        
+        if param == 'both' or param == 'beta_effective':
+            if beta_tally is None:
+                raise LookupError('Unable to get Beta Numerator Tally')
+            beta_values = uarray(beta_tally.get_values(scores = ['ifp-beta-numerator']),
+                                 beta_tally.get_values(scores = ['ifp-beta-numerator'],value = 'rel_err'))
+            beta_values /= denom_values
+            result['Beta Effective'] = beta_values.flatten()
+
+        return result

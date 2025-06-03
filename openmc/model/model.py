@@ -1,7 +1,7 @@
 from __future__ import annotations
 from collections.abc import Iterable, Sequence
 import copy
-from functools import lru_cache
+from functools import cache
 from pathlib import Path
 import math
 from numbers import Integral, Real
@@ -81,6 +81,9 @@ class Model:
         self.tallies = openmc.Tallies() if tallies is None else tallies
         self.plots = openmc.Plots() if plots is None else plots
 
+        if self.settings._ifp_n_generation is not None:
+            self._init_ifp()
+
     @property
     def geometry(self) -> openmc.Geometry | None:
         return self._geometry
@@ -154,7 +157,7 @@ class Model:
             return False
 
     @property
-    @lru_cache(maxsize=None)
+    @cache
     def _materials_by_id(self) -> dict:
         """Dictionary mapping material ID --> material"""
         if self.materials:
@@ -164,14 +167,14 @@ class Model:
         return {mat.id: mat for mat in mats}
 
     @property
-    @lru_cache(maxsize=None)
+    @cache
     def _cells_by_id(self) -> dict:
         """Dictionary mapping cell ID --> cell"""
         cells = self.geometry.get_all_cells()
         return {cell.id: cell for cell in cells.values()}
 
     @property
-    @lru_cache(maxsize=None)
+    @cache
     def _cells_by_name(self) -> dict[int, openmc.Cell]:
         # Get the names maps, but since names are not unique, store a set for
         # each name key. In this way when the user requests a change by a name,
@@ -184,7 +187,7 @@ class Model:
         return result
 
     @property
-    @lru_cache(maxsize=None)
+    @cache
     def _materials_by_name(self) -> dict[int, openmc.Material]:
         if self.materials is None:
             mats = self.geometry.get_all_materials().values()
@@ -196,6 +199,39 @@ class Model:
                 result[mat.name] = set()
             result[mat.name].add(mat)
         return result
+
+    def _init_ifp(self) -> None:
+        """Automate tally creation for calculating Iterated Fission Probability kinetics parameters"""
+        existing_tallies = {'time-num':False, 'beta-num':False, 'ifp-denom':False}
+                
+        dg_filter = None
+        for tally in self._tallies:
+            if 'ifp-time-numerator' in tally.scores:
+                existing_tallies['time-num'] = True
+            if 'ifp-beta-numerator' in tally.scores:
+                existing_tallies['beta-num'] = True
+            if 'ifp-denominator' in tally.scores:
+                existing_tallies['ifp-denom'] = True
+            
+            if tally.contains_filter(openmc.DelayedGroupFilter):
+                dg_filter = tally.find_filter(openmc.DelayedGroupFilter)
+            
+        if not existing_tallies['time-num']:
+            gen_time_tally = openmc.Tally()
+            gen_time_tally.scores = ['ifp-time-numerator']
+            self._tallies.append(gen_time_tally)
+        if not existing_tallies['beta-num']:
+            beta_tally = openmc.Tally()
+            beta_tally.scores = ['ifp-beta-numerator']
+            if dg_filter is None:
+                beta_tally.filters = [openmc.DelayedGroupFilter(list(range(1,7)))]
+            else:
+                beta_tally.filters = [dg_filter]
+            self._tallies.append(beta_tally)
+        if not existing_tallies['ifp-denom']:
+            denom_tally = openmc.Tally()
+            denom_tally.scores = ['ifp-denominator']
+            self._tallies.append(denom_tally)
 
     @classmethod
     def from_xml(

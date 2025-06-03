@@ -913,6 +913,9 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
               simulation::ifp_source_delayed_group_bank[p.current_work() - 1];
             if (delayed_groups.size() == settings::ifp_n_generation) {
               if (delayed_groups[0] > 0) {
+                if (tally.delayedgroup_filter_ != C_NONE) {
+                  filter_index = delayed_groups[0] - 1;
+                }
                 score = p.wgt_last();
               }
             }

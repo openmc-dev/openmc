@@ -247,6 +247,8 @@ double Surface::distance(Position r, Direction u, double t, double speed, bool c
     return _distance(r, u, coincident);
   }
   // The surface moves
+  
+  coincident = false;
 
   // Store the origin coordinate
   Position r_origin {r};
@@ -273,10 +275,17 @@ double Surface::distance(Position r, Direction u, double t, double speed, bool c
 
     // Adjust to relative direction
     u -= velocity / speed;
+
+    // Normalize scaled relative direction
+    double norm = u.norm();
+    u /= norm;
         
     // Get distance using the static function based on the adjusted position
     // and direction
-    double distance = _distance(r, u, coincident);
+    double distance = _distance(r, u, coincident) * norm;
+
+    // Rescale relative direction
+    u *= norm;
         
     // Intersection within the interval?
     double t_distance = distance / speed;
@@ -326,7 +335,11 @@ double Surface::dot_normal(
 
   // Get the relative direction
   Direction u_relative = u - velocity / speed;
-
+  
+  // Normalize scaled relative direction
+  double norm = u_relative.norm();
+  u_relative /= norm;
+  
   // Get the dot product
   return u_relative.dot(normal(r_moved));
 }

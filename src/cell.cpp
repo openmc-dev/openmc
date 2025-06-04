@@ -827,7 +827,6 @@ bool Region::contains_simple(
     // is moving, we need to factor in the surface-particle relative velocity,
     // so the surface-sense calculation needs to be done.
    
-    /*
     if (model::surfaces[abs(token) - 1]->moving_) {
       // Note the off-by-one indexing
       bool sense = model::surfaces[abs(token) - 1]->sense(r, u, t, speed);
@@ -837,7 +836,6 @@ bool Region::contains_simple(
       continue;
     }
     // Surface is not moving
-    */
     
     if (token == on_surface) {
     } else if (-token == on_surface) {
@@ -869,8 +867,7 @@ bool Region::contains_complex(
     // If the token is a union or intersection check to
     // short circuit
     if (token < OP_UNION) {
-      //if (model::surfaces[abs(token) - 1]->moving_) {
-      if (false) {
+      if (model::surfaces[abs(token) - 1]->moving_) {
         // Note the off-by-one indexing
         bool sense = model::surfaces[abs(token) - 1]->sense(r, u, t, speed);
         in_cell = (sense == (token > 0));

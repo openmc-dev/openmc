@@ -7,7 +7,6 @@
 #include <utility>
 
 #include <fmt/core.h>
-#include <gsl/gsl-lite.hpp>
 
 #include "openmc/array.h"
 #include "openmc/container_util.h"
@@ -113,90 +112,7 @@ Surface::Surface(pugi::xml_node surf_node)
       bc_->set_albedo(surf_alb);
     }
   }
-}
-
-bool Surface::sense(Position r, Direction u, double t, double speed) const
-{
-  // Evaluate the surface equation at the particle's coordinates to determine
-  // which side the particle is on.
-  const double f = evaluate(r, t);
-
-  // Check which side of surface the point is on.
-  if (std::abs(f) < FP_COINCIDENT) {
-    // Particle may be coincident with this surface. To determine the sense, we
-    // look at the direction of the particle relative to the surface normal (by
-    // default in the positive direction) via their dot product.
-    return dot_normal(r, u, t, speed) > 0.0;
-  }
-  return f > 0.0;
-}
-
-Direction Surface::reflect(Position r, Direction u, GeometryState* p) const
-{
-  // Determine projection of direction onto normal and squared magnitude of
-  // normal.
-  Direction n = normal(r);
-
-  // Reflect direction according to normal.
-  return u.reflect(n);
-}
-
-Direction Surface::diffuse_reflect(
-  Position r, Direction u, uint64_t* seed, GeometryState* p) const
-{
-  // Diffuse reflect direction according to the normal.
-  // cosine distribution
-
-  Direction n = this->normal(r);
-  n /= n.norm();
-  const double projection = n.dot(u);
-
-  // sample from inverse function, u=sqrt(rand) since p(u)=2u, so F(u)=u^2
-  const double mu =
-    (projection >= 0.0) ? -std::sqrt(prn(seed)) : std::sqrt(prn(seed));
-
-  // sample azimuthal distribution uniformly
-  u = rotate_angle(n, mu, nullptr, seed);
-
-  // normalize the direction
-  return u / u.norm();
-}
-
-void Surface::to_hdf5(hid_t group_id) const
-{
-  hid_t surf_group = create_group(group_id, fmt::format("surface {}", id_));
-
-  if (geom_type_ == GeometryType::DAG) {
-    write_string(surf_group, "geom_type", "dagmc", false);
-  } else if (geom_type_ == GeometryType::CSG) {
-    write_string(surf_group, "geom_type", "csg", false);
-
-    if (bc_) {
-      write_string(surf_group, "boundary_type", bc_->type(), false);
-      bc_->to_hdf5(surf_group);
-    } else {
-      write_string(surf_group, "boundary_type", "transmission", false);
-    }
-  }
-
-  if (!name_.empty()) {
-    write_string(surf_group, "name", name_, false);
-  }
-
-  to_hdf5_inner(surf_group);
-
-  close_group(surf_group);
-}
-
-CSGSurface::CSGSurface() : Surface {}
-{
-  geom_type_ = GeometryType::CSG;
-};
-
-CSGSurface::CSGSurface(pugi::xml_node surf_node) : Surface {surf_node}
-{
-  geom_type_ = GeometryType::CSG;
-
+  
   // Not moving?
   if (!(check_for_node(surf_node, "moving_velocities") ||
         check_for_node(surf_node, "moving_durations"))) {
@@ -252,9 +168,56 @@ CSGSurface::CSGSurface(pugi::xml_node surf_node) : Surface {surf_node}
       moving_translations_[n] + moving_velocities_[n] * durations[n];
   }
   moving_translations_[N_move] = moving_translations_[N_move - 1];
-};
+}
 
-double CSGSurface::evaluate(Position r, double t) const
+bool Surface::sense(Position r, Direction u, double t, double speed) const
+{
+  // Evaluate the surface equation at the particle's coordinates to determine
+  // which side the particle is on.
+  const double f = evaluate(r, t);
+
+  // Check which side of surface the point is on.
+  if (std::abs(f) < FP_COINCIDENT) {
+    // Particle may be coincident with this surface. To determine the sense, we
+    // look at the direction of the particle relative to the surface normal (by
+    // default in the positive direction) via their dot product.
+    return dot_normal(r, u, t, speed) > 0.0;
+  }
+  return f > 0.0;
+}
+
+Direction Surface::reflect(Position r, Direction u, GeometryState* p) const
+{
+  // Determine projection of direction onto normal and squared magnitude of
+  // normal.
+  Direction n = normal(r);
+
+  // Reflect direction according to normal.
+  return u.reflect(n);
+}
+
+Direction Surface::diffuse_reflect(
+  Position r, Direction u, uint64_t* seed) const
+{
+  // Diffuse reflect direction according to the normal.
+  // cosine distribution
+
+  Direction n = this->normal(r);
+  n /= n.norm();
+  const double projection = n.dot(u);
+
+  // sample from inverse function, u=sqrt(rand) since p(u)=2u, so F(u)=u^2
+  const double mu =
+    (projection >= 0.0) ? -std::sqrt(prn(seed)) : std::sqrt(prn(seed));
+
+  // sample azimuthal distribution uniformly
+  u = rotate_angle(n, mu, nullptr, seed);
+
+  // normalize the direction
+  return u / u.norm();
+}
+
+double Surface::evaluate(Position r, double t) const
 {
   if (!moving_) {
     return _evaluate(r);
@@ -278,35 +241,7 @@ double CSGSurface::evaluate(Position r, double t) const
   return _evaluate(r_moved);
 }
 
-double CSGSurface::dot_normal(
-  Position r, Direction u, double t, double speed) const
-{
-  if (!moving_) {
-    return u.dot(normal(r));
-  }
-  // The surface moves
-
-  // Get moving index
-  int idx =
-    lower_bound_index(moving_time_grid_.begin(), moving_time_grid_.end(), t);
-
-  // Get moving translation, velocity, and starting time
-  Position translation = moving_translations_[idx];
-  double time_0 = moving_time_grid_[idx];
-  Position velocity = moving_velocities_[idx];
-
-  // Move the position relative to the surface movement
-  double t_local = t - time_0;
-  Position r_moved = r - (translation + velocity * t_local);
-
-  // Get the relative direction
-  Direction u_relative = u - velocity / speed;
-
-  // Get the dot product
-  return u_relative.dot(normal(r_moved));
-}
-
-double CSGSurface::distance(Position r, Direction u, double t, double speed, bool coincident) const
+double Surface::distance(Position r, Direction u, double t, double speed, bool coincident) const
 {
   if (!moving_) {
     return _distance(r, u, coincident);
@@ -368,6 +303,60 @@ double CSGSurface::distance(Position r, Direction u, double t, double speed, boo
   return INFTY;
 }
 
+double Surface::dot_normal(
+  Position r, Direction u, double t, double speed) const
+{
+  if (!moving_) {
+    return u.dot(normal(r));
+  }
+  // The surface moves
+
+  // Get moving index
+  int idx =
+    lower_bound_index(moving_time_grid_.begin(), moving_time_grid_.end(), t);
+
+  // Get moving translation, velocity, and starting time
+  Position translation = moving_translations_[idx];
+  double time_0 = moving_time_grid_[idx];
+  Position velocity = moving_velocities_[idx];
+
+  // Move the position relative to the surface movement
+  double t_local = t - time_0;
+  Position r_moved = r - (translation + velocity * t_local);
+
+  // Get the relative direction
+  Direction u_relative = u - velocity / speed;
+
+  // Get the dot product
+  return u_relative.dot(normal(r_moved));
+}
+
+void Surface::to_hdf5(hid_t group_id) const
+{
+  hid_t surf_group = create_group(group_id, fmt::format("surface {}", id_));
+
+  if (geom_type() == GeometryType::DAG) {
+    write_string(surf_group, "geom_type", "dagmc", false);
+  } else if (geom_type() == GeometryType::CSG) {
+    write_string(surf_group, "geom_type", "csg", false);
+
+    if (bc_) {
+      write_string(surf_group, "boundary_type", bc_->type(), false);
+      bc_->to_hdf5(surf_group);
+    } else {
+      write_string(surf_group, "boundary_type", "transmission", false);
+    }
+  }
+
+  if (!name_.empty()) {
+    write_string(surf_group, "name", name_, false);
+  }
+
+  to_hdf5_inner(surf_group);
+
+  close_group(surf_group);
+}
+
 //==============================================================================
 // Generic functions for x-, y-, and z-, planes.
 //==============================================================================
@@ -390,7 +379,7 @@ double axis_aligned_plane_distance(
 // SurfaceXPlane implementation
 //==============================================================================
 
-SurfaceXPlane::SurfaceXPlane(pugi::xml_node surf_node) : CSGSurface(surf_node)
+SurfaceXPlane::SurfaceXPlane(pugi::xml_node surf_node) : Surface(surf_node)
 {
   read_coeffs(surf_node, id_, {&x0_});
 }
@@ -430,7 +419,7 @@ BoundingBox SurfaceXPlane::bounding_box(bool pos_side) const
 // SurfaceYPlane implementation
 //==============================================================================
 
-SurfaceYPlane::SurfaceYPlane(pugi::xml_node surf_node) : CSGSurface(surf_node)
+SurfaceYPlane::SurfaceYPlane(pugi::xml_node surf_node) : Surface(surf_node)
 {
   read_coeffs(surf_node, id_, {&y0_});
 }
@@ -470,7 +459,7 @@ BoundingBox SurfaceYPlane::bounding_box(bool pos_side) const
 // SurfaceZPlane implementation
 //==============================================================================
 
-SurfaceZPlane::SurfaceZPlane(pugi::xml_node surf_node) : CSGSurface(surf_node)
+SurfaceZPlane::SurfaceZPlane(pugi::xml_node surf_node) : Surface(surf_node)
 {
   read_coeffs(surf_node, id_, {&z0_});
 }
@@ -510,7 +499,7 @@ BoundingBox SurfaceZPlane::bounding_box(bool pos_side) const
 // SurfacePlane implementation
 //==============================================================================
 
-SurfacePlane::SurfacePlane(pugi::xml_node surf_node) : CSGSurface(surf_node)
+SurfacePlane::SurfacePlane(pugi::xml_node surf_node) : Surface(surf_node)
 {
   read_coeffs(surf_node, id_, {&A_, &B_, &C_, &D_});
 }
@@ -629,7 +618,7 @@ Direction axis_aligned_cylinder_normal(
 //==============================================================================
 
 SurfaceXCylinder::SurfaceXCylinder(pugi::xml_node surf_node)
-  : CSGSurface(surf_node)
+  : Surface(surf_node)
 {
   read_coeffs(surf_node, id_, {&y0_, &z0_, &radius_});
 }
@@ -672,7 +661,7 @@ BoundingBox SurfaceXCylinder::bounding_box(bool pos_side) const
 //==============================================================================
 
 SurfaceYCylinder::SurfaceYCylinder(pugi::xml_node surf_node)
-  : CSGSurface(surf_node)
+  : Surface(surf_node)
 {
   read_coeffs(surf_node, id_, {&x0_, &z0_, &radius_});
 }
@@ -716,7 +705,7 @@ BoundingBox SurfaceYCylinder::bounding_box(bool pos_side) const
 //==============================================================================
 
 SurfaceZCylinder::SurfaceZCylinder(pugi::xml_node surf_node)
-  : CSGSurface(surf_node)
+  : Surface(surf_node)
 {
   read_coeffs(surf_node, id_, {&x0_, &y0_, &radius_});
 }
@@ -759,7 +748,7 @@ BoundingBox SurfaceZCylinder::bounding_box(bool pos_side) const
 // SurfaceSphere implementation
 //==============================================================================
 
-SurfaceSphere::SurfaceSphere(pugi::xml_node surf_node) : CSGSurface(surf_node)
+SurfaceSphere::SurfaceSphere(pugi::xml_node surf_node) : Surface(surf_node)
 {
   read_coeffs(surf_node, id_, {&x0_, &y0_, &z0_, &radius_});
 }
@@ -925,7 +914,7 @@ Direction axis_aligned_cone_normal(
 // SurfaceXCone implementation
 //==============================================================================
 
-SurfaceXCone::SurfaceXCone(pugi::xml_node surf_node) : CSGSurface(surf_node)
+SurfaceXCone::SurfaceXCone(pugi::xml_node surf_node) : Surface(surf_node)
 {
   read_coeffs(surf_node, id_, {&x0_, &y0_, &z0_, &radius_sq_});
 }
@@ -957,7 +946,7 @@ void SurfaceXCone::to_hdf5_inner(hid_t group_id) const
 // SurfaceYCone implementation
 //==============================================================================
 
-SurfaceYCone::SurfaceYCone(pugi::xml_node surf_node) : CSGSurface(surf_node)
+SurfaceYCone::SurfaceYCone(pugi::xml_node surf_node) : Surface(surf_node)
 {
   read_coeffs(surf_node, id_, {&x0_, &y0_, &z0_, &radius_sq_});
 }
@@ -989,7 +978,7 @@ void SurfaceYCone::to_hdf5_inner(hid_t group_id) const
 // SurfaceZCone implementation
 //==============================================================================
 
-SurfaceZCone::SurfaceZCone(pugi::xml_node surf_node) : CSGSurface(surf_node)
+SurfaceZCone::SurfaceZCone(pugi::xml_node surf_node) : Surface(surf_node)
 {
   read_coeffs(surf_node, id_, {&x0_, &y0_, &z0_, &radius_sq_});
 }
@@ -1021,7 +1010,7 @@ void SurfaceZCone::to_hdf5_inner(hid_t group_id) const
 // SurfaceQuadric implementation
 //==============================================================================
 
-SurfaceQuadric::SurfaceQuadric(pugi::xml_node surf_node) : CSGSurface(surf_node)
+SurfaceQuadric::SurfaceQuadric(pugi::xml_node surf_node) : Surface(surf_node)
 {
   read_coeffs(
     surf_node, id_, {&A_, &B_, &C_, &D_, &E_, &F_, &G_, &H_, &J_, &K_});
@@ -1181,7 +1170,7 @@ double torus_distance(double x1, double x2, double x3, double u1, double u2,
 // SurfaceXTorus implementation
 //==============================================================================
 
-SurfaceXTorus::SurfaceXTorus(pugi::xml_node surf_node) : CSGSurface(surf_node)
+SurfaceXTorus::SurfaceXTorus(pugi::xml_node surf_node) : Surface(surf_node)
 {
   read_coeffs(surf_node, id_, {&x0_, &y0_, &z0_, &A_, &B_, &C_});
 }
@@ -1234,7 +1223,7 @@ Direction SurfaceXTorus::normal(Position r) const
 // SurfaceYTorus implementation
 //==============================================================================
 
-SurfaceYTorus::SurfaceYTorus(pugi::xml_node surf_node) : CSGSurface(surf_node)
+SurfaceYTorus::SurfaceYTorus(pugi::xml_node surf_node) : Surface(surf_node)
 {
   read_coeffs(surf_node, id_, {&x0_, &y0_, &z0_, &A_, &B_, &C_});
 }
@@ -1287,7 +1276,7 @@ Direction SurfaceYTorus::normal(Position r) const
 // SurfaceZTorus implementation
 //==============================================================================
 
-SurfaceZTorus::SurfaceZTorus(pugi::xml_node surf_node) : CSGSurface(surf_node)
+SurfaceZTorus::SurfaceZTorus(pugi::xml_node surf_node) : Surface(surf_node)
 {
   read_coeffs(surf_node, id_, {&x0_, &y0_, &z0_, &A_, &B_, &C_});
 }

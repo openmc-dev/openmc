@@ -4,7 +4,7 @@
 #define HAS_DYNAMIC_LINKING
 #endif
 
-#include <algorithm> // for move
+#include <utility> // for move
 
 #ifdef HAS_DYNAMIC_LINKING
 #include <dlfcn.h> // for dlopen, dlsym, dlclose, dlerror
@@ -172,7 +172,7 @@ SourceSite Source::sample_with_constraints(uint64_t* seed) const
       accepted = true;
     } else {
       // Check whether sampled site satisfies constraints
-      accepted = satisfies_spatial_constraints(site.r) &&
+      accepted = satisfies_spatial_constraints(site.r, site.time) &&
                  satisfies_energy_constraints(site.E) &&
                  satisfies_time_constraints(site.time);
       if (!accepted) {
@@ -210,11 +210,12 @@ bool Source::satisfies_time_constraints(double time) const
   return time > time_bounds_.first && time < time_bounds_.second;
 }
 
-bool Source::satisfies_spatial_constraints(Position r) const
+bool Source::satisfies_spatial_constraints(Position r, double time) const
 {
   GeometryState geom_state;
   geom_state.r() = r;
   geom_state.u() = {0.0, 0.0, 1.0};
+  geom_state.time() = time;
 
   // Reject particle if it's not in the geometry at all
   bool found = exhaustive_find_cell(geom_state);
@@ -335,31 +336,9 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
   SourceSite site;
   site.particle = particle_;
 
-  // Repeat sampling source location until a good site has been accepted
-  bool accepted = false;
   static int n_reject = 0;
   static int n_accept = 0;
-
-  while (!accepted) {
-
-    // Sample spatial distribution
-    site.r = space_->sample(seed);
-
-    // Check if sampled position satisfies spatial constraints
-    accepted = satisfies_spatial_constraints(site.r);
-
-    // Check for rejection
-    if (!accepted) {
-      ++n_reject;
-      if (n_reject >= EXTSRC_REJECT_THRESHOLD &&
-          static_cast<double>(n_accept) / n_reject <= EXTSRC_REJECT_FRACTION) {
-        fatal_error("More than 95% of external source sites sampled were "
-                    "rejected. Please check your external source's spatial "
-                    "definition.");
-      }
-    }
-  }
-
+  
   // Sample angle
   site.u = angle_->sample(seed);
 
@@ -398,6 +377,30 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
     // Sample particle creation time
     site.time = time_->sample(seed);
   }
+  
+  // Repeat sampling source location until a good site has been accepted
+  bool accepted = false;
+
+  while (!accepted) {
+
+    // Sample spatial distribution
+    site.r = space_->sample(seed);
+
+    // Check if sampled position satisfies spatial constraints
+    accepted = satisfies_spatial_constraints(site.r, site.time);
+
+    // Check for rejection
+    if (!accepted) {
+      ++n_reject;
+      if (n_reject >= EXTSRC_REJECT_THRESHOLD &&
+          static_cast<double>(n_accept) / n_reject <= EXTSRC_REJECT_FRACTION) {
+        fatal_error("More than 95% of external source sites sampled were "
+                    "rejected. Please check your external source's spatial "
+                    "definition.");
+      }
+    }
+  }
+
 
   // Increment number of accepted samples
   ++n_accept;
@@ -557,21 +560,24 @@ SourceSite MeshSource::sample(uint64_t* seed) const
   // Sample the CDF defined in initialization above
   int32_t element = space_->sample_element_index(seed);
 
-  // Sample position and apply rejection on spatial domains
-  Position r;
-  do {
-    r = space_->mesh()->sample_element(element, seed);
-  } while (!this->satisfies_spatial_constraints(r));
-
   SourceSite site;
   while (true) {
-    // Sample source for the chosen element and replace the position
+    // Sample source for the chosen element
     site = source(element)->sample_with_constraints(seed);
-    site.r = r;
+   
+    // Reject time?
+    if (!satisfies_time_constraints(site.time)) { continue; }
 
+    // Sample position and apply rejection on spatial domains
+    Position r;
+    do {
+      r = space_->mesh()->sample_element(element, seed);
+    } while (!this->satisfies_spatial_constraints(r, site.time));
+    // Replace the position
+    site.r = r;
+    
     // Apply other rejections
-    if (satisfies_energy_constraints(site.E) &&
-        satisfies_time_constraints(site.time)) {
+    if (satisfies_energy_constraints(site.E)) {
       break;
     }
   }
@@ -613,9 +619,10 @@ SourceSite sample_external_source(uint64_t* seed)
 {
   // Sample from among multiple source distributions
   int i = 0;
-  if (model::external_sources.size() > 1) {
+  int n_sources = model::external_sources.size();
+  if (n_sources > 1) {
     if (settings::uniform_source_sampling) {
-      i = prn(seed) * model::external_sources.size();
+      i = prn(seed) * n_sources;
     } else {
       i = model::external_sources_probability.sample(seed);
     }
@@ -624,9 +631,13 @@ SourceSite sample_external_source(uint64_t* seed)
   // Sample source site from i-th source distribution
   SourceSite site {model::external_sources[i]->sample_with_constraints(seed)};
 
-  // Set particle creation weight
-  if (settings::uniform_source_sampling) {
-    site.wgt *= model::external_sources[i]->strength();
+  // For uniform source sampling, multiply the weight by the ratio of the actual
+  // probability of sampling source i to the biased probability of sampling
+  // source i, which is (strength_i / total_strength) / (1 / n)
+  if (n_sources > 1 && settings::uniform_source_sampling) {
+    double total_strength = model::external_sources_probability.integral();
+    site.wgt *=
+      model::external_sources[i]->strength() * n_sources / total_strength;
   }
 
   // If running in MG, convert site.E to group

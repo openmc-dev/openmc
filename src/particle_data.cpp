@@ -15,6 +15,11 @@
 
 namespace openmc {
 
+void GeometryState::mark_as_lost(const char* message)
+{
+  fatal_error(message);
+}
+
 void GeometryState::mark_as_lost(const std::string& message)
 {
   mark_as_lost(message.c_str());
@@ -23,11 +28,6 @@ void GeometryState::mark_as_lost(const std::string& message)
 void GeometryState::mark_as_lost(const std::stringstream& message)
 {
   mark_as_lost(message.str());
-}
-
-void GeometryState::mark_as_lost(const char* message)
-{
-  fatal_error(message);
 }
 
 void LocalCoord::rotate(const vector<double>& rotation)
@@ -54,6 +54,40 @@ GeometryState::GeometryState()
   coord_.resize(model::n_coord_levels);
   cell_last_.resize(model::n_coord_levels);
   clear();
+}
+
+void GeometryState::advance_to_boundary_from_void()
+{
+  auto root_coord = this->coord(0);
+  const auto& root_universe = model::universes[model::root_universe];
+  boundary().reset();
+
+  for (auto c_i : root_universe->cells_) {
+    auto dist =
+      model::cells.at(c_i)->distance(root_coord.r, root_coord.u, this->time(), this->speed(), 0, this);
+    if (dist.first < boundary().distance) {
+      boundary().distance = dist.first;
+      boundary().surface = dist.second;
+    }
+  }
+
+  // if no intersection or near-infinite intersection, reset
+  // boundary information
+  if (boundary().distance > 1e300) {
+    boundary().distance = INFTY;
+    boundary().surface = SURFACE_NONE;
+    return;
+  }
+
+  // move the particle up to (and just past) the boundary
+  move_distance(boundary().distance + TINY_BIT);
+}
+
+void GeometryState::move_distance(double length)
+{
+  for (int j = 0; j < n_coord(); ++j) {
+    coord(j).r += length * coord(j).u;
+  }
 }
 
 ParticleData::ParticleData()

@@ -59,6 +59,10 @@ constexpr double RADIAL_MESH_TOL {1e-10};
 // Maximum number of random samples per history
 constexpr int MAX_SAMPLE {100000};
 
+// Avg. number of hits per batch to be defined as a "small"
+// source region in the random ray solver
+constexpr double MIN_HITS_PER_BATCH {1.5};
+
 // ============================================================================
 // MATH AND PHYSICAL CONSTANTS
 
@@ -308,7 +312,10 @@ enum TallyScore {
   SCORE_FISS_Q_PROMPT = -14,      // prompt fission Q-value
   SCORE_FISS_Q_RECOV = -15,       // recoverable fission Q-value
   SCORE_DECAY_RATE = -16,         // delayed neutron precursor decay rate
-  SCORE_PULSE_HEIGHT = -17        // pulse-height
+  SCORE_PULSE_HEIGHT = -17,       // pulse-height
+  SCORE_IFP_TIME_NUM = -18,       // IFP lifetime numerator
+  SCORE_IFP_BETA_NUM = -19,       // IFP delayed fraction numerator
+  SCORE_IFP_DENOM = -20           // IFP common denominator
 };
 
 // Global tally parameters
@@ -317,6 +324,9 @@ enum class GlobalTally { K_COLLISION, K_ABSORPTION, K_TRACKLENGTH, LEAKAGE };
 
 // Miscellaneous
 constexpr int C_NONE {-1};
+
+// Default value of generation for IFP
+constexpr int DEFAULT_IFP_N_GENERATION {10};
 
 // Interpolation rules
 enum class Interpolation {
@@ -344,11 +354,16 @@ enum class SolverType { MONTE_CARLO, RANDOM_RAY };
 
 enum class RandomRayVolumeEstimator { NAIVE, SIMULATION_AVERAGED, HYBRID };
 enum class RandomRaySourceShape { FLAT, LINEAR, LINEAR_XY };
+enum class RandomRaySampleMethod { PRNG, HALTON };
 
 //==============================================================================
 // Geometry Constants
 
 enum class GeometryType { CSG, DAG };
+
+// a surface token cannot be zero due to the unsigned nature of zero for integer
+// representations. This value represents no surface.
+constexpr int32_t SURFACE_NONE {0};
 
 } // namespace openmc
 

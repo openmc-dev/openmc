@@ -4,10 +4,9 @@
 #include "openmc/random_lcg.h"
 #include "openmc/search.h"
 
-#include <gsl/gsl-lite.hpp>
-
 #include "xtensor/xview.hpp"
 
+#include <cassert>
 #include <cmath> // for log, exp
 
 namespace openmc {
@@ -40,7 +39,7 @@ void CoherentElasticAE::sample(
 
   const auto& energies {xs_.bragg_edges()};
 
-  Expects(E_in >= energies.front());
+  assert(E_in >= energies.front());
 
   const int i = lower_bound_index(energies.begin(), energies.end(), E_in);
 

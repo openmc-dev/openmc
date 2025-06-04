@@ -2,6 +2,7 @@
 #include "openmc/cell.h"
 
 #include <algorithm>
+#include <cassert>
 #include <cctype>
 #include <cmath>
 #include <iterator>
@@ -10,7 +11,6 @@
 #include <string>
 
 #include <fmt/core.h>
-#include <gsl/gsl-lite.hpp>
 
 #include "openmc/capi.h"
 #include "openmc/constants.h"
@@ -137,7 +137,7 @@ void Cell::set_temperature(double T, int32_t instance, bool set_contained)
     auto contained_cells = this->get_contained_cells(instance);
     for (const auto& entry : contained_cells) {
       auto& cell = model::cells[entry.first];
-      Expects(cell->type_ == Fill::MATERIAL);
+      assert(cell->type_ == Fill::MATERIAL);
       auto& instances = entry.second;
       for (auto instance : instances) {
         cell->set_temperature(T, instance);
@@ -179,7 +179,7 @@ void Cell::import_properties_hdf5(hid_t group)
   // Modify temperatures for the cell
   sqrtkT_.clear();
   sqrtkT_.resize(temps.size());
-  for (gsl::index i = 0; i < temps.size(); ++i) {
+  for (int64_t i = 0; i < temps.size(); ++i) {
     this->set_temperature(temps[i], i);
   }
 
@@ -249,16 +249,8 @@ void Cell::to_hdf5(hid_t cell_group) const
 // CSGCell implementation
 //==============================================================================
 
-// default constructor
-CSGCell::CSGCell()
-{
-  geom_type_ = GeometryType::CSG;
-}
-
 CSGCell::CSGCell(pugi::xml_node cell_node)
 {
-  geom_type_ = GeometryType::CSG;
-
   if (check_for_node(cell_node, "id")) {
     id_ = std::stoi(get_node_value(cell_node, "id"));
   } else {
@@ -578,7 +570,7 @@ void Region::apply_demorgan(
 //! precedence than unions using parentheses.
 //==============================================================================
 
-gsl::index Region::add_parentheses(gsl::index start)
+int64_t Region::add_parentheses(int64_t start)
 {
   int32_t start_token = expression_[start];
   // Add left parenthesis and set new position to be after parenthesis
@@ -650,7 +642,7 @@ void Region::add_precedence()
   int32_t current_op = 0;
   std::size_t current_dist = 0;
 
-  for (gsl::index i = 0; i < expression_.size(); i++) {
+  for (int64_t i = 0; i < expression_.size(); i++) {
     int32_t token = expression_[i];
 
     if (token == OP_UNION || token == OP_INTERSECTION) {
@@ -831,7 +823,22 @@ bool Region::contains_simple(
     // Assume that no tokens are operators. Evaluate the sense of particle with
     // respect to the surface and see if the token matches the sense. If the
     // particle's surface attribute is set and matches the token, that
-    // overrides the determination based on sense().
+    // overrides the determination based on sense(). However, if the surface
+    // is moving, we need to factor in the surface-particle relative velocity,
+    // so the surface-sense calculation needs to be done.
+   
+    /*
+    if (model::surfaces[abs(token) - 1]->moving_) {
+      // Note the off-by-one indexing
+      bool sense = model::surfaces[abs(token) - 1]->sense(r, u, t, speed);
+      if (sense != (token > 0)) {
+        return false;
+      }
+      continue;
+    }
+    // Surface is not moving
+    */
+    
     if (token == on_surface) {
     } else if (-token == on_surface) {
       return false;
@@ -862,14 +869,22 @@ bool Region::contains_complex(
     // If the token is a union or intersection check to
     // short circuit
     if (token < OP_UNION) {
-      if (token == on_surface) {
-        in_cell = true;
-      } else if (-token == on_surface) {
-        in_cell = false;
-      } else {
+      //if (model::surfaces[abs(token) - 1]->moving_) {
+      if (false) {
         // Note the off-by-one indexing
         bool sense = model::surfaces[abs(token) - 1]->sense(r, u, t, speed);
         in_cell = (sense == (token > 0));
+      } else {
+        // Surface is not moving
+        if (token == on_surface) {
+          in_cell = true;
+        } else if (-token == on_surface) {
+          in_cell = false;
+        } else {
+          // Note the off-by-one indexing
+          bool sense = model::surfaces[abs(token) - 1]->sense(r, u, t, speed);
+          in_cell = (sense == (token > 0));
+        }
       }
     } else if ((token == OP_UNION && in_cell == true) ||
                (token == OP_INTERSECTION && in_cell == false)) {
@@ -949,7 +964,7 @@ BoundingBox Region::bounding_box_complex(vector<int32_t> postfix) const
     }
   }
 
-  Ensures(i_stack == 0);
+  assert(i_stack == 0);
   return stack.front();
 }
 
@@ -1221,8 +1236,8 @@ struct ParentCell {
              lattice_index < other.lattice_index);
   }
 
-  gsl::index cell_index;
-  gsl::index lattice_index;
+  int64_t cell_index;
+  int64_t lattice_index;
 };
 
 //! Structure used to insert ParentCell into hashed STL data structures

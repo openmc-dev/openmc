@@ -38,8 +38,13 @@ public:
   int id_;                           //!< Unique ID
   std::string name_;                 //!< User-defined name
   unique_ptr<BoundaryCondition> bc_; //!< Boundary condition
-  GeometryType geom_type_;           //!< Geometry type indicator (CSG or DAGMC)
   bool surf_source_ {false}; //!< Activate source banking for the surface?
+  
+  //!< Moving surface parameters
+  bool moving_ {false};
+  vector<double> moving_time_grid_;      // Time grid points [0.0, ..., INFTY]
+  vector<Position> moving_translations_; // Translations at the time grid points
+  vector<Position> moving_velocities_;   // Velocities within time bins
 
   explicit Surface(pugi::xml_node surf_node);
   Surface();
@@ -65,7 +70,7 @@ public:
     Position r, Direction u, GeometryState* p = nullptr) const;
 
   virtual Direction diffuse_reflect(
-    Position r, Direction u, uint64_t* seed, GeometryState* p = nullptr) const;
+    Position r, Direction u, uint64_t* seed) const;
 
   //! Evaluate the equation describing the surface.
   //!
@@ -74,7 +79,7 @@ public:
   //! needed for evaluation of moving surfaces.
   //! \param r A 3D Cartesian coordinate.
   //! \param t The time for the evaluation.
-  virtual double evaluate(Position r, double t) const = 0;
+  virtual double evaluate(Position r, double t) const;
 
   //! Compute the distance between a point and the surface along a ray.
   //! \param r A 3D Cartesian coordinate.
@@ -83,7 +88,7 @@ public:
   //! \param speed The speed of moving point (for moving surface).
   //! \param coincident A hint to the code that the given point should lie
   //!   exactly on the surface.
-  virtual double distance(Position r, Direction u, double time, double speed, bool coincident) const = 0;
+  virtual double distance(Position r, Direction u, double t, double speed, bool coincident) const;
 
   //! Compute the local outward normal direction of the surface.
   //! \param r A 3D Cartesian coordinate.
@@ -98,7 +103,7 @@ public:
   //! \param speed The speed of the particle.
   //! \return The dot product
   virtual double dot_normal(
-    Position r, Direction u, double t, double speed) const = 0;
+    Position r, Direction u, double t, double speed) const;
 
   //! Write all information needed to reconstruct the surface to an HDF5 group.
   //! \param group_id An HDF5 group id.
@@ -107,29 +112,21 @@ public:
   //! Get the BoundingBox for this surface.
   virtual BoundingBox bounding_box(bool /*pos_side*/) const { return {}; }
 
-protected:
-  virtual void to_hdf5_inner(hid_t group_id) const = 0;
-};
-
-class CSGSurface : public Surface {
-public:
-  //!< Moving surface parameters
-  bool moving_ {false};
-  vector<double> moving_time_grid_;      // Time grid points [0.0, ..., INFTY]
-  vector<Position> moving_translations_; // Translations at the time grid points
-  vector<Position> moving_velocities_;   // Velocities within time bins
-
-  explicit CSGSurface(pugi::xml_node surf_node);
-  CSGSurface();
-  double evaluate(Position r, double t) const override;
-  double dot_normal(
-    Position r, Direction u, double t, double speed) const override;
-  double distance(Position r, Direction u, double time, double speed, bool coincident) const override;
+  /* Must specify if this is a CSG or DAGMC-type surface. Only
+   * the DAGMC surface should return the DAG type geometry, so
+   * by default, this returns the CSG. The main difference is that
+   * if the geom_type is found to be DAG in the geometry handling code,
+   * some DAGMC-specific operations get carried out like resetting
+   * the particle's intersection history when necessary.
+   */
+  virtual GeometryType geom_type() const { return GeometryType::CSG; }
 
 protected:
-  //! Static CSG surface functions
+  //! Static surface functions
   virtual double _evaluate(Position r) const = 0;
   virtual double _distance(Position r, Direction u, bool coincident) const = 0;
+
+  virtual void to_hdf5_inner(hid_t group_id) const = 0;
 };
 
 //==============================================================================
@@ -138,7 +135,7 @@ protected:
 //! The plane is described by the equation \f$x - x_0 = 0\f$
 //==============================================================================
 
-class SurfaceXPlane : public CSGSurface {
+class SurfaceXPlane : public Surface {
 public:
   explicit SurfaceXPlane(pugi::xml_node surf_node);
   Direction normal(Position r) const override;
@@ -158,7 +155,7 @@ protected:
 //! The plane is described by the equation \f$y - y_0 = 0\f$
 //==============================================================================
 
-class SurfaceYPlane : public CSGSurface {
+class SurfaceYPlane : public Surface {
 public:
   explicit SurfaceYPlane(pugi::xml_node surf_node);
   Direction normal(Position r) const override;
@@ -178,7 +175,7 @@ protected:
 //! The plane is described by the equation \f$z - z_0 = 0\f$
 //==============================================================================
 
-class SurfaceZPlane : public CSGSurface {
+class SurfaceZPlane : public Surface {
 public:
   explicit SurfaceZPlane(pugi::xml_node surf_node);
   Direction normal(Position r) const override;
@@ -198,7 +195,7 @@ protected:
 //! The plane is described by the equation \f$A x + B y + C z - D = 0\f$
 //==============================================================================
 
-class SurfacePlane : public CSGSurface {
+class SurfacePlane : public Surface {
 public:
   explicit SurfacePlane(pugi::xml_node surf_node);
   Direction normal(Position r) const override;
@@ -218,7 +215,7 @@ protected:
 //! \f$(y - y_0)^2 + (z - z_0)^2 - R^2 = 0\f$
 //==============================================================================
 
-class SurfaceXCylinder : public CSGSurface {
+class SurfaceXCylinder : public Surface {
 public:
   explicit SurfaceXCylinder(pugi::xml_node surf_node);
   Direction normal(Position r) const override;
@@ -239,7 +236,7 @@ protected:
 //! \f$(x - x_0)^2 + (z - z_0)^2 - R^2 = 0\f$
 //==============================================================================
 
-class SurfaceYCylinder : public CSGSurface {
+class SurfaceYCylinder : public Surface {
 public:
   explicit SurfaceYCylinder(pugi::xml_node surf_node);
   Direction normal(Position r) const override;
@@ -260,7 +257,7 @@ protected:
 //! \f$(x - x_0)^2 + (y - y_0)^2 - R^2 = 0\f$
 //==============================================================================
 
-class SurfaceZCylinder : public CSGSurface {
+class SurfaceZCylinder : public Surface {
 public:
   explicit SurfaceZCylinder(pugi::xml_node surf_node);
   Direction normal(Position r) const override;
@@ -281,7 +278,7 @@ protected:
 //! \f$(x - x_0)^2 + (y - y_0)^2 + (z - z_0)^2 - R^2 = 0\f$
 //==============================================================================
 
-class SurfaceSphere : public CSGSurface {
+class SurfaceSphere : public Surface {
 public:
   explicit SurfaceSphere(pugi::xml_node surf_node);
   Direction normal(Position r) const override;
@@ -302,7 +299,7 @@ protected:
 //! \f$(y - y_0)^2 + (z - z_0)^2 - R^2 (x - x_0)^2 = 0\f$
 //==============================================================================
 
-class SurfaceXCone : public CSGSurface {
+class SurfaceXCone : public Surface {
 public:
   explicit SurfaceXCone(pugi::xml_node surf_node);
   Direction normal(Position r) const override;
@@ -322,7 +319,7 @@ protected:
 //! \f$(x - x_0)^2 + (z - z_0)^2 - R^2 (y - y_0)^2 = 0\f$
 //==============================================================================
 
-class SurfaceYCone : public CSGSurface {
+class SurfaceYCone : public Surface {
 public:
   explicit SurfaceYCone(pugi::xml_node surf_node);
   Direction normal(Position r) const override;
@@ -342,7 +339,7 @@ protected:
 //! \f$(x - x_0)^2 + (y - y_0)^2 - R^2 (z - z_0)^2 = 0\f$
 //==============================================================================
 
-class SurfaceZCone : public CSGSurface {
+class SurfaceZCone : public Surface {
 public:
   explicit SurfaceZCone(pugi::xml_node surf_node);
   Direction normal(Position r) const override;
@@ -362,7 +359,7 @@ protected:
 //! 0\f$
 //==============================================================================
 
-class SurfaceQuadric : public CSGSurface {
+class SurfaceQuadric : public Surface {
 public:
   explicit SurfaceQuadric(pugi::xml_node surf_node);
   Direction normal(Position r) const override;
@@ -382,7 +379,7 @@ protected:
 //! \f$(x-x_0)^2/B^2 + (\sqrt{(y-y_0)^2 + (z-z_0)^2} - A)^2/C^2 -1 \f$
 //==============================================================================
 
-class SurfaceXTorus : public CSGSurface {
+class SurfaceXTorus : public Surface {
 public:
   explicit SurfaceXTorus(pugi::xml_node surf_node);
   Direction normal(Position r) const override;
@@ -401,7 +398,7 @@ protected:
 //! \f$(y-y_0)^2/B^2 + (\sqrt{(x-x_0)^2 + (z-z_0)^2} - A)^2/C^2 -1 \f$
 //==============================================================================
 
-class SurfaceYTorus : public CSGSurface {
+class SurfaceYTorus : public Surface {
 public:
   explicit SurfaceYTorus(pugi::xml_node surf_node);
   Direction normal(Position r) const override;
@@ -420,7 +417,7 @@ protected:
 //! \f$(z-z_0)^2/B^2 + (\sqrt{(x-x_0)^2 + (y-y_0)^2} - A)^2/C^2 -1 \f$
 //==============================================================================
 
-class SurfaceZTorus : public CSGSurface {
+class SurfaceZTorus : public Surface {
 public:
   explicit SurfaceZTorus(pugi::xml_node surf_node);
   Direction normal(Position r) const override;

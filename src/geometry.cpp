@@ -426,15 +426,15 @@ BoundaryInfo distance_to_boundary(GeometryState& p)
         // have to explicitly check which half-space the particle would be
         // traveling into if the surface is crossed
         if (c.is_simple() || d == INFTY) {
-          info.surface_index = level_surf_cross;
+          info.surface = level_surf_cross;
         } else {
           Position r_hit = r + d_surf * u;
           Surface& surf {*model::surfaces[std::abs(level_surf_cross) - 1]};
           Direction norm = surf.normal(r_hit);
           if (u.dot(norm) > 0) {
-            info.surface_index = std::abs(level_surf_cross);
+            info.surface = std::abs(level_surf_cross);
           } else {
-            info.surface_index = -std::abs(level_surf_cross);
+            info.surface = -std::abs(level_surf_cross);
           }
         }
 
@@ -446,7 +446,7 @@ BoundaryInfo distance_to_boundary(GeometryState& p)
     } else {
       if (d == INFINITY || (d - d_lat) / d >= FP_REL_PRECISION) {
         d = d_lat;
-        info.surface_index = 0;
+        info.surface = SURFACE_NONE;
         info.lattice_translation = level_lat_trans;
         info.coord_level = i + 1;
       }

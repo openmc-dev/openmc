@@ -441,6 +441,11 @@ void sample_photon_reaction(Particle& p)
     u = rotate_angle(p.u(), mu_positron, nullptr, p.current_seed());
     p.create_secondary(p.wgt(), u, E_positron, ParticleType::positron);
 
+    // Add 2 times electron rest mass energy to banked energy since the positron
+    // will annihilate later. This ensures that the energy deposited is not
+    // overestimated here
+    p.bank_second_E() += 2.0 * MASS_ELECTRON_EV;
+
     p.event() = TallyEvent::ABSORB;
     p.event_mt() = PAIR_PROD;
     p.wgt() = 0.0;
@@ -474,9 +479,11 @@ void sample_positron_reaction(Particle& p)
   // Sample angle isotropically
   Direction u = isotropic_direction(p.current_seed());
 
-  // Create annihilation photon pair traveling in opposite directions
+  // Create annihilation photon pair traveling in opposite directions, but don't
+  // add their energy to the banked energy to avoid negative heating
   p.create_secondary(p.wgt(), u, MASS_ELECTRON_EV, ParticleType::photon);
   p.create_secondary(p.wgt(), -u, MASS_ELECTRON_EV, ParticleType::photon);
+  p.bank_second_E() -= 2.0 * MASS_ELECTRON_EV;
 
   p.E() = 0.0;
   p.wgt() = 0.0;

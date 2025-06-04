@@ -173,17 +173,16 @@ void Surface::to_hdf5(hid_t group_id) const
       write_string(surf_group, "boundary_type", bc_->type(), false);
       bc_->to_hdf5(surf_group);
 
-      // write periodic surface id
+      // write periodic surface ID
       if (bc_->type() == "periodic") {
         auto pbc = dynamic_cast<PeriodicBC*>(bc_.get());
-        if (id_ == pbc->i_surf() + 1) {
-          write_string(surf_group, "periodic_surface_id",
-            fmt::format("{}", pbc->j_surf() + 1), false);
-        } else if (id_ == pbc->j_surf() + 1) {
-          write_string(surf_group, "periodic_surface_id",
-            fmt::format("{}", pbc->i_surf() + 1), false);
+        Surface& surf1 {*model::surfaces[pbc->i_surf()]};
+        Surface& surf2 {*model::surfaces[pbc->j_surf()]};
+
+        if (id_ == surf1.id_) {
+          write_dataset(surf_group, "periodic_surface_id", surf2.id_);
         } else {
-          UNREACHABLE();
+          write_dataset(surf_group, "periodic_surface_id", surf1.id_);
         }
       }
     } else {

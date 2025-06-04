@@ -135,14 +135,15 @@ class Summary:
                 self._fast_surfaces[surface.id] = surface
                 if surface.boundary_type == "periodic":
                     periodic_surface_ids.add(surface.id)
-                
-        # assign periodic surfaces
+
+        # Assign periodic surfaces when information is in file
         for surface_id in periodic_surface_ids:
-            group = self._f[f'geometry/surfaces/surface {surface_id}']         
+            group = self._f[f'geometry/surfaces/surface {surface_id}']
             surface = self._fast_surfaces[surface_id]
-            periodic_surface_id = int(group['periodic_surface_id'][()].decode())
-            surface.periodic_surface = self._fast_surfaces[periodic_surface_id]
-                
+            if 'periodic_surface_id' in group:
+                periodic_surface_id = int(group['periodic_surface_id'][()])
+                surface.periodic_surface = self._fast_surfaces[periodic_surface_id]
+
 
     def _read_cells(self):
 

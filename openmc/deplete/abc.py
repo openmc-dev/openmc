@@ -818,29 +818,31 @@ class Integrator(ABC):
             rates *= source_rate / res.source_rate
         return bos_conc, OperatorResult(k, rates)
 
-    def _get_start_data(self):
+    def _get_start_data(self) -> tuple[float, int]:
         """
-        This function fetches the starting state of a depletion simulation
-        in terms of the simulation physical time at which to start and the
-        index at which the depletion simulation should start. When no
-        previous results exist, the time and index are both zero. When 
-        previous results do exist, it returns the time corresponding to
-        beginning the previous results last timestep and the index as 
-        N-1 where N is the number of previous StepResults found in 
-        the previous Results (as expected from 0-based indexing).
-        
+        This function fetches the starting state of a depletion simulation in
+        terms of the simulation physical time at which to start and the index at
+        which the depletion simulation should start. When no previous results
+        exist, the time and index are both zero. When previous results do exist,
+        it returns the time corresponding to beginning the previous results last
+        timestep and the index as N-1 where N is the number of previous
+        StepResults found in the previous Results (as expected from 0-based
+        indexing).
+
         Note that the openmc.deplete.Results.time object is a list of float with
-        [t,t+dt] where t is the beginning of timestep time and t+dt is the end of
-        timestep time. If the previous results correspond to a simulation that
-        finished to completeion, it will contain a results in the form of [t,t],
-        but if a simulation doesn't finish all the given timesteps, it is the t
-        that is the desired start time, not t+dt. Thus, it is always safe to take 
-        time[0].
+        [t,t+dt] where t is the beginning of timestep time and t+dt is the end
+        of timestep time. If the previous results correspond to a simulation
+        that finished to completeion, it will contain a results in the form of
+        [t,t], but if a simulation doesn't finish all the given timesteps, it is
+        the t that is the desired start time, not t+dt. Thus, it is always safe
+        to take time[0].
 
         Returns
-        _______
+        -------
         start_time : float
-        index: int
+            Time at which depletion simulation should start in [s]
+        index : int
+            Index at which depletion simulation should start
         """
         if self.operator.prev_res is None:
             return 0.0, 0

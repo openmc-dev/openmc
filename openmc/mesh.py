@@ -2188,11 +2188,11 @@ class SphericalMesh(StructuredMesh):
         domain : openmc.Cell or openmc.Region or openmc.Universe or openmc.Geometry
             The object passed in will be used as a template for this mesh. The
             bounding box of the property of the object passed will be used to
-            set the r_grid, theta_grid, phi_grid ranges.
+            set the r_grid, phi_grid, and theta_grid ranges.
         dimension : Iterable of int
             The number of equally spaced mesh cells in each direction (r_grid,
-            theta_grid, phi_grid). Spacing is in angular space (radians) for
-            theta and phi, and in absolute space for r.
+            phi_grid, theta_grid). Spacing is in angular space (radians) for
+            phi and theta, and in absolute space for r.
         mesh_id : int
             Unique identifier for the mesh
         phi_grid_bounds : numpy.ndarray
@@ -2219,21 +2219,21 @@ class SphericalMesh(StructuredMesh):
         # loaded once to avoid recalculating bounding box
         cached_bb = domain.bounding_box
 
-        outer_radius = 0.5 * max(cached_bb.width)
+        outer_radius = 0.5 * min(cached_bb.width)
 
         r_grid = np.linspace(
             0,
             outer_radius,
             num=dimension[0]+1
         )
-        theta_grid = np.linspace(
-            theta_grid_bounds[0],
-            theta_grid_bounds[1],
-            num=dimension[1]+1
-        )
         phi_grid = np.linspace(
             phi_grid_bounds[0],
             phi_grid_bounds[1],
+            num=dimension[1]+1
+        )
+        theta_grid = np.linspace(
+            theta_grid_bounds[0],
+            theta_grid_bounds[1],
             num=dimension[2]+1
         )
         origin = (cached_bb.center[0], cached_bb.center[1], cached_bb.center[2])

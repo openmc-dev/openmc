@@ -99,6 +99,10 @@ void MeshMaterialFilter::set_translation(const double translation[3])
 void MeshMaterialFilter::get_all_bins(
   const Particle& p, TallyEstimator estimator, FilterMatch& match) const
 {
+  // If current material is not in any bins, don't bother checking
+  if (!contains(materials_, p.material())) {
+    return;
+  }
 
   Position last_r = p.r_last();
   Position r = p.r();
@@ -120,11 +124,6 @@ void MeshMaterialFilter::get_all_bins(
       }
     }
   } else {
-    // If current material is not in any bins, don't bother checking
-    if (!contains(materials_, p.material())) {
-      return;
-    }
-
     // First determine which elements the particle crosses (may or may not
     // actually match bins so we have to adjust bins_/weight_ after)
     int32_t n_start = match.bins_.size();

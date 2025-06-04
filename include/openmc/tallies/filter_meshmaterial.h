@@ -94,13 +94,13 @@ private:
   bool translated_ {false}; //!< Whether or not the filter is translated
   Position translation_ {0.0, 0.0, 0.0}; //!< Filter translation
 
-  //! The indices of the cells binned by this filter.
+  //! The indices of the mesh element-material combinations binned by this filter.
   vector<ElementMat> bins_;
 
   //! The set of materials used in this filter
   std::unordered_set<int32_t> materials_;
 
-  //! A map from cell/instance indices to filter bin indices.
+  //! A map from mesh element-material indices to filter bin indices.
   std::unordered_map<ElementMat, int32_t, ElementMatHash> map_;
 };
 

@@ -9,7 +9,7 @@
 namespace openmc {
 
 //==============================================================================
-//! Indexes the location of particle events to a mesh.  For tracklength tallies,
+//! Indexes the location of particle events to a mesh. For tracklength tallies,
 //! it will produce multiple valid bins and the bin weight will correspond to
 //! the fraction of the track length that lies in that bin.
 //==============================================================================

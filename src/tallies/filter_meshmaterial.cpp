@@ -30,7 +30,9 @@ void MeshMaterialFilter::from_xml(pugi::xml_node node)
 
   // Get pairs of (element index, material)
   auto bins = get_node_array<int32_t>(node, "bins");
-  assert(bins.size() % 2 == 0);
+  if (bins.size() % 2 == 0) { 
+    fatal_error(fmt::format("Size of mesh material bins is not even: {}", bins.size())); 
+  }
 
   // Convert into vector of ElementMat
   vector<ElementMat> element_mats;
@@ -116,7 +118,7 @@ void MeshMaterialFilter::get_all_bins(
     }
   } else {
     // If current material is not in any bins, don't bother checking
-    if (materials_.find(p.material()) == materials_.end()) {
+    if (contains(materials_, p.material()) {
       return;
     }
 

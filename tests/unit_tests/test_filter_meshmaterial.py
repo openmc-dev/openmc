@@ -15,7 +15,6 @@ def test_filter_mesh_material(run_in_tmpdir):
     # Create a slab model with four cells
     z_values = [-10., -5., 0., 5., 10.]
     planes = [openmc.ZPlane(z) for z in z_values]
-    print(planes)
     planes[0].boundary_type = 'vacuum'
     planes[-1].boundary_type = 'vacuum'
     regions = [+left & -right for left, right in zip(planes[:-1], planes[1:])]

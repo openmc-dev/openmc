@@ -21,10 +21,10 @@ __all__ = [
     'CellInstanceFilter', 'CollisionFilter', 'DistribcellFilter', 'DelayedGroupFilter',
     'EnergyFilter', 'EnergyoutFilter', 'EnergyFunctionFilter', 'LegendreFilter',
     'MaterialFilter', 'MaterialFromFilter', 'MeshFilter', 'MeshBornFilter',
-    'MeshSurfaceFilter', 'MuFilter', 'MuSurfaceFilter', 'ParentNuclideFilter',
-    'ParticleFilter', 'PolarFilter', 'SphericalHarmonicsFilter',
-    'SpatialLegendreFilter', 'SurfaceFilter', 'UniverseFilter', 'ZernikeFilter',
-    'ZernikeRadialFilter', 'filters'
+    'MeshMaterialFilter', 'MeshSurfaceFilter', 'MuFilter', 'MuSurfaceFilter',
+    'ParentNuclideFilter', 'ParticleFilter', 'PolarFilter', 'SphericalHarmonicsFilter',
+    'SpatialLegendreFilter', 'SurfaceFilter', 'TimeFilter', 'UniverseFilter',
+    'WeightFilter', 'ZernikeFilter', 'ZernikeRadialFilter', 'filters'
 ]
 
 # Tally functions
@@ -651,6 +651,7 @@ _FILTER_TYPE_MAP = {
     'cellborn': CellbornFilter,
     'cellfrom': CellfromFilter,
     'cellinstance': CellInstanceFilter,
+    'collision': CollisionFilter,
     'delayedgroup': DelayedGroupFilter,
     'distribcell': DistribcellFilter,
     'energy': EnergyFilter,

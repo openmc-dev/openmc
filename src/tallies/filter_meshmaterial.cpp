@@ -1,9 +1,12 @@
 #include "openmc/tallies/filter_meshmaterial.h"
 
+#include <utility> // for move
+
 #include <fmt/core.h>
 
 #include "openmc/capi.h"
 #include "openmc/constants.h"
+#include "openmc/container_util.h"
 #include "openmc/error.h"
 #include "openmc/material.h"
 #include "openmc/mesh.h"
@@ -30,8 +33,9 @@ void MeshMaterialFilter::from_xml(pugi::xml_node node)
 
   // Get pairs of (element index, material)
   auto bins = get_node_array<int32_t>(node, "bins");
-  if (bins.size() % 2 == 0) { 
-    fatal_error(fmt::format("Size of mesh material bins is not even: {}", bins.size())); 
+  if (bins.size() % 2 != 0) {
+    fatal_error(
+      fmt::format("Size of mesh material bins is not even: {}", bins.size()));
   }
 
   // Convert into vector of ElementMat
@@ -41,35 +45,34 @@ void MeshMaterialFilter::from_xml(pugi::xml_node node)
     int32_t mat_id = bins[2 * i + 1];
     auto search = model::material_map.find(mat_id);
     if (search == model::material_map.end()) {
-      throw std::runtime_error {fmt::format(
-        "Could not find material {} specified on tally filter.", mat_id)};
+      fatal_error(fmt::format(
+        "Could not find material {} specified on tally filter.", mat_id));
     }
     int32_t mat_index = search->second;
     element_mats.push_back({element, mat_index});
   }
 
-  this->set_bins(element_mats);
+  this->set_bins(std::move(element_mats));
 
   if (check_for_node(node, "translation")) {
     set_translation(get_node_array<double>(node, "translation"));
   }
 }
 
-void MeshMaterialFilter::set_bins(span<ElementMat> bins)
+void MeshMaterialFilter::set_bins(vector<ElementMat>&& bins)
 {
-  // Clear existing cells
-  bins_.clear();
-  bins_.reserve(bins.size());
+  // Swap internal bins_ with the provided vector to avoid copying
+  bins_.swap(bins);
+
+  // Clear and update the mapping and vector of materials
   materials_.clear();
   map_.clear();
-
-  // Update cells and mapping
-  for (auto& x : bins) {
+  for (std::size_t i = 0; i < bins_.size(); ++i) {
+    const auto& x = bins_[i];
     assert(x.index_mat >= 0);
     assert(x.index_mat < model::materials.size());
-    bins_.push_back(x);
     materials_.insert(x.index_mat);
-    map_[x] = bins_.size() - 1;
+    map_[x] = i;
   }
 
   n_bins_ = bins_.size();
@@ -118,7 +121,7 @@ void MeshMaterialFilter::get_all_bins(
     }
   } else {
     // If current material is not in any bins, don't bother checking
-    if (contains(materials_, p.material()) {
+    if (!contains(materials_, p.material())) {
       return;
     }
 

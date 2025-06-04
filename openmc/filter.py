@@ -1093,7 +1093,7 @@ class MeshMaterialFilter(MeshFilter):
         string = type(self).__name__ + '\n'
         string += '{: <16}=\t{}\n'.format('\tID', self.id)
         string += '{: <16}=\t{}\n'.format('\tMesh ID', self.mesh.id)
-        string += '{: <16}=\t{}\n'.format('\tBins', self.bins)
+        string += '{: <16}=\n{}\n'.format('\tBins', self.bins)
         string += '{: <16}=\t{}\n'.format('\tTranslation', self.translation)
         return string
 

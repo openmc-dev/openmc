@@ -76,7 +76,7 @@ public:
 
   void set_mesh(int32_t mesh);
 
-  void set_bins(span<ElementMat> bins);
+  void set_bins(vector<ElementMat>&& bins);
 
   virtual void set_translation(const Position& translation);
 
@@ -94,7 +94,8 @@ private:
   bool translated_ {false}; //!< Whether or not the filter is translated
   Position translation_ {0.0, 0.0, 0.0}; //!< Filter translation
 
-  //! The indices of the mesh element-material combinations binned by this filter.
+  //! The indices of the mesh element-material combinations binned by this
+  //! filter.
   vector<ElementMat> bins_;
 
   //! The set of materials used in this filter

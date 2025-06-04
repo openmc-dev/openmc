@@ -2191,7 +2191,8 @@ class SphericalMesh(StructuredMesh):
             set the r_grid, theta_grid, phi_grid ranges.
         dimension : Iterable of int
             The number of equally spaced mesh cells in each direction (r_grid,
-            theta_grid, phi_grid)
+            theta_grid, phi_grid). Spacing is in angular space (radians) for
+            theta and phi, and in absolute space for r.
         mesh_id : int
             Unique identifier for the mesh
         phi_grid_bounds : numpy.ndarray

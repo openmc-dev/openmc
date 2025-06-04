@@ -218,7 +218,7 @@ def get_microxs_from_multigroup(
 
     """
 
-    default to not print terminal output
+    # defaulting to not print terminal output during openmc.lib init
     if init_kwargs == {}:
         init_kwargs = {"output": False}
 

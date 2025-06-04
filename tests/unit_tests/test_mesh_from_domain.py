@@ -87,7 +87,7 @@ def test_cylindrical_mesh_from_region():
     assert np.array_equal(mesh.origin, (0.0, 0.0, -30.))
 
 
-def test_spherical_mesh_from_region():
+def test_spherical_mesh_from_domain():
     """Tests a SphericalMesh can be made from a Region and the specified
     dimensions are propagated through. Cell is not centralized"""
     sphere = openmc.Sphere(r=5, x0=2, y0=3, z0=4)

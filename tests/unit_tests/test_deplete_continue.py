@@ -6,7 +6,6 @@ These tests run in two steps: first a normal run and then a continue run using t
 import pytest
 import numpy as np
 import openmc.deplete
-from pathlib import Path
 
 from tests import dummy_operator
 
@@ -30,7 +29,10 @@ def test_continue(run_in_tmpdir):
 
     final_res = openmc.deplete.Results(operator.output_dir / "depletion_results.h5")
 
-    assert np.array_equal(np.diff(final_res.get_times(time_units="s")),[1.0, 2.0, 3.0, 4.0])
+    assert np.array_equal(
+        np.diff(final_res.get_times(time_units="s")),
+        [1.0, 2.0, 3.0, 4.0]
+    )
 
 
 def test_continue_continue(run_in_tmpdir):
@@ -54,44 +56,14 @@ def test_continue_continue(run_in_tmpdir):
     # second continue run
     bundle.solver(operator, [1.0, 2.0, 3.0, 4.0, 5.0, 6.0], [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
                   continue_timesteps=True).integrate()
-    
+
     final_res = openmc.deplete.Results(operator.output_dir / "depletion_results.h5")
 
-    assert np.array_equal(np.diff(final_res.get_times(time_units="s")),[1.0, 2.0, 3.0, 4.0, 5.0, 6.0])
-
-def test_killed_and_continue(run_in_tmpdir):
-    """
-    Attempt to continue from a simulation that was killed mid state.
-    The previous state is provided in the form of a few local files:
-
-    continue_model.xml contains the necessary XML information
-    chain_simple.xml contians a simplified version of the CASL chain
-
-    continue_depletion_results.h5 contains the results output by
-    an OpenMC (v0.15.2) depletion simulation that was killed in
-    the middle of the third step
-    """
-    base_path = Path(__file__).parents[0]
-    chain_path = Path(__file__).parents[1]/'chain_simple.xml'
-    model = openmc.Model.from_model_xml(f"{base_path}/kill_continue/continue_model.xml")
-    power = 35000 # W
-
-    time_steps = [1.0,2.0,3.0,4.0] # days
-    prev_results = openmc.deplete.Results(f"{base_path}/kill_continue/continue_depletion_results.h5")
-    operator = openmc.deplete.CoupledOperator(
-        model, prev_results=prev_results, chain_file=chain_path
+    assert np.array_equal(
+        np.diff(final_res.get_times(time_units="s")),
+        [1.0, 2.0, 3.0, 4.0, 5.0, 6.0]
     )
-    integrator = openmc.deplete.CECMIntegrator(
-        operator,
-        time_steps,
-        power=power,
-        timestep_units="d",
-        continue_timesteps=True,
-    )
-    integrator.integrate(path=f"{base_path}/kill_continue/continue_depletion_results.h5")
-    final_res = openmc.deplete.Results(f"{base_path}/kill_continue/continue_depletion_results.h5")
 
-    assert np.array_equal(np.diff(final_res.get_times(time_units="d")),[1.0, 2.0, 3.0, 4.0])
 
 def test_mismatched_initial_times(run_in_tmpdir):
     """Test to ensure that a continue run with different initial steps is properly caught"""

@@ -87,6 +87,34 @@ def test_cylindrical_mesh_from_region():
     assert np.array_equal(mesh.origin, (0.0, 0.0, -30.))
 
 
+def test_spherical_mesh_from_region():
+    """Tests a SphericalMesh can be made from a Region and the specified
+    dimensions are propagated through. Cell is not centralized"""
+    sphere = openmc.Sphere(r=5, x0=2, y0=3, z0=4)
+    region = -sphere
+
+    geometry = openmc.Geometry(openmc.Universe(cells=[openmc.Cell(region=region)]))
+
+    region_mesh = openmc.SphericalMesh.from_domain(
+        domain=region, dimension=(4, 3, 4))
+    universe_mesh = openmc.SphericalMesh.from_domain(
+        domain=geometry.root_universe, dimension=(4, 3, 4))
+    geometry_mesh = openmc.SphericalMesh.from_domain(
+        domain=geometry, dimension=(4, 3, 4))
+
+
+    for mesh in (region_mesh, universe_mesh, geometry_mesh):
+        assert isinstance(mesh, openmc.SphericalMesh)
+        assert np.array_equal(mesh.dimension, (4, 3, 4))
+        assert np.array_equal(mesh.r_grid, [0., 1.25, 2.5, 3.75, 5.0])
+        assert np.array_equal(mesh.theta_grid, [0., np.pi/3., 2*np.pi/3., np.pi])
+        assert np.array_equal(mesh.phi_grid, [0., np.pi/2., np.pi, 3*np.pi/2., 2*np.pi])
+        assert np.array_equal(mesh.origin, (2.0, 3.0, 4.0))
+
+        for p in mesh.centroids.reshape(-1, 3):
+            assert p in mesh.bounding_box
+
+
 def test_reg_mesh_from_universe():
     """Tests a RegularMesh can be made from a Universe and the default
     dimensions are propagated through. Universe is centralized"""

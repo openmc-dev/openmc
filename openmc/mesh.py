@@ -2150,6 +2150,10 @@ class SphericalMesh(StructuredMesh):
         if self._phi_grid is not None:
             string += fmt.format('\tPhi Min:', '=\t', self._phi_grid[0])
             string += fmt.format('\tPhi Max:', '=\t', self._phi_grid[-1])
+        if self.origin is not None:
+            string += fmt.format('\tOrigin:', '=\t', self.origin)
+        else:
+            string += fmt.format('\tOrigin:', '=\t', '[0.0, 0.0, 0.0]')
         return string
 
     @classmethod
@@ -2164,6 +2168,84 @@ class SphericalMesh(StructuredMesh):
         )
         if 'origin' in group:
             mesh.origin = group['origin'][()]
+
+        return mesh
+
+    @classmethod
+    def from_domain(
+        cls,
+        domain: 'openmc.Cell' | 'openmc.Region' | 'openmc.Universe' | 'openmc.Geometry',
+        dimension: Sequence[int] = (10, 10, 10),
+        mesh_id: int | None = None,
+        phi_grid_bounds: Sequence[float] = (0.0, 2*pi),
+        theta_grid_bounds: Sequence[float] = (0.0, pi),
+        name: str = ''
+    ):
+        """Creates a regular SphericalMesh from an existing openmc domain.
+
+        Parameters
+        ----------
+        domain : openmc.Cell or openmc.Region or openmc.Universe or openmc.Geometry
+            The object passed in will be used as a template for this mesh. The
+            bounding box of the property of the object passed will be used to
+            set the r_grid, theta_grid, phi_grid ranges.
+        dimension : Iterable of int
+            The number of equally spaced mesh cells in each direction (r_grid,
+            theta_grid, phi_grid)
+        mesh_id : int
+            Unique identifier for the mesh
+        phi_grid_bounds : numpy.ndarray
+            Mesh bounds points along the phi-axis in radians. The default value
+            is (0, 2π), i.e., the full phi range.
+        theta_grid_bounds : numpy.ndarray
+            Mesh bounds points along the theta-axis in radians. The default value
+            is (0, π), i.e., the full theta range.
+        name : str
+            Name of the mesh
+
+        Returns
+        -------
+        openmc.SphericalMesh
+            SphericalMesh instance
+
+        """
+        cv.check_type(
+            "domain",
+            domain,
+            (openmc.Cell, openmc.Region, openmc.Universe, openmc.Geometry),
+        )
+
+        # loaded once to avoid recalculating bounding box
+        cached_bb = domain.bounding_box
+
+        outer_radius = 0.5 * max(cached_bb.width)
+
+        r_grid = np.linspace(
+            0,
+            outer_radius,
+            num=dimension[0]+1
+        )
+        theta_grid = np.linspace(
+            theta_grid_bounds[0],
+            theta_grid_bounds[1],
+            num=dimension[1]+1
+        )
+        phi_grid = np.linspace(
+            phi_grid_bounds[0],
+            phi_grid_bounds[1],
+            num=dimension[2]+1
+        )
+        origin = (cached_bb.center[0], cached_bb.center[1], cached_bb.center[2])
+
+        origin = np.asarray(origin)
+
+        mesh = cls(
+            r_grid=r_grid,
+            phi_grid=phi_grid,
+            theta_grid=theta_grid,
+            origin=origin,
+            mesh_id=mesh_id,
+            name=name)
 
         return mesh
 

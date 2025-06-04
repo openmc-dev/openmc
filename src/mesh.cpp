@@ -1794,7 +1794,7 @@ Position SphericalMesh::sample_element(
   double phi_min = this->phi(ijk[2] - 1);
   double phi_max = this->phi(ijk[2]);
 
-  double cos_theta = uniform_distribution(theta_min, theta_max, seed);
+  double cos_theta = uniform_distribution(std::cos(theta_min), std::cos(theta_max), seed);
   double sin_theta = std::sin(std::acos(cos_theta));
   double phi = uniform_distribution(phi_min, phi_max, seed);
   double r_min_cub = std::pow(r_min, 3);

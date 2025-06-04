@@ -1791,12 +1791,13 @@ class CylindricalMesh(StructuredMesh):
         dimension: Sequence[int] = (10, 10, 10),
         mesh_id: int | None = None,
         phi_grid_bounds: Sequence[float] = (0.0, 2*pi),
-        name: str = ''
+        name: str = '',
+        inscribe: bool = True
     ):
         """Creates a regular CylindricalMesh from an existing openmc domain.
 
         Parameters
-        ----------
+        ----------s
         domain : openmc.Cell or openmc.Region or openmc.Universe or openmc.Geometry
             The object passed in will be used as a template for this mesh. The
             bounding box of the property of the object passed will be used to
@@ -1811,6 +1812,10 @@ class CylindricalMesh(StructuredMesh):
             is (0, 2π), i.e., the full phi range.
         name : str
             Name of the mesh
+        inscribe : bool
+            If True, the mesh will be inscribed within the bounding box of the
+            domain, meaning that the r_grid will be adjusted to fit within
+            the bounding box.
 
         Returns
         -------
@@ -1826,17 +1831,15 @@ class CylindricalMesh(StructuredMesh):
 
         # loaded once to avoid recalculating bounding box
         cached_bb = domain.bounding_box
-        max_bounding_box_radius = max(
-            [
-                cached_bb[0][0],
-                cached_bb[0][1],
-                cached_bb[1][0],
-                cached_bb[1][1],
-            ]
-        )
+
+        if inscribe:
+            outer_radius = 0.5 * min(cached_bb.width[:2])
+        else:
+            outer_radius = 0.5 * np.linalg.norm(cached_bb.width[:2])
+
         r_grid = np.linspace(
             0,
-            max_bounding_box_radius,
+            outer_radius,
             num=dimension[0]+1
         )
         phi_grid = np.linspace(
@@ -2179,7 +2182,8 @@ class SphericalMesh(StructuredMesh):
         mesh_id: int | None = None,
         phi_grid_bounds: Sequence[float] = (0.0, 2*pi),
         theta_grid_bounds: Sequence[float] = (0.0, pi),
-        name: str = ''
+        name: str = '',
+        inscribe: bool = False
     ):
         """Creates a regular SphericalMesh from an existing openmc domain.
 
@@ -2203,6 +2207,10 @@ class SphericalMesh(StructuredMesh):
             is (0, π), i.e., the full theta range.
         name : str
             Name of the mesh
+        inscribe : bool
+            If True, the mesh will be inscribed within the bounding box of the
+            domain, meaning that the r_grid will be adjusted to fit within
+            the bounding box.
 
         Returns
         -------
@@ -2219,26 +2227,27 @@ class SphericalMesh(StructuredMesh):
         # loaded once to avoid recalculating bounding box
         cached_bb = domain.bounding_box
 
-        outer_radius = 0.5 * min(cached_bb.width)
+        if inscribe:
+            outer_radius = 0.5 * min(cached_bb.width)
+        else:
+            outer_radius = 0.5 * np.linalg.norm(cached_bb.width)
 
         r_grid = np.linspace(
             0,
             outer_radius,
             num=dimension[0]+1
         )
-        phi_grid = np.linspace(
-            phi_grid_bounds[0],
-            phi_grid_bounds[1],
-            num=dimension[1]+1
-        )
         theta_grid = np.linspace(
             theta_grid_bounds[0],
             theta_grid_bounds[1],
+            num=dimension[1]+1
+        )
+        phi_grid = np.linspace(
+            phi_grid_bounds[0],
+            phi_grid_bounds[1],
             num=dimension[2]+1
         )
-        origin = (cached_bb.center[0], cached_bb.center[1], cached_bb.center[2])
-
-        origin = np.asarray(origin)
+        origin = np.asarray((cached_bb.center[0], cached_bb.center[1], cached_bb.center[2]))
 
         mesh = cls(
             r_grid=r_grid,

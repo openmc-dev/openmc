@@ -40,7 +40,7 @@ def test_cylindrical_mesh_from_cell():
 
     assert isinstance(mesh, openmc.CylindricalMesh)
     assert np.array_equal(mesh.dimension, (1, 1, 1))
-    assert np.array_equal(mesh.r_grid, [0., 150.])
+    assert np.array_equal(mesh.r_grid, [0., 50.])
     assert np.array_equal(mesh.origin, [100., 0., 10.])
 
     # Cell is not centralized on Z, X or Y axis
@@ -49,7 +49,7 @@ def test_cylindrical_mesh_from_cell():
     mesh = openmc.CylindricalMesh.from_domain(domain=cell, dimension=[1, 1, 1])
 
     assert isinstance(mesh, openmc.CylindricalMesh)
-    assert np.array_equal(mesh.r_grid, [0., 220.])
+    assert np.array_equal(mesh.r_grid, [0., 50.])
     assert np.array_equal(mesh.origin, [100., 170., 10.])
 
 
@@ -96,11 +96,11 @@ def test_spherical_mesh_from_domain():
     geometry = openmc.Geometry(openmc.Universe(cells=[openmc.Cell(region=region)]))
 
     region_mesh = openmc.SphericalMesh.from_domain(
-        domain=region, dimension=(4, 3, 4))
+        domain=region, dimension=(4, 3, 4), inscribe=True)
     universe_mesh = openmc.SphericalMesh.from_domain(
-        domain=geometry.root_universe, dimension=(4, 3, 4))
+        domain=geometry.root_universe, dimension=(4, 3, 4), inscribe=True)
     geometry_mesh = openmc.SphericalMesh.from_domain(
-        domain=geometry, dimension=(4, 3, 4))
+        domain=geometry, dimension=(4, 3, 4), inscribe=True)
 
 
     for mesh in (region_mesh, universe_mesh, geometry_mesh):

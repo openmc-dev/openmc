@@ -6,6 +6,7 @@ import numpy as np
 import openmc
 import openmc.lib
 
+import openmc.model
 from tests import cdtemp
 
 
@@ -403,19 +404,23 @@ def test_mesh_spatial(run_in_tmpdir, mesh_type):
     """Test that a spherical mesh source works as expected."""
     model = openmc.Model()
 
-    # Set up geometry
-    sphere = openmc.Sphere(r=10.0, boundary_type='vacuum')
+    # Set up geometry, a box that is shifted in x, y, and z
+    box = openmc.model.RectangularParallelepiped(5.0, 25.0, -20.0, 20.0, -30.0, 30.0, boundary_type='vacuum')
     mat = openmc.Material()
     mat.add_nuclide('H1', 1.0)
-    model.geometry = openmc.Geometry([openmc.Cell(fill=mat, region=-sphere)])
+    model.geometry = openmc.Geometry([openmc.Cell(fill=mat, region=-box)])
 
     # Create a spherical mesh
     if mesh_type == 'rectangular':
         mesh = openmc.RegularMesh.from_domain(model.geometry, (10, 2, 2))
     elif mesh_type == 'cylindrical':
-        mesh = openmc.CylindricalMesh.from_domain(model.geometry, (10, 2, 2))
+        mesh = openmc.CylindricalMesh.from_domain(model.geometry, (10, 2, 2), inscribe=True)
+        assert max(mesh.r_grid) == 10.0, "Cylindrical mesh radius exceeds geometry bounds"
+        assert mesh.origin[0] == 15.0, "Cylindrical mesh origin x-coordinate is incorrect"
     elif mesh_type == 'spherical':
-        mesh = openmc.SphericalMesh.from_domain(model.geometry, (10, 2, 2))
+        mesh = openmc.SphericalMesh.from_domain(model.geometry, (10, 2, 2), inscribe=True)
+        assert max(mesh.r_grid) == 10.0, "Spherical mesh radius exceeds geometry bounds"
+        assert mesh.origin[0] == 15.0, "Spherical mesh origin x-coordinate is incorrect"
 
     # Create a mesh source with a single particle
     ind_source = openmc.IndependentSource(space=openmc.stats.MeshSpatial(mesh, np.prod(mesh.dimension)*[1.0]))

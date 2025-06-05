@@ -11,14 +11,22 @@
 
 #include <fmt/core.h>
 
+#include <cctype>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include <dlfcn.h>
 #include <memory>
 #include <mutex>
 #include <stdexcept>
+#include <string>
+
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#else
+#include <dlfcn.h>
+#endif
 
 // WARNING: These declarations MUST EXACTLY MATCH the structure and function
 // signatures of the libmcpl being loaded at runtime. Any discrepancy will
@@ -61,6 +69,37 @@ typedef void (*mcpl_close_outfile_fpt)(
 
 namespace openmc {
 
+#ifdef _WIN32
+typedef HMODULE LibraryHandleType;
+#else
+typedef void* LibraryHandleType;
+#endif
+
+std::string get_last_library_error()
+{
+#ifdef _WIN32
+  DWORD error_code = GetLastError();
+  if (error_code == 0)
+    return "No error reported by system."; // More accurate than "No error."
+  LPSTR message_buffer = nullptr;
+  size_t size =
+    FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
+                     FORMAT_MESSAGE_IGNORE_INSERTS,
+      NULL, error_code, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+      (LPSTR)&message_buffer, 0, NULL);
+  std::string message(message_buffer, size);
+  LocalFree(message_buffer);
+  while (
+    !message.empty() && (message.back() == '\n' || message.back() == '\r')) {
+    message.pop_back();
+  }
+  return message;
+#else
+  const char* err = dlerror();
+  return err ? std::string(err) : "No error reported by dlerror.";
+#endif
+}
+
 struct McplApi {
   mcpl_open_file_fpt open_file;
   mcpl_hdr_nparticles_fpt hdr_nparticles;
@@ -71,42 +110,50 @@ struct McplApi {
   mcpl_add_particle_fpt add_particle;
   mcpl_close_outfile_fpt close_outfile;
 
-  explicit McplApi(void* lib_handle)
+  explicit McplApi(LibraryHandleType lib_handle)
   {
     if (!lib_handle)
       throw std::runtime_error(
         "MCPL library handle is null during API binding.");
-    auto load_symbol = [lib_handle](const char* name) {
-      void* sym = dlsym(lib_handle, name);
+
+    auto load_symbol_platform = [lib_handle](const char* name) {
+      void* sym = nullptr;
+#ifdef _WIN32
+      sym = (void*)GetProcAddress(lib_handle, name);
+#else
+      sym = dlsym(lib_handle, name);
+#endif
       if (!sym) {
         throw std::runtime_error(
-          fmt::format("Failed to load MCPL symbol '{}': {}", name, dlerror()));
+          fmt::format("Failed to load MCPL symbol '{}': {}", name,
+            get_last_library_error()));
       }
       return sym;
     };
-    open_file =
-      reinterpret_cast<mcpl_open_file_fpt>(load_symbol("mcpl_open_file"));
+
+    open_file = reinterpret_cast<mcpl_open_file_fpt>(
+      load_symbol_platform("mcpl_open_file"));
     hdr_nparticles = reinterpret_cast<mcpl_hdr_nparticles_fpt>(
-      load_symbol("mcpl_hdr_nparticles")); // Cast uses correct type
-    read = reinterpret_cast<mcpl_read_fpt>(load_symbol("mcpl_read"));
-    close_file =
-      reinterpret_cast<mcpl_close_file_fpt>(load_symbol("mcpl_close_file"));
+      load_symbol_platform("mcpl_hdr_nparticles"));
+    read = reinterpret_cast<mcpl_read_fpt>(load_symbol_platform("mcpl_read"));
+    close_file = reinterpret_cast<mcpl_close_file_fpt>(
+      load_symbol_platform("mcpl_close_file"));
     create_outfile = reinterpret_cast<mcpl_create_outfile_fpt>(
-      load_symbol("mcpl_create_outfile"));
+      load_symbol_platform("mcpl_create_outfile"));
     hdr_set_srcname = reinterpret_cast<mcpl_hdr_set_srcname_fpt>(
-      load_symbol("mcpl_hdr_set_srcname"));
-    add_particle =
-      reinterpret_cast<mcpl_add_particle_fpt>(load_symbol("mcpl_add_particle"));
+      load_symbol_platform("mcpl_hdr_set_srcname"));
+    add_particle = reinterpret_cast<mcpl_add_particle_fpt>(
+      load_symbol_platform("mcpl_add_particle"));
     close_outfile = reinterpret_cast<mcpl_close_outfile_fpt>(
-      load_symbol("mcpl_close_outfile"));
+      load_symbol_platform("mcpl_close_outfile"));
   }
 };
 
-static void* g_mcpl_lib_handle = nullptr;
+static LibraryHandleType g_mcpl_lib_handle = nullptr;
 static std::unique_ptr<McplApi> g_mcpl_api;
 static bool g_mcpl_init_attempted = false;
 static bool g_mcpl_successfully_loaded = false;
-static std::string g_mcpl_load_error_msg; // Stores concatenated error messages
+static std::string g_mcpl_load_error_msg;
 static std::once_flag g_mcpl_init_flag;
 
 void append_error(std::string& existing_msg, const std::string& new_error)
@@ -121,7 +168,11 @@ void mcpl_library_cleanup()
 {
   g_mcpl_api.reset();
   if (g_mcpl_lib_handle) {
+#ifdef _WIN32
+    FreeLibrary(g_mcpl_lib_handle);
+#else
     dlclose(g_mcpl_lib_handle);
+#endif
     g_mcpl_lib_handle = nullptr;
   }
   g_mcpl_successfully_loaded = false;
@@ -133,46 +184,68 @@ void initialize_mcpl_interface_impl()
   g_mcpl_init_attempted = true;
   g_mcpl_load_error_msg.clear();
 
-  const char* lib_path_env = std::getenv("MCPL_LIB_PATH");
-  if (lib_path_env && strlen(lib_path_env) > 0) {
-    g_mcpl_lib_handle = dlopen(lib_path_env, RTLD_LAZY);
-    if (!g_mcpl_lib_handle) {
-      append_error(g_mcpl_load_error_msg,
-        fmt::format("From MCPL_LIB_PATH ({}): {}", lib_path_env, dlerror()));
-    }
-  }
-
+  // Try mcpl-config
   if (!g_mcpl_lib_handle) {
-    FILE* pipe = popen("mcpl-config --show libpath 2>/dev/null", "r");
+    FILE* pipe = nullptr;
+#ifdef _WIN32
+    pipe = _popen("mcpl-config --show libpath", "r");
+#else
+    pipe = popen("mcpl-config --show libpath 2>/dev/null", "r");
+#endif
     if (pipe) {
       char buffer[512];
       if (fgets(buffer, sizeof(buffer), pipe) != nullptr) {
-        buffer[strcspn(buffer, "\n\r")] = 0;
-        if (strlen(buffer) > 0) {
-          g_mcpl_lib_handle = dlopen(buffer, RTLD_LAZY);
+        std::string shlibpath = buffer;
+        // Remove trailing whitespace
+        while (!shlibpath.empty() &&
+               std::isspace(static_cast<unsigned char>(shlibpath.back()))) {
+          shlibpath.pop_back();
+        }
+
+        if (!shlibpath.empty()) {
+#ifdef _WIN32
+          g_mcpl_lib_handle = LoadLibraryA(shlibpath.c_str());
+#else
+          g_mcpl_lib_handle = dlopen(shlibpath.c_str(), RTLD_LAZY);
+#endif
           if (!g_mcpl_lib_handle) {
-            append_error(g_mcpl_load_error_msg,
-              fmt::format("From mcpl-config ({}): {}", buffer, dlerror()));
+            append_error(
+              g_mcpl_load_error_msg, fmt::format("From mcpl-config ({}): {}",
+                                       shlibpath, get_last_library_error()));
           }
         }
       }
+#ifdef _WIN32
+      _pclose(pipe);
+#else
       pclose(pipe);
-    } else {
-      append_error(
-        g_mcpl_load_error_msg, "mcpl-config not found or failed to execute");
+#endif
+    } else { // pipe failed to open
+      append_error(g_mcpl_load_error_msg,
+        "mcpl-config command not found or failed to execute");
     }
   }
 
+  // Try standard library names
   if (!g_mcpl_lib_handle) {
-    const char* standard_names[] = {"libmcpl.so", "libmcpl.dylib", "mcpl.dll"};
+#ifdef _WIN32
+    const char* standard_names[] = {"mcpl.dll", "libmcpl.dll"};
+#else
+    const char* standard_names[] = {"libmcpl.so", "libmcpl.dylib"};
+#endif
     for (const char* name : standard_names) {
+#ifdef _WIN32
+      g_mcpl_lib_handle = LoadLibraryA(name);
+#else
       g_mcpl_lib_handle = dlopen(name, RTLD_LAZY);
+#endif
       if (g_mcpl_lib_handle)
         break;
     }
     if (!g_mcpl_lib_handle) {
-      append_error(g_mcpl_load_error_msg,
-        fmt::format("Using standard names (e.g. libmcpl.so): {}", dlerror()));
+      append_error(
+        g_mcpl_load_error_msg, fmt::format("Using standard names (e.g. {}): {}",
+                                 standard_names[0], get_last_library_error()));
     }
   }
 
@@ -199,7 +272,11 @@ void initialize_mcpl_interface_impl()
     if (mpi::master) {
       warning(g_mcpl_load_error_msg);
     }
+#ifdef _WIN32
+    FreeLibrary(g_mcpl_lib_handle);
+#else
     dlclose(g_mcpl_lib_handle);
+#endif
     g_mcpl_lib_handle = nullptr;
     g_mcpl_successfully_loaded = false;
   }
@@ -224,8 +301,9 @@ inline void ensure_mcpl_ready_or_fatal()
       "MCPL functionality is required, but the MCPL library is not available "
       "or failed to initialize. "
       "Please ensure MCPL is installed and its library can be found (e.g., via "
-      "LD_LIBRARY_PATH, MCPL_LIB_PATH, or mcpl-config). "
-      "You can install MCPL with 'pip install mcpl'. "
+      "PATH on Windows, LD_LIBRARY_PATH on Linux, or DYLD_LIBRARY_PATH on "
+      "macOS). "
+      "You can often install MCPL with 'pip install mcpl'. "
       "Last error(s): {}",
       g_mcpl_load_error_msg.empty() ? "No specific error during load."
                                     : g_mcpl_load_error_msg));

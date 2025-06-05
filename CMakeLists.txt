@@ -36,7 +36,6 @@ option(OPENMC_ENABLE_COVERAGE "Compile with coverage analysis flags"            
 option(OPENMC_USE_DAGMC       "Enable support for DAGMC (CAD) geometry"              OFF)
 option(OPENMC_USE_LIBMESH     "Enable support for libMesh unstructured mesh tallies" OFF)
 option(OPENMC_USE_MPI         "Enable MPI"                                           OFF)
-option(OPENMC_USE_MCPL        "Enable MCPL"                                          OFF)
 option(OPENMC_USE_UWUW        "Enable UWUW"                                          OFF)
 
 message(STATUS "OPENMC_USE_OPENMP ${OPENMC_USE_OPENMP}")
@@ -46,7 +45,6 @@ message(STATUS "OPENMC_ENABLE_COVERAGE ${OPENMC_ENABLE_COVERAGE}")
 message(STATUS "OPENMC_USE_DAGMC ${OPENMC_USE_DAGMC}")
 message(STATUS "OPENMC_USE_LIBMESH ${OPENMC_USE_LIBMESH}")
 message(STATUS "OPENMC_USE_MPI ${OPENMC_USE_MPI}")
-message(STATUS "OPENMC_USE_MCPL ${OPENMC_USE_MCPL}")
 message(STATUS "OPENMC_USE_UWUW ${OPENMC_USE_UWUW}")
 
 # Warnings for deprecated options
@@ -187,22 +185,6 @@ endif()
 # versions of HDF5.
 if(${HDF5_VERSION} VERSION_GREATER_EQUAL 1.12.0)
   list(APPEND cxxflags -DH5Oget_info_by_idx_vers=1 -DH5O_info_t_vers=1)
-endif()
-
-#===============================================================================
-# MCPL
-#===============================================================================
-
-if (OPENMC_USE_MCPL)
-  if (NOT DEFINED MCPL_DIR)
-    execute_process(
-      COMMAND mcpl-config --show cmakedir
-      OUTPUT_VARIABLE MCPL_DIR
-      OUTPUT_STRIP_TRAILING_WHITESPACE
-    )
-  endif()
-  find_package(MCPL REQUIRED)
-  message(STATUS "Found MCPL: ${MCPL_DIR} (found version \"${MCPL_VERSION}\")")
 endif()
 
 #===============================================================================
@@ -532,11 +514,6 @@ if (OPENMC_BUILD_TESTS)
   # Add cpp tests directory
   include(CTest)
   add_subdirectory(tests/cpp_unit_tests)
-endif()
-
-if (OPENMC_USE_MCPL)
-  target_compile_definitions(libopenmc PUBLIC OPENMC_MCPL)
-  target_link_libraries(libopenmc MCPL::mcpl)
 endif()
 
 #===============================================================================

@@ -368,10 +368,6 @@ OPENMC_USE_DAGMC
   should also be defined as `DAGMC_ROOT` in the CMake configuration command.
   (Default: off)
 
-OPENMC_USE_MCPL
-  Turns on support for reading MCPL_ source files and writing MCPL source points
-  and surface sources. (Default: off)
-
 OPENMC_USE_LIBMESH
   Enables the use of unstructured mesh tallies with libMesh_. (Default: off)
 

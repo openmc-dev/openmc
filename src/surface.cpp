@@ -106,6 +106,7 @@ Surface::Surface(pugi::xml_node surf_node)
         dir_trans = {
           1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0};
       }
+      
       if (check_for_node(surf_node, "position_transformation")) {
         pos_trans =
           get_node_array<double>(surf_node, "position_transformation");

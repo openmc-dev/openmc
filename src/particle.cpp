@@ -781,9 +781,9 @@ void Particle::cross_transformation_bc(
   r() = new_r;
   u() = new_u;
 
-  // Note that particle's cell and surface are not strictly assigned upon
-  // surface crossing. The cell will be assigned during the
-  // neighbor_list_find_cell call below.
+  // Clear the surface assignment after transformation so as not to confuse the
+  // cell finding routine
+  surface() = SURFACE_NONE;
 
   // If a transformation surface is coincident with a lattice or universe
   // boundary, it is necessary to redetermine the particle's coordinates in
@@ -791,7 +791,7 @@ void Particle::cross_transformation_bc(
   // (unless we're using a dagmc model, which has exactly one universe)
   n_coord() = 1;
   if (surf.geom_type() != GeometryType::DAG &&
-      !neighbor_list_find_cell(*this)) {
+      !exhaustive_find_cell(*this)) {
     mark_as_lost("Couldn't find particle after transforming from surface " +
                  std::to_string(surf.id_) + ".");
     return;

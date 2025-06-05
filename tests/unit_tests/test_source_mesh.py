@@ -414,11 +414,11 @@ def test_mesh_spatial(run_in_tmpdir, mesh_type):
     if mesh_type == 'rectangular':
         mesh = openmc.RegularMesh.from_domain(model.geometry, (10, 2, 2))
     elif mesh_type == 'cylindrical':
-        mesh = openmc.CylindricalMesh.from_domain(model.geometry, (10, 2, 2), inscribe=True)
+        mesh = openmc.CylindricalMesh.from_domain(model.geometry, (10, 2, 2))
         assert max(mesh.r_grid) == 10.0, "Cylindrical mesh radius exceeds geometry bounds"
         assert mesh.origin[0] == 15.0, "Cylindrical mesh origin x-coordinate is incorrect"
     elif mesh_type == 'spherical':
-        mesh = openmc.SphericalMesh.from_domain(model.geometry, (10, 2, 2), inscribe=True)
+        mesh = openmc.SphericalMesh.from_domain(model.geometry, (10, 2, 2))
         assert max(mesh.r_grid) == 10.0, "Spherical mesh radius exceeds geometry bounds"
         assert mesh.origin[0] == 15.0, "Spherical mesh origin x-coordinate is incorrect"
 

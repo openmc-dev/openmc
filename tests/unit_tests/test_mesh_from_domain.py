@@ -98,9 +98,9 @@ def test_spherical_mesh_from_domain():
     region_mesh = openmc.SphericalMesh.from_domain(
         domain=region, dimension=(4, 3, 4), inscribe=True)
     universe_mesh = openmc.SphericalMesh.from_domain(
-        domain=geometry.root_universe, dimension=(4, 3, 4), inscribe=True)
+        domain=geometry.root_universe, dimension=(4, 3, 4))
     geometry_mesh = openmc.SphericalMesh.from_domain(
-        domain=geometry, dimension=(4, 3, 4), inscribe=True)
+        domain=geometry, dimension=(4, 3, 4))
 
 
     for mesh in (region_mesh, universe_mesh, geometry_mesh):

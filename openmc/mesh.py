@@ -1792,7 +1792,7 @@ class CylindricalMesh(StructuredMesh):
         mesh_id: int | None = None,
         phi_grid_bounds: Sequence[float] = (0.0, 2*pi),
         name: str = '',
-        inscribe: bool = True
+        inscribe: bool = False
     ):
         """Creates a regular CylindricalMesh from an existing openmc domain.
 

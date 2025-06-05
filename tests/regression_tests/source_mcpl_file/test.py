@@ -3,11 +3,13 @@ import openmc.lib
 import pytest
 import glob
 import os
-
+import shutil
 from tests.testing_harness import *
+
 pytestmark = pytest.mark.skipif(
-    not openmc.lib._mcpl_enabled(),
-    reason="MCPL is not enabled.")
+    shutil.which("mcpl-config") is None,
+    reason="mcpl-config command not found in PATH; MCPL is likely not available."
+)
 
 settings1="""<?xml version="1.0"?>
 <settings>

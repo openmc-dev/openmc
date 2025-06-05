@@ -76,6 +76,11 @@ public:
 
   void set_mesh(int32_t mesh);
 
+  //! Set the bins based on a flat vector of alternating element index and
+  //! material IDs
+  void set_bins(span<int32_t> bins);
+
+  //! Set the bins based on a vector of (element, material index) pairs
   void set_bins(vector<ElementMat>&& bins);
 
   virtual void set_translation(const Position& translation);

@@ -31,14 +31,23 @@ void MeshMaterialFilter::from_xml(pugi::xml_node node)
   }
   set_mesh(search->second);
 
-  // Get pairs of (element index, material)
+  // Get pairs of (element index, material) and set the bins
   auto bins = get_node_array<int32_t>(node, "bins");
+  this->set_bins(bins);
+
+  if (check_for_node(node, "translation")) {
+    set_translation(get_node_array<double>(node, "translation"));
+  }
+}
+
+void MeshMaterialFilter::set_bins(span<int32_t> bins)
+{
   if (bins.size() % 2 != 0) {
     fatal_error(
       fmt::format("Size of mesh material bins is not even: {}", bins.size()));
   }
 
-  // Convert into vector of ElementMat
+  // Create a vector of ElementMat pairs from the flat vector of bins
   vector<ElementMat> element_mats;
   for (int64_t i = 0; i < bins.size() / 2; ++i) {
     int32_t element = bins[2 * i];
@@ -53,10 +62,6 @@ void MeshMaterialFilter::from_xml(pugi::xml_node node)
   }
 
   this->set_bins(std::move(element_mats));
-
-  if (check_for_node(node, "translation")) {
-    set_translation(get_node_array<double>(node, "translation"));
-  }
 }
 
 void MeshMaterialFilter::set_bins(vector<ElementMat>&& bins)

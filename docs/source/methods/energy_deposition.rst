@@ -47,14 +47,16 @@ interactions, the energy-balance KERMA coefficient is
 
 where :math:`\bar{E}_{i, r, n}` is the average energy of secondary neutrons and
 :math:`\bar{E}_{i, r, \gamma}` is the average energy of secondary photons. For
-photon and charged particle interactions, the :math:`Q` value is zero and thus
-the KERMA coefficient is
+photon and charged particle interactions the KERMA coefficient is
 
 .. math::
     :label: energy-balance-photon
 
-    k_{i, r}(E) = \left(E - \sum\limits_x \bar{E}_{i, r, x}
+    k_{i, r}(E) = \left(E + Q_{i, r} - \sum\limits_x \bar{E}_{i, r, x}
     \right)\sigma_{i, r}(E).
+
+where the :math:`Q` value is zero for all interactions except for pair
+production and positron annihilation.
 
 -------
 Fission

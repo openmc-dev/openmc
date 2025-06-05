@@ -325,6 +325,20 @@ double score_neutron_heating(const Particle& p, const Tally& tally, double flux,
   return score;
 }
 
+//! Helper function to obtain reaction Q value for photons and charged particles
+double get_reaction_q_value(const Particle& p)
+{
+  if (p.type() == ParticleType::photon && p.event_mt() == PAIR_PROD) {
+    // pair production
+    return -2 * MASS_ELECTRON_EV;
+  } else if (p.type() == ParticleType::positron) {
+    // positron annihilation
+    return 2 * MASS_ELECTRON_EV;
+  } else {
+    return 0.0;
+  }
+}
+
 //! Helper function to obtain particle heating [eV]
 
 double score_particle_heating(const Particle& p, const Tally& tally,
@@ -335,14 +349,17 @@ double score_particle_heating(const Particle& p, const Tally& tally,
       p, tally, flux, rxn_bin, i_nuclide, atom_density);
   if (i_nuclide == -1 || i_nuclide == p.event_nuclide() ||
       p.event_nuclide() == -1) {
+    // For pair production and positron annihilation, we need to account for the
+    // reaction Q value
+    double Q = get_reaction_q_value(p);
+
     // Get the pre-collision energy of the particle.
     auto E = p.E_last();
-    // The energy deposited is the difference between the pre-collision
-    // and post-collision energy...
-    double score = E - p.E();
-    // ...less the energy of any secondary particles since they will be
-    // transported individually later
-    score -= p.bank_second_E();
+
+    // The energy deposited is the sum of the incident energy and the reaction
+    // Q-value less the energy of any outgoing particles
+    double score = E + Q - p.E() - p.bank_second_E();
+
     score *= p.wgt_last();
 
     // if no event_nuclide (charged particle) scale energy deposition by

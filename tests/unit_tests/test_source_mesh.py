@@ -6,7 +6,6 @@ import numpy as np
 import openmc
 import openmc.lib
 
-import openmc.model
 from tests import cdtemp
 
 

@@ -54,8 +54,9 @@ photon and charged particle interactions the KERMA coefficient is
 
     k_{i, r}(E) = \left(E + Q_{i, r} - \sum\limits_x \bar{E}_{i, r, x}
     \right)\sigma_{i, r}(E).
-    
-where the :math:`Q` value is zero for all interactions except for pair production and positron annihilation.    
+
+where the :math:`Q` value is zero for all interactions except for pair
+production and positron annihilation.
 
 -------
 Fission

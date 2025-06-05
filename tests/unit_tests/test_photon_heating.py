@@ -11,7 +11,7 @@ def test_negative_positron_heating():
     model = openmc.Model()
     model.geometry = openmc.Geometry([cell])
     model.settings.run_mode = 'fixed source'
-    model.settings.source = openmc.Source(
+    model.settings.source = openmc.IndependentSource(
         space=openmc.stats.Point(),
         energy=openmc.stats.Discrete([5.0e6], [1.0]),
         particle='photon',

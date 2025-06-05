@@ -785,6 +785,7 @@ void Particle::cross_transformation_bc(
   // cell finding routine
   surface() = SURFACE_NONE;
 
+  // Figure out what cell particle is in now
   // If a transformation surface is coincident with a lattice or universe
   // boundary, it is necessary to redetermine the particle's coordinates in
   // the lower universes.

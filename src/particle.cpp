@@ -790,8 +790,7 @@ void Particle::cross_transformation_bc(
   // the lower universes.
   // (unless we're using a dagmc model, which has exactly one universe)
   n_coord() = 1;
-  if (surf.geom_type() != GeometryType::DAG &&
-      !exhaustive_find_cell(*this)) {
+  if (surf.geom_type() != GeometryType::DAG && !exhaustive_find_cell(*this)) {
     mark_as_lost("Couldn't find particle after transforming from surface " +
                  std::to_string(surf.id_) + ".");
     return;

@@ -2153,11 +2153,6 @@ class SphericalMesh(StructuredMesh):
         if self._phi_grid is not None:
             string += fmt.format('\tPhi Min:', '=\t', self._phi_grid[0])
             string += fmt.format('\tPhi Max:', '=\t', self._phi_grid[-1])
-        if self.origin is not None:
-            string += fmt.format('\tOrigin:', '=\t', self.origin)
-        else:
-            string += fmt.format('\tOrigin:', '=\t', '[0.0, 0.0, 0.0]')
-        return string
 
     @classmethod
     def from_hdf5(cls, group: h5py.Group, mesh_id: int, name: str):

@@ -302,7 +302,7 @@ class Surface(IDManagerMixin, ABC):
                             'transformation', transformation[key], 12)
                     else:
                         transformation[key] = np.append(
-                            np.identity(3), np.zeros(3,1), axis=1).flatten()
+                            np.identity(3), np.zeros((3,1)), axis=1).flatten()
         
         self._transformation = transformation
 

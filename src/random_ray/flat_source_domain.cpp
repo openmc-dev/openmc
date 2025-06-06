@@ -919,10 +919,17 @@ void FlatSourceDomain::output_to_vtk() const
       std::fprintf(plot, "LOOKUP_TABLE default\n");
       for (int i = 0; i < Nx * Ny * Nz; i++) {
         int64_t fsr = voxel_indices[i];
+        int mat = source_regions_.material(fsr);
         float total_external = 0.0f;
         if (fsr >= 0) {
           for (int g = 0; g < negroups_; g++) {
-            total_external += source_regions_.external_source(fsr, g);
+            // External sources are already divided by sigma_t, so we need to
+            // multiply it back to get the true external source.
+            double sigma_t = 1.0;
+            if (mat != MATERIAL_VOID) {
+              sigma_t = sigma_t_[mat * negroups_ + g];
+            }
+            total_external += source_regions_.external_source(fsr, g) * sigma_t;
           }
         }
         total_external = convert_to_big_endian<float>(total_external);

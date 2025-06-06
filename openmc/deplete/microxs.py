@@ -187,7 +187,7 @@ def get_microxs_from_multigroup(
     reactions: Sequence[str] | None = None,
     **init_kwargs: dict,
 ) -> Sequence[openmc.Materials]:
-    """Computer microscopic cross sections for the specified materials, multigroup_fluxes
+    """Computes microscopic cross sections for the specified materials, multigroup_fluxes
     and energy_group_structures.
 
     .. versionadded:: 0.15.3

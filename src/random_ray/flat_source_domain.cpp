@@ -923,7 +923,7 @@ void FlatSourceDomain::output_to_vtk() const
         float total_external = 0.0f;
         if (fsr >= 0) {
           for (int g = 0; g < negroups_; g++) {
-            // external sources are already divided by sigma_t, so we need to
+            // External sources are already divided by sigma_t, so we need to
             // multiply it back to get the true external source.
             double sigma_t = 1.0;
             if (mat != MATERIAL_VOID) {

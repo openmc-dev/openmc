@@ -409,7 +409,7 @@ def test_mesh_spatial(run_in_tmpdir, mesh_type):
     mat.add_nuclide('H1', 1.0)
     model.geometry = openmc.Geometry([openmc.Cell(fill=mat, region=-box)])
 
-    # Create a spherical mesh
+    # Create a mesh of each type in turn
     if mesh_type == 'rectangular':
         mesh = openmc.RegularMesh.from_domain(model.geometry, (10, 2, 2))
     elif mesh_type == 'cylindrical':

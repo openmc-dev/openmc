@@ -96,7 +96,7 @@ def test_spherical_mesh_from_domain():
     geometry = openmc.Geometry(openmc.Universe(cells=[openmc.Cell(region=region)]))
 
     region_mesh = openmc.SphericalMesh.from_domain(
-        domain=region, dimension=(4, 3, 4), inscribe=True)
+        domain=region, dimension=(4, 3, 4))
     universe_mesh = openmc.SphericalMesh.from_domain(
         domain=geometry.root_universe, dimension=(4, 3, 4))
     geometry_mesh = openmc.SphericalMesh.from_domain(

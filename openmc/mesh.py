@@ -1792,7 +1792,7 @@ class CylindricalMesh(StructuredMesh):
         mesh_id: int | None = None,
         phi_grid_bounds: Sequence[float] = (0.0, 2*pi),
         name: str = '',
-        inscribe: bool = True
+        enclose_domain: bool = False
     ):
         """Creates a regular CylindricalMesh from an existing openmc domain.
 
@@ -1812,10 +1812,9 @@ class CylindricalMesh(StructuredMesh):
             is (0, 2π), i.e., the full phi range.
         name : str
             Name of the mesh
-        inscribe : bool
-            If True, the mesh will be inscribed within the bounding box of the
-            domain, meaning that the r_grid will be adjusted to fit within
-            the bounding box.
+        enclose_domain : bool
+            If True, the mesh will encompass the bounding box of the domain. If
+            False, the mesh will be inscribed within the domain's bounding box.
 
         Returns
         -------
@@ -1832,10 +1831,10 @@ class CylindricalMesh(StructuredMesh):
         # loaded once to avoid recalculating bounding box
         cached_bb = domain.bounding_box
 
-        if inscribe:
-            outer_radius = 0.5 * min(cached_bb.width[:2])
-        else:
+        if enclose_domain:
             outer_radius = 0.5 * np.linalg.norm(cached_bb.width[:2])
+        else:
+            outer_radius = 0.5 * min(cached_bb.width[:2])
 
         r_grid = np.linspace(
             0,
@@ -2179,7 +2178,7 @@ class SphericalMesh(StructuredMesh):
         phi_grid_bounds: Sequence[float] = (0.0, 2*pi),
         theta_grid_bounds: Sequence[float] = (0.0, pi),
         name: str = '',
-        inscribe: bool = True
+        enclose_domain: bool = False
     ):
         """Creates a regular SphericalMesh from an existing openmc domain.
 
@@ -2203,10 +2202,9 @@ class SphericalMesh(StructuredMesh):
             is (0, π), i.e., the full theta range.
         name : str
             Name of the mesh
-        inscribe : bool
-            If True, the mesh will be inscribed within the bounding box of the
-            domain, meaning that the r_grid will be adjusted to fit within
-            the bounding box.
+        enclose_domain : bool
+            If True, the mesh will encompass the bounding box of the domain. If
+            False, the mesh will be inscribed within the domain's bounding box.
 
         Returns
         -------
@@ -2223,10 +2221,10 @@ class SphericalMesh(StructuredMesh):
         # loaded once to avoid recalculating bounding box
         cached_bb = domain.bounding_box
 
-        if inscribe:
-            outer_radius = 0.5 * min(cached_bb.width)
-        else:
+        if enclose_domain:
             outer_radius = 0.5 * np.linalg.norm(cached_bb.width)
+        else:
+            outer_radius = 0.5 * min(cached_bb.width)
 
         r_grid = np.linspace(
             0,

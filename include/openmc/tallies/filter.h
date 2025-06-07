@@ -34,6 +34,7 @@ enum class FilterType {
   MESH,
   MESHBORN,
   IMPORTANCE,
+  MESH_MATERIAL,
   MESH_SURFACE,
   MU,
   MUSURFACE,

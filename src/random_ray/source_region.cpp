@@ -217,7 +217,11 @@ SourceRegionHandle SourceRegionContainer::get_source_region_handle(int64_t sr)
   handle.scalar_flux_old_ = &scalar_flux_old(sr, 0);
   handle.scalar_flux_new_ = &scalar_flux_new(sr, 0);
   handle.source_ = &source(sr, 0);
-  handle.external_source_ = &external_source(sr, 0);
+  if (settings::run_mode == RunMode::FIXED_SOURCE) {
+    handle.external_source_ = &external_source(sr, 0);
+  } else {
+    handle.external_source_ = nullptr;
+  }
   handle.scalar_flux_final_ = &scalar_flux_final(sr, 0);
   handle.tally_task_ = &tally_task(sr, 0);
 

@@ -26,6 +26,7 @@
 #include "openmc/tallies/filter_materialfrom.h"
 #include "openmc/tallies/filter_mesh.h"
 #include "openmc/tallies/filter_meshborn.h"
+#include "openmc/tallies/filter_meshmaterial.h"
 #include "openmc/tallies/filter_meshsurface.h"
 #include "openmc/tallies/filter_mu.h"
 #include "openmc/tallies/filter_musurface.h"
@@ -134,6 +135,8 @@ Filter* Filter::create(const std::string& type, int32_t id)
     return Filter::create<MeshFilter>(id);
   } else if (type == "meshborn") {
     return Filter::create<MeshBornFilter>(id);
+  } else if (type == "meshmaterial") {
+    return Filter::create<MeshMaterialFilter>(id);
   } else if (type == "meshsurface") {
     return Filter::create<MeshSurfaceFilter>(id);
   } else if (type == "mu") {

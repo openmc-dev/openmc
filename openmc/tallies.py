@@ -1583,7 +1583,7 @@ class Tally(IDManagerMixin):
         for i, f in enumerate(self.filters):
             if expand_dims:
                 # Mesh filter indices are backwards so we need to flip them
-                if isinstance(f, openmc.MeshFilter):
+                if type(f) in {openmc.MeshFilter, openmc.MeshBornFilter}:
                     fshape = f.shape[::-1]
                     new_shape += fshape
                     idx0, idx1 = i, i + len(fshape) - 1

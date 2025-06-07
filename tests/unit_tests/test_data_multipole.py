@@ -52,7 +52,7 @@ def test_from_endf():
     pytest.importorskip('vectfit')
     endf_data = os.environ['OPENMC_ENDF_DATA']
     endf_file = os.path.join(endf_data, 'neutrons', 'n-001_H_001.endf')
-    return openmc.data.WindowedMultipole.from_endf(
+    assert openmc.data.WindowedMultipole.from_endf(
             endf_file, log=True, wmp_options={"n_win": 400, "n_cf": 3})
 
 
@@ -60,5 +60,5 @@ def test_from_endf_search():
     pytest.importorskip('vectfit')
     endf_data = os.environ['OPENMC_ENDF_DATA']
     endf_file = os.path.join(endf_data, 'neutrons', 'n-095_Am_244.endf')
-    return openmc.data.WindowedMultipole.from_endf(
+    assert openmc.data.WindowedMultipole.from_endf(
             endf_file, log=True, wmp_options={"search": True, 'rtol':1e-2})

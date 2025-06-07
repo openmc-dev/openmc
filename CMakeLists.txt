@@ -414,7 +414,8 @@ list(APPEND libopenmc_SOURCES
   src/tallies/filter_material.cpp
   src/tallies/filter_materialfrom.cpp
   src/tallies/filter_mesh.cpp
-  src/tallies/filter_meshborn.cpp  
+  src/tallies/filter_meshborn.cpp
+  src/tallies/filter_meshmaterial.cpp
   src/tallies/filter_meshsurface.cpp
   src/tallies/filter_mu.cpp
   src/tallies/filter_musurface.cpp

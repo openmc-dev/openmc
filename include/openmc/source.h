@@ -243,15 +243,15 @@ public:
   double strength() const override { return space_->total_strength(); }
 
   // Accessors
-  const std::unique_ptr<IndependentSource>& source(int32_t i) const
+  const unique_ptr<IndependentSource>& source(int32_t i) const
   {
     return sources_.size() == 1 ? sources_[0] : sources_[i];
   }
 
 private:
   // Data members
-  unique_ptr<MeshSpatial> space_;                      //!< Mesh spatial
-  vector<std::unique_ptr<IndependentSource>> sources_; //!< Source distributions
+  unique_ptr<MeshSpatial> space_;                 //!< Mesh spatial
+  vector<unique_ptr<IndependentSource>> sources_; //!< Source distributions
 };
 
 //==============================================================================

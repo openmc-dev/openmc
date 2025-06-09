@@ -537,8 +537,21 @@ MeshSource::MeshSource(pugi::xml_node node) : Source(node)
   // read all source distributions and populate strengths vector for MeshSpatial
   // object
   for (auto source_node : node.children("source")) {
-    sources_.emplace_back(Source::create(source_node));
+    auto src = Source::create(source_node);
+    if (auto ptr = dynamic_cast<IndependentSource*>(src.get())) {
+      src.release();
+      sources_.emplace_back(std::unique_ptr<IndependentSource>(ptr));
+    } else {
+      fatal_error(
+        "The source assigned to each element must be an IndependentSource.");
+    }
     strengths.push_back(sources_.back()->strength());
+  }
+
+  // Set spatial distributions for each mesh element
+  for (int elem_index = 0; elem_index < sources_.size(); ++elem_index) {
+    sources_[elem_index]->set_space(
+      std::make_unique<MeshElementSpatial>(*mesh, elem_index));
   }
 
   // the number of source distributions should either be one or equal to the
@@ -554,29 +567,12 @@ MeshSource::MeshSource(pugi::xml_node node) : Source(node)
 
 SourceSite MeshSource::sample(uint64_t* seed) const
 {
-  // Sample the CDF defined in initialization above
+  // Sample a mesh element based on the relative strengths
   int32_t element = space_->sample_element_index(seed);
 
-  // Sample position and apply rejection on spatial domains
-  Position r;
-  do {
-    r = space_->mesh()->sample_element(element, seed);
-  } while (!this->satisfies_spatial_constraints(r));
-
-  SourceSite site;
-  while (true) {
-    // Sample source for the chosen element and replace the position
-    site = source(element)->sample_with_constraints(seed);
-    site.r = r;
-
-    // Apply other rejections
-    if (satisfies_energy_constraints(site.E) &&
-        satisfies_time_constraints(site.time)) {
-      break;
-    }
-  }
-
-  return site;
+  // Sample the distribution for the specific mesh element; note that the
+  // spatial distribution has been set for each element using MeshElementSpatial
+  return source(element)->sample_with_constraints(seed);
 }
 
 //==============================================================================

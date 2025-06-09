@@ -923,8 +923,10 @@ std::complex<double> w_derivative(std::complex<double> z, int order)
 double exprel(double x)
 {
   if (std::abs(x) < 1e-16)
-    return x;
-  return std::expm1(x) / x;
+    return 1.0;
+  else {
+    return std::expm1(x) / x;
+  }
 }
 
 double lambert_w0(double x)

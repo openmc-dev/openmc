@@ -171,6 +171,7 @@ public:
   Position origin_;           //!< Plot origin in geometry
   Position width_;            //!< Plot width in geometry
   PlotBasis basis_;           //!< Plot basis (XY/XZ/YZ)
+  double time_;               //!< Plot time
   array<size_t, 3> pixels_;   //!< Plot size in pixels
   bool slice_color_overlaps_; //!< Show overlapping cells?
   int slice_level_ {-1};      //!< Plot universe level
@@ -223,6 +224,7 @@ T SlicePlotBase::get_map() const
     GeometryState p;
     p.r() = xyz;
     p.u() = dir;
+    p.time() = time_;
     p.coord(0).universe = model::root_universe;
     int level = slice_level_;
     int j {};

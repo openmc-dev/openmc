@@ -185,6 +185,8 @@ _PLOT_PARAMS = """
             the image aspect ratio.
         basis : {'xy', 'xz', 'yz'}
             The basis directions for the plot
+        time : float
+            Simulation time at which geometry is evaluated
         color_by : {'cell', 'material'}
             Indicate whether the plot should be colored by cell or by material
         colors : dict
@@ -673,6 +675,8 @@ class Plot(PlotBase):
         The type of the plot
     basis : {'xy', 'xz', 'yz'}
         The basis directions for the plot
+    time : float
+        Time at which geometry is evaluated
     meshlines : dict
         Dictionary defining type, id, linewidth and color of a mesh to be
         plotted on top of a plot
@@ -685,6 +689,7 @@ class Plot(PlotBase):
         self._origin = [0., 0., 0.]
         self._type = 'slice'
         self._basis = 'xy'
+        self._time = 0.0
         self._meshlines = None
 
     @property
@@ -724,6 +729,15 @@ class Plot(PlotBase):
     def basis(self, basis):
         cv.check_value('plot basis', basis, _BASES)
         self._basis = basis
+
+    @property
+    def time(self):
+        return self._time
+
+    @time.setter
+    def time(self, time):
+        cv.check_type('plot time', time, Real)
+        self._time = time
 
     @property
     def meshlines(self):
@@ -766,6 +780,7 @@ class Plot(PlotBase):
         string += '{: <16}=\t{}\n'.format('\tBasis', self._basis)
         string += '{: <16}=\t{}\n'.format('\tWidth', self._width)
         string += '{: <16}=\t{}\n'.format('\tOrigin', self._origin)
+        string += '{: <16}=\t{}\n'.format('\tTime', self._time)
         string += '{: <16}=\t{}\n'.format('\tPixels', self._pixels)
         string += '{: <16}=\t{}\n'.format('\tColor by', self._color_by)
         string += '{: <16}=\t{}\n'.format('\tBackground', self._background)
@@ -898,6 +913,9 @@ class Plot(PlotBase):
 
         subelement = ET.SubElement(element, "width")
         subelement.text = ' '.join(map(str, self._width))
+
+        subelement = ET.SubElement(element, "time")
+        subelement.text = str(self._time)
 
         if self._colors:
             self._colors_to_xml(element)

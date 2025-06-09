@@ -145,6 +145,7 @@ void Plot::print_info() const
 
   // Plot parameters
   fmt::print("Origin: {} {} {}\n", origin_[0], origin_[1], origin_[2]);
+  fmt::print("Time: {}\n", time_);
 
   if (PlotType::slice == type_) {
     fmt::print("Width: {:4} {:4}\n", width_[0], width_[1]);
@@ -721,6 +722,7 @@ Plot::Plot(pugi::xml_node plot_node, PlotType type)
 {
   set_output_path(plot_node);
   set_basis(plot_node);
+  time_ = get_node_array<double>(plot_node, "time")[0];
   set_origin(plot_node);
   set_width(plot_node);
   set_meshlines(plot_node);

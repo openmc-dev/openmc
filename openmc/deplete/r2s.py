@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import numpy as np
 import openmc
 from .results import Results
@@ -27,7 +29,7 @@ def get_mesh_source(
     materials: list[openmc.Material],
     results: Results,
     mat_vols: openmc.MeshMaterialVolumes,
-):
+) -> list[openmc.MeshSource]:
     """Create decay photon source for a mesh-based R2S calculation.
 
     This function creates N :class:`MeshSource` objects where N is the maximum
@@ -38,10 +40,8 @@ def get_mesh_source(
     # that is used for this case
     null_source = openmc.IndependentSource(particle='photon', strength=0.0)
 
-    # Lists to hold sources and rejection domains for each MeshSource. That is,
-    # the length of source_lists and domain_lists is N.
+    # List to hold sources for each MeshSource (length = N)
     source_lists = []
-    domain_lists = []
 
     # Index in the overall list of activated materials
     index_mat = 0
@@ -51,31 +51,29 @@ def get_mesh_source(
 
     for index_elem in range(n_elements):
         for j, (mat_id, _) in enumerate(mat_vols.by_element(index_elem)):
+            # Skip void volume
+            if mat_id is None:
+                continue
+
             # Check whether a new MeshSource object is needed
             if j >= len(source_lists):
                 source_lists.append([null_source]*n_elements)
-                domain_lists.append([])
 
             # Get activated material composition
             original_mat = materials[index_mat]
             activated_mat = results[-1].get_material(str(original_mat.id))
 
-            # Create decay photon source source; note that domain rejection is
-            # not used here because the MeshSource implementation ignores
-            # spatial constraints at the level of an individual element.
+            # Create decay photon source source
             energy = activated_mat.get_decay_photon_energy()
             source_lists[j][index_elem] = openmc.IndependentSource(
                 energy=energy,
                 particle='photon',
                 strength=energy.integral(),
+                constraints={'domains': [mat_dict[mat_id]]}
             )
-            domain_lists[j].append(mat_dict[mat_id])
 
             # Increment index of activated material
             index_mat += 1
 
     # Return list of mesh sources
-    return [
-        openmc.MeshSource(mesh, sources, constraints={'domains': domains})
-        for sources, domains in zip(source_lists, domain_lists)
-    ]
+    return [openmc.MeshSource(mesh, sources) for sources in source_lists]

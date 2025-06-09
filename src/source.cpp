@@ -226,7 +226,9 @@ bool Source::satisfies_spatial_constraints(Position r) const
   if (!domain_ids_.empty()) {
     if (domain_type_ == DomainType::MATERIAL) {
       auto mat_index = geom_state.material();
-      if (mat_index != MATERIAL_VOID) {
+      if (mat_index == MATERIAL_VOID) {
+        accepted = false;
+      } else {
         accepted = contains(domain_ids_, model::materials[mat_index]->id());
       }
     } else {

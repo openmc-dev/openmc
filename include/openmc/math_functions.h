@@ -215,7 +215,7 @@ double lambert_w0(double x);
 //! Evaluate secondary branch of lambert_w function
 //!
 //! \param x Real argument
-//! \return principal branch of lambert_w function
+//! \return secondary branch of lambert_w function
 double lambert_wm1(double x);
 
 } // namespace openmc

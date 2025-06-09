@@ -25,6 +25,11 @@ _INTERPOLATION_SCHEMES = {
 }
 
 
+def exprel2(x):
+    """Exaluate 2*(exp(x)-1-x)/x^2 without loss of precision at 0"""
+    return hyp1f1(1, 3, x)
+
+
 class Univariate(EqualityMixin, ABC):
     """Probability distribution of a single random variable.
 
@@ -985,8 +990,8 @@ class Tabular(Univariate):
             c[1:] = p[:-1] * np.diff(np.log(x)) * exprel((m + 1) * np.diff(np.log(x)))
         else:
             raise NotImplementedError(
-                f"Cannot generate CDFs for tabular "
-                f"distributions using {self.interpolation} interpolation"
+                f'Cannot generate CDFs for tabular '
+                f'distributions using {self.interpolation} interpolation'
             )
 
         return np.cumsum(c)
@@ -1007,16 +1012,72 @@ class Tabular(Univariate):
                 exp_val += 0.5 * m * x_min * (x_min**2 - x_max**2)
                 exp_val += 0.5 * y_min * (x_max**2 - x_min**2)
                 mean += exp_val
+        elif self.interpolation == 'linear-log':
+            mean = 0.0
+            for i in range(1, len(self.x)):
+                y_min = self.p[i - 1]
+                y_max = self.p[i]
+                x_min = self.x[i - 1]
+                x_max = self.x[i]
 
-        elif self.interpolation == 'histogram':
+                m = (y_max - y_min) / np.log(x_max / x_min)
+
+                exp_val = (
+                    (1.0 / 4.0)
+                    * m
+                    * (x_max**2 * (2 * np.log(x_max / x_min) - 1) + x_min**2)
+                )
+                exp_val += 0.5 * y_min * (x_max**2 - x_min**2)
+                mean += exp_val
+        elif self.interpolation == 'log-linear':
+            mean = 0.0
+            for i in range(1, len(self.x)):
+                y_min = self.p[i - 1]
+                y_max = self.p[i]
+                x_min = self.x[i - 1]
+                x_max = self.x[i]
+
+                m = np.log(y_max / y_min) / (x_max - x_min)
+
+                exp_val = (
+                    y_min
+                    * np.exp(-m * x_min)
+                    * (
+                        0.5
+                        * (x_max - x_min) ** 2
+                        * exprel2(m * (x_max - x_min))
+                        * (x_max * m - 1)
+                        + x_max**2
+                        - x_max * x_min
+                    )
+                )
+                mean += exp_val
+        elif self.interpolation == 'log-log':
+            mean = 0.0
+            for i in range(1, len(self.x)):
+                y_min = self.p[i - 1]
+                y_max = self.p[i]
+                x_min = self.x[i - 1]
+                x_max = self.x[i]
+
+                m = np.log(y_max / y_min) / np.log(x_max / x_min)
+
+                exp_val = (
+                    x_min**2
+                    * np.log(x_max / x_min)
+                    * exprel((m + 2) * np.log(x_max / x_min))
+                )
+                mean += exp_val
+        elif self.interpolation == "histogram":
             x_l = self.x[:-1]
             x_r = self.x[1:]
             p_l = self.p[:self.x.size-1]
             mean = (0.5 * (x_l + x_r) * (x_r - x_l) * p_l).sum()
         else:
-            raise NotImplementedError('Can only compute mean for tabular '
-                                      'distributions using histogram '
-                                      'or linear-linear interpolation.')
+            raise NotImplementedError(
+                f'Cannot compute mean for tabular '
+                f'distributions using {self.interpolation} interpolation'
+            )
 
         # Normalize for when integral of distribution is not 1
         mean /= self.integral()
@@ -1142,8 +1203,8 @@ class Tabular(Univariate):
 
         else:
             raise NotImplementedError(
-                f"Cannot sample tabular distributions "
-                f"for {self.inteprolation} interpolation "
+                f'Cannot sample tabular distributions '
+                f'for {self.inteprolation} interpolation '
             )
 
         assert all(samples_out < self.x[-1])

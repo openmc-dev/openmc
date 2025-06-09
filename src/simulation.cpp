@@ -577,7 +577,15 @@ void initialize_history(Particle& p, int64_t index_source)
   }
   p.current_work() = index_source;
 
-  p.speed() = p.get_speed();
+  // Speed will be needed if the particle happens to be coincident on a moving
+  // surface. In MG mode, we get a chicken-egg situation as we need material to 
+  // get speed, but we need speed to determine cell and thus material. 
+  // Put zero for now.
+  if (settings::run_CE) {
+    p.speed() = p.get_speed();
+  } else {
+    p.speed() = 0.0;
+  }
 
   // set identifier for particle
   p.id() = simulation::work_index[mpi::rank] + index_source;

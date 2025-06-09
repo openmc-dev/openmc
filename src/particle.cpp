@@ -154,7 +154,14 @@ void Particle::event_calculate_xs()
   r_last() = r();
   time_last() = time();
 
-  speed() = get_speed();
+  // Calculate speed.
+  // In MG mode, we can't determine particle speed if cell, and thus material, 
+  // is not known. Just set to zero for now.
+  if (settings::run_CE || !(lowest_coord().cell == C_NONE)) {
+    this->speed() = this->get_speed();
+  } else {
+    this->speed() = 0.0;
+  }
 
   // Reset event variables
   event() = TallyEvent::KILL;
@@ -180,6 +187,11 @@ void Particle::event_calculate_xs()
       cell_last(j) = coord(j).cell;
     }
     n_coord_last() = n_coord();
+    
+    // Calculate speed for MG mode
+    if (!settings::run_CE) {
+      this->speed() = 0.0;
+    }
   }
 
   // Write particle track.

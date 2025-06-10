@@ -156,6 +156,12 @@ def test_get_adjacent_nuclides():
     result = openmc.data.get_adjacent_nuclides(["Fe56"], include_input=True)
     assert "Fe56" in result
     assert len(result) == 9
+    result = openmc.data.get_adjacent_nuclides(["Fe56"], delta_z=2)
+    assert len(result) == 15
+    result = openmc.data.get_adjacent_nuclides(["Fe56"], delta_n=3)
+    assert len(result) == 21
+    result = openmc.data.get_adjacent_nuclides(["Fe56"], delta_n=2, delta_z=2)
+    assert len(result) == 25
 
     # test with multiple nuclides
     result = openmc.data.get_adjacent_nuclides(["Fe56", "Be9"])
@@ -166,8 +172,24 @@ def test_get_adjacent_nuclides():
     assert len(result) >= max(len(fe56_result), len(be9_result))
 
     # Test with adjacent nuclides that have overlapping surroundings.
-    fe56_fe57_result = openmc.data.get_adjacent_nuclides(["Fe56", "Fe57"])
+    fe56_fe57_result = openmc.data.get_adjacent_nuclides(
+        ["Fe56", "Fe57"], include_input=True
+    )
+    assert "Fe57" in fe56_fe57_result
+    assert "Fe56" in fe56_fe57_result
+    assert len(fe56_fe57_result) == 12
+    fe56_fe57_result = openmc.data.get_adjacent_nuclides(
+        ["Fe56", "Fe57"], include_input=False
+    )
+    assert "Fe57" not in fe56_fe57_result
+    assert "Fe56" not in fe56_fe57_result
+    assert len(fe56_fe57_result) == 10
     fe57_result = openmc.data.get_adjacent_nuclides(["Fe57"])
 
     # Combined result should be less than sum due to overlap (no duplicates)
     assert len(fe56_fe57_result) < len(fe56_result) + len(fe57_result)
+
+    fe56_fe57_result_extra = openmc.data.get_adjacent_nuclides(
+        ["Fe56", "Fe57"], delta_n=2, delta_z=2
+    )
+    assert len(fe56_fe57_result_extra) == 30

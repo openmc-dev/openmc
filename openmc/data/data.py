@@ -5,6 +5,7 @@ import re
 from pathlib import Path
 from math import sqrt, log
 from warnings import warn
+import openmc.checkvalue as cv
 
 # Isotopic abundances from Meija J, Coplen T B, et al, "Isotopic compositions
 # of the elements 2013 (IUPAC Technical Report)", Pure. Appl. Chem. 88 (3),
@@ -619,24 +620,32 @@ def zam(name):
     return (ATOMIC_NUMBER[symbol], int(A), metastable)
 
 
-def get_adjacent_nuclides(nuclides, include_input=True):
+def get_adjacent_nuclides(nuclides, delta_z=1, delta_n=1, include_input=True):
     """
     Find all nuclides adjacent to the given nuclide(s).
-
-    nuclides with +/- proton or neutron numbers will be returned without duplicates.
+    Nuclides with +/- proton or neutron numbers will be returned without duplicates.
 
     Parameters:
     -----------
     nuclides : list
         Single nuclide like ['Fe56'] or list of nuclides like ['Fe56', 'Be9']
-    include_input : bool
-        If True, include the input nuclide(s) in the output list.
+    delta_z : int, optional
+        Range of proton number changes (±delta_z). Default is 1.
+    delta_n : int, optional
+        Range of neutron number changes (±delta_n). Default is 1.
+    include_input : bool, optional
+        If True, include the input nuclide(s) in the output list. Default is True.
 
     Returns:
     --------
     list
-        list of surrounding nuclide names
+        List of adjacent nuclide names
     """
+
+    cv.check_type("delta_z", delta_z, int)
+    cv.check_type("delta_n", delta_n, int)
+    cv.check_type("nuclides", nuclides, list, str)
+    cv.check_type("include_input", include_input, bool)
 
     surrounding_nuclides = set()
 
@@ -645,12 +654,11 @@ def get_adjacent_nuclides(nuclides, include_input=True):
         Z, A, _ = zam(nuclide)
         N = A - Z  # neutron number
 
-        # Check all combinations of Z±1 and N±1
-        for dz in [-1, 0, 1]:
-            for dn in [-1, 0, 1]:
-
-                # Skip the original nuclide
-                if dz == 0 and dn == 0:
+        # Check all combinations within the specified deltas
+        for dz in range(-delta_z, delta_z + 1):
+            for dn in range(-delta_n, delta_n + 1):
+                # Skip the original nuclide if not including input
+                if dz == 0 and dn == 0 and not include_input:
                     continue
 
                 new_z = Z + dz
@@ -661,10 +669,13 @@ def get_adjacent_nuclides(nuclides, include_input=True):
                 if new_z <= 0 or new_n < 0:
                     continue
 
+                # This is an adjacent nuclide
                 new_nuclide = gnds_name(new_z, new_a)
-                surrounding_nuclides.add(new_nuclide)
 
-    if include_input:
-        surrounding_nuclides.add(nuclide)
+                if include_input == False:
+                    if new_nuclide not in nuclides:
+                        surrounding_nuclides.add(new_nuclide)
+                else:
+                    surrounding_nuclides.add(new_nuclide)
 
     return list(surrounding_nuclides)

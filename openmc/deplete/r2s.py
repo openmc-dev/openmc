@@ -6,133 +6,139 @@ from .results import Results
 from ..mesh import _get_all_materials
 
 
-def get_activation_materials(
-        model: openmc.Model,
-        mmv: openmc.MeshMaterialVolumes
-) -> list[openmc.Material]:
-    """Get a list of activation materials for each mesh element/material.
+class R2SManager:
+    """Manager for R2S calculations.
 
-    When performing a mesh-based R2S calculation, a unique material is needed
-    for each activation region, which is a combination of a mesh element and a
-    material within that mesh element. This function generates a list of such
-    materials, each with a unique name and volume corresponding to the mesh
-    element and material.
-
-    Parameters
-    ----------
-    model : openmc.Model
-        The OpenMC model containing the materials.
-    mmv : openmc.MeshMaterialVolumes
-        The mesh material volumes object containing the materials and their
-        volumes for each mesh element.
-
-    Returns
-    -------
-    list of openmc.Material
-        A list of materials, each corresponding to a unique mesh element and
-        material combination.
+    This class is responsible for managing the materials and sources needed
+    for mesh-based R2S calculations. It provides methods to get activation
+    materials and decay photon sources based on the mesh and materials in the
+    OpenMC model.
 
     """
-    # Get the material ID, volume, and element index for each element-material
-    # combination
-    mat_ids = mmv._materials[mmv._materials > -1]
-    volumes = mmv._volumes[mmv._materials > -1]
-    elems, _ = np.where(mmv._materials > -1)
+    def __init__(self, model: openmc.Model, mesh: openmc.MeshBase):
+        self.model = model
+        self.mesh = mesh
 
-    # Get all materials in the model
-    material_dict = _get_all_materials(model)
+    def get_activation_materials(
+        self, mmv: openmc.MeshMaterialVolumes
+    ) -> list[openmc.Material]:
+        """Get a list of activation materials for each mesh element/material.
 
-    # Create a new activation material for each element-material combination
-    materials = []
-    for elem, mat_id, vol in zip(elems, mat_ids, volumes):
-        mat = material_dict[mat_id]
-        new_mat = mat.clone()
-        new_mat.depletable = True
-        new_mat.name = f'Element {elem}, Material {mat_id}'
-        new_mat.volume = vol
-        materials.append(new_mat)
+        When performing a mesh-based R2S calculation, a unique material is needed
+        for each activation region, which is a combination of a mesh element and a
+        material within that mesh element. This function generates a list of such
+        materials, each with a unique name and volume corresponding to the mesh
+        element and material.
 
-    return materials
+        Parameters
+        ----------
+        mmv : openmc.MeshMaterialVolumes
+            The mesh material volumes object containing the materials and their
+            volumes for each mesh element.
 
+        Returns
+        -------
+        list of openmc.Material
+            A list of materials, each corresponding to a unique mesh element and
+            material combination.
 
-# TODO: put as part of a R2S class
-def get_decay_photon_source(
-    model: openmc.Model,
-    mesh: openmc.MeshBase,
-    materials: list[openmc.Material],
-    results: Results,
-    mat_vols: openmc.MeshMaterialVolumes,
-) -> list[openmc.MeshSource]:
-    """Create decay photon source for a mesh-based R2S calculation.
+        """
+        # Get the material ID, volume, and element index for each element-material
+        # combination
+        mat_ids = mmv._materials[mmv._materials > -1]
+        volumes = mmv._volumes[mmv._materials > -1]
+        elems, _ = np.where(mmv._materials > -1)
 
-    This function creates N :class:`MeshSource` objects where N is the maximum
-    number of unique materials that appears in a single mesh element. For each
-    mesh element-material combination, and IndependentSource instance is created
-    with a spatial constraint limited the sampled decay photons to the correct
-    region.
+        # Get all materials in the model
+        material_dict = _get_all_materials(self)
 
-    Parameters
-    ----------
-    model : openmc.Model
-        The OpenMC model containing the geometry and materials.
-    mesh : openmc.MeshBase
-        The mesh object defining the spatial regions over which activation is
-        performed.
-    materials : list of openmc.Material
-        List of materials that are activated in the model.
-    results : openmc.deplete.Results
-        The results object containing the depletion results for the materials.
-    mat_vols : openmc.MeshMaterialVolumes
-        The mesh material volumes object containing the materials and their
-        volumes for each mesh element.
+        # Create a new activation material for each element-material combination
+        materials = []
+        for elem, mat_id, vol in zip(elems, mat_ids, volumes):
+            mat = material_dict[mat_id]
+            new_mat = mat.clone()
+            new_mat.depletable = True
+            new_mat.name = f'Element {elem}, Material {mat_id}'
+            new_mat.volume = vol
+            materials.append(new_mat)
 
-    Returns
-    -------
-    list of openmc.MeshSource
-        A list of MeshSource objects, each containing IndependentSource
-        instances for the decay photons in the corresponding mesh element.
+        return materials
 
-    """
-    mat_dict = _get_all_materials(model)
+    def get_decay_photon_source(
+        self,
+        mesh: openmc.MeshBase,
+        materials: list[openmc.Material],
+        results: Results,
+        mat_vols: openmc.MeshMaterialVolumes,
+    ) -> list[openmc.MeshSource]:
+        """Create decay photon source for a mesh-based R2S calculation.
 
-    # Some MeshSource objects will have empty positions; create a "null source"
-    # that is used for this case
-    null_source = openmc.IndependentSource(particle='photon', strength=0.0)
+        This function creates N :class:`MeshSource` objects where N is the maximum
+        number of unique materials that appears in a single mesh element. For each
+        mesh element-material combination, and IndependentSource instance is created
+        with a spatial constraint limited the sampled decay photons to the correct
+        region.
 
-    # List to hold sources for each MeshSource (length = N)
-    source_lists = []
+        Parameters
+        ----------
+        mesh : openmc.MeshBase
+            The mesh object defining the spatial regions over which activation is
+            performed.
+        materials : list of openmc.Material
+            List of materials that are activated in the model.
+        results : openmc.deplete.Results
+            The results object containing the depletion results for the materials.
+        mat_vols : openmc.MeshMaterialVolumes
+            The mesh material volumes object containing the materials and their
+            volumes for each mesh element.
 
-    # Index in the overall list of activated materials
-    index_mat = 0
+        Returns
+        -------
+        list of openmc.MeshSource
+            A list of MeshSource objects, each containing IndependentSource
+            instances for the decay photons in the corresponding mesh element.
 
-    # Total number of mesh elements
-    n_elements = mat_vols.num_elements
+        """
+        mat_dict = _get_all_materials(self)
 
-    for index_elem in range(n_elements):
-        for j, (mat_id, _) in enumerate(mat_vols.by_element(index_elem)):
-            # Skip void volume
-            if mat_id is None:
-                continue
+        # Some MeshSource objects will have empty positions; create a "null source"
+        # that is used for this case
+        null_source = openmc.IndependentSource(particle='photon', strength=0.0)
 
-            # Check whether a new MeshSource object is needed
-            if j >= len(source_lists):
-                source_lists.append([null_source]*n_elements)
+        # List to hold sources for each MeshSource (length = N)
+        source_lists = []
 
-            # Get activated material composition
-            original_mat = materials[index_mat]
-            activated_mat = results[-1].get_material(str(original_mat.id))
+        # Index in the overall list of activated materials
+        index_mat = 0
 
-            # Create decay photon source source
-            energy = activated_mat.get_decay_photon_energy()
-            source_lists[j][index_elem] = openmc.IndependentSource(
-                energy=energy,
-                particle='photon',
-                strength=energy.integral(),
-                constraints={'domains': [mat_dict[mat_id]]}
-            )
+        # Total number of mesh elements
+        n_elements = mat_vols.num_elements
 
-            # Increment index of activated material
-            index_mat += 1
+        for index_elem in range(n_elements):
+            for j, (mat_id, _) in enumerate(mat_vols.by_element(index_elem)):
+                # Skip void volume
+                if mat_id is None:
+                    continue
 
-    # Return list of mesh sources
-    return [openmc.MeshSource(mesh, sources) for sources in source_lists]
+                # Check whether a new MeshSource object is needed
+                if j >= len(source_lists):
+                    source_lists.append([null_source]*n_elements)
+
+                # Get activated material composition
+                original_mat = materials[index_mat]
+                activated_mat = results[-1].get_material(str(original_mat.id))
+
+                # Create decay photon source source
+                energy = activated_mat.get_decay_photon_energy()
+                source_lists[j][index_elem] = openmc.IndependentSource(
+                    energy=energy,
+                    particle='photon',
+                    strength=energy.integral(),
+                    constraints={'domains': [mat_dict[mat_id]]}
+                )
+
+                # Increment index of activated material
+                index_mat += 1
+
+        # Return list of mesh sources
+        return [openmc.MeshSource(mesh, sources) for sources in source_lists]

@@ -298,7 +298,7 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
         // in the cell we will use the previous iteration's flux estimate. This
         // injects a small degree of correlation into the simulation, but this
         // is going to be trivial when the miss rate is a few percent or less.
-        if (source_regions_.external_source_present(sr) && !adjoint_) {
+        if (source_regions_.external_source_present(sr)) {
           set_flux_to_old_flux(sr, g);
         } else {
           set_flux_to_source(sr, g);

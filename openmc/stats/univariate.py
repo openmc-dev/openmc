@@ -26,7 +26,7 @@ _INTERPOLATION_SCHEMES = {
 
 
 def exprel2(x):
-    """Exaluate 2*(exp(x)-1-x)/x^2 without loss of precision at 0"""
+    """Evaluate 2*(exp(x)-1-x)/x^2 without loss of precision near 0"""
     return hyp1f1(1, 3, x)
 
 

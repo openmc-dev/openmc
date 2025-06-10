@@ -5,6 +5,7 @@ from collections.abc import Iterable, Sequence, Mapping
 from functools import wraps
 from math import pi, sqrt, atan2
 from numbers import Integral, Real
+from typing import Protocol
 
 import h5py
 import lxml.etree as ET
@@ -842,6 +843,11 @@ class StructuredMesh(MeshBase):
             )
 
 
+class HasBoundingBox(Protocol):
+    """Object that has a ``bounding_box`` attribute."""
+    bounding_box: openmc.BoundingBox
+
+
 class RegularMesh(StructuredMesh):
     """A regular Cartesian mesh in one, two, or three dimensions
 
@@ -1088,17 +1094,16 @@ class RegularMesh(StructuredMesh):
     @classmethod
     def from_domain(
         cls,
-        domain: 'openmc.Cell' | 'openmc.Region' | 'openmc.Universe' | 'openmc.Geometry',
+        domain: HasBoundingBox,
         dimension: Sequence[int] = (10, 10, 10),
         mesh_id: int | None = None,
         name: str = ''
     ):
-        """Create mesh from an existing openmc cell, region, universe or
-        geometry by making use of the objects bounding box property.
+        """Create RegularMesh from a domain using its bounding box.
 
         Parameters
         ----------
-        domain : {openmc.Cell, openmc.Region, openmc.Universe, openmc.Geometry}
+        domain : HasBoundingBox
             The object passed in will be used as a template for this mesh. The
             bounding box of the property of the object passed will be used to
             set the lower_left and upper_right and of the mesh instance
@@ -1115,11 +1120,8 @@ class RegularMesh(StructuredMesh):
             RegularMesh instance
 
         """
-        cv.check_type(
-            "domain",
-            domain,
-            (openmc.Cell, openmc.Region, openmc.Universe, openmc.Geometry),
-        )
+        if not hasattr(domain, 'bounding_box'):
+            raise TypeError("Domain must have a bounding_box property")
 
         mesh = cls(mesh_id=mesh_id, name=name)
         mesh.lower_left = domain.bounding_box[0]
@@ -1787,17 +1789,18 @@ class CylindricalMesh(StructuredMesh):
     @classmethod
     def from_domain(
         cls,
-        domain: 'openmc.Cell' | 'openmc.Region' | 'openmc.Universe' | 'openmc.Geometry',
+        domain: HasBoundingBox,
         dimension: Sequence[int] = (10, 10, 10),
         mesh_id: int | None = None,
         phi_grid_bounds: Sequence[float] = (0.0, 2*pi),
-        name: str = ''
+        name: str = '',
+        enclose_domain: bool = False
     ):
-        """Creates a regular CylindricalMesh from an existing openmc domain.
+        """Create CylindricalMesh from a domain using its bounding box.
 
         Parameters
         ----------
-        domain : openmc.Cell or openmc.Region or openmc.Universe or openmc.Geometry
+        domain : HasBoundingBox
             The object passed in will be used as a template for this mesh. The
             bounding box of the property of the object passed will be used to
             set the r_grid, z_grid ranges.
@@ -1811,6 +1814,9 @@ class CylindricalMesh(StructuredMesh):
             is (0, 2π), i.e., the full phi range.
         name : str
             Name of the mesh
+        enclose_domain : bool
+            If True, the mesh will encompass the bounding box of the domain. If
+            False, the mesh will be inscribed within the domain's bounding box.
 
         Returns
         -------
@@ -1818,25 +1824,20 @@ class CylindricalMesh(StructuredMesh):
             CylindricalMesh instance
 
         """
-        cv.check_type(
-            "domain",
-            domain,
-            (openmc.Cell, openmc.Region, openmc.Universe, openmc.Geometry),
-        )
+        if not hasattr(domain, 'bounding_box'):
+            raise TypeError("Domain must have a bounding_box property")
 
         # loaded once to avoid recalculating bounding box
         cached_bb = domain.bounding_box
-        max_bounding_box_radius = max(
-            [
-                cached_bb[0][0],
-                cached_bb[0][1],
-                cached_bb[1][0],
-                cached_bb[1][1],
-            ]
-        )
+
+        if enclose_domain:
+            outer_radius = 0.5 * np.linalg.norm(cached_bb.width[:2])
+        else:
+            outer_radius = 0.5 * min(cached_bb.width[:2])
+
         r_grid = np.linspace(
             0,
-            max_bounding_box_radius,
+            outer_radius,
             num=dimension[0]+1
         )
         phi_grid = np.linspace(
@@ -2166,6 +2167,77 @@ class SphericalMesh(StructuredMesh):
             mesh.origin = group['origin'][()]
 
         return mesh
+
+    @classmethod
+    def from_domain(
+        cls,
+        domain: HasBoundingBox,
+        dimension: Sequence[int] = (10, 10, 10),
+        mesh_id: int | None = None,
+        phi_grid_bounds: Sequence[float] = (0.0, 2*pi),
+        theta_grid_bounds: Sequence[float] = (0.0, pi),
+        name: str = '',
+        enclose_domain: bool = False
+    ):
+        """Create SphericalMesh from a domain using its bounding box.
+
+        Parameters
+        ----------
+        domain : HasBoundingBox
+            The object passed in will be used as a template for this mesh. The
+            bounding box of the property of the object passed will be used to
+            set the r_grid, phi_grid, and theta_grid ranges.
+        dimension : Iterable of int
+            The number of equally spaced mesh cells in each direction (r_grid,
+            phi_grid, theta_grid). Spacing is in angular space (radians) for
+            phi and theta, and in absolute space for r.
+        mesh_id : int
+            Unique identifier for the mesh
+        phi_grid_bounds : numpy.ndarray
+            Mesh bounds points along the phi-axis in radians. The default value
+            is (0, 2π), i.e., the full phi range.
+        theta_grid_bounds : numpy.ndarray
+            Mesh bounds points along the theta-axis in radians. The default value
+            is (0, π), i.e., the full theta range.
+        name : str
+            Name of the mesh
+        enclose_domain : bool
+            If True, the mesh will encompass the bounding box of the domain. If
+            False, the mesh will be inscribed within the domain's bounding box.
+
+        Returns
+        -------
+        openmc.SphericalMesh
+            SphericalMesh instance
+
+        """
+        if not hasattr(domain, 'bounding_box'):
+            raise TypeError("Domain must have a bounding_box property")
+
+        # loaded once to avoid recalculating bounding box
+        cached_bb = domain.bounding_box
+
+        if enclose_domain:
+            outer_radius = 0.5 * np.linalg.norm(cached_bb.width)
+        else:
+            outer_radius = 0.5 * min(cached_bb.width)
+
+        r_grid = np.linspace(0, outer_radius, num=dimension[0] + 1)
+        theta_grid = np.linspace(
+            theta_grid_bounds[0],
+            theta_grid_bounds[1],
+            num=dimension[1]+1
+        )
+        phi_grid = np.linspace(
+            phi_grid_bounds[0],
+            phi_grid_bounds[1],
+            num=dimension[2]+1
+        )
+        origin = np.array([
+            cached_bb.center[0], cached_bb.center[1], cached_bb.center[2]])
+
+        return cls(r_grid=r_grid, phi_grid=phi_grid, theta_grid=theta_grid,
+                   origin=origin, mesh_id=mesh_id, name=name)
 
     def to_xml_element(self):
         """Return XML representation of the mesh

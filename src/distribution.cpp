@@ -310,8 +310,9 @@ void Tabular::init(
       } else if (interp_ == Interpolation::log_log) {
         double m = std::log((x_[i] * p_[i]) / (x_[i - 1] * p_[i - 1])) /
                    std::log(x_[i] / x_[i - 1]);
-        c_[i] = p_[i - 1] * std::log(x_[i] / x_[i - 1]) *
-                exprel(m * std::log(x_[i] / x_[i - 1]));
+        c_[i] = c_[i - 1] + x_[i - 1] * p_[i - 1] *
+                              std::log(x_[i] / x_[i - 1]) *
+                              exprel(m * std::log(x_[i] / x_[i - 1]));
       } else {
         UNREACHABLE();
       }
@@ -389,22 +390,16 @@ double Tabular::sample(uint64_t* seed) const
     double p_i1 = p_[i + 1];
 
     double m = std::log(p_i1 / p_i) / (x_i1 - x_i);
-    if (m == 0.0) {
-      return x_i + (c - c_i) / p_i;
-    } else {
-      return x_i + 1.0 / m * std::log1p(m * (c - c_i) / p_i);
-    }
+    double f = (c - c_i) / p_i;
+    return x_i + f * log1prel(m * f);
   } else if (interp_ == Interpolation::log_log) {
     // Log-Log interpolation
     double x_i1 = x_[i + 1];
     double p_i1 = p_[i + 1];
 
     double m = std::log((x_i1 * p_i1) / (x_i * p_i)) / std::log(x_i1 / x_i);
-    if (m == 0.0) {
-      return x_i * std::exp((c - c_i) / (p_i * x_i));
-    } else {
-      return x_i * std::pow(1.0 + m * (c - c_i) / (p_i * x_i), 1.0 / m);
-    }
+    double f = (c - c_i) / (p_i * x_i);
+    return x_i * std::exp(f * log1prel(m * f));
   } else {
     UNREACHABLE();
   }

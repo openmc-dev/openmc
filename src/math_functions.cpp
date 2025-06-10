@@ -929,6 +929,15 @@ double exprel(double x)
   }
 }
 
+double log1prel(double x)
+{
+  if (std::abs(x) < 1e-16)
+    return 1.0;
+  else {
+    return std::log1p(x) / x;
+  }
+}
+
 double lambert_w0(double x)
 {
   return LambertW::lambert_w0(x);

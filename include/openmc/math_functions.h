@@ -206,6 +206,12 @@ std::complex<double> w_derivative(std::complex<double> z, int order);
 //! \return (exp(x)-1)/x without loss of precision near 0
 double exprel(double x);
 
+//! Evaluate relative logarithm function
+//!
+//! \param x Real argument
+//! \return log(1+x)/x without loss of precision near 0
+double log1prel(double x);
+
 //! Evaluate principal branch of lambert_w function
 //!
 //! \param x Real argument

@@ -617,3 +617,54 @@ def zam(name):
 
     metastable = int(state[2:]) if state else 0
     return (ATOMIC_NUMBER[symbol], int(A), metastable)
+
+
+def get_adjacent_nuclides(nuclides, include_input=True):
+    """
+    Find all nuclides adjacent to the given nuclide(s).
+
+    nuclides with +/- proton or neutron numbers will be returned without duplicates.
+
+    Parameters:
+    -----------
+    nuclides : list
+        Single nuclide like ['Fe56'] or list of nuclides like ['Fe56', 'Be9']
+    include_input : bool
+        If True, include the input nuclide(s) in the output list.
+
+    Returns:
+    --------
+    list
+        list of surrounding nuclide names
+    """
+
+    surrounding_nuclides = set()
+
+    for nuclide in nuclides:
+        # Parse the nuclide string to get Z and A
+        Z, A, _ = zam(nuclide)
+        N = A - Z  # neutron number
+
+        # Check all combinations of Z±1 and N±1
+        for dz in [-1, 0, 1]:
+            for dn in [-1, 0, 1]:
+
+                # Skip the original nuclide
+                if dz == 0 and dn == 0:
+                    continue
+
+                new_z = Z + dz
+                new_n = N + dn
+                new_a = new_z + new_n
+
+                # Skip invalid cases (negative numbers)
+                if new_z <= 0 or new_n < 0:
+                    continue
+
+                new_nuclide = gnds_name(new_z, new_a)
+                surrounding_nuclides.add(new_nuclide)
+
+    if include_input:
+        surrounding_nuclides.add(nuclide)
+
+    return list(surrounding_nuclides)

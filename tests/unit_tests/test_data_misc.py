@@ -142,3 +142,32 @@ def test_half_life():
     assert openmc.data.decay_constant('U235') == pytest.approx(log(2.0)/2.22102e16)
     assert openmc.data.decay_constant('Am242') == pytest.approx(log(2.0)/57672.0)
     assert openmc.data.decay_constant('Am242_m1') == pytest.approx(log(2.0)/4449622000.0)
+
+
+def test_get_adjacent_nuclides():
+
+    # test with single nuclides
+    result = openmc.data.get_adjacent_nuclides(["Fe56"], include_input=False)
+    assert isinstance(result, list)
+    assert len(result) > 0
+    assert len(result) == 8  # Maximum 8 adjacent nuclides
+    # Should not contain the original nuclide
+    assert "Fe56" not in result
+    result = openmc.data.get_adjacent_nuclides(["Fe56"], include_input=True)
+    assert "Fe56" in result
+    assert len(result) == 9
+
+    # test with multiple nuclides
+    result = openmc.data.get_adjacent_nuclides(["Fe56", "Be9"])
+    assert isinstance(result, list)
+    # Should contain nuclides from both individual results
+    fe56_result = openmc.data.get_adjacent_nuclides(["Fe56"])
+    be9_result = openmc.data.get_adjacent_nuclides(["Be9"])
+    assert len(result) >= max(len(fe56_result), len(be9_result))
+
+    # Test with adjacent nuclides that have overlapping surroundings.
+    fe56_fe57_result = openmc.data.get_adjacent_nuclides(["Fe56", "Fe57"])
+    fe57_result = openmc.data.get_adjacent_nuclides(["Fe57"])
+
+    # Combined result should be less than sum due to overlap (no duplicates)
+    assert len(fe56_fe57_result) < len(fe56_result) + len(fe57_result)

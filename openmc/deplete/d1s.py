@@ -15,18 +15,19 @@ import openmc
 from openmc.data import half_life
 from .abc import _normalize_timesteps
 from .chain import Chain
+from ..checkvalue import PathLike
 
 
-def get_radionuclides(model: openmc.Model, chain_file: str | None = None) -> list[str]:
+def get_radionuclides(model: openmc.Model, chain_file: PathLike | Chain | None = None) -> list[str]:
     """Determine all radionuclides that can be produced during D1S.
 
     Parameters
     ----------
     model : openmc.Model
         Model that should be used for determining what nuclides are present
-    chain_file : str, optional
-        Which chain file to use for inspecting decay data. If None is passed,
-        defaults to ``openmc.config['chain_file']``
+    chain_file : PathLike | Chain
+        Path to the depletion chain XML file or instance of openmc.deplete.Chain.
+        Used for inspecting decay data. Defaults to ``openmc.config['chain_file']``
 
     Returns
     -------
@@ -39,9 +40,14 @@ def get_radionuclides(model: openmc.Model, chain_file: str | None = None) -> lis
                       for nuc in mat.get_nuclides()}
 
     # Load chain file
-    if chain_file is None:
-        chain_file = openmc.config['chain_file']
-    chain = Chain.from_xml(chain_file)
+    if isinstance(chain_file, Chain):
+        chain = chain_file
+    elif isinstance(chain_file, PathLike):
+        chain = Chain.from_xml(chain_file)
+    else:
+        raise TypeError(
+            f"Expected chain_file to be a PathLike or Chain, not {type(chain_file)}"
+        )
 
     radionuclides = set()
     for nuclide in chain.nuclides:

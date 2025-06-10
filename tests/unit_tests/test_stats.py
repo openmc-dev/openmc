@@ -4,6 +4,7 @@ import numpy as np
 import pytest
 import openmc
 import openmc.stats
+from openmc.stats.univariate import _INTERPOLATION_SCHEMES
 from scipy.integrate import trapezoid
 
 
@@ -196,24 +197,19 @@ def test_watt():
 
 def test_tabular():
     # test linear-linear sampling
-    x = np.array([0.0, 5.0, 7.0, 10.0])
+    x = np.array([0.001, 5.0, 7.0, 10.0])
     p = np.array([10.0, 20.0, 5.0, 6.0])
-    d = openmc.stats.Tabular(x, p, 'linear-linear')
-    n_samples = 100_000
-    samples = d.sample(n_samples)
-    assert_sample_mean(samples, d.mean())
 
-    # test linear-linear normalization
-    d.normalize()
-    assert d.integral() == pytest.approx(1.0)
+    for scheme in _INTERPOLATION_SCHEMES:
+        # test sampling
+        d = openmc.stats.Tabular(x, p, scheme)
+        n_samples = 100_000
+        samples = d.sample(n_samples)
+        assert_sample_mean(samples, d.mean())
 
-    # test histogram sampling
-    d = openmc.stats.Tabular(x, p, interpolation='histogram')
-    samples = d.sample(n_samples)
-    assert_sample_mean(samples, d.mean())
-
-    d.normalize()
-    assert d.integral() == pytest.approx(1.0)
+        # test normalization
+        d.normalize()
+        assert d.integral() == pytest.approx(1.0)
 
     # ensure that passing a set of probabilities shorter than x works
     # for histogram interpolation

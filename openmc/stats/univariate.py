@@ -10,7 +10,7 @@ from warnings import warn
 import lxml.etree as ET
 import numpy as np
 from scipy.integrate import trapezoid
-from scipy.special import exprel, lambertw
+from scipy.special import exprel, hyp1f1, lambertw
 
 import openmc.checkvalue as cv
 from .._xml import get_text
@@ -987,7 +987,7 @@ class Tabular(Univariate):
             c[1:] = p[:-1] * np.diff(x) * exprel(m * np.diff(x))
         elif self.interpolation == 'log-log':
             m = np.diff(np.log(p)) / np.diff(np.log(x))
-            c[1:] = p[:-1] * np.diff(np.log(x)) * exprel((m + 1) * np.diff(np.log(x)))
+            c[1:] = p[:-1] * x[:-1] * np.diff(np.log(x)) * exprel((m + 1) * np.diff(np.log(x)))
         else:
             raise NotImplementedError(
                 f'Cannot generate CDFs for tabular '
@@ -998,90 +998,35 @@ class Tabular(Univariate):
 
     def mean(self):
         """Compute the mean of the tabular distribution"""
+        
+        # use normalized probabilities when computing mean
+        p = self.p / self.cdf().max()
+        x = self.x
+        x_min = x[:-1]
+        x_max = x[1:]
+        p_min = p[:x.size-1]
+        p_max = p[1:]
+
         if self.interpolation == 'linear-linear':
-            mean = 0.0
-            for i in range(1, len(self.x)):
-                y_min = self.p[i-1]
-                y_max = self.p[i]
-                x_min = self.x[i-1]
-                x_max = self.x[i]
-
-                m = (y_max - y_min) / (x_max - x_min)
-
-                exp_val = (1./3.) * m * (x_max**3 - x_min**3)
-                exp_val += 0.5 * m * x_min * (x_min**2 - x_max**2)
-                exp_val += 0.5 * y_min * (x_max**2 - x_min**2)
-                mean += exp_val
+            m = np.diff(p)/np.diff(x)
+            mean = ((1./3.) * m * np.diff(x**3) + 0.5 * (p_min - m * x_min) * np.diff(x**2)).sum()
         elif self.interpolation == 'linear-log':
-            mean = 0.0
-            for i in range(1, len(self.x)):
-                y_min = self.p[i - 1]
-                y_max = self.p[i]
-                x_min = self.x[i - 1]
-                x_max = self.x[i]
-
-                m = (y_max - y_min) / np.log(x_max / x_min)
-
-                exp_val = (
-                    (1.0 / 4.0)
-                    * m
-                    * (x_max**2 * (2 * np.log(x_max / x_min) - 1) + x_min**2)
-                )
-                exp_val += 0.5 * y_min * (x_max**2 - x_min**2)
-                mean += exp_val
+            m = np.diff(p)/np.diff(np.log(x))
+            mean = ((1.0/4.0) * m * x_min**2 * ((x_max/x_min)**2 * (2 * np.diff(np.log(x))-1) + 1) +  
+                     + 0.5 * p_min * np.diff(x**2)).sum()
         elif self.interpolation == 'log-linear':
-            mean = 0.0
-            for i in range(1, len(self.x)):
-                y_min = self.p[i - 1]
-                y_max = self.p[i]
-                x_min = self.x[i - 1]
-                x_max = self.x[i]
-
-                m = np.log(y_max / y_min) / (x_max - x_min)
-
-                exp_val = (
-                    y_min
-                    * np.exp(-m * x_min)
-                    * (
-                        0.5
-                        * (x_max - x_min) ** 2
-                        * exprel2(m * (x_max - x_min))
-                        * (x_max * m - 1)
-                        + x_max**2
-                        - x_max * x_min
-                    )
-                )
-                mean += exp_val
+            m = np.diff(np.log(p))/np.diff(x)
+            mean = (p_min*(np.diff(x)**2*((0.5*exprel2(m*np.diff(x))*(m*np.diff(x)-1)+1))+np.diff(x)*x_min*exprel(m*np.diff(x)))).sum()
         elif self.interpolation == 'log-log':
-            mean = 0.0
-            for i in range(1, len(self.x)):
-                y_min = self.p[i - 1]
-                y_max = self.p[i]
-                x_min = self.x[i - 1]
-                x_max = self.x[i]
-
-                m = np.log(y_max / y_min) / np.log(x_max / x_min)
-
-                exp_val = (
-                    x_min**2
-                    * np.log(x_max / x_min)
-                    * exprel((m + 2) * np.log(x_max / x_min))
-                )
-                mean += exp_val
+            m = np.diff(np.log(p))/np.diff(np.log(x))
+            mean = (p_min*x_min**2*np.diff(np.log(x))*exprel((m+2)*np.diff(np.log(x)))).sum()
         elif self.interpolation == "histogram":
-            x_l = self.x[:-1]
-            x_r = self.x[1:]
-            p_l = self.p[:self.x.size-1]
-            mean = (0.5 * (x_l + x_r) * (x_r - x_l) * p_l).sum()
+            mean = (0.5 * (x_min + x_max) * np.diff(x) * p_min).sum()
         else:
             raise NotImplementedError(
                 f'Cannot compute mean for tabular '
                 f'distributions using {self.interpolation} interpolation'
             )
-
-        # Normalize for when integral of distribution is not 1
-        mean /= self.integral()
-
         return mean
 
     def normalize(self):
@@ -1195,10 +1140,8 @@ class Tabular(Univariate):
             )
             # set values for non-zero slope
             non_zero = ~zero
-            m[non_zero] = (
-                x_i[non_zero]
-                * np.power(1.0 + m * (xi - c_i) / (x_i * p_i), 1.0 / m)[non_zero]
-            )
+            m[non_zero] = (x_i * np.power(1.0 + m * (xi - c_i) / (x_i * p_i), 1.0 / m))[non_zero]
+            
             samples_out = m
 
         else:
@@ -1272,16 +1215,17 @@ class Tabular(Univariate):
         elif self.interpolation == 'linear-log':
             m = np.diff(self.p) / np.diff(np.log(self.x))
             return np.sum(
-                p[:-1] * np.diff(self.x)
+                self.p[:-1] * np.diff(self.x)
                 + m * (self.x[1:] * (np.diff(np.log(self.x)) - 1.0) + self.x[:-1])
             )
         elif self.interpolation == 'log-linear':
             m = np.diff(np.log(self.p)) / np.diff(self.x)
-            return np.sum(np.diff(self.x) * exprel(m * np.diff(self.x)))
+            return np.sum(self.p[:-1] * np.diff(self.x) * exprel(m * np.diff(self.x)))
         elif self.interpolation == 'log-log':
             m = np.diff(np.log(self.p)) / np.diff(np.log(self.x))
             return np.sum(
                 self.p[:-1]
+                * self.x[:-1]
                 * np.diff(np.log(self.x))
                 * exprel((m + 1) * np.diff(np.log(self.x)))
             )

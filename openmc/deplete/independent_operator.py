@@ -50,9 +50,9 @@ class IndependentOperator(OpenMCOperator):
         Cross sections in [b] for each domain. If the
         :class:`~openmc.deplete.MicroXS` object is empty, a decay-only
         calculation will be run.
-    chain_file : str
-        Path to the depletion chain XML file. Defaults to
-        ``openmc.config['chain_file']``.
+    chain_file : str | Chain
+        Path to the depletion chain XML file or instance of openmc.deplete.Chain.
+        Defaults to ``openmc.config['chain_file']``.
     keff : 2-tuple of float, optional
        keff eigenvalue and uncertainty from transport calculation.
     prev_results : Results, optional

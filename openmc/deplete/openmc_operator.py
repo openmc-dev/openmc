@@ -36,9 +36,9 @@ class OpenMCOperator(TransportOperator):
     cross_sections : str or list of MicroXS
         Path to continuous energy cross section library, or list of objects
         containing cross sections.
-    chain_file : str, optional
-        Path to the depletion chain XML file. Defaults to
-        openmc.config['chain_file'].
+    chain_file : str | Chain
+        Path to the depletion chain XML file or instance of openmc.deplete.Chain.
+        Defaults to ``openmc.config['chain_file']``.
     prev_results : Results, optional
         Results from a previous depletion calculation. If this argument is
         specified, the depletion calculation will start from the latest state

@@ -317,20 +317,10 @@ class MeshBase(IDManagerMixin, ABC):
         vols = self.material_volumes(model, n_samples, **kwargs)
         mat_volume_by_element = [vols.by_element(i) for i in range(vols.num_elements)]
 
+        # Get dictionary of all materials
+        materials = _get_all_materials(model)
+
         # Create homogenized material for each element
-        materials = model.geometry.get_all_materials()
-
-        # Account for materials in DAGMC universes
-        # TODO: This should really get incorporated in lower-level calls to
-        # get_all_materials, but right now it requires information from the
-        # Model object
-        for cell in model.geometry.get_all_cells().values():
-            if isinstance(cell.fill, openmc.DAGMCUniverse):
-                names = cell.fill.material_names
-                materials.update({
-                    mat.id: mat for mat in model.materials if mat.name in names
-                })
-
         homogenized_materials = []
         for mat_volume_list in mat_volume_by_element:
             material_ids, volumes = [list(x) for x in zip(*mat_volume_list)]
@@ -2867,6 +2857,23 @@ def _read_meshes(elem):
         out[mesh.id] = mesh
 
     return out
+
+
+# TODO: This should really get incorporated in lower-level calls to
+# get_all_materials, but right now it requires information from the Model object
+def _get_all_materials(model: openmc.Model) -> dict[int, openmc.Material]:
+    # Get all materials from the Geometry object
+    materials = model.geometry.get_all_materials()
+
+    # Account for materials in DAGMC universes
+    for cell in model.geometry.get_all_cells().values():
+        if isinstance(cell.fill, openmc.DAGMCUniverse):
+            names = cell.fill.material_names
+            materials.update({
+                mat.id: mat for mat in model.materials if mat.name in names
+            })
+
+    return materials
 
 
 # hexahedron element connectivity

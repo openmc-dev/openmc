@@ -222,6 +222,10 @@ class Settings:
         Number of random numbers allocated for each source particle history
     source : Iterable of openmc.SourceBase
         Distribution of source sites in space, angle, and energy
+    source_rejection_fraction : float
+        Minimum fraction of source sites that must be accepted when applying
+        rejection sampling based on constraints. If not specified, the default
+        value is 0.05.
     sourcepoint : dict
         Options for writing source points. Acceptable keys are:
 
@@ -357,6 +361,7 @@ class Settings:
 
         # Source subelement
         self._source = cv.CheckedList(SourceBase, 'source distributions')
+        self._source_rejection_fraction = None
 
         self._confidence_intervals = None
         self._electron_treatment = None
@@ -1224,6 +1229,17 @@ class Settings:
         cv.check_type('use decay photons', value, bool)
         self._use_decay_photons = value
 
+    @property
+    def source_rejection_fraction(self) -> float:
+        return self._source_rejection_fraction
+
+    @source_rejection_fraction.setter
+    def source_rejection_fraction(self, source_rejection_fraction: float):
+        cv.check_type('source_rejection_fraction', source_rejection_fraction, Real)
+        cv.check_greater_than('source_rejection_fraction', source_rejection_fraction, 0)
+        cv.check_less_than('source_rejection_fraction', source_rejection_fraction, 1)
+        self._source_rejection_fraction = source_rejection_fraction
+
     def _create_run_mode_subelement(self, root):
         elem = ET.SubElement(root, "run_mode")
         elem.text = self._run_mode.value
@@ -1685,6 +1701,11 @@ class Settings:
                     subelement = ET.SubElement(element, key)
                     subelement.text = str(value)
 
+    def _create_source_rejection_fraction_subelement(self, root):
+        if self._source_rejection_fraction is not None:
+            element = ET.SubElement(root, "source_rejection_fraction")
+            element.text = str(self._source_rejection_fraction)
+
     def _eigenvalue_from_xml_element(self, root):
         elem = root.find('eigenvalue')
         if elem is not None:
@@ -2104,6 +2125,11 @@ class Settings:
         if text is not None:
             self.use_decay_photons = text in ('true', '1')
 
+    def _source_rejection_fraction_from_xml_element(self, root):
+        text = get_text(root, 'source_rejection_fraction')
+        if text is not None:
+            self.source_rejection_fraction = float(text)
+
     def to_xml_element(self, mesh_memo=None):
         """Create a 'settings' element to be written to an XML file.
 
@@ -2171,6 +2197,7 @@ class Settings:
         self._create_max_tracks_subelement(element)
         self._create_random_ray_subelement(element, mesh_memo)
         self._create_use_decay_photons_subelement(element)
+        self._create_source_rejection_fraction_subelement(element)
 
         # Clean the indentation in the file to be user-readable
         clean_indentation(element)
@@ -2279,6 +2306,7 @@ class Settings:
         settings._max_tracks_from_xml_element(elem)
         settings._random_ray_from_xml_element(elem)
         settings._use_decay_photons_from_xml_element(elem)
+        settings._source_rejection_fraction_from_xml_element(elem)
 
         return settings
 

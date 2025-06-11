@@ -21,10 +21,9 @@ namespace openmc {
 // Constants
 //==============================================================================
 
-// Maximum number of external source spatial resamples to encounter before an
-// error is thrown.
+// Minimum number of external source sites rejected before checking againts the
+// source_rejection_fraction
 constexpr int EXTSRC_REJECT_THRESHOLD {10000};
-constexpr double EXTSRC_REJECT_FRACTION {0.05};
 
 //==============================================================================
 // Global variables

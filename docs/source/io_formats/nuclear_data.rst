@@ -256,6 +256,54 @@ temperature-dependent data set.  For example, the data set corresponding to
 :Groups:
          - **distribution** -- Format for angle-energy distributions are
            detailed in :ref:`angle_energy`.
+           
+--------------------------
+Incident Photonuclear Data
+--------------------------
+
+**/**
+
+:Attributes: - **filetype** (*char[]*) -- String indicating the type of file
+             - **version** (*int[2]*) -- Major and minor version of the data
+
+**/<nuclide name>/**
+
+:Attributes: - **Z** (*int*) -- Atomic number
+             - **A** (*int*) -- Mass number. For a natural element, A=0 is given.
+             - **metastable** (*int*) -- Metastable state (0=ground, 1=first
+               excited, etc.)
+             - **atomic_weight_ratio** (*double*) -- Mass in units of neutron masses
+             - **n_reaction** (*int*) -- Number of reactions
+
+:Datasets:
+           - **energy** (*double[]*) -- Energies in [eV] at which cross sections
+             are tabulated
+
+**/<nuclide name>/**
+
+**/<nuclide name>/reactions/reaction_<mt>/**
+
+:Attributes: - **mt** (*int*) -- ENDF MT reaction number
+             - **label** (*char[]*) -- Name of the reaction
+             - **Q_value** (*double*) -- Q value in eV
+             - **center_of_mass** (*int*) -- Whether the reference frame for
+               scattering is center-of-mass (1) or laboratory (0)
+             - **n_product** (*int*) -- Number of reaction products
+             - **redundant** (*int*) -- Whether reaction is redundant
+
+**/<nuclide name>/reactions/reaction_<mt>/**
+
+:Datasets:
+           - **xs** (*double[]*) -- Cross section values tabulated against the
+             nuclide energy grid
+
+             :Attributes:
+                          - **threshold_idx** (*int*) -- Index on the energy
+                            grid that the reaction threshold corresponds to
+
+**/<nuclide name>/reactions/reaction_<mt>/product_<j>/**
+
+   Reaction product data is described in :ref:`product`.
 
 .. _product:
 
@@ -415,6 +463,7 @@ Kalbach-Mann
 
 :Object type: Group
 :Attributes: - **type** (*char[]*) -- 'kalbach-mann'
+             - **is_photon** (*bool*) -- Whether the incident particle is a photon.
 :Datasets: - **energy** (*double[]*) -- Incoming energies at which distributions exist
 
              :Attributes:
@@ -586,7 +635,8 @@ Level Inelastic
 :Attributes: - **type** (*char[]*) -- 'level'
              - **threshold** (*double*) -- Energy threshold in the laboratory
                system in eV
-             - **mass_ratio** (*double*) -- :math:`(A/(A + 1))^2`
+             - **mass_ratio** (*double*) -- for incident neutrons: :math:`(A/(A + 1))^2`,
+               while for incident photons: :math:`(A-1)/A`
 
 Continuous Tabular
 ------------------

@@ -20,6 +20,7 @@ public:
   enum class Type {
     neutron = 1,
     photon = 3,
+    photonuclear = 6,
     thermal = 2,
     multigroup = 4,
     wmp = 5

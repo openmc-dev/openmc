@@ -210,7 +210,7 @@ def kalbach_slope(energy_projectile, energy_emitted, za_projectile,
         # or ENDF-6 Formats Manual section 6.2.3.2
         slope_n = kalbach_slope(energy_projectile, energy_emitted, 1,
                   za_emitted, za_target)
-        return slope_n * np.sqrt(0.5*energy_projectile/NEUTRON_MASS_EV)*np.minimum(4,np.maximum(1,9.3/np.sqrt(energy_emitted*1e-6))) 
+        return slope_n * np.sqrt(0.5*energy_projectile/NEUTRON_MASS_EV)*np.minimum(4,np.maximum(1,9.3/np.sqrt(energy_emitted/EV_PER_MEV))) 
         
     # Special handling of elemental carbon
     if za_emitted == 6000:

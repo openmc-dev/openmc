@@ -274,6 +274,7 @@ K_BOLTZMANN = 8.617333262e-5
 # Unit conversions
 EV_PER_MEV = 1.0e6
 JOULE_PER_EV = 1.602176634e-19
+EV_PER_AMU = 931.49410372e6 # eV/c^2 per amu
 
 # Avogadro's constant
 AVOGADRO = 6.02214076e23
@@ -282,7 +283,7 @@ AVOGADRO = 6.02214076e23
 NEUTRON_MASS = 1.00866491595
 
 # Neutron mass in units of eV/c^2
-NEUTRON_MASS_EV = 939.56542052e6                             
+NEUTRON_MASS_EV = NEUTRON_MASS*EV_PER_AMU                             
 
 # Used in atomic_mass function as a cache
 _ATOMIC_MASS: dict[str, float] = {}

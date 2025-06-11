@@ -17,11 +17,10 @@
 namespace openmc {
 
 //==============================================================================
-//! Sample class representing a sample from the distribution and its weight
+//! Sample struct representing a sample from the distribution and its weight
 //==============================================================================
 
-class Sample {
-public:
+struct Sample {
   std::any val;
   double wgt;
 
@@ -81,11 +80,6 @@ public:
   //! \return Sampled value
   size_t sample(uint64_t* seed) const;
 
-  //! Return weight of a sample drawn from the specified bin
-  //! \param i Index of probability mass function bin
-  //! \return Sample weight (1.0 if distribution is unbiased)
-  double 
-
   //! Apply biased sampling using another Discrete distribution
   //! \param b Biased probability vector for accepting a uniformly sampled bin
   //! \return void
@@ -127,7 +121,9 @@ public:
 
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
-  //! \return Sampled value
+  //! \return A Sample where:
+  //!         - val stores a sampled value, accessible by std::any_cast<double>
+  //!         - wgt is a double representing the sample weight
   Sample sample(uint64_t* seed) const override;
 
   //! Evaluate probability density at a point
@@ -163,7 +159,9 @@ public:
 
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
-  //! \return Sampled value
+  //! \return A Sample where:
+  //!         - val stores a sampled value, accessible by std::any_cast<double>
+  //!         - wgt is a double representing the sample weight
   Sample sample(uint64_t* seed) const override;
 
   //! Evaluate probability density at a point
@@ -192,7 +190,9 @@ public:
 
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
-  //! \return Sampled value
+  //! \return A Sample where:
+  //!         - val stores a sampled value, accessible by std::any_cast<double>
+  //!         - wgt is a double representing the sample weight
   Sample sample(uint64_t* seed) const override;
 
   //! Evaluate probability density at a point
@@ -222,7 +222,9 @@ public:
 
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
-  //! \return Sampled value
+  //! \return A Sample where:
+  //!         - val stores a sampled value, accessible by std::any_cast<double>
+  //!         - wgt is a double representing the sample weight
   Sample sample(uint64_t* seed) const override;
 
   //! Evaluate probability density at a point
@@ -247,7 +249,9 @@ public:
 
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
-  //! \return Sampled value
+  //! \return A Sample where:
+  //!         - val stores a sampled value, accessible by std::any_cast<double>
+  //!         - wgt is a double representing the sample weight
   Sample sample(uint64_t* seed) const override;
 
   //! Evaluate probability density at a point
@@ -276,7 +280,9 @@ public:
 
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
-  //! \return Sampled value
+  //! \return A Sample where:
+  //!         - val stores a sampled value, accessible by std::any_cast<double>
+  //!         - wgt is a double representing the sample weight
   Sample sample(uint64_t* seed) const override;
 
   //! Evaluate probability density at a point
@@ -304,7 +310,9 @@ public:
 
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
-  //! \return Sampled value
+  //! \return A Sample where:
+  //!         - val stores a sampled value, accessible by std::any_cast<double>
+  //!         - wgt is a double representing the sample weight
   Sample sample(uint64_t* seed) const override;
 
   //! Evaluate probability density at a point
@@ -345,7 +353,9 @@ public:
 
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
-  //! \return Sampled value
+  //! \return A Sample where:
+  //!         - val stores a sampled value, accessible by std::any_cast<double>
+  //!         - wgt is a double representing the sample weight
   Sample sample(uint64_t* seed) const override;
   
   //! Evaluate probability density at a point
@@ -369,7 +379,9 @@ public:
 
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
-  //! \return Sampled value
+  //! \return A Sample where:
+  //!         - val stores a sampled value, accessible by std::any_cast<double>
+  //!         - wgt is a double representing the sample weight
   Sample sample(uint64_t* seed) const override;
 
   double integral() const override { return integral_; }

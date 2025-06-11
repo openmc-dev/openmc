@@ -183,7 +183,7 @@ def get_microxs_from_multigroup(
     materials: openmc.Materials,
     multigroup_fluxes: Sequence[float],
     energy_group_structures: Sequence[float] | str,
-    chain_file: cv.PathLike | None = None,
+    chain_file: cv.PathLike | Chain | None = None,
     reactions: Sequence[str] | None = None,
     **init_kwargs: dict,
 ) -> Sequence[openmc.Materials]:
@@ -203,8 +203,8 @@ def get_microxs_from_multigroup(
     energy_group_structures': Sequence[float] | str
         Energy group boundaries in [eV] or the name of the group structure.
     chain_file : str, optional
-        Path to the depletion chain XML file that will be used in depletion
-        simulation. Defaults to ``openmc.config['chain_file']``.
+        Path to the depletion chain XML file or instance of openmc.deplete.Chain.
+        Defaults to ``openmc.config['chain_file']``.
     reactions : list of str, optional
         Reactions to get cross sections for. If not specified, all neutron
         reactions listed in the depletion chain file are used.
@@ -233,8 +233,22 @@ def get_microxs_from_multigroup(
                 f"Entry {i}: Material temperature must be set before depletion"
             )
 
-    chain_file_path = _resolve_chain_file_path(Path(chain_file)).resolve()
-    chain = Chain.from_xml(chain_file_path)
+    if chain_file is None:
+        chain_file = openmc.config.get('chain_file')
+        if chain_file is None:
+            raise DataError(
+                "No depletion chain specified and could not find depletion "
+                "chain in openmc.config['chain_file']"
+            )
+    if isinstance(chain_file, Chain):
+        chain = chain_file
+    elif isinstance(chain_file, PathLike):
+        chain_file_path = _resolve_chain_file_path(Path(chain_file)).resolve()
+        chain = Chain.from_xml(chain_file_path)
+    else:
+        raise TypeError(
+            f"Expected chain_file to be a PathLike or Chain, not {type(chain_file)}"
+        )
 
     cross_sections = _find_cross_sections(model=None)
     nuclides_with_data = _get_nuclides_with_data(cross_sections)

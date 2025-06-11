@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 import openmc
-from openmc.deplete import MicroXS, get_microxs_from_multigroup
+from openmc.deplete import MicroXS, get_microxs_from_multigroup, Chain
 from openmc.mgxs import GROUP_STRUCTURES
 import numpy as np
 
@@ -132,6 +132,26 @@ def test_get_microxs_from_multigroup():
     mg_flux = np.array([0.5e11] * 42)
     multigroup_flux = list(mg_flux / sum(mg_flux))
 
+    chain = Chain.from_xml(
+        Path(__file__).parents[1] / "chain_ni.xml"
+    )
+
+    # chain is passed as Chain object
+    all_micro_xs = get_microxs_from_multigroup(
+        materials=openmc.Materials([mat_ni58, mat_ni60]),
+        multigroup_fluxes=[multigroup_flux, multigroup_flux],
+        energy_group_structures=[
+            GROUP_STRUCTURES["VITAMIN-J-42"],
+            "VITAMIN-J-42",
+        ],
+        chain_file=chain,
+        reactions=None,
+    )
+
+    for micro_xs in all_micro_xs:
+        assert isinstance(micro_xs, openmc.deplete.MicroXS)
+
+    # chain is passed as file path
     all_micro_xs = get_microxs_from_multigroup(
         materials=openmc.Materials([mat_ni58, mat_ni60]),
         multigroup_fluxes=[multigroup_flux, multigroup_flux],

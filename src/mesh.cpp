@@ -998,8 +998,10 @@ void StructuredMesh::raytrace_mesh(
         }
       }
       // Assure some distance is traveled
-      if (k_max == -1)
+      if (k_max == -1) {
         traveled_distance += TINY_BIT;
+      }
+
       // If r1 is not inside the mesh, exit here
       if (traveled_distance >= total_distance)
         return;
@@ -1013,7 +1015,7 @@ void StructuredMesh::raytrace_mesh(
       }
 
       // If inside the mesh, Tally inward current
-      if (in_mesh)
+      if (in_mesh && k_max >= 0)
         tally.surface(ijk, k_max, !distances[k_max].max_surface, true);
     }
   }
@@ -1209,6 +1211,7 @@ StructuredMesh::MeshDistance RegularMesh::distance_to_grid_boundary(
     d.next_index--;
     d.distance = (negative_grid_boundary(ijk, i) - r0[i]) / u[i];
   }
+
   return d;
 }
 

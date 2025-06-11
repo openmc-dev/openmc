@@ -143,7 +143,7 @@ Surface::Surface(pugi::xml_node surf_node)
   for (int i = 0; i < velocities_spec.size();) {
     if (velocities_spec[i] == '-' || std::isdigit(velocities_spec[i])) {
       int j = i + 1;
-      while (j < velocities_spec.size() && std::isdigit(velocities_spec[j])) {
+      while (j < velocities_spec.size() && (std::isdigit(velocities_spec[j]) || velocities_spec[j] == '.')) {
         j++;
       }
       numbers.push_back(std::stod(velocities_spec.substr(i, j - i)));

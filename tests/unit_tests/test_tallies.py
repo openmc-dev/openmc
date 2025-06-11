@@ -1,5 +1,4 @@
 import numpy as np
-
 import openmc
 
 
@@ -139,7 +138,8 @@ def test_tally_application(sphere_model, run_in_tmpdir):
 
     assert (sp_tally.std_dev != tally.std_dev).any()
     assert (sp_tally.mean != tally.mean).any()
-
+    assert (sp_tally.VOV != tally.VOV).any()
+    
     # now re-read data from the new stateopint file and
     # ensure that the new results match those in
     # the latest statepoint

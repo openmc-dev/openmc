@@ -431,6 +431,7 @@ class StatePoint:
 
                     # Check if tally has vov attribute
                     if "vov_results" in group.attrs:
+                        print("VOV results found", group.attrs["vov_results"].item())
                         tally._vov = group.attrs["vov_results"].item()
                         
                     # Read the number of realizations
@@ -464,6 +465,7 @@ class StatePoint:
                     # Add the scores to the Tally
                     scores = group['score_bins'][()]
                     tally.scores = [score.decode() for score in scores]
+                    print(scores.shape)
 
                     # Add Tally to the global dictionary of all Tallies
                     tally.sparse = self.sparse

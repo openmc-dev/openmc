@@ -399,14 +399,19 @@ class Tally(IDManagerMixin):
             # Update nuclides
             nuclide_names = group['nuclides'][()]
             self._nuclides = [name.decode().strip() for name in nuclide_names]
+            print("VOV results:", self._vov)
             self._vov = 'vov_results' in group.attrs
-            
+            print("VOV results:", self._vov)
             # Extract Tally data from the file
             data = group['results']
             
             if self._vov:
+                print("Data shape=", data.shape[2])
                 if (data.shape[2] != 4):
                     raise ValueError("Tally results data does not have the expected number of columns.")
+                print("VOV results data shape:", data.shape)
+                print("sum_rd shape:", data[:, :, 2])
+                print("sum_th shape:", data[:, :, 3])
                 sum_rd = data[:, :, 2]
                 sum_th = data[:, :, 3]
                 sum_rd = np.reshape(sum_rd, self.shape)
@@ -416,7 +421,7 @@ class Tally(IDManagerMixin):
             
             sum_ = data[:, :, 0]
             sum_sq = data[:, :, 1]
-        
+         
             # Reshape the results arrays
             sum_ = np.reshape(sum_, self.shape)
             sum_sq = np.reshape(sum_sq, self.shape)
@@ -541,14 +546,13 @@ class Tally(IDManagerMixin):
     def VOV(self):
         if not self._sp_filename:
             return None
-        
+        print("VOV results:", self._vov)
         n = self.num_realizations
         nonzero = np.abs(self.mean) > 0
         vov = np.zeros_like(self.mean)
-        
         numerator = self.sum_th - ( 4.0* self.sum_rd*self.sum ) / n + (6.0 * self.sum_sq * (self.sum)**2) / (n**2) - (3.0 * (self.sum)**4 ) / (n**3) 
         denominator = (self.sum_sq - (1.0/n)*(self.sum)**2) **2
-        
+
         # Apply the nonzero mask to numerator and denominator
         numerator = numerator[nonzero]
         denominator = denominator[nonzero]
@@ -1091,9 +1095,9 @@ class Tally(IDManagerMixin):
             subelement.text = str(self.derivative.id)
 
         # Optional VOV
-        if self.vov:
+        if self._vov:
             subelement = ET.SubElement(element, "vov")
-            subelement.text = str(self.vov).lower() 
+            subelement.text = str(self._vov).lower() 
 
         return element
 
@@ -1121,6 +1125,8 @@ class Tally(IDManagerMixin):
         # point are based on the current statepoint file
         self._sum = None
         self._sum_sq = None
+        self._sum_rd = None
+        self._sum_th = None
         self._mean = None
         self._std_dev = None
         self._num_realizations = 0

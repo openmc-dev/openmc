@@ -18,7 +18,7 @@ from .angle_distribution import AngleDistribution
 from .angle_energy import AngleEnergy
 from .correlated import CorrelatedAngleEnergy
 from .data import ATOMIC_SYMBOL, EV_PER_MEV
-from .endf import Evaluation, get_head_record, get_tab1_record,  get_cont_record
+from .endf import Evaluation, SUM_RULES, get_head_record, get_tab1_record,  get_cont_record
 from .function import Tabulated1D
 from .njoy import make_ace_photonuclear
 from .reaction import Reaction, REACTION_NAME, FISSION_MTS, _get_products, _get_fission_products_endf, _get_photon_products_endf, _get_activation_products
@@ -118,7 +118,7 @@ class PhotonuclearReaction(EqualityMixin):
 
         Returns
         -------
-        rx : openmc.data.Reaction
+        rx : openmc.data.PhotonuclearReaction
             Reaction data
 
         """
@@ -353,7 +353,7 @@ class PhotonuclearReaction(EqualityMixin):
                 idx = int(ace.xss[int(ace.xss[loc+9])+i_mtr])
                 if idx==0:
                     # No angular distribution data are given for this reaction,
-                    # isotropic scattering is asssumed in LAB
+                    # isotropic scattering is assumed in LAB
                     energy = np.array([particle.yield_.x[0], particle.yield_.x[-1]])
                     mu_isotropic = Uniform(-1., 1.)
                     distribution.angle = AngleDistribution(
@@ -421,6 +421,9 @@ class IncidentPhotonuclear(EqualityMixin):
         Atomic symbol of the nuclide, e.g., 'Zr'
     atomic_weight_ratio : float
         Atomic weight ratio of the target nuclide.
+    fission_energy : None or openmc.data.FissionEnergyRelease
+        The energy released by fission, tabulated by component (e.g. prompt
+        neutrons or beta particles) and dependent on incident neutron energy        
     mass_number : int
         Number of nucleons in the target nucleus
     metastable : int
@@ -443,6 +446,7 @@ class IncidentPhotonuclear(EqualityMixin):
         self.mass_number = mass_number
         self.reactions = OrderedDict()
         self.energy = []
+        self._fission_energy = None
         self.metastable = metastable
         self.atomic_weight_ratio = atomic_weight_ratio
 
@@ -513,6 +517,16 @@ class IncidentPhotonuclear(EqualityMixin):
         cv.check_type("atomic weight ratio", atomic_weight_ratio, Real)
         cv.check_greater_than("atomic weight ratio", atomic_weight_ratio, 0.0)
         self._atomic_weight_ratio = atomic_weight_ratio
+        
+    @property
+    def fission_energy(self):
+        return self._fission_energy
+
+    @fission_energy.setter
+    def fission_energy(self, fission_energy):
+        cv.check_type('fission energy release', fission_energy,
+                      FissionEnergyRelease)
+        self._fission_energy = fission_energy        
 
     @classmethod
     def from_endf(cls, ev_or_filename):
@@ -551,6 +565,11 @@ class IncidentPhotonuclear(EqualityMixin):
         for mf, mt, nc, mod in ev.reaction_list:
             if mf == 3:
                 data.reactions[mt] = PhotonuclearReaction.from_endf(ev, mt)
+                
+        # Read fission energy release (requires that we already know nu for
+        # fission)
+        if (1, 458) in ev.section:
+            data.fission_energy = FissionEnergyRelease.from_endf(ev, data)
 
         data._evaluation = ev
         return data
@@ -696,7 +715,12 @@ class IncidentPhotonuclear(EqualityMixin):
 
             rx_group = rxs_group.create_group(f'reaction_{rx.mt:03}')
             rx.to_hdf5(rx_group)
-
+        
+        # Write fission energy release data
+        if self.fission_energy is not None:
+            fer_group = g.create_group('fission_energy_release')
+            self.fission_energy.to_hdf5(fer_group)
+        
         f.close()
 
     @classmethod
@@ -753,6 +777,11 @@ class IncidentPhotonuclear(EqualityMixin):
                 rx = PhotonuclearReaction.from_hdf5(obj, data.energy)
                 data.reactions[rx.mt] = rx
 
+        # Read fission energy release data
+        if 'fission_energy_release' in group:
+            fer_group = group['fission_energy_release']
+            data.fission_energy = FissionEnergyRelease.from_hdf5(fer_group)
+
         return data
 
     @classmethod
@@ -781,13 +810,42 @@ class IncidentPhotonuclear(EqualityMixin):
             for key in ("acer", "pendf"):
                 kwargs.setdefault(key, os.path.join(kwargs["output_dir"], key))
             kwargs["evaluation"] = evaluation
-            make_ace_photonuclear(filename, [0.0], **kwargs)
+            make_ace_photonuclear(filename, **kwargs)
 
             # Create instance from ACE tables within library
             lib = Library(kwargs["acer"])
             data = cls.from_ace(lib.tables[0])
+            
+            # Add fission energy release data
+            ev = evaluation if evaluation is not None else Evaluation(filename)
+            if (1, 458) in ev.section:
+                data.fission_energy = FissionEnergyRelease.from_endf(ev, data)
 
         return data
+
+    def get_reaction_components(self, mt):
+        """Determine what reactions make up redundant reaction.
+
+        Parameters
+        ----------
+        mt : int
+            ENDF MT number of the reaction to find components of.
+
+        Returns
+        -------
+        mts : list of int
+            ENDF MT numbers of reactions that make up the redundant reaction and
+            have cross sections provided.
+
+        """
+        mts = []
+        if mt in SUM_RULES:
+            for mt_i in SUM_RULES[mt]:
+                mts += self.get_reaction_components(mt_i)
+        if mts:
+            return mts
+        else:
+            return [mt] if mt in self else []        
 
     def _get_redundant_reaction(self, mt, mts):
         """Create redundant reaction from its components

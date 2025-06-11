@@ -304,6 +304,34 @@ Incident Photonuclear Data
 **/<nuclide name>/reactions/reaction_<mt>/product_<j>/**
 
    Reaction product data is described in :ref:`product`.
+   
+**/<nuclide name>/fission_energy_release/**
+
+:Datasets: - **fragments** (:ref:`function <1d_functions>`) -- Energy
+             released in the form of fragments as a function of incident
+             neutron energy.
+           - **prompt_neutrons** (:ref:`function <1d_functions>`) -- Energy
+             released in the form of prompt neutrons as a function of incident
+             neutron energy.
+           - **delayed_neutrons** (:ref:`function <1d_functions>`) -- Energy
+             released in the form of delayed neutrons as a function of incident
+             neutron energy.
+           - **prompt_photons** (:ref:`function <1d_functions>`) -- Energy
+             released in the form of prompt photons as a function of incident
+             neutron energy.
+           - **delayed_photons** (:ref:`function <1d_functions>`) -- Energy
+             released in the form of delayed photons as a function of incident
+             neutron energy.
+           - **betas** (:ref:`function <1d_functions>`) -- Energy released in
+             the form of betas as a function of incident neutron energy.
+           - **neutrinos** (:ref:`function <1d_functions>`) -- Energy released
+             in the form of neutrinos as a function of incident neutron energy.
+           - **q_prompt** (:ref:`function <1d_functions>`) -- The prompt fission
+             Q-value (fragments + prompt neutrons + prompt photons - incident
+             energy)
+           - **q_recoverable** (:ref:`function <1d_functions>`) -- The
+             recoverable fission Q-value (Q_prompt + delayed neutrons + delayed
+             photons + betas)   
 
 .. _product:
 

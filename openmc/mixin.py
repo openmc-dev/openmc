@@ -115,3 +115,14 @@ def set_auto_id(next_id):
     """
     for cls in IDManagerMixin.__subclasses__():
         cls.next_id = next_id
+
+
+def update_auto_ids():
+    """Update next_id for all IDManagerMixin subclasses to be greater than maximum used ID.
+    
+    This ensures that newly created objects will not conflict with existing IDs
+    that have been loaded from XML or otherwise assigned explicitly.
+    """
+    for cls in IDManagerMixin.__subclasses__():
+        if cls.used_ids:
+            cls.next_id = max(cls.used_ids) + 1

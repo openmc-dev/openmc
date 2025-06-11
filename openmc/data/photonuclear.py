@@ -19,6 +19,7 @@ from .angle_energy import AngleEnergy
 from .correlated import CorrelatedAngleEnergy
 from .data import ATOMIC_SYMBOL, EV_PER_MEV
 from .endf import Evaluation, SUM_RULES, get_head_record, get_tab1_record,  get_cont_record
+from .fission_energy import FissionEnergyRelease
 from .function import Tabulated1D
 from .njoy import make_ace_photonuclear
 from .reaction import Reaction, REACTION_NAME, FISSION_MTS, _get_products, _get_fission_products_endf, _get_photon_products_endf, _get_activation_products

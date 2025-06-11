@@ -106,6 +106,10 @@ class Tally(IDManagerMixin):
         Whether the tally will accumulate sum third and sum fourth for each tally bin
     normality_tests = None
         Whether normality tests will be performed on the tally results
+    figure_of_merit : numpy.ndarray
+        An array containing the figure of merit for each bin
+
+        .. versionadded:: 0.15.3
     derived : bool
         Whether or not the tally is derived from one or more other tallies
     sparse : bool
@@ -142,6 +146,7 @@ class Tally(IDManagerMixin):
         self._std_dev = None
         self._vov = None
         self._normality_tests = None
+        self._simulation_time = None
         self._with_batch_statistics = False
         self._derived = False
         self._sparse = False
@@ -435,6 +440,9 @@ class Tally(IDManagerMixin):
                 self._sum = sps.lil_matrix(self._sum.flatten(), self._sum.shape)
                 self._sum_sq = sps.lil_matrix(self._sum_sq.flatten(), self._sum_sq.shape)
 
+            # Read simulation time (needed for figure of merit)
+            self._simulation_time = f["runtime"]["simulation"][()]
+
         # Indicate that Tally results have been read
         self._results_read = True
 
@@ -577,6 +585,16 @@ class Tally(IDManagerMixin):
             raise ValueError("D’Agostino kurtosis test is typically recommended for n >= 20.")
         else:
             tally_stats.print_normality_tests_summary(n, self.mean, self.sum_sq, self.sum_rd, self.sum_th)
+
+    @property
+    def figure_of_merit(self):
+        mean = self.mean
+        std_dev = self.std_dev
+        fom = np.zeros_like(mean)
+        nonzero = np.abs(mean) > 0
+        fom[nonzero] = 1.0 / (
+            (std_dev[nonzero] / mean[nonzero])**2 * self._simulation_time)
+        return fom
 
     @property
     def with_batch_statistics(self):
@@ -1724,7 +1742,7 @@ class Tally(IDManagerMixin):
         for i, f in enumerate(self.filters):
             if expand_dims:
                 # Mesh filter indices are backwards so we need to flip them
-                if isinstance(f, openmc.MeshFilter):
+                if type(f) in {openmc.MeshFilter, openmc.MeshBornFilter}:
                     fshape = f.shape[::-1]
                     new_shape += fshape
                     idx0, idx1 = i, i + len(fshape) - 1

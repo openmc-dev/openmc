@@ -194,6 +194,13 @@ endif()
 #===============================================================================
 
 if (OPENMC_USE_MCPL)
+  if (NOT DEFINED MCPL_DIR)
+    execute_process(
+      COMMAND mcpl-config --show cmakedir
+      OUTPUT_VARIABLE MCPL_DIR
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+  endif()
   find_package(MCPL REQUIRED)
   message(STATUS "Found MCPL: ${MCPL_DIR} (found version \"${MCPL_VERSION}\")")
 endif()
@@ -407,6 +414,7 @@ list(APPEND libopenmc_SOURCES
   src/tallies/filter_materialfrom.cpp
   src/tallies/filter_mesh.cpp
   src/tallies/filter_meshborn.cpp
+  src/tallies/filter_meshmaterial.cpp
   src/tallies/filter_meshsurface.cpp
   src/tallies/filter_mu.cpp
   src/tallies/filter_musurface.cpp
@@ -418,6 +426,7 @@ list(APPEND libopenmc_SOURCES
   src/tallies/filter_surface.cpp
   src/tallies/filter_time.cpp
   src/tallies/filter_universe.cpp
+  src/tallies/filter_weight.cpp
   src/tallies/filter_zernike.cpp
   src/tallies/tally.cpp
   src/tallies/tally_scoring.cpp

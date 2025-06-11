@@ -91,6 +91,7 @@ Classes
    Tally
    UniverseFilter
    UnstructuredMesh
+   WeightFilter
    WeightWindows
    ZernikeFilter
    ZernikeRadialFilter

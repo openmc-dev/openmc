@@ -454,12 +454,15 @@ void Material::normalize_density()
   // Calculate nuclide atom densities
   atom_density_ *= density_;
 
-  // Calculate density in g/cm^3.
+  // Calculate density in [g/cm^3] and charge density in [e/b-cm]
   density_gpcc_ = 0.0;
+  charge_density_ = 0.0;
   for (int i = 0; i < nuclide_.size(); ++i) {
     int i_nuc = nuclide_[i];
     double awr = settings::run_CE ? data::nuclides[i_nuc]->awr_ : 1.0;
+    int z = settings::run_CE ? data::nuclides[i_nuc]->Z_ : 0.0;
     density_gpcc_ += atom_density_(i) * awr * MASS_NEUTRON / N_AVOGADRO;
+    charge_density_ += atom_density_(i) * z;
   }
 }
 
@@ -640,7 +643,7 @@ void Material::init_bremsstrahlung()
     // Allocate arrays for TTB data
     ttb->pdf = xt::zeros<double>({n_e, n_e});
     ttb->cdf = xt::zeros<double>({n_e, n_e});
-    ttb->yield = xt::empty<double>({n_e});
+    ttb->yield = xt::zeros<double>({n_e});
 
     // Allocate temporary arrays
     xt::xtensor<double, 1> stopping_power_collision({n_e}, 0.0);
@@ -777,14 +780,15 @@ void Material::init_bremsstrahlung()
       // Loop over photon energies
       double c = 0.0;
       for (int i = 0; i < j; ++i) {
-        // Integrate the CDF from the PDF using the trapezoidal rule in log-log
-        // space
+        // Integrate the CDF from the PDF using the fact that the PDF is linear
+        // in log-log space
         double w_l = std::log(data::ttb_e_grid(i));
         double w_r = std::log(data::ttb_e_grid(i + 1));
         double x_l = std::log(ttb->pdf(j, i));
         double x_r = std::log(ttb->pdf(j, i + 1));
-
-        c += 0.5 * (w_r - w_l) * (std::exp(w_l + x_l) + std::exp(w_r + x_r));
+        double beta = (x_r - x_l) / (w_r - w_l);
+        double a = beta + 1.0;
+        c += std::exp(w_l + x_l) / a * std::expm1(a * (w_r - w_l));
         ttb->cdf(j, i + 1) = c;
       }
 
@@ -981,12 +985,15 @@ void Material::set_density(double density, const std::string& units)
     // Recalculate nuclide atom densities based on given density
     atom_density_ *= density;
 
-    // Calculate density in g/cm^3.
+    // Calculate density in g/cm^3 and charge density in [e/b-cm]
     density_gpcc_ = 0.0;
+    charge_density_ = 0.0;
     for (int i = 0; i < nuclide_.size(); ++i) {
       int i_nuc = nuclide_[i];
       double awr = data::nuclides[i_nuc]->awr_;
+      int z = settings::run_CE ? data::nuclides[i_nuc]->Z_ : 0.0;
       density_gpcc_ += atom_density_(i) * awr * MASS_NEUTRON / N_AVOGADRO;
+      charge_density_ += atom_density_(i) * z;
     }
   } else if (units == "g/cm3" || units == "g/cc") {
     // Determine factor by which to change densities
@@ -997,6 +1004,7 @@ void Material::set_density(double density, const std::string& units)
     density_gpcc_ = density;
     density_ *= f;
     atom_density_ *= f;
+    charge_density_ *= f;
   } else {
     throw std::invalid_argument {
       "Invalid units '" + std::string(units.data()) + "' specified."};

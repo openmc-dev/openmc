@@ -915,6 +915,11 @@ void StructuredMesh::raytrace_mesh(
   if (total_distance == 0.0 && settings::solver_type != SolverType::RANDOM_RAY)
     return;
 
+  // keep a copy of the original global position to pass to get_indices,
+  // which performs its own transformation to local coordinates
+  Position global_r = r0;
+  Position local_r = local_coords(r0);
+
   const int n = n_dimension_;
 
   // Flag if position is inside the mesh
@@ -925,7 +930,7 @@ void StructuredMesh::raytrace_mesh(
 
   // Calculate index of current cell. Offset the position a tiny bit in
   // direction of flight
-  MeshIndex ijk = get_indices(r0 + TINY_BIT * u, in_mesh);
+  MeshIndex ijk = get_indices(global_r + TINY_BIT * u, in_mesh);
 
   // if track is very short, assume that it is completely inside one cell.
   // Only the current cell will score and no surfaces
@@ -936,16 +941,10 @@ void StructuredMesh::raytrace_mesh(
     return;
   }
 
-  // translate start and end positions,
-  // this needs to come after the get_indices call because it does its own
-  // translation
-  local_coords(r0);
-  local_coords(r1);
-
   // Calculate initial distances to next surfaces in all three dimensions
   std::array<MeshDistance, 3> distances;
   for (int k = 0; k < n; ++k) {
-    distances[k] = distance_to_grid_boundary(ijk, k, r0, u, 0.0);
+    distances[k] = distance_to_grid_boundary(ijk, k, local_r, u, 0.0);
   }
 
   // Loop until r = r1 is eventually reached
@@ -975,7 +974,7 @@ void StructuredMesh::raytrace_mesh(
       // The two other directions are still valid!
       ijk[k] = distances[k].next_index;
       distances[k] =
-        distance_to_grid_boundary(ijk, k, r0, u, traveled_distance);
+        distance_to_grid_boundary(ijk, k, local_r, u, traveled_distance);
 
       // Check if we have left the interior of the mesh
       in_mesh = ((ijk[k] >= 1) && (ijk[k] <= shape_[k]));
@@ -1005,10 +1004,10 @@ void StructuredMesh::raytrace_mesh(
 
       // Calculate the new cell index and update all distances to next
       // surfaces.
-      ijk = get_indices(r0 + (traveled_distance + TINY_BIT) * u, in_mesh);
+      ijk = get_indices(global_r + (traveled_distance + TINY_BIT) * u, in_mesh);
       for (int k = 0; k < n; ++k) {
         distances[k] =
-          distance_to_grid_boundary(ijk, k, r0, u, traveled_distance);
+          distance_to_grid_boundary(ijk, k, local_r, u, traveled_distance);
       }
 
       // If inside the mesh, Tally inward current
@@ -1482,7 +1481,7 @@ std::string CylindricalMesh::get_mesh_type() const
 StructuredMesh::MeshIndex CylindricalMesh::get_indices(
   Position r, bool& in_mesh) const
 {
-  local_coords(r);
+  r = local_coords(r);
 
   Position mapped_r;
   mapped_r[0] = std::hypot(r.x, r.y);
@@ -1630,23 +1629,21 @@ StructuredMesh::MeshDistance CylindricalMesh::distance_to_grid_boundary(
   const MeshIndex& ijk, int i, const Position& r0, const Direction& u,
   double l) const
 {
-  Position r = r0 - origin_;
-
   if (i == 0) {
 
     return std::min(
-      MeshDistance(ijk[i] + 1, true, find_r_crossing(r, u, l, ijk[i])),
-      MeshDistance(ijk[i] - 1, false, find_r_crossing(r, u, l, ijk[i] - 1)));
+      MeshDistance(ijk[i] + 1, true, find_r_crossing(r0, u, l, ijk[i])),
+      MeshDistance(ijk[i] - 1, false, find_r_crossing(r0, u, l, ijk[i] - 1)));
 
   } else if (i == 1) {
 
     return std::min(MeshDistance(sanitize_phi(ijk[i] + 1), true,
-                      find_phi_crossing(r, u, l, ijk[i])),
+                      find_phi_crossing(r0, u, l, ijk[i])),
       MeshDistance(sanitize_phi(ijk[i] - 1), false,
-        find_phi_crossing(r, u, l, ijk[i] - 1)));
+        find_phi_crossing(r0, u, l, ijk[i] - 1)));
 
   } else {
-    return find_z_crossing(r, u, l, ijk[i]);
+    return find_z_crossing(r0, u, l, ijk[i]);
   }
 }
 
@@ -1762,7 +1759,7 @@ std::string SphericalMesh::get_mesh_type() const
 StructuredMesh::MeshIndex SphericalMesh::get_indices(
   Position r, bool& in_mesh) const
 {
-  local_coords(r);
+  r = local_coords(r);
 
   Position mapped_r;
   mapped_r[0] = r.norm();
@@ -1797,7 +1794,8 @@ Position SphericalMesh::sample_element(
   double phi_min = this->phi(ijk[2] - 1);
   double phi_max = this->phi(ijk[2]);
 
-  double cos_theta = uniform_distribution(theta_min, theta_max, seed);
+  double cos_theta =
+    uniform_distribution(std::cos(theta_min), std::cos(theta_max), seed);
   double sin_theta = std::sin(std::acos(cos_theta));
   double phi = uniform_distribution(phi_min, phi_max, seed);
   double r_min_cub = std::pow(r_min, 3);

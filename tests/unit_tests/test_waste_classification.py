@@ -96,3 +96,7 @@ def test_waste_disposal_rating():
     ci_m3 = mat.get_activity('Ci/m3')
     assert mat.waste_disposal_rating(limits={'K40': 2*ci_m3}) < 1.0
     assert mat.waste_disposal_rating(limits={'K40': 0.5*ci_m3}) > 1.0
+
+    wdr = mat.waste_disposal_rating(limits={'K40': 4*ci_m3}, by_nuclide=True)
+    assert isinstance(wdr, dict)
+    assert wdr['K40'] == pytest.approx(1/4)

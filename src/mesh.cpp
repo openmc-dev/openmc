@@ -989,13 +989,17 @@ void StructuredMesh::raytrace_mesh(
       // For all directions outside the mesh, find the distance that we need
       // to travel to reach the next surface. Use the largest distance, as
       // only this will cross all outer surfaces.
-      int k_max {0};
+      int k_max {-1};
       for (int k = 0; k < n; ++k) {
         if ((ijk[k] < 1 || ijk[k] > shape_[k]) &&
             (distances[k].distance > traveled_distance)) {
           traveled_distance = distances[k].distance;
           k_max = k;
         }
+      }
+      // Assure some distance is traveled
+      if (k_max == -1) {
+        traveled_distance += TINY_BIT;
       }
 
       // If r1 is not inside the mesh, exit here
@@ -1011,7 +1015,7 @@ void StructuredMesh::raytrace_mesh(
       }
 
       // If inside the mesh, Tally inward current
-      if (in_mesh)
+      if (in_mesh && k_max >= 0)
         tally.surface(ijk, k_max, !distances[k_max].max_surface, true);
     }
   }
@@ -1207,6 +1211,7 @@ StructuredMesh::MeshDistance RegularMesh::distance_to_grid_boundary(
     d.next_index--;
     d.distance = (negative_grid_boundary(ijk, i) - r0[i]) / u[i];
   }
+
   return d;
 }
 
@@ -1794,7 +1799,8 @@ Position SphericalMesh::sample_element(
   double phi_min = this->phi(ijk[2] - 1);
   double phi_max = this->phi(ijk[2]);
 
-  double cos_theta = uniform_distribution(theta_min, theta_max, seed);
+  double cos_theta =
+    uniform_distribution(std::cos(theta_min), std::cos(theta_max), seed);
   double sin_theta = std::sin(std::acos(cos_theta));
   double phi = uniform_distribution(phi_min, phi_max, seed);
   double r_min_cub = std::pow(r_min, 3);

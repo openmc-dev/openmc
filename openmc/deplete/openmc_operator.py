@@ -36,7 +36,7 @@ class OpenMCOperator(TransportOperator):
     cross_sections : str or list of MicroXS
         Path to continuous energy cross section library, or list of objects
         containing cross sections.
-    chain_file : str | Chain
+    chain_file : PathLike or Chain, optional
         Path to the depletion chain XML file or instance of openmc.deplete.Chain.
         Defaults to ``openmc.config['chain_file']``.
     prev_results : Results, optional

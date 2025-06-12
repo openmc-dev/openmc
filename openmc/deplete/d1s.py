@@ -14,7 +14,7 @@ import numpy as np
 import openmc
 from openmc.data import half_life
 from .abc import _normalize_timesteps
-from .chain import Chain
+from .chain import Chain, _get_chain
 from ..checkvalue import PathLike
 
 
@@ -40,14 +40,7 @@ def get_radionuclides(model: openmc.Model, chain_file: PathLike | Chain | None =
                       for nuc in mat.get_nuclides()}
 
     # Load chain file
-    if isinstance(chain_file, Chain):
-        chain = chain_file
-    elif isinstance(chain_file, PathLike):
-        chain = Chain.from_xml(chain_file)
-    else:
-        raise TypeError(
-            f"Expected chain_file to be a PathLike or Chain, not {type(chain_file)}"
-        )
+    chain = _get_chain(chain_file)
 
     radionuclides = set()
     for nuclide in chain.nuclides:

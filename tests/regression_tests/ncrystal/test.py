@@ -99,8 +99,11 @@ def test_cfg_from_xml():
     actual = open('materials.xml.after', 'r').readlines()
     compare = filecmp.cmp('materials.xml.orig','materials.xml.after')
     if not compare:
-        diff = unified_diff(expected, actual, 'materials.xml.orig',
-                           'materials.xml.after')
-        print('Input differences:')
-        print(''.join(diff))
+        diff = list(unified_diff(expected, actual, 'materials.xml.orig',
+                           'materials.xml.after'))
+        if diff:
+            print('Input differences:')
+            print(''.join(diff))
+        else:
+            compare = True
     assert compare, 'Materials not read correctly from XML'

@@ -132,12 +132,8 @@ void TimedMeshFilter::get_all_bins(
     int i_time_bin =
       lower_bound_index(time_grid_.begin(), time_grid_.end(), t_start);
 
-    // If time interval is zero, add a match corresponding to the starting time
+    // If time interval is zero, tracklength is zero, no score
     if (t_end == t_start) {
-      model::meshes[mesh_]->bins_crossed(
-        last_r, r, u, match.bins_, match.weights_);
-      // Offset the bin location accordingly
-      match.bins_.back() += i_time_bin * mesh_n_bins_;
       return;
     }
 

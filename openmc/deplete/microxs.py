@@ -168,7 +168,6 @@ def get_microxs_and_flux(
     return fluxes, micros
 
 
-
 def get_microxs_from_multigroup(
     materials: openmc.Materials,
     multigroup_fluxes: Sequence[float],
@@ -192,7 +191,7 @@ def get_microxs_from_multigroup(
         to a specific material. Will be normalized so that it sums to 1.
     energy_group_structures': Sequence[float] | str
         Energy group boundaries in [eV] or the name of the group structure.
-    chain_file : str, optional
+    chain_file : PathLike or Chain
         Path to the depletion chain XML file or instance of openmc.deplete.Chain.
         Defaults to ``openmc.config['chain_file']``.
     reactions : list of str, optional
@@ -223,22 +222,7 @@ def get_microxs_from_multigroup(
                 f"Entry {i}: Material temperature must be set before depletion"
             )
 
-    if chain_file is None:
-        chain_file = openmc.config.get('chain_file')
-        if chain_file is None:
-            raise DataError(
-                "No depletion chain specified and could not find depletion "
-                "chain in openmc.config['chain_file']"
-            )
-    if isinstance(chain_file, Chain):
-        chain = chain_file
-    elif isinstance(chain_file, PathLike):
-        chain_file_path = _resolve_chain_file_path(Path(chain_file)).resolve()
-        chain = Chain.from_xml(chain_file_path)
-    else:
-        raise TypeError(
-            f"Expected chain_file to be a PathLike or Chain, not {type(chain_file)}"
-        )
+    chain = _get_chain(chain_file)
 
     cross_sections = _find_cross_sections(model=None)
     nuclides_with_data = _get_nuclides_with_data(cross_sections)

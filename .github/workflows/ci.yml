@@ -153,7 +153,7 @@ jobs:
           path: |
             ~/nndc_hdf5
             ~/endf-b-vii.1
-          key: ${{ runner.os }}-build-xs-cache-${{ hashFiles("$GITHUB_WORKSPACE/tools/ci/download-xs.sh")}}
+          key: ${{ runner.os }}-build-xs-cache-${{ hashFiles(format('{0}/tools/ci/download-xs.sh', github.workspace)) }}
 
       - name: before
         shell: bash

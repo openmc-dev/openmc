@@ -1,5 +1,6 @@
 from pathlib import Path
 import os
+import sys
 import shutil
 import subprocess
 import textwrap
@@ -11,6 +12,9 @@ import pytest
 from tests.regression_tests import config
 from tests.testing_harness import PyAPITestHarness
 
+pytestmark = pytest.mark.skipif(
+    sys.platform == 'win32',
+    reason="Cannot use compiled tests on Windows.")
 
 @pytest.fixture
 def cpp_driver(request):

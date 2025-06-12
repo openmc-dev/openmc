@@ -51,9 +51,9 @@ def test_from_array():
 
 
 def test_csv():
-    ref_xs = MicroXS.from_csv(ONE_GROUP_XS)
-    ref_xs.to_csv('temp_xs.csv')
-    temp_xs = MicroXS.from_csv('temp_xs.csv')
+    ref_xs = MicroXS.from_csv(ONE_GROUP_XS, lineterminator='\n')
+    ref_xs.to_csv('temp_xs.csv', lineterminator='\n')
+    temp_xs = MicroXS.from_csv('temp_xs.csv', lineterminator='\n')
     assert np.all(ref_xs.data == temp_xs.data)
     remove('temp_xs.csv')
 

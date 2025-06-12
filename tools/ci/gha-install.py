@@ -1,4 +1,5 @@
 import os
+import sys
 import shutil
 import subprocess
 
@@ -10,7 +11,11 @@ def install(omp=False, mpi=False, phdf5=False, dagmc=False, libmesh=False):
     os.chdir('build')
 
     # Build in debug mode by default with support for MCPL
-    cmake_cmd = ['cmake', '-DCMAKE_BUILD_TYPE=Debug', '-DOPENMC_USE_MCPL=on']
+    if sys.platform == 'win32':
+        work_dir = os.environ.get('GITHUB_WORKSPACE')
+        cmake_cmd = ['cmake', '-DCMAKE_BUILD_TYPE=Release', '-DCMAKE_TOOLCHAIN_FILE='+work_dir+'\\..\\vcpkg\\scripts\\buildsystems\\vcpkg.cmake', '-DVCPKG_TARGET_TRIPLET=x64-windows-static']
+    else:
+        cmake_cmd = ['cmake', '-DCMAKE_BUILD_TYPE=Debug', '-DOPENMC_USE_MCPL=on']
 
     # Turn off OpenMP if specified
     if not omp:
@@ -41,14 +46,20 @@ def install(omp=False, mpi=False, phdf5=False, dagmc=False, libmesh=False):
         cmake_cmd.append('-DCMAKE_PREFIX_PATH=' + libmesh_path)
 
     # Build in coverage mode for coverage testing
-    cmake_cmd.append('-DOPENMC_ENABLE_COVERAGE=on')
+    if sys.platform != 'win32':
+        cmake_cmd.append('-DOPENMC_ENABLE_COVERAGE=on')
 
     # Build and install
     cmake_cmd.append('..')
     print(' '.join(cmake_cmd))
     subprocess.check_call(cmake_cmd)
-    subprocess.check_call(['make', '-j4'])
-    subprocess.check_call(['sudo', 'make', 'install'])
+
+    if sys.platform == 'win32':
+        subprocess.check_call(['cmake', '--build', '.', '--config=Release'])
+        subprocess.check_call(['cmake', '--install', '.', '--config=Release'])
+    else:
+        subprocess.check_call(['make', '-j4'])
+        subprocess.check_call(['sudo', 'make', 'install'])
 
 def main():
     # Convert Travis matrix environment variables into arguments for install()

@@ -30,7 +30,7 @@ int OPENMC_E_PHYSICS {-10};
 int OPENMC_E_WARNING {1};
 
 // Error message
-char openmc_err_msg[256];
+char OPENMC_API openmc_err_msg[256];
 
 //==============================================================================
 // Functions

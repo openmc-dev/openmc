@@ -4,6 +4,7 @@ from pathlib import Path
 
 import openmc
 import pytest
+from pathlib import Path
 
 
 @pytest.fixture(autouse=True, scope='module')
@@ -45,8 +46,8 @@ def test_config_basics():
 def test_config_patch():
     openmc.config['cross_sections'] = '/path/to/cross_sections.xml'
     with openmc.config.patch('cross_sections', '/path/to/other.xml'):
-        assert str(openmc.config['cross_sections']) == '/path/to/other.xml'
-    assert str(openmc.config['cross_sections']) == '/path/to/cross_sections.xml'
+        assert str(openmc.config['cross_sections']) == str(Path('/path/to/other.xml'))
+    assert str(openmc.config['cross_sections']) == str(Path('/path/to/cross_sections.xml'))
 
 
 def test_config_set_envvar():

@@ -482,7 +482,9 @@ Region::Region(std::string region_spec, int32_t cell_id)
     auto it = std::find(expression_.begin(), expression_.end(), OP_COMPLEMENT);
     while (it != expression_.end()) {
       // Erase complement
-      expression_.erase(it);
+      it = expression_.erase(it);
+      if (it == expression_.end())
+        break; // Shouldn't happen, but to be safe
 
       // Define stop given left parenthesis or not
       auto stop = it;
@@ -536,7 +538,7 @@ Region::Region(std::string region_spec, int32_t cell_id)
     if (simple_) {
       for (auto it = expression_.begin(); it != expression_.end(); it++) {
         if (*it == OP_INTERSECTION || *it > OP_COMPLEMENT) {
-          expression_.erase(it);
+          it = expression_.erase(it);
           it--;
         }
       }

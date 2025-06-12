@@ -1019,13 +1019,15 @@ void FlatSourceDomain::apply_external_source_to_cell_and_children(
 
 void FlatSourceDomain::count_external_source_regions()
 {
-  n_external_source_regions_ = 0;
-#pragma omp parallel for reduction(+ : n_external_source_regions_)
+  // Must use temporary accumulator variable for OpenMP on Windows
+  int64_t tmp_n_external_source_regions {0};
+#pragma omp parallel for reduction(+ : tmp_n_external_source_regions)
   for (int64_t sr = 0; sr < n_source_regions(); sr++) {
     if (source_regions_.external_source_present(sr)) {
-      n_external_source_regions_++;
+      tmp_n_external_source_regions++;
     }
   }
+  n_external_source_regions_ = tmp_n_external_source_regions;
 }
 
 void FlatSourceDomain::convert_external_sources()

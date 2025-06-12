@@ -27,9 +27,9 @@
 namespace openmc {
 
 #ifdef DAGMC
-const bool DAGMC_ENABLED = true;
+const bool OPENMC_API DAGMC_ENABLED = true;
 #else
-const bool DAGMC_ENABLED = false;
+const bool OPENMC_API DAGMC_ENABLED = false;
 #endif
 
 #ifdef OPENMC_UWUW

@@ -71,16 +71,14 @@ Library::Library(pugi::xml_node node, const std::string& directory)
   if (!check_for_node(node, "path")) {
     fatal_error("Missing library path");
   }
-  std::string path = get_node_value(node, "path");
-
-  if (starts_with(path, "/")) {
-    path_ = path;
-  } else if (ends_with(directory, "/")) {
-    path_ = directory + path;
-  } else if (!directory.empty()) {
-    path_ = directory + "/" + path;
+  std::filesystem::path path(get_node_value(node, "path"));
+  std::filesystem::path dir(directory);
+  if (path.is_absolute()) {
+    path_ = path.string();
+  } else if (std::filesystem::is_directory(dir)) {
+    path_ = (dir / path).string();
   } else {
-    path_ = path;
+    path_ = path.string();
   }
 
   if (!file_exists(path_)) {
@@ -144,11 +142,11 @@ void read_cross_sections_xml(pugi::xml_node root)
   } else {
     settings::path_cross_sections = get_node_value(root, "cross_sections");
 
-    // If no '/' found, the file is probably in the input directory
-    auto pos = settings::path_cross_sections.rfind("/");
-    if (pos == std::string::npos && !settings::path_input.empty()) {
-      settings::path_cross_sections =
-        settings::path_input + "/" + settings::path_cross_sections;
+    // If the path is relative, it is probably in the input directory
+    std::filesystem::path p(settings::path_cross_sections);
+    if (p.is_relative() && !settings::path_input.empty()) {
+      std::filesystem::path dir(settings::path_input);
+      settings::path_cross_sections = (dir / p).string();
     }
   }
 

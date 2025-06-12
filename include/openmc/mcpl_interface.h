@@ -1,6 +1,7 @@
 #ifndef OPENMC_MCPL_INTERFACE_H
 #define OPENMC_MCPL_INTERFACE_H
 
+#include "openmc/constants.h"
 #include "openmc/particle_data.h"
 #include "openmc/span.h"
 #include "openmc/vector.h"
@@ -13,7 +14,7 @@ namespace openmc {
 // Constants
 //==============================================================================
 
-extern "C" const bool MCPL_ENABLED;
+extern "C" const bool OPENMC_API MCPL_ENABLED;
 
 //==============================================================================
 // Functions

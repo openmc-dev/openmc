@@ -1,7 +1,6 @@
 #include "openmc/plot.h"
 
 #include <algorithm>
-#define _USE_MATH_DEFINES // to make M_PI declared in Intel and MSVC compilers
 #include <cmath>
 #include <cstdio>
 #include <fstream>
@@ -1180,7 +1179,7 @@ std::pair<Position, Direction> RayTracePlot::get_pixel_ray(
   int horiz, int vert) const
 {
   // Compute field of view in radians
-  constexpr double DEGREE_TO_RADIAN = M_PI / 180.0;
+  constexpr double DEGREE_TO_RADIAN = PI / 180.0;
   double horiz_fov_radians = horizontal_field_of_view_ * DEGREE_TO_RADIAN;
   double p0 = static_cast<double>(pixels_[0]);
   double p1 = static_cast<double>(pixels_[1]);
@@ -1535,9 +1534,12 @@ void SolidRayTracePlot::create_output() const
   size_t height = pixels_[1];
   ImageData data({width, height}, not_found_);
 
+  const auto pixels_0 = pixels_[0];
+  const auto pixels_1 = pixels_[1];
+
 #pragma omp parallel for schedule(dynamic) collapse(2)
-  for (int horiz = 0; horiz < pixels_[0]; ++horiz) {
-    for (int vert = 0; vert < pixels_[1]; ++vert) {
+  for (int horiz = 0; horiz < pixels_0; ++horiz) {
+    for (int vert = 0; vert < pixels_1; ++vert) {
       // RayTracePlot implements camera ray generation
       std::pair<Position, Direction> ru = get_pixel_ray(horiz, vert);
       PhongRay ray(ru.first, ru.second, *this);

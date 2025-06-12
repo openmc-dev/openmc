@@ -1027,7 +1027,7 @@ class Model:
 
             if outline:
                 # Combine R, G, B values into a single int
-                rgb = (img * 256).astype(int)
+                rgb = img.astype(int) * 256
                 image_value = (rgb[..., 0] << 16) + \
                     (rgb[..., 1] << 8) + (rgb[..., 2])
 

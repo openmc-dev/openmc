@@ -177,8 +177,75 @@ jobs:
           cpp-coveralls -i src -i include -e src/external --exclude-pattern "/usr/*" --dump cpp_cov.json
           coveralls --merge=cpp_cov.json --service=github
 
+  win:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        python-version: ["3.11"]
+        omp: [n, y]
+
+        include:
+          - python-version: "3.11"
+            omp: n
+          - python-version: "3.11"
+            omp: y
+    name: "Windows Python ${{ matrix.python-version }} (omp=${{ matrix.omp }})"
+
+    env:
+      OMP: ${{ matrix.omp }}
+      EVENT: ${{ matrix.event }}
+      NPY_DISABLE_CPU_FEATURES: "AVX512F AVX512_SKX"
+      OPENBLAS_NUM_THREADS: 1
+      # libfabric complains about fork() as a result of using Python multiprocessing.
+      # We can work around it with RDMAV_FORK_SAFE=1 in libfabric < 1.13 and with
+      # FI_EFA_FORK_SAFE=1 in more recent versions.
+      RDMAV_FORK_SAFE: 1
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Environment Variables
+        shell: pwsh
+        run: |
+          [Environment]::SetEnvironmentVariable("OPENMC_CROSS_SECTIONS", "$Env:GITHUB_WORKSPACE\nndc_hdf5\cross_sections.xml", 'Machine')
+          [Environment]::SetEnvironmentVariable("OPENMC_ENDF_DATA", "$Env:GITHUB_WORKSPACE\endf-b-vii.1", 'Machine')
+
+      - name: Cache XS
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{github.workspace}}\nndc_hdf5
+            ${{github.workspace}}\endf-b-vii.1
+          key: ${{ runner.os }}-build-xs-cache
+
+      - name: Install
+        shell: pwsh
+        run: |
+          ${{github.workspace}}\tools\ci\gha-install.ps1
+
+      - name: Before
+        shell: pwsh
+        run: ${{github.workspace}}\tools\ci\download-xs.ps1
+
+      - name: Test
+        shell: pwsh
+        run: |
+          ctest --output-on-failure -C Release ${{ github.workspace }}\build\
+          ${{github.workspace}}\tools\ci\gha-script.ps1
+
+      - name: Setup tmate debug session
+        continue-on-error: true
+        if: ${{ contains(env.COMMIT_MESSAGE, '[gha-debug]') }}
+        uses: mxschmitt/action-tmate@v3
+        timeout-minutes: 10
+
   finish:
-    needs: main
+    needs: [win, main]
     runs-on: ubuntu-latest
     steps:
       - name: Coveralls Finished

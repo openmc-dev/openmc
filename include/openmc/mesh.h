@@ -11,6 +11,7 @@
 #include "xtensor/xtensor.hpp"
 
 #include "openmc/bounding_box.h"
+#include "openmc/constants.h" // for OPENMC_API
 #include "openmc/error.h"
 #include "openmc/memory.h" // for unique_ptr
 #include "openmc/particle.h"
@@ -50,7 +51,7 @@ enum class ElementType { UNSUPPORTED = -1, LINEAR_TET, LINEAR_HEX };
 // Global variables
 //==============================================================================
 
-extern "C" const bool LIBMESH_ENABLED;
+extern "C" const bool OPENMC_API LIBMESH_ENABLED;
 
 class Mesh;
 
@@ -578,7 +579,7 @@ private:
 
   inline int sanitize_angular_index(int idx, bool full, int N) const
   {
-    if ((idx > 0) and (idx <= N)) {
+    if ((idx > 0) && (idx <= N)) {
       return idx;
     } else if (full) {
       return (idx + N - 1) % N + 1;
@@ -640,7 +641,7 @@ private:
 
   inline int sanitize_angular_index(int idx, bool full, int N) const
   {
-    if ((idx > 0) and (idx <= N)) {
+    if ((idx > 0) && (idx <= N)) {
       return idx;
     } else if (full) {
       return (idx + N - 1) % N + 1;

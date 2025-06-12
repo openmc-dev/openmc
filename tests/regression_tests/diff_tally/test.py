@@ -109,7 +109,7 @@ class DiffTallyTestHarness(PyAPITestHarness):
         # Extract the relevant data as a CSV string.
         cols = ('d_material', 'd_nuclide', 'd_variable', 'score', 'mean',
                 'std. dev.')
-        return df.to_csv(None, columns=cols, index=False, float_format='%.7e')
+        return df.to_csv(None, columns=cols, index=False, float_format='%.7e', lineterminator='\n')
 
 
 def test_diff_tally():

@@ -284,8 +284,17 @@ extern int OPENMC_E_DATA;
 extern int OPENMC_E_PHYSICS;
 extern int OPENMC_E_WARNING;
 
+// Macro to ensure global variables are exported in Windows DLLs
+#if defined(_WIN32) && defined(OPENMC_DLL_EXPORTS)
+#define OPENMC_API __declspec(dllexport)
+#elif defined(_WIN32)
+#define OPENMC_API __declspec(dllimport)
+#else
+#define OPENMC_API
+#endif
+
 // Global variables
-extern char openmc_err_msg[256];
+extern char OPENMC_API openmc_err_msg[256];
 
 #ifdef __cplusplus
 }

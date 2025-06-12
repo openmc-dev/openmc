@@ -7,6 +7,9 @@
 
 namespace oqs {
 
+// TODO: replace with <numbers> when we go for C++20
+constexpr double PI {3.141592653589793238462643383279502884L};
+
 // pow(DBL_MAX,1.0/3.0)/1.618034;
 constexpr double CUBIC_RESCAL_FACT = 3.488062113727083e+102;
 // pow(DBL_MAX,1.0/4.0)/1.618034;
@@ -36,10 +39,10 @@ double solve_cubic_analytic_depressed_handle_inf(double b, double c)
   if (KK < 0.0) {
     double sqrtQ = std::sqrt(Q);
     double theta = std::acos((R / std::abs(Q)) / sqrtQ);
-    if (2.0 * theta < M_PI)
+    if (2.0 * theta < PI)
       return -2.0 * sqrtQ * std::cos(theta / 3.0);
     else
-      return -2.0 * sqrtQ * std::cos((theta + 2.0 * M_PI) / 3.0);
+      return -2.0 * sqrtQ * std::cos((theta + 2.0 * PI) / 3.0);
   } else {
     double A;
     if (std::abs(Q) < std::abs(R))
@@ -68,10 +71,10 @@ double solve_cubic_analytic_depressed(double b, double c)
   if (R2 < Q3) {
     double theta = std::acos(R / std::sqrt(Q3));
     double sqrtQ = -2.0 * std::sqrt(Q);
-    if (2.0 * theta < M_PI)
+    if (2.0 * theta < PI)
       return sqrtQ * std::cos(theta / 3.0);
     else
-      return sqrtQ * std::cos((theta + 2.0 * M_PI) / 3.0);
+      return sqrtQ * std::cos((theta + 2.0 * PI) / 3.0);
   } else {
     double A = -std::copysign(1.0, R) *
                std::pow(std::abs(R) + std::sqrt(R2 - Q3), 1.0 / 3.0);

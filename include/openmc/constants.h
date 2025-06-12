@@ -365,6 +365,19 @@ enum class GeometryType { CSG, DAG };
 // representations. This value represents no surface.
 constexpr int32_t SURFACE_NONE {0};
 
+//==============================================================================
+// Shared Libraries on Windows need the functions/classes/variables to be
+// exposed to be declared with this special keyword "__declspec(dllexport)".
+// We use a macro for this, so that it is only exported on Windows.
+
+#if defined(_WIN32) && defined(OPENMC_DLL_EXPORTS)
+#define OPENMC_API __declspec(dllexport)
+#elif defined(_WIN32)
+#define OPENMC_API __declspec(dllimport)
+#else
+#define OPENMC_API
+#endif
+
 } // namespace openmc
 
 #endif // OPENMC_CONSTANTS_H

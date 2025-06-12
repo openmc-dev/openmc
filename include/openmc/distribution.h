@@ -17,24 +17,13 @@
 namespace openmc {
 
 //==============================================================================
-//! Sample struct representing a sample from the distribution and its weight
-//==============================================================================
-
-struct Sample {
-  std::any val;
-  double wgt;
-
-  Sample(double v, double w) : val(v), wgt(w) {}
-};
-
-//==============================================================================
 //! Abstract class representing a univariate probability distribution
 //==============================================================================
 
 class Distribution {
 public:
   virtual ~Distribution() = default;
-  virtual Sample sample(uint64_t* seed) const = 0;
+  virtual std::pair<double, double> sample(uint64_t* seed) const = 0;
 
   //! Evaluate pdf at a point
   //! \return Value of pdf at a point
@@ -121,10 +110,8 @@ public:
 
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
-  //! \return A Sample where:
-  //!         - val stores a sampled value, accessible by std::any_cast<double>
-  //!         - wgt is a double representing the sample weight
-  Sample sample(uint64_t* seed) const override;
+  //! \return (sampled value, sample weight)
+  std::pair<double, double> sample(uint64_t* seed) const override;
 
   //! Evaluate probability density at a point
   //! \param x Point to evaluate f(x)
@@ -159,10 +146,8 @@ public:
 
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
-  //! \return A Sample where:
-  //!         - val stores a sampled value, accessible by std::any_cast<double>
-  //!         - wgt is a double representing the sample weight
-  Sample sample(uint64_t* seed) const override;
+  //! \return (sampled value, sample weight)
+  std::pair<double, double> sample(uint64_t* seed) const override;
 
   //! Evaluate probability density at a point
   //! \param x Point to evaluate f(x)
@@ -190,10 +175,8 @@ public:
 
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
-  //! \return A Sample where:
-  //!         - val stores a sampled value, accessible by std::any_cast<double>
-  //!         - wgt is a double representing the sample weight
-  Sample sample(uint64_t* seed) const override;
+  //! \return (sampled value, sample weight)
+  std::pair<double, double> sample(uint64_t* seed) const override;
 
   //! Evaluate probability density at a point
   //! \param x Point to evaluate f(x)
@@ -222,10 +205,8 @@ public:
 
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
-  //! \return A Sample where:
-  //!         - val stores a sampled value, accessible by std::any_cast<double>
-  //!         - wgt is a double representing the sample weight
-  Sample sample(uint64_t* seed) const override;
+  //! \return (sampled value, sample weight)
+  std::pair<double, double> sample(uint64_t* seed) const override;
 
   //! Evaluate probability density at a point
   //! \param x Point to evaluate f(x)
@@ -249,10 +230,8 @@ public:
 
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
-  //! \return A Sample where:
-  //!         - val stores a sampled value, accessible by std::any_cast<double>
-  //!         - wgt is a double representing the sample weight
-  Sample sample(uint64_t* seed) const override;
+  //! \return (sampled value, sample weight)
+  std::pair<double, double> sample(uint64_t* seed) const override;
 
   //! Evaluate probability density at a point
   //! \param x Point to evaluate f(x)
@@ -280,10 +259,8 @@ public:
 
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
-  //! \return A Sample where:
-  //!         - val stores a sampled value, accessible by std::any_cast<double>
-  //!         - wgt is a double representing the sample weight
-  Sample sample(uint64_t* seed) const override;
+  //! \return (sampled value, sample weight)
+  std::pair<double, double> sample(uint64_t* seed) const override;
 
   //! Evaluate probability density at a point
   //! \param x Point to evaluate f(x)
@@ -310,10 +287,8 @@ public:
 
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
-  //! \return A Sample where:
-  //!         - val stores a sampled value, accessible by std::any_cast<double>
-  //!         - wgt is a double representing the sample weight
-  Sample sample(uint64_t* seed) const override;
+  //! \return (sampled value, sample weight)
+  std::pair<double, double> sample(uint64_t* seed) const override;
 
   //! Evaluate probability density at a point
   //! \param x Point to evaluate f(x)
@@ -356,7 +331,7 @@ public:
   //! \return A Sample where:
   //!         - val stores a sampled value, accessible by std::any_cast<double>
   //!         - wgt is a double representing the sample weight
-  Sample sample(uint64_t* seed) const override;
+  std::pair<double, double> sample(uint64_t* seed) const override;
   
   //! Evaluate probability density at a point
   //! \param x Point to evaluate f(x)
@@ -379,10 +354,8 @@ public:
 
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
-  //! \return A Sample where:
-  //!         - val stores a sampled value, accessible by std::any_cast<double>
-  //!         - wgt is a double representing the sample weight
-  Sample sample(uint64_t* seed) const override;
+  //! \return (sampled value, sample weight)
+  std::pair<double, double> sample(uint64_t* seed) const override;
 
   double integral() const override { return integral_; }
 

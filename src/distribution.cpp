@@ -170,10 +170,10 @@ Discrete::Discrete(const double* x, const double* p, size_t n) : di_({p, n})
   x_.assign(x, x + n);
 }
 
-Sample Discrete::sample(uint64_t* seed) const
+std::pair<double, double> Discrete::sample(uint64_t* seed) const
 {
   size_t sample_index = di_.sample(seed);
-  return Sample(x_[sample_index],di_.weight()[sample_index]);
+  return { x_[sample_index], di_.weight()[sample_index] };
 }
 
 double Discrete::evaluate(double x) const
@@ -216,17 +216,14 @@ Uniform::Uniform(pugi::xml_node node)
   b_ = params.at(1);
 }
 
-Sample Uniform::sample(uint64_t* seed) const
+std::pair<double, double> Uniform::sample(uint64_t* seed) const
 {
-  Sample s;
-
   if (bias()) {
-    s = bias()->sample(seed);
-    s.wgt =  this->evaluate(s.val) / bias()->evaluate(s.val);
+    auto [val, wgt] = bias()->sample(seed);
+    return { val, this->evaluate(val) / bias()->evaluate(val) };
   } else {
-    s = Sample(a_ + prn(seed) * (b_ - a_), 1.0);
+    return { a_ + prn(seed) * (b_ - a_), 1.0 };
   }
-  return s;
 }
 
 double Uniform::evaluate(double x) const
@@ -274,17 +271,14 @@ double PowerLaw::evaluate(double x) const
   }
 }
 
-Sample PowerLaw::sample(uint64_t* seed) const
+std::pair<double, double> PowerLaw::sample(uint64_t* seed) const
 {
-  Sample s;
-
   if (bias()) {
-    s = bias()->sample(seed);
-    s.wgt =  this->evaluate(s.val) / bias()->evaluate(s.val);
+    auto [val, wgt] = bias()->sample(seed);
+    return { val, this->evaluate(val) / bias()->evaluate(val) };
   } else {
-    s = Sample(std::pow(offset_ + prn(seed) * span_, ninv_), 1.0);
+    return { std::pow(offset_ + prn(seed) * span_, ninv_), 1.0 };
   }
-  return s;
 }
 
 //==============================================================================
@@ -296,17 +290,14 @@ Maxwell::Maxwell(pugi::xml_node node)
   theta_ = std::stod(get_node_value(node, "parameters"));
 }
 
-double Maxwell::sample(uint64_t* seed) const
+std::pair<double, double> Maxwell::sample(uint64_t* seed) const
 {
-  Sample s;
-
   if (bias()) {
-    s = bias()->sample(seed);
-    s.wgt =  this->evaluate(s.val) / bias()->evaluate(s.val);
+    auto [val, wgt] = bias()->sample(seed);
+    return { val, this->evaluate(val) / bias()->evaluate(val) };
   } else {
-    s = Sample(maxwell_spectrum(theta_, seed), 1.0);
+    return { maxwell_spectrum(theta_, seed), 1.0 };
   }
-  return s;
 }
 
 double Maxwell::evaluate(double x) const
@@ -330,17 +321,14 @@ Watt::Watt(pugi::xml_node node)
   b_ = params.at(1);
 }
 
-double Watt::sample(uint64_t* seed) const
+std::pair<double, double> Watt::sample(uint64_t* seed) const
 {
-  Sample s;
-
   if (bias()) {
-    s = bias()->sample(seed);
-    s.wgt =  this->evaluate(s.val) / bias()->evaluate(s.val);
+    auto [val, wgt] = bias()->sample(seed);
+    return { val, this->evaluate(val) / bias()->evaluate(val) };
   } else {
-    s = Sample(watt_spectrum(a_, b_, seed), 1.0);
+    return { watt_spectrum(a_, b_, seed), 1.0 };
   }
-  return s; 
 }
 
 double Watt::evaluate(double x) const
@@ -364,17 +352,14 @@ Normal::Normal(pugi::xml_node node)
   std_dev_ = params.at(1);
 }
 
-double Normal::sample(uint64_t* seed) const
+std::pair<double, double> Normal::sample(uint64_t* seed) const
 {
-  Sample s;
-
   if (bias()) {
-    s = bias()->sample(seed);
-    s.wgt =  this->evaluate(s.val) / bias()->evaluate(s.val);
+    auto [val, wgt] = bias()->sample(seed);
+    return { val, this->evaluate(val) / bias()->evaluate(val) };
   } else {
-    s = Sample(normal_variate(mean_value_, std_dev_, seed), 1.0);
+    return { normal_variate(mean_value_, std_dev_, seed), 1.0 };
   }
-  return s;
 }
 
 double Normal::evaluate(double x) const
@@ -462,13 +447,11 @@ void Tabular::init(
   }
 }
 
-Sample Tabular::sample(uint64_t* seed) const
+std::pair<double, double> Tabular::sample(uint64_t* seed) const
 {
-  Sample s;
-
   if (bias()) {
-    s = bias()->sample(seed);
-    s.wgt =  this->evaluate(s.val) / bias()->evaluate(s.val);
+    auto [val, wgt] = bias()->sample(seed);
+    return { val, this->evaluate(val) / bias()->evaluate(val) };
   } else {
     // Sample value of CDF
     double c = prn(seed);
@@ -490,9 +473,9 @@ Sample Tabular::sample(uint64_t* seed) const
     if (interp_ == Interpolation::histogram) {
       // Histogram interpolation
       if (p_i > 0.0) {
-        s = Sample((x_i + (c - c_i) / p_i), 1.0);
+        return { (x_i + (c - c_i) / p_i), 1.0 };
       } else {
-        s = Sample(x_i, 1.0);
+        return { x_i, 1.0 };
       }
     } else {
       // Linear-linear interpolation
@@ -501,15 +484,14 @@ Sample Tabular::sample(uint64_t* seed) const
 
       double m = (p_i1 - p_i) / (x_i1 - x_i);
       if (m == 0.0) {
-        s = Sample((x_i + (c - c_i) / p_i), 1.0);
+        return { (x_i + (c - c_i) / p_i), 1.0 };
       } else {
-        s = Sample((x_i +
+        return { (x_i +
                    (std::sqrt(std::max(0.0, p_i * p_i + 2 * m * (c - c_i)))
-                   - p_i) / m), 1.0);
+                   - p_i) / m), 1.0 };
       }
     }
   }
-  return s;
 }
 
 double Tabular::evaluate(double x) const
@@ -544,13 +526,11 @@ double Tabular::evaluate(double x) const
 // Equiprobable implementation
 //==============================================================================
 
-Sample Equiprobable::sample(uint64_t* seed) const
+std::pair<double, double> Equiprobable::sample(uint64_t* seed) const
 {
-  Sample s;
-
   if (bias()) {
-    s = bias()->sample(seed);
-    s.wgt =  this->evaluate(s.val) / bias()->evaluate(s.val);
+    auto [val, wgt] = bias()->sample(seed);
+    return { val, this->evaluate(val) / bias()->evaluate(val) };
   } else {
     std::size_t n = x_.size();
 
@@ -559,9 +539,8 @@ Sample Equiprobable::sample(uint64_t* seed) const
 
     double xl = x_[i];
     double xr = x_[i + i];
-    s = Sample((xl + ((n - 1) * r - i) * (xr - xl)), 1.0);
+    return { (xl + ((n - 1) * r - i) * (xr - xl)), 1.0 };
   }
-  return s;
 }
 
 double Equiprobable::evaluate(double x) const
@@ -609,7 +588,7 @@ Mixture::Mixture(pugi::xml_node node)
   }
 }
 
-Sample Mixture::sample(uint64_t* seed) const
+std::pair<double, double> Mixture::sample(uint64_t* seed) const
 {
   // Sample value of CDF
   const double p = prn(seed);
@@ -678,6 +657,11 @@ UPtrDist distribution_from_xml(pugi::xml_node node)
         "Discrete distributions may only be biased by another Discrete.");
     } else if (type == "discrete" && bias_type == "discrete") {
       dist->set_bias_discrete(bias_node)
+    } else if (bias_type == "discrete") {
+      openmc::fatal_error(
+        "Only Discrete distributions may be biased by a Discrete "
+        "distribution. Please ensure bias distribution shares the support "
+        "of the unbiased distribution.");
     } else {
       UPtrDist bias = distribution_from_xml(bias_node);
       dist->set_bias(std::move(bias));

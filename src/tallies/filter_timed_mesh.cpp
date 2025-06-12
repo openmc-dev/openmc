@@ -82,8 +82,8 @@ void TimedMeshFilter::get_all_bins(
   const Particle& p, TallyEstimator estimator, FilterMatch& match) const
 {
   // Get the start/end time of the particle for this track
-  const auto t_start = p.time_last();
-  const auto t_end = p.time();
+  const double t_start = p.time_last();
+  const double t_end = p.time();
 
   // If time interval is entirely out of time bin range, exit
   if (t_end < time_grid_.front() || t_start >= time_grid_.back())
@@ -93,7 +93,7 @@ void TimedMeshFilter::get_all_bins(
   Position last_r = p.r_last();
   Position r = p.r();
   Position u = p.u();
-  const auto speed = p.speed();
+  const double speed = p.speed();
 
   // apply translation if present
   if (translated_) {
@@ -110,15 +110,15 @@ void TimedMeshFilter::get_all_bins(
     if (t_end < time_grid_.back())
       return;
 
-    auto time_bin =
+    int time_bin =
       lower_bound_index(time_grid_.begin(), time_grid_.end(), t_end);
-    auto mesh_bin = model::meshes[mesh_]->get_bin(r);
+    int mesh_bin = model::meshes[mesh_]->get_bin(r);
 
     // Inside the mesh?
     if (mesh_bin < 0)
       return;
 
-    auto bin = time_bin * mesh_n_bins_ + mesh_bin;
+    int bin = time_bin * mesh_n_bins_ + mesh_bin;
     match.bins_.push_back(bin);
     match.weights_.push_back(1.0);
 
@@ -129,11 +129,8 @@ void TimedMeshFilter::get_all_bins(
     // score accordingly.
 
     // Determine first time bin containing a portion of time interval
-    auto i_time_bin =
+    int i_time_bin =
       lower_bound_index(time_grid_.begin(), time_grid_.end(), t_start);
-
-    // std::cout<<last_r.x<<"  "<<r.x<<"  "<<u.x<<"  "<<t_start<<"  "<<t_end<<"
-    // "<<speed<<"\n";
 
     // If time interval is zero, add a match corresponding to the starting time
     if (t_end == t_start) {
@@ -141,17 +138,6 @@ void TimedMeshFilter::get_all_bins(
         last_r, r, u, match.bins_, match.weights_);
       // Offset the bin location accordingly
       match.bins_.back() += i_time_bin * mesh_n_bins_;
-
-      /*
-      std::cout<<"end = start\n";
-      double sum {0.0};
-      for (int i = 0; i < match.bins_.size(); i++) {
-        std::cout<<"    "<<match.bins_[i]<<"  "<<match.weights_[i]<<"\n";
-        sum += match.weights_[i];
-      }
-      std::cout<<sum<<"\n";
-      */
-
       return;
     }
 
@@ -170,13 +156,13 @@ void TimedMeshFilter::get_all_bins(
       const Position r_end = r_start + u * speed * dt;
 
       // Mesh sweep in this time interval
-      const auto n_match_old = match.bins_.size();
+      const int n_match_old = match.bins_.size();
       model::meshes[mesh_]->bins_crossed(
         r_start, r_end, u, match.bins_, match.weights_);
-      const auto n_match = match.bins_.size() - n_match_old;
+      const int n_match = match.bins_.size() - n_match_old;
 
       // Update the newly-added bins and weights
-      const auto offset = i_time_bin * mesh_n_bins_;
+      const int offset = i_time_bin * mesh_n_bins_;
       for (int i = 0; i < n_match; i++) {
         match.bins_[match.bins_.size() - i - 1] += offset;
         match.weights_[match.weights_.size() - i - 1] *= fraction;
@@ -185,15 +171,6 @@ void TimedMeshFilter::get_all_bins(
       if (t_end < time_grid_[i_time_bin + 1])
         break;
     }
-
-    /*
-    double sum {0.0};
-    for (int i = 0; i < match.bins_.size(); i++) {
-      std::cout<<"    "<<match.bins_[i]<<"  "<<match.weights_[i]<<"\n";
-      sum += match.weights_[i];
-    }
-    std::cout<<sum<<"\n";
-    */
   }
 }
 

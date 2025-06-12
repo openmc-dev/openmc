@@ -16,7 +16,7 @@ import openmc
 import openmc.data
 import openmc.checkvalue as cv
 from ._xml import clean_indentation, reorder_attributes
-from .mixin import IDManagerMixin, update_auto_ids
+from .mixin import IDManagerMixin
 from .utility_funcs import input_path
 from . import waste
 from openmc.checkvalue import PathLike
@@ -1894,9 +1894,6 @@ class Materials(cv.CheckedList):
         xs = elem.find('cross_sections')
         if xs is not None:
             materials.cross_sections = xs.text
-
-        # Update auto ID counters to prevent conflicts with loaded materials
-        update_auto_ids()
 
         return materials
 

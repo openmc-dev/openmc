@@ -11,7 +11,6 @@ import openmc
 import openmc._xml as xml
 from .plots import add_plot_params
 from .checkvalue import check_type, check_less_than, check_greater_than, PathLike
-from .mixin import update_auto_ids
 
 
 class Geometry:
@@ -253,9 +252,6 @@ class Geometry:
             c = openmc.Cell.from_xml_element(e, surfaces, mats, get_universe)
             if c.fill_type in ('universe', 'lattice'):
                 child_of[c.fill].append(c)
-
-        # Update auto ID counters to prevent conflicts with all loaded objects
-        update_auto_ids()
 
         # Determine which universe is the root by finding one which is not a
         # child of any other object

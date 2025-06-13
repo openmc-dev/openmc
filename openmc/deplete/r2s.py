@@ -149,13 +149,21 @@ class R2SManager:
     def __init__(self, model: openmc.Model, mesh: openmc.MeshBase):
         self.model = model
         self.mesh = mesh
+        # TODO: Think about directory structure and file naming
+        # TODO: Option to select cell-based or mesh-basedk
+        # TODO: Photon settings
+        # TODO: Think about MPI
+        # TODO: Voiding/changing materials between neutron/photon steps
 
     def run(self):
         self.step1_neutron_transport()
         self.step2_activation()
         self.step3_decay_photon_source()
 
-    def step1_neutron_transport(self, mat_vol_kwargs, micro_kwargs):
+    def step1_neutron_transport(self, output_dir="neutron_transport", mat_vol_kwargs=None, micro_kwargs=None):
+        # TODO: Run this in a "neutron_transport" subdirectory?
+        # TODO: Energy discretization
+
         # Compute material volume fractions on the mesh
         self.mmv = self.mesh.material_volumes(**mat_vol_kwargs)
 

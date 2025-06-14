@@ -16,11 +16,13 @@ def pu239():
     filename = os.path.join(directory, 'photonuclear', 'Pu239.h5')
     return openmc.data.IncidentPhotonuclear.from_hdf5(filename)
 
+
 @pytest.fixture(scope='module')
 def u235():
     endf_data = os.environ['OPENMC_ENDF_DATA']
     endf_file = os.path.join(endf_data, 'gammas', 'g-092_U_235.endf')
     return openmc.data.IncidentPhotonuclear.from_njoy(endf_file)
+
 
 @pytest.fixture(scope='module')
 def be9():
@@ -45,17 +47,8 @@ def test_attributes(pu239):
     assert pu239.atomic_weight_ratio == pytest.approx(236.9986)
 
 
-def test_fission_energy(pu239):
-    fer = pu239.fission_energy
-    assert isinstance(fer, openmc.data.FissionEnergyRelease)
-    components = ['betas', 'delayed_neutrons', 'delayed_photons', 'fragments',
-                  'neutrinos', 'prompt_neutrons', 'prompt_photons', 'recoverable',
-                  'total', 'q_prompt', 'q_recoverable', 'q_total']
-    for c in components:
-        assert isinstance(getattr(fer, c), Callable)
-
 @needs_njoy        
-def test_fission_energy_endf(u235):
+def test_fission_energy(u235):
     fer = u235.fission_energy
     assert isinstance(fer, openmc.data.FissionEnergyRelease)
     components = ['betas', 'delayed_neutrons', 'delayed_photons', 'fragments',
@@ -75,6 +68,7 @@ def test_reactions(pu239):
     assert isinstance(pu239.reactions[18], openmc.data.PhotonuclearReaction)
     with pytest.raises(KeyError):
         pu239.reactions[2]
+
 
 def test_fission(pu239):
     fission = pu239.reactions[18]

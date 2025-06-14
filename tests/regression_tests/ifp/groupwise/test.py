@@ -32,6 +32,7 @@ def ifp_model():
     space = openmc.stats.Box(*cell.bounding_box)
     model.settings.source = openmc.IndependentSource(
         space=space, constraints={'fissionable': True})
+    model.add_ifp_kinetics_tallies(num_groups = 6)
     return model
 
 def test_iterated_fission_probability(ifp_model):

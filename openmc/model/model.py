@@ -81,9 +81,6 @@ class Model:
         self.tallies = openmc.Tallies() if tallies is None else tallies
         self.plots = openmc.Plots() if plots is None else plots
 
-        if self.settings._ifp_n_generation is not None:
-            self._init_ifp()
-
     @property
     def geometry(self) -> openmc.Geometry | None:
         return self._geometry
@@ -200,8 +197,14 @@ class Model:
             result[mat.name].add(mat)
         return result
 
-    def _init_ifp(self) -> None:
-        """Automate tally creation for calculating Iterated Fission Probability kinetics parameters"""
+    def add_ifp_kinetics_tallies(self, num_groups: int = 0):
+        """Add necessary tallies for calculating kinetics parameters using Iterated Fission Probability 
+
+        Parameters
+        ----------
+        num_groups : int
+            Number of precursor groups to filter the delayed neutron fraction.
+        """
         existing_tallies = {'time-num':False, 'beta-num':False, 'ifp-denom':False}
                 
         dg_filter = None
@@ -223,10 +226,10 @@ class Model:
         if not existing_tallies['beta-num']:
             beta_tally = openmc.Tally()
             beta_tally.scores = ['ifp-beta-numerator']
-            if dg_filter is None:
-                beta_tally.filters = [openmc.DelayedGroupFilter(list(range(1,7)))]
-            else:
+            if dg_filter is not None:
                 beta_tally.filters = [dg_filter]
+            elif num_groups > 1:
+                beta_tally.filters = [openmc.DelayedGroupFilter(list(range(1, num_groups + 1)))]
             self._tallies.append(beta_tally)
         if not existing_tallies['ifp-denom']:
             denom_tally = openmc.Tally()

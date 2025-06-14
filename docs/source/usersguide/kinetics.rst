@@ -68,9 +68,10 @@ Obtaining kinetics parameters
 -----------------------------
 
 The ``Model`` class can be used to automatically generate all IFP tallies using the Python API
-with ``settings.ifp_n_generation`` greater than 0::
+with ``settings.ifp_n_generation`` greater than 0 and the ``Model.add_ifp_kinetics_tallies`` method::
 
-    model = openmc.model.Model(settings = settings)
+    model = openmc.model.Model(geometry = geometry, materials = materials, settings = settings)
+    model.add_ifp_kinetics_tallies(num_groups = 6) #Add 6 precursor groups
     model.export_to_xml()
 
 Additionally, each of the tallies can be manually defined individually with group-wise or total 

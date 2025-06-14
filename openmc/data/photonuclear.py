@@ -565,7 +565,10 @@ class IncidentPhotonuclear(EqualityMixin):
         atomic_weight_ratio = ev.target["mass"]
 
         element = ATOMIC_SYMBOL[atomic_number]
-        name = "{}{}".format(element, mass_number)
+        if metastable > 0:
+            name = f'{element}{mass_number}_m{metastable}'
+        else:
+            name = f'{element}{mass_number}'
 
         data = cls(name, atomic_number, mass_number, metastable, atomic_weight_ratio)
 

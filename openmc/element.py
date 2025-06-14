@@ -142,7 +142,9 @@ class Element(str):
             library_nuclides = set()
             tree = ET.parse(cross_sections)
             root = tree.getroot()
-            for child in root.findall("library[not(@type = 'photonuclear')]"):
+            for child in root.findall('library'):
+                if child.attrib['type'] == 'photonuclear':
+                    continue
                 nuclide = child.attrib['materials']
                 if re.match(r'{}\d+'.format(self), nuclide):
                     library_nuclides.add(nuclide)

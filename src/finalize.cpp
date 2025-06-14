@@ -119,6 +119,7 @@ int openmc_finalize()
   settings::run_CE = true;
   settings::run_mode = RunMode::UNSET;
   settings::source_latest = false;
+  settings::source_rejection_fraction = 0.05;
   settings::source_separate = false;
   settings::source_write = true;
   settings::ssw_cell_id = C_NONE;

@@ -1588,7 +1588,6 @@ class Model:
                       "if a material has a k-infinity > 1.0.")
         mgxs_sets = []
         for material in self.materials:
-            openmc.reset_auto_ids()
             model = openmc.Model()
 
             # Set materials on the model
@@ -1785,7 +1784,6 @@ class Model:
         directory : str
             Directory to run the simulation in, so as to contain XML files.
         """
-        openmc.reset_auto_ids()
         model = openmc.Model()
         model.materials = self.materials
 
@@ -1897,7 +1895,6 @@ class Model:
         directory : PathLike
             Directory to run the simulation in, so as to contain XML files.
         """
-        openmc.reset_auto_ids()
         model = copy.deepcopy(self)
         model.tallies = openmc.Tallies()
 
@@ -2009,7 +2006,7 @@ class Model:
             # Make sure all materials have a name, and that the name is a valid HDF5
             # dataset name
             for material in self.materials:
-                if material.name is None:
+                if not material.name or not material.name.strip():
                     material.name = f"material {material.id}"
                 material.name = re.sub(r'[^a-zA-Z0-9]', '_', material.name)
 

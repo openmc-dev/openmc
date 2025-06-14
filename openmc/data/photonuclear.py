@@ -460,8 +460,13 @@ class IncidentPhotonuclear(EqualityMixin):
         if mt in self.reactions:
             return self.reactions[mt]
         else:
-            raise KeyError("No reaction with MT={}.".format(mt))
-
+            # Try to create a redundant cross section
+            mts = self.get_reaction_components(mt)
+            if len(mts) > 0:
+                return self._get_redundant_reaction(mt, mts)
+            else:
+                raise KeyError(f'No reaction with MT={mt}.')
+    
     def __repr__(self):
         return "<IncidentPhotonuclear: {}>".format(self.name)
 

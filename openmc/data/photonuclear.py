@@ -769,7 +769,6 @@ class IncidentPhotonuclear(EqualityMixin):
                 )
 
             group = list(h5file.values())[0]
-            h5file.close()
 
         name = group.name[1:]
         atomic_number = group.attrs["Z"]
@@ -794,6 +793,10 @@ class IncidentPhotonuclear(EqualityMixin):
             fer_group = group['fission_energy_release']
             data.fission_energy = FissionEnergyRelease.from_hdf5(fer_group)
 
+        # Close h5file when done if was opened
+        if not isinstance(group_or_filename, h5py.Group):
+            h5file.close()
+            
         return data
 
     @classmethod

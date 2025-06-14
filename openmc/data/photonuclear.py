@@ -329,6 +329,8 @@ class PhotonuclearReaction(EqualityMixin):
                     case _:
                         #TODO: support more product particles
                         # for now skip particle if it is not a neutron or photon
+                        warn(f"Unsupported secondary particle type in {ace.name} for MT={mt}. "
+                            "This product will be skipped.")
                         continue
                         
                 # Determine reference frame        
@@ -759,6 +761,7 @@ class IncidentPhotonuclear(EqualityMixin):
                 )
 
             group = list(h5file.values())[0]
+            h5file.close()
 
         name = group.name[1:]
         atomic_number = group.attrs["Z"]

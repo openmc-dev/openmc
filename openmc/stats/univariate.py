@@ -830,6 +830,36 @@ class Normal(Univariate):
         params = get_text(elem, 'parameters').split()
         return cls(*map(float, params))
 
+    @classmethod
+    def merge(
+        cls,
+        dists: Sequence[Normal],
+        probs: Sequence[int]
+    ):
+        """Merge multiple normal distributions into a single distribution
+
+        Parameters
+        ----------
+        dists : iterable of openmc.stats.Normal
+            Normal distributions to combine
+        probs : iterable of float
+            Probability of each distribution
+
+        Returns
+        -------
+        openmc.stats.Normal
+            Combined normal distribution
+
+        """
+        if len(dists) != len(probs):
+            raise ValueError("Number of distributions and probabilities must match.")
+        means = np.array([d.mean_value for d in dists])
+        stds = np.array([d.std_dev for d in dists])
+        probs = np.asarray(probs)
+        combined_mean = np.dot(probs,means)
+        combined_std = np.sqrt(np.dot(probs**2,stds**2))
+        return cls(combined_mean, combined_std)
+
 
 def muir(e0: float, m_rat: float, kt: float):
     """Generate a Muir energy spectrum

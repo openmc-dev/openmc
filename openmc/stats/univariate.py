@@ -249,7 +249,7 @@ class Discrete(Univariate):
     def merge(
         cls,
         dists: Sequence[Discrete],
-        probs: Sequence[int]
+        probs: Sequence[float]
     ):
         """Merge multiple discrete distributions into a single distribution
 
@@ -834,7 +834,7 @@ class Normal(Univariate):
     def merge(
         cls,
         dists: Sequence[Normal],
-        probs: Sequence[int]
+        probs: Sequence[float]
     ):
         """Merge multiple normal distributions into a single distribution
 
@@ -1357,22 +1357,22 @@ class Mixture(Univariate):
     @classmethod
     def merge(
         cls,
-        dists: Sequence[Mixture],
-        probs: Sequence[int]
+        dists: Sequence[Univariate],
+        probs: Sequence[float]
     ):
-        """Merge multiple mixture distributions into a single mixture distribution
+        """Merge multiple distributions into a single distribution
 
         Parameters
         ----------
-        dists : iterable of openmc.stats.Mixture
-            Mixture distributions to combine
+        dists : iterable of openmc.stats.Univariate
+            Univariate distributions to combine
         probs : iterable of float
             Probability of each distribution
 
         Returns
         -------
-        openmc.stats.Mixture
-            Combined Mixture distribution
+        openmc.stats.Univariate
+            Combined distribution
 
         """
         if len(dists) != len(probs):
@@ -1381,8 +1381,12 @@ class Mixture(Univariate):
         discrete = [[],[]]
         normal = [[],[]]
         others = [[],[]]
-        for p,m in zip(probs,dists):
-            for prob,dist in zip(m.probability,m.distribution):
+        for p,d in zip(probs,dists):
+            if isinstance(d, Mixture):
+                iterator = zip(m.probability,m.distribution)
+            else:
+                iterator = [(p,d)]
+            for prob,dist in iterator:
                 if isinstance(dist,Discrete):
                     discrete[0].append(dist)
                     discrete[1].append(p*prob)  
@@ -1402,8 +1406,7 @@ class Mixture(Univariate):
             return others[0][0]
         else:
             return cls(others[1], others[0])
-                
-
+    
     def integral(self):
         """Return integral of the distribution
 
@@ -1501,32 +1504,4 @@ def combine_distributions(
         Probability (or intensity) of each distribution
 
     """
-    # Get copy of distribution list so as not to modify the argument
-    dist_list = deepcopy(dists)
-
-    # Get list of discrete/continuous distribution indices
-    discrete_index = [i for i, d in enumerate(dist_list) if isinstance(d, Discrete)]
-    cont_index = [i for i, d in enumerate(dist_list) if isinstance(d, Tabular)]
-
-    # Apply probabilites to continuous distributions
-    for i in cont_index:
-        dist = dist_list[i]
-        dist._p *= probs[i]
-
-    if discrete_index:
-        # Create combined discrete distribution
-        dist_discrete = [dist_list[i] for i in discrete_index]
-        discrete_probs = [probs[i] for i in discrete_index]
-        combined_dist = Discrete.merge(dist_discrete, discrete_probs)
-
-        # Replace multiple discrete distributions with merged
-        for idx in reversed(discrete_index):
-            dist_list.pop(idx)
-        dist_list.append(combined_dist)
-
-    # Combine discrete and continuous if present
-    if len(dist_list) > 1:
-        probs = [1.0]*len(dist_list)
-        dist_list[:] = [Mixture(probs, dist_list.copy())]
-
-    return dist_list[0]
+    return Mixture.merge(dists, probs)

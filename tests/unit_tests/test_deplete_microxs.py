@@ -129,6 +129,8 @@ def test_get_microxs_from_multigroup():
     mat_ni60.depletable = True
     mat_ni60.temperature = 293.6
 
+    mg_flux = np.array([0.5e11] * 42)
+
     chain = Chain.from_xml(
         Path(__file__).parents[1] / "chain_ni.xml"
     )

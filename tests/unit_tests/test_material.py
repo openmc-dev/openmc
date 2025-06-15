@@ -716,12 +716,11 @@ def test_material_deplete():
     from openmc.deplete import Chain
 
     pristine_material = openmc.Material()
-    pristine_material.add_nuclide("Ni58", 0.95)
+    pristine_material.add_nuclide("Ni58", 1.0)
     pristine_material.set_density("g/cm3", 7.87)
     pristine_material.depletable = True
     pristine_material.temperature = 293.6
     pristine_material.volume = 1.
-
 
     mg_flux = [0.5e11] * 42
 
@@ -731,7 +730,7 @@ def test_material_deplete():
 
     depleted_material = pristine_material.deplete(
         multigroup_flux=mg_flux,
-        energy_group_structures="VITAMIN-J-42",
+        energy_group_structure="VITAMIN-J-42",
         timesteps=[10,10],
         source_rates=[1e19, 0.0],
         timestep_units='s',

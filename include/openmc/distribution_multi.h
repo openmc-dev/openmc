@@ -46,6 +46,12 @@ public:
   //! \return (sampled Direction, sample weight)
   std::pair<Direction, double> sample(uint64_t* seed) const override;
 
+  //! Sample a direction and return evaluation of the PDF for biased sampling.
+  //! Note that bias distributions are intended to return unit-weight samples.
+  //! \param seed Pseudorandom number seed points
+  //! \return (sampled Direction, value of the PDF at this Direction)
+  std::pair<Direction,double> sample_as_bias(uint64_t* seed) const;
+
   // Observing pointers
   Distribution* mu() const { return mu_.get(); }
   Distribution* phi() const { return phi_.get(); }
@@ -64,11 +70,23 @@ Direction isotropic_direction(uint64_t* seed);
 class Isotropic : public UnitSphereDistribution {
 public:
   Isotropic() {};
+  explicit Isotropic(pugi::xml_node node);
 
   //! Sample a direction from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return (sampled Direction, sample weight)
   std::pair<Direction, double> sample(uint64_t* seed) const override;
+
+  // Set or get bias distribution
+  void set_bias(std::unique_ptr<PolarAzimuthal> bias) {
+    bias_ = std::move(bias);
+  }
+
+  const PolarAzimuthal* bias() const { return bias_.get(); }
+
+protected:
+  // Biasing distribution
+  unique_ptr<PolarAzimuthal> bias_;
 };
 
 //==============================================================================

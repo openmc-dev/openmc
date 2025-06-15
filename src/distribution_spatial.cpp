@@ -1,8 +1,6 @@
 #include "openmc/distribution_spatial.h"
 
-#define _USE_MATH_DEFINES // to make M_PI declared in Intel and MSVC compilers
-#include <cmath>          // for M_PI
-
+#include "openmc/constants.h"
 #include "openmc/error.h"
 #include "openmc/mesh.h"
 #include "openmc/random_lcg.h"
@@ -390,11 +388,11 @@ SpatialBall::SpatialBall(pugi::xml_node node)
 Position SpatialBall::sample(uint64_t* seed) const
 {
   double u = 2.0 * prn(seed) - 1.0;
-  double phi = 2 * M_PI * prn(seed);
-  double r = std::cbrt(prn(seed));
+  double phi = 2 * PI * prn(seed);
+  double r = radius_ * std::cbrt(prn(seed));
   Position xi {std::cos(phi) * std::sqrt(1 - u * u),
     std::sin(phi) * std::sqrt(1 - u * u), u};
-  return origin_ + xi * (radius_ * r);
+  return origin_ + xi * r;
 }
 
 //==============================================================================

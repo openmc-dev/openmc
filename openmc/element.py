@@ -186,6 +186,7 @@ class Element(str):
                         abundances['O16'] += NATURAL_ABUNDANCE[nuclide]
                     elif nuclide == 'Ta180_m1':
                         if 'Ta180' in library_nuclides:
+                            abundances.setdefault('Ta180', 0.0)
                             abundances['Ta180'] += NATURAL_ABUNDANCE[nuclide]
                         elif 'Ta181' in mutual_nuclides:
                             abundances['Ta181'] += NATURAL_ABUNDANCE[nuclide]

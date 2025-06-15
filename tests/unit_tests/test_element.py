@@ -47,7 +47,7 @@ def test_expand_no_isotopes():
 def test_expand_ta():
     ref = {'Ta180': 0.0001201, 'Ta181': 0.9998799}
     element = openmc.Element('Ta')
-    for isotope in elememt.expand(100.0, 'ao'):
+    for isotope in element.expand(100.0, 'ao'):
         assert isotope[1] == approx(ref[isotope[0]])
     
 

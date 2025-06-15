@@ -1,8 +1,10 @@
 #include "openmc/distribution_spatial.h"
 
+#define _USE_MATH_DEFINES // to make M_PI declared in Intel and MSVC compilers 
+#include <cmath> // for M_PI
+
 #include "openmc/error.h"
 #include "openmc/mesh.h"
-#define _USE_MATH_DEFINES // to make M_PI declared in Intel and MSVC compilers 
 #include "openmc/random_lcg.h"
 #include "openmc/search.h"
 #include "openmc/xml_interface.h"

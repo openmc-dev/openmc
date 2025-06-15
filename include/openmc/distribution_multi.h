@@ -26,8 +26,8 @@ public:
 
   //! Sample a direction from the distribution
   //! \param seed Pseudorandom number seed pointer
-  //! \return Direction sampled
-  virtual Direction sample(uint64_t* seed) const = 0;
+  //! \return (sampled Direction, sample weight)
+  virtual std::pair<Direction, double> sample(uint64_t* seed) const = 0;
 
   Direction u_ref_ {0.0, 0.0, 1.0}; //!< reference direction
 };
@@ -43,8 +43,8 @@ public:
 
   //! Sample a direction from the distribution
   //! \param seed Pseudorandom number seed pointer
-  //! \return Direction sampled
-  Direction sample(uint64_t* seed) const override;
+  //! \return (sampled Direction, sample weight)
+  std::pair<Direction, double> sample(uint64_t* seed) const override;
 
   // Observing pointers
   Distribution* mu() const { return mu_.get(); }
@@ -67,8 +67,8 @@ public:
 
   //! Sample a direction from the distribution
   //! \param seed Pseudorandom number seed pointer
-  //! \return Sampled direction
-  Direction sample(uint64_t* seed) const override;
+  //! \return (sampled Direction, sample weight)
+  std::pair<Direction, double> sample(uint64_t* seed) const override;
 };
 
 //==============================================================================
@@ -83,8 +83,8 @@ public:
 
   //! Sample a direction from the distribution
   //! \param seed Pseudorandom number seed pointer
-  //! \return Sampled direction
-  Direction sample(uint64_t* seed) const override;
+  //! \return (sampled Direction, sample weight)
+  std::pair<Direction, double> sample(uint64_t* seed) const override;
 };
 
 using UPtrAngle = unique_ptr<UnitSphereDistribution>;

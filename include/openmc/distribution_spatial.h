@@ -19,7 +19,7 @@ public:
   virtual ~SpatialDistribution() = default;
 
   //! Sample a position from the distribution
-  virtual Position sample(uint64_t* seed) const = 0;
+  virtual std::pair<Position, double> sample(uint64_t* seed) const = 0;
 
   static unique_ptr<SpatialDistribution> create(pugi::xml_node node);
 };
@@ -35,7 +35,7 @@ public:
   //! Sample a position from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled position
-  Position sample(uint64_t* seed) const override;
+  std::pair<Position, double> sample(uint64_t* seed) const override;
 
   // Observer pointers
   Distribution* x() const { return x_.get(); }
@@ -59,7 +59,7 @@ public:
   //! Sample a position from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled position
-  Position sample(uint64_t* seed) const override;
+  std::pair<Position, double> sample(uint64_t* seed) const override;
 
   Distribution* r() const { return r_.get(); }
   Distribution* phi() const { return phi_.get(); }
@@ -84,7 +84,7 @@ public:
   //! Sample a position from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled position
-  Position sample(uint64_t* seed) const override;
+  std::pair<Position, double> sample(uint64_t* seed) const override;
 
   Distribution* r() const { return r_.get(); }
   Distribution* cos_theta() const { return cos_theta_.get(); }
@@ -110,7 +110,7 @@ public:
   //! Sample a position from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled position
-  Position sample(uint64_t* seed) const override;
+  std::pair<Position, double> sample(uint64_t* seed) const override;
 
   //! Sample the mesh for an element and position within that element
   //! \param seed Pseudorandom number seed pointer
@@ -131,10 +131,21 @@ public:
 
   double total_strength() { return this->elem_idx_dist_.integral(); }
 
+  // Set or get bias distribution
+  void set_bias(std::unique_ptr<DiscreteIndex> bias) {
+    bias_ = std::move(bias);
+  }
+
+  const DiscreteIndex* bias() const { return bias_.get(); }
+
 private:
   int32_t mesh_idx_ {C_NONE};
   DiscreteIndex elem_idx_dist_; //!< Distribution of
                                 //!< mesh element indices
+
+protected:
+  // Biasing distribution
+  unique_ptr<DiscreteIndex> bias_;
 };
 
 //==============================================================================
@@ -150,11 +161,22 @@ public:
   //! Sample a position from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled position
-  Position sample(uint64_t* seed) const override;
+  std::pair<Position, double> sample(uint64_t* seed) const override;
+
+  // Set or get bias distribution
+  void set_bias(std::unique_ptr<DiscreteIndex> bias) {
+    bias_ = std::move(bias);
+  }
+
+  const DiscreteIndex* bias() const { return bias_.get(); }
 
 private:
   std::vector<Position> point_cloud_;
   DiscreteIndex point_idx_dist_; //!< Distribution of Position indices
+
+protected:
+  // Biasing distribution
+  unique_ptr<DiscreteIndex> bias_;
 };
 
 //==============================================================================
@@ -168,7 +190,7 @@ public:
   //! Sample a position from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled position
-  Position sample(uint64_t* seed) const override;
+  std::pair<Position, double> sample(uint64_t* seed) const override;
 
   // Properties
   bool only_fissionable() const { return only_fissionable_; }
@@ -194,7 +216,7 @@ public:
   //! Sample a position from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled position
-  Position sample(uint64_t* seed) const override;
+  std::pair<Position, double> sample(uint64_t* seed) const override;
 
   Position r() const { return r_; }
 

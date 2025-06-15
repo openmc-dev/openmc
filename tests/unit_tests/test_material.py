@@ -710,3 +710,34 @@ def test_avoid_subnormal(run_in_tmpdir):
     # When read back in, the density should be zero
     mats = openmc.Materials.from_xml()
     assert mats[0].get_nuclide_atom_densities()['H2'] == 0.0
+
+def test_material_deplete():
+
+    from openmc.deplete import Chain
+
+    pristine_material = openmc.Material()
+    pristine_material.add_nuclide("Ni58", 0.95)
+    pristine_material.set_density("g/cm3", 7.87)
+    pristine_material.depletable = True
+    pristine_material.temperature = 293.6
+    pristine_material.volume = 1.
+
+
+    mg_flux = [0.5e11] * 42
+
+    chain = Chain.from_xml(
+        Path(__file__).parents[1] / "chain_ni.xml"
+    )
+
+    depleted_material = pristine_material.deplete(
+        multigroup_flux=mg_flux,
+        energy_group_structures="VITAMIN-J-42",
+        timesteps=[10,10],
+        source_rates=[1e19, 0.0],
+        timestep_units='s',
+        chain_file= chain,
+    )
+
+    for material in depleted_material:
+        assert isinstance(material, openmc.Material)
+        assert len(material.get_nuclides()) > len(pristine_material.get_nuclides())

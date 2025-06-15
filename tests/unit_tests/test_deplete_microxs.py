@@ -129,9 +129,6 @@ def test_get_microxs_from_multigroup():
     mat_ni60.depletable = True
     mat_ni60.temperature = 293.6
 
-    mg_flux = np.array([0.5e11] * 42)
-    multigroup_flux = list(mg_flux / sum(mg_flux))
-
     chain = Chain.from_xml(
         Path(__file__).parents[1] / "chain_ni.xml"
     )
@@ -139,7 +136,7 @@ def test_get_microxs_from_multigroup():
     # chain is passed as Chain object
     all_micro_xs = get_microxs_from_multigroup(
         materials=openmc.Materials([mat_ni58, mat_ni60]),
-        multigroup_fluxes=[multigroup_flux, multigroup_flux],
+        multigroup_fluxes=[mg_flux, mg_flux],
         energy_group_structures=[
             GROUP_STRUCTURES["VITAMIN-J-42"],
             "VITAMIN-J-42",
@@ -154,7 +151,7 @@ def test_get_microxs_from_multigroup():
     # chain is passed as file path
     all_micro_xs = get_microxs_from_multigroup(
         materials=openmc.Materials([mat_ni58, mat_ni60]),
-        multigroup_fluxes=[multigroup_flux, multigroup_flux],
+        multigroup_fluxes=[mg_flux, mg_flux],
         energy_group_structures=[
             GROUP_STRUCTURES["VITAMIN-J-42"],
             "VITAMIN-J-42",

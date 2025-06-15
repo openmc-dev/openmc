@@ -170,12 +170,12 @@ def get_microxs_and_flux(
 
 def get_microxs_from_multigroup(
     materials: openmc.Materials,
-    multigroup_fluxes: Sequence[float],
-    energy_group_structures: Sequence[float] | str,
+    multigroup_fluxes: Sequence[Sequence[float]],
+    energy_group_structures: Sequence[Sequence[float] | str],
     chain_file: cv.PathLike | Chain | None = None,
     reactions: Sequence[str] | None = None,
     **init_kwargs: dict,
-) -> Sequence[openmc.Materials]:
+) -> list[MicroXS]:
     """Computes microscopic cross sections for the specified materials, multigroup_fluxes
     and energy_group_structures.
 
@@ -186,10 +186,10 @@ def get_microxs_from_multigroup(
     materials : openmc.Materials
         OpenMC Materials object containing the materials for which to compute
         microscopic cross sections. Each material must have a temperature set.
-    multigroup_fluxes: Sequence[float]
+    multigroup_fluxes: Sequence[Sequence[float]]
         Energy-dependent multigroup flux values, where each sublist corresponds
         to a specific material. Will be normalized so that it sums to 1.
-    energy_group_structures': Sequence[float] | str
+    energy_group_structures': Sequence[Sequence[float] | str]
         Energy group boundaries in [eV] or the name of the group structure.
     chain_file : PathLike or Chain
         Path to the depletion chain XML file or instance of openmc.deplete.Chain.

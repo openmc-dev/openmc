@@ -1396,10 +1396,10 @@ class Mixture(Univariate):
                 else:
                     others[0].append(dist)
                     others[1].append(p*prob)
-        if discrete:
+        if discrete[0]:
             others[0].append(Discrete.merge(*discrete))
             others[1].append(1.0)
-        if normal:
+        if normal[0]:
             others[0].append(Normal.merge(*normal))
             others[1].append(1.0)
         if others[1]==[1.0]:

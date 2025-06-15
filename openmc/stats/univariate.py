@@ -1354,6 +1354,56 @@ class Mixture(Univariate):
 
         return cls(probability, distribution)
 
+    @classmethod
+    def merge(
+        cls,
+        dists: Sequence[Mixture],
+        probs: Sequence[int]
+    ):
+        """Merge multiple mixture distributions into a single mixture distribution
+
+        Parameters
+        ----------
+        dists : iterable of openmc.stats.Mixture
+            Mixture distributions to combine
+        probs : iterable of float
+            Probability of each distribution
+
+        Returns
+        -------
+        openmc.stats.Mixture
+            Combined Mixture distribution
+
+        """
+        if len(dists) != len(probs):
+            raise ValueError("Number of distributions and probabilities must match.")
+        
+        discrete = [[],[]]
+        normal = [[],[]]
+        others = [[],[]]
+        for p,m in zip(probs,dists):
+            for prob,dist in zip(m.probability,m.distribution):
+                if isinstance(dist,Discrete):
+                    discrete[0].append(dist)
+                    discrete[1].append(p*prob)  
+                elif isinstance(dist,Normal):
+                    normal[0].append(dist)
+                    normal[1].append(p*prob)
+                else:
+                    others[0].append(dist)
+                    others[1].append(p*prob)
+        if discrete:
+            others[0].append(Discrete.merge(*discrete))
+            others[1].append(1.0)
+        if normal:
+            others[0].append(Normal.merge(*normal))
+            others[1].append(1.0)
+        if others[1]==[1.0]:
+            return others[0][0]
+        else:
+            return cls(others[1], others[0])
+                
+
     def integral(self):
         """Return integral of the distribution
 

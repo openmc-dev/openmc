@@ -281,6 +281,8 @@ class Spatial(ABC):
             return MeshSpatial.from_xml_element(elem, meshes)
         elif distribution == 'cloud':
             return PointCloud.from_xml_element(elem)
+        elif distribution == 'ball':
+            return Ball.from_xml_element(elem)
 
 
 class CartesianIndependent(Spatial):

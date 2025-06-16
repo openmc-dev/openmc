@@ -1203,17 +1203,30 @@ void FlatSourceDomain::flatten_xs()
 
 void FlatSourceDomain::set_adjoint_sources(const vector<double>& forward_flux)
 {
-  // Set the external source to 1/forward_flux. If the forward flux is negative
-  // or zero, set the adjoint source to zero, as this is likely a very small
-  // source region that we don't need to bother trying to vector particles
-  // towards. Flux negativity in random ray is not related to the flux being
-  // small in magnitude, but rather due to the source region being physically
-  // small in volume and thus having a noisy flux estimate.
+  // Set the adjoint external source to 1/forward_flux. If the forward flux is
+  // negative, zero, or extremely close to zero, set the adjoint source to zero,
+  // as this is likely a very small source region that we don't need to bother
+  // trying to vector particles towards. In the case of flux "being extremely
+  // close to zero", we define this as being a fixed fraction of the maximum
+  // forward flux, below which we assume the flux would be physically
+  // undetectable.
+
+  // First, find the maximum forward flux value
+  double max_flux = 0.0;
+#pragma omp parallel for reduction(max : max_flux)
+  for (int64_t se = 0; se < n_source_elements(); se++) {
+    double flux = forward_flux[se];
+    if (flux > max_flux) {
+      max_flux = flux;
+    }
+  }
+
+  // Then, compute the adjoint source for each source region
 #pragma omp parallel for
   for (int64_t sr = 0; sr < n_source_regions(); sr++) {
     for (int g = 0; g < negroups_; g++) {
       double flux = forward_flux[sr * negroups_ + g];
-      if (flux <= ZERO_FLUX_CUTOFF) {
+      if (flux <= ZERO_FLUX_CUTOFF * max_flux) {
         source_regions_.external_source(sr, g) = 0.0;
       } else {
         source_regions_.external_source(sr, g) = 1.0 / flux;

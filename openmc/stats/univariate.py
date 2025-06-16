@@ -1489,8 +1489,8 @@ def combine_distributions(
     """Combine distributions with specified probabilities
 
     This function can be used to combine multiple instances of
-    :class:`~openmc.stats.Discrete` and `~openmc.stats.Tabular`. Multiple
-    discrete distributions are merged into a single distribution and the
+    :class:`~openmc.stats.Univariate`. Multiple
+    discrete or normal distributions are merged into a single distribution and the
     remainder of the distributions are put into a :class:`~openmc.stats.Mixture`
     distribution.
 

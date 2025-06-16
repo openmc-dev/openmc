@@ -31,10 +31,10 @@ def test_materials_deplete():
     depleted_material = pristine_materials.deplete(
         multigroup_fluxes=[mg_flux, mg_flux],
         energy_group_structures=["VITAMIN-J-42", "VITAMIN-J-42"],
-        timesteps=[10,10],
+        timesteps=[100, 100],
         source_rates=[1e19, 0.0],
-        timestep_units='s',
-        chain_file= chain,
+        timestep_units="d",
+        chain_file=chain,
     )
 
     assert list(depleted_material.keys()) == [1, 2]
@@ -43,3 +43,21 @@ def test_materials_deplete():
             assert isinstance(material, openmc.Material)
             assert len(material.get_nuclides()) > 1
             assert mat_id == material.id
+
+    Co58_mat_1_step_0 = depleted_material[1][0].get_nuclide_atom_densities("Co58")["Co58"]
+    Co58_mat_1_step_1 = depleted_material[1][1].get_nuclide_atom_densities("Co58")["Co58"]
+    Co58_mat_1_step_2 = depleted_material[1][2].get_nuclide_atom_densities("Co58")["Co58"]
+
+    assert Co58_mat_1_step_0 == 0.0
+    # Co58 is the main activation product of Ni58 in the first irradiation step.
+    # It then decays in the second cooling step (flux = 0)
+    assert Co58_mat_1_step_1 > 0.0 and Co58_mat_1_step_1 > Co58_mat_1_step_2
+
+    Ni59_mat_1_step_0 = depleted_material[1][0].get_nuclide_atom_densities("Ni59")["Ni59"]
+    Ni59_mat_1_step_1 = depleted_material[1][1].get_nuclide_atom_densities("Ni59")["Ni59"]
+    Ni59_mat_1_step_2 = depleted_material[1][2].get_nuclide_atom_densities("Ni59")["Ni59"]
+
+    assert Ni59_mat_1_step_0 == 0.0
+    # Ni59 is one of the main activation product of Ni60 in the first irradiation
+    # step. It then decays in the second cooling step (flux = 0)
+    assert Ni59_mat_1_step_1 > 0.0 and Ni59_mat_1_step_1 > Ni59_mat_1_step_2

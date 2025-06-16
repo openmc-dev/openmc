@@ -7,6 +7,7 @@ from pathlib import Path
 import re
 import sys
 from typing import Sequence, Dict
+import tempfile
 import warnings
 
 import lxml.etree as ET
@@ -158,8 +159,9 @@ class Material(IDManagerMixin):
         string += '{: <16}\n'.format('\tNuclides')
 
         for nuclide, percent, percent_type in self._nuclides:
-            string += '{: <16}'.format('\t{}'.format(nuclide))
-            string += f'=\t{percent: <12} [{percent_type}]\n'
+            if percent > 0.0:
+                string += "{: <16}".format("\t{}".format(nuclide))
+                string += f"=\t{percent: <12} [{percent_type}]\n"
 
         if self._macroscopic is not None:
             string += '{: <16}\n'.format('\tMacroscopic Data')
@@ -1985,8 +1987,8 @@ class Materials(cv.CheckedList):
 
     def deplete(
         self,
-        multigroup_fluxes: Iterable[Iterable[float]],
-        energy_group_structures: Iterable[Iterable[float] | str],
+        multigroup_fluxes: Sequence[Sequence[float]],
+        energy_group_structures: Sequence[Sequence[float] | str],
         timesteps: Sequence[float] | Sequence[tuple[float, str]],
         source_rates: float | Sequence[float],
         timestep_units: str = 's',
@@ -1999,10 +2001,10 @@ class Materials(cv.CheckedList):
 
         Parameters
         ----------
-        multigroup_fluxes: Sequence[float]
+        multigroup_fluxes: Sequence[Sequence[float]]
             Energy-dependent multigroup flux values, where each sublist corresponds
             to a specific material. Will be normalized so that it sums to 1.
-        energy_group_structures': Sequence[float] | str
+        energy_group_structures': Sequence[Sequence[float] | str]
             Energy group boundaries in [eV] or the name of the group structure.
         timesteps : iterable of float or iterable of tuple
             Array of timesteps. Note that values are not cumulative. The units are
@@ -2031,49 +2033,53 @@ class Materials(cv.CheckedList):
         """
 
         import openmc.deplete
-        from openmc.deplete import get_microxs_from_multigroup
         from .deplete.chain import _get_chain
+
+        # setting all materials to be depletable
+        for mat in self:
+            mat.depletable = True
 
         chain = _get_chain(chain_file)
 
-        micro_xs = get_microxs_from_multigroup(
-            materials = self,
-            multigroup_fluxes = multigroup_fluxes,
-            energy_group_structures = energy_group_structures,
-            chain_file = chain,
-            reactions = reactions,
-        )
-
-        volumes = [mat.volume for mat in self]
-
-        operator = openmc.deplete.IndependentOperator(
-            materials=self,
-            fluxes=volumes,
-            micros=micro_xs,
-            normalization_mode="source-rate",
-            chain_file=chain,
-        )
-
-        integrator = openmc.deplete.PredictorIntegrator(
-            operator=operator,
-            timesteps=timesteps,
-            source_rates=source_rates,
-            timestep_units=timestep_units,
-        )
-
-        integrator.integrate(path="depletion_results.h5")
-
-        results = openmc.deplete.ResultsList.from_hdf5(
-            filename="depletion_results.h5"
-        )
-
         all_depleted_materials = {}
-        mat_ids = [mat.id for mat in self]
-        for mat_id in mat_ids:
-            depleted_materials = []
-            for result in results:
-                mat = result.get_material(str(mat_id))
-                depleted_materials.append(mat)
-            all_depleted_materials[mat_id] = depleted_materials
+
+        for material, flux, energy in zip(
+            self, multigroup_fluxes, energy_group_structures
+        ):
+
+            micro_xs = openmc.deplete.get_microxs_from_multigroup(
+                materials=openmc.Materials([material]),
+                multigroup_fluxes=[flux],
+                energy_group_structures=[energy],
+                chain_file=chain,
+                reactions=reactions,
+            )
+
+            operator = openmc.deplete.IndependentOperator(
+                materials=openmc.Materials([material]),
+                fluxes=[material.volume],
+                micros=micro_xs,
+                normalization_mode="source-rate",
+                chain_file=chain,
+            )
+
+            integrator = openmc.deplete.PredictorIntegrator(
+                operator=operator,
+                timesteps=timesteps,
+                source_rates=source_rates,
+                timestep_units=timestep_units,
+            )
+
+            with tempfile.TemporaryDirectory() as tmpdir:
+                results_path = Path(tmpdir) / "depletion_results.h5"
+                integrator.integrate(path=results_path)
+
+                results = openmc.deplete.ResultsList.from_hdf5(filename=results_path)
+
+                depleted_materials = []
+                for result in results:
+                    depleted_material = result.get_material(str(material.id))
+                    depleted_materials.append(depleted_material)
+                all_depleted_materials[material.id] = depleted_materials
 
         return all_depleted_materials

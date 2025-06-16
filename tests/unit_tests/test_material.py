@@ -3,6 +3,8 @@ from pathlib import Path
 
 import pytest
 
+import numpy as np
+
 import openmc
 from openmc.data import decay_photon_energy
 import openmc.examples
@@ -731,12 +733,24 @@ def test_material_deplete():
     depleted_material = pristine_material.deplete(
         multigroup_flux=mg_flux,
         energy_group_structure="VITAMIN-J-42",
-        timesteps=[10,10],
+        timesteps=[10, 70.86],
         source_rates=[1e19, 0.0],
-        timestep_units='s',
-        chain_file= chain,
+        timestep_units="d",
+        chain_file=chain,
     )
 
     for material in depleted_material:
         assert isinstance(material, openmc.Material)
         assert len(material.get_nuclides()) > len(pristine_material.get_nuclides())
+
+    Co58_mat_1_step_0 = depleted_material[0].get_nuclide_atom_densities("Co58")["Co58"]
+    Co58_mat_1_step_1 = depleted_material[1].get_nuclide_atom_densities("Co58")["Co58"]
+    Co58_mat_1_step_2 = depleted_material[2].get_nuclide_atom_densities("Co58")["Co58"]
+
+    assert Co58_mat_1_step_0 == 0.0
+
+    # Check that Co58 is produced in the first step
+    assert Co58_mat_1_step_1 > 0.0
+
+    # Check that Co58 is halved in the second step which is one halflife later
+    assert np.allclose(Co58_mat_1_step_1 * 0.5, Co58_mat_1_step_2)

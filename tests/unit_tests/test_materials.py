@@ -13,7 +13,7 @@ def test_materials_deplete():
     pristine_material_1.temperature = 293.6
     pristine_material_1.volume = 1.
 
-    pristine_material_2 = openmc.Material(material_id=1)
+    pristine_material_2 = openmc.Material(material_id=2)
     pristine_material_2.add_nuclide("Ni60", 1.)
     pristine_material_2.set_density("g/cm3", 7.87)
     pristine_material_2.depletable = True
@@ -37,8 +37,9 @@ def test_materials_deplete():
         chain_file= chain,
     )
 
+    assert list(depleted_material.keys()) == [1, 2]
     for mat_id, materials in depleted_material.items():
         for material in materials:
             assert isinstance(material, openmc.Material)
             assert len(material.get_nuclides()) > 1
-            assert mat_id in [1, 2]
+            assert mat_id == material.id

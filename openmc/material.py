@@ -1765,44 +1765,19 @@ class Material(IDManagerMixin):
 
         """
 
-        import openmc.deplete
-        from openmc.deplete import get_microxs_from_multigroup
-        from .deplete.chain import _get_chain
-        chain = _get_chain(chain_file)
+        materials = openmc.Materials([self])
 
-        micro_xs = get_microxs_from_multigroup(
-            materials = openmc.Materials([self]),
-            multigroup_fluxes = [multigroup_flux],
-            energy_group_structures = [energy_group_structure],
-            chain_file = chain,
-            reactions = reactions,
-        )
-
-        operator = openmc.deplete.IndependentOperator(
-            materials=openmc.Materials([self]),
-            fluxes=[self.volume],
-            micros=micro_xs,
-            normalization_mode="source-rate",
-            chain_file=chain,
-        )
-
-        integrator = openmc.deplete.PredictorIntegrator(
-            operator=operator,
+        depleted_materials_dict = materials.deplete(
+            multigroup_fluxes=[multigroup_flux],
+            energy_group_structures=[energy_group_structure],
             timesteps=timesteps,
             source_rates=source_rates,
             timestep_units=timestep_units,
+            chain_file=chain_file,
+            reactions=reactions,
         )
 
-        integrator.integrate(path="depletion_results.h5")
-
-        results = openmc.deplete.ResultsList.from_hdf5(
-            filename="depletion_results.h5"
-        )
-
-        depleted_materials = []
-        for result in results:
-            mat = result.get_material(str(self.id))
-            depleted_materials.append(mat)
+        depleted_materials = depleted_materials_dict[self.id]
 
         return depleted_materials
 

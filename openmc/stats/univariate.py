@@ -1383,19 +1383,19 @@ class Mixture(Univariate):
         others = [[],[]]
         for p,d in zip(probs,dists):
             if isinstance(d, Mixture):
-                iterator = zip(m.probability,m.distribution)
+                iterator = zip(p * m.probability, m.distribution)
             else:
                 iterator = [(p,d)]
             for prob,dist in iterator:
                 if isinstance(dist,Discrete):
                     discrete[0].append(dist)
-                    discrete[1].append(p*prob)  
+                    discrete[1].append(prob)  
                 elif isinstance(dist,Normal):
                     normal[0].append(dist)
-                    normal[1].append(p*prob)
+                    normal[1].append(prob)
                 else:
                     others[0].append(dist)
-                    others[1].append(p*prob)
+                    others[1].append(prob)
         if discrete[0]:
             others[0].append(Discrete.merge(*discrete))
             others[1].append(1.0)

@@ -227,7 +227,7 @@ def get_microxs_from_multigroup(
     cross_sections = _find_cross_sections(model=None)
     nuclides_with_data = _get_nuclides_with_data(cross_sections)
 
-    # If no nuclides were specified, default to all nuclides from the chain
+   # Gets all the nuclides within the user specified materials
     nuclides = []
     for material in materials:
         for material_nuclides in material.get_nuclides():
@@ -243,7 +243,7 @@ def get_microxs_from_multigroup(
     # Create 3D array for microscopic cross sections
     microxs_arr = np.zeros((len(nuclides), len(mts), 1))
 
-    # Create a material with all nuclides
+    # Create a material with all nuclides that have cross section data
     mat_all_nucs = openmc.Material()
     for nuc in nuclides:
         if nuc in nuclides_with_data:
@@ -264,7 +264,6 @@ def get_microxs_from_multigroup(
 
         with openmc.lib.run_in_memory(**init_kwargs):
             # For each material, energy and multigroup flux compute the flux-averaged cross section for the nuclides and reactions
-
             for material, multigroup_flux, energy in zip(materials, multigroup_fluxes, energy_group_structures):
 
                 # Normalize multigroup flux

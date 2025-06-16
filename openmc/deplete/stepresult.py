@@ -233,7 +233,7 @@ class StepResult:
             ) from e
         for nuc, _ in sorted(self.index_nuc.items(), key=lambda x: x[1]):
             atoms = self[0, mat_id, nuc]
-            if atoms < 0.0:
+            if atoms <= 0.0:
                 continue
             atom_per_bcm = atoms / vol * 1e-24
             material.add_nuclide(nuc, atom_per_bcm)

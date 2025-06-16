@@ -444,6 +444,15 @@ def test_normal():
     assert_sample_mean(samples, mean)
 
 
+def test_combine_normal():
+    norm1=openmc.stats.Normal(mean_value=10, std_dev=1)
+    norm2=openmc.stats.Normal(mean_value=1, std_dev=1)
+    combined=openmc.stats.combine_distributions([norm1,norm2],probs=[0.1,0.9])
+    assert isinstance(combined, openmc.stats.Normal)
+    assert combined.mean_value == pytest.approx(1.9)
+    assert combined.std_dev**2 == pytest.approx(0.82)
+
+
 def test_muir():
     mean = 10.0
     mass = 5.0

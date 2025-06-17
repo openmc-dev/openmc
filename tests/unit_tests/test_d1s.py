@@ -22,7 +22,8 @@ def model():
 
 def test_get_radionuclides(model):
     # Check that radionuclides are correct and are unstable
-    nuclides = d1s.get_radionuclides(model, CHAIN_PATH)
+    chain = openmc.deplete.Chain.from_xml(CHAIN_PATH)
+    nuclides = d1s.get_radionuclides(model, chain)
     assert sorted(nuclides) == [
         'Co58', 'Co60', 'Co61', 'Co62', 'Co64',
         'Fe55', 'Fe59', 'Fe61', 'Ni57', 'Ni59', 'Ni63', 'Ni65'

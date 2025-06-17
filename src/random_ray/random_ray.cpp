@@ -265,6 +265,12 @@ uint64_t RandomRay::transport_history_based_single_ray()
     if (!alive())
       break;
     event_cross_surface();
+    // If ray has too many events, display warning and kill it
+    if (n_event() >= settings::max_particle_events) {
+      warning("Ray " + std::to_string(id()) +
+              " underwent maximum number of events, terminating ray.");
+      wgt() = 0.0;
+    }
   }
 
   return n_event();

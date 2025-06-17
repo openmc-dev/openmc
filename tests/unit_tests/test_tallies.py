@@ -1,7 +1,9 @@
 import numpy as np
 import pytest
 import openmc
-
+import openmc.tally_stats as ts
+import os, h5py, pprint
+import shutil
 
 def test_xml_roundtrip(run_in_tmpdir):
     # Create a tally with all possible gizmos
@@ -110,6 +112,125 @@ def test_figure_of_merit(sphere_model, run_in_tmpdir):
 
     # Check that figure of merit is calculated correctly
     assert tally.figure_of_merit == pytest.approx(1 / (rel_err**2 * time))
+
+
+def test_tally_normality_functions():
+    values = np.arange(1, 21, dtype=float)
+    n       = values.size 
+    mean    = np.array([values.mean()]) 
+    sum_sq  = np.array([np.sum(values**2)])
+    sum_rd  = np.array([np.sum(values**3)])
+    sum_th  = np.array([np.sum(values**4)])
+
+    sqrt_b1, b2 = ts._calc_b1_b2(n, mean, sum_sq, sum_rd, sum_th)
+    assert sqrt_b1.shape == mean.shape
+    assert b2.shape      == mean.shape
+
+    Zb1, p_skew, _ = ts.skewness_test(n, mean, sum_sq, sum_rd, sum_th)
+    assert Zb1.shape       == mean.shape
+    assert p_skew.shape    == mean.shape
+    assert np.all((0.0 <= p_skew) & (p_skew <= 1.0))
+
+    Zb2, p_kurt, _ = ts.kurtosis_test(n, mean, sum_sq, sum_rd, sum_th)
+    assert Zb2.shape       == mean.shape
+    assert p_kurt.shape    == mean.shape
+    assert np.all((0.0 <= p_kurt) & (p_kurt <= 1.0))
+
+    K2, p_omni = ts.k2_test(Zb1, Zb2)
+    assert K2.shape        == mean.shape
+    assert p_omni.shape    == mean.shape
+    assert np.all((0.0 <= p_omni) & (p_omni <= 1.0))
+
+
+def test_tally_normality_stats(sphere_model, run_in_tmpdir):
+
+    openmc_path = shutil.which("openmc")
+    assert openmc_path is not None, "Cannot find 'openmc' on PATH!"
+    print("pytest will invoke OpenMC binary at:", openmc_path)
+ 
+    tally = openmc.Tally()
+    tally.scores = ['flux']
+    tally.vov = True
+    tally.normality_tests = True
+    sphere_model.tallies = [tally]
+
+    sphere_model.settings.particles = 500
+    sphere_model.settings.batches   =  30
+    sphere_model.settings.run_mode  = 'fixed source'
+
+    sp_file = sphere_model.run(apply_tally_results=True)
+    
+    n   = tally.num_realizations
+    mu  = tally.mean
+    s2  = tally.sum_sq
+    s3  = tally.sum_rd
+    s4  = tally.sum_th
+
+    assert n >= 20
+    assert mu is not None
+ 
+    Zg1, p_skew,  _ = ts.skewness_test(n, mu, s2, s3, s4)
+    Zg2, p_kurt,  _ = ts.kurtosis_test(n, mu, s2, s3, s4)
+    K2,  p_omni     = ts.k2_test(Zg1, Zg2)
+
+    for arr in (Zg1, Zg2, K2, p_skew, p_kurt, p_omni):
+        assert arr.shape == mu.shape
+
+    for p in (p_skew, p_kurt, p_omni):
+        assert ((0.0 <= p) & (p <= 1.0)).all()
+
+def test_vov(sphere_model, run_in_tmpdir):
+    # Create a tally with all the gizmos
+    tally = openmc.Tally(name='test tally')
+    ef = openmc.EnergyFilter([0.0, 0.1, 1.0, 10.0e6])
+    mesh = openmc.RegularMesh.from_domain(sphere_model.geometry, (2, 2, 2))
+    mf = openmc.MeshFilter(mesh)
+    tally.filters = [ef, mf]
+    tally.scores = ['flux', 'absorption', 'fission', 'scatter']
+    tally.vov = True
+    sphere_model.tallies = [tally]
+
+    sp_file = sphere_model.run(apply_tally_results=True)
+
+    assert tally._mean           is None
+    assert tally._std_dev        is None
+    assert tally._sum            is None
+    assert tally._sum_sq         is None
+    assert tally._sum_rd         is None
+    assert tally._sum_th         is None
+    assert tally._num_realizations == 0
+    assert tally._sp_filename    == sp_file
+
+    with openmc.StatePoint(sp_file) as sp:
+        assert tally in sp.tallies.values()
+        sp_tally = sp.tallies[tally.id]
+    
+    assert np.all(sp_tally.std_dev == tally.std_dev)
+    assert np.all(sp_tally.mean    == tally.mean)
+    assert np.all(sp_tally.VOV     == tally.VOV)
+    assert sp_tally.nuclides       == tally.nuclides
+
+    n       = sp_tally.num_realizations
+    mean    = sp_tally.mean
+    sum_    = sp_tally._sum
+    sum_sq  = sp_tally._sum_sq
+    sum_rd  = sp_tally._sum_rd
+    sum_th  = sp_tally._sum_th
+
+    expected_vov = np.zeros_like(mean)
+    nonzero = np.abs(mean) > 0
+
+    num = (
+        sum_th
+        - (4.0 * sum_rd * sum_) / n
+        + (6.0 * sum_sq * sum_**2) / (n**2)
+        - (3.0 * sum_**4) / (n**3)
+    )
+    den = (sum_sq - (1.0/n)*sum_**2)**2
+
+    expected_vov[nonzero] = num[nonzero] / den[nonzero] - 1.0 / n
+
+    assert np.allclose(expected_vov, sp_tally.VOV, rtol=1e-7, atol=0.0)
 
 
 def test_tally_application(sphere_model, run_in_tmpdir):

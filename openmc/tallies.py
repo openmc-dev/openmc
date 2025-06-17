@@ -146,6 +146,7 @@ class Tally(IDManagerMixin):
         self._std_dev = None
         self._vov = None
         self._normality_tests = None
+        self._sig_level = 0.05
         self._simulation_time = None
         self._with_batch_statistics = False
         self._derived = False
@@ -253,6 +254,10 @@ class Tally(IDManagerMixin):
     def normality_tests(self, value):
         cv.check_type('normality tests', value, bool)
         self._normality_tests = value 
+
+    @property
+    def sig_level(self):
+        return self._sig_level
 
     @property
     def filters(self):
@@ -404,26 +409,10 @@ class Tally(IDManagerMixin):
             # Update nuclides
             nuclide_names = group['nuclides'][()]
             self._nuclides = [name.decode().strip() for name in nuclide_names]
-            print("VOV results:", self._vov)
             self._vov = 'vov_results' in group.attrs
-            print("VOV results:", self._vov)
+
             # Extract Tally data from the file
             data = group['results']
-            
-            if self._vov:
-                print("Data shape=", data.shape[2])
-                if (data.shape[2] != 4):
-                    raise ValueError("Tally results data does not have the expected number of columns.")
-                print("VOV results data shape:", data.shape)
-                print("sum_rd shape:", data[:, :, 2])
-                print("sum_th shape:", data[:, :, 3])
-                sum_rd = data[:, :, 2]
-                sum_th = data[:, :, 3]
-                sum_rd = np.reshape(sum_rd, self.shape)
-                sum_th = np.reshape(sum_th, self.shape)
-                self._sum_rd = sum_rd
-                self._sum_th = sum_th
-            
             sum_ = data[:, :, 0]
             sum_sq = data[:, :, 1]
          
@@ -434,6 +423,19 @@ class Tally(IDManagerMixin):
             # Set the data for this Tally
             self._sum = sum_
             self._sum_sq = sum_sq
+
+            if data.shape[2] == 4:
+
+                self._vov = True
+                sum_rd = data[:, :, 2]
+                sum_th = data[:, :, 3]
+                sum_rd = np.reshape(sum_rd, self.shape)
+                sum_th = np.reshape(sum_th, self.shape)
+                self._sum_rd = sum_rd
+                self._sum_th = sum_th
+            else:
+                self._vov = False
+            
             
             # Convert NumPy arrays to SciPy sparse LIL matrices
             if self.sparse:
@@ -479,6 +481,7 @@ class Tally(IDManagerMixin):
         self._sum_sq = sum_sq
     
     @property
+    @ensure_results
     def sum_rd(self):
         if not self._sp_filename or self.derived:
             return None
@@ -494,6 +497,7 @@ class Tally(IDManagerMixin):
         self._sum_rd = sum_rd
 
     @property
+    @ensure_results
     def sum_th(self):
         if not self._sp_filename or self.derived:
             return None
@@ -554,7 +558,7 @@ class Tally(IDManagerMixin):
     def VOV(self):
         if not self._sp_filename:
             return None
-        print("VOV results:", self._vov)
+
         n = self.num_realizations
         nonzero = np.abs(self.mean) > 0
         vov = np.zeros_like(self.mean)
@@ -580,11 +584,11 @@ class Tally(IDManagerMixin):
 
         n = self.num_realizations
         if n < 8:
-            raise ValueError("D’Agostino skewness test is not well-defined for n < 8.")
+            raise ValueError("Skewness test is not well-defined for n < 8.")
         elif n < 20:
-            raise ValueError("D’Agostino kurtosis test is typically recommended for n >= 20.")
+            raise ValueError("Kurtosis test is typically recommended for n >= 20.")
         else:
-            tally_stats.print_normality_tests_summary(n, self.mean, self.sum_sq, self.sum_rd, self.sum_th)
+            tally_stats.print_normality_tests_summary(n, self.mean, self.sum_sq, self.sum_rd, self.sum_th, self._sig_level)
 
     @property
     def figure_of_merit(self):
@@ -1115,7 +1119,7 @@ class Tally(IDManagerMixin):
         # Optional VOV
         if self._vov:
             subelement = ET.SubElement(element, "vov")
-            subelement.text = str(self._vov).lower() 
+            subelement.text = str(self._vov).lower()
 
         return element
 

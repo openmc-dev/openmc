@@ -24,6 +24,7 @@ from openmc.filter_expansion import *
 from openmc.trigger import *
 from openmc.tally_derivative import *
 from openmc.tallies import *
+from openmc.tally_stats import *
 from openmc.mgxs_library import *
 from openmc.executor import *
 from openmc.statepoint import *

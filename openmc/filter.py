@@ -1693,6 +1693,64 @@ class EnergyoutFilter(EnergyFilter):
 
     """
 
+class SecondaryEnergyFilter(EnergyFilter):
+    """Bins tally events based on energy of secondary particles.
+
+    .. versionadded:: 0.15.3
+
+    This filter collects the energies of secondary particles (e.g., photons
+    or electrons) produced in a reaction. This is useful for constructing
+    production matrices or analyzing secondary particle spectra.
+
+    The primary particle type should be filtered by the usual ParticleFilter.
+
+    Parameters
+    ----------
+    values : Iterable of Real
+        A list of energy boundaries in [eV]; each successive pair defines a bin.
+    filter_id : int, optional
+        Unique identifier for the filter
+    particle : str
+        Type of secondary particle to tally ('photon', 'neutron', etc.)
+
+    Attributes
+    ----------
+    values : numpy.ndarray
+        Energy boundaries in [eV]
+    bins : numpy.ndarray
+        Array of (low, high) energy bin pairs
+    num_bins : int
+        Number of filter bins
+    particle : str
+        The secondary particle type this filter applies to
+    """
+
+    def __init__(self, values, filter_id=None, particle='photon'):
+        self.particle = particle
+        super().__init__(values, filter_id)
+
+    @property
+    def particle(self):
+        return self._particle
+
+    @particle.setter
+    def particle(self, particle):
+        cv.check_value('particle', particle, _PARTICLES)
+        self._particle = particle
+
+    def to_xml_element(self):
+        element = super().to_xml_element()
+        subelement = ET.SubElement(element, 'particle')
+        subelement.text = self.particle
+        return element
+
+    @classmethod
+    def from_xml_element(cls, elem, **kwargs):
+        filter_id = int(elem.get('id'))
+        values = [float(x) for x in get_text(elem, 'bins').split()]
+        particle = get_text(elem, 'particle')
+        return cls(values, filter_id=filter_id, particle=particle)
+
 class TimeFilter(RealFilter):
     """Bins tally events based on the particle's time.
 

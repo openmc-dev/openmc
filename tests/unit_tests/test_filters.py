@@ -314,6 +314,38 @@ def test_energy_filter():
         openmc.EnergyFilter([-1.2, 0.25, 0.5])
 
 
+def test_secondary_energy_filter():
+    energy_bins = [1e3, 1e4, 1e5, 1e6]
+    f = openmc.SecondaryEnergyFilter(energy_bins, particle='photon')
+
+    assert f.particle == 'photon'
+    assert f.num_bins == 3
+    assert f.bins.shape == (3, 2)
+    assert np.allclose(f.values, energy_bins)
+
+    # __repr__ check
+    repr(f)
+
+    # to_xml_element()
+    elem = f.to_xml_element()
+    assert elem.tag == 'filter'
+    assert elem.attrib['type'] == 'secondaryenergy'
+    assert elem.find('particle').text == 'photon'
+    assert elem.find('bins').text.split()[0] == str(energy_bins[0])
+
+    # from_xml_element()
+    new_f = openmc.Filter.from_xml_element(elem)
+    assert new_f.id == f.id
+    assert new_f.particle == f.particle
+    assert np.allclose(new_f.bins, f.bins)
+
+    # pandas output
+    df = f.get_pandas_dataframe(data_size=3, stride=1)
+    assert df.shape[0] == 3
+    assert "secondaryenergy low [eV]" in df.columns
+    assert "secondaryenergy high [eV]" in df.columns
+
+
 def test_weight():
     f = openmc.WeightFilter([0.01, 0.1, 1.0, 10.0])
     expected_bins = [[0.01, 0.1], [0.1, 1.0], [1.0, 10.0]]

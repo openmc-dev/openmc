@@ -466,6 +466,11 @@ private:
 
   vector<SourceSite> secondary_bank_;
 
+  // Keeps track of how many secondary particles were created
+  // in the collision the particle most recently experienced.
+  // This is used to tally secondary photon energies.
+  int secondaries_this_collision_ {0};
+
   int64_t current_work_;
 
   vector<double> flux_derivs_;
@@ -615,7 +620,17 @@ public:
 
   // secondary particle bank
   SourceSite& secondary_bank(int i) { return secondary_bank_[i]; }
+  const SourceSite& secondary_bank(int i) const { return secondary_bank_[i]; }
   decltype(secondary_bank_)& secondary_bank() { return secondary_bank_; }
+  decltype(secondary_bank_) const& secondary_bank() const
+  {
+    return secondary_bank_;
+  }
+  const int& secondaries_this_collision() const
+  {
+    return secondaries_this_collision_;
+  }
+  int& secondaries_this_collision() { return secondaries_this_collision_; }
 
   // Current simulation work index
   int64_t& current_work() { return current_work_; }

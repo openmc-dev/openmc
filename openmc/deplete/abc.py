@@ -24,7 +24,7 @@ from openmc.mpi import comm
 from openmc.utility_funcs import change_directory
 from openmc import Material
 from .stepresult import StepResult
-from .chain import Chain
+from .chain import _get_chain
 from .results import Results, _SECONDS_PER_MINUTE, _SECONDS_PER_HOUR, \
     _SECONDS_PER_DAY, _SECONDS_PER_JULIAN_YEAR
 from .pool import deplete
@@ -126,8 +126,8 @@ class TransportOperator(ABC):
 
     Parameters
     ----------
-    chain_file : str
-        Path to the depletion chain XML file
+    chain_file : PathLike or Chain
+        Path to the depletion chain XML file or instance of openmc.deplete.Chain.
     fission_q : dict, optional
         Dictionary of nuclides and their fission Q values [eV]. If not given,
         values will be pulled from the ``chain_file``.
@@ -145,11 +145,12 @@ class TransportOperator(ABC):
         The depletion chain information necessary to form matrices and tallies.
 
     """
-    def __init__(self, chain_file, fission_q=None, prev_results=None):
+    def __init__(self, chain_file=None, fission_q=None, prev_results=None):
         self.output_dir = '.'
 
         # Read depletion chain
-        self.chain = Chain.from_xml(chain_file, fission_q)
+        self.chain = _get_chain(chain_file, fission_q)
+
         if prev_results is None:
             self.prev_res = None
         else:

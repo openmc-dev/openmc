@@ -46,7 +46,7 @@ def test_discrete():
     # sample discrete distribution and check that the mean of the samples is
     # within 4 std. dev. of the expected mean
     n_samples = 1_000_000
-    samples = d3.sample(n_samples)
+    samples, weights = d3.sample(n_samples)
     assert_sample_mean(samples, exp_mean)
 
 
@@ -123,7 +123,7 @@ def test_uniform():
     # std. dev. of the expected mean
     exp_mean = 0.5 * (a + b)
     n_samples = 1_000_000
-    samples = d.sample(n_samples)
+    samples, weights = d.sample(n_samples)
     assert_sample_mean(samples, exp_mean)
 
 
@@ -144,7 +144,7 @@ def test_powerlaw():
     # sample power law distribution and check that the mean of the samples is
     # within 4 std. dev. of the expected mean
     n_samples = 1_000_000
-    samples = d.sample(n_samples)
+    samples, weights = d.sample(n_samples)
     assert_sample_mean(samples, exp_mean)
 
 
@@ -162,11 +162,11 @@ def test_maxwell():
     # sample maxwell distribution and check that the mean of the samples is
     # within 4 std. dev. of the expected mean
     n_samples = 1_000_000
-    samples = d.sample(n_samples)
+    samples, weights = d.sample(n_samples)
     assert_sample_mean(samples, exp_mean)
 
     # A second sample starting from a different seed
-    samples_2 = d.sample(n_samples)
+    samples_2, weights_2 = d.sample(n_samples)
     assert_sample_mean(samples_2, exp_mean)
     assert samples_2.mean() != samples.mean()
 
@@ -190,7 +190,7 @@ def test_watt():
     # sample Watt distribution and check that the mean of the samples is within
     # 4 std. dev. of the expected mean
     n_samples = 1_000_000
-    samples = d.sample(n_samples)
+    samples, weights = d.sample(n_samples)
     assert_sample_mean(samples, exp_mean)
 
 
@@ -200,7 +200,7 @@ def test_tabular():
     p = np.array([10.0, 20.0, 5.0, 6.0])
     d = openmc.stats.Tabular(x, p, 'linear-linear')
     n_samples = 100_000
-    samples = d.sample(n_samples)
+    samples, weights = d.sample(n_samples)
     assert_sample_mean(samples, d.mean())
 
     # test linear-linear normalization
@@ -209,7 +209,7 @@ def test_tabular():
 
     # test histogram sampling
     d = openmc.stats.Tabular(x, p, interpolation='histogram')
-    samples = d.sample(n_samples)
+    samples, weights = d.sample(n_samples)
     assert_sample_mean(samples, d.mean())
 
     d.normalize()
@@ -220,7 +220,7 @@ def test_tabular():
     d = openmc.stats.Tabular(x, p[:-1], interpolation='histogram')
     d.cdf()
     d.mean()
-    assert_sample_mean(d.sample(n_samples), d.mean())
+    assert_sample_mean(d.sample(n_samples)[0], d.mean())
 
     # passing a shorter probability set should raise an error for linear-linear
     with pytest.raises(ValueError):
@@ -281,7 +281,7 @@ def test_mixture():
 
     # Sample and make sure sample mean is close to expected mean
     n_samples = 1_000_000
-    samples = mix.sample(n_samples)
+    samples, weights = mix.sample(n_samples)
     assert_sample_mean(samples, (2.5 + 5.0)/2)
 
     elem = mix.to_xml_element('distribution')
@@ -440,7 +440,7 @@ def test_normal():
 
     # sample normal distribution
     n_samples = 100_000
-    samples = d.sample(n_samples)
+    samples, weights = d.sample(n_samples)
     assert_sample_mean(samples, mean)
 
 
@@ -459,7 +459,7 @@ def test_muir():
 
     # sample muir distribution
     n_samples = 100_000
-    samples = d.sample(n_samples)
+    samples, weights = d.sample(n_samples)
     assert_sample_mean(samples, mean)
 
 
@@ -504,5 +504,5 @@ def test_combine_distributions():
 
     # Sample the combined distribution and make sure the sample mean is within
     # uncertainty of the expected value
-    samples = combined.sample(10_000)
+    samples, weights = combined.sample(10_000)
     assert_sample_mean(samples, 0.25)

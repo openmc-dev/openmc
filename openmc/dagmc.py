@@ -569,7 +569,8 @@ class DAGMCUniverse(openmc.UniverseBase):
 
     @add_plot_params
     def plot(self, *args, **kwargs):
-        """Display a slice plot of the DAGMCUniverse."""
+        """Display a slice plot of the DAGMCUniverse.
+        """
         model = openmc.Model()
         model.geometry = openmc.Geometry(self)
 
@@ -577,8 +578,6 @@ class DAGMCUniverse(openmc.UniverseBase):
             material = openmc.Material(name=mat_name)
             # Placeholder nuclide to ensure material is not empty
             material.add_nuclide('H1', 1.0)
-            # Placeholder density to ensure material is not empty
-            material.set_density('g/cc', 1.0)
             model.materials.append(material)
 
         return model.plot(*args, **kwargs)

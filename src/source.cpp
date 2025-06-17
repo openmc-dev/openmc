@@ -343,7 +343,8 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
   while (!accepted) {
 
     // Sample spatial distribution
-    site.r = space_->sample(seed);
+    auto [r, r_wgt] = space_->sample(seed);
+    site.r = r;
 
     // Check if sampled position satisfies spatial constraints
     accepted = satisfies_spatial_constraints(site.r);
@@ -361,7 +362,10 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
   }
 
   // Sample angle
-  site.u = angle_->sample(seed);
+  auto [u, u_wgt] = angle_->sample(seed);
+  site.u = u;
+
+  site.wgt = r_wgt * u_wgt;
 
   // Sample energy and time for neutron and photon sources
   if (settings::solver_type != SolverType::RANDOM_RAY) {
@@ -378,7 +382,8 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
 
     while (true) {
       // Sample energy spectrum
-      site.E = energy_->sample(seed);
+      auto [E, E_wgt] = energy_->sample(seed);
+      site.E = E;
 
       // Resample if energy falls above maximum particle energy
       if (site.E < data::energy_max[p] and
@@ -396,7 +401,10 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
     }
 
     // Sample particle creation time
-    site.time = time_->sample(seed);
+    auto [time, time_wgt] = time_->sample(seed);
+    site.time = time;
+
+    site.wgt *= (E_wgt * time_wgt);
   }
 
   // Increment number of accepted samples

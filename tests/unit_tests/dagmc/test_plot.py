@@ -7,9 +7,9 @@ pytestmark = pytest.mark.skipif(
     not openmc.lib._dagmc_enabled(), reason="DAGMC CAD geometry is not enabled."
 )
 
-def test_plotting_dagmc_geometry(request):
-    """Test plotting a DAGMC geometry with OpenMC. This is different to CSG
-    geometry plotting as the path to the DAGMC file needs handling."""
+def test_plotting_dagmc_model(request):
+    """Test plotting a DAGMC model with OpenMC. This is different to CSG
+    model plotting as the path to the DAGMC file needs handling."""
 
     dag_universe = openmc.DAGMCUniverse(request.path.parent / 'dagmc.h5m')
     csg_with_dag_inside = dag_universe.bounded_universe()
@@ -30,3 +30,11 @@ def test_plotting_dagmc_geometry(request):
     model.settings.particles = 50
 
     model.plot()
+
+
+def test_plotting_dagmc_universe(request):
+    """Test plotting a DAGMCUniverse with OpenMC. This is different to plotting
+    UniverseBase as the materials are not defined withing the DAGMCUniverse."""
+
+    dag_universe = openmc.DAGMCUniverse(request.path.parent / 'dagmc.h5m')
+    dag_universe.plot()

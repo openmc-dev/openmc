@@ -17,14 +17,16 @@ def box_model():
     model.settings.particles = 100
     model.settings.batches = 10
     model.settings.inactive = 0
-    model.settings.source = openmc.IndependentSource(space=openmc.stats.Point())
+    model.settings.source = openmc.IndependentSource(
+        space=openmc.stats.Point())
     return model
 
 
 def test_cell_instance():
     c1 = openmc.Cell()
     c2 = openmc.Cell()
-    f = openmc.CellInstanceFilter([(c1, 0), (c1, 1), (c1, 2), (c2, 0), (c2, 1)])
+    f = openmc.CellInstanceFilter(
+        [(c1, 0), (c1, 1), (c1, 2), (c2, 0), (c2, 1)])
 
     # Make sure __repr__ works
     repr(f)
@@ -234,7 +236,7 @@ def test_first_moment(run_in_tmpdir, box_model):
         flux, scatter = sp.tallies[plain_tally.id].mean.ravel()
 
         # Check that first moment matches
-        first_score = lambda t: sp.tallies[t.id].mean.ravel()[0]
+        def first_score(t): return sp.tallies[t.id].mean.ravel()[0]
         assert first_score(leg_tally) == scatter
         assert first_score(leg_sptl_tally) == scatter
         assert first_score(sph_scat_tally) == scatter
@@ -258,7 +260,8 @@ def test_lethargy_bin_width():
     assert len(f.lethargy_bin_width) == 175
     energy_bins = openmc.mgxs.GROUP_STRUCTURES['VITAMIN-J-175']
     assert f.lethargy_bin_width[0] == np.log10(energy_bins[1]/energy_bins[0])
-    assert f.lethargy_bin_width[-1] == np.log10(energy_bins[-1]/energy_bins[-2])
+    assert f.lethargy_bin_width[-1] == np.log10(
+        energy_bins[-1]/energy_bins[-2])
 
 
 def test_energyfunc():
@@ -292,7 +295,8 @@ def test_tabular_from_energyfilter():
     # 'histogram' is the default
     assert tab.interpolation == 'histogram'
 
-    tab = efilter.get_tabular(values=np.array([10, 10, 5]), interpolation='linear-linear')
+    tab = efilter.get_tabular(values=np.array(
+        [10, 10, 5]), interpolation='linear-linear')
     assert tab.interpolation == 'linear-linear'
 
 

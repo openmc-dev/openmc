@@ -772,8 +772,7 @@ void HexagonalMesh::surface_bins_crossed(
     {}
     void surface(const HexMeshIndex& ijkl, int k, bool max, bool inward) const
     {
-      int i_bin =
-        4 * mesh->hex_count_ * mesh->get_bin_from_hexindices(ijkl) + 4 * k;
+      int i_bin = 4 * mesh->get_bin_from_hexindices(ijkl) + 4 * k;
       if (max)
         i_bin += 2;
       if (inward)

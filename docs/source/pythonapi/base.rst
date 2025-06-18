@@ -258,6 +258,7 @@ Variance Reduction
    :template: myclass
 
    openmc.WeightWindows
+   openmc.WeightWindowsList
    openmc.WeightWindowGenerator
 
 .. autosummary::
@@ -266,8 +267,6 @@ Variance Reduction
    :template: myfunction.rst
 
    openmc.hdf5_to_wws
-   openmc.read_weight_windows_file
-   openmc.write_weight_windows_file
    openmc.wwinp_to_wws
 
 

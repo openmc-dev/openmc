@@ -754,4 +754,17 @@ class Geometry:
 
         .. versionadded:: 0.14.0
         """
-        return self.root_universe.plot(*args, **kwargs)
+        model = openmc.Model()
+        model.geometry = self
+        model.materials = self.get_all_materials().values()
+
+        # Add placeholder materials for DAGMCUniverses
+        universes = self.get_all_universes()
+        for universe in universes.values():
+            if isinstance(universe, openmc.DAGMCUniverse):
+                for name in universe.material_names:
+                    mat_dag = openmc.Material(name=name)
+                    mat_dag.add_nuclide('H1', 1.0)
+                    model.materials.append(mat_dag)
+
+        return model.plot(*args, **kwargs)

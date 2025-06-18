@@ -986,7 +986,16 @@ class Model:
         y_min = (origin[y] - 0.5*width[1]) * axis_scaling_factor[axis_units]
         y_max = (origin[y] + 0.5*width[1]) * axis_scaling_factor[axis_units]
 
+        # Determine whether any materials contains macroscopic data and if so,
+        # set energy mode accordingly
+        _energy_mode = self.settings._energy_mode
+        for mat in self.geometry.get_all_materials().values():
+            if mat._macroscopic is not None:
+                self.settings.energy_mode = 'multi-group'
+                break
+
         with TemporaryDirectory() as tmpdir:
+            _plot_seed = self.settings.plot_seed
             if seed is not None:
                 self.settings.plot_seed = seed
 
@@ -1006,6 +1015,11 @@ class Model:
 
             # Run OpenMC in geometry plotting mode
             self.plot_geometry(False, cwd=tmpdir, openmc_exec=openmc_exec)
+
+            # Undo changes to model
+            self.plots.pop()
+            self.settings._plot_seed = _plot_seed
+            self.settings._energy_mode = _energy_mode
 
             # Read image from file
             img_path = Path(tmpdir) / f'plot_{plot.id}.png'

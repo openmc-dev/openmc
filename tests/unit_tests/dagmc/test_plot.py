@@ -7,9 +7,9 @@ pytestmark = pytest.mark.skipif(
     not openmc.lib._dagmc_enabled(), reason="DAGMC CAD geometry is not enabled."
 )
 
-def test_plotting_dagmc_geometry(request):
-    """Test plotting a DAGMC geometry with OpenMC. This is different to CSG
-    geometry plotting as the path to the DAGMC file needs handling."""
+def test_plotting_dagmc_model(request):
+    """Test plotting a DAGMC model with OpenMC. This is different to CSG
+    model plotting as the path to the DAGMC file needs handling."""
 
     dag_universe = openmc.DAGMCUniverse(request.path.parent / 'dagmc.h5m')
     csg_with_dag_inside = dag_universe.bounded_universe()
@@ -30,3 +30,32 @@ def test_plotting_dagmc_geometry(request):
     model.settings.particles = 50
 
     model.plot()
+
+
+def test_plotting_dagmc_universe(request):
+    """Test plotting a DAGMCUniverse with OpenMC. This is different to plotting
+    UniverseBase as the materials are not defined withing the DAGMCUniverse."""
+
+    dag_universe = openmc.DAGMCUniverse(request.path.parent / 'dagmc.h5m')
+    dag_universe.plot()
+
+
+def test_plotting_geometry_filled_with_dagmc_universe(request):
+    """Test plotting a geometry with OpenMC. This is an edge case when plotting
+    geometry as often geometry objects don't include a DAGMCUniverse. The
+    inclusion of a DAGMCUniverse requires special handling for the materials."""
+
+    dag_universe = openmc.DAGMCUniverse(request.path.parent / 'dagmc.h5m', auto_geom_ids=True)
+
+    sphere1 = openmc.Sphere(r=50.0)
+    sphere2 = openmc.Sphere(r=60.0, boundary_type='vacuum')
+
+    # Adding a material to the CSG Universe to check all materials are accounted for
+    csg_material = openmc.Material(name='csg_material')
+    csg_material.add_nuclide("H1", 1.0)
+
+    cell1 = openmc.Cell(fill=dag_universe, region=-sphere1)
+    cell2 = openmc.Cell(fill=csg_material, region=+sphere1 & -sphere2)
+
+    geometry = openmc.Geometry([cell1, cell2])
+    geometry.plot()

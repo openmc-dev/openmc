@@ -1,9 +1,13 @@
 #include "openmc/distribution_spatial.h"
 
+#include <cmath>
+
+#include "openmc/constants.h"
 #include "openmc/error.h"
 #include "openmc/mesh.h"
 #include "openmc/random_lcg.h"
 #include "openmc/search.h"
+#include "openmc/vector.h"
 #include "openmc/xml_interface.h"
 
 namespace openmc {
@@ -78,11 +82,27 @@ CartesianIndependent::CartesianIndependent(pugi::xml_node node)
     double p[] {1.0};
     z_ = UPtrDist {new Discrete {x, p, 1}};
   }
+  if ((x_->dims() > 0) && (y_->dims() > 0) && (z_->dims() > 0))
+    dims_ = x_->dims() + y_->dims() + z_->dims();
+  volume_ = 1.0;
+  auto sup = x_->support();
+  volume_ *= sup.second - sup.first;
+  sup = y_->support();
+  volume_ *= sup.second - sup.first;
+  sup = z_->support();
+  volume_ *= sup.second - sup.first;
 }
 
 Position CartesianIndependent::sample(uint64_t* seed) const
 {
   return {x_->sample(seed), y_->sample(seed), z_->sample(seed)};
+}
+Position CartesianIndependent::sample(vector<double>::iterator x) const
+{
+  const auto* _x = dynamic_cast<FixedDistribution*>(x_.get());
+  const auto* _y = dynamic_cast<FixedDistribution*>(y_.get());
+  const auto* _z = dynamic_cast<FixedDistribution*>(z_.get());
+  return {_x->sample(x), _y->sample(x), _z->sample(x)};
 }
 
 //==============================================================================
@@ -137,16 +157,33 @@ CylindricalIndependent::CylindricalIndependent(pugi::xml_node node)
     // If no coordinates were specified, default to (0, 0, 0)
     origin_ = {0.0, 0.0, 0.0};
   }
+  if ((r_->dims() > 0) && (phi_->dims() > 0) && (z_->dims() > 0))
+    dims_ = r_->dims() + phi_->dims() + z_->dims();
+  volume_ = 1.0;
+  auto sup = r_->support();
+  volume_ *= 0.5 * (std::pow(sup.second, 2) - std::pow(sup.first, 2));
+  sup = phi_->support();
+  volume_ *= sup.second - sup.first;
+  sup = z_->support();
+  volume_ *= sup.second - sup.first;
 }
 
 Position CylindricalIndependent::sample(uint64_t* seed) const
 {
   double r = r_->sample(seed);
   double phi = phi_->sample(seed);
-  double x = r * cos(phi) + origin_.x;
-  double y = r * sin(phi) + origin_.y;
-  double z = z_->sample(seed) + origin_.z;
-  return {x, y, z};
+  return {r * cos(phi) + origin_.x, r * sin(phi) + origin_.y,
+    z_->sample(seed) + origin_.z};
+}
+Position CylindricalIndependent::sample(vector<double>::iterator x) const
+{
+  const auto* _r = dynamic_cast<FixedDistribution*>(r_.get());
+  const auto* _phi = dynamic_cast<FixedDistribution*>(phi_.get());
+  const auto* _z = dynamic_cast<FixedDistribution*>(z_.get());
+  double r = _r->sample(x);
+  double phi = _phi->sample(x);
+  return {r * cos(phi) + origin_.x, r * sin(phi) + origin_.y,
+    _z->sample(x) + origin_.z};
 }
 
 //==============================================================================
@@ -201,6 +238,15 @@ SphericalIndependent::SphericalIndependent(pugi::xml_node node)
     // If no coordinates were specified, default to (0, 0, 0)
     origin_ = {0.0, 0.0, 0.0};
   }
+  if ((r_->dims() > 0) && (cos_theta_->dims() > 0) && (phi_->dims() > 0))
+    dims_ = r_->dims() + cos_theta_->dims() + phi_->dims();
+  volume_ = 1.0;
+  auto sup = r_->support();
+  volume_ *= 1.0 / 3.0 * (std::pow(sup.second, 3) - std::pow(sup.first, 3));
+  sup = cos_theta_->support();
+  volume_ *= sup.second - sup.first;
+  sup = phi_->support();
+  volume_ *= sup.second - sup.first;
 }
 
 Position SphericalIndependent::sample(uint64_t* seed) const
@@ -209,10 +255,22 @@ Position SphericalIndependent::sample(uint64_t* seed) const
   double cos_theta = cos_theta_->sample(seed);
   double phi = phi_->sample(seed);
   // sin(theta) by sin**2 + cos**2 = 1
-  double x = r * std::sqrt(1 - cos_theta * cos_theta) * cos(phi) + origin_.x;
-  double y = r * std::sqrt(1 - cos_theta * cos_theta) * sin(phi) + origin_.y;
-  double z = r * cos_theta + origin_.z;
-  return {x, y, z};
+  return {r * std::sqrt(1 - cos_theta * cos_theta) * cos(phi) + origin_.x,
+    r * std::sqrt(1 - cos_theta * cos_theta) * sin(phi) + origin_.y,
+    r * cos_theta + origin_.z};
+}
+Position SphericalIndependent::sample(vector<double>::iterator x) const
+{
+  const auto* _r = dynamic_cast<FixedDistribution*>(r_.get());
+  const auto* _cos_theta = dynamic_cast<FixedDistribution*>(cos_theta_.get());
+  const auto* _phi = dynamic_cast<FixedDistribution*>(phi_.get());
+  double r = _r->sample(x);
+  double cos_theta = _cos_theta->sample(x);
+  double phi = _phi->sample(x);
+  // sin(theta) by sin**2 + cos**2 = 1
+  return {r * std::sqrt(1 - cos_theta * cos_theta) * cos(phi) + origin_.x,
+    r * std::sqrt(1 - cos_theta * cos_theta) * sin(phi) + origin_.y,
+    r * cos_theta + origin_.z};
 }
 
 //==============================================================================
@@ -358,11 +416,16 @@ SpatialBox::SpatialBox(pugi::xml_node node, bool fission)
 
   lower_left_ = Position {params[0], params[1], params[2]};
   upper_right_ = Position {params[3], params[4], params[5]};
+  dims_ = 3;
+  if (!only_fissionable_)
+    volume_ =
+      ((upper_right_[0] - lower_left_[0]) * (upper_right_[1] - lower_left_[1]) *
+        (upper_right_[2] - lower_left_[2]));
 }
 
-Position SpatialBox::sample(uint64_t* seed) const
+Position SpatialBox::sample(vector<double>::iterator x) const
 {
-  Position xi {prn(seed), prn(seed), prn(seed)};
+  Position xi {*(x++), *(x++), *(x++)};
   return lower_left_ + xi * (upper_right_ - lower_left_);
 }
 

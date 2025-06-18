@@ -229,19 +229,16 @@ void validate_random_ray_inputs()
                 "be of type IndependentSource.");
   }
 
-  // Check for box source
-  SpatialDistribution* space_dist = is->space();
-  SpatialBox* sb = dynamic_cast<SpatialBox*>(space_dist);
-  if (!sb) {
-    fatal_error(
-      "Invalid ray source definition -- only box sources are allowed.");
+  // Check for computable volume
+  auto* space_dist = dynamic_cast<FixedSpatialDistribution*>(is->space());
+  if (!space_dist || !(space_dist->volume() > 0)) {
+    fatal_error("Invalid ray source definition -- only volumetric sources with "
+                "defined volume are allowed.");
   }
-
-  // Check that box source is not restricted to fissionable areas
-  if (sb->only_fissionable()) {
-    fatal_error(
-      "Invalid ray source definition -- fissionable spatial distribution "
-      "not allowed.");
+  // Check for fixed dimensional source
+  if (!(space_dist->dims() > 0)) {
+    fatal_error("Invalid ray source definition -- only fixed dimensional "
+                "sources are allowed.");
   }
 
   // Check for isotropic source
@@ -296,15 +293,6 @@ void validate_random_ray_inputs()
                   "precedence in random ray mode -- point source coordinate "
                   "will be ignored.");
         }
-      }
-
-      // Check that a discrete energy distribution was used
-      Distribution* d = is->energy();
-      Discrete* dd = dynamic_cast<Discrete*>(d);
-      if (!dd) {
-        fatal_error(
-          "Only discrete (multigroup) energy distributions are allowed for "
-          "external sources in random ray mode.");
       }
     }
   }

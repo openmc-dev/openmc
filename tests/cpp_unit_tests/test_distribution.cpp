@@ -5,6 +5,42 @@
 #include <cmath>
 #include <pugixml.hpp>
 
+TEST_CASE("Test integral over normalized distributions is 1.0")
+{
+  uint64_t seed = openmc::init_seed(0, 0);
+
+  // Initialize discrete distribution
+  double x[5] = {-1.6, 1.1, 20.3, 4.7, 0.9};
+  double p[5] = {0.2, 0.1, 0.65, 0.02, 0.03};
+  openmc::Discrete discrete(x, p, 5);
+
+  REQUIRE_THAT(
+    discrete.integral(-2.0, 21.0), Catch::Matchers::WithinAbs(1.0, 1e-12));
+
+  openmc::Uniform uniform(-1.0, 1.0);
+  REQUIRE_THAT(
+    uniform.integral(-1.0, 1.0), Catch::Matchers::WithinAbs(1.0, 1e-12));
+
+  double n[4] = {0.0, -1.0, -2.0, 3.0};
+  for (auto i : n) {
+    openmc::PowerLaw powerlaw(1.0, 5.0, i);
+    REQUIRE_THAT(
+      powerlaw.integral(1.0, 5.0), Catch::Matchers::WithinAbs(1.0, 1e-12));
+  }
+
+  openmc::Maxwell maxwell(1.0);
+  REQUIRE_THAT(maxwell.integral(0.0, openmc::INFTY),
+    Catch::Matchers::WithinAbs(1.0, 1e-12));
+
+  openmc::Watt watt(0.5, 3.0);
+  REQUIRE_THAT(
+    watt.integral(0.0, openmc::INFTY), Catch::Matchers::WithinAbs(1.0, 1e-12));
+
+  openmc::Normal normal(0.5, 3.0);
+  REQUIRE_THAT(normal.integral(-openmc::INFTY, openmc::INFTY),
+    Catch::Matchers::WithinAbs(1.0, 1e-12));
+}
+
 TEST_CASE("Test alias method sampling of a discrete distribution")
 {
   constexpr int n_samples = 1000000;

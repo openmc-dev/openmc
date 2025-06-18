@@ -862,20 +862,21 @@ SourceSite RandomRay::sample_halton()
   init_particle_seeds(batch_seed, seeds());
   stream() = STREAM_TRACKING;
 
-  // Calculate next samples in LDS across 5 dimensions
-  vector<double> samples = rhalton(5, current_seed(), skip = skip);
+  auto* space_dist =
+    dynamic_cast<IndependentSource*>(RandomRay::ray_source_.get())->space();
+  int32_t n = space_dist->dims();
+  auto* fspace_dist = dynamic_cast<FixedSpatialDistribution*>(space_dist);
 
-  // Get spatial box of ray_source_
-  SpatialBox* sb = dynamic_cast<SpatialBox*>(
-    dynamic_cast<IndependentSource*>(RandomRay::ray_source_.get())->space());
+  // Calculate next samples in LDS across n+2 dimensions
+  vector<double> samples = rhalton(n + 2, current_seed(), skip = skip);
 
-  // Sample spatial distribution
-  Position xi {samples[0], samples[1], samples[2]};
-  // make a small shift in position to avoid geometry floating point issues
-  Position shift {FP_COINCIDENT, FP_COINCIDENT, FP_COINCIDENT};
-  site.r = (sb->lower_left() + shift) +
-           xi * ((sb->upper_right() - shift) - (sb->lower_left() + shift));
-
+  vector<double> x;
+  for (auto i = 0; i < n; i++) {
+    // make a small shift in position to avoid geometry floating point issues
+    x.emplace_back(FP_COINCIDENT + samples[i] * (1.0 - 2 * FP_COINCIDENT));
+  }
+  // Sample position
+  site.r = fspace_dist->sample(begin(x));
   // Sample Polar cosine and azimuthal angles
   double mu = 2.0 * samples[3] - 1.0;
   double azi = 2.0 * PI * samples[4];

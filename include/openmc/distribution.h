@@ -4,12 +4,15 @@
 #ifndef OPENMC_DISTRIBUTION_H
 #define OPENMC_DISTRIBUTION_H
 
+#include <algorithm>
 #include <cstddef> // for size_t
 
 #include "pugixml.hpp"
 
 #include "openmc/constants.h"
+#include "openmc/math_functions.h"
 #include "openmc/memory.h" // for unique_ptr
+#include "openmc/random_lcg.h"
 #include "openmc/span.h"
 #include "openmc/vector.h" // for vector
 
@@ -22,11 +25,44 @@ namespace openmc {
 class Distribution {
 public:
   virtual ~Distribution() = default;
+
   virtual double sample(uint64_t* seed) const = 0;
 
-  //! Return integral of distribution
-  //! \return Integral of distribution
+  //! Return integral of distribution over whole range
+  //! \return Integral of distribution over whole range
   virtual double integral() const { return 1.0; };
+
+  //! Return integral of distribution over finite interval
+  //! \return Integral of distribution over finite interval
+  virtual double integral(double x0, double x1) const = 0;
+
+  struct Support {
+    double first;
+    double second;
+  };
+
+  //! Return range of possible values
+  virtual Support support() const = 0;
+
+  int32_t dims() const { return dims_; }
+
+protected:
+  int32_t dims_ {
+    C_NONE}; //! Number of uniform random samples needed for sampling
+};
+
+class FixedDistribution : public Distribution {
+public:
+  int32_t dims() const { return dims_; }
+  virtual double sample(vector<double>::iterator x) const = 0;
+  double sample(uint64_t* seed) const override
+  {
+    vector<double> x;
+    for (auto i = 0; i < dims(); i++) {
+      x.emplace_back(prn(seed));
+    }
+    return this->sample(begin(x));
+  }
 };
 
 using UPtrDist = unique_ptr<Distribution>;
@@ -51,7 +87,12 @@ public:
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
-  size_t sample(uint64_t* seed) const;
+  size_t sample(uint64_t* seed) const
+  {
+    vector<double> x = {prn(seed), prn(seed)};
+    return sample(begin(x));
+  }
+  size_t sample(vector<double>::iterator x) const;
 
   // Properties
   const vector<double>& prob() const { return prob_; }
@@ -75,17 +116,25 @@ private:
 //! A discrete distribution (probability mass function)
 //==============================================================================
 
-class Discrete : public Distribution {
+class Discrete : public FixedDistribution {
 public:
   explicit Discrete(pugi::xml_node node);
   Discrete(const double* x, const double* p, size_t n);
 
-  //! Sample a value from the distribution
-  //! \param seed Pseudorandom number seed pointer
-  //! \return Sampled value
-  double sample(uint64_t* seed) const override;
+  using FixedDistribution::sample;
+  double sample(vector<double>::iterator x) const override;
 
   double integral() const override { return di_.integral(); };
+
+  double integral(double x0, double x1) const override;
+
+  Support support() const override
+  {
+    Support sup;
+    sup.first = *std::min_element(begin(x_), end(x_));
+    sup.second = *std::max_element(begin(x_), end(x_));
+    return sup;
+  }
 
   // Properties
   const vector<double>& x() const { return x_; }
@@ -102,15 +151,23 @@ private:
 //! Uniform distribution over the interval [a,b]
 //==============================================================================
 
-class Uniform : public Distribution {
+class Uniform : public FixedDistribution {
 public:
   explicit Uniform(pugi::xml_node node);
-  Uniform(double a, double b) : a_ {a}, b_ {b} {};
+  Uniform(double a, double b) : a_ {a}, b_ {b} { dims_ = 1; };
 
-  //! Sample a value from the distribution
-  //! \param seed Pseudorandom number seed pointer
-  //! \return Sampled value
-  double sample(uint64_t* seed) const override;
+  using FixedDistribution::sample;
+  double sample(vector<double>::iterator x) const override;
+
+  double integral(double x0, double x1) const override;
+
+  Support support() const override
+  {
+    Support sup;
+    sup.first = a_;
+    sup.second = b_;
+    return sup;
+  }
 
   double a() const { return a_; }
   double b() const { return b_; }
@@ -124,27 +181,36 @@ private:
 //! PowerLaw distribution over the interval [a,b] with exponent n : p(x)=c x^n
 //==============================================================================
 
-class PowerLaw : public Distribution {
+class PowerLaw : public FixedDistribution {
 public:
   explicit PowerLaw(pugi::xml_node node);
   PowerLaw(double a, double b, double n)
-    : offset_ {std::pow(a, n + 1)}, span_ {std::pow(b, n + 1) - offset_},
-      ninv_ {1 / (n + 1)} {};
+    : a_ {a}, f_ {std::log(b / a) * exprel((n + 1.0) * std::log(b / a))}, n_ {n}
+  {
+    dims_ = 1;
+  };
 
-  //! Sample a value from the distribution
-  //! \param seed Pseudorandom number seed pointer
-  //! \return Sampled value
-  double sample(uint64_t* seed) const override;
+  using FixedDistribution::sample;
+  double sample(vector<double>::iterator x) const override;
 
-  double a() const { return std::pow(offset_, ninv_); }
-  double b() const { return std::pow(offset_ + span_, ninv_); }
-  double n() const { return 1 / ninv_ - 1; }
+  double integral(double x0, double x1) const override;
+
+  double a() const { return a_; }
+  double b() const { return a_ * std::exp(f_ * log1prel((n_ + 1.0) * f_)); }
+  double n() const { return n_; }
+  Support support() const override
+  {
+    Support sup;
+    sup.first = a();
+    sup.second = b();
+    return sup;
+  }
 
 private:
   //! Store processed values in object to allow for faster sampling
-  double offset_; //!< a^(n+1)
-  double span_;   //!< b^(n+1) - a^(n+1)
-  double ninv_;   //!< 1/(n+1)
+  double a_;
+  double n_;
+  double f_; //!< ln(b/a)*exprel((n+1)*ln(b/a))
 };
 
 //==============================================================================
@@ -160,6 +226,16 @@ public:
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
   double sample(uint64_t* seed) const override;
+
+  double integral(double x0, double x1) const override;
+
+  Support support() const override
+  {
+    Support sup;
+    sup.first = 0.0;
+    sup.second = INFTY;
+    return sup;
+  }
 
   double theta() const { return theta_; }
 
@@ -180,6 +256,16 @@ public:
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
   double sample(uint64_t* seed) const override;
+
+  double integral(double x0, double x1) const override;
+
+  Support support() const override
+  {
+    Support sup;
+    sup.first = 0.0;
+    sup.second = INFTY;
+    return sup;
+  }
 
   double a() const { return a_; }
   double b() const { return b_; }
@@ -205,6 +291,16 @@ public:
   //! \return Sampled value
   double sample(uint64_t* seed) const override;
 
+  double integral(double x0, double x1) const override;
+
+  Support support() const override
+  {
+    Support sup;
+    sup.first = 0.0;
+    sup.second = INFTY;
+    return sup;
+  }
+
   double mean_value() const { return mean_value_; }
   double std_dev() const { return std_dev_; }
 
@@ -217,23 +313,32 @@ private:
 //! Histogram or linear-linear interpolated tabular distribution
 //==============================================================================
 
-class Tabular : public Distribution {
+class Tabular : public FixedDistribution {
 public:
   explicit Tabular(pugi::xml_node node);
   Tabular(const double* x, const double* p, int n, Interpolation interp,
     const double* c = nullptr);
 
-  //! Sample a value from the distribution
-  //! \param seed Pseudorandom number seed pointer
-  //! \return Sampled value
-  double sample(uint64_t* seed) const override;
+  using FixedDistribution::sample;
+  double sample(vector<double>::iterator x) const override;
 
   // properties
   vector<double>& x() { return x_; }
   const vector<double>& x() const { return x_; }
   const vector<double>& p() const { return p_; }
   Interpolation interp() const { return interp_; }
-  double integral() const override { return integral_; };
+
+  double integral() const override { return integral_; }
+
+  Support support() const override
+  {
+    Support sup;
+    sup.first = *std::min_element(begin(x_), end(x_));
+    sup.second = *std::max_element(begin(x_), end(x_));
+    return sup;
+  }
+
+  double integral(double x0, double x1) const override;
 
 private:
   vector<double> x_;     //!< tabulated independent variable
@@ -254,15 +359,21 @@ private:
 //! Equiprobable distribution
 //==============================================================================
 
-class Equiprobable : public Distribution {
+class Equiprobable : public FixedDistribution {
 public:
   explicit Equiprobable(pugi::xml_node node);
-  Equiprobable(const double* x, int n) : x_ {x, x + n} {};
+  Equiprobable(const double* x, int n) : x_ {x, x + n} { dims_ = 1; };
 
-  //! Sample a value from the distribution
-  //! \param seed Pseudorandom number seed pointer
-  //! \return Sampled value
-  double sample(uint64_t* seed) const override;
+  using FixedDistribution::sample;
+  double sample(vector<double>::iterator x) const override;
+
+  Support support() const override
+  {
+    Support sup;
+    sup.first = *std::min_element(begin(x_), end(x_));
+    sup.second = *std::max_element(begin(x_), end(x_));
+    return sup;
+  }
 
   const vector<double>& x() const { return x_; }
 
@@ -285,8 +396,23 @@ public:
 
   double integral() const override { return integral_; }
 
+  double integral(double x0, double x1) const override;
+
+  Support support() const override
+  {
+    Support sup;
+    sup.first = INFTY;
+    sup.second = -INFTY;
+    for (auto& item : distribution_) {
+      Support dsup = item.second->support();
+      sup.first = std::min(sup.first, dsup.first);
+      sup.second = std::max(sup.second, dsup.second);
+    }
+    return sup;
+  }
+
 private:
-  // Storrage for probability + distribution
+  // Storage for probability + distribution
   using DistPair = std::pair<double, UPtrDist>;
 
   vector<DistPair>

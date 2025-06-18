@@ -1013,13 +1013,15 @@ class WeightWindowsList(list):
 
         return wws
 
-    def export_to_hdf5(self, path: PathLike = 'weight_windows.h5'):
+    def export_to_hdf5(self, path: PathLike = 'weight_windows.h5', **init_kwargs):
         """Write weight windows to an HDF5 file.
 
         Parameters
         ----------
         path : PathLike
             Path to the file to write weight windows to
+        **init_kwargs
+            Keyword arguments passed to :func:`openmc.lib.init`
 
         """
         import openmc.lib
@@ -1039,8 +1041,8 @@ class WeightWindowsList(list):
 
         with change_directory(tmpdir=True):
             # Write the model to an XML file
-            model.export_to_xml()
+            model.export_to_model_xml()
 
             # Load the model with openmc.lib and then export it to an HDF5 file
-            with openmc.lib.run_in_memory():
+            with openmc.lib.run_in_memory(**init_kwargs):
                 openmc.lib.export_weight_windows(path)

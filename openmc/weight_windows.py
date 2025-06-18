@@ -95,7 +95,7 @@ class WeightWindows(IDManagerMixin):
         rouletting
     max_lower_bound_ratio : float
         Maximum allowed ratio of a particle's weight to the weight window's
-        lower bound.
+        lower bound. (Default: 1.0)
     max_split : int
         Maximum allowable number of particles when splitting
     weight_cutoff : float

@@ -756,9 +756,9 @@ class Geometry:
         """
         model = openmc.Model()
         model.geometry = self
-        model.materials = openmc.Materials(list(self.get_all_materials().values()))
+        model.materials = self.get_all_materials().values()
 
-        # Adding placeholder materials for DAGMCUniverses
+        # Add placeholder materials for DAGMCUniverses
         universes = self.get_all_universes()
         for universe in universes.values():
             if isinstance(universe, openmc.DAGMCUniverse):
@@ -766,12 +766,5 @@ class Geometry:
                     mat_dag = openmc.Material(name=name)
                     mat_dag.add_nuclide('H1', 1.0)
                     model.materials.append(mat_dag)
-
-        # Determine whether any materials contains macroscopic data and if
-        # so, set energy mode accordingly
-        for mat in self.get_all_materials().values():
-            if mat._macroscopic is not None:
-                model.settings.energy_mode = 'multi-group'
-                break
 
         return model.plot(*args, **kwargs)

@@ -10,7 +10,6 @@ from warnings import warn
 import lxml.etree as ET
 import numpy as np
 from scipy.integrate import trapezoid
-from scipy.special import exprel
 
 import openmc.checkvalue as cv
 from .._xml import get_text
@@ -24,9 +23,6 @@ _INTERPOLATION_SCHEMES = {
     'log-log'
 }
 
-def log1prel(x):
-    """Evaluate log(1+x)/x without loss of precision near 0"""
-    return np.where(np.abs(x) < 1e-16, 1.0, np.log1p(x) / x)
 
 class Univariate(EqualityMixin, ABC):
     """Probability distribution of a single random variable.
@@ -522,8 +518,10 @@ class PowerLaw(Univariate):
     def sample(self, n_samples=1, seed=None):
         rng = np.random.RandomState(seed)
         xi = rng.random(n_samples)
-        f = np.log(self.b/self.a)*exprel((self.n+1)*np.log(self.b/self.a))
-        return self.a*np.exp(f*xi*log1prel(((self.n+1)*f)*xi))
+        pwr = self.n + 1
+        offset = self.a**pwr
+        span = self.b**pwr - offset
+        return np.power(offset + xi * span, 1/pwr)
 
     def to_xml_element(self, element_name: str):
         """Return XML representation of the power law distribution

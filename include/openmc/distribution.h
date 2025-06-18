@@ -34,7 +34,7 @@ public:
 
   //! Return integral of distribution over finite interval
   //! \return Integral of distribution over finite interval
-  virtual double integral(double x0, double x1) const = 0;
+  double integral(double x0, double x1) const;
 
   struct Support {
     double first;
@@ -126,7 +126,7 @@ public:
 
   double integral() const override { return di_.integral(); };
 
-  double integral(double x0, double x1) const override;
+  double integral(double x0, double x1) const;
 
   Support support() const override
   {
@@ -159,7 +159,7 @@ public:
   using FixedDistribution::sample;
   double sample(vector<double>::iterator x) const override;
 
-  double integral(double x0, double x1) const override;
+  double integral(double x0, double x1) const;
 
   Support support() const override
   {
@@ -185,7 +185,8 @@ class PowerLaw : public FixedDistribution {
 public:
   explicit PowerLaw(pugi::xml_node node);
   PowerLaw(double a, double b, double n)
-    : a_ {a}, f_ {std::log(b / a) * exprel((n + 1.0) * std::log(b / a))}, n_ {n}
+    : offset_ {std::pow(a, n + 1)}, span_ {std::pow(b, n + 1) - offset_},
+      ninv_ {1 / (n + 1)}
   {
     dims_ = 1;
   };
@@ -193,11 +194,12 @@ public:
   using FixedDistribution::sample;
   double sample(vector<double>::iterator x) const override;
 
-  double integral(double x0, double x1) const override;
+  double integral(double x0, double x1) const;
 
-  double a() const { return a_; }
-  double b() const { return a_ * std::exp(f_ * log1prel((n_ + 1.0) * f_)); }
-  double n() const { return n_; }
+  double a() const { return std::pow(offset_, ninv_); }
+  double b() const { return std::pow(offset_ + span_, ninv_); }
+  double n() const { return 1 / ninv_ - 1; }
+
   Support support() const override
   {
     Support sup;
@@ -208,9 +210,9 @@ public:
 
 private:
   //! Store processed values in object to allow for faster sampling
-  double a_;
-  double n_;
-  double f_; //!< ln(b/a)*exprel((n+1)*ln(b/a))
+  double offset_; //!< a^(n+1)
+  double span_;   //!< b^(n+1) - a^(n+1)
+  double ninv_;   //!< 1/(n+1)
 };
 
 //==============================================================================
@@ -227,7 +229,7 @@ public:
   //! \return Sampled value
   double sample(uint64_t* seed) const override;
 
-  double integral(double x0, double x1) const override;
+  double integral(double x0, double x1) const;
 
   Support support() const override
   {
@@ -257,7 +259,7 @@ public:
   //! \return Sampled value
   double sample(uint64_t* seed) const override;
 
-  double integral(double x0, double x1) const override;
+  double integral(double x0, double x1) const;
 
   Support support() const override
   {
@@ -291,7 +293,7 @@ public:
   //! \return Sampled value
   double sample(uint64_t* seed) const override;
 
-  double integral(double x0, double x1) const override;
+  double integral(double x0, double x1) const;
 
   Support support() const override
   {
@@ -338,7 +340,7 @@ public:
     return sup;
   }
 
-  double integral(double x0, double x1) const override;
+  double integral(double x0, double x1) const;
 
 private:
   vector<double> x_;     //!< tabulated independent variable
@@ -366,6 +368,8 @@ public:
 
   using FixedDistribution::sample;
   double sample(vector<double>::iterator x) const override;
+
+  double integral(double x0, double x1) const;
 
   Support support() const override
   {
@@ -396,7 +400,7 @@ public:
 
   double integral() const override { return integral_; }
 
-  double integral(double x0, double x1) const override;
+  double integral(double x0, double x1) const;
 
   Support support() const override
   {

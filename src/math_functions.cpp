@@ -937,10 +937,18 @@ double log1prel(double x)
   }
 }
 
+double powm1rel(double x, double n)
+{
+  if (x == 0.0)
+    return -1 / n;
+  if (n * std::log(x) < 0.5)
+    return std::log(x) * exprel(n * std::log(x));
+  return (std::pow(x, n) - 1.0) / n;
+}
+
 double monodiff(double x, double y, double n)
 {
-  double log = std::log(x / y);
-  return std::pow(y, n) * log * exprel(n * log);
+  return powm1rel(x, n) - powm1rel(y, n);
 }
 
 } // namespace openmc

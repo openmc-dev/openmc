@@ -19,6 +19,28 @@
 namespace openmc {
 
 //==============================================================================
+// Distribution implementation
+//==============================================================================
+
+double Distribution::integral(double x0, double x1) const
+{
+  // Exit early if integral is over support
+  auto sup = support();
+  if ((x0 <= sup.first) && (sup.second <= x1))
+    return 1.0;
+
+  int32_t integral = 0;
+  uint64_t seed = init_seed(0, 0);
+  int32_t n = 1000000;
+  for (auto i = 0; i < n; ++i) {
+    double s = sample(&seed);
+    if ((x0 <= s) && (s <= x1))
+      ++integral;
+  }
+  return static_cast<float>(integral) / n;
+}
+
+//==============================================================================
 // DiscreteIndex implementation
 //==============================================================================
 
@@ -151,7 +173,7 @@ double Discrete::integral(double x0, double x1) const
     if ((x0 <= x_[j]) && (x_[j] <= x1))
       integral += 1.0 - p;
   }
-  return integral / n;
+  return integral / n * di_.integral();
 }
 
 //==============================================================================
@@ -197,22 +219,21 @@ PowerLaw::PowerLaw(pugi::xml_node node)
   const double b = params.at(1);
   const double n = params.at(2);
 
-  a_ = a;
-  f_ = std::log(b / a) * exprel((n + 1.0) * std::log(b / a));
-  n_ = n;
+  offset_ = std::pow(a, n + 1);
+  span_ = std::pow(b, n + 1) - offset_;
+  ninv_ = 1 / (n + 1);
   dims_ = 1;
-}
-
-double PowerLaw::sample(vector<double>::iterator x) const
-{
-  double x_ = *(x++);
-  return a_ * exp(x_ * f_ * log1prel(x_ * (n_ + 1.0) * f_));
 }
 
 double PowerLaw::integral(double x0, double x1) const
 {
-  return monodiff(std::min(x1, b()), std::max(a_, x0), n_ + 1.0) /
-         monodiff(b(), a_, n_ + 1.0);
+  return monodiff(std::min(x1, b()), std::max(a(), x0), n() + 1.0) /
+         monodiff(b(), a(), n() + 1.0);
+}
+
+double PowerLaw::sample(vector<double>::iterator x) const
+{
+  return std::pow(offset_ + *(x++) * span_, ninv_);
 }
 
 //==============================================================================
@@ -478,6 +499,17 @@ double Equiprobable::sample(vector<double>::iterator x) const
   double xl = x_[i];
   double xr = x_[i + i];
   return xl + ((n - 1) * r - i) * (xr - xl);
+}
+
+double Equiprobable::integral(double x0, double x1) const
+{
+  int32_t integral = 0;
+  size_t n = x_.size();
+  for (int i = 0; i < n; ++i) {
+    if ((x0 <= x_[i]) && (x_[i] <= x1))
+      ++integral;
+  }
+  return static_cast<double>(integral) / n;
 }
 
 //==============================================================================

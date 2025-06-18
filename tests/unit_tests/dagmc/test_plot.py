@@ -50,6 +50,7 @@ def test_plotting_geometry_filled_with_dagmc_universe(request):
     sphere1 = openmc.Sphere(r=50.0)
     sphere2 = openmc.Sphere(r=60.0, boundary_type='vacuum')
 
+    # Adding a material to the CSG Universe to check all materials are accounted for
     csg_material = openmc.Material(name='csg_material')
     csg_material.add_nuclide("H1", 1.0)
 

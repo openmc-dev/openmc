@@ -758,6 +758,7 @@ class Geometry:
         model.geometry = self
         model.materials = openmc.Materials(list(self.get_all_materials().values()))
 
+        # Adding placeholder materials for DAGMCUniverses
         universes = self.get_all_universes()
         for universe in universes.values():
             if isinstance(universe, openmc.DAGMCUniverse):

@@ -147,11 +147,12 @@ std::pair<Position, double> CylindricalIndependent::sample(uint64_t* seed) const
 {
   auto [r, r_wgt] = r_->sample(seed);
   auto [phi, phi_wgt] = phi_->sample(seed);
+  auto [z, z_wgt] = z_->sample(seed);
   double x = r * cos(phi) + origin_.x;
   double y = r * sin(phi) + origin_.y;
-  double z = z_->sample(seed) + origin_.z;
+  z += origin_.z;
   Position xi {x, y, z};
-  return { xi, r_wgt * phi_wgt };
+  return { xi, r_wgt * phi_wgt * z_wgt};
 }
 
 //==============================================================================

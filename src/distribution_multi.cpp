@@ -95,7 +95,7 @@ std::pair<Direction, double> PolarAzimuthal::sample_as_bias(
   // Sample azimuthal angle
   auto [phi, phi_wgt] = phi_->sample(seed);
 
-  double pdf_evaluation = mu_.evaluate(mu) * phi_.evaluate(phi);
+  double pdf_evaluation = mu_->evaluate(mu) * phi_->evaluate(phi);
 
   if (mu == 1.0)
     return { u_ref_, pdf_evaluation };
@@ -117,8 +117,8 @@ Isotropic::Isotropic(pugi::xml_node node)
       openmc::fatal_error(
         "Isotropic distributions may only be biased by a PolarAzimuthal.");
     }
-    UPtrAngle bias = PolarAzimuthal(bias_node);
-    if (bias.mu().bias() || bias.phi().bias()) {
+    auto bias = std::make_unique<PolarAzimuthal>(bias_node);
+    if (bias->mu()->bias() || bias->phi()->bias()) {
       openmc::fatal_error(
         "Attempted to bias Isotropic distribution with a biased PolarAzimuthal "
         "distribution. Please ensure bias distributions are unbiased.");
@@ -151,7 +151,7 @@ std::pair<Direction, double> Isotropic::sample(uint64_t* seed) const
 
 std::pair<Direction, double> Monodirectional::sample(uint64_t* seed) const
 {
-  return u_ref_;
+  return { u_ref_, 1.0 };
 }
 
 } // namespace openmc

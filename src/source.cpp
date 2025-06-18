@@ -334,6 +334,7 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
 {
   SourceSite site;
   site.particle = particle_;
+  double r_wgt, E_wgt = 1.0;
 
   // Repeat sampling source location until a good site has been accepted
   bool accepted = false;
@@ -343,8 +344,9 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
   while (!accepted) {
 
     // Sample spatial distribution
-    auto [r, r_wgt] = space_->sample(seed);
+    auto [r, r_wgt_temp] = space_->sample(seed);
     site.r = r;
+    r_wgt = r_wgt_temp;
 
     // Check if sampled position satisfies spatial constraints
     accepted = satisfies_spatial_constraints(site.r);
@@ -382,8 +384,9 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
 
     while (true) {
       // Sample energy spectrum
-      auto [E, E_wgt] = energy_->sample(seed);
+      auto [E, E_wgt_temp] = energy_->sample(seed);
       site.E = E;
+      E_wgt = E_wgt_temp;
 
       // Resample if energy falls above maximum particle energy
       if (site.E < data::energy_max[p] and

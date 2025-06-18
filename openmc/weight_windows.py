@@ -1,6 +1,7 @@
 from __future__ import annotations
 from numbers import Real, Integral
 from collections.abc import Iterable, Sequence
+from pathlib import Path
 import warnings
 
 import lxml.etree as ET
@@ -14,6 +15,7 @@ import openmc.checkvalue as cv
 from openmc.checkvalue import PathLike
 from ._xml import get_text, clean_indentation
 from .mixin import IDManagerMixin
+from .utility_funcs import change_directory
 
 
 class WeightWindows(IDManagerMixin):
@@ -90,9 +92,9 @@ class WeightWindows(IDManagerMixin):
     survival_ratio : float
         Ratio of the survival weight to the lower weight window bound for
         rouletting
-    max_lower_bound_ratio: float
+    max_lower_bound_ratio : float
         Maximum allowed ratio of a particle's weight to the weight window's
-        lower bound. (Default: 1.0)
+        lower bound.
     max_split : int
         Maximum allowable number of particles when splitting
     weight_cutoff : float
@@ -114,7 +116,7 @@ class WeightWindows(IDManagerMixin):
         upper_bound_ratio: float | None = None,
         energy_bounds: Iterable[Real] | None = None,
         particle_type: str = 'neutron',
-        survival_ratio: float = 3,
+        survival_ratio: float = 3.0,
         max_lower_bound_ratio: float | None = None,
         max_split: int = 10,
         weight_cutoff: float = 1.e-38,
@@ -951,3 +953,66 @@ def hdf5_to_wws(path='weight_windows.h5'):
             mesh = MeshBase.from_hdf5(h5_file['meshes'][mesh_group])
             meshes[mesh.id] = mesh
         return [WeightWindows.from_hdf5(ww, meshes) for ww in h5_file['weight_windows'].values()]
+
+
+def read_weight_windows_file(
+    filename: PathLike = 'weight_windows.h5'
+) -> list[WeightWindows]:
+    """Read weight windows from an HDF5 file or a MCNP wwinp file.
+
+    Parameters
+    ----------
+    filename : PathLike
+        Path to the file to read weight windows from (should be an HDF5 file or
+        a MCNP wwinp file).
+
+    Returns
+    -------
+    list of openmc.WeightWindows
+        Weight windows read from the file
+
+    """
+    cv.check_type('filename', filename, PathLike)
+    filename = Path(filename)
+    if filename.suffix == '.h5':
+        return hdf5_to_wws(filename)
+    else:
+        return wwinp_to_wws(filename)
+
+
+def write_weight_windows_file(
+    weight_windows: Sequence[WeightWindows],
+    filename: PathLike = 'weight_windows.h5'
+) -> list[WeightWindows]:
+    """Write weight windows to an HDF5 file.
+
+    Parameters
+    ----------
+    weight_windows : sequence of openmc.WeightWindows
+        Weight windows to write to file
+    filename : PathLike
+        Path to the file to write weight windows to
+
+    """
+    import openmc.lib
+    cv.check_type('filename', filename, PathLike)
+
+    # Create a temporary model with the weight windows
+    model = openmc.Model()
+    sph = openmc.Sphere(boundary_type='vacuum')
+    cell = openmc.Cell(region=-sph)
+    model.geometry = openmc.Geometry([cell])
+    model.settings.weight_windows = weight_windows
+    model.settings.particles = 100
+    model.settings.batches = 1
+
+    # Get absolute path before moving to temporary directory
+    filename = Path(filename).resolve()
+
+    with change_directory(tmpdir=True):
+        # Write the model to an XML file
+        model.export_to_xml()
+
+        # Load the model with openmc.lib and then export it to an HDF5 file
+        with openmc.lib.run_in_memory():
+            openmc.lib.export_weight_windows(filename)

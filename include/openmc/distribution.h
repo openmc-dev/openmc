@@ -72,7 +72,7 @@ public:
   //! Apply biased sampling using another Discrete distribution
   //! \param b Biased probability vector for accepting a uniformly sampled bin
   //! \return void
-  void apply_bias(span<const double> b) const;
+  void apply_bias(span<const double> b);
 
   // Properties
   const vector<double>& prob() const { return prob_; }
@@ -120,7 +120,7 @@ public:
 
   double integral() const override { return di_.integral(); };
 
-  void set_bias_discrete(pugi::xml_node bias_node) const;
+  void set_bias_discrete(pugi::xml_node bias_node);
 
   // Properties
   const vector<double>& x() const { return x_; }

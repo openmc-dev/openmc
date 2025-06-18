@@ -17,6 +17,12 @@
 
 namespace openmc {
 
+// PDF evaluation not supported for all distribution types
+double Distribution::evaluate(double x) const {
+  throw std::runtime_error(
+    "PDF evaluation not implemented for this distribution type.");
+}
+
 //==============================================================================
 // DiscreteIndex implementation
 //==============================================================================
@@ -121,7 +127,7 @@ void DiscreteIndex::normalize()
   }
 }
 
-void DiscreteIndex::apply_bias(span<const double> b) const
+void DiscreteIndex::apply_bias(span<const double> b)
 {
   // Replace the probability vector with that from the bias distribution.
   prob_.assign(b.begin(), b.end());
@@ -190,7 +196,7 @@ double Discrete::evaluate(double x) const
   return 0.0;
 }
 
-void Discrete::set_bias_discrete(pugi::xml_node bias_node) const
+void Discrete::set_bias_discrete(pugi::xml_node bias_node)
 {
   // Takes the probability vector from a bias distribution and applies it to
   // the existing DiscreteIndex.
@@ -228,12 +234,12 @@ std::pair<double, double> Uniform::sample(uint64_t* seed) const
 
 double Uniform::evaluate(double x) const
 {
-  if (x <= a) {
+  if (x <= a()) {
     return 0.0;
-  } else if (x >= b) {
+  } else if (x >= b()) {
     return 0.0;
   } else {
-    return 1/(b - a);
+    return 1/(b() - a());
   }
 }
 
@@ -260,14 +266,14 @@ PowerLaw::PowerLaw(pugi::xml_node node)
 
 double PowerLaw::evaluate(double x) const
 {
-  if (x <= a) {
+  if (x <= a()) {
     return 0.0;
-  } else if (x >= b) {
+  } else if (x >= b()) {
     return 0.0;
   } else {
-    int pwr = n + 1;
+    int pwr = n() + 1;
     double norm = pwr / span_;
-    return norm * std::pow(std::fabs(x),n);
+    return norm * std::pow(std::fabs(x),n());
   }
 }
 
@@ -506,7 +512,7 @@ double Tabular::evaluate(double x) const
       return p_[i];
     }
   } else {
-    i = std::lower_bound(x_.begin(), x_.end(), target_x) - x_.begin() - 1;
+    i = std::lower_bound(x_.begin(), x_.end(), x) - x_.begin() - 1;
         
     if (i < 0 || i >= static_cast<int>(p_.size()) - 1) {
         return 0.0;
@@ -656,7 +662,7 @@ UPtrDist distribution_from_xml(pugi::xml_node node)
       openmc::fatal_error(
         "Discrete distributions may only be biased by another Discrete.");
     } else if (type == "discrete" && bias_type == "discrete") {
-      dist->set_bias_discrete(bias_node)
+      static_cast<Discrete*>(dist.get())->set_bias_discrete(bias_node);
     } else if (bias_type == "discrete") {
       openmc::fatal_error(
         "Only Discrete distributions may be biased by a Discrete "

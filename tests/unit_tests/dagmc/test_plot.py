@@ -54,7 +54,7 @@ def test_plotting_geometry_filled_with_dagmc_universe(request):
     csg_material.add_nuclide("H1", 1.0)
 
     cell1 = openmc.Cell(fill=dag_universe, region=-sphere1)
-    cell2 = openmc.Cell(fill=dag_universe, region=+sphere1 & -sphere2)
+    cell2 = openmc.Cell(fill=csg_material, region=+sphere1 & -sphere2)
 
     geometry = openmc.Geometry([cell1, cell2])
 

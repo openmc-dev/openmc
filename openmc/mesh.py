@@ -2810,7 +2810,7 @@ class HexagonalMesh(StructuredMesh):
         return mesh
 
     @classmethod
-    def from_hexagonal_lattice(cls,
+    def from_hex_lattice(cls,
         lattice: 'openmc.HexLattice',
         division: int = 1,
         mesh_id: int | None = None,

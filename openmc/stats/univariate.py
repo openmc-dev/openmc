@@ -216,7 +216,7 @@ class Discrete(Univariate):
     
     @bias.setter
     def bias(self, bias):
-        cv.check_type('Biasing distribution', bias, Discrete)
+        cv.check_type('Biasing distribution', bias, Discrete, none_ok=True)
         self._bias = bias
 
     def cdf(self):
@@ -477,7 +477,7 @@ class Uniform(Univariate):
     
     @bias.setter
     def bias(self, bias):
-        cv.check_type('Biasing distribution', bias, Univariate)
+        cv.check_type('Biasing distribution', bias, Univariate, none_ok=True)
         self._bias = bias
 
     def to_tabular(self):
@@ -635,7 +635,7 @@ class PowerLaw(Univariate):
     
     @bias.setter
     def bias(self, bias):
-        cv.check_type('Biasing distribution', bias, Univariate)
+        cv.check_type('Biasing distribution', bias, Univariate, none_ok=True)
         self._bias = bias
 
     def sample(self, n_samples=1, seed=None):
@@ -765,7 +765,7 @@ class Maxwell(Univariate):
     
     @bias.setter
     def bias(self, bias):
-        cv.check_type('Biasing distribution', bias, Univariate)
+        cv.check_type('Biasing distribution', bias, Univariate, none_ok=True)
         self._bias = bias
 
     def sample(self, n_samples=1, seed=None):
@@ -906,7 +906,7 @@ class Watt(Univariate):
     
     @bias.setter
     def bias(self, bias):
-        cv.check_type('Biasing distribution', bias, Univariate)
+        cv.check_type('Biasing distribution', bias, Univariate, none_ok=True)
         self._bias = bias
 
     def sample(self, n_samples=1, seed=None):
@@ -1040,7 +1040,7 @@ class Normal(Univariate):
     
     @bias.setter
     def bias(self, bias):
-        cv.check_type('Biasing distribution', bias, Univariate)
+        cv.check_type('Biasing distribution', bias, Univariate, none_ok=True)
         self._bias = bias
 
     def sample(self, n_samples=1, seed=None):
@@ -1256,7 +1256,7 @@ class Tabular(Univariate):
     
     @bias.setter
     def bias(self, bias):
-        cv.check_type('Biasing distribution', bias, Univariate)
+        cv.check_type('Biasing distribution', bias, Univariate, none_ok=True)
         self._bias = bias
 
     def cdf(self):
@@ -1528,7 +1528,7 @@ class Legendre(Univariate):
     
     @bias.setter
     def bias(self, bias):
-        cv.check_type('Biasing distribution', bias, Univariate)
+        cv.check_type('Biasing distribution', bias, Univariate, none_ok=True)
         self._bias = bias
 
     def sample(self, n_samples=1, seed=None):

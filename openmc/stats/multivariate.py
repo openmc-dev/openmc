@@ -173,7 +173,7 @@ class Isotropic(UnitSphere):
     
     @bias.setter
     def bias(self, bias):
-        cv.check_type('Biasing distribution', bias, PolarAzimuthal)
+        cv.check_type('Biasing distribution', bias, PolarAzimuthal, none_ok=True)
         self._bias = bias
 
     def to_xml_element(self):

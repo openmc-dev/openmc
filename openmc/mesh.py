@@ -3121,12 +3121,49 @@ class HexagonalMesh(StructuredMesh):
         return mesh
 
     @classmethod
-    def from_hexagonal_lattice(cls):
-        """Create hexagonal mesh from an existing hexagonal lattice
+    def from_hexagonal_lattice(cls,
+        lattice: 'openmc.HexLattice',
+        division: int = 1,
+        mesh_id: int | None = None,
+        name: str = ''
+    ):
+        """Create a hexagonal mesh from an existing hexagonal lattice
 
-        Not implemented yet
+        Parameters
+        ----------
+        lattice : openmc.HexLattice
+            Hexagonal lattice used as a template for this mesh
+        division : int
+            Number of mesh cells per lattice cell.
+            If not specified, there will be 1 mesh cell per lattice cell.
+        mesh_id : int
+            Unique identifier for the mesh
+        name : str
+            Name of the mesh
+
+        Returns
+        -------
+        openmc.HexagonalMesh
+            HexgonalMesh instance
+
         """
         pass
+        cv.check_type('hexagonal lattice', lattice, openmc.HexLattice)
+
+        # check these! the hex_lattice type has attributes num_rings,
+        #  pitch, center, and orientation - which will define the mesh, except for z-divisions
+        # we can add in divisions, to make sure we can also divide the lattice up in more hexagons. 
+        shape = np.array(lattice.shape)
+        width = lattice.pitch*shape
+        
+        mesh = cls(mesh_id=mesh_id, name=name)
+        mesh.lower_left = lattice.lower_left
+        mesh.upper_right = lattice.lower_left + width
+        mesh.dimension = shape*division
+
+        return mesh
+
+        
 
     @classmethod
     def from_domain(

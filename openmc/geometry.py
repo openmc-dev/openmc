@@ -758,32 +758,27 @@ class Geometry:
         model.geometry = self
         model.materials = self.get_all_materials().values()
 
-        # Add placeholder materials for DAGMCUniverses
-        universes = self.get_all_universes().values()
+        # collect all the material names from the geometry
+        all_material_names = {m.name for m in model.materials if m.name is not None}
 
-        universe_mat_names = set()
-        # collects all the material names from openmc.Universe universes
-        for universe in universes:
-            if isinstance(universe, openmc.Universe):
-                for universe_mat_name in universe.get_all_materials().values():
-                    if universe_mat_name.name is not None:
-                        universe_mat_names.add(universe_mat_name.name)
-
-        dagmcuniverse_only_mat_names = set()
-        # collects all the material names from openmc.DAGMCUniverse universes
-        # that are not already in the universe_mat_names set
-        for universe in universes:
-            if isinstance(universe, openmc.DAGMCUniverse):
-                for name in universe.material_names:
-                    if name not in universe_mat_names:
-                        dagmcuniverse_only_mat_names.add(name)
-
-        # makes a placeholder material for each material name for all names in
-        # dagmcuniverse_only_mat_names. These materials are otherwise missing
+        # makes a placeholder material for each material name if it isn't
+        # already present on the model. These materials are otherwise missing
         # from the geometry and are needed for plotting.
-        for name in dagmcuniverse_only_mat_names:
-            mat_dag = openmc.Material(name=name)
-            mat_dag.add_nuclide('H1', 1.0)
-            model.materials.append(mat_dag)
+        for universe in model.geometry.get_all_universes().values():
+            if not isinstance(universe, openmc.DAGMCUniverse):
+                continue
+            for name in universe.material_names:
+                # if this name is already present in the model, skip it
+                # (this can happen if the same material is used in multiple
+                # universes)
+                if name in all_material_names:
+                    continue
+                # if the material name is not present on the model,
+                # create a placeholder material with the same name
+                # and add it to the model
+                mat_dag = openmc.Material(name=name)
+                mat_dag.add_nuclide('H1', 1.0)
+                model.materials.append(mat_dag)
+                all_material_names.add(name)
 
         return model.plot(*args, **kwargs)

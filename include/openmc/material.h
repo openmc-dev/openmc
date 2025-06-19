@@ -107,6 +107,10 @@ public:
   //! \return Density in [g/cm^3]
   double density_gpcc() const { return density_gpcc_; }
 
+  //! Get charge density in [e/b-cm]
+  //! \return Charge density in [e/b-cm]
+  double charge_density() const { return charge_density_; };
+
   //! Get name
   //! \return Material name
   const std::string& name() const { return name_; }
@@ -177,6 +181,7 @@ public:
   xt::xtensor<double, 1> atom_density_; //!< Nuclide atom density in [atom/b-cm]
   double density_;                      //!< Total atom density in [atom/b-cm]
   double density_gpcc_;                 //!< Total atom density in [g/cm^3]
+  double charge_density_;               //!< Total charge density in [e/b-cm]
   double volume_ {-1.0};                //!< Volume in [cm^3]
   vector<bool> p0_; //!< Indicate which nuclides are to be treated with
                     //!< iso-in-lab scattering

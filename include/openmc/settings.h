@@ -147,6 +147,7 @@ extern std::unordered_set<int>
   statepoint_batch; //!< Batches when state should be written
 extern std::unordered_set<int>
   source_write_surf_id; //!< Surface ids where sources will be written
+<<<<<<< HEAD
 extern std::unordered_set<int>
   ct_cell_id; //!< Cell ids where collisions will be written
 extern std::unordered_set<int>
@@ -156,9 +157,15 @@ extern std::unordered_set<int>
 extern std::unordered_set<int>
   ct_material_id; //!< Material IDs where collisions will be written
 extern std::unordered_set<int>
-  ct_nuclide_id;       //!< Nuclide IDs where collisions will be written
-extern double ct_deposited_E_threshold; // Threshold deposited energy to recrod the collisions 
-extern int64_t ct_max_collisions; //!< Maximum events recoreded by Collision track?
+  ct_nuclide_id; //!< Nuclide IDs where collisions will be written
+extern double ct_deposited_E_threshold; // Threshold deposited energy to recrod
+                                        // the collisions
+extern int64_t
+  ct_max_collisions; //!< Maximum events recoreded by Collision track?
+=======
+extern double source_rejection_fraction; //!< Minimum fraction of source sites
+                                         //!< that must be accepted
+>>>>>>> 7a1cafa6c17d456dabdd4a2aa33fd5e586e98794
 
 extern int
   max_history_splits; //!< maximum number of particle splits for weight windows

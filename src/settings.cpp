@@ -126,6 +126,7 @@ RunMode run_mode {RunMode::UNSET};
 SolverType solver_type {SolverType::MONTE_CARLO};
 std::unordered_set<int> sourcepoint_batch;
 std::unordered_set<int> statepoint_batch;
+double source_rejection_fraction {0.05};
 std::unordered_set<int> source_write_surf_id;
 std::unordered_set<int> ct_cell_id;
 std::unordered_set<int> ct_mt_number;
@@ -653,6 +654,12 @@ void read_settings_xml(pugi::xml_node root)
     write_initial_source = get_node_value_bool(root, "write_initial_source");
   }
 
+  // Get relative number of lost particles
+  if (check_for_node(root, "source_rejection_fraction")) {
+    source_rejection_fraction =
+      std::stod(get_node_value(root, "source_rejection_fraction"));
+  }
+
   // Survival biasing
   if (check_for_node(root, "survival_biasing")) {
     survival_biasing = get_node_value_bool(root, "survival_biasing");
@@ -971,7 +978,8 @@ void read_settings_xml(pugi::xml_node root)
       }
     }
     if (check_for_node(node_ct, "deposited_E_threshold")) {
-      ct_deposited_E_threshold = std::stoll(get_node_value(node_ct, "deposited_E_threshold"));
+      ct_deposited_E_threshold =
+        std::stoll(get_node_value(node_ct, "deposited_E_threshold"));
     }
     // Get maximum number of particles to be banked per collision
     if (check_for_node(node_ct, "max_collisions")) {

@@ -43,14 +43,16 @@ void write_source_point(std::string, span<SourceSite> source_bank,
   const vector<int64_t>& bank_index, bool use_mcpl);
 
 void write_h5_collision_track(const char* filename,
-  span<CollisionTrackSite> collision_track_bank, const vector<int64_t>& bank_index);
+  span<CollisionTrackSite> collision_track_bank,
+  const vector<int64_t>& bank_index);
 
 // This appends a source bank specification to an HDF5 file
 // that's already open. It is used internally by write_source_point.
 void write_source_bank(hid_t group_id, span<SourceSite> source_bank,
   const vector<int64_t>& bank_index);
 
-void write_collision_track_bank(hid_t group_id, span<CollisionTrackSite> collision_track_bank,
+void write_collision_track_bank(hid_t group_id,
+  span<CollisionTrackSite> collision_track_bank,
   const vector<int64_t>& bank_index);
 
 void read_source_bank(

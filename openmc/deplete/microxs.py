@@ -12,13 +12,12 @@ import pandas as pd
 import numpy as np
 
 from openmc.checkvalue import check_type, check_value, check_iterable_type, PathLike
-from openmc.exceptions import DataError
 from openmc.utility_funcs import change_directory
 from openmc import StatePoint
 from openmc.mgxs import GROUP_STRUCTURES
 from openmc.data import REACTION_MT
 import openmc
-from .chain import Chain, REACTIONS
+from .chain import Chain, REACTIONS, _get_chain
 from .coupled_operator import _find_cross_sections, _get_nuclides_with_data
 import openmc.lib
 from openmc.mpi import comm
@@ -28,24 +27,13 @@ _valid_rxns.append('fission')
 _valid_rxns.append('damage-energy')
 
 
-def _resolve_chain_file_path(chain_file: str | None):
-    if chain_file is None:
-        chain_file = openmc.config.get('chain_file')
-        if 'chain_file' not in openmc.config:
-            raise DataError(
-                "No depletion chain specified and could not find depletion "
-                "chain in openmc.config['chain_file']"
-            )
-    return chain_file
-
-
 def get_microxs_and_flux(
         model: openmc.Model,
         domains,
         nuclides: Iterable[str] | None = None,
         reactions: Iterable[str] | None = None,
         energies: Iterable[float] | str | None = None,
-        chain_file: PathLike | None = None,
+        chain_file: PathLike | Chain | None = None,
         run_kwargs=None
     ) -> tuple[list[np.ndarray], list[MicroXS]]:
     """Generate a microscopic cross sections and flux from a Model
@@ -56,8 +44,8 @@ def get_microxs_and_flux(
     ----------
     model : openmc.Model
         OpenMC model object. Must contain geometry, materials, and settings.
-    domains : list of openmc.Material or openmc.Cell or openmc.Universe, or openmc.MeshBase
-        Domains in which to tally reaction rates.
+    domains : list of openmc.Material or openmc.Cell or openmc.Universe, or openmc.MeshBase, or openmc.Filter
+        Domains in which to tally reaction rates, or a spatial tally filter.
     nuclides : list of str
         Nuclides to get cross sections for. If not specified, all burnable
         nuclides from the depletion chain file are used.
@@ -66,9 +54,9 @@ def get_microxs_and_flux(
         reactions listed in the depletion chain file are used.
     energies : iterable of float or str
         Energy group boundaries in [eV] or the name of the group structure
-    chain_file : str, optional
-        Path to the depletion chain XML file that will be used in depletion
-        simulation. Used to determine cross sections for materials not
+    chain_file : PathLike or Chain, optional
+        Path to the depletion chain XML file or an instance of
+        openmc.deplete.Chain. Used to determine cross sections for materials not
         present in the inital composition. Defaults to
         ``openmc.config['chain_file']``.
     run_kwargs : dict, optional
@@ -86,8 +74,7 @@ def get_microxs_and_flux(
     original_tallies = model.tallies
 
     # Determine what reactions and nuclides are available in chain
-    chain_file = _resolve_chain_file_path(chain_file)
-    chain = Chain.from_xml(chain_file)
+    chain = _get_chain(chain_file)
     if reactions is None:
         reactions = chain.reactions
     if not nuclides:
@@ -103,7 +90,10 @@ def get_microxs_and_flux(
         energy_filter = openmc.EnergyFilter.from_group_structure(energies)
     else:
         energy_filter = openmc.EnergyFilter(energies)
-    if isinstance(domains, openmc.MeshBase):
+
+    if isinstance(domains, openmc.Filter):
+        domain_filter = domains
+    elif isinstance(domains, openmc.MeshBase):
         domain_filter = openmc.MeshFilter(domains)
     elif isinstance(domains[0], openmc.Material):
         domain_filter = openmc.MaterialFilter(domains)
@@ -242,9 +232,9 @@ class MicroXS:
             Energy group boundaries in [eV] or the name of the group structure
         multi_group_flux : iterable of float
             Energy-dependent multigroup flux values
-        chain_file : str, optional
-            Path to the depletion chain XML file that will be used in depletion
-            simulation.  Defaults to ``openmc.config['chain_file']``.
+        chain_file : PathLike or Chain, optional
+            Path to the depletion chain XML file or an instance of
+            openmc.deplete.Chain. Defaults to ``openmc.config['chain_file']``.
         temperature : int, optional
             Temperature for cross section evaluation in [K].
         nuclides : list of str, optional
@@ -275,9 +265,7 @@ class MicroXS:
         if len(multigroup_flux) != len(energies) - 1:
             raise ValueError('Length of flux array should be len(energies)-1')
 
-        chain_file_path = _resolve_chain_file_path(chain_file)
-        chain = Chain.from_xml(chain_file_path)
-
+        chain = _get_chain(chain_file)
         cross_sections = _find_cross_sections(model=None)
         nuclides_with_data = _get_nuclides_with_data(cross_sections)
 

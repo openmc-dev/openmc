@@ -1,6 +1,8 @@
 #ifndef OPENMC_TALLIES_FILTER_MESHSURFACE_H
 #define OPENMC_TALLIES_FILTER_MESHSURFACE_H
 
+#include "openmc/hex_mesh.h"
+#include "openmc/mesh.h"
 #include "openmc/tallies/filter_mesh.h"
 
 namespace openmc {
@@ -17,6 +19,8 @@ public:
     FilterMatch& match) const override;
 
   std::string text_label(int bin) const override;
+  std::string bin_label(int n_dim, int bin) const;
+  std::string hexbin_label(int bin) const;
 
   //----------------------------------------------------------------------------
   // Accessors
@@ -55,7 +59,7 @@ public:
     IN_BOTTOM,  // z min
     OUT_TOP,    // z max
     IN_TOP      // z max
-  }
+  };
 };
 
 } // namespace openmc

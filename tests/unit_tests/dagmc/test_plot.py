@@ -48,14 +48,21 @@ def test_plotting_geometry_filled_with_dagmc_universe(request):
     dag_universe = openmc.DAGMCUniverse(request.path.parent / 'dagmc.h5m', auto_geom_ids=True)
 
     sphere1 = openmc.Sphere(r=50.0)
-    sphere2 = openmc.Sphere(r=60.0, boundary_type='vacuum')
+    sphere2 = openmc.Sphere(r=60.0)
+    sphere2 = openmc.Sphere(r=70.0, boundary_type='vacuum')
 
-    # Adding a material to the CSG Universe to check all materials are accounted for
+    # Adding a material to the CSG Universe to check universe materials are accounted for
     csg_material = openmc.Material(name='csg_material')
+    csg_material.add_nuclide("H1", 1.0)
+
+    # Adding a material with the same name as a dagmc material to check that
+    # the plot can handel two materials with the same name from different universes
+    csg_material = openmc.Material(name=dag_universe.material_names[0])
     csg_material.add_nuclide("H1", 1.0)
 
     cell1 = openmc.Cell(fill=dag_universe, region=-sphere1)
     cell2 = openmc.Cell(fill=csg_material, region=+sphere1 & -sphere2)
 
     geometry = openmc.Geometry([cell1, cell2])
+
     geometry.plot()

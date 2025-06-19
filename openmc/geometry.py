@@ -748,6 +748,28 @@ class Geometry:
         clone.root_universe = self.root_universe.clone()
         return clone
 
+    # @add_plot_params
+    # def plot(self, *args, **kwargs):
+    #     """Display a slice plot of the geometry.
+
+    #     .. versionadded:: 0.14.0
+    #     """
+    #     model = openmc.Model()
+    #     model.geometry = self
+    #     model.materials = self.get_all_materials().values()
+
+    #     # Add placeholder materials for DAGMCUniverses
+    #     universes = self.get_all_universes()
+    #     for universe in universes.values():
+    #         if isinstance(universe, openmc.DAGMCUniverse):
+    #             for name in universe.material_names:
+    #                 mat_dag = openmc.Material(name=name)
+    #                 mat_dag.add_nuclide('H1', 1.0)
+    #                 model.materials.append(mat_dag)
+
+    #     return model.plot(*args, **kwargs)
+
+
     @add_plot_params
     def plot(self, *args, **kwargs):
         """Display a slice plot of the geometry.
@@ -759,12 +781,31 @@ class Geometry:
         model.materials = self.get_all_materials().values()
 
         # Add placeholder materials for DAGMCUniverses
-        universes = self.get_all_universes()
-        for universe in universes.values():
+        universes = self.get_all_universes().values()
+
+        universe_mat_names = set()
+        # collects all the material names from openmc.Universe universes
+        for universe in universes:
+            if isinstance(universe, openmc.Universe):
+                for universe_mat_name in universe.get_all_materials().values():
+                    if universe_mat_name.name is not None:
+                        universe_mat_names.add(universe_mat_name.name)
+
+        dagmcuniverse_only_mat_names = set()
+        # collects all the material names from openmc.DAGMCUniverse universes
+        # that are not already in the universe_mat_names set
+        for universe in universes:
             if isinstance(universe, openmc.DAGMCUniverse):
                 for name in universe.material_names:
-                    mat_dag = openmc.Material(name=name)
-                    mat_dag.add_nuclide('H1', 1.0)
-                    model.materials.append(mat_dag)
+                    if name not in universe_mat_names:
+                        dagmcuniverse_only_mat_names.add(name)
+
+        # makes a placeholder material for each material name for all names in
+        # dagmcuniverse_only_mat_names. These materials are otherwise missing
+        # from the geometry and are needed for plotting.
+        for name in dagmcuniverse_only_mat_names:
+            mat_dag = openmc.Material(name=name)
+            mat_dag.add_nuclide('H1', 1.0)
+            model.materials.append(mat_dag)
 
         return model.plot(*args, **kwargs)

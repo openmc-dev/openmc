@@ -169,7 +169,7 @@ void initialize_mpi(MPI_Comm intracomm)
   MPI_Get_address(&b.parent_nuclide, &disp[8]);
   MPI_Get_address(&b.parent_id, &disp[9]);
   MPI_Get_address(&b.progeny_id, &disp[10]);
-  MPI_Get_addresss(&b.surface, &disp[11]);
+  MPI_Get_address(&b.surface, &disp[11]);
   for (int i = 11; i >= 0; --i) {
     disp[i] -= disp[0];
   }

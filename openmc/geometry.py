@@ -748,27 +748,6 @@ class Geometry:
         clone.root_universe = self.root_universe.clone()
         return clone
 
-    # @add_plot_params
-    # def plot(self, *args, **kwargs):
-    #     """Display a slice plot of the geometry.
-
-    #     .. versionadded:: 0.14.0
-    #     """
-    #     model = openmc.Model()
-    #     model.geometry = self
-    #     model.materials = self.get_all_materials().values()
-
-    #     # Add placeholder materials for DAGMCUniverses
-    #     universes = self.get_all_universes()
-    #     for universe in universes.values():
-    #         if isinstance(universe, openmc.DAGMCUniverse):
-    #             for name in universe.material_names:
-    #                 mat_dag = openmc.Material(name=name)
-    #                 mat_dag.add_nuclide('H1', 1.0)
-    #                 model.materials.append(mat_dag)
-
-    #     return model.plot(*args, **kwargs)
-
 
     @add_plot_params
     def plot(self, *args, **kwargs):

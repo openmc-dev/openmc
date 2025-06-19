@@ -769,7 +769,7 @@ class Geometry:
                 continue
             for name in universe.material_names:
                 # if this name is already present in the model, skip it
-                # (this can happen if the same material is used in multiple
+                # (this can happen if the same material name is used in multiple
                 # universes)
                 if name in all_material_names:
                     continue

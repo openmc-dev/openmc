@@ -176,7 +176,8 @@ void initialize_mpi(MPI_Comm intracomm)
 
   int blocks[] {3, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
   MPI_Datatype types[] {MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE,
-    MPI_DOUBLE, MPI_INT, MPI_INT, MPI_INT, MPI_INT, MPI_LONG, MPI_LONG, MPI_INT};
+    MPI_DOUBLE, MPI_INT, MPI_INT, MPI_INT, MPI_INT, MPI_LONG, MPI_LONG,
+    MPI_INT};
   MPI_Type_create_struct(12, blocks, disp, types, &mpi::source_site);
   MPI_Type_commit(&mpi::source_site);
 }

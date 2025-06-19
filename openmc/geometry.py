@@ -748,7 +748,6 @@ class Geometry:
         clone.root_universe = self.root_universe.clone()
         return clone
 
-
     @add_plot_params
     def plot(self, *args, **kwargs):
         """Display a slice plot of the geometry.

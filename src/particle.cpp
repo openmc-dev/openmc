@@ -104,6 +104,7 @@ void Particle::split(double wgt)
   bank.u = u();
   bank.E = settings::run_CE ? E() : g();
   bank.time = time();
+  bank.surface = surface();
 }
 
 void Particle::from_source(const SourceSite* src)
@@ -140,6 +141,7 @@ void Particle::from_source(const SourceSite* src)
   time() = src->time;
   time_last() = src->time;
   parent_nuclide() = src->parent_nuclide;
+  surface() = src->surface;
 }
 
 void Particle::event_calculate_xs()

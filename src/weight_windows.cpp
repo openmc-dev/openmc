@@ -75,7 +75,7 @@ void apply_weight_windows(Particle& p)
   }
 
   // If particle has not yet had its birth weight window value set, set it to
-  // the current weight window (or 1.0 if not born in a weight window). 
+  // the current weight window (or 1.0 if not born in a weight window).
   if (p.ww_born() == -1.0) {
     if (weight_window.is_valid()) {
       p.ww_born() =

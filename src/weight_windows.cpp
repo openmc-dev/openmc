@@ -79,8 +79,7 @@ void apply_weight_windows(Particle& p)
   if (p.ww_born() == -1.0) {
     if (weight_window.is_valid()) {
       p.ww_born() =
-        weight_window.lower_weight +
-        (weight_window.upper_weight + weight_window.lower_weight) * 0.5;
+        (weight_window.lower_weight + weight_window.upper_weight) / 2;
     } else {
       p.ww_born() = 1.0;
     }

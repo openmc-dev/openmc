@@ -435,6 +435,7 @@ private:
 
   double wgt_ {1.0};
   double wgt_born_ {1.0};
+  double ww_born_ {-1.0};
   double mu_;
   double time_ {0.0};
   double time_last_ {0.0};
@@ -544,6 +545,10 @@ public:
   // Statistic weight of particle at birth
   double& wgt_born() { return wgt_born_; }
   double wgt_born() const { return wgt_born_; }
+
+  // Weight window value at birth
+  double& ww_born() { return ww_born_; }
+  const double& ww_born() const { return ww_born_; }
 
   // Statistic weight of particle at last collision
   double& wgt_last() { return wgt_last_; }

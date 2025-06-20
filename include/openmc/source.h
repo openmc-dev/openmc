@@ -170,7 +170,7 @@ protected:
   SourceSite sample(uint64_t* seed) const override;
 
 private:
-  vector<SourceSite> sites_; //!< Source sites from a file
+  vector<SourceSite> sites_; //!< Source sites
 };
 
 //==============================================================================

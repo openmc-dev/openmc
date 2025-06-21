@@ -779,6 +779,8 @@ def hdf5_to_wws(path='weight_windows.h5') -> WeightWindowsList:
 class WeightWindowsList(list):
     """A list of WeightWindows objects.
 
+    .. versionadded:: 0.15.3
+
     Parameters
     ----------
     iterable : iterable of openmc.WeightWindows

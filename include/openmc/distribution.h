@@ -89,8 +89,13 @@ public:
   //! \return Sampled value
   size_t sample(uint64_t* seed) const
   {
-    vector<double> x = {prn(seed), prn(seed)};
-    return sample(begin(x));
+    size_t n = prob_.size();
+    if (n > 1) {
+      vector<double> x = {prn(seed), prn(seed)};
+      return sample(begin(x));
+    } else {
+      return 0;
+    }
   }
   size_t sample(vector<double>::iterator x) const;
 

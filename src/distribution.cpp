@@ -146,14 +146,22 @@ Discrete::Discrete(pugi::xml_node node) : di_(node)
   std::size_t n = params.size() / 2;
 
   x_.assign(params.begin(), params.begin() + n);
-  dims_ = 2;
+  if (n > 1) {
+    dims_ = 2;
+  } else {
+    dims_ = 0;
+  }
 }
 
 Discrete::Discrete(const double* x, const double* p, size_t n) : di_({p, n})
 {
 
   x_.assign(x, x + n);
-  dims_ = 2;
+  if (n > 1) {
+    dims_ = 2;
+  } else {
+    dims_ = 0;
+  }
 }
 
 double Discrete::sample(vector<double>::iterator x) const

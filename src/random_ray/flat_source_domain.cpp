@@ -298,11 +298,18 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
         // in the cell we will use the previous iteration's flux estimate. This
         // injects a small degree of correlation into the simulation, but this
         // is going to be trivial when the miss rate is a few percent or less.
-        if (source_regions_.external_source_present(sr) && !adjoint_) {
+        if (source_regions_.external_source_present(sr)) {
           set_flux_to_old_flux(sr, g);
         } else {
           set_flux_to_source(sr, g);
         }
+      }
+      // Halt if NaN implosion is detected
+      if (!std::isfinite(source_regions_.scalar_flux_new(sr, g))) {
+        fatal_error("A source region scalar flux is not finite. "
+                    "This indicates a numerical instability in the "
+                    "simulation. Consider increasing ray density or adjusting "
+                    "the source region mesh.");
       }
     }
   }
@@ -919,10 +926,17 @@ void FlatSourceDomain::output_to_vtk() const
       std::fprintf(plot, "LOOKUP_TABLE default\n");
       for (int i = 0; i < Nx * Ny * Nz; i++) {
         int64_t fsr = voxel_indices[i];
+        int mat = source_regions_.material(fsr);
         float total_external = 0.0f;
         if (fsr >= 0) {
           for (int g = 0; g < negroups_; g++) {
-            total_external += source_regions_.external_source(fsr, g);
+            // External sources are already divided by sigma_t, so we need to
+            // multiply it back to get the true external source.
+            double sigma_t = 1.0;
+            if (mat != MATERIAL_VOID) {
+              sigma_t = sigma_t_[mat * negroups_ + g];
+            }
+            total_external += source_regions_.external_source(fsr, g) * sigma_t;
           }
         }
         total_external = convert_to_big_endian<float>(total_external);
@@ -1147,9 +1161,9 @@ void FlatSourceDomain::flatten_xs()
           m.get_xs(MgxsType::TOTAL, g_out, NULL, NULL, NULL, t, a);
         sigma_t_.push_back(sigma_t);
 
-        double nu_Sigma_f =
+        double nu_sigma_f =
           m.get_xs(MgxsType::NU_FISSION, g_out, NULL, NULL, NULL, t, a);
-        nu_sigma_f_.push_back(nu_Sigma_f);
+        nu_sigma_f_.push_back(nu_sigma_f);
 
         double sigma_f =
           m.get_xs(MgxsType::FISSION, g_out, NULL, NULL, NULL, t, a);
@@ -1157,6 +1171,11 @@ void FlatSourceDomain::flatten_xs()
 
         double chi =
           m.get_xs(MgxsType::CHI_PROMPT, g_out, &g_out, NULL, NULL, t, a);
+        if (!std::isfinite(chi)) {
+          // MGXS interface may return NaN in some cases, such as when material
+          // is fissionable but has very small sigma_f.
+          chi = 0.0;
+        }
         chi_.push_back(chi);
 
         for (int g_in = 0; g_in < negroups_; g_in++) {
@@ -1184,17 +1203,30 @@ void FlatSourceDomain::flatten_xs()
 
 void FlatSourceDomain::set_adjoint_sources(const vector<double>& forward_flux)
 {
-  // Set the external source to 1/forward_flux. If the forward flux is negative
-  // or zero, set the adjoint source to zero, as this is likely a very small
-  // source region that we don't need to bother trying to vector particles
-  // towards. Flux negativity in random ray is not related to the flux being
-  // small in magnitude, but rather due to the source region being physically
-  // small in volume and thus having a noisy flux estimate.
+  // Set the adjoint external source to 1/forward_flux. If the forward flux is
+  // negative, zero, or extremely close to zero, set the adjoint source to zero,
+  // as this is likely a very small source region that we don't need to bother
+  // trying to vector particles towards. In the case of flux "being extremely
+  // close to zero", we define this as being a fixed fraction of the maximum
+  // forward flux, below which we assume the flux would be physically
+  // undetectable.
+
+  // First, find the maximum forward flux value
+  double max_flux = 0.0;
+#pragma omp parallel for reduction(max : max_flux)
+  for (int64_t se = 0; se < n_source_elements(); se++) {
+    double flux = forward_flux[se];
+    if (flux > max_flux) {
+      max_flux = flux;
+    }
+  }
+
+  // Then, compute the adjoint source for each source region
 #pragma omp parallel for
   for (int64_t sr = 0; sr < n_source_regions(); sr++) {
     for (int g = 0; g < negroups_; g++) {
       double flux = forward_flux[sr * negroups_ + g];
-      if (flux <= 0.0) {
+      if (flux <= ZERO_FLUX_CUTOFF * max_flux) {
         source_regions_.external_source(sr, g) = 0.0;
       } else {
         source_regions_.external_source(sr, g) = 1.0 / flux;

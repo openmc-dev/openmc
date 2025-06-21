@@ -157,11 +157,28 @@ void Source::read_constraints(pugi::xml_node node)
   }
 }
 
+void check_rejection_fraction(int64_t n_reject, int64_t n_accept)
+{
+  // Don't check unless we've hit a minimum number of total sites rejected
+  if (n_reject < EXTSRC_REJECT_THRESHOLD)
+    return;
+
+  // Compute fraction of accepted sites and compare against minimum
+  double fraction = static_cast<double>(n_accept) / n_reject;
+  if (fraction <= settings::source_rejection_fraction) {
+    fatal_error(fmt::format(
+      "Too few source sites satisfied the constraints (minimum source "
+      "rejection fraction = {}). Please check your source definition or "
+      "set a lower value of Settings.source_rejection_fraction.",
+      settings::source_rejection_fraction));
+  }
+}
+
 SourceSite Source::sample_with_constraints(uint64_t* seed) const
 {
   bool accepted = false;
-  static int n_reject = 0;
-  static int n_accept = 0;
+  static int64_t n_reject = 0;
+  static int64_t n_accept = 0;
   SourceSite site;
 
   while (!accepted) {
@@ -176,13 +193,9 @@ SourceSite Source::sample_with_constraints(uint64_t* seed) const
                  satisfies_energy_constraints(site.E) &&
                  satisfies_time_constraints(site.time);
       if (!accepted) {
+        // Increment number of rejections and check against minimum fraction
         ++n_reject;
-        if (n_reject >= EXTSRC_REJECT_THRESHOLD &&
-            static_cast<double>(n_accept) / n_reject <=
-              EXTSRC_REJECT_FRACTION) {
-          fatal_error("More than 95% of external source sites sampled were "
-                      "rejected. Please check your source definition.");
-        }
+        check_rejection_fraction(n_reject, n_accept);
 
         // For the "kill" strategy, accept particle but set weight to 0 so that
         // it is terminated immediately
@@ -338,8 +351,8 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
 
   // Repeat sampling source location until a good site has been accepted
   bool accepted = false;
-  static int n_reject = 0;
-  static int n_accept = 0;
+  static int64_t n_reject = 0;
+  static int64_t n_accept = 0;
 
   while (!accepted) {
 
@@ -354,12 +367,7 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
     // Check for rejection
     if (!accepted) {
       ++n_reject;
-      if (n_reject >= EXTSRC_REJECT_THRESHOLD &&
-          static_cast<double>(n_accept) / n_reject <= EXTSRC_REJECT_FRACTION) {
-        fatal_error("More than 95% of external source sites sampled were "
-                    "rejected. Please check your external source's spatial "
-                    "definition.");
-      }
+      check_rejection_fraction(n_reject, n_accept);
     }
   }
 
@@ -389,18 +397,12 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
       E_wgt = E_wgt_temp;
 
       // Resample if energy falls above maximum particle energy
-      if (site.E < data::energy_max[p] and
+      if (site.E < data::energy_max[p] &&
           (satisfies_energy_constraints(site.E)))
         break;
 
       n_reject++;
-      if (n_reject >= EXTSRC_REJECT_THRESHOLD &&
-          static_cast<double>(n_accept) / n_reject <= EXTSRC_REJECT_FRACTION) {
-        fatal_error(
-          "More than 95% of external source sites sampled were "
-          "rejected. Please check your external source energy spectrum "
-          "definition.");
-      }
+      check_rejection_fraction(n_reject, n_accept);
     }
 
     // Sample particle creation time

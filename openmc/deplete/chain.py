@@ -17,8 +17,9 @@ from typing import List
 import lxml.etree as ET
 import scipy.sparse as sp
 
-from openmc.checkvalue import check_type, check_greater_than
+from openmc.checkvalue import check_type, check_greater_than, PathLike
 from openmc.data import gnds_name, zam
+from openmc.exceptions import DataError
 from .nuclide import FissionYieldDistribution, Nuclide
 import openmc.data
 
@@ -1246,3 +1247,38 @@ class Chain:
         found.update(isotopes)
 
         return found
+
+
+def _get_chain(
+    chain_file: PathLike | Chain | None = None,
+    fission_q: dict | None = None
+) -> Chain:
+    """Get a depletion chain from a file or the runtime configuration.
+
+    Parameters
+    ----------
+    chain_file : PathLike or Chain, optional
+        Path to depletion chain XML file, a Chain instance, or None to use
+        the file specified in ``openmc.config['chain_file']``.
+    fission_q : dict, optional
+        Dictionary of nuclides and their fission Q values [eV]. If not given,
+        values will be pulled from the ``chain_file``.
+
+    Returns
+    -------
+    Chain
+        Depletion chain instance.
+    """
+    if isinstance(chain_file, Chain):
+        return chain_file
+    elif isinstance(chain_file, PathLike | None):
+        if chain_file is None:
+            chain_file = openmc.config.get('chain_file')
+            if 'chain_file' not in openmc.config:
+                raise DataError(
+                    "No depletion chain specified and could not find depletion "
+                    "chain in openmc.config['chain_file']"
+                )
+        return Chain.from_xml(chain_file, fission_q)
+    else:
+        raise TypeError("chain_file must be path-like, a Chain, or None")

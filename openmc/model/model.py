@@ -986,7 +986,16 @@ class Model:
         y_min = (origin[y] - 0.5*width[1]) * axis_scaling_factor[axis_units]
         y_max = (origin[y] + 0.5*width[1]) * axis_scaling_factor[axis_units]
 
+        # Determine whether any materials contains macroscopic data and if so,
+        # set energy mode accordingly
+        _energy_mode = self.settings._energy_mode
+        for mat in self.geometry.get_all_materials().values():
+            if mat._macroscopic is not None:
+                self.settings.energy_mode = 'multi-group'
+                break
+
         with TemporaryDirectory() as tmpdir:
+            _plot_seed = self.settings.plot_seed
             if seed is not None:
                 self.settings.plot_seed = seed
 
@@ -1006,6 +1015,11 @@ class Model:
 
             # Run OpenMC in geometry plotting mode
             self.plot_geometry(False, cwd=tmpdir, openmc_exec=openmc_exec)
+
+            # Undo changes to model
+            self.plots.pop()
+            self.settings._plot_seed = _plot_seed
+            self.settings._energy_mode = _energy_mode
 
             # Read image from file
             img_path = Path(tmpdir) / f'plot_{plot.id}.png'
@@ -1552,7 +1566,6 @@ class Model:
                       "if a material has a k-infinity > 1.0.")
         mgxs_sets = []
         for material in self.materials:
-            openmc.reset_auto_ids()
             model = openmc.Model()
 
             # Set materials on the model
@@ -1749,7 +1762,6 @@ class Model:
         directory : str
             Directory to run the simulation in, so as to contain XML files.
         """
-        openmc.reset_auto_ids()
         model = openmc.Model()
         model.materials = self.materials
 
@@ -1861,7 +1873,6 @@ class Model:
         directory : PathLike
             Directory to run the simulation in, so as to contain XML files.
         """
-        openmc.reset_auto_ids()
         model = copy.deepcopy(self)
         model.tallies = openmc.Tallies()
 
@@ -1973,7 +1984,7 @@ class Model:
             # Make sure all materials have a name, and that the name is a valid HDF5
             # dataset name
             for material in self.materials:
-                if material.name is None:
+                if not material.name or not material.name.strip():
                     material.name = f"material {material.id}"
                 material.name = re.sub(r'[^a-zA-Z0-9]', '_', material.name)
 

@@ -1,4 +1,5 @@
 from __future__ import annotations
+from collections.abc import Sequence
 
 import numpy as np
 import openmc
@@ -55,12 +56,13 @@ def get_activation_materials(
     return materials
 
 
-def get_decay_photon_source(
+def get_decay_photon_source_mesh(
     model: openmc.Model,
     mesh: openmc.MeshBase,
     materials: list[openmc.Material],
     results: Results,
     mat_vols: openmc.MeshMaterialVolumes,
+    time_index: int = -1,
 ) -> list[openmc.MeshSource]:
     """Create decay photon source for a mesh-based R2S calculation.
 
@@ -119,7 +121,7 @@ def get_decay_photon_source(
 
             # Get activated material composition
             original_mat = materials[index_mat]
-            activated_mat = results[-1].get_material(str(original_mat.id))
+            activated_mat = results[time_index].get_material(str(original_mat.id))
 
             # Create decay photon source source
             energy = activated_mat.get_decay_photon_energy()
@@ -140,60 +142,146 @@ def get_decay_photon_source(
 class R2SManager:
     """Manager for mesh-based R2S calculations.
 
-    This class is responsible for managing the materials and sources needed
-    for mesh-based R2S calculations. It provides methods to get activation
-    materials and decay photon sources based on the mesh and materials in the
-    OpenMC model.
+    This class is responsible for managing the materials and sources needed for
+    mesh-based or cell-based R2S calculations. It provides methods to get
+    activation materials and decay photon sources based on the mesh/cells and
+    materials in the OpenMC model.
 
     """
-    def __init__(self, model: openmc.Model, mesh: openmc.MeshBase):
+    def __init__(
+        self,
+        model: openmc.Model,
+        domains: openmc.MeshBase,
+    ):
         self.model = model
-        self.mesh = mesh
+        if isinstance(domains, openmc.Mesh):
+            self.method = 'mesh-based'
+        else:
+            self.method = 'cell-based'
+        self.domains = domains
         # TODO: Think about directory structure and file naming
         # TODO: Option to select cell-based or mesh-basedk
         # TODO: Photon settings
         # TODO: Think about MPI
+        # TODO: Option to use CoupledOperator? Needed for true burnup
         # TODO: Voiding/changing materials between neutron/photon steps
+        self.results = {}
 
-    def run(self):
-        self.step1_neutron_transport()
-        self.step2_activation()
+    def run(
+        self,
+        timesteps: Sequence[float] | Sequence[tuple[float, str]],
+        source_rates: float | Sequence[float],
+        timestep_units: str = 's',
+        micro_kwargs: dict | None = None,
+        mat_vol_kwargs: dict | None = None,
+    ):
+        self.step1_neutron_transport(micro_kwargs=micro_kwargs, mat_vol_kwargs=mat_vol_kwargs)
+        self.step2_activation(timesteps, source_rates, timestep_units)
         self.step3_decay_photon_source()
 
     def step1_neutron_transport(self, output_dir="neutron_transport", mat_vol_kwargs=None, micro_kwargs=None):
+        """Run the neutron transport step.
+
+        This step computes the material volume fractions on the mesh, creates a
+        mesh-material filter, and retrieves the fluxes and microscopic cross
+        sections for each mesh/material combination. It populates the results
+
+        This step will populate the 'mesh_material_volumes', 'fluxes', and
+        'micros' keys in the results dictionary.
+        """
+
         # TODO: Run this in a "neutron_transport" subdirectory?
         # TODO: Energy discretization
 
-        # Compute material volume fractions on the mesh
-        self.mmv = self.mesh.material_volumes(**mat_vol_kwargs)
+        if self.method == 'mesh-based':
+            # Compute material volume fractions on the mesh
+            self.results['mesh_material_volumes'] = mmv = \
+                self.mesh.material_volumes(**mat_vol_kwargs)
 
-        # Create mesh-material filter based on what combos were found
-        mm_filter = openmc.MeshMaterialFilter.from_volumes(self.mesh, self.mmv)
+            # Create mesh-material filter based on what combos were found
+            domains = openmc.MeshMaterialFilter.from_volumes(self.domains, mmv)
+        else:
+            # TODO: Run volume calculation for cells
+            domains = self.domains
 
         # Get fluxes and microscopic cross sections on each mesh/material
-        self.fluxes, self.micros = get_microxs_and_flux(
-            self.model, mm_filter, **micro_kwargs)
+        self.results['fluxes'], self.results['micros'] = get_microxs_and_flux(
+            self.model, domains, **micro_kwargs)
 
-    def step2_activation(self, timesteps, source_rates):
-        # Get unique material for each (mesh, material) combination
-        self.activation_materials = get_activation_materials(self.model, self.mmv)
+    def step2_activation(
+        self,
+        timesteps: Sequence[float] | Sequence[tuple[float, str]],
+        source_rates: float | Sequence[float],
+        timestep_units: str = 's'
+    ):
+        if self.method == 'mesh-based':
+            # Get unique material for each (mesh, material) combination
+            mmv = self.results['mesh_material_volumes']
+            self.results['activation_materials'] = get_activation_materials(self.model, mmv)
+        else:
+            # Create unique material for each cell
+            activation_mats = []
+            for cell in self.domains:
+                mat = cell.fill.clone()
+                mat.name = f'Cell {cell.id}'
+                mat.depletable = True
+                mat.volume = cell.volume
+                activation_mats.append(mat)
+            self.results['activation_materials'] = activation_mats
 
         # Create depletion operator for the activation materials
         op = IndependentOperator(
-            self.activation_materials, self.fluxes, self.micros,
+            self.results['activation_materials'],
+            self.results['fluxes'],
+            self.results['micros'],
             normalization_mode='source-rate'
         )
 
         # Create time integrator and solve depletion equations
-        integrator = PredictorIntegrator(op, timesteps, source_rates=source_rates)
+        integrator = PredictorIntegrator(
+            op, timesteps, source_rates=source_rates,
+            timestep_units=timestep_units
+        )
         integrator.integrate(final_step=False)
 
         # Get depletion results
-        self.results = Results()
+        self.results['depletion_results'] = Results()
 
-    def step3_decay_photon_source(self):
+    def step3_decay_photon_source(
+        self,
+        bounding_boxes: dict[int, openmc.BoundingBox] | None = None
+    ):
+        # TODO: Automatically determine bounding box for each cell
+
         # Create decay photon source
-        self.model.settings.source = get_decay_photon_source(
-            self.model, self.mesh, self.activation_materials, self.results, self.mmv
-        )
+        # TODO: Add loop over cooling times
+        if self.method == 'mesh-based':
+            self.model.settings.source = get_decay_photon_source_mesh(
+                self.model,
+                self.mesh,
+                self.results['activation_materials'],
+                self.results['depletion_results'],
+                self.results['mesh_material_volumes'],
+                time_index=-1
+            )
+        else:
+            sources = []
+            results = self.results['depletion_results']
+            for cell, original_mat in zip(self.domains, self.results['activation_materials']):
+                bounding_box = bounding_boxes[cell.id]
 
+                # Get activated material composition
+                activated_mat = results[-1].get_material(str(original_mat.id))
+
+                # Create decay photon source source
+                space = openmc.stats.Box(*bounding_box)
+                energy = activated_mat.get_decay_photon_energy()
+                source = openmc.IndependentSource(
+                    space=space,
+                    energy=energy,
+                    particle='photon',
+                    strength=energy.integral(),
+                    domains=[cell]
+                )
+                sources.append(source)
+            self.model.settings.source = sources

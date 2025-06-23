@@ -473,7 +473,7 @@ void FlatSourceDomain::convert_source_regions_to_tallies(int64_t start_sr_id)
       // Loop over all active tallies. This logic is essentially identical
       // to what happens when scanning for applicable tallies during
       // MC transport.
-      for (auto i_tally : model::active_tallies) {
+      for (int i_tally = 0; i_tally < model::tallies.size(); i_tally++) {
         Tally& tally {*model::tallies[i_tally]};
 
         // Initialize an iterator over valid filter bin combinations.

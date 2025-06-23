@@ -47,14 +47,13 @@ struct SourceSite {
   double time {0.0};
   double wgt {1.0};
   int delayed_group {0};
-  int surf_id {0};
+  int surf_id {SURFACE_NONE};
   ParticleType particle;
 
   // Extra attributes that don't show up in source written to file
   int parent_nuclide {-1};
   int64_t parent_id;
   int64_t progeny_id;
-  int32_t surface {SURFACE_NONE};
 };
 
 //! State of a particle used for particle track files

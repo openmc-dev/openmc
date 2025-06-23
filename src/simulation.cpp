@@ -614,6 +614,10 @@ void initialize_history(Particle& p, int64_t index_source)
   // Set particle track.
   p.write_track() = check_track_criteria(p);
 
+  // Set the particle's initial weight window value.
+  p.wgt_ww_born() = -1.0;
+  apply_weight_windows(p);
+
   // Display message if high verbosity or trace is on
   if (settings::verbosity >= 9 || p.trace()) {
     write_message("Simulating Particle {}", p.id());

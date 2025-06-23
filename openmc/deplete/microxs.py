@@ -5,7 +5,7 @@ IndependentOperator class for depletion.
 """
 
 from __future__ import annotations
-from collections.abc import Iterable, Sequence
+from collections.abc import Sequence
 from tempfile import TemporaryDirectory
 
 import pandas as pd
@@ -28,17 +28,21 @@ _valid_rxns.append('damage-energy')
 
 
 def get_microxs_and_flux(
-        model: openmc.Model,
-        domains,
-        nuclides: Iterable[str] | None = None,
-        reactions: Iterable[str] | None = None,
-        energies: Iterable[float] | str | None = None,
-        chain_file: PathLike | Chain | None = None,
-        run_kwargs=None
-    ) -> tuple[list[np.ndarray], list[MicroXS]]:
+    model: openmc.Model,
+    domains,
+    nuclides: Sequence[str] | None = None,
+    reactions: Sequence[str] | None = None,
+    energies: Sequence[float] | str | None = None,
+    reaction_rate_mode: str = 'direct',
+    chain_file: PathLike | Chain | None = None,
+    run_kwargs=None
+) -> tuple[list[np.ndarray], list[MicroXS]]:
     """Generate a microscopic cross sections and flux from a Model
 
     .. versionadded:: 0.14.0
+
+    .. versionchanged:: 0.15.3
+        Added `reaction_rate_mode` argument.
 
     Parameters
     ----------
@@ -54,6 +58,11 @@ def get_microxs_and_flux(
         reactions listed in the depletion chain file are used.
     energies : iterable of float or str
         Energy group boundaries in [eV] or the name of the group structure
+    reaction_rate_mode : {"direct", "flux"}, optional
+        Indicate how reaction rates should be calculated. The "direct" method
+        tallies reaction rates directly. The "flux" method tallies a multigroup
+        flux spectrum and then collapses multigroup reaction rates after a
+        transport solve (with an option to tally some reaction rates directly).
     chain_file : PathLike or Chain, optional
         Path to the depletion chain XML file or an instance of
         openmc.deplete.Chain. Used to determine cross sections for materials not
@@ -104,16 +113,18 @@ def get_microxs_and_flux(
     else:
         raise ValueError(f"Unsupported domain type: {type(domains[0])}")
 
-    rr_tally = openmc.Tally(name='MicroXS RR')
-    rr_tally.filters = [domain_filter, energy_filter]
-    rr_tally.nuclides = nuclides
-    rr_tally.multiply_density = False
-    rr_tally.scores = reactions
-
     flux_tally = openmc.Tally(name='MicroXS flux')
     flux_tally.filters = [domain_filter, energy_filter]
     flux_tally.scores = ['flux']
-    model.tallies = openmc.Tallies([rr_tally, flux_tally])
+    model.tallies = [flux_tally]
+
+    if reaction_rate_mode == 'direct':
+        rr_tally = openmc.Tally(name='MicroXS RR')
+        rr_tally.filters = [domain_filter, energy_filter]
+        rr_tally.nuclides = nuclides
+        rr_tally.multiply_density = False
+        rr_tally.scores = reactions
+        model.tallies.append(rr_tally)
 
     if openmc.lib.is_initialized:
         openmc.lib.finalize()
@@ -135,32 +146,47 @@ def get_microxs_and_flux(
 
         if comm.rank == 0:
             with StatePoint(statepoint_path) as sp:
-                rr_tally = sp.tallies[rr_tally.id]
-                rr_tally._read_results()
+                if reaction_rate_mode == 'direct':
+                    rr_tally = sp.tallies[rr_tally.id]
+                    rr_tally._read_results()
                 flux_tally = sp.tallies[flux_tally.id]
                 flux_tally._read_results()
 
-    rr_tally = comm.bcast(rr_tally)
+    # Get flux values and make energy groups last dimension
     flux_tally = comm.bcast(flux_tally)
-    # Get reaction rates and flux values
-    reaction_rates = rr_tally.get_reshaped_data()  # (domains, groups, nuclides, reactions)
     flux = flux_tally.get_reshaped_data()  # (domains, groups, 1, 1)
-
-    # Make energy groups last dimension
-    reaction_rates = np.moveaxis(reaction_rates, 1, -1)  # (domains, nuclides, reactions, groups)
     flux = np.moveaxis(flux, 1, -1)  # (domains, 1, 1, groups)
 
-    # Divide RR by flux to get microscopic cross sections
-    xs = np.empty_like(reaction_rates) # (domains, nuclides, reactions, groups)
-    d, _, _, g = np.nonzero(flux)
-    xs[d, ..., g] = reaction_rates[d, ..., g] / flux[d, :, :, g]
+    # Create list where each item corresponds to one domain
+    fluxes = list(flux.squeeze((1, 2)))
+
+    if reaction_rate_mode == 'direct':
+        # Get reaction rates
+        rr_tally = comm.bcast(rr_tally)
+        reaction_rates = rr_tally.get_reshaped_data()  # (domains, groups, nuclides, reactions)
+
+        # Make energy groups last dimension
+        reaction_rates = np.moveaxis(reaction_rates, 1, -1)  # (domains, nuclides, reactions, groups)
+
+        # Divide RR by flux to get microscopic cross sections
+        xs = np.empty_like(reaction_rates) # (domains, nuclides, reactions, groups)
+        d, _, _, g = np.nonzero(flux)
+        xs[d, ..., g] = reaction_rates[d, ..., g] / flux[d, :, :, g]
+
+        # Create lists where each item corresponds to one domain
+        micros = [MicroXS(xs_i, nuclides, reactions) for xs_i in xs]
+    else:
+        micros = [MicroXS.from_multigroup_flux(
+            energies=energies,
+            multigroup_flux=flux_i,
+            chain_file=chain_file,
+            nuclides=nuclides,
+            reactions=reactions
+        ) for flux_i in fluxes]
 
     # Reset tallies
     model.tallies = original_tallies
 
-    # Create lists where each item corresponds to one domain
-    fluxes = list(flux.squeeze((1, 2)))
-    micros = [MicroXS(xs_i, nuclides, reactions) for xs_i in xs]
     return fluxes, micros
 
 
@@ -230,7 +256,7 @@ class MicroXS:
         ----------
         energies : iterable of float or str
             Energy group boundaries in [eV] or the name of the group structure
-        multi_group_flux : iterable of float
+        multigroup_flux : iterable of float
             Energy-dependent multigroup flux values
         chain_file : PathLike or Chain, optional
             Path to the depletion chain XML file or an instance of

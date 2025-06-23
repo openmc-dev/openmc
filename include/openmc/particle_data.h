@@ -573,7 +573,8 @@ public:
   bool& fission() { return fission_; }            // true if implicit fission
   int& event_nuclide() { return event_nuclide_; } // index of collision nuclide
   const int& event_nuclide() const { return event_nuclide_; }
-  int& event_mt() { return event_mt_; }           // MT number of collision
+  int& event_mt() { return event_mt_; } // MT number of collision
+  const int& event_mt() const { return event_mt_; }
   int& delayed_group() { return delayed_group_; } // delayed group
   const int& parent_nuclide() const { return parent_nuclide_; }
   int& parent_nuclide() { return parent_nuclide_; } // Parent nuclide

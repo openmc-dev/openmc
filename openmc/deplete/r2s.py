@@ -160,7 +160,6 @@ class R2SManager:
             self.method = 'cell-based'
         self.domains = domains
         # TODO: Think about directory structure and file naming
-        # TODO: Option to select cell-based or mesh-basedk
         # TODO: Photon settings
         # TODO: Think about MPI
         # TODO: Option to use CoupledOperator? Needed for true burnup
@@ -171,13 +170,17 @@ class R2SManager:
         self,
         timesteps: Sequence[float] | Sequence[tuple[float, str]],
         source_rates: float | Sequence[float],
+        cooling_times: Sequence[int],
+        dose_tallies: Sequence[openmc.Tally] | None = None,
         timestep_units: str = 's',
+        bounding_boxes: dict[int, openmc.BoundingBox] | None = None,
         micro_kwargs: dict | None = None,
         mat_vol_kwargs: dict | None = None,
+        run_kwargs: dict | None = None,
     ):
         self.step1_neutron_transport(micro_kwargs=micro_kwargs, mat_vol_kwargs=mat_vol_kwargs)
         self.step2_activation(timesteps, source_rates, timestep_units)
-        self.step3_decay_photon_source()
+        self.step3_photon_transport(cooling_times, dose_tallies, bounding_boxes, run_kwargs)
 
     def step1_neutron_transport(self, output_dir="neutron_transport", mat_vol_kwargs=None, micro_kwargs=None):
         """Run the neutron transport step.
@@ -247,41 +250,57 @@ class R2SManager:
         # Get depletion results
         self.results['depletion_results'] = Results()
 
-    def step3_decay_photon_source(
+    def step3_photon_transport(
         self,
-        bounding_boxes: dict[int, openmc.BoundingBox] | None = None
+        cooling_times: Sequence[int],
+        dose_tallies: Sequence[openmc.Tally] | None = None,
+        bounding_boxes: dict[int, openmc.BoundingBox] | None = None,
+        run_kwargs: dict | None = None,
     ):
         # TODO: Automatically determine bounding box for each cell
 
-        # Create decay photon source
-        # TODO: Add loop over cooling times
-        if self.method == 'mesh-based':
-            self.model.settings.source = get_decay_photon_source_mesh(
-                self.model,
-                self.mesh,
-                self.results['activation_materials'],
-                self.results['depletion_results'],
-                self.results['mesh_material_volumes'],
-                time_index=-1
-            )
-        else:
-            sources = []
-            results = self.results['depletion_results']
-            for cell, original_mat in zip(self.domains, self.results['activation_materials']):
-                bounding_box = bounding_boxes[cell.id]
+        # Set default run arguments if not provided
+        if run_kwargs is None:
+            run_kwargs = {}
+        run_kwargs.setdefault('output', False)
 
-                # Get activated material composition
-                activated_mat = results[-1].get_material(str(original_mat.id))
+        # Add dose tallies to model if provided
+        if dose_tallies is not None:
+            self.model.tallies.extend(dose_tallies)
 
-                # Create decay photon source source
-                space = openmc.stats.Box(*bounding_box)
-                energy = activated_mat.get_decay_photon_energy()
-                source = openmc.IndependentSource(
-                    space=space,
-                    energy=energy,
-                    particle='photon',
-                    strength=energy.integral(),
-                    domains=[cell]
+        for time_index in cooling_times:
+            # Create decay photon source
+            if self.method == 'mesh-based':
+                self.model.settings.source = get_decay_photon_source_mesh(
+                    self.model,
+                    self.mesh,
+                    self.results['activation_materials'],
+                    self.results['depletion_results'],
+                    self.results['mesh_material_volumes'],
+                    time_index=time_index,
                 )
-                sources.append(source)
-            self.model.settings.source = sources
+            else:
+                sources = []
+                results = self.results['depletion_results']
+                for cell, original_mat in zip(self.domains, self.results['activation_materials']):
+                    bounding_box = bounding_boxes[cell.id]
+
+                    # Get activated material composition
+                    activated_mat = results[time_index].get_material(str(original_mat.id))
+
+                    # Create decay photon source source
+                    space = openmc.stats.Box(*bounding_box)
+                    energy = activated_mat.get_decay_photon_energy()
+                    source = openmc.IndependentSource(
+                        space=space,
+                        energy=energy,
+                        particle='photon',
+                        strength=energy.integral(),
+                        domains=[cell]
+                    )
+                    sources.append(source)
+                self.model.settings.source = sources
+
+            # Run photon transport calculation
+            run_kwargs['cwd'] = f'photon_transport_{time_index}'
+            self.model.run(**run_kwargs)

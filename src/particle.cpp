@@ -151,8 +151,8 @@ void Particle::from_source(const SourceSite* src)
 
   // Convert signed surface ID to signed index
   if (src->surf_id != SURFACE_NONE) {
-    int surface_index = model::surface_map[std::abs(src->surf_id)];
-    surface() = (src->surf_id > 0) ? surface_index : -surface_index;
+    int index_plus_one = model::surface_map[std::abs(src->surf_id)] + 1;
+    surface() = (src->surf_id > 0) ? index_plus_one : -index_plus_one;
   }
 }
 

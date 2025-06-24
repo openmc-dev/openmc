@@ -188,7 +188,9 @@ def get_microxs_and_flux(
         # Make energy groups last dimension
         reaction_rates = np.moveaxis(reaction_rates, 1, -1)  # (domains, nuclides, reactions, groups)
 
-        # Divide RR by flux to get microscopic cross sections
+        # Divide RR by flux to get microscopic cross sections. The indexing
+        # ensures that only non-zero flux values are used, and broadcasting is
+        # applied to align the shapes of reaction_rates and flux for division.
         xs = np.empty_like(reaction_rates) # (domains, nuclides, reactions, groups)
         d, _, _, g = np.nonzero(flux)
         xs[d, ..., g] = reaction_rates[d, ..., g] / flux[d, :, :, g]

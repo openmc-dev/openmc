@@ -65,3 +65,4 @@ def test_from_model(model, domain_type, rr_mode):
 
     # Make sure statepoint file was saved
     assert Path('neutron_transport.h5').exists()
+    Path('neutron_transport.h5').unlink()

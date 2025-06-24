@@ -506,8 +506,17 @@ void WeightWindows::update_weights(const Tally* tally, const std::string& value,
   ///////////////////////////
   this->check_tally_update_compatibility(tally);
 
-  lower_ww_.fill(-1);
-  upper_ww_.fill(-1);
+  // Parallelize the initialization of weight window arrays
+  int e_bins_init = lower_ww_.shape()[0];
+  int mesh_bins_init = lower_ww_.shape()[1];
+  
+#pragma omp parallel for collapse(2) schedule(static)
+  for (int e = 0; e < e_bins_init; e++) {
+    for (int m = 0; m < mesh_bins_init; m++) {
+      lower_ww_(e, m) = -1.0;
+      upper_ww_(e, m) = -1.0;
+    }
+  }
 
   // determine which value to use
   const std::set<std::string> allowed_values = {"mean", "rel_err"};
@@ -638,7 +647,7 @@ void WeightWindows::update_weights(const Tally* tally, const std::string& value,
   
   // Calculate mean (new_bounds) and relative error in parallel
   // Also handle rel_err inversion in the same loop to avoid separate parallel region
-#pragma omp parallel for collapse(2) schedule(runtime)
+#pragma omp parallel for collapse(2) schedule(static)
   for (int e = 0; e < e_bins; e++) {
     for (int m = 0; m < mesh_bins; m++) {
       // Calculate mean
@@ -665,7 +674,7 @@ void WeightWindows::update_weights(const Tally* tally, const std::string& value,
     // Monte Carlo or forward random ray solve, we use the MAGIC algorithm.
     
     // First pass: divide by volume of mesh elements in parallel
-#pragma omp parallel for collapse(2) schedule(runtime)
+#pragma omp parallel for collapse(2) schedule(static)
     for (int e = 0; e < e_bins; e++) {
       for (int i = 0; i < mesh_bins; i++) {
         new_bounds(e, i) /= mesh_vols[i];
@@ -677,7 +686,7 @@ void WeightWindows::update_weights(const Tally* tally, const std::string& value,
       double group_max = 0.0;
       
       // Find maximum in this energy group using parallel reduction
-#pragma omp parallel for schedule(runtime) reduction(max:group_max)
+#pragma omp parallel for schedule(static) reduction(max:group_max)
       for (int i = 0; i < mesh_bins; i++) {
         if (new_bounds(e, i) > group_max) {
           group_max = new_bounds(e, i);
@@ -687,7 +696,7 @@ void WeightWindows::update_weights(const Tally* tally, const std::string& value,
       // Normalize values in this energy group by the maximum value
       if (group_max > 0.0) {
         double norm_factor = 2.0 * group_max;
-#pragma omp parallel for schedule(runtime)
+#pragma omp parallel for schedule(static)
         for (int i = 0; i < mesh_bins; i++) {
           new_bounds(e, i) /= norm_factor;
         }
@@ -698,7 +707,7 @@ void WeightWindows::update_weights(const Tally* tally, const std::string& value,
     // adjoint random ray solve, we use the FW-CADIS algorithm.
     
     // Combine volume division and inverse calculation into one parallel loop
-#pragma omp parallel for collapse(2) schedule(runtime)
+#pragma omp parallel for collapse(2) schedule(static)
     for (int e = 0; e < e_bins; e++) {
       for (int i = 0; i < mesh_bins; i++) {
         // Divide by volume of mesh elements
@@ -715,7 +724,7 @@ void WeightWindows::update_weights(const Tally* tally, const std::string& value,
     
     // Find the maximum value across all elements using parallel reduction
     double max_val = 0.0;
-#pragma omp parallel for collapse(2) schedule(runtime) reduction(max:max_val)
+#pragma omp parallel for collapse(2) schedule(static) reduction(max:max_val)
     for (int e = 0; e < e_bins; e++) {
       for (int i = 0; i < mesh_bins; i++) {
         if (new_bounds(e, i) > max_val) {
@@ -730,7 +739,7 @@ void WeightWindows::update_weights(const Tally* tally, const std::string& value,
       double min_val = INFTY;
       
       // Normalize and find minimum in one pass
-#pragma omp parallel for collapse(2) schedule(runtime) reduction(min:min_val)
+#pragma omp parallel for collapse(2) schedule(static) reduction(min:min_val)
       for (int e = 0; e < e_bins; e++) {
         for (int i = 0; i < mesh_bins; i++) {
           new_bounds(e, i) /= norm_factor;
@@ -741,7 +750,7 @@ void WeightWindows::update_weights(const Tally* tally, const std::string& value,
       }
       
       // Apply minimum value to missed bins
-#pragma omp parallel for collapse(2) schedule(runtime)
+#pragma omp parallel for collapse(2) schedule(static)
       for (int e = 0; e < e_bins; e++) {
         for (int i = 0; i < mesh_bins; i++) {
           if (new_bounds(e, i) == 0.0) {
@@ -753,7 +762,7 @@ void WeightWindows::update_weights(const Tally* tally, const std::string& value,
   }
 
   // Combine all final processing into a single parallel loop to reduce overhead
-#pragma omp parallel for collapse(2) schedule(runtime)
+#pragma omp parallel for collapse(2) schedule(static)
   for (int e = 0; e < e_bins; e++) {
     for (int i = 0; i < mesh_bins; i++) {
       // Check if values where the mean is zero should be ignored

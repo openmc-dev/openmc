@@ -6,6 +6,7 @@ IndependentOperator class for depletion.
 
 from __future__ import annotations
 from collections.abc import Sequence
+import shutil
 from tempfile import TemporaryDirectory
 
 import pandas as pd
@@ -35,6 +36,7 @@ def get_microxs_and_flux(
     energies: Sequence[float] | str | None = None,
     reaction_rate_mode: str = 'direct',
     chain_file: PathLike | Chain | None = None,
+    path_statepoint: PathLike | None = None,
     run_kwargs=None
 ) -> tuple[list[np.ndarray], list[MicroXS]]:
     """Generate a microscopic cross sections and flux from a Model
@@ -68,6 +70,10 @@ def get_microxs_and_flux(
         openmc.deplete.Chain. Used to determine cross sections for materials not
         present in the inital composition. Defaults to
         ``openmc.config['chain_file']``.
+    path_statepoint : path-like, optional
+        Path to write the statepoint file from the neutron transport solve to.
+        By default, The statepoint file is written to a temporary directory and
+        is not kept.
     run_kwargs : dict, optional
         Keyword arguments passed to :meth:`openmc.Model.run`
 
@@ -145,6 +151,11 @@ def get_microxs_and_flux(
         statepoint_path = model.run(**run_kwargs)
 
         if comm.rank == 0:
+            # Move the statepoint file if it is being saved to a specific path
+            if path_statepoint is not None:
+                shutil.move(statepoint_path, path_statepoint)
+                statepoint_path = path_statepoint
+
             with StatePoint(statepoint_path) as sp:
                 if reaction_rate_mode == 'direct':
                     rr_tally = sp.tallies[rr_tally.id]

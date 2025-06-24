@@ -631,12 +631,28 @@ void WeightWindows::update_weights(const Tally* tally, const std::string& value,
   int e_bins = new_bounds.shape()[0];
   int mesh_bins = new_bounds.shape()[1];
 
-  // Use xtensor operations for the initial calculations but evaluate them immediately
-  xt::noalias(new_bounds) = sum / n;
-
-  xt::noalias(rel_err) =
-    xt::sqrt(((sum_sq / n) - xt::square(new_bounds)) / (n - 1)) / new_bounds;
-  xt::filter(rel_err, sum <= 0.0).fill(INFTY);
+  // Parallelize ALL calculations - eliminate ALL xtensor element-wise operations
+  // First evaluate the xtensor views into concrete arrays for parallel access
+  auto sum_evaluated = xt::eval(sum);
+  auto sum_sq_evaluated = xt::eval(sum_sq);
+  
+  // Calculate mean (new_bounds) and relative error in parallel
+#pragma omp parallel for collapse(2) schedule(runtime)
+  for (int e = 0; e < e_bins; e++) {
+    for (int m = 0; m < mesh_bins; m++) {
+      // Calculate mean
+      new_bounds(e, m) = sum_evaluated(e, m) / n;
+      
+      // Calculate relative error
+      if (sum_evaluated(e, m) > 0.0) {
+        double mean_val = new_bounds(e, m);
+        double variance = (sum_sq_evaluated(e, m) / n - mean_val * mean_val) / (n - 1);
+        rel_err(e, m) = std::sqrt(variance) / mean_val;
+      } else {
+        rel_err(e, m) = INFTY;
+      }
+    }
+  }
 
   if (value == "rel_err") {
 #pragma omp parallel for collapse(2) schedule(runtime)
@@ -750,7 +766,14 @@ void WeightWindows::update_weights(const Tally* tally, const std::string& value,
 
   // make sure that values where the mean is zero are set s.t. the weight window
   // value will be ignored
-  xt::filter(new_bounds, sum <= 0.0).fill(-1.0);
+#pragma omp parallel for collapse(2) schedule(runtime)
+  for (int e = 0; e < e_bins; e++) {
+    for (int i = 0; i < mesh_bins; i++) {
+      if (sum_evaluated(e, i) <= 0.0) {
+        new_bounds(e, i) = -1.0;
+      }
+    }
+  }
 
   // make sure the weight windows are ignored for any locations where the
   // relative error is higher than the specified relative error threshold

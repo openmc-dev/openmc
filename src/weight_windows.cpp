@@ -10,7 +10,7 @@
 #include "xtensor/xio.hpp"
 #include "xtensor/xmasked_view.hpp"
 #include "xtensor/xnoalias.hpp"
-#include "xtensor/xstrided_view.hpp"
+#include "xtensor/xdynamic_view.hpp"
 #include "xtensor/xview.hpp"
 
 #include "openmc/error.h"
@@ -510,7 +510,7 @@ void WeightWindows::update_weights(const Tally* tally, const std::string& value,
   int e_bins = lower_ww_.shape()[0];
   int64_t mesh_bins = lower_ww_.shape()[1];
   
-  // Parallelize the initialization of weight window arrays
+  // Parallel initialization of weight window arrays
 #pragma omp parallel for collapse(2) schedule(static)
   for (int e = 0; e < e_bins; e++) {
     for (int64_t m = 0; m < mesh_bins; m++) {
@@ -615,10 +615,10 @@ void WeightWindows::update_weights(const Tally* tally, const std::string& value,
   }
 
   // down-select data based on particle and score
-  auto sum = xt::view(transposed_view, particle_idx, xt::all(), xt::all(),
-    score_index, static_cast<int>(TallyResult::SUM));
-  auto sum_sq = xt::view(transposed_view, particle_idx, xt::all(), xt::all(),
-    score_index, static_cast<int>(TallyResult::SUM_SQ));
+  auto sum = xt::dynamic_view(transposed_view, {particle_idx, xt::all(), xt::all(),
+    score_index, static_cast<int>(TallyResult::SUM)});
+  auto sum_sq = xt::dynamic_view(transposed_view, {particle_idx, xt::all(), xt::all(),
+    score_index, static_cast<int>(TallyResult::SUM_SQ)});
   int n = tally->n_realizations_;
 
   //////////////////////////////////////////////
@@ -638,30 +638,22 @@ void WeightWindows::update_weights(const Tally* tally, const std::string& value,
 
   // get mesh volumes
   auto mesh_vols = this->mesh()->volumes();
-
-  // Parallelize ALL calculations - eliminate ALL xtensor element-wise operations
-  // First evaluate the xtensor views into concrete arrays for parallel access
-  auto sum_evaluated = xt::eval(sum);
-  auto sum_sq_evaluated = xt::eval(sum_sq);
   
   // Calculate mean (new_bounds) and relative error in parallel
-  // Also handle rel_err inversion in the same loop to avoid separate parallel region
 #pragma omp parallel for collapse(2) schedule(static)
   for (int e = 0; e < e_bins; e++) {
     for (int64_t m = 0; m < mesh_bins; m++) {
       // Calculate mean
-      new_bounds(e, m) = sum_evaluated(e, m) / n;
+      new_bounds(e, m) = sum(e, m) / n;
       
       // Calculate relative error
-      if (sum_evaluated(e, m) > 0.0) {
+      if (sum(e, m) > 0.0) {
         double mean_val = new_bounds(e, m);
-        double variance = (sum_sq_evaluated(e, m) / n - mean_val * mean_val) / (n - 1);
+        double variance = (sum_sq(e, m) / n - mean_val * mean_val) / (n - 1);
         rel_err(e, m) = std::sqrt(variance) / mean_val;
       } else {
         rel_err(e, m) = INFTY;
-      }
-      
-      // Handle rel_err inversion in the same loop if needed
+      }      
       if (value == "rel_err") {
         new_bounds(e, m) = 1.0 / rel_err(e, m);
       }
@@ -672,7 +664,7 @@ void WeightWindows::update_weights(const Tally* tally, const std::string& value,
     // If we are computing weight windows with forward fluxes derived from a
     // Monte Carlo or forward random ray solve, we use the MAGIC algorithm.
     
-    // First pass: divide by volume of mesh elements in parallel
+    // Divide by volume of mesh elements in parallel
 #pragma omp parallel for collapse(2) schedule(static)
     for (int e = 0; e < e_bins; e++) {
       for (int64_t m = 0; m < mesh_bins; m++) {
@@ -680,7 +672,7 @@ void WeightWindows::update_weights(const Tally* tally, const std::string& value,
       }
     }
 
-    // Second pass: find group maximum and normalize (per energy group)
+    // Find group maximum and normalize (per energy group)
     for (int e = 0; e < e_bins; e++) {
       double group_max = 0.0;
       
@@ -705,13 +697,12 @@ void WeightWindows::update_weights(const Tally* tally, const std::string& value,
     // If we are computing weight windows with adjoint fluxes derived from an
     // adjoint random ray solve, we use the FW-CADIS algorithm.
     
-    // Combine volume division and inverse calculation into one parallel loop
+    // Parallel volume division and inverse calculation
 #pragma omp parallel for collapse(2) schedule(static)
     for (int e = 0; e < e_bins; e++) {
       for (int64_t m = 0; m < mesh_bins; m++) {
         // Divide by volume of mesh elements
         new_bounds(e, m) /= mesh_vols[m];
-        
         // Take the inverse, but are careful not to divide by zero
         if (new_bounds(e, m) != 0.0) {
           new_bounds(e, m) = 1.0 / new_bounds(e, m);
@@ -732,12 +723,12 @@ void WeightWindows::update_weights(const Tally* tally, const std::string& value,
       }
     }
     
-    // Combine normalization and minimum finding for efficiency
+    // Normalization and minimum finding
     if (max_val > 0.0) {
       double norm_factor = 2.0 * max_val;
       double min_val = INFTY;
       
-      // Normalize and find minimum in one pass
+      // Normalize and find minimum in parallel
 #pragma omp parallel for collapse(2) schedule(static) reduction(min:min_val)
       for (int e = 0; e < e_bins; e++) {
         for (int64_t m = 0; m < mesh_bins; m++) {
@@ -760,19 +751,18 @@ void WeightWindows::update_weights(const Tally* tally, const std::string& value,
     }
   }
 
-  // Combine all final processing into a single parallel loop to reduce overhead
+  // Final processing 
 #pragma omp parallel for collapse(2) schedule(static)
   for (int e = 0; e < e_bins; e++) {
     for (int64_t m = 0; m < mesh_bins; m++) {
-      // Check if values where the mean is zero should be ignored
-      if (sum_evaluated(e, m) <= 0.0) {
+      // Values where the mean is zero should be ignored
+      if (sum(e, m) <= 0.0) {
         new_bounds(e, m) = -1.0;
       }
       // Check if relative error is higher than threshold
       else if (rel_err(e, m) > threshold) {
         new_bounds(e, m) = -1.0;
       }
-      
       // Update the upper bounds (always do this regardless of bounds value)
       upper_ww_(e, m) = ratio * lower_ww_(e, m);
     }

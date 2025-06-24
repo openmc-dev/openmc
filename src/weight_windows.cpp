@@ -626,21 +626,26 @@ void WeightWindows::update_weights(const Tally* tally, const std::string& value,
   auto& new_bounds = this->lower_ww_;
   auto& rel_err = this->upper_ww_;
 
-  // Use original xtensor operations for initial calculations - these are already optimized
+  // get mesh volumes and dimensions
+  auto mesh_vols = this->mesh()->volumes();
+  int e_bins = new_bounds.shape()[0];
+  int mesh_bins = new_bounds.shape()[1];
+
+  // Use xtensor operations for the initial calculations but evaluate them immediately
   xt::noalias(new_bounds) = sum / n;
 
   xt::noalias(rel_err) =
     xt::sqrt(((sum_sq / n) - xt::square(new_bounds)) / (n - 1)) / new_bounds;
   xt::filter(rel_err, sum <= 0.0).fill(INFTY);
 
-  if (value == "rel_err")
-    xt::noalias(new_bounds) = 1 / rel_err;
-
-  // get mesh volumes
-  auto mesh_vols = this->mesh()->volumes();
-
-  int e_bins = new_bounds.shape()[0];
-  int mesh_bins = new_bounds.shape()[1];
+  if (value == "rel_err") {
+#pragma omp parallel for collapse(2) schedule(runtime)
+    for (int e = 0; e < e_bins; e++) {
+      for (int m = 0; m < mesh_bins; m++) {
+        new_bounds(e, m) = 1.0 / rel_err(e, m);
+      }
+    }
+  }
 
   if (method == WeightWindowUpdateMethod::MAGIC) {
     // If we are computing weight windows with forward fluxes derived from a
@@ -654,11 +659,12 @@ void WeightWindows::update_weights(const Tally* tally, const std::string& value,
       }
     }
 
-    // Second pass: find group maximum and normalize (this needs to be sequential per energy group)
+    // Second pass: find group maximum and normalize (per energy group)
     for (int e = 0; e < e_bins; e++) {
       double group_max = 0.0;
       
-      // Find maximum in this energy group
+      // Find maximum in this energy group using parallel reduction
+#pragma omp parallel for schedule(runtime) reduction(max:group_max)
       for (int i = 0; i < mesh_bins; i++) {
         if (new_bounds(e, i) > group_max) {
           group_max = new_bounds(e, i);
@@ -698,8 +704,9 @@ void WeightWindows::update_weights(const Tally* tally, const std::string& value,
       }
     }
     
-    // Find the maximum value across all elements
+    // Find the maximum value across all elements using parallel reduction
     double max_val = 0.0;
+#pragma omp parallel for collapse(2) schedule(runtime) reduction(max:max_val)
     for (int e = 0; e < e_bins; e++) {
       for (int i = 0; i < mesh_bins; i++) {
         if (new_bounds(e, i) > max_val) {
@@ -719,8 +726,9 @@ void WeightWindows::update_weights(const Tally* tally, const std::string& value,
       }
     }
 
-    // Find minimum value for missed bins
+    // Find minimum value for missed bins using parallel reduction
     double min_val = INFTY;
+#pragma omp parallel for collapse(2) schedule(runtime) reduction(min:min_val)
     for (int e = 0; e < e_bins; e++) {
       for (int i = 0; i < mesh_bins; i++) {
         if (new_bounds(e, i) != 0.0 && new_bounds(e, i) < min_val) {
@@ -742,7 +750,6 @@ void WeightWindows::update_weights(const Tally* tally, const std::string& value,
 
   // make sure that values where the mean is zero are set s.t. the weight window
   // value will be ignored
-  // Note: We'll use the original xtensor filtering for this since it involves the sum view
   xt::filter(new_bounds, sum <= 0.0).fill(-1.0);
 
   // make sure the weight windows are ignored for any locations where the

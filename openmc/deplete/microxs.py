@@ -39,12 +39,17 @@ def get_microxs_and_flux(
     path_statepoint: PathLike | None = None,
     run_kwargs=None
 ) -> tuple[list[np.ndarray], list[MicroXS]]:
-    """Generate a microscopic cross sections and flux from a Model
+    """Generate microscopic cross sections and fluxes for multiple domains.
+
+    This function runs a neutron transport solve to obtain the flux and reaction
+    rates in the specified domains and computes multigroup microscopic cross
+    sections that can be used in depletion calculations with the
+    :class:`~openmc.deplete.IndependentOperator` class.
 
     .. versionadded:: 0.14.0
 
     .. versionchanged:: 0.15.3
-        Added `reaction_rate_mode` argument.
+        Added `reaction_rate_mode` and `path_statepoint` arguments.
 
     Parameters
     ----------
@@ -83,6 +88,10 @@ def get_microxs_and_flux(
         Flux in each group in [n-cm/src] for each domain
     list of MicroXS
         Cross section data in [b] for each domain
+
+    See Also
+    --------
+    openmc.deplete.IndependentOperator
 
     """
     # Save any original tallies on the model

@@ -626,7 +626,7 @@ void WeightWindows::update_weights(const Tally* tally, const std::string& value,
   auto& new_bounds = this->lower_ww_;
   auto& rel_err = this->upper_ww_;
 
-  // noalias avoids memory allocation here
+  // Use original xtensor operations for initial calculations - these are already optimized
   xt::noalias(new_bounds) = sum / n;
 
   xt::noalias(rel_err) =
@@ -640,64 +640,129 @@ void WeightWindows::update_weights(const Tally* tally, const std::string& value,
   auto mesh_vols = this->mesh()->volumes();
 
   int e_bins = new_bounds.shape()[0];
+  int mesh_bins = new_bounds.shape()[1];
 
   if (method == WeightWindowUpdateMethod::MAGIC) {
     // If we are computing weight windows with forward fluxes derived from a
     // Monte Carlo or forward random ray solve, we use the MAGIC algorithm.
+    
+    // First pass: divide by volume of mesh elements in parallel
+#pragma omp parallel for schedule(runtime)
     for (int e = 0; e < e_bins; e++) {
-      // select all
-      auto group_view = xt::view(new_bounds, e);
-
-      // divide by volume of mesh elements
-      for (int i = 0; i < group_view.size(); i++) {
-        group_view[i] /= mesh_vols[i];
+      for (int i = 0; i < mesh_bins; i++) {
+        new_bounds(e, i) /= mesh_vols[i];
       }
+    }
 
-      double group_max =
-        *std::max_element(group_view.begin(), group_view.end());
-      // normalize values in this energy group by the maximum value for this
-      // group
-      if (group_max > 0.0)
-        group_view /= 2.0 * group_max;
+    // Second pass: find group maximum and normalize (this needs to be sequential per energy group)
+    for (int e = 0; e < e_bins; e++) {
+      double group_max = 0.0;
+      
+      // Find maximum in this energy group
+      for (int i = 0; i < mesh_bins; i++) {
+        if (new_bounds(e, i) > group_max) {
+          group_max = new_bounds(e, i);
+        }
+      }
+      
+      // Normalize values in this energy group by the maximum value
+      if (group_max > 0.0) {
+        double norm_factor = 2.0 * group_max;
+#pragma omp parallel for schedule(runtime)
+        for (int i = 0; i < mesh_bins; i++) {
+          new_bounds(e, i) /= norm_factor;
+        }
+      }
     }
   } else {
     // If we are computing weight windows with adjoint fluxes derived from an
     // adjoint random ray solve, we use the FW-CADIS algorithm.
+    
+    // First: divide by volume of mesh elements in parallel
+#pragma omp parallel for collapse(2) schedule(runtime)
     for (int e = 0; e < e_bins; e++) {
-      // select all
-      auto group_view = xt::view(new_bounds, e);
-
-      // divide by volume of mesh elements
-      for (int i = 0; i < group_view.size(); i++) {
-        group_view[i] /= mesh_vols[i];
+      for (int i = 0; i < mesh_bins; i++) {
+        new_bounds(e, i) /= mesh_vols[i];
       }
     }
 
-    // We take the inverse, but are careful not to divide by zero e.g. if some
-    // mesh bins are not reachable in the physical geometry.
-    xt::noalias(new_bounds) =
-      xt::where(xt::not_equal(new_bounds, 0.0), 1.0 / new_bounds, 0.0);
-    auto max_val = xt::amax(new_bounds)();
-    xt::noalias(new_bounds) = new_bounds / (2.0 * max_val);
+    // Take the inverse, but are careful not to divide by zero
+#pragma omp parallel for collapse(2) schedule(runtime)
+    for (int e = 0; e < e_bins; e++) {
+      for (int i = 0; i < mesh_bins; i++) {
+        if (new_bounds(e, i) != 0.0) {
+          new_bounds(e, i) = 1.0 / new_bounds(e, i);
+        } else {
+          new_bounds(e, i) = 0.0;
+        }
+      }
+    }
+    
+    // Find the maximum value across all elements
+    double max_val = 0.0;
+    for (int e = 0; e < e_bins; e++) {
+      for (int i = 0; i < mesh_bins; i++) {
+        if (new_bounds(e, i) > max_val) {
+          max_val = new_bounds(e, i);
+        }
+      }
+    }
+    
+    // Normalize by 2 * max_val
+    if (max_val > 0.0) {
+      double norm_factor = 2.0 * max_val;
+#pragma omp parallel for collapse(2) schedule(runtime)
+      for (int e = 0; e < e_bins; e++) {
+        for (int i = 0; i < mesh_bins; i++) {
+          new_bounds(e, i) /= norm_factor;
+        }
+      }
+    }
 
-    // For bins that were missed, we use the minimum weight window value. This
-    // shouldn't matter except for plotting.
-    auto min_val = xt::amin(new_bounds)();
-    xt::noalias(new_bounds) =
-      xt::where(xt::not_equal(new_bounds, 0.0), new_bounds, min_val);
+    // Find minimum value for missed bins
+    double min_val = INFTY;
+    for (int e = 0; e < e_bins; e++) {
+      for (int i = 0; i < mesh_bins; i++) {
+        if (new_bounds(e, i) != 0.0 && new_bounds(e, i) < min_val) {
+          min_val = new_bounds(e, i);
+        }
+      }
+    }
+    
+    // For bins that were missed, use the minimum weight window value
+#pragma omp parallel for collapse(2) schedule(runtime)
+    for (int e = 0; e < e_bins; e++) {
+      for (int i = 0; i < mesh_bins; i++) {
+        if (new_bounds(e, i) == 0.0) {
+          new_bounds(e, i) = min_val;
+        }
+      }
+    }
   }
 
   // make sure that values where the mean is zero are set s.t. the weight window
   // value will be ignored
+  // Note: We'll use the original xtensor filtering for this since it involves the sum view
   xt::filter(new_bounds, sum <= 0.0).fill(-1.0);
 
   // make sure the weight windows are ignored for any locations where the
   // relative error is higher than the specified relative error threshold
-  xt::filter(new_bounds, rel_err > threshold).fill(-1.0);
+#pragma omp parallel for collapse(2) schedule(runtime)
+  for (int e = 0; e < e_bins; e++) {
+    for (int i = 0; i < mesh_bins; i++) {
+      if (rel_err(e, i) > threshold) {
+        new_bounds(e, i) = -1.0;
+      }
+    }
+  }
 
   // update the bounds of this weight window class
-  // noalias avoids additional memory allocation
-  xt::noalias(upper_ww_) = ratio * lower_ww_;
+#pragma omp parallel for collapse(2) schedule(runtime)
+  for (int e = 0; e < e_bins; e++) {
+    for (int i = 0; i < mesh_bins; i++) {
+      upper_ww_(e, i) = ratio * lower_ww_(e, i);
+    }
+  }
 }
 
 void WeightWindows::check_tally_update_compatibility(const Tally* tally)

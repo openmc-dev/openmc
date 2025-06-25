@@ -43,18 +43,18 @@ public:
   };
 
   enum class HexMeshDir {
-    OUT_SE,     // r max
-    IN_SE,      // r max
     OUT_NW,     // r min
     IN_NW,      // r min
-    OUT_E,      // q max
-    IN_E,       // q max
+    OUT_SE,     // r max
+    IN_SE,      // r max
     OUT_W,      // q min
     IN_W,       // q min
-    OUT_NE,     // s max
-    IN_NE,      // s max
+    OUT_E,      // q max
+    IN_E,       // q max
     OUT_SW,     // s min
     IN_SW,      // s min
+    OUT_NE,     // s max
+    IN_NE,      // s max
     OUT_BOTTOM, // z min
     IN_BOTTOM,  // z min
     OUT_TOP,    // z max

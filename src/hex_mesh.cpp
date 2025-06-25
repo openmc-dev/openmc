@@ -313,7 +313,7 @@ int HexagonalMesh::n_bins() const
 
 int HexagonalMesh::n_surface_bins() const
 {
-  return 4 * 3 * n_bins();
+  return 4 * 4 * n_bins();
 }
 
 xt::xtensor<int, 1> HexagonalMesh::get_x_shape() const
@@ -779,7 +779,7 @@ void HexagonalMesh::surface_bins_crossed(
     {}
     void surface(const HexMeshIndex& ijkl, int k, bool max, bool inward) const
     {
-      int i_bin = 4 * mesh->get_bin_from_hexindices(ijkl) + 4 * k;
+      int i_bin = 4 * 4 * mesh->get_bin_from_hexindices(ijkl) + 4 * k;
       if (max)
         i_bin += 2;
       if (inward)

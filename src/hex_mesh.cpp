@@ -59,6 +59,13 @@ HexagonalMesh::HexagonalMesh(pugi::xml_node node)
   }
   std::copy(shape.begin(), shape.end(), shape_.begin());
 
+  // Make sure shape has two numbers
+  if (n ==1){
+    shape_[1] = 1;
+    n = 2;
+  }
+
+
   // Check that dimensions are all greater than zero
   if (xt::any(shape <= 0)) {
     fatal_error("All entries on the <dimension> element for a tally "

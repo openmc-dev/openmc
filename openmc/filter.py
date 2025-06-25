@@ -935,7 +935,7 @@ class MeshFilter(Filter):
         mesh_key = f'mesh {self.mesh.id}'
 
         # Find mesh dimensions - use 3D indices for simplicity
-        if not isinstance(self.mesh, HexagonalMesh):
+        if not isinstance(self.mesh, openmc.HexagonalMesh):
             n_dim = len(self.mesh.dimension)
             if n_dim == 3:
                 nx, ny, nz = self.mesh.dimension
@@ -1069,7 +1069,7 @@ class MeshSurfaceFilter(MeshFilter):
         # Take the product of mesh indices and current names
         # Special case when the mesh is hexagonal
         n_dim = mesh.n_dimension
-        if isinstance(mesh, HexagonalMesh):
+        if isinstance(mesh, openmc.HexagonalMesh):
             names = _CURRENT_HEXNAMES
         else:
             names = _CURRENT_NAMES[:4*n_dim]

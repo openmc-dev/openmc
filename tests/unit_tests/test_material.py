@@ -717,9 +717,9 @@ def test_mean_free_path():
     mat1 = openmc.Material()
     mat1.add_nuclide('Si28', 1.0)
     mat1.set_density('g/cm3', 2.32)
-    assert mat2.mean_free_path(energy=14e6) == pytest.approx(5.65, abs=1e-2)
+    assert mat1.mean_free_path(energy=14e6) == pytest.approx(11.41, abs=1e-2)
 
     mat2 = openmc.Material()
     mat2.add_nuclide('Pb208', 1.0)
     mat2.set_density('g/cm3', 11.34)
-    assert mat1.mean_free_path(energy=14e6) == pytest.approx(11.41, abs=1e-2)
+    assert mat2.mean_free_path(energy=14e6) == pytest.approx(5.65, abs=1e-2)

@@ -378,7 +378,7 @@ void prepare_distribcell(const std::vector<int32_t>* user_distribcells)
   }
 
   // Search through universes for material cells and assign each one a
-  // unique distribcell array index.
+  // distribcell array index according to the containing universe.
   vector<int32_t> target_univ_ids;
   for (const auto& u : model::universes) {
     for (auto idx : u->cells_) {

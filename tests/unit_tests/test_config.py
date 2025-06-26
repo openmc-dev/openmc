@@ -46,6 +46,7 @@ def test_config_basics():
     with pytest.raises(TypeError):
         openmc.config['resolve_paths'] = 'not a bool'
 
+
 def test_config_path_resolution(tmp_path):
     """Test path resolution logic."""
     os.chdir(tmp_path)
@@ -67,6 +68,7 @@ def test_config_path_resolution(tmp_path):
 
     assert openmc.config['resolve_paths'] is True
 
+
 def test_config_patch(tmp_path):
     file_a = tmp_path / "a.xml"; file_a.touch()
     file_b = tmp_path / "b.xml"; file_b.touch()
@@ -84,11 +86,13 @@ def test_config_set_envvar(tmp_path):
     expected_path = str(relative_path.resolve())
     assert os.environ['OPENMC_CROSS_SECTIONS'] == expected_path
 
+
 def test_config_warning_nonexistent_path(tmp_path):
     """Test that a warning is issued for a path that does not exist."""
     bad_path = tmp_path / "a/path/that/does/not/exist.xml"
     with pytest.warns(UserWarning, match=f"Path '{bad_path}' does not exist."):
         openmc.config['chain_file'] = bad_path
+
 
 def test_config_chain_side_effect(tmp_path):
     """Test that modifying chain_file clears decay data caches."""

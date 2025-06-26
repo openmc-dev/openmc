@@ -1,6 +1,6 @@
 """Module for handling global configuration in OpenMC.
 
-This module exports a single object, `config`, which can be used to control
+This module exports a single object, `config`, that can be used to control
 various settings, primarily paths to data files. It acts like a dictionary but
 with special behaviors.
 
@@ -17,14 +17,12 @@ from contextlib import contextmanager
 import os
 from pathlib import Path
 import warnings
-from typing import Any, Dict, Iterator, Union
+from typing import Any, Dict, Iterator
 
 from openmc.data import DataLibrary
 from openmc.data.decay import _DECAY_ENERGY, _DECAY_PHOTON_ENERGY
 
 __all__ = ["config"]
-
-PathLike = Union[str, os.PathLike]
 
 
 class _Config(MutableMapping):
@@ -66,8 +64,8 @@ class _Config(MutableMapping):
     def __delitem__(self, key: str):
         """Delete a configuration key.
 
-        This also deletes the corresponding environment variable if the key is
-        a path-like key, and clears decay data caches if 'chain_file' is deleted.
+        This also deletes the corresponding environment variable if the key is a
+        path-like key, and clears decay data caches if 'chain_file' is deleted.
         'resolve_paths' cannot be deleted.
 
         """
@@ -179,6 +177,7 @@ class _Config(MutableMapping):
             else:
                 self[key] = previous_value
 
+
 def _default_config() -> _Config:
     """Create a configuration initialized from environment variables.
 
@@ -203,14 +202,15 @@ def _default_config() -> _Config:
     if chain_file is None and xs_path is not None and xs_path.exists():
         try:
             data = DataLibrary.from_xml(xs_path)
-            for lib in reversed(data.libraries):
-                if lib['type'] == 'depletion_chain':
-                    chain_file = xs_path.parent / lib['path']
-                    break
         except Exception:
             # Let this pass silently if cross_sections.xml can't be parsed
             # or if a dependency like lxml is not available.
             pass
+        else:
+            for lib in reversed(data.libraries):
+                if lib['type'] == 'depletion_chain':
+                    chain_file = xs_path.parent / lib['path']
+                    break
     if chain_file is not None:
         config['chain_file'] = chain_file
     return config

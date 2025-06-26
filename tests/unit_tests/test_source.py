@@ -49,6 +49,34 @@ def test_spherical_uniform():
                                                         origin)
 
     assert isinstance(sph_indep_function, openmc.stats.SphericalIndependent)
+    
+def test_cylindrical_uniform():
+    r_outer = 2.0
+    r_inner = 1.0
+    height = 1.0
+    phis = (0.0, pi)
+    origin = (0.0, 1.0, 2.0)
+
+    cyl_indep_function = openmc.stats.cylindrical_uniform(r_outer,
+                                                          height,
+                                                          r_inner,
+                                                          phis,
+                                                          origin)
+
+    assert isinstance(cyl_indep_function, openmc.stats.CylindricalIndependent)
+    
+def test_ring_uniform():
+    r_outer = 2.0
+    r_inner = 1.0
+    phis = (0.0, pi)
+    origin = (0.0, 1.0, 2.0)
+
+    ring_indep_function = openmc.stats.ring_uniform(r_outer,
+                                                    r_inner,
+                                                    phis,
+                                                    origin)
+
+    assert isinstance(ring_indep_function, openmc.stats.CylindricalIndependent)        
 
 def test_point_cloud():
     positions = [(1, 0, 2), (0, 1, 0), (0, 0, 3), (4, 9, 2)]

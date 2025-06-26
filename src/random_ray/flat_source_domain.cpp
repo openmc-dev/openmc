@@ -1092,6 +1092,12 @@ void FlatSourceDomain::convert_external_sources()
         // point_source_map to determine if there are any point source terms
         // that should be applied.
         SourceRegionKey key {sr, mesh_bin};
+        auto it = point_source_map_.find(key);
+        if (it != point_source_map_.end()) {
+          fatal_error("Multiple point sources detected in the same subdivided "
+                      "source region. This is not supported in the random ray "
+                      "solver.");
+        }
         point_source_map_[key] = es;
       } else {
         // If we are not using mesh subdivision, we can apply the external

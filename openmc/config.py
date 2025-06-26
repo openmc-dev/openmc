@@ -5,7 +5,7 @@ from pathlib import Path
 import warnings
 
 from openmc.data import DataLibrary
-from openmc.data.decay import _DECAY_ENERGY, _DECAY_PHOTON_ENERGY
+from openmc.data.decay import _DECAY_ENERGY, _DECAY_PARTICLE_ENERGY
 
 __all__ = ["config"]
 
@@ -26,8 +26,8 @@ class _Config(MutableMapping):
             del os.environ['OPENMC_MG_CROSS_SECTIONS']
         elif key == 'chain_file':
             del os.environ['OPENMC_CHAIN_FILE']
-            # Reset photon source data since it relies on chain file
-            _DECAY_PHOTON_ENERGY.clear()
+            # Reset particle source data since it relies on chain file
+            _DECAY_PARTICLE_ENERGY = {"photon": {}, "neutron": {}}
 
     def __setitem__(self, key, value):
         if key == 'cross_sections':
@@ -40,8 +40,8 @@ class _Config(MutableMapping):
         elif key == 'chain_file':
             self._set_path(key, value)
             os.environ['OPENMC_CHAIN_FILE'] = str(value)
-            # Reset photon source data since it relies on chain file
-            _DECAY_PHOTON_ENERGY.clear()
+            # Reset particle source data since it relies on chain file
+            _DECAY_PARTICLE_ENERGY = {"photon": {}, "neutron": {}}
             _DECAY_ENERGY.clear()
         elif key == 'resolve_paths':
             self._mapping[key] = value

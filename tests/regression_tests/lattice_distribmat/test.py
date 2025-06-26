@@ -2,7 +2,6 @@ import numpy as np
 import openmc
 from openmc.utility_funcs import change_directory
 import pytest
-from copy import deepcopy
 
 from tests.testing_harness import PyAPITestHarness
 
@@ -74,12 +73,11 @@ def model():
     
     return model
 
-@pytest.mark.parametrize("distribmat", [True, False])
+@pytest.mark.parametrize("distribmat", [False, True])
 def test_lattice(model, distribmat):
     with change_directory(str(distribmat)):
         openmc.reset_auto_ids()
         if distribmat:
-            model = deepcopy(model)
             model.differentiate_mats(depletable_only=False)
         harness = PyAPITestHarness('statepoint.10.h5', model)
         harness.main()

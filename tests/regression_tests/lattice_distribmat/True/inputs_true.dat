@@ -47,56 +47,56 @@
     </material>
   </materials>
   <geometry>
-    <cell id="1" material="1 2 3 4" region="-1" universe="1"/>
-    <cell id="2" material="5 6 7 8" region="1" universe="1"/>
-    <cell fill="2" id="3" region="2 -3 4 -5" universe="6"/>
-    <cell fill="3" id="4" region="2 -3 5 -9" universe="6"/>
-    <cell fill="4" id="5" region="3 -11 4 -5" universe="6"/>
-    <cell fill="5" id="6" region="3 -11 5 -9" universe="6"/>
-    <cell fill="6" id="7" region="18 -19 20 -21" universe="7"/>
-    <lattice id="2">
+    <cell id="8" material="1 2 3 4" region="-6" universe="8"/>
+    <cell id="9" material="5 6 7 8" region="6" universe="8"/>
+    <cell fill="9" id="10" region="7 -8 10 -12" universe="13"/>
+    <cell fill="10" id="11" region="7 -8 12 -16" universe="13"/>
+    <cell fill="11" id="12" region="8 -22 10 -12" universe="13"/>
+    <cell fill="12" id="13" region="8 -22 12 -16" universe="13"/>
+    <cell fill="13" id="14" region="29 -30 31 -32" universe="14"/>
+    <lattice id="9">
       <pitch>1.0 1.0</pitch>
-      <outer>1</outer>
+      <outer>8</outer>
       <dimension>1 1</dimension>
       <lower_left>-1.0 -1.0</lower_left>
       <universes>
-1 </universes>
+8 </universes>
     </lattice>
-    <lattice id="3">
+    <lattice id="10">
       <pitch>1.0 1.0</pitch>
-      <outer>1</outer>
+      <outer>8</outer>
       <dimension>1 1</dimension>
       <lower_left>-1.0 0</lower_left>
       <universes>
-1 </universes>
+8 </universes>
     </lattice>
-    <lattice id="4">
+    <lattice id="11">
       <pitch>1.0 1.0</pitch>
-      <outer>1</outer>
+      <outer>8</outer>
       <dimension>1 1</dimension>
       <lower_left>0 -1.0</lower_left>
       <universes>
-1 </universes>
+8 </universes>
     </lattice>
-    <lattice id="5">
+    <lattice id="12">
       <pitch>1.0 1.0</pitch>
-      <outer>1</outer>
+      <outer>8</outer>
       <dimension>1 1</dimension>
       <lower_left>0 0</lower_left>
       <universes>
-1 </universes>
+8 </universes>
     </lattice>
-    <surface coeffs="0.0 0.0 0.4" id="1" type="z-cylinder"/>
-    <surface coeffs="-1.0" id="2" name="minimum x" type="x-plane"/>
-    <surface coeffs="0.0" id="3" name="maximum x" type="x-plane"/>
-    <surface coeffs="-1.0" id="4" name="minimum y" type="y-plane"/>
-    <surface coeffs="0.0" id="5" name="maximum y" type="y-plane"/>
-    <surface coeffs="1.0" id="9" name="maximum y" type="y-plane"/>
-    <surface coeffs="1.0" id="11" name="maximum x" type="x-plane"/>
-    <surface boundary="reflective" coeffs="-1.0" id="18" name="minimum x" type="x-plane"/>
-    <surface boundary="reflective" coeffs="1.0" id="19" name="maximum x" type="x-plane"/>
-    <surface boundary="reflective" coeffs="-1.0" id="20" name="minimum y" type="y-plane"/>
-    <surface boundary="reflective" coeffs="1.0" id="21" name="maximum y" type="y-plane"/>
+    <surface coeffs="0.0 0.0 0.4" id="6" type="z-cylinder"/>
+    <surface coeffs="-1.0" id="7" name="minimum x" type="x-plane"/>
+    <surface coeffs="0.0" id="8" name="maximum x" type="x-plane"/>
+    <surface coeffs="-1.0" id="10" name="minimum y" type="y-plane"/>
+    <surface coeffs="0.0" id="12" name="maximum y" type="y-plane"/>
+    <surface coeffs="1.0" id="16" name="maximum y" type="y-plane"/>
+    <surface coeffs="1.0" id="22" name="maximum x" type="x-plane"/>
+    <surface boundary="reflective" coeffs="-1.0" id="29" name="minimum x" type="x-plane"/>
+    <surface boundary="reflective" coeffs="1.0" id="30" name="maximum x" type="x-plane"/>
+    <surface boundary="reflective" coeffs="-1.0" id="31" name="minimum y" type="y-plane"/>
+    <surface boundary="reflective" coeffs="1.0" id="32" name="maximum y" type="y-plane"/>
   </geometry>
   <settings>
     <run_mode>eigenvalue</run_mode>

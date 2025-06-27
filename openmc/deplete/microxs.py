@@ -8,6 +8,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 import shutil
 from tempfile import TemporaryDirectory
+from typing import Union, TypeAlias
 
 import pandas as pd
 import numpy as np
@@ -28,9 +29,19 @@ _valid_rxns.append('fission')
 _valid_rxns.append('damage-energy')
 
 
+# TODO: Replace with type statement when support is Python 3.12+
+DomainTypes: TypeAlias = Union[
+    Sequence[openmc.Material],
+    Sequence[openmc.Cell],
+    Sequence[openmc.Universe],
+    openmc.MeshBase,
+    openmc.Filter
+]
+
+
 def get_microxs_and_flux(
     model: openmc.Model,
-    domains,
+    domains: DomainTypes,
     nuclides: Sequence[str] | None = None,
     reactions: Sequence[str] | None = None,
     energies: Sequence[float] | str | None = None,
@@ -64,7 +75,8 @@ def get_microxs_and_flux(
         Reactions to get cross sections for. If not specified, all neutron
         reactions listed in the depletion chain file are used.
     energies : iterable of float or str
-        Energy group boundaries in [eV] or the name of the group structure
+        Energy group boundaries in [eV] or the name of the group structure.
+        If left as None energies will default to [0.0, 100e6]
     reaction_rate_mode : {"direct", "flux"}, optional
         Indicate how reaction rates should be calculated. The "direct" method
         tallies reaction rates directly. The "flux" method tallies a multigroup

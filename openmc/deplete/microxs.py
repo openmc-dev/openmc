@@ -12,7 +12,6 @@ import pandas as pd
 import numpy as np
 
 from openmc.checkvalue import check_type, check_value, check_iterable_type, PathLike
-from openmc.utility_funcs import change_directory
 from openmc import StatePoint
 from openmc.mgxs import GROUP_STRUCTURES
 from openmc.data import REACTION_MT
@@ -216,6 +215,7 @@ class MicroXS:
         temperature: float = 293.6,
         nuclides: Sequence[str] | None = None,
         reactions: Sequence[str] | None = None,
+        session: openmc.lib.TemporarySession | None = None,
         **init_kwargs: dict,
     ) -> MicroXS:
         """Generated microscopic cross sections from a known flux.
@@ -223,6 +223,11 @@ class MicroXS:
         The size of the MicroXS matrix depends on the chain file and cross
         sections available. MicroXS entry will be 0 if the nuclide cross section
         is not found.
+
+        For repeated calls to this method, it is recommended to create a context
+        manager using the :class:`openmc.lib.TemporarySession` class and pass it
+        to the `session` argument to avoid re-initializing OpenMC and loading
+        cross sections each time.
 
         .. versionadded:: 0.15.0
 
@@ -243,6 +248,9 @@ class MicroXS:
         reactions : list of str, optional
             Reactions to get cross sections for. If not specified, all neutron
             reactions listed in the depletion chain file are used.
+        session : TemporaryLibSession, optional
+            A temporary OpenMC shared library session. If not provided, a new
+            session will be created.
         **init_kwargs : dict
             Keyword arguments passed to :func:`openmc.lib.init`
 
@@ -287,37 +295,23 @@ class MicroXS:
         # Create 3D array for microscopic cross sections
         microxs_arr = np.zeros((len(nuclides), len(mts), 1))
 
-        # Create a material with all nuclides
-        mat_all_nucs = openmc.Material()
-        for nuc in nuclides:
-            if nuc in nuclides_with_data:
-                mat_all_nucs.add_nuclide(nuc, 1.0)
-        mat_all_nucs.set_density("atom/b-cm", 1.0)
+        def compute_microxs():
+            # For each nuclide and reaction, compute the flux-averaged xs
+            for nuc_index, nuc in enumerate(nuclides):
+                if nuc not in nuclides_with_data:
+                    continue
+                lib_nuc = openmc.lib.load_nuclide(nuc)
+                for mt_index, mt in enumerate(mts):
+                    microxs_arr[nuc_index, mt_index, 0] = lib_nuc.collapse_rate(
+                        mt, temperature, energies, multigroup_flux
+                    )
 
-        # Create simple model containing the above material
-        surf1 = openmc.Sphere(boundary_type="vacuum")
-        surf1_cell = openmc.Cell(fill=mat_all_nucs, region=-surf1)
-        model = openmc.Model()
-        model.geometry = openmc.Geometry([surf1_cell])
-        model.settings = openmc.Settings(
-            particles=1, batches=1, output={'summary': False})
-
-        with change_directory(tmpdir=True):
-            # Export model within temporary directory
-            model.export_to_model_xml()
-
-            with openmc.lib.run_in_memory(**init_kwargs):
-                # For each nuclide and reaction, compute the flux-averaged
-                # cross section
-                for nuc_index, nuc in enumerate(nuclides):
-                    if nuc not in nuclides_with_data:
-                        continue
-                    lib_nuc = openmc.lib.nuclides[nuc]
-                    for mt_index, mt in enumerate(mts):
-                        xs = lib_nuc.collapse_rate(
-                            mt, temperature, energies, multigroup_flux
-                        )
-                        microxs_arr[nuc_index, mt_index, 0] = xs
+        # Compute microscopic cross sections within a temporary session
+        if session is None:
+            with openmc.lib.TemporarySession(**init_kwargs):
+                compute_microxs()
+        else:
+            compute_microxs()
 
         return cls(microxs_arr, nuclides, reactions)
 

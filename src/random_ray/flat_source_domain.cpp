@@ -1094,9 +1094,9 @@ void FlatSourceDomain::convert_external_sources()
         SourceRegionKey key {sr, mesh_bin};
         auto it = point_source_map_.find(key);
         if (it != point_source_map_.end()) {
-          fatal_error("Multiple point sources detected in the same subdivided "
-                      "source region. This is not currently supported in the random ray "
-                      "solver.");
+          fatal_error(
+            "Multiple point sources detected in the same subdivided source region."
+            "This is not currently supported in the random ray solver.");
         }
         point_source_map_[key] = es;
       } else {

@@ -11,6 +11,7 @@ import re
 from collections import defaultdict, namedtuple
 from collections.abc import Mapping, Iterable
 from numbers import Real, Integral
+from pathlib import Path
 from warnings import warn
 from typing import List
 
@@ -278,7 +279,6 @@ class Chain:
         """Number of nuclides in chain."""
         return len(self.nuclides)
 
-
     @property
     def stable_nuclides(self) -> List[Nuclide]:
         """List of stable nuclides available in the chain"""
@@ -462,7 +462,6 @@ class Chain:
                     q_value = reactions[parent][18]
                     nuclide.add_reaction('fission', None, q_value, 1.0)
                     fissionable = True
-
 
             if fissionable:
                 if parent in fpy_data:
@@ -1249,6 +1248,10 @@ class Chain:
         return found
 
 
+# A global cache for Chain objects
+_CHAIN_CACHE = {}
+
+
 def _get_chain(
     chain_file: PathLike | Chain | None = None,
     fission_q: dict | None = None
@@ -1269,16 +1272,30 @@ def _get_chain(
     Chain
         Depletion chain instance.
     """
+    # If chain_file is already a Chain, return it directly
     if isinstance(chain_file, Chain):
         return chain_file
-    elif isinstance(chain_file, PathLike | None):
-        if chain_file is None:
-            chain_file = openmc.config.get('chain_file')
-            if 'chain_file' not in openmc.config:
-                raise DataError(
-                    "No depletion chain specified and could not find depletion "
-                    "chain in openmc.config['chain_file']"
-                )
-        return Chain.from_xml(chain_file, fission_q)
-    else:
+
+    # Resolve chain_file based on config if None
+    if chain_file is None:
+        chain_file = openmc.config.get('chain_file')
+        if 'chain_file' not in openmc.config:
+            raise DataError(
+                "No depletion chain specified and could not find depletion "
+                "chain in openmc.config['chain_file']"
+            )
+    elif not isinstance(chain_file, PathLike):
         raise TypeError("chain_file must be path-like, a Chain, or None")
+
+    # Determine the key for the cache, which consists of the absolute path, the
+    # file modification time, the file size, and the fission Q values.
+    chain_path = Path(chain_file).resolve()
+    stat_result = chain_path.stat()
+    fq_tuple = tuple(sorted(fission_q.items())) if fission_q else ()
+    key = (chain_path, stat_result.st_mtime, stat_result.st_size, fq_tuple)
+
+    # Check the global cache. If not cached, load the chain from XML and store
+    global _CHAIN_CACHE
+    if key not in _CHAIN_CACHE:
+        _CHAIN_CACHE[key] = Chain.from_xml(chain_path, fission_q)
+    return _CHAIN_CACHE[key]

@@ -298,6 +298,7 @@ class Chain:
             Nuclide to add
 
         """
+        _invalidate_chain_cache(self)
         self.nuclide_dict[nuclide.name] = len(self.nuclides)
         self.nuclides.append(nuclide)
 
@@ -556,6 +557,9 @@ class Chain:
 
             nuc = Nuclide.from_xml(nuclide_elem, root, this_q)
             chain.add_nuclide(nuc)
+
+        # Store path of XML file (used for handling cache invalidation)
+        chain._xml_path = str(Path(filename).resolve())
 
         return chain
 
@@ -887,7 +891,7 @@ class Chain:
         --------
         :meth:`get_branch_ratios`
         """
-
+        _invalidate_chain_cache(self)
         # Store some useful information through the validation stage
 
         sums = {}
@@ -1026,6 +1030,7 @@ class Chain:
 
     @fission_yields.setter
     def fission_yields(self, yields):
+        _invalidate_chain_cache(self)
         if yields is not None:
             if isinstance(yields, Mapping):
                 yields = [yields]
@@ -1299,3 +1304,12 @@ def _get_chain(
     if key not in _CHAIN_CACHE:
         _CHAIN_CACHE[key] = Chain.from_xml(chain_path, fission_q)
     return _CHAIN_CACHE[key]
+
+
+def _invalidate_chain_cache(chain):
+    """Invalidate the cache for a specific Chain (when it is modifed)."""
+    if hasattr(chain, '_xml_path'):
+        # Remove all entries with the same path as self._xml_path
+        for key in list(_CHAIN_CACHE.keys()):
+            if str(key[0]) == chain._xml_path:
+                del _CHAIN_CACHE[key]

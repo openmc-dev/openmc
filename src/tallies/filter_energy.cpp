@@ -128,7 +128,7 @@ void SecondaryEnergyFilter::get_all_bins(
 
   // Loop over secondary bank entries from latest to earliest
   for (int secondary_idx = 0; secondary_idx < p.secondaries_this_collision();
-    secondary_idx++) {
+       secondary_idx++) {
 
     int bank_idx = p.secondary_bank().size() - 1 - secondary_idx;
 

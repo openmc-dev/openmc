@@ -106,6 +106,8 @@ def get_microxs_and_flux(
     openmc.deplete.IndependentOperator
 
     """
+    check_value('reaction_rate_mode', reaction_rate_mode, {'direct', 'flux'})
+
     # Save any original tallies on the model
     original_tallies = model.tallies
 

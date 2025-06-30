@@ -1,7 +1,6 @@
 #include "openmc/geometry_aux.h"
 
 #include <algorithm> // for std::max
-#include <set>
 #include <sstream>
 #include <unordered_set>
 
@@ -425,28 +424,6 @@ void prepare_distribcell(const std::vector<int32_t>* user_distribcells)
           c.offset_[map] = offset;
           Lattice& lat = *model::lattices[c.fill_];
           offset += lat.fill_offset_table(target_univ_id, map, univ_count_memo);
-        }
-      }
-    }
-  }
-
-  // check distinct distribcell paths from contiguous cell instances
-  for (const auto& u : model::universes) {
-    for (auto idx : u->cells_) {
-      if (distribcells.find(idx) != distribcells.end()) {
-        int32_t map =
-          std::find(target_univ_ids.begin(), target_univ_ids.end(), u->id_) -
-          target_univ_ids.begin();
-        Cell& c = *model::cells[idx];
-        std::set<std::string> paths;
-        for (int32_t i = 0; i < c.n_instances_; i++) {
-          auto path = distribcell_path(idx, map, i);
-          if (paths.find(path) != paths.end()) {
-            fatal_error(fmt::format(
-              "Two or more cell instances have the same path {}", path));
-          } else {
-            paths.insert(path);
-          }
         }
       }
     }

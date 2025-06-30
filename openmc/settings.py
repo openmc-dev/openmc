@@ -16,7 +16,7 @@ from .mesh import _read_meshes, RegularMesh, MeshBase
 from .source import SourceBase, MeshSource, IndependentSource
 from .utility_funcs import input_path
 from .volume import VolumeCalculation
-from .weight_windows import WeightWindows, WeightWindowGenerator
+from .weight_windows import WeightWindows, WeightWindowGenerator, WeightWindowsList
 
 
 class RunMode(Enum):
@@ -326,7 +326,7 @@ class Settings:
         described in :ref:`verbosity`.
     volume_calculations : VolumeCalculation or iterable of VolumeCalculation
         Stochastic volume calculation specifications
-    weight_windows : WeightWindows or iterable of WeightWindows
+    weight_windows : WeightWindowsList
         Weight windows to use for variance reduction
 
         .. versionadded:: 0.13
@@ -440,9 +440,8 @@ class Settings:
         self._max_particles_in_flight = None
         self._max_particle_events = None
         self._write_initial_source = None
-        self._weight_windows = cv.CheckedList(WeightWindows, 'weight windows')
-        self._weight_window_generators = cv.CheckedList(
-            WeightWindowGenerator, 'weight window generators')
+        self._weight_windows = WeightWindowsList()
+        self._weight_window_generators = cv.CheckedList(WeightWindowGenerator, 'weight window generators')
         self._weight_windows_on = None
         self._weight_windows_file = None
         self._weight_window_checkpoints = {}
@@ -1180,15 +1179,14 @@ class Settings:
         self._write_initial_source = value
 
     @property
-    def weight_windows(self) -> list[WeightWindows]:
+    def weight_windows(self) -> WeightWindowsList:
         return self._weight_windows
 
     @weight_windows.setter
-    def weight_windows(self, value: WeightWindows | Iterable[WeightWindows]):
-        if not isinstance(value, MutableSequence):
+    def weight_windows(self, value: WeightWindows | Sequence[WeightWindows]):
+        if not isinstance(value, Sequence):
             value = [value]
-        self._weight_windows = cv.CheckedList(
-            WeightWindows, 'weight windows', value)
+        self._weight_windows = WeightWindowsList(value)
 
     @property
     def weight_windows_on(self) -> bool:

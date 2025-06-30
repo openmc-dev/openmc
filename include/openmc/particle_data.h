@@ -47,7 +47,7 @@ struct SourceSite {
   double time {0.0};
   double wgt {1.0};
   int delayed_group {0};
-  int surf_id {0};
+  int surf_id {SURFACE_NONE};
   ParticleType particle;
 
   // Extra attributes that don't show up in source written to file
@@ -453,6 +453,7 @@ private:
 
   double wgt_ {1.0};
   double wgt_born_ {1.0};
+  double wgt_ww_born_ {-1.0};
   double mu_;
   double time_ {0.0};
   double time_last_ {0.0};
@@ -562,6 +563,10 @@ public:
   // Statistic weight of particle at birth
   double& wgt_born() { return wgt_born_; }
   double wgt_born() const { return wgt_born_; }
+
+  // Weight window value at birth
+  double& wgt_ww_born() { return wgt_ww_born_; }
+  const double& wgt_ww_born() const { return wgt_ww_born_; }
 
   // Statistic weight of particle at last collision
   double& wgt_last() { return wgt_last_; }

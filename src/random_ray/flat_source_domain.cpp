@@ -46,7 +46,7 @@ FlatSourceDomain::FlatSourceDomain() : negroups_(data::mg.num_energy_groups_)
       source_region_offsets_.push_back(-1);
     } else {
       source_region_offsets_.push_back(base_source_regions);
-      base_source_regions += c->n_instances_;
+      base_source_regions += c->n_instances();
     }
   }
 
@@ -61,7 +61,7 @@ FlatSourceDomain::FlatSourceDomain() : negroups_(data::mg.num_energy_groups_)
   for (int i = 0; i < model::cells.size(); i++) {
     Cell& cell = *model::cells[i];
     if (cell.type_ == Fill::MATERIAL) {
-      for (int j = 0; j < cell.n_instances_; j++) {
+      for (int j = 0; j < cell.n_instances(); j++) {
         source_regions_.material(source_region_id++) = cell.material(j);
       }
     }
@@ -1014,7 +1014,7 @@ void FlatSourceDomain::apply_external_source_to_cell_and_children(
   Cell& cell = *model::cells[i_cell];
 
   if (cell.type_ == Fill::MATERIAL) {
-    vector<int> instances(cell.n_instances_);
+    vector<int> instances(cell.n_instances());
     std::iota(instances.begin(), instances.end(), 0);
     apply_external_source_to_cell_instances(
       i_cell, discrete, strength_factor, target_material_id, instances);
@@ -1319,12 +1319,12 @@ void FlatSourceDomain::apply_mesh_to_cell_and_children(int32_t i_cell,
   Cell& cell = *model::cells[i_cell];
 
   if (cell.type_ == Fill::MATERIAL) {
-    vector<int> instances(cell.n_instances_);
+    vector<int> instances(cell.n_instances());
     std::iota(instances.begin(), instances.end(), 0);
     apply_mesh_to_cell_instances(
       i_cell, mesh_idx, target_material_id, instances, is_target_void);
   } else if (target_material_id == C_NONE && !is_target_void) {
-    for (int j = 0; j < cell.n_instances_; j++) {
+    for (int j = 0; j < cell.n_instances(); j++) {
       std::unordered_map<int32_t, vector<int32_t>> cell_instance_list =
         cell.get_contained_cells(j, nullptr);
       for (const auto& pair : cell_instance_list) {

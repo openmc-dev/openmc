@@ -17,6 +17,7 @@
 #include "openmc/dagmc.h"
 #include "openmc/error.h"
 #include "openmc/geometry.h"
+#include "openmc/geometry_aux.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/lattice.h"
 #include "openmc/material.h"
@@ -39,6 +40,11 @@ vector<unique_ptr<Cell>> cells;
 //==============================================================================
 // Cell implementation
 //==============================================================================
+
+int32_t Cell::n_instances() const
+{
+  return model::universe_counts[universe_];
+}
 
 void Cell::set_rotation(const vector<double>& rot)
 {
@@ -115,8 +121,8 @@ void Cell::set_temperature(double T, int32_t instance, bool set_contained)
   if (type_ == Fill::MATERIAL) {
     if (instance >= 0) {
       // If temperature vector is not big enough, resize it first
-      if (sqrtkT_.size() != n_instances_)
-        sqrtkT_.resize(n_instances_, sqrtkT_[0]);
+      if (sqrtkT_.size() != n_instances())
+        sqrtkT_.resize(n_instances(), sqrtkT_[0]);
 
       // Set temperature for the corresponding instance
       sqrtkT_.at(instance) = std::sqrt(K_BOLTZMANN * T);
@@ -170,7 +176,7 @@ void Cell::import_properties_hdf5(hid_t group)
 
   // Ensure number of temperatures makes sense
   auto n_temps = temps.size();
-  if (n_temps > 1 && n_temps != n_instances_) {
+  if (n_temps > 1 && n_temps != n_instances()) {
     throw std::runtime_error(fmt::format(
       "Number of temperatures for cell {} doesn't match number of instances",
       id_));
@@ -1618,7 +1624,7 @@ extern "C" int openmc_cell_get_num_instances(
     set_errmsg("Index in cells array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
-  *num_instances = model::cells[index]->n_instances_;
+  *num_instances = model::cells[index]->n_instances();
   return 0;
 }
 

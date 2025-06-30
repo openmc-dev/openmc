@@ -25,20 +25,9 @@
 namespace openmc {
 
 namespace model {
-std::unordered_map<int32_t, std::unordered_map<int32_t, int32_t>>
-  universe_cell_counts;
+std::unordered_map<int32_t, int32_t> universe_counts;
 std::unordered_map<int32_t, int32_t> universe_level_counts;
 } // namespace model
-
-// adds the cell counts of universe b to universe a
-void update_universe_cell_count(int32_t a, int32_t b)
-{
-  auto& universe_a_counts = model::universe_cell_counts[a];
-  const auto& universe_b_counts = model::universe_cell_counts[b];
-  for (const auto& it : universe_b_counts) {
-    universe_a_counts[it.first] += it.second;
-  }
-}
 
 void read_geometry_xml()
 {
@@ -263,7 +252,7 @@ void finalize_geometry()
 {
   // Perform some final operations to set up the geometry
   adjust_indices();
-  count_cell_instances(model::root_universe);
+  count_universe_instances();
   partition_universes();
 
   // Assign temperatures to cells that don't have temperatures already assigned
@@ -356,22 +345,22 @@ void prepare_distribcell(const std::vector<int32_t>* user_distribcells)
     Cell& c {*model::cells[i]};
 
     if (c.material_.size() > 1) {
-      if (c.material_.size() != c.n_instances_) {
+      if (c.material_.size() != c.n_instances()) {
         fatal_error(fmt::format(
           "Cell {} was specified with {} materials but has {} distributed "
           "instances. The number of materials must equal one or the number "
           "of instances.",
-          c.id_, c.material_.size(), c.n_instances_));
+          c.id_, c.material_.size(), c.n_instances()));
       }
     }
 
     if (c.sqrtkT_.size() > 1) {
-      if (c.sqrtkT_.size() != c.n_instances_) {
+      if (c.sqrtkT_.size() != c.n_instances()) {
         fatal_error(fmt::format(
           "Cell {} was specified with {} temperatures but has {} distributed "
           "instances. The number of temperatures must equal one or the number "
           "of instances.",
-          c.id_, c.sqrtkT_.size(), c.n_instances_));
+          c.id_, c.sqrtkT_.size(), c.n_instances()));
       }
     }
   }
@@ -432,32 +421,13 @@ void prepare_distribcell(const std::vector<int32_t>* user_distribcells)
 
 //==============================================================================
 
-void count_cell_instances(int32_t univ_indx)
+void count_universe_instances()
 {
-  const auto univ_counts = model::universe_cell_counts.find(univ_indx);
-  if (univ_counts != model::universe_cell_counts.end()) {
-    for (const auto& it : univ_counts->second) {
-      model::cells[it.first]->n_instances_ += it.second;
-    }
-  } else {
-    for (int32_t cell_indx : model::universes[univ_indx]->cells_) {
-      Cell& c = *model::cells[cell_indx];
-      ++c.n_instances_;
-      model::universe_cell_counts[univ_indx][cell_indx] += 1;
-
-      if (c.type_ == Fill::UNIVERSE) {
-        // This cell contains another universe.  Recurse into that universe.
-        count_cell_instances(c.fill_);
-        update_universe_cell_count(univ_indx, c.fill_);
-      } else if (c.type_ == Fill::LATTICE) {
-        // This cell contains a lattice.  Recurse into the lattice universes.
-        Lattice& lat = *model::lattices[c.fill_];
-        for (auto it = lat.begin(); it != lat.end(); ++it) {
-          count_cell_instances(*it);
-          update_universe_cell_count(univ_indx, *it);
-        }
-      }
-    }
+  for (int32_t univ = 0; univ < model::universes.size(); ++univ) {
+    std::unordered_map<int32_t, int32_t> univ_count_memo;
+    int32_t result = count_universe_instances(
+      model::root_universe, model::universes[univ]->id_, univ_count_memo);
+    model::universe_counts[univ] = result;
   }
 }
 
@@ -633,6 +603,7 @@ void free_memory_geometry()
   model::cells.clear();
   model::cell_map.clear();
 
+  model::universe_counts.clear();
   model::universes.clear();
   model::universe_map.clear();
 

@@ -1,10 +1,12 @@
 from __future__ import annotations
 from collections.abc import Sequence
+from pathlib import Path
 
 import numpy as np
 import openmc
 from . import get_microxs_and_flux, IndependentOperator, PredictorIntegrator
 from .results import Results
+from ..checkvalue import PathLike
 from ..mesh import _get_all_materials
 
 
@@ -154,7 +156,7 @@ class R2SManager:
         domains: openmc.MeshBase,
     ):
         self.model = model
-        if isinstance(domains, openmc.Mesh):
+        if isinstance(domains, openmc.MeshBase):
             self.method = 'mesh-based'
         else:
             self.method = 'cell-based'
@@ -180,26 +182,36 @@ class R2SManager:
     ):
         self.step1_neutron_transport(micro_kwargs=micro_kwargs, mat_vol_kwargs=mat_vol_kwargs)
         self.step2_activation(timesteps, source_rates, timestep_units)
-        self.step3_photon_transport(cooling_times, dose_tallies, bounding_boxes, run_kwargs)
+        self.step3_photon_transport(cooling_times, dose_tallies, bounding_boxes, run_kwargs=run_kwargs)
 
-    def step1_neutron_transport(self, output_dir="neutron_transport", mat_vol_kwargs=None, micro_kwargs=None):
+    def step1_neutron_transport(
+        self,
+        output_dir: PathLike = "neutron_transport",
+        mat_vol_kwargs: dict | None = None,
+        micro_kwargs: dict | None = None
+    ):
         """Run the neutron transport step.
 
         This step computes the material volume fractions on the mesh, creates a
         mesh-material filter, and retrieves the fluxes and microscopic cross
         sections for each mesh/material combination. It populates the results
 
-        This step will populate the 'mesh_material_volumes', 'fluxes', and
-        'micros' keys in the results dictionary.
+        This step will populate the 'fluxes' and 'micros' keys in the results
+        dictionary. For a mesh-based calculation, it will also populate the
+        'mesh_material_volumes' key.
         """
 
-        # TODO: Run this in a "neutron_transport" subdirectory?
         # TODO: Energy discretization
+        output_dir = Path(output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
 
         if self.method == 'mesh-based':
             # Compute material volume fractions on the mesh
             self.results['mesh_material_volumes'] = mmv = \
-                self.mesh.material_volumes(**mat_vol_kwargs)
+                self.domains.material_volumes(self.model, **mat_vol_kwargs)
+
+            # Save results to file
+            mmv.save(output_dir / 'mesh_material_volumes.h5')
 
             # Create mesh-material filter based on what combos were found
             domains = openmc.MeshMaterialFilter.from_volumes(self.domains, mmv)
@@ -208,14 +220,25 @@ class R2SManager:
             domains = self.domains
 
         # Get fluxes and microscopic cross sections on each mesh/material
+        if micro_kwargs is None:
+            micro_kwargs = {}
+        micro_kwargs.setdefault('path_statepoint', output_dir / 'statepoint.h5')
+
+        # Run neutron transport and get fluxes and micros
         self.results['fluxes'], self.results['micros'] = get_microxs_and_flux(
             self.model, domains, **micro_kwargs)
+
+        # Save flux and micros to file
+        np.save(output_dir / 'fluxes.npy', self.results['fluxes'])
+        for i, micros in enumerate(self.results['micros']):
+            micros.to_csv(output_dir / f'micros_{i}.csv')
 
     def step2_activation(
         self,
         timesteps: Sequence[float] | Sequence[tuple[float, str]],
         source_rates: float | Sequence[float],
-        timestep_units: str = 's'
+        timestep_units: str = 's',
+        output_dir: PathLike = 'activation',
     ):
         if self.method == 'mesh-based':
             # Get unique material for each (mesh, material) combination
@@ -245,16 +268,20 @@ class R2SManager:
             op, timesteps, source_rates=source_rates,
             timestep_units=timestep_units
         )
-        integrator.integrate(final_step=False)
+        output_dir = Path(output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        output_path = output_dir / 'depletion_results.h5'
+        integrator.integrate(final_step=False, path=output_path)
 
         # Get depletion results
-        self.results['depletion_results'] = Results()
+        self.results['depletion_results'] = Results(output_path)
 
     def step3_photon_transport(
         self,
         cooling_times: Sequence[int],
         dose_tallies: Sequence[openmc.Tally] | None = None,
         bounding_boxes: dict[int, openmc.BoundingBox] | None = None,
+        output_dir: PathLike = 'photon_transport',
         run_kwargs: dict | None = None,
     ):
         # TODO: Automatically determine bounding box for each cell
@@ -273,7 +300,7 @@ class R2SManager:
             if self.method == 'mesh-based':
                 self.model.settings.source = get_decay_photon_source_mesh(
                     self.model,
-                    self.mesh,
+                    self.domains,
                     self.results['activation_materials'],
                     self.results['depletion_results'],
                     self.results['mesh_material_volumes'],
@@ -301,6 +328,10 @@ class R2SManager:
                     sources.append(source)
                 self.model.settings.source = sources
 
+            # Convert time_index (which may be negative) to a normal index
+            if time_index < 0:
+                time_index = len(self.results['depletion_results']) + time_index
+
             # Run photon transport calculation
-            run_kwargs['cwd'] = f'photon_transport_{time_index}'
+            run_kwargs['cwd'] = Path(output_dir) / f'time_{time_index}'
             self.model.run(**run_kwargs)

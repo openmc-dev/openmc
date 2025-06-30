@@ -1783,6 +1783,36 @@ class Material(IDManagerMixin):
         return depleted_materials
 
 
+    def mean_free_path(self, energy: float) -> float:
+        """Calculate the mean free path of neutrons in the material at a given
+        energy.
+
+        .. versionadded:: 0.15.3
+
+        Parameters
+        ----------
+        energy : float
+            Neutron energy in eV
+
+        Returns
+        -------
+        float
+            Mean free path in cm
+
+        """
+        from openmc.plotter import _calculate_cexs_elem_mat
+
+        energy_grid, cexs = _calculate_cexs_elem_mat(
+            this=self,
+            types=["total"],
+        )
+        total_cexs = cexs[0]
+
+        interpolated_cexs = float(np.interp(energy, energy_grid, total_cexs))
+
+        return 1.0 / interpolated_cexs
+
+
 class Materials(cv.CheckedList):
     """Collection of Materials used for an OpenMC simulation.
 

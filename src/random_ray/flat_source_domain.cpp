@@ -304,6 +304,13 @@ int64_t FlatSourceDomain::add_source_to_scalar_flux()
           set_flux_to_source(sr, g);
         }
       }
+      // Halt if NaN implosion is detected
+      if (!std::isfinite(source_regions_.scalar_flux_new(sr, g))) {
+        fatal_error("A source region scalar flux is not finite. "
+                    "This indicates a numerical instability in the "
+                    "simulation. Consider increasing ray density or adjusting "
+                    "the source region mesh.");
+      }
     }
   }
 
@@ -414,7 +421,12 @@ double FlatSourceDomain::compute_k_eff(double k_eff_old) const
 // be passed back to the caller to alert them that this function doesn't
 // need to be called for the remainder of the simulation.
 
-void FlatSourceDomain::convert_source_regions_to_tallies()
+// It takes as an argument the starting index in the source region array,
+// and it will operate from that index until the end of the array. This
+// is useful as it can be called for both explicit user source regions or
+// when a source region mesh is overlaid.
+
+void FlatSourceDomain::convert_source_regions_to_tallies(int64_t start_sr_id)
 {
   openmc::simulation::time_tallies.start();
 
@@ -423,7 +435,7 @@ void FlatSourceDomain::convert_source_regions_to_tallies()
 
 // Attempt to generate mapping for all source regions
 #pragma omp parallel for
-  for (int64_t sr = 0; sr < n_source_regions(); sr++) {
+  for (int64_t sr = start_sr_id; sr < n_source_regions(); sr++) {
 
     // If this source region has not been hit by a ray yet, then
     // we aren't going to be able to map it, so skip it.
@@ -461,7 +473,7 @@ void FlatSourceDomain::convert_source_regions_to_tallies()
       // Loop over all active tallies. This logic is essentially identical
       // to what happens when scanning for applicable tallies during
       // MC transport.
-      for (auto i_tally : model::active_tallies) {
+      for (int i_tally = 0; i_tally < model::tallies.size(); i_tally++) {
         Tally& tally {*model::tallies[i_tally]};
 
         // Initialize an iterator over valid filter bin combinations.
@@ -1154,9 +1166,9 @@ void FlatSourceDomain::flatten_xs()
           m.get_xs(MgxsType::TOTAL, g_out, NULL, NULL, NULL, t, a);
         sigma_t_.push_back(sigma_t);
 
-        double nu_Sigma_f =
+        double nu_sigma_f =
           m.get_xs(MgxsType::NU_FISSION, g_out, NULL, NULL, NULL, t, a);
-        nu_sigma_f_.push_back(nu_Sigma_f);
+        nu_sigma_f_.push_back(nu_sigma_f);
 
         double sigma_f =
           m.get_xs(MgxsType::FISSION, g_out, NULL, NULL, NULL, t, a);
@@ -1164,6 +1176,11 @@ void FlatSourceDomain::flatten_xs()
 
         double chi =
           m.get_xs(MgxsType::CHI_PROMPT, g_out, &g_out, NULL, NULL, t, a);
+        if (!std::isfinite(chi)) {
+          // MGXS interface may return NaN in some cases, such as when material
+          // is fissionable but has very small sigma_f.
+          chi = 0.0;
+        }
         chi_.push_back(chi);
 
         for (int g_in = 0; g_in < negroups_; g_in++) {
@@ -1191,17 +1208,30 @@ void FlatSourceDomain::flatten_xs()
 
 void FlatSourceDomain::set_adjoint_sources(const vector<double>& forward_flux)
 {
-  // Set the external source to 1/forward_flux. If the forward flux is negative
-  // or zero, set the adjoint source to zero, as this is likely a very small
-  // source region that we don't need to bother trying to vector particles
-  // towards. Flux negativity in random ray is not related to the flux being
-  // small in magnitude, but rather due to the source region being physically
-  // small in volume and thus having a noisy flux estimate.
+  // Set the adjoint external source to 1/forward_flux. If the forward flux is
+  // negative, zero, or extremely close to zero, set the adjoint source to zero,
+  // as this is likely a very small source region that we don't need to bother
+  // trying to vector particles towards. In the case of flux "being extremely
+  // close to zero", we define this as being a fixed fraction of the maximum
+  // forward flux, below which we assume the flux would be physically
+  // undetectable.
+
+  // First, find the maximum forward flux value
+  double max_flux = 0.0;
+#pragma omp parallel for reduction(max : max_flux)
+  for (int64_t se = 0; se < n_source_elements(); se++) {
+    double flux = forward_flux[se];
+    if (flux > max_flux) {
+      max_flux = flux;
+    }
+  }
+
+  // Then, compute the adjoint source for each source region
 #pragma omp parallel for
   for (int64_t sr = 0; sr < n_source_regions(); sr++) {
     for (int g = 0; g < negroups_; g++) {
       double flux = forward_flux[sr * negroups_ + g];
-      if (flux <= 0.0) {
+      if (flux <= ZERO_FLUX_CUTOFF * max_flux) {
         source_regions_.external_source(sr, g) = 0.0;
       } else {
         source_regions_.external_source(sr, g) = 1.0 / flux;
@@ -1209,6 +1239,30 @@ void FlatSourceDomain::set_adjoint_sources(const vector<double>& forward_flux)
       if (flux > 0.0) {
         source_regions_.external_source_present(sr) = 1;
       }
+    }
+  }
+
+  // "Small" source regions in OpenMC are defined as those that are hit by
+  // MIN_HITS_PER_BATCH rays or fewer each batch. These regions typically have
+  // very small volumes combined with a low aspect ratio, and are often
+  // generated when applying a source region mesh that clips the edge of a
+  // curved surface. As perhaps only a few rays will visit these regions over
+  // the entire forward simulation, the forward flux estimates are extremely
+  // noisy and unreliable. In some cases, the noise may make the forward fluxes
+  // extremely low, leading to unphysically large adjoint source terms,
+  // resulting in weight windows that aggressively try to drive particles
+  // towards these regions. To fix this, we simply filter out any "small" source
+  // regions from consideration. If a source region is "small", we
+  // set its adjoint source to zero. This adds negligible bias to the adjoint
+  // flux solution, as the true total adjoint source contribution from small
+  // regions is likely to be negligible.
+#pragma omp parallel for
+  for (int64_t sr = 0; sr < n_source_regions(); sr++) {
+    if (source_regions_.is_small(sr)) {
+      for (int g = 0; g < negroups_; g++) {
+        source_regions_.external_source(sr, g) = 0.0;
+      }
+      source_regions_.external_source_present(sr) = 0;
     }
   }
 
@@ -1500,6 +1554,9 @@ void FlatSourceDomain::finalize_discovered_source_regions()
     // order due to shared memory threading.
     std::sort(keys.begin(), keys.end());
 
+    // Remember the index of the first new source region
+    int64_t start_sr_id = source_regions_.n_source_regions();
+
     // Append the source regions in the sorted key order.
     for (const auto& key : keys) {
       const SourceRegion& sr = discovered_source_regions_[key];
@@ -1507,9 +1564,8 @@ void FlatSourceDomain::finalize_discovered_source_regions()
       source_regions_.push_back(sr);
     }
 
-    // If any new source regions were discovered, we need to update the
-    // tally mapping between source regions and tally bins.
-    mapped_all_tallies_ = false;
+    // Map all new source regions to tallies
+    convert_source_regions_to_tallies(start_sr_id);
   }
 
   discovered_source_regions_.clear();

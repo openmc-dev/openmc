@@ -713,6 +713,7 @@ def test_avoid_subnormal(run_in_tmpdir):
     mats = openmc.Materials.from_xml()
     assert mats[0].get_nuclide_atom_densities()['H2'] == 0.0
 
+
 def test_material_deplete():
 
     from openmc.deplete import Chain
@@ -754,3 +755,16 @@ def test_material_deplete():
 
     # Check that Co58 is halved in the second step which is one halflife later
     assert np.allclose(Co58_mat_1_step_1 * 0.5, Co58_mat_1_step_2)
+
+
+def test_mean_free_path():
+
+    mat1 = openmc.Material()
+    mat1.add_nuclide('Si28', 1.0)
+    mat1.set_density('g/cm3', 2.32)
+    assert mat1.mean_free_path(energy=14e6) == pytest.approx(11.41, abs=1e-2)
+
+    mat2 = openmc.Material()
+    mat2.add_nuclide('Pb208', 1.0)
+    mat2.set_density('g/cm3', 11.34)
+    assert mat2.mean_free_path(energy=14e6) == pytest.approx(5.65, abs=1e-2)

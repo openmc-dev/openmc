@@ -1130,10 +1130,10 @@ def random_ray_three_region_cube() -> openmc.Model:
 def random_ray_three_region_sphere() -> openmc.Model:
     """Create a three region sphere model.
 
-    This is a simple monoenergetic problem of a sphere with three concentric spherical regions. The innermost region is near void (with Sigma_t around 10^-5) and
-    contains an external isotropic source term, the middle region is void (with
-    Sigma_t around 10^-4), and the outer region of the cube is an absorber
-    (with Sigma_t around 1).
+    This is a simple monoenergetic problem of a sphere with three concentric spherical
+    regions. The innermost region is near void (with Sigma_t around 10^-5) and contains
+    an external isotropic source term, the middle region is void (with Sigma_t around
+    10^-4), and the outer region of the cube is an absorber (with Sigma_t around 1).
 
     Returns
     -------
@@ -1215,8 +1215,7 @@ def random_ray_three_region_sphere() -> openmc.Model:
     s3 = openmc.Sphere(r=30,boundary_type='reflective')
 
     source_cell = openmc.Cell(fill=source_mat,region=-s2&+s1, name='infinite source region')
-    void_cell = openmc.Cell(fill=void_mat,region=-s1,
- name='infinite void region')
+    void_cell = openmc.Cell(fill=void_mat,region=-s1, name='infinite void region')
     absorber_cell = openmc.Cell(
         fill=absorber_mat,region=-s3&+s2, name='infinite absorber region')
 

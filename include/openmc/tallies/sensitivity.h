@@ -69,9 +69,11 @@ struct TallySensitivity {
 
   SensitivityVariable variable;  //!< Independent variable (like xs)
   int id;  //!< User-defined identifier
-  int sens_nuclide;  //!< Nuclide this material is applied to
-  int sens_element;  //!< Element this material is applied to
+  int sens_nuclide;     //!< Nuclide the sensitivity is calculated for
+  int sens_element;     //!< Element the sensitivity is calculated for
   int sens_reaction;    //!< Need something to specify reaction, use ReactionType?
+  int sens_material;    //!< Material the sensitivity is calculated in
+  int sens_cell;        //!< Cell the sensitivity is calculated in
   std::vector<double> energy_bins_; //!< Energy bins on which to discretize the cross section
   int n_bins_; //!< something to indicate the size of the vector
 
@@ -110,7 +112,7 @@ void score_collision_sensitivity(Particle& p);
 //! \param distance The distance in [cm] traveled by the particle
 void score_track_sensitivity(Particle& p, double distance);
 
-// void score_source_sensitivity(Particle& p);
+void score_source_sensitivity(Particle& p);
 
 } // namespace openmc
 

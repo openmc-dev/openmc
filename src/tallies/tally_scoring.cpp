@@ -3495,87 +3495,87 @@ void score_collision_sensitivity_tally(Particle& p, int i_tally, int start_index
         }
       }
     } else {      
+            
+      #pragma omp atomic
+      tally.denominator_ += score*filter_weight;
       
       for (int idx = 0; idx < cumulative_sensitivities.size(); idx++){
         #pragma omp atomic
-        tally.results_(idx, score_index, SensitivityTallyResult::VALUE) += cumulative_sensitivities[idx]*filter_weight;      
-      }  
-      //if (sens.sens_nuclide == p.event_nuclide()){ 
+        tally.results_(idx, score_index, SensitivityTallyResult::VALUE) += cumulative_sensitivities[idx]*score*filter_weight;      
+      } 
+      
+      // // direct effect???      
+      // double atom_density = 0.;
+      // if (sens.sens_nuclide >= 0) {
+      //   auto j = model::materials[p.material()]->mat_nuclide_index_[sens.sens_nuclide];
+      //   if (j == C_NONE) continue;
+      //   atom_density = model::materials[p.material()]->atom_density_(j);
+      // }
+      // 
       // switch (sens.variable) {
       // 
       // case SensitivityVariable::CROSS_SECTION:
-      // {         
-      //   double macro_xs;
-      //   // switch (sens.sens_reaction) {                    
-      //   //if (sens.sens_reaction == SCORE_TOTAL){
-      //   macro_xs = 1.0;
-      //   if (E >= sens.energy_bins_.front() && E <= sens.energy_bins_.back()) {
-      //       auto bin = lower_bound_index(sens.energy_bins_.begin(), sens.energy_bins_.end(), E);
-      //       #pragma omp atomic
-      //       tally.previous_results_(bin, score_index, SensitivityTallyResult::VALUE) += filter_weight;
-      //   }
-      //     // break;
-      //   //}  
-      //   // case SCORE_SCATTER:
-      //   //   if (sens.sens_reaction != score_bin ) break;
-      //   //   if (sens.sens_nuclide >=0){
-      //   //       macro_xs = (p.neutron_xs(sens.sens_nuclide).total 
-      //   //       - p.neutron_xs(sens.sens_nuclide).absorption) * atom_density;
-      //   //   } else {
-      //   //       macro_xs = p.macro_xs().total - p.macro_xs().absorption;
-      //   //   }
-      //   //   break;
-      //   // case ELASTIC:
-      //   //   // if (sens.sens_reaction != score_bin ) break;
-      //   //   if (p.event_mt() != ELASTIC) break;
-      //   //   macro_xs = 1.0;
-      //   //   // if (sens.sens_nuclide >= 0) {
-      //   //   //     if (p.neutron_xs(sens.sens_nuclide).elastic == CACHE_INVALID)
-      //   //   //       data::nuclides[sens.sens_nuclide]->calculate_elastic_xs(p);
-      //   //   //     macro_xs = p.neutron_xs(sens.sens_nuclide).elastic * atom_density;
-      //   //   //   } 
-      //   //   break;
-      //   // case SCORE_ABSORPTION: 
-      //   //   if (sens.sens_reaction != score_bin ) break;
-      //   //   if (sens.sens_nuclide >=0){
-      //   //       macro_xs = p.neutron_xs(sens.sens_nuclide).absorption * atom_density;
-      //   //   } else {
-      //   //       macro_xs = p.macro_xs().absorption;
-      //   //   }
-      //   //   break;
-      //   // case SCORE_FISSION:
-      //   //   if (sens.sens_reaction != score_bin ) break;
-      //   //   if (p.macro_xs().absorption == 0) break;
-      //   // 
-      //   //   if (sens.sens_nuclide >= 0) {
-      //   //     macro_xs = p.neutron_xs(sens.sens_nuclide).fission * atom_density;
-      //   //   } else {
-      //   //     macro_xs = p.macro_xs().fission;
-      //   //   }
-      //   //   break;      
-      //   // case N_T:
-      //   // case N_XT:
-      //   // case N_GAMMA:
-      //   // case N_P:     
-      //   // case N_A: 
-      //   // case N_2N:
-      //   //   // if (sens.sens_reaction != score_bin ) break;
-      //   //   if (p.event_mt() != sens.sens_reaction) break;
-      //   //   macro_xs = 1.0;
-      //   //   // if (sens.sens_nuclide >= 0) {
-      //   //   //   macro_xs = get_nuclide_xs(p, sens.sens_nuclide, sens.sens_reaction) * atom_density;
-      //   //   // }
-      //   //   break;
-      //   // }
+      // {
+      //   // Calculate the sensitivity with respect to the cross section
+      //   // at this energy
       // 
-      //   // Bin the energy.
-      //   // if (E >= sens.energy_bins_.front() && E <= sens.energy_bins_.back()) {
-      //   //   auto bin = lower_bound_index(sens.energy_bins_.begin(), sens.energy_bins_.end(), E);
-      //   //   #pragma omp atomic
-      //   //   tally.previous_results_(bin, score_index, SensitivityTallyResult::VALUE) += macro_xs*filter_weight;
-      //   // }                
+      //   // Get the post-collision energy of the particle.
+      //   auto E = p.E();
+      // 
+      //   // Get the correct cross section
+      //   double macro_xs;
+      //   switch (sens.sens_reaction) {
+      //   case SCORE_TOTAL:
+      //     if (sens.sens_nuclide >=0){
+      //         macro_xs = p.neutron_xs(sens.sens_nuclide).total * atom_density;
+      //     } else {
+      //         macro_xs = p.macro_xs().total;
+      //     }
+      //     break;
+      //   case SCORE_SCATTER:
+      //     if (sens.sens_nuclide >=0){
+      //         macro_xs = (p.neutron_xs(sens.sens_nuclide).total 
+      //         - p.neutron_xs(sens.sens_nuclide).absorption) * atom_density;
+      //     } else {
+      //         macro_xs = p.macro_xs().total - p.macro_xs().absorption;
+      //     }
+      //     break;
+      //   case ELASTIC:
+      //     if (sens.sens_nuclide >= 0) {
+      //         if (p.neutron_xs(sens.sens_nuclide).elastic == CACHE_INVALID)
+      //           data::nuclides[sens.sens_nuclide]->calculate_elastic_xs(p);
+      //         macro_xs = p.neutron_xs(sens.sens_nuclide).elastic * atom_density;
+      //       } 
+      //     break;
+      //   case SCORE_ABSORPTION: 
+      //     if (sens.sens_nuclide >=0){
+      //         macro_xs = p.neutron_xs(sens.sens_nuclide).absorption * atom_density;
+      //     } else {
+      //         macro_xs = p.macro_xs().absorption;
+      //     }
+      //     break;
+      //   case SCORE_FISSION:
+      //     if (p.macro_xs().absorption == 0) continue;
+      // 
+      //     if (sens.sens_nuclide >= 0) {
+      //       macro_xs = p.neutron_xs(sens.sens_nuclide).fission * atom_density;
+      //     } else {
+      //       macro_xs = p.macro_xs().fission;
+      //     }
+      //     break;      
+      //   default:
+      //     if (sens.sens_nuclide >= 0) {
+      //       macro_xs = get_nuclide_xs(p, sens.sens_nuclide, sens.sens_reaction) * atom_density;
+      //     }
+      //     break;
+      //   }  
+      //   // Bin the contribution.
+      //   if (E >= sens.energy_bins_.front() && E <= sens.energy_bins_.back()) {
+      //     auto bin = lower_bound_index(sens.energy_bins_.begin(), sens.energy_bins_.end(), E);
+      //     tally.previous_results_(bin, score_index, SensitivityTallyResult::VALUE) += flux * macro_xs;
+      //   }                
       // }
-      // break;    
+      // break;     
       // }
       //}      
     }            

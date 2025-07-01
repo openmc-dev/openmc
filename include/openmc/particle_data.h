@@ -714,7 +714,7 @@ public:
   {
     flux_derivs_.resize(newSize, 0.0);
   }
-  
+    
   // Resize and initialize sensitivity vectors
   void resize_init_cumulative_sensitivities(int newSize)
   {

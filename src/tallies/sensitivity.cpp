@@ -205,9 +205,11 @@ SensitivityTally::set_filters(span<Filter*> filters)
 
   // Copy in the given filter indices.
   auto n = filters.size();
-  if (n != 1) {
-      throw std::runtime_error{fmt::format("Cannot use more than one filter for sensitivity")};
-  }
+  if (settings::run_mode == RunMode::EIGENVALUE) {
+    if (n != 1) {
+        throw std::runtime_error{fmt::format("Cannot use more than one filter for eigenvalue sensitivity")};
+    }
+  }  
   reserveFilters(n);
 
   for (int i = 0; i < n; ++i) {
@@ -217,9 +219,11 @@ SensitivityTally::set_filters(span<Filter*> filters)
     // filters_.push_back(model::filter_map.at(f->id()));
 
     // Keep track of indices for special filters.
-    if (!dynamic_cast<const ImportanceFilter*>(f)) {
-      throw std::runtime_error{fmt::format("Must use an importance filter for sensitivity")};
-    }
+    if (settings::run_mode == RunMode::EIGENVALUE) {
+      if (!dynamic_cast<const ImportanceFilter*>(f)) {
+        throw std::runtime_error{fmt::format("Must use an importance filter for eigenvalue sensitivity")};
+      }
+    }  
   }
 
   // Set the strides.  Filters are traversed in reverse so that the last filter
@@ -363,6 +367,9 @@ TallySensitivity::TallySensitivity(pugi::xml_node node)
     fatal_error(fmt::format("Unrecognized variable \"{}\" on derivative {}",
       variable_str, id));
   }
+  
+  // sens_material = std::stoi(get_node_value(node, "material"));
+  // sens_cell = std::stoi(get_node_value(node, "cell"));
 
 }
 
@@ -470,13 +477,15 @@ double get_nuclide_xs_sens(const Particle& p, int i_nuclide, int score_bin)
 void
 score_track_sensitivity(Particle& p, double distance)
 {
-  // A void material cannot be perturbed so it will not affect flux sensitivities.
+  // A void material cannot be perturbed so it will not affect sensitivities.
   if (p.material() == MATERIAL_VOID) return;
   const Material& material {*model::materials[p.material()]};
 
   for (auto idx = 0; idx < model::tally_sens.size(); idx++) {
     const auto& sens = model::tally_sens[idx];
     auto& cumulative_sensitivities = p.cumulative_sensitivities(idx);
+    // if (sens.sens_material != material.id_) // this particle location must be inside detector region? confirm
+    //   continue;
 
     double atom_density = 0.;
     if (sens.sens_nuclide >= 0) {
@@ -597,7 +606,7 @@ score_track_sensitivity(Particle& p, double distance)
 
 void score_collision_sensitivity(Particle& p)
 {
-  // A void material cannot be perturbed so it will not affect flux derivatives.
+  // A void material cannot be perturbed so it will not affect sensitivities.
   if (p.material() == MATERIAL_VOID) return;
 
   // only scattering events effect the cumulative tallies
@@ -608,6 +617,8 @@ void score_collision_sensitivity(Particle& p)
   for (auto idx = 0; idx < model::tally_sens.size(); idx++) {
     const auto& sens = model::tally_sens[idx];
     auto& cumulative_sensitivities = p.cumulative_sensitivities(idx);
+    
+    // if (sens.sens_material != material.id_) continue;
 
     if (p.event_nuclide() != sens.sens_nuclide) continue;
     // Find the index in this material for the diff_nuclide.
@@ -750,6 +761,132 @@ void score_collision_sensitivity(Particle& p)
         for (int deriv_idx = start; deriv_idx < start + size ; deriv_idx++){
           cumulative_sensitivities[deriv_idx] += derivative.second[deriv_idx - start]/scatter;
         }
+      }
+    }
+      break;
+    }
+  }
+}
+
+// should this routine only be called if the particle being transported is a secondary particle?
+// do we need to note which event produced the secondary particle?
+void score_source_sensitivity(Particle& p) 
+{
+  // A void material cannot be perturbed so it will not affect sensitivities.
+  if (p.material() == MATERIAL_VOID) return;
+
+  // only scattering events affect source sensitivity
+  if (p.event() != TallyEvent::SCATTER) return;
+
+  const Material& material {*model::materials[p.material()]};
+
+  for (auto idx = 0; idx < model::tally_sens.size(); idx++) {
+    const auto& sens = model::tally_sens[idx];
+    auto& cumulative_sensitivities = p.cumulative_sensitivities(idx);
+
+    if (p.event_nuclide() != sens.sens_nuclide) continue;
+    // Find the index in this material for the diff_nuclide.
+    int i;
+    for (i = 0; i < material.nuclide_.size(); ++i)
+      if (material.nuclide_[i] == sens.sens_nuclide) break;
+    // Make sure we found the nuclide.
+    if (material.nuclide_[i] != sens.sens_nuclide) {
+      fatal_error(fmt::format(
+        "Could not find nuclide {} in material {} for tally sensitivity {}",
+        data::nuclides[sens.sens_nuclide]->name_, material.id_, sens.id));
+    }
+
+    switch (sens.variable) {
+
+    case SensitivityVariable::CROSS_SECTION:
+    {
+
+      // Get the energy of the secondary particle.
+      double E = p.E();
+      
+      // only scattering events that produce secondary particles
+      double score;
+      switch (sens.sens_reaction) {
+      case N_ND:
+        if (p.event_mt() != sens.sens_reaction) continue;
+        score = 1.0;
+        break;
+      case N_NP:
+        if (p.event_mt() != sens.sens_reaction) continue;
+        score = 1.0;
+        break;
+      case N_NA:
+        if (p.event_mt() != sens.sens_reaction) continue;
+        score = 1.0;
+        break;
+      case N_2N:
+        if (p.event_mt() != sens.sens_reaction) continue;
+        score = 1.0;
+        break;
+      case ELASTIC:
+      case N_T:
+      case N_XT:
+      case N_GAMMA:
+      case N_P:     
+      case N_A:
+      case N_D:      
+        score = 0.0;
+        break;
+      case N_LEVEL:
+      case N_N1:
+      case N_N40:
+      case N_NC:
+      case 52:
+      case 53:
+      case 54:
+      case 55:
+      case 56:
+      case 57:
+      case 58:
+      case 59:
+      case 60:
+      case 61:
+      case 62:
+      case 63:
+      case 64:
+      case 65:
+      case 66:
+      case 67:
+      case 68:
+      case 69:
+      case 70:
+      case 71:
+      case 72:
+      case 73:
+      case 74:
+      case 75:
+      case 76:
+      case 77:
+      case 78:
+      case 79:
+      case 80:
+      case 81:
+      case 82:
+      case 83:
+      case 84:
+      case 85:
+      case 86:
+      case 87:
+      case 88:
+      case 89:
+        if (p.event_mt() != N_LEVEL || p.event_mt() != N_N1 || p.event_mt() != N_N40 
+          || p.event_mt() != N_NC || (p.event_mt() < N_N1 && p.event_mt() > N_NC)) continue;
+        score = 1.0;
+        break;
+      default:          
+        score = 0.0;
+        break;
+      }
+  
+      // Bin the energy.
+      if (E >= sens.energy_bins_.front() && E <= sens.energy_bins_.back()) {
+        auto bin = lower_bound_index(sens.energy_bins_.begin(), sens.energy_bins_.end(), E);
+        cumulative_sensitivities[bin] += score;
       }
     }
       break;

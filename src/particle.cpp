@@ -96,6 +96,7 @@ bool Particle::create_secondary(
   }
   bank.time = time();
   bank_second_E() += bank.E;
+  // if (!model::active_tallies.empty()) score_source_sensitivity(*this);
   return true;
 }
 
@@ -403,6 +404,7 @@ void Particle::event_collide()
   if (!model::active_tallies.empty()) {
     score_collision_derivative(*this);
     score_collision_sensitivity(*this);  // Score cumulative sensitivity for sensitivity tallies.
+    // score_source_sensitivity(*this);
   }
   
 #ifdef DAGMC

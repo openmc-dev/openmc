@@ -380,6 +380,11 @@ OPENMC_USE_MPI
   options, please see the `FindMPI.cmake documentation
   <https://cmake.org/cmake/help/latest/module/FindMPI.html>`_.
 
+OPENMC_USE_VENDOR
+  Forces OpenMC to use the submodules located in the vendor directory, as
+  opposed to searching the system for already installed versions of those
+  modules.
+
 To set any of these options (e.g., turning on profiling), the following form
 should be used:
 

@@ -515,10 +515,13 @@ to install the Python package in :ref:`"editable" mode <devguide_editable>`.
 Prerequisites
 -------------
 
-The Python API works with Python 3.8+. In addition to Python itself, the API
-relies on a number of third-party packages. All prerequisites can be installed
-using Conda_ (recommended), pip_, or through the package manager in most Linux
-distributions.
+In addition to Python itself, the OpenMC Python API relies on a number of
+third-party packages. All prerequisites can be installed using Conda_
+(recommended), pip_, or through the package manager in most Linux distributions.
+The current required Python version and up-to-date list of package dependencies
+can be found in the `pyproject.toml <https://github.com/openmc-dev/openmc/blob/develop/pyproject.toml>`_
+file in the root directory of the OpenMC repository. An overview of these
+dependencies is provided below.
 
 .. admonition:: Required
    :class: error

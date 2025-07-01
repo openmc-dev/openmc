@@ -91,6 +91,7 @@ Classes
    SurfaceFilter
    Tally
    SensitivityTally
+   TemporarySession
    UniverseFilter
    UnstructuredMesh
    WeightFilter

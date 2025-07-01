@@ -215,7 +215,6 @@ class MicroXS:
         temperature: float = 293.6,
         nuclides: Sequence[str] | None = None,
         reactions: Sequence[str] | None = None,
-        session: openmc.lib.TemporarySession | None = None,
         **init_kwargs: dict,
     ) -> MicroXS:
         """Generated microscopic cross sections from a known flux.

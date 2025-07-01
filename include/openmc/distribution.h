@@ -54,7 +54,7 @@ protected:
 class FixedDistribution : public Distribution {
 public:
   int32_t dims() const { return dims_; }
-  virtual double sample(vector<double>::iterator x) const = 0;
+  virtual double sample(vector<double>::iterator it) const = 0;
   double sample(uint64_t* seed) const override
   {
     vector<double> x;
@@ -97,7 +97,7 @@ public:
       return 0;
     }
   }
-  size_t sample(vector<double>::iterator x) const;
+  size_t sample(vector<double>::iterator it) const;
 
   // Properties
   const vector<double>& prob() const { return prob_; }
@@ -127,7 +127,7 @@ public:
   Discrete(const double* x, const double* p, size_t n);
 
   using FixedDistribution::sample;
-  double sample(vector<double>::iterator x) const override;
+  double sample(vector<double>::iterator it) const override;
 
   double integral() const override { return di_.integral(); };
 
@@ -162,7 +162,7 @@ public:
   Uniform(double a, double b) : a_ {a}, b_ {b} { dims_ = 1; };
 
   using FixedDistribution::sample;
-  double sample(vector<double>::iterator x) const override;
+  double sample(vector<double>::iterator it) const override;
 
   double integral(double x0, double x1) const;
 
@@ -197,7 +197,7 @@ public:
   };
 
   using FixedDistribution::sample;
-  double sample(vector<double>::iterator x) const override;
+  double sample(vector<double>::iterator it) const override;
 
   double integral(double x0, double x1) const;
 
@@ -327,7 +327,7 @@ public:
     const double* c = nullptr);
 
   using FixedDistribution::sample;
-  double sample(vector<double>::iterator x) const override;
+  double sample(vector<double>::iterator it) const override;
 
   // properties
   vector<double>& x() { return x_; }
@@ -372,7 +372,7 @@ public:
   Equiprobable(const double* x, int n) : x_ {x, x + n} { dims_ = 1; };
 
   using FixedDistribution::sample;
-  double sample(vector<double>::iterator x) const override;
+  double sample(vector<double>::iterator it) const override;
 
   double integral(double x0, double x1) const;
 

@@ -108,13 +108,13 @@ void DiscreteIndex::init_alias()
   }
 }
 
-size_t DiscreteIndex::sample(vector<double>::iterator x) const
+size_t DiscreteIndex::sample(vector<double>::iterator it) const
 {
   // Alias sampling of discrete distribution
   size_t n = prob_.size();
   if (n > 1) {
-    size_t u = *(x++) * n;
-    if (*(x++) < prob_[u]) {
+    size_t u = *(it++) * n;
+    if (*(it++) < prob_[u]) {
       return u;
     } else {
       return alias_[u];
@@ -164,9 +164,9 @@ Discrete::Discrete(const double* x, const double* p, size_t n) : di_({p, n})
   }
 }
 
-double Discrete::sample(vector<double>::iterator x) const
+double Discrete::sample(vector<double>::iterator it) const
 {
-  return x_[di_.sample(x)];
+  return x_[di_.sample(it)];
 }
 
 double Discrete::integral(double x0, double x1) const
@@ -201,9 +201,9 @@ Uniform::Uniform(pugi::xml_node node)
   dims_ = 1;
 }
 
-double Uniform::sample(vector<double>::iterator x) const
+double Uniform::sample(vector<double>::iterator it) const
 {
-  return a_ + *(x++) * (b_ - a_);
+  return a_ + *(it++) * (b_ - a_);
 }
 
 double Uniform::integral(double x0, double x1) const
@@ -239,9 +239,9 @@ double PowerLaw::integral(double x0, double x1) const
          monodiff(b(), a(), n() + 1.0);
 }
 
-double PowerLaw::sample(vector<double>::iterator x) const
+double PowerLaw::sample(vector<double>::iterator it) const
 {
-  return std::pow(offset_ + *(x++) * span_, ninv_);
+  return std::pow(offset_ + *(it++) * span_, ninv_);
 }
 
 //==============================================================================
@@ -409,10 +409,10 @@ void Tabular::init(
   }
 }
 
-double Tabular::sample(vector<double>::iterator x) const
+double Tabular::sample(vector<double>::iterator it) const
 {
   // Sample value of CDF
-  double c = *(x++);
+  double c = *(it++);
 
   // Find first CDF bin which is above the sampled value
   double c_i = c_[0];
@@ -497,11 +497,11 @@ double Tabular::integral(double x0, double x1) const
 // Equiprobable implementation
 //==============================================================================
 
-double Equiprobable::sample(vector<double>::iterator x) const
+double Equiprobable::sample(vector<double>::iterator it) const
 {
   std::size_t n = x_.size();
 
-  double r = *(x++);
+  double r = *(it++);
   int i = std::floor((n - 1) * r);
 
   double xl = x_[i];

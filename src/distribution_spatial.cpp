@@ -97,12 +97,11 @@ Position CartesianIndependent::sample(uint64_t* seed) const
 {
   return {x_->sample(seed), y_->sample(seed), z_->sample(seed)};
 }
-Position CartesianIndependent::sample(vector<double>::iterator x) const
+Position CartesianIndependent::sample(vector<double>::iterator it) const
 {
-  const auto* _x = dynamic_cast<FixedDistribution*>(x_.get());
-  const auto* _y = dynamic_cast<FixedDistribution*>(y_.get());
-  const auto* _z = dynamic_cast<FixedDistribution*>(z_.get());
-  return {_x->sample(x), _y->sample(x), _z->sample(x)};
+  return {dynamic_cast<FixedDistribution*>(x_.get())->sample(it),
+    dynamic_cast<FixedDistribution*>(y_.get())->sample(it),
+    dynamic_cast<FixedDistribution*>(z_.get())->sample(it)};
 }
 
 //==============================================================================
@@ -172,18 +171,17 @@ Position CylindricalIndependent::sample(uint64_t* seed) const
 {
   double r = r_->sample(seed);
   double phi = phi_->sample(seed);
-  return {r * cos(phi) + origin_.x, r * sin(phi) + origin_.y,
-    z_->sample(seed) + origin_.z};
+  double z = z_->sample(seed);
+  Position xi {r * cos(phi), r * sin(phi), z};
+  return xi + origin_;
 }
-Position CylindricalIndependent::sample(vector<double>::iterator x) const
+Position CylindricalIndependent::sample(vector<double>::iterator it) const
 {
-  const auto* _r = dynamic_cast<FixedDistribution*>(r_.get());
-  const auto* _phi = dynamic_cast<FixedDistribution*>(phi_.get());
-  const auto* _z = dynamic_cast<FixedDistribution*>(z_.get());
-  double r = _r->sample(x);
-  double phi = _phi->sample(x);
-  return {r * cos(phi) + origin_.x, r * sin(phi) + origin_.y,
-    _z->sample(x) + origin_.z};
+  double r = dynamic_cast<FixedDistribution*>(r_.get())->sample(it);
+  double phi = dynamic_cast<FixedDistribution*>(phi_.get())->sample(it);
+  double z = dynamic_cast<FixedDistribution*>(z_.get())->sample(it);
+  Position xi {r * cos(phi), r * sin(phi), z};
+  return xi + origin_;
 }
 
 //==============================================================================
@@ -255,22 +253,20 @@ Position SphericalIndependent::sample(uint64_t* seed) const
   double cos_theta = cos_theta_->sample(seed);
   double phi = phi_->sample(seed);
   // sin(theta) by sin**2 + cos**2 = 1
-  return {r * std::sqrt(1 - cos_theta * cos_theta) * cos(phi) + origin_.x,
-    r * std::sqrt(1 - cos_theta * cos_theta) * sin(phi) + origin_.y,
-    r * cos_theta + origin_.z};
+  Position xi {std::sqrt(1 - cos_theta * cos_theta) * cos(phi),
+    std::sqrt(1 - cos_theta * cos_theta) * sin(phi), cos_theta};
+  return r * xi + origin_;
 }
-Position SphericalIndependent::sample(vector<double>::iterator x) const
+Position SphericalIndependent::sample(vector<double>::iterator it) const
 {
-  const auto* _r = dynamic_cast<FixedDistribution*>(r_.get());
-  const auto* _cos_theta = dynamic_cast<FixedDistribution*>(cos_theta_.get());
-  const auto* _phi = dynamic_cast<FixedDistribution*>(phi_.get());
-  double r = _r->sample(x);
-  double cos_theta = _cos_theta->sample(x);
-  double phi = _phi->sample(x);
+  double r = dynamic_cast<FixedDistribution*>(r_.get())->sample(it);
+  double cos_theta =
+    dynamic_cast<FixedDistribution*>(cos_theta_.get())->sample(it);
+  double phi = dynamic_cast<FixedDistribution*>(phi_.get())->sample(it);
   // sin(theta) by sin**2 + cos**2 = 1
-  return {r * std::sqrt(1 - cos_theta * cos_theta) * cos(phi) + origin_.x,
-    r * std::sqrt(1 - cos_theta * cos_theta) * sin(phi) + origin_.y,
-    r * cos_theta + origin_.z};
+  Position xi {std::sqrt(1 - cos_theta * cos_theta) * cos(phi),
+    std::sqrt(1 - cos_theta * cos_theta) * sin(phi), cos_theta};
+  return r * xi + origin_;
 }
 
 //==============================================================================
@@ -423,9 +419,9 @@ SpatialBox::SpatialBox(pugi::xml_node node, bool fission)
         (upper_right_[2] - lower_left_[2]));
 }
 
-Position SpatialBox::sample(vector<double>::iterator x) const
+Position SpatialBox::sample(vector<double>::iterator it) const
 {
-  Position xi {*(x++), *(x++), *(x++)};
+  Position xi {*(it++), *(it++), *(it++)};
   return lower_left_ + xi * (upper_right_ - lower_left_);
 }
 

@@ -39,7 +39,7 @@ class FixedSpatialDistribution : public SpatialDistribution {
 public:
   virtual ~FixedSpatialDistribution() = default;
 
-  virtual Position sample(vector<double>::iterator x) const = 0;
+  virtual Position sample(vector<double>::iterator it) const = 0;
 
   int32_t dims() const { return dims_; }
   double volume() const { return volume_; }
@@ -57,7 +57,7 @@ public:
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled position
   Position sample(uint64_t* seed) const override;
-  Position sample(vector<double>::iterator x) const override;
+  Position sample(vector<double>::iterator it) const override;
 
   // Observer pointers
   Distribution* x() const { return x_.get(); }
@@ -82,7 +82,7 @@ public:
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled position
   Position sample(uint64_t* seed) const override;
-  Position sample(vector<double>::iterator x) const override;
+  Position sample(vector<double>::iterator it) const override;
 
   Distribution* r() const { return r_.get(); }
   Distribution* phi() const { return phi_.get(); }
@@ -108,7 +108,7 @@ public:
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled position
   Position sample(uint64_t* seed) const override;
-  Position sample(vector<double>::iterator x) const override;
+  Position sample(vector<double>::iterator it) const override;
 
   Distribution* r() const { return r_.get(); }
   Distribution* cos_theta() const { return cos_theta_.get(); }
@@ -197,7 +197,7 @@ public:
     vector<double> x = {prn(seed), prn(seed), prn(seed)};
     return sample(begin(x));
   }
-  Position sample(vector<double>::iterator x) const override;
+  Position sample(vector<double>::iterator it) const override;
 
   // Properties
   bool only_fissionable() const { return only_fissionable_; }

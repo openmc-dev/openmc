@@ -212,21 +212,18 @@ typedef unique_ptr<Source> create_compiled_source_t(std::string parameters);
 // Helper class to sample spatial position on a single mesh element
 class MeshElementSpatial : public SpatialDistribution {
 public:
-  MeshElementSpatial(const Mesh& mesh, int elem_index)
-    : mesh_(mesh), elem_index_(elem_index)
+  MeshElementSpatial(int32_t mesh_index, int elem_index)
+    : mesh_index_(mesh_index), elem_index_(elem_index)
   {}
 
   //! Sample a position from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled position
-  Position sample(uint64_t* seed) const override
-  {
-    return mesh_.sample_element(elem_index_, seed);
-  }
+  Position sample(uint64_t* seed) const override;
 
 private:
-  const Mesh& mesh_; //! Reference to mesh
-  int elem_index_;   //! Index of mesh element
+  int32_t mesh_index_ {C_NONE}; //!< Index in global meshes array
+  int elem_index_;              //! Index of mesh element
 };
 
 class MeshSource : public Source {

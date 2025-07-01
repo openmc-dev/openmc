@@ -526,6 +526,15 @@ CompiledSourceWrapper::~CompiledSourceWrapper()
 }
 
 //==============================================================================
+// MeshElementSpatial implementation
+//==============================================================================
+
+Position MeshElementSpatial::sample(uint64_t* seed) const
+{
+  return model::meshes[mesh_index_]->sample_element(elem_index_, seed);
+}
+
+//==============================================================================
 // MeshSource implementation
 //==============================================================================
 
@@ -553,7 +562,7 @@ MeshSource::MeshSource(pugi::xml_node node) : Source(node)
   // Set spatial distributions for each mesh element
   for (int elem_index = 0; elem_index < sources_.size(); ++elem_index) {
     sources_[elem_index]->set_space(
-      std::make_unique<MeshElementSpatial>(*mesh, elem_index));
+      std::make_unique<MeshElementSpatial>(mesh_idx, elem_index));
   }
 
   // the number of source distributions should either be one or equal to the

@@ -654,6 +654,10 @@ class TemporarySession:
 
     def __enter__(self):
         """Initialize the OpenMC library in a temporary directory."""
+        # Make sure OpenMC is not already initialized
+        if openmc.lib.is_initialized:
+            raise RuntimeError("openmc.lib is already initialized.")
+
         # Store original working directory
         self.orig_dir = Path.cwd()
 
@@ -671,9 +675,11 @@ class TemporarySession:
 
     def __exit__(self, exc_type, exc_value, traceback):
         """Finalize the OpenMC library and clean up temporary directory."""
-        openmc.lib.finalize()
-        os.chdir(self.orig_dir)
-        self.tmp_dir.cleanup()
+        try:
+            openmc.lib.finalize()
+        finally:
+            os.chdir(self.orig_dir)
+            self.tmp_dir.cleanup()
 
 
 class _DLLGlobal:

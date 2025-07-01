@@ -224,10 +224,9 @@ class MicroXS:
         sections available. MicroXS entry will be 0 if the nuclide cross section
         is not found.
 
-        For repeated calls to this method, it is recommended to create a context
-        manager using the :class:`openmc.lib.TemporarySession` class and pass it
-        to the `session` argument to avoid re-initializing OpenMC and loading
-        cross sections each time.
+        It is recommended to make repeated calls to this method within a context
+        manager using the :class:`openmc.lib.TemporarySession` class to avoid
+        re-initializing OpenMC and loading cross sections each time.
 
         .. versionadded:: 0.15.0
 
@@ -248,9 +247,6 @@ class MicroXS:
         reactions : list of str, optional
             Reactions to get cross sections for. If not specified, all neutron
             reactions listed in the depletion chain file are used.
-        session : TemporaryLibSession, optional
-            A temporary OpenMC shared library session. If not provided, a new
-            session will be created.
         **init_kwargs : dict
             Keyword arguments passed to :func:`openmc.lib.init`
 
@@ -307,7 +303,7 @@ class MicroXS:
                     )
 
         # Compute microscopic cross sections within a temporary session
-        if session is None:
+        if not openmc.lib.is_initialized:
             with openmc.lib.TemporarySession(**init_kwargs):
                 compute_microxs()
         else:

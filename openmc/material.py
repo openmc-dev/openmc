@@ -2070,45 +2070,49 @@ class Materials(cv.CheckedList):
 
         chain = _get_chain(chain_file)
 
-        all_depleted_materials = {}
+        with openmc.lib.TemporarySession() as session:
 
-        for material, flux, energy in zip(
-            self, multigroup_fluxes, energy_group_structures
-        ):
+            all_depleted_materials = {}
 
-            micro_xs = openmc.deplete.get_microxs_from_multigroup(
-                materials=openmc.Materials([material]),
-                multigroup_fluxes=[flux],
-                energy_group_structures=[energy],
-                chain_file=chain,
-                reactions=reactions,
-            )
+            for material, flux, energy in zip(
+                self, multigroup_fluxes, energy_group_structures
+            ):
 
-            operator = openmc.deplete.IndependentOperator(
-                materials=openmc.Materials([material]),
-                fluxes=[material.volume],
-                micros=micro_xs,
-                normalization_mode="source-rate",
-                chain_file=chain,
-            )
+                micro_xs = openmc.deplete.MicroXS.from_multigroup_flux(
+                    energies=energy,
+                    multigroup_flux= flux,
+                    chain_file= chain_file,
+                    temperature = material.temperature,
+                    nuclides= material.get_nuclides(),
+                    reactions=reactions,
+                    session=session
+                )
 
-            integrator = openmc.deplete.PredictorIntegrator(
-                operator=operator,
-                timesteps=timesteps,
-                source_rates=source_rates,
-                timestep_units=timestep_units,
-            )
+                operator = openmc.deplete.IndependentOperator(
+                    materials=openmc.Materials([material]),
+                    fluxes=[material.volume],
+                    micros=[micro_xs],
+                    normalization_mode="source-rate",
+                    chain_file=chain,
+                )
 
-            with tempfile.TemporaryDirectory() as tmpdir:
-                results_path = Path(tmpdir) / "depletion_results.h5"
-                integrator.integrate(path=results_path)
+                integrator = openmc.deplete.PredictorIntegrator(
+                    operator=operator,
+                    timesteps=timesteps,
+                    source_rates=source_rates,
+                    timestep_units=timestep_units,
+                )
 
-                results = openmc.deplete.ResultsList.from_hdf5(filename=results_path)
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    results_path = Path(tmpdir) / "depletion_results.h5"
+                    integrator.integrate(path=results_path)
 
-                depleted_materials = []
-                for result in results:
-                    depleted_material = result.get_material(str(material.id))
-                    depleted_materials.append(depleted_material)
-                all_depleted_materials[material.id] = depleted_materials
+                    results = openmc.deplete.ResultsList.from_hdf5(filename=results_path)
+
+                    depleted_materials = []
+                    for result in results:
+                        depleted_material = result.get_material(str(material.id))
+                        depleted_materials.append(depleted_material)
+                    all_depleted_materials[material.id] = depleted_materials
 
         return all_depleted_materials

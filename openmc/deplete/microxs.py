@@ -24,6 +24,7 @@ import openmc.lib
 import openmc.checkvalue as cv
 import openmc.deplete
 from openmc.mpi import comm
+from openmc.utility_funcs import change_directory
 
 
 _valid_rxns = list(REACTIONS)
@@ -226,140 +227,6 @@ def get_microxs_and_flux(
     model.tallies = original_tallies
 
     return fluxes, micros
-
-
-def get_microxs_from_multigroup(
-    materials: openmc.Materials,
-    multigroup_fluxes: Sequence[Sequence[float]],
-    energy_group_structures: Sequence[Sequence[float] | str],
-    chain_file: cv.PathLike | Chain | None = None,
-    reactions: Sequence[str] | None = None,
-    **init_kwargs: dict,
-) -> list[MicroXS]:
-    """Computes microscopic cross sections for the specified materials, multigroup_fluxes
-    and energy_group_structures.
-
-    .. versionadded:: 0.15.3
-
-    Parameters
-    ----------
-    materials : openmc.Materials
-        OpenMC Materials object containing the materials for which to compute
-        microscopic cross sections. Each material must have a temperature set.
-    multigroup_fluxes: Sequence[Sequence[float]]
-        Energy-dependent multigroup flux values, where each sublist corresponds
-        to a specific material. Will be normalized so that it sums to 1.
-    energy_group_structures': Sequence[Sequence[float] | str]
-        Energy group boundaries in [eV] or the name of the group structure.
-    chain_file : PathLike or Chain
-        Path to the depletion chain XML file or instance of openmc.deplete.Chain.
-        Defaults to ``openmc.config['chain_file']``.
-    reactions : list of str, optional
-        Reactions to get cross sections for. If not specified, all neutron
-        reactions listed in the depletion chain file are used.
-    **init_kwargs : dict
-        Keyword arguments passed to :func:`openmc.lib.init` defaults to
-        {'output': False}
-
-    Returns
-    -------
-    list of MicroXS, one for each material
-
-    """
-
-    # defaulting to not print terminal output during openmc.lib init
-    if init_kwargs == {}:
-        init_kwargs = {"output": False}
-
-        # Check material field
-    for i, material in enumerate(materials):
-        if not isinstance(material, openmc.Material):
-            raise TypeError(f"Entry {i}: 'material' must be an openmc.Material object")
-
-        # Check temperature and volume are set
-        if material.temperature is None:
-            raise ValueError(
-                f"Entry {i}: Material temperature must be set before depletion"
-            )
-
-    chain = _get_chain(chain_file)
-
-    cross_sections = _find_cross_sections(model=None)
-    nuclides_with_data = _get_nuclides_with_data(cross_sections)
-
-   # Gets all the nuclides within the user specified materials
-    nuclides = []
-    for material in materials:
-        for material_nuclides in material.get_nuclides():
-            if material_nuclides not in nuclides:
-                nuclides.append(material_nuclides)
-
-    # Get reaction MT values. If no reactions specified, default to the
-    # reactions available in the chain file
-    if reactions is None:
-        reactions = chain.reactions
-    mts = [REACTION_MT[name] for name in reactions]
-
-    # Create 3D array for microscopic cross sections
-    microxs_arr = np.zeros((len(nuclides), len(mts), 1))
-
-    # Create a material with all nuclides that have cross section data
-    mat_all_nucs = openmc.Material()
-    for nuc in nuclides:
-        if nuc in nuclides_with_data:
-            mat_all_nucs.add_nuclide(nuc, 1.0)
-    mat_all_nucs.set_density("atom/b-cm", 1.0)
-
-    # Create simple model containing the above material
-    surf1 = openmc.Sphere(boundary_type="vacuum")
-    surf1_cell = openmc.Cell(fill=mat_all_nucs, region=-surf1)
-    model = openmc.Model()
-    model.geometry = openmc.Geometry([surf1_cell])
-    model.settings = openmc.Settings(particles=1, batches=1, output={"summary": False})
-
-    all_micro_xs = []
-    with change_directory(tmpdir=True):
-        # Export model within temporary directory
-        model.export_to_model_xml()
-
-        with openmc.lib.run_in_memory(**init_kwargs):
-            # For each material, energy and multigroup flux compute the flux-averaged cross section for the nuclides and reactions
-            for material, multigroup_flux, energy in zip(materials, multigroup_fluxes, energy_group_structures):
-
-                # Normalize multigroup flux
-                multigroup_flux = np.array(multigroup_flux)
-                multigroup_flux /= multigroup_flux.sum()
-
-                # if energy is string then use group structure of that name
-                if isinstance(energy, str):
-                    energy = GROUP_STRUCTURES[energy]
-                else:
-                    # if user inputs energy check they are ascending (low to high) as
-                    # some depletion codes use high energy to low energy.
-                    cv.check_increasing(name="energy", value=energy)
-
-                # check dimension consistency
-                if len(multigroup_flux) != len(energy) - 1:
-                    msg = (
-                        "Length of flux array should be len(energy)-1, but "
-                        f"got {len(multigroup_flux)} multigroup_flux entries "
-                        f"and {len(energy)} energy group boundaries"
-                    )
-                    raise ValueError(msg)
-
-                for nuc_index, nuc in enumerate(material.get_nuclides()):
-                    if nuc not in nuclides_with_data:
-                        continue
-                    lib_nuc = openmc.lib.nuclides[nuc]
-                    for mt_index, mt in enumerate(mts):
-                        xs = lib_nuc.collapse_rate(
-                            mt, material.temperature, energy, multigroup_flux
-                        )
-                        microxs_arr[nuc_index, mt_index, 0] = xs
-
-                micro_xs = openmc.deplete.MicroXS(microxs_arr, nuclides, reactions)
-                all_micro_xs.append(micro_xs)
-    return all_micro_xs
 
 
 class MicroXS:

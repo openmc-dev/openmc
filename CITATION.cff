@@ -64,8 +64,6 @@ title: 'OpenMC Monte Carlo Code'
 type: software
 version: v0.15.2
 doi: 10.5281/zenodo.15185507
-message: If you use this software, please cite our article in the
-  Journal of Open Source Software.
 preferred-citation:
   authors:
   - family-names: Romano

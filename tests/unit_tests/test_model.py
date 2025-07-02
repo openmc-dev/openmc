@@ -700,6 +700,27 @@ def test_model_id_map(run_in_tmpdir):
         assert max_map_material_id <= max_material_id, \
             f"Material ID {max_map_material_id}  in the map is greater than the maximum material ID {max_material_id}"
 
+    # Test id_map with pixels outside the model geometry
+    # Use a plot that's far from the model center to ensure we get -2 values
+    outside_id_map = model.id_map(
+        pixels=(50, 50),
+        basis='xy',
+        color_by='cell',
+        origin=(1000, 1000, 0),  # Far from the model center
+        width=(10, 10),
+    )
+
+    assert outside_id_map.shape == (50, 50, 3)
+    assert outside_id_map.dtype == np.int32
+
+    # All values should be -2 (outside geometry) for this plot
+    assert np.all(outside_id_map == -2), "Expected all values to be -2 for plot outside model geometry"
+
+    # Verify that the outside plot has the correct structure
+    assert np.all(outside_id_map[:, :, 0] == -2), "Cell IDs should all be -2 outside geometry"
+    assert np.all(outside_id_map[:, :, 1] == -2), "Cell instances should all be -2 outside geometry"
+    assert np.all(outside_id_map[:, :, 2] == -2), "Material IDs should all be -2 outside geometry"
+
     # if the model is already initialized, it should not be finalized
     # after callind this method
     model.init_lib(output=False)
@@ -723,3 +744,4 @@ def test_model_id_map(run_in_tmpdir):
         width=(10, 10),
     )
     assert not model.is_initialized
+

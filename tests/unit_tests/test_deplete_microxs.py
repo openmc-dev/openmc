@@ -8,9 +8,7 @@ from os import remove
 from pathlib import Path
 
 import pytest
-import openmc
-from openmc.deplete import MicroXS, get_microxs_from_multigroup, Chain
-from openmc.mgxs import GROUP_STRUCTURES
+from openmc.deplete import MicroXS
 import numpy as np
 
 ONE_GROUP_XS = Path(__file__).parents[1] / "micro_xs_simple.csv"

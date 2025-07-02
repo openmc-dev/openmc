@@ -902,15 +902,65 @@ class Model:
                             openmc.lib.materials[domain_id].volume = \
                                 vol_calc.volumes[domain_id].n
 
-    def id_map(self, plot: openmc.Plot, **init_kwargs):
+
+    def _set_plot_defaults(self,
+                           xy_idx: Sequence[int],
+                           origin: Sequence[float] | None = None,
+                           width: Sequence[float] | None = None,
+                           pixels: int | Sequence[int] = 40000,
+                           basis: str = 'xy'):
+        x, y = xy_idx
+        bb = self.bounding_box
+        # checks to see if bounding box contains -inf or inf values
+        if np.isinf(bb.extent[basis]).any():
+            if origin is None:
+                origin = (0, 0, 0)
+            if width is None:
+                width = (10, 10)
+        else:
+            if origin is None:
+                # if nan values in the bb.center they get replaced with 0.0
+                # this happens when the bounding_box contains inf values
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore", RuntimeWarning)
+                    origin = np.nan_to_num(bb.center)
+            if width is None:
+                bb_width = bb.width
+                width = (bb_width[x], bb_width[y])
+
+        if isinstance(pixels, int):
+            aspect_ratio = width[0] / width[1]
+            pixels_y = math.sqrt(pixels / aspect_ratio)
+            pixels = (int(pixels / pixels_y), int(pixels_y))
+
+        return origin, width, pixels, basis
+
+    def id_map(self,
+               origin: Sequence[float] | None = None,
+               width: Sequence[float] | None = None,
+               pixels: int | Sequence[int] = 40000,
+               basis: str = 'xy',
+               color_by: str = 'cell',
+               **init_kwargs):
         """Generate an ID map for domains based on the plot parameters
+
+        .. versionadded:: 0.15.3
 
         If the model is not yet initialized, it will be initialized
         with openmc.lib.
 
-        Args:
-            plot (openmc.Plot): Plot object with the desired parameters for
-                the ID map.
+        Parameters
+        ----------
+            origin : Sequence[float] | None, optional
+                Origin of the plot. Defaults to (0.0, 0.0, 0.0).
+            width : Sequence[float] | None, optional
+                Width of the plot. Defaults to (10.0, 10.0).
+            pixels : int | Sequence[int], optional
+                Number of pixels in the plot. Defaults to 40000.
+            basis : str, optional
+                Basis of the plot. Defaults to 'xy'.
+            color_by : str, optional
+                Color by which to plot the ID map. Defaults to 'cell'.
             **init_kwargs
                 Keyword arguments passed to :meth:`Model.init_lib`.
 
@@ -928,15 +978,25 @@ class Model:
             self.init_lib(**init_kwargs)
             finalize_on_return = True
 
+        if basis == 'xy':
+            x, y, z = 0, 1, 2
+        elif basis == 'yz':
+            x, y, z = 1, 2, 0
+        elif basis == 'xz':
+            x, y, z = 0, 2, 1
+
+        origin, width, pixels, basis = self._set_plot_defaults(
+            (x, y), origin, width, pixels, basis)
+
         # initialize the openmc.lib.plot._PlotBase object
         plot_obj = openmc.lib.plot._PlotBase()
-        plot_obj.origin = (0.0, 0.0, 0.0)
-        plot_obj.width = plot.width[0]
-        plot_obj.height = plot.width[1]
-        plot_obj.h_res = plot.pixels[0]
-        plot_obj.v_res = plot.pixels[1]
-        plot_obj.colorby = plot.color_by
-        plot_obj.basis = plot.basis
+        plot_obj.origin = origin
+        plot_obj.width = width[0]
+        plot_obj.height = width[1]
+        plot_obj.h_res = pixels[0]
+        plot_obj.v_res = pixels[1]
+        plot_obj.colorby = color_by
+        plot_obj.basis = basis
 
         try:
             id_mapping = openmc.lib.id_map(plot_obj)
@@ -1000,28 +1060,8 @@ class Model:
             x, y, z = 0, 2, 1
             xlabel, ylabel = f'x [{axis_units}]', f'z [{axis_units}]'
 
-        bb = self.bounding_box
-        # checks to see if bounding box contains -inf or inf values
-        if np.isinf(bb.extent[basis]).any():
-            if origin is None:
-                origin = (0, 0, 0)
-            if width is None:
-                width = (10, 10)
-        else:
-            if origin is None:
-                # if nan values in the bb.center they get replaced with 0.0
-                # this happens when the bounding_box contains inf values
-                with warnings.catch_warnings():
-                    warnings.simplefilter("ignore", RuntimeWarning)
-                    origin = np.nan_to_num(bb.center)
-            if width is None:
-                bb_width = bb.width
-                width = (bb_width[x], bb_width[y])
-
-        if isinstance(pixels, int):
-            aspect_ratio = width[0] / width[1]
-            pixels_y = math.sqrt(pixels / aspect_ratio)
-            pixels = (int(pixels / pixels_y), int(pixels_y))
+        origin, width, pixels, basis = self._set_plot_defaults(
+            (x, y), origin, width, pixels, basis)
 
         axis_scaling_factor = {'km': 0.00001, 'm': 0.01, 'cm': 1, 'mm': 10}
 

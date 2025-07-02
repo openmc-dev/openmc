@@ -653,11 +653,15 @@ def test_model_plot():
 
 def test_model_id_map(run_in_tmpdir):
     model = openmc.examples.pwr_assembly()
-    plot = model.plots[0]
-    plot.pixels = (100, 100)
-    id_map = model.id_map(plot)
+    id_map = model.id_map(
+        pixels=(100, 100),
+        basis='xy',
+        color_by='cell',
+        origin=(0, 0, 0),
+        width=(10, 10),
+    )
 
-    assert id_map.shape == (plot.pixels[0], plot.pixels[1], 3)
+    assert id_map.shape == (100, 100, 3)
     assert id_map.dtype == np.int32
 
     max_cell_id = max(model.geometry.get_all_cells().keys())
@@ -699,11 +703,23 @@ def test_model_id_map(run_in_tmpdir):
     # if the model is already initialized, it should not be finalized
     # after callind this method
     model.init_lib(output=False)
-    model.id_map(plot)
+    model.id_map(
+        pixels=(100, 100),
+        basis='xy',
+        color_by='cell',
+        origin=(0, 0, 0),
+        width=(10, 10),
+    )
     assert model.is_initialized
 
     # if the model is not initialized, it should be finalized
     # before exiting this method
     model.finalize_lib()
-    model.id_map(plot)
+    model.id_map(
+        pixels=(100, 100),
+        basis='xy',
+        color_by='cell',
+        origin=(0, 0, 0),
+        width=(10, 10),
+    )
     assert not model.is_initialized

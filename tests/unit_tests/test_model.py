@@ -653,10 +653,11 @@ def test_model_plot():
 
 def test_model_id_map(run_in_tmpdir):
     model = openmc.examples.pwr_assembly()
+    model.init_lib(output=False)
+
     id_map = model.id_map(
         pixels=(100, 100),
         basis='xy',
-        color_by='cell',
         origin=(0, 0, 0),
         width=(10, 10),
     )
@@ -705,7 +706,6 @@ def test_model_id_map(run_in_tmpdir):
     outside_id_map = model.id_map(
         pixels=(50, 50),
         basis='xy',
-        color_by='cell',
         origin=(1000, 1000, 0),  # Far from the model center
         width=(10, 10),
     )
@@ -722,12 +722,10 @@ def test_model_id_map(run_in_tmpdir):
     assert np.all(outside_id_map[:, :, 2] == -2), "Material IDs should all be -2 outside geometry"
 
     # if the model is already initialized, it should not be finalized
-    # after callind this method
-    model.init_lib(output=False)
+    # after calling this method
     model.id_map(
         pixels=(100, 100),
         basis='xy',
-        color_by='cell',
         origin=(0, 0, 0),
         width=(10, 10),
     )
@@ -739,7 +737,6 @@ def test_model_id_map(run_in_tmpdir):
     model.id_map(
         pixels=(100, 100),
         basis='xy',
-        color_by='cell',
         origin=(0, 0, 0),
         width=(10, 10),
     )

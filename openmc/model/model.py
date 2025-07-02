@@ -904,12 +904,10 @@ class Model:
 
 
     def _set_plot_defaults(self,
-                           xy_idx: Sequence[int],
-                           origin: Sequence[float] | None = None,
-                           width: Sequence[float] | None = None,
-                           pixels: int | Sequence[int] = 40000,
-                           basis: str = 'xy'):
-        x, y = xy_idx
+                           origin: Sequence[float] | None,
+                           width: Sequence[float] | None,
+                           pixels: int | Sequence[int],
+                           basis: str):
         bb = self.bounding_box
         # checks to see if bounding box contains -inf or inf values
         if np.isinf(bb.extent[basis]).any():
@@ -940,7 +938,6 @@ class Model:
                width: Sequence[float] | None = None,
                pixels: int | Sequence[int] = 40000,
                basis: str = 'xy',
-               color_by: str = 'cell',
                **init_kwargs):
         """Generate an ID map for domains based on the plot parameters
 
@@ -978,15 +975,10 @@ class Model:
             self.init_lib(**init_kwargs)
             finalize_on_return = True
 
-        if basis == 'xy':
-            x, y, z = 0, 1, 2
-        elif basis == 'yz':
-            x, y, z = 1, 2, 0
-        elif basis == 'xz':
-            x, y, z = 0, 2, 1
+        x, y, z = openmc.plots._BASIS_INDICES[basis]
 
         origin, width, pixels, basis = self._set_plot_defaults(
-            (x, y), origin, width, pixels, basis)
+            origin, width, pixels, basis)
 
         # initialize the openmc.lib.plot._PlotBase object
         plot_obj = openmc.lib.plot._PlotBase()
@@ -995,7 +987,6 @@ class Model:
         plot_obj.height = width[1]
         plot_obj.h_res = pixels[0]
         plot_obj.v_res = pixels[1]
-        plot_obj.colorby = color_by
         plot_obj.basis = basis
 
         try:
@@ -1049,19 +1040,13 @@ class Model:
             source_kwargs = {}
         source_kwargs.setdefault('marker', 'x')
 
-        # Determine extents of plot
-        if basis == 'xy':
-            x, y, z = 0, 1, 2
-            xlabel, ylabel = f'x [{axis_units}]', f'y [{axis_units}]'
-        elif basis == 'yz':
-            x, y, z = 1, 2, 0
-            xlabel, ylabel = f'y [{axis_units}]', f'z [{axis_units}]'
-        elif basis == 'xz':
-            x, y, z = 0, 2, 1
-            xlabel, ylabel = f'x [{axis_units}]', f'z [{axis_units}]'
+        # Set indices using basis and create axis labels
+        x, y, z = openmc.plots._BASIS_INDICES[basis]
+        xlabel, ylabel = f'{basis[0]} [{axis_units}]', f'{basis[1]} [{axis_units}]'
 
+        # Determine extents of plot
         origin, width, pixels, basis = self._set_plot_defaults(
-            (x, y), origin, width, pixels, basis)
+            origin, width, pixels, basis)
 
         axis_scaling_factor = {'km': 0.00001, 'm': 0.01, 'cm': 1, 'mm': 10}
 

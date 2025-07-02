@@ -937,10 +937,12 @@ class Model:
         plot_obj.v_res = plot.pixels[1]
         plot_obj.colorby = plot.color_by
         plot_obj.basis = plot.basis
-        id_mapping = openmc.lib.id_map(plot_obj)
 
-        if finalize_on_return:
-            self.finalize_lib()
+        try:
+            id_mapping = openmc.lib.id_map(plot_obj)
+        finally:
+            if finalize_on_return:
+                self.finalize_lib()
 
         return id_mapping
 

@@ -902,6 +902,48 @@ class Model:
                             openmc.lib.materials[domain_id].volume = \
                                 vol_calc.volumes[domain_id].n
 
+    def id_map(self, plot: openmc.Plot, **init_kwargs):
+        """Generate an ID map for domains based on the plot parameters
+
+        If the model is not yet initialized, it will be initialized
+        with openmc.lib.
+
+        Args:
+            plot (openmc.Plot): Plot object with the desired parameters for
+                the ID map.
+            **init_kwargs
+                Keyword arguments passed to :meth:`Model.init_lib`.
+
+        Returns
+        -------
+        id_map : numpy.ndarray
+            A NumPy array with shape (vertical pixels, horizontal pixels, 3) of
+            OpenMC property ids with dtype int32. The last dimension of the array
+            contains, in order, cell IDs, cell instances, and material IDs.
+        """
+
+        finalize_on_return = False
+
+        if not self.is_initialized:
+            self.init_lib(**init_kwargs)
+            finalize_on_return = True
+
+        # initialize the openmc.lib.plot._PlotBase object
+        plot_obj = openmc.lib.plot._PlotBase()
+        plot_obj.origin = (0.0, 0.0, 0.0)
+        plot_obj.width = plot.width[0]
+        plot_obj.height = plot.width[1]
+        plot_obj.h_res = plot.pixels[0]
+        plot_obj.v_res = plot.pixels[1]
+        plot_obj.colorby = plot.color_by
+        plot_obj.basis = plot.basis
+        id_mapping = openmc.lib.id_map(plot_obj)
+
+        if finalize_on_return:
+            self.finalize_lib()
+
+        return id_mapping
+
     @add_plot_params
     def plot(
         self,

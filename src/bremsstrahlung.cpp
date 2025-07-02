@@ -112,6 +112,12 @@ void thick_target_bremsstrahlung(Particle& p, double* E_lost)
                std::pow(a * (c - c_l) / (std::exp(w_l) * p_l) + 1.0, 1.0 / a);
 
     if (w > settings::energy_cutoff[photon]) {
+      // If the energy of the secondary photon is larger than the remaining
+      // energy of the primary particle, adjust it to the remaining energy
+      if (*E_lost + w > p.E()) {
+        w = p.E() - *E_lost;
+      }
+
       // Create secondary photon
       p.create_secondary(p.wgt(), p.u(), w, ParticleType::photon);
       *E_lost += w;

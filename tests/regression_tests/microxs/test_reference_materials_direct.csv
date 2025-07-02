@@ -1,0 +1,7 @@
+nuclides,reactions,groups,xs
+U235,"(n,gamma)",1,0.14765501510184456
+U235,fission,1,1.2517200956290817
+O16,"(n,gamma)",1,0.00010872314985710938
+O16,fission,1,0.0
+Xe135,"(n,gamma)",1,0.014333667335215764
+Xe135,fission,1,0.0

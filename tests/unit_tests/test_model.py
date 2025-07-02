@@ -649,3 +649,61 @@ def test_model_plot():
     # ensure that all of the data in the image data is either white or red
     test_mask = (image_data == white) | (image_data == red)
     assert np.all(test_mask), "Colors other than white or red found in overlap plot image"
+
+
+def test_model_id_map(run_in_tmpdir):
+    model = openmc.examples.pwr_assembly()
+    plot = model.plots[0]
+    plot.pixels = (100, 100)
+    id_map = model.id_map(plot)
+
+    assert id_map.shape == (plot.pixels[0], plot.pixels[1], 3)
+    assert id_map.dtype == np.int32
+
+    max_cell_id = max(model.geometry.get_all_cells().keys())
+    max_material_id = max(model.geometry.get_all_materials().keys())
+
+    # add some spot checks for the id_map
+    # Check that the array contains valid cell/material IDs (not all -2)
+    # The -2 values indicate outside the geometry
+    assert not np.all(id_map == -2), "All values are -2, indicating no valid geometry found"
+
+    # Check that we have valid cell IDs (first dimension)
+    valid_cell_ids = id_map[:, :, 0]
+    assert np.any(valid_cell_ids >= 0), "No valid cell IDs found in the id_map"
+
+    # Check that we have valid material IDs (third dimension)
+    valid_material_ids = id_map[:, :, 2]
+    assert np.any(valid_material_ids >= 0), "No valid material IDs found in the id_map"
+
+    # Check that the middle dimension (cell instances) is consistent
+    # Cell instances should be >= 0 when cell IDs are valid
+    cell_instances = id_map[:, :, 1]
+    valid_cells = valid_cell_ids >= 0
+    if np.any(valid_cells):
+        assert np.all(cell_instances[valid_cells] >= 0), "Invalid cell instances found for valid cells"
+
+    # Check that the array contains reasonable ranges of values
+    # Cell IDs should be within the expected range for the assembly
+    if np.any(valid_cell_ids >= 0):
+        max_map_cell_id = np.max(valid_cell_ids)
+        assert max_map_cell_id <= max_cell_id, \
+            f"Cell ID {max_map_cell_id} in the map is greater than the maximum cell ID {max_cell_id}"
+
+    # Material IDs should be within the expected range
+    if np.any(valid_material_ids >= 0):
+        max_map_material_id = np.max(valid_material_ids)
+        assert max_map_material_id <= max_material_id, \
+            f"Material ID {max_map_material_id}  in the map is greater than the maximum material ID {max_material_id}"
+
+    # if the model is already initialized, it should not be finalized
+    # after callind this method
+    model.init_lib(output=False)
+    model.id_map(plot)
+    assert model.is_initialized
+
+    # if the model is not initialized, it should be finalized
+    # before exiting this method
+    model.finalize_lib()
+    model.id_map(plot)
+    assert not model.is_initialized

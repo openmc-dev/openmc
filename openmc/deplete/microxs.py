@@ -21,10 +21,7 @@ import openmc
 from .chain import Chain, REACTIONS, _get_chain
 from .coupled_operator import _find_cross_sections, _get_nuclides_with_data
 import openmc.lib
-import openmc.checkvalue as cv
-import openmc.deplete
 from openmc.mpi import comm
-from openmc.utility_funcs import change_directory
 
 
 _valid_rxns = list(REACTIONS)

@@ -38,7 +38,7 @@ option(OPENMC_USE_LIBMESH     "Enable support for libMesh unstructured mesh tall
 option(OPENMC_USE_MPI         "Enable MPI"                                           OFF)
 option(OPENMC_USE_MCPL        "Enable MCPL"                                          OFF)
 option(OPENMC_USE_UWUW        "Enable UWUW"                                          OFF)
-option(OPENMC_USE_VENDOR      "Explicitly use submodules defined in '/vendor'"       OFF)
+option(OPENMC_FORCE_VENDORED_LIBS "Explicitly use submodules defined in 'vendor'"    OFF)
 
 message(STATUS "OPENMC_USE_OPENMP ${OPENMC_USE_OPENMP}")
 message(STATUS "OPENMC_BUILD_TESTS ${OPENMC_BUILD_TESTS}")
@@ -49,7 +49,7 @@ message(STATUS "OPENMC_USE_LIBMESH ${OPENMC_USE_LIBMESH}")
 message(STATUS "OPENMC_USE_MPI ${OPENMC_USE_MPI}")
 message(STATUS "OPENMC_USE_MCPL ${OPENMC_USE_MCPL}")
 message(STATUS "OPENMC_USE_UWUW ${OPENMC_USE_UWUW}")
-message(STATUS "OPENMC_USE_VENDOR ${OPENMC_USE_VENDOR}")
+message(STATUS "OPENMC_FORCE_VENDORED_LIBS ${OPENMC_FORCE_VENDORED_LIBS}")
 
 # Warnings for deprecated options
 foreach(OLD_OPT IN ITEMS "openmp" "profile" "coverage" "dagmc" "libmesh")
@@ -257,10 +257,11 @@ endif()
 #===============================================================================
 # pugixml library
 #===============================================================================
-if (OPENMC_USE_VENDOR)
+
+if(OPENMC_FORCE_VENDORED_LIBS)
   add_subdirectory(vendor/pugixml)
   set_target_properties(pugixml PROPERTIES CXX_STANDARD 14 CXX_EXTENSIONS OFF)
-else ()
+else()
   find_package_write_status(pugixml)
   if (NOT pugixml_FOUND)
     add_subdirectory(vendor/pugixml)
@@ -268,14 +269,14 @@ else ()
   endif()
 endif()
 
-
 #===============================================================================
 # {fmt} library
 #===============================================================================
-if (OPENMC_USE_VENDOR)
+
+if(OPENMC_FORCE_VENDORED_LIBS)
   set(FMT_INSTALL ON CACHE BOOL "Generate the install target.")
   add_subdirectory(vendor/fmt)
-else ()
+else()
   find_package_write_status(fmt)
   if (NOT fmt_FOUND)
     set(FMT_INSTALL ON CACHE BOOL "Generate the install target.")
@@ -283,16 +284,15 @@ else ()
   endif()
 endif()
 
-
-
 #===============================================================================
 # xtensor header-only library
 #===============================================================================
-if (OPENMC_USE_VENDOR)
+
+if(OPENMC_FORCE_VENDORED_LIBS)
   add_subdirectory(vendor/xtl)
   set(xtl_DIR ${CMAKE_CURRENT_BINARY_DIR}/vendor/xtl)
   add_subdirectory(vendor/xtensor)
-else ()
+else()
   find_package_write_status(xtensor)
   if (NOT xtensor_FOUND)
     add_subdirectory(vendor/xtl)
@@ -301,16 +301,14 @@ else ()
   endif()
 endif()
 
-
-
 #===============================================================================
 # Catch2 library
 #===============================================================================
 
 if(OPENMC_BUILD_TESTS)
-  if (OPENMC_USE_VENDOR)
+  if (OPENMC_FORCE_VENDORED_LIBS)
     add_subdirectory(vendor/Catch2)
-  else ()
+  else()
     find_package_write_status(Catch2)
     if (NOT Catch2_FOUND)
       add_subdirectory(vendor/Catch2)

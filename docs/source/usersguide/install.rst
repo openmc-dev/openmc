@@ -380,7 +380,7 @@ OPENMC_USE_MPI
   options, please see the `FindMPI.cmake documentation
   <https://cmake.org/cmake/help/latest/module/FindMPI.html>`_.
 
-OPENMC_USE_VENDOR
+OPENMC_FORCE_VENDORED_LIBS
   Forces OpenMC to use the submodules located in the vendor directory, as
   opposed to searching the system for already installed versions of those
   modules.

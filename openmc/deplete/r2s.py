@@ -1,5 +1,6 @@
 from __future__ import annotations
 from collections.abc import Sequence
+from datetime import datetime
 from pathlib import Path
 
 import numpy as np
@@ -142,7 +143,7 @@ def get_decay_photon_source_mesh(
 
 
 class R2SManager:
-    """Manager for mesh-based R2S calculations.
+    """Manager for Rigorous 2-Step (R2S) method calculations.
 
     This class is responsible for managing the materials and sources needed for
     mesh-based or cell-based R2S calculations. It provides methods to get
@@ -161,7 +162,6 @@ class R2SManager:
         else:
             self.method = 'cell-based'
         self.domains = domains
-        # TODO: Think about directory structure and file naming
         # TODO: Photon settings
         # TODO: Think about MPI
         # TODO: Option to use CoupledOperator? Needed for true burnup
@@ -175,14 +175,30 @@ class R2SManager:
         cooling_times: Sequence[int],
         dose_tallies: Sequence[openmc.Tally] | None = None,
         timestep_units: str = 's',
+        output_dir: PathLike | None = None,
         bounding_boxes: dict[int, openmc.BoundingBox] | None = None,
         micro_kwargs: dict | None = None,
         mat_vol_kwargs: dict | None = None,
         run_kwargs: dict | None = None,
     ):
-        self.step1_neutron_transport(micro_kwargs=micro_kwargs, mat_vol_kwargs=mat_vol_kwargs)
-        self.step2_activation(timesteps, source_rates, timestep_units)
-        self.step3_photon_transport(cooling_times, dose_tallies, bounding_boxes, run_kwargs=run_kwargs)
+        """Run the R2S calculation."""
+
+        if output_dir is None:
+            stamp = datetime.now().strftime('%Y-%m-%dT%H-%M-%S')
+            output_dir = Path(f'r2s_{stamp}')
+
+        self.step1_neutron_transport(
+            output_dir / 'neutron_transport', mat_vol_kwargs, micro_kwargs
+        )
+        self.step2_activation(
+            timesteps, source_rates, timestep_units, output_dir / 'activation'
+        )
+        self.step3_photon_transport(
+            cooling_times, dose_tallies, bounding_boxes,
+            output_dir / 'photon_transport', run_kwargs=run_kwargs
+        )
+
+        return output_dir
 
     def step1_neutron_transport(
         self,
@@ -194,11 +210,10 @@ class R2SManager:
 
         This step computes the material volume fractions on the mesh, creates a
         mesh-material filter, and retrieves the fluxes and microscopic cross
-        sections for each mesh/material combination. It populates the results
+        sections for each mesh/material combination. This step will populate the
+        'fluxes' and 'micros' keys in the results dictionary. For a mesh-based
+        calculation, it will also populate the 'mesh_material_volumes' key.
 
-        This step will populate the 'fluxes' and 'micros' keys in the results
-        dictionary. For a mesh-based calculation, it will also populate the
-        'mesh_material_volumes' key.
         """
 
         # TODO: Energy discretization
@@ -227,6 +242,9 @@ class R2SManager:
         # Run neutron transport and get fluxes and micros
         self.results['fluxes'], self.results['micros'] = get_microxs_and_flux(
             self.model, domains, **micro_kwargs)
+
+        # Export model to output directory
+        self.model.export_to_model_xml(output_dir / 'model.xml')
 
         # Save flux and micros to file
         np.save(output_dir / 'fluxes.npy', self.results['fluxes'])

@@ -1,5 +1,5 @@
 import numpy as np
-from math import pi
+from math import pi,sqrt
 
 import openmc
 import pytest
@@ -85,6 +85,16 @@ def model():
     sph_mesh_exp_vols = np.multiply.outer(drdt, dp)
     np.testing.assert_allclose(sph_mesh.volumes, sph_mesh_exp_vols)
 
+    hex_mesh = openmc.HexagonalMesh()
+    hex_mesh.dimension = [5,1]
+    hex_mesh.lower_left = [-7.5, -7.5]
+    hex_mesh.upper_right = [7.5, 7.5]
+    dx = 15 / 5
+    dz = 15
+    dxdy = dx * dx * sqrt(3)
+    hm_mesh_exp_vols = dxdy * dz
+    np.testing.assert_allclose(hex_mesh.volumes, hm_mesh_exp_vols)
+
     # Create filters
     reg_filters = [
         openmc.MeshFilter(mesh_1d),
@@ -92,7 +102,8 @@ def model():
         openmc.MeshFilter(mesh_3d),
         openmc.MeshFilter(recti_mesh),
         openmc.MeshFilter(cyl_mesh),
-        openmc.MeshFilter(sph_mesh)
+        openmc.MeshFilter(sph_mesh),
+        openmc.MeshFilter(hex_mesh),
     ]
     surf_filters = [
         openmc.MeshSurfaceFilter(mesh_1d),
@@ -100,7 +111,8 @@ def model():
         openmc.MeshSurfaceFilter(mesh_3d),
         openmc.MeshSurfaceFilter(recti_mesh),
         openmc.MeshSurfaceFilter(cyl_mesh),
-        openmc.MeshSurfaceFilter(sph_mesh)
+        openmc.MeshSurfaceFilter(sph_mesh),
+        openmc.MeshSurfaceFilter(hex_mesh),
     ]
 
     # Create tallies

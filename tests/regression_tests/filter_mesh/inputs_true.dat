@@ -63,48 +63,59 @@
       <phi_grid>0.0 0.3490658503988659 0.6981317007977318 1.0471975511965976 1.3962634015954636 1.7453292519943295 2.0943951023931953 2.443460952792061 2.792526803190927 3.141592653589793 3.490658503988659 3.839724354387525 4.1887902047863905 4.537856055185257 4.886921905584122 5.235987755982989 5.585053606381854 5.93411945678072 6.283185307179586</phi_grid>
       <origin>0.0 0.0 0.0</origin>
     </mesh>
+    <mesh id="7" type="hexagonal">
+      <dimension>5 1</dimension>
+      <lower_left>-7.5 -7.5</lower_left>
+      <upper_right>7.5 7.5</upper_right>
+    </mesh>
     <filter id="1" type="mesh">
       <bins>1</bins>
     </filter>
-    <filter id="7" type="meshsurface">
+    <filter id="8" type="meshsurface">
       <bins>1</bins>
     </filter>
     <filter id="2" type="mesh">
       <bins>2</bins>
     </filter>
-    <filter id="8" type="meshsurface">
+    <filter id="9" type="meshsurface">
       <bins>2</bins>
     </filter>
     <filter id="3" type="mesh">
       <bins>3</bins>
     </filter>
-    <filter id="9" type="meshsurface">
+    <filter id="10" type="meshsurface">
       <bins>3</bins>
     </filter>
     <filter id="4" type="mesh">
       <bins>4</bins>
     </filter>
-    <filter id="10" type="meshsurface">
+    <filter id="11" type="meshsurface">
       <bins>4</bins>
     </filter>
     <filter id="5" type="mesh">
       <bins>5</bins>
     </filter>
-    <filter id="11" type="meshsurface">
+    <filter id="12" type="meshsurface">
       <bins>5</bins>
     </filter>
     <filter id="6" type="mesh">
       <bins>6</bins>
     </filter>
-    <filter id="12" type="meshsurface">
+    <filter id="13" type="meshsurface">
       <bins>6</bins>
+    </filter>
+    <filter id="7" type="mesh">
+      <bins>7</bins>
+    </filter>
+    <filter id="14" type="meshsurface">
+      <bins>7</bins>
     </filter>
     <tally id="1">
       <filters>1</filters>
       <scores>total</scores>
     </tally>
     <tally id="2">
-      <filters>7</filters>
+      <filters>8</filters>
       <scores>current</scores>
     </tally>
     <tally id="3">
@@ -112,7 +123,7 @@
       <scores>total</scores>
     </tally>
     <tally id="4">
-      <filters>8</filters>
+      <filters>9</filters>
       <scores>current</scores>
     </tally>
     <tally id="5">
@@ -120,7 +131,7 @@
       <scores>total</scores>
     </tally>
     <tally id="6">
-      <filters>9</filters>
+      <filters>10</filters>
       <scores>current</scores>
     </tally>
     <tally id="7">
@@ -128,7 +139,7 @@
       <scores>total</scores>
     </tally>
     <tally id="8">
-      <filters>10</filters>
+      <filters>11</filters>
       <scores>current</scores>
     </tally>
     <tally id="9">
@@ -136,7 +147,7 @@
       <scores>total</scores>
     </tally>
     <tally id="10">
-      <filters>11</filters>
+      <filters>12</filters>
       <scores>current</scores>
     </tally>
     <tally id="11">
@@ -144,7 +155,15 @@
       <scores>total</scores>
     </tally>
     <tally id="12">
-      <filters>12</filters>
+      <filters>13</filters>
+      <scores>current</scores>
+    </tally>
+    <tally id="13">
+      <filters>7</filters>
+      <scores>total</scores>
+    </tally>
+    <tally id="14">
+      <filters>14</filters>
       <scores>current</scores>
     </tally>
   </tallies>

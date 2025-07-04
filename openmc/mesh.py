@@ -2843,7 +2843,7 @@ class HexagonalMesh(StructuredMesh):
         # check these! the hex_lattice type has attributes num_rings,
         #  pitch, center, and orientation - which will define the mesh, except for z-divisions
         # we can add in divisions, to make sure we can also divide the lattice up in more hexagons.
-        hex_div = lattice.num_rings * 2 + 1
+        hex_div = lattice.num_rings * 2 - 1 if lattice.num_rings > 0 else 1
         z_div = lattice.num_axial if lattice.num_axial is not None else 1
 
         shape = np.array([hex_div,z_div])

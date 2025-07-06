@@ -37,7 +37,6 @@ Simulation Settings
 
    openmc.read_source_file
    openmc.write_source_file
-   openmc.wwinp_to_wws
 
 Material Specification
 ----------------------
@@ -129,6 +128,7 @@ Constructing Tallies
    openmc.SurfaceFilter
    openmc.MeshFilter
    openmc.MeshBornFilter
+   openmc.MeshMaterialFilter
    openmc.MeshSurfaceFilter
    openmc.EnergyFilter
    openmc.EnergyoutFilter
@@ -259,8 +259,16 @@ Variance Reduction
    :template: myclass
 
    openmc.WeightWindows
+   openmc.WeightWindowsList
    openmc.WeightWindowGenerator
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myfunction.rst
+
    openmc.hdf5_to_wws
+   openmc.wwinp_to_wws
 
 
 Coarse Mesh Finite Difference Acceleration

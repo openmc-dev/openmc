@@ -33,6 +33,7 @@ enum class FilterType {
   MATERIALFROM,
   MESH,
   MESHBORN,
+  MESH_MATERIAL,
   MESH_SURFACE,
   MU,
   MUSURFACE,

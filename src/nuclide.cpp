@@ -1114,7 +1114,7 @@ extern "C" size_t nuclides_size()
 extern "C" int openmc_load_nuclide(const char* name, const double* temps, int n)
 {
   if (data::nuclide_map.find(name) == data::nuclide_map.end() ||
-      data::nuclide_map.at(name) >= data::elements.size()) {
+      data::nuclide_map.at(name) >= data::nuclides.size()) {
     LibraryKey key {Library::Type::neutron, name};
     const auto& it = data::library_map.find(key);
     if (it == data::library_map.end()) {
@@ -1215,7 +1215,6 @@ extern "C" int openmc_nuclide_collapse_rate(int index, int MT,
     *xs = data::nuclides[index]->collapse_rate(
       MT, temperature, {energy, energy + n + 1}, {flux, flux + n});
   } catch (const std::out_of_range& e) {
-    fmt::print("Caught error\n");
     set_errmsg(e.what());
     return OPENMC_E_OUT_OF_BOUNDS;
   }

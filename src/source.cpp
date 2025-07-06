@@ -157,11 +157,28 @@ void Source::read_constraints(pugi::xml_node node)
   }
 }
 
+void check_rejection_fraction(int64_t n_reject, int64_t n_accept)
+{
+  // Don't check unless we've hit a minimum number of total sites rejected
+  if (n_reject < EXTSRC_REJECT_THRESHOLD)
+    return;
+
+  // Compute fraction of accepted sites and compare against minimum
+  double fraction = static_cast<double>(n_accept) / n_reject;
+  if (fraction <= settings::source_rejection_fraction) {
+    fatal_error(fmt::format(
+      "Too few source sites satisfied the constraints (minimum source "
+      "rejection fraction = {}). Please check your source definition or "
+      "set a lower value of Settings.source_rejection_fraction.",
+      settings::source_rejection_fraction));
+  }
+}
+
 SourceSite Source::sample_with_constraints(uint64_t* seed) const
 {
   bool accepted = false;
-  static int n_reject = 0;
-  static int n_accept = 0;
+  static int64_t n_reject = 0;
+  static int64_t n_accept = 0;
   SourceSite site;
 
   while (!accepted) {
@@ -176,13 +193,9 @@ SourceSite Source::sample_with_constraints(uint64_t* seed) const
                  satisfies_energy_constraints(site.E) &&
                  satisfies_time_constraints(site.time);
       if (!accepted) {
+        // Increment number of rejections and check against minimum fraction
         ++n_reject;
-        if (n_reject >= EXTSRC_REJECT_THRESHOLD &&
-            static_cast<double>(n_accept) / n_reject <=
-              EXTSRC_REJECT_FRACTION) {
-          fatal_error("More than 95% of external source sites sampled were "
-                      "rejected. Please check your source definition.");
-        }
+        check_rejection_fraction(n_reject, n_accept);
 
         // For the "kill" strategy, accept particle but set weight to 0 so that
         // it is terminated immediately
@@ -226,7 +239,9 @@ bool Source::satisfies_spatial_constraints(Position r) const
   if (!domain_ids_.empty()) {
     if (domain_type_ == DomainType::MATERIAL) {
       auto mat_index = geom_state.material();
-      if (mat_index != MATERIAL_VOID) {
+      if (mat_index == MATERIAL_VOID) {
+        accepted = false;
+      } else {
         accepted = contains(domain_ids_, model::materials[mat_index]->id());
       }
     } else {
@@ -337,8 +352,8 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
 
   // Repeat sampling source location until a good site has been accepted
   bool accepted = false;
-  static int n_reject = 0;
-  static int n_accept = 0;
+  static int64_t n_reject = 0;
+  static int64_t n_accept = 0;
 
   while (!accepted) {
 
@@ -351,12 +366,7 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
     // Check for rejection
     if (!accepted) {
       ++n_reject;
-      if (n_reject >= EXTSRC_REJECT_THRESHOLD &&
-          static_cast<double>(n_accept) / n_reject <= EXTSRC_REJECT_FRACTION) {
-        fatal_error("More than 95% of external source sites sampled were "
-                    "rejected. Please check your external source's spatial "
-                    "definition.");
-      }
+      check_rejection_fraction(n_reject, n_accept);
     }
   }
 
@@ -381,18 +391,12 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
       site.E = energy_->sample(seed);
 
       // Resample if energy falls above maximum particle energy
-      if (site.E < data::energy_max[p] and
+      if (site.E < data::energy_max[p] &&
           (satisfies_energy_constraints(site.E)))
         break;
 
       n_reject++;
-      if (n_reject >= EXTSRC_REJECT_THRESHOLD &&
-          static_cast<double>(n_accept) / n_reject <= EXTSRC_REJECT_FRACTION) {
-        fatal_error(
-          "More than 95% of external source sites sampled were "
-          "rejected. Please check your external source energy spectrum "
-          "definition.");
-      }
+      check_rejection_fraction(n_reject, n_accept);
     }
 
     // Sample particle creation time
@@ -524,6 +528,15 @@ CompiledSourceWrapper::~CompiledSourceWrapper()
 }
 
 //==============================================================================
+// MeshElementSpatial implementation
+//==============================================================================
+
+Position MeshElementSpatial::sample(uint64_t* seed) const
+{
+  return model::meshes[mesh_index_]->sample_element(elem_index_, seed);
+}
+
+//==============================================================================
 // MeshSource implementation
 //==============================================================================
 
@@ -537,8 +550,21 @@ MeshSource::MeshSource(pugi::xml_node node) : Source(node)
   // read all source distributions and populate strengths vector for MeshSpatial
   // object
   for (auto source_node : node.children("source")) {
-    sources_.emplace_back(Source::create(source_node));
+    auto src = Source::create(source_node);
+    if (auto ptr = dynamic_cast<IndependentSource*>(src.get())) {
+      src.release();
+      sources_.emplace_back(ptr);
+    } else {
+      fatal_error(
+        "The source assigned to each element must be an IndependentSource.");
+    }
     strengths.push_back(sources_.back()->strength());
+  }
+
+  // Set spatial distributions for each mesh element
+  for (int elem_index = 0; elem_index < sources_.size(); ++elem_index) {
+    sources_[elem_index]->set_space(
+      std::make_unique<MeshElementSpatial>(mesh_idx, elem_index));
   }
 
   // the number of source distributions should either be one or equal to the
@@ -554,29 +580,12 @@ MeshSource::MeshSource(pugi::xml_node node) : Source(node)
 
 SourceSite MeshSource::sample(uint64_t* seed) const
 {
-  // Sample the CDF defined in initialization above
+  // Sample a mesh element based on the relative strengths
   int32_t element = space_->sample_element_index(seed);
 
-  // Sample position and apply rejection on spatial domains
-  Position r;
-  do {
-    r = space_->mesh()->sample_element(element, seed);
-  } while (!this->satisfies_spatial_constraints(r));
-
-  SourceSite site;
-  while (true) {
-    // Sample source for the chosen element and replace the position
-    site = source(element)->sample_with_constraints(seed);
-    site.r = r;
-
-    // Apply other rejections
-    if (satisfies_energy_constraints(site.E) &&
-        satisfies_time_constraints(site.time)) {
-      break;
-    }
-  }
-
-  return site;
+  // Sample the distribution for the specific mesh element; note that the
+  // spatial distribution has been set for each element using MeshElementSpatial
+  return source(element)->sample_with_constraints(seed);
 }
 
 //==============================================================================

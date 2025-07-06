@@ -13,6 +13,7 @@ from .checkvalue import check_type, check_value
 from .surface import _BOUNDARY_TYPES
 from .bounding_box import BoundingBox
 from .utility_funcs import input_path
+from .plots import add_plot_params
 
 
 class DAGMCUniverse(openmc.UniverseBase):
@@ -565,6 +566,12 @@ class DAGMCUniverse(openmc.UniverseBase):
             else:
                 fill = mats_per_id[dag_cell.fill.id] if dag_cell.fill else None
             self.add_cell(openmc.DAGMCCell(cell_id=dag_cell_id, fill=fill))
+
+    @add_plot_params
+    def plot(self, *args, **kwargs):
+        """Display a slice plot of the DAGMCUniverse.
+        """
+        return openmc.Geometry(self).plot(*args, **kwargs)
 
 
 class DAGMCCell(openmc.Cell):

@@ -47,7 +47,7 @@ struct SourceSite {
   double time {0.0};
   double wgt {1.0};
   int delayed_group {0};
-  int surf_id {0};
+  int surf_id {SURFACE_NONE};
   ParticleType particle;
 
   // Extra attributes that don't show up in source written to file
@@ -450,6 +450,7 @@ private:
 
   double wgt_ {1.0};
   double wgt_born_ {1.0};
+  double wgt_ww_born_ {-1.0};
   double mu_;
   double wgt_last_ {1.0};
 
@@ -558,6 +559,10 @@ public:
   double& wgt_born() { return wgt_born_; }
   double wgt_born() const { return wgt_born_; }
 
+  // Weight window value at birth
+  double& wgt_ww_born() { return wgt_ww_born_; }
+  const double& wgt_ww_born() const { return wgt_ww_born_; }
+
   // Statistic weight of particle at last collision
   double& wgt_last() { return wgt_last_; }
   const double& wgt_last() const { return wgt_last_; }
@@ -579,7 +584,8 @@ public:
   bool& fission() { return fission_; }            // true if implicit fission
   int& event_nuclide() { return event_nuclide_; } // index of collision nuclide
   const int& event_nuclide() const { return event_nuclide_; }
-  int& event_mt() { return event_mt_; }           // MT number of collision
+  int& event_mt() { return event_mt_; } // MT number of collision
+  const int& event_mt() const { return event_mt_; }
   int& delayed_group() { return delayed_group_; } // delayed group
   const int& parent_nuclide() const { return parent_nuclide_; }
   int& parent_nuclide() { return parent_nuclide_; } // Parent nuclide

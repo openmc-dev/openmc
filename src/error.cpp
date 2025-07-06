@@ -110,23 +110,26 @@ void write_message(const std::string& message, int level)
 
 void fatal_error(const std::string& message, int err)
 {
+#pragma omp critical(FatalError)
+  {
 #ifdef _POSIX_VERSION
-  // Make output red if user is in a terminal
-  if (isatty(STDERR_FILENO)) {
-    std::cerr << "\033[0;31m";
-  }
+    // Make output red if user is in a terminal
+    if (isatty(STDERR_FILENO)) {
+      std::cerr << "\033[0;31m";
+    }
 #endif
 
-  // Write error message
-  std::cerr << " ERROR: ";
-  output(message, std::cerr, 8);
+    // Write error message
+    std::cerr << " ERROR: ";
+    output(message, std::cerr, 8);
 
 #ifdef _POSIX_VERSION
-  // Reset color for terminal
-  if (isatty(STDERR_FILENO)) {
-    std::cerr << "\033[0m";
-  }
+    // Reset color for terminal
+    if (isatty(STDERR_FILENO)) {
+      std::cerr << "\033[0m";
+    }
 #endif
+  }
 
 #ifdef OPENMC_MPI
   MPI_Abort(mpi::intracomm, err);

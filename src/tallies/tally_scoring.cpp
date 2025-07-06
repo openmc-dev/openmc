@@ -325,6 +325,56 @@ double score_neutron_heating(const Particle& p, const Tally& tally, double flux,
   return score;
 }
 
+//! Helper function to obtain reaction Q value for photons and charged particles
+double get_reaction_q_value(const Particle& p)
+{
+  if (p.type() == ParticleType::photon && p.event_mt() == PAIR_PROD) {
+    // pair production
+    return -2 * MASS_ELECTRON_EV;
+  } else if (p.type() == ParticleType::positron) {
+    // positron annihilation
+    return 2 * MASS_ELECTRON_EV;
+  } else {
+    return 0.0;
+  }
+}
+
+//! Helper function to obtain particle heating [eV]
+
+double score_particle_heating(const Particle& p, const Tally& tally,
+  double flux, int rxn_bin, int i_nuclide, double atom_density)
+{
+  if (p.type() == ParticleType::neutron)
+    return score_neutron_heating(
+      p, tally, flux, rxn_bin, i_nuclide, atom_density);
+  if (i_nuclide == -1 || i_nuclide == p.event_nuclide() ||
+      p.event_nuclide() == -1) {
+    // For pair production and positron annihilation, we need to account for the
+    // reaction Q value
+    double Q = get_reaction_q_value(p);
+
+    // Get the pre-collision energy of the particle.
+    auto E = p.E_last();
+
+    // The energy deposited is the sum of the incident energy and the reaction
+    // Q-value less the energy of any outgoing particles
+    double score = E + Q - p.E() - p.bank_second_E();
+
+    score *= p.wgt_last();
+
+    // if no event_nuclide (charged particle) scale energy deposition by
+    // fractional charge density
+    if (i_nuclide != -1 && p.event_nuclide() == -1) {
+      const auto& mat {model::materials[p.material()]};
+      int z = data::nuclides[i_nuclide]->Z_;
+      auto i = mat->mat_nuclide_index_[i_nuclide];
+      score *= (z * mat->atom_density_[i] / mat->charge_density());
+    }
+    return score;
+  }
+  return 0.0;
+}
+
 //! Helper function for nu-fission tallies with energyout filters.
 //
 //! In this case, we may need to score to multiple bins if there were multiple
@@ -1007,23 +1057,8 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
       break;
 
     case HEATING:
-      if (p.type() == Type::neutron) {
-        score = score_neutron_heating(
-          p, tally, flux, HEATING, i_nuclide, atom_density);
-      } else {
-        if (i_nuclide == -1 || i_nuclide == p.event_nuclide()) {
-          // The energy deposited is the difference between the pre-collision
-          // and post-collision energy...
-          score = E - p.E();
-          // ...less the energy of any secondary particles since they will be
-          // transported individually later
-          score -= p.bank_second_E();
-
-          score *= p.wgt_last();
-        } else {
-          score = 0.0;
-        }
-      }
+      score = score_particle_heating(
+        p, tally, flux, HEATING, i_nuclide, atom_density);
       break;
 
     default:
@@ -1539,19 +1574,8 @@ void score_general_ce_analog(Particle& p, int i_tally, int start_index,
       break;
 
     case HEATING:
-      if (p.type() == Type::neutron) {
-        score = score_neutron_heating(
-          p, tally, flux, HEATING, i_nuclide, atom_density);
-      } else {
-        // The energy deposited is the difference between the pre-collision and
-        // post-collision energy...
-        score = E - p.E();
-        // ...less the energy of any secondary particles since they will be
-        // transported individually later
-        score -= p.bank_second_E();
-
-        score *= p.wgt_last();
-      }
+      score = score_particle_heating(
+        p, tally, flux, HEATING, i_nuclide, atom_density);
       break;
 
     default:

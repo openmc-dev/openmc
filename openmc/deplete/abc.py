@@ -24,7 +24,7 @@ from openmc.mpi import comm
 from openmc.utility_funcs import change_directory
 from openmc import Material
 from .stepresult import StepResult
-from .chain import Chain
+from .chain import _get_chain
 from .results import Results, _SECONDS_PER_MINUTE, _SECONDS_PER_HOUR, \
     _SECONDS_PER_DAY, _SECONDS_PER_JULIAN_YEAR
 from .pool import deplete
@@ -126,8 +126,8 @@ class TransportOperator(ABC):
 
     Parameters
     ----------
-    chain_file : str
-        Path to the depletion chain XML file
+    chain_file : PathLike or Chain
+        Path to the depletion chain XML file or instance of openmc.deplete.Chain.
     fission_q : dict, optional
         Dictionary of nuclides and their fission Q values [eV]. If not given,
         values will be pulled from the ``chain_file``.
@@ -145,11 +145,12 @@ class TransportOperator(ABC):
         The depletion chain information necessary to form matrices and tallies.
 
     """
-    def __init__(self, chain_file, fission_q=None, prev_results=None):
+    def __init__(self, chain_file=None, fission_q=None, prev_results=None):
         self.output_dir = '.'
 
         # Read depletion chain
-        self.chain = Chain.from_xml(chain_file, fission_q)
+        self.chain = _get_chain(chain_file, fission_q)
+
         if prev_results is None:
             self.prev_res = None
         else:
@@ -818,10 +819,35 @@ class Integrator(ABC):
             rates *= source_rate / res.source_rate
         return bos_conc, OperatorResult(k, rates)
 
-    def _get_start_data(self):
+    def _get_start_data(self) -> tuple[float, int]:
+        """
+        This function fetches the starting state of a depletion simulation in
+        terms of the simulation physical time at which to start and the index at
+        which the depletion simulation should start. When no previous results
+        exist, the time and index are both zero. When previous results do exist,
+        it returns the time corresponding to beginning the previous results last
+        timestep and the index as N-1 where N is the number of previous
+        StepResults found in the previous Results (as expected from 0-based
+        indexing).
+
+        Note that the openmc.deplete.Results.time object is a list of float with
+        [t,t+dt] where t is the beginning of timestep time and t+dt is the end
+        of timestep time. If the previous results correspond to a simulation
+        that finished to completeion, it will contain a results in the form of
+        [t,t], but if a simulation doesn't finish all the given timesteps, it is
+        the t that is the desired start time, not t+dt. Thus, it is always safe
+        to take time[0].
+
+        Returns
+        -------
+        start_time : float
+            Time at which depletion simulation should start in [s]
+        index : int
+            Index at which depletion simulation should start
+        """
         if self.operator.prev_res is None:
             return 0.0, 0
-        return (self.operator.prev_res[-1].time[-1],
+        return (self.operator.prev_res[-1].time[0],
                 len(self.operator.prev_res) - 1)
 
     def integrate(

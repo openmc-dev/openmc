@@ -125,6 +125,7 @@ RunMode run_mode {RunMode::UNSET};
 SolverType solver_type {SolverType::MONTE_CARLO};
 std::unordered_set<int> sourcepoint_batch;
 std::unordered_set<int> statepoint_batch;
+double source_rejection_fraction {0.05};
 std::unordered_set<int> source_write_surf_id;
 int64_t ssw_max_particles;
 int64_t ssw_max_files;
@@ -643,6 +644,12 @@ void read_settings_xml(pugi::xml_node root)
   // Check if we want to write out source
   if (check_for_node(root, "write_initial_source")) {
     write_initial_source = get_node_value_bool(root, "write_initial_source");
+  }
+
+  // Get relative number of lost particles
+  if (check_for_node(root, "source_rejection_fraction")) {
+    source_rejection_fraction =
+      std::stod(get_node_value(root, "source_rejection_fraction"));
   }
 
   // Survival biasing

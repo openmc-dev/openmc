@@ -400,31 +400,30 @@ class MeshBase(IDManagerMixin, ABC):
         """
         import openmc.lib
 
-        with change_directory(tmpdir=True):
-            # In order to get mesh into model, we temporarily replace the
-            # tallies with a single mesh tally using the current mesh
-            original_tallies = model.tallies
-            new_tally = openmc.Tally()
-            new_tally.filters = [openmc.MeshFilter(self)]
-            new_tally.scores = ['flux']
-            model.tallies = [new_tally]
+        # In order to get mesh into model, we temporarily replace the
+        # tallies with a single mesh tally using the current mesh
+        original_tallies = model.tallies
+        new_tally = openmc.Tally()
+        new_tally.filters = [openmc.MeshFilter(self)]
+        new_tally.scores = ['flux']
+        model.tallies = [new_tally]
 
-            # Export model to XML
-            model.export_to_model_xml()
+        # Set default arguments
+        kwargs.setdefault('output', True)
+        if 'args' in kwargs:
+            kwargs['args'] = ['-c'] + kwargs['args']
+        kwargs.setdefault('args', ['-c'])
 
-            # Get material volume fractions
-            kwargs.setdefault('output', True)
-            if 'args' in kwargs:
-                kwargs['args'] = ['-c'] + kwargs['args']
-            kwargs.setdefault('args', ['-c'])
-            openmc.lib.init(**kwargs)
+        with openmc.lib.TemporarySession(model, **kwargs):
+            # Get mesh from single tally
             mesh = openmc.lib.tallies[new_tally.id].filters[0].mesh
+
+            # Compute material volumes
             volumes = mesh.material_volumes(
                 n_samples, max_materials, output=kwargs['output'])
-            openmc.lib.finalize()
 
-            # Restore original tallies
-            model.tallies = original_tallies
+        # Restore original tallies
+        model.tallies = original_tallies
 
         return volumes
 

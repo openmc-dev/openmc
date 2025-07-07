@@ -131,7 +131,8 @@ def test_zam():
     assert openmc.data.zam('Am242_m10') == (95, 242, 10)
     with pytest.raises(ValueError):
         openmc.data.zam('garbage')
-
+    with pytest.raises(ValueError):
+        openmc.data.zam('Am242-m1')
 
 def test_half_life():
     assert openmc.data.half_life('H2') is None

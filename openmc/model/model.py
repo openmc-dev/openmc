@@ -908,6 +908,8 @@ class Model:
                            width: Sequence[float] | None,
                            pixels: int | Sequence[int],
                            basis: str):
+        x, y, z = openmc.plots._BASIS_INDICES[basis]
+
         bb = self.bounding_box
         # checks to see if bounding box contains -inf or inf values
         if np.isinf(bb.extent[basis]).any():

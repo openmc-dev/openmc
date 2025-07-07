@@ -48,24 +48,30 @@ struct openmc_local_mcpl_particle_t {
 
 typedef struct openmc_local_mcpl_particle_t mcpl_particle_repr_t;
 
-typedef void* mcpl_file_handle_repr_t;
-typedef void* mcpl_outfile_handle_repr_t;
+// Opaque struct definitions replicating the MCPL C-API to ensure ABI
+// compatibility without including mcpl.h. These must be kept in sync.
+struct mcpl_file_t_ {
+  void* internal;
+};
+struct mcpl_outfile_t_ {
+  void* internal;
+};
 
-typedef mcpl_file_handle_repr_t (*mcpl_open_file_fpt)(const char* filename);
-typedef uint64_t (*mcpl_hdr_nparticles_fpt)(
-  mcpl_file_handle_repr_t file_handle);
-typedef const mcpl_particle_repr_t* (*mcpl_read_fpt)(
-  mcpl_file_handle_repr_t file_handle);
-typedef void (*mcpl_close_file_fpt)(mcpl_file_handle_repr_t file_handle);
+typedef struct mcpl_file_t_ mcpl_file_t;
+typedef struct mcpl_outfile_t_ mcpl_outfile_t;
 
-typedef mcpl_outfile_handle_repr_t (*mcpl_create_outfile_fpt)(
-  const char* filename);
+// Function pointer types for the dynamically loaded MCPL library
+typedef mcpl_file_t* (*mcpl_open_file_fpt)(const char* filename);
+typedef uint64_t (*mcpl_hdr_nparticles_fpt)(mcpl_file_t* file_handle);
+typedef const mcpl_particle_repr_t* (*mcpl_read_fpt)(mcpl_file_t* file_handle);
+typedef void (*mcpl_close_file_fpt)(mcpl_file_t* file_handle);
+
+typedef mcpl_outfile_t* (*mcpl_create_outfile_fpt)(const char* filename);
 typedef void (*mcpl_hdr_set_srcname_fpt)(
-  mcpl_outfile_handle_repr_t outfile_handle, const char* srcname);
-typedef void (*mcpl_add_particle_fpt)(mcpl_outfile_handle_repr_t outfile_handle,
-  const mcpl_particle_repr_t* particle);
-typedef void (*mcpl_close_outfile_fpt)(
-  mcpl_outfile_handle_repr_t outfile_handle);
+  mcpl_outfile_t* outfile_handle, const char* srcname);
+typedef void (*mcpl_add_particle_fpt)(
+  mcpl_outfile_t* outfile_handle, const mcpl_particle_repr_t* particle);
+typedef void (*mcpl_close_outfile_fpt)(mcpl_outfile_t* outfile_handle);
 
 namespace openmc {
 
@@ -164,21 +170,6 @@ void append_error(std::string& existing_msg, const std::string& new_error)
   existing_msg += new_error;
 }
 
-void mcpl_library_cleanup()
-{
-  g_mcpl_api.reset();
-  if (g_mcpl_lib_handle) {
-#ifdef _WIN32
-    FreeLibrary(g_mcpl_lib_handle);
-#else
-    dlclose(g_mcpl_lib_handle);
-#endif
-    g_mcpl_lib_handle = nullptr;
-  }
-  g_mcpl_successfully_loaded = false;
-  g_mcpl_init_attempted = false;
-}
-
 void initialize_mcpl_interface_impl()
 {
   g_mcpl_init_attempted = true;
@@ -264,7 +255,8 @@ void initialize_mcpl_interface_impl()
   try {
     g_mcpl_api = std::make_unique<McplApi>(g_mcpl_lib_handle);
     g_mcpl_successfully_loaded = true;
-    std::atexit(mcpl_library_cleanup);
+    // Do not call dlclose/FreeLibrary at exit. Leaking the handle is safer
+    // and standard practice for libraries used for the application's lifetime.
   } catch (const std::runtime_error& e) {
     append_error(g_mcpl_load_error_msg,
       fmt::format(
@@ -297,16 +289,12 @@ inline void ensure_mcpl_ready_or_fatal()
 {
   initialize_mcpl_interface_if_needed();
   if (!g_mcpl_successfully_loaded) {
-    fatal_error(fmt::format(
-      "MCPL functionality is required, but the MCPL library is not available "
-      "or failed to initialize. "
-      "Please ensure MCPL is installed and its library can be found (e.g., via "
-      "PATH on Windows, LD_LIBRARY_PATH on Linux, or DYLD_LIBRARY_PATH on "
-      "macOS). "
-      "You can often install MCPL with 'pip install mcpl'. "
-      "Last error(s): {}",
-      g_mcpl_load_error_msg.empty() ? "No specific error during load."
-                                    : g_mcpl_load_error_msg));
+    fatal_error("MCPL functionality is required, but the MCPL library is not "
+                "available or failed to initialize. Please ensure MCPL is "
+                "installed and its library can be found (e.g., via PATH on "
+                "Windows, LD_LIBRARY_PATH on Linux, or DYLD_LIBRARY_PATH on "
+                "macOS). You can often install MCPL with 'pip install mcpl' or "
+                "'conda install mcpl'.");
   }
 }
 
@@ -352,7 +340,7 @@ vector<SourceSite> mcpl_source_sites(std::string path)
   ensure_mcpl_ready_or_fatal();
   vector<SourceSite> sites;
 
-  mcpl_file_handle_repr_t mcpl_file = g_mcpl_api->open_file(path.c_str());
+  mcpl_file_t* mcpl_file = g_mcpl_api->open_file(path.c_str());
   if (!mcpl_file) {
     fatal_error(fmt::format("MCPL: Could not open file '{}'. It might be "
                             "missing, inaccessible, or not a valid MCPL file.",
@@ -360,6 +348,7 @@ vector<SourceSite> mcpl_source_sites(std::string path)
   }
 
   size_t n_particles_in_file = g_mcpl_api->hdr_nparticles(mcpl_file);
+  size_t n_skipped = 0;
   if (n_particles_in_file > 0) {
     sites.reserve(n_particles_in_file);
   }
@@ -375,16 +364,28 @@ vector<SourceSite> mcpl_source_sites(std::string path)
     if (p_repr->pdgcode == 2112 || p_repr->pdgcode == 22 ||
         p_repr->pdgcode == 11 || p_repr->pdgcode == -11) {
       sites.push_back(mcpl_particle_to_site(p_repr));
+    } else {
+      n_skipped++;
     }
   }
 
   g_mcpl_api->close_file(mcpl_file);
 
+  if (n_skipped > 0 && n_particles_in_file > 0) {
+    double percent_skipped =
+      100.0 * static_cast<double>(n_skipped) / n_particles_in_file;
+    warning(fmt::format(
+      "MCPL: Skipped {} of {} total particles ({:.1f}%) in file '{}' because "
+      "their type is not supported by OpenMC.",
+      n_skipped, n_particles_in_file, percent_skipped, path));
+  }
+
   if (sites.empty()) {
     if (n_particles_in_file > 0) {
-      fatal_error(fmt::format("MCPL file '{}' contained {} particles, but none "
-                              "were of the supported types "
-                              "(neutron, photon, electron, positron).",
+      fatal_error(fmt::format(
+        "MCPL file '{}' contained {} particles, but none were of the supported "
+        "types (neutron, photon, electron, positron). OpenMC cannot proceed "
+        "without source particles.",
         path, n_particles_in_file));
     } else {
       fatal_error(fmt::format(
@@ -394,7 +395,7 @@ vector<SourceSite> mcpl_source_sites(std::string path)
   return sites;
 }
 
-void write_mcpl_source_bank_internal(mcpl_outfile_handle_repr_t file_id,
+void write_mcpl_source_bank_internal(mcpl_outfile_t* file_id,
   span<SourceSite> local_source_bank,
   const vector<int64_t>& bank_index_all_ranks)
 {
@@ -484,7 +485,7 @@ void write_mcpl_source_point(const char* filename, span<SourceSite> source_bank,
       filename, extension));
   }
 
-  mcpl_outfile_handle_repr_t file_id = nullptr;
+  mcpl_outfile_t* file_id = nullptr;
 
   if (mpi::master) {
     file_id = g_mcpl_api->create_outfile(filename_.c_str());

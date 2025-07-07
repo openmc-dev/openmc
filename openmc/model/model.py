@@ -950,20 +950,21 @@ class Model:
 
         Parameters
         ----------
-            origin : Sequence[float] | None, optional
-                Origin of the plot. Defaults to (0.0, 0.0, 0.0).
-            width : Sequence[float] | None, optional
-                Width of the plot. Defaults to (10.0, 10.0).
-            pixels : int | Sequence[int], optional
-               If iterable of ints provided then this directly sets the number of
-               pixels to use in each basis direction. If int provided then this
-               sets the total number of pixels in the plot and the number of
-               pixels in each basis direction is calculated from this total and
-               the image aspect ratio.
-            basis : str, optional
-                Basis of the plot. Defaults to 'xy'.
-            **init_kwargs
-                Keyword arguments passed to :meth:`Model.init_lib`.
+        origin : Sequence[float] | None, optional
+            Origin of the plot. Defaults to (0.0, 0.0, 0.0).
+        width : Sequence[float] | None, optional
+            Width of the plot. Defaults to (10.0, 10.0).
+        pixels : int | Sequence[int], optional
+            If an iterable of ints is provided then this directly sets the
+            number of pixels to use in each basis direction. If a single int
+            is provided then this sets the total number of pixels in the plot
+            and the number of pixels in each basis direction is calculated
+            from this total and the image aspect ratio based on the width
+            argument.
+        basis : str, optional
+            Basis of the plot. Defaults to 'xy'.
+        **init_kwargs
+            Keyword arguments passed to :meth:`Model.init_lib`.
 
         Returns
         -------

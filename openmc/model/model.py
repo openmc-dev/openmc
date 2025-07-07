@@ -955,7 +955,11 @@ class Model:
             width : Sequence[float] | None, optional
                 Width of the plot. Defaults to (10.0, 10.0).
             pixels : int | Sequence[int], optional
-                Number of pixels in the plot. Defaults to 40000.
+               If iterable of ints provided then this directly sets the number of
+               pixels to use in each basis direction. If int provided then this
+               sets the total number of pixels in the plot and the number of
+               pixels in each basis direction is calculated from this total and
+               the image aspect ratio.
             basis : str, optional
                 Basis of the plot. Defaults to 'xy'.
             **init_kwargs

@@ -958,8 +958,6 @@ class Model:
                 Number of pixels in the plot. Defaults to 40000.
             basis : str, optional
                 Basis of the plot. Defaults to 'xy'.
-            color_by : str, optional
-                Color by which to plot the ID map. Defaults to 'cell'.
             **init_kwargs
                 Keyword arguments passed to :meth:`Model.init_lib`.
 

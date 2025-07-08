@@ -60,11 +60,10 @@ HexagonalMesh::HexagonalMesh(pugi::xml_node node)
   std::copy(shape.begin(), shape.end(), shape_.begin());
 
   // Make sure shape has two numbers
-  if (n ==1){
+  if (n == 1) {
     shape_[1] = 1;
     n = 2;
   }
-
 
   // Check that dimensions are all greater than zero
   if (xt::any(shape <= 0)) {
@@ -218,7 +217,8 @@ int32_t HexagonalMesh::get_bin_from_hexindices(const HexMeshIndex& ijkl) const
 {
   // get linear index from the HexMeshIndex
   int32_t r_0 = hex_radius(ijkl);
-  if (r_0 == 0) return (ijkl[3] - 1) * hex_count_;
+  if (r_0 == 0)
+    return (ijkl[3] - 1) * hex_count_;
   int32_t start_of_ring = (1 + 3 * r_0 * (r_0 - 1));
   int32_t bin_no = (ijkl[3] - 1) * hex_count_ + (1 + 3 * r_0 * (r_0 - 1)) +
                    offset_in_ring(ijkl, r_0);
@@ -340,7 +340,8 @@ double HexagonalMesh::frac_hexindex_in_direction(const Position& r, int i) const
   case 1:
     return (sqrt(3.0) / 3.0 * r.x + 1.0 / 3.0 * r.y) / this->size_;
   case 2:
-    return -(2.0 / 3.0 * -r.y) / this->size_ -(sqrt(3.0) / 3.0 * r.x + 1.0 / 3.0 * r.y) / this->size_;
+    return -(2.0 / 3.0 * -r.y) / this->size_ -
+           (sqrt(3.0) / 3.0 * r.x + 1.0 / 3.0 * r.y) / this->size_;
   case 3:
     // z is idx 1 in width_ and lower_left_ / upper_right_
     return (r.z - lower_left_[1]) / width_[1];
@@ -375,13 +376,13 @@ HexagonalMesh::HexMeshIndex HexagonalMesh::get_hexindices(
   vector<double> frac_cds {0, 0, 0, 0};
 
   // r coordinate
-  frac_cds[0] = frac_hexindex_in_direction(r,0);
+  frac_cds[0] = frac_hexindex_in_direction(r, 0);
   // q coordinate
-  frac_cds[1] = frac_hexindex_in_direction(r,1);
+  frac_cds[1] = frac_hexindex_in_direction(r, 1);
   // s coordinate
-  frac_cds[2] = frac_hexindex_in_direction(r,2);
+  frac_cds[2] = frac_hexindex_in_direction(r, 2);
   // z-coordinate
-  frac_cds[3] = frac_hexindex_in_direction(r,3);
+  frac_cds[3] = frac_hexindex_in_direction(r, 3);
 
   HexMeshIndex idx = round_frac_hexindex(frac_cds);
   // check if either index is out of bounds
@@ -389,17 +390,18 @@ HexagonalMesh::HexMeshIndex HexagonalMesh::get_hexindices(
   return idx;
 }
 
-HexagonalMesh::HexMeshIndex HexagonalMesh::round_frac_hexindex(vector<double> frac_ijkl) const
+HexagonalMesh::HexMeshIndex HexagonalMesh::round_frac_hexindex(
+  vector<double> frac_ijkl) const
 {
   std::vector<double> diff(4);
-  HexMeshIndex ijkl {0,0,0,1};
+  HexMeshIndex ijkl {0, 0, 0, 1};
 
-  for (int i = 0; i < frac_ijkl.size(); ++i){
-    diff[i] = (std::abs(std::round(frac_ijkl[i])-frac_ijkl[i]));
+  for (int i = 0; i < frac_ijkl.size(); ++i) {
+    diff[i] = (std::abs(std::round(frac_ijkl[i]) - frac_ijkl[i]));
     ijkl[i] = std::round(frac_ijkl[i]);
   }
   if (diff[0] > diff[1] && diff[0] > diff[2]) {
-    ijkl[0] = -ijkl[1] -ijkl[2];
+    ijkl[0] = -ijkl[1] - ijkl[2];
   } else if (diff[1] > diff[2]) {
     ijkl[1] = -ijkl[0] - ijkl[2];
   } else {
@@ -410,7 +412,6 @@ HexagonalMesh::HexMeshIndex HexagonalMesh::round_frac_hexindex(vector<double> fr
 
   return ijkl;
 }
-
 
 bool HexagonalMesh::in_hexmesh(HexMeshIndex& ijkl) const
 {
@@ -596,8 +597,8 @@ void HexagonalMesh::raytrace_mesh(
     } else {
       distances[3] =
         distance_to_hex_boundary(ijkl, 3, r0, u, traveled_distance);
-      for (int j = 0; j<3; ++j) {
-        distances[k].next_index[3]=ijkl[3];
+      for (int j = 0; j < 3; ++j) {
+        distances[k].next_index[3] = ijkl[3];
       }
     }
 

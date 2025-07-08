@@ -1,4 +1,4 @@
-#include "zrf4/mesh.h"
+#include "openmc/mesh.h"
 #include <algorithm> // for copy, equal, min, min_element
 #include <cassert>
 #define _USE_MATH_DEFINES // to make M_PI declared in Intel and MSVC compilers

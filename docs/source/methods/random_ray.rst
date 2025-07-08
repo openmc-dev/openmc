@@ -109,9 +109,7 @@ terms on the right hand side.
 In Equation :eq:`transport`, :math:`\psi` is the angular neutron flux. This
 parameter represents the total distance traveled by all neutrons in a particular
 direction inside of a control volume per second, and is often given in units of
-:math:`1/(\text{cm}^{2} \text{s})`. As OpenMC does not support time dependence
-in the random ray solver mode, we consider the steady state equation, where the
-units of flux become :math:`1/\text{cm}^{2}`. The angular direction unit vector,
+:math:`1/(\text{cm}^{2} \text{s})`. The angular direction unit vector,
 :math:`\mathbf{\Omega}`, represents the direction of travel for the neutron. The
 spatial position vector, :math:`\mathbf{r}`,  represents the location within the
 simulation. The neutron energy, :math:`E`, or speed in continuous space, is
@@ -1052,13 +1050,16 @@ random ray and Monte Carlo, however.
   regions. Thus, in the OpenMC implementation of random ray, particle sources
   are restricted to being volumetric and isotropic, although different energy
   spectrums are supported. Fixed sources can be applied to specific materials,
-  cells, or universes.
+  cells, or universes. Point sources are "smeared" to fill the volume of the
+  source region that contains the point source coordinate.
 
 - **Inactive batches:** In Monte Carlo, use of a fixed source implies that all
   batches are active batches, as there is no longer a need to develop a fission
   source distribution. However, in random ray mode, there is still a need to
   develop the scattering source by way of inactive batches before beginning
   active batches.
+
+.. _adjoint:
 
 ------------------------
 Adjoint Flux Solver Mode

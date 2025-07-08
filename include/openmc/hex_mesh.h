@@ -111,6 +111,22 @@ public:
 
   double volume(int bin) const { return element_volume_; }
 
+  Position lower_left() const override
+  {
+    Position ll {lower_left_[0], 0, lower_left_[1]};
+    auto dy = this->width_[0] / sqrt(3.0);
+    ll.y = -(this->hex_radius_ * 1.5 * dy + dy);
+    return ll;
+  }
+
+  Position upper_right() const override
+  {
+    Position ur {upper_right_[0], 0, upper_right_[1]};
+    auto dy = this->width_[0] / sqrt(3.0);
+    ur.y = (this->hex_radius_ * 1.5 * dy + dy);
+    return ur;
+  }
+
   // Data members
   double size_ {0};
   int hex_radius_ {0};

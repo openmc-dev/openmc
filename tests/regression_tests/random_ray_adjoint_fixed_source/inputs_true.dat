@@ -191,7 +191,7 @@
   </geometry>
   <settings>
     <run_mode>fixed source</run_mode>
-    <particles>90</particles>
+    <particles>500</particles>
     <batches>10</batches>
     <inactive>5</inactive>
     <source particle="neutron" strength="3.14" type="independent">
@@ -214,6 +214,7 @@
       </source>
       <volume_normalized_flux_tallies>True</volume_normalized_flux_tallies>
       <adjoint>True</adjoint>
+      <volume_estimator>naive</volume_estimator>
     </random_ray>
   </settings>
   <tallies>

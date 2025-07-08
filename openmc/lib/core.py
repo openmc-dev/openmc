@@ -4,7 +4,9 @@ from ctypes import (c_bool, c_int, c_int32, c_int64, c_double, c_char_p,
                     c_uint64, c_size_t)
 import sys
 import os
+from pathlib import Path
 from random import getrandbits
+from tempfile import TemporaryDirectory
 
 import numpy as np
 from numpy.ctypeslib import as_array
@@ -25,6 +27,7 @@ class _SourceSite(Structure):
                 ('delayed_group', c_int),
                 ('surf_id', c_int),
                 ('particle', c_int),
+                ('parent_nuclide', c_int),
                 ('parent_id', c_int64),
                 ('progeny_id', c_int64)]
 
@@ -614,6 +617,69 @@ def run_in_memory(**kwargs):
         yield
     finally:
         finalize()
+
+
+class TemporarySession:
+    """Context manager for running via openmc.lib in a temporary directory.
+
+    This class is useful for accessing functionality from openmc.lib without
+    polluting your current working directory with OpenMC files. It is used
+    internally as a persistent session to avoid loading cross sections multiple
+    times.
+
+    Parameters
+    ----------
+    model : openmc.Model, optional
+        OpenMC model to use for the session. If None, a minimal working model is
+        created.
+    **init_kwargs
+        Keyword arguments to pass to :func:`openmc.lib.init`.
+
+    Attributes
+    ----------
+    model : openmc.Model
+        The OpenMC model used for the session.
+
+    """
+    def __init__(self, model=None, **init_kwargs):
+        self.init_kwargs = init_kwargs
+        if model is None:
+            surf = openmc.Sphere(boundary_type="vacuum")
+            cell = openmc.Cell(region=-surf)
+            model = openmc.Model()
+            model.geometry = openmc.Geometry([cell])
+            model.settings = openmc.Settings(
+                particles=1, batches=1, output={'summary': False})
+        self.model = model
+
+    def __enter__(self):
+        """Initialize the OpenMC library in a temporary directory."""
+        # Make sure OpenMC is not already initialized
+        if openmc.lib.is_initialized:
+            raise RuntimeError("openmc.lib is already initialized.")
+
+        # Store original working directory
+        self.orig_dir = Path.cwd()
+
+        # Set up temporary directory
+        self.tmp_dir = TemporaryDirectory()
+        working_dir = Path(self.tmp_dir.name)
+        working_dir.mkdir(parents=True, exist_ok=True)
+        os.chdir(working_dir)
+
+        # Export model and initialize OpenMC
+        self.model.export_to_model_xml()
+        openmc.lib.init(**self.init_kwargs)
+
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        """Finalize the OpenMC library and clean up temporary directory."""
+        try:
+            openmc.lib.finalize()
+        finally:
+            os.chdir(self.orig_dir)
+            self.tmp_dir.cleanup()
 
 
 class _DLLGlobal:

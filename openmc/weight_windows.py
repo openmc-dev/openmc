@@ -1,6 +1,8 @@
 from __future__ import annotations
 from numbers import Real, Integral
 from collections.abc import Iterable, Sequence
+from pathlib import Path
+from typing import Self
 import warnings
 
 import lxml.etree as ET
@@ -14,6 +16,7 @@ import openmc.checkvalue as cv
 from openmc.checkvalue import PathLike
 from ._xml import get_text, clean_indentation
 from .mixin import IDManagerMixin
+from .utility_funcs import change_directory
 
 
 class WeightWindows(IDManagerMixin):
@@ -90,7 +93,7 @@ class WeightWindows(IDManagerMixin):
     survival_ratio : float
         Ratio of the survival weight to the lower weight window bound for
         rouletting
-    max_lower_bound_ratio: float
+    max_lower_bound_ratio : float
         Maximum allowed ratio of a particle's weight to the weight window's
         lower bound. (Default: 1.0)
     max_split : int
@@ -114,7 +117,7 @@ class WeightWindows(IDManagerMixin):
         upper_bound_ratio: float | None = None,
         energy_bounds: Iterable[Real] | None = None,
         particle_type: str = 'neutron',
-        survival_ratio: float = 3,
+        survival_ratio: float = 3.0,
         max_lower_bound_ratio: float | None = None,
         max_split: int = 10,
         weight_cutoff: float = 1.e-38,
@@ -354,7 +357,7 @@ class WeightWindows(IDManagerMixin):
         return element
 
     @classmethod
-    def from_xml_element(cls, elem: ET.Element, meshes: dict[int, MeshBase]) -> WeightWindows:
+    def from_xml_element(cls, elem: ET.Element, meshes: dict[int, MeshBase]) -> Self:
         """Generate weight window settings from an XML element
 
         Parameters
@@ -408,7 +411,7 @@ class WeightWindows(IDManagerMixin):
         )
 
     @classmethod
-    def from_hdf5(cls, group: h5py.Group, meshes: dict[int, MeshBase]) -> WeightWindows:
+    def from_hdf5(cls, group: h5py.Group, meshes: dict[int, MeshBase]) -> Self:
         """Create weight windows from HDF5 group
 
         Parameters
@@ -458,7 +461,7 @@ class WeightWindows(IDManagerMixin):
         )
 
 
-def wwinp_to_wws(path: PathLike) -> list[WeightWindows]:
+def wwinp_to_wws(path: PathLike) -> WeightWindowsList:
     """Create WeightWindows instances from a wwinp file
 
     .. versionadded:: 0.13.1
@@ -470,180 +473,13 @@ def wwinp_to_wws(path: PathLike) -> list[WeightWindows]:
 
     Returns
     -------
-    list of openmc.WeightWindows
+    WeightWindowsList
     """
-
-    with open(path) as wwinp:
-        # BLOCK 1
-        header = wwinp.readline().split(None, 4)
-        # read file type, time-dependence, number of
-        # particles, mesh type and problem identifier
-        _if, iv, ni, nr = [int(x) for x in header[:4]]
-
-        # header value checks
-        if _if != 1:
-            raise ValueError(f'Found incorrect file type, if: {_if}')
-
-        if iv > 1:
-            # read number of time bins for each particle, 'nt(1...ni)'
-            nt = np.fromstring(wwinp.readline(), sep=' ', dtype=int)
-
-            # raise error if time bins are present for now
-            raise ValueError('Time-dependent weight windows '
-                             'are not yet supported')
-        else:
-            nt = ni * [1]
-
-        # read number of energy bins for each particle, 'ne(1...ni)'
-        ne = np.fromstring(wwinp.readline(), sep=' ', dtype=int)
-
-        # read coarse mesh dimensions and lower left corner
-        mesh_description = np.fromstring(wwinp.readline(), sep=' ')
-        nfx, nfy, nfz = mesh_description[:3].astype(int)
-        xyz0 = mesh_description[3:]
-
-        # read cylindrical and spherical mesh vectors if present
-        if nr == 16:
-            # read number of coarse bins
-            line_arr = np.fromstring(wwinp.readline(), sep=' ')
-            ncx, ncy, ncz = line_arr[:3].astype(int)
-            # read polar vector (x1, y1, z1)
-            xyz1 = line_arr[3:]
-            # read azimuthal vector (x2, y2, z2)
-            line_arr = np.fromstring(wwinp.readline(), sep=' ')
-            xyz2 = line_arr[:3]
-
-            # oriented polar and azimuthal vectors aren't yet supported
-            if np.count_nonzero(xyz1) or np.count_nonzero(xyz2):
-                raise NotImplementedError('Custom sphere/cylinder orientations are not supported')
-
-            # read geometry type
-            nwg = int(line_arr[-1])
-
-        elif nr == 10:
-            # read rectilinear data:
-            # number of coarse mesh bins and mesh type
-            ncx, ncy, ncz, nwg = \
-                np.fromstring(wwinp.readline(), sep=' ').astype(int)
-        else:
-            raise RuntimeError(f'Invalid mesh description (nr) found: {nr}')
-
-        # read BLOCK 2 and BLOCK 3 data into a single array
-        ww_data = np.fromstring(wwinp.read(), sep=' ')
-
-    # extract mesh data from the ww_data array
-    start_idx = 0
-
-    # first values in the mesh definition arrays are the first
-    # coordinate of the grid
-    end_idx = start_idx + 1 + 3 * ncx
-    i0, i_vals = ww_data[start_idx], ww_data[start_idx+1:end_idx]
-    start_idx = end_idx
-
-    end_idx = start_idx + 1 + 3 * ncy
-    j0, j_vals = ww_data[start_idx], ww_data[start_idx+1:end_idx]
-    start_idx = end_idx
-
-    end_idx = start_idx + 1 + 3 * ncz
-    k0, k_vals = ww_data[start_idx], ww_data[start_idx+1:end_idx]
-    start_idx = end_idx
-
-    # mesh consistency checks
-    if nr == 16 and nwg == 1 or nr == 10 and nwg != 1:
-        raise ValueError(f'Mesh description in header ({nr}) '
-                         f'does not match the mesh type ({nwg})')
-
-    if nr == 10 and (xyz0 != (i0, j0, k0)).any():
-        raise ValueError(f'Mesh origin in the header ({xyz0}) '
-                         f' does not match the origin in the mesh '
-                         f' description ({i0, j0, k0})')
-
-    # create openmc mesh object
-    grids = []
-    mesh_definition = [(i0, i_vals, nfx), (j0, j_vals, nfy), (k0, k_vals, nfz)]
-    for grid0, grid_vals, n_pnts in mesh_definition:
-        # file spec checks for the mesh definition
-        if (grid_vals[2::3] != 1.0).any():
-            raise ValueError('One or more mesh ratio value, qx, '
-                             'is not equal to one')
-
-        s = int(grid_vals[::3].sum())
-        if s != n_pnts:
-            raise ValueError(f'Sum of the fine bin entries, {s}, does '
-                             f'not match the number of fine bins, {n_pnts}')
-
-        # extend the grid based on the next coarse bin endpoint, px
-        # and the number of fine bins in the coarse bin, sx
-        intervals = grid_vals.reshape(-1, 3)
-        coords = [grid0]
-        for sx, px, qx in intervals:
-            coords += np.linspace(coords[-1], px, int(sx + 1)).tolist()[1:]
-
-        grids.append(np.array(coords))
-
-    if nwg == 1:
-        mesh = RectilinearMesh()
-        mesh.x_grid, mesh.y_grid, mesh.z_grid = grids
-    elif nwg == 2:
-        mesh = CylindricalMesh(
-            r_grid=grids[0],
-            z_grid=grids[1],
-            phi_grid=grids[2],
-            origin = xyz0,
-        )
-    elif nwg == 3:
-        mesh = SphericalMesh(
-            r_grid=grids[0],
-            theta_grid=grids[1],
-            phi_grid=grids[2],
-            origin = xyz0
-        )
-
-    # extract weight window values from array
-    wws = []
-    for ne_i, nt_i, particle_type in zip(ne, nt, ('neutron', 'photon')):
-        # no information to read for this particle if
-        # either the energy bins or time bins are empty
-        if ne_i == 0 or nt_i == 0:
-            continue
-
-        if iv > 1:
-            # time bins are parsed but unused for now
-            end_idx = start_idx + nt_i
-            time_bounds = ww_data[start_idx:end_idx]
-            np.insert(time_bounds, (0,), (0.0,))
-            start_idx = end_idx
-
-        # read energy boundaries
-        end_idx = start_idx + ne_i
-        energy_bounds = np.insert(ww_data[start_idx:end_idx], (0,), (0.0,))
-        # convert from MeV to eV
-        energy_bounds *= 1e6
-        start_idx = end_idx
-
-        # read weight window values
-        end_idx = start_idx + (nfx * nfy * nfz) * nt_i * ne_i
-
-        # read values and reshape according to ordering
-        # slowest to fastest: t, e, z, y, x
-        # reorder with transpose since our ordering is x, y, z, e, t
-        ww_shape = (nt_i, ne_i, nfz, nfy, nfx)
-        ww_values = ww_data[start_idx:end_idx].reshape(ww_shape).T
-        # Only use first time bin since we don't support time dependent weight
-        # windows yet.
-        ww_values = ww_values[:, :, :, :, 0]
-        start_idx = end_idx
-
-        # create a weight window object
-        ww = WeightWindows(id=None,
-                           mesh=mesh,
-                           lower_ww_bounds=ww_values,
-                           upper_bound_ratio=5.0,
-                           energy_bounds=energy_bounds,
-                           particle_type=particle_type)
-        wws.append(ww)
-
-    return wws
+    warnings.warn(
+        "This function is deprecated in favor of 'WeightWindowsList.from_wwinp'",
+        FutureWarning
+    )
+    return WeightWindowsList.from_wwinp(path)
 
 
 class WeightWindowGenerator:
@@ -660,9 +496,8 @@ class WeightWindowGenerator:
         maximum and minimum energy for the data available at runtime.
     particle_type : {'neutron', 'photon'}
         Particle type the weight windows apply to
-    method : {'magic'}
-        The weight window generation methodology applied during an update. Only
-        'magic' is currently supported.
+    method : {'magic', 'fw_cadis'}
+        The weight window generation methodology applied during an update.
     max_realizations : int
         The upper limit for number of tally realizations when generating weight
         windows.
@@ -680,9 +515,8 @@ class WeightWindowGenerator:
         energies in [eV] for a single bin
     particle_type : {'neutron', 'photon'}
         Particle type the weight windows apply to
-    method : {'magic'}
-        The weight window generation methodology applied during an update. Only
-        'magic' is currently supported.
+    method : {'magic', 'fw_cadis'}
+        The weight window generation methodology applied during an update.
     max_realizations : int
         The upper limit for number of tally realizations when generating weight
         windows.
@@ -767,7 +601,7 @@ class WeightWindowGenerator:
     @method.setter
     def method(self, m: str):
         cv.check_type('generation method', m, str)
-        cv.check_value('generation method', m, {'magic'})
+        cv.check_value('generation method', m, ('magic', 'fw_cadis'))
         self._method = m
         if self._update_parameters is not None:
             try:
@@ -800,7 +634,7 @@ class WeightWindowGenerator:
         return self._update_parameters
 
     def _check_update_parameters(self, params: dict):
-        if self.method == 'magic':
+        if self.method == 'magic' or self.method == 'fw_cadis':
             check_params = self._MAGIC_PARAMS
 
         for key, val in params.items():
@@ -843,7 +677,7 @@ class WeightWindowGenerator:
         update_parameters : dict
             The update parameters as-read from the XML node (keys: str, values: str)
         """
-        if method == 'magic':
+        if method == 'magic' or method == 'fw_cadis':
             check_params = cls._MAGIC_PARAMS
 
         for param, param_type in check_params.items():
@@ -878,7 +712,7 @@ class WeightWindowGenerator:
         return element
 
     @classmethod
-    def from_xml_element(cls, elem: ET.Element, meshes: dict) -> WeightWindowGenerator:
+    def from_xml_element(cls, elem: ET.Element, meshes: dict) -> Self:
         """
         Create a weight window generation object from an XML element
 
@@ -921,8 +755,8 @@ class WeightWindowGenerator:
 
         return wwg
 
-def hdf5_to_wws(path='weight_windows.h5'):
-    """Create WeightWindows instances from a weight windows HDF5 file
+def hdf5_to_wws(path='weight_windows.h5') -> WeightWindowsList:
+    """Create a WeightWindowsList from a weight windows HDF5 file
 
     .. versionadded:: 0.14.0
 
@@ -933,13 +767,280 @@ def hdf5_to_wws(path='weight_windows.h5'):
 
     Returns
     -------
-    list of openmc.WeightWindows
+    WeightWindowsList
     """
+    warnings.warn(
+        "This function is deprecated in favor of 'WeightWindowsList.from_hdf5'",
+        FutureWarning
+    )
+    return WeightWindowsList.from_hdf5(path)
 
-    with h5py.File(path) as h5_file:
-        # read in all of the meshes in the mesh node
-        meshes = {}
-        for mesh_group in h5_file['meshes']:
-            mesh = MeshBase.from_hdf5(h5_file['meshes'][mesh_group])
-            meshes[mesh.id] = mesh
-        return [WeightWindows.from_hdf5(ww, meshes) for ww in h5_file['weight_windows'].values()]
+
+class WeightWindowsList(list):
+    """A list of WeightWindows objects.
+
+    .. versionadded:: 0.15.3
+
+    Parameters
+    ----------
+    iterable : iterable of openmc.WeightWindows
+        An iterable of WeightWindows objects to initialize the list with
+
+    """
+    def __init__(self, iterable: Iterable[WeightWindows] = ()):
+        super().__init__(iterable)
+
+    @classmethod
+    def from_hdf5(cls, path: PathLike = 'weight_windows.h5') -> Self:
+        """Create WeightWindowsList from a weight windows HDF5 file.
+
+        Parameters
+        ----------
+        path : PathLike
+            Path to the weight windows hdf5 file
+
+        Returns
+        -------
+        WeightWindowsList
+            A list of WeightWindows objects read from the file
+        """
+
+        with h5py.File(path) as h5_file:
+            # read in all of the meshes in the mesh node
+            meshes = {}
+            for mesh_group in h5_file['meshes']:
+                mesh = MeshBase.from_hdf5(h5_file['meshes'][mesh_group])
+                meshes[mesh.id] = mesh
+            wws = [
+                WeightWindows.from_hdf5(ww, meshes)
+                for ww in h5_file['weight_windows'].values()
+            ]
+
+        return cls(wws)
+
+    @classmethod
+    def from_wwinp(cls, path: PathLike) -> Self:
+        """Create WeightWindowsList from a wwinp file.
+
+        Parameters
+        ----------
+        path : PathLike
+            Path to the wwinp file
+
+        Returns
+        -------
+        WeightWindowsList
+            A list of WeightWindows objects read from the file
+        """
+
+        with open(path) as wwinp:
+            # BLOCK 1
+            header = wwinp.readline().split(None, 4)
+            # read file type, time-dependence, number of
+            # particles, mesh type and problem identifier
+            _if, iv, ni, nr = [int(x) for x in header[:4]]
+
+            # header value checks
+            if _if != 1:
+                raise ValueError(f'Found incorrect file type, if: {_if}')
+
+            if iv > 1:
+                # read number of time bins for each particle, 'nt(1...ni)'
+                nt = np.fromstring(wwinp.readline(), sep=' ', dtype=int)
+
+                # raise error if time bins are present for now
+                raise ValueError('Time-dependent weight windows '
+                                'are not yet supported')
+            else:
+                nt = ni * [1]
+
+            # read number of energy bins for each particle, 'ne(1...ni)'
+            ne = np.fromstring(wwinp.readline(), sep=' ', dtype=int)
+
+            # read coarse mesh dimensions and lower left corner
+            mesh_description = np.fromstring(wwinp.readline(), sep=' ')
+            nfx, nfy, nfz = mesh_description[:3].astype(int)
+            xyz0 = mesh_description[3:]
+
+            # read cylindrical and spherical mesh vectors if present
+            if nr == 16:
+                # read number of coarse bins
+                line_arr = np.fromstring(wwinp.readline(), sep=' ')
+                ncx, ncy, ncz = line_arr[:3].astype(int)
+                # read polar vector (x1, y1, z1)
+                xyz1 = line_arr[3:]
+                # read azimuthal vector (x2, y2, z2)
+                line_arr = np.fromstring(wwinp.readline(), sep=' ')
+                xyz2 = line_arr[:3]
+
+                # Get polar and azimuthal axes
+                polar_axis = xyz1 - xyz0
+                azimuthal_axis = xyz2 - xyz0
+
+                # Check for polar axis other than (0, 0, 1)
+                norm = np.linalg.norm(polar_axis)
+                if not np.isclose(polar_axis[2]/norm, 1.0):
+                    raise NotImplementedError('Polar axis not aligned to z-axis not supported')
+
+                # Check for azimuthal axis other than (1, 0, 0)
+                norm = np.linalg.norm(azimuthal_axis)
+                if not np.isclose(azimuthal_axis[0]/norm, 1.0):
+                    raise NotImplementedError('Azimuthal axis not aligned to x-axis not supported')
+
+                # read geometry type
+                nwg = int(line_arr[-1])
+
+            elif nr == 10:
+                # read rectilinear data:
+                # number of coarse mesh bins and mesh type
+                ncx, ncy, ncz, nwg = \
+                    np.fromstring(wwinp.readline(), sep=' ').astype(int)
+            else:
+                raise RuntimeError(f'Invalid mesh description (nr) found: {nr}')
+
+            # read BLOCK 2 and BLOCK 3 data into a single array
+            ww_data = np.fromstring(wwinp.read(), sep=' ')
+
+        # extract mesh data from the ww_data array
+        start_idx = 0
+
+        # first values in the mesh definition arrays are the first
+        # coordinate of the grid
+        end_idx = start_idx + 1 + 3 * ncx
+        i0, i_vals = ww_data[start_idx], ww_data[start_idx+1:end_idx]
+        start_idx = end_idx
+
+        end_idx = start_idx + 1 + 3 * ncy
+        j0, j_vals = ww_data[start_idx], ww_data[start_idx+1:end_idx]
+        start_idx = end_idx
+
+        end_idx = start_idx + 1 + 3 * ncz
+        k0, k_vals = ww_data[start_idx], ww_data[start_idx+1:end_idx]
+        start_idx = end_idx
+
+        # mesh consistency checks
+        if nr == 16 and nwg == 1 or nr == 10 and nwg != 1:
+            raise ValueError(f'Mesh description in header ({nr}) '
+                            f'does not match the mesh type ({nwg})')
+
+        if nr == 10 and (xyz0 != (i0, j0, k0)).any():
+            raise ValueError(f'Mesh origin in the header ({xyz0}) '
+                            f' does not match the origin in the mesh '
+                            f' description ({i0, j0, k0})')
+
+        # create openmc mesh object
+        grids = []
+        mesh_definition = [(i0, i_vals, nfx), (j0, j_vals, nfy), (k0, k_vals, nfz)]
+        for grid0, grid_vals, n_pnts in mesh_definition:
+            # file spec checks for the mesh definition
+            if (grid_vals[2::3] != 1.0).any():
+                raise ValueError('One or more mesh ratio value, qx, '
+                                'is not equal to one')
+
+            s = int(grid_vals[::3].sum())
+            if s != n_pnts:
+                raise ValueError(f'Sum of the fine bin entries, {s}, does '
+                                f'not match the number of fine bins, {n_pnts}')
+
+            # extend the grid based on the next coarse bin endpoint, px
+            # and the number of fine bins in the coarse bin, sx
+            intervals = grid_vals.reshape(-1, 3)
+            coords = [grid0]
+            for sx, px, qx in intervals:
+                coords += np.linspace(coords[-1], px, int(sx + 1)).tolist()[1:]
+
+            grids.append(np.array(coords))
+
+        if nwg == 1:
+            mesh = RectilinearMesh()
+            mesh.x_grid, mesh.y_grid, mesh.z_grid = grids
+        elif nwg == 2:
+            mesh = CylindricalMesh(
+                r_grid=grids[0],
+                z_grid=grids[1],
+                phi_grid=grids[2],
+                origin = xyz0,
+            )
+        elif nwg == 3:
+            mesh = SphericalMesh(
+                r_grid=grids[0],
+                theta_grid=grids[1],
+                phi_grid=grids[2],
+                origin = xyz0
+            )
+
+        # extract weight window values from array
+        wws = cls()
+        for ne_i, nt_i, particle_type in zip(ne, nt, ('neutron', 'photon')):
+            # no information to read for this particle if
+            # either the energy bins or time bins are empty
+            if ne_i == 0 or nt_i == 0:
+                continue
+
+            if iv > 1:
+                # time bins are parsed but unused for now
+                end_idx = start_idx + nt_i
+                time_bounds = ww_data[start_idx:end_idx]
+                np.insert(time_bounds, (0,), (0.0,))
+                start_idx = end_idx
+
+            # read energy boundaries
+            end_idx = start_idx + ne_i
+            energy_bounds = np.insert(ww_data[start_idx:end_idx], (0,), (0.0,))
+            # convert from MeV to eV
+            energy_bounds *= 1e6
+            start_idx = end_idx
+
+            # read weight window values
+            end_idx = start_idx + (nfx * nfy * nfz) * nt_i * ne_i
+
+            # read values and reshape according to ordering
+            # slowest to fastest: t, e, z, y, x
+            # reorder with transpose since our ordering is x, y, z, e, t
+            ww_shape = (nt_i, ne_i, nfz, nfy, nfx)
+            ww_values = ww_data[start_idx:end_idx].reshape(ww_shape).T
+            # Only use first time bin since we don't support time dependent weight
+            # windows yet.
+            ww_values = ww_values[:, :, :, :, 0]
+            start_idx = end_idx
+
+            # create a weight window object
+            ww = WeightWindows(id=None,
+                            mesh=mesh,
+                            lower_ww_bounds=ww_values,
+                            upper_bound_ratio=5.0,
+                            energy_bounds=energy_bounds,
+                            particle_type=particle_type)
+            wws.append(ww)
+
+        return wws
+
+    def export_to_hdf5(self, path: PathLike = 'weight_windows.h5', **init_kwargs):
+        """Write weight windows to an HDF5 file.
+
+        Parameters
+        ----------
+        path : PathLike
+            Path to the file to write weight windows to
+        **init_kwargs
+            Keyword arguments passed to :func:`openmc.lib.init`
+
+        """
+        import openmc.lib
+        cv.check_type('path', path, PathLike)
+
+        # Create a temporary model with the weight windows
+        model = openmc.Model()
+        sph = openmc.Sphere(boundary_type='vacuum')
+        cell = openmc.Cell(region=-sph)
+        model.geometry = openmc.Geometry([cell])
+        model.settings.weight_windows = self
+        model.settings.particles = 100
+        model.settings.batches = 1
+
+        # Get absolute path before moving to temporary directory
+        path = Path(path).resolve()
+
+        # Load the model with openmc.lib and then export it to an HDF5 file
+        with openmc.lib.TemporarySession(model, **init_kwargs):
+            openmc.lib.export_weight_windows(path)

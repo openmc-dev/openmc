@@ -18,7 +18,7 @@ void ParticleFilter::from_xml(pugi::xml_node node)
   this->set_particles(types);
 }
 
-void ParticleFilter::set_particles(gsl::span<ParticleType> particles)
+void ParticleFilter::set_particles(span<ParticleType> particles)
 {
   // Clear existing particles
   particles_.clear();

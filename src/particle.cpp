@@ -75,33 +75,43 @@ double Particle::speed() const
   }
 }
 
-void Particle::move_distance(double length)
-{
-  for (int j = 0; j < n_coord(); ++j) {
-    coord(j).r += length * coord(j).u;
-  }
-}
-
-void Particle::create_secondary(
+bool Particle::create_secondary(
   double wgt, Direction u, double E, ParticleType type)
 {
   // If energy is below cutoff for this particle, don't create secondary
   // particle
   if (E < settings::energy_cutoff[static_cast<int>(type)]) {
-    return;
+    return false;
   }
 
-  secondary_bank().emplace_back();
-
-  auto& bank {secondary_bank().back()};
+  auto& bank = secondary_bank().emplace_back();
   bank.particle = type;
   bank.wgt = wgt;
   bank.r = r();
   bank.u = u;
   bank.E = settings::run_CE ? E : g();
   bank.time = time();
+  bank_second_E() += bank.E;
+  return true;
+}
 
-  n_bank_second() += 1;
+void Particle::split(double wgt)
+{
+  auto& bank = secondary_bank().emplace_back();
+  bank.particle = type();
+  bank.wgt = wgt;
+  bank.r = r();
+  bank.u = u();
+  bank.E = settings::run_CE ? E() : g();
+  bank.time = time();
+
+  // Convert signed index to a singed surface ID
+  if (surface() == SURFACE_NONE) {
+    bank.surf_id = SURFACE_NONE;
+  } else {
+    int surf_id = model::surfaces[surface_index()]->id_;
+    bank.surf_id = (surface() > 0) ? surf_id : -surf_id;
+  }
 }
 
 void Particle::from_source(const SourceSite* src)
@@ -114,6 +124,7 @@ void Particle::from_source(const SourceSite* src)
   n_collision() = 0;
   fission() = false;
   zero_flux_derivs();
+  lifetime() = 0.0;
 
   // Copy attributes from source bank site
   type() = src->particle;
@@ -136,6 +147,13 @@ void Particle::from_source(const SourceSite* src)
   E_last() = E();
   time() = src->time;
   time_last() = src->time;
+  parent_nuclide() = src->parent_nuclide;
+
+  // Convert signed surface ID to signed index
+  if (src->surf_id != SURFACE_NONE) {
+    int index_plus_one = model::surface_map[std::abs(src->surf_id)] + 1;
+    surface() = (src->surf_id > 0) ? index_plus_one : -index_plus_one;
+  }
 }
 
 void Particle::event_calculate_xs()
@@ -232,7 +250,9 @@ void Particle::event_advance()
   for (int j = 0; j < n_coord(); ++j) {
     coord(j).r += distance * coord(j).u;
   }
-  this->time() += distance / this->speed();
+  double dt = distance / this->speed();
+  this->time() += dt;
+  this->lifetime() += dt;
 
   // Kill particle if its time exceeds the cutoff
   bool hit_time_boundary = false;
@@ -240,6 +260,7 @@ void Particle::event_advance()
   if (time() > time_cutoff) {
     double dt = time() - time_cutoff;
     time() = time_cutoff;
+    lifetime() = time_cutoff;
 
     double push_back_distance = speed() * dt;
     this->move_distance(-push_back_distance);
@@ -290,7 +311,6 @@ void Particle::event_cross_surface()
     event() = TallyEvent::LATTICE;
   } else {
     // Particle crosses surface
-    // TODO: off-by-one
     const auto& surf {model::surfaces[surface_index()].get()};
     // If BC, add particle to surface source before crossing surface
     if (surf->surf_source_ && surf->bc_) {
@@ -356,7 +376,7 @@ void Particle::event_collide()
 
   // Reset banked weight during collision
   n_bank() = 0;
-  n_bank_second() = 0;
+  bank_second_E() = 0.0;
   wgt_bank() = 0.0;
   zero_delayed_bank();
 
@@ -417,6 +437,7 @@ void Particle::event_revive_from_secondary()
     from_source(&secondary_bank().back());
     secondary_bank().pop_back();
     n_event() = 0;
+    bank_second_E() = 0.0;
 
     // Subtract secondary particle energy from interim pulse-height results
     if (!model::active_pulse_height_tallies.empty() &&

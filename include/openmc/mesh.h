@@ -9,13 +9,13 @@
 #include "hdf5.h"
 #include "pugixml.hpp"
 #include "xtensor/xtensor.hpp"
-#include <gsl/gsl-lite.hpp>
 
 #include "openmc/bounding_box.h"
 #include "openmc/error.h"
 #include "openmc/memory.h" // for unique_ptr
 #include "openmc/particle.h"
 #include "openmc/position.h"
+#include "openmc/span.h"
 #include "openmc/vector.h"
 #include "openmc/xml_interface.h"
 
@@ -69,14 +69,66 @@ extern const libMesh::Parallel::Communicator* libmesh_comm;
 } // namespace settings
 #endif
 
+//==============================================================================
+//! Helper class for keeping track of volume for each material in a mesh element
+//
+//! This class is used in Mesh::material_volumes to manage for each mesh element
+//! a list of (material, volume) pairs. The openmc.lib.Mesh class allocates two
+//! 2D arrays, one for materials and one for volumes. Because we don't know a
+//! priori how many materials there are in each element but at the same time we
+//! can't dynamically size an array at runtime for performance reasons, we
+//! assume a maximum number of materials per element. For each element, the set
+//! of material indices are stored in a hash table with twice as many slots as
+//! the assumed maximum number of materials per element. Collision resolution is
+//! handled by open addressing with linear probing.
+//==============================================================================
+
+namespace detail {
+
+class MaterialVolumes {
+public:
+  MaterialVolumes(int32_t* mats, double* vols, int table_size)
+    : materials_(mats), volumes_(vols), table_size_(table_size)
+  {}
+
+  //! Add volume for a given material in a mesh element
+  //
+  //! \param[in] index_elem Index of the mesh element
+  //! \param[in] index_material Index of the material within the model
+  //! \param[in] volume Volume to add
+  void add_volume(int index_elem, int index_material, double volume);
+  void add_volume_unsafe(int index_elem, int index_material, double volume);
+
+  // Accessors
+  int32_t& materials(int i, int j) { return materials_[i * table_size_ + j]; }
+  const int32_t& materials(int i, int j) const
+  {
+    return materials_[i * table_size_ + j];
+  }
+
+  double& volumes(int i, int j) { return volumes_[i * table_size_ + j]; }
+  const double& volumes(int i, int j) const
+  {
+    return volumes_[i * table_size_ + j];
+  }
+
+  bool table_full() const { return table_full_; }
+
+private:
+  int32_t* materials_;      //!< material index (bins, table_size)
+  double* volumes_;         //!< volume in [cm^3] (bins, table_size)
+  int table_size_;          //!< Size of hash table for each mesh element
+  bool table_full_ {false}; //!< Whether the hash table is full
+};
+
+} // namespace detail
+
+//==============================================================================
+//! Base mesh class
+//==============================================================================
+
 class Mesh {
 public:
-  // Types, aliases
-  struct MaterialVolume {
-    int32_t material; //!< material index
-    double volume;    //!< volume in [cm^3]
-  };
-
   // Constructors and destructor
   Mesh() = default;
   Mesh(pugi::xml_node node);
@@ -85,9 +137,6 @@ public:
   // Methods
   //! Perform any preparation needed to support point location within the mesh
   virtual void prepare_for_point_location() {};
-
-  //! Update a position to the local coordinates of the mesh
-  virtual void local_coords(Position& r) const {};
 
   //! Return a position in the local coordinates of the mesh
   virtual Position local_coords(const Position& r) const { return r; };
@@ -172,24 +221,17 @@ public:
 
   virtual std::string get_mesh_type() const = 0;
 
-  //! Determine volume of materials within a single mesh elemenet
+  //! Determine volume of materials within each mesh element
   //
-  //! \param[in] n_sample Number of samples within each element
-  //! \param[in] bin Index of mesh element
-  //! \param[out] Array of (material index, volume) for desired element
-  //! \param[inout] seed Pseudorandom number seed
-  //! \return Number of materials within element
-  int material_volumes(int n_sample, int bin, gsl::span<MaterialVolume> volumes,
-    uint64_t* seed) const;
-
-  //! Determine volume of materials within a single mesh elemenet
-  //
-  //! \param[in] n_sample Number of samples within each element
-  //! \param[in] bin Index of mesh element
-  //! \param[inout] seed Pseudorandom number seed
-  //! \return Vector of (material index, volume) for desired element
-  vector<MaterialVolume> material_volumes(
-    int n_sample, int bin, uint64_t* seed) const;
+  //! \param[in] nx Number of samples in x direction
+  //! \param[in] ny Number of samples in y direction
+  //! \param[in] nz Number of samples in z direction
+  //! \param[in] max_materials Maximum number of materials in a single mesh
+  //!                          element
+  //! \param[inout] materials Array storing material indices
+  //! \param[inout] volumes Array storing volumes
+  void material_volumes(int nx, int ny, int nz, int max_materials,
+    int32_t* materials, double* volumes) const;
 
   //! Determine bounding box of mesh
   //
@@ -381,8 +423,6 @@ class PeriodicStructuredMesh : public StructuredMesh {
 public:
   PeriodicStructuredMesh() = default;
   PeriodicStructuredMesh(pugi::xml_node node) : StructuredMesh {node} {};
-
-  void local_coords(Position& r) const override { r -= origin_; };
 
   Position local_coords(const Position& r) const override
   {

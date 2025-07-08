@@ -635,6 +635,9 @@ HexagonalMesh::HexMeshDistance HexagonalMesh::distance_to_hex_boundary(
       return d;
     switch (i) {
     case 0:
+      if (abs(u.dot(n0_)) < FP_PRECISION) {
+        return d;
+      }
       dh = rh.dot(n0_) / u.dot(n0_);
       d.max_surface = n0_.dot(u) > 0;
       if (abs(ijkl[0]) > hex_radius_ + 1) {
@@ -651,6 +654,9 @@ HexagonalMesh::HexMeshDistance HexagonalMesh::distance_to_hex_boundary(
       }
       break;
     case 1:
+      if (abs(u.dot(n1_)) < FP_PRECISION) {
+        return d;
+      }
       dh = rh.dot(n1_) / u.dot(n1_);
       d.max_surface = n1_.dot(u) > 0;
       if (abs(ijkl[1]) > hex_radius_ + 1) {
@@ -667,6 +673,9 @@ HexagonalMesh::HexMeshDistance HexagonalMesh::distance_to_hex_boundary(
       }
       break;
     case 2:
+      if (abs(u.dot(n2_)) < FP_PRECISION) {
+        return d;
+      }
       dh = rh.dot(n2_) / u.dot(n2_);
       d.max_surface = n2_.dot(u) > 0;
       if (abs(ijkl[2]) > hex_radius_ + 1) {

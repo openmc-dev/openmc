@@ -1322,7 +1322,7 @@ class MeshSurfaceFilter(MeshFilter):
         mesh_key = f'mesh {self.mesh.id}'
 
         # Find mesh dimensions - use 3D indices for simplicity
-        if not isinstance(self._mesh,HexagonalMesh):
+        if not isinstance(self._mesh,openmc.HexagonalMesh):
             n_surfs = 4 * len(self.mesh.dimension)
             if len(self.mesh.dimension) == 3:
                 nx, ny, nz = self.mesh.dimension

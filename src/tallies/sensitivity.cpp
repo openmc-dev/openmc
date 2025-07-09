@@ -707,6 +707,11 @@ void score_collision_sensitivity(Particle& p)
       case N_FISSION:
         score = 0.0;
         break;
+      case N_2N:
+      case N_2NA:
+        if (p.event_mt() != sens.sens_reaction) continue;
+        score = 1.5; 
+        break;
       default:          
         if (p.event_mt() != sens.sens_reaction) continue;
         score = 1.0;
@@ -768,8 +773,6 @@ void score_collision_sensitivity(Particle& p)
   }
 }
 
-// should this routine only be called if the particle being transported is a secondary particle?
-// do we need to note which event produced the secondary particle?
 void score_source_sensitivity(Particle& p) 
 {
   // A void material cannot be perturbed so it will not affect sensitivities.
@@ -777,6 +780,8 @@ void score_source_sensitivity(Particle& p)
 
   // only scattering events affect source sensitivity
   if (p.event() != TallyEvent::SCATTER) return;
+  if (p.event_mt() == ELASTIC) return;
+  if (p.event_mt() == N_DISAPPEAR) return;
 
   const Material& material {*model::materials[p.material()]};
 
@@ -807,21 +812,19 @@ void score_source_sensitivity(Particle& p)
       // only scattering events that produce secondary particles
       double score;
       switch (sens.sens_reaction) {
+      // these 3 rxns and other inelastic ones below
+      // don't affect the source as the outgoing neutron is not banked in the secondary bank
       case N_ND:
-        if (p.event_mt() != sens.sens_reaction) continue;
-        score = 1.0;
-        break;
       case N_NP:
-        if (p.event_mt() != sens.sens_reaction) continue;
-        score = 1.0;
-        break;
       case N_NA:
         if (p.event_mt() != sens.sens_reaction) continue;
         score = 1.0;
         break;
       case N_2N:
+      case N_2NA:
         if (p.event_mt() != sens.sens_reaction) continue;
-        score = 1.0;
+        // parent particle continues as one of the secondaries
+        score = 0.5;
         break;
       case ELASTIC:
       case N_T:

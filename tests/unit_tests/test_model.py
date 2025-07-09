@@ -651,7 +651,7 @@ def test_model_plot():
     assert np.all(test_mask), "Colors other than white or red found in overlap plot image"
 
 
-def test_model_id_map(run_in_tmpdir):
+def test_model_id_map_initialization(run_in_tmpdir):
     model = openmc.examples.pwr_assembly()
     model.init_lib(output=False)
 
@@ -742,3 +742,147 @@ def test_model_id_map(run_in_tmpdir):
     )
     assert not model.is_initialized
 
+
+def test_id_map_aligned_model():
+    """Test id_map with a 2x2 lattice where pixel boundaries align to cell boundaries"""
+
+    # Create materials -- identical compositions, different IDs
+    mat1 = openmc.Material(material_id=1, name='Material 1')
+    mat1.set_density('g/cm3', 1.0)
+    mat1.add_element('H', 1.0)
+
+    mat2 = mat1.clone()
+    mat3 = mat1.clone()
+    mat4 = mat1.clone()
+
+    outer_mat = mat1.clone()
+
+    inner_materials = [mat1, mat2, mat3, mat4]
+
+    # Create square surface that fits inside the lattice cell
+    # Lattice cell is 1 cm x 1 cm, so square will be 0.6 cm x 0.6 cm centered on the origin
+    square = openmc.model.RectangularPrism(0.6, 0.6, boundary_type='transmission')
+
+    # Create cells for this universe
+    inner_cell = openmc.Cell(cell_id=10, region=-square, name=f'inner_cell')
+    inner_cell.fill = inner_materials
+
+    outer_cell = openmc.Cell(cell_id=20, region=+square, name=f'outer_cell')
+    outer_cell.fill = outer_mat
+
+    # Create universe
+    universe = openmc.Universe(universe_id=100, cells=[inner_cell, outer_cell])
+
+    # Create 2x2 lattice
+    lattice = openmc.RectLattice(lattice_id=1)
+    lattice.lower_left = [-1.0, -1.0]
+    lattice.pitch = [1.0, 1.0]
+    lattice.universes = 2*[2*[universe]]
+
+    # Create outer boundary
+    outer_boundary = openmc.model.RectangularPrism(2.0, 2.0, boundary_type='vacuum')
+
+    # Create root cell
+    root_cell = openmc.Cell(cell_id=1, name='root', fill=lattice, region=-outer_boundary)
+
+    # Create geometry
+    geometry = openmc.Geometry([root_cell])
+
+    # Create settings
+    settings = openmc.Settings()
+    settings.particles = 1000
+    settings.batches = 10
+
+    # Create model
+    model = openmc.Model(settings=settings, geometry=geometry)
+
+    # Generate id_map with pixel boundaries aligned to cell boundaries
+    # The model is 2 cm x 2 cm, so we'll use 200x200 pixels to get 0.01 cm resolution
+    # This allows us to align pixels with the squares inside each lattice cell
+    id_map = model.id_map(
+        pixels=(200, 200),
+        basis='xy',
+        origin=(0.0, 0.0, 0.0),  # Align with lattice lower_left
+        width=(2.0, 2.0),     # Align with lattice size
+    )
+
+    # Verify id_map properties
+    assert id_map.shape == (200, 200, 3)
+    assert id_map.dtype == np.int32
+
+    cell_id_map = id_map[:, :, 0]
+    cell_instances_map = id_map[:, :, 1]
+    material_ids_map = id_map[:, :, 2]
+
+    # Check that we have valid cell IDs (not all -2)
+    assert np.any(cell_id_map >= 0), "No valid cell IDs found in the id_map"
+
+    # Check that we have valid material IDs
+    assert np.any(material_ids_map >= 0), "No valid material IDs found in the id_map"
+
+    # Check that the expected cell IDs are present
+    expected_cell_ids = [10, 20]  # Root cell, inner cell, outer cell
+    found_cell_ids = np.unique(cell_id_map[cell_id_map >= 0])
+    for cell_id in expected_cell_ids:
+        assert cell_id in found_cell_ids, f"Expected cell ID {cell_id} not found in id_map"
+
+    # Check that the expected material IDs are present
+    expected_material_ids = [1, 2, 3, 4, 5]  # All materials defined above
+    found_material_ids = np.unique(material_ids_map[material_ids_map >= 0])
+    print(found_material_ids)
+    for mat_id in expected_material_ids:
+        assert mat_id in found_material_ids, f"Expected material ID {mat_id} not found in id_map"
+
+    # Test specific regions to verify lattice structure
+    # Check center of each lattice cell (should be inner cells)
+    # Lattice cell centers are at (-0.5, -0.5), (0.5, -0.5), (-0.5, 0.5), (0.5, 0.5)
+    # With 200x200 pixels over 2x2 units, each pixel is 0.01 units
+
+    # Bottom-left lattice cell center (should be inner cell 10)
+    bl_cell, bl_instance, bl_material = id_map[-50, 50]
+    print(cell_id_map)
+    assert bl_cell == 10, f"Expected cell ID 10 at bottom-left center, got {bl_cell}"
+    assert bl_instance == 0, f"Expected cell instance 0 at bottom-left center, got {bl_instance}"
+    assert bl_material == 1, f"Expected material ID 1 at bottom-left center, got {bl_material}"
+
+    # Bottom-right lattice cell center (should be inner cell 10)
+    br_cell, br_instance, br_material = id_map[-50, 150]
+    assert br_cell == 10, f"Expected cell ID 10 at bottom-right center, got {br_cell}"
+    assert br_instance == 1, f"Expected cell instance 1 at bottom-right center, got {br_instance}"
+    assert br_material == 2, f"Expected material ID 2 at bottom-right center, got {br_material}"
+
+    # Top-left lattice cell center (should be inner cell 10)
+    tl_cell, tl_instance, tl_material = id_map[-150, 50]
+    assert tl_cell == 10, f"Expected cell ID 10 at top-left center, got {tl_cell}"
+    assert tl_instance == 2, f"Expected cell instance 2 at top-left center, got {tl_instance}"
+    assert tl_material == 3, f"Expected material ID 3 at top-left center, got {tl_material}"
+
+    # Top-right lattice cell center (should be inner cell 10)
+    tr_cell, tr_instance, tr_material = id_map[-150, 150]
+    assert tr_cell == 10, f"Expected cell ID 10 at top-right center, got {tr_cell}"
+    assert tr_instance == 3, f"Expected cell instance 3 at top-right center, got {tr_instance}"
+    assert tr_material == 4, f"Expected material ID 4 at top-right center, got {tr_material}"
+
+    # Check that the model is properly finalized after id_map call
+    assert not model.is_initialized, "Model should be finalized after id_map call"
+
+    # Check that the values at the corners are correctly set as the outer cell and material
+    bl_cell, bl_instance, bl_material = id_map[-1, 0]
+    assert bl_cell == 20, f"Expected cell ID 20 at bottom-left corner, got {bl_cell}"
+    assert bl_instance == 0, f"Expected cell instance 0 at bottom-left corner, got {bl_instance}"
+    assert bl_material == 5, f"Expected material ID 5 at bottom-left corner, got {bl_material}"
+
+    br_cell, br_instance, br_material = id_map[-1, -1]
+    assert br_cell == 20, f"Expected cell ID 20 at bottom-right corner, got {br_cell}"
+    assert br_instance == 1, f"Expected cell instance 1 at bottom-right corner, got {br_instance}"
+    assert br_material == 5, f"Expected material ID 5 at bottom-right corner, got {br_material}"
+
+    tl_cell, tl_instance, tl_material = id_map[0, 0]
+    assert tl_cell == 20, f"Expected cell ID 20 at top-left corner, got {tl_cell}"
+    assert tl_instance == 2, f"Expected cell instance 2 at top-left corner, got {tl_instance}"
+    assert tl_material == 5, f"Expected material ID 5 at top-left corner, got {tl_material}"
+
+    tr_cell, tr_instance, tr_material = id_map[0, -1]
+    assert tr_cell == 20, f"Expected cell ID 20 at top-right corner, got {tr_cell}"
+    assert tr_instance == 3, f"Expected cell instance 3 at top-right corner, got {tr_instance}"
+    assert tr_material == 5, f"Expected material ID 5 at top-right corner, got {tr_material}"

@@ -3176,7 +3176,20 @@ class HexagonalMesh(StructuredMesh):
 
         return mesh
 
+    @classmethod
+    def from_hdf5(cls, group: h5py.Group, mesh_id: int, name: str):
+        # Read and assign mesh properties
+        mesh = cls(mesh_id=mesh_id, name=name)
+        mesh.dimension = group['dimension'][()]
+        mesh.lower_left = group['lower_left'][()]
+        if 'width' in group:
+            mesh.width = group['width'][()]
+        elif 'upper_right' in group:
+            mesh.upper_right = group['upper_right'][()]
+        else:
+            raise IOError('Invalid mesh: must have one of "upper_right" or "width"')
 
+        return mesh
 
     @classmethod
     def from_domain(

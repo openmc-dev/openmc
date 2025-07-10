@@ -509,8 +509,8 @@ void initialize_generation()
     // Store current value of tracklength k
     auto& gt = simulation::global_tallies;
     simulation::keff_generation = {
-      gt(GlobalTally::K_TRACKLENGTH, GlobalTallyResult::VALUE),
-      gt(GlobalTally::K_TRACKLENGTH, GlobalTallyResult::VALUE_SQ)};
+      gt(GlobalTally::K_TRACKLENGTH, TallyResult::VALUE),
+      gt(GlobalTally::K_TRACKLENGTH_SQ, TallyResult::VALUE)};
   }
 }
 
@@ -520,27 +520,22 @@ void finalize_generation()
 
   // Update global tallies with the accumulation variables
   if (settings::run_mode == RunMode::EIGENVALUE) {
-    gt(GlobalTally::K_COLLISION, GlobalTallyResult::VALUE) +=
-      global_tally_collision[0];
-    gt(GlobalTally::K_ABSORPTION, GlobalTallyResult::VALUE) +=
-      global_tally_absorption[0];
-    gt(GlobalTally::K_TRACKLENGTH, GlobalTallyResult::VALUE) +=
-      global_tally_tracklength[0];
-
-    gt(GlobalTally::K_COLLISION, GlobalTallyResult::VALUE_SQ) +=
-      global_tally_collision[1];
-    gt(GlobalTally::K_ABSORPTION, GlobalTallyResult::VALUE_SQ) +=
-      global_tally_absorption[1];
-    gt(GlobalTally::K_TRACKLENGTH, GlobalTallyResult::VALUE_SQ) +=
-      global_tally_tracklength[1];
+    gt(GlobalTally::K_COLLISION, TallyResult::VALUE) += global_tally_collision;
+    gt(GlobalTally::K_ABSORPTION, TallyResult::VALUE) +=
+      global_tally_absorption;
+    gt(GlobalTally::K_TRACKLENGTH, TallyResult::VALUE) +=
+      global_tally_tracklength;
+    gt(GlobalTally::K_TRACKLENGTH_SQ, TallyResult::VALUE) +=
+      global_tally_tracklength_sq;
   }
-  gt(GlobalTally::LEAKAGE, GlobalTallyResult::VALUE) += global_tally_leakage;
+  gt(GlobalTally::LEAKAGE, TallyResult::VALUE) += global_tally_leakage;
 
   // reset tallies
   if (settings::run_mode == RunMode::EIGENVALUE) {
-    global_tally_collision = {0.0, 0.0};
-    global_tally_absorption = {0.0, 0.0};
-    global_tally_tracklength = {0.0, 0.0};
+    global_tally_collision = 0.0;
+    global_tally_absorption = 0.0;
+    global_tally_tracklength = 0.0;
+    global_tally_tracklength_sq = 0.0;
   }
   global_tally_leakage = 0.0;
 

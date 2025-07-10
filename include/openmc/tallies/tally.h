@@ -1,7 +1,6 @@
 #ifndef OPENMC_TALLIES_TALLY_H
 #define OPENMC_TALLIES_TALLY_H
 
-#include "openmc/array.h"
 #include "openmc/constants.h"
 #include "openmc/memory.h" // for unique_ptr
 #include "openmc/span.h"
@@ -215,17 +214,17 @@ extern vector<int> pulse_height_cells;
 
 namespace simulation {
 //! Global tallies (such as k-effective estimators)
-extern xt::xtensor_fixed<double,
-  xt::xshape<N_GLOBAL_TALLIES, static_cast<int>(GlobalTallyResult::SIZE)>>
+extern xt::xtensor_fixed<double, xt::xshape<N_GLOBAL_TALLIES, 3>>
   global_tallies;
 
 //! Number of realizations for global tallies
 extern "C" int32_t n_realizations;
 } // namespace simulation
 
-extern array<double, 2> global_tally_absorption;
-extern array<double, 2> global_tally_collision;
-extern array<double, 2> global_tally_tracklength;
+extern double global_tally_absorption;
+extern double global_tally_collision;
+extern double global_tally_tracklength;
+extern double global_tally_tracklength_sq;
 extern double global_tally_leakage;
 
 //==============================================================================

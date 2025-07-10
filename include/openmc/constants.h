@@ -288,8 +288,6 @@ enum class MgxsType {
 
 enum class TallyResult { VALUE, SUM, SUM_SQ, SIZE };
 
-enum class GlobalTallyResult { VALUE, VALUE_SQ, SUM, SUM_SQ, SIZE };
-
 enum class TallyType { VOLUME, MESH_SURFACE, SURFACE, PULSE_HEIGHT };
 
 enum class TallyEstimator { ANALOG, TRACKLENGTH, COLLISION };
@@ -330,6 +328,7 @@ enum class GlobalTally {
   K_COLLISION,
   K_ABSORPTION,
   K_TRACKLENGTH,
+  K_TRACKLENGTH_SQ, // for calculation of stddev for generational k
   LEAKAGE,
   SIZE
 };

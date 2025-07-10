@@ -745,17 +745,26 @@ def test_model_id_map_initialization(run_in_tmpdir):
 
 def test_id_map_aligned_model(run_in_tmpdir):
     """Test id_map with a 2x2 lattice where pixel boundaries align to cell boundaries"""
-
     # Create materials -- identical compositions, different IDs
     mat1 = openmc.Material(material_id=1, name='Material 1')
     mat1.set_density('g/cm3', 1.0)
     mat1.add_element('H', 1.0)
 
-    mat2 = mat1.clone()
-    mat3 = mat1.clone()
-    mat4 = mat1.clone()
+    mat2 = openmc.Material(material_id=2, name='Material 2')
+    mat2.set_density('g/cm3', 1.0)
+    mat2.add_element('H', 1.0)
 
-    outer_mat = mat1.clone()
+    mat3 = openmc.Material(material_id=3, name='Material 3')
+    mat3.set_density('g/cm3', 1.0)
+    mat3.add_element('H', 1.0)
+
+    mat4 = openmc.Material(material_id=4, name='Material 4')
+    mat4.set_density('g/cm3', 1.0)
+    mat4.add_element('H', 1.0)
+
+    outer_mat = openmc.Material(material_id=5, name='Material 5')
+    outer_mat.set_density('g/cm3', 1.0)
+    outer_mat.add_element('H', 1.0)
 
     inner_materials = [mat1, mat2, mat3, mat4]
 

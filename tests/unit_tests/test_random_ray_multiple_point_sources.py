@@ -6,16 +6,19 @@ placed in the same subdivided source region would silently overwrite each other.
 The fix adds proper error detection to prevent this condition.
 """
 
+import os
+import tempfile
 import pytest
 import openmc
 from openmc.examples import random_ray_three_region_cube
 
 
-def test_multiple_point_sources_same_location_error():
+def test_multiple_point_sources_same_location_error(run_in_tmpdir):
     """Test that multiple point sources at the same location trigger an error 
     when mesh subdivision is enabled."""
     
     # Create a basic random ray model
+    openmc.reset_auto_ids()
     model = random_ray_three_region_cube()
     
     # Enable mesh subdivision - this is required to trigger the error
@@ -59,11 +62,12 @@ def test_multiple_point_sources_same_location_error():
         model.run()
 
 
-def test_multiple_point_sources_different_locations_success():
+def test_multiple_point_sources_different_locations_success(run_in_tmpdir):
     """Test that multiple point sources at different locations work correctly 
     with mesh subdivision enabled."""
     
     # Create a basic random ray model
+    openmc.reset_auto_ids()
     model = random_ray_three_region_cube()
     
     # Enable mesh subdivision 
@@ -113,11 +117,12 @@ def test_multiple_point_sources_different_locations_success():
         raise
 
 
-def test_multiple_point_sources_no_mesh_subdivision_success():
+def test_multiple_point_sources_no_mesh_subdivision_success(run_in_tmpdir):
     """Test that multiple point sources at the same location work correctly 
     when mesh subdivision is disabled."""
     
     # Create a basic random ray model without mesh subdivision
+    openmc.reset_auto_ids()
     model = random_ray_three_region_cube()
     
     # Explicitly ensure no mesh subdivision is configured

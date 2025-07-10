@@ -371,8 +371,7 @@ void prepare_distribcell(const std::vector<int32_t>* user_distribcells)
   for (const auto& u : model::universes) {
     for (auto idx : u->cells_) {
       if (distribcells.find(idx) != distribcells.end()) {
-        if (std::find(target_univ_ids.begin(), target_univ_ids.end(), u->id_) ==
-            target_univ_ids.end()) {
+        if (!contains(target_univ_ids, u->id_)) {
           target_univ_ids.push_back(u->id_);
         }
         model::cells[idx]->distribcell_index_ =

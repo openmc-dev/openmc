@@ -9,6 +9,8 @@ import numpy as np
 from scipy.signal import find_peaks
 
 import openmc.checkvalue as cv
+import vecfit as vf
+
 from ..exceptions import DataError
 from ..mixin import EqualityMixin
 from . import WMP_VERSION, WMP_VERSION_MAJOR
@@ -571,10 +573,6 @@ def _windowing(mp_data, n_cf, rtol=1e-3, atol=1e-5, n_win=None, spacing=None,
         format.
 
     """
-
-    # import vectfit package: https://github.com/liangjg/vectfit
-    import vectfit as vf
-
     # unpack multipole data
     name = mp_data["name"]
     awr = mp_data["AWR"]

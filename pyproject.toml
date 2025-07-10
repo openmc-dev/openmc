@@ -36,6 +36,7 @@ dependencies = [
     "uncertainties",
     "setuptools",
     "endf",
+    "scikit-rf"
 ]
 
 [project.optional-dependencies]

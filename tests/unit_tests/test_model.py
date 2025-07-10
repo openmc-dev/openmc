@@ -743,7 +743,7 @@ def test_model_id_map_initialization(run_in_tmpdir):
     assert not model.is_initialized
 
 
-def test_id_map_aligned_model():
+def test_id_map_aligned_model(run_in_tmpdir):
     """Test id_map with a 2x2 lattice where pixel boundaries align to cell boundaries"""
 
     # Create materials -- identical compositions, different IDs

@@ -111,7 +111,6 @@ int32_t Lattice::fill_offset_table(int32_t target_univ_id, int map,
   // offsets_ array doesn't actually include the offset accounting for the last
   // universe, so we get the before-last offset for the given map and then
   // explicitly add the count for the last universe.
-  int32_t offset = 0;
   if (offsets_[map * universes_.size() + this->begin().indx_] != C_NONE) {
     int last_offset =
       offsets_[(map + 1) * universes_.size() - this->begin().indx_ - 1];
@@ -120,6 +119,7 @@ int32_t Lattice::fill_offset_table(int32_t target_univ_id, int map,
            count_universe_instances(last_univ, target_univ_id, univ_count_memo);
   }
 
+  int32_t offset = 0;
   for (LatticeIter it = begin(); it != end(); ++it) {
     offsets_[map * universes_.size() + it.indx_] = offset;
     offset += count_universe_instances(*it, target_univ_id, univ_count_memo);

@@ -15,7 +15,6 @@
 namespace openmc {
 
 namespace model {
-extern std::unordered_map<int32_t, int32_t> universe_counts;
 extern std::unordered_map<int32_t, int32_t> universe_level_counts;
 } // namespace model
 
@@ -81,7 +80,7 @@ void prepare_distribcell(
 //==============================================================================
 //! Recursively search through the geometry and count universe instances.
 //!
-//! This function will update the openmc::model::universe_counts for each
+//! This function will update the n_instances for each
 //! universe in the geometry.
 //==============================================================================
 

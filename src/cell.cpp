@@ -43,7 +43,7 @@ vector<unique_ptr<Cell>> cells;
 
 int32_t Cell::n_instances() const
 {
-  return model::universe_counts[universe_];
+  return model::universes[universe_]->n_instances_;
 }
 
 void Cell::set_rotation(const vector<double>& rot)

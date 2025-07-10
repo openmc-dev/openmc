@@ -25,7 +25,6 @@
 namespace openmc {
 
 namespace model {
-std::unordered_map<int32_t, int32_t> universe_counts;
 std::unordered_map<int32_t, int32_t> universe_level_counts;
 } // namespace model
 
@@ -422,11 +421,10 @@ void prepare_distribcell(const std::vector<int32_t>* user_distribcells)
 
 void count_universe_instances()
 {
-  for (int32_t univ = 0; univ < model::universes.size(); ++univ) {
+  for (auto& univ : model::universes) {
     std::unordered_map<int32_t, int32_t> univ_count_memo;
-    int32_t result = count_universe_instances(
-      model::root_universe, model::universes[univ]->id_, univ_count_memo);
-    model::universe_counts[univ] = result;
+    univ->n_instances_ = count_universe_instances(
+      model::root_universe, univ->id_, univ_count_memo);
   }
 }
 
@@ -602,7 +600,6 @@ void free_memory_geometry()
   model::cells.clear();
   model::cell_map.clear();
 
-  model::universe_counts.clear();
   model::universes.clear();
   model::universe_map.clear();
 

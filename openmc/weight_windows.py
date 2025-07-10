@@ -1041,10 +1041,6 @@ class WeightWindowsList(list):
         # Get absolute path before moving to temporary directory
         path = Path(path).resolve()
 
-        with change_directory(tmpdir=True):
-            # Write the model to an XML file
-            model.export_to_model_xml()
-
-            # Load the model with openmc.lib and then export it to an HDF5 file
-            with openmc.lib.run_in_memory(**init_kwargs):
-                openmc.lib.export_weight_windows(path)
+        # Load the model with openmc.lib and then export it to an HDF5 file
+        with openmc.lib.TemporarySession(model, **init_kwargs):
+            openmc.lib.export_weight_windows(path)

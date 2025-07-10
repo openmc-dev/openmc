@@ -371,10 +371,10 @@ void print_columns()
 {
   if (settings::entropy_on) {
     fmt::print(
-      "  Bat./Gen.            k             Entropy         Average k \n"
+      "  Bat./Gen.             k             Entropy         Average k \n"
       "  =========   ====================   ========   ====================\n");
   } else {
-    fmt::print("  Bat./Gen.            k                  Average k\n"
+    fmt::print("  Bat./Gen.             k                  Average k\n"
                "  =========   ====================   ====================\n");
   }
 }

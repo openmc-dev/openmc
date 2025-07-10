@@ -699,7 +699,7 @@ def test_model_id_map_initialization(run_in_tmpdir):
     if np.any(valid_material_ids >= 0):
         max_map_material_id = np.max(valid_material_ids)
         assert max_map_material_id <= max_material_id, \
-            f"Material ID {max_map_material_id}  in the map is greater than the maximum material ID {max_material_id}"
+            f"Material ID {max_map_material_id} in the map is greater than the maximum material ID {max_material_id}"
 
     # Test id_map with pixels outside the model geometry
     # Use a plot that's far from the model center to ensure we get -2 values
@@ -764,10 +764,10 @@ def test_id_map_aligned_model():
     square = openmc.model.RectangularPrism(0.6, 0.6, boundary_type='transmission')
 
     # Create cells for this universe
-    inner_cell = openmc.Cell(cell_id=10, region=-square, name=f'inner_cell')
+    inner_cell = openmc.Cell(cell_id=10, region=-square, name='inner_cell')
     inner_cell.fill = inner_materials
 
-    outer_cell = openmc.Cell(cell_id=20, region=+square, name=f'outer_cell')
+    outer_cell = openmc.Cell(cell_id=20, region=+square, name='outer_cell')
     outer_cell.fill = outer_mat
 
     # Create universe
@@ -777,7 +777,7 @@ def test_id_map_aligned_model():
     lattice = openmc.RectLattice(lattice_id=1)
     lattice.lower_left = [-1.0, -1.0]
     lattice.pitch = [1.0, 1.0]
-    lattice.universes = 2*[2*[universe]]
+    lattice.universes = [[universe, universe], [universe, universe]]
 
     # Create outer boundary
     outer_boundary = openmc.model.RectangularPrism(2.0, 2.0, boundary_type='vacuum')
@@ -829,7 +829,6 @@ def test_id_map_aligned_model():
     # Check that the expected material IDs are present
     expected_material_ids = [1, 2, 3, 4, 5]  # All materials defined above
     found_material_ids = np.unique(material_ids_map[material_ids_map >= 0])
-    print(found_material_ids)
     for mat_id in expected_material_ids:
         assert mat_id in found_material_ids, f"Expected material ID {mat_id} not found in id_map"
 
@@ -840,7 +839,6 @@ def test_id_map_aligned_model():
 
     # Bottom-left lattice cell center (should be inner cell 10)
     bl_cell, bl_instance, bl_material = id_map[-50, 50]
-    print(cell_id_map)
     assert bl_cell == 10, f"Expected cell ID 10 at bottom-left center, got {bl_cell}"
     assert bl_instance == 0, f"Expected cell instance 0 at bottom-left center, got {bl_instance}"
     assert bl_material == 1, f"Expected material ID 1 at bottom-left center, got {bl_material}"

@@ -80,7 +80,7 @@ void prepare_distribcell(
 //==============================================================================
 //! Recursively search through the geometry and count universe instances.
 //!
-//! This function will update the n_instances for each
+//! This function will update Universe.n_instances_ for each
 //! universe in the geometry.
 //==============================================================================
 

@@ -22,7 +22,7 @@ namespace openmc {
 namespace simulation {
 
 extern array<double, 2>
-  keff_generation;             //!<  Single-generation k,k^2 on each processor
+  keff_generation;             //!<  Single-generation k on each processor
 extern array<double, 2> k_sum; //!< Used to reduce sum and sum_sq
 extern vector<double> entropy; //!< Shannon entropy at each generation
 extern xt::xtensor<double, 1> source_frac; //!< Source fraction for UFS

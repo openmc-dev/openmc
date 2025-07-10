@@ -8,6 +8,7 @@ import h5py
 import numpy as np
 from pathlib import Path
 from uncertainties import ufloat
+from uncertainties.unumpy import uarray
 
 import openmc
 import openmc.checkvalue as cv
@@ -264,7 +265,13 @@ class StatePoint:
     @property
     def k_generation(self):
         if self.run_mode == 'eigenvalue':
-            return self._f['k_generation'][()]
+            arr = self._f['k_generation'][()]
+            if arr.ndim==1:
+                return arr
+            elif arr.ndim==2:
+                return uarray(arr[:,0],arr[:,1])
+            else:
+                raise ValueError(f'k_generation shape ({arr.shape}) must be either 1d or 2d')
         else:
             return None
 

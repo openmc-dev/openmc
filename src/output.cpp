@@ -395,8 +395,7 @@ void print_generation()
                        std::to_string(simulation::current_gen);
   array<double, 2> k_gen;
   k_gen[0] = simulation::k_generation[idx][0];
-  k_gen[1] =
-    std::sqrt(simulation::k_generation[idx][1] - std::pow(k_gen[0], 2));
+  k_gen[1] = simulation::k_generation[idx][1];
   fmt::print("  {:>9}   {:8.5f} +/-{:8.5f}", batch_and_gen, k_gen[0], k_gen[1]);
 
   // write out entropy info

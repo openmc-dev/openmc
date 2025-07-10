@@ -482,13 +482,27 @@ void Particle::event_death()
     finalize_particle_track(*this);
   }
 
-// Contribute tally reduction variables to global accumulator
+  // Contribute tally reduction variables to global accumulator
+  double val;
+
+  val = keff_tally_absorption();
 #pragma omp atomic
-  global_tally_absorption += keff_tally_absorption();
+  global_tally_absorption[0] += val;
 #pragma omp atomic
-  global_tally_collision += keff_tally_collision();
+  global_tally_absorption[1] += val * val;
+
+  val = keff_tally_collision();
 #pragma omp atomic
-  global_tally_tracklength += keff_tally_tracklength();
+  global_tally_collision[0] += val;
+#pragma omp atomic
+  global_tally_collision[1] += val * val;
+
+  val = keff_tally_tracklength();
+#pragma omp atomic
+  global_tally_tracklength[0] += val;
+#pragma omp atomic
+  global_tally_tracklength[1] += val * val;
+
 #pragma omp atomic
   global_tally_leakage += keff_tally_leakage();
 

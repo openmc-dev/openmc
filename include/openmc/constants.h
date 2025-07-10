@@ -288,6 +288,8 @@ enum class MgxsType {
 
 enum class TallyResult { VALUE, SUM, SUM_SQ, SIZE };
 
+enum class GlobalTallyResult { VALUE, VALUE_SQ, SUM, SUM_SQ, SIZE };
+
 enum class TallyType { VOLUME, MESH_SURFACE, SURFACE, PULSE_HEIGHT };
 
 enum class TallyEstimator { ANALOG, TRACKLENGTH, COLLISION };
@@ -324,8 +326,14 @@ enum TallyScore {
 };
 
 // Global tally parameters
-constexpr int N_GLOBAL_TALLIES {4};
-enum class GlobalTally { K_COLLISION, K_ABSORPTION, K_TRACKLENGTH, LEAKAGE };
+enum class GlobalTally {
+  K_COLLISION,
+  K_ABSORPTION,
+  K_TRACKLENGTH,
+  LEAKAGE,
+  SIZE
+};
+constexpr int N_GLOBAL_TALLIES {static_cast<int>(GlobalTally::SIZE)};
 
 // Miscellaneous
 constexpr int C_NONE {-1};

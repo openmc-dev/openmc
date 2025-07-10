@@ -64,13 +64,15 @@ vector<int> pulse_height_cells;
 } // namespace model
 
 namespace simulation {
-xt::xtensor_fixed<double, xt::xshape<N_GLOBAL_TALLIES, 3>> global_tallies;
+xt::xtensor_fixed<double,
+  xt::xshape<N_GLOBAL_TALLIES, static_cast<int>(GlobalTallyResult::SIZE)>>
+  global_tallies;
 int32_t n_realizations {0};
 } // namespace simulation
 
-double global_tally_absorption;
-double global_tally_collision;
-double global_tally_tracklength;
+array<double, 2> global_tally_absorption {0.0, 0.0};
+array<double, 2> global_tally_collision {0.0, 0.0};
+array<double, 2> global_tally_tracklength {0.0, 0.0};
 double global_tally_leakage;
 
 //==============================================================================
@@ -994,7 +996,7 @@ void reduce_tally_results()
   // Get view of global tally values
   auto& gt = simulation::global_tallies;
   auto gt_values_view =
-    xt::view(gt, xt::all(), static_cast<int>(TallyResult::VALUE));
+    xt::view(gt, xt::all(), static_cast<int>(GlobalTallyResult::VALUE));
 
   // Make copy of values in contiguous array
   xt::xtensor<double, 1> gt_values = gt_values_view;
@@ -1040,12 +1042,13 @@ void accumulate_tallies()
     if (settings::run_mode == RunMode::EIGENVALUE) {
       if (simulation::current_batch > settings::n_inactive) {
         // Accumulate products of different estimators of k
-        double k_col = gt(GlobalTally::K_COLLISION, TallyResult::VALUE) /
+        double k_col = gt(GlobalTally::K_COLLISION, GlobalTallyResult::VALUE) /
                        simulation::total_weight;
-        double k_abs = gt(GlobalTally::K_ABSORPTION, TallyResult::VALUE) /
+        double k_abs = gt(GlobalTally::K_ABSORPTION, GlobalTallyResult::VALUE) /
                        simulation::total_weight;
-        double k_tra = gt(GlobalTally::K_TRACKLENGTH, TallyResult::VALUE) /
-                       simulation::total_weight;
+        double k_tra =
+          gt(GlobalTally::K_TRACKLENGTH, GlobalTallyResult::VALUE) /
+          simulation::total_weight;
         simulation::k_col_abs += k_col * k_abs;
         simulation::k_col_tra += k_col * k_tra;
         simulation::k_abs_tra += k_abs * k_tra;
@@ -1054,10 +1057,15 @@ void accumulate_tallies()
 
     // Accumulate results for global tallies
     for (int i = 0; i < N_GLOBAL_TALLIES; ++i) {
-      double val = gt(i, TallyResult::VALUE) / simulation::total_weight;
-      gt(i, TallyResult::VALUE) = 0.0;
-      gt(i, TallyResult::SUM) += val;
-      gt(i, TallyResult::SUM_SQ) += val * val;
+      double val = gt(i, GlobalTallyResult::VALUE) / simulation::total_weight;
+      double val_sq =
+        gt(i, GlobalTallyResult::VALUE_SQ) / simulation::total_weight;
+      if (val_sq == 0.0)
+        val_sq = val * val;
+      gt(i, GlobalTallyResult::VALUE) = 0.0;
+      gt(i, GlobalTallyResult::VALUE_SQ) = 0.0;
+      gt(i, GlobalTallyResult::SUM) += val;
+      gt(i, GlobalTallyResult::SUM_SQ) += val_sq;
     }
   }
 
@@ -1469,8 +1477,8 @@ extern "C" int openmc_tally_get_n_realizations(int32_t index, int32_t* n)
   return 0;
 }
 
-//! \brief Returns a pointer to a tally results array along with its shape. This
-//! allows a user to obtain in-memory tally results from Python directly.
+//! \brief Returns a pointer to a tally results array along with its shape.
+//! This allows a user to obtain in-memory tally results from Python directly.
 extern "C" int openmc_tally_results(
   int32_t index, double** results, size_t* shape)
 {

@@ -1,5 +1,6 @@
 #include "openmc/simulation.h"
 
+#include "openmc/array.h"
 #include "openmc/bank.h"
 #include "openmc/capi.h"
 #include "openmc/container_util.h"
@@ -318,7 +319,7 @@ int64_t work_per_rank;
 const RegularMesh* entropy_mesh {nullptr};
 const RegularMesh* ufs_mesh {nullptr};
 
-vector<double> k_generation;
+vector<array<double, 2>> k_generation;
 vector<int64_t> work_index;
 
 } // namespace simulation
@@ -506,8 +507,10 @@ void initialize_generation()
       ufs_count_sites();
 
     // Store current value of tracklength k
-    simulation::keff_generation = simulation::global_tallies(
-      GlobalTally::K_TRACKLENGTH, TallyResult::VALUE);
+    auto& gt = simulation::global_tallies;
+    simulation::keff_generation = {
+      gt(GlobalTally::K_TRACKLENGTH, GlobalTallyResult::VALUE),
+      gt(GlobalTally::K_TRACKLENGTH, GlobalTallyResult::VALUE_SQ)};
   }
 }
 
@@ -517,19 +520,27 @@ void finalize_generation()
 
   // Update global tallies with the accumulation variables
   if (settings::run_mode == RunMode::EIGENVALUE) {
-    gt(GlobalTally::K_COLLISION, TallyResult::VALUE) += global_tally_collision;
-    gt(GlobalTally::K_ABSORPTION, TallyResult::VALUE) +=
-      global_tally_absorption;
-    gt(GlobalTally::K_TRACKLENGTH, TallyResult::VALUE) +=
-      global_tally_tracklength;
+    gt(GlobalTally::K_COLLISION, GlobalTallyResult::VALUE) +=
+      global_tally_collision[0];
+    gt(GlobalTally::K_ABSORPTION, GlobalTallyResult::VALUE) +=
+      global_tally_absorption[0];
+    gt(GlobalTally::K_TRACKLENGTH, GlobalTallyResult::VALUE) +=
+      global_tally_tracklength[0];
+
+    gt(GlobalTally::K_COLLISION, GlobalTallyResult::VALUE_SQ) +=
+      global_tally_collision[1];
+    gt(GlobalTally::K_ABSORPTION, GlobalTallyResult::VALUE_SQ) +=
+      global_tally_absorption[1];
+    gt(GlobalTally::K_TRACKLENGTH, GlobalTallyResult::VALUE_SQ) +=
+      global_tally_tracklength[1];
   }
-  gt(GlobalTally::LEAKAGE, TallyResult::VALUE) += global_tally_leakage;
+  gt(GlobalTally::LEAKAGE, GlobalTallyResult::VALUE) += global_tally_leakage;
 
   // reset tallies
   if (settings::run_mode == RunMode::EIGENVALUE) {
-    global_tally_collision = 0.0;
-    global_tally_absorption = 0.0;
-    global_tally_tracklength = 0.0;
+    global_tally_collision = {0.0, 0.0};
+    global_tally_absorption = {0.0, 0.0};
+    global_tally_tracklength = {0.0, 0.0};
   }
   global_tally_leakage = 0.0;
 

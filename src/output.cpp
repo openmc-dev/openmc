@@ -19,6 +19,7 @@
 #endif
 #include "xtensor/xview.hpp"
 
+#include "openmc/array.h"
 #include "openmc/capi.h"
 #include "openmc/cell.h"
 #include "openmc/constants.h"
@@ -369,11 +370,12 @@ void print_build_info()
 void print_columns()
 {
   if (settings::entropy_on) {
-    fmt::print("  Bat./Gen.      k       Entropy         Average k \n"
-               "  =========   ========   ========   ====================\n");
+    fmt::print(
+      "  Bat./Gen.            k             Entropy         Average k \n"
+      "  =========   ====================   ========   ====================\n");
   } else {
-    fmt::print("  Bat./Gen.      k            Average k\n"
-               "  =========   ========   ====================\n");
+    fmt::print("  Bat./Gen.            k                  Average k\n"
+               "  =========   ====================   ====================\n");
   }
 }
 
@@ -391,7 +393,11 @@ void print_generation()
   // write out batch/generation and generation k-effective
   auto batch_and_gen = std::to_string(simulation::current_batch) + "/" +
                        std::to_string(simulation::current_gen);
-  fmt::print("  {:>9}   {:8.5f}", batch_and_gen, simulation::k_generation[idx]);
+  array<double, 2> k_gen;
+  k_gen[0] = simulation::k_generation[idx][0];
+  k_gen[1] =
+    std::sqrt(simulation::k_generation[idx][1] - std::pow(k_gen[0], 2));
+  fmt::print("  {:>9}   {:8.5f} +/-{:8.5f}", batch_and_gen, k_gen[0], k_gen[1]);
 
   // write out entropy info
   if (settings::entropy_on) {
@@ -499,12 +505,13 @@ void print_runtime()
 
 std::pair<double, double> mean_stdev(const double* x, int n)
 {
-  double mean = x[static_cast<int>(TallyResult::SUM)] / n;
+  double mean = x[static_cast<int>(GlobalTallyResult::SUM)] / n;
   double stdev =
-    n > 1 ? std::sqrt(std::max(0.0,
-              (x[static_cast<int>(TallyResult::SUM_SQ)] / n - mean * mean) /
-                (n - 1)))
-          : 0.0;
+    n > 1
+      ? std::sqrt(std::max(0.0,
+          (x[static_cast<int>(GlobalTallyResult::SUM_SQ)] / n - mean * mean) /
+            (n - 1)))
+      : 0.0;
   return {mean, stdev};
 }
 

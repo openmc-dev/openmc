@@ -179,7 +179,7 @@ vector<VolumeCalculation::Result> VolumeCalculation::execute() const
         } else if (domain_type_ == TallyDomain::CELL) {
           for (int level = 0; level < p.n_coord(); ++level) {
             for (int i_domain = 0; i_domain < n; i_domain++) {
-              if (model::cells[p.coord(level).cell()].get()->id_ ==
+              if (model::cells[p.coord(level).cell()]->id_ ==
                   domain_ids_[i_domain]) {
                 this->check_hit(
                   p.material(), indices[i_domain], hits[i_domain]);
@@ -190,7 +190,7 @@ vector<VolumeCalculation::Result> VolumeCalculation::execute() const
         } else if (domain_type_ == TallyDomain::UNIVERSE) {
           for (int level = 0; level < p.n_coord(); ++level) {
             for (int i_domain = 0; i_domain < n; ++i_domain) {
-              if (model::universes[p.coord(level).universe()].get()->id_ ==
+              if (model::universes[p.coord(level).universe()]->id_ ==
                   domain_ids_[i_domain]) {
                 check_hit(p.material(), indices[i_domain], hits[i_domain]);
                 break;

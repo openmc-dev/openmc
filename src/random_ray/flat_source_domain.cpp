@@ -794,7 +794,7 @@ void FlatSourceDomain::output_to_vtk() const
             continue;
           }
 
-          int i_cell = p.lowest_coord().cell;
+          int i_cell = p.lowest_coord().cell();
           int64_t sr = source_region_offsets_[i_cell] + p.cell_instance();
           if (RandomRay::mesh_subdivision_enabled_) {
             int mesh_idx = base_source_regions_.mesh(sr);
@@ -1070,7 +1070,7 @@ void FlatSourceDomain::convert_external_sources()
                                 "point source at {}",
           sp->r()));
       }
-      int i_cell = gs.lowest_coord().cell;
+      int i_cell = gs.lowest_coord().cell();
       int64_t sr = source_region_offsets_[i_cell] + gs.cell_instance();
 
       if (RandomRay::mesh_subdivision_enabled_) {
@@ -1475,7 +1475,7 @@ SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
   gs.r() = r + TINY_BIT * u;
   gs.u() = {1.0, 0.0, 0.0};
   exhaustive_find_cell(gs);
-  int gs_i_cell = gs.lowest_coord().cell;
+  int gs_i_cell = gs.lowest_coord().cell();
   int64_t sr_found = source_region_offsets_[gs_i_cell] + gs.cell_instance();
   if (sr_found != sr) {
     discovered_source_regions_.unlock(sr_key);

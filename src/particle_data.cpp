@@ -32,20 +32,20 @@ void GeometryState::mark_as_lost(const std::stringstream& message)
 
 void LocalCoord::rotate(const vector<double>& rotation)
 {
-  r = r.rotate(rotation);
-  u = u.rotate(rotation);
-  rotated = true;
+  r() = r().rotate(rotation);
+  u() = u().rotate(rotation);
+  rotated() = true;
 }
 
 void LocalCoord::reset()
 {
-  cell = C_NONE;
-  universe = C_NONE;
-  lattice = C_NONE;
-  lattice_i[0] = 0;
-  lattice_i[1] = 0;
-  lattice_i[2] = 0;
-  rotated = false;
+  cell() = C_NONE;
+  universe() = C_NONE;
+  lattice() = C_NONE;
+  lattice_index()[0] = 0;
+  lattice_index()[1] = 0;
+  lattice_index()[2] = 0;
+  rotated() = false;
 }
 
 GeometryState::GeometryState()
@@ -64,7 +64,7 @@ void GeometryState::advance_to_boundary_from_void()
 
   for (auto c_i : root_universe->cells_) {
     auto dist =
-      model::cells.at(c_i)->distance(root_coord.r, root_coord.u, 0, this);
+      model::cells.at(c_i)->distance(root_coord.r(), root_coord.u(), 0, this);
     if (dist.first < boundary().distance) {
       boundary().distance = dist.first;
       boundary().surface = dist.second;
@@ -86,7 +86,7 @@ void GeometryState::advance_to_boundary_from_void()
 void GeometryState::move_distance(double length)
 {
   for (int j = 0; j < n_coord(); ++j) {
-    coord(j).r += length * coord(j).u;
+    coord(j).r() += length * coord(j).u();
   }
 }
 
@@ -123,7 +123,7 @@ TrackState ParticleData::get_track_state() const
   state.E = this->E();
   state.time = this->time();
   state.wgt = this->wgt();
-  state.cell_id = model::cells[this->lowest_coord().cell]->id_;
+  state.cell_id = model::cells[this->lowest_coord().cell()]->id_;
   state.cell_instance = this->cell_instance();
   if (this->material() != MATERIAL_VOID) {
     state.material_id = model::materials[material()]->id_;

@@ -88,13 +88,36 @@ public:
   //! clear data from a single coordinate level
   void reset();
 
-  Position r;  //!< particle position
-  Direction u; //!< particle direction
-  int cell {-1};
-  int universe {-1};
-  int lattice {-1};
-  array<int, 3> lattice_i {{-1, -1, -1}};
-  bool rotated {false}; //!< Is the level rotated?
+  // accessors
+  Position& r() { return r_; }
+  const Position& r() const { return r_; }
+
+  Direction& u() { return u_; }
+  const Direction& u() const { return u_; }
+
+  int& cell() { return cell_; }
+  const int& cell() const { return cell_; }
+
+  int& universe() { return universe_; }
+  const int& universe() const { return universe_; }
+
+  int& lattice() { return lattice_; }
+  int lattice() const { return lattice_; }
+
+  array<int, 3>& lattice_index() { return lattice_index_; }
+  const array<int, 3>& lattice_index() const { return lattice_index_; }
+
+  bool& rotated() { return rotated_; }
+  const bool& rotated() const { return rotated_; }
+
+  // data
+  Position r_;  //!< particle position
+  Direction u_; //!< particle direction
+  int cell_ {-1};
+  int universe_ {-1};
+  int lattice_ {-1};
+  array<int, 3> lattice_index_ {{-1, -1, -1}};
+  bool rotated_ {false}; //!< Is the level rotated?
 };
 
 //==============================================================================
@@ -301,20 +324,20 @@ public:
   const Position& u_last() const { return u_last_; }
 
   // Accessors for position in global coordinates
-  Position& r() { return coord_[0].r; }
-  const Position& r() const { return coord_[0].r; }
+  Position& r() { return coord_[0].r(); }
+  const Position& r() const { return coord_[0].r(); }
 
   // Accessors for position in local coordinates
-  Position& r_local() { return coord_[n_coord_ - 1].r; }
-  const Position& r_local() const { return coord_[n_coord_ - 1].r; }
+  Position& r_local() { return coord_[n_coord_ - 1].r(); }
+  const Position& r_local() const { return coord_[n_coord_ - 1].r(); }
 
   // Accessors for direction in global coordinates
-  Direction& u() { return coord_[0].u; }
-  const Direction& u() const { return coord_[0].u; }
+  Direction& u() { return coord_[0].u(); }
+  const Direction& u() const { return coord_[0].u(); }
 
   // Accessors for direction in local coordinates
-  Direction& u_local() { return coord_[n_coord_ - 1].u; }
-  const Direction& u_local() const { return coord_[n_coord_ - 1].u; }
+  Direction& u_local() { return coord_[n_coord_ - 1].u(); }
+  const Direction& u_local() const { return coord_[n_coord_ - 1].u(); }
 
   // Surface token for the surface that the particle is currently on
   int& surface() { return surface_; }

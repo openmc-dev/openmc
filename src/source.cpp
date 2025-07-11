@@ -247,8 +247,8 @@ bool Source::satisfies_spatial_constraints(Position r) const
     } else {
       for (int i = 0; i < geom_state.n_coord(); i++) {
         auto id = (domain_type_ == DomainType::CELL)
-                    ? model::cells[geom_state.coord(i).cell]->id_
-                    : model::universes[geom_state.coord(i).universe]->id_;
+                    ? model::cells[geom_state.coord(i).cell()].get()->id_
+                    : model::universes[geom_state.coord(i).universe()].get()->id_;
         if ((accepted = contains(domain_ids_, id)))
           break;
       }

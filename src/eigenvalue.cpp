@@ -86,9 +86,9 @@ void calculate_generation_keff()
     keff_reduced[1] /= settings::n_particles;
   }
 
-  simulation::k_generation.push_back({keff_reduced[0],
-    std::sqrt(keff_reduced[1] - std::pow(keff_reduced[0], 2)) /
-      settings::n_particles});
+  simulation::k_generation.push_back(
+    {keff_reduced[0], std::sqrt(keff_reduced[1] - std::pow(keff_reduced[0], 2) /
+                                                    settings::n_particles)});
 }
 
 void synchronize_bank()

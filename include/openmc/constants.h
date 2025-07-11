@@ -328,8 +328,8 @@ enum class GlobalTally {
   K_COLLISION,
   K_ABSORPTION,
   K_TRACKLENGTH,
-  K_TRACKLENGTH_SQ, // for calculation of stddev for generational k
   LEAKAGE,
+  K_TRACKLENGTH_SQ, // for calculation of stddev for generational k
   SIZE
 };
 constexpr int N_GLOBAL_TALLIES {static_cast<int>(GlobalTally::SIZE)};

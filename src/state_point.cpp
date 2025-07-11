@@ -253,7 +253,7 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
 
     if (settings::reduce_tallies) {
       // Write global tallies
-      write_dataset(file_id, "global_tallies", simulation::global_tallies);
+      write_global_tallies(file_id);
 
       // Write tallies
       if (model::active_tallies.size() > 0) {
@@ -484,8 +484,9 @@ extern "C" int openmc_statepoint_load(const char* filename)
   if (mpi::master) {
 #endif
     // Read global tally data
-    read_dataset_lowlevel(file_id, "global_tallies", H5T_NATIVE_DOUBLE, H5S_ALL,
-      false, simulation::global_tallies.data());
+    auto gt_view = xt::view(simulation::global_tallies, xt::range())
+      read_dataset_lowlevel(file_id, "global_tallies", H5T_NATIVE_DOUBLE,
+        H5S_ALL, false, simulation::global_tallies.data());
 
     // Check if tally results are present
     bool present;
@@ -917,6 +918,29 @@ void write_unstructured_mesh_results()
     }
   }
 }
+void write_global_tallies(hid_t file_id)
+{
+  // Get global tallies
+  auto& gt = simulation::global_tallies;
+  auto write_view =
+    xt::view(gt, xt::range(0, static_cast<int>(GlobalTally::SIZE)),
+      xt::range(static_cast<int>(TallyResult::SUM),
+        static_cast<int>(TallyResult::SUM_SQ) + 1));
+  write_dataset(file_id, "global_tallies", write_view);
+}
+
+void read_global_tallies(hid_t file_id)
+{
+  // Get global tallies
+  auto& gt = simulation::global_tallies;
+  auto gt_view = xt::view(gt, xt::range(0, static_cast<int>(GlobalTally::SIZE)),
+    xt::range(static_cast<int>(TallyResult::SUM),
+      static_cast<int>(TallyResult::SUM_SQ) + 1));
+  auto gt_reduced =
+    xt : empty_like(gt_view) read_dataset_lowlevel(file_id, "global_tallies",
+           H5T_NATIVE_DOUBLE, H5S_ALL, false, gt_reduced.data());
+  gt_view = gt_reduced;
+}
 
 void write_tally_results_nr(hid_t file_id)
 {
@@ -951,7 +975,7 @@ void write_tally_results_nr(hid_t file_id)
 
   // Write out global tallies sum and sum_sq
   if (mpi::master) {
-    write_dataset(file_id, "global_tallies", gt);
+    write_global_tallies(file_id);
   }
 
   for (const auto& t : model::tallies) {

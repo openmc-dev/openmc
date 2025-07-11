@@ -114,7 +114,7 @@ void process_advance_particle_events()
     p.event_advance();
     if (!p.alive())
       continue;
-    if (p.boundary().distance() > p.collision_distance()) {
+    if (p.collision_distance() > p.boundary().distance()) {
       simulation::surface_crossing_queue.thread_safe_append({p, buffer_idx});
     } else {
       simulation::collision_queue.thread_safe_append({p, buffer_idx});

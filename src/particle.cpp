@@ -395,12 +395,12 @@ void Particle::event_collide()
   for (int j = 0; j < n_coord() - 1; ++j) {
     if (coord(j + 1).rotated()) {
       // If next level is rotated, apply rotation matrix
-              const auto& m {model::cells[coord(j).cell()]->rotation_};
-              const auto& u {coord(j).u()};
-              coord(j + 1).u() = u.rotate(m);
+      const auto& m {model::cells[coord(j).cell()]->rotation_};
+      const auto& u {coord(j).u()};
+      coord(j + 1).u() = u.rotate(m);
     } else {
       // Otherwise, copy this level's direction
-              coord(j + 1).u() = coord(j).u();
+      coord(j + 1).u() = coord(j).u();
     }
   }
 
@@ -681,7 +681,7 @@ void Particle::cross_reflective_bc(const Surface& surf, Direction new_u)
   u() = new_u;
 
   // Reassign particle's cell and surface
-      coord(0).cell() = cell_last(0);
+  coord(0).cell() = cell_last(0);
   surface() = -surface();
 
   // If a reflective surface is coincident with a lattice or universe

@@ -1330,7 +1330,7 @@ vector<ParentCell> Cell::find_parent_cells(
       lattice_idx = model::lattices[next_coord.lattice()]->get_flat_index(
         next_coord.lattice_index());
     }
-          stack.push(coord.universe(), {coord.cell(), lattice_idx});
+    stack.push(coord.universe(), {coord.cell(), lattice_idx});
   }
 
   // if this loop finished because the cell was found and

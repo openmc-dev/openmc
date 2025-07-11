@@ -190,8 +190,9 @@ void print_particle(Particle& p)
     if (p.coord(i).lattice() != C_NONE) {
       const Lattice& lat {*model::lattices[p.coord(i).lattice()]};
       fmt::print("    Lattice          = {}\n", lat.id_);
-      fmt::print("    Lattice position = ({},{},{})\n", p.coord(i).lattice_index()[0],
-        p.coord(i).lattice_index()[1], p.coord(i).lattice_index()[2]);
+      fmt::print("    Lattice position = ({},{},{})\n",
+        p.coord(i).lattice_index()[0], p.coord(i).lattice_index()[1],
+        p.coord(i).lattice_index()[2]);
     }
 
     fmt::print("    r = {}\n", p.coord(i).r());

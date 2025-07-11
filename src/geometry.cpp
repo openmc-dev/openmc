@@ -234,7 +234,7 @@ bool find_cell_inner(
         coord.universe() = lat[i_xyz];
       } else {
         if (lat.outer_ != NO_OUTER_UNIVERSE) {
-                      coord.universe() = lat.outer_;
+          coord.universe() = lat.outer_;
         } else {
           p.mark_as_lost(fmt::format(
             "Particle {} left lattice {}, but it has no outer definition.",
@@ -304,20 +304,20 @@ void cross_lattice(GeometryState& p, const BoundaryInfo& boundary, bool verbose)
   if (verbose) {
     write_message(
       fmt::format("    Crossing lattice {}. Current position ({},{},{}). r={}",
-        lat.id_, coord.lattice_index()[0], coord.lattice_index()[1], coord.lattice_index()[2],
-        p.r()),
+        lat.id_, coord.lattice_index()[0], coord.lattice_index()[1],
+        coord.lattice_index()[2], p.r()),
       1);
   }
 
   // Set the lattice indices.
-        coord.lattice_index()[0] += boundary.lattice_translation[0];
-      coord.lattice_index()[1] += boundary.lattice_translation[1];
-      coord.lattice_index()[2] += boundary.lattice_translation[2];
+  coord.lattice_index()[0] += boundary.lattice_translation[0];
+  coord.lattice_index()[1] += boundary.lattice_translation[1];
+  coord.lattice_index()[2] += boundary.lattice_translation[2];
 
   // Set the new coordinate position.
   const auto& upper_coord {p.coord(p.n_coord() - 2)};
   const auto& cell {model::cells[upper_coord.cell()]};
-      Position r = upper_coord.r();
+  Position r = upper_coord.r();
   r -= cell->translation_;
   if (!cell->rotation_.empty()) {
     r = r.rotate(cell->rotation_);
@@ -337,7 +337,7 @@ void cross_lattice(GeometryState& p, const BoundaryInfo& boundary, bool verbose)
 
   } else {
     // Find cell in next lattice element.
-          p.lowest_coord().universe() = lat[coord.lattice_index()];
+    p.lowest_coord().universe() = lat[coord.lattice_index()];
     bool found = exhaustive_find_cell(p);
 
     if (!found) {
@@ -378,7 +378,7 @@ BoundaryInfo distance_to_boundary(GeometryState& p)
 
     // Find the distance to the next lattice tile crossing.
     if (coord.lattice() != C_NONE) {
-              auto& lat {*model::lattices[coord.lattice()]};
+      auto& lat {*model::lattices[coord.lattice()]};
       // TODO: refactor so both lattice use the same position argument (which
       // also means the lat.type attribute can be removed)
       std::pair<double, array<int, 3>> lattice_distance;
@@ -388,7 +388,7 @@ BoundaryInfo distance_to_boundary(GeometryState& p)
         break;
       case LatticeType::hex:
         auto& cell_above {model::cells[p.coord(i - 1).cell()]};
-                  Position r_hex {p.coord(i - 1).r()};
+        Position r_hex {p.coord(i - 1).r()};
         r_hex -= cell_above->translation_;
         if (coord.rotated()) {
           r_hex = r_hex.rotate(cell_above->rotation_);

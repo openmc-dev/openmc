@@ -205,16 +205,21 @@ struct BoundaryInfo {
   int& coord_level() { return coord_level_; }
 
   array<int, 3>& lattice_translation() { return lattice_translation_; }
-  const array<int, 3>& lattice_translation() const { return lattice_translation_; }
+  const array<int, 3>& lattice_translation() const
+  {
+    return lattice_translation_;
+  }
 
   // TODO: off-by-one
   int surface_index() const { return std::abs(surface()) - 1; }
 
-  private:
+private:
   double distance_ {INFINITY}; //!< distance to nearest boundary
-  int surface_ {SURFACE_NONE}; //!< surface token, non-zero if boundary is surface
+  int surface_ {
+    SURFACE_NONE};      //!< surface token, non-zero if boundary is surface
   int coord_level_ {0}; //!< coordinate level after crossing boundary
-  array<int, 3> lattice_translation_ {0, 0, 0}; //!< which way lattice indices will change
+  array<int, 3> lattice_translation_ {
+    0, 0, 0}; //!< which way lattice indices will change
 };
 
 /*

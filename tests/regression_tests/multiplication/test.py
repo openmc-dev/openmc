@@ -1,9 +1,14 @@
+"""This test is based on a simple 4-group slab model from 
+"MCNP Calculations of Subcritical Fixed and Fission Multiplication Factors",
+LA-UR-10-00141 which can be found at https://mcnp.lanl.gov/pdf_files/TechReport_2010_LANL_LA-UR-10-00141_KiedrowskiBrown.pdf 
+"""
 import openmc
 from openmc.stats import delta_function
 import numpy as np
 import pytest
 from openmc.examples import slab_mg
 import os
+import glob
     
 from tests.testing_harness import PyAPITestHarness
 
@@ -14,6 +19,36 @@ class MGXSTestHarness(PyAPITestHarness):
         f = 'mgxs.h5'
         if os.path.exists(f):
             os.remove(f)
+    def _get_results(self, hash_output=False):
+        outstr = super()._get_results(hash_output=hash_output)
+        # Read the statepoint file.
+        statepoint = glob.glob(self._sp_name)[0]
+        with openmc.StatePoint(statepoint) as sp:
+            # Write out multiplication.
+            outstr += 'multiplication:\n'
+            form = '{0:12.6E} {1:12.6E}\n'
+            M = sp.multiplication
+            outstr += form.format(M.n, M.s)              
+            
+            # Write out k1.
+            outstr += 'k1:\n'
+            form = '{0:12.6E} {1:12.6E}\n'
+            k1 = sp.k_generation[0]
+            outstr += form.format(k1.n, k1.s)   
+            
+            # Write out kf.
+            outstr += 'kf:\n'
+            form = '{0:12.6E} {1:12.6E}\n'
+            kf = 1-k1/(M-1) 
+            outstr += form.format(kf.n, kf.s)
+            
+            # Write out g*.
+            outstr += 'g*:\n'
+            form = '{0:12.6E} {1:12.6E}\n'
+            g_star = sp.source_efficiency 
+            outstr += form.format(g_star.n, g_star.s)
+        return outstr   
+                       
 
 @pytest.fixture()
 def slab_model():

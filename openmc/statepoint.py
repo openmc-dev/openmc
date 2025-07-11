@@ -81,6 +81,8 @@ class StatePoint:
         .. versionadded:: 0.13.1
     meshes : dict
         Dictionary whose keys are mesh IDs and whose values are MeshBase objects
+    multiplication : uncertainties.UFloat
+        Estimator for multiplication of initial source neutrons 
     n_batches : int
         Number of batches
     n_inactive : int
@@ -107,6 +109,8 @@ class StatePoint:
         'E', 'wgt', 'delayed_group', 'surf_id', and 'particle', corresponding to
         the position, direction, energy, weight, delayed group, surface ID and
         particle type of the source site, respectively.
+    source_effectiveness : uncertainties.UFloat
+        Source effectiveness factor.        
     source_present : bool
         Indicate whether source sites are present
     sparse : bool
@@ -324,6 +328,17 @@ class StatePoint:
             self._meshes_read = True
 
         return self._meshes
+        
+    @property
+    def multiplication(self):
+        if self.run_mode == 'eigenvalue':
+            k_gen = self.k_generation
+            k_inactive = k_gen[:self.n_inactive]
+            cumprod = np.cumprod(k_inactive)
+            cumprod[-1] *= 1/(1-self.keff)
+            return 1.0+np.sum(cumprod)
+        else:
+            return None        
 
     @property
     def n_batches(self):
@@ -372,6 +387,15 @@ class StatePoint:
     @property
     def source(self):
         return self._f['source_bank'][()] if self.source_present else None
+        
+    @property
+    def source_efficiency(self):
+        if self.run_mode == 'eigenvalue':
+            k_gen = self.k_generation
+            k_inactive = k_gen[:self.n_inactive]
+            return np.prod(k_inactive/self.keff)
+        else:
+            return None          
 
     @property
     def source_present(self):

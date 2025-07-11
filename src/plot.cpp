@@ -1634,7 +1634,7 @@ void Ray::trace()
       break;
 
     // if there is no intersection with the model, we're done
-    if (boundary().surface == SURFACE_NONE)
+    if (boundary().surface() == SURFACE_NONE)
       return;
 
     event_counter_++;
@@ -1646,10 +1646,10 @@ void Ray::trace()
 
   // Call the specialized logic for this type of ray. This is for the
   // intersection for the first intersection if we had one.
-  if (boundary().surface != SURFACE_NONE) {
+  if (boundary().surface() != SURFACE_NONE) {
     // set the geometry state's surface attribute to be used for
     // surface normal computation
-    surface() = boundary().surface;
+    surface() = boundary().surface();
     on_intersection();
     if (stop_)
       return;
@@ -1674,37 +1674,37 @@ void Ray::trace()
     // if we hit the edge of the model, so stop
     // the particle in that case. Also, just exit
     // if a negative distance was somehow computed.
-    if (boundary().distance == INFTY || boundary().distance == INFINITY ||
-        boundary().distance < 0) {
+    if (boundary().distance() == INFTY || boundary().distance() == INFINITY ||
+        boundary().distance() < 0) {
       return;
     }
 
     // See below comment where call_on_intersection is checked in an
     // if statement for an explanation of this.
     bool call_on_intersection {true};
-    if (boundary().distance < 10 * TINY_BIT) {
+    if (boundary().distance() < 10 * TINY_BIT) {
       call_on_intersection = false;
     }
 
     // DAGMC surfaces expect us to go a little bit further than the advance
     // distance to properly check cell inclusion.
-    boundary().distance += TINY_BIT;
+    boundary().distance() += TINY_BIT;
 
     // Advance particle, prepare for next intersection
     for (int lev = 0; lev < n_coord(); ++lev) {
-      coord(lev).r += boundary().distance * coord(lev).u;
+      coord(lev).r += boundary().distance() * coord(lev).u;
     }
-    surface() = boundary().surface;
+    surface() = boundary().surface();
     n_coord_last() = n_coord();
-    n_coord() = boundary().coord_level;
-    if (boundary().lattice_translation[0] != 0 ||
-        boundary().lattice_translation[1] != 0 ||
-        boundary().lattice_translation[2] != 0) {
+    n_coord() = boundary().coord_level();
+    if (boundary().lattice_translation()[0] != 0 ||
+        boundary().lattice_translation()[1] != 0 ||
+        boundary().lattice_translation()[2] != 0) {
       cross_lattice(*this, boundary(), settings::verbosity >= 10);
     }
 
     // Record how far the ray has traveled
-    traversal_distance_ += boundary().distance;
+    traversal_distance_ += boundary().distance();
     inside_cell = neighbor_list_find_cell(*this, settings::verbosity >= 10);
 
     // Call the specialized logic for this type of ray. Note that we do not

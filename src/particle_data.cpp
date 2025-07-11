@@ -65,22 +65,22 @@ void GeometryState::advance_to_boundary_from_void()
   for (auto c_i : root_universe->cells_) {
     auto dist =
       model::cells.at(c_i)->distance(root_coord.r, root_coord.u, 0, this);
-    if (dist.first < boundary().distance) {
-      boundary().distance = dist.first;
-      boundary().surface = dist.second;
+    if (dist.first < boundary().distance()) {
+      boundary().distance() = dist.first;
+      boundary().surface() = dist.second;
     }
   }
 
   // if no intersection or near-infinite intersection, reset
   // boundary information
-  if (boundary().distance > 1e300) {
-    boundary().distance = INFTY;
-    boundary().surface = SURFACE_NONE;
+  if (boundary().distance() > 1e300) {
+    boundary().distance() = INFTY;
+    boundary().surface() = SURFACE_NONE;
     return;
   }
 
   // move the particle up to (and just past) the boundary
-  move_distance(boundary().distance + TINY_BIT);
+  move_distance(boundary().distance() + TINY_BIT);
 }
 
 void GeometryState::move_distance(double length)

@@ -281,7 +281,7 @@ void RandomRay::event_advance_ray()
 {
   // Find the distance to the nearest boundary
   boundary() = distance_to_boundary(*this);
-  double distance = boundary().distance;
+  double distance = boundary().distance();
 
   if (distance < 0.0) {
     mark_as_lost("Negative transport distance detected for particle " +

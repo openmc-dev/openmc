@@ -926,7 +926,7 @@ void write_global_tallies(hid_t file_id)
     xt::range(static_cast<int>(TallyResult::SUM),
       static_cast<int>(TallyResult::SUM_SQ) + 1));
   auto gt_reduced = xt::empty_like(write_view);
-  gt_reduced = write_view;    
+  gt_reduced = write_view;
   write_dataset(file_id, "global_tallies", gt_reduced);
 }
 

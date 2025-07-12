@@ -484,9 +484,7 @@ extern "C" int openmc_statepoint_load(const char* filename)
   if (mpi::master) {
 #endif
     // Read global tally data
-    auto gt_view = xt::view(simulation::global_tallies, xt::range())
-      read_dataset_lowlevel(file_id, "global_tallies", H5T_NATIVE_DOUBLE,
-        H5S_ALL, false, simulation::global_tallies.data());
+    read_global_tallies(file_id);
 
     // Check if tally results are present
     bool present;
@@ -922,23 +920,28 @@ void write_global_tallies(hid_t file_id)
 {
   // Get global tallies
   auto& gt = simulation::global_tallies;
-  auto write_view =
-    xt::view(gt, xt::range(0, static_cast<int>(GlobalTally::SIZE)),
-      xt::range(static_cast<int>(TallyResult::SUM),
-        static_cast<int>(TallyResult::SUM_SQ) + 1));
-  write_dataset(file_id, "global_tallies", write_view);
+  auto write_view = xt::view(gt,
+    xt::range(static_cast<int>(GlobalTally::K_COLLISION),
+      static_cast<int>(GlobalTally::LEAKAGE) + 1),
+    xt::range(static_cast<int>(TallyResult::SUM),
+      static_cast<int>(TallyResult::SUM_SQ) + 1));
+  auto gt_reduced = xt::empty_like(write_view);
+  gt_reduced = write_view;    
+  write_dataset(file_id, "global_tallies", gt_reduced);
 }
 
 void read_global_tallies(hid_t file_id)
 {
   // Get global tallies
   auto& gt = simulation::global_tallies;
-  auto gt_view = xt::view(gt, xt::range(0, static_cast<int>(GlobalTally::SIZE)),
+  auto gt_view = xt::view(gt,
+    xt::range(static_cast<int>(GlobalTally::K_COLLISION),
+      static_cast<int>(GlobalTally::LEAKAGE) + 1),
     xt::range(static_cast<int>(TallyResult::SUM),
       static_cast<int>(TallyResult::SUM_SQ) + 1));
-  auto gt_reduced =
-    xt : empty_like(gt_view) read_dataset_lowlevel(file_id, "global_tallies",
-           H5T_NATIVE_DOUBLE, H5S_ALL, false, gt_reduced.data());
+  auto gt_reduced = xt::empty_like(gt_view);
+  read_dataset_lowlevel(file_id, "global_tallies", H5T_NATIVE_DOUBLE, H5S_ALL,
+    false, gt_reduced.data());
   gt_view = gt_reduced;
 }
 

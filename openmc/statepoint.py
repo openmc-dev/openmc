@@ -247,8 +247,8 @@ class StatePoint:
                 ('mean', 'f8'), ('std_dev', 'f8')])
             gt['name'] = ['k-collision', 'k-absorption', 'k-tracklength',
                           'leakage']
-            gt['sum'] = data[:,1]
-            gt['sum_sq'] = data[:,2]
+            gt['sum'] = data[:,0]
+            gt['sum_sq'] = data[:,1]
 
             # Calculate mean and sample standard deviation of mean
             n = self.n_realizations

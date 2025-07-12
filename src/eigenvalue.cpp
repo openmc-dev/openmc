@@ -737,7 +737,7 @@ void write_eigenvalue_hdf5(hid_t group)
 void read_eigenvalue_hdf5(hid_t group)
 {
   read_dataset(group, "generations_per_batch", settings::gen_per_batch);
-  int n = simulation::restart_batch * settings::gen_per_batch;
+  size_t n = simulation::restart_batch * settings::gen_per_batch;
   xt::xtensor<double, 2> k_generation({n, 2});
   read_dataset(group, "k_generation", k_generation);
   simulation::k_generation.resize(n);

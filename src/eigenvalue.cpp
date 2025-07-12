@@ -742,7 +742,7 @@ void read_eigenvalue_hdf5(hid_t group)
   read_dataset(group, "k_generation", k_generation);
   simulation::k_generation.resize(n);
   for (int i = 0; i < n; ++i) {
-    simulation::k_generation[i] = {k_generation(i, 0), k_generation(i, 1)});
+    simulation::k_generation[i] = {k_generation(i, 0), k_generation(i, 1)};
   }
   if (settings::entropy_on) {
     read_dataset(group, "entropy", simulation::entropy);

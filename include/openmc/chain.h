@@ -45,9 +45,12 @@ public:
 
 private:
   // Data members
-  std::string name_;          //!< Name of nuclide
-  double half_life_ {0.0};    //!< Half-life in [s]
-  double decay_energy_ {0.0}; //!< Decay energy in [eV]
+  std::string name_;              //!< Name of nuclide
+  double half_life_ {0.0};        //!< Half-life in [s]
+  double decay_energy_ {0.0};     //!< Decay energy in [eV]
+  bool fissionable_ {false};      //!< Can do fission
+  double fission_energy_ {0.0};   //!< Fission energy in [eV]
+  FissionYields* fission_yields_; //!< Fission yields
   std::unordered_map<int, vector<Product>>
     reaction_products_;    //!< Map of MT to reaction products
   UPtrDist photon_energy_; //!< Decay photon energy distribution
@@ -76,6 +79,21 @@ private:
 };
 
 //==============================================================================
+// Fission Yield Data
+//==============================================================================
+
+class FissionYields {
+public:
+  // Constructors, destructors
+  FissionYields(pugi::xml_node node);
+  ~FissionYields();
+
+private:
+  // Data members
+  std::unordered_map<std::string, unique_ptr<Function1D>> yields_;
+};
+
+//==============================================================================
 // Global variables
 //==============================================================================
 
@@ -83,6 +101,7 @@ namespace data {
 
 extern std::unordered_map<std::string, int> chain_nuclide_map;
 extern vector<unique_ptr<ChainNuclide>> chain_nuclides;
+extern vector<unique_ptr<FissionYields>> fission_yields;
 
 } // namespace data
 

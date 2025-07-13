@@ -183,7 +183,6 @@ class R2SManager:
         else:
             self.method = 'cell-based'
         self.domains = domains
-        # TODO: Photon settings
         # TODO: Think about MPI
         # TODO: Option to use CoupledOperator? Needed for true burnup
         # TODO: Voiding/changing materials between neutron/photon steps
@@ -201,6 +200,7 @@ class R2SManager:
         micro_kwargs: dict | None = None,
         mat_vol_kwargs: dict | None = None,
         run_kwargs: dict | None = None,
+        photon_settings: openmc.Settings | None = None,
     ):
         """Run the R2S calculation.
 
@@ -244,6 +244,10 @@ class R2SManager:
         run_kwargs : dict, optional
             Additional keyword arguments passed to :meth:`openmc.Model.run`
             during the photon transport step. By default, output is disabled.
+        photon_settings : openmc.Settings, optional
+            Custom settings to use for the photon transport calculation. If
+            provided, the original model settings will be temporarily replaced
+            during the photon transport calculations and restored afterward.
 
         Returns
         -------
@@ -263,7 +267,8 @@ class R2SManager:
         )
         self.step3_photon_transport(
             cooling_times, dose_tallies, bounding_boxes,
-            output_dir / 'photon_transport', run_kwargs=run_kwargs
+            output_dir / 'photon_transport', run_kwargs=run_kwargs,
+            settings=photon_settings
         )
 
         return output_dir
@@ -406,15 +411,16 @@ class R2SManager:
         bounding_boxes: dict[int, openmc.BoundingBox] | None = None,
         output_dir: PathLike = 'photon_transport',
         run_kwargs: dict | None = None,
+        settings: openmc.Settings | None = None,
     ):
         """Run the photon transport step.
 
         This step performs photon transport calculations using decay photon
-        sources created from the activated materials. For each cooling time,
-        it creates appropriate photon sources and runs a transport calculation.
-        In mesh-based mode, the sources are created using the mesh material
-        volumes, while in cell-based mode, they are created using bounding
-        boxes for each cell.
+        sources created from the activated materials. For each cooling time, it
+        creates appropriate photon sources and runs a transport calculation. In
+        mesh-based mode, the sources are created using the mesh material
+        volumes, while in cell-based mode, they are created using bounding boxes
+        for each cell.
 
         Parameters
         ----------
@@ -433,6 +439,10 @@ class R2SManager:
         run_kwargs : dict, optional
             Additional keyword arguments passed to :meth:`openmc.Model.run`
             during the photon transport step. By default, output is disabled.
+        settings : openmc.Settings, optional
+            Custom settings to use for the photon transport calculation. If
+            provided, the original model settings will be temporarily replaced
+            during the photon transport calculations and restored afterward.
         """
 
         # TODO: Automatically determine bounding box for each cell
@@ -446,43 +456,52 @@ class R2SManager:
         if dose_tallies is not None:
             self.model.tallies.extend(dose_tallies)
 
-        for time_index in cooling_times:
-            # Create decay photon source
-            if self.method == 'mesh-based':
-                self.model.settings.source = get_decay_photon_source_mesh(
-                    self.model,
-                    self.domains,
-                    self.results['activation_materials'],
-                    self.results['depletion_results'],
-                    self.results['mesh_material_volumes'],
-                    time_index=time_index,
-                )
-            else:
-                sources = []
-                results = self.results['depletion_results']
-                for cell, original_mat in zip(self.domains, self.results['activation_materials']):
-                    bounding_box = bounding_boxes[cell.id]
+        # Save original settings to restore later
+        original_settings = self.model.settings
+        if settings is not None:
+            self.model.settings = settings
 
-                    # Get activated material composition
-                    activated_mat = results[time_index].get_material(str(original_mat.id))
-
-                    # Create decay photon source source
-                    space = openmc.stats.Box(*bounding_box)
-                    energy = activated_mat.get_decay_photon_energy()
-                    source = openmc.IndependentSource(
-                        space=space,
-                        energy=energy,
-                        particle='photon',
-                        strength=energy.integral(),
-                        domains=[cell]
+        try:
+            for time_index in cooling_times:
+                # Create decay photon source
+                if self.method == 'mesh-based':
+                    self.model.settings.source = get_decay_photon_source_mesh(
+                        self.model,
+                        self.domains,
+                        self.results['activation_materials'],
+                        self.results['depletion_results'],
+                        self.results['mesh_material_volumes'],
+                        time_index=time_index,
                     )
-                    sources.append(source)
-                self.model.settings.source = sources
+                else:
+                    sources = []
+                    results = self.results['depletion_results']
+                    for cell, original_mat in zip(self.domains, self.results['activation_materials']):
+                        bounding_box = bounding_boxes[cell.id]
 
-            # Convert time_index (which may be negative) to a normal index
-            if time_index < 0:
-                time_index = len(self.results['depletion_results']) + time_index
+                        # Get activated material composition
+                        activated_mat = results[time_index].get_material(str(original_mat.id))
 
-            # Run photon transport calculation
-            run_kwargs['cwd'] = Path(output_dir) / f'time_{time_index}'
-            self.model.run(**run_kwargs)
+                        # Create decay photon source source
+                        space = openmc.stats.Box(*bounding_box)
+                        energy = activated_mat.get_decay_photon_energy()
+                        source = openmc.IndependentSource(
+                            space=space,
+                            energy=energy,
+                            particle='photon',
+                            strength=energy.integral(),
+                            domains=[cell]
+                        )
+                        sources.append(source)
+                    self.model.settings.source = sources
+
+                # Convert time_index (which may be negative) to a normal index
+                if time_index < 0:
+                    time_index = len(self.results['depletion_results']) + time_index
+
+                # Run photon transport calculation
+                run_kwargs['cwd'] = Path(output_dir) / f'time_{time_index}'
+                self.model.run(**run_kwargs)
+        finally:
+            # Restore original settings
+            self.model.settings = original_settings

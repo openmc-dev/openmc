@@ -150,11 +150,32 @@ class R2SManager:
     activation materials and decay photon sources based on the mesh/cells and
     materials in the OpenMC model.
 
+    Parameters
+    ----------
+    model : openmc.Model
+        The OpenMC model containing the geometry and materials.
+    domains : openmc.MeshBase or Sequence[openmc.Cell]
+        The mesh or a sequence of cells that represent the spatial units over
+        which the R2S calculation will be performed.
+
+    Attributes
+    ----------
+    domains : openmc.MeshBase or Sequence[openmc.Cell]
+        The mesh or a sequence of cells that represent the spatial units over
+        which the R2S calculation will be performed.
+    model : openmc.Model
+        The OpenMC model containing the geometry and materials.
+    method : {'mesh-based', 'cell-based'}
+        Indicates whether the R2S calculation uses mesh elements ('mesh-based')
+        as the spatial discetization or a list of a cells ('cell-based').
+    results : dict
+        A dictionary that stores results from the R2S calculation.
+
     """
     def __init__(
         self,
         model: openmc.Model,
-        domains: openmc.MeshBase,
+        domains: openmc.MeshBase | Sequence[openmc.Cell],
     ):
         self.model = model
         if isinstance(domains, openmc.MeshBase):
@@ -181,7 +202,54 @@ class R2SManager:
         mat_vol_kwargs: dict | None = None,
         run_kwargs: dict | None = None,
     ):
-        """Run the R2S calculation."""
+        """Run the R2S calculation.
+
+        Parameters
+        ----------
+        timesteps : Sequence[float] or Sequence[tuple[float, str]]
+            Sequence of timesteps. Note that values are not cumulative. The
+            units are specified by the `timestep_units` argument when
+            `timesteps` is an iterable of float. Alternatively, units can be
+            specified for each step by passing an iterable of (value, unit)
+            tuples.
+        source_rates : float or Sequence[float]
+            Source rate in [neutron/sec] for each interval in `timesteps`.
+        cooling_times : Sequence[int]
+            Sequence of cooling times represented as indices into the array of
+            `timesteps`.
+        dose_tallies : Sequence[openmc.Tally], optional
+            A sequence of tallies to be used for dose calculations in the photon
+            transport step. If None, no dose tallies are added.
+        timestep_units : {'s', 'min', 'h', 'd', 'a'}, optional
+            Units for values specified in the `timesteps` argument when passing
+            float values. 's' means seconds, 'min' means minutes, 'h' means
+            hours, 'd' means days, and 'a' means years (Julian).
+        output_dir : PathLike, optional
+            Path to directory where R2S calculation outputs will be saved. If
+            not provided, a timestamped directory 'r2s_YYYY-MM-DDTHH-MM-SS' is
+            created. Subdirectories will be created for the neutron transport,
+            activation, and photon transport steps.
+        bounding_boxes : dict[int, openmc.BoundingBox], optional
+            Dictionary mapping cell IDs to bounding boxes used for spatial
+            source sampling in cell-based R2S calculations. Required if method
+            is 'cell-based'.
+        micro_kwargs : dict, optional
+            Additional keyword arguments passed to
+            :func:`openmc.deplete.get_microxs_and_flux` during the neutron
+            transport step.
+        mat_vol_kwargs : dict, optional
+            Additional keyword arguments passed to
+            :meth:`openmc.MeshBase.material_volumes` during the neutron
+            transport step.
+        run_kwargs : dict, optional
+            Additional keyword arguments passed to :meth:`openmc.Model.run`
+            during the photon transport step. By default, output is disabled.
+
+        Returns
+        -------
+        Path
+            Path to the output directory containing all calculation results
+        """
 
         if output_dir is None:
             stamp = datetime.now().strftime('%Y-%m-%dT%H-%M-%S')
@@ -213,6 +281,17 @@ class R2SManager:
         sections for each mesh/material combination. This step will populate the
         'fluxes' and 'micros' keys in the results dictionary. For a mesh-based
         calculation, it will also populate the 'mesh_material_volumes' key.
+
+        Parameters
+        ----------
+        output_dir : PathLike, optional
+            The directory where the results will be saved.
+        mat_vol_kwargs : dict, optional
+            Additional keyword arguments based to
+            :meth:`openmc.MeshBase.material_volumes`.
+        micro_kwargs : dict, optional
+            Additional keyword arguments passed to
+            :func:`openmc.deplete.get_microxs_and_flux`.
 
         """
 
@@ -258,6 +337,32 @@ class R2SManager:
         timestep_units: str = 's',
         output_dir: PathLike = 'activation',
     ):
+        """Run the activation step.
+
+        This step creates a unique copy of each activation material based on the
+        mesh elements or cells, then solves the depletion equations for each
+        material using the fluxes and microscopic cross sections obtained in the
+        neutron transport step.
+
+        Parameters
+        ----------
+        timesteps : Sequence[float] or Sequence[tuple[float, str]]
+            Sequence of timesteps. Note that values are not cumulative. The
+            units are specified by the `timestep_units` argument when
+            `timesteps` is an iterable of float. Alternatively, units can be
+            specified for each step by passing an iterable of (value, unit)
+            tuples.
+        source_rates : float | Sequence[float]
+            Source rate in [neutron/sec] for each interval in `timesteps`.
+        timestep_units : {'s', 'min', 'h', 'd', 'a'}, optional
+            Units for values specified in the `timesteps` argument when passing
+            float values. 's' means seconds, 'min' means minutes, 'h' means
+            hours, 'd' means days, and 'a' means years (Julian).
+        output_dir : PathLike, optional
+            Path to directory where activation calculation outputs will be
+            saved.
+        """
+
         if self.method == 'mesh-based':
             # Get unique material for each (mesh, material) combination
             mmv = self.results['mesh_material_volumes']
@@ -302,6 +407,34 @@ class R2SManager:
         output_dir: PathLike = 'photon_transport',
         run_kwargs: dict | None = None,
     ):
+        """Run the photon transport step.
+
+        This step performs photon transport calculations using decay photon
+        sources created from the activated materials. For each cooling time,
+        it creates appropriate photon sources and runs a transport calculation.
+        In mesh-based mode, the sources are created using the mesh material
+        volumes, while in cell-based mode, they are created using bounding
+        boxes for each cell.
+
+        Parameters
+        ----------
+        cooling_times : Sequence[int]
+            Sequence of cooling times represented as indices into the array of
+            timesteps used in the activation step.
+        dose_tallies : Sequence[openmc.Tally], optional
+            A sequence of tallies to be used for dose calculations in the photon
+            transport step. If None, no dose tallies are added.
+        bounding_boxes : dict[int, openmc.BoundingBox], optional
+            Dictionary mapping cell IDs to bounding boxes used for spatial
+            source sampling in cell-based R2S calculations. Required if method
+            is 'cell-based'.
+        output_dir : PathLike, optional
+            Path to directory where photon transport outputs will be saved.
+        run_kwargs : dict, optional
+            Additional keyword arguments passed to :meth:`openmc.Model.run`
+            during the photon transport step. By default, output is disabled.
+        """
+
         # TODO: Automatically determine bounding box for each cell
 
         # Set default run arguments if not provided

@@ -945,22 +945,26 @@ class Model:
 
         .. versionadded:: 0.15.3
 
-        If the model is not yet initialized, it will be initialized
-        with openmc.lib.
+        If the model is not yet initialized, it will be initialized with
+        openmc.lib. If the model is initialized, the model will remain
+        initialized after this method call exits.
 
         Parameters
         ----------
         origin : Sequence[float] | None, optional
-            Origin of the plot. Defaults to (0.0, 0.0, 0.0).
+            Origin of the plot. If unspecified, this argument defaults to the
+            center of the bounding box if the bounding box does not contain inf
+            values for the provided basis, otherwise (0.0, 0.0, 0.0).
         width : Sequence[float] | None, optional
-            Width of the plot. Defaults to (10.0, 10.0).
+            Width of the plot. If unspecified, this argument defaults to the
+            width of the bounding box if the bounding box does not contain inf
+            values for the provided basis, otherwise (10.0, 10.0).
         pixels : int | Sequence[int], optional
             If an iterable of ints is provided then this directly sets the
-            number of pixels to use in each basis direction. If a single int
-            is provided then this sets the total number of pixels in the plot
-            and the number of pixels in each basis direction is calculated
-            from this total and the image aspect ratio based on the width
-            argument.
+            number of pixels to use in each basis direction. If a single int is
+            provided then this sets the total number of pixels in the plot and
+            the number of pixels in each basis direction is calculated from this
+            total and the image aspect ratio based on the width argument.
         basis : str, optional
             Basis of the plot. Defaults to 'xy'.
         **init_kwargs
@@ -970,8 +974,9 @@ class Model:
         -------
         id_map : numpy.ndarray
             A NumPy array with shape (vertical pixels, horizontal pixels, 3) of
-            OpenMC property ids with dtype int32. The last dimension of the array
-            contains, in order, cell IDs, cell instances, and material IDs.
+            OpenMC property ids with dtype int32. The last dimension of the
+            array contains, in order, cell IDs, cell instances, and material
+            IDs.
         """
 
         finalize_on_return = False
@@ -979,8 +984,6 @@ class Model:
         if not self.is_initialized:
             self.init_lib(**init_kwargs)
             finalize_on_return = True
-
-        x, y, z = openmc.plots._BASIS_INDICES[basis]
 
         origin, width, pixels = self._set_plot_defaults(
             origin, width, pixels, basis)

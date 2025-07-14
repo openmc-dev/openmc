@@ -933,7 +933,7 @@ class Model:
             pixels_y = math.sqrt(pixels / aspect_ratio)
             pixels = (int(pixels / pixels_y), int(pixels_y))
 
-        return origin, width, pixels, basis
+        return origin, width, pixels
 
     def id_map(self,
                origin: Sequence[float] | None = None,
@@ -982,7 +982,7 @@ class Model:
 
         x, y, z = openmc.plots._BASIS_INDICES[basis]
 
-        origin, width, pixels, basis = self._set_plot_defaults(
+        origin, width, pixels = self._set_plot_defaults(
             origin, width, pixels, basis)
 
         # initialize the openmc.lib.plot._PlotBase object
@@ -1050,7 +1050,7 @@ class Model:
         xlabel, ylabel = f'{basis[0]} [{axis_units}]', f'{basis[1]} [{axis_units}]'
 
         # Determine extents of plot
-        origin, width, pixels, basis = self._set_plot_defaults(
+        origin, width, pixels = self._set_plot_defaults(
             origin, width, pixels, basis)
 
         axis_scaling_factor = {'km': 0.00001, 'm': 0.01, 'cm': 1, 'mm': 10}

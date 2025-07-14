@@ -20,7 +20,7 @@ from openmc.dummy_comm import DummyCommunicator
 from openmc.executor import _process_CLI_arguments
 from openmc.checkvalue import check_type, check_value, PathLike
 from openmc.exceptions import InvalidIDError
-from openmc.plots import add_plot_params
+from openmc.plots import add_plot_params, _BASIS_INDICES
 from openmc.utility_funcs import change_directory
 
 
@@ -903,12 +903,14 @@ class Model:
                                 vol_calc.volumes[domain_id].n
 
 
-    def _set_plot_defaults(self,
-                           origin: Sequence[float] | None,
-                           width: Sequence[float] | None,
-                           pixels: int | Sequence[int],
-                           basis: str):
-        x, y, z = openmc.plots._BASIS_INDICES[basis]
+    def _set_plot_defaults(
+        self,
+        origin: Sequence[float] | None,
+        width: Sequence[float] | None,
+        pixels: int | Sequence[int],
+        basis: str
+    ):
+        x, y, _ = _BASIS_INDICES[basis]
 
         bb = self.bounding_box
         # checks to see if bounding box contains -inf or inf values
@@ -935,27 +937,29 @@ class Model:
 
         return origin, width, pixels
 
-    def id_map(self,
-               origin: Sequence[float] | None = None,
-               width: Sequence[float] | None = None,
-               pixels: int | Sequence[int] = 40000,
-               basis: str = 'xy',
-               **init_kwargs):
+    def id_map(
+        self,
+        origin: Sequence[float] | None = None,
+        width: Sequence[float] | None = None,
+        pixels: int | Sequence[int] = 40000,
+        basis: str = 'xy',
+        **init_kwargs
+    ) -> np.ndarray:
         """Generate an ID map for domains based on the plot parameters
-
-        .. versionadded:: 0.15.3
 
         If the model is not yet initialized, it will be initialized with
         openmc.lib. If the model is initialized, the model will remain
         initialized after this method call exits.
 
+        .. versionadded:: 0.15.3
+
         Parameters
         ----------
-        origin : Sequence[float] | None, optional
+        origin : Sequence[float], optional
             Origin of the plot. If unspecified, this argument defaults to the
             center of the bounding box if the bounding box does not contain inf
             values for the provided basis, otherwise (0.0, 0.0, 0.0).
-        width : Sequence[float] | None, optional
+        width : Sequence[float], optional
             Width of the plot. If unspecified, this argument defaults to the
             width of the bounding box if the bounding box does not contain inf
             values for the provided basis, otherwise (10.0, 10.0).
@@ -965,8 +969,8 @@ class Model:
             provided then this sets the total number of pixels in the plot and
             the number of pixels in each basis direction is calculated from this
             total and the image aspect ratio based on the width argument.
-        basis : str, optional
-            Basis of the plot. Defaults to 'xy'.
+        basis : {'xy', 'yz', 'xz'}, optional
+            Basis of the plot.
         **init_kwargs
             Keyword arguments passed to :meth:`Model.init_lib`.
 
@@ -974,16 +978,11 @@ class Model:
         -------
         id_map : numpy.ndarray
             A NumPy array with shape (vertical pixels, horizontal pixels, 3) of
-            OpenMC property ids with dtype int32. The last dimension of the
-            array contains, in order, cell IDs, cell instances, and material
-            IDs.
+            OpenMC property IDs with dtype int32. The last dimension of the
+            array contains cell IDs, cell instances, and material IDs (in that
+            order).
         """
-
-        finalize_on_return = False
-
-        if not self.is_initialized:
-            self.init_lib(**init_kwargs)
-            finalize_on_return = True
+        import openmc.lib
 
         origin, width, pixels = self._set_plot_defaults(
             origin, width, pixels, basis)
@@ -997,13 +996,16 @@ class Model:
         plot_obj.v_res = pixels[1]
         plot_obj.basis = basis
 
-        try:
-            id_mapping = openmc.lib.id_map(plot_obj)
-        finally:
-            if finalize_on_return:
-                self.finalize_lib()
+        if self.is_initialized:
+            return openmc.lib.id_map(plot_obj)
+        else:
+            # Silence output by default. Also set arguments to start in volume
+            # calculation mode to avoid loading cross sections
+            init_kwargs.setdefault('output', False)
+            init_kwargs.setdefault('args', ['-c'])
 
-        return id_mapping
+            with openmc.lib.TemporarySession(**init_kwargs):
+                return openmc.lib.id_map(plot_obj)
 
     @add_plot_params
     def plot(
@@ -1049,7 +1051,7 @@ class Model:
         source_kwargs.setdefault('marker', 'x')
 
         # Set indices using basis and create axis labels
-        x, y, z = openmc.plots._BASIS_INDICES[basis]
+        x, y, z = _BASIS_INDICES[basis]
         xlabel, ylabel = f'{basis[0]} [{axis_units}]', f'{basis[1]} [{axis_units}]'
 
         # Determine extents of plot

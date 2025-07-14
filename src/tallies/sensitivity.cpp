@@ -707,11 +707,6 @@ void score_collision_sensitivity(Particle& p)
       case N_FISSION:
         score = 0.0;
         break;
-      case N_2N:
-      case N_2NA:
-        if (p.event_mt() != sens.sens_reaction) continue;
-        score = 1.5; 
-        break;
       default:          
         if (p.event_mt() != sens.sens_reaction) continue;
         score = 1.0;
@@ -780,8 +775,6 @@ void score_source_sensitivity(Particle& p)
 
   // only scattering events affect source sensitivity
   if (p.event() != TallyEvent::SCATTER) return;
-  if (p.event_mt() == ELASTIC) return;
-  if (p.event_mt() == N_DISAPPEAR) return;
 
   const Material& material {*model::materials[p.material()]};
 
@@ -807,79 +800,15 @@ void score_source_sensitivity(Particle& p)
     {
 
       // Get the energy of the secondary particle.
-      double E = p.E();
+      double E = p.E_last();
       
       // only scattering events that produce secondary particles
       double score;
       switch (sens.sens_reaction) {
-      // these 3 rxns and other inelastic ones below
-      // don't affect the source as the outgoing neutron is not banked in the secondary bank
-      case N_ND:
-      case N_NP:
-      case N_NA:
-        if (p.event_mt() != sens.sens_reaction) continue;
-        score = 1.0;
-        break;
       case N_2N:
       case N_2NA:
         if (p.event_mt() != sens.sens_reaction) continue;
-        // parent particle continues as one of the secondaries
-        score = 0.5;
-        break;
-      case ELASTIC:
-      case N_T:
-      case N_XT:
-      case N_GAMMA:
-      case N_P:     
-      case N_A:
-      case N_D:      
-        score = 0.0;
-        break;
-      case N_LEVEL:
-      case N_N1:
-      case N_N40:
-      case N_NC:
-      case 52:
-      case 53:
-      case 54:
-      case 55:
-      case 56:
-      case 57:
-      case 58:
-      case 59:
-      case 60:
-      case 61:
-      case 62:
-      case 63:
-      case 64:
-      case 65:
-      case 66:
-      case 67:
-      case 68:
-      case 69:
-      case 70:
-      case 71:
-      case 72:
-      case 73:
-      case 74:
-      case 75:
-      case 76:
-      case 77:
-      case 78:
-      case 79:
-      case 80:
-      case 81:
-      case 82:
-      case 83:
-      case 84:
-      case 85:
-      case 86:
-      case 87:
-      case 88:
-      case 89:
-        if (p.event_mt() != N_LEVEL || p.event_mt() != N_N1 || p.event_mt() != N_N40 
-          || p.event_mt() != N_NC || (p.event_mt() < N_N1 && p.event_mt() > N_NC)) continue;
-        score = 1.0;
+        score = 3.0/4.0;
         break;
       default:          
         score = 0.0;

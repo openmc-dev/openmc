@@ -6,6 +6,8 @@
 #include <cstdlib> // for getenv
 #include <memory>  // for make_unique
 #include <string>  // for stod
+#include <unordered_map>
+#include <utility>
 
 #include <fmt/core.h>
 #include <pugixml.hpp>
@@ -16,6 +18,34 @@
 #include "openmc/xml_interface.h" // for get_node_value
 
 namespace openmc {
+
+//==============================================================================
+// FissionYields implementation
+//==============================================================================
+
+FissionYields::FissionYields(pugi::xml_node node)
+{
+  std::unordered_map<std::string, vector<std::pair<double, double>>> temp;
+  auto energies = get_node_array<double>(node, "energies");
+  for (pugi::xml_node fy : node.children("fission_yields")) {
+    double energy = std::stod(get_node_value(fy, "energy"));
+    auto products = get_node_array<std::string>(fy, "products");
+    auto data = get_node_array<double>(fy, "data");
+    for (int32_t i = 0; i < products.size(); ++i) {
+      temp.insert({products[i], {}});
+      temp[products[i]].push_back(std::make_pair(energy, data[i]));
+    }
+  }
+  for (const auto& pair : temp) {
+    vector<double> x_;
+    vector<double> y_;
+    for (const auto& v : pair.second) {
+      x_.push_back(v.first);
+      y_.push_back(v.second);
+    }
+    yields_[pair.first] = Tabulated1D(x_, y_);
+  }
+}
 
 //==============================================================================
 // ChainNuclide implementation
@@ -58,6 +88,16 @@ ChainNuclide::ChainNuclide(pugi::xml_node node)
     }
   }
 
+  if (check_for_node(node, "neutron_fission_yields")) {
+    pugi::xml_node nfy = node.child("neutron_fission_yields");
+    if (check_for_node(nfy, "parent")) {
+      fission_yields_parent_ = get_node_value(nfy, "parent");
+    } else {
+      data::fission_yields.push_back(std::make_unique<FissionYields>(nfy));
+      fission_yields_ = data::fission_yields.back().get();
+    }
+  }
+
   // Set entry in mapping
   data::chain_nuclide_map[name_] = data::chain_nuclides.size();
 }
@@ -67,6 +107,15 @@ ChainNuclide::~ChainNuclide()
   data::chain_nuclide_map.erase(name_);
 }
 
+FissionYields* ChainNuclide::fission_yields()
+{
+  if (fission_yields_parent_.size() > 0) {
+    return data::chain_nuclides[data::chain_nuclide_map[fission_yields_parent_]]
+      ->fission_yields();
+  } else {
+    return fission_yields_;
+  }
+}
 //==============================================================================
 // DecayPhotonAngleEnergy implementation
 //==============================================================================
@@ -86,6 +135,7 @@ namespace data {
 
 std::unordered_map<std::string, int> chain_nuclide_map;
 vector<unique_ptr<ChainNuclide>> chain_nuclides;
+vector<unique_ptr<FissionYields>> fission_yields;
 
 } // namespace data
 

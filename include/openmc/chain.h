@@ -12,10 +12,24 @@
 
 #include "openmc/angle_energy.h" // for AngleEnergy
 #include "openmc/distribution.h" // for UPtrDist
-#include "openmc/memory.h"       // for unique_ptr
+#include "openmc/endf.h"
+#include "openmc/memory.h" // for unique_ptr
 #include "openmc/vector.h"
 
 namespace openmc {
+
+//==============================================================================
+// Fission Yield Data
+//==============================================================================
+
+class FissionYields {
+public:
+  // Constructors, destructors
+  FissionYields(pugi::xml_node node);
+
+  // Data members
+  std::unordered_map<std::string, Tabulated1D> yields_;
+};
 
 //==============================================================================
 // Data for a nuclide in the depletion chain
@@ -36,6 +50,7 @@ public:
   //! Compute the decay constant for the nuclide
   //! \return Decay constant in [1/s]
   double decay_constant() const { return std::log(2.0) / half_life_; }
+  FissionYields* fission_yields();
 
   const Distribution* photon_energy() const { return photon_energy_.get(); }
   const std::unordered_map<int, vector<Product>>& reaction_products() const
@@ -45,12 +60,13 @@ public:
 
 private:
   // Data members
-  std::string name_;              //!< Name of nuclide
-  double half_life_ {0.0};        //!< Half-life in [s]
-  double decay_energy_ {0.0};     //!< Decay energy in [eV]
-  bool fissionable_ {false};      //!< Can do fission
-  double fission_energy_ {0.0};   //!< Fission energy in [eV]
-  FissionYields* fission_yields_; //!< Fission yields
+  std::string name_;                        //!< Name of nuclide
+  double half_life_ {0.0};                  //!< Half-life in [s]
+  double decay_energy_ {0.0};               //!< Decay energy in [eV]
+  bool fissionable_ {false};                //!< Can do fission
+  double fission_energy_ {0.0};             //!< Fission energy in [eV]
+  FissionYields* fission_yields_ = nullptr; //!< Fission yields
+  std::string fission_yields_parent_ {""};  //!< Fission yields parent
   std::unordered_map<int, vector<Product>>
     reaction_products_;    //!< Map of MT to reaction products
   UPtrDist photon_energy_; //!< Decay photon energy distribution
@@ -76,21 +92,6 @@ public:
 
 private:
   const Distribution* photon_energy_;
-};
-
-//==============================================================================
-// Fission Yield Data
-//==============================================================================
-
-class FissionYields {
-public:
-  // Constructors, destructors
-  FissionYields(pugi::xml_node node);
-  ~FissionYields();
-
-private:
-  // Data members
-  std::unordered_map<std::string, unique_ptr<Function1D>> yields_;
 };
 
 //==============================================================================

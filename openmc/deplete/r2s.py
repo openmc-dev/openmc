@@ -183,9 +183,6 @@ class R2SManager:
         else:
             self.method = 'cell-based'
         self.domains = domains
-        # TODO: Think about MPI
-        # TODO: Option to use CoupledOperator? Needed for true burnup
-        # TODO: Voiding/changing materials between neutron/photon steps
         self.results = {}
 
     def run(
@@ -243,7 +240,8 @@ class R2SManager:
             transport step.
         run_kwargs : dict, optional
             Additional keyword arguments passed to :meth:`openmc.Model.run`
-            during the photon transport step. By default, output is disabled.
+            during the neutron and photon transport step. By default, output is
+            disabled.
         photon_settings : openmc.Settings, optional
             Custom settings to use for the photon transport calculation. If
             provided, the original model settings will be temporarily replaced
@@ -258,6 +256,14 @@ class R2SManager:
         if output_dir is None:
             stamp = datetime.now().strftime('%Y-%m-%dT%H-%M-%S')
             output_dir = Path(f'r2s_{stamp}')
+
+        # Set run_kwargs for the neutron transport step
+        if micro_kwargs is None:
+            micro_kwargs = {}
+        if run_kwargs is None:
+            run_kwargs = {}
+        run_kwargs.setdefault('output', False)
+        micro_kwargs.setdefault('run_kwargs', run_kwargs)
 
         self.step1_neutron_transport(
             output_dir / 'neutron_transport', mat_vol_kwargs, micro_kwargs
@@ -300,7 +306,6 @@ class R2SManager:
 
         """
 
-        # TODO: Energy discretization
         output_dir = Path(output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -310,25 +315,40 @@ class R2SManager:
                 self.domains.material_volumes(self.model, **mat_vol_kwargs)
 
             # Save results to file
-            mmv.save(output_dir / 'mesh_material_volumes.h5')
+            mmv.save(output_dir / 'mesh_material_volumes.npz')
 
             # Create mesh-material filter based on what combos were found
             domains = openmc.MeshMaterialFilter.from_volumes(self.domains, mmv)
         else:
-            # TODO: Run volume calculation for cells
-            domains = self.domains
+            domains: Sequence[openmc.Cell] = self.domains
 
-        # Get fluxes and microscopic cross sections on each mesh/material
+            # Check to make sure that each cell is filled with a material and
+            # that the volume has been set
+
+            # TODO: If volumes are not set, run volume calculation for cells
+            for cell in domains:
+                if cell.fill is None:
+                    raise ValueError(
+                        f"Cell {cell.id} is not filled with a materials. "
+                        "Please set the fill material for each cell before "
+                        "running the R2S calculation."
+                    )
+                if cell.volume is None:
+                    raise ValueError(
+                        f"Cell {cell.id} does not have a volume set. "
+                        "Please set the volume for each cell before running "
+                        "the R2S calculation."
+                    )
+
+        # Set default keyword arguments for microxs and flux calculation
         if micro_kwargs is None:
             micro_kwargs = {}
         micro_kwargs.setdefault('path_statepoint', output_dir / 'statepoint.h5')
+        micro_kwargs.setdefault('path_input', output_dir / 'model.xml')
 
         # Run neutron transport and get fluxes and micros
         self.results['fluxes'], self.results['micros'] = get_microxs_and_flux(
             self.model, domains, **micro_kwargs)
-
-        # Export model to output directory
-        self.model.export_to_model_xml(output_dir / 'model.xml')
 
         # Save flux and micros to file
         np.save(output_dir / 'fluxes.npy', self.results['fluxes'])
@@ -347,7 +367,8 @@ class R2SManager:
         This step creates a unique copy of each activation material based on the
         mesh elements or cells, then solves the depletion equations for each
         material using the fluxes and microscopic cross sections obtained in the
-        neutron transport step.
+        neutron transport step.  This step will populate the 'depletion_results'
+        key in the results dictionary.
 
         Parameters
         ----------
@@ -420,7 +441,8 @@ class R2SManager:
         creates appropriate photon sources and runs a transport calculation. In
         mesh-based mode, the sources are created using the mesh material
         volumes, while in cell-based mode, they are created using bounding boxes
-        for each cell.
+        for each cell.  This step will populate the 'dose_tallies' key in the
+        results dictionary.
 
         Parameters
         ----------
@@ -446,6 +468,7 @@ class R2SManager:
         """
 
         # TODO: Automatically determine bounding box for each cell
+        # TODO: Voiding/changing materials between neutron/photon steps
 
         # Set default run arguments if not provided
         if run_kwargs is None:
@@ -460,6 +483,8 @@ class R2SManager:
         original_settings = self.model.settings
         if settings is not None:
             self.model.settings = settings
+
+        self.results['dose_tallies'] = {}
 
         try:
             for time_index in cooling_times:
@@ -501,7 +526,14 @@ class R2SManager:
 
                 # Run photon transport calculation
                 run_kwargs['cwd'] = Path(output_dir) / f'time_{time_index}'
-                self.model.run(**run_kwargs)
+                statepoint_path = self.model.run(**run_kwargs)
+
+                # Store tally results
+                if dose_tallies is not None:
+                    with openmc.StatePoint(statepoint_path) as sp:
+                        self.results['dose_tallies'][time_index] = [
+                            sp.tallies[tally.id] for tally in dose_tallies
+                        ]
         finally:
             # Restore original settings
             self.model.settings = original_settings

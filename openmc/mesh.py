@@ -392,7 +392,7 @@ class MeshBase(IDManagerMixin, ABC):
 
         # In order to get mesh into model, we temporarily replace the
         # tallies with a single mesh tally using the current mesh
-        original_tallies = model.tallies
+        original_tallies = list(model.tallies)
         new_tally = openmc.Tally()
         new_tally.filters = [openmc.MeshFilter(self)]
         new_tally.scores = ['flux']

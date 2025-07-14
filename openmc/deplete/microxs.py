@@ -47,6 +47,7 @@ def get_microxs_and_flux(
     reaction_rate_mode: str = 'direct',
     chain_file: PathLike | Chain | None = None,
     path_statepoint: PathLike | None = None,
+    path_input: PathLike | None = None,
     run_kwargs=None
 ) -> tuple[list[np.ndarray], list[MicroXS]]:
     """Generate microscopic cross sections and fluxes for multiple domains.
@@ -59,7 +60,7 @@ def get_microxs_and_flux(
     .. versionadded:: 0.14.0
 
     .. versionchanged:: 0.15.3
-        Added `reaction_rate_mode` and `path_statepoint` arguments.
+        Added `reaction_rate_mode`, `path_statepoint`, `path_input` arguments.
 
     Parameters
     ----------
@@ -90,6 +91,10 @@ def get_microxs_and_flux(
         Path to write the statepoint file from the neutron transport solve to.
         By default, The statepoint file is written to a temporary directory and
         is not kept.
+    path_input : path-like, optional
+        Path to write the model XML file from the neutron transport solve to.
+        By default, the model XML file is written to a temporary directory and
+        not kept.
     run_kwargs : dict, optional
         Keyword arguments passed to :meth:`openmc.Model.run`
 
@@ -108,7 +113,7 @@ def get_microxs_and_flux(
     check_value('reaction_rate_mode', reaction_rate_mode, {'direct', 'flux'})
 
     # Save any original tallies on the model
-    original_tallies = model.tallies
+    original_tallies = list(model.tallies)
 
     # Determine what reactions and nuclides are available in chain
     chain = _get_chain(chain_file)
@@ -177,6 +182,10 @@ def get_microxs_and_flux(
             if path_statepoint is not None:
                 shutil.move(statepoint_path, path_statepoint)
                 statepoint_path = path_statepoint
+
+            # Export the model to path_input if provided
+            if path_input is not None:
+                model.export_to_model_xml(path_input)
 
             with StatePoint(statepoint_path) as sp:
                 if reaction_rate_mode == 'direct':

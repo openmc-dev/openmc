@@ -21,6 +21,7 @@
 #include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
 #include "openmc/output.h"
+#include "openmc/random_ray/random_ray_simulation.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
 #include "openmc/tallies/derivative.h"
@@ -118,6 +119,16 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
     // Write out information for eigenvalue run
     if (settings::run_mode == RunMode::EIGENVALUE)
       write_eigenvalue_hdf5(file_id);
+
+    switch (settings::solver_type) {
+    case SolverType::RANDOM_RAY:
+      write_dataset(file_id, "solver_type", "random ray");
+      write_random_ray_hdf5(file_id);
+      break;
+    default:
+      write_dataset(file_id, "solver_type", "monte carlo");
+      break;
+    }
 
     hid_t tallies_group = create_group(file_id, "tallies");
 

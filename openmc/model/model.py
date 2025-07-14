@@ -1004,7 +1004,7 @@ class Model:
             init_kwargs.setdefault('output', False)
             init_kwargs.setdefault('args', ['-c'])
 
-            with openmc.lib.TemporarySession(**init_kwargs):
+            with openmc.lib.TemporarySession(self, **init_kwargs):
                 return openmc.lib.id_map(plot_obj)
 
     @add_plot_params
@@ -1203,10 +1203,10 @@ class Model:
         return axes
 
     def sample_external_source(
-            self,
-            n_samples: int = 1000,
-            prn_seed: int | None = None,
-            **init_kwargs
+        self,
+        n_samples: int = 1000,
+        prn_seed: int | None = None,
+        **init_kwargs
     ) -> openmc.ParticleList:
         """Sample external source and return source particles.
 
@@ -1229,17 +1229,17 @@ class Model:
         """
         import openmc.lib
 
-        # Silence output by default. Also set arguments to start in volume
-        # calculation mode to avoid loading cross sections
-        init_kwargs.setdefault('output', False)
-        init_kwargs.setdefault('args', ['-c'])
+        if self.is_initialized:
+            return openmc.lib.sample_external_source(
+                n_samples=n_samples, prn_seed=prn_seed
+            )
+        else:
+            # Silence output by default. Also set arguments to start in volume
+            # calculation mode to avoid loading cross sections
+            init_kwargs.setdefault('output', False)
+            init_kwargs.setdefault('args', ['-c'])
 
-        with change_directory(tmpdir=True):
-            # Export model within temporary directory
-            self.export_to_model_xml()
-
-            # Sample external source sites
-            with openmc.lib.run_in_memory(**init_kwargs):
+            with openmc.lib.TemporarySession(self, **init_kwargs):
                 return openmc.lib.sample_external_source(
                     n_samples=n_samples, prn_seed=prn_seed
                 )

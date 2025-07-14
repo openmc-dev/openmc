@@ -588,8 +588,8 @@ void Tally::set_scores(const vector<std::string>& scores)
         fatal_error("Cannot tally " + score_str +
                     " reaction rate with an "
                     "outgoing energy filter");
-      if (fission_yields_present)
-        estimator_ = TallyEstimator::ANALOG;
+      if (fission_yields_present && estimator_ == TallyEstimator::TRACKLENGTH)
+        estimator_ = TallyEstimator::COLLISION;
       break;
 
     case SCORE_SCATTER:

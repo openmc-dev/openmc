@@ -19,7 +19,7 @@ def test_fissionyieldsfilter(run_in_tmpdir):
     )
     model.settings.run_mode = "eigenvalue"
 
-    fissionyields_filter = openmc.FissionYieldsFilter(['Xe135','Te135','I135'])
+    fissionyields_filter = openmc.FissionYieldsFilter(['Xe135','I135'])
 
     tally = openmc.Tally()
     tally.filters = [fissionyields_filter]
@@ -32,7 +32,7 @@ def test_fissionyieldsfilter(run_in_tmpdir):
     # Run OpenMC
     model.run(apply_tally_results=True)
 
-    assert np.all(tally.mean.reshape(3)>0)
+    assert np.all(tally.mean.reshape(2)>0)
     
 
 

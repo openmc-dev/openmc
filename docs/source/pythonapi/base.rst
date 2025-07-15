@@ -132,6 +132,7 @@ Constructing Tallies
    openmc.MeshSurfaceFilter
    openmc.EnergyFilter
    openmc.EnergyoutFilter
+   openmc.FissionYieldsFilter
    openmc.MuFilter
    openmc.MuSurfaceFilter
    openmc.PolarFilter

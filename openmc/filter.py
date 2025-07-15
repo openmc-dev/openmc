@@ -23,7 +23,7 @@ from ._xml import get_text
 _FILTER_TYPES = (
     'universe', 'material', 'cell', 'cellborn', 'surface', 'mesh', 'energy',
     'energyout', 'mu', 'musurface', 'polar', 'azimuthal', 'distribcell', 'delayedgroup',
-    'energyfunction', 'fission_yields', 'cellfrom', 'materialfrom', 'legendre', 'spatiallegendre',
+    'energyfunction', 'fissionyields', 'cellfrom', 'materialfrom', 'legendre', 'spatiallegendre',
     'sphericalharmonics', 'zernike', 'zernikeradial', 'particle', 'cellinstance',
     'collision', 'time', 'parentnuclide', 'weight', 'meshborn', 'meshsurface',
     'meshmaterial',

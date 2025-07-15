@@ -17,10 +17,10 @@ void FissionYieldsFilter::from_xml(pugi::xml_node node)
                 "continuous-energy transport calculations");
 
   if (!check_for_node(node, "bins"))
-    fatal_error("Nuclides not specified for FissionYieldsFilter.");
+    fatal_error("Bins not specified for FissionYieldsFilter.");
 
-  nuclides_ = get_node_array<std::string>(node, "bins");
-  n_bins_ = nuclides_.size();
+  bins_ = get_node_array<std::string>(node, "bins");
+  n_bins_ = bins_.size();
 }
 
 void FissionYieldsFilter::get_all_bins(
@@ -32,10 +32,10 @@ void FissionYieldsFilter::get_all_bins(
       auto fy = data::chain_nuclides[data::chain_nuclide_map[nuc]]
                   ->fission_yields()
                   ->yields_;
-      for (int i = 0; i < nuclides_.size(); ++i) {
-        if (fy.find(nuclides_[i]) != fy.end()) {
+      for (int i = 0; i < bins_.size(); ++i) {
+        if (fy.find(bins_[i]) != fy.end()) {
           match.bins_.push_back(i);
-          match.weights_.push_back(fy[nuclides_[i]](p.E_last()));
+          match.weights_.push_back(fy[bins_[i]](p.E_last()));
         }
       }
     }
@@ -45,12 +45,12 @@ void FissionYieldsFilter::get_all_bins(
 void FissionYieldsFilter::to_statepoint(hid_t filter_group) const
 {
   Filter::to_statepoint(filter_group);
-  write_dataset(filter_group, "nuclides", nuclides_);
+  write_dataset(filter_group, "bins", bins_);
 }
 
 std::string FissionYieldsFilter::text_label(int bin) const
 {
-  return fmt::format("Fission Yield [{}]", nuclides_[bin]);
+  return fmt::format("Fission Yield [{}]", bins_[bin]);
 }
 
 } // namespace openmc

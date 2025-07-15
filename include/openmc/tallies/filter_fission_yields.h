@@ -35,13 +35,13 @@ public:
   //----------------------------------------------------------------------------
   // Accessors
 
-  const vector<std::string>& nuclides() const { return nuclides_; }
+  const vector<std::string>& bins() const { return bins_; }
 
 private:
   //----------------------------------------------------------------------------
   // Data members
 
-  vector<std::string> nuclides_;
+  vector<std::string> bins_;
 };
 
 } // namespace openmc

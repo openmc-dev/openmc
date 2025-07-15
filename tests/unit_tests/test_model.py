@@ -743,7 +743,7 @@ def test_model_id_map_initialization(run_in_tmpdir):
     assert not model.is_initialized
 
 
-def test_id_map_aligned_model(run_in_tmpdir):
+def test_id_map_aligned_model():
     """Test id_map with a 2x2 lattice where pixel boundaries align to cell boundaries"""
     # Create materials -- identical compositions, different IDs
     mat1 = openmc.Material(material_id=1, name='Material 1')
@@ -820,7 +820,6 @@ def test_id_map_aligned_model(run_in_tmpdir):
     assert id_map.dtype == np.int32
 
     cell_id_map = id_map[:, :, 0]
-    cell_instances_map = id_map[:, :, 1]
     material_ids_map = id_map[:, :, 2]
 
     # Check that we have valid cell IDs (not all -2)

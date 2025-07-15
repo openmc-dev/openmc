@@ -6,8 +6,7 @@
 namespace openmc {
 
 //==============================================================================
-//! Multiplies tally scores by an arbitrary function of incident energy
-//! described by a piecewise linear-linear interpolation.
+//! Multiplies tally scores by fission yields.
 //==============================================================================
 
 class FissionYieldsFilter : public Filter {

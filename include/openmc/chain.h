@@ -63,8 +63,6 @@ private:
   std::string name_;                        //!< Name of nuclide
   double half_life_ {0.0};                  //!< Half-life in [s]
   double decay_energy_ {0.0};               //!< Decay energy in [eV]
-  bool fissionable_ {false};                //!< Can do fission
-  double fission_energy_ {0.0};             //!< Fission energy in [eV]
   FissionYields* fission_yields_ = nullptr; //!< Fission yields
   std::string fission_yields_parent_ {""};  //!< Fission yields parent
   std::unordered_map<int, vector<Product>>

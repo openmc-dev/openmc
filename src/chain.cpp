@@ -64,10 +64,6 @@ ChainNuclide::ChainNuclide(pugi::xml_node node)
   // Read reactions to store MT -> product map
   for (pugi::xml_node reaction_node : node.children("reaction")) {
     std::string rx_name = get_node_value(reaction_node, "type");
-    if (rx_name == "fission") {
-      fission_energy_ = std::stod(get_node_value(reaction_node, "Q"));
-      fissionable_ = true;
-    }
     if (!reaction_node.attribute("target"))
       continue;
     std::string rx_target = get_node_value(reaction_node, "target");

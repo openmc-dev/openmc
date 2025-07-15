@@ -23,7 +23,6 @@ def test_fissionyieldsfilter(run_in_tmpdir):
 
     tally = openmc.Tally()
     tally.filters = [fissionyields_filter]
-    tally.estimator = 'analog'
     tally.scores = ['fission']
     model.tallies = openmc.Tallies([tally])
 

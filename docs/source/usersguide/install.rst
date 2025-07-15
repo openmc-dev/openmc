@@ -40,7 +40,7 @@ will also need to specify the `--platform` option:
 
 .. code-block:: sh
 
-    conda create --name openmc-env --platform osx-arm64 openmc
+    conda create --name openmc-env --platform osx-64 openmc
 
 You are now in a conda environment called `openmc-env` that has OpenMC
 installed.

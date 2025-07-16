@@ -233,7 +233,8 @@ class Chain:
 
     A depletion chain can be created by using the :meth:`from_endf` method which
     requires a list of ENDF incident neutron, decay, and neutron fission product
-    yield sublibrary files. The depletion chain used during a depletion
+    yield sublibrary files and optionally spontanteous fission product yield sublibrary files.
+    The depletion chain used during a depletion
     simulation is indicated by either an argument to
     :class:`openmc.deplete.CoupledOperator` or
     :class:`openmc.deplete.IndependentOperator`, or through
@@ -260,6 +261,9 @@ class Chain:
         Otherwise, an entry can be added for each material to be burned.
         Ordering should be identical to how the operator orders reaction
         rates for burnable materials.
+    spont_fission_yields: None or iterable of dict
+        List of effective spontaneous fission yields.
+        The dictionary takes the same form as fission_yields.
     """
 
     def __init__(self):
@@ -267,6 +271,7 @@ class Chain:
         self.reactions = []
         self.nuclide_dict = {}
         self._fission_yields = None
+        self._spont_fission_yields = None
 
     def __contains__(self, nuclide):
         return nuclide in self.nuclide_dict
@@ -308,7 +313,7 @@ class Chain:
                 self.reactions.append(rx.type)
 
     @classmethod
-    def from_endf(cls, decay_files, fpy_files, neutron_files,
+    def from_endf(cls, decay_files, fpy_files, neutron_files, sfy_files,
         reactions=('(n,2n)', '(n,3n)', '(n,4n)', '(n,gamma)', '(n,p)', '(n,a)'),
         progress=True
     ):
@@ -327,6 +332,8 @@ class Chain:
             List of ENDF neutron-induced fission product yield sub-library files
         neutron_files : list of str or openmc.data.endf.Evaluation
             List of ENDF neutron reaction sub-library files
+        sfy_files : list of str or openmc.data.endf.Evaluation
+            List of ENDF spontaneous fission product yield sub-library files
         reactions : iterable of str, optional
             Transmutation reactions to include in the depletion chain, e.g.,
             `["(n,2n)", "(n,gamma)"]`. Note that fission is always included if
@@ -388,12 +395,21 @@ class Chain:
             data = openmc.data.FissionProductYields(f)
             fpy_data[data.nuclide['name']] = data
 
+
+        if progress:
+            print('Processing spontaneous fission product yield sub-library files...')
+        sfy_data = {}
+        for f in sfy_files:
+            data = openmc.data.FissionProductYields(f)
+            sfy_data[data.nuclide['name']] = data
+
         if progress:
             print('Creating depletion_chain...')
         missing_daughter = []
         missing_rx_product = []
         missing_fpy = []
         missing_fp = []
+        missing_sfp = []
 
         chain = cls()
         for idx, parent in enumerate(sorted(decay_data, key=openmc.data.zam)):
@@ -494,9 +510,39 @@ class Chain:
                 else:
                     nuclide._fpy = replace_missing_fpy(parent, fpy_data, decay_data)
                     missing_fpy.append((parent, nuclide._fpy))
+            
+            #spontaneous fission yield data
+            if parent in sfy_data:
+                sfy = sfy_data[parent]
+
+                yield_data = {}
+                for yield_table in sfy.independent:
+                    yield_replace = 0.0
+                    yields = defaultdict(float)
+                    for product, y in yield_table.items():
+                        # Handle fission products that have no decay data
+                        if product not in decay_data:
+                            daughter = replace_missing(product, decay_data)
+                            product = daughter
+                            yield_replace += y.nominal_value
+
+                        yields[product] += y.nominal_value
+
+                    if yield_replace > 0.0:
+                        missing_sfp.append((parent, yield_replace))
+                    yield_data[0.0] = yields
+
+                nuclide.spont_yield_data = FissionYieldDistribution(yield_data)
+            #else:
+            #    nuclide._fpy = replace_missing_fpy(parent, fpy_data, decay_data)
+            #    missing_fpy.append((parent, nuclide._fpy))
+
+            
 
             # Add nuclide to chain
             chain.add_nuclide(nuclide)
+
+
 
         # Replace missing FPY data
         for nuclide in chain.nuclides:
@@ -526,6 +572,12 @@ class Chain:
             print('The following nuclides have fission products with no decay data:')
             for vals in missing_fp:
                 print('  {}, E={} eV (total yield={})'.format(*vals))
+
+        if missing_sfp:
+            print('The following nuclides have spontaneous fission products with no decay data:')
+            for vals in missing_sfp:
+                print('  {}, (total yield={})'.format(*vals))
+
 
         return chain
 
@@ -599,6 +651,25 @@ class Chain:
             if nuc.yield_data is None:
                 continue
             yield_obj = nuc.yield_data[min(nuc.yield_energies)]
+            out[nuc.name] = dict(yield_obj)
+        return out
+
+    def get_spont_fission_yields(self):
+        """Return spontaneous fission yields.
+
+        Returns
+        -------
+        spont_fission_yields : dict
+            Dictionary of ``{parent: {product: f_yield}}``
+            where ``parent`` and ``product`` are both string
+            names of nuclides with yield data and ``f_yield``
+            is a float for the fission yield.
+        """
+        out = defaultdict(dict)
+        for nuc in self.nuclides:
+            if nuc.spont_yield_data is None:
+                continue
+            yield_obj = nuc.spont_yield_data[0.0]
             out[nuc.name] = dict(yield_obj)
         return out
 
@@ -1028,6 +1099,13 @@ class Chain:
             self._fission_yields = [self.get_default_fission_yields()]
         return self._fission_yields
 
+    @property
+    def spont_fission_yields(self):
+        if self._spont_fission_yields is None:
+            #return [defaultdict(dict)]
+            self._spont_fission_yields = [self.get_spont_fission_yields()]
+        return self._spont_fission_yields
+
     @fission_yields.setter
     def fission_yields(self, yields):
         _invalidate_chain_cache(self)
@@ -1036,6 +1114,15 @@ class Chain:
                 yields = [yields]
             check_type("fission_yields", yields, Iterable, Mapping)
         self._fission_yields = yields
+
+    @spont_fission_yields.setter
+    def spont_fission_yields(self, yields):
+        _invalidate_chain_cache(self)
+        if yields is not None:
+            if isinstance(yields, Mapping):
+                yields = [yields]
+            check_type("fission_yields", yields, Iterable, Mapping)
+        self._spont_fission_yields = yields
 
     def validate(self, strict=True, quiet=False, tolerance=1e-4):
         """Search for possible inconsistencies

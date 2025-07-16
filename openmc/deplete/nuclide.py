@@ -105,6 +105,8 @@ class Nuclide:
     yield_data : FissionYieldDistribution or None
         Fission product yields at tabulated energies for this nuclide. Can be
         treated as a nested dictionary ``{energy: {product: yield}}``
+    spont_yield_data : FissionYieldDistribution or None
+        ADD
     yield_energies : tuple of float or None
         Energies at which fission product yields exist
     """
@@ -127,6 +129,9 @@ class Nuclide:
         # Neutron fission yields, if present
         self._yield_data = None
 
+        # Spontanteous fission yields, if present
+        self._spont_yield_data = None
+
     def __repr__(self):
         n_modes, n_rx = self.n_decay_modes, self.n_reaction_paths
         return f"<Nuclide: {self.name} ({n_modes} modes, {n_rx} reactions)>"
@@ -145,6 +150,12 @@ class Nuclide:
             return None
         return self._yield_data
 
+    @property
+    def spont_yield_data(self):
+        if self._spont_yield_data is None:
+            return None
+        return self._spont_yield_data
+
     @yield_data.setter
     def yield_data(self, fission_yields):
         if fission_yields is None:
@@ -155,6 +166,17 @@ class Nuclide:
                 self._yield_data = fission_yields
             else:
                 self._yield_data = FissionYieldDistribution(fission_yields)
+
+    @spont_yield_data.setter
+    def spont_yield_data(self, fission_yields):
+        if fission_yields is None:
+            self._spont_yield_data = None
+        else:
+            check_type("fission_yields", fission_yields, Mapping)
+            if isinstance(fission_yields, FissionYieldDistribution):
+                self._spont_yield_data = fission_yields
+            else:
+                self._spont_yield_data = FissionYieldDistribution(fission_yields)
 
     @property
     def yield_energies(self):

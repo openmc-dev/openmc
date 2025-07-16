@@ -34,7 +34,7 @@
 // MCPL 2.2.0
 
 #pragma pack(push, 1)
-struct openmc_local_mcpl_particle_t {
+struct mcpl_particle_repr_t {
   double ekin;
   double polarisation[3];
   double position[3];
@@ -46,39 +46,34 @@ struct openmc_local_mcpl_particle_t {
 };
 #pragma pack(pop)
 
-typedef struct openmc_local_mcpl_particle_t mcpl_particle_repr_t;
-
 // Opaque struct definitions replicating the MCPL C-API to ensure ABI
 // compatibility without including mcpl.h. These must be kept in sync.
-struct mcpl_file_t_ {
+struct mcpl_file_t {
   void* internal;
 };
-struct mcpl_outfile_t_ {
+struct mcpl_outfile_t {
   void* internal;
 };
-
-typedef struct mcpl_file_t_ mcpl_file_t;
-typedef struct mcpl_outfile_t_ mcpl_outfile_t;
 
 // Function pointer types for the dynamically loaded MCPL library
-typedef mcpl_file_t* (*mcpl_open_file_fpt)(const char* filename);
-typedef uint64_t (*mcpl_hdr_nparticles_fpt)(mcpl_file_t* file_handle);
-typedef const mcpl_particle_repr_t* (*mcpl_read_fpt)(mcpl_file_t* file_handle);
-typedef void (*mcpl_close_file_fpt)(mcpl_file_t* file_handle);
+using mcpl_open_file_fpt = mcpl_file_t* (*)(const char* filename);
+using mcpl_hdr_nparticles_fpt = uint64_t (*)(mcpl_file_t* file_handle);
+using mcpl_read_fpt = const mcpl_particle_repr_t* (*)(mcpl_file_t* file_handle);
+using mcpl_close_file_fpt = void (*)(mcpl_file_t* file_handle);
 
-typedef mcpl_outfile_t* (*mcpl_create_outfile_fpt)(const char* filename);
-typedef void (*mcpl_hdr_set_srcname_fpt)(
+using mcpl_create_outfile_fpt = mcpl_outfile_t* (*)(const char* filename);
+using mcpl_hdr_set_srcname_fpt = void (*)(
   mcpl_outfile_t* outfile_handle, const char* srcname);
-typedef void (*mcpl_add_particle_fpt)(
+using mcpl_add_particle_fpt = void (*)(
   mcpl_outfile_t* outfile_handle, const mcpl_particle_repr_t* particle);
-typedef void (*mcpl_close_outfile_fpt)(mcpl_outfile_t* outfile_handle);
+using mcpl_close_outfile_fpt = void (*)(mcpl_outfile_t* outfile_handle);
 
 namespace openmc {
 
 #ifdef _WIN32
-typedef HMODULE LibraryHandleType;
+using LibraryHandleType = HMODULE;
 #else
-typedef void* LibraryHandleType;
+using LibraryHandleType = void*;
 #endif
 
 std::string get_last_library_error()

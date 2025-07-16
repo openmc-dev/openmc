@@ -334,7 +334,7 @@ def test_ww_bounds_set_in_memory(run_in_tmpdir, model):
 
     openmc.lib.finalize()
 
-openmc.config['cross_sections'] = '/home/jon/nuclear_data/cross_sections.xml'
+
 def test_ww_generation_with_dagmc():
 
     mat1 = openmc.Material(name="no-void fuel")

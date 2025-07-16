@@ -15,6 +15,8 @@ from .mixin import IDManagerMixin
 
 _BASES = {'xy', 'xz', 'yz'}
 
+_BASIS_INDICES = {'xy': (0, 1, 2), 'xz': (0, 2, 1), 'yz': (1, 2, 0)}
+
 _SVG_COLORS = {
     'aliceblue': (240, 248, 255),
     'antiquewhite': (250, 235, 215),
@@ -178,11 +180,12 @@ _PLOT_PARAMS = """
             ascertain the plot width. Defaults to (10, 10) if the bounding box
             contains inf values.
         pixels : Iterable of int or int
-            If iterable of ints provided then this directly sets the number of
-            pixels to use in each basis direction. If int provided then this
-            sets the total number of pixels in the plot and the number of
-            pixels in each basis direction is calculated from this total and
-            the image aspect ratio.
+            If an iterable of ints is provided then this directly sets the
+            number of pixels to use in each basis direction. If a single int
+            is provided then this sets the total number of pixels in the plot
+            and the number of pixels in each basis direction is calculated
+            from this total and the image aspect ratio based on the width
+            argument.
         basis : {'xy', 'xz', 'yz'}
             The basis directions for the plot
         color_by : {'cell', 'material'}

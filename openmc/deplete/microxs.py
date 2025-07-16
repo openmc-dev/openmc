@@ -352,7 +352,8 @@ class MicroXS:
         # Create 3D array for microscopic cross sections
         microxs_arr = np.zeros((len(nuclides), len(mts), 1))
 
-        def compute_microxs():
+        # Compute microscopic cross sections within a temporary session
+        with openmc.lib.TemporarySession(**init_kwargs):
             # For each nuclide and reaction, compute the flux-averaged xs
             for nuc_index, nuc in enumerate(nuclides):
                 if nuc not in nuclides_with_data:
@@ -362,13 +363,6 @@ class MicroXS:
                     microxs_arr[nuc_index, mt_index, 0] = lib_nuc.collapse_rate(
                         mt, temperature, energies, multigroup_flux
                     )
-
-        # Compute microscopic cross sections within a temporary session
-        if not openmc.lib.is_initialized:
-            with openmc.lib.TemporarySession(**init_kwargs):
-                compute_microxs()
-        else:
-            compute_microxs()
 
         return cls(microxs_arr, nuclides, reactions)
 

@@ -1,3 +1,4 @@
+import copy
 from itertools import permutations
 from pathlib import Path
 
@@ -332,3 +333,85 @@ def test_ww_bounds_set_in_memory(run_in_tmpdir, model):
     wws.bounds = (bounds, bounds)
 
     openmc.lib.finalize()
+
+openmc.config['cross_sections'] = '/home/jon/nuclear_data/cross_sections.xml'
+def test_ww_generation_with_dagmc():
+
+    mat1 = openmc.Material(name="no-void fuel")
+    mat1.add_nuclide("H1", 1, percent_type="ao")
+    mat1.set_density("g/cm3", 0.001)
+    mat2 = openmc.Material(name="41")
+    mat2.add_nuclide("Be9", 1, percent_type="ao")
+    mat2.set_density("g/cm3", 2.0)
+
+    my_materials = openmc.Materials([mat1, mat2])
+    dag_univ = openmc.DAGMCUniverse(filename=Path(__file__).parent.parent / "dagmc" / "dagmc.h5m")
+    bound_dag_univ = dag_univ.bounded_universe(padding_distance=10)
+    my_geometry = openmc.Geometry(root=bound_dag_univ)
+    # my_geometry = openmc.Geometry(root=dag_univ) # could set geometry like this
+    # but the ww generation then fails with RuntimeError: Unknown domain type: dagmcuniverse
+
+    my_settings = openmc.Settings()
+    my_settings.batches = 10
+    my_settings.particles = 50
+    my_settings.run_mode = "fixed source"
+
+    # Create a point source which are supported by random ray mode
+    my_source = openmc.IndependentSource()
+    my_source.space = openmc.stats.Point((0,0,0))
+    my_source.angle = openmc.stats.Isotropic()
+    my_source.energy = openmc.stats.Discrete([14e6], [1])
+    my_settings.source = my_source
+
+    model = openmc.model.Model(my_geometry, my_materials, my_settings)
+
+    rr_model = copy.deepcopy(model)
+    rr_model.settings.inactive = 3
+
+    rr_model.convert_to_multigroup(
+        method="stochastic_slab",
+        overwrite_mgxs_library=True,
+        nparticles=20,
+        groups="CASMO-2"
+    )
+
+    rr_model.convert_to_random_ray()
+
+    mesh = openmc.RegularMesh().from_domain(rr_model)
+    mesh.dimension = (10, 10, 10)
+    mesh.id = 1
+
+    # avoid writing files we don't make use of
+    rr_model.settings.output = {"summary": False, "tallies": False}
+
+    # Subdivide random ray source regions
+    rr_model.settings.random_ray["source_region_meshes"] = [
+        (mesh, [rr_model.geometry.root_universe])
+    ]
+
+    # less likely to get negative values in the weight window
+    rr_model.settings.random_ray["volume_estimator"] = "naive"
+
+    # Add a weight window generator to the model
+    rr_model.settings.weight_window_generators = openmc.WeightWindowGenerator(
+        method="fw_cadis",
+        mesh=mesh,
+        max_realizations=42,
+        particle_type='neutron',
+        energy_bounds=[0.0, 100e6]
+    )
+
+    rr_model.run()
+    # If my_geometry is set to a dagmc universe like this my_geometry = openmc.Geometry(root=dag_univ)
+    # then this line fails with RuntimeError: Unknown domain type: dagmcuniverse
+
+    weight_windows = openmc.WeightWindowsList().from_hdf5("weight_windows.h5")
+    weight_windows = openmc.hdf5_to_wws("weight_windows.h5")
+
+    model.settings.weight_windows_on = True
+    model.settings.weight_window_checkpoints = {"collision": True, "surface": True}
+    model.settings.survival_biasing = False
+    model.settings.weight_windows = weight_windows
+
+    model.run()
+    # this line fails with RuntimeError: Maximum number of lost particles has been reached

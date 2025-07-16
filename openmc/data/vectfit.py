@@ -29,9 +29,11 @@ All credit goes to:
 (https://github.com/mit-crpg/vectfit.git)
 
 """
-import numpy as np
-from scipy.linalg import lstsq, eigvals, norm, qr
+
 from typing import Tuple
+
+import numpy as np
+from scipy.linalg import eigvals, lstsq, norm, qr
 
 
 def evaluate(
@@ -234,7 +236,7 @@ def _identify_poles(
         Updated poles as eigenvalues (shape: [num_poles]).
     """
     conj_index = _label_conjugate_poles(poles)
-    
+
     dk_matrix = np.zeros((num_samples, num_poles + max(num_polys, 1)), dtype=complex)
     for m in range(num_poles):
         p = poles[m]
@@ -441,6 +443,7 @@ def _identify_residues(
     rms_error = norm(fit_result - response_matrix) / np.sqrt(num_vectors * num_samples)
     return fit_result, rms_error
 
+
 def _label_conjugate_poles(poles: np.ndarray) -> np.ndarray:
     """
     Ensure complex poles appear in conjugate pairs and label them accordingly.
@@ -470,7 +473,9 @@ def _label_conjugate_poles(poles: np.ndarray) -> np.ndarray:
     while m < num_poles:
         if np.imag(poles[m]) != 0.0:
             if m == 0 or conj_index[m - 1] in [0, 2]:
-                if m >= num_poles - 1 or not np.isclose(np.conj(poles[m]), poles[m + 1]):
+                if m >= num_poles - 1 or not np.isclose(
+                    np.conj(poles[m]), poles[m + 1]
+                ):
                     raise ValueError("Complex poles must appear in conjugate pairs")
                 conj_index[m] = 1
                 conj_index[m + 1] = 2
@@ -478,4 +483,3 @@ def _label_conjugate_poles(poles: np.ndarray) -> np.ndarray:
         m += 1
 
     return conj_index
-

@@ -9,7 +9,6 @@ import numpy as np
 from scipy.signal import find_peaks
 
 import openmc.checkvalue as cv
-import vecfit as vf
 
 from ..exceptions import DataError
 from ..mixin import EqualityMixin
@@ -17,7 +16,7 @@ from . import WMP_VERSION, WMP_VERSION_MAJOR
 from .data import K_BOLTZMANN
 from .neutron import IncidentNeutron
 from .resonance import ResonanceRange
-
+from .vectfit import vectfit as vf
 
 # Constants that determine which value to access
 _MP_EA = 0       # Pole

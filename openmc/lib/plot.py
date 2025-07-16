@@ -90,6 +90,7 @@ class _PlotBase(Structure):
 
     def __init__(self):
         self.level_ = -1
+        self.basis_ = 1
         self.color_overlaps_ = False
 
     @property

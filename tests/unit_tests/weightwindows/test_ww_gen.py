@@ -345,7 +345,7 @@ def test_ww_generation_with_dagmc():
     mat2.set_density("g/cm3", 2.0)
 
     my_materials = openmc.Materials([mat1, mat2])
-    dag_univ = openmc.DAGMCUniverse(filename=Path(__file__).parent.parent / "dagmc" / "dagmc.h5m")
+    dag_univ = openmc.DAGMCUniverse(filename=Path(__file__).parent.parent / "dagmc" / "dagmc_tetrahedral_no_graveyard.h5m")
     bound_dag_univ = dag_univ.bounded_universe(padding_distance=10)
     my_geometry = openmc.Geometry(root=bound_dag_univ)
     # my_geometry = openmc.Geometry(root=dag_univ) # could set geometry like this

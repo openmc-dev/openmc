@@ -6,8 +6,8 @@ from numbers import Real
 from pathlib import Path
 import re
 import sys
-from typing import Sequence, Dict
 import tempfile
+from typing import Sequence, Dict
 import warnings
 
 import lxml.etree as ET
@@ -2068,9 +2068,11 @@ class Materials(cv.CheckedList):
 
         chain = _get_chain(chain_file)
 
-        with openmc.lib.TemporarySession():
-            all_depleted_materials = {}
+        # Create MicroXS objects for all materials
+        micros = []
+        fluxes = []
 
+        with openmc.lib.TemporarySession():
             for material, flux, energy in zip(
                 self, multigroup_fluxes, energy_group_structures
             ):
@@ -2082,29 +2084,40 @@ class Materials(cv.CheckedList):
                     nuclides=material.get_nuclides(),
                     reactions=reactions,
                 )
+                micros.append(micro_xs)
+                fluxes.append(material.volume)
 
-                operator = openmc.deplete.IndependentOperator(
-                    materials=[material],
-                    fluxes=[material.volume],
-                    micros=[micro_xs],
-                    normalization_mode="source-rate",
-                    chain_file=chain,
-                )
+        # Create a single operator for all materials
+        operator = openmc.deplete.IndependentOperator(
+            materials=self,
+            fluxes=fluxes,
+            micros=micros,
+            normalization_mode="source-rate",
+            chain_file=chain,
+        )
 
-                integrator = openmc.deplete.PredictorIntegrator(
-                    operator=operator,
-                    timesteps=timesteps,
-                    source_rates=source_rates,
-                    timestep_units=timestep_units,
-                )
+        integrator = openmc.deplete.PredictorIntegrator(
+            operator=operator,
+            timesteps=timesteps,
+            source_rates=source_rates,
+            timestep_units=timestep_units,
+        )
 
-                with tempfile.TemporaryDirectory() as tmpdir:
-                    results_path = Path(tmpdir) / "depletion_results.h5"
-                    integrator.integrate(path=results_path)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Run integrator
+            results_path = Path(tmpdir) / "depletion_results.h5"
+            integrator.integrate(path=results_path)
 
-                    all_depleted_materials[material.id] = [
-                        result.get_material(str(material.id))
-                        for result in openmc.deplete.Results(results_path)
-                    ]
+            # Load depletion results
+            results = openmc.deplete.Results(results_path)
+
+            # For each material, get activated composition at each timestep
+            all_depleted_materials = {
+                material.id: [
+                    result.get_material(str(material.id))
+                    for result in results
+                ]
+                for material in self
+            }
 
         return all_depleted_materials

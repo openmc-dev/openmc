@@ -16,7 +16,7 @@ from . import WMP_VERSION, WMP_VERSION_MAJOR
 from .data import K_BOLTZMANN
 from .neutron import IncidentNeutron
 from .resonance import ResonanceRange
-from .vectfit import vectfit as vf
+from .vectfit import vectfit
 
 # Constants that determine which value to access
 _MP_EA = 0       # Pole
@@ -175,10 +175,6 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
         (poles, residues)
 
     """
-
-    # import vectfit package: https://github.com/liangjg/vectfit
-    import vectfit as vf
-
     ne = energy.size
     nmt = len(mts)
     if ce_xs.shape != (nmt, ne):
@@ -252,7 +248,7 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
                 print(f"VF iteration {i_vf + 1}/{n_vf_iter}")
 
             # call vf
-            poles, residues, cf, f_fit, rms = vf.vectfit(f, s, poles, weight)
+            poles, residues, cf, f_fit, rms = vectfit(f, s, poles, weight)
 
             # convert real pole to conjugate pairs
             n_real_poles = 0
@@ -270,7 +266,7 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
                 if log >= DETAILED_LOGGING:
                     print(f"  # real poles: {n_real_poles}")
                 new_poles, residues, cf, f_fit, rms = \
-                      vf.vectfit(f, s, new_poles, weight, skip_pole=True)
+                      vectfit(f, s, new_poles, weight, skip_pole=True)
 
             # assess the result on test grid
             test_xs = vf.evaluate(test_s, new_poles, residues) / test_energy

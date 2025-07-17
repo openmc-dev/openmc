@@ -186,14 +186,14 @@ struct CacheDataMG {
 // Information about nearest boundary crossing
 //==============================================================================
 
-struct BoundaryInfo {
-
+class BoundaryInfo {
+public:
   void reset()
   {
-    distance() = INFINITY;
-    surface() = SURFACE_NONE;
-    coord_level() = 0;
-    lattice_translation() = {0, 0, 0};
+    distance_ = INFINITY;
+    surface_ = SURFACE_NONE;
+    coord_level_ = 0;
+    lattice_translation_ = {0, 0, 0};
   }
   double& distance() { return distance_; }
   const double& distance() const { return distance_; }
@@ -214,6 +214,7 @@ struct BoundaryInfo {
   int surface_index() const { return std::abs(surface()) - 1; }
 
 private:
+  // Data members
   double distance_ {INFINITY}; //!< distance to nearest boundary
   int surface_ {
     SURFACE_NONE};      //!< surface token, non-zero if boundary is surface

@@ -11,6 +11,7 @@
 #include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
 #include "openmc/particle.h"
+#include "openmc/random_dist.h"
 #include "openmc/reaction.h"
 #include "openmc/reaction_product.h"
 #include "openmc/settings.h"
@@ -373,6 +374,47 @@ Tally::Tally(pugi::xml_node node)
     } else {
       throw std::runtime_error {
         fmt::format("Invalid estimator '{}' on tally {}", est, id_)};
+    }
+  }
+
+  // =======================================================================
+  // SET GAUSSIAN ENERGY BROADENING
+  if (check_for_node(node, "gaussian-energy-broadening")) {
+    if (settings::run_CE == false) {
+      // Cannot use Gaussian broadening in a MG problem
+      throw std::runtime_error {
+        fmt::format("Cannot use Gaussian energy broadening in a multi-group "
+                    "problem. Found on tally {}",
+          id_)};
+    }
+
+    auto params = get_node_array<double>(node, "gaussian-energy-broadening");
+
+    if (params.size() != 3) {
+      throw std::runtime_error {
+        fmt::format("Gaussian energy broadening was given {} parameters "
+                    "instead of 3 on tally {}",
+          params.size(), id_)};
+    }
+
+    gaussian_energy_broadening_.active = true;
+    gaussian_energy_broadening_.a = params[0];
+    gaussian_energy_broadening_.b = params[1];
+    gaussian_energy_broadening_.c = params[2];
+
+    if (gaussian_energy_broadening_.a < 0.) {
+      throw std::runtime_error {fmt::format(
+        "Gaussian energy broadening parameter a is < 0 on tally {}", id_)};
+    }
+
+    if (gaussian_energy_broadening_.b < 0.) {
+      throw std::runtime_error {fmt::format(
+        "Gaussian energy broadening parameter b is < 0 on tally {}", id_)};
+    }
+
+    if (gaussian_energy_broadening_.c < 0.) {
+      throw std::runtime_error {fmt::format(
+        "Gaussian energy broadening parameter c is < 0 on tally {}", id_)};
     }
   }
 
@@ -894,6 +936,46 @@ std::string Tally::nuclide_name(int nuclide_idx) const
     return "total";
   }
   return data::nuclides.at(nuclide)->name_;
+}
+
+//==============================================================================
+// GaussianEnergyBroadening object implementation
+//==============================================================================
+
+void Tally::GaussianEnergyBroadening::apply(Particle& p) const
+{
+  // This method applies GEB to a particle, changing E_last
+
+  if (active == false)
+    return;
+
+  // If the particle has a zero energy or (more likely) its contribution to a
+  // pulse height tally was 0, we don't perform GEB
+  if (p.E_last() <= 0.)
+    return;
+
+  // Calculate the FWHM
+  const double FWHM =
+    a + b * std::sqrt(p.E_last() + c * p.E_last() * p.E_last());
+
+  // Calculate sigma of the gaussian
+  constexpr double sigma_coeff = 1. / (2. * std::sqrt(2. * std::log(2.)));
+  const double sigma = sigma_coeff * FWHM;
+
+  // Save a copy of the original RNG stream, and set the stream for GEB
+  const int orig_stream = p.stream();
+  p.stream() = STREAM_TALLYING;
+
+  // Sample new energy
+  const double E = normal_variate(p.E_last(), sigma, p.current_seed());
+
+  // Reset the original RNG stream of the particle
+  p.stream() = orig_stream;
+
+  // Set E_last to the sampled energy. We only do this however if we
+  // sampled a valid energy.
+  if (E > 0.)
+    p.E_last() = E;
 }
 
 //==============================================================================

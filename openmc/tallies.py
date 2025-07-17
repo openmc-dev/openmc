@@ -57,8 +57,13 @@ class Tally(IDManagerMixin):
         Name of the tally
     multiply_density : bool
         Whether reaction rates should be multiplied by atom density
-
+        
         .. versionadded:: 0.14.0
+    gaussian_broadening : 3-tuple of float
+        Parameters for applying Gaussian energy broadening to the tally. The
+        parameters have units of eV, eV^(1/2), and eV^(-1), respectively.
+
+        .. versionadded:: 0.14.1
     filters : list of openmc.Filter
         List of specified filters for the tally
     nuclides : list of str
@@ -123,6 +128,7 @@ class Tally(IDManagerMixin):
         self._triggers = cv.CheckedList(openmc.Trigger, 'tally triggers')
         self._derivative = None
         self._multiply_density = True
+        self._gaussian_broadening = None
 
         self._num_realizations = 0
         self._with_summary = False
@@ -220,6 +226,24 @@ class Tally(IDManagerMixin):
     def multiply_density(self, value):
         cv.check_type('multiply density', value, bool)
         self._multiply_density = value
+
+    @property
+    def gaussian_broadening(self):
+        return self._gaussian_broadening
+
+    @gaussian_broadening.setter
+    def gaussian_broadening(self, geb):
+        if not isinstance(geb, tuple):
+            raise TypeError(f'Gaussian broadening on Tally must be a '
+                            f'3-tuple of floats.')
+        elif len(geb) != 3:
+            raise TypeError(f'Gaussian broadening on Tally must be a '
+                            f'3-tuple of floats.')
+        for p in geb:
+            if p < 0.:
+                raise ValueError(f'All Gaussian broadening parameters '
+                                 f'on a Tally must be >= 0.')
+        self._gaussian_broadening = geb
 
     @property
     def filters(self):
@@ -925,6 +949,11 @@ class Tally(IDManagerMixin):
         if not self.multiply_density:
             element.set("multiply_density", str(self.multiply_density).lower())
 
+        # Gaussian Energy Broadenning
+        if self.gaussian_broadening is not None:
+            subelement = ET.SubElement(element, "gaussian-energy-broadening")
+            subelement.text = ' '.join(str(p) for p in self.gaussian_broadening)
+
         # Optional Tally filters
         if len(self.filters) > 0:
             subelement = ET.SubElement(element, "filters")
@@ -1046,6 +1075,11 @@ class Tally(IDManagerMixin):
         if deriv_elem is not None:
             deriv_id = int(deriv_elem.text)
             tally.derivative = kwargs['derivatives'][deriv_id]
+
+        # Read Gaussian Energy Broadening
+        geb_elem = elem.find('gaussian-energy-broadening')
+        if geb_elem is not None:
+            tally.gaussian_broadening = (float(p) for p in geb_elem.text.split())
 
         return tally
 

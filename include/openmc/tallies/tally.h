@@ -178,6 +178,19 @@ public:
 
   int deriv_ {C_NONE}; //!< Index of a TallyDerivative object for diff tallies.
 
+  // This struct contains the information for applying Gaussian Energy
+  // Broadening to a tally. The parameters a, b, and c are used to calculate
+  // the FWHM of the Gaussian distribtuion from which the incident energy for
+  // scoring purposes will be sampled.
+  struct GaussianEnergyBroadening {
+    bool active = false;
+    double a = 0., b = 0., c = 0.;
+
+    void apply(Particle& p) const;
+  };
+
+  GaussianEnergyBroadening gaussian_energy_broadening_;
+
 private:
   //----------------------------------------------------------------------------
   // Private data.

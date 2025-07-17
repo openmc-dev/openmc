@@ -343,6 +343,21 @@ The following tables show all valid scores:
 
 .. _usersguide_tally_normalization:
 
+--------------------------
+Gaussian Energy Broadening
+--------------------------
+If simulating a radiation detector, :ref:`methods_geb` can be applied to the
+results in the simulation. If the detector parameters :math:`a`, :math:`b`, and
+:math:`c` are known, then Gaussian Energy Broadening can be applied to a tally
+in the following manner::
+
+  tally.gaussian_broadening = (a,b,c)
+
+All scores associated with the tally will then be broadened with these
+parameters. If you would like to simulate multiple detectors, each with
+different broadening parameters, a different :attr:`Tally` instance will be
+needed for each one.
+
 ------------------------------
 Normalization of Tally Results
 ------------------------------

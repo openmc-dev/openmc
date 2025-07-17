@@ -14,19 +14,20 @@ import numpy as np
 import openmc
 from openmc.data import half_life
 from .abc import _normalize_timesteps
-from .chain import Chain
+from .chain import Chain, _get_chain
+from ..checkvalue import PathLike
 
 
-def get_radionuclides(model: openmc.Model, chain_file: str | None = None) -> list[str]:
+def get_radionuclides(model: openmc.Model, chain_file: PathLike | Chain | None = None) -> list[str]:
     """Determine all radionuclides that can be produced during D1S.
 
     Parameters
     ----------
     model : openmc.Model
         Model that should be used for determining what nuclides are present
-    chain_file : str, optional
-        Which chain file to use for inspecting decay data. If None is passed,
-        defaults to ``openmc.config['chain_file']``
+    chain_file : PathLike | Chain
+        Path to the depletion chain XML file or instance of openmc.deplete.Chain.
+        Used for inspecting decay data. Defaults to ``openmc.config['chain_file']``
 
     Returns
     -------
@@ -39,9 +40,7 @@ def get_radionuclides(model: openmc.Model, chain_file: str | None = None) -> lis
                       for nuc in mat.get_nuclides()}
 
     # Load chain file
-    if chain_file is None:
-        chain_file = openmc.config['chain_file']
-    chain = Chain.from_xml(chain_file)
+    chain = _get_chain(chain_file)
 
     radionuclides = set()
     for nuclide in chain.nuclides:
@@ -141,7 +140,9 @@ def apply_time_correction(
     time_correction_factors : dict
         Time correction factors as returned by :func:`time_correction_factors`
     index : int, optional
-        Index to use for the correction factors
+        Index of the time of interest. If N timesteps are provided in
+        :func:`time_correction_factors`, there are N + 1 times to select from.
+        The default is -1 which corresponds to the final time.
     sum_nuclides : bool
         Whether to sum over the parent nuclides
 

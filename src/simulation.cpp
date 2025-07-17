@@ -400,8 +400,11 @@ void finalize_batch()
   simulation::time_tallies.stop();
 
   // update weight windows if needed
-  for (const auto& wwg : variance_reduction::weight_windows_generators) {
-    wwg->update();
+  if (settings::solver_type != SolverType::RANDOM_RAY ||
+      simulation::current_batch == settings::n_batches) {
+    for (const auto& wwg : variance_reduction::weight_windows_generators) {
+      wwg->update();
+    }
   }
 
   // Reset global tally results
@@ -613,6 +616,10 @@ void initialize_history(Particle& p, int64_t index_source)
 
   // Set particle track.
   p.write_track() = check_track_criteria(p);
+
+  // Set the particle's initial weight window value.
+  p.wgt_ww_born() = -1.0;
+  apply_weight_windows(p);
 
   // Display message if high verbosity or trace is on
   if (settings::verbosity >= 9 || p.trace()) {

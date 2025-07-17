@@ -217,7 +217,11 @@ SourceRegionHandle SourceRegionContainer::get_source_region_handle(int64_t sr)
   handle.scalar_flux_old_ = &scalar_flux_old(sr, 0);
   handle.scalar_flux_new_ = &scalar_flux_new(sr, 0);
   handle.source_ = &source(sr, 0);
-  handle.external_source_ = &external_source(sr, 0);
+  if (settings::run_mode == RunMode::FIXED_SOURCE) {
+    handle.external_source_ = &external_source(sr, 0);
+  } else {
+    handle.external_source_ = nullptr;
+  }
   handle.scalar_flux_final_ = &scalar_flux_final(sr, 0);
   handle.tally_task_ = &tally_task(sr, 0);
 
@@ -255,15 +259,11 @@ void SourceRegionContainer::adjoint_reset()
     MomentMatrix {0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
   std::fill(mom_matrix_t_.begin(), mom_matrix_t_.end(),
     MomentMatrix {0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
-  for (auto& task_set : volume_task_) {
-    task_set.clear();
-  }
   std::fill(scalar_flux_old_.begin(), scalar_flux_old_.end(), 0.0);
   std::fill(scalar_flux_new_.begin(), scalar_flux_new_.end(), 0.0);
   std::fill(scalar_flux_final_.begin(), scalar_flux_final_.end(), 0.0);
   std::fill(source_.begin(), source_.end(), 0.0f);
   std::fill(external_source_.begin(), external_source_.end(), 0.0f);
-
   std::fill(source_gradients_.begin(), source_gradients_.end(),
     MomentArray {0.0, 0.0, 0.0});
   std::fill(flux_moments_old_.begin(), flux_moments_old_.end(),
@@ -272,10 +272,6 @@ void SourceRegionContainer::adjoint_reset()
     MomentArray {0.0, 0.0, 0.0});
   std::fill(flux_moments_t_.begin(), flux_moments_t_.end(),
     MomentArray {0.0, 0.0, 0.0});
-
-  for (auto& task_set : tally_task_) {
-    task_set.clear();
-  }
 }
 
 } // namespace openmc

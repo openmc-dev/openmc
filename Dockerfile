@@ -24,7 +24,7 @@ ARG compile_cores=1
 ARG build_dagmc=off
 ARG build_libmesh=off
 
-FROM debian:bookworm-slim AS dependencies
+FROM ubuntu:24.04 AS dependencies
 
 ARG compile_cores
 ARG build_dagmc
@@ -96,6 +96,7 @@ RUN if [ "$build_dagmc" = "on" ]; then \
         # Install addition packages required for DAGMC
         apt-get -y install libeigen3-dev libnetcdf-dev libtbb-dev libglfw3-dev \
         && pip install --upgrade numpy \
+        && pip install --no-cache-dir setuptools cython \
         # Clone and install EMBREE
         && mkdir -p $HOME/EMBREE && cd $HOME/EMBREE \
         && git clone --single-branch -b ${EMBREE_TAG} --depth 1 ${EMBREE_REPO} \

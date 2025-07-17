@@ -20,7 +20,7 @@ from openmc.dummy_comm import DummyCommunicator
 from openmc.executor import _process_CLI_arguments
 from openmc.checkvalue import check_type, check_value, PathLike
 from openmc.exceptions import InvalidIDError
-from openmc.plots import add_plot_params
+from openmc.plots import add_plot_params, _BASIS_INDICES
 from openmc.utility_funcs import change_directory
 
 
@@ -67,8 +67,14 @@ class Model:
 
     """
 
-    def __init__(self, geometry=None, materials=None, settings=None,
-                 tallies=None, plots=None):
+    def __init__(
+        self,
+        geometry: openmc.Geometry | None = None,
+        materials: openmc.Materials = None,
+        settings: openmc.Settings | None = None,
+        tallies: openmc.Tallies | None = None,
+        plots: openmc.Plots | None = None,
+    ):
         self.geometry = openmc.Geometry() if geometry is None else geometry
         self.materials = openmc.Materials() if materials is None else materials
         self.settings = openmc.Settings() if settings is None else settings
@@ -192,24 +198,29 @@ class Model:
         return result
 
     @classmethod
-    def from_xml(cls, geometry='geometry.xml', materials='materials.xml',
-                 settings='settings.xml', tallies='tallies.xml',
-                 plots='plots.xml') -> Model:
+    def from_xml(
+        cls,
+        geometry: PathLike = "geometry.xml",
+        materials: PathLike = "materials.xml",
+        settings: PathLike = "settings.xml",
+        tallies: PathLike = "tallies.xml",
+        plots: PathLike = "plots.xml",
+    ) -> Model:
         """Create model from existing XML files
 
         Parameters
         ----------
-        geometry : str
+        geometry : PathLike
             Path to geometry.xml file
-        materials : str
+        materials : PathLike
             Path to materials.xml file
-        settings : str
+        settings : PathLike
             Path to settings.xml file
-        tallies : str
+        tallies : PathLike
             Path to tallies.xml file
 
             .. versionadded:: 0.13.0
-        plots : str
+        plots : PathLike
             Path to plots.xml file
 
             .. versionadded:: 0.13.0
@@ -229,14 +240,14 @@ class Model:
         return cls(geometry, materials, settings, tallies, plots)
 
     @classmethod
-    def from_model_xml(cls, path='model.xml'):
+    def from_model_xml(cls, path: PathLike = "model.xml") -> Model:
         """Create model from single XML file
 
         .. versionadded:: 0.13.3
 
         Parameters
         ----------
-        path : str or PathLike
+        path : PathLike
             Path to model.xml file
         """
         parser = ET.XMLParser(huge_tree=True)
@@ -262,8 +273,17 @@ class Model:
 
         return model
 
-    def init_lib(self, threads=None, geometry_debug=False, restart_file=None,
-                 tracks=False, output=True, event_based=None, intracomm=None, directory=None):
+    def init_lib(
+        self,
+        threads: int | None = None,
+        geometry_debug: bool = False,
+        restart_file: PathLike | None = None,
+        tracks: bool = False,
+        output: bool = True,
+        event_based: bool | None = None,
+        intracomm=None,
+        directory: PathLike | None = None,
+    ):
         """Initializes the model in memory via the C API
 
         .. versionadded:: 0.13.0
@@ -278,7 +298,7 @@ class Model:
             variable).
         geometry_debug : bool, optional
             Turn on geometry debugging during simulation. Defaults to False.
-        restart_file : str, optional
+        restart_file : PathLike, optional
             Path to restart file to use
         tracks : bool, optional
             Enables the writing of particles tracks. The number of particle
@@ -291,7 +311,7 @@ class Model:
             the Settings will be used.
         intracomm : mpi4py.MPI.Intracomm or None, optional
             MPI intracommunicator
-        directory : str or None, optional
+        directory : PathLike or None, optional
             Directory to write XML files to. Defaults to None.
         """
 
@@ -365,9 +385,15 @@ class Model:
 
         openmc.lib.finalize()
 
-    def deplete(self, timesteps, method='cecm', final_step=True,
-                operator_kwargs=None, directory='.', output=True,
-                **integrator_kwargs):
+    def deplete(
+        self,
+        method: str = "cecm",
+        final_step: bool = True,
+        operator_kwargs: dict | None = None,
+        directory: PathLike = ".",
+        output: bool = True,
+        **integrator_kwargs,
+    ):
         """Deplete model using specified timesteps/power
 
         .. versionchanged:: 0.13.0
@@ -376,10 +402,12 @@ class Model:
 
         Parameters
         ----------
-        timesteps : iterable of float
-            Array of timesteps in units of [s]. Note that values are not
-            cumulative.
-        method : str, optional
+        timesteps : iterable of float or iterable of tuple
+            Array of timesteps. Note that values are not cumulative. The units are
+            specified by the `timestep_units` argument when `timesteps` is an
+            iterable of float. Alternatively, units can be specified for each step
+            by passing an iterable of (value, unit) tuples.
+        method : str
              Integration method used for depletion (e.g., 'cecm', 'predictor').
              Defaults to 'cecm'.
         final_step : bool, optional
@@ -388,14 +416,14 @@ class Model:
         operator_kwargs : dict
             Keyword arguments passed to the depletion operator initializer
             (e.g., :func:`openmc.deplete.Operator`)
-        directory : str, optional
+        directory : PathLike, optional
             Directory to write XML files to. If it doesn't exist already, it
             will be created. Defaults to the current working directory
         output : bool
             Capture OpenMC output from standard out
         integrator_kwargs : dict
-            Remaining keyword arguments passed to the depletion Integrator
-            initializer (e.g., :func:`openmc.deplete.integrator.cecm`).
+            Remaining keyword arguments passed to the depletion integrator
+            (e.g., :class:`openmc.deplete.CECMIntegrator`).
 
         """
 
@@ -426,8 +454,7 @@ class Model:
             check_value('method', method,
                         dep.integrators.integrator_by_name.keys())
             integrator_class = dep.integrators.integrator_by_name[method]
-            integrator = integrator_class(depletion_operator, timesteps,
-                                          **integrator_kwargs)
+            integrator = integrator_class(depletion_operator, **integrator_kwargs)
 
             # Now perform the depletion
             with openmc.lib.quiet_dll(output):
@@ -456,7 +483,7 @@ class Model:
 
         Parameters
         ----------
-        directory : str
+        directory : PathLike
             Directory to write XML files to. If it doesn't exist already, it
             will be created.
         remove_surfs : bool
@@ -570,7 +597,7 @@ class Model:
                 fh.write(ET.tostring(plots_element, encoding="unicode"))
             fh.write("</model>\n")
 
-    def import_properties(self, filename):
+    def import_properties(self, filename: PathLike):
         """Import physical properties
 
         .. versionchanged:: 0.13.0
@@ -578,7 +605,7 @@ class Model:
 
         Parameters
         ----------
-        filename : str
+        filename : PathLike
             Path to properties HDF5 file
 
         See Also
@@ -631,11 +658,22 @@ class Model:
                     C_mat = openmc.lib.materials[mat_id]
                     C_mat.set_density(atom_density, 'atom/b-cm')
 
-    def run(self, particles=None, threads=None, geometry_debug=False,
-            restart_file=None, tracks=False, output=True, cwd='.',
-            openmc_exec='openmc', mpi_args=None, event_based=None,
-            export_model_xml=True, apply_tally_results=False,
-            **export_kwargs):
+    def run(
+        self,
+        particles: int | None = None,
+        threads: int | None = None,
+        geometry_debug: bool = False,
+        restart_file: PathLike | None = None,
+        tracks: bool = False,
+        output: bool = True,
+        cwd: PathLike = ".",
+        openmc_exec: PathLike = "openmc",
+        mpi_args: Iterable[str] = None,
+        event_based: bool | None = None,
+        export_model_xml: bool = True,
+        apply_tally_results: bool = False,
+        **export_kwargs,
+    ) -> Path:
         """Run OpenMC
 
         If the C API has been initialized, then the C API is used, otherwise,
@@ -767,10 +805,17 @@ class Model:
 
         return last_statepoint
 
-    def calculate_volumes(self, threads=None, output=True, cwd='.',
-                          openmc_exec='openmc', mpi_args=None,
-                          apply_volumes=True, export_model_xml=True,
-                          **export_kwargs):
+    def calculate_volumes(
+        self,
+        threads: int | None = None,
+        output: bool = True,
+        cwd: PathLike = ".",
+        openmc_exec: PathLike = "openmc",
+        mpi_args: list[str] | None = None,
+        apply_volumes: bool = True,
+        export_model_xml: bool = True,
+        **export_kwargs,
+    ):
         """Runs an OpenMC stochastic volume calculation and, if requested,
         applies volumes to the model
 
@@ -857,6 +902,111 @@ class Model:
                             openmc.lib.materials[domain_id].volume = \
                                 vol_calc.volumes[domain_id].n
 
+
+    def _set_plot_defaults(
+        self,
+        origin: Sequence[float] | None,
+        width: Sequence[float] | None,
+        pixels: int | Sequence[int],
+        basis: str
+    ):
+        x, y, _ = _BASIS_INDICES[basis]
+
+        bb = self.bounding_box
+        # checks to see if bounding box contains -inf or inf values
+        if np.isinf(bb.extent[basis]).any():
+            if origin is None:
+                origin = (0, 0, 0)
+            if width is None:
+                width = (10, 10)
+        else:
+            if origin is None:
+                # if nan values in the bb.center they get replaced with 0.0
+                # this happens when the bounding_box contains inf values
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore", RuntimeWarning)
+                    origin = np.nan_to_num(bb.center)
+            if width is None:
+                bb_width = bb.width
+                width = (bb_width[x], bb_width[y])
+
+        if isinstance(pixels, int):
+            aspect_ratio = width[0] / width[1]
+            pixels_y = math.sqrt(pixels / aspect_ratio)
+            pixels = (int(pixels / pixels_y), int(pixels_y))
+
+        return origin, width, pixels
+
+    def id_map(
+        self,
+        origin: Sequence[float] | None = None,
+        width: Sequence[float] | None = None,
+        pixels: int | Sequence[int] = 40000,
+        basis: str = 'xy',
+        **init_kwargs
+    ) -> np.ndarray:
+        """Generate an ID map for domains based on the plot parameters
+
+        If the model is not yet initialized, it will be initialized with
+        openmc.lib. If the model is initialized, the model will remain
+        initialized after this method call exits.
+
+        .. versionadded:: 0.15.3
+
+        Parameters
+        ----------
+        origin : Sequence[float], optional
+            Origin of the plot. If unspecified, this argument defaults to the
+            center of the bounding box if the bounding box does not contain inf
+            values for the provided basis, otherwise (0.0, 0.0, 0.0).
+        width : Sequence[float], optional
+            Width of the plot. If unspecified, this argument defaults to the
+            width of the bounding box if the bounding box does not contain inf
+            values for the provided basis, otherwise (10.0, 10.0).
+        pixels : int | Sequence[int], optional
+            If an iterable of ints is provided then this directly sets the
+            number of pixels to use in each basis direction. If a single int is
+            provided then this sets the total number of pixels in the plot and
+            the number of pixels in each basis direction is calculated from this
+            total and the image aspect ratio based on the width argument.
+        basis : {'xy', 'yz', 'xz'}, optional
+            Basis of the plot.
+        **init_kwargs
+            Keyword arguments passed to :meth:`Model.init_lib`.
+
+        Returns
+        -------
+        id_map : numpy.ndarray
+            A NumPy array with shape (vertical pixels, horizontal pixels, 3) of
+            OpenMC property IDs with dtype int32. The last dimension of the
+            array contains cell IDs, cell instances, and material IDs (in that
+            order).
+        """
+        import openmc.lib
+
+        origin, width, pixels = self._set_plot_defaults(
+            origin, width, pixels, basis)
+
+        # initialize the openmc.lib.plot._PlotBase object
+        plot_obj = openmc.lib.plot._PlotBase()
+        plot_obj.origin = origin
+        plot_obj.width = width[0]
+        plot_obj.height = width[1]
+        plot_obj.h_res = pixels[0]
+        plot_obj.v_res = pixels[1]
+        plot_obj.basis = basis
+
+        if self.is_initialized:
+            return openmc.lib.id_map(plot_obj)
+        else:
+            # Silence output by default. Also set arguments to start in volume
+            # calculation mode to avoid loading cross sections
+            init_kwargs.setdefault('output', False)
+            init_kwargs.setdefault('args', ['-c'])
+
+            with openmc.lib.TemporarySession(self, **init_kwargs):
+                return openmc.lib.id_map(plot_obj)
+
     @add_plot_params
     def plot(
         self,
@@ -900,39 +1050,13 @@ class Model:
             source_kwargs = {}
         source_kwargs.setdefault('marker', 'x')
 
+        # Set indices using basis and create axis labels
+        x, y, z = _BASIS_INDICES[basis]
+        xlabel, ylabel = f'{basis[0]} [{axis_units}]', f'{basis[1]} [{axis_units}]'
+
         # Determine extents of plot
-        if basis == 'xy':
-            x, y, z = 0, 1, 2
-            xlabel, ylabel = f'x [{axis_units}]', f'y [{axis_units}]'
-        elif basis == 'yz':
-            x, y, z = 1, 2, 0
-            xlabel, ylabel = f'y [{axis_units}]', f'z [{axis_units}]'
-        elif basis == 'xz':
-            x, y, z = 0, 2, 1
-            xlabel, ylabel = f'x [{axis_units}]', f'z [{axis_units}]'
-
-        bb = self.bounding_box
-        # checks to see if bounding box contains -inf or inf values
-        if np.isinf(bb.extent[basis]).any():
-            if origin is None:
-                origin = (0, 0, 0)
-            if width is None:
-                width = (10, 10)
-        else:
-            if origin is None:
-                # if nan values in the bb.center they get replaced with 0.0
-                # this happens when the bounding_box contains inf values
-                with warnings.catch_warnings():
-                    warnings.simplefilter("ignore", RuntimeWarning)
-                    origin = np.nan_to_num(bb.center)
-            if width is None:
-                bb_width = bb.width
-                width = (bb_width[x], bb_width[y])
-
-        if isinstance(pixels, int):
-            aspect_ratio = width[0] / width[1]
-            pixels_y = math.sqrt(pixels / aspect_ratio)
-            pixels = (int(pixels / pixels_y), int(pixels_y))
+        origin, width, pixels = self._set_plot_defaults(
+            origin, width, pixels, basis)
 
         axis_scaling_factor = {'km': 0.00001, 'm': 0.01, 'cm': 1, 'mm': 10}
 
@@ -941,7 +1065,16 @@ class Model:
         y_min = (origin[y] - 0.5*width[1]) * axis_scaling_factor[axis_units]
         y_max = (origin[y] + 0.5*width[1]) * axis_scaling_factor[axis_units]
 
+        # Determine whether any materials contains macroscopic data and if so,
+        # set energy mode accordingly
+        _energy_mode = self.settings._energy_mode
+        for mat in self.geometry.get_all_materials().values():
+            if mat._macroscopic is not None:
+                self.settings.energy_mode = 'multi-group'
+                break
+
         with TemporaryDirectory() as tmpdir:
+            _plot_seed = self.settings.plot_seed
             if seed is not None:
                 self.settings.plot_seed = seed
 
@@ -961,6 +1094,11 @@ class Model:
 
             # Run OpenMC in geometry plotting mode
             self.plot_geometry(False, cwd=tmpdir, openmc_exec=openmc_exec)
+
+            # Undo changes to model
+            self.plots.pop()
+            self.settings._plot_seed = _plot_seed
+            self.settings._energy_mode = _energy_mode
 
             # Read image from file
             img_path = Path(tmpdir) / f'plot_{plot.id}.png'
@@ -1065,10 +1203,10 @@ class Model:
         return axes
 
     def sample_external_source(
-            self,
-            n_samples: int = 1000,
-            prn_seed: int | None = None,
-            **init_kwargs
+        self,
+        n_samples: int = 1000,
+        prn_seed: int | None = None,
+        **init_kwargs
     ) -> openmc.ParticleList:
         """Sample external source and return source particles.
 
@@ -1091,17 +1229,17 @@ class Model:
         """
         import openmc.lib
 
-        # Silence output by default. Also set arguments to start in volume
-        # calculation mode to avoid loading cross sections
-        init_kwargs.setdefault('output', False)
-        init_kwargs.setdefault('args', ['-c'])
+        if self.is_initialized:
+            return openmc.lib.sample_external_source(
+                n_samples=n_samples, prn_seed=prn_seed
+            )
+        else:
+            # Silence output by default. Also set arguments to start in volume
+            # calculation mode to avoid loading cross sections
+            init_kwargs.setdefault('output', False)
+            init_kwargs.setdefault('args', ['-c'])
 
-        with change_directory(tmpdir=True):
-            # Export model within temporary directory
-            self.export_to_model_xml()
-
-            # Sample external source sites
-            with openmc.lib.run_in_memory(**init_kwargs):
+            with openmc.lib.TemporarySession(self, **init_kwargs):
                 return openmc.lib.sample_external_source(
                     n_samples=n_samples, prn_seed=prn_seed
                 )
@@ -1116,8 +1254,14 @@ class Model:
         """
         self.tallies.add_results(statepoint)
 
-    def plot_geometry(self, output=True, cwd='.', openmc_exec='openmc',
-                      export_model_xml=True, **export_kwargs):
+    def plot_geometry(
+        self,
+        output: bool = True,
+        cwd: PathLike = ".",
+        openmc_exec: PathLike = "openmc",
+        export_model_xml: bool = True,
+        **export_kwargs,
+    ):
         """Creates plot images as specified by the Model.plots attribute
 
         .. versionadded:: 0.13.0
@@ -1126,10 +1270,10 @@ class Model:
         ----------
         output : bool, optional
             Capture OpenMC output from standard out
-        cwd : str, optional
+        cwd : PathLike, optional
             Path to working directory to run in. Defaults to the current
             working directory.
-        openmc_exec : str, optional
+        openmc_exec : PathLike, optional
             Path to OpenMC executable. Defaults to 'openmc'.
             This only applies to the case when not using the C API.
         export_model_xml : bool, optional
@@ -1159,8 +1303,14 @@ class Model:
                 openmc.plot_geometry(output=output, openmc_exec=openmc_exec,
                                      path_input=path_input)
 
-    def _change_py_lib_attribs(self, names_or_ids, value, obj_type,
-                               attrib_name, density_units='atom/b-cm'):
+    def _change_py_lib_attribs(
+        self,
+        names_or_ids: Iterable[str] | Iterable[int],
+        value: float | Iterable[float],
+        obj_type: str,
+        attrib_name: str,
+        density_units: str = "atom/b-cm",
+    ):
         # Method to do the same work whether it is a cell or material and
         # a temperature or volume
         check_type('names_or_ids', names_or_ids, Iterable, (Integral, str))
@@ -1239,7 +1389,9 @@ class Model:
                 else:
                     setattr(lib_obj, attrib_name, value)
 
-    def rotate_cells(self, names_or_ids, vector):
+    def rotate_cells(
+        self, names_or_ids: Iterable[str] | Iterable[int], vector: Iterable[float]
+    ):
         """Rotate the identified cell(s) by the specified rotation vector.
         The rotation is only applied to cells filled with a universe.
 
@@ -1261,7 +1413,9 @@ class Model:
 
         self._change_py_lib_attribs(names_or_ids, vector, 'cell', 'rotation')
 
-    def translate_cells(self, names_or_ids, vector):
+    def translate_cells(
+        self, names_or_ids: Iterable[str] | Iterable[int], vector: Iterable[float]
+    ):
         """Translate the identified cell(s) by the specified translation vector.
         The translation is only applied to cells filled with a universe.
 
@@ -1284,7 +1438,12 @@ class Model:
         self._change_py_lib_attribs(names_or_ids, vector, 'cell',
                                     'translation')
 
-    def update_densities(self, names_or_ids, density, density_units='atom/b-cm'):
+    def update_densities(
+        self,
+        names_or_ids: Iterable[str] | Iterable[int],
+        density: float,
+        density_units: str = "atom/b-cm",
+    ):
         """Update the density of a given set of materials to a new value
 
         .. note:: If applying this change to a name that is not unique, then
@@ -1307,7 +1466,9 @@ class Model:
         self._change_py_lib_attribs(names_or_ids, density, 'material',
                                     'density', density_units)
 
-    def update_cell_temperatures(self, names_or_ids, temperature):
+    def update_cell_temperatures(
+        self, names_or_ids: Iterable[str] | Iterable[int], temperature: float
+    ):
         """Update the temperature of a set of cells to the given value
 
         .. note:: If applying this change to a name that is not unique, then
@@ -1328,7 +1489,9 @@ class Model:
         self._change_py_lib_attribs(names_or_ids, temperature, 'cell',
                                     'temperature')
 
-    def update_material_volumes(self, names_or_ids, volume):
+    def update_material_volumes(
+        self, names_or_ids: Iterable[str] | Iterable[int], volume: float
+    ):
         """Update the volume of a set of materials to the given value
 
         .. note:: If applying this change to a name that is not unique, then
@@ -1449,7 +1612,14 @@ class Model:
                 self.geometry.get_all_materials().values()
             )
 
-    def _generate_infinite_medium_mgxs(self, groups, nparticles, mgxs_path, correction, directory):
+    def _generate_infinite_medium_mgxs(
+        self,
+        groups: openmc.mgxs.EnergyGroups,
+        nparticles: int,
+        mgxs_path: PathLike,
+        correction: str | None,
+        directory: PathLike,
+    ):
         """Generate a MGXS library by running multiple OpenMC simulations, each
         representing an infinite medium simulation of a single isolated
         material. A discrete source is used to sample particles, with an equal
@@ -1475,7 +1645,6 @@ class Model:
                       "if a material has a k-infinity > 1.0.")
         mgxs_sets = []
         for material in self.materials:
-            openmc.reset_auto_ids()
             model = openmc.Model()
 
             # Set materials on the model
@@ -1567,7 +1736,11 @@ class Model:
         mgxs_file.export_to_hdf5(mgxs_path)
 
     @staticmethod
-    def _create_stochastic_slab_geometry(materials, cell_thickness=1.0, num_repeats=100):
+    def _create_stochastic_slab_geometry(
+        materials: Sequence[openmc.Material],
+        cell_thickness: float = 1.0,
+        num_repeats: int = 100,
+    ) -> tuple[openmc.Geometry, openmc.stats.Box]:
         """Create a geometry representing a stochastic "sandwich" of materials in a
         layered slab geometry. To reduce the impact of the order of materials in
         the slab, the materials are applied to 'num_repeats' different randomly
@@ -1636,7 +1809,14 @@ class Model:
 
         return geometry, box
 
-    def _generate_stochastic_slab_mgxs(self, groups, nparticles, mgxs_path, correction, directory) -> None:
+    def _generate_stochastic_slab_mgxs(
+        self,
+        groups: openmc.mgxs.EnergyGroups,
+        nparticles: int,
+        mgxs_path: PathLike,
+        correction: str | None,
+        directory: PathLike,
+    ) -> None:
         """Generate MGXS assuming a stochastic "sandwich" of materials in a layered
         slab geometry. While geometry-specific spatial shielding effects are not
         captured, this method can be useful when the geometry has materials only
@@ -1661,7 +1841,6 @@ class Model:
         directory : str
             Directory to run the simulation in, so as to contain XML files.
         """
-        openmc.reset_auto_ids()
         model = openmc.Model()
         model.materials = self.materials
 
@@ -1741,7 +1920,14 @@ class Model:
         mgxs_file = mgxs_lib.create_mg_library(xs_type='macro', xsdata_names=names)
         mgxs_file.export_to_hdf5(mgxs_path)
 
-    def _generate_material_wise_mgxs(self, groups, nparticles, mgxs_path, correction, directory) -> None:
+    def _generate_material_wise_mgxs(
+        self,
+        groups: openmc.mgxs.EnergyGroups,
+        nparticles: int,
+        mgxs_path: PathLike,
+        correction: str | None,
+        directory: PathLike,
+    ) -> None:
         """Generate a material-wise MGXS library for the model by running the
         original continuous energy OpenMC simulation of the full material
         geometry and source, and tally MGXS data for each material. This method
@@ -1758,15 +1944,14 @@ class Model:
             Energy group structure for the MGXS.
         nparticles : int
             Number of particles to simulate per batch when generating MGXS.
-        mgxs_path : str
+        mgxs_path : PathLike
             Filename for the MGXS HDF5 file.
         correction : str
             Transport correction to apply to the MGXS. Options are None and
             "P0".
-        directory : str
+        directory : PathLike
             Directory to run the simulation in, so as to contain XML files.
         """
-        openmc.reset_auto_ids()
         model = copy.deepcopy(self)
         model.tallies = openmc.Tallies()
 
@@ -1831,9 +2016,15 @@ class Model:
             xs_type='macro', xsdata_names=names)
         mgxs_file.export_to_hdf5(mgxs_path)
 
-    def convert_to_multigroup(self, method="material_wise", groups='CASMO-2',
-                              nparticles=2000, overwrite_mgxs_library=False,
-                              mgxs_path: PathLike = "mgxs.h5", correction=None):
+    def convert_to_multigroup(
+        self,
+        method: str = "material_wise",
+        groups: str = "CASMO-2",
+        nparticles: int = 2000,
+        overwrite_mgxs_library: bool = False,
+        mgxs_path: PathLike = "mgxs.h5",
+        correction: str | None = None,
+    ):
         """Convert all materials from continuous energy to multigroup.
 
         If no MGXS data library file is found, generate one using one or more
@@ -1868,11 +2059,11 @@ class Model:
                     self.sync_dagmc_universes()
                     self.finalize_lib()
                     break
-            
+
             # Make sure all materials have a name, and that the name is a valid HDF5
             # dataset name
             for material in self.materials:
-                if material.name is None:
+                if not material.name or not material.name.strip():
                     material.name = f"material {material.id}"
                 material.name = re.sub(r'[^a-zA-Z0-9]', '_', material.name)
 

@@ -47,7 +47,7 @@ struct SourceSite {
   double time {0.0};
   double wgt {1.0};
   int delayed_group {0};
-  int surf_id {0};
+  int surf_id {SURFACE_NONE};
   ParticleType particle;
 
   // Extra attributes that don't show up in source written to file
@@ -88,13 +88,37 @@ public:
   //! clear data from a single coordinate level
   void reset();
 
-  Position r;  //!< particle position
-  Direction u; //!< particle direction
-  int cell {-1};
-  int universe {-1};
-  int lattice {-1};
-  array<int, 3> lattice_i {{-1, -1, -1}};
-  bool rotated {false}; //!< Is the level rotated?
+  // accessors
+  Position& r() { return r_; }
+  const Position& r() const { return r_; }
+
+  Direction& u() { return u_; }
+  const Direction& u() const { return u_; }
+
+  int& cell() { return cell_; }
+  const int& cell() const { return cell_; }
+
+  int& universe() { return universe_; }
+  const int& universe() const { return universe_; }
+
+  int& lattice() { return lattice_; }
+  int lattice() const { return lattice_; }
+
+  array<int, 3>& lattice_index() { return lattice_index_; }
+  const array<int, 3>& lattice_index() const { return lattice_index_; }
+
+  bool& rotated() { return rotated_; }
+  const bool& rotated() const { return rotated_; }
+
+private:
+  // Data members
+  Position r_;  //!< particle position
+  Direction u_; //!< particle direction
+  int cell_ {-1};
+  int universe_ {-1};
+  int lattice_ {-1};
+  array<int, 3> lattice_index_ {{-1, -1, -1}};
+  bool rotated_ {false}; //!< Is the level rotated?
 };
 
 //==============================================================================
@@ -301,20 +325,20 @@ public:
   const Position& u_last() const { return u_last_; }
 
   // Accessors for position in global coordinates
-  Position& r() { return coord_[0].r; }
-  const Position& r() const { return coord_[0].r; }
+  Position& r() { return coord_[0].r(); }
+  const Position& r() const { return coord_[0].r(); }
 
   // Accessors for position in local coordinates
-  Position& r_local() { return coord_[n_coord_ - 1].r; }
-  const Position& r_local() const { return coord_[n_coord_ - 1].r; }
+  Position& r_local() { return coord_[n_coord_ - 1].r(); }
+  const Position& r_local() const { return coord_[n_coord_ - 1].r(); }
 
   // Accessors for direction in global coordinates
-  Direction& u() { return coord_[0].u; }
-  const Direction& u() const { return coord_[0].u; }
+  Direction& u() { return coord_[0].u(); }
+  const Direction& u() const { return coord_[0].u(); }
 
   // Accessors for direction in local coordinates
-  Direction& u_local() { return coord_[n_coord_ - 1].u; }
-  const Direction& u_local() const { return coord_[n_coord_ - 1].u; }
+  Direction& u_local() { return coord_[n_coord_ - 1].u(); }
+  const Direction& u_local() const { return coord_[n_coord_ - 1].u(); }
 
   // Surface token for the surface that the particle is currently on
   int& surface() { return surface_; }
@@ -435,6 +459,7 @@ private:
 
   double wgt_ {1.0};
   double wgt_born_ {1.0};
+  double wgt_ww_born_ {-1.0};
   double mu_;
   double time_ {0.0};
   double time_last_ {0.0};
@@ -545,6 +570,10 @@ public:
   double& wgt_born() { return wgt_born_; }
   double wgt_born() const { return wgt_born_; }
 
+  // Weight window value at birth
+  double& wgt_ww_born() { return wgt_ww_born_; }
+  const double& wgt_ww_born() const { return wgt_ww_born_; }
+
   // Statistic weight of particle at last collision
   double& wgt_last() { return wgt_last_; }
   const double& wgt_last() const { return wgt_last_; }
@@ -573,7 +602,8 @@ public:
   bool& fission() { return fission_; }            // true if implicit fission
   int& event_nuclide() { return event_nuclide_; } // index of collision nuclide
   const int& event_nuclide() const { return event_nuclide_; }
-  int& event_mt() { return event_mt_; }           // MT number of collision
+  int& event_mt() { return event_mt_; } // MT number of collision
+  const int& event_mt() const { return event_mt_; }
   int& delayed_group() { return delayed_group_; } // delayed group
   const int& parent_nuclide() const { return parent_nuclide_; }
   int& parent_nuclide() { return parent_nuclide_; } // Parent nuclide

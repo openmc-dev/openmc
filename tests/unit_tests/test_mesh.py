@@ -480,6 +480,9 @@ def test_umesh(run_in_tmpdir, simple_umesh, export_type):
     mean = np.array([arr.GetTuple1(i) for i in range(ref_data.size)])
     np.testing.assert_almost_equal(mean, ref_data)
 
+    # attempt to apply a dataset with an improper size to a VTK write
+    with pytest.raises(ValueError, match='Cannot apply dataset "mean"') as e:
+        simple_umesh.write_data_to_vtk(datasets={'mean': ref_data[:-2]}, filename=filename)
 
 def test_mesh_get_homogenized_materials():
     """Test the get_homogenized_materials method"""
@@ -615,3 +618,36 @@ def test_mesh_material_volumes_serialize():
     assert new_volumes.by_element(1) == [(None, 1.0)]
     assert new_volumes.by_element(2) == [(2, 0.5), (1, 0.5)]
     assert new_volumes.by_element(3) == [(2, 1.0)]
+
+
+def test_raytrace_mesh_infinite_loop():
+    # Create a model with one large spherical cell
+    sphere = openmc.Sphere(r=100, boundary_type='vacuum')
+    cell = openmc.Cell(region=-sphere)
+    model = openmc.Model()
+    model.geometry = openmc.Geometry([cell])
+
+    # Create a regular mesh and associated tally
+    mesh_surface = openmc.RegularMesh()
+    mesh_surface.lower_left = (-30, -30, 30)
+    mesh_surface.upper_right = (30, 30, 60)
+    mesh_surface.dimension = (1, 1, 1)
+    reg_filter = openmc.MeshSurfaceFilter(mesh_surface)
+    mesh_surface_tally = openmc.Tally()
+    mesh_surface_tally.filters = [reg_filter]
+    mesh_surface_tally.scores = ['current']
+    model.tallies = [mesh_surface_tally]
+
+    # Define a source such that the z position is on a mesh boundary with a very
+    # small directional cosine in the z direction
+    polar = openmc.stats.delta_function(1.75e-7)
+    azimuthal = openmc.stats.Uniform(0.0, 2.0*pi)
+    model.settings.source = openmc.IndependentSource(
+        angle=openmc.stats.PolarAzimuthal(polar, azimuthal)
+    )
+    model.settings.run_mode = 'fixed source'
+    model.settings.particles = 10
+    model.settings.batches =  1
+
+    # Run the model; this should not cause an infinite loop
+    model.run()

@@ -316,6 +316,16 @@ public:
   Direction& u_local() { return coord_[n_coord_ - 1].u; }
   const Direction& u_local() const { return coord_[n_coord_ - 1].u; }
 
+  // Accessors for time (units are seconds).
+  double& time() { return time_; }
+  const double& time() const { return time_; }
+  double& time_last() { return time_last_; }
+  const double& time_last() const { return time_last_; }
+
+  // Accessors for speed (cm/s).
+  double& speed() { return speed_; }
+  const double& speed() const { return speed_; }
+
   // Surface token for the surface that the particle is currently on
   int& surface() { return surface_; }
   const int& surface() const { return surface_; }
@@ -363,6 +373,11 @@ private:
                             //!< current tallies
   Position r_last_;         //!< previous coordinates
   Direction u_last_;        //!< previous direction coordinates
+
+  double time_;      //!< time
+  double time_last_; //!< previous time
+
+  double speed_;
 
   int surface_ {
     SURFACE_NONE}; //!< surface token for surface the particle is currently on
@@ -437,8 +452,6 @@ private:
   double wgt_born_ {1.0};
   double wgt_ww_born_ {-1.0};
   double mu_;
-  double time_ {0.0};
-  double time_last_ {0.0};
   double wgt_last_ {1.0};
 
   bool fission_ {false};
@@ -560,13 +573,6 @@ public:
   // Polar scattering angle after a collision
   double& mu() { return mu_; }
   const double& mu() const { return mu_; }
-
-  // Tracks the time of a particle as it traverses the problem.
-  // Units are seconds.
-  double& time() { return time_; }
-  const double& time() const { return time_; }
-  double& time_last() { return time_last_; }
-  const double& time_last() const { return time_last_; }
 
   // Particle lifetime
   double& lifetime() { return lifetime_; }

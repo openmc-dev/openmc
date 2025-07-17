@@ -37,7 +37,7 @@ public:
   //==========================================================================
   // Methods
 
-  double speed() const;
+  double get_speed() const;
 
   //! create a secondary particle
   //

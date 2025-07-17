@@ -15,6 +15,7 @@
 #include "openmc/hdf5_interface.h"
 #include "openmc/math_functions.h"
 #include "openmc/random_lcg.h"
+#include "openmc/search.h"
 #include "openmc/settings.h"
 #include "openmc/string_utils.h"
 #include "openmc/xml_interface.h"
@@ -111,20 +112,76 @@ Surface::Surface(pugi::xml_node surf_node)
       bc_->set_albedo(surf_alb);
     }
   }
+  
+  // Not moving?
+  if (!(check_for_node(surf_node, "moving_velocities") ||
+        check_for_node(surf_node, "moving_durations"))) {
+    moving_ = false;
+    return;
+  }
+
+  // Now, set the surface moving parameters
+  moving_ = true;
+
+  // Moving durations
+  auto durations = get_node_array<double>(surf_node, "moving_durations");
+  const int N_move = durations.size() + 1;
+
+  // Moving time grids
+  moving_time_grid_.resize(N_move + 1);
+  moving_time_grid_[0] = 0.0;
+  for (int n = 0; n < N_move - 1; n++) {
+    moving_time_grid_[n + 1] = moving_time_grid_[n] + durations[n];
+  }
+  moving_time_grid_[N_move] = INFTY;
+
+  // Moving velocities
+  moving_velocities_.resize(N_move);
+  std::string velocities_spec = get_node_value(surf_node, "moving_velocities");
+  // Parse
+  std::vector<double> numbers;
+  for (int i = 0; i < velocities_spec.size();) {
+    if (velocities_spec[i] == '-' || std::isdigit(velocities_spec[i])) {
+      int j = i + 1;
+      while (j < velocities_spec.size() && (std::isdigit(velocities_spec[j]) || velocities_spec[j] == '.')) {
+        j++;
+      }
+      numbers.push_back(std::stod(velocities_spec.substr(i, j - i)));
+      i = j;
+    }
+    i++;
+  }
+  // Assign to velocities
+  for (int n = 0; n < N_move - 1; n++) {
+    int idx = 3 * n;
+    moving_velocities_[n][0] = numbers[idx];
+    moving_velocities_[n][1] = numbers[idx + 1];
+    moving_velocities_[n][2] = numbers[idx + 2];
+  }
+  moving_velocities_[N_move - 1] *= 0.0;
+
+  // Moving translations
+  moving_translations_.resize(N_move + 1);
+  moving_translations_[0] *= 0.0;
+  for (int n = 0; n < N_move - 1; n++) {
+    moving_translations_[n + 1] =
+      moving_translations_[n] + moving_velocities_[n] * durations[n];
+  }
+  moving_translations_[N_move] = moving_translations_[N_move - 1];
 }
 
-bool Surface::sense(Position r, Direction u) const
+bool Surface::sense(Position r, Direction u, double t, double speed) const
 {
   // Evaluate the surface equation at the particle's coordinates to determine
   // which side the particle is on.
-  const double f = evaluate(r);
+  const double f = evaluate(r, t);
 
   // Check which side of surface the point is on.
   if (std::abs(f) < FP_COINCIDENT) {
     // Particle may be coincident with this surface. To determine the sense, we
     // look at the direction of the particle relative to the surface normal (by
     // default in the positive direction) via their dot product.
-    return u.dot(normal(r)) > 0.0;
+    return dot_normal(r, u, t, speed) > 0.0;
   }
   return f > 0.0;
 }
@@ -158,6 +215,133 @@ Direction Surface::diffuse_reflect(
 
   // normalize the direction
   return u / u.norm();
+}
+
+double Surface::evaluate(Position r, double t) const
+{
+  if (!moving_) {
+    return _evaluate(r);
+  }
+  // The surface moves
+
+  // Get moving index
+  int idx =
+    lower_bound_index(moving_time_grid_.begin(), moving_time_grid_.end(), t);
+
+  // Get moving translation, velocity, and starting time
+  Position translation = moving_translations_[idx];
+  double time_0 = moving_time_grid_[idx];
+  Position velocity = moving_velocities_[idx];
+
+  // Move the position relative to the surface movement
+  double t_local = t - time_0;
+  Position r_moved = r - (translation + velocity * t_local);
+
+  // Evaluate the moved position
+  return _evaluate(r_moved);
+}
+
+double Surface::distance(Position r, Direction u, double t, double speed, bool coincident) const
+{
+  if (!moving_) {
+    return _distance(r, u, coincident);
+  }
+  // The surface moves
+  
+  coincident = false;
+
+  // Store the origin coordinate
+  Position r_origin {r};
+  Position u_origin {u};
+  double t_origin {t};
+
+  // Get moving interval index
+  int idx =
+    lower_bound_index(moving_time_grid_.begin(), moving_time_grid_.end(), t);
+
+  // Distance accumulator
+  double distance_total = 0.0;
+
+  // Evaluate the current and the subsequent intervals until intersecting
+  while (idx < moving_velocities_.size()) {
+    // Get moving translation, velocity, and starting time
+    Position translation = moving_translations_[idx];
+    double time_0 = moving_time_grid_[idx];
+    Position velocity = moving_velocities_[idx];
+
+    // Adjust the position based on the surface movement
+    double t_local = t - time_0;
+    r -= (translation + velocity * t_local);
+
+    // Adjust to relative direction
+    u -= velocity / speed;
+
+    // Normalize scaled relative direction
+    double norm = u.norm();
+    u /= norm;
+        
+    // Get distance using the static function based on the adjusted position
+    // and direction
+    double distance = _distance(r, u, coincident) * norm;
+
+    // Rescale relative direction
+    u *= norm;
+        
+    // Intersection within the interval?
+    double t_distance = distance / speed;
+    double t_interval = moving_time_grid_[idx + 1] - t;
+    if (t_distance < t_interval) {
+      // Return the total distance
+      return distance_total + distance;
+    }
+    // Not intersecting. 
+    // Prepare to check the next interval.
+
+    // Accumulate distance
+    distance_total += t_interval * speed;
+
+    // March forward the coordinate
+    r = r_origin + distance_total * u_origin;
+    u = u_origin;
+    t = moving_time_grid_[idx + 1];
+
+    idx++;
+  }
+
+  // No intersection
+  return INFTY;
+}
+
+double Surface::dot_normal(
+  Position r, Direction u, double t, double speed) const
+{
+  if (!moving_) {
+    return u.dot(normal(r));
+  }
+  // The surface moves
+
+  // Get moving index
+  int idx =
+    lower_bound_index(moving_time_grid_.begin(), moving_time_grid_.end(), t);
+
+  // Get moving translation, velocity, and starting time
+  Position translation = moving_translations_[idx];
+  double time_0 = moving_time_grid_[idx];
+  Position velocity = moving_velocities_[idx];
+
+  // Move the position relative to the surface movement
+  double t_local = t - time_0;
+  Position r_moved = r - (translation + velocity * t_local);
+
+  // Get the relative direction
+  Direction u_relative = u - velocity / speed;
+  
+  // Normalize scaled relative direction
+  double norm = u_relative.norm();
+  u_relative /= norm;
+  
+  // Get the dot product
+  return u_relative.dot(normal(r_moved));
 }
 
 void Surface::to_hdf5(hid_t group_id) const
@@ -226,12 +410,12 @@ SurfaceXPlane::SurfaceXPlane(pugi::xml_node surf_node) : Surface(surf_node)
   read_coeffs(surf_node, id_, {&x0_});
 }
 
-double SurfaceXPlane::evaluate(Position r) const
+double SurfaceXPlane::_evaluate(Position r) const
 {
   return r.x - x0_;
 }
 
-double SurfaceXPlane::distance(Position r, Direction u, bool coincident) const
+double SurfaceXPlane::_distance(Position r, Direction u, bool coincident) const
 {
   return axis_aligned_plane_distance<0>(r, u, coincident, x0_);
 }
@@ -266,12 +450,12 @@ SurfaceYPlane::SurfaceYPlane(pugi::xml_node surf_node) : Surface(surf_node)
   read_coeffs(surf_node, id_, {&y0_});
 }
 
-double SurfaceYPlane::evaluate(Position r) const
+double SurfaceYPlane::_evaluate(Position r) const
 {
   return r.y - y0_;
 }
 
-double SurfaceYPlane::distance(Position r, Direction u, bool coincident) const
+double SurfaceYPlane::_distance(Position r, Direction u, bool coincident) const
 {
   return axis_aligned_plane_distance<1>(r, u, coincident, y0_);
 }
@@ -306,12 +490,12 @@ SurfaceZPlane::SurfaceZPlane(pugi::xml_node surf_node) : Surface(surf_node)
   read_coeffs(surf_node, id_, {&z0_});
 }
 
-double SurfaceZPlane::evaluate(Position r) const
+double SurfaceZPlane::_evaluate(Position r) const
 {
   return r.z - z0_;
 }
 
-double SurfaceZPlane::distance(Position r, Direction u, bool coincident) const
+double SurfaceZPlane::_distance(Position r, Direction u, bool coincident) const
 {
   return axis_aligned_plane_distance<2>(r, u, coincident, z0_);
 }
@@ -346,12 +530,12 @@ SurfacePlane::SurfacePlane(pugi::xml_node surf_node) : Surface(surf_node)
   read_coeffs(surf_node, id_, {&A_, &B_, &C_, &D_});
 }
 
-double SurfacePlane::evaluate(Position r) const
+double SurfacePlane::_evaluate(Position r) const
 {
   return A_ * r.x + B_ * r.y + C_ * r.z - D_;
 }
 
-double SurfacePlane::distance(Position r, Direction u, bool coincident) const
+double SurfacePlane::_distance(Position r, Direction u, bool coincident) const
 {
   const double f = A_ * r.x + B_ * r.y + C_ * r.z - D_;
   const double projection = A_ * u.x + B_ * u.y + C_ * u.z;
@@ -465,12 +649,12 @@ SurfaceXCylinder::SurfaceXCylinder(pugi::xml_node surf_node)
   read_coeffs(surf_node, id_, {&y0_, &z0_, &radius_});
 }
 
-double SurfaceXCylinder::evaluate(Position r) const
+double SurfaceXCylinder::_evaluate(Position r) const
 {
   return axis_aligned_cylinder_evaluate<1, 2>(r, y0_, z0_, radius_);
 }
 
-double SurfaceXCylinder::distance(
+double SurfaceXCylinder::_distance(
   Position r, Direction u, bool coincident) const
 {
   return axis_aligned_cylinder_distance<0, 1, 2>(
@@ -508,12 +692,12 @@ SurfaceYCylinder::SurfaceYCylinder(pugi::xml_node surf_node)
   read_coeffs(surf_node, id_, {&x0_, &z0_, &radius_});
 }
 
-double SurfaceYCylinder::evaluate(Position r) const
+double SurfaceYCylinder::_evaluate(Position r) const
 {
   return axis_aligned_cylinder_evaluate<0, 2>(r, x0_, z0_, radius_);
 }
 
-double SurfaceYCylinder::distance(
+double SurfaceYCylinder::_distance(
   Position r, Direction u, bool coincident) const
 {
   return axis_aligned_cylinder_distance<1, 0, 2>(
@@ -552,12 +736,12 @@ SurfaceZCylinder::SurfaceZCylinder(pugi::xml_node surf_node)
   read_coeffs(surf_node, id_, {&x0_, &y0_, &radius_});
 }
 
-double SurfaceZCylinder::evaluate(Position r) const
+double SurfaceZCylinder::_evaluate(Position r) const
 {
   return axis_aligned_cylinder_evaluate<0, 1>(r, x0_, y0_, radius_);
 }
 
-double SurfaceZCylinder::distance(
+double SurfaceZCylinder::_distance(
   Position r, Direction u, bool coincident) const
 {
   return axis_aligned_cylinder_distance<2, 0, 1>(
@@ -595,7 +779,7 @@ SurfaceSphere::SurfaceSphere(pugi::xml_node surf_node) : Surface(surf_node)
   read_coeffs(surf_node, id_, {&x0_, &y0_, &z0_, &radius_});
 }
 
-double SurfaceSphere::evaluate(Position r) const
+double SurfaceSphere::_evaluate(Position r) const
 {
   const double x = r.x - x0_;
   const double y = r.y - y0_;
@@ -603,7 +787,7 @@ double SurfaceSphere::evaluate(Position r) const
   return x * x + y * y + z * z - radius_ * radius_;
 }
 
-double SurfaceSphere::distance(Position r, Direction u, bool coincident) const
+double SurfaceSphere::_distance(Position r, Direction u, bool coincident) const
 {
   const double x = r.x - x0_;
   const double y = r.y - y0_;
@@ -761,12 +945,12 @@ SurfaceXCone::SurfaceXCone(pugi::xml_node surf_node) : Surface(surf_node)
   read_coeffs(surf_node, id_, {&x0_, &y0_, &z0_, &radius_sq_});
 }
 
-double SurfaceXCone::evaluate(Position r) const
+double SurfaceXCone::_evaluate(Position r) const
 {
   return axis_aligned_cone_evaluate<0, 1, 2>(r, x0_, y0_, z0_, radius_sq_);
 }
 
-double SurfaceXCone::distance(Position r, Direction u, bool coincident) const
+double SurfaceXCone::_distance(Position r, Direction u, bool coincident) const
 {
   return axis_aligned_cone_distance<0, 1, 2>(
     r, u, coincident, x0_, y0_, z0_, radius_sq_);
@@ -793,12 +977,12 @@ SurfaceYCone::SurfaceYCone(pugi::xml_node surf_node) : Surface(surf_node)
   read_coeffs(surf_node, id_, {&x0_, &y0_, &z0_, &radius_sq_});
 }
 
-double SurfaceYCone::evaluate(Position r) const
+double SurfaceYCone::_evaluate(Position r) const
 {
   return axis_aligned_cone_evaluate<1, 0, 2>(r, y0_, x0_, z0_, radius_sq_);
 }
 
-double SurfaceYCone::distance(Position r, Direction u, bool coincident) const
+double SurfaceYCone::_distance(Position r, Direction u, bool coincident) const
 {
   return axis_aligned_cone_distance<1, 0, 2>(
     r, u, coincident, y0_, x0_, z0_, radius_sq_);
@@ -825,12 +1009,12 @@ SurfaceZCone::SurfaceZCone(pugi::xml_node surf_node) : Surface(surf_node)
   read_coeffs(surf_node, id_, {&x0_, &y0_, &z0_, &radius_sq_});
 }
 
-double SurfaceZCone::evaluate(Position r) const
+double SurfaceZCone::_evaluate(Position r) const
 {
   return axis_aligned_cone_evaluate<2, 0, 1>(r, z0_, x0_, y0_, radius_sq_);
 }
 
-double SurfaceZCone::distance(Position r, Direction u, bool coincident) const
+double SurfaceZCone::_distance(Position r, Direction u, bool coincident) const
 {
   return axis_aligned_cone_distance<2, 0, 1>(
     r, u, coincident, z0_, x0_, y0_, radius_sq_);
@@ -858,7 +1042,7 @@ SurfaceQuadric::SurfaceQuadric(pugi::xml_node surf_node) : Surface(surf_node)
     surf_node, id_, {&A_, &B_, &C_, &D_, &E_, &F_, &G_, &H_, &J_, &K_});
 }
 
-double SurfaceQuadric::evaluate(Position r) const
+double SurfaceQuadric::_evaluate(Position r) const
 {
   const double x = r.x;
   const double y = r.y;
@@ -867,7 +1051,7 @@ double SurfaceQuadric::evaluate(Position r) const
          z * (C_ * z + F_ * x + J_) + K_;
 }
 
-double SurfaceQuadric::distance(
+double SurfaceQuadric::_distance(
   Position r, Direction ang, bool coincident) const
 {
   const double& x = r.x;
@@ -1024,7 +1208,7 @@ void SurfaceXTorus::to_hdf5_inner(hid_t group_id) const
   write_dataset(group_id, "coefficients", coeffs);
 }
 
-double SurfaceXTorus::evaluate(Position r) const
+double SurfaceXTorus::_evaluate(Position r) const
 {
   double x = r.x - x0_;
   double y = r.y - y0_;
@@ -1033,7 +1217,7 @@ double SurfaceXTorus::evaluate(Position r) const
          std::pow(std::sqrt(y * y + z * z) - A_, 2) / (C_ * C_) - 1.;
 }
 
-double SurfaceXTorus::distance(Position r, Direction u, bool coincident) const
+double SurfaceXTorus::_distance(Position r, Direction u, bool coincident) const
 {
   double x = r.x - x0_;
   double y = r.y - y0_;
@@ -1077,7 +1261,7 @@ void SurfaceYTorus::to_hdf5_inner(hid_t group_id) const
   write_dataset(group_id, "coefficients", coeffs);
 }
 
-double SurfaceYTorus::evaluate(Position r) const
+double SurfaceYTorus::_evaluate(Position r) const
 {
   double x = r.x - x0_;
   double y = r.y - y0_;
@@ -1086,7 +1270,7 @@ double SurfaceYTorus::evaluate(Position r) const
          std::pow(std::sqrt(x * x + z * z) - A_, 2) / (C_ * C_) - 1.;
 }
 
-double SurfaceYTorus::distance(Position r, Direction u, bool coincident) const
+double SurfaceYTorus::_distance(Position r, Direction u, bool coincident) const
 {
   double x = r.x - x0_;
   double y = r.y - y0_;
@@ -1130,7 +1314,7 @@ void SurfaceZTorus::to_hdf5_inner(hid_t group_id) const
   write_dataset(group_id, "coefficients", coeffs);
 }
 
-double SurfaceZTorus::evaluate(Position r) const
+double SurfaceZTorus::_evaluate(Position r) const
 {
   double x = r.x - x0_;
   double y = r.y - y0_;
@@ -1139,7 +1323,7 @@ double SurfaceZTorus::evaluate(Position r) const
          std::pow(std::sqrt(x * x + y * y) - A_, 2) / (C_ * C_) - 1.;
 }
 
-double SurfaceZTorus::distance(Position r, Direction u, bool coincident) const
+double SurfaceZTorus::_distance(Position r, Direction u, bool coincident) const
 {
   double x = r.x - x0_;
   double y = r.y - y0_;

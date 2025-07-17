@@ -75,14 +75,17 @@ public:
   //! \param r The 3D Cartesian coordinate to check.
   //! \param u A direction used to "break ties" the coordinates are very
   //!   close to a surface.
+  //! \param t The time coordinate to check.
+  //! \param speed Particle speed to "break ties" for moving surface.
   //! \param on_surface The signed index of a surface that the coordinate is
   //!   known to be on.  This index takes precedence over surface sense
   //!   calculations.
-  bool contains(Position r, Direction u, int32_t on_surface) const;
+  bool contains(
+    Position r, Direction u, double t, double speed, int32_t on_surface) const;
 
   //! Find the oncoming boundary of this cell.
   std::pair<double, int32_t> distance(
-    Position r, Direction u, int32_t on_surface) const;
+    Position r, Direction u, double t, double speed, int32_t on_surface) const;
 
   //! Get the BoundingBox for this cell.
   BoundingBox bounding_box(int32_t cell_id) const;
@@ -108,7 +111,9 @@ private:
 
   //! Determine if a particle is inside the cell for a simple cell (only
   //! intersection operators)
-  bool contains_simple(Position r, Direction u, int32_t on_surface) const;
+  bool contains_simple(
+
+    Position r, Direction u, double t, double speed, int32_t on_surface) const;
 
   //! Determine if a particle is inside the cell for a complex cell.
   //!
@@ -116,6 +121,8 @@ private:
   //! if short circuiting can be used. Short cicuiting uses the relative and
   //! absolute depth of parentheses in the expression.
   bool contains_complex(Position r, Direction u, int32_t on_surface) const;
+  bool contains_complex(
+    Position r, Direction u, double t, double speed, int32_t on_surface) const;
 
   //! BoundingBox if the paritcle is in a simple cell.
   BoundingBox bounding_box_simple() const;
@@ -175,14 +182,17 @@ public:
   //! \param r The 3D Cartesian coordinate to check.
   //! \param u A direction used to "break ties" the coordinates are very
   //!   close to a surface.
+  //! \param t The time coordinate to check.
+  //! \param speed Particle speed to "break ties" for moving surface.
   //! \param on_surface The signed index of a surface that the coordinate is
   //!   known to be on.  This index takes precedence over surface sense
   //!   calculations.
-  virtual bool contains(Position r, Direction u, int32_t on_surface) const = 0;
+  virtual bool contains(Position r, Direction u, double t, double speed,
+    int32_t on_surface) const = 0;
 
   //! Find the oncoming boundary of this cell.
   virtual std::pair<double, int32_t> distance(
-    Position r, Direction u, int32_t on_surface, GeometryState* p) const = 0;
+    Position r, Direction u, double t, double speed, int32_t on_surface, GeometryState* p) const = 0;
 
   //! Write all information needed to reconstruct the cell to an HDF5 group.
   //! \param group_id An HDF5 group id.
@@ -371,14 +381,15 @@ public:
   vector<int32_t> surfaces() const override { return region_.surfaces(); }
 
   std::pair<double, int32_t> distance(Position r, Direction u,
-    int32_t on_surface, GeometryState* p) const override
+    double t, double speed, int32_t on_surface, GeometryState* p) const override
   {
-    return region_.distance(r, u, on_surface);
+    return region_.distance(r, u, t, speed, on_surface);
   }
 
-  bool contains(Position r, Direction u, int32_t on_surface) const override
+  bool contains(Position r, Direction u, double t, double speed,
+    int32_t on_surface) const override
   {
-    return region_.contains(r, u, on_surface);
+    return region_.contains(r, u, t, speed, on_surface);
   }
 
   BoundingBox bounding_box() const override

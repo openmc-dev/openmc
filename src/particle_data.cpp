@@ -64,7 +64,7 @@ void GeometryState::advance_to_boundary_from_void()
 
   for (auto c_i : root_universe->cells_) {
     auto dist =
-      model::cells.at(c_i)->distance(root_coord.r, root_coord.u, 0, this);
+      model::cells.at(c_i)->distance(root_coord.r, root_coord.u, this->time(), this->speed(), 0, this);
     if (dist.first < boundary().distance) {
       boundary().distance = dist.first;
       boundary().surface = dist.second;

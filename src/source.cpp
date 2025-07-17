@@ -189,7 +189,7 @@ SourceSite Source::sample_with_constraints(uint64_t* seed) const
       accepted = true;
     } else {
       // Check whether sampled site satisfies constraints
-      accepted = satisfies_spatial_constraints(site.r) &&
+      accepted = satisfies_spatial_constraints(site.r, site.time) &&
                  satisfies_energy_constraints(site.E) &&
                  satisfies_time_constraints(site.time);
       if (!accepted) {
@@ -223,11 +223,12 @@ bool Source::satisfies_time_constraints(double time) const
   return time > time_bounds_.first && time < time_bounds_.second;
 }
 
-bool Source::satisfies_spatial_constraints(Position r) const
+bool Source::satisfies_spatial_constraints(Position r, double time) const
 {
   GeometryState geom_state;
   geom_state.r() = r;
   geom_state.u() = {0.0, 0.0, 1.0};
+  geom_state.time() = time;
 
   // Reject particle if it's not in the geometry at all
   bool found = exhaustive_find_cell(geom_state);
@@ -583,9 +584,30 @@ SourceSite MeshSource::sample(uint64_t* seed) const
   // Sample a mesh element based on the relative strengths
   int32_t element = space_->sample_element_index(seed);
 
-  // Sample the distribution for the specific mesh element; note that the
-  // spatial distribution has been set for each element using MeshElementSpatial
-  return source(element)->sample_with_constraints(seed);
+  SourceSite site;
+  while (true) {
+    // Sample the distribution for the specific mesh element; note that the
+    // spatial distribution has been set for each element using MeshElementSpatial
+    site = source(element)->sample_with_constraints(seed);
+   
+    // Reject time?
+    if (!satisfies_time_constraints(site.time)) { continue; }
+
+    // Sample position and apply rejection on spatial domains
+    Position r;
+    do {
+      r = space_->mesh()->sample_element(element, seed);
+    } while (!this->satisfies_spatial_constraints(r, site.time));
+    // Replace the position
+    site.r = r;
+    
+    // Apply other rejections
+    if (satisfies_energy_constraints(site.E)) {
+      break;
+    }
+  }
+
+  return site;
 }
 
 //==============================================================================

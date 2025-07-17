@@ -769,7 +769,7 @@ moab::EntityHandle DAGSurface::mesh_handle() const
   return dagmc_ptr()->entity_by_index(2, dag_index());
 }
 
-double DAGSurface::evaluate(Position r) const
+double DAGSurface::evaluate(Position r, double t) const
 {
   return 0.0;
 }
@@ -798,6 +798,12 @@ Direction DAGSurface::normal(Position r) const
   rval = dagmc_ptr_->get_angle(surf, pnt, dir);
   MB_CHK_ERR_CONT(rval);
   return dir;
+}
+
+double DAGSurface::dot_normal(
+  Position r, Direction u, double t, double speed) const
+{
+  return u.dot(normal(r));
 }
 
 Direction DAGSurface::reflect(Position r, Direction u, GeometryState* p) const

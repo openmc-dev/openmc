@@ -60,7 +60,8 @@ public:
   explicit UniversePartitioner(const Universe& univ);
 
   //! Return the list of cells that could contain the given coordinates.
-  const vector<int32_t>& get_cells(Position r, Direction u) const;
+  const vector<int32_t>& get_cells(
+    Position r, Direction u, double t, double speed) const;
 
 private:
   //! A sorted vector of indices to surfaces that partition the universe

@@ -101,22 +101,22 @@ TranslationalPeriodicBC::TranslationalPeriodicBC(int i_surf, int j_surf)
   Position origin {0, 0, 0};
   Direction u = surf1.normal(origin);
   double d1;
-  double e1 = surf1.evaluate(origin);
+  double e1 = surf1.evaluate(origin, 0.0); // Time = 0.0
   if (e1 > FP_COINCIDENT) {
-    d1 = -surf1.distance(origin, -u, false);
+    d1 = -surf1.distance(origin, -u, 0.0, 0.0, false); // Time = speed = 0.0
   } else if (e1 < -FP_COINCIDENT) {
-    d1 = surf1.distance(origin, u, false);
+    d1 = surf1.distance(origin, u, 0.0, 0.0, false); // Time = speed = 0.0
   } else {
     d1 = 0.0;
   }
 
   // Compute the distance from the second surface to the origin.
   double d2;
-  double e2 = surf2.evaluate(origin);
+  double e2 = surf2.evaluate(origin, 0.0); // Time = 0.0
   if (e2 > FP_COINCIDENT) {
-    d2 = -surf2.distance(origin, -u, false);
+    d2 = -surf2.distance(origin, -u, 0.0, 0.0, false); // Time = speed = 0.0
   } else if (e2 < -FP_COINCIDENT) {
-    d2 = surf2.distance(origin, u, false);
+    d2 = surf2.distance(origin, u, 0.0, 0.0, false); // Time = speed = 0.0
   } else {
     d2 = 0.0;
   }
@@ -216,14 +216,14 @@ RotationalPeriodicBC::RotationalPeriodicBC(int i_surf, int j_surf)
   }
 
   // Make sure both surfaces intersect the origin
-  if (std::abs(surf1.evaluate({0, 0, 0})) > FP_COINCIDENT) {
+  if (std::abs(surf1.evaluate({0, 0, 0}, 0.0)) > FP_COINCIDENT) { // Time = 0.0
     throw std::invalid_argument(fmt::format(
       "Rotational periodic BCs are only "
       "supported for rotations about the origin, but surface {} does not "
       "intersect the origin.",
       surf1.id_));
   }
-  if (std::abs(surf2.evaluate({0, 0, 0})) > FP_COINCIDENT) {
+  if (std::abs(surf2.evaluate({0, 0, 0}, 0.0)) > FP_COINCIDENT) { // Time = 0.0
     throw std::invalid_argument(fmt::format(
       "Rotational periodic BCs are only "
       "supported for rotations about the origin, but surface {} does not "

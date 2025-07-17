@@ -1014,6 +1014,7 @@ class Model:
         width: Sequence[float] | None = None,
         pixels: int | Sequence[int] = 40000,
         basis: str = 'xy',
+        time: float = 0.0,
         color_by: str = 'cell',
         colors: dict | None = None,
         seed: int | None = None,
@@ -1084,6 +1085,7 @@ class Model:
             plot.width = width
             plot.pixels = pixels
             plot.basis = basis
+            plot.time = time
             plot.color_by = color_by
             plot.show_overlaps = show_overlaps
             if overlap_color is not None:
@@ -1183,7 +1185,6 @@ class Model:
             # Plot image and return the axes
             if outline != 'only':
                 axes.imshow(img, extent=(x_min, x_max, y_min, y_max), **kwargs)
-
 
         if n_samples:
             # Sample external source particles

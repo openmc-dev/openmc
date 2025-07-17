@@ -775,7 +775,7 @@ std::string Region::str() const
 //==============================================================================
 
 std::pair<double, int32_t> Region::distance(
-  Position r, Direction u, int32_t on_surface) const
+  Position r, Direction u, double t, double speed, int32_t on_surface) const
 {
   double min_dist {INFTY};
   int32_t i_surf {std::numeric_limits<int32_t>::max()};
@@ -788,7 +788,7 @@ std::pair<double, int32_t> Region::distance(
     // Calculate the distance to this surface.
     // Note the off-by-one indexing
     bool coincident {std::abs(token) == std::abs(on_surface)};
-    double d {model::surfaces[abs(token) - 1]->distance(r, u, coincident)};
+    double d {model::surfaces[abs(token) - 1]->distance(r, u, t, speed, coincident)};
 
     // Check if this distance is the new minimum.
     if (d < min_dist) {
@@ -804,30 +804,45 @@ std::pair<double, int32_t> Region::distance(
 
 //==============================================================================
 
-bool Region::contains(Position r, Direction u, int32_t on_surface) const
+bool Region::contains(
+  Position r, Direction u, double t, double speed, int32_t on_surface) const
 {
   if (simple_) {
-    return contains_simple(r, u, on_surface);
+    return contains_simple(r, u, t, speed, on_surface);
   } else {
-    return contains_complex(r, u, on_surface);
+    return contains_complex(r, u, t, speed, on_surface);
   }
 }
 
 //==============================================================================
 
-bool Region::contains_simple(Position r, Direction u, int32_t on_surface) const
+bool Region::contains_simple(
+  Position r, Direction u, double t, double speed, int32_t on_surface) const
 {
   for (int32_t token : expression_) {
     // Assume that no tokens are operators. Evaluate the sense of particle with
     // respect to the surface and see if the token matches the sense. If the
     // particle's surface attribute is set and matches the token, that
-    // overrides the determination based on sense().
+    // overrides the determination based on sense(). However, if the surface
+    // is moving, we need to factor in the surface-particle relative velocity,
+    // so the surface-sense calculation needs to be done.
+   
+    if (model::surfaces[abs(token) - 1]->moving_) {
+      // Note the off-by-one indexing
+      bool sense = model::surfaces[abs(token) - 1]->sense(r, u, t, speed);
+      if (sense != (token > 0)) {
+        return false;
+      }
+      continue;
+    }
+    // Surface is not moving
+    
     if (token == on_surface) {
     } else if (-token == on_surface) {
       return false;
     } else {
       // Note the off-by-one indexing
-      bool sense = model::surfaces[abs(token) - 1]->sense(r, u);
+      bool sense = model::surfaces[abs(token) - 1]->sense(r, u, t, speed);
       if (sense != (token > 0)) {
         return false;
       }
@@ -838,7 +853,8 @@ bool Region::contains_simple(Position r, Direction u, int32_t on_surface) const
 
 //==============================================================================
 
-bool Region::contains_complex(Position r, Direction u, int32_t on_surface) const
+bool Region::contains_complex(
+  Position r, Direction u, double t, double speed, int32_t on_surface) const
 {
   bool in_cell = true;
   int total_depth = 0;
@@ -851,14 +867,21 @@ bool Region::contains_complex(Position r, Direction u, int32_t on_surface) const
     // If the token is a union or intersection check to
     // short circuit
     if (token < OP_UNION) {
-      if (token == on_surface) {
-        in_cell = true;
-      } else if (-token == on_surface) {
-        in_cell = false;
-      } else {
+      if (model::surfaces[abs(token) - 1]->moving_) {
         // Note the off-by-one indexing
-        bool sense = model::surfaces[abs(token) - 1]->sense(r, u);
+        bool sense = model::surfaces[abs(token) - 1]->sense(r, u, t, speed);
         in_cell = (sense == (token > 0));
+      } else {
+        // Surface is not moving
+        if (token == on_surface) {
+          in_cell = true;
+        } else if (-token == on_surface) {
+          in_cell = false;
+        } else {
+          // Note the off-by-one indexing
+          bool sense = model::surfaces[abs(token) - 1]->sense(r, u, t, speed);
+          in_cell = (sense == (token > 0));
+        }
       }
     } else if ((token == OP_UNION && in_cell == true) ||
                (token == OP_INTERSECTION && in_cell == false)) {

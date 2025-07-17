@@ -32,20 +32,20 @@ void GeometryState::mark_as_lost(const std::stringstream& message)
 
 void LocalCoord::rotate(const vector<double>& rotation)
 {
-  r() = r().rotate(rotation);
-  u() = u().rotate(rotation);
-  rotated() = true;
+  r_ = r_.rotate(rotation);
+  u_ = u_.rotate(rotation);
+  rotated_ = true;
 }
 
 void LocalCoord::reset()
 {
-  cell() = C_NONE;
-  universe() = C_NONE;
-  lattice() = C_NONE;
-  lattice_index()[0] = 0;
-  lattice_index()[1] = 0;
-  lattice_index()[2] = 0;
-  rotated() = false;
+  cell_ = C_NONE;
+  universe_ = C_NONE;
+  lattice_ = C_NONE;
+  lattice_index_[0] = 0;
+  lattice_index_[1] = 0;
+  lattice_index_[2] = 0;
+  rotated_ = false;
 }
 
 GeometryState::GeometryState()

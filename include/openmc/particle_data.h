@@ -110,7 +110,8 @@ public:
   bool& rotated() { return rotated_; }
   const bool& rotated() const { return rotated_; }
 
-  // data
+private:
+  // Data members
   Position r_;  //!< particle position
   Direction u_; //!< particle direction
   int cell_ {-1};

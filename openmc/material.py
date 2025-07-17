@@ -1726,7 +1726,7 @@ class Material(IDManagerMixin):
         timesteps: Sequence[float] | Sequence[tuple[float, str]],
         source_rates: float | Sequence[float],
         timestep_units: str = 's',
-        chain_file: cv.PathLike | "Chain" | None = None,
+        chain_file: cv.PathLike | "openmc.deplete.Chain" | None = None,
         reactions: Iterable[str] | None = None,
     ) -> list[openmc.Material]:
         """Depletes that material, evolving the nuclide densities
@@ -2021,7 +2021,7 @@ class Materials(cv.CheckedList):
         timesteps: Sequence[float] | Sequence[tuple[float, str]],
         source_rates: float | Sequence[float],
         timestep_units: str = 's',
-        chain_file: cv.PathLike | "Chain" | None = None,
+        chain_file: cv.PathLike | "openmc.deplete.Chain" | None = None,
         reactions: Iterable[str] | None = None,
     ) -> Dict[int, list[openmc.Material]]:
         """Depletes that material, evolving the nuclide densities
@@ -2070,26 +2070,23 @@ class Materials(cv.CheckedList):
 
         chain = _get_chain(chain_file)
 
-        with openmc.lib.TemporarySession() as session:
-
+        with openmc.lib.TemporarySession():
             all_depleted_materials = {}
 
             for material, flux, energy in zip(
                 self, multigroup_fluxes, energy_group_structures
             ):
-
                 micro_xs = openmc.deplete.MicroXS.from_multigroup_flux(
                     energies=energy,
-                    multigroup_flux= flux,
-                    chain_file= chain_file,
-                    temperature = material.temperature,
-                    nuclides= material.get_nuclides(),
+                    multigroup_flux=flux,
+                    chain_file=chain,
+                    temperature=material.temperature,
+                    nuclides=material.get_nuclides(),
                     reactions=reactions,
-                    session=session
                 )
 
                 operator = openmc.deplete.IndependentOperator(
-                    materials=openmc.Materials([material]),
+                    materials=[material],
                     fluxes=[material.volume],
                     micros=[micro_xs],
                     normalization_mode="source-rate",
@@ -2107,12 +2104,10 @@ class Materials(cv.CheckedList):
                     results_path = Path(tmpdir) / "depletion_results.h5"
                     integrator.integrate(path=results_path)
 
-                    results = openmc.deplete.ResultsList.from_hdf5(filename=results_path)
+                    results = openmc.deplete.ResultsList.from_hdf5(results_path)
 
-                    depleted_materials = []
-                    for result in results:
-                        depleted_material = result.get_material(str(material.id))
-                        depleted_materials.append(depleted_material)
-                    all_depleted_materials[material.id] = depleted_materials
+                    all_depleted_materials[material.id] = [
+                        result.get_material(str(material.id)) for result in results
+                    ]
 
         return all_depleted_materials

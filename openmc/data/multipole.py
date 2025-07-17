@@ -16,7 +16,7 @@ from . import WMP_VERSION, WMP_VERSION_MAJOR
 from .data import K_BOLTZMANN
 from .neutron import IncidentNeutron
 from .resonance import ResonanceRange
-from .vectfit import vectfit
+from .vectfit import vectfit, evaluate
 
 # Constants that determine which value to access
 _MP_EA = 0       # Pole
@@ -269,7 +269,7 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
                       vectfit(f, s, new_poles, weight, skip_pole=True)
 
             # assess the result on test grid
-            test_xs = vf.evaluate(test_s, new_poles, residues) / test_energy
+            test_xs = evaluate(test_s, new_poles, residues) / test_energy
             abserr = np.abs(test_xs - test_xs_ref)
             with np.errstate(invalid='ignore', divide='ignore'):
                 relerr = abserr / test_xs_ref
@@ -638,7 +638,7 @@ def _windowing(mp_data, n_cf, rtol=1e-3, atol=1e-5, n_win=None, spacing=None,
 
         # reference xs from multipole form, note the residue terms in the
         # multipole and vector fitting representations differ by a 1j
-        xs_ref = vf.evaluate(energy_sqrt, poles, residues*1j) / energy
+        xs_ref = evaluate(energy_sqrt, poles, residues*1j) / energy
 
         # curve fit matrix
         matrix = np.vstack([energy**(0.5*i - 1) for i in range(n_cf + 1)]).T
@@ -652,7 +652,7 @@ def _windowing(mp_data, n_cf, rtol=1e-3, atol=1e-5, n_win=None, spacing=None,
 
             # calculate the cross sections contributed by the windowed poles
             if rp > lp:
-                xs_wp = vf.evaluate(energy_sqrt, poles[lp:rp],
+                xs_wp = evaluate(energy_sqrt, poles[lp:rp],
                                     residues[:, lp:rp]*1j) / energy
             else:
                 xs_wp = np.zeros_like(xs_ref)

@@ -3638,7 +3638,7 @@ void score_pulse_height_tally(Particle& p, const vector<int>& tallies)
 
   // Save original cell/energy information
   int orig_n_coord = p.n_coord();
-  int orig_cell = p.coord(0).cell;
+  int orig_cell = p.coord(0).cell();
   double orig_E_last = p.E_last();
 
   for (auto i_tally : tallies) {
@@ -3657,7 +3657,7 @@ void score_pulse_height_tally(Particle& p, const vector<int>& tallies)
 
           // Temporarily change cell of particle
           p.n_coord() = 1;
-          p.coord(0).cell = cell_id;
+          p.coord(0).cell() = cell_id;
 
           // Determine index of cell in model::pulse_height_cells
           auto it = std::find(model::pulse_height_cells.begin(),
@@ -3697,7 +3697,7 @@ void score_pulse_height_tally(Particle& p, const vector<int>& tallies)
     }
     // Restore cell/energy
     p.n_coord() = orig_n_coord;
-    p.coord(0).cell = orig_cell;
+    p.coord(0).cell() = orig_cell;
     p.E_last() = orig_E_last;
   }
 }

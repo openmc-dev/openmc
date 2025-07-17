@@ -1721,13 +1721,13 @@ class Material(IDManagerMixin):
 
     def deplete(
         self,
-        multigroup_flux: Iterable[float],
-        energy_group_structure: Iterable[float] | str,
+        multigroup_flux: Sequence[float],
+        energy_group_structure: Sequence[float] | str,
         timesteps: Sequence[float] | Sequence[tuple[float, str]],
         source_rates: float | Sequence[float],
         timestep_units: str = 's',
         chain_file: cv.PathLike | "openmc.deplete.Chain" | None = None,
-        reactions: Iterable[str] | None = None,
+        reactions: Sequence[str] | None = None,
     ) -> list[openmc.Material]:
         """Depletes that material, evolving the nuclide densities
 
@@ -1738,7 +1738,7 @@ class Material(IDManagerMixin):
         multigroup_flux: Sequence[float]
             Energy-dependent multigroup flux values, where each sublist corresponds
             to a specific material. Will be normalized so that it sums to 1.
-        energy_group_structure': Sequence[float] | str
+        energy_group_structure : Sequence[float] | str
             Energy group boundaries in [eV] or the name of the group structure.
         timesteps : iterable of float or iterable of tuple
             Array of timesteps. Note that values are not cumulative. The units are
@@ -1778,9 +1778,7 @@ class Material(IDManagerMixin):
             reactions=reactions,
         )
 
-        depleted_materials = depleted_materials_dict[self.id]
-
-        return depleted_materials
+        return depleted_materials_dict[self.id]
 
 
     def mean_free_path(self, energy: float) -> float:
@@ -2022,7 +2020,7 @@ class Materials(cv.CheckedList):
         source_rates: float | Sequence[float],
         timestep_units: str = 's',
         chain_file: cv.PathLike | "openmc.deplete.Chain" | None = None,
-        reactions: Iterable[str] | None = None,
+        reactions: Sequence[str] | None = None,
     ) -> Dict[int, list[openmc.Material]]:
         """Depletes that material, evolving the nuclide densities
 
@@ -2104,10 +2102,9 @@ class Materials(cv.CheckedList):
                     results_path = Path(tmpdir) / "depletion_results.h5"
                     integrator.integrate(path=results_path)
 
-                    results = openmc.deplete.ResultsList.from_hdf5(results_path)
-
                     all_depleted_materials[material.id] = [
-                        result.get_material(str(material.id)) for result in results
+                        result.get_material(str(material.id))
+                        for result in openmc.deplete.Results(results_path)
                     ]
 
         return all_depleted_materials

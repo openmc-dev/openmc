@@ -216,7 +216,8 @@ struct BoundaryInfo {
     SURFACE_NONE}; //!< surface token, non-zero if boundary is surface
   int coord_level; //!< coordinate level after crossing boundary
   array<int, 3>
-    lattice_translation {}; //!< which way lattice indices will change
+    lattice_translation {};           //!< which way lattice indices will change
+  bool if_stochastic_surface {false}; //!< is the surface in stochastic media?
 
   void reset()
   {
@@ -354,6 +355,10 @@ public:
   // Boundary information
   BoundaryInfo& boundary() { return boundary_; }
 
+  // Particle status
+  ParticleStatus& status() { return status_; }
+  const ParticleStatus& status() const { return status_; }
+
 #ifdef DAGMC
   // DagMC state variables
   moab::DagMC::RayHistory& history() { return history_; }
@@ -361,7 +366,7 @@ public:
 #endif
 
   // material of current and last cell
-  int& material() { return material_; }
+  int& material() { return material_; } 
   const int& material() const { return material_; }
   int& material_last() { return material_last_; }
   const int& material_last() const { return material_last_; }
@@ -392,6 +397,9 @@ private:
     SURFACE_NONE}; //!< surface token for surface the particle is currently on
 
   BoundaryInfo boundary_; //!< Info about the next intersection
+
+  ParticleStatus status_ {
+    ParticleStatus::OUTSIDE}; // The status of the particle in stochastic media
 
   int material_ {-1};      //!< index for current material
   int material_last_ {-1}; //!< index for last material

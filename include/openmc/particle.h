@@ -79,6 +79,8 @@ public:
   //! Cross a surface and handle boundary conditions
   void cross_surface(const Surface& surf);
 
+  void cross_surface_in_stochmedia();
+
   //! Cross a vacuum boundary condition.
   //
   //! \param surf The surface (with the vacuum boundary condition) that the

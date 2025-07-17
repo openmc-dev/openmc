@@ -12,6 +12,7 @@
 #include "openmc/simulation.h"
 #include "openmc/string_utils.h"
 #include "openmc/surface.h"
+#include <openmc/stochastic_media.h>
 
 namespace openmc {
 
@@ -177,7 +178,14 @@ bool find_cell_inner(
       p.material() = c.material(p.cell_instance());
       p.sqrtkT_last() = p.sqrtkT();
       p.sqrtkT() = c.sqrtkT(p.cell_instance());
+      p.status() = ParticleStatus::OUTSIDE;
 
+      return true;
+
+    } else if (c.type_ == Fill::STOCHASTIC_MEDIA) {
+      //========================================================================
+      //! Found stochastic media cell, means this is the lowest coord level.
+      model::stochastic_media[c.fill_]->sample_material(p);
       return true;
 
     } else if (c.type_ == Fill::UNIVERSE) {

@@ -17,6 +17,7 @@
 #include "openmc/lattice.h"
 #include "openmc/material.h"
 #include "openmc/settings.h"
+#include "openmc/stochastic_media.h"
 #include "openmc/surface.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/tallies/filter_cell_instance.h"
@@ -66,10 +67,11 @@ void read_geometry_xml()
 
 void read_geometry_xml(pugi::xml_node root)
 {
-  // Read surfaces, cells, lattice
+  // Read surfaces, cells, lattice, and stochastic media
   read_surfaces(root);
   read_cells(root);
   read_lattices(root);
+  read_stochastic_media(root);
 
   // Check to make sure a boundary condition was applied to at least one
   // surface
@@ -103,15 +105,19 @@ void adjust_indices()
       int32_t id = c->fill_;
       auto search_univ = model::universe_map.find(id);
       auto search_lat = model::lattice_map.find(id);
+      auto search_media = model::stochastic_media_map.find(id);
       if (search_univ != model::universe_map.end()) {
         c->type_ = Fill::UNIVERSE;
         c->fill_ = search_univ->second;
       } else if (search_lat != model::lattice_map.end()) {
         c->type_ = Fill::LATTICE;
         c->fill_ = search_lat->second;
+      } else if (search_media != model::stochastic_media_map.end()) {
+        c->type_ = Fill::STOCHASTIC_MEDIA;
+        c->fill_ = search_media->second;
       } else {
-        fatal_error(fmt::format("Specified fill {} on cell {} is neither a "
-                                "universe nor a lattice.",
+        fatal_error(fmt::format("Specified fill {} on cell {} must be one of  "
+                                "universe  lattice and stochastic media.",
           id, c->id_));
       }
     } else {
@@ -145,6 +151,10 @@ void adjust_indices()
   // Change all lattice universe values from IDs to indices.
   for (auto& l : model::lattices) {
     l->adjust_indices();
+  }
+
+  for (auto& media : model::stochastic_media) {
+    media->adjust_indices();
   }
 }
 
@@ -187,8 +197,16 @@ void assign_temperatures()
 {
   for (auto& c : model::cells) {
     // Ignore non-material cells and cells with defined temperature.
-    if (c->material_.size() == 0)
-      continue;
+    if (c->material_.size() == 0) {
+      if (c->type_ != Fill::STOCHASTIC_MEDIA)
+        continue;
+      c->sqrtkT_.reserve(1);
+
+      auto fill_idx = model::stochastic_media_map[c->fill_];
+      auto mat_id {model::stochastic_media[fill_idx]->particle_mat()[0]};
+      const auto& mat {model::materials[mat_id]};
+      c->sqrtkT_.push_back(std::sqrt(K_BOLTZMANN * mat->temperature()));
+    }
     if (c->sqrtkT_.size() > 0)
       continue;
 
@@ -638,6 +656,9 @@ void free_memory_geometry()
 
   model::lattices.clear();
   model::lattice_map.clear();
+
+  model::stochastic_media.clear();
+  model::stochastic_media_map.clear();
 
   model::overlap_check_count.clear();
 }

@@ -368,11 +368,11 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
 
           // Set birth cell attribute
           if (p.cell_born() == C_NONE)
-            p.cell_born() = p.lowest_coord().cell;
+            p.cell_born() = p.lowest_coord().cell();
 
           // Initialize last cells from current cell
           for (int j = 0; j < p.n_coord(); ++j) {
-            p.cell_last(j) = p.coord(j).cell;
+            p.cell_last(j) = p.coord(j).cell();
           }
           p.n_coord_last() = p.n_coord();
 
@@ -411,7 +411,7 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
 
             // cross next geometric surface
             for (int j = 0; j < p.n_coord(); ++j) {
-              p.cell_last(j) = p.coord(j).cell;
+              p.cell_last(j) = p.coord(j).cell();
             }
             p.n_coord_last() = p.n_coord();
 

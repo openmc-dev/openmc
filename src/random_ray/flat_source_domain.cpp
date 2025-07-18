@@ -794,7 +794,7 @@ void FlatSourceDomain::output_to_vtk() const
             continue;
           }
 
-          int i_cell = p.lowest_coord().cell;
+          int i_cell = p.lowest_coord().cell();
           int64_t sr = source_region_offsets_[i_cell] + p.cell_instance();
           if (RandomRay::mesh_subdivision_enabled_) {
             int mesh_idx = base_source_regions_.mesh(sr);
@@ -1070,7 +1070,7 @@ void FlatSourceDomain::convert_external_sources()
                                 "point source at {}",
           sp->r()));
       }
-      int i_cell = gs.lowest_coord().cell;
+      int i_cell = gs.lowest_coord().cell();
       int64_t sr = source_region_offsets_[i_cell] + gs.cell_instance();
 
       if (RandomRay::mesh_subdivision_enabled_) {
@@ -1239,6 +1239,30 @@ void FlatSourceDomain::set_adjoint_sources(const vector<double>& forward_flux)
       if (flux > 0.0) {
         source_regions_.external_source_present(sr) = 1;
       }
+    }
+  }
+
+  // "Small" source regions in OpenMC are defined as those that are hit by
+  // MIN_HITS_PER_BATCH rays or fewer each batch. These regions typically have
+  // very small volumes combined with a low aspect ratio, and are often
+  // generated when applying a source region mesh that clips the edge of a
+  // curved surface. As perhaps only a few rays will visit these regions over
+  // the entire forward simulation, the forward flux estimates are extremely
+  // noisy and unreliable. In some cases, the noise may make the forward fluxes
+  // extremely low, leading to unphysically large adjoint source terms,
+  // resulting in weight windows that aggressively try to drive particles
+  // towards these regions. To fix this, we simply filter out any "small" source
+  // regions from consideration. If a source region is "small", we
+  // set its adjoint source to zero. This adds negligible bias to the adjoint
+  // flux solution, as the true total adjoint source contribution from small
+  // regions is likely to be negligible.
+#pragma omp parallel for
+  for (int64_t sr = 0; sr < n_source_regions(); sr++) {
+    if (source_regions_.is_small(sr)) {
+      for (int g = 0; g < negroups_; g++) {
+        source_regions_.external_source(sr, g) = 0.0;
+      }
+      source_regions_.external_source_present(sr) = 0;
     }
   }
 
@@ -1451,7 +1475,7 @@ SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
   gs.r() = r + TINY_BIT * u;
   gs.u() = {1.0, 0.0, 0.0};
   exhaustive_find_cell(gs);
-  int gs_i_cell = gs.lowest_coord().cell;
+  int gs_i_cell = gs.lowest_coord().cell();
   int64_t sr_found = source_region_offsets_[gs_i_cell] + gs.cell_instance();
   if (sr_found != sr) {
     discovered_source_regions_.unlock(sr_key);

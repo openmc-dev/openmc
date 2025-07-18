@@ -7,6 +7,7 @@ import numpy as np
 
 import openmc
 from openmc.data import decay_photon_energy
+from openmc.deplete import Chain
 import openmc.examples
 import openmc.model
 import openmc.stats
@@ -715,9 +716,6 @@ def test_avoid_subnormal(run_in_tmpdir):
 
 
 def test_material_deplete():
-
-    from openmc.deplete import Chain
-
     pristine_material = openmc.Material()
     pristine_material.add_nuclide("Ni58", 1.0)
     pristine_material.set_density("g/cm3", 7.87)

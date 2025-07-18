@@ -243,7 +243,9 @@ def prepare_tallies(
         for f in tally.filters:
             if isinstance(f, openmc.ParticleFilter):
                 if list(f.bins) == ['photon']:
-                    tally.filters.append(filter)
-                    break
-
+                    for filter in tally.filters:
+                        # avoid adding the ParentNuclideFilter multiple times
+                        if isinstance(filter, openmc.ParentNuclideFilter):
+                            break
+                        tally.filters.append(filter)
     return nuclides

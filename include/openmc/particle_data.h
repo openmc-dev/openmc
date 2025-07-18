@@ -210,23 +210,41 @@ struct CacheDataMG {
 // Information about nearest boundary crossing
 //==============================================================================
 
-struct BoundaryInfo {
-  double distance {INFINITY}; //!< distance to nearest boundary
-  int surface {
-    SURFACE_NONE}; //!< surface token, non-zero if boundary is surface
-  int coord_level; //!< coordinate level after crossing boundary
-  array<int, 3>
-    lattice_translation {}; //!< which way lattice indices will change
-
+class BoundaryInfo {
+public:
   void reset()
   {
-    distance = INFINITY;
-    surface = SURFACE_NONE;
-    coord_level = 0;
-    lattice_translation = {0, 0, 0};
+    distance_ = INFINITY;
+    surface_ = SURFACE_NONE;
+    coord_level_ = 0;
+    lattice_translation_ = {0, 0, 0};
   }
+  double& distance() { return distance_; }
+  const double& distance() const { return distance_; }
+
+  int& surface() { return surface_; }
+  const int& surface() const { return surface_; }
+
+  int coord_level() const { return coord_level_; }
+  int& coord_level() { return coord_level_; }
+
+  array<int, 3>& lattice_translation() { return lattice_translation_; }
+  const array<int, 3>& lattice_translation() const
+  {
+    return lattice_translation_;
+  }
+
   // TODO: off-by-one
-  int surface_index() const { return std::abs(surface) - 1; }
+  int surface_index() const { return std::abs(surface()) - 1; }
+
+private:
+  // Data members
+  double distance_ {INFINITY}; //!< distance to nearest boundary
+  int surface_ {
+    SURFACE_NONE};      //!< surface token, non-zero if boundary is surface
+  int coord_level_ {0}; //!< coordinate level after crossing boundary
+  array<int, 3> lattice_translation_ {
+    0, 0, 0}; //!< which way lattice indices will change
 };
 
 /*

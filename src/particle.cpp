@@ -242,7 +242,7 @@ void Particle::event_advance()
   }
 
   // Select smaller of the two distances
-  double distance = std::min(boundary().distance, collision_distance());
+  double distance = std::min(boundary().distance(), collision_distance());
 
   // Advance particle in space and time
   // Short-term solution until the surface source is revised and we can use
@@ -298,12 +298,12 @@ void Particle::event_cross_surface()
   n_coord_last() = n_coord();
 
   // Set surface that particle is on and adjust coordinate levels
-  surface() = boundary().surface;
-  n_coord() = boundary().coord_level;
+  surface() = boundary().surface();
+  n_coord() = boundary().coord_level();
 
-  if (boundary().lattice_translation[0] != 0 ||
-      boundary().lattice_translation[1] != 0 ||
-      boundary().lattice_translation[2] != 0) {
+  if (boundary().lattice_translation()[0] != 0 ||
+      boundary().lattice_translation()[1] != 0 ||
+      boundary().lattice_translation()[2] != 0) {
     // Particle crosses lattice boundary
 
     bool verbose = settings::verbosity >= 10 || trace();

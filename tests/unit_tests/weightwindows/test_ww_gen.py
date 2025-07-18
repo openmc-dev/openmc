@@ -335,6 +335,7 @@ def test_ww_bounds_set_in_memory(run_in_tmpdir, model):
     openmc.lib.finalize()
 
 
+@pytest.mark.skipif(not openmc.lib._dagmc_enabled(), reason="DAGMC CAD geometry is not enabled.")
 def test_ww_generation_with_dagmc():
 
     mat1 = openmc.Material(name="no-void fuel")

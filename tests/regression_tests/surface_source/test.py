@@ -5,7 +5,6 @@ import h5py
 import numpy as np
 import pytest
 import openmc
-import openmc.lib
 
 from tests.testing_harness import PyAPITestHarness
 from tests.regression_tests import config
@@ -174,7 +173,7 @@ def test_surface_source_read(model, request):
     harness.main()
 
 
-@pytest.mark.skipif(not openmc.lib._mcpl_enabled(), reason="MCPL is not enabled.")
+@pytest.mark.skipif(shutil.which("mcpl-config") is None, reason="MCPL is not available.")
 @pytest.mark.params('write', 'mcpl')
 def test_surface_source_write_mcpl(model, monkeypatch, request):
     monkeypatch.setitem(config, "mpi_np", "1")  # Results generated with 1 MPI process
@@ -186,7 +185,7 @@ def test_surface_source_write_mcpl(model, monkeypatch, request):
     harness.main()
 
 
-@pytest.mark.skipif(not openmc.lib._mcpl_enabled(), reason="MCPL is not enabled.")
+@pytest.mark.skipif(shutil.which("mcpl-config") is None, reason="MCPL is not available.")
 @pytest.mark.params('read', 'mcpl')
 def test_surface_source_read_mcpl(model, request):
     operation, file_format = request.node.get_closest_marker("params").args

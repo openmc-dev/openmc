@@ -214,8 +214,11 @@ class R2SManager:
         source_rates : float or Sequence[float]
             Source rate in [neutron/sec] for each interval in `timesteps`.
         cooling_times : Sequence[int]
-            Sequence of cooling times represented as indices into the array of
-            `timesteps`.
+            Sequence of cooling times at which photon transport should be run;
+            represented as indices into the array of times formed by the
+            timesteps. For example, if two timesteps are specified, the array of
+            times would contain three entries, and [2] would indicate computing
+            photon results at the last time.
         dose_tallies : Sequence[openmc.Tally], optional
             A sequence of tallies to be used for dose calculations in the photon
             transport step. If None, no dose tallies are added.
@@ -449,8 +452,11 @@ class R2SManager:
         Parameters
         ----------
         cooling_times : Sequence[int]
-            Sequence of cooling times represented as indices into the array of
-            timesteps used in the activation step.
+            Sequence of cooling times at which photon transport should be run;
+            represented as indices into the array of times formed by the
+            timesteps. For example, if two timesteps are specified, the array of
+            times would contain three entries, and [2] would indicate computing
+            photon results at the last time.
         dose_tallies : Sequence[openmc.Tally], optional
             A sequence of tallies to be used for dose calculations in the photon
             transport step. If None, no dose tallies are added.

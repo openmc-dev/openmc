@@ -1,11 +1,13 @@
 from __future__ import annotations
 from collections.abc import Sequence
 from datetime import datetime
+import json
 from pathlib import Path
 
 import numpy as np
 import openmc
-from . import get_microxs_and_flux, IndependentOperator, PredictorIntegrator
+from . import IndependentOperator, PredictorIntegrator
+from .microxs import get_microxs_and_flux, MicroXS
 from .results import Results
 from ..checkvalue import PathLike
 from ..mesh import _get_all_materials
@@ -484,6 +486,15 @@ class R2SManager:
         if settings is not None:
             self.model.settings = settings
 
+        # Write out JSON file with dose tally IDs that can be used for loading
+        # results
+        output_dir = Path(output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        if dose_tallies is not None:
+            dose_tally_ids = [tally.id for tally in dose_tallies]
+            with open(output_dir / 'dose_tally_ids.json', 'w') as f:
+                json.dump(dose_tally_ids, f)
+
         self.results['dose_tallies'] = {}
 
         try:
@@ -537,3 +548,55 @@ class R2SManager:
         finally:
             # Restore original settings
             self.model.settings = original_settings
+
+    def load_results(self, path: PathLike):
+        """Load results from a previous R2S calculation.
+
+        Parameters
+        ----------
+        path : PathLike
+            Path to the directory containing the R2S calculation results.
+
+        """
+        path = Path(path)
+
+        # Load neutron transport results
+        if self.method == 'mesh-based':
+            neutron_dir = path / 'neutron_transport'
+            mmv_file = neutron_dir / 'mesh_material_volumes.npz'
+            if mmv_file.exists():
+                self.results['mesh_material_volumes'] = \
+                    openmc.MeshMaterialVolumes.from_npz(mmv_file)
+        fluxes_file = neutron_dir / 'fluxes.npy'
+        if fluxes_file.exists():
+            self.results['fluxes'] = list(np.load(fluxes_file, allow_pickle=True))
+            self.results['micros'] = [
+                MicroXS.from_csv(neutron_dir / f'micros_{i}.csv')
+                for i in range(len(self.results['fluxes']))
+            ]
+
+        # Load activation results
+        activation_dir = path / 'activation'
+        activation_results = activation_dir / 'depletion_results.h5'
+        if activation_results.exists():
+            self.results['depletion_results'] = Results()
+
+        # Load photon transport results
+        photon_dir = path / 'photon_transport'
+
+        # Load dose tally IDs from JSON file
+        dose_tally_ids_path = photon_dir / 'dose_tally_ids.json'
+        if dose_tally_ids_path.exists():
+            with dose_tally_ids_path.open('r') as f:
+                dose_tally_ids = json.load(f)
+            self.results['dose_tallies'] = {}
+
+            # For each cooling time, load the statepoint and get the dose
+            # tallies based on dose_tally_ids
+            for time_dir in photon_dir.glob('time_*'):
+                time_index = int(time_dir.name.split('_')[1])
+                for sp_path in time_dir.glob('statepoint.*.h5'):
+                    with openmc.StatePoint(sp_path) as sp:
+                        self.results['dose_tallies'][time_index] = [
+                            sp.tallies[tally_id] for tally_id in dose_tally_ids
+                        ]

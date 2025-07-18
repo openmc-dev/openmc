@@ -417,11 +417,7 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
 FileSource::FileSource(pugi::xml_node node) : Source(node)
 {
   auto path = get_node_value(node, "file", false, true);
-  if (ends_with(path, ".mcpl") || ends_with(path, ".mcpl.gz")) {
-    sites_ = mcpl_source_sites(path);
-  } else {
-    this->load_sites_from_file(path);
-  }
+  load_sites_from_file(path);
 }
 
 FileSource::FileSource(const std::string& path)
@@ -431,30 +427,33 @@ FileSource::FileSource(const std::string& path)
 
 void FileSource::load_sites_from_file(const std::string& path)
 {
-  // Check if source file exists
-  if (!file_exists(path)) {
-    fatal_error(fmt::format("Source file '{}' does not exist.", path));
+  // If MCPL file, use the dedicated file reader
+  if (ends_with(path, ".mcpl") || ends_with(path, ".mcpl.gz")) {
+    sites_ = mcpl_source_sites(path);
+  } else {
+    // Check if source file exists
+    if (!file_exists(path)) {
+      fatal_error(fmt::format("Source file '{}' does not exist.", path));
+    }
+
+    write_message(6, "Reading source file from {}...", path);
+
+    // Open the binary file
+    hid_t file_id = file_open(path, 'r', true);
+
+    // Check to make sure this is a source file
+    std::string filetype;
+    read_attribute(file_id, "filetype", filetype);
+    if (filetype != "source" && filetype != "statepoint") {
+      fatal_error("Specified starting source file not a source file type.");
+    }
+
+    // Read in the source particles
+    read_source_bank(file_id, sites_, false);
+
+    // Close file
+    file_close(file_id);
   }
-
-  // Read the source from a binary file instead of sampling from some
-  // assumed source distribution
-  write_message(6, "Reading source file from {}...", path);
-
-  // Open the binary file
-  hid_t file_id = file_open(path, 'r', true);
-
-  // Check to make sure this is a source file
-  std::string filetype;
-  read_attribute(file_id, "filetype", filetype);
-  if (filetype != "source" && filetype != "statepoint") {
-    fatal_error("Specified starting source file not a source file type.");
-  }
-
-  // Read in the source particles
-  read_source_bank(file_id, sites_, false);
-
-  // Close file
-  file_close(file_id);
 }
 
 SourceSite FileSource::sample(uint64_t* seed) const

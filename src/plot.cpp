@@ -54,14 +54,14 @@ void IdData::set_value(size_t y, size_t x, const GeometryState& p, int level)
     data_(y, x, 0) = NOT_FOUND;
     data_(y, x, 1) = NOT_FOUND;
   } else {
-    data_(y, x, 0) = model::cells.at(p.coord(level).cell)->id_;
+    data_(y, x, 0) = model::cells.at(p.coord(level).cell())->id_;
     data_(y, x, 1) = level == p.n_coord() - 1
                        ? p.cell_instance()
                        : cell_instance_at_level(p, level);
   }
 
   // set material data
-  Cell* c = model::cells.at(p.lowest_coord().cell).get();
+  Cell* c = model::cells.at(p.lowest_coord().cell()).get();
   if (p.material() == MATERIAL_VOID) {
     data_(y, x, 2) = MATERIAL_VOID;
     return;
@@ -83,7 +83,7 @@ PropertyData::PropertyData(size_t h_res, size_t v_res)
 void PropertyData::set_value(
   size_t y, size_t x, const GeometryState& p, int level)
 {
-  Cell* c = model::cells.at(p.lowest_coord().cell).get();
+  Cell* c = model::cells.at(p.lowest_coord().cell()).get();
   data_(y, x, 0) = (p.sqrtkT() * p.sqrtkT()) / K_BOLTZMANN;
   if (c->type_ != Fill::UNIVERSE && p.material() != MATERIAL_VOID) {
     Material* m = model::materials.at(p.material()).get();
@@ -1692,7 +1692,7 @@ void Ray::trace()
 
     // Advance particle, prepare for next intersection
     for (int lev = 0; lev < n_coord(); ++lev) {
-      coord(lev).r += boundary().distance() * coord(lev).u;
+      coord(lev).r() += boundary().distance() * coord(lev).u();
     }
     surface() = boundary().surface();
     n_coord_last() = n_coord();
@@ -1743,7 +1743,7 @@ void ProjectionRay::on_intersection()
   line_segments_.emplace_back(
     plot_.color_by_ == PlottableInterface::PlotColorBy::mats
       ? material()
-      : lowest_coord().cell,
+      : lowest_coord().cell(),
     traversal_distance_, boundary().surface_index());
 }
 
@@ -1752,7 +1752,7 @@ void PhongRay::on_intersection()
   // Check if we hit an opaque material or cell
   int hit_id = plot_.color_by_ == PlottableInterface::PlotColorBy::mats
                  ? material()
-                 : lowest_coord().cell;
+                 : lowest_coord().cell();
 
   // If we are reflected and have advanced beyond the camera,
   // the ray is done. This is checked here because we should
@@ -1798,8 +1798,8 @@ void PhongRay::on_intersection()
     // Need to apply translations to find the normal vector in
     // the base level universe's coordinate system.
     for (int lev = n_coord() - 2; lev >= 0; --lev) {
-      if (coord(lev + 1).rotated) {
-        const Cell& c {*model::cells[coord(lev).cell]};
+      if (coord(lev + 1).rotated()) {
+        const Cell& c {*model::cells[coord(lev).cell()]};
         normal = normal.inverse_rotate(c.rotation_);
       }
     }

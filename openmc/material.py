@@ -2076,12 +2076,12 @@ class Materials(cv.CheckedList):
             for material, flux, energy in zip(
                 self, multigroup_fluxes, energy_group_structures
             ):
+                temperature = material.temperature or 293.6
                 micro_xs = openmc.deplete.MicroXS.from_multigroup_flux(
                     energies=energy,
                     multigroup_flux=flux,
                     chain_file=chain,
-                    temperature=material.temperature,
-                    nuclides=material.get_nuclides(),
+                    temperature=temperature,
                     reactions=reactions,
                 )
                 micros.append(micro_xs)

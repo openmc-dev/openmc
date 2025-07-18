@@ -191,15 +191,15 @@ class R2SManager:
         self,
         timesteps: Sequence[float] | Sequence[tuple[float, str]],
         source_rates: float | Sequence[float],
-        cooling_times: Sequence[int],
-        dose_tallies: Sequence[openmc.Tally] | None = None,
         timestep_units: str = 's',
+        photon_time_indices: Sequence[int] | None = None,
+        photon_tallies: Sequence[openmc.Tally] | None = None,
+        photon_settings: openmc.Settings | None = None,
         output_dir: PathLike | None = None,
         bounding_boxes: dict[int, openmc.BoundingBox] | None = None,
         micro_kwargs: dict | None = None,
         mat_vol_kwargs: dict | None = None,
         run_kwargs: dict | None = None,
-        photon_settings: openmc.Settings | None = None,
     ):
         """Run the R2S calculation.
 
@@ -213,19 +213,24 @@ class R2SManager:
             tuples.
         source_rates : float or Sequence[float]
             Source rate in [neutron/sec] for each interval in `timesteps`.
-        cooling_times : Sequence[int]
-            Sequence of cooling times at which photon transport should be run;
-            represented as indices into the array of times formed by the
-            timesteps. For example, if two timesteps are specified, the array of
-            times would contain three entries, and [2] would indicate computing
-            photon results at the last time.
-        dose_tallies : Sequence[openmc.Tally], optional
-            A sequence of tallies to be used for dose calculations in the photon
-            transport step. If None, no dose tallies are added.
         timestep_units : {'s', 'min', 'h', 'd', 'a'}, optional
             Units for values specified in the `timesteps` argument when passing
             float values. 's' means seconds, 'min' means minutes, 'h' means
             hours, 'd' means days, and 'a' means years (Julian).
+        photon_time_indices : Sequence[int], optional
+            Sequence of time indices at which photon transport should be run;
+            represented as indices into the array of times formed by the
+            timesteps. For example, if two timesteps are specified, the array of
+            times would contain three entries, and [2] would indicate computing
+            photon results at the last time. A value of None indicates to run
+            photon transport for each time.
+        photon_tallies : Sequence[openmc.Tally], optional
+            A sequence of tallies to be used in the photon transport step. If
+            None, no tallies are present.
+        photon_settings : openmc.Settings, optional
+            Custom settings to use for the photon transport calculation. If
+            provided, the original model settings will be temporarily replaced
+            during the photon transport calculations and restored afterward.
         output_dir : PathLike, optional
             Path to directory where R2S calculation outputs will be saved. If
             not provided, a timestamped directory 'r2s_YYYY-MM-DDTHH-MM-SS' is
@@ -247,10 +252,6 @@ class R2SManager:
             Additional keyword arguments passed to :meth:`openmc.Model.run`
             during the neutron and photon transport step. By default, output is
             disabled.
-        photon_settings : openmc.Settings, optional
-            Custom settings to use for the photon transport calculation. If
-            provided, the original model settings will be temporarily replaced
-            during the photon transport calculations and restored afterward.
 
         Returns
         -------
@@ -277,7 +278,7 @@ class R2SManager:
             timesteps, source_rates, timestep_units, output_dir / 'activation'
         )
         self.step3_photon_transport(
-            cooling_times, dose_tallies, bounding_boxes,
+            photon_time_indices, photon_tallies, bounding_boxes,
             output_dir / 'photon_transport', run_kwargs=run_kwargs,
             settings=photon_settings
         )
@@ -432,8 +433,8 @@ class R2SManager:
 
     def step3_photon_transport(
         self,
-        cooling_times: Sequence[int],
-        dose_tallies: Sequence[openmc.Tally] | None = None,
+        time_indices: Sequence[int] | None = None,
+        tallies: Sequence[openmc.Tally] | None = None,
         bounding_boxes: dict[int, openmc.BoundingBox] | None = None,
         output_dir: PathLike = 'photon_transport',
         run_kwargs: dict | None = None,
@@ -442,24 +443,25 @@ class R2SManager:
         """Run the photon transport step.
 
         This step performs photon transport calculations using decay photon
-        sources created from the activated materials. For each cooling time, it
-        creates appropriate photon sources and runs a transport calculation. In
-        mesh-based mode, the sources are created using the mesh material
+        sources created from the activated materials. For each specified time,
+        it creates appropriate photon sources and runs a transport calculation.
+        In mesh-based mode, the sources are created using the mesh material
         volumes, while in cell-based mode, they are created using bounding boxes
-        for each cell.  This step will populate the 'dose_tallies' key in the
+        for each cell.  This step will populate the 'photon_tallies' key in the
         results dictionary.
 
         Parameters
         ----------
-        cooling_times : Sequence[int]
-            Sequence of cooling times at which photon transport should be run;
+        time_indices : Sequence[int], optional
+            Sequence of time indices at which photon transport should be run;
             represented as indices into the array of times formed by the
             timesteps. For example, if two timesteps are specified, the array of
             times would contain three entries, and [2] would indicate computing
-            photon results at the last time.
-        dose_tallies : Sequence[openmc.Tally], optional
-            A sequence of tallies to be used for dose calculations in the photon
-            transport step. If None, no dose tallies are added.
+            photon results at the last time. A value of None indicates to run
+            photon transport for each time.
+        tallies : Sequence[openmc.Tally], optional
+            A sequence of tallies to be used in the photon transport step. If
+            None, no tallies are present.
         bounding_boxes : dict[int, openmc.BoundingBox], optional
             Dictionary mapping cell IDs to bounding boxes used for spatial
             source sampling in cell-based R2S calculations. Required if method
@@ -483,28 +485,28 @@ class R2SManager:
             run_kwargs = {}
         run_kwargs.setdefault('output', False)
 
-        # Add dose tallies to model if provided
-        if dose_tallies is not None:
-            self.model.tallies.extend(dose_tallies)
+        # Add photon tallies to model if provided
+        if tallies is None:
+            tallies = []
+        self.model.tallies = tallies
 
         # Save original settings to restore later
         original_settings = self.model.settings
         if settings is not None:
             self.model.settings = settings
 
-        # Write out JSON file with dose tally IDs that can be used for loading
+        # Write out JSON file with tally IDs that can be used for loading
         # results
         output_dir = Path(output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
-        if dose_tallies is not None:
-            dose_tally_ids = [tally.id for tally in dose_tallies]
-            with open(output_dir / 'dose_tally_ids.json', 'w') as f:
-                json.dump(dose_tally_ids, f)
+        tally_ids = [tally.id for tally in tallies]
+        with open(output_dir / 'tally_ids.json', 'w') as f:
+            json.dump(tally_ids, f)
 
-        self.results['dose_tallies'] = {}
+        self.results['photon_tallies'] = {}
 
         try:
-            for time_index in cooling_times:
+            for time_index in time_indices:
                 # Create decay photon source
                 if self.method == 'mesh-based':
                     self.model.settings.source = get_decay_photon_source_mesh(
@@ -546,11 +548,10 @@ class R2SManager:
                 statepoint_path = self.model.run(**run_kwargs)
 
                 # Store tally results
-                if dose_tallies is not None:
-                    with openmc.StatePoint(statepoint_path) as sp:
-                        self.results['dose_tallies'][time_index] = [
-                            sp.tallies[tally.id] for tally in dose_tallies
-                        ]
+                with openmc.StatePoint(statepoint_path) as sp:
+                    self.results['photon_tallies'][time_index] = [
+                        sp.tallies[tally.id] for tally in tallies
+                    ]
         finally:
             # Restore original settings
             self.model.settings = original_settings
@@ -590,19 +591,19 @@ class R2SManager:
         # Load photon transport results
         photon_dir = path / 'photon_transport'
 
-        # Load dose tally IDs from JSON file
-        dose_tally_ids_path = photon_dir / 'dose_tally_ids.json'
-        if dose_tally_ids_path.exists():
-            with dose_tally_ids_path.open('r') as f:
-                dose_tally_ids = json.load(f)
-            self.results['dose_tallies'] = {}
+        # Load tally IDs from JSON file
+        tally_ids_path = photon_dir / 'tally_ids.json'
+        if tally_ids_path.exists():
+            with tally_ids_path.open('r') as f:
+                tally_ids = json.load(f)
+            self.results['photon_tallies'] = {}
 
-            # For each cooling time, load the statepoint and get the dose
-            # tallies based on dose_tally_ids
+            # For each photon transport calc, load the statepoint and get the
+            # tally results based on tally_ids
             for time_dir in photon_dir.glob('time_*'):
                 time_index = int(time_dir.name.split('_')[1])
                 for sp_path in time_dir.glob('statepoint.*.h5'):
                     with openmc.StatePoint(sp_path) as sp:
-                        self.results['dose_tallies'][time_index] = [
-                            sp.tallies[tally_id] for tally_id in dose_tally_ids
+                        self.results['photon_tallies'][time_index] = [
+                            sp.tallies[tally_id] for tally_id in tally_ids
                         ]

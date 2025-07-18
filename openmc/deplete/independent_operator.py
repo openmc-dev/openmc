@@ -273,7 +273,7 @@ class IndependentOperator(OpenMCOperator):
         Returns
         -------
         nuclides : set of str
-            Set of nuclide names that have cross secton data
+            Set of nuclide names that have cross section data
 
         """
         return set(cross_sections[0].nuclides)

@@ -507,7 +507,7 @@ if(OPENMC_USE_DAGMC)
   target_link_libraries(libopenmc dagmc-shared)
 
   if(OPENMC_USE_UWUW)
-    target_compile_definitions(libopenmc PRIVATE OPENMC_UWUW)
+    target_compile_definitions(libopenmc PRIVATE OPENMC_UWUW_ENABLED)
     target_link_libraries(libopenmc uwuw-shared)
   endif()
 elseif(OPENMC_USE_UWUW)

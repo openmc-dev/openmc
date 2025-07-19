@@ -341,7 +341,7 @@ void print_build_info()
 #ifdef COVERAGEBUILD
   coverage = y;
 #endif
-#ifdef OPENMC_UWUW
+#ifdef OPENMC_UWUW_ENABLED
   uwuw = y;
 #endif
 

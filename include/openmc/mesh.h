@@ -26,7 +26,7 @@
 #include "moab/Matrix3.hpp"
 #endif
 
-#ifdef LIBMESH
+#ifdef OPENMC_LIBMESH_ENABLED
 #include "libmesh/bounding_box.h"
 #include "libmesh/dof_map.h"
 #include "libmesh/elem.h"
@@ -61,7 +61,7 @@ extern vector<unique_ptr<Mesh>> meshes;
 
 } // namespace model
 
-#ifdef LIBMESH
+#ifdef OPENMC_LIBMESH_ENABLED
 namespace settings {
 // used when creating new libMesh::MeshBase instances
 extern unique_ptr<libMesh::LibMeshInit> libmesh_init;
@@ -938,7 +938,7 @@ private:
 
 #endif
 
-#ifdef LIBMESH
+#ifdef OPENMC_LIBMESH_ENABLED
 
 class LibMesh : public UnstructuredMesh {
 public:

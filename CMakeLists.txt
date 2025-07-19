@@ -516,7 +516,7 @@ elseif(OPENMC_USE_UWUW)
 endif()
 
 if(OPENMC_USE_LIBMESH)
-  target_compile_definitions(libopenmc PRIVATE LIBMESH)
+  target_compile_definitions(libopenmc PRIVATE OPENMC_LIBMESH_ENABLED)
   target_link_libraries(libopenmc PkgConfig::LIBMESH)
 endif()
 

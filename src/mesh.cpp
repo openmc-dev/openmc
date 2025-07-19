@@ -47,7 +47,7 @@
 #include "openmc/volume_calc.h"
 #include "openmc/xml_interface.h"
 
-#ifdef LIBMESH
+#ifdef OPENMC_LIBMESH_ENABLED
 #include "libmesh/mesh_modification.h"
 #include "libmesh/mesh_tools.h"
 #include "libmesh/numeric_vector.h"
@@ -63,7 +63,7 @@ namespace openmc {
 // Global variables
 //==============================================================================
 
-#ifdef LIBMESH
+#ifdef OPENMC_LIBMESH_ENABLED
 const bool LIBMESH_ENABLED = true;
 #else
 const bool LIBMESH_ENABLED = false;
@@ -80,7 +80,7 @@ vector<unique_ptr<Mesh>> meshes;
 
 } // namespace model
 
-#ifdef LIBMESH
+#ifdef OPENMC_LIBMESH_ENABLED
 namespace settings {
 unique_ptr<libMesh::LibMeshInit> libmesh_init;
 const libMesh::Parallel::Communicator* libmesh_comm {nullptr};
@@ -2141,7 +2141,7 @@ extern "C" int openmc_add_unstructured_mesh(
   }
 #endif
 
-#ifdef LIBMESH
+#ifdef OPENMC_LIBMESH_ENABLED
   if (lib_name == LibMesh::mesh_lib_type) {
     model::meshes.push_back(std::move(make_unique<LibMesh>(mesh_file)));
     valid_lib = true;
@@ -3211,7 +3211,7 @@ void MOABMesh::write(const std::string& base_filename) const
 
 #endif
 
-#ifdef LIBMESH
+#ifdef OPENMC_LIBMESH_ENABLED
 
 const std::string LibMesh::mesh_lib_type = "libmesh";
 
@@ -3556,7 +3556,7 @@ double LibMesh::volume(int bin) const
   return this->get_element_from_bin(bin).volume();
 }
 
-#endif // LIBMESH
+#endif // OPENMC_LIBMESH_ENABLED
 
 //==============================================================================
 // Non-member functions
@@ -3610,7 +3610,7 @@ void read_meshes(pugi::xml_node root)
                mesh_lib == MOABMesh::mesh_lib_type) {
       model::meshes.push_back(make_unique<MOABMesh>(node));
 #endif
-#ifdef LIBMESH
+#ifdef OPENMC_LIBMESH_ENABLED
     } else if (mesh_type == UnstructuredMesh::mesh_type &&
                mesh_lib == LibMesh::mesh_lib_type) {
       model::meshes.push_back(make_unique<LibMesh>(node));

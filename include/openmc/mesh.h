@@ -19,7 +19,7 @@
 #include "openmc/vector.h"
 #include "openmc/xml_interface.h"
 
-#ifdef DAGMC
+#ifdef OPENMC_DAGMC_ENABLED
 #include "moab/AdaptiveKDTree.hpp"
 #include "moab/Core.hpp"
 #include "moab/GeomUtil.hpp"
@@ -768,7 +768,7 @@ private:
   virtual void initialize() = 0;
 };
 
-#ifdef DAGMC
+#ifdef OPENMC_DAGMC_ENABLED
 
 class MOABMesh : public UnstructuredMesh {
 public:

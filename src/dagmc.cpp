@@ -26,7 +26,7 @@
 
 namespace openmc {
 
-#ifdef DAGMC
+#ifdef OPENMC_DAGMC_ENABLED
 const bool DAGMC_ENABLED = true;
 #else
 const bool DAGMC_ENABLED = false;
@@ -40,7 +40,7 @@ const bool UWUW_ENABLED = false;
 
 } // namespace openmc
 
-#ifdef DAGMC
+#ifdef OPENMC_DAGMC_ENABLED
 
 namespace openmc {
 
@@ -926,4 +926,4 @@ int32_t next_cell(int32_t surf, int32_t curr_cell, int32_t univ);
 
 } // namespace openmc
 
-#endif // DAGMC
+#endif // OPENMC_DAGMC_ENABLED

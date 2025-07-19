@@ -53,7 +53,7 @@
 #include "libmesh/numeric_vector.h"
 #endif
 
-#ifdef DAGMC
+#ifdef OPENMC_DAGMC_ENABLED
 #include "moab/FileOptions.hpp"
 #endif
 
@@ -2134,7 +2134,7 @@ extern "C" int openmc_add_unstructured_mesh(
   std::string mesh_file(filename);
   bool valid_lib = false;
 
-#ifdef DAGMC
+#ifdef OPENMC_DAGMC_ENABLED
   if (lib_name == MOABMesh::mesh_lib_type) {
     model::meshes.push_back(std::move(make_unique<MOABMesh>(mesh_file)));
     valid_lib = true;
@@ -2509,7 +2509,7 @@ extern "C" int openmc_spherical_mesh_set_grid(int32_t index,
     index, grid_x, nx, grid_y, ny, grid_z, nz);
 }
 
-#ifdef DAGMC
+#ifdef OPENMC_DAGMC_ENABLED
 
 const std::string MOABMesh::mesh_lib_type = "moab";
 
@@ -3605,7 +3605,7 @@ void read_meshes(pugi::xml_node root)
       model::meshes.push_back(make_unique<CylindricalMesh>(node));
     } else if (mesh_type == SphericalMesh::mesh_type) {
       model::meshes.push_back(make_unique<SphericalMesh>(node));
-#ifdef DAGMC
+#ifdef OPENMC_DAGMC_ENABLED
     } else if (mesh_type == UnstructuredMesh::mesh_type &&
                mesh_lib == MOABMesh::mesh_lib_type) {
       model::meshes.push_back(make_unique<MOABMesh>(node));

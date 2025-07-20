@@ -6,6 +6,8 @@ from numbers import Real
 from pathlib import Path
 import re
 import sys
+import tempfile
+from typing import Sequence, Dict
 import warnings
 
 import lxml.etree as ET
@@ -1717,6 +1719,67 @@ class Material(IDManagerMixin):
 
         return mat
 
+    def deplete(
+        self,
+        multigroup_flux: Sequence[float],
+        energy_group_structure: Sequence[float] | str,
+        timesteps: Sequence[float] | Sequence[tuple[float, str]],
+        source_rates: float | Sequence[float],
+        timestep_units: str = 's',
+        chain_file: cv.PathLike | "openmc.deplete.Chain" | None = None,
+        reactions: Sequence[str] | None = None,
+    ) -> list[openmc.Material]:
+        """Depletes that material, evolving the nuclide densities
+
+        .. versionadded:: 0.15.3
+
+        Parameters
+        ----------
+        multigroup_flux: Sequence[float]
+            Energy-dependent multigroup flux values, where each sublist corresponds
+            to a specific material. Will be normalized so that it sums to 1.
+        energy_group_structure : Sequence[float] | str
+            Energy group boundaries in [eV] or the name of the group structure.
+        timesteps : iterable of float or iterable of tuple
+            Array of timesteps. Note that values are not cumulative. The units are
+            specified by the `timestep_units` argument when `timesteps` is an
+            iterable of float. Alternatively, units can be specified for each step
+            by passing an iterable of (value, unit) tuples.
+        source_rates : float or iterable of float, optional
+            Source rate in [neutron/sec] or neutron flux in [neutron/s-cm^2] for
+            each interval in :attr:`timesteps`
+        timestep_units : {'s', 'min', 'h', 'd', 'a', 'MWd/kg'}
+            Units for values specified in the `timesteps` argument. 's' means
+            seconds, 'min' means minutes, 'h' means hours, 'a' means Julian years
+            and 'MWd/kg' indicates that the values are given in burnup (MW-d of
+            energy deposited per kilogram of initial heavy metal).
+        chain_file : PathLike or Chain
+            Path to the depletion chain XML file or instance of openmc.deplete.Chain.
+            Defaults to ``openmc.config['chain_file']``.
+        reactions : list of str, optional
+            Reactions to get cross sections for. If not specified, all neutron
+            reactions listed in the depletion chain file are used.
+
+        Returns
+        -------
+        list of openmc.Material, one for each timestep
+
+        """
+
+        materials = openmc.Materials([self])
+
+        depleted_materials_dict = materials.deplete(
+            multigroup_fluxes=[multigroup_flux],
+            energy_group_structures=[energy_group_structure],
+            timesteps=timesteps,
+            source_rates=source_rates,
+            timestep_units=timestep_units,
+            chain_file=chain_file,
+            reactions=reactions,
+        )
+
+        return depleted_materials_dict[self.id]
+
 
     def mean_free_path(self, energy: float) -> float:
         """Calculate the mean free path of neutrons in the material at a given
@@ -1947,3 +2010,114 @@ class Materials(cv.CheckedList):
         root = tree.getroot()
 
         return cls.from_xml_element(root)
+
+
+    def deplete(
+        self,
+        multigroup_fluxes: Sequence[Sequence[float]],
+        energy_group_structures: Sequence[Sequence[float] | str],
+        timesteps: Sequence[float] | Sequence[tuple[float, str]],
+        source_rates: float | Sequence[float],
+        timestep_units: str = 's',
+        chain_file: cv.PathLike | "openmc.deplete.Chain" | None = None,
+        reactions: Sequence[str] | None = None,
+    ) -> Dict[int, list[openmc.Material]]:
+        """Depletes that material, evolving the nuclide densities
+
+        .. versionadded:: 0.15.3
+
+        Parameters
+        ----------
+        multigroup_fluxes: Sequence[Sequence[float]]
+            Energy-dependent multigroup flux values, where each sublist corresponds
+            to a specific material. Will be normalized so that it sums to 1.
+        energy_group_structures': Sequence[Sequence[float] | str]
+            Energy group boundaries in [eV] or the name of the group structure.
+        timesteps : iterable of float or iterable of tuple
+            Array of timesteps. Note that values are not cumulative. The units are
+            specified by the `timestep_units` argument when `timesteps` is an
+            iterable of float. Alternatively, units can be specified for each step
+            by passing an iterable of (value, unit) tuples.
+        source_rates : float or iterable of float, optional
+            Source rate in [neutron/sec] or neutron flux in [neutron/s-cm^2] for
+            each interval in :attr:`timesteps`
+        timestep_units : {'s', 'min', 'h', 'd', 'a', 'MWd/kg'}
+            Units for values specified in the `timesteps` argument. 's' means
+            seconds, 'min' means minutes, 'h' means hours, 'a' means Julian years
+            and 'MWd/kg' indicates that the values are given in burnup (MW-d of
+            energy deposited per kilogram of initial heavy metal).
+        chain_file : PathLike or Chain
+            Path to the depletion chain XML file or instance of openmc.deplete.Chain.
+            Defaults to ``openmc.config['chain_file']``.
+        reactions : list of str, optional
+            Reactions to get cross sections for. If not specified, all neutron
+            reactions listed in the depletion chain file are used.
+
+        Returns
+        -------
+        list of openmc.Material, one for each timestep
+
+        """
+
+        import openmc.deplete
+        from .deplete.chain import _get_chain
+
+        # setting all materials to be depletable
+        for mat in self:
+            mat.depletable = True
+
+        chain = _get_chain(chain_file)
+
+        # Create MicroXS objects for all materials
+        micros = []
+        fluxes = []
+
+        with openmc.lib.TemporarySession():
+            for material, flux, energy in zip(
+                self, multigroup_fluxes, energy_group_structures
+            ):
+                temperature = material.temperature or 293.6
+                micro_xs = openmc.deplete.MicroXS.from_multigroup_flux(
+                    energies=energy,
+                    multigroup_flux=flux,
+                    chain_file=chain,
+                    temperature=temperature,
+                    reactions=reactions,
+                )
+                micros.append(micro_xs)
+                fluxes.append(material.volume)
+
+        # Create a single operator for all materials
+        operator = openmc.deplete.IndependentOperator(
+            materials=self,
+            fluxes=fluxes,
+            micros=micros,
+            normalization_mode="source-rate",
+            chain_file=chain,
+        )
+
+        integrator = openmc.deplete.PredictorIntegrator(
+            operator=operator,
+            timesteps=timesteps,
+            source_rates=source_rates,
+            timestep_units=timestep_units,
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Run integrator
+            results_path = Path(tmpdir) / "depletion_results.h5"
+            integrator.integrate(path=results_path)
+
+            # Load depletion results
+            results = openmc.deplete.Results(results_path)
+
+            # For each material, get activated composition at each timestep
+            all_depleted_materials = {
+                material.id: [
+                    result.get_material(str(material.id))
+                    for result in results
+                ]
+                for material in self
+            }
+
+        return all_depleted_materials

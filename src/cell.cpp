@@ -1314,10 +1314,10 @@ vector<ParentCell> Cell::find_parent_cells(
   bool cell_found = false;
   for (auto it = coords.begin(); it != coords.end(); it++) {
     const auto& coord = *it;
-    const auto& cell = model::cells[coord.cell];
+    const auto& cell = model::cells[coord.cell()];
     // if the cell at this level matches the current cell, stop adding to the
     // stack
-    if (coord.cell == model::cell_map[this->id_]) {
+    if (coord.cell() == model::cell_map[this->id_]) {
       cell_found = true;
       break;
     }
@@ -1327,10 +1327,10 @@ vector<ParentCell> Cell::find_parent_cells(
     int lattice_idx = C_NONE;
     if (cell->type_ == Fill::LATTICE) {
       const auto& next_coord = *(it + 1);
-      lattice_idx = model::lattices[next_coord.lattice]->get_flat_index(
-        next_coord.lattice_i);
+      lattice_idx = model::lattices[next_coord.lattice()]->get_flat_index(
+        next_coord.lattice_index());
     }
-    stack.push(coord.universe, {coord.cell, lattice_idx});
+    stack.push(coord.universe(), {coord.cell(), lattice_idx});
   }
 
   // if this loop finished because the cell was found and

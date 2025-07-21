@@ -672,7 +672,7 @@ std::pair<double, int32_t> DAGCell::distance(
     p->last_dir() = u;
     p->history().reset();
   }
-  if (on_surface == 0) {
+  if (on_surface == SURFACE_NONE) {
     p->history().reset();
   }
 

@@ -359,7 +359,7 @@ def test_ww_generation_with_dagmc():
 
     # Create a point source which are supported by random ray mode
     my_source = openmc.IndependentSource()
-    my_source.space = openmc.stats.Point((0,0,0))
+    my_source.space = openmc.stats.Point((0.25,0.25,0.25))
     my_source.angle = openmc.stats.Isotropic()
     my_source.energy = openmc.stats.Discrete([14e6], [1])
     my_settings.source = my_source

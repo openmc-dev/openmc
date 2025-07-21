@@ -195,10 +195,6 @@ def test_particle_location(parameter, run_in_tmpdir, model):
             else:
                 assert False
 
-
-@pytest.mark.skipif(
-    not openmc.lib._mcpl_enabled(), reason="MCPL format is not enabled."
-)
 def test_format_similarity(run_in_tmpdir, model):
 
     model.settings.collision_track = {"max_collisions": 200, "mt_numbers": [2],

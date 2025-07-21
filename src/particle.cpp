@@ -362,10 +362,10 @@ void Particle::event_collide()
     if (fission()) {
       event_mt() = 18;
     }
-    int cell_id = model::cells[this->lowest_coord().cell]->id_;
+    int cell_id = model::cells[lowest_coord().cell()]->id_;
     int nuclide_zaid = 1000 * data::nuclides[event_nuclide()]->Z_ +
                        data::nuclides[event_nuclide()]->A_;
-    int universe_id = model::universes[this->lowest_coord().universe]->id_;
+    int universe_id = model::universes[lowest_coord().universe()]->id_;
     double delta_E = E_last() - E();
     int material_id = model::materials[material()]->id_;
 

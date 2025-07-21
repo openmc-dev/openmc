@@ -980,10 +980,10 @@ void read_settings_xml(pugi::xml_node root)
     if (check_for_node(node_ct, "mcpl")) {
       ct_mcpl_write = get_node_value_bool(node_ct, "mcpl");
       // Make sure MCPL support is enabled
-      if (ct_mcpl_write && !MCPL_ENABLED) {
-        fatal_error("Your build of OpenMC does not support writing MCPL "
-                    "surface source files.");
-      }
+      //if (ct_mcpl_write) {
+      //  fatal_error("Your build of OpenMC does not support writing MCPL "
+      //              "surface source files.");
+      //}
     }
   }
 

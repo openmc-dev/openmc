@@ -34,7 +34,7 @@ from .product import Product
 from .uncorrelated import UncorrelatedAngleEnergy
 
 REACTION_NAME = {50 : '(gamma,n0)'}
-REACTION_NAME.update({key:value.replace("(n,","(gamma,") for key,value in REACTION_NAME_.items()})
+REACTION_NAME.update({key:value.replace("(n,","(gamma,") for key,value in _REACTION_NAME.items()})
 
 class PhotonuclearReaction(EqualityMixin):
     def __init__(self, mt):
@@ -713,6 +713,17 @@ class IncidentPhotonuclear(EqualityMixin):
                 union_grid = np.union1d(union_grid, product.yield_.x)
         g.create_dataset("energy", data=union_grid)
         
+        # Update reactions according to union energy grid
+        for rx in self:
+          if tuple(rx.xs.interpolation) != (2,):
+              raise NotImplementedError('Only linear-linear interpolable reactions are supported.')
+              
+          threshold_idx, = np.flatnonzero(union_grid == rx.xs.x[0])
+          xs = rx.xs(union_grid[threshold_idx:]) 
+          tab1d = Tabulated1D(union_grid[threshold_idx:], xs)
+          tab1d._threshold_idx = threshold_idx
+          rx.xs = tab1d
+                
         # Write reaction data
         rxs_group = g.create_group('reactions')
         for rx in self.reactions.values():

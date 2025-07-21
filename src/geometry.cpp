@@ -310,9 +310,9 @@ void cross_lattice(GeometryState& p, const BoundaryInfo& boundary, bool verbose)
   }
 
   // Set the lattice indices.
-  coord.lattice_index()[0] += boundary.lattice_translation[0];
-  coord.lattice_index()[1] += boundary.lattice_translation[1];
-  coord.lattice_index()[2] += boundary.lattice_translation[2];
+  coord.lattice_index()[0] += boundary.lattice_translation()[0];
+  coord.lattice_index()[1] += boundary.lattice_translation()[1];
+  coord.lattice_index()[2] += boundary.lattice_translation()[2];
 
   // Set the new coordinate position.
   const auto& upper_coord {p.coord(p.n_coord() - 2)};
@@ -410,7 +410,7 @@ BoundaryInfo distance_to_boundary(GeometryState& p)
     // If the boundary on this coordinate level is coincident with a boundary on
     // a higher level then we need to make sure that the higher level boundary
     // is selected.  This logic must consider floating point precision.
-    double& d = info.distance;
+    double& d = info.distance();
     if (d_surf < d_lat - FP_COINCIDENT) {
       if (d == INFINITY || (d - d_surf) / d >= FP_REL_PRECISION) {
         // Update closest distance
@@ -421,29 +421,29 @@ BoundaryInfo distance_to_boundary(GeometryState& p)
         // have to explicitly check which half-space the particle would be
         // traveling into if the surface is crossed
         if (c.is_simple() || d == INFTY) {
-          info.surface = level_surf_cross;
+          info.surface() = level_surf_cross;
         } else {
           Position r_hit = r + d_surf * u;
           Surface& surf {*model::surfaces[std::abs(level_surf_cross) - 1]};
           Direction norm = surf.normal(r_hit);
           if (u.dot(norm) > 0) {
-            info.surface = std::abs(level_surf_cross);
+            info.surface() = std::abs(level_surf_cross);
           } else {
-            info.surface = -std::abs(level_surf_cross);
+            info.surface() = -std::abs(level_surf_cross);
           }
         }
 
-        info.lattice_translation[0] = 0;
-        info.lattice_translation[1] = 0;
-        info.lattice_translation[2] = 0;
-        info.coord_level = i + 1;
+        info.lattice_translation()[0] = 0;
+        info.lattice_translation()[1] = 0;
+        info.lattice_translation()[2] = 0;
+        info.coord_level() = i + 1;
       }
     } else {
       if (d == INFINITY || (d - d_lat) / d >= FP_REL_PRECISION) {
         d = d_lat;
-        info.surface = SURFACE_NONE;
-        info.lattice_translation = level_lat_trans;
-        info.coord_level = i + 1;
+        info.surface() = SURFACE_NONE;
+        info.lattice_translation() = level_lat_trans;
+        info.coord_level() = i + 1;
       }
     }
   }

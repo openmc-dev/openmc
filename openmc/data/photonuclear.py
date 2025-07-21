@@ -22,7 +22,7 @@ from .endf import Evaluation, SUM_RULES, get_head_record, get_tab1_record,  get_
 from .fission_energy import FissionEnergyRelease
 from .function import Tabulated1D
 from .njoy import make_ace_photonuclear
-from .reaction import Reaction, REACTION_NAME, FISSION_MTS, _get_products, _get_fission_products_endf, _get_photon_products_endf, _get_activation_products
+from .reaction import Reaction, REACTION_NAME as _REACTION_NAME, FISSION_MTS, _get_products, _get_fission_products_endf, _get_photon_products_endf, _get_activation_products
 from .product import Product
 from .energy_distribution import EnergyDistribution, LevelInelastic, \
     DiscretePhoton
@@ -33,7 +33,8 @@ from .nbody import NBodyPhaseSpace
 from .product import Product
 from .uncorrelated import UncorrelatedAngleEnergy
 
-_REACTION_NAME = {key:value.replace("(n,","(gamma,") for key,value in REACTION_NAME.items()}
+REACTION_NAME = {50 : '(gamma,n0)'}
+REACTION_NAME.update({key:value.replace("(n,","(gamma,") for key,value in REACTION_NAME_.items()})
 
 class PhotonuclearReaction(EqualityMixin):
     def __init__(self, mt):
@@ -47,7 +48,7 @@ class PhotonuclearReaction(EqualityMixin):
 
     def __repr__(self):
         if self.mt in _REACTION_NAME:
-            return f"<PhotonuclearReaction: MT={self.mt} {_REACTION_NAME[self.mt]}>"
+            return f"<PhotonuclearReaction: MT={self.mt} {REACTION_NAME[self.mt]}>"
         else:
             return f"<PhotonuclearReaction: MT={self.mt}>"
     
@@ -211,8 +212,8 @@ class PhotonuclearReaction(EqualityMixin):
         """
 
         group.attrs['mt'] = self.mt
-        if self.mt in _REACTION_NAME:
-            group.attrs['label'] = np.bytes_(_REACTION_NAME[self.mt])
+        if self.mt in REACTION_NAME:
+            group.attrs['label'] = np.bytes_(REACTION_NAME[self.mt])
         else:
             group.attrs['label'] = np.bytes_(self.mt)
         group.attrs['Q_value'] = self.q_value

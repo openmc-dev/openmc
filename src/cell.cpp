@@ -1025,7 +1025,7 @@ void populate_universes()
       model::universes.back()->cells_.push_back(index_cell);
       model::universe_map[uid] = model::universes.size() - 1;
     } else {
-#ifdef DAGMC
+#ifdef OPENMC_DAGMC_ENABLED
       // Skip implicit complement cells for now
       Universe* univ = model::universes[it->second].get();
       DAGUniverse* dag_univ = dynamic_cast<DAGUniverse*>(univ);

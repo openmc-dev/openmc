@@ -373,7 +373,7 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
       file_close(file_id);
   }
 
-#if defined(LIBMESH) || defined(DAGMC)
+#if defined(OPENMC_LIBMESH_ENABLED) || defined(OPENMC_DAGMC_ENABLED)
   // write unstructured mesh tally files
   write_unstructured_mesh_results();
 #endif

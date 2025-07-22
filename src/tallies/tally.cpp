@@ -381,7 +381,7 @@ Tally::Tally(pugi::xml_node node)
     }
   }
 
-#ifdef LIBMESH
+#ifdef OPENMC_LIBMESH_ENABLED
   // ensure a tracklength tally isn't used with a libMesh filter
   for (auto i : this->filters_) {
     auto df = dynamic_cast<MeshFilter*>(model::tally_filters[i].get());

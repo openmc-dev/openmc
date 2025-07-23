@@ -29,8 +29,6 @@ All credit goes to:
 (https://github.com/mit-crpg/vectfit.git)
 
 """
-
-from concurrent.futures import ProcessPoolExecutor, as_completed
 from typing import Tuple
 
 import numpy as np
@@ -506,29 +504,22 @@ def identify_poles(
     lhs_matrix = np.zeros((num_vectors * (num_poles + 1), num_poles + 1))
     rhs_vector = np.zeros(num_vectors * (num_poles + 1))
 
-    with ProcessPoolExecutor() as executor:
-        futures = [
-            executor.submit(
-                process_constrained_block,
-                vec_idx,
-                dk_matrix,
-                weights,
-                response_matrix,
-                num_samples,
-                num_poles,
-                num_polys,
-                scale_factor,
-                num_vectors,
-            )
-            for vec_idx in range(num_vectors)
-        ]
-
-        for future in as_completed(futures):
-            vec_idx, lhs_block, rhs_block = future.result()
-            i0 = vec_idx * (num_poles + 1)
-            i1 = (vec_idx + 1) * (num_poles + 1)
-            lhs_matrix[i0:i1] = lhs_block
-            rhs_vector[i0:i1] = rhs_block
+    for vec_idx in range(num_vectors):
+        vec_idx, lhs_block, rhs_block = process_constrained_block(
+            vec_idx,
+            dk_matrix,
+            weights,
+            response_matrix,
+            num_samples,
+            num_poles,
+            num_polys,
+            scale_factor,
+            num_vectors
+        )
+        i0 = vec_idx * (num_poles + 1)
+        i1 = (vec_idx + 1) * (num_poles + 1)
+        lhs_matrix[i0:i1] = lhs_block
+        rhs_vector[i0:i1] = rhs_block
 
     column_scale = np.linalg.norm(lhs_matrix, axis=0)
     column_scale[column_scale == 0] = 1.0
@@ -554,28 +545,20 @@ def identify_poles(
         lhs_matrix = np.zeros((num_vectors * num_poles, num_poles))
         rhs_vector = np.zeros(num_vectors * num_poles)
 
-        # Run in parallel
-        with ProcessPoolExecutor() as executor:
-            futures = [
-                executor.submit(
-                    process_unconstrained_block,
-                    vec_idx,
-                    dk_matrix,
-                    weights,
-                    response_matrix,
-                    denom,
-                    num_poles,
-                    num_polys,
-                )
-                for vec_idx in range(num_vectors)
-            ]
-
-            for future in as_completed(futures):
-                vec_idx, lhs_block, rhs_block = future.result()
-                i0 = vec_idx * num_poles
-                i1 = (vec_idx + 1) * num_poles
-                lhs_matrix[i0:i1] = lhs_block
-                rhs_vector[i0:i1] = rhs_block
+        for vec_idx in range(num_vectors):
+            vec_idx, lhs_block, rhs_block = process_unconstrained_block(
+                vec_idx,
+                dk_matrix,
+                weights,
+                response_matrix,
+                denom,
+                num_poles,
+                num_polys,
+            )
+            i0 = vec_idx * num_poles
+            i1 = (vec_idx + 1) * num_poles
+            lhs_matrix[i0:i1] = lhs_block
+            rhs_vector[i0:i1] = rhs_block
 
         column_scale = np.linalg.norm(lhs_matrix, axis=0)
         column_scale[column_scale == 0] = 1.0
@@ -718,25 +701,19 @@ def identify_residues(
     compute_dk_matrix(dk_matrix, eval_points, poles, conj_index, num_poles, num_polys)
 
     real_residues = np.zeros((num_vectors, num_poles), dtype=np.float64)
-    with ProcessPoolExecutor() as executor:
-        futures = [
-            executor.submit(
-                solve_vector_block,
-                vec_idx,
-                dk_matrix,
-                weights,
-                response_matrix,
-                num_poles,
-                num_polys,
-            )
-            for vec_idx in range(num_vectors)
-        ]
 
-        for future in as_completed(futures):
-            vec_idx, residues, poly_coeffs = future.result()
-            real_residues[vec_idx] = residues
-            if poly_coeffs is not None:
-                poly_coefficients[vec_idx] = poly_coeffs
+    for vec_idx in range(num_vectors):
+        vec_idx, residues, poly_coeffs = solve_vector_block(
+            vec_idx,
+            dk_matrix,
+            weights,
+            response_matrix,
+            num_poles,
+            num_polys,
+        )
+        real_residues[vec_idx] = residues
+        if poly_coeffs is not None:
+            poly_coefficients[vec_idx] = poly_coeffs
 
     # Mask for real poles
     mask_real = conj_index == 0

@@ -387,7 +387,7 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
 
 def vectfit_nuclide(endf_file, njoy_error=5e-4, vf_pieces=None,
                     log=False, path_out=None, mp_filename=None,
-                    n_procs=-1, **kwargs):
+                    **kwargs):
     r"""Generate multipole data for a nuclide from ENDF.
 
     Parameters
@@ -404,8 +404,6 @@ def vectfit_nuclide(endf_file, njoy_error=5e-4, vf_pieces=None,
         Path to write out mutipole data file and vector fitting figures
     mp_filename : str, optional
         File name to write out multipole data
-    n_procs : int, optional
-        Maximum number of processors to use for vector fitting
     **kwargs
         Keyword arguments passed to :func:`openmc.data.multipole._vectfit_xs`
 

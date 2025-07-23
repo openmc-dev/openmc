@@ -132,7 +132,8 @@ public:
   double total_strength() { return this->elem_idx_dist_.integral(); }
 
   // Set or get bias distribution
-  void set_bias(std::unique_ptr<DiscreteIndex> bias) {
+  void set_bias(std::unique_ptr<DiscreteIndex> bias)
+  {
     bias_ = std::move(bias);
   }
 
@@ -164,7 +165,8 @@ public:
   std::pair<Position, double> sample(uint64_t* seed) const override;
 
   // Set or get bias distribution
-  void set_bias(std::unique_ptr<DiscreteIndex> bias) {
+  void set_bias(std::unique_ptr<DiscreteIndex> bias)
+  {
     bias_ = std::move(bias);
   }
 

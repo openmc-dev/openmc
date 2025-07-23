@@ -50,7 +50,7 @@ public:
   //! Note that bias distributions are intended to return unit-weight samples.
   //! \param seed Pseudorandom number seed points
   //! \return (sampled Direction, value of the PDF at this Direction)
-  std::pair<Direction,double> sample_as_bias(uint64_t* seed) const;
+  std::pair<Direction, double> sample_as_bias(uint64_t* seed) const;
 
   // Observing pointers
   Distribution* mu() const { return mu_.get(); }
@@ -78,7 +78,8 @@ public:
   std::pair<Direction, double> sample(uint64_t* seed) const override;
 
   // Set or get bias distribution
-  void set_bias(std::unique_ptr<PolarAzimuthal> bias) {
+  void set_bias(std::unique_ptr<PolarAzimuthal> bias)
+  {
     bias_ = std::move(bias);
   }
 

@@ -18,7 +18,8 @@
 namespace openmc {
 
 // PDF evaluation not supported for all distribution types
-double Distribution::evaluate(double x) const {
+double Distribution::evaluate(double x) const
+{
   throw std::runtime_error(
     "PDF evaluation not implemented for this distribution type.");
 }
@@ -53,7 +54,7 @@ void DiscreteIndex::init_alias()
   normalize();
 
   // record user input normalized distribution prob_actual for RR/source bias
-  prob_actual_ = prob_; 
+  prob_actual_ = prob_;
 
   // The initialization and sampling method is based on Vose
   // (DOI: 10.1109/32.92917)
@@ -133,28 +134,29 @@ void DiscreteIndex::apply_bias(span<const double> b)
   prob_.assign(b.begin(), b.end());
   if (prob_.size() != prob_actual_.size()) {
     openmc::fatal_error(
-      "Size mismatch: Attempted to bias Discrete distribution with " + 
-      std::to_string(prob_actual_.size()) + " probability entries using a "
-      "Discrete distribution with " + std::to_string(prob_.size()) + 
+      "Size mismatch: Attempted to bias Discrete distribution with " +
+      std::to_string(prob_actual_.size()) +
+      " probability entries using a "
+      "Discrete distribution with " +
+      std::to_string(prob_.size()) +
       " entries. Please ensure distributions have the same size.");
   }
 
   // Normalize biased probability vector and populate weight table.
   normalize();
   for (std::size_t i = 0; i < wgt_.size(); ++i) {
-      if (prob_[i] == 0.0) {
-        // Allow nonzero entries in original distribution to be given zero
-        // sampling probability in the biased distribution.
-        wgt_[i] = INFTY;
-      } else {
-        wgt_[i] = prob_actual_[i] / prob_[i];
-      }
+    if (prob_[i] == 0.0) {
+      // Allow nonzero entries in original distribution to be given zero
+      // sampling probability in the biased distribution.
+      wgt_[i] = INFTY;
+    } else {
+      wgt_[i] = prob_actual_[i] / prob_[i];
+    }
   }
 
   // Reconstruct alias table for sampling from the biased distribution.
   // Values from unbiased prob_actual_ may be recovered using weight table.
   this->init_alias();
-
 }
 
 //==============================================================================
@@ -179,7 +181,7 @@ Discrete::Discrete(const double* x, const double* p, size_t n) : di_({p, n})
 std::pair<double, double> Discrete::sample(uint64_t* seed) const
 {
   size_t sample_index = di_.sample(seed);
-  return { x_[sample_index], di_.weight()[sample_index] };
+  return {x_[sample_index], di_.weight()[sample_index]};
 }
 
 double Discrete::evaluate(double x) const
@@ -189,9 +191,9 @@ double Discrete::evaluate(double x) const
   // be biased by another Discrete distribution. It is only called when a
   // Discrete distribution is used to bias another kind of distribution.
   for (size_t i = 0; i < x_.size(); ++i) {
-      if (std::fabs(x_[i] - x) <= FP_PRECISION) {
-          return di_.prob_actual()[i];
-      }
+    if (std::fabs(x_[i] - x) <= FP_PRECISION) {
+      return di_.prob_actual()[i];
+    }
   }
   return 0.0;
 }
@@ -226,9 +228,9 @@ std::pair<double, double> Uniform::sample(uint64_t* seed) const
 {
   if (bias()) {
     auto [val, wgt] = bias()->sample(seed);
-    return { val, this->evaluate(val) / bias()->evaluate(val) };
+    return {val, this->evaluate(val) / bias()->evaluate(val)};
   } else {
-    return { a_ + prn(seed) * (b_ - a_), 1.0 };
+    return {a_ + prn(seed) * (b_ - a_), 1.0};
   }
 }
 
@@ -239,7 +241,7 @@ double Uniform::evaluate(double x) const
   } else if (x >= b()) {
     return 0.0;
   } else {
-    return 1/(b() - a());
+    return 1 / (b() - a());
   }
 }
 
@@ -273,7 +275,7 @@ double PowerLaw::evaluate(double x) const
   } else {
     int pwr = n() + 1;
     double norm = pwr / span_;
-    return norm * std::pow(std::fabs(x),n());
+    return norm * std::pow(std::fabs(x), n());
   }
 }
 
@@ -281,9 +283,9 @@ std::pair<double, double> PowerLaw::sample(uint64_t* seed) const
 {
   if (bias()) {
     auto [val, wgt] = bias()->sample(seed);
-    return { val, this->evaluate(val) / bias()->evaluate(val) };
+    return {val, this->evaluate(val) / bias()->evaluate(val)};
   } else {
-    return { std::pow(offset_ + prn(seed) * span_, ninv_), 1.0 };
+    return {std::pow(offset_ + prn(seed) * span_, ninv_), 1.0};
   }
 }
 
@@ -300,9 +302,9 @@ std::pair<double, double> Maxwell::sample(uint64_t* seed) const
 {
   if (bias()) {
     auto [val, wgt] = bias()->sample(seed);
-    return { val, this->evaluate(val) / bias()->evaluate(val) };
+    return {val, this->evaluate(val) / bias()->evaluate(val)};
   } else {
-    return { maxwell_spectrum(theta_, seed), 1.0 };
+    return {maxwell_spectrum(theta_, seed), 1.0};
   }
 }
 
@@ -331,9 +333,9 @@ std::pair<double, double> Watt::sample(uint64_t* seed) const
 {
   if (bias()) {
     auto [val, wgt] = bias()->sample(seed);
-    return { val, this->evaluate(val) / bias()->evaluate(val) };
+    return {val, this->evaluate(val) / bias()->evaluate(val)};
   } else {
-    return { watt_spectrum(a_, b_, seed), 1.0 };
+    return {watt_spectrum(a_, b_, seed), 1.0};
   }
 }
 
@@ -362,17 +364,17 @@ std::pair<double, double> Normal::sample(uint64_t* seed) const
 {
   if (bias()) {
     auto [val, wgt] = bias()->sample(seed);
-    return { val, this->evaluate(val) / bias()->evaluate(val) };
+    return {val, this->evaluate(val) / bias()->evaluate(val)};
   } else {
-    return { normal_variate(mean_value_, std_dev_, seed), 1.0 };
+    return {normal_variate(mean_value_, std_dev_, seed), 1.0};
   }
 }
 
 double Normal::evaluate(double x) const
 {
-  return (1.0 / (std::sqrt(2.0 / PI) * std_dev_)) * 
-         std::exp(-(std::pow((x - mean_value_), 2.0)) / 
-         (2.0 * std::pow(std_dev_, 2.0)));
+  return (1.0 / (std::sqrt(2.0 / PI) * std_dev_)) *
+         std::exp(-(std::pow((x - mean_value_), 2.0)) /
+                  (2.0 * std::pow(std_dev_, 2.0)));
 }
 
 //==============================================================================
@@ -457,7 +459,7 @@ std::pair<double, double> Tabular::sample(uint64_t* seed) const
 {
   if (bias()) {
     auto [val, wgt] = bias()->sample(seed);
-    return { val, this->evaluate(val) / bias()->evaluate(val) };
+    return {val, this->evaluate(val) / bias()->evaluate(val)};
   } else {
     // Sample value of CDF
     double c = prn(seed);
@@ -479,9 +481,9 @@ std::pair<double, double> Tabular::sample(uint64_t* seed) const
     if (interp_ == Interpolation::histogram) {
       // Histogram interpolation
       if (p_i > 0.0) {
-        return { (x_i + (c - c_i) / p_i), 1.0 };
+        return {(x_i + (c - c_i) / p_i), 1.0};
       } else {
-        return { x_i, 1.0 };
+        return {x_i, 1.0};
       }
     } else {
       // Linear-linear interpolation
@@ -490,11 +492,13 @@ std::pair<double, double> Tabular::sample(uint64_t* seed) const
 
       double m = (p_i1 - p_i) / (x_i1 - x_i);
       if (m == 0.0) {
-        return { (x_i + (c - c_i) / p_i), 1.0 };
+        return {(x_i + (c - c_i) / p_i), 1.0};
       } else {
-        return { (x_i +
-                   (std::sqrt(std::max(0.0, p_i * p_i + 2 * m * (c - c_i)))
-                   - p_i) / m), 1.0 };
+        return {
+          (x_i +
+            (std::sqrt(std::max(0.0, p_i * p_i + 2 * m * (c - c_i))) - p_i) /
+              m),
+          1.0};
       }
     }
   }
@@ -513,9 +517,9 @@ double Tabular::evaluate(double x) const
     }
   } else {
     i = std::lower_bound(x_.begin(), x_.end(), x) - x_.begin() - 1;
-        
+
     if (i < 0 || i >= static_cast<int>(p_.size()) - 1) {
-        return 0.0;
+      return 0.0;
     } else {
       double x0 = x_[i];
       double x1 = x_[i + 1];
@@ -536,7 +540,7 @@ std::pair<double, double> Equiprobable::sample(uint64_t* seed) const
 {
   if (bias()) {
     auto [val, wgt] = bias()->sample(seed);
-    return { val, this->evaluate(val) / bias()->evaluate(val) };
+    return {val, this->evaluate(val) / bias()->evaluate(val)};
   } else {
     std::size_t n = x_.size();
 
@@ -545,7 +549,7 @@ std::pair<double, double> Equiprobable::sample(uint64_t* seed) const
 
     double xl = x_[i];
     double xr = x_[i + i];
-    return { (xl + ((n - 1) * r - i) * (xr - xl)), 1.0 };
+    return {(xl + ((n - 1) * r - i) * (xr - xl)), 1.0};
   }
 }
 
@@ -555,7 +559,7 @@ double Equiprobable::evaluate(double x) const
   double x_max = *std::max_element(x_.begin(), x_.end());
 
   if (x < x_min || x > x_max) {
-      return 0.0;
+    return 0.0;
   } else {
     return 1.0 / (x_max - x_min);
   }
@@ -647,15 +651,16 @@ UPtrDist distribution_from_xml(pugi::xml_node node)
   } else {
     openmc::fatal_error("Invalid distribution type: " + type);
   }
-  
+
   // Check for biasing distribution
   if (check_for_node(node, "bias")) {
     pugi::xml_node bias_node = node.child("bias");
     std::string bias_type = get_node_value(bias_node, "type", true, true);
 
-    if (check_for_node(bias_node,"bias")) {
+    if (check_for_node(bias_node, "bias")) {
       openmc::fatal_error(
-        "Distribution of type " + type + " has a bias distribution with its "
+        "Distribution of type " + type +
+        " has a bias distribution with its "
         "own bias distribution. Please ensure bias distributions do not have "
         "their own bias.");
     } else if (type == "discrete" && bias_type != "discrete") {
@@ -673,7 +678,7 @@ UPtrDist distribution_from_xml(pugi::xml_node node)
       dist->set_bias(std::move(bias));
     }
   }
-  
+
   return dist;
 }
 

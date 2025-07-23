@@ -86,7 +86,7 @@ std::pair<Position, double> CartesianIndependent::sample(uint64_t* seed) const
   auto [y_val, y_wgt] = y_->sample(seed);
   auto [z_val, z_wgt] = z_->sample(seed);
   Position xi {x_val, y_val, z_val};
-  return { xi, x_wgt * y_wgt * z_wgt };
+  return {xi, x_wgt * y_wgt * z_wgt};
 }
 
 //==============================================================================
@@ -152,7 +152,7 @@ std::pair<Position, double> CylindricalIndependent::sample(uint64_t* seed) const
   double y = r * sin(phi) + origin_.y;
   z += origin_.z;
   Position xi {x, y, z};
-  return { xi, r_wgt * phi_wgt * z_wgt};
+  return {xi, r_wgt * phi_wgt * z_wgt};
 }
 
 //==============================================================================
@@ -219,7 +219,7 @@ std::pair<Position, double> SphericalIndependent::sample(uint64_t* seed) const
   double y = r * std::sqrt(1 - cos_theta * cos_theta) * sin(phi) + origin_.y;
   double z = r * cos_theta + origin_.z;
   Position xi {x, y, z};
-  return { xi, r_wgt * cos_theta_wgt * phi_wgt };
+  return {xi, r_wgt * cos_theta_wgt * phi_wgt};
 }
 
 //==============================================================================
@@ -284,16 +284,15 @@ MeshSpatial::MeshSpatial(pugi::xml_node node)
 
       if (get_node_value_bool(node, "volume_normalized")) {
         for (int i = 0; i < n_bins; i++) {
-        bias_strengths[i] *= this->mesh()->volume(i);
+          bias_strengths[i] *= this->mesh()->volume(i);
         }
       }
 
-      span<const double> b{bias_strengths};
+      span<const double> b {bias_strengths};
       elem_idx_dist_.apply_bias(b);
     } else {
-      fatal_error(
-        fmt::format(
-          "Bias node for mesh {} found without strengths array.", mesh_id));
+      fatal_error(fmt::format(
+        "Bias node for mesh {} found without strengths array.", mesh_id));
     }
   }
 }
@@ -334,7 +333,7 @@ std::pair<int32_t, Position> MeshSpatial::sample_mesh(uint64_t* seed) const
 std::pair<Position, double> MeshSpatial::sample(uint64_t* seed) const
 {
   auto [elem_idx, u] = this->sample_mesh(seed);
-  return { u, elem_idx_dist_.weight()[elem_idx] };
+  return {u, elem_idx_dist_.weight()[elem_idx]};
 }
 
 //==============================================================================
@@ -366,7 +365,7 @@ PointCloud::PointCloud(pugi::xml_node node)
 
   point_idx_dist_.assign(strengths);
 
-    if (check_for_node(node, "bias")) {
+  if (check_for_node(node, "bias")) {
     pugi::xml_node bias_node = node.child("bias");
 
     if (check_for_node(bias_node, "strengths")) {
@@ -380,7 +379,7 @@ PointCloud::PointCloud(pugi::xml_node node)
             bias_strengths.size(), point_cloud_.size()));
       }
 
-      span<const double> b{bias_strengths};
+      span<const double> b {bias_strengths};
       point_idx_dist_.apply_bias(b);
     } else {
       fatal_error(
@@ -399,7 +398,7 @@ PointCloud::PointCloud(
 std::pair<Position, double> PointCloud::sample(uint64_t* seed) const
 {
   int32_t index = point_idx_dist_.sample(seed);
-  return { point_cloud_[index], point_idx_dist_.weight()[index] };
+  return {point_cloud_[index], point_idx_dist_.weight()[index]};
 }
 
 //==============================================================================
@@ -423,7 +422,7 @@ std::pair<Position, double> SpatialBox::sample(uint64_t* seed) const
 {
   Position xi {prn(seed), prn(seed), prn(seed)};
   // Biasing not implemented--use CartesianIndependent instead
-  return { lower_left_ + xi * (upper_right_ - lower_left_), 1.0 };
+  return {lower_left_ + xi * (upper_right_ - lower_left_), 1.0};
 }
 
 //==============================================================================
@@ -444,7 +443,7 @@ SpatialPoint::SpatialPoint(pugi::xml_node node)
 
 std::pair<Position, double> SpatialPoint::sample(uint64_t* seed) const
 {
-  return { r_, 1.0 };
+  return {r_, 1.0};
 }
 
 } // namespace openmc

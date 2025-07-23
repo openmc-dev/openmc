@@ -33,9 +33,7 @@ public:
   virtual double integral() const { return 1.0; };
 
   // Set or get bias distribution
-  void set_bias(std::unique_ptr<Distribution> bias) {
-    bias_ = std::move(bias);
-  }
+  void set_bias(std::unique_ptr<Distribution> bias) { bias_ = std::move(bias); }
 
   const Distribution* bias() const { return bias_.get(); }
 
@@ -83,9 +81,9 @@ public:
 private:
   vector<double> prob_; //!< Probability of accepting the uniformly sampled bin,
                         //!< mapped to alias method table
-  vector<size_t> alias_; //!< Alias table
-  vector<double> wgt_; //!< Weights for sampling from a biased prob_
-  double integral_;      //!< Integral of distribution
+  vector<size_t> alias_;       //!< Alias table
+  vector<double> wgt_;         //!< Weights for sampling from a biased prob_
+  double integral_;            //!< Integral of distribution
   vector<double> prob_actual_; //!< actual probability before the Vose algorithm
 
   //! Normalize distribution so that probabilities sum to unity
@@ -329,7 +327,7 @@ public:
   //! \param seed Pseudorandom number seed pointer
   //! \return (sampled value, sample weight)
   std::pair<double, double> sample(uint64_t* seed) const override;
-  
+
   //! Evaluate probability density at a point
   //! \param x Point to evaluate f(x)
   //! \return f(x)

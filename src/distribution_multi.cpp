@@ -81,9 +81,9 @@ std::pair<Direction, double> PolarAzimuthal::sample(uint64_t* seed) const
   // Sample azimuthal angle
   auto [phi, phi_wgt] = phi_->sample(seed);
   if (mu == 1.0)
-    return { u_ref_, mu_wgt * phi_wgt };
+    return {u_ref_, mu_wgt * phi_wgt};
 
-  return { rotate_angle(u_ref_, mu, &phi, seed), mu_wgt * phi_wgt };
+  return {rotate_angle(u_ref_, mu, &phi, seed), mu_wgt * phi_wgt};
 }
 
 std::pair<Direction, double> PolarAzimuthal::sample_as_bias(
@@ -98,17 +98,16 @@ std::pair<Direction, double> PolarAzimuthal::sample_as_bias(
   double pdf_evaluation = mu_->evaluate(mu) * phi_->evaluate(phi);
 
   if (mu == 1.0)
-    return { u_ref_, pdf_evaluation };
+    return {u_ref_, pdf_evaluation};
 
-  return { rotate_angle(u_ref_, mu, &phi, seed), pdf_evaluation };
+  return {rotate_angle(u_ref_, mu, &phi, seed), pdf_evaluation};
 }
 
 //==============================================================================
 // Isotropic implementation
 //==============================================================================
 
-Isotropic::Isotropic(pugi::xml_node node)
-  : UnitSphereDistribution {node}
+Isotropic::Isotropic(pugi::xml_node node) : UnitSphereDistribution {node}
 {
   if (check_for_node(node, "bias")) {
     pugi::xml_node bias_node = node.child("bias");
@@ -139,9 +138,9 @@ std::pair<Direction, double> Isotropic::sample(uint64_t* seed) const
 {
   if (bias()) {
     auto [val, eval] = bias()->sample_as_bias(seed);
-    return { val, 1.0 / (4.0 * PI * eval) };
+    return {val, 1.0 / (4.0 * PI * eval)};
   } else {
-    return { isotropic_direction(seed), 1.0 };
+    return {isotropic_direction(seed), 1.0};
   }
 }
 
@@ -151,7 +150,7 @@ std::pair<Direction, double> Isotropic::sample(uint64_t* seed) const
 
 std::pair<Direction, double> Monodirectional::sample(uint64_t* seed) const
 {
-  return { u_ref_, 1.0 };
+  return {u_ref_, 1.0};
 }
 
 } // namespace openmc

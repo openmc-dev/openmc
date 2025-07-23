@@ -1,4 +1,5 @@
 #!/bin/bash
+# touching this script invalidate the test data xs cache
 set -ex
 
 # Download HDF5 data

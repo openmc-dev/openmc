@@ -275,20 +275,21 @@ distribution in OpenMC which permits biasing.
     +----------------------------------------------+---------------------------+
     |Discrete Univariate PDFs                      | Biasing Method            |
     +==============================================+===========================+
-    | :class:`openmc.stats.Discrete`               |Apply a second, unbiased   |
-    |                                         | :class:`openmc.stats.Discrete` |
-    |                                              |sharing the same :attr:`x` |
-    |                                              |vector to the :attr:`bias` |
-    |                                              |attribute                  |
+    | :class:`openmc.stats.Discrete`               | Apply a second, unbiased  |
+    |                                              | :class:`openmc.stats.     |
+    |                                              | Discrete` sharing the     |
+    |                                              | same :attr:`x` vector to  |
+    |                                              | the :attr:`bias`          |
+    |                                              | attribute                 |
     +----------------------------------------------+---------------------------+
 
     +----------------------------------------------+---------------------------+
     |Continuous Univariate PDFs                    | Biasing Method            |
     +==============================================+===========================+
-    | :class:`openmc.stats.Uniform`,               |Apply a second, unbiased   |
-    | :class:`openmc.stats.PowerLaw`,              |continuous univariate PDF  |
-    | :class:`openmc.stats.Maxwell`,               |to the :attr:`bias`        |
-    | :class:`openmc.stats.Watt`,                  |attribute                  |
+    | :class:`openmc.stats.Uniform`,               | Apply a second, unbiased  |
+    | :class:`openmc.stats.PowerLaw`,              | continuous univariate PDF |
+    | :class:`openmc.stats.Maxwell`,               | to the :attr:`bias`       |
+    | :class:`openmc.stats.Watt`,                  | attribute                 |
     | :class:`openmc.stats.Normal`,                |                           |
     | :class:`openmc.stats.Tabular`                |                           |
     +----------------------------------------------+---------------------------+
@@ -311,10 +312,10 @@ distribution in OpenMC which permits biasing.
     | :class:`openmc.stats.SphericalIndependent`,  |for :attr:`x`, :attr:`y`,  | 
     | :class:`openmc.stats.PolarAzimuthal`         | :attr:`z`, etc.           |
     +----------------------------------------------+---------------------------+
-    | :class:`openmc.stats.Isotropic`              |Apply an unbiased          |
-    |                                   | :class:`openmc.stats.PolarAzimuthal` |
-    |                                              | to the :attr:`bias`       |
-    |                                              | attribute                 |
+    | :class:`openmc.stats.Isotropic`              | Apply an unbiased         |
+    |                                              | :class:`openmc.stats.     |
+    |                                              | PolarAzimuthal` to the    |
+    |                                              | :attr:`bias` attribute    |
     +----------------------------------------------+---------------------------+
 
 .. note::

@@ -270,53 +270,57 @@ compatible distributions which may be used to bias sampling of each
 distribution type. The following table summarizes the method for each 
 distribution in OpenMC which permits biasing.
 
-.. table:: **Biasable probability density functions (PDFs) in OpenMC**
+.. list-table:: **Biasable probability density functions (PDFs) in OpenMC**
+   :header-rows: 1
+   :widths: 40 60
 
-    +----------------------------------------------+---------------------------+
-    |Discrete Univariate PDFs                      | Biasing Method            |
-    +==============================================+===========================+
-    | :class:`openmc.stats.Discrete`               | Apply a second, unbiased  |
-    |                                              | :class:`openmc.stats.     |
-    |                                              | Discrete` sharing the     |
-    |                                              | same :attr:`x` vector to  |
-    |                                              | the :attr:`bias`          |
-    |                                              | attribute                 |
-    +----------------------------------------------+---------------------------+
+   * - Discrete Univariate PDFs
+     - Biasing Method
+   * - :class:`openmc.stats.Discrete`
+     - Apply a second, unbiased :class:`openmc.stats.Discrete` sharing the 
+       same :attr:`x` vector to the :attr:`bias` attribute
 
-    +----------------------------------------------+---------------------------+
-    |Continuous Univariate PDFs                    | Biasing Method            |
-    +==============================================+===========================+
-    | :class:`openmc.stats.Uniform`,               | Apply a second, unbiased  |
-    | :class:`openmc.stats.PowerLaw`,              | continuous univariate PDF |
-    | :class:`openmc.stats.Maxwell`,               | to the :attr:`bias`       |
-    | :class:`openmc.stats.Watt`,                  | attribute                 |
-    | :class:`openmc.stats.Normal`,                |                           |
-    | :class:`openmc.stats.Tabular`                |                           |
-    +----------------------------------------------+---------------------------+
+.. list-table::
+   :header-rows: 1
+   :widths: 40 60
 
-    +----------------------------------------------+---------------------------+
-    |Discrete Multivariate PDFs                    | Biasing Method            |
-    +==============================================+===========================+
-    | :class:`openmc.stats.PointCloud`,            |Apply a vector of the new  |
-    | :class:`openmc.stats.MeshSpatial`            |relative probabilities of  |
-    |                                              |each point or mesh element |
-    |                                              |under biased sampling to   |
-    |                                              |the :attr:`bias` attribute |
-    +----------------------------------------------+---------------------------+
+   * - Continuous Univariate PDFs
+     - Biasing Method
+   * - :class:`openmc.stats.Uniform`, 
+       :class:`openmc.stats.PowerLaw`, 
+       :class:`openmc.stats.Maxwell`, 
+       :class:`openmc.stats.Watt`, 
+       :class:`openmc.stats.Normal`, 
+       :class:`openmc.stats.Tabular`
+     - Apply a second, unbiased continous univariate PDF to the :attr:`bias` 
+       attribute
 
-    +----------------------------------------------+---------------------------+
-    |Continuous Multivariate PDFs                  | Biasing Method            |
-    +==============================================+===========================+
-    | :class:`openmc.stats.CartesianIndependent`,  |Construct from biased      |
-    | :class:`openmc.stats.CylindricalIndependent`,|univariate distributions   |
-    | :class:`openmc.stats.SphericalIndependent`,  |for :attr:`x`, :attr:`y`,  | 
-    | :class:`openmc.stats.PolarAzimuthal`         | :attr:`z`, etc.           |
-    +----------------------------------------------+---------------------------+
-    | :class:`openmc.stats.Isotropic`              | Apply an unbiased         |
-    |                                              | :class:`openmc.stats.     |
-    |                                              | PolarAzimuthal` to the    |
-    |                                              | :attr:`bias` attribute    |
-    +----------------------------------------------+---------------------------+
+.. list-table::
+   :header-rows: 1
+   :widths: 40 60
+
+   * - Discrete Multivariate PDFs
+     - Biasing Method
+   * - :class:`openmc.stats.PointCloud`,
+       :class:`openmc.stats.MeshSpatial`
+     - Apply a vector of the new relative probabilities of each point or mesh 
+       element under biased sampling to the attr:`bias` attribute  
+
+.. list-table::
+   :header-rows: 1
+   :widths: 40 60 
+
+   * - Continuous Multivariate PDFs
+     - Biasing Method
+   * - :class:`openmc.stats.CartesianIndependent`, 
+       :class:`openmc.stats.CylindricalIndependent`, 
+       :class:`openmc.stats.SphericalIndependent`, 
+       :class:`openmc.stats.PolarAzimuthal`
+     - Construct from biased univariate distributions for :attr:`x`, :attr:`y`, 
+       :attr:`z`, etc.
+   * - :class:`openmc.stats.Isotropic`
+     - Apply an unbiased :class:`openmc.stats.PolarAzimuthal` to the 
+       :attr:`bias` attribute
 
 .. note::
     The :class:`openmc.stats.Mixture` class may be constructed from multiple 

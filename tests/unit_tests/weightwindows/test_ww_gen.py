@@ -338,14 +338,11 @@ def test_ww_bounds_set_in_memory(run_in_tmpdir, model):
 @pytest.mark.skipif(not openmc.lib._dagmc_enabled(), reason="DAGMC CAD geometry is not enabled.")
 def test_ww_generation_with_dagmc():
 
-    mat1 = openmc.Material(name="no-void fuel")
+    mat1 = openmc.Material(name="1")
     mat1.add_nuclide("H1", 1, percent_type="ao")
     mat1.set_density("g/cm3", 0.001)
-    mat2 = openmc.Material(name="41")
-    mat2.add_nuclide("Be9", 1, percent_type="ao")
-    mat2.set_density("g/cm3", 2.0)
 
-    my_materials = openmc.Materials([mat1, mat2])
+    my_materials = openmc.Materials([mat1])
     dag_univ = openmc.DAGMCUniverse(filename=Path(__file__).parent.parent / "dagmc" / "dagmc_tetrahedral_no_graveyard.h5m")
     bound_dag_univ = dag_univ.bounded_universe(padding_distance=10)
     my_geometry = openmc.Geometry(root=bound_dag_univ)

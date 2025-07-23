@@ -191,8 +191,8 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
         test_xs_ref[i] = np.interp(test_energy, energy, ce_xs[i])
 
     if log:
-        print(f"  energy: {energy[0]:.3e} to {energy[-1]:.3e} eV ({ne} points)")
-        print(f"  error tolerance: rtol={rtol}, atol={atol}")
+        print(f"\tenergy: {energy[0]:.3e} to {energy[-1]:.3e} eV ({ne} points)")
+        print(f"\terror tolerance: rtol={rtol}, atol={atol}")
 
     # transform xs (sigma) and energy (E) to f (sigma*E) and s (sqrt(E)) to be
     # compatible with the multipole representation
@@ -248,7 +248,7 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
                 print(f"VF iteration {i_vf + 1}/{n_vf_iter}")
 
             # call vf
-            poles, residues, cf, f_fit, rms = vectfit(f, s, poles, weight)
+            poles, residues, *_ = vectfit(f, s, poles, weight)
 
             # convert real pole to conjugate pairs
             n_real_poles = 0
@@ -265,8 +265,8 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
             if n_real_poles > 0:
                 if log >= DETAILED_LOGGING:
                     print(f"  # real poles: {n_real_poles}")
-                new_poles, residues, cf, f_fit, rms = \
-                      vectfit(f, s, new_poles, weight, skip_pole=True)
+                new_poles, residues, *_ = \
+                      vectfit(f, s, new_poles, weight, skip_pole_update=True)
 
             # assess the result on test grid
             test_xs = evaluate(test_s, new_poles, residues) / test_energy
@@ -385,9 +385,9 @@ def _vectfit_xs(energy, ce_xs, mts, rtol=1e-3, atol=1e-5, orders=None,
 
     return (mp_poles, mp_residues)
 
-
 def vectfit_nuclide(endf_file, njoy_error=5e-4, vf_pieces=None,
-                    log=False, path_out=None, mp_filename=None, **kwargs):
+                    log=False, path_out=None, mp_filename=None,
+                    n_procs=-1, **kwargs):
     r"""Generate multipole data for a nuclide from ENDF.
 
     Parameters
@@ -404,6 +404,8 @@ def vectfit_nuclide(endf_file, njoy_error=5e-4, vf_pieces=None,
         Path to write out mutipole data file and vector fitting figures
     mp_filename : str, optional
         File name to write out multipole data
+    n_procs : int, optional
+        Maximum number of processors to use for vector fitting
     **kwargs
         Keyword arguments passed to :func:`openmc.data.multipole._vectfit_xs`
 
@@ -490,7 +492,7 @@ def vectfit_nuclide(endf_file, njoy_error=5e-4, vf_pieces=None,
     piece_width = (sqrt(E_max) - sqrt(E_min)) / vf_pieces
 
     alpha = nuc_ce.atomic_weight_ratio/(K_BOLTZMANN*TEMPERATURE_LIMIT)
-
+    
     poles, residues = [], []
     # VF piece by piece
     for i_piece in range(vf_pieces):

@@ -30,6 +30,7 @@ All credit goes to:
 
 """
 
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from typing import Tuple
 
 import numpy as np
@@ -85,16 +86,19 @@ def evaluate(
     num_coeffs = poly_coefficients.shape[1]
     result = np.zeros((num_vectors, num_samples))
 
-    for vec_idx in range(num_vectors):
-        term = np.sum(
-            residue_matrix[vec_idx][:, None] / (eval_points - pole_values[:, None]),
-            axis=0,
-        )
-        result[vec_idx] = np.real(term)
-        for poly_idx in range(num_coeffs):
-            result[vec_idx] += (
-                poly_coefficients[vec_idx, poly_idx] * eval_points**poly_idx
-            )
+    # term: sum over poles of (residues / (eval_points - poles))
+    denominator = (
+        eval_points[None, :] - pole_values[:, None]
+    )  # shape: (num_poles, num_eval)
+    pole_terms = residue_matrix @ (1.0 / denominator)  # shape: (num_vectors, num_eval)
+    result = np.real(pole_terms)
+
+    # polynomial part: sum over poly_idx of (coeff * eval_points**poly_idx)
+    if num_coeffs > 0:
+        powers = (
+            eval_points[None, :] ** np.arange(num_coeffs)[:, None]
+        )  # shape: (num_coeffs, num_eval)
+        result += poly_coefficients @ powers  # shape: (num_vectors, num_eval)
 
     return result
 
@@ -150,7 +154,7 @@ def vectfit(
     if n_polys < 0 or n_polys > 11:
         raise ValueError("num_polynomials must be in [0, 11]")
 
-    residue_matrix = np.zeros((num_vectors, num_poles), dtype=complex)
+    residue_matrix = np.zeros((num_vectors, num_poles), dtype=np.complex128)
     poly_coefficients = np.zeros((num_vectors, n_polys))
     fit_result = np.zeros_like(response_matrix)
     rms_error = 0.0
@@ -160,7 +164,7 @@ def vectfit(
         return initial_poles, residue_matrix, poly_coefficients, fit_result, rms_error
 
     if not skip_pole_update and num_poles > 0:
-        updated_poles = _identify_poles(
+        updated_poles = identify_poles(
             num_poles,
             num_samples,
             n_polys,
@@ -176,7 +180,7 @@ def vectfit(
         updated_poles = initial_poles
 
     if not skip_residue_update:
-        fit_result, rms_error = _identify_residues(
+        fit_result, rms_error = identify_residues(
             num_poles,
             updated_poles,
             num_samples,
@@ -192,7 +196,257 @@ def vectfit(
     return updated_poles, residue_matrix, poly_coefficients, fit_result, rms_error
 
 
-def _identify_poles(
+def compute_dk_matrix(
+    dk_matrix, eval_points, poles, conj_index, num_poles, num_polys, tol_high=None
+):
+    """
+    Compute the dk_matrix used in windowed multipole evaluations.
+
+    Parameters
+    ----------
+    dk_matrix : ndarray of shape (len(eval_points), M)
+        The full matrix used in least-squares fitting or evaluation.
+    eval_points : ndarray of shape (N,)
+        Energy points at which to evaluate.
+    poles : ndarray of shape (num_poles,)
+        Complex poles used in the resonance model.
+    conj_index : ndarray of shape (num_poles,)
+        Index array indicating pole conjugacy behavior: 0 (normal), 1 (add conjugate), 2 (imaginary part).
+    num_poles : int
+        Number of complex poles.
+    num_polys : int
+        Number of Chebyshev polynomial terms (including constant term).
+    tol_high : float
+        Replacement value for infinities.
+    """
+    # Broadcast shapes
+    eval_points_col = eval_points[:, np.newaxis]
+    poles_row = poles[np.newaxis, :]
+
+    # Compute base terms
+    term1 = 1.0 / (eval_points_col - poles_row)
+    term2 = 1.0 / (eval_points_col - np.conj(poles_row))
+    term3 = 1j / (eval_points_col - np.conj(poles_row)) - 1j / (
+        eval_points_col - poles_row
+    )
+
+    # Masks for different conjugacy types
+    mask0 = conj_index == 0
+    mask1 = conj_index == 1
+    mask2 = conj_index == 2
+
+    # Fill dk_matrix with pole terms
+    dk_matrix[:, :num_poles][:, mask0] = term1[:, mask0]
+    dk_matrix[:, :num_poles][:, mask1] = term1[:, mask1] + term2[:, mask1]
+    dk_matrix[:, :num_poles][:, mask2] = term3[:, mask2]
+
+    # Replace infinities with high tolerance value
+    if tol_high is not None:
+        np.copyto(dk_matrix, tol_high + 0j, where=np.isinf(dk_matrix))
+
+    # Add polynomial basis (Chebyshev-like, just powers here)
+    powers = np.arange(num_polys)
+    dk_matrix[:, num_poles : num_poles + num_polys] = eval_points_col**powers + 0j
+    return dk_matrix
+
+
+def row_block_matrix(
+    dk_matrix: np.ndarray,
+    weights: np.ndarray,
+    response_matrix: np.ndarray,
+    vec_idx: int,
+    num_poles: int,
+    num_polys: int,
+) -> np.ndarray:
+    """
+    Construct a single matrix row block for the given vector index.
+
+    Parameters
+    ----------
+    dk_matrix : ndarray of shape (num_samples, num_poles + num_polys)
+        Basis function evaluations at each sample point.
+    weights : ndarray of shape (num_vectors, num_samples)
+        Sample weights for each vector.
+    response_matrix : ndarray of shape (num_vectors, num_samples)
+        Response values at each sample point.
+    vec_idx : int
+        Index of the vector to construct the A1 block for.
+    num_poles : int
+        Number of poles used in the model.
+    num_polys : int
+        Number of polynomial basis terms.
+
+    Returns
+    -------
+    A : ndarray of shape (num_samples, num_poles + num_polys + num_poles + 1)
+        Weighted and assembled matrix block for the current vector.
+    """
+    num_samples = dk_matrix.shape[0]
+    A = np.zeros(
+        (num_samples, num_poles + num_polys + num_poles + 1), dtype=np.complex128
+    )
+
+    # Weighted basis terms
+    A[:, : num_poles + num_polys] = (
+        weights[vec_idx][:, np.newaxis] * dk_matrix[:, : num_poles + num_polys]
+    )
+
+    # Weighted response terms (includes poles + 1)
+    A[:, num_poles + num_polys : num_poles + num_polys + num_poles + 1] = (
+        -weights[vec_idx][:, np.newaxis]
+        * dk_matrix[:, : num_poles + 1]
+        * response_matrix[vec_idx][:, np.newaxis]
+    )
+
+    return A
+
+
+def process_constrained_block(
+    vec_idx,
+    dk_matrix,
+    weights,
+    response_matrix,
+    num_samples,
+    num_poles,
+    num_polys,
+    scale_factor,
+    num_vectors,
+) -> Tuple[int, np.ndarray, np.ndarray]:
+    """
+    Construct a constrained least-squares system block for the given vector index.
+
+    This function computes the A matrix using weighted evaluations of the basis functions
+    and response terms. It appends a constraint row to enforce physical properties
+    (e.g., normalization) **only for the final vector index**. The full matrix A is
+    decomposed via QR, and the resulting triangular block is returned.
+
+    This routine is intended for use in the main vector fitting loop when the denominator
+    is well-conditioned but requires an additional constraint row for physical consistency.
+
+    Parameters
+    ----------
+    vec_idx : int
+        Index of the vector to process.
+    dk_matrix : ndarray of shape (num_samples, num_poles + num_polys)
+        Evaluated basis functions at sample points.
+    weights : ndarray of shape (num_vectors, num_samples)
+        Weight matrix per vector.
+    response_matrix : ndarray of shape (num_vectors, num_samples)
+        Response function values for each vector.
+    num_samples : int
+        Number of sample points.
+    num_poles : int
+        Number of poles in the model.
+    num_polys : int
+        Number of polynomial terms in the model.
+    scale_factor : float
+        Scaling factor applied to the final constraint row.
+    num_vectors : int
+        Total number of vectors to process.
+
+    Returns
+    -------
+    vec_idx : int
+        Index of the processed vector.
+    lhs_block : ndarray of shape (num_poles + 1, num_poles + 1)
+        Triangular matrix block from QR decomposition.
+    rhs_block : ndarray of shape (num_poles + 1,) or None
+        Right-hand side vector block (only returned for final vec_idx), else None.
+    """
+    A1 = row_block_matrix(
+        dk_matrix, weights, response_matrix, vec_idx, num_poles, num_polys
+    )
+    A = np.zeros((2 * num_samples + 1, num_poles + num_polys + num_poles + 1))
+    A[:num_samples] = A1.real
+    A[num_samples : 2 * num_samples] = A1.imag
+    # Handle final row only if vec_idx is last
+    if vec_idx == num_vectors - 1:
+        A[
+            2 * num_samples,
+            num_poles + num_polys : num_poles + num_polys + num_poles + 1,
+        ] = scale_factor * np.real(dk_matrix[:, : num_poles + 1].sum(axis=0))
+
+    Q, R = qr(A, mode="economic")
+
+    lhs_block = R[
+        num_poles + num_polys : num_poles + num_polys + num_poles + 1,
+        num_poles + num_polys : num_poles + num_polys + num_poles + 1,
+    ]
+
+    if vec_idx == num_vectors - 1:
+        rhs_block = (
+            num_samples
+            * scale_factor
+            * Q[-1, num_poles + num_polys : num_poles + num_polys + num_poles + 1]
+        )
+    else:
+        rhs_block = np.zeros_like(
+            Q[-1, num_poles + num_polys : num_poles + num_polys + num_poles + 1]
+        )
+
+    return vec_idx, lhs_block, rhs_block
+
+
+def process_unconstrained_block(
+    vec_idx, dk_matrix, weights, response_matrix, denom, num_poles, num_polys
+) -> Tuple[int, np.ndarray, np.ndarray]:
+    """
+    Construct an unconstrained least-squares system block for the given vector index.
+
+    This function is used when the fitting denominator becomes ill-conditioned
+    (too small or too large), and the original constrained system is replaced by
+    an alternative regularized least-squares problem. The A matrix is built by stacking
+    the real and imaginary parts of the basis evaluations, and the RHS vector b is
+    scaled by `denom`.
+
+    A standard QR decomposition is used to extract the square block of the system,
+    which can be solved independently from the constrained system.
+
+    Parameters
+    ----------
+    vec_idx : int
+        Index of the vector to process.
+    dk_matrix : ndarray of shape (num_samples, num_poles + num_polys)
+        Evaluated basis functions at sample points.
+    weights : ndarray of shape (num_vectors, num_samples)
+        Weight matrix per vector.
+    response_matrix : ndarray of shape (num_vectors, num_samples)
+        Response function values for each vector.
+    denom : float
+        Scaling factor applied to the right-hand side vector b.
+    num_poles : int
+        Number of poles in the model.
+    num_polys : int
+        Number of polynomial terms in the model.
+
+    Returns
+    -------
+    vec_idx : int
+        Index of the processed vector.
+    lhs_block : ndarray of shape (num_poles, num_poles)
+        Triangular matrix block from QR decomposition.
+    rhs_block : ndarray of shape (num_poles,)
+        Right-hand side vector block for this vector.
+    """
+    A1 = row_block_matrix(
+        dk_matrix, weights, response_matrix, vec_idx, num_poles, num_polys
+    )
+    A = np.vstack((A1.real, A1.imag))
+
+    b1 = denom * weights[vec_idx] * response_matrix[vec_idx]
+    b = np.concatenate((b1.real, b1.imag))
+
+    Q, R = qr(A, mode="economic")
+
+    lhs_block = R[
+        num_poles + num_polys : num_poles + num_polys + num_poles,
+        num_poles + num_polys : num_poles + num_polys + num_poles,
+    ]
+    rhs_block = Q[:, num_poles + num_polys : num_poles + num_polys + num_poles].T @ b
+    return vec_idx, lhs_block, rhs_block
+
+
+def identify_poles(
     num_poles: int,
     num_samples: int,
     num_polys: int,
@@ -235,22 +489,13 @@ def _identify_poles(
     np.ndarray
         Updated poles as eigenvalues (shape: [num_poles]).
     """
-    conj_index = _label_conjugate_poles(poles)
-
-    dk_matrix = np.zeros((num_samples, num_poles + max(num_polys, 1)), dtype=complex)
-    for m in range(num_poles):
-        p = poles[m]
-        if conj_index[m] == 0:
-            dk_matrix[:, m] = 1.0 / (eval_points - p)
-        elif conj_index[m] == 1:
-            dk_matrix[:, m] = 1.0 / (eval_points - p) + 1.0 / (eval_points - np.conj(p))
-        elif conj_index[m] == 2:
-            dk_matrix[:, m] = 1j / (eval_points - np.conj(p)) - 1j / (eval_points - p)
-
-    dk_matrix[np.isinf(dk_matrix)] = tol_high + 0j
-    dk_matrix[:, num_poles] = 1.0 + 0j
-    for m in range(1, num_polys):
-        dk_matrix[:, num_poles + m] = eval_points**m + 0j
+    conj_index = label_conjugate_poles(poles)
+    dk_matrix = np.zeros(
+        (num_samples, num_poles + max(num_polys, 1)), dtype=np.complex128
+    )
+    compute_dk_matrix(
+        dk_matrix, eval_points, poles, conj_index, num_poles, num_polys, tol_high
+    )
 
     scale_factor = (
         np.sqrt(
@@ -261,41 +506,34 @@ def _identify_poles(
     lhs_matrix = np.zeros((num_vectors * (num_poles + 1), num_poles + 1))
     rhs_vector = np.zeros(num_vectors * (num_poles + 1))
 
-    for vec_idx in range(num_vectors):
-        A1 = np.zeros(
-            (num_samples, num_poles + num_polys + num_poles + 1), dtype=complex
-        )
-        for m in range(num_poles + num_polys):
-            A1[:, m] = weights[vec_idx] * dk_matrix[:, m]
-        for m in range(num_poles + 1):
-            A1[:, num_poles + num_polys + m] = (
-                -weights[vec_idx] * dk_matrix[:, m] * response_matrix[vec_idx]
+    with ProcessPoolExecutor() as executor:
+        futures = [
+            executor.submit(
+                process_constrained_block,
+                vec_idx,
+                dk_matrix,
+                weights,
+                response_matrix,
+                num_samples,
+                num_poles,
+                num_polys,
+                scale_factor,
+                num_vectors,
             )
-
-        A = np.zeros((2 * num_samples + 1, num_poles + num_polys + num_poles + 1))
-        A[:num_samples] = A1.real
-        A[num_samples : 2 * num_samples] = A1.imag
-
-        if vec_idx == num_vectors - 1:
-            for m in range(num_poles + 1):
-                A[2 * num_samples, num_poles + num_polys + m] = scale_factor * np.real(
-                    dk_matrix[:, m].sum()
-                )
-
-        Q, R = qr(A, mode="economic")
-        lhs_matrix[vec_idx * (num_poles + 1) : (vec_idx + 1) * (num_poles + 1)] = R[
-            num_poles + num_polys : num_poles + num_polys + num_poles + 1,
-            num_poles + num_polys : num_poles + num_polys + num_poles + 1,
+            for vec_idx in range(num_vectors)
         ]
-        if vec_idx == num_vectors - 1:
-            rhs_vector[vec_idx * (num_poles + 1) : (vec_idx + 1) * (num_poles + 1)] = (
-                num_samples
-                * scale_factor
-                * Q[-1, num_poles + num_polys : num_poles + num_polys + num_poles + 1]
-            )
 
-    column_scale = 1.0 / np.linalg.norm(lhs_matrix, axis=0)
+        for future in as_completed(futures):
+            vec_idx, lhs_block, rhs_block = future.result()
+            i0 = vec_idx * (num_poles + 1)
+            i1 = (vec_idx + 1) * (num_poles + 1)
+            lhs_matrix[i0:i1] = lhs_block
+            rhs_vector[i0:i1] = rhs_block
+
+    column_scale = np.linalg.norm(lhs_matrix, axis=0)
+    column_scale[column_scale == 0] = 1.0
     lhs_matrix *= column_scale
+
     solution, *_ = lstsq(lhs_matrix, rhs_vector)
     solution *= column_scale
     coeffs = solution[:-1]
@@ -304,6 +542,7 @@ def _identify_poles(
     if abs(denom) < tol_low or abs(denom) > tol_high:
         lhs_matrix = np.zeros((num_vectors * num_poles, num_poles))
         rhs_vector = np.zeros(num_vectors * num_poles)
+        # Adjust denom
         if denom == 0.0:
             denom = 1.0
         elif abs(denom) < tol_low:
@@ -311,53 +550,125 @@ def _identify_poles(
         elif abs(denom) > tol_high:
             denom = np.sign(denom) * tol_high
 
-        for vec_idx in range(num_vectors):
-            A1 = np.zeros(
-                (num_samples, num_poles + num_polys + num_poles), dtype=complex
-            )
-            for m in range(num_poles + num_polys):
-                A1[:, m] = weights[vec_idx] * dk_matrix[:, m]
-            for m in range(num_poles):
-                A1[:, num_poles + num_polys + m] = (
-                    -weights[vec_idx] * dk_matrix[:, m] * response_matrix[vec_idx]
-                )
-            A = np.vstack((A1.real, A1.imag))
-            b1 = denom * weights[vec_idx] * response_matrix[vec_idx]
-            b = np.concatenate((b1.real, b1.imag))
-            Q, R = qr(A, mode="economic")
-            lhs_matrix[vec_idx * num_poles : (vec_idx + 1) * num_poles] = R[
-                num_poles + num_polys : num_poles + num_polys + num_poles,
-                num_poles + num_polys : num_poles + num_polys + num_poles,
-            ]
-            rhs_vector[vec_idx * num_poles : (vec_idx + 1) * num_poles] = (
-                Q[:, num_poles + num_polys : num_poles + num_polys + num_poles].T @ b
-            )
+        # Allocate output
+        lhs_matrix = np.zeros((num_vectors * num_poles, num_poles))
+        rhs_vector = np.zeros(num_vectors * num_poles)
 
-        column_scale = 1.0 / np.linalg.norm(lhs_matrix, axis=0)
+        # Run in parallel
+        with ProcessPoolExecutor() as executor:
+            futures = [
+                executor.submit(
+                    process_unconstrained_block,
+                    vec_idx,
+                    dk_matrix,
+                    weights,
+                    response_matrix,
+                    denom,
+                    num_poles,
+                    num_polys,
+                )
+                for vec_idx in range(num_vectors)
+            ]
+
+            for future in as_completed(futures):
+                vec_idx, lhs_block, rhs_block = future.result()
+                i0 = vec_idx * num_poles
+                i1 = (vec_idx + 1) * num_poles
+                lhs_matrix[i0:i1] = lhs_block
+                rhs_vector[i0:i1] = rhs_block
+
+        column_scale = np.linalg.norm(lhs_matrix, axis=0)
+        column_scale[column_scale == 0] = 1.0
         lhs_matrix *= column_scale
         coeffs, *_ = lstsq(lhs_matrix, rhs_vector)
         coeffs *= column_scale
 
     lambda_matrix = np.zeros((num_poles, num_poles))
     scale_vector = np.ones((num_poles, 1))
-    for m in range(num_poles):
-        if conj_index[m] == 0:
-            lambda_matrix[m, m] = np.real(poles[m])
-        elif conj_index[m] == 1:
-            real_part = np.real(poles[m])
-            imag_part = np.imag(poles[m])
-            lambda_matrix[m, m] = real_part
-            lambda_matrix[m + 1, m + 1] = real_part
-            lambda_matrix[m + 1, m] = -imag_part
-            lambda_matrix[m, m + 1] = imag_part
-            scale_vector[m, 0] = 2.0
-            scale_vector[m + 1, 0] = 0.0
 
-    residue_matrix = lambda_matrix - (scale_vector @ coeffs.reshape(1, -1)) / denom
+    # Mask for real poles (conj_index == 0)
+    mask_real = conj_index == 0
+    real_indices = np.where(mask_real)[0]
+    lambda_matrix[real_indices, real_indices] = np.real(poles[real_indices])
+
+    # Mask for start of complex conjugate pairs (conj_index == 1)
+    mask_cplx_start = conj_index == 1
+    cplx_indices = np.where(mask_cplx_start)[0]
+
+    # Extract real and imaginary parts of complex conjugate poles
+    real_parts = np.real(poles[cplx_indices])
+    imag_parts = np.imag(poles[cplx_indices])
+
+    # Diagonal assignments
+    lambda_matrix[cplx_indices, cplx_indices] = real_parts
+    lambda_matrix[cplx_indices + 1, cplx_indices + 1] = real_parts
+
+    # Off-diagonal assignments
+    lambda_matrix[cplx_indices, cplx_indices + 1] = imag_parts
+    lambda_matrix[cplx_indices + 1, cplx_indices] = -imag_parts
+
+    # Scaling vector adjustments
+    scale_vector[cplx_indices, 0] = 2.0
+    scale_vector[cplx_indices + 1, 0] = 0.0
+
+    residue_matrix = lambda_matrix - np.outer(scale_vector.squeeze(), coeffs) / denom
     return eigvals(residue_matrix)
 
 
-def _identify_residues(
+def solve_vector_block(
+    vec_idx: int,
+    dk_matrix: np.ndarray,
+    weights: np.ndarray,
+    response_matrix: np.ndarray,
+    num_poles: int,
+    num_polys: int,
+) -> Tuple[int, np.ndarray, np.ndarray]:
+    """
+    Solve the least-squares system for a single vector index.
+
+    Parameters
+    ----------
+    vec_idx : int
+        Index of the vector to solve.
+    dk_matrix : ndarray
+        Basis function evaluations of shape (num_samples, num_poles + num_polys).
+    weights : ndarray
+        Weight array of shape (num_vectors, num_samples).
+    response_matrix : ndarray
+        Response array of shape (num_vectors, num_samples).
+    num_poles : int
+        Number of poles.
+    num_polys : int
+        Number of polynomial coefficients.
+
+    Returns
+    -------
+    vec_idx : int
+        The index of the solved vector.
+    residues : ndarray
+        Solution vector for the residues (length = num_poles).
+    poly_coeffs : ndarray or None
+        Solution vector for polynomial coefficients (length = num_polys), or None if num_polys == 0.
+    """
+    A = dk_matrix * weights[vec_idx][:, None]
+    b = weights[vec_idx] * response_matrix[vec_idx]
+
+    lhs_matrix = np.vstack((A.real, A.imag))
+    rhs_vector = np.concatenate((b.real, b.imag))
+
+    scale_column = np.linalg.norm(lhs_matrix, axis=0)
+    scale_column[scale_column == 0] = 1.0
+    lhs_matrix *= scale_column
+    x, *_ = lstsq(lhs_matrix, rhs_vector)
+    x *= scale_column
+
+    residues = x[:num_poles]
+    poly_coeffs = x[num_poles : num_poles + num_polys] if num_polys > 0 else None
+
+    return vec_idx, residues, poly_coeffs
+
+
+def identify_residues(
     num_poles: int,
     poles: np.ndarray,
     num_samples: int,
@@ -401,50 +712,55 @@ def _identify_residues(
         - Fitted response matrix (np.ndarray)
         - Root-mean-square fitting error (float)
     """
-    conj_index = _label_conjugate_poles(poles)
+    conj_index = label_conjugate_poles(poles)
+    dk_matrix = np.zeros((num_samples, num_poles + num_polys), dtype=np.complex128)
 
-    dk_matrix = np.zeros((num_samples, num_poles + num_polys), dtype=complex)
-    for m in range(num_poles):
-        p = poles[m]
-        if conj_index[m] == 0:
-            dk_matrix[:, m] = 1.0 / (eval_points - p)
-        elif conj_index[m] == 1:
-            dk_matrix[:, m] = 1.0 / (eval_points - p) + 1.0 / (eval_points - np.conj(p))
-        elif conj_index[m] == 2:
-            dk_matrix[:, m] = 1j / (eval_points - np.conj(p)) - 1j / (eval_points - p)
+    compute_dk_matrix(dk_matrix, eval_points, poles, conj_index, num_poles, num_polys)
 
-    for m in range(num_polys):
-        dk_matrix[:, num_poles + m] = eval_points**m + 0j
-
-    real_residues = np.zeros((num_vectors, num_poles))
-    for vec_idx in range(num_vectors):
-        A = dk_matrix * weights[vec_idx][:, None]
-        b = weights[vec_idx] * response_matrix[vec_idx]
-        lhs_matrix = np.vstack((A.real, A.imag))
-        rhs_vector = np.concatenate((b.real, b.imag))
-        scale_column = 1.0 / np.linalg.norm(lhs_matrix, axis=0)
-        lhs_matrix *= scale_column
-        x, *_ = lstsq(lhs_matrix, rhs_vector)
-        x *= scale_column
-        real_residues[vec_idx] = x[:num_poles]
-        if num_polys > 0:
-            poly_coefficients[vec_idx] = x[num_poles : num_poles + num_polys]
-
-    for m in range(num_poles):
-        if conj_index[m] == 0:
-            residue_matrix[:, m] = real_residues[:, m]
-        elif conj_index[m] == 1:
-            residue_matrix[:, m] = real_residues[:, m] + 1j * real_residues[:, m + 1]
-            residue_matrix[:, m + 1] = (
-                real_residues[:, m] - 1j * real_residues[:, m + 1]
+    real_residues = np.zeros((num_vectors, num_poles), dtype=np.float64)
+    with ProcessPoolExecutor() as executor:
+        futures = [
+            executor.submit(
+                solve_vector_block,
+                vec_idx,
+                dk_matrix,
+                weights,
+                response_matrix,
+                num_poles,
+                num_polys,
             )
+            for vec_idx in range(num_vectors)
+        ]
+
+        for future in as_completed(futures):
+            vec_idx, residues, poly_coeffs = future.result()
+            real_residues[vec_idx] = residues
+            if poly_coeffs is not None:
+                poly_coefficients[vec_idx] = poly_coeffs
+
+    # Mask for real poles
+    mask_real = conj_index == 0
+    real_indices = np.where(mask_real)[0]
+    residue_matrix[:, real_indices] = real_residues[:, real_indices]
+
+    # Mask for first of complex conjugate pairs
+    mask_cplx_start = conj_index == 1
+    cplx_indices = np.where(mask_cplx_start)[0]
+
+    # Compute complex residues using vectorized operations
+    residue_matrix[:, cplx_indices] = (
+        real_residues[:, cplx_indices] + 1j * real_residues[:, cplx_indices + 1]
+    )
+    residue_matrix[:, cplx_indices + 1] = (
+        real_residues[:, cplx_indices] - 1j * real_residues[:, cplx_indices + 1]
+    )
 
     fit_result = evaluate(eval_points, poles, residue_matrix, poly_coefficients)
     rms_error = norm(fit_result - response_matrix) / np.sqrt(num_vectors * num_samples)
     return fit_result, rms_error
 
 
-def _label_conjugate_poles(poles: np.ndarray) -> np.ndarray:
+def label_conjugate_poles(poles: np.ndarray) -> np.ndarray:
     """
     Ensure complex poles appear in conjugate pairs and label them accordingly.
 
@@ -469,17 +785,19 @@ def _label_conjugate_poles(poles: np.ndarray) -> np.ndarray:
     num_poles = len(poles)
     conj_index = np.zeros(num_poles, dtype=int)
 
-    m = 0
-    while m < num_poles:
-        if np.imag(poles[m]) != 0.0:
-            if m == 0 or conj_index[m - 1] in [0, 2]:
-                if m >= num_poles - 1 or not np.isclose(
-                    np.conj(poles[m]), poles[m + 1]
-                ):
-                    raise ValueError("Complex poles must appear in conjugate pairs")
-                conj_index[m] = 1
-                conj_index[m + 1] = 2
-                m += 1
-        m += 1
+    # Identify complex poles (nonzero imaginary part)
+    is_complex = np.imag(poles) != 0.0
+
+    # Find conjugate pairs: poles[i+1] ≈ conj(poles[i])
+    is_pair_start = is_complex[:-1] & np.isclose(np.conj(poles[:-1]), poles[1:])
+
+    # Mark valid conjugate pair entries
+    conj_index[:-1][is_pair_start] = 1  # mark i with 1
+    conj_index[1:][is_pair_start] = 2  # mark i+1 with 2
+
+    # Now validate: all complex poles must be part of valid conjugate pairs
+    unmatched_complex = is_complex & (conj_index == 0)
+    if np.any(unmatched_complex):
+        raise ValueError("Complex poles must appear in conjugate pairs")
 
     return conj_index

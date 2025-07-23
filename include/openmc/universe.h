@@ -6,7 +6,7 @@
 
 namespace openmc {
 
-#ifdef DAGMC
+#ifdef OPENMC_DAGMC_ENABLED
 class DAGUniverse;
 #endif
 

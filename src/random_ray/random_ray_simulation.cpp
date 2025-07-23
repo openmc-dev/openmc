@@ -508,8 +508,9 @@ void RandomRaySimulation::simulate()
         domain_->accumulate_iteration_flux();
 
         // Generate mapping between source regions and tallies
-        if (!domain_->mapped_all_tallies_) {
-          domain_->convert_source_regions_to_tallies();
+        if (!domain_->mapped_all_tallies_ &&
+            !RandomRay::mesh_subdivision_enabled_) {
+          domain_->convert_source_regions_to_tallies(0);
         }
 
         // Use above mapping to contribute FSR flux data to appropriate

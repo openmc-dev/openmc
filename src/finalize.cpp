@@ -166,7 +166,7 @@ int openmc_finalize()
   // Deallocate arrays
   free_memory();
 
-#ifdef LIBMESH
+#ifdef OPENMC_LIBMESH_ENABLED
   settings::libmesh_init.reset();
 #endif
 

@@ -400,31 +400,30 @@ class MeshBase(IDManagerMixin, ABC):
         """
         import openmc.lib
 
-        with change_directory(tmpdir=True):
-            # In order to get mesh into model, we temporarily replace the
-            # tallies with a single mesh tally using the current mesh
-            original_tallies = model.tallies
-            new_tally = openmc.Tally()
-            new_tally.filters = [openmc.MeshFilter(self)]
-            new_tally.scores = ['flux']
-            model.tallies = [new_tally]
+        # In order to get mesh into model, we temporarily replace the
+        # tallies with a single mesh tally using the current mesh
+        original_tallies = model.tallies
+        new_tally = openmc.Tally()
+        new_tally.filters = [openmc.MeshFilter(self)]
+        new_tally.scores = ['flux']
+        model.tallies = [new_tally]
 
-            # Export model to XML
-            model.export_to_model_xml()
+        # Set default arguments
+        kwargs.setdefault('output', True)
+        if 'args' in kwargs:
+            kwargs['args'] = ['-c'] + kwargs['args']
+        kwargs.setdefault('args', ['-c'])
 
-            # Get material volume fractions
-            kwargs.setdefault('output', True)
-            if 'args' in kwargs:
-                kwargs['args'] = ['-c'] + kwargs['args']
-            kwargs.setdefault('args', ['-c'])
-            openmc.lib.init(**kwargs)
+        with openmc.lib.TemporarySession(model, **kwargs):
+            # Get mesh from single tally
             mesh = openmc.lib.tallies[new_tally.id].filters[0].mesh
+
+            # Compute material volumes
             volumes = mesh.material_volumes(
                 n_samples, max_materials, output=kwargs['output'])
-            openmc.lib.finalize()
 
-            # Restore original tallies
-            model.tallies = original_tallies
+        # Restore original tallies
+        model.tallies = original_tallies
 
         return volumes
 
@@ -1095,7 +1094,7 @@ class RegularMesh(StructuredMesh):
     def from_domain(
         cls,
         domain: HasBoundingBox,
-        dimension: Sequence[int] = (10, 10, 10),
+        dimension: Sequence[int] | int = 1000,
         mesh_id: int | None = None,
         name: str = ''
     ):
@@ -1107,8 +1106,11 @@ class RegularMesh(StructuredMesh):
             The object passed in will be used as a template for this mesh. The
             bounding box of the property of the object passed will be used to
             set the lower_left and upper_right and of the mesh instance
-        dimension : Iterable of int
-            The number of mesh cells in each direction (x, y, z).
+        dimension : Iterable of int | int
+            The number of mesh cells in total or number of mesh cells in each
+            direction (x, y, z). If a single integer is provided, the domain
+            will will be divided into that many mesh cells with roughly equal
+            lengths in each direction (cubes).
         mesh_id : int
             Unique identifier for the mesh
         name : str
@@ -1126,6 +1128,16 @@ class RegularMesh(StructuredMesh):
         mesh = cls(mesh_id=mesh_id, name=name)
         mesh.lower_left = domain.bounding_box[0]
         mesh.upper_right = domain.bounding_box[1]
+        if isinstance(dimension, int):
+            cv.check_greater_than("dimension", dimension, 1, equality=True)
+            # If a single integer is provided, divide the domain into that many
+            # mesh cells with roughly equal lengths in each direction
+            ideal_cube_volume = domain.bounding_box.volume / dimension
+            ideal_cube_size = ideal_cube_volume ** (1 / 3)
+            dimension = [
+                max(1, int(round(side / ideal_cube_size)))
+                for side in domain.bounding_box.width
+            ]
         mesh.dimension = dimension
 
         return mesh

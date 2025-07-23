@@ -328,13 +328,13 @@ class StepResult:
 
         handle.create_dataset("number", (1, n_stages, n_mats, n_nuc_number),
                               maxshape=(None, n_stages, n_mats, n_nuc_number),
-                              chunks=(1, 1, n_mats, n_nuc_number),
+                              chunks=True,
                               dtype='float64')
 
         if n_nuc_rxn > 0 and n_rxn > 0:
             handle.create_dataset("reaction rates", (1, n_stages, n_mats, n_nuc_rxn, n_rxn),
                                 maxshape=(None, n_stages, n_mats, n_nuc_rxn, n_rxn),
-                                chunks=(1, 1, n_mats, n_nuc_rxn, n_rxn),
+                                chunks=True,
                                 dtype='float64')
 
         handle.create_dataset("eigenvalues", (1, n_stages, 2),

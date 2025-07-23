@@ -346,8 +346,6 @@ def test_ww_generation_with_dagmc():
     dag_univ = openmc.DAGMCUniverse(filename=Path(__file__).parent.parent / "dagmc" / "dagmc_tetrahedral_no_graveyard.h5m")
     bound_dag_univ = dag_univ.bounded_universe(padding_distance=10)
     my_geometry = openmc.Geometry(root=bound_dag_univ)
-    # my_geometry = openmc.Geometry(root=dag_univ) # could set geometry like this
-    # but the ww generation then fails with RuntimeError: Unknown domain type: dagmcuniverse
 
     my_settings = openmc.Settings()
     my_settings.batches = 10
@@ -400,8 +398,6 @@ def test_ww_generation_with_dagmc():
     )
 
     rr_model.run()
-    # If my_geometry is set to a dagmc universe like this my_geometry = openmc.Geometry(root=dag_univ)
-    # then this line fails with RuntimeError: Unknown domain type: dagmcuniverse
 
     weight_windows = openmc.WeightWindowsList().from_hdf5("weight_windows.h5")
     weight_windows = openmc.hdf5_to_wws("weight_windows.h5")
@@ -412,4 +408,3 @@ def test_ww_generation_with_dagmc():
     model.settings.weight_windows = weight_windows
 
     model.run()
-    # this line fails with RuntimeError: Maximum number of lost particles has been reached

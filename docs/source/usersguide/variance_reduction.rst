@@ -272,7 +272,7 @@ distribution in OpenMC which permits biasing.
 
 .. list-table:: **Biasable probability density functions (PDFs) in OpenMC**
    :header-rows: 1
-   :widths: 40 60
+   :widths: 35 65
 
    * - Discrete Univariate PDFs
      - Biasing Method
@@ -282,7 +282,7 @@ distribution in OpenMC which permits biasing.
 
 .. list-table::
    :header-rows: 1
-   :widths: 40 60
+   :widths: 35 65
 
    * - Continuous Univariate PDFs
      - Biasing Method
@@ -297,18 +297,18 @@ distribution in OpenMC which permits biasing.
 
 .. list-table::
    :header-rows: 1
-   :widths: 40 60
+   :widths: 35 65
 
    * - Discrete Multivariate PDFs
      - Biasing Method
    * - :class:`openmc.stats.PointCloud`,
        :class:`openmc.stats.MeshSpatial`
      - Apply a vector of the new relative probabilities of each point or mesh 
-       element under biased sampling to the attr:`bias` attribute  
+       element under biased sampling to the :attr:`bias` attribute  
 
 .. list-table::
    :header-rows: 1
-   :widths: 40 60 
+   :widths: 35 65 
 
    * - Continuous Multivariate PDFs
      - Biasing Method

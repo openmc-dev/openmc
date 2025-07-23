@@ -161,7 +161,19 @@ class PolarAzimuthal(UnitSphere):
 
 
 class Isotropic(UnitSphere):
-    """Isotropic angular distribution."""
+    """Isotropic angular distribution.
+
+    Parameters
+    ----------
+    bias : openmc.stats.PolarAzimuthal, optional
+        Distribution for biased sampling. Defaults to None for unbiased sampling.
+
+    Attributes
+    ----------
+    bias : openmc.stats.PolarAzimuthal or None
+        Distribution for biased sampling
+
+    """
 
     def __init__(self, bias: PolarAzimuthal = None):
         super().__init__()
@@ -174,7 +186,10 @@ class Isotropic(UnitSphere):
     @bias.setter
     def bias(self, bias):
         cv.check_type('Biasing distribution', bias, PolarAzimuthal, none_ok=True)
-        self._bias = bias
+        if (bias.mu().bias is not None) or (bias.phi().bias is not None):
+            raise RuntimeError('Biasing distributions should not have their own bias!')
+        else:
+            self._bias = bias
 
     def to_xml_element(self):
         """Return XML representation of the isotropic distribution
@@ -674,6 +689,9 @@ class MeshSpatial(Spatial):
     volume_normalized : bool, optional
         Whether or not the strengths will be multiplied by element volumes at
         runtime. Default is True.
+    bias : iterable of float, optional
+        An iterable of values giving the selection weights assigned to each 
+        element during biased sampling. Defaults to None for unbiased sampling.
 
     Attributes
     ----------
@@ -684,6 +702,8 @@ class MeshSpatial(Spatial):
     volume_normalized : bool
         Whether or not the strengths will be multiplied by element volumes at
         runtime.
+    bias : numpy.ndarray or None
+        Distribution for biased sampling
     """
 
     def __init__(self, mesh, strengths=None, volume_normalized=True, bias=None):
@@ -827,6 +847,9 @@ class PointCloud(Spatial):
     strengths : iterable of float, optional
         An iterable of values that represents the relative probabilty of each
         point.
+    bias : iterable of float, optional
+        An iterable of values representing the relative probability of each
+        point under biased sampling. Defaults to None for unbiased sampling.
 
     Attributes
     ----------
@@ -834,6 +857,8 @@ class PointCloud(Spatial):
         The points in space to be sampled with shape (N, 3)
     strengths : numpy.ndarray or None
         An array of relative probabilities for each mesh point
+    bias : numpy.ndarray or None
+        An array of relative probabilities for biased sampling of mesh points
     """
 
     def __init__(

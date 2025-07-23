@@ -5,7 +5,6 @@
 #define OPENMC_DISTRIBUTION_H
 
 #include <cstddef> // for size_t
-#include <any> // for std::any
 
 #include "pugixml.hpp"
 
@@ -328,9 +327,7 @@ public:
 
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
-  //! \return A Sample where:
-  //!         - val stores a sampled value, accessible by std::any_cast<double>
-  //!         - wgt is a double representing the sample weight
+  //! \return (sampled value, sample weight)
   std::pair<double, double> sample(uint64_t* seed) const override;
   
   //! Evaluate probability density at a point

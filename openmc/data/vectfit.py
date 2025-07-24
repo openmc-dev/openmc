@@ -29,6 +29,7 @@ All credit goes to:
 (https://github.com/mit-crpg/vectfit.git)
 
 """
+
 from typing import Tuple
 
 import numpy as np
@@ -195,7 +196,13 @@ def vectfit(
 
 
 def compute_dk_matrix(
-    dk_matrix, eval_points, poles, conj_index, num_poles, num_polys, tol_high=None
+    dk_matrix: np.ndarray,
+    eval_points: np.ndarray,
+    poles: np.ndarray,
+    conj_index: np.ndarray,
+    num_poles: int,
+    num_polys: int,
+    tol_high: float = None,
 ):
     """
     Compute the dk_matrix used in windowed multipole evaluations.
@@ -300,15 +307,15 @@ def row_block_matrix(
 
 
 def process_constrained_block(
-    vec_idx,
-    dk_matrix,
-    weights,
-    response_matrix,
-    num_samples,
-    num_poles,
-    num_polys,
-    scale_factor,
-    num_vectors,
+    vec_idx: int,
+    dk_matrix: np.ndarray,
+    weights: np.ndarray,
+    response_matrix: np.ndarray,
+    num_samples: int,
+    num_poles: int,
+    num_polys: int,
+    scale_factor: float,
+    num_vectors: int,
 ) -> Tuple[int, np.ndarray, np.ndarray]:
     """
     Construct a constrained least-squares system block for the given vector index.
@@ -386,7 +393,13 @@ def process_constrained_block(
 
 
 def process_unconstrained_block(
-    vec_idx, dk_matrix, weights, response_matrix, denom, num_poles, num_polys
+    vec_idx: int,
+    dk_matrix: np.ndarray,
+    weights: np.ndarray,
+    response_matrix: np.ndarray,
+    denom: float,
+    num_poles: int,
+    num_polys: int,
 ) -> Tuple[int, np.ndarray, np.ndarray]:
     """
     Construct an unconstrained least-squares system block for the given vector index.
@@ -514,7 +527,7 @@ def identify_poles(
             num_poles,
             num_polys,
             scale_factor,
-            num_vectors
+            num_vectors,
         )
         i0 = vec_idx * (num_poles + 1)
         i1 = (vec_idx + 1) * (num_poles + 1)

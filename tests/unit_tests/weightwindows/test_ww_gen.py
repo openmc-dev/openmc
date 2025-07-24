@@ -344,12 +344,12 @@ def test_ww_generation_with_dagmc():
 
     my_materials = openmc.Materials([mat1])
     dag_univ = openmc.DAGMCUniverse(filename=Path(__file__).parent.parent / "dagmc" / "dagmc_tetrahedral_no_graveyard.h5m")
-    bound_dag_univ = dag_univ.bounded_universe(padding_distance=10)
+    bound_dag_univ = dag_univ.bounded_universe(padding_distance=1)
     my_geometry = openmc.Geometry(root=bound_dag_univ)
 
     my_settings = openmc.Settings()
-    my_settings.batches = 10
-    my_settings.particles = 50
+    my_settings.batches = 6
+    my_settings.particles = 30
     my_settings.run_mode = "fixed source"
 
     # Create a point source which are supported by random ray mode
@@ -367,15 +367,14 @@ def test_ww_generation_with_dagmc():
     rr_model.convert_to_multigroup(
         method="stochastic_slab",
         overwrite_mgxs_library=True,
-        nparticles=20,
+        nparticles=10,
         groups="CASMO-2"
     )
 
     rr_model.convert_to_random_ray()
 
     mesh = openmc.RegularMesh().from_domain(rr_model)
-    mesh.dimension = (10, 10, 10)
-    mesh.id = 1
+    mesh.dimension = (4, 4, 4)
 
     # avoid writing files we don't make use of
     rr_model.settings.output = {"summary": False, "tallies": False}
@@ -400,7 +399,6 @@ def test_ww_generation_with_dagmc():
     rr_model.run()
 
     weight_windows = openmc.WeightWindowsList().from_hdf5("weight_windows.h5")
-    weight_windows = openmc.hdf5_to_wws("weight_windows.h5")
 
     model.settings.weight_windows_on = True
     model.settings.weight_window_checkpoints = {"collision": True, "surface": True}

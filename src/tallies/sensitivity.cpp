@@ -773,7 +773,7 @@ void score_source_sensitivity(Particle& p)
   // A void material cannot be perturbed so it will not affect sensitivities.
   if (p.material() == MATERIAL_VOID) return;
 
-  // only scattering events affect source sensitivity
+  // only scattering events affect source
   if (p.event() != TallyEvent::SCATTER) return;
 
   const Material& material {*model::materials[p.material()]};
@@ -807,8 +807,14 @@ void score_source_sensitivity(Particle& p)
       switch (sens.sens_reaction) {
       case N_2N:
       case N_2NA:
+      case N_3N:
+      case N_3NA:
         if (p.event_mt() != sens.sens_reaction) continue;
-        score = 3.0/4.0;
+        // fraction of scattering due to (n,xn) reaction
+        double nxn_fraction;
+        nxn_fraction = get_nuclide_xs_sens(p, sens.sens_nuclide, sens.sens_reaction) / 
+          (p.neutron_xs(sens.sens_nuclide).total - p.neutron_xs(sens.sens_nuclide).absorption); 
+        score = 1.0 - nxn_fraction;
         break;
       default:          
         score = 0.0;

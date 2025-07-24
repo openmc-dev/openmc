@@ -542,9 +542,9 @@ CompiledSourceWrapper::~CompiledSourceWrapper()
 // MeshElementSpatial implementation
 //==============================================================================
 
-Position MeshElementSpatial::sample(uint64_t* seed) const
+std::pair<Position, double> MeshElementSpatial::sample(uint64_t* seed) const
 {
-  return model::meshes[mesh_index_]->sample_element(elem_index_, seed);
+  return {model::meshes[mesh_index_]->sample_element(elem_index_, seed), 1.0};
 }
 
 //==============================================================================

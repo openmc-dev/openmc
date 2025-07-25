@@ -17,6 +17,8 @@
 #include "openmc/particle.h"
 #include "openmc/position.h"
 #include "openmc/random_lcg.h"
+#include "openmc/tallies/filter.h"
+#include "openmc/tallies/filter_match.h"
 #include "openmc/xml_interface.h"
 
 namespace openmc {
@@ -148,11 +150,13 @@ struct IdData {
   IdData(size_t h_res, size_t v_res);
 
   // Methods
-  void set_value(size_t y, size_t x, const GeometryState& p, int level);
+  void set_value(size_t y, size_t x, const Particle& p, int level,
+    Filter* filter, FilterMatch* match);
   void set_overlap(size_t y, size_t x);
 
   // Members
-  xt::xtensor<int32_t, 3> data_; //!< 2D array of cell & material ids
+  xt::xtensor<int32_t, 4> data_; //!< 4D array of cell ID, cell instance,
+                                 //!< material ID, and filter index
 };
 
 struct PropertyData {
@@ -160,7 +164,8 @@ struct PropertyData {
   PropertyData(size_t h_res, size_t v_res);
 
   // Methods
-  void set_value(size_t y, size_t x, const GeometryState& p, int level);
+  void set_value(size_t y, size_t x, const Particle& p, int level,
+    Filter* filter, FilterMatch* match);
   void set_overlap(size_t y, size_t x);
 
   // Members
@@ -174,7 +179,7 @@ struct PropertyData {
 class SlicePlotBase {
 public:
   template<class T>
-  T get_map() const;
+  T get_map(int32_t filter_index = -1) const;
 
   enum class PlotBasis { xy = 1, xz = 2, yz = 3 };
 
@@ -195,11 +200,16 @@ private:
 };
 
 template<class T>
-T SlicePlotBase::get_map() const
+T SlicePlotBase::get_map(int32_t filter_index) const
 {
 
   size_t width = pixels_[0];
   size_t height = pixels_[1];
+
+  Filter* filter = nullptr;
+  if (filter_index > 0) {
+    filter = &model::tally_filters[filter_index].get();
+  }
 
   // get pixel size
   double in_pixel = (width_[0]) / static_cast<double>(width);
@@ -237,12 +247,13 @@ T SlicePlotBase::get_map() const
 
 #pragma omp parallel
   {
-    GeometryState p;
+    Particle p;
     p.r() = xyz;
     p.u() = dir;
     p.coord(0).universe() = model::root_universe;
     int level = slice_level_;
     int j {};
+    FilterMatch match;
 
 #pragma omp for
     for (int y = 0; y < height; y++) {
@@ -257,7 +268,7 @@ T SlicePlotBase::get_map() const
           j = level;
         }
         if (found_cell) {
-          data.set_value(y, x, p, j);
+          data.set_value(y, x, p, j, filter, &match);
         }
         if (slice_color_overlaps_ && check_cell_overlap(p, false)) {
           data.set_overlap(y, x);

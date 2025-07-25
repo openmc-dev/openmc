@@ -34,6 +34,7 @@
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
 #include "openmc/string_utils.h"
+#include "openmc/tallies/filter.h"
 
 namespace openmc {
 
@@ -48,7 +49,8 @@ constexpr int32_t OVERLAP {-3};
 IdData::IdData(size_t h_res, size_t v_res) : data_({v_res, h_res, 3}, NOT_FOUND)
 {}
 
-void IdData::set_value(size_t y, size_t x, const GeometryState& p, int level)
+void IdData::set_value(size_t y, size_t x, const Particle& p, int level,
+  Filter* filter, FilterMatch* match)
 {
   // set cell data
   if (p.n_coord() <= level) {
@@ -70,6 +72,18 @@ void IdData::set_value(size_t y, size_t x, const GeometryState& p, int level)
     Material* m = model::materials.at(p.material()).get();
     data_(y, x, 2) = m->id_;
   }
+
+  // set filter index
+  if (filter) {
+    filter->get_all_bins(p, TallyEstimator::COLLISION, *match);
+    if (match->bins_.empty()) {
+      data_(y, x, 3) = -1;
+    } else {
+      data_(y, x, 3) = match->bins_[0];
+    }
+    match->bins_.clear();
+    match->weights_.clear();
+  }
 }
 
 void IdData::set_overlap(size_t y, size_t x)
@@ -81,8 +95,8 @@ PropertyData::PropertyData(size_t h_res, size_t v_res)
   : data_({v_res, h_res, 2}, NOT_FOUND)
 {}
 
-void PropertyData::set_value(
-  size_t y, size_t x, const GeometryState& p, int level)
+void PropertyData::set_value(size_t y, size_t x, const Particle& p, int level,
+  Filter* filter, FilterMatch* match)
 {
   Cell* c = model::cells.at(p.lowest_coord().cell()).get();
   data_(y, x, 0) = (p.sqrtkT() * p.sqrtkT()) / K_BOLTZMANN;
@@ -189,9 +203,10 @@ void Plot::print_info() const
 
 void read_plots_xml()
 {
-  // Check if plots.xml exists; this is only necessary when the plot runmode is
-  // initiated. Otherwise, we want to read plots.xml because it may be called
-  // later via the API. In that case, its ok for a plots.xml to not exist
+  // Check if plots.xml exists; this is only necessary when the plot runmode
+  // is initiated. Otherwise, we want to read plots.xml because it may be
+  // called later via the API. In that case, its ok for a plots.xml to not
+  // exist
   std::string filename = settings::path_input + "plots.xml";
   if (!file_exists(filename) && settings::run_mode == RunMode::PLOTTING) {
     fatal_error(fmt::format("Plots XML file '{}' does not exist!", filename));
@@ -929,14 +944,15 @@ void Plot::draw_mesh_lines(ImageData& data) const
 }
 
 /* outputs a binary file that can be input into silomesh for 3D geometry
- * visualization.  It works the same way as create_image by dragging a particle
- * across the geometry for the specified number of voxels. The first 3 int's in
- * the binary are the number of x, y, and z voxels.  The next 3 double's are
- * the widths of the voxels in the x, y, and z directions. The next 3 double's
- * are the x, y, and z coordinates of the lower left point. Finally the binary
- * is filled with entries of four int's each. Each 'row' in the binary contains
- * four int's: 3 for x,y,z position and 1 for cell or material id.  For 1
- * million voxels this produces a file of approximately 15MB.
+ * visualization.  It works the same way as create_image by dragging a
+ * particle across the geometry for the specified number of voxels. The first
+ * 3 int's in the binary are the number of x, y, and z voxels.  The next 3
+ * double's are the widths of the voxels in the x, y, and z directions. The
+ * next 3 double's are the x, y, and z coordinates of the lower left point.
+ * Finally the binary is filled with entries of four int's each. Each 'row' in
+ * the binary contains four int's: 3 for x,y,z position and 1 for cell or
+ * material id.  For 1 million voxels this produces a file of approximately
+ * 15MB.
  */
 void Plot::create_voxel() const
 {
@@ -1182,8 +1198,9 @@ bool WireframeRayTracePlot::trackstack_equivalent(
           return false;
 
         // Check if neighboring cells are different
-        // if (track1[t1_i ? t1_i - 1 : 0].id != track2[t2_i ? t2_i - 1 : 0].id)
-        // return false; if (track1[t1_i < track1.size() - 1 ? t1_i + 1 : t1_i
+        // if (track1[t1_i ? t1_i - 1 : 0].id != track2[t2_i ? t2_i - 1 :
+        // 0].id) return false; if (track1[t1_i < track1.size() - 1 ? t1_i + 1
+        // : t1_i
         // ].id !=
         //    track2[t2_i < track2.size() - 1 ? t2_i + 1 : t2_i].id) return
         //    false;
@@ -1243,8 +1260,8 @@ ImageData WireframeRayTracePlot::create_image() const
   size_t height = pixels()[1];
   ImageData data({width, height}, not_found_);
 
-  // This array marks where the initial wireframe was drawn. We convolve it with
-  // a filter that gets adjusted with the wireframe thickness in order to
+  // This array marks where the initial wireframe was drawn. We convolve it
+  // with a filter that gets adjusted with the wireframe thickness in order to
   // thicken the lines.
   xt::xtensor<int, 2> wireframe_initial({width, height}, 0);
 
@@ -1278,9 +1295,9 @@ ImageData WireframeRayTracePlot::create_image() const
     for (int iter = 0; iter <= pixels()[1] / n_threads; iter++) {
 
       // Save bottom line of current work chunk to compare against later. This
-      // used to be inside the below if block, but it causes a spurious line to
-      // be drawn at the bottom of the image. Not sure why, but moving it here
-      // fixes things.
+      // used to be inside the below if block, but it causes a spurious line
+      // to be drawn at the bottom of the image. Not sure why, but moving it
+      // here fixes things.
       if (tid == n_threads - 1)
         old_segments = this_line_segments[n_threads - 1];
 
@@ -1305,8 +1322,8 @@ ImageData WireframeRayTracePlot::create_image() const
 
           // There must be at least two cell intersections to color, front and
           // back of the cell. Maybe an infinitely thick cell could be present
-          // with no back, but why would you want to color that? It's easier to
-          // just skip that edge case and not even color it.
+          // with no back, but why would you want to color that? It's easier
+          // to just skip that edge case and not even color it.
           if (segments.size() <= 1)
             continue;
 
@@ -1341,8 +1358,8 @@ ImageData WireframeRayTracePlot::create_image() const
         }
       } // end "if" vert in correct range
 
-      // We require a barrier before comparing vertical neighbors' intersection
-      // stacks. i.e. all threads must be done with their line.
+      // We require a barrier before comparing vertical neighbors'
+      // intersection stacks. i.e. all threads must be done with their line.
 #pragma omp barrier
 
       // Now that the horizontal line has finished rendering, we can fill in
@@ -1366,8 +1383,8 @@ ImageData WireframeRayTracePlot::create_image() const
         }
       }
 
-      // We need another barrier to ensure threads don't proceed to modify their
-      // intersection stacks on that horizontal line while others are
+      // We need another barrier to ensure threads don't proceed to modify
+      // their intersection stacks on that horizontal line while others are
       // potentially still working on the above.
 #pragma omp barrier
       vert += n_threads;
@@ -1633,7 +1650,8 @@ void Ray::trace()
   // radiation transport model.
   //
   // After phase one is done, we can starting tracing from cell to cell within
-  // the model. This step can use neighbor lists to accelerate the ray tracing.
+  // the model. This step can use neighbor lists to accelerate the ray
+  // tracing.
 
   // Attempt to initialize the particle. We may have to enter a loop to move
   // it up to the edge of the model.
@@ -1731,13 +1749,13 @@ void Ray::trace()
     inside_cell = neighbor_list_find_cell(*this, settings::verbosity >= 10);
 
     // Call the specialized logic for this type of ray. Note that we do not
-    // call this if the advance distance is very small. Unfortunately, it seems
-    // darn near impossible to get the particle advanced to the model boundary
-    // and through it without sometimes accidentally calling on_intersection
-    // twice. This incorrectly shades the region as occluded when it might not
-    // actually be. By screening out intersection distances smaller than a
-    // threshold 10x larger than the scoot distance used to advance up to the
-    // model boundary, we can avoid that situation.
+    // call this if the advance distance is very small. Unfortunately, it
+    // seems darn near impossible to get the particle advanced to the model
+    // boundary and through it without sometimes accidentally calling
+    // on_intersection twice. This incorrectly shades the region as occluded
+    // when it might not actually be. By screening out intersection distances
+    // smaller than a threshold 10x larger than the scoot distance used to
+    // advance up to the model boundary, we can avoid that situation.
     if (call_on_intersection) {
       on_intersection();
       if (stop_)
@@ -1800,8 +1818,8 @@ void PhongRay::on_intersection()
     // TODO
     // Not sure what can cause a surface token to be invalid here, although it
     // sometimes happens for a few pixels. It's very very rare, so proceed by
-    // coloring the pixel with the overlap color. It seems to happen only for a
-    // few pixels on the outer boundary of a hex lattice.
+    // coloring the pixel with the overlap color. It seems to happen only for
+    // a few pixels on the outer boundary of a hex lattice.
     //
     // We cannot detect it in the outer loop, and it only matters here, so
     // that's why the error handling is a little different than for a lost
@@ -1872,9 +1890,9 @@ void PhongRay::on_intersection()
     compute_distance();
 
   } else {
-    // If it's not facing the light, we color with the diffuse contribution, so
-    // next we check if we're going to occlude the last reflected surface. if
-    // so, color by the diffuse contribution instead
+    // If it's not facing the light, we color with the diffuse contribution,
+    // so next we check if we're going to occlude the last reflected surface.
+    // if so, color by the diffuse contribution instead
 
     if (orig_hit_id_ == -1)
       fatal_error("somehow a ray got reflected but not original ID set?");
@@ -1885,7 +1903,8 @@ void PhongRay::on_intersection()
   }
 }
 
-extern "C" int openmc_id_map(const void* plot, int32_t* data_out)
+extern "C" int openmc_id_map(
+  const void* plot, int32_t filter_index, int32_t* data_out)
 {
 
   auto plt = reinterpret_cast<const SlicePlotBase*>(plot);
@@ -1894,11 +1913,16 @@ extern "C" int openmc_id_map(const void* plot, int32_t* data_out)
     return OPENMC_E_INVALID_ARGUMENT;
   }
 
+  if (filter_index >= 0) {
+    if (int err = verify_filter(filter_index))
+      return err;
+  }
+
   if (plt->slice_color_overlaps_ && model::overlap_check_count.size() == 0) {
     model::overlap_check_count.resize(model::cells.size());
   }
 
-  auto ids = plt->get_map<IdData>();
+  auto ids = plt->get_map<IdData>(filter_index);
 
   // write id data to array
   std::copy(ids.data_.begin(), ids.data_.end(), data_out);

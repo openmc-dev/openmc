@@ -204,12 +204,12 @@ class _PlotBase(Structure):
         return '\n'.join(out_str)
 
 
-_dll.openmc_id_map.argtypes = [POINTER(_PlotBase), POINTER(c_int32)]
+_dll.openmc_id_map.argtypes = [POINTER(_PlotBase), c_int32, POINTER(c_int32)]
 _dll.openmc_id_map.restype = c_int
 _dll.openmc_id_map.errcheck = _error_handler
 
 
-def id_map(plot):
+def id_map(plot, filter=None):
     """
     Generate a 2-D map of cell and material IDs. Used for in-memory image
     generation.
@@ -218,18 +218,22 @@ def id_map(plot):
     ----------
     plot : openmc.lib.plot._PlotBase
         Object describing the slice of the model to be generated
+    filter : openmc.Filter, optional
+        If provided, the information for each pixel also includes an index in
+        the filter corresponding to the pixel position.
 
     Returns
     -------
     id_map : numpy.ndarray
-        A NumPy array with shape (vertical pixels, horizontal pixels, 3) of
+        A NumPy array with shape (vertical pixels, horizontal pixels, 4) of
         OpenMC property ids with dtype int32. The last dimension of the array
-        contains, in order, cell IDs, cell instances, and material IDs.
+        contains, in order, cell IDs, cell instances, material IDs, and filter
+        indices.
 
     """
-    img_data = np.zeros((plot.v_res, plot.h_res, 3),
-                        dtype=np.dtype('int32'))
-    _dll.openmc_id_map(plot, img_data.ctypes.data_as(POINTER(c_int32)))
+    filter_id = filter.id if filter is not None else -1
+    img_data = np.zeros((plot.v_res, plot.h_res, 4), dtype=np.int32)
+    _dll.openmc_id_map(plot, filter_id, img_data.ctypes.data_as(POINTER(c_int32)))
     return img_data
 
 

@@ -1038,6 +1038,7 @@ class Model:
         pixels: int | Sequence[int] = 40000,
         basis: str = 'xy',
         color_overlaps: bool = False,
+        filter: openmc.Filter | None = None,
         **init_kwargs
     ) -> np.ndarray:
         """Generate an ID map for domains based on the plot parameters
@@ -1070,6 +1071,9 @@ class Model:
             Whether to assign unique IDs (-3) to overlapping regions. If False,
             overlapping regions will be assigned the ID of the lowest-numbered
             cell that occupies that region. Defaults to False.
+        filter : openmc.Filter, optional
+            If provided, the information for each pixel also includes an index
+            in the filter corresponding to the pixel position.
         **init_kwargs
             Keyword arguments passed to :meth:`Model.init_lib`.
 
@@ -1101,8 +1105,23 @@ class Model:
         init_kwargs.setdefault('output', False)
         init_kwargs.setdefault('args', ['-c'])
 
+        # If filter does not already appear in the model, temporarily add a
+        # tally with the filter
+        filter_ids = {f.id for t in self.tallies for f in t.filters}
+        original_length = len(self.tallies)
+        if filter is not None and filter.id not in filter_ids:
+            temp_tally = openmc.Tally()
+            temp_tally.filters = [filter]
+            temp_tally.scores = ['flux']
+            self.tallies.append(temp_tally)
+
         with openmc.lib.TemporarySession(self, **init_kwargs):
-            return openmc.lib.id_map(plot_obj)
+            ids = openmc.lib.id_map(plot_obj)
+
+        # If filter was temporarily added, remove it
+        if len(self.tallies) > original_length:
+            self.tallies.pop()
+        return ids
 
     @add_plot_params
     def plot(

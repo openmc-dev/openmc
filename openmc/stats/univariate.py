@@ -1614,11 +1614,13 @@ class Mixture(Univariate):
 
         # Draw samples from the distributions sampled above
         out = np.empty_like(idx, dtype=float)
+        out_wgt = np.empty_like(idx, dtype=float)
         for i in np.unique(idx):
             n_dist_samples = np.count_nonzero(idx == i)
-            samples = self.distribution[i].sample(n_dist_samples)
+            samples, weights = self.distribution[i].sample(n_dist_samples)
             out[idx == i] = samples
-        return out
+            out_wgt[idx ==i] = weights
+        return out, out_wgt
     
     def evaluate(self, x):
         raise NotImplementedError

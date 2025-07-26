@@ -186,10 +186,11 @@ class Isotropic(UnitSphere):
     @bias.setter
     def bias(self, bias):
         cv.check_type('Biasing distribution', bias, PolarAzimuthal, none_ok=True)
-        if (bias.mu().bias is not None) or (bias.phi().bias is not None):
-            raise RuntimeError('Biasing distributions should not have their own bias!')
-        else:
-            self._bias = bias
+        if bias is not None:
+            if (bias.mu().bias is not None) or (bias.phi().bias is not None):
+                raise RuntimeError('Biasing distributions should not have their own bias!')
+            
+        self._bias = bias
 
     def to_xml_element(self):
         """Return XML representation of the isotropic distribution

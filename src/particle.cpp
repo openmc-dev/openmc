@@ -418,7 +418,7 @@ void Particle::event_collide()
   if (!model::active_tallies.empty()) {
     score_collision_derivative(*this);
     score_collision_sensitivity(*this);  // Score cumulative sensitivity for sensitivity tallies.
-    score_source_sensitivity(*this);
+    // score_source_sensitivity(*this);
   }
   
 #ifdef OPENMC_DAGMC_ENABLED

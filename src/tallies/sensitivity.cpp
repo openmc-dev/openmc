@@ -545,6 +545,14 @@ score_track_sensitivity(Particle& p, double distance)
           macro_xs = p.macro_xs().fission;
         }
         break;      
+      case N_2N:
+      case N_2NA: 
+      case N_3N: 
+      case N_3NA: 
+        if (sens.sens_nuclide >= 0) {
+          macro_xs = p.neutron_xs(sens.sens_nuclide).reaction[sens.sens_reaction] * atom_density;
+        }
+        break;
       default:
         if (sens.sens_nuclide >= 0) {
           macro_xs = get_nuclide_xs_sens(p, sens.sens_nuclide, sens.sens_reaction) * atom_density;
@@ -667,44 +675,6 @@ void score_collision_sensitivity(Particle& p)
       case N_A:
       case N_D:
       case N_3HE:
-      case N_NONELASTIC: // to remove
-      case N_DISAPPEAR:
-      case MISC:
-      case N_TA:
-      case N_PA:
-      case N_2A:
-      case N_3A:
-      case N_2P:
-      case N_T2A:
-      case N_D2A:
-      case N_PD:
-      case N_PT:
-      case N_DA:
-      case N_DT:
-      case N_P3HE:
-      case N_D3HE:
-      case N_3HEA:
-      case N_3P:
-      case N_XP:
-      case N_X3HE:
-      case N_XA:
-      case N_P0:
-      case N_PC:
-      case N_D0:
-      case N_DC:
-      case N_T0:
-      case N_TC:
-      case N_3HE0:
-      case N_3HEC:
-      case N_A0:
-      case N_AC:
-      case N_XD:
-      case 202:
-      case N_F:
-      case N_NF:
-      case N_2NF:
-      case N_3NF:
-      case N_FISSION:
         score = 0.0;
         break;
       default:          

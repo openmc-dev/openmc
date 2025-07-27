@@ -996,16 +996,13 @@ class Model:
         plot_obj.v_res = pixels[1]
         plot_obj.basis = basis
 
-        if self.is_initialized:
-            return openmc.lib.id_map(plot_obj)
-        else:
-            # Silence output by default. Also set arguments to start in volume
-            # calculation mode to avoid loading cross sections
-            init_kwargs.setdefault('output', False)
-            init_kwargs.setdefault('args', ['-c'])
+        # Silence output by default. Also set arguments to start in volume
+        # calculation mode to avoid loading cross sections
+        init_kwargs.setdefault('output', False)
+        init_kwargs.setdefault('args', ['-c'])
 
-            with openmc.lib.TemporarySession(self, **init_kwargs):
-                return openmc.lib.id_map(plot_obj)
+        with openmc.lib.TemporarySession(self, **init_kwargs):
+            return openmc.lib.id_map(plot_obj)
 
     @add_plot_params
     def plot(
@@ -1229,20 +1226,15 @@ class Model:
         """
         import openmc.lib
 
-        if self.is_initialized:
+        # Silence output by default. Also set arguments to start in volume
+        # calculation mode to avoid loading cross sections
+        init_kwargs.setdefault('output', False)
+        init_kwargs.setdefault('args', ['-c'])
+
+        with openmc.lib.TemporarySession(self, **init_kwargs):
             return openmc.lib.sample_external_source(
                 n_samples=n_samples, prn_seed=prn_seed
             )
-        else:
-            # Silence output by default. Also set arguments to start in volume
-            # calculation mode to avoid loading cross sections
-            init_kwargs.setdefault('output', False)
-            init_kwargs.setdefault('args', ['-c'])
-
-            with openmc.lib.TemporarySession(self, **init_kwargs):
-                return openmc.lib.sample_external_source(
-                    n_samples=n_samples, prn_seed=prn_seed
-                )
 
     def apply_tally_results(self, statepoint: PathLike | openmc.StatePoint):
         """Apply results from a statepoint to tally objects on the Model

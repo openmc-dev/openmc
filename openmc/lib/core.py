@@ -656,9 +656,10 @@ class TemporarySession:
 
     def __enter__(self):
         """Initialize the OpenMC library in a temporary directory."""
-        # Make sure OpenMC is not already initialized
-        if openmc.lib.is_initialized:
-            raise RuntimeError("openmc.lib is already initialized.")
+        # If already initialized, the context manager is a no-op
+        self.already_initialized = openmc.lib.is_initialized
+        if self.already_initialized:
+            return self
 
         # Store original working directory
         self.orig_dir = Path.cwd()
@@ -677,8 +678,11 @@ class TemporarySession:
 
     def __exit__(self, exc_type, exc_value, traceback):
         """Finalize the OpenMC library and clean up temporary directory."""
+        if self.already_initialized:
+            return
+
         try:
-            openmc.lib.finalize()
+            finalize()
         finally:
             os.chdir(self.orig_dir)
             self.tmp_dir.cleanup()

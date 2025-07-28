@@ -119,8 +119,13 @@ class PolarAzimuthal(UnitSphere):
         cv.check_type('azimuthal angle', phi, Univariate)
         self._phi = phi
 
-    def to_xml_element(self):
+    def to_xml_element(self, element_name: str = None):
         """Return XML representation of the angular distribution
+
+        Parameters
+        ----------
+        element_name : str, optional
+            XML element name
 
         Returns
         -------
@@ -128,7 +133,11 @@ class PolarAzimuthal(UnitSphere):
             XML element containing angular distribution data
 
         """
-        element = ET.Element('angle')
+        if element_name is not None:
+            element = ET.Element(element_name)
+        else:
+            element = ET.Element('angle')
+
         element.set("type", "mu-phi")
         if self.reference_uvw is not None:
             element.set("reference_uvw", ' '.join(map(str, self.reference_uvw)))
@@ -187,7 +196,7 @@ class Isotropic(UnitSphere):
     def bias(self, bias):
         cv.check_type('Biasing distribution', bias, PolarAzimuthal, none_ok=True)
         if bias is not None:
-            if (bias.mu().bias is not None) or (bias.phi().bias is not None):
+            if (bias.mu.bias is not None) or (bias.phi.bias is not None):
                 raise RuntimeError('Biasing distributions should not have their own bias!')
             
         self._bias = bias
@@ -206,7 +215,7 @@ class Isotropic(UnitSphere):
 
         if self.bias is not None:
             bias_dist = self.bias
-            if (bias_dist.mu().bias is not None) or (bias_dist.phi().bias is not None):
+            if (bias_dist.mu.bias is not None) or (bias_dist.phi.bias is not None):
                 raise RuntimeError('Biasing distributions should not have their own bias!')
             else:
                 bias_elem = self.bias.to_xml_element("bias")

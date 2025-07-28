@@ -20,7 +20,7 @@ unique_ptr<UnitSphereDistribution> UnitSphereDistribution::create(
   if (check_for_node(node, "type"))
     type = get_node_value(node, "type", true, true);
   if (type == "isotropic") {
-    return UPtrAngle {new Isotropic()};
+    return UPtrAngle {new Isotropic(node)};
   } else if (type == "monodirectional") {
     return UPtrAngle {new Monodirectional(node)};
   } else if (type == "mu-phi") {

@@ -100,6 +100,8 @@ class Model:
         if isinstance(materials, openmc.Materials):
             self._materials = materials
         else:
+            if not hasattr(self, '_materials'):
+                self._materials = openmc.Materials()
             del self._materials[:]
             for mat in materials:
                 self._materials.append(mat)
@@ -123,6 +125,8 @@ class Model:
         if isinstance(tallies, openmc.Tallies):
             self._tallies = tallies
         else:
+            if not hasattr(self, '_tallies'):
+                self._tallies = openmc.Tallies()
             del self._tallies[:]
             for tally in tallies:
                 self._tallies.append(tally)
@@ -137,6 +141,8 @@ class Model:
         if isinstance(plots, openmc.Plots):
             self._plots = plots
         else:
+            if not hasattr(self, '_plots'):
+                self._plots = openmc.Plots()
             del self._plots[:]
             for plot in plots:
                 self._plots.append(plot)

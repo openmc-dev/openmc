@@ -109,6 +109,62 @@ vector<int32_t> tokenize(const std::string region_spec)
   return tokens;
 }
 
+vector<vector<int32_t>> \
+  generate_triso_distribution(\
+    vector<int> lattice_shape,\
+    vector<double> lattice_pitch,\
+    vector<double> lattice_lower_left,\
+    vector<std::int32_t> cell_rpn, int id)
+{
+  vector<vector<int32_t>> triso_distribution(lattice_shape[0]*lattice_shape[1]*lattice_shape[2]);
+  vector<double> mesh_center(3);
+  vector<int> mesh_ind(3);
+  /*
+  for (int i=0; i<lattice_shape[0]; i++) {
+    for (int j=0; j<lattice_shape[1]; j++) {
+      for (int k=0; k<lattice_shape[2]; k++) {
+        mesh_center[0]=(i+0.5)*lattice_pitch[0]+lattice_lower_left[0];
+        mesh_center[1]=(j+0.5)*lattice_pitch[1]+lattice_lower_left[1];
+        mesh_center[2]=(k+0.5)*lattice_pitch[2]+lattice_lower_left[2];
+        for (int32_t token : cell_rpn) {
+          if (token >= OP_UNION) continue;
+          if (model::surfaces[abs(token) - 1]->triso_in_mesh(mesh_center, lattice_pitch)) {
+            triso_distribution[i+j*lattice_shape[0]+k*lattice_shape[0]*lattice_shape[1]].push_back(token);
+            model::surfaces[abs(token) - 1]->connect_to_triso_base(id, "base");
+          }
+        }
+      }
+    }
+  }*/
+  for (int32_t token : cell_rpn) {
+    if (token >= OP_UNION) continue;
+    vector<double> triso_center=model::surfaces[abs(token) - 1]->get_center();
+    for (int i=0; i<3; i++) {
+      mesh_ind[i]=floor((triso_center[i]-lattice_lower_left[i])/lattice_pitch[i]);
+    }
+    for (int i=mesh_ind[0]-1; i<=mesh_ind[0]+1; i++) {
+      for (int j=mesh_ind[1]-1; j<=mesh_ind[1]+1; j++) {
+        for (int k=mesh_ind[2]-1; k<=mesh_ind[2]+1; k++) {
+          if (i < 0 || i >= lattice_shape[0] ||\
+              j < 0 || j >= lattice_shape[1] ||\
+              k < 0 || k >= lattice_shape[2]) continue;
+          mesh_center[0]=(i+0.5)*lattice_pitch[0]+lattice_lower_left[0];
+          mesh_center[1]=(j+0.5)*lattice_pitch[1]+lattice_lower_left[1];
+          mesh_center[2]=(k+0.5)*lattice_pitch[2]+lattice_lower_left[2];
+          if (model::surfaces[abs(token) - 1]->triso_in_mesh(mesh_center, lattice_pitch)) {
+            triso_distribution[i+j*lattice_shape[0]+k*lattice_shape[0]*lattice_shape[1]].push_back(token);
+            model::surfaces[abs(token) - 1]->connect_to_triso_base(id, "base");
+          }
+        }
+      }
+    }
+  }
+
+
+  return triso_distribution;
+}
+
+
 //==============================================================================
 //! Convert infix region specification to Reverse Polish Notation (RPN)
 //!
@@ -211,6 +267,37 @@ void Universe::to_hdf5(hid_t universes_group) const
 
 bool Universe::find_cell(Particle& p) const
 {
+  if (filled_with_triso_base_ != -1) {
+    Cell& c {*model::cells[model::cell_map[filled_with_triso_base_]]};
+    vector<int> lat_ind(3);
+    Position r {p.r_local()};
+    lat_ind[0]=floor((r.x-c.vl_lower_left_[0])/c.vl_pitch_[0]);
+    lat_ind[1]=floor((r.y-c.vl_lower_left_[1])/c.vl_pitch_[1]);
+    lat_ind[2]=floor((r.z-c.vl_lower_left_[2])/c.vl_pitch_[2]);
+    int32_t i_univ = p.coord(p.n_coord() - 1).universe;
+    for (int token : c.vl_triso_distribution_[lat_ind[0]+lat_ind[1]*c.vl_shape_[0]+lat_ind[2]*c.vl_shape_[0]*c.vl_shape_[1]]) {
+      vector<double> triso_center=model::surfaces[abs(token) - 1]->get_center();
+      double triso_radius=model::surfaces[abs(token) - 1]->get_radius();
+      if (model::cells[model::cell_map[model::surfaces[abs(token) - 1]->triso_base_index_]]->universe_!= i_univ) continue;
+      if (abs(token)==abs(p.surface())) {
+        if (p.surface() < 0) {
+          p.coord(p.n_coord() - 1).cell = model::cell_map[model::surfaces[abs(token) - 1]->triso_particle_index_];
+          return true;
+        } else {
+          p.coord(p.n_coord() - 1).cell = model::cell_map[filled_with_triso_base_];
+          return true;
+        }
+      }
+      if (pow(r.x-triso_center[0],2)+pow(r.y-triso_center[1],2)+pow(r.z-triso_center[2],2) < pow(triso_radius,2)) {
+        p.coord(p.n_coord() - 1).cell = model::cell_map[model::surfaces[abs(token) - 1]->triso_particle_index_];
+        return true;
+      }
+    }
+    if (model::cells[model::cell_map[filled_with_triso_base_]]->universe_== i_univ) {
+      p.coord(p.n_coord() - 1).cell = model::cell_map[filled_with_triso_base_];
+      return true;
+    }
+  }
   const auto& cells {
     !partitioner_ ? cells_ : partitioner_->get_cells(p.r_local(), p.u_local())};
 
@@ -481,6 +568,29 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
     universe_ = 0;
   }
 
+  // Check if the cell is the base of a virtual triso lattice
+  bool virtual_lattice_present = check_for_node(cell_node, "virtual_lattice");
+  if (virtual_lattice_present) {
+    virtual_lattice_ = get_node_value_bool(cell_node, "virtual_lattice");
+    if (virtual_lattice_) {
+      if (check_for_node(cell_node, "lower_left") && check_for_node(cell_node, "pitch") && check_for_node(cell_node, "shape")) {
+        vl_lower_left_ = get_node_array<double>(cell_node, "lower_left");
+        vl_pitch_ = get_node_array<double>(cell_node, "pitch");
+        vl_shape_ = get_node_array<int>(cell_node, "shape");
+      } else {
+        fatal_error(fmt::format("Lower_left, pitch and shape of the virtual lattice must be specified for cell {}", id_));
+      }
+    }
+  } else {
+    virtual_lattice_ = false;
+  }
+  
+  if (check_for_node(cell_node, "triso_particle")) {
+    triso_particle_ = get_node_value_bool(cell_node, "triso_particle");
+  } else {
+    triso_particle_ = false;
+  }
+
   // Make sure that either material or fill was specified, but not both.
   bool fill_present = check_for_node(cell_node, "fill");
   bool material_present = check_for_node(cell_node, "material");
@@ -603,6 +713,25 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
   }
   rpn_.shrink_to_fit();
 
+  if (virtual_lattice_) {
+    vl_triso_distribution_ = generate_triso_distribution(vl_shape_, vl_pitch_, vl_lower_left_, rpn_, id_);
+    write_message("successfully generated virtual lattice", 5);
+    for (int tri_sur_id : vl_triso_distribution_[floor(vl_shape_[0]/2)+floor(vl_shape_[1]/2)*vl_shape_[0]+\
+    floor(vl_shape_[2]/2)*vl_shape_[0]*vl_shape_[1]])
+    {
+      std::cout<<model::surfaces[abs(tri_sur_id)-1]->id_<<std::endl;
+
+    }
+  }
+
+  if (triso_particle_) {
+    if (rpn_.size() != 1) {
+      fatal_error(fmt::format("Wrong surface definition of triso particle cell {}", id_));
+    } else {
+      model::surfaces[abs(rpn_[0]) - 1]->connect_to_triso_base(id_, "particle");
+    }
+  }
+
   // Read the translation vector.
   if (check_for_node(cell_node, "translation")) {
     if (fill_ == C_NONE) {
@@ -644,26 +773,136 @@ std::pair<double, int32_t> CSGCell::distance(
 {
   double min_dist {INFTY};
   int32_t i_surf {std::numeric_limits<int32_t>::max()};
+  double min_dis_vl;
+  int32_t i_surf_vl;
+  if (virtual_lattice_) {
+    /*
+    double tol_dis = p.collision_distance();
+    double u_value = sqrt(pow(u.x,2)+pow(u.y,2)+pow(u.z,2)); //don't know if u has been normalized
+    vector<double> norm_u = {u.x/u_value, u.y/u_value, u.z/u_value};
+    vector<double> r_end = {r.x+tol_dis*norm_u[0], r.y+tol_dis*norm_u[1], r.z+tol_dis*norm_u[2]};
+    double temp_pos_x, temp_pos_y, temp_pos_z;
+    vector<vector<int>> passed_lattice={{floor((r.x-vl_lower_left_[0])/vl_pitch_[0]),\
+                                          floor((r.y-vl_lower_left_[1])/vl_pitch_[1]),\
+                                          floor((r.z-vl_lower_left_[2])/vl_pitch_[2]), 0}};
+    int index_start;
+    int index_end;
+    for (int i = 0; i < 3; i++){
+      if (passed_lattice[0][i] == vl_shape_[i]) {
+        passed_lattice[0][i] = vl_shape_[i]-1;
+      }
+    }
 
-  for (int32_t token : rpn_) {
-    // Ignore this token if it corresponds to an operator rather than a region.
-    if (token >= OP_UNION)
-      continue;
+    if (u.x > 0) {
+      index_start = ceil((r.x-vl_lower_left_[0])/vl_pitch_[0]);
+      index_end = floor((r_end[0]-vl_lower_left_[0])/vl_pitch_[0]);
+      if (index_start <= index_end && index_start < vl_shape_[0]) {
+        for (int i = index_start; i <= index_end; i++) {
+          if (i >= vl_shape_[0]) break;
+          temp_pos_x = i*vl_pitch_[0]+vl_lower_left_[0];
+          temp_pos_y = (temp_pos_x-r.x)*norm_u[1]/norm_u[0]+r.y;
+          temp_pos_z = (temp_pos_x-r.x)*norm_u[2]/norm_u[0]+r.z;
+          passed_lattice.push_back({i, floor((temp_pos_y-vl_lower_left_[1])/vl_pitch_[1]),\
+                                    floor((temp_pos_z-vl_lower_left_[2])/vl_pitch_[2]),\
+                                    (temp_pos_x-r.x)/norm_u[0]})
+        }
+      }
+    } 
+    */
 
-    // Calculate the distance to this surface.
-    // Note the off-by-one indexing
-    bool coincident {std::abs(token) == std::abs(on_surface)};
-    double d {model::surfaces[abs(token) - 1]->distance(r, u, coincident)};
+    double max_dis = p->collision_distance();
+    double tol_dis = 0;
+    vector<double> dis_to_bou(3), dis_to_bou_max(3);
+    double u_value = sqrt(pow(u.x,2)+pow(u.y,2)+pow(u.z,2)); //don't know if u has been normalized
+    vector<double> norm_u = {u.x/u_value, u.y/u_value, u.z/u_value};
+    vector<int> lat_ind(3);
+    vector<double> temp_pos ={r.x,r.y,r.z};
+    int loop_time;
+    for (int i=0; i<3; i++) {
+      lat_ind[i]=floor((temp_pos[i]-vl_lower_left_[i])/vl_pitch_[i]);
+    }
 
-    // Check if this distance is the new minimum.
-    if (d < min_dist) {
-      if (min_dist - d >= FP_PRECISION * min_dist) {
-        min_dist = d;
-        i_surf = -token;
+    dis_to_bou = {INFTY,INFTY,INFTY};
+    for (int i=0; i<3; i++) {
+      if (norm_u[i] > 0) {
+        dis_to_bou[i]=std::abs(((lat_ind[i]+1)*vl_pitch_[i]+vl_lower_left_[i]-temp_pos[i])/norm_u[i]);
+        dis_to_bou_max[i]=vl_pitch_[i]/norm_u[i];
+      } else if (norm_u[i] < 0){
+        dis_to_bou[i]=std::abs((lat_ind[i]*vl_pitch_[i]+vl_lower_left_[i]-temp_pos[i])/norm_u[i]);
+        dis_to_bou_max[i]=-vl_pitch_[i]/norm_u[i];
+      }
+    }
+
+    while(true) {
+      
+      
+
+      if (lat_ind[0] < 0 || lat_ind[0] >= vl_shape_[0] ||\
+          lat_ind[1] < 0 || lat_ind[1] >= vl_shape_[1] ||\
+          lat_ind[2] < 0 || lat_ind[2] >= vl_shape_[2]) break;
+
+      
+      for (int token : vl_triso_distribution_[lat_ind[0]+lat_ind[1]*vl_shape_[0]+lat_ind[2]*vl_shape_[0]*vl_shape_[1]]) {
+        bool coincident {std::abs(token) == std::abs(on_surface)};
+        double d {model::surfaces[abs(token) - 1]->distance(r, u, coincident)};
+        if (d < min_dist) {
+          if (min_dist - d >= FP_PRECISION * min_dist) {
+            min_dist = d;
+            i_surf = -token;
+          }
+        }
+      }
+      
+
+      int mes_bou_crossed=0;
+      if  (dis_to_bou[1] < dis_to_bou[0]) {
+        mes_bou_crossed=1;
+      }
+      if  (dis_to_bou[2] < dis_to_bou[mes_bou_crossed]) {
+        mes_bou_crossed=2;
+      }
+
+      tol_dis = dis_to_bou[mes_bou_crossed];
+
+      if (min_dist < tol_dis) {
+        break;
+      }
+
+      if (norm_u[mes_bou_crossed] > 0) {
+        lat_ind[mes_bou_crossed] += 1;
+      } else {
+        lat_ind[mes_bou_crossed] += -1;
+      }
+
+      dis_to_bou[mes_bou_crossed] += dis_to_bou_max[mes_bou_crossed];
+      
+      if (tol_dis > max_dis) {
+        break;
+      }
+    }
+
+    
+  } else {
+    for (int32_t token : rpn_) {
+      // Ignore this token if it corresponds to an operator rather than a region.
+      if (token >= OP_UNION)
+        continue;
+
+      // Calculate the distance to this surface.
+      // Note the off-by-one indexing
+      bool coincident {std::abs(token) == std::abs(on_surface)};
+      double d {model::surfaces[abs(token) - 1]->distance(r, u, coincident)};
+
+      // Check if this distance is the new minimum.
+      if (d < min_dist) {
+        if (min_dist - d >= FP_PRECISION * min_dist) {
+          min_dist = d;
+          i_surf = -token;
+        }
       }
     }
   }
-
+  
   return {min_dist, i_surf};
 }
 
@@ -1064,6 +1303,9 @@ void read_cells(pugi::xml_node node)
       model::universe_map[uid] = model::universes.size() - 1;
     } else {
       model::universes[it->second]->cells_.push_back(i);
+    }
+    if (model::cells[i]->virtual_lattice_) {
+      model::universes[it->second]->filled_with_triso_base_=model::cells[i]->id_;
     }
   }
   model::universes.shrink_to_fit();

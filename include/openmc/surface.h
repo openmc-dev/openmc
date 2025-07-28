@@ -88,6 +88,9 @@ public:
   std::shared_ptr<BoundaryCondition> bc_ {nullptr}; //!< Boundary condition
   GeometryType geom_type_;   //!< Geometry type indicator (CSG or DAGMC)
   bool surf_source_ {false}; //!< Activate source banking for the surface?
+  int triso_base_index_;
+  int triso_particle_index_ = -1;
+  bool is_triso_surface_ = false;
 
   explicit Surface(pugi::xml_node surf_node);
   Surface();
@@ -125,6 +128,11 @@ public:
   //! \param coincident A hint to the code that the given point should lie
   //!   exactly on the surface.
   virtual double distance(Position r, Direction u, bool coincident) const = 0;
+
+  virtual bool triso_in_mesh(vector<double> mesh_center, vector<double> lattice_pitch) const { return {}; };
+  virtual void connect_to_triso_base(int triso_index, std::string key) {};
+  virtual vector<double> get_center() const { return {}; };
+  virtual double get_radius() const { return {}; };
 
   //! Compute the local outward normal direction of the surface.
   //! \param r A 3D Cartesian coordinate.
@@ -164,6 +172,7 @@ public:
   double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
+  bool triso_in_mesh(vector<double> mesh_center, vector<double> lattice_pitch) const;
   BoundingBox bounding_box(bool pos_side) const;
 
   double x0_;
@@ -182,6 +191,7 @@ public:
   double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
+  bool triso_in_mesh(vector<double> mesh_center, vector<double> lattice_pitch) const;
   BoundingBox bounding_box(bool pos_side) const;
 
   double y0_;
@@ -200,6 +210,7 @@ public:
   double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
+  bool triso_in_mesh(vector<double> mesh_center, vector<double> lattice_pitch) const;
   BoundingBox bounding_box(bool pos_side) const;
 
   double z0_;
@@ -218,6 +229,7 @@ public:
   double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
+  bool triso_in_mesh(vector<double> mesh_center, vector<double> lattice_pitch) const;
 
   double A_, B_, C_, D_;
 };
@@ -237,6 +249,7 @@ public:
   Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
   BoundingBox bounding_box(bool pos_side) const;
+  bool triso_in_mesh(vector<double> mesh_center, vector<double> lattice_pitch) const;
 
   double y0_, z0_, radius_;
 };
@@ -256,6 +269,7 @@ public:
   Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
   BoundingBox bounding_box(bool pos_side) const;
+  bool triso_in_mesh(vector<double> mesh_center, vector<double> lattice_pitch) const;
 
   double x0_, z0_, radius_;
 };
@@ -275,6 +289,7 @@ public:
   Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
   BoundingBox bounding_box(bool pos_side) const;
+  bool triso_in_mesh(vector<double> mesh_center, vector<double> lattice_pitch) const;
 
   double x0_, y0_, radius_;
 };
@@ -291,11 +306,16 @@ public:
   explicit SurfaceSphere(pugi::xml_node surf_node);
   double evaluate(Position r) const;
   double distance(Position r, Direction u, bool coincident) const;
+  bool triso_in_mesh(vector<double> mesh_center, vector<double> lattice_pitch) const;
+  vector<double> get_center() const;
+  double get_radius() const;
+  void connect_to_triso_base(int triso_index, std::string key);
   Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
   BoundingBox bounding_box(bool pos_side) const;
 
   double x0_, y0_, z0_, radius_;
+  //int triso_base_index_ = -1;
 };
 
 //==============================================================================
@@ -312,6 +332,7 @@ public:
   double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
+  bool triso_in_mesh(vector<double> mesh_center, vector<double> lattice_pitch) const;
 
   double x0_, y0_, z0_, radius_sq_;
 };
@@ -330,6 +351,7 @@ public:
   double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
+  bool triso_in_mesh(vector<double> mesh_center, vector<double> lattice_pitch) const;
 
   double x0_, y0_, z0_, radius_sq_;
 };
@@ -348,6 +370,7 @@ public:
   double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
+  bool triso_in_mesh(vector<double> mesh_center, vector<double> lattice_pitch) const;
 
   double x0_, y0_, z0_, radius_sq_;
 };
@@ -366,6 +389,7 @@ public:
   double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
+  bool triso_in_mesh(vector<double> mesh_center, vector<double> lattice_pitch) const;
 
   // Ax^2 + By^2 + Cz^2 + Dxy + Eyz + Fxz + Gx + Hy + Jz + K = 0
   double A_, B_, C_, D_, E_, F_, G_, H_, J_, K_;
@@ -384,6 +408,7 @@ public:
   double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
+  bool triso_in_mesh(vector<double> mesh_center, vector<double> lattice_pitch) const;
 
   double x0_, y0_, z0_, A_, B_, C_;
 };
@@ -401,6 +426,7 @@ public:
   double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;
   void to_hdf5_inner(hid_t group_id) const;
+  bool triso_in_mesh(vector<double> mesh_center, vector<double> lattice_pitch) const;
 
   double x0_, y0_, z0_, A_, B_, C_;
 };
@@ -417,6 +443,7 @@ public:
   double evaluate(Position r) const;
   double distance(Position r, Direction u, bool coincident) const;
   Direction normal(Position r) const;
+  bool triso_in_mesh(vector<double> mesh_center, vector<double> lattice_pitch) const;
   void to_hdf5_inner(hid_t group_id) const;
 
   double x0_, y0_, z0_, A_, B_, C_;

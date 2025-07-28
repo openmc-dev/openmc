@@ -148,7 +148,7 @@ bool find_cell_inner(Particle& p, const NeighborList* neighbor_list)
       const auto& univ {model::universes[i_universe]};
       found = univ->find_cell(p);
     }
-
+    
     if (!found) {
       return found;
     }

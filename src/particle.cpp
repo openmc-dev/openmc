@@ -184,7 +184,6 @@ void Particle::event_calculate_xs()
 void Particle::event_advance()
 {
   // Find the distance to the nearest boundary
-  boundary() = distance_to_boundary(*this);
 
   // Sample a distance to collision
   if (type() == ParticleType::electron || type() == ParticleType::positron) {
@@ -194,6 +193,8 @@ void Particle::event_advance()
   } else {
     collision_distance() = -std::log(prn(current_seed())) / macro_xs().total;
   }
+
+  boundary() = distance_to_boundary(*this);
 
   // Select smaller of the two distances
   double distance = std::min(boundary().distance, collision_distance());
@@ -396,7 +397,10 @@ void Particle::cross_surface()
   if (settings::verbosity >= 10 || trace()) {
     write_message(1, "    Crossing surface {}", surf->id_);
   }
-
+  /*
+  if (surf->id_ >= 11675 && surf->id_ <=23340) {
+    write_message(1, "    {}", surf->id_);
+  }*/
   if (surf->surf_source_ && simulation::current_batch == settings::n_batches) {
     SourceSite site;
     site.r = r();
@@ -449,8 +453,96 @@ void Particle::cross_surface()
   }
 #endif
 
-  if (neighbor_list_find_cell(*this))
-    return;
+  
+  if (surf->is_triso_surface_) {
+    if (surface() > 0){
+      for (int i = n_coord(); i < model::n_coord_levels; i++) {
+        coord(i).reset();
+      }
+      coord(n_coord() - 1).cell = model::cell_map[model::surfaces[i_surface - 1]->triso_base_index_];
+    } else if (surface() < 0) {
+      for (int i = n_coord(); i < model::n_coord_levels; i++) {
+        coord(i).reset();
+      }
+      if (model::surfaces[i_surface - 1]->triso_particle_index_==-1) {
+        fatal_error(fmt::format("Particle cell of surface {} is not defined", model::surfaces[i_surface - 1]->id_));
+      }
+      coord(n_coord() - 1).cell = model::cell_map[model::surfaces[i_surface - 1]->triso_particle_index_];
+    }
+
+    //find material
+    bool found=true;
+    int i_cell = coord(n_coord() - 1).cell;
+    for (;; ++n_coord()) {
+      if (i_cell == C_NONE) {
+        int i_universe = coord(n_coord() - 1).universe;
+        const auto& univ {model::universes[i_universe]};
+        
+        if (univ->filled_with_triso_base_ != -1) {
+          coord(n_coord() - 1).cell = model::cell_map[univ->filled_with_triso_base_];
+          found=true;
+        } else {
+          found = univ->find_cell(*this);
+        }
+        if (!found) {
+          break;
+        }
+      }
+
+      i_cell = coord(n_coord() - 1).cell;
+
+      Cell& c {*model::cells[i_cell]};
+      if (c.type_ == Fill::MATERIAL) {
+        // Found a material cell which means this is the lowest coord level.
+
+        cell_instance() = 0;
+        // Find the distribcell instance number.
+        if (c.distribcell_index_ >= 0) {
+          cell_instance() = cell_instance_at_level(*this, n_coord() - 1);
+        }
+
+        // Set the material and temperature.
+        material_last() = material();
+        if (c.material_.size() > 1) {
+          material() = c.material_[cell_instance()];
+        } else {
+          material() = c.material_[0];
+        }
+        sqrtkT_last() = sqrtkT();
+        if (c.sqrtkT_.size() > 1) {
+          sqrtkT() = c.sqrtkT_[cell_instance()];
+        } else {
+          sqrtkT() = c.sqrtkT_[0];
+        }
+        return;
+
+      } else if (c.type_ == Fill::UNIVERSE) {
+        //========================================================================
+        //! Found a lower universe, update this coord level then search the next.
+
+        // Set the lower coordinate level universe.
+        auto& coor {coord(n_coord())};
+        coor.universe = c.fill_;
+
+        // Set the position and direction.
+        coor.r = r_local();
+        coor.u = u_local();
+
+        // Apply translation.
+        coor.r -= c.translation_;
+
+        // Apply rotation.
+        if (!c.rotation_.empty()) {
+          coor.rotate(c.rotation_);
+        }
+        i_cell = C_NONE;
+      }
+    }
+  } else {
+      if (neighbor_list_find_cell(*this))
+      return;
+  }
+  
 
   // ==========================================================================
   // COULDN'T FIND PARTICLE IN NEIGHBORING CELLS, SEARCH ALL CELLS

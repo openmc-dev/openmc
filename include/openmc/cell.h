@@ -60,6 +60,7 @@ class Universe {
 public:
   int32_t id_;            //!< Unique ID
   vector<int32_t> cells_; //!< Cells within this universe
+  int filled_with_triso_base_ = -1;
 
   //! \brief Write universe information to an HDF5 group.
   //! \param group_id An HDF5 group id.
@@ -212,6 +213,15 @@ public:
   int32_t fill_;            //!< Universe # filling this cell
   int32_t n_instances_ {0}; //!< Number of instances of this cell
   GeometryType geom_type_;  //!< Geometric representation type (CSG, DAGMC)
+  bool virtual_lattice_;    //!< If the cell is the base of a virtual triso lattice
+  bool triso_particle_;
+
+
+  // Specification of the viryual lattice
+  vector<double> vl_lower_left_;
+  vector<double> vl_pitch_;
+  vector<int32_t> vl_shape_;
+  vector<vector<int32_t>> vl_triso_distribution_;
 
   //! \brief Index corresponding to this cell in distribcell arrays
   int distribcell_index_ {C_NONE};

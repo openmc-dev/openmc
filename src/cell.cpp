@@ -271,9 +271,11 @@ bool Universe::find_cell(Particle& p) const
     Cell& c {*model::cells[model::cell_map[filled_with_triso_base_]]};
     vector<int> lat_ind(3);
     Position r {p.r_local()};
-    lat_ind[0]=floor((r.x-c.vl_lower_left_[0])/c.vl_pitch_[0]);
-    lat_ind[1]=floor((r.y-c.vl_lower_left_[1])/c.vl_pitch_[1]);
-    lat_ind[2]=floor((r.z-c.vl_lower_left_[2])/c.vl_pitch_[2]);
+    lat_ind[0]=std::max<int>(std::min<int>(floor((r.x-c.vl_lower_left_[0])/c.vl_pitch_[0]),c.vl_shape_[0]-1),0);
+    lat_ind[1]=std::max<int>(std::min<int>(floor((r.y-c.vl_lower_left_[1])/c.vl_pitch_[1]),c.vl_shape_[1]-1),0);
+    lat_ind[2]=std::max<int>(std::min<int>(floor((r.z-c.vl_lower_left_[2])/c.vl_pitch_[2]),c.vl_shape_[2]-1),0);
+
+
     int32_t i_univ = p.coord(p.n_coord() - 1).universe;
     for (int token : c.vl_triso_distribution_[lat_ind[0]+lat_ind[1]*c.vl_shape_[0]+lat_ind[2]*c.vl_shape_[0]*c.vl_shape_[1]]) {
       vector<double> triso_center=model::surfaces[abs(token) - 1]->get_center();
@@ -715,13 +717,6 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
 
   if (virtual_lattice_) {
     vl_triso_distribution_ = generate_triso_distribution(vl_shape_, vl_pitch_, vl_lower_left_, rpn_, id_);
-    write_message("successfully generated virtual lattice", 5);
-    for (int tri_sur_id : vl_triso_distribution_[floor(vl_shape_[0]/2)+floor(vl_shape_[1]/2)*vl_shape_[0]+\
-    floor(vl_shape_[2]/2)*vl_shape_[0]*vl_shape_[1]])
-    {
-      std::cout<<model::surfaces[abs(tri_sur_id)-1]->id_<<std::endl;
-
-    }
   }
 
   if (triso_particle_) {
@@ -820,6 +815,12 @@ std::pair<double, int32_t> CSGCell::distance(
     int loop_time;
     for (int i=0; i<3; i++) {
       lat_ind[i]=floor((temp_pos[i]-vl_lower_left_[i])/vl_pitch_[i]);
+      if (lat_ind[i]==vl_shape_[i] && norm_u[i]<0) {
+        lat_ind[i]=vl_shape_[i]-1;
+      }
+      if (lat_ind[i]==-1 && norm_u[i]>0) {
+        lat_ind[i]=0;
+      }
     }
 
     dis_to_bou = {INFTY,INFTY,INFTY};

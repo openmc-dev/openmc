@@ -1,11 +1,10 @@
-from copy import deepcopy
 import pytest
 import numpy as np
 
 import openmc
 from openmc.stats import Discrete, Point
 
-from tests.testing_harness import TolerantPyAPITestHarness
+from tests.testing_harness import HashedPyAPITestHarness
 
 
 
@@ -109,7 +108,7 @@ def model():
 
 
 def test_weightwindows(model):
-    test = TolerantPyAPITestHarness('statepoint.2.h5', model)
+    test = HashedPyAPITestHarness('statepoint.2.h5', model)
     test.main()
 
 

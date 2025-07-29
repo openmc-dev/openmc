@@ -759,31 +759,38 @@ instance, whereas the :meth:`openmc.Track.filter` method returns a new
 Collision Track File
 ---------------------
 
-OpenMC can generate a collision track file that contains detailed collision information
-(position, direction, energy, deposited energy, time, weight, cell ID, material ID, 
-universe ID, nuclide ZAID, particle type, particle delayed group and particle ID) 
-for each particle collision depending on user defined parameters. To invoke this feature,
-call the collision_track function as shown
-in this example::
+OpenMC can generate a collision track file that contains detailed collision
+information (position, direction, energy, deposited energy, time, weight, cell
+ID, material ID, universe ID, nuclide ZAID, particle type, particle delayed
+group and particle ID) for each particle collision depending on user-defined
+parameters. To invoke this feature, set the
+:attr:`~openmc.Settings.collision_track` attribute as shown in this example::
 
-  settings.collision_track = {"max_collisions": 300, "mt_numbers" : [18], "material_ids" : [1],
-                     "nuclide_ids": [92238], "cell_ids": [22,33]}
+  settings.collision_track = {
+      "max_collisions": 300,
+      "mt_numbers": [18],
+      "material_ids": [1],
+      "nuclide_ids": [92238],
+      "cell_ids": [22, 33]
+  }
 
-In this example, collision track information would be written in the ``collision_track.h5``
-file at the end of the simulation. The file will contain 300 collisions inside material of which 
-its ID is 1, and with the reaction MT18 (Fission) on the nuclide 92238 that occured in cells with IDs 22 and 33.
-The file can be opened using  :meth:`openmc.read_collision_track_file()`. The example below
-showcase how to use the collision track feature, while displaying the fields obtained from the file
+In this example, collision track information would be written in the
+``collision_track.h5`` file at the end of the simulation. The file will contain
+300 collisions inside material of which its ID is 1, and with the reaction MT=18
+(Fission) on the nuclide 92238 that occured in cells with IDs 22 and 33. The
+file can be opened using :func:`openmc.read_collision_track_file()`. The example
+below illustrates how to use the collision track feature, while displaying the
+fields obtained from the file:
 
 >>> data = openmc.read_collision_track_file('collision_track.h5')
 >>> data.dtype
-dtype({'names': ['r', 'u', 'E', 'dE', 'time', 'wgt', 'event_mt', 
-'delayed_group', 'cell_id', 'nuclide_id', 'material_id', 'universe_id', 
-'particle', 'parent_id', 'progeny_id'], 
-'formats': [[('x', '<f8'), ('y', '<f8'), ('z', '<f8')], 
-[('x', '<f8'), ('y', '<f8'), ('z', '<f8')], '<f8', '<f8', '<f8', '<f8', 
-'<i4', '<i4', '<i4', '<i4', '<i4', '<i4', '<i4', '<i8', '<i8'], 
-'offsets': [0, 24, 48, 56, 64, 72, 80, 84, 88, 92, 96, 100, 104, 112, 120], 
+dtype({'names': ['r', 'u', 'E', 'dE', 'time', 'wgt', 'event_mt',
+'delayed_group', 'cell_id', 'nuclide_id', 'material_id', 'universe_id',
+'particle', 'parent_id', 'progeny_id'],
+'formats': [[('x', '<f8'), ('y', '<f8'), ('z', '<f8')],
+[('x', '<f8'), ('y', '<f8'), ('z', '<f8')], '<f8', '<f8', '<f8', '<f8',
+'<i4', '<i4', '<i4', '<i4', '<i4', '<i4', '<i4', '<i8', '<i8'],
+'offsets': [0, 24, 48, 56, 64, 72, 80, 84, 88, 92, 96, 100, 104, 112, 120],
 'itemsize': 128})
 
 
@@ -792,11 +799,11 @@ The full list of fields is as follows:
   :r: Position (each direction in [cm])
   :u: Direction
   :E: Energy in [eV]
-  :dE: Deposited Energy during collision [eV]
+  :dE: Energy deposited during collision in [eV]
   :time: Time in [s]
   :wgt: Weight
   :event_mt: Reaction MT number
-  :delayed_group: Delayed Group of the particle
+  :delayed_group: Delayed group of the particle
   :cell_id: Cell ID
   :nuclide_id: Nuclide ZAID
   :material_id: Material ID

@@ -20,27 +20,32 @@ source neutrons.
 
   *Default*: None
 
--------------------------------
+-----------------------------
 ``<collision_track>`` Element
--------------------------------
+-----------------------------
 
-The ``<collision_track>`` element in OpenMC is designed to track information about 
-particle collisions based on user-defined criteria and store these events in 
-a dedicated file named ``collision_track.h5``. ``collision_track.h5`` records details such as 
-the position of the interaction, direction of the incoming particle, incident energy 
-and deposited energy, weight, time of the interaction, and the delayed neutron group 
-(0 for prompt neutrons). Additional information such as the cell ID, material ID, 
-universe ID, nuclide ZAID, particle type, and event MT number is also logged. 
-Users can specify one or several discriminators to filter for specific types 
-of collisions. If no specific collision type, location, or material is designated, 
-the element defaults to tracking all collisions across the model. Caution: This can 
-be very memory intensive. For more targeted tracking, users can employ a variety of 
-parameters such as ``cell_ids``, ``mt_numbers``, ``universe_ids``, ``material_ids``, 
-``nuclide_ids``, and ``deposited_E_threshold`` to refine the selection of particle interactions 
-to be banked. This element can contain one or more of the following attributes or sub-elements:
+The ``<collision_track>`` element indicates to track information about particle
+collisions based on a set of criteria and store these events in a file named
+``collision_track.h5``. This file records details such as the position of the
+interaction, direction of the incoming particle, incident energy and deposited
+energy, weight, time of the interaction, and the delayed neutron group (0 for
+prompt neutrons). Additional information such as the cell ID, material ID,
+universe ID, nuclide ZAID, particle type, and event MT number are also stored.
+Users can specify one or more criterion to filter collisions. If no criteria are
+specified, it defaults to tracking all collisions across the model.
+
+.. warning::
+    Storing all collisions can be very memory intensive. For more targeted
+    tracking, users can employ a variety of parameters such as ``cell_ids``,
+    ``mt_numbers``, ``universe_ids``, ``material_ids``, ``nuclide_ids``, and
+    ``deposited_E_threshold`` to refine the selection of particle interactions
+    to be banked.
+
+This element can contain one or more of the following attributes or
+sub-elements:
 
   :max_collisions:
-    An integer indicating the maximum number of collisions to be banked. 
+    An integer indicating the maximum number of collisions to be banked.
 
     *Default*: None
 
@@ -54,37 +59,41 @@ to be banked. This element can contain one or more of the following attributes o
     .. _MCPL: https://mctools.github.io/mcpl/mcpl.pdf
 
   :cell_ids:
-    A list of integers representing cell IDs to define specfic cells in which collisions are to be banked. 
+    A list of integers representing cell IDs to define specfic cells in which
+    collisions are to be banked.
 
     *Default*: None
 
   :universe_ids:
-    A list of integers representing the universe IDs to define specific universes in which collisions are to be banked. 
+    A list of integers representing the universe IDs to define specific
+    universes in which collisions are to be banked.
 
     *Default*: None
 
   :material_ids:
-    A list of integers representing the material IDs to define specific materials in which collisions are to be banked. 
+    A list of integers representing the material IDs to define specific
+    materials in which collisions are to be banked.
 
     *Default*: None
 
   :nuclide_ids:
-    A list of integers representing the nuclide IDs, expressed in ZAID, to define specific target nuclide collisions to be banked. 
+    A list of integers representing the nuclide IDs, expressed in ZAID, to
+    define specific target nuclide collisions to be banked.
 
     *Default*: None
 
   :mt_numbers:
     A list of integers representing the ENDF-6 format MT numbers to define
-    specific reaction types to be banked. (Fission MT = 18, Scattering MT = 2, Absorption MT = 101)
+    specific reaction types to be banked.
 
     *Default*: None
 
   :deposited_E_threshold:
-    A float defining the minimum deposited energy per collision (in eV) 
-    to trigger banking.
+    A float defining the minimum deposited energy per collision (in eV) to
+    trigger banking.
 
     *Default*: None
- 
+
 ----------------------------------
 ``<confidence_intervals>`` Element
 ----------------------------------
@@ -96,7 +105,7 @@ set to "false", uncertainties on tally results will be reported as the sample
 standard deviation.
 
   *Default*: false
- 
+
 -------------------------------------
 ``<create_delayed_neutrons>`` Element
 -------------------------------------

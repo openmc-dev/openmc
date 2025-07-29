@@ -893,11 +893,15 @@ def test_id_map_aligned_model():
     assert tr_instance == 3, f"Expected cell instance 3 at top-right corner, got {tr_instance}"
     assert tr_material == 5, f"Expected material ID 5 at top-right corner, got {tr_material}"
 
-def test_materials_setter_from_list():
-    lithium = openmc.Material(name="lithium")
-    lithium.set_density("g/cc", 0.534)
-    lithium.add_element("Li", 1.0)
+def test_setter_from_list():
+    mat = openmc.Material()
+    model = openmc.Model(materials=[mat])
+    assert isinstance(model.materials, openmc.Materials)
 
-    my_model = openmc.Model(materials=[lithium])
+    tally = openmc.Tally()
+    model = openmc.Model(tallies=[tally])
+    assert isinstance(model.tallies, openmc.Tallies)
 
-    assert isinstance(my_model.materials, openmc.Materials)
+    plot = openmc.Plot()
+    model = openmc.Model(plots=[plot])
+    assert isinstance(model.plots, openmc.Plots)

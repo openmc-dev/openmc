@@ -70,7 +70,7 @@ class Model:
     def __init__(
         self,
         geometry: openmc.Geometry | None = None,
-        materials: openmc.Materials = None,
+        materials: openmc.Materials | None = None,
         settings: openmc.Settings | None = None,
         tallies: openmc.Tallies | None = None,
         plots: openmc.Plots | None = None,
@@ -82,7 +82,7 @@ class Model:
         self.plots = openmc.Plots() if plots is None else plots
 
     @property
-    def geometry(self) -> openmc.Geometry | None:
+    def geometry(self) -> openmc.Geometry:
         return self._geometry
 
     @geometry.setter
@@ -91,7 +91,7 @@ class Model:
         self._geometry = geometry
 
     @property
-    def materials(self) -> openmc.Materials | None:
+    def materials(self) -> openmc.Materials:
         return self._materials
 
     @materials.setter
@@ -100,12 +100,14 @@ class Model:
         if isinstance(materials, openmc.Materials):
             self._materials = materials
         else:
+            if not hasattr(self, '_materials'):
+                self._materials = openmc.Materials()
             del self._materials[:]
             for mat in materials:
                 self._materials.append(mat)
 
     @property
-    def settings(self) -> openmc.Settings | None:
+    def settings(self) -> openmc.Settings:
         return self._settings
 
     @settings.setter
@@ -114,7 +116,7 @@ class Model:
         self._settings = settings
 
     @property
-    def tallies(self) -> openmc.Tallies | None:
+    def tallies(self) -> openmc.Tallies:
         return self._tallies
 
     @tallies.setter
@@ -123,12 +125,14 @@ class Model:
         if isinstance(tallies, openmc.Tallies):
             self._tallies = tallies
         else:
+            if not hasattr(self, '_tallies'):
+                self._tallies = openmc.Tallies()
             del self._tallies[:]
             for tally in tallies:
                 self._tallies.append(tally)
 
     @property
-    def plots(self) -> openmc.Plots | None:
+    def plots(self) -> openmc.Plots:
         return self._plots
 
     @plots.setter
@@ -137,6 +141,8 @@ class Model:
         if isinstance(plots, openmc.Plots):
             self._plots = plots
         else:
+            if not hasattr(self, '_plots'):
+                self._plots = openmc.Plots()
             del self._plots[:]
             for plot in plots:
                 self._plots.append(plot)

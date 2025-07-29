@@ -303,7 +303,7 @@ def test_python_hdf5_roundtrip(run_in_tmpdir, model):
 
     openmc.lib.finalize()
 
-    wws_hdf5 = openmc.hdf5_to_wws()[0]
+    wws_hdf5 = openmc.WeightWindowsList.from_hdf5()[0]
 
     # ensure
     assert all(wws.energy_bounds == wws_hdf5.energy_bounds)

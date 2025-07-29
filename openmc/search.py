@@ -67,8 +67,8 @@ def _search_keff(guess, target, model_builder, model_args, print_iterations,
     return keff.n - target
 
 
-def search_for_keff(model_builder, initial_guess=None, target=1.0,
-                    bracket=None, model_args=None, tol=None,
+def search_for_keff(model_builder, initial_guess=None, second_guess=None,
+                    target=1.0, bracket=None, model_args=None, tol=None,
                     bracketed_method='bisect', print_iterations=False,
                     run_args=None, **kwargs):
     """Function to perform a keff search by modifying a model parametrized by a
@@ -82,6 +82,12 @@ def search_for_keff(model_builder, initial_guess=None, target=1.0,
     initial_guess : Real, optional
         Initial guess for the parameter to be searched in
         `model_builder`. One of `guess` or `bracket` must be provided.
+    second_guess: Real, optional
+        Second guess for the parameter to be searched in
+        `model_builder`. If a second guess is not provided, scipy 
+        generates a guess nearby. This option exists to allow the
+        user to define their own x1 guess, which may improve search
+        behavior over the scipy default.
     target : Real, optional
         keff value to search for, defaults to 1.0.
     bracket : None or Iterable of Real, optional
@@ -126,6 +132,8 @@ def search_for_keff(model_builder, initial_guess=None, target=1.0,
 
     if initial_guess is not None:
         cv.check_type('initial_guess', initial_guess, Real)
+    if second_guess is not None:
+        cv.check_type('second_guess', second_guess, Real)
     if bracket is not None:
         cv.check_iterable_type('bracket', bracket, Real)
         cv.check_length('bracket', bracket, 2)
@@ -178,9 +186,10 @@ def search_for_keff(model_builder, initial_guess=None, target=1.0,
             root_finder = sopt.bisect
 
     elif initial_guess is not None:
-
+        # x1 can be None if the user does not provide a second_guess
+        # in which case, scipy generates a guess near x0
         # Generate our arguments
-        args = {'func': search_function, 'x0': initial_guess}
+        args = {'func': search_function, 'x0': initial_guess, 'x1': second_guess} 
         if tol is not None:
             args['tol'] = tol
 

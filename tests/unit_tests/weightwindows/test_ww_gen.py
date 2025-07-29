@@ -1,3 +1,4 @@
+import copy
 from itertools import permutations
 from pathlib import Path
 
@@ -332,3 +333,72 @@ def test_ww_bounds_set_in_memory(run_in_tmpdir, model):
     wws.bounds = (bounds, bounds)
 
     openmc.lib.finalize()
+
+
+@pytest.mark.skipif(not openmc.lib._dagmc_enabled(), reason="DAGMC CAD geometry is not enabled.")
+def test_ww_generation_with_dagmc(run_in_tmpdir):
+    mat1 = openmc.Material(name="1")
+    mat1.add_nuclide("H1", 1, percent_type="ao")
+    mat1.set_density("g/cm3", 0.001)
+
+    materials = openmc.Materials([mat1])
+    dag_univ = openmc.DAGMCUniverse(
+        Path(__file__).parent.parent / "dagmc" / "dagmc_tetrahedral_no_graveyard.h5m")
+    bound_dag_univ = dag_univ.bounded_universe(padding_distance=1)
+    geometry = openmc.Geometry(bound_dag_univ)
+
+    settings = openmc.Settings()
+    settings.batches = 6
+    settings.particles = 30
+    settings.run_mode = "fixed source"
+
+    # Create a point source which are supported by random ray mode
+    my_source = openmc.IndependentSource()
+    my_source.space = openmc.stats.Point((0.25, 0.25, 0.25))
+    my_source.energy = openmc.stats.delta_function(14e6)
+    settings.source = my_source
+
+    model = openmc.Model(geometry, materials, settings)
+
+    rr_model = copy.deepcopy(model)
+    rr_model.settings.inactive = 3
+
+    rr_model.convert_to_multigroup(
+        method="stochastic_slab",
+        overwrite_mgxs_library=True,
+        nparticles=10,
+        groups="CASMO-2"
+    )
+
+    rr_model.convert_to_random_ray()
+
+    mesh = openmc.RegularMesh.from_domain(rr_model, dimension=(4, 4, 4))
+
+    # avoid writing files we don't make use of
+    rr_model.settings.output = {"summary": False, "tallies": False}
+
+    # Subdivide random ray source regions
+    rr_model.settings.random_ray["source_region_meshes"] = [
+        (mesh, [rr_model.geometry.root_universe])
+    ]
+
+    # less likely to get negative values in the weight window
+    rr_model.settings.random_ray["volume_estimator"] = "naive"
+
+    # Add a weight window generator to the model
+    rr_model.settings.weight_window_generators = openmc.WeightWindowGenerator(
+        method="fw_cadis",
+        mesh=mesh,
+        max_realizations=42,
+        particle_type='neutron',
+        energy_bounds=[0.0, 100e6]
+    )
+
+    rr_model.run()
+
+    model.settings.weight_windows_on = True
+    model.settings.weight_window_checkpoints = {"collision": True, "surface": True}
+    model.settings.survival_biasing = False
+    model.settings.weight_windows = openmc.WeightWindowsList.from_hdf5()
+
+    model.run()

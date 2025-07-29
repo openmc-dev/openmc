@@ -336,30 +336,29 @@ def test_ww_bounds_set_in_memory(run_in_tmpdir, model):
 
 
 @pytest.mark.skipif(not openmc.lib._dagmc_enabled(), reason="DAGMC CAD geometry is not enabled.")
-def test_ww_generation_with_dagmc():
-
+def test_ww_generation_with_dagmc(run_in_tmpdir):
     mat1 = openmc.Material(name="1")
     mat1.add_nuclide("H1", 1, percent_type="ao")
     mat1.set_density("g/cm3", 0.001)
 
-    my_materials = openmc.Materials([mat1])
-    dag_univ = openmc.DAGMCUniverse(filename=Path(__file__).parent.parent / "dagmc" / "dagmc_tetrahedral_no_graveyard.h5m")
+    materials = openmc.Materials([mat1])
+    dag_univ = openmc.DAGMCUniverse(
+        Path(__file__).parent.parent / "dagmc" / "dagmc_tetrahedral_no_graveyard.h5m")
     bound_dag_univ = dag_univ.bounded_universe(padding_distance=1)
-    my_geometry = openmc.Geometry(root=bound_dag_univ)
+    geometry = openmc.Geometry(bound_dag_univ)
 
-    my_settings = openmc.Settings()
-    my_settings.batches = 6
-    my_settings.particles = 30
-    my_settings.run_mode = "fixed source"
+    settings = openmc.Settings()
+    settings.batches = 6
+    settings.particles = 30
+    settings.run_mode = "fixed source"
 
     # Create a point source which are supported by random ray mode
     my_source = openmc.IndependentSource()
-    my_source.space = openmc.stats.Point((0.25,0.25,0.25))
-    my_source.angle = openmc.stats.Isotropic()
-    my_source.energy = openmc.stats.Discrete([14e6], [1])
-    my_settings.source = my_source
+    my_source.space = openmc.stats.Point((0.25, 0.25, 0.25))
+    my_source.energy = openmc.stats.delta_function(14e6)
+    settings.source = my_source
 
-    model = openmc.model.Model(my_geometry, my_materials, my_settings)
+    model = openmc.Model(geometry, materials, settings)
 
     rr_model = copy.deepcopy(model)
     rr_model.settings.inactive = 3
@@ -373,8 +372,7 @@ def test_ww_generation_with_dagmc():
 
     rr_model.convert_to_random_ray()
 
-    mesh = openmc.RegularMesh().from_domain(rr_model)
-    mesh.dimension = (4, 4, 4)
+    mesh = openmc.RegularMesh.from_domain(rr_model, dimension=(4, 4, 4))
 
     # avoid writing files we don't make use of
     rr_model.settings.output = {"summary": False, "tallies": False}
@@ -398,11 +396,9 @@ def test_ww_generation_with_dagmc():
 
     rr_model.run()
 
-    weight_windows = openmc.WeightWindowsList().from_hdf5("weight_windows.h5")
-
     model.settings.weight_windows_on = True
     model.settings.weight_window_checkpoints = {"collision": True, "surface": True}
     model.settings.survival_biasing = False
-    model.settings.weight_windows = weight_windows
+    model.settings.weight_windows = openmc.WeightWindowsList.from_hdf5()
 
     model.run()

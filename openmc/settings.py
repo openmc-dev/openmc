@@ -56,9 +56,9 @@ class Settings:
         :universe_ids: List of universe IDs to define universes in which collisions should be banked. (list of int)
         :material_ids: List of material IDs to define materials in which collisions should be banked. (list of int)
         :nuclide_ids: List of nuclide ZAIDs to define nuclides in which collisions should be banked. (list of int)
-        :mt_numbers: List of reaction MT numbers to define specific reactions that should be banked 
+        :mt_numbers: List of reaction MT numbers to define specific reactions that should be banked
                     (ex: Fission:18, Sactter:2, Absorption: 101). (list of int)
-        :deposited_E_threshold: Number to define the minimum deposited energy during 
+        :deposited_E_threshold: Number to define the minimum deposited energy during
                      per collision to trigger banking.(float)
     create_fission_neutrons : bool
         Indicate whether fission neutrons should be created or not.
@@ -481,9 +481,8 @@ class Settings:
 
     @generations_per_batch.setter
     def generations_per_batch(self, generations_per_batch: int):
-        cv.check_type('generations per patch', generations_per_batch, Integral)
-        cv.check_greater_than('generations per batch',
-                              generations_per_batch, 0)
+        cv.check_type('generations per batch', generations_per_batch, Integral)
+        cv.check_greater_than('generations per batch', generations_per_batch, 0)
         self._generations_per_batch = generations_per_batch
 
     @property
@@ -513,8 +512,7 @@ class Settings:
     @rel_max_lost_particles.setter
     def rel_max_lost_particles(self, rel_max_lost_particles: float):
         cv.check_type('rel_max_lost_particles', rel_max_lost_particles, Real)
-        cv.check_greater_than('rel_max_lost_particles',
-                              rel_max_lost_particles, 0)
+        cv.check_greater_than('rel_max_lost_particles', rel_max_lost_particles, 0)
         cv.check_less_than('rel_max_lost_particles', rel_max_lost_particles, 1)
         self._rel_max_lost_particles = rel_max_lost_particles
 
@@ -524,10 +522,8 @@ class Settings:
 
     @max_write_lost_particles.setter
     def max_write_lost_particles(self, max_write_lost_particles: int):
-        cv.check_type('max_write_lost_particles',
-                      max_write_lost_particles, Integral)
-        cv.check_greater_than('max_write_lost_particles',
-                              max_write_lost_particles, 0)
+        cv.check_type('max_write_lost_particles', max_write_lost_particles, Integral)
+        cv.check_greater_than('max_write_lost_particles', max_write_lost_particles, 0)
         self._max_write_lost_particles = max_write_lost_particles
 
     @property
@@ -603,8 +599,7 @@ class Settings:
     def source(self, source: SourceBase | Iterable[SourceBase]):
         if not isinstance(source, MutableSequence):
             source = [source]
-        self._source = cv.CheckedList(
-            SourceBase, 'source distributions', source)
+        self._source = cv.CheckedList(SourceBase, 'source distributions', source)
 
     @property
     def confidence_intervals(self) -> bool:
@@ -621,8 +616,7 @@ class Settings:
 
     @electron_treatment.setter
     def electron_treatment(self, electron_treatment: str):
-        cv.check_value('electron treatment',
-                       electron_treatment, ['led', 'ttb'])
+        cv.check_value('electron treatment', electron_treatment, ['led', 'ttb'])
         self._electron_treatment = electron_treatment
 
     @property
@@ -716,8 +710,7 @@ class Settings:
     @trigger_max_batches.setter
     def trigger_max_batches(self, trigger_max_batches: int):
         cv.check_type('trigger maximum batches', trigger_max_batches, Integral)
-        cv.check_greater_than('trigger maximum batches',
-                              trigger_max_batches, 0)
+        cv.check_greater_than('trigger maximum batches', trigger_max_batches, 0)
         self._trigger_max_batches = trigger_max_batches
 
     @property
@@ -726,10 +719,8 @@ class Settings:
 
     @trigger_batch_interval.setter
     def trigger_batch_interval(self, trigger_batch_interval: int):
-        cv.check_type('trigger batch interval',
-                      trigger_batch_interval, Integral)
-        cv.check_greater_than('trigger batch interval',
-                              trigger_batch_interval, 0)
+        cv.check_type('trigger batch interval', trigger_batch_interval, Integral)
+        cv.check_greater_than('trigger batch interval', trigger_batch_interval, 0)
         self._trigger_batch_interval = trigger_batch_interval
 
     @property
@@ -813,8 +804,7 @@ class Settings:
 
     @surf_source_write.setter
     def surf_source_write(self, surf_source_write: dict):
-        cv.check_type("surface source writing options",
-                      surf_source_write, Mapping)
+        cv.check_type("surface source writing options", surf_source_write, Mapping)
         for key, value in surf_source_write.items():
             cv.check_value(
                 "surface source writing key",
@@ -827,8 +817,7 @@ class Settings:
                     "surface ids for source banking", value, Iterable, Integral
                 )
                 for surf_id in value:
-                    cv.check_greater_than(
-                        "surface id for source banking", surf_id, 0)
+                    cv.check_greater_than("surface id for source banking", surf_id, 0)
 
             elif key == "mcpl":
                 cv.check_type("write to an MCPL-format file", value, bool)
@@ -1204,8 +1193,7 @@ class Settings:
     @weight_window_checkpoints.setter
     def weight_window_checkpoints(self, weight_window_checkpoints: dict):
         for key in weight_window_checkpoints.keys():
-            cv.check_value('weight_window_checkpoints',
-                           key, ('collision', 'surface'))
+            cv.check_value('weight_window_checkpoints', key, ('collision', 'surface'))
         self._weight_window_checkpoints = weight_window_checkpoints
 
     @property
@@ -1288,8 +1276,7 @@ class Settings:
                 for mesh, domains in value:
                     cv.check_type('mesh', mesh, MeshBase)
                     cv.check_type('domains', domains, Iterable)
-                    valid_types = (openmc.Material,
-                                   openmc.Cell, openmc.Universe)
+                    valid_types = (openmc.Material, openmc.Cell, openmc.Universe)
                     for domain in domains:
                         if not isinstance(domain, valid_types):
                             raise ValueError(
@@ -1817,8 +1804,7 @@ class Settings:
                         for domain in domains:
                             domain_elem = ET.SubElement(mesh_elem, 'domain')
                             domain_elem.set('id', str(domain.id))
-                            domain_elem.set(
-                                'type', domain.__class__.__name__.lower())
+                            domain_elem.set('type', domain.__class__.__name__.lower())
                         if mesh_memo is not None and mesh.id not in mesh_memo:
                             root.append(mesh.to_xml_element())
                             mesh_memo.add(mesh.id)
@@ -2268,8 +2254,7 @@ class Settings:
                             elif domain_type == 'universe':
                                 domain = openmc.Universe(domain_id)
                             domains.append(domain)
-                        self.random_ray['source_region_meshes'].append(
-                            (mesh, domains))
+                        self.random_ray['source_region_meshes'].append((mesh, domains))
 
     def _use_decay_photons_from_xml_element(self, root):
         text = get_text(root, 'use_decay_photons')

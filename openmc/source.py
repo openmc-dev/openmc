@@ -107,12 +107,10 @@ class SourceBase(ABC):
                 cv.check_type('fissionable', value, bool)
                 self._constraints['fissionable'] = value
             elif key == 'rejection_strategy':
-                cv.check_value('rejection strategy',
-                               value, ('resample', 'kill'))
+                cv.check_value('rejection strategy', value, ('resample', 'kill'))
                 self._constraints['rejection_strategy'] = value
             else:
-                raise ValueError(
-                    f'Unknown key in constraints dictionary: {key}')
+                raise ValueError(f'Unknown key in constraints dictionary: {key}')
 
     @abstractmethod
     def populate_xml_element(self, element):
@@ -150,12 +148,10 @@ class SourceBase(ABC):
                                         for uid in constraints["domain_ids"])
             if "time_bounds" in constraints:
                 dt_elem = ET.SubElement(constraints_elem, "time_bounds")
-                dt_elem.text = ' '.join(str(t)
-                                        for t in constraints["time_bounds"])
+                dt_elem.text = ' '.join(str(t) for t in constraints["time_bounds"])
             if "energy_bounds" in constraints:
                 dt_elem = ET.SubElement(constraints_elem, "energy_bounds")
-                dt_elem.text = ' '.join(str(E)
-                                        for E in constraints["energy_bounds"])
+                dt_elem.text = ' '.join(str(E) for E in constraints["energy_bounds"])
             if "fissionable" in constraints:
                 dt_elem = ET.SubElement(constraints_elem, "fissionable")
                 dt_elem.text = str(constraints["fissionable"]).lower()
@@ -204,8 +200,7 @@ class SourceBase(ABC):
             elif source_type == 'mesh':
                 return MeshSource.from_xml_element(elem, meshes)
             else:
-                raise ValueError(
-                    f'Source type {source_type} is not recognized')
+                raise ValueError(f'Source type {source_type} is not recognized')
 
     @staticmethod
     def _get_constraints(elem: ET.Element) -> dict[str, Any]:
@@ -232,13 +227,11 @@ class SourceBase(ABC):
 
         time_bounds = get_text(elem, "time_bounds")
         if time_bounds is not None:
-            constraints['time_bounds'] = [
-                float(x) for x in time_bounds.split()]
+            constraints['time_bounds'] = [float(x) for x in time_bounds.split()]
 
         energy_bounds = get_text(elem, "energy_bounds")
         if energy_bounds is not None:
-            constraints['energy_bounds'] = [
-                float(x) for x in energy_bounds.split()]
+            constraints['energy_bounds'] = [float(x) for x in energy_bounds.split()]
 
         fissionable = get_text(elem, "fissionable")
         if fissionable is not None:
@@ -324,8 +317,7 @@ class IndependentSource(SourceBase):
         time: openmc.stats.Univariate | None = None,
         strength: float = 1.0,
         particle: str = 'neutron',
-        domains: Sequence[openmc.Cell | openmc.Material |
-                          openmc.Universe] | None = None,
+        domains: Sequence[openmc.Cell | openmc.Material | openmc.Universe] | None = None,
         constraints: dict[str, Any] | None = None
     ):
         if domains is not None:
@@ -535,7 +527,6 @@ class MeshSource(SourceBase):
         'fissionable', and 'rejection_strategy'.
 
     """
-
     def __init__(
             self,
             mesh: MeshBase,
@@ -586,8 +577,7 @@ class MeshSource(SourceBase):
 
         elif isinstance(self.mesh, UnstructuredMesh):
             if s.ndim > 1:
-                raise ValueError(
-                    'Sources must be a 1-D array for unstructured mesh')
+                raise ValueError('Sources must be a 1-D array for unstructured mesh')
 
         self._sources = s
         for src in self._sources:
@@ -656,8 +646,7 @@ class MeshSource(SourceBase):
         mesh_id = int(get_text(elem, 'mesh'))
         mesh = meshes[mesh_id]
 
-        sources = [SourceBase.from_xml_element(
-            e) for e in elem.iterchildren('source')]
+        sources = [SourceBase.from_xml_element(e) for e in elem.iterchildren('source')]
         constraints = cls._get_constraints(elem)
         return cls(mesh, sources, constraints=constraints)
 
@@ -667,8 +656,7 @@ def Source(*args, **kwargs):
     A function for backward compatibility of sources. Will be removed in the
     future. Please update to IndependentSource.
     """
-    warnings.warn(
-        "This class is deprecated in favor of 'IndependentSource'", FutureWarning)
+    warnings.warn("This class is deprecated in favor of 'IndependentSource'", FutureWarning)
     return openmc.IndependentSource(*args, **kwargs)
 
 
@@ -715,7 +703,6 @@ class CompiledSource(SourceBase):
         'fissionable', and 'rejection_strategy'.
 
     """
-
     def __init__(
         self,
         library: PathLike,
@@ -927,8 +914,7 @@ class ParticleType(IntEnum):
         try:
             return cls[value.upper()]
         except KeyError:
-            raise ValueError(
-                f"Invalid string for creation of {cls.__name__}: {value}")
+            raise ValueError(f"Invalid string for creation of {cls.__name__}: {value}")
 
     @classmethod
     def from_pdg_number(cls, pdg_number: int) -> ParticleType:
@@ -1057,8 +1043,7 @@ def write_source_file(
     openmc.SourceParticle
 
     """
-    cv.check_iterable_type(
-        "source particles", source_particles, SourceParticle)
+    cv.check_iterable_type("source particles", source_particles, SourceParticle)
     pl = ParticleList(source_particles)
     pl.export_to_hdf5(filename, **kwargs)
 
@@ -1120,8 +1105,7 @@ class ParticleList(list):
             for particle in f.particles:
                 # Determine particle type based on the PDG number
                 try:
-                    particle_type = ParticleType.from_pdg_number(
-                        particle.pdgcode)
+                    particle_type = ParticleType.from_pdg_number(particle.pdgcode)
                 except ValueError:
                     particle_type = "UNKNOWN"
 

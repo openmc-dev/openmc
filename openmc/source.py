@@ -144,8 +144,7 @@ class SourceBase(ABC):
                 dt_elem = ET.SubElement(constraints_elem, "domain_type")
                 dt_elem.text = constraints["domain_type"]
                 id_elem = ET.SubElement(constraints_elem, "domain_ids")
-                id_elem.text = ' '.join(str(uid)
-                                        for uid in constraints["domain_ids"])
+                id_elem.text = ' '.join(str(uid) for uid in constraints["domain_ids"])
             if "time_bounds" in constraints:
                 dt_elem = ET.SubElement(constraints_elem, "time_bounds")
                 dt_elem.text = ' '.join(str(t) for t in constraints["time_bounds"])
@@ -984,7 +983,6 @@ class SourceParticle:
         Type of the particle
 
     """
-
     def __init__(
         self,
         r: Iterable[float] = (0., 0., 0.),

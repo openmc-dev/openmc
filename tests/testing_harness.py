@@ -305,7 +305,7 @@ class PyAPITestHarness(TestHarness):
         else:
             self.execute_test()
 
-    def execute_test(self, change_dir = None):
+    def execute_test(self, change_dir=False):
         """Build input XMLs, run OpenMC, and verify correct results."""
         base_dir = os.getcwd() if change_dir else None
         try:
@@ -323,9 +323,9 @@ class PyAPITestHarness(TestHarness):
         finally:
             self._cleanup()
             if base_dir:
-                os.chdir(base_dir)            
+                os.chdir(base_dir)
 
-    def update_results(self, change_dir = None):
+    def update_results(self, change_dir=False):
         """Update results_true.dat and inputs_true.dat"""
         base_dir = os.getcwd() if change_dir else None
         try:
@@ -343,7 +343,7 @@ class PyAPITestHarness(TestHarness):
         finally:
             self._cleanup()
             if base_dir:
-                os.chdir(base_dir)            
+                os.chdir(base_dir)
 
     def _build_inputs(self):
         """Write input XML files."""
@@ -560,9 +560,9 @@ class CollisionTrackTestHarness(PyAPITestHarness):
         if config["build_inputs"]:
             self.build_inputs()
         elif config["update"]:
-            self.update_results(change_dir = True)
+            self.update_results(change_dir=True)
         else:
-            self.execute_test(change_dir = True)
+            self.execute_test(change_dir=True)
 
     def build_inputs(self):
         """Build inputs."""
@@ -572,7 +572,7 @@ class CollisionTrackTestHarness(PyAPITestHarness):
             self._build_inputs()
         finally:
             os.chdir(base_dir)
-    
+
     def _overwrite_results(self):
         """Also add the 'collision_track.h5' file during overwriting."""
         super()._overwrite_results()
@@ -630,5 +630,5 @@ class CollisionTrackTestHarness(PyAPITestHarness):
         data = np.array(data)
         keys = np.array(keys)
         sorted_idx = np.argsort(keys,kind='stable')
-        
+
         return data[sorted_idx]

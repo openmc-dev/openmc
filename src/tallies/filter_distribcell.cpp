@@ -34,7 +34,7 @@ void DistribcellFilter::set_cell(int32_t cell)
   assert(cell >= 0);
   assert(cell < model::cells.size());
   cell_ = cell;
-  n_bins_ = model::cells[cell]->n_instances_;
+  n_bins_ = model::cells[cell]->n_instances();
 }
 
 void DistribcellFilter::get_all_bins(

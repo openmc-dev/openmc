@@ -533,9 +533,6 @@ class Chain:
                     yield_data[0.0] = yields
 
                 nuclide.spont_yield_data = FissionYieldDistribution(yield_data)
-            #else:
-            #    nuclide._fpy = replace_missing_fpy(parent, fpy_data, decay_data)
-            #    missing_fpy.append((parent, nuclide._fpy))
 
             
 

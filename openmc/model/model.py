@@ -1,5 +1,5 @@
 from __future__ import annotations
-from collections.abc import Iterable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 import copy
 from functools import lru_cache
 from pathlib import Path
@@ -8,11 +8,13 @@ from numbers import Integral, Real
 import random
 import re
 from tempfile import NamedTemporaryFile, TemporaryDirectory
+from typing import Any, Protocol
 import warnings
 
 import h5py
 import lxml.etree as ET
 import numpy as np
+import scipy.optimize as sopt
 
 import openmc
 import openmc._xml as xml
@@ -22,6 +24,12 @@ from openmc.checkvalue import check_type, check_value, PathLike
 from openmc.exceptions import InvalidIDError
 from openmc.plots import add_plot_params, _BASIS_INDICES
 from openmc.utility_funcs import change_directory
+
+
+# Protocol for a function that is passed to search_keff
+class ModelModifier(Protocol):
+    def __call__(self, val: float, **kwargs: Any) -> None:
+        ...
 
 
 class Model:
@@ -2151,3 +2159,95 @@ class Model:
 
         # Take a wild guess as to how many rays are needed
         self.settings.particles = 2 * int(max_length)
+
+
+    def keff_search(
+        self,
+        func: ModelModifier,
+        target: float = 1.0,
+        method: str | None = None,
+        print_iterations: bool = False,
+        func_kwargs: dict[str, Any] | None = None,
+        run_kwargs: dict[str, Any] | None = None,
+        **kwargs
+    ):
+        """Perform a keff search on a model parametrized by a single variable.
+
+        Parameters
+        ----------
+        func : ModelModifier
+            Function that takes the parameter to be searched and makes a
+            modification to the model.
+        target : float, optional
+            keff value to search for
+        method : str, optional
+            Method to use for the root finding.
+        print_iterations : bool, optional
+            Whether or not to print the guess and the resultant keff during the
+            iteration process.
+        func_kwargs : dict, optional
+            Keyword-based arguments to pass to the `func` function.
+        run_kwargs : dict, optional
+            Keyword arguments to pass to :meth:`openmc.Model.run`.
+
+            .. versionadded:: 0.13.1
+        **kwargs
+            All remaining keyword arguments are passed to the root-finding
+            method.
+
+        Returns
+        -------
+        zero_value : float
+            Estimated value of the variable parameter where keff is the targeted
+            value
+        guesses : List of Real
+            List of guesses attempted by the search
+        results : List of 2-tuple of Real
+            List of keffs and uncertainties corresponding to the guess attempted
+            by the search
+
+        """
+
+        check_type('model modifier', func, Callable)
+        check_type('target', target, Real)
+        func_kwargs = {} if func_kwargs is None else dict(func_kwargs)
+        run_kwargs = {} if run_kwargs is None else dict(run_kwargs)
+        run_kwargs.setdefault('output', False)
+
+        # Set the iteration data storage variables
+        guesses = []
+        results = []
+
+        # Define the function to be passed to root_scalar
+        def f(guess: float) -> float:
+            # Modify the model with the current guess
+            func(guess, **func_kwargs)
+
+            # Run the model and obtain keff
+            sp_filepath = self.run(**run_kwargs)
+            with openmc.StatePoint(sp_filepath) as sp:
+                keff = sp.keff
+
+            # Record the history
+            guesses.append(guess)
+            results.append(keff)
+
+            if print_iterations:
+                print(f'Iteration: {len(guesses)}; {guess=:.2e}, {keff=:.5f}')
+
+            return keff.n - target
+
+        # Set arguments to be passed to root_scalar. Note that 'args' are extra
+        # arguments passed to _search_keff (does not include the 'guess' since that
+        # is handled by root_scalar)
+        kwargs['f'] = f
+        kwargs['args'] = (self, target, func, func_kwargs, print_iterations,
+                          run_kwargs, guesses, results)
+        kwargs.setdefault('method', method)
+
+        # Perform the search in a temporary directrory
+        with TemporaryDirectory() as tmpdir:
+            run_kwargs.setdefault('cwd', tmpdir)
+            sol = sopt.root_scalar(**kwargs)
+
+        return sol.root, guesses, results

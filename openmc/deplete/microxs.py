@@ -8,8 +8,9 @@ from __future__ import annotations
 from collections.abc import Sequence
 import shutil
 from tempfile import TemporaryDirectory
-from typing import Union, TypeAlias
+from typing import Union, TypeAlias, Self
 
+import h5py
 import pandas as pd
 import numpy as np
 
@@ -20,6 +21,7 @@ from openmc.data import REACTION_MT
 import openmc
 from .chain import Chain, REACTIONS, _get_chain
 from .coupled_operator import _find_cross_sections, _get_nuclides_with_data
+from ..utility_funcs import h5py_file_or_group
 import openmc.lib
 from openmc.mpi import comm
 
@@ -398,8 +400,7 @@ class MicroXS:
         MicroXS
 
         """
-        if 'float_precision' not in kwargs:
-            kwargs['float_precision'] = 'round_trip'
+        kwargs.setdefault('float_precision', 'round_trip')
 
         df = pd.read_csv(csv_file, **kwargs)
         df.set_index(['nuclides', 'reactions', 'groups'], inplace=True)
@@ -434,3 +435,96 @@ class MicroXS:
         )
         df = pd.DataFrame({'xs': self.data.flatten()}, index=multi_index)
         df.to_csv(*args, **kwargs)
+
+    def to_hdf5(self, group_or_filename: h5py.Group | PathLike, **kwargs):
+        """Export microscopic cross section data to HDF5 format
+
+        Parameters
+        ----------
+        group_or_filename : h5py.Group or path-like
+            HDF5 group or filename to write to
+        kwargs : dict, optional
+            Keyword arguments to pass to :meth:`h5py.Group.create_dataset`.
+            Defaults to {'compression': 'lzf'}.
+
+        """
+        kwargs.setdefault('compression', 'lzf')
+
+        with h5py_file_or_group(group_or_filename, 'w') as group:
+            # Store cross section data as 3D dataset
+            group.create_dataset('data', data=self.data, **kwargs)
+
+            # Store metadata as datasets using string encoding
+            group.create_dataset('nuclides', data=np.array(self.nuclides, dtype='S'))
+            group.create_dataset('reactions', data=np.array(self.reactions, dtype='S'))
+
+    @classmethod
+    def from_hdf5(cls, group_or_filename: h5py.Group | PathLike) -> Self:
+        """Load data from an HDF5 file
+
+        Parameters
+        ----------
+        group_or_filename : h5py.Group or str or PathLike
+            HDF5 group or path to HDF5 file. If given as an h5py.Group, the
+            data is read from that group. If given as a string, it is assumed
+            to be the filename for the HDF5 file.
+
+        Returns
+        -------
+        MicroXS
+        """
+
+        with h5py_file_or_group(group_or_filename, 'r') as group:
+            # Read data from HDF5 group
+            data = group['data'][:]
+            nuclides = [nuc.decode('utf-8') for nuc in group['nuclides'][:]]
+            reactions = [rxn.decode('utf-8') for rxn in group['reactions'][:]]
+
+        return cls(data, nuclides, reactions)
+
+
+def write_microxs_hdf5(
+    micros: Sequence[MicroXS],
+    filename: PathLike,
+    names: Sequence[str] | None = None,
+    **kwargs
+):
+    """Write multiple MicroXS objects to an HDF5 file
+
+    Parameters
+    ----------
+    micros : list of MicroXS
+        List of MicroXS objects
+    filename : PathLike
+        Output HDF5 filename
+    names : list of str, optional
+        Names for each MicroXS object. If None, uses 'domain_0', 'domain_1',
+        etc.
+    **kwargs
+        Additional keyword arguments passed to :meth:`h5py.Group.create_dataset`
+    """
+    if names is None:
+        names = [f'domain_{i}' for i in range(len(micros))]
+
+    # Open file once and write all domains using group interface
+    with h5py.File(filename, 'w') as f:
+        for microxs, name in zip(micros, names):
+            group = f.create_group(name)
+            microxs.to_hdf5(group, **kwargs)
+
+
+def read_microxs_hdf5(filename: PathLike) -> dict[str, MicroXS]:
+    """Read multiple MicroXS objects from an HDF5 file
+
+    Parameters
+    ----------
+    filename : path-like
+        HDF5 filename
+
+    Returns
+    -------
+    dict
+        Dictionary mapping domain names to MicroXS objects
+    """
+    with h5py.File(filename, 'r') as f:
+        return {name: MicroXS.from_hdf5(group) for name, group in f.items()}

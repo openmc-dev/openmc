@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 import openmc
 from . import IndependentOperator, PredictorIntegrator
-from .microxs import get_microxs_and_flux, MicroXS
+from .microxs import get_microxs_and_flux, write_microxs_hdf5, read_microxs_hdf5
 from .results import Results
 from ..checkvalue import PathLike
 from ..mesh import _get_all_materials
@@ -358,8 +358,7 @@ class R2SManager:
 
         # Save flux and micros to file
         np.save(output_dir / 'fluxes.npy', self.results['fluxes'])
-        for i, micros in enumerate(self.results['micros']):
-            micros.to_csv(output_dir / f'micros_{i}.csv')
+        write_microxs_hdf5(self.results['micros'], output_dir / 'micros.h5')
 
     def step2_activation(
         self,
@@ -577,9 +576,9 @@ class R2SManager:
         fluxes_file = neutron_dir / 'fluxes.npy'
         if fluxes_file.exists():
             self.results['fluxes'] = list(np.load(fluxes_file, allow_pickle=True))
+            micros_dict = read_microxs_hdf5(neutron_dir / 'micros.h5')
             self.results['micros'] = [
-                MicroXS.from_csv(neutron_dir / f'micros_{i}.csv')
-                for i in range(len(self.results['fluxes']))
+                micros_dict[f'domain_{i}'] for i in range(len(micros_dict))
             ]
 
         # Load activation results

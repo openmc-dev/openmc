@@ -9,7 +9,6 @@ import numpy as np
 from scipy.signal import find_peaks
 
 import openmc.checkvalue as cv
-
 from ..exceptions import DataError
 from ..mixin import EqualityMixin
 from . import WMP_VERSION, WMP_VERSION_MAJOR
@@ -490,7 +489,7 @@ def vectfit_nuclide(endf_file, njoy_error=5e-4, vf_pieces=None,
     piece_width = (sqrt(E_max) - sqrt(E_min)) / vf_pieces
 
     alpha = nuc_ce.atomic_weight_ratio/(K_BOLTZMANN*TEMPERATURE_LIMIT)
-    
+
     poles, residues = [], []
     # VF piece by piece
     for i_piece in range(vf_pieces):

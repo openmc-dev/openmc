@@ -5,28 +5,28 @@ Approximate f(s) with a rational function:
         f(s)=R*(s*I-A)^(-1) + Polynomials*s
 where f(s) is a vector of elements.
 
-When f(s) is a vector, all elements become fitted with a common pole set.
-The identification is done using the pole relocating method known as Vector
-Fitting [1] with relaxed non-triviality constraint for faster convergence
-and smaller fitting errors [2], and utilization of matrix structure for fast
-solution of the pole identifion step [3].
+When f(s) is a vector, all elements become fitted with a common pole set. The
+identification is done using the pole relocating method known as Vector Fitting
+[1] with relaxed non-triviality constraint for faster convergence and smaller
+fitting errors [2], and utilization of matrix structure for fast solution of the
+pole identifion step [3].
 
 [1] B. Gustavsen and A. Semlyen, "Rational approximation of frequency
-    domain responses by Vector Fitting", IEEE Trans. Power Delivery,
-    vol. 14, no. 3, pp. 1052-1061, July 1999.
+    domain responses by Vector Fitting", IEEE Trans. Power Delivery, vol. 14,
+    no. 3, pp. 1052-1061, July 1999.
 [2] B. Gustavsen, "Improving the pole relocating properties of vector
-    fitting", IEEE Trans. Power Delivery, vol. 21, no. 3, pp. 1587-1592,
-    July 2006.
+    fitting", IEEE Trans. Power Delivery, vol. 21, no. 3, pp. 1587-1592, July
+    2006.
 [3] D. Deschrijver, M. Mrozowski, T. Dhaene, and D. De Zutter,
-    "Macromodeling of Multiport Systems Using a Fast Implementation of
-    the Vector Fitting Method", IEEE Microwave and Wireless Components
-    Letters, vol. 18, no. 6, pp. 383-385, June 2008.
+    "Macromodeling of Multiport Systems Using a Fast Implementation of the
+    Vector Fitting Method", IEEE Microwave and Wireless Components Letters, vol.
+    18, no. 6, pp. 383-385, June 2008.
 
 All credit goes to:
-- Bjorn Gustavsen for his MATLAB implementation.
-(http://www.sintef.no/Projectweb/VECTFIT/)
-- Jingang Liang for his C++ implementation.
-(https://github.com/mit-crpg/vectfit.git)
+ - Bjorn Gustavsen for his MATLAB implementation.
+   (http://www.sintef.no/Projectweb/VECTFIT/)
+ - Jingang Liang for his C++ implementation.
+   (https://github.com/mit-crpg/vectfit.git)
 
 """
 
@@ -40,10 +40,9 @@ def evaluate(
     eval_points: np.ndarray,
     pole_values: np.ndarray,
     residue_matrix: np.ndarray,
-    poly_coefficients: np.ndarray = None,
+    poly_coefficients: np.ndarray | None = None,
 ) -> np.ndarray:
-    """
-    Evaluate the rational function approximation:
+    """Evaluate the rational function approximation:
         f(s) ≈ sum(residue / (s - pole)) + sum(poly_coefficients * s^j)
 
     Parameters
@@ -61,10 +60,20 @@ def evaluate(
     -------
     np.ndarray
         2D array of evaluated real function values (shape: [num_vectors, num_samples]).
+
+    Raises
+    ------
+    ValueError
+        If input arrays have incompatible shapes.
     """
     eval_points = np.asarray(eval_points)
     pole_values = np.asarray(pole_values)
     residue_matrix = np.asarray(residue_matrix)
+
+    if eval_points.ndim != 1:
+        raise ValueError("eval_points must be a 1D array")
+    if pole_values.ndim != 1:
+        raise ValueError("pole_values must be a 1D array")
 
     if residue_matrix.ndim == 1:
         residue_matrix = residue_matrix.reshape((1, -1))
@@ -87,7 +96,7 @@ def evaluate(
 
     # term: sum over poles of (residues / (eval_points - poles))
     denominator = (
-        eval_points[None, :] - pole_values[:, None]
+        eval_points[np.newaxis, :] - pole_values[:, np.newaxis]
     )  # shape: (num_poles, num_eval)
     pole_terms = residue_matrix @ (1.0 / denominator)  # shape: (num_vectors, num_eval)
     result = np.real(pole_terms)
@@ -95,7 +104,7 @@ def evaluate(
     # polynomial part: sum over poly_idx of (coeff * eval_points**poly_idx)
     if num_coeffs > 0:
         powers = (
-            eval_points[None, :] ** np.arange(num_coeffs)[:, None]
+            eval_points[np.newaxis, :] ** np.arange(num_coeffs)[:, np.newaxis]
         )  # shape: (num_coeffs, num_eval)
         result += poly_coefficients @ powers  # shape: (num_vectors, num_eval)
 
@@ -111,8 +120,7 @@ def vectfit(
     skip_pole_update: bool = False,
     skip_residue_update: bool = False,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, float]:
-    """
-    Perform vector fitting using the Fast Relaxed Vector Fitting algorithm.
+    """Perform vector fitting using the Fast Relaxed Vector Fitting algorithm.
 
     Parameters
     ----------
@@ -151,7 +159,7 @@ def vectfit(
     num_poles = len(initial_poles)
 
     if n_polys < 0 or n_polys > 11:
-        raise ValueError("num_polynomials must be in [0, 11]")
+        raise ValueError("n_polys must be in [0, 11]")
 
     residue_matrix = np.zeros((num_vectors, num_poles), dtype=np.complex128)
     poly_coefficients = np.zeros((num_vectors, n_polys))
@@ -204,8 +212,7 @@ def compute_dk_matrix(
     num_polys: int,
     tol_high: float = None,
 ):
-    """
-    Compute the dk_matrix used in windowed multipole evaluations.
+    """Compute the dk_matrix used in windowed multipole evaluations.
 
     Parameters
     ----------
@@ -220,7 +227,7 @@ def compute_dk_matrix(
     num_poles : int
         Number of complex poles.
     num_polys : int
-        Number of Chebyshev polynomial terms (including constant term).
+        Number of polynomial terms (including constant term).
     tol_high : float
         Replacement value for infinities.
     """
@@ -247,7 +254,8 @@ def compute_dk_matrix(
 
     # Replace infinities with high tolerance value
     if tol_high is not None:
-        np.copyto(dk_matrix, tol_high + 0j, where=np.isinf(dk_matrix))
+        inf_mask = np.isinf(dk_matrix)
+        dk_matrix[inf_mask] = tol_high + 0j
 
     # Add polynomial basis (Chebyshev-like, just powers here)
     powers = np.arange(num_polys)
@@ -646,7 +654,7 @@ def solve_vector_block(
     poly_coeffs : ndarray or None
         Solution vector for polynomial coefficients (length = num_polys), or None if num_polys == 0.
     """
-    A = dk_matrix * weights[vec_idx][:, None]
+    A = dk_matrix * weights[vec_idx][:, np.newaxis]
     b = weights[vec_idx] * response_matrix[vec_idx]
 
     lhs_matrix = np.vstack((A.real, A.imag))
@@ -655,7 +663,7 @@ def solve_vector_block(
     scale_column = np.linalg.norm(lhs_matrix, axis=0)
     scale_column[scale_column == 0] = 1.0
     lhs_matrix *= scale_column
-    x, *_ = lstsq(lhs_matrix, rhs_vector)
+    x = lstsq(lhs_matrix, rhs_vector)[0]
     x *= scale_column
 
     residues = x[:num_poles]

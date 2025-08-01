@@ -119,6 +119,7 @@ int openmc_finalize()
   settings::run_CE = true;
   settings::run_mode = RunMode::UNSET;
   settings::source_latest = false;
+  settings::source_rejection_fraction = 0.05;
   settings::source_separate = false;
   settings::source_write = true;
   settings::ssw_cell_id = C_NONE;
@@ -165,14 +166,15 @@ int openmc_finalize()
   // Deallocate arrays
   free_memory();
 
-#ifdef LIBMESH
+#ifdef OPENMC_LIBMESH_ENABLED
   settings::libmesh_init.reset();
 #endif
 
   // Free all MPI types
 #ifdef OPENMC_MPI
-  if (mpi::source_site != MPI_DATATYPE_NULL)
+  if (mpi::source_site != MPI_DATATYPE_NULL) {
     MPI_Type_free(&mpi::source_site);
+  }
 #endif
 
   openmc_reset_random_ray();
@@ -183,7 +185,6 @@ int openmc_finalize()
 int openmc_reset()
 {
 
-  model::universe_cell_counts.clear();
   model::universe_level_counts.clear();
 
   for (auto& t : model::tallies) {

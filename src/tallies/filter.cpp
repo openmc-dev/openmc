@@ -25,6 +25,7 @@
 #include "openmc/tallies/filter_materialfrom.h"
 #include "openmc/tallies/filter_mesh.h"
 #include "openmc/tallies/filter_meshborn.h"
+#include "openmc/tallies/filter_meshmaterial.h"
 #include "openmc/tallies/filter_meshsurface.h"
 #include "openmc/tallies/filter_mu.h"
 #include "openmc/tallies/filter_musurface.h"
@@ -36,6 +37,7 @@
 #include "openmc/tallies/filter_surface.h"
 #include "openmc/tallies/filter_time.h"
 #include "openmc/tallies/filter_universe.h"
+#include "openmc/tallies/filter_weight.h"
 #include "openmc/tallies/filter_zernike.h"
 #include "openmc/xml_interface.h"
 
@@ -132,6 +134,8 @@ Filter* Filter::create(const std::string& type, int32_t id)
     return Filter::create<MeshFilter>(id);
   } else if (type == "meshborn") {
     return Filter::create<MeshBornFilter>(id);
+  } else if (type == "meshmaterial") {
+    return Filter::create<MeshMaterialFilter>(id);
   } else if (type == "meshsurface") {
     return Filter::create<MeshSurfaceFilter>(id);
   } else if (type == "mu") {
@@ -154,6 +158,8 @@ Filter* Filter::create(const std::string& type, int32_t id)
     return Filter::create<TimeFilter>(id);
   } else if (type == "universe") {
     return Filter::create<UniverseFilter>(id);
+  } else if (type == "weight") {
+    return Filter::create<WeightFilter>(id);
   } else if (type == "zernike") {
     return Filter::create<ZernikeFilter>(id);
   } else if (type == "zernikeradial") {

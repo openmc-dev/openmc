@@ -196,8 +196,8 @@ void validate_random_ray_inputs()
                   "supported in random ray mode.");
     }
     if (material.get_xsdata().size() > 1) {
-      fatal_error("Non-isothermal MGXS detected. Only isothermal XS data sets "
-                  "supported in random ray mode.");
+      warning("Non-isothermal MGXS detected. Only isothermal XS data sets "
+              "supported in random ray mode. Using lowest temperature.");
     }
     for (int g = 0; g < data::mg.num_energy_groups_; g++) {
       if (material.exists_in_model) {
@@ -281,10 +281,21 @@ void validate_random_ray_inputs()
           "allowed in random ray mode.");
       }
 
-      // Validate that a domain ID was specified
-      if (is->domain_ids().size() == 0) {
-        fatal_error("Fixed sources must be specified by domain "
-                    "id (cell, material, or universe) in random ray mode.");
+      // Validate that a domain ID was specified OR that it is a point source
+      auto sp = dynamic_cast<SpatialPoint*>(is->space());
+      if (is->domain_ids().size() == 0 && !sp) {
+        fatal_error("Fixed sources must be point source or spatially "
+                    "constrained by domain id (cell, material, or universe) in "
+                    "random ray mode.");
+      } else if (is->domain_ids().size() > 0 && sp) {
+        // If both a domain constraint and a non-default point source location
+        // are specified, notify user that domain constraint takes precedence.
+        if (sp->r().x == 0.0 && sp->r().y == 0.0 && sp->r().z == 0.0) {
+          warning("Fixed source has both a domain constraint and a point "
+                  "type spatial distribution. The domain constraint takes "
+                  "precedence in random ray mode -- point source coordinate "
+                  "will be ignored.");
+        }
       }
 
       // Check that a discrete energy distribution was used
@@ -303,20 +314,21 @@ void validate_random_ray_inputs()
   for (int p = 0; p < model::plots.size(); p++) {
 
     // Get handle to OpenMC plot object
-    Plot* openmc_plot = dynamic_cast<Plot*>(model::plots[p].get());
+    const auto& openmc_plottable = model::plots[p];
+    Plot* openmc_plot = dynamic_cast<Plot*>(openmc_plottable.get());
 
     // Random ray plots only support voxel plots
     if (!openmc_plot) {
       warning(fmt::format(
         "Plot {} will not be used for end of simulation data plotting -- only "
         "voxel plotting is allowed in random ray mode.",
-        p));
+        openmc_plottable->id()));
       continue;
     } else if (openmc_plot->type_ != Plot::PlotType::voxel) {
       warning(fmt::format(
         "Plot {} will not be used for end of simulation data plotting -- only "
         "voxel plotting is allowed in random ray mode.",
-        p));
+        openmc_plottable->id()));
       continue;
     }
   }
@@ -392,12 +404,12 @@ RandomRaySimulation::RandomRaySimulation()
 
 void RandomRaySimulation::apply_fixed_sources_and_mesh_domains()
 {
+  domain_->apply_meshes();
   if (settings::run_mode == RunMode::FIXED_SOURCE) {
     // Transfer external source user inputs onto random ray source regions
     domain_->convert_external_sources();
     domain_->count_external_source_regions();
   }
-  domain_->apply_meshes();
 }
 
 void RandomRaySimulation::prepare_fixed_sources_adjoint(
@@ -477,6 +489,9 @@ void RandomRaySimulation::simulate()
       // Add source to scalar flux, compute number of FSR hits
       int64_t n_hits = domain_->add_source_to_scalar_flux();
 
+      // Apply transport stabilization factors
+      domain_->apply_transport_stabilization();
+
       if (settings::run_mode == RunMode::EIGENVALUE) {
         // Compute random ray k-eff
         k_eff_ = domain_->compute_k_eff(k_eff_);
@@ -493,8 +508,9 @@ void RandomRaySimulation::simulate()
         domain_->accumulate_iteration_flux();
 
         // Generate mapping between source regions and tallies
-        if (!domain_->mapped_all_tallies_) {
-          domain_->convert_source_regions_to_tallies();
+        if (!domain_->mapped_all_tallies_ &&
+            !RandomRay::mesh_subdivision_enabled_) {
+          domain_->convert_source_regions_to_tallies(0);
         }
 
         // Use above mapping to contribute FSR flux data to appropriate
@@ -513,6 +529,8 @@ void RandomRaySimulation::simulate()
     finalize_generation();
     finalize_batch();
   } // End random ray power iteration loop
+
+  domain_->count_external_source_regions();
 }
 
 void RandomRaySimulation::output_simulation_results() const
@@ -576,17 +594,23 @@ void RandomRaySimulation::print_results_random_ray(
     header("Simulation Statistics", 4);
     fmt::print(
       " Total Iterations                  = {}\n", settings::n_batches);
-    fmt::print(" Flat Source Regions (FSRs)        = {}\n", n_source_regions);
     fmt::print(
-      " FSRs Containing External Sources  = {}\n", n_external_source_regions);
+      " Number of Rays per Iteration      = {}\n", settings::n_particles);
+    fmt::print(" Inactive Distance                 = {} cm\n",
+      RandomRay::distance_inactive_);
+    fmt::print(" Active Distance                   = {} cm\n",
+      RandomRay::distance_active_);
+    fmt::print(" Source Regions (SRs)              = {}\n", n_source_regions);
+    fmt::print(
+      " SRs Containing External Sources   = {}\n", n_external_source_regions);
     fmt::print(" Total Geometric Intersections     = {:.4e}\n",
       static_cast<double>(total_geometric_intersections));
     fmt::print("   Avg per Iteration               = {:.4e}\n",
       static_cast<double>(total_geometric_intersections) / settings::n_batches);
-    fmt::print("   Avg per Iteration per FSR       = {:.2f}\n",
+    fmt::print("   Avg per Iteration per SR        = {:.2f}\n",
       static_cast<double>(total_geometric_intersections) /
         static_cast<double>(settings::n_batches) / n_source_regions);
-    fmt::print(" Avg FSR Miss Rate per Iteration   = {:.4f}%\n", avg_miss_rate);
+    fmt::print(" Avg SR Miss Rate per Iteration    = {:.4f}%\n", avg_miss_rate);
     fmt::print(" Energy Groups                     = {}\n", negroups);
     fmt::print(
       " Total Integrations                = {:.4e}\n", total_integrations);
@@ -611,6 +635,33 @@ void RandomRaySimulation::print_results_random_ray(
 
     std::string adjoint_true = (FlatSourceDomain::adjoint_) ? "ON" : "OFF";
     fmt::print(" Adjoint Flux Mode                 = {}\n", adjoint_true);
+
+    std::string shape;
+    switch (RandomRay::source_shape_) {
+    case RandomRaySourceShape::FLAT:
+      shape = "Flat";
+      break;
+    case RandomRaySourceShape::LINEAR:
+      shape = "Linear";
+      break;
+    case RandomRaySourceShape::LINEAR_XY:
+      shape = "Linear XY";
+      break;
+    default:
+      fatal_error("Invalid random ray source shape");
+    }
+    fmt::print(" Source Shape                      = {}\n", shape);
+    std::string sample_method =
+      (RandomRay::sample_method_ == RandomRaySampleMethod::PRNG) ? "PRNG"
+                                                                 : "Halton";
+    fmt::print(" Sample Method                     = {}\n", sample_method);
+
+    if (domain_->is_transport_stabilization_needed_) {
+      fmt::print(" Transport XS Stabilization Used   = YES (rho = {:.3f})\n",
+        FlatSourceDomain::diagonal_stabilization_rho_);
+    } else {
+      fmt::print(" Transport XS Stabilization Used   = NO\n");
+    }
 
     header("Timing Statistics", 4);
     show_time("Total time for initialization", time_initialize.elapsed());

@@ -78,20 +78,18 @@ A minimal example for performing depletion would be:
     >>> import openmc.deplete
     >>> geometry = openmc.Geometry.from_xml()
     >>> settings = openmc.Settings.from_xml()
-    >>> model = openmc.model.Model(geometry, settings)
+    >>> model = openmc.Model(geometry, settings)
 
     # Representation of a depletion chain
     >>> chain_file = "chain_casl.xml"
-    >>> operator = openmc.deplete.CoupledOperator(
-    ...     model, chain_file)
+    >>> operator = openmc.deplete.CoupledOperator(model, chain_file)
 
     # Set up 5 time steps of one day each
     >>> dt = [24 * 60 * 60] * 5
     >>> power = 1e6  # constant power of 1 MW
 
     # Deplete using mid-point predictor-corrector
-    >>> cecm = openmc.deplete.CECMIntegrator(
-    ...     operator, dt, power)
+    >>> cecm = openmc.deplete.CECMIntegrator(operator, dt, power)
     >>> cecm.integrate()
 
 Internal Classes and Functions
@@ -208,14 +206,15 @@ total system energy.
 The :class:`openmc.deplete.IndependentOperator` uses inner classes subclassed
 from those listed above to perform similar calculations.
 
-The following classes are used to define transfer rates to model continuous
-removal or feed of nuclides during depletion.
+The following classes are used to define external source rates or transfer rates
+to model continuous removal or feed of nuclides during depletion.
 
 .. autosummary::
    :toctree: generated
    :nosignatures:
    :template: myclass.rst
 
+   transfer_rates.ExternalSourceRates
    transfer_rates.TransferRates
 
 Intermediate Classes

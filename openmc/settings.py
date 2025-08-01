@@ -16,7 +16,7 @@ from .mesh import _read_meshes, RegularMesh, MeshBase
 from .source import SourceBase, MeshSource, IndependentSource
 from .utility_funcs import input_path
 from .volume import VolumeCalculation
-from .weight_windows import WeightWindows, WeightWindowGenerator
+from .weight_windows import WeightWindows, WeightWindowGenerator, WeightWindowsList
 
 
 class RunMode(Enum):
@@ -86,6 +86,9 @@ class Settings:
         .. versionadded:: 0.12
     generations_per_batch : int
         Number of generations per batch
+    ifp_n_generation : int
+        Number of generations to consider for the Iterated Fission Probability
+        method.
     max_lost_particles : int
         Maximum number of lost particles
 
@@ -187,6 +190,17 @@ class Settings:
             or openmc.Universe. The mesh will be applied to the listed domains
             to subdivide source regions so as to improve accuracy and/or conform
             with tally meshes.
+        :diagonal_stabilization_rho:
+            The rho factor for use with diagonal stabilization. This technique is
+            applied when negative diagonal (in-group) elements are detected in
+            the scattering matrix of input MGXS data, which is a common feature
+            of transport corrected MGXS data. The default is 1.0, which ensures
+            no negative diagonal elements are present in the iteration matrix and
+            thus stabilizes the simulation. A value of 0.0 will disable diagonal
+            stabilization. Values between 0.0 and 1.0 will apply a degree of
+            stabilization, which may be desirable as stronger diagonal stabilization
+            also tends to dampen the convergence rate of the solver, thus requiring
+            more iterations to converge.
 
         .. versionadded:: 0.15.0
     resonance_scattering : dict
@@ -208,6 +222,10 @@ class Settings:
         Number of random numbers allocated for each source particle history
     source : Iterable of openmc.SourceBase
         Distribution of source sites in space, angle, and energy
+    source_rejection_fraction : float
+        Minimum fraction of source sites that must be accepted when applying
+        rejection sampling based on constraints. If not specified, the default
+        value is 0.05.
     sourcepoint : dict
         Options for writing source points. Acceptable keys are:
 
@@ -295,7 +313,7 @@ class Settings:
         described in :ref:`verbosity`.
     volume_calculations : VolumeCalculation or iterable of VolumeCalculation
         Stochastic volume calculation specifications
-    weight_windows : WeightWindows or iterable of WeightWindows
+    weight_windows : WeightWindowsList
         Weight windows to use for variance reduction
 
         .. versionadded:: 0.13
@@ -343,6 +361,7 @@ class Settings:
 
         # Source subelement
         self._source = cv.CheckedList(SourceBase, 'source distributions')
+        self._source_rejection_fraction = None
 
         self._confidence_intervals = None
         self._electron_treatment = None
@@ -363,6 +382,9 @@ class Settings:
         self._trigger_batch_interval = None
 
         self._output = None
+
+        # Iterated Fission Probability
+        self._ifp_n_generation = None
 
         # Output options
         self._statepoint = {}
@@ -402,7 +424,7 @@ class Settings:
         self._max_particles_in_flight = None
         self._max_particle_events = None
         self._write_initial_source = None
-        self._weight_windows = cv.CheckedList(WeightWindows, 'weight windows')
+        self._weight_windows = WeightWindowsList()
         self._weight_window_generators = cv.CheckedList(WeightWindowGenerator, 'weight window generators')
         self._weight_windows_on = None
         self._weight_windows_file = None
@@ -816,6 +838,17 @@ class Settings:
         self._verbosity = verbosity
 
     @property
+    def ifp_n_generation(self) -> int:
+        return self._ifp_n_generation
+
+    @ifp_n_generation.setter
+    def ifp_n_generation(self, ifp_n_generation: int):
+        if ifp_n_generation is not None:
+            cv.check_type("number of generations", ifp_n_generation, Integral)
+            cv.check_greater_than("number of generations", ifp_n_generation, 0)
+        self._ifp_n_generation = ifp_n_generation
+
+    @property
     def tabular_legendre(self) -> dict:
         return self._tabular_legendre
 
@@ -1062,14 +1095,14 @@ class Settings:
         self._write_initial_source = value
 
     @property
-    def weight_windows(self) -> list[WeightWindows]:
+    def weight_windows(self) -> WeightWindowsList:
         return self._weight_windows
 
     @weight_windows.setter
-    def weight_windows(self, value: WeightWindows | Iterable[WeightWindows]):
-        if not isinstance(value, MutableSequence):
+    def weight_windows(self, value: WeightWindows | Sequence[WeightWindows]):
+        if not isinstance(value, Sequence):
             value = [value]
-        self._weight_windows = cv.CheckedList(WeightWindows, 'weight windows', value)
+        self._weight_windows = WeightWindowsList(value)
 
     @property
     def weight_windows_on(self) -> bool:
@@ -1174,10 +1207,13 @@ class Settings:
                             raise ValueError(
                                 f'Invalid domain type: {type(domain)}. Expected '
                                 'openmc.Material, openmc.Cell, or openmc.Universe.')
-                cv.check_type('adjoint', value, bool)
             elif key == 'sample_method':
                 cv.check_value('sample method', value,
                                ('prng', 'halton'))
+            elif key == 'diagonal_stabilization_rho':
+                cv.check_type('diagonal stabilization rho', value, Real)
+                cv.check_greater_than('diagonal stabilization rho',
+                                      value, 0.0, True)
             else:
                 raise ValueError(f'Unable to set random ray to "{key}" which is '
                                  'unsupported by OpenMC')
@@ -1192,6 +1228,17 @@ class Settings:
     def use_decay_photons(self, value):
         cv.check_type('use decay photons', value, bool)
         self._use_decay_photons = value
+
+    @property
+    def source_rejection_fraction(self) -> float:
+        return self._source_rejection_fraction
+
+    @source_rejection_fraction.setter
+    def source_rejection_fraction(self, source_rejection_fraction: float):
+        cv.check_type('source_rejection_fraction', source_rejection_fraction, Real)
+        cv.check_greater_than('source_rejection_fraction', source_rejection_fraction, 0)
+        cv.check_less_than('source_rejection_fraction', source_rejection_fraction, 1)
+        self._source_rejection_fraction = source_rejection_fraction
 
     def _create_run_mode_subelement(self, root):
         elem = ET.SubElement(root, "run_mode")
@@ -1441,6 +1488,11 @@ class Settings:
             element = ET.SubElement(root, "no_reduce")
             element.text = str(self._no_reduce).lower()
 
+    def _create_ifp_n_generation_subelement(self, root):
+        if self._ifp_n_generation is not None:
+            element = ET.SubElement(root, "ifp_n_generation")
+            element.text = str(self._ifp_n_generation)
+
     def _create_tabular_legendre_subelements(self, root):
         if self.tabular_legendre:
             element = ET.SubElement(root, "tabular_legendre")
@@ -1590,9 +1642,12 @@ class Settings:
             if mesh_memo is not None and wwg.mesh.id in mesh_memo:
                 continue
 
-            root.append(wwg.mesh.to_xml_element())
-            if mesh_memo is not None:
-                mesh_memo.add(wwg.mesh.id)
+            # See if a <mesh> element already exists -- if not, add it
+            path = f"./mesh[@id='{wwg.mesh.id}']"
+            if root.find(path) is None:
+                root.append(wwg.mesh.to_xml_element())
+                if mesh_memo is not None:
+                    mesh_memo.add(wwg.mesh.id)
 
     def _create_weight_windows_file_element(self, root):
         if self.weight_windows_file is not None:
@@ -1645,6 +1700,11 @@ class Settings:
                 else:
                     subelement = ET.SubElement(element, key)
                     subelement.text = str(value)
+
+    def _create_source_rejection_fraction_subelement(self, root):
+        if self._source_rejection_fraction is not None:
+            element = ET.SubElement(root, "source_rejection_fraction")
+            element.text = str(self._source_rejection_fraction)
 
     def _eigenvalue_from_xml_element(self, root):
         elem = root.find('eigenvalue')
@@ -1874,6 +1934,11 @@ class Settings:
         if text is not None:
             self.verbosity = int(text)
 
+    def _ifp_n_generation_from_xml_element(self, root):
+        text = get_text(root, 'ifp_n_generation')
+        if text is not None:
+            self.ifp_n_generation = int(text)
+
     def _tabular_legendre_from_xml_element(self, root):
         elem = root.find('tabular_legendre')
         if elem is not None:
@@ -2019,7 +2084,7 @@ class Settings:
         if elem is not None:
             self.random_ray = {}
             for child in elem:
-                if child.tag in ('distance_inactive', 'distance_active'):
+                if child.tag in ('distance_inactive', 'distance_active', 'diagonal_stabilization_rho'):
                     self.random_ray[child.tag] = float(child.text)
                 elif child.tag == 'source':
                     source = SourceBase.from_xml_element(child)
@@ -2059,6 +2124,11 @@ class Settings:
         text = get_text(root, 'use_decay_photons')
         if text is not None:
             self.use_decay_photons = text in ('true', '1')
+
+    def _source_rejection_fraction_from_xml_element(self, root):
+        text = get_text(root, 'source_rejection_fraction')
+        if text is not None:
+            self.source_rejection_fraction = float(text)
 
     def to_xml_element(self, mesh_memo=None):
         """Create a 'settings' element to be written to an XML file.
@@ -2102,6 +2172,7 @@ class Settings:
         self._create_trigger_subelement(element)
         self._create_no_reduce_subelement(element)
         self._create_verbosity_subelement(element)
+        self._create_ifp_n_generation_subelement(element)
         self._create_tabular_legendre_subelements(element)
         self._create_temperature_subelements(element)
         self._create_trace_subelement(element)
@@ -2126,6 +2197,7 @@ class Settings:
         self._create_max_tracks_subelement(element)
         self._create_random_ray_subelement(element, mesh_memo)
         self._create_use_decay_photons_subelement(element)
+        self._create_source_rejection_fraction_subelement(element)
 
         # Clean the indentation in the file to be user-readable
         clean_indentation(element)
@@ -2211,6 +2283,7 @@ class Settings:
         settings._trigger_from_xml_element(elem)
         settings._no_reduce_from_xml_element(elem)
         settings._verbosity_from_xml_element(elem)
+        settings._ifp_n_generation_from_xml_element(elem)
         settings._tabular_legendre_from_xml_element(elem)
         settings._temperature_from_xml_element(elem)
         settings._trace_from_xml_element(elem)
@@ -2233,6 +2306,7 @@ class Settings:
         settings._max_tracks_from_xml_element(elem)
         settings._random_ray_from_xml_element(elem)
         settings._use_decay_photons_from_xml_element(elem)
+        settings._source_rejection_fraction_from_xml_element(elem)
 
         return settings
 

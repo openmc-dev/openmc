@@ -265,6 +265,12 @@ uint64_t RandomRay::transport_history_based_single_ray()
     if (!alive())
       break;
     event_cross_surface();
+    // If ray has too many events, display warning and kill it
+    if (n_event() >= settings::max_particle_events) {
+      warning("Ray " + std::to_string(id()) +
+              " underwent maximum number of events, terminating ray.");
+      wgt() = 0.0;
+    }
   }
 
   return n_event();
@@ -275,9 +281,9 @@ void RandomRay::event_advance_ray()
 {
   // Find the distance to the nearest boundary
   boundary() = distance_to_boundary(*this);
-  double distance = boundary().distance;
+  double distance = boundary().distance();
 
-  if (distance <= 0.0) {
+  if (distance < 0.0) {
     mark_as_lost("Negative transport distance detected for particle " +
                  std::to_string(id()));
     return;
@@ -324,14 +330,14 @@ void RandomRay::event_advance_ray()
 
   // Advance particle
   for (int j = 0; j < n_coord(); ++j) {
-    coord(j).r += distance * coord(j).u;
+    coord(j).r() += distance * coord(j).u();
   }
 }
 
 void RandomRay::attenuate_flux(double distance, bool is_active, double offset)
 {
   // Determine source region index etc.
-  int i_cell = lowest_coord().cell;
+  int i_cell = lowest_coord().cell();
 
   // The base source region is the spatial region index
   int64_t sr = domain_->source_region_offsets_[i_cell] + cell_instance();
@@ -518,8 +524,10 @@ void RandomRay::attenuate_flux_flat_source_void(
   }
 
   // Add source to incoming angular flux, assuming void region
-  for (int g = 0; g < negroups_; g++) {
-    angular_flux_[g] += srh.external_source(g) * distance;
+  if (settings::run_mode == RunMode::FIXED_SOURCE) {
+    for (int g = 0; g < negroups_; g++) {
+      angular_flux_[g] += srh.external_source(g) * distance;
+    }
   }
 }
 
@@ -688,7 +696,10 @@ void RandomRay::attenuate_flux_linear_source_void(
   // transport through a void region is greatly simplified. Here we
   // compute the updated flux moments.
   for (int g = 0; g < negroups_; g++) {
-    float spatial_source = srh.external_source(g);
+    float spatial_source = 0.f;
+    if (settings::run_mode == RunMode::FIXED_SOURCE) {
+      spatial_source = srh.external_source(g);
+    }
     float new_delta_psi = (angular_flux_[g] - spatial_source) * distance;
     float h1 = 0.5f;
     h1 = h1 * angular_flux_[g];
@@ -750,8 +761,10 @@ void RandomRay::attenuate_flux_linear_source_void(
   }
 
   // Add source to incoming angular flux, assuming void region
-  for (int g = 0; g < negroups_; g++) {
-    angular_flux_[g] += srh.external_source(g) * distance;
+  if (settings::run_mode == RunMode::FIXED_SOURCE) {
+    for (int g = 0; g < negroups_; g++) {
+      angular_flux_[g] += srh.external_source(g) * distance;
+    }
   }
 }
 
@@ -782,13 +795,11 @@ void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
     fatal_error("Unknown sample method for random ray transport.");
   }
 
-  site.E = lower_bound_index(
-    data::mg.rev_energy_bins_.begin(), data::mg.rev_energy_bins_.end(), site.E);
-  site.E = negroups_ - site.E - 1.;
+  site.E = 0.0;
   this->from_source(&site);
 
   // Locate ray
-  if (lowest_coord().cell == C_NONE) {
+  if (lowest_coord().cell() == C_NONE) {
     if (!exhaustive_find_cell(*this)) {
       this->mark_as_lost(
         "Could not find the cell containing particle " + std::to_string(id()));
@@ -796,12 +807,12 @@ void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
 
     // Set birth cell attribute
     if (cell_born() == C_NONE)
-      cell_born() = lowest_coord().cell;
+      cell_born() = lowest_coord().cell();
   }
 
   // Initialize ray's starting angular flux to starting location's isotropic
   // source
-  int i_cell = lowest_coord().cell;
+  int i_cell = lowest_coord().cell();
   int64_t sr = domain_->source_region_offsets_[i_cell] + cell_instance();
 
   SourceRegionHandle srh;

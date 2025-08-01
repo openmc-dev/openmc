@@ -19,14 +19,14 @@
 #include "openmc/vector.h"
 #include "openmc/xml_interface.h"
 
-#ifdef DAGMC
+#ifdef OPENMC_DAGMC_ENABLED
 #include "moab/AdaptiveKDTree.hpp"
 #include "moab/Core.hpp"
 #include "moab/GeomUtil.hpp"
 #include "moab/Matrix3.hpp"
 #endif
 
-#ifdef LIBMESH
+#ifdef OPENMC_LIBMESH_ENABLED
 #include "libmesh/bounding_box.h"
 #include "libmesh/dof_map.h"
 #include "libmesh/elem.h"
@@ -61,7 +61,7 @@ extern vector<unique_ptr<Mesh>> meshes;
 
 } // namespace model
 
-#ifdef LIBMESH
+#ifdef OPENMC_LIBMESH_ENABLED
 namespace settings {
 // used when creating new libMesh::MeshBase instances
 extern unique_ptr<libMesh::LibMeshInit> libmesh_init;
@@ -137,9 +137,6 @@ public:
   // Methods
   //! Perform any preparation needed to support point location within the mesh
   virtual void prepare_for_point_location() {};
-
-  //! Update a position to the local coordinates of the mesh
-  virtual void local_coords(Position& r) const {};
 
   //! Return a position in the local coordinates of the mesh
   virtual Position local_coords(const Position& r) const { return r; };
@@ -426,8 +423,6 @@ class PeriodicStructuredMesh : public StructuredMesh {
 public:
   PeriodicStructuredMesh() = default;
   PeriodicStructuredMesh(pugi::xml_node node) : StructuredMesh {node} {};
-
-  void local_coords(Position& r) const override { r -= origin_; };
 
   Position local_coords(const Position& r) const override
   {
@@ -773,7 +768,7 @@ private:
   virtual void initialize() = 0;
 };
 
-#ifdef DAGMC
+#ifdef OPENMC_DAGMC_ENABLED
 
 class MOABMesh : public UnstructuredMesh {
 public:
@@ -943,7 +938,7 @@ private:
 
 #endif
 
-#ifdef LIBMESH
+#ifdef OPENMC_LIBMESH_ENABLED
 
 class LibMesh : public UnstructuredMesh {
 public:

@@ -488,6 +488,14 @@ found in the :ref:`random ray user guide <random_ray>`.
         :type:
           The type of the domain. Can be ``material``, ``cell``, or ``universe``.
 
+  :diagonal_stabilization_rho:
+    The rho factor for use with diagonal stabilization. This technique is
+    applied when negative diagonal (in-group) elements are detected in
+    the scattering matrix of input MGXS data, which is a common feature
+    of transport corrected MGXS data.
+
+    *Default*: 1.0
+
 ----------------------------------
 ``<resonance_scattering>`` Element
 ----------------------------------
@@ -908,6 +916,16 @@ variable and whose sub-elements/attributes are as follows:
 
   :dist:
     This sub-element of a ``pair`` element provides information on the corresponding univariate distribution.
+
+---------------------------------------
+``<source_rejection_fraction>`` Element
+---------------------------------------
+
+The ``<source_rejection_fraction>`` element specifies the minimum fraction of
+external source sites that must be accepted when applying rejection sampling
+based on constraints.
+
+   *Default*: 0.05
 
 -------------------------
 ``<state_point>`` Element

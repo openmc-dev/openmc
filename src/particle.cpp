@@ -32,7 +32,7 @@
 #include "openmc/track_output.h"
 #include "openmc/weight_windows.h"
 
-#ifdef DAGMC
+#ifdef OPENMC_DAGMC_ENABLED
 #include "DagMC.hpp"
 #endif
 
@@ -104,6 +104,14 @@ void Particle::split(double wgt)
   bank.u = u();
   bank.E = settings::run_CE ? E() : g();
   bank.time = time();
+
+  // Convert signed index to a singed surface ID
+  if (surface() == SURFACE_NONE) {
+    bank.surf_id = SURFACE_NONE;
+  } else {
+    int surf_id = model::surfaces[surface_index()]->id_;
+    bank.surf_id = (surface() > 0) ? surf_id : -surf_id;
+  }
 }
 
 void Particle::from_source(const SourceSite* src)
@@ -116,6 +124,7 @@ void Particle::from_source(const SourceSite* src)
   n_collision() = 0;
   fission() = false;
   zero_flux_derivs();
+  lifetime() = 0.0;
 
   // Copy attributes from source bank site
   type() = src->particle;
@@ -139,6 +148,12 @@ void Particle::from_source(const SourceSite* src)
   time() = src->time;
   time_last() = src->time;
   parent_nuclide() = src->parent_nuclide;
+
+  // Convert signed surface ID to signed index
+  if (src->surf_id != SURFACE_NONE) {
+    int index_plus_one = model::surface_map[std::abs(src->surf_id)] + 1;
+    surface() = (src->surf_id > 0) ? index_plus_one : -index_plus_one;
+  }
 }
 
 void Particle::event_calculate_xs()
@@ -161,7 +176,7 @@ void Particle::event_calculate_xs()
   // If the cell hasn't been determined based on the particle's location,
   // initiate a search for the current cell. This generally happens at the
   // beginning of the history and again for any secondary particles
-  if (lowest_coord().cell == C_NONE) {
+  if (lowest_coord().cell() == C_NONE) {
     if (!exhaustive_find_cell(*this)) {
       mark_as_lost(
         "Could not find the cell containing particle " + std::to_string(id()));
@@ -170,11 +185,11 @@ void Particle::event_calculate_xs()
 
     // Set birth cell attribute
     if (cell_born() == C_NONE)
-      cell_born() = lowest_coord().cell;
+      cell_born() = lowest_coord().cell();
 
     // Initialize last cells from current cell
     for (int j = 0; j < n_coord(); ++j) {
-      cell_last(j) = coord(j).cell;
+      cell_last(j) = coord(j).cell();
     }
     n_coord_last() = n_coord();
   }
@@ -227,15 +242,17 @@ void Particle::event_advance()
   }
 
   // Select smaller of the two distances
-  double distance = std::min(boundary().distance, collision_distance());
+  double distance = std::min(boundary().distance(), collision_distance());
 
   // Advance particle in space and time
   // Short-term solution until the surface source is revised and we can use
   // this->move_distance(distance)
   for (int j = 0; j < n_coord(); ++j) {
-    coord(j).r += distance * coord(j).u;
+    coord(j).r() += distance * coord(j).u();
   }
-  this->time() += distance / this->speed();
+  double dt = distance / this->speed();
+  this->time() += dt;
+  this->lifetime() += dt;
 
   // Kill particle if its time exceeds the cutoff
   bool hit_time_boundary = false;
@@ -243,6 +260,7 @@ void Particle::event_advance()
   if (time() > time_cutoff) {
     double dt = time() - time_cutoff;
     time() = time_cutoff;
+    lifetime() = time_cutoff;
 
     double push_back_distance = speed() * dt;
     this->move_distance(-push_back_distance);
@@ -275,17 +293,17 @@ void Particle::event_cross_surface()
 {
   // Saving previous cell data
   for (int j = 0; j < n_coord(); ++j) {
-    cell_last(j) = coord(j).cell;
+    cell_last(j) = coord(j).cell();
   }
   n_coord_last() = n_coord();
 
   // Set surface that particle is on and adjust coordinate levels
-  surface() = boundary().surface;
-  n_coord() = boundary().coord_level;
+  surface() = boundary().surface();
+  n_coord() = boundary().coord_level();
 
-  if (boundary().lattice_translation[0] != 0 ||
-      boundary().lattice_translation[1] != 0 ||
-      boundary().lattice_translation[2] != 0) {
+  if (boundary().lattice_translation()[0] != 0 ||
+      boundary().lattice_translation()[1] != 0 ||
+      boundary().lattice_translation()[2] != 0) {
     // Particle crosses lattice boundary
 
     bool verbose = settings::verbosity >= 10 || trace();
@@ -375,14 +393,14 @@ void Particle::event_collide()
   // Set all directions to base level -- right now, after a collision, only
   // the base level directions are changed
   for (int j = 0; j < n_coord() - 1; ++j) {
-    if (coord(j + 1).rotated) {
+    if (coord(j + 1).rotated()) {
       // If next level is rotated, apply rotation matrix
-      const auto& m {model::cells[coord(j).cell]->rotation_};
-      const auto& u {coord(j).u};
-      coord(j + 1).u = u.rotate(m);
+      const auto& m {model::cells[coord(j).cell()]->rotation_};
+      const auto& u {coord(j).u()};
+      coord(j + 1).u() = u.rotate(m);
     } else {
       // Otherwise, copy this level's direction
-      coord(j + 1).u = coord(j).u;
+      coord(j + 1).u() = coord(j).u();
     }
   }
 
@@ -390,7 +408,7 @@ void Particle::event_collide()
   if (!model::active_tallies.empty())
     score_collision_derivative(*this);
 
-#ifdef DAGMC
+#ifdef OPENMC_DAGMC_ENABLED
   history().reset();
 #endif
 }
@@ -427,7 +445,7 @@ void Particle::event_revive_from_secondary()
       // Since the birth cell of the particle has not been set we
       // have to determine it before the energy of the secondary particle can be
       // removed from the pulse-height of this cell.
-      if (lowest_coord().cell == C_NONE) {
+      if (lowest_coord().cell() == C_NONE) {
         bool verbose = settings::verbosity >= 10 || trace();
         if (!exhaustive_find_cell(*this, verbose)) {
           mark_as_lost("Could not find the cell containing particle " +
@@ -436,11 +454,11 @@ void Particle::event_revive_from_secondary()
         }
         // Set birth cell attribute
         if (cell_born() == C_NONE)
-          cell_born() = lowest_coord().cell;
+          cell_born() = lowest_coord().cell();
 
         // Initialize last cells from current cell
         for (int j = 0; j < n_coord(); ++j) {
-          cell_last(j) = coord(j).cell;
+          cell_last(j) = coord(j).cell();
         }
         n_coord_last() = n_coord();
       }
@@ -455,7 +473,7 @@ void Particle::event_revive_from_secondary()
 
 void Particle::event_death()
 {
-#ifdef DAGMC
+#ifdef OPENMC_DAGMC_ENABLED
   history().reset();
 #endif
 
@@ -498,7 +516,7 @@ void Particle::pht_collision_energy()
 
   // determine index of cell in pulse_height_cells
   auto it = std::find(model::pulse_height_cells.begin(),
-    model::pulse_height_cells.end(), lowest_coord().cell);
+    model::pulse_height_cells.end(), lowest_coord().cell());
 
   if (it != model::pulse_height_cells.end()) {
     int index = std::distance(model::pulse_height_cells.begin(), it);
@@ -535,7 +553,7 @@ void Particle::cross_surface(const Surface& surf)
   }
 
 // if we're crossing a CSG surface, make sure the DAG history is reset
-#ifdef DAGMC
+#ifdef OPENMC_DAGMC_ENABLED
   if (surf.geom_type() == GeometryType::CSG)
     history().reset();
 #endif
@@ -549,17 +567,17 @@ void Particle::cross_surface(const Surface& surf)
   // ==========================================================================
   // SEARCH NEIGHBOR LISTS FOR NEXT CELL
 
-#ifdef DAGMC
+#ifdef OPENMC_DAGMC_ENABLED
   // in DAGMC, we know what the next cell should be
   if (surf.geom_type() == GeometryType::DAG) {
     int32_t i_cell = next_cell(surface_index(), cell_last(n_coord() - 1),
-                       lowest_coord().universe) -
+                       lowest_coord().universe()) -
                      1;
     // save material and temp
     material_last() = material();
     sqrtkT_last() = sqrtkT();
     // set new cell value
-    lowest_coord().cell = i_cell;
+    lowest_coord().cell() = i_cell;
     auto& cell = model::cells[i_cell];
 
     cell_instance() = 0;
@@ -663,7 +681,7 @@ void Particle::cross_reflective_bc(const Surface& surf, Direction new_u)
   u() = new_u;
 
   // Reassign particle's cell and surface
-  coord(0).cell = cell_last(0);
+  coord(0).cell() = cell_last(0);
   surface() = -surface();
 
   // If a reflective surface is coincident with a lattice or universe
@@ -924,7 +942,7 @@ void add_surf_source_to_bank(Particle& p, const Surface& surf)
     // Check if the cell of interest has been entered
     bool entered = false;
     for (int i = 0; i < p.n_coord(); ++i) {
-      if (p.coord(i).cell == cell_idx) {
+      if (p.coord(i).cell() == cell_idx) {
         entered = true;
       }
     }

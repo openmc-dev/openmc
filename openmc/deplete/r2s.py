@@ -1,5 +1,6 @@
 from __future__ import annotations
 from collections.abc import Sequence
+import copy
 from datetime import datetime
 import json
 from pathlib import Path
@@ -154,19 +155,24 @@ class R2SManager:
 
     Parameters
     ----------
-    model : openmc.Model
-        The OpenMC model containing the geometry and materials.
+    neutron_model : openmc.Model
+        The OpenMC model to use for neutron transport.
     domains : openmc.MeshBase or Sequence[openmc.Cell]
         The mesh or a sequence of cells that represent the spatial units over
         which the R2S calculation will be performed.
+    photon_model : openmc.Model, optional
+        The OpenMC model to use for photon transport calculations. If None,
+        a shallow copy of the neutron_model will be created and used.
 
     Attributes
     ----------
     domains : openmc.MeshBase or Sequence[openmc.Cell]
         The mesh or a sequence of cells that represent the spatial units over
         which the R2S calculation will be performed.
-    model : openmc.Model
-        The OpenMC model containing the geometry and materials.
+    neutron_model : openmc.Model
+        The OpenMC model used for neutron transport.
+    photon_model : openmc.Model
+        The OpenMC model used for photon transport calculations.
     method : {'mesh-based', 'cell-based'}
         Indicates whether the R2S calculation uses mesh elements ('mesh-based')
         as the spatial discetization or a list of a cells ('cell-based').
@@ -176,10 +182,16 @@ class R2SManager:
     """
     def __init__(
         self,
-        model: openmc.Model,
+        neutron_model: openmc.Model,
         domains: openmc.MeshBase | Sequence[openmc.Cell],
+        photon_model: openmc.Model | None = None,
     ):
-        self.model = model
+        self.neutron_model = neutron_model
+        if photon_model is None:
+            # Create a shallow copy of the neutron model for photon transport
+            self.photon_model = copy.copy(neutron_model)
+        else:
+            self.photon_model = photon_model
         if isinstance(domains, openmc.MeshBase):
             self.method = 'mesh-based'
         else:
@@ -193,8 +205,6 @@ class R2SManager:
         source_rates: float | Sequence[float],
         timestep_units: str = 's',
         photon_time_indices: Sequence[int] | None = None,
-        photon_tallies: Sequence[openmc.Tally] | None = None,
-        photon_settings: openmc.Settings | None = None,
         output_dir: PathLike | None = None,
         bounding_boxes: dict[int, openmc.BoundingBox] | None = None,
         micro_kwargs: dict | None = None,
@@ -224,13 +234,6 @@ class R2SManager:
             times would contain three entries, and [2] would indicate computing
             photon results at the last time. A value of None indicates to run
             photon transport for each time.
-        photon_tallies : Sequence[openmc.Tally], optional
-            A sequence of tallies to be used in the photon transport step. If
-            None, no tallies are present.
-        photon_settings : openmc.Settings, optional
-            Custom settings to use for the photon transport calculation. If
-            provided, the original model settings will be temporarily replaced
-            during the photon transport calculations and restored afterward.
         output_dir : PathLike, optional
             Path to directory where R2S calculation outputs will be saved. If
             not provided, a timestamped directory 'r2s_YYYY-MM-DDTHH-MM-SS' is
@@ -278,9 +281,8 @@ class R2SManager:
             timesteps, source_rates, timestep_units, output_dir / 'activation'
         )
         self.step3_photon_transport(
-            photon_time_indices, photon_tallies, bounding_boxes,
-            output_dir / 'photon_transport', run_kwargs=run_kwargs,
-            settings=photon_settings
+            photon_time_indices, bounding_boxes,
+            output_dir / 'photon_transport', run_kwargs=run_kwargs
         )
 
         return output_dir
@@ -318,7 +320,7 @@ class R2SManager:
         if self.method == 'mesh-based':
             # Compute material volume fractions on the mesh
             self.results['mesh_material_volumes'] = mmv = \
-                self.domains.material_volumes(self.model, **mat_vol_kwargs)
+                self.domains.material_volumes(self.neutron_model, **mat_vol_kwargs)
 
             # Save results to file
             mmv.save(output_dir / 'mesh_material_volumes.npz')
@@ -354,7 +356,7 @@ class R2SManager:
 
         # Run neutron transport and get fluxes and micros
         self.results['fluxes'], self.results['micros'] = get_microxs_and_flux(
-            self.model, domains, **micro_kwargs)
+            self.neutron_model, domains, **micro_kwargs)
 
         # Save flux and micros to file
         np.save(output_dir / 'fluxes.npy', self.results['fluxes'])
@@ -397,7 +399,7 @@ class R2SManager:
         if self.method == 'mesh-based':
             # Get unique material for each (mesh, material) combination
             mmv = self.results['mesh_material_volumes']
-            self.results['activation_materials'] = get_activation_materials(self.model, mmv)
+            self.results['activation_materials'] = get_activation_materials(self.neutron_model, mmv)
         else:
             # Create unique material for each cell
             activation_mats = []
@@ -433,11 +435,9 @@ class R2SManager:
     def step3_photon_transport(
         self,
         time_indices: Sequence[int] | None = None,
-        tallies: Sequence[openmc.Tally] | None = None,
         bounding_boxes: dict[int, openmc.BoundingBox] | None = None,
         output_dir: PathLike = 'photon_transport',
         run_kwargs: dict | None = None,
-        settings: openmc.Settings | None = None,
     ):
         """Run the photon transport step.
 
@@ -458,9 +458,6 @@ class R2SManager:
             times would contain three entries, and [2] would indicate computing
             photon results at the last time. A value of None indicates to run
             photon transport for each time.
-        tallies : Sequence[openmc.Tally], optional
-            A sequence of tallies to be used in the photon transport step. If
-            None, no tallies are present.
         bounding_boxes : dict[int, openmc.BoundingBox], optional
             Dictionary mapping cell IDs to bounding boxes used for spatial
             source sampling in cell-based R2S calculations. Required if method
@@ -470,10 +467,6 @@ class R2SManager:
         run_kwargs : dict, optional
             Additional keyword arguments passed to :meth:`openmc.Model.run`
             during the photon transport step. By default, output is disabled.
-        settings : openmc.Settings, optional
-            Custom settings to use for the photon transport calculation. If
-            provided, the original model settings will be temporarily replaced
-            during the photon transport calculations and restored afterward.
         """
 
         # TODO: Automatically determine bounding box for each cell
@@ -484,76 +477,62 @@ class R2SManager:
             run_kwargs = {}
         run_kwargs.setdefault('output', False)
 
-        # Add photon tallies to model if provided
-        if tallies is None:
-            tallies = []
-        self.model.tallies = tallies
-
-        # Save original settings to restore later
-        original_settings = self.model.settings
-        if settings is not None:
-            self.model.settings = settings
-
         # Write out JSON file with tally IDs that can be used for loading
         # results
         output_dir = Path(output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
-        tally_ids = [tally.id for tally in tallies]
+        tally_ids = [tally.id for tally in self.photon_model.tallies]
         with open(output_dir / 'tally_ids.json', 'w') as f:
             json.dump(tally_ids, f)
 
         self.results['photon_tallies'] = {}
 
-        try:
-            for time_index in time_indices:
-                # Create decay photon source
-                if self.method == 'mesh-based':
-                    self.model.settings.source = get_decay_photon_source_mesh(
-                        self.model,
-                        self.domains,
-                        self.results['activation_materials'],
-                        self.results['depletion_results'],
-                        self.results['mesh_material_volumes'],
-                        time_index=time_index,
+        for time_index in time_indices:
+            # Create decay photon source
+            if self.method == 'mesh-based':
+                self.photon_model.settings.source = get_decay_photon_source_mesh(
+                    self.neutron_model,
+                    self.domains,
+                    self.results['activation_materials'],
+                    self.results['depletion_results'],
+                    self.results['mesh_material_volumes'],
+                    time_index=time_index,
+                )
+            else:
+                sources = []
+                results = self.results['depletion_results']
+                for cell, original_mat in zip(self.domains, self.results['activation_materials']):
+                    bounding_box = bounding_boxes[cell.id]
+
+                    # Get activated material composition
+                    activated_mat = results[time_index].get_material(str(original_mat.id))
+
+                    # Create decay photon source source
+                    space = openmc.stats.Box(*bounding_box)
+                    energy = activated_mat.get_decay_photon_energy()
+                    source = openmc.IndependentSource(
+                        space=space,
+                        energy=energy,
+                        particle='photon',
+                        strength=energy.integral(),
+                        domains=[cell]
                     )
-                else:
-                    sources = []
-                    results = self.results['depletion_results']
-                    for cell, original_mat in zip(self.domains, self.results['activation_materials']):
-                        bounding_box = bounding_boxes[cell.id]
+                    sources.append(source)
+                self.photon_model.settings.source = sources
 
-                        # Get activated material composition
-                        activated_mat = results[time_index].get_material(str(original_mat.id))
+            # Convert time_index (which may be negative) to a normal index
+            if time_index < 0:
+                time_index = len(self.results['depletion_results']) + time_index
 
-                        # Create decay photon source source
-                        space = openmc.stats.Box(*bounding_box)
-                        energy = activated_mat.get_decay_photon_energy()
-                        source = openmc.IndependentSource(
-                            space=space,
-                            energy=energy,
-                            particle='photon',
-                            strength=energy.integral(),
-                            domains=[cell]
-                        )
-                        sources.append(source)
-                    self.model.settings.source = sources
+            # Run photon transport calculation
+            run_kwargs['cwd'] = Path(output_dir) / f'time_{time_index}'
+            statepoint_path = self.photon_model.run(**run_kwargs)
 
-                # Convert time_index (which may be negative) to a normal index
-                if time_index < 0:
-                    time_index = len(self.results['depletion_results']) + time_index
-
-                # Run photon transport calculation
-                run_kwargs['cwd'] = Path(output_dir) / f'time_{time_index}'
-                statepoint_path = self.model.run(**run_kwargs)
-
-                # Store tally results
-                with openmc.StatePoint(statepoint_path) as sp:
-                    self.results['photon_tallies'][time_index] = [
-                        sp.tallies[tally.id] for tally in tallies
-                    ]
-        finally:
-            # Restore original settings
-            self.model.settings = original_settings
+            # Store tally results
+            with openmc.StatePoint(statepoint_path) as sp:
+                self.results['photon_tallies'][time_index] = [
+                    sp.tallies[tally.id] for tally in self.photon_model.tallies
+                ]
 
     def load_results(self, path: PathLike):
         """Load results from a previous R2S calculation.

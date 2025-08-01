@@ -189,7 +189,13 @@ class R2SManager:
         self.neutron_model = neutron_model
         if photon_model is None:
             # Create a shallow copy of the neutron model for photon transport
-            self.photon_model = copy.copy(neutron_model)
+            self.photon_model = openmc.Model(
+                geometry=copy.copy(neutron_model.geometry),
+                materials=copy.copy(neutron_model.materials),
+                settings=copy.copy(neutron_model.settings),
+                tallies=copy.copy(neutron_model.tallies),
+                plots=copy.copy(neutron_model.plots),
+            )
         else:
             self.photon_model = photon_model
         if isinstance(domains, openmc.MeshBase):

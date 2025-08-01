@@ -309,6 +309,27 @@ class Nuclide:
 
             nuc.yield_data = FissionYieldDistribution.from_xml_element(fpy_elem)
 
+
+        sfy_elem = element.find('spont_fission_yields')
+        if sfy_elem is not None:
+            # Check for use of FPY from other nuclide
+            parent = sfy_elem.get('parent')
+            if parent is not None:
+                assert root is not None
+                sfy_elem = root.find(
+                    f'.//nuclide[@name="{parent}"]/spont_fission_yields'
+                )
+                if sfy_elem is None:
+                    raise ValueError(
+                        "Spontanteous fission product yields for {0} borrow from {1}, but {1} is"
+                        " not present in the chain file or has no yields.".format(
+                            nuc.name, parent
+                        ))
+                nuc._sfy = parent
+
+            nuc.spont_yield_data = FissionYieldDistribution.from_xml_element(sfy_elem)
+
+
         return nuc
 
     def to_xml_element(self):
@@ -361,6 +382,15 @@ class Nuclide:
                 energy_elem = ET.SubElement(fpy_elem, 'energies')
                 energy_elem.text = ' '.join(str(E) for E in self.yield_energies)
                 self.yield_data.to_xml_element(fpy_elem)
+
+        if self.spont_yield_data:
+            sfy_elem = ET.SubElement(elem, 'spont_fission_yields')
+
+            if hasattr(self, '_sfy'):
+                # Check for link to other nuclide data
+                sfy_elem.set('parent', self._sfy)
+            else:
+                self.spont_yield_data.to_xml_element(sfy_elem)
 
         return elem
 

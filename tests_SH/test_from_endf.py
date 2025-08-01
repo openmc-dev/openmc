@@ -35,17 +35,28 @@ for file in os.listdir(sfy_folder):
         sfy_files.append(sfy_folder + file)
 
 #read from endf file
-newchain = mychain.from_endf(decay_files,nfy_files,xs_files,sfy_files)
+mychain = mychain.from_endf(decay_files,nfy_files,xs_files,sfy_files)
 
 
 #try printing out the chain, especially spontaneous fission variables
-#print(newchain)
-#print(newchain.nuclides)
-#print(newchain.reactions)
-#print(newchain.nuclide_dict)
-#print(newchain.stable_nuclides)
-#print(newchain.unstable_nuclides)
-print(newchain.fission_yields[0].keys())
-print(newchain.spont_fission_yields[0].keys())
-print(newchain.spont_fission_yields[0]['U238'])
-print(sum(newchain.spont_fission_yields[0]['U238'].values()))
+#print(mychain)
+#print(mychain.nuclides)
+#print(mychain.reactions)
+#print(mychain.nuclide_dict)
+#print(mychain.stable_nuclides)
+#print(mychain.unstable_nuclides)
+print(mychain.fission_yields[0].keys())
+print(mychain.spont_fission_yields[0].keys())
+print(mychain.spont_fission_yields[0]['U238'])
+print(sum(mychain.spont_fission_yields[0]['U238'].values()))
+
+
+#Print chain to xml file
+mychain.export_to_xml("./chain.xml")
+
+#Read in the chain from the xml file and print to a new xml file.
+newchain = openmc.deplete.Chain.from_xml("./chain.xml")
+newchain.export_to_xml("./chain_new.xml")
+
+
+

@@ -31,7 +31,6 @@ jobs:
         dagmc: [n]
         libmesh: [n]
         event: [n]
-        vectfit: [n]
 
         include:
           - python-version: "3.12"
@@ -56,14 +55,9 @@ jobs:
             python-version: "3.11"
             omp: y
             mpi: n
-          - vectfit: y
-            python-version: "3.11"
-            omp: n
-            mpi: y
     name: "Python ${{ matrix.python-version }} (omp=${{ matrix.omp }},
       mpi=${{ matrix.mpi }}, dagmc=${{ matrix.dagmc }},
-      libmesh=${{ matrix.libmesh }}, event=${{ matrix.event }}
-      vectfit=${{ matrix.vectfit }})"
+      libmesh=${{ matrix.libmesh }}, event=${{ matrix.event }}"
 
     env:
       MPI: ${{ matrix.mpi }}
@@ -71,7 +65,6 @@ jobs:
       OMP: ${{ matrix.omp }}
       DAGMC: ${{ matrix.dagmc }}
       EVENT: ${{ matrix.event }}
-      VECTFIT: ${{ matrix.vectfit }}
       LIBMESH: ${{ matrix.libmesh }}
       NPY_DISABLE_CPU_FEATURES: "AVX512F AVX512_SKX"
       OPENBLAS_NUM_THREADS: 1
@@ -130,11 +123,6 @@ jobs:
           sudo update-alternatives --set mpi /usr/bin/mpicc.mpich
           sudo update-alternatives --set mpirun /usr/bin/mpirun.mpich
           sudo update-alternatives --set mpi-x86_64-linux-gnu /usr/include/x86_64-linux-gnu/mpich
-
-      - name: Optional apt dependencies for vectfit
-        shell: bash
-        if: ${{ matrix.vectfit == 'y' }}
-        run: sudo apt install -y libblas-dev liblapack-dev
 
       - name: install
         shell: bash

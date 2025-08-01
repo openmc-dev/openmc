@@ -49,7 +49,6 @@ def test_export_to_hdf5(tmpdir, u235):
 
 
 def test_from_endf():
-    pytest.importorskip('vectfit')
     endf_data = os.environ['OPENMC_ENDF_DATA']
     endf_file = os.path.join(endf_data, 'neutrons', 'n-001_H_001.endf')
     assert openmc.data.WindowedMultipole.from_endf(
@@ -57,7 +56,6 @@ def test_from_endf():
 
 
 def test_from_endf_search():
-    pytest.importorskip('vectfit')
     endf_data = os.environ['OPENMC_ENDF_DATA']
     endf_file = os.path.join(endf_data, 'neutrons', 'n-095_Am_244.endf')
     assert openmc.data.WindowedMultipole.from_endf(

@@ -301,7 +301,7 @@ class TransferRates(ExternalRates):
             self.external_timesteps = np.unique(np.concatenate(
                     [self.external_timesteps, timesteps]))
 
-    def set_redox(self, material, buffer, oxidation_states):
+    def set_redox(self, material, buffer, oxidation_states, timesteps=None):
         """Add redox control to depletable material.
 
         Parameters
@@ -309,12 +309,26 @@ class TransferRates(ExternalRates):
         material : openmc.Material or str or int
             Depletable material
         buffer : dict
-            Dictionary of buffer nuclides to be added to keep redox constant,
-            where keys are nuclide names and values fractions to 1.
+            Dictionary of buffer nuclides used to maintain redox balance.
+            Keys are nuclide names (strings) and values are their respective
+            fractions (float) that collectively sum to 1.
         oxidation_states : dict
             User-defined oxidation states for elements.
+            Keys are element symbols (e.g., 'H', 'He'), and values are their
+            corresponding oxidation states as integers (e.g., +1, 0).
+        timesteps : list of int, optional
+            List of timestep indices where to set external source rates.
+            Defaults to None, which means the external source rate is set for
+            all timesteps.
+
         """
         material_id = self._get_material_id(material)
+        if timesteps is not None:
+            for timestep in timesteps:
+                check_value('timestep', timestep, range(self.number_of_timesteps))
+            timesteps = np.array(timesteps)
+        else:
+            timesteps = np.arange(self.number_of_timesteps)
         #Check nuclides in buffer exist
         for nuc in buffer:
             if nuc not in self.chain_nuclides:
@@ -325,6 +339,8 @@ class TransferRates(ExternalRates):
                 raise ValueError(f'{elm} is not a valid element.')
 
         self.redox[material_id] =  (buffer, oxidation_states)
+        self.external_timesteps = np.unique(np.concatenate(
+                    [self.external_timesteps, timesteps]))
 
 class ExternalSourceRates(ExternalRates):
     """Class for defining external source rates.

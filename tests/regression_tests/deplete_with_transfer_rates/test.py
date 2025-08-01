@@ -91,14 +91,9 @@ def test_transfer_rates(run_in_tmpdir, model, rate, dest_mat, power, ref_result)
     # Load the reference/test results
     res_ref = openmc.deplete.Results(path_reference)
     res_test = openmc.deplete.Results(path_test)
-<<<<<<< HEAD
-    
-    assert_atoms_equal(res_ref, res_test, 1e-6)
-=======
 
     assert_atoms_equal(res_ref, res_test)
     assert_reaction_rates_equal(res_ref, res_test)
-
 
 @pytest.mark.parametrize("rate, power, ref_result", [
     (1e-1, 0.0, 'no_depletion_with_ext_source'),
@@ -132,5 +127,4 @@ def test_external_source_rates(run_in_tmpdir, model, rate, power, ref_result):
     res_test = openmc.deplete.Results(path_test)
 
     assert_atoms_equal(res_ref, res_test)
->>>>>>> origin/develop
     assert_reaction_rates_equal(res_ref, res_test)

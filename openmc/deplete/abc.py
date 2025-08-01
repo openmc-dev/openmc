@@ -1012,7 +1012,7 @@ class Integrator(ABC):
             material, composition, rate, rate_units, timesteps)
 
 
-    def add_redox(self, material, buffer, oxidation_states):
+    def add_redox(self, material, buffer, oxidation_states, timesteps=None):
         """Add redox control to depletable material.
 
         Parameters
@@ -1020,15 +1020,27 @@ class Integrator(ABC):
         material : openmc.Material or str or int
             Depletable material
         buffer : dict
-            Dictionary of buffer nuclides to be added to keep redox constant,
-            where keys are nuclide names and values fractions to 1.
+            Dictionary of buffer nuclides used to maintain redox balance.
+            Keys are nuclide names (strings) and values are their respective
+            fractions (float) that collectively sum to 1.
         oxidation_states : dict
             User-defined oxidation states for elements.
+            Keys are element symbols (e.g., 'H', 'He'), and values are their
+            corresponding oxidation states as integers (e.g., +1, 0).
+        timesteps : list of int, optional
+            List of timestep indices where to set external source rates.
+            Defaults to None, which means the external source rate is set for
+            all timesteps.
         """
         if self.transfer_rates is None:
-            self.transfer_rates = TransferRates(self.operator, self.operator.model)
-            
-        self.transfer_rates.set_redox(material, buffer, oxidation_states)
+            if hasattr(self.operator, 'model'):
+                materials = self.operator.model.materials
+            elif hasattr(self.operator, 'materials'):
+                materials = self.operator.materials
+            self.transfer_rates = TransferRates(
+                self.operator, materials, len(self.timesteps))
+
+        self.transfer_rates.set_redox(material, buffer, oxidation_states, timesteps)
 
 @add_params
 class SIIntegrator(Integrator):

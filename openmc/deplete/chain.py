@@ -714,10 +714,10 @@ class Chain:
 
         The redox term to add to the buffer nuclide :math:`N_b` can be written
         as: :math:`\frac{dN_b(t)}{dt} =
-                \cdots + \frac{1}{Ox_b}\sum_i N_i\left( L_{ii}Ox_i -
-                \sum_j G_{i\rightarrow j } Ox_j\right)`
+                \cdots + \frac{1}{os_b}\sum_i N_i\left( L_{ii}os_i -
+                \sum_j G_{i\rightarrow j } os_j\right)`
 
-        where :math:`Ox_b` and :math:`Ox_j` are the oxidation states for the
+        where :math:`os_b` and :math:`os_j` are the oxidation states for the
         corresponding buffer elmenent and j-th nuclide.
         The first term in the right hand side represent the losses in the
         diagonal terms of the Bateman matrix, for each nuclide :math:`i`, and
@@ -729,20 +729,23 @@ class Chain:
         matrix : scipy.sparse.csr_matrix
             Sparse matrix representing depletion
         buffer : dict
-            Dictionary of buffer nuclides to be added to keep redox constant,
-            where keys are nuclide names and values fractions to 1.
+            Dictionary of buffer nuclides used to maintain redox balance.
+            Keys are nuclide names (strings) and values are their respective
+            fractions (float) that collectively sum to 1.
         oxidation_states : dict
             User-defined oxidation states for elements.
+            Keys are element symbols (e.g., 'H', 'He'), and values are their
+            corresponding oxidation states as integers (e.g., +1, 0).
         Returns
         -------
-        matrix : scipy.sparse.csr_matrix
+        matrix : scipy.sparse.csc_matrix
             Sparse matrix with redox term added
         """
         # Elements list with the same size as self.nuclides
         elements = [re.split(r'\d+', nuc.name)[0] for nuc in self.nuclides]
 
         # Match oxidation states with all elements and add 0 if not data
-        ox = np.array([oxidation_states[elm] \
+        os = np.array([oxidation_states[elm] \
                         if elm in oxidation_states else 0 for elm in elements])
 
         # Buffer idx with nuclide index as value
@@ -752,20 +755,16 @@ class Chain:
 
         # calculate the redox array
         for i in range(len(self)):
-            # Gains: multiply each column of the depletion matrix by the oxidation states
-            # vector, excluding the i-th terms
-            gains = np.concatenate((array[:i,i], array[i+1:,i])) * np.delete(ox, i)
-            # Loss: multiply the i-th term by its corresponding oxidation state value
-            loss = array[i,i] * ox[i]
-            # Calculate the redox term
-            redox = np.append(redox, loss + sum(gains))
+            #Net redox: multiply the i-th column of the depletion matrix by the oxidation states
+            redox = np.append(redox, sum(array[:,i]*os))
 
         # Subtract redox vector to the buffer nuclides in the matrix scaling by
         # their respective oxidation states
         for nuc, idx in buffer_idx.items():
-            array[idx] -= redox * buffer[nuc] / ox[idx]
+            array[idx] -= redox * buffer[nuc] / os[idx]
 
-        return sp.dok_matrix(array)
+        dok = sp.dok_matrix(array)
+        return dok.tocsc()
 
     def form_rr_term(self, tr_rates, current_timestep, mats):
         """Function to form the transfer rate term matrices.

@@ -62,109 +62,6 @@ def get_activation_materials(
     return materials
 
 
-def get_decay_photon_source_mesh(
-    model: openmc.Model,
-    mesh: openmc.MeshBase,
-    materials: list[openmc.Material],
-    results: Results,
-    mat_vols: openmc.MeshMaterialVolumes,
-    photon_mat_vols: openmc.MeshMaterialVolumes | None = None,
-    time_index: int = -1,
-) -> list[openmc.MeshSource]:
-    """Create decay photon source for a mesh-based R2S calculation.
-
-    This function creates N :class:`MeshSource` objects where N is the maximum
-    number of unique materials that appears in a single mesh element. For each
-    mesh element-material combination, and IndependentSource instance is created
-    with a spatial constraint limited the sampled decay photons to the correct
-    region.
-
-    Parameters
-    ----------
-    model : openmc.Model
-        The full model containing the geometry and materials.
-    mesh : openmc.MeshBase
-        The mesh object defining the spatial regions over which activation is
-        performed.
-    materials : list of openmc.Material
-        List of materials that are activated in the model.
-    results : openmc.deplete.Results
-        The results object containing the depletion results for the materials.
-    mat_vols : openmc.MeshMaterialVolumes
-        The mesh material volumes object containing the materials and their
-        volumes for each mesh element from the neutron transport step.
-    photon_mat_vols : openmc.MeshMaterialVolumes, optional
-        The mesh material volumes object for the photon model. If provided,
-        sources will only be created for mesh element-material combinations
-        that exist in both the neutron and photon models.
-    time_index : int, optional
-        Time index for the decay photon source. Default is -1 (last time).
-
-    Returns
-    -------
-    list of openmc.MeshSource
-        A list of MeshSource objects, each containing IndependentSource
-        instances for the decay photons in the corresponding mesh element.
-
-    """
-    mat_dict = _get_all_materials(model)
-
-    # Some MeshSource objects will have empty positions; create a "null source"
-    # that is used for this case
-    null_source = openmc.IndependentSource(particle='photon', strength=0.0)
-
-    # List to hold sources for each MeshSource (length = N)
-    source_lists = []
-
-    # Index in the overall list of activated materials
-    index_mat = 0
-
-    # Total number of mesh elements
-    n_elements = mat_vols.num_elements
-
-    for index_elem in range(n_elements):
-        # Determine which materials exist in the photon model for this element
-        if photon_mat_vols is not None:
-            photon_materials = {
-                mat_id
-                for mat_id, _ in photon_mat_vols.by_element(index_elem)
-                if mat_id is not None
-            }
-        else:
-            photon_materials = set()
-
-        for j, (mat_id, _) in enumerate(mat_vols.by_element(index_elem)):
-            # Skip void volume
-            if mat_id is None:
-                continue
-
-            # Skip if this material doesn't exist in photon model
-            if mat_id not in photon_materials:
-                index_mat += 1
-                continue
-
-            # Check whether a new MeshSource object is needed
-            if j >= len(source_lists):
-                source_lists.append([null_source]*n_elements)
-
-            # Get activated material composition
-            original_mat = materials[index_mat]
-            activated_mat = results[time_index].get_material(str(original_mat.id))
-
-            # Create decay photon source source
-            energy = activated_mat.get_decay_photon_energy()
-            source_lists[j][index_elem] = openmc.IndependentSource(
-                energy=energy,
-                particle='photon',
-                strength=energy.integral(),
-                constraints={'domains': [mat_dict[mat_id]]}
-            )
-
-            # Increment index of activated material
-            index_mat += 1
-
-    # Return list of mesh sources
-    return [openmc.MeshSource(mesh, sources) for sources in source_lists]
 
 
 class R2SManager:
@@ -277,8 +174,7 @@ class R2SManager:
             transport step.
         mat_vol_kwargs : dict, optional
             Additional keyword arguments passed to
-            :meth:`openmc.MeshBase.material_volumes` during the neutron
-            transport step.
+            :meth:`openmc.MeshBase.material_volumes`.
         run_kwargs : dict, optional
             Additional keyword arguments passed to :meth:`openmc.Model.run`
             during the neutron and photon transport step. By default, output is
@@ -309,8 +205,8 @@ class R2SManager:
             timesteps, source_rates, timestep_units, output_dir / 'activation'
         )
         self.step3_photon_transport(
-            photon_time_indices, bounding_boxes,
-            output_dir / 'photon_transport', run_kwargs=run_kwargs
+            photon_time_indices, bounding_boxes, output_dir / 'photon_transport',
+            mat_vol_kwargs=mat_vol_kwargs, run_kwargs=run_kwargs
         )
 
         return output_dir
@@ -465,6 +361,7 @@ class R2SManager:
         time_indices: Sequence[int] | None = None,
         bounding_boxes: dict[int, openmc.BoundingBox] | None = None,
         output_dir: PathLike = 'photon_transport',
+        mat_vol_kwargs: dict | None = None,
         run_kwargs: dict | None = None,
     ):
         """Run the photon transport step.
@@ -492,6 +389,9 @@ class R2SManager:
             is 'cell-based'.
         output_dir : PathLike, optional
             Path to directory where photon transport outputs will be saved.
+        mat_vol_kwargs : dict, optional
+            Additional keyword arguments passed to
+            :meth:`openmc.MeshBase.material_volumes`.
         run_kwargs : dict, optional
             Additional keyword arguments passed to :meth:`openmc.Model.run`
             during the photon transport step. By default, output is disabled.
@@ -510,14 +410,18 @@ class R2SManager:
         output_dir = Path(output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        # For mesh-based calculations, compute material volume fractions for
-        # the photon model to account for potential material changes
+        # For mesh-based calculations, compute material volume fractions for the
+        # photon model if it is different from the neutron model to account for
+        # potential material changes
         if self.method == 'mesh-based':
-            self.results['mesh_material_volumes_photon'] = photon_mmv = \
-                self.domains.material_volumes(self.photon_model)
+            neutron_univ = self.neutron_model.geometry.root_universe
+            photon_univ = self.photon_model.geometry.root_universe
+            if neutron_univ != photon_univ:
+                self.results['mesh_material_volumes_photon'] = photon_mmv = \
+                    self.domains.material_volumes(self.photon_model, **mat_vol_kwargs)
 
-            # Save photon MMV results to file
-            photon_mmv.save(output_dir / 'mesh_material_volumes.npz')
+                # Save photon MMV results to file
+                photon_mmv.save(output_dir / 'mesh_material_volumes.npz')
 
         tally_ids = [tally.id for tally in self.photon_model.tallies]
         with open(output_dir / 'tally_ids.json', 'w') as f:
@@ -528,15 +432,8 @@ class R2SManager:
         for time_index in time_indices:
             # Create decay photon source
             if self.method == 'mesh-based':
-                self.photon_model.settings.source = get_decay_photon_source_mesh(
-                    self.neutron_model,
-                    self.domains,
-                    self.results['activation_materials'],
-                    self.results['depletion_results'],
-                    self.results['mesh_material_volumes'],
-                    self.results['mesh_material_volumes_photon'],
-                    time_index=time_index,
-                )
+                self.photon_model.settings.source = \
+                    self.get_decay_photon_source_mesh(time_index)
             else:
                 sources = []
                 results = self.results['depletion_results']
@@ -572,6 +469,99 @@ class R2SManager:
                 self.results['photon_tallies'][time_index] = [
                     sp.tallies[tally.id] for tally in self.photon_model.tallies
                 ]
+
+    def get_decay_photon_source_mesh(
+        self,
+        time_index: int = -1
+    ) -> list[openmc.MeshSource]:
+        """Create decay photon source for a mesh-based calculation.
+
+        This function creates N :class:`MeshSource` objects where N is the
+        maximum number of unique materials that appears in a single mesh
+        element. For each mesh element-material combination, and
+        IndependentSource instance is created with a spatial constraint limited
+        the sampled decay photons to the correct region.
+
+        When the photon transport model is different from the neutron model, the
+        photon MeshMaterialVolumes is used to determine whether an (element,
+        material) combination exists in the photon model.
+
+        Parameters
+        ----------
+        time_index : int, optional
+            Time index for the decay photon source. Default is -1 (last time).
+
+        Returns
+        -------
+        list of openmc.MeshSource
+            A list of MeshSource objects, each containing IndependentSource
+            instances for the decay photons in the corresponding mesh element.
+
+        """
+        mat_dict = _get_all_materials(self.neutron_model)
+
+        # Some MeshSource objects will have empty positions; create a "null source"
+        # that is used for this case
+        null_source = openmc.IndependentSource(particle='photon', strength=0.0)
+
+        # List to hold sources for each MeshSource (length = N)
+        source_lists = []
+
+        # Index in the overall list of activated materials
+        index_mat = 0
+
+        # Get various results from previous steps
+        mat_vols = self.results['mesh_material_volumes']
+        materials = self.results['activation_materials']
+        results = self.results['depletion_results']
+        photon_mat_vols = self.results.get('mesh_material_volumes_photon')
+
+        # Total number of mesh elements
+        n_elements = mat_vols.num_elements
+
+        for index_elem in range(n_elements):
+            # Determine which materials exist in the photon model for this element
+            if photon_mat_vols is not None:
+                photon_materials = {
+                    mat_id
+                    for mat_id, _ in photon_mat_vols.by_element(index_elem)
+                    if mat_id is not None
+                }
+            else:
+                photon_materials = set()
+
+            for j, (mat_id, _) in enumerate(mat_vols.by_element(index_elem)):
+                # Skip void volume
+                if mat_id is None:
+                    continue
+
+                # Skip if this material doesn't exist in photon model
+                if mat_id not in photon_materials:
+                    index_mat += 1
+                    continue
+
+                # Check whether a new MeshSource object is needed
+                if j >= len(source_lists):
+                    source_lists.append([null_source]*n_elements)
+
+                # Get activated material composition
+                original_mat = materials[index_mat]
+                activated_mat = results[time_index].get_material(str(original_mat.id))
+
+                # Create decay photon source source
+                energy = activated_mat.get_decay_photon_energy()
+                source_lists[j][index_elem] = openmc.IndependentSource(
+                    energy=energy,
+                    particle='photon',
+                    strength=energy.integral(),
+                    constraints={'domains': [mat_dict[mat_id]]}
+                )
+
+                # Increment index of activated material
+                index_mat += 1
+
+        # Return list of mesh sources
+        return [openmc.MeshSource(self.domains, sources) for sources in source_lists]
 
     def load_results(self, path: PathLike):
         """Load results from a previous R2S calculation.

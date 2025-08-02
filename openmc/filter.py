@@ -17,7 +17,7 @@ from .material import Material
 from .mixin import IDManagerMixin
 from .surface import Surface
 from .universe import UniverseBase
-from ._xml import get_text
+from ._xml import get_elem_list, get_text
 
 
 _FILTER_TYPES = (
@@ -259,17 +259,15 @@ class Filter(IDManagerMixin, metaclass=FilterMeta):
             Filter object
 
         """
-        filter_type = elem.get('type')
-        if filter_type is None:
-            filter_type = elem.find('type').text
+        filter_type = get_text(elem, "type")
 
         # If the filter type matches this class's short_name, then
         # there is no overridden from_xml_element method
         if filter_type == cls.short_name.lower():
             # Get bins from element -- the default here works for any filters
             # that just store a list of bins that can be represented as integers
-            filter_id = int(elem.get('id'))
-            bins = [int(x) for x in get_text(elem, 'bins').split()]
+            filter_id = int(get_text(elem, "id"))
+            bins = get_elem_list(elem, "bins", int) or []
             return cls(bins, filter_id=filter_id)
 
         # Search through all subclasses and find the one matching the HDF5
@@ -701,8 +699,8 @@ class CellInstanceFilter(Filter):
 
     @classmethod
     def from_xml_element(cls, elem, **kwargs):
-        filter_id = int(elem.get('id'))
-        bins = [int(x) for x in get_text(elem, 'bins').split()]
+        filter_id = int(get_text(elem, "id"))
+        bins = get_elem_list(elem, "bins", int) or []
         cell_instances = list(zip(bins[::2], bins[1::2]))
         return cls(cell_instances, filter_id=filter_id)
 
@@ -784,8 +782,8 @@ class ParticleFilter(Filter):
 
     @classmethod
     def from_xml_element(cls, elem, **kwargs):
-        filter_id = int(elem.get('id'))
-        bins = get_text(elem, 'bins').split()
+        filter_id = int(get_text(elem, "id"))
+        bins = get_elem_list(elem, "bins", str) or []
         return cls(bins, filter_id=filter_id)
 
 
@@ -1004,12 +1002,12 @@ class MeshFilter(Filter):
     def from_xml_element(cls, elem: ET.Element, **kwargs) -> MeshFilter:
         mesh_id = int(get_text(elem, 'bins'))
         mesh_obj = kwargs['meshes'][mesh_id]
-        filter_id = int(elem.get('id'))
+        filter_id = int(get_text(elem, "id"))
         out = cls(mesh_obj, filter_id=filter_id)
 
-        translation = elem.get('translation')
+        translation = get_elem_list(elem, "translation", float) or []
         if translation:
-            out.translation = [float(x) for x in translation.split()]
+            out.translation = translation
         return out
 
 
@@ -1144,16 +1142,16 @@ class MeshMaterialFilter(MeshFilter):
 
     @classmethod
     def from_xml_element(cls, elem: ET.Element, **kwargs) -> MeshMaterialFilter:
-        filter_id = int(elem.get('id'))
-        mesh_id = int(elem.get('mesh'))
+        filter_id = int(get_text(elem, "id"))
+        mesh_id = int(get_text(elem, "mesh"))
         mesh_obj = kwargs['meshes'][mesh_id]
-        bins = [int(x) for x in get_text(elem, 'bins').split()]
+        bins = get_elem_list(elem, "bins", int) or []
         bins = list(zip(bins[::2], bins[1::2]))
         out = cls(mesh_obj, bins, filter_id=filter_id)
 
-        translation = elem.get('translation')
+        translation = get_elem_list(elem, "translation", float) or []
         if translation:
-            out.translation = [float(x) for x in translation.split()]
+            out.translation = translation
         return out
 
     @classmethod
@@ -1552,8 +1550,8 @@ class RealFilter(Filter):
 
     @classmethod
     def from_xml_element(cls, elem, **kwargs):
-        filter_id = int(elem.get('id'))
-        bins = [float(x) for x in get_text(elem, 'bins').split()]
+        filter_id = int(get_text(elem, "id"))
+        bins = get_elem_list(elem, "bins", float) or []
         return cls(bins, filter_id=filter_id)
 
 
@@ -2442,12 +2440,13 @@ class EnergyFunctionFilter(Filter):
 
     @classmethod
     def from_xml_element(cls, elem, **kwargs):
-        filter_id = int(elem.get('id'))
-        energy = [float(x) for x in get_text(elem, 'energy').split()]
-        y = [float(x) for x in get_text(elem, 'y').split()]
+        filter_id = int(get_text(elem, "id"))
+        energy = get_elem_list(elem, "energy", float) or []
+        y = get_elem_list(elem, "y", float) or []
         out = cls(energy, y, filter_id=filter_id)
-        if elem.find('interpolation') is not None:
-            out.interpolation = elem.find('interpolation').text
+        interpolation = get_text(elem, "interpolation")
+        if interpolation is not None:
+            out.interpolation = interpolation
         return out
 
     def can_merge(self, other):

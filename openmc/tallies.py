@@ -15,7 +15,7 @@ import scipy.sparse as sps
 
 import openmc
 import openmc.checkvalue as cv
-from ._xml import clean_indentation, reorder_attributes, get_text
+from ._xml import clean_indentation, get_elem_list, get_text, reorder_attributes
 from .mixin import IDManagerMixin
 from .mesh import MeshBase
 
@@ -1006,8 +1006,8 @@ class Tally(IDManagerMixin):
             Tally object
 
         """
-        tally_id = int(elem.get('id'))
-        name = elem.get('name', '')
+        tally_id = int(get_text(elem, "id"))
+        name = get_text(elem, "name", "")
         tally = cls(tally_id=tally_id, name=name)
 
         text = get_text(elem, 'multiply_density')
@@ -1015,25 +1015,24 @@ class Tally(IDManagerMixin):
             tally.multiply_density = text in ('true', '1')
 
         # Read filters
-        filters_elem = elem.find('filters')
-        if filters_elem is not None:
-            filter_ids = [int(x) for x in filters_elem.text.split()]
+        filter_ids = get_elem_list(elem, "filters", int)
+        if filter_ids is not None:
             tally.filters = [kwargs['filters'][uid] for uid in filter_ids]
 
         # Read nuclides
-        nuclides_elem = elem.find('nuclides')
-        if nuclides_elem is not None:
-            tally.nuclides = nuclides_elem.text.split()
+        nuclides = get_elem_list(elem, "nuclides", str)
+        if nuclides is not None:
+            tally.nuclides = nuclides
 
         # Read scores
-        scores_elem = elem.find('scores')
-        if scores_elem is not None:
-            tally.scores = scores_elem.text.split()
+        scores = get_elem_list(elem, "scores", str)
+        if scores is not None:
+            tally.scores = scores
 
         # Set estimator
-        estimator_elem = elem.find('estimator')
-        if estimator_elem is not None:
-            tally.estimator = estimator_elem.text
+        estimator = get_text(elem, "estimator")
+        if estimator is not None:
+            tally.estimator = estimator
 
         # Read triggers
         tally.triggers = [
@@ -1042,9 +1041,9 @@ class Tally(IDManagerMixin):
         ]
 
         # Read tally derivative
-        deriv_elem = elem.find('derivative')
-        if deriv_elem is not None:
-            deriv_id = int(deriv_elem.text)
+        deriv = get_text(elem, "derivative")
+        if deriv is not None:
+            deriv_id = int(deriv)
             tally.derivative = kwargs['derivatives'][deriv_id]
 
         return tally

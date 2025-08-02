@@ -62,8 +62,6 @@ def get_activation_materials(
     return materials
 
 
-
-
 class R2SManager:
     """Manager for Rigorous 2-Step (R2S) method calculations.
 
@@ -71,6 +69,13 @@ class R2SManager:
     mesh-based or cell-based R2S calculations. It provides methods to get
     activation materials and decay photon sources based on the mesh/cells and
     materials in the OpenMC model.
+
+    This class supports the use of a different models for the neutron and photon
+    transport calculation. However, for cell-based calculations, it assumes that
+    the only changes in the model are material assignments. For mesh-based
+    calculations, it checks material assignments in the photon model and any
+    element--material combinations that don't appear in the photon model are
+    skipped.
 
     Parameters
     ----------
@@ -80,8 +85,8 @@ class R2SManager:
         The mesh or a sequence of cells that represent the spatial units over
         which the R2S calculation will be performed.
     photon_model : openmc.Model, optional
-        The OpenMC model to use for photon transport calculations. If None,
-        a shallow copy of the neutron_model will be created and used.
+        The OpenMC model to use for photon transport calculations. If None, a
+        shallow copy of the neutron_model will be created and used.
 
     Attributes
     ----------
@@ -398,7 +403,6 @@ class R2SManager:
         """
 
         # TODO: Automatically determine bounding box for each cell
-        # TODO: For cell-based calculations, account for material changes in photon model
 
         # Set default run arguments if not provided
         if run_kwargs is None:
@@ -410,24 +414,30 @@ class R2SManager:
         output_dir = Path(output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
 
+        # Check whether the photon model is different
+        neutron_univ = self.neutron_model.geometry.root_universe
+        photon_univ = self.photon_model.geometry.root_universe
+        different_photon_model = (neutron_univ != photon_univ)
+
         # For mesh-based calculations, compute material volume fractions for the
         # photon model if it is different from the neutron model to account for
         # potential material changes
-        if self.method == 'mesh-based':
-            neutron_univ = self.neutron_model.geometry.root_universe
-            photon_univ = self.photon_model.geometry.root_universe
-            if neutron_univ != photon_univ:
-                self.results['mesh_material_volumes_photon'] = photon_mmv = \
-                    self.domains.material_volumes(self.photon_model, **mat_vol_kwargs)
+        if self.method == 'mesh-based' and different_photon_model:
+            self.results['mesh_material_volumes_photon'] = photon_mmv = \
+                self.domains.material_volumes(self.photon_model, **mat_vol_kwargs)
 
-                # Save photon MMV results to file
-                photon_mmv.save(output_dir / 'mesh_material_volumes.npz')
+            # Save photon MMV results to file
+            photon_mmv.save(output_dir / 'mesh_material_volumes.npz')
 
         tally_ids = [tally.id for tally in self.photon_model.tallies]
         with open(output_dir / 'tally_ids.json', 'w') as f:
             json.dump(tally_ids, f)
 
         self.results['photon_tallies'] = {}
+
+        # Get dictionary of cells in the photon model
+        if different_photon_model:
+            photon_cells = self.photon_model.geometry.get_all_cells()
 
         for time_index in time_indices:
             # Create decay photon source
@@ -438,6 +448,14 @@ class R2SManager:
                 sources = []
                 results = self.results['depletion_results']
                 for cell, original_mat in zip(self.domains, self.results['activation_materials']):
+                    # Skip if the cell is not in the photon model or the
+                    # material has changed
+                    if different_photon_model:
+                        if cell.id not in photon_cells or \
+                            cell.fill.id != photon_cells[cell.id].fill.id:
+                            continue
+
+                    # Get bounding box for the cell
                     bounding_box = bounding_boxes[cell.id]
 
                     # Get activated material composition
@@ -527,8 +545,6 @@ class R2SManager:
                     for mat_id, _ in photon_mat_vols.by_element(index_elem)
                     if mat_id is not None
                 }
-            else:
-                photon_materials = set()
 
             for j, (mat_id, _) in enumerate(mat_vols.by_element(index_elem)):
                 # Skip void volume
@@ -536,7 +552,7 @@ class R2SManager:
                     continue
 
                 # Skip if this material doesn't exist in photon model
-                if mat_id not in photon_materials:
+                if photon_mat_vols is not None and mat_id not in photon_materials:
                     index_mat += 1
                     continue
 

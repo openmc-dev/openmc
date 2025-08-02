@@ -95,4 +95,37 @@ double AngleDistribution::sample(double E, uint64_t* seed) const
   return mu;
 }
 
+double AngleDistribution::get_pdf(double E, double mu, uint64_t* seed) const
+{
+  // Determine number of incoming energies
+  auto n = energy_.size();
+
+  // Find energy bin and calculate interpolation factor -- if the energy is
+  // outside the range of the tabulated energies, choose the first or last bins
+  int i;
+  double r;
+  if (E < energy_[0]) {
+    i = 0;
+    r = 0.0;
+  } else if (E > energy_[n - 1]) {
+    i = n - 2;
+    r = 1.0;
+  } else {
+    i = lower_bound_index(energy_.begin(), energy_.end(), E);
+    r = (E - energy_[i]) / (energy_[i + 1] - energy_[i]);
+  }
+
+  // Sample between the ith and (i+1)th bin
+  if (r > prn(seed))
+    ++i;
+
+  // Sample i-th distribution
+  double pdf = distribution_[i]->get_pdf(mu);
+
+  // Make sure pdf > 0 and return
+  if (std::abs(pdf) < 0)
+    fmt::print("pdf = {} <1", pdf);
+  return pdf;
+}
+
 } // namespace openmc

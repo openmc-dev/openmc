@@ -12,6 +12,7 @@
 #include "openmc/math_functions.h"
 #include "openmc/random_dist.h"
 #include "openmc/random_lcg.h"
+#include "openmc/search.h"
 #include "openmc/xml_interface.h"
 
 namespace openmc {
@@ -134,6 +135,12 @@ double Discrete::sample(uint64_t* seed) const
 {
   return x_[di_.sample(seed)];
 }
+// Not implemented
+double Discrete::get_pdf(double x) const
+{
+
+  return -1;
+}
 
 //==============================================================================
 // Uniform implementation
@@ -154,6 +161,13 @@ Uniform::Uniform(pugi::xml_node node)
 double Uniform::sample(uint64_t* seed) const
 {
   return a_ + prn(seed) * (b_ - a_);
+}
+double Uniform::get_pdf(double x) const
+{
+  if (x <= b_ && x >= a_)
+    return 1 / (b_ - a_);
+  else
+    return 0;
 }
 
 //==============================================================================
@@ -181,6 +195,10 @@ double PowerLaw::sample(uint64_t* seed) const
 {
   return std::pow(offset_ + prn(seed) * span_, ninv_);
 }
+double PowerLaw::get_pdf(double x) const
+{
+  return x / span_ / ninv_;
+}
 
 //==============================================================================
 // Maxwell implementation
@@ -194,6 +212,11 @@ Maxwell::Maxwell(pugi::xml_node node)
 double Maxwell::sample(uint64_t* seed) const
 {
   return maxwell_spectrum(theta_, seed);
+}
+// Not implemented
+double Maxwell::get_pdf(double x) const
+{
+  return -1;
 }
 
 //==============================================================================
@@ -215,6 +238,11 @@ double Watt::sample(uint64_t* seed) const
 {
   return watt_spectrum(a_, b_, seed);
 }
+// Not implemented
+double Watt::get_pdf(double x) const
+{
+  return -1;
+}
 
 //==============================================================================
 // Normal implementation
@@ -234,6 +262,12 @@ Normal::Normal(pugi::xml_node node)
 double Normal::sample(uint64_t* seed) const
 {
   return normal_variate(mean_value_, std_dev_, seed);
+}
+double Normal::get_pdf(double x) const
+{
+  double exponent = -0.5 * std::pow((x - mean_value_) / std_dev_, 2);
+  double coefficient = 1 / (std_dev_ * std::sqrt(2 * PI));
+  return coefficient * std::exp(exponent);
 }
 
 //==============================================================================
@@ -356,6 +390,41 @@ double Tabular::sample(uint64_t* seed) const
   }
 }
 
+double Tabular::get_pdf(double x) const
+{
+  // get PDF value at x
+
+  int i;
+  std::size_t n = x_.size();
+  if (x < x_[0]) {
+    return 0;
+  } else if (x > x_[n - 1]) {
+    return 0;
+  } else {
+    i = lower_bound_index(x_.begin(), x_.end(), x);
+  }
+
+  // Determine bounding PDF values
+  double x_i = x_[i];
+  double p_i = p_[i];
+
+  if (interp_ == Interpolation::histogram) {
+    // Histogram interpolation
+    return p_i;
+  } else {
+    // Linear-linear interpolation
+    double x_i1 = x_[i + 1];
+    double p_i1 = p_[i + 1];
+
+    double m = (p_i1 - p_i) / (x_i1 - x_i);
+    if (m == 0.0) {
+      return p_i;
+    } else {
+      return p_i + (x - x_i) * m;
+    }
+  }
+}
+
 //==============================================================================
 // Equiprobable implementation
 //==============================================================================
@@ -370,6 +439,10 @@ double Equiprobable::sample(uint64_t* seed) const
   double xl = x_[i];
   double xr = x_[i + i];
   return xl + ((n - 1) * r - i) * (xr - xl);
+}
+double Equiprobable::get_pdf(double x) const
+{
+  return -1;
 }
 
 //==============================================================================
@@ -419,6 +492,10 @@ double Mixture::sample(uint64_t* seed) const
 
   // Sample the chosen distribution
   return it->second->sample(seed);
+}
+double Mixture::get_pdf(double x) const
+{
+  return -1;
 }
 
 //==============================================================================

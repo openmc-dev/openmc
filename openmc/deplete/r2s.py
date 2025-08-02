@@ -68,6 +68,7 @@ def get_decay_photon_source_mesh(
     materials: list[openmc.Material],
     results: Results,
     mat_vols: openmc.MeshMaterialVolumes,
+    photon_mat_vols: openmc.MeshMaterialVolumes | None = None,
     time_index: int = -1,
 ) -> list[openmc.MeshSource]:
     """Create decay photon source for a mesh-based R2S calculation.
@@ -91,7 +92,13 @@ def get_decay_photon_source_mesh(
         The results object containing the depletion results for the materials.
     mat_vols : openmc.MeshMaterialVolumes
         The mesh material volumes object containing the materials and their
-        volumes for each mesh element.
+        volumes for each mesh element from the neutron transport step.
+    photon_mat_vols : openmc.MeshMaterialVolumes, optional
+        The mesh material volumes object for the photon model. If provided,
+        sources will only be created for mesh element-material combinations
+        that exist in both the neutron and photon models.
+    time_index : int, optional
+        Time index for the decay photon source. Default is -1 (last time).
 
     Returns
     -------
@@ -116,9 +123,24 @@ def get_decay_photon_source_mesh(
     n_elements = mat_vols.num_elements
 
     for index_elem in range(n_elements):
+        # Determine which materials exist in the photon model for this element
+        if photon_mat_vols is not None:
+            photon_materials = {
+                mat_id
+                for mat_id, _ in photon_mat_vols.by_element(index_elem)
+                if mat_id is not None
+            }
+        else:
+            photon_materials = set()
+
         for j, (mat_id, _) in enumerate(mat_vols.by_element(index_elem)):
             # Skip void volume
             if mat_id is None:
+                continue
+
+            # Skip if this material doesn't exist in photon model
+            if mat_id not in photon_materials:
+                index_mat += 1
                 continue
 
             # Check whether a new MeshSource object is needed
@@ -476,7 +498,7 @@ class R2SManager:
         """
 
         # TODO: Automatically determine bounding box for each cell
-        # TODO: Voiding/changing materials between neutron/photon steps
+        # TODO: For cell-based calculations, account for material changes in photon model
 
         # Set default run arguments if not provided
         if run_kwargs is None:
@@ -487,6 +509,16 @@ class R2SManager:
         # results
         output_dir = Path(output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
+
+        # For mesh-based calculations, compute material volume fractions for
+        # the photon model to account for potential material changes
+        if self.method == 'mesh-based':
+            self.results['mesh_material_volumes_photon'] = photon_mmv = \
+                self.domains.material_volumes(self.photon_model)
+
+            # Save photon MMV results to file
+            photon_mmv.save(output_dir / 'mesh_material_volumes.npz')
+
         tally_ids = [tally.id for tally in self.photon_model.tallies]
         with open(output_dir / 'tally_ids.json', 'w') as f:
             json.dump(tally_ids, f)
@@ -502,6 +534,7 @@ class R2SManager:
                     self.results['activation_materials'],
                     self.results['depletion_results'],
                     self.results['mesh_material_volumes'],
+                    self.results['mesh_material_volumes_photon'],
                     time_index=time_index,
                 )
             else:
@@ -574,6 +607,13 @@ class R2SManager:
 
         # Load photon transport results
         photon_dir = path / 'photon_transport'
+
+        # Load photon mesh material volumes if they exist (for mesh-based calculations)
+        if self.method == 'mesh-based':
+            photon_mmv_file = photon_dir / 'mesh_material_volumes.npz'
+            if photon_mmv_file.exists():
+                self.results['mesh_material_volumes_photon'] = \
+                    openmc.MeshMaterialVolumes.from_npz(photon_mmv_file)
 
         # Load tally IDs from JSON file
         tally_ids_path = photon_dir / 'tally_ids.json'

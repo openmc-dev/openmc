@@ -694,12 +694,15 @@ class Chain:
         """
         reactions = set()
 
+
         # Use DOK matrix as intermediate representation for matrix
         n = len(self)
         matrix = sp.dok_matrix((n, n))
 
         if fission_yields is None:
             fission_yields = self.get_default_fission_yields()
+
+        spont_fission_yields = self.get_spont_fission_yields()
 
         for i, nuc in enumerate(self.nuclides):
             # Loss from radioactive decay
@@ -708,13 +711,21 @@ class Chain:
                 if decay_constant != 0.0:
                     matrix[i, i] -= decay_constant
 
-            # Gain from radioactive decay
+            # Gain from radioactive decay, exluding spontaneous fission
             if nuc.n_decay_modes != 0:
                 for decay_type, target, branching_ratio in nuc.decay_modes:
                     branch_val = branching_ratio * decay_constant
 
                     # Allow for total annihilation for debug purposes
                     if branch_val != 0.0:
+                        if decay_type == "sf":
+                            if nuc.spont_yield_data is not None: 
+                                for product, y in spont_fission_yields[nuc.name].items():
+                                    yield_val = y * branch_val
+                                    if yield_val != 0.0:
+                                        k = self.nuclide_dict[product]
+                                        matrix[k, i] += yield_val
+                        
                         if target is not None:
                             k = self.nuclide_dict[target]
                             matrix[k, i] += branch_val

@@ -60,7 +60,7 @@ class Universe {
 public:
   int32_t id_;            //!< Unique ID
   vector<int32_t> cells_; //!< Cells within this universe
-  int filled_with_triso_base_ = -1;
+  int filled_with_triso_base_ = -1; //!< ID of cell filled with virtual lattice
 
   //! \brief Write universe information to an HDF5 group.
   //! \param group_id An HDF5 group id.
@@ -217,7 +217,7 @@ public:
   bool triso_particle_;
 
 
-  // Specification of the viryual lattice
+  //! \brief Specification of the virtual lattice
   vector<double> vl_lower_left_;
   vector<double> vl_pitch_;
   vector<int32_t> vl_shape_;

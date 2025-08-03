@@ -118,7 +118,6 @@ class Cell(IDManagerMixin):
         self.pitch = None
         self.shape = None
 
-
     def __contains__(self, point):
         if self.region is None:
             return True
@@ -585,7 +584,6 @@ class Cell(IDManagerMixin):
             element.set("lower_left", ' '.join(map(str, self.lower_left)))
             element.set("pitch", ' '.join(map(str, self.pitch)))
             element.set("shape", ' '.join(map(str, self.shape)))
-
 
         if len(self._name) > 0:
             element.set("name", str(self.name))

@@ -397,10 +397,7 @@ void Particle::cross_surface()
   if (settings::verbosity >= 10 || trace()) {
     write_message(1, "    Crossing surface {}", surf->id_);
   }
-  /*
-  if (surf->id_ >= 11675 && surf->id_ <=23340) {
-    write_message(1, "    {}", surf->id_);
-  }*/
+
   if (surf->surf_source_ && simulation::current_batch == settings::n_batches) {
     SourceSite site;
     site.r = r();
@@ -453,7 +450,6 @@ void Particle::cross_surface()
   }
 #endif
 
-  
   if (surf->is_triso_surface_) {
     if (surface() > 0){
       for (int i = n_coord(); i < model::n_coord_levels; i++) {
@@ -477,7 +473,7 @@ void Particle::cross_surface()
       if (i_cell == C_NONE) {
         int i_universe = coord(n_coord() - 1).universe;
         const auto& univ {model::universes[i_universe]};
-        
+
         if (univ->filled_with_triso_base_ != -1) {
           coord(n_coord() - 1).cell = model::cell_map[univ->filled_with_triso_base_];
           found=true;
@@ -542,7 +538,6 @@ void Particle::cross_surface()
       if (neighbor_list_find_cell(*this))
       return;
   }
-  
 
   // ==========================================================================
   // COULDN'T FIND PARTICLE IN NEIGHBORING CELLS, SEARCH ALL CELLS

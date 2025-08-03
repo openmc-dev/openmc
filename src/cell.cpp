@@ -119,23 +119,7 @@ vector<vector<int32_t>> \
   vector<vector<int32_t>> triso_distribution(lattice_shape[0]*lattice_shape[1]*lattice_shape[2]);
   vector<double> mesh_center(3);
   vector<int> mesh_ind(3);
-  /*
-  for (int i=0; i<lattice_shape[0]; i++) {
-    for (int j=0; j<lattice_shape[1]; j++) {
-      for (int k=0; k<lattice_shape[2]; k++) {
-        mesh_center[0]=(i+0.5)*lattice_pitch[0]+lattice_lower_left[0];
-        mesh_center[1]=(j+0.5)*lattice_pitch[1]+lattice_lower_left[1];
-        mesh_center[2]=(k+0.5)*lattice_pitch[2]+lattice_lower_left[2];
-        for (int32_t token : cell_rpn) {
-          if (token >= OP_UNION) continue;
-          if (model::surfaces[abs(token) - 1]->triso_in_mesh(mesh_center, lattice_pitch)) {
-            triso_distribution[i+j*lattice_shape[0]+k*lattice_shape[0]*lattice_shape[1]].push_back(token);
-            model::surfaces[abs(token) - 1]->connect_to_triso_base(id, "base");
-          }
-        }
-      }
-    }
-  }*/
+
   for (int32_t token : cell_rpn) {
     if (token >= OP_UNION) continue;
     vector<double> triso_center=model::surfaces[abs(token) - 1]->get_center();
@@ -160,10 +144,8 @@ vector<vector<int32_t>> \
     }
   }
 
-
   return triso_distribution;
 }
-
 
 //==============================================================================
 //! Convert infix region specification to Reverse Polish Notation (RPN)
@@ -586,7 +568,7 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
   } else {
     virtual_lattice_ = false;
   }
-  
+
   if (check_for_node(cell_node, "triso_particle")) {
     triso_particle_ = get_node_value_bool(cell_node, "triso_particle");
   } else {
@@ -771,40 +753,6 @@ std::pair<double, int32_t> CSGCell::distance(
   double min_dis_vl;
   int32_t i_surf_vl;
   if (virtual_lattice_) {
-    /*
-    double tol_dis = p.collision_distance();
-    double u_value = sqrt(pow(u.x,2)+pow(u.y,2)+pow(u.z,2)); //don't know if u has been normalized
-    vector<double> norm_u = {u.x/u_value, u.y/u_value, u.z/u_value};
-    vector<double> r_end = {r.x+tol_dis*norm_u[0], r.y+tol_dis*norm_u[1], r.z+tol_dis*norm_u[2]};
-    double temp_pos_x, temp_pos_y, temp_pos_z;
-    vector<vector<int>> passed_lattice={{floor((r.x-vl_lower_left_[0])/vl_pitch_[0]),\
-                                          floor((r.y-vl_lower_left_[1])/vl_pitch_[1]),\
-                                          floor((r.z-vl_lower_left_[2])/vl_pitch_[2]), 0}};
-    int index_start;
-    int index_end;
-    for (int i = 0; i < 3; i++){
-      if (passed_lattice[0][i] == vl_shape_[i]) {
-        passed_lattice[0][i] = vl_shape_[i]-1;
-      }
-    }
-
-    if (u.x > 0) {
-      index_start = ceil((r.x-vl_lower_left_[0])/vl_pitch_[0]);
-      index_end = floor((r_end[0]-vl_lower_left_[0])/vl_pitch_[0]);
-      if (index_start <= index_end && index_start < vl_shape_[0]) {
-        for (int i = index_start; i <= index_end; i++) {
-          if (i >= vl_shape_[0]) break;
-          temp_pos_x = i*vl_pitch_[0]+vl_lower_left_[0];
-          temp_pos_y = (temp_pos_x-r.x)*norm_u[1]/norm_u[0]+r.y;
-          temp_pos_z = (temp_pos_x-r.x)*norm_u[2]/norm_u[0]+r.z;
-          passed_lattice.push_back({i, floor((temp_pos_y-vl_lower_left_[1])/vl_pitch_[1]),\
-                                    floor((temp_pos_z-vl_lower_left_[2])/vl_pitch_[2]),\
-                                    (temp_pos_x-r.x)/norm_u[0]})
-        }
-      }
-    } 
-    */
-
     double max_dis = p->collision_distance();
     double tol_dis = 0;
     vector<double> dis_to_bou(3), dis_to_bou_max(3);
@@ -835,14 +783,10 @@ std::pair<double, int32_t> CSGCell::distance(
     }
 
     while(true) {
-      
-      
-
       if (lat_ind[0] < 0 || lat_ind[0] >= vl_shape_[0] ||\
           lat_ind[1] < 0 || lat_ind[1] >= vl_shape_[1] ||\
           lat_ind[2] < 0 || lat_ind[2] >= vl_shape_[2]) break;
 
-      
       for (int token : vl_triso_distribution_[lat_ind[0]+lat_ind[1]*vl_shape_[0]+lat_ind[2]*vl_shape_[0]*vl_shape_[1]]) {
         bool coincident {std::abs(token) == std::abs(on_surface)};
         double d {model::surfaces[abs(token) - 1]->distance(r, u, coincident)};
@@ -853,7 +797,6 @@ std::pair<double, int32_t> CSGCell::distance(
           }
         }
       }
-      
 
       int mes_bou_crossed=0;
       if  (dis_to_bou[1] < dis_to_bou[0]) {
@@ -876,13 +819,13 @@ std::pair<double, int32_t> CSGCell::distance(
       }
 
       dis_to_bou[mes_bou_crossed] += dis_to_bou_max[mes_bou_crossed];
-      
+
       if (tol_dis > max_dis) {
         break;
       }
     }
 
-    
+
   } else {
     for (int32_t token : rpn_) {
       // Ignore this token if it corresponds to an operator rather than a region.
@@ -903,7 +846,7 @@ std::pair<double, int32_t> CSGCell::distance(
       }
     }
   }
-  
+
   return {min_dist, i_surf};
 }
 

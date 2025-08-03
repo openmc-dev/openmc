@@ -830,11 +830,10 @@ def create_triso_lattice(trisos, lower_left, pitch, shape, background, virtual=F
         real_shape = copy.deepcopy(shape)
         pitch = [real_pitch[i]*real_shape[i] for i in range(len(real_pitch))]
         shape = [1 for i in range(len(real_shape))]
-    
+
     lattice = openmc.RectLattice()
     lattice.lower_left = lower_left
     lattice.pitch = pitch
-    
 
     indices = list(np.broadcast(*np.ogrid[:shape[2], :shape[1], :shape[0]]))
     triso_locations = {idx: [] for idx in indices}
@@ -872,7 +871,6 @@ def create_triso_lattice(trisos, lower_left, pitch, shape, background, virtual=F
             background_cell.pitch = real_pitch
             background_cell.shape = real_shape
             background_cell.lower_left = [-pitch[i]/2 for i in range(len(pitch))]
-            
 
         u = openmc.Universe()
         u.add_cell(background_cell)

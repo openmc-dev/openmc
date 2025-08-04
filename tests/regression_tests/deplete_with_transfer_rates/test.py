@@ -65,7 +65,7 @@ def test_transfer_rates(run_in_tmpdir, model, rate, dest_mat, power, ref_result)
     chain_file = Path(__file__).parents[2] / 'chain_simple.xml'
 
     transfer_elements = ['Xe']
-    ox = {'I': -1, 'Xe':0, 'Cs': 1, 'Gd': 3, 'U': 4}
+    os = {'I': -1, 'Xe':0, 'Cs': 1, 'Gd': 3, 'U': 4}
 
     op = CoupledOperator(model, chain_file)
     op.round_number = True
@@ -75,7 +75,7 @@ def test_transfer_rates(run_in_tmpdir, model, rate, dest_mat, power, ref_result)
         integrator.add_transfer_rate('f', transfer_elements, rate,
                                     destination_material=dest_mat)
     if 'redox' in ref_result.split('_'):
-        integrator.add_redox('f', {'Gd157':1}, ox)
+        integrator.add_redox('f', {'Gd157':1}, os)
 
     integrator.integrate()
 

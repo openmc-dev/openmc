@@ -9,6 +9,7 @@ def test_filter_mesh_material(run_in_tmpdir):
     materials = []
     for i in range(4):
         mat = openmc.Material()
+        mat.id = 10*(i+1)
         mat.add_nuclide('Fe56', 1.0)
         materials.append(mat)
 
@@ -35,7 +36,7 @@ def test_filter_mesh_material(run_in_tmpdir):
     # MeshMaterialFilter with corresponding bins
     vols = mesh.material_volumes(model)
     mmf = openmc.MeshMaterialFilter.from_volumes(mesh, vols)
-    expected_bins = [(0, 1), (1, 1), (1, 2), (2, 2), (2, 3), (3, 3), (3, 4), (4, 4)]
+    expected_bins = [(0, 10), (1, 10), (1, 20), (2, 20), (2, 30), (3, 30), (3, 40), (4, 40)]
     np.testing.assert_equal(mmf.bins, expected_bins)
 
     # Create two tallies, one with a mesh filter and one with mesh-material

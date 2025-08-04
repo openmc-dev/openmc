@@ -1082,7 +1082,8 @@ class MeshMaterialFilter(MeshFilter):
             A new MeshMaterialFilter instance
 
         """
-        bins = list(zip(*np.where(volumes._materials > -1)))
+        i,j = np.where(volumes._materials > -1)
+        bins = sorted(zip(i,volumes._materials[i,j]))
         return cls(mesh, bins)
 
     def __hash__(self):

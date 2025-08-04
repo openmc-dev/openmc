@@ -11,13 +11,16 @@ import re
 from collections import defaultdict, namedtuple
 from collections.abc import Mapping, Iterable
 from numbers import Real, Integral
+from pathlib import Path
 from warnings import warn
+from typing import List
 
 import lxml.etree as ET
 import scipy.sparse as sp
 
-from openmc.checkvalue import check_type, check_greater_than
+from openmc.checkvalue import check_type, check_greater_than, PathLike
 from openmc.data import gnds_name, zam
+from openmc.exceptions import DataError
 from .nuclide import FissionYieldDistribution, Nuclide
 import openmc.data
 
@@ -244,6 +247,10 @@ class Chain:
         Reactions that are tracked in the depletion chain
     nuclide_dict : dict of str to int
         Maps a nuclide name to an index in nuclides.
+    stable_nuclides : list of openmc.deplete.Nuclide
+        List of stable nuclides available in the chain.
+    unstable_nuclides : list of openmc.deplete.Nuclide
+        List of unstable nuclides available in the chain.
     fission_yields : None or iterable of dict
         List of effective fission yields for materials. Each dictionary
         should be of the form ``{parent: {product: yield}}`` with
@@ -256,7 +263,7 @@ class Chain:
     """
 
     def __init__(self):
-        self.nuclides = []
+        self.nuclides: List[Nuclide] = []
         self.reactions = []
         self.nuclide_dict = {}
         self._fission_yields = None
@@ -272,7 +279,17 @@ class Chain:
         """Number of nuclides in chain."""
         return len(self.nuclides)
 
-    def add_nuclide(self, nuclide):
+    @property
+    def stable_nuclides(self) -> List[Nuclide]:
+        """List of stable nuclides available in the chain"""
+        return [nuc for nuc in self.nuclides if nuc.half_life is None]
+
+    @property
+    def unstable_nuclides(self) -> List[Nuclide]:
+        """List of unstable nuclides available in the chain"""
+        return [nuc for nuc in self.nuclides if nuc.half_life is not None]
+
+    def add_nuclide(self, nuclide: Nuclide):
         """Add a nuclide to the depletion chain
 
         Parameters
@@ -281,6 +298,7 @@ class Chain:
             Nuclide to add
 
         """
+        _invalidate_chain_cache(self)
         self.nuclide_dict[nuclide.name] = len(self.nuclides)
         self.nuclides.append(nuclide)
 
@@ -446,7 +464,6 @@ class Chain:
                     nuclide.add_reaction('fission', None, q_value, 1.0)
                     fissionable = True
 
-
             if fissionable:
                 if parent in fpy_data:
                     fpy = fpy_data[parent]
@@ -540,6 +557,9 @@ class Chain:
 
             nuc = Nuclide.from_xml(nuclide_elem, root, this_q)
             chain.add_nuclide(nuc)
+
+        # Store path of XML file (used for handling cache invalidation)
+        chain._xml_path = str(Path(filename).resolve())
 
         return chain
 
@@ -687,7 +707,7 @@ class Chain:
         # Return CSC representation instead of DOK
         return matrix.tocsc()
 
-    def form_rr_term(self, tr_rates, mats):
+    def form_rr_term(self, tr_rates, current_timestep, mats):
         """Function to form the transfer rate term matrices.
 
         .. versionadded:: 0.14.0
@@ -696,6 +716,8 @@ class Chain:
         ----------
         tr_rates : openmc.deplete.TransferRates
             Instance of openmc.deplete.TransferRates
+        current_timestep : int
+            Current timestep index
         mats : string or two-tuple of strings
             Two cases are possible:
 
@@ -724,31 +746,73 @@ class Chain:
 
         for i, nuc in enumerate(self.nuclides):
             elm = re.split(r'\d+', nuc.name)[0]
-            # Build transfer terms matrices
+            # Build transfer terms (nuclide transfer only)
             if isinstance(mats, str):
                 mat = mats
-                components = tr_rates.get_components(mat)
+                components = tr_rates.get_components(mat, current_timestep)
+                if not components:
+                    break
                 if elm in components:
-                    matrix[i, i] = sum(tr_rates.get_transfer_rate(mat, elm))
+                    matrix[i, i] = sum(
+                        tr_rates.get_external_rate(mat, elm, current_timestep))
                 elif nuc.name in components:
-                    matrix[i, i] = sum(tr_rates.get_transfer_rate(mat, nuc.name))
+                    matrix[i, i] = sum(
+                        tr_rates.get_external_rate(mat, nuc.name, current_timestep))
                 else:
                     matrix[i, i] = 0.0
-            #Build transfer terms matrices
+
+            # Build transfer terms (transfer from one material into another)
             elif isinstance(mats, tuple):
                 dest_mat, mat = mats
-                if dest_mat in tr_rates.get_destination_material(mat, elm):
-                    dest_mat_idx = tr_rates.get_destination_material(mat, elm).index(dest_mat)
-                    matrix[i, i] = tr_rates.get_transfer_rate(mat, elm)[dest_mat_idx]
-                elif dest_mat in tr_rates.get_destination_material(mat, nuc.name):
-                    dest_mat_idx = tr_rates.get_destination_material(mat, nuc.name).index(dest_mat)
-                    matrix[i, i] = tr_rates.get_transfer_rate(mat, nuc.name)[dest_mat_idx]
+                components = tr_rates.get_components(mat, current_timestep, dest_mat)
+                if elm in components:
+                    matrix[i, i] = tr_rates.get_external_rate(
+                        mat, elm, current_timestep, dest_mat)[0]
+                elif nuc.name in components:
+                    matrix[i, i] = tr_rates.get_external_rate(
+                        mat, nuc.name, current_timestep, dest_mat)[0]
                 else:
                     matrix[i, i] = 0.0
-            #Nothing else is allowed
 
         # Return CSC instead of DOK
         return matrix.tocsc()
+
+    def form_ext_source_term(self, ext_source_rates, current_timestep, mat):
+        """Function to form the external source rate term vectors.
+
+        .. versionadded:: 0.15.3
+
+        Parameters
+        ----------
+        ext_source_rates : openmc.deplete.ExternalSourceRates
+            Instance of openmc.deplete.ExternalSourceRates
+        current_timestep : int
+            Current timestep index
+        mat : string
+            Material id
+
+        Returns
+        -------
+        scipy.sparse.csc_matrix
+            Sparse vector representing external source term.
+
+        """
+        if not ext_source_rates.get_components(mat, current_timestep):
+            return
+        # Use DOK as intermediate representation
+        n = len(self)
+        vector = sp.dok_matrix((n, 1))
+
+        for i, nuc in enumerate(self.nuclides):
+            # Build source term vector
+            if nuc.name in ext_source_rates.get_components(mat, current_timestep):
+                vector[i] = sum(ext_source_rates.get_external_rate(
+                    mat, nuc.name, current_timestep))
+            else:
+                vector[i] = 0.0
+
+        # Return CSC instead of DOK
+        return vector.tocsc()
 
     def get_branch_ratios(self, reaction="(n,gamma)"):
         """Return a dictionary with reaction branching ratios
@@ -827,7 +891,7 @@ class Chain:
         --------
         :meth:`get_branch_ratios`
         """
-
+        _invalidate_chain_cache(self)
         # Store some useful information through the validation stage
 
         sums = {}
@@ -966,6 +1030,7 @@ class Chain:
 
     @fission_yields.setter
     def fission_yields(self, yields):
+        _invalidate_chain_cache(self)
         if yields is not None:
             if isinstance(yields, Mapping):
                 yields = [yields]
@@ -1186,3 +1251,65 @@ class Chain:
         found.update(isotopes)
 
         return found
+
+
+# A global cache for Chain objects
+_CHAIN_CACHE = {}
+
+
+def _get_chain(
+    chain_file: PathLike | Chain | None = None,
+    fission_q: dict | None = None
+) -> Chain:
+    """Get a depletion chain from a file or the runtime configuration.
+
+    Parameters
+    ----------
+    chain_file : PathLike or Chain, optional
+        Path to depletion chain XML file, a Chain instance, or None to use
+        the file specified in ``openmc.config['chain_file']``.
+    fission_q : dict, optional
+        Dictionary of nuclides and their fission Q values [eV]. If not given,
+        values will be pulled from the ``chain_file``.
+
+    Returns
+    -------
+    Chain
+        Depletion chain instance.
+    """
+    # If chain_file is already a Chain, return it directly
+    if isinstance(chain_file, Chain):
+        return chain_file
+
+    # Resolve chain_file based on config if None
+    if chain_file is None:
+        chain_file = openmc.config.get('chain_file')
+        if 'chain_file' not in openmc.config:
+            raise DataError(
+                "No depletion chain specified and could not find depletion "
+                "chain in openmc.config['chain_file']"
+            )
+    elif not isinstance(chain_file, PathLike):
+        raise TypeError("chain_file must be path-like, a Chain, or None")
+
+    # Determine the key for the cache, which consists of the absolute path, the
+    # file modification time, the file size, and the fission Q values.
+    chain_path = Path(chain_file).resolve()
+    stat_result = chain_path.stat()
+    fq_tuple = tuple(sorted(fission_q.items())) if fission_q else ()
+    key = (chain_path, stat_result.st_mtime, stat_result.st_size, fq_tuple)
+
+    # Check the global cache. If not cached, load the chain from XML and store
+    global _CHAIN_CACHE
+    if key not in _CHAIN_CACHE:
+        _CHAIN_CACHE[key] = Chain.from_xml(chain_path, fission_q)
+    return _CHAIN_CACHE[key]
+
+
+def _invalidate_chain_cache(chain):
+    """Invalidate the cache for a specific Chain (when it is modifed)."""
+    if hasattr(chain, '_xml_path'):
+        # Remove all entries with the same path as self._xml_path
+        for key in list(_CHAIN_CACHE.keys()):
+            if str(key[0]) == chain._xml_path:
+                del _CHAIN_CACHE[key]

@@ -38,7 +38,7 @@
 #include "openmc/vector.h"
 #include "openmc/weight_windows.h"
 
-#ifdef LIBMESH
+#ifdef OPENMC_LIBMESH_ENABLED
 #include "libmesh/libmesh.h"
 #endif
 
@@ -64,7 +64,7 @@ int openmc_init(int argc, char* argv[], const void* intracomm)
   if (err)
     return err;
 
-#ifdef LIBMESH
+#ifdef OPENMC_LIBMESH_ENABLED
   const int n_threads = num_threads();
   // initialize libMesh if it hasn't been initialized already
   // (if initialized externally, the libmesh_init object needs to be provided
@@ -157,7 +157,7 @@ void initialize_mpi(MPI_Comm intracomm)
 
   // Create bank datatype
   SourceSite b;
-  MPI_Aint disp[10];
+  MPI_Aint disp[11];
   MPI_Get_address(&b.r, &disp[0]);
   MPI_Get_address(&b.u, &disp[1]);
   MPI_Get_address(&b.E, &disp[2]);

@@ -7,6 +7,7 @@
 #include "openmc/error.h"
 #include "openmc/event.h"
 #include "openmc/geometry_aux.h"
+#include "openmc/ifp.h"
 #include "openmc/material.h"
 #include "openmc/mcpl_interface.h"
 #include "openmc/message_passing.h"
@@ -335,6 +336,11 @@ void allocate_banks()
 
     // Allocate fission bank
     init_fission_bank(3 * simulation::work_per_rank);
+
+    // Allocate IFP bank
+    if (settings::ifp_on) {
+      resize_simulation_ifp_banks();
+    }
   }
 
   if (settings::surf_source_write) {
@@ -394,8 +400,11 @@ void finalize_batch()
   simulation::time_tallies.stop();
 
   // update weight windows if needed
-  for (const auto& wwg : variance_reduction::weight_windows_generators) {
-    wwg->update();
+  if (settings::solver_type != SolverType::RANDOM_RAY ||
+      simulation::current_batch == settings::n_batches) {
+    for (const auto& wwg : variance_reduction::weight_windows_generators) {
+      wwg->update();
+    }
   }
 
   // Reset global tally results
@@ -586,6 +595,9 @@ void initialize_history(Particle& p, int64_t index_source)
   // Reset weight window ratio
   p.ww_factor() = 0.0;
 
+  // set particle history start weight
+  p.wgt_born() = p.wgt();
+
   // Reset pulse_height_storage
   std::fill(p.pht_storage().begin(), p.pht_storage().end(), 0);
 
@@ -605,12 +617,16 @@ void initialize_history(Particle& p, int64_t index_source)
   // Set particle track.
   p.write_track() = check_track_criteria(p);
 
+  // Set the particle's initial weight window value.
+  p.wgt_ww_born() = -1.0;
+  apply_weight_windows(p);
+
   // Display message if high verbosity or trace is on
   if (settings::verbosity >= 9 || p.trace()) {
     write_message("Simulating Particle {}", p.id());
   }
 
-// Add paricle's starting weight to count for normalizing tallies later
+// Add particle's starting weight to count for normalizing tallies later
 #pragma omp atomic
   simulation::total_weight += p.wgt();
 
@@ -774,7 +790,7 @@ void transport_history_based_single_particle(Particle& p)
       p.event_advance();
     }
     if (p.alive()) {
-      if (p.collision_distance() > p.boundary().distance) {
+      if (p.collision_distance() > p.boundary().distance()) {
         p.event_cross_surface();
       } else if (p.alive()) {
         p.event_collide();

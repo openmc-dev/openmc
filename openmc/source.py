@@ -110,7 +110,7 @@ class SourceBase(ABC):
                 cv.check_value('rejection strategy', value, ('resample', 'kill'))
                 self._constraints['rejection_strategy'] = value
             else:
-                raise ValueError('Unknown key in constraints dictionary: {key}')
+                raise ValueError(f'Unknown key in constraints dictionary: {key}')
 
     @abstractmethod
     def populate_xml_element(self, element):

@@ -22,6 +22,7 @@ essential aspects of using OpenMC to perform simulations.
     plots
     depletion
     decay_sources
+    kinetics
     scripts
     processing
     parallel

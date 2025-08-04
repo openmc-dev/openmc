@@ -8,6 +8,7 @@
 #include "openmc/eigenvalue.h"
 #include "openmc/endf.h"
 #include "openmc/error.h"
+#include "openmc/ifp.h"
 #include "openmc/material.h"
 #include "openmc/math_functions.h"
 #include "openmc/message_passing.h"
@@ -153,7 +154,13 @@ void sample_neutron_reaction(Particle& p)
 
   // Play russian roulette if survival biasing is turned on
   if (settings::survival_biasing) {
-    if (p.wgt() < settings::weight_cutoff) {
+    // if survival normalization is on, use normalized weight cutoff and
+    // normalized weight survive
+    if (settings::survival_normalization) {
+      if (p.wgt() < settings::weight_cutoff * p.wgt_born()) {
+        russian_roulette(p, settings::weight_survive * p.wgt_born());
+      }
+    } else if (p.wgt() < settings::weight_cutoff) {
       russian_roulette(p, settings::weight_survive);
     }
   }
@@ -226,6 +233,10 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
 
         // Break out of loop as no more sites can be added to fission bank
         break;
+      }
+      // Iterated Fission Probability (IFP) method
+      if (settings::ifp_on) {
+        ifp(p, site, idx);
       }
     } else {
       p.secondary_bank().push_back(site);
@@ -329,11 +340,11 @@ void sample_photon_reaction(Particle& p)
       p.create_secondary(p.wgt(), u, E_electron, ParticleType::electron);
     }
 
-    // TODO: Compton subshell data does not match atomic relaxation data
-    // Allow electrons to fill orbital and produce auger electrons
-    // and fluorescent photons
-    if (i_shell >= 0) {
-      element.atomic_relaxation(i_shell, p);
+    // Allow electrons to fill orbital and produce Auger electrons and
+    // fluorescent photons. Since Compton subshell data does not match atomic
+    // relaxation data, use the mapping between the data to find the subshell
+    if (i_shell >= 0 && element.subshell_map_[i_shell] >= 0) {
+      element.atomic_relaxation(element.subshell_map_[i_shell], p);
     }
 
     phi += PI;

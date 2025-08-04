@@ -6,11 +6,11 @@
 #include <set>
 #include <string>
 
+#include "xtensor/xdynamic_view.hpp"
 #include "xtensor/xindex_view.hpp"
 #include "xtensor/xio.hpp"
 #include "xtensor/xmasked_view.hpp"
 #include "xtensor/xnoalias.hpp"
-#include "xtensor/xstrided_view.hpp"
 #include "xtensor/xview.hpp"
 
 #include "openmc/error.h"
@@ -73,9 +73,25 @@ void apply_weight_windows(Particle& p)
     if (weight_window.is_valid())
       break;
   }
+
+  // If particle has not yet had its birth weight window value set, set it to
+  // the current weight window (or 1.0 if not born in a weight window).
+  if (p.wgt_ww_born() == -1.0) {
+    if (weight_window.is_valid()) {
+      p.wgt_ww_born() =
+        (weight_window.lower_weight + weight_window.upper_weight) / 2;
+    } else {
+      p.wgt_ww_born() = 1.0;
+    }
+  }
+
   // particle is not in any of the ww domains, do nothing
   if (!weight_window.is_valid())
     return;
+
+  // Normalize weight windows based on particle's starting weight
+  // and the value of the weight window the particle was born in.
+  weight_window.scale(p.wgt_born() / p.wgt_ww_born());
 
   // get the paramters
   double weight = p.wgt();
@@ -490,8 +506,18 @@ void WeightWindows::update_weights(const Tally* tally, const std::string& value,
   ///////////////////////////
   this->check_tally_update_compatibility(tally);
 
-  lower_ww_.fill(-1);
-  upper_ww_.fill(-1);
+  // Dimensions of weight window arrays
+  int e_bins = lower_ww_.shape()[0];
+  int64_t mesh_bins = lower_ww_.shape()[1];
+
+  // Initialize weight window arrays to -1.0 by default
+#pragma omp parallel for collapse(2) schedule(static)
+  for (int e = 0; e < e_bins; e++) {
+    for (int64_t m = 0; m < mesh_bins; m++) {
+      lower_ww_(e, m) = -1.0;
+      upper_ww_(e, m) = -1.0;
+    }
+  }
 
   // determine which value to use
   const std::set<std::string> allowed_values = {"mean", "rel_err"};
@@ -589,10 +615,12 @@ void WeightWindows::update_weights(const Tally* tally, const std::string& value,
   }
 
   // down-select data based on particle and score
-  auto sum = xt::view(transposed_view, particle_idx, xt::all(), xt::all(),
-    score_index, static_cast<int>(TallyResult::SUM));
-  auto sum_sq = xt::view(transposed_view, particle_idx, xt::all(), xt::all(),
-    score_index, static_cast<int>(TallyResult::SUM_SQ));
+  auto sum = xt::dynamic_view(
+    transposed_view, {particle_idx, xt::all(), xt::all(), score_index,
+                       static_cast<int>(TallyResult::SUM)});
+  auto sum_sq = xt::dynamic_view(
+    transposed_view, {particle_idx, xt::all(), xt::all(), score_index,
+                       static_cast<int>(TallyResult::SUM_SQ)});
   int n = tally->n_realizations_;
 
   //////////////////////////////////////////////
@@ -610,71 +638,117 @@ void WeightWindows::update_weights(const Tally* tally, const std::string& value,
   auto& new_bounds = this->lower_ww_;
   auto& rel_err = this->upper_ww_;
 
-  // noalias avoids memory allocation here
-  xt::noalias(new_bounds) = sum / n;
-
-  xt::noalias(rel_err) =
-    xt::sqrt(((sum_sq / n) - xt::square(new_bounds)) / (n - 1)) / new_bounds;
-  xt::filter(rel_err, sum <= 0.0).fill(INFTY);
-
-  if (value == "rel_err")
-    xt::noalias(new_bounds) = 1 / rel_err;
-
   // get mesh volumes
   auto mesh_vols = this->mesh()->volumes();
 
-  int e_bins = new_bounds.shape()[0];
-
-  if (method == WeightWindowUpdateMethod::MAGIC) {
-    // If we are computing weight windows with forward fluxes derived from a
-    // Monte Carlo or forward random ray solve, we use the MAGIC algorithm.
-    for (int e = 0; e < e_bins; e++) {
-      // select all
-      auto group_view = xt::view(new_bounds, e);
-
-      // divide by volume of mesh elements
-      for (int i = 0; i < group_view.size(); i++) {
-        group_view[i] /= mesh_vols[i];
+  // Calculate mean (new_bounds) and relative error
+#pragma omp parallel for collapse(2) schedule(static)
+  for (int e = 0; e < e_bins; e++) {
+    for (int64_t m = 0; m < mesh_bins; m++) {
+      // Calculate mean
+      new_bounds(e, m) = sum(e, m) / n;
+      // Calculate relative error
+      if (sum(e, m) > 0.0) {
+        double mean_val = new_bounds(e, m);
+        double variance = (sum_sq(e, m) / n - mean_val * mean_val) / (n - 1);
+        rel_err(e, m) = std::sqrt(variance) / mean_val;
+      } else {
+        rel_err(e, m) = INFTY;
       }
-
-      double group_max =
-        *std::max_element(group_view.begin(), group_view.end());
-      // normalize values in this energy group by the maximum value for this
-      // group
-      if (group_max > 0.0)
-        group_view /= 2.0 * group_max;
-    }
-  } else {
-    // If we are computing weight windows with adjoint fluxes derived from an
-    // adjoint random ray solve, we use the FW-CADIS algorithm.
-    for (int e = 0; e < e_bins; e++) {
-      // select all
-      auto group_view = xt::view(new_bounds, e);
-
-      // divide by volume of mesh elements
-      for (int i = 0; i < group_view.size(); i++) {
-        group_view[i] /= mesh_vols[i];
+      if (value == "rel_err") {
+        new_bounds(e, m) = 1.0 / rel_err(e, m);
       }
     }
-
-    xt::noalias(new_bounds) = 1.0 / new_bounds;
-
-    auto max_val = xt::amax(new_bounds)();
-
-    xt::noalias(new_bounds) = new_bounds / (2.0 * max_val);
   }
 
-  // make sure that values where the mean is zero are set s.t. the weight window
-  // value will be ignored
-  xt::filter(new_bounds, sum <= 0.0).fill(-1.0);
+  // Divide by volume of mesh elements
+#pragma omp parallel for collapse(2) schedule(static)
+  for (int e = 0; e < e_bins; e++) {
+    for (int64_t m = 0; m < mesh_bins; m++) {
+      new_bounds(e, m) /= mesh_vols[m];
+    }
+  }
 
-  // make sure the weight windows are ignored for any locations where the
-  // relative error is higher than the specified relative error threshold
-  xt::filter(new_bounds, rel_err > threshold).fill(-1.0);
+  if (method == WeightWindowUpdateMethod::MAGIC) {
+    // For MAGIC, weight windows are proportional to the forward fluxes.
+    // We normalize weight windows independently for each energy group.
 
-  // update the bounds of this weight window class
-  // noalias avoids additional memory allocation
-  xt::noalias(upper_ww_) = ratio * lower_ww_;
+    // Find group maximum and normalize (per energy group)
+    for (int e = 0; e < e_bins; e++) {
+      double group_max = 0.0;
+
+      // Find maximum value across all elements in this energy group
+#pragma omp parallel for schedule(static) reduction(max : group_max)
+      for (int64_t m = 0; m < mesh_bins; m++) {
+        if (new_bounds(e, m) > group_max) {
+          group_max = new_bounds(e, m);
+        }
+      }
+
+      // Normalize values in this energy group by the maximum value
+      if (group_max > 0.0) {
+        double norm_factor = 1.0 / (2.0 * group_max);
+#pragma omp parallel for schedule(static)
+        for (int64_t m = 0; m < mesh_bins; m++) {
+          new_bounds(e, m) *= norm_factor;
+        }
+      }
+    }
+  } else {
+    // For FW-CADIS, weight windows are inversely proportional to the adjoint
+    // fluxes. We normalize the weight windows across all energy groups.
+#pragma omp parallel for collapse(2) schedule(static)
+    for (int e = 0; e < e_bins; e++) {
+      for (int64_t m = 0; m < mesh_bins; m++) {
+        // Take the inverse, but are careful not to divide by zero
+        if (new_bounds(e, m) != 0.0) {
+          new_bounds(e, m) = 1.0 / new_bounds(e, m);
+        } else {
+          new_bounds(e, m) = 0.0;
+        }
+      }
+    }
+
+    // Find the maximum value across all elements
+    double max_val = 0.0;
+#pragma omp parallel for collapse(2) schedule(static) reduction(max : max_val)
+    for (int e = 0; e < e_bins; e++) {
+      for (int64_t m = 0; m < mesh_bins; m++) {
+        if (new_bounds(e, m) > max_val) {
+          max_val = new_bounds(e, m);
+        }
+      }
+    }
+
+    // Parallel normalization
+    if (max_val > 0.0) {
+      double norm_factor = 1.0 / (2.0 * max_val);
+#pragma omp parallel for collapse(2) schedule(static)
+      for (int e = 0; e < e_bins; e++) {
+        for (int64_t m = 0; m < mesh_bins; m++) {
+          new_bounds(e, m) *= norm_factor;
+        }
+      }
+    }
+  }
+
+  // Final processing
+#pragma omp parallel for collapse(2) schedule(static)
+  for (int e = 0; e < e_bins; e++) {
+    for (int64_t m = 0; m < mesh_bins; m++) {
+      // Values where the mean is zero should be ignored
+      if (sum(e, m) <= 0.0) {
+        new_bounds(e, m) = -1.0;
+      }
+      // Values where the relative error is higher than the threshold should be
+      // ignored
+      else if (rel_err(e, m) > threshold) {
+        new_bounds(e, m) = -1.0;
+      }
+      // Set the upper bounds
+      upper_ww_(e, m) = ratio * lower_ww_(e, m);
+    }
+  }
 }
 
 void WeightWindows::check_tally_update_compatibility(const Tally* tally)

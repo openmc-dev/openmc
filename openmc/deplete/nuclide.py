@@ -403,6 +403,8 @@ class Nuclide:
                does the sum of branching ratios equal about one?
             2) for fission reactions, does the sum of fission yield
                fractions equal about two?
+            3) For spontanous fission, does the sum of fission yield
+               fractions equal about two?
 
         Parameters
         ----------
@@ -489,6 +491,24 @@ class Nuclide:
                     return False
                 warn(msg)
                 valid = False
+
+        if self.spont_yield_data:
+            for _, fission_yield in self.spont_yield_data.items():
+                sum_yield = fission_yield.yields.sum()
+                stat = 2.0 - tolerance <= sum_yield <= 2.0 + tolerance
+                if stat:
+                    continue
+                msg = msg_func(
+                    name=self.name, actual=sum_yield,
+                    expected=2.0, tol=tolerance,
+                    prop=f"spontaneous fission yields")
+                if strict:
+                    raise ValueError(msg)
+                elif quiet:
+                    return False
+                warn(msg)
+                valid = False
+
 
         return valid
 

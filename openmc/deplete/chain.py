@@ -711,7 +711,7 @@ class Chain:
                 if decay_constant != 0.0:
                     matrix[i, i] -= decay_constant
 
-            # Gain from radioactive decay, exluding spontaneous fission
+            # Gain from radioactive decay
             if nuc.n_decay_modes != 0:
                 for decay_type, target, branching_ratio in nuc.decay_modes:
                     branch_val = branching_ratio * decay_constant
@@ -1110,7 +1110,6 @@ class Chain:
     @property
     def spont_fission_yields(self):
         if self._spont_fission_yields is None:
-            #return [defaultdict(dict)]
             self._spont_fission_yields = [self.get_spont_fission_yields()]
         return self._spont_fission_yields
 
@@ -1124,13 +1123,13 @@ class Chain:
         self._fission_yields = yields
 
     @spont_fission_yields.setter
-    def spont_fission_yields(self, yields):
+    def spont_fission_yields(self, spont_yields):
         _invalidate_chain_cache(self)
-        if yields is not None:
-            if isinstance(yields, Mapping):
-                yields = [yields]
-            check_type("fission_yields", yields, Iterable, Mapping)
-        self._spont_fission_yields = yields
+        if spont_yields is not None:
+            if isinstance(spont_yields, Mapping):
+                spont_yields = [spont_yields]
+            check_type("spont_fission_yields", spont_yields, Iterable, Mapping)
+        self._spont_fission_yields = spont_yields
 
     def validate(self, strict=True, quiet=False, tolerance=1e-4):
         """Search for possible inconsistencies
@@ -1140,6 +1139,8 @@ class Chain:
             1) For all non-fission reactions, does the sum of branching
                ratios equal about one?
             2) For fission reactions, does the sum of fission yield
+               fractions equal about two?
+            3) For spontanous fission, does the sum of fission yield
                fractions equal about two?
 
         Parameters
@@ -1256,7 +1257,7 @@ class Chain:
                     new_nuclide.add_decay_mode(*mode)
                 else:
                     new_nuclide.add_decay_mode(mode.type, None, mode.branching_ratio)
-
+            
             for rx in previous.reactions:
                 if rx.target in all_isotopes:
                     new_nuclide.add_reaction(*rx)
@@ -1268,6 +1269,12 @@ class Chain:
                 # Maintain total destruction rates but set no target
                 else:
                     new_nuclide.add_reaction(rx.type, None, rx.Q, rx.branching_ratio)
+
+            if previous.spont_yield_data is not None:
+                new_sf_yields = new_nuclide.spont_yield_data = (
+                    previous.spont_yield_data.restrict_products(name_sort))
+            else:
+                new_nuclide.spont_yield_data = None
 
             new_chain.add_nuclide(new_nuclide)
 
@@ -1324,8 +1331,8 @@ class Chain:
                             continue
                         next_iso.add(product)
 
-                if nuclide.yield_data is not None:
-                    for product in nuclide.yield_data.products:
+                if nuclide.yield_data is not None or nuclide.spont_yield_data is not None:
+                    for product in nuclide.yield_data.products + nuclide.spont_yield_data.products:
                         if (product in next_iso
                                 or product in found or product in isotopes):
                             continue

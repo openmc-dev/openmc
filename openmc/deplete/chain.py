@@ -228,6 +228,54 @@ def replace_missing_fpy(actinide, fpy_data, decay_data):
     return 'U235'
 
 
+def replace_missing_sfy(actinide, sfy_data, decay_data):
+    """Replace missing fission product yields
+
+    Parameters
+    ----------
+    actinide : str
+        Name of actinide missing SFY data
+    sfy_data : dict
+        Dictionary of SFY data
+    decay_data : dict
+        Dictionary of decay data
+
+    Returns
+    -------
+    str
+        Actinide that can be used as replacement for SFY purposes
+
+    """
+
+    # Check if metastable state has data (e.g., Am242m)
+    Z, A, m = zam(actinide)
+    if m == 0:
+        metastable = gnds_name(Z, A, 1)
+        if metastable in sfy_data:
+            return metastable
+
+    # Try increasing Z, holding N constant
+    isotone = actinide
+    while isotone in decay_data:
+        Z += 1
+        A += 1
+        isotone = gnds_name(Z, A, 0)
+        if isotone in sfy_data:
+            return isotone
+
+    # Try decreasing Z, holding N constant
+    isotone = actinide
+    while isotone in decay_data:
+        Z -= 1
+        A -= 1
+        isotone = gnds_name(Z, A, 0)
+        if isotone in sfy_data:
+            return isotone
+
+    # If all else fails, use U238 yields
+    return 'U238'
+
+
 class Chain:
     """Full representation of a depletion chain.
 
@@ -408,6 +456,7 @@ class Chain:
         missing_daughter = []
         missing_rx_product = []
         missing_fpy = []
+        missing_sfy = []
         missing_fp = []
         missing_sfp = []
 
@@ -512,27 +561,31 @@ class Chain:
                     missing_fpy.append((parent, nuclide._fpy))
             
             #spontaneous fission yield data
-            if parent in sfy_data:
-                sfy = sfy_data[parent]
+            if 'sf' in [nuclide.decay_modes[i].type for i in range(len(nuclide.decay_modes))]:
+                if parent in sfy_data:
+                    sfy = sfy_data[parent]
 
-                yield_data = {}
-                for yield_table in sfy.independent:
-                    yield_replace = 0.0
-                    yields = defaultdict(float)
-                    for product, y in yield_table.items():
-                        # Handle fission products that have no decay data
-                        if product not in decay_data:
-                            daughter = replace_missing(product, decay_data)
-                            product = daughter
-                            yield_replace += y.nominal_value
+                    yield_data = {}
+                    for yield_table in sfy.independent:
+                        yield_replace = 0.0
+                        yields = defaultdict(float)
+                        for product, y in yield_table.items():
+                            # Handle fission products that have no decay data
+                            if product not in decay_data:
+                                daughter = replace_missing(product, decay_data)
+                                product = daughter
+                                yield_replace += y.nominal_value
 
-                        yields[product] += y.nominal_value
+                            yields[product] += y.nominal_value
 
-                    if yield_replace > 0.0:
-                        missing_sfp.append((parent, yield_replace))
-                    yield_data[0.0] = yields
+                        if yield_replace > 0.0:
+                            missing_sfp.append((parent, yield_replace))
+                        yield_data[0.0] = yields
 
-                nuclide.spont_yield_data = FissionYieldDistribution(yield_data)
+                    nuclide.spont_yield_data = FissionYieldDistribution(yield_data)
+                else: 
+                    nuclide._sfy = replace_missing_sfy(parent, sfy_data, decay_data)
+                    missing_sfy.append((parent, nuclide._sfy))
 
             
 
@@ -545,6 +598,11 @@ class Chain:
         for nuclide in chain.nuclides:
             if hasattr(nuclide, '_fpy'):
                 nuclide.yield_data = chain[nuclide._fpy].yield_data
+        
+        # Replace missing SFY data
+        for nuclide in chain.nuclides:
+            if hasattr(nuclide, '_sfy'):
+                nuclide.spont_yield_data = chain[nuclide._sfy].spont_yield_data
 
         # Display warnings
         if missing_daughter:
@@ -564,6 +622,13 @@ class Chain:
             for parent, replacement in missing_fpy:
                 print(f'  {parent}, replaced with {replacement}')
             print('')
+
+        if missing_sfy:
+            print('The following nuclides with spontaneous fission have no spontaneous fission product yields:')
+            for parent, replacement in missing_sfy:
+                print(f'  {parent}, replaced with {replacement}')
+            print('')
+
 
         if missing_fp:
             print('The following nuclides have fission products with no decay data:')
@@ -1251,6 +1316,8 @@ class Chain:
             new_nuclide.sources = previous.sources.copy()
             if hasattr(previous, '_fpy'):
                 new_nuclide._fpy = previous._fpy
+            if hasattr(previous, '_sfy'):
+                new_nuclide._sfy = previous._sfy
 
             for mode in previous.decay_modes:
                 if mode.target in all_isotopes:

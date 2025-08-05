@@ -9,6 +9,7 @@ openmc.config['cross_sections'] = "/mnt/d/OpenMC_debug/evaluations/endfb-viii.0-
 
 #initiate an instance of the Chain class
 mychain = openmc.deplete.Chain()
+mychain_nosf = openmc.deplete.Chain()
 
 #Find all relevant endf files
 decay_files = []
@@ -39,10 +40,14 @@ for file in os.listdir(sfy_folder):
 
 #read from endf file
 mychain = mychain.from_endf(decay_files,nfy_files,xs_files,sfy_files)
+mychain_nosf = mychain.from_endf(decay_files,nfy_files,xs_files,[])
 
-#Print chain to xml file
+#Print chains to xml file
 chain_file = "./chain.xml"
 mychain.export_to_xml(chain_file)
+
+chain_file_nosf = "./chain_nosf.xml"
+mychain_nosf.export_to_xml(chain_file_nosf)
 
 
 ###############################################################################
@@ -127,11 +132,54 @@ settings.entropy_mesh = entropy_mesh
 #Create model
 model = openmc.Model(geometry=geometry, settings=settings)
 
-# Create depletion "operator"
+# Create depletion "operator", with and without sf
 op = openmc.deplete.CoupledOperator(model, chain_file)
+op_nosf = openmc.deplete.CoupledOperator(model, chain_file_nosf)
 
 # Perform simulation using the predictor algorithm
 time_steps = [1.0, 1.0, 1.0, 1.0, 1.0]  # days
 power = 174  # W/cm, for 2D simulations only (use W for 3D)
 integrator = openmc.deplete.PredictorIntegrator(op, time_steps, power, timestep_units='d')
 integrator.integrate()
+
+###############################################################################
+#                    Read depletion calculation results
+###############################################################################
+
+# Open results file
+results = openmc.deplete.Results("depletion_results.h5")
+
+# Obtain K_eff as a function of time
+time, keff = results.get_keff(time_units='d')
+
+# Obtain U235 concentration as a function of time
+_, n_U238 = results.get_atoms(uo2, 'U238')
+
+# Obtain Xe135 capture reaction rate as a function of time
+_, Xe_capture = results.get_reaction_rate(uo2, 'Xe135', '(n,gamma)')
+
+#########3
+# Again
+#####################
+print("I'm here 1")
+
+integrator_nosf = openmc.deplete.PredictorIntegrator(op_nosf, time_steps, power, timestep_units='d')
+integrator_nosf.integrate()
+
+print("I'm here 2")
+
+
+# Open results file
+results_nosf = openmc.deplete.Results("depletion_results.h5")
+
+# Obtain K_eff as a function of time
+time_nosf, keff_nosf = results.get_keff(time_units='d')
+
+# Obtain U235 concentration as a function of time
+_, n_U238_nosf = results.get_atoms(uo2, 'U238')
+
+# Obtain Xe135 capture reaction rate as a function of time
+_, Xe_capture_nosf = results.get_reaction_rate(uo2, 'Xe135', '(n,gamma)')
+
+
+print(n_U238, n_U238_nosf)

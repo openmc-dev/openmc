@@ -106,7 +106,9 @@ class Nuclide:
         Fission product yields at tabulated energies for this nuclide. Can be
         treated as a nested dictionary ``{energy: {product: yield}}``
     spont_yield_data : FissionYieldDistribution or None
-        ADD
+        Spontaneous fission product yields. To keep the same structure as for 
+        yield_data this is treated as a nested dictionary ``{energy: {product: yield}}``
+        with one energy value = 0.0.
     yield_energies : tuple of float or None
         Energies at which fission product yields exist
     """

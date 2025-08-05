@@ -68,6 +68,14 @@ print("yield_energies",mychain.nuclides[i].yield_energies)
 print("")
 
 
+#Check whether all nuclides with sf branching ratio include fission yields.
+sfy = True
+for iso_index in list(mychain.nuclide_dict.values()):
+    decay_modes = mychain.nuclides[iso_index].decay_modes
+    if 'sf' in [decay_modes[j].type for j in range(len(decay_modes))]:
+        sfy = sfy and (mychain.nuclides[iso_index].spont_yield_data is not None)
+print("All nuclides with sf branching ratios include fission yields", sfy)
+
 
 ######################################################################################
 #           Can read and write xml files with information about chains including spont. fission

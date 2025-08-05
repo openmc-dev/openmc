@@ -104,14 +104,6 @@ void Particle::split(double wgt)
   bank.u = u();
   bank.E = settings::run_CE ? E() : g();
   bank.time = time();
-
-  // Convert signed index to a singed surface ID
-  if (surface() == SURFACE_NONE) {
-    bank.surf_id = SURFACE_NONE;
-  } else {
-    int surf_id = model::surfaces[surface_index()]->id_;
-    bank.surf_id = (surface() > 0) ? surf_id : -surf_id;
-  }
 }
 
 void Particle::from_source(const SourceSite* src)
@@ -148,12 +140,6 @@ void Particle::from_source(const SourceSite* src)
   time() = src->time;
   time_last() = src->time;
   parent_nuclide() = src->parent_nuclide;
-
-  // Convert signed surface ID to signed index
-  if (src->surf_id != SURFACE_NONE) {
-    int index_plus_one = model::surface_map[std::abs(src->surf_id)] + 1;
-    surface() = (src->surf_id > 0) ? index_plus_one : -index_plus_one;
-  }
 }
 
 void Particle::event_calculate_xs()

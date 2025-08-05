@@ -187,7 +187,6 @@ int openmc_finalize()
 int openmc_reset()
 {
 
-  model::universe_cell_counts.clear();
   model::universe_level_counts.clear();
 
   for (auto& t : model::tallies) {

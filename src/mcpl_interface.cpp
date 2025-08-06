@@ -530,10 +530,10 @@ void write_mcpl_source_point(const char* filename, span<SourceSite> source_bank,
       // simulation (not the number of particles in the file)
       if (g_mcpl_api->hdr_add_stat_sum) {
         // Calculate total source particles from active batches
-        // Per issue #3514: this should be the original number of source particles,
-        // not the number written to the file
-        int64_t total_source_particles = 
-          static_cast<int64_t>(settings::n_batches - settings::n_inactive) * 
+        // Per issue #3514: this should be the original number of source
+        // particles, not the number written to the file
+        int64_t total_source_particles =
+          static_cast<int64_t>(settings::n_batches - settings::n_inactive) *
           settings::n_particles;
         // Update with actual count - this overwrites the initial -1 value
         g_mcpl_api->hdr_add_stat_sum(

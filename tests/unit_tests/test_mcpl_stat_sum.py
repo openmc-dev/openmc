@@ -59,25 +59,30 @@ def test_mcpl_stat_sum_field():
             # Open and check the MCPL file
             mcpl_file = mcpl_files[0]
             with mcpl.MCPLFile(mcpl_file) as f:
-                # Check if stat:sum field exists
-                # The stat:sum should be accessible through the header
-                # Look for the "openmc_np1" key
-                comments = f.comments if hasattr(f, 'comments') else []
-                
-                # Check for stat:sum in comments (MCPL stores these as comments)
-                stat_sum_found = False
-                stat_sum_value = None
-                
-                for comment in comments:
-                    if 'stat:sum:openmc_np1' in comment:
-                        stat_sum_found = True
-                        # Extract the value
-                        parts = comment.split(':')
-                        if len(parts) >= 4:
-                            stat_sum_value = float(parts[3].strip())
-                        break
-                
-                assert stat_sum_found, "stat:sum:openmc_np1 field not found in MCPL file"
+                # Check if stat:sum field exists using convenience property
+                if hasattr(f, 'stat_sum'):
+                    # Use the convenience .stat_sum property directly
+                    stat_sum_dict = f.stat_sum
+                    assert 'openmc_np1' in stat_sum_dict, "openmc_np1 key not found in stat_sum"
+                    stat_sum_value = stat_sum_dict['openmc_np1']
+                else:
+                    # Fallback to checking comments for older MCPL versions
+                    comments = f.comments
+                    
+                    # Check for stat:sum in comments (MCPL stores these as comments)
+                    stat_sum_found = False
+                    stat_sum_value = None
+                    
+                    for comment in comments:
+                        if 'stat:sum:openmc_np1' in comment:
+                            stat_sum_found = True
+                            # Extract the value
+                            parts = comment.split(':')
+                            if len(parts) >= 4:
+                                stat_sum_value = float(parts[3].strip())
+                            break
+                    
+                    assert stat_sum_found, "stat:sum:openmc_np1 field not found in MCPL file"
                 
                 # The value should be the total number of source particles
                 # For 5 batches with 1000 particles each = 5000 total

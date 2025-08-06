@@ -68,8 +68,6 @@ using mcpl_hdr_set_srcname_fpt = void (*)(
 using mcpl_add_particle_fpt = void (*)(
   mcpl_outfile_t* outfile_handle, const mcpl_particle_repr_t* particle);
 using mcpl_close_outfile_fpt = void (*)(mcpl_outfile_t* outfile_handle);
-using mcpl_hdr_add_data_fpt = void (*)(mcpl_outfile_t* outfile_handle,
-  const char* key, uint32_t datalength, const char* data);
 using mcpl_hdr_add_stat_sum_fpt = void (*)(
   mcpl_outfile_t* outfile_handle, const char* key, double value);
 
@@ -115,7 +113,6 @@ struct McplApi {
   mcpl_hdr_set_srcname_fpt hdr_set_srcname;
   mcpl_add_particle_fpt add_particle;
   mcpl_close_outfile_fpt close_outfile;
-  mcpl_hdr_add_data_fpt hdr_add_data;
   mcpl_hdr_add_stat_sum_fpt hdr_add_stat_sum;
 
   explicit McplApi(LibraryHandleType lib_handle)
@@ -154,15 +151,6 @@ struct McplApi {
       load_symbol_platform("mcpl_add_particle"));
     close_outfile = reinterpret_cast<mcpl_close_outfile_fpt>(
       load_symbol_platform("mcpl_close_outfile"));
-
-    // Try to load mcpl_hdr_add_data (available in MCPL >= 2.1.0)
-    // Set to nullptr if not available for graceful fallback
-    try {
-      hdr_add_data = reinterpret_cast<mcpl_hdr_add_data_fpt>(
-        load_symbol_platform("mcpl_hdr_add_data"));
-    } catch (const std::runtime_error&) {
-      hdr_add_data = nullptr;
-    }
 
     // Try to load mcpl_hdr_add_stat_sum (available in MCPL >= 2.1.0)
     // Set to nullptr if not available for graceful fallback
@@ -542,7 +530,8 @@ void write_mcpl_source_point(const char* filename, span<SourceSite> source_bank,
       // This represents the original number of source particles in the
       // simulation
       if (g_mcpl_api->hdr_add_stat_sum) {
-        int64_t total_particles = bank_index.empty() ? 0 : bank_index.back();
+        // If bank_index is empty, statistics are unavailable, use -1
+        int64_t total_particles = bank_index.empty() ? -1 : bank_index.back();
         // Update with actual count - this overwrites the initial -1 value
         g_mcpl_api->hdr_add_stat_sum(
           file_id, "openmc_np1", static_cast<double>(total_particles));

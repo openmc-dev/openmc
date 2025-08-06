@@ -58,8 +58,7 @@ struct mcpl_outfile_t {
 // Function pointer types for the dynamically loaded MCPL library
 using mcpl_open_file_fpt = mcpl_file_t* (*)(const char* filename);
 using mcpl_hdr_nparticles_fpt = uint64_t (*)(mcpl_file_t* file_handle);
-using mcpl_read_fpt = const mcpl_particle_repr_t* (*)(mcpl_file_t *
-                                                      file_handle);
+using mcpl_read_fpt = const mcpl_particle_repr_t* (*)(mcpl_file_t* file_handle);
 using mcpl_close_file_fpt = void (*)(mcpl_file_t* file_handle);
 
 using mcpl_create_outfile_fpt = mcpl_outfile_t* (*)(const char* filename);

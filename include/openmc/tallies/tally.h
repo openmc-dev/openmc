@@ -210,6 +210,28 @@ extern vector<int> active_meshsurf_tallies;
 extern vector<int> active_surface_tallies;
 extern vector<int> active_pulse_height_tallies;
 extern vector<int> pulse_height_cells;
+extern vector<double> time_grid;
+
+double time_to_time_boundary(double time)
+{
+  if (time >= time_grid.end()) {
+    return INFTY;
+    else
+    {
+      return *std::upper_bound(time_grid.begin(), time_grid.end(), time) - time;
+    }
+  }
+
+  void add_to_time_grid(vector<double> grid)
+  {
+    auto temp = time_grid;
+    time_grid.resize(time_grid.size() + grid.size());
+    std::merge(temp.begin(), temp.end(), grid.begin(), grid.end(),
+      time_grid.begin(), time_grid.end());
+    auto last_unique = std::unique(time_grid.begin(), time_grid.end());
+    time_grid.erase(last_unique, time_grid.end());
+  }
+
 } // namespace model
 
 namespace simulation {

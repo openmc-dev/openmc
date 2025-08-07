@@ -61,6 +61,7 @@ vector<int> active_meshsurf_tallies;
 vector<int> active_surface_tallies;
 vector<int> active_pulse_height_tallies;
 vector<int> pulse_height_cells;
+vector<double> time_grid;
 } // namespace model
 
 namespace simulation {
@@ -1077,6 +1078,7 @@ void setup_active_tallies()
   model::active_meshsurf_tallies.clear();
   model::active_surface_tallies.clear();
   model::active_pulse_height_tallies.clear();
+  model::time_grid.clear();
 
   for (auto i = 0; i < model::tallies.size(); ++i) {
     const auto& tally {*model::tallies[i]};
@@ -1092,6 +1094,9 @@ void setup_active_tallies()
           break;
         case TallyEstimator::TRACKLENGTH:
           model::active_tracklength_tallies.push_back(i);
+          if (auto time_filter = tally->get_filter<TimeFilter>()) {
+            model::add_to_time_grid(time_filter.bins_);
+          }
           break;
         case TallyEstimator::COLLISION:
           model::active_collision_tallies.push_back(i);

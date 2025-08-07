@@ -50,8 +50,8 @@
       </constraints>
     </source>
     <collision_track>
-      <cell_ids>22 33</cell_ids>
-      <max_collisions>200</max_collisions>
+      <deposited_E_threshold>100000.0</deposited_E_threshold>
+      <max_collisions>300</max_collisions>
     </collision_track>
     <seed>1</seed>
   </settings>

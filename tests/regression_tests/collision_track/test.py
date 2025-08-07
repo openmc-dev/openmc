@@ -215,17 +215,20 @@ def model_1():
 
 @pytest.mark.parametrize(
     "folder, model_name, parameter",
-    [   ("case-01", "model_1", {"max_collisions": 300, "mt_numbers" : [18], "cell_ids": [22,33,5,8]},),
-        ("case-02", "model_1", {"max_collisions": 300, "mt_numbers" : [2], "nuclide_ids": [1001]}),
-        ("case-03", "model_1", {"max_collisions": 300, "mt_numbers" : [2,18], "nuclide_ids": [92235,92238]}),
-        ("case-04", "model_1", {"max_collisions": 300}),
-        ("case-05", "model_1", {"max_collisions": 300, "material_ids" : [1,11]}),
-        (
-            "case-06", 
-            "model_1", 
-            {"max_collisions": 300,"mt_numbers" : [2,18,101], "material_ids" : [1,11],"universe_ids": [77] ,
-                 "nuclide_ids": [92238, 92235,1001,92234], "cell_ids": [22,33], "deposited_E_threshold" : 100000.5} 
-        ), #Make a test with all the options of the feature
+    [   ("case_1_MT_number", "model_1", {"max_collisions": 300, "mt_numbers": [2, 18]}),
+        ("case_2_Cell_ID", "model_1", {"max_collisions": 300, "cell_ids": [22, 33]}),
+        ("case_3_Material_ID", "model_1", {"max_collisions": 300, "material_ids": [1, 11]}),
+        ("case_4_Nuclide_ID", "model_1", {"max_collisions": 300, "nuclide_ids": [1001, 92235]}),
+        ("case_5_Universe_ID", "model_1", {"max_collisions": 300, "universe_ids": [77]}),
+        ("case_6_deposited_energy_threshold", "model_1", {"max_collisions": 300, "deposited_E_threshold" : 1e5}),
+        ("case_7_all_parameters_used_together", "model_1",{
+        "max_collisions": 300,
+        "mt_numbers": [2, 18, 101],
+        "material_ids": [1, 11],
+        "universe_ids": [77],
+        "nuclide_ids": [92238, 92235, 1001, 92234],
+        "cell_ids": [22, 33],
+        "deposited_E_threshold": 1e5})
     ],
 )
 
@@ -257,21 +260,21 @@ def test_consistency_low_realization_number(model_1, two_threads, single_process
     assert config["mpi_np"] == "1"
     model_1.settings.collision_track = {
         "max_collisions": 200,
-        "cell_ids": [22, 33],
+        "cell_ids": [22], "mt_numbers": [18]
     }
     model_1.settings.seed = 1
     harness = CollisionTrackTestHarness(
-        "statepoint.5.h5", model=model_1, workdir="case-a01"
+        "statepoint.5.h5", model=model_1, workdir="case_8_2threads"
     )
     harness.main()
 
-def test_collision_track_cell_event_based(model_1, single_thread, single_process):
+def test_collision_track_cell_event_based(model_1, two_threads, single_process):
     
-    assert os.environ["OMP_NUM_THREADS"] == "1"
+    assert os.environ["OMP_NUM_THREADS"] == "2"
     assert config["mpi_np"] == "1"
     model_1.settings.collision_track = {"max_collisions": 300, "cell_ids": [22], "mt_numbers": [18]}
     model_1.settings.event_based = True
     harness = CollisionTrackTestHarness(
-        "statepoint.5.h5", model=model_1, workdir="case-e01"
+        "statepoint.5.h5", model=model_1, workdir="case_9_event_mode"
     )
     harness.main()

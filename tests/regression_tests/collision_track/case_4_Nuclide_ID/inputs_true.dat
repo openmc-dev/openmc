@@ -50,8 +50,7 @@
       </constraints>
     </source>
     <collision_track>
-      <mt_numbers>2</mt_numbers>
-      <nuclide_ids>1001</nuclide_ids>
+      <nuclide_ids>1001 92235</nuclide_ids>
       <max_collisions>300</max_collisions>
     </collision_track>
     <seed>1</seed>

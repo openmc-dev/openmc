@@ -31,7 +31,8 @@ vector<SourceSite> mcpl_source_sites(std::string path);
 //!                         MPI ranks.
 void write_mcpl_source_point(const char* filename, span<SourceSite> source_bank,
   const vector<int64_t>& bank_index);
-void write_mcpl_collision_track(const char* filename, span<CollisionTrackSite> collision_track_bank,
+void write_mcpl_collision_track(const char* filename,
+  span<CollisionTrackSite> collision_track_bank,
   const vector<int64_t>& bank_index);
 //! Check if MCPL functionality is available
 

@@ -50,9 +50,9 @@
       </constraints>
     </source>
     <collision_track>
-      <mt_numbers>2 18</mt_numbers>
-      <nuclide_ids>92235 92238</nuclide_ids>
-      <max_collisions>300</max_collisions>
+      <cell_ids>22</cell_ids>
+      <mt_numbers>18</mt_numbers>
+      <max_collisions>200</max_collisions>
     </collision_track>
     <seed>1</seed>
   </settings>

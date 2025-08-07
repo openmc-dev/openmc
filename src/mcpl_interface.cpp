@@ -61,8 +61,8 @@ using mcpl_hdr_nparticles_fpt = uint64_t (*)(mcpl_file_t* file_handle);
 using mcpl_read_fpt = const mcpl_particle_repr_t* (*)(mcpl_file_t* file_handle);
 using mcpl_close_file_fpt = void (*)(mcpl_file_t* file_handle);
 
-using mcpl_hdr_add_data_fpt = void (*)(
-  mcpl_outfile_t* file_handle,const char* key, int32_t ldata, const char* data);
+using mcpl_hdr_add_data_fpt = void (*)(mcpl_outfile_t* file_handle,
+  const char* key, int32_t ldata, const char* data);
 using mcpl_create_outfile_fpt = mcpl_outfile_t* (*)(const char* filename);
 using mcpl_hdr_set_srcname_fpt = void (*)(
   mcpl_outfile_t* outfile_handle, const char* srcname);
@@ -541,8 +541,9 @@ void write_mcpl_collision_track_internal(mcpl_outfile_t* file_id,
         if (receive_buffer.size() < num_sites_on_rank) {
           receive_buffer.resize(num_sites_on_rank);
         }
-        MPI_Recv(receive_buffer.data(), num_sites_on_rank, mpi::collision_track_site,
-          rank_idx, rank_idx, mpi::intracomm, MPI_STATUS_IGNORE);
+        MPI_Recv(receive_buffer.data(), num_sites_on_rank,
+          mpi::collision_track_site, rank_idx, rank_idx, mpi::intracomm,
+          MPI_STATUS_IGNORE);
         sites_to_write = openmc::span<const CollisionTrackSite>(
           receive_buffer.data(), num_sites_on_rank);
       }
@@ -552,26 +553,26 @@ void write_mcpl_collision_track_internal(mcpl_outfile_t* file_id,
 #endif
       int index = 0;
       for (const auto& site : collision_track_bank) {
-       // Binary blob should be added before the mcpl_add_particle function
-       std::ostringstream custom_data_stream;
-       custom_data_stream << " dE : " << site.dE
-                          << " ; event_mt : " << site.event_mt
-                          << " ; delayed_group : " << site.delayed_group
-                          << " ; cell_id : " << site.cell_id
-                          << " ; nuclide_id : " << site.nuclide_id
-                          << " ; material_id : " << site.material_id
-                          << " ; universe_id : " << site.universe_id
-                          << " ; parent_id : " << site.parent_id
-                         << " ; progeny_id : " << site.progeny_id;
+        // Binary blob should be added before the mcpl_add_particle function
+        std::ostringstream custom_data_stream;
+        custom_data_stream << " dE : " << site.dE
+                           << " ; event_mt : " << site.event_mt
+                           << " ; delayed_group : " << site.delayed_group
+                           << " ; cell_id : " << site.cell_id
+                           << " ; nuclide_id : " << site.nuclide_id
+                           << " ; material_id : " << site.material_id
+                           << " ; universe_id : " << site.universe_id
+                           << " ; parent_id : " << site.parent_id
+                           << " ; progeny_id : " << site.progeny_id;
 
-       std::string custom_data_str = custom_data_stream.str();
-       std::ostringstream custom_key;
-       custom_key << "blob_" << index;
-       std::string CK = custom_key.str();
-       g_mcpl_api->hdr_add_data(
-         file_id, CK.c_str(), custom_data_str.size(), custom_data_str.c_str());
-       index++;
-     }
+        std::string custom_data_str = custom_data_stream.str();
+        std::ostringstream custom_key;
+        custom_key << "blob_" << index;
+        std::string CK = custom_key.str();
+        g_mcpl_api->hdr_add_data(
+          file_id, CK.c_str(), custom_data_str.size(), custom_data_str.c_str());
+        index++;
+      }
 
       for (const auto& site : sites_to_write) {
         mcpl_particle_repr_t p_repr {};
@@ -613,7 +614,8 @@ void write_mcpl_collision_track_internal(mcpl_outfile_t* file_id,
   }
 }
 
-void write_mcpl_collision_track(const char* filename, span<CollisionTrackSite> collision_track_bank,
+void write_mcpl_collision_track(const char* filename,
+  span<CollisionTrackSite> collision_track_bank,
   const vector<int64_t>& bank_index)
 {
   ensure_mcpl_ready_or_fatal();
@@ -648,7 +650,8 @@ void write_mcpl_collision_track(const char* filename, span<CollisionTrackSite> c
 
     g_mcpl_api->hdr_set_srcname(file_id, src_line.c_str());
   }
-    write_mcpl_collision_track_internal(file_id, collision_track_bank, bank_index);
+  write_mcpl_collision_track_internal(
+    file_id, collision_track_bank, bank_index);
 
   if (mpi::master) {
     if (file_id) {

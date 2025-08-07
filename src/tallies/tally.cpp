@@ -27,10 +27,12 @@
 #include "openmc/tallies/filter_legendre.h"
 #include "openmc/tallies/filter_mesh.h"
 #include "openmc/tallies/filter_meshborn.h"
+#include "openmc/tallies/filter_meshmaterial.h"
 #include "openmc/tallies/filter_meshsurface.h"
 #include "openmc/tallies/filter_particle.h"
 #include "openmc/tallies/filter_sph_harm.h"
 #include "openmc/tallies/filter_surface.h"
+#include "openmc/tallies/filter_time.h"
 #include "openmc/xml_interface.h"
 
 #include "xtensor/xadapt.hpp"
@@ -61,6 +63,30 @@ vector<int> active_meshsurf_tallies;
 vector<int> active_surface_tallies;
 vector<int> active_pulse_height_tallies;
 vector<int> pulse_height_cells;
+vector<double> time_grid;
+
+double distance_to_time_boundary(double time, double speed)
+{
+  if (time_grid.size() == 0) {
+    return INFTY;
+  } else if (time >= time_grid[time_grid.size() - 1]) {
+    return INFTY;
+  } else {
+    return (*std::upper_bound(time_grid.begin(), time_grid.end(), time) -
+             time) *
+           speed;
+  }
+}
+
+void add_to_time_grid(vector<double> grid)
+{
+  auto temp = time_grid;
+  time_grid.resize(time_grid.size() + grid.size());
+  std::merge(temp.begin(), temp.end(), grid.begin(), grid.end(),
+    std::back_inserter(time_grid));
+  auto last_unique = std::unique(time_grid.begin(), time_grid.end());
+  time_grid.erase(last_unique, time_grid.end());
+}
 } // namespace model
 
 namespace simulation {
@@ -243,8 +269,8 @@ Tally::Tally(pugi::xml_node node)
     for (int score : scores_) {
       switch (score) {
       case SCORE_PULSE_HEIGHT:
-        fatal_error(
-          "For pulse-height tallies, photon transport needs to be activated.");
+        fatal_error("For pulse-height tallies, photon transport needs to be "
+                    "activated.");
         break;
       }
     }
@@ -318,7 +344,8 @@ Tally::Tally(pugi::xml_node node)
         if (has_energyout && i_nuc == -1) {
           fatal_error(fmt::format(
             "Error on tally {}: Cannot use a "
-            "'nuclide_density' or 'temperature' derivative on a tally with an "
+            "'nuclide_density' or 'temperature' derivative on a tally with "
+            "an "
             "outgoing energy filter and 'total' nuclide rate. Instead, tally "
             "each nuclide in the material individually.",
             id_));
@@ -493,9 +520,9 @@ void Tally::add_filter(Filter* filter)
 
 void Tally::set_strides()
 {
-  // Set the strides.  Filters are traversed in reverse so that the last filter
-  // has the shortest stride in memory and the first filter has the longest
-  // stride.
+  // Set the strides.  Filters are traversed in reverse so that the last
+  // filter has the shortest stride in memory and the first filter has the
+  // longest stride.
   auto n = filters_.size();
   strides_.resize(n, 0);
   int stride = 1;
@@ -551,7 +578,8 @@ void Tally::set_scores(const vector<std::string>& scores)
 
   // Iterate over the given scores.
   for (auto score_str : scores) {
-    // Make sure a delayed group filter wasn't used with an incompatible score.
+    // Make sure a delayed group filter wasn't used with an incompatible
+    // score.
     if (delayedgroup_filter_ != C_NONE) {
       if (score_str != "delayed-nu-fission" && score_str != "decay-rate")
         fatal_error("Cannot tally " + score_str + "with a delayedgroup filter");
@@ -984,8 +1012,8 @@ void reduce_tally_results()
     }
   }
 
-  // Note that global tallies are *always* reduced even when no_reduce option is
-  // on.
+  // Note that global tallies are *always* reduced even when no_reduce option
+  // is on.
 
   // Get view of global tally values
   auto& gt = simulation::global_tallies;
@@ -1073,6 +1101,7 @@ void setup_active_tallies()
   model::active_meshsurf_tallies.clear();
   model::active_surface_tallies.clear();
   model::active_pulse_height_tallies.clear();
+  model::time_grid.clear();
 
   for (auto i = 0; i < model::tallies.size(); ++i) {
     const auto& tally {*model::tallies[i]};
@@ -1088,6 +1117,12 @@ void setup_active_tallies()
           break;
         case TallyEstimator::TRACKLENGTH:
           model::active_tracklength_tallies.push_back(i);
+          if (auto time_filter = tally.get_filter<TimeFilter>()) {
+            if ((tally.get_filter<MeshFilter>() != nullptr) ||
+                (tally.get_filter<MeshMaterialFilter>() != nullptr)) {
+              model::add_to_time_grid(time_filter->bins());
+            }
+          }
           break;
         case TallyEstimator::COLLISION:
           model::active_collision_tallies.push_back(i);
@@ -1127,6 +1162,7 @@ void free_memory_tally()
   model::active_meshsurf_tallies.clear();
   model::active_surface_tallies.clear();
   model::active_pulse_height_tallies.clear();
+  model::time_grid.clear();
 
   model::tally_map.clear();
 }
@@ -1465,8 +1501,8 @@ extern "C" int openmc_tally_get_n_realizations(int32_t index, int32_t* n)
   return 0;
 }
 
-//! \brief Returns a pointer to a tally results array along with its shape. This
-//! allows a user to obtain in-memory tally results from Python directly.
+//! \brief Returns a pointer to a tally results array along with its shape.
+//! This allows a user to obtain in-memory tally results from Python directly.
 extern "C" int openmc_tally_results(
   int32_t index, double** results, size_t* shape)
 {

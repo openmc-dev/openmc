@@ -243,39 +243,51 @@ void Particle::event_advance()
     (time_cutoff < INFTY) ? (time_cutoff - time()) * speed : INFTY;
 
   // Select smaller of the three distances
-  double distance =
+  double total_distance =
     std::min({boundary().distance(), collision_distance(), distance_cutoff});
 
-  // Advance particle in space and time
-  // Short-term solution until the surface source is revised and we can use
-  // this->move_distance(distance)
-  for (int j = 0; j < n_coord(); ++j) {
-    coord(j).r() += distance * coord(j).u();
-  }
-  double dt = distance / speed;
-  this->time() += dt;
-  this->lifetime() += dt;
+  double distance_traveled = 0.0;
+  while (distance_traveled < total_distance) {
 
-  // Score track-length tallies
-  if (!model::active_tracklength_tallies.empty()) {
-    score_tracklength_tally(*this, distance);
+    double distance = std::min(model::distance_to_time_boundary(time(), speed),
+      total_distance - distance_traveled);
+    double dt = distance / speed;
+
+    // Save particle last state for tracklength tallies
+    this->time_last() = time();
+    this->r_last() = r();
+
+    // Advance particle in space and time
+    // Short-term solution until the surface source is revised and we can use
+    // this->move_distance(distance)
+    for (int j = 0; j < n_coord(); ++j) {
+      coord(j).r() += distance * coord(j).u();
+    }
+    this->time() += dt;
+    this->lifetime() += dt;
+    distance_traveled += distance;
+
+    // Score track-length tallies
+    if (!model::active_tracklength_tallies.empty()) {
+      score_tracklength_tally(*this, distance);
+    }
+
+    // Score flux derivative accumulators for differential tallies.
+    if (!model::active_tallies.empty()) {
+      score_track_derivative(*this, distance);
+    }
+>>>>>>> 31a712bb0 (fix for time_filter & mesh_filter & tracklength filter)
   }
 
   // Score track-length estimate of k-eff
   if (settings::run_mode == RunMode::EIGENVALUE &&
       type() == ParticleType::neutron) {
-    keff_tally_tracklength() += wgt() * distance * macro_xs().nu_fission;
+    keff_tally_tracklength() += wgt() * total_distance * macro_xs().nu_fission;
   }
 
-  // Score flux derivative accumulators for differential tallies.
-  if (!model::active_tallies.empty()) {
-    score_track_derivative(*this, distance);
-  }
-
-  // Set particle weight to zero if it hit the time boundary
-  if (distance == distance_cutoff) {
+  // Set particle weight to zero if it hit the time cutoff boundary
+  if (total_distance == distance_cutoff)
     wgt() = 0.0;
-  }
 }
 
 void Particle::event_cross_surface()

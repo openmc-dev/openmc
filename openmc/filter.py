@@ -1080,7 +1080,12 @@ class MeshMaterialFilter(MeshFilter):
             A new MeshMaterialFilter instance
 
         """
-        bins = list(zip(*np.where(volumes._materials > -1)))
+        # Get flat arrays of material IDs and element indices
+        mat_ids = volumes._materials[volumes._materials > -1]
+        elems, _ = np.where(volumes._materials > -1)
+
+        # Stack them into a 2D array of (element, material) pairs
+        bins = np.column_stack((elems, mat_ids))
         return cls(mesh, bins)
 
     def __hash__(self):

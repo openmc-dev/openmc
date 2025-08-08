@@ -15,7 +15,7 @@ import scipy.sparse as sps
 
 import openmc
 import openmc.checkvalue as cv
-from ._xml import clean_indentation, get_elem_list, get_text, reorder_attributes
+from ._xml import clean_indentation, get_elem_list, get_text
 from .mixin import IDManagerMixin
 from .mesh import MeshBase
 
@@ -3328,7 +3328,6 @@ class Tallies(cv.CheckedList):
 
         # Clean the indentation in the file to be user-readable
         clean_indentation(element)
-        reorder_attributes(element)  # TODO: Remove when support is Python 3.8+
 
         return element
 

@@ -63,23 +63,6 @@ def get_text(elem, name, default=None):
         return child.text if child is not None else default
 
 
-def reorder_attributes(root):
-    """Sort attributes in XML to preserve pre-Python 3.8 behavior
-
-    Parameters
-    ----------
-    root : lxml.etree._Element
-        Root element
-
-    """
-    for el in root.iter():
-        attrib = el.attrib
-        if len(attrib) > 1:
-            # adjust attribute order, e.g. by sorting
-            attribs = sorted(attrib.items())
-            attrib.clear()
-            attrib.update(attribs)
-
 
 def get_elem_list(elem, name, dtype=int):
     """Helper function to get a list of values from an elem

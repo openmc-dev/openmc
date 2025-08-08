@@ -10,7 +10,7 @@ import openmc
 import openmc.checkvalue as cv
 from openmc.checkvalue import PathLike
 
-from ._xml import clean_indentation, get_elem_list, get_text, reorder_attributes
+from ._xml import clean_indentation, get_elem_list, get_text
 from .mixin import IDManagerMixin
 
 _BASES = {'xy', 'xz', 'yz'}
@@ -1255,7 +1255,7 @@ class RayTracePlot(PlotBase):
         -------
         None
         """
-        
+
         filename = get_text(elem, "filename")
         if filename is not None:
             self.filename = filename
@@ -1856,8 +1856,6 @@ class Plots(cv.CheckedList):
 
         # Clean the indentation in the file to be user-readable
         clean_indentation(self._plots_file)
-        # TODO: Remove when support is Python 3.8+
-        reorder_attributes(self._plots_file)
 
         return self._plots_file
 

@@ -1,26 +1,26 @@
 <?xml version='1.0' encoding='utf-8'?>
 <model>
   <materials>
-    <material depletable="true" id="1" name="UO2">
-      <density units="g/cm3" value="10.0"/>
-      <nuclide ao="1.0" name="U235"/>
-      <nuclide ao="2.0" name="O16"/>
+    <material id="1" name="UO2" depletable="true">
+      <density value="10.0" units="g/cm3"/>
+      <nuclide name="U235" ao="1.0"/>
+      <nuclide name="O16" ao="2.0"/>
     </material>
     <material id="2" name="light water">
-      <density units="g/cm3" value="1.0"/>
-      <nuclide ao="2.0" name="H1"/>
-      <nuclide ao="1.0" name="O16"/>
+      <density value="1.0" units="g/cm3"/>
+      <nuclide name="H1" ao="2.0"/>
+      <nuclide name="O16" ao="1.0"/>
       <sab name="c_H_in_H2O"/>
     </material>
   </materials>
   <geometry>
     <cell id="1" material="1" region="-1" universe="1"/>
     <cell id="2" material="2" region="1" universe="1"/>
-    <cell fill="2" id="3" region="2 -3 4 -5" universe="6"/>
-    <cell fill="3" id="4" region="2 -3 5 -9" universe="6"/>
-    <cell fill="4" id="5" region="3 -11 4 -5" universe="6"/>
-    <cell fill="5" id="6" region="3 -11 5 -9" universe="6"/>
-    <cell fill="6" id="7" region="18 -19 20 -21" universe="7"/>
+    <cell id="3" fill="2" region="2 -3 4 -5" universe="6"/>
+    <cell id="4" fill="3" region="2 -3 5 -9" universe="6"/>
+    <cell id="5" fill="4" region="3 -11 4 -5" universe="6"/>
+    <cell id="6" fill="5" region="3 -11 5 -9" universe="6"/>
+    <cell id="7" fill="6" region="18 -19 20 -21" universe="7"/>
     <lattice id="2">
       <pitch>1.0 1.0</pitch>
       <outer>1</outer>
@@ -53,17 +53,17 @@
       <universes>
 1 </universes>
     </lattice>
-    <surface coeffs="0.0 0.0 0.4" id="1" type="z-cylinder"/>
-    <surface coeffs="-1.0" id="2" name="minimum x" type="x-plane"/>
-    <surface coeffs="0.0" id="3" name="maximum x" type="x-plane"/>
-    <surface coeffs="-1.0" id="4" name="minimum y" type="y-plane"/>
-    <surface coeffs="0.0" id="5" name="maximum y" type="y-plane"/>
-    <surface coeffs="1.0" id="9" name="maximum y" type="y-plane"/>
-    <surface coeffs="1.0" id="11" name="maximum x" type="x-plane"/>
-    <surface boundary="reflective" coeffs="-1.0" id="18" name="minimum x" type="x-plane"/>
-    <surface boundary="reflective" coeffs="1.0" id="19" name="maximum x" type="x-plane"/>
-    <surface boundary="reflective" coeffs="-1.0" id="20" name="minimum y" type="y-plane"/>
-    <surface boundary="reflective" coeffs="1.0" id="21" name="maximum y" type="y-plane"/>
+    <surface id="1" type="z-cylinder" coeffs="0.0 0.0 0.4"/>
+    <surface id="2" name="minimum x" type="x-plane" coeffs="-1.0"/>
+    <surface id="3" name="maximum x" type="x-plane" coeffs="0.0"/>
+    <surface id="4" name="minimum y" type="y-plane" coeffs="-1.0"/>
+    <surface id="5" name="maximum y" type="y-plane" coeffs="0.0"/>
+    <surface id="9" name="maximum y" type="y-plane" coeffs="1.0"/>
+    <surface id="11" name="maximum x" type="x-plane" coeffs="1.0"/>
+    <surface id="18" name="minimum x" type="x-plane" boundary="reflective" coeffs="-1.0"/>
+    <surface id="19" name="maximum x" type="x-plane" boundary="reflective" coeffs="1.0"/>
+    <surface id="20" name="minimum y" type="y-plane" boundary="reflective" coeffs="-1.0"/>
+    <surface id="21" name="maximum y" type="y-plane" boundary="reflective" coeffs="1.0"/>
   </geometry>
   <settings>
     <run_mode>eigenvalue</run_mode>

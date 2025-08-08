@@ -5,7 +5,7 @@ import h5py
 import lxml.etree as ET
 
 import openmc
-from openmc._xml import get_elem_list, get_text, clean_indentation, reorder_attributes
+from openmc._xml import get_elem_list, get_text, clean_indentation
 
 
 class DataLibrary(list):
@@ -132,7 +132,6 @@ class DataLibrary(list):
         clean_indentation(root)
 
         # Write XML file
-        reorder_attributes(root)  # TODO: Remove when support is Python 3.8+
         tree = ET.ElementTree(root)
         tree.write(str(path), xml_declaration=True, encoding='utf-8',
                    method='xml')

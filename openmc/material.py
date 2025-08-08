@@ -17,7 +17,7 @@ import h5py
 import openmc
 import openmc.data
 import openmc.checkvalue as cv
-from ._xml import clean_indentation, get_elem_list, get_text, reorder_attributes
+from ._xml import clean_indentation, get_elem_list, get_text
 from .mixin import IDManagerMixin
 from .utility_funcs import input_path
 from . import waste
@@ -1924,7 +1924,6 @@ class Materials(cv.CheckedList):
             clean_indentation(element, level=level+1)
             element.tail = element.tail.strip(' ')
             file.write((level+1)*spaces_per_level*' ')
-            reorder_attributes(element)  # TODO: Remove when support is Python 3.8+
             file.write(ET.tostring(element, encoding="unicode"))
 
         # Write the <material> elements.
@@ -1933,7 +1932,6 @@ class Materials(cv.CheckedList):
             clean_indentation(element, level=level+1)
             element.tail = element.tail.strip(' ')
             file.write((level+1)*spaces_per_level*' ')
-            reorder_attributes(element)  # TODO: Remove when support is Python 3.8+
             file.write(ET.tostring(element, encoding="unicode"))
 
         # Write the closing tag for the root element.

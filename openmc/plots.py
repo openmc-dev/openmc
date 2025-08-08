@@ -10,7 +10,7 @@ import openmc
 import openmc.checkvalue as cv
 from openmc.checkvalue import PathLike
 
-from ._xml import clean_indentation, get_elem_tuple, reorder_attributes, get_text
+from ._xml import clean_indentation, get_elem_tuple, get_text
 from .mixin import IDManagerMixin
 
 _BASES = {'xy', 'xz', 'yz'}
@@ -1857,8 +1857,6 @@ class Plots(cv.CheckedList):
 
         # Clean the indentation in the file to be user-readable
         clean_indentation(self._plots_file)
-        # TODO: Remove when support is Python 3.8+
-        reorder_attributes(self._plots_file)
 
         return self._plots_file
 

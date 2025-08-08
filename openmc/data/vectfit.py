@@ -544,7 +544,7 @@ def identify_poles(
 
     column_scale = np.linalg.norm(lhs_matrix, axis=0)
     column_scale[column_scale == 0] = 1.0
-    lhs_matrix *= column_scale
+    lhs_matrix /= column_scale
 
     solution, *_ = lstsq(lhs_matrix, rhs_vector)
     solution *= column_scale
@@ -583,7 +583,7 @@ def identify_poles(
 
         column_scale = np.linalg.norm(lhs_matrix, axis=0)
         column_scale[column_scale == 0] = 1.0
-        lhs_matrix *= column_scale
+        lhs_matrix /= column_scale
         coeffs, *_ = lstsq(lhs_matrix, rhs_vector)
         coeffs *= column_scale
 
@@ -662,7 +662,7 @@ def solve_vector_block(
 
     scale_column = np.linalg.norm(lhs_matrix, axis=0)
     scale_column[scale_column == 0] = 1.0
-    lhs_matrix *= scale_column
+    lhs_matrix /= scale_column
     x = lstsq(lhs_matrix, rhs_vector)[0]
     x *= scale_column
 

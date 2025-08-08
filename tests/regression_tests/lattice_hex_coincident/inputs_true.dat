@@ -1,45 +1,45 @@
 <?xml version='1.0' encoding='utf-8'?>
 <model>
   <materials>
-    <material depletable="true" id="1">
+    <material id="1" depletable="true">
       <density units="sum"/>
-      <nuclide ao="0.0049817" name="U235"/>
+      <nuclide name="U235" ao="0.0049817"/>
     </material>
     <material id="2">
-      <density units="atom/b-cm" value="0.017742"/>
-      <nuclide ao="1.0" name="C0"/>
+      <density value="0.017742" units="atom/b-cm"/>
+      <nuclide name="C0" ao="1.0"/>
       <sab name="c_Graphite"/>
     </material>
     <material id="3" name="Lead">
-      <density units="g/cm3" value="10.32"/>
-      <nuclide ao="0.014" name="Pb204"/>
-      <nuclide ao="0.241" name="Pb206"/>
-      <nuclide ao="0.221" name="Pb207"/>
-      <nuclide ao="0.524" name="Pb208"/>
+      <density value="10.32" units="g/cm3"/>
+      <nuclide name="Pb204" ao="0.014"/>
+      <nuclide name="Pb206" ao="0.241"/>
+      <nuclide name="Pb207" ao="0.221"/>
+      <nuclide name="Pb208" ao="0.524"/>
     </material>
     <material id="4">
-      <density units="atom/b-cm" value="0.00054464"/>
-      <nuclide ao="1.0" name="He4"/>
+      <density value="0.00054464" units="atom/b-cm"/>
+      <nuclide name="He4" ao="1.0"/>
     </material>
     <material id="5" name="Zirc4">
       <density units="sum"/>
-      <nuclide ao="0.02217" name="Zr90"/>
-      <nuclide ao="0.004781" name="Zr91"/>
-      <nuclide ao="0.007228" name="Zr92"/>
-      <nuclide ao="0.007169" name="Zr94"/>
-      <nuclide ao="0.001131" name="Zr96"/>
+      <nuclide name="Zr90" ao="0.02217"/>
+      <nuclide name="Zr91" ao="0.004781"/>
+      <nuclide name="Zr92" ao="0.007228"/>
+      <nuclide name="Zr94" ao="0.007169"/>
+      <nuclide name="Zr96" ao="0.001131"/>
     </material>
   </materials>
   <geometry>
     <cell id="1" material="1" region="-1 2 -3" universe="1"/>
     <cell id="2" material="2" region="1" universe="1"/>
-    <cell id="3" material="4" name="coolant" region="-4 2 -3" universe="2"/>
-    <cell id="4" material="5" name="zirconium_shell" region="4 -5 2 -3" universe="2"/>
-    <cell id="5" material="3" name="lead_shell" region="5 -6 2 -3" universe="2"/>
-    <cell id="6" material="2" name="matrix coolant surround" region="6 2 -3" universe="2"/>
+    <cell id="3" name="coolant" material="4" region="-4 2 -3" universe="2"/>
+    <cell id="4" name="zirconium_shell" material="5" region="4 -5 2 -3" universe="2"/>
+    <cell id="5" name="lead_shell" material="3" region="5 -6 2 -3" universe="2"/>
+    <cell id="6" name="matrix coolant surround" material="2" region="6 2 -3" universe="2"/>
     <cell id="7" material="2" universe="3"/>
-    <cell fill="4" id="8" name="container cell" region="-7 8 -9 -12 10 11 2 -3" universe="5"/>
-    <hex_lattice id="4" n_rings="2" name="regular fuel assembly">
+    <cell id="8" name="container cell" fill="4" region="-7 8 -9 -12 10 11 2 -3" universe="5"/>
+    <hex_lattice id="4" name="regular fuel assembly" n_rings="2">
       <pitch>1.4</pitch>
       <outer>3</outer>
       <center>0.0 0.0</center>
@@ -50,25 +50,25 @@
 2 2
  2</universes>
     </hex_lattice>
-    <surface coeffs="0.0 0.0 0.7" id="1" type="z-cylinder"/>
-    <surface boundary="reflective" coeffs="0.0" id="2" type="z-plane"/>
-    <surface boundary="reflective" coeffs="10.0" id="3" type="z-plane"/>
-    <surface coeffs="0.0 0.0 0.293" id="4" type="z-cylinder"/>
-    <surface coeffs="0.0 0.0 0.35" id="5" type="z-cylinder"/>
-    <surface coeffs="0.0 0.0 0.352" id="6" type="z-cylinder"/>
-    <surface boundary="reflective" coeffs="1.4" id="7" type="y-plane"/>
-    <surface boundary="reflective" coeffs="-1.4" id="8" type="y-plane"/>
-    <surface boundary="reflective" coeffs="1.7320508075688772 1.0 0.0 2.8" id="9" type="plane"/>
-    <surface boundary="reflective" coeffs="-1.7320508075688772 1.0 0.0 -2.8" id="10" type="plane"/>
-    <surface boundary="reflective" coeffs="1.7320508075688772 1.0 0.0 -2.8" id="11" type="plane"/>
-    <surface boundary="reflective" coeffs="-1.7320508075688772 1.0 0.0 2.8" id="12" type="plane"/>
+    <surface id="1" type="z-cylinder" coeffs="0.0 0.0 0.7"/>
+    <surface id="2" type="z-plane" boundary="reflective" coeffs="0.0"/>
+    <surface id="3" type="z-plane" boundary="reflective" coeffs="10.0"/>
+    <surface id="4" type="z-cylinder" coeffs="0.0 0.0 0.293"/>
+    <surface id="5" type="z-cylinder" coeffs="0.0 0.0 0.35"/>
+    <surface id="6" type="z-cylinder" coeffs="0.0 0.0 0.352"/>
+    <surface id="7" type="y-plane" boundary="reflective" coeffs="1.4"/>
+    <surface id="8" type="y-plane" boundary="reflective" coeffs="-1.4"/>
+    <surface id="9" type="plane" boundary="reflective" coeffs="1.7320508075688772 1.0 0.0 2.8"/>
+    <surface id="10" type="plane" boundary="reflective" coeffs="-1.7320508075688772 1.0 0.0 -2.8"/>
+    <surface id="11" type="plane" boundary="reflective" coeffs="1.7320508075688772 1.0 0.0 -2.8"/>
+    <surface id="12" type="plane" boundary="reflective" coeffs="-1.7320508075688772 1.0 0.0 2.8"/>
   </geometry>
   <settings>
     <run_mode>eigenvalue</run_mode>
     <particles>1000</particles>
     <batches>5</batches>
     <inactive>2</inactive>
-    <source particle="neutron" strength="1.0" type="independent">
+    <source type="independent" strength="1.0" particle="neutron">
       <space type="box">
         <parameters>-0.9899494936611666 -0.9899494936611666 0.0 0.9899494936611666 0.9899494936611666 10.0</parameters>
       </space>

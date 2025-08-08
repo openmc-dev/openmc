@@ -64,8 +64,8 @@ def get_text(elem, name, default=None):
 
 
 
-def get_elem_tuple(elem, name, dtype=int):
-    """Helper function to get a tuple of values from an elem
+def get_elem_list(elem, name, dtype=int):
+    """Helper function to get a list of values from an elem
 
     Parameters
     ----------
@@ -78,9 +78,9 @@ def get_elem_tuple(elem, name, dtype=int):
 
     Returns
     -------
-    tuple of dtype
-        Data read from the tuple
+    list of dtype
+        Data read from the list
     """
-    subelem = elem.find(name)
-    if subelem is not None:
-        return tuple([dtype(x) for x in subelem.text.split()])
+    text = get_text(elem, name)
+    if text is not None:
+        return [dtype(x) for x in text.split()]

@@ -22,6 +22,7 @@ from openmc.checkvalue import check_type, check_greater_than, PathLike
 from openmc.data import gnds_name, zam
 from openmc.exceptions import DataError
 from .nuclide import FissionYieldDistribution, Nuclide
+from .._xml import get_text
 import openmc.data
 
 
@@ -553,7 +554,7 @@ class Chain:
         root = ET.parse(str(filename))
 
         for i, nuclide_elem in enumerate(root.findall('nuclide')):
-            this_q = fission_q.get(nuclide_elem.get("name"))
+            this_q = fission_q.get(get_text(nuclide_elem, "name"))
 
             nuc = Nuclide.from_xml(nuclide_elem, root, this_q)
             chain.add_nuclide(nuc)

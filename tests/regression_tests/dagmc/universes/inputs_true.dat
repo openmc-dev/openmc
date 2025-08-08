@@ -1,33 +1,33 @@
 <?xml version='1.0' encoding='utf-8'?>
 <model>
   <materials>
-    <material depletable="true" id="1" name="no-void fuel">
-      <density units="g/cc" value="10.29769"/>
-      <nuclide ao="0.93120485" name="U234"/>
-      <nuclide ao="0.00055815" name="U235"/>
-      <nuclide ao="0.022408" name="U238"/>
-      <nuclide ao="0.045829" name="O16"/>
+    <material id="1" name="no-void fuel" depletable="true">
+      <density value="10.29769" units="g/cc"/>
+      <nuclide name="U234" ao="0.93120485"/>
+      <nuclide name="U235" ao="0.00055815"/>
+      <nuclide name="U238" ao="0.022408"/>
+      <nuclide name="O16" ao="0.045829"/>
     </material>
     <material id="2" name="clad">
-      <density units="g/cc" value="6.55"/>
-      <nuclide ao="0.021827" name="Zr90"/>
-      <nuclide ao="0.00476" name="Zr91"/>
-      <nuclide ao="0.0072758" name="Zr92"/>
-      <nuclide ao="0.0073734" name="Zr94"/>
-      <nuclide ao="0.0011879" name="Zr96"/>
+      <density value="6.55" units="g/cc"/>
+      <nuclide name="Zr90" ao="0.021827"/>
+      <nuclide name="Zr91" ao="0.00476"/>
+      <nuclide name="Zr92" ao="0.0072758"/>
+      <nuclide name="Zr94" ao="0.0073734"/>
+      <nuclide name="Zr96" ao="0.0011879"/>
     </material>
     <material id="3" name="water">
-      <density units="g/cc" value="0.740582"/>
-      <nuclide ao="0.049457" name="H1"/>
-      <nuclide ao="0.024672" name="O16"/>
-      <nuclide ao="8.0042e-06" name="B10"/>
-      <nuclide ao="3.2218e-05" name="B11"/>
+      <density value="0.740582" units="g/cc"/>
+      <nuclide name="H1" ao="0.049457"/>
+      <nuclide name="O16" ao="0.024672"/>
+      <nuclide name="B10" ao="8.0042e-06"/>
+      <nuclide name="B11" ao="3.2218e-05"/>
       <sab name="c_H_in_H2O"/>
     </material>
   </materials>
   <geometry>
-    <cell fill="4" id="1" region="1 -2 3 -4 5 -6" universe="5"/>
-    <dagmc_universe auto_geom_ids="true" filename="dagmc.h5m" id="1"/>
+    <cell id="1" fill="4" region="1 -2 3 -4 5 -6" universe="5"/>
+    <dagmc_universe id="1" auto_geom_ids="true" filename="dagmc.h5m"/>
     <lattice id="4">
       <pitch>24.0 24.0</pitch>
       <dimension>2 2</dimension>
@@ -36,12 +36,12 @@
 1 1 
 1 1 </universes>
     </lattice>
-    <surface boundary="reflective" coeffs="-24.0" id="1" name="left" type="x-plane"/>
-    <surface boundary="reflective" coeffs="24.0" id="2" name="right" type="x-plane"/>
-    <surface boundary="reflective" coeffs="-24.0" id="3" name="front" type="y-plane"/>
-    <surface boundary="reflective" coeffs="24.0" id="4" name="back" type="y-plane"/>
-    <surface boundary="reflective" coeffs="-10.0" id="5" name="bottom" type="z-plane"/>
-    <surface boundary="reflective" coeffs="10.0" id="6" name="top" type="z-plane"/>
+    <surface id="1" name="left" type="x-plane" boundary="reflective" coeffs="-24.0"/>
+    <surface id="2" name="right" type="x-plane" boundary="reflective" coeffs="24.0"/>
+    <surface id="3" name="front" type="y-plane" boundary="reflective" coeffs="-24.0"/>
+    <surface id="4" name="back" type="y-plane" boundary="reflective" coeffs="24.0"/>
+    <surface id="5" name="bottom" type="z-plane" boundary="reflective" coeffs="-10.0"/>
+    <surface id="6" name="top" type="z-plane" boundary="reflective" coeffs="10.0"/>
   </geometry>
   <settings>
     <run_mode>eigenvalue</run_mode>

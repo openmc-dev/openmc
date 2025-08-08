@@ -1,0 +1,29 @@
+<?xml version='1.0' encoding='utf-8'?>
+<materials>
+  <material depletable="true" id="0" name="mFuel" temperature="900.0">
+    <density units="g/cm3" value="10.5"/>
+    <nuclide ao="0.0013" name="U234"/>
+    <nuclide ao="0.1975" name="U235"/>
+    <nuclide ao="0.001" name="U236"/>
+    <nuclide ao="0.8002" name="U238"/>
+    <nuclide ao="1.9952" name="O16"/>
+    <nuclide ao="0.00074" name="O17"/>
+    <nuclide ao="0.00408" name="O18"/>
+  </material>
+  <material id="2" name="mCool" temperature="600.0">
+    <density units="g/cm3" value="0.11"/>
+    <nuclide name="C12" wo="0.269751"/>
+    <nuclide name="C13" wo="0.00316149"/>
+    <nuclide name="O16" wo="0.725118"/>
+    <nuclide name="O17" wo="0.000293558"/>
+    <nuclide name="O18" wo="0.00167683"/>
+  </material>
+  <material id="3" name="mRefl" temperature="600.0">
+    <density units="g/cm3" value="0.129"/>
+    <nuclide name="C12" wo="0.269751"/>
+    <nuclide name="C13" wo="0.00316149"/>
+    <nuclide name="O16" wo="0.725118"/>
+    <nuclide name="O17" wo="0.000293558"/>
+    <nuclide name="O18" wo="0.00167683"/>
+  </material>
+</materials>

@@ -955,6 +955,225 @@ void SurfaceQuadric::to_hdf5_inner(hid_t group_id) const
 }
 
 //==============================================================================
+// SurfaceTPMS implementation
+//==============================================================================
+
+SurfaceTPMS::SurfaceTPMS(pugi::xml_node surf_node) : Surface(surf_node)
+{
+  read_coeffs(surf_node, id_,
+    {&isovalue, &pitch, &x0, &y0, &z0, &a, &b, &c, &d, &e, &f, &g, &h, &i});
+  surface_type = get_node_value(surf_node, "surface_type");
+  if (std::find(tpms_types.begin(), tpms_types.end(), surface_type) ==
+      tpms_types.end()) {
+    fatal_error(
+      fmt::format("Surface {} is surface_type {} but it is not implemented.",
+        id_, surface_type));
+  }
+}
+
+double SurfaceTPMS::evaluate(Position r) const
+{
+  double value;
+  if (surface_type == "Schwarz_P") {
+    SchwarzP laTpms =
+      SchwarzP(isovalue, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
+    value = laTpms.evaluate(r);
+  } else if (surface_type == "Gyroid") {
+    Gyroid laTpms =
+      Gyroid(isovalue, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
+    value = laTpms.evaluate(r);
+  } else if (surface_type == "Diamond") {
+    Diamond laTpms =
+      Diamond(isovalue, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
+    value = laTpms.evaluate(r);
+  } else {
+    fatal_error(fmt::format(
+      "Surface type {} is not implemented in SurfaceTPMS::evaluate.",
+      surface_type));
+  }
+  return value;
+}
+
+double SurfaceTPMS::distance(
+  Position r, Direction ang, bool coincident, double max_range) const
+{
+  double raylength = 0.;
+  if (surface_type == "Schwarz_P") {
+    SchwarzP laTpms =
+      SchwarzP(isovalue, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
+    raylength = laTpms.ray_tracing(r, ang, max_range);
+  } else if (surface_type == "Gyroid") {
+    Gyroid laTpms =
+      Gyroid(isovalue, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
+    raylength = laTpms.ray_tracing(r, ang, max_range);
+  } else if (surface_type == "Diamond") {
+    Diamond laTpms =
+      Diamond(isovalue, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
+    raylength = laTpms.ray_tracing(r, ang, max_range);
+  } else {
+    fatal_error(fmt::format(
+      "Surface type {} is not implemented in SurfaceTPMS::distance.",
+      surface_type));
+  }
+  return raylength; // le ray tracing avec la bonne TPMS, frero !
+}
+
+Direction SurfaceTPMS::normal(Position r) const
+{
+  Direction grad;
+  if (surface_type == "Schwarz_P") {
+    SchwarzP laTpms =
+      SchwarzP(isovalue, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
+    grad = laTpms.normal(r);
+  } else if (surface_type == "Gyroid") {
+    Gyroid laTpms =
+      Gyroid(isovalue, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
+    grad = laTpms.normal(r);
+  } else if (surface_type == "Diamond") {
+    Diamond laTpms =
+      Diamond(isovalue, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
+    grad = laTpms.normal(r);
+  } else {
+    fatal_error(
+      fmt::format("Surface type {} is not implemented in SurfaceTPMS::normal.",
+        surface_type));
+  }
+  return grad;
+}
+
+void SurfaceTPMS::to_hdf5_inner(hid_t group_id) const
+{
+  write_string(group_id, "type", "tpms", false);
+  write_string(group_id, "surface_type", surface_type, false);
+  array<double, 14> coeffs {
+    {isovalue, pitch, x0, y0, z0, a, b, c, d, e, f, g, h, i}};
+  write_dataset(group_id, "coefficients", coeffs);
+}
+
+//==============================================================================
+// SurfaceFunctionTPMS implementation
+//==============================================================================
+
+SurfaceFunctionTPMS::SurfaceFunctionTPMS(pugi::xml_node surf_node)
+  : Surface(surf_node)
+{
+  read_coeffs(
+    surf_node, id_, {&x0, &y0, &z0, &a, &b, &c, &d, &e, &f, &g, &h, &i});
+  surface_type = get_node_value(surf_node, "surface_type");
+  if (std::find(tpms_types.begin(), tpms_types.end(), surface_type) ==
+      tpms_types.end()) {
+    fatal_error(
+      fmt::format("Surface {} is surface_type {} but it is not implemented.",
+        id_, surface_type));
+  }
+  function_type = get_node_value(surf_node, "function_type");
+  if (function_type == "interpolation") {
+    std::vector<double> x_grid = get_node_array<double>(surf_node, "x_grid");
+    std::vector<double> y_grid = get_node_array<double>(surf_node, "y_grid");
+    std::vector<double> z_grid = get_node_array<double>(surf_node, "z_grid");
+    std::vector<std::size_t> shape = {
+      x_grid.size(), y_grid.size(), z_grid.size()};
+    xt::xarray<double> m_pitch = get_node_xarray<double>(surf_node, "m_pitch");
+    m_pitch.resize(shape);
+    xt::xarray<double> m_isovalue =
+      get_node_xarray<double>(surf_node, "m_isovalue");
+    m_isovalue.resize(shape);
+    fPitch = std::make_unique<InterpolationForTPMS>(
+      InterpolationForTPMS(x_grid, y_grid, z_grid, m_pitch));
+    fIsovalue = std::make_unique<InterpolationForTPMS>(
+      InterpolationForTPMS(x_grid, y_grid, z_grid, m_isovalue));
+  } else {
+    fatal_error(
+      fmt::format("Function type {} is not recognized.", function_type));
+  }
+}
+
+SurfaceFunctionTPMS::~SurfaceFunctionTPMS()
+{
+  // delete fPitch;
+  // delete fIsovalue;
+}
+
+double SurfaceFunctionTPMS::evaluate(Position r) const
+{
+  double value;
+  if (surface_type == "Schwarz_P") {
+    FunctionSchwarzP laTpms = FunctionSchwarzP(
+      *fIsovalue, *fPitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
+    value = laTpms.evaluate(r);
+  } else if (surface_type == "Gyroid") {
+    FunctionGyroid laTpms = FunctionGyroid(
+      *fIsovalue, *fPitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
+    value = laTpms.evaluate(r);
+  } else if (surface_type == "Diamond") {
+    FunctionDiamond laTpms = FunctionDiamond(
+      *fIsovalue, *fPitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
+    value = laTpms.evaluate(r);
+  } else {
+    fatal_error(fmt::format(
+      "Surface type {} is not implemented in SurfaceTPMS::evaluate.",
+      surface_type));
+  }
+  return value;
+}
+
+double SurfaceFunctionTPMS::distance(
+  Position r, Direction ang, bool coincident, double max_range) const
+{
+  double raylength;
+  if (surface_type == "Schwarz_P") {
+    FunctionSchwarzP laTpms = FunctionSchwarzP(
+      *fIsovalue, *fPitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
+    raylength = laTpms.ray_tracing(r, ang, max_range);
+  } else if (surface_type == "Gyroid") {
+    FunctionGyroid laTpms = FunctionGyroid(
+      *fIsovalue, *fPitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
+    raylength = laTpms.ray_tracing(r, ang, max_range);
+  } else if (surface_type == "Diamond") {
+    FunctionDiamond laTpms = FunctionDiamond(
+      *fIsovalue, *fPitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
+    raylength = laTpms.ray_tracing(r, ang, max_range);
+  } else {
+    fatal_error(fmt::format(
+      "Surface type {} is not implemented in SurfaceFunctionTPMS::distance.",
+      surface_type));
+  }
+  return raylength; // le ray tracing avec la bonne TPMS, frero !
+}
+
+Direction SurfaceFunctionTPMS::normal(Position r) const
+{
+  Direction grad;
+  if (surface_type == "Schwarz_P") {
+    FunctionSchwarzP laTpms = FunctionSchwarzP(
+      *fIsovalue, *fPitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
+    grad = laTpms.normal(r);
+  } else if (surface_type == "Gyroid") {
+    FunctionGyroid laTpms = FunctionGyroid(
+      *fIsovalue, *fPitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
+    grad = laTpms.normal(r);
+  } else if (surface_type == "Diamond") {
+    FunctionDiamond laTpms = FunctionDiamond(
+      *fIsovalue, *fPitch, x0, y0, z0, a, b, c, d, e, f, g, h, i);
+    grad = laTpms.normal(r);
+  } else {
+    fatal_error(fmt::format(
+      "Surface type {} is not implemented in SurfaceFunctionTPMS::normal.",
+      surface_type));
+  }
+  return grad;
+}
+
+void SurfaceFunctionTPMS::to_hdf5_inner(hid_t group_id) const
+{
+  write_string(group_id, "type", "function-tpms", false);
+  write_string(group_id, "surface_type", surface_type, false);
+  write_string(group_id, "function_type", function_type, false);
+  array<double, 12> coeffs {{x0, y0, z0, a, b, c, d, e, f, g, h, i}};
+  write_dataset(group_id, "coefficients", coeffs);
+}
+
+//==============================================================================
 // Torus helper functions
 //==============================================================================
 
@@ -1186,7 +1405,7 @@ void read_surfaces(pugi::xml_node node)
     pugi::xml_node surf_node;
     int i_surf;
     for (surf_node = node.child("surface"), i_surf = 0; surf_node;
-         surf_node = surf_node.next_sibling("surface"), i_surf++) {
+      surf_node = surf_node.next_sibling("surface"), i_surf++) {
       std::string surf_type = get_node_value(surf_node, "type", true, true);
 
       // Allocate and initialize the new surface
@@ -1226,6 +1445,12 @@ void read_surfaces(pugi::xml_node node)
 
       } else if (surf_type == "quadric") {
         model::surfaces.push_back(make_unique<SurfaceQuadric>(surf_node));
+
+      } else if (surf_type == "tpms") {
+        model::surfaces.push_back(make_unique<SurfaceTPMS>(surf_node));
+
+      } else if (surf_type == "function-tpms") {
+        model::surfaces.push_back(make_unique<SurfaceFunctionTPMS>(surf_node));
 
       } else if (surf_type == "x-torus") {
         model::surfaces.push_back(std::make_unique<SurfaceXTorus>(surf_node));

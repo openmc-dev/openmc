@@ -2,6 +2,7 @@
 #define OPENMC_SURFACE_H
 
 #include <limits> // For numeric_limits
+#include <list>
 #include <string>
 #include <unordered_map>
 
@@ -15,6 +16,9 @@
 #include "openmc/particle.h"
 #include "openmc/position.h"
 #include "openmc/vector.h"
+
+#include "tpms.h"
+#include "tpms_functions.h"
 
 namespace openmc {
 
@@ -53,6 +57,10 @@ public:
   //!   false otherwise.
   bool sense(Position r, Direction u) const;
 
+  //! Determine if the surface has a special type and needs specific ray-tracing
+  //! treatment. \return the name of the special treatment.
+  virtual bool is_tpms() const { return false; };
+
   //! Determine the direction of a ray reflected from the surface.
   //! \param[in] r The point at which the ray is incident.
   //! \param[in] u Incident direction of the ray
@@ -76,7 +84,15 @@ public:
   //! \param u The direction of the ray.
   //! \param coincident A hint to the code that the given point should lie
   //!   exactly on the surface.
-  virtual double distance(Position r, Direction u, bool coincident) const = 0;
+  virtual double distance(Position r, Direction u, bool coincident) const
+  {
+    return 0.;
+  };
+  virtual double distance(
+    Position r, Direction u, bool coincident, double max_range) const
+  {
+    return 0.;
+  };
 
   //! Compute the local outward normal direction of the surface.
   //! \param r A 3D Cartesian coordinate.
@@ -321,6 +337,67 @@ public:
 
   // Ax^2 + By^2 + Cz^2 + Dxy + Eyz + Fxz + Gx + Hy + Jz + K = 0
   double A_, B_, C_, D_, E_, F_, G_, H_, J_, K_;
+};
+
+//==============================================================================
+//! Triply Periodic Minimal Surfaces (TPMS)
+//
+//! Surfaces defined by an implicit function f(x,y,z) = c with c, an isovalue.
+//! Various equations exists :
+//! * Schwarz-P : cos(l*x) + cos(l*y) + cos(l*z) = c
+//! * Gyroid : sin(l*x)cos(l*z) + sin(l*y)cos(l*x) + sin(l*z)cos(l*y) = c
+//! * Diamond : sin(l*x)sin(l*y)sin(l*z) + sin(l*x)cos(l*y)cos(l*z) +
+//!             cos(l*x)sin(l*y)cos(l*z) + cos(l*x)cos(l*y)sin(l*z) = c
+//! with l=2pi/L, L is defined as the pitch of the TPMS lattice.
+//! L and c are constants for this class.
+//==============================================================================
+
+class SurfaceTPMS : public Surface {
+public:
+  explicit SurfaceTPMS(pugi::xml_node surf_node);
+  bool is_tpms() const { return true; };
+  double evaluate(Position r) const;
+  double distance(
+    Position r, Direction u, bool coincident, double max_range) const;
+  Direction normal(Position r) const;
+  void to_hdf5_inner(hid_t group_id) const;
+
+  double isovalue, pitch;
+  double x0, y0, z0;
+  double a, b, c, d, e, f, g, h, i;
+  std::string surface_type;
+
+private:
+  std::array<std::string, 3> tpms_types = {"Schwarz_P", "Gyroid", "Diamond"};
+};
+
+//==============================================================================
+//! Interpolated Triply Periodic Minimal Surfaces (TPMS)
+//
+//! Same surfaces as above but with isovalue c and pitch L defined as a function
+//! of x,y and z.
+//==============================================================================
+
+class SurfaceFunctionTPMS : public Surface {
+public:
+  explicit SurfaceFunctionTPMS(pugi::xml_node surf_node);
+  ~SurfaceFunctionTPMS();
+  bool is_tpms() const { return true; };
+  double evaluate(Position r) const;
+  double distance(
+    Position r, Direction u, bool coincident, double max_range) const;
+  Direction normal(Position r) const;
+  void to_hdf5_inner(hid_t group_id) const;
+
+  unique_ptr<FunctionForTPMS> fPitch;
+  unique_ptr<FunctionForTPMS> fIsovalue;
+  double x0, y0, z0;
+  double a, b, c, d, e, f, g, h, i;
+  std::string surface_type;
+  std::string function_type;
+
+private:
+  std::array<std::string, 3> tpms_types = {"Schwarz_P", "Gyroid", "Diamond"};
 };
 
 //==============================================================================

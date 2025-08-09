@@ -1,6 +1,7 @@
 from __future__ import annotations
 from collections.abc import Callable, Iterable, Sequence
 import copy
+from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 import math
@@ -14,7 +15,7 @@ import warnings
 import h5py
 import lxml.etree as ET
 import numpy as np
-import scipy.optimize as sopt
+from scipy.optimize import curve_fit
 
 import openmc
 import openmc._xml as xml
@@ -2165,7 +2166,6 @@ class Model:
         self,
         func: ModelModifier,
         target: float = 1.0,
-        method: str | None = None,
         print_iterations: bool = False,
         func_kwargs: dict[str, Any] | None = None,
         run_kwargs: dict[str, Any] | None = None,
@@ -2180,8 +2180,6 @@ class Model:
             modification to the model.
         target : float, optional
             keff value to search for
-        method : str, optional
-            Method to use for the root finding.
         print_iterations : bool, optional
             Whether or not to print the guess and the resultant keff during the
             iteration process.
@@ -2219,9 +2217,12 @@ class Model:
         results = []
 
         # Define the function to be passed to root_scalar
-        def f(guess: float) -> float:
+        def f(guess: float, generations: int) -> float:
             # Modify the model with the current guess
             func(guess, **func_kwargs)
+
+            # Change the number of batches
+            self.settings.batches = self.settings.inactive + generations
 
             # Run the model and obtain keff
             sp_filepath = self.run(**run_kwargs)
@@ -2233,21 +2234,134 @@ class Model:
             results.append(keff)
 
             if print_iterations:
-                print(f'Iteration: {len(guesses)}; {guess=:.2e}, {keff=:.5f}')
+                print(f'Iteration: {len(guesses)}; {generations=}, {guess=:.2e}, {keff=:.5f}')
 
-            return keff.n - target
+            return keff.n - target, keff.s
 
-        # Set arguments to be passed to root_scalar. Note that 'args' are extra
-        # arguments passed to _search_keff (does not include the 'guess' since that
-        # is handled by root_scalar)
+        # Set arguments to be passed to root_scalar_grsecant
         kwargs['f'] = f
-        kwargs['args'] = (self, target, func, func_kwargs, print_iterations,
-                          run_kwargs, guesses, results)
-        kwargs.setdefault('method', method)
+        kwargs.setdefault('g0', self.settings.batches - self.settings.inactive)
 
-        # Perform the search in a temporary directrory
+        # Perform the search in a temporary directory
         with TemporaryDirectory() as tmpdir:
             run_kwargs.setdefault('cwd', tmpdir)
-            sol = sopt.root_scalar(**kwargs)
+            sol = root_scalar_grsecant(**kwargs)
 
         return sol.root, guesses, results
+
+
+@dataclass
+class RootResult:
+    root: float
+    converged: bool
+    iterations: int
+    function_calls: int
+    flag: str
+
+
+def root_scalar_grsecant(
+    f,
+    x0: float,
+    x1: float,
+    memory: int = 4,
+    k_tol: float = 1e-4,
+    sigma_final: float = 3e-4,
+    p: float = 0.5,
+    sigma_factor: float = 0.95,
+    g0: int = 200,
+    g1: int = 200,
+    min_g: int = 20,
+    max_g: int | None = None,
+    x_min: float | None = None,
+    x_max: float | None = None,
+    maxiter: int = 50,
+    **kwargs: Any
+) -> RootResult:
+    """
+    GRsecant with MC-aware uncertainty/effort selection.
+
+    fun(x, model, **mc_kwargs) -> (mean, std)
+    The solver passes {generations_kw: g} on each call.
+    """
+    if memory < 2:
+        raise ValueError("memory must be ≥ 2")
+
+    xs, fs, ss, gs = [], [], [], []
+
+    def eval_at(x: float, g: int):
+        mc_kwargs = dict(kwargs)
+        mc_kwargs["generations"] = int(g)
+        f_mean, f_std = f(x, **mc_kwargs)
+        xs.append(float(x))
+        fs.append(float(f_mean))
+        ss.append(float(f_std))
+        gs.append(int(g))
+        return fs[-1], ss[-1]
+
+    # ---- Seed with two evaluations
+    f0, s0 = eval_at(x0, g0)
+    if abs(f0) <= k_tol and s0 <= sigma_final:
+        return RootResult(x0, True, 0, 1, "converged(init)")
+    f1, s1 = eval_at(x1, g1)
+    if abs(f1) <= k_tol and s1 <= sigma_final:
+        return RootResult(x1, True, 0, 2, "converged(init)")
+
+    for it in range(maxiter):
+        # ---------- Step 1: propose next x via GRsecant
+        m = min(memory, len(xs))
+
+        # Perform a curve fit on f(x) = a + bx accounting for uncertainties.
+        # This is equivalent to minimizing the function in Equation (A.14)
+        (a, b), _ = curve_fit(
+            lambda x, a, b: a + b*x,
+            xs[-m:], fs[-m:], sigma=ss[-m:], absolute_sigma=True
+        )
+        x_new = float(-a / b)
+
+        # Clamp x_new to the bounds if provided
+        if x_min is not None:
+            x_new = max(x_new, x_min)
+        if x_max is not None:
+            x_new = min(x_new, x_max)
+
+        # ---------- Step 2: choose target σ for next run (Eq. 8 + clamp)
+
+        min_abs_f = float(np.min(np.abs(fs)))
+        base = sigma_factor * sigma_final
+        ratio = min_abs_f / k_tol if k_tol > 0 else 1.0
+        sig = base * (ratio ** p)
+        sig_target = max(sig, base)
+
+        # ---------- Step 3: choose generations to hit σ_target (Appendix C)
+
+        # Use at least two past points for regression; otherwise, assume r≈0.5
+        if len(gs) >= 4 and np.var(np.log(gs)) > 0.0:
+            # Perform a curve fit on ln(sigma) = ln(k) - r*ln(g) to solve for
+            # ln(k) and r.
+            popt, _ = curve_fit(
+                lambda ln_g, ln_k, r: ln_k - r*ln_g,
+                np.log(gs), np.log(ss), absolute_sigma=False
+            )
+            ln_k, r = popt
+            k = float(np.exp(ln_k))
+        else:
+            r = 0.5
+            k = float(ss[-1] * gs[-1]**r)
+
+        g_new = (k / sig_target) ** (1 / r)
+
+        # Clamp and round up to integer
+        g_new = max(min_g, math.ceil(g_new))
+        if max_g is not None:
+            g_new = min(g_new, max_g)
+
+        # Evaluate at proposed x with chosen effort
+        f_new, s_new = eval_at(x_new, g_new)
+
+        #print(f'param_k={k}, {r=}, {sig_target=}, {g_new=}, {f_new=}, {s_new=}')
+
+        # Termination: both criteria (|f| and σ) as in the paper
+        if (abs(f_new) <= k_tol and s_new <= sigma_final):
+            return RootResult(x_new, True, it + 1, len(xs), "converged")
+
+    return RootResult(xs[-1], False, maxiter, len(xs), "maxiter")

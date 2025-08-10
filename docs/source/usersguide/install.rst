@@ -530,7 +530,7 @@ Alternatively, pip provides additional ways to configure the build using
 
 .. code-block:: bash
 
-    python -m pip install . --config-settings=cmake.args="-DOPENMC_USE_MPI=ON;-DOPENMC_USE_MCPL=ON"
+    python -m pip install .
 
 pip will first check that all :ref:`required third-party packages
 <usersguide_python_prereqs>` have been installed, and if they are not present,

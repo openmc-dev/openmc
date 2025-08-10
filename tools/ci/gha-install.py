@@ -5,7 +5,7 @@ import subprocess
 
 def install(omp=False, mpi=False, phdf5=False, dagmc=False, libmesh=False):
     # List to store the CMake arguments
-    cmake_args = ['-DCMAKE_BUILD_TYPE=Debug', '-DOPENMC_USE_MCPL=on']
+    cmake_args = ['-DCMAKE_BUILD_TYPE=Debug']
 
     # Turn off OpenMP if specified
     if not omp:

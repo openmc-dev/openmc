@@ -84,6 +84,11 @@ def test_prepare_tallies(model):
     assert tally.contains_filter(openmc.ParentNuclideFilter)
     assert sorted(tally.filters[-1].bins) == sorted(radionuclides)
 
+    assert len(tally.filters) == 2
+    # calling prepare_tallies twice should not add another ParentNuclideFilter
+    d1s.prepare_tallies(model, chain_file=CHAIN_PATH)
+    assert len(tally.filters) == 2
+
 
 def test_apply_time_correction(run_in_tmpdir):
     # Make simple sphere model with elemental Ni

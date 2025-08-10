@@ -47,13 +47,13 @@
 #include "openmc/volume_calc.h"
 #include "openmc/xml_interface.h"
 
-#ifdef LIBMESH
+#ifdef OPENMC_LIBMESH_ENABLED
 #include "libmesh/mesh_modification.h"
 #include "libmesh/mesh_tools.h"
 #include "libmesh/numeric_vector.h"
 #endif
 
-#ifdef DAGMC
+#ifdef OPENMC_DAGMC_ENABLED
 #include "moab/FileOptions.hpp"
 #endif
 
@@ -63,7 +63,7 @@ namespace openmc {
 // Global variables
 //==============================================================================
 
-#ifdef LIBMESH
+#ifdef OPENMC_LIBMESH_ENABLED
 const bool LIBMESH_ENABLED = true;
 #else
 const bool LIBMESH_ENABLED = false;
@@ -80,7 +80,7 @@ vector<unique_ptr<Mesh>> meshes;
 
 } // namespace model
 
-#ifdef LIBMESH
+#ifdef OPENMC_LIBMESH_ENABLED
 namespace settings {
 unique_ptr<libMesh::LibMeshInit> libmesh_init;
 const libMesh::Parallel::Communicator* libmesh_comm {nullptr};
@@ -385,7 +385,7 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
             BoundaryInfo boundary = distance_to_boundary(p);
 
             // Advance particle forward
-            double distance = std::min(boundary.distance, max_distance);
+            double distance = std::min(boundary.distance(), max_distance);
             p.move_distance(distance);
 
             // Determine what mesh elements were crossed by particle
@@ -416,12 +416,12 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
             p.n_coord_last() = p.n_coord();
 
             // Set surface that particle is on and adjust coordinate levels
-            p.surface() = boundary.surface;
-            p.n_coord() = boundary.coord_level;
+            p.surface() = boundary.surface();
+            p.n_coord() = boundary.coord_level();
 
-            if (boundary.lattice_translation[0] != 0 ||
-                boundary.lattice_translation[1] != 0 ||
-                boundary.lattice_translation[2] != 0) {
+            if (boundary.lattice_translation()[0] != 0 ||
+                boundary.lattice_translation()[1] != 0 ||
+                boundary.lattice_translation()[2] != 0) {
               // Particle crosses lattice boundary
               cross_lattice(p, boundary);
             } else {
@@ -2134,14 +2134,14 @@ extern "C" int openmc_add_unstructured_mesh(
   std::string mesh_file(filename);
   bool valid_lib = false;
 
-#ifdef DAGMC
+#ifdef OPENMC_DAGMC_ENABLED
   if (lib_name == MOABMesh::mesh_lib_type) {
     model::meshes.push_back(std::move(make_unique<MOABMesh>(mesh_file)));
     valid_lib = true;
   }
 #endif
 
-#ifdef LIBMESH
+#ifdef OPENMC_LIBMESH_ENABLED
   if (lib_name == LibMesh::mesh_lib_type) {
     model::meshes.push_back(std::move(make_unique<LibMesh>(mesh_file)));
     valid_lib = true;
@@ -2509,7 +2509,7 @@ extern "C" int openmc_spherical_mesh_set_grid(int32_t index,
     index, grid_x, nx, grid_y, ny, grid_z, nz);
 }
 
-#ifdef DAGMC
+#ifdef OPENMC_DAGMC_ENABLED
 
 const std::string MOABMesh::mesh_lib_type = "moab";
 
@@ -3211,7 +3211,7 @@ void MOABMesh::write(const std::string& base_filename) const
 
 #endif
 
-#ifdef LIBMESH
+#ifdef OPENMC_LIBMESH_ENABLED
 
 const std::string LibMesh::mesh_lib_type = "libmesh";
 
@@ -3556,7 +3556,7 @@ double LibMesh::volume(int bin) const
   return this->get_element_from_bin(bin).volume();
 }
 
-#endif // LIBMESH
+#endif // OPENMC_LIBMESH_ENABLED
 
 //==============================================================================
 // Non-member functions
@@ -3605,12 +3605,12 @@ void read_meshes(pugi::xml_node root)
       model::meshes.push_back(make_unique<CylindricalMesh>(node));
     } else if (mesh_type == SphericalMesh::mesh_type) {
       model::meshes.push_back(make_unique<SphericalMesh>(node));
-#ifdef DAGMC
+#ifdef OPENMC_DAGMC_ENABLED
     } else if (mesh_type == UnstructuredMesh::mesh_type &&
                mesh_lib == MOABMesh::mesh_lib_type) {
       model::meshes.push_back(make_unique<MOABMesh>(node));
 #endif
-#ifdef LIBMESH
+#ifdef OPENMC_LIBMESH_ENABLED
     } else if (mesh_type == UnstructuredMesh::mesh_type &&
                mesh_lib == LibMesh::mesh_lib_type) {
       model::meshes.push_back(make_unique<LibMesh>(node));

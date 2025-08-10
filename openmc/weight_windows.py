@@ -14,7 +14,7 @@ from openmc.filter import _PARTICLES
 from openmc.mesh import MeshBase, RectilinearMesh, CylindricalMesh, SphericalMesh, UnstructuredMesh
 import openmc.checkvalue as cv
 from openmc.checkvalue import PathLike
-from ._xml import get_text, clean_indentation
+from ._xml import get_elem_list, get_text, clean_indentation
 from .mixin import IDManagerMixin
 from .utility_funcs import change_directory
 
@@ -379,9 +379,9 @@ class WeightWindows(IDManagerMixin):
         mesh = meshes[mesh_id]
 
         # Read all other parameters
-        lower_ww_bounds = [float(l) for l in get_text(elem, 'lower_ww_bounds').split()]
-        upper_ww_bounds = [float(u) for u in get_text(elem, 'upper_ww_bounds').split()]
-        e_bounds = [float(b) for b in get_text(elem, 'energy_bounds').split()]
+        lower_ww_bounds = get_elem_list(elem, "lower_ww_bounds", float)
+        upper_ww_bounds = get_elem_list(elem, "upper_ww_bounds", float)
+        e_bounds = get_elem_list(elem, "energy_bounds", float)
         particle_type = get_text(elem, 'particle_type')
         survival_ratio = float(get_text(elem, 'survival_ratio'))
 
@@ -730,11 +730,8 @@ class WeightWindowGenerator:
 
         mesh_id = int(get_text(elem, 'mesh'))
         mesh = meshes[mesh_id]
-
-        if (energy_bounds := get_text(elem, 'energy_bounds')) is not None:
-            energy_bounds = [float(x) for x in energy_bounds.split()]
-        else:
-            energy_bounds = None
+        
+        energy_bounds = get_elem_list(elem, "energy_bounds, float")
         particle_type = get_text(elem, 'particle_type')
 
         wwg = cls(mesh, energy_bounds, particle_type)

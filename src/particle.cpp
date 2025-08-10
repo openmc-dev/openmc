@@ -32,7 +32,7 @@
 #include "openmc/track_output.h"
 #include "openmc/weight_windows.h"
 
-#ifdef DAGMC
+#ifdef OPENMC_DAGMC_ENABLED
 #include "DagMC.hpp"
 #endif
 
@@ -242,7 +242,7 @@ void Particle::event_advance()
   }
 
   // Select smaller of the two distances
-  double distance = std::min(boundary().distance, collision_distance());
+  double distance = std::min(boundary().distance(), collision_distance());
 
   // Advance particle in space and time
   // Short-term solution until the surface source is revised and we can use
@@ -298,12 +298,12 @@ void Particle::event_cross_surface()
   n_coord_last() = n_coord();
 
   // Set surface that particle is on and adjust coordinate levels
-  surface() = boundary().surface;
-  n_coord() = boundary().coord_level;
+  surface() = boundary().surface();
+  n_coord() = boundary().coord_level();
 
-  if (boundary().lattice_translation[0] != 0 ||
-      boundary().lattice_translation[1] != 0 ||
-      boundary().lattice_translation[2] != 0) {
+  if (boundary().lattice_translation()[0] != 0 ||
+      boundary().lattice_translation()[1] != 0 ||
+      boundary().lattice_translation()[2] != 0) {
     // Particle crosses lattice boundary
 
     bool verbose = settings::verbosity >= 10 || trace();
@@ -408,7 +408,7 @@ void Particle::event_collide()
   if (!model::active_tallies.empty())
     score_collision_derivative(*this);
 
-#ifdef DAGMC
+#ifdef OPENMC_DAGMC_ENABLED
   history().reset();
 #endif
 }
@@ -473,7 +473,7 @@ void Particle::event_revive_from_secondary()
 
 void Particle::event_death()
 {
-#ifdef DAGMC
+#ifdef OPENMC_DAGMC_ENABLED
   history().reset();
 #endif
 
@@ -553,7 +553,7 @@ void Particle::cross_surface(const Surface& surf)
   }
 
 // if we're crossing a CSG surface, make sure the DAG history is reset
-#ifdef DAGMC
+#ifdef OPENMC_DAGMC_ENABLED
   if (surf.geom_type() == GeometryType::CSG)
     history().reset();
 #endif
@@ -567,7 +567,7 @@ void Particle::cross_surface(const Surface& surf)
   // ==========================================================================
   // SEARCH NEIGHBOR LISTS FOR NEXT CELL
 
-#ifdef DAGMC
+#ifdef OPENMC_DAGMC_ENABLED
   // in DAGMC, we know what the next cell should be
   if (surf.geom_type() == GeometryType::DAG) {
     int32_t i_cell = next_cell(surface_index(), cell_last(n_coord() - 1),

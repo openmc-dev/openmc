@@ -19,8 +19,17 @@ namespace openmc {
 //! \return  Vector of source sites
 vector<SourceSite> mcpl_source_sites(std::string path);
 
-//! Write an MCPL source file
-//
+//! Write an MCPL source file with stat:sum metadata
+//!
+//! This function writes particle data to an MCPL file. For MCPL >= 2.1.0,
+//! it includes a stat:sum field (key: "openmc_np1") containing the total
+//! number of source particles, which is essential for proper file merging
+//! and weight normalization when using MCPL files with McStas/McXtrace.
+//!
+//! The stat:sum field follows the crash-safety pattern:
+//! - Initially set to -1 when opening (indicates incomplete file)
+//! - Updated with actual particle count before closing
+//!
 //! \param[in] filename     Path to MCPL file
 //! \param[in] source_bank  Vector of SourceSites to write to file for this
 //!                         MPI rank.

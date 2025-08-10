@@ -252,7 +252,7 @@ void Particle::event_advance()
   for (int j = 0; j < n_coord(); ++j) {
     coord(j).r() += distance * coord(j).u();
   }
-  double dt = distance / this->speed();
+  double dt = distance / speed;
   this->time() += dt;
   this->lifetime() += dt;
 

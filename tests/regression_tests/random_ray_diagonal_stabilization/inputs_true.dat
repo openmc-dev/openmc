@@ -2,36 +2,36 @@
 <model>
   <materials>
     <cross_sections>mgxs.h5</cross_sections>
-    <material depletable="true" id="1" name="UO2__2_4__">
-      <density units="macro" value="1.0"/>
+    <material id="1" name="UO2__2_4__" depletable="true">
+      <density value="1.0" units="macro"/>
       <macroscopic name="UO2__2_4__"/>
     </material>
     <material id="2" name="Zircaloy">
-      <density units="macro" value="1.0"/>
+      <density value="1.0" units="macro"/>
       <macroscopic name="Zircaloy"/>
     </material>
     <material id="3" name="Hot_borated_water">
-      <density units="macro" value="1.0"/>
+      <density value="1.0" units="macro"/>
       <macroscopic name="Hot_borated_water"/>
     </material>
   </materials>
   <geometry>
-    <cell id="1" material="1" name="Fuel" region="-1" universe="0"/>
-    <cell id="2" material="2" name="Cladding" region="1 -2" universe="0"/>
-    <cell id="3" material="3" name="Water" region="2 3 -4 5 -6" universe="0"/>
-    <surface coeffs="0 0 0.39218" id="1" name="Fuel OR" type="z-cylinder"/>
-    <surface coeffs="0 0 0.4572" id="2" name="Clad OR" type="z-cylinder"/>
-    <surface boundary="reflective" coeffs="-0.63" id="3" name="left" type="x-plane"/>
-    <surface boundary="reflective" coeffs="0.63" id="4" name="right" type="x-plane"/>
-    <surface boundary="reflective" coeffs="-0.63" id="5" name="bottom" type="y-plane"/>
-    <surface boundary="reflective" coeffs="0.63" id="6" name="top" type="y-plane"/>
+    <cell id="1" name="Fuel" material="1" region="-1" universe="0"/>
+    <cell id="2" name="Cladding" material="2" region="1 -2" universe="0"/>
+    <cell id="3" name="Water" material="3" region="2 3 -4 5 -6" universe="0"/>
+    <surface id="1" name="Fuel OR" type="z-cylinder" coeffs="0 0 0.39218"/>
+    <surface id="2" name="Clad OR" type="z-cylinder" coeffs="0 0 0.4572"/>
+    <surface id="3" name="left" type="x-plane" boundary="reflective" coeffs="-0.63"/>
+    <surface id="4" name="right" type="x-plane" boundary="reflective" coeffs="0.63"/>
+    <surface id="5" name="bottom" type="y-plane" boundary="reflective" coeffs="-0.63"/>
+    <surface id="6" name="top" type="y-plane" boundary="reflective" coeffs="0.63"/>
   </geometry>
   <settings>
     <run_mode>eigenvalue</run_mode>
     <particles>100</particles>
     <batches>20</batches>
     <inactive>15</inactive>
-    <source particle="neutron" strength="1.0" type="independent">
+    <source type="independent" strength="1.0" particle="neutron">
       <space type="box">
         <parameters>-0.63 -0.63 -1 0.63 0.63 1</parameters>
       </space>
@@ -41,7 +41,7 @@
     </source>
     <energy_mode>multi-group</energy_mode>
     <random_ray>
-      <source particle="neutron" strength="1.0" type="independent">
+      <source type="independent" strength="1.0" particle="neutron">
         <space type="box">
           <parameters>-0.63 -0.63 -1.0 0.63 0.63 1.0</parameters>
         </space>

@@ -80,8 +80,7 @@ def test_voxel_plot(run_in_tmpdir):
     geometry.export_to_xml()
     materials = openmc.Materials()
     materials.export_to_xml()
-    vox_plot = openmc.Plot()
-    vox_plot.type = 'voxel'
+    vox_plot = openmc.VoxelPlot()
     vox_plot.id = 12
     vox_plot.width = (1500., 1500., 1500.)
     vox_plot.pixels = (200, 200, 200)
@@ -97,8 +96,9 @@ def test_voxel_plot(run_in_tmpdir):
     assert Path('h5_voxel_plot.h5').is_file()
     assert Path('another_test_voxel_plot.vti').is_file()
 
-    slice_plot = openmc.Plot()
-    with pytest.raises(ValueError):
+    # SlicePlot should not have to_vtk method
+    slice_plot = openmc.SlicePlot()
+    with pytest.raises(AttributeError):
         slice_plot.to_vtk('shimmy.vti')
 
 
@@ -160,7 +160,7 @@ def test_from_geometry():
 
 
 def test_highlight_domains():
-    plot = openmc.Plot()
+    plot = openmc.SlicePlot()
     plot.color_by = 'material'
     plots = openmc.Plots([plot])
 
@@ -200,11 +200,11 @@ def test_to_xml_element_proj(myprojectionplot):
 
 
 def test_plots(run_in_tmpdir):
-    p1 = openmc.Plot(name='plot1')
+    p1 = openmc.SlicePlot(name='plot1')
     p1.origin = (5., 5., 5.)
     p1.colors = {10: (255, 100, 0)}
     p1.mask_components = [2, 4, 6]
-    p2 = openmc.Plot(name='plot2')
+    p2 = openmc.SlicePlot(name='plot2')
     p2.origin = (-3., -3., -3.)
     plots = openmc.Plots([p1, p2])
     assert len(plots) == 2
@@ -213,7 +213,7 @@ def test_plots(run_in_tmpdir):
     plots = openmc.Plots([p1, p2, p3])
     assert len(plots) == 3
 
-    p4 = openmc.Plot(name='plot4')
+    p4 = openmc.VoxelPlot(name='plot4')
     plots.append(p4)
     assert len(plots) == 4
 
@@ -288,10 +288,9 @@ def test_phong_plot_roundtrip():
 def test_plot_directory(run_in_tmpdir):
     pwr_pin = openmc.examples.pwr_pin_cell()
 
-    # create a standard plot, expected to work
-    plot = openmc.Plot()
+    # create a standard slice plot, expected to work
+    plot = openmc.SlicePlot()
     plot.filename = 'plot_1'
-    plot.type = 'slice'
     plot.pixels = (10, 10)
     plot.color_by = 'material'
     plot.width = (100., 100.)

@@ -1091,6 +1091,7 @@ class VoxelPlot(PlotBase):
         super().__init__(plot_id, name)
         self._width = [4.0, 4.0, 4.0]
         self._origin = [0., 0., 0.]
+        self._pixels = [400, 400, 400]
 
     @property
     def pixels(self):

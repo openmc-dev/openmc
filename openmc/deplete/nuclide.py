@@ -314,7 +314,7 @@ class Nuclide:
 
         sfy_elem = element.find('spont_fission_yields')
         if sfy_elem is not None:
-            # Check for use of FPY from other nuclide
+            # Check for use of SFY from other nuclide
             parent = sfy_elem.get('parent')
             if parent is not None:
                 assert root is not None

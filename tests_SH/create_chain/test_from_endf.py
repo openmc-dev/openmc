@@ -47,7 +47,7 @@ mychain = mychain.from_endf(decay_files,nfy_files,xs_files,sfy_files)
 agree = True
 i = mychain.nuclide_dict['U238']
 for product in mychain.spont_fission_yields[0]['U238'].keys():
-    agree = agree and mychain.spont_fission_yields[0]['U238'][product] == mychain.nuclides[i].spont_yield_data[0][product]
+    agree = agree and mychain.spont_fission_yields[0]['U238'][product] == mychain.nuclides[i].spont_yield_data[float('inf')][product]
 print("Does information in Nuclide classes agree with spont_fission_yields?",agree)
 print("")
 

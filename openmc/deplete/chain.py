@@ -459,6 +459,7 @@ class Chain:
         missing_sfy = []
         missing_fp = []
         missing_sfp = []
+        sfp_without_fp = []
 
         chain = cls()
         for idx, parent in enumerate(sorted(decay_data, key=openmc.data.zam)):
@@ -560,8 +561,8 @@ class Chain:
                     nuclide._fpy = replace_missing_fpy(parent, fpy_data, decay_data)
                     missing_fpy.append((parent, nuclide._fpy))
             
-            #spontaneous fission yield data
-            if 'sf' in [nuclide.decay_modes[i].type for i in range(len(nuclide.decay_modes))]:
+            # Spontaneous fission yield data
+            if 'sf' in [decay_mode.type for decay_mode in nuclide.decay_modes]:
                 if parent in sfy_data:
                     sfy = sfy_data[parent]
 
@@ -580,12 +581,15 @@ class Chain:
 
                         if yield_replace > 0.0:
                             missing_sfp.append((parent, yield_replace))
-                        yield_data[0.0] = yields
+                        yield_data[float('inf')] = yields
 
                     nuclide.spont_yield_data = FissionYieldDistribution(yield_data)
                 else: 
                     nuclide._sfy = replace_missing_sfy(parent, sfy_data, decay_data)
                     missing_sfy.append((parent, nuclide._sfy))
+
+                if not fissionable:
+                    sfp_without_fp.append(parent)
 
             
 
@@ -639,6 +643,11 @@ class Chain:
             print('The following nuclides have spontaneous fission products with no decay data:')
             for vals in missing_sfp:
                 print('  {}, (total yield={})'.format(*vals))
+
+        if sfp_without_fp:
+            print('The following nuclides have spontaneous fission products but no induced fission products:')
+            for parent in sfp_without_fp:
+                print(f'  {parent}')
 
 
         return chain
@@ -731,7 +740,7 @@ class Chain:
         for nuc in self.nuclides:
             if nuc.spont_yield_data is None:
                 continue
-            yield_obj = nuc.spont_yield_data[0.0]
+            yield_obj = nuc.spont_yield_data[float('inf')]
             out[nuc.name] = dict(yield_obj)
         return out
 

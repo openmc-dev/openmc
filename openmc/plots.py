@@ -689,13 +689,25 @@ class SlicePlot(PlotBase):
         self._meshlines = None
 
     @property
+    def pixels(self):
+        return self._pixels
+
+    @pixels.setter
+    def pixels(self, pixels):
+        cv.check_type('plot pixels', pixels, Iterable, Integral)
+        cv.check_length('plot pixels', pixels, 2, 2)
+        for dim in pixels:
+            cv.check_greater_than('plot pixels', dim, 0)
+        self._pixels = pixels
+
+    @property
     def width(self):
         return self._width
 
     @width.setter
     def width(self, width):
         cv.check_type('plot width', width, Iterable, Real)
-        cv.check_length('plot width', width, 2)
+        cv.check_length('plot width', width, 2, 2)
         self._width = width
 
     @property
@@ -1087,7 +1099,7 @@ class VoxelPlot(PlotBase):
     @pixels.setter
     def pixels(self, pixels):
         cv.check_type('plot pixels', pixels, Iterable, Integral)
-        cv.check_length('plot pixels', pixels, 3)
+        cv.check_length('plot pixels', pixels, 3, 3)
         for dim in pixels:
             cv.check_greater_than('plot pixels', dim, 0)
         self._pixels = pixels
@@ -1099,7 +1111,7 @@ class VoxelPlot(PlotBase):
     @width.setter
     def width(self, width):
         cv.check_type('plot width', width, Iterable, Real)
-        cv.check_length('plot width', width, 3)
+        cv.check_length('plot width', width, 3, 3)
         self._width = width
 
     @property

@@ -2259,6 +2259,14 @@ class RootResult:
     flag: str
 
 
+# TODO: Consistent use of bracket vs x0, x1
+# TODO: Account for min/max search interval (vs initial points)
+# TODO: Allow for passing a single x0 value?
+# TODO: Clean up use of g0, g1
+# TODO: Reporting total number of generations?
+# TODO: Fit on sigam vs g is done with last 4 points. Change this?
+# TODO: Change order of attributes in RootResult / change return datatype?
+
 def root_scalar_grsecant(
     f,
     x0: float,
@@ -2334,21 +2342,20 @@ def root_scalar_grsecant(
 
         # ---------- Step 3: choose generations to hit σ_target (Appendix C)
 
-        # Use at least two past points for regression; otherwise, assume r≈0.5
-        if len(gs) >= 4 and np.var(np.log(gs)) > 0.0:
-            # Perform a curve fit on ln(sigma) = ln(k) - r*ln(g) to solve for
-            # ln(k) and r.
-            popt, _ = curve_fit(
-                lambda ln_g, ln_k, r: ln_k - r*ln_g,
-                np.log(gs), np.log(ss), absolute_sigma=False
+        # Use at least two past points for regression
+        if len(gs) >= 2 and np.var(np.log(gs)) > 0.0:
+            # Perform a curve fit based on Eq. (C.3) to solve for ln(k). Note
+            # that unlike the paper, we do not leave r as an undetermined
+            # parameter and choose r=0.5.
+            (ln_k,), _ = curve_fit(
+                lambda ln_g, ln_k: ln_k - 0.5*ln_g,
+                np.log(gs[-4:]), np.log(ss[-4:]),
             )
-            ln_k, r = popt
             k = float(np.exp(ln_k))
         else:
-            r = 0.5
-            k = float(ss[-1] * gs[-1]**r)
+            k = float(ss[-1] * math.sqrt(gs[-1]))
 
-        g_new = (k / sig_target) ** (1 / r)
+        g_new = (k / sig_target) ** 2
 
         # Clamp and round up to integer
         g_new = max(min_g, math.ceil(g_new))
@@ -2357,8 +2364,6 @@ def root_scalar_grsecant(
 
         # Evaluate at proposed x with chosen effort
         f_new, s_new = eval_at(x_new, g_new)
-
-        #print(f'param_k={k}, {r=}, {sig_target=}, {g_new=}, {f_new=}, {s_new=}')
 
         # Termination: both criteria (|f| and σ) as in the paper
         if (abs(f_new) <= k_tol and s_new <= sigma_final):

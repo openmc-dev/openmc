@@ -2266,6 +2266,7 @@ class RootResult:
 # TODO: Reporting total number of generations?
 # TODO: Fit on sigam vs g is done with last 4 points. Change this?
 # TODO: Change order of attributes in RootResult / change return datatype?
+# TODO: Support use of openmc.lib
 
 def root_scalar_grsecant(
     f,

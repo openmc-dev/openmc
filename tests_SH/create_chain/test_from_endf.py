@@ -1,4 +1,6 @@
 import os
+import time
+import sys
 import copy
 import openmc
 import openmc.deplete
@@ -11,6 +13,8 @@ import matplotlib.pyplot as plt
 
 #initiate an instance of the Chain class
 mychain = openmc.deplete.Chain()
+
+start_time = time.perf_counter()
 
 #Find all relevant endf files
 decay_files = []
@@ -40,8 +44,15 @@ for file in os.listdir(sfy_folder):
         sfy_files.append(sfy_folder + file)
 
 #Create the chain by reading from endf files
-mychain = mychain.from_endf(decay_files,nfy_files,xs_files,sfy_files)
+#mychain = mychain.from_endf(decay_files,nfy_files,xs_files,sfy_files)
+mychain = mychain.from_endf(decay_files,nfy_files,xs_files,[])
 
+end_time = time.perf_counter()
+
+elapsed_time = end_time - start_time
+print(elapsed_time)
+
+sys.exit()
 
 #Check whether information in Nuclide classes included in mychain agree with the attribute spont_fission_yields
 agree = True
@@ -68,6 +79,7 @@ print("yield_energies",mychain.nuclides[i].yield_energies)
 print("")
 
 
+
 #Check whether all nuclides with sf branching ratio include fission yields.
 sfy = True
 for iso_index in list(mychain.nuclide_dict.values()):
@@ -76,6 +88,18 @@ for iso_index in list(mychain.nuclide_dict.values()):
         sfy = sfy and (mychain.nuclides[iso_index].spont_yield_data is not None)
 print("All nuclides with sf branching ratios include fission yields", sfy)
 
+
+#Check how many nuclides have spontaneous fission yields and neutron-induced yield. 
+n_sf = 0
+n_fp = 0
+for iso_index in list(mychain.nuclide_dict.values()):
+    if mychain.nuclides[iso_index].spont_yield_data is not None:
+        n_sf += 1
+    if mychain.nuclides[iso_index].yield_data is not None:
+        n_fp += 1
+
+print(n_sf," nuclides with spontaneous fission yields.")
+print(n_fp," nuclides with neutron-induced fission yields.")
 
 ######################################################################################
 #           Can read and write xml files with information about chains including spont. fission

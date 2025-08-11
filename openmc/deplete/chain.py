@@ -25,6 +25,11 @@ from .nuclide import FissionYieldDistribution, Nuclide
 import openmc.data
 
 
+# Configurable switch that enables / disables the inclusion
+# of spontantous fission yields when calculating the matrix in 
+# the Batemans equation.
+INCLUDE_SPONT_FISSION = True
+
 # tuple of (possible MT values, secondaries)
 ReactionInfo = namedtuple('ReactionInfo', ('mts', 'secondaries'))
 
@@ -793,7 +798,7 @@ class Chain:
                     # Allow for total annihilation for debug purposes
                     if branch_val != 0.0:
                         if decay_type == "sf":
-                            if nuc.spont_yield_data is not None: 
+                            if INCLUDE_SPONT_FISSION and nuc.spont_yield_data is not None: 
                                 for product, y in spont_fission_yields[nuc.name].items():
                                     yield_val = y * branch_val
                                     if yield_val != 0.0:

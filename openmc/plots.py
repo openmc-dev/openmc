@@ -624,13 +624,14 @@ class PlotBase(IDManagerMixin):
         return element
 
 
-class Plot(PlotBase):
-    """Definition of a finite region of space to be plotted.
+class SlicePlot(PlotBase):
+    """Definition of a 2D slice plot of the geometry.
 
-    OpenMC is capable of generating two-dimensional slice plots, or
-    three-dimensional voxel or projection plots. Colors that are used in plots can be given as
-    RGB tuples, e.g. (255, 255, 255) would be white, or by a string indicating a
+    Colors that are used in plots can be given as RGB tuples, e.g. 
+    (255, 255, 255) would be white, or by a string indicating a
     valid `SVG color <https://www.w3.org/TR/SVG11/types.html#ColorKeywords>`_.
+
+    .. versionadded:: 0.15.1
 
     Parameters
     ----------
@@ -646,7 +647,7 @@ class Plot(PlotBase):
     name : str
         Name of the plot
     pixels : Iterable of int
-        Number of pixels to use in each direction
+        Number of pixels to use in each direction (2 values)
     filename : str
         Path to write the plot to
     color_by : {'cell', 'material'}
@@ -669,11 +670,9 @@ class Plot(PlotBase):
     level : int
         Universe depth to plot at
     width : Iterable of float
-        Width of the plot in each basis direction
+        Width of the plot in each basis direction (2 values)
     origin : tuple or list of ndarray
-        Origin (center) of the plot
-    type : {'slice', 'voxel'}
-        The type of the plot
+        Origin (center) of the plot (3 values)
     basis : {'xy', 'xz', 'yz'}
         The basis directions for the plot
     meshlines : dict
@@ -686,7 +685,6 @@ class Plot(PlotBase):
         super().__init__(plot_id, name)
         self._width = [4.0, 4.0]
         self._origin = [0., 0., 0.]
-        self._type = 'slice'
         self._basis = 'xy'
         self._meshlines = None
 
@@ -697,7 +695,7 @@ class Plot(PlotBase):
     @width.setter
     def width(self, width):
         cv.check_type('plot width', width, Iterable, Real)
-        cv.check_length('plot width', width, 2, 3)
+        cv.check_length('plot width', width, 2)
         self._width = width
 
     @property
@@ -709,15 +707,6 @@ class Plot(PlotBase):
         cv.check_type('plot origin', origin, Iterable, Real)
         cv.check_length('plot origin', origin, 3)
         self._origin = origin
-
-    @property
-    def type(self):
-        return self._type
-
-    @type.setter
-    def type(self, plottype):
-        cv.check_value('plot type', plottype, ['slice', 'voxel'])
-        self._type = plottype
 
     @property
     def basis(self):
@@ -761,11 +750,10 @@ class Plot(PlotBase):
         self._meshlines = meshlines
 
     def __repr__(self):
-        string = 'Plot\n'
+        string = 'SlicePlot\n'
         string += '{: <16}=\t{}\n'.format('\tID', self._id)
         string += '{: <16}=\t{}\n'.format('\tName', self._name)
         string += '{: <16}=\t{}\n'.format('\tFilename', self._filename)
-        string += '{: <16}=\t{}\n'.format('\tType', self._type)
         string += '{: <16}=\t{}\n'.format('\tBasis', self._basis)
         string += '{: <16}=\t{}\n'.format('\tWidth', self._width)
         string += '{: <16}=\t{}\n'.format('\tOrigin', self._origin)
@@ -881,7 +869,7 @@ class Plot(PlotBase):
                 self._colors[domain] = (r, g, b)
 
     def to_xml_element(self):
-        """Return XML representation of the slice/voxel plot
+        """Return XML representation of the slice plot
 
         Returns
         -------
@@ -891,10 +879,8 @@ class Plot(PlotBase):
         """
 
         element = super().to_xml_element()
-        element.set("type", self._type)
-
-        if self._type == 'slice':
-            element.set("basis", self._basis)
+        element.set("type", "slice")
+        element.set("basis", self._basis)
 
         subelement = ET.SubElement(element, "origin")
         subelement.text = ' '.join(map(str, self._origin))
@@ -940,8 +926,8 @@ class Plot(PlotBase):
 
         Returns
         -------
-        openmc.Plot
-            Plot object
+        openmc.SlicePlot
+            SlicePlot object
 
         """
         plot_id = int(elem.get("id"))
@@ -950,9 +936,7 @@ class Plot(PlotBase):
         if "filename" in elem.keys():
             plot.filename = elem.get("filename")
         plot.color_by = elem.get("color_by")
-        plot.type = elem.get("type")
-        if plot.type == 'slice':
-            plot.basis = elem.get("basis")
+        plot.basis = elem.get("basis")
 
         plot.origin = get_elem_tuple(elem, "origin", float)
         plot.width = get_elem_tuple(elem, "width", float)
@@ -1037,9 +1021,492 @@ class Plot(PlotBase):
         # Return produced image
         return _get_plot_image(self, cwd)
 
+
+
+class VoxelPlot(PlotBase):
+    """Definition of a 3D voxel plot of the geometry.
+
+    Colors that are used in plots can be given as RGB tuples, e.g. 
+    (255, 255, 255) would be white, or by a string indicating a
+    valid `SVG color <https://www.w3.org/TR/SVG11/types.html#ColorKeywords>`_.
+
+    .. versionadded:: 0.15.1
+
+    Parameters
+    ----------
+    plot_id : int
+        Unique identifier for the plot
+    name : str
+        Name of the plot
+
+    Attributes
+    ----------
+    id : int
+        Unique identifier
+    name : str
+        Name of the plot
+    pixels : Iterable of int
+        Number of pixels to use in each direction (3 values)
+    filename : str
+        Path to write the plot to
+    color_by : {'cell', 'material'}
+        Indicate whether the plot should be colored by cell or by material
+    background : Iterable of int or str
+        Color of the background
+    mask_components : Iterable of openmc.Cell or openmc.Material or int
+        The cells or materials (or corresponding IDs) to mask
+    mask_background : Iterable of int or str
+        Color to apply to all cells/materials listed in mask_components
+    show_overlaps : bool
+        Indicate whether or not overlapping regions are shown
+    overlap_color : Iterable of int or str
+        Color to apply to overlapping regions
+    colors : dict
+        Dictionary indicating that certain cells/materials should be
+        displayed with a particular color. The keys can be of type
+        :class:`~openmc.Cell`, :class:`~openmc.Material`, or int (ID for a
+        cell/material).
+    level : int
+        Universe depth to plot at
+    width : Iterable of float
+        Width of the plot in each dimension (3 values)
+    origin : tuple or list of ndarray
+        Origin (center) of the plot (3 values)
+
+    """
+
+    def __init__(self, plot_id=None, name=''):
+        super().__init__(plot_id, name)
+        self._width = [4.0, 4.0, 4.0]
+        self._origin = [0., 0., 0.]
+
+    @property
+    def pixels(self):
+        return self._pixels
+
+    @pixels.setter
+    def pixels(self, pixels):
+        cv.check_type('plot pixels', pixels, Iterable, Integral)
+        cv.check_length('plot pixels', pixels, 3)
+        for dim in pixels:
+            cv.check_greater_than('plot pixels', dim, 0)
+        self._pixels = pixels
+
+    @property
+    def width(self):
+        return self._width
+
+    @width.setter
+    def width(self, width):
+        cv.check_type('plot width', width, Iterable, Real)
+        cv.check_length('plot width', width, 3)
+        self._width = width
+
+    @property
+    def origin(self):
+        return self._origin
+
+    @origin.setter
+    def origin(self, origin):
+        cv.check_type('plot origin', origin, Iterable, Real)
+        cv.check_length('plot origin', origin, 3)
+        self._origin = origin
+
+    def __repr__(self):
+        string = 'VoxelPlot\n'
+        string += '{: <16}=\t{}\n'.format('\tID', self._id)
+        string += '{: <16}=\t{}\n'.format('\tName', self._name)
+        string += '{: <16}=\t{}\n'.format('\tFilename', self._filename)
+        string += '{: <16}=\t{}\n'.format('\tWidth', self._width)
+        string += '{: <16}=\t{}\n'.format('\tOrigin', self._origin)
+        string += '{: <16}=\t{}\n'.format('\tPixels', self._pixels)
+        string += '{: <16}=\t{}\n'.format('\tColor by', self._color_by)
+        string += '{: <16}=\t{}\n'.format('\tBackground', self._background)
+        string += '{: <16}=\t{}\n'.format('\tMask components',
+                                          self._mask_components)
+        string += '{: <16}=\t{}\n'.format('\tMask background',
+                                          self._mask_background)
+        string += '{: <16}=\t{}\n'.format('\tOverlap Color',
+                                          self._overlap_color)
+        string += '{: <16}=\t{}\n'.format('\tColors', self._colors)
+        string += '{: <16}=\t{}\n'.format('\tLevel', self._level)
+        return string
+
+    def to_xml_element(self):
+        """Return XML representation of the voxel plot
+
+        Returns
+        -------
+        element : lxml.etree._Element
+            XML element containing plot data
+
+        """
+
+        element = super().to_xml_element()
+        element.set("type", "voxel")
+
+        subelement = ET.SubElement(element, "origin")
+        subelement.text = ' '.join(map(str, self._origin))
+
+        subelement = ET.SubElement(element, "width")
+        subelement.text = ' '.join(map(str, self._width))
+
+        if self._colors:
+            self._colors_to_xml(element)
+
+        if self._show_overlaps:
+            subelement = ET.SubElement(element, "show_overlaps")
+            subelement.text = "true"
+
+            if self._overlap_color is not None:
+                color = self._overlap_color
+                if isinstance(color, str):
+                    color = _SVG_COLORS[color.lower()]
+                subelement = ET.SubElement(element, "overlap_color")
+                subelement.text = ' '.join(str(x) for x in color)
+
+        return element
+
+    @classmethod
+    def from_xml_element(cls, elem):
+        """Generate plot object from an XML element
+
+        Parameters
+        ----------
+        elem : lxml.etree._Element
+            XML element
+
+        Returns
+        -------
+        openmc.VoxelPlot
+            VoxelPlot object
+
+        """
+        plot_id = int(elem.get("id"))
+        name = get_text(elem, 'name', '')
+        plot = cls(plot_id, name)
+        if "filename" in elem.keys():
+            plot.filename = elem.get("filename")
+        plot.color_by = elem.get("color_by")
+
+        plot.origin = get_elem_tuple(elem, "origin", float)
+        plot.width = get_elem_tuple(elem, "width", float)
+        plot.pixels = get_elem_tuple(elem, "pixels")
+        plot._background = get_elem_tuple(elem, "background")
+
+        # Set plot colors
+        colors = {}
+        for color_elem in elem.findall("color"):
+            uid = int(color_elem.get("id"))
+            colors[uid] = tuple([int(x)
+                                for x in color_elem.get("rgb").split()])
+        plot.colors = colors
+
+        # Set masking information
+        mask_elem = elem.find("mask")
+        if mask_elem is not None:
+            plot.mask_components = [
+                int(x) for x in mask_elem.get("components").split()]
+            background = mask_elem.get("background")
+            if background is not None:
+                plot.mask_background = tuple(
+                    [int(x) for x in background.split()])
+
+        # show overlaps
+        overlap_elem = elem.find("show_overlaps")
+        if overlap_elem is not None:
+            plot.show_overlaps = (overlap_elem.text in ('true', '1'))
+        overlap_color = get_elem_tuple(elem, "overlap_color")
+        if overlap_color is not None:
+            plot.overlap_color = overlap_color
+
+        # Set universe level
+        level = elem.find("level")
+        if level is not None:
+            plot.level = int(level.text)
+
+        return plot
+
+    def to_ipython_image(self, openmc_exec='openmc', cwd='.'):
+        """Render plot as an image
+
+        This method runs OpenMC in plotting mode to produce a .png file.
+
+        .. versionchanged:: 0.13.0
+            The *convert_exec* argument was removed since OpenMC now produces
+            .png images directly.
+
+        Parameters
+        ----------
+        openmc_exec : str
+            Path to OpenMC executable
+        cwd : str, optional
+            Path to working directory to run in
+
+        Returns
+        -------
+        IPython.display.Image
+            Image generated
+
+        """
+        # Create plots.xml
+        Plots([self]).export_to_xml(cwd)
+
+        # Run OpenMC in geometry plotting mode
+        openmc.plot_geometry(False, openmc_exec, cwd)
+
+        # Return produced image
+        return _get_plot_image(self, cwd)
+
     def to_vtk(self, output: PathLike | None = None,
                openmc_exec: str = 'openmc', cwd: str = '.'):
-        """Render plot as an voxel image
+        """Render plot as a voxel image
+
+        This method runs OpenMC in plotting mode to produce a .vti file.
+
+        .. versionadded:: 0.14.0
+
+        Parameters
+        ----------
+        output : path-like
+            Path of the output .vti file produced
+        openmc_exec : str
+            Path to OpenMC executable
+        cwd : str, optional
+            Path to working directory to run in
+
+        Returns
+        -------
+        Path
+            Path of the .vti file produced
+
+        """
+        # Create plots.xml
+        Plots([self]).export_to_xml(cwd)
+
+        # Run OpenMC in geometry plotting mode and produces a h5 file
+        openmc.plot_geometry(False, openmc_exec, cwd)
+
+        h5_voxel_filename = self.filename if self.filename is not None else f'plot_{self.id}'
+
+        # Add file extension if not already present
+        if Path(h5_voxel_filename).suffix != ".h5":
+            h5_voxel_filename += ".h5"
+
+        h5_voxel_file = Path(cwd) / h5_voxel_filename
+        if output is None:
+            output = h5_voxel_file.with_suffix('.vti')
+
+        return voxel_to_vtk(h5_voxel_file, output)
+
+
+class Plot(SlicePlot):
+    """Legacy Plot class for backward compatibility.
+
+    .. deprecated:: 0.15.1
+        Use :class:`SlicePlot` for 2D slice plots or :class:`VoxelPlot` for 3D voxel plots.
+
+    """
+
+    def __init__(self, plot_id=None, name=''):
+        import warnings
+        warnings.warn(
+            "The Plot class is deprecated. Use SlicePlot for 2D slice plots "
+            "or VoxelPlot for 3D voxel plots.",
+            DeprecationWarning,
+            stacklevel=2
+        )
+        super().__init__(plot_id, name)
+        self._type = 'slice'
+
+    @property
+    def type(self):
+        return self._type
+
+    @type.setter
+    def type(self, plottype):
+        cv.check_value('plot type', plottype, ['slice', 'voxel'])
+        self._type = plottype
+
+    @property
+    def width(self):
+        return self._width
+
+    @width.setter
+    def width(self, width):
+        cv.check_type('plot width', width, Iterable, Real)
+        cv.check_length('plot width', width, 2, 3)
+        self._width = width
+
+    @property
+    def pixels(self):
+        return self._pixels
+
+    @pixels.setter
+    def pixels(self, pixels):
+        cv.check_type('plot pixels', pixels, Iterable, Integral)
+        cv.check_length('plot pixels', pixels, 2, 3)
+        for dim in pixels:
+            cv.check_greater_than('plot pixels', dim, 0)
+        self._pixels = pixels
+
+    def to_xml_element(self):
+        """Return XML representation of the plot
+
+        Returns
+        -------
+        element : lxml.etree._Element
+            XML element containing plot data
+
+        """
+        if self._type == 'voxel':
+            # Convert to VoxelPlot for proper XML generation
+            voxel_plot = VoxelPlot(self.id, self.name)
+            voxel_plot._width = self._width
+            voxel_plot._origin = self._origin
+            voxel_plot._pixels = self._pixels
+            voxel_plot._filename = self._filename
+            voxel_plot._color_by = self._color_by
+            voxel_plot._background = self._background
+            voxel_plot._mask_components = self._mask_components
+            voxel_plot._mask_background = self._mask_background
+            voxel_plot._show_overlaps = self._show_overlaps
+            voxel_plot._overlap_color = self._overlap_color
+            voxel_plot._colors = self._colors
+            voxel_plot._level = self._level
+            return voxel_plot.to_xml_element()
+        else:
+            # Use parent SlicePlot implementation
+            return super().to_xml_element()
+
+    @classmethod
+    def from_xml_element(cls, elem):
+        """Generate plot object from an XML element
+
+        Parameters
+        ----------
+        elem : lxml.etree._Element
+            XML element
+
+        Returns
+        -------
+        openmc.Plot
+            Plot object
+
+        """
+        plot_type = elem.get('type')
+        if plot_type == 'voxel':
+            # Create a Plot but with voxel type
+            plot_id = int(elem.get("id"))
+            name = get_text(elem, 'name', '')
+            plot = cls(plot_id, name)
+            plot._type = 'voxel'
+            if "filename" in elem.keys():
+                plot.filename = elem.get("filename")
+            plot.color_by = elem.get("color_by")
+            
+            plot.origin = get_elem_tuple(elem, "origin", float)
+            plot.width = get_elem_tuple(elem, "width", float)
+            plot.pixels = get_elem_tuple(elem, "pixels")
+            plot._background = get_elem_tuple(elem, "background")
+            
+            # Set plot colors
+            colors = {}
+            for color_elem in elem.findall("color"):
+                uid = int(color_elem.get("id"))
+                colors[uid] = tuple([int(x)
+                                    for x in color_elem.get("rgb").split()])
+            plot.colors = colors
+            
+            # Set masking information
+            mask_elem = elem.find("mask")
+            if mask_elem is not None:
+                plot.mask_components = [
+                    int(x) for x in mask_elem.get("components").split()]
+                background = mask_elem.get("background")
+                if background is not None:
+                    plot.mask_background = tuple(
+                        [int(x) for x in background.split()])
+            
+            # show overlaps
+            overlap_elem = elem.find("show_overlaps")
+            if overlap_elem is not None:
+                plot.show_overlaps = (overlap_elem.text in ('true', '1'))
+            overlap_color = get_elem_tuple(elem, "overlap_color")
+            if overlap_color is not None:
+                plot.overlap_color = overlap_color
+            
+            # Set universe level
+            level = elem.find("level")
+            if level is not None:
+                plot.level = int(level.text)
+            
+            return plot
+        else:
+            # Use SlicePlot.from_xml_element but return as Plot
+            plot_id = int(elem.get("id"))
+            name = get_text(elem, 'name', '')
+            plot = cls(plot_id, name)
+            if "filename" in elem.keys():
+                plot.filename = elem.get("filename")
+            plot.color_by = elem.get("color_by")
+            plot.basis = elem.get("basis")
+            
+            plot.origin = get_elem_tuple(elem, "origin", float)
+            plot.width = get_elem_tuple(elem, "width", float)
+            plot.pixels = get_elem_tuple(elem, "pixels")
+            plot._background = get_elem_tuple(elem, "background")
+            
+            # Set plot colors
+            colors = {}
+            for color_elem in elem.findall("color"):
+                uid = int(color_elem.get("id"))
+                colors[uid] = tuple([int(x)
+                                    for x in color_elem.get("rgb").split()])
+            plot.colors = colors
+            
+            # Set masking information
+            mask_elem = elem.find("mask")
+            if mask_elem is not None:
+                plot.mask_components = [
+                    int(x) for x in mask_elem.get("components").split()]
+                background = mask_elem.get("background")
+                if background is not None:
+                    plot.mask_background = tuple(
+                        [int(x) for x in background.split()])
+            
+            # show overlaps
+            overlap_elem = elem.find("show_overlaps")
+            if overlap_elem is not None:
+                plot.show_overlaps = (overlap_elem.text in ('true', '1'))
+            overlap_color = get_elem_tuple(elem, "overlap_color")
+            if overlap_color is not None:
+                plot.overlap_color = overlap_color
+            
+            # Set universe level
+            level = elem.find("level")
+            if level is not None:
+                plot.level = int(level.text)
+            
+            # Set meshlines
+            mesh_elem = elem.find("meshlines")
+            if mesh_elem is not None:
+                meshlines = {'type': mesh_elem.get('meshtype')}
+                if 'id' in mesh_elem.keys():
+                    meshlines['id'] = int(mesh_elem.get('id'))
+                if 'linewidth' in mesh_elem.keys():
+                    meshlines['linewidth'] = int(mesh_elem.get('linewidth'))
+                if 'color' in mesh_elem.keys():
+                    meshlines['color'] = tuple(
+                        [int(x) for x in mesh_elem.get('color').split()]
+                    )
+                plot.meshlines = meshlines
+            
+            return plot
+
+    def to_vtk(self, output: PathLike | None = None,
+               openmc_exec: str = 'openmc', cwd: str = '.'):
+        """Render plot as a voxel image
 
         This method runs OpenMC in plotting mode to produce a .vti file.
 
@@ -1063,24 +1530,23 @@ class Plot(PlotBase):
         if self.type != 'voxel':
             raise ValueError(
                 'Generating a VTK file only works for voxel plots')
-
-        # Create plots.xml
-        Plots([self]).export_to_xml(cwd)
-
-        # Run OpenMC in geometry plotting mode and produces a h5 file
-        openmc.plot_geometry(False, openmc_exec, cwd)
-
-        h5_voxel_filename = self.filename if self.filename is not None else f'plot_{self.id}'
-
-        # Add file extension if not already present
-        if Path(h5_voxel_filename).suffix != ".h5":
-            h5_voxel_filename += ".h5"
-
-        h5_voxel_file = Path(cwd) / h5_voxel_filename
-        if output is None:
-            output = h5_voxel_file.with_suffix('.vti')
-
-        return voxel_to_vtk(h5_voxel_file, output)
+        
+        # Convert to VoxelPlot and call its to_vtk method
+        voxel_plot = VoxelPlot(self.id, self.name)
+        voxel_plot._width = self._width
+        voxel_plot._origin = self._origin
+        voxel_plot._pixels = self._pixels
+        voxel_plot._filename = self._filename
+        voxel_plot._color_by = self._color_by
+        voxel_plot._background = self._background
+        voxel_plot._mask_components = self._mask_components
+        voxel_plot._mask_background = self._mask_background
+        voxel_plot._show_overlaps = self._show_overlaps
+        voxel_plot._overlap_color = self._overlap_color
+        voxel_plot._colors = self._colors
+        voxel_plot._level = self._level
+        
+        return voxel_plot.to_vtk(output, openmc_exec, cwd)
 
 
 class RayTracePlot(PlotBase):
@@ -1904,8 +2370,13 @@ class Plots(cv.CheckedList):
                 plots.append(WireframeRayTracePlot.from_xml_element(e))
             elif plot_type == 'solid_raytrace':
                 plots.append(SolidRayTracePlot.from_xml_element(e))
-            elif plot_type in ('slice', 'voxel'):
-                plots.append(Plot.from_xml_element(e))
+            elif plot_type == 'slice':
+                plots.append(SlicePlot.from_xml_element(e))
+            elif plot_type == 'voxel':
+                plots.append(VoxelPlot.from_xml_element(e))
+            elif plot_type is None:
+                # For backward compatibility, assume slice if no type specified
+                plots.append(SlicePlot.from_xml_element(e))
             else:
                 raise ValueError("Unknown plot type: {}".format(plot_type))
         return plots

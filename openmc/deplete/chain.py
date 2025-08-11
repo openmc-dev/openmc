@@ -366,7 +366,7 @@ class Chain:
                 self.reactions.append(rx.type)
 
     @classmethod
-    def from_endf(cls, decay_files, fpy_files, neutron_files, sfy_files,
+    def from_endf(cls, decay_files, fpy_files, neutron_files, sfy_files=[],
         reactions=('(n,2n)', '(n,3n)', '(n,4n)', '(n,gamma)', '(n,p)', '(n,a)'),
         progress=True
     ):

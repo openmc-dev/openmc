@@ -1,5 +1,4 @@
 import os
-import time
 import sys
 import copy
 import openmc
@@ -14,7 +13,6 @@ import matplotlib.pyplot as plt
 #initiate an instance of the Chain class
 mychain = openmc.deplete.Chain()
 
-start_time = time.perf_counter()
 
 #Find all relevant endf files
 decay_files = []
@@ -44,15 +42,8 @@ for file in os.listdir(sfy_folder):
         sfy_files.append(sfy_folder + file)
 
 #Create the chain by reading from endf files
-#mychain = mychain.from_endf(decay_files,nfy_files,xs_files,sfy_files)
-mychain = mychain.from_endf(decay_files,nfy_files,xs_files,[])
+mychain = mychain.from_endf(decay_files,nfy_files,xs_files,sfy_files)
 
-end_time = time.perf_counter()
-
-elapsed_time = end_time - start_time
-print(elapsed_time)
-
-sys.exit()
 
 #Check whether information in Nuclide classes included in mychain agree with the attribute spont_fission_yields
 agree = True

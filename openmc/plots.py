@@ -1512,6 +1512,38 @@ class Plot(SlicePlot):
             
             return plot
 
+    @classmethod 
+    def from_geometry(cls, geometry,
+                      basis: str = 'xy',
+                      slice_coord: float = 0.):
+        """Generate plot from a geometry object
+        
+        Parameters
+        ----------
+        geometry : openmc.Geometry
+            Geometry object to create plot from
+        basis : {'xy', 'xz', 'yz'}
+            The basis directions
+        slice_coord : float
+            The position of the slice
+            
+        Returns
+        -------
+        openmc.Plot
+            Plot object
+            
+        """
+        import warnings
+        # Suppress deprecation warning when called as class method
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", DeprecationWarning)
+            plot = super().from_geometry(geometry, basis, slice_coord)
+            # Convert from SlicePlot to Plot
+            new_plot = cls.__new__(cls)
+            new_plot.__dict__.update(plot.__dict__)
+            new_plot._type = 'slice'
+            return new_plot
+
     def to_vtk(self, output: PathLike | None = None,
                openmc_exec: str = 'openmc', cwd: str = '.'):
         """Render plot as a voxel image

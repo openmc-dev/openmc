@@ -20,7 +20,7 @@ from openmc.dummy_comm import DummyCommunicator
 from openmc.executor import _process_CLI_arguments
 from openmc.checkvalue import check_type, check_value, PathLike
 from openmc.exceptions import InvalidIDError
-from openmc.plots import add_plot_params
+from openmc.plots import add_plot_params, _BASIS_INDICES
 from openmc.utility_funcs import change_directory
 
 
@@ -70,7 +70,7 @@ class Model:
     def __init__(
         self,
         geometry: openmc.Geometry | None = None,
-        materials: openmc.Materials = None,
+        materials: openmc.Materials | None = None,
         settings: openmc.Settings | None = None,
         tallies: openmc.Tallies | None = None,
         plots: openmc.Plots | None = None,
@@ -82,7 +82,7 @@ class Model:
         self.plots = openmc.Plots() if plots is None else plots
 
     @property
-    def geometry(self) -> openmc.Geometry | None:
+    def geometry(self) -> openmc.Geometry:
         return self._geometry
 
     @geometry.setter
@@ -91,7 +91,7 @@ class Model:
         self._geometry = geometry
 
     @property
-    def materials(self) -> openmc.Materials | None:
+    def materials(self) -> openmc.Materials:
         return self._materials
 
     @materials.setter
@@ -100,12 +100,14 @@ class Model:
         if isinstance(materials, openmc.Materials):
             self._materials = materials
         else:
+            if not hasattr(self, '_materials'):
+                self._materials = openmc.Materials()
             del self._materials[:]
             for mat in materials:
                 self._materials.append(mat)
 
     @property
-    def settings(self) -> openmc.Settings | None:
+    def settings(self) -> openmc.Settings:
         return self._settings
 
     @settings.setter
@@ -114,7 +116,7 @@ class Model:
         self._settings = settings
 
     @property
-    def tallies(self) -> openmc.Tallies | None:
+    def tallies(self) -> openmc.Tallies:
         return self._tallies
 
     @tallies.setter
@@ -123,12 +125,14 @@ class Model:
         if isinstance(tallies, openmc.Tallies):
             self._tallies = tallies
         else:
+            if not hasattr(self, '_tallies'):
+                self._tallies = openmc.Tallies()
             del self._tallies[:]
             for tally in tallies:
                 self._tallies.append(tally)
 
     @property
-    def plots(self) -> openmc.Plots | None:
+    def plots(self) -> openmc.Plots:
         return self._plots
 
     @plots.setter
@@ -137,6 +141,8 @@ class Model:
         if isinstance(plots, openmc.Plots):
             self._plots = plots
         else:
+            if not hasattr(self, '_plots'):
+                self._plots = openmc.Plots()
             del self._plots[:]
             for plot in plots:
                 self._plots.append(plot)
@@ -902,6 +908,108 @@ class Model:
                             openmc.lib.materials[domain_id].volume = \
                                 vol_calc.volumes[domain_id].n
 
+
+    def _set_plot_defaults(
+        self,
+        origin: Sequence[float] | None,
+        width: Sequence[float] | None,
+        pixels: int | Sequence[int],
+        basis: str
+    ):
+        x, y, _ = _BASIS_INDICES[basis]
+
+        bb = self.bounding_box
+        # checks to see if bounding box contains -inf or inf values
+        if np.isinf(bb.extent[basis]).any():
+            if origin is None:
+                origin = (0, 0, 0)
+            if width is None:
+                width = (10, 10)
+        else:
+            if origin is None:
+                # if nan values in the bb.center they get replaced with 0.0
+                # this happens when the bounding_box contains inf values
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore", RuntimeWarning)
+                    origin = np.nan_to_num(bb.center)
+            if width is None:
+                bb_width = bb.width
+                width = (bb_width[x], bb_width[y])
+
+        if isinstance(pixels, int):
+            aspect_ratio = width[0] / width[1]
+            pixels_y = math.sqrt(pixels / aspect_ratio)
+            pixels = (int(pixels / pixels_y), int(pixels_y))
+
+        return origin, width, pixels
+
+    def id_map(
+        self,
+        origin: Sequence[float] | None = None,
+        width: Sequence[float] | None = None,
+        pixels: int | Sequence[int] = 40000,
+        basis: str = 'xy',
+        **init_kwargs
+    ) -> np.ndarray:
+        """Generate an ID map for domains based on the plot parameters
+
+        If the model is not yet initialized, it will be initialized with
+        openmc.lib. If the model is initialized, the model will remain
+        initialized after this method call exits.
+
+        .. versionadded:: 0.15.3
+
+        Parameters
+        ----------
+        origin : Sequence[float], optional
+            Origin of the plot. If unspecified, this argument defaults to the
+            center of the bounding box if the bounding box does not contain inf
+            values for the provided basis, otherwise (0.0, 0.0, 0.0).
+        width : Sequence[float], optional
+            Width of the plot. If unspecified, this argument defaults to the
+            width of the bounding box if the bounding box does not contain inf
+            values for the provided basis, otherwise (10.0, 10.0).
+        pixels : int | Sequence[int], optional
+            If an iterable of ints is provided then this directly sets the
+            number of pixels to use in each basis direction. If a single int is
+            provided then this sets the total number of pixels in the plot and
+            the number of pixels in each basis direction is calculated from this
+            total and the image aspect ratio based on the width argument.
+        basis : {'xy', 'yz', 'xz'}, optional
+            Basis of the plot.
+        **init_kwargs
+            Keyword arguments passed to :meth:`Model.init_lib`.
+
+        Returns
+        -------
+        id_map : numpy.ndarray
+            A NumPy array with shape (vertical pixels, horizontal pixels, 3) of
+            OpenMC property IDs with dtype int32. The last dimension of the
+            array contains cell IDs, cell instances, and material IDs (in that
+            order).
+        """
+        import openmc.lib
+
+        origin, width, pixels = self._set_plot_defaults(
+            origin, width, pixels, basis)
+
+        # initialize the openmc.lib.plot._PlotBase object
+        plot_obj = openmc.lib.plot._PlotBase()
+        plot_obj.origin = origin
+        plot_obj.width = width[0]
+        plot_obj.height = width[1]
+        plot_obj.h_res = pixels[0]
+        plot_obj.v_res = pixels[1]
+        plot_obj.basis = basis
+
+        # Silence output by default. Also set arguments to start in volume
+        # calculation mode to avoid loading cross sections
+        init_kwargs.setdefault('output', False)
+        init_kwargs.setdefault('args', ['-c'])
+
+        with openmc.lib.TemporarySession(self, **init_kwargs):
+            return openmc.lib.id_map(plot_obj)
+
     @add_plot_params
     def plot(
         self,
@@ -945,39 +1053,13 @@ class Model:
             source_kwargs = {}
         source_kwargs.setdefault('marker', 'x')
 
+        # Set indices using basis and create axis labels
+        x, y, z = _BASIS_INDICES[basis]
+        xlabel, ylabel = f'{basis[0]} [{axis_units}]', f'{basis[1]} [{axis_units}]'
+
         # Determine extents of plot
-        if basis == 'xy':
-            x, y, z = 0, 1, 2
-            xlabel, ylabel = f'x [{axis_units}]', f'y [{axis_units}]'
-        elif basis == 'yz':
-            x, y, z = 1, 2, 0
-            xlabel, ylabel = f'y [{axis_units}]', f'z [{axis_units}]'
-        elif basis == 'xz':
-            x, y, z = 0, 2, 1
-            xlabel, ylabel = f'x [{axis_units}]', f'z [{axis_units}]'
-
-        bb = self.bounding_box
-        # checks to see if bounding box contains -inf or inf values
-        if np.isinf(bb.extent[basis]).any():
-            if origin is None:
-                origin = (0, 0, 0)
-            if width is None:
-                width = (10, 10)
-        else:
-            if origin is None:
-                # if nan values in the bb.center they get replaced with 0.0
-                # this happens when the bounding_box contains inf values
-                with warnings.catch_warnings():
-                    warnings.simplefilter("ignore", RuntimeWarning)
-                    origin = np.nan_to_num(bb.center)
-            if width is None:
-                bb_width = bb.width
-                width = (bb_width[x], bb_width[y])
-
-        if isinstance(pixels, int):
-            aspect_ratio = width[0] / width[1]
-            pixels_y = math.sqrt(pixels / aspect_ratio)
-            pixels = (int(pixels / pixels_y), int(pixels_y))
+        origin, width, pixels = self._set_plot_defaults(
+            origin, width, pixels, basis)
 
         axis_scaling_factor = {'km': 0.00001, 'm': 0.01, 'cm': 1, 'mm': 10}
 
@@ -986,7 +1068,16 @@ class Model:
         y_min = (origin[y] - 0.5*width[1]) * axis_scaling_factor[axis_units]
         y_max = (origin[y] + 0.5*width[1]) * axis_scaling_factor[axis_units]
 
+        # Determine whether any materials contains macroscopic data and if so,
+        # set energy mode accordingly
+        _energy_mode = self.settings._energy_mode
+        for mat in self.geometry.get_all_materials().values():
+            if mat._macroscopic is not None:
+                self.settings.energy_mode = 'multi-group'
+                break
+
         with TemporaryDirectory() as tmpdir:
+            _plot_seed = self.settings.plot_seed
             if seed is not None:
                 self.settings.plot_seed = seed
 
@@ -1006,6 +1097,11 @@ class Model:
 
             # Run OpenMC in geometry plotting mode
             self.plot_geometry(False, cwd=tmpdir, openmc_exec=openmc_exec)
+
+            # Undo changes to model
+            self.plots.pop()
+            self.settings._plot_seed = _plot_seed
+            self.settings._energy_mode = _energy_mode
 
             # Read image from file
             img_path = Path(tmpdir) / f'plot_{plot.id}.png'
@@ -1110,10 +1206,10 @@ class Model:
         return axes
 
     def sample_external_source(
-            self,
-            n_samples: int = 1000,
-            prn_seed: int | None = None,
-            **init_kwargs
+        self,
+        n_samples: int = 1000,
+        prn_seed: int | None = None,
+        **init_kwargs
     ) -> openmc.ParticleList:
         """Sample external source and return source particles.
 
@@ -1141,15 +1237,10 @@ class Model:
         init_kwargs.setdefault('output', False)
         init_kwargs.setdefault('args', ['-c'])
 
-        with change_directory(tmpdir=True):
-            # Export model within temporary directory
-            self.export_to_model_xml()
-
-            # Sample external source sites
-            with openmc.lib.run_in_memory(**init_kwargs):
-                return openmc.lib.sample_external_source(
-                    n_samples=n_samples, prn_seed=prn_seed
-                )
+        with openmc.lib.TemporarySession(self, **init_kwargs):
+            return openmc.lib.sample_external_source(
+                n_samples=n_samples, prn_seed=prn_seed
+            )
 
     def apply_tally_results(self, statepoint: PathLike | openmc.StatePoint):
         """Apply results from a statepoint to tally objects on the Model

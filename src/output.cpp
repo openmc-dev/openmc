@@ -177,25 +177,26 @@ void print_particle(Particle& p)
   for (auto i = 0; i < p.n_coord(); i++) {
     fmt::print("  Level {}\n", i);
 
-    if (p.coord(i).cell != C_NONE) {
-      const Cell& c {*model::cells[p.coord(i).cell]};
+    if (p.coord(i).cell() != C_NONE) {
+      const Cell& c {*model::cells[p.coord(i).cell()]};
       fmt::print("    Cell             = {}\n", c.id_);
     }
 
-    if (p.coord(i).universe != C_NONE) {
-      const Universe& u {*model::universes[p.coord(i).universe]};
+    if (p.coord(i).universe() != C_NONE) {
+      const Universe& u {*model::universes[p.coord(i).universe()]};
       fmt::print("    Universe         = {}\n", u.id_);
     }
 
-    if (p.coord(i).lattice != C_NONE) {
-      const Lattice& lat {*model::lattices[p.coord(i).lattice]};
+    if (p.coord(i).lattice() != C_NONE) {
+      const Lattice& lat {*model::lattices[p.coord(i).lattice()]};
       fmt::print("    Lattice          = {}\n", lat.id_);
-      fmt::print("    Lattice position = ({},{},{})\n", p.coord(i).lattice_i[0],
-        p.coord(i).lattice_i[1], p.coord(i).lattice_i[2]);
+      fmt::print("    Lattice position = ({},{},{})\n",
+        p.coord(i).lattice_index()[0], p.coord(i).lattice_index()[1],
+        p.coord(i).lattice_index()[2]);
     }
 
-    fmt::print("    r = {}\n", p.coord(i).r);
-    fmt::print("    u = {}\n", p.coord(i).u);
+    fmt::print("    r = {}\n", p.coord(i).r());
+    fmt::print("    u = {}\n", p.coord(i).u());
   }
 
   // Display miscellaneous info.
@@ -322,10 +323,10 @@ void print_build_info()
 #ifdef OPENMC_MPI
   mpi = y;
 #endif
-#ifdef DAGMC
+#ifdef OPENMC_DAGMC_ENABLED
   dagmc = y;
 #endif
-#ifdef LIBMESH
+#ifdef OPENMC_LIBMESH_ENABLED
   libmesh = y;
 #endif
 #ifdef OPENMC_MCPL
@@ -340,7 +341,7 @@ void print_build_info()
 #ifdef COVERAGEBUILD
   coverage = y;
 #endif
-#ifdef OPENMC_UWUW
+#ifdef OPENMC_UWUW_ENABLED
   uwuw = y;
 #endif
 

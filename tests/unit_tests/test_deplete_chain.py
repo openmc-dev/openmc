@@ -310,8 +310,7 @@ def test_capture_branch_infer_ground():
     # Create nuclide to be added into the chain
     xe136m = nuclide.Nuclide("Xe136_m1")
 
-    chain.nuclides.append(xe136m)
-    chain.nuclide_dict[xe136m.name] = len(chain.nuclides) - 1
+    chain.add_nuclide(xe136m)
 
     chain.set_branch_ratios(infer_br, "(n,gamma)")
 
@@ -327,8 +326,7 @@ def test_capture_branch_no_rxn():
 
     u5m = nuclide.Nuclide("U235_m1")
 
-    chain.nuclides.append(u5m)
-    chain.nuclide_dict[u5m.name] = len(chain.nuclides) - 1
+    chain.add_nuclide(u5m)
 
     with pytest.raises(AttributeError, match="U234"):
         chain.set_branch_ratios(u4br)

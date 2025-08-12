@@ -223,7 +223,7 @@ T SlicePlotBase::get_map() const
     GeometryState p;
     p.r() = xyz;
     p.u() = dir;
-    p.coord(0).universe = model::root_universe;
+    p.coord(0).universe() = model::root_universe;
     int level = slice_level_;
     int j {};
 

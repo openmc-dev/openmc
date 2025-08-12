@@ -347,7 +347,7 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
       file_close(file_id);
   }
 
-#if defined(LIBMESH) || defined(DAGMC)
+#if defined(OPENMC_LIBMESH_ENABLED) || defined(OPENMC_DAGMC_ENABLED)
   // write unstructured mesh tally files
   write_unstructured_mesh_results();
 #endif
@@ -443,7 +443,8 @@ extern "C" int openmc_statepoint_load(const char* filename)
   // Read batch number to restart at
   read_dataset(file_id, "current_batch", simulation::restart_batch);
 
-  if (simulation::restart_batch >= settings::n_max_batches) {
+  if (settings::restart_run &&
+      simulation::restart_batch >= settings::n_max_batches) {
     warning(fmt::format(
       "The number of batches specified for simulation ({}) is smaller "
       "than or equal to the number of batches in the restart statepoint file "

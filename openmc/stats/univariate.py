@@ -32,6 +32,10 @@ class Univariate(EqualityMixin, ABC):
 
     """
     @abstractmethod
+    def to_hdf5(self, group):
+        return
+    
+    @abstractmethod
     def to_xml_element(self, element_name):
         return ''
 
@@ -64,6 +68,30 @@ class Univariate(EqualityMixin, ABC):
             return Legendre.from_xml_element(elem)
         elif distribution == 'mixture':
             return Mixture.from_xml_element(elem)
+            
+    @classmethod
+    @abstractmethod
+    def from_hdf5(cls, group):
+        distribution = group.attrs["type"]
+        if distribution == 'discrete':
+            return Discrete.from_hdf5(group)
+        elif distribution == 'uniform':
+            return Uniform.from_hdf5(group)
+        elif distribution == 'powerlaw':
+            return PowerLaw.from_hdf5(group)
+        elif distribution == 'maxwell':
+            return Maxwell.from_hdf5(group)
+        elif distribution == 'watt':
+            return Watt.from_hdf5(group)
+        elif distribution == 'normal':
+            return Normal.from_hdf5(group)
+        elif distribution == 'tabular':
+            return Tabular.from_hdf5(group)
+        elif distribution == 'legendre':
+            return Legendre.from_hdf5(group)
+        elif distribution == 'mixture':
+            return Mixture.from_hdf5(group)
+            
 
     @abstractmethod
     def sample(n_samples: int = 1, seed: int | None = None):
@@ -243,6 +271,17 @@ class Discrete(Univariate):
         x = params[:len(params)//2]
         p = params[len(params)//2:]
         return cls(x, p)
+
+    def to_hdf5(self, group):
+        group.attrs["type"] = "discrete"
+        group.create_dataset("parameters", data=np.r_[self.x,self.p])
+        
+    @classmethod
+    def from_hdf5(cls, group):
+        params = group["parameters"][()]
+        x = params[:len(params)//2]
+        p = params[len(params)//2:]
+        return cls(x, p)        
 
     @classmethod
     def merge(
@@ -450,6 +489,14 @@ class Uniform(Univariate):
         params = get_elem_list(elem, "parameters", float)
         return cls(*params)
 
+    def to_hdf5(self, group):
+        group.attrs["type"] = "uniform"
+        group.create_dataset("parameters", data=np.r_[self.a,self.b])
+        
+    @classmethod
+    def from_hdf5(cls, group):
+        params = group["parameters"][()]
+        return cls(*params)
 
 class PowerLaw(Univariate):
     """Distribution with power law probability over a finite interval [a,b]
@@ -558,7 +605,15 @@ class PowerLaw(Univariate):
         """
         params = get_elem_list(elem, "parameters", float)
         return cls(*params)
-
+        
+    def to_hdf5(self, group):
+        group.attrs["type"] = "powerlaw"
+        group.create_dataset("parameters", data=np.r_[self.a,self.b,self.n])
+        
+    @classmethod
+    def from_hdf5(cls, group):
+        params = group["parameters"][()]
+        return cls(*params)
 
 class Maxwell(Univariate):
     r"""Maxwellian distribution in energy.
@@ -644,6 +699,14 @@ class Maxwell(Univariate):
         theta = float(get_text(elem, 'parameters'))
         return cls(theta)
 
+    def to_hdf5(self, group):
+        group.attrs["type"] = "maxwell"
+        group.attrs["theta"] = self.theta
+
+    @classmethod
+    def from_hdf5(cls, group):
+        theta = group.attrs["theta"]
+        return cls(theta)
 
 class Watt(Univariate):
     r"""Watt fission energy spectrum.
@@ -739,6 +802,14 @@ class Watt(Univariate):
         params = get_elem_list(elem, "parameters", float)
         return cls(*params)
 
+    def to_hdf5(self, group):
+        group.attrs["type"] = "watt"
+        group.create_dataset("parameters", data=np.r_[self.a,self.b])
+        
+    @classmethod
+    def from_hdf5(cls, group):
+        params = group["parameters"][()]
+        return cls(*params)
 
 class Normal(Univariate):
     r"""Normally distributed sampling.
@@ -829,6 +900,14 @@ class Normal(Univariate):
         params = get_elem_list(elem, "parameters", float)
         return cls(*params)
 
+    def to_hdf5(self, group):
+        group.attrs["type"] = "normal"
+        group.create_dataset("parameters", data=np.r_[self.mean_value,self.std_dev])
+        
+    @classmethod
+    def from_hdf5(cls, group):
+        params = group["parameters"][()]
+        return cls(*params)
 
 def muir(e0: float, m_rat: float, kt: float):
     """Generate a Muir energy spectrum
@@ -1119,7 +1198,21 @@ class Tabular(Univariate):
         x = params[:m]
         p = params[m:]
         return cls(x, p, interpolation)
-
+        
+    def to_hdf5(self, group):
+        group.attrs["type"] = "tabular"
+        group.attrs["interpolation"] = self.interpolation
+        group.create_dataset("parameters", data=np.r_[self.x,self.p])
+        
+    @classmethod
+    def from_hdf5(cls, group):
+        interpolation = group.attrs["interpolation"]
+        params = group["parameters"][()]
+        m = (len(params) + 1)//2  # +1 for when len(params) is odd
+        x = params[:m]
+        p = params[m:]
+        return cls(x, p, interpolation)
+        
     def integral(self):
         """Return integral of distribution
 
@@ -1190,6 +1283,13 @@ class Legendre(Univariate):
     @classmethod
     def from_xml_element(cls, elem):
         raise NotImplementedError
+        
+    def to_hdf5(self, group):
+        raise NotImplementedError
+
+    @classmethod
+    def from_hdf5(cls, group):
+        raise NotImplementedError        
 
 
 class Mixture(Univariate):
@@ -1323,6 +1423,23 @@ class Mixture(Univariate):
 
         return cls(probability, distribution)
 
+    def to_hdf5(self, group):
+        group.attrs["type"] = "mixture"
+        for i, (p, d) in enumerate(zip(self.probability, self.distribution)):
+          dgroup = group.create_group(f"dist_{i:d}")
+          dgroup.attrs["probability"] = p
+          d.to_hdf5(dgroup)
+
+    @classmethod
+    def from_hdf5(cls, group):
+        probability = []
+        distribution = []
+        for dgroup in group.values():
+            probability.append(dgroup.attrs["probability"])
+            distribution.append(Univariate.from_hdf5(dgroup))
+
+        return cls(probability, distribution)
+        
     def integral(self):
         """Return integral of the distribution
 

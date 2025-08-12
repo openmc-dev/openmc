@@ -94,10 +94,3 @@ def test_config_warning_nonexistent_path(tmp_path):
         openmc.config['chain_file'] = bad_path
 
 
-def test_config_chain_side_effect(tmp_path):
-    """Test that modifying chain_file clears decay data caches."""
-    chain_file = tmp_path / "chain.xml"; chain_file.touch()
-    decay._DECAY_ENERGY['U235'] = (1.0, 2.0)
-    decay._DECAY_PHOTON_ENERGY['PU239'] = {}
-    openmc.config['chain_file'] = chain_file
-    assert not decay._DECAY_ENERGY and not decay._DECAY_PHOTON_ENERGY

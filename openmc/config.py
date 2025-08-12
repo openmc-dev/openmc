@@ -20,7 +20,6 @@ import warnings
 from typing import Any, Dict, Iterator
 
 from openmc.data import DataLibrary
-from openmc.data.decay import _DECAY_ENERGY, _DECAY_PHOTON_ENERGY
 
 __all__ = ["config"]
 
@@ -76,9 +75,6 @@ class _Config(MutableMapping):
             env_var = self._PATH_KEYS[key]
             if env_var in os.environ:
                 del os.environ[env_var]
-        if key == 'chain_file':
-            _DECAY_PHOTON_ENERGY.clear()
-            _DECAY_ENERGY.clear()
 
     def __setitem__(self, key: str, value: Any):
         """Set a configuration key and its corresponding value.
@@ -102,9 +98,6 @@ class _Config(MutableMapping):
             self._mapping[key] = stored_path
             os.environ[self._PATH_KEYS[key]] = str(stored_path)
 
-            if key == 'chain_file':
-                _DECAY_PHOTON_ENERGY.clear()
-                _DECAY_ENERGY.clear()
 
             if not stored_path.exists():
                 warnings.warn(f"Path '{stored_path}' does not exist.", UserWarning)
@@ -168,7 +161,10 @@ class _Config(MutableMapping):
 
         """
         previous_value = self.get(key)
-        self[key] = value
+        if value is not None:
+            self[key] = value
+        else:
+            del self[key]
         try:
             yield
         finally:

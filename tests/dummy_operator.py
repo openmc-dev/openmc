@@ -115,6 +115,9 @@ class TestChain:
         a22 = np.sin(y_1)
 
         return sp.csr_matrix(np.array([[a11, a12], [a21, a22]]))
+        
+    def to_hdf5(self, group):
+        group.create_group("depletion_chain").create_group("nuclides")
 
 
 class DummyOperator(TransportOperator):

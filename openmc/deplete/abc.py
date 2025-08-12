@@ -19,7 +19,7 @@ from warnings import warn
 import numpy as np
 from uncertainties import ufloat
 
-from openmc.checkvalue import check_type, check_greater_than, PathLike
+from openmc.checkvalue import check_type, check_greater_than, check_value, PathLike
 from openmc.mpi import comm
 from openmc.utility_funcs import change_directory
 from openmc import Material
@@ -155,6 +155,7 @@ class TransportOperator(ABC):
             self.prev_res = None
         else:
             check_type("previous results", prev_results, Results)
+            check_value("previous results chain file", prev_results.chain, [self.chain])
             self.prev_res = prev_results
 
     @abstractmethod

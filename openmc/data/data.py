@@ -6,6 +6,8 @@ from pathlib import Path
 from math import sqrt, log
 from warnings import warn
 
+from ..exceptions import DataError
+
 # Isotopic abundances from Meija J, Coplen T B, et al, "Isotopic compositions
 # of the elements 2013 (IUPAC Technical Report)", Pure. Appl. Chem. 88 (3),
 # pp. 293-306 (2013). The "representative isotopic abundance" values from
@@ -363,7 +365,7 @@ def atomic_weight(element):
         raise ValueError(f"No naturally-occurring isotopes for element '{element}'.")
 
 
-def half_life(isotope):
+def half_life(isotope, chain_file = None):
     """Return half-life of isotope in seconds or None if isotope is stable
 
     Half-life values are from the `ENDF/B-VIII.0 decay sublibrary
@@ -382,6 +384,15 @@ def half_life(isotope):
         Half-life of isotope in [s]
 
     """
+    from openmc.deplete.chain import _get_chain
+    
+    try:
+        chain = _get_chain(chain_file)
+        if isotope in chain:
+            return chain[isotope].half_life
+    except DataError:
+        pass
+    
     global _HALF_LIFE
     if not _HALF_LIFE:
         # Load ENDF/B-VIII.0 data from JSON file
@@ -391,7 +402,7 @@ def half_life(isotope):
     return _HALF_LIFE.get(isotope.lower())
 
 
-def decay_constant(isotope):
+def decay_constant(isotope, chain_file = None):
     """Return decay constant of isotope in [s^-1]
 
     Decay constants are based on half-life values from the
@@ -415,7 +426,7 @@ def decay_constant(isotope):
     openmc.data.half_life
 
     """
-    t = half_life(isotope)
+    t = half_life(isotope, chain_file = chain_file)
     return _LOG_TWO / t if t else 0.0
 
 

@@ -293,7 +293,8 @@ class Material(IDManagerMixin):
             self,
             clip_tolerance: float = 1e-6,
             units: str = 'Bq',
-            volume: float | None = None
+            volume: float | None = None, 
+            chain_file: str | Path | None = None,
         ) -> Univariate | None:
         r"""Return energy distribution of decay photons from unstable nuclides.
 
@@ -309,6 +310,8 @@ class Material(IDManagerMixin):
         volume : float, optional
             Volume of the material. If not passed, defaults to using the
             :attr:`Material.volume` attribute.
+        chain_file : str or path-like, optional.
+            Location of chain file to get decay constants from.                
 
         Returns
         -------
@@ -332,7 +335,7 @@ class Material(IDManagerMixin):
         dists = []
         probs = []
         for nuc, atoms_per_bcm in self.get_nuclide_atom_densities().items():
-            source_per_atom = openmc.data.decay_photon_energy(nuc)
+            source_per_atom = openmc.data.decay_photon_energy(nuc, chain_file=chain_file)
             if source_per_atom is not None and atoms_per_bcm > 0.0:
                 dists.append(source_per_atom)
                 probs.append(1e24 * atoms_per_bcm * multiplier)
@@ -1139,7 +1142,7 @@ class Material(IDManagerMixin):
 
 
     def get_activity(self, units: str = 'Bq/cm3', by_nuclide: bool = False,
-                     volume: float | None = None) -> dict[str, float] | float:
+                     volume: float | None = None, chain_file: str | Path | None = None) -> dict[str, float] | float:
         """Returns the activity of the material or of each nuclide within.
 
         .. versionadded:: 0.13.1
@@ -1156,6 +1159,8 @@ class Material(IDManagerMixin):
         volume : float, optional
             Volume of the material. If not passed, defaults to using the
             :attr:`Material.volume` attribute.
+        chain_file : str or path-like, optional.
+            Location of chain file to get decay constants from.    
 
             .. versionadded:: 0.13.3
 
@@ -1188,13 +1193,13 @@ class Material(IDManagerMixin):
 
         activity = {}
         for nuclide, atoms_per_bcm in self.get_nuclide_atom_densities().items():
-            inv_seconds = openmc.data.decay_constant(nuclide)
+            inv_seconds = openmc.data.decay_constant(nuclide, chain_file = chain_file)
             activity[nuclide] = inv_seconds * 1e24 * atoms_per_bcm * multiplier
 
         return activity if by_nuclide else sum(activity.values())
 
     def get_decay_heat(self, units: str = 'W', by_nuclide: bool = False,
-                       volume: float | None = None) -> dict[str, float] | float:
+                       volume: float | None = None, chain_file: str | Path | None = None) -> dict[str, float] | float:
         """Returns the decay heat of the material or for each nuclide in the
         material in units of [W], [W/g], [W/kg] or [W/cm3].
 
@@ -1212,6 +1217,8 @@ class Material(IDManagerMixin):
         volume : float, optional
             Volume of the material. If not passed, defaults to using the
             :attr:`Material.volume` attribute.
+        chain_file : str or path-like, optional.
+            Location of chain file to get decay constants from.    
 
             .. versionadded:: 0.13.3
 
@@ -1237,8 +1244,8 @@ class Material(IDManagerMixin):
 
         decayheat = {}
         for nuclide, atoms_per_bcm in self.get_nuclide_atom_densities().items():
-            decay_erg = openmc.data.decay_energy(nuclide)
-            inv_seconds = openmc.data.decay_constant(nuclide)
+            decay_erg = openmc.data.decay_energy(nuclide, chain_file=chain_file)
+            inv_seconds = openmc.data.decay_constant(nuclide, chain_file=chain_file)
             decay_erg *= openmc.data.JOULE_PER_EV
             decayheat[nuclide] = inv_seconds * decay_erg * 1e24 * atoms_per_bcm * multiplier
 

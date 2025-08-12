@@ -6,6 +6,7 @@ from pathlib import Path
 from math import sqrt, log
 from warnings import warn
 
+
 # Isotopic abundances from Meija J, Coplen T B, et al, "Isotopic compositions
 # of the elements 2013 (IUPAC Technical Report)", Pure. Appl. Chem. 88 (3),
 # pp. 293-306 (2013). The "representative isotopic abundance" values from
@@ -382,6 +383,12 @@ def half_life(isotope):
         Half-life of isotope in [s]
 
     """
+    from openmc.deplete.chain import _get_chain
+    
+    chain = _get_chain()
+    if isotope in chain:
+        return chain[isotope].half_life
+    
     global _HALF_LIFE
     if not _HALF_LIFE:
         # Load ENDF/B-VIII.0 data from JSON file

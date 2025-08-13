@@ -21,7 +21,7 @@ GROUP_STRUCTURES = {}
 - "ECCO-1968_" designed for fine group reactor cell calculations for fast,
   intermediate and thermal reactor applications ([SAR1990]_)
 - activation_ energy group structures "VITAMIN-J-42", "VITAMIN-J-175",
-  "TRIPOLI-315", "CCFE-709_" and "UKAEA-1102_"
+  "TRIPOLI-315", "LLNL-616", "CCFE-709_" and "UKAEA-1102_"
 
 .. _CASMO: http://large.stanford.edu/courses/2013/ph241/dalvi1/docs/c5.physor2006.pdf
 .. _SCALE44: https://www-nds.iaea.org/publications/indc/indc-czr-0001.pdf
@@ -31,6 +31,7 @@ GROUP_STRUCTURES = {}
 .. _SHEM-361: http://merlin.polymtl.ca/downloads/FP214.pdf
 .. _activation: https://fispact.ukaea.uk/wiki/Keyword:GETXS
 .. _VITAMIN-J-42: https://www.oecd-nea.org/dbdata/nds_jefreports/jefreport-10.pdf
+.. _LLNL-616: https://fispact.ukaea.uk/manual/user_manual.pdf
 .. _CCFE-709: https://fispact.ukaea.uk/wiki/CCFE-709_group_structure
 .. _UKAEA-1102: https://fispact.ukaea.uk/wiki/UKAEA-1102_group_structure
 .. _ECCO-1968: https://serpent.vtt.fi/mediawiki/index.php/ECCO_1968-group_structure

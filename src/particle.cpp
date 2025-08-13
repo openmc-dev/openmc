@@ -105,7 +105,7 @@ void Particle::split(double wgt)
   bank.E = settings::run_CE ? E() : g();
   bank.time = time();
 
-  // Convert signed index to a singed surface ID
+  // Convert signed index to a signed surface ID
   if (surface() == SURFACE_NONE) {
     bank.surf_id = SURFACE_NONE;
   } else {

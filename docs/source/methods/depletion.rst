@@ -176,14 +176,16 @@ only solving the transport equation to estimate transmutation reaction rates
 sections (in the case of transport-independent depletion), but also a series of
 choices about what data to include. In OpenMC, the burnup matrix is constructed
 based on data inside of a *depletion chain* file, which includes fundamental
-data gathered from ENDF incident neutron, decay, and fission product yield
-sublibraries. For each nuclide, this file includes:
+data gathered from ENDF incident neutron, decay, fission product yield and
+spontaneous fission yield sublibraries. For each nuclide, this file includes:
 
 - What transmutation reactions are possible, their Q values, and their products;
 - If a nuclide is not stable, what decay modes are possible, their branching
-  ratios, and their products; and
+  ratios, and their products;
 - If a nuclide is fissionable, the fission products yields at any number of
-  incident neutron energies.
+  incident neutron energies; and
+- If a nuclide can undergo spontanous fission, the products yields for
+  spontaneous fission.
 
 Transmutation Reactions
 -----------------------

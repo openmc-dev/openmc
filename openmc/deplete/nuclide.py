@@ -107,8 +107,8 @@ class Nuclide:
         treated as a nested dictionary ``{energy: {product: yield}}``
     spont_yield_data : FissionYieldDistribution or None
         Spontaneous fission product yields. To keep the same structure as for 
-        yield_data this is treated as a nested dictionary ``{energy: {product: yield}}``
-        with one energy value = 0.0.
+        yield_data this is treated as a nested dictionary 
+        ``{energy: {product: yield}}`` with one energy value = Inf.
     yield_energies : tuple of float or None
         Energies at which fission product yields exist
     """
@@ -323,14 +323,14 @@ class Nuclide:
                 )
                 if sfy_elem is None:
                     raise ValueError(
-                        "Spontanteous fission product yields for {0} borrow from {1}, but {1} is"
-                        " not present in the chain file or has no yields.".format(
+                        "Spontanteous fission product yields for {0} borrow"
+                        " from {1}, but {1} is not present in the chain file"
+                        " or has no yields.".format(
                             nuc.name, parent
                         ))
                 nuc._sfy = parent
 
             nuc.spont_yield_data = FissionYieldDistribution.from_xml_element(sfy_elem)
-
 
         return nuc
 

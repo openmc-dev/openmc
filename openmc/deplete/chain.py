@@ -448,7 +448,6 @@ class Chain:
             data = openmc.data.FissionProductYields(f)
             fpy_data[data.nuclide['name']] = data
 
-
         if progress:
             print('Processing spontaneous fission product yield sub-library files...')
         sfy_data = {}
@@ -596,11 +595,9 @@ class Chain:
                 if not fissionable:
                     sfp_without_fp.append(parent)
 
-            
 
             # Add nuclide to chain
             chain.add_nuclide(nuclide)
-
 
 
         # Replace missing FPY data
@@ -633,11 +630,11 @@ class Chain:
             print('')
 
         if missing_sfy:
-            print('The following nuclides with spontaneous fission have no spontaneous fission product yields:')
+            print("The following nuclides with spontaneous fission "
+                "have no spontaneous fission product yields:")
             for parent, replacement in missing_sfy:
                 print(f'  {parent}, replaced with {replacement}')
             print('')
-
 
         if missing_fp:
             print('The following nuclides have fission products with no decay data:')
@@ -645,15 +642,16 @@ class Chain:
                 print('  {}, E={} eV (total yield={})'.format(*vals))
 
         if missing_sfp:
-            print('The following nuclides have spontaneous fission products with no decay data:')
+            print("The following nuclides have spontaneous fission"
+                "products with no decay data:")
             for vals in missing_sfp:
                 print('  {}, (total yield={})'.format(*vals))
 
         if sfp_without_fp:
-            print('The following nuclides have spontaneous fission products but no induced fission products:')
+            print("The following nuclides have spontaneous fission products"
+                " but no induced fission products:")
             for parent in sfp_without_fp:
                 print(f'  {parent}')
-
 
         return chain
 
@@ -773,7 +771,6 @@ class Chain:
         """
         reactions = set()
 
-
         # Use DOK matrix as intermediate representation for matrix
         n = len(self)
         matrix = sp.dok_matrix((n, n))
@@ -799,6 +796,7 @@ class Chain:
                     if branch_val != 0.0:
                         if decay_type == "sf":
                             if INCLUDE_SPONT_FISSION and nuc.spont_yield_data is not None: 
+                                print("HERE FOR SPONT FISS")
                                 for product, y in spont_fission_yields[nuc.name].items():
                                     yield_val = y * branch_val
                                     if yield_val != 0.0:

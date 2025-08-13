@@ -178,7 +178,7 @@ class _Config(MutableMapping):
                 self[key] = previous_value
 
 
-def _default_config() -> _Config:
+def _default_config(**kwargs) -> _Config:
     """Create a configuration initialized from environment variables.
 
     This function checks for OPENMC_CROSS_SECTIONS, OPENMC_MG_CROSS_SECTIONS,
@@ -192,7 +192,7 @@ def _default_config() -> _Config:
         A new configuration object.
 
     """
-    config = _Config()
+    config = _Config(kwargs)
     if "OPENMC_CROSS_SECTIONS" in os.environ:
         config['cross_sections'] = os.environ["OPENMC_CROSS_SECTIONS"]
     if "OPENMC_MG_CROSS_SECTIONS" in os.environ:

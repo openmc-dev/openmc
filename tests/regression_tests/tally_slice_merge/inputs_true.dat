@@ -1,40 +1,40 @@
 <?xml version='1.0' encoding='utf-8'?>
 <model>
   <materials>
-    <material depletable="true" id="1" name="UOX fuel">
-      <density units="g/cm3" value="10.062"/>
-      <nuclide ao="4.9476e-06" name="U234"/>
-      <nuclide ao="0.00048218" name="U235"/>
-      <nuclide ao="0.021504" name="U238"/>
-      <nuclide ao="1.0801e-08" name="Xe135"/>
-      <nuclide ao="0.045737" name="O16"/>
+    <material id="1" name="UOX fuel" depletable="true">
+      <density value="10.062" units="g/cm3"/>
+      <nuclide name="U234" ao="4.9476e-06"/>
+      <nuclide name="U235" ao="0.00048218"/>
+      <nuclide name="U238" ao="0.021504"/>
+      <nuclide name="Xe135" ao="1.0801e-08"/>
+      <nuclide name="O16" ao="0.045737"/>
     </material>
     <material id="2" name="Zircaloy">
-      <density units="g/cm3" value="5.77"/>
-      <nuclide ao="0.5145" name="Zr90"/>
-      <nuclide ao="0.1122" name="Zr91"/>
-      <nuclide ao="0.1715" name="Zr92"/>
-      <nuclide ao="0.1738" name="Zr94"/>
-      <nuclide ao="0.028" name="Zr96"/>
+      <density value="5.77" units="g/cm3"/>
+      <nuclide name="Zr90" ao="0.5145"/>
+      <nuclide name="Zr91" ao="0.1122"/>
+      <nuclide name="Zr92" ao="0.1715"/>
+      <nuclide name="Zr94" ao="0.1738"/>
+      <nuclide name="Zr96" ao="0.028"/>
     </material>
     <material id="3" name="Cold borated water">
-      <density units="atom/b-cm" value="0.07416"/>
-      <nuclide ao="2.0" name="H1"/>
-      <nuclide ao="1.0" name="O16"/>
-      <nuclide ao="0.000649" name="B10"/>
-      <nuclide ao="0.002689" name="B11"/>
+      <density value="0.07416" units="atom/b-cm"/>
+      <nuclide name="H1" ao="2.0"/>
+      <nuclide name="O16" ao="1.0"/>
+      <nuclide name="B10" ao="0.000649"/>
+      <nuclide name="B11" ao="0.002689"/>
       <sab name="c_H_in_H2O"/>
     </material>
     <material id="4" name="Hot borated water">
-      <density units="atom/b-cm" value="0.06614"/>
-      <nuclide ao="2.0" name="H1"/>
-      <nuclide ao="1.0" name="O16"/>
-      <nuclide ao="0.000649" name="B10"/>
-      <nuclide ao="0.002689" name="B11"/>
+      <density value="0.06614" units="atom/b-cm"/>
+      <nuclide name="H1" ao="2.0"/>
+      <nuclide name="O16" ao="1.0"/>
+      <nuclide name="B10" ao="0.000649"/>
+      <nuclide name="B11" ao="0.002689"/>
       <sab name="c_H_in_H2O"/>
     </material>
     <material id="5" name="Reactor pressure vessel steel">
-      <density units="g/cm3" value="7.9"/>
+      <density value="7.9" units="g/cm3"/>
       <nuclide name="Fe54" wo="0.05437098"/>
       <nuclide name="Fe56" wo="0.88500663"/>
       <nuclide name="Fe57" wo="0.0208008"/>
@@ -47,7 +47,7 @@
       <nuclide name="Cu63" wo="0.0013696"/>
     </material>
     <material id="6" name="Lower radial reflector">
-      <density units="g/cm3" value="4.32"/>
+      <density value="4.32" units="g/cm3"/>
       <nuclide name="H1" wo="0.0095661"/>
       <nuclide name="O16" wo="0.0759107"/>
       <nuclide name="B10" wo="3.08409e-05"/>
@@ -62,7 +62,7 @@
       <sab name="c_H_in_H2O"/>
     </material>
     <material id="7" name="Upper radial reflector / Top plate region">
-      <density units="g/cm3" value="4.28"/>
+      <density value="4.28" units="g/cm3"/>
       <nuclide name="H1" wo="0.0086117"/>
       <nuclide name="O16" wo="0.0683369"/>
       <nuclide name="B10" wo="2.77638e-05"/>
@@ -77,7 +77,7 @@
       <sab name="c_H_in_H2O"/>
     </material>
     <material id="8" name="Bottom plate region">
-      <density units="g/cm3" value="7.184"/>
+      <density value="7.184" units="g/cm3"/>
       <nuclide name="H1" wo="0.0011505"/>
       <nuclide name="O16" wo="0.0091296"/>
       <nuclide name="B10" wo="3.70915e-06"/>
@@ -92,7 +92,7 @@
       <sab name="c_H_in_H2O"/>
     </material>
     <material id="9" name="Bottom nozzle region">
-      <density units="g/cm3" value="2.53"/>
+      <density value="2.53" units="g/cm3"/>
       <nuclide name="H1" wo="0.0245014"/>
       <nuclide name="O16" wo="0.1944274"/>
       <nuclide name="B10" wo="7.89917e-05"/>
@@ -107,7 +107,7 @@
       <sab name="c_H_in_H2O"/>
     </material>
     <material id="10" name="Top nozzle region">
-      <density units="g/cm3" value="1.746"/>
+      <density value="1.746" units="g/cm3"/>
       <nuclide name="H1" wo="0.035887"/>
       <nuclide name="O16" wo="0.2847761"/>
       <nuclide name="B10" wo="0.000115699"/>
@@ -122,7 +122,7 @@
       <sab name="c_H_in_H2O"/>
     </material>
     <material id="11" name="Top of fuel assemblies">
-      <density units="g/cm3" value="3.044"/>
+      <density value="3.044" units="g/cm3"/>
       <nuclide name="H1" wo="0.0162913"/>
       <nuclide name="O16" wo="0.1292776"/>
       <nuclide name="B10" wo="5.25228e-05"/>
@@ -135,7 +135,7 @@
       <sab name="c_H_in_H2O"/>
     </material>
     <material id="12" name="Bottom of fuel assemblies">
-      <density units="g/cm3" value="1.762"/>
+      <density value="1.762" units="g/cm3"/>
       <nuclide name="H1" wo="0.0292856"/>
       <nuclide name="O16" wo="0.2323919"/>
       <nuclide name="B10" wo="9.44159e-05"/>
@@ -149,8 +149,8 @@
     </material>
   </materials>
   <geometry>
-    <cell fill="200" id="1" region="-6 34 -35" universe="0"/>
-    <cell fill="201" id="2" region="-6 35 -36" universe="0"/>
+    <cell id="1" fill="200" region="-6 34 -35" universe="0"/>
+    <cell id="2" fill="201" region="-6 35 -36" universe="0"/>
     <cell id="3" material="8" region="-7 31 -32" universe="0"/>
     <cell id="4" material="9" region="-5 32 -33" universe="0"/>
     <cell id="5" material="12" region="-5 33 -34" universe="0"/>
@@ -174,9 +174,9 @@
     <cell id="31" material="2" region="3 -4" universe="4"/>
     <cell id="32" material="4" region="4" universe="4"/>
     <cell id="50" material="3" region="34 -35" universe="5"/>
-    <cell fill="100" id="60" region="34 -35" universe="6"/>
+    <cell id="60" fill="100" region="34 -35" universe="6"/>
     <cell id="70" material="4" region="35 -36" universe="7"/>
-    <cell fill="101" id="80" region="35 -36" universe="8"/>
+    <cell id="80" fill="101" region="35 -36" universe="8"/>
     <lattice id="100" name="Fuel assembly (lower half)">
       <pitch>1.26 1.26</pitch>
       <dimension>17 17</dimension>
@@ -277,30 +277,30 @@
 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 
 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 </universes>
     </lattice>
-    <surface coeffs="0.0 0.0 0.41" id="1" type="z-cylinder"/>
-    <surface coeffs="0.0 0.0 0.475" id="2" type="z-cylinder"/>
-    <surface coeffs="0.0 0.0 0.56" id="3" type="z-cylinder"/>
-    <surface coeffs="0.0 0.0 0.62" id="4" type="z-cylinder"/>
-    <surface coeffs="0.0 0.0 187.6" id="5" type="z-cylinder"/>
-    <surface coeffs="0.0 0.0 209.0" id="6" type="z-cylinder"/>
-    <surface coeffs="0.0 0.0 229.0" id="7" type="z-cylinder"/>
-    <surface boundary="vacuum" coeffs="0.0 0.0 249.0" id="8" type="z-cylinder"/>
-    <surface boundary="vacuum" coeffs="-229.0" id="31" type="z-plane"/>
-    <surface coeffs="-199.0" id="32" type="z-plane"/>
-    <surface coeffs="-193.0" id="33" type="z-plane"/>
-    <surface coeffs="-183.0" id="34" type="z-plane"/>
-    <surface coeffs="0.0" id="35" type="z-plane"/>
-    <surface coeffs="183.0" id="36" type="z-plane"/>
-    <surface coeffs="203.0" id="37" type="z-plane"/>
-    <surface coeffs="215.0" id="38" type="z-plane"/>
-    <surface boundary="vacuum" coeffs="223.0" id="39" type="z-plane"/>
+    <surface id="1" type="z-cylinder" coeffs="0.0 0.0 0.41"/>
+    <surface id="2" type="z-cylinder" coeffs="0.0 0.0 0.475"/>
+    <surface id="3" type="z-cylinder" coeffs="0.0 0.0 0.56"/>
+    <surface id="4" type="z-cylinder" coeffs="0.0 0.0 0.62"/>
+    <surface id="5" type="z-cylinder" coeffs="0.0 0.0 187.6"/>
+    <surface id="6" type="z-cylinder" coeffs="0.0 0.0 209.0"/>
+    <surface id="7" type="z-cylinder" coeffs="0.0 0.0 229.0"/>
+    <surface id="8" type="z-cylinder" boundary="vacuum" coeffs="0.0 0.0 249.0"/>
+    <surface id="31" type="z-plane" boundary="vacuum" coeffs="-229.0"/>
+    <surface id="32" type="z-plane" coeffs="-199.0"/>
+    <surface id="33" type="z-plane" coeffs="-193.0"/>
+    <surface id="34" type="z-plane" coeffs="-183.0"/>
+    <surface id="35" type="z-plane" coeffs="0.0"/>
+    <surface id="36" type="z-plane" coeffs="183.0"/>
+    <surface id="37" type="z-plane" coeffs="203.0"/>
+    <surface id="38" type="z-plane" coeffs="215.0"/>
+    <surface id="39" type="z-plane" boundary="vacuum" coeffs="223.0"/>
   </geometry>
   <settings>
     <run_mode>eigenvalue</run_mode>
     <particles>100</particles>
     <batches>10</batches>
     <inactive>5</inactive>
-    <source particle="neutron" strength="1.0" type="independent">
+    <source type="independent" strength="1.0" particle="neutron">
       <space type="box">
         <parameters>-160 -160 -183 160 160 183</parameters>
       </space>

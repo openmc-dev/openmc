@@ -26,7 +26,7 @@ def model():
     model.geometry = openmc.Geometry([cell])
 
     model.settings.batches = 10
-    model.settings.particles = 10000
+    model.settings.particles = 1000
     model.settings.source = openmc.IndependentSource(
         space=openmc.stats.Point(),
         energy=openmc.stats.Discrete([1.0e6], [1.0])

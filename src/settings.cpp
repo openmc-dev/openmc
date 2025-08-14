@@ -135,6 +135,7 @@ std::unordered_set<int> ct_material_id;
 std::unordered_set<int> ct_nuclide_id;
 double ct_deposited_E_threshold {0};
 int64_t ct_max_collisions;
+int64_t ct_max_files;
 int64_t ssw_max_particles;
 int64_t ssw_max_files;
 int64_t ssw_cell_id {C_NONE};
@@ -977,13 +978,14 @@ void read_settings_xml(pugi::xml_node root)
                   "using the 'max_collisions' parameter to store wanted "
                   "collision events.");
     }
+    // Get maximum number of collision_track files to be created
+    if (check_for_node(node_ct, "max_collision_track_files")) {
+      ct_max_files = std::stoll(get_node_value(node_ct, "max_collision_track_files"));
+    } else {
+      ct_max_files = 3;
+    }
     if (check_for_node(node_ct, "mcpl")) {
       ct_mcpl_write = get_node_value_bool(node_ct, "mcpl");
-      // Make sure MCPL support is enabled
-      // if (ct_mcpl_write) {
-      //  fatal_error("Your build of OpenMC does not support writing MCPL "
-      //              "surface source files.");
-      //}
     }
   }
 

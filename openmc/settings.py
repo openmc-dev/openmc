@@ -50,7 +50,8 @@ class Settings:
     collision_track : dict
         Options for writing collision information. Acceptable keys are:
 
-        :max_collisions: Maximum number of collisions to be banked. (int)
+        :max_collisions: Maximum number of collisions to be banked per file. (int)
+        :max_collision_track_files: Maximum number of collision_track files. (int)
         :mcpl: Output in the form of an MCPL-file. (bool)
         :cell_ids: List of cell IDs to define cells in which collisions should be banked. (list of int)
         :universe_ids: List of universe IDs to define universes in which collisions should be banked. (list of int)
@@ -844,7 +845,7 @@ class Settings:
         for key, value in collision_track.items():
             cv.check_value('collision_track key', key,
                            ('cell_ids', 'mt_numbers', 'universe_ids', 'material_ids', 'nuclide_ids',
-                            'deposited_E_threshold', 'max_collisions', 'mcpl'))
+                            'deposited_E_threshold', 'max_collisions','max_collision_track_files' ,'mcpl'))
             if key == 'cell_ids':
                 cv.check_type('cell ids for collision tracking data banking', value,
                               Iterable, Integral)
@@ -881,10 +882,15 @@ class Settings:
                 cv.check_greater_than('Deposited Energy Threshold for collision tracking data banking',
                                       value, 0)
             elif key == 'max_collisions':
-                cv.check_type('maximum collisions banks',
+                cv.check_type('maximum collisions banks per file',
                               value, Integral)
                 cv.check_greater_than('maximum collisions banks in collision tracking',
                                       value, 0)
+            elif key == 'max_collision_track_files':
+                cv.check_type('maximum collisions banks',
+                              value, Integral)
+                cv.check_greater_than('maximum number of collision_track files ',
+                                      value, 0)            
             elif key == 'mcpl':
                 cv.check_type('write to an MCPL-format file', value, bool)
 
@@ -1495,6 +1501,9 @@ class Settings:
             if 'max_collisions' in self._collision_track:
                 subelement = ET.SubElement(element, "max_collisions")
                 subelement.text = str(self._collision_track['max_collisions'])
+            if 'max_collision_track_files' in self._collision_track:
+                subelement = ET.SubElement(element, "max_collision_track_files")
+                subelement.text = str(self._collision_track['max_collision_track_files'])            
             if 'mcpl' in self._collision_track:
                 subelement = ET.SubElement(element, "mcpl")
                 subelement.text = str(self._collision_track['mcpl']).lower()
@@ -1948,7 +1957,7 @@ class Settings:
         elem = root.find('collision_track')
         if elem is not None:
             for key in ('cell_ids', 'mt_numbers', 'universe_ids', 'material_ids', 'nuclide_ids',
-                        'deposited_E_threshold', 'max_collisions', 'mcpl'):
+                        'deposited_E_threshold', 'max_collisions',"max_collision_track_files", 'mcpl'):
                 value = get_text(elem, key)
                 if value is not None:
                     if key == 'cell_ids':
@@ -1965,6 +1974,8 @@ class Settings:
                         value = float(value)
                     elif key in ('max_collisions'):
                         value = int(value)
+                    elif key in ('max_collision_track_files'):
+                        value = int(value)                        
                     elif key == 'mcpl':
                         value = value in ('true', '1')
                     self.collision_track[key] = value

@@ -163,6 +163,8 @@ extern int64_t
   ct_max_collisions; //!< Maximum events recoreded by Collision track?
 extern double source_rejection_fraction; //!< Minimum fraction of source sites
                                          //!< that must be accepted
+extern int64_t ct_max_files;     //!< maximum number of collision track files
+                                  //!<  to be created                          
 extern int
   max_history_splits; //!< maximum number of particle splits for weight windows
 extern int64_t ssw_max_particles; //!< maximum number of particles to be

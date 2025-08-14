@@ -40,7 +40,7 @@ def model():
     return model
 
 
-ENERGIES = np.logspace(log10(1e-5), log10(2e7), 100)
+ENERGIES = np.logspace(log10(1e-5), log10(150e6), 500)
 
 
 @pytest.mark.parametrize("reaction_rate_mode,reaction_rate_opts,tolerance", [

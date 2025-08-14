@@ -82,7 +82,12 @@ def dose_coefficients(particle, geometry='AP', data_source='icrp116'):
     cv.check_value('data_source', data_source, {'icrp74', 'icrp116'})
 
     if (data_source, particle) not in _FILES:
-        raise ValueError(f"{particle} has no dose data in data source {data_source}.")
+        available_particles = sorted({p for (ds, p) in _FILES if ds == data_source})
+        msg = (
+            f"'{particle}' has no dose data in data source '{data_source}'. "
+            f"Available particles for {data_source} are: {available_particles}"
+        )
+        raise ValueError(msg)
     elif (data_source, particle) not in _DOSE_TABLES:
         _load_dose_icrp(data_source, particle)
 

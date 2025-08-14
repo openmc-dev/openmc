@@ -487,10 +487,6 @@ void Tally::add_filter(Filter* filter)
     energyout_filter_ = filters_.size();
   } else if (filter->type() == FilterType::DELAYED_GROUP) {
     delayedgroup_filter_ = filters_.size();
-  } else if (filter->type() == FilterType::CELL) {
-    cell_filter_ = filters_.size();
-  } else if (filter->type() == FilterType::ENERGY) {
-    energy_filter_ = filters_.size();
   }
   filters_.push_back(filter_idx);
 }

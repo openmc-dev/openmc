@@ -84,7 +84,7 @@ def dose_coefficients(particle, geometry='AP', data_source='icrp116'):
     if (data_source, particle) not in _FILES:
         available_particles = sorted({p for (ds, p) in _FILES if ds == data_source})
         msg = (
-            f"'{particle}' has no dose data in data source '{data_source}'. "
+            f"'{particle}' has no dose data in data source {data_source}. "
             f"Available particles for {data_source} are: {available_particles}"
         )
         raise ValueError(msg)

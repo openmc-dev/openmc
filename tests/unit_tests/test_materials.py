@@ -61,3 +61,18 @@ def test_materials_deplete():
     # Ni59 is one of the main activation product of Ni60 in the first irradiation
     # step. It then decays in the second cooling step (flux = 0)
     assert Ni59_mat_1_step_1 > 0.0 and Ni59_mat_1_step_1 > Ni59_mat_1_step_2
+
+def test_export_duplicate_materials_to_xml():
+    """
+    Test exporting Materials to xml with a duplicate and checking that only
+    unique entities are exported.
+    """
+    my_mat = openmc.Material(name="my_mat")
+    my_mat2 = openmc.Material(name="my_mat2")
+
+    materials = openmc.Materials([my_mat, my_mat2, my_mat])
+
+    materials.export_to_xml("materials.xml")
+
+    materials_in = openmc.Materials.from_xml("materials.xml")
+    assert len(materials_in) == 2

@@ -132,7 +132,7 @@ std::unordered_set<int> ct_cell_id;
 std::unordered_set<int> ct_mt_number;
 std::unordered_set<int> ct_universe_id;
 std::unordered_set<int> ct_material_id;
-std::unordered_set<int> ct_nuclide_id;
+std::unordered_set<std::string> ct_nuclide_id;
 double ct_deposited_E_threshold {0};
 int64_t ct_max_collisions;
 int64_t ct_max_files;
@@ -961,8 +961,13 @@ void read_settings_xml(pugi::xml_node root)
       }
     }
     if (check_for_node(node_ct, "nuclide_ids")) {
-      auto temp = get_node_array<int>(node_ct, "nuclide_ids");
+      auto temp = get_node_array<std::string>(node_ct, "nuclide_ids");
       for (const auto& b : temp) {
+        // if (openmc::data::nuclide_map.find(b) ==
+        // openmc::data::nuclide_map.end()) {
+        //   fatal_error("Could not find nuclide " + b + " in the nuclear data
+        //   library.");
+        // }
         ct_nuclide_id.insert(b);
       }
     }
@@ -980,9 +985,10 @@ void read_settings_xml(pugi::xml_node root)
     }
     // Get maximum number of collision_track files to be created
     if (check_for_node(node_ct, "max_collision_track_files")) {
-      ct_max_files = std::stoll(get_node_value(node_ct, "max_collision_track_files"));
+      ct_max_files =
+        std::stoll(get_node_value(node_ct, "max_collision_track_files"));
     } else {
-      ct_max_files = 3;
+      ct_max_files = 1;
     }
     if (check_for_node(node_ct, "mcpl")) {
       ct_mcpl_write = get_node_value_bool(node_ct, "mcpl");

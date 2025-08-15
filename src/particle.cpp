@@ -363,15 +363,14 @@ void Particle::event_collide()
       event_mt() = 18;
     }
     int cell_id = model::cells[lowest_coord().cell()]->id_;
-    int nuclide_zaid = 1000 * data::nuclides[event_nuclide()]->Z_ +
-                       data::nuclides[event_nuclide()]->A_;
+    std::string nuclide_id = data::nuclides[event_nuclide()]->name_;
     int universe_id = model::universes[lowest_coord().universe()]->id_;
     double delta_E = E_last() - E();
     int material_id = model::materials[material()]->id_;
 
     // ADD THOSE INFORMATION TO CollisionTrackSite
-    if (collision_track_conditions(cell_id, event_mt(), nuclide_zaid,
-          universe_id, material_id, delta_E)) {
+    if (collision_track_conditions(
+          cell_id, event_mt(), nuclide_id, universe_id, material_id, delta_E)) {
       CollisionTrackSite site;
       site.r = r();
       site.u = u();
@@ -382,7 +381,9 @@ void Particle::event_collide()
       site.event_mt = event_mt();
       site.delayed_group = delayed_group();
       site.cell_id = cell_id;
-      site.nuclide_id = nuclide_zaid;
+      site.nuclide_id = 10000 * data::nuclides[event_nuclide()]->Z_ +
+                        10 * data::nuclides[event_nuclide()]->A_ +
+                        data::nuclides[event_nuclide()]->metastable_;
       site.material_id = material_id;
       site.universe_id = universe_id;
       site.particle = type();
@@ -1027,7 +1028,7 @@ void add_surf_source_to_bank(Particle& p, const Surface& surf)
   int64_t idx = simulation::surf_source_bank.thread_safe_append(site);
 }
 
-bool collision_track_conditions(int id_cell, int mt_event, int zaid_nuclide,
+bool collision_track_conditions(int id_cell, int mt_event, std::string zaid_nuclide,
   int id_universe, int id_material, double difference_E)
 {
 

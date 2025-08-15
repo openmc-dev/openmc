@@ -6,7 +6,7 @@ from numbers import Integral, Real
 from pathlib import Path
 
 import lxml.etree as ET
-
+import warnings
 import openmc
 import openmc.checkvalue as cv
 from openmc.checkvalue import PathLike
@@ -872,10 +872,15 @@ class Settings:
                                           material_id, 0)
             elif key == 'nuclide_ids':
                 cv.check_type('nuclide ids for collision tracking data banking', value,
-                              Iterable, Integral)
+                              Iterable, str)
                 for nuclide_id in value:
-                    cv.check_greater_than('nuclide ids for collision  banking',
-                                          nuclide_id, 0)
+                    cv.check_type('nuclide ids for collision  banking',
+                                          nuclide_id, str)
+                    # If nuclide name doesn't look valid, give a warning
+                    try:
+                        Z, _, _ = openmc.data.zam(nuclide_id)
+                    except ValueError as e:
+                        warnings.warn(str(e))
             elif key == 'deposited_E_threshold':
                 cv.check_type('Deposited Energy Threshold for collision tracking data banking',
                               value, Real)

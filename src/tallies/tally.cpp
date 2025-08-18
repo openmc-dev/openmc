@@ -1021,7 +1021,7 @@ void reduce_tally_results()
       // TO DO: allocate the correct size for the values array during
       // initialization
 
-      if (vov_) {
+      if (tally->vov_results()) {
         xt::xtensor<double, 4> values = values_view;
         xt::xtensor<double, 4> values_reduced = xt::empty_like(values);
 

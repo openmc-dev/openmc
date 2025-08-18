@@ -276,7 +276,6 @@ void Particle::event_advance()
     if (!model::active_tallies.empty()) {
       score_track_derivative(*this, distance);
     }
->>>>>>> 31a712bb0 (fix for time_filter & mesh_filter & tracklength filter)
   }
 
   // Score track-length estimate of k-eff

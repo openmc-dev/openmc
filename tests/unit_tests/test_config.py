@@ -32,7 +32,7 @@ def reset_config_and_env():
         os.chdir(original_cwd)
 
         # Restore config one last time for safety between modules
-        openmc.config = _default_config(resolve_paths = original_resolve_paths)
+        openmc.config = _default_config(resolve_paths=original_resolve_paths)
 
 
 def test_config_basics():

@@ -1927,8 +1927,7 @@ class Materials(cv.CheckedList):
             file.write(ET.tostring(element, encoding="unicode"))
 
         # Write the <material> elements.
-        unique_materials = sorted(set(self), key=lambda x: x.id)
-        for material in unique_materials:
+        for material in sorted(set(self), key=lambda x: x.id):
             element = material.to_xml_element(nuclides_to_ignore=nuclides_to_ignore)
             clean_indentation(element, level=level+1)
             element.tail = element.tail.strip(' ')

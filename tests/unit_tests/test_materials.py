@@ -62,7 +62,8 @@ def test_materials_deplete():
     # step. It then decays in the second cooling step (flux = 0)
     assert Ni59_mat_1_step_1 > 0.0 and Ni59_mat_1_step_1 > Ni59_mat_1_step_2
 
-def test_export_duplicate_materials_to_xml():
+
+def test_export_duplicate_materials_to_xml(run_in_tmpdir):
     """
     Test exporting Materials to xml with a duplicate and checking that only
     unique entities are exported.

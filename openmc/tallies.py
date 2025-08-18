@@ -554,16 +554,13 @@ class Tally(IDManagerMixin):
         else:
             return self._std_dev
     
-    @property
-    def VOV(self):
-        if not self._sp_filename:
-            return None
+    @staticmethod    
+    def _VOV_from_sums(n, mean, sum1, sum2, sum3, sum4):
+        nonzero = np.abs(mean) > 0
+        vov = np.zeros_like(mean, dtype=float)
 
-        n = self.num_realizations
-        nonzero = np.abs(self.mean) > 0
-        vov = np.zeros_like(self.mean)
-        numerator = self.sum_th - ( 4.0* self.sum_rd*self.sum ) / n + (6.0 * self.sum_sq * (self.sum)**2) / (n**2) - (3.0 * (self.sum)**4 ) / (n**3) 
-        denominator = (self.sum_sq - (1.0/n)*(self.sum)**2) **2
+        numerator = sum4 - ( 4.0*sum3*sum1 ) / n + (6.0 * sum2 * (sum1)**2) / (n**2) - (3.0 * (sum1)**4 ) / (n**3) 
+        denominator = (sum2 - (1.0/n)*(sum1)**2) **2
 
         # Apply the nonzero mask to numerator and denominator
         numerator = numerator[nonzero]
@@ -572,11 +569,17 @@ class Tally(IDManagerMixin):
         # Ensure the shapes match
         numerator = np.reshape(numerator, vov[nonzero].shape)
         denominator = np.reshape(denominator, vov[nonzero].shape)
-        
+
         vov[nonzero] = numerator / denominator - 1.0 / n
 
         return vov
-
+    
+    @property
+    def VOV(self):
+        if not self._sp_filename:
+            return None
+        return Tally._VOV_from_sums(self.num_realizations, self.mean, self.sum, self.sum_sq, self.sum_rd, self.sum_th)
+    
     @property
     def normality_test(self):
         if not self._sp_filename:

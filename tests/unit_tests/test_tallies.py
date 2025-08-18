@@ -4,6 +4,7 @@ import openmc
 import openmc.tally_stats as ts
 import os, h5py, pprint
 import shutil
+from fractions import Fraction
 
 def test_xml_roundtrip(run_in_tmpdir):
     # Create a tally with all possible gizmos
@@ -113,9 +114,8 @@ def test_figure_of_merit(sphere_model, run_in_tmpdir):
     # Check that figure of merit is calculated correctly
     assert tally.figure_of_merit == pytest.approx(1 / (rel_err**2 * time))
 
-
 def test_tally_normality_functions():
-    values = np.arange(1, 21, dtype=float)
+    values = np.arange(1, 15, dtype=float)
     n       = values.size 
     mean    = np.array([values.mean()]) 
     sum_sq  = np.array([np.sum(values**2)])
@@ -141,6 +141,25 @@ def test_tally_normality_functions():
     assert p_omni.shape    == mean.shape
     assert np.all((0.0 <= p_omni) & (p_omni <= 1.0))
 
+@pytest.mark.parametrize("x, expected", [
+    ([-1, 1],                     Fraction(0, 1)),
+    ([-1, 0, 1],                  Fraction(1, 6)),
+    ([0, 1, 2],                   Fraction(1, 6)),
+    ([0, 1, 2, 3],                Fraction(4, 25)),
+    ([0, 1, 2, 3, 4],             Fraction(7, 50)),
+    ([0, 0, 1, 1],                Fraction(0, 1)),
+])
+
+def test_vov_deterministic(x, expected):
+    x = np.arange(1, 15, dtype=float)  
+    N = x.size
+    S1, S2, S3, S4 = [x.sum(),(x**2).sum(),(x**3).sum(), (x**4).sum()]
+
+    mean = np.array([x.mean()])
+    vov = openmc.Tally._VOV_from_sums(N, mean,
+                                       np.array([S1]), np.array([S2]),
+                                       np.array([S3]), np.array([S4]))[0]
+    assert np.isclose(vov, float(expected), rtol=0, atol=1e-15)
 
 def test_tally_normality_stats(sphere_model, run_in_tmpdir):
 
@@ -179,7 +198,7 @@ def test_tally_normality_stats(sphere_model, run_in_tmpdir):
     for p in (p_skew, p_kurt, p_omni):
         assert ((0.0 <= p) & (p <= 1.0)).all()
 
-def test_vov(sphere_model, run_in_tmpdir):
+def test_vov_stochastic(sphere_model, run_in_tmpdir):
     # Create a tally with all the gizmos
     tally = openmc.Tally(name='test tally')
     ef = openmc.EnergyFilter([0.0, 0.1, 1.0, 10.0e6])

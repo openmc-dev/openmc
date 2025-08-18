@@ -373,7 +373,7 @@ Mgxs::Mgxs(const std::string& in_name, const vector<double>& mat_kTs,
           }
         }
       } // end switch
-    } // end microscopic temperature loop
+    }   // end microscopic temperature loop
 
     // Now combine the microscopic data at each relevant temperature
     // We will do this by treating the multiple temperatures of a nuclide as

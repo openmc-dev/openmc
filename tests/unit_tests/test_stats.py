@@ -5,7 +5,7 @@ import pytest
 import openmc
 import openmc.stats
 from scipy.integrate import trapezoid
-
+from scipy import stats as sps
 
 def assert_sample_mean(samples, expected_mean):
     # Calculate sample standard deviation
@@ -506,3 +506,123 @@ def test_combine_distributions():
     # uncertainty of the expected value
     samples = combined.sample(10_000)
     assert_sample_mean(samples, 0.25)
+
+@pytest.mark.parametrize("x, skew_true, kurt_true", [
+    ([-1, 0, 1],                 0.0,        1.5),  
+    ([-1, 1],                    0.0,        1.0),   
+    ([0, 0, 1, 1],               0.0,        1.0),   
+    ([0, 1, 2, 3],               0.0,        41/25), 
+])
+
+def test_b1_b2_analytical(x, skew_true, kurt_true):
+    x = np.asarray(x, dtype=float)
+    n = x.size
+    mean = x.mean()
+    s2 = (x**2).sum()
+    s3 = (x**3).sum()
+    s4 = (x**4).sum()
+
+    sqrt_b1, b2 = openmc.tally_stats._calc_b1_b2(n, np.array([mean]),
+                               np.array([s2]), np.array([s3]), np.array([s4]))
+    skew = sqrt_b1.item()
+    kurt = b2.item()
+
+    assert np.isclose(skew, skew_true, rtol=0, atol=1e-15)
+    assert np.isclose(kurt, kurt_true, rtol=0, atol=1e-14)
+
+@pytest.mark.parametrize("draw, skew_true, kurt_true", [
+    (lambda rng, n: rng.normal(0, 1, n),        0.0,  3.0),   
+    (lambda rng, n: rng.random(n),              0.0,  1.8),   
+    (lambda rng, n: rng.exponential(1.0, n),    2.0,  9.0),  
+    (lambda rng, n: (rng.random(n) < 0.3).astype(float),
+                                                  (1-2*0.3)/np.sqrt(0.3*0.7),
+                                                  (1 - 3*0.3 + 3*0.3**2)/(0.3*0.7)), 
+])
+
+def test_b1_b2_scipy(draw, skew_true, kurt_true):
+    rng = np.random.default_rng(12345)
+    N = 200_000  
+    x = draw(rng, N)
+
+    n = x.size
+    mean = x.mean()
+    s2 = (x**2).sum()
+    s3 = (x**3).sum()
+    s4 = (x**4).sum()
+
+    sqrt_b1, b2 = openmc.tally_stats._calc_b1_b2(n, np.array([mean]),
+                               np.array([s2]), np.array([s3]), np.array([s4]))
+    skew_mine = sqrt_b1.item()
+    kurt_mine = b2.item()
+
+    # Scipy values
+    skew_sp = sps.skew(x, bias=True)
+    kurt_sp = sps.kurtosis(x, fisher=False, bias=True)
+
+    # Compare to SciPy 
+    assert np.isclose(skew_mine, skew_sp, rtol=0, atol=5e-3)
+    assert np.isclose(kurt_mine, kurt_sp, rtol=0, atol=5e-3)
+
+    tol_skew = 0.02 if abs(skew_true) < 0.5 else 0.05
+    tol_kurt = 0.03 if kurt_true < 4 else 0.1
+
+    assert abs(skew_mine - skew_true) < tol_skew
+    assert abs(kurt_mine - kurt_true) < tol_kurt
+
+def ztests_scipy_comparison():
+    rng = np.random.default_rng(987)
+    x_norm = rng.normal(size=50_000)
+    x_exp  = rng.exponential(size=50_000)
+
+    # Normal dataset
+    n0 = x_norm.size
+    mean0 = x_norm.mean()
+    s20 = (x_norm**2).sum()
+    s30 = (x_norm**3).sum()
+    s40 = (x_norm**4).sum()
+    Zb1_0, p_skew_0, _ = openmc.tally_stats.skewness_test(n0, mean0, s20, s30, s40)
+    Zb2_0, p_kurt_0, _ = openmc.tally_stats.kurtosis_test(n0, mean0, s20, s30, s40)
+    K2_0, p_omni_0 = openmc.tally_stats.k2_test(Zb1_0, Zb2_0)
+
+    # SciPy Z and p values
+    z_skew_0, p_skew_sp0 = sps.skewtest(x_norm)
+    z_kurt_0, p_kurt_sp0 = sps.kurtosistest(x_norm)
+    k2_sp0, p_omni_sp0 = sps.normaltest(x_norm)
+
+    assert np.isclose(Zb1_0, z_skew_0, atol=0.15)
+    assert np.isclose(Zb2_0, z_kurt_0, atol=0.15)
+    assert np.isclose(K2_0, k2_sp0, atol=0.3)
+    assert np.isclose(p_skew_0, p_skew_sp0, atol=5e-3)
+    assert np.isclose(p_kurt_0, p_kurt_sp0, atol=5e-3)
+    assert np.isclose(p_omni_0, p_omni_sp0, atol=5e-3)
+
+    # Exponential dataset
+    n1 = x_exp.size
+    mean1 = x_exp.mean()
+    s21 = (x_exp**2).sum()
+    s31 = (x_exp**3).sum()
+    s41 = (x_exp**4).sum()
+    Zb1_1, p_skew_1, _ = openmc.tally_stats.skewness_test(n1, mean1, s21, s31, s41)
+    Zb2_1, p_kurt_1, _ = openmc.tally_stats.kurtosis_test(n1, mean1, s21, s31, s41)
+    K2_1, p_omni_1 = openmc.tally_stats.k2_test(Zb1_1, Zb2_1)
+
+    # SciPy Z and p values
+    z_skew_1, p_skew_sp1 = sps.skewtest(x_exp)
+    z_kurt_1, p_kurt_sp1 = sps.kurtosistest(x_exp)
+    k2_sp1, p_omni_sp1 = sps.normaltest(x_exp)
+
+    # Both pipelines should reject (p ≪ 1e-6)
+    assert p_skew_1 < 1e-6 and p_skew_sp1 < 1e-6
+    assert p_kurt_1 < 1e-6 and p_kurt_sp1 < 1e-6
+    assert p_omni_1 < 1e-6 and p_omni_sp1 < 1e-6
+
+     # Right-skewed: large positive Zb1
+    assert Zb1_1 > 30
+    assert z_skew_1 > 30
+    # Heavy-tailed: large positive Zb2
+    assert Zb2_1 > 30
+    assert z_kurt_1 > 30
+    # Combined omnibus rejects
+    assert K2_1 > 2000
+    assert k2_sp1 >2000
+  

@@ -151,14 +151,16 @@ def test_tally_normality_functions():
 ])
 
 def test_vov_deterministic(x, expected):
-    x = np.arange(1, 15, dtype=float)  
+    print(x)
+    x = np.asarray(x, dtype=float)
     N = x.size
-    S1, S2, S3, S4 = [x.sum(),(x**2).sum(),(x**3).sum(), (x**4).sum()]
-
-    mean = np.array([x.mean()])
-    vov = openmc.Tally._VOV_from_sums(N, mean,
-                                       np.array([S1]), np.array([S2]),
-                                       np.array([S3]), np.array([S4]))[0]
+    S1 = x.sum()
+    S2 = (x**2).sum()
+    S3 = (x**3).sum()
+    S4 = (x**4).sum()
+    vov = openmc.Tally._VOV_from_sums(N, np.array([S1]), np.array([S2]),
+                                         np.array([S3]), np.array([S4]))[0]
+    print("VOV=", vov)
     assert np.isclose(vov, float(expected), rtol=0, atol=1e-15)
 
 def test_tally_normality_stats(sphere_model, run_in_tmpdir):

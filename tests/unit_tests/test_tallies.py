@@ -151,7 +151,6 @@ def test_tally_normality_functions():
 ])
 
 def test_vov_deterministic(x, expected):
-    print(x)
     x = np.asarray(x, dtype=float)
     N = x.size
     S1 = x.sum()
@@ -160,15 +159,11 @@ def test_vov_deterministic(x, expected):
     S4 = (x**4).sum()
     vov = openmc.Tally._VOV_from_sums(N, np.array([S1]), np.array([S2]),
                                          np.array([S3]), np.array([S4]))[0]
-    print("VOV=", vov)
+    
     assert np.isclose(vov, float(expected), rtol=0, atol=1e-15)
 
 def test_tally_normality_stats(sphere_model, run_in_tmpdir):
 
-    openmc_path = shutil.which("openmc")
-    assert openmc_path is not None, "Cannot find 'openmc' on PATH!"
-    print("pytest will invoke OpenMC binary at:", openmc_path)
- 
     tally = openmc.Tally()
     tally.scores = ['flux']
     tally.vov = True

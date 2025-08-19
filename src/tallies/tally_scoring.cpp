@@ -2404,15 +2404,70 @@ void score_analog_tally_mg(Particle& p)
     match.bins_present_ = false;
 }
 
-void score_tracklength_tally(Particle& p, double distance)
+void score_tracklength_tally(Particle& p, double total_distance)
 {
-  // Determine the tracklength estimate of the flux
-  double flux = p.wgt() * distance;
 
+  if (!model::active_timed_tracklength_tallies.empty()) {
+    double speed = p.speed();
+    double total_dt = total_distance / speed;
+
+    // save particle last state
+    auto time_last = p.time_last();
+    auto r_last = p.r_last();
+
+    // move particle back
+    p.time() -= total_dt;
+    p.lifetime() -= total_dt;
+
+    for (int j = 0; j < p.n_coord(); ++j) {
+      p.coord(j).r() -= total_distance * p.coord(j).u();
+    }
+
+    double distance_traveled = 0.0;
+    while (distance_traveled < total_distance) {
+
+      double distance =
+        std::min(model::distance_to_time_boundary(p.time(), speed),
+          total_distance - distance_traveled);
+      double dt = distance / speed;
+
+      // Save particle last state for tracklength tallies
+      p.time_last() = p.time();
+      p.r_last() = p.r();
+
+      // Advance particle in space and time
+      // Short-term solution until the surface source is revised and we can use
+      // this->move_distance(distance)
+      for (int j = 0; j < p.n_coord(); ++j) {
+        p.coord(j).r() += distance * p.coord(j).u();
+      }
+      p.time() += dt;
+      p.lifetime() += dt;
+
+      // Determine the tracklength estimate of the flux
+      double flux = p.wgt() * distance;
+
+      score_tracklength_tally(p, flux, model::active_timed_tracklength_tallies);
+      distance_traveled += distance;
+    }
+
+    p.time_last() = time_last;
+    p.r_last() = r_last;
+  }
+
+  // Determine the tracklength estimate of the flux
+  double total_flux = p.wgt() * total_distance;
+
+  score_tracklength_tally(p, total_flux, model::active_tracklength_tallies);
+}
+
+void score_tracklength_tally(
+  Particle& p, double flux, const vector<int>& tallies)
+{
   // Set 'none' value for log union grid index
   int i_log_union = C_NONE;
 
-  for (auto i_tally : model::active_tracklength_tallies) {
+  for (auto i_tally : tallies) {
     const Tally& tally {*model::tallies[i_tally]};
 
     // Initialize an iterator over valid filter bin combinations.  If there are

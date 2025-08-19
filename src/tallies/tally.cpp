@@ -58,6 +58,7 @@ vector<unique_ptr<Tally>> tallies;
 vector<int> active_tallies;
 vector<int> active_analog_tallies;
 vector<int> active_tracklength_tallies;
+vector<int> active_timed_tracklength_tallies;
 vector<int> active_collision_tallies;
 vector<int> active_meshsurf_tallies;
 vector<int> active_surface_tallies;
@@ -1097,6 +1098,7 @@ void setup_active_tallies()
   model::active_tallies.clear();
   model::active_analog_tallies.clear();
   model::active_tracklength_tallies.clear();
+  model::active_timed_tracklength_tallies.clear();
   model::active_collision_tallies.clear();
   model::active_meshsurf_tallies.clear();
   model::active_surface_tallies.clear();
@@ -1108,6 +1110,9 @@ void setup_active_tallies()
 
     if (tally.active_) {
       model::active_tallies.push_back(i);
+      bool mesh_present = ((tally.get_filter<MeshFilter>() != nullptr) ||
+                           (tally.get_filter<MeshMaterialFilter>() != nullptr));
+      auto time_filter = tally.get_filter<TimeFilter>();
       switch (tally.type_) {
 
       case TallyType::VOLUME:
@@ -1116,12 +1121,11 @@ void setup_active_tallies()
           model::active_analog_tallies.push_back(i);
           break;
         case TallyEstimator::TRACKLENGTH:
-          model::active_tracklength_tallies.push_back(i);
-          if (auto time_filter = tally.get_filter<TimeFilter>()) {
-            if ((tally.get_filter<MeshFilter>() != nullptr) ||
-                (tally.get_filter<MeshMaterialFilter>() != nullptr)) {
-              model::add_to_time_grid(time_filter->bins());
-            }
+          if ((time_filter != nullptr) && mesh_present) {
+            model::active_timed_tracklength_tallies.push_back(i);
+            model::add_to_time_grid(time_filter->bins());
+          } else {
+            model::active_tracklength_tallies.push_back(i);
           }
           break;
         case TallyEstimator::COLLISION:
@@ -1158,6 +1162,7 @@ void free_memory_tally()
   model::active_tallies.clear();
   model::active_analog_tallies.clear();
   model::active_tracklength_tallies.clear();
+  model::active_timed_tracklength_tallies.clear();
   model::active_collision_tallies.clear();
   model::active_meshsurf_tallies.clear();
   model::active_surface_tallies.clear();

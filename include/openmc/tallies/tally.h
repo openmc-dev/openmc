@@ -203,6 +203,7 @@ extern vector<unique_ptr<Tally>> tallies;
 extern vector<int> active_tallies;
 extern vector<int> active_analog_tallies;
 extern vector<int> active_tracklength_tallies;
+extern vector<int> active_timed_tracklength_tallies;
 extern vector<int> active_collision_tallies;
 extern vector<int> active_meshsurf_tallies;
 extern vector<int> active_surface_tallies;

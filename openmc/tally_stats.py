@@ -1,7 +1,6 @@
 import numpy as np
 from math import sqrt, log
 from scipy.stats import norm, chi2, shapiro
-import matplotlib.pyplot as plt
 
 """
 [1] "A Suggestion for Using Powerful and Informative Tests of Normality"

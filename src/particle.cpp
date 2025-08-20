@@ -849,8 +849,10 @@ void Particle::update_neutron_xs(
 
   // If the cache doesn't match, recalculate micro xs
   if (this->E() != micro.last_E || this->sqrtkT() != micro.last_sqrtkT ||
-      i_sab != micro.index_sab || sab_frac != micro.sab_frac) {
+      i_sab != micro.index_sab || sab_frac != micro.sab_frac ||
+      ncrystal_xs != micro.last_ncrystal_xs) {
     data::nuclides[i_nuclide]->calculate_xs(i_sab, i_grid, sab_frac, *this);
+    micro.last_ncrystal_xs = ncrystal_xs;
 
     // If NCrystal is being used, update micro cross section cache
     if (ncrystal_xs >= 0.0) {

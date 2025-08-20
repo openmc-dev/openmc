@@ -157,6 +157,7 @@ struct NuclideMicroXS {
   double last_E {0.0};      //!< Last evaluated energy
   double last_sqrtkT {0.0}; //!< Last temperature in sqrt(Boltzmann constant
                             //!< * temperature (eV))
+  double last_ncrystal_xs {-999.0}; //!< Last evaluated NCrystal cross section
 };
 
 //==============================================================================

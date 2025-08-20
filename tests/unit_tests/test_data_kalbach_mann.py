@@ -7,6 +7,7 @@ import pytest
 
 import numpy as np
 
+import openmc
 from openmc.data import IncidentNeutron
 from openmc.data.kalbach_mann import _separation_energy, _AtomicRepresentation
 from openmc.data import kalbach_slope

@@ -29,7 +29,7 @@ def run_in_tmpdir(tmpdir):
     finally:
         orig.chdir()
         
-@pytest.fixture
+@pytest.fixture(scope="module")
 def endf_data():
     return openmc.config.get('endf_data')        
 

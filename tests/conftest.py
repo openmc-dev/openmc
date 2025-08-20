@@ -28,7 +28,10 @@ def run_in_tmpdir(tmpdir):
         yield
     finally:
         orig.chdir()
-
+        
+@pytest.fixture
+def endf_data():
+    return openmc.config.get('endf_data')        
 
 @pytest.fixture(scope='session', autouse=True)
 def resolve_paths():

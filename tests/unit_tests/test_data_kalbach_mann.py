@@ -129,7 +129,7 @@ def test_kalbach_slope():
         ('Hg204.h5', 'n-080_Hg_204.endf')
     ]
 )
-def test_comparison_slope_hdf5(hdf5_filename, endf_filename):
+def test_comparison_slope_hdf5(hdf5_filename, endf_filename, endf_data):
     """Test the calculation of the Kalbach-Mann slope done by OpenMC
     by comparing it to HDF5 data. The test is based on the first product
     of MT=5 (neutron). The isotopes tested have been selected because the
@@ -147,13 +147,13 @@ def test_comparison_slope_hdf5(hdf5_filename, endf_filename):
 
     """
     # HDF5 data
-    hdf5_directory = Path(os.environ['OPENMC_CROSS_SECTIONS']).parent
+    hdf5_directory = Path(openmc.config.get('cross_sections')).parent
     hdf5_data = IncidentNeutron.from_hdf5(hdf5_directory / hdf5_filename)
     hdf5_product = hdf5_data[5].products[0]
     hdf5_distribution = hdf5_product.distribution[0]
 
     # ENDF data
-    endf_directory = Path(os.environ['OPENMC_ENDF_DATA'])
+    endf_directory = Path(endf_data)
     endf_path = endf_directory / 'neutrons' / endf_filename
     endf_data = IncidentNeutron.from_endf(endf_path)
     endf_product = endf_data[5].products[0]

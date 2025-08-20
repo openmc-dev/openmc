@@ -43,6 +43,9 @@ class _Config(MutableMapping):
         Path to a depletion chain XML file. Also sets/unsets the
         OPENMC_CHAIN_FILE environment variable. Setting or deleting this
         clears internal decay data caches.
+    endf_data : pathlib.Path
+        Path to endf data directory. Used for testing. Also sets/unsets the
+        OPENMC_ENDF_DATA environment variable.
     resolve_paths : bool
         If True (default), all paths assigned are resolved to absolute
         paths. If False, paths are stored as they are provided.
@@ -51,7 +54,8 @@ class _Config(MutableMapping):
     _PATH_KEYS: Dict[str, str] = {
         'cross_sections': 'OPENMC_CROSS_SECTIONS',
         'mg_cross_sections': 'OPENMC_MG_CROSS_SECTIONS',
-        'chain_file': 'OPENMC_CHAIN_FILE'
+        'chain_file': 'OPENMC_CHAIN_FILE',
+        'endf_data': 'OPENMC_ENDF_DATA'
     }
 
     def __init__(self, data: dict = ()):
@@ -193,12 +197,12 @@ def _default_config() -> _Config:
 
     """
     config = _Config()
-    if "OPENMC_CROSS_SECTIONS" in os.environ:
-        config['cross_sections'] = os.environ["OPENMC_CROSS_SECTIONS"]
-    if "OPENMC_MG_CROSS_SECTIONS" in os.environ:
-        config['mg_cross_sections'] = os.environ["OPENMC_MG_CROSS_SECTIONS"]
-    chain_file = os.environ.get("OPENMC_CHAIN_FILE")
-    xs_path = config.get('cross_sections')
+    for key,var in _Config._PATH_KEYS.items():
+        if var in os.environ:
+            config[key] = os.environ[var]
+    
+    chain_file = config.get("chain_file")
+    xs_path = config.get("cross_sections")
     if chain_file is None and xs_path is not None and xs_path.exists():
         try:
             data = DataLibrary.from_xml(xs_path)
@@ -209,10 +213,8 @@ def _default_config() -> _Config:
         else:
             for lib in reversed(data.libraries):
                 if lib['type'] == 'depletion_chain':
-                    chain_file = xs_path.parent / lib['path']
+                    config['chain_file'] = xs_path.parent / lib['path']
                     break
-    if chain_file is not None:
-        config['chain_file'] = chain_file
     return config
 
 

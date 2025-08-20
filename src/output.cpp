@@ -523,7 +523,7 @@ double variance_of_variance(const double* x, int n)
   // Equation for variance of variance
   double vov = numerator / denominator - 1.0 / n;
 
-  return vov;
+  return sum;
 }
 
 std::pair<double, double> mean_stdev(const double* x, int n)

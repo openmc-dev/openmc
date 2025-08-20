@@ -541,9 +541,14 @@ void read_tally_results(hid_t group_id, hsize_t n_filter, hsize_t n_score,
   double* results, bool vov_results)
 {
   constexpr int ndim = 3;
-  hsize_t mem_dims[ndim] {n_filter, n_score, vov_results ? 5 : 3};
+  const hsize_t planes_mem =
+    vov_results ? static_cast<hsize_t>(5) : static_cast<hsize_t>(3);
+  const hsize_t planes_file =
+    vov_results ? static_cast<hsize_t>(4) : static_cast<hsize_t>(2);
+
+  hsize_t mem_dims[ndim] {n_filter, n_score, planes_mem};
   hsize_t start[ndim] {0, 0, 1};
-  hsize_t count[ndim] {n_filter, n_score, vov_results ? 4 : 2};
+  hsize_t count[ndim] {n_filter, n_score, planes_file};
 
   hid_t memspace = H5Screate_simple(ndim, mem_dims, nullptr);
   H5Sselect_hyperslab(memspace, H5S_SELECT_SET, start, nullptr, count, nullptr);
@@ -553,43 +558,6 @@ void read_tally_results(hid_t group_id, hsize_t n_filter, hsize_t n_score,
 
   H5Sclose(memspace);
 }
-/*
-  // Create dataspace for hyperslab in memory
-  constexpr int ndim = 3;
-  if (vov_results) {
-
-    hsize_t dims[ndim] {n_filter, n_score, 5};
-    hsize_t start[ndim] {0, 0, 1};
-    hsize_t count[ndim] {n_filter, n_score, 4};
-    hid_t memspace = H5Screate_simple(ndim, dims, nullptr);
-    H5Sselect_hyperslab(
-      memspace, H5S_SELECT_SET, start, nullptr, count, nullptr);
-
-    // Read the dataset
-    read_dataset_lowlevel(
-      group_id, "results", H5T_NATIVE_DOUBLE, memspace, false, results);
-
-    // Free resources
-    H5Sclose(memspace);
-
-  } else {
-
-    hsize_t dims[ndim] {n_filter, n_score, 3};
-    hsize_t start[ndim] {0, 0, 1};
-    hsize_t count[ndim] {n_filter, n_score, 2};
-    hid_t memspace = H5Screate_simple(ndim, dims, nullptr);
-    H5Sselect_hyperslab(
-      memspace, H5S_SELECT_SET, start, nullptr, count, nullptr);
-
-    // Read the dataset
-    read_dataset_lowlevel(
-      group_id, "results", H5T_NATIVE_DOUBLE, memspace, false, results);
-
-    // Free resources
-    H5Sclose(memspace);
-  }
-}
-*/
 
 void write_attr(hid_t obj_id, int ndim, const hsize_t* dims, const char* name,
   hid_t mem_type_id, const void* buffer)
@@ -726,58 +694,23 @@ void write_tally_results(hid_t group_id, hsize_t n_filter, hsize_t n_score,
   const double* results, bool vov_results)
 {
   constexpr int ndim = 3;
-  hsize_t mem_dims[ndim] {n_filter, n_score, vov_results ? 5 : 3};
+  const hsize_t planes_mem =
+    vov_results ? static_cast<hsize_t>(5) : static_cast<hsize_t>(3);
+  const hsize_t planes_file =
+    vov_results ? static_cast<hsize_t>(4) : static_cast<hsize_t>(2);
+
+  hsize_t mem_dims[ndim] {n_filter, n_score, planes_mem};
   hsize_t start[ndim] {0, 0, 1};
-  hsize_t count[ndim] {n_filter, n_score, vov_results ? 4 : 2};
+  hsize_t count[ndim] {n_filter, n_score, planes_file};
 
   hid_t memspace = H5Screate_simple(ndim, mem_dims, nullptr);
   H5Sselect_hyperslab(memspace, H5S_SELECT_SET, start, nullptr, count, nullptr);
 
-  // File dataset contains ONLY the running sums (shape ...x2 or ...x4)
-  hsize_t file_dims[ndim] {n_filter, n_score, vov_results ? 4 : 2};
-  write_dataset_lowlevel(group_id, ndim, file_dims, "results",
-    H5T_NATIVE_DOUBLE, memspace, false, results);
+  write_dataset_lowlevel(group_id, ndim, count, "results", H5T_NATIVE_DOUBLE,
+    memspace, false, results);
 
   H5Sclose(memspace);
 }
-/*
-  // Set dimensions of sum/sum_sq hyperslab to store
-  constexpr int ndim = 3;
-  if (vov_results) {
-    hsize_t count[ndim] {n_filter, n_score, 4};
-    // Set dimensions of results array
-    hsize_t dims[ndim] {n_filter, n_score, 5};
-
-    hsize_t start[ndim] {0, 0, 1};
-    hid_t memspace = H5Screate_simple(ndim, dims, nullptr);
-    H5Sselect_hyperslab(
-      memspace, H5S_SELECT_SET, start, nullptr, count, nullptr);
-
-    // Create and write dataset
-    write_dataset_lowlevel(group_id, ndim, count, "results", H5T_NATIVE_DOUBLE,
-      memspace, false, results);
-
-    // Free resources
-    H5Sclose(memspace);
-  } else {
-    hsize_t count[ndim] {n_filter, n_score, 2};
-    // Set dimensions of results array
-    hsize_t dims[ndim] {n_filter, n_score, 3};
-
-    hsize_t start[ndim] {0, 0, 1};
-    hid_t memspace = H5Screate_simple(ndim, dims, nullptr);
-    H5Sselect_hyperslab(
-      memspace, H5S_SELECT_SET, start, nullptr, count, nullptr);
-
-    // Create and write dataset
-    write_dataset_lowlevel(group_id, ndim, count, "results", H5T_NATIVE_DOUBLE,
-      memspace, false, results);
-
-    // Free resources
-    H5Sclose(memspace);
-  }
-}
-*/
 
 bool using_mpio_device(hid_t obj_id)
 {

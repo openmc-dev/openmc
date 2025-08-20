@@ -1021,7 +1021,7 @@ void reduce_tally_results()
       // TO DO: allocate the correct size for the values array during
       // initialization
 
-      if (tally->vov_results()) {
+      /*if (tally->vov_results()) {
         xt::xtensor<double, 4> values = values_view;
         xt::xtensor<double, 4> values_reduced = xt::empty_like(values);
 
@@ -1035,20 +1035,19 @@ void reduce_tally_results()
         } else {
           values_view = 0.0;
         }
+      } else {*/
+      xt::xtensor<double, 2> values = values_view;
+      xt::xtensor<double, 2> values_reduced = xt::empty_like(values);
+
+      // Reduce contiguous set of tally results
+      MPI_Reduce(values.data(), values_reduced.data(), values.size(),
+        MPI_DOUBLE, MPI_SUM, 0, mpi::intracomm);
+
+      // Transfer values on master and reset on other ranks
+      if (mpi::master) {
+        values_view = values_reduced;
       } else {
-        xt::xtensor<double, 2> values = values_view;
-        xt::xtensor<double, 2> values_reduced = xt::empty_like(values);
-
-        // Reduce contiguous set of tally results
-        MPI_Reduce(values.data(), values_reduced.data(), values.size(),
-          MPI_DOUBLE, MPI_SUM, 0, mpi::intracomm);
-
-        // Transfer values on master and reset on other ranks
-        if (mpi::master) {
-          values_view = values_reduced;
-        } else {
-          values_view = 0.0;
-        }
+        values_view = 0.0;
       }
     }
   }

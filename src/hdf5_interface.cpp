@@ -540,9 +540,24 @@ void read_complex(
 void read_tally_results(hid_t group_id, hsize_t n_filter, hsize_t n_score,
   double* results, bool vov_results)
 {
+  constexpr int ndim = 3;
+  hsize_t mem_dims[ndim] {n_filter, n_score, vov_results ? 5 : 3};
+  hsize_t start[ndim] {0, 0, 1};
+  hsize_t count[ndim] {n_filter, n_score, vov_results ? 4 : 2};
+
+  hid_t memspace = H5Screate_simple(ndim, mem_dims, nullptr);
+  H5Sselect_hyperslab(memspace, H5S_SELECT_SET, start, nullptr, count, nullptr);
+
+  read_dataset_lowlevel(
+    group_id, "results", H5T_NATIVE_DOUBLE, memspace, false, results);
+
+  H5Sclose(memspace);
+}
+/*
   // Create dataspace for hyperslab in memory
   constexpr int ndim = 3;
   if (vov_results) {
+
     hsize_t dims[ndim] {n_filter, n_score, 5};
     hsize_t start[ndim] {0, 0, 1};
     hsize_t count[ndim] {n_filter, n_score, 4};
@@ -574,6 +589,7 @@ void read_tally_results(hid_t group_id, hsize_t n_filter, hsize_t n_score,
     H5Sclose(memspace);
   }
 }
+*/
 
 void write_attr(hid_t obj_id, int ndim, const hsize_t* dims, const char* name,
   hid_t mem_type_id, const void* buffer)
@@ -709,6 +725,22 @@ void write_string(
 void write_tally_results(hid_t group_id, hsize_t n_filter, hsize_t n_score,
   const double* results, bool vov_results)
 {
+  constexpr int ndim = 3;
+  hsize_t mem_dims[ndim] {n_filter, n_score, vov_results ? 5 : 3};
+  hsize_t start[ndim] {0, 0, 1};
+  hsize_t count[ndim] {n_filter, n_score, vov_results ? 4 : 2};
+
+  hid_t memspace = H5Screate_simple(ndim, mem_dims, nullptr);
+  H5Sselect_hyperslab(memspace, H5S_SELECT_SET, start, nullptr, count, nullptr);
+
+  // File dataset contains ONLY the running sums (shape ...x2 or ...x4)
+  hsize_t file_dims[ndim] {n_filter, n_score, vov_results ? 4 : 2};
+  write_dataset_lowlevel(group_id, ndim, file_dims, "results",
+    H5T_NATIVE_DOUBLE, memspace, false, results);
+
+  H5Sclose(memspace);
+}
+/*
   // Set dimensions of sum/sum_sq hyperslab to store
   constexpr int ndim = 3;
   if (vov_results) {
@@ -745,6 +777,7 @@ void write_tally_results(hid_t group_id, hsize_t n_filter, hsize_t n_score,
     H5Sclose(memspace);
   }
 }
+*/
 
 bool using_mpio_device(hid_t obj_id)
 {

@@ -203,9 +203,10 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
 
         if (tally->vov_results()) {
           write_attribute(tally_group, "vov_results", 1);
-        } else {
-          write_attribute(tally_group, "vov_results", 0);
         }
+        /*else {
+          write_attribute(tally_group, "vov_results", 0);
+        }*/
 
         if (tally->estimator_ == TallyEstimator::ANALOG) {
           write_dataset(tally_group, "estimator", "analog");
@@ -514,9 +515,15 @@ extern "C" int openmc_statepoint_load(const char* filename)
         if (internal) {
           tally->writable_ = false;
         } else {
+
           auto& results = tally->results_;
           read_tally_results(tally_group, results.shape()[0],
             results.shape()[1], results.data(), tally->vov_results());
+
+          auto value_view = xt::view(results, xt::all(), xt::all(),
+            static_cast<int>(TallyResult::VALUE));
+          value_view = 0.0;
+
           read_dataset(tally_group, "n_realizations", tally->n_realizations_);
           close_group(tally_group);
         }

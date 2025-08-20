@@ -500,7 +500,7 @@ def _calculate_cexs_nuclide(this, types, temperature=294., sab_name=None,
                     elif ncrystal_cfg:
                         import NCrystal
                         nc_scatter = NCrystal.createScatter(ncrystal_cfg)
-                        nc_func = nc_scatter.crossSectionNonOriented
+                        nc_func = nc_scatter.xsect
                         nc_emax = 5 # eV # this should be obtained from NCRYSTAL_MAX_ENERGY
                         energy_grid = np.union1d(np.geomspace(min(energy_grid),
                                                               1.1*nc_emax,

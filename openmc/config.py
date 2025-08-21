@@ -43,9 +43,6 @@ class _Config(MutableMapping):
         Path to a depletion chain XML file. Also sets/unsets the
         OPENMC_CHAIN_FILE environment variable. Setting or deleting this
         clears internal decay data caches.
-    endf_data : pathlib.Path
-        Path to endf data directory. Used for testing. Also sets/unsets the
-        OPENMC_ENDF_DATA environment variable.
     resolve_paths : bool
         If True (default), all paths assigned are resolved to absolute
         paths. If False, paths are stored as they are provided.
@@ -54,8 +51,7 @@ class _Config(MutableMapping):
     _PATH_KEYS: Dict[str, str] = {
         'cross_sections': 'OPENMC_CROSS_SECTIONS',
         'mg_cross_sections': 'OPENMC_MG_CROSS_SECTIONS',
-        'chain_file': 'OPENMC_CHAIN_FILE',
-        'endf_data': 'OPENMC_ENDF_DATA'
+        'chain_file': 'OPENMC_CHAIN_FILE'
     }
 
     def __init__(self, data: dict = ()):

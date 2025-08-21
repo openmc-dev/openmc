@@ -247,11 +247,7 @@ void Particle::event_advance()
     std::min({boundary().distance(), collision_distance(), distance_cutoff});
 
   // Advance particle in space and time
-  // Short-term solution until the surface source is revised and we can use
-  // this->move_distance(distance)
-  for (int j = 0; j < n_coord(); ++j) {
-    coord(j).r() += distance * coord(j).u();
-  }
+  this->move_distance(distance);
   double dt = distance / speed;
   this->time() += dt;
   this->lifetime() += dt;

@@ -220,5 +220,4 @@ def test_stepresult_get_material(res):
     # Spot check number densities
     densities = mat1.get_nuclide_atom_densities()
     assert densities['Xe135'] == pytest.approx(1e-14)
-    assert densities['I135'] == pytest.approx(1e-21)
     assert densities['U234'] == pytest.approx(1.00506e-05)

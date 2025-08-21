@@ -796,7 +796,7 @@ void Tally::init_results()
 {
   int n_scores = scores_.size() * nuclides_.size();
   if (vov_) {
-    results_ = xt::empty<double>({n_filter_bins_, n_scores, 5});
+    results_ = xt::empty<double>({n_filter_bins_, n_scores, 6});
   } else {
     results_ = xt::empty<double>({n_filter_bins_, n_scores, 3});
   }

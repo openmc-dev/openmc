@@ -542,7 +542,7 @@ void read_tally_results(hid_t group_id, hsize_t n_filter, hsize_t n_score,
 {
   constexpr int ndim = 3;
   const hsize_t planes_mem =
-    vov_results ? static_cast<hsize_t>(5) : static_cast<hsize_t>(3);
+    vov_results ? static_cast<hsize_t>(6) : static_cast<hsize_t>(3);
   const hsize_t planes_file =
     vov_results ? static_cast<hsize_t>(4) : static_cast<hsize_t>(2);
 
@@ -695,7 +695,7 @@ void write_tally_results(hid_t group_id, hsize_t n_filter, hsize_t n_score,
 {
   constexpr int ndim = 3;
   const hsize_t planes_mem =
-    vov_results ? static_cast<hsize_t>(5) : static_cast<hsize_t>(3);
+    vov_results ? static_cast<hsize_t>(6) : static_cast<hsize_t>(3);
   const hsize_t planes_file =
     vov_results ? static_cast<hsize_t>(4) : static_cast<hsize_t>(2);
 

@@ -430,8 +430,8 @@ class StatePoint:
                         tally.multiply_density = group.attrs["multiply_density"].item() > 0
 
                     # Check if tally has vov attribute
-                    if "vov_enabled_" in group.attrs:
-                        tally._vov_enabled = group.attrs["vov_enabled_"].item()
+                    if "vov_enabled" in group.attrs:
+                        tally.vov_enabled = group.attrs["vov_enabled"].item()
                         
                     # Read the number of realizations
                     n_realizations = group['n_realizations'][()]

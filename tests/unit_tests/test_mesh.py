@@ -620,7 +620,7 @@ def test_mesh_material_volumes_serialize():
     assert new_volumes.by_element(3) == [(2, 1.0)]
 
 
-def test_raytrace_mesh_infinite_loop():
+def test_raytrace_mesh_infinite_loop(run_in_tmpdir):
     # Create a model with one large spherical cell
     sphere = openmc.Sphere(r=100, boundary_type='vacuum')
     cell = openmc.Cell(region=-sphere)

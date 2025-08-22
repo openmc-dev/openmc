@@ -569,7 +569,7 @@ class Tally(IDManagerMixin):
         return vov
     
     @property
-    def VOV(self):
+    def vov(self):
         if not self._sp_filename:
             return None
         return Tally._VOV_from_sums(self.num_realizations, self.sum, self.sum_sq, self.sum_third, self.sum_fourth)

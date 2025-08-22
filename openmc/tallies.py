@@ -102,8 +102,8 @@ class Tally(IDManagerMixin):
         An array containing the sample mean for each bin
     std_dev : numpy.ndarray
         An array containing the sample standard deviation for each bin
-    VOV : numpy.ndarray
-        An array containing the variance of variance for each bin
+    vov : numpy.ndarray
+        An array containing the variance of the variance for each bin
     normality_tests = None
         Whether normality tests will be performed on the tally results
     figure_of_merit : numpy.ndarray

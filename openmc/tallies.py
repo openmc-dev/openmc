@@ -241,9 +241,9 @@ class Tally(IDManagerMixin):
     def vov(self):
         return self._vov_enabled
     
-    @vov.setter
-    def vov(self, value):
-        cv.check_type('vov', value, bool)
+    @vov_enabled.setter
+    def vov_enabled(self, value):
+        cv.check_type('vov_enabled', value, bool)
         self._vov_enabled = value
 
     @property

@@ -2416,12 +2416,9 @@ void score_tracklength_tally(Particle& p, double total_distance)
     auto r_last = p.r_last();
 
     // move particle back
+    p.move_distance(-total_distance);
     p.time() -= total_dt;
     p.lifetime() -= total_dt;
-
-    for (int j = 0; j < p.n_coord(); ++j) {
-      p.coord(j).r() -= total_distance * p.coord(j).u();
-    }
 
     double distance_traveled = 0.0;
     while (distance_traveled < total_distance) {
@@ -2436,11 +2433,7 @@ void score_tracklength_tally(Particle& p, double total_distance)
       p.r_last() = p.r();
 
       // Advance particle in space and time
-      // Short-term solution until the surface source is revised and we can use
-      // this->move_distance(distance)
-      for (int j = 0; j < p.n_coord(); ++j) {
-        p.coord(j).r() += distance * p.coord(j).u();
-      }
+      p.move_distance(distance);
       p.time() += dt;
       p.lifetime() += dt;
 

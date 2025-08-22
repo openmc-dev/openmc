@@ -101,7 +101,7 @@ void read_string(
   hid_t obj_id, const char* name, size_t slen, char* buffer, bool indep);
 
 void read_tally_results(hid_t group_id, hsize_t n_filter, hsize_t n_score,
-  double* results, bool vov_results);
+  double* results, hsize_t n_results);
 void write_attr_double(hid_t obj_id, int ndim, const hsize_t* dims,
   const char* name, const double* buffer);
 void write_attr_int(hid_t obj_id, int ndim, const hsize_t* dims,
@@ -116,7 +116,7 @@ void write_llong(hid_t group_id, int ndim, const hsize_t* dims,
 void write_string(hid_t group_id, int ndim, const hsize_t* dims, size_t slen,
   const char* name, const char* buffer, bool indep);
 void write_tally_results(hid_t group_id, hsize_t n_filter, hsize_t n_score,
-  const double* results, bool vov_results);
+  const double* results, hsize_t n_results);
 } // extern "C"
 
 //==============================================================================

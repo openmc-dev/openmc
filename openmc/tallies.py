@@ -92,18 +92,18 @@ class Tally(IDManagerMixin):
     sum_sq : numpy.ndarray
         An array containing the sum of each independent realization squared for
         each bin
-    sum_rd : numpy.ndarray
+    sum_third : numpy.ndarray
         An array containing the sum of each independent realization tp the third power for
         each bin
-    sum_th : numpy.ndarray
+    sum_fourth : numpy.ndarray
         An array containing the sum of each independent realization to the fourth power for
         each bin
     mean : numpy.ndarray
         An array containing the sample mean for each bin
     std_dev : numpy.ndarray
         An array containing the sample standard deviation for each bin
-    vov : bool
-        Whether the tally will accumulate sum third and sum fourth for each tally bin
+    VOV : numpy.ndarray
+        An array containing the variance of variance for each bin
     normality_tests = None
         Whether normality tests will be performed on the tally results
     figure_of_merit : numpy.ndarray
@@ -140,11 +140,11 @@ class Tally(IDManagerMixin):
 
         self._sum = None
         self._sum_sq = None
-        self._sum_rd = None
-        self._sum_th = None
+        self._sum_third = None
+        self._sum_fourth= None
         self._mean = None
         self._std_dev = None
-        self._vov = None
+        self._vov_enabled = None
         self._normality_tests = None
         self._sig_level = 0.05
         self._simulation_time = None
@@ -239,12 +239,12 @@ class Tally(IDManagerMixin):
 
     @property
     def vov(self):
-        return self._vov
+        return self._vov_enabled
     
     @vov.setter
     def vov(self, value):
         cv.check_type('vov', value, bool)
-        self._vov = value
+        self._vov_enabled = value
 
     @property
     def normality_tests(self):
@@ -409,7 +409,7 @@ class Tally(IDManagerMixin):
             # Update nuclides
             nuclide_names = group['nuclides'][()]
             self._nuclides = [name.decode().strip() for name in nuclide_names]
-            self._vov = 'vov_results' in group.attrs
+            self._vov_enabled = 'vov_enabled_' in group.attrs
 
             # Extract Tally data from the file
             data = group['results']
@@ -426,15 +426,15 @@ class Tally(IDManagerMixin):
 
             if data.shape[2] == 4:
 
-                self._vov = True
-                sum_rd = data[:, :, 2]
-                sum_th = data[:, :, 3]
-                sum_rd = np.reshape(sum_rd, self.shape)
-                sum_th = np.reshape(sum_th, self.shape)
-                self._sum_rd = sum_rd
-                self._sum_th = sum_th
+                self._vov_enabled = True
+                sum_third = data[:, :, 2]
+                sum_fourth= data[:, :, 3]
+                sum_third = np.reshape(sum_third, self.shape)
+                sum_fourth= np.reshape(sum_fourth, self.shape)
+                self._sum_third = sum_third
+                self._sum_fourth= sum_fourth
             else:
-                self._vov = False
+                self._vov_enabled = False
             
             
             # Convert NumPy arrays to SciPy sparse LIL matrices
@@ -482,35 +482,35 @@ class Tally(IDManagerMixin):
     
     @property
     @ensure_results
-    def sum_rd(self):
+    def sum_third(self):
         if not self._sp_filename or self.derived:
             return None
 
         if self.sparse:
-            return np.reshape(self._sum_rd.toarray(), self.shape)
+            return np.reshape(self._sum_third.toarray(), self.shape)
         else:
-            return self._sum_rd
+            return self._sum_third
 
-    @sum_rd.setter
-    def sum_rd(self, sum_rd):
-        cv.check_type('sum_rd', sum_rd, Iterable)
-        self._sum_rd = sum_rd
+    @sum_third.setter
+    def sum_third(self, sum_third):
+        cv.check_type('sum_third', sum_third, Iterable)
+        self._sum_third = sum_third
 
     @property
     @ensure_results
-    def sum_th(self):
+    def sum_fourth(self):
         if not self._sp_filename or self.derived:
             return None
 
         if self.sparse:
-            return np.reshape(self._sum_th.toarray(), self.shape)
+            return np.reshape(self._sum_fourth.toarray(), self.shape)
         else:
-            return self._sum_th
+            return self._sum_fourth
 
-    @sum_th.setter
-    def sum_th(self, sum_th):
-        cv.check_type('sum_th', sum_th, Iterable)
-        self._sum_th = sum_th
+    @sum_fourth.setter
+    def sum_fourth(self, sum_fourth):
+        cv.check_type('sum_fourth', sum_fourth, Iterable)
+        self._sum_fourth = sum_fourth
 
     @property
     def mean(self):
@@ -572,7 +572,7 @@ class Tally(IDManagerMixin):
     def VOV(self):
         if not self._sp_filename:
             return None
-        return Tally._VOV_from_sums(self.num_realizations, self.sum, self.sum_sq, self.sum_rd, self.sum_th)
+        return Tally._VOV_from_sums(self.num_realizations, self.sum, self.sum_sq, self.sum_third, self.sum_fourth)
     
     @property
     def normality_test(self):
@@ -585,7 +585,7 @@ class Tally(IDManagerMixin):
         elif n < 20:
             raise ValueError("Kurtosis test is typically recommended for n >= 20.")
         else:
-            tally_stats.print_normality_tests_summary(n, self.mean, self.sum_sq, self.sum_rd, self.sum_th, self._sig_level)
+            tally_stats.print_normality_tests_summary(n, self.mean, self.sum_sq, self.sum_third, self.sum_fourth, self._sig_level)
 
     @property
     def figure_of_merit(self):
@@ -645,12 +645,12 @@ class Tally(IDManagerMixin):
             if self._sum_sq is not None:
                 self._sum_sq = sps.lil_matrix(self._sum_sq.flatten(),
                                               self._sum_sq.shape)
-            if self._sum_rd is not None:
-                self._sum_rd = sps.lil_matrix(self._sum_rd.flatten(),
-                                              self._sum_rd.shape)
-            if self._sum_th is not None:
-                self._sum_th = sps.lil_matrix(self._sum_th.flatten(),
-                                              self._sum_th.shape)
+            if self._sum_third is not None:
+                self._sum_third = sps.lil_matrix(self._sum_third.flatten(),
+                                              self._sum_third.shape)
+            if self._sum_fourth is not None:
+                self._sum_fourth = sps.lil_matrix(self._sum_fourth.flatten(),
+                                              self._sum_fourth.shape)
             if self._mean is not None:
                 self._mean = sps.lil_matrix(self._mean.flatten(),
                                             self._mean.shape)
@@ -666,10 +666,10 @@ class Tally(IDManagerMixin):
                 self._sum = np.reshape(self._sum.toarray(), self.shape)
             if self._sum_sq is not None:
                 self._sum_sq = np.reshape(self._sum_sq.toarray(), self.shape)
-            if self._sum_rd is not None:
-                self._sum_rd = np.reshape(self._sum_rd.toarray(), self.shape)
-            if self._sum_th is not None:
-                self._sum_th = np.reshape(self._sum_th.toarray(), self.shape)
+            if self._sum_third is not None:
+                self._sum_third = np.reshape(self._sum_third.toarray(), self.shape)
+            if self._sum_fourth is not None:
+                self._sum_fourth = np.reshape(self._sum_fourth.toarray(), self.shape)
             if self._mean is not None:
                 self._mean = np.reshape(self._mean.toarray(), self.shape)
             if self._std_dev is not None:
@@ -996,33 +996,33 @@ class Tally(IDManagerMixin):
 
             merged_tally._sum_sq = np.reshape(merged_sum_sq, merged_tally.shape)
         
-        # Concatenate sum_rd arrays if present in both tallies
-        if self.sum_rd is not None and other.sum_rd is not None:
-            self_sum_rd = self.get_reshaped_data(value='sum_rd')
-            other_sum_rd = other_copy.get_reshaped_data(value='sum_rd')
+        # Concatenate sum_third arrays if present in both tallies
+        if self.sum_third is not None and other.sum_third is not None:
+            self_sum_third = self.get_reshaped_data(value='sum_third')
+            other_sum_third = other_copy.get_reshaped_data(value='sum_third')
 
             if join_right:
-                merged_sum_rd = np.concatenate((self_sum_rd, other_sum_rd),
+                merged_sum_third = np.concatenate((self_sum_third, other_sum_third),
                                                axis=merge_axis)
             else:
-                merged_sum_rd = np.concatenate((other_sum_rd, self_sum_rd),
+                merged_sum_third = np.concatenate((other_sum_third, self_sum_third),
                                                axis=merge_axis)
 
-            merged_tally._sum_rd = np.reshape(merged_sum_rd, merged_tally.shape)
+            merged_tally._sum_third = np.reshape(merged_sum_third, merged_tally.shape)
 
         # Concatenate sum_th arrays if present in both tallies
-        if self.sum_th is not None and other.sum_th is not None:
-            self_sum_th = self.get_reshaped_data(value='sum_th')
-            other_sum_th = other_copy.get_reshaped_data(value='sum_th')
+        if self.sum_fourth is not None and other.sum_fourth is not None:
+            self_sum_fourth = self.get_reshaped_data(value='sum_fourth')
+            other_sum_fourth = other_copy.get_reshaped_data(value='sum_fourth')
 
             if join_right:
-                merged_sum_th = np.concatenate((self_sum_th, other_sum_th),
+                merged_sum_fourth = np.concatenate((self_sum_fourth, other_sum_fourth),
                                                axis=merge_axis)
             else:
-                merged_sum_th = np.concatenate((other_sum_th, self_sum_th),
+                merged_sum_fourth = np.concatenate((other_sum_fourth, self_sum_fourth),
                                                axis=merge_axis)
 
-            merged_tally._sum_th = np.reshape(merged_sum_th, merged_tally.shape)
+            merged_tally._sum_fourth = np.reshape(merged_sum_fourth, merged_tally.shape)
 
         # Concatenate mean arrays if present in both tallies
         if self.mean is not None and other.mean is not None:
@@ -1114,9 +1114,9 @@ class Tally(IDManagerMixin):
             subelement.text = str(self.derivative.id)
 
         # Optional VOV
-        if self._vov:
+        if self._vov_enabled:
             subelement = ET.SubElement(element, "vov")
-            subelement.text = str(self._vov).lower()
+            subelement.text = str(self._vov_enabled).lower()
 
         return element
 
@@ -1144,8 +1144,8 @@ class Tally(IDManagerMixin):
         # point are based on the current statepoint file
         self._sum = None
         self._sum_sq = None
-        self._sum_rd = None
-        self._sum_th = None
+        self._sum_third = None
+        self._sum_fourth = None
         self._mean = None
         self._std_dev = None
         self._num_realizations = 0
@@ -1518,8 +1518,8 @@ class Tally(IDManagerMixin):
            (value == 'rel_err' and self.mean is None) or \
            (value == 'sum' and self.sum is None) or \
            (value == 'sum_sq' and self.sum_sq is None) or \
-           (value == 'sum_rd' and self.sum_th is None) or \
-           (value == 'sum_th' and self.sum_rd is None):
+           (value == 'sum_third' and self.sum_th is None) or \
+           (value == 'sum_fourth' and self.sum_fourthird is None):
             msg = f'The Tally ID="{self.id}" has no data to return'
             raise ValueError(msg)
 
@@ -1542,10 +1542,10 @@ class Tally(IDManagerMixin):
             data = self.sum[indices]
         elif value == 'sum_sq':
             data = self.sum_sq[indices]
-        elif value == 'sum_rd':
-            data = self.sum_rd[indices]
-        elif value == 'sum_th':
-            data = self.sum_th[indices]
+        elif value == 'sum_third':
+            data = self.sum_third[indices]
+        elif value == 'sum_fourth':
+            data = self.sum_fourth[indices]
         else:
             msg = f'Unable to return results from Tally ID="{value}" since ' \
                   f'the requested value "{self.id}" is not \'mean\', ' \
@@ -2879,14 +2879,14 @@ class Tally(IDManagerMixin):
             new_sum_sq = self.get_values(scores, filters, filter_bins,
                                          nuclides, 'sum_sq')
             new_tally.sum_sq = new_sum_sq
-        if not self.derived and self.sum_rd is not None:
-            new_sum_rd = self.get_values(scores, filters, filter_bins,
-                                         nuclides, 'sum_rd')
-            new_tally.sum_rd = new_sum_rd
-        if not self.derived and self.sum_th is not None:
-            new_sum_th = self.get_values(scores, filters, filter_bins,
-                                         nuclides, 'sum_th')
-            new_tally.sum_th = new_sum_th
+        if not self.derived and self.sum_third is not None:
+            new_sum_third = self.get_values(scores, filters, filter_bins,
+                                         nuclides, 'sum_third')
+            new_tally.sum_third = new_sum_third
+        if not self.derived and self.sum_fourth is not None:
+            new_sum_fourth = self.get_values(scores, filters, filter_bins,
+                                         nuclides, 'sum_fourth')
+            new_tally.sum_fourth = new_sum_fourth
 
         if self.mean is not None:
             new_mean = self.get_values(scores, filters, filter_bins,
@@ -3328,12 +3328,12 @@ class Tally(IDManagerMixin):
         if not self.derived and self.sum_sq is not None:
             new_tally._sum_sq = np.zeros(new_tally.shape, dtype=np.float64)
             new_tally._sum_sq[diag_indices, :, :] = self.sum_sq
-        if not self.derived and self.sum_rd is not None:
-            new_tally._sum_rd = np.zeros(new_tally.shape, dtype=np.float64)
-            new_tally._sum_rd[diag_indices, :, :] = self.sum_rd
-        if not self.derived and self.sum_th is not None:
-            new_tally._sum_th = np.zeros(new_tally.shape, dtype=np.float64)
-            new_tally._sum_th[diag_indices, :, :] = self.sum_th
+        if not self.derived and self.sum_third is not None:
+            new_tally._sum_third = np.zeros(new_tally.shape, dtype=np.float64)
+            new_tally._sum_third[diag_indices, :, :] = self.sum_third
+        if not self.derived and self.sum_fourth is not None:
+            new_tally._sum_fourth = np.zeros(new_tally.shape, dtype=np.float64)
+            new_tally._sum_fourth[diag_indices, :, :] = self.sum_fourth
         if self.mean is not None:
             new_tally._mean = np.zeros(new_tally.shape, dtype=np.float64)
             new_tally._mean[diag_indices, :, :] = self.mean

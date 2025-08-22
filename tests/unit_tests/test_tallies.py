@@ -119,19 +119,19 @@ def test_tally_normality_functions():
     n       = values.size 
     mean    = np.array([values.mean()]) 
     sum_sq  = np.array([np.sum(values**2)])
-    sum_rd  = np.array([np.sum(values**3)])
-    sum_th  = np.array([np.sum(values**4)])
+    sum_third  = np.array([np.sum(values**3)])
+    sum_fourth  = np.array([np.sum(values**4)])
 
-    sqrt_b1, b2 = ts._calc_b1_b2(n, mean, sum_sq, sum_rd, sum_th)
+    sqrt_b1, b2 = ts._calc_b1_b2(n, mean, sum_sq, sum_third, sum_fourth)
     assert sqrt_b1.shape == mean.shape
     assert b2.shape      == mean.shape
 
-    Zb1, p_skew, _ = ts.skewness_test(n, mean, sum_sq, sum_rd, sum_th)
+    Zb1, p_skew, _ = ts.skewness_test(n, mean, sum_sq, sum_third, sum_fourth)
     assert Zb1.shape       == mean.shape
     assert p_skew.shape    == mean.shape
     assert np.all((0.0 <= p_skew) & (p_skew <= 1.0))
 
-    Zb2, p_kurt, _ = ts.kurtosis_test(n, mean, sum_sq, sum_rd, sum_th)
+    Zb2, p_kurt, _ = ts.kurtosis_test(n, mean, sum_sq, sum_third, sum_fourth)
     assert Zb2.shape       == mean.shape
     assert p_kurt.shape    == mean.shape
     assert np.all((0.0 <= p_kurt) & (p_kurt <= 1.0))
@@ -179,8 +179,8 @@ def test_tally_normality_stats(sphere_model, run_in_tmpdir):
     n   = tally.num_realizations
     mu  = tally.mean
     s2  = tally.sum_sq
-    s3  = tally.sum_rd
-    s4  = tally.sum_th
+    s3  = tally.sum_third
+    s4  = tally.sum_fourth
 
     assert n >= 20
     assert mu is not None
@@ -212,8 +212,8 @@ def test_vov_stochastic(sphere_model, run_in_tmpdir):
     assert tally._std_dev        is None
     assert tally._sum            is None
     assert tally._sum_sq         is None
-    assert tally._sum_rd         is None
-    assert tally._sum_th         is None
+    assert tally._sum_third         is None
+    assert tally._sum_fourth         is None
     assert tally._num_realizations == 0
     assert tally._sp_filename    == sp_file
 
@@ -230,15 +230,15 @@ def test_vov_stochastic(sphere_model, run_in_tmpdir):
     mean    = sp_tally.mean
     sum_    = sp_tally._sum
     sum_sq  = sp_tally._sum_sq
-    sum_rd  = sp_tally._sum_rd
-    sum_th  = sp_tally._sum_th
+    sum_third  = sp_tally._sum_third
+    sum_fourth  = sp_tally._sum_fourth
 
     expected_vov = np.zeros_like(mean)
     nonzero = np.abs(mean) > 0
 
     num = (
-        sum_th
-        - (4.0 * sum_rd * sum_) / n
+        sum_fourth
+        - (4.0 * sum_third * sum_) / n
         + (6.0 * sum_sq * sum_**2) / (n**2)
         - (3.0 * sum_**4) / (n**3)
     )
@@ -269,8 +269,8 @@ def test_tally_application(sphere_model, run_in_tmpdir):
     assert tally._std_dev is None
     assert tally._sum is None
     assert tally._sum_sq is None
-    assert tally._sum_rd is None
-    assert tally._sum_th is None
+    assert tally._sum_third is None
+    assert tally._sum_fourth is None
     assert tally._num_realizations == 0
     # the statepoint file property should be set, however
     assert tally._sp_filename == sp_file

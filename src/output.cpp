@@ -503,27 +503,24 @@ double variance_of_variance(const double* x, int n)
   // Need to create a double for each sum
   double sum = (x[static_cast<int>(TallyResult::SUM)]);
   double sum_sq = (x[static_cast<int>(TallyResult::SUM_SQ)]);
-  double sum_rd = (x[static_cast<int>(TallyResult::SUM_THIRD)]);
-  double sum_th = (x[static_cast<int>(TallyResult::SUM_FOURTH)]);
+  double sum_third = (x[static_cast<int>(TallyResult::SUM_THIRD)]);
+  double sum_fourth = (x[static_cast<int>(TallyResult::SUM_FOURTH)]);
 
-  double term1 = sum_th;
-  double term2 = (4.0 * sum_rd * sum) / n;
-  double term3 = (6.0 * sum_sq * (pow(sum, 2.0))) / (pow(n, 2.0));
-  double term4 = (3.0 * (pow(sum, 4.0))) / (pow(n, 3.0));
-  double term5 = sum_sq - (1.0 / n) * (pow(sum, 2.0));
+  double sum2 = sum * sum;
+  double n2 = n * n;
   // Fourth moment of the sample
-  double numerator = sum_th - (4.0 * sum_rd * sum) / n +
-                     (6.0 * sum_sq * (pow(sum, 2.0))) / (pow(n, 2.0)) -
+  double numerator = sum_fourth - (4.0 * sum_third * sum) / n +
+                     (6.0 * sum_sq * sum2) / n2 -
                      (3.0 * (pow(sum, 4.0))) / (pow(n, 3.0));
 
   // Second moment of the sample
-  double denominator = (sum_sq - (1.0 / n) * (pow(sum, 2.0))) *
-                       (sum_sq - (1.0 / n) * (pow(sum, 2.0)));
+  double denominator =
+    (sum_sq - (1.0 / n) * (sum2)) * (sum_sq - (1.0 / n) * (sum2));
 
   // Equation for variance of variance
   double vov = numerator / denominator - 1.0 / n;
 
-  return sum;
+  return vov;
 }
 
 std::pair<double, double> mean_stdev(const double* x, int n)
@@ -736,7 +733,7 @@ void write_tallies()
           double mean, stdev;
           mean_stdev(&tally.results_(filter_index, score_index, 0),
             tally.n_realizations_);
-          if (tally.vov_results()) {
+          if (tally.vov_enabled()) {
             double vov = variance_of_variance(
               &tally.results_(filter_index, score_index, 0),
               tally.n_realizations_);

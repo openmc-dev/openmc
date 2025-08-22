@@ -106,7 +106,7 @@ public:
 
   bool writable() const { return writable_; }
 
-  bool vov_results() const { return vov_; }
+  bool vov_enabled() const { return vov_enabled_; }
 
   //----------------------------------------------------------------------------
   // Other methods.
@@ -120,8 +120,6 @@ public:
   void reset();
 
   void accumulate();
-
-  void accumulate_vov();
 
   //! return the index of a score specified by name
   int score_index(const std::string& score) const;
@@ -194,7 +192,7 @@ private:
   //! Whether to multiply by atom density for reaction rates
   bool multiply_density_ {true};
 
-  bool vov_ = {false};
+  bool vov_enabled_ = {false};
 
   int64_t index_;
 };

@@ -538,17 +538,12 @@ void read_complex(
 }
 
 void read_tally_results(hid_t group_id, hsize_t n_filter, hsize_t n_score,
-  double* results, bool vov_results)
+  double* results, hsize_t n_results)
 {
   constexpr int ndim = 3;
-  const hsize_t planes_mem =
-    vov_results ? static_cast<hsize_t>(6) : static_cast<hsize_t>(3);
-  const hsize_t planes_file =
-    vov_results ? static_cast<hsize_t>(4) : static_cast<hsize_t>(2);
-
-  hsize_t mem_dims[ndim] {n_filter, n_score, planes_mem};
+  hsize_t mem_dims[ndim] {n_filter, n_score, n_results};
   hsize_t start[ndim] {0, 0, 1};
-  hsize_t count[ndim] {n_filter, n_score, planes_file};
+  hsize_t count[ndim] {n_filter, n_score, n_results - 1};
 
   hid_t memspace = H5Screate_simple(ndim, mem_dims, nullptr);
   H5Sselect_hyperslab(memspace, H5S_SELECT_SET, start, nullptr, count, nullptr);
@@ -691,17 +686,12 @@ void write_string(
 }
 
 void write_tally_results(hid_t group_id, hsize_t n_filter, hsize_t n_score,
-  const double* results, bool vov_results)
+  const double* results, hsize_t n_results)
 {
   constexpr int ndim = 3;
-  const hsize_t planes_mem =
-    vov_results ? static_cast<hsize_t>(6) : static_cast<hsize_t>(3);
-  const hsize_t planes_file =
-    vov_results ? static_cast<hsize_t>(4) : static_cast<hsize_t>(2);
-
-  hsize_t mem_dims[ndim] {n_filter, n_score, planes_mem};
+  hsize_t mem_dims[ndim] {n_filter, n_score, n_results};
   hsize_t start[ndim] {0, 0, 1};
-  hsize_t count[ndim] {n_filter, n_score, planes_file};
+  hsize_t count[ndim] {n_filter, n_score, n_results - 1};
 
   hid_t memspace = H5Screate_simple(ndim, mem_dims, nullptr);
   H5Sselect_hyperslab(memspace, H5S_SELECT_SET, start, nullptr, count, nullptr);

@@ -201,10 +201,10 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
           write_attribute(tally_group, "multiply_density", 0);
         }
 
-        if (tally->vov_results()) {
-          write_attribute(tally_group, "vov_results", 1);
+        if (tally->vov_enabled()) {
+          write_attribute(tally_group, "vov_enabled_", 1);
         } else {
-          write_attribute(tally_group, "vov_results", 0);
+          write_attribute(tally_group, "vov_enabled_", 0);
         }
 
         if (tally->estimator_ == TallyEstimator::ANALOG) {
@@ -276,7 +276,7 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
           hid_t tally_group = open_group(tallies_group, name.c_str());
           auto& results = tally->results_;
           write_tally_results(tally_group, results.shape()[0],
-            results.shape()[1], results.data(), tally->vov_results());
+            results.shape()[1], results.data(), results.shape()[2]);
           close_group(tally_group);
         }
       } else {
@@ -517,7 +517,7 @@ extern "C" int openmc_statepoint_load(const char* filename)
 
           auto& results = tally->results_;
           read_tally_results(tally_group, results.shape()[0],
-            results.shape()[1], results.data(), tally->vov_results());
+            results.shape()[1], results.data(), results.shape()[2]);
 
           read_dataset(tally_group, "n_realizations", tally->n_realizations_);
           close_group(tally_group);
@@ -1011,7 +1011,7 @@ void write_tally_results_nr(hid_t file_id)
       // Write reduced tally results to file
       auto shape = results_copy.shape();
       write_tally_results(
-        tally_group, shape[0], shape[1], results_copy.data(), t->vov_results());
+        tally_group, shape[0], shape[1], results_copy.data(), shape[2]);
 
       close_group(tally_group);
     } else {

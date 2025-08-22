@@ -93,7 +93,7 @@ class Tally(IDManagerMixin):
         An array containing the sum of each independent realization squared for
         each bin
     sum_third : numpy.ndarray
-        An array containing the sum of each independent realization tp the third power for
+        An array containing the sum of each independent realization to the third power for
         each bin
     sum_fourth : numpy.ndarray
         An array containing the sum of each independent realization to the fourth power for

@@ -1518,8 +1518,8 @@ class Tally(IDManagerMixin):
            (value == 'rel_err' and self.mean is None) or \
            (value == 'sum' and self.sum is None) or \
            (value == 'sum_sq' and self.sum_sq is None) or \
-           (value == 'sum_third' and self.sum_th is None) or \
-           (value == 'sum_fourth' and self.sum_fourthird is None):
+           (value == 'sum_third' and self.sum_third is None) or \
+           (value == 'sum_fourth' and self.sum_fourth is None):
             msg = f'The Tally ID="{self.id}" has no data to return'
             raise ValueError(msg)
 

@@ -617,10 +617,10 @@ void Mgxs::calculate_xs(Particle& p)
   }
   int temperature = p.mg_xs_cache().t;
   int angle = p.mg_xs_cache().a;
-  p.macro_xs().total = xs[temperature].total(angle, p.g());
-  p.macro_xs().absorption = xs[temperature].absorption(angle, p.g());
+  p.macro_xs().total = xs[temperature].total(angle, p.g()) * p.rho_mult();
+  p.macro_xs().absorption = xs[temperature].absorption(angle, p.g()) * p.rho_mult();
   p.macro_xs().nu_fission =
-    fissionable ? xs[temperature].nu_fission(angle, p.g()) : 0.;
+    fissionable ? xs[temperature].nu_fission(angle, p.g()) * p.rho_mult() : 0.;
 }
 
 //==============================================================================

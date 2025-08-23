@@ -159,7 +159,7 @@ def test_tally_normality_functions():
         ([0, 0, 1, 1], Fraction(0, 1)),
     ],
 )
-def test_vov_deterministic(x, expected, rum_in_tmpdir):
+def test_vov_deterministic(x, expected, run_in_tmpdir):
     x = np.asarray(x, dtype=float)
     N = x.size
     S1 = x.sum()
@@ -168,7 +168,7 @@ def test_vov_deterministic(x, expected, rum_in_tmpdir):
     S4 = (x**4).sum()
 
     t = openmc.Tally()
-    t._sp_filename = rum_in_tmpdir / "dummy.sp"  # allow property access
+    t._sp_filename = run_in_tmpdir / "dummy.sp"  # allow property access
     t.num_realizations = N
     t.sum = S1
     t.sum_sq = S2

@@ -101,6 +101,20 @@ double Cell::temperature(int32_t instance) const
   }
 }
 
+double Cell::density_mult(int32_t instance) const
+{
+  if (rho_mult_.size() < 1) {
+    throw std::runtime_error {"Cell density multiplier has not yet been set."};
+  }
+
+  if (instance >= 0) {
+    double rho = rho_mult_.size() == 1 ? rho_mult_.at(0) : rho_mult_.at(instance);
+    return rho;
+  } else {
+    return rho_mult_[0];
+  }
+}
+
 void Cell::set_temperature(double T, int32_t instance, bool set_contained)
 {
   if (settings::temperature_method == TemperatureMethod::INTERPOLATION) {
@@ -146,6 +160,42 @@ void Cell::set_temperature(double T, int32_t instance, bool set_contained)
       auto& instances = entry.second;
       for (auto instance : instances) {
         cell->set_temperature(T, instance);
+      }
+    }
+  }
+}
+
+void Cell::set_density_mult(double rho, int32_t instance, bool set_contained)
+{
+  if (type_ == Fill::MATERIAL) {
+    if (instance >= 0) {
+      // If density multiplier vector is not big enough, resize it first
+      if (rho_mult_.size() != n_instances())
+        rho_mult_.resize(n_instances(), rho_mult_[0]);
+
+      // Set density multiplier for the corresponding instance
+      rho_mult_.at(instance) = rho;
+    } else {
+      // Set density multiplier for all instances
+      for (auto& Rho_ : rho_mult_) {
+        Rho_ = rho;
+      }
+    }
+  } else {
+    if (!set_contained) {
+      throw std::runtime_error {
+        fmt::format("Attempted to set the density multiplier of cell {} "
+                    "which is not filled by a material.",
+          id_)};
+    }
+
+    auto contained_cells = this->get_contained_cells(instance);
+    for (const auto& entry : contained_cells) {
+      auto& cell = model::cells[entry.first];
+      assert(cell->type_ == Fill::MATERIAL);
+      auto& instances = entry.second;
+      for (auto instance : instances) {
+        cell->set_density_mult(rho, instance);
       }
     }
   }
@@ -1129,6 +1179,24 @@ extern "C" int openmc_cell_set_temperature(
   return 0;
 }
 
+extern "C" int openmc_cell_set_density_mult(
+  int32_t index, double rho, const int32_t* instance, bool set_contained)
+{
+  if (index < 0 || index >= model::cells.size()) {
+    strcpy(openmc_err_msg, "Index in cells array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
+  int32_t instance_index = instance ? *instance : -1;
+  try {
+    model::cells[index]->set_density_mult(rho, instance_index, set_contained);
+  } catch (const std::exception& e) {
+    set_errmsg(e.what());
+    return OPENMC_E_UNASSIGNED;
+  }
+  return 0;
+}
+
 extern "C" int openmc_cell_get_temperature(
   int32_t index, const int32_t* instance, double* T)
 {
@@ -1140,6 +1208,24 @@ extern "C" int openmc_cell_get_temperature(
   int32_t instance_index = instance ? *instance : -1;
   try {
     *T = model::cells[index]->temperature(instance_index);
+  } catch (const std::exception& e) {
+    set_errmsg(e.what());
+    return OPENMC_E_UNASSIGNED;
+  }
+  return 0;
+}
+
+extern "C" int openmc_cell_get_density_mult(
+  int32_t index, const int32_t* instance, double* rho)
+{
+  if (index < 0 || index >= model::cells.size()) {
+    strcpy(openmc_err_msg, "Index in cells array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
+  int32_t instance_index = instance ? *instance : -1;
+  try {
+    *rho = model::cells[index]->density_mult(instance_index);
   } catch (const std::exception& e) {
     set_errmsg(e.what());
     return OPENMC_E_UNASSIGNED;

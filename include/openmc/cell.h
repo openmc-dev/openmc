@@ -216,6 +216,12 @@ public:
   //! \return Temperature in [K]
   double temperature(int32_t instance = -1) const;
 
+  //! Get the density multiplier of a cell instance
+  //! \param[in] instance Instance index. If -1 is given, the density multiplier for
+  //!   the first instance is returned.
+  //! \return Density multiplier [-]
+  double density_mult(int32_t instance = -1) const;
+
   //! Set the temperature of a cell instance
   //! \param[in] T Temperature in [K]
   //! \param[in] instance Instance index. If -1 is given, the temperature for
@@ -225,6 +231,16 @@ public:
   //!   temperatures.
   void set_temperature(
     double T, int32_t instance = -1, bool set_contained = false);
+
+  //! Set the density multiplier of a cell instance
+  //! \param[in] rho Density multiplier [-]
+  //! \param[in] instance Instance index. If -1 is given, the density multiplier for
+  //!   all instances is set.
+  //! \param[in] set_contained If this cell is not filled with a material,
+  //!   collect all contained cells with material fills and set their
+  //!   density multipliers.
+  void set_density_mult(
+    double rho, int32_t instance = -1, bool set_contained = false);
 
   int32_t n_instances() const;
 
@@ -333,6 +349,9 @@ public:
   //! The stored values are actually sqrt(k_Boltzmann * T) for each temperature
   //! T. The units are sqrt(eV).
   vector<double> sqrtkT_;
+
+  //! \brief Unitless density multiplier(s) within this cell.
+  vector<double> rho_mult_;
 
   //! \brief Neighboring cells in the same universe.
   NeighborList neighbors_;

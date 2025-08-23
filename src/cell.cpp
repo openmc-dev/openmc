@@ -212,6 +212,9 @@ void Cell::export_properties_hdf5(hid_t group) const
     temps.push_back(sqrtkT_val * sqrtkT_val / K_BOLTZMANN);
   write_dataset(cell_group, "temperature", temps);
 
+  // Write density multipliers for one or more cell instances
+  write_dataset(cell_group, "density_mult", rho_mult_);
+
   close_group(cell_group);
 }
 
@@ -236,6 +239,17 @@ void Cell::import_properties_hdf5(hid_t group)
   sqrtkT_.resize(temps.size());
   for (int64_t i = 0; i < temps.size(); ++i) {
     this->set_temperature(temps[i], i);
+  }
+
+  // Read density multipliers
+  read_dataset(cell_group, "density_mult", rho_mult_);
+
+  // Ensure number of density muultipliers makes sense
+  auto n_rho = rho_mult_.size();
+  if (n_rho > 1 && n_rho != n_instances()) {
+    throw std::runtime_error(fmt::format(
+      "Number of density multipliers for cell {} doesn't match number of instances",
+      id_));
   }
 
   close_group(cell_group);

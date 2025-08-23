@@ -200,7 +200,8 @@ void Particle::event_calculate_xs()
   // Calculate microscopic and macroscopic cross sections
   if (material() != MATERIAL_VOID) {
     if (settings::run_CE) {
-      if (material() != material_last() || sqrtkT() != sqrtkT_last()) {
+      if (material() != material_last() || sqrtkT() != sqrtkT_last()
+          || rho_mult() != rho_mult_last()) {
         // If the material is the same as the last material and the
         // temperature hasn't changed, we don't need to lookup cross
         // sections again.
@@ -558,9 +559,10 @@ void Particle::cross_surface(const Surface& surf)
     int32_t i_cell = next_cell(surface_index(), cell_last(n_coord() - 1),
                        lowest_coord().universe()) -
                      1;
-    // save material and temp
+    // save material, temp and density multiplier
     material_last() = material();
     sqrtkT_last() = sqrtkT();
+    rho_mult_last() = rho_mult();
     // set new cell value
     lowest_coord().cell() = i_cell;
     auto& cell = model::cells[i_cell];
@@ -571,6 +573,7 @@ void Particle::cross_surface(const Surface& surf)
 
     material() = cell->material(cell_instance());
     sqrtkT() = cell->sqrtkT(cell_instance());
+    rho_mult() = cell->density_mult(cell_instance());
     return;
   }
 #endif

@@ -538,19 +538,21 @@ void read_complex(
 }
 
 void read_tally_results(hid_t group_id, hsize_t n_filter, hsize_t n_score,
-  double* results, hsize_t n_results)
+  hsize_t n_results, double* results)
 {
+  // Create dataspace for hyperslab in memory
   constexpr int ndim = 3;
-  hsize_t mem_dims[ndim] {n_filter, n_score, n_results};
+  hsize_t dims[ndim] {n_filter, n_score, n_results};
   hsize_t start[ndim] {0, 0, 1};
   hsize_t count[ndim] {n_filter, n_score, n_results - 1};
-
-  hid_t memspace = H5Screate_simple(ndim, mem_dims, nullptr);
+  hid_t memspace = H5Screate_simple(ndim, dims, nullptr);
   H5Sselect_hyperslab(memspace, H5S_SELECT_SET, start, nullptr, count, nullptr);
 
+  // Read the dataset
   read_dataset_lowlevel(
     group_id, "results", H5T_NATIVE_DOUBLE, memspace, false, results);
 
+  // Free resources
   H5Sclose(memspace);
 }
 
@@ -686,19 +688,23 @@ void write_string(
 }
 
 void write_tally_results(hid_t group_id, hsize_t n_filter, hsize_t n_score,
-  const double* results, hsize_t n_results)
+  hsize_t n_results, const double* results)
 {
+  // Set dimensions of sum/sum_sq hyperslab to store
   constexpr int ndim = 3;
-  hsize_t mem_dims[ndim] {n_filter, n_score, n_results};
-  hsize_t start[ndim] {0, 0, 1};
   hsize_t count[ndim] {n_filter, n_score, n_results - 1};
 
-  hid_t memspace = H5Screate_simple(ndim, mem_dims, nullptr);
+  // Set dimensions of results array
+  hsize_t dims[ndim] {n_filter, n_score, n_results};
+  hsize_t start[ndim] {0, 0, 1};
+  hid_t memspace = H5Screate_simple(ndim, dims, nullptr);
   H5Sselect_hyperslab(memspace, H5S_SELECT_SET, start, nullptr, count, nullptr);
 
+  // Create and write dataset
   write_dataset_lowlevel(group_id, ndim, count, "results", H5T_NATIVE_DOUBLE,
     memspace, false, results);
 
+  // Free resources
   H5Sclose(memspace);
 }
 

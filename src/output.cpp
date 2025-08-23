@@ -511,7 +511,7 @@ double variance_of_variance(const double* x, int n)
   // Fourth moment of the sample
   double numerator = sum_fourth - (4.0 * sum_third * sum) / n +
                      (6.0 * sum_sq * sum2) / n2 -
-                     (3.0 * (pow(sum, 4.0))) / (pow(n, 3.0));
+                     (3.0 * sum2 * sum2) / (n * n2);
 
   // Second moment of the sample
   double denominator =

@@ -102,8 +102,8 @@ Tally::Tally(pugi::xml_node node)
     multiply_density_ = get_node_value_bool(node, "multiply_density");
   }
 
-  if (check_for_node(node, "vov")) {
-    vov_enabled_ = get_node_value_bool(node, "vov");
+  if (check_for_node(node, "vov_enabled")) {
+    vov_enabled_ = get_node_value_bool(node, "vov_enabled");
   }
   // =======================================================================
   // READ DATA FOR FILTERS
@@ -832,21 +832,32 @@ void Tally::accumulate()
       norm = 1.0;
     }
 
-// Accumulate each result
+    // Accumulate each result
+    if (vov_enabled_) {
 #pragma omp parallel for
-    // filter bins (specific cell, energy bins)
-    for (int i = 0; i < results_.shape()[0]; ++i) {
-      // score bins (flux, total reaction rate, fission reaction rate, etc.)
-      for (int j = 0; j < results_.shape()[1]; ++j) {
-        double val = results_(i, j, TallyResult::VALUE) * norm;
-        results_(i, j, TallyResult::VALUE) = 0.0;
-        results_(i, j, TallyResult::SUM) += val;
-        results_(i, j, TallyResult::SUM_SQ) += val * val;
-        // Only accumulate higher-moment running sums when VOV is enabled
-        if (vov_enabled_) {
-          const double v2 = val * val;
-          results_(i, j, TallyResult::SUM_THIRD) += v2 * val; // val^3
-          results_(i, j, TallyResult::SUM_FOURTH) += v2 * v2; // val^4
+      // filter bins (specific cell, energy bins)
+      for (int i = 0; i < results_.shape()[0]; ++i) {
+        // score bins (flux, total reaction rate, fission reaction rate, etc.)
+        for (int j = 0; j < results_.shape()[1]; ++j) {
+          double val = results_(i, j, TallyResult::VALUE) * norm;
+          double val2 = val * val;
+          results_(i, j, TallyResult::VALUE) = 0.0;
+          results_(i, j, TallyResult::SUM) += val;
+          results_(i, j, TallyResult::SUM_SQ) += val2;
+          results_(i, j, TallyResult::SUM_THIRD) += val2 * val;
+          results_(i, j, TallyResult::SUM_FOURTH) += val2 * val2;
+        }
+      }
+    } else {
+#pragma omp parallel for
+      // filter bins (specific cell, energy bins)
+      for (int i = 0; i < results_.shape()[0]; ++i) {
+        // score bins (flux, total reaction rate, fission reaction rate, etc.)
+        for (int j = 0; j < results_.shape()[1]; ++j) {
+          double val = results_(i, j, TallyResult::VALUE) * norm;
+          results_(i, j, TallyResult::VALUE) = 0.0;
+          results_(i, j, TallyResult::SUM) += val;
+          results_(i, j, TallyResult::SUM_SQ) += val * val;
         }
       }
     }
@@ -999,8 +1010,8 @@ void reduce_tally_results()
     }
   }
 
-  // Note that global tallies are *always* reduced even when no_reduce option is
-  // on.
+  // Note that global tallies are *always* reduced even when no_reduce option
+  // is on.
 
   // Get view of global tally values
   auto& gt = simulation::global_tallies;
@@ -1480,8 +1491,8 @@ extern "C" int openmc_tally_get_n_realizations(int32_t index, int32_t* n)
   return 0;
 }
 
-//! \brief Returns a pointer to a tally results array along with its shape. This
-//! allows a user to obtain in-memory tally results from Python directly.
+//! \brief Returns a pointer to a tally results array along with its shape.
+//! This allows a user to obtain in-memory tally results from Python directly.
 extern "C" int openmc_tally_results(
   int32_t index, double** results, size_t* shape)
 {

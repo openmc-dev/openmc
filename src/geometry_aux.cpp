@@ -193,6 +193,19 @@ void assign_temperatures()
   }
 }
 
+void assign_density_mult()
+{
+  for (auto& c : model::cells) {
+    // Ignore non-material cells and cells with previously defined density multipliers.
+    if (c->material_.size() == 0)
+      continue;
+    if (c->rho_mult_.size() > 0)
+      continue;
+
+    c->rho_mult_.resize(c->material_.size(), 1.0);
+  }
+}
+
 //==============================================================================
 
 void get_temperatures(
@@ -256,6 +269,9 @@ void finalize_geometry()
 
   // Assign temperatures to cells that don't have temperatures already assigned
   assign_temperatures();
+
+  // Assign density multipliers to cells that don't have one already
+  assign_density_mult();
 
   // Determine number of nested coordinate levels in the geometry
   model::n_coord_levels = maximum_levels(model::root_universe);
@@ -360,6 +376,16 @@ void prepare_distribcell(const std::vector<int32_t>* user_distribcells)
           "instances. The number of temperatures must equal one or the number "
           "of instances.",
           c.id_, c.sqrtkT_.size(), c.n_instances()));
+      }
+    }
+
+    if (c.rho_mult_.size() > 1) {
+      if (c.rho_mult_.size() != c.n_instances()) {
+        fatal_error(fmt::format(
+          "Cell {} was specified with {} density multipliers but has {} distributed "
+          "instances. The number of density multipliers must equal one or the number "
+          "of instances.",
+          c.id_, c.rho_mult_.size(), c.n_instances()));
       }
     }
   }

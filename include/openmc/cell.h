@@ -217,7 +217,8 @@ public:
   double temperature(int32_t instance = -1) const;
 
   //! Get the density multiplier of a cell instance
-  //! \param[in] instance Instance index. If -1 is given, the density multiplier for
+  //! \param[in] instance Instance index. If -1 is given, the density multiplier
+  //! for
   //!   the first instance is returned.
   //! \return Density multiplier [-]
   double density_mult(int32_t instance = -1) const;
@@ -234,7 +235,8 @@ public:
 
   //! Set the density multiplier of a cell instance
   //! \param[in] rho Density multiplier [-]
-  //! \param[in] instance Instance index. If -1 is given, the density multiplier for
+  //! \param[in] instance Instance index. If -1 is given, the density multiplier
+  //! for
   //!   all instances is set.
   //! \param[in] set_contained If this cell is not filled with a material,
   //!   collect all contained cells with material fills and set their

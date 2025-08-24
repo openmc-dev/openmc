@@ -200,8 +200,8 @@ void Particle::event_calculate_xs()
   // Calculate microscopic and macroscopic cross sections
   if (material() != MATERIAL_VOID) {
     if (settings::run_CE) {
-      if (material() != material_last() || sqrtkT() != sqrtkT_last()
-          || rho_mult() != rho_mult_last()) {
+      if (material() != material_last() || sqrtkT() != sqrtkT_last() ||
+          rho_mult() != rho_mult_last()) {
         // If the material is the same as the last material and the
         // temperature hasn't changed, we don't need to lookup cross
         // sections again.

@@ -29,8 +29,8 @@ int openmc_cell_set_fill(
 int openmc_cell_set_id(int32_t index, int32_t id);
 int openmc_cell_set_temperature(
   int32_t index, double T, const int32_t* instance, bool set_contained = false);
-int openmc_cell_set_density_mult(
-  int32_t index, double rho, const int32_t* instance, bool set_contained = false);
+int openmc_cell_set_density_mult(int32_t index, double rho,
+  const int32_t* instance, bool set_contained = false);
 int openmc_cell_set_translation(int32_t index, const double xyz[]);
 int openmc_cell_set_rotation(int32_t index, const double rot[], size_t rot_len);
 int openmc_dagmc_universe_get_cell_ids(

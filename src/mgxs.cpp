@@ -373,7 +373,7 @@ Mgxs::Mgxs(const std::string& in_name, const vector<double>& mat_kTs,
           }
         }
       } // end switch
-    }   // end microscopic temperature loop
+    } // end microscopic temperature loop
 
     // Now combine the microscopic data at each relevant temperature
     // We will do this by treating the multiple temperatures of a nuclide as
@@ -618,7 +618,8 @@ void Mgxs::calculate_xs(Particle& p)
   int temperature = p.mg_xs_cache().t;
   int angle = p.mg_xs_cache().a;
   p.macro_xs().total = xs[temperature].total(angle, p.g()) * p.rho_mult();
-  p.macro_xs().absorption = xs[temperature].absorption(angle, p.g()) * p.rho_mult();
+  p.macro_xs().absorption =
+    xs[temperature].absorption(angle, p.g()) * p.rho_mult();
   p.macro_xs().nu_fission =
     fissionable ? xs[temperature].nu_fission(angle, p.g()) * p.rho_mult() : 0.;
 }

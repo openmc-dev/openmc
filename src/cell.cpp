@@ -108,7 +108,8 @@ double Cell::density_mult(int32_t instance) const
   }
 
   if (instance >= 0) {
-    double rho = rho_mult_.size() == 1 ? rho_mult_.at(0) : rho_mult_.at(instance);
+    double rho =
+      rho_mult_.size() == 1 ? rho_mult_.at(0) : rho_mult_.at(instance);
     return rho;
   } else {
     return rho_mult_[0];
@@ -247,9 +248,10 @@ void Cell::import_properties_hdf5(hid_t group)
   // Ensure number of density muultipliers makes sense
   auto n_rho = rho_mult_.size();
   if (n_rho > 1 && n_rho != n_instances()) {
-    throw std::runtime_error(fmt::format(
-      "Number of density multipliers for cell {} doesn't match number of instances",
-      id_));
+    throw std::runtime_error(
+      fmt::format("Number of density multipliers for cell {} doesn't match "
+                  "number of instances",
+        id_));
   }
 
   close_group(cell_group);

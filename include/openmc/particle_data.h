@@ -422,7 +422,7 @@ private:
   double sqrtkT_ {-1.0};     //!< sqrt(k_Boltzmann * temperature) in eV
   double sqrtkT_last_ {0.0}; //!< last temperature
 
-  double rho_mult_      {1.0}; //!< density multiplier
+  double rho_mult_ {1.0};      //!< density multiplier
   double rho_mult_last_ {1.0}; //!< last density multiplier
 
 #ifdef OPENMC_DAGMC_ENABLED

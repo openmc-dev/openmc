@@ -496,7 +496,7 @@ int sample_nuclide(Particle& p)
   for (int i = 0; i < n; ++i) {
     // Get atom density
     int i_nuclide = mat->nuclide_[i];
-    double atom_density = mat->atom_density_[i];
+    double atom_density = p.rho_mult() * mat->atom_density_[i];
 
     // Increment probability to compare to cutoff
     prob += atom_density * p.neutron_xs(i_nuclide).total;
@@ -521,7 +521,7 @@ int sample_element(Particle& p)
   for (int i = 0; i < mat->element_.size(); ++i) {
     // Find atom density
     int i_element = mat->element_[i];
-    double atom_density = mat->atom_density_[i];
+    double atom_density = p.rho_mult() * mat->atom_density_[i];
 
     // Determine microscopic cross section
     double sigma = atom_density * p.photon_xs(i_element).total;

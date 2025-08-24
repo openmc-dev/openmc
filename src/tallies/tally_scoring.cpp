@@ -2383,7 +2383,7 @@ void score_analog_tally_mg(Particle& p)
             model::materials[p.material()]->mat_nuclide_index_[i_nuclide];
           if (j == C_NONE)
             continue;
-          atom_density = model::materials[p.material()]->atom_density_(j);
+          atom_density = model::materials[p.material()]->atom_density_(j) * p.rho_mult();
         }
 
         score_general_mg(p, i_tally, i * tally.scores_.size(), filter_index,
@@ -2452,7 +2452,7 @@ void score_tracklength_tally(Particle& p, double distance)
               }
             } else {
               atom_density =
-                tally.multiply_density() ? mat->atom_density_(j) : 1.0;
+                tally.multiply_density() ? mat->atom_density_(j) * p.rho_mult() : 1.0;
             }
           }
         }
@@ -2531,7 +2531,7 @@ void score_collision_tally(Particle& p)
             }
           } else {
             atom_density =
-              tally.multiply_density() ? mat->atom_density_(j) : 1.0;
+              tally.multiply_density() ? mat->atom_density_(j) * p.rho_mult() : 1.0;
           }
         }
 

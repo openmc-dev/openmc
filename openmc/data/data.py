@@ -388,7 +388,7 @@ def half_life(isotope, chain_file = None):
     
     try:
         chain = _get_chain(chain_file)
-        if isotope in chain:
+        if isotope in chain and chain[isotope].half_life is not None:
             return chain[isotope].half_life
     except DataError:
         pass

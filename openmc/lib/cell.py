@@ -34,6 +34,10 @@ _dll.openmc_cell_get_temperature.argtypes = [
     c_int32, POINTER(c_int32), POINTER(c_double)]
 _dll.openmc_cell_get_temperature.restype = c_int
 _dll.openmc_cell_get_temperature.errcheck = _error_handler
+_dll.openmc_cell_get_density_mult.argtypes = [
+    c_int32, POINTER(c_int32), POINTER(c_double)]
+_dll.openmc_cell_get_density_mult.restype = c_int
+_dll.openmc_cell_get_density_mult.errcheck = _error_handler
 _dll.openmc_cell_get_name.argtypes = [c_int32, POINTER(c_char_p)]
 _dll.openmc_cell_get_name.restype = c_int
 _dll.openmc_cell_get_name.errcheck = _error_handler
@@ -58,6 +62,10 @@ _dll.openmc_cell_set_temperature.argtypes = [
     c_int32, c_double, POINTER(c_int32), c_bool]
 _dll.openmc_cell_set_temperature.restype = c_int
 _dll.openmc_cell_set_temperature.errcheck = _error_handler
+_dll.openmc_cell_set_density_mult.argtypes = [
+    c_int32, c_double, POINTER(c_int32), c_bool]
+_dll.openmc_cell_set_density_mult.restype = c_int
+_dll.openmc_cell_set_density_mult.errcheck = _error_handler
 _dll.openmc_cell_set_translation.argtypes = [c_int32, POINTER(c_double)]
 _dll.openmc_cell_set_translation.restype = c_int
 _dll.openmc_cell_set_translation.errcheck = _error_handler

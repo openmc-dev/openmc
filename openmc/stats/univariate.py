@@ -480,6 +480,9 @@ class PowerLaw(Univariate):
     """
 
     def __init__(self, a: float = 0.0, b: float = 1.0, n: float = 0.):
+        if a < b:
+            raise ValueError(
+                "Lower bound of sampling interval must be less than upper bound.")
         self.a = a
         self.b = b
         self.n = n

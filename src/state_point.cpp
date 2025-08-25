@@ -612,6 +612,8 @@ hid_t h5collisiontrackbanktype()
     H5T_NATIVE_INT);
   H5Tinsert(banktype, "universe_id", HOFFSET(CollisionTrackSite, universe_id),
     H5T_NATIVE_INT);
+  H5Tinsert(banktype, "n_collision", HOFFSET(CollisionTrackSite, n_collision),
+    H5T_NATIVE_INT);
   H5Tinsert(banktype, "particle", HOFFSET(CollisionTrackSite, particle),
     H5T_NATIVE_INT);
   H5Tinsert(banktype, "parent_id", HOFFSET(CollisionTrackSite, parent_id),

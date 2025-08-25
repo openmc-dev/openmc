@@ -371,6 +371,7 @@ void Particle::event_collide()
                         data::nuclides[event_nuclide()]->metastable_;
       site.material_id = material_id;
       site.universe_id = universe_id;
+      site.n_collision = n_collision();
       site.particle = type();
       site.parent_id = id();
       site.progeny_id = n_progeny();
@@ -1013,8 +1014,9 @@ void add_surf_source_to_bank(Particle& p, const Surface& surf)
   int64_t idx = simulation::surf_source_bank.thread_safe_append(site);
 }
 
-bool collision_track_conditions(int id_cell, int mt_event, std::string zaid_nuclide,
-  int id_universe, int id_material, double difference_E)
+bool collision_track_conditions(int id_cell, int mt_event,
+  std::string zaid_nuclide, int id_universe, int id_material,
+  double difference_E)
 {
 
   bool condition = true;

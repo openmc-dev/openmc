@@ -69,6 +69,7 @@ struct CollisionTrackSite {
   int nuclide_id;
   int material_id {0};
   int universe_id {0};
+  int n_collision {0};
   ParticleType particle;
   int64_t parent_id;
   int64_t progeny_id;

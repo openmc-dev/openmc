@@ -1256,10 +1256,11 @@ def read_collision_track_mcpl(file_path):
     data = {
         'r': [],  # for position (x, y, z)
         'u': [],  # for direction (ux, uy, uz)
-        'E': [], 'dE': [], 'time': [], 'wgt': [],
-        'event_mt': [], 'delayed_group': [], 'cell_id': [],
-        'nuclide_id': [], 'material_id': [], 'universe_id': [],
-        'particle': [], 'parent_id': [], 'progeny_id': []
+        'E': [], 'dE': [], 'time': [],
+        'wgt': [], 'event_mt': [], 'delayed_group': [],
+        'cell_id': [], 'nuclide_id': [], 'material_id': [],
+        'universe_id': [], 'n_collision': [], 'particle': [],
+        'parent_id': [], 'progeny_id': []
     }
 
     # Read and collect data from the MCPL file
@@ -1284,6 +1285,7 @@ def read_collision_track_mcpl(file_path):
             data['nuclide_id'].append(int(values_dict.get('nuclide_id', 0)))
             data['material_id'].append(int(values_dict.get('material_id', 0)))
             data['universe_id'].append(int(values_dict.get('universe_id', 0)))
+            data['n_collision'].append(int(values_dict.get('n_collision', 0)))
             data['particle'].append(p.pdgcode)
             data['parent_id'].append(int(values_dict.get('parent_id', 0)))
             data['progeny_id'].append(int(values_dict.get('progeny_id', 0)))
@@ -1294,7 +1296,8 @@ def read_collision_track_mcpl(file_path):
         ('E', 'f8'), ('dE', 'f8'), ('time', 'f8'), ('wgt', 'f8'),
         ('event_mt', 'f8'), ('delayed_group', 'i4'), ('cell_id', 'i4'),
         ('nuclide_id', 'i4'), ('material_id', 'i4'), ('universe_id', 'i4'),
-        ('particle', 'i4'), ('parent_id', 'i8'), ('progeny_id', 'i8')
+        ('n_collision', 'i4'), ('particle', 'i4'),
+        ('parent_id', 'i8'), ('progeny_id', 'i8')
     ]
 
     structured_array = np.zeros(len(data['r']), dtype=dtypes)

@@ -598,6 +598,7 @@ void write_mcpl_collision_track_internal(mcpl_outfile_t* file_id,
                            << " ; nuclide_id : " << site.nuclide_id
                            << " ; material_id : " << site.material_id
                            << " ; universe_id : " << site.universe_id
+                           << " ; n_collision : " << site.n_collision
                            << " ; parent_id : " << site.parent_id
                            << " ; progeny_id : " << site.progeny_id;
 

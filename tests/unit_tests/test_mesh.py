@@ -765,3 +765,4 @@ def test_filter_time_mesh(run_in_tmpdir):
     #Check that difference is within uncertainty
     diff = nominal_values(delta)
     std_dev = std_devs(delta)
+    assert np.all(diff < 3*std_dev)

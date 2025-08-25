@@ -44,34 +44,30 @@ namespace openmc {
 
 double Particle::speed() const
 {
-  // Determine mass in eV/c^2
-  double mass;
-  switch (this->type()) {
-  case ParticleType::neutron:
-    mass = MASS_NEUTRON_EV;
-    break;
-  case ParticleType::photon:
-    mass = 0.0;
-    break;
-  case ParticleType::electron:
-  case ParticleType::positron:
-    mass = MASS_ELECTRON_EV;
-    break;
-  }
-
-  if (this->E() < 1.0e-9 * mass) {
-    // If the energy is much smaller than the mass, revert to non-relativistic
-    // formula. The 1e-9 criterion is specifically chosen as the point below
-    // which the error from using the non-relativistic formula is less than the
-    // round-off eror when using the relativistic formula (see analysis at
-    // https://gist.github.com/paulromano/da3b473fe3df33de94b265bdff0c7817)
-    return C_LIGHT * std::sqrt(2 * this->E() / mass);
+  if (settings::run_CE) {
+    // Determine mass in eV/c^2
+    double mass;
+    switch (this->type()) {
+    case ParticleType::neutron:
+      mass = MASS_NEUTRON_EV;
+      break;
+    case ParticleType::photon:
+      mass = 0.0;
+      break;
+    case ParticleType::electron:
+    case ParticleType::positron:
+      mass = MASS_ELECTRON_EV;
+      break;
+    }
+    // Equivalent to C * sqrt(1-(m/(m+E))^2) without problem at E<<m:
+    return C_LIGHT * std::sqrt(this->E() * (this->E() + 2 * mass)) /
+           (this->E() + mass);
   } else {
-    // Calculate inverse of Lorentz factor
-    const double inv_gamma = mass / (this->E() + mass);
-
-    // Calculate speed via v = c * sqrt(1 - γ^-2)
-    return C_LIGHT * std::sqrt(1 - inv_gamma * inv_gamma);
+    auto& macro_xs = data::mg.macro_xs_[this->material()];
+    int macro_t = this->mg_xs_cache().t;
+    int macro_a = macro_xs.get_angle_index(this->u());
+    return 1.0 / macro_xs.get_xs(MgxsType::INVERSE_VELOCITY, this->g(), nullptr,
+                   nullptr, nullptr, macro_t, macro_a);
   }
 }
 
@@ -105,7 +101,7 @@ void Particle::split(double wgt)
   bank.E = settings::run_CE ? E() : g();
   bank.time = time();
 
-  // Convert signed index to a singed surface ID
+  // Convert signed index to a signed surface ID
   if (surface() == SURFACE_NONE) {
     bank.surf_id = SURFACE_NONE;
   } else {
@@ -241,31 +237,20 @@ void Particle::event_advance()
     collision_distance() = -std::log(prn(current_seed())) / macro_xs().total;
   }
 
-  // Select smaller of the two distances
-  double distance = std::min(boundary().distance(), collision_distance());
+  double speed = this->speed();
+  double time_cutoff = settings::time_cutoff[static_cast<int>(type())];
+  double distance_cutoff =
+    (time_cutoff < INFTY) ? (time_cutoff - time()) * speed : INFTY;
+
+  // Select smaller of the three distances
+  double distance =
+    std::min({boundary().distance(), collision_distance(), distance_cutoff});
 
   // Advance particle in space and time
-  // Short-term solution until the surface source is revised and we can use
-  // this->move_distance(distance)
-  for (int j = 0; j < n_coord(); ++j) {
-    coord(j).r() += distance * coord(j).u();
-  }
-  double dt = distance / this->speed();
+  this->move_distance(distance);
+  double dt = distance / speed;
   this->time() += dt;
   this->lifetime() += dt;
-
-  // Kill particle if its time exceeds the cutoff
-  bool hit_time_boundary = false;
-  double time_cutoff = settings::time_cutoff[static_cast<int>(type())];
-  if (time() > time_cutoff) {
-    double dt = time() - time_cutoff;
-    time() = time_cutoff;
-    lifetime() = time_cutoff;
-
-    double push_back_distance = speed() * dt;
-    this->move_distance(-push_back_distance);
-    hit_time_boundary = true;
-  }
 
   // Score track-length tallies
   if (!model::active_tracklength_tallies.empty()) {
@@ -284,7 +269,7 @@ void Particle::event_advance()
   }
 
   // Set particle weight to zero if it hit the time boundary
-  if (hit_time_boundary) {
+  if (distance == distance_cutoff) {
     wgt() = 0.0;
   }
 }

@@ -140,7 +140,6 @@ class Geometry:
 
         # Clean the indentation in the file to be user-readable
         xml.clean_indentation(element)
-        xml.reorder_attributes(element)  # TODO: Remove when support is Python 3.8+
 
         return element
 

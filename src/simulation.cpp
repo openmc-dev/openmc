@@ -515,20 +515,18 @@ void finalize_batch()
       std::string ext = settings::ct_mcpl_write ? "mcpl" : "h5";
       auto filename = fmt::format("{}collision_track.{}.{}",
         settings::path_output, simulation::ct_current_file, ext);
-      
+
       if (settings::ct_max_files == 1 ||
           (simulation::ct_current_file == 1 && last_batch)) {
         filename = settings::path_output + "collision_track." + ext;
+        write_message(filename + " file with {} recorded collisions ...",
+          simulation::collision_track_bank.size(), 2);
+      } else {
         write_message(
-        filename + " file with {} recorded collisions ...",
-        simulation::collision_track_bank.size(), 2);
+          "Creating collision_track.{}.{} file with {} recorded collisions ...",
+          simulation::ct_current_file, ext,
+          simulation::collision_track_bank.size(), 4);
       }
-      else {
-      write_message(
-        "Creating collision_track.{}.{} file with {} recorded collisions ...",
-        simulation::ct_current_file, ext,
-        simulation::collision_track_bank.size(), 4);
-        }
 
       if (settings::ct_mcpl_write) {
         write_mcpl_collision_track(

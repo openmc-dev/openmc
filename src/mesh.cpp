@@ -321,6 +321,7 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
 
     SourceSite site;
     site.E = 1.0;
+    site.E_last = 1.0;
     site.particle = ParticleType::neutron;
 
     for (int axis = 0; axis < 3; ++axis) {

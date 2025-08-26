@@ -44,6 +44,7 @@ struct SourceSite {
   Position r;
   Direction u;
   double E;
+  double E_last;
   double time {0.0};
   double wgt {1.0};
   int delayed_group {0};

@@ -22,6 +22,7 @@ class _SourceSite(Structure):
     _fields_ = [('r', c_double*3),
                 ('u', c_double*3),
                 ('E', c_double),
+                ('E_last', c_double),                
                 ('time', c_double),
                 ('wgt', c_double),
                 ('delayed_group', c_int),

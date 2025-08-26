@@ -132,6 +132,7 @@ void Particle::from_source(const SourceSite* src, ParticleType particle)
   r_last_current() = src->r;
   r_last() = src->r;
   u_last() = src->u;
+  E_last() = src->E_last;
   if (settings::run_CE) {
     E() = src->E;
     g() = 0;
@@ -140,7 +141,6 @@ void Particle::from_source(const SourceSite* src, ParticleType particle)
     g_last() = static_cast<int>(src->E);
     E() = data::mg.energy_bin_avg_[g()];
   }
-  E_last() = E();
   type_last() = particle;
   time() = src->time;
   time_last() = src->time;

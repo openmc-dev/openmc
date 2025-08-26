@@ -27,7 +27,6 @@ class _SourceSite(Structure):
                 ('delayed_group', c_int),
                 ('surf_id', c_int),
                 ('particle', c_int),
-                ('E_last', c_double),                
                 ('parent_nuclide', c_int),
                 ('parent_id', c_int64),
                 ('progeny_id', c_int64)]

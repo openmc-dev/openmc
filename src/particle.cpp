@@ -88,6 +88,23 @@ bool Particle::create_secondary(
   bank.E = settings::run_CE ? E : g();
   bank.time = time();
   bank_second_E() += bank.E;
+
+  // Score tallies affected by secondary particles
+  if (!model::active_particleout_analog_tallies.empty()) {
+    // Create secondary particle for tallying purposes only
+    Particle p;
+    p.from_source(&bank);
+    p.u_last() = this->u();
+    p.r_last() = this->r();
+    p.E_last() = this->E();
+    p.type_last() = this->type();
+
+    if (settings::run_CE) {
+      score_analog_tally_ce(p, model::active_particleout_analog_tallies);
+    } else {
+      score_analog_tally_mg(p, model::active_particleout_analog_tallies);
+    }
+  }
   return true;
 }
 
@@ -110,7 +127,7 @@ void Particle::split(double wgt)
   }
 }
 
-void Particle::from_source(const SourceSite* src, ParticleType particle)
+void Particle::from_source(const SourceSite* src)
 {
   // Reset some attributes
   clear();
@@ -124,6 +141,7 @@ void Particle::from_source(const SourceSite* src, ParticleType particle)
 
   // Copy attributes from source bank site
   type() = src->particle;
+  type_last() = src->particle;
   wgt() = src->wgt;
   wgt_last() = src->wgt;
   r() = src->r;
@@ -132,7 +150,6 @@ void Particle::from_source(const SourceSite* src, ParticleType particle)
   r_last_current() = src->r;
   r_last() = src->r;
   u_last() = src->u;
-  E_last() = src->E_last;
   if (settings::run_CE) {
     E() = src->E;
     g() = 0;
@@ -141,7 +158,7 @@ void Particle::from_source(const SourceSite* src, ParticleType particle)
     g_last() = static_cast<int>(src->E);
     E() = data::mg.energy_bin_avg_[g()];
   }
-  type_last() = particle;
+  E_last() = E();
   time() = src->time;
   time_last() = src->time;
   parent_nuclide() = src->parent_nuclide;
@@ -410,8 +427,6 @@ void Particle::event_revive_from_secondary()
     wgt() = 0.0;
   }
 
-  auto type = this->type();
-
   // Check for secondary particles if this particle is dead
   if (!alive()) {
     // Write final position for this particle
@@ -423,19 +438,10 @@ void Particle::event_revive_from_secondary()
     if (secondary_bank().empty())
       return;
 
-    from_source(&secondary_bank().back(), type);
+    from_source(&secondary_bank().back());
     secondary_bank().pop_back();
     n_event() = 0;
     bank_second_E() = 0.0;
-
-    // Score tallies affected by secondary particles
-    if (!model::active_particleout_analog_tallies.empty()) {
-      if (settings::run_CE) {
-        score_analog_tally_ce(*this, model::active_particleout_analog_tallies);
-      } else {
-        score_analog_tally_mg(*this, model::active_particleout_analog_tallies);
-      }
-    }
 
     // Subtract secondary particle energy from interim pulse-height results
     if (!model::active_pulse_height_tallies.empty() &&

@@ -138,7 +138,6 @@ void create_fission_sites(Particle& p)
     site.r = p.r();
     site.particle = ParticleType::neutron;
     site.time = p.time();
-    site.E_last = p.E();
     site.wgt = 1. / weight;
     site.parent_id = p.id();
     site.progeny_id = p.n_progeny()++;

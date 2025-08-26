@@ -358,7 +358,7 @@ void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
           site.r[ax1] = min1 + (i1 + 0.5) * d1;
           site.r[ax2] = min2 + (i2 + 0.5) * d2;
 
-          p.from_source(&site);
+          p.from_source(&site, site.particle);
 
           // Determine particle's location
           if (!exhaustive_find_cell(p)) {

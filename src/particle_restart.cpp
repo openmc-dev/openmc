@@ -64,6 +64,7 @@ void read_particle_restart(Particle& p, RunMode& previous_run_mode)
   p.r_last() = p.r();
   p.u_last() = p.u();
   p.E_last() = p.E();
+  p.type_last() = p.type();
   p.g_last() = p.g();
   p.time_last() = p.time();
 

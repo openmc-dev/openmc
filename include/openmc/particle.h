@@ -62,7 +62,8 @@ public:
   //! site may have been produced from an external source, from fission, or
   //! simply as a secondary particle.
   //! \param src Source site data
-  void from_source(const SourceSite* src);
+  //! \param particle ParticleType incident particle type
+  void from_source(const SourceSite* src, ParticleType particle);
 
   // Coarse-grained particle events
   void event_calculate_xs();

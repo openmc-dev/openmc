@@ -796,7 +796,7 @@ void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
   }
 
   site.E = 0.0;
-  this->from_source(&site);
+  this->from_source(&site, site.particle);
 
   // Locate ray
   if (lowest_coord().cell() == C_NONE) {

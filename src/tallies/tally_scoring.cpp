@@ -2303,7 +2303,7 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
   }
 }
 
-void score_analog_tally_ce(Particle& p)
+void score_analog_tally_ce(Particle& p, const vector<int>& tallies)
 {
   // Since electrons/positrons are not transported, we assign a flux of zero.
   // Note that the heating score does NOT use the flux and will be non-zero for
@@ -2313,7 +2313,7 @@ void score_analog_tally_ce(Particle& p)
       ? 1.0
       : 0.0;
 
-  for (auto i_tally : model::active_analog_tallies) {
+  for (auto i_tally : tallies) {
     const Tally& tally {*model::tallies[i_tally]};
 
     // Initialize an iterator over valid filter bin combinations.  If there are
@@ -2355,9 +2355,9 @@ void score_analog_tally_ce(Particle& p)
     match.bins_present_ = false;
 }
 
-void score_analog_tally_mg(Particle& p)
+void score_analog_tally_mg(Particle& p, const vector<int>& tallies)
 {
-  for (auto i_tally : model::active_analog_tallies) {
+  for (auto i_tally : tallies) {
     const Tally& tally {*model::tallies[i_tally]};
 
     // Initialize an iterator over valid filter bin combinations.  If there are

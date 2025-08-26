@@ -1,0 +1,20 @@
+====================
+What's New in 0.15.2
+====================
+
+.. currentmodule:: openmc
+
+-------
+Summary
+-------
+
+This is a hotfix release to fix an MPI-related bug that was inadvertently
+introduced in the prior release.
+
+---------------------------
+Bug Fixes and Small Changes
+---------------------------
+
+- Remove errant ``openmc.Settings.random_ray`` check and removed of not useful warning in MG mode (`#3344 <https://github.com/openmc-dev/openmc/pull/3344>`_)
+- Throw an error if a spherical harmonics order larger than 10 is provided. (`#3354 <https://github.com/openmc-dev/openmc/pull/3354>`_)
+- Correcting the size of the displacement list in the SourceSite MPI interface object (`#3356 <https://github.com/openmc-dev/openmc/pull/3356>`_)

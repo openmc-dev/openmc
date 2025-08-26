@@ -18,7 +18,7 @@ import openmc.checkvalue as cv
 from openmc.checkvalue import PathLike
 from openmc.stats.multivariate import UnitSphere, Spatial
 from openmc.stats.univariate import Univariate
-from ._xml import get_text
+from ._xml import get_elem_list, get_text
 from .mesh import MeshBase, StructuredMesh, UnstructuredMesh
 from .utility_funcs import input_path
 
@@ -110,7 +110,7 @@ class SourceBase(ABC):
                 cv.check_value('rejection strategy', value, ('resample', 'kill'))
                 self._constraints['rejection_strategy'] = value
             else:
-                raise ValueError('Unknown key in constraints dictionary: {key}')
+                raise ValueError(f'Unknown key in constraints dictionary: {key}')
 
     @abstractmethod
     def populate_xml_element(self, element):
@@ -210,7 +210,7 @@ class SourceBase(ABC):
         constraints = {}
         domain_type = get_text(elem, "domain_type")
         if domain_type is not None:
-            domain_ids = [int(x) for x in get_text(elem, "domain_ids").split()]
+            domain_ids = get_elem_list(elem, "domain_ids", int)
 
             # Instantiate some throw-away domains that are used by the
             # constructor to assign IDs
@@ -224,13 +224,13 @@ class SourceBase(ABC):
                     domains = [openmc.Universe(uid) for uid in domain_ids]
             constraints['domains'] = domains
 
-        time_bounds = get_text(elem, "time_bounds")
+        time_bounds = get_elem_list(elem, "time_bounds", float)
         if time_bounds is not None:
-            constraints['time_bounds'] = [float(x) for x in time_bounds.split()]
+            constraints['time_bounds'] = time_bounds
 
-        energy_bounds = get_text(elem, "energy_bounds")
+        energy_bounds = get_elem_list(elem, "energy_bounds", float)
         if energy_bounds is not None:
-            constraints['energy_bounds'] = [float(x) for x in energy_bounds.split()]
+            constraints['energy_bounds'] = energy_bounds
 
         fissionable = get_text(elem, "fissionable")
         if fissionable is not None:

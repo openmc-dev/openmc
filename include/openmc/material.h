@@ -4,9 +4,9 @@
 #include <string>
 #include <unordered_map>
 
+#include "openmc/span.h"
 #include "pugixml.hpp"
 #include "xtensor/xtensor.hpp"
-#include <gsl/gsl-lite.hpp>
 #include <hdf5.h>
 
 #include "openmc/bremsstrahlung.h"
@@ -107,6 +107,10 @@ public:
   //! \return Density in [g/cm^3]
   double density_gpcc() const { return density_gpcc_; }
 
+  //! Get charge density in [e/b-cm]
+  //! \return Charge density in [e/b-cm]
+  double charge_density() const { return charge_density_; };
+
   //! Get name
   //! \return Material name
   const std::string& name() const { return name_; }
@@ -118,21 +122,21 @@ public:
   //
   //! \param[in] density Density value
   //! \param[in] units Units of density
-  void set_density(double density, gsl::cstring_span units);
+  void set_density(double density, const std::string& units);
 
   //! Set temperature of the material
   void set_temperature(double temperature) { temperature_ = temperature; };
 
   //! Get nuclides in material
   //! \return Indices into the global nuclides vector
-  gsl::span<const int> nuclides() const
+  span<const int> nuclides() const
   {
     return {nuclide_.data(), nuclide_.size()};
   }
 
   //! Get densities of each nuclide in material
   //! \return Densities in [atom/b-cm]
-  gsl::span<const double> densities() const
+  span<const double> densities() const
   {
     return {atom_density_.data(), atom_density_.size()};
   }
@@ -177,6 +181,7 @@ public:
   xt::xtensor<double, 1> atom_density_; //!< Nuclide atom density in [atom/b-cm]
   double density_;                      //!< Total atom density in [atom/b-cm]
   double density_gpcc_;                 //!< Total atom density in [g/cm^3]
+  double charge_density_;               //!< Total charge density in [e/b-cm]
   double volume_ {-1.0};                //!< Volume in [cm^3]
   vector<bool> p0_; //!< Indicate which nuclides are to be treated with
                     //!< iso-in-lab scattering
@@ -210,7 +215,7 @@ private:
 
   //----------------------------------------------------------------------------
   // Private data members
-  gsl::index index_;
+  int64_t index_;
 
   bool depletable_ {false}; //!< Is the material depletable?
   bool fissionable_ {

@@ -50,7 +50,6 @@ jobs:
       PHDF5: ${{ matrix.mpi }}
       OMP: ${{ matrix.omp }}
       DAGMC: ${{ matrix.dagmc }}
-      NCRYSTAL: ${{ matrix.ncrystal }}
       EVENT: ${{ matrix.event }}
       VECTFIT: ${{ matrix.vectfit }}
       LIBMESH: ${{ matrix.libmesh }}
@@ -62,7 +61,15 @@ jobs:
       RDMAV_FORK_SAFE: 1
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Setup cmake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: '3.31'
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
@@ -73,6 +80,16 @@ jobs:
         run: |
           echo "OPENMC_CROSS_SECTIONS=$HOME/nndc_hdf5/cross_sections.xml" >> $GITHUB_ENV
           echo "OPENMC_ENDF_DATA=$HOME/endf-b-vii.1" >> $GITHUB_ENV
+          # get the sha of the last branch commit
+          # for push and workflow_dispatch events, use the current reference head
+          BRANCH_SHA=HEAD
+          # for a pull_request event, use the last reference of the parents of the merge commit
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            BRANCH_SHA=$(git rev-list --parents -n 1 HEAD | rev | cut -d" " -f 1 | rev)
+          fi
+          COMMIT_MESSAGE=$(git log $BRANCH_SHA -1 --pretty=%B | tr '\n' ' ')
+          echo ${COMMIT_MESSAGE}
+          echo "COMMIT_MESSAGE=${COMMIT_MESSAGE}" >> $GITHUB_ENV
 
       - name: Apt dependencies
         shell: bash
@@ -122,16 +139,6 @@ jobs:
             ~/MOAB
           key: DAGMC-${{ env.DAGMC_HASH }}/MOAB-${{ env.MOAB_HASH }}
 
-      - name: Restore NCrystal
-        if: ${{ matrix.ncrystal == 'y' }}
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/ncrystal_src
-            ~/ncrystal_bld
-            ~/ncrystal_inst
-          key: NCrystal-${{ env.NC_HASH }} 
-
       - name: Restore vectfit
         if: ${{ matrix.vectfit == 'y' }} 
         uses: actions/cache@v4
@@ -150,7 +157,7 @@ jobs:
         with:
           path: |
             ~/LIBMESH
-          key: libmesh-mpi-${{matrix.mpi}}-${{ env.NC_HASH }} 
+          key: libmesh-mpi-${{matrix.mpi}}-${{ env.LB_HASH }} 
 
       - name: install
         shell: bash
@@ -179,6 +186,12 @@ jobs:
         run: |
           CTEST_OUTPUT_ON_FAILURE=1 make test -C $GITHUB_WORKSPACE/build/
           $GITHUB_WORKSPACE/tools/ci/gha-script.sh
+
+      - name: Setup tmate debug session
+        continue-on-error: true
+        if: ${{ contains(env.COMMIT_MESSAGE, '[gha-debug]') }}
+        uses: mxschmitt/action-tmate@v3
+        timeout-minutes: 10
 
       - name: after_success
         shell: bash

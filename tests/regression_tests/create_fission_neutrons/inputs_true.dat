@@ -1,30 +1,30 @@
 <?xml version='1.0' encoding='utf-8'?>
 <model>
   <materials>
-    <material depletable="true" id="1" name="mat">
-      <density units="atom/b-cm" value="0.069335"/>
-      <nuclide ao="40.0" name="H1"/>
-      <nuclide ao="1.0" name="U235"/>
+    <material id="1" name="mat" depletable="true">
+      <density value="0.069335" units="atom/b-cm"/>
+      <nuclide name="H1" ao="40.0"/>
+      <nuclide name="U235" ao="1.0"/>
     </material>
   </materials>
   <geometry>
-    <cell id="1" material="1" name="box" region="1 -2 3 -4 5 -6" universe="0"/>
-    <surface boundary="reflective" coeffs="-1" id="1" type="x-plane"/>
-    <surface boundary="reflective" coeffs="1" id="2" type="x-plane"/>
-    <surface boundary="reflective" coeffs="-1" id="3" type="y-plane"/>
-    <surface boundary="reflective" coeffs="1" id="4" type="y-plane"/>
-    <surface boundary="reflective" coeffs="-1" id="5" type="z-plane"/>
-    <surface boundary="reflective" coeffs="1" id="6" type="z-plane"/>
+    <cell id="1" name="box" material="1" region="1 -2 3 -4 5 -6" universe="0"/>
+    <surface id="1" type="x-plane" boundary="reflective" coeffs="-1"/>
+    <surface id="2" type="x-plane" boundary="reflective" coeffs="1"/>
+    <surface id="3" type="y-plane" boundary="reflective" coeffs="-1"/>
+    <surface id="4" type="y-plane" boundary="reflective" coeffs="1"/>
+    <surface id="5" type="z-plane" boundary="reflective" coeffs="-1"/>
+    <surface id="6" type="z-plane" boundary="reflective" coeffs="1"/>
   </geometry>
   <settings>
     <run_mode>fixed source</run_mode>
     <particles>100</particles>
     <batches>10</batches>
-    <source particle="neutron" strength="1.0" type="independent">
+    <source type="independent" strength="1.0" particle="neutron">
       <space type="box">
         <parameters>-1 -1 -1 1 1 1</parameters>
       </space>
-      <energy parameters="988000.0 2.249e-06" type="watt"/>
+      <energy type="watt" parameters="988000.0 2.249e-06"/>
     </source>
     <create_fission_neutrons>false</create_fission_neutrons>
   </settings>

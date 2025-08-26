@@ -12,11 +12,6 @@ if [[ $DAGMC = 'y' ]]; then
     head -c 15)" >> $GITHUB_ENV
 fi
 
-if [[ $NCRYSTAL = 'y' ]]; then
-    echo "NC_HASH=$(git ls-remote https://github.com/mctools/ncrystal \
-    --branch develop HEAD | head -c 15)" >> $GITHUB_ENV
-fi
-
 if [[ $VECTFIT = 'y' ]]; then
     echo "PYBIND_HASH=$(git ls-remote https://github.com/pybind/pybind11 \
     --branch master HEAD | head -c 15)" >> $GITHUB_ENV
@@ -26,6 +21,6 @@ if [[ $VECTFIT = 'y' ]]; then
 fi
 
 if [[ $LIBMESH = 'y' ]]; then
-    echo "NC_HASH=$(git ls-remote https://github.com/libmesh/libmesh \
+    echo "LB_HASH=$(git ls-remote https://github.com/libmesh/libmesh \
     --branch v1.7.1 HEAD | head -c 15)" >> $GITHUB_ENV
 fi

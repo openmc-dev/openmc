@@ -41,7 +41,7 @@ def hzrh():
     """H in ZrH thermal scattering data."""
     endf_data = os.environ['OPENMC_ENDF_DATA']
     filename = os.path.join(endf_data, 'thermal_scatt', 'tsl-HinZrH.endf')
-    return openmc.data.ThermalScattering.from_endf(filename)
+    return openmc.data.ThermalScattering.from_endf(filename, divide_incoherent_elastic=True)
 
 
 @pytest.fixture(scope='module')
@@ -64,7 +64,7 @@ def sio2():
     """SiO2 thermal scattering data."""
     endf_data = os.environ['OPENMC_ENDF_DATA']
     filename = os.path.join(endf_data, 'thermal_scatt', 'tsl-SiO2.endf')
-    return openmc.data.ThermalScattering.from_endf(filename)
+    return openmc.data.ThermalScattering.from_endf(filename, divide_incoherent_elastic=True)
 
 
 def test_h2o_attributes(h2o):
@@ -144,7 +144,7 @@ def test_continuous_dist(h2o_njoy):
 def test_h2o_endf():
     endf_data = os.environ['OPENMC_ENDF_DATA']
     filename = os.path.join(endf_data, 'thermal_scatt', 'tsl-HinH2O.endf')
-    h2o = openmc.data.ThermalScattering.from_endf(filename)
+    h2o = openmc.data.ThermalScattering.from_endf(filename, divide_incoherent_elastic=True)
     assert not h2o.elastic
     assert h2o.atomic_weight_ratio == pytest.approx(0.99917)
     assert h2o.energy_max == pytest.approx(3.99993)

@@ -26,6 +26,7 @@ def test_export_to_xml(run_in_tmpdir):
     s.plot_seed = 100
     s.survival_biasing = True
     s.cutoff = {'weight': 0.25, 'weight_avg': 0.5, 'energy_neutron': 1.0e-5,
+                'survival_normalization': True,
                 'energy_photon': 1000.0, 'energy_electron': 1.0e-5,
                 'energy_positron': 1.0e-5, 'time_neutron': 1.0e-5,
                 'time_photon': 1.0e-5, 'time_electron': 1.0e-5,
@@ -65,8 +66,8 @@ def test_export_to_xml(run_in_tmpdir):
             space=openmc.stats.Box((-1., -1., -1.), (1., 1., 1.))
         )
     }
-
     s.max_particle_events = 100
+    s.source_rejection_fraction = 0.01
 
     # Make sure exporting XML works
     s.export_to_xml()
@@ -99,6 +100,7 @@ def test_export_to_xml(run_in_tmpdir):
     assert s.seed == 17
     assert s.survival_biasing
     assert s.cutoff == {'weight': 0.25, 'weight_avg': 0.5,
+                        'survival_normalization': True,
                         'energy_neutron': 1.0e-5, 'energy_photon': 1000.0,
                         'energy_electron': 1.0e-5, 'energy_positron': 1.0e-5,
                         'time_neutron': 1.0e-5, 'time_photon': 1.0e-5,
@@ -128,7 +130,7 @@ def test_export_to_xml(run_in_tmpdir):
     assert s.log_grid_bins == 2000
     assert not s.photon_transport
     assert s.electron_treatment == 'led'
-    assert s.write_initial_source == True
+    assert s.write_initial_source
     assert len(s.volume_calculations) == 1
     vol = s.volume_calculations[0]
     assert vol.domain_type == 'cell'
@@ -142,3 +144,4 @@ def test_export_to_xml(run_in_tmpdir):
     assert s.random_ray['distance_active'] == 100.0
     assert s.random_ray['ray_source'].space.lower_left == [-1., -1., -1.]
     assert s.random_ray['ray_source'].space.upper_right == [1., 1., 1.]
+    assert s.source_rejection_fraction == 0.01

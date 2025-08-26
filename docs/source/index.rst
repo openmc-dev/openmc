@@ -12,7 +12,7 @@ files produced by NJOY. Parallelism is enabled via a hybrid MPI and OpenMP
 programming model.
 
 OpenMC was originally developed by members of the `Computational Reactor Physics
-Group <http://crpg.mit.edu>`_ at the `Massachusetts Institute of Technology
+Group <https://crpg.mit.edu>`_ at the `Massachusetts Institute of Technology
 <https://web.mit.edu>`_ starting in 2011. Various universities, laboratories,
 and other organizations now contribute to the development of OpenMC. For more
 information on OpenMC, feel free to post a message on the `OpenMC Discourse

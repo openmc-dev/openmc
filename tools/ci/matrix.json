@@ -6,7 +6,6 @@
         "omp": "n",
         "mpi": "n",
         "dagmc": "n",
-        "ncrystal": "n",
         "libmesh": "n",
         "event": "n",
         "vectfit": "n"
@@ -17,7 +16,6 @@
         "omp": "y",
         "mpi": "n",
         "dagmc": "n",
-        "ncrystal": "n",
         "libmesh": "n",
         "event": "n",
         "vectfit": "n"
@@ -28,7 +26,6 @@
         "omp": "n",
         "mpi": "y",
         "dagmc": "n",
-        "ncrystal": "n",
         "libmesh": "n",
         "event": "n",
         "vectfit": "n"
@@ -39,7 +36,6 @@
         "omp": "y",
         "mpi": "y",
         "dagmc": "n",
-        "ncrystal": "n",
         "libmesh": "n",
         "event": "n",
         "vectfit": "n"
@@ -50,7 +46,6 @@
         "omp": "n",
         "mpi": "n",
         "dagmc": "n",
-        "ncrystal": "n",
         "libmesh": "n",
         "event": "n",
         "vectfit": "n"
@@ -61,7 +56,6 @@
         "omp": "n",
         "mpi": "n",
         "dagmc": "n",
-        "ncrystal": "n",
         "libmesh": "n",
         "event": "n",
         "vectfit": "n"
@@ -72,18 +66,6 @@
         "omp": "y",
         "mpi": "y",
         "dagmc": "y",
-        "ncrystal": "n",
-        "libmesh": "n",
-        "event": "n",
-        "vectfit": "n"
-        },
-        {
-        "job-name": "Python 3.11 [ncrystal]",
-        "python-version": "3.11",
-        "omp": "n",
-        "mpi": "n",
-        "dagmc": "n",
-        "ncrystal": "y",
         "libmesh": "n",
         "event": "n",
         "vectfit": "n"
@@ -94,7 +76,6 @@
         "omp": "y",
         "mpi": "y",
         "dagmc": "n",
-        "ncrystal": "n",
         "libmesh": "y",
         "event": "n",
         "vectfit": "n"
@@ -105,7 +86,6 @@
         "omp": "y",
         "mpi": "n",
         "dagmc": "n",
-        "ncrystal": "n",
         "libmesh": "y",
         "event": "n",
         "vectfit": "n"
@@ -116,7 +96,6 @@
         "omp": "y",
         "mpi": "n",
         "dagmc": "n",
-        "ncrystal": "n",
         "libmesh": "n",
         "event": "y",
         "vectfit": "n"
@@ -127,7 +106,6 @@
         "omp": "n",
         "mpi": "y",
         "dagmc": "n",
-        "ncrystal": "n",
         "libmesh": "n",
         "event": "n",
         "vectfit": "y"

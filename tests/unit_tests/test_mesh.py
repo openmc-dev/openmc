@@ -1,8 +1,12 @@
 from math import pi
+from tempfile import TemporaryDirectory
+from pathlib import Path
 
 import numpy as np
 import pytest
 import openmc
+import openmc.lib
+from openmc.utility_funcs import change_directory
 
 
 @pytest.mark.parametrize("val_left,val_right", [(0, 0), (-1., -1.), (2.0, 2)])
@@ -398,6 +402,88 @@ def test_umesh_roundtrip(run_in_tmpdir, request):
     assert umesh.id == xml_mesh.id
 
 
+@pytest.fixture(scope='module')
+def simple_umesh(request):
+    """Fixture returning UnstructuredMesh with all attributes"""
+    surf1 = openmc.Sphere(r=20.0, boundary_type="vacuum")
+    material1 = openmc.Material()
+    material1.add_element("H", 1.0)
+    material1.set_density('g/cm3', 1.0)
+
+    materials = openmc.Materials([material1])
+    cell1 = openmc.Cell(region=-surf1, fill=material1)
+    geometry = openmc.Geometry([cell1])
+
+    umesh = openmc.UnstructuredMesh(
+       filename=request.path.parent.parent
+        / "regression_tests/external_moab/test_mesh_tets.h5m",
+       library="moab",
+       mesh_id=1
+    )
+    # setting ID to make it easier to get the mesh from the statepoint later
+    mesh_filter = openmc.MeshFilter(umesh)
+
+    # Create flux mesh tally to score alpha production
+    mesh_tally = openmc.Tally(name="test_tally")
+    mesh_tally.filters = [mesh_filter]
+    mesh_tally.scores = ["total"]
+
+    tallies = openmc.Tallies([mesh_tally])
+
+    settings = openmc.Settings()
+    settings.run_mode = "fixed source"
+    settings.batches = 2
+    settings.particles = 100
+    settings.source = openmc.IndependentSource(
+        space=openmc.stats.Point((0.1, 0.1, 0.1))
+    )
+
+    model = openmc.Model(
+        materials=materials, geometry=geometry, settings=settings, tallies=tallies
+    )
+
+    with change_directory(tmpdir=True):
+        statepoint_file = model.run()
+        with openmc.StatePoint(statepoint_file) as sp:
+            return sp.meshes[1]
+
+
+@pytest.mark.skipif(not openmc.lib._dagmc_enabled(), reason="DAGMC not enabled.")
+@pytest.mark.parametrize('export_type', ('.vtk', '.vtu'))
+def test_umesh(run_in_tmpdir, simple_umesh, export_type):
+    """Performs a minimal UnstructuredMesh simulation, reads in the resulting
+    statepoint file and writes the mesh data to vtk and vtkhdf files. It is
+    necessary to read in the unstructured mesh from a statepoint file to ensure
+    it has all the required attributes
+    """
+    # Get VTK modules
+    vtkIOLegacy = pytest.importorskip("vtkmodules.vtkIOLegacy")
+    vtkIOXML = pytest.importorskip("vtkmodules.vtkIOXML")
+
+    # Sample some random data and write to VTK
+    rng = np.random.default_rng()
+    ref_data = rng.random(simple_umesh.dimension)
+    filename = f"test_mesh{export_type}"
+    simple_umesh.write_data_to_vtk(datasets={"mean": ref_data}, filename=filename)
+
+    assert Path(filename).exists()
+
+    if export_type == ".vtk":
+        reader = vtkIOLegacy.vtkGenericDataObjectReader()
+    elif export_type == ".vtu":
+        reader = vtkIOXML.vtkXMLGenericDataObjectReader()
+    reader.SetFileName(str(filename))
+    reader.Update()
+
+    # Get mean from file and make sure it matches original data
+    arr = reader.GetOutput().GetCellData().GetArray("mean")
+    mean = np.array([arr.GetTuple1(i) for i in range(ref_data.size)])
+    np.testing.assert_almost_equal(mean, ref_data)
+
+    # attempt to apply a dataset with an improper size to a VTK write
+    with pytest.raises(ValueError, match='Cannot apply dataset "mean"') as e:
+        simple_umesh.write_data_to_vtk(datasets={'mean': ref_data[:-2]}, filename=filename)
+
 def test_mesh_get_homogenized_materials():
     """Test the get_homogenized_materials method"""
     # Simple model with 1 cm of Fe56 next to 1 cm of H1
@@ -423,7 +509,7 @@ def test_mesh_get_homogenized_materials():
     mesh.lower_left = (-1., -1., -1.)
     mesh.upper_right = (1., 1., 1.)
     mesh.dimension = (3, 1, 1)
-    m1, m2, m3 = mesh.get_homogenized_materials(model, n_samples=1_000_000)
+    m1, m2, m3 = mesh.get_homogenized_materials(model, n_samples=10_000)
 
     # Left mesh element should be only Fe56
     assert m1.get_mass_density('Fe56') == pytest.approx(5.0)
@@ -439,7 +525,7 @@ def test_mesh_get_homogenized_materials():
     mesh_void.lower_left = (0.5, 0.5, -1.)
     mesh_void.upper_right = (1.5, 1.5, 1.)
     mesh_void.dimension = (1, 1, 1)
-    m4, = mesh_void.get_homogenized_materials(model, n_samples=1_000_000)
+    m4, = mesh_void.get_homogenized_materials(model, n_samples=(100, 100, 0))
 
     # Mesh element that overlaps void should have half density
     assert m4.get_mass_density('H1') == pytest.approx(0.5, rel=1e-2)
@@ -449,3 +535,119 @@ def test_mesh_get_homogenized_materials():
     m5, = mesh_void.get_homogenized_materials(
         model, n_samples=1000, include_void=False)
     assert m5.get_mass_density('H1') == pytest.approx(1.0)
+
+
+@pytest.fixture
+def sphere_model():
+    # Model with three materials separated by planes x=0 and z=0
+    mats = []
+    for i in range(3):
+        mat = openmc.Material()
+        mat.add_nuclide('H1', 1.0)
+        mat.set_density('g/cm3', float(i + 1))
+        mats.append(mat)
+
+    sph = openmc.Sphere(r=25.0, boundary_type='vacuum')
+    x0 = openmc.XPlane(0.0)
+    z0 = openmc.ZPlane(0.0)
+    cell1 = openmc.Cell(fill=mats[0], region=-sph & +x0 & +z0)
+    cell2 = openmc.Cell(fill=mats[1], region=-sph & -x0 & +z0)
+    cell3 = openmc.Cell(fill=mats[2], region=-sph & -z0)
+    model = openmc.Model()
+    model.geometry = openmc.Geometry([cell1, cell2, cell3])
+    model.materials = openmc.Materials(mats)
+    return model
+
+
+@pytest.mark.parametrize("n_rays", [1000, (10, 10, 0), (10, 0, 10), (0, 10, 10)])
+def test_material_volumes_regular_mesh(sphere_model, n_rays):
+    """Test the material_volumes method on a regular mesh"""
+    mesh = openmc.RegularMesh()
+    mesh.lower_left = (-1., -1., -1.)
+    mesh.upper_right = (1., 1., 1.)
+    mesh.dimension = (2, 2, 2)
+    volumes = mesh.material_volumes(sphere_model, n_rays)
+    mats = sphere_model.materials
+    np.testing.assert_almost_equal(volumes[mats[0].id], [0., 0., 0., 0., 0., 1., 0., 1.])
+    np.testing.assert_almost_equal(volumes[mats[1].id], [0., 0., 0., 0., 1., 0., 1., 0.])
+    np.testing.assert_almost_equal(volumes[mats[2].id], [1., 1., 1., 1., 0., 0., 0., 0.])
+    assert volumes.by_element(4) == [(mats[1].id, 1.)]
+    assert volumes.by_element(0) == [(mats[2].id, 1.)]
+
+
+def test_material_volumes_cylindrical_mesh(sphere_model):
+    """Test the material_volumes method on a cylindrical mesh"""
+    cyl_mesh = openmc.CylindricalMesh(
+        [0., 1.], [-1., 0., 1.,], [0.0, pi/4, 3*pi/4, 5*pi/4, 7*pi/4, 2*pi])
+    volumes = cyl_mesh.material_volumes(sphere_model, (0, 100, 100))
+    mats = sphere_model.materials
+    np.testing.assert_almost_equal(volumes[mats[0].id], [
+        0., 0., 0., 0., 0.,
+        pi/8, pi/8, 0., pi/8, pi/8
+    ])
+    np.testing.assert_almost_equal(volumes[mats[1].id], [
+        0., 0., 0., 0., 0.,
+        0., pi/8, pi/4, pi/8, 0.
+    ])
+    np.testing.assert_almost_equal(volumes[mats[2].id], [
+        pi/8, pi/4, pi/4, pi/4, pi/8,
+        0., 0., 0., 0., 0.
+    ])
+
+
+def test_mesh_material_volumes_serialize():
+    materials = np.array([
+        [1, -1, -2],
+        [-1, -2, -2],
+        [2, 1, -2],
+        [2, -2, -2]
+    ])
+    volumes = np.array([
+        [0.5, 0.5, 0.0],
+        [1.0, 0.0, 0.0],
+        [0.5, 0.5, 0.0],
+        [1.0, 0.0, 0.0]
+    ])
+    volumes = openmc.MeshMaterialVolumes(materials, volumes)
+    with TemporaryDirectory() as tmpdir:
+        path = f'{tmpdir}/volumes.npz'
+        volumes.save(path)
+        new_volumes = openmc.MeshMaterialVolumes.from_npz(path)
+
+    assert new_volumes.by_element(0) == [(1, 0.5), (None, 0.5)]
+    assert new_volumes.by_element(1) == [(None, 1.0)]
+    assert new_volumes.by_element(2) == [(2, 0.5), (1, 0.5)]
+    assert new_volumes.by_element(3) == [(2, 1.0)]
+
+
+def test_raytrace_mesh_infinite_loop(run_in_tmpdir):
+    # Create a model with one large spherical cell
+    sphere = openmc.Sphere(r=100, boundary_type='vacuum')
+    cell = openmc.Cell(region=-sphere)
+    model = openmc.Model()
+    model.geometry = openmc.Geometry([cell])
+
+    # Create a regular mesh and associated tally
+    mesh_surface = openmc.RegularMesh()
+    mesh_surface.lower_left = (-30, -30, 30)
+    mesh_surface.upper_right = (30, 30, 60)
+    mesh_surface.dimension = (1, 1, 1)
+    reg_filter = openmc.MeshSurfaceFilter(mesh_surface)
+    mesh_surface_tally = openmc.Tally()
+    mesh_surface_tally.filters = [reg_filter]
+    mesh_surface_tally.scores = ['current']
+    model.tallies = [mesh_surface_tally]
+
+    # Define a source such that the z position is on a mesh boundary with a very
+    # small directional cosine in the z direction
+    polar = openmc.stats.delta_function(1.75e-7)
+    azimuthal = openmc.stats.Uniform(0.0, 2.0*pi)
+    model.settings.source = openmc.IndependentSource(
+        angle=openmc.stats.PolarAzimuthal(polar, azimuthal)
+    )
+    model.settings.run_mode = 'fixed source'
+    model.settings.particles = 10
+    model.settings.batches =  1
+
+    # Run the model; this should not cause an infinite loop
+    model.run()

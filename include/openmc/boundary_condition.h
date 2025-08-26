@@ -111,6 +111,10 @@ public:
 
   std::string type() const override { return "periodic"; }
 
+  int i_surf() const { return i_surf_; }
+
+  int j_surf() const { return j_surf_; }
+
 protected:
   int i_surf_;
   int j_surf_;

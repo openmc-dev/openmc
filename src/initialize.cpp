@@ -181,7 +181,7 @@ void initialize_mpi(MPI_Comm intracomm)
 
   if (settings::collision_track) {
     CollisionTrackSite b;
-    MPI_Aint disp[15];
+    MPI_Aint disp[16];
     MPI_Get_address(&b.r, &disp[0]);             // Double
     MPI_Get_address(&b.u, &disp[1]);             // Double
     MPI_Get_address(&b.E, &disp[2]);             // Double
@@ -194,19 +194,20 @@ void initialize_mpi(MPI_Comm intracomm)
     MPI_Get_address(&b.nuclide_id, &disp[9]);    // Int
     MPI_Get_address(&b.material_id, &disp[10]);  // Int
     MPI_Get_address(&b.universe_id, &disp[11]);  // Int
-    MPI_Get_address(&b.particle, &disp[12]);     // Int
-    MPI_Get_address(&b.parent_id, &disp[13]);    // Long
-    MPI_Get_address(&b.progeny_id, &disp[14]);   // Long
+    MPI_Get_address(&b.universe_id, &disp[12]);  // Int
+    MPI_Get_address(&b.particle, &disp[13]);     // Int
+    MPI_Get_address(&b.parent_id, &disp[14]);    // Long
+    MPI_Get_address(&b.progeny_id, &disp[15]);   // Long
     for (int i = 14; i >= 0; --i) {
       disp[i] -= disp[0];
     }
 
-    int blocks[] = {3, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+    int blocks[] = {3, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
     MPI_Datatype types[] = {MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE,
-      MPI_DOUBLE, MPI_DOUBLE, MPI_INT, MPI_INT, MPI_INT, MPI_INT, MPI_INT,
+      MPI_DOUBLE, MPI_DOUBLE, MPI_INT, MPI_INT, MPI_INT, MPI_INT, MPI_INT, MPI_INT,
       MPI_INT, MPI_INT, MPI_LONG, MPI_LONG};
 
-    MPI_Type_create_struct(15, blocks, disp, types, &mpi::collision_track_site);
+    MPI_Type_create_struct(16, blocks, disp, types, &mpi::collision_track_site);
     MPI_Type_commit(&mpi::collision_track_site);
   }
 }

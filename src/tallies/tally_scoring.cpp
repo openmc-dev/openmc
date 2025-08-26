@@ -2404,57 +2404,7 @@ void score_analog_tally_mg(Particle& p)
     match.bins_present_ = false;
 }
 
-void score_tracklength_tally(Particle& p, double total_distance)
-{
-
-  if (!model::active_timed_tracklength_tallies.empty()) {
-    double speed = p.speed();
-    double total_dt = total_distance / speed;
-
-    // save particle last state
-    auto time_last = p.time_last();
-    auto r_last = p.r_last();
-
-    // move particle back
-    p.move_distance(-total_distance);
-    p.time() -= total_dt;
-    p.lifetime() -= total_dt;
-
-    double distance_traveled = 0.0;
-    while (distance_traveled < total_distance) {
-
-      double distance =
-        std::min(model::distance_to_time_boundary(p.time(), speed),
-          total_distance - distance_traveled);
-      double dt = distance / speed;
-
-      // Save particle last state for tracklength tallies
-      p.time_last() = p.time();
-      p.r_last() = p.r();
-
-      // Advance particle in space and time
-      p.move_distance(distance);
-      p.time() += dt;
-      p.lifetime() += dt;
-
-      // Determine the tracklength estimate of the flux
-      double flux = p.wgt() * distance;
-
-      score_tracklength_tally(p, flux, model::active_timed_tracklength_tallies);
-      distance_traveled += distance;
-    }
-
-    p.time_last() = time_last;
-    p.r_last() = r_last;
-  }
-
-  // Determine the tracklength estimate of the flux
-  double total_flux = p.wgt() * total_distance;
-
-  score_tracklength_tally(p, total_flux, model::active_tracklength_tallies);
-}
-
-void score_tracklength_tally(
+void score_tracklength_tally_general(
   Particle& p, double flux, const vector<int>& tallies)
 {
   // Set 'none' value for log union grid index
@@ -2527,6 +2477,58 @@ void score_tracklength_tally(
   // Reset all the filter matches for the next tally event.
   for (auto& match : p.filter_matches())
     match.bins_present_ = false;
+}
+
+void score_timed_tracklength_tally(Particle& p, double total_distance)
+{
+  double speed = p.speed();
+  double total_dt = total_distance / speed;
+
+  // save particle last state
+  auto time_last = p.time_last();
+  auto r_last = p.r_last();
+
+  // move particle back
+  p.move_distance(-total_distance);
+  p.time() -= total_dt;
+  p.lifetime() -= total_dt;
+
+  double distance_traveled = 0.0;
+  while (distance_traveled < total_distance) {
+
+    double distance =
+      std::min(model::distance_to_time_boundary(p.time(), speed),
+        total_distance - distance_traveled);
+    double dt = distance / speed;
+
+    // Save particle last state for tracklength tallies
+    p.time_last() = p.time();
+    p.r_last() = p.r();
+
+    // Advance particle in space and time
+    p.move_distance(distance);
+    p.time() += dt;
+    p.lifetime() += dt;
+
+    // Determine the tracklength estimate of the flux
+    double flux = p.wgt() * distance;
+
+    score_tracklength_tally_general(p, flux, model::active_timed_tracklength_tallies);
+    distance_traveled += distance;
+  }
+
+  p.time_last() = time_last;
+  p.r_last() = r_last;
+
+}
+
+void score_tracklength_tally(Particle& p, double distance)
+{
+
+  // Determine the tracklength estimate of the flux
+  double flux = p.wgt() * distance;
+
+  score_tracklength_tally_general(p, flux, model::active_tracklength_tallies);
 }
 
 void score_collision_tally(Particle& p)

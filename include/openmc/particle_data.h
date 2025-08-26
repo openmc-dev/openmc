@@ -44,7 +44,6 @@ struct SourceSite {
   Position r;
   Direction u;
   double E;
-  double E_last;
   double time {0.0};
   double wgt {1.0};
   int delayed_group {0};
@@ -52,6 +51,7 @@ struct SourceSite {
   ParticleType particle;
 
   // Extra attributes that don't show up in source written to file
+  double E_last;
   int parent_nuclide {-1};
   int64_t parent_id;
   int64_t progeny_id;

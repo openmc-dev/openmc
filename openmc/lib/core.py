@@ -22,12 +22,12 @@ class _SourceSite(Structure):
     _fields_ = [('r', c_double*3),
                 ('u', c_double*3),
                 ('E', c_double),
-                ('E_last', c_double),                
                 ('time', c_double),
                 ('wgt', c_double),
                 ('delayed_group', c_int),
                 ('surf_id', c_int),
                 ('particle', c_int),
+                ('E_last', c_double),                
                 ('parent_nuclide', c_int),
                 ('parent_id', c_int64),
                 ('progeny_id', c_int64)]

@@ -98,8 +98,8 @@ void score_tracklength_tally(Particle& p, double distance);
 //! information.
 //
 //! \param p The particle being tracked
-//! \param distance The distance in [cm] traveled by the particle
-void score_timed_tracklength_tally(Particle& p, double distance);
+//! \param total_distance The distance in [cm] traveled by the particle
+void score_timed_tracklength_tally(Particle& p, double total_distance);
 
 //! Score surface or mesh-surface tallies for particle currents.
 //

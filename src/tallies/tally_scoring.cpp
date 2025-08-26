@@ -2513,13 +2513,13 @@ void score_timed_tracklength_tally(Particle& p, double total_distance)
     // Determine the tracklength estimate of the flux
     double flux = p.wgt() * distance;
 
-    score_tracklength_tally_general(p, flux, model::active_timed_tracklength_tallies);
+    score_tracklength_tally_general(
+      p, flux, model::active_timed_tracklength_tallies);
     distance_traveled += distance;
   }
 
   p.time_last() = time_last;
   p.r_last() = r_last;
-
 }
 
 void score_tracklength_tally(Particle& p, double distance)

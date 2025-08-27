@@ -13,7 +13,9 @@
 #include "openmc/secondary_correlated.h"
 #include "openmc/secondary_kalbach.h"
 #include "openmc/secondary_nbody.h"
+#include "openmc/secondary_thermal.h"
 #include "openmc/secondary_uncorrelated.h"
+#include "openmc/tallies/tally_scoring.h"
 
 namespace openmc {
 
@@ -126,6 +128,74 @@ void ReactionProduct::sample(
   } else {
     // If only one distribution is present, go ahead and sample it
     distribution_[0]->sample(E_in, E_out, mu, seed);
+  }
+}
+void ReactionProduct::get_pdf(int i_tally, double E_in, double& E_out,
+  uint64_t* seed, Particle& p, std::vector<double>& mu_cm,
+  std::vector<double>& Js, std::vector<Particle>& ghost_particles,
+  std::vector<double>& pdfs_lab) const
+{
+  /* function to get detector position from user - Future implementation
+   double det_pos[4];
+   get_det_pos(det_pos, i_tally);
+  */
+  double det_pos[4] = {0.0, 0.0, 0.0, 1.0}; // Placeholder for detector position
+
+  int distribution_index;
+  auto n = applicability_.size();
+  if (n > 1) {
+    double prob = 0.0;
+    double c = prn(seed);
+    for (int i = 0; i < n; ++i) {
+      // Determine probability that i-th energy distribution is sampled
+      prob += applicability_[i](E_in);
+
+      // If i-th distribution is sampled, sample energy from the distribution
+      if (c <= prob) {
+        // distribution_[i]->sample(E_in, E_out, mu, seed);
+        distribution_index = i;
+        break;
+      }
+    }
+  } else {
+    // If only one distribution is present, go ahead and sample it
+    // distribution_[0]->sample(E_in, E_out, mu, seed);
+    distribution_index = 0;
+  }
+  // now extract pdf
+
+  AngleEnergy* angleEnergyPtr = distribution_[distribution_index].get();
+
+  if (CorrelatedAngleEnergy* correlatedAE =
+        dynamic_cast<CorrelatedAngleEnergy*>(angleEnergyPtr)) {
+
+    (*correlatedAE)
+      .get_pdf(
+        det_pos, E_in, E_out, seed, p, mu_cm, Js, ghost_particles, pdfs_lab);
+    // Handle CorrelatedAngleEnergy
+  } else if (KalbachMann* kalbachMann =
+               dynamic_cast<KalbachMann*>(angleEnergyPtr)) {
+
+    (*kalbachMann)
+      .get_pdf(
+        det_pos, E_in, E_out, seed, p, mu_cm, Js, ghost_particles, pdfs_lab);
+
+    // Handle KalbachMann
+  } else if (NBodyPhaseSpace* nBodyPS =
+               dynamic_cast<NBodyPhaseSpace*>(angleEnergyPtr)) {
+
+    (*nBodyPS).get_pdf(
+      det_pos, E_in, E_out, seed, p, mu_cm, Js, ghost_particles, pdfs_lab);
+    // Handle NBodyPhaseSpace
+  } else if (UncorrelatedAngleEnergy* uncorrelatedAE =
+               dynamic_cast<UncorrelatedAngleEnergy*>(angleEnergyPtr)) {
+
+    (*uncorrelatedAE)
+      .get_pdf(
+        det_pos, E_in, E_out, seed, p, mu_cm, Js, ghost_particles, pdfs_lab);
+    // Handle UncorrelatedAngleEnergy
+  } else {
+    std::cout << "Unknown derived type." << std::endl;
   }
 }
 

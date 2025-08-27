@@ -1,4 +1,5 @@
 #include "openmc/physics.h"
+#include <fstream>
 
 #include "openmc/bank.h"
 #include "openmc/bremsstrahlung.h"
@@ -216,7 +217,7 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
 
     // Sample delayed group and angle/energy for fission reaction
     sample_fission_neutron(i_nuclide, rx, &site, p);
-
+    p.event_index_mt() = -999;
     // Store fission site in bank
     if (use_fission_bank) {
       int64_t idx = simulation::fission_bank.thread_safe_append(site);
@@ -665,7 +666,7 @@ void scatter(Particle& p, int i_nuclide)
 {
   // copy incoming direction
   Direction u_old {p.u()};
-
+  p.event_index_mt() = 0;
   // Get pointer to nuclide and grid index/interpolation factor
   const auto& nuc {data::nuclides[i_nuclide]};
   const auto& micro {p.neutron_xs(i_nuclide)};
@@ -702,7 +703,7 @@ void scatter(Particle& p, int i_nuclide)
     // S(A,B) SCATTERING
 
     sab_scatter(i_nuclide, micro.index_sab, p);
-
+    p.event_index_mt() = -1234; // to distinguish from elastic
     p.event_mt() = ELASTIC;
     sampled = true;
   }
@@ -724,6 +725,7 @@ void scatter(Particle& p, int i_nuclide)
     const auto& rx {nuc->reactions_[i]};
     inelastic_scatter(*nuc, *rx, p);
     p.event_mt() = rx->mt_;
+    p.event_index_mt() = i;
   }
 
   // Set event component
@@ -758,8 +760,9 @@ void elastic_scatter(int i_nuclide, const Reaction& rx, double kT, Particle& p)
     v_t = sample_target_velocity(*nuc, p.E(), p.u(), v_n,
       p.neutron_xs(i_nuclide).elastic, kT, p.current_seed());
   }
-
-  // Velocity of center-of-mass
+  // change units in the future
+  //   p.v_t() = C_LIGHT * std::sqrt(2 / p.getMass()) * v_t;
+  //  Velocity of center-of-mass
   Direction v_cm = (v_n + awr * v_t) / (awr + 1.0);
 
   // Transform to CM frame
@@ -1104,6 +1107,7 @@ void sample_fission_neutron(
 
 void inelastic_scatter(const Nuclide& nuc, const Reaction& rx, Particle& p)
 {
+  //  p.v_t() = {0, 0, 0}; // intialize target velocity to zero
   // copy energy of neutron
   double E_in = p.E();
 

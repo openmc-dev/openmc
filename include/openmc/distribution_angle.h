@@ -25,10 +25,11 @@ public:
   //! \param[inout] seed pseudorandom number seed pointer
   //! \return Cosine of the angle in the range [-1,1]
   double sample(double E, uint64_t* seed) const;
-
+  double get_pdf(double E, double mu, uint64_t* seed) const;
   //! Determine whether angle distribution is empty
   //! \return Whether distribution is empty
   bool empty() const { return energy_.empty(); }
+  double get_energy(int num) { return energy_[num]; }
 
 private:
   vector<double> energy_;

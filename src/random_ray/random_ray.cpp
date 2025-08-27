@@ -281,7 +281,7 @@ void RandomRay::event_advance_ray()
 {
   // Find the distance to the nearest boundary
   boundary() = distance_to_boundary(*this);
-  double distance = boundary().distance;
+  double distance = boundary().distance();
 
   if (distance < 0.0) {
     mark_as_lost("Negative transport distance detected for particle " +
@@ -330,14 +330,14 @@ void RandomRay::event_advance_ray()
 
   // Advance particle
   for (int j = 0; j < n_coord(); ++j) {
-    coord(j).r += distance * coord(j).u;
+    coord(j).r() += distance * coord(j).u();
   }
 }
 
 void RandomRay::attenuate_flux(double distance, bool is_active, double offset)
 {
   // Determine source region index etc.
-  int i_cell = lowest_coord().cell;
+  int i_cell = lowest_coord().cell();
 
   // The base source region is the spatial region index
   int64_t sr = domain_->source_region_offsets_[i_cell] + cell_instance();
@@ -799,7 +799,7 @@ void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
   this->from_source(&site);
 
   // Locate ray
-  if (lowest_coord().cell == C_NONE) {
+  if (lowest_coord().cell() == C_NONE) {
     if (!exhaustive_find_cell(*this)) {
       this->mark_as_lost(
         "Could not find the cell containing particle " + std::to_string(id()));
@@ -807,12 +807,12 @@ void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
 
     // Set birth cell attribute
     if (cell_born() == C_NONE)
-      cell_born() = lowest_coord().cell;
+      cell_born() = lowest_coord().cell();
   }
 
   // Initialize ray's starting angular flux to starting location's isotropic
   // source
-  int i_cell = lowest_coord().cell;
+  int i_cell = lowest_coord().cell();
   int64_t sr = domain_->source_region_offsets_[i_cell] + cell_instance();
 
   SourceRegionHandle srh;

@@ -40,7 +40,7 @@ will also need to specify the `--platform` option:
 
 .. code-block:: sh
 
-    conda create --name openmc-env --platform osx-arm64 openmc
+    conda create --name openmc-env --platform osx-64 openmc
 
 You are now in a conda environment called `openmc-env` that has OpenMC
 installed.
@@ -374,10 +374,6 @@ OPENMC_USE_DAGMC
   for more information on this feature. The installation directory for DAGMC
   should also be defined as `DAGMC_ROOT` in the CMake configuration command.
   (Default: off)
-
-OPENMC_USE_MCPL
-  Turns on support for reading MCPL_ source files and writing MCPL source points
-  and surface sources. (Default: off)
 
 OPENMC_USE_LIBMESH
   Enables the use of unstructured mesh tallies with libMesh_. (Default: off)

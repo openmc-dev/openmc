@@ -12,7 +12,7 @@ import numpy as np
 from scipy.integrate import trapezoid
 
 import openmc.checkvalue as cv
-from .._xml import get_text
+from .._xml import get_elem_list, get_text
 from ..mixin import EqualityMixin
 
 _INTERPOLATION_SCHEMES = {
@@ -57,8 +57,7 @@ class Univariate(EqualityMixin, ABC):
             return Normal.from_xml_element(elem)
         elif distribution == 'muir':
             # Support older files where Muir had its own class
-            params = [float(x) for x in get_text(elem, 'parameters').split()]
-            return muir(*params)
+            return muir(*get_elem_list(elem, "parameters", float))
         elif distribution == 'tabular':
             return Tabular.from_xml_element(elem)
         elif distribution == 'legendre':
@@ -240,7 +239,7 @@ class Discrete(Univariate):
             Discrete distribution generated from XML element
 
         """
-        params = [float(x) for x in get_text(elem, 'parameters').split()]
+        params = get_elem_list(elem, "parameters", float)
         x = params[:len(params)//2]
         p = params[len(params)//2:]
         return cls(x, p)
@@ -448,8 +447,8 @@ class Uniform(Univariate):
             Uniform distribution generated from XML element
 
         """
-        params = get_text(elem, 'parameters').split()
-        return cls(*map(float, params))
+        params = get_elem_list(elem, "parameters", float)
+        return cls(*params)
 
 
 class PowerLaw(Univariate):
@@ -557,8 +556,8 @@ class PowerLaw(Univariate):
             Distribution generated from XML element
 
         """
-        params = get_text(elem, 'parameters').split()
-        return cls(*map(float, params))
+        params = get_elem_list(elem, "parameters", float)
+        return cls(*params)
 
 
 class Maxwell(Univariate):
@@ -737,8 +736,8 @@ class Watt(Univariate):
             Watt distribution generated from XML element
 
         """
-        params = get_text(elem, 'parameters').split()
-        return cls(*map(float, params))
+        params = get_elem_list(elem, "parameters", float)
+        return cls(*params)
 
 
 class Normal(Univariate):
@@ -827,8 +826,8 @@ class Normal(Univariate):
             Normal distribution generated from XML element
 
         """
-        params = get_text(elem, 'parameters').split()
-        return cls(*map(float, params))
+        params = get_elem_list(elem, "parameters", float)
+        return cls(*params)
 
     @classmethod
     def merge(
@@ -1145,7 +1144,7 @@ class Tabular(Univariate):
 
         """
         interpolation = get_text(elem, 'interpolation')
-        params = [float(x) for x in get_text(elem, 'parameters').split()]
+        params = get_elem_list(elem, "parameters", float)        
         m = (len(params) + 1)//2  # +1 for when len(params) is odd
         x = params[:m]
         p = params[m:]

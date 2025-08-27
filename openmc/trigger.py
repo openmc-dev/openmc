@@ -5,6 +5,7 @@ import lxml.etree as ET
 
 import openmc.checkvalue as cv
 from .mixin import EqualityMixin
+from ._xml import get_elem_list, get_text
 
 
 class Trigger(EqualityMixin):
@@ -129,16 +130,16 @@ class Trigger(EqualityMixin):
 
         """
         # Generate trigger object
-        trigger_type = elem.get("type")
-        threshold = float(elem.get("threshold"))
-        ignore_zeros = str(elem.get("ignore_zeros", "false")).lower()
+        trigger_type = get_text(elem, "type")
+        threshold = float(get_text(elem, "threshold"))
+        ignore_zeros = str(get_text(elem, "ignore_zeros", "false")).lower()
         # Try to convert to bool. Let Trigger error out on instantiation.
         ignore_zeros = ignore_zeros in ('true', '1')
         trigger = cls(trigger_type, threshold, ignore_zeros)
 
         # Add scores if present
-        scores = elem.get("scores")
+        scores = get_elem_list(elem, "scores", str)
         if scores is not None:
-            trigger.scores = scores.split()
+            trigger.scores = scores
 
         return trigger

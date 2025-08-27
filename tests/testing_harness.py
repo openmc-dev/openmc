@@ -449,7 +449,7 @@ class TolerantPyAPITestHarness(PyAPITestHarness):
 class WeightWindowPyAPITestHarness(PyAPITestHarness):
     def _get_results(self):
         """Digest info in the weight window file and return as a string."""
-        ww = openmc.hdf5_to_wws()[0]
+        ww = openmc.WeightWindowsList.from_hdf5()[0]
 
         # Access the weight window bounds
         lower_bound = ww.lower_ww_bounds

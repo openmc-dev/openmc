@@ -38,6 +38,10 @@
 
 namespace openmc {
 
+namespace simulation {
+thread_local Particle tmp_particle;
+}
+
 //==============================================================================
 // Particle implementation
 //==============================================================================
@@ -92,17 +96,18 @@ bool Particle::create_secondary(
   // Score tallies affected by secondary particles
   if (!model::active_particleout_analog_tallies.empty()) {
     // Create secondary particle for tallying purposes only
-    Particle p;
-    p.from_source(&bank);
-    p.u_last() = this->u();
-    p.r_last() = this->r();
-    p.E_last() = this->E();
-    p.type_last() = this->type();
+    simulation::tmp_particle.from_source(&bank);
+    simulation::tmp_particle.u_last() = this->u();
+    simulation::tmp_particle.r_last() = this->r();
+    simulation::tmp_particle.E_last() = this->E();
+    simulation::tmp_particle.type_last() = this->type();
 
     if (settings::run_CE) {
-      score_analog_tally_ce(p, model::active_particleout_analog_tallies);
+      score_analog_tally_ce(
+        simulation::tmp_particle, model::active_particleout_analog_tallies);
     } else {
-      score_analog_tally_mg(p, model::active_particleout_analog_tallies);
+      score_analog_tally_mg(
+        simulation::tmp_particle, model::active_particleout_analog_tallies);
     }
   }
   return true;

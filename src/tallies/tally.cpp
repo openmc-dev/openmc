@@ -377,7 +377,7 @@ Tally::Tally(pugi::xml_node node)
     }
   }
 
-#ifdef LIBMESH
+#ifdef OPENMC_LIBMESH_ENABLED
   // ensure a tracklength tally isn't used with a libMesh filter
   for (auto i : this->filters_) {
     auto df = dynamic_cast<MeshFilter*>(model::tally_filters[i].get());
@@ -488,10 +488,6 @@ void Tally::add_filter(Filter* filter)
     energyout_filter_ = filters_.size();
   } else if (filter->type() == FilterType::DELAYED_GROUP) {
     delayedgroup_filter_ = filters_.size();
-  } else if (filter->type() == FilterType::CELL) {
-    cell_filter_ = filters_.size();
-  } else if (filter->type() == FilterType::ENERGY) {
-    energy_filter_ = filters_.size();
   }
   filters_.push_back(filter_idx);
 }

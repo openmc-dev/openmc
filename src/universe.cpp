@@ -45,14 +45,14 @@ bool Universe::find_cell(GeometryState& p) const
   Position r {p.r_local()};
   Position u {p.u_local()};
   auto surf = p.surface();
-  int32_t i_univ = p.lowest_coord().universe;
+  int32_t i_univ = p.lowest_coord().universe();
 
   for (auto i_cell : cells) {
     if (model::cells[i_cell]->universe_ != i_univ)
       continue;
     // Check if this cell contains the particle
     if (model::cells[i_cell]->contains(r, u, surf)) {
-      p.lowest_coord().cell = i_cell;
+      p.lowest_coord().cell() = i_cell;
       return true;
     }
   }

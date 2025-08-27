@@ -8,7 +8,7 @@
 #include "openmc/tallies/filter_match.h"
 #include "openmc/vector.h"
 
-#ifdef DAGMC
+#ifdef OPENMC_DAGMC_ENABLED
 #include "DagMC.hpp"
 #endif
 
@@ -88,13 +88,37 @@ public:
   //! clear data from a single coordinate level
   void reset();
 
-  Position r;  //!< particle position
-  Direction u; //!< particle direction
-  int cell {-1};
-  int universe {-1};
-  int lattice {-1};
-  array<int, 3> lattice_i {{-1, -1, -1}};
-  bool rotated {false}; //!< Is the level rotated?
+  // accessors
+  Position& r() { return r_; }
+  const Position& r() const { return r_; }
+
+  Direction& u() { return u_; }
+  const Direction& u() const { return u_; }
+
+  int& cell() { return cell_; }
+  const int& cell() const { return cell_; }
+
+  int& universe() { return universe_; }
+  const int& universe() const { return universe_; }
+
+  int& lattice() { return lattice_; }
+  int lattice() const { return lattice_; }
+
+  array<int, 3>& lattice_index() { return lattice_index_; }
+  const array<int, 3>& lattice_index() const { return lattice_index_; }
+
+  bool& rotated() { return rotated_; }
+  const bool& rotated() const { return rotated_; }
+
+private:
+  // Data members
+  Position r_;  //!< particle position
+  Direction u_; //!< particle direction
+  int cell_ {-1};
+  int universe_ {-1};
+  int lattice_ {-1};
+  array<int, 3> lattice_index_ {{-1, -1, -1}};
+  bool rotated_ {false}; //!< Is the level rotated?
 };
 
 //==============================================================================
@@ -186,23 +210,41 @@ struct CacheDataMG {
 // Information about nearest boundary crossing
 //==============================================================================
 
-struct BoundaryInfo {
-  double distance {INFINITY}; //!< distance to nearest boundary
-  int surface {
-    SURFACE_NONE}; //!< surface token, non-zero if boundary is surface
-  int coord_level; //!< coordinate level after crossing boundary
-  array<int, 3>
-    lattice_translation {}; //!< which way lattice indices will change
-
+class BoundaryInfo {
+public:
   void reset()
   {
-    distance = INFINITY;
-    surface = SURFACE_NONE;
-    coord_level = 0;
-    lattice_translation = {0, 0, 0};
+    distance_ = INFINITY;
+    surface_ = SURFACE_NONE;
+    coord_level_ = 0;
+    lattice_translation_ = {0, 0, 0};
   }
+  double& distance() { return distance_; }
+  const double& distance() const { return distance_; }
+
+  int& surface() { return surface_; }
+  const int& surface() const { return surface_; }
+
+  int coord_level() const { return coord_level_; }
+  int& coord_level() { return coord_level_; }
+
+  array<int, 3>& lattice_translation() { return lattice_translation_; }
+  const array<int, 3>& lattice_translation() const
+  {
+    return lattice_translation_;
+  }
+
   // TODO: off-by-one
-  int surface_index() const { return std::abs(surface) - 1; }
+  int surface_index() const { return std::abs(surface()) - 1; }
+
+private:
+  // Data members
+  double distance_ {INFINITY}; //!< distance to nearest boundary
+  int surface_ {
+    SURFACE_NONE};      //!< surface token, non-zero if boundary is surface
+  int coord_level_ {0}; //!< coordinate level after crossing boundary
+  array<int, 3> lattice_translation_ {
+    0, 0, 0}; //!< which way lattice indices will change
 };
 
 /*
@@ -301,20 +343,20 @@ public:
   const Position& u_last() const { return u_last_; }
 
   // Accessors for position in global coordinates
-  Position& r() { return coord_[0].r; }
-  const Position& r() const { return coord_[0].r; }
+  Position& r() { return coord_[0].r(); }
+  const Position& r() const { return coord_[0].r(); }
 
   // Accessors for position in local coordinates
-  Position& r_local() { return coord_[n_coord_ - 1].r; }
-  const Position& r_local() const { return coord_[n_coord_ - 1].r; }
+  Position& r_local() { return coord_[n_coord_ - 1].r(); }
+  const Position& r_local() const { return coord_[n_coord_ - 1].r(); }
 
   // Accessors for direction in global coordinates
-  Direction& u() { return coord_[0].u; }
-  const Direction& u() const { return coord_[0].u; }
+  Direction& u() { return coord_[0].u(); }
+  const Direction& u() const { return coord_[0].u(); }
 
   // Accessors for direction in local coordinates
-  Direction& u_local() { return coord_[n_coord_ - 1].u; }
-  const Direction& u_local() const { return coord_[n_coord_ - 1].u; }
+  Direction& u_local() { return coord_[n_coord_ - 1].u(); }
+  const Direction& u_local() const { return coord_[n_coord_ - 1].u(); }
 
   // Surface token for the surface that the particle is currently on
   int& surface() { return surface_; }
@@ -330,7 +372,7 @@ public:
   // Boundary information
   BoundaryInfo& boundary() { return boundary_; }
 
-#ifdef DAGMC
+#ifdef OPENMC_DAGMC_ENABLED
   // DagMC state variables
   moab::DagMC::RayHistory& history() { return history_; }
   Direction& last_dir() { return last_dir_; }
@@ -375,7 +417,7 @@ private:
   double sqrtkT_ {-1.0};     //!< sqrt(k_Boltzmann * temperature) in eV
   double sqrtkT_last_ {0.0}; //!< last temperature
 
-#ifdef DAGMC
+#ifdef OPENMC_DAGMC_ENABLED
   moab::DagMC::RayHistory history_;
   Direction last_dir_;
 #endif

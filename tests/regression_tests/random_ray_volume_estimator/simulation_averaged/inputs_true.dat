@@ -3,24 +3,24 @@
   <materials>
     <cross_sections>mgxs.h5</cross_sections>
     <material id="1" name="source">
-      <density units="macro" value="1.0"/>
+      <density value="1.0" units="macro"/>
       <macroscopic name="source"/>
     </material>
     <material id="2" name="void">
-      <density units="macro" value="1.0"/>
+      <density value="1.0" units="macro"/>
       <macroscopic name="void"/>
     </material>
     <material id="3" name="absorber">
-      <density units="macro" value="1.0"/>
+      <density value="1.0" units="macro"/>
       <macroscopic name="absorber"/>
     </material>
   </materials>
   <geometry>
-    <cell id="1" material="1" name="infinite source region" universe="1"/>
-    <cell id="2" material="2" name="infinite void region" universe="2"/>
-    <cell id="3" material="3" name="infinite absorber region" universe="3"/>
-    <cell fill="4" id="4" universe="5"/>
-    <cell fill="5" id="5" name="full domain" region="1 -2 3 -4 5 -6" universe="6"/>
+    <cell id="1" name="infinite source region" material="1" universe="1"/>
+    <cell id="2" name="infinite void region" material="2" universe="2"/>
+    <cell id="3" name="infinite absorber region" material="3" universe="3"/>
+    <cell id="4" fill="4" universe="5"/>
+    <cell id="5" name="full domain" fill="5" region="1 -2 3 -4 5 -6" universe="6"/>
     <lattice id="4">
       <pitch>2.5 2.5 2.5</pitch>
       <dimension>12 12 12</dimension>
@@ -182,19 +182,19 @@
 3 3 3 3 3 3 3 3 3 3 3 3 
 3 3 3 3 3 3 3 3 3 3 3 3 </universes>
     </lattice>
-    <surface boundary="reflective" coeffs="0.0" id="1" type="x-plane"/>
-    <surface boundary="vacuum" coeffs="30.0" id="2" type="x-plane"/>
-    <surface boundary="reflective" coeffs="0.0" id="3" type="y-plane"/>
-    <surface boundary="vacuum" coeffs="30.0" id="4" type="y-plane"/>
-    <surface boundary="reflective" coeffs="0.0" id="5" type="z-plane"/>
-    <surface boundary="vacuum" coeffs="30.0" id="6" type="z-plane"/>
+    <surface id="1" type="x-plane" boundary="reflective" coeffs="0.0"/>
+    <surface id="2" type="x-plane" boundary="vacuum" coeffs="30.0"/>
+    <surface id="3" type="y-plane" boundary="reflective" coeffs="0.0"/>
+    <surface id="4" type="y-plane" boundary="vacuum" coeffs="30.0"/>
+    <surface id="5" type="z-plane" boundary="reflective" coeffs="0.0"/>
+    <surface id="6" type="z-plane" boundary="vacuum" coeffs="30.0"/>
   </geometry>
   <settings>
     <run_mode>fixed source</run_mode>
     <particles>90</particles>
     <batches>10</batches>
     <inactive>5</inactive>
-    <source particle="neutron" strength="3.14" type="independent">
+    <source type="independent" strength="3.14" particle="neutron">
       <energy type="discrete">
         <parameters>100.0 1.0</parameters>
       </energy>
@@ -207,7 +207,7 @@
     <random_ray>
       <distance_active>500.0</distance_active>
       <distance_inactive>100.0</distance_inactive>
-      <source particle="neutron" strength="1.0" type="independent">
+      <source type="independent" strength="1.0" particle="neutron">
         <space type="box">
           <parameters>0.0 0.0 0.0 30.0 30.0 30.0</parameters>
         </space>

@@ -2,39 +2,39 @@
 <model>
   <materials>
     <material id="1">
-      <density units="g/cc" value="2.3"/>
-      <nuclide ao="0.168018676" name="H1"/>
-      <nuclide ao="1.93244e-05" name="H2"/>
-      <nuclide ao="0.561814465" name="O16"/>
-      <nuclide ao="0.00021401" name="O17"/>
-      <nuclide ao="0.021365" name="Na23"/>
-      <nuclide ao="0.021343" name="Al27"/>
-      <nuclide ao="0.187439342" name="Si28"/>
-      <nuclide ao="0.009517714" name="Si29"/>
-      <nuclide ao="0.006273944" name="Si30"/>
-      <nuclide ao="0.018026179" name="Ca40"/>
-      <nuclide ao="0.00012031" name="Ca42"/>
-      <nuclide ao="2.51033e-05" name="Ca43"/>
-      <nuclide ao="0.000387892" name="Ca44"/>
-      <nuclide ao="7.438e-07" name="Ca46"/>
-      <nuclide ao="3.47727e-05" name="Ca48"/>
-      <nuclide ao="0.000248179" name="Fe54"/>
-      <nuclide ao="0.003895875" name="Fe56"/>
-      <nuclide ao="8.99727e-05" name="Fe57"/>
-      <nuclide ao="1.19737e-05" name="Fe58"/>
+      <density value="2.3" units="g/cc"/>
+      <nuclide name="H1" ao="0.168018676"/>
+      <nuclide name="H2" ao="1.93244e-05"/>
+      <nuclide name="O16" ao="0.561814465"/>
+      <nuclide name="O17" ao="0.00021401"/>
+      <nuclide name="Na23" ao="0.021365"/>
+      <nuclide name="Al27" ao="0.021343"/>
+      <nuclide name="Si28" ao="0.187439342"/>
+      <nuclide name="Si29" ao="0.009517714"/>
+      <nuclide name="Si30" ao="0.006273944"/>
+      <nuclide name="Ca40" ao="0.018026179"/>
+      <nuclide name="Ca42" ao="0.00012031"/>
+      <nuclide name="Ca43" ao="2.51033e-05"/>
+      <nuclide name="Ca44" ao="0.000387892"/>
+      <nuclide name="Ca46" ao="7.438e-07"/>
+      <nuclide name="Ca48" ao="3.47727e-05"/>
+      <nuclide name="Fe54" ao="0.000248179"/>
+      <nuclide name="Fe56" ao="0.003895875"/>
+      <nuclide name="Fe57" ao="8.99727e-05"/>
+      <nuclide name="Fe58" ao="1.19737e-05"/>
     </material>
   </materials>
   <geometry>
     <cell id="1" material="1" region="-1" universe="1"/>
     <cell id="2" material="void" region="1 -2" universe="1"/>
-    <surface coeffs="0.0 0.0 0.0 240" id="1" type="sphere"/>
-    <surface boundary="vacuum" coeffs="0.0 0.0 0.0 250" id="2" type="sphere"/>
+    <surface id="1" type="sphere" coeffs="0.0 0.0 0.0 240"/>
+    <surface id="2" type="sphere" boundary="vacuum" coeffs="0.0 0.0 0.0 250"/>
   </geometry>
   <settings>
     <run_mode>fixed source</run_mode>
     <particles>200</particles>
     <batches>2</batches>
-    <source particle="neutron" strength="1.0" type="independent">
+    <source type="independent" strength="1.0" particle="neutron">
       <space type="point">
         <parameters>0.001 0.001 0.001</parameters>
       </space>

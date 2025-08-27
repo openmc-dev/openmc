@@ -3,8 +3,11 @@ from pathlib import Path
 
 import pytest
 
+import numpy as np
+
 import openmc
 from openmc.data import decay_photon_energy
+from openmc.deplete import Chain
 import openmc.examples
 import openmc.model
 import openmc.stats
@@ -710,6 +713,47 @@ def test_avoid_subnormal(run_in_tmpdir):
     # When read back in, the density should be zero
     mats = openmc.Materials.from_xml()
     assert mats[0].get_nuclide_atom_densities()['H2'] == 0.0
+
+
+def test_material_deplete():
+    pristine_material = openmc.Material()
+    pristine_material.add_nuclide("Ni58", 1.0)
+    pristine_material.set_density("g/cm3", 7.87)
+    pristine_material.depletable = True
+    pristine_material.temperature = 293.6
+    pristine_material.volume = 1.
+
+    mg_flux = [0.5e11] * 42
+
+    chain = Chain.from_xml(
+        Path(__file__).parents[1] / "chain_ni.xml"
+    )
+
+    depleted_material = pristine_material.deplete(
+        multigroup_flux=mg_flux,
+        energy_group_structure="VITAMIN-J-42",
+        timesteps=[10, 70.86],
+        source_rates=[1e19, 0.0],
+        timestep_units="d",
+        chain_file=chain,
+    )
+
+    for i_step, material in enumerate(depleted_material):
+        assert isinstance(material, openmc.Material)
+        if i_step > 0:
+            assert len(material.get_nuclides()) > len(pristine_material.get_nuclides())
+
+    Co58_mat_1_step_0 = depleted_material[0].get_nuclide_atom_densities("Co58").get("Co58", 0.0)
+    Co58_mat_1_step_1 = depleted_material[1].get_nuclide_atom_densities("Co58")["Co58"]
+    Co58_mat_1_step_2 = depleted_material[2].get_nuclide_atom_densities("Co58")["Co58"]
+
+    assert Co58_mat_1_step_0 == 0.0
+
+    # Check that Co58 is produced in the first step
+    assert Co58_mat_1_step_1 > 0.0
+
+    # Check that Co58 is halved in the second step which is one halflife later
+    assert np.allclose(Co58_mat_1_step_1 * 0.5, Co58_mat_1_step_2)
 
 
 def test_mean_free_path():

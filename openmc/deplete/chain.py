@@ -11,6 +11,7 @@ import re
 from collections import defaultdict, namedtuple
 from collections.abc import Mapping, Iterable
 from numbers import Real, Integral
+from pathlib import Path
 from warnings import warn
 from typing import List
 
@@ -21,6 +22,7 @@ from openmc.checkvalue import check_type, check_greater_than, PathLike
 from openmc.data import gnds_name, zam
 from openmc.exceptions import DataError
 from .nuclide import FissionYieldDistribution, Nuclide
+from .._xml import get_text
 import openmc.data
 
 
@@ -278,7 +280,6 @@ class Chain:
         """Number of nuclides in chain."""
         return len(self.nuclides)
 
-
     @property
     def stable_nuclides(self) -> List[Nuclide]:
         """List of stable nuclides available in the chain"""
@@ -298,6 +299,7 @@ class Chain:
             Nuclide to add
 
         """
+        _invalidate_chain_cache(self)
         self.nuclide_dict[nuclide.name] = len(self.nuclides)
         self.nuclides.append(nuclide)
 
@@ -463,7 +465,6 @@ class Chain:
                     nuclide.add_reaction('fission', None, q_value, 1.0)
                     fissionable = True
 
-
             if fissionable:
                 if parent in fpy_data:
                     fpy = fpy_data[parent]
@@ -553,10 +554,13 @@ class Chain:
         root = ET.parse(str(filename))
 
         for i, nuclide_elem in enumerate(root.findall('nuclide')):
-            this_q = fission_q.get(nuclide_elem.get("name"))
+            this_q = fission_q.get(get_text(nuclide_elem, "name"))
 
             nuc = Nuclide.from_xml(nuclide_elem, root, this_q)
             chain.add_nuclide(nuc)
+
+        # Store path of XML file (used for handling cache invalidation)
+        chain._xml_path = str(Path(filename).resolve())
 
         return chain
 
@@ -888,7 +892,7 @@ class Chain:
         --------
         :meth:`get_branch_ratios`
         """
-
+        _invalidate_chain_cache(self)
         # Store some useful information through the validation stage
 
         sums = {}
@@ -1027,6 +1031,7 @@ class Chain:
 
     @fission_yields.setter
     def fission_yields(self, yields):
+        _invalidate_chain_cache(self)
         if yields is not None:
             if isinstance(yields, Mapping):
                 yields = [yields]
@@ -1249,6 +1254,10 @@ class Chain:
         return found
 
 
+# A global cache for Chain objects
+_CHAIN_CACHE = {}
+
+
 def _get_chain(
     chain_file: PathLike | Chain | None = None,
     fission_q: dict | None = None
@@ -1269,16 +1278,39 @@ def _get_chain(
     Chain
         Depletion chain instance.
     """
+    # If chain_file is already a Chain, return it directly
     if isinstance(chain_file, Chain):
         return chain_file
-    elif isinstance(chain_file, PathLike | None):
-        if chain_file is None:
-            chain_file = openmc.config.get('chain_file')
-            if 'chain_file' not in openmc.config:
-                raise DataError(
-                    "No depletion chain specified and could not find depletion "
-                    "chain in openmc.config['chain_file']"
-                )
-        return Chain.from_xml(chain_file, fission_q)
-    else:
+
+    # Resolve chain_file based on config if None
+    if chain_file is None:
+        chain_file = openmc.config.get('chain_file')
+        if 'chain_file' not in openmc.config:
+            raise DataError(
+                "No depletion chain specified and could not find depletion "
+                "chain in openmc.config['chain_file']"
+            )
+    elif not isinstance(chain_file, PathLike):
         raise TypeError("chain_file must be path-like, a Chain, or None")
+
+    # Determine the key for the cache, which consists of the absolute path, the
+    # file modification time, the file size, and the fission Q values.
+    chain_path = Path(chain_file).resolve()
+    stat_result = chain_path.stat()
+    fq_tuple = tuple(sorted(fission_q.items())) if fission_q else ()
+    key = (chain_path, stat_result.st_mtime, stat_result.st_size, fq_tuple)
+
+    # Check the global cache. If not cached, load the chain from XML and store
+    global _CHAIN_CACHE
+    if key not in _CHAIN_CACHE:
+        _CHAIN_CACHE[key] = Chain.from_xml(chain_path, fission_q)
+    return _CHAIN_CACHE[key]
+
+
+def _invalidate_chain_cache(chain):
+    """Invalidate the cache for a specific Chain (when it is modifed)."""
+    if hasattr(chain, '_xml_path'):
+        # Remove all entries with the same path as self._xml_path
+        for key in list(_CHAIN_CACHE.keys()):
+            if str(key[0]) == chain._xml_path:
+                del _CHAIN_CACHE[key]

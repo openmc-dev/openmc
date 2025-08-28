@@ -626,8 +626,6 @@ public:
   const int& event_mt() const { return event_mt_; }
   int& event_index_mt() { return event_index_mt_; }
   int& delayed_group() { return delayed_group_; } // delayed group
-  //  Position& v_t() { return v_t_; } // future use for thermal velocity
-  //  const Position& v_t() const { return v_t_; }
   const int& parent_nuclide() const { return parent_nuclide_; }
   int& parent_nuclide() { return parent_nuclide_; } // Parent nuclide
 

@@ -760,8 +760,6 @@ void elastic_scatter(int i_nuclide, const Reaction& rx, double kT, Particle& p)
     v_t = sample_target_velocity(*nuc, p.E(), p.u(), v_n,
       p.neutron_xs(i_nuclide).elastic, kT, p.current_seed());
   }
-  // change units in the future
-  //   p.v_t() = C_LIGHT * std::sqrt(2 / p.getMass()) * v_t;
   //  Velocity of center-of-mass
   Direction v_cm = (v_n + awr * v_t) / (awr + 1.0);
 

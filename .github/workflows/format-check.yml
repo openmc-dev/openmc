@@ -28,5 +28,5 @@ jobs:
           extensions: 'cpp,h'
 
       - name: Failure Check
-        if: steps.linter.outputs.checks-failed > 0
+        if: steps.linter.outputs.clang-format-checks-failed > 0
         run: echo "Some files failed the formatting check! See job summary and file annotations for more info" && exit 1

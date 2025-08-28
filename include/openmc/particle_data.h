@@ -490,7 +490,6 @@ private:
   int delayed_group_ {0};
   int event_index_mt_;
   int parent_nuclide_ {-1};
-  // Direction v_t_; future use for thermal velocity
 
   int n_bank_ {0};
   double bank_second_E_ {0.0};

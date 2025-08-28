@@ -1105,7 +1105,6 @@ void sample_fission_neutron(
 
 void inelastic_scatter(const Nuclide& nuc, const Reaction& rx, Particle& p)
 {
-  //  p.v_t() = {0, 0, 0}; // intialize target velocity to zero
   // copy energy of neutron
   double E_in = p.E();
 

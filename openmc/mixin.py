@@ -79,11 +79,10 @@ class IDManagerMixin:
         cls.next_id = 1
 
 
-def reset_auto_ids(*, cls=IDManagerMixin):
+def reset_auto_ids():
     """Reset counters for all auto-generated IDs"""
-    for subcls in cls.__subclasses__():
-        subcls.reset_ids()
-        reset_auto_ids(cls=subcls)
+    for cls in IDManagerMixin.__subclasses__():
+        cls.reset_ids()
 
 
 def reserve_ids(ids, cls=None):

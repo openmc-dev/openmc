@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import pytest
 import openmc.data
+import openmc
 
 from . import needs_njoy
 
@@ -12,29 +13,26 @@ from . import needs_njoy
 @pytest.fixture(scope='module')
 def pu239():
     """Pu239 HDF5 data."""
-    directory = os.path.dirname(os.environ['OPENMC_CROSS_SECTIONS'])
+    directory = os.path.dirname(openmc.config.get('cross_sections'))
     filename = os.path.join(directory, 'photonuclear', 'Pu239.h5')
     return openmc.data.IncidentPhotonuclear.from_hdf5(filename)
 
 
 @pytest.fixture(scope='module')
-def u235():
-    endf_data = os.environ['OPENMC_ENDF_DATA']
+def u235(endf_data):
     endf_file = os.path.join(endf_data, 'gammas', 'g-092_U_235.endf')
     return openmc.data.IncidentPhotonuclear.from_njoy(endf_file)
 
 
 @pytest.fixture(scope='module')
-def be9():
+def be9(endf_data):
     """Be9 ENDF data (contains laboratory angle-energy distribution)."""
-    endf_data = os.environ['OPENMC_ENDF_DATA']
     filename = os.path.join(endf_data, 'gammas', 'g-004_Be_009.endf')
     return openmc.data.IncidentPhotonuclear.from_endf(filename)
 
 
 @pytest.fixture(scope='module')
-def h2():
-    endf_data = os.environ['OPENMC_ENDF_DATA']
+def h2(endf_data):
     endf_file = os.path.join(endf_data, 'gammas', 'g-001_H_002.endf')
     return openmc.data.IncidentPhotonuclear.from_njoy(endf_file)
 
@@ -105,8 +103,7 @@ def test_export_to_hdf5(tmpdir, pu239, be9):
 
 
 @needs_njoy
-def test_ace_convert(run_in_tmpdir):
-    endf_data = os.environ['OPENMC_ENDF_DATA']
+def test_ace_convert(endf_data, run_in_tmpdir):
     filename = os.path.join(endf_data, 'gammas', 'g-001_H_002.endf')
     ace_ascii = 'ace_ascii'
     ace_binary = 'ace_binary'

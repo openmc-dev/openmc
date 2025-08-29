@@ -193,12 +193,12 @@ def _default_config(**kwargs) -> _Config:
 
     """
     config = _Config(kwargs)
-    if "OPENMC_CROSS_SECTIONS" in os.environ:
-        config['cross_sections'] = os.environ["OPENMC_CROSS_SECTIONS"]
-    if "OPENMC_MG_CROSS_SECTIONS" in os.environ:
-        config['mg_cross_sections'] = os.environ["OPENMC_MG_CROSS_SECTIONS"]
-    chain_file = os.environ.get("OPENMC_CHAIN_FILE")
-    xs_path = config.get('cross_sections')
+    for key,var in _Config._PATH_KEYS.items():
+        if var in os.environ:
+            config[key] = os.environ[var]
+
+    chain_file = config.get("chain_file")
+    xs_path = config.get("cross_sections")
     if chain_file is None and xs_path is not None and xs_path.exists():
         try:
             data = DataLibrary.from_xml(xs_path)
@@ -209,10 +209,8 @@ def _default_config(**kwargs) -> _Config:
         else:
             for lib in reversed(data.libraries):
                 if lib['type'] == 'depletion_chain':
-                    chain_file = xs_path.parent / lib['path']
+                    config['chain_file'] = xs_path.parent / lib['path']
                     break
-    if chain_file is not None:
-        config['chain_file'] = chain_file
     return config
 
 

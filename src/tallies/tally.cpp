@@ -530,6 +530,22 @@ void Tally::set_filters(span<Filter*> filters)
 //   filters_.push_back(filter_idx);
 // }
 
+void Tally::add_filter(Filter* filter)
+{
+  int32_t filter_idx = model::filter_map.at(filter->id());
+  // if this filter is already present, do nothing and return
+  if (std::find(filters_.begin(), filters_.end(), filter_idx) != filters_.end())
+    return;
+
+  // Keep track of indices for special filters
+  if (filter->type() == FilterType::ENERGY_OUT) {
+    energyout_filter_ = filters_.size();
+  } else if (filter->type() == FilterType::DELAYED_GROUP) {
+    delayedgroup_filter_ = filters_.size();
+  }
+  filters_.push_back(filter_idx);
+}
+
 void Tally::set_strides()
 {
   // Set the strides.  Filters are traversed in reverse so that the last filter

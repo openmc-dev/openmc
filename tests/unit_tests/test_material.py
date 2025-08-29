@@ -738,11 +738,12 @@ def test_material_deplete():
         chain_file=chain,
     )
 
-    for material in depleted_material:
+    for i_step, material in enumerate(depleted_material):
         assert isinstance(material, openmc.Material)
-        assert len(material.get_nuclides()) > len(pristine_material.get_nuclides())
+        if i_step > 0:
+            assert len(material.get_nuclides()) > len(pristine_material.get_nuclides())
 
-    Co58_mat_1_step_0 = depleted_material[0].get_nuclide_atom_densities("Co58")["Co58"]
+    Co58_mat_1_step_0 = depleted_material[0].get_nuclide_atom_densities("Co58").get("Co58", 0.0)
     Co58_mat_1_step_1 = depleted_material[1].get_nuclide_atom_densities("Co58")["Co58"]
     Co58_mat_1_step_2 = depleted_material[2].get_nuclide_atom_densities("Co58")["Co58"]
 

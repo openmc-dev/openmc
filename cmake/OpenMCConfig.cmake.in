@@ -4,6 +4,9 @@ find_package(fmt REQUIRED HINTS ${OpenMC_CMAKE_DIR}/../fmt)
 find_package(pugixml REQUIRED HINTS ${OpenMC_CMAKE_DIR}/../pugixml)
 find_package(xtl REQUIRED HINTS ${OpenMC_CMAKE_DIR}/../xtl)
 find_package(xtensor REQUIRED HINTS ${OpenMC_CMAKE_DIR}/../xtensor)
+
+find_package(HDF5 REQUIRED COMPONENTS C HL)
+
 if(@OPENMC_USE_DAGMC@)
   find_package(DAGMC REQUIRED HINTS @DAGMC_DIR@)
 endif()
@@ -17,7 +20,48 @@ endif()
 
 find_package(PNG)
 
-if(NOT TARGET OpenMC::libopenmc)
+if(@SKBUILD@)
+  # Find the Python interpreter and ensure it's available.
+  find_package(Python COMPONENTS Interpreter REQUIRED)
+
+  # Function to run Python commands and validate their execution.
+  function(run_python_command output_var command)
+    execute_process(
+      COMMAND ${Python_EXECUTABLE} -c "${command}"
+      OUTPUT_VARIABLE ${output_var}
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+      RESULT_VARIABLE result
+    )
+    # Check if the command was successful
+    if(NOT result EQUAL 0)
+      message(FATAL_ERROR "Failed to run Python command: ${command}")
+    else()
+      # Add the output variable to the parent scope
+      set(${output_var} "${${output_var}}" PARENT_SCOPE)
+    endif()
+  endfunction()
+
+  # Extract MOAB include paths, library paths, and extra libraries
+  run_python_command(OpenMC_INCLUDE_DIRS "import openmc; print(' '.join(openmc.include_path))")
+  run_python_command(OpenMC_LIBRARY_DIRS "import openmc; print(' '.join(openmc.lib_path))")
+  run_python_command(OpenMC_EXTRA_LIBRARIES "import openmc; print(' '.join(openmc.extra_lib))")
+
+  # Check if the wheel was repaired using auditwheel or delocate
+  if(OpenMC_EXTRA_LIBRARIES)
+    message(FATAL_ERROR
+        "This build of OpenMC is not supported. "
+        "It appears that the wheel was repaired using tools like auditwheel or delocate, "
+        "that modifies the shared libraries, which may cause problems.\n"
+        "OpenMC_EXTRA_LIBRARIES is not empty: ${OpenMC_EXTRA_LIBRARIES}.\n"
+        "To resolve this, please build OpenMC from scratch. "
+        "For more information, visit: https://docs.openmc.org/"
+    )
+  endif()
+  
+  # Add OpenMC targets
+  file(TO_CMAKE_PATH "${OpenMC_LIBRARY_DIRS}/cmake/OpenMC/OpenMCTargets.cmake" OpenMC_TARGETS_FILE)
+  include(${OpenMC_TARGETS_FILE})
+elseif(NOT TARGET OpenMC::libopenmc)
   include("${OpenMC_CMAKE_DIR}/OpenMCTargets.cmake")
 endif()
 

@@ -100,6 +100,7 @@ jobs:
         run: |
           echo "OPENMC_CROSS_SECTIONS=$HOME/nndc_hdf5/cross_sections.xml" >> $GITHUB_ENV
           echo "OPENMC_ENDF_DATA=$HOME/endf-b-vii.1" >> $GITHUB_ENV
+          echo "LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
           # get the sha of the last branch commit
           # for push and workflow_dispatch events, use the current reference head
           BRANCH_SHA=HEAD

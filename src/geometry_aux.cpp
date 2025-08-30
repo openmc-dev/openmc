@@ -198,7 +198,7 @@ void assign_density_mult()
   for (auto& c : model::cells) {
     // Ignore non-material cells and cells with previously defined density
     // multipliers.
-    if (c->material_.size() == 0)
+    if (c->type_ != Fill::MATERIAL)
       continue;
     if (c->rho_mult_.size() > 0)
       continue;

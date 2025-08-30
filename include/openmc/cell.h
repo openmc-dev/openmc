@@ -353,7 +353,7 @@ public:
   vector<double> sqrtkT_;
 
   //! \brief Unitless density multiplier(s) within this cell.
-  vector<double> rho_mult_;
+  vector<double> rho_mult_ = {1.0};
 
   //! \brief Neighboring cells in the same universe.
   NeighborList neighbors_;

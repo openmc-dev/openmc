@@ -103,10 +103,6 @@ double Cell::temperature(int32_t instance) const
 
 double Cell::density_mult(int32_t instance) const
 {
-  if (rho_mult_.size() < 1) {
-    throw std::runtime_error {"Cell density multiplier has not yet been set."};
-  }
-
   if (instance >= 0) {
     double rho =
       rho_mult_.size() == 1 ? rho_mult_.at(0) : rho_mult_.at(instance);
@@ -168,6 +164,13 @@ void Cell::set_temperature(double T, int32_t instance, bool set_contained)
 
 void Cell::set_density_mult(double rho, int32_t instance, bool set_contained)
 {
+  if (type_ != Fill::MATERIAL && !set_contained) {
+    fatal_error(
+      fmt::format("Attempted to set the density multiplier of cell {} "
+                  "which is not filled by a material.",
+        id_));
+  }
+
   if (type_ == Fill::MATERIAL) {
     if (instance >= 0) {
       // If density multiplier vector is not big enough, resize it first
@@ -183,13 +186,6 @@ void Cell::set_density_mult(double rho, int32_t instance, bool set_contained)
       }
     }
   } else {
-    if (!set_contained) {
-      throw std::runtime_error {
-        fmt::format("Attempted to set the density multiplier of cell {} "
-                    "which is not filled by a material.",
-          id_)};
-    }
-
     auto contained_cells = this->get_contained_cells(instance);
     for (const auto& entry : contained_cells) {
       auto& cell = model::cells[entry.first];
@@ -230,7 +226,7 @@ void Cell::import_properties_hdf5(hid_t group)
   // Ensure number of temperatures makes sense
   auto n_temps = temps.size();
   if (n_temps > 1 && n_temps != n_instances()) {
-    throw std::runtime_error(fmt::format(
+    fatal_error(fmt::format(
       "Number of temperatures for cell {} doesn't match number of instances",
       id_));
   }
@@ -243,15 +239,16 @@ void Cell::import_properties_hdf5(hid_t group)
   }
 
   // Read density multipliers
-  read_dataset(cell_group, "density_mult", rho_mult_);
+  if (object_exists(cell_group, "density_mult")) {
+    read_dataset(cell_group, "density_mult", rho_mult_);
 
-  // Ensure number of density muultipliers makes sense
-  auto n_rho = rho_mult_.size();
-  if (n_rho > 1 && n_rho != n_instances()) {
-    throw std::runtime_error(
-      fmt::format("Number of density multipliers for cell {} doesn't match "
-                  "number of instances",
+    // Ensure number of density multipliers makes sense
+    auto n_rho = rho_mult_.size();
+    if (n_rho > 1 && n_rho != n_instances()) {
+      fatal_error(fmt::format("Number of density multipliers for cell {} "
+                              "doesn't match number of instances",
         id_));
+    }
   }
 
   close_group(cell_group);

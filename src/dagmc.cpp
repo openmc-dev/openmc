@@ -266,9 +266,6 @@ void DAGUniverse::init_geometry()
         std::sqrt(K_BOLTZMANN * settings::temperature_default));
     }
 
-    // assign a cell density multiplier of unity
-    c->rho_mult_.push_back(1.0);
-
     model::cells.emplace_back(std::move(c));
   }
 

@@ -244,6 +244,43 @@ class Cell(_FortranObjectWithID):
 
         _dll.openmc_cell_set_temperature(self._index, T, instance, set_contained)
 
+    def get_density_mult(self, instance=None):
+        """Get the density multiplier of a cell
+
+        Parameters
+        ----------
+        instance: int or None
+            Which instance of the cell
+
+        """
+
+        if instance is not None:
+            instance = c_int32(instance)
+
+        rho = c_double()
+        _dll.openmc_cell_get_density_mult(self._index, instance, rho)
+        return rho.value
+
+    def set_density_mult(self, rho, instance=None, set_contained=False):
+        """Set the density multiplier of a cell
+
+        Parameters
+        ----------
+        rho : float
+            Unitless density multiplier
+        instance : int or None
+            Which instance of the cell
+        set_contained: bool
+            If cell is not filled by a material, whether to set the density
+            multiplier of all filled cells
+
+        """
+
+        if instance is not None:
+            instance = c_int32(instance)
+
+        _dll.openmc_cell_set_density_mult(self._index, rho, instance, set_contained)
+
     @property
     def translation(self):
         translation = np.zeros(3)

@@ -56,12 +56,12 @@ double get_pdf_discrete(
   }
 
   //  Calculate Delta_a and Delta_b
-  double delta_a = 0.5 * std::min(b_0 - a_0, a_0 - a_1);
-  double delta_b = 0.5 * std::min(b_1 - b_0, b_0 - a_0);
+  double delta_a = 0.5 * std::min(b0 - a0, a0 - a1);
+  double delta_b = 0.5 * std::min(b1 - b0, b0 - a0);
 
-  if (mu_0 < a_0 + delta_a)
+  if (mu_0 < a0 + delta_a)
     return w[ai] / (2.0 * delta_a);
-  else if (mu_0 + delta_b < b_0)
+  else if (mu_0 + delta_b < b0)
     return w[bi] / (2.0 * delta_b);
   else
     return 0.0;
@@ -70,8 +70,7 @@ double get_pdf_discrete(
 double get_pdf_discrete(const vector<double>& mu, double mu_0)
 {
   vector<double> w(mu.size(), 1.0 / mu.size());
-  return get_pdf_discrete(
-    const vector<double>& mu, const vector<double>& w, double mu_0);
+  return get_pdf_discrete(mu, w, mu_0);
 }
 
 //==============================================================================
@@ -128,10 +127,13 @@ double CoherentElasticAE::get_pdf(
     [E_in](double Ei) { return 1 - 2 * Ei / E_in; });
   vector<double> mu_vector(mu_vector_rev.rbegin(), mu_vector_rev.rend());
 
-  auto weights = xt::diff(factors_cut);
+  auto f = xt::adapt(factors_cut, {
+                                    factors_cut.size(),
+                                  });
+  auto weights = xt::diff(f);
   weights /= xt::sum(weights);
-
-  return get_pdf_discrete(mu_vector, weights, mu);
+  vector<double> w(weights.begin(), weights.end());
+  return get_pdf_discrete(mu_vector, w, mu);
 }
 
 //==============================================================================

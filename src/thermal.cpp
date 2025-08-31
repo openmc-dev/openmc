@@ -2,8 +2,8 @@
 
 #include <algorithm> // for sort, move, min, max, find
 #include <cmath>     // for round, sqrt, abs
-#include <iomanip>
 #include <fstream>
+#include <iomanip>
 
 #include "xtensor/xarray.hpp"
 #include "xtensor/xbuilder.hpp"

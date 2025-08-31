@@ -1,15 +1,17 @@
 #include "openmc/thermal.h"
+
+#include <algorithm> // for sort, move, min, max, find
+#include <cmath>     // for round, sqrt, abs
+#include <iomanip>
+#include <fstream>
+
 #include "xtensor/xarray.hpp"
 #include "xtensor/xbuilder.hpp"
 #include "xtensor/xmath.hpp"
 #include "xtensor/xsort.hpp"
 #include "xtensor/xtensor.hpp"
 #include "xtensor/xview.hpp"
-#include <algorithm> // for sort, move, min, max, find
-#include <cmath>     // for round, sqrt, abs
 #include <fmt/core.h>
-#include <fstream>
-#include <iomanip>
 
 #include "openmc/constants.h"
 #include "openmc/endf.h"

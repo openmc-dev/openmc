@@ -24,6 +24,7 @@ public:
   virtual ~Distribution() = default;
   virtual double sample(uint64_t* seed) const = 0;
   virtual double get_pdf(double x) const = 0;
+
   //! Return integral of distribution
   //! \return Integral of distribution
   virtual double integral() const { return 1.0; };
@@ -84,6 +85,7 @@ public:
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
   double sample(uint64_t* seed) const override;
+
   //! Calculate the probability density function (PDF) at a given value
   //! \param x The value at which to evaluate the PDF
   //! \return The value of the PDF at the given point
@@ -238,7 +240,7 @@ public:
   double sample(uint64_t* seed) const override;
   double get_pdf(double x) const;
 
-  //  properties
+  // properties
   vector<double>& x() { return x_; }
   const vector<double>& x() const { return x_; }
   const vector<double>& p() const { return p_; }

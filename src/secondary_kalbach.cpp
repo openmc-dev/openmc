@@ -240,6 +240,7 @@ void KalbachMann::sample(
     mu = std::log(r1 * std::exp(km_a) + (1.0 - r1) * std::exp(-km_a)) / km_a;
   }
 }
+
 void KalbachMann::get_pdf(double det_pos[4], double E_in, double& E_out,
   uint64_t* seed, Particle& p, std::vector<double>& mu_cm,
   std::vector<double>& Js, std::vector<Particle>& ghost_particles,

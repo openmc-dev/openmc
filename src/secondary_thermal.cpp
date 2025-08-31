@@ -558,6 +558,7 @@ void IncoherentInelasticAEDiscrete::sample(
   // Cosine of angle between incoming and outgoing neutron
   mu = (1 - f) * mu_ijk + f * mu_i1jk;
 }
+
 double IncoherentInelasticAEDiscrete::get_pdf(
   double E_in, double& E_out, double& mu, uint64_t* seed, int l) const
 {

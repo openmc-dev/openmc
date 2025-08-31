@@ -14,6 +14,7 @@
 #include "openmc/tallies/filter.h"
 #include "openmc/tallies/tally.h"
 #include "openmc/vector.h" // for vector
+
 namespace openmc {
 
 //==============================================================================

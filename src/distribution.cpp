@@ -135,10 +135,10 @@ double Discrete::sample(uint64_t* seed) const
 {
   return x_[di_.sample(seed)];
 }
+
 // Not implemented
 double Discrete::get_pdf(double x) const
 {
-
   return -1;
 }
 
@@ -162,6 +162,7 @@ double Uniform::sample(uint64_t* seed) const
 {
   return a_ + prn(seed) * (b_ - a_);
 }
+
 double Uniform::get_pdf(double x) const
 {
   if (x <= b_ && x >= a_)
@@ -195,6 +196,7 @@ double PowerLaw::sample(uint64_t* seed) const
 {
   return std::pow(offset_ + prn(seed) * span_, ninv_);
 }
+
 double PowerLaw::get_pdf(double x) const
 {
   // Recover the lower/upper bounds from offset_ and span_
@@ -223,6 +225,7 @@ double Maxwell::sample(uint64_t* seed) const
 {
   return maxwell_spectrum(theta_, seed);
 }
+
 // Not implemented
 double Maxwell::get_pdf(double x) const
 {
@@ -248,6 +251,7 @@ double Watt::sample(uint64_t* seed) const
 {
   return watt_spectrum(a_, b_, seed);
 }
+
 // Not implemented
 double Watt::get_pdf(double x) const
 {
@@ -273,6 +277,7 @@ double Normal::sample(uint64_t* seed) const
 {
   return normal_variate(mean_value_, std_dev_, seed);
 }
+
 double Normal::get_pdf(double x) const
 {
   double exponent = -0.5 * std::pow((x - mean_value_) / std_dev_, 2);
@@ -450,6 +455,7 @@ double Equiprobable::sample(uint64_t* seed) const
   double xr = x_[i + i];
   return xl + ((n - 1) * r - i) * (xr - xl);
 }
+
 double Equiprobable::get_pdf(double x) const
 {
   return -1;
@@ -503,6 +509,7 @@ double Mixture::sample(uint64_t* seed) const
   // Sample the chosen distribution
   return it->second->sample(seed);
 }
+
 double Mixture::get_pdf(double x) const
 {
   return -1;

@@ -130,6 +130,7 @@ void ReactionProduct::sample(
     distribution_[0]->sample(E_in, E_out, mu, seed);
   }
 }
+
 void ReactionProduct::get_pdf(int i_tally, double E_in, double& E_out,
   uint64_t* seed, Particle& p, std::vector<double>& mu_cm,
   std::vector<double>& Js, std::vector<Particle>& ghost_particles,

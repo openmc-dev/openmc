@@ -1,5 +1,6 @@
 #ifndef OPENMC_ANGLE_ENERGY_H
 #define OPENMC_ANGLE_ENERGY_H
+
 #include <cstdint>
 #include <stdexcept>
 

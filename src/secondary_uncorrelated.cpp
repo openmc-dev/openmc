@@ -74,23 +74,9 @@ void UncorrelatedAngleEnergy::get_pdf(double det_pos[4], double E_in,
   std::vector<double>& pdfs_lab) const
 {
   bool COM = false;
-  const auto& nuc {data::nuclides[p.event_nuclide()]};
-  if (p.event_index_mt() != -999) {
-    const auto& rx {nuc->reactions_[p.event_index_mt()]};
-    COM = rx->scatter_in_cm_;
-  }
 
   // Sample outgoing energy
   E_out = energy_->sample(E_in, seed);
-
-  if (COM) {
-
-    /* transform pdf cm to lab frame
-     */
-  }
-
-  if (!COM) {
-  }
 }
 
 } // namespace openmc

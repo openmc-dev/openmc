@@ -488,7 +488,6 @@ private:
   int event_nuclide_;
   int event_mt_;
   int delayed_group_ {0};
-  int event_index_mt_;
   int parent_nuclide_ {-1};
 
   int n_bank_ {0};
@@ -623,7 +622,6 @@ public:
   const int& event_nuclide() const { return event_nuclide_; }
   int& event_mt() { return event_mt_; } // MT number of collision
   const int& event_mt() const { return event_mt_; }
-  int& event_index_mt() { return event_index_mt_; }
   int& delayed_group() { return delayed_group_; } // delayed group
   const int& parent_nuclide() const { return parent_nuclide_; }
   int& parent_nuclide() { return parent_nuclide_; } // Parent nuclide

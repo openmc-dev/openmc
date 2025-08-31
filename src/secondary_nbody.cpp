@@ -124,11 +124,7 @@ void NBodyPhaseSpace::get_pdf(double det_pos[4], double E_in, double& E_out,
    }
   */
 
-  const auto& nuc {data::nuclides[p.event_nuclide()]};
-  const auto& rx {nuc->reactions_[p.event_index_mt()]};
-  if (!rx->scatter_in_cm_) {
-    fatal_error("didn't implement lab");
-  }
+
 }
 
 } // namespace openmc

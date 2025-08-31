@@ -217,7 +217,6 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
 
     // Sample delayed group and angle/energy for fission reaction
     sample_fission_neutron(i_nuclide, rx, &site, p);
-    p.event_index_mt() = -999;
     // Store fission site in bank
     if (use_fission_bank) {
       int64_t idx = simulation::fission_bank.thread_safe_append(site);
@@ -666,7 +665,6 @@ void scatter(Particle& p, int i_nuclide)
 {
   // copy incoming direction
   Direction u_old {p.u()};
-  p.event_index_mt() = 0;
   // Get pointer to nuclide and grid index/interpolation factor
   const auto& nuc {data::nuclides[i_nuclide]};
   const auto& micro {p.neutron_xs(i_nuclide)};
@@ -703,7 +701,6 @@ void scatter(Particle& p, int i_nuclide)
     // S(A,B) SCATTERING
 
     sab_scatter(i_nuclide, micro.index_sab, p);
-    p.event_index_mt() = -1234; // to distinguish from elastic
     p.event_mt() = ELASTIC;
     sampled = true;
   }
@@ -725,7 +722,6 @@ void scatter(Particle& p, int i_nuclide)
     const auto& rx {nuc->reactions_[i]};
     inelastic_scatter(*nuc, *rx, p);
     p.event_mt() = rx->mt_;
-    p.event_index_mt() = i;
   }
 
   // Set event component

@@ -374,10 +374,6 @@ void KalbachMann::get_pdf(double det_pos[4], double E_in, double& E_out,
   // double pdf_mu = km_a / (2 * std::sinh(km_a)) * (std::cosh(km_a * mymu) +
   // km_r * std::sinh(km_a * mymu)); // center of mass return pdf_mu;
 
-  const auto& rx {nuc->reactions_[p.event_index_mt()]};
-  if (!rx->scatter_in_cm_) {
-    fatal_error("didn't implement lab");
-  }
 }
 
 } // namespace openmc

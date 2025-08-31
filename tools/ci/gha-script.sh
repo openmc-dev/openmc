@@ -14,5 +14,5 @@ if [[ $EVENT == 'y' ]]; then
   args="${args} --event "
 fi
 
-# Run regression and unit tests
-pytest --cov=openmc -v $args tests
+# Run unit tests and then regression tests
+pytest --cov=openmc -v $args tests/unit_tests tests/regression_tests

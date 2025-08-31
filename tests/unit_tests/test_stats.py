@@ -7,20 +7,21 @@ import openmc.stats
 from scipy.integrate import trapezoid
 from scipy import stats as sps
 
+
 def assert_sample_mean(samples, expected_mean):
     # Calculate sample standard deviation
     std_dev = samples.std() / np.sqrt(samples.size - 1)
 
     # Means should agree within 4 sigma 99.993% of the time. Note that this is
     # expected to fail about 1 out of 16,000 times
-    assert np.abs(expected_mean - samples.mean()) < 4*std_dev
+    assert np.abs(expected_mean - samples.mean()) < 4 * std_dev
 
 
 def test_discrete():
     x = [0.0, 1.0, 10.0]
     p = [0.3, 0.2, 0.5]
     d = openmc.stats.Discrete(x, p)
-    elem = d.to_xml_element('distribution')
+    elem = d.to_xml_element("distribution")
 
     d = openmc.stats.Discrete.from_xml_element(elem)
     np.testing.assert_array_equal(d.x, x)
@@ -71,7 +72,8 @@ def test_merge_discrete():
     merged = openmc.stats.Discrete.merge([d1, d2], [0.6, 0.4])
     assert merged.x == pytest.approx([0.0, 0.5, 1.0, 5.0, 10.0])
     assert merged.p == pytest.approx(
-        [0.6*0.3, 0.4*0.4, 0.6*0.2 + 0.4*0.5, 0.4*0.1, 0.6*0.5])
+        [0.6 * 0.3, 0.4 * 0.4, 0.6 * 0.2 + 0.4 * 0.5, 0.4 * 0.1, 0.6 * 0.5]
+    )
     assert merged.integral() == pytest.approx(1.0)
 
     # Probabilities add up but are not normalized
@@ -98,7 +100,7 @@ def test_clip_discrete():
     assert d_same is d
 
     with pytest.raises(ValueError):
-        d.clip(-1.)
+        d.clip(-1.0)
 
     with pytest.raises(ValueError):
         d.clip(5)
@@ -107,7 +109,7 @@ def test_clip_discrete():
 def test_uniform():
     a, b = 10.0, 20.0
     d = openmc.stats.Uniform(a, b)
-    elem = d.to_xml_element('distribution')
+    elem = d.to_xml_element("distribution")
 
     d = openmc.stats.Uniform.from_xml_element(elem)
     assert d.a == a
@@ -116,8 +118,8 @@ def test_uniform():
 
     t = d.to_tabular()
     np.testing.assert_array_equal(t.x, [a, b])
-    np.testing.assert_array_equal(t.p, [1/(b-a), 1/(b-a)])
-    assert t.interpolation == 'histogram'
+    np.testing.assert_array_equal(t.p, [1 / (b - a), 1 / (b - a)])
+    assert t.interpolation == "histogram"
 
     # Sample distribution and check that the mean of the samples is within 4
     # std. dev. of the expected mean
@@ -130,7 +132,7 @@ def test_uniform():
 def test_powerlaw():
     a, b, n = 10.0, 100.0, 2.0
     d = openmc.stats.PowerLaw(a, b, n)
-    elem = d.to_xml_element('distribution')
+    elem = d.to_xml_element("distribution")
 
     d = openmc.stats.PowerLaw.from_xml_element(elem)
     assert d.a == a
@@ -139,7 +141,11 @@ def test_powerlaw():
     assert len(d) == 3
 
     # Determine mean of distribution
-    exp_mean = (n+1)*(b**(n+2) - a**(n+2))/((n+2)*(b**(n+1) - a**(n+1)))
+    exp_mean = (
+        (n + 1)
+        * (b ** (n + 2) - a ** (n + 2))
+        / ((n + 2) * (b ** (n + 1) - a ** (n + 1)))
+    )
 
     # sample power law distribution and check that the mean of the samples is
     # within 4 std. dev. of the expected mean
@@ -151,13 +157,13 @@ def test_powerlaw():
 def test_maxwell():
     theta = 1.2895e6
     d = openmc.stats.Maxwell(theta)
-    elem = d.to_xml_element('distribution')
+    elem = d.to_xml_element("distribution")
 
     d = openmc.stats.Maxwell.from_xml_element(elem)
     assert d.theta == theta
     assert len(d) == 1
 
-    exp_mean = 3/2 * theta
+    exp_mean = 3 / 2 * theta
 
     # sample maxwell distribution and check that the mean of the samples is
     # within 4 std. dev. of the expected mean
@@ -174,7 +180,7 @@ def test_maxwell():
 def test_watt():
     a, b = 0.965e6, 2.29e-6
     d = openmc.stats.Watt(a, b)
-    elem = d.to_xml_element('distribution')
+    elem = d.to_xml_element("distribution")
 
     d = openmc.stats.Watt.from_xml_element(elem)
     assert d.a == a
@@ -185,7 +191,7 @@ def test_watt():
     # "Prompt-fission-neutron average energy for 238U(n, f ) from
     # threshold to 200 MeV" Ethvignot et. al.
     # https://doi.org/10.1016/j.physletb.2003.09.048
-    exp_mean = 3/2 * a + a**2 * b / 4
+    exp_mean = 3 / 2 * a + a**2 * b / 4
 
     # sample Watt distribution and check that the mean of the samples is within
     # 4 std. dev. of the expected mean
@@ -198,7 +204,7 @@ def test_tabular():
     # test linear-linear sampling
     x = np.array([0.0, 5.0, 7.0, 10.0])
     p = np.array([10.0, 20.0, 5.0, 6.0])
-    d = openmc.stats.Tabular(x, p, 'linear-linear')
+    d = openmc.stats.Tabular(x, p, "linear-linear")
     n_samples = 100_000
     samples = d.sample(n_samples)
     assert_sample_mean(samples, d.mean())
@@ -208,7 +214,7 @@ def test_tabular():
     assert d.integral() == pytest.approx(1.0)
 
     # test histogram sampling
-    d = openmc.stats.Tabular(x, p, interpolation='histogram')
+    d = openmc.stats.Tabular(x, p, interpolation="histogram")
     samples = d.sample(n_samples)
     assert_sample_mean(samples, d.mean())
 
@@ -217,39 +223,39 @@ def test_tabular():
 
     # ensure that passing a set of probabilities shorter than x works
     # for histogram interpolation
-    d = openmc.stats.Tabular(x, p[:-1], interpolation='histogram')
+    d = openmc.stats.Tabular(x, p[:-1], interpolation="histogram")
     d.cdf()
     d.mean()
     assert_sample_mean(d.sample(n_samples), d.mean())
 
     # passing a shorter probability set should raise an error for linear-linear
     with pytest.raises(ValueError):
-        d = openmc.stats.Tabular(x, p[:-1], interpolation='linear-linear')
+        d = openmc.stats.Tabular(x, p[:-1], interpolation="linear-linear")
         d.cdf()
 
     # Use probabilities of correct length for linear-linear interpolation and
     # call the CDF method
-    d = openmc.stats.Tabular(x, p, interpolation='linear-linear')
+    d = openmc.stats.Tabular(x, p, interpolation="linear-linear")
     d.cdf()
 
 
 def test_tabular_from_xml():
     x = np.array([0.0, 5.0, 7.0, 10.0])
     p = np.array([10.0, 20.0, 5.0, 6.0])
-    d = openmc.stats.Tabular(x, p, 'linear-linear')
-    elem = d.to_xml_element('distribution')
+    d = openmc.stats.Tabular(x, p, "linear-linear")
+    elem = d.to_xml_element("distribution")
 
     d = openmc.stats.Tabular.from_xml_element(elem)
     assert all(d.x == x)
     assert all(d.p == p)
-    assert d.interpolation == 'linear-linear'
+    assert d.interpolation == "linear-linear"
     assert len(d) == len(x)
 
     # Make sure XML roundtrip works with len(x) == len(p) + 1
     x = np.array([0.0, 5.0, 7.0, 10.0])
     p = np.array([10.0, 20.0, 5.0])
-    d = openmc.stats.Tabular(x, p, 'histogram')
-    elem = d.to_xml_element('distribution')
+    d = openmc.stats.Tabular(x, p, "histogram")
+    elem = d.to_xml_element("distribution")
     d = openmc.stats.Tabular.from_xml_element(elem)
     assert all(d.x == x)
     assert all(d.p == p)
@@ -257,17 +263,17 @@ def test_tabular_from_xml():
 
 def test_legendre():
     # Pu239 elastic scattering at 100 keV
-    coeffs = [1.000e+0, 1.536e-1, 1.772e-2, 5.945e-4, 3.497e-5, 1.881e-5]
+    coeffs = [1.000e0, 1.536e-1, 1.772e-2, 5.945e-4, 3.497e-5, 1.881e-5]
     d = openmc.stats.Legendre(coeffs)
     assert d.coefficients == pytest.approx(coeffs)
     assert len(d) == len(coeffs)
 
     # Integrating distribution should yield one
-    mu = np.linspace(-1., 1., 1000)
+    mu = np.linspace(-1.0, 1.0, 1000)
     assert trapezoid(d(mu), mu) == pytest.approx(1.0, rel=1e-4)
 
     with pytest.raises(NotImplementedError):
-        d.to_xml_element('distribution')
+        d.to_xml_element("distribution")
 
 
 def test_mixture():
@@ -282,9 +288,9 @@ def test_mixture():
     # Sample and make sure sample mean is close to expected mean
     n_samples = 1_000_000
     samples = mix.sample(n_samples)
-    assert_sample_mean(samples, (2.5 + 5.0)/2)
+    assert_sample_mean(samples, (2.5 + 5.0) / 2)
 
-    elem = mix.to_xml_element('distribution')
+    elem = mix.to_xml_element("distribution")
 
     d = openmc.stats.Mixture.from_xml_element(elem)
     np.testing.assert_allclose(d.probability, p)
@@ -310,15 +316,15 @@ def test_mixture_clip():
     assert mix_same is mix
 
     # Make sure clip removes low probability distributions
-    d_small = openmc.stats.Uniform(0., 1.)
-    d_large = openmc.stats.Uniform(2., 5.)
+    d_small = openmc.stats.Uniform(0.0, 1.0)
+    d_large = openmc.stats.Uniform(2.0, 5.0)
     mix = openmc.stats.Mixture([1e-10, 1.0], [d_small, d_large])
     mix_clip = mix.clip(1e-3)
     assert mix_clip.distribution == [d_large]
 
     # Make sure warning is raised if tolerance is exceeded
     d1 = openmc.stats.Discrete([1.0, 1.001], [1.0, 0.7e-6])
-    d2 = openmc.stats.Tabular([0.0, 1.0], [0.7e-6], interpolation='histogram')
+    d2 = openmc.stats.Tabular([0.0, 1.0], [0.7e-6], interpolation="histogram")
     mix = openmc.stats.Mixture([1.0, 1.0], [d1, d2])
     with pytest.warns(UserWarning):
         mix_clip = mix.clip(1e-6)
@@ -328,29 +334,29 @@ def test_polar_azimuthal():
     # default polar-azimuthal should be uniform in mu and phi
     d = openmc.stats.PolarAzimuthal()
     assert isinstance(d.mu, openmc.stats.Uniform)
-    assert d.mu.a == -1.
-    assert d.mu.b == 1.
+    assert d.mu.a == -1.0
+    assert d.mu.b == 1.0
     assert isinstance(d.phi, openmc.stats.Uniform)
-    assert d.phi.a == 0.
-    assert d.phi.b == 2*pi
+    assert d.phi.a == 0.0
+    assert d.phi.b == 2 * pi
 
-    mu = openmc.stats.Discrete(1., 1.)
-    phi = openmc.stats.Discrete(0., 1.)
+    mu = openmc.stats.Discrete(1.0, 1.0)
+    phi = openmc.stats.Discrete(0.0, 1.0)
     d = openmc.stats.PolarAzimuthal(mu, phi)
     assert d.mu == mu
     assert d.phi == phi
 
     elem = d.to_xml_element()
-    assert elem.tag == 'angle'
-    assert elem.attrib['type'] == 'mu-phi'
-    assert elem.find('mu') is not None
-    assert elem.find('phi') is not None
+    assert elem.tag == "angle"
+    assert elem.attrib["type"] == "mu-phi"
+    assert elem.find("mu") is not None
+    assert elem.find("phi") is not None
 
     d = openmc.stats.PolarAzimuthal.from_xml_element(elem)
-    assert d.mu.x == [1.]
-    assert d.mu.p == [1.]
-    assert d.phi.x == [0.]
-    assert d.phi.p == [1.]
+    assert d.mu.x == [1.0]
+    assert d.mu.p == [1.0]
+    assert d.phi.x == [0.0]
+    assert d.phi.p == [1.0]
 
     d = openmc.stats.UnitSphere.from_xml_element(elem)
     assert isinstance(d, openmc.stats.PolarAzimuthal)
@@ -359,34 +365,34 @@ def test_polar_azimuthal():
 def test_isotropic():
     d = openmc.stats.Isotropic()
     elem = d.to_xml_element()
-    assert elem.tag == 'angle'
-    assert elem.attrib['type'] == 'isotropic'
+    assert elem.tag == "angle"
+    assert elem.attrib["type"] == "isotropic"
 
     d = openmc.stats.Isotropic.from_xml_element(elem)
     assert isinstance(d, openmc.stats.Isotropic)
 
 
 def test_monodirectional():
-    d = openmc.stats.Monodirectional((1., 0., 0.))
+    d = openmc.stats.Monodirectional((1.0, 0.0, 0.0))
     elem = d.to_xml_element()
-    assert elem.tag == 'angle'
-    assert elem.attrib['type'] == 'monodirectional'
+    assert elem.tag == "angle"
+    assert elem.attrib["type"] == "monodirectional"
 
     d = openmc.stats.Monodirectional.from_xml_element(elem)
-    assert d.reference_uvw == pytest.approx((1., 0., 0.))
+    assert d.reference_uvw == pytest.approx((1.0, 0.0, 0.0))
 
 
 def test_cartesian():
-    x = openmc.stats.Uniform(-10., 10.)
-    y = openmc.stats.Uniform(-10., 10.)
-    z = openmc.stats.Uniform(0., 20.)
+    x = openmc.stats.Uniform(-10.0, 10.0)
+    y = openmc.stats.Uniform(-10.0, 10.0)
+    z = openmc.stats.Uniform(0.0, 20.0)
     d = openmc.stats.CartesianIndependent(x, y, z)
 
     elem = d.to_xml_element()
-    assert elem.tag == 'space'
-    assert elem.attrib['type'] == 'cartesian'
-    assert elem.find('x') is not None
-    assert elem.find('y') is not None
+    assert elem.tag == "space"
+    assert elem.attrib["type"] == "cartesian"
+    assert elem.find("x") is not None
+    assert elem.find("y") is not None
 
     d = openmc.stats.CartesianIndependent.from_xml_element(elem)
     assert d.x == x
@@ -398,14 +404,14 @@ def test_cartesian():
 
 
 def test_box():
-    lower_left = (-10., -10., -10.)
-    upper_right = (10., 10., 10.)
+    lower_left = (-10.0, -10.0, -10.0)
+    upper_right = (10.0, 10.0, 10.0)
     d = openmc.stats.Box(lower_left, upper_right)
 
     elem = d.to_xml_element()
-    assert elem.tag == 'space'
-    assert elem.attrib['type'] == 'box'
-    assert elem.find('parameters') is not None
+    assert elem.tag == "space"
+    assert elem.attrib["type"] == "box"
+    assert elem.find("parameters") is not None
 
     d = openmc.stats.Box.from_xml_element(elem)
     assert d.lower_left == pytest.approx(lower_left)
@@ -413,13 +419,13 @@ def test_box():
 
 
 def test_point():
-    p = (-4., 2., 10.)
+    p = (-4.0, 2.0, 10.0)
     d = openmc.stats.Point(p)
 
     elem = d.to_xml_element()
-    assert elem.tag == 'space'
-    assert elem.attrib['type'] == 'point'
-    assert elem.find('parameters') is not None
+    assert elem.tag == "space"
+    assert elem.attrib["type"] == "point"
+    assert elem.find("parameters") is not None
 
     d = openmc.stats.Point.from_xml_element(elem)
     assert d.xyz == pytest.approx(p)
@@ -428,10 +434,10 @@ def test_point():
 def test_normal():
     mean = 10.0
     std_dev = 2.0
-    d = openmc.stats.Normal(mean,std_dev)
+    d = openmc.stats.Normal(mean, std_dev)
 
-    elem = d.to_xml_element('distribution')
-    assert elem.attrib['type'] == 'normal'
+    elem = d.to_xml_element("distribution")
+    assert elem.attrib["type"] == "normal"
 
     d = openmc.stats.Normal.from_xml_element(elem)
     assert d.mean_value == pytest.approx(mean)
@@ -447,12 +453,12 @@ def test_normal():
 def test_muir():
     mean = 10.0
     mass = 5.0
-    temp = 20000.
+    temp = 20000.0
     d = openmc.stats.muir(mean, mass, temp)
     assert isinstance(d, openmc.stats.Normal)
 
-    elem = d.to_xml_element('energy')
-    assert elem.attrib['type'] == 'normal'
+    elem = d.to_xml_element("energy")
+    assert elem.attrib["type"] == "normal"
 
     d = openmc.stats.Univariate.from_xml_element(elem)
     assert isinstance(d, openmc.stats.Normal)
@@ -478,7 +484,8 @@ def test_combine_distributions():
     assert isinstance(merged, openmc.stats.Discrete)
     assert merged.x == pytest.approx([0.0, 0.5, 1.0, 5.0, 10.0])
     assert merged.p == pytest.approx(
-        [0.6*0.3, 0.4*0.4, 0.6*0.2 + 0.4*0.5, 0.4*0.1, 0.6*0.5])
+        [0.6 * 0.3, 0.4 * 0.4, 0.6 * 0.2 + 0.4 * 0.5, 0.4 * 0.1, 0.6 * 0.5]
+    )
 
     # Probabilities add up but are not normalized
     d1 = openmc.stats.Discrete([3.0], [1.0])
@@ -496,8 +503,8 @@ def test_combine_distributions():
     # Combine 1 discrete and 2 tabular -- the tabular distributions should
     # combine to produce a uniform distribution with mean 0.5. The combined
     # distribution should have a mean of 0.25.
-    t1 = openmc.stats.Tabular([0., 1.], [2.0, 0.0])
-    t2 = openmc.stats.Tabular([0., 1.], [0.0, 2.0])
+    t1 = openmc.stats.Tabular([0.0, 1.0], [2.0, 0.0])
+    t2 = openmc.stats.Tabular([0.0, 1.0], [0.0, 2.0])
     d1 = openmc.stats.Discrete([0.0], [1.0])
     combined = openmc.stats.combine_distributions([t1, t2, d1], [0.25, 0.25, 0.5])
     assert combined.integral() == pytest.approx(1.0)
@@ -506,123 +513,3 @@ def test_combine_distributions():
     # uncertainty of the expected value
     samples = combined.sample(10_000)
     assert_sample_mean(samples, 0.25)
-
-@pytest.mark.parametrize("x, skew_true, kurt_true", [
-    ([-1, 0, 1],                 0.0,        1.5),  
-    ([-1, 1],                    0.0,        1.0),   
-    ([0, 0, 1, 1],               0.0,        1.0),   
-    ([0, 1, 2, 3],               0.0,        41/25), 
-])
-
-def test_b1_b2_analytical(x, skew_true, kurt_true):
-    x = np.asarray(x, dtype=float)
-    n = x.size
-    mean = x.mean()
-    s2 = (x**2).sum()
-    s3 = (x**3).sum()
-    s4 = (x**4).sum()
-
-    sqrt_b1, b2 = openmc.tally_stats._calc_b1_b2(n, np.array([mean]),
-                               np.array([s2]), np.array([s3]), np.array([s4]))
-    skew = sqrt_b1.item()
-    kurt = b2.item()
-
-    assert np.isclose(skew, skew_true, rtol=0, atol=1e-15)
-    assert np.isclose(kurt, kurt_true, rtol=0, atol=1e-14)
-
-@pytest.mark.parametrize("draw, skew_true, kurt_true", [
-    (lambda rng, n: rng.normal(0, 1, n),        0.0,  3.0),   
-    (lambda rng, n: rng.random(n),              0.0,  1.8),   
-    (lambda rng, n: rng.exponential(1.0, n),    2.0,  9.0),  
-    (lambda rng, n: (rng.random(n) < 0.3).astype(float),
-                                                  (1-2*0.3)/np.sqrt(0.3*0.7),
-                                                  (1 - 3*0.3 + 3*0.3**2)/(0.3*0.7)), 
-])
-
-def test_b1_b2_scipy(draw, skew_true, kurt_true):
-    rng = np.random.default_rng(12345)
-    N = 200_000  
-    x = draw(rng, N)
-
-    n = x.size
-    mean = x.mean()
-    s2 = (x**2).sum()
-    s3 = (x**3).sum()
-    s4 = (x**4).sum()
-
-    sqrt_b1, b2 = openmc.tally_stats._calc_b1_b2(n, np.array([mean]),
-                               np.array([s2]), np.array([s3]), np.array([s4]))
-    skew_mine = sqrt_b1.item()
-    kurt_mine = b2.item()
-
-    # Scipy values
-    skew_sp = sps.skew(x, bias=True)
-    kurt_sp = sps.kurtosis(x, fisher=False, bias=True)
-
-    # Compare to SciPy 
-    assert np.isclose(skew_mine, skew_sp, rtol=0, atol=5e-3)
-    assert np.isclose(kurt_mine, kurt_sp, rtol=0, atol=5e-3)
-
-    tol_skew = 0.02 if abs(skew_true) < 0.5 else 0.05
-    tol_kurt = 0.03 if kurt_true < 4 else 0.1
-
-    assert abs(skew_mine - skew_true) < tol_skew
-    assert abs(kurt_mine - kurt_true) < tol_kurt
-
-def ztests_scipy_comparison():
-    rng = np.random.default_rng(987)
-    x_norm = rng.normal(size=50_000)
-    x_exp  = rng.exponential(size=50_000)
-
-    # Normal dataset
-    n0 = x_norm.size
-    mean0 = x_norm.mean()
-    s20 = (x_norm**2).sum()
-    s30 = (x_norm**3).sum()
-    s40 = (x_norm**4).sum()
-    Zb1_0, p_skew_0, _ = openmc.tally_stats.skewness_test(n0, mean0, s20, s30, s40)
-    Zb2_0, p_kurt_0, _ = openmc.tally_stats.kurtosis_test(n0, mean0, s20, s30, s40)
-    K2_0, p_omni_0 = openmc.tally_stats.k2_test(Zb1_0, Zb2_0)
-
-    # SciPy Z and p values
-    z_skew_0, p_skew_sp0 = sps.skewtest(x_norm)
-    z_kurt_0, p_kurt_sp0 = sps.kurtosistest(x_norm)
-    k2_sp0, p_omni_sp0 = sps.normaltest(x_norm)
-
-    assert np.isclose(Zb1_0, z_skew_0, atol=0.15)
-    assert np.isclose(Zb2_0, z_kurt_0, atol=0.15)
-    assert np.isclose(K2_0, k2_sp0, atol=0.3)
-    assert np.isclose(p_skew_0, p_skew_sp0, atol=5e-3)
-    assert np.isclose(p_kurt_0, p_kurt_sp0, atol=5e-3)
-    assert np.isclose(p_omni_0, p_omni_sp0, atol=5e-3)
-
-    # Exponential dataset
-    n1 = x_exp.size
-    mean1 = x_exp.mean()
-    s21 = (x_exp**2).sum()
-    s31 = (x_exp**3).sum()
-    s41 = (x_exp**4).sum()
-    Zb1_1, p_skew_1, _ = openmc.tally_stats.skewness_test(n1, mean1, s21, s31, s41)
-    Zb2_1, p_kurt_1, _ = openmc.tally_stats.kurtosis_test(n1, mean1, s21, s31, s41)
-    K2_1, p_omni_1 = openmc.tally_stats.k2_test(Zb1_1, Zb2_1)
-
-    # SciPy Z and p values
-    z_skew_1, p_skew_sp1 = sps.skewtest(x_exp)
-    z_kurt_1, p_kurt_sp1 = sps.kurtosistest(x_exp)
-    k2_sp1, p_omni_sp1 = sps.normaltest(x_exp)
-
-    # Both pipelines should reject (p ≪ 1e-6)
-    assert p_skew_1 < 1e-6 and p_skew_sp1 < 1e-6
-    assert p_kurt_1 < 1e-6 and p_kurt_sp1 < 1e-6
-    assert p_omni_1 < 1e-6 and p_omni_sp1 < 1e-6
-
-     # Right-skewed: large positive Zb1
-    assert Zb1_1 > 30
-    assert z_skew_1 > 30
-    # Heavy-tailed: large positive Zb2
-    assert Zb2_1 > 30
-    assert z_kurt_1 > 30
-    # Combined omnibus rejects
-    assert K2_1 > 2000
-    assert k2_sp1 >2000
-  

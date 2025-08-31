@@ -1,10 +1,13 @@
-import numpy as np
-import pytest
-import openmc
-import openmc.tally_stats as ts
-import os, h5py, pprint
+import os
+import pprint
 import shutil
 from fractions import Fraction
+
+import h5py
+import numpy as np
+import pytest
+import scipy.stats as sps
+import openmc
 
 
 def test_xml_roundtrip(run_in_tmpdir):
@@ -120,101 +123,147 @@ def test_figure_of_merit(sphere_model, run_in_tmpdir):
     assert tally.figure_of_merit == pytest.approx(1 / (rel_err**2 * time))
 
 
-def test_tally_normality_functions():
-    values = np.arange(1, 15, dtype=float)
-    n = values.size
-    mean = np.array([values.mean()])
-    sum_sq = np.array([np.sum(values**2)])
-    sum_third = np.array([np.sum(values**3)])
-    sum_fourth = np.array([np.sum(values**4)])
+def _tally_from_data(x, *, vov_enabled=True, normality=True):
+    t = openmc.Tally()
+    t.scores = ["flux"]  # 1 score
+    t.nuclides = [openmc.Nuclide("H1")]  # 1 nuclide
+    t._sp_filename = "dummy.h5"  # mark "results available"
+    t._results_read = True  # don't try to read from disk
+    t._num_realizations = int(len(x))  # n
+    t.vov_enabled = bool(vov_enabled)
+    t.normality_tests = bool(normality)
 
-    sqrt_b1, b2 = ts._calc_b1_b2(n, mean, sum_sq, sum_third, sum_fourth)
-    assert sqrt_b1.shape == mean.shape
-    assert b2.shape == mean.shape
-
-    Zb1, p_skew, _ = ts.skewness_test(n, mean, sum_sq, sum_third, sum_fourth)
-    assert Zb1.shape == mean.shape
-    assert p_skew.shape == mean.shape
-    assert np.all((0.0 <= p_skew) & (p_skew <= 1.0))
-
-    Zb2, p_kurt, _ = ts.kurtosis_test(n, mean, sum_sq, sum_third, sum_fourth)
-    assert Zb2.shape == mean.shape
-    assert p_kurt.shape == mean.shape
-    assert np.all((0.0 <= p_kurt) & (p_kurt <= 1.0))
-
-    K2, p_omni = ts.k2_test(Zb1, Zb2)
-    assert K2.shape == mean.shape
-    assert p_omni.shape == mean.shape
-    assert np.all((0.0 <= p_omni) & (p_omni <= 1.0))
+    x = np.asarray(x, dtype=float)
+    # (num_filter_bins=1, num_nuclides=1, num_scores=1) -> (1,1,1) arrays
+    t._sum = np.array([[[np.sum(x)]]], dtype=float)
+    t._sum_sq = np.array([[[np.sum(x**2)]]], dtype=float)
+    if vov_enabled:
+        t._sum_third = np.array([[[np.sum(x**3)]]], dtype=float)
+        t._sum_fourth = np.array([[[np.sum(x**4)]]], dtype=float)
+    return t
 
 
 @pytest.mark.parametrize(
-    "x, expected",
+    "x, skew_true, kurt_true",
     [
-        ([-1, 1], Fraction(0, 1)),
-        ([-1, 0, 1], Fraction(1, 6)),
-        ([0, 1, 2], Fraction(1, 6)),
-        ([0, 1, 2, 3], Fraction(4, 25)),
-        ([0, 1, 2, 3, 4], Fraction(7, 50)),
-        ([0, 0, 1, 1], Fraction(0, 1)),
+        # Rademacher ±1 with p=0.5 → g1 = 0, b2 = 1
+        (np.array([1.0, -1.0] * 200), 0.0, 1.0),
+        # Two-point {0,3} with p(0)=3/4, p(3)=1/4
+        (
+            np.concatenate([np.zeros(600), np.full(200, 3.0)]),
+            2.0 / np.sqrt(3.0),
+            7.0 / 3.0,
+        ),
+        # Bernoulli(p=0.3): g1 = (1-2p)/sqrt(p(1-p)), b2 = (1 - 3p + 3p^2)/(p(1-p))
+        (
+            np.concatenate([np.ones(300), np.zeros(700)]),
+            (1 - 2 * 0.3) / np.sqrt(0.3 * 0.7),
+            (1 - 3 * 0.3 + 3 * 0.3**2) / (0.3 * 0.7),
+        ),
     ],
 )
-def test_vov_deterministic(x, expected, run_in_tmpdir):
-    x = np.asarray(x, dtype=float)
-    N = x.size
-    S1 = x.sum()
-    S2 = (x**2).sum()
-    S3 = (x**3).sum()
-    S4 = (x**4).sum()
+def test_b1_b2_analytical_against_tally(x, skew_true, kurt_true):
+    t = _tally_from_data(x, vov_enabled=True, normality=False)
 
-    t = openmc.Tally()
-    t._sp_filename = run_in_tmpdir / "dummy.sp"  # allow property access
-    t.num_realizations = N
-    t.sum = S1
-    t.sum_sq = S2
-    t.sum_third = S3
-    t.sum_fourth = S4
+    g1 = t.skewness["Unadjusted skewness"][0, 0, 0]
+    b2 = t.kurtosis["Kurtosis b2"][0, 0, 0]
 
-    vov = t.vov[0]
-    assert np.isclose(vov, float(expected), rtol=0, atol=1e-15)
+    assert np.isclose(g1, skew_true, rtol=0, atol=1e-12)
+    assert np.isclose(b2, kurt_true, rtol=0, atol=1e-12)
 
 
-def test_tally_normality_stats(sphere_model, run_in_tmpdir):
+@pytest.mark.parametrize(
+    "draw, skew_true, kurt_true",
+    [
+        (lambda rng, n: rng.normal(0, 1, n), 0.0, 3.0),  # Normal
+        (lambda rng, n: rng.random(n), 0.0, 1.8),  # Uniform(0,1)
+        (lambda rng, n: rng.exponential(1.0, n), 2.0, 9.0),  # Exp(1)
+        (
+            lambda rng, n: (rng.random(n) < 0.3).astype(float),
+            (1 - 2 * 0.3) / np.sqrt(0.3 * 0.7),
+            (1 - 3 * 0.3 + 3 * 0.3**2) / (0.3 * 0.7),
+        ),  # Bernoulli(0.3)
+    ],
+)
+def test_b1_b2_scipy_and_theory(draw, skew_true, kurt_true):
+    rng = np.random.default_rng(12345)
+    N = 200_000
+    x = draw(rng, N)
 
-    tally = openmc.Tally()
-    tally.scores = ["flux"]
-    tally.vov_enabled = True
-    tally.normality_tests = True
-    sphere_model.tallies = [tally]
+    # Tally outputs
+    t = _tally_from_data(x, vov_enabled=True, normality=False)
+    g1_t = t.skewness["Unadjusted skewness"][0, 0, 0]
+    b2_t = t.kurtosis["Kurtosis b2"][0, 0, 0]
 
-    sphere_model.settings.particles = 500
-    sphere_model.settings.batches = 30
-    sphere_model.settings.run_mode = "fixed source"
+    # SciPy (population, bias=True to match population-moment style)
+    skew_sp = sps.skew(x, bias=True)
+    kurt_sp = sps.kurtosis(x, fisher=False, bias=True)
 
-    sp_file = sphere_model.run(apply_tally_results=True)
+    # Compare to SciPy numerically
+    assert np.isclose(g1_t, skew_sp, rtol=0, atol=5e-3)
+    assert np.isclose(b2_t, kurt_sp, rtol=0, atol=5e-3)
 
-    n = tally.num_realizations
-    mu = tally.mean
-    s2 = tally.sum_sq
-    s3 = tally.sum_third
-    s4 = tally.sum_fourth
+    # Compare to analytical targets with size-dependent tolerances
+    tol_skew = 0.02 if abs(skew_true) < 0.5 else 0.05
+    tol_kurt = 0.03 if kurt_true < 4 else 0.1
+    assert abs(g1_t - skew_true) < tol_skew
+    assert abs(b2_t - kurt_true) < tol_kurt
 
-    assert n >= 20
-    assert mu is not None
 
-    Zg1, p_skew, _ = ts.skewness_test(n, mu, s2, s3, s4)
-    Zg2, p_kurt, _ = ts.kurtosis_test(n, mu, s2, s3, s4)
-    K2, p_omni = ts.k2_test(Zg1, Zg2)
+def test_ztests_scipy_comparison():
+    rng = np.random.default_rng(987)
+    x_norm = rng.normal(size=50_000)
+    x_exp = rng.exponential(size=50_000)
 
-    for arr in (Zg1, Zg2, K2, p_skew, p_kurt, p_omni):
-        assert arr.shape == mu.shape
+    # -------- Normal dataset (should not reject) --------
+    t0 = _tally_from_data(x_norm, vov_enabled=True, normality=True)
+    stats0 = t0.normality_test(alternative="two-sided")
 
-    for p in (p_skew, p_kurt, p_omni):
-        assert ((0.0 <= p) & (p <= 1.0)).all()
+    Zb1_0 = stats0["Zb1"][0, 0, 0]
+    p_skew_0 = stats0["p_skew"][0, 0, 0]
+    Zb2_0 = stats0["Zb2"][0, 0, 0]
+    p_kurt_0 = stats0["p_kurt"][0, 0, 0]
+    K2_0 = stats0["K2"][0, 0, 0]
+    p_omni_0 = stats0["p_K2"][0, 0, 0]
+
+    z_skew_sp0, p_skew_sp0 = sps.skewtest(x_norm)
+    z_kurt_sp0, p_kurt_sp0 = sps.kurtosistest(x_norm)
+    k2_sp0, p_omni_sp0 = sps.normaltest(x_norm)
+
+    assert np.isclose(Zb1_0, z_skew_sp0, atol=0.15)
+    assert np.isclose(Zb2_0, z_kurt_sp0, atol=0.15)
+    assert np.isclose(K2_0, k2_sp0, atol=0.30)
+    assert np.isclose(p_skew_0, p_skew_sp0, atol=5e-3)
+    assert np.isclose(p_kurt_0, p_kurt_sp0, atol=5e-3)
+    assert np.isclose(p_omni_0, p_omni_sp0, atol=5e-3)
+
+    # -------- Exponential dataset (should strongly reject) --------
+    t1 = _tally_from_data(x_exp, vov_enabled=True, normality=True)
+    stats1 = t1.normality_test(alternative="two-sided")
+
+    Zb1_1 = stats1["Zb1"][0, 0, 0]
+    p_skew_1 = stats1["p_skew"][0, 0, 0]
+    Zb2_1 = stats1["Zb2"][0, 0, 0]
+    p_kurt_1 = stats1["p_kurt"][0, 0, 0]
+    K2_1 = stats1["K2"][0, 0, 0]
+    p_omni_1 = stats1["p_K2"][0, 0, 0]
+
+    z_skew_sp1, p_skew_sp1 = sps.skewtest(x_exp)
+    z_kurt_sp1, p_kurt_sp1 = sps.kurtosistest(x_exp)
+    k2_sp1, p_omni_sp1 = sps.normaltest(x_exp)
+
+    # Both pipelines should reject very strongly
+    assert p_skew_1 < 1e-6 and p_skew_sp1 < 1e-6
+    assert p_kurt_1 < 1e-6 and p_kurt_sp1 < 1e-6
+    assert p_omni_1 < 1e-6 and p_omni_sp1 < 1e-6
+
+    # Right-skewed and heavy-tailed → large positive Z-statistics
+    assert Zb1_1 > 30 and z_skew_sp1 > 30
+    assert Zb2_1 > 30 and z_kurt_sp1 > 30
+    assert K2_1 > 2000 and k2_sp1 > 2000
 
 
 def test_vov_stochastic(sphere_model, run_in_tmpdir):
-    # Create a tally with all the gizmos
     tally = openmc.Tally(name="test tally")
     ef = openmc.EnergyFilter([0.0, 0.1, 1.0, 10.0e6])
     mesh = openmc.RegularMesh.from_domain(sphere_model.geometry, (2, 2, 2))

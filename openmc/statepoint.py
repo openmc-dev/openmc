@@ -1,12 +1,12 @@
-from datetime import datetime
 import glob
-import re
 import os
+import re
 import warnings
+from datetime import datetime
+from pathlib import Path
 
 import h5py
 import numpy as np
-from pathlib import Path
 from uncertainties import ufloat
 
 import openmc
@@ -247,7 +247,12 @@ class StatePoint:
                     ("std_dev", "f8"),
                 ],
             )
-            gt["name"] = ["k-collision", "k-absorption", "k-tracklength", "leakage"]
+            gt["name"] = [
+                "k-collision",
+                "k-absorption",
+                "k-tracklength",
+                "leakage",
+            ]
             gt["sum"] = data[:, 1]
             gt["sum_sq"] = data[:, 2]
 
@@ -439,7 +444,7 @@ class StatePoint:
 
                     # Check if tally has vov attribute
                     if "vov_enabled" in group.attrs:
-                        tally.vov_enabled = group.attrs["vov_enabled"].item()
+                        tally.vov_enabled = bool(group.attrs["vov_enabled"][()])
 
                     # Read the number of realizations
                     n_realizations = group["n_realizations"][()]

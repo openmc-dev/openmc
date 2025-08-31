@@ -1,25 +1,27 @@
 from __future__ import annotations
-from collections.abc import Iterable, MutableSequence
+
 import copy
+import operator
+from collections.abc import Iterable, MutableSequence
 from functools import partial, reduce, wraps
 from itertools import product
+from math import erf, log, sqrt
 from numbers import Integral, Real
-import operator
 from pathlib import Path
-import lxml.etree as ET
 
 import h5py
+import lxml.etree as ET
 import numpy as np
 import pandas as pd
 import scipy.sparse as sps
-
+from scipy.stats import chi2, norm
 
 import openmc
 import openmc.checkvalue as cv
+
 from ._xml import clean_indentation, get_elem_list, get_text
-from .mixin import IDManagerMixin
 from .mesh import MeshBase
-from . import tally_stats
+from .mixin import IDManagerMixin
 
 # The tally arithmetic product types. The tensor product performs the full
 # cross product of the data in two tallies with respect to a specified axis
@@ -103,14 +105,17 @@ class Tally(IDManagerMixin):
     std_dev : numpy.ndarray
         An array containing the sample standard deviation for each bin
     vov : numpy.ndarray
-        An array containing the variance of the variance for each bin
+        An array containing the variance of the variance for each tally bin
+    skewness : numpy.ndarray
+        An array containing the skewness for each tally bin
+    kurtosis : numpy.ndarray
+        An array containing the kurtosis for each tally bin
+    normality_tests = numpy.ndarray
+        Compute normality tests for each tally bin
     vov_enabled : bool
         Whether or not the tally accumulates the sums third and fourth to compute the variance of the variance
-    normality_tests = None
-        Whether normality tests will be performed on the tally results
     figure_of_merit : numpy.ndarray
         An array containing the figure of merit for each bin
-
         .. versionadded:: 0.15.3
     derived : bool
         Whether or not the tally is derived from one or more other tallies
@@ -147,8 +152,10 @@ class Tally(IDManagerMixin):
         self._mean = None
         self._std_dev = None
         self._vov = None
-        self._vov_enabled = None
-        self._normality_tests = None
+        self._skewness = None
+        self._kurtosis = None
+        self._vov_enabled = False
+        self._normality_tests = False
         self._sig_level = 0.05
         self._simulation_time = None
         self._with_batch_statistics = False
@@ -261,7 +268,7 @@ class Tally(IDManagerMixin):
 
     @normality_tests.setter
     def normality_tests(self, value):
-        cv.check_type("normality tests", value, bool)
+        cv.check_type("normality_tests", value, bool)
         self._normality_tests = value
 
     @property
@@ -429,7 +436,9 @@ class Tally(IDManagerMixin):
             # Update nuclides
             nuclide_names = group["nuclides"][()]
             self._nuclides = [name.decode().strip() for name in nuclide_names]
-            self._vov_enabled = "vov_enabled" in group.attrs
+            print(self._vov_enabled)
+            self._vov_enabled = bool(group.attrs["vov_enabled"][()])
+            print(self._vov_enabled)
 
             # Extract Tally data from the file
             data = group["results"]
@@ -444,7 +453,8 @@ class Tally(IDManagerMixin):
             self._sum = sum_
             self._sum_sq = sum_sq
 
-            if self.vov_enabled:
+            print(self._vov_enabled)
+            if self._vov_enabled:
                 sum_third = data[:, :, 2]
                 sum_fourth = data[:, :, 3]
                 sum_third = np.reshape(sum_third, self.shape)
@@ -606,28 +616,251 @@ class Tally(IDManagerMixin):
 
             if self.sparse:
                 self._vov = sps.lil_matrix(self._vov.flatten(), self._vov.shape)
-            else:
-                return self._vov
+
+        if self.sparse:
+            return np.reshape(self._vov.toarray(), self.shape)
+        else:
+            return self._vov
+
+    def m2(self):
+        if not self._vov_enabled:
+            return None
+        n = self.num_realizations
+
+        return self.sum_sq / n - self.mean**2
+
+    def m3(self):
+        if not self._vov_enabled:
+            return None
+        n = self.num_realizations
+        mean = self.mean
+        sum2 = self.sum_sq / n
+        sum3 = self.sum_third / n
+
+        return sum3 - 3.0 * mean * sum2 + 2.0 * mean**3
+
+    def m4(self):
+        if not self._vov_enabled:
+            return None
+        n = self.num_realizations
+        mean = self.mean
+        sum2 = self.sum_sq / n
+        sum3 = self.sum_third / n
+        sum4 = self.sum_fourth / n
+
+        return sum4 - 4.0 * mean * sum3 + 6.0 * (mean**2) * sum2 - 3.0 * mean**4
 
     @property
-    def normality_test(self):
+    def skewness(self):
+        if not self._vov_enabled:
+            return None
+        n = self.num_realizations
+        m2 = self.m2()
+        m3 = self.m3()
+
+        with np.errstate(divide="ignore", invalid="ignore"):
+            g1 = np.where(m2 > 0.0, m3 / (m2**1.5), 0.0)
+
+        G1 = np.where(n > 2, np.sqrt(n * (n - 1)) / (n - 2) * g1, 0.0)
+        return {"Unadjusted skewness": g1, "Fisher-Pearson": G1}
+
+    @property
+    def kurtosis(self):
+        if not self._vov_enabled:
+            return None
+        n = self.num_realizations
+        m2 = self.m2()
+        m4 = self.m4()
+
+        with np.errstate(divide="ignore", invalid="ignore"):
+            b2 = np.where(m2 > 0.0, m4 / (m2**2), 0.0)
+
+        g2 = b2 - 3.0
+        G2 = np.where(
+            n > 3, ((n - 1) / ((n - 2) * (n - 3))) * ((n + 1) * g2 + 6.0), 0.0
+        )
+
+        return {
+            "Kurtosis b2": b2,
+            "Excess kurtosis g2": g2,
+            "Adjusted excess kurtosis G2": G2,
+        }
+
+    def normality_test(self, alternative: str = "two-sided"):
+        if not self._vov_enabled:
+            return None
+        if not self._normality_tests:
+            return None
         if not self._sp_filename:
             return None
+        if self._vov_enabled and self._normality_tests:
+            n = self.num_realizations
+            if n < 8:
+                raise ValueError("Skewness test is not well-defined for n < 8.")
+            elif n < 20:
+                raise ValueError("Kurtosis test is typically recommended for n >= 20.")
+            else:
+                g1 = self.skewness["Unadjusted skewness"]
+                b2 = self.kurtosis["Kurtosis b2"]
 
-        n = self.num_realizations
-        if n < 8:
-            raise ValueError("Skewness test is not well-defined for n < 8.")
-        elif n < 20:
-            raise ValueError("Kurtosis test is typically recommended for n >= 20.")
+                # --- Z1 (skewness) ---
+                y = g1 * np.sqrt(((n + 1.0) * (n + 3.0)) / (6.0 * (n - 2.0)))
+                beta2 = (3.0 * (n**2 + 27.0 * n - 70.0) * (n + 1.0) * (n + 3.0)) / (
+                    (n - 2.0) * (n + 5.0) * (n + 7.0) * (n + 9.0)
+                )
+                W2 = -1.0 + np.sqrt(2.0 * (beta2 - 1.0))
+                delta = 1.0 / np.sqrt(np.log(np.sqrt(W2)))
+                alpha = np.sqrt(2.0 / (W2 - 1.0))
+                # asinh(y/alpha) via log (stable, preserves sign)
+                Zb1 = np.where(
+                    y >= 0.0,
+                    delta * np.log((y / alpha) + np.sqrt((y / alpha) ** 2 + 1.0)),
+                    -delta * np.log((-y / alpha) + np.sqrt((y / alpha) ** 2 + 1.0)),
+                )
+
+                # --- Z2 (kurtosis) ---
+                mean_b2 = 3.0 * (n - 1.0) / (n + 1.0)
+                var_b2 = (
+                    24.0
+                    * n
+                    * (n - 2.0)
+                    * (n - 3.0)
+                    / ((n + 1.0) ** 2 * (n + 3.0) * (n + 5.0))
+                )
+                x = (b2 - mean_b2) / np.sqrt(var_b2)
+                moment = (
+                    (6.0 * (n**2 - 5.0 * n + 2.0)) / ((n + 7.0) * (n + 9.0))
+                ) * np.sqrt((6.0 * (n + 3.0) * (n + 5.0)) / (n * (n - 2.0) * (n - 3.0)))
+                A = 6.0 + (8.0 / moment) * (
+                    (2.0 / moment) + np.sqrt(1.0 + 4.0 / (moment**2))
+                )
+                Zb2 = (
+                    1.0
+                    - 2.0 / (9.0 * A)
+                    - ((1.0 - 2.0 / A) / (1.0 + x * np.sqrt(2.0 / (A - 4.0))))
+                    ** (1.0 / 3.0)
+                ) / np.sqrt(2.0 / (9.0 * A))
+
+                # --- p-values ---
+                if alternative == "two-sided":
+                    p_skew = 2.0 * (1.0 - norm.cdf(np.abs(Zb1)))
+                    p_kurt = 2.0 * (1.0 - norm.cdf(np.abs(Zb2)))
+                elif alternative == "greater":
+                    p_skew = 1.0 - norm.cdf(Zb1)
+                    p_kurt = 1.0 - norm.cdf(Zb2)
+                elif alternative == "less":
+                    p_skew = norm.cdf(Zb1)
+                    p_kurt = norm.cdf(Zb2)
+                else:
+                    raise ValueError(
+                        "alternative must be 'two-sided', 'greater', or 'less'"
+                    )
+
+                # --- Omnibus Test ---
+                K2 = Zb1**2 + Zb2**2
+
+                try:
+                    p_K2 = chi2.sf(K2, 2)
+                except Exception:
+                    p_K2 = None
+
+                return {
+                    "Zb1": Zb1,
+                    "p_skew": p_skew,
+                    "Zb2": Zb2,
+                    "p_kurt": p_kurt,
+                    "K2": K2,
+                    "p_K2": p_K2,
+                    "n": n,
+                    "g1": g1,
+                    "b2": b2,
+                }
+
+    def print_normality_report(
+        self,
+        sig_level: float = 0.05,
+        alternative: str = "two-sided",
+        bin_index=None,
+    ):
+
+        stats = self.normality_test(alternative=alternative)
+        if stats is None:
+            print("Normality tests not available (disabled or missing data).")
+            return
+
+        # Helper to select a single bin from possibly-scalar/array stats
+        def _sel(x, idx):
+            try:
+                arr = np.asarray(x)
+            except Exception:
+                return x
+            if arr.ndim == 0 or idx is None:
+                return x
+            return arr.flat[idx]
+
+        # Determine which bins to print
+        g1 = np.atleast_1d(stats["g1"])
+        n_bins = g1.size
+        if bin_index is None:
+            indices = range(n_bins)
+        elif isinstance(bin_index, (list, tuple, np.ndarray)):
+            indices = bin_index
         else:
-            tally_stats.print_normality_tests_summary(
-                n,
-                self.mean,
-                self.sum_sq,
-                self.sum_third,
-                self.sum_fourth,
-                self._sig_level,
-            )
+            indices = [int(bin_index)]
+
+        for i in indices:
+            if i < 0 or i >= n_bins:
+                print(f"[skip] bin {i} is out of range 0..{n_bins-1}")
+                continue
+
+            n = _sel(stats["n"], i)
+            g1_i = _sel(stats["g1"], i)
+            b2_i = _sel(stats["b2"], i)
+            Zb1_i = _sel(stats["Zb1"], i)
+            Zb2_i = _sel(stats["Zb2"], i)
+            K2_i = _sel(stats["K2"], i)
+            p_s_i = _sel(stats["p_skew"], i)
+            p_k_i = _sel(stats["p_kurt"], i)
+            p_o_i = _sel(stats["p_K2"], i)
+
+            print(f"\n===== Normality Report (bin {i}) =====")
+
+            # Skewness
+            print("\nSkewness Test Result:")
+            print(f"Raw skewness: {g1_i}")
+            print(f"Z statistic: {Zb1_i}, p-value: {p_s_i}")
+            if p_s_i is not None and p_s_i < sig_level:
+                if g1_i > 0:
+                    print("Data is right-skewed")
+                elif g1_i < 0:
+                    print("Data is left-skewed")
+                else:
+                    print("Data is symmetric.")
+            else:
+                print("Data is symmetric.")
+
+            # Kurtosis
+            print("\nKurtosis Test Result:")
+            print(f"Kurtosis: {b2_i}")
+            print(f"Z statistic: {Zb2_i}, p-value: {p_k_i}")
+            normal_b2 = 3.0 * (n - 1.0) / (n + 1.0)
+            if p_k_i is not None and p_k_i < sig_level:
+                if b2_i > normal_b2:
+                    print("Distribution is leptokurtic")
+                elif b2_i < normal_b2:
+                    print("Distribution is platykurtic")
+                else:
+                    print("Distribution has normal kurtosis.")
+            else:
+                print("Distribution has normal kurtosis.")
+
+            # Omnibus
+            print("\nOmnibus Test Result:")
+            print(f"K2 statistic: {K2_i}, p-value: {p_o_i}")
+            if p_o_i is not None and p_o_i < sig_level:
+                print("Data is not normally distributed.")
+            else:
+                print("Data is normally distributed.")
 
     @property
     def figure_of_merit(self):
@@ -926,7 +1159,11 @@ class Tally(IDManagerMixin):
         can_merge_filters = self._can_merge_filters(other)
         can_merge_nuclides = self._can_merge_nuclides(other)
         can_merge_scores = self._can_merge_scores(other)
-        mergeability = [can_merge_filters, can_merge_nuclides, can_merge_scores]
+        mergeability = [
+            can_merge_filters,
+            can_merge_nuclides,
+            can_merge_scores,
+        ]
 
         if not all(mergeability):
             return False

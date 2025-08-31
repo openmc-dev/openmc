@@ -122,9 +122,6 @@ double AngleDistribution::get_pdf(double E, double mu, uint64_t* seed) const
   // Sample i-th distribution
   double pdf = distribution_[i]->get_pdf(mu);
 
-  // Make sure pdf > 0 and return
-  if (std::abs(pdf) < 0)
-    fmt::print("pdf = {} <1", pdf);
   return pdf;
 }
 

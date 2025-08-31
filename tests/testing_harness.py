@@ -133,14 +133,11 @@ class TestHarness:
         if not compare:
             expected = open('results_true.dat').readlines()
             actual = open('results_test.dat').readlines()
-            diff = list(unified_diff(expected, actual, 'results_true.dat',
-                                'results_test.dat'))
-            if diff:
-                print('Result differences:')
-                print(''.join(colorize(diff)))
-                os.rename('results_test.dat', 'results_error.dat')
-            else:
-                compare = True
+            diff = unified_diff(expected, actual, 'results_true.dat',
+                                'results_test.dat')
+            print('Result differences:')
+            print(''.join(colorize(diff)))
+            os.rename('results_test.dat', 'results_error.dat')
         assert compare, 'Results do not agree'
 
     def _cleanup(self):
@@ -363,14 +360,11 @@ class PyAPITestHarness(TestHarness):
         if not compare:
             expected = open(self.inputs_true, 'r').readlines()
             actual = open('inputs_test.dat', 'r').readlines()
-            diff = list(unified_diff(expected, actual, self.inputs_true,
-                                'inputs_test.dat'))
-            if diff:
-                print('Input differences:')
-                print(''.join(colorize(diff)))
-                os.rename('inputs_test.dat', 'inputs_error.dat')
-            else:
-                compare = True
+            diff = unified_diff(expected, actual, self.inputs_true,
+                                'inputs_test.dat')
+            print('Input differences:')
+            print(''.join(colorize(diff)))
+            os.rename('inputs_test.dat', 'inputs_error.dat')
         assert compare, 'Input files are broken.'
 
     def _cleanup(self):

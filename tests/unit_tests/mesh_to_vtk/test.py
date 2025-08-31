@@ -82,8 +82,7 @@ def test_mesh_write_vtk(mesh_params, run_in_tmpdir):
         assert filecmp.cmp(test_data, filename)
     except AssertionError as e:
         diff = diff_file(test_data, filename)
-        if diff:
-            raise AssertionError(diff) from e
+        raise AssertionError(diff) from e
 
 # check data writing
 def test_mesh_write_vtk_data(run_in_tmpdir):
@@ -98,8 +97,7 @@ def test_mesh_write_vtk_data(run_in_tmpdir):
         assert filecmp.cmp(filename, filename_expected)
     except AssertionError as e:
         diff = diff_file(filename_expected, filename)
-        if diff:
-            raise AssertionError(diff) from e
+        raise AssertionError(diff) from e
 
 
 

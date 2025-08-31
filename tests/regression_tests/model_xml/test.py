@@ -38,14 +38,11 @@ class ModelXMLTestHarness(PyAPITestHarness):
         if not compare:
             expected = open(self.results_true).readlines()
             actual = open('results_test.dat').readlines()
-            diff = list(unified_diff(expected, actual, self.results_true,
-                                'results_test.dat'))
-            if diff:
-                print('Result differences:')
-                print(''.join(colorize(diff)))
-                os.rename('results_test.dat', 'results_error.dat')
-            else:
-                compare = True
+            diff = unified_diff(expected, actual, self.results_true,
+                                'results_test.dat')
+            print('Result differences:')
+            print(''.join(colorize(diff)))
+            os.rename('results_test.dat', 'results_error.dat')
         assert compare, 'Results do not agree'
 
     def _cleanup(self):

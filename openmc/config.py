@@ -178,7 +178,7 @@ class _Config(MutableMapping):
                 self[key] = previous_value
 
 
-def _default_config() -> _Config:
+def _default_config(**kwargs) -> _Config:
     """Create a configuration initialized from environment variables.
 
     This function checks for OPENMC_CROSS_SECTIONS, OPENMC_MG_CROSS_SECTIONS,
@@ -192,11 +192,11 @@ def _default_config() -> _Config:
         A new configuration object.
 
     """
-    config = _Config()
+    config = _Config(kwargs)
     for key,var in _Config._PATH_KEYS.items():
         if var in os.environ:
             config[key] = os.environ[var]
-    
+
     chain_file = config.get("chain_file")
     xs_path = config.get("cross_sections")
     if chain_file is None and xs_path is not None and xs_path.exists():

@@ -316,47 +316,15 @@ void ThermalData::sample(const NuclideMicroXS& micro_xs, double E,
 double ThermalData::get_pdf(const NuclideMicroXS& micro_xs, double E,
   double& E_out, double mu, uint64_t* seed)
 {
-  double pdf = -1;
   AngleEnergy* angleEnergyPtr;
-  // Determine whether inelastic or elastic scattering occured
+
   if (prn(seed) < micro_xs.thermal_elastic / micro_xs.thermal) {
-    // elastic_.distribution->get_pdf(E, *E_out, *mu, seed);
     angleEnergyPtr = elastic_.distribution.get();
   } else {
-    // inelastic_.distribution->get_pdf(E, *E_out, *mu, seed);
     angleEnergyPtr = inelastic_.distribution.get();
   }
 
-  if (CoherentElasticAE* coherentElasticAE =
-        dynamic_cast<CoherentElasticAE*>(angleEnergyPtr)) {
-    pdf = (*coherentElasticAE).get_pdf(E, E_out, mu, seed);
-
-    bool creat_pdf_file = false;
-
-    // Handle CoherentElasticAE
-  } else if (IncoherentElasticAE* incoherentElasticAE =
-               dynamic_cast<IncoherentElasticAE*>(angleEnergyPtr)) {
-    // Handle IncoherentElasticAE
-  } else if (IncoherentElasticAEDiscrete* incoherentElasticAEDiscrete =
-               dynamic_cast<IncoherentElasticAEDiscrete*>(angleEnergyPtr)) {
-    // Handle IncoherentElasticAEDiscrete
-  } else if (IncoherentInelasticAEDiscrete* incoherentInelasticAEDiscrete =
-               dynamic_cast<IncoherentInelasticAEDiscrete*>(angleEnergyPtr)) {
-    pdf = (*incoherentInelasticAEDiscrete).get_pdf(E, E_out, mu, seed, -1);
-    bool creat_pdf_file = false;
-    // Handle IncoherentInelasticAEDiscrete
-  } else if (IncoherentInelasticAE* incoherentInelasticAE =
-               dynamic_cast<IncoherentInelasticAE*>(angleEnergyPtr)) {
-
-    // Handle IncoherentInelasticAE
-  } else if (MixedElasticAE* mixedElasticAE =
-               dynamic_cast<MixedElasticAE*>(angleEnergyPtr)) {
-    // Handle MixedElasticAE
-  } else {
-    std::cout << "Unknown derived type." << std::endl;
-  }
-
-  return pdf;
+  return angleEnergyPtr->get_pdf(E, E_out, mu, seed);
 }
 
 void free_memory_thermal()

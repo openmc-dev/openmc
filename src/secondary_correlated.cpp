@@ -246,11 +246,10 @@ void CorrelatedAngleEnergy::sample(
           p_l_k) /
           frac;
     }
+  } else {
+    throw std::runtime_error {
+      "Unsupported interpolation type in CorrelatedAngleEnergy::get_pdf"};
   }
-  else {
-  throw std::runtime_error{
-    "Unsupported interpolation type in CorrelatedAngleEnergy::get_pdf"};
-}
 
   // Now interpolate between incident energy bins i and i + 1
   if (k >= n_discrete) {
@@ -362,11 +361,10 @@ void CorrelatedAngleEnergy::get_pdf(double det_pos[4], double E_in,
           p_l_k) /
           frac;
     }
+  } else {
+    throw std::runtime_error {
+      "Unsupported interpolation type in CorrelatedAngleEnergy::sample"};
   }
-  else {
-  throw std::runtime_error{
-    "Unsupported interpolation type in CorrelatedAngleEnergy::sample"};
-}
 
   // Now interpolate between incident energy bins i and i + 1
   if (k >= n_discrete) {
@@ -376,7 +374,6 @@ void CorrelatedAngleEnergy::get_pdf(double det_pos[4], double E_in,
       E_out = E_1 + (E_out - E_i1_1) * (E_K - E_1) / (E_i1_K - E_i1_1);
     }
   }
-
 }
 
 } // namespace openmc

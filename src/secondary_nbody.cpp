@@ -123,8 +123,6 @@ void NBodyPhaseSpace::get_pdf(double det_pos[4], double E_in, double& E_out,
      pdfs_lab.push_back(pdf_cm / std::abs(derivative));
    }
   */
-
-
 }
 
 } // namespace openmc

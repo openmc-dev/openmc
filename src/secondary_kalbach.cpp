@@ -357,23 +357,6 @@ void KalbachMann::get_pdf(double det_pos[4], double E_in, double& E_out,
       E_out = E_1 + (E_out - E_i1_1) * (E_K - E_1) / (E_i1_K - E_i1_1);
     }
   }
-  /* function to transform pdf CM to lab frame - Future implementation
-    get_pdf_to_point_elastic(det_pos, p, mu_cm, Js, ghost_particles, E_out /
-    1e6); for (std::size_t i = 0; i < mu_cm.size(); ++i) {
-      // Assuming Js.size() is the same as mu_cm.size()
-      double mu_c = mu_cm[i];
-      double derivative = Js[i];
-      double pdf_cm = km_a / (2 * std::sinh(km_a)) *
-                      (std::cosh(km_a * mu_c) +
-                        km_r * std::sinh(km_a * mu_c)); // center of mass
-      pdfs_lab.push_back(pdf_cm / std::abs(derivative));
-    }
-   */
-
-  // https://docs.openmc.org/en/v0.8.0/methods/physics.html#equation-KM-pdf-angle
-  // double pdf_mu = km_a / (2 * std::sinh(km_a)) * (std::cosh(km_a * mymu) +
-  // km_r * std::sinh(km_a * mymu)); // center of mass return pdf_mu;
-
 }
 
 } // namespace openmc

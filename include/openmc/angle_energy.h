@@ -1,7 +1,7 @@
 #ifndef OPENMC_ANGLE_ENERGY_H
 #define OPENMC_ANGLE_ENERGY_H
-
 #include <cstdint>
+#include <stdexcept>
 
 namespace openmc {
 
@@ -16,6 +16,10 @@ class AngleEnergy {
 public:
   virtual void sample(
     double E_in, double& E_out, double& mu, uint64_t* seed) const = 0;
+  virtual double get_pdf(double, double&, double, uint64_t*) const
+  {
+    throw std::runtime_error("get_pdf not available for this AngleEnergy type");
+  }
   virtual ~AngleEnergy() = default;
 };
 

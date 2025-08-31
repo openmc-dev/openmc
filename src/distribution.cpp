@@ -197,7 +197,17 @@ double PowerLaw::sample(uint64_t* seed) const
 }
 double PowerLaw::get_pdf(double x) const
 {
-  return x / span_ / ninv_;
+  // Recover the lower/upper bounds from offset_ and span_
+  double a = std::pow(offset_, ninv_);         // since offset_ = a^(n+1)
+  double b = std::pow(offset_ + span_, ninv_); // since offset_+span_ = b^(n+1)
+
+  if (x < a || x > b) {
+    return 0.0; // outside support
+  }
+
+  double n = 1.0 / ninv_ - 1.0; // since ninv_ = 1/(n+1)
+
+  return (n + 1.0) * std::pow(x, n) / (std::pow(b, n + 1) - std::pow(a, n + 1));
 }
 
 //==============================================================================

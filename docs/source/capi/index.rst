@@ -84,14 +84,14 @@ Functions
    :return: Return status (negative if an error occurred)
    :rtype: int
 
-.. c:function:: int openmc_cell_get_density_mult(int32_t index, const int32_t* instance, double* rho)
+.. c:function:: int openmc_cell_get_density(int32_t index, const int32_t* instance, double* rho)
 
-   Get the unitless density multiplier of a cell
+   Get the density of a cell
 
    :param int32_t index: Index in the cells array
    :param int32_t* instance: Which instance of the cell. If a null pointer is passed, the density
                              multiplier of the first instance is returned.
-   :param double* rho: temperature of the cell
+   :param double* rho: density of the cell in g/cc
    :return: Return status (negative if an error occurred)
    :rtype: int
 
@@ -130,12 +130,12 @@ Functions
    :return: Return status (negative if an error occurred)
    :rtype: int
 
-.. c:function:: int openmc_cell_set_density_mult(index index, double rho, const int32_t* instance, bool set_contained)
+.. c:function:: int openmc_cell_set_density(index index, double rho, const int32_t* instance, bool set_contained)
 
-   Set the unitless density multiplier of a cell.
+   Set the density of a cell.
 
    :param int32_t index: Index in the cells array
-   :param double rho: Unitless density multiplier
+   :param double rho: Density of the cell in g/cc
    :param instance: Which instance of the cell. To set the density multiplier for all
                     instances, pass a null pointer.
    :param set_contained: If the cell is not filled by a material, whether to set the density multiplier

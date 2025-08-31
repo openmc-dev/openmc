@@ -34,10 +34,10 @@ _dll.openmc_cell_get_temperature.argtypes = [
     c_int32, POINTER(c_int32), POINTER(c_double)]
 _dll.openmc_cell_get_temperature.restype = c_int
 _dll.openmc_cell_get_temperature.errcheck = _error_handler
-_dll.openmc_cell_get_density_mult.argtypes = [
+_dll.openmc_cell_get_density.argtypes = [
     c_int32, POINTER(c_int32), POINTER(c_double)]
-_dll.openmc_cell_get_density_mult.restype = c_int
-_dll.openmc_cell_get_density_mult.errcheck = _error_handler
+_dll.openmc_cell_get_density.restype = c_int
+_dll.openmc_cell_get_density.errcheck = _error_handler
 _dll.openmc_cell_get_name.argtypes = [c_int32, POINTER(c_char_p)]
 _dll.openmc_cell_get_name.restype = c_int
 _dll.openmc_cell_get_name.errcheck = _error_handler
@@ -62,10 +62,10 @@ _dll.openmc_cell_set_temperature.argtypes = [
     c_int32, c_double, POINTER(c_int32), c_bool]
 _dll.openmc_cell_set_temperature.restype = c_int
 _dll.openmc_cell_set_temperature.errcheck = _error_handler
-_dll.openmc_cell_set_density_mult.argtypes = [
+_dll.openmc_cell_set_density.argtypes = [
     c_int32, c_double, POINTER(c_int32), c_bool]
-_dll.openmc_cell_set_density_mult.restype = c_int
-_dll.openmc_cell_set_density_mult.errcheck = _error_handler
+_dll.openmc_cell_set_density.restype = c_int
+_dll.openmc_cell_set_density.errcheck = _error_handler
 _dll.openmc_cell_set_translation.argtypes = [c_int32, POINTER(c_double)]
 _dll.openmc_cell_set_translation.restype = c_int
 _dll.openmc_cell_set_translation.errcheck = _error_handler
@@ -244,8 +244,8 @@ class Cell(_FortranObjectWithID):
 
         _dll.openmc_cell_set_temperature(self._index, T, instance, set_contained)
 
-    def get_density_mult(self, instance=None):
-        """Get the density multiplier of a cell
+    def get_density(self, instance=None):
+        """Get the density of a cell (g/cc)
 
         Parameters
         ----------
@@ -258,28 +258,28 @@ class Cell(_FortranObjectWithID):
             instance = c_int32(instance)
 
         rho = c_double()
-        _dll.openmc_cell_get_density_mult(self._index, instance, rho)
+        _dll.openmc_cell_get_density(self._index, instance, rho)
         return rho.value
 
-    def set_density_mult(self, rho, instance=None, set_contained=False):
-        """Set the density multiplier of a cell
+    def set_density(self, rho, instance=None, set_contained=False):
+        """Set the density of a cell
 
         Parameters
         ----------
         rho : float
-            Unitless density multiplier
+            Density of the cell (g/cc)
         instance : int or None
             Which instance of the cell
         set_contained: bool
             If cell is not filled by a material, whether to set the density
-            multiplier of all filled cells
+            of all filled cells
 
         """
 
         if instance is not None:
             instance = c_int32(instance)
 
-        _dll.openmc_cell_set_density_mult(self._index, rho, instance, set_contained)
+        _dll.openmc_cell_set_density(self._index, rho, instance, set_contained)
 
     @property
     def translation(self):

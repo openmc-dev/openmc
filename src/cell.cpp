@@ -1192,7 +1192,7 @@ extern "C" int openmc_cell_set_temperature(
   return 0;
 }
 
-extern "C" int openmc_cell_set_density_mult(
+extern "C" int openmc_cell_set_density(
   int32_t index, double rho, const int32_t* instance, bool set_contained)
 {
   if (index < 0 || index >= model::cells.size()) {
@@ -1202,7 +1202,18 @@ extern "C" int openmc_cell_set_density_mult(
 
   int32_t instance_index = instance ? *instance : -1;
   try {
-    model::cells[index]->set_density_mult(rho, instance_index, set_contained);
+    if (model::cells[index]->type_ != Fill::MATERIAL) {
+      fatal_error(
+        fmt::format("Cell {}, instance {} is not filled with a material.",
+          model::cells[index]->id_, instance_index));
+    }
+
+    int32_t mat_index = model::cells[index]->material(instance_index);
+    if (mat_index != MATERIAL_VOID) {
+      model::cells[index]->set_density_mult(
+        rho / model::materials[mat_index]->density_gpcc(), instance_index,
+        set_contained);
+    }
   } catch (const std::exception& e) {
     set_errmsg(e.what());
     return OPENMC_E_UNASSIGNED;
@@ -1228,7 +1239,7 @@ extern "C" int openmc_cell_get_temperature(
   return 0;
 }
 
-extern "C" int openmc_cell_get_density_mult(
+extern "C" int openmc_cell_get_density(
   int32_t index, const int32_t* instance, double* rho)
 {
   if (index < 0 || index >= model::cells.size()) {
@@ -1238,7 +1249,19 @@ extern "C" int openmc_cell_get_density_mult(
 
   int32_t instance_index = instance ? *instance : -1;
   try {
-    *rho = model::cells[index]->density_mult(instance_index);
+    if (model::cells[index]->type_ != Fill::MATERIAL) {
+      fatal_error(
+        fmt::format("Cell {}, instance {} is not filled with a material.",
+          model::cells[index]->id_, instance_index));
+    }
+
+    int32_t mat_index = model::cells[index]->material(instance_index);
+    if (mat_index == MATERIAL_VOID) {
+      *rho = 0.0;
+    } else {
+      *rho = model::cells[index]->density_mult(instance_index) *
+             model::materials[mat_index]->density_gpcc();
+    }
   } catch (const std::exception& e) {
     set_errmsg(e.what());
     return OPENMC_E_UNASSIGNED;

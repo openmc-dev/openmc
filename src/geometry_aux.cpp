@@ -193,20 +193,6 @@ void assign_temperatures()
   }
 }
 
-void assign_density_mult()
-{
-  for (auto& c : model::cells) {
-    // Ignore non-material cells and cells with previously defined density
-    // multipliers.
-    if (c->type_ != Fill::MATERIAL)
-      continue;
-    if (c->rho_mult_.size() > 0)
-      continue;
-
-    c->rho_mult_.resize(c->material_.size(), 1.0);
-  }
-}
-
 //==============================================================================
 
 void get_temperatures(
@@ -270,9 +256,6 @@ void finalize_geometry()
 
   // Assign temperatures to cells that don't have temperatures already assigned
   assign_temperatures();
-
-  // Assign density multipliers to cells that don't have one already
-  assign_density_mult();
 
   // Determine number of nested coordinate levels in the geometry
   model::n_coord_levels = maximum_levels(model::root_universe);

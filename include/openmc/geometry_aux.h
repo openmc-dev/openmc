@@ -38,12 +38,6 @@ void adjust_indices();
 void assign_temperatures();
 
 //==============================================================================
-//! Assign default density multipliers (1) to cells with undefined multipliers.
-//==============================================================================
-
-void assign_density_mult();
-
-//==============================================================================
 //! \brief Obtain a list of temperatures that each nuclide/thermal scattering
 //! table appears at in the model. Later, this list is used to determine the
 //! actual temperatures to read (which may be different if interpolation is

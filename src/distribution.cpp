@@ -424,21 +424,24 @@ double Tabular::get_pdf(double x) const
   double x_i = x_[i];
   double p_i = p_[i];
 
-  if (interp_ == Interpolation::histogram) {
+  switch (interp_) {
+  case Interpolation::histogram:
     // Histogram interpolation
     return p_i;
-  } else {
+
+  case Interpolation::lin_lin: {
     // Linear-linear interpolation
     double x_i1 = x_[i + 1];
     double p_i1 = p_[i + 1];
 
     double m = (p_i1 - p_i) / (x_i1 - x_i);
-    if (m == 0.0) {
-      return p_i;
-    } else {
-      return p_i + (x - x_i) * m;
-    }
+    return (m == 0.0) ? p_i : p_i + (x - x_i) * m;
   }
+
+  default:
+    fatal_error("Unsupported interpolation type in PDF evaluation.");
+}
+
 }
 
 //==============================================================================

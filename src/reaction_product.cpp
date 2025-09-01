@@ -132,15 +132,9 @@ void ReactionProduct::sample(
 }
 
 void ReactionProduct::get_pdf(int i_tally, double E_in, double& E_out,
-  uint64_t* seed, Particle& p, std::vector<double>& mu_cm,
-  std::vector<double>& Js, std::vector<Particle>& ghost_particles,
-  std::vector<double>& pdfs_lab) const
+  uint64_t* seed, double mu_cm) const
 {
-  /* function to get detector position from user - Future implementation
-   double det_pos[4];
-   get_det_pos(det_pos, i_tally);
-  */
-  double det_pos[4] = {0.0, 0.0, 0.0, 1.0}; // Placeholder for detector position
+
 
   int distribution_index;
   auto n = applicability_.size();
@@ -167,37 +161,6 @@ void ReactionProduct::get_pdf(int i_tally, double E_in, double& E_out,
 
   AngleEnergy* angleEnergyPtr = distribution_[distribution_index].get();
 
-  if (CorrelatedAngleEnergy* correlatedAE =
-        dynamic_cast<CorrelatedAngleEnergy*>(angleEnergyPtr)) {
-
-    (*correlatedAE)
-      .get_pdf(
-        det_pos, E_in, E_out, seed, p, mu_cm, Js, ghost_particles, pdfs_lab);
-    // Handle CorrelatedAngleEnergy
-  } else if (KalbachMann* kalbachMann =
-               dynamic_cast<KalbachMann*>(angleEnergyPtr)) {
-
-    (*kalbachMann)
-      .get_pdf(
-        det_pos, E_in, E_out, seed, p, mu_cm, Js, ghost_particles, pdfs_lab);
-
-    // Handle KalbachMann
-  } else if (NBodyPhaseSpace* nBodyPS =
-               dynamic_cast<NBodyPhaseSpace*>(angleEnergyPtr)) {
-
-    (*nBodyPS).get_pdf(
-      det_pos, E_in, E_out, seed, p, mu_cm, Js, ghost_particles, pdfs_lab);
-    // Handle NBodyPhaseSpace
-  } else if (UncorrelatedAngleEnergy* uncorrelatedAE =
-               dynamic_cast<UncorrelatedAngleEnergy*>(angleEnergyPtr)) {
-
-    (*uncorrelatedAE)
-      .get_pdf(
-        det_pos, E_in, E_out, seed, p, mu_cm, Js, ghost_particles, pdfs_lab);
-    // Handle UncorrelatedAngleEnergy
-  } else {
-    std::cout << "Unknown derived type." << std::endl;
-  }
 }
 
 } // namespace openmc

@@ -247,9 +247,9 @@ void CorrelatedAngleEnergy::sample(
           frac;
     }
   } else {
-    throw std::runtime_error {
-      "Unsupported interpolation type in CorrelatedAngleEnergy::get_pdf"};
-  }
+  fatal_error("Unsupported interpolation type in CorrelatedAngleEnergy::get_pdf");
+}
+
 
   // Now interpolate between incident energy bins i and i + 1
   if (k >= n_discrete) {
@@ -362,9 +362,9 @@ void CorrelatedAngleEnergy::get_pdf(double det_pos[4], double E_in,
           frac;
     }
   } else {
-    throw std::runtime_error {
-      "Unsupported interpolation type in CorrelatedAngleEnergy::sample"};
-  }
+  fatal_error("Unsupported interpolation type in CorrelatedAngleEnergy::sample");
+}
+
 
   // Now interpolate between incident energy bins i and i + 1
   if (k >= n_discrete) {

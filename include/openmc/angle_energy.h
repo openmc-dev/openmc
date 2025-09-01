@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <stdexcept>
+#include "openmc/error.h"
 
 namespace openmc {
 
@@ -19,7 +20,7 @@ public:
     double E_in, double& E_out, double& mu, uint64_t* seed) const = 0;
   virtual double get_pdf(double, double&, double, uint64_t*) const
   {
-    throw std::runtime_error("get_pdf not available for this AngleEnergy type");
+  fatal_error("get_pdf not available for this AngleEnergy type");
   }
   virtual ~AngleEnergy() = default;
 };

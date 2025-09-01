@@ -61,8 +61,9 @@ void NBodyPhaseSpace::sample(
         std::log(r5) * std::pow(std::cos(PI / 2.0 * r6), 2);
     break;
   default:
-    throw std::runtime_error {"N-body phase space with >5 bodies."};
-  }
+  fatal_error("N-body phase space with >5 bodies.");
+}
+
 
   // Now determine v and E_out
   double v = x / (x + y);

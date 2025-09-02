@@ -10,7 +10,6 @@
 #include "openmc/angle_energy.h"
 #include "openmc/distribution.h"
 #include "openmc/endf.h"
-#include "openmc/particle.h"
 #include "openmc/vector.h"
 
 namespace openmc {

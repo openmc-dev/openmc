@@ -70,10 +70,7 @@ void NBodyPhaseSpace::sample(
   E_out = E_max * v;
 }
 
-void NBodyPhaseSpace::get_pdf(double det_pos[4], double E_in, double& E_out,
-  uint64_t* seed, Particle& p, std::vector<double>& mu_cm,
-  std::vector<double>& Js, std::vector<Particle>& ghost_particles,
-  std::vector<double>& pdfs_lab) const
+double NBodyPhaseSpace::get_pdf(double E_in, double mu, double& E_out, uint64_t* seed) const
 {
   // By definition, the distribution of the angle is isotropic for an N-body
   // phase space distribution

@@ -212,7 +212,6 @@ double PowerLaw::get_pdf(double x) const
          (std::pow(b_val, n_val + 1.0) - std::pow(a_val, n_val + 1.0));
 }
 
-
 //==============================================================================
 // Maxwell implementation
 //==============================================================================
@@ -440,8 +439,7 @@ double Tabular::get_pdf(double x) const
 
   default:
     fatal_error("Unsupported interpolation type in PDF evaluation.");
-}
-
+  }
 }
 
 //==============================================================================

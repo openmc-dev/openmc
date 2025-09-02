@@ -223,7 +223,8 @@ void IncoherentElasticAEDiscrete::sample(
   E_out = E_in;
 }
 
-double IncoherentElasticAEDiscrete::get_pdf(double E_in, double mu, double& E_out, uint64_t* seed) const
+double IncoherentElasticAEDiscrete::get_pdf(
+  double E_in, double mu, double& E_out, uint64_t* seed) const
 {
   // Get index and interpolation factor for elastic grid
   int i;

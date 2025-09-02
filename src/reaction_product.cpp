@@ -130,10 +130,9 @@ void ReactionProduct::sample(
   }
 }
 
-double ReactionProduct::get_pdf(double E_in, double mu, double& E_out,
-  uint64_t* seed) const
+double ReactionProduct::get_pdf(
+  double E_in, double mu, double& E_out, uint64_t* seed) const
 {
-
 
   int distribution_index;
   auto n = applicability_.size();
@@ -159,7 +158,6 @@ double ReactionProduct::get_pdf(double E_in, double mu, double& E_out,
   // now extract pdf
 
   AngleEnergy* angleEnergyPtr = distribution_[distribution_index].get();
-
 }
 
 } // namespace openmc

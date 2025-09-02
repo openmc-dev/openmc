@@ -2,6 +2,7 @@
 #define OPENMC_ANGLE_ENERGY_H
 
 #include <cstdint>
+
 #include "openmc/error.h"
 
 namespace openmc {
@@ -17,9 +18,10 @@ class AngleEnergy {
 public:
   virtual void sample(
     double E_in, double& E_out, double& mu, uint64_t* seed) const = 0;
-  virtual double get_pdf(double E_in, double mu, double& E_out, uint64_t* seed) const
+  virtual double get_pdf(
+    double E_in, double mu, double& E_out, uint64_t* seed) const
   {
-  fatal_error("get_pdf not available for this AngleEnergy type");
+    fatal_error("get_pdf not available for this AngleEnergy type");
   }
   virtual ~AngleEnergy() = default;
 };

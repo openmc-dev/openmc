@@ -61,16 +61,16 @@ void NBodyPhaseSpace::sample(
         std::log(r5) * std::pow(std::cos(PI / 2.0 * r6), 2);
     break;
   default:
-  fatal_error("N-body phase space with >5 bodies.");
-}
-
+    fatal_error("N-body phase space with >5 bodies.");
+  }
 
   // Now determine v and E_out
   double v = x / (x + y);
   E_out = E_max * v;
 }
 
-double NBodyPhaseSpace::get_pdf(double E_in, double mu, double& E_out, uint64_t* seed) const
+double NBodyPhaseSpace::get_pdf(
+  double E_in, double mu, double& E_out, uint64_t* seed) const
 {
   // By definition, the distribution of the angle is isotropic for an N-body
   // phase space distribution

@@ -247,9 +247,9 @@ void CorrelatedAngleEnergy::sample(
           frac;
     }
   } else {
-  fatal_error("Unsupported interpolation type in CorrelatedAngleEnergy::get_pdf");
-}
-
+    fatal_error(
+      "Unsupported interpolation type in CorrelatedAngleEnergy::get_pdf");
+  }
 
   // Now interpolate between incident energy bins i and i + 1
   if (k >= n_discrete) {
@@ -269,7 +269,8 @@ void CorrelatedAngleEnergy::sample(
   }
 }
 
-double CorrelatedAngleEnergy::get_pdf(double E_in,double mu, double& E_out, uint64_t* seed) const
+double CorrelatedAngleEnergy::get_pdf(
+  double E_in, double mu, double& E_out, uint64_t* seed) const
 {
   // Find energy bin and calculate interpolation factor -- if the energy is
   // outside the range of the tabulated energies, choose the first or last bins
@@ -359,9 +360,9 @@ double CorrelatedAngleEnergy::get_pdf(double E_in,double mu, double& E_out, uint
           frac;
     }
   } else {
-  fatal_error("Unsupported interpolation type in CorrelatedAngleEnergy::sample");
-}
-
+    fatal_error(
+      "Unsupported interpolation type in CorrelatedAngleEnergy::sample");
+  }
 
   // Now interpolate between incident energy bins i and i + 1
   if (k >= n_discrete) {

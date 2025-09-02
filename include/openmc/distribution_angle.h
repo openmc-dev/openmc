@@ -30,7 +30,6 @@ public:
   //! Determine whether angle distribution is empty
   //! \return Whether distribution is empty
   bool empty() const { return energy_.empty(); }
-  double get_energy(int num) { return energy_[num]; }
 
 private:
   vector<double> energy_;

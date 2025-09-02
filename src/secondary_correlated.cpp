@@ -265,7 +265,7 @@ void CorrelatedAngleEnergy::sample(
   }
 }
 
-double CorrelatedAngleEnergy::get_pdf(double E_in, double& E_out, double& mu, uint64_t* seed) const
+double CorrelatedAngleEnergy::get_pdf(double E_in, double mu, double& E_out, uint64_t* seed) const
 {
   // Find energy bin and calculate interpolation factor -- if the energy is
   // outside the range of the tabulated energies, choose the first or last bins

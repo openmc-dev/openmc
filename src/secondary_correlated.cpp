@@ -245,9 +245,6 @@ void CorrelatedAngleEnergy::sample(
           p_l_k) /
           frac;
     }
-  } else {
-    fatal_error(
-      "Unsupported interpolation type in CorrelatedAngleEnergy::get_pdf");
   }
 
   // Now interpolate between incident energy bins i and i + 1
@@ -268,8 +265,7 @@ void CorrelatedAngleEnergy::sample(
   }
 }
 
-double CorrelatedAngleEnergy::get_pdf(
-  double E_in, double mu, double& E_out, uint64_t* seed) const
+double CorrelatedAngleEnergy::get_pdf(double E_in, double& E_out, double& mu, uint64_t* seed) const
 {
   // Find energy bin and calculate interpolation factor -- if the energy is
   // outside the range of the tabulated energies, choose the first or last bins
@@ -358,9 +354,6 @@ double CorrelatedAngleEnergy::get_pdf(
           p_l_k) /
           frac;
     }
-  } else {
-    fatal_error(
-      "Unsupported interpolation type in CorrelatedAngleEnergy::sample");
   }
 
   // Now interpolate between incident energy bins i and i + 1
@@ -371,6 +364,21 @@ double CorrelatedAngleEnergy::get_pdf(
       E_out = E_1 + (E_out - E_i1_1) * (E_K - E_1) / (E_i1_K - E_i1_1);
     }
   }
+
+    double pdf_mu_lab; // assuming the data in lab frame!
+    if (r1 - c_k < c_k1 - r1 ||
+        distribution_[l].interpolation == Interpolation::histogram) {
+      pdf_mu_lab =
+        distribution_[l].angle[k]->get_pdf(mu);
+    } else {
+      pdf_mu_lab =
+        distribution_[l].angle[k + 1]->get_pdf(mu);
+    }
+
+    return pdf_mu_lab;
+
+
+  
 }
 
 } // namespace openmc

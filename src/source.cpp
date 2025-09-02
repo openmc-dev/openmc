@@ -350,7 +350,7 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
 {
   SourceSite site;
   site.particle = particle_;
-  double r_wgt, E_wgt = 1.0;
+  double r_wgt = 1.0, E_wgt = 1.0;
 
   // Repeat sampling source location until a good site has been accepted
   bool accepted = false;

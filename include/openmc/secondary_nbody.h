@@ -7,7 +7,6 @@
 #include "hdf5.h"
 
 #include "openmc/angle_energy.h"
-#include "openmc/particle.h"
 
 namespace openmc {
 

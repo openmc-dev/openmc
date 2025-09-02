@@ -8,7 +8,6 @@
 #include "openmc/nuclide.h"
 #include "openmc/random_dist.h"
 #include "openmc/random_lcg.h"
-#include "openmc/tallies/tally_scoring.h"
 
 namespace openmc {
 

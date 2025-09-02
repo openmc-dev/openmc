@@ -6,8 +6,6 @@
 
 #include "openmc/error.h"
 #include "openmc/hdf5_interface.h"
-#include "openmc/nuclide.h"
-#include "openmc/particle.h"
 #include "openmc/random_dist.h"
 
 namespace openmc {

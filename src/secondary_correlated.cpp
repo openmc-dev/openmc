@@ -10,8 +10,6 @@
 
 #include "openmc/endf.h"
 #include "openmc/hdf5_interface.h"
-#include "openmc/nuclide.h"
-#include "openmc/particle.h"
 #include "openmc/random_lcg.h"
 #include "openmc/search.h"
 

@@ -315,7 +315,7 @@ void ThermalData::sample(const NuclideMicroXS& micro_xs, double E,
     *mu = std::copysign(1.0, *mu);
 }
 
-double ThermalData::get_pdf(const NuclideMicroXS& micro_xs, double E,
+double ThermalData::get_pdf(const NuclideMicroXS& micro_xs, double E_in,
   double mu, double& E_out, uint64_t* seed)
 {
   AngleEnergy* angleEnergyPtr;

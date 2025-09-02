@@ -240,7 +240,8 @@ void KalbachMann::sample(
     mu = std::log(r1 * std::exp(km_a) + (1.0 - r1) * std::exp(-km_a)) / km_a;
   }
 }
-double KalbachMann::get_pdf(double E_in, double mu, double& E_out, uint64_t* seed) const
+double KalbachMann::get_pdf(
+  double E_in, double mu, double& E_out, uint64_t* seed) const
 {
   // Find energy bin and calculate interpolation factor -- if the energy is
   // outside the range of the tabulated energies, choose the first or last bins
@@ -354,16 +355,14 @@ double KalbachMann::get_pdf(double E_in, double mu, double& E_out, uint64_t* see
     }
   }
 
-   
-double pdf_cm = km_a / (2 * std::sinh(km_a)) *
-                      (std::cosh(km_a * mu) +
-                        km_r * std::sinh(km_a * mu)); // center of mass
+  double pdf_cm =
+    km_a / (2 * std::sinh(km_a)) *
+    (std::cosh(km_a * mu) + km_r * std::sinh(km_a * mu)); // center of mass
 
-return pdf_cm;
+  return pdf_cm;
   // https://docs.openmc.org/en/v0.8.0/methods/physics.html#equation-KM-pdf-angle
   // double pdf_mu = km_a / (2 * std::sinh(km_a)) * (std::cosh(km_a * mymu) +
   // km_r * std::sinh(km_a * mymu)); // center of mass return pdf_mu;
-
 }
 
 } // namespace openmc

@@ -51,8 +51,7 @@ public:
   //! \param[inout] seed Pseudorandom seed pointer
   void sample(double E_in, double& E_out, double& mu, uint64_t* seed) const;
 
-  void get_pdf(int i_tally, double E_in, double& E_out, uint64_t* seed
- , double mu_cm) const;
+  double get_pdf(double E_in, double mu, double& E_out, uint64_t* seed) const;
 
   ParticleType particle_;      //!< Particle type
   EmissionMode emission_mode_; //!< Emission mode

@@ -316,7 +316,7 @@ void ThermalData::sample(const NuclideMicroXS& micro_xs, double E,
 }
 
 double ThermalData::get_pdf(const NuclideMicroXS& micro_xs, double E,
-  double& E_out, double mu, uint64_t* seed)
+  double mu, double& E_out, uint64_t* seed)
 {
   AngleEnergy* angleEnergyPtr;
 

@@ -2,7 +2,6 @@
 #define OPENMC_ANGLE_ENERGY_H
 
 #include <cstdint>
-#include <stdexcept>
 #include "openmc/error.h"
 
 namespace openmc {

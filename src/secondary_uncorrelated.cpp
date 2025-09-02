@@ -9,7 +9,6 @@
 #include "openmc/nuclide.h"
 #include "openmc/particle.h"
 #include "openmc/random_dist.h"
-#include "openmc/tallies/tally_scoring.h"
 
 namespace openmc {
 

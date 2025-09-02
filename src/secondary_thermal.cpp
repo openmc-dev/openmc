@@ -318,7 +318,7 @@ void IncoherentInelasticAEDiscrete::sample(
 }
 
 double IncoherentInelasticAEDiscrete::get_pdf(
-  double E_in, double& E_out, double& mu, uint64_t* seed, int l) const
+  double E_in, double& E_out, double& mu, uint64_t* seed) const
 {
   // Get index and interpolation factor for inelastic grid
   int i;
@@ -349,9 +349,7 @@ double IncoherentInelasticAEDiscrete::get_pdf(
       j = 0;
     }
   }
-  if (l != -1) {
-    j = l;
-  } // take j as param
+
   // Determine outgoing energy corresponding to E_in[i] and E_in[i+1]
   double E_ij = energy_out_(i, j);
   double E_i1j = energy_out_(i + 1, j);

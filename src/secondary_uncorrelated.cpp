@@ -67,13 +67,8 @@ void UncorrelatedAngleEnergy::sample(
   E_out = energy_->sample(E_in, seed);
 }
 
-void UncorrelatedAngleEnergy::get_pdf(double det_pos[4], double E_in,
-  double& E_out, uint64_t* seed, Particle& p, std::vector<double>& mu_cm,
-  std::vector<double>& Js, std::vector<Particle>& ghost_particles,
-  std::vector<double>& pdfs_lab) const
+double UncorrelatedAngleEnergy::get_pdf(double E_in, double mu, double& E_out, uint64_t* seed) const
 {
-  bool COM = false;
-
   // Sample outgoing energy
   E_out = energy_->sample(E_in, seed);
 }

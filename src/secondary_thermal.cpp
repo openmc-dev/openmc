@@ -104,7 +104,7 @@ void CoherentElasticAE::sample(
 }
 
 double CoherentElasticAE::get_pdf(
-  double E_in, double& E_out, double& mu, uint64_t* seed) const
+  double E_in, double mu, double& E_out, uint64_t* seed) const
 {
   // Energy doesn't change in elastic scattering (ENDF-102, Eq. 7-1)
 
@@ -156,7 +156,7 @@ void IncoherentElasticAE::sample(
   E_out = E_in;
 }
 double IncoherentElasticAE::get_pdf(
-  double E_in, double& E_out, double& mu, uint64_t* seed) const
+  double E_in, double mu, double& E_out, uint64_t* seed) const
 {
   // Sample angle by inverting the distribution in ENDF-102, Eq. 7.4
   double c = 2 * E_in * debye_waller_;
@@ -223,8 +223,7 @@ void IncoherentElasticAEDiscrete::sample(
   E_out = E_in;
 }
 
-double IncoherentElasticAEDiscrete::get_pdf(
-  double E_in, double& E_out, double& mu, uint64_t* seed) const
+double IncoherentElasticAEDiscrete::get_pdf(double E_in, double mu, double& E_out, uint64_t* seed) const
 {
   // Get index and interpolation factor for elastic grid
   int i;

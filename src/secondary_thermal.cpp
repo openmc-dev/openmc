@@ -501,7 +501,7 @@ void IncoherentInelasticAE::sample(
 }
 
 double IncoherentInelasticAE::get_pdf(
-  double E_in, double& E_out, double& mu, uint64_t* seed) const
+  double E_in, double mu, double& E_out, uint64_t* seed) const
 {
   // Get index and interpolation factor for inelastic grid
   int i;

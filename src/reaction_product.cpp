@@ -131,8 +131,8 @@ void ReactionProduct::sample(
   }
 }
 
-void ReactionProduct::get_pdf(int i_tally, double E_in, double& E_out,
-  uint64_t* seed, double mu_cm) const
+double ReactionProduct::get_pdf(double E_in, double mu, double& E_out,
+  uint64_t* seed) const
 {
 
 

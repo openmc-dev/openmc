@@ -15,7 +15,6 @@
 #include "openmc/secondary_nbody.h"
 #include "openmc/secondary_thermal.h"
 #include "openmc/secondary_uncorrelated.h"
-#include "openmc/tallies/tally_scoring.h"
 
 namespace openmc {
 

@@ -263,7 +263,8 @@ void CorrelatedAngleEnergy::sample(
   }
 }
 
-double CorrelatedAngleEnergy::get_pdf(double E_in, double mu, double& E_out, uint64_t* seed) const
+double CorrelatedAngleEnergy::get_pdf(
+  double E_in, double mu, double& E_out, uint64_t* seed) const
 {
   // Find energy bin and calculate interpolation factor -- if the energy is
   // outside the range of the tabulated energies, choose the first or last bins
@@ -363,20 +364,15 @@ double CorrelatedAngleEnergy::get_pdf(double E_in, double mu, double& E_out, uin
     }
   }
 
-    double pdf_mu_lab; // assuming the data in lab frame!
-    if (r1 - c_k < c_k1 - r1 ||
-        distribution_[l].interpolation == Interpolation::histogram) {
-      pdf_mu_lab =
-        distribution_[l].angle[k]->get_pdf(mu);
-    } else {
-      pdf_mu_lab =
-        distribution_[l].angle[k + 1]->get_pdf(mu);
-    }
+  double pdf_mu_lab; // assuming the data in lab frame!
+  if (r1 - c_k < c_k1 - r1 ||
+      distribution_[l].interpolation == Interpolation::histogram) {
+    pdf_mu_lab = distribution_[l].angle[k]->get_pdf(mu);
+  } else {
+    pdf_mu_lab = distribution_[l].angle[k + 1]->get_pdf(mu);
+  }
 
-    return pdf_mu_lab;
-
-
-  
+  return pdf_mu_lab;
 }
 
 } // namespace openmc

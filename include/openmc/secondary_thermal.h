@@ -110,7 +110,7 @@ public:
   void sample(
     double E_in, double& E_out, double& mu, uint64_t* seed) const override;
   double get_pdf(
-    double E_in, double& E_out, double& mu, uint64_t* seed) const;
+    double E_in, double mu, double& E_out, uint64_t* seed) const;
 
 private:
   const vector<double>& energy_; //!< Incident energies

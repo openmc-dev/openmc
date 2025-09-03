@@ -257,6 +257,11 @@ BoundingBox SurfaceXPlane::bounding_box(bool pos_side) const
   }
 }
 
+bool SurfaceXPlane::triso_in_mesh(vector<double> mesh_center, vector<double> lattice_pitch) const
+{
+  return false;
+}
+
 //==============================================================================
 // SurfaceYPlane implementation
 //==============================================================================
@@ -340,6 +345,10 @@ BoundingBox SurfaceZPlane::bounding_box(bool pos_side) const
 //==============================================================================
 // SurfacePlane implementation
 //==============================================================================
+bool SurfacePlane::triso_in_mesh(vector<double> mesh_center, vector<double> lattice_pitch) const
+{
+  return false;
+}
 
 SurfacePlane::SurfacePlane(pugi::xml_node surf_node) : Surface(surf_node)
 {
@@ -459,6 +468,11 @@ Direction axis_aligned_cylinder_normal(
 // SurfaceXCylinder implementation
 //==============================================================================
 
+bool SurfaceXCylinder::triso_in_mesh(vector<double> mesh_center, vector<double> lattice_pitch) const
+{
+  return false;
+}
+
 SurfaceXCylinder::SurfaceXCylinder(pugi::xml_node surf_node)
   : Surface(surf_node)
 {
@@ -501,6 +515,11 @@ BoundingBox SurfaceXCylinder::bounding_box(bool pos_side) const
 //==============================================================================
 // SurfaceYCylinder implementation
 //==============================================================================
+
+bool SurfaceYCylinder::triso_in_mesh(vector<double> mesh_center, vector<double> lattice_pitch) const
+{
+  return false;
+}
 
 SurfaceYCylinder::SurfaceYCylinder(pugi::xml_node surf_node)
   : Surface(surf_node)
@@ -545,6 +564,11 @@ BoundingBox SurfaceYCylinder::bounding_box(bool pos_side) const
 //==============================================================================
 // SurfaceZCylinder implementation
 //==============================================================================
+
+bool SurfaceZCylinder::triso_in_mesh(vector<double> mesh_center, vector<double> lattice_pitch) const
+{
+  return false;
+}
 
 SurfaceZCylinder::SurfaceZCylinder(pugi::xml_node surf_node)
   : Surface(surf_node)
@@ -661,6 +685,66 @@ BoundingBox SurfaceSphere::bounding_box(bool pos_side) const
       z0_ - radius_, z0_ + radius_};
   } else {
     return {};
+  }
+}
+
+void SurfaceSphere::connect_to_triso_base(int triso_index, std::string key)
+{
+  if (key=="base") {
+    triso_base_index_=triso_index;
+    is_triso_surface_=true;
+  } else if (key=="particle") {
+    triso_particle_index_=triso_index;
+  }
+}
+
+vector<double> SurfaceSphere::get_center() const {
+  return {x0_,y0_,z0_};
+}
+
+double SurfaceSphere::get_radius() const {
+  return radius_;
+}
+
+bool SurfaceSphere::triso_in_mesh(vector<double> mesh_center, vector<double> lattice_pitch) const
+{
+  double dis_x;
+  double dis_y;
+  double dis_z;
+  double x_min=mesh_center[0]-lattice_pitch[0]/2;
+  double x_max=mesh_center[0]+lattice_pitch[0]/2;
+  double y_min=mesh_center[1]-lattice_pitch[1]/2;
+  double y_max=mesh_center[1]+lattice_pitch[1]/2;
+  double z_min=mesh_center[2]-lattice_pitch[2]/2;
+  double z_max=mesh_center[2]+lattice_pitch[2]/2;
+  if (x0_>=x_min && x0_<=x_max) {
+    dis_x=0;
+  } else if (x0_<x_min) {
+    dis_x=pow(x_min-x0_, 2);
+  } else {
+    dis_x=pow(x_max-x0_, 2);
+  }
+
+  if (y0_>=y_min && y0_<=y_max) {
+    dis_y=0;
+  } else if (y0_<y_min) {
+    dis_y=pow(y_min-y0_, 2);
+  } else {
+    dis_y=pow(y_max-y0_, 2);
+  }
+
+  if (z0_>=z_min && z0_<=z_max) {
+    dis_z=0;
+  } else if (z0_<z_min) {
+    dis_z=pow(z_min-z0_, 2);
+  } else {
+    dis_z=pow(z_max-z0_, 2);
+  }
+
+  if (sqrt(dis_x+dis_y+dis_z) < radius_) {
+    return true;
+  } else {
+    return false;
   }
 }
 
@@ -1117,6 +1201,10 @@ Direction SurfaceYTorus::normal(Position r) const
 //==============================================================================
 // SurfaceZTorus implementation
 //==============================================================================
+bool SurfaceZTorus::triso_in_mesh(vector<double> mesh_center, vector<double> lattice_pitch) const
+{
+  return false;
+}
 
 SurfaceZTorus::SurfaceZTorus(pugi::xml_node surf_node) : Surface(surf_node)
 {

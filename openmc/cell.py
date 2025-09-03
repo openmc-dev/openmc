@@ -114,6 +114,11 @@ class Cell(IDManagerMixin):
         self._num_instances = None
         self._volume = None
         self._atoms = None
+        self._triso_particle = False
+        self.virtual_lattice = False
+        self.lower_left = None
+        self.pitch = None
+        self.shape = None
 
     def __contains__(self, point):
         if self.region is None:
@@ -593,6 +598,13 @@ class Cell(IDManagerMixin):
         """
         element = ET.Element("cell")
         element.set("id", str(self.id))
+        if self._triso_particle:
+            element.set("triso_particle", 'true')
+        if self.virtual_lattice:
+            element.set("virtual_lattice", str(self.virtual_lattice))
+            element.set("lower_left", ' '.join(map(str, self.lower_left)))
+            element.set("pitch", ' '.join(map(str, self.pitch)))
+            element.set("shape", ' '.join(map(str, self.shape)))
 
         if len(self._name) > 0:
             element.set("name", str(self.name))

@@ -319,7 +319,15 @@ public:
   Fill type_;        //!< Material, universe, or lattice
   int32_t universe_; //!< Universe # this cell is in
   int32_t fill_;     //!< Universe # filling this cell
+  bool virtual_lattice_;    //!< If the cell is the base of a virtual triso lattice
+  bool triso_particle_;
 
+
+  //! \brief Specification of the virtual lattice
+  vector<double> vl_lower_left_;
+  vector<double> vl_pitch_;
+  vector<int32_t> vl_shape_;
+  vector<vector<int32_t>> vl_triso_distribution_;
   //! \brief Index corresponding to this cell in distribcell arrays
   int distribcell_index_ {C_NONE};
 

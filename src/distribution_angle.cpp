@@ -95,7 +95,7 @@ double AngleDistribution::sample(double E, uint64_t* seed) const
   return mu;
 }
 
-double AngleDistribution::get_pdf(double E, double mu, uint64_t* seed) const
+double AngleDistribution::get_pdf(double E, double mu) const
 {
   // Determine number of incoming energies
   auto n = energy_.size();
@@ -115,13 +115,11 @@ double AngleDistribution::get_pdf(double E, double mu, uint64_t* seed) const
     r = (E - energy_[i]) / (energy_[i + 1] - energy_[i]);
   }
 
-  // Sample between the ith and (i+1)th bin
-  if (r > prn(seed))
-    ++i;
-
-  // Sample i-th distribution
-  double pdf = distribution_[i]->get_pdf(mu);
-
+  double pdf = 0.0;
+  if (r>0.0)
+    pdf += r * distribution_[i+1]->get_pdf(mu);
+  if (r<1.0)
+    pdf += (1.0-r) * distribution_[i]->get_pdf(mu);
   return pdf;
 }
 

@@ -352,14 +352,12 @@ double KalbachMann::get_pdf(
     }
   }
 
-  double pdf_cm =
+  // https://docs.openmc.org/en/latest/methods/neutron_physics.html#equation-KM-pdf-angle
+  double pdf =
     km_a / (2 * std::sinh(km_a)) *
-    (std::cosh(km_a * mu) + km_r * std::sinh(km_a * mu)); // center of mass
+    (std::cosh(km_a * mu) + km_r * std::sinh(km_a * mu));
 
-  return pdf_cm;
-  // https://docs.openmc.org/en/v0.8.0/methods/physics.html#equation-KM-pdf-angle
-  // double pdf_mu = km_a / (2 * std::sinh(km_a)) * (std::cosh(km_a * mymu) +
-  // km_r * std::sinh(km_a * mymu)); // center of mass return pdf_mu;
+  return pdf;
 }
 
 } // namespace openmc

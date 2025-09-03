@@ -290,6 +290,8 @@ void Cell::to_hdf5(hid_t cell_group) const
       temps.push_back(sqrtkT_val * sqrtkT_val / K_BOLTZMANN);
     write_dataset(group, "temperature", temps);
 
+    write_dataset(group, "density_mult", rho_mult_);
+
   } else if (type_ == Fill::UNIVERSE) {
     write_dataset(group, "fill_type", "universe");
     write_dataset(group, "fill", model::universes[fill_]->id_);
@@ -404,6 +406,48 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
     // Convert to sqrt(k*T).
     for (auto& T : sqrtkT_) {
       T = std::sqrt(K_BOLTZMANN * T);
+    }
+  }
+
+  // Read the density element which can be distributed similar to temperature.
+  // These get assigned to the density multiplier, requiring a division by
+  // the material density.
+  if (check_for_node(cell_node, "density")) {
+    rho_mult_ = get_node_array<double>(cell_node, "density");
+    rho_mult_.shrink_to_fit();
+
+    // Make sure this is a material-filled cell.
+    if (material_.size() == 0) {
+      fatal_error(fmt::format(
+        "Cell {} was specified with a density but no material. Density"
+        "specification is only valid for cells filled with a material.",
+        id_));
+    }
+
+    // Make sure this is a non-void material.
+    for (auto mat_id : material_) {
+      if (mat_id == MATERIAL_VOID) {
+        fatal_error(fmt::format(
+          "Cell {} was specified with a density, but contains a void "
+          "material. Density specification is only valid for cells "
+          "filled with a non-void material.",
+          id_));
+      }
+    }
+
+    // Make sure all densities are non-negative and greater than zero.
+    for (auto rho : rho_mult_) {
+      if (rho <= 0) {
+        fatal_error(fmt::format(
+          "Cell {} was specified with a density less than or equal to zero",
+          id_));
+      }
+    }
+
+    // Convert to density multipliers.
+    for (int32_t instance = 0; instance < rho_mult_.size(); ++instance) {
+      auto mat_idx = model::material_map.at(material(instance));
+      rho_mult_[instance] /= model::materials[mat_idx]->density_gpcc();
     }
   }
 

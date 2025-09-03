@@ -38,5 +38,6 @@ Cell
 	Region         =	-1
 	Rotation       =	None
 	Temperature    =	[500. 700.   0. 800.]
+	Density        =	None
 	Translation    =	None
 	Volume         =	None

@@ -664,6 +664,30 @@ class Model:
                     C_mat = openmc.lib.materials[mat_id]
                     C_mat.set_density(atom_density, 'atom/b-cm')
 
+            # Update densities for cells filled with materials. We have
+            # to do this after loading materials due to the storage of
+            # density multipliers instead of raw densities
+            for name, group in cells_group.items():
+                # For backwards compatibility
+                if not 'density_mult' in group:
+                    continue
+                cell_id = int(name.split()[1])
+                cell = cells[cell_id]
+                if cell.fill_type in ('material', 'distribmat'):
+                    density_mult = group['density_mult'][()]
+                    mat_density = cell.fill.get_mass_density()
+                    if density_mult.size > 1:
+                        cell.density = [mat_density * m for m in density_mult]
+                    else:
+                        cell.density = density_mult * mat_density
+                    if self.is_initialized:
+                        lib_cell = openmc.lib.cells[cell_id]
+                        if density_mult.size > 1:
+                            for i, rho_mult in enumerate(density_mult):
+                                lib_cell.set_density(rho_mult * mat_density, i)
+                        else:
+                            lib_cell.set_density(density_mult[0] * mat_density)
+
     def run(
         self,
         particles: int | None = None,

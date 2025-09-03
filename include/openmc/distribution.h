@@ -9,6 +9,7 @@
 #include "pugixml.hpp"
 
 #include "openmc/constants.h"
+#include "openmc/error.h"
 #include "openmc/memory.h" // for unique_ptr
 #include "openmc/span.h"
 #include "openmc/vector.h" // for vector
@@ -23,7 +24,10 @@ class Distribution {
 public:
   virtual ~Distribution() = default;
   virtual double sample(uint64_t* seed) const = 0;
-  virtual double get_pdf(double x) const = 0;
+  virtual double get_pdf(double x) const
+  {
+    fatal_error("get_pdf not available for this Distribution type");
+  }
 
   //! Return integral of distribution
   //! \return Integral of distribution
@@ -85,11 +89,6 @@ public:
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
   double sample(uint64_t* seed) const override;
-
-  //! Calculate the probability density function (PDF) at a given value
-  //! \param x The value at which to evaluate the PDF
-  //! \return The value of the PDF at the given point
-  double get_pdf(double x) const;
 
   double integral() const override { return di_.integral(); };
 
@@ -168,7 +167,6 @@ public:
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
   double sample(uint64_t* seed) const override;
-  double get_pdf(double x) const;
 
   double theta() const { return theta_; }
 
@@ -189,7 +187,6 @@ public:
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
   double sample(uint64_t* seed) const override;
-  double get_pdf(double x) const;
 
   double a() const { return a_; }
   double b() const { return b_; }
@@ -275,7 +272,6 @@ public:
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
   double sample(uint64_t* seed) const override;
-  double get_pdf(double x) const;
 
   const vector<double>& x() const { return x_; }
 
@@ -295,7 +291,6 @@ public:
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
   double sample(uint64_t* seed) const override;
-  double get_pdf(double x) const;
 
   double integral() const override { return integral_; }
 

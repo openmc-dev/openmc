@@ -364,15 +364,15 @@ double CorrelatedAngleEnergy::get_pdf(
     }
   }
 
-  double pdf_mu_lab; // assuming the data in lab frame!
+  double pdf; // assuming the data in lab frame!
   if (r1 - c_k < c_k1 - r1 ||
       distribution_[l].interpolation == Interpolation::histogram) {
-    pdf_mu_lab = distribution_[l].angle[k]->get_pdf(mu);
+    pdf = distribution_[l].angle[k]->get_pdf(mu);
   } else {
-    pdf_mu_lab = distribution_[l].angle[k + 1]->get_pdf(mu);
+    pdf = distribution_[l].angle[k + 1]->get_pdf(mu);
   }
 
-  return pdf_mu_lab;
+  return pdf;
 }
 
 } // namespace openmc

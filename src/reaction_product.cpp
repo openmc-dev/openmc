@@ -151,8 +151,6 @@ double ReactionProduct::get_pdf(
       }
     }
   } else {
-    // If only one distribution is present, go ahead and sample it
-    // distribution_[0]->sample(E_in, E_out, mu, seed);
     distribution_index = 0;
   }
   // now extract pdf

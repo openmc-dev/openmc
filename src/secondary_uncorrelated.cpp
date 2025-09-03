@@ -70,14 +70,14 @@ double UncorrelatedAngleEnergy::get_pdf(
 {
   // Sample outgoing energy
   E_out = energy_->sample(E_in, seed);
-  double pdf_cm;
+  double pdf;
   if (!angle_.empty()) {
-    pdf_cm = angle_.get_pdf(E_in, mu);
+    pdf = angle_.get_pdf(E_in, mu);
   } else {
     // no angle distribution given => assume isotropic for all energies
-    pdf_cm = 0.5;
+    pdf = 0.5;
   }
-  return pdf_cm;
+  return pdf;
 }
 
 } // namespace openmc

@@ -136,12 +136,6 @@ double Discrete::sample(uint64_t* seed) const
   return x_[di_.sample(seed)];
 }
 
-// Not implemented
-double Discrete::get_pdf(double x) const
-{
-  return -1;
-}
-
 //==============================================================================
 // Uniform implementation
 //==============================================================================
@@ -226,12 +220,6 @@ double Maxwell::sample(uint64_t* seed) const
   return maxwell_spectrum(theta_, seed);
 }
 
-// Not implemented
-double Maxwell::get_pdf(double x) const
-{
-  return -1;
-}
-
 //==============================================================================
 // Watt implementation
 //==============================================================================
@@ -250,12 +238,6 @@ Watt::Watt(pugi::xml_node node)
 double Watt::sample(uint64_t* seed) const
 {
   return watt_spectrum(a_, b_, seed);
-}
-
-// Not implemented
-double Watt::get_pdf(double x) const
-{
-  return -1;
 }
 
 //==============================================================================
@@ -458,11 +440,6 @@ double Equiprobable::sample(uint64_t* seed) const
   return xl + ((n - 1) * r - i) * (xr - xl);
 }
 
-double Equiprobable::get_pdf(double x) const
-{
-  return -1;
-}
-
 //==============================================================================
 // Mixture implementation
 //==============================================================================
@@ -510,11 +487,6 @@ double Mixture::sample(uint64_t* seed) const
 
   // Sample the chosen distribution
   return it->second->sample(seed);
-}
-
-double Mixture::get_pdf(double x) const
-{
-  return -1;
 }
 
 //==============================================================================

@@ -353,9 +353,8 @@ double KalbachMann::get_pdf(
   }
 
   // https://docs.openmc.org/en/latest/methods/neutron_physics.html#equation-KM-pdf-angle
-  double pdf =
-    km_a / (2 * std::sinh(km_a)) *
-    (std::cosh(km_a * mu) + km_r * std::sinh(km_a * mu));
+  double pdf = km_a / (2 * std::sinh(km_a)) *
+               (std::cosh(km_a * mu) + km_r * std::sinh(km_a * mu));
 
   return pdf;
 }

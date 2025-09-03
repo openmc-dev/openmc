@@ -72,7 +72,7 @@ double UncorrelatedAngleEnergy::get_pdf(
   E_out = energy_->sample(E_in, seed);
   double pdf_cm;
     if (!angle_.empty()) {
-      pdf_cm = angle_.get_pdf(E_in, mu, seed);
+      pdf_cm = angle_.get_pdf(E_in, mu);
       } else {
        // no angle distribution given => assume isotropic for all energies
         pdf_cm = 0.5;

@@ -201,7 +201,8 @@ void finalize_cell_densities()
     // Convert to density multipliers.
     if (c->xml_set_density_) {
       for (int32_t instance = 0; instance < c->rho_mult_.size(); ++instance) {
-        c->rho_mult_[instance] /= model::materials[c->material(instance)]->density_gpcc();
+        c->rho_mult_[instance] /=
+          model::materials[c->material(instance)]->density_gpcc();
       }
     }
   }

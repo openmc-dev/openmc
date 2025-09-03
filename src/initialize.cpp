@@ -401,6 +401,10 @@ bool read_model_xml()
   // Finalize cross sections having assigned temperatures
   finalize_cross_sections();
 
+  // Compute cell density multipliers now that material densities
+  // have been finalized (from geometry_aux.h)
+  finalize_cell_densities();
+
   if (check_for_node(root, "tallies"))
     read_tallies_xml(root.child("tallies"));
 

@@ -195,6 +195,20 @@ void assign_temperatures()
 
 //==============================================================================
 
+void finalize_cell_densities()
+{
+  for (auto& c : model::cells) {
+    // Convert to density multipliers.
+    if (c->xml_set_density_) {
+      for (int32_t instance = 0; instance < c->rho_mult_.size(); ++instance) {
+        c->rho_mult_[instance] /= model::materials[c->material(instance)]->density_gpcc();
+      }
+    }
+  }
+}
+
+//==============================================================================
+
 void get_temperatures(
   vector<vector<double>>& nuc_temps, vector<vector<double>>& thermal_temps)
 {

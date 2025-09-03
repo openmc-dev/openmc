@@ -372,6 +372,10 @@ public:
 
   // Right now, either CSG or DAGMC cells are used.
   virtual GeometryType geom_type() const = 0;
+
+  //! \brief A flag to indicate if this cell has it's density set in the
+  //! xml file.
+  bool xml_set_density_ = false;
 };
 
 struct CellInstanceItem {

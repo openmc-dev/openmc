@@ -412,9 +412,12 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
   // Read the density element which can be distributed similar to temperature.
   // These get assigned to the density multiplier, requiring a division by
   // the material density.
+  // Note: calculating the actual density multiplier is deferred until materials
+  // are finalized. rho_mult_ contains the true density in the meantime.
   if (check_for_node(cell_node, "density")) {
     rho_mult_ = get_node_array<double>(cell_node, "density");
     rho_mult_.shrink_to_fit();
+    xml_set_density_ = true;
 
     // Make sure this is a material-filled cell.
     if (material_.size() == 0) {
@@ -442,12 +445,6 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
           "Cell {} was specified with a density less than or equal to zero",
           id_));
       }
-    }
-
-    // Convert to density multipliers.
-    for (int32_t instance = 0; instance < rho_mult_.size(); ++instance) {
-      auto mat_idx = model::material_map.at(material(instance));
-      rho_mult_[instance] /= model::materials[mat_idx]->density_gpcc();
     }
   }
 

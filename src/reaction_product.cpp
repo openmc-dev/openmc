@@ -158,6 +158,7 @@ double ReactionProduct::get_pdf(
   // now extract pdf
 
   AngleEnergy* angleEnergyPtr = distribution_[distribution_index].get();
+  return angleEnergyPtr->get_pdf(E_in,mu , E_out , seed);
 }
 
 } // namespace openmc

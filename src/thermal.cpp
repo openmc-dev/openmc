@@ -313,8 +313,8 @@ void ThermalData::sample(const NuclideMicroXS& micro_xs, double E,
     *mu = std::copysign(1.0, *mu);
 }
 
-double ThermalData::get_pdf(const NuclideMicroXS& micro_xs, double E_in,
-  double mu, double& E_out, uint64_t* seed)
+double ThermalData::sample_energy_and_pdf(const NuclideMicroXS& micro_xs,
+  double E_in, double mu, double& E_out, uint64_t* seed)
 {
   AngleEnergy* angleEnergyPtr;
 
@@ -324,7 +324,7 @@ double ThermalData::get_pdf(const NuclideMicroXS& micro_xs, double E_in,
     angleEnergyPtr = inelastic_.distribution.get();
   }
 
-  return angleEnergyPtr->get_pdf(E_in, mu, E_out, seed);
+  return angleEnergyPtr->sample_energy_and_pdf(E_in, mu, E_out, seed);
 }
 
 void free_memory_thermal()

@@ -32,8 +32,8 @@ public:
   //! \param[inout] seed Pseudorandom seed pointer
   void sample(
     double E_in, double& E_out, double& mu, uint64_t* seed) const override;
-  double angular_pdf(double E_in, double mu) const override;
-  double conditional_sample_energy(double E_in, double mu, uint64_t* seed) const override;
+  double sample_energy_and_pdf(
+    double E_in, double mu, double& E_out, uint64_t* seed) const override;
 
 private:
   const CoherentElasticXS& xs_; //!< Coherent elastic scattering cross section
@@ -57,9 +57,9 @@ public:
   //! \param[inout] seed Pseudorandom number seed pointer
   void sample(
     double E_in, double& E_out, double& mu, uint64_t* seed) const override;
-  double angular_pdf(double E_in, double mu) const override;
-  double conditional_sample_energy(double E_in, double mu, uint64_t* seed) const override;
-  
+  double sample_energy_and_pdf(
+    double E_in, double mu, double& E_out, uint64_t* seed) const override;
+
 private:
   double debye_waller_;
 };
@@ -84,8 +84,8 @@ public:
   //! \param[inout] seed Pseudorandom number seed pointer
   void sample(
     double E_in, double& E_out, double& mu, uint64_t* seed) const override;
-  double angular_pdf(double E_in, double mu) const override;
-  double conditional_sample_energy(double E_in, double mu, uint64_t* seed) const override;
+  double sample_energy_and_pdf(
+    double E_in, double mu, double& E_out, uint64_t* seed) const override;
 
 private:
   const vector<double>& energy_;  //!< Energies at which cosines are tabulated
@@ -112,8 +112,8 @@ public:
   //! \param[inout] seed Pseudorandom number seed pointer
   void sample(
     double E_in, double& E_out, double& mu, uint64_t* seed) const override;
-  double angular_pdf(double E_in, double mu) const override;
-  double conditional_sample_energy(double E_in, double mu, uint64_t* seed) const override;
+  double sample_energy_and_pdf(
+    double E_in, double mu, double& E_out, uint64_t* seed) const override;
 
 private:
   const vector<double>& energy_; //!< Incident energies
@@ -142,8 +142,8 @@ public:
   //! \param[inout] seed Pseudorandom number seed pointer
   void sample(
     double E_in, double& E_out, double& mu, uint64_t* seed) const override;
-  double angular_pdf(double E_in, double mu) const override;
-  double conditional_sample_energy(double E_in, double mu, uint64_t* seed) const override;
+  double sample_energy_and_pdf(
+    double E_in, double mu, double& E_out, uint64_t* seed) const override;
 
 private:
   //! Secondary energy/angle distribution
@@ -179,8 +179,8 @@ public:
   //! \param[inout] seed Pseudorandom number seed pointer
   void sample(
     double E_in, double& E_out, double& mu, uint64_t* seed) const override;
-  double angular_pdf(double E_in, double mu) const override;
-  double conditional_sample_energy(double E_in, double mu, uint64_t* seed) const override;
+  double sample_energy_and_pdf(
+    double E_in, double mu, double& E_out, uint64_t* seed) const override;
 
 private:
   CoherentElasticAE coherent_dist_;         //!< Coherent distribution

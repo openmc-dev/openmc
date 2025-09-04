@@ -103,14 +103,13 @@ void CoherentElasticAE::sample(
   mu = 1.0 - 2.0 * energies[k] / E_in;
 }
 
-double CoherentElasticAE::conditional_sample_energy(double E_in, double mu, uint64_t* seed) const
+double CoherentElasticAE::sample_energy_and_pdf(
+  double E_in, double mu, double& E_out, uint64_t* seed) const
 {
-  return E_in;
-}
+  // Energy doesn't change in elastic scattering (ENDF-102, Eq. 7-1)
 
-double CoherentElasticAE::angular_pdf(double E_in, double mu) const
-{
   double pdf;
+  E_out = E_in;
   const auto& energies {xs_.bragg_edges()};
   const auto& factors = xs_.factors();
 
@@ -156,18 +155,18 @@ void IncoherentElasticAE::sample(
   // Energy doesn't change in elastic scattering (ENDF-102, Eq. 7.4)
   E_out = E_in;
 }
-
-double IncoherentElasticAE::conditional_sample_energy(double E_in, double mu, uint64_t* seed) const
-{
-  return E_in;
-}
-  
-double IncoherentElasticAE::angular_pdf(double E_in, double mu) const
+double IncoherentElasticAE::sample_energy_and_pdf(
+  double E_in, double mu, double& E_out, uint64_t* seed) const
 {
   // Sample angle by inverting the distribution in ENDF-102, Eq. 7.4
   double c = 2 * E_in * debye_waller_;
+  E_out = E_in;
+
   double A = c / (1 - std::exp(-2.0 * c)); // normalization factor
-  return A * std::exp(-c * (1 - mu));
+  double pdf = A * std::exp(-c * (1 - mu));
+  return pdf;
+
+  // Energy doesn't change in elastic scattering (ENDF-102, Eq. 7.4)
 }
 
 //==============================================================================
@@ -224,17 +223,15 @@ void IncoherentElasticAEDiscrete::sample(
   E_out = E_in;
 }
 
-double IncoherentElasticAEDiscrete::conditional_sample_energy(double E_in, double mu, uint64_t* seed) const
-{
-  return E_in;
-}
-
-double IncoherentElasticAEDiscrete::angular_pdf(double E_in, double mu) const
+double IncoherentElasticAEDiscrete::sample_energy_and_pdf(
+  double E_in, double mu, double& E_out, uint64_t* seed) const
 {
   // Get index and interpolation factor for elastic grid
   int i;
   double f;
   get_energy_index(energy_, E_in, i, f);
+  // Energy doesn't change in elastic scattering
+  E_out = E_in;
   int n_mu = mu_out_.shape()[1];
 
   std::vector<double> mu_vector;
@@ -320,12 +317,8 @@ void IncoherentInelasticAEDiscrete::sample(
   mu = (1 - f) * mu_ijk + f * mu_i1jk;
 }
 
-double IncoherentInelasticAEDiscrete::conditional_sample_energy(double E_in, double mu, uint64_t* seed) const
-{
-  return E_in;
-}
-
-double IncoherentInelasticAEDiscrete::angular_pdf(double E_in, double mu) const
+double IncoherentInelasticAEDiscrete::sample_energy_and_pdf(
+  double E_in, double mu, double& E_out, uint64_t* seed) const
 {
   // Get index and interpolation factor for inelastic grid
   int i;
@@ -505,7 +498,7 @@ void IncoherentInelasticAE::sample(
   mu += std::min(mu - mu_left, mu_right - mu) * (prn(seed) - 0.5);
 }
 
-double IncoherentInelasticAE::get_pdf(
+double IncoherentInelasticAE::sample_energy_and_pdf(
   double E_in, double mu, double& E_out, uint64_t* seed) const
 {
   // Get index and interpolation factor for inelastic grid

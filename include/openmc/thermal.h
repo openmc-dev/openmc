@@ -52,8 +52,8 @@ public:
   //! \param[inout] seed Pseudorandom seed pointer
   void sample(const NuclideMicroXS& micro_xs, double E_in, double* E_out,
     double* mu, uint64_t* seed);
-  double angular_pdf(const NuclideMicroXS& micro_xs, double E_in, double mu) const;
-  double conditional_sample_energy(const NuclideMicroXS& micro_xs, double E_in, double mu, uint64_t* seed) const;
+  double sample_energy_and_pdf(const NuclideMicroXS& micro_xs, double E_in,
+    double mu, uint64_t* seed) const;
 
 private:
   struct Reaction {

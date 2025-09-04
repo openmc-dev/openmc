@@ -237,7 +237,7 @@ void KalbachMann::sample(
     mu = std::log(r1 * std::exp(km_a) + (1.0 - r1) * std::exp(-km_a)) / km_a;
   }
 }
-double KalbachMann::get_pdf(
+double KalbachMann::sample_energy_and_pdf(
   double E_in, double mu, double& E_out, uint64_t* seed) const
 {
   // Find energy bin and calculate interpolation factor -- if the energy is

@@ -3,6 +3,8 @@
 
 #include <cstdint>
 
+#include "openmc/error.h"
+
 namespace openmc {
 
 //==============================================================================
@@ -16,8 +18,11 @@ class AngleEnergy {
 public:
   virtual void sample(
     double E_in, double& E_out, double& mu, uint64_t* seed) const = 0;
-  virtual double angular_pdf(double E_in, double mu) const = 0;
-  virtual double conditional_sample_energy(double E_in, double mu, uint64_t* seed) const = 0;
+  virtual double sample_energy_and_pdf(
+    double E_in, double mu, double& E_out, uint64_t* seed) const
+  {
+    fatal_error("get_pdf not available for this AngleEnergy type");
+  }
   virtual ~AngleEnergy() = default;
 };
 

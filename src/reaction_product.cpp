@@ -13,7 +13,6 @@
 #include "openmc/secondary_correlated.h"
 #include "openmc/secondary_kalbach.h"
 #include "openmc/secondary_nbody.h"
-#include "openmc/secondary_thermal.h"
 #include "openmc/secondary_uncorrelated.h"
 
 namespace openmc {
@@ -130,7 +129,7 @@ void ReactionProduct::sample(
   }
 }
 
-double ReactionProduct::get_pdf(
+double ReactionProduct::sample_energy_and_pdf(
   double E_in, double mu, double& E_out, uint64_t* seed) const
 {
 
@@ -156,7 +155,7 @@ double ReactionProduct::get_pdf(
   // now extract pdf
 
   AngleEnergy* angleEnergyPtr = distribution_[distribution_index].get();
-  return angleEnergyPtr->get_pdf(E_in, mu, E_out, seed);
+  return angleEnergyPtr->sample_energy_and_pdf(E_in, mu, E_out, seed);
 }
 
 } // namespace openmc

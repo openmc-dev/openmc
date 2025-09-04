@@ -263,7 +263,7 @@ void CorrelatedAngleEnergy::sample(
   }
 }
 
-double CorrelatedAngleEnergy::get_pdf(
+double CorrelatedAngleEnergy::sample_energy_and_pdf(
   double E_in, double mu, double& E_out, uint64_t* seed) const
 {
   // Find energy bin and calculate interpolation factor -- if the energy is
@@ -367,9 +367,9 @@ double CorrelatedAngleEnergy::get_pdf(
   double pdf; // assuming the data in lab frame!
   if (r1 - c_k < c_k1 - r1 ||
       distribution_[l].interpolation == Interpolation::histogram) {
-    pdf = distribution_[l].angle[k]->get_pdf(mu);
+    pdf = distribution_[l].angle[k]->pdf(mu);
   } else {
-    pdf = distribution_[l].angle[k + 1]->get_pdf(mu);
+    pdf = distribution_[l].angle[k + 1]->pdf(mu);
   }
 
   return pdf;

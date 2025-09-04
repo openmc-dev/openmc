@@ -65,14 +65,14 @@ void UncorrelatedAngleEnergy::sample(
   E_out = energy_->sample(E_in, seed);
 }
 
-double UncorrelatedAngleEnergy::get_pdf(
+double UncorrelatedAngleEnergy::pdf(
   double E_in, double mu, double& E_out, uint64_t* seed) const
 {
   // Sample outgoing energy
   E_out = energy_->sample(E_in, seed);
   double pdf;
   if (!angle_.empty()) {
-    pdf = angle_.get_pdf(E_in, mu);
+    pdf = angle_.pdf(E_in, mu);
   } else {
     // no angle distribution given => assume isotropic for all energies
     pdf = 0.5;

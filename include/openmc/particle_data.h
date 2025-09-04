@@ -372,22 +372,52 @@ public:
   // Boundary information
   BoundaryInfo& boundary() { return boundary_; }
 
+  // Distance to the next collision
+  double& collision_distance() { return collision_distance_; }
+
 #ifdef OPENMC_DAGMC_ENABLED
   // DagMC state variables
-  moab::DagMC::RayHistory& history() { return history_; }
-  Direction& last_dir() { return last_dir_; }
+  moab::DagMC::RayHistory& history()
+  {
+    return history_;
+  }
+  Direction& last_dir()
+  {
+    return last_dir_;
+  }
 #endif
 
   // material of current and last cell
-  int& material() { return material_; }
-  const int& material() const { return material_; }
-  int& material_last() { return material_last_; }
-  const int& material_last() const { return material_last_; }
+  int& material()
+  {
+    return material_;
+  }
+  const int& material() const
+  {
+    return material_;
+  }
+  int& material_last()
+  {
+    return material_last_;
+  }
+  const int& material_last() const
+  {
+    return material_last_;
+  }
 
   // temperature of current and last cell
-  double& sqrtkT() { return sqrtkT_; }
-  const double& sqrtkT() const { return sqrtkT_; }
-  double& sqrtkT_last() { return sqrtkT_last_; }
+  double& sqrtkT()
+  {
+    return sqrtkT_;
+  }
+  const double& sqrtkT() const
+  {
+    return sqrtkT_;
+  }
+  double& sqrtkT_last()
+  {
+    return sqrtkT_last_;
+  }
 
 private:
   int64_t id_ {-1}; //!< Unique ID
@@ -416,6 +446,8 @@ private:
 
   double sqrtkT_ {-1.0};     //!< sqrt(k_Boltzmann * temperature) in eV
   double sqrtkT_last_ {0.0}; //!< last temperature
+
+  double collision_distance_ {INFTY};
 
 #ifdef OPENMC_DAGMC_ENABLED
   moab::DagMC::RayHistory history_;
@@ -527,8 +559,6 @@ private:
   double keff_tally_leakage_ {0.0};
 
   bool trace_ {false};
-
-  double collision_distance_;
 
   int n_event_ {0};
 
@@ -694,9 +724,6 @@ public:
 
   // Shows debug info
   bool& trace() { return trace_; }
-
-  // Distance to the next collision
-  double& collision_distance() { return collision_distance_; }
 
   // Number of events particle has undergone
   int& n_event() { return n_event_; }

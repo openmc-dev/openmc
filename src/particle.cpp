@@ -225,8 +225,6 @@ void Particle::event_calculate_xs()
 
 void Particle::event_advance()
 {
-  // Find the distance to the nearest boundary
-
   // Sample a distance to collision
   if (type() == ParticleType::electron || type() == ParticleType::positron) {
     collision_distance() = 0.0;
@@ -236,6 +234,7 @@ void Particle::event_advance()
     collision_distance() = -std::log(prn(current_seed())) / macro_xs().total;
   }
 
+  // Find the distance to the nearest boundary
   boundary() = distance_to_boundary(*this);
 
   double speed = this->speed();
@@ -575,14 +574,14 @@ void Particle::cross_surface(const Surface& surf)
     return;
   }
 #endif
-
+  int i_surface = std::abs(surface());
   bool verbose = settings::verbosity >= 10 || trace();
-  if (surf->is_triso_surface_) {
+  if (surf.is_triso_surface_) {
     if (surface() > 0) {
       for (int i = n_coord(); i < model::n_coord_levels; i++) {
         coord(i).reset();
       }
-      coord(n_coord() - 1).cell =
+      coord(n_coord() - 1).cell() =
         model::cell_map[model::surfaces[i_surface - 1]->triso_base_index_];
     } else if (surface() < 0) {
       for (int i = n_coord(); i < model::n_coord_levels; i++) {
@@ -592,20 +591,20 @@ void Particle::cross_surface(const Surface& surf)
         fatal_error(fmt::format("Particle cell of surface {} is not defined",
           model::surfaces[i_surface - 1]->id_));
       }
-      coord(n_coord() - 1).cell =
+      coord(n_coord() - 1).cell() =
         model::cell_map[model::surfaces[i_surface - 1]->triso_particle_index_];
     }
 
     // find material
     bool found = true;
-    int i_cell = coord(n_coord() - 1).cell;
+    int i_cell = coord(n_coord() - 1).cell();
     for (;; ++n_coord()) {
       if (i_cell == C_NONE) {
-        int i_universe = coord(n_coord() - 1).universe;
+        int i_universe = coord(n_coord() - 1).universe();
         const auto& univ {model::universes[i_universe]};
 
         if (univ->filled_with_triso_base_ != -1) {
-          coord(n_coord() - 1).cell =
+          coord(n_coord() - 1).cell() =
             model::cell_map[univ->filled_with_triso_base_];
           found = true;
         } else {
@@ -616,7 +615,7 @@ void Particle::cross_surface(const Surface& surf)
         }
       }
 
-      i_cell = coord(n_coord() - 1).cell;
+      i_cell = coord(n_coord() - 1).cell();
 
       Cell& c {*model::cells[i_cell]};
       if (c.type_ == Fill::MATERIAL) {
@@ -650,14 +649,14 @@ void Particle::cross_surface(const Surface& surf)
 
         // Set the lower coordinate level universe.
         auto& coor {coord(n_coord())};
-        coor.universe = c.fill_;
+        coor.universe() = c.fill_;
 
         // Set the position and direction.
-        coor.r = r_local();
-        coor.u = u_local();
+        coor.r() = r_local();
+        coor.u() = u_local();
 
         // Apply translation.
-        coor.r -= c.translation_;
+        coor.r() -= c.translation_;
 
         // Apply rotation.
         if (!c.rotation_.empty()) {

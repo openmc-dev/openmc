@@ -422,18 +422,19 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
   // Morgans law
   Region region(region_spec, id_);
   region_ = region;
+  vector<int32_t> rpn = region_.generate_postfix(id_);
 
   if (virtual_lattice_) {
     vl_triso_distribution_ = generate_triso_distribution(
-      vl_shape_, vl_pitch_, vl_lower_left_, rpn_, id_);
+      vl_shape_, vl_pitch_, vl_lower_left_, rpn, id_);
   }
 
   if (triso_particle_) {
-    if (rpn_.size() != 1) {
+    if (rpn.size() != 1) {
       fatal_error(
         fmt::format("Wrong surface definition of triso particle cell {}", id_));
     } else {
-      model::surfaces[abs(rpn_[0]) - 1]->connect_to_triso_base(id_, "particle");
+      model::surfaces[abs(rpn[0]) - 1]->connect_to_triso_base(id_, "particle");
     }
   }
 
@@ -591,7 +592,7 @@ std::pair<double, int32_t> CSGCell::distance(
     }
 
   } else {
-    region_.distance(r, u, on_surface);
+    return region_.distance(r, u, on_surface);
   }
 
   return {min_dist, i_surf};

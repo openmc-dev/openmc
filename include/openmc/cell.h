@@ -99,12 +99,12 @@ public:
   //! Get Boolean of if the cell is simple or not
   bool is_simple() const { return simple_; }
 
+  //! Get a vector of the region expression in postfix notation
+  vector<int32_t> generate_postfix(int32_t cell_id) const;
+
 private:
   //----------------------------------------------------------------------------
   // Private Methods
-
-  //! Get a vector of the region expression in postfix notation
-  vector<int32_t> generate_postfix(int32_t cell_id) const;
 
   //! Determine if a particle is inside the cell for a simple cell (only
   //! intersection operators)
@@ -314,14 +314,13 @@ public:
   //----------------------------------------------------------------------------
   // Data members
 
-  int32_t id_;       //!< Unique ID
-  std::string name_; //!< User-defined name
-  Fill type_;        //!< Material, universe, or lattice
-  int32_t universe_; //!< Universe # this cell is in
-  int32_t fill_;     //!< Universe # filling this cell
-  bool virtual_lattice_;    //!< If the cell is the base of a virtual triso lattice
+  int32_t id_;           //!< Unique ID
+  std::string name_;     //!< User-defined name
+  Fill type_;            //!< Material, universe, or lattice
+  int32_t universe_;     //!< Universe # this cell is in
+  int32_t fill_;         //!< Universe # filling this cell
+  bool virtual_lattice_; //!< If the cell is the base of a virtual triso lattice
   bool triso_particle_;
-
 
   //! \brief Specification of the virtual lattice
   vector<double> vl_lower_left_;
@@ -380,10 +379,7 @@ public:
   vector<int32_t> surfaces() const override { return region_.surfaces(); }
 
   std::pair<double, int32_t> distance(Position r, Direction u,
-    int32_t on_surface, GeometryState* p) const override
-  {
-    return region_.distance(r, u, on_surface);
-  }
+    int32_t on_surface, GeometryState* p) const override;
 
   bool contains(Position r, Direction u, int32_t on_surface) const override
   {

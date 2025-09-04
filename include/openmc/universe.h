@@ -29,6 +29,7 @@ class Universe {
 public:
   int32_t id_;            //!< Unique ID
   vector<int32_t> cells_; //!< Cells within this universe
+  int filled_with_triso_base_ = -1; //!< ID of cell filled with virtual lattice
   int32_t n_instances_;   //!< Number of instances of this universe
 
   //! \brief Write universe information to an HDF5 group.

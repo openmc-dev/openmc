@@ -274,6 +274,9 @@ public:
   bool triso_in_mesh(
     vector<double> mesh_center, vector<double> lattice_pitch) const override;
   BoundingBox bounding_box(bool pos_side) const override;
+  vector<double> get_center() const override;
+  double get_radius() const override;
+  void connect_to_triso_base(int triso_index, std::string key) override;
 
   double x0_, y0_, z0_, radius_;
   // int triso_base_index_ = -1;

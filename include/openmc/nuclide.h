@@ -115,6 +115,9 @@ public:
   unique_ptr<Function1D> fragments_;       //!< Fission fragment energy release
   unique_ptr<Function1D> betas_;           //!< Delayed beta energy release
 
+  // Absorption reactions
+  vector<Reaction*> absorption_rx_; //!< Absorption reactions
+
   // Resonance scattering information
   bool resonant_ {false};
   vector<double> energy_0K_;

@@ -880,7 +880,7 @@ class Settings:
                     try:
                         Z, _, _ = openmc.data.zam(nuclide_id)
                     except ValueError as e:
-                        warnings.warn(str(e))
+                        warnings.warn("this nuclide id {} is not valid".format(nuclide_id))
             elif key == 'deposited_E_threshold':
                 cv.check_type('Deposited Energy Threshold for collision tracking data banking',
                               value, Real)

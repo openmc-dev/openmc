@@ -95,7 +95,7 @@ double AngleDistribution::sample(double E, uint64_t* seed) const
   return mu;
 }
 
-double AngleDistribution::get_pdf(double E, double mu) const
+double AngleDistribution::pdf(double E, double mu) const
 {
   // Determine number of incoming energies
   auto n = energy_.size();

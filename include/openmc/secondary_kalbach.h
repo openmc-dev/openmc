@@ -31,7 +31,8 @@ public:
   //! \param[inout] seed Pseudorandom seed pointer
   void sample(
     double E_in, double& E_out, double& mu, uint64_t* seed) const override;
-  double get_pdf(double E_in, double mu, double& E_out, uint64_t* seed) const;
+  double angular_pdf(double E_in, double mu) const override;
+  double conditional_sample_energy(double E_in, double mu, uint64_t* seed) const override;
 
 private:
   //! Outgoing energy/angle at a single incoming energy

@@ -65,7 +65,7 @@ void UncorrelatedAngleEnergy::sample(
   E_out = energy_->sample(E_in, seed);
 }
 
-double UncorrelatedAngleEnergy::pdf(
+double UncorrelatedAngleEnergy::sample_energy_and_pdf(
   double E_in, double mu, double& E_out, uint64_t* seed) const
 {
   // Sample outgoing energy

@@ -27,10 +27,10 @@ public:
     double heating;
   };
 
-  Interpolation interp_; //!< interpolation type
-  int inelastic_flag_;   //!< inelastic competition flag
-  int absorption_flag_;  //!< other absorption flag
-  bool multiply_smooth_; //!< multiply by smooth cross section?
+  Interpolation interp_;         //!< interpolation type
+  int inelastic_flag_;           //!< inelastic competition flag
+  int absorption_flag_;          //!< other absorption flag
+  bool multiply_smooth_;         //!< multiply by smooth cross section?
 
   vector<double> energy_; //!< incident energies
   auto n_energy() const { return energy_.size(); }

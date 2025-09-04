@@ -53,7 +53,7 @@ public:
   void sample(const NuclideMicroXS& micro_xs, double E_in, double* E_out,
     double* mu, uint64_t* seed);
   double sample_energy_and_pdf(const NuclideMicroXS& micro_xs, double E_in,
-    double mu, uint64_t* seed) const;
+    double mu, double& E_out, uint64_t* seed) const;
 
 private:
   struct Reaction {

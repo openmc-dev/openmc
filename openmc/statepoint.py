@@ -714,3 +714,4 @@ class StatePoint:
                     tally_filter.paths = cell.paths
 
         self._summary = summary
+        

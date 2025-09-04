@@ -604,4 +604,18 @@ void MixedElasticAE::sample(
   }
 }
 
+double MixedElasticAE::sample_energy_and_pdf(
+  double E_in, double mu, double& E_out, uint64_t* seed) const
+{
+  // Evaluate coherent and incoherent elastic cross sections
+  double xs_coh = coherent_xs_(E_in);
+  double xs_incoh = incoherent_xs_(E_in);
+
+  if (prn(seed) * (xs_coh + xs_incoh) < xs_coh) {
+    return coherent_dist_.sample_energy_and_pdf(E_in, mu, E_out, seed);
+  } else {
+    return incoherent_dist_->sample_energy_and_pdf(E_in, mu, E_out, seed);
+  }
+}
+
 } // namespace openmc

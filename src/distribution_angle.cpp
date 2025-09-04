@@ -117,9 +117,9 @@ double AngleDistribution::pdf(double E, double mu) const
 
   double pdf = 0.0;
   if (r > 0.0)
-    pdf += r * distribution_[i + 1]->get_pdf(mu);
+    pdf += r * distribution_[i + 1]->pdf(mu);
   if (r < 1.0)
-    pdf += (1.0 - r) * distribution_[i]->get_pdf(mu);
+    pdf += (1.0 - r) * distribution_[i]->pdf(mu);
   return pdf;
 }
 

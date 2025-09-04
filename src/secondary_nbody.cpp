@@ -29,6 +29,16 @@ void NBodyPhaseSpace::sample(
   // phase space distribution
   mu = uniform_distribution(-1., 1., seed);
 
+  E_out = conditional_sample_energy(E_in, mu, seed);
+}
+
+double NBodyPhaseSpace::angular_pdf(double E_in, double mu) const
+{
+  return 0.5;
+}
+
+double NBodyPhaseSpace::conditional_sample_energy(double E_in, double mu, uint64_t* seed) const
+{
   // Determine E_max parameter
   double Ap = mass_ratio_;
   double E_max = (Ap - 1.0) / Ap * (A_ / (A_ + 1.0) * E_in + Q_);
@@ -56,7 +66,7 @@ void NBodyPhaseSpace::sample(
     r5 = prn(seed);
     r6 = prn(seed);
     y = -std::log(r1 * r2 * r3 * r4) -
-        std::log(r5) * std::pow(std::cos(PI / 2.0 * r6), 2);
+      std::log(r5) * std::pow(std::cos(PI / 2.0 * r6), 2);
     break;
   default:
     fatal_error("N-body phase space with >5 bodies.");
@@ -64,13 +74,7 @@ void NBodyPhaseSpace::sample(
 
   // Now determine v and E_out
   double v = x / (x + y);
-  E_out = E_max * v;
-}
-
-double NBodyPhaseSpace::get_pdf(
-  double E_in, double mu, double& E_out, uint64_t* seed) const
-{
-  return 0.5;
+  return E_max * v;
 }
 
 } // namespace openmc

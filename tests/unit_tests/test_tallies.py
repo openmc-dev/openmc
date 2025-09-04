@@ -1,36 +1,26 @@
-import os
-import pprint
-import shutil
-from fractions import Fraction
-
-import h5py
 import numpy as np
 import pytest
-import scipy.stats as sps
 import openmc
+import scipy.stats as sps
 
 
 def test_xml_roundtrip(run_in_tmpdir):
     # Create a tally with all possible gizmos
     mesh = openmc.RegularMesh()
-    mesh.lower_left = (-10.0, -10.0, -10.0)
-    mesh.upper_right = (
-        10.0,
-        10.0,
-        10.0,
-    )
+    mesh.lower_left = (-10., -10., -10.)
+    mesh.upper_right = (10., 10., 10.,)
     mesh.dimension = (5, 5, 5)
     mesh_filter = openmc.MeshFilter(mesh)
     meshborn_filter = openmc.MeshBornFilter(mesh)
     tally = openmc.Tally()
     tally.filters = [mesh_filter, meshborn_filter]
-    tally.nuclides = ["U235", "I135", "Li6"]
-    tally.scores = ["total", "fission", "heating"]
+    tally.nuclides = ['U235', 'I135', 'Li6']
+    tally.scores = ['total', 'fission', 'heating']
     tally.derivative = openmc.TallyDerivative(
-        variable="nuclide_density", material=1, nuclide="Li6"
+        variable='nuclide_density', material=1, nuclide='Li6'
     )
-    tally.triggers = [openmc.Trigger("rel_err", 0.025)]
-    tally.triggers[0].scores = ["total", "fission"]
+    tally.triggers = [openmc.Trigger('rel_err', 0.025)]
+    tally.triggers[0].scores = ['total', 'fission']
     tallies = openmc.Tallies([tally])
 
     # Roundtrip through XML and make sure we get what we started with
@@ -60,7 +50,7 @@ def test_tally_equivalence():
     tally_a = openmc.Tally()
     tally_b = openmc.Tally(tally_id=tally_a.id)
 
-    tally_a.name = "new name"
+    tally_a.name = 'new name'
     assert tally_a != tally_b
     tally_b.name = tally_a.name
     assert tally_a == tally_b
@@ -74,23 +64,23 @@ def test_tally_equivalence():
     tally_b.filters = [ef_b]
     assert tally_a == tally_b
 
-    tally_a.scores = ["flux", "absorption", "fission", "scatter"]
+    tally_a.scores = ['flux', 'absorption', 'fission', 'scatter']
     assert tally_a != tally_b
-    tally_b.scores = ["flux", "absorption", "fission", "scatter"]
+    tally_b.scores = ['flux', 'absorption', 'fission', 'scatter']
     assert tally_a == tally_b
 
     tally_a.nuclides = []
     tally_b.nuclides = []
     assert tally_a == tally_b
 
-    tally_a.nuclides = ["total"]
+    tally_a.nuclides = ['total']
     assert tally_a == tally_b
 
     # a tally with an estimator set to None is equal to
     # a tally with an estimator specified
-    tally_a.estimator = "collision"
+    tally_a.estimator = 'collision'
     assert tally_a == tally_b
-    tally_b.estimator = "collision"
+    tally_b.estimator = 'collision'
     assert tally_a == tally_b
 
     tally_a.multiply_density = False
@@ -98,8 +88,8 @@ def test_tally_equivalence():
     tally_b.multiply_density = False
     assert tally_a == tally_b
 
-    trigger_a = openmc.Trigger("rel_err", 0.025)
-    trigger_b = openmc.Trigger("rel_err", 0.025)
+    trigger_a = openmc.Trigger('rel_err', 0.025)
+    trigger_b = openmc.Trigger('rel_err', 0.025)
 
     tally_a.triggers = [trigger_a]
     assert tally_a != tally_b
@@ -110,18 +100,70 @@ def test_tally_equivalence():
 def test_figure_of_merit(sphere_model, run_in_tmpdir):
     # Run model with a few simple tally scores
     tally = openmc.Tally()
-    tally.scores = ["total", "absorption", "scatter"]
+    tally.scores = ['total', 'absorption', 'scatter']
     sphere_model.tallies = [tally]
     sp_path = sphere_model.run(apply_tally_results=True)
 
     # Get execution time and relative error
     with openmc.StatePoint(sp_path) as sp:
-        time = sp.runtime["simulation"]
+        time = sp.runtime['simulation']
     rel_err = tally.std_dev / tally.mean
 
     # Check that figure of merit is calculated correctly
     assert tally.figure_of_merit == pytest.approx(1 / (rel_err**2 * time))
 
+
+def test_tally_application(sphere_model, run_in_tmpdir):
+    # Create a tally with most possible gizmos
+    tally = openmc.Tally(name='test tally')
+    ef = openmc.EnergyFilter([0.0, 0.1, 1.0, 10.0e6])
+    mesh = openmc.RegularMesh.from_domain(sphere_model.geometry, (2, 2, 2))
+    mf = openmc.MeshFilter(mesh)
+    tally.filters = [ef, mf]
+    tally.scores = ['flux', 'absorption', 'fission', 'scatter']
+    sphere_model.tallies = [tally]
+
+    # FIRST RUN
+    # run the simulation and apply results
+    sp_file = sphere_model.run(apply_tally_results=True)
+    # before calling for any property requiring results (including the equivalence check below),
+    # the following internal attributes of the original should be unset
+    assert tally._mean is None
+    assert tally._std_dev is None
+    assert tally._sum is None
+    assert tally._sum_sq is None
+    assert tally._num_realizations == 0
+    # the statepoint file property should be set, however
+    assert tally._sp_filename == sp_file
+
+    with openmc.StatePoint(sp_file) as sp:
+        assert tally in sp.tallies.values()
+        sp_tally = sp.tallies[tally.id]
+
+    # at this point the tally information regarding results should be the same
+    assert (sp_tally.std_dev == tally.std_dev).all()
+    assert (sp_tally.mean == tally.mean).all()
+    assert sp_tally.nuclides == tally.nuclides
+
+    # SECOND RUN
+    # change the number of particles and ensure that the results are different
+    sphere_model.settings.particles += 1
+    sp_file = sphere_model.run(apply_tally_results=True)
+
+    assert (sp_tally.std_dev != tally.std_dev).any()
+    assert (sp_tally.mean != tally.mean).any()
+
+    # now re-read data from the new stateopint file and
+    # ensure that the new results match those in
+    # the latest statepoint
+    with openmc.StatePoint(sp_file) as sp:
+        assert tally in sp.tallies.values()
+        sp_tally = sp.tallies[tally.id]
+
+    # at this point the tally information regarding results should be the same
+    assert (sp_tally.std_dev == tally.std_dev).all()
+    assert (sp_tally.mean == tally.mean).all()
+    assert sp_tally.nuclides == tally.nuclides
 
 def _tally_from_data(x, *, vov_enabled=True, normality=True):
     t = openmc.Tally()
@@ -142,26 +184,16 @@ def _tally_from_data(x, *, vov_enabled=True, normality=True):
         t._sum_fourth = np.array([[[np.sum(x**4)]]], dtype=float)
     return t
 
-
 @pytest.mark.parametrize(
     "x, skew_true, kurt_true",
-    [
-        # Rademacher ±1 with p=0.5 → g1 = 0, b2 = 1
+    [   # Rademacher distribution
         (np.array([1.0, -1.0] * 200), 0.0, 1.0),
         # Two-point {0,3} with p(0)=3/4, p(3)=1/4
-        (
-            np.concatenate([np.zeros(600), np.full(200, 3.0)]),
-            2.0 / np.sqrt(3.0),
-            7.0 / 3.0,
-        ),
-        # Bernoulli(p=0.3): g1 = (1-2p)/sqrt(p(1-p)), b2 = (1 - 3p + 3p^2)/(p(1-p))
-        (
-            np.concatenate([np.ones(300), np.zeros(700)]),
-            (1 - 2 * 0.3) / np.sqrt(0.3 * 0.7),
-            (1 - 3 * 0.3 + 3 * 0.3**2) / (0.3 * 0.7),
-        ),
-    ],
-)
+        (np.concatenate([np.zeros(600), np.full(200, 3.0)]), 2.0 / np.sqrt(3.0), 7.0 / 3.0,),
+        # Bernoullii distribution
+        (np.concatenate([np.ones(300), np.zeros(700)]), (1 - 2 * 0.3) / np.sqrt(0.3 * 0.7), (1 - 3 * 0.3 + 3 * 0.3**2) / (0.3 * 0.7),),
+    ],)
+
 def test_b1_b2_analytical_against_tally(x, skew_true, kurt_true):
     t = _tally_from_data(x, vov_enabled=True, normality=False)
 
@@ -171,20 +203,15 @@ def test_b1_b2_analytical_against_tally(x, skew_true, kurt_true):
     assert np.isclose(g1, skew_true, rtol=0, atol=1e-12)
     assert np.isclose(b2, kurt_true, rtol=0, atol=1e-12)
 
-
 @pytest.mark.parametrize(
     "draw, skew_true, kurt_true",
-    [
-        (lambda rng, n: rng.normal(0, 1, n), 0.0, 3.0),  # Normal
-        (lambda rng, n: rng.random(n), 0.0, 1.8),  # Uniform(0,1)
-        (lambda rng, n: rng.exponential(1.0, n), 2.0, 9.0),  # Exp(1)
-        (
-            lambda rng, n: (rng.random(n) < 0.3).astype(float),
+    [(lambda rng, n: rng.normal(0, 1, n), 0.0, 3.0),  # Normal
+     (lambda rng, n: rng.random(n), 0.0, 1.8),  # Uniform(0,1)
+     (lambda rng, n: rng.exponential(1.0, n), 2.0, 9.0),  # Exp(1)
+     (lambda rng, n: (rng.random(n) < 0.3).astype(float),
             (1 - 2 * 0.3) / np.sqrt(0.3 * 0.7),
-            (1 - 3 * 0.3 + 3 * 0.3**2) / (0.3 * 0.7),
-        ),  # Bernoulli(0.3)
-    ],
-)
+            (1 - 3 * 0.3 + 3 * 0.3**2) / (0.3 * 0.7),),],)
+
 def test_b1_b2_scipy_and_theory(draw, skew_true, kurt_true):
     rng = np.random.default_rng(12345)
     N = 200_000
@@ -208,7 +235,6 @@ def test_b1_b2_scipy_and_theory(draw, skew_true, kurt_true):
     tol_kurt = 0.03 if kurt_true < 4 else 0.1
     assert abs(g1_t - skew_true) < tol_skew
     assert abs(b2_t - kurt_true) < tol_kurt
-
 
 def test_ztests_scipy_comparison():
     rng = np.random.default_rng(987)
@@ -262,7 +288,6 @@ def test_ztests_scipy_comparison():
     assert Zb2_1 > 30 and z_kurt_sp1 > 30
     assert K2_1 > 2000 and k2_sp1 > 2000
 
-
 def test_vov_stochastic(sphere_model, run_in_tmpdir):
     tally = openmc.Tally(name="test tally")
     ef = openmc.EnergyFilter([0.0, 0.1, 1.0, 10.0e6])
@@ -303,73 +328,10 @@ def test_vov_stochastic(sphere_model, run_in_tmpdir):
     expected_vov = np.zeros_like(mean)
     nonzero = np.abs(mean) > 0
 
-    num = (
-        sum_fourth
-        - (4.0 * sum_third * sum_) / n
-        + (6.0 * sum_sq * sum_**2) / (n**2)
-        - (3.0 * sum_**4) / (n**3)
-    )
-    den = (sum_sq - (1.0 / n) * sum_**2) ** 2
+    num = (sum_fourth - (4.0*sum_third*sum_)/n + (6.0*sum_sq*sum_**2)/(n**2) 
+           - (3.0*sum_**4)/(n**3))
+    den = (sum_sq - (1.0/n)*sum_**2)**2
 
-    expected_vov[nonzero] = num[nonzero] / den[nonzero] - 1.0 / n
+    expected_vov[nonzero] = num[nonzero]/den[nonzero] - 1.0/n
 
     assert np.allclose(expected_vov, sp_tally.vov, rtol=1e-7, atol=0.0)
-
-
-def test_tally_application(sphere_model, run_in_tmpdir):
-    # Create a tally with most possible gizmos
-    tally = openmc.Tally(name="test tally")
-    ef = openmc.EnergyFilter([0.0, 0.1, 1.0, 10.0e6])
-    mesh = openmc.RegularMesh.from_domain(sphere_model.geometry, (2, 2, 2))
-    mf = openmc.MeshFilter(mesh)
-    tally.filters = [ef, mf]
-    tally.scores = ["flux", "absorption", "fission", "scatter"]
-    tally.vov_enabled = True
-    sphere_model.tallies = [tally]
-
-    # FIRST RUN
-    # run the simulation and apply results
-    sp_file = sphere_model.run(apply_tally_results=True)
-    # before calling for any property requiring results (including the equivalence check below),
-    # the following internal attributes of the original should be unset
-    assert tally._mean is None
-    assert tally._std_dev is None
-    assert tally._sum is None
-    assert tally._sum_sq is None
-    assert tally._sum_third is None
-    assert tally._sum_fourth is None
-    assert tally._num_realizations == 0
-    # the statepoint file property should be set, however
-    assert tally._sp_filename == sp_file
-
-    with openmc.StatePoint(sp_file) as sp:
-        assert tally in sp.tallies.values()
-        sp_tally = sp.tallies[tally.id]
-
-    # at this point the tally information regarding results should be the same
-    assert (sp_tally.std_dev == tally.std_dev).all()
-    assert (sp_tally.mean == tally.mean).all()
-    assert (sp_tally.vov == tally.vov).all()
-    assert sp_tally.nuclides == tally.nuclides
-
-    # SECOND RUN
-    # change the number of particles and ensure that the results are different
-    sphere_model.settings.particles += 1
-    sp_file = sphere_model.run(apply_tally_results=True)
-
-    assert (sp_tally.std_dev != tally.std_dev).any()
-    assert (sp_tally.mean != tally.mean).any()
-    assert (sp_tally.vov != tally.vov).any()
-
-    # now re-read data from the new stateopint file and
-    # ensure that the new results match those in
-    # the latest statepoint
-    with openmc.StatePoint(sp_file) as sp:
-        assert tally in sp.tallies.values()
-        sp_tally = sp.tallies[tally.id]
-
-    # at this point the tally information regarding results should be the same
-    assert (sp_tally.std_dev == tally.std_dev).all()
-    assert (sp_tally.mean == tally.mean).all()
-    assert (sp_tally.vov == tally.vov).all()
-    assert sp_tally.nuclides == tally.nuclides

@@ -2077,6 +2077,7 @@ class Settings:
         text = get_text(root, 'max_tracks')
         if text is not None:
             self.max_tracks = int(text)
+
     def _random_ray_from_xml_element(self, root):
         elem = root.find('random_ray')
         if elem is not None:

@@ -1,12 +1,12 @@
-import glob
-import os
-import re
-import warnings
 from datetime import datetime
-from pathlib import Path
+import glob
+import re
+import os
+import warnings
 
 import h5py
 import numpy as np
+from pathlib import Path
 from uncertainties import ufloat
 
 import openmc
@@ -237,29 +237,18 @@ class StatePoint:
     def global_tallies(self):
         if self._global_tallies is None:
             data = self._f['global_tallies'][()]
-            gt = np.zeros(
-                data.shape[0],
-                dtype=[
-                    ('name', 'S14'),
-                    ('sum', 'f8'),
-                    ('sum_sq', 'f8'),
-                    ('mean', 'f8'),
-                    ('std_dev', 'f8'),
-                ],
-            )
-            gt['name'] = [
-                'k-collision',
-                'k-absorption',
-                'k-tracklength',
-                'leakage',
-            ]
-            gt['sum'] = data[:, 1]
-            gt['sum_sq'] = data[:, 2]
+            gt = np.zeros(data.shape[0], dtype=[
+                ('name', 'S14'), ('sum', 'f8'), ('sum_sq', 'f8'),
+                ('mean', 'f8'), ('std_dev', 'f8')])
+            gt['name'] = ['k-collision', 'k-absorption', 'k-tracklength',
+                          'leakage']
+            gt['sum'] = data[:,1]
+            gt['sum_sq'] = data[:,2]
 
             # Calculate mean and sample standard deviation of mean
             n = self.n_realizations
-            gt['mean'] = gt['sum'] / n
-            gt['std_dev'] = np.sqrt((gt['sum_sq'] / n - gt['mean'] ** 2) / (n - 1))
+            gt['mean'] = gt['sum']/n
+            gt['std_dev'] = np.sqrt((gt['sum_sq']/n - gt['mean']**2)/(n - 1))
 
             self._global_tallies = gt
 
@@ -290,8 +279,7 @@ class StatePoint:
     def k_combined(self):
         warnings.warn(
             "The 'k_combined' property has been renamed to 'keff' and will be "
-            "removed in a future version of OpenMC.",
-            FutureWarning,
+            "removed in a future version of OpenMC.", FutureWarning
         )
         return self.keff
 
@@ -363,7 +351,8 @@ class StatePoint:
 
     @property
     def runtime(self):
-        return {name: dataset[()] for name, dataset in self._f['runtime'].items()}
+        return {name: dataset[()]
+                for name, dataset in self._f['runtime'].items()}
 
     @property
     def seed(self):
@@ -428,7 +417,7 @@ class StatePoint:
                     group = tallies_group[f'tally {tally_id}']
 
                     # Check if tally is internal and therefore has no data
-                    if group.attrs.get('internal'):
+                    if group.attrs.get("internal"):
                         continue
 
                     # Create Tally object and assign basic properties
@@ -438,10 +427,8 @@ class StatePoint:
 
                     # Check if tally has multiply_density attribute
                     if "multiply_density" in group.attrs:
-                        tally.multiply_density = (
-                            group.attrs["multiply_density"].item() > 0
-                        )
-
+                        tally.multiply_density = group.attrs["multiply_density"].item() > 0
+                    
                     # Check if tally has vov attribute
                     if 'vov_enabled' in group.attrs:
                         tally.vov_enabled = bool(group.attrs['vov_enabled'][()])
@@ -465,8 +452,7 @@ class StatePoint:
                         for filter_id in filter_ids:
                             filter_group = filters_group[f'filter {filter_id}']
                             new_filter = openmc.Filter.from_hdf5(
-                                filter_group, meshes=self.meshes
-                            )
+                                filter_group, meshes=self.meshes)
                             tally.filters.append(new_filter)
 
                     # Read nuclide bins
@@ -546,20 +532,10 @@ class StatePoint:
         if self.summary is not None:
             self.summary.add_volume_information(volume_calc)
 
-    def get_tally(
-        self,
-        scores=[],
-        filters=[],
-        nuclides=[],
-        name=None,
-        id=None,
-        estimator=None,
-        exact_filters=False,
-        exact_nuclides=False,
-        exact_scores=False,
-        multiply_density=None,
-        derivative=None,
-    ):
+    def get_tally(self, scores=[], filters=[], nuclides=[],
+                  name=None, id=None, estimator=None, exact_filters=False,
+                  exact_nuclides=False, exact_scores=False,
+                  multiply_density=None, derivative=None):
         """Finds and returns a Tally object with certain properties.
 
         This routine searches the list of Tallies and returns the first Tally
@@ -647,10 +623,7 @@ class StatePoint:
                 continue
             if derivative is not None and derivative != test_tally.derivative:
                 continue
-            if (
-                multiply_density is not None
-                and multiply_density != test_tally.multiply_density
-            ):
+            if multiply_density is not None and multiply_density != test_tally.multiply_density:
                 continue
 
             # Determine if Tally has the queried score(s)
@@ -718,14 +691,13 @@ class StatePoint:
         """
 
         if self.summary is not None:
-            warnings.warn('A Summary object has already been linked.', RuntimeWarning)
+            warnings.warn('A Summary object has already been linked.',
+                          RuntimeWarning)
             return
 
         if not isinstance(summary, openmc.Summary):
-            msg = (
-                f'Unable to link statepoint with '{summary}' which is not a'
-                'Summary object'
-            )
+            msg = f'Unable to link statepoint with "{summary}" which is not a' \
+                  'Summary object'
             raise ValueError(msg)
 
         cells = summary.geometry.get_all_cells()

@@ -1,12 +1,15 @@
 #ifndef OPENMC_DISTRIBUTION_SPATIAL_H
 #define OPENMC_DISTRIBUTION_SPATIAL_H
 
+#include <cmath>
+
 #include "pugixml.hpp"
 
 #include "openmc/distribution.h"
 #include "openmc/mesh.h"
 #include "openmc/position.h"
 #include "openmc/span.h"
+#include "openmc/vector.h"
 
 namespace openmc {
 
@@ -21,14 +24,32 @@ public:
   //! Sample a position from the distribution
   virtual Position sample(uint64_t* seed) const = 0;
 
+  int32_t dims() const { return dims_; }
+  double volume() const { return volume_; }
+
   static unique_ptr<SpatialDistribution> create(pugi::xml_node node);
+
+protected:
+  int32_t dims_ {
+    C_NONE}; //! Number of uniform random samples needed for sampling
+  double volume_ = std::nan("");
+};
+
+class FixedSpatialDistribution : public SpatialDistribution {
+public:
+  virtual ~FixedSpatialDistribution() = default;
+
+  virtual Position sample(vector<double>::iterator it) const = 0;
+
+  int32_t dims() const { return dims_; }
+  double volume() const { return volume_; }
 };
 
 //==============================================================================
 //! Distribution of points specified by independent distributions in x,y,z
 //==============================================================================
 
-class CartesianIndependent : public SpatialDistribution {
+class CartesianIndependent : public FixedSpatialDistribution {
 public:
   explicit CartesianIndependent(pugi::xml_node node);
 
@@ -36,6 +57,7 @@ public:
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled position
   Position sample(uint64_t* seed) const override;
+  Position sample(vector<double>::iterator it) const override;
 
   // Observer pointers
   Distribution* x() const { return x_.get(); }
@@ -52,7 +74,7 @@ private:
 //! Distribution of points specified by cylindrical coordinates r,phi,z
 //==============================================================================
 
-class CylindricalIndependent : public SpatialDistribution {
+class CylindricalIndependent : public FixedSpatialDistribution {
 public:
   explicit CylindricalIndependent(pugi::xml_node node);
 
@@ -60,6 +82,7 @@ public:
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled position
   Position sample(uint64_t* seed) const override;
+  Position sample(vector<double>::iterator it) const override;
 
   Distribution* r() const { return r_.get(); }
   Distribution* phi() const { return phi_.get(); }
@@ -77,7 +100,7 @@ private:
 //! Distribution of points specified by spherical coordinates r,cos_theta,phi
 //==============================================================================
 
-class SphericalIndependent : public SpatialDistribution {
+class SphericalIndependent : public FixedSpatialDistribution {
 public:
   explicit SphericalIndependent(pugi::xml_node node);
 
@@ -85,6 +108,7 @@ public:
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled position
   Position sample(uint64_t* seed) const override;
+  Position sample(vector<double>::iterator it) const override;
 
   Distribution* r() const { return r_.get(); }
   Distribution* cos_theta() const { return cos_theta_.get(); }
@@ -161,14 +185,19 @@ private:
 //! Uniform distribution of points over a box
 //==============================================================================
 
-class SpatialBox : public SpatialDistribution {
+class SpatialBox : public FixedSpatialDistribution {
 public:
   explicit SpatialBox(pugi::xml_node node, bool fission = false);
 
   //! Sample a position from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled position
-  Position sample(uint64_t* seed) const override;
+  Position sample(uint64_t* seed) const override
+  {
+    vector<double> x = {prn(seed), prn(seed), prn(seed)};
+    return sample(begin(x));
+  }
+  Position sample(vector<double>::iterator it) const override;
 
   // Properties
   bool only_fissionable() const { return only_fissionable_; }

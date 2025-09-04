@@ -126,6 +126,8 @@ public:
   //! \return Sampled site
   SourceSite sample(uint64_t* seed) const override;
 
+  void set_energy(UPtrDist energy) { energy_ = std::move(energy); }
+
   // Properties
   ParticleType particle_type() const { return particle_; }
 

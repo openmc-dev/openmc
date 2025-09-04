@@ -8,13 +8,37 @@
 #include <stdexcept> // for runtime_error
 #include <string>    // for string, stod
 
+#include "openmc/constants.h"
 #include "openmc/error.h"
 #include "openmc/math_functions.h"
 #include "openmc/random_dist.h"
 #include "openmc/random_lcg.h"
+#include "openmc/vector.h"
 #include "openmc/xml_interface.h"
 
 namespace openmc {
+
+//==============================================================================
+// Distribution implementation
+//==============================================================================
+
+double Distribution::integral(double x0, double x1) const
+{
+  // Exit early if integral is over support
+  auto sup = support();
+  if ((x0 <= sup.first) && (sup.second <= x1))
+    return 1.0;
+
+  int32_t integral = 0;
+  uint64_t seed = init_seed(0, 0);
+  int32_t n = 1000000;
+  for (auto i = 0; i < n; ++i) {
+    double s = sample(&seed);
+    if ((x0 <= s) && (s <= x1))
+      ++integral;
+  }
+  return static_cast<float>(integral) / n;
+}
 
 //==============================================================================
 // DiscreteIndex implementation
@@ -84,13 +108,13 @@ void DiscreteIndex::init_alias()
   }
 }
 
-size_t DiscreteIndex::sample(uint64_t* seed) const
+size_t DiscreteIndex::sample(vector<double>::iterator it) const
 {
   // Alias sampling of discrete distribution
   size_t n = prob_.size();
   if (n > 1) {
-    size_t u = prn(seed) * n;
-    if (prn(seed) < prob_[u]) {
+    size_t u = *(it++) * n;
+    if (*(it++) < prob_[u]) {
       return u;
     } else {
       return alias_[u];
@@ -122,17 +146,42 @@ Discrete::Discrete(pugi::xml_node node) : di_(node)
   std::size_t n = params.size() / 2;
 
   x_.assign(params.begin(), params.begin() + n);
+  if (n > 1) {
+    dims_ = 2;
+  } else {
+    dims_ = 0;
+  }
 }
 
 Discrete::Discrete(const double* x, const double* p, size_t n) : di_({p, n})
 {
 
   x_.assign(x, x + n);
+  if (n > 1) {
+    dims_ = 2;
+  } else {
+    dims_ = 0;
+  }
 }
 
-double Discrete::sample(uint64_t* seed) const
+double Discrete::sample(vector<double>::iterator it) const
 {
-  return x_[di_.sample(seed)];
+  return x_[di_.sample(it)];
+}
+
+double Discrete::integral(double x0, double x1) const
+{
+  double integral = 0.0;
+  size_t n = x_.size();
+  for (int i = 0; i < n; ++i) {
+    int j = di_.alias()[i];
+    double p = di_.prob()[i];
+    if ((x0 <= x_[i]) && (x_[i] <= x1))
+      integral += p;
+    if ((x0 <= x_[j]) && (x_[j] <= x1))
+      integral += 1.0 - p;
+  }
+  return integral / n * di_.integral();
 }
 
 //==============================================================================
@@ -149,11 +198,17 @@ Uniform::Uniform(pugi::xml_node node)
 
   a_ = params.at(0);
   b_ = params.at(1);
+  dims_ = 1;
 }
 
-double Uniform::sample(uint64_t* seed) const
+double Uniform::sample(vector<double>::iterator it) const
 {
-  return a_ + prn(seed) * (b_ - a_);
+  return a_ + *(it++) * (b_ - a_);
+}
+
+double Uniform::integral(double x0, double x1) const
+{
+  return (std::min(x1, b_) - std::max(a_, x0)) / (b_ - a_);
 }
 
 //==============================================================================
@@ -175,11 +230,18 @@ PowerLaw::PowerLaw(pugi::xml_node node)
   offset_ = std::pow(a, n + 1);
   span_ = std::pow(b, n + 1) - offset_;
   ninv_ = 1 / (n + 1);
+  dims_ = 1;
 }
 
-double PowerLaw::sample(uint64_t* seed) const
+double PowerLaw::integral(double x0, double x1) const
 {
-  return std::pow(offset_ + prn(seed) * span_, ninv_);
+  return monodiff(std::min(x1, b()), std::max(a(), x0), n() + 1.0) /
+         monodiff(b(), a(), n() + 1.0);
+}
+
+double PowerLaw::sample(vector<double>::iterator it) const
+{
+  return std::pow(offset_ + *(it++) * span_, ninv_);
 }
 
 //==============================================================================
@@ -194,6 +256,15 @@ Maxwell::Maxwell(pugi::xml_node node)
 double Maxwell::sample(uint64_t* seed) const
 {
   return maxwell_spectrum(theta_, seed);
+}
+
+double Maxwell::integral(double x0, double x1) const
+{
+  double y0 = std::sqrt(std::max(x0, 0.0) / theta_);
+  double y1 = std::sqrt(x1 / theta_);
+  const double ispi = 1.0 / SQRT_PI;
+  return ((std::erf(y1) - std::erf(y0)) -
+          2.0 * ispi * (y1 * std::exp(-y1 * y1) - y0 * std::exp(-y0 * y0)));
 }
 
 //==============================================================================
@@ -216,6 +287,21 @@ double Watt::sample(uint64_t* seed) const
   return watt_spectrum(a_, b_, seed);
 }
 
+double Watt::integral(double x0, double x1) const
+{
+  double c = std::sqrt(a_ * b_) / 2.0;
+  double y0 = std::sqrt(std::max(x0, 0.0) / a_);
+  double y1 = std::sqrt(x1 / a_);
+  const double ispi = 1.0 / SQRT_PI;
+  return 0.5 * ((std::erf(y1 + c) - std::erf(y0 + c)) +
+                 (std::erf(y1 - c) - std::erf(y0 - c)) +
+                 ispi / c *
+                   ((std::exp(-(c + y1) * (c + y1)) -
+                      std::exp(-(c + y0) * (c + y0))) -
+                     (std::exp(-(c - y1) * (c - y1)) -
+                       std::exp(-(c - y0) * (c - y0)))));
+}
+
 //==============================================================================
 // Normal implementation
 //==============================================================================
@@ -234,6 +320,13 @@ Normal::Normal(pugi::xml_node node)
 double Normal::sample(uint64_t* seed) const
 {
   return normal_variate(mean_value_, std_dev_, seed);
+}
+
+double Normal::integral(double x0, double x1) const
+{
+  double y0 = (x0 - mean_value_) / (std::sqrt(2.0) * std_dev_);
+  double y1 = (x1 - mean_value_) / (std::sqrt(2.0) * std_dev_);
+  return 0.5 * (std::erf(y1) - std::erf(y0));
 }
 
 //==============================================================================
@@ -266,6 +359,7 @@ Tabular::Tabular(pugi::xml_node node)
   const double* x = params.data();
   const double* p = x + n;
   init(x, p, n);
+  dims_ = 1;
 }
 
 Tabular::Tabular(const double* x, const double* p, int n, Interpolation interp,
@@ -273,6 +367,7 @@ Tabular::Tabular(const double* x, const double* p, int n, Interpolation interp,
   : interp_ {interp}
 {
   init(x, p, n, c);
+  dims_ = 1;
 }
 
 void Tabular::init(
@@ -314,10 +409,10 @@ void Tabular::init(
   }
 }
 
-double Tabular::sample(uint64_t* seed) const
+double Tabular::sample(vector<double>::iterator it) const
 {
   // Sample value of CDF
-  double c = prn(seed);
+  double c = *(it++);
 
   // Find first CDF bin which is above the sampled value
   double c_i = c_[0];
@@ -356,20 +451,73 @@ double Tabular::sample(uint64_t* seed) const
   }
 }
 
+double Tabular::integral(double x0, double x1) const
+{
+
+  double integral = 0.0;
+
+  std::size_t n = c_.size();
+
+  double c_i = c_[0];
+  int i;
+  for (i = 0; i < n - 1; ++i) {
+    if (x0 < x_[i + 1])
+      break;
+    c_i = c_[i + 1];
+  }
+
+  double c_j = c_[0];
+  int j;
+  for (j = 0; j < n - 1; ++j) {
+    if (x1 < x_[j + 1])
+      break;
+    c_j = c_[j + 1];
+  }
+
+  integral += c_j - c_i;
+
+  if (interp_ == Interpolation::histogram) {
+    // Histogram interpolation
+    integral -= (c_[i + 1] - c_[i]) * (x0 - x_[i]) / (x_[i + 1] - x_[i]);
+    integral += (c_[j + 1] - c_[j]) * (x1 - x_[j]) / (x_[j + 1] - x_[j]);
+  } else {
+    // Linear-linear interpolation
+    double m0 = (p_[i + 1] - p_[i]) / (x_[i + 1] - x_[i]);
+    double m1 = (p_[j + 1] - p_[j]) / (x_[j + 1] - x_[j]);
+
+    integral -= (p_[i] - m0 * x_[i]) * (x0 - x_[i]) +
+                m0 / 2 * (x0 - x_[i]) * (x0 + x_[i]);
+    integral += (p_[j] - m1 * x_[j]) * (x1 - x_[j]) +
+                m1 / 2 * (x1 - x_[j]) * (x1 + x_[j]);
+  }
+  return integral;
+}
+
 //==============================================================================
 // Equiprobable implementation
 //==============================================================================
 
-double Equiprobable::sample(uint64_t* seed) const
+double Equiprobable::sample(vector<double>::iterator it) const
 {
   std::size_t n = x_.size();
 
-  double r = prn(seed);
+  double r = *(it++);
   int i = std::floor((n - 1) * r);
 
   double xl = x_[i];
   double xr = x_[i + i];
   return xl + ((n - 1) * r - i) * (xr - xl);
+}
+
+double Equiprobable::integral(double x0, double x1) const
+{
+  int32_t integral = 0;
+  size_t n = x_.size();
+  for (int i = 0; i < n; ++i) {
+    if ((x0 <= x_[i]) && (x_[i] <= x1))
+      ++integral;
+  }
+  return static_cast<double>(integral) / n;
 }
 
 //==============================================================================
@@ -419,6 +567,15 @@ double Mixture::sample(uint64_t* seed) const
 
   // Sample the chosen distribution
   return it->second->sample(seed);
+}
+
+double Mixture::integral(double x0, double x1) const
+{
+  double integral = 0.0;
+  for (auto& pair : distribution_) {
+    integral += pair.first * pair.second->integral(x0, x1);
+  }
+  return integral;
 }
 
 //==============================================================================

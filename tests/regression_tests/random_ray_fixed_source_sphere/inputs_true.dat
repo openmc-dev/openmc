@@ -1,0 +1,96 @@
+<?xml version='1.0' encoding='utf-8'?>
+<model>
+  <materials>
+    <cross_sections>mgxs.h5</cross_sections>
+    <material id="1" name="source">
+      <density units="macro" value="1.0"/>
+      <macroscopic name="source"/>
+    </material>
+    <material id="2" name="void">
+      <density units="macro" value="1.0"/>
+      <macroscopic name="void"/>
+    </material>
+    <material id="3" name="absorber">
+      <density units="macro" value="1.0"/>
+      <macroscopic name="absorber"/>
+    </material>
+  </materials>
+  <geometry>
+    <cell id="1" material="1" name="infinite source region" region="-2 1" universe="1"/>
+    <cell id="2" material="2" name="infinite void region" region="-1" universe="1"/>
+    <cell id="3" material="3" name="infinite absorber region" region="-3 2" universe="1"/>
+    <surface coeffs="0.0 0.0 0.0 10" id="1" type="sphere"/>
+    <surface coeffs="0.0 0.0 0.0 20" id="2" type="sphere"/>
+    <surface boundary="reflective" coeffs="0.0 0.0 0.0 30" id="3" type="sphere"/>
+  </geometry>
+  <settings>
+    <run_mode>fixed source</run_mode>
+    <particles>90</particles>
+    <batches>10</batches>
+    <inactive>5</inactive>
+    <source particle="neutron" strength="3.14" type="independent">
+      <energy type="mixture">
+        <pair probability="1.0">
+          <dist type="discrete">
+            <parameters>100.0 1000000.0 0.5 0.5</parameters>
+          </dist>
+        </pair>
+        <pair probability="2.0">
+          <dist parameters="988000.0 2.249e-06" type="watt"/>
+        </pair>
+        <pair probability="1.0">
+          <dist parameters="1000000.0" type="maxwell"/>
+        </pair>
+        <pair probability="1.0">
+          <dist parameters="1 1000000.0" type="uniform"/>
+        </pair>
+        <pair probability="1.0">
+          <dist parameters="1 1000000.0 -1.0" type="powerlaw"/>
+        </pair>
+      </energy>
+      <constraints>
+        <domain_type>cell</domain_type>
+        <domain_ids>1</domain_ids>
+      </constraints>
+    </source>
+    <energy_mode>multi-group</energy_mode>
+    <random_ray>
+      <distance_active>500.0</distance_active>
+      <distance_inactive>100.0</distance_inactive>
+      <source particle="neutron" strength="1.0" type="independent">
+        <space origin="0.0 0.0 0.0" type="spherical">
+          <r parameters="0.0 30 2" type="powerlaw"/>
+          <cos_theta parameters="-1.0 1.0" type="uniform"/>
+          <phi parameters="0.0 6.283185307179586" type="uniform"/>
+        </space>
+      </source>
+      <volume_normalized_flux_tallies>True</volume_normalized_flux_tallies>
+    </random_ray>
+  </settings>
+  <tallies>
+    <filter id="3" type="material">
+      <bins>1</bins>
+    </filter>
+    <filter id="2" type="material">
+      <bins>2</bins>
+    </filter>
+    <filter id="1" type="material">
+      <bins>3</bins>
+    </filter>
+    <tally id="3" name="Source Tally">
+      <filters>3</filters>
+      <scores>flux</scores>
+      <estimator>tracklength</estimator>
+    </tally>
+    <tally id="2" name="Void Tally">
+      <filters>2</filters>
+      <scores>flux</scores>
+      <estimator>tracklength</estimator>
+    </tally>
+    <tally id="1" name="Absorber Tally">
+      <filters>1</filters>
+      <scores>flux</scores>
+      <estimator>tracklength</estimator>
+    </tally>
+  </tallies>
+</model>

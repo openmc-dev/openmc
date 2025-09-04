@@ -200,5 +200,22 @@ std::complex<double> faddeeva(std::complex<double> z);
 //! \return Derivative of Faddeeva function evaluated at z
 std::complex<double> w_derivative(std::complex<double> z, int order);
 
+//! Evaluate relative exponential function
+//! \param x Real argument
+//! \return (exp(x)-1)/x without loss of precision near 0
+double exprel(double x);
+
+//! Evaluate relative exponential function
+//! \param x Real argument
+//! \return log(1+x)/x without loss of precision near 0
+double log1prel(double x);
+
+//! Evaluate monomial difference
+//! \param x Real argument
+//! \param y Real argument
+//! \param n Real argument
+//! \return (x^n-y^n)/n without loss of precision near n=0
+double monodiff(double x, double y, double n);
+
 } // namespace openmc
 #endif // OPENMC_MATH_FUNCTIONS_H

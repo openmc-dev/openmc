@@ -89,9 +89,7 @@ FlatSourceDomain::FlatSourceDomain() : negroups_(data::mg.num_energy_groups_)
   // Compute simulation domain volume based on ray source
   auto* is = dynamic_cast<IndependentSource*>(RandomRay::ray_source_.get());
   SpatialDistribution* space_dist = is->space();
-  SpatialBox* sb = dynamic_cast<SpatialBox*>(space_dist);
-  Position dims = sb->upper_right() - sb->lower_left();
-  simulation_volume_ = dims.x * dims.y * dims.z;
+  simulation_volume_ = space_dist->volume();
 }
 
 void FlatSourceDomain::batch_reset()
@@ -1048,7 +1046,21 @@ void FlatSourceDomain::convert_external_sources()
     // Extract source information
     Source* s = model::external_sources[es].get();
     IndependentSource* is = dynamic_cast<IndependentSource*>(s);
-    Discrete* energy = dynamic_cast<Discrete*>(is->energy());
+    auto* energy = is->energy();
+
+    // Convert energy distribution to discrete
+    std::vector<double> x;
+    std::vector<double> p;
+    for (int g = 0; g < data::mg.num_energy_groups_; ++g) {
+      double prob = energy->integral(
+        data::mg.energy_bins_[g + 1], data::mg.energy_bins_[g]);
+      if (prob > 0.0) {
+        x.push_back(data::mg.energy_bin_avg_[g]);
+        p.push_back(prob);
+      }
+    }
+    is->set_energy(UPtrDist {new Discrete(&x[0], &p[0], x.size())});
+    Discrete* discrete = dynamic_cast<Discrete*>(is->energy());
     const std::unordered_set<int32_t>& domain_ids = is->domain_ids();
     double strength_factor = is->strength();
 
@@ -1098,7 +1110,7 @@ void FlatSourceDomain::convert_external_sources()
         // source directly to the source region as we do for volumetric domain
         // constraint sources.
         SourceRegionHandle srh = source_regions_.get_source_region_handle(sr);
-        apply_external_source_to_source_region(energy, strength_factor, srh);
+        apply_external_source_to_source_region(discrete, strength_factor, srh);
       }
 
     } else {
@@ -1108,14 +1120,14 @@ void FlatSourceDomain::convert_external_sources()
         for (int32_t material_id : domain_ids) {
           for (int i_cell = 0; i_cell < model::cells.size(); i_cell++) {
             apply_external_source_to_cell_and_children(
-              i_cell, energy, strength_factor, material_id);
+              i_cell, discrete, strength_factor, material_id);
           }
         }
       } else if (is->domain_type() == Source::DomainType::CELL) {
         for (int32_t cell_id : domain_ids) {
           int32_t i_cell = model::cell_map[cell_id];
           apply_external_source_to_cell_and_children(
-            i_cell, energy, strength_factor, C_NONE);
+            i_cell, discrete, strength_factor, C_NONE);
         }
       } else if (is->domain_type() == Source::DomainType::UNIVERSE) {
         for (int32_t universe_id : domain_ids) {
@@ -1123,7 +1135,7 @@ void FlatSourceDomain::convert_external_sources()
           Universe& universe = *model::universes[i_universe];
           for (int32_t i_cell : universe.cells_) {
             apply_external_source_to_cell_and_children(
-              i_cell, energy, strength_factor, C_NONE);
+              i_cell, discrete, strength_factor, C_NONE);
           }
         }
       }

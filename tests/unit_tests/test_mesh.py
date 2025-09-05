@@ -636,9 +636,10 @@ def test_mesh_material_volumes_boundary_conditions(sphere_model):
 
     volumes = mesh.material_volumes(sphere_model, (0, 100, 100))
     sphere_volume = 4/3*np.pi*25**3
-    expected_volumes = [(1, 0.25*sphere_volume),
-                        (2, 0.25*sphere_volume),
-                        (3, 0.5*sphere_volume),
+    mats = sphere_model.materials
+    expected_volumes = [(mats[0].id, 0.25*sphere_volume),
+                        (mats[1].id, 0.25*sphere_volume),
+                        (mats[2].id, 0.5*sphere_volume),
                         (None, 4/3*np.pi*mesh.r_grid[-1]**3 - sphere_volume)]
 
     for evaluated, expected in zip(volumes.by_element(0), expected_volumes):

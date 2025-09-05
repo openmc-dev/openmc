@@ -650,7 +650,7 @@ void calc_zn(int n, double rho, double phi, double zn[])
   // ===========================================================================
   // Determine vector of sin(n*phi) and cos(n*phi). This takes advantage of the
   // following recurrence relations so that only a single sin/cos have to be
-  // evaluated (http://mathworld.wolfram.com/Multiple-AngleFormulas.html)
+  // evaluated (https://mathworld.wolfram.com/Multiple-AngleFormulas.html)
   //
   // sin(nx) = 2 cos(x) sin((n-1)x) - sin((n-2)x)
   // cos(nx) = 2 cos(x) cos((n-1)x) - cos((n-2)x)

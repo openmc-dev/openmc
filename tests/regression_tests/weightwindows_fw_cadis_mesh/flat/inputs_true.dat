@@ -1,0 +1,265 @@
+<?xml version='1.0' encoding='utf-8'?>
+<model>
+  <materials>
+    <cross_sections>mgxs.h5</cross_sections>
+    <material id="1" name="source">
+      <density value="1.0" units="macro"/>
+      <macroscopic name="source"/>
+    </material>
+    <material id="2" name="void">
+      <density value="1.0" units="macro"/>
+      <macroscopic name="void"/>
+    </material>
+    <material id="3" name="absorber">
+      <density value="1.0" units="macro"/>
+      <macroscopic name="absorber"/>
+    </material>
+  </materials>
+  <geometry>
+    <cell id="1" name="infinite source region" material="1" universe="1"/>
+    <cell id="2" name="infinite void region" material="2" universe="2"/>
+    <cell id="3" name="infinite absorber region" material="3" universe="3"/>
+    <cell id="4" fill="4" universe="5"/>
+    <cell id="5" name="full domain" fill="5" region="1 -2 3 -4 5 -6" universe="6"/>
+    <lattice id="4">
+      <pitch>2.5 2.5 2.5</pitch>
+      <dimension>12 12 12</dimension>
+      <lower_left>0.0 0.0 0.0</lower_left>
+      <universes>
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+1 1 2 2 2 2 2 2 2 2 3 3 
+1 1 2 2 2 2 2 2 2 2 3 3 
+
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+1 1 2 2 2 2 2 2 2 2 3 3 
+1 1 2 2 2 2 2 2 2 2 3 3 
+
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+2 2 2 2 2 2 2 2 2 2 3 3 
+
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 
+3 3 3 3 3 3 3 3 3 3 3 3 </universes>
+    </lattice>
+    <surface id="1" type="x-plane" boundary="reflective" coeffs="0.0"/>
+    <surface id="2" type="x-plane" boundary="vacuum" coeffs="30.0"/>
+    <surface id="3" type="y-plane" boundary="reflective" coeffs="0.0"/>
+    <surface id="4" type="y-plane" boundary="vacuum" coeffs="30.0"/>
+    <surface id="5" type="z-plane" boundary="reflective" coeffs="0.0"/>
+    <surface id="6" type="z-plane" boundary="vacuum" coeffs="30.0"/>
+  </geometry>
+  <settings>
+    <run_mode>fixed source</run_mode>
+    <particles>750</particles>
+    <batches>30</batches>
+    <inactive>20</inactive>
+    <source type="independent" strength="3.14" particle="neutron">
+      <energy type="discrete">
+        <parameters>100.0 1.0</parameters>
+      </energy>
+      <constraints>
+        <domain_type>universe</domain_type>
+        <domain_ids>1</domain_ids>
+      </constraints>
+    </source>
+    <energy_mode>multi-group</energy_mode>
+    <weight_window_generators>
+      <weight_windows_generator>
+        <mesh>1</mesh>
+        <particle_type>neutron</particle_type>
+        <max_realizations>10</max_realizations>
+        <update_interval>1</update_interval>
+        <on_the_fly>true</on_the_fly>
+        <method>fw_cadis</method>
+      </weight_windows_generator>
+    </weight_window_generators>
+    <mesh id="1">
+      <dimension>15 15 15</dimension>
+      <lower_left>0.0 0.0 0.0</lower_left>
+      <upper_right>30.0 30.0 30.0</upper_right>
+    </mesh>
+    <random_ray>
+      <distance_active>500.0</distance_active>
+      <distance_inactive>100.0</distance_inactive>
+      <source type="independent" strength="1.0" particle="neutron">
+        <space type="box">
+          <parameters>0.0 0.0 0.0 30.0 30.0 30.0</parameters>
+        </space>
+      </source>
+      <volume_normalized_flux_tallies>True</volume_normalized_flux_tallies>
+      <source_region_meshes>
+        <mesh id="1">
+          <domain id="6" type="universe"/>
+        </mesh>
+      </source_region_meshes>
+      <source_shape>flat</source_shape>
+    </random_ray>
+  </settings>
+  <tallies>
+    <filter id="3" type="material">
+      <bins>1</bins>
+    </filter>
+    <filter id="2" type="material">
+      <bins>2</bins>
+    </filter>
+    <filter id="1" type="material">
+      <bins>3</bins>
+    </filter>
+    <tally id="3" name="Source Tally">
+      <filters>3</filters>
+      <scores>flux</scores>
+      <estimator>tracklength</estimator>
+    </tally>
+    <tally id="2" name="Void Tally">
+      <filters>2</filters>
+      <scores>flux</scores>
+      <estimator>tracklength</estimator>
+    </tally>
+    <tally id="1" name="Absorber Tally">
+      <filters>1</filters>
+      <scores>flux</scores>
+      <estimator>tracklength</estimator>
+    </tally>
+  </tallies>
+</model>

@@ -1,0 +1,34 @@
+preferred-citation:
+  authors:
+  - family-names: Romano
+    given-names: Paul K.
+    orcid: "https://orcid.org/0000-0002-1147-045X"
+  - final-names: Horelik
+    given-names: Nicholas E.
+  - family-names: Herman
+    given-names: Bryan R.
+  - family-names: Nelson
+    given-names: Adam G.
+    orcid: "https://orcid.org/0000-0002-3614-0676"
+  - family-names: Forget
+    given-names: Benoit
+    orcid: "https://orcid.org/0000-0003-1459-7672"
+  - family-names: Smith
+    given-names: Kord
+  contact:
+  - family-names: Romano
+    given-names: Paul K.
+    orcid: "https://orcid.org/0000-0002-1147-045X"
+  doi: 10.1016/j.anucene.2014.07.048
+  issn: 0306-4549
+  volume: 82
+  journal: Annals of Nuclear Energy
+  publisher:
+    name: Elsevier
+  start: 90
+  end: 97
+  year: 2015
+  month: 8
+  title: "OpenMC: A state-of-the-art Monte Carlo code for research and development"
+  type: article
+  url: "https://doi.org/10.1016/j.anucene.2014.07.048"

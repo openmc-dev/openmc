@@ -21,10 +21,9 @@ namespace openmc {
 // Constants
 //==============================================================================
 
-// Maximum number of external source spatial resamples to encounter before an
-// error is thrown.
+// Minimum number of external source sites rejected before checking againts the
+// source_rejection_fraction
 constexpr int EXTSRC_REJECT_THRESHOLD {10000};
-constexpr double EXTSRC_REJECT_FRACTION {0.05};
 
 //==============================================================================
 // Global variables
@@ -35,6 +34,9 @@ class Source;
 namespace model {
 
 extern vector<unique_ptr<Source>> external_sources;
+
+// Probability distribution for selecting external sources
+extern DiscreteIndex external_sources_probability;
 
 } // namespace model
 
@@ -137,6 +139,9 @@ public:
   DomainType domain_type() const { return domain_type_; }
   const std::unordered_set<int32_t>& domain_ids() const { return domain_ids_; }
 
+  // Setter for spatial distribution
+  void set_space(UPtrSpace space) { space_ = std::move(space); }
+
 protected:
   // Indicates whether derived class already handles constraints
   bool constraints_applied() const override { return true; }
@@ -168,7 +173,7 @@ protected:
   SourceSite sample(uint64_t* seed) const override;
 
 private:
-  vector<SourceSite> sites_; //!< Source sites from a file
+  vector<SourceSite> sites_; //!< Source sites
 };
 
 //==============================================================================
@@ -203,6 +208,23 @@ typedef unique_ptr<Source> create_compiled_source_t(std::string parameters);
 //! Mesh-based source with different distributions for each element
 //==============================================================================
 
+// Helper class to sample spatial position on a single mesh element
+class MeshElementSpatial : public SpatialDistribution {
+public:
+  MeshElementSpatial(int32_t mesh_index, int elem_index)
+    : mesh_index_(mesh_index), elem_index_(elem_index)
+  {}
+
+  //! Sample a position from the distribution
+  //! \param seed Pseudorandom number seed pointer
+  //! \return Sampled position
+  Position sample(uint64_t* seed) const override;
+
+private:
+  int32_t mesh_index_ {C_NONE}; //!< Index in global meshes array
+  int elem_index_;              //! Index of mesh element
+};
+
 class MeshSource : public Source {
 public:
   // Constructors
@@ -217,18 +239,15 @@ public:
   double strength() const override { return space_->total_strength(); }
 
   // Accessors
-  const std::unique_ptr<Source>& source(int32_t i) const
+  const unique_ptr<IndependentSource>& source(int32_t i) const
   {
     return sources_.size() == 1 ? sources_[0] : sources_[i];
   }
 
-protected:
-  bool constraints_applied() const override { return true; }
-
 private:
   // Data members
-  unique_ptr<MeshSpatial> space_;           //!< Mesh spatial
-  vector<std::unique_ptr<Source>> sources_; //!< Source distributions
+  unique_ptr<MeshSpatial> space_;                 //!< Mesh spatial
+  vector<unique_ptr<IndependentSource>> sources_; //!< Source distributions
 };
 
 //==============================================================================

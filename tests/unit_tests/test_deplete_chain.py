@@ -54,11 +54,11 @@ def simple_chain():
 
 
 @pytest.fixture(scope='module')
-def endf_chain():
-    endf_data = Path(os.environ['OPENMC_ENDF_DATA'])
-    decay_data = (endf_data / 'decay').glob('*.endf')
-    fpy_data = (endf_data / 'nfy').glob('*.endf')
-    neutron_data = (endf_data / 'neutrons').glob('*.endf')
+def endf_chain(endf_data):
+    endf_dir = Path(endf_data)
+    decay_data = (endf_dir / 'decay').glob('*.endf')
+    fpy_data = (endf_dir / 'nfy').glob('*.endf')
+    neutron_data = (endf_dir / 'neutrons').glob('*.endf')
     return Chain.from_endf(decay_data, fpy_data, neutron_data)
 
 
@@ -84,6 +84,14 @@ def test_from_endf(endf_chain):
     assert len(chain) == len(chain.nuclides) == len(chain.nuclide_dict) == 3820
     for nuc in chain.nuclides:
         assert nuc == chain[nuc.name]
+
+
+def test_unstable_nuclides(simple_chain: Chain):
+    assert [nuc.name for nuc in simple_chain.unstable_nuclides] == ["A", "B"]
+
+
+def test_stable_nuclides(simple_chain: Chain):
+    assert [nuc.name for nuc in simple_chain.stable_nuclides] == ["H1", "C"]
 
 
 def test_from_xml(simple_chain):
@@ -302,8 +310,7 @@ def test_capture_branch_infer_ground():
     # Create nuclide to be added into the chain
     xe136m = nuclide.Nuclide("Xe136_m1")
 
-    chain.nuclides.append(xe136m)
-    chain.nuclide_dict[xe136m.name] = len(chain.nuclides) - 1
+    chain.add_nuclide(xe136m)
 
     chain.set_branch_ratios(infer_br, "(n,gamma)")
 
@@ -319,8 +326,7 @@ def test_capture_branch_no_rxn():
 
     u5m = nuclide.Nuclide("U235_m1")
 
-    chain.nuclides.append(u5m)
-    chain.nuclide_dict[u5m.name] = len(chain.nuclides) - 1
+    chain.add_nuclide(u5m)
 
     with pytest.raises(AttributeError, match="U234"):
         chain.set_branch_ratios(u4br)

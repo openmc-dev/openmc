@@ -17,6 +17,7 @@
 #include "openmc/photon.h"
 #include "openmc/plot.h"
 #include "openmc/random_lcg.h"
+#include "openmc/random_ray/random_ray_simulation.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
 #include "openmc/source.h"
@@ -118,6 +119,7 @@ int openmc_finalize()
   settings::run_CE = true;
   settings::run_mode = RunMode::UNSET;
   settings::source_latest = false;
+  settings::source_rejection_fraction = 0.05;
   settings::source_separate = false;
   settings::source_write = true;
   settings::ssw_cell_id = C_NONE;
@@ -133,6 +135,7 @@ int openmc_finalize()
   settings::trigger_on = false;
   settings::trigger_predict = false;
   settings::trigger_batch_interval = 1;
+  settings::uniform_source_sampling = false;
   settings::ufs_on = false;
   settings::urr_ptables_on = true;
   settings::verbosity = 7;
@@ -158,19 +161,23 @@ int openmc_finalize()
   model::root_universe = -1;
   model::plotter_seed = 1;
   openmc::openmc_set_seed(DEFAULT_SEED);
+  openmc::openmc_set_stride(DEFAULT_STRIDE);
 
   // Deallocate arrays
   free_memory();
 
-#ifdef LIBMESH
+#ifdef OPENMC_LIBMESH_ENABLED
   settings::libmesh_init.reset();
 #endif
 
   // Free all MPI types
 #ifdef OPENMC_MPI
-  if (mpi::source_site != MPI_DATATYPE_NULL)
+  if (mpi::source_site != MPI_DATATYPE_NULL) {
     MPI_Type_free(&mpi::source_site);
+  }
 #endif
+
+  openmc_reset_random_ray();
 
   return 0;
 }
@@ -178,7 +185,6 @@ int openmc_finalize()
 int openmc_reset()
 {
 
-  model::universe_cell_counts.clear();
   model::universe_level_counts.clear();
 
   for (auto& t : model::tallies) {
@@ -220,5 +226,6 @@ int openmc_hard_reset()
 
   // Reset the random number generator state
   openmc::openmc_set_seed(DEFAULT_SEED);
+  openmc::openmc_set_stride(DEFAULT_STRIDE);
   return 0;
 }

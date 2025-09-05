@@ -183,6 +183,7 @@ source distributions and has four main attributes that one can set:
 :attr:`IndependentSource.energy`, which defines the energy distribution, and
 :attr:`IndependentSource.time`, which defines the time distribution.
 
+
 The spatial distribution can be set equal to a sub-class of
 :class:`openmc.stats.Spatial`; common choices are :class:`openmc.stats.Point` or
 :class:`openmc.stats.Box`. To independently specify distributions in the
@@ -225,6 +226,7 @@ distribution. This could be a probability mass function
 (:class:`openmc.stats.Tabular`). By default, if no time distribution is
 specified, particles are started at :math:`t=0`.
 
+
 As an example, to create an isotropic, 10 MeV monoenergetic source uniformly
 distributed over a cube centered at the origin with an edge length of 10 cm, and
 emitting a pulse of particles from 0 to 10 µs, one
@@ -251,6 +253,24 @@ sampled 70% of the time and another that should be sampled 30% of the time::
   ...
 
   settings.source = [src1, src2]
+
+When the relative strengths are several orders of magnitude different, it may
+happen that not enough statistics are obtained from the lower strength source.
+This can be improved by sampling among the sources with equal probability,
+applying the source strength as a weight on the sampled source particles. The
+:attr:`Settings.uniform_source_sampling` attribute can be used to enable this
+option::
+
+  src1 = openmc.IndependentSource()
+  src1.strength = 100.0
+  ...
+
+  src2 = openmc.IndependentSource()
+  src2.strength = 1.0
+  ...
+
+  settings.source = [src1, src2]
+  settings.uniform_source_sampling = True
 
 Finally, the :attr:`IndependentSource.particle` attribute can be used to
 indicate the source should be composed of particles other than neutrons. For
@@ -731,11 +751,10 @@ instance, whereas the :meth:`openmc.Track.filter` method returns a new
           with more than one process, a separate track file will be written for
           each MPI process with the filename ``tracks_p#.h5`` where # is the
           rank of the corresponding process. Multiple track files can be
-          combined with the :ref:`scripts_track_combine` script:
+          combined with the :meth:`openmc.Tracks.combine` method::
 
-          .. code-block:: sh
-
-            openmc-track-combine tracks_p*.h5 --out tracks.h5
+            track_files = [f"tracks_p{rank}.h5" for rank in range(32)]
+            openmc.Tracks.combine(track_files, "tracks.h5")
 
 -----------------------
 Restarting a Simulation

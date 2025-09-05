@@ -1743,19 +1743,19 @@ types.
 
 .. _Watt fission spectrum: https://doi.org/10.1103/PhysRev.87.1037
 
-.. _Foderaro: http://hdl.handle.net/1721.1/1716
+.. _Foderaro: https://dspace.mit.edu/handle/1721.1/1716
 
 .. _OECD: https://www.oecd-nea.org/tools/abstract/detail/NEA-1792
 
 .. _NJOY: https://www.njoy21.io/NJOY2016/
 
-.. _PREPRO: https://www-nds.iaea.org/ndspub/endf/prepro/
+.. _PREPRO: https://www-nds.iaea.org/public/endf/prepro/
 
 .. _ENDF-6 Format: https://www.oecd-nea.org/dbdata/data/manual-endf/endf102.pdf
 
-.. _Monte Carlo Sampler: https://permalink.lanl.gov/object/tr?what=info:lanl-repo/lareport/LA-09721-MS
+.. _Monte Carlo Sampler: https://mcnp.lanl.gov/pdf_files/TechReport_1983_LANL_LA-9721-MS_EverettCashwell.pdf
 
-.. _LA-UR-14-27694: https://permalink.lanl.gov/object/tr?what=info:lanl-repo/lareport/LA-UR-14-27694
+.. _LA-UR-14-27694: https://www.osti.gov/biblio/1159204
 
 .. _MC21: https://www.osti.gov/biblio/903083
 
@@ -1763,6 +1763,4 @@ types.
 
 .. _Sutton and Brown: https://www.osti.gov/biblio/307911
 
-.. _lectures: https://laws.lanl.gov/vhosts/mcnp.lanl.gov/pdf_files/la-ur-05-4983.pdf
-
-.. _MCNP Manual: https://laws.lanl.gov/vhosts/mcnp.lanl.gov/pdf_files/la-ur-03-1987.pdf
+.. _lectures: https://mcnp.lanl.gov/pdf_files/TechReport_2005_LANL_LA-UR-05-4983_Brown.pdf

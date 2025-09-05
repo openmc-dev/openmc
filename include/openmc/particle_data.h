@@ -8,7 +8,7 @@
 #include "openmc/tallies/filter_match.h"
 #include "openmc/vector.h"
 
-#ifdef DAGMC
+#ifdef OPENMC_DAGMC_ENABLED
 #include "DagMC.hpp"
 #endif
 
@@ -47,8 +47,11 @@ struct SourceSite {
   double time {0.0};
   double wgt {1.0};
   int delayed_group {0};
-  int surf_id {0};
+  int surf_id {SURFACE_NONE};
   ParticleType particle;
+
+  // Extra attributes that don't show up in source written to file
+  int parent_nuclide {-1};
   int64_t parent_id;
   int64_t progeny_id;
 };
@@ -85,13 +88,37 @@ public:
   //! clear data from a single coordinate level
   void reset();
 
-  Position r;  //!< particle position
-  Direction u; //!< particle direction
-  int cell {-1};
-  int universe {-1};
-  int lattice {-1};
-  array<int, 3> lattice_i {{-1, -1, -1}};
-  bool rotated {false}; //!< Is the level rotated?
+  // accessors
+  Position& r() { return r_; }
+  const Position& r() const { return r_; }
+
+  Direction& u() { return u_; }
+  const Direction& u() const { return u_; }
+
+  int& cell() { return cell_; }
+  const int& cell() const { return cell_; }
+
+  int& universe() { return universe_; }
+  const int& universe() const { return universe_; }
+
+  int& lattice() { return lattice_; }
+  int lattice() const { return lattice_; }
+
+  array<int, 3>& lattice_index() { return lattice_index_; }
+  const array<int, 3>& lattice_index() const { return lattice_index_; }
+
+  bool& rotated() { return rotated_; }
+  const bool& rotated() const { return rotated_; }
+
+private:
+  // Data members
+  Position r_;  //!< particle position
+  Direction u_; //!< particle direction
+  int cell_ {-1};
+  int universe_ {-1};
+  int lattice_ {-1};
+  array<int, 3> lattice_index_ {{-1, -1, -1}};
+  bool rotated_ {false}; //!< Is the level rotated?
 };
 
 //==============================================================================
@@ -183,12 +210,41 @@ struct CacheDataMG {
 // Information about nearest boundary crossing
 //==============================================================================
 
-struct BoundaryInfo {
-  double distance {INFINITY}; //!< distance to nearest boundary
-  int surface_index {0}; //!< if boundary is surface, index in surfaces vector
-  int coord_level;       //!< coordinate level after crossing boundary
-  array<int, 3>
-    lattice_translation {}; //!< which way lattice indices will change
+class BoundaryInfo {
+public:
+  void reset()
+  {
+    distance_ = INFINITY;
+    surface_ = SURFACE_NONE;
+    coord_level_ = 0;
+    lattice_translation_ = {0, 0, 0};
+  }
+  double& distance() { return distance_; }
+  const double& distance() const { return distance_; }
+
+  int& surface() { return surface_; }
+  const int& surface() const { return surface_; }
+
+  int coord_level() const { return coord_level_; }
+  int& coord_level() { return coord_level_; }
+
+  array<int, 3>& lattice_translation() { return lattice_translation_; }
+  const array<int, 3>& lattice_translation() const
+  {
+    return lattice_translation_;
+  }
+
+  // TODO: off-by-one
+  int surface_index() const { return std::abs(surface()) - 1; }
+
+private:
+  // Data members
+  double distance_ {INFINITY}; //!< distance to nearest boundary
+  int surface_ {
+    SURFACE_NONE};      //!< surface token, non-zero if boundary is surface
+  int coord_level_ {0}; //!< coordinate level after crossing boundary
+  array<int, 3> lattice_translation_ {
+    0, 0, 0}; //!< which way lattice indices will change
 };
 
 /*
@@ -222,11 +278,17 @@ public:
     n_coord_last_ = 1;
   }
 
+  //! moves the particle by the specified distance to its next location
+  //! \param distance the distance the particle is moved
+  void move_distance(double distance);
+
+  void advance_to_boundary_from_void();
+
   // Initialize all internal state from position and direction
   void init_from_r_u(Position r_a, Direction u_a)
   {
     clear();
-    surface() = 0;
+    surface() = SURFACE_NONE;
     material() = C_NONE;
     r() = r_a;
     u() = u_a;
@@ -281,29 +343,36 @@ public:
   const Position& u_last() const { return u_last_; }
 
   // Accessors for position in global coordinates
-  Position& r() { return coord_[0].r; }
-  const Position& r() const { return coord_[0].r; }
+  Position& r() { return coord_[0].r(); }
+  const Position& r() const { return coord_[0].r(); }
 
   // Accessors for position in local coordinates
-  Position& r_local() { return coord_[n_coord_ - 1].r; }
-  const Position& r_local() const { return coord_[n_coord_ - 1].r; }
+  Position& r_local() { return coord_[n_coord_ - 1].r(); }
+  const Position& r_local() const { return coord_[n_coord_ - 1].r(); }
 
   // Accessors for direction in global coordinates
-  Direction& u() { return coord_[0].u; }
-  const Direction& u() const { return coord_[0].u; }
+  Direction& u() { return coord_[0].u(); }
+  const Direction& u() const { return coord_[0].u(); }
 
   // Accessors for direction in local coordinates
-  Direction& u_local() { return coord_[n_coord_ - 1].u; }
-  const Direction& u_local() const { return coord_[n_coord_ - 1].u; }
+  Direction& u_local() { return coord_[n_coord_ - 1].u(); }
+  const Direction& u_local() const { return coord_[n_coord_ - 1].u(); }
 
-  // Surface that the particle is on
+  // Surface token for the surface that the particle is currently on
   int& surface() { return surface_; }
   const int& surface() const { return surface_; }
+
+  // Surface index based on the current value of the surface_ attribute
+  int surface_index() const
+  {
+    // TODO: off-by-one
+    return std::abs(surface_) - 1;
+  }
 
   // Boundary information
   BoundaryInfo& boundary() { return boundary_; }
 
-#ifdef DAGMC
+#ifdef OPENMC_DAGMC_ENABLED
   // DagMC state variables
   moab::DagMC::RayHistory& history() { return history_; }
   Direction& last_dir() { return last_dir_; }
@@ -337,7 +406,8 @@ private:
   Position r_last_;         //!< previous coordinates
   Direction u_last_;        //!< previous direction coordinates
 
-  int surface_ {0}; //!< index for surface particle is on
+  int surface_ {
+    SURFACE_NONE}; //!< surface token for surface the particle is currently on
 
   BoundaryInfo boundary_; //!< Info about the next intersection
 
@@ -347,7 +417,7 @@ private:
   double sqrtkT_ {-1.0};     //!< sqrt(k_Boltzmann * temperature) in eV
   double sqrtkT_last_ {0.0}; //!< last temperature
 
-#ifdef DAGMC
+#ifdef OPENMC_DAGMC_ENABLED
   moab::DagMC::RayHistory history_;
   Direction last_dir_;
 #endif
@@ -406,6 +476,8 @@ private:
   int g_last_;
 
   double wgt_ {1.0};
+  double wgt_born_ {1.0};
+  double wgt_ww_born_ {-1.0};
   double mu_;
   double time_ {0.0};
   double time_last_ {0.0};
@@ -416,14 +488,18 @@ private:
   int event_nuclide_;
   int event_mt_;
   int delayed_group_ {0};
+  int parent_nuclide_ {-1};
   Direction v_t_;
 
   int n_bank_ {0};
-  int n_bank_second_ {0};
+  double bank_second_E_ {0.0};
   double wgt_bank_ {0.0};
   int n_delayed_bank_[MAX_DELAYED_GROUPS];
 
   int cell_born_ {-1};
+
+  // Iterated Fission Probability
+  double lifetime_ {0.0}; //!< neutron lifetime [s]
 
   int n_collision_ {0};
 
@@ -504,12 +580,24 @@ public:
   int& g_last() { return g_last_; }
   const int& g_last() const { return g_last_; }
 
-  // Statistic weight of particle. Setting to zero
-  // indicates that the particle is dead.
+  // Statistic weight of particle. Setting to zero indicates that the particle
+  // is dead.
   double& wgt() { return wgt_; }
   double wgt() const { return wgt_; }
+
+  // Statistic weight of particle at birth
+  double& wgt_born() { return wgt_born_; }
+  double wgt_born() const { return wgt_born_; }
+
+  // Weight window value at birth
+  double& wgt_ww_born() { return wgt_ww_born_; }
+  const double& wgt_ww_born() const { return wgt_ww_born_; }
+
+  // Statistic weight of particle at last collision
   double& wgt_last() { return wgt_last_; }
   const double& wgt_last() const { return wgt_last_; }
+
+  // Whether particle is alive
   bool alive() const { return wgt_ != 0.0; }
 
   // Polar scattering angle after a collision
@@ -523,23 +611,32 @@ public:
   double& time_last() { return time_last_; }
   const double& time_last() const { return time_last_; }
 
+  // Particle lifetime
+  double& lifetime() { return lifetime_; }
+  const double& lifetime() const { return lifetime_; }
+
   // What event took place, described in greater detail below
   TallyEvent& event() { return event_; }
   const TallyEvent& event() const { return event_; }
   bool& fission() { return fission_; }            // true if implicit fission
   int& event_nuclide() { return event_nuclide_; } // index of collision nuclide
   const int& event_nuclide() const { return event_nuclide_; }
-  int& event_mt() { return event_mt_; }           // MT number of collision
+  int& event_mt() { return event_mt_; } // MT number of collision
+  const int& event_mt() const { return event_mt_; }
   int& delayed_group() { return delayed_group_; } // delayed group
+  const int& parent_nuclide() const { return parent_nuclide_; }
+  int& parent_nuclide() { return parent_nuclide_; } // Parent nuclide
   Position& v_t() { return v_t_; } // target velocity
   const Position& v_t() const { return v_t_; }
 
   // Post-collision data
-  int& n_bank() { return n_bank_; } // number of banked fission sites
-  int& n_bank_second()
+  double& bank_second_E()
   {
-    return n_bank_second_;
-  }                                        // number of secondaries banked
+    return bank_second_E_;
+  } // energy of last reaction secondaries
+  const double& bank_second_E() const { return bank_second_E_; }
+
+  int& n_bank() { return n_bank_; }        // number of banked fission sites
   double& wgt_bank() { return wgt_bank_; } // weight of banked fission sites
   int* n_delayed_bank()
   {
@@ -554,7 +651,6 @@ public:
   int& cell_born() { return cell_born_; }
   const int& cell_born() const { return cell_born_; }
 
-  // index of the current and last material
   // Total number of collisions suffered by particle
   int& n_collision() { return n_collision_; }
   const int& n_collision() const { return n_collision_; }

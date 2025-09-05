@@ -3,6 +3,7 @@
 
 #include "openmc/constants.h"
 #include "openmc/memory.h" // for unique_ptr
+#include "openmc/span.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/tallies/trigger.h"
 #include "openmc/vector.h"
@@ -10,7 +11,6 @@
 #include "pugixml.hpp"
 #include "xtensor/xfixed.hpp"
 #include "xtensor/xtensor.hpp"
-#include <gsl/gsl-lite.hpp>
 
 #include <string>
 #include <unordered_map>
@@ -93,7 +93,7 @@ public:
   //! \brief Check if this tally has a specified type of filter
   bool has_filter(FilterType filter_type) const;
 
-  void set_filters(gsl::span<Filter*> filters);
+  void set_filters(span<Filter*> filters);
 
   //! Given already-set filters, set the stride lengths
   void set_strides();
@@ -169,10 +169,8 @@ public:
   // We need to have quick access to some filters.  The following gives indices
   // for various filters that could be in the tally or C_NONE if they are not
   // present.
-  int energy_filter_ {C_NONE};
   int energyout_filter_ {C_NONE};
   int delayedgroup_filter_ {C_NONE};
-  int cell_filter_ {C_NONE};
 
   vector<Trigger> triggers_;
 
@@ -192,7 +190,7 @@ private:
   //! Whether to multiply by atom density for reaction rates
   bool multiply_density_ {true};
 
-  gsl::index index_;
+  int64_t index_;
 };
 
 //==============================================================================

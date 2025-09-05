@@ -753,3 +753,16 @@ def test_ztorus():
     assert isinstance(sr, openmc.YTorus)
     sr = s.rotate((0., 90., 0.))
     assert isinstance(sr, openmc.XTorus)
+
+
+def test_normalize():
+    """Test that equivalent planes give same normalized coefficients"""
+    p1 = openmc.Plane(a=0.0, b=1.0, c=0.0, d=1.0)
+    p2 = openmc.Plane(a=0.0, b=2.0, c=0.0, d=2.0)
+    assert p1.normalize() == p2.normalize()
+
+    p2 = openmc.Plane(a=0.0, b=-1.0, c=0.0, d=-1.0)
+    assert p1.normalize() == p2.normalize()
+
+    p2 = openmc.YPlane(1.0)
+    assert p1.normalize() == p2.normalize()

@@ -17,7 +17,7 @@ from .material import Material
 from .mixin import IDManagerMixin
 from .surface import Surface
 from .universe import UniverseBase
-from ._xml import get_text
+from ._xml import get_elem_list, get_text
 
 
 _FILTER_TYPES = (
@@ -25,7 +25,8 @@ _FILTER_TYPES = (
     'energyout', 'mu', 'musurface', 'polar', 'azimuthal', 'distribcell', 'delayedgroup',
     'energyfunction', 'cellfrom', 'materialfrom', 'legendre', 'spatiallegendre',
     'sphericalharmonics', 'zernike', 'zernikeradial', 'particle', 'cellinstance',
-    'collision', 'time'
+    'collision', 'time', 'parentnuclide', 'weight', 'meshborn', 'meshsurface',
+    'meshmaterial',
 )
 
 _CURRENT_NAMES = (
@@ -258,17 +259,15 @@ class Filter(IDManagerMixin, metaclass=FilterMeta):
             Filter object
 
         """
-        filter_type = elem.get('type')
-        if filter_type is None:
-            filter_type = elem.find('type').text
+        filter_type = get_text(elem, "type")
 
         # If the filter type matches this class's short_name, then
         # there is no overridden from_xml_element method
         if filter_type == cls.short_name.lower():
             # Get bins from element -- the default here works for any filters
             # that just store a list of bins that can be represented as integers
-            filter_id = int(elem.get('id'))
-            bins = [int(x) for x in get_text(elem, 'bins').split()]
+            filter_id = int(get_text(elem, "id"))
+            bins = get_elem_list(elem, "bins", int) or []
             return cls(bins, filter_id=filter_id)
 
         # Search through all subclasses and find the one matching the HDF5
@@ -700,8 +699,8 @@ class CellInstanceFilter(Filter):
 
     @classmethod
     def from_xml_element(cls, elem, **kwargs):
-        filter_id = int(elem.get('id'))
-        bins = [int(x) for x in get_text(elem, 'bins').split()]
+        filter_id = int(get_text(elem, "id"))
+        bins = get_elem_list(elem, "bins", int) or []
         cell_instances = list(zip(bins[::2], bins[1::2]))
         return cls(cell_instances, filter_id=filter_id)
 
@@ -732,7 +731,7 @@ class SurfaceFilter(WithIDFilter):
 
 
 class ParticleFilter(Filter):
-    """Bins tally events based on the Particle type.
+    """Bins tally events based on the particle type.
 
     Parameters
     ----------
@@ -783,9 +782,36 @@ class ParticleFilter(Filter):
 
     @classmethod
     def from_xml_element(cls, elem, **kwargs):
-        filter_id = int(elem.get('id'))
-        bins = get_text(elem, 'bins').split()
+        filter_id = int(get_text(elem, "id"))
+        bins = get_elem_list(elem, "bins", str) or []
         return cls(bins, filter_id=filter_id)
+
+
+class ParentNuclideFilter(ParticleFilter):
+    """Bins tally events based on the parent nuclide
+
+    Parameters
+    ----------
+    bins : str, or iterable of str
+        Names of nuclides (e.g., 'Ni65')
+    filter_id : int
+        Unique identifier for the filter
+
+    Attributes
+    ----------
+    bins : iterable of str
+        Names of nuclides
+    id : int
+        Unique identifier for the filter
+    num_bins : Integral
+        The number of filter bins
+
+    """
+    @Filter.bins.setter
+    def bins(self, bins):
+        bins = np.atleast_1d(bins)
+        cv.check_iterable_type('filter bins', bins, str)
+        self._bins = bins
 
 
 class MeshFilter(Filter):
@@ -873,8 +899,6 @@ class MeshFilter(Filter):
 
     @property
     def shape(self):
-        if isinstance(self, MeshSurfaceFilter):
-            return (self.num_bins,)
         return self.mesh.dimension
 
     @property
@@ -965,8 +989,11 @@ class MeshFilter(Filter):
             XML element containing filter data
 
         """
-        element = super().to_xml_element()
-        element[0].text = str(self.mesh.id)
+        element = ET.Element('filter')
+        element.set('id', str(self.id))
+        element.set('type', self.short_name.lower())
+        subelement = ET.SubElement(element, 'bins')
+        subelement.text = str(self.mesh.id)
         if self.translation is not None:
             element.set('translation', ' '.join(map(str, self.translation)))
         return element
@@ -975,12 +1002,12 @@ class MeshFilter(Filter):
     def from_xml_element(cls, elem: ET.Element, **kwargs) -> MeshFilter:
         mesh_id = int(get_text(elem, 'bins'))
         mesh_obj = kwargs['meshes'][mesh_id]
-        filter_id = int(elem.get('id'))
+        filter_id = int(get_text(elem, "id"))
         out = cls(mesh_obj, filter_id=filter_id)
 
-        translation = elem.get('translation')
+        translation = get_elem_list(elem, "translation", float) or []
         if translation:
-            out.translation = [float(x) for x in translation.split()]
+            out.translation = translation
         return out
 
 
@@ -1012,6 +1039,186 @@ class MeshBornFilter(MeshFilter):
     """
 
 
+class MeshMaterialFilter(MeshFilter):
+    """Filter events by combinations of mesh elements and materials.
+
+    .. versionadded:: 0.15.3
+
+    Parameters
+    ----------
+    mesh : openmc.MeshBase
+        The mesh object that events will be tallied onto
+    bins : iterable of 2-tuples or numpy.ndarray
+        Combinations of (mesh element, material) to tally, given as 2-tuples.
+        The first value in the tuple represents the index of the mesh element,
+        and the second value indicates the material (either a
+        :class:`openmc.Material` instance of the ID).
+    filter_id : int
+        Unique identifier for the filter
+
+    """
+    def __init__(self, mesh: openmc.MeshBase, bins, filter_id=None):
+        self.mesh = mesh
+        self.bins = bins
+        self.id = filter_id
+        self._translation = None
+
+    @classmethod
+    def from_volumes(cls, mesh: openmc.MeshBase, volumes: openmc.MeshMaterialVolumes):
+        """Construct a MeshMaterialFilter from a MeshMaterialVolumes object.
+
+        Parameters
+        ----------
+        mesh : openmc.MeshBase
+            The mesh object that events will be tallied onto
+        volumes : openmc.MeshMaterialVolumes
+            The mesh material volumes to use for the filter
+
+        Returns
+        -------
+        MeshMaterialFilter
+            A new MeshMaterialFilter instance
+
+        """
+        # Get flat arrays of material IDs and element indices
+        mat_ids = volumes._materials[volumes._materials > -1]
+        elems, _ = np.where(volumes._materials > -1)
+
+        # Stack them into a 2D array of (element, material) pairs
+        bins = np.column_stack((elems, mat_ids))
+        return cls(mesh, bins)
+
+    def __hash__(self):
+        data = (type(self).__name__, self.mesh.id, tuple(self.bins.ravel()))
+        return hash(data)
+
+    def __repr__(self):
+        string = type(self).__name__ + '\n'
+        string += '{: <16}=\t{}\n'.format('\tID', self.id)
+        string += '{: <16}=\t{}\n'.format('\tMesh ID', self.mesh.id)
+        string += '{: <16}=\n{}\n'.format('\tBins', self.bins)
+        string += '{: <16}=\t{}\n'.format('\tTranslation', self.translation)
+        return string
+
+    @property
+    def shape(self):
+        return (self.num_bins,)
+
+    @property
+    def mesh(self):
+        return self._mesh
+
+    @mesh.setter
+    def mesh(self, mesh):
+        cv.check_type('filter mesh', mesh, openmc.MeshBase)
+        self._mesh = mesh
+
+    @Filter.bins.setter
+    def bins(self, bins):
+        pairs = np.empty((len(bins), 2), dtype=int)
+        for i, (elem, mat) in enumerate(bins):
+            cv.check_type('element', elem, Integral)
+            cv.check_type('material', mat, (Integral, openmc.Material))
+            pairs[i, 0] = elem
+            pairs[i, 1] = mat if isinstance(mat, Integral) else mat.id
+        self._bins = pairs
+
+    def to_xml_element(self):
+        """Return XML element representing the filter.
+
+        Returns
+        -------
+        element : lxml.etree._Element
+            XML element containing filter data
+
+        """
+        element = ET.Element('filter')
+        element.set('id', str(self.id))
+        element.set('type', self.short_name.lower())
+        element.set('mesh', str(self.mesh.id))
+
+        if self.translation is not None:
+            element.set('translation', ' '.join(map(str, self.translation)))
+
+        subelement = ET.SubElement(element, 'bins')
+        subelement.text = ' '.join(str(i) for i in self.bins.ravel())
+
+        return element
+
+    @classmethod
+    def from_xml_element(cls, elem: ET.Element, **kwargs) -> MeshMaterialFilter:
+        filter_id = int(get_text(elem, "id"))
+        mesh_id = int(get_text(elem, "mesh"))
+        mesh_obj = kwargs['meshes'][mesh_id]
+        bins = get_elem_list(elem, "bins", int) or []
+        bins = list(zip(bins[::2], bins[1::2]))
+        out = cls(mesh_obj, bins, filter_id=filter_id)
+
+        translation = get_elem_list(elem, "translation", float) or []
+        if translation:
+            out.translation = translation
+        return out
+
+    @classmethod
+    def from_hdf5(cls, group, **kwargs):
+        if group['type'][()].decode() != cls.short_name.lower():
+            raise ValueError("Expected HDF5 data for filter type '"
+                             + cls.short_name.lower() + "' but got '"
+                             + group['type'][()].decode() + " instead")
+
+        if 'meshes' not in kwargs:
+            raise ValueError(cls.__name__ + " requires a 'meshes' keyword "
+                             "argument.")
+
+        mesh_id = group['mesh'][()]
+        mesh_obj = kwargs['meshes'][mesh_id]
+        bins = group['bins'][()]
+        filter_id = int(group.name.split('/')[-1].lstrip('filter '))
+        out = cls(mesh_obj, bins, filter_id=filter_id)
+
+        translation = group.get('translation')
+        if translation:
+            out.translation = translation[()]
+
+        return out
+
+    def get_pandas_dataframe(self, data_size, stride, **kwargs):
+        """Builds a Pandas DataFrame for the Filter's bins.
+
+        This method constructs a Pandas DataFrame object for the filter with
+        columns annotated by filter bin information. This is a helper method for
+        :meth:`Tally.get_pandas_dataframe`.
+
+        Parameters
+        ----------
+        data_size : int
+            The total number of bins in the tally corresponding to this filter
+        stride : int
+            Stride in memory for the filter
+
+        Returns
+        -------
+        pandas.DataFrame
+            A Pandas DataFrame with a multi-index column for the cell instance.
+            The number of rows in the DataFrame is the same as the total number
+            of bins in the corresponding tally, with the filter bin appropriately
+            tiled to map to the corresponding tally bins.
+
+        See also
+        --------
+        Tally.get_pandas_dataframe(), CrossFilter.get_pandas_dataframe()
+
+        """
+        # Repeat and tile bins as necessary to account for other filters.
+        bins = np.repeat(self.bins, stride, axis=0)
+        tile_factor = data_size // len(bins)
+        bins = np.tile(bins, (tile_factor, 1))
+
+        columns = pd.MultiIndex.from_product([[self.short_name.lower()],
+                                              ['element', 'material']])
+        return pd.DataFrame(bins, columns=columns)
+
+
 class MeshSurfaceFilter(MeshFilter):
     """Filter events by surface crossings on a mesh.
 
@@ -1038,6 +1245,9 @@ class MeshSurfaceFilter(MeshFilter):
         The number of filter bins
 
     """
+    @property
+    def shape(self):
+        return (self.num_bins,)
 
     @MeshFilter.mesh.setter
     def mesh(self, mesh):
@@ -1211,7 +1421,7 @@ class RealFilter(Filter):
             cv.check_type('filter value', v1, Real)
 
             # Make sure that each tuple has values that are increasing
-            if v1 < v0:
+            if v1 <= v0:
                 raise ValueError(f'Values {v0} and {v1} appear to be out of '
                                  'order')
 
@@ -1345,8 +1555,8 @@ class RealFilter(Filter):
 
     @classmethod
     def from_xml_element(cls, elem, **kwargs):
-        filter_id = int(elem.get('id'))
-        bins = [float(x) for x in get_text(elem, 'bins').split()]
+        filter_id = int(get_text(elem, "id"))
+        bins = get_elem_list(elem, "bins", float) or []
         return cls(bins, filter_id=filter_id)
 
 
@@ -1357,7 +1567,7 @@ class EnergyFilter(RealFilter):
     ----------
     values : Iterable of Real
         A list of values for which each successive pair constitutes a range of
-        energies in [eV] for a single bin
+        energies in [eV] for a single bin. Entries must be positive and ascending.
     filter_id : int
         Unique identifier for the filter
 
@@ -2235,12 +2445,13 @@ class EnergyFunctionFilter(Filter):
 
     @classmethod
     def from_xml_element(cls, elem, **kwargs):
-        filter_id = int(elem.get('id'))
-        energy = [float(x) for x in get_text(elem, 'energy').split()]
-        y = [float(x) for x in get_text(elem, 'y').split()]
+        filter_id = int(get_text(elem, "id"))
+        energy = get_elem_list(elem, "energy", float) or []
+        y = get_elem_list(elem, "y", float) or []
         out = cls(energy, y, filter_id=filter_id)
-        if elem.find('interpolation') is not None:
-            out.interpolation = elem.find('interpolation').text
+        interpolation = get_text(elem, "interpolation")
+        if interpolation is not None:
+            out.interpolation = interpolation
         return out
 
     def can_merge(self, other):
@@ -2301,3 +2512,26 @@ class EnergyFunctionFilter(Filter):
             {self.short_name.lower(): filter_bins})])
 
         return df
+
+
+class WeightFilter(RealFilter):
+    """Bins tally events based on the incoming particle weight.
+
+    Parameters
+    ----------
+    Values : Iterable of float
+        A list or iterable of the weight boundaries, as float values.
+    filter_id : int
+        Unique identifier for the filter
+
+    Attributes
+    ----------
+    id : int
+        Unique identifier for the filter
+    bins : numpy.ndarray
+        An array of integer values representing the weights by which to filter
+    num_bins : int
+        The number of filter bins
+    values : numpy.ndarray
+        Array of weight boundaries
+    """

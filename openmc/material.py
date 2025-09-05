@@ -6,6 +6,8 @@ from numbers import Real
 from pathlib import Path
 import re
 import sys
+import tempfile
+from typing import Sequence, Dict
 import warnings
 
 import lxml.etree as ET
@@ -15,9 +17,10 @@ import h5py
 import openmc
 import openmc.data
 import openmc.checkvalue as cv
-from ._xml import clean_indentation, reorder_attributes
+from ._xml import clean_indentation, get_elem_list, get_text
 from .mixin import IDManagerMixin
 from .utility_funcs import input_path
+from . import waste
 from openmc.checkvalue import PathLike
 from openmc.stats import Univariate, Discrete, Mixture
 from openmc.data.data import _get_element_symbol
@@ -30,6 +33,7 @@ DENSITY_UNITS = ('g/cm3', 'g/cc', 'kg/m3', 'atom/b-cm', 'atom/cm3', 'sum',
 # Smallest normalized floating point number
 _SMALLEST_NORMAL = sys.float_info.min
 
+_BECQUEREL_PER_CURIE = 3.7e10
 
 NuclideTuple = namedtuple('NuclideTuple', ['name', 'percent', 'percent_type'])
 
@@ -300,7 +304,7 @@ class Material(IDManagerMixin):
         clip_tolerance : float
             Maximum fraction of :math:`\sum_i x_i p_i` for discrete
             distributions that will be discarded.
-        units : {'Bq', 'Bq/g', 'Bq/cm3'}
+        units : {'Bq', 'Bq/g', 'Bq/kg', 'Bq/cm3'}
             Specifies the units on the integral of the distribution.
         volume : float, optional
             Volume of the material. If not passed, defaults to using the
@@ -308,11 +312,12 @@ class Material(IDManagerMixin):
 
         Returns
         -------
-        Decay photon energy distribution. The integral of this distribution is
-        the total intensity of the photon source in the requested units.
+        Univariate or None
+            Decay photon energy distribution. The integral of this distribution
+            is the total intensity of the photon source in the requested units.
 
         """
-        cv.check_value('units', units, {'Bq', 'Bq/g', 'Bq/cm3'})
+        cv.check_value('units', units, {'Bq', 'Bq/g', 'Bq/kg', 'Bq/cm3'})
         if units == 'Bq':
             multiplier = volume if volume is not None else self.volume
             if multiplier is None:
@@ -321,6 +326,8 @@ class Material(IDManagerMixin):
             multiplier = 1
         elif units == 'Bq/g':
             multiplier = 1.0 / self.get_mass_density()
+        elif units == 'Bq/kg':
+            multiplier = 1000.0 / self.get_mass_density()
 
         dists = []
         probs = []
@@ -426,7 +433,11 @@ class Material(IDManagerMixin):
 
         """
 
-        import NCrystal
+        try:
+            import NCrystal
+        except ModuleNotFoundError as e:
+            raise RuntimeError('The .from_ncrystal method requires'
+                               ' NCrystal to be installed.') from e
         nc_mat = NCrystal.createInfo(cfg)
 
         def openmc_natabund(Z):
@@ -1051,7 +1062,6 @@ class Material(IDManagerMixin):
             nuc_densities.append(nuc.percent)
             nuc_density_types.append(nuc.percent_type)
 
-        nucs = np.array(nucs)
         nuc_densities = np.array(nuc_densities)
         nuc_density_types = np.array(nuc_density_types)
 
@@ -1130,17 +1140,16 @@ class Material(IDManagerMixin):
 
     def get_activity(self, units: str = 'Bq/cm3', by_nuclide: bool = False,
                      volume: float | None = None) -> dict[str, float] | float:
-        """Returns the activity of the material or for each nuclide in the
-        material in units of [Bq], [Bq/g] or [Bq/cm3].
+        """Returns the activity of the material or of each nuclide within.
 
         .. versionadded:: 0.13.1
 
         Parameters
         ----------
-        units : {'Bq', 'Bq/g', 'Bq/cm3'}
+        units : {'Bq', 'Bq/g', 'Bq/kg', 'Bq/cm3', 'Ci', 'Ci/m3'}
             Specifies the type of activity to return, options include total
-            activity [Bq], specific [Bq/g] or volumetric activity [Bq/cm3].
-            Default is volumetric activity [Bq/cm3].
+            activity [Bq,Ci], specific [Bq/g, Bq/kg] or volumetric activity
+            [Bq/cm3,Ci/m3]. Default is volumetric activity [Bq/cm3].
         by_nuclide : bool
             Specifies if the activity should be returned for the material as a
             whole or per nuclide. Default is False.
@@ -1158,15 +1167,24 @@ class Material(IDManagerMixin):
             of the material is returned as a float.
         """
 
-        cv.check_value('units', units, {'Bq', 'Bq/g', 'Bq/cm3'})
+        cv.check_value('units', units, {'Bq', 'Bq/g', 'Bq/kg', 'Bq/cm3', 'Ci', 'Ci/m3'})
         cv.check_type('by_nuclide', by_nuclide, bool)
 
+        if volume is None:
+            volume = self.volume
+
         if units == 'Bq':
-            multiplier = volume if volume is not None else self.volume
+            multiplier = volume
         elif units == 'Bq/cm3':
             multiplier = 1
         elif units == 'Bq/g':
             multiplier = 1.0 / self.get_mass_density()
+        elif units == 'Bq/kg':
+            multiplier = 1000.0 / self.get_mass_density()
+        elif units == 'Ci':
+            multiplier = volume / _BECQUEREL_PER_CURIE
+        elif units == 'Ci/m3':
+            multiplier = 1e6 / _BECQUEREL_PER_CURIE
 
         activity = {}
         for nuclide, atoms_per_bcm in self.get_nuclide_atom_densities().items():
@@ -1178,15 +1196,15 @@ class Material(IDManagerMixin):
     def get_decay_heat(self, units: str = 'W', by_nuclide: bool = False,
                        volume: float | None = None) -> dict[str, float] | float:
         """Returns the decay heat of the material or for each nuclide in the
-        material in units of [W], [W/g] or [W/cm3].
+        material in units of [W], [W/g], [W/kg] or [W/cm3].
 
         .. versionadded:: 0.13.3
 
         Parameters
         ----------
-        units : {'W', 'W/g', 'W/cm3'}
+        units : {'W', 'W/g', 'W/kg', 'W/cm3'}
             Specifies the units of decay heat to return. Options include total
-            heat [W], specific [W/g] or volumetric heat [W/cm3].
+            heat [W], specific [W/g, W/kg] or volumetric heat [W/cm3].
             Default is total heat [W].
         by_nuclide : bool
             Specifies if the decay heat should be returned for the material as a
@@ -1205,7 +1223,7 @@ class Material(IDManagerMixin):
             of the material is returned as a float.
         """
 
-        cv.check_value('units', units, {'W', 'W/g', 'W/cm3'})
+        cv.check_value('units', units, {'W', 'W/g', 'W/kg', 'W/cm3'})
         cv.check_type('by_nuclide', by_nuclide, bool)
 
         if units == 'W':
@@ -1214,6 +1232,8 @@ class Material(IDManagerMixin):
             multiplier = 1
         elif units == 'W/g':
             multiplier = 1.0 / self.get_mass_density()
+        elif units == 'W/kg':
+            multiplier = 1000.0 / self.get_mass_density()
 
         decayheat = {}
         for nuclide, atoms_per_bcm in self.get_nuclide_atom_densities().items():
@@ -1304,6 +1324,91 @@ class Material(IDManagerMixin):
         if volume is None:
             raise ValueError("Volume must be set in order to determine mass.")
         return volume*self.get_mass_density(nuclide)
+
+    def waste_classification(self, metal: bool = False) -> str:
+        """Classify the material for near-surface waste disposal.
+
+        This method determines a waste classification for the material based on
+        the NRC regulations (10 CFR 61.55). Note that the NRC regulations do not
+        consider many long-lived radionuclides relevant to fusion systems; for
+        fusion applications, it is recommended to calculate a waste disposal
+        rating based on limits by Fetter et al. using the
+        :meth:`~openmc.Material.waste_disposal_rating` method.
+
+        Parameters
+        ----------
+        metal : bool, optional
+            Whether or not the material is in metal form.
+
+        Returns
+        -------
+        str
+            The waste disposal classification, which can be "Class A", "Class
+            B", "Class C", or "GTCC" (greater than class C).
+
+        """
+        return waste._waste_classification(self, metal=metal)
+
+    def waste_disposal_rating(
+        self,
+        limits: str | dict[str, float] = 'Fetter',
+        metal: bool = False,
+        by_nuclide: bool = False,
+    ) -> float | dict[str, float]:
+        """Return the waste disposal rating for the material.
+
+        This method returns a waste disposal rating for the material based on a
+        set of specific activity limits. The waste disposal rating is a single
+        number that represents the sum of the ratios of the specific activity
+        for each radionuclide in the material against a nuclide-specific limit.
+        A value less than 1.0 indicates that the material "meets" the limits
+        whereas a value greater than 1.0 exceeds the limits.
+
+        Note that the limits for NRC do not consider many long-lived
+        radionuclides relevant to fusion systems. A paper by `Fetter et al.
+        <https://doi.org/10.1016/0920-3796(90)90104-E>`_ applies the NRC
+        methodology to calculate specific activity limits for an expanded set of
+        radionuclides.
+
+        Parameters
+        ----------
+        limits : str or dict, optional
+            The name of a predefined set of specific activity limits or a
+            dictionary that contains specific activity limits for radionuclides,
+            where keys are nuclide names and values are activities in units of
+            [Ci/m3]. The predefined options are:
+
+            - 'Fetter': Uses limits from Fetter et al. (1990)
+            - 'NRC_long': Uses the 10 CFR 61.55 limits for long-lived
+              radionuclides
+            - 'NRC_short_A': Uses the 10 CFR 61.55 class A limits for
+              short-lived radionuclides
+            - 'NRC_short_B': Uses the 10 CFR 61.55 class B limits for
+              short-lived radionuclides
+            - 'NRC_short_C': Uses the 10 CFR 61.55 class C limits for
+              short-lived radionuclides
+        metal : bool, optional
+            Whether or not the material is in metal form (only applicable for
+            NRC based limits)
+        by_nuclide : bool, optional
+            Whether to return the waste disposal rating for each nuclide in the
+            material. If True, a dictionary is returned where the keys are the
+            nuclide names and the values are the waste disposal ratings for each
+            nuclide. If False, a single float value is returned that represents
+            the overall waste disposal rating for the material.
+
+        Returns
+        -------
+        float or dict
+            The waste disposal rating for the material or its constituent
+            nuclides.
+
+        See also
+        --------
+        Material.waste_classification()
+
+        """
+        return waste._waste_disposal_rating(self, limits, metal, by_nuclide)
 
     def clone(self, memo: dict | None = None) -> Material:
         """Create a copy of this material with a new unique ID.
@@ -1456,7 +1561,7 @@ class Material(IDManagerMixin):
 
     @classmethod
     def mix_materials(cls, materials, fracs: Iterable[float],
-                      percent_type: str = 'ao', name: str | None = None) -> Material:
+                      percent_type: str = 'ao', **kwargs) -> Material:
         """Mix materials together based on atom, weight, or volume fractions
 
         .. versionadded:: 0.12
@@ -1471,10 +1576,8 @@ class Material(IDManagerMixin):
             Type of percentage, must be one of 'ao', 'wo', or 'vo', to signify atom
             percent (molar percent), weight percent, or volume percent,
             optional. Defaults to 'ao'
-        name : str
-            The name for the new material, optional. Defaults to concatenated
-            names of input materials with percentages indicated inside
-            parentheses.
+        **kwargs
+            Keyword arguments passed to :class:`openmc.Material`
 
         Returns
         -------
@@ -1533,10 +1636,11 @@ class Material(IDManagerMixin):
                                     openmc.data.AVOGADRO
 
         # Create the new material with the desired name
-        if name is None:
-            name = '-'.join([f'{m.name}({f})' for m, f in
+        if "name" not in kwargs:
+            kwargs["name"] = '-'.join([f'{m.name}({f})' for m, f in
                              zip(materials, fracs)])
-        new_mat = cls(name=name)
+
+        new_mat = cls(**kwargs)
 
         # Compute atom fractions of nuclides and add them to the new material
         tot_nuclides_per_cc = np.sum([dens for dens in nuclides_per_cc.values()])
@@ -1568,50 +1672,148 @@ class Material(IDManagerMixin):
             Material generated from XML element
 
         """
-        mat_id = int(elem.get('id'))
+        mat_id = int(get_text(elem, 'id'))
+
         # Add NCrystal material from cfg string
-        if "cfg" in elem.attrib:
-            cfg = elem.get("cfg")
+        cfg = get_text(elem, "cfg")
+        if cfg is not None:
             return Material.from_ncrystal(cfg, material_id=mat_id)
 
         mat = cls(mat_id)
-        mat.name = elem.get('name')
+        mat.name = get_text(elem, 'name')
 
-        if "temperature" in elem.attrib:
-            mat.temperature = float(elem.get("temperature"))
+        temperature = get_text(elem, "temperature")
+        if temperature is not None:
+            mat.temperature = float(temperature)
 
-        if 'volume' in elem.attrib:
-            mat.volume = float(elem.get('volume'))
-        mat.depletable = bool(elem.get('depletable'))
+        volume = get_text(elem, "volume")
+        if volume is not None:
+            mat.volume = float(volume)
 
         # Get each nuclide
         for nuclide in elem.findall('nuclide'):
-            name = nuclide.attrib['name']
+            name = get_text(nuclide, "name")
             if 'ao' in nuclide.attrib:
                 mat.add_nuclide(name, float(nuclide.attrib['ao']))
             elif 'wo' in nuclide.attrib:
                 mat.add_nuclide(name, float(nuclide.attrib['wo']), 'wo')
 
+        # Get depletable attribute
+        depletable = get_text(elem, "depletable")
+        mat.depletable = depletable in ('true', '1')
+
         # Get each S(a,b) table
         for sab in elem.findall('sab'):
-            fraction = float(sab.get('fraction', 1.0))
-            mat.add_s_alpha_beta(sab.get('name'), fraction)
+            fraction = float(get_text(sab, "fraction", 1.0))
+            name = get_text(sab, "name")
+            mat.add_s_alpha_beta(name, fraction)
 
         # Get total material density
         density = elem.find('density')
-        units = density.get('units')
+        units = get_text(density, "units")
         if units == 'sum':
             mat.set_density(units)
         else:
-            value = float(density.get('value'))
+            value = float(get_text(density, 'value'))
             mat.set_density(units, value)
 
         # Check for isotropic scattering nuclides
-        isotropic = elem.find('isotropic')
+        isotropic = get_elem_list(elem, "isotropic", str)
         if isotropic is not None:
-            mat.isotropic = isotropic.text.split()
+            mat.isotropic = isotropic
 
         return mat
+
+    def deplete(
+        self,
+        multigroup_flux: Sequence[float],
+        energy_group_structure: Sequence[float] | str,
+        timesteps: Sequence[float] | Sequence[tuple[float, str]],
+        source_rates: float | Sequence[float],
+        timestep_units: str = 's',
+        chain_file: cv.PathLike | "openmc.deplete.Chain" | None = None,
+        reactions: Sequence[str] | None = None,
+    ) -> list[openmc.Material]:
+        """Depletes that material, evolving the nuclide densities
+
+        .. versionadded:: 0.15.3
+
+        Parameters
+        ----------
+        multigroup_flux: Sequence[float]
+            Energy-dependent multigroup flux values, where each sublist corresponds
+            to a specific material. Will be normalized so that it sums to 1.
+        energy_group_structure : Sequence[float] | str
+            Energy group boundaries in [eV] or the name of the group structure.
+        timesteps : iterable of float or iterable of tuple
+            Array of timesteps. Note that values are not cumulative. The units are
+            specified by the `timestep_units` argument when `timesteps` is an
+            iterable of float. Alternatively, units can be specified for each step
+            by passing an iterable of (value, unit) tuples.
+        source_rates : float or iterable of float, optional
+            Source rate in [neutron/sec] or neutron flux in [neutron/s-cm^2] for
+            each interval in :attr:`timesteps`
+        timestep_units : {'s', 'min', 'h', 'd', 'a', 'MWd/kg'}
+            Units for values specified in the `timesteps` argument. 's' means
+            seconds, 'min' means minutes, 'h' means hours, 'a' means Julian years
+            and 'MWd/kg' indicates that the values are given in burnup (MW-d of
+            energy deposited per kilogram of initial heavy metal).
+        chain_file : PathLike or Chain
+            Path to the depletion chain XML file or instance of openmc.deplete.Chain.
+            Defaults to ``openmc.config['chain_file']``.
+        reactions : list of str, optional
+            Reactions to get cross sections for. If not specified, all neutron
+            reactions listed in the depletion chain file are used.
+
+        Returns
+        -------
+        list of openmc.Material, one for each timestep
+
+        """
+
+        materials = openmc.Materials([self])
+
+        depleted_materials_dict = materials.deplete(
+            multigroup_fluxes=[multigroup_flux],
+            energy_group_structures=[energy_group_structure],
+            timesteps=timesteps,
+            source_rates=source_rates,
+            timestep_units=timestep_units,
+            chain_file=chain_file,
+            reactions=reactions,
+        )
+
+        return depleted_materials_dict[self.id]
+
+
+    def mean_free_path(self, energy: float) -> float:
+        """Calculate the mean free path of neutrons in the material at a given
+        energy.
+
+        .. versionadded:: 0.15.3
+
+        Parameters
+        ----------
+        energy : float
+            Neutron energy in eV
+
+        Returns
+        -------
+        float
+            Mean free path in cm
+
+        """
+        from openmc.plotter import _calculate_cexs_elem_mat
+
+        energy_grid, cexs = _calculate_cexs_elem_mat(
+            this=self,
+            types=["total"],
+        )
+        total_cexs = cexs[0]
+
+        interpolated_cexs = float(np.interp(energy, energy_grid, total_cexs))
+
+        return 1.0 / interpolated_cexs
 
 
 class Materials(cv.CheckedList):
@@ -1722,16 +1924,14 @@ class Materials(cv.CheckedList):
             clean_indentation(element, level=level+1)
             element.tail = element.tail.strip(' ')
             file.write((level+1)*spaces_per_level*' ')
-            reorder_attributes(element)  # TODO: Remove when support is Python 3.8+
             file.write(ET.tostring(element, encoding="unicode"))
 
         # Write the <material> elements.
-        for material in sorted(self, key=lambda x: x.id):
+        for material in sorted(set(self), key=lambda x: x.id):
             element = material.to_xml_element(nuclides_to_ignore=nuclides_to_ignore)
             clean_indentation(element, level=level+1)
             element.tail = element.tail.strip(' ')
             file.write((level+1)*spaces_per_level*' ')
-            reorder_attributes(element)  # TODO: Remove when support is Python 3.8+
             file.write(ET.tostring(element, encoding="unicode"))
 
         # Write the closing tag for the root element.
@@ -1787,9 +1987,9 @@ class Materials(cv.CheckedList):
             materials.append(Material.from_xml_element(material))
 
         # Check for cross sections settings
-        xs = elem.find('cross_sections')
+        xs = get_text(elem, "cross_sections")
         if xs is not None:
-            materials.cross_sections = xs.text
+            materials.cross_sections = xs
 
         return materials
 
@@ -1813,3 +2013,114 @@ class Materials(cv.CheckedList):
         root = tree.getroot()
 
         return cls.from_xml_element(root)
+
+
+    def deplete(
+        self,
+        multigroup_fluxes: Sequence[Sequence[float]],
+        energy_group_structures: Sequence[Sequence[float] | str],
+        timesteps: Sequence[float] | Sequence[tuple[float, str]],
+        source_rates: float | Sequence[float],
+        timestep_units: str = 's',
+        chain_file: cv.PathLike | "openmc.deplete.Chain" | None = None,
+        reactions: Sequence[str] | None = None,
+    ) -> Dict[int, list[openmc.Material]]:
+        """Depletes that material, evolving the nuclide densities
+
+        .. versionadded:: 0.15.3
+
+        Parameters
+        ----------
+        multigroup_fluxes: Sequence[Sequence[float]]
+            Energy-dependent multigroup flux values, where each sublist corresponds
+            to a specific material. Will be normalized so that it sums to 1.
+        energy_group_structures': Sequence[Sequence[float] | str]
+            Energy group boundaries in [eV] or the name of the group structure.
+        timesteps : iterable of float or iterable of tuple
+            Array of timesteps. Note that values are not cumulative. The units are
+            specified by the `timestep_units` argument when `timesteps` is an
+            iterable of float. Alternatively, units can be specified for each step
+            by passing an iterable of (value, unit) tuples.
+        source_rates : float or iterable of float, optional
+            Source rate in [neutron/sec] or neutron flux in [neutron/s-cm^2] for
+            each interval in :attr:`timesteps`
+        timestep_units : {'s', 'min', 'h', 'd', 'a', 'MWd/kg'}
+            Units for values specified in the `timesteps` argument. 's' means
+            seconds, 'min' means minutes, 'h' means hours, 'a' means Julian years
+            and 'MWd/kg' indicates that the values are given in burnup (MW-d of
+            energy deposited per kilogram of initial heavy metal).
+        chain_file : PathLike or Chain
+            Path to the depletion chain XML file or instance of openmc.deplete.Chain.
+            Defaults to ``openmc.config['chain_file']``.
+        reactions : list of str, optional
+            Reactions to get cross sections for. If not specified, all neutron
+            reactions listed in the depletion chain file are used.
+
+        Returns
+        -------
+        list of openmc.Material, one for each timestep
+
+        """
+
+        import openmc.deplete
+        from .deplete.chain import _get_chain
+
+        # setting all materials to be depletable
+        for mat in self:
+            mat.depletable = True
+
+        chain = _get_chain(chain_file)
+
+        # Create MicroXS objects for all materials
+        micros = []
+        fluxes = []
+
+        with openmc.lib.TemporarySession():
+            for material, flux, energy in zip(
+                self, multigroup_fluxes, energy_group_structures
+            ):
+                temperature = material.temperature or 293.6
+                micro_xs = openmc.deplete.MicroXS.from_multigroup_flux(
+                    energies=energy,
+                    multigroup_flux=flux,
+                    chain_file=chain,
+                    temperature=temperature,
+                    reactions=reactions,
+                )
+                micros.append(micro_xs)
+                fluxes.append(material.volume)
+
+        # Create a single operator for all materials
+        operator = openmc.deplete.IndependentOperator(
+            materials=self,
+            fluxes=fluxes,
+            micros=micros,
+            normalization_mode="source-rate",
+            chain_file=chain,
+        )
+
+        integrator = openmc.deplete.PredictorIntegrator(
+            operator=operator,
+            timesteps=timesteps,
+            source_rates=source_rates,
+            timestep_units=timestep_units,
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Run integrator
+            results_path = Path(tmpdir) / "depletion_results.h5"
+            integrator.integrate(path=results_path)
+
+            # Load depletion results
+            results = openmc.deplete.Results(results_path)
+
+            # For each material, get activated composition at each timestep
+            all_depleted_materials = {
+                material.id: [
+                    result.get_material(str(material.id))
+                    for result in results
+                ]
+                for material in self
+            }
+
+        return all_depleted_materials

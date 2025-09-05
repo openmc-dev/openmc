@@ -7,7 +7,6 @@
 #include "openmc/vector.h"
 
 #include "xtensor/xtensor.hpp"
-#include <gsl/gsl-lite.hpp>
 #include <hdf5.h>
 
 #include <string>
@@ -34,7 +33,6 @@ public:
 
   int index_subshell; //!< index in SUBSHELLS
   int threshold;
-  double n_electrons;
   double binding_energy;
   vector<Transition> transitions;
 };
@@ -61,7 +59,7 @@ public:
   // Data members
   std::string name_; //!< Name of element, e.g. "Zr"
   int Z_;            //!< Atomic number
-  gsl::index index_; //!< Index in global elements vector
+  int64_t index_;    //!< Index in global elements vector
 
   // Microscopic cross sections
   xt::xtensor<double, 1> energy_;
@@ -90,6 +88,11 @@ public:
   xt::xtensor<double, 2> profile_cdf_;
   xt::xtensor<double, 1> binding_energy_;
   xt::xtensor<double, 1> electron_pdf_;
+
+  // Map subshells from Compton profile data obtained from Biggs et al,
+  // "Hartree-Fock Compton profiles for the elements" to ENDF/B atomic
+  // relaxation data
+  xt::xtensor<int, 1> subshell_map_;
 
   // Stopping power data
   double I_; // mean excitation energy

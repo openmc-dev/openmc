@@ -2,6 +2,7 @@
 #include "openmc/cell.h"
 
 #include <algorithm>
+#include <cassert>
 #include <cctype>
 #include <cmath>
 #include <iterator>
@@ -10,7 +11,6 @@
 #include <string>
 
 #include <fmt/core.h>
-#include <gsl/gsl-lite.hpp>
 
 #include "openmc/capi.h"
 #include "openmc/constants.h"
@@ -39,6 +39,11 @@ vector<unique_ptr<Cell>> cells;
 //==============================================================================
 // Cell implementation
 //==============================================================================
+
+int32_t Cell::n_instances() const
+{
+  return model::universes[universe_]->n_instances_;
+}
 
 void Cell::set_rotation(const vector<double>& rot)
 {
@@ -115,8 +120,8 @@ void Cell::set_temperature(double T, int32_t instance, bool set_contained)
   if (type_ == Fill::MATERIAL) {
     if (instance >= 0) {
       // If temperature vector is not big enough, resize it first
-      if (sqrtkT_.size() != n_instances_)
-        sqrtkT_.resize(n_instances_, sqrtkT_[0]);
+      if (sqrtkT_.size() != n_instances())
+        sqrtkT_.resize(n_instances(), sqrtkT_[0]);
 
       // Set temperature for the corresponding instance
       sqrtkT_.at(instance) = std::sqrt(K_BOLTZMANN * T);
@@ -137,7 +142,7 @@ void Cell::set_temperature(double T, int32_t instance, bool set_contained)
     auto contained_cells = this->get_contained_cells(instance);
     for (const auto& entry : contained_cells) {
       auto& cell = model::cells[entry.first];
-      Expects(cell->type_ == Fill::MATERIAL);
+      assert(cell->type_ == Fill::MATERIAL);
       auto& instances = entry.second;
       for (auto instance : instances) {
         cell->set_temperature(T, instance);
@@ -170,7 +175,7 @@ void Cell::import_properties_hdf5(hid_t group)
 
   // Ensure number of temperatures makes sense
   auto n_temps = temps.size();
-  if (n_temps > 1 && n_temps != n_instances_) {
+  if (n_temps > 1 && n_temps != n_instances()) {
     throw std::runtime_error(fmt::format(
       "Number of temperatures for cell {} doesn't match number of instances",
       id_));
@@ -179,7 +184,7 @@ void Cell::import_properties_hdf5(hid_t group)
   // Modify temperatures for the cell
   sqrtkT_.clear();
   sqrtkT_.resize(temps.size());
-  for (gsl::index i = 0; i < temps.size(); ++i) {
+  for (int64_t i = 0; i < temps.size(); ++i) {
     this->set_temperature(temps[i], i);
   }
 
@@ -249,16 +254,8 @@ void Cell::to_hdf5(hid_t cell_group) const
 // CSGCell implementation
 //==============================================================================
 
-// default constructor
-CSGCell::CSGCell()
-{
-  geom_type_ = GeometryType::CSG;
-}
-
 CSGCell::CSGCell(pugi::xml_node cell_node)
 {
-  geom_type_ = GeometryType::CSG;
-
   if (check_for_node(cell_node, "id")) {
     id_ = std::stoi(get_node_value(cell_node, "id"));
   } else {
@@ -578,7 +575,7 @@ void Region::apply_demorgan(
 //! precedence than unions using parentheses.
 //==============================================================================
 
-gsl::index Region::add_parentheses(gsl::index start)
+int64_t Region::add_parentheses(int64_t start)
 {
   int32_t start_token = expression_[start];
   // Add left parenthesis and set new position to be after parenthesis
@@ -650,7 +647,7 @@ void Region::add_precedence()
   int32_t current_op = 0;
   std::size_t current_dist = 0;
 
-  for (gsl::index i = 0; i < expression_.size(); i++) {
+  for (int64_t i = 0; i < expression_.size(); i++) {
     int32_t token = expression_[i];
 
     if (token == OP_UNION || token == OP_INTERSECTION) {
@@ -946,7 +943,7 @@ BoundingBox Region::bounding_box_complex(vector<int32_t> postfix) const
     }
   }
 
-  Ensures(i_stack == 0);
+  assert(i_stack == 0);
   return stack.front();
 }
 
@@ -1033,7 +1030,7 @@ void populate_universes()
       model::universes.back()->cells_.push_back(index_cell);
       model::universe_map[uid] = model::universes.size() - 1;
     } else {
-#ifdef DAGMC
+#ifdef OPENMC_DAGMC_ENABLED
       // Skip implicit complement cells for now
       Universe* univ = model::universes[it->second].get();
       DAGUniverse* dag_univ = dynamic_cast<DAGUniverse*>(univ);
@@ -1218,8 +1215,8 @@ struct ParentCell {
              lattice_index < other.lattice_index);
   }
 
-  gsl::index cell_index;
-  gsl::index lattice_index;
+  int64_t cell_index;
+  int64_t lattice_index;
 };
 
 //! Structure used to insert ParentCell into hashed STL data structures
@@ -1322,10 +1319,10 @@ vector<ParentCell> Cell::find_parent_cells(
   bool cell_found = false;
   for (auto it = coords.begin(); it != coords.end(); it++) {
     const auto& coord = *it;
-    const auto& cell = model::cells[coord.cell];
+    const auto& cell = model::cells[coord.cell()];
     // if the cell at this level matches the current cell, stop adding to the
     // stack
-    if (coord.cell == model::cell_map[this->id_]) {
+    if (coord.cell() == model::cell_map[this->id_]) {
       cell_found = true;
       break;
     }
@@ -1335,10 +1332,10 @@ vector<ParentCell> Cell::find_parent_cells(
     int lattice_idx = C_NONE;
     if (cell->type_ == Fill::LATTICE) {
       const auto& next_coord = *(it + 1);
-      lattice_idx = model::lattices[next_coord.lattice]->get_flat_index(
-        next_coord.lattice_i);
+      lattice_idx = model::lattices[next_coord.lattice()]->get_flat_index(
+        next_coord.lattice_index());
     }
-    stack.push(coord.universe, {coord.cell, lattice_idx});
+    stack.push(coord.universe(), {coord.cell(), lattice_idx});
   }
 
   // if this loop finished because the cell was found and
@@ -1626,7 +1623,7 @@ extern "C" int openmc_cell_get_num_instances(
     set_errmsg("Index in cells array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
-  *num_instances = model::cells[index]->n_instances_;
+  *num_instances = model::cells[index]->n_instances();
   return 0;
 }
 

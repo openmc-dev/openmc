@@ -109,7 +109,7 @@ The ``<tally>`` element accepts the following sub-elements:
                prematurely if there are no hits in any bins at the first
                evalulation. It is the user's responsibility to specify enough
                particles per batch to get a nonzero score in at least one bin.
-     
+
      *Default*: False
 
    :scores:
@@ -328,6 +328,11 @@ should be set to:
 If a mesh is desired as a filter for a tally, it must be specified in a separate
 element with the tag name ``<mesh>``. This element has the following
 attributes/sub-elements:
+
+  :name:
+    An optional string name to identify the mesh in output files.
+
+    *Default*: ""
 
   :type:
     The type of mesh. This can be either "regular", "rectilinear",

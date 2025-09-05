@@ -2329,5 +2329,4 @@ class Settings:
         tree = ET.parse(path, parser=parser)
         root = tree.getroot()
         meshes = _read_meshes(root)
-        return cls.from_xml_element(root, meshes)
-        
+        return cls.from_xml_element(root, meshes)     

@@ -620,6 +620,33 @@ def test_mesh_material_volumes_serialize():
     assert new_volumes.by_element(3) == [(2, 1.0)]
 
 
+def test_mesh_material_volumes_boundary_conditions(sphere_model):
+    """Test the material volumes method using a regular mesh
+    that overlaps with a vacuum boundary condition."""
+
+    mesh = openmc.SphericalMesh.from_domain(sphere_model.geometry, dimension=(1, 1, 1))
+    # extend mesh beyond the outer sphere surface to test rays crossing the boundary condition
+    mesh.r_grid[-1] += 5.0
+
+    # add a new cell to the modelthat occupies the outside of the sphere
+    sphere_surfaces = list(filter(lambda s: isinstance(s, openmc.Sphere),
+                            sphere_model.geometry.get_all_surfaces().values()))
+    outer_cell = openmc.Cell(region=+sphere_surfaces[0])
+    sphere_model.geometry.root_universe.add_cell(outer_cell)
+
+    volumes = mesh.material_volumes(sphere_model, (0, 100, 100))
+    sphere_volume = 4/3*np.pi*25**3
+    mats = sphere_model.materials
+    expected_volumes = [(mats[0].id, 0.25*sphere_volume),
+                        (mats[1].id, 0.25*sphere_volume),
+                        (mats[2].id, 0.5*sphere_volume),
+                        (None, 4/3*np.pi*mesh.r_grid[-1]**3 - sphere_volume)]
+
+    for evaluated, expected in zip(volumes.by_element(0), expected_volumes):
+        assert evaluated[0] == expected[0]
+        assert evaluated[1] == pytest.approx(expected[1], rel=1e-2)
+
+
 def test_raytrace_mesh_infinite_loop(run_in_tmpdir):
     # Create a model with one large spherical cell
     sphere = openmc.Sphere(r=100, boundary_type='vacuum')

@@ -819,6 +819,11 @@ def create_triso_lattice(trisos, lower_left, pitch, shape, background, virtual=F
     background : openmc.Material
         A background material that is used anywhere within the lattice but
         outside a TRISO particle
+    virtual : bool
+        If True, create a virtual lattice where each cell is repeated
+        according to the pitch and shape. This is useful for creating a
+        lattice with a very large number of elements.
+        Default is False.
 
     Returns
     -------

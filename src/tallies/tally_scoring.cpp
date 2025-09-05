@@ -2539,9 +2539,15 @@ void score_surface_tally(Particle& p, const vector<int>& tallies)
 
 void boostf(double A[4], double B[4], double X[4])
 {
-  //
-  //     boosts B(labfram) to A rest frame and gives output in X
-  //
+  // boostf(A, B, X)
+  // Performs a Lorentz boost of four-vector B from the lab frame 
+  // into the rest frame of four-vector A.
+  // A[μ]: reference four-momentum (defines the rest frame).
+  // B[μ]: four-vector to be boosted.
+  // X[μ]: output four-vector in the A-rest frame.
+  // 
+  // Formula is the standard Lorentz transformation to the rest frame
+  
   double W;
   int j;
 
@@ -2562,13 +2568,26 @@ void boostf(double A[4], double B[4], double X[4])
 
 void rel_scatt(double det_pos[4], Particle& p,double E3k_cm_given)
 {
+// rel_scatt(det_pos, p, E3k_cm_given)
+// Computes relativistic two-body scattering kinematics in the lab ↔ COM frames.
+//
+// Process:
+//  1. Build incoming and target four-momenta in the lab.
+//  2. Boost to the COM frame using boostf().
+//  3. Compute outgoing energy and momentum using two-body kinematic relations:
+//       E3_cm = (M_cm^2 + m3^2 - m4^2) / (2 * M_cm)
+//  4. Determine angles and jacobian factors via back-transformation to lab.
+//
+// Reference for the general method and implementation approach:
+//   Horin, I., Alon, O., Kreisel, A., Hirsh, T. Y., Dayan, T., & Fuks, H. (2025)
   std::vector<double> mu_cm;
   std::vector<double> Js;
   Direction u_lab {det_pos[0] - p.r().x, // towards the detector
     det_pos[1] - p.r().y, det_pos[2] - p.r().z};
   Direction u_lab_unit = u_lab / u_lab.norm(); // normalize
-
-  double m1 = MASS_NEUTRON_EV/1e6; // p.getMass() / 1e6; // mass of incoming particle in MeV
+  double beta  = p.speed() / C_LIGHT;
+  double gamma1 = 1.0 / sqrt(1.0 - beta * beta);
+  double m1 = p.E() / ((gamma1 - 1.0) * C_LIGHT * C_LIGHT) /1e6;  // mass of incoming particle in MeV
   const auto& nuc {data::nuclides[p.event_nuclide()]};
   double awr = nuc->awr_;
   double m2 = m1 * awr; // mass of target

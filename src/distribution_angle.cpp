@@ -95,7 +95,7 @@ double AngleDistribution::sample(double E, uint64_t* seed) const
   return mu;
 }
 
-double AngleDistribution::pdf(double E, double mu) const
+double AngleDistribution::evaluate(double E, double mu) const
 {
   // Determine number of incoming energies
   auto n = energy_.size();
@@ -117,9 +117,9 @@ double AngleDistribution::pdf(double E, double mu) const
 
   double pdf = 0.0;
   if (r > 0.0)
-    pdf += r * distribution_[i + 1]->pdf(mu);
+    pdf += r * distribution_[i + 1]->evaluate(mu);
   if (r < 1.0)
-    pdf += (1.0 - r) * distribution_[i]->pdf(mu);
+    pdf += (1.0 - r) * distribution_[i]->evaluate(mu);
   return pdf;
 }
 

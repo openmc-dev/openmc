@@ -24,9 +24,9 @@ class Distribution {
 public:
   virtual ~Distribution() = default;
   virtual double sample(uint64_t* seed) const = 0;
-  virtual double pdf(double x) const
+  virtual double evaluate(double x) const
   {
-    fatal_error("pdf not available for this Distribution type");
+    fatal_error("evaluate not available for this Distribution type");
   }
 
   //! Return integral of distribution
@@ -116,7 +116,7 @@ public:
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
   double sample(uint64_t* seed) const override;
-  double pdf(double x) const override;
+  double evaluate(double x) const override;
 
   double a() const { return a_; }
   double b() const { return b_; }
@@ -141,7 +141,7 @@ public:
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
   double sample(uint64_t* seed) const override;
-  double pdf(double x) const override;
+  double evaluate(double x) const override;
 
   double a() const { return std::pow(offset_, ninv_); }
   double b() const { return std::pow(offset_ + span_, ninv_); }
@@ -211,7 +211,7 @@ public:
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
   double sample(uint64_t* seed) const override;
-  double pdf(double x) const override;
+  double evaluate(double x) const override;
 
   double mean_value() const { return mean_value_; }
   double std_dev() const { return std_dev_; }
@@ -235,7 +235,7 @@ public:
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
   double sample(uint64_t* seed) const override;
-  double pdf(double x) const override;
+  double evaluate(double x) const override;
 
   // properties
   vector<double>& x() { return x_; }

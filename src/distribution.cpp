@@ -157,7 +157,7 @@ double Uniform::sample(uint64_t* seed) const
   return a_ + prn(seed) * (b_ - a_);
 }
 
-double Uniform::pdf(double x) const
+double Uniform::evaluate(double x) const
 {
   if (x <= b_ && x >= a_)
     return 1 / (b_ - a_);
@@ -191,7 +191,7 @@ double PowerLaw::sample(uint64_t* seed) const
   return std::pow(offset_ + prn(seed) * span_, ninv_);
 }
 
-double PowerLaw::pdf(double x) const
+double PowerLaw::evaluate(double x) const
 {
   // Use accessors
   double a_val = this->a();
@@ -260,7 +260,7 @@ double Normal::sample(uint64_t* seed) const
   return normal_variate(mean_value_, std_dev_, seed);
 }
 
-double Normal::pdf(double x) const
+double Normal::evaluate(double x) const
 {
   double exponent = -0.5 * std::pow((x - mean_value_) / std_dev_, 2);
   double coefficient = 1 / (std_dev_ * std::sqrt(2 * PI));
@@ -387,7 +387,7 @@ double Tabular::sample(uint64_t* seed) const
   }
 }
 
-double Tabular::pdf(double x) const
+double Tabular::evaluate(double x) const
 {
   // get PDF value at x
 

@@ -367,9 +367,9 @@ double CorrelatedAngleEnergy::sample_energy_and_pdf(
   double pdf; // assuming the data in lab frame!
   if (r1 - c_k < c_k1 - r1 ||
       distribution_[l].interpolation == Interpolation::histogram) {
-    pdf = distribution_[l].angle[k]->pdf(mu);
+    pdf = distribution_[l].angle[k]->evaluate(mu);
   } else {
-    pdf = distribution_[l].angle[k + 1]->pdf(mu);
+    pdf = distribution_[l].angle[k + 1]->evaluate(mu);
   }
 
   return pdf;

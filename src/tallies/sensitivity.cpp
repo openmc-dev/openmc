@@ -545,10 +545,13 @@ score_track_sensitivity(Particle& p, double distance)
           macro_xs = p.macro_xs().fission;
         }
         break;      
+      // for reactions with multiplicities
       case N_2N:
       case N_2NA: 
       case N_3N: 
-      case N_3NA: 
+      case N_3NA:
+      case N_4N:
+      case N_2NP:
         if (sens.sens_nuclide >= 0) {
           macro_xs = p.neutron_xs(sens.sens_nuclide).reaction[sens.sens_reaction] * atom_density;
         }

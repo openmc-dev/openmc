@@ -17,7 +17,7 @@ import h5py
 import openmc
 import openmc.data
 import openmc.checkvalue as cv
-from ._xml import clean_indentation
+from ._xml import clean_indentation, get_elem_list, get_text
 from .mixin import IDManagerMixin
 from .utility_funcs import input_path
 from . import waste
@@ -1672,50 +1672,55 @@ class Material(IDManagerMixin):
             Material generated from XML element
 
         """
-        mat_id = int(elem.get('id'))
+        mat_id = int(get_text(elem, 'id'))
+
         # Add NCrystal material from cfg string
-        if "cfg" in elem.attrib:
-            cfg = elem.get("cfg")
+        cfg = get_text(elem, "cfg")
+        if cfg is not None:
             return Material.from_ncrystal(cfg, material_id=mat_id)
 
         mat = cls(mat_id)
-        mat.name = elem.get('name')
+        mat.name = get_text(elem, 'name')
 
-        if "temperature" in elem.attrib:
-            mat.temperature = float(elem.get("temperature"))
+        temperature = get_text(elem, "temperature")
+        if temperature is not None:
+            mat.temperature = float(temperature)
 
-        if 'volume' in elem.attrib:
-            mat.volume = float(elem.get('volume'))
+        volume = get_text(elem, "volume")
+        if volume is not None:
+            mat.volume = float(volume)
 
         # Get each nuclide
         for nuclide in elem.findall('nuclide'):
-            name = nuclide.attrib['name']
+            name = get_text(nuclide, "name")
             if 'ao' in nuclide.attrib:
                 mat.add_nuclide(name, float(nuclide.attrib['ao']))
             elif 'wo' in nuclide.attrib:
                 mat.add_nuclide(name, float(nuclide.attrib['wo']), 'wo')
 
         # Get depletable attribute
-        mat.depletable = elem.get('depletable') in ('true', '1')
+        depletable = get_text(elem, "depletable")
+        mat.depletable = depletable in ('true', '1')
 
         # Get each S(a,b) table
         for sab in elem.findall('sab'):
-            fraction = float(sab.get('fraction', 1.0))
-            mat.add_s_alpha_beta(sab.get('name'), fraction)
+            fraction = float(get_text(sab, "fraction", 1.0))
+            name = get_text(sab, "name")
+            mat.add_s_alpha_beta(name, fraction)
 
         # Get total material density
         density = elem.find('density')
-        units = density.get('units')
+        units = get_text(density, "units")
         if units == 'sum':
             mat.set_density(units)
         else:
-            value = float(density.get('value'))
+            value = float(get_text(density, 'value'))
             mat.set_density(units, value)
 
         # Check for isotropic scattering nuclides
-        isotropic = elem.find('isotropic')
+        isotropic = get_elem_list(elem, "isotropic", str)
         if isotropic is not None:
-            mat.isotropic = isotropic.text.split()
+            mat.isotropic = isotropic
 
         return mat
 
@@ -1922,7 +1927,7 @@ class Materials(cv.CheckedList):
             file.write(ET.tostring(element, encoding="unicode"))
 
         # Write the <material> elements.
-        for material in sorted(self, key=lambda x: x.id):
+        for material in sorted(set(self), key=lambda x: x.id):
             element = material.to_xml_element(nuclides_to_ignore=nuclides_to_ignore)
             clean_indentation(element, level=level+1)
             element.tail = element.tail.strip(' ')
@@ -1982,9 +1987,9 @@ class Materials(cv.CheckedList):
             materials.append(Material.from_xml_element(material))
 
         # Check for cross sections settings
-        xs = elem.find('cross_sections')
+        xs = get_text(elem, "cross_sections")
         if xs is not None:
-            materials.cross_sections = xs.text
+            materials.cross_sections = xs
 
         return materials
 

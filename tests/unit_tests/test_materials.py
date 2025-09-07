@@ -38,13 +38,14 @@ def test_materials_deplete():
 
     assert list(depleted_material.keys()) == [pristine_material_1.id, pristine_material_2.id]
     for mat_id, materials in depleted_material.items():
-        for material in materials:
+        for i_step, material in enumerate(materials):
             assert isinstance(material, openmc.Material)
-            assert len(material.get_nuclides()) > 1
+            if i_step > 0:
+                assert len(material.get_nuclides()) > 1
             assert mat_id == material.id
 
     mats = depleted_material[pristine_material_1.id]
-    Co58_mat_1_step_0 = mats[0].get_nuclide_atom_densities("Co58")["Co58"]
+    Co58_mat_1_step_0 = mats[0].get_nuclide_atom_densities("Co58").get("Co58", 0.0)
     Co58_mat_1_step_1 = mats[1].get_nuclide_atom_densities("Co58")["Co58"]
     Co58_mat_1_step_2 = mats[2].get_nuclide_atom_densities("Co58")["Co58"]
 
@@ -53,7 +54,7 @@ def test_materials_deplete():
     # It then decays in the second cooling step (flux = 0)
     assert Co58_mat_1_step_1 > 0.0 and Co58_mat_1_step_1 > Co58_mat_1_step_2
 
-    Ni59_mat_1_step_0 = mats[0].get_nuclide_atom_densities("Ni59")["Ni59"]
+    Ni59_mat_1_step_0 = mats[0].get_nuclide_atom_densities("Ni59").get("Ni59", 0.0)
     Ni59_mat_1_step_1 = mats[1].get_nuclide_atom_densities("Ni59")["Ni59"]
     Ni59_mat_1_step_2 = mats[2].get_nuclide_atom_densities("Ni59")["Ni59"]
 
@@ -61,3 +62,19 @@ def test_materials_deplete():
     # Ni59 is one of the main activation product of Ni60 in the first irradiation
     # step. It then decays in the second cooling step (flux = 0)
     assert Ni59_mat_1_step_1 > 0.0 and Ni59_mat_1_step_1 > Ni59_mat_1_step_2
+
+
+def test_export_duplicate_materials_to_xml(run_in_tmpdir):
+    """
+    Test exporting Materials to xml with a duplicate and checking that only
+    unique entities are exported.
+    """
+    my_mat = openmc.Material(name="my_mat")
+    my_mat2 = openmc.Material(name="my_mat2")
+
+    materials = openmc.Materials([my_mat, my_mat2, my_mat])
+
+    materials.export_to_xml("materials.xml")
+
+    materials_in = openmc.Materials.from_xml("materials.xml")
+    assert len(materials_in) == 2

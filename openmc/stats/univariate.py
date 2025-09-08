@@ -215,7 +215,7 @@ class Discrete(Univariate):
     
     @bias.setter
     def bias(self, bias):
-        cv.check_type('Biasing distribution', bias, Discrete, none_ok=True)
+        check_bias_support(self, bias)
         self._bias = bias
 
     def cdf(self):
@@ -330,6 +330,11 @@ class Discrete(Univariate):
         """
         if len(dists) != len(probs):
             raise ValueError("Number of distributions and probabilities must match.")
+        
+        for d in dists:
+            if d.bias is not None:
+                raise NotImplementedError(
+                    "Merging biased Discrete distributions is not yet supported.")
 
         # Combine distributions accounting for duplicate x values
         x_merged = set()
@@ -476,10 +481,12 @@ class Uniform(Univariate):
     
     @bias.setter
     def bias(self, bias):
-        cv.check_type('Biasing distribution', bias, Univariate, none_ok=True)
+        check_bias_support(self, bias)
         self._bias = bias
 
     def to_tabular(self):
+        if self.bias is not None:
+            raise RuntimeError("to_tabular() is not permitted for biased distributions.")
         prob = 1./(self.b - self.a)
         t = Tabular([self.a, self.b], [prob, prob], 'histogram')
         t.c = [0., 1.]
@@ -634,7 +641,7 @@ class PowerLaw(Univariate):
     
     @bias.setter
     def bias(self, bias):
-        cv.check_type('Biasing distribution', bias, Univariate, none_ok=True)
+        check_bias_support(self, bias)
         self._bias = bias
 
     def sample(self, n_samples=1, seed=None):
@@ -764,7 +771,7 @@ class Maxwell(Univariate):
     
     @bias.setter
     def bias(self, bias):
-        cv.check_type('Biasing distribution', bias, Univariate, none_ok=True)
+        check_bias_support(self, bias)
         self._bias = bias
 
     def sample(self, n_samples=1, seed=None):
@@ -905,7 +912,7 @@ class Watt(Univariate):
     
     @bias.setter
     def bias(self, bias):
-        cv.check_type('Biasing distribution', bias, Univariate, none_ok=True)
+        check_bias_support(self, bias)
         self._bias = bias
 
     def sample(self, n_samples=1, seed=None):
@@ -1039,7 +1046,7 @@ class Normal(Univariate):
     
     @bias.setter
     def bias(self, bias):
-        cv.check_type('Biasing distribution', bias, Univariate, none_ok=True)
+        check_bias_support(self, bias)
         self._bias = bias
 
     def sample(self, n_samples=1, seed=None):
@@ -1255,7 +1262,7 @@ class Tabular(Univariate):
     
     @bias.setter
     def bias(self, bias):
-        cv.check_type('Biasing distribution', bias, Univariate, none_ok=True)
+        check_bias_support(self, bias)
         self._bias = bias
 
     def cdf(self):
@@ -1527,7 +1534,7 @@ class Legendre(Univariate):
     
     @bias.setter
     def bias(self, bias):
-        cv.check_type('Biasing distribution', bias, Univariate, none_ok=True)
+        check_bias_support(self, bias)
         self._bias = bias
 
     def sample(self, n_samples=1, seed=None):
@@ -1597,6 +1604,15 @@ class Mixture(Univariate):
                       Iterable, Univariate)
         self._distribution = distribution
 
+    @property
+    def bias(self):
+        return self._bias
+    
+    @bias.setter
+    def bias(self, bias):
+        check_bias_support(self, bias)
+        self._bias = bias
+
     def cdf(self):
         return np.insert(np.cumsum(self.probability), 0, 0.0)
 
@@ -1622,7 +1638,8 @@ class Mixture(Univariate):
         return out, out_wgt
     
     def evaluate(self, x):
-        raise NotImplementedError
+        raise NotImplementedError(
+            "evaluate() is undefined for Mixture distributions")
 
     def normalize(self):
         """Normalize the probabilities stored on the distribution"""
@@ -1806,3 +1823,110 @@ def combine_distributions(
         dist_list[:] = [Mixture(probs, dist_list.copy())]
 
     return dist_list[0]
+
+
+def check_bias_support(parent: Univariate, bias: Univariate):
+    """Ensure that bias distributions share the support of the univariate 
+    distribution they are biasing.
+
+    Currently, distributions supported on an infinite or semi-infinite 
+    interval are permitted as bias distributions for continuous distributions 
+    whose support is contained within the same infinite or semi-infinite 
+    interval. The user is warned in such cases that this practice can result 
+    in biased tally means, and it will eventually be disallowed when 
+    substitutes for these distributions are available.
+
+    Parameters
+    ----------
+    parent : openmc.stats.Univariate
+        Distributions to be biased
+    bias : openmc.stats.Univariate or None
+        Proposed bias distribution
+
+    """
+    if bias is None:
+        return
+    
+    def check_interval_match(parent_a, parent_b, bias_a, bias_b):
+        """Ensures sampling intervals match."""
+        if (bias_a != parent_a) or (bias_b != parent_b):
+            raise RuntimeError(
+                f'Sampling intervals of parent [{parent_a},{parent_b}] '
+                f'and bias [{bias_a},{bias_b}] distributions do not match!')
+    
+    def warn_unbounded_bias(parent_type):
+        """Raises a warning if parent distribution has compact support and 
+        user attempts to add a bias distribution supported over an infinite 
+        or semi-infinite interval. This should eventually raise an error once 
+        appropriate subsitute distributions with compact support are added.
+        """
+        warn_msg = (f"Bias distribution without compact support applied "
+                   f"to a {parent_type} distribution. This may induce tally "
+                   f"fluctuations or bias results, and is not recommended.")
+        warn(warn_msg, RuntimeWarning)
+    
+    def check_maxwell_watt_compatibility(parent_lower):
+        """Raises an error if parent distribution sampling interval does not 
+        share lower bound with a Maxwell/Watt bias distribution.
+        """
+        if parent_lower != 0.0:
+            raise RuntimeError(f'Lower bound of parent distribution ({parent_lower}) '
+                              f'incompatible with lower bound of Maxwell or Watt '
+                              f'distribution (0.0)')
+    
+    # Define compatible bias types for each parent type
+    bounded_parents = (Uniform, PowerLaw, Tabular)
+    unbounded_bias = (Maxwell, Watt, Normal)
+    
+    if isinstance(parent, bounded_parents):
+        parent_type = type(parent).__name__
+        
+        # Get parent bounds
+        if isinstance(parent, (Uniform, PowerLaw)):
+            parent_a, parent_b = parent.a, parent.b
+        else:  # Tabular
+            parent_a, parent_b = parent.x[0], parent.x[-1]
+        
+        if isinstance(bias, (PowerLaw, Uniform)):
+            check_interval_match(parent_a, parent_b, bias.a, bias.b)
+        
+        elif isinstance(bias, Tabular):
+            check_interval_match(parent_a, parent_b, bias.x[0], bias.x[-1])
+        
+        elif isinstance(bias, unbounded_bias):
+            if isinstance(bias, (Maxwell, Watt)):
+                check_maxwell_watt_compatibility(parent_a)
+            warn_unbounded_bias(parent_type)
+        
+        else:
+            raise RuntimeError(f"Attempted to bias {parent_type} distribution with an "
+                              "incompatible bias distribution type.")
+    
+    elif isinstance(parent, Discrete):
+        if isinstance(bias, Discrete):
+            if bias.x != parent.x:
+                raise RuntimeError("Sampling intervals of parent and bias "
+                                  "Discrete distributions do not match!")
+        else:
+            raise RuntimeError("Attempted to bias Discrete distribution with an "
+                              "incompatible bias distribution type.")
+    
+    elif isinstance(parent, (Maxwell, Watt)):
+        if isinstance(bias, unbounded_bias):
+            if isinstance(bias, Normal):
+                warn_msg = ("Support of bias distribution (Normal) includes "
+                           "points outside support of the Maxwell or Watt "
+                           "distribution it is biasing. This may induce tally "
+                           "fluctuations or bias results, and is not recommended.")
+                warn(warn_msg, RuntimeWarning)
+        else:
+            raise RuntimeError("Attempted to bias Maxwell or Watt distribution "
+                              "with an incompatible bias distribution type.")
+    
+    elif isinstance(parent, Normal):
+        if not isinstance(bias, Normal):
+            raise RuntimeError("Normal distribution may only be biased by "
+                              "another instance of a Normal distribution.")
+    
+    else:
+        raise RuntimeError("Parent distribution type does not permit biasing.")

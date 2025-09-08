@@ -26,6 +26,7 @@
 #include "openmc/plot.h"
 #include "openmc/random_lcg.h"
 #include "openmc/random_ray/random_ray.h"
+#include "openmc/reaction.h"
 #include "openmc/simulation.h"
 #include "openmc/source.h"
 #include "openmc/string_utils.h"
@@ -942,10 +943,34 @@ void read_settings_xml(pugi::xml_node root)
         ct_cell_id.insert(b);
       }
     }
-    if (check_for_node(node_ct, "mt_numbers")) {
-      auto temp = get_node_array<int>(node_ct, "mt_numbers");
+    if (check_for_node(node_ct, "reactions")) {
+      auto temp = get_node_array<std::string>(node_ct, "reactions");
       for (const auto& b : temp) {
-        ct_mt_number.insert(b);
+        try {
+          int reaction_int = reaction_type(b);
+          if (reaction_int > 0) {
+            ct_mt_number.insert(reaction_int);
+          } else {
+            fatal_error("Reaction type must be a positive integer and " + b +
+                        " has a ENDF MT number of " +
+                        std::to_string(reaction_int));
+          }
+        } catch (const std::invalid_argument& e) {
+          // If not valid, try to treat it as an integer
+          try {
+            int reaction_int =
+              std::stoi(b);         
+            if (reaction_int > 0) { 
+              ct_mt_number.insert(
+                reaction_int); 
+            } else {
+              fatal_error("Reaction number must be a positive integer: " + b);
+            }
+          } catch (const std::invalid_argument& e) {
+            // If both conversions fail, trigger an error
+            fatal_error("Invalid reaction type or number: " + b);
+          }
+        }
       }
     }
     if (check_for_node(node_ct, "universe_ids")) {

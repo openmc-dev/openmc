@@ -57,7 +57,7 @@ class Settings:
         :universe_ids: List of universe IDs to define universes in which collisions should be banked. (list of int)
         :material_ids: List of material IDs to define materials in which collisions should be banked. (list of int)
         :nuclide_ids: List of nuclide ZAIDs to define nuclides in which collisions should be banked. (list of int)
-        :mt_numbers: List of reaction MT numbers to define specific reactions that should be banked
+        :reactions: List of reaction MT numbers to define specific reactions that should be banked
                     (ex: Fission:18, Sactter:2, Absorption: 101). (list of int)
         :deposited_E_threshold: Number to define the minimum deposited energy during
                      per collision to trigger banking.(float)
@@ -844,7 +844,7 @@ class Settings:
         cv.check_type('Collision tracking options', collision_track, Mapping)
         for key, value in collision_track.items():
             cv.check_value('collision_track key', key,
-                           ('cell_ids', 'mt_numbers', 'universe_ids', 'material_ids', 'nuclide_ids',
+                           ('cell_ids', 'reactions', 'universe_ids', 'material_ids', 'nuclide_ids',
                             'deposited_E_threshold', 'max_collisions','max_collision_track_files' ,'mcpl'))
             if key == 'cell_ids':
                 cv.check_type('cell ids for collision tracking data banking', value,
@@ -852,12 +852,21 @@ class Settings:
                 for cell_id in value:
                     cv.check_greater_than('cell id for collision tracking data banking',
                                           cell_id, 0)
-            elif key == 'mt_numbers':
+            elif key == 'reactions':
                 cv.check_type('MT numbers for collision tracking data banking', value,
-                              Iterable, Integral)
-                for mt_number in value:
-                    cv.check_greater_than('MT number for collision tracking data banking',
-                                          mt_number, 0)
+                               Iterable)
+                for reaction in value:
+                    if isinstance(reaction, int):
+                        cv.check_greater_than(
+                        'MT number for collision tracking data banking', reaction, 0
+                            )
+                    elif isinstance(reaction, str):
+                        # check against allowed strings? so far let C++ code handle it
+                        pass
+                    else:
+                       raise TypeError(
+                            f"MT number for collision tracking data banking must be a positive int or string, "
+                            f"got {type(reaction).__name__}")
             elif key == 'universe_ids':
                 cv.check_type('universe ids for collision tracking data banking', value,
                               Iterable, Integral)
@@ -1484,10 +1493,10 @@ class Settings:
                 subelement = ET.SubElement(element, "cell_ids")
                 subelement.text = ' '.join(
                     str(x) for x in self._collision_track['cell_ids'])
-            if 'mt_numbers' in self._collision_track:
-                subelement = ET.SubElement(element, "mt_numbers")
+            if 'reactions' in self._collision_track:
+                subelement = ET.SubElement(element, "reactions")
                 subelement.text = ' '.join(
-                    str(x) for x in self._collision_track['mt_numbers'])
+                    str(x) for x in self._collision_track['reactions'])
             if 'universe_ids' in self._collision_track:
                 subelement = ET.SubElement(element, "universe_ids")
                 subelement.text = ' '.join(
@@ -1961,13 +1970,13 @@ class Settings:
     def _collision_track_from_xml_element(self, root):
         elem = root.find('collision_track')
         if elem is not None:
-            for key in ('cell_ids', 'mt_numbers', 'universe_ids', 'material_ids', 'nuclide_ids',
+            for key in ('cell_ids', 'reactions', 'universe_ids', 'material_ids', 'nuclide_ids',
                         'deposited_E_threshold', 'max_collisions',"max_collision_track_files", 'mcpl'):
                 value = get_text(elem, key)
                 if value is not None:
                     if key == 'cell_ids':
                         value = [int(x) for x in value.split()]
-                    elif key == 'mt_numbers':
+                    elif key == 'reactions':
                         value = [int(x) for x in value.split()]
                     elif key == 'universe_ids':
                         value = [int(x) for x in value.split()]

@@ -602,7 +602,8 @@ void Particle::cross_surface(const Surface& surf)
 #endif
 
   // Handle any applicable boundary conditions.
-  if (surf.bc_ && settings::run_mode != RunMode::PLOTTING) {
+  if (surf.bc_ && settings::run_mode != RunMode::PLOTTING &&
+      settings::run_mode != RunMode::VOLUME) {
     surf.bc_->handle_particle(*this, surf);
     return;
   }

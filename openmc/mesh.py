@@ -3046,7 +3046,7 @@ class HexagonalMesh(StructuredMesh):
 
     @property
     def bounding_box(self) -> openmc.BoundingBox:
-        dy = self.width_[0] / sqrt(3)
+        dy = self.width[0] / sqrt(3)
         return openmc.BoundingBox(
                 [self.lower_left[0], -(self.hex_radius * 1.5 * dy + dy), self.lower_left[1]],
                 [self.upper_right[0], self.hex_radius * 1.5 * dy + dy, self.lower_left[1]],

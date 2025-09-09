@@ -112,6 +112,21 @@ double Cell::density_mult(int32_t instance) const
   }
 }
 
+double Cell::density(int32_t instance) const
+{
+  const int32_t mat_index = material(instance);
+  if (mat_index == MATERIAL_VOID)
+    return 0.0;
+
+  if (instance >= 0) {
+    double rho =
+      rho_mult_.size() == 1 ? rho_mult_.at(0) : rho_mult_.at(instance);
+    return rho * model::materials[mat_index]->density_gpcc();
+  } else {
+    return rho_mult_[0];
+  }
+}
+
 void Cell::set_temperature(double T, int32_t instance, bool set_contained)
 {
   if (settings::temperature_method == TemperatureMethod::INTERPOLATION) {
@@ -162,7 +177,7 @@ void Cell::set_temperature(double T, int32_t instance, bool set_contained)
   }
 }
 
-void Cell::set_density_mult(double rho, int32_t instance, bool set_contained)
+void Cell::set_density(double rho, int32_t instance, bool set_contained)
 {
   if (type_ != Fill::MATERIAL && !set_contained) {
     fatal_error(
@@ -172,17 +187,22 @@ void Cell::set_density_mult(double rho, int32_t instance, bool set_contained)
   }
 
   if (type_ == Fill::MATERIAL) {
+    const int32_t mat_index = material(instance);
+    if (mat_index == MATERIAL_VOID)
+      return;
+
     if (instance >= 0) {
       // If density multiplier vector is not big enough, resize it first
       if (rho_mult_.size() != n_instances())
         rho_mult_.resize(n_instances(), rho_mult_[0]);
 
       // Set density multiplier for the corresponding instance
-      rho_mult_.at(instance) = rho;
+      rho_mult_.at(instance) =
+        rho / model::materials[mat_index]->density_gpcc();
     } else {
       // Set density multiplier for all instances
       for (auto& Rho_ : rho_mult_) {
-        Rho_ = rho;
+        Rho_ = rho / model::materials[mat_index]->density_gpcc();
       }
     }
   } else {
@@ -192,7 +212,7 @@ void Cell::set_density_mult(double rho, int32_t instance, bool set_contained)
       assert(cell->type_ == Fill::MATERIAL);
       auto& instances = entry.second;
       for (auto instance : instances) {
-        cell->set_density_mult(rho, instance);
+        cell->set_density(rho, instance);
       }
     }
   }
@@ -1243,18 +1263,7 @@ extern "C" int openmc_cell_set_density(
 
   int32_t instance_index = instance ? *instance : -1;
   try {
-    if (model::cells[index]->type_ != Fill::MATERIAL) {
-      fatal_error(
-        fmt::format("Cell {}, instance {} is not filled with a material.",
-          model::cells[index]->id_, instance_index));
-    }
-
-    int32_t mat_index = model::cells[index]->material(instance_index);
-    if (mat_index != MATERIAL_VOID) {
-      model::cells[index]->set_density_mult(
-        rho / model::materials[mat_index]->density_gpcc(), instance_index,
-        set_contained);
-    }
+    model::cells[index]->set_density(rho, instance_index, set_contained);
   } catch (const std::exception& e) {
     set_errmsg(e.what());
     return OPENMC_E_UNASSIGNED;

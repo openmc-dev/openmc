@@ -65,8 +65,8 @@ int main(int argc, char** argv)
   // model)
   model::cells[model::cell_map[4]]->set_temperature(400.0, 3, true);
 
-  // set a larger density multiplier for another lattice cell
-  model::cells[model::cell_map[4]]->set_density_mult(2.0, 2, true);
+  // set the density of another lattice cell to 2
+  model::cells[model::cell_map[4]]->set_density(2.0, 2, true);
 
   // the summary file will be used to check that
   // temperatures were set correctly so clear

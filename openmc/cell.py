@@ -74,7 +74,8 @@ class Cell(IDManagerMixin):
         to give each distributed cell instance a unique temperature.
     density : float or iterable of float
         Density of the cell in g/cm3. Multiple densities can be given to give
-        each distributed cell instance a unique density.
+        each distributed cell instance a unique density. Densities set here will
+        override the density set on materials used to fill the cell.
     translation : Iterable of float
         If the cell is filled with a universe, this array specifies a vector
         that is used to translate (shift) the universe.

@@ -3021,7 +3021,7 @@ class HexagonalMesh(StructuredMesh):
 
     @property
     def hex_area(self):
-        return sqrt(3) * self.width[0] * self.width[0]
+        return sqrt(3) * self.width[0] * self.width[0] * 0.5
 
     @property
     def volumes(self):

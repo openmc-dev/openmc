@@ -354,12 +354,11 @@ void Particle::event_collide()
                                 neutron_xs(event_nuclide()).fission);
       double prob = 0.0;
 
-      // Loop through each partial fission reaction type
+      // Loop through each absorption reaction type
       for (auto& rx : nuc->absorption_rx_) {
         // add to cumulative probability
         prob += rx->xs(micro);
 
-        // Create fission bank sites if fission occurs
         if (prob > cutoff) {
           event_mt() = rx->mt_;
           break;

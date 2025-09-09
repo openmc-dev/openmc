@@ -1977,13 +1977,13 @@ class Settings:
                     if key == 'cell_ids':
                         value = [int(x) for x in value.split()]
                     elif key == 'reactions':
-                        value = [int(x) for x in value.split()]
+                        value = value.split()
                     elif key == 'universe_ids':
                         value = [int(x) for x in value.split()]
                     elif key == 'material_ids':
                         value = [int(x) for x in value.split()]
                     elif key == 'nuclide_ids':
-                        value = [int(x) for x in value.split()]
+                        value = value.split()
                     elif key in ('deposited_E_threshold'):
                         value = float(value)
                     elif key in ('max_collisions'):

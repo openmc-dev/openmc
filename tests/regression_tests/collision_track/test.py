@@ -29,7 +29,7 @@ reflective and periodic Boundary Conditions (BC):
 # Below is a summary of the parameters used in the test cases:
 #
 # - max_collisions: Maximum number of particles to track in the simulation.
-# - mt_numbers: List of MT numbers (reaction types- 2 for scattering, 18 for fission, 101 for absorbtion).
+# - reactions: List of MT numbers (reaction types- 2 for scattering, 18 for fission, 101 for absorbtion).
 # - cell_ids: IDs of specific cells in the model.
 # - mat_ids: Material IDs for filtering particles.
 # - nuclide_ids: Nuclide IDs for filtering particles.
@@ -215,18 +215,18 @@ def model_1():
 
 @pytest.mark.parametrize(
     "folder, model_name, parameter",
-    [   ("case_1_MT_number", "model_1", {"max_collisions": 300, "mt_numbers": [2, 18]}),
+    [   ("case_1_Reactions", "model_1", {"max_collisions": 300, "reactions": ["elastic", "(n,fission)",102]}),
         ("case_2_Cell_ID", "model_1", {"max_collisions": 300, "cell_ids": [22, 33]}),
         ("case_3_Material_ID", "model_1", {"max_collisions": 300, "material_ids": [1, 11]}),
-        ("case_4_Nuclide_ID", "model_1", {"max_collisions": 300, "nuclide_ids": [1001, 92235]}),
+        ("case_4_Nuclide_ID", "model_1", {"max_collisions": 300, "nuclide_ids": ["H1", "U235"]}),
         ("case_5_Universe_ID", "model_1", {"max_collisions": 300, "universe_ids": [77]}),
         ("case_6_deposited_energy_threshold", "model_1", {"max_collisions": 300, "deposited_E_threshold" : 1e5}),
         ("case_7_all_parameters_used_together", "model_1",{
         "max_collisions": 300,
-        "mt_numbers": [2, 18, 101],
+        "reactions": ["elastic", 18, "(n,gamma)"],
         "material_ids": [1, 11],
         "universe_ids": [77],
-        "nuclide_ids": [92238, 92235, 1001, 92234],
+        "nuclide_ids": ["U238", "U235", "H1", "U234"],
         "cell_ids": [22, 33],
         "deposited_E_threshold": 1e5})
     ],
@@ -246,21 +246,14 @@ def test_collision_track_cell_history_based(
     )
     harness.main()
 
-#@pytest.mark.skipif(True is True, reason="Results from history-based mode.")
-def test_consistency_low_realization_number(model_1, two_threads, single_process):
-    """The objective is to test that the results produced, in a case where
-    the number of potential realization (particle storage) is low
-    compared to the capacity of storage, are still consistent.
 
-    This configuration ensures that the competition between threads does not
-    occur and that the content of the collision_track file created can be compared.
+def test_collision_track_2threads(model_1, two_threads, single_process):
 
-    """
     assert os.environ["OMP_NUM_THREADS"] == "2"
     assert config["mpi_np"] == "1"
     model_1.settings.collision_track = {
         "max_collisions": 200,
-        "cell_ids": [22], "mt_numbers": [18]
+        "cell_ids": [22], "reactions": [18]
     }
     model_1.settings.seed = 1
     harness = CollisionTrackTestHarness(
@@ -272,7 +265,7 @@ def test_collision_track_cell_event_based(model_1, two_threads, single_process):
     
     assert os.environ["OMP_NUM_THREADS"] == "2"
     assert config["mpi_np"] == "1"
-    model_1.settings.collision_track = {"max_collisions": 300, "cell_ids": [22], "mt_numbers": [18]}
+    model_1.settings.collision_track = {"max_collisions": 300, "cell_ids": [22], "reactions": [18]}
     model_1.settings.event_based = True
     harness = CollisionTrackTestHarness(
         "statepoint.5.h5", model=model_1, workdir="case_9_event_mode"

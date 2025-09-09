@@ -958,11 +958,9 @@ void read_settings_xml(pugi::xml_node root)
         } catch (const std::invalid_argument& e) {
           // If not valid, try to treat it as an integer
           try {
-            int reaction_int =
-              std::stoi(b);         
-            if (reaction_int > 0) { 
-              ct_mt_number.insert(
-                reaction_int); 
+            int reaction_int = std::stoi(b);
+            if (reaction_int > 0) {
+              ct_mt_number.insert(reaction_int);
             } else {
               fatal_error("Reaction number must be a positive integer: " + b);
             }

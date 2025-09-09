@@ -8,60 +8,7 @@ import openmc.lib
 import pytest
 import h5py
 import numpy as np
-
-
-def return_collision_track_data(filepath):
-    """Read a collision_track file and return a sorted array composed
-    of flatten arrays of collision information.
-
-    Parameters
-    ----------
-    filepath : str
-        Path to the collision_track file
-
-    Returns
-    -------
-    data : np.array
-        Sorted array composed of flatten arrays of source data for
-        each collision information
-
-    """
-    data = []
-    keys = []
-
-    # Read source file
-    source = openmc.read_collision_track_file(filepath)
-    N = len(source)
-    for j in range(N):
-        r = source['r'][j]
-        u = source['u'][j]
-        e = source['E'][j]
-        de = source['dE'][j]
-        time = source['time'][j]
-        wgt = source['wgt'][j]
-        delayed_group = source['delayed_group'][j]
-        cell_id = source['cell_id'][j]
-        nuclide_id = source['nuclide_id'][j]
-        material_id = source['material_id'][j]
-        univ_id = source['universe_id'][j]
-        event_mt = source['event_mt'][j]
-        # no particle type because the code for MCPL is different from h5
-        key = (
-            f"{r[0]:.10e} {r[1]:.10e} {r[2]:.10e} {u[0]:.10e} {u[1]:.10e} {u[2]:.10e}"
-            f"{e:.10e} {de:.10e}  {time:.10e} {wgt:.10e} {event_mt} {delayed_group} {cell_id}"
-            f"{nuclide_id} {material_id} {univ_id} "
-        )
-        keys.append(key)
-        values = [*r, *u, e, de, time, wgt, event_mt,
-                  delayed_group, cell_id, nuclide_id, material_id, univ_id,]
-        assert len(values) == 16
-        data.append(values)
-
-    data = np.array(data)
-    keys = np.array(keys)
-    sorted_idx = np.argsort(keys)
-
-    return data[sorted_idx]
+from tests.testing_harness import CollisionTrackTestHarness as ctt
 
 
 @pytest.fixture(scope="module")
@@ -79,11 +26,11 @@ def geometry():
     "parameter",
     [
         {"max_collisions": 200},
-        {"max_collisions": 200, "mt_numbers": [1]},
+        {"max_collisions": 200, "reactions": ["(n,gamma)"]},
         {"max_collisions": 200, "cell_ids": [1]},
         {"max_collisions": 200, "material_ids": [1]},
         {"max_collisions": 200, "universe_ids": [1]},
-        {"max_collisions": 200, "nuclide_ids": [1001]},
+        {"max_collisions": 200, "nuclide_ids": ["H1"]},
         {"max_collisions": 200, "deposited_E_threshold": 200000},
         {"max_collisions": 200, "mcpl": True}
 
@@ -97,35 +44,6 @@ def test_xml_serialization(parameter, run_in_tmpdir):
 
     read_settings = openmc.Settings.from_xml()
     assert read_settings.collision_track == parameter
-
-
-@pytest.fixture(scope="module")
-def model():
-    """Simple hydrogen sphere geometry"""
-    openmc.reset_auto_ids()
-    model = openmc.Model()
-
-    # Material
-    h1 = openmc.Material(name="H1")
-    h1.add_nuclide("H1", 1.0)
-    h1.set_density('g/cm3', 1e-3)
-
-    # Geometry
-    radius = 1.0
-    sphere = openmc.Sphere(r=radius, boundary_type="vacuum")
-    cell = openmc.Cell(region=-sphere, fill=h1)
-    model.geometry = openmc.Geometry([cell])
-
-    # Settings
-    model.settings = openmc.Settings()
-    model.settings.run_mode = "fixed source"
-    model.settings.particles = 100
-    model.settings.batches = 3
-    model.settings.seed = 1
-
-    distribution = openmc.stats.Point()
-    model.settings.source = openmc.IndependentSource(space=distribution)
-    return model
 
 
 @pytest.fixture(scope="module")
@@ -153,7 +71,7 @@ def model():
     model.settings.run_mode = "fixed source"
     model.settings.particles = 100
     model.settings.batches = 3
-    model.settings.seed = 1
+    model.settings.seed = 2
 
     bounds = [-radius, -radius, -radius, radius, radius, radius]
     distribution = openmc.stats.Box(bounds[:3], bounds[3:])
@@ -165,7 +83,7 @@ def model():
 @pytest.mark.parametrize(
     "parameter",
     [
-        {"max_collisions": 200, "mt_numbers": [2], "cell_ids": [1, 2]},
+        {"max_collisions": 200, "reactions": ["elastic"], "cell_ids": [1, 2]},
 
     ],
 )
@@ -189,27 +107,28 @@ def test_particle_location(parameter, run_in_tmpdir, model):
         # relative to the cell_id already set.
         for point in source:
             if point['cell_id'] == 1:
-                assert point['r'][2] < 0.0
+                assert point['r'][2] < 0.0  # z component negative
             elif point['cell_id'] == 2:
-                assert point["r"][2] > 0.0
+                assert point["r"][2] > 0.0  # z component positive
             else:
                 assert False
 
+
 def test_format_similarity(run_in_tmpdir, model):
 
-    model.settings.collision_track = {"max_collisions": 200, "mt_numbers": [2],
+    model.settings.collision_track = {"max_collisions": 200, "reactions": ['elastic'],
                                       "cell_ids": [1, 2], "mcpl": False}
 
     model.run(threads=1)
 
-    data_h5 = return_collision_track_data('collision_track.h5')
+    data_h5 = ctt._return_collision_track_data('collision_track.h5')
 
-    model.settings.collision_track = {"max_collisions": 200, "mt_numbers": [2],
+    model.settings.collision_track = {"max_collisions": 200, "reactions": ['elastic'],
                                       "cell_ids": [1, 2], "mcpl": True}
 
     model.run(threads=1)
 
-    data_mcpl = return_collision_track_data('collision_track.mcpl')
+    data_mcpl = ctt._return_collision_track_data('collision_track.mcpl')
 
     assert len(data_h5) == 200
     assert len(data_mcpl) == 200

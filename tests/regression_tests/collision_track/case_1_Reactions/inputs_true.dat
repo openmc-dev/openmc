@@ -50,7 +50,7 @@
       </constraints>
     </source>
     <collision_track>
-      <deposited_E_threshold>100000.0</deposited_E_threshold>
+      <reactions>elastic (n,fission) 102</reactions>
       <max_collisions>300</max_collisions>
     </collision_track>
     <seed>1</seed>

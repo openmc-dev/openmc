@@ -489,7 +489,8 @@ def test_set_n_batches(lib_run):
 
 def test_reset(lib_run):
     # Init and run 10 batches.
-    openmc.lib.hard_reset()
+    openmc.lib.finalize()
+    openmc.lib.init()
     openmc.lib.simulation_init()
     try:
         for i in range(20):

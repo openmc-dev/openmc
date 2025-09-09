@@ -80,6 +80,7 @@ def label(p):
 def test_offset_mesh(run_in_tmpdir, model, estimator, origin):
     """Tests that the mesh has been moved based on tally results
     """
+    model.settings.particles = 4000
     mesh = model.tallies[0].filters[0].mesh
     model.tallies[0].estimator = estimator
     # move the center of the spherical mesh

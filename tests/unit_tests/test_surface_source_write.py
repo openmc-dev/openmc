@@ -173,6 +173,7 @@ def test_particle_direction(parameter, run_in_tmpdir, model):
     into two hemispheres.
 
     """
+    model.settings.batches = 5 
     model.settings.surf_source_write = parameter
     model.run()
     with h5py.File("surface_source.h5", "r") as f:

@@ -967,7 +967,7 @@ Direction sample_target_velocity(const Nuclide& nuc, double E, Direction u,
         if (std::abs(mu) < 1.0) {
           // set and accept target velocity
           E_t /= nuc.awr_;
-          return std::sqrt(E_t) * rotate_angle(u, mu, nullptr, seed);
+          return std::sqrt(2.0 * E_t) * rotate_angle(u, mu, nullptr, seed);
         }
       }
     }

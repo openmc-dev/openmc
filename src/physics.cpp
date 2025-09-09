@@ -746,7 +746,7 @@ void elastic_scatter(int i_nuclide, const Reaction& rx, double kT, Particle& p)
   // get pointer to nuclide
   const auto& nuc {data::nuclides[i_nuclide]};
 
-  double vel = std::sqrt(p.E());
+  double vel = std::sqrt(2.0 * p.E());
   double awr = nuc->awr_;
 
   // Neutron velocity in LAB
@@ -790,8 +790,8 @@ void elastic_scatter(int i_nuclide, const Reaction& rx, double kT, Particle& p)
   // Transform back to LAB frame
   v_n += v_cm;
 
-  p.E() = v_n.dot(v_n);
-  vel = std::sqrt(p.E());
+  p.E() = 0.5 * v_n.dot(v_n);
+  vel = std::sqrt(2.0 * p.E());
 
   // compute cosine of scattering angle in LAB frame by taking dot product of
   // neutron's pre- and post-collision angle
@@ -917,7 +917,7 @@ Direction sample_target_velocity(const Nuclide& nuc, double E, Direction u,
           // approx.
           v_target = sample_cxs_target_velocity(nuc.awr_, E, u, kT, seed);
           Direction v_rel = v_neut - v_target;
-          E_rel = v_rel.dot(v_rel);
+          E_rel = 0.5 * v_rel.dot(v_rel);
           if (E_rel < E_up)
             break;
         }

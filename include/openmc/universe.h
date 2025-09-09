@@ -38,6 +38,8 @@ public:
 
   virtual bool find_cell(GeometryState& p) const;
 
+  virtual bool find_cell_in_virtual_lattice(GeometryState& p) const;
+
   BoundingBox bounding_box() const;
 
   /* By default, universes are CSG universes. The DAGMC

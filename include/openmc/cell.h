@@ -381,6 +381,9 @@ public:
   std::pair<double, int32_t> distance(Position r, Direction u,
     int32_t on_surface, GeometryState* p) const override;
 
+  std::pair<double, int32_t> distance_in_virtual_lattice(
+    Position r, Direction u, int32_t on_surface, GeometryState* p) const;
+
   bool contains(Position r, Direction u, int32_t on_surface) const override
   {
     return region_.contains(r, u, on_surface);

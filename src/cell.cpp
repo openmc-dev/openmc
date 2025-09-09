@@ -506,95 +506,100 @@ vector<int32_t>::iterator CSGCell::find_left_parenthesis(
 std::pair<double, int32_t> CSGCell::distance(
   Position r, Direction u, int32_t on_surface, GeometryState* p) const
 {
+  if (virtual_lattice_) {
+    return distance_in_virtual_lattice(r, u, on_surface, p);
+  } else {
+    return region_.distance(r, u, on_surface);
+  }
+}
+
+std::pair<double, int32_t> CSGCell::distance_in_virtual_lattice(
+  Position r, Direction u, int32_t on_surface, GeometryState* p) const
+{
   double min_dist {INFTY};
   int32_t i_surf {std::numeric_limits<int32_t>::max()};
   double min_dis_vl;
   int32_t i_surf_vl;
-  if (virtual_lattice_) {
-    double max_dis = p->collision_distance();
-    double tol_dis = 0;
-    vector<double> dis_to_bou(3), dis_to_bou_max(3);
-    double u_value = sqrt(pow(u.x, 2) + pow(u.y, 2) +
-                          pow(u.z, 2)); // don't know if u has been normalized
-    vector<double> norm_u = {u.x / u_value, u.y / u_value, u.z / u_value};
-    vector<int> lat_ind(3);
-    vector<double> temp_pos = {r.x, r.y, r.z};
-    int loop_time;
-    for (int i = 0; i < 3; i++) {
-      lat_ind[i] = floor((temp_pos[i] - vl_lower_left_[i]) / vl_pitch_[i]);
-      if (lat_ind[i] == vl_shape_[i] && norm_u[i] < 0) {
-        lat_ind[i] = vl_shape_[i] - 1;
-      }
-      if (lat_ind[i] == -1 && norm_u[i] > 0) {
-        lat_ind[i] = 0;
-      }
+
+  double max_dis = p->collision_distance();
+  double tol_dis = 0;
+  vector<double> dis_to_bou(3), dis_to_bou_max(3);
+  double u_value = sqrt(pow(u.x, 2) + pow(u.y, 2) +
+                        pow(u.z, 2)); // don't know if u has been normalized
+  vector<double> norm_u = {u.x / u_value, u.y / u_value, u.z / u_value};
+  vector<int> lat_ind(3);
+  vector<double> temp_pos = {r.x, r.y, r.z};
+  int loop_time;
+  for (int i = 0; i < 3; i++) {
+    lat_ind[i] = floor((temp_pos[i] - vl_lower_left_[i]) / vl_pitch_[i]);
+    if (lat_ind[i] == vl_shape_[i] && norm_u[i] < 0) {
+      lat_ind[i] = vl_shape_[i] - 1;
     }
-
-    dis_to_bou = {INFTY, INFTY, INFTY};
-    for (int i = 0; i < 3; i++) {
-      if (norm_u[i] > 0) {
-        dis_to_bou[i] = std::abs(
-          ((lat_ind[i] + 1) * vl_pitch_[i] + vl_lower_left_[i] - temp_pos[i]) /
-          norm_u[i]);
-        dis_to_bou_max[i] = vl_pitch_[i] / norm_u[i];
-      } else if (norm_u[i] < 0) {
-        dis_to_bou[i] = std::abs(
-          (lat_ind[i] * vl_pitch_[i] + vl_lower_left_[i] - temp_pos[i]) /
-          norm_u[i]);
-        dis_to_bou_max[i] = -vl_pitch_[i] / norm_u[i];
-      }
+    if (lat_ind[i] == -1 && norm_u[i] > 0) {
+      lat_ind[i] = 0;
     }
-
-    while (true) {
-      if (lat_ind[0] < 0 || lat_ind[0] >= vl_shape_[0] || lat_ind[1] < 0 ||
-          lat_ind[1] >= vl_shape_[1] || lat_ind[2] < 0 ||
-          lat_ind[2] >= vl_shape_[2])
-        break;
-
-      for (int token :
-        vl_triso_distribution_[lat_ind[0] + lat_ind[1] * vl_shape_[0] +
-                               lat_ind[2] * vl_shape_[0] * vl_shape_[1]]) {
-        bool coincident {std::abs(token) == std::abs(on_surface)};
-        double d {model::surfaces[abs(token) - 1]->distance(r, u, coincident)};
-        if (d < min_dist) {
-          if (min_dist - d >= FP_PRECISION * min_dist) {
-            min_dist = d;
-            i_surf = -token;
-          }
-        }
-      }
-
-      int mes_bou_crossed = 0;
-      if (dis_to_bou[1] < dis_to_bou[0]) {
-        mes_bou_crossed = 1;
-      }
-      if (dis_to_bou[2] < dis_to_bou[mes_bou_crossed]) {
-        mes_bou_crossed = 2;
-      }
-
-      tol_dis = dis_to_bou[mes_bou_crossed];
-
-      if (min_dist < tol_dis) {
-        break;
-      }
-
-      if (norm_u[mes_bou_crossed] > 0) {
-        lat_ind[mes_bou_crossed] += 1;
-      } else {
-        lat_ind[mes_bou_crossed] += -1;
-      }
-
-      dis_to_bou[mes_bou_crossed] += dis_to_bou_max[mes_bou_crossed];
-
-      if (tol_dis > max_dis) {
-        break;
-      }
-    }
-
-  } else {
-    return region_.distance(r, u, on_surface);
   }
 
+  dis_to_bou = {INFTY, INFTY, INFTY};
+  for (int i = 0; i < 3; i++) {
+    if (norm_u[i] > 0) {
+      dis_to_bou[i] = std::abs(
+        ((lat_ind[i] + 1) * vl_pitch_[i] + vl_lower_left_[i] - temp_pos[i]) /
+        norm_u[i]);
+      dis_to_bou_max[i] = vl_pitch_[i] / norm_u[i];
+    } else if (norm_u[i] < 0) {
+      dis_to_bou[i] =
+        std::abs((lat_ind[i] * vl_pitch_[i] + vl_lower_left_[i] - temp_pos[i]) /
+                 norm_u[i]);
+      dis_to_bou_max[i] = -vl_pitch_[i] / norm_u[i];
+    }
+  }
+
+  while (true) {
+    if (lat_ind[0] < 0 || lat_ind[0] >= vl_shape_[0] || lat_ind[1] < 0 ||
+        lat_ind[1] >= vl_shape_[1] || lat_ind[2] < 0 ||
+        lat_ind[2] >= vl_shape_[2])
+      break;
+
+    for (int token :
+      vl_triso_distribution_[lat_ind[0] + lat_ind[1] * vl_shape_[0] +
+                             lat_ind[2] * vl_shape_[0] * vl_shape_[1]]) {
+      bool coincident {std::abs(token) == std::abs(on_surface)};
+      double d {model::surfaces[abs(token) - 1]->distance(r, u, coincident)};
+      if (d < min_dist) {
+        if (min_dist - d >= FP_PRECISION * min_dist) {
+          min_dist = d;
+          i_surf = -token;
+        }
+      }
+    }
+
+    int mes_bou_crossed = 0;
+    if (dis_to_bou[1] < dis_to_bou[0]) {
+      mes_bou_crossed = 1;
+    }
+    if (dis_to_bou[2] < dis_to_bou[mes_bou_crossed]) {
+      mes_bou_crossed = 2;
+    }
+
+    tol_dis = dis_to_bou[mes_bou_crossed];
+
+    if (min_dist < tol_dis) {
+      break;
+    }
+
+    if (norm_u[mes_bou_crossed] > 0) {
+      lat_ind[mes_bou_crossed] += 1;
+    } else {
+      lat_ind[mes_bou_crossed] += -1;
+    }
+
+    dis_to_bou[mes_bou_crossed] += dis_to_bou_max[mes_bou_crossed];
+
+    if (tol_dis > max_dis) {
+      break;
+    }
+  }
   return {min_dist, i_surf};
 }
 

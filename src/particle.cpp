@@ -577,97 +577,13 @@ void Particle::cross_surface(const Surface& surf)
   int i_surface = std::abs(surface());
   bool verbose = settings::verbosity >= 10 || trace();
   if (surf.is_triso_surface_) {
-    if (surface() > 0) {
-      for (int i = n_coord(); i < model::n_coord_levels; i++) {
-        coord(i).reset();
-      }
-      coord(n_coord() - 1).cell() =
-        model::cell_map[model::surfaces[i_surface - 1]->triso_base_index_];
-    } else if (surface() < 0) {
-      for (int i = n_coord(); i < model::n_coord_levels; i++) {
-        coord(i).reset();
-      }
-      if (model::surfaces[i_surface - 1]->triso_particle_index_ == -1) {
-        fatal_error(fmt::format("Particle cell of surface {} is not defined",
-          model::surfaces[i_surface - 1]->id_));
-      }
-      coord(n_coord() - 1).cell() =
-        model::cell_map[model::surfaces[i_surface - 1]->triso_particle_index_];
-    }
-
-    // find material
-    bool found = true;
-    int i_cell = coord(n_coord() - 1).cell();
-    for (;; ++n_coord()) {
-      if (i_cell == C_NONE) {
-        int i_universe = coord(n_coord() - 1).universe();
-        const auto& univ {model::universes[i_universe]};
-
-        if (univ->filled_with_triso_base_ != -1) {
-          coord(n_coord() - 1).cell() =
-            model::cell_map[univ->filled_with_triso_base_];
-          found = true;
-        } else {
-          found = univ->find_cell(*this);
-        }
-        if (!found) {
-          break;
-        }
-      }
-
-      i_cell = coord(n_coord() - 1).cell();
-
-      Cell& c {*model::cells[i_cell]};
-      if (c.type_ == Fill::MATERIAL) {
-        // Found a material cell which means this is the lowest coord level.
-
-        cell_instance() = 0;
-        // Find the distribcell instance number.
-        if (c.distribcell_index_ >= 0) {
-          cell_instance() = cell_instance_at_level(*this, n_coord() - 1);
-        }
-
-        // Set the material and temperature.
-        material_last() = material();
-        if (c.material_.size() > 1) {
-          material() = c.material_[cell_instance()];
-        } else {
-          material() = c.material_[0];
-        }
-        sqrtkT_last() = sqrtkT();
-        if (c.sqrtkT_.size() > 1) {
-          sqrtkT() = c.sqrtkT_[cell_instance()];
-        } else {
-          sqrtkT() = c.sqrtkT_[0];
-        }
-        return;
-
-      } else if (c.type_ == Fill::UNIVERSE) {
-        //========================================================================
-        //! Found a lower universe, update this coord level then search the
-        //! next.
-
-        // Set the lower coordinate level universe.
-        auto& coor {coord(n_coord())};
-        coor.universe() = c.fill_;
-
-        // Set the position and direction.
-        coor.r() = r_local();
-        coor.u() = u_local();
-
-        // Apply translation.
-        coor.r() -= c.translation_;
-
-        // Apply rotation.
-        if (!c.rotation_.empty()) {
-          coor.rotate(c.rotation_);
-        }
-        i_cell = C_NONE;
-      }
+    if (find_cell_in_virtual_lattice(*this, verbose)) {
+      return;
     }
   } else {
-    if (neighbor_list_find_cell(*this, verbose))
+    if (neighbor_list_find_cell(*this, verbose)) {
       return;
+    }
   }
 
   // ==========================================================================

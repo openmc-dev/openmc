@@ -160,7 +160,7 @@ extern std::unordered_set<std::string>
 extern double ct_deposited_E_threshold; // Threshold deposited energy to recrod
                                         // the collisions
 extern int64_t
-  ct_max_collisions; //!< Maximum events recoreded by Collision track?
+  ct_max_collisions; //!< Maximum events recoreded by Collision track per file
 extern double source_rejection_fraction; //!< Minimum fraction of source sites
                                          //!< that must be accepted
 extern int64_t ct_max_files; //!< maximum number of collision track files

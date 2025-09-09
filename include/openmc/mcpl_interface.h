@@ -10,12 +10,6 @@
 namespace openmc {
 
 //==============================================================================
-// Constants
-//==============================================================================
-
-extern "C" const bool MCPL_ENABLED;
-
-//==============================================================================
 // Functions
 //==============================================================================
 
@@ -25,18 +19,31 @@ extern "C" const bool MCPL_ENABLED;
 //! \return  Vector of source sites
 vector<SourceSite> mcpl_source_sites(std::string path);
 
-//! Write an MCPL source file
-//
+//! Write an MCPL source file with stat:sum metadata
+//!
+//! This function writes particle data to an MCPL file. For MCPL >= 2.1.0,
+//! it includes a stat:sum field (key: "openmc_np1") containing the total
+//! number of source particles, which is essential for proper file merging
+//! and weight normalization when using MCPL files with McStas/McXtrace.
+//!
+//! The stat:sum field follows the crash-safety pattern:
+//! - Initially set to -1 when opening (indicates incomplete file)
+//! - Updated with actual particle count before closing
+//!
 //! \param[in] filename     Path to MCPL file
 //! \param[in] source_bank  Vector of SourceSites to write to file for this
-//!                         MPI rank. Note that this can't be const due to
-//!                         it being used as work space by MPI.
-//! \param[in] bank_indx    Pointer to vector of site index ranges over all
-//!                         MPI ranks. This can be computed by calling
-//!                         calculate_parallel_index_vector on
-//!                         source_bank.size().
+//!                         MPI rank.
+//! \param[in] bank_index   Pointer to vector of site index ranges over all
+//!                         MPI ranks.
 void write_mcpl_source_point(const char* filename, span<SourceSite> source_bank,
   const vector<int64_t>& bank_index);
+
+//! Check if MCPL functionality is available
+bool is_mcpl_interface_available();
+
+//! Initialize the MCPL interface
+void initialize_mcpl_interface_if_needed();
+
 } // namespace openmc
 
 #endif // OPENMC_MCPL_INTERFACE_H

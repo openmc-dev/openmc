@@ -16,7 +16,7 @@ import openmc
 import openmc.checkvalue as cv
 from openmc.checkvalue import PathLike
 from openmc.utility_funcs import change_directory
-from ._xml import get_text
+from ._xml import get_elem_list, get_text
 from .mixin import IDManagerMixin
 from .surface import _BOUNDARY_TYPES
 from .utility_funcs import input_path
@@ -1098,7 +1098,7 @@ class RegularMesh(StructuredMesh):
     def from_domain(
         cls,
         domain: HasBoundingBox,
-        dimension: Sequence[int] = (10, 10, 10),
+        dimension: Sequence[int] | int = 1000,
         mesh_id: int | None = None,
         name: str = ''
     ):
@@ -1110,8 +1110,11 @@ class RegularMesh(StructuredMesh):
             The object passed in will be used as a template for this mesh. The
             bounding box of the property of the object passed will be used to
             set the lower_left and upper_right and of the mesh instance
-        dimension : Iterable of int
-            The number of mesh cells in each direction (x, y, z).
+        dimension : Iterable of int | int
+            The number of mesh cells in total or number of mesh cells in each
+            direction (x, y, z). If a single integer is provided, the domain
+            will will be divided into that many mesh cells with roughly equal
+            lengths in each direction (cubes).
         mesh_id : int
             Unique identifier for the mesh
         name : str
@@ -1129,6 +1132,16 @@ class RegularMesh(StructuredMesh):
         mesh = cls(mesh_id=mesh_id, name=name)
         mesh.lower_left = domain.bounding_box[0]
         mesh.upper_right = domain.bounding_box[1]
+        if isinstance(dimension, int):
+            cv.check_greater_than("dimension", dimension, 1, equality=True)
+            # If a single integer is provided, divide the domain into that many
+            # mesh cells with roughly equal lengths in each direction
+            ideal_cube_volume = domain.bounding_box.volume / dimension
+            ideal_cube_size = ideal_cube_volume ** (1 / 3)
+            dimension = [
+                max(1, int(round(side / ideal_cube_size)))
+                for side in domain.bounding_box.width
+            ]
         mesh.dimension = dimension
 
         return mesh
@@ -1178,21 +1191,21 @@ class RegularMesh(StructuredMesh):
         mesh_id = int(get_text(elem, 'id'))
         mesh = cls(mesh_id=mesh_id)
 
-        dimension = get_text(elem, 'dimension')
+        dimension = get_elem_list(elem, "dimension", int)
         if dimension is not None:
-            mesh.dimension = [int(x) for x in dimension.split()]
+            mesh.dimension = dimension
 
-        lower_left = get_text(elem, 'lower_left')
+        lower_left = get_elem_list(elem, "lower_left", float)
         if lower_left is not None:
-            mesh.lower_left = [float(x) for x in lower_left.split()]
+            mesh.lower_left = lower_left
 
-        upper_right = get_text(elem, 'upper_right')
+        upper_right = get_elem_list(elem, "upper_right", float)
         if upper_right is not None:
-            mesh.upper_right = [float(x) for x in upper_right.split()]
+            mesh.upper_right = upper_right
 
-        width = get_text(elem, 'width')
+        width = get_elem_list(elem, "width", float)
         if width is not None:
-            mesh.width = [float(x) for x in width.split()]
+            mesh.width = width
 
         return mesh
 
@@ -1498,9 +1511,9 @@ class RectilinearMesh(StructuredMesh):
         """
         mesh_id = int(get_text(elem, 'id'))
         mesh = cls(mesh_id=mesh_id)
-        mesh.x_grid = [float(x) for x in get_text(elem, 'x_grid').split()]
-        mesh.y_grid = [float(y) for y in get_text(elem, 'y_grid').split()]
-        mesh.z_grid = [float(z) for z in get_text(elem, 'z_grid').split()]
+        mesh.x_grid = get_elem_list(elem, "x_grid", float)
+        mesh.y_grid = get_elem_list(elem, "y_grid", float)
+        mesh.z_grid = get_elem_list(elem, "z_grid", float)
 
         return mesh
 
@@ -1914,10 +1927,10 @@ class CylindricalMesh(StructuredMesh):
 
         mesh_id = int(get_text(elem, 'id'))
         mesh = cls(
-            r_grid = [float(x) for x in get_text(elem, "r_grid").split()],
-            phi_grid = [float(x) for x in get_text(elem, "phi_grid").split()],
-            z_grid = [float(x) for x in get_text(elem, "z_grid").split()],
-            origin = [float(x) for x in get_text(elem, "origin", default=[0., 0., 0.]).split()],
+            r_grid = get_elem_list(elem, "r_grid", float),
+            phi_grid = get_elem_list(elem, "phi_grid", float),
+            z_grid = get_elem_list(elem, "z_grid", float),
+            origin = get_elem_list(elem, "origin", float) or [0., 0., 0.],
             mesh_id=mesh_id,
         )
 
@@ -2287,10 +2300,10 @@ class SphericalMesh(StructuredMesh):
         mesh_id = int(get_text(elem, 'id'))
         mesh = cls(
             mesh_id=mesh_id,
-            r_grid = [float(x) for x in get_text(elem, "r_grid").split()],
-            theta_grid = [float(x) for x in get_text(elem, "theta_grid").split()],
-            phi_grid = [float(x) for x in get_text(elem, "phi_grid").split()],
-            origin = [float(x) for x in get_text(elem, "origin", default=[0., 0., 0.]).split()],
+            r_grid = get_elem_list(elem, "r_grid", float),
+            theta_grid = get_elem_list(elem, "theta_grid", float),
+            phi_grid = get_elem_list(elem, "phi_grid", float),
+            origin = get_elem_list(elem, "origin", float) or [0., 0., 0.],
         )
 
         return mesh
@@ -2833,7 +2846,7 @@ class UnstructuredMesh(MeshBase):
         filename = get_text(elem, 'filename')
         library = get_text(elem, 'library')
         length_multiplier = float(get_text(elem, 'length_multiplier', 1.0))
-        options = elem.get('options')
+        options = get_text(elem, "options")
 
         return cls(filename, library, mesh_id, '', length_multiplier, options)
 

@@ -38,6 +38,9 @@ The current version of the summary file format is 6.0.
              is an array if the cell uses distributed materials, otherwise it is
              a scalar.
            - **temperature** (*double[]*) -- Temperature of the cell in Kelvin.
+           - **density_mult** (*double[]*) -- Unitless density multipliers for the cell.
+             The cell density is equal to the density multiplier times the density of the
+             material filling the cell.
            - **translation** (*double[3]*) -- Translation applied to the fill
              universe. This dataset is present only if fill_type is set to
              'universe'.

@@ -25,6 +25,9 @@ The current version of the properties file format is 1.0.
 **/geometry/cells/cell <uid>/**
 
 :Datasets: - **temperature** (*double[]*) -- Temperature of the cell in [K].
+           - **density_mult** (*double[]*) -- Unitless density multipliers for
+             the cell. The cell density is equal to the density multiplier
+             times the density of the material filling the cell.
 
 **/materials/**
 

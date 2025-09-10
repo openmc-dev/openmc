@@ -91,7 +91,7 @@ def model():
     hex_mesh.upper_right = [7.5, 7.5]
     dx = 15 / 5
     dz = 15
-    dxdy = dx * dx * sqrt(3)
+    dxdy = dx * dx * sqrt(3) * 0.5
     hm_mesh_exp_vols = dxdy * dz
     np.testing.assert_allclose(hex_mesh.volumes, hm_mesh_exp_vols)
 

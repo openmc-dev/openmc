@@ -573,8 +573,9 @@ class Material(IDManagerMixin):
                 break
             elif nt.name == nuclide and nt.percent_type != percent_type:
                 warnings.warn(
-                    f"Nuclide '{nuclide}' already present with percent_type '{nt.percent_type}'. "
-                    f"Keeping separate entry for percent_type '{percent_type}'."
+                    f"Nuclide '{nuclide}' already present with percent_type "
+                    f"'{nt.percent_type}'. Keeping separate entry for "
+                    f"new percent_type '{percent_type}'."
                 )
 
         if not squashed:

@@ -2185,7 +2185,13 @@ class Model:
     ) -> SearchResult:
         """Perform a keff search on a model parametrized by a single variable.
 
-        TODO: Describe GRsecant
+        This method uses the GRsecant method described in a paper by `Price and
+        Roskoff <https://doi.org/10.1016/j.pnucene.2023.104731>`_. The GRsecant
+        method is a modification of the secant method that accounts for
+        uncertainties in the function evaluations. The method uses a weighted
+        linear fit of the most recent function evaluations to predict the next
+        point to evaluate. It also adaptively changes the number of batches to
+        meet the target uncertainty value at each iteration.
 
         Parameters
         ----------
@@ -2199,8 +2205,8 @@ class Model:
         target : float, optional
             keff value to search for
         k_tol : float, optional
-            Stopping criterion on the function value; the absolute value must
-            be within ``k_tol`` of zero to be accepted.
+            Stopping criterion on the function value; the absolute value must be
+            within ``k_tol`` of zero to be accepted.
         sigma_final : float, optional
             Maximum accepted uncertainty in ``f(x)`` for the Eq. 8 stopping
             criterion.
@@ -2216,8 +2222,8 @@ class Model:
         x_max : float, optional
             Maximum allowed value for the parameter ``x``.
         b0 : int, optional
-            Number of active batches to use in the first function evaluation.
-            If None, uses the model's current setting.
+            Number of active batches to use in the first function evaluation. If
+            None, uses the model's current setting.
         b1 : int, optional
             Number of active batches to use in the second function evaluation.
             If None, uses the model's current setting.

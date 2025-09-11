@@ -10,10 +10,12 @@ import openmc
 import openmc.checkvalue as cv
 from openmc.checkvalue import PathLike
 
-from ._xml import clean_indentation, get_elem_tuple, reorder_attributes, get_text
+from ._xml import clean_indentation, get_elem_list, get_text
 from .mixin import IDManagerMixin
 
 _BASES = {'xy', 'xz', 'yz'}
+
+_BASIS_INDICES = {'xy': (0, 1, 2), 'xz': (0, 2, 1), 'yz': (1, 2, 0)}
 
 _SVG_COLORS = {
     'aliceblue': (240, 248, 255),
@@ -178,11 +180,12 @@ _PLOT_PARAMS = """
             ascertain the plot width. Defaults to (10, 10) if the bounding box
             contains inf values.
         pixels : Iterable of int or int
-            If iterable of ints provided then this directly sets the number of
-            pixels to use in each basis direction. If int provided then this
-            sets the total number of pixels in the plot and the number of
-            pixels in each basis direction is calculated from this total and
-            the image aspect ratio.
+            If an iterable of ints is provided then this directly sets the
+            number of pixels to use in each basis direction. If a single int
+            is provided then this sets the total number of pixels in the plot
+            and the number of pixels in each basis direction is calculated
+            from this total and the image aspect ratio based on the width
+            argument.
         basis : {'xy', 'xz', 'yz'}
             The basis directions for the plot
         color_by : {'cell', 'material'}
@@ -941,64 +944,61 @@ class Plot(PlotBase):
             Plot object
 
         """
-        plot_id = int(elem.get("id"))
+        plot_id = int(get_text(elem, "id"))
         name = get_text(elem, 'name', '')
         plot = cls(plot_id, name)
         if "filename" in elem.keys():
-            plot.filename = elem.get("filename")
-        plot.color_by = elem.get("color_by")
-        plot.type = elem.get("type")
+            plot.filename = get_text(elem, "filename")
+        plot.color_by = get_text(elem, "color_by")
+        plot.type = get_text(elem, "type")
         if plot.type == 'slice':
-            plot.basis = elem.get("basis")
+            plot.basis = get_text(elem, "basis")
 
-        plot.origin = get_elem_tuple(elem, "origin", float)
-        plot.width = get_elem_tuple(elem, "width", float)
-        plot.pixels = get_elem_tuple(elem, "pixels")
-        plot._background = get_elem_tuple(elem, "background")
+        plot.origin = tuple(get_elem_list(elem, "origin", float))
+        plot.width = tuple(get_elem_list(elem, "width", float))
+        plot.pixels = tuple(get_elem_list(elem, "pixels"))
+        background = get_elem_list(elem, "background")
+        if background is not None:
+            plot._background = tuple(background)
 
         # Set plot colors
         colors = {}
         for color_elem in elem.findall("color"):
-            uid = int(color_elem.get("id"))
-            colors[uid] = tuple([int(x)
-                                for x in color_elem.get("rgb").split()])
+            uid = int(get_text(color_elem, "id"))
+            colors[uid] = tuple(get_elem_list(color_elem, "rgb", int))
         plot.colors = colors
 
         # Set masking information
         mask_elem = elem.find("mask")
         if mask_elem is not None:
-            plot.mask_components = [
-                int(x) for x in mask_elem.get("components").split()]
-            background = mask_elem.get("background")
+            plot.mask_components = get_elem_list(mask_elem, "components", int)
+            background = get_elem_list(mask_elem, "background", int)
             if background is not None:
-                plot.mask_background = tuple(
-                    [int(x) for x in background.split()])
+                plot.mask_background = tuple(background)
 
         # show overlaps
-        overlap_elem = elem.find("show_overlaps")
-        if overlap_elem is not None:
-            plot.show_overlaps = (overlap_elem.text in ('true', '1'))
-        overlap_color = get_elem_tuple(elem, "overlap_color")
+        overlap = get_text(elem, "show_overlaps")
+        if overlap is not None:
+            plot.show_overlaps = (overlap in ('true', '1'))
+        overlap_color = get_elem_list(elem, "overlap_color", int)
         if overlap_color is not None:
-            plot.overlap_color = overlap_color
+            plot.overlap_color = tuple(overlap_color)
 
         # Set universe level
-        level = elem.find("level")
+        level = get_text(elem, "level")
         if level is not None:
-            plot.level = int(level.text)
+            plot.level = int(level)
 
         # Set meshlines
         mesh_elem = elem.find("meshlines")
         if mesh_elem is not None:
-            meshlines = {'type': mesh_elem.get('meshtype')}
+            meshlines = {'type': get_text(mesh_elem, "meshtype")}
             if 'id' in mesh_elem.keys():
-                meshlines['id'] = int(mesh_elem.get('id'))
+                meshlines['id'] = int(get_text(mesh_elem, "id"))
             if 'linewidth' in mesh_elem.keys():
-                meshlines['linewidth'] = int(mesh_elem.get('linewidth'))
+                meshlines['linewidth'] = int(get_text(mesh_elem, "linewidth"))
             if 'color' in mesh_elem.keys():
-                meshlines['color'] = tuple(
-                    [int(x) for x in mesh_elem.get('color').split()]
-                )
+                meshlines['color'] = tuple(get_elem_list(mesh_elem, "color", int))
             plot.meshlines = meshlines
 
         return plot
@@ -1256,38 +1256,39 @@ class RayTracePlot(PlotBase):
         None
         """
 
-        if "filename" in elem.keys():
-            self.filename = elem.get("filename")
-        self.color_by = elem.get("color_by")
+        filename = get_text(elem, "filename")
+        if filename is not None:
+            self.filename = filename
+        self.color_by = get_text(elem, "color_by")
 
-        horizontal_fov = elem.find("horizontal_field_of_view")
+        horizontal_fov = get_text(elem, "horizontal_field_of_view")
         if horizontal_fov is not None:
-            self.horizontal_field_of_view = float(horizontal_fov.text)
+            self.horizontal_field_of_view = float(horizontal_fov)
 
-        if (tmp := elem.find("orthographic_width")) is not None:
-            self.orthographic_width = float(tmp)
+        orthographic_width = get_text(elem, "orthographic_width")
+        if orthographic_width is not None:
+            self.orthographic_width = float(orthographic_width)
 
-        self.pixels = get_elem_tuple(elem, "pixels")
-        self.camera_position = get_elem_tuple(elem, "camera_position", float)
-        self.look_at = get_elem_tuple(elem, "look_at", float)
+        self.pixels = tuple(get_elem_list(elem, "pixels", int))
+        self.camera_position = tuple(get_elem_list(elem, "camera_position", float))
+        self.look_at = tuple(get_elem_list(elem, "look_at", float))
 
-        if elem.find("background") is not None:
-            self.background = get_elem_tuple(elem, "background")
+        background = get_elem_list(elem, "background", int)
+        if background is not None:
+            self.background = tuple(background)
 
         # Set masking information
         if (mask_elem := elem.find("mask")) is not None:
-            mask_components = [int(x)
-                               for x in mask_elem.get("components").split()]
+            mask_components = get_elem_list(mask_elem, "components", int)
             # TODO: set mask components(needs geometry information)
-            background = mask_elem.get("background")
+            background = get_elem_list(mask_elem, "background", int)
             if background is not None:
-                self.mask_background = tuple(
-                    [int(x) for x in background.split()])
+                self.mask_background = tuple(background)
 
         # Set universe level
-        level = elem.find("level")
+        level = get_text(elem, "level")
         if level is not None:
-            self.level = int(level.text)
+            self.level = int(level)
 
 
 class WireframeRayTracePlot(RayTracePlot):
@@ -1512,7 +1513,7 @@ class WireframeRayTracePlot(RayTracePlot):
 
         """
 
-        plot_id = int(elem.get("id"))
+        plot_id = int(get_text(elem, "id"))
         plot_name = get_text(elem, 'name', '')
         plot = cls(plot_id, plot_name)
         plot.type = "wireframe_raytrace"
@@ -1520,19 +1521,18 @@ class WireframeRayTracePlot(RayTracePlot):
         plot._read_xml_attributes(elem)
 
         # Attempt to get wireframe thickness.May not be present
-        wireframe_thickness = elem.find("wireframe_thickness")
+        wireframe_thickness = get_text(elem, "wireframe_thickness")
         if wireframe_thickness is not None:
-            plot.wireframe_thickness = int(wireframe_thickness.text)
-        wireframe_color = elem.get("wireframe_color")
+            plot.wireframe_thickness = int(wireframe_thickness)
+        wireframe_color = get_elem_list(elem, "wireframe_color", int)
         if wireframe_color:
-            plot.wireframe_color = [int(item) for item in wireframe_color]
+            plot.wireframe_color = wireframe_color
 
         # Set plot colors
         for color_elem in elem.findall("color"):
-            uid = int(color_elem.get("id"))
-            plot.colors[uid] = tuple(int(i)
-                                     for i in get_text(color_elem, 'rgb').split())
-            plot.xs[uid] = float(color_elem.get("xs"))
+            uid = int(get_text(color_elem, "id"))
+            plot.colors[uid] = tuple(get_elem_list(color_elem, "rgb", int))
+            plot.xs[uid] = float(get_text(color_elem, "xs"))
 
         return plot
 
@@ -1690,15 +1690,17 @@ class SolidRayTracePlot(RayTracePlot):
 
     def _read_phong_attributes(self, elem):
         """Read attributes specific to the Phong plot from an XML element"""
-        if elem.find('light_position') is not None:
-            self.light_position = get_elem_tuple(elem, 'light_position', float)
+        light_position = get_elem_list(elem, 'light_position', float)
+        if light_position is not None:
+            self.light_position = tuple(light_position)
 
-        diffuse_fraction = elem.find('diffuse_fraction')
+        diffuse_fraction = get_text(elem, "diffuse_fraction")
         if diffuse_fraction is not None:
-            self.diffuse_fraction = float(diffuse_fraction.text)
+            self.diffuse_fraction = float(diffuse_fraction)
 
-        if elem.find('opaque_ids') is not None:
-            self.opaque_domains = list(get_elem_tuple(elem, 'opaque_ids', int))
+        opaque_domains = get_elem_list(elem, 'opaque_ids', int)
+        if opaque_domains is not None:
+            self.opaque_domains = opaque_domains
 
     @classmethod
     def from_xml_element(cls, elem):
@@ -1716,7 +1718,7 @@ class SolidRayTracePlot(RayTracePlot):
 
         """
 
-        plot_id = int(elem.get("id"))
+        plot_id = int(get_text(elem, "id"))
         plot_name = get_text(elem, 'name', '')
         plot = cls(plot_id, plot_name)
         plot.type = "solid_raytrace"
@@ -1726,8 +1728,8 @@ class SolidRayTracePlot(RayTracePlot):
 
         # Set plot colors
         for color_elem in elem.findall("color"):
-            uid = color_elem.get("id")
-            plot.colors[uid] = get_elem_tuple(color_elem, "rgb")
+            uid = get_text(color_elem, "id")
+            plot.colors[uid] = tuple(get_elem_list(color_elem, "rgb", int))
 
         return plot
 
@@ -1854,8 +1856,6 @@ class Plots(cv.CheckedList):
 
         # Clean the indentation in the file to be user-readable
         clean_indentation(self._plots_file)
-        # TODO: Remove when support is Python 3.8+
-        reorder_attributes(self._plots_file)
 
         return self._plots_file
 
@@ -1896,7 +1896,7 @@ class Plots(cv.CheckedList):
         # Generate each plot
         plots = cls()
         for e in elem.findall('plot'):
-            plot_type = e.get('type')
+            plot_type = get_text(e, "type")
             if plot_type == 'wireframe_raytrace':
                 plots.append(WireframeRayTracePlot.from_xml_element(e))
             elif plot_type == 'solid_raytrace':

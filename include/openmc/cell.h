@@ -226,6 +226,8 @@ public:
   void set_temperature(
     double T, int32_t instance = -1, bool set_contained = false);
 
+  int32_t n_instances() const;
+
   //! Set the rotation matrix of a cell instance
   //! \param[in] rot The rotation matrix of length 3 or 9
   void set_rotation(const vector<double>& rot);
@@ -312,12 +314,11 @@ public:
   //----------------------------------------------------------------------------
   // Data members
 
-  int32_t id_;              //!< Unique ID
-  std::string name_;        //!< User-defined name
-  Fill type_;               //!< Material, universe, or lattice
-  int32_t universe_;        //!< Universe # this cell is in
-  int32_t fill_;            //!< Universe # filling this cell
-  int32_t n_instances_ {0}; //!< Number of instances of this cell
+  int32_t id_;       //!< Unique ID
+  std::string name_; //!< User-defined name
+  Fill type_;        //!< Material, universe, or lattice
+  int32_t universe_; //!< Universe # this cell is in
+  int32_t fill_;     //!< Universe # filling this cell
 
   //! \brief Index corresponding to this cell in distribcell arrays
   int distribcell_index_ {C_NONE};

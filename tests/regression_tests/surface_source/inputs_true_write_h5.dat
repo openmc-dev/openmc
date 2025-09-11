@@ -7,18 +7,24 @@
     <cell id="2" material="void" region="1 -2" universe="1"/>
     <cell id="3" material="void" region="2 -3" universe="1"/>
     <cell id="4" material="void" region="3 -4" universe="1"/>
-    <surface coeffs="0.0 0.0 0.0 1.0" id="1" type="sphere"/>
-    <surface coeffs="0.0 0.0 0.0 2.0" id="2" type="sphere"/>
-    <surface coeffs="0.0 0.0 0.0 2.5" id="3" type="sphere"/>
-    <surface boundary="vacuum" coeffs="0.0 0.0 0.0 4.0" id="4" type="sphere"/>
+    <surface id="1" type="sphere" coeffs="0.0 0.0 0.0 1.0"/>
+    <surface id="2" type="sphere" coeffs="0.0 0.0 0.0 2.0"/>
+    <surface id="3" type="sphere" coeffs="0.0 0.0 0.0 2.5"/>
+    <surface id="4" type="sphere" boundary="vacuum" coeffs="0.0 0.0 0.0 4.0"/>
   </geometry>
   <settings>
     <run_mode>fixed source</run_mode>
     <particles>1000</particles>
     <batches>10</batches>
-    <surf_source_read>
-      <path>surface_source_true.h5</path>
-    </surf_source_read>
+    <source type="independent" strength="1.0" particle="neutron">
+      <space type="point">
+        <parameters>0 0 0</parameters>
+      </space>
+    </source>
+    <surf_source_write>
+      <surface_ids>1</surface_ids>
+      <max_particles>1000</max_particles>
+    </surf_source_write>
     <seed>1</seed>
   </settings>
   <tallies>

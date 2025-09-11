@@ -239,14 +239,17 @@ bool Source::satisfies_spatial_constraints(Position r) const
   if (!domain_ids_.empty()) {
     if (domain_type_ == DomainType::MATERIAL) {
       auto mat_index = geom_state.material();
-      if (mat_index != MATERIAL_VOID) {
+      if (mat_index == MATERIAL_VOID) {
+        accepted = false;
+      } else {
         accepted = contains(domain_ids_, model::materials[mat_index]->id());
       }
     } else {
       for (int i = 0; i < geom_state.n_coord(); i++) {
-        auto id = (domain_type_ == DomainType::CELL)
-                    ? model::cells[geom_state.coord(i).cell]->id_
-                    : model::universes[geom_state.coord(i).universe]->id_;
+        auto id =
+          (domain_type_ == DomainType::CELL)
+            ? model::cells[geom_state.coord(i).cell()].get()->id_
+            : model::universes[geom_state.coord(i).universe()].get()->id_;
         if ((accepted = contains(domain_ids_, id)))
           break;
       }
@@ -414,11 +417,7 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
 FileSource::FileSource(pugi::xml_node node) : Source(node)
 {
   auto path = get_node_value(node, "file", false, true);
-  if (ends_with(path, ".mcpl") || ends_with(path, ".mcpl.gz")) {
-    sites_ = mcpl_source_sites(path);
-  } else {
-    this->load_sites_from_file(path);
-  }
+  load_sites_from_file(path);
 }
 
 FileSource::FileSource(const std::string& path)
@@ -428,30 +427,33 @@ FileSource::FileSource(const std::string& path)
 
 void FileSource::load_sites_from_file(const std::string& path)
 {
-  // Check if source file exists
-  if (!file_exists(path)) {
-    fatal_error(fmt::format("Source file '{}' does not exist.", path));
+  // If MCPL file, use the dedicated file reader
+  if (ends_with(path, ".mcpl") || ends_with(path, ".mcpl.gz")) {
+    sites_ = mcpl_source_sites(path);
+  } else {
+    // Check if source file exists
+    if (!file_exists(path)) {
+      fatal_error(fmt::format("Source file '{}' does not exist.", path));
+    }
+
+    write_message(6, "Reading source file from {}...", path);
+
+    // Open the binary file
+    hid_t file_id = file_open(path, 'r', true);
+
+    // Check to make sure this is a source file
+    std::string filetype;
+    read_attribute(file_id, "filetype", filetype);
+    if (filetype != "source" && filetype != "statepoint") {
+      fatal_error("Specified starting source file not a source file type.");
+    }
+
+    // Read in the source particles
+    read_source_bank(file_id, sites_, false);
+
+    // Close file
+    file_close(file_id);
   }
-
-  // Read the source from a binary file instead of sampling from some
-  // assumed source distribution
-  write_message(6, "Reading source file from {}...", path);
-
-  // Open the binary file
-  hid_t file_id = file_open(path, 'r', true);
-
-  // Check to make sure this is a source file
-  std::string filetype;
-  read_attribute(file_id, "filetype", filetype);
-  if (filetype != "source" && filetype != "statepoint") {
-    fatal_error("Specified starting source file not a source file type.");
-  }
-
-  // Read in the source particles
-  read_source_bank(file_id, sites_, false);
-
-  // Close file
-  file_close(file_id);
 }
 
 SourceSite FileSource::sample(uint64_t* seed) const
@@ -526,6 +528,15 @@ CompiledSourceWrapper::~CompiledSourceWrapper()
 }
 
 //==============================================================================
+// MeshElementSpatial implementation
+//==============================================================================
+
+Position MeshElementSpatial::sample(uint64_t* seed) const
+{
+  return model::meshes[mesh_index_]->sample_element(elem_index_, seed);
+}
+
+//==============================================================================
 // MeshSource implementation
 //==============================================================================
 
@@ -539,8 +550,21 @@ MeshSource::MeshSource(pugi::xml_node node) : Source(node)
   // read all source distributions and populate strengths vector for MeshSpatial
   // object
   for (auto source_node : node.children("source")) {
-    sources_.emplace_back(Source::create(source_node));
+    auto src = Source::create(source_node);
+    if (auto ptr = dynamic_cast<IndependentSource*>(src.get())) {
+      src.release();
+      sources_.emplace_back(ptr);
+    } else {
+      fatal_error(
+        "The source assigned to each element must be an IndependentSource.");
+    }
     strengths.push_back(sources_.back()->strength());
+  }
+
+  // Set spatial distributions for each mesh element
+  for (int elem_index = 0; elem_index < sources_.size(); ++elem_index) {
+    sources_[elem_index]->set_space(
+      std::make_unique<MeshElementSpatial>(mesh_idx, elem_index));
   }
 
   // the number of source distributions should either be one or equal to the
@@ -556,29 +580,12 @@ MeshSource::MeshSource(pugi::xml_node node) : Source(node)
 
 SourceSite MeshSource::sample(uint64_t* seed) const
 {
-  // Sample the CDF defined in initialization above
+  // Sample a mesh element based on the relative strengths
   int32_t element = space_->sample_element_index(seed);
 
-  // Sample position and apply rejection on spatial domains
-  Position r;
-  do {
-    r = space_->mesh()->sample_element(element, seed);
-  } while (!this->satisfies_spatial_constraints(r));
-
-  SourceSite site;
-  while (true) {
-    // Sample source for the chosen element and replace the position
-    site = source(element)->sample_with_constraints(seed);
-    site.r = r;
-
-    // Apply other rejections
-    if (satisfies_energy_constraints(site.E) &&
-        satisfies_time_constraints(site.time)) {
-      break;
-    }
-  }
-
-  return site;
+  // Sample the distribution for the specific mesh element; note that the
+  // spatial distribution has been set for each element using MeshElementSpatial
+  return source(element)->sample_with_constraints(seed);
 }
 
 //==============================================================================

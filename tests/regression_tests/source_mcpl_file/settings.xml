@@ -1,12 +1,11 @@
 <?xml version="1.0"?>
 <settings>
+  <run_mode>eigenvalue</run_mode>
   <state_point batches="10" />
   <source_point mcpl="true" separate="true" />
-  <eigenvalue>
-    <batches>10</batches>
-    <inactive>5</inactive>
-    <particles>1000</particles>
-  </eigenvalue>
+  <batches>10</batches>
+  <inactive>5</inactive>
+  <particles>1000</particles>
   <source>
     <space type="box">
       <parameters>-4 -4 -4  4  4  4</parameters>

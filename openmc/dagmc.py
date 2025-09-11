@@ -8,11 +8,12 @@ import warnings
 
 import openmc
 import openmc.checkvalue as cv
-from ._xml import get_text
+from ._xml import get_elem_list, get_text
 from .checkvalue import check_type, check_value
 from .surface import _BOUNDARY_TYPES
 from .bounding_box import BoundingBox
 from .utility_funcs import input_path
+from .plots import add_plot_params
 
 
 class DAGMCUniverse(openmc.UniverseBase):
@@ -467,8 +468,8 @@ class DAGMCUniverse(openmc.UniverseBase):
         if name is not None:
             out.name = name
 
-        out.auto_geom_ids = bool(elem.get('auto_geom_ids'))
-        out.auto_mat_ids = bool(elem.get('auto_mat_ids'))
+        out.auto_geom_ids = bool(get_text(elem, "auto_geom_ids"))
+        out.auto_mat_ids = bool(get_text(elem, "auto_mat_ids"))
 
         el_mat_override = elem.find('material_overrides')
         if el_mat_override is not None:
@@ -479,7 +480,7 @@ class DAGMCUniverse(openmc.UniverseBase):
             out._material_overrides = {}
             for elem in el_mat_override.findall('cell_override'):
                 cell_id = int(get_text(elem, 'id'))
-                mat_ids = get_text(elem, 'material_ids').split(' ')
+                mat_ids = get_elem_list(elem, "material_ids", str) or []
                 mat_objs = [mats[mat_id] for mat_id in mat_ids]
                 out._material_overrides[cell_id] = mat_objs
 
@@ -565,6 +566,12 @@ class DAGMCUniverse(openmc.UniverseBase):
             else:
                 fill = mats_per_id[dag_cell.fill.id] if dag_cell.fill else None
             self.add_cell(openmc.DAGMCCell(cell_id=dag_cell_id, fill=fill))
+
+    @add_plot_params
+    def plot(self, *args, **kwargs):
+        """Display a slice plot of the DAGMCUniverse.
+        """
+        return openmc.Geometry(self).plot(*args, **kwargs)
 
 
 class DAGMCCell(openmc.Cell):

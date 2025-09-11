@@ -567,7 +567,7 @@ class Material(IDManagerMixin):
 
         for i, nt in enumerate(self._nuclides):
             if nt.name == nuclide and nt.percent_type == percent_type:
-                # merge
+                # add the percentage the two matching nuclides
                 self._nuclides[i] = NuclideTuple(nuclide, nt.percent + percent, percent_type)
                 squashed = True
                 break

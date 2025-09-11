@@ -526,8 +526,8 @@ class Material(IDManagerMixin):
     def add_nuclide(self, nuclide: str, percent: float, percent_type: str = 'ao'):
         """Add a nuclide to the material.
 
-        If nuclide with the same percent_type already exists in the material,
-        its percentage will be updated.
+        If nuclide with the same name and percent_type already exists in the
+        material, its percentage will be updated.
 
         Parameters
         ----------

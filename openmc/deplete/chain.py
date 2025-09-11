@@ -627,9 +627,15 @@ class Chain:
         """
         reactions = set()
 
-        # Use DOK matrix as intermediate representation for matrix
         n = len(self)
-        matrix = sp.dok_matrix((n, n))
+
+        # we accumulate indices and value entries for everything and create the matrix 
+        # in one step at the end to avoid expensive index checks scipy otherwise does.
+        rows, cols, vals = [], [], []
+        def setval(i, j, val):
+            rows.append(i)
+            cols.append(j)
+            vals.append(val)
 
         if fission_yields is None:
             fission_yields = self.get_default_fission_yields()
@@ -639,7 +645,7 @@ class Chain:
             if nuc.half_life is not None:
                 decay_constant = math.log(2) / nuc.half_life
                 if decay_constant != 0.0:
-                    matrix[i, i] -= decay_constant
+                    setval(i, i, -decay_constant)
 
             # Gain from radioactive decay
             if nuc.n_decay_modes != 0:
@@ -650,19 +656,19 @@ class Chain:
                     if branch_val != 0.0:
                         if target is not None:
                             k = self.nuclide_dict[target]
-                            matrix[k, i] += branch_val
+                            setval(k, i, branch_val)
 
                         # Produce alphas and protons from decay
                         if 'alpha' in decay_type:
                             k = self.nuclide_dict.get('He4')
                             if k is not None:
                                 count = decay_type.count('alpha')
-                                matrix[k, i] += count * branch_val
+                                setval(k, i, count * branch_val)
                         elif 'p' in decay_type:
                             k = self.nuclide_dict.get('H1')
                             if k is not None:
                                 count = decay_type.count('p')
-                                matrix[k, i] += count * branch_val
+                                setval(k, i, count * branch_val)
 
             if nuc.name in rates.index_nuc:
                 # Extract all reactions for this nuclide in this cell
@@ -679,13 +685,13 @@ class Chain:
                     if r_type not in reactions:
                         reactions.add(r_type)
                         if path_rate != 0.0:
-                            matrix[i, i] -= path_rate
+                            setval(i, i, -path_rate)
 
                     # Gain term; allow for total annihilation for debug purposes
                     if r_type != 'fission':
                         if target is not None and path_rate != 0.0:
                             k = self.nuclide_dict[target]
-                            matrix[k, i] += path_rate * br
+                            setval(k, i, path_rate * br)
 
                         # Determine light nuclide production, e.g., (n,d) should
                         # produce H2
@@ -693,20 +699,20 @@ class Chain:
                         for light_nuc in light_nucs:
                             k = self.nuclide_dict.get(light_nuc)
                             if k is not None:
-                                matrix[k, i] += path_rate * br
+                                setval(k, i, path_rate * br)
 
                     else:
                         for product, y in fission_yields[nuc.name].items():
                             yield_val = y * path_rate
                             if yield_val != 0.0:
                                 k = self.nuclide_dict[product]
-                                matrix[k, i] += yield_val
+                                setval(k, i, yield_val)
 
                 # Clear set of reactions
                 reactions.clear()
 
         # Return CSC representation instead of DOK
-        return matrix.tocsc()
+        return sp.csc_matrix((vals, (rows, cols)), shape=(n, n))
 
     def form_rr_term(self, tr_rates, current_timestep, mats):
         """Function to form the transfer rate term matrices.

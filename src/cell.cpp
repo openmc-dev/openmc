@@ -123,7 +123,7 @@ double Cell::density(int32_t instance) const
       rho_mult_.size() == 1 ? rho_mult_.at(0) : rho_mult_.at(instance);
     return rho * model::materials[mat_index]->density_gpcc();
   } else {
-    return rho_mult_[0];
+    return rho_mult_[0] * model::materials[mat_index]->density_gpcc();
   }
 }
 
@@ -229,8 +229,14 @@ void Cell::export_properties_hdf5(hid_t group) const
     temps.push_back(sqrtkT_val * sqrtkT_val / K_BOLTZMANN);
   write_dataset(cell_group, "temperature", temps);
 
-  // Write density multipliers for one or more cell instances
-  write_dataset(cell_group, "density_mult", rho_mult_);
+  // Write density for one or more cell instances
+  if (type_ == Fill::MATERIAL && material_.size() > 0) {
+    vector<double> rho;
+    for (int32_t i = 0; i < rho_mult_.size(); ++i)
+      rho.push_back(density(i));
+
+    write_dataset(cell_group, "density", rho);
+  }
 
   close_group(cell_group);
 }
@@ -258,17 +264,22 @@ void Cell::import_properties_hdf5(hid_t group)
     this->set_temperature(temps[i], i);
   }
 
-  // Read density multipliers
-  if (object_exists(cell_group, "density_mult")) {
-    read_dataset(cell_group, "density_mult", rho_mult_);
+  // Read densities
+  if (object_exists(cell_group, "density")) {
+    vector<double> rho;
+    read_dataset(cell_group, "density", rho);
 
-    // Ensure number of density multipliers makes sense
-    auto n_rho = rho_mult_.size();
+    // Ensure number of densities makes sense
+    auto n_rho = rho.size();
     if (n_rho > 1 && n_rho != n_instances()) {
-      fatal_error(fmt::format("Number of density multipliers for cell {} "
+      fatal_error(fmt::format("Number of densities for cell {} "
                               "doesn't match number of instances",
         id_));
     }
+
+    // Set densities.
+    for (int32_t i = 0; i < n_rho; ++i)
+      set_density(rho[i], i);
   }
 
   close_group(cell_group);

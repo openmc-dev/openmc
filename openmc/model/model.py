@@ -648,19 +648,19 @@ class Model:
                         else:
                             lib_cell.set_temperature(temperature[0])
 
-                    density_mult = group['density_mult'][()]
-                    mat_density = cell.fill.get_mass_density()
-                    if density_mult.size > 1:
-                        cell.density = [mat_density * m for m in density_mult]
-                    else:
-                        cell.density = density_mult * mat_density
-                    if self.is_initialized:
-                        lib_cell = openmc.lib.cells[cell_id]
-                        if density_mult.size > 1:
-                            for i, rho_mult in enumerate(density_mult):
-                                lib_cell.set_density(rho_mult * mat_density, i)
-                        else:
-                            lib_cell.set_density(density_mult[0] * mat_density)
+                    if group['density']:
+                      density = group['density'][()]
+                      if density.size > 1:
+                          cell.density = [rho for rho in density]
+                      else:
+                          cell.density = density
+                      if self.is_initialized:
+                          lib_cell = openmc.lib.cells[cell_id]
+                          if density.size > 1:
+                              for i, rho in enumerate(density):
+                                  lib_cell.set_density(rho, i)
+                          else:
+                              lib_cell.set_density(density[0])
 
             # Make sure number of materials matches
             mats_group = fh['materials']

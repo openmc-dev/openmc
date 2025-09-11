@@ -254,8 +254,8 @@ def test_import_properties(run_in_tmpdir, mpi_intracomm):
     # Change cell fuel temperature, density, material density and export properties
     cell = openmc.lib.cells[1]
     cell.set_temperature(600.0)
-    cell.set_density(10.0)
     cell.fill.set_density(5.0, 'g/cm3')
+    cell.set_density(10.0)
     openmc.lib.export_properties(output=False)
 
     # Import properties to existing model

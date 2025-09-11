@@ -559,7 +559,23 @@ class Material(IDManagerMixin):
             if Z >= 89:
                 self.depletable = True
 
-        self._nuclides.append(NuclideTuple(nuclide, percent, percent_type))
+        # Flag to mark if we squashed the nuclide with an existing one
+        squashed = False
+
+        for i, nt in enumerate(self._nuclides):
+            if nt.name == nuclide and nt.percent_type == percent_type:
+                # merge
+                self._nuclides[i] = NuclideTuple(nuclide, nt.percent + percent, percent_type)
+                squashed = True
+                break
+            elif nt.name == nuclide and nt.percent_type != percent_type:
+                warnings.warn(
+                    f"Nuclide '{nuclide}' already present with percent_type '{nt.percent_type}'. "
+                    f"Keeping separate entry for percent_type '{percent_type}'."
+                )
+
+        if not squashed:
+            self._nuclides.append(NuclideTuple(nuclide, percent, percent_type))
 
     def add_components(self, components: dict, percent_type: str = 'ao'):
         """ Add multiple elements or nuclides to a material

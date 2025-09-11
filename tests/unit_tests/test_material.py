@@ -2,6 +2,7 @@ from collections import defaultdict
 from pathlib import Path
 
 import pytest
+import warnings
 
 import numpy as np
 
@@ -766,3 +767,34 @@ def test_mean_free_path():
     mat2.add_nuclide('Pb208', 1.0)
     mat2.set_density('g/cm3', 11.34)
     assert mat2.mean_free_path(energy=14e6) == pytest.approx(5.65, abs=1e-2)
+
+
+def test_add_nuclide_squash_same_type():
+    mat1 = openmc.Material()
+    mat1.add_nuclide('Li6', 0.02, 'ao')
+    mat1.add_nuclide('Li6', 0.03, 'ao')
+    # Should be a single entry with 0.05 ao
+    entries = [nt for nt in mat1.nuclides if nt.name == 'Li6' and nt.percent_type == 'ao']
+    assert len(entries) == 1
+    assert entries[0].percent == pytest.approx(0.05)
+
+    mat2 = openmc.Material()
+    mat2.add_nuclide('Li6', 0.04, 'wo')
+    mat2.add_nuclide('Li6', 0.05, 'wo')
+    # Should be a single entry with 0.09 wo
+    entries = [nt for nt in mat2.nuclides if nt.name == 'Li6' and nt.percent_type == 'wo']
+    assert len(entries) == 1
+    assert entries[0].percent == pytest.approx(0.09)
+
+
+def test_add_nuclide_keep_different_type_warns():
+    mat = openmc.Material()
+    mat.add_nuclide('Li6', 0.02, 'ao')
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        mat.add_nuclide('Li6', 0.01, 'wo')
+        assert any("Keeping separate entry" in str(rec.message) for rec in w)
+    # Should have two entries: one ao and one wo
+    aos = [nt for nt in mat.nuclides if nt.name == 'Li6' and nt.percent_type == 'ao']
+    wos = [nt for nt in mat.nuclides if nt.name == 'Li6' and nt.percent_type == 'wo']
+    assert len(aos) == 1 and len(wos) == 1

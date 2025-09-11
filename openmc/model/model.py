@@ -1,7 +1,7 @@
 from __future__ import annotations
 from collections.abc import Callable, Iterable, Sequence
 import copy
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
 import math
@@ -2161,16 +2161,17 @@ class Model:
         # Take a wild guess as to how many rays are needed
         self.settings.particles = 2 * int(max_length)
 
-
     def keff_search(
         self,
         func: ModelModifier,
+        x0: float,
+        x1: float,
         target: float = 1.0,
         print_iterations: bool = False,
         func_kwargs: dict[str, Any] | None = None,
         run_kwargs: dict[str, Any] | None = None,
         **kwargs
-    ):
+    ) -> SearchResult:
         """Perform a keff search on a model parametrized by a single variable.
 
         Parameters
@@ -2178,6 +2179,10 @@ class Model:
         func : ModelModifier
             Function that takes the parameter to be searched and makes a
             modification to the model.
+        x0 : float
+            First guess for the parameter passed to `func`
+        x1 : float
+            Second guess for the parameter passed to `func`
         target : float, optional
             keff value to search for
         print_iterations : bool, optional
@@ -2187,11 +2192,9 @@ class Model:
             Keyword-based arguments to pass to the `func` function.
         run_kwargs : dict, optional
             Keyword arguments to pass to :meth:`openmc.Model.run`.
-
-            .. versionadded:: 0.13.1
         **kwargs
-            All remaining keyword arguments are passed to the root-finding
-            method.
+            All remaining keyword arguments are passed to
+            :func:`grsecant`.
 
         Returns
         -------
@@ -2212,91 +2215,150 @@ class Model:
         run_kwargs = {} if run_kwargs is None else dict(run_kwargs)
         run_kwargs.setdefault('output', False)
 
-        # Set the iteration data storage variables
-        guesses = []
-        results = []
-
-        # Define the function to be passed to root_scalar
-        def f(guess: float, generations: int) -> float:
+        # Define the function to be passed to grsecant
+        def f(guess: float, batches: int) -> float:
             # Modify the model with the current guess
             func(guess, **func_kwargs)
 
             # Change the number of batches
-            self.settings.batches = self.settings.inactive + generations
+            self.settings.batches = self.settings.inactive + batches
 
             # Run the model and obtain keff
             sp_filepath = self.run(**run_kwargs)
             with openmc.StatePoint(sp_filepath) as sp:
                 keff = sp.keff
 
-            # Record the history
-            guesses.append(guess)
-            results.append(keff)
-
             if print_iterations:
-                print(f'Iteration: {len(guesses)}; {generations=}, {guess=:.2e}, {keff=:.5f}')
+                print(f'{batches=}, {guess=:.2e}, {keff=:.5f}')
 
             return keff.n - target, keff.s
 
-        # Set arguments to be passed to root_scalar_grsecant
+        # Set arguments to be passed to grsecant
         kwargs['f'] = f
-        kwargs.setdefault('g0', self.settings.batches - self.settings.inactive)
+        kwargs['x0'] = x0
+        kwargs['x1'] = x1
+        kwargs.setdefault('b0', self.settings.batches - self.settings.inactive)
+        kwargs.setdefault('b1', self.settings.batches - self.settings.inactive)
 
         # Perform the search in a temporary directory
         with TemporaryDirectory() as tmpdir:
             run_kwargs.setdefault('cwd', tmpdir)
-            sol = root_scalar_grsecant(**kwargs)
-
-        return sol.root, guesses, results
+            return grsecant(**kwargs)
 
 
 @dataclass
-class RootResult:
+class SearchResult:
+    """Result of a GRsecant keff search.
+
+    Attributes
+    ----------
+    root : float
+        Estimated parameter value where f(x) = 0 at termination.
+    parameters : list[float]
+        Parameter values (x) evaluated during the search, in order.
+    keffs : list[float]
+        Estimated keff values for each evaluation.
+    stdevs : list[float]
+        One-sigma uncertainties of keff for each evaluation.
+    batches : list[int]
+        Number of active batches used for each evaluation.
+    converged : bool
+        Whether both |f| <= k_tol and sigma <= sigma_final were met.
+    flag : str
+        Reason for termination (e.g., "converged", "maxiter").
+    """
     root: float
+    parameters: list[float] = field(repr=False)
+    means: list[float] = field(repr=False)
+    stdevs: list[float] = field(repr=False)
+    batches: list[int] = field(repr=False)
     converged: bool
-    iterations: int
-    function_calls: int
     flag: str
 
+    @property
+    def function_calls(self) -> int:
+        """Number of function evaluations performed."""
+        return len(self.parameters)
 
-# TODO: Consistent use of bracket vs x0, x1
-# TODO: Account for min/max search interval (vs initial points)
+    @property
+    def total_batches(self) -> int:
+        """Total number of active batches used across all evaluations."""
+        return sum(self.batches)
+
+
+
 # TODO: Allow for passing a single x0 value?
-# TODO: Clean up use of g0, g1
-# TODO: Reporting total number of generations?
-# TODO: Fit on sigam vs g is done with last 4 points. Change this?
-# TODO: Change order of attributes in RootResult / change return datatype?
+# TODO: Fit on sigma vs b is done with last 4 points. Change this?
 # TODO: Support use of openmc.lib
 
-def root_scalar_grsecant(
+def grsecant(
     f,
     x0: float,
     x1: float,
+    x_min: float | None = None,
+    x_max: float | None = None,
+    b0: int = 200,
+    b1: int = 200,
+    b_min: int = 20,
+    b_max: int | None = None,
     memory: int = 4,
     k_tol: float = 1e-4,
     sigma_final: float = 3e-4,
     p: float = 0.5,
     sigma_factor: float = 0.95,
-    g0: int = 200,
-    g1: int = 200,
-    min_g: int = 20,
-    max_g: int | None = None,
-    x_min: float | None = None,
-    x_max: float | None = None,
     maxiter: int = 50,
     **kwargs: Any
-) -> RootResult:
-    """
-    GRsecant with MC-aware uncertainty/effort selection.
+) -> SearchResult:
+    """GRsecant with MC-aware uncertainty/effort selection.
 
-    fun(x, model, **mc_kwargs) -> (mean, std)
-    The solver passes {generations_kw: g} on each call.
+    Parameters
+    ----------
+    f : function
+        Function that takes a parameter and returns the mean and standard
+        deviation.
+    x0 : float
+        First guess for the parameter passed to `f`
+    x1 : float
+        Second guess for the parameter passed to `f`
+    x_min : float
+        Minimum value for x.
+    x_max : float
+        Maximum value for x.
+    b0 : int
+        Number of batches to use in first function evaluation.
+    b1 : int
+        Number of batches to use in second function evaluation.
+    b_min : int
+        Minimum number of batches to use in a given function evaluation.
+    b_max : int
+        Maximum number of batches to use in a given function evaluation.
+    memory : int
+        Number of points to use in curve fit of f for predicting the next point.
+    k_tol : float
+        Stopping criterion on function value; value must be within k_tol of zero
+        to be accepted.
+    sigma_final : float
+        Maximum accepted uncertainty in f(x) for Eq. 8 stopping criterion.
+    p : float
+        Exponent in Eq. 8 stopping criteria.
+    sigma_factor : float
+        Multiplicative factor in Eq. 8 stopping criteria.
+    maxiter : int
+        Maximum number of iterations to perform.
+    **kwargs
+        Additional keyword arguments to pass to `f`.
+
     """
     if memory < 2:
         raise ValueError("memory must be ≥ 2")
 
-    xs, fs, ss, gs = [], [], [], []
+    # Create lists to store the history of evaluations
+    xs = []
+    fs = []
+    ss = []
+    gs = []
 
+    # Helper function to evaluate f and store results
     def eval_at(x: float, g: int):
         mc_kwargs = dict(kwargs)
         mc_kwargs["generations"] = int(g)
@@ -2308,12 +2370,12 @@ def root_scalar_grsecant(
         return fs[-1], ss[-1]
 
     # ---- Seed with two evaluations
-    f0, s0 = eval_at(x0, g0)
+    f0, s0 = eval_at(x0, b0)
     if abs(f0) <= k_tol and s0 <= sigma_final:
-        return RootResult(x0, True, 0, 1, "converged(init)")
-    f1, s1 = eval_at(x1, g1)
+        return SearchResult(x0, xs, fs, ss, gs, True, "converged")
+    f1, s1 = eval_at(x1, b1)
     if abs(f1) <= k_tol and s1 <= sigma_final:
-        return RootResult(x1, True, 0, 2, "converged(init)")
+        return SearchResult(x1, xs, fs, ss, gs, True, "converged")
 
     for it in range(maxiter):
         # ---------- Step 1: propose next x via GRsecant
@@ -2346,28 +2408,28 @@ def root_scalar_grsecant(
         # Use at least two past points for regression
         if len(gs) >= 2 and np.var(np.log(gs)) > 0.0:
             # Perform a curve fit based on Eq. (C.3) to solve for ln(k). Note
-            # that unlike the paper, we do not leave r as an undetermined
+            # that unlike in the paper, we do not leave r as an undetermined
             # parameter and choose r=0.5.
             (ln_k,), _ = curve_fit(
-                lambda ln_g, ln_k: ln_k - 0.5*ln_g,
+                lambda ln_b, ln_k: ln_k - 0.5*ln_b,
                 np.log(gs[-4:]), np.log(ss[-4:]),
             )
             k = float(np.exp(ln_k))
         else:
             k = float(ss[-1] * math.sqrt(gs[-1]))
 
-        g_new = (k / sig_target) ** 2
+        b_new = (k / sig_target) ** 2
 
         # Clamp and round up to integer
-        g_new = max(min_g, math.ceil(g_new))
-        if max_g is not None:
-            g_new = min(g_new, max_g)
+        b_new = max(b_min, math.ceil(b_new))
+        if b_max is not None:
+            b_new = min(b_new, b_max)
 
         # Evaluate at proposed x with chosen effort
-        f_new, s_new = eval_at(x_new, g_new)
+        f_new, s_new = eval_at(x_new, b_new)
 
         # Termination: both criteria (|f| and σ) as in the paper
-        if (abs(f_new) <= k_tol and s_new <= sigma_final):
-            return RootResult(x_new, True, it + 1, len(xs), "converged")
+        if abs(f_new) <= k_tol and s_new <= sigma_final:
+            return SearchResult(x_new, xs, fs, ss, gs, True, "converged")
 
-    return RootResult(xs[-1], False, maxiter, len(xs), "maxiter")
+    return SearchResult(xs[-1], xs, fs, ss, gs, False, "maxiter")

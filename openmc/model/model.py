@@ -2179,7 +2179,7 @@ class Model:
         b_min: int = 20,
         b_max: int | None = None,
         maxiter: int = 50,
-        print_iterations: bool = False,
+        output: bool = False,
         func_kwargs: dict[str, Any] | None = None,
         run_kwargs: dict[str, Any] | None = None,
     ) -> SearchResult:
@@ -2233,9 +2233,8 @@ class Model:
             Maximum number of active batches to use in a function evaluation.
         maxiter : int, optional
             Maximum number of iterations to perform.
-        print_iterations : bool, optional
-            Whether or not to print the guess and the resultant keff during the
-            iteration process.
+        output : bool, optional
+            Whether or not to display output showing iteration progress.
         func_kwargs : dict, optional
             Keyword-based arguments to pass to the `func` function.
         run_kwargs : dict, optional
@@ -2279,7 +2278,7 @@ class Model:
             with openmc.StatePoint(sp_filepath) as sp:
                 keff = sp.keff
 
-            if print_iterations:
+            if output:
                 nonlocal count
                 count += 1
                 print(f'Iteration {count}: {batches=}, {x=:.2e}, {keff=:.5f}')

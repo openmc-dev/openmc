@@ -629,8 +629,8 @@ class Chain:
 
         n = len(self)
 
-        # we accumulate indices and value entries for everything and create the matrix in one at
-        # the end to avoid expensive index checks scipy otherwise does.
+        # we accumulate indices and value entries for everything and create the matrix 
+        # in one step at the end to avoid expensive index checks scipy otherwise does.
         rows, cols, vals = [], [], []
         def setval(i, j, val):
             rows.append(i)

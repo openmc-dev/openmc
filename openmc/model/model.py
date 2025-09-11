@@ -2167,12 +2167,25 @@ class Model:
         x0: float,
         x1: float,
         target: float = 1.0,
+        k_tol: float = 1e-4,
+        sigma_final: float = 3e-4,
+        p: float = 0.5,
+        sigma_factor: float = 0.95,
+        memory: int = 4,
+        x_min: float | None = None,
+        x_max: float | None = None,
+        b0: int | None = None,
+        b1: int | None = None,
+        b_min: int = 20,
+        b_max: int | None = None,
+        maxiter: int = 50,
         print_iterations: bool = False,
         func_kwargs: dict[str, Any] | None = None,
         run_kwargs: dict[str, Any] | None = None,
-        **kwargs
     ) -> SearchResult:
         """Perform a keff search on a model parametrized by a single variable.
+
+        TODO: Describe GRsecant
 
         Parameters
         ----------
@@ -2185,6 +2198,35 @@ class Model:
             Second guess for the parameter passed to `func`
         target : float, optional
             keff value to search for
+        k_tol : float, optional
+            Stopping criterion on the function value; the absolute value must
+            be within ``k_tol`` of zero to be accepted.
+        sigma_final : float, optional
+            Maximum accepted uncertainty in ``f(x)`` for the Eq. 8 stopping
+            criterion.
+        p : float, optional
+            Exponent used in the Eq. 8 stopping criterion.
+        sigma_factor : float, optional
+            Multiplicative factor used in the Eq. 8 stopping criterion.
+        memory : int, optional
+            Number of most-recent points used in the weighted linear fit of
+            ``f(x) = a + b x`` to predict the next point.
+        x_min : float, optional
+            Minimum allowed value for the parameter ``x``.
+        x_max : float, optional
+            Maximum allowed value for the parameter ``x``.
+        b0 : int, optional
+            Number of active batches to use in the first function evaluation.
+            If None, uses the model's current setting.
+        b1 : int, optional
+            Number of active batches to use in the second function evaluation.
+            If None, uses the model's current setting.
+        b_min : int, optional
+            Minimum number of active batches to use in a function evaluation.
+        b_max : int, optional
+            Maximum number of active batches to use in a function evaluation.
+        maxiter : int, optional
+            Maximum number of iterations to perform.
         print_iterations : bool, optional
             Whether or not to print the guess and the resultant keff during the
             iteration process.
@@ -2192,33 +2234,36 @@ class Model:
             Keyword-based arguments to pass to the `func` function.
         run_kwargs : dict, optional
             Keyword arguments to pass to :meth:`openmc.Model.run`.
-        **kwargs
-            All remaining keyword arguments are passed to
-            :func:`grsecant`.
 
         Returns
         -------
-        zero_value : float
-            Estimated value of the variable parameter where keff is the targeted
-            value
-        guesses : List of Real
-            List of guesses attempted by the search
-        results : List of 2-tuple of Real
-            List of keffs and uncertainties corresponding to the guess attempted
-            by the search
+        SearchResult
+            Result object containing the estimated root (parameter value) and
+            evaluation history (parameters, means, standard deviations, and
+            batches), plus convergence status and termination reason.
 
         """
 
         check_type('model modifier', func, Callable)
         check_type('target', target, Real)
+        if memory < 2:
+            raise ValueError("memory must be ≥ 2")
         func_kwargs = {} if func_kwargs is None else dict(func_kwargs)
         run_kwargs = {} if run_kwargs is None else dict(run_kwargs)
         run_kwargs.setdefault('output', False)
 
-        # Define the function to be passed to grsecant
-        def f(guess: float, batches: int) -> float:
+        # Create lists to store the history of evaluations
+        xs: list[float] = []
+        fs: list[float] = []
+        ss: list[float] = []
+        gs: list[int] = []
+        count = 0
+
+        # Helper function to evaluate f and store results
+        # TODO: Support use of openmc.lib
+        def eval_at(x: float, batches: int) -> tuple[float, float]:
             # Modify the model with the current guess
-            func(guess, **func_kwargs)
+            func(x, **func_kwargs)
 
             # Change the number of batches
             self.settings.batches = self.settings.inactive + batches
@@ -2229,21 +2274,91 @@ class Model:
                 keff = sp.keff
 
             if print_iterations:
-                print(f'{batches=}, {guess=:.2e}, {keff=:.5f}')
+                nonlocal count
+                count += 1
+                print(f'Iteration {count}: {batches=}, {x=:.2e}, {keff=:.5f}')
 
-            return keff.n - target, keff.s
+            xs.append(float(x))
+            fs.append(float(keff.n - target))
+            ss.append(float(keff.s))
+            gs.append(int(batches))
+            return fs[-1], ss[-1]
 
-        # Set arguments to be passed to grsecant
-        kwargs['f'] = f
-        kwargs['x0'] = x0
-        kwargs['x1'] = x1
-        kwargs.setdefault('b0', self.settings.batches - self.settings.inactive)
-        kwargs.setdefault('b1', self.settings.batches - self.settings.inactive)
+        # Default b0/b1 to current model settings if not explicitly provided
+        if b0 is None:
+            b0 = self.settings.batches - self.settings.inactive
+        if b1 is None:
+            b1 = self.settings.batches - self.settings.inactive
 
-        # Perform the search in a temporary directory
+        # Perform the search (inlined GRsecant) in a temporary directory
         with TemporaryDirectory() as tmpdir:
             run_kwargs.setdefault('cwd', tmpdir)
-            return grsecant(**kwargs)
+
+            # ---- Seed with two evaluations
+            f0, s0 = eval_at(x0, b0)
+            if abs(f0) <= k_tol and s0 <= sigma_final:
+                return SearchResult(x0, xs, fs, ss, gs, True, "converged")
+            f1, s1 = eval_at(x1, b1)
+            if abs(f1) <= k_tol and s1 <= sigma_final:
+                return SearchResult(x1, xs, fs, ss, gs, True, "converged")
+
+            for _ in range(maxiter):
+                # ------ Step 1: propose next x via GRsecant
+                m = min(memory, len(xs))
+
+                # Perform a curve fit on f(x) = a + bx accounting for
+                # uncertainties. This is equivalent to minimizing the function
+                # in Equation (A.14)
+                (a, b), _ = curve_fit(
+                    lambda x, a, b: a + b*x,
+                    xs[-m:], fs[-m:], sigma=ss[-m:], absolute_sigma=True
+                )
+                x_new = float(-a / b)
+
+                # Clamp x_new to the bounds if provided
+                if x_min is not None:
+                    x_new = max(x_new, x_min)
+                if x_max is not None:
+                    x_new = min(x_new, x_max)
+
+                # ------ Step 2: choose target σ for next run (Eq. 8 + clamp)
+
+                min_abs_f = float(np.min(np.abs(fs)))
+                base = sigma_factor * sigma_final
+                ratio = min_abs_f / k_tol if k_tol > 0 else 1.0
+                sig = base * (ratio ** p)
+                sig_target = max(sig, base)
+
+                # ------ Step 3: choose generations to hit σ_target (Appendix C)
+
+                # Use at least two past points for regression
+                if len(gs) >= 2 and np.var(np.log(gs)) > 0.0:
+                    # Perform a curve fit based on Eq. (C.3) to solve for ln(k).
+                    # Note that unlike in the paper, we do not leave r as an
+                    # undetermined parameter and choose r=0.5.
+                    (ln_k,), _ = curve_fit(
+                        lambda ln_b, ln_k: ln_k - 0.5*ln_b,
+                        np.log(gs[-4:]), np.log(ss[-4:]),
+                    )
+                    k = float(np.exp(ln_k))
+                else:
+                    k = float(ss[-1] * math.sqrt(gs[-1]))
+
+                b_new = (k / sig_target) ** 2
+
+                # Clamp and round up to integer
+                b_new = max(b_min, math.ceil(b_new))
+                if b_max is not None:
+                    b_new = min(b_new, b_max)
+
+                # Evaluate at proposed x with batches determined above
+                f_new, s_new = eval_at(x_new, b_new)
+
+                # Termination based on both criteria (|f| and σ)
+                if abs(f_new) <= k_tol and s_new <= sigma_final:
+                    return SearchResult(x_new, xs, fs, ss, gs, True, "converged")
+
+            return SearchResult(xs[-1], xs, fs, ss, gs, False, "maxiter")
 
 
 @dataclass
@@ -2286,150 +2401,3 @@ class SearchResult:
         return sum(self.batches)
 
 
-
-# TODO: Allow for passing a single x0 value?
-# TODO: Fit on sigma vs b is done with last 4 points. Change this?
-# TODO: Support use of openmc.lib
-
-def grsecant(
-    f,
-    x0: float,
-    x1: float,
-    x_min: float | None = None,
-    x_max: float | None = None,
-    b0: int = 200,
-    b1: int = 200,
-    b_min: int = 20,
-    b_max: int | None = None,
-    memory: int = 4,
-    k_tol: float = 1e-4,
-    sigma_final: float = 3e-4,
-    p: float = 0.5,
-    sigma_factor: float = 0.95,
-    maxiter: int = 50,
-    **kwargs: Any
-) -> SearchResult:
-    """GRsecant with MC-aware uncertainty/effort selection.
-
-    Parameters
-    ----------
-    f : function
-        Function that takes a parameter and returns the mean and standard
-        deviation.
-    x0 : float
-        First guess for the parameter passed to `f`
-    x1 : float
-        Second guess for the parameter passed to `f`
-    x_min : float
-        Minimum value for x.
-    x_max : float
-        Maximum value for x.
-    b0 : int
-        Number of batches to use in first function evaluation.
-    b1 : int
-        Number of batches to use in second function evaluation.
-    b_min : int
-        Minimum number of batches to use in a given function evaluation.
-    b_max : int
-        Maximum number of batches to use in a given function evaluation.
-    memory : int
-        Number of points to use in curve fit of f for predicting the next point.
-    k_tol : float
-        Stopping criterion on function value; value must be within k_tol of zero
-        to be accepted.
-    sigma_final : float
-        Maximum accepted uncertainty in f(x) for Eq. 8 stopping criterion.
-    p : float
-        Exponent in Eq. 8 stopping criteria.
-    sigma_factor : float
-        Multiplicative factor in Eq. 8 stopping criteria.
-    maxiter : int
-        Maximum number of iterations to perform.
-    **kwargs
-        Additional keyword arguments to pass to `f`.
-
-    """
-    if memory < 2:
-        raise ValueError("memory must be ≥ 2")
-
-    # Create lists to store the history of evaluations
-    xs = []
-    fs = []
-    ss = []
-    gs = []
-
-    # Helper function to evaluate f and store results
-    def eval_at(x: float, g: int):
-        mc_kwargs = dict(kwargs)
-        mc_kwargs["generations"] = int(g)
-        f_mean, f_std = f(x, **mc_kwargs)
-        xs.append(float(x))
-        fs.append(float(f_mean))
-        ss.append(float(f_std))
-        gs.append(int(g))
-        return fs[-1], ss[-1]
-
-    # ---- Seed with two evaluations
-    f0, s0 = eval_at(x0, b0)
-    if abs(f0) <= k_tol and s0 <= sigma_final:
-        return SearchResult(x0, xs, fs, ss, gs, True, "converged")
-    f1, s1 = eval_at(x1, b1)
-    if abs(f1) <= k_tol and s1 <= sigma_final:
-        return SearchResult(x1, xs, fs, ss, gs, True, "converged")
-
-    for it in range(maxiter):
-        # ---------- Step 1: propose next x via GRsecant
-        m = min(memory, len(xs))
-
-        # Perform a curve fit on f(x) = a + bx accounting for uncertainties.
-        # This is equivalent to minimizing the function in Equation (A.14)
-        (a, b), _ = curve_fit(
-            lambda x, a, b: a + b*x,
-            xs[-m:], fs[-m:], sigma=ss[-m:], absolute_sigma=True
-        )
-        x_new = float(-a / b)
-
-        # Clamp x_new to the bounds if provided
-        if x_min is not None:
-            x_new = max(x_new, x_min)
-        if x_max is not None:
-            x_new = min(x_new, x_max)
-
-        # ---------- Step 2: choose target σ for next run (Eq. 8 + clamp)
-
-        min_abs_f = float(np.min(np.abs(fs)))
-        base = sigma_factor * sigma_final
-        ratio = min_abs_f / k_tol if k_tol > 0 else 1.0
-        sig = base * (ratio ** p)
-        sig_target = max(sig, base)
-
-        # ---------- Step 3: choose generations to hit σ_target (Appendix C)
-
-        # Use at least two past points for regression
-        if len(gs) >= 2 and np.var(np.log(gs)) > 0.0:
-            # Perform a curve fit based on Eq. (C.3) to solve for ln(k). Note
-            # that unlike in the paper, we do not leave r as an undetermined
-            # parameter and choose r=0.5.
-            (ln_k,), _ = curve_fit(
-                lambda ln_b, ln_k: ln_k - 0.5*ln_b,
-                np.log(gs[-4:]), np.log(ss[-4:]),
-            )
-            k = float(np.exp(ln_k))
-        else:
-            k = float(ss[-1] * math.sqrt(gs[-1]))
-
-        b_new = (k / sig_target) ** 2
-
-        # Clamp and round up to integer
-        b_new = max(b_min, math.ceil(b_new))
-        if b_max is not None:
-            b_new = min(b_new, b_max)
-
-        # Evaluate at proposed x with chosen effort
-        f_new, s_new = eval_at(x_new, b_new)
-
-        # Termination: both criteria (|f| and σ) as in the paper
-        if abs(f_new) <= k_tol and s_new <= sigma_final:
-            return SearchResult(x_new, xs, fs, ss, gs, True, "converged")
-
-    return SearchResult(xs[-1], xs, fs, ss, gs, False, "maxiter")

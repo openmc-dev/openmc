@@ -8,7 +8,7 @@ import openmc
 import openmc.checkvalue as cv
 from .region import Region
 
-_VERSION_SUMMARY = 7
+_VERSION_SUMMARY = 6
 
 
 class Summary:

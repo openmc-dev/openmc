@@ -2496,9 +2496,8 @@ void score_timed_tracklength_tally(Particle& p, double total_distance)
   double distance_traveled = 0.0;
   while (distance_traveled < total_distance) {
 
-    double distance =
-      std::min(model::distance_to_time_boundary(p.time(), speed),
-        total_distance - distance_traveled);
+    double distance = std::min(distance_to_time_boundary(p.time(), speed),
+      total_distance - distance_traveled);
     double dt = distance / speed;
 
     // Save particle last state for tracklength tallies

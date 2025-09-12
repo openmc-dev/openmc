@@ -40,9 +40,10 @@
 #include "xtensor/xview.hpp"
 #include <fmt/core.h>
 
-#include <algorithm> // for max
+#include <algorithm> // for max, set_union
 #include <cassert>
-#include <cstddef> // for size_t
+#include <cstddef>  // for size_t
+#include <iterator> // for back_inserter
 #include <string>
 
 namespace openmc {
@@ -65,29 +66,6 @@ vector<int> active_surface_tallies;
 vector<int> active_pulse_height_tallies;
 vector<int> pulse_height_cells;
 vector<double> time_grid;
-
-double distance_to_time_boundary(double time, double speed)
-{
-  if (time_grid.size() == 0) {
-    return INFTY;
-  } else if (time >= time_grid[time_grid.size() - 1]) {
-    return INFTY;
-  } else {
-    return (*std::upper_bound(time_grid.begin(), time_grid.end(), time) -
-             time) *
-           speed;
-  }
-}
-
-void add_to_time_grid(vector<double> grid)
-{
-  auto temp = time_grid;
-  time_grid.resize(time_grid.size() + grid.size());
-  std::merge(temp.begin(), temp.end(), grid.begin(), grid.end(),
-    std::back_inserter(time_grid));
-  auto last_unique = std::unique(time_grid.begin(), time_grid.end());
-  time_grid.erase(last_unique, time_grid.end());
-}
 } // namespace model
 
 namespace simulation {
@@ -1093,6 +1071,39 @@ void accumulate_tallies()
   }
 }
 
+double distance_to_time_boundary(double time, double speed)
+{
+  if (model::time_grid.empty()) {
+    return INFTY;
+  } else if (time >= model::time_grid.back()) {
+    return INFTY;
+  } else {
+    double next_time =
+      *std::upper_bound(model::time_grid.begin(), model::time_grid.end(), time);
+    return (next_time - time) * speed;
+  }
+}
+
+//! Add new points to the global time grid
+//
+//! \param grid Vector of new time points to add
+void add_to_time_grid(vector<double> grid)
+{
+  if (grid.empty())
+    return;
+
+  // Create new vector with enough space to hold old and new grid points
+  vector<double> merged;
+  merged.reserve(model::time_grid.size() + grid.size());
+
+  // Merge and remove duplicates
+  std::set_union(model::time_grid.begin(), model::time_grid.end(), grid.begin(),
+    grid.end(), std::back_inserter(merged));
+
+  // Swap in the new grid
+  model::time_grid.swap(merged);
+}
+
 void setup_active_tallies()
 {
   model::active_tallies.clear();
@@ -1110,8 +1121,8 @@ void setup_active_tallies()
 
     if (tally.active_) {
       model::active_tallies.push_back(i);
-      bool mesh_present = ((tally.get_filter<MeshFilter>() != nullptr) ||
-                           (tally.get_filter<MeshMaterialFilter>() != nullptr));
+      bool mesh_present = (tally.get_filter<MeshFilter>() ||
+                           tally.get_filter<MeshMaterialFilter>());
       auto time_filter = tally.get_filter<TimeFilter>();
       switch (tally.type_) {
 
@@ -1121,9 +1132,9 @@ void setup_active_tallies()
           model::active_analog_tallies.push_back(i);
           break;
         case TallyEstimator::TRACKLENGTH:
-          if ((time_filter != nullptr) && mesh_present) {
+          if (time_filter && mesh_present) {
             model::active_timed_tracklength_tallies.push_back(i);
-            model::add_to_time_grid(time_filter->bins());
+            add_to_time_grid(time_filter->bins());
           } else {
             model::active_tracklength_tallies.push_back(i);
           }

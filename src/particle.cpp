@@ -252,6 +252,11 @@ void Particle::event_advance()
   this->time() += dt;
   this->lifetime() += dt;
 
+  // Score timed track-length tallies
+  if (!model::active_timed_tracklength_tallies.empty()) {
+    score_timed_tracklength_tally(*this, distance);
+  }
+
   // Score track-length tallies
   if (!model::active_tracklength_tallies.empty()) {
     score_tracklength_tally(*this, distance);

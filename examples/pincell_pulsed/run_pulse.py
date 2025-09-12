@@ -1,3 +1,4 @@
+import matplotlib.pyplot as plt
 import numpy as np
 import openmc
 
@@ -59,14 +60,12 @@ model.settings.run_mode = "fixed source"
 model.settings.batches = 10
 model.settings.particles = 10000
 
-# Set time cutoff
-# (because we only care about solutions in t < 100 seconds, see tally below)
+# Set time cutoff (we only care about t < 100 seconds, see tally below)
 model.settings.cutoff = {"time_neutron": 100}
 
-# Create the neutron pulse source
-# (by default, isotropic direction, at t = 0 s)
+# Create the neutron pulse source (by default, isotropic direction, t=0)
 space = openmc.stats.Point()  # At the origin (0, 0, 0)
-energy = openmc.stats.Discrete([1.41e7], [1.0])  # At 14.1 MeV
+energy = openmc.stats.delta_function(14.1e6)  # At 14.1 MeV
 model.settings.source = openmc.IndependentSource(space=space, energy=energy)
 
 ###############################################################################
@@ -83,4 +82,20 @@ density_tally.scores = ["inverse-velocity"]
 
 # Add tallies to model
 model.tallies = openmc.Tallies([density_tally])
-model.export_to_model_xml()
+
+
+# Run the model
+model.run(apply_tally_results=True)
+
+# Bin-averaged result
+density_mean = density_tally.mean.ravel() / np.diff(t_grid)
+
+# Plot particle density versus time
+fig, ax = plt.subplots()
+ax.stairs(density_mean, t_grid)
+ax.set_xscale("log")
+ax.set_yscale("log")
+ax.set_xlabel("Time [s]")
+ax.set_ylabel("Total density")
+ax.grid()
+plt.show()

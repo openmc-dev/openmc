@@ -131,7 +131,7 @@ class Settings:
     max_secondaries : int
         Maximum secondary bank size
 
-        .. versionadded:: 0.14.1
+        .. versionadded:: 0.15.3
     max_tracks : int
         Maximum number of tracks written to a track file (per MPI process).
 

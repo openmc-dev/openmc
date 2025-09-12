@@ -39,7 +39,7 @@ def cpp_driver(request):
             target_link_libraries(main OpenMC::libopenmc)
             target_compile_features(main PUBLIC cxx_std_14)
             set(CMAKE_CXX_FLAGS "-pedantic-errors")
-            add_compile_definitions(DAGMC=1)
+            add_compile_definitions(OPENMC_DAGMC_ENABLED=1)
             """.format(openmc_dir)))
 
     # Create temporary build directory and change to there

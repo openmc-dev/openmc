@@ -8,7 +8,7 @@ from uncertainties import UFloat
 
 import openmc
 import openmc.checkvalue as cv
-from ._xml import get_text
+from ._xml import get_elem_list, get_text
 from .mixin import IDManagerMixin
 from .plots import add_plot_params
 from .region import Region, Complement
@@ -567,10 +567,10 @@ class Cell(IDManagerMixin):
         .. versionadded:: 0.14.0
         """
         # Create dummy universe but preserve used_ids
-        next_id = openmc.Universe.next_id
+        next_id = openmc.UniverseBase.next_id
         u = openmc.Universe(cells=[self])
-        openmc.Universe.used_ids.remove(u.id)
-        openmc.Universe.next_id = next_id
+        openmc.UniverseBase.used_ids.remove(u.id)
+        openmc.UniverseBase.next_id = next_id
         return u.plot(*args, **kwargs)
 
     def create_xml_subelement(self, xml_element, memo=None):
@@ -689,9 +689,8 @@ class Cell(IDManagerMixin):
         c = cls(cell_id, name)
 
         # Assign material/distributed materials or fill
-        mat_text = get_text(elem, 'material')
-        if mat_text is not None:
-            mat_ids = mat_text.split()
+        mat_ids = get_elem_list(elem, 'material', str)
+        if mat_ids is not None:
             if len(mat_ids) > 1:
                 c.fill = [materials[i] for i in mat_ids]
             else:
@@ -706,19 +705,18 @@ class Cell(IDManagerMixin):
             c.region = Region.from_expression(region, surfaces)
 
         # Check for other attributes
-        t = get_text(elem, 'temperature')
-        if t is not None:
-            if ' ' in t:
-                c.temperature = [float(t_i) for t_i in t.split()]
+        temperature = get_elem_list(elem, 'temperature', float)
+        if temperature is not None:
+            if len(temperature) > 1:
+                c.temperature = temperature
             else:
-                c.temperature = float(t)
+                c.temperature = temperature[0]
         v = get_text(elem, 'volume')
         if v is not None:
             c.volume = float(v)
         for key in ('temperature', 'rotation', 'translation'):
-            value = get_text(elem, key)
-            if value is not None:
-                values = [float(x) for x in value.split()]
+            values = get_elem_list(elem, key, float)
+            if values is not None:
                 if key == 'rotation' and len(values) == 9:
                     values = np.array(values).reshape(3, 3)
                 setattr(c, key, values)

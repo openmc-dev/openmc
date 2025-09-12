@@ -3,6 +3,7 @@ from tempfile import TemporaryDirectory
 from pathlib import Path
 
 import numpy as np
+from scipy.stats import chi2
 import pytest
 import openmc
 import openmc.lib
@@ -482,7 +483,7 @@ def test_umesh(run_in_tmpdir, simple_umesh, export_type):
     np.testing.assert_almost_equal(mean, ref_data)
 
     # attempt to apply a dataset with an improper size to a VTK write
-    with pytest.raises(ValueError, match='Cannot apply dataset "mean"') as e:
+    with pytest.raises(ValueError, match='Cannot apply dataset "mean"'):
         simple_umesh.write_data_to_vtk(datasets={'mean': ref_data[:-2]}, filename=filename)
 
 def test_mesh_get_homogenized_materials():
@@ -713,7 +714,21 @@ def test_filter_time_mesh(run_in_tmpdir):
     tracklength = uarray(flux_tracklength, flux_tracklength_unc)
     delta = collision - tracklength
 
-    # Check that difference is within uncertainty
+    # Compute differences and standard deviations
     diff = nominal_values(delta)
     std_dev = std_devs(delta)
-    assert np.all(diff < 3*std_dev)
+
+    # Exclude zero-uncertainty bins
+    mask = std_dev > 0.0
+    dof = int(np.sum(mask))
+
+    # Global chi-square consistency test between collision and tracklength
+    # estimators. Target false positive rate ~1e-4 (1 in 10,000)
+    z = diff[mask] / std_dev[mask]
+    chi2_stat = np.sum(z * z)
+    alpha = 1.0e-4
+    crit = chi2.ppf(1 - alpha, dof)
+    assert chi2_stat < crit, (
+        f"Collision vs tracklength tallies disagree: chi2={chi2_stat:.2f} "
+        f">= {crit=:.2f} ({dof=}, {alpha=})"
+    )

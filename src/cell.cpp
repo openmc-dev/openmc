@@ -118,13 +118,8 @@ double Cell::density(int32_t instance) const
   if (mat_index == MATERIAL_VOID)
     return 0.0;
 
-  if (instance >= 0) {
-    double rho =
-      rho_mult_.size() == 1 ? rho_mult_.at(0) : rho_mult_.at(instance);
-    return rho * model::materials[mat_index]->density_gpcc();
-  } else {
-    return rho_mult_[0] * model::materials[mat_index]->density_gpcc();
-  }
+  double rho_mult = density_mult(instance);
+  return rho_mult * model::materials[mat_index]->density_gpcc();
 }
 
 void Cell::set_temperature(double T, int32_t instance, bool set_contained)

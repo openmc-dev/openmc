@@ -218,8 +218,7 @@ public:
 
   //! Get the density multiplier of a cell instance
   //! \param[in] instance Instance index. If -1 is given, the density multiplier
-  //! for
-  //!   the first instance is returned.
+  //! for the first instance is returned.
   //! \return Density multiplier [-]
   double density_mult(int32_t instance = -1) const;
 

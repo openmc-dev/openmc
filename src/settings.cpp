@@ -124,6 +124,7 @@ RunMode run_mode {RunMode::UNSET};
 SolverType solver_type {SolverType::MONTE_CARLO};
 std::unordered_set<int> sourcepoint_batch;
 std::unordered_set<int> statepoint_batch;
+double source_rejection_fraction {0.05};
 std::unordered_set<int> source_write_surf_id;
 int64_t ssw_max_particles;
 int64_t ssw_max_files;
@@ -644,6 +645,12 @@ void read_settings_xml(pugi::xml_node root)
     write_initial_source = get_node_value_bool(root, "write_initial_source");
   }
 
+  // Get relative number of lost particles
+  if (check_for_node(root, "source_rejection_fraction")) {
+    source_rejection_fraction =
+      std::stod(get_node_value(root, "source_rejection_fraction"));
+  }
+
   // Survival biasing
   if (check_for_node(root, "survival_biasing")) {
     survival_biasing = get_node_value_bool(root, "survival_biasing");
@@ -837,12 +844,6 @@ void read_settings_xml(pugi::xml_node root)
     }
     if (check_for_node(node_sp, "mcpl")) {
       source_mcpl_write = get_node_value_bool(node_sp, "mcpl");
-
-      // Make sure MCPL support is enabled
-      if (source_mcpl_write && !MCPL_ENABLED) {
-        fatal_error(
-          "Your build of OpenMC does not support writing MCPL source files.");
-      }
     }
     if (check_for_node(node_sp, "overwrite_latest")) {
       source_latest = get_node_value_bool(node_sp, "overwrite_latest");
@@ -895,12 +896,6 @@ void read_settings_xml(pugi::xml_node root)
 
     if (check_for_node(node_ssw, "mcpl")) {
       surf_mcpl_write = get_node_value_bool(node_ssw, "mcpl");
-
-      // Make sure MCPL support is enabled
-      if (surf_mcpl_write && !MCPL_ENABLED) {
-        fatal_error("Your build of OpenMC does not support writing MCPL "
-                    "surface source files.");
-      }
     }
     // Get cell information
     if (check_for_node(node_ssw, "cell")) {

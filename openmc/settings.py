@@ -11,12 +11,12 @@ import openmc
 import openmc.checkvalue as cv
 from openmc.checkvalue import PathLike
 from openmc.stats.multivariate import MeshSpatial
-from ._xml import clean_indentation, get_text, reorder_attributes
+from ._xml import clean_indentation, get_elem_list, get_text
 from .mesh import _read_meshes, RegularMesh, MeshBase
 from .source import SourceBase, MeshSource, IndependentSource
 from .utility_funcs import input_path
 from .volume import VolumeCalculation
-from .weight_windows import WeightWindows, WeightWindowGenerator
+from .weight_windows import WeightWindows, WeightWindowGenerator, WeightWindowsList
 
 
 class RunMode(Enum):
@@ -222,6 +222,10 @@ class Settings:
         Number of random numbers allocated for each source particle history
     source : Iterable of openmc.SourceBase
         Distribution of source sites in space, angle, and energy
+    source_rejection_fraction : float
+        Minimum fraction of source sites that must be accepted when applying
+        rejection sampling based on constraints. If not specified, the default
+        value is 0.05.
     sourcepoint : dict
         Options for writing source points. Acceptable keys are:
 
@@ -309,7 +313,7 @@ class Settings:
         described in :ref:`verbosity`.
     volume_calculations : VolumeCalculation or iterable of VolumeCalculation
         Stochastic volume calculation specifications
-    weight_windows : WeightWindows or iterable of WeightWindows
+    weight_windows : WeightWindowsList
         Weight windows to use for variance reduction
 
         .. versionadded:: 0.13
@@ -357,6 +361,7 @@ class Settings:
 
         # Source subelement
         self._source = cv.CheckedList(SourceBase, 'source distributions')
+        self._source_rejection_fraction = None
 
         self._confidence_intervals = None
         self._electron_treatment = None
@@ -419,7 +424,7 @@ class Settings:
         self._max_particles_in_flight = None
         self._max_particle_events = None
         self._write_initial_source = None
-        self._weight_windows = cv.CheckedList(WeightWindows, 'weight windows')
+        self._weight_windows = WeightWindowsList()
         self._weight_window_generators = cv.CheckedList(WeightWindowGenerator, 'weight window generators')
         self._weight_windows_on = None
         self._weight_windows_file = None
@@ -1090,14 +1095,14 @@ class Settings:
         self._write_initial_source = value
 
     @property
-    def weight_windows(self) -> list[WeightWindows]:
+    def weight_windows(self) -> WeightWindowsList:
         return self._weight_windows
 
     @weight_windows.setter
-    def weight_windows(self, value: WeightWindows | Iterable[WeightWindows]):
-        if not isinstance(value, MutableSequence):
+    def weight_windows(self, value: WeightWindows | Sequence[WeightWindows]):
+        if not isinstance(value, Sequence):
             value = [value]
-        self._weight_windows = cv.CheckedList(WeightWindows, 'weight windows', value)
+        self._weight_windows = WeightWindowsList(value)
 
     @property
     def weight_windows_on(self) -> bool:
@@ -1223,6 +1228,17 @@ class Settings:
     def use_decay_photons(self, value):
         cv.check_type('use decay photons', value, bool)
         self._use_decay_photons = value
+
+    @property
+    def source_rejection_fraction(self) -> float:
+        return self._source_rejection_fraction
+
+    @source_rejection_fraction.setter
+    def source_rejection_fraction(self, source_rejection_fraction: float):
+        cv.check_type('source_rejection_fraction', source_rejection_fraction, Real)
+        cv.check_greater_than('source_rejection_fraction', source_rejection_fraction, 0)
+        cv.check_less_than('source_rejection_fraction', source_rejection_fraction, 1)
+        self._source_rejection_fraction = source_rejection_fraction
 
     def _create_run_mode_subelement(self, root):
         elem = ET.SubElement(root, "run_mode")
@@ -1685,6 +1701,11 @@ class Settings:
                     subelement = ET.SubElement(element, key)
                     subelement.text = str(value)
 
+    def _create_source_rejection_fraction_subelement(self, root):
+        if self._source_rejection_fraction is not None:
+            element = ET.SubElement(root, "source_rejection_fraction")
+            element.text = str(self._source_rejection_fraction)
+
     def _eigenvalue_from_xml_element(self, root):
         elem = root.find('eigenvalue')
         if elem is not None:
@@ -1770,23 +1791,21 @@ class Settings:
     def _statepoint_from_xml_element(self, root):
         elem = root.find('state_point')
         if elem is not None:
-            text = get_text(elem, 'batches')
-            if text is not None:
-                self.statepoint['batches'] = [int(x) for x in text.split()]
+            batches = get_elem_list(elem, "batches", int)
+            if batches is not None:
+                self.statepoint['batches'] = batches
 
     def _sourcepoint_from_xml_element(self, root):
         elem = root.find('source_point')
         if elem is not None:
             for key in ('separate', 'write', 'overwrite_latest', 'batches', 'mcpl'):
-                value = get_text(elem, key)
-                if value is not None:
-                    if key in ('separate', 'write', 'mcpl'):
-                        value = value in ('true', '1')
-                    elif key == 'overwrite_latest':
-                        value = value in ('true', '1')
+                if key in ('separate', 'write', 'mcpl', 'overwrite_latest'):
+                    value = get_text(elem, key) in ('true', '1')
+                    if key == 'overwrite_latest':
                         key = 'overwrite'
-                    else:
-                        value = [int(x) for x in value.split()]
+                else:
+                    value = get_elem_list(elem, key, int)
+                if value is not None:
                     self.sourcepoint[key] = value
 
     def _surf_source_read_from_xml_element(self, root):
@@ -1803,11 +1822,12 @@ class Settings:
         if elem is None:
             return
         for key in ('surface_ids', 'max_particles', 'max_source_files', 'mcpl', 'cell', 'cellto', 'cellfrom'):
-            value = get_text(elem, key)
+            if key == 'surface_ids':
+                value = get_elem_list(elem, key, int)
+            else:
+                value = get_text(elem, key)
             if value is not None:
-                if key == 'surface_ids':
-                    value = [int(x) for x in value.split()]
-                elif key == 'mcpl':
+                if key == 'mcpl':
                     value = value in ('true', '1')
                 elif key in ('max_particles', 'max_source_files', 'cell', 'cellfrom', 'cellto'):
                     value = int(value)
@@ -1937,22 +1957,21 @@ class Settings:
         text = get_text(root, 'temperature_method')
         if text is not None:
             self.temperature['method'] = text
-        text = get_text(root, 'temperature_range')
+        text = get_elem_list(root, "temperature_range", float)
         if text is not None:
-            self.temperature['range'] = [float(x) for x in text.split()]
+            self.temperature['range'] = text
         text = get_text(root, 'temperature_multipole')
         if text is not None:
             self.temperature['multipole'] = text in ('true', '1')
 
     def _trace_from_xml_element(self, root):
-        text = get_text(root, 'trace')
+        text = get_elem_list(root, "trace", int)
         if text is not None:
-            self.trace = [int(x) for x in text.split()]
+            self.trace = text
 
     def _track_from_xml_element(self, root):
-        text = get_text(root, 'track')
-        if text is not None:
-            values = [int(x) for x in text.split()]
+        values = get_elem_list(root, "track", int)
+        if values is not None:
             self.track = list(zip(values[::3], values[1::3], values[2::3]))
 
     def _ufs_mesh_from_xml_element(self, root, meshes):
@@ -1969,14 +1988,15 @@ class Settings:
         if elem is not None:
             keys = ('enable', 'method', 'energy_min', 'energy_max', 'nuclides')
             for key in keys:
-                value = get_text(elem, key)
+                if key == 'nuclides':
+                    value = get_elem_list(elem, key, str)
+                else:
+                    value = get_text(elem, key)
                 if value is not None:
                     if key == 'enable':
                         value = value in ('true', '1')
                     elif key in ('energy_min', 'energy_max'):
                         value = float(value)
-                    elif key == 'nuclides':
-                        value = value.split()
                     self.resonance_scattering[key] = value
 
     def _create_fission_neutrons_from_xml_element(self, root):
@@ -2088,8 +2108,8 @@ class Settings:
                         mesh = MeshBase.from_xml_element(mesh_elem)
                         domains = []
                         for domain_elem in mesh_elem.findall('domain'):
-                            domain_id = int(domain_elem.get('id'))
-                            domain_type = domain_elem.get('type')
+                            domain_id = int(get_text(domain_elem, "id"))
+                            domain_type = get_text(domain_elem, "type")
                             if domain_type == 'material':
                                 domain = openmc.Material(domain_id)
                             elif domain_type == 'cell':
@@ -2103,6 +2123,11 @@ class Settings:
         text = get_text(root, 'use_decay_photons')
         if text is not None:
             self.use_decay_photons = text in ('true', '1')
+
+    def _source_rejection_fraction_from_xml_element(self, root):
+        text = get_text(root, 'source_rejection_fraction')
+        if text is not None:
+            self.source_rejection_fraction = float(text)
 
     def to_xml_element(self, mesh_memo=None):
         """Create a 'settings' element to be written to an XML file.
@@ -2171,10 +2196,10 @@ class Settings:
         self._create_max_tracks_subelement(element)
         self._create_random_ray_subelement(element, mesh_memo)
         self._create_use_decay_photons_subelement(element)
+        self._create_source_rejection_fraction_subelement(element)
 
         # Clean the indentation in the file to be user-readable
         clean_indentation(element)
-        reorder_attributes(element)  # TODO: Remove when support is Python 3.8+
 
         return element
 
@@ -2279,6 +2304,7 @@ class Settings:
         settings._max_tracks_from_xml_element(elem)
         settings._random_ray_from_xml_element(elem)
         settings._use_decay_photons_from_xml_element(elem)
+        settings._source_rejection_fraction_from_xml_element(elem)
 
         return settings
 

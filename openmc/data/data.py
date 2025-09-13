@@ -94,7 +94,7 @@ NATURAL_ABUNDANCE = {
     'Yb174': 0.32025, 'Yb176': 0.12995, 'Lu175': 0.97401,
     'Lu176': 0.02599, 'Hf174': 0.0016, 'Hf176': 0.0526,
     'Hf177': 0.186, 'Hf178': 0.2728, 'Hf179': 0.1362,
-    'Hf180': 0.3508, 'Ta180': 0.0001201, 'Ta181': 0.9998799,
+    'Hf180': 0.3508, 'Ta180_m1': 0.0001201, 'Ta181': 0.9998799,
     'W180': 0.0012, 'W182': 0.265, 'W183': 0.1431,
     'W184': 0.3064, 'W186': 0.2843, 'Re185': 0.374,
     'Re187': 0.626, 'Os184': 0.0002, 'Os186': 0.0159,
@@ -607,7 +607,7 @@ def zam(name):
 
     """
     try:
-        symbol, A, state = _GNDS_NAME_RE.match(name).groups()
+        symbol, A, state = _GNDS_NAME_RE.fullmatch(name).groups()
     except AttributeError:
         raise ValueError(f"'{name}' does not appear to be a nuclide name in "
                          "GNDS format")

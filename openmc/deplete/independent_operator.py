@@ -50,9 +50,9 @@ class IndependentOperator(OpenMCOperator):
         Cross sections in [b] for each domain. If the
         :class:`~openmc.deplete.MicroXS` object is empty, a decay-only
         calculation will be run.
-    chain_file : str
-        Path to the depletion chain XML file. Defaults to
-        ``openmc.config['chain_file']``.
+    chain_file : PathLike or Chain, optional
+        Path to the depletion chain XML file or instance of openmc.deplete.Chain.
+        Defaults to ``openmc.config['chain_file']``.
     keff : 2-tuple of float, optional
        keff eigenvalue and uncertainty from transport calculation.
     prev_results : Results, optional
@@ -179,9 +179,9 @@ class IndependentOperator(OpenMCOperator):
         micro_xs : MicroXS
             Cross sections in [b]. If the :class:`~openmc.deplete.MicroXS`
             object is empty, a decay-only calculation will be run.
-        chain_file : str, optional
-            Path to the depletion chain XML file. Defaults to
-            ``openmc.config['chain_file']``.
+        chain_file : PathLike or Chain, optional
+            Path to the depletion chain XML file or instance of
+            openmc.deplete.Chain. Defaults to ``openmc.config['chain_file']``.
         nuc_units : {'atom/cm3', 'atom/b-cm'}, optional
             Units for nuclide concentration.
         keff : 2-tuple of float, optional
@@ -273,7 +273,7 @@ class IndependentOperator(OpenMCOperator):
         Returns
         -------
         nuclides : set of str
-            Set of nuclide names that have cross secton data
+            Set of nuclide names that have cross section data
 
         """
         return set(cross_sections[0].nuclides)

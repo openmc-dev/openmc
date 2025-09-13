@@ -11,15 +11,18 @@ import re
 from collections import defaultdict, namedtuple
 from collections.abc import Mapping, Iterable
 from numbers import Real, Integral
+from pathlib import Path
 from warnings import warn
 from typing import List
 
 import lxml.etree as ET
 import scipy.sparse as sp
 
-from openmc.checkvalue import check_type, check_greater_than
+from openmc.checkvalue import check_type, check_greater_than, PathLike
 from openmc.data import gnds_name, zam
+from openmc.exceptions import DataError
 from .nuclide import FissionYieldDistribution, Nuclide
+from .._xml import get_text
 import openmc.data
 
 
@@ -277,7 +280,6 @@ class Chain:
         """Number of nuclides in chain."""
         return len(self.nuclides)
 
-
     @property
     def stable_nuclides(self) -> List[Nuclide]:
         """List of stable nuclides available in the chain"""
@@ -297,6 +299,7 @@ class Chain:
             Nuclide to add
 
         """
+        _invalidate_chain_cache(self)
         self.nuclide_dict[nuclide.name] = len(self.nuclides)
         self.nuclides.append(nuclide)
 
@@ -462,7 +465,6 @@ class Chain:
                     nuclide.add_reaction('fission', None, q_value, 1.0)
                     fissionable = True
 
-
             if fissionable:
                 if parent in fpy_data:
                     fpy = fpy_data[parent]
@@ -552,10 +554,13 @@ class Chain:
         root = ET.parse(str(filename))
 
         for i, nuclide_elem in enumerate(root.findall('nuclide')):
-            this_q = fission_q.get(nuclide_elem.get("name"))
+            this_q = fission_q.get(get_text(nuclide_elem, "name"))
 
             nuc = Nuclide.from_xml(nuclide_elem, root, this_q)
             chain.add_nuclide(nuc)
+
+        # Store path of XML file (used for handling cache invalidation)
+        chain._xml_path = str(Path(filename).resolve())
 
         return chain
 
@@ -622,9 +627,15 @@ class Chain:
         """
         reactions = set()
 
-        # Use DOK matrix as intermediate representation for matrix
         n = len(self)
-        matrix = sp.dok_matrix((n, n))
+
+        # we accumulate indices and value entries for everything and create the matrix 
+        # in one step at the end to avoid expensive index checks scipy otherwise does.
+        rows, cols, vals = [], [], []
+        def setval(i, j, val):
+            rows.append(i)
+            cols.append(j)
+            vals.append(val)
 
         if fission_yields is None:
             fission_yields = self.get_default_fission_yields()
@@ -634,7 +645,7 @@ class Chain:
             if nuc.half_life is not None:
                 decay_constant = math.log(2) / nuc.half_life
                 if decay_constant != 0.0:
-                    matrix[i, i] -= decay_constant
+                    setval(i, i, -decay_constant)
 
             # Gain from radioactive decay
             if nuc.n_decay_modes != 0:
@@ -645,19 +656,19 @@ class Chain:
                     if branch_val != 0.0:
                         if target is not None:
                             k = self.nuclide_dict[target]
-                            matrix[k, i] += branch_val
+                            setval(k, i, branch_val)
 
                         # Produce alphas and protons from decay
                         if 'alpha' in decay_type:
                             k = self.nuclide_dict.get('He4')
                             if k is not None:
                                 count = decay_type.count('alpha')
-                                matrix[k, i] += count * branch_val
+                                setval(k, i, count * branch_val)
                         elif 'p' in decay_type:
                             k = self.nuclide_dict.get('H1')
                             if k is not None:
                                 count = decay_type.count('p')
-                                matrix[k, i] += count * branch_val
+                                setval(k, i, count * branch_val)
 
             if nuc.name in rates.index_nuc:
                 # Extract all reactions for this nuclide in this cell
@@ -674,13 +685,13 @@ class Chain:
                     if r_type not in reactions:
                         reactions.add(r_type)
                         if path_rate != 0.0:
-                            matrix[i, i] -= path_rate
+                            setval(i, i, -path_rate)
 
                     # Gain term; allow for total annihilation for debug purposes
                     if r_type != 'fission':
                         if target is not None and path_rate != 0.0:
                             k = self.nuclide_dict[target]
-                            matrix[k, i] += path_rate * br
+                            setval(k, i, path_rate * br)
 
                         # Determine light nuclide production, e.g., (n,d) should
                         # produce H2
@@ -688,20 +699,20 @@ class Chain:
                         for light_nuc in light_nucs:
                             k = self.nuclide_dict.get(light_nuc)
                             if k is not None:
-                                matrix[k, i] += path_rate * br
+                                setval(k, i, path_rate * br)
 
                     else:
                         for product, y in fission_yields[nuc.name].items():
                             yield_val = y * path_rate
                             if yield_val != 0.0:
                                 k = self.nuclide_dict[product]
-                                matrix[k, i] += yield_val
+                                setval(k, i, yield_val)
 
                 # Clear set of reactions
                 reactions.clear()
 
         # Return CSC representation instead of DOK
-        return matrix.tocsc()
+        return sp.csc_matrix((vals, (rows, cols)), shape=(n, n))
 
     def form_rr_term(self, tr_rates, current_timestep, mats):
         """Function to form the transfer rate term matrices.
@@ -887,7 +898,7 @@ class Chain:
         --------
         :meth:`get_branch_ratios`
         """
-
+        _invalidate_chain_cache(self)
         # Store some useful information through the validation stage
 
         sums = {}
@@ -1026,6 +1037,7 @@ class Chain:
 
     @fission_yields.setter
     def fission_yields(self, yields):
+        _invalidate_chain_cache(self)
         if yields is not None:
             if isinstance(yields, Mapping):
                 yields = [yields]
@@ -1246,3 +1258,65 @@ class Chain:
         found.update(isotopes)
 
         return found
+
+
+# A global cache for Chain objects
+_CHAIN_CACHE = {}
+
+
+def _get_chain(
+    chain_file: PathLike | Chain | None = None,
+    fission_q: dict | None = None
+) -> Chain:
+    """Get a depletion chain from a file or the runtime configuration.
+
+    Parameters
+    ----------
+    chain_file : PathLike or Chain, optional
+        Path to depletion chain XML file, a Chain instance, or None to use
+        the file specified in ``openmc.config['chain_file']``.
+    fission_q : dict, optional
+        Dictionary of nuclides and their fission Q values [eV]. If not given,
+        values will be pulled from the ``chain_file``.
+
+    Returns
+    -------
+    Chain
+        Depletion chain instance.
+    """
+    # If chain_file is already a Chain, return it directly
+    if isinstance(chain_file, Chain):
+        return chain_file
+
+    # Resolve chain_file based on config if None
+    if chain_file is None:
+        chain_file = openmc.config.get('chain_file')
+        if 'chain_file' not in openmc.config:
+            raise DataError(
+                "No depletion chain specified and could not find depletion "
+                "chain in openmc.config['chain_file']"
+            )
+    elif not isinstance(chain_file, PathLike):
+        raise TypeError("chain_file must be path-like, a Chain, or None")
+
+    # Determine the key for the cache, which consists of the absolute path, the
+    # file modification time, the file size, and the fission Q values.
+    chain_path = Path(chain_file).resolve()
+    stat_result = chain_path.stat()
+    fq_tuple = tuple(sorted(fission_q.items())) if fission_q else ()
+    key = (chain_path, stat_result.st_mtime, stat_result.st_size, fq_tuple)
+
+    # Check the global cache. If not cached, load the chain from XML and store
+    global _CHAIN_CACHE
+    if key not in _CHAIN_CACHE:
+        _CHAIN_CACHE[key] = Chain.from_xml(chain_path, fission_q)
+    return _CHAIN_CACHE[key]
+
+
+def _invalidate_chain_cache(chain):
+    """Invalidate the cache for a specific Chain (when it is modifed)."""
+    if hasattr(chain, '_xml_path'):
+        # Remove all entries with the same path as self._xml_path
+        for key in list(_CHAIN_CACHE.keys()):
+            if str(key[0]) == chain._xml_path:
+                del _CHAIN_CACHE[key]

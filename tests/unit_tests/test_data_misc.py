@@ -30,7 +30,7 @@ def test_data_library(tmpdir):
     assert os.path.exists(filename)
 
     new_lib = openmc.data.DataLibrary()
-    directory = os.path.dirname(os.environ['OPENMC_CROSS_SECTIONS'])
+    directory = os.path.dirname(openmc.config.get('cross_sections'))
     new_lib.register_file(os.path.join(directory, 'H1.h5'))
     assert new_lib[-1]['type'] == 'neutron'
     new_lib.register_file(os.path.join(directory, 'c_Zr_in_ZrH.h5'))
@@ -131,7 +131,8 @@ def test_zam():
     assert openmc.data.zam('Am242_m10') == (95, 242, 10)
     with pytest.raises(ValueError):
         openmc.data.zam('garbage')
-
+    with pytest.raises(ValueError):
+        openmc.data.zam('Am242-m1')
 
 def test_half_life():
     assert openmc.data.half_life('H2') is None

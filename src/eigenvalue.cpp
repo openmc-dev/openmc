@@ -134,7 +134,7 @@ void synchronize_bank()
   int64_t index_temp = 0;
 
   vector<SourceSite> temp_sites(3 * simulation::work_per_rank);
-  
+
   // Temporary banks for IFP
   vector<vector<int>> temp_delayed_groups;
   vector<vector<double>> temp_lifetimes;
@@ -157,7 +157,7 @@ void synchronize_bank()
   double teeth_distance = static_cast<double>(total) / settings::n_particles;
   double teeth_offset = prn(&seed) * teeth_distance;
 
-  // First and last hiting tooth
+  // First and last hitting tooth
   int64_t end = start + simulation::fission_bank.size();
   int64_t tooth_start = std::ceil((start - teeth_offset) / teeth_distance);
   int64_t tooth_end = std::floor((end - teeth_offset) / teeth_distance) + 1;
@@ -167,6 +167,10 @@ void synchronize_bank()
   for (int64_t i = tooth_start; i < tooth_end; i++) {
     int64_t idx = std::floor(tooth) - start;
     temp_sites[index_temp] = simulation::fission_bank[idx];
+    if (settings::ifp_on) {
+      copy_ifp_data_from_fission_banks(
+        idx, temp_delayed_groups[index_temp], temp_lifetimes[index_temp]);
+    }
     ++index_temp;
 
     // Next tooth

@@ -70,6 +70,90 @@ double Particle::speed() const
                    nullptr, nullptr, macro_t, macro_a);
   }
 }
+double Particle::getMass() const
+{
+  // Determine mass in eV/c^2
+  double mass;
+  switch (this->type()) {
+  case ParticleType::neutron:
+    mass = MASS_NEUTRON_EV;
+    break;
+  case ParticleType::photon:
+    mass = 0.0;
+    break;
+  case ParticleType::electron:
+  case ParticleType::positron:
+    mass = MASS_ELECTRON_EV;
+    break;
+  }
+
+  return mass;
+}
+
+void Particle::initialize_ghost_particle(
+  Particle& p, Direction u_new, double E_new)
+{
+  clear();
+  surface() = 0;
+  cell_born() = C_NONE;
+  material() = C_NONE;
+  n_collision() = p.n_collision();
+  fission() = false;
+  zero_flux_derivs();
+
+  type() = p.type();
+  wgt() = p.wgt();
+  wgt_last() = p.wgt_last();
+  r() = p.r();
+  r_last() = p.r();
+  u() = u_new;
+  u_last() = u_new;
+  // u_last() = p.u_last();
+  E() = E_new; // settings::run_CE ? p.E_last() : p.g_last();
+  E_last() = E_new;
+  time() = p.time_last();
+  time_last() = p.time_last();
+}
+
+void Particle::initialize_ghost_particle_from_source(
+  const SourceSite* src, Direction u_new)
+{
+  // Reset some attributes
+  clear();
+  surface() = 0;
+  cell_born() = C_NONE;
+  material() = C_NONE;
+  n_collision() = 0;
+  fission() = false;
+  zero_flux_derivs();
+
+  // Copy attributes from source bank site
+  type() = src->particle;
+  wgt() = src->wgt;
+  wgt_last() = src->wgt;
+  r() = src->r;
+  u() = u_new;
+  r_last_current() = src->r;
+  r_last() = src->r;
+  u_last() = src->u;
+  if (settings::run_CE) {
+    E() = src->E;
+    g() = 0;
+  } else {
+    g() = static_cast<int>(src->E);
+    g_last() = static_cast<int>(src->E);
+    E() = data::mg.energy_bin_avg_[g()];
+  }
+  E_last() = E();
+  time() = src->time;
+  time_last() = src->time;
+
+  // fmt::print("==============================particle
+  // created==============================\n"); fmt::print("u = {0} , {1} ,
+  // {2}\n",u().x,u().y,u().z); fmt::print("u_last = {0} , {1} ,
+  // {2}\n",u_last().x,u_last().y,u_last().z); fmt::print("pos = {0} , {1} ,
+  // {2}\n",r().x,r().y,r().z);
+}
 
 bool Particle::create_secondary(
   double wgt, Direction u, double E, ParticleType type)
@@ -150,6 +234,14 @@ void Particle::from_source(const SourceSite* src)
     int index_plus_one = model::surface_map[std::abs(src->surf_id)] + 1;
     surface() = (src->surf_id > 0) ? index_plus_one : -index_plus_one;
   }
+  if (!model::active_point_tallies.empty())
+    score_point_tally_from_source(src);
+
+  // fmt::print("==============================particle
+  // created==============================\n"); fmt::print("u = {0} , {1} ,
+  // {2}\n",u().x,u().y,u().z); fmt::print("u_last = {0} , {1} ,
+  // {2}\n",u_last().x,u_last().y,u_last().z); fmt::print("pos = {0} , {1} ,
+  // {2}\n",r().x,r().y,r().z);
 }
 
 void Particle::event_calculate_xs()
@@ -349,8 +441,11 @@ void Particle::event_collide()
   // Score collision estimator tallies -- this is done after a collision
   // has occurred rather than before because we need information on the
   // outgoing energy for any tallies with an outgoing energy filter
+
   if (!model::active_collision_tallies.empty())
     score_collision_tally(*this);
+  if (!model::active_point_tallies.empty() && exhaustive_find_cell(*this))
+    score_point_tally(*this);
   if (!model::active_analog_tallies.empty()) {
     if (settings::run_CE) {
       score_analog_tally_ce(*this);

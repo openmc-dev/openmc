@@ -10,8 +10,11 @@
 
 #include "openmc/endf.h"
 #include "openmc/hdf5_interface.h"
+#include "openmc/nuclide.h"
+#include "openmc/particle.h"
 #include "openmc/random_lcg.h"
 #include "openmc/search.h"
+#include "openmc/tallies/tally_scoring.h"
 
 namespace openmc {
 
@@ -260,6 +263,154 @@ void CorrelatedAngleEnergy::sample(
     mu = distribution_[l].angle[k]->sample(seed);
   } else {
     mu = distribution_[l].angle[k + 1]->sample(seed);
+  }
+}
+
+void CorrelatedAngleEnergy::get_pdf(double det_pos[4], double E_in,
+  double& E_out, uint64_t* seed, Particle& p, std::vector<double>& mu_cm,
+  std::vector<double>& Js, std::vector<Particle>& ghost_particles,
+  std::vector<double>& pdfs_lab) const
+{
+  // Find energy bin and calculate interpolation factor -- if the energy is
+  // outside the range of the tabulated energies, choose the first or last bins
+  auto n_energy_in = energy_.size();
+  int i;
+  double r;
+  if (E_in < energy_[0]) {
+    i = 0;
+    r = 0.0;
+  } else if (E_in > energy_[n_energy_in - 1]) {
+    i = n_energy_in - 2;
+    r = 1.0;
+  } else {
+    i = lower_bound_index(energy_.begin(), energy_.end(), E_in);
+    r = (E_in - energy_[i]) / (energy_[i + 1] - energy_[i]);
+  }
+
+  // Sample between the ith and [i+1]th bin
+  int l = r > prn(seed) ? i + 1 : i;
+
+  // Interpolation for energy E1 and EK
+  int n_energy_out = distribution_[i].e_out.size();
+  int n_discrete = distribution_[i].n_discrete;
+  double E_i_1 = distribution_[i].e_out[n_discrete];
+  double E_i_K = distribution_[i].e_out[n_energy_out - 1];
+
+  n_energy_out = distribution_[i + 1].e_out.size();
+  n_discrete = distribution_[i + 1].n_discrete;
+  double E_i1_1 = distribution_[i + 1].e_out[n_discrete];
+  double E_i1_K = distribution_[i + 1].e_out[n_energy_out - 1];
+
+  double E_1 = E_i_1 + r * (E_i1_1 - E_i_1);
+  double E_K = E_i_K + r * (E_i1_K - E_i_K);
+
+  // Determine outgoing energy bin
+  n_energy_out = distribution_[l].e_out.size();
+  n_discrete = distribution_[l].n_discrete;
+  double r1 = prn(seed);
+  double c_k = distribution_[l].c[0];
+  int k = 0;
+  int end = n_energy_out - 2;
+
+  // Discrete portion
+  for (int j = 0; j < n_discrete; ++j) {
+    k = j;
+    c_k = distribution_[l].c[k];
+    if (r1 < c_k) {
+      end = j;
+      break;
+    }
+  }
+
+  // Continuous portion
+  double c_k1;
+  for (int j = n_discrete; j < end; ++j) {
+    k = j;
+    c_k1 = distribution_[l].c[k + 1];
+    if (r1 < c_k1)
+      break;
+    k = j + 1;
+    c_k = c_k1;
+  }
+
+  double E_l_k = distribution_[l].e_out[k];
+  double p_l_k = distribution_[l].p[k];
+  if (distribution_[l].interpolation == Interpolation::histogram) {
+    // Histogram interpolation
+    if (p_l_k > 0.0 && k >= n_discrete) {
+      E_out = E_l_k + (r1 - c_k) / p_l_k;
+    } else {
+      E_out = E_l_k;
+    }
+
+  } else if (distribution_[l].interpolation == Interpolation::lin_lin) {
+    // Linear-linear interpolation
+    double E_l_k1 = distribution_[l].e_out[k + 1];
+    double p_l_k1 = distribution_[l].p[k + 1];
+
+    double frac = (p_l_k1 - p_l_k) / (E_l_k1 - E_l_k);
+    if (frac == 0.0) {
+      E_out = E_l_k + (r1 - c_k) / p_l_k;
+    } else {
+      E_out =
+        E_l_k +
+        (std::sqrt(std::max(0.0, p_l_k * p_l_k + 2.0 * frac * (r1 - c_k))) -
+          p_l_k) /
+          frac;
+    }
+  }
+
+  // Now interpolate between incident energy bins i and i + 1
+  if (k >= n_discrete) {
+    if (l == i) {
+      E_out = E_1 + (E_out - E_i_1) * (E_K - E_1) / (E_i_K - E_i_1);
+    } else {
+      E_out = E_1 + (E_out - E_i1_1) * (E_K - E_1) / (E_i1_K - E_i1_1);
+    }
+  }
+
+  const auto& nuc {data::nuclides[p.event_nuclide()]};
+  const auto& rx {nuc->reactions_[p.event_index_mt()]};
+  if (rx->scatter_in_cm_) {
+    get_pdf_to_point_elastic(
+      det_pos, p, mu_cm, Js, ghost_particles, E_out / 1e6);
+    for (std::size_t i = 0; i < mu_cm.size(); ++i) {
+      // Assuming Js.size() is the same as mu_cm.size()
+      double mu_c = mu_cm[i];
+      double derivative = Js[i];
+      double pdf_cm;
+      if (r1 - c_k < c_k1 - r1 ||
+          distribution_[l].interpolation == Interpolation::histogram) {
+        pdf_cm = distribution_[l].angle[k]->get_pdf(mu_c);
+      } else {
+        pdf_cm = distribution_[l].angle[k + 1]->get_pdf(mu_c);
+      }
+      pdfs_lab.push_back(pdf_cm / std::abs(derivative));
+    }
+  }
+
+  if (!rx->scatter_in_cm_) {
+    // fatal_error("Didnt implemt lab");
+    Direction u_lab {det_pos[0] - p.r().x, // towards the detector
+      det_pos[1] - p.r().y, det_pos[2] - p.r().z};
+    Direction u_lab_unit = u_lab / u_lab.norm(); // normalize
+    double E_lab = E_out;
+    Particle ghost_particle = Particle();
+    ghost_particle.initialize_ghost_particle(p, u_lab_unit, E_lab);
+    ghost_particles.push_back(ghost_particle);
+    double pdf_mu_lab;
+    if (r1 - c_k < c_k1 - r1 ||
+        distribution_[l].interpolation == Interpolation::histogram) {
+      pdf_mu_lab =
+        distribution_[l].angle[k]->get_pdf(u_lab_unit.dot(p.u_last()));
+    } else {
+      pdf_mu_lab =
+        distribution_[l].angle[k + 1]->get_pdf(u_lab_unit.dot(p.u_last()));
+    }
+
+    pdfs_lab.push_back(pdf_mu_lab);
+
+    // fatal_error("didn't implement lab");
   }
 }
 

@@ -207,6 +207,8 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
           write_dataset(tally_group, "estimator", "tracklength");
         } else if (tally->estimator_ == TallyEstimator::COLLISION) {
           write_dataset(tally_group, "estimator", "collision");
+        } else if (tally->estimator_ == TallyEstimator::POINT) {
+          write_dataset(tally_group, "estimator", "point");
         }
 
         write_dataset(tally_group, "n_realizations", tally->n_realizations_);

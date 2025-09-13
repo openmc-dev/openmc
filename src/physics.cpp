@@ -1,4 +1,5 @@
 #include "openmc/physics.h"
+#include <fstream>
 
 #include "openmc/bank.h"
 #include "openmc/bremsstrahlung.h"
@@ -25,9 +26,9 @@
 #include "openmc/simulation.h"
 #include "openmc/string_utils.h"
 #include "openmc/tallies/tally.h"
+#include "openmc/tallies/tally_scoring.h"
 #include "openmc/thermal.h"
 #include "openmc/weight_windows.h"
-
 #include <fmt/core.h>
 
 #include <algorithm> // for max, min, max_element
@@ -202,6 +203,11 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
   // Counter for the number of fission sites successfully stored to the shared
   // fission bank or the secondary particle bank
   int n_sites_stored;
+  // Initialize for point detector
+  std::vector<Particle> ghost_particles;
+  std::vector<double> mu_cm;
+  std::vector<double> Js;
+  std::vector<double> pdfs_lab;
 
   for (n_sites_stored = 0; n_sites_stored < nu; n_sites_stored++) {
     // Initialize fission site object with particle data
@@ -216,7 +222,11 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
 
     // Sample delayed group and angle/energy for fission reaction
     sample_fission_neutron(i_nuclide, rx, &site, p);
-
+    p.event_index_mt() = -999;
+    for (auto i_tally : model::active_point_tallies) {
+      score_fission_neutron(
+        i_tally, i_nuclide, rx, &site, p, mu_cm, Js, ghost_particles, pdfs_lab);
+    }
     // Store fission site in bank
     if (use_fission_bank) {
       int64_t idx = simulation::fission_bank.thread_safe_append(site);
@@ -665,7 +675,7 @@ void scatter(Particle& p, int i_nuclide)
 {
   // copy incoming direction
   Direction u_old {p.u()};
-
+  p.event_index_mt() = 0;
   // Get pointer to nuclide and grid index/interpolation factor
   const auto& nuc {data::nuclides[i_nuclide]};
   const auto& micro {p.neutron_xs(i_nuclide)};
@@ -702,7 +712,7 @@ void scatter(Particle& p, int i_nuclide)
     // S(A,B) SCATTERING
 
     sab_scatter(i_nuclide, micro.index_sab, p);
-
+    p.event_index_mt() = -1234; // to distinguish from elastic
     p.event_mt() = ELASTIC;
     sampled = true;
   }
@@ -724,6 +734,7 @@ void scatter(Particle& p, int i_nuclide)
     const auto& rx {nuc->reactions_[i]};
     inelastic_scatter(*nuc, *rx, p);
     p.event_mt() = rx->mt_;
+    p.event_index_mt() = i;
   }
 
   // Set event component
@@ -758,8 +769,8 @@ void elastic_scatter(int i_nuclide, const Reaction& rx, double kT, Particle& p)
     v_t = sample_target_velocity(*nuc, p.E(), p.u(), v_n,
       p.neutron_xs(i_nuclide).elastic, kT, p.current_seed());
   }
-
-  // Velocity of center-of-mass
+  p.v_t() = C_LIGHT * std::sqrt(2 / p.getMass()) * v_t;
+  //  Velocity of center-of-mass
   Direction v_cm = (v_n + awr * v_t) / (awr + 1.0);
 
   // Transform to CM frame
@@ -797,6 +808,11 @@ void elastic_scatter(int i_nuclide, const Reaction& rx, double kT, Particle& p)
   // neutron's pre- and post-collision angle
   p.mu() = p.u().dot(v_n) / vel;
 
+  // std::ofstream outfile;
+
+  // outfile.open("scatter", std::ios_base::app); // append instead of overwrite
+  // outfile << v_cm.dot(v_n)/v_cm.norm()/v_n.norm()<<"\n";
+
   // Set energy and direction of particle in LAB frame
   p.u() = v_n / vel;
 
@@ -817,6 +833,22 @@ void sab_scatter(int i_nuclide, int i_sab, Particle& p)
   double E_out;
   data::thermal_scatt[i_sab]->data_[i_temp].sample(
     micro, p.E(), &E_out, &p.mu(), p.current_seed());
+
+  for (auto i_tally : model::active_point_tallies) {
+    double E_out_ghost;
+    double det_pos[4];
+    get_det_pos(det_pos, i_tally);
+    Direction u_lab {det_pos[0] - p.r().x, // towards the detector
+      det_pos[1] - p.r().y, det_pos[2] - p.r().z};
+    Direction u_lab_unit = u_lab / u_lab.norm(); // normalize
+    double mu_det =
+      u_lab_unit.dot(p.u_last()); // target velocity is treated as zero
+    double pdf = data::thermal_scatt[i_sab]->data_[i_temp].get_pdf(
+      micro, p.E(), E_out_ghost, mu_det, p.current_seed());
+    Particle ghost_particle = Particle();
+    ghost_particle.initialize_ghost_particle(p, u_lab_unit, E_out_ghost);
+    score_ghost_particle(ghost_particle, pdf, i_tally);
+  }
 
   // Set energy to outgoing, change direction of particle
   p.E() = E_out;
@@ -854,12 +886,13 @@ Direction sample_target_velocity(const Nuclide& nuc, double E, Direction u,
   // use appropriate target velocity sampling method
   switch (sampling_method) {
   case ResScatMethod::cxs:
-
-    // sample target velocity with the constant cross section (cxs) approx.
+    // fmt::print("ResScatMethod = ResScatMethod::cxs\n");
+    //  sample target velocity with the constant cross section (cxs) approx.
     return sample_cxs_target_velocity(nuc.awr_, E, u, kT, seed);
 
   case ResScatMethod::dbrc:
   case ResScatMethod::rvs: {
+    fmt::print("ResScatMethod = ResScatMethod::rvs\n");
     double E_red = std::sqrt(nuc.awr_ * E / kT);
     double E_low = std::pow(std::max(0.0, E_red - 4.0), 2) * kT / nuc.awr_;
     double E_up = (E_red + 4.0) * (E_red + 4.0) * kT / nuc.awr_;
@@ -1102,8 +1135,96 @@ void sample_fission_neutron(
   site->u = rotate_angle(p.u(), mu, nullptr, seed);
 }
 
+void score_fission_neutron(int i_tally, int i_nuclide, const Reaction& rx,
+  SourceSite* site, Particle& p, std::vector<double>& mu_cm,
+  std::vector<double>& Js, std::vector<Particle>& ghost_particles,
+  std::vector<double>& pdfs_lab)
+{
+
+  // Get attributes of particle
+  double E_in = p.E();
+  uint64_t* seed = p.current_seed();
+
+  // Determine total nu, delayed nu, and delayed neutron fraction
+  const auto& nuc {data::nuclides[i_nuclide]};
+  double nu_t = nuc->nu(E_in, Nuclide::EmissionMode::total);
+  double nu_d = nuc->nu(E_in, Nuclide::EmissionMode::delayed);
+  double beta = nu_d / nu_t;
+
+  if (prn(seed) < beta) {
+    // ====================================================================
+    // DELAYED NEUTRON SAMPLED
+
+    // sampled delayed precursor group
+    double xi = prn(seed) * nu_d;
+    double prob = 0.0;
+    int group;
+    for (group = 1; group < nuc->n_precursor_; ++group) {
+      // determine delayed neutron precursor yield for group j
+      double yield = (*rx.products_[group].yield_)(E_in);
+
+      // Check if this group is sampled
+      prob += yield;
+      if (xi < prob)
+        break;
+    }
+
+    // if the sum of the probabilities is slightly less than one and the
+    // random number is greater, j will be greater than nuc %
+    // n_precursor -- check for this condition
+    group = std::min(group, nuc->n_precursor_);
+
+    // set the delayed group for the particle born from fission
+    site->delayed_group = group;
+
+  } else {
+    // ====================================================================
+    // PROMPT NEUTRON SAMPLED
+
+    // set the delayed group for the particle born from fission to 0
+    site->delayed_group = 0;
+  }
+
+  // sample from prompt neutron energy distribution
+  int n_sample = 0;
+  double mu;
+  while (true) {
+    // erase previous elemts bc they were rejected.
+    mu_cm.clear();
+    Js.clear();
+    pdfs_lab.clear();
+    ghost_particles.clear();
+    double E_out;
+    rx.products_[site->delayed_group].get_pdf(
+      i_tally, E_in, E_out, seed, p, mu_cm, Js, ghost_particles, pdfs_lab);
+
+    // resample if energy is greater than maximum neutron energy
+    constexpr int neutron = static_cast<int>(ParticleType::neutron);
+    if (E_out < data::energy_max[neutron])
+      break;
+
+    // check for large number of resamples
+    ++n_sample;
+    if (n_sample == MAX_SAMPLE) {
+      // particle_write_restart(p)
+      fatal_error("Resampled energy distribution maximum number of times "
+                  "for nuclide " +
+                  nuc->name_);
+    }
+  }
+  // starting scoring loop on ghost particles
+
+  for (size_t index = 0; index < ghost_particles.size(); ++index) {
+    auto& ghost_p = ghost_particles[index];
+    double pdf_lab = pdfs_lab[index];
+    score_ghost_particle(ghost_p, pdf_lab, i_tally);
+
+  } // for loop on ghost particles
+}
+
 void inelastic_scatter(const Nuclide& nuc, const Reaction& rx, Particle& p)
 {
+  p.v_t() = {0, 0, 0};
   // copy energy of neutron
   double E_in = p.E();
 

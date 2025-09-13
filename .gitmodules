@@ -13,3 +13,6 @@
 [submodule "vendor/Catch2"]
 	path = vendor/Catch2
 	url = https://github.com/catchorg/Catch2.git
+[submodule "vendor/gsl-lite"]
+    path = vendor/gsl-lite
+    url = https://github.com/gsl-lite/gsl-lite.git

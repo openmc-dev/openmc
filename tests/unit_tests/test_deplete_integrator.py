@@ -44,6 +44,8 @@ def test_results_save(run_in_tmpdir):
 
     # Mock geometry
     op = MagicMock()
+    
+    op.chain = dummy_operator.TestChain()
 
     # Avoid DummyOperator thinking it's doing a restart calculation
     op.prev_res = None

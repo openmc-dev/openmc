@@ -135,11 +135,12 @@ def test_zam():
         openmc.data.zam('Am242-m1')
 
 def test_half_life():
-    assert openmc.data.half_life('H2') is None
-    assert openmc.data.half_life('U235') == pytest.approx(2.22102e16)
-    assert openmc.data.half_life('Am242') == pytest.approx(57672.0)
-    assert openmc.data.half_life('Am242_m1') == pytest.approx(4449622000.0)
-    assert openmc.data.decay_constant('H2') == 0.0
-    assert openmc.data.decay_constant('U235') == pytest.approx(log(2.0)/2.22102e16)
-    assert openmc.data.decay_constant('Am242') == pytest.approx(log(2.0)/57672.0)
+    with openmc.config.patch('chain_file', None):
+        assert openmc.data.half_life('H2') is None
+        assert openmc.data.half_life('U235') == pytest.approx(2.22102e16)
+        assert openmc.data.half_life('Am242') == pytest.approx(57672.0)
+        assert openmc.data.half_life('Am242_m1') == pytest.approx(4449622000.0)
+        assert openmc.data.decay_constant('H2') == 0.0
+        assert openmc.data.decay_constant('U235') == pytest.approx(log(2.0)/2.22102e16)
+        assert openmc.data.decay_constant('Am242') == pytest.approx(log(2.0)/57672.0)
     assert openmc.data.decay_constant('Am242_m1') == pytest.approx(log(2.0)/4449622000.0)

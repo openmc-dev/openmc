@@ -343,6 +343,125 @@ class Nuclide:
                 self.yield_data.to_xml_element(fpy_elem)
 
         return elem
+        
+    @classmethod
+    def from_hdf5(cls, group, name, fission_q=None):
+        """Read nuclide from a hdf5 group.
+
+        Parameters
+        ----------
+        group : h5py.Group
+            hdf5 group to read nuclide data from
+        fission_q : None or float
+            User-supplied fission Q value [eV].
+            Will be read from the group if not given
+
+        Returns
+        -------
+        nuc : openmc.deplete.Nuclide
+            Instance of a nuclide
+
+        """
+        nuc = cls()
+        nuc.name = name
+
+        # Check for half-life
+        if "decay" in group[name]:
+            nuc.half_life = float(group[name]["decay"].attrs["half_life"])
+            nuc.decay_energy = float(group[name]["decay"].attrs.get("decay_energy", 0.0))
+            
+            # Check for decay paths
+            for dgroup in group[name]["decay"].values():
+                d_type = dgroup.attrs["type"]
+                target = dgroup.attrs.get("target")
+                if target is not None and target.lower() == "nothing":
+                     target = None
+                branching_ratio = float(dgroup.attrs.get("branching_ratio", 1.0))
+                nuc.decay_modes.append(DecayTuple(d_type, target, branching_ratio))
+
+        # Check for sources
+        if "sources" in group[name]:
+            for particle, sgroup in group[name]["sources"].items():
+                distribution = Univariate.from_hdf5(sgroup)
+                nuc.sources[particle] = distribution
+
+        # Check for reaction paths
+        if "reactions" in group[name]:
+            for rgroup in group[name]["reactions"].values():
+                r_type = rgroup.attrs["type"]
+                Q = rgroup.attrs.get("Q", 0.0)
+                branching_ratio = rgroup.attrs.get("branching_ratio", 1.0)
+
+                # If the type is not fission, get target and Q value, otherwise
+                # just set null values
+                if r_type != 'fission':
+                    target = rgroup.attrs.get("target")
+                    if target is not None and target.lower() == "nothing":
+                        target = None
+                else:
+                    target = None
+                    if fission_q is not None:
+                        Q = fission_q
+
+                # Append reaction
+                nuc.reactions.append(ReactionTuple(
+                    r_type, target, Q, branching_ratio))
+
+        if "neutron_fission_yields" in group[name]:
+            parent = group[name]["neutron_fission_yields"].attrs.get("parent")
+            if parent is not None:
+                if "neutron_fission_yields" not in group[parent]:
+                    raise ValueError(
+                        "Fission product yields for {0} borrow from {1}, but {1} is"
+                        " not present in the chain file or has no yields.".format(
+                            name, parent
+                        ))
+                nuc.yield_data = FissionYieldDistribution.from_hdf5(group[parent]["neutron_fission_yields"])
+                nuc._fpy = parent
+            else:
+                nuc.yield_data = FissionYieldDistribution.from_hdf5(group[name]["neutron_fission_yields"])
+        return nuc
+        
+    def to_hdf5(self, group):
+        """Write nuclide to hdf5."""
+        group = group.create_group(self.name)
+        
+        if self.half_life is not None:
+            dec_group = group.create_group("decay")
+            dec_group.attrs['half_life'] = self.half_life
+            dec_group.attrs['decay_energy'] = self.decay_energy
+            
+            for i, (mode_type, daughter, br) in enumerate(self.decay_modes):
+                mgroup = dec_group.create_group(f"mode_{i:01d}")
+                mgroup.attrs["type"] = mode_type
+                if daughter:
+                    mgroup.attrs["target"] = daughter
+                mgroup.attrs["branching_ratio"] = br
+
+        # Write decay sources
+        if self.sources:
+            sources_group = group.create_group("sources")
+            for particle, source in self.sources.items():
+                pgroup = sources_group.create_group(particle)
+                source.to_hdf5(pgroup)
+  
+        reac_group = group.create_group("reactions")
+        for i, (rx, daughter, Q, br) in enumerate(self.reactions):
+            rgroup = reac_group.create_group(f"reaction_{i:03d}")
+            rgroup.attrs["type"] = rx
+            rgroup.attrs["Q"] = Q
+            if daughter is not None:
+                rgroup.attrs["target"] = daughter
+            if br != 1.0:
+                rgroup.attrs["branching_ratio"] = br
+
+        if self.yield_data:
+            nfy_group = group.create_group("neutron_fission_yields")
+            if hasattr(self, '_fpy'):
+                # Check for link to other nuclide data
+                nfy_group.attrs["parent"] = self._fpy
+            else:
+                self.yield_data.to_hdf5(nfy_group)
 
     def validate(self, strict=True, quiet=False, tolerance=1e-4):
         """Search for possible inconsistencies
@@ -554,6 +673,25 @@ class FissionYieldDistribution(Mapping):
             product_elem.text = " ".join(map(str, yield_obj.products))
             data_elem = ET.SubElement(yield_element, "data")
             data_elem.text = " ".join(map(str, yield_obj.yields))
+            
+    @classmethod
+    def from_hdf5(cls, group):
+        all_yields = {}
+        for egroup in group.values():
+            energy = egroup.attrs["energy"]
+            products = egroup["products"][()]
+            yields = egroup["yields"][()]
+            # Get a map of products to their corresponding yield
+            all_yields[energy] = dict(zip(products, yields))
+
+        return cls(all_yields)
+
+    def to_hdf5(self, group):
+        for energy, yield_obj in self.items():
+            egroup = group.create_group(f"{energy}eV")
+            egroup.attrs["energy"] = energy
+            egroup.create_dataset("products", data = yield_obj.products)
+            egroup.create_dataset("yields", data = yield_obj.yields)
 
     def restrict_products(self, possible_products):
         """Return a new distribution with select products

@@ -22,6 +22,7 @@ from openmc.checkvalue import check_type, check_greater_than, PathLike
 from openmc.data import gnds_name, zam
 from openmc.exceptions import DataError
 from .nuclide import FissionYieldDistribution, Nuclide
+from ..mixin import EqualityMixin
 from .._xml import get_text
 import openmc.data
 
@@ -229,7 +230,7 @@ def replace_missing_fpy(actinide, fpy_data, decay_data):
     return 'U235'
 
 
-class Chain:
+class Chain(EqualityMixin):
     """Full representation of a depletion chain.
 
     A depletion chain can be created by using the :meth:`from_endf` method which
@@ -580,6 +581,50 @@ class Chain:
 
         tree = ET.ElementTree(root_elem)
         tree.write(str(filename), encoding='utf-8', pretty_print=True)
+        
+    @classmethod
+    def from_hdf5(cls, group, fission_q=None):
+        """Reads a depletion chain XML file.
+
+        Parameters
+        ----------
+        group : str
+            The hdf5 group to read depletion chain from.
+        fission_q : dict, optional
+            Dictionary of nuclides and their fission Q values [eV].
+            If not given, values will be pulled from ``filename``
+
+        """
+        cgroup = group["depletion_chain"]
+        if fission_q is not None:
+            check_type("fission_q", fission_q, Mapping)
+        else:
+            fission_q = {}
+        if "path" in cgroup.attrs:
+            path = Path(__file__).resolve().parent.joinpath(cgroup.attrs["path"])
+            return Chain.from_xml(path, fission_q)
+        else:
+            chain = cls()
+            nuc_group = cgroup["nuclides"]
+            for name, ngroup in nuc_group.items():
+                this_q = fission_q.get(name)
+                nuc = Nuclide.from_hdf5(nuc_group, name, this_q)
+                chain.add_nuclide(nuc)
+        
+    def to_hdf5(self, group):
+        cgroup = group.create_group("depletion_chain")
+        if hasattr(self, "_xml_path"):
+            path = Path(self._xml_path)
+            if openmc.config["resolve_paths"]:
+                path = path.resolve()
+            else:
+                path = path.relative_to(Path(__file__).resolve().parent, walk_up=True)
+            cgroup.attrs["path"] = str(path)
+        else:
+            nuc_group = cgroup.create_group("nuclides")
+            for nuclide in self.nuclides:
+                nuclide.to_hdf5(nuc_group)
+        
 
     def get_default_fission_yields(self):
         """Return fission yields at lowest incident neutron energy

@@ -2,11 +2,13 @@ import numbers
 import bisect
 import math
 from collections.abc import Iterable
+from pathlib import Path
 from warnings import warn
 
 import h5py
 import numpy as np
 
+from .chain import Chain
 from .stepresult import StepResult, VERSION_RESULTS
 import openmc.checkvalue as cv
 from openmc.data import atomic_mass, AVOGADRO
@@ -69,6 +71,8 @@ class Results(list):
             with h5py.File(str(filename), "r") as fh:
                 cv.check_filetype_version(fh, 'depletion results', VERSION_RESULTS[0])
 
+                self.chain = Chain.from_hdf5(fh)
+                
                 # Get number of results stored
                 n = fh["number"][...].shape[0]
 
@@ -149,7 +153,7 @@ class Results(list):
         # Evaluate activity for each depletion time
         for i, result in enumerate(self):
             times[i] = result.time[0]
-            activities[i] = result.get_material(mat_id).get_activity(units, by_nuclide, volume)
+            activities[i] = result.get_material(mat_id).get_activity(units, by_nuclide, volume, chain_file = self.chain)
 
         return times, activities
 
@@ -268,7 +272,7 @@ class Results(list):
         for i, result in enumerate(self):
             times[i] = result.time[0]
             decay_heat[i] = result.get_material(mat_id).get_decay_heat(
-                units, by_nuclide, volume)
+                units, by_nuclide, volume, chain_file = self.chain)
 
         return times, decay_heat
 

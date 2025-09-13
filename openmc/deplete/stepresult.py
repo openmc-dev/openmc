@@ -12,6 +12,7 @@ import h5py
 import numpy as np
 
 import openmc
+import openmc.checkvalue as cv
 from openmc.mpi import comm, MPI
 from openmc.checkvalue import PathLike
 from .reaction_rates import ReactionRates
@@ -252,7 +253,7 @@ class StepResult:
 
         """
         # Write new file if first time step, else add to existing file
-        kwargs = {'mode': "w" if step == 0 else "a"}
+        kwargs = {'mode': "a"}
 
         if h5py.get_config().mpi and comm.size > 1:
             # Write results in parallel
@@ -567,6 +568,25 @@ class StepResult:
 
         if not Path(path).is_file():
             Path(path).parent.mkdir(parents=True, exist_ok=True)
+        
+        filename = str(path)
+        
+        if step_ind == 0:    
+            # Write new file if first time step, else add to existing file
+            kwargs = {'mode': "w"}
+
+            if h5py.get_config().mpi and comm.size > 1:
+                # Write results in parallel
+                kwargs['driver'] = 'mpio'
+                kwargs['comm'] = comm
+                with h5py.File(filename, **kwargs) as handle:
+                    op.chain.to_hdf5(handle)
+            else:
+                # Only root process writes depletion chain
+                if comm.rank == 0:
+                    with h5py.File(filename, **kwargs) as handle:
+                        op.chain.to_hdf5(handle)
+                                    
         results.export_to_hdf5(path, step_ind)
 
     def transfer_volumes(self, model):

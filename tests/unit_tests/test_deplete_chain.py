@@ -54,11 +54,11 @@ def simple_chain():
 
 
 @pytest.fixture(scope='module')
-def endf_chain():
-    endf_data = Path(os.environ['OPENMC_ENDF_DATA'])
-    decay_data = (endf_data / 'decay').glob('*.endf')
-    fpy_data = (endf_data / 'nfy').glob('*.endf')
-    neutron_data = (endf_data / 'neutrons').glob('*.endf')
+def endf_chain(endf_data):
+    endf_dir = Path(endf_data)
+    decay_data = (endf_dir / 'decay').glob('*.endf')
+    fpy_data = (endf_dir / 'nfy').glob('*.endf')
+    neutron_data = (endf_dir / 'neutrons').glob('*.endf')
     return Chain.from_endf(decay_data, fpy_data, neutron_data)
 
 

@@ -93,6 +93,16 @@ void score_analog_tally_mg(Particle& p, const vector<int>& tallies);
 //! \param distance The distance in [cm] traveled by the particle
 void score_tracklength_tally(Particle& p, double distance);
 
+//! Score time filtered tallies using a tracklength estimate of the flux.
+//
+//! This is triggered at every event (surface crossing, lattice crossing, or
+//! collision) and thus cannot be done for tallies that require post-collision
+//! information.
+//
+//! \param p The particle being tracked
+//! \param total_distance The distance in [cm] traveled by the particle
+void score_timed_tracklength_tally(Particle& p, double total_distance);
+
 //! Score surface or mesh-surface tallies for particle currents.
 //
 //! \param p The particle being tracked

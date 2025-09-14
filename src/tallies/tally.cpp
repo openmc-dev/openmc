@@ -27,10 +27,12 @@
 #include "openmc/tallies/filter_legendre.h"
 #include "openmc/tallies/filter_mesh.h"
 #include "openmc/tallies/filter_meshborn.h"
+#include "openmc/tallies/filter_meshmaterial.h"
 #include "openmc/tallies/filter_meshsurface.h"
 #include "openmc/tallies/filter_particle.h"
 #include "openmc/tallies/filter_sph_harm.h"
 #include "openmc/tallies/filter_surface.h"
+#include "openmc/tallies/filter_time.h"
 #include "openmc/xml_interface.h"
 
 #include "xtensor/xadapt.hpp"
@@ -38,9 +40,10 @@
 #include "xtensor/xview.hpp"
 #include <fmt/core.h>
 
-#include <algorithm> // for max
+#include <algorithm> // for max, set_union
 #include <cassert>
-#include <cstddef> // for size_t
+#include <cstddef>  // for size_t
+#include <iterator> // for back_inserter
 #include <string>
 
 namespace openmc {
@@ -57,11 +60,13 @@ vector<int> active_tallies;
 vector<int> active_analog_tallies;
 vector<int> active_particleout_analog_tallies;
 vector<int> active_tracklength_tallies;
+vector<int> active_timed_tracklength_tallies;
 vector<int> active_collision_tallies;
 vector<int> active_meshsurf_tallies;
 vector<int> active_surface_tallies;
 vector<int> active_pulse_height_tallies;
 vector<int> pulse_height_cells;
+vector<double> time_grid;
 } // namespace model
 
 namespace simulation {
@@ -245,8 +250,8 @@ Tally::Tally(pugi::xml_node node)
     for (int score : scores_) {
       switch (score) {
       case SCORE_PULSE_HEIGHT:
-        fatal_error(
-          "For pulse-height tallies, photon transport needs to be activated.");
+        fatal_error("For pulse-height tallies, photon transport needs to be "
+                    "activated.");
         break;
       }
     }
@@ -495,9 +500,9 @@ void Tally::add_filter(Filter* filter)
 
 void Tally::set_strides()
 {
-  // Set the strides.  Filters are traversed in reverse so that the last filter
-  // has the shortest stride in memory and the first filter has the longest
-  // stride.
+  // Set the strides.  Filters are traversed in reverse so that the last
+  // filter has the shortest stride in memory and the first filter has the
+  // longest stride.
   auto n = filters_.size();
   strides_.resize(n, 0);
   int stride = 1;
@@ -553,7 +558,8 @@ void Tally::set_scores(const vector<std::string>& scores)
 
   // Iterate over the given scores.
   for (auto score_str : scores) {
-    // Make sure a delayed group filter wasn't used with an incompatible score.
+    // Make sure a delayed group filter wasn't used with an incompatible
+    // score.
     if (delayedgroup_filter_ != C_NONE) {
       if (score_str != "delayed-nu-fission" && score_str != "decay-rate")
         fatal_error("Cannot tally " + score_str + "with a delayedgroup filter");
@@ -986,8 +992,8 @@ void reduce_tally_results()
     }
   }
 
-  // Note that global tallies are *always* reduced even when no_reduce option is
-  // on.
+  // Note that global tallies are *always* reduced even when no_reduce option
+  // is on.
 
   // Get view of global tally values
   auto& gt = simulation::global_tallies;
@@ -1066,22 +1072,60 @@ void accumulate_tallies()
   }
 }
 
+double distance_to_time_boundary(double time, double speed)
+{
+  if (model::time_grid.empty()) {
+    return INFTY;
+  } else if (time >= model::time_grid.back()) {
+    return INFTY;
+  } else {
+    double next_time =
+      *std::upper_bound(model::time_grid.begin(), model::time_grid.end(), time);
+    return (next_time - time) * speed;
+  }
+}
+
+//! Add new points to the global time grid
+//
+//! \param grid Vector of new time points to add
+void add_to_time_grid(vector<double> grid)
+{
+  if (grid.empty())
+    return;
+
+  // Create new vector with enough space to hold old and new grid points
+  vector<double> merged;
+  merged.reserve(model::time_grid.size() + grid.size());
+
+  // Merge and remove duplicates
+  std::set_union(model::time_grid.begin(), model::time_grid.end(), grid.begin(),
+    grid.end(), std::back_inserter(merged));
+
+  // Swap in the new grid
+  model::time_grid.swap(merged);
+}
+
 void setup_active_tallies()
 {
   model::active_tallies.clear();
   model::active_analog_tallies.clear();
   model::active_particleout_analog_tallies.clear();
   model::active_tracklength_tallies.clear();
+  model::active_timed_tracklength_tallies.clear();
   model::active_collision_tallies.clear();
   model::active_meshsurf_tallies.clear();
   model::active_surface_tallies.clear();
   model::active_pulse_height_tallies.clear();
+  model::time_grid.clear();
 
   for (auto i = 0; i < model::tallies.size(); ++i) {
     const auto& tally {*model::tallies[i]};
 
     if (tally.active_) {
       model::active_tallies.push_back(i);
+      bool mesh_present = (tally.get_filter<MeshFilter>() ||
+                           tally.get_filter<MeshMaterialFilter>());
+      auto time_filter = tally.get_filter<TimeFilter>();
       bool particleout_present = tally.has_filter(FilterType::PARTICLE_OUT);
       switch (tally.type_) {
 
@@ -1093,7 +1137,12 @@ void setup_active_tallies()
             model::active_particleout_analog_tallies.push_back(i);
           break;
         case TallyEstimator::TRACKLENGTH:
-          model::active_tracklength_tallies.push_back(i);
+          if (time_filter && mesh_present) {
+            model::active_timed_tracklength_tallies.push_back(i);
+            add_to_time_grid(time_filter->bins());
+          } else {
+            model::active_tracklength_tallies.push_back(i);
+          }
           break;
         case TallyEstimator::COLLISION:
           model::active_collision_tallies.push_back(i);
@@ -1130,10 +1179,12 @@ void free_memory_tally()
   model::active_analog_tallies.clear();
   model::active_particleout_analog_tallies.clear();
   model::active_tracklength_tallies.clear();
+  model::active_timed_tracklength_tallies.clear();
   model::active_collision_tallies.clear();
   model::active_meshsurf_tallies.clear();
   model::active_surface_tallies.clear();
   model::active_pulse_height_tallies.clear();
+  model::time_grid.clear();
 
   model::tally_map.clear();
 }
@@ -1472,8 +1523,8 @@ extern "C" int openmc_tally_get_n_realizations(int32_t index, int32_t* n)
   return 0;
 }
 
-//! \brief Returns a pointer to a tally results array along with its shape. This
-//! allows a user to obtain in-memory tally results from Python directly.
+//! \brief Returns a pointer to a tally results array along with its shape.
+//! This allows a user to obtain in-memory tally results from Python directly.
 extern "C" int openmc_tally_results(
   int32_t index, double** results, size_t* shape)
 {

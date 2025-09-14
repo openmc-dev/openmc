@@ -252,6 +252,11 @@ void Particle::event_advance()
   this->time() += dt;
   this->lifetime() += dt;
 
+  // Score timed track-length tallies
+  if (!model::active_timed_tracklength_tallies.empty()) {
+    score_timed_tracklength_tally(*this, distance);
+  }
+
   // Score track-length tallies
   if (!model::active_tracklength_tallies.empty()) {
     score_tracklength_tally(*this, distance);
@@ -544,7 +549,8 @@ void Particle::cross_surface(const Surface& surf)
 #endif
 
   // Handle any applicable boundary conditions.
-  if (surf.bc_ && settings::run_mode != RunMode::PLOTTING) {
+  if (surf.bc_ && settings::run_mode != RunMode::PLOTTING &&
+      settings::run_mode != RunMode::VOLUME) {
     surf.bc_->handle_particle(*this, surf);
     return;
   }

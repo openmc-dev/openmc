@@ -2175,7 +2175,6 @@ class Model:
         x_min: float | None = None,
         x_max: float | None = None,
         b0: int | None = None,
-        b1: int | None = None,
         b_min: int = 20,
         b_max: int | None = None,
         maxiter: int = 50,
@@ -2222,11 +2221,8 @@ class Model:
         x_max : float, optional
             Maximum allowed value for the parameter ``x``.
         b0 : int, optional
-            Number of active batches to use in the first function evaluation. If
-            None, uses the model's current setting.
-        b1 : int, optional
-            Number of active batches to use in the second function evaluation.
-            If None, uses the model's current setting.
+            Number of active batches to use for the initial function
+            evaluations. If None, uses the model's current setting.
         b_min : int, optional
             Minimum number of active batches to use in a function evaluation.
         b_max : int, optional
@@ -2298,11 +2294,9 @@ class Model:
             gs.append(int(batches))
             return fs[-1], ss[-1]
 
-        # Default b0/b1 to current model settings if not explicitly provided
+        # Default b0 to current model settings if not explicitly provided
         if b0 is None:
             b0 = self.settings.batches - self.settings.inactive
-        if b1 is None:
-            b1 = self.settings.batches - self.settings.inactive
 
         # Perform the search (inlined GRsecant) in a temporary directory
         with TemporaryDirectory() as tmpdir:
@@ -2313,7 +2307,7 @@ class Model:
             f0, s0 = eval_at(x0, b0)
             if abs(f0) <= k_tol and s0 <= sigma_final:
                 return SearchResult(x0, xs, fs, ss, gs, True, "converged")
-            f1, s1 = eval_at(x1, b1)
+            f1, s1 = eval_at(x1, b0)
             if abs(f1) <= k_tol and s1 <= sigma_final:
                 return SearchResult(x1, xs, fs, ss, gs, True, "converged")
 

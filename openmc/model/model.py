@@ -2238,7 +2238,8 @@ class Model:
         func_kwargs : dict, optional
             Keyword-based arguments to pass to the `func` function.
         run_kwargs : dict, optional
-            Keyword arguments to pass to :meth:`openmc.Model.run`.
+            Keyword arguments to pass to :meth:`openmc.Model.run` or
+            :meth:`openmc.lib.run`.
 
         Returns
         -------
@@ -2248,6 +2249,7 @@ class Model:
             batches), plus convergence status and termination reason.
 
         """
+        import openmc.lib
 
         check_type('model modifier', func, Callable)
         check_type('target', target, Real)
@@ -2270,18 +2272,25 @@ class Model:
             # Modify the model with the current guess
             func(x, **func_kwargs)
 
-            # Change the number of batches
-            self.settings.batches = self.settings.inactive + batches
+            # Change the number of batches and run the model
+            batches = self.settings.inactive + batches
+            if openmc.lib.is_initialized:
+                openmc.lib.settings.set_batches(batches)
+                openmc.lib.reset()
+                openmc.lib.run(**run_kwargs)
+                sp_filepath = f'statepoint.{batches}.h5'
+            else:
+                self.settings.batches = batches
+                sp_filepath = self.run(**run_kwargs)
 
-            # Run the model and obtain keff
-            sp_filepath = self.run(**run_kwargs)
+            # Extract keff and its uncertainty
             with openmc.StatePoint(sp_filepath) as sp:
                 keff = sp.keff
 
             if output:
                 nonlocal count
                 count += 1
-                print(f'Iteration {count}: {batches=}, {x=:.2e}, {keff=:.5f}')
+                print(f'Iteration {count}: {batches=}, {x=:.6g}, {keff=:.5f}')
 
             xs.append(float(x))
             fs.append(float(keff.n - target))
@@ -2297,7 +2306,8 @@ class Model:
 
         # Perform the search (inlined GRsecant) in a temporary directory
         with TemporaryDirectory() as tmpdir:
-            run_kwargs.setdefault('cwd', tmpdir)
+            if not openmc.lib.is_initialized:
+                run_kwargs.setdefault('cwd', tmpdir)
 
             # ---- Seed with two evaluations
             f0, s0 = eval_at(x0, b0)
@@ -2307,7 +2317,7 @@ class Model:
             if abs(f1) <= k_tol and s1 <= sigma_final:
                 return SearchResult(x1, xs, fs, ss, gs, True, "converged")
 
-            for _ in range(maxiter):
+            for _ in range(maxiter - 2):
                 # ------ Step 1: propose next x via GRsecant
                 m = min(memory, len(xs))
 

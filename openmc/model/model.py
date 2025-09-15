@@ -2170,7 +2170,7 @@ class Model:
         k_tol: float = 1e-4,
         sigma_final: float = 3e-4,
         p: float = 0.5,
-        sigma_factor: float = 0.95,
+        q: float = 0.95,
         memory: int = 4,
         x_min: float | None = None,
         x_max: float | None = None,
@@ -2182,7 +2182,7 @@ class Model:
         func_kwargs: dict[str, Any] | None = None,
         run_kwargs: dict[str, Any] | None = None,
     ) -> SearchResult:
-        """Perform a keff search on a model parametrized by a single variable.
+        r"""Perform a keff search on a model parametrized by a single variable.
 
         This method uses the GRsecant method described in a paper by `Price and
         Roskoff <https://doi.org/10.1016/j.pnucene.2023.104731>`_. The GRsecant
@@ -2191,6 +2191,17 @@ class Model:
         linear fit of the most recent function evaluations to predict the next
         point to evaluate. It also adaptively changes the number of batches to
         meet the target uncertainty value at each iteration.
+
+        The target uncertainty for iteration :math:`n+1` is determined by the
+        following equation (following Eq. (8) in the paper):
+
+        .. math::
+            \sigma_{i+1} = q \sigma_\text{final} \left ( \frac{ \min \left \{
+            \left\lvert k_i - k_\text{target} \right\rvert : k=0,1,\dots,n
+            \right \} }{k_\text{tol}} \right )^p
+
+        where :math:`q` is a multiplicative factor less than 1, given as the
+        ``sigma_factor`` parameter below.
 
         Parameters
         ----------
@@ -2207,12 +2218,11 @@ class Model:
             Stopping criterion on the function value; the absolute value must be
             within ``k_tol`` of zero to be accepted.
         sigma_final : float, optional
-            Maximum accepted uncertainty in ``f(x)`` for the Eq. 8 stopping
-            criterion.
+            Maximum accepted k-effective uncertainty for the stopping criterion.
         p : float, optional
-            Exponent used in the Eq. 8 stopping criterion.
-        sigma_factor : float, optional
-            Multiplicative factor used in the Eq. 8 stopping criterion.
+            Exponent used in the stopping criterion.
+        q : float, optional
+            Multiplicative factor used in the stopping criterion.
         memory : int, optional
             Number of most-recent points used in the weighted linear fit of
             ``f(x) = a + b x`` to predict the next point.
@@ -2263,7 +2273,6 @@ class Model:
         count = 0
 
         # Helper function to evaluate f and store results
-        # TODO: Support use of openmc.lib
         def eval_at(x: float, batches: int) -> tuple[float, float]:
             # Modify the model with the current guess
             func(x, **func_kwargs)
@@ -2333,7 +2342,7 @@ class Model:
                 # ------ Step 2: choose target σ for next run (Eq. 8 + clamp)
 
                 min_abs_f = float(np.min(np.abs(fs)))
-                base = sigma_factor * sigma_final
+                base = q * sigma_final
                 ratio = min_abs_f / k_tol if k_tol > 0 else 1.0
                 sig = base * (ratio ** p)
                 sig_target = max(sig, base)

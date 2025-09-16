@@ -966,10 +966,11 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
                 score = p.wgt_last();
                 if (tally.delayedgroup_filter_ != C_NONE) {
                   auto i_dg_filt = tally.filters()[tally.delayedgroup_filter_];
-                  const DelayedGroupFilter& filt {*dynamic_cast<DelayedGroupFilter*>(
+                  const DelayedGroupFilter& filt {
+                    *dynamic_cast<DelayedGroupFilter*>(
                       model::tally_filters[i_dg_filt].get())};
-                  score_fission_delayed_dg(
-                      i_tally, delayed_groups[0] - 1, score, score_index, p.filter_matches());
+                  score_fission_delayed_dg(i_tally, delayed_groups[0] - 1,
+                    score, score_index, p.filter_matches());
                   continue;
                 }
               }

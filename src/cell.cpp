@@ -271,8 +271,9 @@ void Cell::import_properties_hdf5(hid_t group)
     }
 
     // Set densities.
-    for (int32_t i = 0; i < n_density; ++i)
-      set_density(density[i], i);
+    for (int32_t i = 0; i < n_density; ++i) {
+      this->set_density(density[i], i);
+    }
   }
 
   close_group(cell_group);

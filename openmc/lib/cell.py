@@ -244,12 +244,12 @@ class Cell(_FortranObjectWithID):
 
         _dll.openmc_cell_set_temperature(self._index, T, instance, set_contained)
 
-    def get_density(self, instance=None):
-        """Get the density of a cell (g/cc)
+    def get_density(self, instance: int | None = None):
+        """Get the density of a cell in [g/cm3]
 
         Parameters
         ----------
-        instance: int or None
+        instance : int or None
             Which instance of the cell
 
         """
@@ -261,16 +261,17 @@ class Cell(_FortranObjectWithID):
         _dll.openmc_cell_get_density(self._index, instance, rho)
         return rho.value
 
-    def set_density(self, rho, instance=None, set_contained=False):
+    def set_density(self, rho: float, instance: int | None = None,
+                    set_contained: bool = False):
         """Set the density of a cell
 
         Parameters
         ----------
         rho : float
-            Density of the cell (g/cc)
+            Density of the cell in [g/cm3]
         instance : int or None
             Which instance of the cell
-        set_contained: bool
+        set_contained : bool
             If cell is not filled by a material, whether to set the density
             of all filled cells
 

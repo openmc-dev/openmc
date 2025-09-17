@@ -559,7 +559,7 @@ void Particle::cross_surface(const Surface& surf)
     int32_t i_cell = next_cell(surface_index(), cell_last(n_coord() - 1),
                        lowest_coord().universe()) -
                      1;
-    // save material, temp and density multiplier
+    // save material, temperature, and density multiplier
     material_last() = material();
     sqrtkT_last() = sqrtkT();
     density_mult_last() = density_mult();

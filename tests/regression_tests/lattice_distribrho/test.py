@@ -3,9 +3,10 @@ import pytest
 
 from tests.testing_harness import PyAPITestHarness
 
+
 @pytest.fixture
 def model():
-    model = openmc.model.Model()
+    model = openmc.Model()
 
     uo2 = openmc.Material(name='UO2')
     uo2.set_density('g/cm3', 10.0)
@@ -27,11 +28,15 @@ def model():
     lattice.pitch = (d, d)
     lattice.universes = [[pin, pin],
                          [pin, pin]]
-    box = openmc.model.RectangularPrism(2.0 * d, 2.0 * d, origin=(0.0,0.0), boundary_type='reflective')
+    box = openmc.model.RectangularPrism(
+        2.0 * d, 2.0 * d,
+        origin=(0.0, 0.0),
+        boundary_type='reflective'
+    )
 
     pin.cells[1].density = [10.0, 20.0, 10.0, 20.0]
 
-    model.geometry = openmc.Geometry([openmc.Cell(fill=lattice, region = -box)])
+    model.geometry = openmc.Geometry([openmc.Cell(fill=lattice, region=-box)])
     model.geometry.merge_surfaces = True
 
     model.settings.batches = 10
@@ -39,6 +44,7 @@ def model():
     model.settings.particles = 1000
 
     return model
+
 
 def test_lattice_checkerboard(model):
     harness = PyAPITestHarness('statepoint.10.h5', model)

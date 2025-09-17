@@ -73,7 +73,7 @@ class Cell(IDManagerMixin):
         Temperature of the cell in Kelvin.  Multiple temperatures can be given
         to give each distributed cell instance a unique temperature.
     density : float or iterable of float
-        Density of the cell in g/cm3. Multiple densities can be given to give
+        Density of the cell in [g/cm3]. Multiple densities can be given to give
         each distributed cell instance a unique density. Densities set here will
         override the density set on materials used to fill the cell.
     translation : Iterable of float
@@ -684,8 +684,7 @@ class Cell(IDManagerMixin):
 
         if self.density is not None:
             if isinstance(self.density, Iterable):
-                element.set("density", ' '.join(
-                    str(t) for t in self.density))
+                element.set("density", ' '.join(str(t) for t in self.density))
             else:
                 element.set("density", str(self.density))
 
@@ -752,10 +751,7 @@ class Cell(IDManagerMixin):
                 c.temperature = temperature[0]
         density = get_elem_list(elem, 'density', float)
         if density is not None:
-            if len(density) > 1:
-                c.density = density
-            else:
-                c.density = density[0]
+            c.density = density if len(density) > 1 else density[0]
         v = get_text(elem, 'volume')
         if v is not None:
             c.volume = float(v)

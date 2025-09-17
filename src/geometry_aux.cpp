@@ -200,8 +200,9 @@ void finalize_cell_densities()
   for (auto& c : model::cells) {
     // Convert to density multipliers.
     if (c->xml_set_density_) {
-      for (int32_t instance = 0; instance < c->rho_mult_.size(); ++instance) {
-        c->rho_mult_[instance] /=
+      for (int32_t instance = 0; instance < c->density_mult_.size();
+           ++instance) {
+        c->density_mult_[instance] /=
           model::materials[c->material(instance)]->density_gpcc();
       }
     }
@@ -378,14 +379,14 @@ void prepare_distribcell(const std::vector<int32_t>* user_distribcells)
       }
     }
 
-    if (c.rho_mult_.size() > 1) {
-      if (c.rho_mult_.size() != c.n_instances()) {
+    if (c.density_mult_.size() > 1) {
+      if (c.density_mult_.size() != c.n_instances()) {
         fatal_error(fmt::format("Cell {} was specified with {} density "
                                 "multipliers but has {} distributed "
                                 "instances. The number of density multipliers "
                                 "must equal one or the number "
                                 "of instances.",
-          c.id_, c.rho_mult_.size(), c.n_instances()));
+          c.id_, c.density_mult_.size(), c.n_instances()));
       }
     }
   }

@@ -4,7 +4,7 @@
 Properties File Format
 ======================
 
-The current version of the properties file format is 1.0.
+The current version of the properties file format is 1.1.
 
 **/**
 

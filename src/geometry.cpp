@@ -177,8 +177,8 @@ bool find_cell_inner(
       p.material() = c.material(p.cell_instance());
       p.sqrtkT_last() = p.sqrtkT();
       p.sqrtkT() = c.sqrtkT(p.cell_instance());
-      p.rho_mult_last() = p.rho_mult();
-      p.rho_mult() = c.density_mult(p.cell_instance());
+      p.density_mult_last() = p.density_mult();
+      p.density_mult() = c.density_mult(p.cell_instance());
 
       return true;
 

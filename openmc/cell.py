@@ -146,8 +146,7 @@ class Cell(IDManagerMixin):
         if self.fill_type == 'material':
             string += '\t{0: <15}=\t{1}\n'.format('Temperature',
                                                   self.temperature)
-            string += '\t{0: <15}=\t{1}\n'.format('Density',
-                                                  self.density)
+            string += '\t{0: <15}=\t{1}\n'.format('Density', self.density)
         string += '{: <16}=\t{}\n'.format('\tTranslation', self.translation)
         string += '{: <16}=\t{}\n'.format('\tVolume', self.volume)
 

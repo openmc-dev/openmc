@@ -84,14 +84,14 @@ Functions
    :return: Return status (negative if an error occurred)
    :rtype: int
 
-.. c:function:: int openmc_cell_get_density(int32_t index, const int32_t* instance, double* rho)
+.. c:function:: int openmc_cell_get_density(int32_t index, const int32_t* instance, double* density)
 
    Get the density of a cell
 
    :param int32_t index: Index in the cells array
    :param int32_t* instance: Which instance of the cell. If a null pointer is passed, the density
                              multiplier of the first instance is returned.
-   :param double* rho: density of the cell in g/cc
+   :param double* density: Density of the cell in [g/cm3]
    :return: Return status (negative if an error occurred)
    :rtype: int
 
@@ -124,22 +124,22 @@ Functions
    :param double T: Temperature in Kelvin
    :param instance: Which instance of the cell. To set the temperature for all
                     instances, pass a null pointer.
-   :param set_contained: If the cell is not filled by a material, whether to set the temperatures
-                         of all filled cells
+   :param bool set_contained: If the cell is not filled by a material, whether
+                              to set the temperatures of all filled cells
    :type instance: const int32_t*
    :return: Return status (negative if an error occurred)
    :rtype: int
 
-.. c:function:: int openmc_cell_set_density(index index, double rho, const int32_t* instance, bool set_contained)
+.. c:function:: int openmc_cell_set_density(index index, double density, const int32_t* instance, bool set_contained)
 
    Set the density of a cell.
 
    :param int32_t index: Index in the cells array
-   :param double rho: Density of the cell in g/cc
+   :param double density: Density of the cell in [g/cm3]
    :param instance: Which instance of the cell. To set the density multiplier for all
                     instances, pass a null pointer.
-   :param set_contained: If the cell is not filled by a material, whether to set the density multiplier
-                         of all filled cells
+   :param bool set_contained: If the cell is not filled by a material, whether
+                              to set the density multiplier of all filled cells
    :type instance: const int32_t*
    :return: Return status (negative if an error occurred)
    :rtype: int

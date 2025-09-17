@@ -219,13 +219,13 @@ public:
   //! Get the density multiplier of a cell instance
   //! \param[in] instance Instance index. If -1 is given, the density multiplier
   //! for the first instance is returned.
-  //! \return Density multiplier [-]
+  //! \return Density multiplier
   double density_mult(int32_t instance = -1) const;
 
   //! Get the density of a cell instance in g/cm3
   //! \param[in] instance Instance index. If -1 is given, the density
   //! for the first instance is returned.
-  //! \return Density multiplier g/cm3
+  //! \return Density in [g/cm3]
   double density(int32_t instance = -1) const;
 
   //! Set the temperature of a cell instance
@@ -239,14 +239,14 @@ public:
     double T, int32_t instance = -1, bool set_contained = false);
 
   //! Set the density of a cell instance
-  //! \param[in] rho Density [g/cm3]
+  //! \param[in] density Density [g/cm3]
   //! \param[in] instance Instance index. If -1 is given, the density
-  //! for all instances is set.
+  //!   for all instances is set.
   //! \param[in] set_contained If this cell is not filled with a material,
   //!   collect all contained cells with material fills and set their
   //!   densities.
   void set_density(
-    double rho, int32_t instance = -1, bool set_contained = false);
+    double density, int32_t instance = -1, bool set_contained = false);
 
   int32_t n_instances() const;
 
@@ -357,7 +357,7 @@ public:
   vector<double> sqrtkT_;
 
   //! \brief Unitless density multiplier(s) within this cell.
-  vector<double> rho_mult_ = {1.0};
+  vector<double> density_mult_ = {1.0};
 
   //! \brief Neighboring cells in the same universe.
   NeighborList neighbors_;
@@ -377,8 +377,8 @@ public:
   // Right now, either CSG or DAGMC cells are used.
   virtual GeometryType geom_type() const = 0;
 
-  //! \brief A flag to indicate if this cell has it's density set in the
-  //! xml file.
+  //! \brief A flag to indicate if this cell has its density set in the XML
+  //! file.
   bool xml_set_density_ = false;
 };
 

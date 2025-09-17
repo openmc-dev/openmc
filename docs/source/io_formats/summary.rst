@@ -4,7 +4,7 @@
 Summary File Format
 ===================
 
-The current version of the summary file format is 6.0.
+The current version of the summary file format is 6.1.
 
 **/**
 

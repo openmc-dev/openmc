@@ -199,12 +199,14 @@ void finalize_cell_densities()
 {
   for (auto& c : model::cells) {
     // Convert to density multipliers.
-    if (c->xml_set_density_) {
+    if (!c->density_mult_.empty()) {
       for (int32_t instance = 0; instance < c->density_mult_.size();
            ++instance) {
         c->density_mult_[instance] /=
           model::materials[c->material(instance)]->density_gpcc();
       }
+    } else {
+      c->density_mult_ = {1.0};
     }
   }
 }

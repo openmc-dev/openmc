@@ -442,7 +442,6 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
   if (check_for_node(cell_node, "density")) {
     density_mult_ = get_node_array<double>(cell_node, "density");
     density_mult_.shrink_to_fit();
-    xml_set_density_ = true;
 
     // Make sure this is a material-filled cell.
     if (material_.size() == 0) {

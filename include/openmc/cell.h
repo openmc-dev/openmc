@@ -357,7 +357,7 @@ public:
   vector<double> sqrtkT_;
 
   //! \brief Unitless density multiplier(s) within this cell.
-  vector<double> density_mult_ = {1.0};
+  vector<double> density_mult_;
 
   //! \brief Neighboring cells in the same universe.
   NeighborList neighbors_;
@@ -376,10 +376,6 @@ public:
 
   // Right now, either CSG or DAGMC cells are used.
   virtual GeometryType geom_type() const = 0;
-
-  //! \brief A flag to indicate if this cell has its density set in the XML
-  //! file.
-  bool xml_set_density_ = false;
 };
 
 struct CellInstanceItem {

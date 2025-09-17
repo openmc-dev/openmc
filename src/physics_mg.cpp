@@ -177,6 +177,10 @@ void create_fission_sites(Particle& p)
       }
     }
 
+    // Set parent and progeny ID
+    site.parent_id = p.id();
+    site.progeny_id = p.n_progeny()++;
+
     // Store fission site in bank
     if (use_fission_bank) {
       int64_t idx = simulation::fission_bank.thread_safe_append(site);
@@ -186,16 +190,17 @@ void create_fission_sites(Particle& p)
           "in this generation will not be banked. Results may be "
           "non-deterministic.");
 
+        // Decrement number of particle progeny as storage was unsuccessful.
+        // This step is needed so that the sum of all progeny is equal to the
+        // size of the shared fission bank.
+        p.n_progeny()--;
+
         // Break out of loop as no more sites can be added to fission bank
         break;
       }
     } else {
       p.secondary_bank().push_back(site);
     }
-
-    // Set parent and progeny ID
-    site.parent_id = p.id();
-    site.progeny_id = p.n_progeny()++;
 
     // Set the delayed group on the particle as well
     p.delayed_group() = dg + 1;

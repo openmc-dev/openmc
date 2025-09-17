@@ -215,17 +215,17 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
     // Sample delayed group and angle/energy for fission reaction
     sample_fission_neutron(i_nuclide, rx, &site, p);
 
-    // If neutron is delayed, sample time of emission
+    // Reject site if it exceeds time cutoff
     if (site.delayed_group > 0) {
-      double decay_rate = rx.products_[site.delayed_group].decay_rate_;
-      site.time -= std::log(prn(p.current_seed())) / decay_rate;
-
-      // Reject site if it exceeds time cutoff
       double t_cutoff = settings::time_cutoff[static_cast<int>(site.particle)];
       if (site.time > t_cutoff) {
         continue;
       }
     }
+
+    // Set parent and progeny IDs
+    site.parent_id = p.id();
+    site.progeny_id = p.n_progeny()++;
 
     // Store fission site in bank
     if (use_fission_bank) {
@@ -235,6 +235,11 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
           "The shared fission bank is full. Additional fission sites created "
           "in this generation will not be banked. Results may be "
           "non-deterministic.");
+
+        // Decrement number of particle progeny as storage was unsuccessful.
+        // This step is needed so that the sum of all progeny is equal to the
+        // size of the shared fission bank.
+        p.n_progeny()--;
 
         // Break out of loop as no more sites can be added to fission bank
         break;
@@ -246,10 +251,6 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
     } else {
       p.secondary_bank().push_back(site);
     }
-
-    // Set parent and progeny ID
-    site.parent_id = p.id();
-    site.progeny_id = p.n_progeny()++;
 
     // Set the delayed group on the particle as well
     p.delayed_group() = site.delayed_group;
@@ -1077,6 +1078,10 @@ void sample_fission_neutron(
 
     // set the delayed group for the particle born from fission
     site->delayed_group = group;
+
+    // Sample time of emission based on decay constant of precursor
+    double decay_rate = rx.products_[site->delayed_group].decay_rate_;
+    site->time -= std::log(prn(p.current_seed())) / decay_rate;
 
   } else {
     // ====================================================================

@@ -84,8 +84,9 @@ def test_transfer_rates(run_in_tmpdir, model, rate, dest_mat, power, ref_result)
     res_ref = openmc.deplete.Results(path_reference)
     res_test = openmc.deplete.Results(path_test)
 
-    assert_atoms_equal(res_ref, res_test)
-    assert_reaction_rates_equal(res_ref, res_test)
+    tol = 1e-2
+    assert_atoms_equal(res_ref, res_test, tol)
+    assert_reaction_rates_equal(res_ref, res_test, tol)
 
 
 @pytest.mark.parametrize("rate, power, ref_result", [

@@ -435,6 +435,7 @@ class Settings:
         self._weight_window_checkpoints = {}
         self._max_history_splits = None
         self._max_tracks = None
+        self._max_secondaries = None
         self._use_decay_photons = None
 
         self._random_ray = {}
@@ -2218,6 +2219,7 @@ class Settings:
         self._create_weight_window_checkpoints_subelement(element)
         self._create_max_history_splits_subelement(element)
         self._create_max_tracks_subelement(element)
+        self._create_max_secondaries_subelement(element)
         self._create_random_ray_subelement(element, mesh_memo)
         self._create_use_decay_photons_subelement(element)
         self._create_source_rejection_fraction_subelement(element)
@@ -2326,6 +2328,7 @@ class Settings:
         settings._weight_window_checkpoints_from_xml_element(elem)
         settings._max_history_splits_from_xml_element(elem)
         settings._max_tracks_from_xml_element(elem)
+        settings._max_secondaries_from_xml_element(elem)
         settings._random_ray_from_xml_element(elem)
         settings._use_decay_photons_from_xml_element(elem)
         settings._source_rejection_fraction_from_xml_element(elem)

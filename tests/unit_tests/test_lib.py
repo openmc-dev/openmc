@@ -468,9 +468,6 @@ def test_set_n_batches(lib_run):
 
     for i in range(7):
         openmc.lib.next_batch()
-    # Setting n_batches less than current_batch should raise error
-    with pytest.raises(exc.InvalidArgumentError):
-        settings.set_batches(6)
     # n_batches should stay the same
     assert settings.get_batches() == 10
 

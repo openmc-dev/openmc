@@ -1624,8 +1624,7 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
       tally.estimator_ == TallyEstimator::COLLISION) {
     if (settings::survival_biasing) {
       // Determine weight that was absorbed
-      wgt_absorb = p.wgt_last() * p.neutron_xs(p.event_nuclide()).absorption /
-                   p.neutron_xs(p.event_nuclide()).total;
+      wgt_absorb = p.wgt_last() * p.macro_xs().absorption / p.macro_xs().total;
 
       // Then we either are alive and had a scatter (and so g changed),
       // or are dead and g did not change

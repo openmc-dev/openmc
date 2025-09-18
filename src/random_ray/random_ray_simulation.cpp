@@ -15,6 +15,8 @@
 #include "openmc/tallies/tally_scoring.h"
 #include "openmc/timer.h"
 #include "openmc/weight_windows.h"
+#include "openmc/random_ray/decomposition_map.h"
+#include "openmc/random_ray/ray_bank.h"
 
 namespace openmc {
 
@@ -60,6 +62,9 @@ void openmc_run_random_ray()
 
     // Initialize fixed sources, if present
     sim.apply_fixed_sources_and_mesh_domains();
+
+    // Initialize subdomains for MPI ranks
+    mpi::decomp_map.create(sim.domain());
 
     // Begin main simulation timer
     simulation::time_total.start();
@@ -431,6 +436,9 @@ void RandomRaySimulation::prepare_fixed_sources_adjoint(
 
 void RandomRaySimulation::simulate()
 {
+  // Create ray bank
+  RayBank RB;
+
   // Random ray power iteration loop
   while (simulation::current_batch < settings::n_batches) {
     // Initialize the current batch
@@ -439,7 +447,7 @@ void RandomRaySimulation::simulate()
 
     // MPI not supported in random ray solver, so all work is done by rank 0
     // TODO: Implement domain decomposition for MPI parallelism
-    if (mpi::master) {
+    // if (mpi::master) {
 
       // Reset total starting particle weight used for normalizing tallies
       simulation::total_weight = 1.0;
@@ -465,16 +473,17 @@ void RandomRaySimulation::simulate()
       // Start timer for transport
       simulation::time_transport.start();
 
-// Transport sweep over all random rays for the iteration
-#pragma omp parallel for schedule(dynamic)                                     \
-  reduction(+ : total_geometric_intersections_)
-      for (int i = 0; i < settings::n_particles; i++) {
-        RandomRay ray(i, domain_.get());
-        total_geometric_intersections_ +=
-          ray.transport_history_based_single_ray();
+      if (mpi::n_procs > 1){
+        transport_sweep_decomp(RB);
+      } else {
+        transport_sweep();
       }
 
+      // printf("Transport sweep complete \n");
       simulation::time_transport.stop();
+
+      // Update decomposition map with newly discovered source regions
+      mpi::decomp_map.update();
 
       // If using mesh subdivision, add any newly discovered source regions
       // to the main source region container.
@@ -500,6 +509,8 @@ void RandomRaySimulation::simulate()
         global_tally_tracklength = k_eff_;
       }
 
+      // printf("Keff calculated \n");
+
       // Execute all tallying tasks, if this is an active batch
       if (simulation::current_batch > settings::n_inactive) {
 
@@ -521,14 +532,38 @@ void RandomRaySimulation::simulate()
       // Set phi_old = phi_new
       domain_->flux_swap();
 
+      int n_source_regions = domain_->n_source_regions(); //TODO: is that base source regions or does that include mesh_bins?
+
+      if (mpi::n_procs > 1){
+        n_source_regions = mpi::decomp_map.n_source_regions();
+      }
+
       // Check for any obvious insabilities/nans/infs
-      instability_check(n_hits, k_eff_, avg_miss_rate_);
-    } // End MPI master work
+      instability_check(n_hits, k_eff_, avg_miss_rate_, n_source_regions);
+
+      // Include weighting factor when decomposed into more than one subdomain
+      if (mpi::n_procs > 1){
+        avg_miss_rate_ = avg_miss_rate_*(n_source_regions/domain_->n_source_regions());
+      }
+    // } // End MPI master work
 
     // Finalize the current batch
     finalize_generation();
     finalize_batch();
   } // End random ray power iteration loop
+
+  if (mpi::n_procs > 1){
+    // double avg_miss_rate_temp = 0.0;
+    // MPI_Allreduce(&avg_miss_rate_, &avg_miss_rate_temp, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    // avg_miss_rate_ = avg_miss_rate_temp;
+
+    // uint64_t total_geometric_intersections_temp = 0;
+    // MPI_Allreduce(&total_geometric_intersections_, &total_geometric_intersections_temp, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
+    // total_geometric_intersections_ = total_geometric_intersections_temp;
+
+    MPI_Allreduce(MPI_IN_PLACE, &avg_miss_rate_, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE, &total_geometric_intersections_, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
+  }
 
   domain_->count_external_source_regions();
 }
@@ -549,11 +584,14 @@ void RandomRaySimulation::output_simulation_results() const
 // Apply a few sanity checks to catch obvious cases of numerical instability.
 // Instability typically only occurs if ray density is extremely low.
 void RandomRaySimulation::instability_check(
-  int64_t n_hits, double k_eff, double& avg_miss_rate) const
+  int64_t n_hits, double k_eff, double& avg_miss_rate, int n_source_regions) const
 {
-  double percent_missed = ((domain_->n_source_regions() - n_hits) /
-                            static_cast<double>(domain_->n_source_regions())) *
-                          100.0;
+  // double percent_missed = ((domain_->n_source_regions() - n_hits) /
+  //                           static_cast<double>(domain_->n_source_regions())) *
+  //                         100.0;
+  double percent_missed = ((n_source_regions - n_hits) /
+                          static_cast<double>(n_source_regions)) *
+                        100.0;
   avg_miss_rate += percent_missed;
 
   if (mpi::master) {
@@ -686,6 +724,62 @@ void RandomRaySimulation::print_results_random_ray(
     fmt::print(" k-effective                       = {:.5f} +/- {:.5f}\n",
       simulation::keff, simulation::keff_std);
   }
+}
+
+void RandomRaySimulation::transport_sweep() {
+
+  // Transport sweep over all random rays for the iteration
+  #pragma omp parallel for schedule(dynamic)                                     \
+    reduction(+ : total_geometric_intersections_)
+        for (int i = 0; i < settings::n_particles; i++) {
+          RandomRay ray(i, domain_.get());
+
+          total_geometric_intersections_ += ray.transport_history_based_single_ray();
+        }
+}
+
+void RandomRaySimulation::transport_sweep_decomp(RayBank& RB) {
+
+  // Transport sweep over all random rays for the iteration
+  #pragma omp parallel for schedule(static)
+    for (int i = 0; i < simulation::work_per_rank; i++) {
+      uint64_t id = simulation::work_index[mpi::rank] + i;
+      RandomRay ray(id, domain_.get());
+
+      // Add ray to ray bank 
+      #pragma omp critical (raybank)
+      {
+        RB.add_ray_to_bank(ray);
+      }
+    }
+
+    // batch_geometric_intersections_ = 0;
+
+    while (RB.is_any_ray_alive()) {
+      #pragma omp parallel for schedule(dynamic)                                     \
+        reduction(+ : total_geometric_intersections_)
+          for (int i = 0; i < RB.ray_bank_size(); i++) {
+            RandomRay& ray = RB.my_ray_list_[i];
+            total_geometric_intersections_ += ray.transport_history_based_single_ray();
+
+            // If ray has left my subdomain, buffer ray state
+            if(ray.has_left_subdomain()){
+              #pragma omp critical (raybuffer)
+              {
+                RB.buffer_ray_data_to_send(ray, domain_.get());
+              }
+            }
+          }
+
+          // printf("Transport and buffering complete, RB size %d \n", RB.ray_bank_size());
+      // Remove dead rays and move rays across subdomains between ranks
+      RB.update(domain_.get());
+
+      // printf("Ray Bank Update complete, RB size %d \n", RB.ray_bank_size());
+    }
+
+    // Reset ray bank list for next batch
+    RB.reset_my_ray_list();
 }
 
 } // namespace openmc

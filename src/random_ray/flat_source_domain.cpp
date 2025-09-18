@@ -16,6 +16,7 @@
 #include "openmc/tallies/tally_scoring.h"
 #include "openmc/timer.h"
 #include "openmc/weight_windows.h"
+#include "openmc/message_passing.h"
 
 #include <cstdio>
 
@@ -365,11 +366,26 @@ double FlatSourceDomain::compute_k_eff(double k_eff_old) const
     p[sr] = sr_fission_source_new;
   }
 
-  double k_eff_new = k_eff_old * (fission_rate_new / fission_rate_old);
+  double fission_rate_old_total = 0;
+  double fission_rate_new_total = 0;
+
+  // Sum up fission rates across all ranks
+  if (mpi::n_procs > 1) {
+    MPI_Allreduce(&fission_rate_old, &fission_rate_old_total, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(&fission_rate_new, &fission_rate_new_total, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  } else{
+    fission_rate_old_total = fission_rate_old;
+    fission_rate_new_total = fission_rate_new;
+  }
+
+  double k_eff_new = k_eff_old * (fission_rate_new_total / fission_rate_old_total);
+
+  // double k_eff_new = k_eff_old * (fission_rate_new / fission_rate_old);
 
   double H = 0.0;
   // defining an inverse sum for better performance
-  double inverse_sum = 1 / fission_rate_new;
+  double inverse_sum = 1 / fission_rate_new_total;
+  // double inverse_sum = 1 / fission_rate_new;
 
 #pragma omp parallel for reduction(+ : H)
   for (int64_t sr = 0; sr < n_source_regions(); sr++) {
@@ -1410,7 +1426,7 @@ void FlatSourceDomain::prepare_base_source_regions()
 }
 
 SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
-  int64_t sr, int mesh_bin, Position r, double dist, Direction u)
+  int64_t sr, int mesh_bin, Position r, Direction u)
 {
   SourceRegionKey sr_key {sr, mesh_bin};
 
@@ -1619,5 +1635,11 @@ void FlatSourceDomain::apply_transport_stabilization()
     }
   }
 }
+
+// void FlatSourceDomain::initialize_ray_bank(){
+//   // RB_.clear();
+//   // RB_.shrink_to_fit();
+// }
+
 
 } // namespace openmc

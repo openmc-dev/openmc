@@ -14,6 +14,9 @@
 #include "openmc/random_dist.h"
 #include "openmc/source.h"
 
+// #include "openmc/random_ray/ray_bank.h"
+#include "openmc/random_ray/decomposition_map.h"
+
 namespace openmc {
 
 //==============================================================================
@@ -256,11 +259,18 @@ RandomRay::RandomRay(uint64_t ray_id, FlatSourceDomain* domain) : RandomRay()
   initialize_ray(ray_id, domain);
 }
 
+RandomRay::RandomRay(FlatSourceDomain* domain, RayExchangeData data, vector<float> angular_flux) : RandomRay()
+{
+  restart_ray(domain, data, angular_flux);
+}
+
 // Transports ray until termination criteria are met
 uint64_t RandomRay::transport_history_based_single_ray()
 {
   using namespace openmc;
   while (alive()) {
+    // if (simulation::current_batch == 30){
+      // printf("RANK %d: Ray %ld, position: %f, %f, %f, angular flux: %f, distance travlled: %f\n", mpi::rank, id(), r().x, r().y, r().z, angular_flux_[0], distance_travelled_);}
     event_advance_ray();
     if (!alive())
       break;
@@ -299,8 +309,8 @@ void RandomRay::event_advance_ray()
       wgt() = 0.0;
     }
 
-    distance_travelled_ += distance;
     attenuate_flux(distance, true);
+    distance_travelled_ += distance;
   } else {
     // If the ray is still in the dead zone, need to check if it
     // has entered the active phase. If so, split into two segments (one
@@ -308,9 +318,10 @@ void RandomRay::event_advance_ray()
     // first part of the active length) and attenuate each. Otherwise, if the
     // full length of the segment is within the dead zone, attenuate as normal.
     if (distance_travelled_ + distance >= distance_inactive_) {
-      is_active_ = true;
+      // is_active_ = true;
       double distance_dead = distance_inactive_ - distance_travelled_;
       attenuate_flux(distance_dead, false);
+      is_active_ = true;
 
       double distance_alive = distance - distance_dead;
 
@@ -320,11 +331,16 @@ void RandomRay::event_advance_ray()
         wgt() = 0.0;
       }
 
+      //TODO: Add check here to avoid useless onwards travel?
+      // if (has_left_subdomain()) {
+      //   return;
+      // }
+
       attenuate_flux(distance_alive, true, distance_dead);
       distance_travelled_ = distance_alive;
     } else {
-      distance_travelled_ += distance;
       attenuate_flux(distance, false);
+      distance_travelled_ += distance;
     }
   }
 
@@ -341,6 +357,11 @@ void RandomRay::attenuate_flux(double distance, bool is_active, double offset)
 
   // The base source region is the spatial region index
   int64_t sr = domain_->source_region_offsets_[i_cell] + cell_instance();
+
+  // Initialise values for ray buffering
+  double mesh_partial_length = 0.0;
+  int mesh_bin = 0;
+  double tiny_multiplier = 0.0;
 
   // Perform ray tracing across mesh
   if (mesh_subdivision_enabled_) {
@@ -377,20 +398,60 @@ void RandomRay::attenuate_flux(double distance, bool is_active, double offset)
         attenuate_flux_inner(
           physical_length, is_active, sr, mesh_bins_[b], start);
         start += physical_length * u();
+
+        // if (simulation::current_batch == 30) {
+          // printf("RANK %d: Source region %ld, mesh bin %d\n", mpi::rank, sr, mesh_bins_[b]);}
+
+        // If ray has left my subdomain, stop transport
+        // and correct position
+        if(has_left_subdomain()){
+          // for (int i = 0; i <= b; i++) {
+          for (int i = 0; i <= b - 1; i++) {
+            mesh_partial_length += mesh_fractional_lengths_[i];
+            // tiny_multiplier = 1.0;
+          }
+
+          if (b > 0) {
+            tiny_multiplier = 1.0;
+          }
+
+          // Add TINY_BIT to account for deleted length in first mesh_bin in each base source region
+          mesh_partial_length = tiny_multiplier * TINY_BIT + reduced_distance * mesh_partial_length;
+          mesh_bin = mesh_bins_[b];
+          break;
+        }
       }
     }
   } else {
     attenuate_flux_inner(distance, is_active, sr, C_NONE, r());
+  }
+  // If ray has left my subdomain, buffer ray state
+  if(has_left_subdomain() && !is_buffered_) {
+    // if (simulation::current_batch == 30) {
+    //   printf("RANK %d: buffering \n", mpi::rank);}
+    Position position_buffer =  r() + (offset + mesh_partial_length) * u();
+    double distance_buffer = distance_travelled_ + offset + mesh_partial_length;
+    pack_ray_for_buffer(distance_buffer, position_buffer, SourceRegionKey(sr, mesh_bin), sr);
+    wgt() = 0.0;
   }
 }
 
 void RandomRay::attenuate_flux_inner(
   double distance, bool is_active, int64_t sr, int mesh_bin, Position r)
 {
+  // Check if SR belongs to my subdomain.
+  // If not, buffer ray, set wgt to zero and leave function.
+  bool is_in_my_subdomain = mpi::decomp_map.is_SRK_in_domain(sr);
+  // bool is_in_my_subdomain = mpi::decomp_map.is_SRK_in_domain(SourceRegionKey(sr, mesh_bin));
+  if (!is_in_my_subdomain) {
+   is_local_ = false;
+   return;
+  }
+
   SourceRegionHandle srh;
   if (mesh_subdivision_enabled_) {
     srh = domain_->get_subdivided_source_region_handle(
-      sr, mesh_bin, r, distance, u());
+      sr, mesh_bin, r, u());
     if (srh.is_numerical_fp_artifact_) {
       return;
     }
@@ -768,6 +829,72 @@ void RandomRay::attenuate_flux_linear_source_void(
   }
 }
 
+void RandomRay::restart_ray(FlatSourceDomain* domain, RayExchangeData data, vector<float> angular_flux)
+{
+
+  domain_ = domain;
+  distance_travelled_ = data.distance_travelled;
+
+  // Reset particle event counter. I read out intersections after each ray transport, 
+  // so the reset to zero after transmission between ranks should be OK here.
+  n_event() = 0;
+
+  is_active_ = data.is_active;
+
+  wgt() = 1.0;
+
+  // is_local_ = true;
+
+  // set identifier for particle
+  id() = data.ray_id;
+
+  // generate source site using sample method
+  SourceSite site;
+
+  // Set location and direction as in previous subdomain
+  site.r = data.position;
+
+  // angle
+  site.u = data.direction;
+
+  site.E = 0.0;
+  this->from_source(&site);
+
+  // Locate ray
+  if (lowest_coord().cell() == C_NONE) {
+    if (!exhaustive_find_cell(*this)) {
+      this->mark_as_lost(
+        "Could not find the cell containing particle " + std::to_string(id()));
+    }
+
+    // Set birth cell attribute
+    if (cell_born() == C_NONE)
+      cell_born() = lowest_coord().cell();
+  }
+
+  // Initialize ray's starting angular flux to starting location's isotropic
+  // source
+  int i_cell = lowest_coord().cell();
+  int64_t sr = domain_->source_region_offsets_[i_cell] + cell_instance();
+
+  if (sr == C_NONE || sr < 0){
+    std::string err_msg = "ERROR: Cell " + std::to_string(sr) + 
+                          " not found when restarting ray " + std::to_string(id()) + 
+                          "at position: (" + std::to_string(site.r.x) + ", " +
+                          std::to_string(site.r.y) + ", " +
+                          std::to_string(site.r.z) + ")";
+    fatal_error(err_msg);
+}
+
+  // Set ray's angular flux to value before subdomain change
+  for (int g = 0; g < negroups_; g++) {
+    angular_flux_[g] = angular_flux[g];
+  }
+
+  // printf(" Restart: ray %ld, position: %f, %f, %f, angular flux: %f, distance travlled: %f, rank %d\n", id(), r().x, r().y, r().z, angular_flux_[0], distance_travelled_, mpi::rank);
+
+}
+
 void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
 {
   domain_ = domain;
@@ -826,7 +953,7 @@ void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
       mesh_bin = mesh->get_bin(r());
     }
     srh =
-      domain_->get_subdivided_source_region_handle(sr, mesh_bin, r(), 0.0, u());
+      domain_->get_subdivided_source_region_handle(sr, mesh_bin, r(), u());
   } else {
     srh = domain_->source_regions_.get_source_region_handle(sr);
   }
@@ -887,5 +1014,27 @@ SourceSite RandomRay::sample_halton()
 
   return site;
 }
+
+bool RandomRay::has_left_subdomain() {
+  return !is_local_;
+}
+
+void RandomRay::pack_ray_for_buffer(double distance_buffer, Position position_buffer, SourceRegionKey sr_key, int sr) {
+ exchange_data_.position = position_buffer;
+ exchange_data_.direction = u();
+ exchange_data_.angular_flux = angular_flux_;
+ exchange_data_.distance_travelled = distance_buffer;
+ exchange_data_.sr_key = sr_key;
+ exchange_data_.sr = sr;
+ exchange_data_.is_active = is_active_;
+ exchange_data_.ray_id = id();
+
+ is_buffered_ = true; 
+}
+
+int RandomRay::get_energy_groups() {
+  return negroups_;
+}
+
 
 } // namespace openmc

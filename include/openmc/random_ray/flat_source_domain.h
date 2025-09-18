@@ -9,6 +9,7 @@
 #include "openmc/source.h"
 #include <unordered_map>
 #include <unordered_set>
+// #include "openmc/random_ray/ray_bank.h"
 
 namespace openmc {
 
@@ -56,17 +57,31 @@ public:
     int32_t target_material_id, bool is_target_void);
   void prepare_base_source_regions();
   SourceRegionHandle get_subdivided_source_region_handle(
-    int64_t sr, int mesh_bin, Position r, double dist, Direction u);
+    int64_t sr, int mesh_bin, Position r, Direction u);
   void finalize_discovered_source_regions();
   void apply_transport_stabilization();
   int64_t n_source_regions() const
   {
+    // int64_t n_source_regions = source_regions_.n_source_regions(); //TODO: is this base source regions or does this include msh_bins?
+    // if (mpi::n_procs > 1){
+    //   n_source_regions = mpi::decomp_map.n_source_regions();
+    // }     
+    
+    // return n_source_regions;
     return source_regions_.n_source_regions();
   }
   int64_t n_source_elements() const
   {
     return source_regions_.n_source_regions() * negroups_;
+
+    // int64_t n_source_regions = source_regions_.n_source_regions(); //TODO: is this base source regions or does this include msh_bins?
+    // if (mpi::n_procs > 1){
+    //   n_source_regions = mpi::decomp_map.n_source_regions();
+    // }     
+    
+    // return n_source_regions * negroups_;
   }
+  // void initialize_ray_bank();
 
   //----------------------------------------------------------------------------
   // Static Data members
@@ -142,6 +157,8 @@ public:
   // and random ray if used naively. This flag enables a stabilization
   // technique.
   bool is_transport_stabilization_needed_ {false};
+
+  // RayBank RB_; // Ray bank to store rays for each MPI rank
 
 protected:
   //----------------------------------------------------------------------------

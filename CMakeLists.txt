@@ -35,7 +35,7 @@ option(OPENMC_ENABLE_PROFILE  "Compile with profiling flags"                    
 option(OPENMC_ENABLE_COVERAGE "Compile with coverage analysis flags"                 OFF)
 option(OPENMC_USE_DAGMC       "Enable support for DAGMC (CAD) geometry"              OFF)
 option(OPENMC_USE_LIBMESH     "Enable support for libMesh unstructured mesh tallies" OFF)
-option(OPENMC_USE_MPI         "Enable MPI"                                           OFF)
+option(OPENMC_USE_MPI         "Enable MPI"                                           ON)
 option(OPENMC_USE_UWUW        "Enable UWUW"                                          OFF)
 option(OPENMC_FORCE_VENDORED_LIBS "Explicitly use submodules defined in 'vendor'"    OFF)
 
@@ -380,6 +380,8 @@ list(APPEND libopenmc_SOURCES
   src/progress_bar.cpp
   src/random_dist.cpp
   src/random_lcg.cpp
+  src/random_ray/decomposition_map.cpp
+  src/random_ray/ray_bank.cpp
   src/random_ray/random_ray_simulation.cpp
   src/random_ray/random_ray.cpp
   src/random_ray/flat_source_domain.cpp

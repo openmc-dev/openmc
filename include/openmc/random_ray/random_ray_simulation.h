@@ -3,6 +3,8 @@
 
 #include "openmc/random_ray/flat_source_domain.h"
 #include "openmc/random_ray/linear_source_domain.h"
+#include "openmc/random_ray/ray_bank.h"
+
 
 namespace openmc {
 
@@ -29,10 +31,12 @@ public:
   void simulate();
   void output_simulation_results() const;
   void instability_check(
-    int64_t n_hits, double k_eff, double& avg_miss_rate) const;
+    int64_t n_hits, double k_eff, double& avg_miss_rate, int n_source_regions) const;
   void print_results_random_ray(uint64_t total_geometric_intersections,
     double avg_miss_rate, int negroups, int64_t n_source_regions,
     int64_t n_external_source_regions) const;
+  void transport_sweep();
+  void transport_sweep_decomp(RayBank& RB);
 
   //----------------------------------------------------------------------------
   // Accessors
@@ -54,6 +58,8 @@ private:
   // Tracks the total number of geometric intersections by all rays for
   // reporting
   uint64_t total_geometric_intersections_ {0};
+  // batch-wise intersection counter
+  // uint64_t batch_geometric_intersections_ {0};
 
   // Number of energy groups
   int negroups_;

@@ -6,8 +6,33 @@
 #include "openmc/random_ray/flat_source_domain.h"
 #include "openmc/random_ray/moment_matrix.h"
 #include "openmc/source.h"
+// #include "openmc/random_ray/ray_bank.h"
 
 namespace openmc {
+
+// Container for MPI exchange
+struct RayBufferContainer {
+  Position position;
+  Direction direction;
+  double distance_travelled;
+  vector<float> angular_flux;
+  SourceRegionKey sr_key;
+  int sr;
+  bool is_active;
+  uint64_t ray_id; 
+};
+
+// Container for MPI exchange
+struct RayExchangeData {
+  Position position;
+  Direction direction;
+  double distance_travelled;
+  bool is_active;
+  uint64_t ray_id; 
+};
+
+// Forward declare
+class FlatSourceDomain;
 
 /*
  * The RandomRay class encompasses data and methods for transporting random rays
@@ -21,6 +46,8 @@ public:
   // Constructors
   RandomRay();
   RandomRay(uint64_t ray_id, FlatSourceDomain* domain);
+  RandomRay(FlatSourceDomain* domain, RayExchangeData data, vector<float> angular_flux);
+  // RandomRay(uint64_t ray_id, FlatSourceDomain* domain, RayBank RB);
 
   //----------------------------------------------------------------------------
   // Methods
@@ -38,9 +65,16 @@ public:
     SourceRegionHandle& srh, double distance, bool is_active, Position r);
 
   void initialize_ray(uint64_t ray_id, FlatSourceDomain* domain);
+  void restart_ray(FlatSourceDomain* domain, RayExchangeData data, vector<float> angular_flux);
+  // void initialize_ray(uint64_t ray_id, FlatSourceDomain* domain, RayBank RB);
   uint64_t transport_history_based_single_ray();
   SourceSite sample_prng();
   SourceSite sample_halton();
+
+  bool has_left_subdomain();
+  // RayBufferContainer pack_ray();
+  void pack_ray_for_buffer(double distance_buffer, Position position_buffer, SourceRegionKey sr_key, int sr);
+  int get_energy_groups();
 
   //----------------------------------------------------------------------------
   // Static data members
@@ -54,6 +88,7 @@ public:
   //----------------------------------------------------------------------------
   // Public data members
   vector<float> angular_flux_;
+  RayBufferContainer exchange_data_;
 
   bool ray_trace_only_ {false}; // If true, only perform geometry operations
 
@@ -64,6 +99,7 @@ private:
   vector<MomentArray> delta_moments_;
   vector<int> mesh_bins_;
   vector<double> mesh_fractional_lengths_;
+  // RayBank RB_;
 
   int negroups_;
   FlatSourceDomain* domain_ {nullptr}; // pointer to domain that has flat source
@@ -71,6 +107,8 @@ private:
   double distance_travelled_ {0};
   bool is_active_ {false};
   bool is_alive_ {true};
+  bool is_local_ {true};
+  bool is_buffered_ {false};
 }; // class RandomRay
 
 } // namespace openmc

@@ -40,10 +40,9 @@ def model():
     geometry = openmc.Geometry([cell_f, cell_w])
 
     settings = openmc.Settings()
-    settings.particles = 100
+    settings.particles = 150
     settings.inactive = 0
     settings.batches = 10
-    settings.seed = 1
 
     return openmc.Model(geometry, materials, settings)
 
@@ -84,10 +83,8 @@ def test_transfer_rates(run_in_tmpdir, model, rate, dest_mat, power, ref_result)
     res_ref = openmc.deplete.Results(path_reference)
     res_test = openmc.deplete.Results(path_test)
 
-    atom_tol = 4e-3
-    rx_tol = 9e-2
-    assert_atoms_equal(res_ref, res_test, atom_tol)
-    assert_reaction_rates_equal(res_ref, res_test, rx_tol)
+    assert_atoms_equal(res_ref, res_test)
+    assert_reaction_rates_equal(res_ref, res_test)
 
 
 @pytest.mark.parametrize("rate, power, ref_result", [

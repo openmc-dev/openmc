@@ -48,7 +48,7 @@ SourceRegion::SourceRegion(int negroups, bool is_linear)
   }
 
   scalar_flux_new_.assign(negroups, 0.0);
-  source_.resize(negroups);
+  source_.assign(negroups, 0.0);
   scalar_flux_final_.assign(negroups, 0.0);
 
   tally_task_.resize(negroups);

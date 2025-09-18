@@ -45,9 +45,6 @@ private:
   // Contains all flat source region data
   unique_ptr<FlatSourceDomain> domain_;
 
-  // Random ray eigenvalue
-  double k_eff_ {1.0};
-
   // Tracks the average FSR miss rate for analysis and reporting
   double avg_miss_rate_ {0.0};
 

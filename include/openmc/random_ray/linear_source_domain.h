@@ -20,7 +20,7 @@ class LinearSourceDomain : public FlatSourceDomain {
 public:
   //----------------------------------------------------------------------------
   // Methods
-  void update_neutron_source(double k_eff) override;
+  void update_neutron_source() override;
   void normalize_scalar_flux_and_volumes(
     double total_active_distance_per_iteration) override;
 

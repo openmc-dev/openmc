@@ -34,11 +34,11 @@ void LinearSourceDomain::batch_reset()
   }
 }
 
-void LinearSourceDomain::update_neutron_source(double k_eff)
+void LinearSourceDomain::update_neutron_source()
 {
   simulation::time_update_src.start();
 
-  double inverse_k_eff = 1.0 / k_eff;
+  double inverse_k_eff = 1.0 / k_eff_;
 
 // Reset all source regions to zero (important for void regions)
 #pragma omp parallel for

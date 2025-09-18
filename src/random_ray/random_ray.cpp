@@ -345,7 +345,11 @@ void RandomRay::attenuate_flux(double distance, bool is_active, double offset)
   // Perform ray tracing across mesh
   if (mesh_subdivision_enabled_) {
     // Determine the mesh index for the base source region, if any
-    int mesh_idx = domain_->base_source_regions_.mesh(sr);
+    int mesh_idx = C_NONE;
+    auto it = domain_->mesh_map_.find(sr);
+    if (it != domain_->mesh_map_.end()) {
+      mesh_idx = it->second;
+    }
 
     if (mesh_idx == C_NONE) {
       // If there's no mesh being applied to this cell, then
@@ -816,20 +820,22 @@ void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
   int64_t sr = domain_->source_region_offsets_[i_cell] + cell_instance();
 
   SourceRegionHandle srh;
-  if (mesh_subdivision_enabled_) {
-    int mesh_idx = domain_->base_source_regions_.mesh(sr);
-    int mesh_bin;
-    if (mesh_idx == C_NONE) {
-      mesh_bin = 0;
-    } else {
-      Mesh* mesh = model::meshes[mesh_idx].get();
-      mesh_bin = mesh->get_bin(r());
-    }
-    srh =
-      domain_->get_subdivided_source_region_handle(sr, mesh_bin, r(), 0.0, u());
-  } else {
-    srh = domain_->source_regions_.get_source_region_handle(sr);
+
+  // Determine if there are any meshes assigned to this
+  int mesh_idx = C_NONE;
+  auto it = domain_->mesh_map_.find(sr);
+  if (it != domain_->mesh_map_.end()) {
+    mesh_idx = it->second;
   }
+  int mesh_bin;
+  if (mesh_idx == C_NONE) {
+    mesh_bin = 0;
+  } else {
+    Mesh* mesh = model::meshes[mesh_idx].get();
+    mesh_bin = mesh->get_bin(r());
+  }
+  srh =
+    domain_->get_subdivided_source_region_handle(sr, mesh_bin, r(), 0.0, u());
 
   if (!srh.is_numerical_fp_artifact_) {
     for (int g = 0; g < negroups_; g++) {

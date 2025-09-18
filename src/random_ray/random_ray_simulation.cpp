@@ -444,12 +444,13 @@ void RandomRaySimulation::simulate()
       // Reset total starting particle weight used for normalizing tallies
       simulation::total_weight = 1.0;
 
-      // Update source term (scattering + fission)
-      domain_->update_neutron_source(k_eff_);
-
-      // Reset scalar fluxes, iteration volume tallies, and region hit flags to
-      // zero
-      domain_->batch_reset();
+      if (simulation::current_batch > 1) {
+        // Update source term (scattering + fission)
+        domain_->update_neutron_source();
+        // Reset scalar fluxes, iteration volume tallies, and region hit flags
+        // to zero
+        domain_->batch_reset();
+      }
 
       // At the beginning of the simulation, if mesh subvivision is in use, we
       // need to swap the main source region container into the base container,
@@ -459,7 +460,7 @@ void RandomRaySimulation::simulate()
       // material properties, and initial guess values for the flux/source.
       if (RandomRay::mesh_subdivision_enabled_ &&
           simulation::current_batch == 1 && !FlatSourceDomain::adjoint_) {
-        domain_->prepare_base_source_regions();
+        // domain_->prepare_base_source_regions();
       }
 
       // Start timer for transport
@@ -494,10 +495,10 @@ void RandomRaySimulation::simulate()
 
       if (settings::run_mode == RunMode::EIGENVALUE) {
         // Compute random ray k-eff
-        k_eff_ = domain_->compute_k_eff(k_eff_);
+        domain_->compute_k_eff();
 
         // Store random ray k-eff into OpenMC's native k-eff variable
-        global_tally_tracklength = k_eff_;
+        global_tally_tracklength = domain_->k_eff_;
       }
 
       // Execute all tallying tasks, if this is an active batch
@@ -522,7 +523,7 @@ void RandomRaySimulation::simulate()
       domain_->flux_swap();
 
       // Check for any obvious insabilities/nans/infs
-      instability_check(n_hits, k_eff_, avg_miss_rate_);
+      instability_check(n_hits, domain_->k_eff_, avg_miss_rate_);
     } // End MPI master work
 
     // Finalize the current batch

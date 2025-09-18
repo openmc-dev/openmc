@@ -1,7 +1,10 @@
 #include "openmc/event.h"
+
 #include "openmc/material.h"
 #include "openmc/simulation.h"
 #include "openmc/timer.h"
+
+#include <execution>
 
 namespace openmc {
 
@@ -73,14 +76,11 @@ void process_calculate_xs_events(SharedArray<EventQueueItem>& queue)
 {
   simulation::time_event_calculate_xs.start();
 
-  // TODO: If using C++17, perform a parallel sort of the queue
+  // Perform a parallel sort of the queue
   // by particle type, material type, and then energy, in order to
-  // improve cache locality and reduce thread divergence on GPU. Prior
-  // to C++17, std::sort is a serial only operation, which in this case
-  // makes it too slow to be practical for most test problems.
-  //
-  // std::sort(std::execution::par_unseq, queue.data(), queue.data() +
-  // queue.size());
+  // improve cache locality and reduce thread divergence on GPU.
+  std::sort(
+    std::execution::par_unseq, queue.data(), queue.data() + queue.size());
 
   int64_t offset = simulation::advance_particle_queue.size();
   ;

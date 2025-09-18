@@ -86,7 +86,7 @@ public:
 
   //----------------------------------------------------------------------------
   // Public Data members
-  double k_eff_ {1.0}; // Eigenvalue
+  double k_eff_ {1.0};              // Eigenvalue
   bool mapped_all_tallies_ {false}; // If all source regions have been visited
 
   int64_t n_external_source_regions_ {0}; // Total number of source regions with
@@ -141,13 +141,12 @@ public:
   // Map that relates a base source region index to the external source index.
   // This map is used to check if there are any volumetric sources within a
   // subdivided source region at the time it is discovered.
-  std::unordered_map<int64_t, vector<int>, SourceRegionKey::HashFunctor>
+  std::unordered_map<int64_t, vector<int>>
     external_volumetric_source_map_;
 
   // Map that relates a base source region index to a mesh index. This map
   // is used to check which subdivision mesh is present in a source region.
-  std::unordered_map<int64_t, int, SourceRegionKey::HashFunctor>
-    mesh_map_;
+  std::unordered_map<int64_t, int> mesh_map_;
 
   // If transport corrected MGXS data is being used, there may be negative
   // in-group scattering cross sections that can result in instability in MOC
@@ -158,13 +157,12 @@ public:
 protected:
   //----------------------------------------------------------------------------
   // Methods
-  void FlatSourceDomain::apply_external_source_to_source_region(
+  void apply_external_source_to_source_region(
     int src_idx, SourceRegionHandle& srh);
-  void apply_external_source_to_cell_instances(int32_t i_cell,
-    int src_idx, int target_material_id,
-    const vector<int32_t>& instances);
-  void apply_external_source_to_cell_and_children(int32_t i_cell,
-    int src_idx, int32_t target_material_id);
+  void apply_external_source_to_cell_instances(int32_t i_cell, int src_idx,
+    int target_material_id, const vector<int32_t>& instances);
+  void apply_external_source_to_cell_and_children(
+    int32_t i_cell, int src_idx, int32_t target_material_id);
   virtual void set_flux_to_flux_plus_source(int64_t sr, double volume, int g);
   void set_flux_to_source(int64_t sr, int g);
   virtual void set_flux_to_old_flux(int64_t sr, int g);

@@ -348,7 +348,6 @@ void validate_random_ray_inputs()
   // when generating weight windows with FW-CADIS and an overlaid mesh.
   ///////////////////////////////////////////////////////////////////
   if (RandomRay::source_shape_ == RandomRaySourceShape::LINEAR &&
-      RandomRay::mesh_subdivision_enabled_ &&
       variance_reduction::weight_windows.size() > 0) {
     warning(
       "Linear sources may result in negative fluxes in small source regions "
@@ -366,7 +365,6 @@ void openmc_reset_random_ray()
   FlatSourceDomain::mesh_domain_map_.clear();
   RandomRay::ray_source_.reset();
   RandomRay::source_shape_ = RandomRaySourceShape::FLAT;
-  RandomRay::mesh_subdivision_enabled_ = false;
   RandomRay::sample_method_ = RandomRaySampleMethod::PRNG;
 }
 
@@ -419,12 +417,10 @@ void RandomRaySimulation::prepare_fixed_sources_adjoint(
     forward_source_region_map)
 {
   if (settings::run_mode == RunMode::FIXED_SOURCE) {
-    if (RandomRay::mesh_subdivision_enabled_) {
-      domain_->source_regions_ = forward_source_regions;
-      domain_->source_region_map_ = forward_source_region_map;
-      domain_->base_source_regions_ = forward_base_source_regions;
-      domain_->source_regions_.adjoint_reset();
-    }
+    domain_->source_regions_ = forward_source_regions;
+    domain_->source_region_map_ = forward_source_region_map;
+    domain_->base_source_regions_ = forward_base_source_regions;
+    domain_->source_regions_.adjoint_reset();
     domain_->set_adjoint_sources(forward_flux);
   }
 }
@@ -458,10 +454,6 @@ void RandomRaySimulation::simulate()
       // subdivided source regions. The base container will therefore only
       // contain the external source region information, the mesh indices,
       // material properties, and initial guess values for the flux/source.
-      if (RandomRay::mesh_subdivision_enabled_ &&
-          simulation::current_batch == 1 && !FlatSourceDomain::adjoint_) {
-        // domain_->prepare_base_source_regions();
-      }
 
       // Start timer for transport
       simulation::time_transport.start();
@@ -479,9 +471,9 @@ void RandomRaySimulation::simulate()
 
       // If using mesh subdivision, add any newly discovered source regions
       // to the main source region container.
-      if (RandomRay::mesh_subdivision_enabled_) {
-        domain_->finalize_discovered_source_regions();
-      }
+      // if (RandomRay::mesh_subdivision_enabled_) {
+      domain_->finalize_discovered_source_regions();
+      //}
 
       // Normalize scalar flux and update volumes
       domain_->normalize_scalar_flux_and_volumes(
@@ -507,12 +499,6 @@ void RandomRaySimulation::simulate()
         // Add this iteration's scalar flux estimate to final accumulated
         // estimate
         domain_->accumulate_iteration_flux();
-
-        // Generate mapping between source regions and tallies
-        if (!domain_->mapped_all_tallies_ &&
-            !RandomRay::mesh_subdivision_enabled_) {
-          domain_->convert_source_regions_to_tallies(0);
-        }
 
         // Use above mapping to contribute FSR flux data to appropriate
         // tallies
@@ -572,7 +558,7 @@ void RandomRaySimulation::instability_check(
     }
 
     if (k_eff > 10.0 || k_eff < 0.01 || !(std::isfinite(k_eff))) {
-      fatal_error("Instability detected");
+      fatal_error(fmt::format("Instability detected: k-eff = {:.5f}", k_eff));
     }
   }
 }

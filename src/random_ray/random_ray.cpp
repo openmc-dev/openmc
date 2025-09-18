@@ -237,7 +237,6 @@ double RandomRay::distance_inactive_;
 double RandomRay::distance_active_;
 unique_ptr<Source> RandomRay::ray_source_;
 RandomRaySourceShape RandomRay::source_shape_ {RandomRaySourceShape::FLAT};
-bool RandomRay::mesh_subdivision_enabled_ {false};
 RandomRaySampleMethod RandomRay::sample_method_ {RandomRaySampleMethod::PRNG};
 
 RandomRay::RandomRay()
@@ -343,48 +342,44 @@ void RandomRay::attenuate_flux(double distance, bool is_active, double offset)
   int64_t sr = domain_->source_region_offsets_[i_cell] + cell_instance();
 
   // Perform ray tracing across mesh
-  if (mesh_subdivision_enabled_) {
-    // Determine the mesh index for the base source region, if any
-    int mesh_idx = C_NONE;
-    auto it = domain_->mesh_map_.find(sr);
-    if (it != domain_->mesh_map_.end()) {
-      mesh_idx = it->second;
-    }
+  // Determine the mesh index for the base source region, if any
+  int mesh_idx = C_NONE;
+  auto it = domain_->mesh_map_.find(sr);
+  if (it != domain_->mesh_map_.end()) {
+    mesh_idx = it->second;
+  }
 
-    if (mesh_idx == C_NONE) {
-      // If there's no mesh being applied to this cell, then
-      // we just attenuate the flux as normal, and set
-      // the mesh bin to 0
-      attenuate_flux_inner(distance, is_active, sr, 0, r());
-    } else {
-      // If there is a mesh being applied to this cell, then
-      // we loop over all the bin crossings and attenuate
-      // separately.
-      Mesh* mesh = model::meshes[mesh_idx].get();
-
-      // We adjust the start and end positions of the ray slightly
-      // to accomodate for floating point precision issues that tend
-      // to occur at mesh boundaries that overlap with geometry lattice
-      // boundaries.
-      Position start = r() + (offset + TINY_BIT) * u();
-      Position end = start + (distance - 2.0 * TINY_BIT) * u();
-      double reduced_distance = (end - start).norm();
-
-      // Ray trace through the mesh and record bins and lengths
-      mesh_bins_.resize(0);
-      mesh_fractional_lengths_.resize(0);
-      mesh->bins_crossed(start, end, u(), mesh_bins_, mesh_fractional_lengths_);
-
-      // Loop over all mesh bins and attenuate flux
-      for (int b = 0; b < mesh_bins_.size(); b++) {
-        double physical_length = reduced_distance * mesh_fractional_lengths_[b];
-        attenuate_flux_inner(
-          physical_length, is_active, sr, mesh_bins_[b], start);
-        start += physical_length * u();
-      }
-    }
+  if (mesh_idx == C_NONE) {
+    // If there's no mesh being applied to this cell, then
+    // we just attenuate the flux as normal, and set
+    // the mesh bin to 0
+    attenuate_flux_inner(distance, is_active, sr, 0, r());
   } else {
-    attenuate_flux_inner(distance, is_active, sr, C_NONE, r());
+    // If there is a mesh being applied to this cell, then
+    // we loop over all the bin crossings and attenuate
+    // separately.
+    Mesh* mesh = model::meshes[mesh_idx].get();
+
+    // We adjust the start and end positions of the ray slightly
+    // to accomodate for floating point precision issues that tend
+    // to occur at mesh boundaries that overlap with geometry lattice
+    // boundaries.
+    Position start = r() + (offset + TINY_BIT) * u();
+    Position end = start + (distance - 2.0 * TINY_BIT) * u();
+    double reduced_distance = (end - start).norm();
+
+    // Ray trace through the mesh and record bins and lengths
+    mesh_bins_.resize(0);
+    mesh_fractional_lengths_.resize(0);
+    mesh->bins_crossed(start, end, u(), mesh_bins_, mesh_fractional_lengths_);
+
+    // Loop over all mesh bins and attenuate flux
+    for (int b = 0; b < mesh_bins_.size(); b++) {
+      double physical_length = reduced_distance * mesh_fractional_lengths_[b];
+      attenuate_flux_inner(
+        physical_length, is_active, sr, mesh_bins_[b], start);
+      start += physical_length * u();
+    }
   }
 }
 
@@ -392,14 +387,10 @@ void RandomRay::attenuate_flux_inner(
   double distance, bool is_active, int64_t sr, int mesh_bin, Position r)
 {
   SourceRegionHandle srh;
-  if (mesh_subdivision_enabled_) {
-    srh = domain_->get_subdivided_source_region_handle(
-      sr, mesh_bin, r, distance, u());
-    if (srh.is_numerical_fp_artifact_) {
-      return;
-    }
-  } else {
-    srh = domain_->source_regions_.get_source_region_handle(sr);
+  srh = domain_->get_subdivided_source_region_handle(
+    sr, mesh_bin, r, distance, u());
+  if (srh.is_numerical_fp_artifact_) {
+    return;
   }
 
   switch (source_shape_) {

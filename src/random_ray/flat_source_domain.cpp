@@ -53,8 +53,8 @@ FlatSourceDomain::FlatSourceDomain() : negroups_(data::mg.num_energy_groups_)
   // Initialize source regions.
   bool is_linear = RandomRay::source_shape_ != RandomRaySourceShape::FLAT;
   source_regions_ = SourceRegionContainer(negroups_, is_linear);
-  source_regions_.assign(
-    base_source_regions, SourceRegion(negroups_, is_linear));
+  //source_regions_.assign(
+  //  base_source_regions, SourceRegion(negroups_, is_linear));
 
   // Initialize tally volumes
   if (volume_normalized_flux_tallies_) {
@@ -780,25 +780,23 @@ void FlatSourceDomain::output_to_vtk() const
 
           int i_cell = p.lowest_coord().cell();
           int64_t sr = source_region_offsets_[i_cell] + p.cell_instance();
-          if (RandomRay::mesh_subdivision_enabled_) {
-            int mesh_idx = C_NONE;
-            auto mesh_it = mesh_map_.find(sr);
-            if (mesh_it != mesh_map_.end()) {
-              mesh_idx = mesh_it->second;
-            }
-            int mesh_bin;
-            if (mesh_idx == C_NONE) {
-              mesh_bin = 0;
-            } else {
-              mesh_bin = model::meshes[mesh_idx]->get_bin(p.r());
-            }
-            SourceRegionKey sr_key {sr, mesh_bin};
-            auto it = source_region_map_.find(sr_key);
-            if (it != source_region_map_.end()) {
-              sr = it->second;
-            } else {
-              sr = -1;
-            }
+          int mesh_idx = C_NONE;
+          auto mesh_it = mesh_map_.find(sr);
+          if (mesh_it != mesh_map_.end()) {
+            mesh_idx = mesh_it->second;
+          }
+          int mesh_bin;
+          if (mesh_idx == C_NONE) {
+            mesh_bin = 0;
+          } else {
+            mesh_bin = model::meshes[mesh_idx]->get_bin(p.r());
+          }
+          SourceRegionKey sr_key {sr, mesh_bin};
+          auto it = source_region_map_.find(sr_key);
+          if (it != source_region_map_.end()) {
+            sr = it->second;
+          } else {
+            sr = -1;
           }
 
           voxel_indices[z * Ny * Nx + y * Nx + x] = sr;
@@ -1547,7 +1545,7 @@ SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
   }
 
   // 7. Divide external source by sigma_t
-  if (material != C_NONE) {
+  if (material != C_NONE && settings::run_mode == RunMode::FIXED_SOURCE) {
     for (int g = 0; g < negroups_; g++) {
       double sigma_t = sigma_t_[material * negroups_ + g];
       handle.external_source(g) /= sigma_t;
@@ -1577,8 +1575,10 @@ SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
   }
 
   // 9. Add in external source
-  for (int g = 0; g < negroups_; g++) {
-    handle.source(g) += handle.external_source(g);
+  if (settings::run_mode == RunMode::FIXED_SOURCE) {
+    for (int g = 0; g < negroups_; g++) {
+      handle.source(g) += handle.external_source(g);
+    }
   }
 
   // 10. Unlock the SR

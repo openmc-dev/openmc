@@ -345,7 +345,6 @@ void get_run_parameters(pugi::xml_node node_base)
           }
           FlatSourceDomain::mesh_domain_map_[mesh_id].emplace_back(
             type, domain_id);
-          RandomRay::mesh_subdivision_enabled_ = true;
         }
       }
     }

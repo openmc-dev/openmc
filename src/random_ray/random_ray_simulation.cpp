@@ -413,6 +413,7 @@ void RandomRaySimulation::prepare_fixed_sources_adjoint(
   std::unordered_map<SourceRegionKey, int64_t, SourceRegionKey::HashFunctor>&
     forward_source_region_map)
 {
+  domain_->k_eff_ = 1.0;
   if (settings::run_mode == RunMode::FIXED_SOURCE) {
     domain_->source_regions_ = forward_source_regions;
     domain_->source_region_map_ = forward_source_region_map;
@@ -438,7 +439,7 @@ void RandomRaySimulation::simulate()
 
       if (simulation::current_batch > 1) {
         // Update source term (scattering + fission)
-        domain_->update_neutron_source();
+        domain_->update_all_neutron_sources();
         // Reset scalar fluxes, iteration volume tallies, and region hit flags
         // to zero
         domain_->batch_reset();

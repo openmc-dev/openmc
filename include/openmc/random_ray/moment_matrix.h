@@ -26,12 +26,12 @@ class MomentMatrix {
 public:
   //----------------------------------------------------------------------------
   // Public data members
-  double a;
-  double b;
-  double c;
-  double d;
-  double e;
-  double f;
+  double a {0};
+  double b {0};
+  double c {0};
+  double d {0};
+  double e {0};
+  double f {0};
 
   //----------------------------------------------------------------------------
   // Constructors

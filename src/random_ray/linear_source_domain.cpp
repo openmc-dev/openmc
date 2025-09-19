@@ -34,25 +34,18 @@ void LinearSourceDomain::batch_reset()
   }
 }
 
-void LinearSourceDomain::update_neutron_source()
+void LinearSourceDomain::update_single_neutron_source(SourceRegionHandle& srh)
 {
-  simulation::time_update_src.start();
-
-  double inverse_k_eff = 1.0 / k_eff_;
-
-// Reset all source regions to zero (important for void regions)
-#pragma omp parallel for
-  for (int64_t se = 0; se < n_source_elements(); se++) {
-    source_regions_.source(se) = 0.0;
+  // Reset all source regions to zero (important for void regions)
+  for (int g = 0; g < negroups_; g++) {
+    srh.source(g) = 0.0;
   }
 
-#pragma omp parallel for
-  for (int64_t sr = 0; sr < n_source_regions(); sr++) {
-    int material = source_regions_.material(sr);
-    if (material == MATERIAL_VOID) {
-      continue;
-    }
-    MomentMatrix invM = source_regions_.mom_matrix(sr).inverse();
+  // Add scattering + fission source
+  int material = srh.material();
+  if (material != MATERIAL_VOID) {
+    double inverse_k_eff = 1.0 / k_eff_;
+    MomentMatrix invM = srh.mom_matrix().inverse();
 
     for (int g_out = 0; g_out < negroups_; g_out++) {
       double sigma_t = sigma_t_[material * negroups_ + g_out];
@@ -64,8 +57,8 @@ void LinearSourceDomain::update_neutron_source()
 
       for (int g_in = 0; g_in < negroups_; g_in++) {
         // Handles for the flat and linear components of the flux
-        double flux_flat = source_regions_.scalar_flux_old(sr, g_in);
-        MomentArray flux_linear = source_regions_.flux_moments_old(sr, g_in);
+        double flux_flat = srh.scalar_flux_old(g_in);
+        MomentArray flux_linear = srh.flux_moments_old(g_in);
 
         // Handles for cross sections
         double sigma_s =
@@ -81,7 +74,7 @@ void LinearSourceDomain::update_neutron_source()
       }
 
       // Compute the flat source term
-      source_regions_.source(sr, g_out) =
+      srh.source(g_out) =
         (scatter_flat + fission_flat * inverse_k_eff) / sigma_t;
 
       // Compute the linear source terms. In the first 10 iterations when the
@@ -92,24 +85,21 @@ void LinearSourceDomain::update_neutron_source()
       // the source gradients (effectively making this a flat source region
       // temporarily), so as to improve stability.
       if (simulation::current_batch > 10 &&
-          source_regions_.source(sr, g_out) >= 0.0) {
-        source_regions_.source_gradients(sr, g_out) =
+          srh.source(g_out) >= 0.0) {
+        srh.source_gradients(g_out) =
           invM * ((scatter_linear + fission_linear * inverse_k_eff) / sigma_t);
       } else {
-        source_regions_.source_gradients(sr, g_out) = {0.0, 0.0, 0.0};
+        srh.source_gradients(g_out) = {0.0, 0.0, 0.0};
       }
     }
   }
 
+  // Add external source if in fixed source mode
   if (settings::run_mode == RunMode::FIXED_SOURCE) {
-// Add external source to flat source term if in fixed source mode
-#pragma omp parallel for
-    for (int64_t se = 0; se < n_source_elements(); se++) {
-      source_regions_.source(se) += source_regions_.external_source(se);
+    for (int g = 0; g < negroups_; g++) {
+      srh.source(g) += srh.external_source(g);
     }
   }
-
-  simulation::time_update_src.stop();
 }
 
 void LinearSourceDomain::normalize_scalar_flux_and_volumes(

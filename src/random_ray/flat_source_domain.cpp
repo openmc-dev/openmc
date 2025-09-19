@@ -100,34 +100,24 @@ void FlatSourceDomain::accumulate_iteration_flux()
   }
 }
 
-// Compute new estimate of scattering + fission sources in each source region
-// based on the flux estimate from the previous iteration.
-void FlatSourceDomain::update_neutron_source()
+void FlatSourceDomain::update_single_neutron_source(SourceRegionHandle& srh)
 {
-  simulation::time_update_src.start();
-
-  double inverse_k_eff = 1.0 / k_eff_;
-
-// Reset all source regions to zero (important for void regions)
-#pragma omp parallel for
-  for (int64_t se = 0; se < n_source_elements(); se++) {
-    source_regions_.source(se) = 0.0;
+  // Reset all source regions to zero (important for void regions)
+  for (int g = 0; g < negroups_; g++) {
+    srh.source(g) = 0.0;
   }
 
   // Add scattering + fission source
-#pragma omp parallel for
-  for (int64_t sr = 0; sr < n_source_regions(); sr++) {
-    int material = source_regions_.material(sr);
-    if (material == MATERIAL_VOID) {
-      continue;
-    }
+  int material = srh.material();
+  if (material != MATERIAL_VOID) {
+    double inverse_k_eff = 1.0 / k_eff_;
     for (int g_out = 0; g_out < negroups_; g_out++) {
       double sigma_t = sigma_t_[material * negroups_ + g_out];
       double scatter_source = 0.0;
       double fission_source = 0.0;
 
       for (int g_in = 0; g_in < negroups_; g_in++) {
-        double scalar_flux = source_regions_.scalar_flux_old(sr, g_in);
+        double scalar_flux = srh.scalar_flux_old(g_in);
         double sigma_s =
           sigma_s_[material * negroups_ * negroups_ + g_out * negroups_ + g_in];
         double nu_sigma_f = nu_sigma_f_[material * negroups_ + g_in];
@@ -136,17 +126,29 @@ void FlatSourceDomain::update_neutron_source()
         scatter_source += sigma_s * scalar_flux;
         fission_source += nu_sigma_f * scalar_flux * chi;
       }
-      source_regions_.source(sr, g_out) =
+      srh.source(g_out) =
         (scatter_source + fission_source * inverse_k_eff) / sigma_t;
     }
   }
 
   // Add external source if in fixed source mode
   if (settings::run_mode == RunMode::FIXED_SOURCE) {
-#pragma omp parallel for
-    for (int64_t se = 0; se < n_source_elements(); se++) {
-      source_regions_.source(se) += source_regions_.external_source(se);
+    for (int g = 0; g < negroups_; g++) {
+      srh.source(g) += srh.external_source(g);
     }
+  }
+}
+
+// Compute new estimate of scattering + fission sources in each source region
+// based on the flux estimate from the previous iteration.
+void FlatSourceDomain::update_all_neutron_sources()
+{
+  simulation::time_update_src.start();
+
+  #pragma omp parallel for
+  for (int64_t sr = 0; sr < n_source_regions(); sr++) {
+    SourceRegionHandle srh = source_regions_.get_source_region_handle(sr);
+    update_single_neutron_source(srh);
   }
 
   simulation::time_update_src.stop();
@@ -1547,34 +1549,8 @@ SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
     }
   }
 
-  // 8. Compute the scattering + fission and divide by sigma_t
-  if (material != MATERIAL_VOID) {
-    for (int g_out = 0; g_out < negroups_; g_out++) {
-      double sigma_t = sigma_t_[material * negroups_ + g_out];
-      double scatter_source = 0.0;
-      double fission_source = 0.0;
-
-      for (int g_in = 0; g_in < negroups_; g_in++) {
-        double scalar_flux = handle.scalar_flux_old(g_in);
-        double sigma_s =
-          sigma_s_[material * negroups_ * negroups_ + g_out * negroups_ + g_in];
-        double nu_sigma_f = nu_sigma_f_[material * negroups_ + g_in];
-        double chi = chi_[material * negroups_ + g_out];
-
-        scatter_source += sigma_s * scalar_flux;
-        fission_source += nu_sigma_f * scalar_flux * chi;
-      }
-      handle.source(g_out) =
-        (scatter_source + fission_source / k_eff_) / sigma_t;
-    }
-  }
-
-  // 9. Add in external source
-  if (settings::run_mode == RunMode::FIXED_SOURCE) {
-    for (int g = 0; g < negroups_; g++) {
-      handle.source(g) += handle.external_source(g);
-    }
-  }
+  // Compute the combined source term
+  update_single_neutron_source(handle);
 
   // 10. Unlock the SR
   handle.unlock();

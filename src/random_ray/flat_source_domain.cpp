@@ -636,7 +636,7 @@ void FlatSourceDomain::random_ray_tally()
                       "random ray mode.");
           break;
         }
-
+        fmt::print("Score: {} Flux: {} Volume: {}\n", score, flux, volume);
         // Apply score to the appropriate tally bin
         Tally& tally {*model::tallies[task.tally_idx]};
 #pragma omp atomic

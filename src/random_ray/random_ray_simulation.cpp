@@ -436,15 +436,14 @@ void RandomRaySimulation::simulate()
       // Reset total starting particle weight used for normalizing tallies
       simulation::total_weight = 1.0;
 
-      if (simulation::current_batch > 1) {
-        // Update source term (scattering + fission)
-        domain_->update_all_neutron_sources();
-        // Reset scalar fluxes, iteration volume tallies, and region hit flags
-        // to zero
-        domain_->batch_reset();
-      }
+      // Update source term (scattering + fission)
+      domain_->update_all_neutron_sources();
+      
+      // Reset scalar fluxes, iteration volume tallies, and region hit flags
+      // to zero
+      domain_->batch_reset();
 
-      // At the beginning of the simulation, if mesh subvivision is in use, we
+      // At the beginning of the simulation, if mesh subdivision is in use, we
       // need to swap the main source region container into the base container,
       // as the main source region container will be used to hold the true
       // subdivided source regions. The base container will therefore only

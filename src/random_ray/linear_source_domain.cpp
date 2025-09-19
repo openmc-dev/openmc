@@ -84,8 +84,7 @@ void LinearSourceDomain::update_single_neutron_source(SourceRegionHandle& srh)
       // very small/noisy or have poorly developed spatial moments, so we zero
       // the source gradients (effectively making this a flat source region
       // temporarily), so as to improve stability.
-      if (simulation::current_batch > 10 &&
-          srh.source(g_out) >= 0.0) {
+      if (simulation::current_batch > 10 && srh.source(g_out) >= 0.0) {
         srh.source_gradients(g_out) =
           invM * ((scatter_linear + fission_linear * inverse_k_eff) / sigma_t);
       } else {

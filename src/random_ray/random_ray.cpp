@@ -381,8 +381,7 @@ void RandomRay::attenuate_flux_inner(
 {
   SourceRegionKey sr_key {sr, mesh_bin};
   SourceRegionHandle srh;
-  srh = domain_->get_subdivided_source_region_handle(
-    sr_key, r, distance, u());
+  srh = domain_->get_subdivided_source_region_handle(sr_key, r, distance, u());
   if (srh.is_numerical_fp_artifact_) {
     return;
   }

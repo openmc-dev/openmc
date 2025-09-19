@@ -18,6 +18,8 @@ GROUP_STRUCTURES = {}
   ([ZAL1999]_ and [REARDEN2013]_)
 - "MPACT-X" (where X is 51 (PWR), 60 (BWR), 69 (Magnox)) from the MPACT_ reactor
   physics code ([KIM2019]_ and [KIM2020]_)
+- "ECCO-33" intended for fast reactor criticality benchmarks. It’s derived as a
+  subset of VITAMIN‑J
 - "ECCO-1968_" designed for fine group reactor cell calculations for fast,
   intermediate and thermal reactor applications ([SAR1990]_)
 - activation_ energy group structures "VITAMIN-J-42", "VITAMIN-J-175",
@@ -25,6 +27,7 @@ GROUP_STRUCTURES = {}
 
 .. _CASMO: http://large.stanford.edu/courses/2013/ph241/dalvi1/docs/c5.physor2006.pdf
 .. _SCALE44: https://www-nds.iaea.org/publications/indc/indc-czr-0001.pdf
+.. _ECCO-33: https://serpent.vtt.fi/mediawiki/index.php/ECCO_33-group_structure
 .. _SCALE252: https://oecd-nea.org/science/wpncs/amct/workingarea/meeting2013/EGAMCT2013_08.pdf
 .. _MPACT: https://vera.ornl.gov/mpact/
 .. _XMAS-172: https://www-nds.iaea.org/wimsd/energy.htm
@@ -81,6 +84,16 @@ GROUP_STRUCTURES['CASMO-25']  = np.array([
     0., 3.e-2, 5.8e-2, 1.4e-1, 2.8e-1, 3.5e-1, 6.25e-1, 9.72e-1, 1.02, 1.097,
     1.15, 1.855, 4., 9.877, 1.5968e1, 1.4873e2, 5.53e3, 9.118e3, 1.11e5, 5.e5,
     8.21e5, 1.353e6, 2.231e6, 3.679e6, 6.0655e6, 2.e7])
+GROUP_STRUCTURES['ECCO-33'] = np.array([
+    1.0000100000E-05, 1.0000000000E-01, 5.4000000000E-01, 4.0000000000E+00,
+    8.3152870000E+00, 1.3709590000E+01, 2.2603290000E+01, 4.0169000000E+01,
+    6.7904050000E+01, 9.1660880000E+01, 1.4862540000E+02, 3.0432480000E+02,
+    4.5399930000E+02, 7.4851830000E+02, 1.2340980000E+03, 2.0346840000E+03,
+    3.3546260000E+03, 5.5308440000E+03, 9.1188200000E+03, 1.5034390000E+04,
+    2.4787520000E+04, 4.0867710000E+04, 6.7379470000E+04, 1.1109000000E+05,
+    1.8315640000E+05, 3.0197380000E+05, 4.9787070000E+05, 8.2085000000E+05,
+    1.3533530000E+06, 2.2313020000E+06, 3.6787940000E+06, 6.0653070000E+06,
+    1.0000000000E+07, 1.9640330000E+07])
 GROUP_STRUCTURES['CASMO-40'] = np.array([
     0., 1.5e-2, 3.e-2, 4.2e-2, 5.8e-2, 8.e-2, 1.e-1, 1.4e-1,
     1.8e-1, 2.2e-1, 2.8e-1, 3.5e-1, 6.25e-1, 8.5e-1, 9.5e-1,

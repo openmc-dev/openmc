@@ -1108,22 +1108,6 @@ void FlatSourceDomain::convert_external_sources()
       }
     }
   } // End loop over external sources
-
-  // Divide the fixed source term by sigma t (to save time when applying each
-  // iteration)
-  /*
-  #pragma omp parallel for
-    for (int64_t sr = 0; sr < n_source_regions(); sr++) {
-      int material = source_regions_.material(sr);
-      if (material == MATERIAL_VOID) {
-        continue;
-      }
-      for (int g = 0; g < negroups_; g++) {
-        double sigma_t = sigma_t_[material * negroups_ + g];
-        source_regions_.external_source(sr, g) /= sigma_t;
-      }
-    }
-      */
 }
 
 void FlatSourceDomain::flux_swap()
@@ -1510,36 +1494,40 @@ SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
   // 3. Determine if there are any meshes assigned to this
   handle.mesh() = mesh_idx;
 
-  // 4. Determine if there are any point sources, and apply them.
-  // Point sources are specific to the SRK.
-  auto it4 = external_point_source_map_.find(sr_key);
-  if (it4 != external_point_source_map_.end()) {
-    handle.external_source_present() = 1;
-    const vector<int>& point_sources = it4->second;
-    for (int src_idx : point_sources) {
-      apply_external_source_to_source_region(src_idx, handle);
-    }
-  }
-
-  // 5. Determine if there are any volumetric sources, and apply them.
+  // 4. Determine if there are any volumetric sources, and apply them.
   // Volumetric sources are specifc only to the base SR idx.
   auto it5 = external_volumetric_source_map_.find(sr);
   if (it5 != external_volumetric_source_map_.end()) {
-    handle.external_source_present() = 1;
     const vector<int>& vol_sources = it5->second;
     for (int src_idx : vol_sources) {
       apply_external_source_to_source_region(src_idx, handle);
     }
   }
 
-  // 6. Initialize scalar flux based off of 1.0 or 0.0 depending on k vs. fixed,
-  // and if external source is present or not.
-  for (int g = 0; g < negroups_; g++) {
-    if (settings::run_mode == RunMode::FIXED_SOURCE &&
-        handle.external_source_present()) {
-      handle.scalar_flux_old(g) = 1.0;
+  // 5. Determine if there are any point sources, and apply them.
+  // Point sources are specific to the SRK.
+  auto it4 = external_point_source_map_.find(sr_key);
+  if (it4 != external_point_source_map_.end()) {
+    const vector<int>& point_sources = it4->second;
+    for (int src_idx : point_sources) {
+      apply_external_source_to_source_region(src_idx, handle);
     }
   }
+
+  // 6. Initialize scalar flux based off of 1.0 or 0.0 depending on k vs. fixed,
+  // and if external source is present or not.
+  // TODO: This changes the solutions slightly, despite probably helping 
+  // things to converge more rapidly?
+  // That said, perhaps this is not the best idea. In void regions, the
+  // assumption that there is a ton of flux present is maybe not the best
+  // idea? Maybe better to just assume everything starts at zero.
+
+  // for (int g = 0; g < negroups_; g++) {
+  //   if (settings::run_mode == RunMode::FIXED_SOURCE &&
+  //       handle.external_source_present()) {
+  //     handle.scalar_flux_old(g) = 1.0;
+  //   }
+  // }
 
   // 7. Divide external source by sigma_t
   if (material != C_NONE && settings::run_mode == RunMode::FIXED_SOURCE) {

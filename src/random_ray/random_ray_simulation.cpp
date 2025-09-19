@@ -111,9 +111,8 @@ void openmc_run_random_ray()
     RandomRaySimulation adjoint_sim;
 
     // Initialize adjoint fixed sources, if present
-    adjoint_sim.prepare_fixed_sources_adjoint(forward_flux,
-      forward_source_regions,
-      forward_source_region_map);
+    adjoint_sim.prepare_fixed_sources_adjoint(
+      forward_flux, forward_source_regions, forward_source_region_map);
 
     // Transpose scattering matrix
     adjoint_sim.domain()->transpose_scattering_matrix();
@@ -466,11 +465,9 @@ void RandomRaySimulation::simulate()
 
       simulation::time_transport.stop();
 
-      // If using mesh subdivision, add any newly discovered source regions
-      // to the main source region container.
-      // if (RandomRay::mesh_subdivision_enabled_) {
+      // Add any newly discovered source regions to the main source region
+      // container.
       domain_->finalize_discovered_source_regions();
-      //}
 
       // Normalize scalar flux and update volumes
       domain_->normalize_scalar_flux_and_volumes(

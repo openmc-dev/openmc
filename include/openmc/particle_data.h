@@ -389,6 +389,11 @@ public:
   const double& sqrtkT() const { return sqrtkT_; }
   double& sqrtkT_last() { return sqrtkT_last_; }
 
+  // density multiplier of the current and last cell
+  double& density_mult() { return density_mult_; }
+  const double& density_mult() const { return density_mult_; }
+  double& density_mult_last() { return density_mult_last_; }
+
 private:
   int64_t id_ {-1}; //!< Unique ID
 
@@ -416,6 +421,9 @@ private:
 
   double sqrtkT_ {-1.0};     //!< sqrt(k_Boltzmann * temperature) in eV
   double sqrtkT_last_ {0.0}; //!< last temperature
+
+  double density_mult_ {1.0};      //!< density multiplier
+  double density_mult_last_ {1.0}; //!< last density multiplier
 
 #ifdef OPENMC_DAGMC_ENABLED
   moab::DagMC::RayHistory history_;

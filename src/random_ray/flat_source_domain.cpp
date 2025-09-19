@@ -1171,7 +1171,7 @@ void FlatSourceDomain::flatten_xs()
   }
 }
 
-void FlatSourceDomain::set_adjoint_sources(const vector<double>& forward_flux)
+void FlatSourceDomain::set_adjoint_sources()
 {
   // Set the adjoint external source to 1/forward_flux. If the forward flux is
   // negative, zero, or extremely close to zero, set the adjoint source to zero,
@@ -1185,7 +1185,7 @@ void FlatSourceDomain::set_adjoint_sources(const vector<double>& forward_flux)
   double max_flux = 0.0;
 #pragma omp parallel for reduction(max : max_flux)
   for (int64_t se = 0; se < n_source_elements(); se++) {
-    double flux = forward_flux[se];
+    double flux = source_regions_.scalar_flux_final(se);
     if (flux > max_flux) {
       max_flux = flux;
     }
@@ -1195,7 +1195,7 @@ void FlatSourceDomain::set_adjoint_sources(const vector<double>& forward_flux)
 #pragma omp parallel for
   for (int64_t sr = 0; sr < n_source_regions(); sr++) {
     for (int g = 0; g < negroups_; g++) {
-      double flux = forward_flux[sr * negroups_ + g];
+      double flux = source_regions_.scalar_flux_final(sr,g);
       if (flux <= ZERO_FLUX_CUTOFF * max_flux) {
         source_regions_.external_source(sr, g) = 0.0;
       } else {
@@ -1204,6 +1204,7 @@ void FlatSourceDomain::set_adjoint_sources(const vector<double>& forward_flux)
       if (flux > 0.0) {
         source_regions_.external_source_present(sr) = 1;
       }
+      source_regions_.scalar_flux_final(sr,g) = 0.0;
     }
   }
 

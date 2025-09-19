@@ -259,9 +259,12 @@ void SourceRegionContainer::adjoint_reset()
     MomentMatrix {0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
   std::fill(mom_matrix_t_.begin(), mom_matrix_t_.end(),
     MomentMatrix {0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
-  std::fill(scalar_flux_old_.begin(), scalar_flux_old_.end(), 0.0);
+  if (settings::run_mode == RunMode::FIXED_SOURCE) {
+    std::fill(scalar_flux_old_.begin(), scalar_flux_old_.end(), 0.0);
+  } else {
+    std::fill(scalar_flux_old_.begin(), scalar_flux_old_.end(), 1.0);
+  }
   std::fill(scalar_flux_new_.begin(), scalar_flux_new_.end(), 0.0);
-  std::fill(scalar_flux_final_.begin(), scalar_flux_final_.end(), 0.0);
   std::fill(source_.begin(), source_.end(), 0.0f);
   std::fill(external_source_.begin(), external_source_.end(), 0.0f);
   std::fill(source_gradients_.begin(), source_gradients_.end(),

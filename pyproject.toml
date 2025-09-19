@@ -41,12 +41,12 @@ dependencies = [
 [project.optional-dependencies]
 depletion-mpi = ["mpi4py"]
 docs = [
-    "sphinx==5.0.2",
+    "sphinx",
     "sphinxcontrib-katex",
     "sphinx-numfig",
     "jupyter",
     "sphinxcontrib-svg2pdfconverter",
-    "sphinx-rtd-theme==1.0.0"
+    "sphinx-rtd-theme"
 ]
 test = ["packaging", "pytest", "pytest-cov", "colorama", "openpyxl"]
 ci = ["cpp-coveralls", "coveralls"]

@@ -491,6 +491,9 @@ class PowerLaw(Univariate):
     """
 
     def __init__(self, a: float = 0.0, b: float = 1.0, n: float = 0.):
+        if a >= b:
+            raise ValueError(
+                "Lower bound of sampling interval must be less than upper bound.")
         self.a = a
         self.b = b
         self.n = n
@@ -505,6 +508,9 @@ class PowerLaw(Univariate):
     @a.setter
     def a(self, a):
         cv.check_type('interval lower bound', a, Real)
+        if a < 0:
+            raise ValueError(
+                "PowerLaw sampling is restricted to positive-valued intervals.")
         self._a = a
 
     @property
@@ -514,6 +520,9 @@ class PowerLaw(Univariate):
     @b.setter
     def b(self, b):
         cv.check_type('interval upper bound', b, Real)
+        if b < 0:
+            raise ValueError(
+                "PowerLaw sampling is restricted to positive-valued intervals.")
         self._b = b
 
     @property

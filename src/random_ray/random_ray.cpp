@@ -335,19 +335,12 @@ void RandomRay::event_advance_ray()
 
 void RandomRay::attenuate_flux(double distance, bool is_active, double offset)
 {
-  // Determine source region index etc.
-  int i_cell = lowest_coord().cell();
-
-  // The base source region is the spatial region index
-  int64_t sr = domain_->source_region_offsets_[i_cell] + cell_instance();
+  // Lookup base source region index
+  int64_t sr = domain_->lookup_base_source_region_idx(*this);
 
   // Perform ray tracing across mesh
   // Determine the mesh index for the base source region, if any
-  int mesh_idx = C_NONE;
-  auto it = domain_->mesh_map_.find(sr);
-  if (it != domain_->mesh_map_.end()) {
-    mesh_idx = it->second;
-  }
+  int mesh_idx = domain_->lookup_mesh_idx(sr);
 
   if (mesh_idx == C_NONE) {
     // If there's no mesh being applied to this cell, then
@@ -386,9 +379,10 @@ void RandomRay::attenuate_flux(double distance, bool is_active, double offset)
 void RandomRay::attenuate_flux_inner(
   double distance, bool is_active, int64_t sr, int mesh_bin, Position r)
 {
+  SourceRegionKey sr_key {sr, mesh_bin};
   SourceRegionHandle srh;
   srh = domain_->get_subdivided_source_region_handle(
-    sr, mesh_bin, r, distance, u());
+    sr_key, r, distance, u());
   if (srh.is_numerical_fp_artifact_) {
     return;
   }
@@ -805,29 +799,12 @@ void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
       cell_born() = lowest_coord().cell();
   }
 
+  SourceRegionKey sr_key = domain_->lookup_source_region_key(*this);
+  SourceRegionHandle srh =
+    domain_->get_subdivided_source_region_handle(sr_key, r(), 0.0, u());
+
   // Initialize ray's starting angular flux to starting location's isotropic
   // source
-  int i_cell = lowest_coord().cell();
-  int64_t sr = domain_->source_region_offsets_[i_cell] + cell_instance();
-
-  SourceRegionHandle srh;
-
-  // Determine if there are any meshes assigned to this
-  int mesh_idx = C_NONE;
-  auto it = domain_->mesh_map_.find(sr);
-  if (it != domain_->mesh_map_.end()) {
-    mesh_idx = it->second;
-  }
-  int mesh_bin;
-  if (mesh_idx == C_NONE) {
-    mesh_bin = 0;
-  } else {
-    Mesh* mesh = model::meshes[mesh_idx].get();
-    mesh_bin = mesh->get_bin(r());
-  }
-  srh =
-    domain_->get_subdivided_source_region_handle(sr, mesh_bin, r(), 0.0, u());
-
   if (!srh.is_numerical_fp_artifact_) {
     for (int g = 0; g < negroups_; g++) {
       angular_flux_[g] = srh.source(g);

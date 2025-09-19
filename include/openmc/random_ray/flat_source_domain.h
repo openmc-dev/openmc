@@ -56,7 +56,7 @@ public:
   void apply_mesh_to_cell_and_children(int32_t i_cell, int32_t mesh_idx,
     int32_t target_material_id, bool is_target_void);
   SourceRegionHandle get_subdivided_source_region_handle(
-    int64_t sr, int mesh_bin, Position r, double dist, Direction u);
+    SourceRegionKey sr_key, Position r, double dist, Direction u);
   void finalize_discovered_source_regions();
   void apply_transport_stabilization();
   int64_t n_source_regions() const
@@ -67,6 +67,10 @@ public:
   {
     return source_regions_.n_source_regions() * negroups_;
   }
+  int64_t lookup_base_source_region_idx(const GeometryState& p) const;
+  SourceRegionKey lookup_source_region_key(const GeometryState& p) const;
+  int64_t lookup_mesh_bin(int64_t sr, Position r) const;
+  int lookup_mesh_idx(int64_t sr) const;
 
   //----------------------------------------------------------------------------
   // Static Data members
@@ -133,8 +137,7 @@ public:
   // Map that relates a base source region index to the external source index.
   // This map is used to check if there are any volumetric sources within a
   // subdivided source region at the time it is discovered.
-  std::unordered_map<int64_t, vector<int>>
-    external_volumetric_source_map_;
+  std::unordered_map<int64_t, vector<int>> external_volumetric_source_map_;
 
   // Map that relates a base source region index to a mesh index. This map
   // is used to check which subdivision mesh is present in a source region.

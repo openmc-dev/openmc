@@ -63,7 +63,7 @@ public:
 
   xt::xtensor<int, 1> get_x_shape() const;
 
-  std::string bin_label(int bin) const;
+  std::string bin_label(int bin) const override;
 
   int32_t offset_in_ring(const HexMeshIndex& ijkl, int32_t r) const;
 
@@ -75,7 +75,7 @@ public:
 
   HexMeshIndex round_frac_hexindex(vector<double> frac_ijkl) const;
 
-  int get_index_in_direction(double r, int i) const;
+  int get_index_in_direction(double r, int i) const override;
 
   virtual std::string get_mesh_type() const override;
 
@@ -107,9 +107,9 @@ public:
 
   bool in_hexmesh(HexMeshIndex& ijkl) const;
 
-  double volume(const StructuredMesh::MeshIndex& ijk) const;
+  double volume(const StructuredMesh::MeshIndex& ijk) const override;
 
-  double volume(int bin) const { return element_volume_; }
+  double volume(int bin) const override { return element_volume_; }
 
   Position lower_left() const override
   {

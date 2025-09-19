@@ -2520,7 +2520,8 @@ MOABMesh::MOABMesh(pugi::xml_node node) : UnstructuredMesh(node)
   initialize();
 }
 
-MOABMesh::MOABMesh(const std::string& filename, double length_multiplier) : UnstructuredMesh()
+MOABMesh::MOABMesh(const std::string& filename, double length_multiplier)
+  : UnstructuredMesh()
 {
   n_dimension_ = 3;
   filename_ = filename;

@@ -616,8 +616,8 @@ HexagonalMesh::HexMeshDistance HexagonalMesh::distance_to_hex_boundary(
   const HexMeshIndex& ijkl, int i, const Position& r0, const Direction& u,
   double l) const
 {
-  // Compute the distance to the element boundary of index i \in {0, ..., 6}
-  // i==6 means z
+  // Compute the distance to the element boundary of index i \in {0, ..., 3}
+  // i==3 means z
 
   Position r = r0 - origin_;
   // Given the hex index - we now find the distance from r0 to the 0:q, 1:r, 2:s

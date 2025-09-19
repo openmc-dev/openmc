@@ -135,29 +135,7 @@ void synchronize_bank()
       "No fission sites banked on MPI rank " + std::to_string(mpi::rank));
   }
 
-  // Make sure all processors start at the same point for random sampling. Then
-  // skip ahead in the sequence using the starting index in the 'global'
-  // fission bank for each processor.
-
-  int64_t id = simulation::total_gen + overall_generation();
-  uint64_t seed = init_seed(id, STREAM_TRACKING);
-  advance_prn_seed(start, &seed);
-
-  // Determine how many fission sites we need to sample from the source bank
-  // and the probability for selecting a site.
-
-  int64_t sites_needed;
-  if (total < settings::n_particles) {
-    sites_needed = settings::n_particles % total;
-  } else {
-    sites_needed = settings::n_particles;
-  }
-  double p_sample = static_cast<double>(sites_needed) / total;
-
   simulation::time_bank_sample.start();
-
-  // ==========================================================================
-  // SAMPLE N_PARTICLES FROM FISSION BANK AND PLACE IN TEMP_SITES
 
   // Allocate temporary source bank -- we don't really know how many fission
   // sites were created, so overallocate by a factor of 3
@@ -173,33 +151,38 @@ void synchronize_bank()
       temp_delayed_groups, temp_lifetimes, 3 * simulation::work_per_rank);
   }
 
-  for (int64_t i = 0; i < simulation::fission_bank.size(); i++) {
-    const auto& site = simulation::fission_bank[i];
+  // ==========================================================================
+  // SAMPLE N_PARTICLES FROM FISSION BANK AND PLACE IN TEMP_SITES
 
-    // If there are less than n_particles particles banked, automatically add
-    // int(n_particles/total) sites to temp_sites. For example, if you need
-    // 1000 and 300 were banked, this would add 3 source sites per banked site
-    // and the remaining 100 would be randomly sampled.
-    if (total < settings::n_particles) {
-      for (int64_t j = 1; j <= settings::n_particles / total; ++j) {
-        temp_sites[index_temp] = site;
-        if (settings::ifp_on) {
-          copy_ifp_data_from_fission_banks(
-            i, temp_delayed_groups[index_temp], temp_lifetimes[index_temp]);
-        }
-        ++index_temp;
-      }
-    }
+  // We use Uniform Combing method to exactly get the targeted particle size
+  // [https://doi.org/10.1080/00295639.2022.2091906]
 
-    // Randomly sample sites needed
-    if (prn(&seed) < p_sample) {
-      temp_sites[index_temp] = site;
-      if (settings::ifp_on) {
-        copy_ifp_data_from_fission_banks(
-          i, temp_delayed_groups[index_temp], temp_lifetimes[index_temp]);
-      }
-      ++index_temp;
+  // Make sure all processors use the same random number seed.
+  int64_t id = simulation::total_gen + overall_generation();
+  uint64_t seed = init_seed(id, STREAM_TRACKING);
+
+  // Comb specification
+  double teeth_distance = static_cast<double>(total) / settings::n_particles;
+  double teeth_offset = prn(&seed) * teeth_distance;
+
+  // First and last hitting tooth
+  int64_t end = start + simulation::fission_bank.size();
+  int64_t tooth_start = std::ceil((start - teeth_offset) / teeth_distance);
+  int64_t tooth_end = std::floor((end - teeth_offset) / teeth_distance) + 1;
+
+  // Locally comb particles in fission_bank
+  double tooth = tooth_start * teeth_distance + teeth_offset;
+  for (int64_t i = tooth_start; i < tooth_end; i++) {
+    int64_t idx = std::floor(tooth) - start;
+    temp_sites[index_temp] = simulation::fission_bank[idx];
+    if (settings::ifp_on) {
+      copy_ifp_data_from_fission_banks(
+        idx, temp_delayed_groups[index_temp], temp_lifetimes[index_temp]);
     }
+    ++index_temp;
+
+    // Next tooth
+    tooth += teeth_distance;
   }
 
   // At this point, the sampling of source sites is done and now we need to
@@ -224,37 +207,6 @@ void synchronize_bank()
   start = 0;
   finish = index_temp;
 #endif
-
-  // Now that the sampling is complete, we need to ensure that we have exactly
-  // n_particles source sites. The way this is done in a reproducible manner is
-  // to adjust only the source sites on the last processor.
-
-  if (mpi::rank == mpi::n_procs - 1) {
-    if (finish > settings::n_particles) {
-      // If we have extra sites sampled, we will simply discard the extra
-      // ones on the last processor
-      index_temp = settings::n_particles - start;
-
-    } else if (finish < settings::n_particles) {
-      // If we have too few sites, repeat sites from the very end of the
-      // fission bank
-      sites_needed = settings::n_particles - finish;
-      // TODO: sites_needed > simulation::fission_bank.size() or other test to
-      // make sure we don't need info from other proc
-      for (int i = 0; i < sites_needed; ++i) {
-        int i_bank = simulation::fission_bank.size() - sites_needed + i;
-        temp_sites[index_temp] = simulation::fission_bank[i_bank];
-        if (settings::ifp_on) {
-          copy_ifp_data_from_fission_banks(i_bank,
-            temp_delayed_groups[index_temp], temp_lifetimes[index_temp]);
-        }
-        ++index_temp;
-      }
-    }
-
-    // the last processor should not be sending sites to right
-    finish = simulation::work_index[mpi::rank + 1];
-  }
 
   simulation::time_bank_sample.stop();
   simulation::time_bank_sendrecv.start();

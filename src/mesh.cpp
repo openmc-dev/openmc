@@ -590,6 +590,8 @@ Position StructuredMesh::sample_element(
 
 UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node)
 {
+  n_dimension_ = 3;
+
   // check the mesh type
   if (check_for_node(node, "type")) {
     auto temp = get_node_value(node, "type", true, true);
@@ -2518,8 +2520,9 @@ MOABMesh::MOABMesh(pugi::xml_node node) : UnstructuredMesh(node)
   initialize();
 }
 
-MOABMesh::MOABMesh(const std::string& filename, double length_multiplier)
+MOABMesh::MOABMesh(const std::string& filename, double length_multiplier) : UnstructuredMesh()
 {
+  n_dimension_ = 3;
   filename_ = filename;
   set_length_multiplier(length_multiplier);
   initialize();
@@ -3242,6 +3245,7 @@ LibMesh::LibMesh(libMesh::MeshBase& input_mesh, double length_multiplier)
 LibMesh::LibMesh(const std::string& filename, double length_multiplier)
   : adaptive_(false)
 {
+  n_dimension_ = 3;
   set_mesh_pointer_from_filename(filename);
   set_length_multiplier(length_multiplier);
   initialize();

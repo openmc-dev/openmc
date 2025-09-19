@@ -1230,7 +1230,6 @@ void FlatSourceDomain::set_adjoint_sources(const vector<double>& forward_flux)
       source_regions_.external_source_present(sr) = 0;
     }
   }
-
   // Divide the fixed source term by sigma t (to save time when applying each
   // iteration)
 #pragma omp parallel for
@@ -1384,6 +1383,7 @@ SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
     int64_t sr = it->second;
     return source_regions_.get_source_region_handle(sr);
   }
+
 
   // Case 2: Check if the source region key is present in the temporary (thread
   // safe) map. This is a common occurrence in the first power iteration when

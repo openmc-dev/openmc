@@ -24,7 +24,8 @@ public:
   void prepare_fixed_sources_adjoint(vector<double>& forward_flux,
     SourceRegionContainer& forward_source_regions,
     std::unordered_map<SourceRegionKey, int64_t, SourceRegionKey::HashFunctor>&
-      forward_source_region_map);
+      forward_source_region_map,
+    std::unordered_map<int64_t, int>& mesh_map);
   void simulate();
   void output_simulation_results() const;
   void instability_check(

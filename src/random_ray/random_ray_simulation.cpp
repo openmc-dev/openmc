@@ -52,6 +52,7 @@ void openmc_run_random_ray()
   SourceRegionContainer forward_source_regions;
   std::unordered_map<SourceRegionKey, int64_t, SourceRegionKey::HashFunctor>
     forward_source_region_map;
+  std::unordered_map<int64_t, int> mesh_map;
 
   {
     // Initialize Random Ray Simulation Object
@@ -83,6 +84,7 @@ void openmc_run_random_ray()
 
     forward_source_regions = sim.domain()->source_regions_;
     forward_source_region_map = sim.domain()->source_region_map_;
+    mesh_map = sim.domain()->mesh_map_;
 
     // Finalize OpenMC
     openmc_simulation_finalize();
@@ -112,7 +114,7 @@ void openmc_run_random_ray()
 
     // Initialize adjoint fixed sources, if present
     adjoint_sim.prepare_fixed_sources_adjoint(
-      forward_flux, forward_source_regions, forward_source_region_map);
+      forward_flux, forward_source_regions, forward_source_region_map, mesh_map);
 
     // Transpose scattering matrix
     adjoint_sim.domain()->transpose_scattering_matrix();
@@ -410,12 +412,13 @@ void RandomRaySimulation::apply_fixed_sources_and_mesh_domains()
 void RandomRaySimulation::prepare_fixed_sources_adjoint(
   vector<double>& forward_flux, SourceRegionContainer& forward_source_regions,
   std::unordered_map<SourceRegionKey, int64_t, SourceRegionKey::HashFunctor>&
-    forward_source_region_map)
+    forward_source_region_map, std::unordered_map<int64_t, int>& mesh_map)
 {
   domain_->k_eff_ = 1.0;
   if (settings::run_mode == RunMode::FIXED_SOURCE) {
     domain_->source_regions_ = forward_source_regions;
     domain_->source_region_map_ = forward_source_region_map;
+    domain_->mesh_map_ = mesh_map;
     domain_->source_regions_.adjoint_reset();
     domain_->set_adjoint_sources(forward_flux);
   }
@@ -433,12 +436,13 @@ void RandomRaySimulation::simulate()
     // TODO: Implement domain decomposition for MPI parallelism
     if (mpi::master) {
 
+
       // Reset total starting particle weight used for normalizing tallies
       simulation::total_weight = 1.0;
 
       // Update source term (scattering + fission)
       domain_->update_all_neutron_sources();
-      
+
       // Reset scalar fluxes, iteration volume tallies, and region hit flags
       // to zero
       domain_->batch_reset();

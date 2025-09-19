@@ -115,7 +115,7 @@ void sample_neutron_reaction(Particle& p)
 
       // Make sure particle population doesn't grow out of control for
       // subcritical multiplication problems.
-      if (p.secondary_bank().size() >= 10000) {
+      if (p.secondary_bank().size() >= settings::max_secondaries) {
         fatal_error(
           "The secondary particle bank appears to be growing without "
           "bound. You are likely running a subcritical multiplication problem "
@@ -210,12 +210,22 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
     site.particle = ParticleType::neutron;
     site.time = p.time();
     site.wgt = 1. / weight;
-    site.parent_id = p.id();
-    site.progeny_id = p.n_progeny()++;
     site.surf_id = 0;
 
     // Sample delayed group and angle/energy for fission reaction
     sample_fission_neutron(i_nuclide, rx, &site, p);
+
+    // Reject site if it exceeds time cutoff
+    if (site.delayed_group > 0) {
+      double t_cutoff = settings::time_cutoff[static_cast<int>(site.particle)];
+      if (site.time > t_cutoff) {
+        continue;
+      }
+    }
+
+    // Set parent and progeny IDs
+    site.parent_id = p.id();
+    site.progeny_id = p.n_progeny()++;
 
     // Store fission site in bank
     if (use_fission_bank) {
@@ -1068,6 +1078,10 @@ void sample_fission_neutron(
 
     // set the delayed group for the particle born from fission
     site->delayed_group = group;
+
+    // Sample time of emission based on decay constant of precursor
+    double decay_rate = rx.products_[site->delayed_group].decay_rate_;
+    site->time -= std::log(prn(p.current_seed())) / decay_rate;
 
   } else {
     // ====================================================================

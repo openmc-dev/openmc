@@ -1434,77 +1434,67 @@ SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
   // condition only occurs the first time the source region is discovered
   // (typically in the first power iteration). In this case, we need to handle
   // creation of the new source region and its storage into the parallel map.
-  // The new source region is created by copying the base source region, so as
-  // to inherit material, external source, and some flux properties etc. We
-  // also pass the base source region id to allow the new source region to
-  // know which base source region it is derived from.
+  // Additionally, we need to determine the source region's material, initialize
+  // the starting scalar flux guess, and apply any known external sources.
 
-  // 0. Call the basic constructor for the source region
+  // Call the basic constructor for the source region and store in the parallel
+  // map.
   bool is_linear = RandomRay::source_shape_ != RandomRaySourceShape::FLAT;
   SourceRegion* sr_ptr =
     discovered_source_regions_.emplace(sr_key, {negroups_, is_linear});
   SourceRegionHandle handle {*sr_ptr};
 
-  // 1. Lock the SR (before writing anything to it)
+  // Lock the SR (before writing anything to it), and release the lock
+  // on the parallel map object. Locking the handle must happen first,
+  // so as to ensure another thread does not visit this source region
+  // before it is fully initialized.
   handle.lock();
   discovered_source_regions_.unlock(sr_key);
 
-  // 2. Determine the material
+  // Determine the material
   int gs_i_cell = gs.lowest_coord().cell();
   Cell& cell = *model::cells[gs_i_cell];
   int material = cell.material(gs.cell_instance());
   handle.material() = material;
 
-  // 3. Determine if there are any meshes assigned to this
+  // Store the mesh index (if any) assigned to this source region
   handle.mesh() = mesh_idx;
 
-  // 4. Determine if there are any volumetric sources, and apply them.
-  // Volumetric sources are specifc only to the base SR idx.
-  auto it5 = external_volumetric_source_map_.find(sr_key.base_source_region_id);
-  if (it5 != external_volumetric_source_map_.end()) {
-    const vector<int>& vol_sources = it5->second;
-    for (int src_idx : vol_sources) {
-      apply_external_source_to_source_region(src_idx, handle);
+  if (settings::run_mode == RunMode::FIXED_SOURCE) {
+    // Determine if there are any volumetric sources, and apply them.
+    // Volumetric sources are specifc only to the base SR idx.
+    auto it_vol =
+      external_volumetric_source_map_.find(sr_key.base_source_region_id);
+    if (it_vol != external_volumetric_source_map_.end()) {
+      const vector<int>& vol_sources = it_vol->second;
+      for (int src_idx : vol_sources) {
+        apply_external_source_to_source_region(src_idx, handle);
+      }
     }
-  }
 
-  // 5. Determine if there are any point sources, and apply them.
-  // Point sources are specific to the SRK.
-  auto it4 = external_point_source_map_.find(sr_key);
-  if (it4 != external_point_source_map_.end()) {
-    const vector<int>& point_sources = it4->second;
-    for (int src_idx : point_sources) {
-      apply_external_source_to_source_region(src_idx, handle);
+    // Determine if there are any point sources, and apply them.
+    // Point sources are specific to the source region key.
+    auto it_point = external_point_source_map_.find(sr_key);
+    if (it_point != external_point_source_map_.end()) {
+      const vector<int>& point_sources = it_point->second;
+      for (int src_idx : point_sources) {
+        apply_external_source_to_source_region(src_idx, handle);
+      }
     }
-  }
 
-  // 6. Initialize scalar flux based off of 1.0 or 0.0 depending on k vs. fixed,
-  // and if external source is present or not.
-  // TODO: This changes the solutions slightly, despite probably helping
-  // things to converge more rapidly?
-  // That said, perhaps this is not the best idea. In void regions, the
-  // assumption that there is a ton of flux present is maybe not the best
-  // idea? Maybe better to just assume everything starts at zero.
-
-  // for (int g = 0; g < negroups_; g++) {
-  //   if (settings::run_mode == RunMode::FIXED_SOURCE &&
-  //       handle.external_source_present()) {
-  //     handle.scalar_flux_old(g) = 1.0;
-  //   }
-  // }
-
-  // 7. Divide external source by sigma_t
-  if (material != C_NONE && settings::run_mode == RunMode::FIXED_SOURCE) {
-    for (int g = 0; g < negroups_; g++) {
-      double sigma_t = sigma_t_[material * negroups_ + g];
-      handle.external_source(g) /= sigma_t;
+    // Divide external source term by sigma_t
+    if (material != C_NONE) {
+      for (int g = 0; g < negroups_; g++) {
+        double sigma_t = sigma_t_[material * negroups_ + g];
+        handle.external_source(g) /= sigma_t;
+      }
     }
   }
 
   // Compute the combined source term
   update_single_neutron_source(handle);
 
-  // 10. Unlock the SR
+  // Unlock the source region
   handle.unlock();
 
   return handle;

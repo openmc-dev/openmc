@@ -1059,7 +1059,11 @@ void FlatSourceDomain::convert_external_sources()
 
       // If mesh subdivision is enabled, we need to determine which subdivided
       // mesh bin the point source coordinate is in as well
-      int mesh_idx = source_regions_.mesh(sr);
+      int mesh_idx = C_NONE;
+      auto mesh_it = mesh_map_.find(sr);
+      if (mesh_it != mesh_map_.end()) {
+        mesh_idx = mesh_it->second;
+      }
       int mesh_bin;
       if (mesh_idx == C_NONE) {
         mesh_bin = 0;

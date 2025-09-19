@@ -54,7 +54,6 @@ public:
     bool is_target_void);
   void apply_mesh_to_cell_and_children(int32_t i_cell, int32_t mesh_idx,
     int32_t target_material_id, bool is_target_void);
-  void prepare_base_source_regions();
   SourceRegionHandle get_subdivided_source_region_handle(
     int64_t sr, int mesh_bin, Position r, double dist, Direction u);
   void finalize_discovered_source_regions();
@@ -110,14 +109,6 @@ public:
 
   // The abstract container holding all source region-specific data
   SourceRegionContainer source_regions_;
-
-  // Base source region container. When source region subdivision via mesh
-  // is in use, this container holds the original (non-subdivided) material
-  // filled cell instance source regions. These are useful as they can be
-  // initialized with external source and mesh domain information ahead of time.
-  // Then, dynamically discovered source regions can be initialized by cloning
-  // their base region.
-  SourceRegionContainer base_source_regions_;
 
   // Parallel hash map holding all source regions discovered during
   // a single iteration. This is a threadsafe data structure that is cleaned

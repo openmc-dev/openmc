@@ -3519,9 +3519,9 @@ double LibMesh::volume(int bin) const
   return this->get_element_from_bin(bin).volume();
 }
 
-AdaptiveLibMesh::AdaptiveLibMesh(libMesh::MeshBase& input_mesh, double length_multiplier)
-  : LibMesh(input_mesh, length_multiplier),
-    num_active_(m_->n_active_elem())
+AdaptiveLibMesh::AdaptiveLibMesh(
+  libMesh::MeshBase& input_mesh, double length_multiplier)
+  : LibMesh(input_mesh, length_multiplier), num_active_(m_->n_active_elem())
 {
   // if the mesh is adaptive elements aren't guaranteed by libMesh to be
   // contiguous in ID space, so we need to map from bin indices (defined over
@@ -3549,8 +3549,8 @@ void AdaptiveLibMesh::add_score(const std::string& var_name)
     this->id_));
 }
 
-void AdaptiveLibMesh::set_score_data(const std::string& var_name, const vector<double>& values,
-  const vector<double>& std_dev)
+void AdaptiveLibMesh::set_score_data(const std::string& var_name,
+  const vector<double>& values, const vector<double>& std_dev)
 {
   warning(fmt::format(
     "Exodus output cannot be provided as unstructured mesh {} is adaptive.",

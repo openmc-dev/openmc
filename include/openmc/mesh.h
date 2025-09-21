@@ -1028,7 +1028,8 @@ private:
 class AdaptiveLibMesh : public LibMesh {
 public:
   // Constructor
-  AdaptiveLibMesh(libMesh::MeshBase& input_mesh, double length_multiplier = 1.0);
+  AdaptiveLibMesh(
+    libMesh::MeshBase& input_mesh, double length_multiplier = 1.0);
 
   // Overridden methods
   int n_bins() const override;
@@ -1051,8 +1052,8 @@ private:
   const libMesh::dof_id_type num_active_; //!< cached number of active elements
 
   std::vector<libMesh::dof_id_type>
-  bin_to_elem_map_; //!< mapping bin indices to dof indices for active
-                    //!< elements
+    bin_to_elem_map_; //!< mapping bin indices to dof indices for active
+                      //!< elements
   std::vector<int> elem_to_bin_map_; //!< mapping dof indices to bin indices for
                                      //!< active elements
 };

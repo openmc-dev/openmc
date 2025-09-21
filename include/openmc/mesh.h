@@ -1022,11 +1022,33 @@ private:
   libMesh::BoundingBox bbox_; //!< bounding box of the mesh
   libMesh::dof_id_type
     first_element_id_; //!< id of the first element in the mesh
+};
 
-  const bool adaptive_; //!< whether this mesh has adaptivity enabled or not
+class AdaptiveLibMesh : public LibMesh {
+public:
+  // Constructors
+  AdaptiveLibMesh(libMesh::MeshBase& input_mesh, double length_multiplier = 1.0);
+
+  // Overridden Methods
+  int n_bins() const override;
+
+  void add_score(const std::string& var_name) override;
+
+  void set_score_data(const std::string& var_name, const vector<double>& values,
+    const vector<double>& std_dev) override;
+
+  void write(const std::string& filename) const override;
+
+  int get_bin_from_element(const libMesh::Elem* elem) const override;
+
+  const libMesh::Elem& get_element_from_bin(int bin) const override;
+
+private:
+  const libMesh::dof_id_type num_active_; //!< cached number of active elements
+
   std::vector<libMesh::dof_id_type>
-    bin_to_elem_map_; //!< mapping bin indices to dof indices for active
-                      //!< elements
+  bin_to_elem_map_; //!< mapping bin indices to dof indices for active
+                    //!< elements
   std::vector<int> elem_to_bin_map_; //!< mapping dof indices to bin indices for
                                      //!< active elements
 };

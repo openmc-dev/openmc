@@ -991,14 +991,6 @@ public:
   libMesh::MeshBase* mesh_ptr() const { return m_; };
 
 protected:
-  libMesh::MeshBase* m_; //!< pointer to libMesh MeshBase instance, always set
-                         //!< during intialization
-
-private:
-  void initialize() override;
-  void set_mesh_pointer_from_filename(const std::string& filename);
-  void build_eqn_sys();
-
   // Methods
 
   //! Translate a bin value to an element reference
@@ -1006,6 +998,13 @@ private:
 
   //! Translate an element pointer to a bin index
   virtual int get_bin_from_element(const libMesh::Elem* elem) const;
+
+  libMesh::MeshBase* m_; //!< pointer to libMesh MeshBase instance, always set
+                         //!< during intialization
+private:
+  void initialize() override;
+  void set_mesh_pointer_from_filename(const std::string& filename);
+  void build_eqn_sys();
 
   // Data members
   unique_ptr<libMesh::MeshBase> unique_m_ =
@@ -1028,10 +1027,10 @@ private:
 
 class AdaptiveLibMesh : public LibMesh {
 public:
-  // Constructors
+  // Constructor
   AdaptiveLibMesh(libMesh::MeshBase& input_mesh, double length_multiplier = 1.0);
 
-  // Overridden Methods
+  // Overridden methods
   int n_bins() const override;
 
   void add_score(const std::string& var_name) override;
@@ -1041,11 +1040,14 @@ public:
 
   void write(const std::string& filename) const override;
 
+private:
+  // Overridden methods
+
   int get_bin_from_element(const libMesh::Elem* elem) const override;
 
   const libMesh::Elem& get_element_from_bin(int bin) const override;
 
-private:
+  // Data members
   const libMesh::dof_id_type num_active_; //!< cached number of active elements
 
   std::vector<libMesh::dof_id_type>

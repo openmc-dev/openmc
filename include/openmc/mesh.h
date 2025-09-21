@@ -1040,13 +1040,13 @@ public:
 
   void write(const std::string& filename) const override;
 
-private:
+protected:
   // Overridden methods
-
   int get_bin_from_element(const libMesh::Elem* elem) const override;
 
   const libMesh::Elem& get_element_from_bin(int bin) const override;
 
+private:
   // Data members
   const libMesh::dof_id_type num_active_; //!< cached number of active elements
 

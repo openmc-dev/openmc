@@ -990,6 +990,10 @@ public:
 
   libMesh::MeshBase* mesh_ptr() const { return m_; };
 
+protected:
+  libMesh::MeshBase* m_; //!< pointer to libMesh MeshBase instance, always set
+                         //!< during intialization
+
 private:
   void initialize() override;
   void set_mesh_pointer_from_filename(const std::string& filename);
@@ -998,17 +1002,15 @@ private:
   // Methods
 
   //! Translate a bin value to an element reference
-  const libMesh::Elem& get_element_from_bin(int bin) const;
+  virtual const libMesh::Elem& get_element_from_bin(int bin) const;
 
   //! Translate an element pointer to a bin index
-  int get_bin_from_element(const libMesh::Elem* elem) const;
+  virtual int get_bin_from_element(const libMesh::Elem* elem) const;
 
   // Data members
   unique_ptr<libMesh::MeshBase> unique_m_ =
     nullptr; //!< pointer to the libMesh MeshBase instance, only used if mesh is
              //!< created inside OpenMC
-  libMesh::MeshBase* m_; //!< pointer to libMesh MeshBase instance, always set
-                         //!< during intialization
   vector<unique_ptr<libMesh::PointLocatorBase>>
     pl_; //!< per-thread point locators
   unique_ptr<libMesh::EquationSystems>

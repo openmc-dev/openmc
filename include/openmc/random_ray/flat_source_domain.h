@@ -56,7 +56,7 @@ public:
   void apply_mesh_to_cell_and_children(int32_t i_cell, int32_t mesh_idx,
     int32_t target_material_id, bool is_target_void);
   SourceRegionHandle get_subdivided_source_region_handle(
-    SourceRegionKey sr_key, Position r, double dist, Direction u);
+    SourceRegionKey sr_key, Position r, Direction u);
   void finalize_discovered_source_regions();
   void apply_transport_stabilization();
   int64_t n_source_regions() const

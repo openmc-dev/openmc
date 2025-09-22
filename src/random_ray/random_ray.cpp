@@ -381,7 +381,7 @@ void RandomRay::attenuate_flux_inner(
 {
   SourceRegionKey sr_key {sr, mesh_bin};
   SourceRegionHandle srh;
-  srh = domain_->get_subdivided_source_region_handle(sr_key, r, distance, u());
+  srh = domain_->get_subdivided_source_region_handle(sr_key, r, u());
   if (srh.is_numerical_fp_artifact_) {
     return;
   }
@@ -800,7 +800,7 @@ void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
 
   SourceRegionKey sr_key = domain_->lookup_source_region_key(*this);
   SourceRegionHandle srh =
-    domain_->get_subdivided_source_region_handle(sr_key, r(), 0.0, u());
+    domain_->get_subdivided_source_region_handle(sr_key, r(), u());
 
   // Initialize ray's starting angular flux to starting location's isotropic
   // source

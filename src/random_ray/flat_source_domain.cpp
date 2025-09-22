@@ -1339,7 +1339,7 @@ void FlatSourceDomain::apply_meshes()
 }
 
 SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
-  SourceRegionKey sr_key, Position r, double dist, Direction u)
+  SourceRegionKey sr_key, Position r, Direction u)
 {
   // Case 1: Check if the source region key is already present in the permanent
   // map. This is the most common condition, as any source region visited in a
@@ -1444,13 +1444,6 @@ SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
     discovered_source_regions_.emplace(sr_key, {negroups_, is_linear});
   SourceRegionHandle handle {*sr_ptr};
 
-  // Lock the SR (before writing anything to it), and release the lock
-  // on the parallel map object. Locking the handle must happen first,
-  // so as to ensure another thread does not visit this source region
-  // before it is fully initialized.
-  handle.lock();
-  discovered_source_regions_.unlock(sr_key);
-
   // Determine the material
   int gs_i_cell = gs.lowest_coord().cell();
   Cell& cell = *model::cells[gs_i_cell];
@@ -1493,9 +1486,18 @@ SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
 
   // Compute the combined source term
   update_single_neutron_source(handle);
-
-  // Unlock the source region
-  handle.unlock();
+  
+  // Unlock the parallel map. Note: we may be tempted to release
+  // this lock earlier, and then just use the source region's lock to protect
+  // the flux/source initialization stages above. However, the rest of the code
+  // only protects updates to the new flux and volume fields, and assumes that the
+  // source is constant for the duration of transport. Thus, using just the source
+  // region's lock by itself would result in other threads potentially reading from
+  // the source before it is computed, as they won't use the lock when only reading
+  // from the SR's source. It would be expensive to protect those operations,
+  // whereas generating the SR is only done once, so we just hold the map's bucket
+  // lock until the source region is fully initialized.
+  discovered_source_regions_.unlock(sr_key);
 
   return handle;
 }

@@ -1,6 +1,7 @@
 from collections.abc import Iterable, Mapping
 from numbers import Integral, Real
 from pathlib import Path
+from textwrap import dedent
 
 import h5py
 import lxml.etree as ET
@@ -167,7 +168,8 @@ _SVG_COLORS = {
     'yellowgreen': (154, 205, 50)
 }
 
-_PLOT_PARAMS = """
+_PLOT_PARAMS = dedent("""\
+
         Parameters
         ----------
         origin : iterable of float
@@ -249,7 +251,7 @@ _PLOT_PARAMS = """
         -------
         matplotlib.axes.Axes
             Axes containing resulting image
-"""
+""")
 
 
 # Decorator for consistently adding plot parameters to docstrings (Model.plot,

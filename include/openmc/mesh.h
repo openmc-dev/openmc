@@ -666,9 +666,8 @@ class UnstructuredMesh : public Mesh {
 
 public:
   // Constructors
-  UnstructuredMesh() {};
+  UnstructuredMesh() { n_dimension_ = 3; };
   UnstructuredMesh(pugi::xml_node node);
-  UnstructuredMesh(const std::string& filename);
 
   static const std::string mesh_type;
   virtual std::string get_mesh_type() const override;

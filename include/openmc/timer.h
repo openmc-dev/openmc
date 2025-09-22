@@ -34,6 +34,7 @@ extern Timer time_event_death;
 extern Timer time_update_src;
 extern Timer time_ray_comms;
 extern Timer time_decomposition_handling;
+extern Timer time_ray_buffering;
 
 } // namespace simulation
 

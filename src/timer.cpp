@@ -28,6 +28,7 @@ Timer time_event_collision;
 Timer time_event_death;
 Timer time_update_src;
 Timer time_ray_comms;
+Timer time_ray_buffering;
 Timer time_decomposition_handling;
 
 } // namespace simulation

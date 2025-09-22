@@ -80,13 +80,11 @@ int RayBank::ray_bank_size(){
 // Tells each rank how many rays to receive from whom
 void RayBank::communicate_message_metadata() {  
   vector<int> num_messages_sending(mpi::n_procs, 0);
-  // vector<int> num_messages_receiving(mpi::n_procs, 0);
 
   // Ensure all values are zero
   fill(num_messages_receiving_.begin(), num_messages_receiving_.end(), 0);
 
   total_sending_rays_ = 0;
-  // total_receiving_rays_= 0;
 
   // Fill the sending counts //TODO: OMP?
   for (auto& [rank, rays] : ray_send_buffer_) {
@@ -120,7 +118,6 @@ void RayBank::communicate_rays(){
     // vector<MPI_Request> requests(num_requests); // heap
     MPI_Request requests[num_requests]; // stack
     int req_idx = 0;
-    // uint64_t num_comms = 0;
 
     // Define one-dimensional arrays to be sent and received and allocate size
     vector<RayExchangeData> ray_data;
@@ -134,15 +131,10 @@ void RayBank::communicate_rays(){
     int vector_send_idx = 0;
     int vector_receive_idx = 0;
 
-    // printf("Rank %d: Sending %d rays to other ranks and receiving %d rays from other ranks.\n", mpi::rank, total_sending_rays_, total_receiving_rays_);
-    // printf("Number of requests: %d \n", num_requests);
-
     // Send ray data to neighbouring ranks
     for (auto [receiving_rank, rays] : ray_send_buffer_) {
 
       int num_rays_sending = rays.size();
-
-      // printf("Rank %d: Sending %d rays to rank %d \n", mpi::rank, num_rays_sending, receiving_rank);
 
       for (int i = 0; i < num_rays_sending; i++) {
         // Pack slimmed down data container for MPI send
@@ -159,18 +151,14 @@ void RayBank::communicate_rays(){
         }
       }
 
-      // printf("Prepared data for sending to rank %d, req_idx %d, vector_send_idx %d \n", receiving_rank, req_idx, vector_send_idx);
-
       MPI_Isend(&ray_data[vector_send_idx], num_rays_sending * sizeof(RayExchangeData), MPI_BYTE, receiving_rank, 1, mpi::intracomm, &requests[req_idx]);
       MPI_Isend(&angular_flux_data[vector_send_idx * negroups_], num_rays_sending * negroups_, MPI_FLOAT, receiving_rank, 2, mpi::intracomm, &requests[req_idx+1]); 
 
-      // printf("Initiated send to rank %d, req_idx %d, vector_send_idx %d \n", receiving_rank, req_idx, vector_send_idx);
       vector_send_idx += num_rays_sending;
       req_idx += 2;
       }
 
-    // printf("Sending complete, req_idx %d, vector_send_idx %d \n", req_idx, vector_send_idx);
-
+    //TODO: Post Irecv before Isend?
     // Receive ray data to neighbouring ranks //TODO: OMP?
     for (int sending_rank = 0; sending_rank < mpi::n_procs; sending_rank++) {
       int num_rays_receiving = num_messages_receiving_[sending_rank];
@@ -179,25 +167,14 @@ void RayBank::communicate_rays(){
       MPI_Recv(&received_angular_flux_data_[vector_receive_idx * negroups_], num_rays_receiving * negroups_, MPI_FLOAT, sending_rank, 2, mpi::intracomm, MPI_STATUS_IGNORE);
 
       vector_receive_idx += num_rays_receiving;
-      // num_comms++;
     }
-
-    // printf("Receiving complete, req_idx %d, vector_send_idx %d, vector_receive_idx %d \n", req_idx, vector_send_idx, vector_receive_idx);
 
     // Wait for all communication to complete
     MPI_Waitall(num_requests, requests, MPI_STATUSES_IGNORE);
     // MPI_Waitall(num_requests, requests.data(), MPI_STATUSES_IGNORE);
-
-    // // Calculate how many rays were sent in this communication round
-    // MPI_Allreduce(MPI_IN_PLACE, &num_comms, 1, MPI_UINT64_T, MPI_SUM, mpi::intracomm);
-
-    // num_comms_batch_ += num_comms;
     
     // Empty buffered_ray_data
     ray_send_buffer_.clear();
-
-    // printf("Communication complete, req_idx %d, vector_send_idx %d, vector_receive_idx %d \n", req_idx, vector_send_idx, vector_receive_idx);
-
 }
 
 void RayBank::update_my_ray_list(FlatSourceDomain* domain){

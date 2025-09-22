@@ -1,9 +1,11 @@
 #ifndef OPENMC_TALLIES_TALLY_SCORING_H
 #define OPENMC_TALLIES_TALLY_SCORING_H
 
+#include "openmc/nuclide.h"
 #include "openmc/particle.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/tallies/tally.h"
+#include "openmc/thermal.h"
 
 namespace openmc {
 
@@ -114,6 +116,16 @@ void score_surface_tally(Particle& p, const vector<int>& tallies);
 //! \param tallies A vector of the indices of the tallies to score to
 void score_pulse_height_tally(Particle& p, const vector<int>& tallies);
 
+void score_point_tally(Particle& p, int i_nuclide, const Reaction& rx,
+  int i_product, Direction* v_t);
+
+void score_point_tally(Particle& p, int i_nuclide, const ThermalData& sab,
+  const NuclideMicroXS& micro);
+
+void score_point_tally(SourceSite& site, int source_index);
+
+void score_pseudoparticle_tally(
+  Particle& p, double distance, double mfp, double pdf);
 } // namespace openmc
 
 #endif // OPENMC_TALLIES_TALLY_SCORING_H

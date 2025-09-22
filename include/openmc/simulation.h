@@ -91,6 +91,9 @@ void broadcast_results();
 
 void free_memory_simulation();
 
+//! Simulate a single pseudoparticle history
+void transport_pseudoparticle(Particle& p, double total_distance, double& mfp);
+
 //! Simulate a single particle history (and all generated secondary particles,
 //!  if enabled), from birth to death
 void transport_history_based_single_particle(Particle& p);

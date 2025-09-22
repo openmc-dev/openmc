@@ -37,6 +37,8 @@ public:
   //==========================================================================
   // Methods
 
+  double mass() const;
+
   double speed() const;
 
   //! create a secondary particle
@@ -64,6 +66,8 @@ public:
   //! \param src Source site data
   void from_source(const SourceSite* src);
 
+  void initialize_pseudoparticle(Particle& p, Direction u, double E);
+
   // Coarse-grained particle events
   void event_calculate_xs();
   void event_advance();
@@ -71,6 +75,10 @@ public:
   void event_collide();
   void event_revive_from_secondary();
   void event_death();
+
+  // Pseudo-particles events
+  void event_advance_pseudo(double& total_distance, double& mfp);
+  void event_cross_surface_pseudo();
 
   //! pulse-height recording
   void pht_collision_energy();

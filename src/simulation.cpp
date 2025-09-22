@@ -22,6 +22,7 @@
 #include "openmc/tallies/derivative.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/tallies/tally.h"
+#include "openmc/tallies/tally_scoring.h"
 #include "openmc/tallies/trigger.h"
 #include "openmc/timer.h"
 #include "openmc/track_output.h"
@@ -799,6 +800,29 @@ void transport_history_based_single_particle(Particle& p)
     p.event_revive_from_secondary();
   }
   p.event_death();
+}
+
+void transport_pseudoparticle(Particle& p, double total_distance, double& mfp)
+{
+  if (!p.alive())
+    return;
+
+  double distance = total_distance;
+  bool cross_surface = false;
+  while (distance > 0.0) {
+    p.event_calculate_xs();
+    if (p.alive()) {
+      cross_surface = (distance > p.boundary().distance());
+      p.event_advance_pseudo(distance, mfp);
+    } else {
+      return;
+    }
+    if (p.alive() && cross_surface) {
+      p.event_cross_surface_pseudo();
+    }
+    if (!p.alive())
+      return;
+  }
 }
 
 void transport_history_based()

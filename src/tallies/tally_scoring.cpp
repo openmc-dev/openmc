@@ -13,6 +13,7 @@
 #include "openmc/search.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
+#include "openmc/source.h"
 #include "openmc/string_utils.h"
 #include "openmc/tallies/derivative.h"
 #include "openmc/tallies/filter.h"
@@ -23,6 +24,10 @@
 #include <string>
 
 namespace openmc {
+
+namespace simulation {
+thread_local Particle pseudoparticle;
+}
 
 //==============================================================================
 // FilterBinIter implementation
@@ -2729,4 +2734,161 @@ void score_pulse_height_tally(Particle& p, const vector<int>& tallies)
     p.E_last() = orig_E_last;
   }
 }
+
+void score_pseudoparticle_tally(
+  Particle& p, double distance, double mfp, double pdf)
+{
+  double attenuation = std::exp(-mfp);
+  double flux = pdf * p.wgt() / (2 * PI * distance * distance);
+
+  // Save the attenuation for point filter handling
+  p.wgt_last() = p.wgt();
+  p.wgt() *= attenuation;
+
+  for (auto i_tally : model::active_point_tallies) {
+    const Tally& tally {*model::tallies[i_tally]};
+
+    // Initialize an iterator over valid filter bin combinations.  If there are
+    // no valid combinations, use a continue statement to ensure we skip the
+    // assume_separate break below.
+    auto filter_iter = FilterBinIter(tally, p);
+    auto end = FilterBinIter(tally, true, &p.filter_matches());
+    if (filter_iter == end)
+      continue;
+
+    // Loop over filter bins.
+    for (; filter_iter != end; ++filter_iter) {
+      auto filter_index = filter_iter.index_;
+      auto filter_weight = filter_iter.weight_;
+
+      // Loop over nuclide bins.
+      for (auto i = 0; i < tally.nuclides_.size(); ++i) {
+        auto i_nuclide = tally.nuclides_[i];
+
+        // Tally this event in the present nuclide bin if that bin represents
+        // the event nuclide or the total material.  Note that the atomic
+        // density argument for score_general is not used for analog tallies.
+        if (i_nuclide == p.event_nuclide() || i_nuclide == -1)
+          score_general_ce_analog(p, i_tally, i * tally.scores_.size(),
+            filter_index, filter_weight, i_nuclide, -1.0, flux);
+      }
+    }
+
+    // If the user has specified that we can assume all tallies are spatially
+    // separate, this implies that once a tally has been scored to, we needn't
+    // check the others. This cuts down on overhead when there are many
+    // tallies specified
+    if (settings::assume_separate)
+      break;
+  }
+
+  // Reset all the filter matches for the next tally event.
+  for (auto& match : p.filter_matches())
+    match.bins_present_ = false;
+}
+
+void score_point_tally(Particle& p, const Nuclide* nuc, const Reaction& rx,
+  int i_product, Direction* v_t)
+{
+  double awr = nuc->awr_;
+  double E_in = p.E();
+  double vel = std::sqrt(E_in);
+  Direction v_n = vel * p.u();
+  Direction v_cm = (v_n + awr * (v_t != nullptr ? *v_t : 0)) / (awr + 1.0);
+  Direction u_cm = (v_n - v_cm);
+  u_cm /= u_cm.norm();
+  double mfp;
+
+  for (auto& det : model::active_point_detectors) {
+
+    auto u = (det - p.r());
+    double distance = u.norm();
+    u /= distance;
+
+    double mu;
+    if (rx.scatter_in_cm_) {
+      mu = u.dot(u_cm);
+    } else {
+      mu = u.dot(p.u());
+    }
+    double E_out;
+    double pdf = rx.products_[i_product].sample_energy_and_pdf(
+      p.E(), mu, E_out, p.current_seed());
+    if (rx.scatter_in_cm_) {
+      double E_cm = E_out;
+      Direction v_out = std::sqrt(E_cm) * u_cm;
+      v_out += v_cm;
+      E_out = std::pow(v_out.norm(), 2);
+      pdf *= std::sqrt(E_out / E_cm) /
+             (1 - mu / (awr + 1) * std::sqrt(E_in / E_out));
+    }
+    simulation::pseudoparticle.initialize_pseudoparticle(p, u, E_out);
+    mfp = 0.0;
+    transport_pseudoparticle(simulation::pseudoparticle, distance, mfp);
+    if (!simulation::pseudoparticle.alive())
+      continue;
+    score_pseudoparticle_tally(simulation::pseudoparticle, distance, mfp, pdf);
+  }
+}
+
+void score_point_tally(Particle& p, const Nuclide* nuc, const ThermalData& sab,
+  const NuclideMicroXS& micro)
+{
+  double awr = nuc->awr_;
+  double E_in = p.E();
+  double vel = std::sqrt(E_in);
+  Direction v_n = vel * p.u();
+  Direction v_cm = v_n / (awr + 1.0);
+  Direction u_cm = (v_n - v_cm);
+  u_cm /= u_cm.norm();
+  double mfp;
+
+  for (auto& det : model::active_point_detectors) {
+
+    auto u = (det - p.r());
+    double distance = u.norm();
+    u /= distance;
+
+    double mu = u.dot(p.u());
+    double E_out;
+    double pdf =
+      sab.sample_energy_and_pdf(micro, p.E(), mu, E_out, p.current_seed());
+    simulation::pseudoparticle.initialize_pseudoparticle(p, u, E_out);
+    mfp = 0.0;
+    transport_pseudoparticle(simulation::pseudoparticle, distance, mfp);
+    if (!simulation::pseudoparticle.alive())
+      continue;
+    score_pseudoparticle_tally(simulation::pseudoparticle, distance, mfp, pdf);
+  }
+}
+
+void score_point_tally(SourceSite& site, int source_index)
+{
+  double E_out = site.E;
+  Position r = site.r;
+  auto src_ = model::external_sources[source_index].get();
+  auto src = dynamic_cast<IndependentSource*>(src_);
+  if (!src)
+    fatal_error("Only independent source is valid for point detectors.");
+  auto angle = src->angle();
+
+  double mfp;
+
+  for (auto& det : model::active_point_detectors) {
+
+    auto u = (det - r);
+    double distance = u.norm();
+    u /= distance;
+
+    double pdf = angle->evaluate(u);
+    simulation::pseudoparticle.from_source(&site);
+    simulation::pseudoparticle.u() = u;
+    mfp = 0.0;
+    transport_pseudoparticle(simulation::pseudoparticle, distance, mfp);
+    if (!simulation::pseudoparticle.alive())
+      continue;
+    score_pseudoparticle_tally(simulation::pseudoparticle, distance, mfp, pdf);
+  }
+}
+
 } // namespace openmc

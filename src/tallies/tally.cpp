@@ -11,6 +11,7 @@
 #include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
 #include "openmc/particle.h"
+#include "openmc/position.h"
 #include "openmc/reaction.h"
 #include "openmc/reaction_product.h"
 #include "openmc/settings.h"
@@ -61,11 +62,13 @@ vector<int> active_analog_tallies;
 vector<int> active_tracklength_tallies;
 vector<int> active_timed_tracklength_tallies;
 vector<int> active_collision_tallies;
+vector<int> active_point_tallies;
 vector<int> active_meshsurf_tallies;
 vector<int> active_surface_tallies;
 vector<int> active_pulse_height_tallies;
 vector<int> pulse_height_cells;
 vector<double> time_grid;
+std::set<Position> active_point_detectors;
 } // namespace model
 
 namespace simulation {
@@ -1104,6 +1107,14 @@ void add_to_time_grid(vector<double> grid)
   model::time_grid.swap(merged);
 }
 
+//! Add new points to the global time grid
+//
+//! \param detector Position of new point detector to add
+void add_point_detector(Position& detector)
+{
+  model::active_point_detectors.insert(detector);
+}
+
 void setup_active_tallies()
 {
   model::active_tallies.clear();
@@ -1111,10 +1122,12 @@ void setup_active_tallies()
   model::active_tracklength_tallies.clear();
   model::active_timed_tracklength_tallies.clear();
   model::active_collision_tallies.clear();
+  model::active_point_tallies.clear();
   model::active_meshsurf_tallies.clear();
   model::active_surface_tallies.clear();
   model::active_pulse_height_tallies.clear();
   model::time_grid.clear();
+  model::active_point_detectors.clear();
 
   for (auto i = 0; i < model::tallies.size(); ++i) {
     const auto& tally {*model::tallies[i]};
@@ -1155,6 +1168,13 @@ void setup_active_tallies()
       case TallyType::PULSE_HEIGHT:
         model::active_pulse_height_tallies.push_back(i);
         break;
+
+      case TallyType::NEXT_EVENT:
+        switch (tally.estimator_) {
+        case TallyEstimator::POINT:
+          model::active_point_tallies.push_back(i);
+          break;
+        }
       }
     }
   }
@@ -1175,10 +1195,12 @@ void free_memory_tally()
   model::active_tracklength_tallies.clear();
   model::active_timed_tracklength_tallies.clear();
   model::active_collision_tallies.clear();
+  model::active_point_tallies.clear();
   model::active_meshsurf_tallies.clear();
   model::active_surface_tallies.clear();
   model::active_pulse_height_tallies.clear();
   model::time_grid.clear();
+  model::active_point_detectors.clear();
 
   model::tally_map.clear();
 }

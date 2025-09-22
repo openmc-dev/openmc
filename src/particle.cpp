@@ -42,23 +42,25 @@ namespace openmc {
 // Particle implementation
 //==============================================================================
 
+double Particle::mass() const
+{
+  // Determine mass in eV/c^2
+  switch (this->type()) {
+  case ParticleType::neutron:
+    return MASS_NEUTRON_EV;
+  case ParticleType::photon:
+    return 0.0;
+  case ParticleType::electron:
+  case ParticleType::positron:
+    return MASS_ELECTRON_EV;
+  }
+  UNREACHABLE();
+}
+
 double Particle::speed() const
 {
   if (settings::run_CE) {
-    // Determine mass in eV/c^2
-    double mass;
-    switch (this->type()) {
-    case ParticleType::neutron:
-      mass = MASS_NEUTRON_EV;
-      break;
-    case ParticleType::photon:
-      mass = 0.0;
-      break;
-    case ParticleType::electron:
-    case ParticleType::positron:
-      mass = MASS_ELECTRON_EV;
-      break;
-    }
+    double mass = this->mass();
     // Equivalent to C * sqrt(1-(m/(m+E))^2) without problem at E<<m:
     return C_LIGHT * std::sqrt(this->E() * (this->E() + 2 * mass)) /
            (this->E() + mass);
@@ -150,6 +152,42 @@ void Particle::from_source(const SourceSite* src)
     int index_plus_one = model::surface_map[std::abs(src->surf_id)] + 1;
     surface() = (src->surf_id > 0) ? index_plus_one : -index_plus_one;
   }
+}
+
+void Particle::initialize_pseudoparticle(
+  Particle& p, Direction u_new, double E_new)
+{
+  // Reset some attributes
+  clear();
+  surface() = SURFACE_NONE;
+  cell_born() = C_NONE;
+  material() = C_NONE;
+  n_collision() = 0;
+  fission() = false;
+  zero_flux_derivs();
+  lifetime() = 0.0;
+
+  // Copy attributes from particle
+  type() = p.type();
+  wgt() = p.wgt();
+  wgt_last() = p.wgt();
+  r() = p.r();
+  u() = u_new;
+  r_born() = p.r();
+  r_last_current() = p.r();
+  r_last() = p.r();
+  u_last() = p.u();
+  if (settings::run_CE) {
+    E() = E_new;
+    g() = 0;
+  } else {
+    g() = static_cast<int>(E_new);
+    g_last() = static_cast<int>(E_new);
+    E() = data::mg.energy_bin_avg_[g()];
+  }
+  E_last() = E();
+  time() = p.time();
+  time_last() = p.time();
 }
 
 void Particle::event_calculate_xs()
@@ -498,6 +536,61 @@ void Particle::event_death()
   if (settings::run_mode == RunMode::EIGENVALUE) {
     int64_t offset = id() - 1 - simulation::work_index[mpi::rank];
     simulation::progeny_per_particle[offset] = n_progeny();
+  }
+}
+
+void Particle::event_advance_pseudo(double& total_distance, double& mfp)
+{
+  // Find the distance to the nearest boundary
+  boundary() = distance_to_boundary(*this);
+
+  double speed = this->speed();
+  double time_cutoff = settings::time_cutoff[static_cast<int>(type())];
+  double distance_cutoff =
+    (time_cutoff < INFTY) ? (time_cutoff - time()) * speed : INFTY;
+
+  if (distance_cutoff < boundary().distance()) {
+    wgt() = 0.0;
+    return;
+  }
+
+  // Select smaller of the two distances
+  double distance = std::min({boundary().distance(), total_distance});
+
+  // Advance particle in space and time
+  this->move_distance(distance);
+  double dt = distance / speed;
+  this->time() += dt;
+  this->lifetime() += dt;
+  mfp += distance * macro_xs().total;
+  total_distance -= distance;
+}
+
+void Particle::event_cross_surface_pseudo()
+{
+  // Saving previous cell data
+  for (int j = 0; j < n_coord(); ++j) {
+    cell_last(j) = coord(j).cell();
+  }
+  n_coord_last() = n_coord();
+
+  // Set surface that particle is on and adjust coordinate levels
+  surface() = boundary().surface();
+  n_coord() = boundary().coord_level();
+
+  if (boundary().lattice_translation()[0] != 0 ||
+      boundary().lattice_translation()[1] != 0 ||
+      boundary().lattice_translation()[2] != 0) {
+    // Particle crosses lattice boundary
+
+    bool verbose = settings::verbosity >= 10 || trace();
+    cross_lattice(*this, boundary(), verbose);
+    event() = TallyEvent::LATTICE;
+  } else {
+    // Particle crosses surface
+    const auto& surf {model::surfaces[surface_index()].get()};
+    this->cross_surface(*surf);
+    event() = TallyEvent::SURFACE;
   }
 }
 

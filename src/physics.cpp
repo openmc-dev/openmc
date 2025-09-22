@@ -25,6 +25,7 @@
 #include "openmc/simulation.h"
 #include "openmc/string_utils.h"
 #include "openmc/tallies/tally.h"
+#include "openmc/tallies/tally_scoring.h"
 #include "openmc/thermal.h"
 #include "openmc/weight_windows.h"
 
@@ -732,7 +733,7 @@ void scatter(Particle& p, int i_nuclide)
 
     // Perform collision physics for inelastic scattering
     const auto& rx {nuc->reactions_[i]};
-    inelastic_scatter(*nuc, *rx, p);
+    inelastic_scatter(i_nuclide, *rx, p);
     p.event_mt() = rx->mt_;
   }
 
@@ -777,6 +778,10 @@ void elastic_scatter(int i_nuclide, const Reaction& rx, double kT, Particle& p)
 
   // Find speed of neutron in CM
   vel = v_n.norm();
+
+  if (!model::active_point_tallies.empty()) {
+    score_point_tally(p, i_nuclide, rx, 0, &v_t);
+  }
 
   // Sample scattering angle, checking if angle distribution is present (assume
   // isotropic otherwise)
@@ -825,8 +830,12 @@ void sab_scatter(int i_nuclide, int i_sab, Particle& p)
 
   // Sample energy and angle
   double E_out;
-  data::thermal_scatt[i_sab]->data_[i_temp].sample(
-    micro, p.E(), &E_out, &p.mu(), p.current_seed());
+  auto& sab = data::thermal_scatt[i_sab]->data_[i_temp];
+  sab.sample(micro, p.E(), &E_out, &p.mu(), p.current_seed());
+
+  if (!model::active_point_tallies.empty()) {
+    score_point_tally(p, i_nuclide, sab, micro);
+  }
 
   // Set energy to outgoing, change direction of particle
   p.E() = E_out;
@@ -1091,6 +1100,10 @@ void sample_fission_neutron(
     site->delayed_group = 0;
   }
 
+  if (!model::active_point_tallies.empty()) {
+    score_point_tally(p, i_nuclide, rx, site->delayed_group, nullptr);
+  }
+
   // sample from prompt neutron energy distribution
   int n_sample = 0;
   double mu;
@@ -1116,8 +1129,11 @@ void sample_fission_neutron(
   site->u = rotate_angle(p.u(), mu, nullptr, seed);
 }
 
-void inelastic_scatter(const Nuclide& nuc, const Reaction& rx, Particle& p)
+void inelastic_scatter(int i_nuclide, const Reaction& rx, Particle& p)
 {
+  // Get pointer to nuclide
+  const auto& nuc {data::nuclides[i_nuclide]};
+
   // copy energy of neutron
   double E_in = p.E();
 
@@ -1126,13 +1142,17 @@ void inelastic_scatter(const Nuclide& nuc, const Reaction& rx, Particle& p)
   double mu;
   rx.products_[0].sample(E_in, E, mu, p.current_seed());
 
+  if (!model::active_point_tallies.empty()) {
+    score_point_tally(p, i_nuclide, rx, 0, nullptr);
+  }
+
   // if scattering system is in center-of-mass, transfer cosine of scattering
   // angle and outgoing energy from CM to LAB
   if (rx.scatter_in_cm_) {
     double E_cm = E;
 
     // determine outgoing energy in lab
-    double A = nuc.awr_;
+    double A = nuc->awr_;
     E = E_cm + (E_in + 2.0 * mu * (A + 1.0) * std::sqrt(E_in * E_cm)) /
                  ((A + 1.0) * (A + 1.0));
 

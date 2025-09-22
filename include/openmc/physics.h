@@ -92,7 +92,7 @@ void sample_fission_neutron(
 
 //! handles all reactions with a single secondary neutron (other than fission),
 //! i.e. level scattering, (n,np), (n,na), etc.
-void inelastic_scatter(const Nuclide& nuc, const Reaction& rx, Particle& p);
+void inelastic_scatter(int i_nuclide, const Reaction& rx, Particle& p);
 
 void sample_secondary_photons(Particle& p, int i_nuclide);
 

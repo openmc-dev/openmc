@@ -17,6 +17,7 @@
 #include "openmc/timer.h"
 #include "openmc/weight_windows.h"
 #include "openmc/message_passing.h"
+#include "openmc/random_ray/decomposition_map.h"
 
 #include <cstdio>
 
@@ -366,26 +367,19 @@ double FlatSourceDomain::compute_k_eff(double k_eff_old) const
     p[sr] = sr_fission_source_new;
   }
 
-  double fission_rate_old_total = 0;
-  double fission_rate_new_total = 0;
-
   // Sum up fission rates across all ranks
   if (mpi::n_procs > 1) {
-    MPI_Allreduce(&fission_rate_old, &fission_rate_old_total, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-    MPI_Allreduce(&fission_rate_new, &fission_rate_new_total, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  } else{
-    fission_rate_old_total = fission_rate_old;
-    fission_rate_new_total = fission_rate_new;
+    simulation::time_decomposition_handling.start();
+    MPI_Allreduce(MPI_IN_PLACE, &fission_rate_old, 1, MPI_DOUBLE, MPI_SUM, mpi::intracomm);
+    MPI_Allreduce(MPI_IN_PLACE, &fission_rate_new, 1, MPI_DOUBLE, MPI_SUM, mpi::intracomm);
+    simulation::time_decomposition_handling.stop();
   }
 
-  double k_eff_new = k_eff_old * (fission_rate_new_total / fission_rate_old_total);
-
-  // double k_eff_new = k_eff_old * (fission_rate_new / fission_rate_old);
+  double k_eff_new = k_eff_old * (fission_rate_new / fission_rate_old);
 
   double H = 0.0;
   // defining an inverse sum for better performance
-  double inverse_sum = 1 / fission_rate_new_total;
-  // double inverse_sum = 1 / fission_rate_new;
+  double inverse_sum = 1 / fission_rate_new;
 
 #pragma omp parallel for reduction(+ : H)
   for (int64_t sr = 0; sr < n_source_regions(); sr++) {
@@ -396,6 +390,12 @@ double FlatSourceDomain::compute_k_eff(double k_eff_old) const
       // Sum values to obtain Shannon entropy.
       H -= p_i * std::log2(p_i);
     }
+  }
+
+  if (mpi::n_procs > 1) {
+    simulation::time_decomposition_handling.start();
+    MPI_Allreduce(MPI_IN_PLACE, &H, 1, MPI_DOUBLE, MPI_SUM, mpi::intracomm);
+    simulation::time_decomposition_handling.stop();
   }
 
   // Adds entropy value to shared entropy vector in openmc namespace.
@@ -784,6 +784,7 @@ void FlatSourceDomain::output_to_vtk() const
 
     // Relate voxel spatial locations to random ray source regions
     vector<int> voxel_indices(Nx * Ny * Nz);
+    vector<SourceRegionKey> voxel_indices_key(Nx * Ny * Nz);
     vector<Position> voxel_positions(Nx * Ny * Nz);
     vector<double> weight_windows(Nx * Ny * Nz);
     float min_weight = 1e20;
@@ -804,6 +805,7 @@ void FlatSourceDomain::output_to_vtk() const
 
           bool found = exhaustive_find_cell(p);
           if (!found) {
+            voxel_indices_key[z * Ny * Nx + y * Nx + x] = {-1,-1};
             voxel_indices[z * Ny * Nx + y * Nx + x] = -1;
             voxel_positions[z * Ny * Nx + y * Nx + x] = sample;
             weight_windows[z * Ny * Nx + y * Nx + x] = 0.0;
@@ -812,6 +814,7 @@ void FlatSourceDomain::output_to_vtk() const
 
           int i_cell = p.lowest_coord().cell();
           int64_t sr = source_region_offsets_[i_cell] + p.cell_instance();
+          SourceRegionKey sr_key {sr, 0};
           if (RandomRay::mesh_subdivision_enabled_) {
             int mesh_idx = base_source_regions_.mesh(sr);
             int mesh_bin;
@@ -820,7 +823,7 @@ void FlatSourceDomain::output_to_vtk() const
             } else {
               mesh_bin = model::meshes[mesh_idx]->get_bin(p.r());
             }
-            SourceRegionKey sr_key {sr, mesh_bin};
+            sr_key = {sr, mesh_bin};
             auto it = source_region_map_.find(sr_key);
             if (it != source_region_map_.end()) {
               sr = it->second;
@@ -829,6 +832,7 @@ void FlatSourceDomain::output_to_vtk() const
             }
           }
 
+          voxel_indices_key[z * Ny * Nx + y * Nx + x] = sr_key;
           voxel_indices[z * Ny * Nx + y * Nx + x] = sr;
           voxel_positions[z * Ny * Nx + y * Nx + x] = sample;
 
@@ -870,7 +874,7 @@ void FlatSourceDomain::output_to_vtk() const
       std::fprintf(plot, "LOOKUP_TABLE default\n");
       for (int i = 0; i < Nx * Ny * Nz; i++) {
         int64_t fsr = voxel_indices[i];
-        int64_t source_element = fsr * negroups_ + g;
+        // int64_t source_element = fsr * negroups_ + g;
         float flux = 0;
         if (fsr >= 0) {
           flux = evaluate_flux_at_point(voxel_positions[i], fsr, g);
@@ -921,6 +925,19 @@ void FlatSourceDomain::output_to_vtk() const
       std::fwrite(&mat, sizeof(int), 1, plot);
     }
 
+    // Plot rank subdomains
+    std::fprintf(plot, "SCALARS rank_subdomains int\n");
+    std::fprintf(plot, "LOOKUP_TABLE default\n");
+    for (auto sr_key : voxel_indices_key) {
+      int rank = -1;
+      if (mpi::decomp_map.subdomain_map_.find(sr_key.base_source_region_id) != mpi::decomp_map.subdomain_map_.end()){
+        rank = mpi::decomp_map.subdomain_map_[sr_key.base_source_region_id];
+      }
+      float value = future_prn(10, rank);
+      value = convert_to_big_endian<float>(value);
+      std::fwrite(&value, sizeof(float), 1, plot);
+    }
+
     // Plot fission source
     if (settings::run_mode == RunMode::EIGENVALUE) {
       std::fprintf(plot, "SCALARS total_fission_source float\n");
@@ -932,7 +949,7 @@ void FlatSourceDomain::output_to_vtk() const
           int mat = source_regions_.material(fsr);
           if (mat != MATERIAL_VOID) {
             for (int g = 0; g < negroups_; g++) {
-              int64_t source_element = fsr * negroups_ + g;
+              // int64_t source_element = fsr * negroups_ + g;
               float flux = evaluate_flux_at_point(voxel_positions[i], fsr, g);
               double sigma_f = sigma_f_[mat * negroups_ + g];
               total_fission += sigma_f * flux;
@@ -981,6 +998,720 @@ void FlatSourceDomain::output_to_vtk() const
     std::fclose(plot);
   }
 }
+
+
+// Outputs all basic material, FSR ID, multigroup flux, and
+// fission source data to .vtk file that can be directly
+// loaded and displayed by Paraview. Note that .vtk binary
+// files require big endian byte ordering, so endianness
+// is checked and flipped if necessary.
+void FlatSourceDomain::output_to_vtk_decomp() const
+{
+  int master_rank = 0; // Master rank is rank 0
+
+  if (mpi::master){
+  // if (mpi::rank == master){
+    // Rename .h5 plot filename(s) to .vtk filenames
+    for (int p = 0; p < model::plots.size(); p++) {
+      PlottableInterface* plot = model::plots[p].get();
+      plot->path_plot() =
+        plot->path_plot().substr(0, plot->path_plot().find_last_of('.')) + ".vtk";
+    }
+
+    // Print header information
+    print_plot();
+  }
+
+  // Outer loop over plots
+  for (int p = 0; p < model::plots.size(); p++) {
+
+    // Get handle to OpenMC plot object and extract params
+    Plot* openmc_plot = dynamic_cast<Plot*>(model::plots[p].get());
+
+    // Random ray plots only support voxel plots
+    if (!openmc_plot) {
+      warning(fmt::format("Plot {} is invalid plot type -- only voxel plotting "
+                          "is allowed in random ray mode.",
+        p));
+      continue;
+    } else if (openmc_plot->type_ != Plot::PlotType::voxel) {
+      warning(fmt::format("Plot {} is invalid plot type -- only voxel plotting "
+                          "is allowed in random ray mode.",
+        p));
+      continue;
+    }
+
+    int Nx = openmc_plot->pixels_[0];
+    int Ny = openmc_plot->pixels_[1];
+    int Nz = openmc_plot->pixels_[2];
+    Position origin = openmc_plot->origin_;
+    Position width = openmc_plot->width_;
+    Position ll = origin - width / 2.0;
+    double x_delta = width.x / Nx;
+    double y_delta = width.y / Ny;
+    double z_delta = width.z / Nz;
+    std::string filename = openmc_plot->path_plot();
+
+    // Perform sanity checks on file size
+    uint64_t bytes = Nx * Ny * Nz * (negroups_ + 1 + 1 + 1) * sizeof(float);
+    write_message(5, "Processing plot {}: {}... (Estimated size is {} MB)",
+      openmc_plot->id(), filename, bytes / 1.0e6);
+    if (bytes / 1.0e9 > 1.0) {
+      warning("Voxel plot specification is very large (>1 GB). Plotting may be "
+              "slow.");
+    } else if (bytes / 1.0e9 > 100.0) {
+      fatal_error("Voxel plot specification is too large (>100 GB). Exiting.");
+    }
+
+    // Relate voxel spatial locations to random ray source regions
+    vector<int> voxel_indices(Nx * Ny * Nz);
+    vector<SourceRegionKey> voxel_indices_key(Nx * Ny * Nz);
+    vector<Position> voxel_positions(Nx * Ny * Nz);
+    vector<double> weight_windows(Nx * Ny * Nz);
+    vector<int> my_voxel_ids;
+    float min_weight = 1e20;
+#pragma omp parallel for collapse(3) reduction(min : min_weight)
+    for (int z = 0; z < Nz; z++) {
+      for (int y = 0; y < Ny; y++) {
+        for (int x = 0; x < Nx; x++) {
+          Position sample;
+          sample.z = ll.z + z_delta / 2.0 + z * z_delta;
+          sample.y = ll.y + y_delta / 2.0 + y * y_delta;
+          sample.x = ll.x + x_delta / 2.0 + x * x_delta;
+          Particle p;
+          p.r() = sample;
+          p.r_last() = sample;
+          p.E() = 1.0;
+          p.E_last() = 1.0;
+          p.u() = {1.0, 0.0, 0.0};
+
+          bool found = exhaustive_find_cell(p);
+          if (!found) {
+            voxel_indices_key[z * Ny * Nx + y * Nx + x] = {-1,-1};
+            voxel_indices[z * Ny * Nx + y * Nx + x] = -1;
+            voxel_positions[z * Ny * Nx + y * Nx + x] = sample;
+            weight_windows[z * Ny * Nx + y * Nx + x] = 0.0;
+            continue;
+          }
+
+          int i_cell = p.lowest_coord().cell();
+          int64_t sr = source_region_offsets_[i_cell] + p.cell_instance();
+          SourceRegionKey sr_key {sr, 0};
+          if (RandomRay::mesh_subdivision_enabled_) {
+            int mesh_idx = base_source_regions_.mesh(sr);
+            int mesh_bin;
+            if (mesh_idx == C_NONE) {
+              mesh_bin = 0;
+            } else {
+              mesh_bin = model::meshes[mesh_idx]->get_bin(p.r());
+            }
+            sr_key = {sr, mesh_bin};
+            auto it = source_region_map_.find(sr_key);
+            if (it != source_region_map_.end()) {
+              sr = it->second;
+            } else {
+              sr = -1;
+            }
+          }
+
+          voxel_indices_key[z * Ny * Nx + y * Nx + x] = sr_key;
+          voxel_indices[z * Ny * Nx + y * Nx + x] = sr;
+          voxel_positions[z * Ny * Nx + y * Nx + x] = sample;
+
+          int assigned_rank = master_rank;
+          // Which rank is responsible
+          auto it = mpi::decomp_map.subdomain_map_.find(sr_key.base_source_region_id);
+          if (it != mpi::decomp_map.subdomain_map_.end()){
+            assigned_rank = it->second;
+          }
+          if (assigned_rank == mpi::rank) {
+            #pragma omp critical
+            {
+              my_voxel_ids.push_back(z * Ny * Nx + y * Nx + x);
+            }
+          }
+
+          if (variance_reduction::weight_windows.size() == 1) {
+            WeightWindow ww =
+              variance_reduction::weight_windows[0]->get_weight_window(p);
+            float weight = ww.lower_weight;
+            weight_windows[z * Ny * Nx + y * Nx + x] = weight;
+            if (weight < min_weight)
+              min_weight = weight;
+          }
+        }
+      }
+    }
+
+    double source_normalization_factor =
+      compute_fixed_source_normalization_factor();
+
+    // Open file for writing
+
+    std::FILE* plot = nullptr;
+    if (mpi::master) {
+    // if (mpi::rank == master) {
+      plot = std::fopen(filename.c_str(), "wb");
+
+      // Write vtk metadata
+      std::fprintf(plot, "# vtk DataFile Version 2.0\n");
+      std::fprintf(plot, "Dataset File\n");
+      std::fprintf(plot, "BINARY\n");
+      std::fprintf(plot, "DATASET STRUCTURED_POINTS\n");
+      std::fprintf(plot, "DIMENSIONS %d %d %d\n", Nx, Ny, Nz);
+      std::fprintf(plot, "ORIGIN %lf %lf %lf\n", ll.x, ll.y, ll.z);
+      std::fprintf(plot, "SPACING %lf %lf %lf\n", x_delta, y_delta, z_delta);
+      std::fprintf(plot, "POINT_DATA %d\n", Nx * Ny * Nz);
+    }
+
+    int vector_size = Nx * Ny * Nz;
+    vector<float> vector_out(vector_size, 0.0);
+    // vector_out.resize(vector_size);
+    // fill(vector_out.begin(), vector_out.end(), 0.0);
+
+    int64_t num_neg = 0;
+    int64_t num_samples = 0;
+    float min_flux = 0.0;
+    float max_flux = -1.0e20;
+
+    // Plot multigroup flux data
+    for (int g = 0; g < negroups_; g++) {
+
+      for (int voxel_id : my_voxel_ids) {
+        int64_t fsr = voxel_indices[voxel_id];
+        float flux = 0;
+        if (fsr >= 0) {
+          flux = evaluate_flux_at_point(voxel_positions[voxel_id], fsr, g);
+          if (flux < 0.0)
+            flux = FlatSourceDomain::evaluate_flux_at_point(
+              voxel_positions[voxel_id], fsr, g);
+        }
+        if (flux < 0.0) {
+          num_neg++;
+          if (flux < min_flux) {
+            min_flux = flux;
+          }
+        }
+        if (flux > max_flux)
+          max_flux = flux;
+        num_samples++;
+        vector_out[voxel_id] = flux;
+      }
+
+      // communicate_plotting_data();
+
+      if (mpi::master){
+      // if (mpi::rank == master) {
+        MPI_Reduce(MPI_IN_PLACE, vector_out.data(), vector_size, MPI_FLOAT, MPI_SUM, master_rank, mpi::intracomm);
+      } else {
+        MPI_Reduce(vector_out.data(), nullptr, vector_size, MPI_FLOAT, MPI_SUM, master_rank, mpi::intracomm);
+      }
+
+      // if(mpi::rank == master){
+      if (mpi::master){
+        std::fprintf(plot, "SCALARS flux_group_%d float\n", g);
+        std::fprintf(plot, "LOOKUP_TABLE default\n");
+        for (float value : vector_out) {
+          float print_value = convert_to_big_endian<float>(value);
+          std::fwrite(&print_value, sizeof(float), 1, plot);
+        }
+      }
+
+      fill(vector_out.begin(), vector_out.end(), 0.0);
+    }
+
+    // Slightly negative fluxes can be normal when sampling corners of linear
+    // source regions. However, very common and high magnitude negative fluxes
+    // may indicate numerical instability. //TODO: needs changing for MPI ranks
+    if (num_neg > 0) {
+      warning(fmt::format("{} plot samples ({:.4f}%) contained negative fluxes "
+                          "(minumum found = {:.2e} maximum_found = {:.2e})",
+        num_neg, (100.0 * num_neg) / num_samples, min_flux, max_flux));
+    }
+
+    // Plot FSRs
+    for (int voxel_id : my_voxel_ids) {
+      int fsr = voxel_indices[voxel_id];
+      float value = future_prn(10, fsr);
+      vector_out[voxel_id] = value;
+    }
+
+    // // if (mpi::rank == master) {
+    if (mpi::master){
+      MPI_Reduce(MPI_IN_PLACE, vector_out.data(), vector_size, MPI_FLOAT, MPI_SUM, master_rank, mpi::intracomm);
+    } else {
+      MPI_Reduce(vector_out.data(), nullptr, vector_size, MPI_FLOAT, MPI_SUM, master_rank, mpi::intracomm);
+    }
+
+    // communicate_plotting_data();
+
+    // if(mpi::rank == master){
+    if (mpi::master){
+      std::fprintf(plot, "SCALARS FSRs float\n");
+      std::fprintf(plot, "LOOKUP_TABLE default\n");
+      for (float value : vector_out) {
+        float print_value = convert_to_big_endian<float>(value);
+        std::fwrite(&print_value, sizeof(float), 1, plot);
+      }
+    }
+
+    fill(vector_out.begin(), vector_out.end(), 0.0);
+
+    // Plot Materials
+    for (int voxel_id : my_voxel_ids) {
+      int mat = -1;
+      int fsr = voxel_indices[voxel_id];
+      if (fsr >= 0) {
+        mat = source_regions_.material(fsr);
+      }
+      vector_out[voxel_id] = mat;
+    }
+
+    // // if (mpi::rank == master) {
+    if (mpi::master){
+      MPI_Reduce(MPI_IN_PLACE, vector_out.data(), vector_size, MPI_FLOAT, MPI_SUM, master_rank, mpi::intracomm);
+    } else {
+      MPI_Reduce(vector_out.data(), nullptr, vector_size, MPI_FLOAT, MPI_SUM, master_rank, mpi::intracomm);
+    }
+
+    // communicate_plotting_data();
+
+    // if(mpi::rank == master){
+    if (mpi::master){
+      std::fprintf(plot, "SCALARS Materials int\n");
+      std::fprintf(plot, "LOOKUP_TABLE default\n");
+
+      for (float value : vector_out) {
+        float print_value = convert_to_big_endian<int>(value);
+        std::fwrite(&print_value, sizeof(int), 1, plot);
+      }
+    }
+
+    fill(vector_out.begin(), vector_out.end(), 0.0);
+
+    // Plot rank subdomains
+    for (int voxel_id : my_voxel_ids) {
+      int rank_id = mpi::rank;
+      float value = future_prn(10, rank_id);
+      vector_out[voxel_id] = value;
+    }
+
+    // // if (mpi::rank == master) {
+    if (mpi::master){
+      MPI_Reduce(MPI_IN_PLACE, vector_out.data(), vector_size, MPI_FLOAT, MPI_SUM, master_rank, mpi::intracomm);
+    } else {
+      MPI_Reduce(vector_out.data(), nullptr, vector_size, MPI_FLOAT, MPI_SUM, master_rank, mpi::intracomm);
+    }
+
+    // communicate_plotting_data();
+
+    // if(mpi::rank == master){
+    if (mpi::master){
+      std::fprintf(plot, "SCALARS rank_subdomains int\n");
+      std::fprintf(plot, "LOOKUP_TABLE default\n");
+
+      for (float value : vector_out) {
+        float print_value = convert_to_big_endian<float>(value);
+        std::fwrite(&print_value, sizeof(float), 1, plot);
+      }
+    }
+
+    fill(vector_out.begin(), vector_out.end(), 0.0);
+
+    // Plot fission source
+    if (settings::run_mode == RunMode::EIGENVALUE) {
+      // std::fprintf(plot, "SCALARS total_fission_source float\n");
+      // std::fprintf(plot, "LOOKUP_TABLE default\n");
+      for (int voxel_id : my_voxel_ids) {
+        int64_t fsr = voxel_indices[voxel_id];
+        float total_fission = 0.0;
+        if (fsr >= 0) {
+          int mat = source_regions_.material(fsr);
+          if (mat != MATERIAL_VOID) {
+            for (int g = 0; g < negroups_; g++) {
+              // int64_t source_element = fsr * negroups_ + g;
+              float flux = evaluate_flux_at_point(voxel_positions[voxel_id], fsr, g);
+              double sigma_f = sigma_f_[mat * negroups_ + g];
+              total_fission += sigma_f * flux;
+            }
+          }
+        }
+        vector_out[voxel_id] = total_fission;
+      }
+    } else {
+      for (int voxel_id : my_voxel_ids) {
+        int64_t fsr = voxel_indices[voxel_id];
+        int mat = source_regions_.material(fsr);
+        float total_external = 0.0f;
+        if (fsr >= 0) {
+          for (int g = 0; g < negroups_; g++) {
+            // External sources are already divided by sigma_t, so we need to
+            // multiply it back to get the true external source.
+            double sigma_t = 1.0;
+            if (mat != MATERIAL_VOID) {
+              sigma_t = sigma_t_[mat * negroups_ + g];
+            }
+            total_external += source_regions_.external_source(fsr, g) * sigma_t;
+          }
+        }
+        vector_out[voxel_id] = total_external;
+      }
+    }
+
+    // if (mpi::rank == master) {
+    if (mpi::master){
+      MPI_Reduce(MPI_IN_PLACE, vector_out.data(), vector_size, MPI_FLOAT, MPI_SUM, master_rank, mpi::intracomm);
+    } else {
+      MPI_Reduce(vector_out.data(), nullptr, vector_size, MPI_FLOAT, MPI_SUM, master_rank, mpi::intracomm);
+    }
+
+    // communicate_plotting_data();
+
+    // if(mpi::rank == master){
+    if (mpi::master){
+      if (settings::run_mode == RunMode::EIGENVALUE) {
+        std::fprintf(plot, "SCALARS total_fission_source float\n");
+      } else {
+        std::fprintf(plot, "SCALARS external_source float\n");
+        }
+      std::fprintf(plot, "LOOKUP_TABLE default\n");
+      for (float value : vector_out) {
+        float print_value = convert_to_big_endian<float>(value);
+        std::fwrite(&print_value, sizeof(float), 1, plot);
+      }
+    }
+
+    fill(vector_out.begin(), vector_out.end(), 0.0);
+
+    // Plot weight window data
+    if (variance_reduction::weight_windows.size() == 1) {
+      for (int voxel_id : my_voxel_ids) {
+        float weight = weight_windows[voxel_id];
+        if (weight == 0.0)
+          weight = min_weight;
+        vector_out[voxel_id] = weight;
+      }
+
+    // if (mpi::rank == master) {
+    if (mpi::master){
+      MPI_Reduce(MPI_IN_PLACE, vector_out.data(), vector_size, MPI_FLOAT, MPI_SUM, master_rank, mpi::intracomm);
+    } else {
+      MPI_Reduce(vector_out.data(), nullptr, vector_size, MPI_FLOAT, MPI_SUM, master_rank, mpi::intracomm);
+    }
+
+    // communicate_plotting_data();
+
+    // if(mpi::rank == master){
+    if (mpi::master){
+      std::fprintf(plot, "SCALARS weight_window_lower float\n");
+      std::fprintf(plot, "LOOKUP_TABLE default\n");
+
+      for (float value : vector_out) {
+        float print_value = convert_to_big_endian<float>(value);
+        std::fwrite(&print_value, sizeof(float), 1, plot);
+      }
+    }
+    }
+
+    if (mpi::master){
+    // if(mpi::rank == master){
+      std::fclose(plot);
+    }
+  }
+}
+
+// void communicate_plotting_data(){
+//     if (mpi::master){
+//       MPI_Reduce(MPI_IN_PLACE, vector_out.data(), vector_size, MPI_FLOAT, MPI_SUM, master_rank, mpi::intracomm);
+//     } else {
+//       MPI_Reduce(vector_out.data(), nullptr, vector_size, MPI_FLOAT, MPI_SUM, master_rank, mpi::intracomm);
+//     }
+// }
+
+// // Outputs all basic material, FSR ID, multigroup flux, and
+// // fission source data to .vtk file that can be directly
+// // loaded and displayed by Paraview. Note that .vtk binary
+// // files require big endian byte ordering, so endianness
+// // is checked and flipped if necessary.
+// void FlatSourceDomain::output_to_vtk_decomp() const
+// {
+//   // Rename .h5 plot filename(s) to .vtk filenames
+//   for (int p = 0; p < model::plots.size(); p++) {
+//     PlottableInterface* plot = model::plots[p].get();
+//     plot->path_plot() =
+//       plot->path_plot().substr(0, plot->path_plot().find_last_of('.')) + ".vtk";
+//   }
+
+//   // Print header information
+//   print_plot();
+
+//   // Outer loop over plots
+//   for (int p = 0; p < model::plots.size(); p++) {
+
+//     // Get handle to OpenMC plot object and extract params
+//     Plot* openmc_plot = dynamic_cast<Plot*>(model::plots[p].get());
+
+//     // Random ray plots only support voxel plots
+//     if (!openmc_plot) {
+//       warning(fmt::format("Plot {} is invalid plot type -- only voxel plotting "
+//                           "is allowed in random ray mode.",
+//         p));
+//       continue;
+//     } else if (openmc_plot->type_ != Plot::PlotType::voxel) {
+//       warning(fmt::format("Plot {} is invalid plot type -- only voxel plotting "
+//                           "is allowed in random ray mode.",
+//         p));
+//       continue;
+//     }
+
+//     int Nx = openmc_plot->pixels_[0];
+//     int Ny = openmc_plot->pixels_[1];
+//     int Nz = openmc_plot->pixels_[2];
+//     Position origin = openmc_plot->origin_;
+//     Position width = openmc_plot->width_;
+//     Position ll = origin - width / 2.0;
+//     double x_delta = width.x / Nx;
+//     double y_delta = width.y / Ny;
+//     double z_delta = width.z / Nz;
+//     std::string filename = openmc_plot->path_plot();
+
+//     // Perform sanity checks on file size
+//     uint64_t bytes = Nx * Ny * Nz * (negroups_ + 1 + 1 + 1) * sizeof(float);
+//     write_message(5, "Processing plot {}: {}... (Estimated size is {} MB)",
+//       openmc_plot->id(), filename, bytes / 1.0e6);
+//     if (bytes / 1.0e9 > 1.0) {
+//       warning("Voxel plot specification is very large (>1 GB). Plotting may be "
+//               "slow.");
+//     } else if (bytes / 1.0e9 > 100.0) {
+//       fatal_error("Voxel plot specification is too large (>100 GB). Exiting.");
+//     }
+
+//     // Relate voxel spatial locations to random ray source regions
+//     vector<int> voxel_indices(Nx * Ny * Nz);
+//     // vector<SourceRegionKey> voxel_indices_key(Nx * Ny * Nz);
+//     vector<Position> voxel_positions(Nx * Ny * Nz);
+//     vector<double> weight_windows(Nx * Ny * Nz);
+//     vector<int> my_voxel_ids;
+//     float min_weight = 1e20;
+// #pragma omp parallel for collapse(3) reduction(min : min_weight)
+//     for (int z = 0; z < Nz; z++) {
+//       for (int y = 0; y < Ny; y++) {
+//         for (int x = 0; x < Nx; x++) {
+//           Position sample;
+//           sample.z = ll.z + z_delta / 2.0 + z * z_delta;
+//           sample.y = ll.y + y_delta / 2.0 + y * y_delta;
+//           sample.x = ll.x + x_delta / 2.0 + x * x_delta;
+//           Particle p;
+//           p.r() = sample;
+//           p.r_last() = sample;
+//           p.E() = 1.0;
+//           p.E_last() = 1.0;
+//           p.u() = {1.0, 0.0, 0.0};
+
+//           bool found = exhaustive_find_cell(p);
+//           if (!found) {
+//             // voxel_indices_key[z * Ny * Nx + y * Nx + x] = {-1,-1};
+//             voxel_indices[z * Ny * Nx + y * Nx + x] = -1;
+//             voxel_positions[z * Ny * Nx + y * Nx + x] = sample;
+//             weight_windows[z * Ny * Nx + y * Nx + x] = 0.0;
+//             continue;
+//           }
+
+//           int i_cell = p.lowest_coord().cell();
+//           int64_t sr = source_region_offsets_[i_cell] + p.cell_instance();
+//           SourceRegionKey sr_key {sr, 0};
+//           if (RandomRay::mesh_subdivision_enabled_) {
+//             int mesh_idx = base_source_regions_.mesh(sr);
+//             int mesh_bin;
+//             if (mesh_idx == C_NONE) {
+//               mesh_bin = 0;
+//             } else {
+//               mesh_bin = model::meshes[mesh_idx]->get_bin(p.r());
+//             }
+//             sr_key = {sr, mesh_bin};
+//             auto it = source_region_map_.find(sr_key);
+//             if (it != source_region_map_.end()) {
+//               sr = it->second;
+//             } else {
+//               sr = -1;
+//             }
+//           }
+
+//           // voxel_indices_key[z * Ny * Nx + y * Nx + x] = sr_key;
+//           voxel_indices[z * Ny * Nx + y * Nx + x] = sr;
+//           voxel_positions[z * Ny * Nx + y * Nx + x] = sample;
+
+//           int rank = mpi::master;
+//           // Which rank is responsible
+//           auto it = mpi::decomp_map.subdomain_map_.find(sr_key.base_source_region_id);
+//           if (it != mpi::decomp_map.subdomain_map_.end()){
+//             rank = it->second;
+//           }
+//           if (rank == mpi::rank) {
+//             #pragma omp critical
+//             {
+//               my_voxel_ids.push_back(z * Ny * Nx + y * Nx + x);
+//             }
+//           }
+
+//           if (variance_reduction::weight_windows.size() == 1) {
+//             WeightWindow ww =
+//               variance_reduction::weight_windows[0]->get_weight_window(p);
+//             float weight = ww.lower_weight;
+//             weight_windows[z * Ny * Nx + y * Nx + x] = weight;
+//             if (weight < min_weight)
+//               min_weight = weight;
+//           }
+//         }
+//       }
+//     }
+
+//     double source_normalization_factor =
+//       compute_fixed_source_normalization_factor();
+
+//     // Open file for writing
+//     MPI_File plot;
+//     MPI_File_open(mpi::intracomm,
+//                   // "output.vtk",
+//                   filename.c_str(),
+//                   MPI_MODE_CREATE | MPI_MODE_WRONLY,
+//                   MPI_INFO_NULL,
+//                   &plot);
+
+//     // Ensure we start from a clean file
+//     // if (mpi::master) {
+//       // MPI_File_set_size(plot, 0);
+//     // }
+//     MPI_Barrier(mpi::intracomm);
+
+//     std::string header;
+//     header += "# vtk DataFile Version 2.0\n";
+//     header += "Dataset File\n";
+//     header += "BINARY\n";
+//     header += "DATASET STRUCTURED_POINTS\n";
+//     header += fmt::format("DIMENSIONS {} {} {}\n", Nx, Ny, Nz);
+//     header += fmt::format("ORIGIN {} {} {}\n", ll.x, ll.y, ll.z);
+//     header += fmt::format("SPACING {} {} {}\n", x_delta, y_delta, z_delta);
+//     header += fmt::format("POINT_DATA {}\n", Nx * Ny * Nz);
+
+//     // Write header
+//     if (mpi::master) {
+//         MPI_File_write_at(plot, 0, header.c_str(), header.size(), MPI_CHAR, MPI_STATUS_IGNORE);
+//     }
+
+//     int chunk_size = Nx * Ny * Nz;
+
+//     MPI_Offset base_offset = header.size();
+//     // MPI_Offset offset = header.size();
+
+//     int64_t num_neg = 0;
+//     int64_t num_samples = 0;
+//     float min_flux = 0.0;
+//     float max_flux = -1.0e20;
+//     // Plot multigroup flux data
+//     for (int g = 0; g < negroups_; g++) {
+
+//       header.clear();
+//       header += fmt::format("SCALARS flux_group_{} float\n", g);
+//       header += "LOOKUP_TABLE default\n";
+
+//       if (mpi::master) {
+//         MPI_File_write_at(plot, base_offset, header.c_str(), header.size(), MPI_CHAR, MPI_STATUS_IGNORE);
+//       }
+
+//       base_offset += header.size();
+
+//       for (int voxel_id : my_voxel_ids) {
+//         int64_t fsr = voxel_indices[voxel_id];
+//         int64_t source_element = fsr * negroups_ + g;
+//         float flux = 0;
+//         if (fsr >= 0) {
+//           flux = evaluate_flux_at_point(voxel_positions[voxel_id], fsr, g);
+//           if (flux < 0.0)
+//             flux = FlatSourceDomain::evaluate_flux_at_point(
+//               voxel_positions[voxel_id], fsr, g);
+//         }
+//         if (flux < 0.0) {
+//           num_neg++;
+//           if (flux < min_flux) {
+//             min_flux = flux;
+//           }
+//         }
+//         if (flux > max_flux)
+//           max_flux = flux;
+//         num_samples++;
+//         flux = convert_to_big_endian<float>(flux);
+
+//         MPI_Offset offset = base_offset + voxel_id * sizeof(float);
+//         // MPI_Offset fsr_offset = base_offset + voxel_id * sizeof(float);
+
+//         // Write this piece of data at its specific location
+//         MPI_File_write_at(plot, offset, 
+//                           &flux, 
+//                           1, 
+//                           MPI_FLOAT, 
+//                           MPI_STATUS_IGNORE);
+
+//         // std::fwrite(&flux, sizeof(float), 1, plot);
+//       }
+
+//       base_offset += chunk_size * sizeof(float);
+
+//     }
+
+//     // MPI_Barrier(mpi::intracomm);
+
+//     // Plot FSRs
+//     header.clear();
+//     header += "SCALARS FSRs float\n";
+//     header += "LOOKUP_TABLE default\n";
+
+//     // std::string fsr_header;
+//     // fsr_header += "SCALARS FSRs float\n";
+//     // fsr_header += "LOOKUP_TABLE default\n";
+
+//     // Write FSR Header
+//     if (mpi::master) {
+//         MPI_File_write_at(plot, base_offset, header.c_str(), header.size(), MPI_CHAR, MPI_STATUS_IGNORE);
+//         // MPI_File_write_at(plot, offset, fsr_header.c_str(), fsr_header.size(), MPI_CHAR, MPI_STATUS_IGNORE);
+//     }
+
+//     base_offset += header.size();
+//     // MPI_Offset base_offset = offset + header.size();
+
+//     // // Pre-size file
+//     // MPI_Offset data_bytes =
+//     //   static_cast<MPI_Offset>(Nx) * Ny * Nz * static_cast<MPI_Offset>(sizeof(float));
+//     // // if (mpi::master) {
+//     //   MPI_File_set_size(plot, base_offset + data_bytes);
+//     // // }
+
+//     MPI_Barrier(mpi::intracomm);
+
+//     for (int voxel_id : my_voxel_ids) {
+
+//         int fsr = voxel_indices[voxel_id];
+//         float value = future_prn(10, fsr);
+//         value = convert_to_big_endian<float>(value);
+
+//         MPI_Offset offset = base_offset + voxel_id * sizeof(float);
+//         // MPI_Offset fsr_offset = base_offset + voxel_id * sizeof(float);
+
+//         // Write this piece of data at its specific location
+//         MPI_File_write_at(plot, offset, 
+//                           &value, 
+//                           1, 
+//                           MPI_FLOAT, 
+//                           MPI_STATUS_IGNORE);
+//     }
+
+//     MPI_Barrier(mpi::intracomm);
+
+//     base_offset += chunk_size * sizeof(float);
+
+//     MPI_File_close(&plot);
+//   }
+// }
 
 void FlatSourceDomain::apply_external_source_to_source_region(
   Discrete* discrete, double strength_factor, SourceRegionHandle& srh)

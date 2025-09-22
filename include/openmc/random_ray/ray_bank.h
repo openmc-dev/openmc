@@ -42,6 +42,10 @@ public:
   // Public data members
   vector<RandomRay> my_ray_list_;
 
+  // // Number of ray communications between ranks
+  // uint64_t num_comms_total_ {0};
+  // uint64_t num_comms_batch_ {0};
+
 private:
   //----------------------------------------------------------------------------
   // Private data members

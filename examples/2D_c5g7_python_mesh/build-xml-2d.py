@@ -12,8 +12,8 @@ z_max = 32.13
 # Instantiate a Settings, set all runtime parameters, and export to XML
 settings_file = openmc.Settings()
 settings_file.energy_mode = "multi-group"
-settings_file.batches = 1000
-settings_file.inactive = 600
+settings_file.batches = 20 #1000
+settings_file.inactive = 10 #600
 settings_file.particles = 1750
 settings_file.run_mode = 'eigenvalue'
 settings_file.output = {'tallies': False, 'summary': False}

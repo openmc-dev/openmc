@@ -31,10 +31,10 @@ public:
   void simulate();
   void output_simulation_results() const;
   void instability_check(
-    int64_t n_hits, double k_eff, double& avg_miss_rate, int n_source_regions) const;
+    int64_t n_hits, double k_eff, double& avg_miss_rate) const;
   void print_results_random_ray(uint64_t total_geometric_intersections,
     double avg_miss_rate, int negroups, int64_t n_source_regions,
-    int64_t n_external_source_regions) const;
+    int64_t n_external_source_regions, uint64_t avg_num_comms) const;
   void transport_sweep();
   void transport_sweep_decomp(RayBank& RB);
 
@@ -63,6 +63,11 @@ private:
 
   // Number of energy groups
   int negroups_;
+
+  // Average number of ray communications between rank per batch
+  uint64_t avg_num_comms_ {0};
+  uint64_t num_comms_batch_ {0};
+  vector<float> rank_load_;
 
 }; // class RandomRaySimulation
 

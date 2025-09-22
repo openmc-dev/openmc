@@ -40,6 +40,8 @@ public:
   void random_ray_tally();
   virtual void accumulate_iteration_flux();
   void output_to_vtk() const;
+  void output_to_vtk_decomp() const;
+  // void communicate_plotting_data();
   void convert_external_sources();
   void count_external_source_regions();
   void set_adjoint_sources(const vector<double>& forward_flux);
@@ -189,6 +191,9 @@ protected:
   // results tensor in the Tally class, though without the third dimension, as
   // SUM and SUM_SQ do not need to be tracked.
   vector<xt::xtensor<double, 2>> tally_volumes_;
+
+  // Vector that contains the results to be plotted for MPI ranks
+  // vector<float> vector_out_;
 
 }; // class FlatSourceDomain
 

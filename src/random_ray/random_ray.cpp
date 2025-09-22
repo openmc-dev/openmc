@@ -309,7 +309,7 @@ void RandomRay::event_advance_ray()
       wgt() = 0.0;
     }
 
-    attenuate_flux(distance, true);
+    attenuate_flux(distance);
     distance_travelled_ += distance;
   } else {
     // If the ray is still in the dead zone, need to check if it
@@ -320,8 +320,12 @@ void RandomRay::event_advance_ray()
     if (distance_travelled_ + distance >= distance_inactive_) {
       // is_active_ = true;
       double distance_dead = distance_inactive_ - distance_travelled_;
-      attenuate_flux(distance_dead, false);
+      attenuate_flux(distance_dead);
       is_active_ = true;
+
+      if (has_left_subdomain()) {
+        return;
+      }
 
       double distance_alive = distance - distance_dead;
 
@@ -331,15 +335,10 @@ void RandomRay::event_advance_ray()
         wgt() = 0.0;
       }
 
-      //TODO: Add check here to avoid useless onwards travel?
-      // if (has_left_subdomain()) {
-      //   return;
-      // }
-
-      attenuate_flux(distance_alive, true, distance_dead);
+      attenuate_flux(distance_alive, distance_dead);
       distance_travelled_ = distance_alive;
     } else {
-      attenuate_flux(distance, false);
+      attenuate_flux(distance);
       distance_travelled_ += distance;
     }
   }
@@ -350,7 +349,7 @@ void RandomRay::event_advance_ray()
   }
 }
 
-void RandomRay::attenuate_flux(double distance, bool is_active, double offset)
+void RandomRay::attenuate_flux(double distance, double offset)
 {
   // Determine source region index etc.
   int i_cell = lowest_coord().cell();
@@ -372,7 +371,7 @@ void RandomRay::attenuate_flux(double distance, bool is_active, double offset)
       // If there's no mesh being applied to this cell, then
       // we just attenuate the flux as normal, and set
       // the mesh bin to 0
-      attenuate_flux_inner(distance, is_active, sr, 0, r());
+      attenuate_flux_inner(distance, sr, 0, r());
     } else {
       // If there is a mesh being applied to this cell, then
       // we loop over all the bin crossings and attenuate
@@ -396,7 +395,7 @@ void RandomRay::attenuate_flux(double distance, bool is_active, double offset)
       for (int b = 0; b < mesh_bins_.size(); b++) {
         double physical_length = reduced_distance * mesh_fractional_lengths_[b];
         attenuate_flux_inner(
-          physical_length, is_active, sr, mesh_bins_[b], start);
+          physical_length, sr, mesh_bins_[b], start);
         start += physical_length * u();
 
         // if (simulation::current_batch == 30) {
@@ -423,10 +422,11 @@ void RandomRay::attenuate_flux(double distance, bool is_active, double offset)
       }
     }
   } else {
-    attenuate_flux_inner(distance, is_active, sr, C_NONE, r());
+    attenuate_flux_inner(distance, sr, C_NONE, r());
   }
   // If ray has left my subdomain, buffer ray state
-  if(has_left_subdomain() && !is_buffered_) {
+  // if(has_left_subdomain() && !is_buffered_) {
+  if(has_left_subdomain()) {
     // if (simulation::current_batch == 30) {
     //   printf("RANK %d: buffering \n", mpi::rank);}
     Position position_buffer =  r() + (offset + mesh_partial_length) * u();
@@ -437,7 +437,7 @@ void RandomRay::attenuate_flux(double distance, bool is_active, double offset)
 }
 
 void RandomRay::attenuate_flux_inner(
-  double distance, bool is_active, int64_t sr, int mesh_bin, Position r)
+  double distance, int64_t sr, int mesh_bin, Position r)
 {
   // Check if SR belongs to my subdomain.
   // If not, buffer ray, set wgt to zero and leave function.
@@ -462,17 +462,17 @@ void RandomRay::attenuate_flux_inner(
   switch (source_shape_) {
   case RandomRaySourceShape::FLAT:
     if (this->material() == MATERIAL_VOID) {
-      attenuate_flux_flat_source_void(srh, distance, is_active, r);
+      attenuate_flux_flat_source_void(srh, distance, r);
     } else {
-      attenuate_flux_flat_source(srh, distance, is_active, r);
+      attenuate_flux_flat_source(srh, distance, r);
     }
     break;
   case RandomRaySourceShape::LINEAR:
   case RandomRaySourceShape::LINEAR_XY:
     if (this->material() == MATERIAL_VOID) {
-      attenuate_flux_linear_source_void(srh, distance, is_active, r);
+      attenuate_flux_linear_source_void(srh, distance, r);
     } else {
-      attenuate_flux_linear_source(srh, distance, is_active, r);
+      attenuate_flux_linear_source(srh, distance, r);
     }
     break;
   default:
@@ -494,7 +494,7 @@ void RandomRay::attenuate_flux_inner(
 // individually (at least on CPU). Several other bookkeeping tasks are also
 // performed when inside the lock.
 void RandomRay::attenuate_flux_flat_source(
-  SourceRegionHandle& srh, double distance, bool is_active, Position r)
+  SourceRegionHandle& srh, double distance, Position r)
 {
   // The number of geometric intersections is counted for reporting purposes
   n_event()++;
@@ -518,7 +518,7 @@ void RandomRay::attenuate_flux_flat_source(
   // Aquire lock for source region
   srh.lock();
 
-  if (is_active) {
+  if (is_active_) {
     // Accumulate delta psi into new estimate of source region flux for
     // this iteration
     for (int g = 0; g < negroups_; g++) {
@@ -546,7 +546,7 @@ void RandomRay::attenuate_flux_flat_source(
 
 // Alternative flux attenuation function for true void regions.
 void RandomRay::attenuate_flux_flat_source_void(
-  SourceRegionHandle& srh, double distance, bool is_active, Position r)
+  SourceRegionHandle& srh, double distance, Position r)
 {
   // The number of geometric intersections is counted for reporting purposes
   n_event()++;
@@ -555,7 +555,7 @@ void RandomRay::attenuate_flux_flat_source_void(
 
   // If ray is in the active phase (not in dead zone), make contributions to
   // source region bookkeeping
-  if (is_active) {
+  if (is_active_) {
 
     // Aquire lock for source region
     srh.lock();
@@ -593,7 +593,7 @@ void RandomRay::attenuate_flux_flat_source_void(
 }
 
 void RandomRay::attenuate_flux_linear_source(
-  SourceRegionHandle& srh, double distance, bool is_active, Position r)
+  SourceRegionHandle& srh, double distance, Position r)
 {
   // The number of geometric intersections is counted for reporting purposes
   n_event()++;
@@ -686,7 +686,7 @@ void RandomRay::attenuate_flux_linear_source(
   // If ray is in the active phase (not in dead zone), make contributions to
   // source region bookkeeping
 
-  if (is_active) {
+  if (is_active_) {
     // Accumulate deltas into the new estimate of source region flux for this
     // iteration
     for (int g = 0; g < negroups_; g++) {
@@ -726,7 +726,7 @@ void RandomRay::attenuate_flux_linear_source(
 // estimating the flux at specific pixel coordinates. Thus, plots will look
 // nicer/more accurate if we record flux moments, so this function is useful.
 void RandomRay::attenuate_flux_linear_source_void(
-  SourceRegionHandle& srh, double distance, bool is_active, Position r)
+  SourceRegionHandle& srh, double distance, Position r)
 {
   // The number of geometric intersections is counted for reporting purposes
   n_event()++;
@@ -781,7 +781,7 @@ void RandomRay::attenuate_flux_linear_source_void(
 
   // If ray is in the active phase (not in dead zone), make contributions to
   // source region bookkeeping
-  if (is_active) {
+  if (is_active_) {
     // Compute an estimate of the spatial moments matrix for the source
     // region based on parameters from this ray's crossing
     MomentMatrix moment_matrix_estimate;
@@ -1029,7 +1029,7 @@ void RandomRay::pack_ray_for_buffer(double distance_buffer, Position position_bu
  exchange_data_.is_active = is_active_;
  exchange_data_.ray_id = id();
 
- is_buffered_ = true; 
+//  is_buffered_ = true; 
 }
 
 int RandomRay::get_energy_groups() {

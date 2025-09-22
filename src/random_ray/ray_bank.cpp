@@ -5,6 +5,7 @@
 #include "openmc/message_passing.h"
 #include "openmc/random_ray/decomposition_map.h"
 #include "openmc/mgxs_interface.h"
+#include "openmc/timer.h"
 
 namespace openmc {
 
@@ -54,8 +55,12 @@ void RayBank::update(FlatSourceDomain* domain){
     // Communicate how many rays will be sent to each rank
     communicate_message_metadata();
 
+    simulation::time_ray_comms.start();
+
     // Send and receive rays between MPI ranks
     communicate_rays();
+
+    simulation::time_ray_comms.stop();
 
     // Add received rays to ray list of that rank
     update_my_ray_list(domain);
@@ -92,7 +97,7 @@ void RayBank::communicate_message_metadata() {
   // Exchange message counts with all ranks
   MPI_Alltoall(num_messages_sending.data(), 1, MPI_INT,
                num_messages_receiving_.data(), 1, MPI_INT,
-               MPI_COMM_WORLD);
+               mpi::intracomm);
 
   total_receiving_rays_ = accumulate(num_messages_receiving_.begin(), 
                                      num_messages_receiving_.end(), 0);
@@ -115,6 +120,7 @@ void RayBank::communicate_rays(){
     // vector<MPI_Request> requests(num_requests); // heap
     MPI_Request requests[num_requests]; // stack
     int req_idx = 0;
+    // uint64_t num_comms = 0;
 
     // Define one-dimensional arrays to be sent and received and allocate size
     vector<RayExchangeData> ray_data;
@@ -155,8 +161,8 @@ void RayBank::communicate_rays(){
 
       // printf("Prepared data for sending to rank %d, req_idx %d, vector_send_idx %d \n", receiving_rank, req_idx, vector_send_idx);
 
-      MPI_Isend(&ray_data[vector_send_idx], num_rays_sending * sizeof(RayExchangeData), MPI_BYTE, receiving_rank, 1, MPI_COMM_WORLD, &requests[req_idx]);
-      MPI_Isend(&angular_flux_data[vector_send_idx * negroups_], num_rays_sending * negroups_, MPI_FLOAT, receiving_rank, 2, MPI_COMM_WORLD, &requests[req_idx+1]); 
+      MPI_Isend(&ray_data[vector_send_idx], num_rays_sending * sizeof(RayExchangeData), MPI_BYTE, receiving_rank, 1, mpi::intracomm, &requests[req_idx]);
+      MPI_Isend(&angular_flux_data[vector_send_idx * negroups_], num_rays_sending * negroups_, MPI_FLOAT, receiving_rank, 2, mpi::intracomm, &requests[req_idx+1]); 
 
       // printf("Initiated send to rank %d, req_idx %d, vector_send_idx %d \n", receiving_rank, req_idx, vector_send_idx);
       vector_send_idx += num_rays_sending;
@@ -169,10 +175,11 @@ void RayBank::communicate_rays(){
     for (int sending_rank = 0; sending_rank < mpi::n_procs; sending_rank++) {
       int num_rays_receiving = num_messages_receiving_[sending_rank];
       if (num_rays_receiving == 0) continue;
-      MPI_Recv(&received_ray_data_[vector_receive_idx], num_rays_receiving * sizeof(RayExchangeData), MPI_BYTE, sending_rank, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-      MPI_Recv(&received_angular_flux_data_[vector_receive_idx * negroups_], num_rays_receiving * negroups_, MPI_FLOAT, sending_rank, 2, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+      MPI_Recv(&received_ray_data_[vector_receive_idx], num_rays_receiving * sizeof(RayExchangeData), MPI_BYTE, sending_rank, 1, mpi::intracomm, MPI_STATUS_IGNORE);
+      MPI_Recv(&received_angular_flux_data_[vector_receive_idx * negroups_], num_rays_receiving * negroups_, MPI_FLOAT, sending_rank, 2, mpi::intracomm, MPI_STATUS_IGNORE);
 
       vector_receive_idx += num_rays_receiving;
+      // num_comms++;
     }
 
     // printf("Receiving complete, req_idx %d, vector_send_idx %d, vector_receive_idx %d \n", req_idx, vector_send_idx, vector_receive_idx);
@@ -180,6 +187,11 @@ void RayBank::communicate_rays(){
     // Wait for all communication to complete
     MPI_Waitall(num_requests, requests, MPI_STATUSES_IGNORE);
     // MPI_Waitall(num_requests, requests.data(), MPI_STATUSES_IGNORE);
+
+    // // Calculate how many rays were sent in this communication round
+    // MPI_Allreduce(MPI_IN_PLACE, &num_comms, 1, MPI_UINT64_T, MPI_SUM, mpi::intracomm);
+
+    // num_comms_batch_ += num_comms;
     
     // Empty buffered_ray_data
     ray_send_buffer_.clear();
@@ -214,7 +226,7 @@ bool RayBank::is_any_ray_alive() {
 
   int global_rays_alive = 0;
   int local_rays_alive = ray_bank_size();
-  MPI_Allreduce(&local_rays_alive, &global_rays_alive, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(&local_rays_alive, &global_rays_alive, 1, MPI_INT, MPI_SUM, mpi::intracomm);
 
   if (global_rays_alive > 0){
     return true;

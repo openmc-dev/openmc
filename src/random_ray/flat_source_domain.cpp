@@ -1486,17 +1486,17 @@ SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
 
   // Compute the combined source term
   update_single_neutron_source(handle);
-  
+
   // Unlock the parallel map. Note: we may be tempted to release
   // this lock earlier, and then just use the source region's lock to protect
   // the flux/source initialization stages above. However, the rest of the code
-  // only protects updates to the new flux and volume fields, and assumes that the
-  // source is constant for the duration of transport. Thus, using just the source
-  // region's lock by itself would result in other threads potentially reading from
-  // the source before it is computed, as they won't use the lock when only reading
-  // from the SR's source. It would be expensive to protect those operations,
-  // whereas generating the SR is only done once, so we just hold the map's bucket
-  // lock until the source region is fully initialized.
+  // only protects updates to the new flux and volume fields, and assumes that
+  // the source is constant for the duration of transport. Thus, using just the
+  // source region's lock by itself would result in other threads potentially
+  // reading from the source before it is computed, as they won't use the lock
+  // when only reading from the SR's source. It would be expensive to protect
+  // those operations, whereas generating the SR is only done once, so we just
+  // hold the map's bucket lock until the source region is fully initialized.
   discovered_source_regions_.unlock(sr_key);
 
   return handle;

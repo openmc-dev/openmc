@@ -60,25 +60,6 @@ SourceRegion::SourceRegion(int negroups, bool is_linear)
   }
 }
 
-SourceRegion::SourceRegion(const SourceRegionHandle& handle, int64_t parent_sr)
-  : SourceRegion(handle.negroups_, handle.is_linear_)
-{
-  material_ = handle.material();
-  mesh_ = handle.mesh();
-  parent_sr_ = parent_sr;
-  for (int g = 0; g < scalar_flux_new_.size(); g++) {
-    scalar_flux_old_[g] = handle.scalar_flux_old(g);
-    source_[g] = handle.source(g);
-  }
-
-  if (settings::run_mode == RunMode::FIXED_SOURCE) {
-    external_source_present_ = handle.external_source_present();
-    for (int g = 0; g < scalar_flux_new_.size(); g++) {
-      external_source_[g] = handle.external_source(g);
-    }
-  }
-}
-
 //==============================================================================
 // SourceRegionContainer implementation
 //==============================================================================

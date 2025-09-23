@@ -654,6 +654,10 @@ def test_model_plot():
     test_mask = (image_data == white) | (image_data == red)
     assert np.all(test_mask), "Colors other than white or red found in overlap plot image"
 
+    # Close plots to avoid warning
+    import matplotlib.pyplot as plt
+    plt.close('all')
+
 
 def test_model_id_map_initialization(run_in_tmpdir):
     model = openmc.examples.pwr_assembly()

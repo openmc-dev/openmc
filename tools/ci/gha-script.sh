@@ -15,4 +15,7 @@ if [[ $EVENT == 'y' ]]; then
 fi
 
 # Run unit tests and then regression tests
-pytest --cov=openmc -v $args tests/unit_tests tests/regression_tests
+pytest --cov=openmc -v $args \
+  tests/test_matplotlib_import.py \
+  tests/unit_tests \
+  tests/regression_tests

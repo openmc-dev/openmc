@@ -506,15 +506,7 @@ class Model:
         if not d.is_dir():
             d.mkdir(parents=True, exist_ok=True)
 
-        # Use a shared mesh memo to prevent mesh duplication across files
-        mesh_memo = set()
-        
-        # Export settings with mesh memo
-        settings_element = self.settings.to_xml_element(mesh_memo)
-        settings_path = d / 'settings.xml'
-        tree = ET.ElementTree(settings_element)
-        tree.write(str(settings_path), xml_declaration=True, encoding='utf-8')
-        
+        self.settings.export_to_xml(d)
         self.geometry.export_to_xml(d, remove_surfs=remove_surfs)
 
         # If a materials collection was specified, export it. Otherwise, look
@@ -528,11 +520,7 @@ class Model:
             materials.export_to_xml(d, nuclides_to_ignore=nuclides_to_ignore)
 
         if self.tallies:
-            # Export tallies with mesh memo to avoid duplication
-            tallies_element = self.tallies.to_xml_element(mesh_memo)
-            tallies_path = d / 'tallies.xml'
-            tree = ET.ElementTree(tallies_element)
-            tree.write(str(tallies_path), xml_declaration=True, encoding='utf-8')
+            self.tallies.export_to_xml(d)
         if self.plots:
             self.plots.export_to_xml(d)
 

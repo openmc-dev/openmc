@@ -1,5 +1,6 @@
 import openmc
 import openmc.stats
+import xml.etree.ElementTree as ET
 
 
 def test_export_to_xml(run_in_tmpdir):
@@ -147,3 +148,60 @@ def test_export_to_xml(run_in_tmpdir):
     assert s.random_ray['ray_source'].space.upper_right == [1., 1., 1.]
     assert s.max_secondaries == 1_000_000
     assert s.source_rejection_fraction == 0.01
+
+
+def test_random_ray_source_region_meshes_export(run_in_tmpdir):
+    """Test that random ray source region meshes are properly exported to XML
+    
+    This is a regression test for the bug where meshes were not included in
+    settings.xml when using export_to_xml() but worked correctly with 
+    export_to_model_xml().
+    """
+    # Create minimal settings
+    s = openmc.Settings()
+    s.particles = 1000
+    s.batches = 10
+    s.inactive = 5
+    s.run_mode = 'eigenvalue'
+    
+    # Create a mesh for random ray source region meshes
+    mesh = openmc.RegularMesh()
+    mesh.dimension = [2, 2, 2]
+    mesh.lower_left = [-1, -1, -1]
+    mesh.upper_right = [1, 1, 1]
+    
+    # Create a simple universe 
+    root_universe = openmc.Universe()
+    
+    # Set up random ray with source region meshes
+    s.random_ray = {
+        'source_region_meshes': [(mesh, [root_universe])]
+    }
+    
+    # Test 1: Export to XML using export_to_xml (the problematic case)
+    s.export_to_xml()
+    
+    # Parse the settings XML and check for mesh elements
+    tree = ET.parse('settings.xml')
+    root = tree.getroot()
+    mesh_elements = root.findall('.//mesh')
+    
+    # There should be 2 mesh elements:
+    # 1. The mesh reference inside source_region_meshes 
+    # 2. The actual mesh definition at the top level
+    assert len(mesh_elements) == 2, f"Expected 2 mesh elements, found {len(mesh_elements)}"
+    
+    # Check that we have the mesh definition with all required data
+    mesh_defs = [elem for elem in mesh_elements if elem.find('dimension') is not None]
+    assert len(mesh_defs) == 1, f"Expected 1 mesh definition, found {len(mesh_defs)}"
+    
+    mesh_def = mesh_defs[0]
+    assert mesh_def.get('id') == str(mesh.id)
+    assert mesh_def.find('dimension').text == '2 2 2'
+    assert mesh_def.find('lower_left').text == '-1 -1 -1'
+    assert mesh_def.find('upper_right').text == '1 1 1'
+    
+    # Test 2: Also verify that to_xml_element works with mesh_memo=None
+    xml_element = s.to_xml_element(mesh_memo=None)
+    mesh_elements_direct = xml_element.findall('.//mesh')
+    assert len(mesh_elements_direct) == 2, f"Expected 2 mesh elements with mesh_memo=None, found {len(mesh_elements_direct)}"

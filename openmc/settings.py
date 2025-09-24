@@ -1714,9 +1714,12 @@ class Settings:
                             domain_elem = ET.SubElement(mesh_elem, 'domain')
                             domain_elem.set('id', str(domain.id))
                             domain_elem.set('type', domain.__class__.__name__.lower())
-                        if mesh_memo is not None and mesh.id not in mesh_memo:
+                        # See if a <mesh> element already exists -- if not, add it
+                        path = f"./mesh[@id='{mesh.id}']"
+                        if root.find(path) is None:
                             root.append(mesh.to_xml_element())
-                            mesh_memo.add(mesh.id)
+                            if mesh_memo is not None:
+                                mesh_memo.add(mesh.id)
                 else:
                     subelement = ET.SubElement(element, key)
                     subelement.text = str(value)

@@ -60,12 +60,22 @@ def test_export_to_xml(run_in_tmpdir):
     s.electron_treatment = 'led'
     s.write_initial_source = True
     s.weight_window_checkpoints = {'surface': True, 'collision': False}
+    # Create an additional mesh for random ray source region meshes to test the fix
+    source_region_mesh = openmc.RegularMesh()
+    source_region_mesh.dimension = [2, 2, 2]
+    source_region_mesh.lower_left = [-2, -2, -2]
+    source_region_mesh.upper_right = [2, 2, 2]
+    
+    # Create a simple universe for the mesh
+    root_universe = openmc.Universe()
+    
     s.random_ray = {
         'distance_inactive': 10.0,
         'distance_active': 100.0,
         'ray_source': openmc.IndependentSource(
             space=openmc.stats.Box((-1., -1., -1.), (1., 1., 1.))
-        )
+        ),
+        'source_region_meshes': [(source_region_mesh, [root_universe])]
     }
     s.max_particle_events = 100
     s.max_secondaries = 1_000_000
@@ -146,52 +156,13 @@ def test_export_to_xml(run_in_tmpdir):
     assert s.random_ray['distance_active'] == 100.0
     assert s.random_ray['ray_source'].space.lower_left == [-1., -1., -1.]
     assert s.random_ray['ray_source'].space.upper_right == [1., 1., 1.]
+    # Test the source region meshes (this verifies the fix)
+    assert 'source_region_meshes' in s.random_ray
+    assert len(s.random_ray['source_region_meshes']) == 1
+    mesh_and_domains = s.random_ray['source_region_meshes'][0]
+    recovered_mesh = mesh_and_domains[0]
+    assert recovered_mesh.dimension == (2, 2, 2)
+    assert recovered_mesh.lower_left == [-2., -2., -2.]
+    assert recovered_mesh.upper_right == [2., 2., 2.]
     assert s.max_secondaries == 1_000_000
     assert s.source_rejection_fraction == 0.01
-
-
-def test_random_ray_source_region_meshes_export(run_in_tmpdir):
-    """Test that random ray source region meshes are properly exported to XML
-    
-    This is a regression test for the bug where meshes were not included in
-    settings.xml when using export_to_xml() but worked correctly with 
-    export_to_model_xml().
-    """
-    # Create minimal settings
-    s = openmc.Settings()
-    s.particles = 1000
-    s.batches = 10
-    s.inactive = 5
-    s.run_mode = 'eigenvalue'
-    
-    # Create a mesh for random ray source region meshes
-    mesh = openmc.RegularMesh()
-    mesh.dimension = [2, 2, 2]
-    mesh.lower_left = [-1, -1, -1]
-    mesh.upper_right = [1, 1, 1]
-    
-    # Create a simple universe 
-    root_universe = openmc.Universe()
-    
-    # Set up random ray with source region meshes
-    s.random_ray = {
-        'source_region_meshes': [(mesh, [root_universe])]
-    }
-    
-    # Test export to XML - this should not raise an error
-    s.export_to_xml()
-    
-    # Verify settings.xml file was created and contains expected content
-    with open('settings.xml', 'r') as f:
-        content = f.read()
-        # Basic checks that the mesh data is present
-        assert 'source_region_meshes' in content
-        assert 'dimension>2 2 2</dimension' in content
-        assert 'lower_left>-1 -1 -1</lower_left' in content
-        assert 'upper_right>1 1 1</upper_right' in content
-    
-    # Test that to_xml_element works with mesh_memo=None (the core fix)
-    xml_element = s.to_xml_element(mesh_memo=None)
-    xml_string = ET.tostring(xml_element, encoding='unicode')
-    assert 'source_region_meshes' in xml_string
-    assert 'dimension>2 2 2</dimension' in xml_string

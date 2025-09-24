@@ -59,15 +59,11 @@ def test_export_to_xml(run_in_tmpdir):
     s.electron_treatment = 'led'
     s.write_initial_source = True
     s.weight_window_checkpoints = {'surface': True, 'collision': False}
-    # Create an additional mesh for random ray source region meshes
     source_region_mesh = openmc.RegularMesh()
     source_region_mesh.dimension = [2, 2, 2]
     source_region_mesh.lower_left = [-2, -2, -2]
     source_region_mesh.upper_right = [2, 2, 2]
-    
-    # Create a simple universe for the mesh
     root_universe = openmc.Universe()
-    
     s.random_ray = {
         'distance_inactive': 10.0,
         'distance_active': 100.0,
@@ -155,7 +151,6 @@ def test_export_to_xml(run_in_tmpdir):
     assert s.random_ray['distance_active'] == 100.0
     assert s.random_ray['ray_source'].space.lower_left == [-1., -1., -1.]
     assert s.random_ray['ray_source'].space.upper_right == [1., 1., 1.]
-    # Test the source region meshes
     assert 'source_region_meshes' in s.random_ray
     assert len(s.random_ray['source_region_meshes']) == 1
     mesh_and_domains = s.random_ray['source_region_meshes'][0]

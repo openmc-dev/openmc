@@ -64,6 +64,7 @@ void openmc_run_random_ray()
     sim.apply_fixed_sources_and_mesh_domains();
 
     // Initialize subdomains for MPI ranks
+    mpi::decomp_map.generate_rank_centers();
     mpi::decomp_map.create(sim.domain());
 
     // Begin main simulation timer
@@ -546,7 +547,7 @@ void RandomRaySimulation::simulate()
     }
 
     // Average number of ray communications between ranks per batch
-    avg_num_comms_ = avg_num_comms_/settings::n_batches;
+    avg_num_comms_ = avg_num_comms_/settings::n_batches; //TODO: should this be double?
 
     simulation::time_decomposition_handling.stop();
   }

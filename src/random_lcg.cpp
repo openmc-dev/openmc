@@ -17,7 +17,7 @@ uint64_t prn_stride {DEFAULT_STRIDE}; // stride between particles
 //==============================================================================
 
 // 64 bit implementation of the PCG-RXS-M-XS 64-bit state / 64-bit output
-// geneator Adapted from: https://github.com/imneme/pcg-c, in particular
+// generator Adapted from: https://github.com/imneme/pcg-c, in particular
 // https://github.com/imneme/pcg-c/blob/83252d9c23df9c82ecb42210afed61a7b42402d7/include/pcg_variants.h#L188-L192
 // @techreport{oneill:pcg2014,
 //    title = "PCG: A Family of Simple Fast Space-Efficient Statistically Good

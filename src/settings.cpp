@@ -117,6 +117,7 @@ int max_order {0};
 int n_log_bins {8000};
 int n_batches;
 int n_max_batches;
+int max_secondaries {10000};
 int max_history_splits {10'000'000};
 int max_tracks {1000};
 ResScatMethod res_scat_method {ResScatMethod::rvs};
@@ -1240,6 +1241,11 @@ void read_settings_xml(pugi::xml_node root)
   // the automatic setting even if weight windows are present
   if (check_for_node(root, "weight_windows_on")) {
     weight_windows_on = get_node_value_bool(root, "weight_windows_on");
+  }
+
+  if (check_for_node(root, "max_secondaries")) {
+    settings::max_secondaries =
+      std::stoi(get_node_value(root, "max_secondaries"));
   }
 
   if (check_for_node(root, "max_history_splits")) {

@@ -3219,7 +3219,7 @@ void MOABMesh::write(const std::string& base_filename) const
 
 const std::string LibMesh::mesh_lib_type = "libmesh";
 
-LibMesh::LibMesh(pugi::xml_node node) : UnstructuredMesh(node), adaptive_(false)
+LibMesh::LibMesh(pugi::xml_node node) : UnstructuredMesh(node)
 {
   // filename_ and length_multiplier_ will already be set by the
   // UnstructuredMesh constructor
@@ -3230,7 +3230,6 @@ LibMesh::LibMesh(pugi::xml_node node) : UnstructuredMesh(node), adaptive_(false)
 
 // create the mesh from a pointer to a libMesh Mesh
 LibMesh::LibMesh(libMesh::MeshBase& input_mesh, double length_multiplier)
-  : adaptive_(input_mesh.n_active_elem() != input_mesh.n_elem())
 {
   if (!dynamic_cast<libMesh::ReplicatedMesh*>(&input_mesh)) {
     fatal_error("At present LibMesh tallies require a replicated mesh. Please "
@@ -3244,7 +3243,6 @@ LibMesh::LibMesh(libMesh::MeshBase& input_mesh, double length_multiplier)
 
 // create the mesh from an input file
 LibMesh::LibMesh(const std::string& filename, double length_multiplier)
-  : adaptive_(false)
 {
   n_dimension_ = 3;
   set_mesh_pointer_from_filename(filename);
@@ -3307,21 +3305,6 @@ void LibMesh::initialize()
   auto first_elem = *m_->elements_begin();
   first_element_id_ = first_elem->id();
 
-  // if the mesh is adaptive elements aren't guaranteed by libMesh to be
-  // contiguous in ID space, so we need to map from bin indices (defined over
-  // active elements) to global dof ids
-  if (adaptive_) {
-    bin_to_elem_map_.reserve(m_->n_active_elem());
-    elem_to_bin_map_.resize(m_->n_elem(), -1);
-    for (auto it = m_->active_elements_begin(); it != m_->active_elements_end();
-         it++) {
-      auto elem = *it;
-
-      bin_to_elem_map_.push_back(elem->id());
-      elem_to_bin_map_[elem->id()] = bin_to_elem_map_.size() - 1;
-    }
-  }
-
   // bounding box for the mesh for quick rejection checks
   bbox_ = libMesh::MeshTools::create_bounding_box(*m_);
   libMesh::Point ll = bbox_.min();
@@ -3379,7 +3362,7 @@ std::string LibMesh::library() const
 
 int LibMesh::n_bins() const
 {
-  return m_->n_active_elem();
+  return m_->n_elem();
 }
 
 int LibMesh::n_surface_bins() const
@@ -3402,14 +3385,6 @@ int LibMesh::n_surface_bins() const
 
 void LibMesh::add_score(const std::string& var_name)
 {
-  if (adaptive_) {
-    warning(fmt::format(
-      "Exodus output cannot be provided as unstructured mesh {} is adaptive.",
-      this->id_));
-
-    return;
-  }
-
   if (!equation_systems_) {
     build_eqn_sys();
   }
@@ -3445,14 +3420,6 @@ void LibMesh::remove_scores()
 void LibMesh::set_score_data(const std::string& var_name,
   const vector<double>& values, const vector<double>& std_dev)
 {
-  if (adaptive_) {
-    warning(fmt::format(
-      "Exodus output cannot be provided as unstructured mesh {} is adaptive.",
-      this->id_));
-
-    return;
-  }
-
   if (!equation_systems_) {
     build_eqn_sys();
   }
@@ -3496,14 +3463,6 @@ void LibMesh::set_score_data(const std::string& var_name,
 
 void LibMesh::write(const std::string& filename) const
 {
-  if (adaptive_) {
-    warning(fmt::format(
-      "Exodus output cannot be provided as unstructured mesh {} is adaptive.",
-      this->id_));
-
-    return;
-  }
-
   write_message(fmt::format(
     "Writing file: {}.e for unstructured mesh {}", filename, this->id_));
   libMesh::ExodusII_IO exo(*m_);
@@ -3537,8 +3496,7 @@ int LibMesh::get_bin(Position r) const
 
 int LibMesh::get_bin_from_element(const libMesh::Elem* elem) const
 {
-  int bin =
-    adaptive_ ? elem_to_bin_map_[elem->id()] : elem->id() - first_element_id_;
+  int bin = elem->id() - first_element_id_;
   if (bin >= n_bins() || bin < 0) {
     fatal_error(fmt::format("Invalid bin: {}", bin));
   }
@@ -3553,12 +3511,71 @@ std::pair<vector<double>, vector<double>> LibMesh::plot(
 
 const libMesh::Elem& LibMesh::get_element_from_bin(int bin) const
 {
-  return adaptive_ ? m_->elem_ref(bin_to_elem_map_.at(bin)) : m_->elem_ref(bin);
+  return m_->elem_ref(bin);
 }
 
 double LibMesh::volume(int bin) const
 {
   return this->get_element_from_bin(bin).volume();
+}
+
+AdaptiveLibMesh::AdaptiveLibMesh(
+  libMesh::MeshBase& input_mesh, double length_multiplier)
+  : LibMesh(input_mesh, length_multiplier), num_active_(m_->n_active_elem())
+{
+  // if the mesh is adaptive elements aren't guaranteed by libMesh to be
+  // contiguous in ID space, so we need to map from bin indices (defined over
+  // active elements) to global dof ids
+  bin_to_elem_map_.reserve(num_active_);
+  elem_to_bin_map_.resize(m_->n_elem(), -1);
+  for (auto it = m_->active_elements_begin(); it != m_->active_elements_end();
+       it++) {
+    auto elem = *it;
+
+    bin_to_elem_map_.push_back(elem->id());
+    elem_to_bin_map_[elem->id()] = bin_to_elem_map_.size() - 1;
+  }
+}
+
+int AdaptiveLibMesh::n_bins() const
+{
+  return num_active_;
+}
+
+void AdaptiveLibMesh::add_score(const std::string& var_name)
+{
+  warning(fmt::format(
+    "Exodus output cannot be provided as unstructured mesh {} is adaptive.",
+    this->id_));
+}
+
+void AdaptiveLibMesh::set_score_data(const std::string& var_name,
+  const vector<double>& values, const vector<double>& std_dev)
+{
+  warning(fmt::format(
+    "Exodus output cannot be provided as unstructured mesh {} is adaptive.",
+    this->id_));
+}
+
+void AdaptiveLibMesh::write(const std::string& filename) const
+{
+  warning(fmt::format(
+    "Exodus output cannot be provided as unstructured mesh {} is adaptive.",
+    this->id_));
+}
+
+int AdaptiveLibMesh::get_bin_from_element(const libMesh::Elem* elem) const
+{
+  int bin = elem_to_bin_map_[elem->id()];
+  if (bin >= n_bins() || bin < 0) {
+    fatal_error(fmt::format("Invalid bin: {}", bin));
+  }
+  return bin;
+}
+
+const libMesh::Elem& AdaptiveLibMesh::get_element_from_bin(int bin) const
+{
+  return m_->elem_ref(bin_to_elem_map_.at(bin));
 }
 
 #endif // OPENMC_LIBMESH_ENABLED

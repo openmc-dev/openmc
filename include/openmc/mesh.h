@@ -990,25 +990,26 @@ public:
 
   libMesh::MeshBase* mesh_ptr() const { return m_; };
 
+protected:
+  // Methods
+
+  //! Translate a bin value to an element reference
+  virtual const libMesh::Elem& get_element_from_bin(int bin) const;
+
+  //! Translate an element pointer to a bin index
+  virtual int get_bin_from_element(const libMesh::Elem* elem) const;
+
+  libMesh::MeshBase* m_; //!< pointer to libMesh MeshBase instance, always set
+                         //!< during intialization
 private:
   void initialize() override;
   void set_mesh_pointer_from_filename(const std::string& filename);
   void build_eqn_sys();
 
-  // Methods
-
-  //! Translate a bin value to an element reference
-  const libMesh::Elem& get_element_from_bin(int bin) const;
-
-  //! Translate an element pointer to a bin index
-  int get_bin_from_element(const libMesh::Elem* elem) const;
-
   // Data members
   unique_ptr<libMesh::MeshBase> unique_m_ =
     nullptr; //!< pointer to the libMesh MeshBase instance, only used if mesh is
              //!< created inside OpenMC
-  libMesh::MeshBase* m_; //!< pointer to libMesh MeshBase instance, always set
-                         //!< during intialization
   vector<unique_ptr<libMesh::PointLocatorBase>>
     pl_; //!< per-thread point locators
   unique_ptr<libMesh::EquationSystems>
@@ -1022,8 +1023,34 @@ private:
   libMesh::BoundingBox bbox_; //!< bounding box of the mesh
   libMesh::dof_id_type
     first_element_id_; //!< id of the first element in the mesh
+};
 
-  const bool adaptive_; //!< whether this mesh has adaptivity enabled or not
+class AdaptiveLibMesh : public LibMesh {
+public:
+  // Constructor
+  AdaptiveLibMesh(
+    libMesh::MeshBase& input_mesh, double length_multiplier = 1.0);
+
+  // Overridden methods
+  int n_bins() const override;
+
+  void add_score(const std::string& var_name) override;
+
+  void set_score_data(const std::string& var_name, const vector<double>& values,
+    const vector<double>& std_dev) override;
+
+  void write(const std::string& filename) const override;
+
+protected:
+  // Overridden methods
+  int get_bin_from_element(const libMesh::Elem* elem) const override;
+
+  const libMesh::Elem& get_element_from_bin(int bin) const override;
+
+private:
+  // Data members
+  const libMesh::dof_id_type num_active_; //!< cached number of active elements
+
   std::vector<libMesh::dof_id_type>
     bin_to_elem_map_; //!< mapping bin indices to dof indices for active
                       //!< elements

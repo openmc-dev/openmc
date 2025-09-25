@@ -37,7 +37,7 @@ specified, it defaults to tracking all collisions across the model.
 .. warning::
     Storing all collisions can be very memory intensive. For more targeted
     tracking, users can employ a variety of parameters such as ``cell_ids``,
-    ``mt_numbers``, ``universe_ids``, ``material_ids``, ``nuclide_ids``, and
+    ``reactions``, ``universe_ids``, ``material_ids``, ``nuclide_ids``, and
     ``deposited_E_threshold`` to refine the selection of particle interactions
     to be banked.
 
@@ -45,9 +45,14 @@ This element can contain one or more of the following attributes or
 sub-elements:
 
   :max_collisions:
-    An integer indicating the maximum number of collisions to be banked.
+    An integer indicating the maximum number of collisions to be banked per file.
 
-    *Default*: None
+    *Default*: 1000
+
+  :max_collision_track_files:
+    An integer indicating the number of collision_track files to be used.
+
+    *Default*: 1  
 
   :mcpl:
     An optional boolean to enable MCPL_-format instead of the native HDF5-based
@@ -59,7 +64,7 @@ sub-elements:
     .. _MCPL: https://mctools.github.io/mcpl/mcpl.pdf
 
   :cell_ids:
-    A list of integers representing cell IDs to define specfic cells in which
+    A list of integers representing cell IDs to define specific cells in which
     collisions are to be banked.
 
     *Default*: None
@@ -77,14 +82,14 @@ sub-elements:
     *Default*: None
 
   :nuclide_ids:
-    A list of integers representing the nuclide IDs, expressed in ZAID, to
+    A list of strings representing the nuclide, to define specific
     define specific target nuclide collisions to be banked.
 
     *Default*: None
 
-  :mt_numbers:
-    A list of integers representing the ENDF-6 format MT numbers to define
-    specific reaction types to be banked.
+  :reactions:
+    A list of integers representing the ENDF-6 format MT numbers or strings
+    (e.g. (n,fission)) to define specific reaction types to be banked.
 
     *Default*: None
 
@@ -92,7 +97,7 @@ sub-elements:
     A float defining the minimum deposited energy per collision (in eV) to
     trigger banking.
 
-    *Default*: None
+    *Default*: 0.0
 
 ----------------------------------
 ``<confidence_intervals>`` Element

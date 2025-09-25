@@ -768,30 +768,29 @@ parameters. To invoke this feature, set the
 
   settings.collision_track = {
       "max_collisions": 300,
-      "mt_numbers": [18],
-      "material_ids": [1],
-      "nuclide_ids": [92238],
-      "cell_ids": [22, 33]
+      "mt_numbers": ["(n,fission)", "(n,2n)"],
+      "material_ids": [1,2],
+      "nuclide_ids": ["U238", "O16"],
+      "cell_ids": [5, 12]
   }
 
-In this example, collision track information would be written in the
-``collision_track.h5`` file at the end of the simulation. The file will contain
-300 collisions inside material of which its ID is 1, and with the reaction MT=18
-(Fission) on the nuclide 92238 that occured in cells with IDs 22 and 33. The
-file can be opened using :func:`openmc.read_collision_track_file()`. The example
-below illustrates how to use the collision track feature, while displaying the
-fields obtained from the file:
+In this example, collision track information is written to the
+collision_track.h5 file at the end of the simulation. The file contains
+300 recorded collisions that occurred in materials with IDs 1 or 2, involving
+fission or (n,2n) reactions on the nuclides U-238 or O-16, within cells
+with IDs 5 and 12.
+The file can be read using :func:`openmc.read_collision_track_file`.
+The example below shows how to extract the data from the collision_track 
+feature and displays the fields stored in the file:
 
 >>> data = openmc.read_collision_track_file('collision_track.h5')
 >>> data.dtype
-dtype({'names': ['r', 'u', 'E', 'dE', 'time', 'wgt', 'event_mt',
-'delayed_group', 'cell_id', 'nuclide_id', 'material_id', 'universe_id',
-'particle', 'parent_id', 'progeny_id'],
-'formats': [[('x', '<f8'), ('y', '<f8'), ('z', '<f8')],
-[('x', '<f8'), ('y', '<f8'), ('z', '<f8')], '<f8', '<f8', '<f8', '<f8',
-'<i4', '<i4', '<i4', '<i4', '<i4', '<i4', '<i4', '<i8', '<i8'],
-'offsets': [0, 24, 48, 56, 64, 72, 80, 84, 88, 92, 96, 100, 104, 112, 120],
-'itemsize': 128})
+    dtype([('r', [('x', '<f8'), ('y', '<f8'), ('z', '<f8')]), 
+    ('u', [('x', '<f8'), ('y', '<f8'), ('z', '<f8')]), ('E', '<f8'), 
+    ('dE', '<f8'), ('time', '<f8'), ('wgt', '<f8'), ('event_mt', '<i4'), 
+    ('delayed_group', '<i4'), ('cell_id', '<i4'), ('nuclide_id', '<i4'), 
+    ('material_id', '<i4'), ('universe_id', '<i4'), ('n_collision', '<i4'), 
+    ('particle', '<i4'), ('parent_id', '<i8'), ('progeny_id', '<i8')])
 
 
 The full list of fields is as follows:
@@ -801,16 +800,17 @@ The full list of fields is as follows:
   :E: Energy in [eV]
   :dE: Energy deposited during collision in [eV]
   :time: Time in [s]
-  :wgt: Weight
+  :wgt: Weight of the particle
   :event_mt: Reaction MT number
   :delayed_group: Delayed group of the particle
   :cell_id: Cell ID
-  :nuclide_id: Nuclide ZAID
+  :nuclide_id: Nuclide ZAMID
   :material_id: Material ID
   :universe_id: Universe ID
+  :n_collision: Number of collision suffered by the particle
   :particle: Particle type
   :parent_id: Source particle ID
-  :progeny_id: Number of progeny produced by this particle
+  :progeny_id: Progeny ID
 
 -----------------------
 Restarting a Simulation

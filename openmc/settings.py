@@ -56,11 +56,12 @@ class Settings:
         :cell_ids: List of cell IDs to define cells in which collisions should be banked. (list of int)
         :universe_ids: List of universe IDs to define universes in which collisions should be banked. (list of int)
         :material_ids: List of material IDs to define materials in which collisions should be banked. (list of int)
-        :nuclide_ids: List of nuclide ZAIDs to define nuclides in which collisions should be banked. (list of int)
-        :reactions: List of reaction MT numbers to define specific reactions that should be banked
-                    (ex: Fission:18, Sactter:2, Absorption: 101). (list of int)
+        :nuclide_ids: List of nuclide to define nuclides in which collisions should be banked. 
+                    (ex: ["I135m", "U233"] ). (list of str)
+        :reactions: List of reaction to define specific reactions that should be banked
+                    (ex: ["(n,fission)", 2, "(n,2n)"] ). (list of str or int)
         :deposited_E_threshold: Number to define the minimum deposited energy during
-                     per collision to trigger banking.(float)
+                     per collision to trigger banking. (float)
     create_fission_neutrons : bool
         Indicate whether fission neutrons should be created or not.
     cutoff : dict
@@ -446,7 +447,8 @@ class Settings:
         self._max_particle_events = None
         self._write_initial_source = None
         self._weight_windows = WeightWindowsList()
-        self._weight_window_generators = cv.CheckedList(WeightWindowGenerator, 'weight window generators')
+        self._weight_window_generators = cv.CheckedList(
+            WeightWindowGenerator, 'weight window generators')
         self._weight_windows_on = None
         self._weight_windows_file = None
         self._weight_window_checkpoints = {}
@@ -488,7 +490,8 @@ class Settings:
     @generations_per_batch.setter
     def generations_per_batch(self, generations_per_batch: int):
         cv.check_type('generations per batch', generations_per_batch, Integral)
-        cv.check_greater_than('generations per batch', generations_per_batch, 0)
+        cv.check_greater_than('generations per batch',
+                              generations_per_batch, 0)
         self._generations_per_batch = generations_per_batch
 
     @property
@@ -518,7 +521,8 @@ class Settings:
     @rel_max_lost_particles.setter
     def rel_max_lost_particles(self, rel_max_lost_particles: float):
         cv.check_type('rel_max_lost_particles', rel_max_lost_particles, Real)
-        cv.check_greater_than('rel_max_lost_particles', rel_max_lost_particles, 0)
+        cv.check_greater_than('rel_max_lost_particles',
+                              rel_max_lost_particles, 0)
         cv.check_less_than('rel_max_lost_particles', rel_max_lost_particles, 1)
         self._rel_max_lost_particles = rel_max_lost_particles
 
@@ -528,8 +532,10 @@ class Settings:
 
     @max_write_lost_particles.setter
     def max_write_lost_particles(self, max_write_lost_particles: int):
-        cv.check_type('max_write_lost_particles', max_write_lost_particles, Integral)
-        cv.check_greater_than('max_write_lost_particles', max_write_lost_particles, 0)
+        cv.check_type('max_write_lost_particles',
+                      max_write_lost_particles, Integral)
+        cv.check_greater_than('max_write_lost_particles',
+                              max_write_lost_particles, 0)
         self._max_write_lost_particles = max_write_lost_particles
 
     @property
@@ -605,7 +611,8 @@ class Settings:
     def source(self, source: SourceBase | Iterable[SourceBase]):
         if not isinstance(source, MutableSequence):
             source = [source]
-        self._source = cv.CheckedList(SourceBase, 'source distributions', source)
+        self._source = cv.CheckedList(
+            SourceBase, 'source distributions', source)
 
     @property
     def confidence_intervals(self) -> bool:
@@ -622,7 +629,8 @@ class Settings:
 
     @electron_treatment.setter
     def electron_treatment(self, electron_treatment: str):
-        cv.check_value('electron treatment', electron_treatment, ['led', 'ttb'])
+        cv.check_value('electron treatment',
+                       electron_treatment, ['led', 'ttb'])
         self._electron_treatment = electron_treatment
 
     @property
@@ -716,7 +724,8 @@ class Settings:
     @trigger_max_batches.setter
     def trigger_max_batches(self, trigger_max_batches: int):
         cv.check_type('trigger maximum batches', trigger_max_batches, Integral)
-        cv.check_greater_than('trigger maximum batches', trigger_max_batches, 0)
+        cv.check_greater_than('trigger maximum batches',
+                              trigger_max_batches, 0)
         self._trigger_max_batches = trigger_max_batches
 
     @property
@@ -725,8 +734,10 @@ class Settings:
 
     @trigger_batch_interval.setter
     def trigger_batch_interval(self, trigger_batch_interval: int):
-        cv.check_type('trigger batch interval', trigger_batch_interval, Integral)
-        cv.check_greater_than('trigger batch interval', trigger_batch_interval, 0)
+        cv.check_type('trigger batch interval',
+                      trigger_batch_interval, Integral)
+        cv.check_greater_than('trigger batch interval',
+                              trigger_batch_interval, 0)
         self._trigger_batch_interval = trigger_batch_interval
 
     @property
@@ -810,7 +821,8 @@ class Settings:
 
     @surf_source_write.setter
     def surf_source_write(self, surf_source_write: dict):
-        cv.check_type("surface source writing options", surf_source_write, Mapping)
+        cv.check_type("surface source writing options",
+                      surf_source_write, Mapping)
         for key, value in surf_source_write.items():
             cv.check_value(
                 "surface source writing key",
@@ -823,7 +835,8 @@ class Settings:
                     "surface ids for source banking", value, Iterable, Integral
                 )
                 for surf_id in value:
-                    cv.check_greater_than("surface id for source banking", surf_id, 0)
+                    cv.check_greater_than(
+                        "surface id for source banking", surf_id, 0)
 
             elif key == "mcpl":
                 cv.check_type("write to an MCPL-format file", value, bool)
@@ -850,7 +863,7 @@ class Settings:
         for key, value in collision_track.items():
             cv.check_value('collision_track key', key,
                            ('cell_ids', 'reactions', 'universe_ids', 'material_ids', 'nuclide_ids',
-                            'deposited_E_threshold', 'max_collisions','max_collision_track_files' ,'mcpl'))
+                            'deposited_E_threshold', 'max_collisions', 'max_collision_track_files', 'mcpl'))
             if key == 'cell_ids':
                 cv.check_type('cell ids for collision tracking data banking', value,
                               Iterable, Integral)
@@ -859,17 +872,17 @@ class Settings:
                                           cell_id, 0)
             elif key == 'reactions':
                 cv.check_type('MT numbers for collision tracking data banking', value,
-                               Iterable)
+                              Iterable)
                 for reaction in value:
                     if isinstance(reaction, int):
                         cv.check_greater_than(
-                        'MT number for collision tracking data banking', reaction, 0
-                            )
+                            'MT number for collision tracking data banking', reaction, 0
+                        )
                     elif isinstance(reaction, str):
                         # check against allowed strings? so far let C++ code handle it
                         pass
                     else:
-                       raise TypeError(
+                        raise TypeError(
                             f"MT number for collision tracking data banking must be a positive int or string, "
                             f"got {type(reaction).__name__}")
             elif key == 'universe_ids':
@@ -889,12 +902,13 @@ class Settings:
                               Iterable, str)
                 for nuclide_id in value:
                     cv.check_type('nuclide ids for collision  banking',
-                                          nuclide_id, str)
+                                  nuclide_id, str)
                     # If nuclide name doesn't look valid, give a warning
                     try:
                         Z, _, _ = openmc.data.zam(nuclide_id)
                     except ValueError as e:
-                        warnings.warn("this nuclide id {} is not valid".format(nuclide_id))
+                        warnings.warn(
+                            "this nuclide id {} is not valid".format(nuclide_id))
             elif key == 'deposited_E_threshold':
                 cv.check_type('Deposited Energy Threshold for collision tracking data banking',
                               value, Real)
@@ -909,7 +923,7 @@ class Settings:
                 cv.check_type('maximum collisions banks',
                               value, Integral)
                 cv.check_greater_than('maximum number of collision_track files ',
-                                      value, 0)            
+                                      value, 0)
             elif key == 'mcpl':
                 cv.check_type('write to an MCPL-format file', value, bool)
 
@@ -1218,7 +1232,8 @@ class Settings:
     @weight_window_checkpoints.setter
     def weight_window_checkpoints(self, weight_window_checkpoints: dict):
         for key in weight_window_checkpoints.keys():
-            cv.check_value('weight_window_checkpoints', key, ('collision', 'surface'))
+            cv.check_value('weight_window_checkpoints',
+                           key, ('collision', 'surface'))
         self._weight_window_checkpoints = weight_window_checkpoints
 
     @property
@@ -1311,7 +1326,8 @@ class Settings:
                 for mesh, domains in value:
                     cv.check_type('mesh', mesh, MeshBase)
                     cv.check_type('domains', domains, Iterable)
-                    valid_types = (openmc.Material, openmc.Cell, openmc.Universe)
+                    valid_types = (openmc.Material,
+                                   openmc.Cell, openmc.Universe)
                     for domain in domains:
                         if not isinstance(domain, valid_types):
                             raise ValueError(
@@ -1345,9 +1361,12 @@ class Settings:
 
     @source_rejection_fraction.setter
     def source_rejection_fraction(self, source_rejection_fraction: float):
-        cv.check_type('source_rejection_fraction', source_rejection_fraction, Real)
-        cv.check_greater_than('source_rejection_fraction', source_rejection_fraction, 0)
-        cv.check_less_than('source_rejection_fraction', source_rejection_fraction, 1)
+        cv.check_type('source_rejection_fraction',
+                      source_rejection_fraction, Real)
+        cv.check_greater_than('source_rejection_fraction',
+                              source_rejection_fraction, 0)
+        cv.check_less_than('source_rejection_fraction',
+                           source_rejection_fraction, 1)
         self._source_rejection_fraction = source_rejection_fraction
 
     def _create_run_mode_subelement(self, root):
@@ -1526,13 +1545,16 @@ class Settings:
                     str(x) for x in self._collision_track['nuclide_ids'])
             if 'deposited_E_threshold' in self._collision_track:
                 subelement = ET.SubElement(element, "deposited_E_threshold")
-                subelement.text = str(self._collision_track['deposited_E_threshold'])
+                subelement.text = str(
+                    self._collision_track['deposited_E_threshold'])
             if 'max_collisions' in self._collision_track:
                 subelement = ET.SubElement(element, "max_collisions")
                 subelement.text = str(self._collision_track['max_collisions'])
             if 'max_collision_track_files' in self._collision_track:
-                subelement = ET.SubElement(element, "max_collision_track_files")
-                subelement.text = str(self._collision_track['max_collision_track_files'])            
+                subelement = ET.SubElement(
+                    element, "max_collision_track_files")
+                subelement.text = str(
+                    self._collision_track['max_collision_track_files'])
             if 'mcpl' in self._collision_track:
                 subelement = ET.SubElement(element, "mcpl")
                 subelement.text = str(self._collision_track['mcpl']).lower()
@@ -1847,7 +1869,8 @@ class Settings:
                         for domain in domains:
                             domain_elem = ET.SubElement(mesh_elem, 'domain')
                             domain_elem.set('id', str(domain.id))
-                            domain_elem.set('type', domain.__class__.__name__.lower())
+                            domain_elem.set(
+                                'type', domain.__class__.__name__.lower())
                         if mesh_memo is not None and mesh.id not in mesh_memo:
                             root.append(mesh.to_xml_element())
                             mesh_memo.add(mesh.id)
@@ -1991,7 +2014,7 @@ class Settings:
         elem = root.find('collision_track')
         if elem is not None:
             for key in ('cell_ids', 'reactions', 'universe_ids', 'material_ids', 'nuclide_ids',
-                        'deposited_E_threshold', 'max_collisions',"max_collision_track_files", 'mcpl'):
+                        'deposited_E_threshold', 'max_collisions', "max_collision_track_files", 'mcpl'):
                 value = get_text(elem, key)
                 if value is not None:
                     if key == 'cell_ids':
@@ -2009,7 +2032,7 @@ class Settings:
                     elif key in ('max_collisions'):
                         value = int(value)
                     elif key in ('max_collision_track_files'):
-                        value = int(value)                        
+                        value = int(value)
                     elif key == 'mcpl':
                         value = value in ('true', '1')
                     self.collision_track[key] = value
@@ -2303,7 +2326,8 @@ class Settings:
                             elif domain_type == 'universe':
                                 domain = openmc.Universe(domain_id)
                             domains.append(domain)
-                        self.random_ray['source_region_meshes'].append((mesh, domains))
+                        self.random_ray['source_region_meshes'].append(
+                            (mesh, domains))
 
     def _use_decay_photons_from_xml_element(self, root):
         text = get_text(root, 'use_decay_photons')

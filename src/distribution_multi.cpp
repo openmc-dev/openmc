@@ -90,7 +90,7 @@ Direction PolarAzimuthal::sample(uint64_t* seed) const
     return u_ref_;
   if (mu == -1.0)
     return -u_ref_;
-    
+
   // Sample azimuthal angle
   double phi = phi_->sample(seed);
 

@@ -90,13 +90,13 @@ Direction PolarAzimuthal::sample(uint64_t* seed) const
     return u_ref_;
   if (mu == -1.0)
     return -u_ref_;
-    
+
   // Sample azimuthal angle
   double phi = phi_->sample(seed);
-  
-  double f = std::sqrt(1-mu*mu);
-  
-  return mu*u_ref_ + f*std::cos(phi)*v_ref_ + f*std::sin(phi)*w_ref_;
+
+  double f = std::sqrt(1 - mu * mu);
+
+  return mu * u_ref_ + f * std::cos(phi) * v_ref_ + f * std::sin(phi) * w_ref_;
 }
 
 //==============================================================================

@@ -82,16 +82,9 @@ void sort_fission_bank()
 
   // Perform exclusive scan summation to determine starting indices in fission
   // bank for each parent particle id
-  int64_t tmp = simulation::progeny_per_particle[0];
-  simulation::progeny_per_particle[0] = 0;
-  for (int64_t i = 1; i < simulation::progeny_per_particle.size(); i++) {
-    int64_t value = simulation::progeny_per_particle[i - 1] + tmp;
-    tmp = simulation::progeny_per_particle[i];
-    simulation::progeny_per_particle[i] = value;
-  }
-
-  // TODO: C++17 introduces the exclusive_scan() function which could be
-  // used to replace everything above this point in this function.
+  std::exclusive_scan(simulation::progeny_per_particle.begin(),
+    simulation::progeny_per_particle.end(),
+    simulation::progeny_per_particle.begin(), 0);
 
   // We need a scratch vector to make permutation of the fission bank into
   // sorted order easy. Under normal usage conditions, the fission bank is

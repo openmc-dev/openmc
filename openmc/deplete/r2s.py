@@ -4,6 +4,7 @@ import copy
 from datetime import datetime
 import json
 from pathlib import Path
+from time import perf_counter
 
 import numpy as np
 import openmc
@@ -126,7 +127,25 @@ class R2SManager:
         else:
             self.method = 'cell-based'
         self.domains = domains
-        self.results = {}
+        self.results = {'time': {}}
+
+    def _record_time(self, step: str, label: str, start_time: float) -> float:
+        """Record elapsed time for a labelled operation within a step."""
+
+        elapsed = perf_counter() - start_time
+        step_times = self.results.setdefault('time', {}).setdefault(step, {})
+        step_times[label] = elapsed
+        print(f"[openmc.r2s] {step}: {label} took {elapsed:.2f} seconds")
+        return elapsed
+
+    def _write_timing(self, output_dir: PathLike) -> None:
+        """Write accumulated timing information to JSON in the output directory."""
+
+        output_path = Path(output_dir)
+        output_path.mkdir(parents=True, exist_ok=True)
+        timing_file = output_path / 'timing.json'
+        with timing_file.open('w') as fh:
+            json.dump(self.results.get('time', {}), fh, indent=2)
 
     def run(
         self,
@@ -257,6 +276,8 @@ class R2SManager:
 
         """
 
+        step_name = 'step1_neutron_transport'
+        step_start = perf_counter()
         output_dir = Path(output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -264,11 +285,15 @@ class R2SManager:
             # Compute material volume fractions on the mesh
             if mat_vol_kwargs is None:
                 mat_vol_kwargs = {}
+            mat_vol_start = perf_counter()
             self.results['mesh_material_volumes'] = mmv = \
                 self.domains.material_volumes(self.neutron_model, **mat_vol_kwargs)
+            self._record_time(step_name, 'mesh_material_volumes', mat_vol_start)
 
             # Save results to file
+            save_mmv_start = perf_counter()
             mmv.save(output_dir / 'mesh_material_volumes.npz')
+            self._record_time(step_name, 'write_mesh_material_volumes', save_mmv_start)
 
             # Create mesh-material filter based on what combos were found
             domains = openmc.MeshMaterialFilter.from_volumes(self.domains, mmv)
@@ -300,12 +325,22 @@ class R2SManager:
         micro_kwargs.setdefault('path_input', output_dir / 'model.xml')
 
         # Run neutron transport and get fluxes and micros
+        microxs_start = perf_counter()
         self.results['fluxes'], self.results['micros'] = get_microxs_and_flux(
             self.neutron_model, domains, **micro_kwargs)
+        self._record_time(step_name, 'get_microxs_and_flux', microxs_start)
 
         # Save flux and micros to file
+        save_flux_start = perf_counter()
         np.save(output_dir / 'fluxes.npy', self.results['fluxes'])
+        self._record_time(step_name, 'save_fluxes', save_flux_start)
+
+        save_micros_start = perf_counter()
         write_microxs_hdf5(self.results['micros'], output_dir / 'micros.h5')
+        self._record_time(step_name, 'write_micros', save_micros_start)
+
+        self._record_time(step_name, 'total', step_start)
+        self._write_timing(output_dir)
 
     def step2_activation(
         self,
@@ -345,12 +380,18 @@ class R2SManager:
             :class:`openmc.deplete.IndependentOperator`.
         """
 
+        step_name = 'step2_activation'
+        step_start = perf_counter()
+
         if self.method == 'mesh-based':
             # Get unique material for each (mesh, material) combination
             mmv = self.results['mesh_material_volumes']
+            activation_start = perf_counter()
             self.results['activation_materials'] = get_activation_materials(self.neutron_model, mmv)
+            self._record_time(step_name, 'get_activation_materials', activation_start)
         else:
             # Create unique material for each cell
+            activation_start = perf_counter()
             activation_mats = openmc.Materials()
             for cell in self.domains:
                 mat = cell.fill.clone()
@@ -359,33 +400,47 @@ class R2SManager:
                 mat.volume = cell.volume
                 activation_mats.append(mat)
             self.results['activation_materials'] = activation_mats
+            self._record_time(step_name, 'build_activation_materials', activation_start)
 
         # Save activation materials to file
         output_dir = Path(output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
+        save_mats_start = perf_counter()
         self.results['activation_materials'].export_to_xml(
             output_dir / 'materials.xml')
+        self._record_time(step_name, 'export_activation_materials', save_mats_start)
 
         # Create depletion operator for the activation materials
         if operator_kwargs is None:
             operator_kwargs = {}
         operator_kwargs.setdefault('normalization_mode', 'source-rate')
+        operator_start = perf_counter()
         op = IndependentOperator(
             self.results['activation_materials'],
             self.results['fluxes'],
             self.results['micros'],
             **operator_kwargs
         )
+        self._record_time(step_name, 'build_operator', operator_start)
 
         # Create time integrator and solve depletion equations
+        integrator_start = perf_counter()
         integrator = PredictorIntegrator(
             op, timesteps, source_rates=source_rates, timestep_units=timestep_units
         )
+        self._record_time(step_name, 'build_integrator', integrator_start)
         output_path = output_dir / 'depletion_results.h5'
+        integrate_start = perf_counter()
         integrator.integrate(final_step=False, path=output_path)
+        self._record_time(step_name, 'integrate', integrate_start)
 
         # Get depletion results
+        results_start = perf_counter()
         self.results['depletion_results'] = Results(output_path)
+        self._record_time(step_name, 'load_results', results_start)
+
+        self._record_time(step_name, 'total', step_start)
+        self._write_timing(output_dir)
 
     def step3_photon_transport(
         self,
@@ -428,6 +483,9 @@ class R2SManager:
             during the photon transport step. By default, output is disabled.
         """
 
+        step_name = 'step3_photon_transport'
+        step_start = perf_counter()
+
         # TODO: Automatically determine bounding box for each cell
         if bounding_boxes is None and self.method == 'cell-based':
             raise ValueError("bounding_boxes must be provided for cell-based "
@@ -457,15 +515,21 @@ class R2SManager:
         # photon model if it is different from the neutron model to account for
         # potential material changes
         if self.method == 'mesh-based' and different_photon_model:
+            photon_mmv_start = perf_counter()
             self.results['mesh_material_volumes_photon'] = photon_mmv = \
                 self.domains.material_volumes(self.photon_model, **mat_vol_kwargs)
+            self._record_time(step_name, 'photon_mesh_material_volumes', photon_mmv_start)
 
             # Save photon MMV results to file
+            save_photon_mmv_start = perf_counter()
             photon_mmv.save(output_dir / 'mesh_material_volumes.npz')
+            self._record_time(step_name, 'write_photon_mesh_material_volumes', save_photon_mmv_start)
 
         tally_ids = [tally.id for tally in self.photon_model.tallies]
+        tally_json_start = perf_counter()
         with open(output_dir / 'tally_ids.json', 'w') as f:
             json.dump(tally_ids, f)
+        self._record_time(step_name, 'write_tally_ids', tally_json_start)
 
         self.results['photon_tallies'] = {}
 
@@ -473,14 +537,25 @@ class R2SManager:
         if different_photon_model:
             photon_cells = self.photon_model.geometry.get_all_cells()
 
+        n_depletion_steps = len(self.results['depletion_results'])
+
         for time_index in time_indices:
+            normalized_index = time_index if time_index >= 0 else n_depletion_steps + time_index
+            if normalized_index < 0 or normalized_index >= n_depletion_steps:
+                raise IndexError(
+                    f"time_index {time_index} is out of range for depletion results"
+                )
+
             # Create decay photon source
             if self.method == 'mesh-based':
+                source_start = perf_counter()
                 self.photon_model.settings.source = \
                     self.get_decay_photon_source_mesh(time_index)
+                self._record_time(step_name, f'build_sources_{normalized_index}', source_start)
             else:
                 sources = []
                 results = self.results['depletion_results']
+                source_start = perf_counter()
                 for cell, original_mat in zip(self.domains, self.results['activation_materials']):
                     # Skip if the cell is not in the photon model or the
                     # material has changed
@@ -508,20 +583,27 @@ class R2SManager:
                     )
                     sources.append(source)
                 self.photon_model.settings.source = sources
+                self._record_time(step_name, f'build_sources_{normalized_index}', source_start)
 
             # Convert time_index (which may be negative) to a normal index
-            if time_index < 0:
-                time_index = len(self.results['depletion_results']) + time_index
+            time_index = normalized_index
 
             # Run photon transport calculation
+            run_start = perf_counter()
             run_kwargs['cwd'] = Path(output_dir) / f'time_{time_index}'
             statepoint_path = self.photon_model.run(**run_kwargs)
+            self._record_time(step_name, f'run_photon_{time_index}', run_start)
 
             # Store tally results
+            tally_start = perf_counter()
             with openmc.StatePoint(statepoint_path) as sp:
                 self.results['photon_tallies'][time_index] = [
                     sp.tallies[tally.id] for tally in self.photon_model.tallies
                 ]
+            self._record_time(step_name, f'load_tallies_{time_index}', tally_start)
+
+        self._record_time(step_name, 'total', step_start)
+        self._write_timing(output_dir)
 
     def get_decay_photon_source_mesh(
         self,

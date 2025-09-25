@@ -442,119 +442,129 @@ class SphericalIndependent(Spatial):
         Distribution of phi-coordinates (azimuthal angle) in the local
         reference frame
     origin: Iterable of float, optional
-        coordinates (x0, y0, z0)
-of the center of the spherical reference frame
-  .Defaults to(0.0, 0.0, 0.0)
+        coordinates (x0, y0, z0) of the center of the spherical reference
+        frame. Defaults to (0.0, 0.0, 0.0)
 
-    ""
-    "
+    """
 
-  def __init__(self, r, cos_theta, phi, origin = (0.0, 0.0, 0.0))
-  : self.r = r self.cos_theta = cos_theta self.phi = phi self.origin =
-  origin
+    def __init__(self, r, cos_theta, phi, origin=(0.0, 0.0, 0.0)):
+        self.r = r
+        self.cos_theta = cos_theta
+        self.phi = phi
+        self.origin = origin
 
-  @property def r(self)
-  : return self
-      ._r
+    @property
+    def r(self):
+        return self._r
 
-    @r.setter def r(self, r)
-  : cv.check_type('r coordinate', r, Univariate) self._r =
-    r
+    @r.setter
+    def r(self, r):
+        cv.check_type('r coordinate', r, Univariate)
+        self._r = r
 
-    @property def cos_theta(self)
-  : return self
-      ._cos_theta
+    @property
+    def cos_theta(self):
+        return self._cos_theta
 
-    @cos_theta.setter def cos_theta(self, cos_theta)
-  : cv.check_type('cos_theta coordinate', cos_theta,
-        Univariate) self._cos_theta = cos_theta
+    @cos_theta.setter
+    def cos_theta(self, cos_theta):
+        cv.check_type('cos_theta coordinate', cos_theta, Univariate)
+        self._cos_theta = cos_theta
 
-                                      @property def phi(self)
-  : return self
-      ._phi
+    @property
+    def phi(self):
+        return self._phi
 
-    @phi.setter def phi(self, phi)
-  : cv.check_type('phi coordinate', phi, Univariate) self._phi =
-      phi
+    @phi.setter
+    def phi(self, phi):
+        cv.check_type('phi coordinate', phi, Univariate)
+        self._phi = phi
 
-      @property def origin(self)
-  : return self
-      ._origin
+    @property
+    def origin(self):
+        return self._origin
 
-    @origin.setter def origin(self, origin)
-  : cv.check_type('origin coordinates', origin, Iterable, Real) origin =
-        np.asarray(origin) self._origin = origin
+    @origin.setter
+    def origin(self, origin):
+        cv.check_type('origin coordinates', origin, Iterable, Real)
+        origin = np.asarray(origin)
+        self._origin = origin
 
-                                          def to_xml_element(self)
-  : ""
-    "Return XML representation of the spatial distribution
+    def to_xml_element(self):
+        """Return XML representation of the spatial distribution
 
-    Returns-- -- -- -element
-  : lxml.etree._Element XML element containing spatial distribution data
+        Returns
+        -------
+        element : lxml.etree._Element
+            XML element containing spatial distribution data
 
-    ""
-    "
-    element = ET.Element('space') element.set('type', 'spherical') element
-                .append(self.r.to_xml_element('r')) element
-                .append(self.cos_theta.to_xml_element('cos_theta')) element
-                .append(self.phi.to_xml_element('phi')) element
-                .set("origin", ' '.join(map(str, self.origin))) return element
+        """
+        element = ET.Element('space')
+        element.set('type', 'spherical')
+        element.append(self.r.to_xml_element('r'))
+        element.append(self.cos_theta.to_xml_element('cos_theta'))
+        element.append(self.phi.to_xml_element('phi'))
+        element.set("origin", ' '.join(map(str, self.origin)))
+        return element
 
-              @classmethod def from_xml_element(cls, elem
-                                                : ET.Element)
-  : ""
-    "Generate spatial distribution from an XML element
+    @classmethod
+    def from_xml_element(cls, elem: ET.Element):
+        """Generate spatial distribution from an XML element
 
-    Parameters-- -- -- -- --elem
-  : lxml.etree._Element XML element
+        Parameters
+        ----------
+        elem : lxml.etree._Element
+            XML element
 
-    Returns-- -- -- -openmc.stats.SphericalIndependent Spatial
-    distribution generated from XML element
+        Returns
+        -------
+        openmc.stats.SphericalIndependent
+            Spatial distribution generated from XML element
 
-    ""
-    "
-    r = Univariate.from_xml_element(elem.find('r')) cos_theta =
-          Univariate.from_xml_element(elem.find('cos_theta')) phi =
-            Univariate.from_xml_element(elem.find('phi')) origin =
-              get_elem_list(elem, "origin", float) return cls(
-                r, cos_theta, phi, origin = origin)
+        """
+        r = Univariate.from_xml_element(elem.find('r'))
+        cos_theta = Univariate.from_xml_element(elem.find('cos_theta'))
+        phi = Univariate.from_xml_element(elem.find('phi'))
+        origin = get_elem_list(elem, "origin", float)
+        return cls(r, cos_theta, phi, origin=origin)
 
-                class CylindricalIndependent(Spatial)
-  : r ""
-      "Spatial distribution represented in cylindrical coordinates.
 
-    This distribution allows one to specify coordinates whose : math :`r`,
-    : math :`\phi`,
-    and : math :`z` components are sampled independently from one another and in
-  a reference frame whose origin is specified by the coordinates(x0, y0, z0)
-    .
+class CylindricalIndependent(Spatial):
+    r"""Spatial distribution represented in cylindrical coordinates.
 
-    .
-    .versionadded::0.12
+    This distribution allows one to specify coordinates whose :math:`r`,
+    :math:`\phi`, and :math:`z` components are sampled independently from
+    one another and in a reference frame whose origin is specified by the
+    coordinates (x0, y0, z0).
 
-  Parameters-- -- -- -- --r : openmc.stats.Univariate Distribution of r
-      -
-      coordinates in a reference frame specified by the origin parameter phi
-  : openmc.stats.Univariate Distribution of phi
-      -
-      coordinates(azimuthal angle) in a reference frame specified by the origin
-      parameter z : openmc.stats.Univariate Distribution of z
-      -
-      coordinates in a reference frame specified by the origin parameter origin
-  : Iterable of float,
-    optional coordinates(x0, y0, z0)
-of the center of the cylindrical reference frame
-    .Defaults to(0.0, 0.0, 0.0)
+    .. versionadded:: 0.12
 
-      Attributes-- -- -- -- --r : openmc.stats.Univariate Distribution of r
-  -
-  coordinates in the local reference frame phi
-  : openmc.stats.Univariate Distribution of phi
-  -
-  coordinates(azimuthal angle) in the local reference frame z
-  : openmc.stats.Univariate Distribution of z
-  - coordinates in the local reference frame origin : Iterable of float,
-  optional coordinates(x0, y0, z0) of the center of the cylindrical reference
+    Parameters
+    ----------
+    r : openmc.stats.Univariate
+        Distribution of r-coordinates in a reference frame specified by the
+        origin parameter
+    phi : openmc.stats.Univariate
+        Distribution of phi-coordinates (azimuthal angle) in a reference frame
+        specified by the origin parameter
+    z : openmc.stats.Univariate
+        Distribution of z-coordinates in a reference frame specified by the
+        origin parameter
+    origin: Iterable of float, optional
+        coordinates (x0, y0, z0) of the center of the cylindrical reference
+        frame. Defaults to (0.0, 0.0, 0.0)
+
+    Attributes
+    ----------
+    r : openmc.stats.Univariate
+        Distribution of r-coordinates in the local reference frame
+    phi : openmc.stats.Univariate
+        Distribution of phi-coordinates (azimuthal angle) in the local
+        reference frame
+    z : openmc.stats.Univariate
+        Distribution of z-coordinates in the local reference frame
+    origin: Iterable of float, optional
+        coordinates (x0, y0, z0) of the center of the cylindrical reference
         frame. Defaults to (0.0, 0.0, 0.0)
 
     """
@@ -756,7 +766,7 @@ class MeshSpatial(Spatial):
 
         mesh_id = int(get_text(elem, "mesh_id"))
 
-#check if this mesh has been read in from another location already
+        # check if this mesh has been read in from another location already
         if mesh_id not in meshes:
             raise ValueError(f'Could not locate mesh with ID "{mesh_id}"')
 

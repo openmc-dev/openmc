@@ -29,14 +29,14 @@
     <filter id="1" type="delayedgroup">
       <bins>1 2 3 4 5 6</bins>
     </filter>
-    <tally id="1">
+    <tally id="1" name="IFP time numerator">
       <scores>ifp-time-numerator</scores>
     </tally>
-    <tally id="2">
+    <tally id="2" name="IFP beta numerator">
       <filters>1</filters>
       <scores>ifp-beta-numerator</scores>
     </tally>
-    <tally id="3">
+    <tally id="3" name="IFP denominator">
       <scores>ifp-denominator</scores>
     </tally>
   </tallies>

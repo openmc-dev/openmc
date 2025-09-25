@@ -49,23 +49,33 @@ def test_exceptions(options, error, run_in_tmpdir, geometry):
         model.run()
 
 
-@pytest.mark.parametrize("num_groups", [None, 6])
-def test_get_kinetics_parameters(run_in_tmpdir, num_groups):
+@pytest.mark.parametrize(
+    "num_groups, use_auto_tallies",
+    [
+        (None, True),
+        (None, False),
+        (6, True),
+        (6, False),
+    ],
+)
+def test_get_kinetics_parameters(run_in_tmpdir, geometry, num_groups, use_auto_tallies):
     # Create basic model
-    model = openmc.Model()
-    material = openmc.Material(name="core")
-    material.add_nuclide("U235", 1.0)
-    material.set_density('g/cm3', 16.0)
-    sphere = openmc.Sphere(r=10.0, boundary_type="vacuum")
-    cell = openmc.Cell(region=-sphere, fill=material)
-    model.geometry = openmc.Geometry([cell])
+    model = openmc.Model(geometry=geometry)
     model.settings.particles = 1000
     model.settings.batches = 20
     model.settings.inactive = 5
     model.settings.ifp_n_generation = 5
 
-    # Add IFP tallies
-    model.add_kinetics_parameters_tallies(num_groups=num_groups)
+    # Add IFP tallies either via the convenience method or manually
+    if use_auto_tallies:
+        model.add_kinetics_parameters_tallies(num_groups=num_groups)
+    else:
+        for score in ["ifp-time-numerator", "ifp-beta-numerator", "ifp-denominator"]:
+            tally = openmc.Tally()
+            tally.scores = [score]
+            if score == "ifp-beta-numerator" and num_groups is not None:
+                tally.filters = [openmc.DelayedGroupFilter(list(range(1, num_groups + 1)))]
+            model.tallies.append(tally)
 
     # Run and get kinetics parameters
     sp_file = model.run()

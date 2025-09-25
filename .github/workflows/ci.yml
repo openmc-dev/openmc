@@ -75,6 +75,7 @@ jobs:
       LIBMESH: ${{ matrix.libmesh }}
       NPY_DISABLE_CPU_FEATURES: "AVX512F AVX512_SKX"
       OPENBLAS_NUM_THREADS: 1
+      PYTEST_ADDOPTS: --cov=openmc --cov-report=lcov:coverage-python.lcov
       # libfabric complains about fork() as a result of using Python multiprocessing.
       # We can work around it with RDMAV_FORK_SAFE=1 in libfabric < 1.13 and with
       # FI_EFA_FORK_SAFE=1 in more recent versions.
@@ -171,11 +172,35 @@ jobs:
         uses: mxschmitt/action-tmate@v3
         timeout-minutes: 10
 
-      - name: after_success
+      - name: Generate C++ coverage (gcovr)
         shell: bash
         run: |
-          cpp-coveralls -i src -i include -e src/external --exclude-pattern "/usr/*" --dump cpp_cov.json
-          coveralls --merge=cpp_cov.json --service=github
+          # Produce LCOV directly from gcov data in the build tree
+          gcovr \
+            --root "$GITHUB_WORKSPACE" \
+            --object-directory "$GITHUB_WORKSPACE/build" \
+            --filter "$GITHUB_WORKSPACE/src" \
+            --filter "$GITHUB_WORKSPACE/include" \
+            --exclude "$GITHUB_WORKSPACE/src/external/.*" \
+            --exclude "$GITHUB_WORKSPACE/src/include/openmc/external/.*" \
+            --gcov-ignore-errors source_not_found,parse_error \
+            --print-summary \
+            --lcov -o coverage-cpp.lcov || true
+
+      - name: Merge C++ and Python coverage
+        shell: bash
+        run: |
+          # Merge C++ and Python LCOV into a single file for upload
+          cat coverage-cpp.lcov coverage-python.lcov > coverage.lcov
+
+      - name: Upload coverage to Coveralls
+        if: ${{ hashFiles('coverage.lcov') != '' }}
+        uses: coverallsapp/github-action@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          parallel: true
+          flag-name: C++ and Python
+          path-to-lcov: coverage.lcov
 
   finish:
     needs: main
@@ -184,5 +209,5 @@ jobs:
       - name: Coveralls Finished
         uses: coverallsapp/github-action@v2
         with:
-          github-token: ${{ secrets.github_token }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           parallel-finished: true

@@ -10,6 +10,7 @@ import copy
 from random import uniform
 from unittest.mock import MagicMock
 
+import h5py
 import numpy as np
 from uncertainties import ufloat
 import pytest
@@ -101,12 +102,21 @@ def test_results_save(run_in_tmpdir):
                   for k, rates in zip(eigvl2, rate2)]
 
     # saves within a subdirectory
-    StepResult.save(op, x1, op_result1, t1, 0, 0, path='out/put/depletion.h5')
+    StepResult.save(
+        op,
+        x1,
+        op_result1,
+        t1,
+        0,
+        0,
+        write_reaction_rates=True,
+        path='out/put/depletion.h5'
+    )
     res = Results('out/put/depletion.h5')
 
     # saves with default filename
-    StepResult.save(op, x1, op_result1, t1, 0, 0)
-    StepResult.save(op, x2, op_result2, t2, 0, 1)
+    StepResult.save(op, x1, op_result1, t1, 0, 0, write_reaction_rates=True)
+    StepResult.save(op, x2, op_result2, t2, 0, 1, write_reaction_rates=True)
 
     # Load the files
     res = Results("depletion_results.h5")
@@ -124,6 +134,31 @@ def test_results_save(run_in_tmpdir):
 
     np.testing.assert_array_equal(res[1].k, eigvl2)
     np.testing.assert_array_equal(res[1].time, t2)
+
+
+def test_results_save_without_rates(run_in_tmpdir):
+    """StepResult.save skips reaction-rate datasets by default"""
+
+    op = MagicMock()
+    op.prev_res = None
+    vol_dict = {"0": 1.0}
+    nuc_list = ["na"]
+    burn_list = ["0"]
+    op.get_results_info.return_value = (vol_dict, nuc_list, burn_list, burn_list)
+
+    x = [[np.array([1.0])]]
+    rates = ReactionRates(burn_list, nuc_list, ["ra"])
+    rates[:] = np.array([[[2.0]]])
+    op_result = [OperatorResult(ufloat(1.0, 0.1), rates)]
+
+    StepResult.save(op, x, op_result, [0.0, 1.0], 0.0, 0)
+
+    with h5py.File('depletion_results.h5', 'r') as handle:
+        assert 'reaction rates' not in handle
+        assert 'reactions' not in handle
+
+    res = Results('depletion_results.h5')
+    assert res[0].rates[0].size == 0
 
 
 def test_bad_integrator_inputs():

@@ -855,7 +855,8 @@ class Integrator(ABC):
             self,
             final_step: bool = True,
             output: bool = True,
-            path: PathLike = 'depletion_results.h5'
+            path: PathLike = 'depletion_results.h5',
+            write_reaction_rates: bool = False
         ):
         """Perform the entire depletion process across all steps
 
@@ -872,6 +873,11 @@ class Integrator(ABC):
             .. versionadded:: 0.13.1
         path : PathLike
             Path to file to write. Defaults to 'depletion_results.h5'.
+
+            .. versionadded:: 0.15.0
+        write_reaction_rates : bool, optional
+            Whether reaction rates should be written to the results file for
+            each step. Defaults to ``False`` to reduce file size.
 
             .. versionadded:: 0.15.0
         """
@@ -899,8 +905,17 @@ class Integrator(ABC):
                 # Remove actual EOS concentration for next step
                 n = n_list.pop()
 
-                StepResult.save(self.operator, n_list, res_list, [t, t + dt],
-                                source_rate, self._i_res + i, proc_time, path)
+                StepResult.save(
+                    self.operator,
+                    n_list,
+                    res_list,
+                    [t, t + dt],
+                    source_rate,
+                    self._i_res + i,
+                    proc_time,
+                    write_reaction_rates=write_reaction_rates,
+                    path=path
+                )
 
                 t += dt
 
@@ -911,8 +926,17 @@ class Integrator(ABC):
             if output and final_step and comm.rank == 0:
                 print(f"[openmc.deplete] t={t} (final operator evaluation)")
             res_list = [self.operator(n, source_rate if final_step else 0.0)]
-            StepResult.save(self.operator, [n], res_list, [t, t],
-                         source_rate, self._i_res + len(self), proc_time, path)
+            StepResult.save(
+                self.operator,
+                [n],
+                res_list,
+                [t, t],
+                source_rate,
+                self._i_res + len(self),
+                proc_time,
+                write_reaction_rates=write_reaction_rates,
+                path=path
+            )
             self.operator.write_bos_data(len(self) + self._i_res)
 
         self.operator.finalize()
@@ -1144,7 +1168,8 @@ class SIIntegrator(Integrator):
     def integrate(
         self,
         output: bool = True,
-        path: PathLike = "depletion_results.h5"
+        path: PathLike = "depletion_results.h5",
+        write_reaction_rates: bool = False
     ):
         """Perform the entire depletion process across all steps
 
@@ -1154,6 +1179,11 @@ class SIIntegrator(Integrator):
             Indicate whether to display information about progress
         path : PathLike
             Path to file to write. Defaults to 'depletion_results.h5'.
+
+            .. versionadded:: 0.15.0
+        write_reaction_rates : bool, optional
+            Whether reaction rates should be written to the results file for
+            each step. Defaults to ``False`` to reduce file size.
 
             .. versionadded:: 0.15.0
         """
@@ -1184,14 +1214,32 @@ class SIIntegrator(Integrator):
                 # Remove actual EOS concentration for next step
                 n = n_list.pop()
 
-                StepResult.save(self.operator, n_list, res_list, [t, t + dt],
-                             p, self._i_res + i, proc_time, path)
+                StepResult.save(
+                    self.operator,
+                    n_list,
+                    res_list,
+                    [t, t + dt],
+                    p,
+                    self._i_res + i,
+                    proc_time,
+                    write_reaction_rates=write_reaction_rates,
+                    path=path
+                )
 
                 t += dt
 
             # No final simulation for SIE, use last iteration results
-            StepResult.save(self.operator, [n], [res_list[-1]], [t, t],
-                         p, self._i_res + len(self), proc_time, path)
+            StepResult.save(
+                self.operator,
+                [n],
+                [res_list[-1]],
+                [t, t],
+                p,
+                self._i_res + len(self),
+                proc_time,
+                write_reaction_rates=write_reaction_rates,
+                path=path
+            )
             self.operator.write_bos_data(self._i_res + len(self))
 
         self.operator.finalize()

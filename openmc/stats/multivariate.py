@@ -112,8 +112,9 @@ class PolarAzimuthal(UnitSphere):
     @reference_vwu.setter
     def reference_vwu(self, vwu):
         cv.check_type('reference v direction', vwu, Iterable, Real)
-        cv.check_less_than('reference v direction must be orthogonal to reference u direction', vwu.dot(uvw), 1e-6)
         vwu = np.asarray(vwu)
+        uvw = self.reference_uvw
+        cv.check_less_than('reference v direction must be orthogonal to reference u direction', vwu.dot(uvw), 1e-6)
         vwu -= vwu.dot(uvw)*uvw
         self._reference_vwu = vwu/np.linalg.norm(vwu)
 

@@ -413,11 +413,6 @@ void Nuclide::create_derived(
       auto absorption = xt::view(xs_[t], xt::range(j, j + n), XS_ABSORPTION);
       if (is_disappearance(rx->mt_)) {
         absorption += xs;
-
-        // Keep track of absorbtion reactions
-        if (t == 0) {
-          absorption_rx_.push_back(rx.get());
-        }
       }
 
       if (is_fission(rx->mt_)) {

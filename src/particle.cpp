@@ -349,28 +349,6 @@ void Particle::event_collide()
 
   // Collision track feature to recording particle interaction
   if (settings::collision_track) {
-    // Sample absorption reaction
-    if (event_mt() == 101) {
-      const auto& nuc {data::nuclides[event_nuclide()]};
-      const auto& micro = neutron_xs(event_nuclide());
-      // absoption reaction include fission xs, need to substract fission xs
-      // to get only capture and other absorption reaction
-      double cutoff =
-        prn(current_seed()) * (neutron_xs(event_nuclide()).absorption -
-                                neutron_xs(event_nuclide()).fission);
-      double prob = 0.0;
-
-      // Loop through each absorption reaction type
-      for (auto& rx : nuc->absorption_rx_) {
-        // add to cumulative probability
-        prob += rx->xs(micro);
-
-        if (prob > cutoff) {
-          event_mt() = rx->mt_;
-          break;
-        }
-      }
-    }
 
     int cell_id = model::cells[lowest_coord().cell()]->id_;
     std::string nuclide_id = data::nuclides[event_nuclide()]->name_;

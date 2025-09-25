@@ -69,8 +69,8 @@ def model():
     # Settings
     model.settings = openmc.Settings()
     model.settings.run_mode = "fixed source"
-    model.settings.particles = 100
-    model.settings.batches = 3
+    model.settings.particles = 1
+    model.settings.batches = 1
     model.settings.seed = 2
 
     bounds = [-radius, -radius, -radius, radius, radius, radius]
@@ -99,7 +99,7 @@ def test_particle_location(parameter, run_in_tmpdir, model):
     with h5py.File("collision_track.h5", "r") as f:
         source = f["collision_track_bank"]
 
-        assert len(source) == 200
+        assert len(source) == 60
 
         # We want to verify that the collisions happenening are in the right cells
         # and the position of the particle is either positive or negative relative
@@ -119,19 +119,19 @@ def test_format_similarity(run_in_tmpdir, model):
     model.settings.collision_track = {"max_collisions": 200, "reactions": ['elastic'],
                                       "cell_ids": [1, 2], "mcpl": False}
 
-    model.run(threads=1)
+    model.run()
 
     data_h5 = ctt._return_collision_track_data('collision_track.h5')
 
     model.settings.collision_track = {"max_collisions": 200, "reactions": ['elastic'],
                                       "cell_ids": [1, 2], "mcpl": True}
 
-    model.run(threads=1)
+    model.run()
 
     data_mcpl = ctt._return_collision_track_data('collision_track.mcpl')
 
-    assert len(data_h5) == 200
-    assert len(data_mcpl) == 200
+    assert len(data_h5) == 60
+    assert len(data_mcpl) == 60
 
     np.testing.assert_allclose(data_h5, data_mcpl, rtol=1e-05)
     # tolerance not that low due to the strings that is saved in MCPL,

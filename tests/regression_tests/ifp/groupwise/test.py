@@ -8,7 +8,6 @@ from tests.testing_harness import PyAPITestHarness
 
 @pytest.fixture()
 def ifp_model():
-
     # Material
     material = openmc.Material(name="core")
     material.add_nuclide("U235", 1.0)
@@ -27,13 +26,14 @@ def ifp_model():
     settings.inactive = 5
     settings.ifp_n_generation = 5
 
-    model = openmc.Model(settings = settings, geometry = geometry)
+    model = openmc.Model(settings=settings, geometry=geometry)
 
     space = openmc.stats.Box(*cell.bounding_box)
     model.settings.source = openmc.IndependentSource(
         space=space, constraints={'fissionable': True})
-    model.add_ifp_kinetics_tallies(num_groups = 6)
+    model.add_kinetics_parameters_tallies(num_groups=6)
     return model
+
 
 def test_iterated_fission_probability(ifp_model):
     harness = PyAPITestHarness("statepoint.20.h5", model=ifp_model)

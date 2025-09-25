@@ -47,3 +47,32 @@ def test_exceptions(options, error, run_in_tmpdir, geometry):
         tallies = openmc.Tallies([tally])
         model = openmc.Model(geometry=geometry, settings=settings, tallies=tallies)
         model.run()
+
+
+@pytest.mark.parametrize("num_groups", [None, 6])
+def test_get_kinetics_parameters(run_in_tmpdir, num_groups):
+    # Create basic model
+    model = openmc.Model()
+    material = openmc.Material(name="core")
+    material.add_nuclide("U235", 1.0)
+    material.set_density('g/cm3', 16.0)
+    sphere = openmc.Sphere(r=10.0, boundary_type="vacuum")
+    cell = openmc.Cell(region=-sphere, fill=material)
+    model.geometry = openmc.Geometry([cell])
+    model.settings.particles = 1000
+    model.settings.batches = 20
+    model.settings.inactive = 5
+    model.settings.ifp_n_generation = 5
+
+    # Add IFP tallies
+    model.add_kinetics_parameters_tallies(num_groups=num_groups)
+
+    # Run and get kinetics parameters
+    sp_file = model.run()
+    with openmc.StatePoint(sp_file) as sp:
+        params = sp.get_kinetics_parameters()
+    assert isinstance(params, openmc.KineticsParameters)
+    assert params.generation_time is not None
+    assert params.beta_effective is not None
+    if num_groups is not None:
+        assert len(params.beta_effective) == num_groups

@@ -203,44 +203,36 @@ class Model:
             result[mat.name].add(mat)
         return result
 
-    def add_ifp_kinetics_tallies(self, num_groups: int = 0):
-        """Add necessary tallies for calculating kinetics parameters using Iterated Fission Probability 
+    def add_kinetics_parameters_tallies(self, num_groups: int | None = None):
+        """Add tallies for calculating kinetics parameters using the IFP method.
+
+        This method adds tallies to the model for calculating two kinetics
+        parameters, the generation time and the effective delayed neutron
+        fraction (beta effective). After a model is run, these parameters can be
+        determined through the :meth:`openmc.StatePoint.ifp_results` method.
 
         Parameters
         ----------
-        num_groups : int
+        num_groups : int, optional
             Number of precursor groups to filter the delayed neutron fraction.
+            If None, only the total effective delayed neutron fraction is
+            tallied.
+
         """
-        existing_tallies = {'time-num':False, 'beta-num':False, 'ifp-denom':False}
-                
-        dg_filter = None
-        for tally in self._tallies:
-            if 'ifp-time-numerator' in tally.scores:
-                existing_tallies['time-num'] = True
-            if 'ifp-beta-numerator' in tally.scores:
-                existing_tallies['beta-num'] = True
-            if 'ifp-denominator' in tally.scores:
-                existing_tallies['ifp-denom'] = True
-            
-            if tally.contains_filter(openmc.DelayedGroupFilter):
-                dg_filter = tally.find_filter(openmc.DelayedGroupFilter)
-            
-        if not existing_tallies['time-num']:
-            gen_time_tally = openmc.Tally()
+        if not any('ifp-time-numerator' in t.scores for t in self.tallies):
+            gen_time_tally = openmc.Tally(name='IFP time numerator')
             gen_time_tally.scores = ['ifp-time-numerator']
-            self._tallies.append(gen_time_tally)
-        if not existing_tallies['beta-num']:
-            beta_tally = openmc.Tally()
+            self.tallies.append(gen_time_tally)
+        if not any('ifp-beta-numerator' in t.scores for t in self.tallies):
+            beta_tally = openmc.Tally(name='IFP beta numerator')
             beta_tally.scores = ['ifp-beta-numerator']
-            if dg_filter is not None:
-                beta_tally.filters = [dg_filter]
-            elif num_groups > 1:
+            if num_groups is not None:
                 beta_tally.filters = [openmc.DelayedGroupFilter(list(range(1, num_groups + 1)))]
-            self._tallies.append(beta_tally)
-        if not existing_tallies['ifp-denom']:
-            denom_tally = openmc.Tally()
+            self.tallies.append(beta_tally)
+        if not any('ifp-denominator' in t.scores for t in self.tallies):
+            denom_tally = openmc.Tally(name='IFP denominator')
             denom_tally.scores = ['ifp-denominator']
-            self._tallies.append(denom_tally)
+            self.tallies.append(denom_tally)
 
     @classmethod
     def from_xml(

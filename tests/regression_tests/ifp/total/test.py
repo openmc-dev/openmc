@@ -38,6 +38,7 @@ def ifp_model():
 
     return model
 
+
 def test_iterated_fission_probability(ifp_model):
     harness = PyAPITestHarness("statepoint.20.h5", model=ifp_model)
     harness.main()

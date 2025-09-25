@@ -67,22 +67,23 @@ are needed to compute kinetics parameters in OpenMC:
 Obtaining kinetics parameters
 -----------------------------
 
-The ``Model`` class can be used to automatically generate all IFP tallies using the Python API
-with ``settings.ifp_n_generation`` greater than 0 and the ``Model.add_ifp_kinetics_tallies`` method::
+The ``Model`` class can be used to automatically generate all IFP tallies using
+the Python API with :attr:`openmc.Settings.ifp_n_generation` greater than 0 and
+the :meth:`openmc.Model.add_ifp_kinetics_tallies` method::
 
-    model = openmc.model.Model(geometry = geometry, materials = materials, settings = settings)
-    model.add_ifp_kinetics_tallies(num_groups = 6) #Add 6 precursor groups
-    model.export_to_xml()
+    model = openmc.Model(geometry, settings=settings)
+    model.add_kinetics_parameters_tallies(num_groups=6)  # Add 6 precursor groups
 
-Additionally, each of the tallies can be manually defined individually with group-wise or total 
-:math:`\beta_{\text{eff}}` specified by providing a 6-group ``openmc.DelayedGroupFilter``::
-    
+Alternatively, each of the tallies can be manually defined using group-wise or
+total :math:`\beta_{\text{eff}}` specified by providing a 6-group
+:class:`openmc.DelayedGroupFilter`::
+
     beta_tally = openmc.Tally(name="group-beta-score")
     beta_tally.scores = ["ifp-beta-numerator"]
-    
-    #Add DelayedGroupFilter to enable group-wise tallies
+
+    # Add DelayedGroupFilter to enable group-wise tallies
     beta_tally.filters = [openmc.DelayedGroupFilter(list(range(1, 7)))]
-    
+
 Here is an example showing how to declare the three available IFP scores in a
 single tally::
 
@@ -111,17 +112,11 @@ for ``ifp-denominator``:
 
     \beta_{\text{eff}} = \frac{S_{\text{ifp-beta-numerator}}}{S_{\text{ifp-denominator}}}
 
-The parameters can be directly retrieved from a statepoint file direction using the ``ifp_results``
-method::
+The kinetics parameters can be retrieved directly from a statepoint file using
+the :meth:`openmc.StatePoint.ifp_results` method::
 
     with openmc.StatePoint(output_path) as sp:
-        results = sp.ifp_results()
-        
-        #Retrieve generation lifetime
-        generation_lifetime = results['Generation Time']
-        
-        #Retrieve 6-group delayed neutron fraction array
-        beta_eff = results['Beta Effective']
+        generation_time, beta_eff = sp.get_kinetics_parameters()
 
 .. only:: html
 

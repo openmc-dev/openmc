@@ -1173,10 +1173,11 @@ class Chain:
                 if rx.target in all_isotopes:
                     new_nuclide.add_reaction(*rx)
                 elif rx.type == "fission":
-                    new_yields = new_nuclide.yield_data = (
-                        previous.yield_data.restrict_products(name_sort))
-                    if new_yields is not None:
-                        new_nuclide.add_reaction(*rx)
+                    if previous.yield_data is not None:
+                        new_yields = new_nuclide.yield_data = (
+                            previous.yield_data.restrict_products(name_sort))
+                        if new_yields is not None:
+                            new_nuclide.add_reaction(*rx)
                 # Maintain total destruction rates but set no target
                 else:
                     new_nuclide.add_reaction(rx.type, None, rx.Q, rx.branching_ratio)

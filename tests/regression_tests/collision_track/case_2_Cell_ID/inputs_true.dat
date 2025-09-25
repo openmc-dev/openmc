@@ -50,7 +50,7 @@
       </constraints>
     </source>
     <collision_track>
-      <cell_ids>22 33</cell_ids>
+      <cell_ids>22</cell_ids>
       <max_collisions>300</max_collisions>
     </collision_track>
     <seed>1</seed>

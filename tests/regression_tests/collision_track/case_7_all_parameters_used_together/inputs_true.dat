@@ -51,7 +51,7 @@
     </source>
     <collision_track>
       <cell_ids>22 33</cell_ids>
-      <reactions>elastic 18 (n,gamma)</reactions>
+      <reactions>elastic 18 (n,disappear)</reactions>
       <universe_ids>77</universe_ids>
       <material_ids>1 11</material_ids>
       <nuclide_ids>U238 U235 H1 U234</nuclide_ids>

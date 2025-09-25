@@ -26,7 +26,7 @@ def geometry():
     "parameter",
     [
         {"max_collisions": 200},
-        {"max_collisions": 200, "reactions": ["(n,gamma)"]},
+        {"max_collisions": 200, "reactions": ["(n,disappear)"]},
         {"max_collisions": 200, "cell_ids": [1]},
         {"max_collisions": 200, "material_ids": [1]},
         {"max_collisions": 200, "universe_ids": [1]},

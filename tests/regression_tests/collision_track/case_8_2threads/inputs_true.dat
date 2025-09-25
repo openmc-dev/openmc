@@ -50,8 +50,6 @@
       </constraints>
     </source>
     <collision_track>
-      <cell_ids>22</cell_ids>
-      <reactions>18</reactions>
       <max_collisions>200</max_collisions>
     </collision_track>
     <seed>1</seed>

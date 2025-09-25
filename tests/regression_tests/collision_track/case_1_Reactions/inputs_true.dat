@@ -50,7 +50,7 @@
       </constraints>
     </source>
     <collision_track>
-      <reactions>elastic (n,fission) 102</reactions>
+      <reactions>(n,fission) 101</reactions>
       <max_collisions>300</max_collisions>
     </collision_track>
     <seed>1</seed>

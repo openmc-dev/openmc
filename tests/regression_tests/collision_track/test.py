@@ -75,12 +75,6 @@ from tests.regression_tests import config
 
 
 @pytest.fixture(scope="function")
-def single_thread(monkeypatch):
-    """Set the number of OMP threads to 1 for the test."""
-    monkeypatch.setenv("OMP_NUM_THREADS", "1")
-
-
-@pytest.fixture(scope="function")
 def two_threads(monkeypatch):
     """Set the number of OMP threads to 2 for the test."""
     monkeypatch.setenv("OMP_NUM_THREADS", "2")
@@ -106,7 +100,7 @@ def model_1():
     # Materials
     # =============================================================================
 
-    fuel = openmc.Material(material_id = 1)
+    fuel = openmc.Material(material_id=1)
     fuel.add_nuclide("U234", 0.0004524)
     fuel.add_nuclide("U235", 0.0506068)
     fuel.add_nuclide("U238", 0.9487090)
@@ -114,7 +108,7 @@ def model_1():
     fuel.add_nuclide("O16", 2.0)
     fuel.set_density("g/cm3", 11.0)
 
-    water = openmc.Material(material_id = 11)
+    water = openmc.Material(material_id=11)
     water.add_nuclide("H1", 2.0)
     water.add_nuclide("O16", 1.0)
     water.set_density("g/cm3", 1.0)
@@ -140,12 +134,14 @@ def model_1():
     core_region = -core_cylinder & +core_lower_plane & -core_upper_plane
 
     # Cells
-    core = openmc.Cell(fill=fuel, region=core_region , cell_id = 22)
+    core = openmc.Cell(fill=fuel, region=core_region, cell_id=22)
     outside_core_region = +core_cylinder | -core_lower_plane | +core_upper_plane
-    outside_core = openmc.Cell(fill=water, region=outside_core_region, cell_id = 33)
+    outside_core = openmc.Cell(
+        fill=water, region=outside_core_region, cell_id=33)
 
     # Universe
-    inside_box1_universe = openmc.Universe(cells=[core, outside_core], universe_id = 77 )
+    inside_box1_universe = openmc.Universe(
+        cells=[core, outside_core], universe_id=77)
 
     # -----------------------------------------------------------------------------
     # Box 1
@@ -162,7 +158,7 @@ def model_1():
     )
 
     # Cell
-    box1 = openmc.Cell(fill=inside_box1_universe, region=-box1_rpp, cell_id = 5)
+    box1 = openmc.Cell(fill=inside_box1_universe, region=-box1_rpp, cell_id=5)
 
     # -----------------------------------------------------------------------------
     # Box 2
@@ -180,7 +176,7 @@ def model_1():
     )
 
     # Cell
-    box2 = openmc.Cell(fill=water, region=-box2_rpp & +box1_rpp, cell_id = 8)
+    box2 = openmc.Cell(fill=water, region=-box2_rpp & +box1_rpp, cell_id=8)
 
     # Register geometry
     model.geometry = openmc.Geometry([box1, box2])
@@ -206,39 +202,38 @@ def model_1():
     distribution = openmc.stats.Box(bounds[:3], bounds[3:])
     model.settings.source = openmc.IndependentSource(
         space=distribution, constraints={'fissionable': True})
-    
 
     return model
 
 
-@pytest.mark.skipif(config["event"] is True, reason="Results from history-based mode.")
-
 @pytest.mark.parametrize(
     "folder, model_name, parameter",
-    [   ("case_1_Reactions", "model_1", {"max_collisions": 300, "reactions": ["elastic", "(n,fission)",102]}),
-        ("case_2_Cell_ID", "model_1", {"max_collisions": 300, "cell_ids": [22, 33]}),
-        ("case_3_Material_ID", "model_1", {"max_collisions": 300, "material_ids": [1, 11]}),
-        ("case_4_Nuclide_ID", "model_1", {"max_collisions": 300, "nuclide_ids": ["H1", "U235"]}),
-        ("case_5_Universe_ID", "model_1", {"max_collisions": 300, "universe_ids": [77]}),
-        ("case_6_deposited_energy_threshold", "model_1", {"max_collisions": 300, "deposited_E_threshold" : 1e5}),
-        ("case_7_all_parameters_used_together", "model_1",{
-        "max_collisions": 300,
-        "reactions": ["elastic", 18, "(n,gamma)"],
-        "material_ids": [1, 11],
-        "universe_ids": [77],
-        "nuclide_ids": ["U238", "U235", "H1", "U234"],
-        "cell_ids": [22, 33],
-        "deposited_E_threshold": 1e5})
-    ],
+    [("case_1_Reactions", "model_1", {"max_collisions": 300, "reactions": ["(n,fission)", 101]}),
+        ("case_2_Cell_ID", "model_1", {
+         "max_collisions": 300, "cell_ids": [22]}),
+        ("case_3_Material_ID", "model_1", {
+         "max_collisions": 300, "material_ids": [1]}),
+        ("case_4_Nuclide_ID", "model_1", {
+         "max_collisions": 300, "nuclide_ids": ["O16", "U235"]}),
+        ("case_5_Universe_ID", "model_1", {
+         "max_collisions": 300, "cell_ids": [22], "universe_ids": [77]}),
+        ("case_6_deposited_energy_threshold", "model_1", {
+         "max_collisions": 300, "deposited_E_threshold": 5.5e5}),
+        ("case_7_all_parameters_used_together", "model_1", {
+            "max_collisions": 300,
+            "reactions": ["elastic", 18, "(n,disappear)"],
+            "material_ids": [1, 11],
+            "universe_ids": [77],
+            "nuclide_ids": ["U238", "U235", "H1", "U234"],
+            "cell_ids": [22, 33],
+            "deposited_E_threshold": 1e5})
+     ],
 )
-
-#@pytest.mark.skipif(True is True, reason="Results from history-based mode.")
-def test_collision_track_cell_history_based(
-    folder, model_name, parameter, single_thread, single_process, request
+def test_collision_track_several_cases(
+    folder, model_name, parameter, request
 ):
-    """Test on history-based results for CSG-only geometries."""
-    assert os.environ["OMP_NUM_THREADS"] == "1"
-    assert config["mpi_np"] == "1"
+    # Since for these tests the actual number of collisions recorded is < max_collisions,
+    # we can run them with 1 or 2 threads, and in history or event mode.
     model = request.getfixturevalue(model_name)
     model.settings.collision_track = parameter
     harness = CollisionTrackTestHarness(
@@ -247,27 +242,19 @@ def test_collision_track_cell_history_based(
     harness.main()
 
 
+@pytest.mark.skipif(config["event"] is True, reason="Results from history-based mode.")
 def test_collision_track_2threads(model_1, two_threads, single_process):
-
+    # This test checks that the `max_collisions` setting is honored:
+    # no collisions beyond the specified limit should be recorded.
+    #
+    # For the result to be reproducible, the number of threads and
+    # the transport mode (history vs. event) must remain fixed.
     assert os.environ["OMP_NUM_THREADS"] == "2"
     assert config["mpi_np"] == "1"
     model_1.settings.collision_track = {
-        "max_collisions": 200,
-        "cell_ids": [22], "reactions": [18]
+        "max_collisions": 200
     }
-    model_1.settings.seed = 1
     harness = CollisionTrackTestHarness(
         "statepoint.5.h5", model=model_1, workdir="case_8_2threads"
-    )
-    harness.main()
-
-def test_collision_track_cell_event_based(model_1, two_threads, single_process):
-    
-    assert os.environ["OMP_NUM_THREADS"] == "2"
-    assert config["mpi_np"] == "1"
-    model_1.settings.collision_track = {"max_collisions": 300, "cell_ids": [22], "reactions": [18]}
-    model_1.settings.event_based = True
-    harness = CollisionTrackTestHarness(
-        "statepoint.5.h5", model=model_1, workdir="case_9_event_mode"
     )
     harness.main()

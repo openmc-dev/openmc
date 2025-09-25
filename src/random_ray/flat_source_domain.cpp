@@ -1094,12 +1094,22 @@ void FlatSourceDomain::flatten_xs()
   const int a = 0;
 
   n_materials_ = data::mg.macro_xs_.size();
-  for (auto& m : data::mg.macro_xs_) {
+  for (int i = 0; i < n_materials_; i++) {
+    auto& m = data::mg.macro_xs_[i];
     for (int g_out = 0; g_out < negroups_; g_out++) {
       if (m.exists_in_model) {
         double sigma_t =
           m.get_xs(MgxsType::TOTAL, g_out, NULL, NULL, NULL, t, a);
         sigma_t_.push_back(sigma_t);
+
+        if (sigma_t < MINIMUM_MACRO_XS) {
+          Material* mat = model::materials[i].get();
+          warning(fmt::format(
+            "Material \"{}\" (id: {}) has a group {} total cross section "
+            "({:.3e}) below the minimum threshold "
+            "({:.3e}). Material will be treated as pure void.",
+            mat->name(), mat->id(), g_out, sigma_t, MINIMUM_MACRO_XS));
+        }
 
         double nu_sigma_f =
           m.get_xs(MgxsType::NU_FISSION, g_out, NULL, NULL, NULL, t, a);
@@ -1448,6 +1458,17 @@ SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
   int gs_i_cell = gs.lowest_coord().cell();
   Cell& cell = *model::cells[gs_i_cell];
   int material = cell.material(gs.cell_instance());
+
+  // If material total XS is extremely low, just set it to void to avoid
+  // problems with 1/Sigma_t
+  for (int g = 0; g < negroups_; g++) {
+    double sigma_t = sigma_t_[material * negroups_ + g];
+    if (sigma_t < MINIMUM_MACRO_XS) {
+      material = MATERIAL_VOID;
+      break;
+    }
+  }
+
   handle.material() = material;
 
   // Store the mesh index (if any) assigned to this source region

@@ -631,6 +631,7 @@ public:
   int& event_mt() { return event_mt_; } // MT number of collision
   const int& event_mt() const { return event_mt_; }
   int& delayed_group() { return delayed_group_; } // delayed group
+  const int& delayed_group() const { return delayed_group_; }
   const int& parent_nuclide() const { return parent_nuclide_; }
   int& parent_nuclide() { return parent_nuclide_; } // Parent nuclide
 

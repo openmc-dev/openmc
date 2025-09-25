@@ -247,18 +247,15 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
       }
       // Iterated Fission Probability (IFP) method
       if (settings::ifp_on) {
-        ifp(p, site, idx);
+        ifp(p, idx);
       }
     } else {
       p.secondary_bank().push_back(site);
     }
 
-    // Set the delayed group on the particle as well
-    p.delayed_group() = site.delayed_group;
-
     // Increment the number of neutrons born delayed
-    if (p.delayed_group() > 0) {
-      nu_d[p.delayed_group() - 1]++;
+    if (site.delayed_group > 0) {
+      nu_d[site.delayed_group - 1]++;
     }
 
     // Write fission particles to nuBank

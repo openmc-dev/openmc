@@ -150,7 +150,7 @@ class PolarAzimuthal(UnitSphere):
         if self.reference_uvw is not None:
             element.set("reference_uvw", ' '.join(map(str, self.reference_uvw)))
         if self.reference_vwu is not None:
-            element.set("reference_vwu", ' '.join(map(str, self.reference_uwu)))    
+            element.set("reference_vwu", ' '.join(map(str, self.reference_vwu)))    
         element.append(self.mu.to_xml_element('mu'))
         element.append(self.phi.to_xml_element('phi'))
         return element

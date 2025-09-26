@@ -1722,7 +1722,10 @@ class Settings:
                                 mesh_memo.add(mesh.id)
                 else:
                     subelement = ET.SubElement(element, key)
-                    subelement.text = str(value)
+                    if isinstance(value, bool):
+                        subelement.text = str(value).lower()
+                    else:
+                        subelement.text = str(value)
 
     def _create_source_rejection_fraction_subelement(self, root):
         if self._source_rejection_fraction is not None:

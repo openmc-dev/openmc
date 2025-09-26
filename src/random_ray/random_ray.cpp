@@ -388,7 +388,7 @@ void RandomRay::attenuate_flux_inner(
 
   switch (source_shape_) {
   case RandomRaySourceShape::FLAT:
-    if (this->material() == MATERIAL_VOID) {
+    if (srh.material() == MATERIAL_VOID) {
       attenuate_flux_flat_source_void(srh, distance, is_active, r);
     } else {
       attenuate_flux_flat_source(srh, distance, is_active, r);
@@ -396,7 +396,7 @@ void RandomRay::attenuate_flux_inner(
     break;
   case RandomRaySourceShape::LINEAR:
   case RandomRaySourceShape::LINEAR_XY:
-    if (this->material() == MATERIAL_VOID) {
+    if (srh.material() == MATERIAL_VOID) {
       attenuate_flux_linear_source_void(srh, distance, is_active, r);
     } else {
       attenuate_flux_linear_source(srh, distance, is_active, r);
@@ -427,7 +427,7 @@ void RandomRay::attenuate_flux_flat_source(
   n_event()++;
 
   // Get material
-  int material = this->material();
+  int material = srh.material();
 
   // MOC incoming flux attenuation + source contribution/attenuation equation
   for (int g = 0; g < negroups_; g++) {
@@ -478,7 +478,7 @@ void RandomRay::attenuate_flux_flat_source_void(
   // The number of geometric intersections is counted for reporting purposes
   n_event()++;
 
-  int material = this->material();
+  int material = srh.material();
 
   // If ray is in the active phase (not in dead zone), make contributions to
   // source region bookkeeping
@@ -525,7 +525,7 @@ void RandomRay::attenuate_flux_linear_source(
   // The number of geometric intersections is counted for reporting purposes
   n_event()++;
 
-  int material = this->material();
+  int material = srh.material();
 
   Position& centroid = srh.centroid();
   Position midpoint = r + u() * (distance / 2.0);

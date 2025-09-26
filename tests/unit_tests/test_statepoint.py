@@ -10,11 +10,12 @@ def test_get_tally_filter_type():
 
     sphere = openmc.Sphere(r=10.0, boundary_type='vacuum')
     cell = openmc.Cell(fill=mat, region=-sphere)
-    model = openmc.Model()
-    model.geometry = openmc.Geometry([cell])
-    model.settings.particles = 10
-    model.settings.batches = 2
-    model.settings.run_mode = 'fixed source'
+    geometry = openmc.Geometry([cell])
+
+    settings = openmc.Settings()
+    settings.particles = 10
+    settings.batches = 2
+    settings.run_mode = 'fixed source'
 
     reg_mesh = openmc.RegularMesh().from_domain(cell)
     tally1 = openmc.Tally(tally_id=1)
@@ -23,10 +24,17 @@ def test_get_tally_filter_type():
     tally1.scores = ['flux']
 
     tally2 = openmc.Tally(tally_id=2, name='heating tally')
-    tally2.filters = [openmc.CellFilter(cell)]
+    cell_filter = openmc.CellFilter(cell)
+    tally2.filters = [cell_filter]
     tally2.scores = ['heating']
 
-    model.tallies = openmc.Tallies([tally1, tally2])
+    tallies = openmc.Tallies([tally1, tally2])
+    model = openmc.Model(
+        geometry=geometry,
+        materials=[mat],
+        settings=settings,
+        tallies=tallies
+    )
 
     sp_filename = model.run()
 
@@ -40,6 +48,9 @@ def test_get_tally_filter_type():
 
     tally_found = sp.get_tally(filters=[mesh_filter])
     assert tally_found.id == 1
+
+    tally_found = sp.get_tally(filters=[cell_filter])
+    assert tally_found.id == 2
 
     tally_found = sp.get_tally(scores=['heating'])
     assert tally_found.id == 2

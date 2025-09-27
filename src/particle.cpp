@@ -144,6 +144,7 @@ void Particle::from_source(const SourceSite* src)
   time() = src->time;
   time_last() = src->time;
   parent_nuclide() = src->parent_nuclide;
+  delayed_group() = src->delayed_group;
 
   // Convert signed surface ID to signed index
   if (src->surf_id != SURFACE_NONE) {
@@ -200,7 +201,8 @@ void Particle::event_calculate_xs()
   // Calculate microscopic and macroscopic cross sections
   if (material() != MATERIAL_VOID) {
     if (settings::run_CE) {
-      if (material() != material_last() || sqrtkT() != sqrtkT_last()) {
+      if (material() != material_last() || sqrtkT() != sqrtkT_last() ||
+          density_mult() != density_mult_last()) {
         // If the material is the same as the last material and the
         // temperature hasn't changed, we don't need to lookup cross
         // sections again.
@@ -251,6 +253,11 @@ void Particle::event_advance()
   double dt = distance / speed;
   this->time() += dt;
   this->lifetime() += dt;
+
+  // Score timed track-length tallies
+  if (!model::active_timed_tracklength_tallies.empty()) {
+    score_timed_tracklength_tally(*this, distance);
+  }
 
   // Score track-length tallies
   if (!model::active_tracklength_tallies.empty()) {
@@ -544,7 +551,8 @@ void Particle::cross_surface(const Surface& surf)
 #endif
 
   // Handle any applicable boundary conditions.
-  if (surf.bc_ && settings::run_mode != RunMode::PLOTTING) {
+  if (surf.bc_ && settings::run_mode != RunMode::PLOTTING &&
+      settings::run_mode != RunMode::VOLUME) {
     surf.bc_->handle_particle(*this, surf);
     return;
   }
@@ -558,9 +566,10 @@ void Particle::cross_surface(const Surface& surf)
     int32_t i_cell = next_cell(surface_index(), cell_last(n_coord() - 1),
                        lowest_coord().universe()) -
                      1;
-    // save material and temp
+    // save material, temperature, and density multiplier
     material_last() = material();
     sqrtkT_last() = sqrtkT();
+    density_mult_last() = density_mult();
     // set new cell value
     lowest_coord().cell() = i_cell;
     auto& cell = model::cells[i_cell];
@@ -571,6 +580,7 @@ void Particle::cross_surface(const Surface& surf)
 
     material() = cell->material(cell_instance());
     sqrtkT() = cell->sqrtkT(cell_instance());
+    density_mult() = cell->density_mult(cell_instance());
     return;
   }
 #endif

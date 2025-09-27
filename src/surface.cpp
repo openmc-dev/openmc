@@ -1316,7 +1316,7 @@ void read_surfaces(pugi::xml_node node)
     pugi::xml_node surf_node;
     int i_surf;
     for (surf_node = node.child("surface"), i_surf = 0; surf_node;
-         surf_node = surf_node.next_sibling("surface"), i_surf++) {
+      surf_node = surf_node.next_sibling("surface"), i_surf++) {
       std::string surf_type = get_node_value(surf_node, "type", true, true);
 
       // Allocate and initialize the new surface

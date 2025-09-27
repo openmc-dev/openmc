@@ -12,6 +12,7 @@ from . import IndependentOperator, PredictorIntegrator
 from .microxs import get_microxs_and_flux, write_microxs_hdf5, read_microxs_hdf5
 from .results import Results
 from ..checkvalue import PathLike
+from ..mpi import comm
 
 
 def get_activation_materials(
@@ -135,12 +136,15 @@ class R2SManager:
         elapsed = perf_counter() - start_time
         step_times = self.results.setdefault('time', {}).setdefault(step, {})
         step_times[label] = elapsed
-        print(f"[openmc.r2s] {step}: {label} took {elapsed:.2f} seconds")
+        if comm.rank == 0:
+            print(f"[openmc.r2s] {step}: {label} took {elapsed:.2f} seconds")
         return elapsed
 
     def _write_timing(self, output_dir: PathLike) -> None:
         """Write accumulated timing information to JSON in the output directory."""
 
+        if comm.rank != 0:
+            return
         output_path = Path(output_dir)
         output_path.mkdir(parents=True, exist_ok=True)
         timing_file = output_path / 'timing.json'
@@ -238,16 +242,60 @@ class R2SManager:
         self.step1_neutron_transport(
             output_dir / 'neutron_transport', mat_vol_kwargs, micro_kwargs
         )
+        self._sync_neutron_transport_results()
         self.step2_activation(
             timesteps, source_rates, timestep_units, output_dir / 'activation',
             operator_kwargs=operator_kwargs
         )
-        self.step3_photon_transport(
-            photon_time_indices, bounding_boxes, output_dir / 'photon_transport',
-            mat_vol_kwargs=mat_vol_kwargs, run_kwargs=run_kwargs
-        )
+        if comm.rank == 0:
+            self.step3_photon_transport(
+                photon_time_indices, bounding_boxes, output_dir / 'photon_transport',
+                mat_vol_kwargs=mat_vol_kwargs, run_kwargs=run_kwargs
+            )
+        self._sync_photon_transport_results()
 
         return output_dir
+
+    def _sync_neutron_transport_results(self) -> None:
+        """Share neutron transport results from rank 0 with all ranks."""
+
+        if self.method == 'mesh-based':
+            mmv = self.results.get('mesh_material_volumes') if comm.rank == 0 else None
+            mmv = comm.bcast(mmv, root=0)
+            self.results['mesh_material_volumes'] = mmv
+
+        fluxes = self.results.get('fluxes') if comm.rank == 0 else None
+        fluxes = comm.bcast(fluxes, root=0)
+        self.results['fluxes'] = fluxes
+
+        micros = self.results.get('micros') if comm.rank == 0 else None
+        micros = comm.bcast(micros, root=0)
+        self.results['micros'] = micros
+
+        time_data = self.results.get('time') if comm.rank == 0 else None
+        time_data = comm.bcast(time_data, root=0)
+        self.results['time'] = time_data
+
+    def _sync_photon_transport_results(self) -> None:
+        """Share photon transport results from rank 0 with all ranks."""
+
+        photon_mmv = self.results.get('mesh_material_volumes_photon') if comm.rank == 0 else None
+        photon_mmv = comm.bcast(photon_mmv, root=0)
+        if photon_mmv is not None:
+            self.results['mesh_material_volumes_photon'] = photon_mmv
+        elif 'mesh_material_volumes_photon' in self.results:
+            self.results.pop('mesh_material_volumes_photon', None)
+
+        photon_tallies = self.results.get('photon_tallies') if comm.rank == 0 else None
+        photon_tallies = comm.bcast(photon_tallies, root=0)
+        if photon_tallies is not None:
+            self.results['photon_tallies'] = photon_tallies
+        elif 'photon_tallies' in self.results:
+            self.results.pop('photon_tallies', None)
+
+        time_data = self.results.get('time') if comm.rank == 0 else None
+        time_data = comm.bcast(time_data, root=0)
+        self.results['time'] = time_data
 
     def step1_neutron_transport(
         self,
@@ -291,9 +339,10 @@ class R2SManager:
             self._record_time(step_name, 'mesh_material_volumes', mat_vol_start)
 
             # Save results to file
-            save_mmv_start = perf_counter()
-            mmv.save(output_dir / 'mesh_material_volumes.npz')
-            self._record_time(step_name, 'write_mesh_material_volumes', save_mmv_start)
+            if comm.rank == 0:
+                save_mmv_start = perf_counter()
+                mmv.save(output_dir / 'mesh_material_volumes.npz')
+                self._record_time(step_name, 'write_mesh_material_volumes', save_mmv_start)
 
             # Create mesh-material filter based on what combos were found
             domains = openmc.MeshMaterialFilter.from_volumes(self.domains, mmv)
@@ -331,13 +380,14 @@ class R2SManager:
         self._record_time(step_name, 'get_microxs_and_flux', microxs_start)
 
         # Save flux and micros to file
-        save_flux_start = perf_counter()
-        np.save(output_dir / 'fluxes.npy', self.results['fluxes'])
-        self._record_time(step_name, 'save_fluxes', save_flux_start)
+        if comm.rank == 0:
+            save_flux_start = perf_counter()
+            np.save(output_dir / 'fluxes.npy', self.results['fluxes'])
+            self._record_time(step_name, 'save_fluxes', save_flux_start)
 
-        save_micros_start = perf_counter()
-        write_microxs_hdf5(self.results['micros'], output_dir / 'micros.h5')
-        self._record_time(step_name, 'write_micros', save_micros_start)
+            save_micros_start = perf_counter()
+            write_microxs_hdf5(self.results['micros'], output_dir / 'micros.h5')
+            self._record_time(step_name, 'write_micros', save_micros_start)
 
         self._record_time(step_name, 'total', step_start)
         self._write_timing(output_dir)
@@ -482,6 +532,9 @@ class R2SManager:
             Additional keyword arguments passed to :meth:`openmc.Model.run`
             during the photon transport step. By default, output is disabled.
         """
+
+        if comm.rank != 0:
+            return
 
         step_name = 'step3_photon_transport'
         step_start = perf_counter()

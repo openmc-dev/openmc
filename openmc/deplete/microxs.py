@@ -177,9 +177,13 @@ def get_microxs_and_flux(
         else:
             run_kwargs = dict(run_kwargs)
         run_kwargs.setdefault('cwd', temp_dir)
-        statepoint_path = model.run(**run_kwargs)
+
+        flux_tally_sp = None
+        rr_tally_sp = None
 
         if comm.rank == 0:
+            statepoint_path = model.run(**run_kwargs)
+
             # Move the statepoint file if it is being saved to a specific path
             if path_statepoint is not None:
                 shutil.move(statepoint_path, path_statepoint)
@@ -191,13 +195,16 @@ def get_microxs_and_flux(
 
             with StatePoint(statepoint_path) as sp:
                 if reaction_rate_mode == 'direct':
-                    rr_tally = sp.tallies[rr_tally.id]
-                    rr_tally._read_results()
-                flux_tally = sp.tallies[flux_tally.id]
-                flux_tally._read_results()
+                    rr_tally_sp = sp.tallies[rr_tally.id]
+                    rr_tally_sp._read_results()
+                flux_tally_sp = sp.tallies[flux_tally.id]
+                flux_tally_sp._read_results()
+
+        flux_tally = comm.bcast(flux_tally_sp, root=0)
+        if reaction_rate_mode == 'direct':
+            rr_tally = comm.bcast(rr_tally_sp, root=0)
 
     # Get flux values and make energy groups last dimension
-    flux_tally = comm.bcast(flux_tally)
     flux = flux_tally.get_reshaped_data()  # (domains, groups, 1, 1)
     flux = np.moveaxis(flux, 1, -1)  # (domains, 1, 1, groups)
 
@@ -206,7 +213,6 @@ def get_microxs_and_flux(
 
     if reaction_rate_mode == 'direct':
         # Get reaction rates
-        rr_tally = comm.bcast(rr_tally)
         reaction_rates = rr_tally.get_reshaped_data()  # (domains, groups, nuclides, reactions)
 
         # Make energy groups last dimension

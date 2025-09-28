@@ -3540,20 +3540,20 @@ AdaptiveLibMesh::AdaptiveLibMesh(
 void AdaptiveLibMesh::set_mesh_tally_amalgamation(
   std::string cluster_element_integer_name)
 {
-  
+
   clustering_element_integer_index_ =
     m_->has_elem_integer(cluster_element_integer_name)
       ? m_->get_elem_integer_index(cluster_element_integer_name)
       : -1;
   amalgamation_ = (clustering_element_integer_index_ != -1);
-  
+
   if (amalgamation_) {
     // reseve the hash map for cluster elements
     clustering_element_mapping_.reserve(m_->n_active_elem());
 
     // adding clustering map
     for (auto it = m_->active_elements_begin(); it != m_->active_elements_end();
-      it++) {
+         it++) {
 
       auto elem = *it;
       auto cluster_elem = elem;
@@ -3568,10 +3568,10 @@ void AdaptiveLibMesh::set_mesh_tally_amalgamation(
       }
       clustering_element_mapping_.insert(std::make_pair(elem, cluster_elem));
     }
-  }
-  else{
+  } else {
     fatal_error(fmt::format("No extra element integer named: {} found in the "
-                            "mesh", cluster_element_integer_name));
+                            "mesh",
+      cluster_element_integer_name));
   }
 }
 
@@ -3605,9 +3605,10 @@ void AdaptiveLibMesh::write(const std::string& filename) const
 int AdaptiveLibMesh::get_bin_from_element(const libMesh::Elem* elem) const
 {
   auto tally_elem = amalgamation_ ? clustering_element_mapping_.at(elem) : elem;
-  int bin = adaptive_ ? elem_to_bin_map_[tally_elem->id()]
-                      : tally_elem->id() - first_element_id_;
-  if (bin >= n_bins() || bin < 0) {
+  int bin = elem_to_bin_map_[tally_elem->id()];
+
+    if (bin >= n_bins() || bin < 0)
+  {
     fatal_error(fmt::format("Invalid bin: {}", bin));
   }
   return bin;

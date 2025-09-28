@@ -3607,8 +3607,7 @@ int AdaptiveLibMesh::get_bin_from_element(const libMesh::Elem* elem) const
   auto tally_elem = amalgamation_ ? clustering_element_mapping_.at(elem) : elem;
   int bin = elem_to_bin_map_[tally_elem->id()];
 
-    if (bin >= n_bins() || bin < 0)
-  {
+  if (bin >= n_bins() || bin < 0) {
     fatal_error(fmt::format("Invalid bin: {}", bin));
   }
   return bin;

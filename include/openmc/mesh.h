@@ -1041,6 +1041,9 @@ public:
 
   void write(const std::string& filename) const override;
 
+  //! setter for mesh tally amalgamtion
+  void set_mesh_tally_amalgamation(std::string cluster_element_integer_name);
+
 protected:
   // Overridden methods
   int get_bin_from_element(const libMesh::Elem* elem) const override;
@@ -1056,6 +1059,20 @@ private:
                       //!< elements
   std::vector<int> elem_to_bin_map_; //!< mapping dof indices to bin indices for
                                      //!< active elements
+
+  bool amalgamation_ = false; //!< whether we are doing mesh and tally
+                              //!< amalgamation by default it's turned off.
+
+  int clustering_element_integer_index_ = -1; //!< extra element integer index for
+                                           // element clustering
+
+  /*create a hash map where every element in a cluster would map to the first
+   * element of in that cluster if the element isn't part of a cluster then it
+   * will point to it self <any_element_in_a_cluster, first element in that
+   * cluster >
+   */
+  std::unordered_map<const libMesh::Elem*, const libMesh::Elem*>
+    clustering_element_mapping_;
 };
 
 #endif

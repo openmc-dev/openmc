@@ -57,6 +57,25 @@ attributes:
 .. _io_chain_reaction:
 
 ----------------------
+``<source>`` Element
+----------------------
+
+The ``<source>`` element represents photon and electron sources associated with
+the decay of a nuclide and contains information to construct an
+:class:`openmc.stats.Univariate` object that represents this source. This element has the
+following attributes:
+
+  :type:
+    The type of :class:`openmc.stats.Univariate` source term.
+
+  :particle:
+    The type of particle emitted, e.g., 'photon' or 'electron'
+
+  :parameters:
+    The parameters of the source term, e.g., for a :class:`openmc.stats.Discrete` source, the energies (in [eV])
+    at which the particles are emitted and their relative intensities in [Bq/atom].
+
+----------------------
 ``<reaction>`` Element
 ----------------------
 

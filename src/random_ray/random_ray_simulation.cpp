@@ -498,6 +498,7 @@ void RandomRaySimulation::simulate()
 
         // Store random ray k-eff into OpenMC's native k-eff variable
         global_tally_tracklength = k_eff_;
+        global_tally_tracklength_sq = std::pow(k_eff_, 2);
       }
 
       // Execute all tallying tasks, if this is an active batch

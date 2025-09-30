@@ -1,5 +1,6 @@
 #include "openmc/simulation.h"
 
+#include "openmc/array.h"
 #include "openmc/bank.h"
 #include "openmc/capi.h"
 #include "openmc/container_util.h"
@@ -318,7 +319,7 @@ int64_t work_per_rank;
 const RegularMesh* entropy_mesh {nullptr};
 const RegularMesh* ufs_mesh {nullptr};
 
-vector<double> k_generation;
+vector<array<double, 2>> k_generation;
 vector<int64_t> work_index;
 
 } // namespace simulation
@@ -506,8 +507,10 @@ void initialize_generation()
       ufs_count_sites();
 
     // Store current value of tracklength k
-    simulation::keff_generation = simulation::global_tallies(
-      GlobalTally::K_TRACKLENGTH, TallyResult::VALUE);
+    auto& gt = simulation::global_tallies;
+    simulation::keff_generation = {
+      gt(GlobalTally::K_TRACKLENGTH, TallyResult::VALUE),
+      gt(GlobalTally::K_TRACKLENGTH_SQ, TallyResult::VALUE)};
   }
 }
 
@@ -522,6 +525,8 @@ void finalize_generation()
       global_tally_absorption;
     gt(GlobalTally::K_TRACKLENGTH, TallyResult::VALUE) +=
       global_tally_tracklength;
+    gt(GlobalTally::K_TRACKLENGTH_SQ, TallyResult::VALUE) +=
+      global_tally_tracklength_sq;
   }
   gt(GlobalTally::LEAKAGE, TallyResult::VALUE) += global_tally_leakage;
 
@@ -530,6 +535,7 @@ void finalize_generation()
     global_tally_collision = 0.0;
     global_tally_absorption = 0.0;
     global_tally_tracklength = 0.0;
+    global_tally_tracklength_sq = 0.0;
   }
   global_tally_leakage = 0.0;
 

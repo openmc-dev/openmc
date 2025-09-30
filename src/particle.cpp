@@ -479,8 +479,11 @@ void Particle::event_death()
   global_tally_absorption += keff_tally_absorption();
 #pragma omp atomic
   global_tally_collision += keff_tally_collision();
+  double val = keff_tally_tracklength();
 #pragma omp atomic
-  global_tally_tracklength += keff_tally_tracklength();
+  global_tally_tracklength += val;
+#pragma omp atomic
+  global_tally_tracklength_sq += val * val;
 #pragma omp atomic
   global_tally_leakage += keff_tally_leakage();
 

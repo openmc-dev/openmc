@@ -36,7 +36,7 @@ namespace openmc {
 
 namespace simulation {
 
-double keff_generation;
+array<double, 2> keff_generation;
 array<double, 2> k_sum;
 vector<double> entropy;
 xt::xtensor<double, 1> source_frac;
@@ -52,16 +52,21 @@ void calculate_generation_keff()
   const auto& gt = simulation::global_tallies;
 
   // Get keff for this generation by subtracting off the starting value
-  simulation::keff_generation =
+  simulation::keff_generation[0] =
     gt(GlobalTally::K_TRACKLENGTH, TallyResult::VALUE) -
-    simulation::keff_generation;
+    simulation::keff_generation[0];
+  simulation::keff_generation[1] =
+    gt(GlobalTally::K_TRACKLENGTH_SQ, TallyResult::VALUE) -
+    simulation::keff_generation[1];
 
-  double keff_reduced;
+  array<double, 2> keff_reduced;
 #ifdef OPENMC_MPI
   if (settings::solver_type != SolverType::RANDOM_RAY) {
     // Combine values across all processors
-    MPI_Allreduce(&simulation::keff_generation, &keff_reduced, 1, MPI_DOUBLE,
-      MPI_SUM, mpi::intracomm);
+    MPI_Allreduce(&simulation::keff_generation[0], &keff_reduced[0], 1,
+      MPI_DOUBLE, MPI_SUM, mpi::intracomm);
+    MPI_Allreduce(&simulation::keff_generation[1], &keff_reduced[1], 1,
+      MPI_DOUBLE, MPI_SUM, mpi::intracomm);
   } else {
     // If using random ray, MPI parallelism is provided by domain replication.
     // As such, all fluxes will be reduced at the end of each transport sweep,
@@ -77,10 +82,13 @@ void calculate_generation_keff()
   // Normalize single batch estimate of k
   // TODO: This should be normalized by total_weight, not by n_particles
   if (settings::solver_type != SolverType::RANDOM_RAY) {
-    keff_reduced /= settings::n_particles;
+    keff_reduced[0] /= settings::n_particles;
+    keff_reduced[1] /= settings::n_particles;
   }
-
-  simulation::k_generation.push_back(keff_reduced);
+  double k_mean = keff_reduced[0];
+  double k_std = std::sqrt(
+    (keff_reduced[1] - std::pow(k_mean, 2)) / (settings::n_particles - 1));
+  simulation::k_generation.push_back({k_mean, k_std});
 }
 
 void synchronize_bank()
@@ -379,11 +387,11 @@ void calculate_average_keff()
   if (n <= 0) {
     // For inactive generations, use current generation k as estimate for next
     // generation
-    simulation::keff = simulation::k_generation[i];
+    simulation::keff = simulation::k_generation[i][0];
   } else {
     // Sample mean of keff
-    simulation::k_sum[0] += simulation::k_generation[i];
-    simulation::k_sum[1] += std::pow(simulation::k_generation[i], 2);
+    simulation::k_sum[0] += simulation::k_generation[i][0];
+    simulation::k_sum[1] += std::pow(simulation::k_generation[i][0], 2);
 
     // Determine mean
     simulation::keff = simulation::k_sum[0] / n;
@@ -660,7 +668,13 @@ void write_eigenvalue_hdf5(hid_t group)
 {
   write_dataset(group, "n_inactive", settings::n_inactive);
   write_dataset(group, "generations_per_batch", settings::gen_per_batch);
-  write_dataset(group, "k_generation", simulation::k_generation);
+  auto n = simulation::k_generation.size();
+  xt::xtensor<double, 2> k_generation({n, 2});
+  for (int i = 0; i < n; ++i) {
+    k_generation(i, 0) = simulation::k_generation[i][0];
+    k_generation(i, 1) = simulation::k_generation[i][1];
+  }
+  write_dataset(group, "k_generation", k_generation);
   if (settings::entropy_on) {
     write_dataset(group, "entropy", simulation::entropy);
   }
@@ -675,9 +689,13 @@ void write_eigenvalue_hdf5(hid_t group)
 void read_eigenvalue_hdf5(hid_t group)
 {
   read_dataset(group, "generations_per_batch", settings::gen_per_batch);
-  int n = simulation::restart_batch * settings::gen_per_batch;
+  size_t n = simulation::restart_batch * settings::gen_per_batch;
+  xt::xtensor<double, 2> k_generation({n, 2});
+  read_dataset(group, "k_generation", k_generation);
   simulation::k_generation.resize(n);
-  read_dataset(group, "k_generation", simulation::k_generation);
+  for (int i = 0; i < n; ++i) {
+    simulation::k_generation[i] = {k_generation(i, 0), k_generation(i, 1)};
+  }
   if (settings::entropy_on) {
     read_dataset(group, "entropy", simulation::entropy);
   }

@@ -76,6 +76,7 @@ int32_t n_realizations {0};
 double global_tally_absorption;
 double global_tally_collision;
 double global_tally_tracklength;
+double global_tally_tracklength_sq;
 double global_tally_leakage;
 
 //==============================================================================

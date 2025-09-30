@@ -324,8 +324,15 @@ enum TallyScore {
 };
 
 // Global tally parameters
-constexpr int N_GLOBAL_TALLIES {4};
-enum class GlobalTally { K_COLLISION, K_ABSORPTION, K_TRACKLENGTH, LEAKAGE };
+enum class GlobalTally {
+  K_COLLISION,
+  K_ABSORPTION,
+  K_TRACKLENGTH,
+  LEAKAGE,
+  K_TRACKLENGTH_SQ, // for calculation of stddev for generational k
+  SIZE
+};
+constexpr int N_GLOBAL_TALLIES {static_cast<int>(GlobalTally::SIZE)};
 
 // Miscellaneous
 constexpr int C_NONE {-1};

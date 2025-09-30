@@ -13,6 +13,8 @@ from .microxs import get_microxs_and_flux, write_microxs_hdf5, read_microxs_hdf5
 from .results import Results
 from ..checkvalue import PathLike
 from ..mpi import comm
+from openmc.lib import TemporarySession
+from openmc.utility_funcs import change_directory
 
 
 def get_activation_materials(
@@ -242,60 +244,16 @@ class R2SManager:
         self.step1_neutron_transport(
             output_dir / 'neutron_transport', mat_vol_kwargs, micro_kwargs
         )
-        self._sync_neutron_transport_results()
         self.step2_activation(
             timesteps, source_rates, timestep_units, output_dir / 'activation',
             operator_kwargs=operator_kwargs
         )
-        if comm.rank == 0:
-            self.step3_photon_transport(
-                photon_time_indices, bounding_boxes, output_dir / 'photon_transport',
-                mat_vol_kwargs=mat_vol_kwargs, run_kwargs=run_kwargs
-            )
-        self._sync_photon_transport_results()
+        self.step3_photon_transport(
+            photon_time_indices, bounding_boxes, output_dir / 'photon_transport',
+            mat_vol_kwargs=mat_vol_kwargs, run_kwargs=run_kwargs
+        )
 
         return output_dir
-
-    def _sync_neutron_transport_results(self) -> None:
-        """Share neutron transport results from rank 0 with all ranks."""
-
-        if self.method == 'mesh-based':
-            mmv = self.results.get('mesh_material_volumes') if comm.rank == 0 else None
-            mmv = comm.bcast(mmv, root=0)
-            self.results['mesh_material_volumes'] = mmv
-
-        fluxes = self.results.get('fluxes') if comm.rank == 0 else None
-        fluxes = comm.bcast(fluxes, root=0)
-        self.results['fluxes'] = fluxes
-
-        micros = self.results.get('micros') if comm.rank == 0 else None
-        micros = comm.bcast(micros, root=0)
-        self.results['micros'] = micros
-
-        time_data = self.results.get('time') if comm.rank == 0 else None
-        time_data = comm.bcast(time_data, root=0)
-        self.results['time'] = time_data
-
-    def _sync_photon_transport_results(self) -> None:
-        """Share photon transport results from rank 0 with all ranks."""
-
-        photon_mmv = self.results.get('mesh_material_volumes_photon') if comm.rank == 0 else None
-        photon_mmv = comm.bcast(photon_mmv, root=0)
-        if photon_mmv is not None:
-            self.results['mesh_material_volumes_photon'] = photon_mmv
-        elif 'mesh_material_volumes_photon' in self.results:
-            self.results.pop('mesh_material_volumes_photon', None)
-
-        photon_tallies = self.results.get('photon_tallies') if comm.rank == 0 else None
-        photon_tallies = comm.bcast(photon_tallies, root=0)
-        if photon_tallies is not None:
-            self.results['photon_tallies'] = photon_tallies
-        elif 'photon_tallies' in self.results:
-            self.results.pop('photon_tallies', None)
-
-        time_data = self.results.get('time') if comm.rank == 0 else None
-        time_data = comm.bcast(time_data, root=0)
-        self.results['time'] = time_data
 
     def step1_neutron_transport(
         self,
@@ -326,7 +284,7 @@ class R2SManager:
 
         step_name = 'step1_neutron_transport'
         step_start = perf_counter()
-        output_dir = Path(output_dir)
+        output_dir = Path(output_dir).resolve()
         output_dir.mkdir(parents=True, exist_ok=True)
 
         if self.method == 'mesh-based':
@@ -334,8 +292,8 @@ class R2SManager:
             if mat_vol_kwargs is None:
                 mat_vol_kwargs = {}
             mat_vol_start = perf_counter()
-            self.results['mesh_material_volumes'] = mmv = \
-                self.domains.material_volumes(self.neutron_model, **mat_vol_kwargs)
+            self.results['mesh_material_volumes'] = mmv = comm.bcast(
+                self.domains.material_volumes(self.neutron_model, **mat_vol_kwargs))
             self._record_time(step_name, 'mesh_material_volumes', mat_vol_start)
 
             # Save results to file
@@ -375,8 +333,9 @@ class R2SManager:
 
         # Run neutron transport and get fluxes and micros
         microxs_start = perf_counter()
-        self.results['fluxes'], self.results['micros'] = get_microxs_and_flux(
-            self.neutron_model, domains, **micro_kwargs)
+        with TemporarySession():
+            self.results['fluxes'], self.results['micros'] = get_microxs_and_flux(
+                self.neutron_model, domains, **micro_kwargs)
         self._record_time(step_name, 'get_microxs_and_flux', microxs_start)
 
         # Save flux and micros to file
@@ -486,7 +445,8 @@ class R2SManager:
 
         # Get depletion results
         results_start = perf_counter()
-        self.results['depletion_results'] = Results(output_path)
+        results = Results(output_path) if comm.rank == 0 else None
+        self.results['depletion_results'] = comm.bcast(results)
         self._record_time(step_name, 'load_results', results_start)
 
         self._record_time(step_name, 'total', step_start)
@@ -533,9 +493,6 @@ class R2SManager:
             during the photon transport step. By default, output is disabled.
         """
 
-        if comm.rank != 0:
-            return
-
         step_name = 'step3_photon_transport'
         step_start = perf_counter()
 
@@ -569,20 +526,22 @@ class R2SManager:
         # potential material changes
         if self.method == 'mesh-based' and different_photon_model:
             photon_mmv_start = perf_counter()
-            self.results['mesh_material_volumes_photon'] = photon_mmv = \
-                self.domains.material_volumes(self.photon_model, **mat_vol_kwargs)
+            self.results['mesh_material_volumes_photon'] = photon_mmv = comm.bcast(
+                self.domains.material_volumes(self.photon_model, **mat_vol_kwargs))
             self._record_time(step_name, 'photon_mesh_material_volumes', photon_mmv_start)
 
             # Save photon MMV results to file
-            save_photon_mmv_start = perf_counter()
-            photon_mmv.save(output_dir / 'mesh_material_volumes.npz')
-            self._record_time(step_name, 'write_photon_mesh_material_volumes', save_photon_mmv_start)
+            if comm.rank == 0:
+                save_photon_mmv_start = perf_counter()
+                photon_mmv.save(output_dir / 'mesh_material_volumes.npz')
+                self._record_time(step_name, 'write_photon_mesh_material_volumes', save_photon_mmv_start)
 
-        tally_ids = [tally.id for tally in self.photon_model.tallies]
-        tally_json_start = perf_counter()
-        with open(output_dir / 'tally_ids.json', 'w') as f:
-            json.dump(tally_ids, f)
-        self._record_time(step_name, 'write_tally_ids', tally_json_start)
+        if comm.rank == 0:
+            tally_ids = [tally.id for tally in self.photon_model.tallies]
+            tally_json_start = perf_counter()
+            with open(output_dir / 'tally_ids.json', 'w') as f:
+                json.dump(tally_ids, f)
+            self._record_time(step_name, 'write_tally_ids', tally_json_start)
 
         self.results['photon_tallies'] = {}
 
@@ -643,8 +602,9 @@ class R2SManager:
 
             # Run photon transport calculation
             run_start = perf_counter()
-            run_kwargs['cwd'] = Path(output_dir) / f'time_{time_index}'
-            statepoint_path = self.photon_model.run(**run_kwargs)
+            photon_dir = Path(output_dir) / f'time_{time_index}'
+            with change_directory(photon_dir):
+                statepoint_path = self.photon_model.run(**run_kwargs)
             self._record_time(step_name, f'run_photon_{time_index}', run_start)
 
             # Store tally results

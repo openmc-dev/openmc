@@ -13,6 +13,7 @@ from numpy.ctypeslib import as_array
 
 from . import _dll
 from .error import _error_handler
+from ..mpi import comm
 from openmc.checkvalue import PathLike
 import openmc.lib
 import openmc
@@ -664,6 +665,7 @@ class TemporarySession:
 
         # Set up temporary directory
         self.tmp_dir = TemporaryDirectory()
+        self.tmp_dir = comm.bcast(self.tmp_dir)
         working_dir = Path(self.tmp_dir.name)
         working_dir.mkdir(parents=True, exist_ok=True)
         os.chdir(working_dir)

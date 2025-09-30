@@ -536,7 +536,7 @@ class StatePoint:
     def get_tally(self, scores=[], filters=[], nuclides=[],
                   name=None, id=None, estimator=None, exact_filters=False,
                   exact_nuclides=False, exact_scores=False,
-                  multiply_density=None, derivative=None):
+                  multiply_density=None, derivative=None, filter_type=None):
         """Finds and returns a Tally object with certain properties.
 
         This routine searches the list of Tallies and returns the first Tally
@@ -580,6 +580,9 @@ class StatePoint:
             to the same value as this parameter.
         derivative : openmc.TallyDerivative, optional
             TallyDerivative object to match.
+        filter_type : type, optional
+            If not None, the Tally must have at least one Filter that is an
+            instance of this type. For example `openmc.MeshFilter`.
 
         Returns
         -------
@@ -651,6 +654,10 @@ class StatePoint:
                         break
 
                 if not contains_filters:
+                    continue
+
+            if filter_type is not None:
+                if not any(isinstance(f, filter_type) for f in test_tally.filters):
                     continue
 
             # Determine if Tally has the queried Nuclide(s)

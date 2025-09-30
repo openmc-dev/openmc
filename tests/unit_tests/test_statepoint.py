@@ -1,7 +1,7 @@
 import openmc
 
 
-def test_get_tally_filter_type():
+def test_get_tally_filter_type(run_in_tmpdir):
     """Test various ways of retrieving tallies from a StatePoint object."""
 
     mat = openmc.Material()

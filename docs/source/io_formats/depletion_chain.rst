@@ -62,8 +62,8 @@ attributes:
 
 The ``<source>`` element represents photon and electron sources associated with
 the decay of a nuclide and contains information to construct an
-:class:`openmc.stats.Univariate` object that represents this source. This element has the
-following attributes:
+:class:`openmc.stats.Univariate` object that represents this emission as an
+energy distribution. This element has the following attributes:
 
   :type:
     The type of :class:`openmc.stats.Univariate` source term.

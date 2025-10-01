@@ -12,8 +12,8 @@ z_max = 32.13
 # Instantiate a Settings, set all runtime parameters, and export to XML
 settings_file = openmc.Settings()
 settings_file.energy_mode = "multi-group"
-settings_file.batches = 100 #1000
-settings_file.inactive = 50 #600
+settings_file.batches = 20 #1000
+settings_file.inactive = 10 #600
 settings_file.particles = 1750
 settings_file.run_mode = 'eigenvalue'
 settings_file.output = {'tallies': False, 'summary': False}
@@ -43,6 +43,7 @@ plot_1.filename = 'plot_1'
 plot_1.origin = [0.0, 0.0, 0.0]
 plot_1.width = [64.26, 64.26, 1.0]
 plot_1.pixels = [1000, 1000, 1]
+# plot_1.pixels = [3000, 3000, 1]
 plot_1.type = 'voxel'
 
 # Instantiate a Plots collection and export to XML

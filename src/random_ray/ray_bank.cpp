@@ -24,33 +24,65 @@ void RayBank::add_ray_to_bank(RandomRay& ray){
 void RayBank::buffer_ray_data_to_send(RandomRay& ray, FlatSourceDomain* domain){
 
     // Read source region key from ray
-    // SourceRegionKey sr_key = ray.exchange_data_.sr_key;
-    int sr_key = ray.exchange_data_.sr;
+    SourceRegionKey sr_key = ray.exchange_data_.sr_key; //TODO: SRK might not actually need to be buffered
+    // int sr_key = ray.exchange_data_.sr;
 
     // Get rank to send ray to
-    int rank;
+    int rank = ray.owner_rank_;
 
-    if (mpi::decomp_map.subdomain_map_.find(sr_key) != mpi::decomp_map.subdomain_map_.end()){
-      rank = mpi::decomp_map.subdomain_map_[sr_key];
-    } else {
-      std::string err_msg = "ERROR: Source region key " + std::to_string(sr_key) + 
-                            " not found in decomposition map for ray " + 
-                            std::to_string(ray.exchange_data_.ray_id) + " at position: (" + 
-                            std::to_string(ray.exchange_data_.position.x) + ", " +
-                            std::to_string(ray.exchange_data_.position.y) + ", " +
-                            std::to_string(ray.exchange_data_.position.z) + ").";
-      fatal_error(err_msg);
+    // printf("RANK %d: Put ray %ld into map, new owner: %d, %d \n", mpi::rank, ray.exchange_data_.ray_id, ray.owner_rank_, rank);
+
+    if (rank == mpi::rank){
+      warning(fmt::format(
+        "Ray {} at position ({:.5e}, {:.5e}, {:.5e}) in source region key ({}, {})"
+        "is being sent to the same rank {}. This may indicate an error in the decomposition map."
+        , ray.exchange_data_.ray_id, ray.exchange_data_.position.x, ray.exchange_data_.position.y, ray.exchange_data_.position.z,
+        sr_key.base_source_region_id, sr_key.mesh_bin, rank));
+      // warning("Ray {} at position ({:.5e}, {:.5e}, {:.5e}) in source region key ({}, {}) is being sent to the same rank {}. This may indicate an error in the decomposition map.",
+      //   ray.exchange_data_.ray_id, ray.exchange_data_.position.x, ray.exchange_data_.position.y, ray.exchange_data_.position.z,
+      //   sr_key.base_source_region_id, sr_key.mesh_bin, rank);
     }
+
+    // if (mpi::decomp_map.subdomain_map_.find(sr_key) != mpi::decomp_map.subdomain_map_.end()){
+    //   rank = mpi::decomp_map.subdomain_map_[sr_key];
+    // } else {
+    //   std::string err_msg = "ERROR: Source region key " + std::to_string(sr_key.base_source_region_id) + 
+    //                         "," + std::to_string(sr_key.mesh_bin) +
+    //                         " not found in decomposition map for ray " + 
+    //                         std::to_string(ray.exchange_data_.ray_id) + " at position: (" + 
+    //                         std::to_string(ray.exchange_data_.position.x) + ", " +
+    //                         std::to_string(ray.exchange_data_.position.y) + ", " +
+    //                         std::to_string(ray.exchange_data_.position.z) + ").";
+    //   fatal_error(err_msg);
+    // }
 
     // Add ray data to buffer
     ray_send_buffer_[rank].push_back(ray.exchange_data_);
+
+    // for (auto& [rank, rays] : ray_send_buffer_) {
+    //   for (int r = 0; r < rays.size(); r++){
+    //     printf("RANK %d: 1: Buffered ray ID %ld to be sent to rank: %d \n", mpi::rank, rays[r].ray_id, rank);
+    //   }
+    // }
 }
 
 // Update ray bank
 void RayBank::update(FlatSourceDomain* domain){
 
+    // for (auto& [rank, rays] : ray_send_buffer_) {
+    //   for (int r = 0; r < rays.size(); r++){
+    //     printf("RANK %d: 2: Buffered ray ID %ld to be sent to rank: %d \n", mpi::rank, rays[r].ray_id, rank);
+    //   }
+    // }
+
     // Empty ray list because rays have either died or are in buffer to be sent to other ranks
     reset_my_ray_list();
+
+    // for (auto& [rank, rays] : ray_send_buffer_) {
+    //   for (int r = 0; r < rays.size(); r++){
+    //     printf("RANK %d: 3: Buffered ray ID %ld to be sent to rank: %d \n", mpi::rank, rays[r].ray_id, rank);
+    //   }
+    // }
 
     // Communicate how many rays will be sent to each rank
     communicate_message_metadata();
@@ -90,6 +122,9 @@ void RayBank::communicate_message_metadata() {
   for (auto& [rank, rays] : ray_send_buffer_) {
     num_messages_sending[rank] = rays.size();
     total_sending_rays_ += num_messages_sending[rank];
+    // for (int r = 0; r < rays.size(); r++){
+    //   printf("RANK %d: Metadata, ray ID %ld to be sent to rank: %d \n", mpi::rank, rays[r].ray_id, rank);
+    // }
   }
 
   // Exchange message counts with all ranks
@@ -150,6 +185,7 @@ void RayBank::communicate_rays(){
           angular_flux_data[(vector_send_idx + i) * negroups_ + g] = rays[i].angular_flux[g];
         }
       }
+      // printf("RANK %d: Sending ray %ld to rank: %d \n", mpi::rank, ray_data[vector_send_idx].ray_id, receiving_rank);
 
       MPI_Isend(&ray_data[vector_send_idx], num_rays_sending * sizeof(RayExchangeData), MPI_BYTE, receiving_rank, 1, mpi::intracomm, &requests[req_idx]);
       MPI_Isend(&angular_flux_data[vector_send_idx * negroups_], num_rays_sending * negroups_, MPI_FLOAT, receiving_rank, 2, mpi::intracomm, &requests[req_idx+1]); 
@@ -165,6 +201,7 @@ void RayBank::communicate_rays(){
       if (num_rays_receiving == 0) continue;
       MPI_Recv(&received_ray_data_[vector_receive_idx], num_rays_receiving * sizeof(RayExchangeData), MPI_BYTE, sending_rank, 1, mpi::intracomm, MPI_STATUS_IGNORE);
       MPI_Recv(&received_angular_flux_data_[vector_receive_idx * negroups_], num_rays_receiving * negroups_, MPI_FLOAT, sending_rank, 2, mpi::intracomm, MPI_STATUS_IGNORE);
+      // printf("RANK %d: Receiving ray %ld from rank: %d \n", mpi::rank, received_ray_data_[vector_receive_idx].ray_id, sending_rank);
 
       vector_receive_idx += num_rays_receiving;
     }
@@ -199,18 +236,37 @@ void RayBank::update_my_ray_list(FlatSourceDomain* domain){
 
 }
 
-bool RayBank::is_any_ray_alive() {
+// bool RayBank::is_any_ray_alive() {
 
-  int global_rays_alive = 0;
+//   int global_rays_alive = 0;
+//   int local_rays_alive = ray_bank_size(); 
+//   //TODO: maybe this can be optimised, such that if local_rays_alive > 0, 
+//   // we don't need to do MPI_Allreduce. But maybe Allreduce does not matter 
+//   // because they will be synchronised anyway.
+//   MPI_Allreduce(&local_rays_alive, &global_rays_alive, 1, MPI_INT, MPI_SUM, mpi::intracomm);
+
+//   if (global_rays_alive > 0){
+//     return true;
+//   } else {
+//     return false;
+//   }
+
+// }
+
+bool RayBank::is_any_ray_alive(){
+
   int local_rays_alive = ray_bank_size();
-  MPI_Allreduce(&local_rays_alive, &global_rays_alive, 1, MPI_INT, MPI_SUM, mpi::intracomm);
-
-  if (global_rays_alive > 0){
-    return true;
-  } else {
-    return false;
+  int flag = 0;
+  if (local_rays_alive > 0) {
+    flag = 1;
   }
-
+  
+  //TODO: maybe this can be optimised, such that if local_rays_alive > 0, 
+  // we don't need to do MPI_Allreduce. But maybe Allreduce does not matter 
+  // because they will be synchronised anyway.
+  MPI_Allreduce(MPI_IN_PLACE, &flag, 1, MPI_INT, MPI_MAX, mpi::intracomm);
+  
+  return flag > 0;
 }
 
 }// namespace openmc

@@ -64,8 +64,10 @@ void openmc_run_random_ray()
     sim.apply_fixed_sources_and_mesh_domains();
 
     // Initialize subdomains for MPI ranks
+    simulation::time_decomposition_handling.start();
     mpi::decomp_map.generate_rank_centers();
-    mpi::decomp_map.create(sim.domain());
+    // mpi::decomp_map.create(sim.domain());
+    simulation::time_decomposition_handling.stop();
 
     // Begin main simulation timer
     simulation::time_total.start();
@@ -144,6 +146,9 @@ void openmc_run_random_ray()
     // Output all simulation results
     adjoint_sim.output_simulation_results();
   }
+
+  printf("Finished adjoint simulation\n");
+
 }
 
 // Enforces restrictions on inputs in random ray mode.  While there are
@@ -456,23 +461,68 @@ void RandomRaySimulation::simulate()
       domain_->prepare_base_source_regions();
     }
 
+    // printf("Rank %d Test1 \n", mpi::rank);
+
     // Transport sweep over all random rays for the iteration
     if (mpi::n_procs > 1){
+
+      // printf("1: Rank %d Starting transport sweep \n", mpi::rank);
       transport_sweep_decomp(RB);
+      // printf("2: Rank %d Ended transport sweep \n", mpi::rank);
+
+      // bool test  = domain_->discovered_source_regions_.contains(SourceRegionKey(4, 104171));
+      // printf("2 RANK %d: Source region (4, 104171) discovered? %d \n", mpi::rank, test);
+
+      // bool test2 = false;
+      // if(domain_->source_region_map_.find(SourceRegionKey(4, 104171)) != domain_->source_region_map_.end()){
+      //   test2 = true;
+      // }
+      // printf("2 RANK %d: Source region (4, 104171) in main map? %d \n", mpi::rank, test2);
+      // if (test) {
+      //   SourceRegion& sr = domain_->discovered_source_regions_[SourceRegionKey(4, 104171)];
+      //   printf("RANK %d: volume: %f\n", mpi::rank, sr.scalars_.volume_);
+      // }
+
+      // Update decomposition map with newly discovered source regions
+      simulation::time_decomposition_handling.start();
+      mpi::decomp_map.update(domain_->discovered_source_regions_);
+      simulation::time_decomposition_handling.stop();
+      // printf("3: Rank %d Updated decomp map \n", mpi::rank);
+
     } else {
       transport_sweep();
     }
 
-    // Update decomposition map with newly discovered source regions
-    simulation::time_decomposition_handling.start();
-    mpi::decomp_map.update();
-    simulation::time_decomposition_handling.stop();
+    // printf("Rank %d Test6 \n", mpi::rank);
+
+    // bool test  = domain_->discovered_source_regions_.contains(SourceRegionKey(4, 104171));
+    // printf("3 RANK %d: Source region (4, 104171) discovered? %d \n", mpi::rank, test);
+    // if (test) {
+    //   SourceRegion& sr = domain_->discovered_source_regions_[SourceRegionKey(4, 104171)];
+    //   printf("RANK %d: volume: %f\n", mpi::rank, sr.scalars_.volume_);
+    // }
+
+
+    // bool test2 = false;
+    // if(domain_->source_region_map_.find(SourceRegionKey(4, 104171)) != domain_->source_region_map_.end()){
+    //   test2 = true;
+    // }
+    // printf("3 RANK %d: Source region (4, 104171) in main map? %d \n", mpi::rank, test2);
 
     // If using mesh subdivision, add any newly discovered source regions
     // to the main source region container.
     if (RandomRay::mesh_subdivision_enabled_) {
       domain_->finalize_discovered_source_regions();
     }
+
+    // test  = domain_->discovered_source_regions_.contains(SourceRegionKey(4, 104171));
+    // printf("4 RANK %d: Source region (4, 104171) discovered? %d \n", mpi::rank, test);
+
+    // test2 = false;
+    // if(domain_->source_region_map_.find(SourceRegionKey(4, 104171)) != domain_->source_region_map_.end()){
+    //   test2 = true;
+    // }
+    // printf("4 RANK %d: Source region (4, 104171) in main map? %d \n", mpi::rank, test2);
 
     // Normalize scalar flux and update volumes
     domain_->normalize_scalar_flux_and_volumes(
@@ -585,6 +635,8 @@ void RandomRaySimulation::instability_check(
   if (mpi::n_procs > 1){
     // Reduce n_hits and n_source_regions on master rank to compute
     // global miss rate
+    // printf("RANK %d: n_hits: %ld, n_source_regions: %ld \n", mpi::rank, n_hits, n_source_regions);
+
     simulation::time_decomposition_handling.stop();
     if (mpi::master) {
       MPI_Reduce(MPI_IN_PLACE, &n_hits, 1, MPI_LONG_LONG, MPI_SUM, 0, mpi::intracomm);
@@ -597,6 +649,8 @@ void RandomRaySimulation::instability_check(
   }
 
   if (mpi::master) {
+    // printf("TOTAL: n_hits: %ld, n_source_regions: %ld \n", n_hits, n_source_regions);
+
     double percent_missed = ((n_source_regions - n_hits) /
                             static_cast<double>(n_source_regions)) *
                           100.0;
@@ -779,27 +833,45 @@ void RandomRaySimulation::transport_sweep_decomp(RayBank& RB) {
       }
     }
 
+    // printf("RANK %d: Ray bank contains %d rays \n", mpi::rank, RB.ray_bank_size());
+
     int num_comms = 0;
     bool keep_running = true;
 
+    // if (simulation::current_batch == 2){
+    //   printf("Rank %d Starting transport sweep with %d rays \n", mpi::rank, RB.ray_bank_size());
+    // }
+    // printf("Rank %d Test2 \n", mpi::rank);
+
+    // Move rays across ranks until they are terminated
     while (keep_running) {
 
       // Start timer for transport
       simulation::time_transport.start();
+
+      // printf("RANK %d: Starting transport sweep with %d rays \n", mpi::rank, RB.ray_bank_size());
 
       #pragma omp parallel for schedule(dynamic)                                     \
         reduction(+ : total_geometric_intersections_)
           for (int i = 0; i < RB.ray_bank_size(); i++) {
             RandomRay& ray = RB.my_ray_list_[i];
             total_geometric_intersections_ += ray.transport_history_based_single_ray();
+            // printf("RANK %d: Transported ray %ld \n", mpi::rank, ray.id());
+
+            // printf("RANK %d: Transport of ray %d complete, new owner: %d \n", mpi::rank, i, ray.owner_rank_);
+
 
             // If ray has left my subdomain, buffer ray state
             if(ray.has_left_subdomain()){
               #pragma omp critical (raybuffer)
               {
+                // printf("RANK %d: Buffering ray %d, new owner: %d \n", mpi::rank, i, ray.owner_rank_);
+                // printf("Rank %d Test2.2 \n", mpi::rank);
                 simulation::time_ray_buffering.start();
+                num_ray_crossings_ += 1;
                 RB.buffer_ray_data_to_send(ray, domain_.get());
                 simulation::time_ray_buffering.stop();
+                // printf("Rank %d Test2.3 \n", mpi::rank);
               }
             }
           }
@@ -807,38 +879,54 @@ void RandomRaySimulation::transport_sweep_decomp(RayBank& RB) {
 
       // Remove dead rays and move rays across subdomains between ranks
       simulation::time_decomposition_handling.start();
+
+      // Check if new source regions were discovered and add them to subdomain map
+      // if (mpi::decomp_map.new_sr_discovered()){
+      //   mpi::decomp_map.exchange_sr_info()
+      // }
+
+      // printf("Rank %d Test3 \n", mpi::rank);
+
+      // if (simulation::current_batch == 2){
+      //   printf("Rank %d Completed transport of %d rays \n", mpi::rank, RB.ray_bank_size());
+      // }
+
+      // printf("RANK %d: Update ray bank \n", mpi::rank);
       RB.update(domain_.get());
+
+      // bool test  = domain_->discovered_source_regions_.contains(SourceRegionKey(4, 104171));
+      // printf("1 RANK %d: Source region (4, 104171) discovered? %d \n", mpi::rank, test);
+
+      // bool test2 = false;
+      // if(domain_->source_region_map_.find(SourceRegionKey(4, 104171)) != domain_->source_region_map_.end()){
+      //   test2 = true;
+      // }
+      // printf("1 RANK %d: Source region (4, 104171) in main map? %d \n", mpi::rank, test2);
+
+
+      // if (simulation::current_batch == 2){
+      //   printf("Rank %d Completed send/recv, now has %d rays \n", mpi::rank, RB.ray_bank_size());
+      // }
+
+      // printf("Rank %d Test4 \n", mpi::rank);
       
       keep_running = RB.is_any_ray_alive();
       num_comms ++;
       simulation::time_decomposition_handling.stop();
     }
 
-    simulation::time_decomposition_handling.start();
+    // printf("Rank %d Test5 \n", mpi::rank);
 
-    // Temporary diagnostics data
-    uint64_t total_geometric_intersections_sum = 0;
+    simulation::time_decomposition_handling.start();
 
     if (mpi::master) {
       printf("Max subdomain crossings: %d\n", num_comms);
-      printf("Load distribution: ");
+      printf("Number of ray crossings: %ld\n", num_ray_crossings_);
     }
 
-    MPI_Allreduce(&total_geometric_intersections_, &total_geometric_intersections_sum, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, mpi::intracomm);
-    double load = (total_geometric_intersections_/static_cast<double>(total_geometric_intersections_sum))*100.0;
-
-    // send load data to master rank (rank 0)
-    if (mpi::master) {
-      printf("RANK %d: %.2f%%, ", 0, load);     
-      for (int i = 1; i < mpi::n_procs-1; i++) {
-        MPI_Recv(&load, 1, MPI_DOUBLE, i, 1, mpi::intracomm, MPI_STATUS_IGNORE);
-        printf("RANK %d: %.2f%%, ", i, load);
-      }
-      MPI_Recv(&load, 1, MPI_DOUBLE, mpi::n_procs-1, 1, mpi::intracomm, MPI_STATUS_IGNORE);
-      printf("RANK %d: %.2f%%\n", mpi::n_procs-1, load);
-    } else {
-      MPI_Send(&load, 1, MPI_DOUBLE, 0, 1, mpi::intracomm);
-    }
+    // Calculate load per rank based on geometric intersections
+    mpi::decomp_map.calculate_rank_load(total_geometric_intersections_);
+    // mpi::decomp_map.calculate_rank_load(domain_.get());
 
     avg_num_comms_ += num_comms;
 

@@ -10,18 +10,18 @@ namespace openmc {
 // SourceRegionHandle implementation
 //==============================================================================
 SourceRegionHandle::SourceRegionHandle(SourceRegion& sr)
-  : negroups_(sr.scalar_flux_old_.size()), material_(&sr.material_),
-    is_small_(&sr.is_small_), n_hits_(&sr.n_hits_),
+  : negroups_(sr.scalar_flux_old_.size()), material_(&sr.scalars_.material_),
+    is_small_(&sr.scalars_.is_small_), n_hits_(&sr.scalars_.n_hits_),
     is_linear_(sr.source_gradients_.size() > 0), lock_(&sr.lock_),
-    volume_(&sr.volume_), volume_t_(&sr.volume_t_), volume_sq_(&sr.volume_sq_),
-    volume_sq_t_(&sr.volume_sq_t_), volume_naive_(&sr.volume_naive_),
-    position_recorded_(&sr.position_recorded_),
-    external_source_present_(&sr.external_source_present_),
-    position_(&sr.position_), centroid_(&sr.centroid_),
-    centroid_iteration_(&sr.centroid_iteration_), centroid_t_(&sr.centroid_t_),
-    mom_matrix_(&sr.mom_matrix_), mom_matrix_t_(&sr.mom_matrix_t_),
-    volume_task_(&sr.volume_task_), mesh_(&sr.mesh_),
-    parent_sr_(&sr.parent_sr_), scalar_flux_old_(sr.scalar_flux_old_.data()),
+    volume_(&sr.scalars_.volume_), volume_t_(&sr.scalars_.volume_t_), volume_sq_(&sr.scalars_.volume_sq_),
+    volume_sq_t_(&sr.scalars_.volume_sq_t_), volume_naive_(&sr.scalars_.volume_naive_),
+    position_recorded_(&sr.scalars_.position_recorded_),
+    external_source_present_(&sr.scalars_.external_source_present_),
+    position_(&sr.scalars_.position_), centroid_(&sr.scalars_.centroid_),
+    centroid_iteration_(&sr.scalars_.centroid_iteration_), centroid_t_(&sr.scalars_.centroid_t_),
+    mom_matrix_(&sr.scalars_.mom_matrix_), mom_matrix_t_(&sr.scalars_.mom_matrix_t_),
+    volume_task_(&sr.volume_task_), mesh_(&sr.scalars_.mesh_),
+    parent_sr_(&sr.scalars_.parent_sr_), scalar_flux_old_(sr.scalar_flux_old_.data()),
     scalar_flux_new_(sr.scalar_flux_new_.data()), source_(sr.source_.data()),
     external_source_(sr.external_source_.data()),
     scalar_flux_final_(sr.scalar_flux_final_.data()),
@@ -63,20 +63,63 @@ SourceRegion::SourceRegion(int negroups, bool is_linear)
 SourceRegion::SourceRegion(const SourceRegionHandle& handle, int64_t parent_sr)
   : SourceRegion(handle.negroups_, handle.is_linear_)
 {
-  material_ = handle.material();
-  mesh_ = handle.mesh();
-  parent_sr_ = parent_sr;
+  scalars_.material_ = handle.material();
+  scalars_.mesh_ = handle.mesh();
+  scalars_.parent_sr_ = parent_sr;
   for (int g = 0; g < scalar_flux_new_.size(); g++) {
     scalar_flux_old_[g] = handle.scalar_flux_old(g);
     source_[g] = handle.source(g);
   }
 
   if (settings::run_mode == RunMode::FIXED_SOURCE) {
-    external_source_present_ = handle.external_source_present();
+    scalars_.external_source_present_ = handle.external_source_present();
     for (int g = 0; g < scalar_flux_new_.size(); g++) {
       external_source_[g] = handle.external_source(g);
     }
   }
+}
+
+// combine two source regions from different ranks together
+void SourceRegion::merge(SourceRegion& sr_add, bool is_linear) {
+
+  // printf("RANK %d:  Test 1\n", mpi::rank);
+
+  // scalar fields
+  scalars_.volume_ += sr_add.scalars_.volume_;
+  scalars_.volume_sq_ += sr_add.scalars_.volume_sq_;
+  scalars_.volume_naive_ += sr_add.scalars_.volume_naive_;
+  scalars_.n_hits_ += sr_add.scalars_.n_hits_;
+  scalars_.external_source_present_ = std::max(scalars_.external_source_present_, sr_add.scalars_.external_source_present_);
+  if (is_linear) {
+    scalars_.centroid_iteration_ += sr_add.scalars_.centroid_iteration_;
+    scalars_.mom_matrix_ += sr_add.scalars_.mom_matrix_;
+  }
+
+  // printf("RANK %d:  Test 2\n", mpi::rank);
+  // printf("Size scalar flux new %lu \n", scalar_flux_new_.size());
+
+  // vector fields
+  // #pragma omp simd //TODO: check if this is safe
+  for (int g = 0; g < scalar_flux_new_.size(); g++) {
+    // printf("RANK %d:  Test 2.1\n", mpi::rank);   
+    // printf("1 Size scalar flux new %lu \n", sr_add.scalar_flux_new_.size());
+    scalar_flux_new_[g] += sr_add.scalar_flux_new_[g];
+    // printf("0 Size scalar flux new %lu \n", scalar_flux_new_.size());
+    // printf("1 Size scalar flux new %lu \n", sr_add.scalar_flux_new_.size());
+    scalar_flux_final_[g] += sr_add.scalar_flux_final_[g];
+    // printf("2 Size scalar flux new %lu \n", sr_add.scalar_flux_final_.size());
+    if (settings::run_mode == RunMode::FIXED_SOURCE) {
+      external_source_[g] += sr_add.external_source_[g];
+      // printf("3 Size scalar flux new %lu \n", sr_add.external_source_.size());
+    }
+    // printf("is linear %d \n", is_linear);
+    if (is_linear) {
+      flux_moments_new_[g] += sr_add.flux_moments_new_[g];
+    }
+  }
+
+  // printf("RANK %d:  Test 3\n", mpi::rank);
+
 }
 
 //==============================================================================
@@ -88,29 +131,29 @@ void SourceRegionContainer::push_back(const SourceRegion& sr)
   n_source_regions_++;
 
   // Scalar fields
-  material_.push_back(sr.material_);
-  is_small_.push_back(sr.is_small_);
-  n_hits_.push_back(sr.n_hits_);
+  material_.push_back(sr.scalars_.material_);
+  is_small_.push_back(sr.scalars_.is_small_);
+  n_hits_.push_back(sr.scalars_.n_hits_);
   lock_.push_back(sr.lock_);
-  volume_.push_back(sr.volume_);
-  volume_t_.push_back(sr.volume_t_);
-  volume_sq_.push_back(sr.volume_sq_);
-  volume_sq_t_.push_back(sr.volume_sq_t_);
-  volume_naive_.push_back(sr.volume_naive_);
-  position_recorded_.push_back(sr.position_recorded_);
-  external_source_present_.push_back(sr.external_source_present_);
-  position_.push_back(sr.position_);
+  volume_.push_back(sr.scalars_.volume_);
+  volume_t_.push_back(sr.scalars_.volume_t_);
+  volume_sq_.push_back(sr.scalars_.volume_sq_);
+  volume_sq_t_.push_back(sr.scalars_.volume_sq_t_);
+  volume_naive_.push_back(sr.scalars_.volume_naive_);
+  position_recorded_.push_back(sr.scalars_.position_recorded_);
+  external_source_present_.push_back(sr.scalars_.external_source_present_);
+  position_.push_back(sr.scalars_.position_);
   volume_task_.push_back(sr.volume_task_);
-  mesh_.push_back(sr.mesh_);
-  parent_sr_.push_back(sr.parent_sr_);
+  mesh_.push_back(sr.scalars_.mesh_);
+  parent_sr_.push_back(sr.scalars_.parent_sr_);
 
   // Only store these fields if is_linear_ is true
   if (is_linear_) {
-    centroid_.push_back(sr.centroid_);
-    centroid_iteration_.push_back(sr.centroid_iteration_);
-    centroid_t_.push_back(sr.centroid_t_);
-    mom_matrix_.push_back(sr.mom_matrix_);
-    mom_matrix_t_.push_back(sr.mom_matrix_t_);
+    centroid_.push_back(sr.scalars_.centroid_);
+    centroid_iteration_.push_back(sr.scalars_.centroid_iteration_);
+    centroid_t_.push_back(sr.scalars_.centroid_t_);
+    mom_matrix_.push_back(sr.scalars_.mom_matrix_);
+    mom_matrix_t_.push_back(sr.scalars_.mom_matrix_t_);
   }
 
   // Energy-dependent fields

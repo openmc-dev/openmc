@@ -17,7 +17,8 @@ struct RayBufferContainer {
   double distance_travelled;
   vector<float> angular_flux;
   SourceRegionKey sr_key;
-  int sr;
+  int sr; //TODO: remove
+  // int receiving_rank;
   bool is_active;
   uint64_t ray_id; 
 };
@@ -91,6 +92,7 @@ public:
   RayBufferContainer exchange_data_;
 
   bool ray_trace_only_ {false}; // If true, only perform geometry operations
+  int owner_rank_ {C_NONE}; // Rank that owns this ray based on its position
 
 private:
   //----------------------------------------------------------------------------
@@ -108,6 +110,7 @@ private:
   bool is_active_ {false};
   bool is_alive_ {true};
   bool is_local_ {true};
+  // bool discovered_new_SRK_ {false};
   // bool is_buffered_ {false};
 }; // class RandomRay
 

@@ -67,6 +67,7 @@ private:
   // Average number of ray communications between rank per batch
   uint64_t avg_num_comms_ {0};
   uint64_t num_comms_batch_ {0};
+  uint64_t num_ray_crossings_ {0};  //TODO: temporary
   vector<float> rank_load_;
 
 }; // class RandomRaySimulation

@@ -1053,7 +1053,7 @@ void FlatSourceDomain::output_to_vtk_decomp() const
 
     // Relate voxel spatial locations to random ray source regions
     vector<int> voxel_indices(Nx * Ny * Nz);
-    vector<SourceRegionKey> voxel_indices_key(Nx * Ny * Nz);
+    // vector<SourceRegionKey> voxel_indices_key(Nx * Ny * Nz);
     vector<Position> voxel_positions(Nx * Ny * Nz);
     vector<double> weight_windows(Nx * Ny * Nz);
     vector<int> my_voxel_ids;
@@ -1075,7 +1075,7 @@ void FlatSourceDomain::output_to_vtk_decomp() const
 
           bool found = exhaustive_find_cell(p);
           if (!found) {
-            voxel_indices_key[z * Ny * Nx + y * Nx + x] = {-1,-1};
+            // voxel_indices_key[z * Ny * Nx + y * Nx + x] = {-1,-1};
             voxel_indices[z * Ny * Nx + y * Nx + x] = -1;
             voxel_positions[z * Ny * Nx + y * Nx + x] = sample;
             weight_windows[z * Ny * Nx + y * Nx + x] = 0.0;
@@ -1102,14 +1102,14 @@ void FlatSourceDomain::output_to_vtk_decomp() const
             }
           }
 
-          voxel_indices_key[z * Ny * Nx + y * Nx + x] = sr_key;
+          // voxel_indices_key[z * Ny * Nx + y * Nx + x] = sr_key;
           voxel_indices[z * Ny * Nx + y * Nx + x] = sr;
           voxel_positions[z * Ny * Nx + y * Nx + x] = sample;
 
           // Assumed master rank = 0
           int assigned_rank = 0;
           // Which rank is responsible
-          auto it = mpi::decomp_map.subdomain_map_.find(sr_key.base_source_region_id);
+          auto it = mpi::decomp_map.subdomain_map_.find(sr_key);
           if (it != mpi::decomp_map.subdomain_map_.end()){
             assigned_rank = it->second;
           }
@@ -1954,7 +1954,7 @@ void FlatSourceDomain::finalize_discovered_source_regions()
   // Extract keys for entries with a valid volume.
   vector<SourceRegionKey> keys;
   for (const auto& pair : discovered_source_regions_) {
-    if (pair.second.volume_ > 0.0) {
+    if (pair.second.scalars_.volume_ > 0.0) {
       keys.push_back(pair.first);
     }
   }

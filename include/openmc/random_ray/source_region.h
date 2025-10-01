@@ -303,22 +303,9 @@ public:
 
 }; // class SourceRegionHandle
 
-class SourceRegion {
+class ScalarSourceRegionFields {
 public:
-  //----------------------------------------------------------------------------
-  // Constructors
-  SourceRegion(int negroups, bool is_linear);
-  SourceRegion(const SourceRegionHandle& handle, int64_t parent_sr);
-  SourceRegion() = default;
-
-  //----------------------------------------------------------------------------
-  // Public Data members
-
-  //---------------------------------------
-  // Scalar fields
-
   int material_ {0}; //!< Index in openmc::model::materials array
-  OpenMPMutex lock_;
   double volume_ {
     0.0}; //!< Volume (computed from the sum of ray crossing lengths)
   double volume_t_ {0.0};     //!< Volume totaled over all iterations
@@ -345,6 +332,30 @@ public:
     0.0, 0.0, 0.0, 0.0, 0.0, 0.0}; //!< The spatial moment matrix
   MomentMatrix mom_matrix_t_ {0.0, 0.0, 0.0, 0.0, 0.0,
     0.0}; //!< The spatial moment matrix accumulated over all iterations
+};
+
+class SourceRegion {
+public:
+  //----------------------------------------------------------------------------
+  // Constructors
+  SourceRegion(int negroups, bool is_linear);
+  SourceRegion(const SourceRegionHandle& handle, int64_t parent_sr);
+  SourceRegion() = default;
+
+  //----------------------------------------------------------------------------
+  // Methods
+  void merge(SourceRegion& sr_add, bool is_linear);
+
+  //----------------------------------------------------------------------------
+  // Public Data members
+
+  //---------------------------------------
+  // Scalar fields
+
+  OpenMPMutex lock_;
+  
+  // Container with all scalar fields of a source region
+  ScalarSourceRegionFields scalars_;
 
   // A set of volume tally tasks. This more complicated data structure is
   // convenient for ensuring that volumes are only tallied once per source

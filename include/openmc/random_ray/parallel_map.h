@@ -174,6 +174,23 @@ public:
         HashFunctor>::iterator());
   }
 
+  // Return summed length of all buckets.
+  uint64_t size()
+  {
+    uint64_t total_size = 0;
+    for (const auto& bucket : buckets_) {
+      total_size += bucket.map_.size();
+    }
+    return total_size;
+  }
+
+  // Erase element by key.
+  void erase(const KeyType& key)
+  {
+    Bucket& bucket = get_bucket(key);
+    bucket.map_.erase(key);
+  }
+
 private:
   //----------------------------------------------------------------------------
   // Private Methods

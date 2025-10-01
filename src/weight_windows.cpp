@@ -1480,7 +1480,7 @@ extern "C" int openmc_weight_windows_import(const char* filename)
   file_close(ww_file);
 
   if (mpi::master) {
-    write_message(fmt::format("Imported {} weight window and {} meshe", 
+    write_message(fmt::format("Imported {} weight window and {} mesh", 
                               ww_names.size(), meshes_loaded), 5);
   }
 

@@ -2122,11 +2122,11 @@ class Settings:
                     self.random_ray['source_shape'] = child.text
                 elif child.tag == 'volume_normalized_flux_tallies':
                     self.random_ray['volume_normalized_flux_tallies'] = (
-                        child.text in ('true', '1')
+                        child.text.lower() in ('true', '1')
                     )
                 elif child.tag == 'adjoint':
                     self.random_ray['adjoint'] = (
-                        child.text in ('true', '1')
+                        child.text.lower() in ('true', '1')
                     )
                 elif child.tag == 'sample_method':
                     self.random_ray['sample_method'] = child.text

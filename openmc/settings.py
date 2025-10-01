@@ -2078,6 +2078,15 @@ class Settings:
         if text is not None:
             self.weight_windows_on = text in ('true', '1')
 
+    def _weight_windows_file_from_xml_element(self, root):
+        text = get_text(root, 'weight_windows_file')
+        if text is not None:
+            self.weight_windows_file = text
+
+        text = get_text(root, 'weight_windows_on')
+        if text is not None:
+            self.weight_windows_on = text in ('true', '1')
+
     def _weight_window_checkpoints_from_xml_element(self, root):
         elem = root.find('weight_window_checkpoints')
         if elem is None:
@@ -2324,6 +2333,7 @@ class Settings:
         settings._log_grid_bins_from_xml_element(elem)
         settings._write_initial_source_from_xml_element(elem)
         settings._weight_windows_from_xml_element(elem, meshes)
+        settings._weight_windows_file_from_xml_element(elem)
         settings._weight_window_generators_from_xml_element(elem, meshes)
         settings._weight_window_checkpoints_from_xml_element(elem)
         settings._max_history_splits_from_xml_element(elem)

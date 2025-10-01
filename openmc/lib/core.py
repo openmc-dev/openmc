@@ -640,6 +640,8 @@ class TemporarySession:
     ----------
     model : openmc.Model
         The OpenMC model used for the session.
+    comm : mpi4py.MPI.Intracomm
+        The MPI intracommunicator used for the session.
 
     """
     def __init__(self, model=None, **init_kwargs):
@@ -653,6 +655,9 @@ class TemporarySession:
                 particles=1, batches=1, output={'summary': False})
         self.model = model
 
+        # Determine MPI intercommunicator
+        self.comm = init_kwargs.get('intracomm', comm)
+
     def __enter__(self):
         """Initialize the OpenMC library in a temporary directory."""
         # If already initialized, the context manager is a no-op
@@ -664,20 +669,22 @@ class TemporarySession:
         self.orig_dir = Path.cwd()
 
         # Set up temporary directory
-        if comm.rank == 0:
+        if self.comm.rank == 0:
             self.tmp_dir = TemporaryDirectory()
             path_str = self.tmp_dir.name
         else:
             path_str = None
 
         # Broadcast the string path
-        path_str = comm.bcast(path_str)
+        path_str = self.comm.bcast(path_str)
         working_dir = Path(path_str)
         working_dir.mkdir(parents=True, exist_ok=True)
         os.chdir(working_dir)
 
-        # Export model and initialize OpenMC
-        self.model.export_to_model_xml()
+        # Export model on first rank and initialize OpenMC
+        if self.comm.rank == 0:
+            self.model.export_to_model_xml()
+        self.comm.barrier()
         openmc.lib.init(**self.init_kwargs)
 
         return self
@@ -692,8 +699,8 @@ class TemporarySession:
         finally:
             os.chdir(self.orig_dir)
 
-            comm.barrier()
-            if comm.rank == 0:
+            self.comm.barrier()
+            if self.comm.rank == 0:
                 self.tmp_dir.cleanup()
 
 

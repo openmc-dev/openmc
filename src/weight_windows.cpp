@@ -1301,6 +1301,7 @@ extern "C" int openmc_weight_windows_import(const char* filename)
 
   if (!file_exists(name)) {
     set_errmsg(fmt::format("File '{}' does not exist", name));
+    return OPENMC_E_INVALID_ARGUMENT;
   }
 
   hid_t ww_file = file_open(name, 'r');
@@ -1323,20 +1324,165 @@ extern "C" int openmc_weight_windows_import(const char* filename)
                   "expected version ({}).",
         name, file_version, VERSION_WEIGHT_WINDOWS);
     set_errmsg(err_msg);
+    file_close(ww_file);
     return OPENMC_E_INVALID_ARGUMENT;
   }
 
-  hid_t weight_windows_group = open_group(ww_file, "weight_windows");
-
-  std::vector<std::string> names = group_names(weight_windows_group);
-
-  for (const auto& name : names) {
-    WeightWindows::from_hdf5(weight_windows_group, name);
+  // Load meshes before weight windows
+  int meshes_loaded = 0;
+  htri_t meshes_exists = H5Lexists(ww_file, "meshes", H5P_DEFAULT);
+  if (meshes_exists > 0) {
+    hid_t mesh_group = open_group(ww_file, "meshes");
+    
+    // Get list of mesh names in the group
+    std::vector<std::string> mesh_names = group_names(mesh_group);
+    
+    for (const auto& mesh_name : mesh_names) {
+      // Extract mesh ID from name (format: "mesh <id>")
+      if (mesh_name.substr(0, 5) == "mesh ") {
+        int32_t mesh_id = std::stoi(mesh_name.substr(5));
+        
+        // Check if this mesh already exists
+        if (model::mesh_map.find(mesh_id) != model::mesh_map.end()) {
+          if (mpi::master) {
+            write_message(
+              fmt::format("Mesh {} already exists, skipping import", mesh_id), 6);
+          }
+          continue;
+        }
+        
+        // Open this mesh's group
+        hid_t individual_mesh_group = open_group(mesh_group, mesh_name);
+        
+        // Read mesh type - MUST check this first before reading type-specific data
+        std::string mesh_type = "regular";
+        htri_t has_type = H5Lexists(individual_mesh_group, "type", H5P_DEFAULT);
+        if (has_type > 0) {
+          read_dataset(individual_mesh_group, "type", mesh_type);
+        } else {
+          // If no type specified, try to infer from datasets present
+          htri_t has_dimension = H5Lexists(individual_mesh_group, "dimension", H5P_DEFAULT);
+          htri_t has_x_grid = H5Lexists(individual_mesh_group, "x_grid", H5P_DEFAULT);
+          
+          if (has_x_grid > 0) {
+            mesh_type = "rectilinear";
+          } else if (has_dimension > 0) {
+            mesh_type = "regular";
+          }
+        }
+        
+        // Create appropriate mesh based on type
+        unique_ptr<Mesh> new_mesh;
+        
+        if (mesh_type == "regular") {
+          // Create a RegularMesh
+          new_mesh = make_unique<RegularMesh>();
+          auto* reg_mesh = static_cast<RegularMesh*>(new_mesh.get());
+          
+          // Read regular mesh properties
+          reg_mesh->id_ = mesh_id;
+          
+          // Regular meshes have "dimension" dataset
+          read_dataset(individual_mesh_group, "dimension", reg_mesh->shape_);
+          reg_mesh->n_dimension_ = 3; // Set dimension count based on shape
+          for (int i = 0; i < 3; i++) {
+            if (reg_mesh->shape_[i] == 0) {
+              reg_mesh->n_dimension_ = i;
+              break;
+            }
+          }
+          
+          read_dataset(individual_mesh_group, "lower_left", reg_mesh->lower_left_);
+          
+          // Check for either upper_right or width using H5Lexists
+          htri_t has_upper = H5Lexists(individual_mesh_group, "upper_right", H5P_DEFAULT);
+          htri_t has_width = H5Lexists(individual_mesh_group, "width", H5P_DEFAULT);
+          
+          if (has_upper > 0) {
+            read_dataset(individual_mesh_group, "upper_right", reg_mesh->upper_right_);
+            // Calculate width from bounds
+            reg_mesh->width_ = xt::eval((reg_mesh->upper_right_ - reg_mesh->lower_left_) / 
+                                         reg_mesh->get_x_shape());
+          } else if (has_width > 0) {
+            read_dataset(individual_mesh_group, "width", reg_mesh->width_);
+            // Calculate upper_right from width
+            reg_mesh->upper_right_ = xt::eval(reg_mesh->lower_left_ + 
+                                               reg_mesh->get_x_shape() * reg_mesh->width_);
+          }
+          
+          // Set volume properties
+          reg_mesh->volume_frac_ = 1.0 / xt::prod(reg_mesh->get_x_shape())();
+          reg_mesh->element_volume_ = 1.0;
+          for (int i = 0; i < reg_mesh->n_dimension_; i++) {
+            reg_mesh->element_volume_ *= reg_mesh->width_[i];
+          }
+          
+        } else if (mesh_type == "rectilinear") {
+          // Create a RectilinearMesh
+          new_mesh = make_unique<RectilinearMesh>();
+          auto* rect_mesh = static_cast<RectilinearMesh*>(new_mesh.get());
+          
+          // Set mesh ID
+          rect_mesh->id_ = mesh_id;
+          rect_mesh->n_dimension_ = 3;
+          
+          // Read grid coordinates for each axis (rectilinear meshes don't have "dimension")
+          read_dataset(individual_mesh_group, "x_grid", rect_mesh->grid_[0]);
+          read_dataset(individual_mesh_group, "y_grid", rect_mesh->grid_[1]);
+          read_dataset(individual_mesh_group, "z_grid", rect_mesh->grid_[2]);
+          
+          // Set shape and bounds using the set_grid method
+          if (rect_mesh->set_grid() != 0) {
+            warning(fmt::format("Failed to set grid for rectilinear mesh {}", mesh_id));
+            close_group(individual_mesh_group);
+            continue;
+          }
+          
+        } else {
+          // For other mesh types, we'd need to implement their specific loading
+          if (mpi::master) {
+            warning(fmt::format("Mesh type '{}' is not yet supported for import, skipping mesh {}", 
+                              mesh_type, mesh_id));
+          }
+          close_group(individual_mesh_group);
+          continue;
+        }
+        
+        // Add to global mesh collection
+        model::mesh_map[mesh_id] = model::meshes.size();
+        model::meshes.push_back(std::move(new_mesh));
+        
+        // Prepare mesh for point location (needed for weight windows)
+        model::meshes.back()->prepare_for_point_location();
+        
+        close_group(individual_mesh_group);
+        meshes_loaded++;
+      }
+    }
+    
+    close_group(mesh_group);
+  } else {
+    if (mpi::master) {
+      warning("No meshes found in weight windows file. "
+              "Meshes must be defined in the model before import.");
+    }
   }
 
+  // Load weight windows
+  hid_t weight_windows_group = open_group(ww_file, "weight_windows");
+  std::vector<std::string> ww_names = group_names(weight_windows_group);
+  
+  for (const auto& ww_name : ww_names) {
+    WeightWindows::from_hdf5(weight_windows_group, ww_name);
+  }
+  
   close_group(weight_windows_group);
-
   file_close(ww_file);
+
+  if (mpi::master) {
+    write_message(fmt::format("Imported {} weight window and {} meshe", 
+                              ww_names.size(), meshes_loaded), 5);
+  }
 
   return 0;
 }

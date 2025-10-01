@@ -664,9 +664,15 @@ class TemporarySession:
         self.orig_dir = Path.cwd()
 
         # Set up temporary directory
-        self.tmp_dir = TemporaryDirectory()
-        self.tmp_dir = comm.bcast(self.tmp_dir)
-        working_dir = Path(self.tmp_dir.name)
+        if comm.rank == 0:
+            self.tmp_dir = TemporaryDirectory()
+            path_str = self.tmp_dir.name
+        else:
+            path_str = None
+
+        # Broadcast the string path
+        path_str = comm.bcast(path_str)
+        working_dir = Path(path_str)
         working_dir.mkdir(parents=True, exist_ok=True)
         os.chdir(working_dir)
 
@@ -685,7 +691,10 @@ class TemporarySession:
             finalize()
         finally:
             os.chdir(self.orig_dir)
-            self.tmp_dir.cleanup()
+
+            comm.barrier()
+            if comm.rank == 0:
+                self.tmp_dir.cleanup()
 
 
 class _DLLGlobal:

@@ -138,18 +138,23 @@ protected:
 //==============================================================================
 //! A BC that rotates particles about a global axis.
 //
-//! Currently only rotations about the z-axis are supported.
+//! Only rotations about the x, y, and z axes are supported.
 //==============================================================================
 
 class RotationalPeriodicBC : public PeriodicBC {
 public:
   RotationalPeriodicBC(int i_surf, int j_surf);
-
+  float compute_periodic_rotation(float rise_1, float run_1, float rise_2, float run_2) const;
   void handle_particle(Particle& p, const Surface& surf) const override;
 
 protected:
   //! Angle about the axis by which particle coordinates will be rotated
   double angle_;
+  enum PeriodicAxis {x, y, z};
+  //! Ensure that choice of axes is right handed. axis_1_idx_ corresponds to the independent axis and axis_2_idx_ corresponds to the dependent axis in the 2D plane  perpendicular to the planes' axis of rotation
+  int zero_axis_idx;
+  int axis_1_idx_; 
+  int axis_2_idx_;
 };
 
 } // namespace openmc

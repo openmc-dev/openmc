@@ -165,8 +165,8 @@ def test_export_to_xml(run_in_tmpdir):
     assert recovered_mesh.upper_right == [2., 2., 2.]
     assert s.random_ray['volume_estimator'] == 'hybrid'
     assert s.random_ray['source_shape'] == 'linear'
-    assert s.random_ray['volume_normalized_flux_tallies'] == True
-    assert s.random_ray['adjoint'] == False
+    assert s.random_ray['volume_normalized_flux_tallies']
+    assert not s.random_ray['adjoint']
     assert s.random_ray['sample_method'] == 'halton'
     assert s.max_secondaries == 1_000_000
     assert s.source_rejection_fraction == 0.01

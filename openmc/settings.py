@@ -1720,6 +1720,9 @@ class Settings:
                             root.append(mesh.to_xml_element())
                             if mesh_memo is not None:
                                 mesh_memo.add(mesh.id)
+                elif isinstance(value, bool):
+                    subelement = ET.SubElement(element, key)
+                    subelement.text = str(value).lower()
                 else:
                     subelement = ET.SubElement(element, key)
                     subelement.text = str(value)
@@ -2122,11 +2125,11 @@ class Settings:
                     self.random_ray['source_shape'] = child.text
                 elif child.tag == 'volume_normalized_flux_tallies':
                     self.random_ray['volume_normalized_flux_tallies'] = (
-                        child.text.lower() in ('true', '1')
+                        child.text in ('true', '1')
                     )
                 elif child.tag == 'adjoint':
                     self.random_ray['adjoint'] = (
-                        child.text.lower() in ('true', '1')
+                        child.text in ('true', '1')
                     )
                 elif child.tag == 'sample_method':
                     self.random_ray['sample_method'] = child.text

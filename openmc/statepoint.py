@@ -1,4 +1,5 @@
 from datetime import datetime
+from collections import namedtuple
 import glob
 import re
 import os
@@ -8,11 +9,15 @@ import h5py
 import numpy as np
 from pathlib import Path
 from uncertainties import ufloat
+from uncertainties.unumpy import uarray
 
 import openmc
 import openmc.checkvalue as cv
 
 _VERSION_STATEPOINT = 18
+
+
+KineticsParameters = namedtuple("KineticsParameters", ["generation_time", "beta_effective"])
 
 
 class StatePoint:
@@ -565,7 +570,7 @@ class StatePoint:
     def get_tally(self, scores=[], filters=[], nuclides=[],
                   name=None, id=None, estimator=None, exact_filters=False,
                   exact_nuclides=False, exact_scores=False,
-                  multiply_density=None, derivative=None):
+                  multiply_density=None, derivative=None, filter_type=None):
         """Finds and returns a Tally object with certain properties.
 
         This routine searches the list of Tallies and returns the first Tally
@@ -609,6 +614,9 @@ class StatePoint:
             to the same value as this parameter.
         derivative : openmc.TallyDerivative, optional
             TallyDerivative object to match.
+        filter_type : type, optional
+            If not None, the Tally must have at least one Filter that is an
+            instance of this type. For example `openmc.MeshFilter`.
 
         Returns
         -------
@@ -682,6 +690,10 @@ class StatePoint:
                 if not contains_filters:
                     continue
 
+            if filter_type is not None:
+                if not any(isinstance(f, filter_type) for f in test_tally.filters):
+                    continue
+
             # Determine if Tally has the queried Nuclide(s)
             if nuclides:
                 if not all(nuclide in test_tally.nuclides for nuclide in nuclides):
@@ -744,3 +756,56 @@ class StatePoint:
                     tally_filter.paths = cell.paths
 
         self._summary = summary
+
+    def get_kinetics_parameters(self) -> KineticsParameters:
+        """Get kinetics parameters from IFP tallies.
+
+        This method searches the tallies in the statepoint for the tallies
+        required to compute kinetics parameters using the Iterated Fission
+        Probability (IFP) method.
+
+        Returns
+        -------
+        KineticsParameters
+            A named tuple containing the generation time and effective delayed
+            neutron fraction. If the necessary tallies for one or both
+            parameters are not found, that parameter is returned as None.
+
+        """
+
+        denom_tally = None
+        gen_time_tally = None
+        beta_tally = None
+        for tally in self.tallies.values():
+            if 'ifp-denominator' in tally.scores:
+                denom_tally = self.get_tally(scores=['ifp-denominator'])
+            if 'ifp-time-numerator' in tally.scores:
+                gen_time_tally = self.get_tally(scores=['ifp-time-numerator'])
+            if 'ifp-beta-numerator' in tally.scores:
+                beta_tally = self.get_tally(scores=['ifp-beta-numerator'])
+
+        if denom_tally is None:
+            return KineticsParameters(None, None)
+
+        def get_ufloat(tally, score):
+            return uarray(tally.get_values(scores=[score]),
+                          tally.get_values(scores=[score], value='std_dev'))
+
+        denom_values = get_ufloat(denom_tally, 'ifp-denominator')
+        if gen_time_tally is None:
+            generation_time = None
+        else:
+            gen_time_values = get_ufloat(gen_time_tally, 'ifp-time-numerator')
+            gen_time_values /= denom_values*self.keff
+            generation_time = gen_time_values.flatten()[0]
+
+        if beta_tally is None:
+            beta_effective = None
+        else:
+            beta_values = get_ufloat(beta_tally, 'ifp-beta-numerator')
+            beta_values /= denom_values
+            beta_effective = beta_values.flatten()
+            if beta_effective.size == 1:
+                beta_effective = beta_effective[0]
+
+        return KineticsParameters(generation_time, beta_effective)

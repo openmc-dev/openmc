@@ -99,8 +99,13 @@ def time_correction_factors(
     timesteps, source_rates = _normalize_timesteps(
         timesteps, source_rates, timestep_units)
 
-    # Calculate decay rate for each nuclide
-    decay_rate = np.array([log(2.0) / half_life(x) for x in nuclides])
+    # Convert to numpy arrays for faster access
+    timesteps = np.asarray(timesteps)
+    source_rates = np.asarray(source_rates)
+
+    # Calculate decay rate for each nuclide (cache log(2))
+    log_2 = log(2.0)
+    decay_rate = np.array([log_2 / half_life(x) for x in nuclides])
 
     n_timesteps = len(timesteps) + 1
     n_nuclides = len(nuclides)
@@ -108,14 +113,16 @@ def time_correction_factors(
     # Create a 2D array for the time correction factors
     h = np.zeros((n_timesteps, n_nuclides))
 
-    for i, (dt, rate) in enumerate(zip(timesteps, source_rates)):
-        # Precompute the exponential terms. Since (1 - exp(-x)) is susceptible to
-        # roundoff error, use expm1 instead (which computes exp(x) - 1)
-        g = np.exp(-decay_rate*dt)
-        one_minus_g = -np.expm1(-decay_rate*dt)
+    # Vectorized computation - precompute all exponential terms
+    # Shape: (n_timesteps, n_nuclides)
+    decay_dt_matrix = decay_rate[np.newaxis, :] * timesteps[:, np.newaxis]
+    g_matrix = np.exp(-decay_dt_matrix)
+    one_minus_g_matrix = -np.expm1(-decay_dt_matrix)
 
+    # Apply recurrence relation step by step (cannot be fully vectorized due to dependency)
+    for i in range(len(timesteps)):
         # Eq. (4) in doi:10.1016/j.fusengdes.2019.111399
-        h[i + 1] = rate*one_minus_g + h[i]*g
+        h[i + 1] = source_rates[i] * one_minus_g_matrix[i] + h[i] * g_matrix[i]
 
     return {nuclides[i]: h[:, i] for i in range(n_nuclides)}
 

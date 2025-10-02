@@ -154,9 +154,10 @@ struct NuclideMicroXS {
 
   // Energy and temperature last used to evaluate these cross sections.  If
   // these values have changed, then the cross sections must be re-evaluated.
-  double last_E {0.0};      //!< Last evaluated energy
-  double last_sqrtkT {0.0}; //!< Last temperature in sqrt(Boltzmann constant
-                            //!< * temperature (eV))
+  double last_E {0.0};       //!< Last evaluated energy
+  double last_sqrtkT {0.0};  //!< Last temperature in sqrt(Boltzmann constant
+                             //!< * temperature (eV))
+  double ncrystal_xs {-1.0}; //!< NCrystal cross section
 };
 
 //==============================================================================

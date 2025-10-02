@@ -63,11 +63,6 @@ void openmc_run_random_ray()
     // Initialize fixed sources, if present
     sim.apply_fixed_sources_and_mesh_domains();
 
-    // Initialize subdomains for MPI ranks
-    simulation::time_generate_voronoi_centers.start();
-    mpi::decomp_map.generate_rank_centers();
-    simulation::time_generate_voronoi_centers.stop();
-
     // Begin main simulation timer
     simulation::time_total.start();
 
@@ -428,6 +423,12 @@ void RandomRaySimulation::prepare_fixed_sources_adjoint(
 
 void RandomRaySimulation::simulate()
 {
+
+  // Initialize subdomains for MPI ranks
+  simulation::time_generate_voronoi_centers.start();
+  mpi::decomp_map.generate_rank_centers();
+  simulation::time_generate_voronoi_centers.stop();
+
   // Create ray bank
   RayBank RB;
 

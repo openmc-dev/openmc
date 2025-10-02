@@ -73,7 +73,7 @@ energy distribution. This element has the following attributes:
 
   :parameters:
     The parameters of the source term, e.g., for a :class:`openmc.stats.Discrete` source, the energies (in [eV])
-    at which the particles are emitted and their relative intensities in [Bq/atom].
+    at which the particles are emitted and their relative intensities in [Bq/atom] (in other words, decay constants).
 
 ----------------------
 ``<reaction>`` Element

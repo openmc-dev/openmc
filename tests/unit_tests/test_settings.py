@@ -59,12 +59,23 @@ def test_export_to_xml(run_in_tmpdir):
     s.electron_treatment = 'led'
     s.write_initial_source = True
     s.weight_window_checkpoints = {'surface': True, 'collision': False}
+    source_region_mesh = openmc.RegularMesh()
+    source_region_mesh.dimension = [2, 2, 2]
+    source_region_mesh.lower_left = [-2, -2, -2]
+    source_region_mesh.upper_right = [2, 2, 2]
+    root_universe = openmc.Universe()
     s.random_ray = {
         'distance_inactive': 10.0,
         'distance_active': 100.0,
         'ray_source': openmc.IndependentSource(
             space=openmc.stats.Box((-1., -1., -1.), (1., 1., 1.))
-        )
+        ),
+        'source_region_meshes': [(source_region_mesh, [root_universe])],
+        'volume_estimator': 'hybrid',
+        'source_shape': 'linear',
+        'volume_normalized_flux_tallies': True,
+        'adjoint': False,
+        'sample_method': 'halton'
     }
     s.max_particle_events = 100
     s.max_secondaries = 1_000_000
@@ -145,5 +156,17 @@ def test_export_to_xml(run_in_tmpdir):
     assert s.random_ray['distance_active'] == 100.0
     assert s.random_ray['ray_source'].space.lower_left == [-1., -1., -1.]
     assert s.random_ray['ray_source'].space.upper_right == [1., 1., 1.]
+    assert 'source_region_meshes' in s.random_ray
+    assert len(s.random_ray['source_region_meshes']) == 1
+    mesh_and_domains = s.random_ray['source_region_meshes'][0]
+    recovered_mesh = mesh_and_domains[0]
+    assert recovered_mesh.dimension == (2, 2, 2)
+    assert recovered_mesh.lower_left == [-2., -2., -2.]
+    assert recovered_mesh.upper_right == [2., 2., 2.]
+    assert s.random_ray['volume_estimator'] == 'hybrid'
+    assert s.random_ray['source_shape'] == 'linear'
+    assert s.random_ray['volume_normalized_flux_tallies']
+    assert not s.random_ray['adjoint']
+    assert s.random_ray['sample_method'] == 'halton'
     assert s.max_secondaries == 1_000_000
     assert s.source_rejection_fraction == 0.01

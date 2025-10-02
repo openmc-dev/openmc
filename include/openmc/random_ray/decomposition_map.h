@@ -38,7 +38,6 @@ public:
   Position calculate_centroids(const Position position_sum, const int num_points, int rank);
 
   // Methods to create and update subdomain list
-  void create(FlatSourceDomain* domain);
   void update(ParallelMap<SourceRegionKey, SourceRegion, SourceRegionKey::HashFunctor>&
     discovered_source_regions);
   void exchange_sr_info(ParallelMap<SourceRegionKey, SourceRegion, SourceRegionKey::HashFunctor>&
@@ -66,8 +65,8 @@ public:
 
   // Calculates the load per rank based on the total number of hits all source regions
   // experience
-  // void calculate_rank_load(FlatSourceDomain* domain);
-  void calculate_rank_load(uint64_t total_geometric_intersections);
+  void calculate_rank_load(FlatSourceDomain* domain);
+  // void calculate_rank_load(uint64_t total_geometric_intersections);
 
 
   

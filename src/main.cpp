@@ -38,7 +38,6 @@ int main(int argc, char* argv[])
       break;
     case SolverType::RANDOM_RAY:
       openmc_run_random_ray();
-      printf("Finished random ray simulation\n");
       err = 0;
       break;
     }
@@ -64,22 +63,14 @@ int main(int argc, char* argv[])
   if (err)
     fatal_error(openmc_err_msg);
 
-  printf("before finalize\n");
-
   // Finalize and free up memory
   err = openmc_finalize();
   if (err)
     fatal_error(openmc_err_msg);
 
-  MPI_Barrier(mpi::intracomm);
-  printf("RANK: %d after finalize\n", mpi::rank);
-  MPI_Barrier(mpi::intracomm);
-
     // If MPI is in use and enabled, terminate it
 #ifdef OPENMC_MPI
-  printf("RANK: %d OPENMC_MPI compiled\n", mpi::rank);
   MPI_Finalize();
 #endif
-  printf("MPI finalize\n");
 
 }

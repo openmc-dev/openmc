@@ -58,7 +58,7 @@ private:
   // Map that contains the rank to which rays are buffered to be sent
   std::unordered_map<int, vector<RayBufferContainer>> ray_send_buffer_;
 
-  // Map that contains the number of rays to be received from each rank
+  // Vector that contains the number of rays to be received from each rank
   vector<int> num_messages_receiving_;
 
   // vectors that received ray data

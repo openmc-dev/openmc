@@ -16,8 +16,8 @@ struct RayBufferContainer {
   Direction direction;
   double distance_travelled;
   vector<float> angular_flux;
-  SourceRegionKey sr_key;
-  int sr; //TODO: remove
+  // SourceRegionKey sr_key;
+  // int sr;
   // int receiving_rank;
   bool is_active;
   uint64_t ray_id; 
@@ -47,7 +47,7 @@ public:
   // Constructors
   RandomRay();
   RandomRay(uint64_t ray_id, FlatSourceDomain* domain);
-  RandomRay(FlatSourceDomain* domain, RayExchangeData data, vector<float> angular_flux);
+  RandomRay(FlatSourceDomain* domain, RayExchangeData& data, vector<float> angular_flux);
   // RandomRay(uint64_t ray_id, FlatSourceDomain* domain, RayBank RB);
 
   //----------------------------------------------------------------------------
@@ -66,7 +66,7 @@ public:
     SourceRegionHandle& srh, double distance, Position r);
 
   void initialize_ray(uint64_t ray_id, FlatSourceDomain* domain);
-  void restart_ray(FlatSourceDomain* domain, RayExchangeData data, vector<float> angular_flux);
+  void restart_ray(FlatSourceDomain* domain, RayExchangeData& data, vector<float> angular_flux);
   // void initialize_ray(uint64_t ray_id, FlatSourceDomain* domain, RayBank RB);
   uint64_t transport_history_based_single_ray();
   SourceSite sample_prng();
@@ -74,7 +74,7 @@ public:
 
   bool has_left_subdomain();
   // RayBufferContainer pack_ray();
-  void pack_ray_for_buffer(double distance_buffer, Position position_buffer, SourceRegionKey sr_key, int sr);
+  void pack_ray_for_buffer(double distance_buffer, Position position_buffer); //, SourceRegionKey sr_key, int sr);
   int get_energy_groups();
 
   //----------------------------------------------------------------------------

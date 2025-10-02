@@ -9,6 +9,7 @@
 #include "openmc/search.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
+#include "openmc/timer.h" //TODO: temporary?
 
 #include "openmc/distribution_spatial.h"
 #include "openmc/random_dist.h"
@@ -259,7 +260,7 @@ RandomRay::RandomRay(uint64_t ray_id, FlatSourceDomain* domain) : RandomRay()
   initialize_ray(ray_id, domain);
 }
 
-RandomRay::RandomRay(FlatSourceDomain* domain, RayExchangeData data, vector<float> angular_flux) : RandomRay()
+RandomRay::RandomRay(FlatSourceDomain* domain, RayExchangeData& data, vector<float> angular_flux) : RandomRay()
 {
   restart_ray(domain, data, angular_flux);
 }
@@ -464,7 +465,7 @@ void RandomRay::attenuate_flux(double distance, double offset)
     Position position_buffer =  r() + (offset + mesh_partial_length) * u();
     double distance_buffer = distance_travelled_ + mesh_partial_length;
     // double distance_buffer = distance_travelled_ + offset + mesh_partial_length;
-    pack_ray_for_buffer(distance_buffer, position_buffer, SourceRegionKey(sr, mesh_bin), sr);
+    pack_ray_for_buffer(distance_buffer, position_buffer); //, SourceRegionKey(sr, mesh_bin), sr);
     wgt() = 0.0;
     // if (sr == 134 && mesh_bin == 64056){
     //   printf("RANK %d: Buffered (%f, %f, %f) \n", mpi::rank, position_buffer.x, position_buffer.y, position_buffer.z);
@@ -476,55 +477,27 @@ void RandomRay::attenuate_flux(double distance, double offset)
 }
 
 void RandomRay::attenuate_flux_inner(
-  double distance, int64_t sr, int mesh_bin, Position r) //, double mesh_width)
+  double distance, int64_t sr, int mesh_bin, Position r)
 {
-  // Check if source region is in subdomain_map. //TODO: only when MPIactive?
-  // If so, check if it is in this rank's subdomain. If it is in another rank's
-  // subdomain, mark as not local and leave function.
-  // bool is_in_my_subdomain = mpi::decomp_map.is_SRK_in_domain(SourceRegionKey(sr, mesh_bin), r);
-  // bool is_in_my_subdomain = mpi::decomp_map.is_SRK_in_domain(SourceRegionKey(sr, mesh_bin), r, 
-  //   domain_->discovered_source_regions_);
-  // printf("Rank %d checking ownership of SRK (%ld, %ld)\n", mpi::rank, sr, mesh_bin);
-
   int owner = mpi::rank;
 
   if (mpi::n_procs > 1){  //TODO: is this if condition necessary?
+    // Check which rank owns the source region at the current position
+    // simulation::time_find_owner_rank.start();
     Position midpoint = r + u() * (distance / 2.0);
     owner = mpi::decomp_map.find_owner(SourceRegionKey(sr, mesh_bin), midpoint, 
       domain_->discovered_source_regions_, id());
+    // simulation::time_find_owner_rank.stop();
   }
 
-  // if (!is_in_my_subdomain) {
+  // If current rank is not the owner return and mark as not local.
   if (owner != mpi::rank) {
    is_local_ = false;
    owner_rank_ = owner;
    return;
   }
 
-  // bool is_in_my_subdomain = mpi::decomp_map.is_SRK_in_domain(SourceRegionKey(sr, mesh_bin));
-  // bool is_in_map = false;
-  // bool is_in_my_subdomain = false;
-  // // mpi::decomp_map.is_SRK_in_domain(SourceRegionKey(sr, mesh_bin), Position r);
-
-  // mpi::decomp_map.is_SRK_in_domain(SourceRegionKey(sr, mesh_bin), is_in_map, is_in_my_subdomain);
-
-  // if (!is_in_my_subdomain) {
-  //   if(is_in_map){
-  //     // if is not in subdomain but in map mark as not local and stop attenuate
-  //     is_local_ = false;
-  //     return;
-  //   } else {
-  //     // if region has not been recorded yet, check which rank the current position belongs to.
-  //     is_in_my_subdomain = mpi::decomp_map.record_new_SRK(SourceRegionKey(sr, mesh_bin), r);
-  //     // discovered_new_SRK_ = true;
-  //     if (!is_in_my_subdomain) {
-  //       is_local_ = false;
-  //       return;
-  //     }
-  //   }
-  // }
-
-  // if ray is in subdomain continue as normal
+  // If ray is in subdomain continue as normal
 
   SourceRegionHandle srh;
   if (mesh_subdivision_enabled_) {
@@ -907,7 +880,7 @@ void RandomRay::attenuate_flux_linear_source_void(
   }
 }
 
-void RandomRay::restart_ray(FlatSourceDomain* domain, RayExchangeData data, vector<float> angular_flux)
+void RandomRay::restart_ray(FlatSourceDomain* domain, RayExchangeData& data, vector<float> angular_flux)
 {
 
   domain_ = domain;
@@ -1104,13 +1077,13 @@ bool RandomRay::has_left_subdomain() {
   return !is_local_;
 }
 
-void RandomRay::pack_ray_for_buffer(double distance_buffer, Position position_buffer, SourceRegionKey sr_key, int sr) {
+void RandomRay::pack_ray_for_buffer(double distance_buffer, Position position_buffer) {
  exchange_data_.position = position_buffer;
  exchange_data_.direction = u();
  exchange_data_.angular_flux = angular_flux_;
  exchange_data_.distance_travelled = distance_buffer;
- exchange_data_.sr_key = sr_key;
- exchange_data_.sr = sr;
+//  exchange_data_.sr_key = sr_key;
+//  exchange_data_.sr = sr;
  exchange_data_.is_active = is_active_;
  exchange_data_.ray_id = id();
 //  exchange_data_.receiving_rank = owner_rank_;

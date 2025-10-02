@@ -6,6 +6,7 @@
 #include "openmc/random_ray/random_ray.h"
 #include "openmc/random_lcg.h"
 #include "openmc/mgxs_interface.h"
+#include "openmc/timer.h" //TODO: temporary?
 
 #include "openmc/simulation.h"
 
@@ -17,9 +18,8 @@ namespace mpi {
 
 // Constructor
 DecompositionMap::DecompositionMap() {
-  negroups_ = data::mg.num_energy_groups_; //TODO: constructor gets called before num_energy_groups is known?
-  rank_load_.resize(mpi::n_procs, 0.0);
-  // generate_rank_centers();
+  // negroups_ = data::mg.num_energy_groups_; //TODO: constructor gets called before num_energy_groups is known?
+  // rank_load_.resize(mpi::n_procs, 0.0);
 }
 
 void DecompositionMap::generate_rank_centers(){
@@ -200,26 +200,6 @@ Position DecompositionMap::calculate_centroids(const Position position_sum, cons
   return centroid;
 }
 
-// // Method to initialize subdomain list
-// void DecompositionMap::create(FlatSourceDomain* domain){
-//   vector <int> start(mpi::n_procs);
-//   vector <int> end(mpi::n_procs);
-
-//   int sr_per_rank = ((domain->n_source_regions() + mpi::n_procs - 1) / mpi::n_procs);
-
-//   int sr_cnt = 0;
-//   int rank = 0;
-//   for (int i = 0; i < domain->n_source_regions(); i++) {
-//     if (sr_cnt >= sr_per_rank){
-//       sr_cnt = 0;
-//       rank++;
-//     }
-//     subdomain_map_[i] = rank;
-//     sr_cnt++;
-//   }  
-
-// }
-
 // Update subdomain list for each decomposition map.
 void DecompositionMap::update(ParallelMap<SourceRegionKey, SourceRegion, SourceRegionKey::HashFunctor>&
     discovered_source_regions){
@@ -231,10 +211,15 @@ void DecompositionMap::update(ParallelMap<SourceRegionKey, SourceRegion, SourceR
     // bool test  = discovered_source_regions.contains(SourceRegionKey(4, 104171));
     // printf("Exchange sr data info");
 
+    bool any_sr_to_exchange = any_discovered_source_regions(discovered_source_regions);
+
     // Check if any new regions discovered
-    if (any_discovered_source_regions(discovered_source_regions)){
+    // if (any_discovered_source_regions(discovered_source_regions)){
+    if (any_sr_to_exchange){
       // Exchange discovered cell data between ranks
+      simulation::time_source_region_exchange.start();
       exchange_sr_info(discovered_source_regions);
+      simulation::time_source_region_exchange.stop();
     }
 
       // test  = discovered_source_regions.contains(SourceRegionKey(4, 104171));
@@ -361,7 +346,7 @@ void DecompositionMap::exchange_sr_info(ParallelMap<SourceRegionKey, SourceRegio
           // printf("Source region with base id %ld, mesh bin %ld already in map, contested between rank %d and rank %d \n", local_base_ids[j], local_mesh_bins[j], rank, subdomain_map_[sr_key]);
 
           int resident_rank = subdomain_map_[sr_key];
-          int challenger_rank = rank;
+          int challenger_rank = rank; // current broadcasting rank
           // int challenger_rank = local_rank_ids[j];
           double resident_rank_load = rank_load_[resident_rank];
           double challenger_rank_load = rank_load_[challenger_rank];
@@ -385,17 +370,17 @@ void DecompositionMap::exchange_sr_info(ParallelMap<SourceRegionKey, SourceRegio
             // printf("resident_rank_load: %f, challenger_rank_load: %f \n", resident_rank_load, challenger_rank_load);
           // }
 
-          // // Broadcast n_hits such that each rank can update load balance //TODO: n_hits must be batchwise
-          // // TODO: is load update here too costly?
-          // int bcast_n_hits = 0;
-          // if (mpi::rank == sender) {
-          //   SourceRegion& contested_sr = discovered_source_regions[sr_key];
-          //   bcast_n_hits = contested_sr.scalars_.n_hits_;
-          // }
-          // MPI_Bcast(&bcast_n_hits, 1, MPI_INT, sender, mpi::intracomm);
+          // Broadcast n_hits such that each rank can update load balance //TODO: n_hits must be batchwise
+          // TODO: is load update here too costly?
+          int bcast_n_hits = 0;
+          if (mpi::rank == sender) {
+            SourceRegion& contested_sr = discovered_source_regions[sr_key];
+            bcast_n_hits = contested_sr.scalars_.n_hits_;
+          }
+          MPI_Bcast(&bcast_n_hits, 1, MPI_INT, sender, mpi::intracomm);
 
-          // rank_load_[sender] -= bcast_n_hits;
-          // rank_load_[receiver] += bcast_n_hits;
+          rank_load_[sender] -= bcast_n_hits;
+          rank_load_[receiver] += bcast_n_hits;
 
           // Merge source region data
           if (mpi::rank == sender || mpi::rank == receiver){
@@ -421,21 +406,20 @@ void DecompositionMap::transfer_sr_data(int sender, int receiver, SourceRegionKe
 
   int num_scalar_messages = 1;
   //! NOTE: update if new vector fields are added to SourceExchangeVectors struct
-  int num_vector_messages;
+  int num_vector_messages = 4;
   if (is_linear){  
-    num_vector_messages = 8;
-  } else{
-    num_vector_messages = 4;
-  } 
+    num_vector_messages += 4;
+  }
   if (settings::run_mode == RunMode::FIXED_SOURCE) {
     num_vector_messages += 1;
   }
   int num_requests = num_scalar_messages + num_vector_messages;
 
-  MPI_Request requests[num_requests];
+  vector<MPI_Request> requests(num_requests);
+  // MPI_Request requests[num_requests];
   int req_idx = 0;
 
-  if (mpi::rank == sender){
+  if (mpi::rank == sender){ //TODO: maybe add check that only sends fields that are needed when source regions are freshly discovered?
 
     // SourceRegion sr = discovered_source_regions[sr_key]; //TODO: maybe this can be done more efficiently?
 
@@ -457,7 +441,6 @@ void DecompositionMap::transfer_sr_data(int sender, int receiver, SourceRegionKe
     // Tags hardcoded to avoid confusion if new fields are not added sequentially
     MPI_Isend(sr.scalar_flux_old_.data(), negroups_, MPI_DOUBLE, receiver, 2, mpi::intracomm, &requests[req_idx]); 
     req_idx ++;
-    //TODO: DO I need to send flux old??
 
     // printf("Size 1 flux new on rank %d: %lu \n", mpi::rank, sr.scalar_flux_old_.size());
 
@@ -501,7 +484,8 @@ void DecompositionMap::transfer_sr_data(int sender, int receiver, SourceRegionKe
     }
 
     // Wait for all communication to complete
-    MPI_Waitall(num_requests, requests, MPI_STATUSES_IGNORE);
+    // MPI_Waitall(num_requests, requests, MPI_STATUSES_IGNORE);
+    MPI_Waitall(num_requests, requests.data(), MPI_STATUSES_IGNORE);
 
     discovered_source_regions.erase(sr_key);
     // printf("Source region erased from rank %d \n", sender);
@@ -545,6 +529,7 @@ void DecompositionMap::transfer_sr_data(int sender, int receiver, SourceRegionKe
     }
 
     MPI_Recv(sr_recv.scalar_flux_final_.data(), negroups_, MPI_DOUBLE, sender, 6, mpi::intracomm, MPI_STATUS_IGNORE); 
+
     if (is_linear){
       MPI_Recv(sr_recv.source_gradients_.data(), 3*negroups_, MPI_DOUBLE, sender, 7, mpi::intracomm, MPI_STATUS_IGNORE); 
       MPI_Recv(sr_recv.flux_moments_old_.data(), 3*negroups_, MPI_DOUBLE, sender, 8, mpi::intracomm, MPI_STATUS_IGNORE); 
@@ -580,58 +565,6 @@ void DecompositionMap::transfer_sr_data(int sender, int receiver, SourceRegionKe
 
 }
 
-// bool DecompositionMap::is_SRK_in_domain(SourceRegionKey sr_key, Position r){
-//   bool is_in_my_subdomain = false;
-
-//   // check if in subdomain
-//   if (subdomain_map_.find(sr_key) != subdomain_map_.end()){
-//     if (subdomain_map_[sr_key] == mpi::rank){
-//       is_in_my_subdomain = true;
-//     }
-//   // else check if already in discovered_regions_map
-//   } else if (discovered_regions_map_.find(sr_key) != discovered_regions_map_.end()){
-//     if (discovered_regions_map_[sr_key] == mpi::rank){
-//       is_in_my_subdomain = true;
-//     }
-//   // if not record in discovered_regions_map
-//   } else {
-//       is_in_my_subdomain = record_new_SRK(sr_key, r);
-//   }
-
-//   return is_in_my_subdomain
-// }
-
-// bool DecompositionMap::is_SRK_in_domain(SourceRegionKey sr_key, Position r, 
-//     ParallelMap<SourceRegionKey, SourceRegion, SourceRegionKey::HashFunctor>&
-//     discovered_source_regions){
-
-//   // Check if SRK is in rank's subdomain
-//   auto it = subdomain_map_.find(sr_key);
-//   if (it != subdomain_map_.end()){
-//     return it->second == mpi::rank;
-//   } 
-
-//   // Check if already recorded in newly discovered source regions
-//   if (discovered_source_regions.contains(sr_key)){
-//     return true;
-//   }
-
-//   // Check if this SRK has been marked as outside
-//   if (outside_source_regions_.find(sr_key) != outside_source_regions_.end()){
-//     return false;
-//   }
-
-//   // If not found in either map, check if my rank would own source 
-//   // region beased on location
-//   bool is_in_my_subdomain = is_closest_rank(r);
-//   if (!is_in_my_subdomain){
-//     // Record as outside source region key so that we don't have 
-//     // to do this check again for this SRK
-//     outside_source_regions_.insert(sr_key);
-//   }
-//   return is_in_my_subdomain;
-// }
-
 int DecompositionMap::find_owner(SourceRegionKey sr_key, Position r, 
     ParallelMap<SourceRegionKey, SourceRegion, SourceRegionKey::HashFunctor>&
     discovered_source_regions, int64_t ID){ //TODO: Remove ID
@@ -659,24 +592,9 @@ int DecompositionMap::find_owner(SourceRegionKey sr_key, Position r,
     return mpi::rank;
   }
 
-  // // Check if this SRK has been marked as outside //TODO: This can create problems
-  // if (outside_source_regions_.find(sr_key) != outside_source_regions_.end()){
-  //   if (sr_key.base_source_region_id == 134 && sr_key.mesh_bin == 64056 || ID == 1083){
-  //     printf("RANK %d: Identified owner of ray %ld at check 3 as rank %d\n", mpi::rank, ID, outside_source_regions_[sr_key]);
-  //     printf("RANK %d: Position (%f, %f, %f) \n", mpi::rank, r.x, r.y, r.z);
-  //   }
-  //   // printf("RANK %d: Identified owner at check 3 as rank %d\n", mpi::rank, outside_source_regions_[sr_key]);
-  //   return outside_source_regions_[sr_key];
-  // }
-
   // If not found in either map, check if my rank would own source 
   // region beased on location
   int closest_rank = find_closest_rank(r);
-  // if (closest_rank != mpi::rank){ //TODO: This creates problems
-  //   // Record as outside source region so that we don't have 
-  //   // to do this check again for this SRK
-  //   outside_source_regions_[sr_key] = closest_rank;
-  // }
   // if (sr_key.base_source_region_id == 134 && sr_key.mesh_bin == 64056 || ID == 1083){
   //   printf("RANK %d: Identified owner of ray %ld at check 4 as rank %d\n", mpi::rank, ID, closest_rank);
   //   printf("RANK %d: Position (%f, %f, %f) \n", mpi::rank, r.x, r.y, r.z);
@@ -684,51 +602,6 @@ int DecompositionMap::find_owner(SourceRegionKey sr_key, Position r,
   // printf("RANK %d: Identified owner at check 4 as rank %d\n", mpi::rank, closest_rank);
   return closest_rank;
 }
-
-// void DecompositionMap::is_SRK_in_domain(SourceRegionKey sr_key, bool& is_in_map, bool& is_in_my_subdomain){
-//   if (subdomain_map_.find(sr_key) != subdomain_map_.end()){
-//     if (subdomain_map_[sr_key] == mpi::rank){
-//       is_in_map = true;
-//       is_in_my_subdomain = true;
-//     } else {
-//       is_in_map = true;
-//       // is_in_my_subdomain = false;
-//     }
-//   } // else {
-//   //     is_in_map = false;
-//   //     is_in_my_subdomain = false;
-//   // }
-// }
-
-// bool DecompositionMap::record_new_SRK(SourceRegionKey sr_key, Position r) {
-//   // Determine which rank the position belongs to
-//   int closest_rank = C_NONE;
-//   double min_distance = INFTY;
-  
-//   // Find closest rank center
-//   for (int rank = 0; rank < mpi::n_procs; rank++) {
-//       double dist = (r - rank_centers_[rank]).norm();
-//       if (dist < min_distance) {
-//           min_distance = dist;
-//           closest_rank = rank;
-//       }
-//   }
-
-//   if (mpi::master && closest_rank == C_NONE) {
-//     fatal_error("Could not find closest rank for new source region " 
-//       + std::to_string(sr_key.base_source_region_id) 
-//       + ", " + std::to_string(sr_key.mesh_bin) + " at position (" 
-//       + std::to_string(r.x) + ", " + std::to_string(r.y) + ", " + std::to_string(r.z) + ").");
-//   }
-
-//   //TODO: can discovered_source_regions_ be re-used, so that I avoid using additional map?
-//   // Record in subdomain map
-//   discovered_regions_map_[sr_key] = closest_rank; 
-
-//   // check whether it belongs to this rank's subdomain
-//   bool is_in_my_subdomain = (closest_rank == mpi::rank);
-//   return is_in_my_subdomain;
-// }
 
 // bool DecompositionMap::is_closest_rank(Position r) {
 int DecompositionMap::find_closest_rank(Position r) {
@@ -756,73 +629,20 @@ int DecompositionMap::find_closest_rank(Position r) {
   return closest_rank;
 }
 
-void DecompositionMap::calculate_rank_load(uint64_t total_geometric_intersections){
-  
-  // Reset rank load
-  std::fill(rank_load_.begin(), rank_load_.end(), 0.0);
-
-  // Temporary print-outs
-  if (mpi::master) {
-    printf("Load distribution: ");
-  }
-
-  // Calculate rank load based on number of geometric intersections
-  uint64_t total_geometric_intersections_sum = 0;
-  MPI_Allreduce(&total_geometric_intersections, &total_geometric_intersections_sum, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, mpi::intracomm);
-  double load = (total_geometric_intersections/static_cast<double>(total_geometric_intersections_sum))*100.0;
-
-  for (int rank = 0; rank < mpi::n_procs; rank++) {
-    // Broadcast load
-    double bcast_load = 0.0;
-    if (rank == mpi::rank) {
-      bcast_load = load;
-    }
-    MPI_Bcast(&bcast_load, 1, MPI_DOUBLE, rank, mpi::intracomm);
-    rank_load_[rank] = bcast_load;
-    // Temporary print-outs
-    if (mpi::master) {
-      printf("RANK %d: %.2f%% ", rank, rank_load_[rank]);
-    }
-  }
-  // Temporary print-outs
-  if (mpi::master) {
-    printf("\n");
-  }
-}
-
-// void DecompositionMap::calculate_rank_load(FlatSourceDomain* domain){
+// void DecompositionMap::calculate_rank_load(uint64_t total_geometric_intersections){
   
 //   // Reset rank load
 //   std::fill(rank_load_.begin(), rank_load_.end(), 0.0);
 
-//   // Add number of hits for each source region by going through all exisiting source regions.
-//   int64_t n_hits_rank = 0;
-  
-//   // add source region hits
-//   #pragma omp parallel for reduction(+ : n_hits_rank)
-//     for (int64_t sr = 0; sr < domain->n_source_regions(); sr++) {
-//       n_hits_rank += domain->source_regions_.n_hits(sr);
-//     }
-
-//   // add newly discovered source region hits
-//   for (const auto & [sr_key, sr] : domain->discovered_source_regions_) {
-//     n_hits_rank += sr.scalars_.n_hits_;
-//   }
-
-// // source_region_map_
 //   // Temporary print-outs
 //   if (mpi::master) {
 //     printf("Load distribution: ");
 //   }
 
 //   // Calculate rank load based on number of geometric intersections
-//   uint64_t n_hits_total = 0;
-//   MPI_Allreduce(&n_hits_rank, &n_hits_total, 1, MPI_INT64_T, MPI_SUM, mpi::intracomm);
-//   double load = (n_hits_rank/static_cast<double>(n_hits_total))*100.0;
-  
-//   if(mpi::master){
-//     printf("Total hits: %ld \n", n_hits_total);
-//   }
+//   uint64_t total_geometric_intersections_sum = 0;
+//   MPI_Allreduce(&total_geometric_intersections, &total_geometric_intersections_sum, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, mpi::intracomm);
+//   double load = (total_geometric_intersections/static_cast<double>(total_geometric_intersections_sum))*100.0;
 
 //   for (int rank = 0; rank < mpi::n_procs; rank++) {
 //     // Broadcast load
@@ -842,5 +662,59 @@ void DecompositionMap::calculate_rank_load(uint64_t total_geometric_intersection
 //     printf("\n");
 //   }
 // }
+
+void DecompositionMap::calculate_rank_load(FlatSourceDomain* domain){ //TODO: This uses accumulated value, not batch-wise values!
+  
+  rank_load_.resize(mpi::n_procs, 0.0); //TODO: that should be moved elsewhere
+
+  // Reset rank load
+  std::fill(rank_load_.begin(), rank_load_.end(), 0.0);
+
+  // Add number of hits for each source region by going through all exisiting source regions.
+  int64_t n_hits_rank = 0;
+  
+  // add source region hits
+  #pragma omp parallel for reduction(+ : n_hits_rank)
+    for (int64_t sr = 0; sr < domain->n_source_regions(); sr++) {
+      n_hits_rank += domain->source_regions_.n_hits(sr);
+    }
+
+  // add newly discovered source region hits
+  for (const auto & [sr_key, sr] : domain->discovered_source_regions_) {
+    n_hits_rank += sr.scalars_.n_hits_;
+  }
+
+  // Temporary print-outs
+  if (mpi::master) {
+    printf("Load distribution: ");
+  }
+
+  // Calculate rank load based on number of geometric intersections
+  uint64_t n_hits_total = 0;
+  MPI_Allreduce(&n_hits_rank, &n_hits_total, 1, MPI_INT64_T, MPI_SUM, mpi::intracomm);
+  double load = (n_hits_rank/static_cast<double>(n_hits_total))*100.0;
+  
+  if(mpi::master){
+    printf("Total hits: %ld \n", n_hits_total);
+  }
+
+  for (int rank = 0; rank < mpi::n_procs; rank++) {
+    // Broadcast load
+    double bcast_load = 0.0;
+    if (rank == mpi::rank) {
+      bcast_load = load;
+    }
+    MPI_Bcast(&bcast_load, 1, MPI_DOUBLE, rank, mpi::intracomm);
+    rank_load_[rank] = bcast_load;
+    // Temporary print-outs
+    if (mpi::master) {
+      printf("RANK %d: %.2f%% ", rank, rank_load_[rank]);
+    }
+  }
+  // Temporary print-outs
+  if (mpi::master) {
+    printf("\n");
+  }
+}
 
 }// namespace openmc

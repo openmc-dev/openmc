@@ -56,9 +56,9 @@ attributes:
 
 .. _io_chain_reaction:
 
-----------------------
+--------------------
 ``<source>`` Element
-----------------------
+--------------------
 
 The ``<source>`` element represents photon and electron sources associated with
 the decay of a nuclide and contains information to construct an
@@ -72,8 +72,10 @@ energy distribution. This element has the following attributes:
     The type of particle emitted, e.g., 'photon' or 'electron'
 
   :parameters:
-    The parameters of the source term, e.g., for a :class:`openmc.stats.Discrete` source, the energies (in [eV])
-    at which the particles are emitted and their relative intensities in [Bq/atom] (in other words, decay constants).
+    The parameters of the source term, e.g., for a
+    :class:`openmc.stats.Discrete` source, the energies (in [eV]) at which the
+    particles are emitted and their relative intensities in [Bq/atom] (in other
+    words, decay constants).
 
 ----------------------
 ``<reaction>`` Element

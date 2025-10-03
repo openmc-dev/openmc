@@ -310,13 +310,11 @@ void FlatSourceDomain::compute_k_eff()
 {
   double fission_rate_old = 0;
   double fission_rate_new = 0;
-  double power = 0;
 
   // Vector for gathering fission source terms for Shannon entropy calculation
   vector<float> p(n_source_regions(), 0.0f);
 
-#pragma omp parallel for reduction(                                            \
-    + : fission_rate_old, fission_rate_new, power)
+#pragma omp parallel for reduction(+ : fission_rate_old, fission_rate_new)
   for (int64_t sr = 0; sr < n_source_regions(); sr++) {
 
     // If simulation averaged volume is zero, don't include this cell
@@ -332,27 +330,22 @@ void FlatSourceDomain::compute_k_eff()
 
     double sr_fission_source_old = 0;
     double sr_fission_source_new = 0;
-    double sr_power = 0;
 
     for (int g = 0; g < negroups_; g++) {
       double nu_sigma_f = nu_sigma_f_[material * negroups_ + g];
-      double sigma_f = sigma_f_[material * negroups_ + g];
       sr_fission_source_old +=
         nu_sigma_f * source_regions_.scalar_flux_old(sr, g);
       sr_fission_source_new +=
         nu_sigma_f * source_regions_.scalar_flux_new(sr, g);
-      sr_power += sigma_f * source_regions_.scalar_flux_new(sr, g) * volume;
     }
 
     // Compute total fission rates in FSR
     sr_fission_source_old *= volume;
     sr_fission_source_new *= volume;
-    sr_power *= volume;
 
     // Accumulate totals
     fission_rate_old += sr_fission_source_old;
     fission_rate_new += sr_fission_source_new;
-    power += sr_power;
 
     // Store total fission rate in the FSR for Shannon calculation
     p[sr] = sr_fission_source_new;
@@ -360,13 +353,25 @@ void FlatSourceDomain::compute_k_eff()
 
   double k_eff_new = k_eff_ * (fission_rate_new / fission_rate_old);
 
-  // Normalize fluxes to generate a power level of 1 Watt
-  power = fission_rate_new;
-  power *= simulation_volume_;
-  double inverse_power = 1.0 / power;
+  // Normalize fluxes by total number of fission neutrons produced. This ensures
+  // consistent scaling of the eigenvector such that its magnitude is
+  // comparable to the eigenvector produced by the Monte Carlo solver.
+  // Multiplying by the eigenvalue is unintuitive, but it is necessary.
+  // If the eigenvalue is 1.2, per starting source neutron, you will
+  // generate 1.2 neutrons. Thus if we normalize to generating only ONE neutron
+  // in total for the whole domain, then we don't actually have enough flux to
+  // generate the required 1.2 neutrons. We only know the flux required to
+  // generate 1 neutron (which would have required less then one starting
+  // neutron). Thus, you have to scale the flux up by the eigenvalue such
+  // that 1.2 neutrons are generated, so as to be consistent with the
+  // bookkeeping in MC which is all done per starting source neutron (not per
+  // neutron produced).
+  double total_fission_neutrons = fission_rate_new * simulation_volume_;
+  double norm_factor = k_eff_new / total_fission_neutrons;
+
 #pragma omp parallel for
   for (int64_t se = 0; se < n_source_elements(); se++) {
-    source_regions_.scalar_flux_new(se) *= inverse_power;
+    source_regions_.scalar_flux_new(se) *= norm_factor;
   }
 
   double H = 0.0;

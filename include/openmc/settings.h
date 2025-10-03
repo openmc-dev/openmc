@@ -147,8 +147,8 @@ extern std::unordered_set<int>
   source_write_surf_id; //!< Surface ids where sources will be written
 extern double source_rejection_fraction; //!< Minimum fraction of source sites
                                          //!< that must be accepted
-extern double free_gas_threshold; //!< Threshold multiplier for free gas
-                                  //!< scattering treatment
+extern double free_gas_threshold;        //!< Threshold multiplier for free gas
+                                         //!< scattering treatment
 
 extern int
   max_history_splits; //!< maximum number of particle splits for weight windows

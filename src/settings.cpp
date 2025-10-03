@@ -653,8 +653,7 @@ void read_settings_xml(pugi::xml_node root)
   }
 
   if (check_for_node(root, "free_gas_threshold")) {
-    free_gas_threshold =
-      std::stod(get_node_value(root, "free_gas_threshold"));
+    free_gas_threshold = std::stod(get_node_value(root, "free_gas_threshold"));
   }
 
   // Survival biasing

@@ -51,6 +51,8 @@ class Model:
         Tallies information
     plots : openmc.Plots, optional
         Plot information
+    description : str, optional
+        Description of the model
 
     Attributes
     ----------
@@ -64,6 +66,8 @@ class Model:
         Tallies information
     plots : openmc.Plots
         Plot information
+    description : str
+        Description of the model
 
     """
 
@@ -74,12 +78,15 @@ class Model:
         settings: openmc.Settings | None = None,
         tallies: openmc.Tallies | None = None,
         plots: openmc.Plots | None = None,
+        description: str | None = None
     ):
         self.geometry = openmc.Geometry() if geometry is None else geometry
         self.materials = openmc.Materials() if materials is None else materials
         self.settings = openmc.Settings() if settings is None else settings
         self.tallies = openmc.Tallies() if tallies is None else tallies
         self.plots = openmc.Plots() if plots is None else plots
+        if description is not None:
+            self.description = description
 
     @property
     def geometry(self) -> openmc.Geometry:
@@ -114,6 +121,24 @@ class Model:
     def settings(self, settings):
         check_type('settings', settings, openmc.Settings)
         self._settings = settings
+
+    @property
+    def description(self) -> str:
+        return self.settings.description
+
+    @description.setter
+    def description(self, description: str):
+        cv.check_type('description', description, str)
+        self.settings.description = description
+
+    @property
+    def description(self) -> str:
+        return self.settings.description
+
+    @description.setter
+    def description(self, description: str):
+        check_type('description', description, str)
+        self.settings.description = description
 
     @property
     def tallies(self) -> openmc.Tallies:

@@ -342,6 +342,8 @@ class Settings:
 
     weight_windows_file: Pathlike
         Path to a weight window file to load during simulation initialization
+    description : str
+        Description of the model
 
         .. versionadded::0.14.0
     write_initial_source : bool
@@ -370,6 +372,7 @@ class Settings:
         self._confidence_intervals = None
         self._electron_treatment = None
         self._photon_transport = None
+        self._description = None
         self._plot_seed = None
         self._ptables = None
         self._uniform_source_sampling = None
@@ -1255,6 +1258,15 @@ class Settings:
         cv.check_less_than('source_rejection_fraction', source_rejection_fraction, 1)
         self._source_rejection_fraction = source_rejection_fraction
 
+    @property
+    def description(self):
+        return self._description
+
+    @description.setter
+    def description(self, description):
+        cv.check_type('description', description, str)
+        self._description = description
+
     def _create_run_mode_subelement(self, root):
         elem = ET.SubElement(root, "run_mode")
         elem.text = self._run_mode.value
@@ -1733,6 +1745,11 @@ class Settings:
             element = ET.SubElement(root, "source_rejection_fraction")
             element.text = str(self._source_rejection_fraction)
 
+    def _create_description_subelement(self, root):
+        if self._description is not None:
+            subelement = ET.SubElement(root, "description")
+            subelement.text = self._description
+
     def _eigenvalue_from_xml_element(self, root):
         elem = root.find('eigenvalue')
         if elem is not None:
@@ -2171,6 +2188,11 @@ class Settings:
         if text is not None:
             self.source_rejection_fraction = float(text)
 
+    def _description_from_xml_element(self, root):
+        text = get_text(root, 'description')
+        if text is not None:
+            self.description = text
+
     def to_xml_element(self, mesh_memo=None):
         """Create a 'settings' element to be written to an XML file.
 
@@ -2241,6 +2263,7 @@ class Settings:
         self._create_random_ray_subelement(element, mesh_memo)
         self._create_use_decay_photons_subelement(element)
         self._create_source_rejection_fraction_subelement(element)
+        self._create_description_subelement(element)
 
         # Clean the indentation in the file to be user-readable
         clean_indentation(element)
@@ -2352,6 +2375,7 @@ class Settings:
         settings._random_ray_from_xml_element(elem, meshes)
         settings._use_decay_photons_from_xml_element(elem)
         settings._source_rejection_fraction_from_xml_element(elem)
+        settings._description_from_xml_element(elem)
 
         return settings
 

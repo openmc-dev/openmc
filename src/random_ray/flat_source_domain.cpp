@@ -124,7 +124,9 @@ void FlatSourceDomain::update_single_neutron_source(SourceRegionHandle& srh)
         double chi = chi_[material * negroups_ + g_out];
 
         scatter_source += sigma_s * scalar_flux;
-        fission_source += nu_sigma_f * scalar_flux * chi;
+        if (settings::create_fission_neutrons) {
+          fission_source += nu_sigma_f * scalar_flux * chi;
+        }
       }
       srh.source(g_out) =
         (scatter_source + fission_source * inverse_k_eff) / sigma_t;
@@ -308,11 +310,13 @@ void FlatSourceDomain::compute_k_eff()
 {
   double fission_rate_old = 0;
   double fission_rate_new = 0;
+  double power = 0;
 
   // Vector for gathering fission source terms for Shannon entropy calculation
   vector<float> p(n_source_regions(), 0.0f);
 
-#pragma omp parallel for reduction(+ : fission_rate_old, fission_rate_new)
+#pragma omp parallel for reduction(                                            \
+    + : fission_rate_old, fission_rate_new, power)
   for (int64_t sr = 0; sr < n_source_regions(); sr++) {
 
     // If simulation averaged volume is zero, don't include this cell
@@ -328,28 +332,42 @@ void FlatSourceDomain::compute_k_eff()
 
     double sr_fission_source_old = 0;
     double sr_fission_source_new = 0;
+    double sr_power = 0;
 
     for (int g = 0; g < negroups_; g++) {
       double nu_sigma_f = nu_sigma_f_[material * negroups_ + g];
+      double sigma_f = sigma_f_[material * negroups_ + g];
       sr_fission_source_old +=
         nu_sigma_f * source_regions_.scalar_flux_old(sr, g);
       sr_fission_source_new +=
         nu_sigma_f * source_regions_.scalar_flux_new(sr, g);
+      sr_power += sigma_f * source_regions_.scalar_flux_new(sr, g) * volume;
     }
 
     // Compute total fission rates in FSR
     sr_fission_source_old *= volume;
     sr_fission_source_new *= volume;
+    sr_power *= volume;
 
     // Accumulate totals
     fission_rate_old += sr_fission_source_old;
     fission_rate_new += sr_fission_source_new;
+    power += sr_power;
 
     // Store total fission rate in the FSR for Shannon calculation
     p[sr] = sr_fission_source_new;
   }
 
   double k_eff_new = k_eff_ * (fission_rate_new / fission_rate_old);
+
+  // Normalize fluxes to generate a power level of 1 Watt
+  power = fission_rate_new;
+  power *= simulation_volume_;
+  double inverse_power = 1.0 / power;
+#pragma omp parallel for
+  for (int64_t se = 0; se < n_source_elements(); se++) {
+    source_regions_.scalar_flux_new(se) *= inverse_power;
+  }
 
   double H = 0.0;
   // defining an inverse sum for better performance

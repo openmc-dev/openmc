@@ -225,7 +225,7 @@ class R2SManager:
 
         if output_dir is None:
             stamp = datetime.now().strftime('%Y-%m-%dT%H-%M-%S')
-            output_dir = Path(f'r2s_{stamp}')
+            output_dir = Path(comm.bcast(f'r2s_{stamp}'))
 
         # Set run_kwargs for the neutron transport step
         if micro_kwargs is None:
@@ -441,12 +441,12 @@ class R2SManager:
         output_path = output_dir / 'depletion_results.h5'
         integrate_start = perf_counter()
         integrator.integrate(final_step=False, path=output_path)
+        comm.barrier()
         self._record_time(step_name, 'integrate', integrate_start)
 
         # Get depletion results
         results_start = perf_counter()
-        results = Results(output_path) if comm.rank == 0 else None
-        self.results['depletion_results'] = comm.bcast(results)
+        self.results['depletion_results'] = Results(output_path)
         self._record_time(step_name, 'load_results', results_start)
 
         self._record_time(step_name, 'total', step_start)

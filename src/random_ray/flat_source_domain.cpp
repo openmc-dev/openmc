@@ -361,7 +361,7 @@ void FlatSourceDomain::compute_k_eff()
   // generate 1.2 neutrons. Thus if we normalize to generating only ONE neutron
   // in total for the whole domain, then we don't actually have enough flux to
   // generate the required 1.2 neutrons. We only know the flux required to
-  // generate 1 neutron (which would have required less then one starting
+  // generate 1 neutron (which would have required less than one starting
   // neutron). Thus, you have to scale the flux up by the eigenvalue such
   // that 1.2 neutrons are generated, so as to be consistent with the
   // bookkeeping in MC which is all done per starting source neutron (not per

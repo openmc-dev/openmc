@@ -1715,9 +1715,15 @@ class Settings:
                             domain_elem = ET.SubElement(mesh_elem, 'domain')
                             domain_elem.set('id', str(domain.id))
                             domain_elem.set('type', domain.__class__.__name__.lower())
-                        if mesh_memo is not None and mesh.id not in mesh_memo:
+                        # See if a <mesh> element already exists -- if not, add it
+                        path = f"./mesh[@id='{mesh.id}']"
+                        if root.find(path) is None:
                             root.append(mesh.to_xml_element())
-                            mesh_memo.add(mesh.id)
+                            if mesh_memo is not None:
+                                mesh_memo.add(mesh.id)
+                elif isinstance(value, bool):
+                    subelement = ET.SubElement(element, key)
+                    subelement.text = str(value).lower()
                 else:
                     subelement = ET.SubElement(element, key)
                     subelement.text = str(value)
@@ -2110,7 +2116,7 @@ class Settings:
         if text is not None:
             self.max_tracks = int(text)
 
-    def _random_ray_from_xml_element(self, root):
+    def _random_ray_from_xml_element(self, root, meshes=None):
         elem = root.find('random_ray')
         if elem is not None:
             self.random_ray = {}
@@ -2137,7 +2143,11 @@ class Settings:
                 elif child.tag == 'source_region_meshes':
                     self.random_ray['source_region_meshes'] = []
                     for mesh_elem in child.findall('mesh'):
-                        mesh = MeshBase.from_xml_element(mesh_elem)
+                        mesh_id = int(get_text(mesh_elem, 'id'))
+                        if meshes and mesh_id in meshes:
+                            mesh = meshes[mesh_id]
+                        else:
+                            mesh = MeshBase.from_xml_element(mesh_elem)
                         domains = []
                         for domain_elem in mesh_elem.findall('domain'):
                             domain_id = int(get_text(domain_elem, "id"))
@@ -2339,7 +2349,7 @@ class Settings:
         settings._max_history_splits_from_xml_element(elem)
         settings._max_tracks_from_xml_element(elem)
         settings._max_secondaries_from_xml_element(elem)
-        settings._random_ray_from_xml_element(elem)
+        settings._random_ray_from_xml_element(elem, meshes)
         settings._use_decay_photons_from_xml_element(elem)
         settings._source_rejection_fraction_from_xml_element(elem)
 

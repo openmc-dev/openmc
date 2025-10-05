@@ -238,6 +238,17 @@ Mesh::Mesh(pugi::xml_node node)
     name_ = get_node_value(node, "name");
 }
 
+Mesh::Mesh(hid_t group)
+{
+  // Read mesh ID
+  read_attribute(group, "id", id_);
+
+  // Read mesh name
+  if (object_exists(group, "name")) {
+    read_dataset(group, "name", name_);
+  }
+}
+
 void Mesh::set_id(int32_t id)
 {
   assert(id >= 0 || id == C_NONE);
@@ -624,6 +635,46 @@ UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node)
   // statepoint files
   if (check_for_node(node, "output")) {
     output_ = get_node_value_bool(node, "output");
+  }
+}
+
+UnstructuredMesh::UnstructuredMesh(hid_t group) : Mesh(group)
+{
+  n_dimension_ = 3;
+
+  // check the mesh type
+  if (object_exists(group, "type")) {
+    std::string temp;
+    read_dataset(group, "type", temp);
+    if (temp != mesh_type) {
+      fatal_error(fmt::format("Invalid mesh type: {}", temp));
+    }
+  }
+
+  // check if a length unit multiplier was specified
+  if (object_exists(group, "length_multiplier")) {
+    read_dataset(group, "length_multiplier", length_multiplier_);
+  }
+
+  // get the filename of the unstructured mesh to load
+  if (object_exists(group, "filename")) {
+    read_dataset(group, "filename", filename_);
+    if (!file_exists(filename_)) {
+      fatal_error("Mesh file '" + filename_ + "' does not exist!");
+    }
+  } else {
+    fatal_error(fmt::format(
+      "No filename supplied for unstructured mesh with ID: {}", id_));
+  }
+
+  if (attribute_exists(group, "options")) {
+    read_attribute(group, "options", options_);
+  }
+
+  // check if mesh tally data should be written with
+  // statepoint files
+  if (attribute_exists(group, "output")) {
+    read_attribute(group, "output", output_);
   }
 }
 
@@ -1174,6 +1225,73 @@ RegularMesh::RegularMesh(pugi::xml_node node) : StructuredMesh {node}
   }
 }
 
+RegularMesh::RegularMesh(hid_t group) : StructuredMesh {group}
+{
+  // Determine number of dimensions for mesh
+  if (!object_exists(group, "dimension")) {
+    fatal_error("Must specify <dimension> on a regular mesh.");
+  }
+
+  xt::xtensor<int, 1> shape;
+  read_dataset(group, "dimension", shape);
+  int n = n_dimension_ = shape.size();
+  if (n != 1 && n != 2 && n != 3) {
+    fatal_error("Mesh must be one, two, or three dimensions.");
+  }
+  std::copy(shape.begin(), shape.end(), shape_.begin());
+
+  // Check that dimensions are all greater than zero
+  if (xt::any(shape <= 0)) {
+    fatal_error("All entries on the <dimension> element for a tally "
+                "mesh must be positive.");
+  }
+
+  // Check for lower-left coordinates
+  if (object_exists(group, "lower_left")) {
+    // Read mesh lower-left corner location
+    read_dataset(group, "lower_left", lower_left_);
+  } else {
+    fatal_error("Must specify <lower_left> on a mesh.");
+  }
+
+  // Make sure lower_left and dimension match
+  if (shape.size() != lower_left_.size()) {
+    fatal_error("Number of entries on <lower_left> must be the same "
+                "as the number of entries on <dimension>.");
+  }
+
+  if (object_exists(group, "upper_right")) {
+
+    read_dataset(group, "upper_right", upper_right_);
+
+    // Check to ensure width has same dimensions
+    auto n = upper_right_.size();
+    if (n != lower_left_.size()) {
+      fatal_error("Number of entries on <upper_right> must be the "
+                  "same as the number of entries on <lower_left>.");
+    }
+
+    // Check that upper-right is above lower-left
+    if (xt::any(upper_right_ < lower_left_)) {
+      fatal_error("The <upper_right> coordinates must be greater than "
+                  "the <lower_left> coordinates on a tally mesh.");
+    }
+
+    // Set width
+    width_ = xt::eval((upper_right_ - lower_left_) / shape);
+  } else {
+    fatal_error("Must specify either <upper_right> or <width> on a mesh.");
+  }
+
+  // Set material volumes
+  volume_frac_ = 1.0 / xt::prod(shape)();
+
+  element_volume_ = 1.0;
+  for (int i = 0; i < n_dimension_; i++) {
+    element_volume_ *= width_[i];
+  }
+}
+
 int RegularMesh::get_index_in_direction(double r, int i) const
 {
   return std::ceil((r - lower_left_[i]) / width_[i]);
@@ -1343,6 +1461,19 @@ RectilinearMesh::RectilinearMesh(pugi::xml_node node) : StructuredMesh {node}
   }
 }
 
+RectilinearMesh::RectilinearMesh(hid_t group) : StructuredMesh {group}
+{
+  n_dimension_ = 3;
+
+  read_dataset(group, "x_grid", grid_[0]);
+  read_dataset(group, "y_grid", grid_[1]);
+  read_dataset(group, "z_grid", grid_[2]);
+
+  if (int err = set_grid()) {
+    fatal_error(openmc_err_msg);
+  }
+}
+
 const std::string RectilinearMesh::mesh_type = "rectilinear";
 
 std::string RectilinearMesh::get_mesh_type() const
@@ -1472,6 +1603,19 @@ CylindricalMesh::CylindricalMesh(pugi::xml_node node)
   grid_[1] = get_node_array<double>(node, "phi_grid");
   grid_[2] = get_node_array<double>(node, "z_grid");
   origin_ = get_node_position(node, "origin");
+
+  if (int err = set_grid()) {
+    fatal_error(openmc_err_msg);
+  }
+}
+
+CylindricalMesh::CylindricalMesh(hid_t group) : PeriodicStructuredMesh {group}
+{
+  n_dimension_ = 3;
+  read_dataset(group, "r_grid", grid_[0]);
+  read_dataset(group, "phi_grid", grid_[1]);
+  read_dataset(group, "z_grid", grid_[2]);
+  read_dataset(group, "origin", origin_);
 
   if (int err = set_grid()) {
     fatal_error(openmc_err_msg);
@@ -1750,6 +1894,20 @@ SphericalMesh::SphericalMesh(pugi::xml_node node)
   grid_[1] = get_node_array<double>(node, "theta_grid");
   grid_[2] = get_node_array<double>(node, "phi_grid");
   origin_ = get_node_position(node, "origin");
+
+  if (int err = set_grid()) {
+    fatal_error(openmc_err_msg);
+  }
+}
+
+SphericalMesh::SphericalMesh(hid_t group) : PeriodicStructuredMesh {group}
+{
+  n_dimension_ = 3;
+
+  read_dataset(group, "r_grid", grid_[0]);
+  read_dataset(group, "theta_grid", grid_[1]);
+  read_dataset(group, "phi_grid", grid_[2]);
+  read_dataset(group, "origin", origin_);
 
   if (int err = set_grid()) {
     fatal_error(openmc_err_msg);
@@ -2520,6 +2678,11 @@ MOABMesh::MOABMesh(pugi::xml_node node) : UnstructuredMesh(node)
   initialize();
 }
 
+MOABMesh::MOABMesh(hid_t group) : UnstructuredMesh(group)
+{
+  initialize();
+}
+
 MOABMesh::MOABMesh(const std::string& filename, double length_multiplier)
   : UnstructuredMesh()
 {
@@ -3228,6 +3391,15 @@ LibMesh::LibMesh(pugi::xml_node node) : UnstructuredMesh(node)
   initialize();
 }
 
+LibMesh::LibMesh(hid_t group) : UnstructuredMesh(group)
+{
+  // filename_ and length_multiplier_ will already be set by the
+  // UnstructuredMesh constructor
+  set_mesh_pointer_from_filename(filename_);
+  set_length_multiplier(length_multiplier_);
+  initialize();
+}
+
 // create the mesh from a pointer to a libMesh Mesh
 LibMesh::LibMesh(libMesh::MeshBase& input_mesh, double length_multiplier)
 {
@@ -3643,6 +3815,80 @@ void read_meshes(pugi::xml_node root)
     } else {
       fatal_error("Invalid mesh type: " + mesh_type);
     }
+
+    // Map ID to position in vector
+    model::mesh_map[model::meshes.back()->id_] = model::meshes.size() - 1;
+  }
+}
+
+void read_meshes(hid_t group, std::unordered_map<int32_t, int32_t>& mesh_map)
+{
+  // Find the iterator to the element with the maximum key
+  auto max_key_it =
+    std::max_element(model::mesh_map.begin(), model::mesh_map.end(),
+      [](const auto& p1, const auto& p2) { return p1.first < p2.first; });
+  auto offset = max_key_it->first;
+
+  std::unordered_set<int> mesh_ids;
+
+  std::array<int, 1> ids;
+  read_attribute(group, "ids", ids);
+
+  for (auto id : ids) {
+
+    mesh_map[id] = id + offset;
+
+    // Check to make sure multiple meshes in the same file don't share IDs
+    if (contains(mesh_ids, id)) {
+      fatal_error(fmt::format("Two or more meshes use the same unique ID "
+                              "'{}' in the same HDF5 input file",
+        id));
+    }
+    mesh_ids.insert(id);
+
+    std::string name = fmt::format("mesh {}", id);
+    hid_t mesh_group = open_group(group, name.c_str());
+
+    std::string mesh_type;
+    if (attribute_exists(mesh_group, "type")) {
+      read_dataset(mesh_group, "type", mesh_type);
+    } else {
+      mesh_type = "regular";
+    }
+
+    // determine the mesh library to use
+    std::string mesh_lib;
+    if (attribute_exists(mesh_group, "library")) {
+      read_dataset(mesh_group, "library", mesh_lib);
+    }
+
+    // Read mesh and add to vector
+    if (mesh_type == RegularMesh::mesh_type) {
+      model::meshes.push_back(make_unique<RegularMesh>(mesh_group));
+    } else if (mesh_type == RectilinearMesh::mesh_type) {
+      model::meshes.push_back(make_unique<RectilinearMesh>(mesh_group));
+    } else if (mesh_type == CylindricalMesh::mesh_type) {
+      model::meshes.push_back(make_unique<CylindricalMesh>(mesh_group));
+    } else if (mesh_type == SphericalMesh::mesh_type) {
+      model::meshes.push_back(make_unique<SphericalMesh>(mesh_group));
+#ifdef OPENMC_DAGMC_ENABLED
+    } else if (mesh_type == UnstructuredMesh::mesh_type &&
+               mesh_lib == MOABMesh::mesh_lib_type) {
+      model::meshes.push_back(make_unique<MOABMesh>(mesh_group));
+#endif
+#ifdef OPENMC_LIBMESH_ENABLED
+    } else if (mesh_type == UnstructuredMesh::mesh_type &&
+               mesh_lib == LibMesh::mesh_lib_type) {
+      model::meshes.push_back(make_unique<LibMesh>(mesh_group));
+#endif
+    } else if (mesh_type == UnstructuredMesh::mesh_type) {
+      fatal_error("Unstructured mesh support is not enabled or the mesh "
+                  "library is invalid.");
+    } else {
+      fatal_error("Invalid mesh type: " + mesh_type);
+    }
+
+    model::meshes.back()->id_ = mesh_map[model::meshes.back()->id_];
 
     // Map ID to position in vector
     model::mesh_map[model::meshes.back()->id_] = model::meshes.size() - 1;

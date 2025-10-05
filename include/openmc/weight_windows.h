@@ -87,8 +87,9 @@ public:
   WeightWindows(pugi::xml_node node);
   ~WeightWindows();
   static WeightWindows* create(int32_t id = -1);
-  static WeightWindows* from_hdf5(
-    hid_t wws_group, const std::string& group_name);
+  static WeightWindows* from_hdf5(hid_t wws_group,
+    const std::string& group_name,
+    std::unordered_map<int32_t, int32_t>& id_map);
 
   //----------------------------------------------------------------------------
   // Methods

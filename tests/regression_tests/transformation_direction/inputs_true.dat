@@ -4,6 +4,7 @@
     <material id="1" depletable="true">
       <density value="4.5" units="g/cc"/>
       <nuclide name="U235" ao="1.0"/>
+    </material>
   </materials>
   <geometry>
     <cell id="1" material="1" region="1 -2 3 -4 5 -6" universe="1"/>

@@ -121,7 +121,7 @@ def test_apply_time_correction(run_in_tmpdir):
         flux = tally.mean.flatten()
 
     # Apply TCF and make sure results are consistent
-    result = d1s.apply_time_correction(tally, factors, sum_nuclides=False)
+    result = d1s.apply_time_correction(tally, factors, sum_nuclides=False)[0]
     tcf = np.array([factors[nuc][-1] for nuc in nuclides])
     assert result.mean.flatten() == pytest.approx(tcf * flux)
 

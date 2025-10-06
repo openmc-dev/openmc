@@ -1,19 +1,19 @@
 <?xml version='1.0' encoding='utf-8'?>
 <model>
   <materials>
-    <material depletable="true" id="1">
-      <density units="g/cc" value="4.5"/>
-      <nuclide ao="1.0" name="U235"/>
+    <material id="1" depletable="true">
+      <density value="4.5" units="g/cc"/>
+      <nuclide name="U235" ao="1.0"/>
     </material>
   </materials>
   <geometry>
     <cell id="1" material="1" region="-1 2 -3 -4 5 6" universe="1"/>
-    <surface boundary="transformation" coeffs="8.660254037844386" direction_transformation="1.0 0.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 0.0 1.0 0.0" id="1" position_transformation="1.0 0.0 0.0 -17.32050807568877 0.0 1.0 0.0 0.0 0.0 0.0 1.0 0.0" type="x-plane"/>
-    <surface boundary="transformation" coeffs="-8.660254037844386" direction_transformation="1.0 0.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 0.0 1.0 0.0" id="2" position_transformation="1.0 0.0 0.0 17.32050807568877 0.0 1.0 0.0 0.0 0.0 0.0 1.0 0.0" type="x-plane"/>
-    <surface boundary="transformation" coeffs="0.5773502691896257 1.0 0.0 10.0" direction_transformation="1.0 0.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 0.0 1.0 0.0" id="3" position_transformation="1.0 0.0 0.0 -5.0 0.0 1.0 0.0 -8.660254037844386 0.0 0.0 1.0 0.0" type="plane"/>
-    <surface boundary="transformation" coeffs="-0.5773502691896257 1.0 0.0 10.0" direction_transformation="1.0 0.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 0.0 1.0 0.0" id="4" position_transformation="1.0 0.0 0.0 5.0 0.0 1.0 0.0 -8.660254037844386 0.0 0.0 1.0 0.0" type="plane"/>
-    <surface boundary="transformation" coeffs="-0.5773502691896257 1.0 0.0 -10.0" direction_transformation="1.0 0.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 0.0 1.0 0.0" id="5" position_transformation="1.0 0.0 0.0 -5.0 0.0 1.0 0.0 8.660254037844386 0.0 0.0 1.0 0.0" type="plane"/>
-    <surface boundary="transformation" coeffs="0.5773502691896257 1.0 0.0 -10.0" direction_transformation="1.0 0.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 0.0 1.0 0.0" id="6" position_transformation="1.0 0.0 0.0 5.0 0.0 1.0 0.0 8.660254037844386 0.0 0.0 1.0 0.0" type="plane"/>
+    <surface id="1" type="x-plane" boundary="transformation" coeffs="8.660254037844386" direction_transformation="1.0 0.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 0.0 1.0 0.0" position_transformation="1.0 0.0 0.0 -17.32050807568877 0.0 1.0 0.0 0.0 0.0 0.0 1.0 0.0"/>
+    <surface id="2" type="x-plane" boundary="transformation" coeffs="-8.660254037844386" direction_transformation="1.0 0.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 0.0 1.0 0.0" position_transformation="1.0 0.0 0.0 17.32050807568877 0.0 1.0 0.0 0.0 0.0 0.0 1.0 0.0"/>
+    <surface id="3" type="plane" boundary="transformation" coeffs="0.5773502691896257 1.0 0.0 10.0" direction_transformation="1.0 0.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 0.0 1.0 0.0" position_transformation="1.0 0.0 0.0 -5.0 0.0 1.0 0.0 -8.660254037844386 0.0 0.0 1.0 0.0"/>
+    <surface id="4" type="plane" boundary="transformation" coeffs="-0.5773502691896257 1.0 0.0 10.0" direction_transformation="1.0 0.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 0.0 1.0 0.0" position_transformation="1.0 0.0 0.0 5.0 0.0 1.0 0.0 -8.660254037844386 0.0 0.0 1.0 0.0"/>
+    <surface id="5" type="plane" boundary="transformation" coeffs="-0.5773502691896257 1.0 0.0 -10.0" direction_transformation="1.0 0.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 0.0 1.0 0.0" position_transformation="1.0 0.0 0.0 -5.0 0.0 1.0 0.0 8.660254037844386 0.0 0.0 1.0 0.0"/>
+    <surface id="6" type="plane" boundary="transformation" coeffs="0.5773502691896257 1.0 0.0 -10.0" direction_transformation="1.0 0.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 0.0 1.0 0.0" position_transformation="1.0 0.0 0.0 5.0 0.0 1.0 0.0 8.660254037844386 0.0 0.0 1.0 0.0"/>
   </geometry>
   <settings>
     <run_mode>eigenvalue</run_mode>

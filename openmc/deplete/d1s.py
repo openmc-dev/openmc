@@ -124,12 +124,12 @@ def time_correction_factors(
 def apply_time_correction(
         tally: openmc.Tally,
         time_correction_factors: dict[str, np.ndarray],
-        index: int = -1,
+        index: Sequence[int] = [-1],
         sum_nuclides: bool = True
-) -> openmc.Tally:
+) -> list[openmc.Tally]:
     """Apply time correction factors to a tally.
 
-    This function applies the time correction factors at the given index to a
+    This function applies the time correction factors at the given index(es) to a
     tally that contains a :class:`~openmc.ParentNuclideFilter`. When
     `sum_nuclides` is True, values over all parent nuclides will be summed,
     leaving a single value for each filter combination.
@@ -140,71 +140,90 @@ def apply_time_correction(
         Tally to apply the time correction factors to
     time_correction_factors : dict
         Time correction factors as returned by :func:`time_correction_factors`
-    index : int, optional
-        Index of the time of interest. If N timesteps are provided in
+    index : sequence of int, optional
+        Sequence of time indices of interest. If N timesteps are provided in
         :func:`time_correction_factors`, there are N + 1 times to select from.
-        The default is -1 which corresponds to the final time.
+        The default is [-1] which corresponds to the final time. For a single
+        time index, pass [index].
     sum_nuclides : bool
         Whether to sum over the parent nuclides
 
     Returns
     -------
-    openmc.Tally
-        Derived tally with time correction factors applied
+    list of openmc.Tally
+        List of derived tallies with time correction factors applied, one for
+        each index in the input sequence.
 
     """
+    # Convert index sequence to list
+    indices = list(index)
+
     # Make sure the tally contains a ParentNuclideFilter
-    for i_filter, filter in enumerate(tally.filters):
-        if isinstance(filter, openmc.ParentNuclideFilter):
+    i_filter = None
+    for i, filter_obj in enumerate(tally.filters):
+        if isinstance(filter_obj, openmc.ParentNuclideFilter):
+            i_filter = i
             break
-    else:
+    
+    if i_filter is None:
         raise ValueError('Tally must contain a ParentNuclideFilter')
 
     # Get list of radionuclides based on tally filter
     radionuclides = [str(x) for x in tally.filters[i_filter].bins]
-    tcf = np.array([time_correction_factors[x][index] for x in radionuclides])
+    n_radionuclides = len(radionuclides)
+    
+    # Extract TCF values for all requested indices at once
+    # Shape: (n_indices, n_radionuclides)
+    tcf_matrix = np.array([[time_correction_factors[nuc][idx] for nuc in radionuclides] 
+                          for idx in indices])
 
-    # Create copy of tally
-    new_tally = deepcopy(tally)
-
-    # Determine number of bins in other filters
+    # Perform expensive operations once - get tally metadata
+    _, n_nuclides, n_scores = tally.shape
     n_bins_before = prod([f.num_bins for f in tally.filters[:i_filter]])
     n_bins_after = prod([f.num_bins for f in tally.filters[i_filter + 1:]])
+    
+    # Original tally shape for reshaping
+    shape_5d = (n_bins_before, n_radionuclides, n_bins_after, n_nuclides, n_scores)
+    final_shape = (-1, n_nuclides, n_scores)
 
-    # Reshape sum and sum_sq, apply TCF, and sum along that axis
-    _, n_nuclides, n_scores = new_tally.shape
-    n_radionuclides = len(radionuclides)
-    shape = (n_bins_before, n_radionuclides, n_bins_after, n_nuclides, n_scores)
-    tally_sum = new_tally.sum.reshape(shape)
-    tally_sum_sq = new_tally.sum_sq.reshape(shape)
+    # Get original tally data once
+    tally_sum = tally.sum.reshape(shape_5d)
+    tally_sum_sq = tally.sum_sq.reshape(shape_5d)
 
-    # Apply TCF, broadcasting to the correct dimensions
-    tcf.shape = (1, -1, 1, 1, 1)
-    new_tally._sum = tally_sum * tcf
-    new_tally._sum_sq = tally_sum_sq * (tcf*tcf)
-    new_tally._mean = None
-    new_tally._std_dev = None
+    # Process all indices efficiently
+    results = []
+    for i, idx in enumerate(indices):
+        # Create copy of tally (this is still the bottleneck, but we minimize calls)
+        new_tally = deepcopy(tally)
+        
+        # Get TCF for this specific index
+        tcf = tcf_matrix[i].reshape(1, -1, 1, 1, 1)
+        
+        # Apply corrections
+        new_tally._sum = tally_sum * tcf
+        new_tally._sum_sq = tally_sum_sq * (tcf * tcf)
+        new_tally._mean = None
+        new_tally._std_dev = None
 
-    shape = (-1, n_nuclides, n_scores)
+        if sum_nuclides:
+            # Query the mean and standard deviation
+            mean = new_tally.mean
+            std_dev = new_tally.std_dev
 
-    if sum_nuclides:
-        # Query the mean and standard deviation
-        mean = new_tally.mean
-        std_dev = new_tally.std_dev
+            # Sum over parent nuclides
+            new_tally._mean = mean.sum(axis=1).reshape(final_shape)
+            new_tally._std_dev = np.linalg.norm(std_dev, axis=1).reshape(final_shape)
+            new_tally._derived = True
 
-        # Sum over parent nuclides (note that when combining different bins for
-        # parent nuclide, we can't work directly on sum_sq)
-        new_tally._mean = mean.sum(axis=1).reshape(shape)
-        new_tally._std_dev = np.linalg.norm(std_dev, axis=1).reshape(shape)
-        new_tally._derived = True
+            # Remove ParentNuclideFilter
+            new_tally.filters.pop(i_filter)
+        else:
+            new_tally._sum.shape = final_shape
+            new_tally._sum_sq.shape = final_shape
 
-        # Remove ParentNuclideFilter
-        new_tally.filters.pop(i_filter)
-    else:
-        new_tally._sum.shape = shape
-        new_tally._sum_sq.shape = shape
+        results.append(new_tally)
 
-    return new_tally
+    return results
 
 
 def prepare_tallies(

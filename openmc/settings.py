@@ -84,6 +84,10 @@ class Settings:
         history-based parallelism.
 
         .. versionadded:: 0.12
+    free_gas_threshold : float
+        Energy multiplier (in units of :math:`kT`) below which the free gas
+        scattering treatment is applied for elastic scattering. If not
+        specified, a value of 400.0 is used.
     generations_per_batch : int
         Number of generations per batch
     ifp_n_generation : int
@@ -376,6 +380,7 @@ class Settings:
         self._seed = None
         self._stride = None
         self._survival_biasing = None
+        self._free_gas_threshold = None
 
         # Shannon entropy mesh
         self._entropy_mesh = None
@@ -1255,6 +1260,17 @@ class Settings:
         cv.check_less_than('source_rejection_fraction', source_rejection_fraction, 1)
         self._source_rejection_fraction = source_rejection_fraction
 
+    @property
+    def free_gas_threshold(self) -> float | None:
+        return self._free_gas_threshold
+
+    @free_gas_threshold.setter
+    def free_gas_threshold(self, free_gas_threshold: float | None):
+        if free_gas_threshold is not None:
+            cv.check_type('free gas threshold', free_gas_threshold, Real)
+            cv.check_greater_than('free gas threshold', free_gas_threshold, 0.0)
+        self._free_gas_threshold = free_gas_threshold
+
     def _create_run_mode_subelement(self, root):
         elem = ET.SubElement(root, "run_mode")
         elem.text = self._run_mode.value
@@ -1733,6 +1749,11 @@ class Settings:
             element = ET.SubElement(root, "source_rejection_fraction")
             element.text = str(self._source_rejection_fraction)
 
+    def _create_free_gas_threshold_subelement(self, root):
+        if self._free_gas_threshold is not None:
+            element = ET.SubElement(root, "free_gas_threshold")
+            element.text = str(self._free_gas_threshold)
+
     def _eigenvalue_from_xml_element(self, root):
         elem = root.find('eigenvalue')
         if elem is not None:
@@ -2171,6 +2192,11 @@ class Settings:
         if text is not None:
             self.source_rejection_fraction = float(text)
 
+    def _free_gas_threshold_from_xml_element(self, root):
+        text = get_text(root, 'free_gas_threshold')
+        if text is not None:
+            self.free_gas_threshold = float(text)
+
     def to_xml_element(self, mesh_memo=None):
         """Create a 'settings' element to be written to an XML file.
 
@@ -2241,6 +2267,7 @@ class Settings:
         self._create_random_ray_subelement(element, mesh_memo)
         self._create_use_decay_photons_subelement(element)
         self._create_source_rejection_fraction_subelement(element)
+        self._create_free_gas_threshold_subelement(element)
 
         # Clean the indentation in the file to be user-readable
         clean_indentation(element)
@@ -2352,6 +2379,7 @@ class Settings:
         settings._random_ray_from_xml_element(elem, meshes)
         settings._use_decay_photons_from_xml_element(elem)
         settings._source_rejection_fraction_from_xml_element(elem)
+        settings._free_gas_threshold_from_xml_element(elem)
 
         return settings
 

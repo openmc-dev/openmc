@@ -183,7 +183,8 @@ jobs:
             --filter "$GITHUB_WORKSPACE/include" \
             --exclude "$GITHUB_WORKSPACE/src/external/.*" \
             --exclude "$GITHUB_WORKSPACE/src/include/openmc/external/.*" \
-            --gcov-ignore-errors source_not_found,output_error \
+            --gcov-ignore-errors source_not_found \
+            --gcov-ignore-errors output_error \
             --print-summary \
             --lcov -o coverage-cpp.lcov || true
 

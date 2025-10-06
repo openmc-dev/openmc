@@ -126,7 +126,7 @@ def test_apply_time_correction(run_in_tmpdir):
     assert result.mean.flatten() == pytest.approx(tcf * flux)
 
     # Make sure summed results match a manual sum
-    result_summed = d1s.apply_time_correction(tally, factors)
+    result_summed = d1s.apply_time_correction(tally, factors)[0]
     assert result_summed.mean.flatten()[0] == pytest.approx(result.mean.sum())
 
     # Make sure various tally methods work

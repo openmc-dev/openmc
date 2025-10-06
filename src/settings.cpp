@@ -129,6 +129,7 @@ SolverType solver_type {SolverType::MONTE_CARLO};
 std::unordered_set<int> sourcepoint_batch;
 std::unordered_set<int> statepoint_batch;
 double source_rejection_fraction {0.05};
+double free_gas_threshold {400.0};
 std::unordered_set<int> source_write_surf_id;
 std::unordered_set<int> ct_cell_id;
 std::unordered_set<int> ct_mt_number;
@@ -357,7 +358,6 @@ void get_run_parameters(pugi::xml_node node_base)
           }
           FlatSourceDomain::mesh_domain_map_[mesh_id].emplace_back(
             type, domain_id);
-          RandomRay::mesh_subdivision_enabled_ = true;
         }
       }
     }
@@ -661,6 +661,10 @@ void read_settings_xml(pugi::xml_node root)
   if (check_for_node(root, "source_rejection_fraction")) {
     source_rejection_fraction =
       std::stod(get_node_value(root, "source_rejection_fraction"));
+  }
+
+  if (check_for_node(root, "free_gas_threshold")) {
+    free_gas_threshold = std::stod(get_node_value(root, "free_gas_threshold"));
   }
 
   // Survival biasing

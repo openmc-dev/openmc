@@ -257,6 +257,16 @@ history-based parallelism.
 
   *Default*: false
 
+--------------------------------
+``<free_gas_threshold>`` Element
+--------------------------------
+
+The ``<free_gas_threshold>`` element specifies the energy multiplier, expressed
+in units of :math:`kT`, that determines when the free gas scattering approach is
+used for elastic scattering. Values must be positive.
+
+  *Default*: 400.0
+
 -----------------------------------
 ``<generations_per_batch>`` Element
 -----------------------------------

@@ -15,7 +15,7 @@ import openmc
 from openmc.data import half_life
 from .abc import _normalize_timesteps
 from .chain import Chain, _get_chain
-from ..checkvalue import PathLike
+from ..checkvalue import PathLike, check_iterable_type
 
 
 def get_radionuclides(model: openmc.Model, chain_file: PathLike | Chain | None = None) -> list[str]:
@@ -124,7 +124,7 @@ def time_correction_factors(
 def apply_time_correction(
         tally: openmc.Tally,
         time_correction_factors: dict[str, np.ndarray],
-        index: Sequence[int] = [-1],
+        indexes: Sequence[int] = [-1],
         sum_nuclides: bool = True
 ) -> list[openmc.Tally]:
     """Apply time correction factors to a tally.
@@ -140,7 +140,7 @@ def apply_time_correction(
         Tally to apply the time correction factors to
     time_correction_factors : dict
         Time correction factors as returned by :func:`time_correction_factors`
-    index : sequence of int, optional
+    indexes : sequence of int, optional
         Sequence of time indices of interest. If N timesteps are provided in
         :func:`time_correction_factors`, there are N + 1 times to select from.
         The default is [-1] which corresponds to the final time. For a single
@@ -155,8 +155,8 @@ def apply_time_correction(
         each index in the input sequence.
 
     """
-    # Convert index sequence to list
-    indices = list(index)
+
+    check_iterable_type('indexes', indexes, int)
 
     # Make sure the tally contains a ParentNuclideFilter
     for i_filter, filter in enumerate(tally.filters):
@@ -172,9 +172,8 @@ def apply_time_correction(
     # Extract TCF values for all requested indices at once
     # Shape: (n_indices, n_radionuclides)
     tcf_matrix = np.array([[time_correction_factors[nuc][idx] for nuc in radionuclides] 
-                          for idx in indices])
+                          for idx in indexes])
 
-    # Perform expensive operations once - get tally metadata
     _, n_nuclides, n_scores = tally.shape
     n_bins_before = prod([f.num_bins for f in tally.filters[:i_filter]])
     n_bins_after = prod([f.num_bins for f in tally.filters[i_filter + 1:]])
@@ -189,7 +188,7 @@ def apply_time_correction(
 
     # Process all indices efficiently
     results = []
-    for i, idx in enumerate(indices):
+    for i, idx in enumerate(indexes):
 
         new_tally = deepcopy(tally)
         

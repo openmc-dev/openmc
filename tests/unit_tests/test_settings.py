@@ -80,6 +80,7 @@ def test_export_to_xml(run_in_tmpdir):
     s.max_particle_events = 100
     s.max_secondaries = 1_000_000
     s.source_rejection_fraction = 0.01
+    s.free_gas_threshold = 800.0
 
     # Make sure exporting XML works
     s.export_to_xml()
@@ -170,3 +171,4 @@ def test_export_to_xml(run_in_tmpdir):
     assert s.random_ray['sample_method'] == 'halton'
     assert s.max_secondaries == 1_000_000
     assert s.source_rejection_fraction == 0.01
+    assert s.free_gas_threshold == 800.0

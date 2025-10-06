@@ -633,6 +633,9 @@ class TemporarySession:
     model : openmc.Model, optional
         OpenMC model to use for the session. If None, a minimal working model is
         created.
+    cwd : PathLike, optional
+        Working directory in which to run OpenMC. If None, a temporary directory
+        is created and deleted automatically.
     **init_kwargs
         Keyword arguments to pass to :func:`openmc.lib.init`.
 
@@ -644,8 +647,9 @@ class TemporarySession:
         The MPI intracommunicator used for the session.
 
     """
-    def __init__(self, model=None, **init_kwargs):
+    def __init__(self, model=None, cwd=None, **init_kwargs):
         self.init_kwargs = init_kwargs
+        self.cwd = cwd
         if model is None:
             surf = openmc.Sphere(boundary_type="vacuum")
             cell = openmc.Cell(region=-surf)
@@ -668,16 +672,21 @@ class TemporarySession:
         # Store original working directory
         self.orig_dir = Path.cwd()
 
-        # Set up temporary directory
-        if self.comm.rank == 0:
-            self.tmp_dir = TemporaryDirectory()
-            path_str = self.tmp_dir.name
-        else:
-            path_str = None
+        if self.cwd is None:
+            # Set up temporary directory
+            if self.comm.rank == 0:
+                self.tmp_dir = TemporaryDirectory()
+                path_str = self.tmp_dir.name
+            else:
+                path_str = None
 
-        # Broadcast the string path
-        path_str = self.comm.bcast(path_str)
-        working_dir = Path(path_str)
+            # Broadcast the string path
+            path_str = self.comm.bcast(path_str)
+            working_dir = Path(path_str)
+        else:
+            working_dir = Path(self.cwd)
+
+        # Create and change to specified directory
         working_dir.mkdir(parents=True, exist_ok=True)
         os.chdir(working_dir)
 

@@ -159,13 +159,10 @@ def apply_time_correction(
     indices = list(index)
 
     # Make sure the tally contains a ParentNuclideFilter
-    i_filter = None
-    for i, filter_obj in enumerate(tally.filters):
-        if isinstance(filter_obj, openmc.ParentNuclideFilter):
-            i_filter = i
+    for i_filter, filter in enumerate(tally.filters):
+        if isinstance(filter, openmc.ParentNuclideFilter):
             break
-    
-    if i_filter is None:
+    else:
         raise ValueError('Tally must contain a ParentNuclideFilter')
 
     # Get list of radionuclides based on tally filter
@@ -193,7 +190,7 @@ def apply_time_correction(
     # Process all indices efficiently
     results = []
     for i, idx in enumerate(indices):
-        # Create copy of tally (this is still the bottleneck, but we minimize calls)
+
         new_tally = deepcopy(tally)
         
         # Get TCF for this specific index

@@ -185,6 +185,7 @@ jobs:
             --exclude "$GITHUB_WORKSPACE/src/include/openmc/external/.*" \
             --gcov-ignore-errors source_not_found \
             --gcov-ignore-errors output_error \
+            --gcov-ignore-parse-errors suspicious_hits.warn \
             --print-summary \
             --lcov -o coverage-cpp.lcov || true
 

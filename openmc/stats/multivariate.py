@@ -198,6 +198,11 @@ class Isotropic(UnitSphere):
         if bias is not None:
             if (bias.mu.bias is not None) or (bias.phi.bias is not None):
                 raise RuntimeError('Biasing distributions should not have their own bias!')
+            elif ((bias.mu.support != (-1., 1.)) 
+                or not np.all(np.isclose(bias.phi.support, (0., 2*np.pi)))):
+                raise ValueError("Biasing distribution for an isotropic "
+                                 "distribution should be supported on "
+                                 "mu=(-1.0,1.0) and phi=(0.0,2*pi).")
             
         self._bias = bias
 

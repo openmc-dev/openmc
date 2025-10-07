@@ -111,6 +111,21 @@ class Univariate(EqualityMixin, ABC):
         """
         pass
 
+    @property
+    @abstractmethod
+    def support(self):
+        """Return the support of the probability distribution.
+
+        Returns
+        -------
+        set or tuple of float or dict
+            Returns the set of unique points assigned probability mass in a 
+            discrete distribution, the sampling interval for a continuous 
+            distribution, or a dictionary storing the discrete and continuous 
+            parts of the support of a mixed random variable
+        """
+        pass
+
 def _intensity_clip(intensity: Sequence[float], tolerance: float = 1e-6) -> np.ndarray:
     """Clip low-importance points from an array of intensities.
 
@@ -163,8 +178,9 @@ class Discrete(Univariate):
         Values of the random variable
     p : Iterable of float
         Discrete probability for each value
-    bias : openmc.stats.Discrete, optional
-        Distribution for biased sampling. Defaults to None for unbiased sampling.
+    bias : Iterable of float, optional
+        Alternative discrete probabilities for biased sampling. Defaults to 
+        None for unbiased sampling.
 
     Attributes
     ----------
@@ -172,12 +188,15 @@ class Discrete(Univariate):
         Values of the random variable
     p : numpy.ndarray
         Discrete probability for each value
-    bias : openmc.stats.Discrete or None
-        Distribution for biased sampling
+    support : set
+        Values of the random variable over which the distribution is 
+        nonzero-valued
+    bias : numpy.ndarray or None
+        Discrete probabilities for biased sampling
 
     """
 
-    def __init__(self, x, p, bias: Univariate = None):
+    def __init__(self, x, p, bias = None):
         self.x = x
         self.p = p
         self.bias = bias
@@ -208,6 +227,10 @@ class Discrete(Univariate):
         for pk in p:
             cv.check_greater_than('discrete probability', pk, 0.0, True)
         self._p = np.array(p, dtype=float)
+
+    @property
+    def support(self):
+        return set(np.unique(self._x))
     
     @property
     def bias(self):
@@ -215,8 +238,18 @@ class Discrete(Univariate):
     
     @bias.setter
     def bias(self, bias):
-        check_bias_support(self, bias)
-        self._bias = bias
+        if bias is None:
+            self._bias = bias
+        else:
+            if isinstance(bias, Real):
+                bias = [bias]
+            cv.check_type('discrete bias probabilities', bias, Iterable, Real)
+            for bk in bias:
+                cv.check_greater_than('discrete probability', bk, 0.0, True)
+            if len(bias) != len(self.x):
+                raise RuntimeError("Discrete distribution has unequal number of "
+                                   "biased and unbiased probability entries!")
+            self._bias = np.array(bias, dtype=float)
 
     def cdf(self):
         return np.insert(np.cumsum(self.p), 0, 0.0)
@@ -228,15 +261,11 @@ class Discrete(Univariate):
             result = rng.choice(self.x, n_samples, p=p)
             return result, np.ones_like(result)
         else:
-            if self.bias.bias is not None:
-                raise RuntimeError('Biasing distributions should not have their own bias!')
-            elif self.bias.x != self.x:
-                raise RuntimeError('Discrete distributions can only be biased by other' \
-                                   'discrete distributions that share a common x-vector.')
-            else:
-                biased_sample = self.bias.sample(n_samples=n_samples,seed=seed)[0]
-                wgt = [self.evaluate(s)/self.bias.evaluate(s) for s in biased_sample]
-                return biased_sample, wgt
+            rng = np.random.RandomState(seed)
+            b = self.bias / self.bias.sum()
+            biased_sample = rng.choice(self.x, n_samples, p=b)
+            wgt = [self._get_biased_weight(s) for s in biased_sample]
+            return biased_sample, wgt
 
     def normalize(self):
         """Normalize the probabilities stored on the distribution"""
@@ -248,6 +277,12 @@ class Discrete(Univariate):
             if abs(x_i - x) < 1e-14:
                 return (p_i/self.p.sum())
         return 0.0
+    
+    def _get_biased_weight(self, x):
+        for x_i, b_i in zip(self.x, self.bias):
+            if abs(x_i - x) < 1e-14:
+                bias_probability = (b_i/self.bias.sum())
+        return self.evaluate(x)/bias_probability
 
     def to_xml_element(self, element_name):
         """Return XML representation of the discrete distribution
@@ -330,24 +365,52 @@ class Discrete(Univariate):
         """
         if len(dists) != len(probs):
             raise ValueError("Number of distributions and probabilities must match.")
-        
+            
+        biasing = False
         for d in dists:
             if d.bias is not None:
-                raise NotImplementedError(
-                    "Merging biased Discrete distributions is not yet supported.")
+                # If we find that at least one distribution is biased, all 
+                # distributions which are not biased will be assigned their 
+                # default probability vector as a "bias" so that biased  
+                # sampling can occur on the merged distribution.
+                biasing = True
+                break
 
         # Combine distributions accounting for duplicate x values
         x_merged = set()
         p_merged = defaultdict(float)
-        for dist, p_dist in zip(dists, probs):
-            for x, p in zip(dist.x, dist.p):
-                x_merged.add(x)
-                p_merged[x] += p*p_dist
+        new_bias = None
 
-        # Create values and probabilities as arrays
-        x_arr = np.array(sorted(x_merged))
+        if biasing:
+            b_merged = defaultdict(float)
+
+            # Generate any missing bias distributions
+            for d in dists:
+                if d.bias is None:
+                    d.bias = d.p
+
+            for dist, p_dist in zip(dists, probs):
+                for x, p, b in zip(dist.x, dist.p, dist.bias):
+                    x_merged.add(x)
+                    p_merged[x] += p*p_dist
+                    b_merged[x] += b*p_dist
+            
+            # Create values and bias probabilities as arrays
+            x_arr = np.array(sorted(x_merged))
+            new_bias = np.array(b_merged[x] for x in x_arr)
+
+        else:
+            for dist, p_dist in zip(dists, probs):
+                for x, p in zip(dist.x, dist.p):
+                    x_merged.add(x)
+                    p_merged[x] += p*p_dist
+            
+            # Create values as array
+            x_arr = np.array(sorted(x_merged))
+
+        # Create probabilities as array
         p_arr = np.array([p_merged[x] for x in x_arr])
-        return cls(x_arr, p_arr)
+        return cls(x_arr, p_arr, new_bias)
 
     def integral(self):
         """Return integral of distribution
@@ -370,6 +433,9 @@ class Discrete(Univariate):
         function will remove any low-importance points such that :math:`\sum_i
         x_i p_i` is preserved to within some threshold.
 
+        For biased distributions, clipping should be performed before the bias 
+        probabilities are added. 
+
         .. versionadded:: 0.14.0
 
         Parameters
@@ -384,6 +450,10 @@ class Discrete(Univariate):
         Discrete distribution with low-importance points removed
 
         """
+        if self.bias is not None:
+            raise RuntimeError("Biased Discrete distributions should be clipped "
+                               "before applying bias.")
+
         cv.check_less_than("tolerance", tolerance, 1.0, equality=True)
         cv.check_greater_than("tolerance", tolerance, 0.0, equality=True)
 
@@ -443,6 +513,9 @@ class Uniform(Univariate):
         Lower bound of the sampling interval
     b : float
         Upper bound of the sampling interval
+    support : tuple of float
+        A 2-tuple (lower, upper) defining the interval over which the 
+        distribution is nonzero-valued
     bias : openmc.stats.Univariate or None
         Distribution for biased sampling
 
@@ -474,6 +547,10 @@ class Uniform(Univariate):
     def b(self, b):
         cv.check_type('Uniform b', b, Real)
         self._b = b
+
+    @property
+    def support(self):
+        return (self._a, self._b)
 
     @property
     def bias(self):
@@ -593,6 +670,9 @@ class PowerLaw(Univariate):
         Upper bound of the sampling interval
     n : float
         Power law exponent
+    support : tuple of float
+        A 2-tuple (lower, upper) defining the interval over which the 
+        distribution is nonzero-valued
     bias : openmc.stats.Univariate or None
         Distribution for biased sampling
 
@@ -634,6 +714,10 @@ class PowerLaw(Univariate):
     def n(self, n):
         cv.check_type('power law exponent', n, Real)
         self._n = n
+
+    @property
+    def support(self):
+        return (self._a, self._b)
 
     @property
     def bias(self):
@@ -743,6 +827,9 @@ class Maxwell(Univariate):
     ----------
     theta : float
         Effective temperature for distribution in eV
+    support : tuple of float
+        A 2-tuple (lower, upper) defining the interval over which the 
+        distribution is nonzero-valued
     bias : openmc.stats.Univariate or None
         Distribution for biased sampling
 
@@ -764,6 +851,10 @@ class Maxwell(Univariate):
         cv.check_type('Maxwell temperature', theta, Real)
         cv.check_greater_than('Maxwell temperature', theta, 0.0)
         self._theta = theta
+
+    @property
+    def support(self):
+        return (0.0, np.inf)
 
     @property
     def bias(self):
@@ -873,6 +964,9 @@ class Watt(Univariate):
         First parameter of distribution in units of eV
     b : float
         Second parameter of distribution in units of 1/eV
+    support : tuple of float
+        A 2-tuple (lower, upper) defining the interval over which the 
+        distribution is nonzero-valued
     bias : openmc.stats.Univariate or None
         Distribution for biased sampling
 
@@ -905,6 +999,10 @@ class Watt(Univariate):
         cv.check_type('Watt b', b, Real)
         cv.check_greater_than('Watt b', b, 0.0)
         self._b = b
+
+    @property
+    def support(self):
+        return (0.0, np.inf)
 
     @property
     def bias(self):
@@ -1009,6 +1107,9 @@ class Normal(Univariate):
         Mean of the Normal distribution
     std_dev : float
         Standard deviation of the Normal distribution
+    support : tuple of float
+        A 2-tuple (lower, upper) defining the interval over which the 
+        distribution is nonzero-valued
     bias : openmc.stats.Univariate or None
         Distribution for biased sampling
     """
@@ -1039,6 +1140,10 @@ class Normal(Univariate):
         cv.check_type('Normal std_dev', std_dev, Real)
         cv.check_greater_than('Normal std_dev', std_dev, 0.0)
         self._std_dev = std_dev
+
+    @property
+    def support(self):
+        return (-np.inf, np.inf)
 
     @property
     def bias(self):
@@ -1192,6 +1297,9 @@ class Tabular(Univariate):
     interpolation : {'histogram', 'linear-linear', 'linear-log', 'log-linear', 'log-log'}
         Indicates how the density function is interpolated between tabulated
         points. Defaults to 'linear-linear'.
+    support : tuple of float
+        A 2-tuple (lower, upper) defining the interval over which the 
+        distribution is nonzero-valued
     bias : openmc.stats.Univariate or None
         Distribution for biased sampling
 
@@ -1255,6 +1363,10 @@ class Tabular(Univariate):
     def interpolation(self, interpolation):
         cv.check_value('interpolation', interpolation, _INTERPOLATION_SCHEMES)
         self._interpolation = interpolation
+
+    @property
+    def support(self):
+        return (self._x[0], self._x[-1])
 
     @property
     def bias(self):
@@ -1500,6 +1612,11 @@ class Legendre(Univariate):
     coefficients : Iterable of Real
         Expansion coefficients :math:`a_\ell`. Note that the :math:`(2\ell +
         1)/2` factor should not be included.
+    support : tuple of float
+        A 2-tuple (lower, upper) defining the interval over which the 
+        distribution is nonzero-valued
+    bias : openmc.stats.Univariate or None
+        Distribution for biased sampling
 
     """
 
@@ -1527,6 +1644,10 @@ class Legendre(Univariate):
     @coefficients.setter
     def coefficients(self, coefficients):
         self._coefficients = np.asarray(coefficients)
+
+    @property
+    def support(self):
+        raise NotImplementedError
 
     @property
     def bias(self):
@@ -1567,6 +1688,10 @@ class Mixture(Univariate):
         Probability of selecting a particular distribution
     distribution : Iterable of Univariate
         List of distributions with corresponding probabilities
+    support : dict
+        Dictionary containing discrete and continuous parts of the support
+    bias : openmc.stats.Univariate or None
+        Distribution for biased sampling
 
     """
 
@@ -1612,6 +1737,36 @@ class Mixture(Univariate):
     def bias(self, bias):
         check_bias_support(self, bias)
         self._bias = bias
+
+    @property
+    def support(self):
+        discrete_points = set()
+        intervals = []
+
+        for dist in self.distribution:
+            if isinstance(dist, Discrete):
+                discrete_points |= dist.support
+            else:
+                intervals.append(tuple(dist.support))
+        
+        if intervals:
+            # simplify union by combining intervals when able
+            sorted_intervals = sorted(intervals, key=lambda x: x[0])
+            merged = [sorted_intervals[0]]
+
+            for current in sorted_intervals[1:]:
+                prev_start, prev_end = merged[-1]
+                curr_start, curr_end = current
+
+                if curr_start <= prev_end:
+                    merged[-1] = (prev_start, max(prev_end, curr_end))
+                else:
+                    merged.append(current)
+            
+            intervals = merged
+
+        return {"discrete", discrete_points,
+                "continuous", intervals}
 
     def cdf(self):
         return np.insert(np.cumsum(self.probability), 0, 0.0)
@@ -1829,13 +1984,6 @@ def check_bias_support(parent: Univariate, bias: Univariate):
     """Ensure that bias distributions share the support of the univariate 
     distribution they are biasing.
 
-    Currently, distributions supported on an infinite or semi-infinite 
-    interval are permitted as bias distributions for continuous distributions 
-    whose support is contained within the same infinite or semi-infinite 
-    interval. The user is warned in such cases that this practice can result 
-    in biased tally means, and it will eventually be disallowed when 
-    substitutes for these distributions are available.
-
     Parameters
     ----------
     parent : openmc.stats.Univariate
@@ -1847,86 +1995,56 @@ def check_bias_support(parent: Univariate, bias: Univariate):
     if bias is None:
         return
     
-    def check_interval_match(parent_a, parent_b, bias_a, bias_b):
-        """Ensures sampling intervals match."""
-        if (bias_a != parent_a) or (bias_b != parent_b):
-            raise RuntimeError(
-                f'Sampling intervals of parent [{parent_a},{parent_b}] '
-                f'and bias [{bias_a},{bias_b}] distributions do not match!')
+    def mismatch_error(err_type, msg):
+        raise err_type(f"Support of parent {type(parent).__name__} and bias "
+                       f"{type(bias).__name__} distributions do not match. "
+                       f"{msg}")
     
-    def warn_unbounded_bias(parent_type):
-        """Raises a warning if parent distribution has compact support and 
-        user attempts to add a bias distribution supported over an infinite 
-        or semi-infinite interval. This should eventually raise an error once 
-        appropriate subsitute distributions with compact support are added.
-        """
-        warn_msg = (f"Bias distribution without compact support applied "
-                   f"to a {parent_type} distribution. This may induce tally "
-                   f"fluctuations or bias results, and is not recommended.")
-        warn(warn_msg, RuntimeWarning)
+    p_sup, b_sup = parent.support, bias.support
     
-    def check_maxwell_watt_compatibility(parent_lower):
-        """Raises an error if parent distribution sampling interval does not 
-        share lower bound with a Maxwell/Watt bias distribution.
-        """
-        if parent_lower != 0.0:
-            raise RuntimeError(f'Lower bound of parent distribution ({parent_lower}) '
-                              f'incompatible with lower bound of Maxwell or Watt '
-                              f'distribution (0.0)')
-    
-    # Define compatible bias types for each parent type
-    bounded_parents = (Uniform, PowerLaw, Tabular)
-    unbounded_bias = (Maxwell, Watt, Normal)
-    
-    if isinstance(parent, bounded_parents):
-        parent_type = type(parent).__name__
+    match b_sup:
+        case set():
+            if isinstance(p_sup, set):
+                # If both supports are sets, we have a Discrete biasing a Discrete. 
+                # The preferred method of performing this is to assign an array of 
+                # bias probabilities to a single Discrete instance.
+                raise RuntimeError("Cannot assign a Discrete distribution to "
+                               "the bias attribute of another Discrete "
+                               "distribution. Instead, assign a vector of "
+                               "alternate probabilities to the bias attribute.")
+            elif isinstance(p_sup, dict):
+                if p_sup["continuous"] or p_sup["discrete"] != b_sup:
+                    mismatch_error(TypeError, "")
+            else:
+                mismatch_error(TypeError, "Incompatible support types.")
+
+        case tuple():
+            if isinstance(p_sup, tuple):
+                if p_sup != b_sup:
+                    mismatch_error(ValueError, "")
+            elif isinstance(p_sup, dict):
+                if p_sup["discrete"] or p_sup["continuous"] != [b_sup]:
+                    mismatch_error(TypeError, "")
+            else:
+                mismatch_error(TypeError, "Incompatible support types.")
+
+        case dict():
+            if isinstance(p_sup, dict):
+                if (p_sup["discrete"] != b_sup["discrete"] or
+                    p_sup["continuous"] != b_sup["continuous"]):
+                    mismatch_error(ValueError, "")
+            elif isinstance(p_sup, tuple) and not b_sup["discrete"]:
+                if [p_sup] != b_sup["continuous"]:
+                    mismatch_error(ValueError, "")
+            elif isinstance(p_sup, set) and not b_sup["continuous"]:
+                if p_sup != b_sup["discrete"]:
+                    mismatch_error(ValueError, "")
+            elif ((b_sup["continuous"] and isinstance(p_sup, set)) 
+                 or (b_sup["discrete"] and isinstance(p_sup, tuple))):
+                mismatch_error(TypeError, "")
+            else:
+                mismatch_error(TypeError, "Incompatible support types.")
+
+        case _:
+            raise TypeError("Unrecognized type for bias.support")
         
-        # Get parent bounds
-        if isinstance(parent, (Uniform, PowerLaw)):
-            parent_a, parent_b = parent.a, parent.b
-        else:  # Tabular
-            parent_a, parent_b = parent.x[0], parent.x[-1]
-        
-        if isinstance(bias, (PowerLaw, Uniform)):
-            check_interval_match(parent_a, parent_b, bias.a, bias.b)
-        
-        elif isinstance(bias, Tabular):
-            check_interval_match(parent_a, parent_b, bias.x[0], bias.x[-1])
-        
-        elif isinstance(bias, unbounded_bias):
-            if isinstance(bias, (Maxwell, Watt)):
-                check_maxwell_watt_compatibility(parent_a)
-            warn_unbounded_bias(parent_type)
-        
-        else:
-            raise RuntimeError(f"Attempted to bias {parent_type} distribution with an "
-                              "incompatible bias distribution type.")
-    
-    elif isinstance(parent, Discrete):
-        if isinstance(bias, Discrete):
-            if bias.x != parent.x:
-                raise RuntimeError("Sampling intervals of parent and bias "
-                                  "Discrete distributions do not match!")
-        else:
-            raise RuntimeError("Attempted to bias Discrete distribution with an "
-                              "incompatible bias distribution type.")
-    
-    elif isinstance(parent, (Maxwell, Watt)):
-        if isinstance(bias, unbounded_bias):
-            if isinstance(bias, Normal):
-                warn_msg = ("Support of bias distribution (Normal) includes "
-                           "points outside support of the Maxwell or Watt "
-                           "distribution it is biasing. This may induce tally "
-                           "fluctuations or bias results, and is not recommended.")
-                warn(warn_msg, RuntimeWarning)
-        else:
-            raise RuntimeError("Attempted to bias Maxwell or Watt distribution "
-                              "with an incompatible bias distribution type.")
-    
-    elif isinstance(parent, Normal):
-        if not isinstance(bias, Normal):
-            raise RuntimeError("Normal distribution may only be biased by "
-                              "another instance of a Normal distribution.")
-    
-    else:
-        raise RuntimeError("Parent distribution type does not permit biasing.")

@@ -151,6 +151,10 @@ void Particle::from_source(const SourceSite* src)
     int index_plus_one = model::surface_map[std::abs(src->surf_id)] + 1;
     surface() = (src->surf_id > 0) ? index_plus_one : -index_plus_one;
   }
+
+#ifdef OPENMC_DAGMC_ENABLED
+  history().reset();
+#endif
 }
 
 void Particle::event_calculate_xs()

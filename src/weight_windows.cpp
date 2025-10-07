@@ -241,8 +241,8 @@ WeightWindows* WeightWindows::create(int32_t id)
   return wws;
 }
 
-WeightWindows* WeightWindows::from_hdf5(hid_t wws_group,
-  const std::string& group_name, std::unordered_map<int32_t, int32_t>& id_map)
+WeightWindows* WeightWindows::from_hdf5(
+  hid_t wws_group, const std::string& group_name)
 {
   // collect ID from the name of this group
   hid_t ww_group = open_group(wws_group, group_name);
@@ -257,8 +257,6 @@ WeightWindows* WeightWindows::from_hdf5(hid_t wws_group,
 
   int32_t mesh_id;
   read_dataset(ww_group, "mesh", mesh_id);
-
-  mesh_id = id_map[mesh_id];
 
   if (model::mesh_map.count(mesh_id) == 0) {
     fatal_error(
@@ -1330,16 +1328,14 @@ extern "C" int openmc_weight_windows_import(const char* filename)
 
   hid_t weight_windows_group = open_group(ww_file, "weight_windows");
 
-  std::unordered_map<int32_t, int32_t> mesh_map;
-
   hid_t mesh_group = open_group(ww_file, "meshes");
 
-  read_meshes(mesh_group, mesh_map);
+  read_meshes(mesh_group);
 
   std::vector<std::string> names = group_names(weight_windows_group);
 
   for (const auto& name : names) {
-    WeightWindows::from_hdf5(weight_windows_group, name, mesh_map);
+    WeightWindows::from_hdf5(weight_windows_group, name);
   }
 
   close_group(weight_windows_group);

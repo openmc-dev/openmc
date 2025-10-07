@@ -3821,22 +3821,14 @@ void read_meshes(pugi::xml_node root)
   }
 }
 
-void read_meshes(hid_t group, std::unordered_map<int32_t, int32_t>& mesh_map)
+void read_meshes(hid_t group)
 {
-  // Find the iterator to the element with the maximum key
-  auto max_key_it =
-    std::max_element(model::mesh_map.begin(), model::mesh_map.end(),
-      [](const auto& p1, const auto& p2) { return p1.first < p2.first; });
-  auto offset = max_key_it->first;
-
   std::unordered_set<int> mesh_ids;
 
   std::array<int, 1> ids;
   read_attribute(group, "ids", ids);
 
   for (auto id : ids) {
-
-    mesh_map[id] = id + offset;
 
     // Check to make sure multiple meshes in the same file don't share IDs
     if (contains(mesh_ids, id)) {
@@ -3846,11 +3838,18 @@ void read_meshes(hid_t group, std::unordered_map<int32_t, int32_t>& mesh_map)
     }
     mesh_ids.insert(id);
 
+    // If we've already read a mesh with the same ID in a *different* file,
+    // assume it is the same here
+    if (model::mesh_map.find(id) != model::mesh_map.end()) {
+      warning(fmt::format("Mesh with ID={} appears in multiple files.", id));
+      continue;
+    }
+
     std::string name = fmt::format("mesh {}", id);
     hid_t mesh_group = open_group(group, name.c_str());
 
     std::string mesh_type;
-    if (attribute_exists(mesh_group, "type")) {
+    if (object_exists(mesh_group, "type")) {
       read_dataset(mesh_group, "type", mesh_type);
     } else {
       mesh_type = "regular";
@@ -3858,7 +3857,7 @@ void read_meshes(hid_t group, std::unordered_map<int32_t, int32_t>& mesh_map)
 
     // determine the mesh library to use
     std::string mesh_lib;
-    if (attribute_exists(mesh_group, "library")) {
+    if (object_exists(mesh_group, "library")) {
       read_dataset(mesh_group, "library", mesh_lib);
     }
 
@@ -3887,8 +3886,6 @@ void read_meshes(hid_t group, std::unordered_map<int32_t, int32_t>& mesh_map)
     } else {
       fatal_error("Invalid mesh type: " + mesh_type);
     }
-
-    model::meshes.back()->id_ = mesh_map[model::meshes.back()->id_];
 
     // Map ID to position in vector
     model::mesh_map[model::meshes.back()->id_] = model::meshes.size() - 1;

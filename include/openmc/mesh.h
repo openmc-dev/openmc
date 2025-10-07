@@ -1082,9 +1082,7 @@ void read_meshes(pugi::xml_node root);
 //! Read meshes from a HDF5 file
 //
 //! \param[in] group HDF5 group
-//! \param[out] mesh_map mapping from mesh ids inside HDF5 group to global mesh
-//! ids
-void read_meshes(hid_t group, std::unordered_map<int32_t, int32_t>& mesh_map);
+void read_meshes(hid_t group);
 
 //! Write mesh data to an HDF5 group
 //

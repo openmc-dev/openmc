@@ -12,6 +12,7 @@ from copy import deepcopy
 from inspect import signature
 from numbers import Real, Integral
 from pathlib import Path
+from textwrap import dedent
 import time
 from typing import Optional, Union, Sequence
 from warnings import warn
@@ -526,7 +527,7 @@ class Integrator(ABC):
     r"""Abstract class for solving the time-integration for depletion
     """
 
-    _params = r"""
+    _params = dedent(r"""
     Parameters
     ----------
     operator : openmc.deplete.abc.TransportOperator
@@ -617,7 +618,7 @@ class Integrator(ABC):
 
         .. versionadded:: 0.15.3
 
-    """
+    """)
 
     def __init__(
             self,
@@ -1020,7 +1021,7 @@ class SIIntegrator(Integrator):
     the number of particles used in initial transport calculation
     """
 
-    _params = r"""
+    _params = dedent(r"""
     Parameters
     ----------
     operator : openmc.deplete.abc.TransportOperator
@@ -1108,7 +1109,7 @@ class SIIntegrator(Integrator):
 
         .. versionadded:: 0.12
 
-    """
+    """)
 
     def __init__(
             self,

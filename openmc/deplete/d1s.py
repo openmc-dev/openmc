@@ -108,14 +108,15 @@ def time_correction_factors(
     # Create a 2D array for the time correction factors
     h = np.zeros((n_timesteps, n_nuclides))
 
-    for i, (dt, rate) in enumerate(zip(timesteps, source_rates)):
-        # Precompute the exponential terms. Since (1 - exp(-x)) is susceptible to
-        # roundoff error, use expm1 instead (which computes exp(x) - 1)
-        g = np.exp(-decay_rate*dt)
-        one_minus_g = -np.expm1(-decay_rate*dt)
+    # Precompute all exponential terms with same shape as h
+    decay_dt = decay_rate[np.newaxis, :] * timesteps[:, np.newaxis]
+    g = np.exp(-decay_dt)
+    one_minus_g = -np.expm1(-decay_dt)
 
+    # Apply recurrence relation step by step
+    for i in range(len(timesteps)):
         # Eq. (4) in doi:10.1016/j.fusengdes.2019.111399
-        h[i + 1] = rate*one_minus_g + h[i]*g
+        h[i + 1] = source_rates[i] * one_minus_g[i] + h[i] * g[i]
 
     return {nuclides[i]: h[:, i] for i in range(n_nuclides)}
 

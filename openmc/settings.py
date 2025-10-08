@@ -11,7 +11,7 @@ import openmc
 import openmc.checkvalue as cv
 from openmc.checkvalue import PathLike
 from openmc.stats.multivariate import MeshSpatial
-from ._xml import clean_indentation, get_text
+from ._xml import clean_indentation, get_elem_list, get_text
 from .mesh import _read_meshes, RegularMesh, MeshBase
 from .source import SourceBase, MeshSource, IndependentSource
 from .utility_funcs import input_path
@@ -84,6 +84,10 @@ class Settings:
         history-based parallelism.
 
         .. versionadded:: 0.12
+    free_gas_threshold : float
+        Energy multiplier (in units of :math:`kT`) below which the free gas
+        scattering treatment is applied for elastic scattering. If not
+        specified, a value of 400.0 is used.
     generations_per_batch : int
         Number of generations per batch
     ifp_n_generation : int
@@ -128,6 +132,10 @@ class Settings:
         Maximum number of times a particle can split during a history
 
         .. versionadded:: 0.13
+    max_secondaries : int
+        Maximum secondary bank size
+
+        .. versionadded:: 0.15.3
     max_tracks : int
         Maximum number of tracks written to a track file (per MPI process).
 
@@ -372,6 +380,7 @@ class Settings:
         self._seed = None
         self._stride = None
         self._survival_biasing = None
+        self._free_gas_threshold = None
 
         # Shannon entropy mesh
         self._entropy_mesh = None
@@ -431,6 +440,7 @@ class Settings:
         self._weight_window_checkpoints = {}
         self._max_history_splits = None
         self._max_tracks = None
+        self._max_secondaries = None
         self._use_decay_photons = None
 
         self._random_ray = {}
@@ -1138,6 +1148,16 @@ class Settings:
         self._max_history_splits = value
 
     @property
+    def max_secondaries(self) -> int:
+        return self._max_secondaries
+
+    @max_secondaries.setter
+    def max_secondaries(self, value: int):
+        cv.check_type('maximum secondary bank size', value, Integral)
+        cv.check_greater_than('max secondary bank size', value, 0)
+        self._max_secondaries = value
+
+    @property
     def max_tracks(self) -> int:
         return self._max_tracks
 
@@ -1239,6 +1259,17 @@ class Settings:
         cv.check_greater_than('source_rejection_fraction', source_rejection_fraction, 0)
         cv.check_less_than('source_rejection_fraction', source_rejection_fraction, 1)
         self._source_rejection_fraction = source_rejection_fraction
+
+    @property
+    def free_gas_threshold(self) -> float | None:
+        return self._free_gas_threshold
+
+    @free_gas_threshold.setter
+    def free_gas_threshold(self, free_gas_threshold: float | None):
+        if free_gas_threshold is not None:
+            cv.check_type('free gas threshold', free_gas_threshold, Real)
+            cv.check_greater_than('free gas threshold', free_gas_threshold, 0.0)
+        self._free_gas_threshold = free_gas_threshold
 
     def _create_run_mode_subelement(self, root):
         elem = ET.SubElement(root, "run_mode")
@@ -1626,6 +1657,7 @@ class Settings:
                 if mesh_memo is not None:
                     mesh_memo.add(ww.mesh.id)
 
+    def _create_weight_windows_on_subelement(self, root):
         if self._weight_windows_on is not None:
             elem = ET.SubElement(root, "weight_windows_on")
             elem.text = str(self._weight_windows_on).lower()
@@ -1673,6 +1705,11 @@ class Settings:
             elem = ET.SubElement(root, "max_history_splits")
             elem.text = str(self._max_history_splits)
 
+    def _create_max_secondaries_subelement(self, root):
+        if self._max_secondaries is not None:
+            elem = ET.SubElement(root, "max_secondaries")
+            elem.text = str(self._max_secondaries)
+
     def _create_max_tracks_subelement(self, root):
         if self._max_tracks is not None:
             elem = ET.SubElement(root, "max_tracks")
@@ -1694,9 +1731,15 @@ class Settings:
                             domain_elem = ET.SubElement(mesh_elem, 'domain')
                             domain_elem.set('id', str(domain.id))
                             domain_elem.set('type', domain.__class__.__name__.lower())
-                        if mesh_memo is not None and mesh.id not in mesh_memo:
+                        # See if a <mesh> element already exists -- if not, add it
+                        path = f"./mesh[@id='{mesh.id}']"
+                        if root.find(path) is None:
                             root.append(mesh.to_xml_element())
-                            mesh_memo.add(mesh.id)
+                            if mesh_memo is not None:
+                                mesh_memo.add(mesh.id)
+                elif isinstance(value, bool):
+                    subelement = ET.SubElement(element, key)
+                    subelement.text = str(value).lower()
                 else:
                     subelement = ET.SubElement(element, key)
                     subelement.text = str(value)
@@ -1705,6 +1748,11 @@ class Settings:
         if self._source_rejection_fraction is not None:
             element = ET.SubElement(root, "source_rejection_fraction")
             element.text = str(self._source_rejection_fraction)
+
+    def _create_free_gas_threshold_subelement(self, root):
+        if self._free_gas_threshold is not None:
+            element = ET.SubElement(root, "free_gas_threshold")
+            element.text = str(self._free_gas_threshold)
 
     def _eigenvalue_from_xml_element(self, root):
         elem = root.find('eigenvalue')
@@ -1791,23 +1839,21 @@ class Settings:
     def _statepoint_from_xml_element(self, root):
         elem = root.find('state_point')
         if elem is not None:
-            text = get_text(elem, 'batches')
-            if text is not None:
-                self.statepoint['batches'] = [int(x) for x in text.split()]
+            batches = get_elem_list(elem, "batches", int)
+            if batches is not None:
+                self.statepoint['batches'] = batches
 
     def _sourcepoint_from_xml_element(self, root):
         elem = root.find('source_point')
         if elem is not None:
             for key in ('separate', 'write', 'overwrite_latest', 'batches', 'mcpl'):
-                value = get_text(elem, key)
-                if value is not None:
-                    if key in ('separate', 'write', 'mcpl'):
-                        value = value in ('true', '1')
-                    elif key == 'overwrite_latest':
-                        value = value in ('true', '1')
+                if key in ('separate', 'write', 'mcpl', 'overwrite_latest'):
+                    value = get_text(elem, key) in ('true', '1')
+                    if key == 'overwrite_latest':
                         key = 'overwrite'
-                    else:
-                        value = [int(x) for x in value.split()]
+                else:
+                    value = get_elem_list(elem, key, int)
+                if value is not None:
                     self.sourcepoint[key] = value
 
     def _surf_source_read_from_xml_element(self, root):
@@ -1824,11 +1870,12 @@ class Settings:
         if elem is None:
             return
         for key in ('surface_ids', 'max_particles', 'max_source_files', 'mcpl', 'cell', 'cellto', 'cellfrom'):
-            value = get_text(elem, key)
+            if key == 'surface_ids':
+                value = get_elem_list(elem, key, int)
+            else:
+                value = get_text(elem, key)
             if value is not None:
-                if key == 'surface_ids':
-                    value = [int(x) for x in value.split()]
-                elif key == 'mcpl':
+                if key == 'mcpl':
                     value = value in ('true', '1')
                 elif key in ('max_particles', 'max_source_files', 'cell', 'cellfrom', 'cellto'):
                     value = int(value)
@@ -1958,22 +2005,21 @@ class Settings:
         text = get_text(root, 'temperature_method')
         if text is not None:
             self.temperature['method'] = text
-        text = get_text(root, 'temperature_range')
+        text = get_elem_list(root, "temperature_range", float)
         if text is not None:
-            self.temperature['range'] = [float(x) for x in text.split()]
+            self.temperature['range'] = text
         text = get_text(root, 'temperature_multipole')
         if text is not None:
             self.temperature['multipole'] = text in ('true', '1')
 
     def _trace_from_xml_element(self, root):
-        text = get_text(root, 'trace')
+        text = get_elem_list(root, "trace", int)
         if text is not None:
-            self.trace = [int(x) for x in text.split()]
+            self.trace = text
 
     def _track_from_xml_element(self, root):
-        text = get_text(root, 'track')
-        if text is not None:
-            values = [int(x) for x in text.split()]
+        values = get_elem_list(root, "track", int)
+        if values is not None:
             self.track = list(zip(values[::3], values[1::3], values[2::3]))
 
     def _ufs_mesh_from_xml_element(self, root, meshes):
@@ -1990,14 +2036,15 @@ class Settings:
         if elem is not None:
             keys = ('enable', 'method', 'energy_min', 'energy_max', 'nuclides')
             for key in keys:
-                value = get_text(elem, key)
+                if key == 'nuclides':
+                    value = get_elem_list(elem, key, str)
+                else:
+                    value = get_text(elem, key)
                 if value is not None:
                     if key == 'enable':
                         value = value in ('true', '1')
                     elif key in ('energy_min', 'energy_max'):
                         value = float(value)
-                    elif key == 'nuclides':
-                        value = value.split()
                     self.resonance_scattering[key] = value
 
     def _create_fission_neutrons_from_xml_element(self, root):
@@ -2055,9 +2102,15 @@ class Settings:
             ww = WeightWindows.from_xml_element(elem, meshes)
             self.weight_windows.append(ww)
 
+    def _weight_windows_on_from_xml_element(self, root):
         text = get_text(root, 'weight_windows_on')
         if text is not None:
             self.weight_windows_on = text in ('true', '1')
+
+    def _weight_windows_file_from_xml_element(self, root):
+        text = get_text(root, 'weight_windows_file')
+        if text is not None:
+            self.weight_windows_file = text
 
     def _weight_window_checkpoints_from_xml_element(self, root):
         elem = root.find('weight_window_checkpoints')
@@ -2074,12 +2127,17 @@ class Settings:
         if text is not None:
             self.max_history_splits = int(text)
 
+    def _max_secondaries_from_xml_element(self, root):
+        text = get_text(root, 'max_secondaries')
+        if text is not None:
+            self.max_secondaries = int(text)
+
     def _max_tracks_from_xml_element(self, root):
         text = get_text(root, 'max_tracks')
         if text is not None:
             self.max_tracks = int(text)
 
-    def _random_ray_from_xml_element(self, root):
+    def _random_ray_from_xml_element(self, root, meshes=None):
         elem = root.find('random_ray')
         if elem is not None:
             self.random_ray = {}
@@ -2106,11 +2164,15 @@ class Settings:
                 elif child.tag == 'source_region_meshes':
                     self.random_ray['source_region_meshes'] = []
                     for mesh_elem in child.findall('mesh'):
-                        mesh = MeshBase.from_xml_element(mesh_elem)
+                        mesh_id = int(get_text(mesh_elem, 'id'))
+                        if meshes and mesh_id in meshes:
+                            mesh = meshes[mesh_id]
+                        else:
+                            mesh = MeshBase.from_xml_element(mesh_elem)
                         domains = []
                         for domain_elem in mesh_elem.findall('domain'):
-                            domain_id = int(domain_elem.get('id'))
-                            domain_type = domain_elem.get('type')
+                            domain_id = int(get_text(domain_elem, "id"))
+                            domain_type = get_text(domain_elem, "type")
                             if domain_type == 'material':
                                 domain = openmc.Material(domain_id)
                             elif domain_type == 'cell':
@@ -2129,6 +2191,11 @@ class Settings:
         text = get_text(root, 'source_rejection_fraction')
         if text is not None:
             self.source_rejection_fraction = float(text)
+
+    def _free_gas_threshold_from_xml_element(self, root):
+        text = get_text(root, 'free_gas_threshold')
+        if text is not None:
+            self.free_gas_threshold = float(text)
 
     def to_xml_element(self, mesh_memo=None):
         """Create a 'settings' element to be written to an XML file.
@@ -2190,14 +2257,17 @@ class Settings:
         self._create_log_grid_bins_subelement(element)
         self._create_write_initial_source_subelement(element)
         self._create_weight_windows_subelement(element, mesh_memo)
+        self._create_weight_windows_on_subelement(element)
         self._create_weight_window_generators_subelement(element, mesh_memo)
         self._create_weight_windows_file_element(element)
         self._create_weight_window_checkpoints_subelement(element)
         self._create_max_history_splits_subelement(element)
         self._create_max_tracks_subelement(element)
+        self._create_max_secondaries_subelement(element)
         self._create_random_ray_subelement(element, mesh_memo)
         self._create_use_decay_photons_subelement(element)
         self._create_source_rejection_fraction_subelement(element)
+        self._create_free_gas_threshold_subelement(element)
 
         # Clean the indentation in the file to be user-readable
         clean_indentation(element)
@@ -2299,13 +2369,17 @@ class Settings:
         settings._log_grid_bins_from_xml_element(elem)
         settings._write_initial_source_from_xml_element(elem)
         settings._weight_windows_from_xml_element(elem, meshes)
+        settings._weight_windows_on_from_xml_element(elem)
+        settings._weight_windows_file_from_xml_element(elem)
         settings._weight_window_generators_from_xml_element(elem, meshes)
         settings._weight_window_checkpoints_from_xml_element(elem)
         settings._max_history_splits_from_xml_element(elem)
         settings._max_tracks_from_xml_element(elem)
-        settings._random_ray_from_xml_element(elem)
+        settings._max_secondaries_from_xml_element(elem)
+        settings._random_ray_from_xml_element(elem, meshes)
         settings._use_decay_photons_from_xml_element(elem)
         settings._source_rejection_fraction_from_xml_element(elem)
+        settings._free_gas_threshold_from_xml_element(elem)
 
         return settings
 

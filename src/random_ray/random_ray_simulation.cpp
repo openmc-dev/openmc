@@ -425,6 +425,7 @@ void RandomRaySimulation::simulate()
 {
 
   // Initialize subdomains for MPI ranks
+  mpi::decomp_map.initialize();
   simulation::time_generate_voronoi_centers.start();
   mpi::decomp_map.generate_rank_centers();
   simulation::time_generate_voronoi_centers.stop();
@@ -480,6 +481,8 @@ void RandomRaySimulation::simulate()
       //   SourceRegion& sr = domain_->discovered_source_regions_[SourceRegionKey(4, 104171)];
       //   printf("RANK %d: volume: %f\n", mpi::rank, sr.scalars_.volume_);
       // }
+      // Position centroid = domain_->source_regions_.centroid(1);
+      // printf ("1 Centroid (%f, %f, %f) \n", centroid.x, centroid.y, centroid.z);
 
       // Update decomposition map with newly discovered source regions
       simulation::time_decomposition_handling.start();
@@ -512,7 +515,6 @@ void RandomRaySimulation::simulate()
     if (RandomRay::mesh_subdivision_enabled_) {
       domain_->finalize_discovered_source_regions();
     }
-
     // test  = domain_->discovered_source_regions_.contains(SourceRegionKey(4, 104171));
     // printf("4 RANK %d: Source region (4, 104171) discovered? %d \n", mpi::rank, test);
 
@@ -525,6 +527,10 @@ void RandomRaySimulation::simulate()
     // Normalize scalar flux and update volumes
     domain_->normalize_scalar_flux_and_volumes(
       settings::n_particles * RandomRay::distance_active_);
+
+    if (mpi::n_procs > 1 && mpi::decomp_map.load_balanced() == false){
+      mpi::decomp_map.balance_load(domain_.get());
+    }
 
     // Add source to scalar flux, compute number of FSR hits
     int64_t n_hits = domain_->add_source_to_scalar_flux();
@@ -575,26 +581,26 @@ void RandomRaySimulation::simulate()
     // Compute total intersections and load balancing data
     simulation::time_decomposition_handling.start();
 
-    // Exchange intersection data
-    uint64_t total_geometric_intersections_sum = 0;
-    MPI_Allreduce(&total_geometric_intersections_, &total_geometric_intersections_sum, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, mpi::intracomm);
+    // // Exchange intersection data
+    // uint64_t total_geometric_intersections_sum = 0;
+    // MPI_Allreduce(&total_geometric_intersections_, &total_geometric_intersections_sum, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, mpi::intracomm);
 
-    // Local work load 
-    float rank_load_local = (total_geometric_intersections_/static_cast<double>(total_geometric_intersections_sum))*100.0;
+    // // Local work load 
+    // float rank_load_local = (total_geometric_intersections_/static_cast<double>(total_geometric_intersections_sum));
 
-    total_geometric_intersections_ = total_geometric_intersections_sum;
-    rank_load_.resize(mpi::n_procs); //TODO: Decomposition map also owns raak load
+    // total_geometric_intersections_ = total_geometric_intersections_sum;
+    // rank_load_.resize(mpi::n_procs); //TODO: Decomposition map also owns raak load
     
-    // send load data to master rank (rank 0)
-    if (mpi::master) {
-      rank_load_[0] = rank_load_local;
+    // // send load data to master rank (rank 0)
+    // if (mpi::master) {
+    //   rank_load_[0] = rank_load_local;
       
-      for (int i = 1; i < mpi::n_procs; i++) {
-        MPI_Recv(&rank_load_[i], 1, MPI_FLOAT, i, 1, mpi::intracomm, MPI_STATUS_IGNORE);
-      }
-    } else {
-      MPI_Send(&rank_load_local, 1, MPI_FLOAT, 0, 1, mpi::intracomm);
-    }
+    //   for (int i = 1; i < mpi::n_procs; i++) {
+    //     MPI_Recv(&rank_load_[i], 1, MPI_FLOAT, i, 1, mpi::intracomm, MPI_STATUS_IGNORE);
+    //   }
+    // } else {
+    //   MPI_Send(&rank_load_local, 1, MPI_FLOAT, 0, 1, mpi::intracomm);
+    // }
 
     // Average number of ray communications between ranks per batch
     avg_num_comms_ = avg_num_comms_/settings::n_batches; //TODO: should this be double?
@@ -724,9 +730,9 @@ void RandomRaySimulation::print_results_random_ray(
     if (mpi::n_procs > 1){
       fmt::print(" MPI Ranks                         = {}\n", mpi::n_procs);
       fmt::print(" Avg Number of Subdomain Crossings = {}\n", avg_num_comms);
-      fmt::print(" Load per MPI Rank                 = Rank {}: {:.2f}%\n", 0, rank_load_[0]);
+      fmt::print(" Load per MPI Rank                 = Rank {}: {:.2f}%\n", 0, mpi::decomp_map.rank_load_[0]*100.0);
       for (int i = 1; i < mpi::n_procs; i++) {
-        fmt::print("                                     Rank {}: {:.2f}%\n", i, rank_load_[i]);
+        fmt::print("                                     Rank {}: {:.2f}%\n", i, mpi::decomp_map.rank_load_[i]*100.0);
       }
     }
 
@@ -818,6 +824,10 @@ void RandomRaySimulation::transport_sweep() {
 
   // Start timer for transport
   simulation::time_transport.start();
+  
+  // int num = domain->n_source_regions();
+  // Position centroid = domain_->source_regions_.centroid(num);
+  // printf ("1 Centroid (%f, %f, %f), number: %d \n", centroid.x, centroid.y, centroid.z, num);
 
   // Transport sweep over all random rays for the iteration
   #pragma omp parallel for schedule(dynamic)                                     \
@@ -826,6 +836,10 @@ void RandomRaySimulation::transport_sweep() {
           RandomRay ray(i, domain_.get());
           total_geometric_intersections_ += ray.transport_history_based_single_ray();
         }
+
+  // int num = domain->n_source_regions();
+  // Position centroid = domain_->source_regions_.centroid(num);
+  // printf ("1 Centroid (%f, %f, %f), number: %d \n", centroid.x, centroid.y, centroid.z, num);
 
   simulation::time_transport.stop();
 

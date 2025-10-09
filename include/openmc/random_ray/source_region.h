@@ -163,6 +163,7 @@ public:
   Position* centroid_t_;
   MomentMatrix* mom_matrix_;
   MomentMatrix* mom_matrix_t_;
+  SourceRegionKey* key_;
   // A set of volume tally tasks. This more complicated data structure is
   // convenient for ensuring that volumes are only tallied once per source
   // region, regardless of how many energy groups are used for tallying.
@@ -246,6 +247,9 @@ public:
   MomentMatrix& mom_matrix_t() { return *mom_matrix_t_; }
   const MomentMatrix mom_matrix_t() const { return *mom_matrix_t_; }
 
+  SourceRegionKey& key() { return *key_; }
+  const SourceRegionKey key() const { return *key_; }
+
   std::unordered_set<TallyTask, TallyTask::HashFunctor>& volume_task()
   {
     return *volume_task_;
@@ -320,6 +324,7 @@ public:
                       // Mesh that subdivides this source region
   int mesh_ {C_NONE}; //!< Index in openmc::model::meshes array that subdivides
                       //!< this source region
+  SourceRegionKey key_ {0, 0}; //!< The key (base source region + mesh bin)
   int64_t parent_sr_ {C_NONE}; //!< Index of a parent source region
   Position position_ {
     0.0, 0.0, 0.0}; //!< A position somewhere inside the region
@@ -340,6 +345,7 @@ public:
   // Constructors
   SourceRegion(int negroups, bool is_linear);
   SourceRegion(const SourceRegionHandle& handle, int64_t parent_sr);
+  SourceRegion(const SourceRegionHandle& handle);
   SourceRegion() = default;
 
   //----------------------------------------------------------------------------
@@ -467,6 +473,12 @@ public:
   const MomentMatrix mom_matrix_t(int64_t sr) const
   {
     return mom_matrix_t_[sr];
+  }
+
+  SourceRegionKey& key(int64_t sr) { return key_[sr]; }
+  const SourceRegionKey key(int64_t sr) const
+  {
+    return key_[sr];
   }
 
   MomentArray& source_gradients(int64_t sr, int g)
@@ -617,6 +629,7 @@ public:
   // Public Methods
 
   void push_back(const SourceRegion& sr);
+  // void erase(int sr_idx);
   void assign(int n_source_regions, const SourceRegion& source_region);
   void flux_swap();
   int64_t n_source_regions() const { return n_source_regions_; }
@@ -655,6 +668,7 @@ private:
   vector<Position> centroid_t_;
   vector<MomentMatrix> mom_matrix_;
   vector<MomentMatrix> mom_matrix_t_;
+  vector<SourceRegionKey> key_;
   // A set of volume tally tasks. This more complicated data structure is
   // convenient for ensuring that volumes are only tallied once per source
   // region, regardless of how many energy groups are used for tallying.

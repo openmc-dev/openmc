@@ -31,6 +31,7 @@ public:
 
   // Methods to find rank centres that divide spatial domain up into equal 
   // Voronoi volumes
+  void initialize();
   void generate_rank_centers(); //TODO: put in constructor
   void calculate_grid_points(int grid_points_per_dimension);
   void initialize_points();
@@ -44,8 +45,12 @@ public:
     discovered_source_regions);
   bool any_discovered_source_regions(ParallelMap<SourceRegionKey, SourceRegion, SourceRegionKey::HashFunctor>&
     discovered_source_regions);
-  void transfer_sr_data(int sender, int receiver, SourceRegionKey sr_key, ParallelMap<SourceRegionKey, SourceRegion, SourceRegionKey::HashFunctor>&
-    discovered_source_regions);
+  // void transfer_sr_data(int sender, int receiver, SourceRegionKey sr_key, ParallelMap<SourceRegionKey, SourceRegion, SourceRegionKey::HashFunctor>&
+  //   discovered_source_regions);
+  void transfer_sr_data(int sender, int receiver, SourceRegion& sr_send, SourceRegion& sr_recv);
+  void send_sr_data(int receiver, SourceRegion& sr_send);
+  void receive_sr_data(int sender, SourceRegion& sr_recv);
+
 
   // Method to check if source region key is in subdomain of calling rank
   // bool is_SRK_in_domain(SourceRegionKey sr_key, Position r);
@@ -68,6 +73,10 @@ public:
   void calculate_rank_load(FlatSourceDomain* domain);
   // void calculate_rank_load(uint64_t total_geometric_intersections);
 
+  void balance_load(FlatSourceDomain* domain);
+  void update_load(FlatSourceDomain* domain);
+  void redistribute_source_regions(FlatSourceDomain* domain);
+  bool load_balanced() const { return max_imbalance_ < imbalance_tolerance_; }
 
   
 
@@ -94,7 +103,8 @@ public:
   vector<double> rank_load_;
   // std::unordered_set<SourceRegionKey, SourceRegionKey::HashFunctor> outside_source_regions_;
   // std::unordered_map<SourceRegionKey, int, SourceRegionKey::HashFunctor> outside_source_regions_;
-
+  double target_load_;
+  vector<double> rank_weights_;
 
 private:
   //----------------------------------------------------------------------------
@@ -105,6 +115,12 @@ private:
   vector<Position> grid_points_;
   int grid_points_per_rank_{10};
   int negroups_;
+  uint64_t n_hits_sum_;
+
+  double max_domain_length_;
+  bool is_linear_;
+  double max_imbalance_ = 0.0;
+  double imbalance_tolerance_ = 0.01; // 1% imbalance tolerance
       // vector<Position> position_sum_per_rank(mpi::n_procs, Position(0,0,0));
       // vector<int> num_points_per_rank(mpi::n_procs, 0);
 

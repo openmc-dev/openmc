@@ -25,7 +25,7 @@ void LinearSourceDomain::batch_reset()
   FlatSourceDomain::batch_reset();
 #pragma omp parallel for
   for (int64_t sr = 0; sr < n_source_regions(); sr++) {
-    source_regions_.centroid_iteration(sr) = {0.0, 0.0, 0.0};
+    // source_regions_.centroid_iteration(sr) = {0.0, 0.0, 0.0};
     source_regions_.mom_matrix(sr) = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
   }
 #pragma omp parallel for

@@ -101,6 +101,7 @@ void FlatSourceDomain::batch_reset()
 // Reset scalar fluxes and iteration volume tallies to zero
 #pragma omp parallel for
   for (int64_t sr = 0; sr < n_source_regions(); sr++) {
+    source_regions_.centroid_iteration(sr) = {0.0, 0.0, 0.0};
     source_regions_.volume(sr) = 0.0;
     source_regions_.volume_sq(sr) = 0.0;
   }
@@ -191,6 +192,7 @@ void FlatSourceDomain::normalize_scalar_flux_and_volumes(
 // update the simulation-averaged cell-wise volume estimates
 #pragma omp parallel for
   for (int64_t sr = 0; sr < n_source_regions(); sr++) {
+    source_regions_.centroid_t(sr) += source_regions_.centroid_iteration(sr);
     source_regions_.volume_t(sr) += source_regions_.volume(sr);
     source_regions_.volume_sq_t(sr) += source_regions_.volume_sq(sr);
     source_regions_.volume_naive(sr) =
@@ -199,6 +201,11 @@ void FlatSourceDomain::normalize_scalar_flux_and_volumes(
       source_regions_.volume_sq_t(sr) / source_regions_.volume_t(sr);
     source_regions_.volume(sr) =
       source_regions_.volume_t(sr) * volume_normalization_factor;
+    if (source_regions_.volume_t(sr) > 0.0) {
+      double inv_volume = 1.0 / source_regions_.volume_t(sr);
+      source_regions_.centroid(sr) = source_regions_.centroid_t(sr);
+      source_regions_.centroid(sr) *= inv_volume;
+    }
   }
 }
 
@@ -1927,6 +1934,7 @@ SourceRegionHandle FlatSourceDomain::get_subdivided_source_region_handle(
     sr_key, {base_source_regions_.get_source_region_handle(sr), sr});
   discovered_source_regions_.unlock(sr_key);
   SourceRegionHandle handle {*sr_ptr};
+  handle.key() = sr_key;
 
   // Check if the new source region contains a point source and apply it if so
   auto it2 = point_source_map_.find(sr_key);

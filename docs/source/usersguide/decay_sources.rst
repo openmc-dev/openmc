@@ -67,9 +67,9 @@ Altogether, the workflow looks as follows::
     photon_energy = activated_mat.get_decay_photon_energy()
     photon_source = openmc.IndependentSource(
         space=...,
-        energy=energy,
+        energy=photon_energy,
         particle='photon',
-        strength=energy.integral()
+        strength=photon_energy.integral()
     )
 
     # Run photon transport calculation

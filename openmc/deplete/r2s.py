@@ -11,7 +11,6 @@ from . import IndependentOperator, PredictorIntegrator
 from .microxs import get_microxs_and_flux, write_microxs_hdf5, read_microxs_hdf5
 from .results import Results
 from ..checkvalue import PathLike
-from ..mesh import _get_all_materials
 
 
 def get_activation_materials(
@@ -47,7 +46,7 @@ def get_activation_materials(
     elems, _ = np.where(mmv._materials > -1)
 
     # Get all materials in the model
-    material_dict = _get_all_materials(model)
+    material_dict = model._get_all_materials()
 
     # Create a new activation material for each element-material combination
     materials = openmc.Materials()
@@ -552,7 +551,7 @@ class R2SManager:
             instances for the decay photons in the corresponding mesh element.
 
         """
-        mat_dict = _get_all_materials(self.neutron_model)
+        mat_dict = self.neutron_model._get_all_materials()
 
         # Some MeshSource objects will have empty positions; create a "null source"
         # that is used for this case

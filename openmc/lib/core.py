@@ -648,7 +648,7 @@ class TemporarySession:
 
     """
     def __init__(self, model=None, cwd=None, **init_kwargs):
-        self.init_kwargs = init_kwargs
+        self.init_kwargs = dict(init_kwargs)
         self.cwd = cwd
         if model is None:
             surf = openmc.Sphere(boundary_type="vacuum")
@@ -660,7 +660,8 @@ class TemporarySession:
         self.model = model
 
         # Determine MPI intercommunicator
-        self.comm = init_kwargs.get('intracomm', comm)
+        self.init_kwargs.setdefault('intracomm', comm)
+        self.comm = self.init_kwargs['intracomm']
 
     def __enter__(self):
         """Initialize the OpenMC library in a temporary directory."""
@@ -709,7 +710,7 @@ class TemporarySession:
             os.chdir(self.orig_dir)
 
             self.comm.barrier()
-            if self.comm.rank == 0:
+            if hasattr(self, 'tmp_dir'):
                 self.tmp_dir.cleanup()
 
 

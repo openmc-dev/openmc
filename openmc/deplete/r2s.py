@@ -603,9 +603,8 @@ class R2SManager:
             # Run photon transport calculation
             run_start = perf_counter()
             photon_dir = Path(output_dir) / f'time_{time_index}'
-            with change_directory(photon_dir):
-                with TemporarySession(self.photon_model, cwd=photon_dir):
-                    statepoint_path = self.photon_model.run(**run_kwargs)
+            with TemporarySession(self.photon_model, cwd=photon_dir):
+                statepoint_path = self.photon_model.run(**run_kwargs)
             self._record_time(step_name, f'run_photon_{time_index}', run_start)
 
             # Store tally results

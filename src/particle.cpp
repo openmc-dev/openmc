@@ -1026,36 +1026,21 @@ void add_surf_source_to_bank(Particle& p, const Surface& surf)
 bool collision_track_conditions(int id_cell, int mt_event, std::string nuclide,
   int id_universe, int id_material, double difference_E)
 {
+  // Helper lambda to check if a value is in a set (or set is empty = no filter)
+  auto matches_filter = [](const auto& filter_set, const auto& value) {
+    return filter_set.empty() || filter_set.count(value) > 0;
+  };
 
-  bool condition = true;
-  // Condition if the particle is in an Active Batch
-  condition = condition && (simulation::current_batch > settings::n_inactive);
-  // Condition if maximum number of particle is met
-  condition = condition && (!simulation::collision_track_bank.full());
-  // Condition if the particle is in targeted cell
-  condition = condition && (settings::ct_cell_id.empty() ||
-                             settings::ct_cell_id.find(id_cell) !=
-                               settings::ct_cell_id.end());
-  // Condition if the particle undergo the targeted MT reaction
-  condition = condition && (settings::ct_mt_number.empty() ||
-                             settings::ct_mt_number.find(mt_event) !=
-                               settings::ct_mt_number.end());
-  // Condition if the particle is in the targeted universe
-  condition = condition && (settings::ct_universe_id.empty() ||
-                             settings::ct_universe_id.find(id_universe) !=
-                               settings::ct_universe_id.end());
-  // Condition if the particle is in the targeted material
-  condition = condition && (settings::ct_material_id.empty() ||
-                             settings::ct_material_id.find(id_material) !=
-                               settings::ct_material_id.end());
-  condition = condition && (settings::ct_nuclides.empty() ||
-                             settings::ct_nuclides.find(nuclide) !=
-                               settings::ct_nuclides.end());
-  // Energy deposited should be superior to a threshold. Used heavily in Scatter
-  // Detectors
-  condition = condition && (settings::ct_deposited_E_threshold == 0 ||
-                             settings::ct_deposited_E_threshold < difference_E);
-  return condition;
+  // Check all conditions
+  return simulation::current_batch > settings::n_inactive &&
+         !simulation::collision_track_bank.full() &&
+         matches_filter(settings::ct_cell_id, id_cell) &&
+         matches_filter(settings::ct_mt_number, mt_event) &&
+         matches_filter(settings::ct_universe_id, id_universe) &&
+         matches_filter(settings::ct_material_id, id_material) &&
+         matches_filter(settings::ct_nuclides, nuclide) &&
+         (settings::ct_deposited_E_threshold == 0 ||
+           settings::ct_deposited_E_threshold < difference_E);
 }
 
 } // namespace openmc

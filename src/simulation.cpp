@@ -2,6 +2,7 @@
 
 #include "openmc/bank.h"
 #include "openmc/capi.h"
+#include "openmc/collision_track.h"
 #include "openmc/container_util.h"
 #include "openmc/eigenvalue.h"
 #include "openmc/error.h"
@@ -9,7 +10,6 @@
 #include "openmc/geometry_aux.h"
 #include "openmc/ifp.h"
 #include "openmc/material.h"
-#include "openmc/mcpl_interface.h"
 #include "openmc/message_passing.h"
 #include "openmc/nuclide.h"
 #include "openmc/output.h"
@@ -118,7 +118,7 @@ int openmc_simulation_init()
   // Reset global variables -- this is done before loading state point (as that
   // will potentially populate k_generation and entropy)
   simulation::current_batch = 0;
-  simulation::ct_current_file = 1;
+  collision_track::reset_runtime();
   simulation::ssw_current_file = 1;
   simulation::k_generation.clear();
   simulation::entropy.clear();
@@ -300,7 +300,6 @@ namespace simulation {
 
 int current_batch;
 int current_gen;
-int ct_current_file;
 bool initialized {false};
 double keff {1.0};
 double keff_std;
@@ -352,7 +351,7 @@ void allocate_banks()
 
   if (settings::collision_track) {
     // Allocate collision track bank
-    simulation::collision_track_bank.reserve(settings::ct_max_collisions);
+    collision_track::reserve_bank_capacity();
   }
 }
 
@@ -501,48 +500,7 @@ void finalize_batch()
     }
   }
   // Write collision track file if requested
-  if (settings::collision_track &&
-      simulation::ct_current_file <= settings::ct_max_files) {
-    bool last_batch = (simulation::current_batch == settings::n_batches);
-    if (simulation::collision_track_bank.full() || last_batch) {
-
-      auto collision_track_work_index = mpi::calculate_parallel_index_vector(
-        simulation::collision_track_bank.size());
-      span<CollisionTrackSite> collisiontrackbankspan(
-        simulation::collision_track_bank.begin(),
-        simulation::collision_track_bank.size());
-
-      std::string ext = settings::ct_mcpl_write ? "mcpl" : "h5";
-      auto filename = fmt::format("{}collision_track.{}.{}",
-        settings::path_output, simulation::ct_current_file, ext);
-
-      if (settings::ct_max_files == 1 ||
-          (simulation::ct_current_file == 1 && last_batch)) {
-        filename = settings::path_output + "collision_track." + ext;
-        write_message(filename + " file with {} recorded collisions ...",
-          simulation::collision_track_bank.size(), 2);
-      } else {
-        write_message(
-          "Creating collision_track.{}.{} file with {} recorded collisions ...",
-          simulation::ct_current_file, ext,
-          simulation::collision_track_bank.size(), 4);
-      }
-
-      if (settings::ct_mcpl_write) {
-        write_mcpl_collision_track(
-          filename.c_str(), collisiontrackbankspan, collision_track_work_index);
-      } else {
-        write_h5_collision_track(
-          filename.c_str(), collisiontrackbankspan, collision_track_work_index);
-      }
-      // Reset collision_track bank and increment counter
-      simulation::collision_track_bank.clear();
-      if (!last_batch && settings::ct_max_files >= 1) {
-        simulation::collision_track_bank.reserve(settings::ct_max_collisions);
-      }
-      ++simulation::ct_current_file;
-    }
-  }
+  collision_track::flush_bank(simulation::current_batch == settings::n_batches);
 }
 
 void initialize_generation()

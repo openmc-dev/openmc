@@ -18,6 +18,7 @@
 #include <cstring>
 #include <memory>
 #include <mutex>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 
@@ -561,6 +562,10 @@ void write_mcpl_collision_track_internal(mcpl_outfile_t* file_id,
                   "write_mcpl_source_bank_internal with null file_id.");
     }
     vector<CollisionTrackSite> receive_buffer;
+    vector<CollisionTrackSite> all_sites;
+    all_sites.reserve(static_cast<size_t>(bank_index_all_ranks.back()));
+    vector<std::string> all_blobs;
+    all_blobs.reserve(static_cast<size_t>(bank_index_all_ranks.back()));
 
     for (int rank_idx = 0; rank_idx < mpi::n_procs; ++rank_idx) {
       size_t num_sites_on_rank = static_cast<size_t>(
@@ -568,28 +573,25 @@ void write_mcpl_collision_track_internal(mcpl_outfile_t* file_id,
       if (num_sites_on_rank == 0)
         continue;
 
-      span<const CollisionTrackSite> sites_to_write;
+      span<const CollisionTrackSite> sites_to_process;
 #ifdef OPENMC_MPI
       if (rank_idx == mpi::rank) {
-        sites_to_write = openmc::span<const CollisionTrackSite>(
+        sites_to_process = openmc::span<const CollisionTrackSite>(
           collision_track_bank.data(), num_sites_on_rank);
       } else {
-        if (receive_buffer.size() < num_sites_on_rank) {
-          receive_buffer.resize(num_sites_on_rank);
-        }
+        receive_buffer.resize(num_sites_on_rank);
         MPI_Recv(receive_buffer.data(), num_sites_on_rank,
           mpi::collision_track_site, rank_idx, rank_idx, mpi::intracomm,
           MPI_STATUS_IGNORE);
-        sites_to_write = openmc::span<const CollisionTrackSite>(
+        sites_to_process = openmc::span<const CollisionTrackSite>(
           receive_buffer.data(), num_sites_on_rank);
       }
 #else
-      sites_to_write = openmc::span<const CollisionTrackSite>(
+      sites_to_process = openmc::span<const CollisionTrackSite>(
         collision_track_bank.data(), num_sites_on_rank);
 #endif
-      int index = 0;
-      for (const auto& site : collision_track_bank) {
-        // Binary blob should be added before the mcpl_add_particle function
+
+      for (const auto& site : sites_to_process) {
         std::ostringstream custom_data_stream;
         custom_data_stream << " dE : " << site.dE
                            << " ; event_mt : " << site.event_mt
@@ -602,44 +604,45 @@ void write_mcpl_collision_track_internal(mcpl_outfile_t* file_id,
                            << " ; parent_id : " << site.parent_id
                            << " ; progeny_id : " << site.progeny_id;
 
-        std::string custom_data_str = custom_data_stream.str();
-        std::ostringstream custom_key;
-        custom_key << "blob_" << index;
-        std::string CK = custom_key.str();
-        g_mcpl_api->hdr_add_data(
-          file_id, CK.c_str(), custom_data_str.size(), custom_data_str.c_str());
-        index++;
+        all_blobs.push_back(custom_data_stream.str());
+        all_sites.push_back(site);
       }
+    }
 
-      for (const auto& site : sites_to_write) {
-        mcpl_particle_repr_t p_repr {};
-        p_repr.position[0] = site.r.x;
-        p_repr.position[1] = site.r.y;
-        p_repr.position[2] = site.r.z;
-        p_repr.direction[0] = site.u.x;
-        p_repr.direction[1] = site.u.y;
-        p_repr.direction[2] = site.u.z;
-        p_repr.ekin = site.E * 1e-6;
-        p_repr.time = site.time * 1e3;
-        p_repr.weight = site.wgt;
-        switch (site.particle) {
-        case ParticleType::neutron:
-          p_repr.pdgcode = 2112;
-          break;
-        case ParticleType::photon:
-          p_repr.pdgcode = 22;
-          break;
-        case ParticleType::electron:
-          p_repr.pdgcode = 11;
-          break;
-        case ParticleType::positron:
-          p_repr.pdgcode = -11;
-          break;
-        default:
-          continue;
-        }
-        g_mcpl_api->add_particle(file_id, &p_repr);
+    for (size_t idx = 0; idx < all_blobs.size(); ++idx) {
+      const auto& blob = all_blobs[idx];
+      std::string key = "blob_" + std::to_string(idx);
+      g_mcpl_api->hdr_add_data(file_id, key.c_str(), blob.size(), blob.c_str());
+    }
+
+    for (const auto& site : all_sites) {
+      mcpl_particle_repr_t p_repr {};
+      p_repr.position[0] = site.r.x;
+      p_repr.position[1] = site.r.y;
+      p_repr.position[2] = site.r.z;
+      p_repr.direction[0] = site.u.x;
+      p_repr.direction[1] = site.u.y;
+      p_repr.direction[2] = site.u.z;
+      p_repr.ekin = site.E * 1e-6;
+      p_repr.time = site.time * 1e3;
+      p_repr.weight = site.wgt;
+      switch (site.particle) {
+      case ParticleType::neutron:
+        p_repr.pdgcode = 2112;
+        break;
+      case ParticleType::photon:
+        p_repr.pdgcode = 22;
+        break;
+      case ParticleType::electron:
+        p_repr.pdgcode = 11;
+        break;
+      case ParticleType::positron:
+        p_repr.pdgcode = -11;
+        break;
+      default:
+        continue;
       }
+      g_mcpl_api->add_particle(file_id, &p_repr);
     }
   } else {
 #ifdef OPENMC_MPI

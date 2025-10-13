@@ -8,6 +8,7 @@
 #include "openmc/bank.h"
 #include "openmc/capi.h"
 #include "openmc/cell.h"
+#include "openmc/collision_track.h"
 #include "openmc/constants.h"
 #include "openmc/dagmc.h"
 #include "openmc/error.h"
@@ -358,7 +359,7 @@ void Particle::event_collide()
     int material_id = model::materials[material()]->id_;
 
     // ADD THOSE INFORMATION TO CollisionTrackSite
-    if (collision_track_conditions(
+    if (collision_track::should_record_event(
           cell_id, event_mt(), nuclide, universe_id, material_id, delta_E)) {
       CollisionTrackSite site;
       site.r = r();
@@ -1021,26 +1022,6 @@ void add_surf_source_to_bank(Particle& p, const Surface& surf)
   site.parent_id = p.id();
   site.progeny_id = p.n_progeny();
   int64_t idx = simulation::surf_source_bank.thread_safe_append(site);
-}
-
-bool collision_track_conditions(int id_cell, int mt_event, std::string nuclide,
-  int id_universe, int id_material, double difference_E)
-{
-  // Helper lambda to check if a value is in a set (or set is empty = no filter)
-  auto matches_filter = [](const auto& filter_set, const auto& value) {
-    return filter_set.empty() || filter_set.count(value) > 0;
-  };
-
-  // Check all conditions
-  return simulation::current_batch > settings::n_inactive &&
-         !simulation::collision_track_bank.full() &&
-         matches_filter(settings::ct_cell_id, id_cell) &&
-         matches_filter(settings::ct_mt_number, mt_event) &&
-         matches_filter(settings::ct_universe_id, id_universe) &&
-         matches_filter(settings::ct_material_id, id_material) &&
-         matches_filter(settings::ct_nuclides, nuclide) &&
-         (settings::ct_deposited_E_threshold == 0 ||
-           settings::ct_deposited_E_threshold < difference_E);
 }
 
 } // namespace openmc

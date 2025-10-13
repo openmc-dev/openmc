@@ -11,6 +11,7 @@
 #endif
 
 #include "openmc/capi.h"
+#include "openmc/collision_track.h"
 #include "openmc/constants.h"
 #include "openmc/container_util.h"
 #include "openmc/distribution.h"
@@ -52,7 +53,6 @@ bool confidence_intervals {false};
 bool create_delayed_neutrons {true};
 bool create_fission_neutrons {true};
 bool delayed_photon_scaling {true};
-bool ct_mcpl_write {false};
 bool entropy_on {false};
 bool event_based {false};
 bool ifp_on {false};
@@ -131,14 +131,7 @@ std::unordered_set<int> statepoint_batch;
 double source_rejection_fraction {0.05};
 double free_gas_threshold {400.0};
 std::unordered_set<int> source_write_surf_id;
-std::unordered_set<int> ct_cell_id;
-std::unordered_set<int> ct_mt_number;
-std::unordered_set<int> ct_universe_id;
-std::unordered_set<int> ct_material_id;
-std::unordered_set<std::string> ct_nuclides;
-double ct_deposited_E_threshold {0};
-int64_t ct_max_collisions {1000};
-int64_t ct_max_files;
+CollisionTrackConfig collision_track_config {};
 int64_t ssw_max_particles;
 int64_t ssw_max_files;
 int64_t ssw_cell_id {C_NONE};
@@ -938,14 +931,16 @@ void read_settings_xml(pugi::xml_node root)
 
   // Check if the user has specified to write specific collisions
   if (check_for_node(root, "collision_track")) {
-    collision_track = true;
+    settings::collision_track = true;
     // Get collision track node
     xml_node node_ct = root.child("collision_track");
+    collision_track_config = CollisionTrackConfig {};
+
     // Determine cell ids at which crossing particles are to be banked
     if (check_for_node(node_ct, "cell_ids")) {
       auto temp = get_node_array<int>(node_ct, "cell_ids");
       for (const auto& b : temp) {
-        ct_cell_id.insert(b);
+        collision_track_config.cell_ids.insert(b);
       }
     }
     if (check_for_node(node_ct, "reactions")) {
@@ -953,20 +948,20 @@ void read_settings_xml(pugi::xml_node root)
       for (const auto& b : temp) {
         int reaction_int = reaction_type(b);
         if (reaction_int > 0) {
-          ct_mt_number.insert(reaction_int);
+          collision_track_config.mt_numbers.insert(reaction_int);
         }
       }
     }
     if (check_for_node(node_ct, "universe_ids")) {
       auto temp = get_node_array<int>(node_ct, "universe_ids");
       for (const auto& b : temp) {
-        ct_universe_id.insert(b);
+        collision_track_config.universe_ids.insert(b);
       }
     }
     if (check_for_node(node_ct, "material_ids")) {
       auto temp = get_node_array<int>(node_ct, "material_ids");
       for (const auto& b : temp) {
-        ct_material_id.insert(b);
+        collision_track_config.material_ids.insert(b);
       }
     }
     if (check_for_node(node_ct, "nuclides")) {
@@ -977,16 +972,17 @@ void read_settings_xml(pugi::xml_node root)
         //   fatal_error("Could not find nuclide " + b + " in the nuclear data
         //   library.");
         // }
-        ct_nuclides.insert(b);
+        collision_track_config.nuclides.insert(b);
       }
     }
     if (check_for_node(node_ct, "deposited_E_threshold")) {
-      ct_deposited_E_threshold =
-        std::stoll(get_node_value(node_ct, "deposited_E_threshold"));
+      collision_track_config.deposited_energy_threshold =
+        std::stod(get_node_value(node_ct, "deposited_E_threshold"));
     }
     // Get maximum number of particles to be banked per collision
     if (check_for_node(node_ct, "max_collisions")) {
-      ct_max_collisions = std::stoll(get_node_value(node_ct, "max_collisions"));
+      collision_track_config.max_collisions =
+        std::stoll(get_node_value(node_ct, "max_collisions"));
     } else {
       warning("A maximum number of collisions needs to be specified. "
               "By default the code sets 'max_collisions' parameter equals to "
@@ -994,13 +990,11 @@ void read_settings_xml(pugi::xml_node root)
     }
     // Get maximum number of collision_track files to be created
     if (check_for_node(node_ct, "max_collision_track_files")) {
-      ct_max_files =
+      collision_track_config.max_files =
         std::stoll(get_node_value(node_ct, "max_collision_track_files"));
-    } else {
-      ct_max_files = 1;
     }
     if (check_for_node(node_ct, "mcpl")) {
-      ct_mcpl_write = get_node_value_bool(node_ct, "mcpl");
+      collision_track_config.mcpl_write = get_node_value_bool(node_ct, "mcpl");
     }
   }
 
@@ -1285,11 +1279,7 @@ void free_memory_settings()
   settings::sourcepoint_batch.clear();
   settings::source_write_surf_id.clear();
   settings::res_scat_nuclides.clear();
-  settings::ct_cell_id.clear();
-  settings::ct_mt_number.clear();
-  settings::ct_universe_id.clear();
-  settings::ct_material_id.clear();
-  settings::ct_nuclides.clear();
+  collision_track::reset_config();
 }
 
 //==============================================================================

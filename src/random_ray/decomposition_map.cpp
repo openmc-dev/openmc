@@ -23,7 +23,8 @@ void DecompositionMap::initialize(){
   negroups_ = data::mg.num_energy_groups_;
   rank_load_.resize(mpi::n_procs, 0.0);
   target_load_ = 1.0/mpi::n_procs;
-  rank_weights_.resize(mpi::n_procs, 0.0);
+  // rank_weights_.resize(mpi::n_procs, 0.0);
+  rank_weights_.resize(mpi::n_procs, 1.0);
 
   spatial_box_ = dynamic_cast<SpatialBox*>(
     dynamic_cast<IndependentSource*>(RandomRay::ray_source_.get())->space());
@@ -40,8 +41,13 @@ void DecompositionMap::initialize(){
 void DecompositionMap::generate_rank_centers(){
 
   // Calculate grid points that are used for Voronoi cells
-  int grid_points_per_dimension = ceil(grid_points_per_rank_ * cbrt(mpi::n_procs)); // number of grid points in each dimension
-  calculate_grid_points(grid_points_per_dimension);
+  // int grid_points_per_dimension = ceil(grid_points_per_rank_ * cbrt(mpi::n_procs)); // number of grid points in each dimension
+  int grid_points_total = grid_points_per_rank_ * mpi::n_procs;
+  printf("Calculating %d grid points for Voronoi tessellation...\n", grid_points_total);
+  // printf("Grid points per dimension: %d \n", grid_points_per_dimension);
+  // calculate_grid_points(grid_points_per_dimension);
+  calculate_grid_points(grid_points_total);
+
 
   // Initialize points with random positions
   initialize_points();
@@ -109,20 +115,112 @@ void DecompositionMap::generate_rank_centers(){
   
 }
 
-void DecompositionMap::calculate_grid_points(int grid_points_per_dimension){
+// void DecompositionMap::calculate_grid_points(int grid_points_per_dimension){
+void DecompositionMap::calculate_grid_points(int grid_points_total){
 
-    // Calculate grid spacing
-    double delta_x = (spatial_box_->upper_right().x - spatial_box_->lower_left().x) / (grid_points_per_dimension - 1);
-    double delta_y = (spatial_box_->upper_right().y - spatial_box_->lower_left().y) / (grid_points_per_dimension - 1);
-    double delta_z = (spatial_box_->upper_right().z - spatial_box_->lower_left().z) / (grid_points_per_dimension - 1);
+    // Calculate grid spacing     
+    vector <double> domain_length(3);
+    domain_length[0] = spatial_box_->upper_right().x - spatial_box_->lower_left().x;
+    domain_length[1] = spatial_box_->upper_right().y - spatial_box_->lower_left().y;
+    domain_length[2] = spatial_box_->upper_right().z - spatial_box_->lower_left().z;
+    // double x_length = spatial_box_->upper_right().x - spatial_box_->lower_left().x;
+    // double y_length = spatial_box_->upper_right().y - spatial_box_->lower_left().y;
+    // double z_length = spatial_box_->upper_right().z - spatial_box_->lower_left().z;
+
+    double volume = domain_length[0] * domain_length[1] * domain_length[2];
+
+    // printf("Spatial box dimensions: %f x %f x %f \n", x_length, y_length, z_length);
+    printf("Spatial box volume: %f \n", volume);
+    // printf("Grid points per dimension: %d \n", grid_points_per_dimension);
+
+    // int grid_points_x = std::max(2, static_cast<int>(round((x_length / cbrt(volume)) * cbrt(grid_points_total))));
+    // int grid_points_y = std::max(2, static_cast<int>(round((y_length / cbrt(volume)) * cbrt(grid_points_total))));
+    // int grid_points_z = std::max(2, static_cast<int>(round((z_length / cbrt(volume)) * cbrt(grid_points_total))));
+
+    int excluded_dimension = -1;
+    vector<int> grid_points_per_dimension(3);
+    for (int i = 0; i < 3; i++){
+      double grid_points_estimate = ((domain_length[i] / cbrt(volume)) * cbrt(grid_points_total));
+      // Check if any dimension distorted
+      if (grid_points_estimate > 2){
+        grid_points_per_dimension[i] = std::max(2, static_cast<int>(round(grid_points_estimate)));
+      } else {
+        excluded_dimension = i;
+        grid_points_per_dimension[i] = 2;
+      }
+    }
+
+    if (excluded_dimension != -1){
+      double area = 1.0;
+      
+      for (int i = 0; i < 3; i++){
+        if (i == excluded_dimension) continue;
+        area *= domain_length[i];
+      }
+
+      // Recalculate grid points in non-distorted dimensions based on area
+      for (int i = 0; i < 3; i++){
+        if (i == excluded_dimension) continue;
+        grid_points_per_dimension[i] = round((domain_length[i] / sqrt(area)) * sqrt(grid_points_total/2.0));
+      }
+    } 
+
+    printf("Grid points in x, y, z: %d, %d, %d \n", grid_points_per_dimension[0], grid_points_per_dimension[1], grid_points_per_dimension[2]);
+
+    // int total_grid_points = grid_points_per_dimension * grid_points_per_dimension * grid_points_per_dimension;
+
+    // int grid_points_x = std::max(2, static_cast<int>(round((x_length / cbrt(volume)) * grid_points_per_dimension)));
+    // int grid_points_y = std::max(2, static_cast<int>(round((y_length / cbrt(volume)) * grid_points_per_dimension)));
+    // int grid_points_z = std::max(2, static_cast<int>(round((z_length / cbrt(volume)) * grid_points_per_dimension)));
+
+    double new_total = grid_points_per_dimension[0] * grid_points_per_dimension[1] * grid_points_per_dimension[2];
+    double adjustment;
+    if (excluded_dimension != -1) {
+      // When one dimension is fixed at 2, use square root for the other two dimensions
+      adjustment = sqrt(grid_points_total / new_total);
+    } else {
+      // When all dimensions are free, use cube root
+      adjustment = cbrt(grid_points_total / new_total);
+    }
+
+    // double adjustment = cbrt(grid_points_total / new_total);
+
+    for (int i = 0; i < 3; i++){
+      if (i == excluded_dimension) continue;
+      grid_points_per_dimension[i] = round(grid_points_per_dimension[i] * adjustment);
+    }
+    
+    // grid_points_x = std::max(2, static_cast<int>(round(grid_points_x * adjustment)));
+    // grid_points_y = std::max(2, static_cast<int>(round(grid_points_y * adjustment)));
+    // grid_points_z = std::max(2, static_cast<int>(round(grid_points_z * adjustment))); 
+
+    // double exponent_x = (x_length / cbrt(volume));
+    // double exponent_y = (y_length / cbrt(volume));
+    // double exponent_z = (z_length / cbrt(volume));
+
+    // int grid_points_x = std::pow(total_grid_points, exponent_x/3.0);
+    // int grid_points_y = std::pow(total_grid_points, exponent_y/3.0);
+    // int grid_points_z = std::pow(total_grid_points, exponent_z/3.0);
+
+
+
+    printf("Grid points in x, y, z: %d, %d, %d \n", grid_points_per_dimension[0], grid_points_per_dimension[1], grid_points_per_dimension[2]);
+
+    double delta_x = (spatial_box_->upper_right().x - spatial_box_->lower_left().x) / (grid_points_per_dimension[0] - 1);
+    double delta_y = (spatial_box_->upper_right().y - spatial_box_->lower_left().y) / (grid_points_per_dimension[1] - 1);
+    double delta_z = (spatial_box_->upper_right().z - spatial_box_->lower_left().z) / (grid_points_per_dimension[2] - 1);
+
+    // double delta_x = (spatial_box_->upper_right().x - spatial_box_->lower_left().x) / (grid_points_per_dimension - 1);
+    // double delta_y = (spatial_box_->upper_right().y - spatial_box_->lower_left().y) / (grid_points_per_dimension - 1);
+    // double delta_z = (spatial_box_->upper_right().z - spatial_box_->lower_left().z) / (grid_points_per_dimension - 1);
     
     // Generate all grid points
     
-    for (int i = 0; i < grid_points_per_dimension; i++) {
+    for (int i = 0; i < grid_points_per_dimension[0]; i++) {
         double x = spatial_box_->lower_left().x + i * delta_x;
-        for (int j = 0; j < grid_points_per_dimension; j++) {
+        for (int j = 0; j < grid_points_per_dimension[1]; j++) {
             double y = spatial_box_->lower_left().y + j * delta_y;
-            for (int k = 0; k < grid_points_per_dimension; k++) {
+            for (int k = 0; k < grid_points_per_dimension[2]; k++) {
                 double z = spatial_box_->lower_left().z + k * delta_z;
                 grid_points_.push_back({x, y, z});
             }
@@ -823,15 +921,19 @@ void DecompositionMap::balance_load(FlatSourceDomain* domain){
 
   // double tol_outer = 0.01;
   int it_outer = 0;
-  double adaptation_factor = 0.5; //1; //0.1;
-  double min_factor = 0.1;
+  double adaptation_factor = 1; //0.5 //0.1;
+  double min_factor = 0.01;
   double max_factor = 2;
   double prev_imbalance = max_imbalance;
   double avg_rank_distance = max_domain_length_/cbrt(mpi::n_procs); // rough estimate of average distance between ranks //TODO: cubic root might not be adaquate for problems that are not box like
-  double weight_scale = avg_rank_distance * avg_rank_distance;
+  double weight_scale = avg_rank_distance * avg_rank_distance; //TODO: maybe adjust dynamically dependent on wether previous batch has converged
+  // double weight_scale = std::accumulate(rank_weights_.begin(), rank_weights_.end(), 0.0) / mpi::n_procs; // scale weights based on average load
   double beta = 0.6; // momentum damping
 
   vector<double> weight_change(mpi::n_procs, 0.0);
+
+  vector<double> old_weights = rank_weights_;
+  double max_imbalance_old = max_imbalance_;
 
   std::unordered_map<int, vector<int>> sr_send; // contains regions to be send
 
@@ -848,6 +950,7 @@ void DecompositionMap::balance_load(FlatSourceDomain* domain){
     // }
 
     for (int rank = 0; rank < mpi::n_procs; rank++) {
+      // weight_scale = std::accumulate(rank_weights_.begin(), rank_weights_.end(), 0.0) / mpi::n_procs;
       double corr = ((rank_load_[rank] - target_load_) / target_load_) * weight_scale;
       weight_change[rank] = beta * weight_change[rank] + (1.0 - beta) * corr; // keep some inertia from previous changes to prevent oscillations
       // double damping = std::min(1.0, max_imbalance / imbalance_tolerance_); // dampening factor based on how far we are from convergence
@@ -872,9 +975,15 @@ void DecompositionMap::balance_load(FlatSourceDomain* domain){
 
   }
 
-  if (mpi::master && it_outer == max_iterations){
-    warning("MPI load balancing has not converged. Using best estimate after "
-            + std::to_string(max_iterations) + " iterations."); //TODO: maybe revert to previous weights, if not converged?
+  if (it_outer == max_iterations){
+    if(mpi::master) {
+      warning("MPI load balancing has not converged after "
+              + std::to_string(max_iterations) + " iterations."); 
+    }
+    if (max_imbalance_old < max_imbalance){
+      rank_weights_ = old_weights;
+      return;
+    }
   } else {
     if (mpi::master){
       printf("MPI load balancing converged after %d iterations. Max. imbalance: %.2f%% \n", it_outer, max_imbalance*100.0);
@@ -887,6 +996,15 @@ void DecompositionMap::balance_load(FlatSourceDomain* domain){
 
   // update decomposition map
   redistribute_source_regions(domain);
+
+
+  if (mpi::master){
+    printf("Weights: ");
+    for (int rank = 0; rank < mpi::n_procs; rank++) {
+      printf("RANK %d: %.2f ", rank, rank_weights_[rank]);
+    }
+    printf("\n");
+  }
 
 }
 
@@ -906,22 +1024,24 @@ void DecompositionMap::update_load(FlatSourceDomain* domain){
       for (int64_t sr = 0; sr < domain->n_source_regions(); sr++) {
 
         Position centroid = domain->source_regions_.centroid(sr);
-        int owner = C_NONE;
-        double min_distance = INFTY;
+        // int owner = C_NONE;
+        // double min_distance = INFTY;
         
-        // Find closest rank center
-        for (int rank = 0; rank < mpi::n_procs; rank++) {
-            double dist = (centroid - rank_centers_[rank]).norm();
-            // Power Voronoi diagram uses squared distances
-            dist = dist*dist - rank_weights_[rank];
-            if (dist < min_distance) {
-                min_distance = dist;
-                owner = rank;
-                // if (min_distance < 0.0){
-                //   break; // no need to continue searching
-                // }
-            }
-        }
+        // // Find closest rank center
+        // for (int rank = 0; rank < mpi::n_procs; rank++) {
+        //     double dist = (centroid - rank_centers_[rank]).norm();
+        //     // Power Voronoi diagram uses squared distances
+        //     dist = dist*dist - rank_weights_[rank];
+        //     if (dist < min_distance) {
+        //         min_distance = dist;
+        //         owner = rank;
+        //         // if (min_distance < 0.0){
+        //         //   break; // no need to continue searching
+        //         // }
+        //     }
+        // }
+
+        int owner = find_closest_rank(centroid);
 
         local_hits[owner] += domain->source_regions_.n_hits(sr);
       }
@@ -961,19 +1081,21 @@ void DecompositionMap::redistribute_source_regions(FlatSourceDomain* domain) {
   for (int64_t sr = 0; sr < domain->n_source_regions(); sr++) {
 
     Position centroid = domain->source_regions_.centroid(sr);
-    int owner = C_NONE;
-    double min_distance = INFTY;
+    // int owner = C_NONE;
+    // double min_distance = INFTY;
     
-    // Find closest rank center //TODO: Should this be put in update_load() to avoid repeating the same loop? But then I might right  
-    for (int rank = 0; rank < mpi::n_procs; rank++) {
-        double dist = (centroid - rank_centers_[rank]).norm();
-        // Power Voronoi diagram uses squared distances
-        dist = dist*dist - rank_weights_[rank];
-        if (dist < min_distance) {
-          min_distance = dist;
-          owner = rank;
-        }
-    }
+    // // Find closest rank center //TODO: Should this be put in update_load() to avoid repeating the same loop? But then I might right  
+    // for (int rank = 0; rank < mpi::n_procs; rank++) {
+    //     double dist = (centroid - rank_centers_[rank]).norm();
+    //     // Power Voronoi diagram uses squared distances
+    //     dist = dist*dist - rank_weights_[rank];
+    //     if (dist < min_distance) {
+    //       min_distance = dist;
+    //       owner = rank;
+    //     }
+    // }
+
+    int owner = find_closest_rank(centroid);
 
     // If owner changed, write source region to list of outbound source regions
     if (owner != mpi::rank){

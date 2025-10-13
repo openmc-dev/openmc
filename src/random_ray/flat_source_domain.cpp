@@ -157,8 +157,13 @@ void FlatSourceDomain::update_neutron_source(double k_eff)
         scatter_source += sigma_s * scalar_flux;
         fission_source += nu_sigma_f * scalar_flux * chi;
       }
+
       source_regions_.source(sr, g_out) =
         (scatter_source + fission_source * inverse_k_eff) / sigma_t;
+
+      // if (source_regions_.key(sr) == SourceRegionKey(96506,0)){
+      //   printf("Rank: %d, Batch: %d; Scalar_flux_old: %f, Source: %f for material %d \n", mpi::rank, simulation::current_batch, source_regions_.scalar_flux_old(sr, g_out), source_regions_.source(sr, g_out), material);
+      // }
     }
   }
 

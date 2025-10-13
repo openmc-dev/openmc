@@ -33,7 +33,8 @@ public:
   // Voronoi volumes
   void initialize();
   void generate_rank_centers(); //TODO: put in constructor
-  void calculate_grid_points(int grid_points_per_dimension);
+  // void calculate_grid_points(int grid_points_per_dimension);
+  void calculate_grid_points(int grid_points_total);
   void initialize_points();
   void calculate_voronoi(vector<Position>& position_sum_per_rank, vector<int>& num_points_per_rank);
   Position calculate_centroids(const Position position_sum, const int num_points, int rank);
@@ -113,7 +114,9 @@ private:
   SpatialBox* spatial_box_ = nullptr; // Add this member variable
   // std::unordered_map<int, vector<Position>> voronoi_map_;
   vector<Position> grid_points_;
-  int grid_points_per_rank_{10};
+  // int grid_points_per_rank_{2};
+  int grid_points_per_rank_{100};
+  // int grid_points_per_rank_{1000};
   int negroups_;
   uint64_t n_hits_sum_;
 

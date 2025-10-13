@@ -271,7 +271,8 @@ uint64_t RandomRay::transport_history_based_single_ray()
   using namespace openmc;
   while (alive()) {
     // if (id() == 1083){
-    //   printf("RANK %d: Ray %ld, position: %f, %f, %f, angular flux: %f, distance travelled: %f, owner: %d \n", mpi::rank, id(), r().x, r().y, r().z, angular_flux_[0], distance_travelled_, owner_rank_);
+    //   if (simulation::current_batch == 130) {
+    //     printf("RANK %d: Ray %ld, position: %f, %f, %f, angular flux: %f, distance travelled: %f, owner: %d \n", mpi::rank, id(), r().x, r().y, r().z, angular_flux_[0], distance_travelled_, owner_rank_);
     // }
     event_advance_ray();
     if (!alive())
@@ -459,7 +460,7 @@ void RandomRay::attenuate_flux(double distance, double offset)
   // if(has_left_subdomain() && !is_buffered_) {
   if(has_left_subdomain()) {
     // if (id() == 1083){
-    //   printf("RANK %d: buffering, new owner %d \n", mpi::rank, owner_rank_);
+      // if (simulation::current_batch == 130) printf("RANK %d: buffering, new owner %d \n", mpi::rank, owner_rank_);
     //   printf("RANK %d: distance travelled old: %f, offset: %f, mesh_partial_length: %f \n", mpi::rank, distance_travelled_, offset, mesh_partial_length);
     // }
     Position position_buffer =  r() + (offset + mesh_partial_length) * u();
@@ -1017,6 +1018,10 @@ void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
     }
     srh =
       domain_->get_subdivided_source_region_handle(sr, mesh_bin, r(), u());
+    // if (simulation::current_batch == 130){
+      // printf("RANK %d: Ray %ld in source region %ld, mesh bin %d \n", mpi::rank, id(), sr, mesh_bin);
+      // printf("RANK %d: Source = %f \n", mpi::rank, srh.source(0));
+    // }
   } else {
     srh = domain_->source_regions_.get_source_region_handle(sr);
   }

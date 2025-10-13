@@ -212,7 +212,7 @@
           <parameters>0.0 0.0 0.0 30.0 30.0 30.0</parameters>
         </space>
       </source>
-      <volume_normalized_flux_tallies>True</volume_normalized_flux_tallies>
+      <volume_normalized_flux_tallies>true</volume_normalized_flux_tallies>
       <source_shape>flat</source_shape>
     </random_ray>
   </settings>

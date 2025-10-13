@@ -159,6 +159,34 @@ def test_properties_temperature(lib_init):
     assert cell.get_temperature() == pytest.approx(200.0)
 
 
+def test_cell_density(lib_init):
+    cell = openmc.lib.cells[1]
+    print('density', cell.get_density())
+    orig_density = cell.get_density()
+    try:
+        cell.set_density(1.5, 0)
+        assert cell.get_density(0) == pytest.approx(1.5)
+        cell.set_density(2.0)
+        assert cell.get_density() == pytest.approx(2.0)
+    finally:
+        cell.set_density(orig_density)
+
+
+def test_properties_cell_density(lib_init):
+    # Cell density should be 2.0 from above test
+    cell = openmc.lib.cells[1]
+    orig_density = cell.get_density()
+
+    # Export properties and change density
+    openmc.lib.export_properties('properties.h5')
+    cell.set_density(3.0)
+    assert cell.get_density() == pytest.approx(3.0)
+
+    # Import properties and check that density is restored
+    openmc.lib.import_properties('properties.h5')
+    assert cell.get_density() == pytest.approx(orig_density)
+
+
 def test_new_cell(lib_init):
     with pytest.raises(exc.AllocationError):
         openmc.lib.Cell(1)

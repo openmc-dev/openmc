@@ -2,7 +2,7 @@ from __future__ import annotations
 from collections.abc import Callable, Iterable, Sequence
 import copy
 from dataclasses import dataclass, field
-from functools import lru_cache
+from functools import cache
 from pathlib import Path
 import math
 from numbers import Integral, Real
@@ -169,7 +169,7 @@ class Model:
             return False
 
     @property
-    @lru_cache(maxsize=None)
+    @cache
     def _materials_by_id(self) -> dict:
         """Dictionary mapping material ID --> material"""
         if self.materials:
@@ -179,14 +179,14 @@ class Model:
         return {mat.id: mat for mat in mats}
 
     @property
-    @lru_cache(maxsize=None)
+    @cache
     def _cells_by_id(self) -> dict:
         """Dictionary mapping cell ID --> cell"""
         cells = self.geometry.get_all_cells()
         return {cell.id: cell for cell in cells.values()}
 
     @property
-    @lru_cache(maxsize=None)
+    @cache
     def _cells_by_name(self) -> dict[int, openmc.Cell]:
         # Get the names maps, but since names are not unique, store a set for
         # each name key. In this way when the user requests a change by a name,
@@ -199,7 +199,7 @@ class Model:
         return result
 
     @property
-    @lru_cache(maxsize=None)
+    @cache
     def _materials_by_name(self) -> dict[int, openmc.Material]:
         if self.materials is None:
             mats = self.geometry.get_all_materials().values()
@@ -211,6 +211,37 @@ class Model:
                 result[mat.name] = set()
             result[mat.name].add(mat)
         return result
+
+    def add_kinetics_parameters_tallies(self, num_groups: int | None = None):
+        """Add tallies for calculating kinetics parameters using the IFP method.
+
+        This method adds tallies to the model for calculating two kinetics
+        parameters, the generation time and the effective delayed neutron
+        fraction (beta effective). After a model is run, these parameters can be
+        determined through the :meth:`openmc.StatePoint.ifp_results` method.
+
+        Parameters
+        ----------
+        num_groups : int, optional
+            Number of precursor groups to filter the delayed neutron fraction.
+            If None, only the total effective delayed neutron fraction is
+            tallied.
+
+        """
+        if not any('ifp-time-numerator' in t.scores for t in self.tallies):
+            gen_time_tally = openmc.Tally(name='IFP time numerator')
+            gen_time_tally.scores = ['ifp-time-numerator']
+            self.tallies.append(gen_time_tally)
+        if not any('ifp-beta-numerator' in t.scores for t in self.tallies):
+            beta_tally = openmc.Tally(name='IFP beta numerator')
+            beta_tally.scores = ['ifp-beta-numerator']
+            if num_groups is not None:
+                beta_tally.filters = [openmc.DelayedGroupFilter(list(range(1, num_groups + 1)))]
+            self.tallies.append(beta_tally)
+        if not any('ifp-denominator' in t.scores for t in self.tallies):
+            denom_tally = openmc.Tally(name='IFP denominator')
+            denom_tally.scores = ['ifp-denominator']
+            self.tallies.append(denom_tally)
 
     @classmethod
     def from_xml(
@@ -642,7 +673,7 @@ class Model:
                 raise ValueError("Number of cells in properties file doesn't "
                                  "match current model.")
 
-            # Update temperatures for cells filled with materials
+            # Update temperatures and densities for cells filled with materials
             for name, group in cells_group.items():
                 cell_id = int(name.split()[1])
                 cell = cells[cell_id]
@@ -656,6 +687,20 @@ class Model:
                                 lib_cell.set_temperature(T, i)
                         else:
                             lib_cell.set_temperature(temperature[0])
+
+                    if group['density']:
+                      density = group['density'][()]
+                      if density.size > 1:
+                          cell.density = [rho for rho in density]
+                      else:
+                          cell.density = density
+                      if self.is_initialized:
+                          lib_cell = openmc.lib.cells[cell_id]
+                          if density.size > 1:
+                              for i, rho in enumerate(density):
+                                  lib_cell.set_density(rho, i)
+                          else:
+                              lib_cell.set_density(density[0])
 
             # Make sure number of materials matches
             mats_group = fh['materials']

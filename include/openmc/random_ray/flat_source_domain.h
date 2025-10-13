@@ -27,8 +27,9 @@ public:
 
   //----------------------------------------------------------------------------
   // Methods
-  virtual void update_neutron_source(double k_eff);
-  double compute_k_eff(double k_eff_old) const;
+  virtual void update_single_neutron_source(SourceRegionHandle& srh);
+  virtual void update_all_neutron_sources();
+  void compute_k_eff();
   virtual void normalize_scalar_flux_and_volumes(
     double total_active_distance_per_iteration);
 
@@ -41,7 +42,7 @@ public:
   void output_to_vtk() const;
   void convert_external_sources();
   void count_external_source_regions();
-  void set_adjoint_sources(const vector<double>& forward_flux);
+  void set_adjoint_sources();
   void flux_swap();
   virtual double evaluate_flux_at_point(Position r, int64_t sr, int g) const;
   double compute_fixed_source_normalization_factor() const;
@@ -54,9 +55,8 @@ public:
     bool is_target_void);
   void apply_mesh_to_cell_and_children(int32_t i_cell, int32_t mesh_idx,
     int32_t target_material_id, bool is_target_void);
-  void prepare_base_source_regions();
   SourceRegionHandle get_subdivided_source_region_handle(
-    int64_t sr, int mesh_bin, Position r, double dist, Direction u);
+    SourceRegionKey sr_key, Position r, Direction u);
   void finalize_discovered_source_regions();
   void apply_transport_stabilization();
   int64_t n_source_regions() const
@@ -67,6 +67,10 @@ public:
   {
     return source_regions_.n_source_regions() * negroups_;
   }
+  int64_t lookup_base_source_region_idx(const GeometryState& p) const;
+  SourceRegionKey lookup_source_region_key(const GeometryState& p) const;
+  int64_t lookup_mesh_bin(int64_t sr, Position r) const;
+  int lookup_mesh_idx(int64_t sr) const;
 
   //----------------------------------------------------------------------------
   // Static Data members
@@ -86,6 +90,7 @@ public:
 
   //----------------------------------------------------------------------------
   // Public Data members
+  double k_eff_ {1.0};              // Eigenvalue
   bool mapped_all_tallies_ {false}; // If all source regions have been visited
 
   int64_t n_external_source_regions_ {0}; // Total number of source regions with
@@ -110,14 +115,6 @@ public:
   // The abstract container holding all source region-specific data
   SourceRegionContainer source_regions_;
 
-  // Base source region container. When source region subdivision via mesh
-  // is in use, this container holds the original (non-subdivided) material
-  // filled cell instance source regions. These are useful as they can be
-  // initialized with external source and mesh domain information ahead of time.
-  // Then, dynamically discovered source regions can be initialized by cloning
-  // their base region.
-  SourceRegionContainer base_source_regions_;
-
   // Parallel hash map holding all source regions discovered during
   // a single iteration. This is a threadsafe data structure that is cleaned
   // out after each iteration and stored in the "source_regions_" container.
@@ -134,8 +131,17 @@ public:
   // Map that relates a SourceRegionKey to the external source index. This map
   // is used to check if there are any point sources within a subdivided source
   // region at the time it is discovered.
-  std::unordered_map<SourceRegionKey, int64_t, SourceRegionKey::HashFunctor>
-    point_source_map_;
+  std::unordered_map<SourceRegionKey, vector<int>, SourceRegionKey::HashFunctor>
+    external_point_source_map_;
+
+  // Map that relates a base source region index to the external source index.
+  // This map is used to check if there are any volumetric sources within a
+  // subdivided source region at the time it is discovered.
+  std::unordered_map<int64_t, vector<int>> external_volumetric_source_map_;
+
+  // Map that relates a base source region index to a mesh index. This map
+  // is used to check which subdivision mesh is present in a source region.
+  std::unordered_map<int64_t, int> mesh_map_;
 
   // If transport corrected MGXS data is being used, there may be negative
   // in-group scattering cross sections that can result in instability in MOC
@@ -147,12 +153,11 @@ protected:
   //----------------------------------------------------------------------------
   // Methods
   void apply_external_source_to_source_region(
-    Discrete* discrete, double strength_factor, SourceRegionHandle& srh);
-  void apply_external_source_to_cell_instances(int32_t i_cell,
-    Discrete* discrete, double strength_factor, int target_material_id,
-    const vector<int32_t>& instances);
-  void apply_external_source_to_cell_and_children(int32_t i_cell,
-    Discrete* discrete, double strength_factor, int32_t target_material_id);
+    int src_idx, SourceRegionHandle& srh);
+  void apply_external_source_to_cell_instances(int32_t i_cell, int src_idx,
+    int target_material_id, const vector<int32_t>& instances);
+  void apply_external_source_to_cell_and_children(
+    int32_t i_cell, int src_idx, int32_t target_material_id);
   virtual void set_flux_to_flux_plus_source(int64_t sr, double volume, int g);
   void set_flux_to_source(int64_t sr, int g);
   virtual void set_flux_to_old_flux(int64_t sr, int g);

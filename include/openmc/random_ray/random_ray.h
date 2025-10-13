@@ -48,7 +48,6 @@ public:
   static double distance_active_;            // Active ray length
   static unique_ptr<Source> ray_source_;     // Starting source for ray sampling
   static RandomRaySourceShape source_shape_; // Flag for linear source
-  static bool mesh_subdivision_enabled_;     // Flag for mesh subdivision
   static RandomRaySampleMethod sample_method_; // Flag for sampling method
 
   //----------------------------------------------------------------------------

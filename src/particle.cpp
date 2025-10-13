@@ -352,14 +352,14 @@ void Particle::event_collide()
   if (settings::collision_track) {
 
     int cell_id = model::cells[lowest_coord().cell()]->id_;
-    std::string nuclide_id = data::nuclides[event_nuclide()]->name_;
+    std::string nuclide = data::nuclides[event_nuclide()]->name_;
     int universe_id = model::universes[lowest_coord().universe()]->id_;
     double delta_E = E_last() - E();
     int material_id = model::materials[material()]->id_;
 
     // ADD THOSE INFORMATION TO CollisionTrackSite
     if (collision_track_conditions(
-          cell_id, event_mt(), nuclide_id, universe_id, material_id, delta_E)) {
+          cell_id, event_mt(), nuclide, universe_id, material_id, delta_E)) {
       CollisionTrackSite site;
       site.r = r();
       site.u = u();
@@ -1023,9 +1023,8 @@ void add_surf_source_to_bank(Particle& p, const Surface& surf)
   int64_t idx = simulation::surf_source_bank.thread_safe_append(site);
 }
 
-bool collision_track_conditions(int id_cell, int mt_event,
-  std::string zaid_nuclide, int id_universe, int id_material,
-  double difference_E)
+bool collision_track_conditions(int id_cell, int mt_event, std::string nuclide,
+  int id_universe, int id_material, double difference_E)
 {
 
   bool condition = true;
@@ -1050,7 +1049,7 @@ bool collision_track_conditions(int id_cell, int mt_event,
                              settings::ct_material_id.find(id_material) !=
                                settings::ct_material_id.end());
   condition = condition && (settings::ct_nuclides.empty() ||
-                             settings::ct_nuclides.find(zaid_nuclide) !=
+                             settings::ct_nuclides.find(nuclide) !=
                                settings::ct_nuclides.end());
   // Energy deposited should be superior to a threshold. Used heavily in Scatter
   // Detectors

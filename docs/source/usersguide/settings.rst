@@ -804,7 +804,7 @@ The full list of fields is as follows:
   :event_mt: Reaction MT number
   :delayed_group: Delayed group of the particle
   :cell_id: Cell ID
-  :nuclide_id: Nuclide ZAMID
+  :nuclide_id: Nuclide ID (10000×Z + 10×A + M)
   :material_id: Material ID
   :universe_id: Universe ID
   :n_collision: Number of collision suffered by the particle

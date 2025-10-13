@@ -156,17 +156,17 @@ extern std::unordered_set<int>
 extern std::unordered_set<int>
   ct_material_id; //!< Material IDs where collisions will be written
 extern std::unordered_set<std::string>
-  ct_nuclide_id; //!< Nuclide IDs where collisions will be written
+  ct_nuclides; //!< Nuclides where collisions will be written
 extern double ct_deposited_E_threshold; // Threshold deposited energy to recrod
                                         // the collisions
 extern int64_t
   ct_max_collisions; //!< Maximum events recoreded by Collision track per file
 extern double source_rejection_fraction; //!< Minimum fraction of source sites
                                          //!< that must be accepted
-extern int64_t ct_max_files; //!< maximum number of collision track files
-                             //!<  to be created
-extern double free_gas_threshold;        //!< Threshold multiplier for free gas
-                                         //!< scattering treatment
+extern int64_t ct_max_files;      //!< maximum number of collision track files
+                                  //!<  to be created
+extern double free_gas_threshold; //!< Threshold multiplier for free gas
+                                  //!< scattering treatment
 
 extern int
   max_history_splits; //!< maximum number of particle splits for weight windows

@@ -54,7 +54,7 @@
       <reactions>elastic 18 (n,disappear)</reactions>
       <universe_ids>77</universe_ids>
       <material_ids>1 11</material_ids>
-      <nuclide_ids>U238 U235 H1 U234</nuclide_ids>
+      <nuclides>U238 U235 H1 U234</nuclides>
       <deposited_E_threshold>100000.0</deposited_E_threshold>
       <max_collisions>300</max_collisions>
     </collision_track>

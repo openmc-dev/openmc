@@ -50,7 +50,7 @@
       </constraints>
     </source>
     <collision_track>
-      <nuclide_ids>O16 U235</nuclide_ids>
+      <nuclides>O16 U235</nuclides>
       <max_collisions>300</max_collisions>
     </collision_track>
     <seed>1</seed>

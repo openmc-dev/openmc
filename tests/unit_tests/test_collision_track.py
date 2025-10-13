@@ -1,4 +1,4 @@
-"""Test the 'collision_track' setting used to store particle information 
+"""Test the 'collision_track' setting used to store particle information
 during specified collision conditions in a file for a given simulation."""
 
 from pathlib import Path
@@ -30,7 +30,7 @@ def geometry():
         {"max_collisions": 200, "cell_ids": [1]},
         {"max_collisions": 200, "material_ids": [1]},
         {"max_collisions": 200, "universe_ids": [1]},
-        {"max_collisions": 200, "nuclide_ids": ["H1"]},
+        {"max_collisions": 200, "nuclides": ["H1"]},
         {"max_collisions": 200, "deposited_E_threshold": 200000},
         {"max_collisions": 200, "mcpl": True}
 
@@ -88,7 +88,7 @@ def model():
     ],
 )
 def test_particle_location(parameter, run_in_tmpdir, model):
-    """Test the location of particles with respected to the "cell_ids" 
+    """Test the location of particles with respected to the "cell_ids"
     and the location x, y, z of the particle itself. the upper sphere will
     have positive z component and the bottom sphere a negative z compnent.
 

@@ -1049,9 +1049,9 @@ bool collision_track_conditions(int id_cell, int mt_event,
   condition = condition && (settings::ct_material_id.empty() ||
                              settings::ct_material_id.find(id_material) !=
                                settings::ct_material_id.end());
-  condition = condition && (settings::ct_nuclide_id.empty() ||
-                             settings::ct_nuclide_id.find(zaid_nuclide) !=
-                               settings::ct_nuclide_id.end());
+  condition = condition && (settings::ct_nuclides.empty() ||
+                             settings::ct_nuclides.find(zaid_nuclide) !=
+                               settings::ct_nuclides.end());
   // Energy deposited should be superior to a threshold. Used heavily in Scatter
   // Detectors
   condition = condition && (settings::ct_deposited_E_threshold == 0 ||

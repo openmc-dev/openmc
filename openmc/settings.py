@@ -56,7 +56,7 @@ class Settings:
         :cell_ids: List of cell IDs to define cells in which collisions should be banked. (list of int)
         :universe_ids: List of universe IDs to define universes in which collisions should be banked. (list of int)
         :material_ids: List of material IDs to define materials in which collisions should be banked. (list of int)
-        :nuclide_ids: List of nuclide to define nuclides in which collisions should be banked. 
+        :nuclides: List of nuclides to define nuclides in which collisions should be banked.
                     (ex: ["I135m", "U233"] ). (list of str)
         :reactions: List of reaction to define specific reactions that should be banked
                     (ex: ["(n,fission)", 2, "(n,2n)"] ). (list of str or int)
@@ -867,7 +867,7 @@ class Settings:
         cv.check_type('Collision tracking options', collision_track, Mapping)
         for key, value in collision_track.items():
             cv.check_value('collision_track key', key,
-                           ('cell_ids', 'reactions', 'universe_ids', 'material_ids', 'nuclide_ids',
+                           ('cell_ids', 'reactions', 'universe_ids', 'material_ids', 'nuclides',
                             'deposited_E_threshold', 'max_collisions', 'max_collision_track_files', 'mcpl'))
             if key == 'cell_ids':
                 cv.check_type('cell ids for collision tracking data banking', value,
@@ -902,18 +902,15 @@ class Settings:
                 for material_id in value:
                     cv.check_greater_than('material id for collision tracking data banking',
                                           material_id, 0)
-            elif key == 'nuclide_ids':
-                cv.check_type('nuclide ids for collision tracking data banking', value,
+            elif key == 'nuclides':
+                cv.check_type('nuclides for collision tracking data banking', value,
                               Iterable, str)
-                for nuclide_id in value:
-                    cv.check_type('nuclide ids for collision  banking',
-                                  nuclide_id, str)
+                for nuclide in value:
                     # If nuclide name doesn't look valid, give a warning
                     try:
-                        Z, _, _ = openmc.data.zam(nuclide_id)
-                    except ValueError as e:
-                        warnings.warn(
-                            "this nuclide id {} is not valid".format(nuclide_id))
+                        openmc.data.zam(nuclide)
+                    except ValueError:
+                        warnings.warn(f"Nuclide {nuclide} is not valid")
             elif key == 'deposited_E_threshold':
                 cv.check_type('Deposited Energy Threshold for collision tracking data banking',
                               value, Real)
@@ -1555,10 +1552,10 @@ class Settings:
                 subelement = ET.SubElement(element, "material_ids")
                 subelement.text = ' '.join(
                     str(x) for x in self._collision_track['material_ids'])
-            if 'nuclide_ids' in self._collision_track:
-                subelement = ET.SubElement(element, "nuclide_ids")
+            if 'nuclides' in self._collision_track:
+                subelement = ET.SubElement(element, "nuclides")
                 subelement.text = ' '.join(
-                    str(x) for x in self._collision_track['nuclide_ids'])
+                    str(x) for x in self._collision_track['nuclides'])
             if 'deposited_E_threshold' in self._collision_track:
                 subelement = ET.SubElement(element, "deposited_E_threshold")
                 subelement.text = str(
@@ -2043,7 +2040,7 @@ class Settings:
     def _collision_track_from_xml_element(self, root):
         elem = root.find('collision_track')
         if elem is not None:
-            for key in ('cell_ids', 'reactions', 'universe_ids', 'material_ids', 'nuclide_ids',
+            for key in ('cell_ids', 'reactions', 'universe_ids', 'material_ids', 'nuclides',
                         'deposited_E_threshold', 'max_collisions', "max_collision_track_files", 'mcpl'):
                 value = get_text(elem, key)
                 if value is not None:
@@ -2055,7 +2052,7 @@ class Settings:
                         value = [int(x) for x in value.split()]
                     elif key == 'material_ids':
                         value = [int(x) for x in value.split()]
-                    elif key == 'nuclide_ids':
+                    elif key == 'nuclides':
                         value = value.split()
                     elif key in ('deposited_E_threshold'):
                         value = float(value)

@@ -768,9 +768,9 @@ parameters. To invoke this feature, set the
 
   settings.collision_track = {
       "max_collisions": 300,
-      "mt_numbers": ["(n,fission)", "(n,2n)"],
+      "reactions": ["(n,fission)", "(n,2n)"],
       "material_ids": [1,2],
-      "nuclide_ids": ["U238", "O16"],
+      "nuclides": ["U238", "O16"],
       "cell_ids": [5, 12]
   }
 
@@ -780,16 +780,16 @@ collision_track.h5 file at the end of the simulation. The file contains
 fission or (n,2n) reactions on the nuclides U-238 or O-16, within cells
 with IDs 5 and 12.
 The file can be read using :func:`openmc.read_collision_track_file`.
-The example below shows how to extract the data from the collision_track 
+The example below shows how to extract the data from the collision_track
 feature and displays the fields stored in the file:
 
 >>> data = openmc.read_collision_track_file('collision_track.h5')
 >>> data.dtype
-    dtype([('r', [('x', '<f8'), ('y', '<f8'), ('z', '<f8')]), 
-    ('u', [('x', '<f8'), ('y', '<f8'), ('z', '<f8')]), ('E', '<f8'), 
-    ('dE', '<f8'), ('time', '<f8'), ('wgt', '<f8'), ('event_mt', '<i4'), 
-    ('delayed_group', '<i4'), ('cell_id', '<i4'), ('nuclide_id', '<i4'), 
-    ('material_id', '<i4'), ('universe_id', '<i4'), ('n_collision', '<i4'), 
+    dtype([('r', [('x', '<f8'), ('y', '<f8'), ('z', '<f8')]),
+    ('u', [('x', '<f8'), ('y', '<f8'), ('z', '<f8')]), ('E', '<f8'),
+    ('dE', '<f8'), ('time', '<f8'), ('wgt', '<f8'), ('event_mt', '<i4'),
+    ('delayed_group', '<i4'), ('cell_id', '<i4'), ('nuclides', '<i4'),
+    ('material_id', '<i4'), ('universe_id', '<i4'), ('n_collision', '<i4'),
     ('particle', '<i4'), ('parent_id', '<i8'), ('progeny_id', '<i8')])
 
 

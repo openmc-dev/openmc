@@ -37,7 +37,7 @@ specified, it defaults to tracking all collisions across the model.
 .. warning::
     Storing all collisions can be very memory intensive. For more targeted
     tracking, users can employ a variety of parameters such as ``cell_ids``,
-    ``reactions``, ``universe_ids``, ``material_ids``, ``nuclide_ids``, and
+    ``reactions``, ``universe_ids``, ``material_ids``, ``nuclides``, and
     ``deposited_E_threshold`` to refine the selection of particle interactions
     to be banked.
 
@@ -52,7 +52,7 @@ sub-elements:
   :max_collision_track_files:
     An integer indicating the number of collision_track files to be used.
 
-    *Default*: 1  
+    *Default*: 1
 
   :mcpl:
     An optional boolean to enable MCPL_-format instead of the native HDF5-based
@@ -81,7 +81,7 @@ sub-elements:
 
     *Default*: None
 
-  :nuclide_ids:
+  :nuclides:
     A list of strings representing the nuclide, to define specific
     define specific target nuclide collisions to be banked.
 

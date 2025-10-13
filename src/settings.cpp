@@ -135,7 +135,7 @@ std::unordered_set<int> ct_cell_id;
 std::unordered_set<int> ct_mt_number;
 std::unordered_set<int> ct_universe_id;
 std::unordered_set<int> ct_material_id;
-std::unordered_set<std::string> ct_nuclide_id;
+std::unordered_set<std::string> ct_nuclides;
 double ct_deposited_E_threshold {0};
 int64_t ct_max_collisions {1000};
 int64_t ct_max_files;
@@ -988,15 +988,15 @@ void read_settings_xml(pugi::xml_node root)
         ct_material_id.insert(b);
       }
     }
-    if (check_for_node(node_ct, "nuclide_ids")) {
-      auto temp = get_node_array<std::string>(node_ct, "nuclide_ids");
+    if (check_for_node(node_ct, "nuclides")) {
+      auto temp = get_node_array<std::string>(node_ct, "nuclides");
       for (const auto& b : temp) {
         // if (openmc::data::nuclide_map.find(b) ==
         // openmc::data::nuclide_map.end()) {
         //   fatal_error("Could not find nuclide " + b + " in the nuclear data
         //   library.");
         // }
-        ct_nuclide_id.insert(b);
+        ct_nuclides.insert(b);
       }
     }
     if (check_for_node(node_ct, "deposited_E_threshold")) {
@@ -1308,7 +1308,7 @@ void free_memory_settings()
   settings::ct_mt_number.clear();
   settings::ct_universe_id.clear();
   settings::ct_material_id.clear();
-  settings::ct_nuclide_id.clear();
+  settings::ct_nuclides.clear();
 }
 
 //==============================================================================

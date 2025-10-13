@@ -32,7 +32,7 @@ reflective and periodic Boundary Conditions (BC):
 # - reactions: List of MT numbers (reaction types- 2 for scattering, 18 for fission, 101 for absorbtion).
 # - cell_ids: IDs of specific cells in the model.
 # - mat_ids: Material IDs for filtering particles.
-# - nuclide_ids: Nuclide IDs for filtering particles.
+# - nuclides: Nuclides for filtering particles.
 # - univ_ids: Universe IDs for filtering particles.
 # - E_threshold: Energy threshold for filtering particles (optional).
 #
@@ -214,7 +214,7 @@ def model_1():
         ("case_3_Material_ID", "model_1", {
          "max_collisions": 300, "material_ids": [1]}),
         ("case_4_Nuclide_ID", "model_1", {
-         "max_collisions": 300, "nuclide_ids": ["O16", "U235"]}),
+         "max_collisions": 300, "nuclides": ["O16", "U235"]}),
         ("case_5_Universe_ID", "model_1", {
          "max_collisions": 300, "cell_ids": [22], "universe_ids": [77]}),
         ("case_6_deposited_energy_threshold", "model_1", {
@@ -224,7 +224,7 @@ def model_1():
             "reactions": ["elastic", 18, "(n,disappear)"],
             "material_ids": [1, 11],
             "universe_ids": [77],
-            "nuclide_ids": ["U238", "U235", "H1", "U234"],
+            "nuclides": ["U238", "U235", "H1", "U234"],
             "cell_ids": [22, 33],
             "deposited_E_threshold": 1e5})
      ],

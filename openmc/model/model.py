@@ -2323,7 +2323,7 @@ class Model:
             func(x, **func_kwargs)
 
             # Change the number of batches and run the model
-            batches = self.settings.inactive + batches
+            batches += self.settings.inactive
             if openmc.lib.is_initialized:
                 openmc.lib.settings.set_batches(batches)
                 openmc.lib.reset()

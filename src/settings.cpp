@@ -951,28 +951,9 @@ void read_settings_xml(pugi::xml_node root)
     if (check_for_node(node_ct, "reactions")) {
       auto temp = get_node_array<std::string>(node_ct, "reactions");
       for (const auto& b : temp) {
-        try {
-          int reaction_int = reaction_type(b);
-          if (reaction_int > 0) {
-            ct_mt_number.insert(reaction_int);
-          } else {
-            fatal_error("Reaction type must be a positive integer and " + b +
-                        " has a ENDF MT number of " +
-                        std::to_string(reaction_int));
-          }
-        } catch (const std::invalid_argument& e) {
-          // If not valid, try to treat it as an integer
-          try {
-            int reaction_int = std::stoi(b);
-            if (reaction_int > 0) {
-              ct_mt_number.insert(reaction_int);
-            } else {
-              fatal_error("Reaction number must be a positive integer: " + b);
-            }
-          } catch (const std::invalid_argument& e) {
-            // If both conversions fail, trigger an error
-            fatal_error("Invalid reaction type or number: " + b);
-          }
+        int reaction_int = reaction_type(b);
+        if (reaction_int > 0) {
+          ct_mt_number.insert(reaction_int);
         }
       }
     }
@@ -1007,9 +988,9 @@ void read_settings_xml(pugi::xml_node root)
     if (check_for_node(node_ct, "max_collisions")) {
       ct_max_collisions = std::stoll(get_node_value(node_ct, "max_collisions"));
     } else {
-      warning(
-        "A maximum number of collisions needs to be specified. "
-        "By default the code sets 'max_collisions' parameter equals to 1000.");
+      warning("A maximum number of collisions needs to be specified. "
+              "By default the code sets 'max_collisions' parameter equals to "
+              "1000.");
     }
     // Get maximum number of collision_track files to be created
     if (check_for_node(node_ct, "max_collision_track_files")) {
@@ -1023,8 +1004,8 @@ void read_settings_xml(pugi::xml_node root)
     }
   }
 
-  // If source is not separate and is to be written out in the statepoint file,
-  // make sure that the sourcepoint batch numbers are contained in the
+  // If source is not separate and is to be written out in the statepoint
+  // file, make sure that the sourcepoint batch numbers are contained in the
   // statepoint list
   if (!source_separate) {
     for (const auto& b : sourcepoint_batch) {
@@ -1269,8 +1250,8 @@ void read_settings_xml(pugi::xml_node root)
       variance_reduction::weight_windows_generators.emplace_back(
         std::make_unique<WeightWindowsGenerator>(node_wwg));
     }
-    // if any of the weight windows are intended to be generated otf, make sure
-    // they're applied
+    // if any of the weight windows are intended to be generated otf, make
+    // sure they're applied
     for (const auto& wwg : variance_reduction::weight_windows_generators) {
       if (wwg->on_the_fly_) {
         settings::weight_windows_on = true;

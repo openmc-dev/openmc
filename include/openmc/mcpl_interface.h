@@ -53,7 +53,7 @@ void write_mcpl_collision_track(const char* filename,
   span<CollisionTrackSite> collision_track_bank,
   const vector<int64_t>& bank_index);
 
-  //! Check if MCPL functionality is available
+//! Check if MCPL functionality is available
 bool is_mcpl_interface_available();
 
 //! Initialize the MCPL interface

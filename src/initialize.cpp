@@ -182,22 +182,22 @@ void initialize_mpi(MPI_Comm intracomm)
   if (settings::collision_track) {
     CollisionTrackSite b;
     MPI_Aint disp[16];
-    MPI_Get_address(&b.r, &disp[0]);             // Double
-    MPI_Get_address(&b.u, &disp[1]);             // Double
-    MPI_Get_address(&b.E, &disp[2]);             // Double
-    MPI_Get_address(&b.delta_E, &disp[3]);       // Double
-    MPI_Get_address(&b.time, &disp[4]);          // Double
-    MPI_Get_address(&b.wgt, &disp[5]);           // Double
-    MPI_Get_address(&b.event_mt, &disp[6]);      // Int
-    MPI_Get_address(&b.delayed_group, &disp[7]); // Int
-    MPI_Get_address(&b.cell_id, &disp[8]);       // Int
-    MPI_Get_address(&b.nuclide_id, &disp[9]);    // Int
-    MPI_Get_address(&b.material_id, &disp[10]);  // Int
-    MPI_Get_address(&b.universe_id, &disp[11]);  // Int
-    MPI_Get_address(&b.universe_id, &disp[12]);  // Int
-    MPI_Get_address(&b.particle, &disp[13]);     // Int
-    MPI_Get_address(&b.parent_id, &disp[14]);    // Long
-    MPI_Get_address(&b.progeny_id, &disp[15]);   // Long
+    MPI_Get_address(&b.r, &disp[0]);             // double
+    MPI_Get_address(&b.u, &disp[1]);             // double
+    MPI_Get_address(&b.E, &disp[2]);             // double
+    MPI_Get_address(&b.delta_E, &disp[3]);       // double
+    MPI_Get_address(&b.time, &disp[4]);          // double
+    MPI_Get_address(&b.wgt, &disp[5]);           // double
+    MPI_Get_address(&b.event_mt, &disp[6]);      // int
+    MPI_Get_address(&b.delayed_group, &disp[7]); // int
+    MPI_Get_address(&b.cell_id, &disp[8]);       // int
+    MPI_Get_address(&b.nuclide_id, &disp[9]);    // int
+    MPI_Get_address(&b.material_id, &disp[10]);  // int
+    MPI_Get_address(&b.universe_id, &disp[11]);  // int
+    MPI_Get_address(&b.universe_id, &disp[12]);  // int
+    MPI_Get_address(&b.particle, &disp[13]);     // int
+    MPI_Get_address(&b.parent_id, &disp[14]);    // int64_t
+    MPI_Get_address(&b.progeny_id, &disp[15]);   // int64_t
     for (int i = 14; i >= 0; --i) {
       disp[i] -= disp[0];
     }
@@ -205,7 +205,7 @@ void initialize_mpi(MPI_Comm intracomm)
     int blocks[] = {3, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
     MPI_Datatype types[] = {MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE,
       MPI_DOUBLE, MPI_DOUBLE, MPI_INT, MPI_INT, MPI_INT, MPI_INT, MPI_INT,
-      MPI_INT, MPI_INT, MPI_INT, MPI_LONG, MPI_LONG};
+      MPI_INT, MPI_INT, MPI_INT, MPI_INT64_T, MPI_INT64_T};
 
     MPI_Type_create_struct(16, blocks, disp, types, &mpi::collision_track_site);
     MPI_Type_commit(&mpi::collision_track_site);

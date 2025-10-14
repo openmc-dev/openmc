@@ -352,7 +352,7 @@ void allocate_banks()
 
   if (settings::collision_track) {
     // Allocate collision track bank
-    reserve_bank_capacity();
+    collision_track_reserve_bank();
   }
 }
 
@@ -501,7 +501,9 @@ void finalize_batch()
     }
   }
   // Write collision track file if requested
-  flush_bank(simulation::current_batch == settings::n_batches);
+  if (settings::collision_track) {
+    collision_track_flush_bank();
+  }
 }
 
 void initialize_generation()

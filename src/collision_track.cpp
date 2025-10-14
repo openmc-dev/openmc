@@ -224,21 +224,19 @@ bool should_record_event(int id_cell, int mt_event, const std::string& nuclide,
            cfg.deposited_energy_threshold < energy_loss);
 }
 
-void reserve_bank_capacity()
+void collision_track_reserve_bank()
 {
   simulation::collision_track_bank.reserve(
     settings::collision_track_config.max_collisions);
 }
 
-void flush_bank(bool last_batch)
+void collision_track_flush_bank()
 {
-  if (!settings::collision_track)
-    return;
-
   const auto& cfg = settings::collision_track_config;
   if (simulation::ct_current_file > cfg.max_files)
     return;
 
+  bool last_batch = (simulation::current_batch == settings::n_batches);
   if (!simulation::collision_track_bank.full() && !last_batch)
     return;
 
@@ -273,7 +271,7 @@ void flush_bank(bool last_batch)
 
   simulation::collision_track_bank.clear();
   if (!last_batch && cfg.max_files >= 1) {
-    reserve_bank_capacity();
+    collision_track_reserve_bank();
   }
   ++simulation::ct_current_file;
 }

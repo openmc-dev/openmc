@@ -1279,7 +1279,6 @@ void free_memory_settings()
   settings::sourcepoint_batch.clear();
   settings::source_write_surf_id.clear();
   settings::res_scat_nuclides.clear();
-  collision_track::reset_config();
 }
 
 //==============================================================================

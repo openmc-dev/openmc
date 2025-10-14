@@ -1,24 +1,31 @@
 #include "openmc/collision_track.h"
 
 #include <algorithm>
+#include <string>
 
 #include <fmt/format.h>
 
 #include "openmc/bank.h"
+#include "openmc/cell.h"
+#include "openmc/constants.h"
 #include "openmc/error.h"
 #include "openmc/file_utils.h"
 #include "openmc/hdf5_interface.h"
+#include "openmc/material.h"
 #include "openmc/mcpl_interface.h"
 #include "openmc/message_passing.h"
+#include "openmc/nuclide.h"
 #include "openmc/output.h"
+#include "openmc/particle.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
+#include "openmc/universe.h"
 
 #ifdef OPENMC_MPI
 #include <mpi.h>
 #endif
 
-namespace openmc::collision_track {
+namespace openmc {
 
 namespace {
 
@@ -198,13 +205,6 @@ void write_h5_collision_track(const char* filename,
 
 } // namespace
 
-RuntimeState state {};
-
-void reset_runtime()
-{
-  state.current_file = 1;
-}
-
 bool should_record_event(int id_cell, int mt_event, const std::string& nuclide,
   int id_universe, int id_material, double energy_loss)
 {
@@ -236,7 +236,7 @@ void flush_bank(bool last_batch)
     return;
 
   const auto& cfg = settings::collision_track_config;
-  if (state.current_file > cfg.max_files)
+  if (simulation::ct_current_file > cfg.max_files)
     return;
 
   if (!simulation::collision_track_bank.full() && !last_batch)
@@ -251,16 +251,16 @@ void flush_bank(bool last_batch)
     simulation::collision_track_bank.begin(), size);
 
   std::string ext = cfg.mcpl_write ? "mcpl" : "h5";
-  auto filename = fmt::format(
-    "{}collision_track.{}.{}", settings::path_output, state.current_file, ext);
+  auto filename = fmt::format("{}collision_track.{}.{}", settings::path_output,
+    simulation::ct_current_file, ext);
 
-  if (cfg.max_files == 1 || (state.current_file == 1 && last_batch)) {
+  if (cfg.max_files == 1 || (simulation::ct_current_file == 1 && last_batch)) {
     filename = settings::path_output + "collision_track." + ext;
     write_message(filename + " file with {} recorded collisions ...", size, 2);
   } else {
     write_message(
       "Creating collision_track.{}.{} file with {} recorded collisions ...",
-      state.current_file, ext, size, 4);
+      simulation::ct_current_file, ext, size, 4);
   }
 
   if (cfg.mcpl_write) {
@@ -275,13 +275,49 @@ void flush_bank(bool last_batch)
   if (!last_batch && cfg.max_files >= 1) {
     reserve_bank_capacity();
   }
-  ++state.current_file;
+  ++simulation::ct_current_file;
 }
 
-void reset_config()
+void collision_track_record(Particle& particle)
 {
-  settings::collision_track_config = settings::CollisionTrackConfig {};
-  reset_runtime();
+  int cell_index = particle.lowest_coord().cell();
+  if (cell_index == C_NONE)
+    return;
+
+  int cell_id = model::cells[cell_index]->id_;
+  const auto* nuclide_ptr = data::nuclides[particle.event_nuclide()].get();
+  std::string nuclide = nuclide_ptr->name_;
+  int universe_id = model::universes[particle.lowest_coord().universe()]->id_;
+  double delta_E = particle.E_last() - particle.E();
+  int material_index = particle.material();
+  if (material_index == C_NONE)
+    return;
+
+  int material_id = model::materials[material_index]->id_;
+
+  if (!should_record_event(cell_id, particle.event_mt(), nuclide, universe_id,
+        material_id, delta_E))
+    return;
+
+  CollisionTrackSite site;
+  site.r = particle.r();
+  site.u = particle.u();
+  site.E = particle.E_last();
+  site.dE = delta_E;
+  site.time = particle.time();
+  site.wgt = particle.wgt();
+  site.event_mt = particle.event_mt();
+  site.delayed_group = particle.delayed_group();
+  site.cell_id = cell_id;
+  site.nuclide_id =
+    10000 * nuclide_ptr->Z_ + 10 * nuclide_ptr->A_ + nuclide_ptr->metastable_;
+  site.material_id = material_id;
+  site.universe_id = universe_id;
+  site.n_collision = particle.n_collision();
+  site.particle = particle.type();
+  site.parent_id = particle.id();
+  site.progeny_id = particle.n_progeny();
+  simulation::collision_track_bank.thread_safe_append(site);
 }
 
-} // namespace openmc::collision_track
+} // namespace openmc

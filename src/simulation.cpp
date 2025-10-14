@@ -118,7 +118,7 @@ int openmc_simulation_init()
   // Reset global variables -- this is done before loading state point (as that
   // will potentially populate k_generation and entropy)
   simulation::current_batch = 0;
-  collision_track::reset_runtime();
+  simulation::ct_current_file = 1;
   simulation::ssw_current_file = 1;
   simulation::k_generation.clear();
   simulation::entropy.clear();
@@ -298,6 +298,7 @@ namespace openmc {
 
 namespace simulation {
 
+int ct_current_file;
 int current_batch;
 int current_gen;
 bool initialized {false};
@@ -351,7 +352,7 @@ void allocate_banks()
 
   if (settings::collision_track) {
     // Allocate collision track bank
-    collision_track::reserve_bank_capacity();
+    reserve_bank_capacity();
   }
 }
 
@@ -500,7 +501,7 @@ void finalize_batch()
     }
   }
   // Write collision track file if requested
-  collision_track::flush_bank(simulation::current_batch == settings::n_batches);
+  flush_bank(simulation::current_batch == settings::n_batches);
 }
 
 void initialize_generation()

@@ -77,10 +77,10 @@ int openmc_finalize()
   // Reset global variables
   settings::assume_separate = false;
   settings::check_overlaps = false;
+  settings::collision_track_config = CollisionTrackConfig {};
   settings::confidence_intervals = false;
   settings::create_fission_neutrons = true;
   settings::create_delayed_neutrons = true;
-  collision_track::reset_config();
   settings::electron_treatment = ElectronTreatment::LED;
   settings::delayed_photon_scaling = true;
   settings::energy_cutoff = {0.0, 1000.0, 0.0, 0.0};

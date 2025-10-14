@@ -351,37 +351,7 @@ void Particle::event_collide()
 
   // Collision track feature to recording particle interaction
   if (settings::collision_track) {
-
-    int cell_id = model::cells[lowest_coord().cell()]->id_;
-    std::string nuclide = data::nuclides[event_nuclide()]->name_;
-    int universe_id = model::universes[lowest_coord().universe()]->id_;
-    double delta_E = E_last() - E();
-    int material_id = model::materials[material()]->id_;
-
-    // ADD THOSE INFORMATION TO CollisionTrackSite
-    if (collision_track::should_record_event(
-          cell_id, event_mt(), nuclide, universe_id, material_id, delta_E)) {
-      CollisionTrackSite site;
-      site.r = r();
-      site.u = u();
-      site.E = E_last();
-      site.dE = delta_E;
-      site.time = time();
-      site.wgt = wgt();
-      site.event_mt = event_mt();
-      site.delayed_group = delayed_group();
-      site.cell_id = cell_id;
-      site.nuclide_id = 10000 * data::nuclides[event_nuclide()]->Z_ +
-                        10 * data::nuclides[event_nuclide()]->A_ +
-                        data::nuclides[event_nuclide()]->metastable_;
-      site.material_id = material_id;
-      site.universe_id = universe_id;
-      site.n_collision = n_collision();
-      site.particle = type();
-      site.parent_id = id();
-      site.progeny_id = n_progeny();
-      int64_t idx = simulation::collision_track_bank.thread_safe_append(site);
-    }
+    collision_track_record(*this);
   }
 
   // Score collision estimator tallies -- this is done after a collision

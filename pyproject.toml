@@ -48,7 +48,14 @@ docs = [
     "sphinxcontrib-svg2pdfconverter",
     "sphinx-rtd-theme"
 ]
-test = ["packaging", "pytest", "pytest-cov>=4.0", "colorama", "openpyxl"]
+test = [
+    "packaging",
+    "pytest",
+    "pytest-cov>=4.0",
+    "pytest-rerunfailures",
+    "colorama",
+    "openpyxl",
+]
 ci = ["coverage>=7.4", "gcovr>=7.2"]
 vtk = ["vtk"]
 

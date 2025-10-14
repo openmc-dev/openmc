@@ -185,7 +185,7 @@ void initialize_mpi(MPI_Comm intracomm)
     MPI_Get_address(&b.r, &disp[0]);             // double
     MPI_Get_address(&b.u, &disp[1]);             // double
     MPI_Get_address(&b.E, &disp[2]);             // double
-    MPI_Get_address(&b.delta_E, &disp[3]);       // double
+    MPI_Get_address(&b.dE, &disp[3]);            // double
     MPI_Get_address(&b.time, &disp[4]);          // double
     MPI_Get_address(&b.wgt, &disp[5]);           // double
     MPI_Get_address(&b.event_mt, &disp[6]);      // int
@@ -194,11 +194,11 @@ void initialize_mpi(MPI_Comm intracomm)
     MPI_Get_address(&b.nuclide_id, &disp[9]);    // int
     MPI_Get_address(&b.material_id, &disp[10]);  // int
     MPI_Get_address(&b.universe_id, &disp[11]);  // int
-    MPI_Get_address(&b.universe_id, &disp[12]);  // int
+    MPI_Get_address(&b.n_collision, &disp[12]);  // int
     MPI_Get_address(&b.particle, &disp[13]);     // int
     MPI_Get_address(&b.parent_id, &disp[14]);    // int64_t
     MPI_Get_address(&b.progeny_id, &disp[15]);   // int64_t
-    for (int i = 14; i >= 0; --i) {
+    for (int i = 15; i >= 0; --i) {
       disp[i] -= disp[0];
     }
 

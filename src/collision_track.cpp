@@ -80,8 +80,8 @@ void write_collision_track_bank(hid_t group_id,
   write_bank_dataset("collision_track_bank", group_id, collision_track_bank,
     bank_index, banktype, mpi::collision_track_site);
 #else
-  write_bank_dataset(
-    "collision_track_bank", group_id, collision_track_bank, bank_index, banktype);
+  write_bank_dataset("collision_track_bank", group_id, collision_track_bank,
+    bank_index, banktype);
 #endif
 
   H5Tclose(banktype);
@@ -112,7 +112,7 @@ void write_h5_collision_track(const char* filename,
   hid_t file_id;
   if (mpi::master || parallel) {
     file_id = file_open(filename_.c_str(), 'w', true);
-    write_attribute(file_id, "filetype", "source");
+    write_attribute(file_id, "filetype", "collision track");
   }
 
   write_collision_track_bank(file_id, collision_track_bank, bank_index);
@@ -172,12 +172,8 @@ void collision_track_flush_bank()
 
   if (cfg.max_files == 1 || (simulation::ct_current_file == 1 && last_batch)) {
     filename = settings::path_output + "collision_track." + ext;
-    write_message(filename + " file with {} recorded collisions ...", size, 2);
-  } else {
-    write_message(
-      "Creating collision_track.{}.{} file with {} recorded collisions ...",
-      simulation::ct_current_file, ext, size, 4);
   }
+  write_message("Creating {}...", filename, 4);
 
   if (cfg.mcpl_write) {
     write_mcpl_collision_track(

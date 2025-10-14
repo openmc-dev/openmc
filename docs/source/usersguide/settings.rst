@@ -788,7 +788,7 @@ feature and displays the fields stored in the file:
     dtype([('r', [('x', '<f8'), ('y', '<f8'), ('z', '<f8')]),
     ('u', [('x', '<f8'), ('y', '<f8'), ('z', '<f8')]), ('E', '<f8'),
     ('dE', '<f8'), ('time', '<f8'), ('wgt', '<f8'), ('event_mt', '<i4'),
-    ('delayed_group', '<i4'), ('cell_id', '<i4'), ('nuclides', '<i4'),
+    ('delayed_group', '<i4'), ('cell_id', '<i4'), ('nuclide_id', '<i4'),
     ('material_id', '<i4'), ('universe_id', '<i4'), ('n_collision', '<i4'),
     ('particle', '<i4'), ('parent_id', '<i8'), ('progeny_id', '<i8')])
 

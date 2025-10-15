@@ -112,7 +112,10 @@ void write_h5_collision_track(const char* filename,
   hid_t file_id;
   if (mpi::master || parallel) {
     file_id = file_open(filename_.c_str(), 'w', true);
-    write_attribute(file_id, "filetype", "collision track");
+
+    // Write filetype and version info
+    write_attribute(file_id, "filetype", "collision_track");
+    write_attribute(file_id, "version", VERSION_COLLISION_TRACK);
   }
 
   write_collision_track_bank(file_id, collision_track_bank, bank_index);

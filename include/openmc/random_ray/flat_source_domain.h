@@ -169,8 +169,9 @@ protected:
   double
     simulation_volume_; // Total physical volume of the simulation domain, as
                         // defined by the 3D box of the random ray source
-  
-  double fission_rate_; // The system's fission rate (per cm^3), in eigenvalue mode
+
+  double
+    fission_rate_; // The system's fission rate (per cm^3), in eigenvalue mode
 
   // Volumes for each tally and bin/score combination. This intermediate data
   // structure is used when tallying quantities that must be normalized by

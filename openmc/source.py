@@ -1316,8 +1316,8 @@ def read_collision_track_mcpl(file_path):
 
     # Read and collect data from the MCPL file
     for i, p in enumerate(myfile.particles):
-        if 'blob_' + str(i) in myfile.blobs:
-            blob_data = myfile.blobs['blob_' + str(i)]
+        if f'blob_{i}' in myfile.blobs:
+            blob_data = myfile.blobs[f'blob_{i}']
             decoded_str = blob_data.decode('utf-8')
             pairs = decoded_str.split(';')
             values_dict = {k.strip(): v.strip()
@@ -1337,7 +1337,7 @@ def read_collision_track_mcpl(file_path):
             data['material_id'].append(int(values_dict.get('material_id', 0)))
             data['universe_id'].append(int(values_dict.get('universe_id', 0)))
             data['n_collision'].append(int(values_dict.get('n_collision', 0)))
-            data['particle'].append(p.pdgcode)
+            data['particle'].append(ParticleType.from_pdg_number(p.pdgcode))
             data['parent_id'].append(int(values_dict.get('parent_id', 0)))
             data['progeny_id'].append(int(values_dict.get('progeny_id', 0)))
 

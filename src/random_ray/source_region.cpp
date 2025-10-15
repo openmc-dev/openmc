@@ -230,67 +230,6 @@ void SourceRegionContainer::push_back(const SourceRegion& sr)
   }
 }
 
-// void SourceRegionContainer::erase(int sr_idx)
-// {
-//   n_source_regions_--;
-
-//   // Scalar fields
-//   material_.erase(material_.begin() + sr_idx);
-//   is_small_.erase(is_small_.begin() + sr_idx);
-//   n_hits_.erase(n_hits_.begin() + sr_idx);
-//   lock_.erase(lock_.begin() + sr_idx);
-//   volume_.erase(volume_.begin() + sr_idx);
-//   volume_t_.erase(volume_t_.begin() + sr_idx);
-//   volume_sq_.erase(volume_sq_.begin() + sr_idx);
-//   volume_sq_t_.erase(volume_sq_t_.begin() + sr_idx);
-//   volume_naive_.erase(volume_naive_.begin() + sr_idx);
-//   position_recorded_.erase(position_recorded_.begin() + sr_idx);
-//   external_source_present_.erase(external_source_present_.begin() + sr_idx);
-//   position_.erase(position_.begin() + sr_idx);
-//   volume_task_.erase(volume_task_.begin() + sr_idx);
-//   mesh_.erase(mesh_.begin() + sr_idx);
-//   parent_sr_.erase(parent_sr_.begin() + sr_idx);
-//   key_.erase(key_.begin() + sr_idx);
-
-//   centroid_.erase(centroid_.begin() + sr_idx);
-//   centroid_iteration_.erase(centroid_iteration_.begin() + sr_idx);
-//   centroid_t_.erase(centroid_t_.begin() + sr_idx);
-
-//   // Only store these fields if is_linear_ is true
-//   if (is_linear_) {
-//     // centroid_.erase(sr.scalars_.centroid_);
-//     // centroid_iteration_.erase(sr.scalars_.centroid_iteration_);
-//     // centroid_t_.erase(sr.scalars_.centroid_t_);
-//     mom_matrix_.erase(mom_matrix_.begin() + sr_idx);
-//     mom_matrix_t_.erase(mom_matrix_t_.begin() + sr_idx);
-//   }
-
-//   // Energy-dependent fields
-//   const int first = sr_idx * negroups_;
-//   const int last = first + negroups_;
-
-//   scalar_flux_old_.erase(scalar_flux_old_.begin() + first, scalar_flux_old_.begin() + last);
-//   scalar_flux_new_.erase(scalar_flux_new_.begin() + first, scalar_flux_new_.begin() + last);
-//   scalar_flux_final_.erase(scalar_flux_final_.begin() + first, scalar_flux_final_.begin() + last);
-//   source_.erase(source_.begin() + first, source_.begin() + last);
-
-//   if (settings::run_mode == RunMode::FIXED_SOURCE) {
-//     external_source_.erase(external_source_.begin() + first, external_source_.begin() + last);
-//   }
-
-//   // Only erase these fields if is_linear_ is true
-//   if (is_linear_) {
-//     source_gradients_.erase(source_gradients_.begin() + first, source_gradients_.begin() + last);
-//     flux_moments_old_.erase(flux_moments_old_.begin() + first, flux_moments_old_.begin() + last);
-//     flux_moments_new_.erase(flux_moments_new_.begin() + first, flux_moments_new_.begin() + last);
-//     flux_moments_t_.erase(flux_moments_t_.begin() + first, flux_moments_t_.begin() + last);
-//   }
-
-//   // Tally tasks
-//   tally_task_.erase(tally_task_.begin() + first, tally_task_.begin() + last);
-
-// }
-
 void SourceRegionContainer::assign(
   int n_source_regions, const SourceRegion& source_region)
 {

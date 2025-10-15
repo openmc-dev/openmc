@@ -58,17 +58,13 @@ private:
   // Tracks the total number of geometric intersections by all rays for
   // reporting
   uint64_t total_geometric_intersections_ {0};
-  // batch-wise intersection counter
-  // uint64_t batch_geometric_intersections_ {0};
 
   // Number of energy groups
   int negroups_;
 
   // Average number of ray communications between rank per batch
   uint64_t avg_num_comms_ {0};
-  uint64_t num_comms_batch_ {0};
   uint64_t num_ray_crossings_ {0};  //TODO: temporary
-  // vector<float> rank_load_;
 
 }; // class RandomRaySimulation
 

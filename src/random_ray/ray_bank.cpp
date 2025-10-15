@@ -15,7 +15,7 @@ RayBank::RayBank() {
   num_messages_receiving_.resize(mpi::n_procs, 0);
 }
 
-// Initialize list of ray bank that each MPI rank will handle
+// Initialize list of ray bank that each MPI rank will handle //TODO: this does not need to be separate function
 void RayBank::add_ray_to_bank(RandomRay& ray){
     my_ray_list_.push_back(ray);
 }
@@ -26,8 +26,6 @@ void RayBank::buffer_ray_data_to_send(RandomRay& ray, FlatSourceDomain* domain){
     // Get rank to send ray to
     int rank = ray.owner_rank_;
 
-    // printf("RANK %d: Put ray %ld into map, new owner: %d, %d \n", mpi::rank, ray.exchange_data_.ray_id, ray.owner_rank_, rank);
-
     if (rank == mpi::rank){
       warning(fmt::format(
         "Ray {} at position ({:.5e}, {:.5e}, {:.5e})"
@@ -37,30 +35,13 @@ void RayBank::buffer_ray_data_to_send(RandomRay& ray, FlatSourceDomain* domain){
 
     // Add ray data to buffer
     ray_send_buffer_[rank].push_back(ray.exchange_data_);
-
 }
 
 // Update ray bank
 void RayBank::update(FlatSourceDomain* domain){
 
-    // for (auto& [rank, rays] : ray_send_buffer_) {
-    //   for (int r = 0; r < rays.size(); r++){
-    //     printf("RANK %d: 2: Buffered ray ID %ld to be sent to rank: %d \n", mpi::rank, rays[r].ray_id, rank);
-    //   }
-    // }
-
     // Empty ray list because rays have either died or are in buffer to be sent to other ranks
-    reset_my_ray_list();
-
-    // for (auto& [rank, rays] : ray_send_buffer_) {
-    //   for (int r = 0; r < rays.size(); r++){
-    //     printf("RANK %d: 3: Buffered ray ID %ld to be sent to rank: %d \n", mpi::rank, rays[r].ray_id, rank);
-    //   }
-    // }
-
-    // Communicate how many rays will be sent to each rank
-
-    
+    reset_my_ray_list();   
 
     simulation::time_mpi_imbalance.start();
     MPI_Barrier(mpi::intracomm);
@@ -75,7 +56,6 @@ void RayBank::update(FlatSourceDomain* domain){
     communicate_rays();
     simulation::time_ray_comms.stop();
 
-
     simulation::time_unpack_data.start();
     // Add received rays to ray list of that rank
     update_my_ray_list(domain);
@@ -83,7 +63,7 @@ void RayBank::update(FlatSourceDomain* domain){
 
 }
 
-// Clears my_ray_list, but keeps memory allocation in place
+// Clears my_ray_list, but keeps memory allocation in place //TODO: Does this need to be separate function?
 void RayBank::reset_my_ray_list(){
   my_ray_list_.resize(0);
 }
@@ -106,8 +86,11 @@ void RayBank::communicate_message_metadata() {
   for (auto& [rank, rays] : ray_send_buffer_) {
     num_messages_sending[rank] = rays.size();
     total_sending_rays_ += num_messages_sending[rank];
-    // for (int r = 0; r < rays.size(); r++){
-    //   printf("RANK %d: Metadata, ray ID %ld to be sent to rank: %d \n", mpi::rank, rays[r].ray_id, rank);
+
+    // if (mpi::rank == 5 || mpi::rank == 47){
+    //   for (auto& rays : ray_send_buffer_[rank]){
+    //     printf("Rank %d: Sending ray %ld to rank %d\n", mpi::rank, rays.ray_id, rank);
+    //   }
     // }
   }
 
@@ -118,15 +101,6 @@ void RayBank::communicate_message_metadata() {
 
   total_receiving_rays_ = accumulate(num_messages_receiving_.begin(), 
                                      num_messages_receiving_.end(), 0);
-
-  // // Store results
-  // for (int rank = 0; rank < mpi::n_procs; rank++) {
-  //   // Skip over non-sending ranks
-  //   if (num_messages_receiving[rank] == 0) continue;
-  //   // Save number of incoming rays from each rank sending to me in incoming_ray_data map
-  //   incoming_ray_data_[rank] = num_messages_receiving[rank]; //TODO: Could also just be vector
-  //   total_receiving_rays_ += num_messages_receiving[rank];
-  // }
 
 }
 
@@ -158,7 +132,7 @@ void RayBank::communicate_rays(){
 
       int num_rays_sending = rays.size();
 
-      for (int i = 0; i < num_rays_sending; i++) {
+      for (int i = 0; i < num_rays_sending; i++) { //TODO: get rid of this! Entire rayExchangeData should be buffered
         // Pack slimmed down data container for MPI send
         RayExchangeData exchange_data;
         exchange_data.position = rays[i].position;
@@ -166,13 +140,13 @@ void RayBank::communicate_rays(){
         exchange_data.distance_travelled = rays[i].distance_travelled;
         exchange_data.is_active = rays[i].is_active;
         exchange_data.ray_id = rays[i].ray_id;
+        exchange_data.surface = rays[i].surface;
         ray_data[vector_send_idx + i] = exchange_data;
         // Angular flux array
         for (int g = 0; g < negroups_; g++){
           angular_flux_data[(vector_send_idx + i) * negroups_ + g] = rays[i].angular_flux[g];
         }
       }
-      // printf("RANK %d: Sending ray %ld to rank: %d \n", mpi::rank, ray_data[vector_send_idx].ray_id, receiving_rank);
 
       MPI_Isend(&ray_data[vector_send_idx], num_rays_sending * sizeof(RayExchangeData), MPI_BYTE, receiving_rank, 1, mpi::intracomm, &requests[req_idx]);
       MPI_Isend(&angular_flux_data[vector_send_idx * negroups_], num_rays_sending * negroups_, MPI_FLOAT, receiving_rank, 2, mpi::intracomm, &requests[req_idx+1]); 
@@ -188,13 +162,11 @@ void RayBank::communicate_rays(){
       if (num_rays_receiving == 0) continue;
       MPI_Recv(&received_ray_data_[vector_receive_idx], num_rays_receiving * sizeof(RayExchangeData), MPI_BYTE, sending_rank, 1, mpi::intracomm, MPI_STATUS_IGNORE);
       MPI_Recv(&received_angular_flux_data_[vector_receive_idx * negroups_], num_rays_receiving * negroups_, MPI_FLOAT, sending_rank, 2, mpi::intracomm, MPI_STATUS_IGNORE);
-      // printf("RANK %d: Receiving ray %ld from rank: %d \n", mpi::rank, received_ray_data_[vector_receive_idx].ray_id, sending_rank);
 
       vector_receive_idx += num_rays_receiving;
     }
 
     // Wait for all communication to complete
-    // MPI_Waitall(num_requests, requests, MPI_STATUSES_IGNORE);
     MPI_Waitall(num_requests, requests.data(), MPI_STATUSES_IGNORE);
     
     // Empty buffered_ray_data
@@ -221,7 +193,7 @@ void RayBank::update_my_ray_list(FlatSourceDomain* domain){
     my_ray_list_.push_back(ray_received);
   }
 
-  // clear received data vectors //TODO: maybe resize(0)?
+  // clear received data vectors
   received_ray_data_.clear();
   received_angular_flux_data_.clear();
 

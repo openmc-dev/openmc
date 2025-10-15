@@ -270,8 +270,7 @@ uint64_t RandomRay::transport_history_based_single_ray()
 {
   using namespace openmc;
   while (alive()) {
-    // if (id() == 1083){
-    //   if (simulation::current_batch == 130) {
+    // if (id() == 6543){
     //     printf("RANK %d: Ray %ld, position: %f, %f, %f, angular flux: %f, distance travelled: %f, owner: %d \n", mpi::rank, id(), r().x, r().y, r().z, angular_flux_[0], distance_travelled_, owner_rank_);
     // }
     event_advance_ray();
@@ -429,8 +428,8 @@ void RandomRay::attenuate_flux(double distance, double offset)
         // }
         start += physical_length * u();
 
-        // if (id() == 1083){
-        //   printf("RANK %d: Source region %ld, mesh bin %d\n", mpi::rank, sr, mesh_bins_[b]);
+        // if (id() == 6543){
+        //   printf("RANK %d: Source region %ld, mesh bin %d, physical length %f\n", mpi::rank, sr, mesh_bins_[b], physical_length);
         // }
 
         // If ray has left my subdomain, stop transport
@@ -468,9 +467,11 @@ void RandomRay::attenuate_flux(double distance, double offset)
     // double distance_buffer = distance_travelled_ + offset + mesh_partial_length;
     pack_ray_for_buffer(distance_buffer, position_buffer); //, SourceRegionKey(sr, mesh_bin), sr);
     wgt() = 0.0;
-    // if (sr == 134 && mesh_bin == 64056){
-    //   printf("RANK %d: Buffered (%f, %f, %f) \n", mpi::rank, position_buffer.x, position_buffer.y, position_buffer.z);
+    // if (id() == 6543){
+    //   printf("RANK %d: Buffered (%f, %f, %f) at source region %ld, mesh bin %d \n", mpi::rank, position_buffer.x, position_buffer.y, position_buffer.z, sr, mesh_bin);
+    //   printf("RANK %d: material %d \n", mpi::rank, this->material());
     // }
+
     // if (simulation::current_batch == 25) {
     //   printf("RANK %d: distance travelled new: %f %f \n", mpi::rank, distance_buffer, exchange_data_.distance_travelled);
     // }
@@ -487,12 +488,15 @@ void RandomRay::attenuate_flux_inner(
     // simulation::time_find_owner_rank.start();
     Position midpoint = r + u() * (distance / 2.0);
     owner = mpi::decomp_map.find_owner(SourceRegionKey(sr, mesh_bin), midpoint, 
-      domain_->discovered_source_regions_, id());
+      domain_->discovered_source_regions_);
     // simulation::time_find_owner_rank.stop();
   }
 
   // If current rank is not the owner return and mark as not local.
   if (owner != mpi::rank) {
+      // if (id() == 6543){
+      //   printf("RANK %d: Ray %ld leaving subdomain, owner is %d \n", mpi::rank, id(), owner);
+      // }
    is_local_ = false;
    owner_rank_ = owner;
    return;
@@ -922,6 +926,9 @@ void RandomRay::restart_ray(FlatSourceDomain* domain, RayExchangeData& data, vec
   site.E = 0.0;
   this->from_source(&site);
 
+  // reinitialize last surface that was crossed
+  surface() = data.surface;
+
   // Locate ray
   if (lowest_coord().cell() == C_NONE) {
     if (!exhaustive_find_cell(*this)) {
@@ -939,6 +946,10 @@ void RandomRay::restart_ray(FlatSourceDomain* domain, RayExchangeData& data, vec
   int i_cell = lowest_coord().cell();
   int64_t sr = domain_->source_region_offsets_[i_cell] + cell_instance();
 
+  // if (id() == 6543){
+  //   printf("RANK %d: Restart ray %ld, last surface crossed: %d, %d, cell: %d, source region %ld \n", mpi::rank, id(), exchange_data_.surface, surface(), i_cell, sr);
+  // }
+
   if (sr == C_NONE || sr < 0){
     std::string err_msg = "ERROR: Cell " + std::to_string(sr) + 
                           " not found when restarting ray " + std::to_string(id()) + 
@@ -946,7 +957,7 @@ void RandomRay::restart_ray(FlatSourceDomain* domain, RayExchangeData& data, vec
                           std::to_string(site.r.y) + ", " +
                           std::to_string(site.r.z) + ")";
     fatal_error(err_msg);
-}
+ }
 
   // Set ray's angular flux to value before subdomain change
   for (int g = 0; g < negroups_; g++) {
@@ -1092,6 +1103,10 @@ void RandomRay::pack_ray_for_buffer(double distance_buffer, Position position_bu
  exchange_data_.direction = u();
  exchange_data_.angular_flux = angular_flux_;
  exchange_data_.distance_travelled = distance_buffer;
+ exchange_data_.surface = surface();
+  // if (id() == 6543){
+  // printf("RANK: %d: Surface crossed: %d \n", mpi::rank, surface());
+  // }
 //  exchange_data_.sr_key = sr_key;
 //  exchange_data_.sr = sr;
  exchange_data_.is_active = is_active_;

@@ -10,12 +10,13 @@
 
 namespace openmc {
 
-// Container for MPI exchange
+// Container for MPI exchange //TODO: can we avoid this duplication with RayExchangeData?
 struct RayBufferContainer {
   Position position;
   Direction direction;
   double distance_travelled;
   vector<float> angular_flux;
+  int surface;
   // SourceRegionKey sr_key;
   // int sr;
   // int receiving_rank;
@@ -28,6 +29,7 @@ struct RayExchangeData {
   Position position;
   Direction direction;
   double distance_travelled;
+  int surface;
   bool is_active;
   uint64_t ray_id; 
 };

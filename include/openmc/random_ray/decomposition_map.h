@@ -81,7 +81,7 @@ private:
   // Private data members
   SpatialBox* spatial_box_ = nullptr; 
   vector<Position> grid_points_; //TODO: This can be local variable when Voronoi centres ae established
-  int grid_points_per_rank_{100};
+  int grid_points_per_rank_{125}; // default 5x5x5 grid points per rank
   int negroups_;
   uint64_t n_hits_sum_;
 

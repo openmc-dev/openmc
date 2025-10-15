@@ -1288,7 +1288,7 @@ void FlatSourceDomain::output_to_vtk_decomp() const
     }
 
     if (mpi::master){
-      std::fprintf(plot, "SCALARS rank_subdomains int\n");
+      std::fprintf(plot, "SCALARS rank_subdomains float\n");
       std::fprintf(plot, "LOOKUP_TABLE default\n");
 
       for (float value : vector_out) {

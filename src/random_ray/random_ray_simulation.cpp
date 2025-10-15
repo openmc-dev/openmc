@@ -821,7 +821,7 @@ void RandomRaySimulation::transport_sweep_decomp(RayBank& RB) {
 
     int num_comms = 0;
 
-    printf("Rank %d: Starting transport sweep with %d rays\n", mpi::rank, RB.ray_bank_size());
+    // printf("Rank %d: Starting transport sweep with %d rays\n", mpi::rank, RB.ray_bank_size());
 
     // Move rays across ranks until they are terminated 
     while (RB.is_any_ray_alive()) {

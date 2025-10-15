@@ -605,7 +605,7 @@ void DecompositionMap::balance_load(FlatSourceDomain* domain){
 
   //TODO: The optimisation seems really messy
 
-  int max_iterations = 1000;
+  int max_iterations = 500;
   double max_imbalance = max_imbalance_;
 
   int it_outer = 0;
@@ -620,10 +620,12 @@ void DecompositionMap::balance_load(FlatSourceDomain* domain){
 
   // History tracking
   vector<double> imbalance_history;
+  vector<vector<double>> weight_history;
   imbalance_history.push_back(max_imbalance);
+  weight_history.push_back(rank_weights_);
 
   vector<double> weight_change(mpi::n_procs, 0.0);
-  vector<double> old_weights = rank_weights_;
+  // vector<double> old_weights = rank_weights_;
   // double max_imbalance_old = max_imbalance_;
 
   std::unordered_map<int, vector<int>> sr_send; // contains regions to be send
@@ -657,6 +659,7 @@ void DecompositionMap::balance_load(FlatSourceDomain* domain){
 
     // Store imbalance history for diagnostics if convergence fails
     imbalance_history.push_back(max_imbalance);
+    weight_history.push_back(rank_weights_);
 
     // Adaptive factor
     if (max_imbalance > prev_imbalance)
@@ -695,14 +698,20 @@ void DecompositionMap::balance_load(FlatSourceDomain* domain){
     double oscillation_ratio = (double)direction_changes / (imbalance_history.size() - 2);
     
     if (oscillation_ratio > 0.4) {
-      optimization_history_factor_ *= 0.5; // decrease weight for next batch if oscillating, TODO: SHould this be safeguarded with max/ min value?
+      // decrease weight for next batch if oscillating, TODO: SHould this be safeguarded with max/ min value?
+      optimization_history_factor_ = std::max(optimization_history_factor_ * 0.5, min_adaptation_factor);
     } else {
-      optimization_history_factor_ *= 1.2; // increase weight for faster convergence if too slow.
+      // increase weight for faster convergence if too slow.
+      optimization_history_factor_ = std::min(optimization_history_factor_ * 1.2, max_adaptation_factor);     // stable - accelerate slightly
     }
 
     // Revert to previous weights if load balancing did not improve and return
-    if (imbalance_history[0] < max_imbalance){
-      rank_weights_ = old_weights;
+    auto min_it = std::min_element(imbalance_history.begin(), imbalance_history.end());
+    int best_index = std::distance(imbalance_history.begin(), min_it);
+    double best_imbalance = *min_it;
+    rank_weights_ = weight_history[best_index];
+
+    if (best_index == 0){
       return;
     }
   } else {

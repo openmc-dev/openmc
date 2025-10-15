@@ -1,15 +1,19 @@
-.. _methods_charged_particles_physics:
+.. _methods_charged_particle_physics:
 
-=========================
-Charged Particles Physics
-=========================
+========================
+Charged Particle Physics
+========================
 
-OpenMC neglects the spatial transport of charged particles (electrons and positrons), assuming they deposit all their energy locally and produce bremsstrahlung photons at their birth location.
-This approximation, called thick-target bremsstrahlung (TTB) approximation is justified by the fact that charged particles have much shorter stopping ranges compared to neutrons and photons, especially in high-density materials.
+OpenMC neglects the spatial transport of charged particles (electrons and
+positrons), assuming they deposit all their energy locally and produce
+bremsstrahlung photons at their birth location. This approximation, called
+thick-target bremsstrahlung (TTB) approximation is justified by the fact that
+charged particles have much shorter stopping ranges compared to neutrons and
+photons, especially in high-density materials.
 
-------------------------------
-Charged Particles Interactions
-------------------------------
+-----------------------------
+Charged Particle Interactions
+-----------------------------
 
 Bremsstrahlung
 --------------

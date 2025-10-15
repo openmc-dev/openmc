@@ -604,6 +604,7 @@ void DecompositionMap::calculate_rank_load(FlatSourceDomain* domain){ //TODO: Th
 void DecompositionMap::balance_load(FlatSourceDomain* domain){
 
   //TODO: The optimisation seems really messy
+  cnt_optimizations_total_ ++;
 
   int max_iterations = 500;
   double max_imbalance = max_imbalance_;
@@ -678,6 +679,9 @@ void DecompositionMap::balance_load(FlatSourceDomain* domain){
               + std::to_string(max_iterations) + " iterations."); 
     }
 
+    cnt_unconverged_optimizations_ ++;
+    cnt_unconverged_optimizations_total_ ++;
+
     // Check if oscillating or simply slow convergence
     bool is_oscillating = false;
     int direction_changes = 0;
@@ -711,10 +715,22 @@ void DecompositionMap::balance_load(FlatSourceDomain* domain){
     double best_imbalance = *min_it;
     rank_weights_ = weight_history[best_index];
 
+    if (mpi::master){
+      printf("Best imbalance during optimization was %.2f%% at iteration %d. New history factor: %.2f \n", 
+        best_imbalance*100.0, best_index, optimization_history_factor_);
+    }
+
+    if (cnt_unconverged_optimizations_ > 5){
+      cnt_unconverged_optimizations_ = 0;
+      imbalance_tolerance_ = best_imbalance; // relax tolerance if not converging
+      printf("Relaxing MPI load balancing tolerance to %.2f%% \n", imbalance_tolerance_*100.0);
+    }
+
     if (best_index == 0){
       return;
     }
   } else {
+    cnt_unconverged_optimizations_ = 0;
     optimization_history_factor_ = 1.0; // reset history factor if converged
     if (mpi::master){
       printf("MPI load balancing converged after %d iterations. Max. imbalance: %.2f%% \n", it_outer, max_imbalance*100.0);

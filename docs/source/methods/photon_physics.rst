@@ -667,48 +667,6 @@ and Auger electrons:
 
 5. Repeat from step 1 for vacancy left by the transition electron.
 
-Electron-Positron Annihilation
-------------------------------
-
-When a positron collides with an electron, both particles are annihilated and
-generally two photons with equal energy are created. If the kinetic energy of
-the positron is high enough, the two photons can have different energies, and
-the higher-energy photon is emitted preferentially in the direction of flight
-of the positron. It is also possible to produce a single photon if the
-interaction occurs with a bound electron, and in some cases three (or, rarely,
-even more) photons can be emitted. However, the annihilation cross section is
-largest for low-energy positrons, and as the positron energy decreases, the
-angular distribution of the emitted photons becomes isotropic.
-
-In OpenMC, we assume the most likely case in which a low-energy positron (which
-has already lost most of its energy to bremsstrahlung radiation) interacts with
-an electron which is free and at rest. Two photons with energy equal to the
-electron rest mass energy :math:`m_e c^2 = 0.511` MeV are emitted isotropically
-in opposite directions.
-
-Bremsstrahlung
---------------
-
-When a charged particle is decelerated in the field of an atom, some of its
-kinetic energy is converted into electromagnetic radiation known as
-bremsstrahlung, or 'braking radiation'. In each event, an electron or positron
-with kinetic energy :math:`T` generates a photon with an energy :math:`E`
-between :math:`0` and :math:`T`. Bremsstrahlung is described by a cross section
-that is differential in photon energy, in the direction of the emitted photon,
-and in the final direction of the charged particle. However, in Monte Carlo
-simulations it is typical to integrate over the angular variables to obtain a
-single differential cross section with respect to photon energy, which is often
-expressed in the form
-
-.. math::
-    :label: bremsstrahlung-dcs
-
-    \frac{d\sigma_{\text{br}}}{dE} = \frac{Z^2}{\beta^2} \frac{1}{E}
-    \chi(Z, T, \kappa),
-
-where :math:`\kappa = E/T` is the reduced photon energy and :math:`\chi(Z, T,
-\kappa)` is the scaled bremsstrahlung cross section, which is experimentally
-measured.
 
 .. _photon_production:
 

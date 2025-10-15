@@ -636,10 +636,11 @@ void write_source_bank(hid_t group_id, span<SourceSite> source_bank,
   hid_t banktype = h5banktype();
 
 #ifdef OPENMC_MPI
-  write_bank_dataset(
-    "source_bank", group_id, source_bank, bank_index, banktype, mpi::source_site);
+  write_bank_dataset("source_bank", group_id, source_bank, bank_index, banktype,
+    mpi::source_site);
 #else
-  write_bank_dataset("source_bank", group_id, source_bank, bank_index, banktype);
+  write_bank_dataset(
+    "source_bank", group_id, source_bank, bank_index, banktype);
 #endif
 
   H5Tclose(banktype);

@@ -15,11 +15,12 @@
 
 namespace openmc {
 
-template <typename SiteType>
+template<typename SiteType>
 void write_bank_dataset(const char* dataset_name, hid_t group_id,
   span<SiteType> bank, const vector<int64_t>& bank_index, hid_t banktype
 #ifdef OPENMC_MPI
-  , MPI_Datatype mpi_dtype
+  ,
+  MPI_Datatype mpi_dtype
 #endif
 )
 {
@@ -29,8 +30,8 @@ void write_bank_dataset(const char* dataset_name, hid_t group_id,
 #ifdef PHDF5
   hsize_t dims[] {static_cast<hsize_t>(dims_size)};
   hid_t dspace = H5Screate_simple(1, dims, nullptr);
-  hid_t dset = H5Dcreate(
-    group_id, dataset_name, banktype, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  hid_t dset = H5Dcreate(group_id, dataset_name, banktype, dspace, H5P_DEFAULT,
+    H5P_DEFAULT, H5P_DEFAULT);
 
   hsize_t count[] {static_cast<hsize_t>(count_size)};
   hid_t memspace = H5Screate_simple(1, count, nullptr);
@@ -51,8 +52,8 @@ void write_bank_dataset(const char* dataset_name, hid_t group_id,
   if (mpi::master) {
     hsize_t dims[] {static_cast<hsize_t>(dims_size)};
     hid_t dspace = H5Screate_simple(1, dims, nullptr);
-    hid_t dset = H5Dcreate(
-      group_id, dataset_name, banktype, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    hid_t dset = H5Dcreate(group_id, dataset_name, banktype, dspace,
+      H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 
 #ifdef OPENMC_MPI
     vector<SiteType> temp_bank {bank.begin(), bank.end()};

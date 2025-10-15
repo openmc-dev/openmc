@@ -8,7 +8,7 @@
     </material>
   </materials>
   <geometry>
-    <cell id="1" material="1" region="-1" universe="0"/>
+    <cell id="1" material="1" region="-1" universe="1"/>
     <surface id="1" type="sphere" boundary="reflective" coeffs="0.0 0.0 0.0 1.0"/>
   </geometry>
   <settings>
@@ -16,16 +16,10 @@
     <particles>10000</particles>
     <batches>1</batches>
     <source type="independent" strength="1.0" particle="electron">
-      <space type="point">
-        <parameters>0 0 0</parameters>
-      </space>
-      <angle type="isotropic"/>
       <energy type="discrete">
         <parameters>10000000.0 1.0</parameters>
       </energy>
     </source>
-    <electron_treatment>ttb</electron_treatment>
-    <photon_transport>true</photon_transport>
     <cutoff>
       <energy_photon>1000.0</energy_photon>
     </cutoff>

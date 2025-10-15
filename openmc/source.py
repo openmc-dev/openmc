@@ -404,8 +404,7 @@ class IndependentSource(SourceBase):
 
     @particle.setter
     def particle(self, particle):
-        cv.check_value('source particle',
-                       particle,
+        cv.check_value('source particle', particle,
                        ['neutron', 'photon', 'electron', 'positron'])
         self._particle = particle
 

@@ -705,10 +705,10 @@ void initialize_data()
       if (data::ttb_e_grid.size() >= 1) {
         int photon = static_cast<int>(ParticleType::photon);
         int electron = static_cast<int>(ParticleType::electron);
+        int positron = static_cast<int>(ParticleType::positron);
         int n_e = data::ttb_e_grid.size();
 
-        const std::vector<int> charged = {
-          electron, static_cast<int>(ParticleType::positron)};
+        const std::vector<int> charged = {electron, positron};
         for (auto t : charged) {
           data::energy_min[t] = std::exp(data::ttb_e_grid(1));
           data::energy_max[t] = std::exp(data::ttb_e_grid(n_e - 1));

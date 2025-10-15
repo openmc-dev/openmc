@@ -293,13 +293,9 @@ IndependentSource::IndependentSource(pugi::xml_node node) : Source(node)
     } else if (temp_str == "electron") {
       particle_ = ParticleType::electron;
       settings::photon_transport = true;
-      if (settings::electron_treatment == ElectronTreatment::LED)
-        settings::electron_treatment = ElectronTreatment::TTB;
     } else if (temp_str == "positron") {
       particle_ = ParticleType::positron;
       settings::photon_transport = true;
-      if (settings::electron_treatment == ElectronTreatment::LED)
-        settings::electron_treatment = ElectronTreatment::TTB;
     } else {
       fatal_error(std::string("Unknown source particle type: ") + temp_str);
     }

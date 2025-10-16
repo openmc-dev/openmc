@@ -5,6 +5,7 @@ set(TEST_NAMES
   test_interpolate
   test_math
   test_mcpl_stat_sum
+  test_mesh
   # Add additional unit test files here
 )
 

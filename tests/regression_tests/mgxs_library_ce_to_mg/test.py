@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 import openmc
 import openmc.mgxs
@@ -53,7 +54,7 @@ class MGXSTestHarness(PyAPITestHarness):
 
         # Write modified input files
         self._model.export_to_model_xml()
-        self._model.mgxs_file.export_to_hdf5()
+        self._model.mgxs_file.export_to_hdf5(filename = Path('mgxs.h5'))
 
         # Re-run MG mode.
         if config['mpi']:

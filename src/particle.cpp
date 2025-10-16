@@ -241,7 +241,7 @@ void Particle::event_advance()
 
   // Sample a distance to collision
   if (type() == ParticleType::electron || type() == ParticleType::positron) {
-    collision_distance() = 0.0;
+    collision_distance() = material() == MATERIAL_VOID ? INFINITY : 0.0;
   } else if (macro_xs().total == 0.0) {
     collision_distance() = INFINITY;
   } else {

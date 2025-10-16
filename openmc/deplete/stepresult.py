@@ -240,7 +240,7 @@ class StepResult:
         material.volume = vol
         return material
 
-    def export_to_hdf5(self, filename, step, write_reaction_rates=True):
+    def export_to_hdf5(self, filename, step, write_rates=True):
         """Export results to an HDF5 file
 
         Parameters
@@ -249,7 +249,7 @@ class StepResult:
             The filename to write to
         step : int
             What step is this?
-        write_reaction_rates : bool, optional
+        write_rates : bool, optional
             Whether to include reaction rate datasets in the results file.
 
         """
@@ -262,7 +262,7 @@ class StepResult:
             kwargs['comm'] = comm
             with h5py.File(filename, **kwargs) as handle:
                 self._to_hdf5(handle, step, parallel=True,
-                              write_reaction_rates=write_reaction_rates)
+                              write_rates=write_rates)
         else:
             # Gather results at root process
             all_results = comm.gather(self)
@@ -272,16 +272,16 @@ class StepResult:
                 with h5py.File(filename, **kwargs) as handle:
                     for res in all_results:
                         res._to_hdf5(handle, step, parallel=False,
-                                     write_reaction_rates=write_reaction_rates)
+                                     write_rates=write_rates)
 
-    def _write_hdf5_metadata(self, handle, write_reaction_rates):
+    def _write_hdf5_metadata(self, handle, write_rates):
         """Writes result metadata in HDF5 file
 
         Parameters
         ----------
         handle : h5py.File or h5py.Group
             An hdf5 file or group type to store this in.
-        write_reaction_rates : bool
+        write_rates : bool
             Whether reaction rate datasets are being written.
 
         """
@@ -303,7 +303,7 @@ class StepResult:
         nuc_list = sorted(self.index_nuc)
 
         include_rates = (
-            write_reaction_rates
+            write_rates
             and self.rates
             and len(self.rates) > 0
             and bool(self.rates[0].index_nuc)
@@ -366,7 +366,7 @@ class StepResult:
             "depletion time", (1,), maxshape=(None,),
             dtype="float64")
 
-    def _to_hdf5(self, handle, index, parallel=False, write_reaction_rates=True):
+    def _to_hdf5(self, handle, index, parallel=False, write_rates=True):
         """Converts results object into an hdf5 object.
 
         Parameters
@@ -377,14 +377,14 @@ class StepResult:
             What step is this?
         parallel : bool
             Being called with parallel HDF5?
-        write_reaction_rates : bool, optional
+        write_rates : bool, optional
             Whether reaction rate datasets are being written.
 
         """
         if "/number" not in handle:
             if parallel:
                 comm.barrier()
-            self._write_hdf5_metadata(handle, write_reaction_rates)
+            self._write_hdf5_metadata(handle, write_rates)
 
         if parallel:
             comm.barrier()
@@ -536,7 +536,7 @@ class StepResult:
         source_rate,
         step_ind,
         proc_time=None,
-        write_reaction_rates: bool = False,
+        write_rates: bool = False,
         path: PathLike = "depletion_results.h5"
     ):
         """Creates and writes depletion results to disk
@@ -559,7 +559,7 @@ class StepResult:
             Total process time spent depleting materials. This may
             be process-dependent and will be reduced across MPI
             processes.
-        write_reaction_rates : bool, optional
+        write_rates : bool, optional
             Whether reaction rates should be written to the results file.
         path : PathLike
             Path to file to write. Defaults to 'depletion_results.h5'.
@@ -597,7 +597,7 @@ class StepResult:
 
         if not Path(path).is_file():
             Path(path).parent.mkdir(parents=True, exist_ok=True)
-        results.export_to_hdf5(path, step_ind, write_reaction_rates)
+        results.export_to_hdf5(path, step_ind, write_rates)
 
     def transfer_volumes(self, model):
         """Transfers volumes from depletion results to geometry

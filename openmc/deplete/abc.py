@@ -856,7 +856,7 @@ class Integrator(ABC):
             final_step: bool = True,
             output: bool = True,
             path: PathLike = 'depletion_results.h5',
-            write_reaction_rates: bool = False
+            write_rates: bool = False
         ):
         """Perform the entire depletion process across all steps
 
@@ -875,11 +875,11 @@ class Integrator(ABC):
             Path to file to write. Defaults to 'depletion_results.h5'.
 
             .. versionadded:: 0.15.0
-        write_reaction_rates : bool, optional
+        write_rates : bool, optional
             Whether reaction rates should be written to the results file for
             each step. Defaults to ``False`` to reduce file size.
 
-            .. versionadded:: 0.15.0
+            .. versionadded:: 0.15.3
         """
         with change_directory(self.operator.output_dir):
             n = self.operator.initial_condition()
@@ -913,7 +913,7 @@ class Integrator(ABC):
                     source_rate,
                     self._i_res + i,
                     proc_time,
-                    write_reaction_rates=write_reaction_rates,
+                    write_rates=write_rates,
                     path=path
                 )
 
@@ -934,7 +934,7 @@ class Integrator(ABC):
                 source_rate,
                 self._i_res + len(self),
                 proc_time,
-                write_reaction_rates=write_reaction_rates,
+                write_rates=write_rates,
                 path=path
             )
             self.operator.write_bos_data(len(self) + self._i_res)
@@ -1169,7 +1169,7 @@ class SIIntegrator(Integrator):
         self,
         output: bool = True,
         path: PathLike = "depletion_results.h5",
-        write_reaction_rates: bool = False
+        write_rates: bool = False
     ):
         """Perform the entire depletion process across all steps
 
@@ -1181,11 +1181,11 @@ class SIIntegrator(Integrator):
             Path to file to write. Defaults to 'depletion_results.h5'.
 
             .. versionadded:: 0.15.0
-        write_reaction_rates : bool, optional
+        write_rates : bool, optional
             Whether reaction rates should be written to the results file for
             each step. Defaults to ``False`` to reduce file size.
 
-            .. versionadded:: 0.15.0
+            .. versionadded:: 0.15.3
         """
         with change_directory(self.operator.output_dir):
             n = self.operator.initial_condition()
@@ -1222,7 +1222,7 @@ class SIIntegrator(Integrator):
                     p,
                     self._i_res + i,
                     proc_time,
-                    write_reaction_rates=write_reaction_rates,
+                    write_rates=write_rates,
                     path=path
                 )
 
@@ -1237,7 +1237,7 @@ class SIIntegrator(Integrator):
                 p,
                 self._i_res + len(self),
                 proc_time,
-                write_reaction_rates=write_reaction_rates,
+                write_rates=write_rates,
                 path=path
             )
             self.operator.write_bos_data(self._i_res + len(self))

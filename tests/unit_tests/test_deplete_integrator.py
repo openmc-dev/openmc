@@ -109,14 +109,14 @@ def test_results_save(run_in_tmpdir):
         t1,
         0,
         0,
-        write_reaction_rates=True,
+        write_rates=True,
         path='out/put/depletion.h5'
     )
     res = Results('out/put/depletion.h5')
 
     # saves with default filename
-    StepResult.save(op, x1, op_result1, t1, 0, 0, write_reaction_rates=True)
-    StepResult.save(op, x2, op_result2, t2, 0, 1, write_reaction_rates=True)
+    StepResult.save(op, x1, op_result1, t1, 0, 0, write_rates=True)
+    StepResult.save(op, x2, op_result2, t2, 0, 1, write_rates=True)
 
     # Load the files
     res = Results("depletion_results.h5")

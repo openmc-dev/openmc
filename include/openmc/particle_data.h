@@ -154,9 +154,10 @@ struct NuclideMicroXS {
 
   // Energy and temperature last used to evaluate these cross sections.  If
   // these values have changed, then the cross sections must be re-evaluated.
-  double last_E {0.0};      //!< Last evaluated energy
-  double last_sqrtkT {0.0}; //!< Last temperature in sqrt(Boltzmann constant
-                            //!< * temperature (eV))
+  double last_E {0.0};       //!< Last evaluated energy
+  double last_sqrtkT {0.0};  //!< Last temperature in sqrt(Boltzmann constant
+                             //!< * temperature (eV))
+  double ncrystal_xs {-1.0}; //!< NCrystal cross section
 };
 
 //==============================================================================
@@ -634,6 +635,7 @@ public:
   int& event_mt() { return event_mt_; } // MT number of collision
   const int& event_mt() const { return event_mt_; }
   int& delayed_group() { return delayed_group_; } // delayed group
+  const int& delayed_group() const { return delayed_group_; }
   const int& parent_nuclide() const { return parent_nuclide_; }
   int& parent_nuclide() { return parent_nuclide_; } // Parent nuclide
 

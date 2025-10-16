@@ -17,7 +17,7 @@ def test_continue(run_in_tmpdir):
     operator = dummy_operator.DummyOperator()
 
     # initial depletion
-    bundle.solver(operator, [1.0, 2.0], [1.0, 2.0]).integrate()
+    bundle.solver(operator, [1.0, 2.0], [1.0, 2.0]).integrate(write_reaction_rates=True)
 
     # set up continue run
     prev_res = openmc.deplete.Results(operator.output_dir / "depletion_results.h5")
@@ -25,7 +25,7 @@ def test_continue(run_in_tmpdir):
 
     # if continue run happens, test passes
     bundle.solver(operator, [1.0, 2.0, 3.0, 4.0], [1.0, 2.0, 3.0, 4.0],
-                  continue_timesteps=True).integrate()
+                  continue_timesteps=True).integrate(write_reaction_rates=True)
 
     final_res = openmc.deplete.Results(operator.output_dir / "depletion_results.h5")
 
@@ -42,7 +42,7 @@ def test_continue_continue(run_in_tmpdir):
     operator = dummy_operator.DummyOperator()
 
     # initial depletion
-    bundle.solver(operator, [1.0, 2.0], [1.0, 2.0]).integrate()
+    bundle.solver(operator, [1.0, 2.0], [1.0, 2.0]).integrate(write_reaction_rates=True)
 
     # set up continue run
     prev_res = openmc.deplete.Results(operator.output_dir / "depletion_results.h5")
@@ -50,7 +50,7 @@ def test_continue_continue(run_in_tmpdir):
 
     # first continue run
     bundle.solver(operator, [1.0, 2.0, 3.0, 4.0], [1.0, 2.0, 3.0, 4.0],
-                  continue_timesteps=True).integrate()
+                  continue_timesteps=True).integrate(write_reaction_rates=True)
 
     prev_res = openmc.deplete.Results(operator.output_dir / "depletion_results.h5")
     # second continue run

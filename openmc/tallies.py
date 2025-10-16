@@ -245,11 +245,11 @@ class Tally(IDManagerMixin):
     def multiply_density(self, value):
         cv.check_type('multiply density', value, bool)
         self._multiply_density = value
-    
+
     @property
     def vov_enabled(self):
         return self._vov_enabled
-    
+
     @vov_enabled.setter
     def vov_enabled(self, value):
         cv.check_type("vov_enabled", value, bool)
@@ -564,7 +564,7 @@ class Tally(IDManagerMixin):
             return np.reshape(self._std_dev.toarray(), self.shape)
         else:
             return self._std_dev
-    
+
     @property
     def vov(self):
         if not self._vov_enabled:
@@ -589,7 +589,7 @@ class Tally(IDManagerMixin):
             self._vov[mask] = numerator[mask]/denominator[mask] - 1.0/n
 
             if self.sparse:
-                self._vov = sps.lil_matrix(self._vov.flatten(), 
+                self._vov = sps.lil_matrix(self._vov.flatten(),
                                            self._vov.shape)
 
         if self.sparse:
@@ -650,12 +650,12 @@ class Tally(IDManagerMixin):
             b2 = np.where(m2 > 0.0, m4/(m2**2), 0.0)
 
         g2 = b2 - 3.0
-        G2 = np.where(n > 3, ((n - 1)/((n - 2)*(n - 3)))*((n + 1)*g2 + 6.0), 
+        G2 = np.where(n > 3, ((n - 1)/((n - 2)*(n - 3)))*((n + 1)*g2 + 6.0),
                       0.0)
 
         return { "Kurtosis b2": b2, "Excess kurtosis g2": g2,
                 "Adjusted excess kurtosis G2": G2}
-    
+
     def normality_test(self, alternative: str = "two-sided"):
         if not self._vov_enabled:
             return None
@@ -681,7 +681,7 @@ class Tally(IDManagerMixin):
                 W2 = -1.0 + np.sqrt(2.0*(beta2 - 1.0))
                 delta = 1.0 / np.sqrt(np.log(np.sqrt(W2)))
                 alpha = np.sqrt(2.0 / (W2 - 1.0))
-                Zb1 = np.where(y >= 0.0, 
+                Zb1 = np.where(y >= 0.0,
                                delta*np.log((y/alpha)+np.sqrt((y/alpha)**2+1.0)),
                                -delta*np.log((-y/alpha)+np.sqrt((y/alpha)**2+1.0)),)
 
@@ -718,11 +718,11 @@ class Tally(IDManagerMixin):
                 except Exception:
                     p_K2 = None
 
-                return {"Zb1": Zb1, "p_skew": p_skew, "Zb2": Zb2, 
-                        "p_kurt": p_kurt, "K2": K2, "p_K2": p_K2, 
+                return {"Zb1": Zb1, "p_skew": p_skew, "Zb2": Zb2,
+                        "p_kurt": p_kurt, "K2": K2, "p_K2": p_K2,
                         "n": n, "g1": g1, "b2": b2,}
 
-    def print_normality_report(self, sig_level: float = 0.05, 
+    def print_normality_report(self, sig_level: float = 0.05,
                                alternative: str = "two-sided", bin_index=None,):
 
         stats = self.normality_test(alternative=alternative)
@@ -863,10 +863,10 @@ class Tally(IDManagerMixin):
                 self._sum_sq = sps.lil_matrix(self._sum_sq.flatten(),
                                               self._sum_sq.shape)
             if self._sum_third is not None:
-                self._sum_third = sps.lil_matrix(self._sum_third.flatten(), 
+                self._sum_third = sps.lil_matrix(self._sum_third.flatten(),
                                                  self._sum_third.shape)
             if self._sum_fourth is not None:
-                self._sum_fourth = sps.lil_matrix(self._sum_fourth.flatten(), 
+                self._sum_fourth = sps.lil_matrix(self._sum_fourth.flatten(),
                                                   self._sum_fourth.shape)
             if self._mean is not None:
                 self._mean = sps.lil_matrix(self._mean.flatten(),
@@ -1219,10 +1219,10 @@ class Tally(IDManagerMixin):
             other_sum_third = other_copy.get_reshaped_data(value="sum_third")
 
             if join_right:
-                merged_sum_third = np.concatenate((self_sum_third, other_sum_third), 
+                merged_sum_third = np.concatenate((self_sum_third, other_sum_third),
                                                   axis=merge_axis)
             else:
-                merged_sum_third = np.concatenate((other_sum_third, self_sum_third), 
+                merged_sum_third = np.concatenate((other_sum_third, self_sum_third),
                                                   axis=merge_axis)
 
             merged_tally._sum_third = np.reshape(merged_sum_third, merged_tally.shape)
@@ -1233,10 +1233,10 @@ class Tally(IDManagerMixin):
             other_sum_fourth = other_copy.get_reshaped_data(value="sum_fourth")
 
             if join_right:
-                merged_sum_fourth = np.concatenate((self_sum_fourth, other_sum_fourth), 
+                merged_sum_fourth = np.concatenate((self_sum_fourth, other_sum_fourth),
                                                    axis=merge_axis)
             else:
-                merged_sum_fourth = np.concatenate((other_sum_fourth, self_sum_fourth), 
+                merged_sum_fourth = np.concatenate((other_sum_fourth, self_sum_fourth),
                                                    axis=merge_axis)
 
             merged_tally._sum_fourth = np.reshape(merged_sum_fourth, merged_tally.shape)
@@ -1329,7 +1329,7 @@ class Tally(IDManagerMixin):
         if self.derivative is not None:
             subelement = ET.SubElement(element, "derivative")
             subelement.text = str(self.derivative.id)
-        
+
         # Optional variance of the variance (vov)
         if self.vov_enabled:
             subelement = ET.SubElement(element, "vov_enabled")

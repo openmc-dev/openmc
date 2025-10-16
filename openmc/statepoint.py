@@ -428,7 +428,7 @@ class StatePoint:
                     # Check if tally has multiply_density attribute
                     if "multiply_density" in group.attrs:
                         tally.multiply_density = group.attrs["multiply_density"].item() > 0
-                    
+
                     # Check if tally has vov attribute
                     if 'vov_enabled' in group.attrs:
                         tally.vov_enabled = bool(group.attrs['vov_enabled'][()])

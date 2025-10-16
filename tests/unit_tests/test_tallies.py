@@ -328,7 +328,7 @@ def test_vov_stochastic(sphere_model, run_in_tmpdir):
     expected_vov = np.zeros_like(mean)
     nonzero = np.abs(mean) > 0
 
-    num = (sum_fourth - (4.0*sum_third*sum_)/n + (6.0*sum_sq*sum_**2)/(n**2) 
+    num = (sum_fourth - (4.0*sum_third*sum_)/n + (6.0*sum_sq*sum_**2)/(n**2)
            - (3.0*sum_**4)/(n**3))
     den = (sum_sq - (1.0/n)*sum_**2)**2
 

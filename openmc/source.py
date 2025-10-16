@@ -266,7 +266,7 @@ class IndependentSource(SourceBase):
         time distribution of source sites
     strength : float
         Strength of the source
-    particle : {'neutron', 'photon'}
+    particle : {'neutron', 'photon', 'electron', 'positron'}
         Source particle type
     domains : iterable of openmc.Cell, openmc.Material, or openmc.Universe
         Domains to reject based on, i.e., if a sampled spatial location is not
@@ -305,7 +305,7 @@ class IndependentSource(SourceBase):
 
     .. versionadded:: 0.14.0
 
-    particle : {'neutron', 'photon'}
+    particle : {'neutron', 'photon', 'electron', 'positron'}
         Source particle type
     constraints : dict
         Constraints on sampled source particles. Valid keys include
@@ -411,7 +411,8 @@ class IndependentSource(SourceBase):
 
     @particle.setter
     def particle(self, particle):
-        cv.check_value('source particle', particle, ['neutron', 'photon'])
+        cv.check_value('source particle', particle,
+                       ['neutron', 'photon', 'electron', 'positron'])
         self._particle = particle
 
     def populate_xml_element(self, element):

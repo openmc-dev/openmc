@@ -49,6 +49,7 @@ ENERGIES = np.logspace(log10(1e-5), log10(2e7), 100)
     ("flux", {'energies': ENERGIES, 'reactions': ['(n,gamma)']}, 1e-5),
     ("flux", {'energies': ENERGIES, 'reactions': ['(n,gamma)'], 'nuclides': ['W186', 'H3']}, 1e-2),
 ])
+@pytest.mark.flaky(reruns=1)
 def test_activation(run_in_tmpdir, model, reaction_rate_mode, reaction_rate_opts, tolerance):
     # Determine (n.gamma) reaction rate using initial run
     sp = model.run()

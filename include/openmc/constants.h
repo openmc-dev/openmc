@@ -68,6 +68,11 @@ constexpr double MIN_HITS_PER_BATCH {1.5};
 // prevent extremely large adjoint source terms from being generated.
 constexpr double ZERO_FLUX_CUTOFF {1e-22};
 
+// The minimum macroscopic cross section value considered non-void for the
+// random ray solver. Materials with any group with a cross section below this
+// value will be converted to pure void.
+constexpr double MINIMUM_MACRO_XS {1e-6};
+
 // ============================================================================
 // MATH AND PHYSICAL CONSTANTS
 

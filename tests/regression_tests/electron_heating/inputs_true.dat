@@ -1,0 +1,32 @@
+<?xml version='1.0' encoding='utf-8'?>
+<model>
+  <materials>
+    <material id="1">
+      <density value="1.0" units="g/cc"/>
+      <nuclide name="H1" ao="2.0"/>
+      <nuclide name="O16" ao="1.0"/>
+    </material>
+  </materials>
+  <geometry>
+    <cell id="1" material="1" region="-1" universe="1"/>
+    <surface id="1" type="sphere" boundary="reflective" coeffs="0.0 0.0 0.0 1.0"/>
+  </geometry>
+  <settings>
+    <run_mode>fixed source</run_mode>
+    <particles>10000</particles>
+    <batches>1</batches>
+    <source type="independent" strength="1.0" particle="electron">
+      <energy type="discrete">
+        <parameters>10000000.0 1.0</parameters>
+      </energy>
+    </source>
+    <cutoff>
+      <energy_photon>1000.0</energy_photon>
+    </cutoff>
+  </settings>
+  <tallies>
+    <tally id="1">
+      <scores>heating</scores>
+    </tally>
+  </tallies>
+</model>

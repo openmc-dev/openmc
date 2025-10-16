@@ -324,7 +324,7 @@ def atomic_mass(isotope):
         # isotopes of their element (e.g. C0), calculate the atomic mass as
         # the sum of the atomic mass times the natural abundance of the isotopes
         # that make up the element.
-        for element in ['C', 'Zn', 'Pt', 'Os', 'Tl']:
+        for element in ['C', 'Zn', 'Pt', 'Os', 'Tl', 'V']:
             isotope_zero = element.lower() + '0'
             _ATOMIC_MASS[isotope_zero] = 0.
             for iso, abundance in isotopes(element):

@@ -287,6 +287,7 @@ class MeshBase(IDManagerMixin, ABC):
             model: openmc.Model,
             n_samples: int | tuple[int, int, int] = 10_000,
             include_void: bool = True,
+            material_volumes: MeshMaterialVolumes | None = None,
             **kwargs
     ) -> list[openmc.Material]:
         """Generate homogenized materials over each element in a mesh.
@@ -305,8 +306,12 @@ class MeshBase(IDManagerMixin, ABC):
             the x, y, and z dimensions.
         include_void : bool, optional
             Whether homogenization should include voids.
+        material_volumes : MeshMaterialVolumes, optional
+            Previously computed mesh material volumes to use for homogenization.
+            If not provided, they will be computed by calling
+            :meth:`material_volumes`.
         **kwargs
-            Keyword-arguments passed to :meth:`MeshBase.material_volumes`.
+            Keyword-arguments passed to :meth:`material_volumes`.
 
         Returns
         -------
@@ -314,7 +319,10 @@ class MeshBase(IDManagerMixin, ABC):
             Homogenized material in each mesh element
 
         """
-        vols = self.material_volumes(model, n_samples, **kwargs)
+        if material_volumes is None:
+            vols = self.material_volumes(model, n_samples, **kwargs)
+        else:
+            vols = material_volumes
         mat_volume_by_element = [vols.by_element(i) for i in range(vols.num_elements)]
 
         # Create homogenized material for each element
@@ -424,7 +432,6 @@ class MeshBase(IDManagerMixin, ABC):
 
         # Restore original tallies
         model.tallies = original_tallies
-
         return volumes
 
 

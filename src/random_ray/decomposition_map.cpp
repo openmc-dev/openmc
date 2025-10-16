@@ -120,23 +120,28 @@ void DecompositionMap::calculate_grid_points(int grid_points_total){
 
     // For each dimension, determine grid points along that direction based on aspect ratio: 
     // domain_length / volume^(1/3) = grid_points_dimension / grid_points_total^(1/3).
-    // Check if any dimension is so distorted that it would only receive minimun of 2 grid 
-    // points and flag that direction to correct total number of grid points.
+    // Check if any dimension is so distorted that it would only receive minimun of 1 grid 
+    // point and flag that direction to correct total number of grid points.
     int excluded_dimension = -1;
     vector<int> grid_points_per_dimension(3);
     for (int i = 0; i < 3; i++){
       double grid_points_estimate = ((domain_length[i] / cbrt(volume)) * cbrt(grid_points_total));
 
-      if (grid_points_estimate > 2){
+      if (grid_points_estimate > 1){
         grid_points_per_dimension[i] = round(grid_points_estimate);
       } else {
         excluded_dimension = i;
-        grid_points_per_dimension[i] = 2;
+        grid_points_per_dimension[i] = 1;
       }
     }
 
-    // If one dimension is excluded, recalculate grid points in other two dimensions based on area. Divide total 
-    // number of grid points by 2 to account for the fixed 2 grid points in excluded direction.
+    // If problem is 2D, exclude z direction
+    if (RandomRay::geom_dim_ == RandomRayGeomDim::TWO_DIM){
+      excluded_dimension = 2;
+      grid_points_per_dimension[2] = 1;
+    }
+
+    // If one dimension is excluded, recalculate grid points in other two dimensions based on area.
     if (excluded_dimension != -1){
       double area = 1.0;
       
@@ -147,7 +152,7 @@ void DecompositionMap::calculate_grid_points(int grid_points_total){
 
       for (int i = 0; i < 3; i++){
         if (i == excluded_dimension) continue;
-        grid_points_per_dimension[i] = round((domain_length[i] / sqrt(area)) * sqrt(grid_points_total/2.0));
+        grid_points_per_dimension[i] = round((domain_length[i] / sqrt(area)) * sqrt(grid_points_total));
       }
     } 
 
@@ -175,17 +180,31 @@ void DecompositionMap::calculate_grid_points(int grid_points_total){
     printf("Grid points in x, y, z: %d, %d, %d \n", grid_points_per_dimension[0], grid_points_per_dimension[1], grid_points_per_dimension[2]);
 
     // Calculate spacing between grid points in each dimension
-    double delta_x = (spatial_box_->upper_right().x - spatial_box_->lower_left().x) / (grid_points_per_dimension[0] - 1);
-    double delta_y = (spatial_box_->upper_right().y - spatial_box_->lower_left().y) / (grid_points_per_dimension[1] - 1);
-    double delta_z = (spatial_box_->upper_right().z - spatial_box_->lower_left().z) / (grid_points_per_dimension[2] - 1);
+    vector <double> delta_value(3, 0.0);
+
+    for (int i = 0; i < 3; i++){
+      if (grid_points_per_dimension[i] > 1){
+        delta_value[i] = domain_length[i] / (grid_points_per_dimension[i] - 1);
+      }
+    }
+
+    double x = spatial_box_->lower_left().x + domain_length[0] * 0.5;
+    double y = spatial_box_->lower_left().y + domain_length[1] * 0.5;
+    double z = spatial_box_->lower_left().z + domain_length[2] * 0.5;
 
     // Generate all grid points
     for (int i = 0; i < grid_points_per_dimension[0]; i++) {
-        double x = spatial_box_->lower_left().x + i * delta_x;
+        if (grid_points_per_dimension[0] > 1) {        
+          x = spatial_box_->lower_left().x + i * delta_value[0];
+        }
         for (int j = 0; j < grid_points_per_dimension[1]; j++) {
-            double y = spatial_box_->lower_left().y + j * delta_y;
+            if (grid_points_per_dimension[1] > 1) {        
+              y = spatial_box_->lower_left().y + j * delta_value[1];
+            }
             for (int k = 0; k < grid_points_per_dimension[2]; k++) {
-                double z = spatial_box_->lower_left().z + k * delta_z;
+                if (grid_points_per_dimension[2] > 1) {        
+                  z = spatial_box_->lower_left().z + k * delta_value[2];
+                }
                 grid_points_.push_back({x, y, z});
             }
         }
@@ -204,7 +223,12 @@ void DecompositionMap::initialize_points(){
 
     double x = prn(&seed);
     double y = prn(&seed);
-    double z = prn(&seed);
+    double z = 0.0;
+    if (RandomRay::geom_dim_ == RandomRayGeomDim::THREE_DIM){
+      z = prn(&seed);
+    } else{
+      z = 0.5; // Mid-plane in z direction
+    }
 
     Position xi {x, y, z};
 
@@ -261,7 +285,7 @@ void DecompositionMap::calculate_voronoi(vector<Position>& position_sum_per_rank
 
 Position DecompositionMap::calculate_centroids(const Position position_sum, const int num_points, int rank){
 
-  // check if any points have been recorded in rank
+  // check if any points have been recorded in rank //TODO: Message not precise enough, specify what is meant by "mesh".
   if (num_points == 0){
     fatal_error("Rank " + std::to_string(rank) + " has no Voronoi cell points. Mesh is too coarse.");
   }
@@ -723,7 +747,9 @@ void DecompositionMap::balance_load(FlatSourceDomain* domain){
     if (cnt_unconverged_optimizations_ > 5){
       cnt_unconverged_optimizations_ = 0;
       imbalance_tolerance_ = best_imbalance; // relax tolerance if not converging
-      printf("Relaxing MPI load balancing tolerance to %.2f%% \n", imbalance_tolerance_*100.0);
+      if (mpi::master){
+        printf("Relaxing MPI load balancing tolerance to %.2f%% \n", imbalance_tolerance_*100.0);
+      }
     }
 
     if (best_index == 0){
@@ -737,7 +763,9 @@ void DecompositionMap::balance_load(FlatSourceDomain* domain){
     }
   }
 
+  simulation::time_load_balance_sr_transfer.start();
   redistribute_source_regions(domain);
+  simulation::time_load_balance_sr_transfer.stop();
 
   //TODO: temporary
   if (mpi::master){

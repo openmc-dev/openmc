@@ -1057,10 +1057,14 @@ void FlatSourceDomain::output_to_vtk_decomp() const
     write_message(5, "Processing plot {}: {}... (Estimated size is {} MB)",
       openmc_plot->id(), filename, bytes / 1.0e6);
     if (bytes / 1.0e9 > 1.0) {
-      warning("Voxel plot specification is very large (>1 GB). Plotting may be "
-              "slow.");
+      if (mpi::master) {
+        warning("Voxel plot specification is very large (>1 GB). Plotting may be "
+                "slow.");
+      }
     } else if (bytes / 1.0e9 > 100.0) {
-      fatal_error("Voxel plot specification is too large (>100 GB). Exiting.");
+      if (mpi::master) {
+        fatal_error("Voxel plot specification is too large (>100 GB). Exiting.");
+      }
     }
 
     // Relate voxel spatial locations to random ray source regions
@@ -1126,7 +1130,7 @@ void FlatSourceDomain::output_to_vtk_decomp() const
             assigned_rank = it->second;
           }
           if (assigned_rank == mpi::rank) {
-            #pragma omp critical
+            #pragma omp critical (create_my_voxel_ids)
             {
               my_voxel_ids.push_back(z * Ny * Nx + y * Nx + x);
             }
@@ -2044,10 +2048,109 @@ void FlatSourceDomain::apply_transport_stabilization()
   }
 }
 
-// void FlatSourceDomain::initialize_ray_bank(){
-//   // RB_.clear();
-//   // RB_.shrink_to_fit();
-// }
+bool FlatSourceDomain::is_geometry_3D()
+{
+  // Get spatial box of ray_source_
+  SpatialBox* sb = dynamic_cast<SpatialBox*>(
+    dynamic_cast<IndependentSource*>(RandomRay::ray_source_.get())->space());
 
+  // printf("Test1\n");
+  
+  Position shift {FP_COINCIDENT, FP_COINCIDENT, FP_COINCIDENT}; //TODO: necessary? Adopted from halton sampling
+
+  double x_length = sb->upper_right().x - sb->lower_left().x;
+  double y_length = sb->upper_right().y - sb->lower_left().y;
+  double z_length = sb->upper_right().z - sb->lower_left().z;
+
+    // printf("Test2\n");
+
+  int num_xy_points = 100;
+  int num_z_points = 100;
+  uint64_t seed = openmc_get_seed();
+
+    // printf("Test3\n");
+
+  for (int i = 0; i < num_xy_points; i++) {
+    Position sample;
+    sample.x = sb->lower_left().x + x_length * prn(&seed);
+    sample.y = sb->lower_left().y + y_length * prn(&seed);
+    
+    // z_point_samples = rhalton(num_z_points, current_seed(), skip = 0);
+    SourceRegionKey sr_key_prev {-1, -1};
+    bool check_key = false;
+
+    // printf("Checking x,y = %1.6f, %1.6f\n", sample.x, sample.y);
+
+    for (int j = 0; j < num_z_points; j++){ //TODO: include uppermost and lowermost position?
+      sample.z = sb->lower_left().z + z_length * prn(&seed);
+
+      // printf("  Checking z = %1.6f\n", sample.z);
+
+      Particle p;
+      p.r() = sample;
+      p.r_last() = sample;
+      p.E() = 1.0;
+      p.E_last() = 1.0;
+      p.u() = {0.0, 0.0, 1.0};
+
+      bool found = exhaustive_find_cell(p);
+      if (!found) {
+        continue;
+      }
+
+        // printf("Test5\n");
+
+      int i_cell = p.lowest_coord().cell();
+      int64_t sr = source_region_offsets_[i_cell] + p.cell_instance();
+      SourceRegionKey sr_key {sr, 0};
+
+      // printf("Test6\n");
+
+
+      if (RandomRay::mesh_subdivision_enabled_) {
+
+              // printf("Test6.1\n");
+
+        int mesh_idx = base_source_regions_.mesh(sr);
+
+      // printf("Test6.2\n");
+
+        int mesh_bin;
+        if (mesh_idx == C_NONE) {
+          mesh_bin = 0;
+        } else {
+          mesh_bin = model::meshes[mesh_idx]->get_bin(p.r());
+        }
+        sr_key = {sr, mesh_bin};
+
+              // printf("Test6.3\n");
+
+        // printf("    Found source region key = (%ld, %ld)\n", sr_key.base_source_region_id, sr_key.mesh_bin);
+
+        if (check_key && (sr_key.base_source_region_id != sr_key_prev.base_source_region_id ||
+                         sr_key.mesh_bin != sr_key_prev.mesh_bin)) {
+          return true;
+        }
+
+              // printf("Test6.4\n");
+
+        sr_key_prev = sr_key;
+        check_key = true;
+        //TODO: why is this code checking sr when it is already known?
+        // auto it = source_region_map_.find(sr_key);
+        // if (it != source_region_map_.end()) {
+        //   sr = it->second;
+        // } else {
+        //   sr = -1;
+        // }
+      }
+
+        // printf("Test7\n");
+
+    }
+  }
+
+  return false;
+}
 
 } // namespace openmc

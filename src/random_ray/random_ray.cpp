@@ -242,6 +242,7 @@ double RandomRay::distance_active_;
 unique_ptr<Source> RandomRay::ray_source_;
 RandomRaySourceShape RandomRay::source_shape_ {RandomRaySourceShape::FLAT};
 bool RandomRay::mesh_subdivision_enabled_ {false};
+RandomRayGeomDim RandomRay::geom_dim_ {RandomRayGeomDim::THREE_DIM}; 
 RandomRaySampleMethod RandomRay::sample_method_ {RandomRaySampleMethod::PRNG};
 
 RandomRay::RandomRay()
@@ -960,8 +961,36 @@ void RandomRay::restart_ray(FlatSourceDomain* domain, RayExchangeData& data, vec
  }
 
   // Set ray's angular flux to value before subdomain change
-  for (int g = 0; g < negroups_; g++) {
-    angular_flux_[g] = angular_flux[g];
+  if (distance_travelled_ > 0.0 || is_active_){
+    for (int g = 0; g < negroups_; g++) {
+      angular_flux_[g] = angular_flux[g];
+    }
+  } 
+  // Initialize ray's starting angular flux to starting location's isotropic
+  // source 
+  else {
+    SourceRegionHandle srh;
+    if (mesh_subdivision_enabled_) {
+      int mesh_idx = domain_->base_source_regions_.mesh(sr);
+      int mesh_bin;
+      if (mesh_idx == C_NONE) {
+        mesh_bin = 0;
+      } else {
+        Mesh* mesh = model::meshes[mesh_idx].get();
+        mesh_bin = mesh->get_bin(r());
+      }
+
+      srh =
+        domain_->get_subdivided_source_region_handle(sr, mesh_bin, r(), u());
+    } else {
+      srh = domain_->source_regions_.get_source_region_handle(sr);
+    }
+
+    if (!srh.is_numerical_fp_artifact_) {
+      for (int g = 0; g < negroups_; g++) {
+        angular_flux_[g] = srh.source(g);
+      }
+    }
   }
 
   // printf("RANK %d: Restart ray %ld, position: %f, %f, %f, angular flux: %f, distance travlled: %f, rank %d\n", mpi::rank, id(), r().x, r().y, r().z, angular_flux_[0], distance_travelled_, mpi::rank);
@@ -1027,6 +1056,21 @@ void RandomRay::initialize_ray(uint64_t ray_id, FlatSourceDomain* domain)
       Mesh* mesh = model::meshes[mesh_idx].get();
       mesh_bin = mesh->get_bin(r());
     }
+
+    if (mpi::n_procs > 1){
+      // Check if ray sampling site belongs to subdomain
+      owner_rank_ = mpi::decomp_map.find_owner(SourceRegionKey(sr, mesh_bin), r(), 
+        domain_->discovered_source_regions_);
+      if (owner_rank_ != mpi::rank) {
+        for (int g = 0; g < negroups_; g++) {
+          angular_flux_[g] = 0.0;
+        }
+        pack_ray_for_buffer(0.0, r());
+        is_local_ = false;
+        return;
+      }
+    }
+
     srh =
       domain_->get_subdivided_source_region_handle(sr, mesh_bin, r(), u());
     // if (simulation::current_batch == 130){

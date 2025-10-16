@@ -78,6 +78,7 @@ public:
   //TODO: temporary
   int cnt_unconverged_optimizations_total_ = 0;
   int cnt_optimizations_total_ = 0;
+  double max_imbalance_ = 0.0; //TODO: rename in max_load_imbalance_
 
 private:
   //----------------------------------------------------------------------------
@@ -90,7 +91,6 @@ private:
 
   double max_domain_length_;
   bool is_linear_;
-  double max_imbalance_ = 0.0;
   double imbalance_tolerance_ = 0.01; // 1% imbalance tolerance
   double optimization_history_factor_ = 1.0; 
   int cnt_unconverged_optimizations_ = 0;

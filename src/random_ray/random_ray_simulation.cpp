@@ -63,6 +63,9 @@ void openmc_run_random_ray()
     // Initialize fixed sources, if present
     sim.apply_fixed_sources_and_mesh_domains();
 
+    // // Check if problem is 3D or 2D
+    // sim.check_geometry_dimensions();
+
     // Begin main simulation timer
     simulation::time_total.start();
 
@@ -394,6 +397,15 @@ RandomRaySimulation::RandomRaySimulation()
   domain_->flatten_xs();
 }
 
+// void RandomRaySimulation::check_geometry_dimensions(){
+//   // Check if problem is 3D
+//   if (!domain_->is_geometry_3D()){
+//     RandomRay::geom_dim_ = RandomRayGeomDim::TWO_DIM;
+//   }
+
+//   printf("Geometry is %s\n", (RandomRay::geom_dim_ == RandomRayGeomDim::THREE_DIM) ? "3D" : "2D");
+// }
+
 void RandomRaySimulation::apply_fixed_sources_and_mesh_domains()
 {
   domain_->apply_meshes();
@@ -426,9 +438,6 @@ void RandomRaySimulation::simulate()
 
   // Initialize subdomains for MPI ranks
   mpi::decomp_map.initialize();
-  simulation::time_generate_voronoi_centers.start();
-  mpi::decomp_map.generate_rank_centers();
-  simulation::time_generate_voronoi_centers.stop();
 
   // Create ray bank //TODO: Should this just be local object?
   RayBank RB;
@@ -458,6 +467,21 @@ void RandomRaySimulation::simulate()
     if (RandomRay::mesh_subdivision_enabled_ &&
         simulation::current_batch == 1 && !FlatSourceDomain::adjoint_) {
       domain_->prepare_base_source_regions();
+
+      // printf("Geometry is %s\n", (RandomRay::geom_dim_ == RandomRayGeomDim::THREE_DIM) ? "3D" : "2D");
+
+      // Check if problem is 3D
+      if (!domain_->is_geometry_3D()){
+        RandomRay::geom_dim_ = RandomRayGeomDim::TWO_DIM;
+      }
+
+      printf("Geometry is %s\n", (RandomRay::geom_dim_ == RandomRayGeomDim::THREE_DIM) ? "3D" : "2D");
+
+      // Generate Voronoi cells, each of which corresponds to a rank subdomain
+      simulation::time_generate_voronoi_centers.start();
+      mpi::decomp_map.generate_rank_centers();
+      simulation::time_generate_voronoi_centers.stop();
+
     }
 
     // Transport sweep over all random rays for the iteration
@@ -665,6 +689,7 @@ void RandomRaySimulation::print_results_random_ray(
       for (int i = 1; i < mpi::n_procs; i++) {
         fmt::print("                                     Rank {}: {:.2f}%\n", i, mpi::decomp_map.rank_load_[i]*100.0);
       }
+      fmt::print("Maximum Load Imbalance             = {:.2f}%\n", mpi::decomp_map.max_imbalance_*100.0);
     }
 
     std::string estimator;
@@ -728,6 +753,8 @@ void RandomRaySimulation::print_results_random_ray(
       show_time("Ray communication", time_ray_comms.elapsed(), 2);
       show_time("Source region exchange", time_source_region_exchange.elapsed(), 2);
       show_time("Load balancing", time_load_balance.elapsed(), 2);
+      show_time("Optimization", time_load_balance.elapsed() - time_load_balance_sr_transfer.elapsed(), 3);
+      show_time("Source region transfer", time_load_balance_sr_transfer.elapsed(), 3);
       show_time("Waiting for other ranks", time_mpi_imbalance.elapsed(), 2);
       show_time("Generating Voronoi centers", time_generate_voronoi_centers.elapsed(), 2);
       show_time("Sending ray metadata", time_comms_metadata.elapsed(), 2);
@@ -814,10 +841,21 @@ void RandomRaySimulation::transport_sweep_decomp(RayBank& RB) {
       uint64_t id = simulation::work_index[mpi::rank] + i;
       RandomRay ray(id, domain_.get());
 
-      // Add ray to ray bank 
-      #pragma omp critical (raybank)
-      {
-        RB.add_ray_to_bank(ray);
+      // Add ray to ray bank if it starts in my subdomain
+      if (!ray.has_left_subdomain()){
+        #pragma omp critical (raybank)
+        {
+          RB.add_ray_to_bank(ray);
+        }
+      } 
+      // Put ray if straight into buffer it starts outside my subdomain
+      else {
+        #pragma omp critical (raybuffer)
+        {
+          simulation::time_ray_buffering.start();
+          RB.buffer_ray_data_to_send(ray, domain_.get());
+          simulation::time_ray_buffering.stop();
+        }
       }
     }
 

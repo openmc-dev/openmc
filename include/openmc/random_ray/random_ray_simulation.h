@@ -22,6 +22,7 @@ public:
   //----------------------------------------------------------------------------
   // Methods
   void compute_segment_correction_factors();
+  // void check_geometry_dimensions();
   void apply_fixed_sources_and_mesh_domains();
   void prepare_fixed_sources_adjoint(vector<double>& forward_flux,
     SourceRegionContainer& forward_source_regions,

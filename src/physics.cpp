@@ -851,7 +851,7 @@ Direction sample_target_velocity(const Nuclide& nuc, double E, Direction u,
 
     // otherwise, use free gas model
   } else {
-    if (E >= FREE_GAS_THRESHOLD * kT && nuc.awr_ > 1.0) {
+    if (E >= settings::free_gas_threshold * kT && nuc.awr_ > 1.0) {
       return {};
     } else {
       sampling_method = ResScatMethod::cxs;

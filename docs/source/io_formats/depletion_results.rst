@@ -4,7 +4,7 @@
 Depletion Results File Format
 =============================
 
-The current version of the depletion results file format is 1.1.
+The current version of the depletion results file format is 1.2.
 
 **/**
 
@@ -12,22 +12,19 @@ The current version of the depletion results file format is 1.1.
              - **version** (*int[2]*) -- Major and minor version of the
                statepoint file format.
 
-:Datasets: - **eigenvalues** (*double[][][2]*) -- k-eigenvalues at each
-             time/stage. This array has shape (number of timesteps, number of
-             stages, value). The last axis contains the eigenvalue and the
-             associated uncertainty
-           - **number** (*double[][][][]*) -- Total number of atoms. This array
-             has shape (number of timesteps, number of stages, number of
+:Datasets: - **eigenvalues** (*double[][2]*) -- k-eigenvalues at end of each
+             timestep. This array has shape (number of timesteps, 2). The
+             second axis contains the eigenvalue and the associated uncertainty
+           - **number** (*double[][][]*) -- Total number of atoms at end of each
+             timestep. This array has shape (number of timesteps, number of
              materials, number of nuclides).
-           - **reaction rates** (*double[][][][][]*) -- Reaction rates used to
-             build depletion matrices. This array has shape (number of
-             timesteps, number of stages, number of materials, number of
-             nuclides, number of reactions).
+           - **reaction rates** (*double[][][][]*) -- Reaction rates at end of
+             each timestep. This array has shape (number of timesteps, number of
+             materials, number of nuclides, number of reactions).
            - **time** (*double[][2]*) -- Time in [s] at beginning/end of each
              step.
-           - **source_rate** (*double[][]*) -- Power in [W] or source rate in
-             [neutron/sec]. This array has shape (number of timesteps, number
-             of stages).
+           - **source_rate** (*double[]*) -- Power in [W] or source rate in
+             [neutron/sec] for each timestep.
            - **depletion time** (*double[]*) -- Average process time in [s]
              spent depleting a material across all burnable materials and,
              if applicable, MPI processes.

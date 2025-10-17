@@ -775,12 +775,10 @@ class Integrator(ABC):
         -------
         proc_time : float
             Time spent in CRAM routines for all materials in [s]
-        n_list : list of list of numpy.ndarray
-            Concentrations at each of the intermediate points with
-            the final concentration as the last element
-        op_results : list of openmc.deplete.OperatorResult
-            Eigenvalue and reaction rates from intermediate transport
-            simulations
+        n_end : list of numpy.ndarray
+            Concentrations at end of timestep
+        op_result : openmc.deplete.OperatorResult
+            Eigenvalue and reaction rates at end of timestep
         """
 
     @property
@@ -811,9 +809,9 @@ class Integrator(ABC):
         """Get beginning of step concentrations, reaction rates from restart"""
         res = self.operator.prev_res[-1]
         # Depletion methods expect list of arrays
-        bos_conc = list(res.data[0])
-        rates = res.rates[0]
-        k = ufloat(res.k[0, 0], res.k[0, 1])
+        bos_conc = list(res.data)
+        rates = res.rates
+        k = ufloat(res.k[0], res.k[1])
 
         if res.source_rate != 0.0:
             # Scale reaction rates by ratio of source rates
@@ -896,19 +894,12 @@ class Integrator(ABC):
                     n, res = self._get_bos_data_from_restart(source_rate, n)
 
                 # Solve Bateman equations over time interval
-                proc_time, n_list, res_list = self(n, res.rates, dt, source_rate, i)
-
-                # Insert BOS concentration, transport results
-                n_list.insert(0, n)
-                res_list.insert(0, res)
-
-                # Remove actual EOS concentration for next step
-                n = n_list.pop()
+                proc_time, n_end, res_end = self(n, res.rates, dt, source_rate, i)
 
                 StepResult.save(
                     self.operator,
-                    n_list,
-                    res_list,
+                    n,
+                    res,
                     [t, t + dt],
                     source_rate,
                     self._i_res + i,
@@ -917,6 +908,8 @@ class Integrator(ABC):
                     path=path
                 )
 
+                # Update for next step
+                n = n_end
                 t += dt
 
             # Final simulation -- in the case that final_step is False, a zero
@@ -925,11 +918,11 @@ class Integrator(ABC):
             # solve)
             if output and final_step and comm.rank == 0:
                 print(f"[openmc.deplete] t={t} (final operator evaluation)")
-            res_list = [self.operator(n, source_rate if final_step else 0.0)]
+            res_final = self.operator(n, source_rate if final_step else 0.0)
             StepResult.save(
                 self.operator,
-                [n],
-                res_list,
+                n,
+                res_final,
                 [t, t],
                 source_rate,
                 self._i_res + len(self),
@@ -1191,6 +1184,7 @@ class SIIntegrator(Integrator):
             n = self.operator.initial_condition()
             t, self._i_res = self._get_start_data()
 
+            res_end = None  # Will be set in first iteration
             for i, (dt, p) in enumerate(self):
                 if output:
                     print(f"[openmc.deplete] t={t} s, dt={dt} s, source={p}")
@@ -1203,21 +1197,14 @@ class SIIntegrator(Integrator):
                 else:
                     # Pull rates, k from previous iteration w/o
                     # re-running transport
-                    res = res_list[-1]  # defined in previous i iteration
+                    res = res_end  # defined in previous i iteration
 
-                proc_time, n_list, res_list = self(n, res.rates, dt, p, i)
-
-                # Insert BOS concentration, transport results
-                n_list.insert(0, n)
-                res_list.insert(0, res)
-
-                # Remove actual EOS concentration for next step
-                n = n_list.pop()
+                proc_time, n_end, res_end = self(n, res.rates, dt, p, i)
 
                 StepResult.save(
                     self.operator,
-                    n_list,
-                    res_list,
+                    n,
+                    res,
                     [t, t + dt],
                     p,
                     self._i_res + i,
@@ -1226,13 +1213,15 @@ class SIIntegrator(Integrator):
                     path=path
                 )
 
+                # Update for next step
+                n = n_end
                 t += dt
 
             # No final simulation for SIE, use last iteration results
             StepResult.save(
                 self.operator,
-                [n],
-                [res_list[-1]],
+                n,
+                res_end,
                 [t, t],
                 p,
                 self._i_res + len(self),

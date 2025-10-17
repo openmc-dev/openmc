@@ -39,8 +39,6 @@ INTEGRATORS = [
 def test_results_save(run_in_tmpdir):
     """Test data save module"""
 
-    stages = 3
-
     rng = np.random.RandomState(comm.rank)
 
     # Mock geometry
@@ -64,31 +62,22 @@ def test_results_save(run_in_tmpdir):
     op.get_results_info.return_value = (
         vol_dict, nuc_list, burn_list, full_burn_list)
 
-    # Construct x
-    x1 = []
-    x2 = []
+    # Construct end-of-step concentrations
+    x1 = [rng.random(2), rng.random(2)]
+    x2 = [rng.random(2), rng.random(2)]
 
-    for i in range(stages):
-        x1.append([rng.random(2), rng.random(2)])
-        x2.append([rng.random(2), rng.random(2)])
-
-    # Construct r
+    # Construct reaction rates
     r1 = ReactionRates(burn_list, ["na", "nb"], ["ra", "rb"])
     r1[:] = rng.random((2, 2, 2))
+    rate1 = copy.deepcopy(r1)
 
-    rate1 = []
-    rate2 = []
+    r2 = ReactionRates(burn_list, ["na", "nb"], ["ra", "rb"])
+    r2[:] = rng.random((2, 2, 2))
+    rate2 = copy.deepcopy(r2)
 
-    for i in range(stages):
-        rate1.append(copy.deepcopy(r1))
-        r1[:] = rng.random((2, 2, 2))
-        rate2.append(copy.deepcopy(r1))
-        r1[:] = rng.random((2, 2, 2))
-
-    # Create global terms
-    # Col 0: eig, Col 1: uncertainty
-    eigvl1 = rng.random((stages, 2))
-    eigvl2 = rng.random((stages, 2))
+    # Create global terms (eigenvalue and uncertainty)
+    eigvl1 = rng.random(2)
+    eigvl2 = rng.random(2)
 
     eigvl1 = comm.bcast(eigvl1, root=0)
     eigvl2 = comm.bcast(eigvl2, root=0)
@@ -96,10 +85,8 @@ def test_results_save(run_in_tmpdir):
     t1 = [0.0, 1.0]
     t2 = [1.0, 2.0]
 
-    op_result1 = [OperatorResult(ufloat(*k), rates)
-                  for k, rates in zip(eigvl1, rate1)]
-    op_result2 = [OperatorResult(ufloat(*k), rates)
-                  for k, rates in zip(eigvl2, rate2)]
+    op_result1 = OperatorResult(ufloat(*eigvl1), rate1)
+    op_result2 = OperatorResult(ufloat(*eigvl2), rate2)
 
     # saves within a subdirectory
     StepResult.save(
@@ -121,13 +108,12 @@ def test_results_save(run_in_tmpdir):
     # Load the files
     res = Results("depletion_results.h5")
 
-    for i in range(stages):
-        for mat_i, mat in enumerate(burn_list):
-            for nuc_i, nuc in enumerate(nuc_list):
-                assert res[0][i, mat, nuc] == x1[i][mat_i][nuc_i]
-                assert res[1][i, mat, nuc] == x2[i][mat_i][nuc_i]
-        np.testing.assert_array_equal(res[0].rates[i], rate1[i])
-        np.testing.assert_array_equal(res[1].rates[i], rate2[i])
+    for mat_i, mat in enumerate(burn_list):
+        for nuc_i, nuc in enumerate(nuc_list):
+            assert res[0][mat, nuc] == x1[mat_i][nuc_i]
+            assert res[1][mat, nuc] == x2[mat_i][nuc_i]
+    np.testing.assert_array_equal(res[0].rates, rate1)
+    np.testing.assert_array_equal(res[1].rates, rate2)
 
     np.testing.assert_array_equal(res[0].k, eigvl1)
     np.testing.assert_array_equal(res[0].time, t1)
@@ -146,10 +132,10 @@ def test_results_save_without_rates(run_in_tmpdir):
     burn_list = ["0"]
     op.get_results_info.return_value = (vol_dict, nuc_list, burn_list, burn_list)
 
-    x = [[np.array([1.0])]]
+    x = [np.array([1.0])]
     rates = ReactionRates(burn_list, nuc_list, ["ra"])
     rates[:] = np.array([[[2.0]]])
-    op_result = [OperatorResult(ufloat(1.0, 0.1), rates)]
+    op_result = OperatorResult(ufloat(1.0, 0.1), rates)
 
     StepResult.save(op, x, op_result, [0.0, 1.0], 0.0, 0)
 
@@ -158,7 +144,7 @@ def test_results_save_without_rates(run_in_tmpdir):
         assert 'reactions' not in handle
 
     res = Results('depletion_results.h5')
-    assert res[0].rates[0].size == 0
+    assert res[0].rates.size == 0
 
 
 def test_bad_integrator_inputs():

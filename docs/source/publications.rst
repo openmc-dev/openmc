@@ -566,6 +566,11 @@ Parallelism
 Depletion
 ---------
 
+- Oleksandr Yardas, Paul Romano, Madicken Munk, Kathryn Huff, "`Extension of the
+  OpenMC depletion module for transport-independent depletion
+  <https://doi.org/10.25080/ngdf5738>`_," *Proc. SciPy*,
+  Tacoma, Washington, Jul. 9-11 (2025).
+
 - Binhang Zhang, XianBao Yuan, Yonghong Zhang, Haibo Tang, and Liangzhi Cao,
   "`Development of a versatile depletion code AMAC
   <https://doi.org/10.1016/j.anucene.2020.107446>`_", *Ann. Nucl. Energy*,

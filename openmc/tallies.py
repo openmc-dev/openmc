@@ -597,15 +597,16 @@ class Tally(IDManagerMixin):
         else:
             return self._vov
 
+    @property
     def m2(self):
-        if not self._vov_enabled:
-            return None
         n = self.num_realizations
         return self.sum_sq/n - self.mean**2
 
+    @property
     def m3(self):
         if not self._vov_enabled:
-            return None
+            raise ValueError("Third central moment is not available unless "
+                             "vov_enabled is True.")
         n = self.num_realizations
         mean = self.mean
         sum2 = self.sum_sq/n
@@ -613,9 +614,11 @@ class Tally(IDManagerMixin):
 
         return sum3 - 3.0*mean*sum2 + 2.0*mean**3
 
+    @property
     def m4(self):
         if not self._vov_enabled:
-            return None
+            raise ValueError("Fourth central moment is not available unless "
+                             "vov_enabled is True.")
         n = self.num_realizations
         mean = self.mean
         sum2 = self.sum_sq/n
@@ -626,11 +629,9 @@ class Tally(IDManagerMixin):
 
     @property
     def skewness(self):
-        if not self._vov_enabled:
-            return None
         n = self.num_realizations
-        m2 = self.m2()
-        m3 = self.m3()
+        m2 = self.m2
+        m3 = self.m3
 
         with np.errstate(divide="ignore", invalid="ignore"):
             g1 = np.where(m2 > 0.0, m3/(m2**1.5), 0.0)

@@ -464,10 +464,24 @@ class StepResult:
             # Older versions used "power" instead of "source_rate"
             source_rate_dset = handle["/power"]
 
-        results.data = number_dset[step, :, :]
-        results.k = eigenvalues_dset[step, :]
+        # Check if this is an old format file (with stages dimension) or new format
+        # Old format: number has shape (n_steps, n_stages, n_mats, n_nucs)
+        # New format: number has shape (n_steps, n_mats, n_nucs)
+        has_stages = len(number_dset.shape) == 4
+
+        if has_stages:
+            # Old format - extract data from first stage (index 0)
+            results.data = number_dset[step, 0, :, :]
+            results.k = eigenvalues_dset[step, 0, :]
+            # source_rate had shape (n_steps, n_stages) in old format
+            results.source_rate = source_rate_dset[step, 0]
+        else:
+            # New format - no stages dimension
+            results.data = number_dset[step, :, :]
+            results.k = eigenvalues_dset[step, :]
+            results.source_rate = source_rate_dset[step]
+
         results.time = time_dset[step, :]
-        results.source_rate = source_rate_dset[step]
 
         if "depletion time" in handle:
             proc_time_dset = handle["/depletion time"]
@@ -505,7 +519,12 @@ class StepResult:
         # Reconstruct reaction rates
         rate = ReactionRates(results.index_mat, rxn_nuc_to_ind, rxn_to_ind, True)
         if "reaction rates" in handle:
-            rate[:] = handle["/reaction rates"][step, :, :, :]
+            if has_stages:
+                # Old format: (n_steps, n_stages, n_mats, n_nucs, n_rxns)
+                rate[:] = handle["/reaction rates"][step, 0, :, :, :]
+            else:
+                # New format: (n_steps, n_mats, n_nucs, n_rxns)
+                rate[:] = handle["/reaction rates"][step, :, :, :]
         results.rates = rate
 
         return results

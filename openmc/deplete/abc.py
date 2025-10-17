@@ -1184,10 +1184,6 @@ class SIIntegrator(Integrator):
                         n, res = self._get_bos_data_from_operator(i, p, n)
                     else:
                         n, res = self._get_bos_data_from_restart(p, n)
-                else:
-                    # Pull rates, k from previous iteration w/o
-                    # re-running transport
-                    res = res_end  # defined in previous i iteration
 
                 proc_time, n_end, res_end = self(n, res.rates, dt, p, i)
 
@@ -1205,6 +1201,7 @@ class SIIntegrator(Integrator):
 
                 # Update for next step
                 n = n_end
+                res = res_end
                 t += dt
 
             # No final simulation for SIE, use last iteration results

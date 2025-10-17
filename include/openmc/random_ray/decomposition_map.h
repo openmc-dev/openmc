@@ -43,7 +43,7 @@ public:
 
   // Methods for balancing the load between ranks
   void balance_load(FlatSourceDomain* domain);
-  void update_load(FlatSourceDomain* domain);
+  void update_load(FlatSourceDomain* domain, bool check_all_ranks);
   void redistribute_source_regions(FlatSourceDomain* domain);
   bool load_balanced() const { return max_imbalance_ < imbalance_tolerance_; }
 
@@ -51,7 +51,7 @@ public:
   int find_owner(SourceRegionKey sr_key, Position r,  
     ParallelMap<SourceRegionKey, SourceRegion, SourceRegionKey::HashFunctor>&
     discovered_source_regions);
-  int find_closest_rank(Position r);
+  int find_closest_rank(Position r, bool test_all_ranks);
 
   // Method to calculate the load per rank based on the total number of hits in all source regions
   // of a rank
@@ -71,6 +71,10 @@ public:
 
   // Centers of each rank's Voronoi cell
   vector<Position> rank_centers_;
+
+  // Neighbors of each rank's Voronoi cell
+  std::unordered_set<int> my_neighbors;
+  // vector<int> my_neighbors;
 
   vector<double> rank_load_;
   vector<double> rank_weights_;

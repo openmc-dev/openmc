@@ -540,17 +540,31 @@ int DecompositionMap::find_owner(SourceRegionKey sr_key, Position r,
 
   // If not found in either map, check which rank would own source 
   // region beased on location
-  int closest_rank = find_closest_rank(r);
+  int closest_rank = find_closest_rank(r, true); //TODO: Maybe make condition if all ranks need to be check dependend on whether new neighbours were identified!
   return closest_rank;
 }
 
-int DecompositionMap::find_closest_rank(Position r) {
+int DecompositionMap::find_closest_rank(Position r, bool test_all_ranks) {
   // Determine which rank the position belongs to
   int closest_rank = C_NONE;
   double min_distance = INFTY;
+
+  vector<int> test_ranks;
+  // test_ranks = mpi::decomp_map.my_neighbors;
+
+
+  if (test_all_ranks){
+    test_ranks.resize(mpi::n_procs);
+    std::iota(test_ranks.begin(), test_ranks.end(), 0); // fill with 0, 1, ..., n_procs-1
+  } else {
+    // convert unordered set to vector
+    test_ranks=vector<int>(mpi::decomp_map.my_neighbors.begin(), mpi::decomp_map.my_neighbors.end());
+    test_ranks.push_back(mpi::rank); // Always include own rank
+  }
   
   // Find closest rank center
-  for (int rank = 0; rank < mpi::n_procs; rank++) {
+  // for (int rank = 0; rank < mpi::n_procs; rank++) {
+  for (int rank : test_ranks) {
       double dist = (r - rank_centers_[rank]).norm();
       // Distance function corresponding to weighted power Voronoi diagram.
       dist = dist*dist - rank_weights_[rank];
@@ -630,7 +644,7 @@ void DecompositionMap::balance_load(FlatSourceDomain* domain){
   //TODO: The optimisation seems really messy
   cnt_optimizations_total_ ++;
 
-  int max_iterations = 500;
+  int max_iterations = 300;
   double max_imbalance = max_imbalance_;
 
   int it_outer = 0;
@@ -642,6 +656,7 @@ void DecompositionMap::balance_load(FlatSourceDomain* domain){
   double weight_scale = avg_rank_distance * avg_rank_distance * optimization_history_factor_; //TODO: maybe adjust dynamically dependent on wether previous batch has converged
   // double weight_scale = std::accumulate(rank_weights_.begin(), rank_weights_.end(), 0.0) / mpi::n_procs; // scale weights based on average load
   double beta = 0.6; // momentum damping
+  bool check_all_ranks = true;
 
   // History tracking
   vector<double> imbalance_history;
@@ -675,7 +690,12 @@ void DecompositionMap::balance_load(FlatSourceDomain* domain){
       rank_weights_[rank] -= adaptation_factor * damping * weight_change[rank];
     }
 
-    update_load(domain);
+    // if (it_outer > 0 && simulation::current_batch > 1){
+    if (simulation::current_batch > 1){
+      check_all_ranks = false;
+    }
+
+    update_load(domain, check_all_ranks);
     it_outer ++;
 
     double max_load = *std::max_element(rank_load_.begin(), rank_load_.end());
@@ -777,7 +797,7 @@ void DecompositionMap::balance_load(FlatSourceDomain* domain){
   }
 }
 
-void DecompositionMap::update_load(FlatSourceDomain* domain){
+void DecompositionMap::update_load(FlatSourceDomain* domain, bool check_all_ranks){
 
   vector<uint64_t> n_hits(mpi::n_procs, 0);
 
@@ -790,7 +810,7 @@ void DecompositionMap::update_load(FlatSourceDomain* domain){
     #pragma omp for
       for (int64_t sr = 0; sr < domain->n_source_regions(); sr++) {
         Position centroid = domain->source_regions_.centroid(sr);
-        int owner = find_closest_rank(centroid);
+        int owner = find_closest_rank(centroid, check_all_ranks);
         local_hits[owner] += domain->source_regions_.n_hits(sr);
       }
 
@@ -803,6 +823,22 @@ void DecompositionMap::update_load(FlatSourceDomain* domain){
     }
   }
 
+  // // Check if any new neighbors were discovered during this update
+  // if (check_all_ranks){
+
+  //   // Create a set from current neighbors for faster lookups
+  //   std::unordered_set<int> existing_neighbors(
+  //     mpi::decomp_map.my_neighbors.begin(), 
+  //     mpi::decomp_map.my_neighbors.end()
+  //   );
+
+  //   for (int rank = 0; rank < mpi::n_procs; rank++) {
+  //     // add to neighbor list if new neighbour found
+  //     if (n_hits[rank] > 0 && rank != mpi::rank && existing_neighbors.count(rank) == 0){
+  //       mpi::decomp_map.my_neighbors.push_back(rank);
+  //     }
+  //   }
+  // }
   // Accumulate hits across all ranks
   MPI_Allreduce(MPI_IN_PLACE, n_hits.data(), mpi::n_procs, MPI_UINT64_T, MPI_SUM, mpi::intracomm);
 
@@ -822,7 +858,7 @@ void DecompositionMap::redistribute_source_regions(FlatSourceDomain* domain) {
   // Each rank identifies source regions that need to be transferred to new owner and updates subdomain map accordingly
   for (int64_t sr = 0; sr < domain->n_source_regions(); sr++) {
     Position centroid = domain->source_regions_.centroid(sr);
-    int owner = find_closest_rank(centroid);
+    int owner = find_closest_rank(centroid, true);
 
     // If owner changed, write source region to list of outbound source regions
     if (owner != mpi::rank){

@@ -508,6 +508,14 @@ void RandomRaySimulation::simulate()
     domain_->normalize_scalar_flux_and_volumes(
       settings::n_particles * RandomRay::distance_active_);
 
+    if (mpi::master) {
+      printf("Rank %d has %ld neighbors: ", mpi::rank, mpi::decomp_map.my_neighbors.size());
+      for (int rank : mpi::decomp_map.my_neighbors){
+        printf("%d ", rank);
+      }
+      printf("\n");
+    }
+
     // Balance load between ranks by changing weights of Voronoi cells
     if (mpi::n_procs > 1 && mpi::decomp_map.load_balanced() == false){
       simulation::time_load_balance.start();
@@ -832,6 +840,8 @@ void RandomRaySimulation::transport_sweep_decomp(RayBank& RB) {
 
   // printf("Rank %d: Sampled source region %ld, meshbin %ld\n", mpi::rank, 
   //        sr_key.base_source_region_id, sr_key.mesh_bin);  // Assuming these are the correct member names
+
+  // mpi::decomp_map.my_neighbors.clear();
 
   simulation::time_decomposition_handling.start();
 

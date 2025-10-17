@@ -75,6 +75,8 @@ int RayBank::ray_bank_size(){
 
 // Tells each rank how many rays to receive from whom
 void RayBank::communicate_message_metadata() {  
+
+  // mpi::decomp_map.my_neighbors.resize(0); //TODO: Should this be reset here in each iteration? Maybe only if weight has changed? Maybe it does not need to be reset ever
   vector<int> num_messages_sending(mpi::n_procs, 0);
 
   // Ensure all values are zero
@@ -145,6 +147,13 @@ void RayBank::communicate_rays(){
         // Angular flux array
         for (int g = 0; g < negroups_; g++){
           angular_flux_data[(vector_send_idx + i) * negroups_ + g] = rays[i].angular_flux[g];
+        }
+
+        // Check neighbor list and add if not already known. Filter out rays that are sampled elsewhere TODO: Positioning here might be inefficient
+        if (rays[i].distance_travelled > 0.0 || rays[i].is_active) {
+          if (mpi::decomp_map.my_neighbors.count(receiving_rank) == 0) {
+            mpi::decomp_map.my_neighbors.insert(receiving_rank);
+          }
         }
       }
 

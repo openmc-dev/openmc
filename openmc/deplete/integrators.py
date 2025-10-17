@@ -48,16 +48,10 @@ class PredictorIntegrator(Integrator):
             Time spent in CRAM routines for all materials in [s]
         n_end : list of numpy.ndarray
             Concentrations at end of interval
-        op_result : openmc.deplete.OperatorResult
-            Empty OperatorResult with zero reaction rates (no intermediate
-            transport simulation)
 
         """
         proc_time, n_end = self._timed_deplete(n, rates, dt, _i)
-        # Create a dummy OperatorResult with zero rates for consistency
-        from .abc import OperatorResult
-        dummy_result = OperatorResult(None, rates * 0)
-        return proc_time, n_end, dummy_result
+        return proc_time, n_end
 
 
 @add_params
@@ -103,8 +97,6 @@ class CECMIntegrator(Integrator):
             Time spent in CRAM routines for all materials in [s]
         n_end : list of numpy.ndarray
             Concentrations at end of interval
-        op_result : openmc.deplete.OperatorResult
-            Eigenvalue and reaction rates at end of interval
         """
         # deplete across first half of interval
         time0, n_middle = self._timed_deplete(n, rates, dt / 2, _i)
@@ -114,7 +106,7 @@ class CECMIntegrator(Integrator):
         # MOS reaction rates
         time1, n_end = self._timed_deplete(n, res_middle.rates, dt, _i)
 
-        return time0 + time1, n_end, res_middle
+        return time0 + time1, n_end
 
 
 @add_params
@@ -166,9 +158,6 @@ class CF4Integrator(Integrator):
             Time spent in CRAM routines for all materials in [s]
         n_end : list of numpy.ndarray
             Concentrations at end of interval
-        op_result : openmc.deplete.OperatorResult
-            Eigenvalue and reaction rates from final intermediate transport
-            simulation
         """
         # Step 1: deplete with matrix 1/2*A(y0)
         time1, n_eos1 = self._timed_deplete(
@@ -193,7 +182,7 @@ class CF4Integrator(Integrator):
         time5, n_eos5 = self._timed_deplete(
             n_inter, list_rates, dt, _i, matrix_func=cf4_f4)
 
-        return (time1 + time2 + time3 + time4 + time5, n_eos5, res3)
+        return time1 + time2 + time3 + time4 + time5, n_eos5
 
 
 @add_params
@@ -258,7 +247,7 @@ class CELIIntegrator(Integrator):
         time_le2, n_end = self._timed_deplete(
             n_inter, list_rates, dt, _i, matrix_func=celi_f2)
 
-        return proc_time + time_le1 + time_le2, n_end, res_ce
+        return proc_time + time_le1 + time_le2, n_end
 
 
 @add_params
@@ -306,9 +295,6 @@ class EPCRK4Integrator(Integrator):
             Time spent in CRAM routines for all materials in [s]
         n_end : list of numpy.ndarray
             Concentrations at end of interval
-        op_result : openmc.deplete.OperatorResult
-            Eigenvalue and reaction rates from final intermediate transport
-            simulation
         """
 
         # Step 1: deplete with matrix A(y0) / 2
@@ -327,7 +313,7 @@ class EPCRK4Integrator(Integrator):
         list_rates = list(zip(rates, res1.rates, res2.rates, res3.rates))
         time4, n4 = self._timed_deplete(n, list_rates, dt, _i, matrix_func=rk4_f4)
 
-        return (time1 + time2 + time3 + time4, n4, res3)
+        return time1 + time2 + time3 + time4, n4
 
 
 @add_params
@@ -387,9 +373,6 @@ class LEQIIntegrator(Integrator):
             Time spent in CRAM routines for all materials in [s]
         n_end : list of numpy.ndarray
             Concentrations at end of interval
-        op_result : openmc.deplete.OperatorResult
-            Eigenvalue and reaction rates from final intermediate transport
-            simulation
         """
         if i == 0:
             if self._i_res < 1:  # need at least previous transport solution
@@ -427,7 +410,7 @@ class LEQIIntegrator(Integrator):
         # store updated rates
         self._prev_rates = copy.deepcopy(bos_res.rates)
 
-        return (time1 + time2 + time3 + time4, n_eos1, res_inter)
+        return time1 + time2 + time3 + time4, n_eos1
 
 
 @add_params

@@ -767,8 +767,6 @@ class Integrator(ABC):
             Time spent in CRAM routines for all materials in [s]
         n_end : list of numpy.ndarray
             Concentrations at end of timestep
-        op_result : openmc.deplete.OperatorResult
-            Eigenvalue and reaction rates at end of timestep
         """
 
     @property
@@ -884,7 +882,7 @@ class Integrator(ABC):
                     n, res = self._get_bos_data_from_restart(source_rate, n)
 
                 # Solve Bateman equations over time interval
-                proc_time, n_end, res_end = self(n, res.rates, dt, source_rate, i)
+                proc_time, n_end = self(n, res.rates, dt, source_rate, i)
 
                 StepResult.save(
                     self.operator,
@@ -1147,6 +1145,35 @@ class SIIntegrator(Integrator):
         if reset_particles:
             self.operator.settings.particles //= self.n_steps
         return inherited
+
+    @abstractmethod
+    def __call__(self, n, rates, dt, source_rate, i):
+        """Perform the integration across one time step
+
+        Parameters
+        ----------
+        n : list of numpy.ndarray
+            List of atom number arrays for each material. Each array has
+            shape ``(n_nucs,)`` where ``n_nucs`` is the number of nuclides
+        rates : openmc.deplete.ReactionRates
+            Reaction rates (from transport operator)
+        dt : float
+            Time step in [s]
+        source_rate : float
+            Power in [W] or source rate in [neutron/sec]
+        i : int
+            Current time step index
+
+        Returns
+        -------
+        proc_time : float
+            Time spent in transport simulation
+        n_end : list of numpy.ndarray
+            Updated atom number densities for each material
+        op_result : OperatorResult
+            Eigenvalue and reaction rates resulting from transport simulation
+
+        """
 
     def integrate(
         self,

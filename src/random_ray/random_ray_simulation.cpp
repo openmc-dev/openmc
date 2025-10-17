@@ -508,13 +508,13 @@ void RandomRaySimulation::simulate()
     domain_->normalize_scalar_flux_and_volumes(
       settings::n_particles * RandomRay::distance_active_);
 
-    if (mpi::master) {
+    // if (mpi::master) {
       printf("Rank %d has %ld neighbors: ", mpi::rank, mpi::decomp_map.my_neighbors.size());
       for (int rank : mpi::decomp_map.my_neighbors){
         printf("%d ", rank);
       }
       printf("\n");
-    }
+    // }
 
     // Balance load between ranks by changing weights of Voronoi cells
     if (mpi::n_procs > 1 && mpi::decomp_map.load_balanced() == false){
@@ -841,8 +841,6 @@ void RandomRaySimulation::transport_sweep_decomp(RayBank& RB) {
   // printf("Rank %d: Sampled source region %ld, meshbin %ld\n", mpi::rank, 
   //        sr_key.base_source_region_id, sr_key.mesh_bin);  // Assuming these are the correct member names
 
-  // mpi::decomp_map.my_neighbors.clear();
-
   simulation::time_decomposition_handling.start();
 
   // Create rays and add them to ray bank
@@ -910,6 +908,11 @@ void RandomRaySimulation::transport_sweep_decomp(RayBank& RB) {
       printf("Max subdomain crossings: %d\n", num_comms);
       printf("Number of ray crossings: %ld\n", num_ray_crossings_);
     }
+
+    // // Reset neighbors after first batch because first load balance operation will change layout strongly //TODO: However, we want to make sure we capture all possible neighbours, and if ray density is too low, it might actually be good to accumulate niehgbours over whole simulation
+    // if (simulation::current_batch == 1) {
+    //   mpi::decomp_map.my_neighbors.clear();
+    // }
 
     // Calculate load per rank based on number of hits in each source region that a rank owns
     mpi::decomp_map.calculate_rank_load(domain_.get());

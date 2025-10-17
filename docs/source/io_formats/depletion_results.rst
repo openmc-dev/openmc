@@ -12,15 +12,16 @@ The current version of the depletion results file format is 1.2.
              - **version** (*int[2]*) -- Major and minor version of the
                statepoint file format.
 
-:Datasets: - **eigenvalues** (*double[][2]*) -- k-eigenvalues at end of each
-             timestep. This array has shape (number of timesteps, 2). The
-             second axis contains the eigenvalue and the associated uncertainty
-           - **number** (*double[][][]*) -- Total number of atoms at end of each
+:Datasets: - **eigenvalues** (*double[][2]*) -- k-eigenvalues at each timestep.
+             This array has shape (number of timesteps, 2). The second axis
+             contains the eigenvalue and its associated uncertainty.
+           - **number** (*double[][][]*) -- Total number of atoms at each
              timestep. This array has shape (number of timesteps, number of
              materials, number of nuclides).
-           - **reaction rates** (*double[][][][]*) -- Reaction rates at end of
-             each timestep. This array has shape (number of timesteps, number of
-             materials, number of nuclides, number of reactions).
+           - **reaction rates** (*double[][][][]*) -- Reaction rates at each
+             timestep. This array has shape (number of timesteps, number of
+             materials, number of nuclides, number of reactions). Only stored if
+             write_rates=True.
            - **time** (*double[][2]*) -- Time in [s] at beginning/end of each
              step.
            - **source_rate** (*double[]*) -- Power in [W] or source rate in

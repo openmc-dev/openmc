@@ -30,10 +30,6 @@ def test_restart_predictor_cecm(run_in_tmpdir):
     op = dummy_operator.DummyOperator(prev_res)
     op.output_dir = output_dir
 
-    # check ValueError is raised, indicating previous and current stages
-    with pytest.raises(ValueError, match="incompatible.* 1.*2"):
-        openmc.deplete.CECMIntegrator(op, dt, power)
-
 
 def test_restart_cecm_predictor(run_in_tmpdir):
     """Integral regression test of integrator algorithm using CE/CM for the
@@ -55,10 +51,6 @@ def test_restart_cecm_predictor(run_in_tmpdir):
     # Re-create depletion operator and load previous results
     op = dummy_operator.DummyOperator(prev_res)
     op.output_dir = output_dir
-
-    # check ValueError is raised, indicating previous and current stages
-    with pytest.raises(ValueError, match="incompatible.* 2.*1"):
-        openmc.deplete.PredictorIntegrator(op, dt, power)
 
 
 @pytest.mark.parametrize("scheme", dummy_operator.SCHEMES)

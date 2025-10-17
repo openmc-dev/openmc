@@ -631,17 +631,7 @@ class Integrator(ABC):
             solver: str = "cram48",
             continue_timesteps: bool = False,
         ):
-        # Check number of stages previously used
-        if operator.prev_res is not None:
-            res = operator.prev_res[-1]
-            if res.data.shape[0] != self._num_stages:
-                raise ValueError(
-                    "{} incompatible with previous restart calculation. "
-                    "Previous scheme used {} intermediate solutions, while "
-                    "this uses {}".format(
-                        self.__class__.__name__, res.data.shape[0],
-                        self._num_stages))
-        elif continue_timesteps:
+        if continue_timesteps and operator.prev_res is None:
             raise ValueError("Continuation run requires passing prev_results.")
         self.operator = operator
         self.chain = operator.chain

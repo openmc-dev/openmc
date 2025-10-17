@@ -37,6 +37,7 @@ Timer time_source_region_exchange;
 Timer time_comms_metadata;
 Timer time_unpack_data;
 Timer time_mpi_imbalance;
+Timer time_test; //TODO: remove
 
 } // namespace simulation
 

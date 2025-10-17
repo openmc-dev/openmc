@@ -150,11 +150,13 @@ void RayBank::communicate_rays(){
         }
 
         // Check neighbor list and add if not already known. Filter out rays that are sampled elsewhere TODO: Positioning here might be inefficient
+        simulation::time_test.start(); //TODO: Remove
         if (rays[i].distance_travelled > 0.0 || rays[i].is_active) {
           if (mpi::decomp_map.my_neighbors.count(receiving_rank) == 0) {
             mpi::decomp_map.my_neighbors.insert(receiving_rank);
           }
         }
+        simulation::time_test.stop();
       }
 
       MPI_Isend(&ray_data[vector_send_idx], num_rays_sending * sizeof(RayExchangeData), MPI_BYTE, receiving_rank, 1, mpi::intracomm, &requests[req_idx]);

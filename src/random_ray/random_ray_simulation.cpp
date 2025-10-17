@@ -768,6 +768,7 @@ void RandomRaySimulation::print_results_random_ray(
       show_time("Sending ray metadata", time_comms_metadata.elapsed(), 2);
       show_time("Unpacking ray data", time_unpack_data.elapsed(), 2);
       show_time("Other decomposition routines", time_decomp_misc, 2);
+      show_time("Testing: ", time_test.elapsed(), 2); //TODO: remove
     }
     show_time("Other iteration routines", misc_time, 1);
 

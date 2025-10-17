@@ -634,14 +634,14 @@ void DecompositionMap::calculate_rank_load(FlatSourceDomain* domain){ //TODO: Th
   }
 
   // Calculate imbalance
-  vector<double> imbalance_per_rank(mpi::n_procs, 0.0);
-  for (int rank = 0; rank < mpi::n_procs; rank++) {
-    imbalance_per_rank[rank] = std::abs(rank_load_[rank] - target_load_) / target_load_;
-  }
-  max_imbalance_ = *std::max_element(imbalance_per_rank.begin(), imbalance_per_rank.end());
-  // double max_load = *std::max_element(rank_load_.begin(), rank_load_.end());
-  // double avg_load = std::accumulate(rank_load_.begin(), rank_load_.end(), 0.0)/mpi::n_procs;
-  // max_imbalance_ = (max_load - avg_load) / avg_load;
+  // vector<double> imbalance_per_rank(mpi::n_procs, 0.0);
+  // for (int rank = 0; rank < mpi::n_procs; rank++) {
+  //   imbalance_per_rank[rank] = std::abs(rank_load_[rank] - target_load_) / target_load_;
+  // }
+  // max_imbalance_ = *std::max_element(imbalance_per_rank.begin(), imbalance_per_rank.end());
+  double max_load = *std::max_element(rank_load_.begin(), rank_load_.end());
+  double avg_load = std::accumulate(rank_load_.begin(), rank_load_.end(), 0.0)/mpi::n_procs;
+  max_imbalance_ = (max_load - avg_load) / avg_load;
 }
 
 void DecompositionMap::balance_load(FlatSourceDomain* domain){
@@ -674,7 +674,7 @@ void DecompositionMap::balance_load(FlatSourceDomain* domain){
   // double max_imbalance_old = max_imbalance_;
 
 
-  vector<double> imbalance_per_rank(mpi::n_procs, 0.0);
+  // vector<double> imbalance_per_rank(mpi::n_procs, 0.0);
 
   std::unordered_map<int, vector<int>> sr_send; // contains regions to be send
 
@@ -691,8 +691,9 @@ void DecompositionMap::balance_load(FlatSourceDomain* domain){
 
     for (int rank = 0; rank < mpi::n_procs; rank++) {
       // weight_scale = std::accumulate(rank_weights_.begin(), rank_weights_.end(), 0.0) / mpi::n_procs;
-      imbalance_per_rank[rank] = (rank_load_[rank] - target_load_) / target_load_;
-      double corr = imbalance_per_rank[rank] * weight_scale;
+      // imbalance_per_rank[rank] = (rank_load_[rank] - target_load_) / target_load_;
+      // double corr = imbalance_per_rank[rank] * weight_scale;
+      double corr = ((rank_load_[rank] - target_load_) / target_load_) * weight_scale;
       weight_change[rank] = beta * weight_change[rank] + (1.0 - beta) * corr; // keep some inertia from previous changes to prevent oscillations
       // double damping = std::min(1.0, max_imbalance / imbalance_tolerance_); // dampening factor based on how far we are from convergence
       double damping = std::clamp(max_imbalance / prev_imbalance, 0.1, 1.0); // dampening factor based on whether we are getting closer to convergence or not, prevents big jumps, if too big a change, more dampening is applied
@@ -707,17 +708,17 @@ void DecompositionMap::balance_load(FlatSourceDomain* domain){
     update_load(domain, check_all_ranks);
     it_outer ++;
 
-    // double max_load = *std::max_element(rank_load_.begin(), rank_load_.end());
-    // double avg_load = std::accumulate(rank_load_.begin(), rank_load_.end(), 0.0) / mpi::n_procs;
-    // max_imbalance = (max_load - avg_load) / avg_load;
+    double max_load = *std::max_element(rank_load_.begin(), rank_load_.end());
+    double avg_load = std::accumulate(rank_load_.begin(), rank_load_.end(), 0.0) / mpi::n_procs;
+    max_imbalance = (max_load - avg_load) / avg_load;
 
-    max_imbalance = 0.0;
-    for (int rank = 0; rank < mpi::n_procs; rank++) {
-      double imbalance = std::abs(imbalance_per_rank[rank]);
-      if (imbalance > max_imbalance) {
-        max_imbalance = imbalance;
-      }
-    }
+    // max_imbalance = 0.0;
+    // for (int rank = 0; rank < mpi::n_procs; rank++) {
+    //   double imbalance = std::abs(imbalance_per_rank[rank]);
+    //   if (imbalance > max_imbalance) {
+    //     max_imbalance = imbalance;
+    //   }
+    // }
 
     // Store imbalance history
     imbalance_history.push_back(max_imbalance);

@@ -201,10 +201,10 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
           write_attribute(tally_group, "multiply_density", 0);
         }
 
-        if (tally->vov_enabled()) {
-          write_attribute(tally_group, "vov_enabled", 1);
+        if (tally->higher_moments()) {
+          write_attribute(tally_group, "higher_moments", 1);
         } else {
-          write_attribute(tally_group, "vov_enabled", 0);
+          write_attribute(tally_group, "higher_moments", 0);
         }
 
         if (tally->estimator_ == TallyEstimator::ANALOG) {

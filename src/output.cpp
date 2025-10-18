@@ -708,7 +708,7 @@ void write_tallies()
           double mean, stdev;
           mean_stdev(&tally.results_(filter_index, score_index, 0),
             tally.n_realizations_);
-          if (tally.vov_enabled()) {
+          if (tally.higher_moments()) {
             double vov = variance_of_variance(
               &tally.results_(filter_index, score_index, 0),
               tally.n_realizations_);

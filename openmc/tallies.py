@@ -105,8 +105,8 @@ class Tally(IDManagerMixin):
         An array containing the sample standard deviation for each bin
     vov : numpy.ndarray
         An array containing the variance of the variance for each tally bin
-    vov_enabled : bool
-        Whether or not the tally accumulates the sums third and fourth to compute the variance of the variance
+    higher_moments : bool
+        Whether or not the tally accumulates the sums third and fourth to compute higher-order moments
     normality_tests : bool
         Whether or not normality tests are enabled for this tally
     figure_of_merit : numpy.ndarray
@@ -148,7 +148,7 @@ class Tally(IDManagerMixin):
         self._mean = None
         self._std_dev = None
         self._vov = None
-        self._vov_enabled = False
+        self._higher_moments = False
         self._normality_tests = False
         self._simulation_time = None
         self._with_batch_statistics = False
@@ -241,13 +241,13 @@ class Tally(IDManagerMixin):
         self._multiply_density = value
 
     @property
-    def vov_enabled(self):
-        return self._vov_enabled
+    def higher_moments(self) -> bool:
+        return self._higher_moments
 
-    @vov_enabled.setter
-    def vov_enabled(self, value):
-        cv.check_type("vov_enabled", value, bool)
-        self._vov_enabled = value
+    @higher_moments.setter
+    def higher_moments(self, value):
+        cv.check_type("higher_moments", value, bool)
+        self._higher_moments = value
 
     @property
     def normality_tests(self):
@@ -408,10 +408,11 @@ class Tally(IDManagerMixin):
             # Update nuclides
             nuclide_names = group['nuclides'][()]
             self._nuclides = [name.decode().strip() for name in nuclide_names]
-            if "vov_enabled" in group.attrs:
-                self._vov_enabled = bool(group.attrs["vov_enabled"][()])
+            # Check for higher_moments attribute
+            if "higher_moments" in group.attrs:
+                self._higher_moments = bool(group.attrs["higher_moments"][()])
             else:
-                self._vov_enabled = False
+                self._higher_moments = False
 
             # Extract Tally data from the file
             data = group['results']
@@ -426,8 +427,8 @@ class Tally(IDManagerMixin):
             self._sum = sum_
             self._sum_sq = sum_sq
 
-            if self._vov_enabled:
-                # Extract additional Tally data if vov enabled
+            if self._higher_moments:
+                # Extract additional Tally data when higher moments enabled
                 sum_third = data[:, :, 2]
                 sum_fourth = data[:, :, 3]
 
@@ -560,11 +561,11 @@ class Tally(IDManagerMixin):
 
     @property
     def vov(self):
-        if not self._vov_enabled:
+        if not self._higher_moments:
             return None
         if not self._sp_filename:
             return None
-        if self._vov_enabled:
+        if self._higher_moments:
             n = self.num_realizations
             sum1 = self.sum
             sum2 = self.sum_sq
@@ -597,9 +598,9 @@ class Tally(IDManagerMixin):
 
     @property
     def m3(self):
-        if not self._vov_enabled:
+        if not self._higher_moments:
             raise ValueError("Third central moment is not available unless "
-                             "vov_enabled is True.")
+                             "higher_moments is True.")
         n = self.num_realizations
         mean = self.mean
         sum2 = self.sum_sq/n
@@ -609,9 +610,9 @@ class Tally(IDManagerMixin):
 
     @property
     def m4(self):
-        if not self._vov_enabled:
+        if not self._higher_moments:
             raise ValueError("Fourth central moment is not available unless "
-                             "vov_enabled is True.")
+                             "higher_moments is True.")
         n = self.num_realizations
         mean = self.mean
         sum2 = self.sum_sq/n
@@ -709,13 +710,13 @@ class Tally(IDManagerMixin):
             return G2 if fisher else G2 + 3.0
 
     def normality_test(self, alternative: str = "two-sided"):
-        if not self._vov_enabled:
+        if not self._higher_moments:
             return None
         if not self._normality_tests:
             return None
         if not self._sp_filename:
             return None
-        if self._vov_enabled and self._normality_tests:
+        if self._higher_moments and self._normality_tests:
             n = self.num_realizations
             if n < 8:
                 raise ValueError("Skewness test is not well-defined for n < 8.")
@@ -1384,10 +1385,10 @@ class Tally(IDManagerMixin):
             subelement = ET.SubElement(element, "derivative")
             subelement.text = str(self.derivative.id)
 
-        # Optional variance of the variance (vov)
-        if self.vov_enabled:
-            subelement = ET.SubElement(element, "vov_enabled")
-            subelement.text = str(self.vov_enabled).lower()
+        # Optional higher moments accumulation
+        if self.higher_moments:
+            subelement = ET.SubElement(element, "higher_moments")
+            subelement.text = str(self.higher_moments).lower()
 
         return element
 

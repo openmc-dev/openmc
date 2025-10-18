@@ -107,8 +107,8 @@ Tally::Tally(pugi::xml_node node)
     multiply_density_ = get_node_value_bool(node, "multiply_density");
   }
 
-  if (check_for_node(node, "vov_enabled")) {
-    vov_enabled_ = get_node_value_bool(node, "vov_enabled");
+  if (check_for_node(node, "higher_moments")) {
+    higher_moments_ = get_node_value_bool(node, "higher_moments");
   }
   // =======================================================================
   // READ DATA FOR FILTERS
@@ -802,7 +802,7 @@ void Tally::init_triggers(pugi::xml_node node)
 void Tally::init_results()
 {
   int n_scores = scores_.size() * nuclides_.size();
-  if (vov_enabled_) {
+  if (higher_moments_) {
     results_ = xt::empty<double>({n_filter_bins_, n_scores, 5});
   } else {
     results_ = xt::empty<double>({n_filter_bins_, n_scores, 3});
@@ -840,7 +840,7 @@ void Tally::accumulate()
     }
 
     // Accumulate each result
-    if (vov_enabled_) {
+    if (higher_moments_) {
 #pragma omp parallel for
       // filter bins (specific cell, energy bins)
       for (int i = 0; i < results_.shape()[0]; ++i) {

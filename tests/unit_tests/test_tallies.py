@@ -166,21 +166,21 @@ def test_tally_application(sphere_model, run_in_tmpdir):
     assert (sp_tally.mean == tally.mean).all()
     assert sp_tally.nuclides == tally.nuclides
 
-def _tally_from_data(x, *, vov_enabled=True, normality=True):
+def _tally_from_data(x, *, higher_moments=True, normality=True):
     t = openmc.Tally()
     t.scores = ["flux"]  # 1 score
     t.nuclides = [openmc.Nuclide("H1")]  # 1 nuclide
     t._sp_filename = "dummy.h5"  # mark "results available"
     t._results_read = True  # don't try to read from disk
     t._num_realizations = int(len(x))  # n
-    t.vov_enabled = bool(vov_enabled)
+    t.higher_moments = bool(higher_moments)
     t.normality_tests = bool(normality)
 
     x = np.asarray(x, dtype=float)
     # (num_filter_bins=1, num_nuclides=1, num_scores=1) -> (1,1,1) arrays
     t._sum = np.array([[[np.sum(x)]]], dtype=float)
     t._sum_sq = np.array([[[np.sum(x**2)]]], dtype=float)
-    if vov_enabled:
+    if higher_moments:
         t._sum_third = np.array([[[np.sum(x**3)]]], dtype=float)
         t._sum_fourth = np.array([[[np.sum(x**4)]]], dtype=float)
     return t
@@ -196,7 +196,7 @@ def _tally_from_data(x, *, vov_enabled=True, normality=True):
     ],
 )
 def test_b1_b2_analytical_against_tally(x, skew_true, kurt_true):
-    t = _tally_from_data(x, vov_enabled=True, normality=False)
+    t = _tally_from_data(x, higher_moments=True, normality=False)
 
     g1 = t.skew(bias=True)[0, 0, 0]
     b2 = t.kurtosis(bias=True, fisher=False)[0, 0, 0]
@@ -219,7 +219,7 @@ def test_b1_b2_scipy_and_theory(draw, skew_true, kurt_true):
     x = draw(rng, N)
 
     # Tally outputs
-    t = _tally_from_data(x, vov_enabled=True, normality=False)
+    t = _tally_from_data(x, higher_moments=True, normality=False)
     g1_t = t.skew(bias=True)[0, 0, 0]
     b2_t = t.kurtosis(bias=True, fisher=False)[0, 0, 0]
 
@@ -243,9 +243,7 @@ def test_kurtosis_bias_fisher_combinations():
     rng = np.random.default_rng(42)
     x = rng.normal(0, 1, 10000)
 
-    t = _tally_from_data(x, vov_enabled=True, normality=False)
-
-    # Test all four combinations
+    t = _tally_from_data(x, higher_moments=True, normality=False)    # Test all four combinations
     # 1. bias=True, fisher=False (Pearson's kurtosis, b2)
     b2_tally = t.kurtosis(bias=True, fisher=False)[0, 0, 0]
     b2_scipy = sps.kurtosis(x, fisher=False, bias=True)
@@ -281,7 +279,7 @@ def test_ztests_scipy_comparison():
     x_exp = rng.exponential(size=50_000)
 
     # -------- Normal dataset (should not reject) --------
-    t0 = _tally_from_data(x_norm, vov_enabled=True, normality=True)
+    t0 = _tally_from_data(x_norm, higher_moments=True, normality=True)
     stats0 = t0.normality_test(alternative="two-sided")
 
     Zb1_0 = stats0["Zb1"][0, 0, 0]
@@ -303,7 +301,7 @@ def test_ztests_scipy_comparison():
     assert np.isclose(p_omni_0, p_omni_sp0, atol=5e-3)
 
     # -------- Exponential dataset (should strongly reject) --------
-    t1 = _tally_from_data(x_exp, vov_enabled=True, normality=True)
+    t1 = _tally_from_data(x_exp, higher_moments=True, normality=True)
     stats1 = t1.normality_test(alternative="two-sided")
 
     Zb1_1 = stats1["Zb1"][0, 0, 0]
@@ -334,7 +332,7 @@ def test_vov_stochastic(sphere_model, run_in_tmpdir):
     mf = openmc.MeshFilter(mesh)
     tally.filters = [ef, mf]
     tally.scores = ["flux", "absorption", "fission", "scatter"]
-    tally.vov_enabled = True
+    tally.higher_moments = True
     sphere_model.tallies = [tally]
 
     sp_file = sphere_model.run(apply_tally_results=True)

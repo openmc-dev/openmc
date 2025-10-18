@@ -478,8 +478,9 @@ judging whether reported confidence intervals are credible for their application
 [#norm-tests]_.
 
 .. [#norm-tests]
-   Higher-moments accumulation must be enabled with ``vov_enabled = True`` for
-   running these diagnostics including the skewness, kurtosis and normality tests.
+   Higher-moments accumulation must be enabled with ``higher_moments = True``
+   for running these diagnostics including the skewness, kurtosis, and normality
+   tests.
 
 Figure of Merit
 +++++++++++++++

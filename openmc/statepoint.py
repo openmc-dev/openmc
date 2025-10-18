@@ -429,9 +429,9 @@ class StatePoint:
                     if "multiply_density" in group.attrs:
                         tally.multiply_density = group.attrs["multiply_density"].item() > 0
 
-                    # Check if tally has vov attribute
-                    if 'vov_enabled' in group.attrs:
-                        tally.vov_enabled = bool(group.attrs['vov_enabled'][()])
+                    # Check if tally has higher_moments attribute
+                    if 'higher_moments' in group.attrs:
+                        tally.higher_moments = bool(group.attrs['higher_moments'][()])
 
                     # Read the number of realizations
                     n_realizations = group['n_realizations'][()]

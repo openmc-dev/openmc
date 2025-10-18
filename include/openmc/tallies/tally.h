@@ -106,7 +106,7 @@ public:
 
   bool writable() const { return writable_; }
 
-  bool vov_enabled() const { return vov_enabled_; }
+  bool higher_moments() const { return higher_moments_; }
 
   //----------------------------------------------------------------------------
   // Other methods.
@@ -192,7 +192,8 @@ private:
   //! Whether to multiply by atom density for reaction rates
   bool multiply_density_ {true};
 
-  bool vov_enabled_ = {false};
+  //! Whether to accumulate higher moments (third and fourth)
+  bool higher_moments_ {false};
 
   int64_t index_;
 };

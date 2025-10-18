@@ -700,28 +700,20 @@ void write_tallies()
           }
         }
 
-        // Write the score, mean, uncertainty and vov.
-        indent += 3;
+        // Write the score, mean, and uncertainty.
+        indent += 2;
         for (auto score : tally.scores_) {
           std::string score_name =
             score > 0 ? reaction_name(score) : score_names.at(score);
           double mean, stdev;
-          mean_stdev(&tally.results_(filter_index, score_index, 0),
-            tally.n_realizations_);
-          if (tally.higher_moments()) {
-            double vov = variance_of_variance(
-              &tally.results_(filter_index, score_index, 0),
+          std::tie(mean, stdev) =
+            mean_stdev(&tally.results_(filter_index, score_index, 0),
               tally.n_realizations_);
-            fmt::print(tallies_out,
-              "{0:{1}}{2:<36} {3:.6} +/- {4:.6} -- VOV: {5:.6}\n", "",
-              indent + 1, score_name, mean, stdev / mean, vov);
-          } else {
-            fmt::print(tallies_out, "{0:{1}}{2:<36} {3:.6} +/- {4:.6}\n", "",
-              indent + 1, score_name, mean, t_value * stdev);
-          }
+          fmt::print(tallies_out, "{0:{1}}{2:<36} {3:.6} +/- {4:.6}\n", "",
+            indent + 1, score_name, mean, t_value * stdev);
           score_index += 1;
         }
-        indent -= 3;
+        indent -= 2;
       }
     }
   }

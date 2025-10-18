@@ -271,7 +271,7 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
           if (!tally->writable_)
             continue;
 
-          // Write sum, sum_sq, sum_third and sum_fourth for each bin
+          // Write results for each bin
           std::string name = "tally " + std::to_string(tally->id_);
           hid_t tally_group = open_group(tallies_group, name.c_str());
           auto& results = tally->results_;

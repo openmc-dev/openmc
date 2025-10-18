@@ -149,6 +149,8 @@ The current version of the statepoint file format is 18.1.
                tallies will have a value of 0 unless otherwise instructed.
              - **multiply_density** (*int*) -- Flag indicating whether reaction
                rates should be multiplied by atom density (1) or not (0).
+             - **vov_enabled** (*int*) -- Flag indicating whether
+               higher-order tally moments are enabled (1) or not (0).
 
 :Datasets: - **n_realizations** (*int*) -- Number of realizations.
            - **n_filters** (*int*) -- Number of filters used.

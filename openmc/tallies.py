@@ -3,6 +3,7 @@ from collections.abc import Iterable, MutableSequence
 import copy
 from functools import partial, reduce, wraps
 from itertools import product
+from math import sqrt, log
 from numbers import Integral, Real
 import operator
 from pathlib import Path
@@ -104,14 +105,10 @@ class Tally(IDManagerMixin):
         An array containing the sample standard deviation for each bin
     vov : numpy.ndarray
         An array containing the variance of the variance for each tally bin
-    skewness : numpy.ndarray
-        An array containing the skewness for each tally bin
-    kurtosis : numpy.ndarray
-        An array containing the kurtosis for each tally bin
-    normality_tests = numpy.ndarray
-        Compute normality tests for each tally bin
     vov_enabled : bool
         Whether or not the tally accumulates the sums third and fourth to compute the variance of the variance
+    normality_tests : bool
+        Whether or not normality tests are enabled for this tally
     figure_of_merit : numpy.ndarray
         An array containing the figure of merit for each bin
 
@@ -151,11 +148,8 @@ class Tally(IDManagerMixin):
         self._mean = None
         self._std_dev = None
         self._vov = None
-        self._skewness = None
-        self._kurtosis = None
         self._vov_enabled = False
         self._normality_tests = False
-        self._sig_level = 0.05
         self._simulation_time = None
         self._with_batch_statistics = False
         self._derived = False
@@ -263,10 +257,6 @@ class Tally(IDManagerMixin):
     def normality_tests(self, value):
         cv.check_type("normality_tests", value, bool)
         self._normality_tests = value
-
-    @property
-    def sig_level(self):
-        return self._sig_level
 
     @property
     def filters(self):
@@ -418,7 +408,10 @@ class Tally(IDManagerMixin):
             # Update nuclides
             nuclide_names = group['nuclides'][()]
             self._nuclides = [name.decode().strip() for name in nuclide_names]
-            self._vov_enabled = bool(group.attrs["vov_enabled"][()])
+            if "vov_enabled" in group.attrs:
+                self._vov_enabled = bool(group.attrs["vov_enabled"][()])
+            else:
+                self._vov_enabled = False
 
             # Extract Tally data from the file
             data = group['results']
@@ -627,8 +620,25 @@ class Tally(IDManagerMixin):
 
         return sum4 - 4.0*mean*sum3 + 6.0*(mean**2)*sum2 - 3.0*mean**4
 
-    @property
-    def skewness(self):
+    def skew(self, bias=False) -> np.ndarray:
+        """Return the sample skewness of each tally bin.
+
+        This method computes and returns the unadjusted or adjusted
+        Fisher-Pearson coefficient of skewness.
+
+        Parameters
+        ----------
+        bias : bool
+            If False, calculations are corrected for bias and the adjusted
+            Fisher-Pearson skewness (:math:`G_1`) is returned. If True,
+            calculations are not corrected for bias and the unadjusted skewness
+            (:math:`g_1`) is returned.
+
+        Returns
+        -------
+        float
+            The skewness of each tally bin
+        """
         n = self.num_realizations
         m2 = self.m2
         m3 = self.m3
@@ -636,26 +646,67 @@ class Tally(IDManagerMixin):
         with np.errstate(divide="ignore", invalid="ignore"):
             g1 = np.where(m2 > 0.0, m3/(m2**1.5), 0.0)
 
-        G1 = np.where(n > 2, np.sqrt(n*(n - 1))/(n - 2)*g1, 0.0)
-        return {"Unadjusted skewness": g1, "Fisher-Pearson": G1}
+        if bias:
+            return g1
+        else:
+            return np.where(n > 2, sqrt(n*(n - 1))/(n - 2)*g1, 0.0)
 
-    @property
-    def kurtosis(self):
-        if not self._vov_enabled:
-            return None
+    def kurtosis(self, fisher=True, bias=False) -> np.ndarray:
+        r"""Return the sample kurtosis of each tally bin.
+
+        This method computes and returns the sample kurtosis using either
+        Pearson's or Fisher's definition, with or without finite-sample bias
+        correction. The value returned depends on the `bias` and `fisher`
+        arguments as follows:
+
+        - **bias=True, fisher=False**: Returns :math:`b_2` (Pearson's kurtosis)
+          This is the raw fourth standardized moment: :math:`m_4/m_2^2`. For a
+          normal distribution, :math:`b_2\approx 3`.
+
+        - **bias=True, fisher=True**: Returns :math:`g_2` (excess kurtosis) This
+          is :math:`b_2 - 3`, centered at 0 for normal distributions. Positive
+          values indicate heavier tails, negative values lighter tails.
+
+        - **bias=False, fisher=True** (default): Returns :math:`G_2` (adjusted
+          excess kurtosis). This applies finite-sample bias correction to
+          :math:`g_2`. This is the recommended estimator for statistical
+          inference.
+
+        - **bias=False, fisher=False**: Returns bias-corrected Pearson's
+          kurtosis. This is :math:`G_2 + 3`.
+
+        Parameters
+        ----------
+        fisher : bool, optional
+            If True (default), Fisher's definition is used (excess kurtosis). If
+            False, Pearson's definition is used.
+        bias : bool, optional
+            If False (default), calculations are corrected for statistical bias
+            using finite-sample adjustments. If True, calculations use the
+            biased estimator (population formulas).
+
+        Returns
+        -------
+        numpy.ndarray
+            The kurtosis of each tally bin
+
+        """
         n = self.num_realizations
-        m2 = self.m2()
-        m4 = self.m4()
+        m2 = self.m2
+        m4 = self.m4
 
         with np.errstate(divide="ignore", invalid="ignore"):
             b2 = np.where(m2 > 0.0, m4/(m2**2), 0.0)
-
         g2 = b2 - 3.0
-        G2 = np.where(n > 3, ((n - 1)/((n - 2)*(n - 3)))*((n + 1)*g2 + 6.0),
-                      0.0)
 
-        return { "Kurtosis b2": b2, "Excess kurtosis g2": g2,
-                "Adjusted excess kurtosis G2": G2}
+        if bias:
+            # Biased estimator (g2 or b2)
+            return g2 if fisher else b2
+        else:
+            # Unbiased estimator with finite-sample correction
+            G2 = np.where(n > 3, ((n - 1)/((n - 2)*(n - 3)))*((n + 1)*g2 + 6.0),
+                          0.0)
+            return G2 if fisher else G2 + 3.0
 
     def normality_test(self, alternative: str = "two-sided"):
         if not self._vov_enabled:
@@ -672,19 +723,21 @@ class Tally(IDManagerMixin):
                 raise ValueError("Kurtosis test is typically recommended for " \
                 "n >= 20.")
             else:
-                g1 = self.skewness["Unadjusted skewness"]
-                b2 = self.kurtosis["Kurtosis b2"]
+                g1 = self.skew(bias=True)
+                b2 = self.kurtosis(bias=True, fisher=False)
 
                 # --- Z1 (skewness) ---
-                y = g1 * np.sqrt(((n + 1.0)*(n + 3.0))/(6.0*(n - 2.0)))
+                y = g1 * sqrt(((n + 1.0)*(n + 3.0))/(6.0*(n - 2.0)))
                 beta2 = (3.0*(n**2 + 27.0*n - 70.0)*(n + 1.0)*(n + 3.0)
                          )/((n - 2.0)*(n + 5.0)*(n + 7.0)*(n + 9.0))
-                W2 = -1.0 + np.sqrt(2.0*(beta2 - 1.0))
-                delta = 1.0 / np.sqrt(np.log(np.sqrt(W2)))
-                alpha = np.sqrt(2.0 / (W2 - 1.0))
-                Zb1 = np.where(y >= 0.0,
-                               delta*np.log((y/alpha)+np.sqrt((y/alpha)**2+1.0)),
-                               -delta*np.log((-y/alpha)+np.sqrt((y/alpha)**2+1.0)),)
+                W2 = -1.0 + sqrt(2.0*(beta2 - 1.0))
+                delta = 1.0 / sqrt(log(sqrt(W2)))
+                alpha = sqrt(2.0 / (W2 - 1.0))
+                Zb1 = np.where(
+                    y >= 0.0,
+                    delta*np.log((y/alpha) + np.sqrt((y/alpha)**2 + 1.0)),
+                    -delta*np.log((-y/alpha) + np.sqrt((y/alpha)**2 + 1.0))
+                )
 
                 # --- Z2 (kurtosis) ---
                 mean_b2 = 3.0 * (n - 1.0) / (n + 1.0)
@@ -692,10 +745,10 @@ class Tally(IDManagerMixin):
                          (n + 1.0)**2*(n + 3.0)*(n + 5.0)))
                 x = (b2 - mean_b2)/np.sqrt(var_b2)
                 moment = ((6.0*(n**2 - 5.0*n + 2.0))/((n + 7.0)*(n + 9.0))
-                          )*np.sqrt((6.0*(n + 3.0)*(n + 5.0))/(n*(n - 2.0)*(n - 3.0)))
-                A = 6.0 + (8.0/moment)*((2.0/moment) + np.sqrt(1.0 + 4.0/(moment**2)))
+                          )*sqrt((6.0*(n + 3.0)*(n + 5.0))/(n*(n - 2.0)*(n - 3.0)))
+                A = 6.0 + (8.0/moment)*((2.0/moment) + sqrt(1.0 + 4.0/(moment**2)))
                 Zb2 = (1.0- 2.0/(9.0*A) - ((1.0 - 2.0/A) / (1.0 + (x
-                       )*np.sqrt(2.0/(A - 4.0))))**(1.0/3.0)) / np.sqrt(2.0/(9.0*A))
+                       )*sqrt(2.0/(A - 4.0))))**(1.0/3.0)) / sqrt(2.0/(9.0*A))
 
                 # --- p-values ---
                 if alternative == "two-sided":
@@ -721,10 +774,10 @@ class Tally(IDManagerMixin):
 
                 return {"Zb1": Zb1, "p_skew": p_skew, "Zb2": Zb2,
                         "p_kurt": p_kurt, "K2": K2, "p_K2": p_K2,
-                        "n": n, "g1": g1, "b2": b2,}
+                        "n": n, "g1": g1, "b2": b2}
 
     def print_normality_report(self, sig_level: float = 0.05,
-                               alternative: str = "two-sided", bin_index=None,):
+                               alternative: str = "two-sided", bin_index=None):
 
         stats = self.normality_test(alternative=alternative)
         if stats is None:

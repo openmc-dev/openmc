@@ -1,3 +1,4 @@
+from math import sqrt
 import numpy as np
 import pytest
 import openmc
@@ -189,16 +190,16 @@ def _tally_from_data(x, *, vov_enabled=True, normality=True):
     [   # Rademacher distribution
         (np.array([1.0, -1.0] * 200), 0.0, 1.0),
         # Two-point {0,3} with p(0)=3/4, p(3)=1/4
-        (np.concatenate([np.zeros(600), np.full(200, 3.0)]), 2.0 / np.sqrt(3.0), 7.0 / 3.0,),
-        # Bernoullii distribution
-        (np.concatenate([np.ones(300), np.zeros(700)]), (1 - 2 * 0.3) / np.sqrt(0.3 * 0.7), (1 - 3 * 0.3 + 3 * 0.3**2) / (0.3 * 0.7),),
-    ],)
-
+        (np.concatenate([np.zeros(600), np.full(200, 3.0)]), 2.0 / sqrt(3.0), 7.0 / 3.0),
+        # Bernoulli distribution
+        (np.concatenate([np.ones(300), np.zeros(700)]), (1 - 2 * 0.3) / sqrt(0.3 * 0.7), (1 - 3 * 0.3 + 3 * 0.3**2) / (0.3 * 0.7)),
+    ],
+)
 def test_b1_b2_analytical_against_tally(x, skew_true, kurt_true):
     t = _tally_from_data(x, vov_enabled=True, normality=False)
 
-    g1 = t.skewness["Unadjusted skewness"][0, 0, 0]
-    b2 = t.kurtosis["Kurtosis b2"][0, 0, 0]
+    g1 = t.skew(bias=True)[0, 0, 0]
+    b2 = t.kurtosis(bias=True, fisher=False)[0, 0, 0]
 
     assert np.isclose(g1, skew_true, rtol=0, atol=1e-12)
     assert np.isclose(b2, kurt_true, rtol=0, atol=1e-12)
@@ -209,7 +210,7 @@ def test_b1_b2_analytical_against_tally(x, skew_true, kurt_true):
      (lambda rng, n: rng.random(n), 0.0, 1.8),  # Uniform(0,1)
      (lambda rng, n: rng.exponential(1.0, n), 2.0, 9.0),  # Exp(1)
      (lambda rng, n: (rng.random(n) < 0.3).astype(float),
-            (1 - 2 * 0.3) / np.sqrt(0.3 * 0.7),
+            (1 - 2 * 0.3) / sqrt(0.3 * 0.7),
             (1 - 3 * 0.3 + 3 * 0.3**2) / (0.3 * 0.7),),],)
 
 def test_b1_b2_scipy_and_theory(draw, skew_true, kurt_true):
@@ -219,8 +220,8 @@ def test_b1_b2_scipy_and_theory(draw, skew_true, kurt_true):
 
     # Tally outputs
     t = _tally_from_data(x, vov_enabled=True, normality=False)
-    g1_t = t.skewness["Unadjusted skewness"][0, 0, 0]
-    b2_t = t.kurtosis["Kurtosis b2"][0, 0, 0]
+    g1_t = t.skew(bias=True)[0, 0, 0]
+    b2_t = t.kurtosis(bias=True, fisher=False)[0, 0, 0]
 
     # SciPy (population, bias=True to match population-moment style)
     skew_sp = sps.skew(x, bias=True)
@@ -235,6 +236,44 @@ def test_b1_b2_scipy_and_theory(draw, skew_true, kurt_true):
     tol_kurt = 0.03 if kurt_true < 4 else 0.1
     assert abs(g1_t - skew_true) < tol_skew
     assert abs(b2_t - kurt_true) < tol_kurt
+
+
+def test_kurtosis_bias_fisher_combinations():
+    """Test that all combinations of bias and fisher match scipy.stats.kurtosis"""
+    rng = np.random.default_rng(42)
+    x = rng.normal(0, 1, 10000)
+
+    t = _tally_from_data(x, vov_enabled=True, normality=False)
+
+    # Test all four combinations
+    # 1. bias=True, fisher=False (Pearson's kurtosis, b2)
+    b2_tally = t.kurtosis(bias=True, fisher=False)[0, 0, 0]
+    b2_scipy = sps.kurtosis(x, fisher=False, bias=True)
+    assert np.isclose(b2_tally, b2_scipy, rtol=0, atol=1e-10)
+    assert np.isclose(b2_tally, 3.0, rtol=0.05, atol=0.1)  # Should be ~3 for normal
+
+    # 2. bias=True, fisher=True (excess kurtosis, g2)
+    g2_tally = t.kurtosis(bias=True, fisher=True)[0, 0, 0]
+    g2_scipy = sps.kurtosis(x, fisher=True, bias=True)
+    assert np.isclose(g2_tally, g2_scipy, rtol=0, atol=1e-10)
+    assert np.isclose(g2_tally, 0.0, rtol=0, atol=0.1)  # Should be ~0 for normal
+    assert np.isclose(g2_tally, b2_tally - 3.0, rtol=0, atol=1e-10)  # g2 = b2 - 3
+
+    # 3. bias=False, fisher=True (adjusted excess kurtosis, G2)
+    G2_tally = t.kurtosis(bias=False, fisher=True)[0, 0, 0]
+    G2_tally_default = t.kurtosis()[0, 0, 0]  # Should be same as default
+    G2_scipy = sps.kurtosis(x, fisher=True, bias=False)
+    assert np.isclose(G2_tally, G2_tally_default, rtol=0, atol=1e-10)
+    assert np.isclose(G2_tally, G2_scipy, rtol=0, atol=1e-10)
+    assert np.isclose(G2_tally, 0.0, rtol=0, atol=0.1)  # Should be ~0 for normal
+
+    # 4. bias=False, fisher=False (adjusted Pearson's kurtosis)
+    adj_b2_tally = t.kurtosis(bias=False, fisher=False)[0, 0, 0]
+    adj_b2_scipy = sps.kurtosis(x, fisher=False, bias=False)
+    assert np.isclose(adj_b2_tally, adj_b2_scipy, rtol=0, atol=1e-10)
+    assert np.isclose(adj_b2_tally, 3.0, rtol=0.05, atol=0.1)  # Should be ~3 for normal
+    assert np.isclose(adj_b2_tally, G2_tally + 3.0, rtol=0, atol=1e-10)  # adj_b2 = G2 + 3
+
 
 def test_ztests_scipy_comparison():
     rng = np.random.default_rng(987)

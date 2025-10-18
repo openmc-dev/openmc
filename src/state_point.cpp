@@ -53,7 +53,7 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
     // Determine width for zero padding
     int w = std::to_string(settings::n_max_batches).size();
 
-    // Set filename for state point (numbered)
+    // Set filename for state point
     filename_ = fmt::format("{0}statepoint.{1:0{2}}.h5", settings::path_output,
       simulation::current_batch, w);
   }

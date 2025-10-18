@@ -498,31 +498,6 @@ void print_runtime()
 
 //==============================================================================
 
-double variance_of_variance(const double* x, int n)
-{
-  // Need to create a double for each sum
-  double sum = (x[static_cast<int>(TallyResult::SUM)]);
-  double sum_sq = (x[static_cast<int>(TallyResult::SUM_SQ)]);
-  double sum_third = (x[static_cast<int>(TallyResult::SUM_THIRD)]);
-  double sum_fourth = (x[static_cast<int>(TallyResult::SUM_FOURTH)]);
-
-  double sum2 = sum * sum;
-  double n2 = n * n;
-  // Fourth moment of the sample
-  double numerator = sum_fourth - (4.0 * sum_third * sum) / n +
-                     (6.0 * sum_sq * sum2) / n2 -
-                     (3.0 * sum2 * sum2) / (n * n2);
-
-  // Second moment of the sample
-  double denominator =
-    (sum_sq - (1.0 / n) * (sum2)) * (sum_sq - (1.0 / n) * (sum2));
-
-  // Equation for variance of variance
-  double vov = numerator / denominator - 1.0 / n;
-
-  return vov;
-}
-
 std::pair<double, double> mean_stdev(const double* x, int n)
 {
   double mean = x[static_cast<int>(TallyResult::SUM)] / n;

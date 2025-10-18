@@ -832,16 +832,23 @@ class Model:
             else:
                 # Then run via the command line
                 if export_model_xml:
+                    # Export a single model XML file and tell the CLI to read
+                    # that file. If the user provides a path in export_kwargs,
+                    # use that; otherwise default to 'model.xml'.
                     self.export_to_model_xml(**export_kwargs)
                     if "path" in export_kwargs and export_kwargs.get("path") is not None:
-                        p = Path(export_kwargs.get("path"))
-
+                        p = Path(export_kwargs.get("path"))                        
                         if not str(p).endswith('.xml'):
-                            path_input = str((p / 'model.xml'))
+                            # p is a directory
+                            path_input = str(p)
                         else:
+                            # p is a file path; pass the file path
                             path_input = str(p)
                     else:
-                        path_input = 'model.xml'
+                        # No path provided; model.xml was written to the
+                        # current working directory, so passing that directory
+                        # to the CLI.
+                        path_input = '.'
                 else:
                     self.export_to_xml(**export_kwargs)
                     path_input = export_kwargs.get("path", None)
@@ -854,16 +861,18 @@ class Model:
                 output_dir = Path(self.settings.output['path'])
             else:
                 output_dir = Path.cwd()
-            
+            # Prefer an explicit final statepoint filename if present
             final_sp = output_dir / 'statepoint.final.h5'
-            if final_sp.exits() and final_sp.stat().st_mtime >=tstart:
+            if final_sp.exists() and final_sp.stat().st_mtime >= tstart:
                 last_statepoint = final_sp
             else:
-                for sp in output_dir.glob('statepoint.*.h5'):
-                    mtime = sp.stat().st_mtime
-                    if mtime >= tstart:  # >= allows for poor clock resolution
-                        tstart = mtime
-                        last_statepoint = sp
+                # Pick the newest statepoint written during this run by
+                # modification time. Solution for arbitrary glob
+                # ordering and coarse timestamp resolution.
+                sp_paths = [p for p in output_dir.glob('statepoint.*.h5')
+                            if p.stat().st_mtime >= tstart]
+                if sp_paths:
+                    last_statepoint = max(sp_paths, key=lambda p: p.stat().st_mtime)
 
         if apply_tally_results:
             self.apply_tally_results(last_statepoint)

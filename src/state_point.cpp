@@ -40,16 +40,20 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
   // If a nullptr is passed in, we assume that the user
   // wants a default name for this, of the form like output/statepoint.20.h5
   std::string filename_;
-  bool final_write = false;
+
+  // Always write the numbered statepoint file.
+  // If this is the final write (last batch or trigger), also create
+  // "statepoint.final.h5".
+  bool final_write = (simulation::current_batch == settings::n_max_batches ||
+                      simulation::satisfy_triggers);
+
   if (filename) {
     filename_ = filename;
   } else {
-    final_write = (simulation::current_batch == settings::n_batches ||
-                   simulation::satisfy_triggers);
     // Determine width for zero padding
     int w = std::to_string(settings::n_max_batches).size();
 
-    // Set filename for state point
+    // Set filename for state point (numbered)
     filename_ = fmt::format("{0}statepoint.{1:0{2}}.h5", settings::path_output,
       simulation::current_batch, w);
   }
@@ -351,18 +355,16 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
 
   simulation::time_statepoint.stop();
 
-  if (final_write) {
-    if (mpi::master) {
-      try {
-        std::filesystem::path_src {filename_};
-        std::filesystem::path_dist {
-          settings::path_output + "statepoint_final.h5"};
-        std::filesystem::copy_file(
-          src, dst, std::filesystem::copy_options::overwrite_existing);
-      } catch (const std::exception& e) {
-        warning(
-          std::string("Failed to create statepoint.final.h5: ") + e.what());
-      }
+  // If this was the final write, have the master create "statepoint.final.h5"
+  // as a copy of the latest statepoint for consistent access by external tools.
+  if (mpi::master) {
+    try {
+      std::filesystem::path src {filename_};
+      std::filesystem::path dst {settings::path_output + "statepoint.final.h5"};
+      std::filesystem::copy_file(
+        src, dst, std::filesystem::copy_options::overwrite_existing);
+    } catch (const std::exception& e) {
+      warning(std::string("Failed to update statepoint.final.h5: ") + e.what());
     }
   }
 

@@ -84,7 +84,7 @@ def _process_CLI_arguments(volume=False, geometry_debug=False, particles=None,
         args.append('-p')
 
     if mpi_args is not None:
-        args = mpi_args + args
+        args = mpi_args + args    
 
     if path_input is not None:
         args += [path_input]
@@ -93,6 +93,22 @@ def _process_CLI_arguments(volume=False, geometry_debug=False, particles=None,
 
 
 def _run(args, output, cwd):
+    # Optionally print debug information about the invocation when
+    # OPENMC_DEBUG is set in the environment. Helps diagnosing cases
+    # where OpenMC cannot find XML input files because of a cwd/path mixup.
+    if os.environ.get('OPENMC_DEBUG'):
+        try:
+            print('\n[OPENMC_DEBUG] launching OpenMC')
+            print(f'[OPENMC_DEBUG] args: {args}')
+            print(f'[OPENMC_DEBUG] cwd: {cwd}')
+            print('[OPENMC_DEBUG] files in cwd:')
+            for p in sorted(os.listdir(cwd)):
+                print('  ', p)
+            print('\n')
+        except Exception:
+            # Don't let debug printing interfere with the run
+            pass
+
     # Launch a subprocess
     p = subprocess.Popen(args, cwd=cwd, stdout=subprocess.PIPE,
                          stderr=subprocess.STDOUT, universal_newlines=True)

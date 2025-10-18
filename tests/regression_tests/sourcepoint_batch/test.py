@@ -9,7 +9,10 @@ class SourcepointTestHarness(TestHarness):
     def _test_output_created(self):
         """Make sure statepoint files have been created."""
         statepoint = glob.glob('statepoint.*.h5')
-        assert len(statepoint) == 5, 'Five statepoint files must exist.'
+        # Exclude the deterministic final copy from the count if present
+        numbered = [p for p in statepoint if not p.endswith('statepoint.final.h5')]
+        
+        assert len(numbered) == 5, 'Five numbered statepoint files must exist.'
 
     def _get_results(self):
         """Digest info in the statepoint and return as a string."""

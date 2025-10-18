@@ -573,6 +573,8 @@ class Tally(IDManagerMixin):
             sum4 = self.sum_fourth
             self._vov = np.zeros_like(sum1, dtype=float)
 
+            # Calculate the variance of the variance (Eq. 2.232 in
+            # https://doi.org/10.2172/2372634)
             numerator = (sum4 - (4.0*sum3*sum1)/n
                         + (6.0*sum2*(sum1**2))/(n**2)
                         - (3.0*(sum1)**4)/(n**3))
@@ -865,8 +867,8 @@ class Tally(IDManagerMixin):
         std_dev = self.std_dev
         fom = np.zeros_like(mean)
         nonzero = np.abs(mean) > 0
-        fom[nonzero] = 1.0 / (
-            (std_dev[nonzero] / mean[nonzero])**2 * self._simulation_time)
+        rel_err = std_dev[nonzero] / mean[nonzero]
+        fom[nonzero] = 1.0 / (rel_err**2 * self._simulation_time)
         return fom
 
     @property

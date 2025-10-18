@@ -2,6 +2,7 @@ import copy
 from numbers import Integral
 import os
 import warnings
+from textwrap import dedent
 
 import h5py
 import numpy as np
@@ -164,7 +165,7 @@ class MGXS:
 
     """
 
-    _params = """
+    _params = dedent("""
     Parameters
     ----------
     domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.RegularMesh
@@ -251,7 +252,7 @@ class MGXS:
 
         .. versionadded:: 0.13.1
 
-    """
+    """)
 
     # Store whether or not the number density should be removed for microscopic
     # values of this data

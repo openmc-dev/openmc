@@ -17,6 +17,8 @@ fi
 # Skip source directory warning
 export OPENMC_DEV_MODE=1
 
-# Run regression and unit tests
-pytest --cov=openmc -v $args tests
-
+# Run unit tests and then regression tests
+pytest -v $args \
+  tests/test_matplotlib_import.py \
+  tests/unit_tests \
+  tests/regression_tests

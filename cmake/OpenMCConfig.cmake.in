@@ -1,5 +1,12 @@
 find_package(HDF5 REQUIRED COMPONENTS C HL)
 
+# Compute the install prefix from this file's location
+get_filename_component(_OPENMC_PREFIX "${OpenMC_CMAKE_DIR}/../../.." ABSOLUTE)
+
+find_package(fmt CONFIG REQUIRED HINTS ${_OPENMC_PREFIX})
+find_package(pugixml CONFIG REQUIRED HINTS ${_OPENMC_PREFIX})
+find_package(xtl CONFIG REQUIRED HINTS ${_OPENMC_PREFIX})
+find_package(xtensor CONFIG REQUIRED HINTS ${_OPENMC_PREFIX})
 if(@OPENMC_USE_DAGMC@)
   find_package(DAGMC REQUIRED HINTS @DAGMC_DIR@)
 endif()

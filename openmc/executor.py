@@ -105,8 +105,7 @@ def _run(args, output, cwd):
             for p in sorted(os.listdir(cwd)):
                 print('  ', p)
             print('\n')
-        except Exception:
-            # Don't let debug printing interfere with the run
+        except Exception:            
             pass
 
     # Launch a subprocess

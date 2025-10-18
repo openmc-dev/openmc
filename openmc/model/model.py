@@ -833,9 +833,18 @@ class Model:
                 # Then run via the command line
                 if export_model_xml:
                     self.export_to_model_xml(**export_kwargs)
+                    if "path" in export_kwargs and export_kwargs.get("path") is not None:
+                        p = Path(export_kwargs.get("path"))
+
+                        if not str(p).endswith('.xml'):
+                            path_input = str((p / 'model.xml'))
+                        else:
+                            path_input = str(p)
+                    else:
+                        path_input = 'model.xml'
                 else:
                     self.export_to_xml(**export_kwargs)
-                path_input = export_kwargs.get("path", None)
+                    path_input = export_kwargs.get("path", None)
                 openmc.run(particles, threads, geometry_debug, restart_file,
                            tracks, output, Path('.'), openmc_exec, mpi_args,
                            event_based, path_input)
@@ -845,11 +854,16 @@ class Model:
                 output_dir = Path(self.settings.output['path'])
             else:
                 output_dir = Path.cwd()
-            for sp in output_dir.glob('statepoint.*.h5'):
-                mtime = sp.stat().st_mtime
-                if mtime >= tstart:  # >= allows for poor clock resolution
-                    tstart = mtime
-                    last_statepoint = sp
+            
+            final_sp = output_dir / 'statepoint.final.h5'
+            if final_sp.exits() and final_sp.stat().st_mtime >=tstart:
+                last_statepoint = final_sp
+            else:
+                for sp in output_dir.glob('statepoint.*.h5'):
+                    mtime = sp.stat().st_mtime
+                    if mtime >= tstart:  # >= allows for poor clock resolution
+                        tstart = mtime
+                        last_statepoint = sp
 
         if apply_tally_results:
             self.apply_tally_results(last_statepoint)

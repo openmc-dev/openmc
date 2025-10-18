@@ -6,6 +6,7 @@
 
 #include "xtensor/xbuilder.hpp" // for empty_like
 #include "xtensor/xview.hpp"
+#include <filesystem>
 #include <fmt/core.h>
 
 #include "openmc/bank.h"
@@ -39,9 +40,12 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
   // If a nullptr is passed in, we assume that the user
   // wants a default name for this, of the form like output/statepoint.20.h5
   std::string filename_;
+  bool final_write = false;
   if (filename) {
     filename_ = filename;
   } else {
+    final_write = (simulation::current_batch == settings::n_batches ||
+                   simulation::satisfy_triggers);
     // Determine width for zero padding
     int w = std::to_string(settings::n_max_batches).size();
 
@@ -346,6 +350,21 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
 #endif
 
   simulation::time_statepoint.stop();
+
+  if (final_write) {
+    if (mpi::master) {
+      try {
+        std::filesystem::path_src {filename_};
+        std::filesystem::path_dist {
+          settings::path_output + "statepoint_final.h5"};
+        std::filesystem::copy_file(
+          src, dst, std::filesystem::copy_options::overwrite_existing);
+      } catch (const std::exception& e) {
+        warning(
+          std::string("Failed to create statepoint.final.h5: ") + e.what());
+      }
+    }
+  }
 
   return 0;
 }

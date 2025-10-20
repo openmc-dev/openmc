@@ -135,6 +135,10 @@ public:
   Mesh(hid_t group);
   virtual ~Mesh() = default;
 
+  template<typename T>
+  static const std::unique_ptr<Mesh>& create(
+    T dataset, const std::string& mesh_type, const std::string& mesh_library);
+
   // Methods
   //! Perform any preparation needed to support point location within the mesh
   virtual void prepare_for_point_location() {};

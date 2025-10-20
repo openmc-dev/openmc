@@ -230,6 +230,42 @@ void MaterialVolumes::add_volume_unsafe(
 // Mesh implementation
 //==============================================================================
 
+template<typename T>
+const std::unique_ptr<Mesh>& Mesh::create(
+  T dataset, const std::string& mesh_type, const std::string& mesh_library)
+{
+  // Determine mesh type. Add to model vector and map
+  if (mesh_type == RegularMesh::mesh_type) {
+    model::meshes.push_back(make_unique<RegularMesh>(dataset));
+  } else if (mesh_type == RectilinearMesh::mesh_type) {
+    model::meshes.push_back(make_unique<RectilinearMesh>(dataset));
+  } else if (mesh_type == CylindricalMesh::mesh_type) {
+    model::meshes.push_back(make_unique<CylindricalMesh>(dataset));
+  } else if (mesh_type == SphericalMesh::mesh_type) {
+    model::meshes.push_back(make_unique<SphericalMesh>(dataset));
+#ifdef OPENMC_DAGMC_ENABLED
+  } else if (mesh_type == UnstructuredMesh::mesh_type &&
+             mesh_library == MOABMesh::mesh_lib_type) {
+    model::meshes.push_back(make_unique<MOABMesh>(dataset));
+#endif
+#ifdef OPENMC_LIBMESH_ENABLED
+  } else if (mesh_type == UnstructuredMesh::mesh_type &&
+             mesh_library == LibMesh::mesh_lib_type) {
+    model::meshes.push_back(make_unique<LibMesh>(dataset));
+#endif
+  } else if (mesh_type == UnstructuredMesh::mesh_type) {
+    fatal_error("Unstructured mesh support is not enabled or the mesh "
+                "library is invalid.");
+  } else {
+    fatal_error(fmt::format("Invalid mesh type: {}", mesh_type));
+  }
+
+  // Map ID to position in vector
+  model::mesh_map[model::meshes.back()->id_] = model::meshes.size() - 1;
+
+  return model::meshes.back();
+}
+
 Mesh::Mesh(pugi::xml_node node)
 {
   // Read mesh id
@@ -3790,34 +3826,7 @@ void read_meshes(pugi::xml_node root)
       mesh_lib = get_node_value(node, "library", true, true);
     }
 
-    // Read mesh and add to vector
-    if (mesh_type == RegularMesh::mesh_type) {
-      model::meshes.push_back(make_unique<RegularMesh>(node));
-    } else if (mesh_type == RectilinearMesh::mesh_type) {
-      model::meshes.push_back(make_unique<RectilinearMesh>(node));
-    } else if (mesh_type == CylindricalMesh::mesh_type) {
-      model::meshes.push_back(make_unique<CylindricalMesh>(node));
-    } else if (mesh_type == SphericalMesh::mesh_type) {
-      model::meshes.push_back(make_unique<SphericalMesh>(node));
-#ifdef OPENMC_DAGMC_ENABLED
-    } else if (mesh_type == UnstructuredMesh::mesh_type &&
-               mesh_lib == MOABMesh::mesh_lib_type) {
-      model::meshes.push_back(make_unique<MOABMesh>(node));
-#endif
-#ifdef OPENMC_LIBMESH_ENABLED
-    } else if (mesh_type == UnstructuredMesh::mesh_type &&
-               mesh_lib == LibMesh::mesh_lib_type) {
-      model::meshes.push_back(make_unique<LibMesh>(node));
-#endif
-    } else if (mesh_type == UnstructuredMesh::mesh_type) {
-      fatal_error("Unstructured mesh support is not enabled or the mesh "
-                  "library is invalid.");
-    } else {
-      fatal_error("Invalid mesh type: " + mesh_type);
-    }
-
-    // Map ID to position in vector
-    model::mesh_map[model::meshes.back()->id_] = model::meshes.size() - 1;
+    Mesh::create(node, mesh_type, mesh_lib);
   }
 }
 
@@ -3861,34 +3870,7 @@ void read_meshes(hid_t group)
       read_dataset(mesh_group, "library", mesh_lib);
     }
 
-    // Read mesh and add to vector
-    if (mesh_type == RegularMesh::mesh_type) {
-      model::meshes.push_back(make_unique<RegularMesh>(mesh_group));
-    } else if (mesh_type == RectilinearMesh::mesh_type) {
-      model::meshes.push_back(make_unique<RectilinearMesh>(mesh_group));
-    } else if (mesh_type == CylindricalMesh::mesh_type) {
-      model::meshes.push_back(make_unique<CylindricalMesh>(mesh_group));
-    } else if (mesh_type == SphericalMesh::mesh_type) {
-      model::meshes.push_back(make_unique<SphericalMesh>(mesh_group));
-#ifdef OPENMC_DAGMC_ENABLED
-    } else if (mesh_type == UnstructuredMesh::mesh_type &&
-               mesh_lib == MOABMesh::mesh_lib_type) {
-      model::meshes.push_back(make_unique<MOABMesh>(mesh_group));
-#endif
-#ifdef OPENMC_LIBMESH_ENABLED
-    } else if (mesh_type == UnstructuredMesh::mesh_type &&
-               mesh_lib == LibMesh::mesh_lib_type) {
-      model::meshes.push_back(make_unique<LibMesh>(mesh_group));
-#endif
-    } else if (mesh_type == UnstructuredMesh::mesh_type) {
-      fatal_error("Unstructured mesh support is not enabled or the mesh "
-                  "library is invalid.");
-    } else {
-      fatal_error("Invalid mesh type: " + mesh_type);
-    }
-
-    // Map ID to position in vector
-    model::mesh_map[model::meshes.back()->id_] = model::meshes.size() - 1;
+    Mesh::create(mesh_group, mesh_type, mesh_lib);
   }
 }
 

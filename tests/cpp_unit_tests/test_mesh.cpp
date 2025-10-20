@@ -181,3 +181,72 @@ TEST_CASE("Test mesh hdf5 roundtrip - spherical")
 
   REQUIRE(mesh2.grid_ == mesh.grid_);
 }
+
+TEST_CASE("Test multiple meshes HDF5 roundtrip - spherical")
+{
+  // The XML data as a string
+  std::string xml_string = R"(
+        <meshes>
+        <mesh id="1" type="spherical">
+            <r_grid>0.1 0.2 0.5 1.0</r_grid>
+            <theta_grid>0.0 3.141592653589793</theta_grid>
+            <phi_grid>0.0 6.283185307179586</phi_grid>
+            <origin>0.0 0.0 0.0</origin>
+        </mesh>
+         <mesh id="2">
+            <dimension>3 4 5</dimension>
+            <lower_left>-2 -3 -5</lower_left>
+            <upper_right>2 3 5</upper_right>
+       </mesh>
+       </meshes>
+    )";
+
+  // Create a pugixml document object
+  pugi::xml_document doc;
+
+  // Load the XML from the string
+  pugi::xml_parse_result result = doc.load_string(xml_string.c_str());
+
+  pugi::xml_node root = doc.child("meshes");
+
+  read_meshes(root);
+
+  const auto spherical_mesh_xml =
+    dynamic_cast<SphericalMesh*>(model::meshes[0].get());
+  const auto regular_mesh_xml =
+    dynamic_cast<RegularMesh*>(model::meshes[1].get());
+
+  hid_t file_id = file_open("meshes.h5", 'w');
+
+  hid_t root_group = create_group(file_id, "root");
+
+  open_group(file_id, "root");
+
+  meshes_to_hdf5(root_group);
+
+  close_group(root_group);
+
+  file_close(file_id);
+
+  hid_t file_id2 = file_open("meshes.h5", 'r');
+
+  hid_t root_group_read = open_group(file_id2, "root");
+
+  hid_t mesh_group_read = open_group(root_group_read, "meshes");
+
+  read_meshes(mesh_group_read);
+
+  const auto spherical_mesh_hdf5 = dynamic_cast<SphericalMesh*>(
+    model::meshes[model::mesh_map[spherical_mesh_xml->id_ + 10]].get());
+  const auto regular_mesh_hdf5 = dynamic_cast<RegularMesh*>(
+    model::meshes[model::mesh_map[regular_mesh_xml->id_ + 10]].get());
+
+  remove("meshes.h5");
+
+  REQUIRE(spherical_mesh_hdf5->shape_ == spherical_mesh_xml->shape_);
+  REQUIRE(spherical_mesh_hdf5->grid_ == spherical_mesh_xml->grid_);
+
+  REQUIRE(regular_mesh_hdf5->shape_ == regular_mesh_xml->shape_);
+  REQUIRE(regular_mesh_hdf5->lower_left() == regular_mesh_xml->lower_left());
+  REQUIRE(regular_mesh_hdf5->upper_right() == regular_mesh_xml->upper_right());
+}

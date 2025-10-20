@@ -11,7 +11,7 @@ import openmc
 import openmc.mgxs
 from openmc.mgxs import SCATTER_TABULAR, SCATTER_LEGENDRE, SCATTER_HISTOGRAM
 from .checkvalue import check_type, check_value, check_greater_than, \
-    check_iterable_type, check_less_than, check_filetype_version
+    check_iterable_type, check_less_than, check_filetype_version, PathLike
 
 ROOM_TEMPERATURE_KELVIN = 294.0
 
@@ -2506,7 +2506,7 @@ class MGXSLibrary:
 
         Parameters
         ----------
-        filename : str
+        filename : str or PathLike
             Filename of file, default is mgxs.h5.
         libver : {'earliest', 'latest'}
             Compatibility mode for the HDF5 file. 'latest' will produce files
@@ -2514,7 +2514,7 @@ class MGXSLibrary:
 
         """
 
-        check_type('filename', filename, str)
+        check_type('filename', filename, PathLike)
 
         # Create and write to the HDF5 file
         file = h5py.File(filename, "w", libver=libver)

@@ -601,13 +601,14 @@ class R2SManager:
 
                 # Create decay photon source source
                 energy = activated_mat.get_decay_photon_energy()
-                strength = energy.integral() if energy is not None else 0.0
-                source_lists[j][index_elem] = openmc.IndependentSource(
-                    energy=energy,
-                    particle='photon',
-                    strength=strength,
-                    constraints={'domains': [mat_dict[mat_id]]}
-                )
+                if energy is not None:
+                    strength = energy.integral()
+                    source_lists[j][index_elem] = openmc.IndependentSource(
+                        energy=energy,
+                        particle='photon',
+                        strength=strength,
+                        constraints={'domains': [mat_dict[mat_id]]}
+                    )
 
                 # Increment index of activated material
                 index_mat += 1

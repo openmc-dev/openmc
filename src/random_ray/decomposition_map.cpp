@@ -600,9 +600,9 @@ void DecompositionMap::calculate_rank_load(FlatSourceDomain* domain){ //TODO: Th
   }
 
   //TODO: Temporary print-outs
-  if (mpi::master) {
-    printf("Load distribution: ");
-  }
+  // if (mpi::master) {
+  //   printf("Load distribution: ");
+  // }
 
   // Calculate rank load based on number of source region hits
   uint64_t n_hits_total = 0;
@@ -611,9 +611,9 @@ void DecompositionMap::calculate_rank_load(FlatSourceDomain* domain){ //TODO: Th
   n_hits_sum_ = n_hits_total;
   
   //TODO: Temporary print-outs
-  if(mpi::master){
-    printf("Total hits: %ld \n", n_hits_total);
-  }
+  // if(mpi::master){
+  //   printf("Total hits: %ld \n", n_hits_total);
+  // }
 
   // Communicate load across ranks
   for (int rank = 0; rank < mpi::n_procs; rank++) {
@@ -624,14 +624,14 @@ void DecompositionMap::calculate_rank_load(FlatSourceDomain* domain){ //TODO: Th
     MPI_Bcast(&bcast_load, 1, MPI_DOUBLE, rank, mpi::intracomm);
     rank_load_[rank] = bcast_load;
     //TODO: Temporary print-outs
-    if (mpi::master) {
-      printf("RANK %d: %.2f%% ", rank, rank_load_[rank]*100.0);
-    }
+    // if (mpi::master) {
+    //   printf("RANK %d: %.2f%% ", rank, rank_load_[rank]*100.0);
+    // }
   }
   //TODO: Temporary print-outs
-  if (mpi::master) {
-    printf("\n");
-  }
+  // if (mpi::master) {
+  //   printf("\n");
+  // }
 
   // Calculate imbalance
   // vector<double> imbalance_per_rank(mpi::n_procs, 0.0);
@@ -681,7 +681,7 @@ void DecompositionMap::balance_load(FlatSourceDomain* domain){
   while (max_imbalance > imbalance_tolerance_ && it_outer < max_iterations){
 
     //TODO: temporary
-    if (mpi::master)  printf("MPI load balancing iteration %d, max. imbalance: %.2f%% \n", it_outer, max_imbalance*100.0);
+    // if (mpi::master)  printf("MPI load balancing iteration %d, max. imbalance: %.2f%% \n", it_outer, max_imbalance*100.0);
 
     // Optimise rank load rank by rank
     // for (int rank = 0; rank < mpi::n_procs; rank++) {
@@ -806,13 +806,13 @@ void DecompositionMap::balance_load(FlatSourceDomain* domain){
   simulation::time_load_balance_sr_transfer.stop();
 
   //TODO: temporary
-  if (mpi::master){
-    printf("Weights: ");
-    for (int rank = 0; rank < mpi::n_procs; rank++) {
-      printf("RANK %d: %.2f ", rank, rank_weights_[rank]);
-    }
-    printf("\n");
-  }
+  // if (mpi::master){
+  //   printf("Weights: ");
+  //   for (int rank = 0; rank < mpi::n_procs; rank++) {
+  //     printf("RANK %d: %.2f ", rank, rank_weights_[rank]);
+  //   }
+  //   printf("\n");
+  // }
 }
 
 void DecompositionMap::update_load(FlatSourceDomain* domain, bool check_all_ranks){

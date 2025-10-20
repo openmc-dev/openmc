@@ -387,6 +387,10 @@ double FlatSourceDomain::compute_k_eff(double k_eff_old) const
     simulation::time_decomposition_handling.stop();
   }
 
+  // if (mpi::master) {
+  //   printf("Batch %d, RANK %d: keff_old: %f, Fission Rate Old: %f, Fission Rate New: %f \n", simulation::current_batch, mpi::rank, k_eff_old, fission_rate_old, fission_rate_new);
+  // }
+
   double k_eff_new = k_eff_old * (fission_rate_new / fission_rate_old);
 
   double H = 0.0;

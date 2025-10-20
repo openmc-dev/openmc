@@ -17,6 +17,8 @@
 #include "openmc/weight_windows.h"
 #include "openmc/random_ray/decomposition_map.h"
 #include "openmc/random_ray/ray_bank.h"
+// #include <thread>
+// #include <chrono>
 
 namespace openmc {
 
@@ -509,11 +511,11 @@ void RandomRaySimulation::simulate()
       settings::n_particles * RandomRay::distance_active_);
 
     // if (mpi::master) {
-      printf("Rank %d has %ld neighbors: ", mpi::rank, mpi::decomp_map.my_neighbors.size());
-      for (int rank : mpi::decomp_map.my_neighbors){
-        printf("%d ", rank);
-      }
-      printf("\n");
+      // printf("Rank %d has %ld neighbors: ", mpi::rank, mpi::decomp_map.my_neighbors.size());
+      // for (int rank : mpi::decomp_map.my_neighbors){
+      //   printf("%d ", rank);
+      // }
+      // printf("\n");
     // }
 
     // Balance load between ranks by changing weights of Voronoi cells
@@ -617,6 +619,11 @@ void RandomRaySimulation::instability_check(
     simulation::time_decomposition_handling.stop();
   }
 
+  // if (mpi::master) {
+  //   printf("BATCH %d: n_hits = %ld, n_source_regions = %ld, k_eff = %f\n",
+  //     simulation::current_batch, n_hits, n_source_regions, k_eff);
+  // }
+
   if (mpi::master) {
     double percent_missed = ((n_source_regions - n_hits) /
                             static_cast<double>(n_source_regions)) *
@@ -636,7 +643,12 @@ void RandomRaySimulation::instability_check(
           percent_missed));
     }
 
+    // if (simulation::current_batch==56){
+    //   printf("RANK %d: k_eff = %f\n", mpi::rank, k_eff);
+    // }
+
     if (k_eff > 10.0 || k_eff < 0.01 || !(std::isfinite(k_eff))) {
+      // printf("RANK %d: k_eff = %f\n", mpi::rank, k_eff);
       fatal_error("Instability detected");
     }
   }
@@ -754,7 +766,7 @@ void RandomRaySimulation::print_results_random_ray(
     show_time("Source update only", time_update_src.elapsed(), 1);
     show_time("Tally conversion only", time_tallies.elapsed(), 1);
     if (mpi::n_procs > 1){
-      double time_decomp_misc = time_domain_decomposition - time_generate_voronoi_centers.elapsed() 
+      double time_decomp_misc = time_domain_decomposition - time_source_region_exchange.elapsed() - time_generate_voronoi_centers.elapsed() 
         - time_ray_comms.elapsed() - time_comms_metadata.elapsed() - time_unpack_data.elapsed() - time_mpi_imbalance.elapsed() - time_load_balance.elapsed();
 
       show_time("Decomposition handling", time_domain_decomposition, 1);
@@ -768,7 +780,7 @@ void RandomRaySimulation::print_results_random_ray(
       show_time("Sending ray metadata", time_comms_metadata.elapsed(), 2);
       show_time("Unpacking ray data", time_unpack_data.elapsed(), 2);
       show_time("Other decomposition routines", time_decomp_misc, 2);
-      show_time("Testing: ", time_test.elapsed(), 2); //TODO: remove
+      // show_time("Testing: ", time_test.elapsed(), 2); //TODO: remove
     }
     show_time("Other iteration routines", misc_time, 1);
 
@@ -844,11 +856,14 @@ void RandomRaySimulation::transport_sweep_decomp(RayBank& RB) {
 
   simulation::time_decomposition_handling.start();
 
+  // int ray_cnt = 0;
+
   // Create rays and add them to ray bank
   #pragma omp parallel for schedule(static)
     for (int i = 0; i < simulation::work_per_rank; i++) {
       uint64_t id = simulation::work_index[mpi::rank] + i;
       RandomRay ray(id, domain_.get());
+      // ray_cnt ++;
 
       // Add ray to ray bank if it starts in my subdomain
       if (!ray.has_left_subdomain()){
@@ -861,13 +876,20 @@ void RandomRaySimulation::transport_sweep_decomp(RayBank& RB) {
       else {
         #pragma omp critical (raybuffer)
         {
-          simulation::time_ray_buffering.start();
+          // simulation::time_ray_buffering2.start();
           RB.buffer_ray_data_to_send(ray, domain_.get());
-          simulation::time_ray_buffering.stop();
+          // simulation::time_ray_buffering2.stop();
         }
       }
     }
 
+    // If no ray is alive at this stage, it means that all of them have been buffered because they were sampled in foregin subdomain. This requires a ray bank update here.
+    if (!RB.is_any_ray_alive()) {
+      RB.update(domain_.get());
+    }
+
+    // MPI_Barrier(mpi::intracomm);
+    // printf("Batch: %d Rank %d: ray cnt %d, RB size %d\n", simulation::current_batch, mpi::rank, ray_cnt, RB.ray_bank_size());
     int num_comms = 0;
 
     // printf("Rank %d: Starting transport sweep with %d rays\n", mpi::rank, RB.ray_bank_size());
@@ -901,6 +923,10 @@ void RandomRaySimulation::transport_sweep_decomp(RayBank& RB) {
       // if (RB.ray_bank_size() != 0) printf("Rank %d: Communicating %d rays\n", mpi::rank, RB.ray_bank_size());
       RB.update(domain_.get());
 
+      // if (mpi::master){
+      //   printf("Communication round %d\n", num_comms);
+      // }
+
       num_comms ++;
     }
 
@@ -924,6 +950,12 @@ void RandomRaySimulation::transport_sweep_decomp(RayBank& RB) {
     RB.reset_my_ray_list();
 
     simulation::time_decomposition_handling.stop();
+
+    // std::this_thread::sleep_for(std::chrono::seconds(1));
+    // if (simulation::current_batch == 10){
+    //     fatal_error(
+    // "STOP.");
+    // }
 }
 
 } // namespace openmc

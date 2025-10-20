@@ -96,6 +96,15 @@ void RayBank::communicate_message_metadata() {
     // }
   }
 
+  // printf("Rank %d: Sending a total of %d rays to %lu ranks\n", mpi::rank, total_sending_rays_, ray_send_buffer_.size());
+  // if (total_sending_rays_==1){
+  //   for (auto& [rank, rays] : ray_send_buffer_) {
+  //     for (auto& ray : rays){
+  //       printf("Rank %d: Sending ray %ld to rank %d\n", mpi::rank, ray.ray_id, rank);
+  //     }
+  //   }
+  // }
+
   // Exchange message counts with all ranks
   MPI_Alltoall(num_messages_sending.data(), 1, MPI_INT,
                num_messages_receiving_.data(), 1, MPI_INT,
@@ -149,14 +158,14 @@ void RayBank::communicate_rays(){
           angular_flux_data[(vector_send_idx + i) * negroups_ + g] = rays[i].angular_flux[g];
         }
 
-        // Check neighbor list and add if not already known. Filter out rays that are sampled elsewhere TODO: Positioning here might be inefficient
-        simulation::time_test.start(); //TODO: Remove
+        // Check neighbor list and add if not already known (insert does this check automatically). Filter out rays that are sampled elsewhere TODO: Positioning here might be inefficient
+        // simulation::time_test.start(); //TODO: Remove
         if (rays[i].distance_travelled > 0.0 || rays[i].is_active) {
-          if (mpi::decomp_map.my_neighbors.count(receiving_rank) == 0) {
+          // if (mpi::decomp_map.my_neighbors.count(receiving_rank) == 0) {
             mpi::decomp_map.my_neighbors.insert(receiving_rank);
-          }
+          // }
         }
-        simulation::time_test.stop();
+        // simulation::time_test.stop();
       }
 
       MPI_Isend(&ray_data[vector_send_idx], num_rays_sending * sizeof(RayExchangeData), MPI_BYTE, receiving_rank, 1, mpi::intracomm, &requests[req_idx]);

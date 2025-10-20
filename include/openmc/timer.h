@@ -37,13 +37,14 @@ extern Timer time_decomposition_handling;
 extern Timer time_load_balance;
 extern Timer time_load_balance_sr_transfer;
 extern Timer time_ray_buffering;
+// extern Timer time_ray_buffering2;
 extern Timer time_generate_voronoi_centers;
 extern Timer time_source_region_exchange;
 extern Timer time_add_ray_to_bank;
 extern Timer time_comms_metadata;
 extern Timer time_unpack_data;
 extern Timer time_mpi_imbalance;
-extern Timer time_test; //TODO: remove
+// extern Timer time_test; //TODO: remove
 
 } // namespace simulation
 

@@ -354,12 +354,12 @@ public:
 
   double integral() const override { return integral_; }
 
-private:
-  // Storrage for probability + distribution
-  using DistPair = std::pair<double, UPtrDist>;
+  void set_bias_mixture(pugi::xml_node bias_node);
 
-  vector<DistPair>
-    distribution_;  //!< sub-distributions + cummulative probabilities
+private:
+  vector<UPtrDist> distribution_;  //!< sub-distributions
+  DiscreteIndex di_; //!< discrete probability distribution of
+                     //!< sub-distribution indices
   double integral_; //!< integral of distribution
 };
 

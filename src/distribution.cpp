@@ -198,14 +198,13 @@ double Discrete::evaluate(double x) const
   return 0.0;
 }
 
-void Discrete::set_bias_discrete(pugi::xml_node bias_node)
+void Discrete::set_bias_discrete(pugi::xml_node node)
 {
   // Takes the probability vector from a bias distribution and applies it to
   // the existing DiscreteIndex.
-  auto params = get_node_array<double>(bias_node, "parameters");
-  std::size_t n = params.size() / 2;
+  auto bias_params = get_node_array<double>(node, "bias");
 
-  di_.apply_bias({params.data() + n, n});
+  di_.apply_bias(bias_params);
 }
 
 //==============================================================================
@@ -571,47 +570,51 @@ double Equiprobable::evaluate(double x) const
 
 Mixture::Mixture(pugi::xml_node node)
 {
-  double cumsum = 0.0;
+  vector<double> probabilities;
+  
+  // First pass: collect distributions and their probabilities
   for (pugi::xml_node pair : node.children("pair")) {
     // Check that required data exists
     if (!pair.attribute("probability"))
       fatal_error("Mixture pair element does not have probability.");
     if (!pair.child("dist"))
       fatal_error("Mixture pair element does not have a distribution.");
-
-    // cumulative sum of probabilities
+    
+    // Get probability and distribution
     double p = std::stod(pair.attribute("probability").value());
-
-    // Save cumulative probability and distribution
     auto dist = distribution_from_xml(pair.child("dist"));
-    cumsum += p * dist->integral();
-
-    distribution_.push_back(std::make_pair(cumsum, std::move(dist)));
+    
+    // Weight probability by the distribution's integral
+    double weighted_prob = p * dist->integral();
+    probabilities.push_back(weighted_prob);
+    distributions_.push_back(std::move(dist));
   }
+  
+  // Save sum of weighted probabilities
+  integral_ = std::accumulate(probabilities.begin(), probabilities.end(), 0.0);
+  
+  // Initialize DiscreteIndex with probability vector, which will normalize
+  di_.assign(probabilities);
+}
 
-  // Save integral of distribution
-  integral_ = cumsum;
+void Mixture::set_bias_mixture(pugi::xml_node node)
+{
+  // Takes the probability vector from a bias distribution and applies it to
+  // the existing DiscreteIndex.
+  auto bias_params = get_node_array<double>(node, "bias");
 
-  // Normalize cumulative probabilities to 1
-  for (auto& pair : distribution_) {
-    pair.first /= cumsum;
-  }
+  di_.apply_bias(bias_params);
 }
 
 std::pair<double, double> Mixture::sample(uint64_t* seed) const
 {
-  // Sample value of CDF
-  const double p = prn(seed);
-
-  // find matching distribution
-  const auto it = std::lower_bound(distribution_.cbegin(), distribution_.cend(),
-    p, [](const DistPair& pair, double p) { return pair.first < p; });
-
-  // This should not happen. Catch it
-  assert(it != distribution_.cend());
+  size_t sample_index = di_.sample(seed);
 
   // Sample the chosen distribution
-  return it->second->sample(seed);
+  std::pair<double, double> sample_pair = distribution_[sample_index]->sample(seed);
+
+  return {sample_pair.first, di_.weight()[sample_index] * sample_pair.second};
+}
 }
 
 //==============================================================================
@@ -655,7 +658,6 @@ UPtrDist distribution_from_xml(pugi::xml_node node)
   // Check for biasing distribution
   if (check_for_node(node, "bias")) {
     pugi::xml_node bias_node = node.child("bias");
-    std::string bias_type = get_node_value(bias_node, "type", true, true);
 
     if (check_for_node(bias_node, "bias")) {
       openmc::fatal_error(
@@ -663,16 +665,10 @@ UPtrDist distribution_from_xml(pugi::xml_node node)
         " has a bias distribution with its "
         "own bias distribution. Please ensure bias distributions do not have "
         "their own bias.");
-    } else if (type == "discrete" && bias_type != "discrete") {
-      openmc::fatal_error(
-        "Discrete distributions may only be biased by another Discrete.");
-    } else if (type == "discrete" && bias_type == "discrete") {
-      static_cast<Discrete*>(dist.get())->set_bias_discrete(bias_node);
-    } else if (bias_type == "discrete") {
-      openmc::fatal_error(
-        "Only Discrete distributions may be biased by a Discrete "
-        "distribution. Please ensure bias distribution shares the support "
-        "of the unbiased distribution.");
+    } else if (type == "discrete") {
+      static_cast<Discrete*>(dist.get())->set_bias_discrete(node);
+    } else if (type == "mixture") {
+      static_cast<Mixture*>(dist.get())->set_bias_mixture(node);
     } else {
       UPtrDist bias = distribution_from_xml(bias_node);
       dist->set_bias(std::move(bias));

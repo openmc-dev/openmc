@@ -277,8 +277,8 @@ distribution in OpenMC which permits biasing.
    * - Discrete Univariate PDFs
      - Biasing Method
    * - :class:`openmc.stats.Discrete`
-     - Apply a second, unbiased :class:`openmc.stats.Discrete` sharing the 
-       same :attr:`x` vector to the :attr:`bias` attribute
+     - Apply a vector of alternative probabilities to the :attr:`bias` 
+       attribute
 
 .. list-table::
    :header-rows: 1
@@ -293,7 +293,19 @@ distribution in OpenMC which permits biasing.
        :class:`openmc.stats.Normal`, 
        :class:`openmc.stats.Tabular`
      - Apply a second, unbiased continous univariate PDF to the :attr:`bias` 
-       attribute
+       attribute, ensuring that the :attr:`support` attribute of each 
+       distribution is the same
+
+.. list-table::
+   :header-rows: 1
+   :widths: 35 65
+
+   * - Mixed Univariate PDFs
+     - Biasing Method
+   * - :class:`openmc.stats.Mixture`
+     - May be constructed from multiple biased univariate distributions, or a 
+       second, unbiased continous univariate PDF may be applied to the 
+       :attr:`bias` attribute
 
 .. list-table::
    :header-rows: 1
@@ -321,8 +333,3 @@ distribution in OpenMC which permits biasing.
    * - :class:`openmc.stats.Isotropic`
      - Apply an unbiased :class:`openmc.stats.PolarAzimuthal` to the 
        :attr:`bias` attribute
-
-.. note::
-    The :class:`openmc.stats.Mixture` class may be constructed from multiple 
-    biased univariate distributions, but biasing the probabilities used to 
-    select between these distributions is not currently supported.

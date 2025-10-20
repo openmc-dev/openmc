@@ -305,11 +305,8 @@ class Discrete(Univariate):
         params.text = ' '.join(map(str, self.x)) + ' ' + ' '.join(map(str, self.p))
 
         if self.bias is not None:
-            if self.bias.bias is not None:
-                raise RuntimeError('Biasing distributions should not have their own bias!')
-            else:
-                bias_elem = self.bias.to_xml_element("bias")
-                element.append(bias_elem)
+            bias_elem = ET.SubElement(element,"bias")
+            bias_elem.text = ' '.join(map(str, self.bias))
 
         return element
 
@@ -332,9 +329,8 @@ class Discrete(Univariate):
         x = params[:len(params)//2]
         p = params[len(params)//2:]
         
-        bias_elem = elem.find('bias')
-        if bias_elem is not None:
-            bias_dist = Univariate.from_xml_element(bias_elem)
+        if elem.find('bias'):
+            bias_dist = get_elem_list(elem, "bias", float)
         else:
             bias_dist = None
 
@@ -634,9 +630,8 @@ class Uniform(Univariate):
         """
         params = get_elem_list(elem, "parameters", float)
 
-        bias_elem = elem.find('bias')
-        if bias_elem is not None:
-            bias_dist = Univariate.from_xml_element(bias_elem)
+        if elem.find('bias'):
+            bias_dist = Univariate.from_xml_element(elem.find('bias'))
         else:
             bias_dist = None
 
@@ -800,9 +795,8 @@ class PowerLaw(Univariate):
         """
         params = get_elem_list(elem, "parameters", float)
 
-        bias_elem = elem.find('bias')
-        if bias_elem is not None:
-            bias_dist = Univariate.from_xml_element(bias_elem)
+        if elem.find('bias') is not None:
+            bias_dist = Univariate.from_xml_element(elem.find('bias'))
         else:
             bias_dist = None
 
@@ -933,9 +927,8 @@ class Maxwell(Univariate):
         """
         theta = float(get_text(elem, 'parameters'))
 
-        bias_elem = elem.find('bias')
-        if bias_elem is not None:
-            bias_dist = Univariate.from_xml_element(bias_elem)
+        if elem.find('bias'):
+            bias_dist = Univariate.from_xml_element(elem.find('bias'))
         else:
             bias_dist = None
 
@@ -1076,9 +1069,8 @@ class Watt(Univariate):
         """
         params = get_elem_list(elem, "parameters", float)
         
-        bias_elem = elem.find('bias')
-        if bias_elem is not None:
-            bias_dist = Univariate.from_xml_element(bias_elem)
+        if elem.find('bias'):
+            bias_dist = Univariate.from_xml_element(elem.find('bias'))
         else:
             bias_dist = None
 
@@ -1213,9 +1205,8 @@ class Normal(Univariate):
         """
         params = get_elem_list(elem, "parameters", float)
 
-        bias_elem = elem.find('bias')
-        if bias_elem is not None:
-            bias_dist = Univariate.from_xml_element(bias_elem)
+        if elem.find('bias'):
+            bias_dist = Univariate.from_xml_element(elem.find('bias'))
         else:
             bias_dist = None
 
@@ -1570,9 +1561,8 @@ class Tabular(Univariate):
         x = params[:m]
         p = params[m:]
 
-        bias_elem = elem.find('bias')
-        if bias_elem is not None:
-            bias_dist = Univariate.from_xml_element(bias_elem)
+        if elem.find('bias'):
+            bias_dist = Univariate.from_xml_element(elem.find('bias'))
         else:
             bias_dist = None
 
@@ -1681,6 +1671,9 @@ class Mixture(Univariate):
         Probability of selecting a particular distribution
     distribution : Iterable of Univariate
         List of distributions with corresponding probabilities
+    bias : Iterable of Real, optional
+        Probability of selecting a particular distribution under biased 
+        sampling
 
     Attributes
     ----------
@@ -1690,18 +1683,20 @@ class Mixture(Univariate):
         List of distributions with corresponding probabilities
     support : dict
         Dictionary containing discrete and continuous parts of the support
-    bias : openmc.stats.Univariate or None
-        Distribution for biased sampling
+    bias : numpy.ndarray or None
+        Probability of selecting each distribution under biased sampling
 
     """
 
     def __init__(
         self,
         probability: Sequence[float],
-        distribution: Sequence[Univariate]
+        distribution: Sequence[Univariate],
+        bias: Sequence[float] = None
     ):
         self.probability = probability
         self.distribution = distribution
+        self.bias = bias
 
     def __len__(self):
         return sum(len(d) for d in self.distribution)
@@ -1735,8 +1730,12 @@ class Mixture(Univariate):
     
     @bias.setter
     def bias(self, bias):
-        check_bias_support(self, bias)
-        self._bias = bias
+        cv.check_type('biased mixture distribution probabilities', bias,
+                      Iterable, Real)
+        for b in bias:
+            cv.check_greater_than('biased mixture distribution probabilities',
+                                  b, 0.0, True)
+        self._bias = np.array(bias, dtype=float)
 
     @property
     def support(self):
@@ -1825,6 +1824,10 @@ class Mixture(Univariate):
           data.set("probability", str(p))
           data.append(d.to_xml_element("dist"))
 
+        if self.bias is not None:
+            bias_elem = ET.SubElement(element,"bias")
+            bias_elem.text = ' '.join(map(str, self.bias))
+
         return element
 
     @classmethod
@@ -1850,7 +1853,12 @@ class Mixture(Univariate):
             probability.append(float(get_text(pair, 'probability')))
             distribution.append(Univariate.from_xml_element(pair.find("dist")))
 
-        return cls(probability, distribution)
+        if elem.find('bias'):
+            bias_dist = get_elem_list(elem, "bias", float)
+        else:
+            bias_dist = None
+
+        return cls(probability, distribution, bias=bias_dist)
 
     def integral(self):
         """Return integral of the distribution
@@ -2001,50 +2009,27 @@ def check_bias_support(parent: Univariate, bias: Univariate):
                        f"{msg}")
     
     p_sup, b_sup = parent.support, bias.support
+
+    if isinstance(p_sup, set) or isinstance(b_sup, set):
+        raise RuntimeError("Discrete distributions cannot be used as biasing "
+                           "distributions or be biased by another Univariate "
+                           "distribution. Instead, assign a vector of "
+                           "alternate probabilities to the bias attribute.")
     
-    match b_sup:
-        case set():
-            if isinstance(p_sup, set):
-                # If both supports are sets, we have a Discrete biasing a Discrete. 
-                # The preferred method of performing this is to assign an array of 
-                # bias probabilities to a single Discrete instance.
-                raise RuntimeError("Cannot assign a Discrete distribution to "
-                               "the bias attribute of another Discrete "
-                               "distribution. Instead, assign a vector of "
-                               "alternate probabilities to the bias attribute.")
-            elif isinstance(p_sup, dict):
-                if p_sup["continuous"] or p_sup["discrete"] != b_sup:
-                    mismatch_error(TypeError, "")
-            else:
-                mismatch_error(TypeError, "Incompatible support types.")
-
-        case tuple():
-            if isinstance(p_sup, tuple):
-                if p_sup != b_sup:
-                    mismatch_error(ValueError, "")
-            elif isinstance(p_sup, dict):
-                if p_sup["discrete"] or p_sup["continuous"] != [b_sup]:
-                    mismatch_error(TypeError, "")
-            else:
-                mismatch_error(TypeError, "Incompatible support types.")
-
-        case dict():
-            if isinstance(p_sup, dict):
-                if (p_sup["discrete"] != b_sup["discrete"] or
-                    p_sup["continuous"] != b_sup["continuous"]):
-                    mismatch_error(ValueError, "")
-            elif isinstance(p_sup, tuple) and not b_sup["discrete"]:
-                if [p_sup] != b_sup["continuous"]:
-                    mismatch_error(ValueError, "")
-            elif isinstance(p_sup, set) and not b_sup["continuous"]:
-                if p_sup != b_sup["discrete"]:
-                    mismatch_error(ValueError, "")
-            elif ((b_sup["continuous"] and isinstance(p_sup, set)) 
-                 or (b_sup["discrete"] and isinstance(p_sup, tuple))):
-                mismatch_error(TypeError, "")
-            else:
-                mismatch_error(TypeError, "Incompatible support types.")
-
-        case _:
-            raise TypeError("Unrecognized type for bias.support")
-        
+    elif isinstance(p_sup, dict) or isinstance (b_sup, dict):
+        raise RuntimeError("Mixture distributions cannot be used as biasing "
+                           "distributions or be biased by another Univariate "
+                           "distribution. Instead, instantiate the Mixture "
+                           "object using biased member distributions, or "
+                           "assign a vector of alternative probabilities to "
+                           "the bias attribute.")
+    
+    elif isinstance(p_sup, tuple):
+        if isinstance(b_sup, tuple):
+            if p_sup != b_sup:
+                mismatch_error(ValueError, "")
+        else:
+            mismatch_error(TypeError, "Incompatible support types.")
+    
+    else:
+        raise TypeError("Unrecognized type for parent distribution support")

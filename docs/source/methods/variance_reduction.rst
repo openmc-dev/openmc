@@ -168,6 +168,19 @@ provided that its weight is adjusted according to Equation :eq:`source_bias`::
 Here, :math:`w_0` is the weight of an unbiased sample from :math:`p(x)`, 
 typically unity.
 
+Returning now to Equation :eq:`source_bias`, the requirement for common support 
+becomes evident. If :math:`\mathrm{supp} b(x)` fully contains but is not 
+identical to :math:`\mathrm{supp} p(x)`, then some samples from :math:`b(x)` 
+will correspond to points where :math:`p(x) = 0`. Thus these source sites would 
+be assigned a starting weight of 0, meaning the particles would be killed 
+immediately upon transport, effectively wasting computation time. Conversely, 
+if :math:`\mathrm{supp} b(x)` is fully contained by but not identical to 
+:math:`\mathrm{supp} p(x)`, the contributions of some regions outside 
+:math:`\mathrm{supp} b(x)` will not be counted towards the integral, 
+potentially biasing the tally. The weight assigned to such points 
+:math:`\mathbf{x_i}` would be undefined since 
+:math:`b(\mathbf{x_i}) = \mathbf{0}`.
+
 When an independent source is sampled in OpenMC, the particle's coordinate in 
 each variable of phase space :math:`(\mathbf{r},\mathbf{\Omega},E,t)` is 
 successively drawn from an independent probability distribution. Multiple 
@@ -181,19 +194,6 @@ distributions: space, angle, energy, and time, as shown in Equation
 
     w = w_r \times w_{\Omega} \times w_E \times w_t 
 
-Returning now to Equation :eq:`source_bias`, the requirement for common support 
-becomes evident. If :math:`\mathrm{supp} b(x)` fully contains but is not 
-identical to :math:`\mathrm{supp} p(x)`, then some samples from :math:`b(x)` 
-will correspond to points where :math:`p(x) = 0`. Thus these source sites would 
-be assigned a starting weight of 0, meaning the particles would be killed 
-immediately upon transport, yet would still count towards the total specified 
-in :attr:`Settings.particles` (hence biasing tallies and increasing variance). 
-Conversely, if :math:`\mathrm{supp} b(x)` is fully contained by but not 
-identical to :math:`\mathrm{supp} p(x)`, the contributions of some regions 
-outside :math:`\mathrm{supp} b(x)` will not be counted towards the integral, 
-potentially biasing the tally. The weight assigned to such points 
-:math:`\mathbf{x_i}` would be undefined since 
-:math:`b(\mathbf{x_i}) = \mathbf{0}`.
 
 Finally, in addition to offering global or local variance reduction 
 capabilities, source biasing usually requires fewer additional lines to 

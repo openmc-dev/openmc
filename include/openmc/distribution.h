@@ -357,10 +357,10 @@ public:
   void set_bias_mixture(pugi::xml_node bias_node);
 
 private:
-  vector<UPtrDist> distribution_;  //!< sub-distributions
-  DiscreteIndex di_; //!< discrete probability distribution of
-                     //!< sub-distribution indices
-  double integral_; //!< integral of distribution
+  vector<UPtrDist> distribution_; //!< sub-distributions
+  DiscreteIndex di_;              //!< discrete probability distribution of
+                                  //!< sub-distribution indices
+  double integral_;               //!< integral of distribution
 };
 
 } // namespace openmc

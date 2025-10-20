@@ -571,7 +571,7 @@ double Equiprobable::evaluate(double x) const
 Mixture::Mixture(pugi::xml_node node)
 {
   vector<double> probabilities;
-  
+
   // First pass: collect distributions and their probabilities
   for (pugi::xml_node pair : node.children("pair")) {
     // Check that required data exists
@@ -579,20 +579,20 @@ Mixture::Mixture(pugi::xml_node node)
       fatal_error("Mixture pair element does not have probability.");
     if (!pair.child("dist"))
       fatal_error("Mixture pair element does not have a distribution.");
-    
+
     // Get probability and distribution
     double p = std::stod(pair.attribute("probability").value());
     auto dist = distribution_from_xml(pair.child("dist"));
-    
+
     // Weight probability by the distribution's integral
     double weighted_prob = p * dist->integral();
     probabilities.push_back(weighted_prob);
     distributions_.push_back(std::move(dist));
   }
-  
+
   // Save sum of weighted probabilities
   integral_ = std::accumulate(probabilities.begin(), probabilities.end(), 0.0);
-  
+
   // Initialize DiscreteIndex with probability vector, which will normalize
   di_.assign(probabilities);
 }
@@ -611,7 +611,8 @@ std::pair<double, double> Mixture::sample(uint64_t* seed) const
   size_t sample_index = di_.sample(seed);
 
   // Sample the chosen distribution
-  std::pair<double, double> sample_pair = distribution_[sample_index]->sample(seed);
+  std::pair<double, double> sample_pair =
+    distribution_[sample_index]->sample(seed);
 
   return {sample_pair.first, di_.weight()[sample_index] * sample_pair.second};
 }

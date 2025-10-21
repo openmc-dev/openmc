@@ -1191,7 +1191,7 @@ int RegularMesh::set_grid()
   }
 
   // Make sure lower_left and dimension match
-  if (shape_.size() != lower_left_.size()) {
+  if (lower_left_.size() != n_dimension_) {
     set_errmsg("Number of entries in lower_left must be the same "
                "as the regular mesh dimensions.");
     return OPENMC_E_INVALID_ARGUMENT;
@@ -1199,8 +1199,7 @@ int RegularMesh::set_grid()
   if (width_.size() > 0) {
 
     // Check to ensure width has same dimensions
-    auto n = width_.size();
-    if (n != shape_.size()) {
+    if (width_.size() != n_dimension_) {
       set_errmsg("Number of entries on width must be the same as "
                  "the regular mesh dimensions.");
       return OPENMC_E_INVALID_ARGUMENT;
@@ -1218,8 +1217,7 @@ int RegularMesh::set_grid()
   } else if (upper_right_.size() > 0) {
 
     // Check to ensure upper_right_ has same dimensions
-    auto n = upper_right_.size();
-    if (n != shape_.size()) {
+    if (upper_right_.size() != n_dimension_) {
       set_errmsg("Number of entries on upper_right must be the "
                  "same as the regular mesh dimensions.");
       return OPENMC_E_INVALID_ARGUMENT;

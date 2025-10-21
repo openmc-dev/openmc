@@ -329,7 +329,7 @@ class Discrete(Univariate):
         x = params[:len(params)//2]
         p = params[len(params)//2:]
         
-        if elem.find('bias'):
+        if elem.find('bias') is not None:
             bias_dist = get_elem_list(elem, "bias", float)
         else:
             bias_dist = None
@@ -393,7 +393,7 @@ class Discrete(Univariate):
             
             # Create values and bias probabilities as arrays
             x_arr = np.array(sorted(x_merged))
-            new_bias = np.array(b_merged[x] for x in x_arr)
+            new_bias = np.array([b_merged[x] for x in x_arr])
 
         else:
             for dist, p_dist in zip(dists, probs):
@@ -656,7 +656,7 @@ class Uniform(Univariate):
         """
         params = get_elem_list(elem, "parameters", float)
 
-        if elem.find('bias'):
+        if elem.find('bias') is not None:
             bias_dist = Univariate.from_xml_element(elem.find('bias'))
         else:
             bias_dist = None
@@ -962,7 +962,7 @@ class Maxwell(Univariate):
         """
         theta = float(get_text(elem, 'parameters'))
 
-        if elem.find('bias'):
+        if elem.find('bias') is not None:
             bias_dist = Univariate.from_xml_element(elem.find('bias'))
         else:
             bias_dist = None
@@ -1104,7 +1104,7 @@ class Watt(Univariate):
         """
         params = get_elem_list(elem, "parameters", float)
         
-        if elem.find('bias'):
+        if elem.find('bias') is not None:
             bias_dist = Univariate.from_xml_element(elem.find('bias'))
         else:
             bias_dist = None
@@ -1240,7 +1240,7 @@ class Normal(Univariate):
         """
         params = get_elem_list(elem, "parameters", float)
 
-        if elem.find('bias'):
+        if elem.find('bias') is not None:
             bias_dist = Univariate.from_xml_element(elem.find('bias'))
         else:
             bias_dist = None
@@ -1521,6 +1521,7 @@ class Tabular(Univariate):
             if self.bias.bias is not None:
                 raise RuntimeError('Biasing distributions should not have their own bias!')
             biased_sample = self.bias.sample(n_samples=n_samples,seed=seed)[0]
+            self.normalize() # must have normalized probabilities to apply correct weights
             wgt = [self.evaluate(s)/self.bias.evaluate(s) for s in biased_sample]
             return biased_sample, wgt
     
@@ -1596,7 +1597,7 @@ class Tabular(Univariate):
         x = params[:m]
         p = params[m:]
 
-        if elem.find('bias'):
+        if elem.find('bias') is not None:
             bias_dist = Univariate.from_xml_element(elem.find('bias'))
         else:
             bias_dist = None
@@ -1765,12 +1766,15 @@ class Mixture(Univariate):
     
     @bias.setter
     def bias(self, bias):
-        cv.check_type('biased mixture distribution probabilities', bias,
-                      Iterable, Real)
-        for b in bias:
-            cv.check_greater_than('biased mixture distribution probabilities',
-                                  b, 0.0, True)
-        self._bias = np.array(bias, dtype=float)
+        if bias is None:
+            self._bias = bias
+        else:
+            cv.check_type('biased mixture distribution probabilities', bias,
+                          Iterable, Real)
+            for b in bias:
+                cv.check_greater_than('biased mixture distribution probabilities',
+                                      b, 0.0, True)
+            self._bias = np.array(bias, dtype=float)
 
     @property
     def support(self):
@@ -1812,9 +1816,21 @@ class Mixture(Univariate):
         p = np.array([prob*dist.integral() for prob, dist in
                       zip(self.probability, self.distribution)])
         p /= p.sum()
+        idx_wgt = np.ones(n_samples)
 
-        # Sample from the distributions
-        idx = rng.choice(range(len(self.distribution)), n_samples, p=p)
+        if self.bias is not None:
+            b = np.array([prob*dist.integral() for prob, dist in
+                          zip(self.bias, self.distribution)])
+            b /= b.sum()
+
+            # Sample from the distributions
+            idx = rng.choice(range(len(self.distribution)), n_samples, p=b)
+            for i in np.unique(idx):
+                idx_wgt[idx == i] = p[i]/b[i]
+
+        else:
+            # Sample from the distributions
+            idx = rng.choice(range(len(self.distribution)), n_samples, p=p)
 
         # Draw samples from the distributions sampled above
         out = np.empty_like(idx, dtype=float)
@@ -1823,7 +1839,7 @@ class Mixture(Univariate):
             n_dist_samples = np.count_nonzero(idx == i)
             samples, weights = self.distribution[i].sample(n_dist_samples)
             out[idx == i] = samples
-            out_wgt[idx ==i] = weights
+            out_wgt[idx == i] = weights * idx_wgt[idx == i]
         return out, out_wgt
     
     def evaluate(self, x):
@@ -1888,7 +1904,7 @@ class Mixture(Univariate):
             probability.append(float(get_text(pair, 'probability')))
             distribution.append(Univariate.from_xml_element(pair.find("dist")))
 
-        if elem.find('bias'):
+        if elem.find('bias') is not None:
             bias_dist = get_elem_list(elem, "bias", float)
         else:
             bias_dist = None

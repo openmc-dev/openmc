@@ -49,6 +49,17 @@ def test_discrete():
     n_samples = 1_000_000
     samples, weights = d3.sample(n_samples)
     assert_sample_mean(samples, exp_mean)
+    assert np.all(weights == 1.0)
+
+    # Test biased distribution
+    d3.bias = np.array([0.2, 0.1, 0.7])
+    bias_elem = d3.to_xml_element('distribution')
+    d4 = openmc.stats.Univariate.from_xml_element(bias_elem)
+    np.testing.assert_array_equal(d4.bias, [0.2, 0.1, 0.7])
+    samples, weights = d4.sample(n_samples)
+    weighted_sample = samples * weights
+    assert_sample_mean(weighted_sample, exp_mean)
+    assert np.all(weights != 1.0)
 
 
 def test_delta_function():
@@ -127,6 +138,17 @@ def test_uniform():
     n_samples = 1_000_000
     samples, weights = d.sample(n_samples)
     assert_sample_mean(samples, exp_mean)
+    assert np.all(weights == 1.0)
+
+    # Test biased distribution
+    d.bias = openmc.stats.PowerLaw(a, b, 2)
+    bias_elem = d.to_xml_element('distribution')
+    d2 = openmc.stats.Univariate.from_xml_element(bias_elem)
+    assert isinstance (d2.bias, openmc.stats.PowerLaw)
+    samples, weights = d2.sample(n_samples)
+    weighted_sample = samples * weights
+    assert_sample_mean(weighted_sample, exp_mean)
+    assert np.all(weights != 1.0)
 
 
 @pytest.mark.flaky(reruns=1)
@@ -149,6 +171,17 @@ def test_powerlaw():
     n_samples = 1_000_000
     samples, weights = d.sample(n_samples)
     assert_sample_mean(samples, exp_mean)
+    assert np.all(weights == 1.0)
+
+    # Test biased distribution
+    d.bias = openmc.stats.Uniform(a, b)
+    bias_elem = d.to_xml_element('distribution')
+    d2 = openmc.stats.Univariate.from_xml_element(bias_elem)
+    assert isinstance (d2.bias, openmc.stats.Uniform)
+    samples, weights = d2.sample(n_samples)
+    weighted_sample = samples * weights
+    assert_sample_mean(weighted_sample, exp_mean)
+    assert np.all(weights != 1.0)
 
 
 @pytest.mark.flaky(reruns=1)
@@ -168,11 +201,23 @@ def test_maxwell():
     n_samples = 1_000_000
     samples, weights = d.sample(n_samples)
     assert_sample_mean(samples, exp_mean)
+    assert np.all(weights == 1.0)
 
     # A second sample starting from a different seed
     samples_2, weights_2 = d.sample(n_samples)
     assert_sample_mean(samples_2, exp_mean)
     assert samples_2.mean() != samples.mean()
+    assert np.all(weights_2 == 1)
+
+    # Test biased distribution
+    d.bias = openmc.stats.Maxwell((theta * 1.1))
+    bias_elem = d.to_xml_element('distribution')
+    d2 = openmc.stats.Univariate.from_xml_element(bias_elem)
+    assert isinstance (d2.bias, openmc.stats.Maxwell)
+    samples, weights = d2.sample(n_samples)
+    weighted_sample = samples * weights
+    assert_sample_mean(weighted_sample, exp_mean)
+    assert np.all(weights != 1.0)
 
 
 @pytest.mark.flaky(reruns=1)
@@ -197,6 +242,17 @@ def test_watt():
     n_samples = 1_000_000
     samples, weights = d.sample(n_samples)
     assert_sample_mean(samples, exp_mean)
+    assert np.all(weights == 1.0)
+
+    # Test biased distribution
+    d.bias = openmc.stats.Watt(1.0e6, 2.1e-6)
+    bias_elem = d.to_xml_element('distribution')
+    d2 = openmc.stats.Univariate.from_xml_element(bias_elem)
+    assert isinstance (d2.bias, openmc.stats.Watt)
+    samples, weights = d2.sample(n_samples)
+    weighted_sample = samples * weights
+    assert_sample_mean(weighted_sample, exp_mean)
+    assert np.all(weights != 1.0)
 
 
 @pytest.mark.flaky(reruns=1)
@@ -208,6 +264,7 @@ def test_tabular():
     n_samples = 100_000
     samples, weights = d.sample(n_samples)
     assert_sample_mean(samples, d.mean())
+    assert np.all(weights == 1.0)
 
     # test linear-linear normalization
     d.normalize()
@@ -217,6 +274,7 @@ def test_tabular():
     d = openmc.stats.Tabular(x, p, interpolation='histogram')
     samples, weights = d.sample(n_samples)
     assert_sample_mean(samples, d.mean())
+    assert np.all(weights == 1.0)
 
     d.normalize()
     assert d.integral() == pytest.approx(1.0)
@@ -237,6 +295,16 @@ def test_tabular():
     # call the CDF method
     d = openmc.stats.Tabular(x, p, interpolation='linear-linear')
     d.cdf()
+
+    # Test biased distribution
+    d.bias = openmc.stats.Uniform(x[0], x[-1])
+    bias_elem = d.to_xml_element('distribution')
+    d2 = openmc.stats.Univariate.from_xml_element(bias_elem)
+    assert isinstance (d2.bias, openmc.stats.Uniform)
+    samples, weights = d2.sample(n_samples)
+    weighted_sample = samples * weights
+    assert_sample_mean(weighted_sample, d2.mean())
+    assert np.all(weights != 1.0)
 
 
 def test_tabular_from_xml():
@@ -290,6 +358,7 @@ def test_mixture():
     n_samples = 1_000_000
     samples, weights = mix.sample(n_samples)
     assert_sample_mean(samples, (2.5 + 5.0)/2)
+    assert np.all(weights == 1.0)
 
     elem = mix.to_xml_element('distribution')
 
@@ -297,6 +366,26 @@ def test_mixture():
     np.testing.assert_allclose(d.probability, p)
     assert d.distribution == [d1, d2]
     assert len(d) == 4
+
+    # Test biased sub-distribution
+    d.distribution[0].bias = openmc.stats.PowerLaw(0, 5, 2)
+    bias_elem = d.to_xml_element('distribution')
+    d3 = openmc.stats.Univariate.from_xml_element(bias_elem)
+    assert isinstance (d3.distribution[0].bias, openmc.stats.PowerLaw)
+    samples, weights = d3.sample(n_samples)
+    weighted_sample = samples * weights
+    assert_sample_mean(weighted_sample, (2.5 + 5.0)/2)
+
+    # Test biased meta-probability
+    d.distribution[0].bias = None
+    d.bias = [0.25, 0.75]
+    bias_elem_2 = d.to_xml_element('distribution')
+    d4 = openmc.stats.Univariate.from_xml_element(bias_elem_2)
+    assert isinstance (d4.bias, np.ndarray)
+    samples, weights = d4.sample(n_samples)
+    weighted_sample = samples * weights
+    assert_sample_mean(weighted_sample, (2.5 + 5.0)/2)
+    assert np.all(weights != 1.0)
 
 
 def test_mixture_clip():
@@ -328,6 +417,13 @@ def test_mixture_clip():
     d2 = openmc.stats.Tabular([0.0, 1.0], [0.7e-6], interpolation='histogram')
     mix = openmc.stats.Mixture([1.0, 1.0], [d1, d2])
     with pytest.warns(UserWarning):
+        mix_clip = mix.clip(1e-6)
+    
+    # Make sure warning is raised if a biased Discrete is clipped
+    d3 = openmc.stats.Discrete([1.0, 1.001], [1.0, 0.7e-8])
+    d3.bias = [0.9, 0.1]
+    mix = openmc.stats.Mixture([1.0, 1.0], [d3, d2])
+    with pytest.raises(RuntimeError):
         mix_clip = mix.clip(1e-6)
 
 
@@ -365,12 +461,17 @@ def test_polar_azimuthal():
 
 def test_isotropic():
     d = openmc.stats.Isotropic()
+    mu = openmc.stats.Uniform(-1.0, 1.0)
+    phi = openmc.stats.PowerLaw(0., 2*np.pi, 2)
+    d2 = openmc.stats.PolarAzimuthal(mu, phi)
+    d.bias = d2
     elem = d.to_xml_element()
     assert elem.tag == 'angle'
     assert elem.attrib['type'] == 'isotropic'
 
     d = openmc.stats.Isotropic.from_xml_element(elem)
     assert isinstance(d, openmc.stats.Isotropic)
+    assert isinstance(d.bias, openmc.stats.PolarAzimuthal)
 
 
 def test_monodirectional():
@@ -387,6 +488,7 @@ def test_cartesian():
     x = openmc.stats.Uniform(-10., 10.)
     y = openmc.stats.Uniform(-10., 10.)
     z = openmc.stats.Uniform(0., 20.)
+    z.bias = openmc.stats.PowerLaw(0., 20., 3)
     d = openmc.stats.CartesianIndependent(x, y, z)
 
     elem = d.to_xml_element()
@@ -402,6 +504,7 @@ def test_cartesian():
 
     d = openmc.stats.Spatial.from_xml_element(elem)
     assert isinstance(d, openmc.stats.CartesianIndependent)
+    assert isinstance (d.z.bias, openmc.stats.PowerLaw)
 
 
 def test_box():
@@ -450,6 +553,17 @@ def test_normal():
     n_samples = 100_000
     samples, weights = d.sample(n_samples)
     assert_sample_mean(samples, mean)
+    assert np.all(weights == 1.0)
+
+    # Test biased distribution
+    d.bias = openmc.stats.Normal(10.0, 4.0)
+    bias_elem = d.to_xml_element('distribution')
+    d2 = openmc.stats.Univariate.from_xml_element(bias_elem)
+    assert isinstance (d2.bias, openmc.stats.Normal)
+    samples, weights = d2.sample(n_samples)
+    weighted_sample = samples * weights
+    assert_sample_mean(weighted_sample, mean)
+    assert np.all(weights != 1.0)
 
 
 @pytest.mark.flaky(reruns=1)
@@ -470,6 +584,7 @@ def test_muir():
     n_samples = 100_000
     samples, weights = d.sample(n_samples)
     assert_sample_mean(samples, mean)
+    assert np.all(weights == 1.0)
 
 
 @pytest.mark.flaky(reruns=1)
@@ -516,3 +631,21 @@ def test_combine_distributions():
     # uncertainty of the expected value
     samples, weights = combined.sample(10_000)
     assert_sample_mean(samples, 0.25)
+    assert np.all(weights == 1.0)
+
+    # If biased/unbiased Discrete distributions are combined, unbiased probability 
+    # should be conserved and points from both original distributions should be 
+    # assigned bias probabilities.
+    x1 = [0.0, 1.0, 10.0]
+    p1 = [0.3, 0.2, 0.5]
+    b1 = [0.2, 0.5, 0.3]
+    d1 = openmc.stats.Discrete(x1, p1, b1)
+    x2 = [0.5, 1.0, 5.0]
+    p2 = [0.4, 0.5, 0.1]
+    d2 = openmc.stats.Discrete(x2, p2)
+    combined = openmc.stats.combine_distributions([d1, d2, t1], [0.25, 0.25, 0.5])
+
+    p3 = [0.075, 0.1, 0.175, 0.025, 0.125]
+    b3 = [0.05, 0.1, 0.25, 0.025, 0.075]
+    assert all(combined.distribution[-1].p == p3)
+    assert all(combined.distribution[-1].bias == b3)

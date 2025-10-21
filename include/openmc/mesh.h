@@ -135,6 +135,7 @@ public:
   Mesh(hid_t group);
   virtual ~Mesh() = default;
 
+  // Factory method for creating meshes from either an XML node or HDF5 group
   template<typename T>
   static const std::unique_ptr<Mesh>& create(
     T dataset, const std::string& mesh_type, const std::string& mesh_library);
@@ -1085,9 +1086,9 @@ private:
 //! \param[in] root XML node
 void read_meshes(pugi::xml_node root);
 
-//! Read meshes from a HDF5 file
+//! Read meshes from an HDF5 file
 //
-//! \param[in] group HDF5 group
+//! \param[in] group HDF5 group ("meshes" group)
 void read_meshes(hid_t group);
 
 //! Write mesh data to an HDF5 group

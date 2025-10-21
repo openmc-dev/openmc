@@ -1179,6 +1179,74 @@ void StructuredMesh::surface_bins_crossed(
 // RegularMesh implementation
 //==============================================================================
 
+int RegularMesh::set_grid()
+{
+  auto shape = xt::adapt(shape_, {n_dimension_});
+
+  // Check that dimensions are all greater than zero
+  if (xt::any(shape <= 0)) {
+    set_errmsg("All entries for a regular mesh dimensions "
+               "must be positive.");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  // Make sure lower_left and dimension match
+  if (shape_.size() != lower_left_.size()) {
+    set_errmsg("Number of entries in lower_left must be the same "
+               "as the regular mesh dimensions.");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+  if (width_.size() > 0) {
+
+    // Check to ensure width has same dimensions
+    auto n = width_.size();
+    if (n != shape_.size()) {
+      set_errmsg("Number of entries on width must be the same as "
+                 "the regular mesh dimensions.");
+      return OPENMC_E_INVALID_ARGUMENT;
+    }
+
+    // Check for negative widths
+    if (xt::any(width_ < 0.0)) {
+      set_errmsg("Cannot have a negative width on a regular mesh.");
+      return OPENMC_E_INVALID_ARGUMENT;
+    }
+
+    // Set width and upper right coordinate
+    upper_right_ = xt::eval(lower_left_ + shape * width_);
+
+  } else if (upper_right_.size() > 0) {
+
+    // Check to ensure upper_right_ has same dimensions
+    auto n = upper_right_.size();
+    if (n != shape_.size()) {
+      set_errmsg("Number of entries on upper_right must be the "
+                 "same as the regular mesh dimensions.");
+      return OPENMC_E_INVALID_ARGUMENT;
+    }
+
+    // Check that upper-right is above lower-left
+    if (xt::any(upper_right_ < lower_left_)) {
+      set_errmsg(
+        "The upper_right coordinates of a regular mesh must be greater than "
+        "the lower_left coordinates.");
+      return OPENMC_E_INVALID_ARGUMENT;
+    }
+
+    // Set width
+    width_ = xt::eval((upper_right_ - lower_left_) / shape);
+  }
+
+  // Set material volumes
+  volume_frac_ = 1.0 / xt::prod(shape)();
+
+  element_volume_ = 1.0;
+  for (int i = 0; i < n_dimension_; i++) {
+    element_volume_ *= width_[i];
+  }
+  return 0;
+}
+
 RegularMesh::RegularMesh(pugi::xml_node node) : StructuredMesh {node}
 {
   // Determine number of dimensions for mesh
@@ -1193,24 +1261,12 @@ RegularMesh::RegularMesh(pugi::xml_node node) : StructuredMesh {node}
   }
   std::copy(shape.begin(), shape.end(), shape_.begin());
 
-  // Check that dimensions are all greater than zero
-  if (xt::any(shape <= 0)) {
-    fatal_error("All entries on the <dimension> element for a tally "
-                "mesh must be positive.");
-  }
-
   // Check for lower-left coordinates
   if (check_for_node(node, "lower_left")) {
     // Read mesh lower-left corner location
     lower_left_ = get_node_xarray<double>(node, "lower_left");
   } else {
     fatal_error("Must specify <lower_left> on a mesh.");
-  }
-
-  // Make sure lower_left and dimension match
-  if (shape.size() != lower_left_.size()) {
-    fatal_error("Number of entries on <lower_left> must be the same "
-                "as the number of entries on <dimension>.");
   }
 
   if (check_for_node(node, "width")) {
@@ -1221,49 +1277,16 @@ RegularMesh::RegularMesh(pugi::xml_node node) : StructuredMesh {node}
 
     width_ = get_node_xarray<double>(node, "width");
 
-    // Check to ensure width has same dimensions
-    auto n = width_.size();
-    if (n != lower_left_.size()) {
-      fatal_error("Number of entries on <width> must be the same as "
-                  "the number of entries on <lower_left>.");
-    }
-
-    // Check for negative widths
-    if (xt::any(width_ < 0.0)) {
-      fatal_error("Cannot have a negative <width> on a tally mesh.");
-    }
-
-    // Set width and upper right coordinate
-    upper_right_ = xt::eval(lower_left_ + shape * width_);
-
   } else if (check_for_node(node, "upper_right")) {
+
     upper_right_ = get_node_xarray<double>(node, "upper_right");
 
-    // Check to ensure width has same dimensions
-    auto n = upper_right_.size();
-    if (n != lower_left_.size()) {
-      fatal_error("Number of entries on <upper_right> must be the "
-                  "same as the number of entries on <lower_left>.");
-    }
-
-    // Check that upper-right is above lower-left
-    if (xt::any(upper_right_ < lower_left_)) {
-      fatal_error("The <upper_right> coordinates must be greater than "
-                  "the <lower_left> coordinates on a tally mesh.");
-    }
-
-    // Set width
-    width_ = xt::eval((upper_right_ - lower_left_) / shape);
   } else {
     fatal_error("Must specify either <upper_right> or <width> on a mesh.");
   }
 
-  // Set material volumes
-  volume_frac_ = 1.0 / xt::prod(shape)();
-
-  element_volume_ = 1.0;
-  for (int i = 0; i < n_dimension_; i++) {
-    element_volume_ *= width_[i];
+  if (int err = set_grid()) {
+    fatal_error(openmc_err_msg);
   }
 }
 
@@ -1282,55 +1305,24 @@ RegularMesh::RegularMesh(hid_t group) : StructuredMesh {group}
   }
   std::copy(shape.begin(), shape.end(), shape_.begin());
 
-  // Check that dimensions are all greater than zero
-  if (xt::any(shape <= 0)) {
-    fatal_error("All entries on the <dimension> element for a tally "
-                "mesh must be positive.");
-  }
-
   // Check for lower-left coordinates
   if (object_exists(group, "lower_left")) {
     // Read mesh lower-left corner location
     read_dataset(group, "lower_left", lower_left_);
   } else {
-    fatal_error("Must specify <lower_left> on a mesh.");
-  }
-
-  // Make sure lower_left and dimension match
-  if (shape.size() != lower_left_.size()) {
-    fatal_error("Number of entries on <lower_left> must be the same "
-                "as the number of entries on <dimension>.");
+    fatal_error("Must specify lower_left dataset on a mesh.");
   }
 
   if (object_exists(group, "upper_right")) {
 
     read_dataset(group, "upper_right", upper_right_);
 
-    // Check to ensure width has same dimensions
-    auto n = upper_right_.size();
-    if (n != lower_left_.size()) {
-      fatal_error("Number of entries on <upper_right> must be the "
-                  "same as the number of entries on <lower_left>.");
-    }
-
-    // Check that upper-right is above lower-left
-    if (xt::any(upper_right_ < lower_left_)) {
-      fatal_error("The <upper_right> coordinates must be greater than "
-                  "the <lower_left> coordinates on a tally mesh.");
-    }
-
-    // Set width
-    width_ = xt::eval((upper_right_ - lower_left_) / shape);
   } else {
-    fatal_error("Must specify either <upper_right> or <width> on a mesh.");
+    fatal_error("Must specify either upper_right dataset on a mesh.");
   }
 
-  // Set material volumes
-  volume_frac_ = 1.0 / xt::prod(shape)();
-
-  element_volume_ = 1.0;
-  for (int i = 0; i < n_dimension_; i++) {
-    element_volume_ *= width_[i];
+  if (int err = set_grid()) {
+    fatal_error(openmc_err_msg);
   }
 }
 

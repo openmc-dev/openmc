@@ -489,6 +489,8 @@ public:
   //! Return the volume for a given mesh index
   double volume(const MeshIndex& ijk) const override;
 
+  int set_grid();
+
   // Data members
   double volume_frac_;           //!< Volume fraction of each mesh element
   double element_volume_;        //!< Volume of each mesh element

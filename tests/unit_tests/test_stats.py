@@ -244,8 +244,8 @@ def test_watt():
     assert_sample_mean(samples, exp_mean)
     assert np.all(weights == 1.0)
 
-    # Test biased distribution
-    d.bias = openmc.stats.Watt(1.0e6, 2.1e-6)
+    # Test biased distribution with 5 percent higher T_e
+    d.bias = openmc.stats.Watt(1.0133e6, 2.077e-6)
     bias_elem = d.to_xml_element('distribution')
     d2 = openmc.stats.Univariate.from_xml_element(bias_elem)
     assert isinstance (d2.bias, openmc.stats.Watt)

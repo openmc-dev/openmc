@@ -312,7 +312,13 @@ void Mesh::set_id(int32_t id)
 
   // Update ID and entry in the mesh map
   id_ = id;
-  model::mesh_map[id] = model::meshes.size() - 1;
+
+  // find the index of this mesh in the model::meshes vector
+  // (search in reverse because this mesh was likely just added to the vector)
+  auto it = std::find_if(model::meshes.rbegin(), model::meshes.rend(),
+    [this](const std::unique_ptr<Mesh>& mesh) { return mesh.get() == this; });
+
+  model::mesh_map[id] = std::distance(model::meshes.begin(), it.base()) - 1;
 }
 
 vector<double> Mesh::volumes() const
@@ -3834,7 +3840,7 @@ void read_meshes(hid_t group)
 {
   std::unordered_set<int> mesh_ids;
 
-  std::array<int, 1> ids;
+  std::vector<int> ids;
   read_attribute(group, "ids", ids);
 
   for (auto id : ids) {

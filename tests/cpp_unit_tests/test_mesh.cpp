@@ -236,10 +236,15 @@ TEST_CASE("Test multiple meshes HDF5 roundtrip - spherical")
 
   read_meshes(mesh_group_read);
 
+  // increment mesh IDs to avoid collision during read
+  for (auto& mesh : model::meshes) {
+    mesh->set_id(mesh->id() + 10);
+  }
+
   const auto spherical_mesh_hdf5 = dynamic_cast<SphericalMesh*>(
-    model::meshes[model::mesh_map[spherical_mesh_xml->id_ + 10]].get());
+    model::meshes[model::mesh_map[spherical_mesh_xml->id_]].get());
   const auto regular_mesh_hdf5 = dynamic_cast<RegularMesh*>(
-    model::meshes[model::mesh_map[regular_mesh_xml->id_ + 10]].get());
+    model::meshes[model::mesh_map[regular_mesh_xml->id_]].get());
 
   remove("meshes.h5");
 

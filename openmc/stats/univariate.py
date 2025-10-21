@@ -295,6 +295,20 @@ class Discrete(Univariate):
         """
         return np.sum(self.p)
 
+    def mean(self) -> float:
+        """Return mean of the discrete distribution
+
+        The mean is the weighted average of the discrete values.
+
+        .. versionadded:: 0.15.3
+
+        Returns
+        -------
+        float
+            Mean of discrete distribution
+        """
+        return np.sum(self.x * self.p) / np.sum(self.p)
+
     def clip(self, tolerance: float = 1e-6, inplace: bool = False) -> Discrete:
         r"""Remove low-importance points from discrete distribution.
 
@@ -412,6 +426,18 @@ class Uniform(Univariate):
     def sample(self, n_samples=1, seed=None):
         rng = np.random.RandomState(seed)
         return rng.uniform(self.a, self.b, n_samples)
+
+    def mean(self) -> float:
+        """Return mean of the uniform distribution
+
+        .. versionadded:: 0.15.3
+
+        Returns
+        -------
+        float
+            Mean of uniform distribution
+        """
+        return 0.5 * (self.a + self.b)
 
     def to_xml_element(self, element_name: str):
         """Return XML representation of the uniform distribution
@@ -1123,7 +1149,7 @@ class Tabular(Univariate):
 
         """
         interpolation = get_text(elem, 'interpolation')
-        params = get_elem_list(elem, "parameters", float)        
+        params = get_elem_list(elem, "parameters", float)
         m = (len(params) + 1)//2  # +1 for when len(params) is odd
         x = params[:m]
         p = params[m:]
@@ -1347,6 +1373,30 @@ class Mixture(Univariate):
             for p, dist in zip(self.probability, self.distribution)
         ])
 
+    def mean(self) -> float:
+        """Return mean of the mixture distribution
+
+        The mean is the weighted average of the means of the component
+        distributions, weighted by probability * integral.
+
+        .. versionadded:: 0.15.3
+
+        Returns
+        -------
+        float
+            Mean of the mixture distribution
+        """
+        # Weight each component by its probability and integral
+        weights = [p*dist.integral() for p, dist in
+                   zip(self.probability, self.distribution)]
+        total_weight = sum(weights)
+
+        if total_weight == 0:
+            return 0.0
+
+        return sum([w*dist.mean() for w, dist in
+                   zip(weights, self.distribution)]) / total_weight
+
     def clip(self, tolerance: float = 1e-6, inplace: bool = False) -> Mixture:
         r"""Remove low-importance points / distributions
 
@@ -1369,14 +1419,14 @@ class Mixture(Univariate):
         Distribution with low-importance points / distributions removed
 
         """
-        # Determine integral of original distribution to compare later
-        original_integral = self.integral()
+        # Calculate mean * integral for original distribution to compare later.
+        original_mean_integral = self.mean() * self.integral()
 
         # Determine indices for any distributions that contribute non-negligibly
-        # to overall intensity
-        intensities = [prob*dist.integral() for prob, dist in
-                       zip(self.probability, self.distribution)]
-        indices = _intensity_clip(intensities, tolerance=tolerance)
+        # to overall mean * integral
+        mean_integrals = [prob*dist.mean()*dist.integral() for prob, dist in
+                          zip(self.probability, self.distribution)]
+        indices = _intensity_clip(mean_integrals, tolerance=tolerance)
 
         # Clip mixture of distributions
         probability = self.probability[indices]
@@ -1397,12 +1447,14 @@ class Mixture(Univariate):
             # Create new distribution
             new_dist = type(self)(probability, distribution)
 
-        # Show warning if integral of new distribution is not within
-        # tolerance of original
-        diff = (original_integral - new_dist.integral())/original_integral
+        # Show warning if mean * integral of new distribution is not within
+        # tolerance of original. For energy distributions, mean * integral
+        # represents total energy.
+        new_mean_integral = new_dist.mean() * new_dist.integral()
+        diff = (original_mean_integral - new_mean_integral)/original_mean_integral
         if diff > tolerance:
-            warn("Clipping mixture distribution resulted in an integral that is "
-                    f"lower by a fraction of {diff} when tolerance={tolerance}.")
+            warn("Clipping mixture distribution resulted in a mean*integral "
+                 f"that is lower by a fraction of {diff} when tolerance={tolerance}.")
 
         return new_dist
 

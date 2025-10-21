@@ -1328,6 +1328,10 @@ extern "C" int openmc_weight_windows_import(const char* filename)
 
   hid_t weight_windows_group = open_group(ww_file, "weight_windows");
 
+  hid_t mesh_group = open_group(ww_file, "meshes");
+
+  read_meshes(mesh_group);
+
   std::vector<std::string> names = group_names(weight_windows_group);
 
   for (const auto& name : names) {

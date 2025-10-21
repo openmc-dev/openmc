@@ -2,6 +2,13 @@ from tests.testing_harness import TestHarness
 
 import openmc
 
+import pytest
+
+pytestmark = pytest.mark.skipif(
+    not openmc.lib._dagmc_enabled(),
+    reason="DAGMC CAD geometry is not enabled.")
+
+
 class DagmcWeightWindowsTestHarness(TestHarness):
 
     def __init__(self):

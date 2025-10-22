@@ -115,6 +115,7 @@ SourceRegion::SourceRegion(const SourceRegionHandle& handle)
       flux_moments_new_[g] = handle.flux_moments_new(g);
       flux_moments_t_[g] = handle.flux_moments_t(g);
     }
+    tally_task_[g] = handle.tally_task(g);
   }
   if (settings::run_mode == RunMode::FIXED_SOURCE) {
     scalars_.external_source_present_ = handle.external_source_present();
@@ -122,6 +123,8 @@ SourceRegion::SourceRegion(const SourceRegionHandle& handle)
       external_source_[g] = handle.external_source(g);
     }
   }
+
+  volume_task_ = handle.volume_task();
 }
 
 // combine two source regions from different ranks together

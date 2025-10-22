@@ -586,9 +586,11 @@ void RandomRaySimulation::output_simulation_results() const
       avg_miss_rate_ / settings::n_batches, negroups_,
       domain_->n_source_regions(), domain_->n_external_source_regions_, avg_num_comms_);
   }
-
+  
   if (model::plots.size() > 0) {
       if (mpi::n_procs > 1){
+        // printf("RANK: %d start vtk decomp output\n", mpi::rank);
+        // MPI_Barrier(mpi::intracomm);
         domain_->output_to_vtk_decomp();
       } else {
         domain_->output_to_vtk();
@@ -908,13 +910,13 @@ void RandomRaySimulation::transport_sweep_decomp(RayBank& RB) {
 
             // If ray has left my subdomain, buffer ray state
             if(ray.has_left_subdomain()){
+              simulation::time_ray_buffering.start();
               #pragma omp critical (raybuffer)
               {
-                simulation::time_ray_buffering.start();
                 num_ray_crossings_ ++;
                 RB.buffer_ray_data_to_send(ray, domain_.get());
-                simulation::time_ray_buffering.stop();
               }
+              simulation::time_ray_buffering.stop();
             }
           }
       simulation::time_transport.stop();

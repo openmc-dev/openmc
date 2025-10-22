@@ -964,6 +964,12 @@ void DecompositionMap::redistribute_source_regions(FlatSourceDomain* domain) {
     }
   }
 
+  // // Update source regions in domain
+  // domain->source_regions_ = source_regions_new;
+  
+  // int64_t start_sr_id = domain->source_regions_.n_source_regions();
+  int64_t start_sr_id = source_regions_new.n_source_regions();
+
   // Receive source regions
   for (int sender = 0; sender < mpi::n_procs; sender++) {
 
@@ -979,8 +985,12 @@ void DecompositionMap::redistribute_source_regions(FlatSourceDomain* domain) {
       SourceRegion sr_recv(negroups_, is_linear_);
       receive_sr_data(sender, sr_recv); //TODO: Use <MPI tags?
       source_regions_new.push_back(sr_recv);
+      // domain->source_regions_.push_back(sr_recv);
     }
   }
+
+  // // Reinitialise tallies
+  // domain->convert_source_regions_to_tallies(start_sr_id);
 
   // Update source regions in domain
   domain->source_regions_ = source_regions_new;
@@ -990,6 +1000,9 @@ void DecompositionMap::redistribute_source_regions(FlatSourceDomain* domain) {
     SourceRegionKey key = domain->source_regions_.key(sr);
     domain->source_region_map_[key] = sr;
   }
+
+  // Reinitialise tallies
+  domain->convert_source_regions_to_tallies(start_sr_id);
 }
 
 }// namespace openmc

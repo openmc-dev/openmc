@@ -16,13 +16,13 @@ from warnings import warn
 from typing import List
 
 import lxml.etree as ET
-import scipy.sparse as sp
 
 from openmc.checkvalue import check_type, check_greater_than, PathLike
 from openmc.data import gnds_name, zam
 from openmc.exceptions import DataError
 from .nuclide import FissionYieldDistribution, Nuclide
 from .._xml import get_text
+from ._sparse_compat import csc_array, dok_array
 import openmc.data
 
 
@@ -618,7 +618,7 @@ class Chain:
 
         Returns
         -------
-        scipy.sparse.csc_matrix
+        scipy.sparse.csc_array
             Sparse matrix representing depletion.
 
         See Also
@@ -629,7 +629,7 @@ class Chain:
 
         n = len(self)
 
-        # we accumulate indices and value entries for everything and create the matrix 
+        # we accumulate indices and value entries for everything and create the matrix
         # in one step at the end to avoid expensive index checks scipy otherwise does.
         rows, cols, vals = [], [], []
         def setval(i, j, val):
@@ -712,7 +712,7 @@ class Chain:
                 reactions.clear()
 
         # Return CSC representation instead of DOK
-        return sp.csc_matrix((vals, (rows, cols)), shape=(n, n))
+        return csc_array((vals, (rows, cols)), shape=(n, n))
 
     def form_rr_term(self, tr_rates, current_timestep, mats):
         """Function to form the transfer rate term matrices.
@@ -743,13 +743,13 @@ class Chain:
 
         Returns
         -------
-        scipy.sparse.csc_matrix
+        scipy.sparse.csc_array
             Sparse matrix representing transfer term.
 
         """
         # Use DOK as intermediate representation
         n = len(self)
-        matrix = sp.dok_matrix((n, n))
+        matrix = dok_array((n, n))
 
         for i, nuc in enumerate(self.nuclides):
             elm = re.split(r'\d+', nuc.name)[0]
@@ -800,7 +800,7 @@ class Chain:
 
         Returns
         -------
-        scipy.sparse.csc_matrix
+        scipy.sparse.csc_array
             Sparse vector representing external source term.
 
         """
@@ -808,7 +808,7 @@ class Chain:
             return
         # Use DOK as intermediate representation
         n = len(self)
-        vector = sp.dok_matrix((n, 1))
+        vector = dok_array((n, 1))
 
         for i, nuc in enumerate(self.nuclides):
             # Build source term vector

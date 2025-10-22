@@ -8,7 +8,7 @@ from multiprocessing import Pool
 import numpy as np
 
 from openmc.mpi import comm
-from ._sparse_compat import block_array, hstack, vstack, csc_array
+from ._sparse_compat import block_array, hstack
 
 # Configurable switch that enables / disables the use of
 # multiprocessing routines during depletion
@@ -181,7 +181,7 @@ def deplete(func, chain, n, rates, dt, current_timestep=None, matrix_func=None,
         # of the nuclide vectors
         for i, matrix in enumerate(matrices):
             if not np.equal(*matrix.shape):
-                matrices[i] = vstack([matrix, csc_array([0]*matrix.shape[1])])
+                matrix.resize(matrix.shape[1], matrix.shape[1])
                 n[i] = np.append(n[i], 1.0)
 
     inputs = zip(matrices, n, repeat(dt))

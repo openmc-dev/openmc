@@ -147,9 +147,6 @@ HexagonalMesh::HexagonalMesh(pugi::xml_node node)
   // the hexagon from flat end to flat end
   element_volume_ = width_[1] * width_[0] * width_[0] * sqrt(3) * 0.5;
 
-  // Set material volumes
-  volume_frac_ = 1.0 / hex_count_ / shape_[1];
-
   // size of hex is defined as the radius of the circumscribed circle
   size_ = width_[0] / sqrt(3.0);
 
@@ -935,10 +932,6 @@ extern "C" int openmc_hexagonal_mesh_set_params(
   m->size_ = m->width_[0] / sqrt(3.0);
   m->init_plane_normals();
   m->scale_grid_vectors(m->size_);
-
-  m->volume_frac_ = 1.0 / m->shape_[1] / m->hex_count_;
-  m->element_volume_ =
-    m->width_[1] * m->width_[0] * m->width_[0] * sqrt(3) * 0.5;
 
   return 0;
 }

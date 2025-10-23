@@ -617,14 +617,14 @@ void DecompositionMap::calculate_rank_load(FlatSourceDomain* domain){ //TODO: Th
   MPI_Allreduce(MPI_IN_PLACE, num_mesh_bin_RT_batch_.data(), n_base_sr_, MPI_UINT64_T, MPI_SUM, mpi::intracomm);
   // MPI_Allreduce(num_mesh_bin_RT_batch_.data(), num_mesh_bin_RT_tot_.data(), n_base_sr_, MPI_UINT64_T, MPI_SUM, mpi::intracomm);
 
-  // if(mpi::master){
-  //   uint64_t sum_bsr_RT = std::accumulate(num_base_source_region_RT_batch_.begin(), num_base_source_region_RT_batch_.end(), uint64_t{0});
-  //   uint64_t sum_bsr_RT_tot = std::accumulate(num_base_source_region_RT_tot_.begin(), num_base_source_region_RT_tot_.end(), uint64_t{0});
-  //   uint64_t sum_mb_RT = std::accumulate(num_mesh_bin_RT_batch_.begin(), num_mesh_bin_RT_batch_.end(), uint64_t{0});
-  //   printf("Sum of base_source_region_RT_batch_ before: %lu\n", sum_bsr_RT_tot);
-  //   printf("Sum of base_source_region_RT_batch_ new: %lu\n", sum_bsr_RT);
-  //   printf("Sum of mesh_bin_RT_batch_: %lu\n", sum_mb_RT);
-  // }
+  if(mpi::master){
+    uint64_t sum_bsr_RT = std::accumulate(num_base_source_region_RT_batch_.begin(), num_base_source_region_RT_batch_.end(), uint64_t{0});
+    uint64_t sum_bsr_RT_tot = std::accumulate(num_base_source_region_RT_tot_.begin(), num_base_source_region_RT_tot_.end(), uint64_t{0});
+    uint64_t sum_mb_RT = std::accumulate(num_mesh_bin_RT_batch_.begin(), num_mesh_bin_RT_batch_.end(), uint64_t{0});
+    printf("Sum of base_source_region_RT_batch_ before: %lu\n", sum_bsr_RT_tot);
+    printf("Sum of base_source_region_RT_batch_ new: %lu\n", sum_bsr_RT);
+    printf("Sum of mesh_bin_RT_batch_: %lu\n", sum_mb_RT);
+  }
 
   // Add to total
   #pragma omp parallel for
@@ -662,15 +662,15 @@ void DecompositionMap::calculate_rank_load(FlatSourceDomain* domain){ //TODO: Th
     }
   }
   
-  // if(mpi::master){
-  //   printf("RANK: %d, Number of base_source_regions: %lu\n", mpi::rank, n_base_sr_);
-  //   uint64_t sum_bsr_RT = std::accumulate(num_base_source_region_RT_tot_.begin(), num_base_source_region_RT_tot_.end(), uint64_t{0});
-  //   uint64_t sum_mb_RT = std::accumulate(num_mesh_bin_RT_tot_.begin(), num_mesh_bin_RT_tot_.end(), uint64_t{0});
-  //   uint64_t sum_mesh_bins = std::accumulate(mesh_bins_per_base_sr_.begin(), mesh_bins_per_base_sr_.end(), uint64_t{0});
-  //   printf("Sum of base_source_region_RT_tot_: %lu\n", sum_bsr_RT);
-  //   printf("Sum of mesh_bin_RT_tot_: %lu\n", sum_mb_RT);
-  //   printf("Sum of mesh bins: %lu\n", sum_mesh_bins);
-  // }
+  if(mpi::master){
+    printf("RANK: %d, Number of base_source_regions: %lu\n", mpi::rank, n_base_sr_);
+    uint64_t sum_bsr_RT = std::accumulate(num_base_source_region_RT_tot_.begin(), num_base_source_region_RT_tot_.end(), uint64_t{0});
+    uint64_t sum_mb_RT = std::accumulate(num_mesh_bin_RT_tot_.begin(), num_mesh_bin_RT_tot_.end(), uint64_t{0});
+    uint64_t sum_mesh_bins = std::accumulate(mesh_bins_per_base_sr_.begin(), mesh_bins_per_base_sr_.end(), uint64_t{0});
+    printf("Sum of base_source_region_RT_tot_: %lu\n", sum_bsr_RT);
+    printf("Sum of mesh_bin_RT_tot_: %lu\n", sum_mb_RT);
+    printf("Sum of mesh bins: %lu\n", sum_mesh_bins);
+  }
 
 
   // calculate ray tracing cost per base source region

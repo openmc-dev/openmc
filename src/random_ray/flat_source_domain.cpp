@@ -1325,6 +1325,165 @@ void FlatSourceDomain::output_to_vtk_decomp() const
 
     fill(vector_out_float.begin(), vector_out_float.end(), 0.0);
 
+    // Plot calculated load
+    for (int voxel_id : my_voxel_ids) {
+      float value = mpi::decomp_map.rank_load_[mpi::rank];
+      vector_out_float[voxel_id] = value;
+    }
+
+    if (mpi::master){
+      MPI_Reduce(MPI_IN_PLACE, vector_out_float.data(), vector_size, MPI_FLOAT, MPI_SUM, 0, mpi::intracomm);
+    } else {
+      MPI_Reduce(vector_out_float.data(), nullptr, vector_size, MPI_FLOAT, MPI_SUM, 0, mpi::intracomm);
+    }
+
+    if (mpi::master){
+      std::fprintf(plot, "SCALARS calculated_load float\n");
+      std::fprintf(plot, "LOOKUP_TABLE default\n");
+
+      for (float value : vector_out_float) {
+        float print_value = convert_to_big_endian<float>(value);
+        std::fwrite(&print_value, sizeof(float), 1, plot);
+      }
+    }
+
+    // Plot actual load
+    float transport_time = (simulation::time_transport.elapsed() - simulation::time_ray_buffering.elapsed());
+    float total_transport_time = 0.0;
+
+    MPI_Allreduce(&transport_time, &total_transport_time, 1, MPI_FLOAT, MPI_SUM, mpi::intracomm);
+
+    for (int voxel_id : my_voxel_ids) {
+      float value = transport_time/total_transport_time;
+      vector_out_float[voxel_id] = value;
+    }
+
+    if (mpi::master){
+      MPI_Reduce(MPI_IN_PLACE, vector_out_float.data(), vector_size, MPI_FLOAT, MPI_SUM, 0, mpi::intracomm);
+    } else {
+      MPI_Reduce(vector_out_float.data(), nullptr, vector_size, MPI_FLOAT, MPI_SUM, 0, mpi::intracomm);
+    }
+
+    if (mpi::master){
+      std::fprintf(plot, "SCALARS measured_load float\n");
+      std::fprintf(plot, "LOOKUP_TABLE default\n");
+
+      for (float value : vector_out_float) {
+        float print_value = convert_to_big_endian<float>(value);
+        std::fwrite(&print_value, sizeof(float), 1, plot);
+      }
+    }
+
+    fill(vector_out_float.begin(), vector_out_float.end(), 0.0);
+
+    // Plot expensive ray tracing
+    double sum_bsr_RT = 0;
+
+    for (int i = 0; i < mpi::decomp_map.n_base_sr_; i++) {
+      sum_bsr_RT += static_cast<double>(mpi::decomp_map.num_base_source_region_RT_tot_[i])/mpi::decomp_map.mesh_bins_per_base_sr_[i];
+    }
+
+    // uint64_t sum_bsr_RT = std::accumulate(mpi::decomp_map.num_base_source_region_RT_tot_.begin(), mpi::decomp_map.num_base_source_region_RT_tot_.end(), uint64_t{0});
+
+    for (int voxel_id : my_voxel_ids) {
+      int fsr = voxel_indices[voxel_id];
+      float value = 0;
+      if (fsr >= 0) {
+        SourceRegionKey sr_key = source_regions_.key(fsr);
+        // value = static_cast<double>(mpi::decomp_map.num_base_source_region_RT_tot_[sr_key.base_source_region_id])/(sum_bsr_RT * mpi::decomp_map.mesh_bins_per_base_sr_[sr_key.base_source_region_id]);
+        value = static_cast<double>(mpi::decomp_map.num_base_source_region_RT_tot_[sr_key.base_source_region_id])/(mpi::decomp_map.mesh_bins_per_base_sr_[sr_key.base_source_region_id]);
+        // value = static_cast<double>(mpi::decomp_map.num_base_source_region_RT_tot_[sr_key.base_source_region_id])/(sum_bsr_RT);
+        // if (mpi::master) printf("num_base_source_region_RT_tot_[1] = %lu\n", mpi::decomp_map.num_base_source_region_RT_tot_[1]);
+        // if (mpi::master) printf("num_base_source_region_RT_tot_[%lu] = %lu, sum_bsr_RT = %lu, value = %f\n", sr_key.base_source_region_id, mpi::decomp_map.num_base_source_region_RT_tot_[sr_key.base_source_region_id], sum_bsr_RT, value);
+      }
+      vector_out_float[voxel_id] = value; // To avoid -1 for void (MPI_SUM)
+    }
+
+    if (mpi::master){
+      MPI_Reduce(MPI_IN_PLACE, vector_out_float.data(), vector_size, MPI_FLOAT, MPI_SUM, 0, mpi::intracomm);
+    } else {
+      MPI_Reduce(vector_out_float.data(), nullptr, vector_size, MPI_FLOAT, MPI_SUM, 0, mpi::intracomm);
+    }
+
+    if (mpi::master){
+      std::fprintf(plot, "SCALARS ExpensiveRT float\n");
+      std::fprintf(plot, "LOOKUP_TABLE default\n");
+
+      for (float value : vector_out_float) {
+        float print_value = convert_to_big_endian<float>(value);
+        std::fwrite(&print_value, sizeof(float), 1, plot);
+      }
+    }
+
+    fill(vector_out_float.begin(), vector_out_float.end(), 0.0);
+
+    // Plot cheap ray tracing
+    double sum_mb_RT = 0.0;
+
+    for (int i = 0; i < mpi::decomp_map.n_base_sr_; i++) {
+      sum_mb_RT += static_cast<double>(mpi::decomp_map.num_mesh_bin_RT_tot_[i])/mpi::decomp_map.mesh_bins_per_base_sr_[i];
+    }
+
+    // uint64_t sum_mb_RT = std::accumulate(mpi::decomp_map.num_mesh_bin_RT_tot_.begin(), mpi::decomp_map.num_mesh_bin_RT_tot_.end(), uint64_t{0});
+
+    for (int voxel_id : my_voxel_ids) {
+      int fsr = voxel_indices[voxel_id];
+      float cheapRT = 0;
+      if (fsr >= 0) {
+        SourceRegionKey sr_key = source_regions_.key(fsr);
+        // cheapRT = static_cast<double>(mpi::decomp_map.num_mesh_bin_RT_tot_[sr_key.base_source_region_id])/(sum_mb_RT * mpi::decomp_map.mesh_bins_per_base_sr_[sr_key.base_source_region_id]);
+        cheapRT = static_cast<double>(mpi::decomp_map.num_mesh_bin_RT_tot_[sr_key.base_source_region_id])/(mpi::decomp_map.mesh_bins_per_base_sr_[sr_key.base_source_region_id]);
+        // cheapRT = static_cast<double>(mpi::decomp_map.num_mesh_bin_RT_tot_[sr_key.base_source_region_id])/sum_mb_RT;
+      }
+      vector_out_float[voxel_id] = cheapRT; // To avoid -1 for void (MPI_SUM)
+    }
+
+    if (mpi::master){
+      MPI_Reduce(MPI_IN_PLACE, vector_out_float.data(), vector_size, MPI_FLOAT, MPI_SUM, 0, mpi::intracomm);
+    } else {
+      MPI_Reduce(vector_out_float.data(), nullptr, vector_size, MPI_FLOAT, MPI_SUM, 0, mpi::intracomm);
+    }
+
+    if (mpi::master){
+      std::fprintf(plot, "SCALARS CheapRT float\n");
+      std::fprintf(plot, "LOOKUP_TABLE default\n");
+
+      for (float value : vector_out_float) {
+        float print_value = convert_to_big_endian<float>(value);
+        std::fwrite(&print_value, sizeof(float), 1, plot);
+      }
+    }
+
+    fill(vector_out_float.begin(), vector_out_float.end(), 0.0);
+
+    // Plot number of hits
+    for (int voxel_id : my_voxel_ids) {
+      int fsr = voxel_indices[voxel_id];
+      int n_hits = 0;
+      if (fsr >= 0) {
+        n_hits = source_regions_.n_hits(fsr);
+      }
+      vector_out_int[voxel_id] = n_hits;
+    }
+
+    if (mpi::master){
+      MPI_Reduce(MPI_IN_PLACE, vector_out_int.data(), vector_size, MPI_INT, MPI_SUM, 0, mpi::intracomm);
+    } else {
+      MPI_Reduce(vector_out_int.data(), nullptr, vector_size, MPI_INT, MPI_SUM, 0, mpi::intracomm);
+    }
+
+    if (mpi::master){
+      std::fprintf(plot, "SCALARS n_hits int\n");
+      std::fprintf(plot, "LOOKUP_TABLE default\n");
+
+      for (int value : vector_out_int) {
+        int print_value = convert_to_big_endian<int>(value);
+        std::fwrite(&print_value, sizeof(int), 1, plot);
+      }
+    }
+
+    fill(vector_out_int.begin(), vector_out_int.end(), 0);
+
     // Plot fission source
     if (settings::run_mode == RunMode::EIGENVALUE) {
       for (int voxel_id : my_voxel_ids) {

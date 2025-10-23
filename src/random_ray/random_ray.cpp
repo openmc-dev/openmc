@@ -422,9 +422,6 @@ void RandomRay::attenuate_flux(double distance, double offset)
       mesh_bins_.resize(0);
       mesh_fractional_lengths_.resize(0);
       mesh->bins_crossed(start, end, u(), mesh_bins_, mesh_fractional_lengths_);
-      if (mpi::n_procs > 1) {
-          mpi::decomp_map.num_mesh_bin_RT_batch_[sr] += 1;
-      }
 
       // if (simulation::current_batch == 25) {
       //   printf("Start: %f, %f, %f \n", start.x, start.y, start.z);
@@ -435,6 +432,9 @@ void RandomRay::attenuate_flux(double distance, double offset)
 
       // Loop over all mesh bins and attenuate flux
       for (int b = 0; b < mesh_bins_.size(); b++) {
+        if (mpi::n_procs > 1) {
+            mpi::decomp_map.num_mesh_bin_RT_batch_[sr] += 1;
+        }
         double physical_length = reduced_distance * mesh_fractional_lengths_[b];
         attenuate_flux_inner(
           physical_length, sr, mesh_bins_[b], start);

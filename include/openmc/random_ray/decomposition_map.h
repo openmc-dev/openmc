@@ -76,6 +76,17 @@ public:
   std::unordered_set<int> my_neighbors;
   // vector<int> my_neighbors;
 
+  vector<uint64_t> num_base_source_region_RT_tot_; // total number of base source region ray trace operations per base source region
+  vector<uint64_t> num_mesh_bin_RT_tot_; // total number of mesh bin ray trace operations per base source region
+  vector<uint64_t> num_base_source_region_RT_batch_; // number of base source region ray trace operations per base source region for current batch
+  vector<uint64_t> num_mesh_bin_RT_batch_; // number of mesh bin ray trace operations per base source region for current batch
+  vector<uint64_t> mesh_bins_per_base_sr_; // number of mesh bin ray trace operations per base source region for current batch
+  vector<double> ray_tracing_cost_;
+
+  // coefficients for load calculation
+  double C1 = 1.0;
+  double C2 = 1.0; 
+
   vector<double> rank_load_;
   vector<double> rank_weights_;
   double target_load_;
@@ -83,6 +94,7 @@ public:
   int cnt_unconverged_optimizations_total_ = 0;
   int cnt_optimizations_total_ = 0;
   double max_imbalance_ = 0.0; //TODO: rename in max_load_imbalance_
+  uint64_t n_base_sr_ = 0;
 
 private:
   //----------------------------------------------------------------------------
@@ -91,7 +103,8 @@ private:
   vector<Position> grid_points_; //TODO: This can be local variable when Voronoi centres ae established
   int grid_points_per_rank_{125}; // default 5x5x5 grid points per rank
   int negroups_;
-  uint64_t n_hits_sum_;
+  // uint64_t n_hits_sum_;
+  double total_load_;
 
   double max_domain_length_;
   bool is_linear_;

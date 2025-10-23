@@ -10,6 +10,7 @@
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
 #include "openmc/timer.h" //TODO: temporary?
+#include "openmc/cell.h"
 
 #include "openmc/distribution_spatial.h"
 #include "openmc/random_dist.h"
@@ -296,6 +297,19 @@ void RandomRay::event_advance_ray()
   boundary() = distance_to_boundary(*this);
   double distance = boundary().distance();
 
+  //TODO: Is that good location?
+  if (mpi::n_procs > 1) {
+    // Determine source region index etc.   //TODO: This is repeated in attenuate_flux
+    int i_cell = lowest_coord().cell();
+    // The base source region is the spatial region index
+    int64_t sr = domain_->source_region_offsets_[i_cell] + cell_instance();
+    for (int i = 0; i < n_coord(); i++) {
+      // const auto& coord {coord(i)};
+      Cell& c {*model::cells[coord(i).cell()]};
+      mpi::decomp_map.num_base_source_region_RT_batch_[sr] += c.surfaces().size(); //TODO: Is this correct value for "surfaces"
+    }
+  }
+
   if (distance < 0.0) {
     mark_as_lost("Negative transport distance detected for particle " +
                  std::to_string(id()));
@@ -408,6 +422,9 @@ void RandomRay::attenuate_flux(double distance, double offset)
       mesh_bins_.resize(0);
       mesh_fractional_lengths_.resize(0);
       mesh->bins_crossed(start, end, u(), mesh_bins_, mesh_fractional_lengths_);
+      if (mpi::n_procs > 1) {
+          mpi::decomp_map.num_mesh_bin_RT_batch_[sr] += 1;
+      }
 
       // if (simulation::current_batch == 25) {
       //   printf("Start: %f, %f, %f \n", start.x, start.y, start.z);

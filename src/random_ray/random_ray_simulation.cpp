@@ -519,6 +519,8 @@ void RandomRaySimulation::simulate()
     // }
 
     // Balance load between ranks by changing weights of Voronoi cells
+    // if (mpi::master){printf("Max imbalance %f", mpi::decomp_map.max_imbalance_);}
+
     if (mpi::n_procs > 1 && mpi::decomp_map.load_balanced() == false){
       simulation::time_load_balance.start();
       mpi::decomp_map.balance_load(domain_.get());
@@ -589,7 +591,7 @@ void RandomRaySimulation::output_simulation_results() const
   
   if (model::plots.size() > 0) {
       if (mpi::n_procs > 1){
-        // printf("RANK: %d start vtk decomp output\n", mpi::rank);
+        // printf("RANK: %d start vtk decomp output\n", mpi:Co:rank);
         // MPI_Barrier(mpi::intracomm);
         domain_->output_to_vtk_decomp();
       } else {

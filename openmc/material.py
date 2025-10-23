@@ -293,31 +293,42 @@ class Material(IDManagerMixin):
             self,
             clip_tolerance: float = 1e-6,
             units: str = 'Bq',
-            volume: float | None = None
+            volume: float | None = None,
+            exclude_nuclides: list[str] | None = None,
+            include_nuclides: list[str] | None = None
         ) -> Univariate | None:
         r"""Return energy distribution of decay photons from unstable nuclides.
-
+    
         .. versionadded:: 0.14.0
-
+    
         Parameters
         ----------
         clip_tolerance : float
-            Maximum fraction of :math:`\sum_i x_i p_i` for discrete
-            distributions that will be discarded.
+            Maximum fraction of :math:`\sum_i x_i p_i` for discrete distributions
+            that will be discarded.
         units : {'Bq', 'Bq/g', 'Bq/kg', 'Bq/cm3'}
             Specifies the units on the integral of the distribution.
         volume : float, optional
             Volume of the material. If not passed, defaults to using the
             :attr:`Material.volume` attribute.
-
+        exclude_nuclides : list of str, optional
+            Nuclides to exclude from the photon source calculation.
+        include_nuclides : list of str, optional
+            Nuclides to include in the photon source calculation. If specified,
+            only these nuclides are used.
+    
         Returns
         -------
         Univariate or None
-            Decay photon energy distribution. The integral of this distribution
-            is the total intensity of the photon source in the requested units.
-
+            Decay photon energy distribution. The integral of this distribution is
+            the total intensity of the photon source in the requested units.
+    
         """
         cv.check_value('units', units, {'Bq', 'Bq/g', 'Bq/kg', 'Bq/cm3'})
+        
+        if exclude_nuclides is not None and include_nuclides is not None:
+            raise ValueError("Cannot specify both exclude_nuclides and include_nuclides")
+        
         if units == 'Bq':
             multiplier = volume if volume is not None else self.volume
             if multiplier is None:
@@ -328,29 +339,30 @@ class Material(IDManagerMixin):
             multiplier = 1.0 / self.get_mass_density()
         elif units == 'Bq/kg':
             multiplier = 1000.0 / self.get_mass_density()
-
+    
         dists = []
         probs = []
         for nuc, atoms_per_bcm in self.get_nuclide_atom_densities().items():
+            if exclude_nuclides is not None and nuc in exclude_nuclides:
+                continue
+            if include_nuclides is not None and nuc not in include_nuclides:
+                continue
+            
             source_per_atom = openmc.data.decay_photon_energy(nuc)
             if source_per_atom is not None and atoms_per_bcm > 0.0:
                 dists.append(source_per_atom)
                 probs.append(1e24 * atoms_per_bcm * multiplier)
-
-        # If no photon sources, exit early
+    
         if not dists:
             return None
-
-        # Get combined distribution, clip low-intensity values in discrete spectra
+    
         combined = openmc.data.combine_distributions(dists, probs)
         if isinstance(combined, (Discrete, Mixture)):
             combined.clip(clip_tolerance, inplace=True)
-
-        # If clipping resulted in a single distribution within a mixture, pick
-        # out that single distribution
+    
         if isinstance(combined, Mixture) and len(combined.distribution) == 1:
             combined = combined.distribution[0]
-
+    
         return combined
 
     @classmethod

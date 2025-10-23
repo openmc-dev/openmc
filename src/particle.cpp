@@ -44,34 +44,30 @@ namespace openmc {
 
 double Particle::speed() const
 {
-  // Determine mass in eV/c^2
-  double mass;
-  switch (this->type()) {
-  case ParticleType::neutron:
-    mass = MASS_NEUTRON_EV;
-    break;
-  case ParticleType::photon:
-    mass = 0.0;
-    break;
-  case ParticleType::electron:
-  case ParticleType::positron:
-    mass = MASS_ELECTRON_EV;
-    break;
-  }
-
-  if (this->E() < 1.0e-9 * mass) {
-    // If the energy is much smaller than the mass, revert to non-relativistic
-    // formula. The 1e-9 criterion is specifically chosen as the point below
-    // which the error from using the non-relativistic formula is less than the
-    // round-off eror when using the relativistic formula (see analysis at
-    // https://gist.github.com/paulromano/da3b473fe3df33de94b265bdff0c7817)
-    return C_LIGHT * std::sqrt(2 * this->E() / mass);
+  if (settings::run_CE) {
+    // Determine mass in eV/c^2
+    double mass;
+    switch (this->type()) {
+    case ParticleType::neutron:
+      mass = MASS_NEUTRON_EV;
+      break;
+    case ParticleType::photon:
+      mass = 0.0;
+      break;
+    case ParticleType::electron:
+    case ParticleType::positron:
+      mass = MASS_ELECTRON_EV;
+      break;
+    }
+    // Equivalent to C * sqrt(1-(m/(m+E))^2) without problem at E<<m:
+    return C_LIGHT * std::sqrt(this->E() * (this->E() + 2 * mass)) /
+           (this->E() + mass);
   } else {
-    // Calculate inverse of Lorentz factor
-    const double inv_gamma = mass / (this->E() + mass);
-
-    // Calculate speed via v = c * sqrt(1 - γ^-2)
-    return C_LIGHT * std::sqrt(1 - inv_gamma * inv_gamma);
+    auto& macro_xs = data::mg.macro_xs_[this->material()];
+    int macro_t = this->mg_xs_cache().t;
+    int macro_a = macro_xs.get_angle_index(this->u());
+    return 1.0 / macro_xs.get_xs(MgxsType::INVERSE_VELOCITY, this->g(), nullptr,
+                   nullptr, nullptr, macro_t, macro_a);
   }
 }
 
@@ -105,7 +101,7 @@ void Particle::split(double wgt)
   bank.E = settings::run_CE ? E() : g();
   bank.time = time();
 
-  // Convert signed index to a singed surface ID
+  // Convert signed index to a signed surface ID
   if (surface() == SURFACE_NONE) {
     bank.surf_id = SURFACE_NONE;
   } else {
@@ -148,6 +144,7 @@ void Particle::from_source(const SourceSite* src)
   time() = src->time;
   time_last() = src->time;
   parent_nuclide() = src->parent_nuclide;
+  delayed_group() = src->delayed_group;
 
   // Convert signed surface ID to signed index
   if (src->surf_id != SURFACE_NONE) {
@@ -204,7 +201,8 @@ void Particle::event_calculate_xs()
   // Calculate microscopic and macroscopic cross sections
   if (material() != MATERIAL_VOID) {
     if (settings::run_CE) {
-      if (material() != material_last() || sqrtkT() != sqrtkT_last()) {
+      if (material() != material_last() || sqrtkT() != sqrtkT_last() ||
+          density_mult() != density_mult_last()) {
         // If the material is the same as the last material and the
         // temperature hasn't changed, we don't need to lookup cross
         // sections again.
@@ -234,37 +232,31 @@ void Particle::event_advance()
 
   // Sample a distance to collision
   if (type() == ParticleType::electron || type() == ParticleType::positron) {
-    collision_distance() = 0.0;
+    collision_distance() = material() == MATERIAL_VOID ? INFINITY : 0.0;
   } else if (macro_xs().total == 0.0) {
     collision_distance() = INFINITY;
   } else {
     collision_distance() = -std::log(prn(current_seed())) / macro_xs().total;
   }
 
-  // Select smaller of the two distances
-  double distance = std::min(boundary().distance(), collision_distance());
+  double speed = this->speed();
+  double time_cutoff = settings::time_cutoff[static_cast<int>(type())];
+  double distance_cutoff =
+    (time_cutoff < INFTY) ? (time_cutoff - time()) * speed : INFTY;
+
+  // Select smaller of the three distances
+  double distance =
+    std::min({boundary().distance(), collision_distance(), distance_cutoff});
 
   // Advance particle in space and time
-  // Short-term solution until the surface source is revised and we can use
-  // this->move_distance(distance)
-  for (int j = 0; j < n_coord(); ++j) {
-    coord(j).r() += distance * coord(j).u();
-  }
-  double dt = distance / this->speed();
+  this->move_distance(distance);
+  double dt = distance / speed;
   this->time() += dt;
   this->lifetime() += dt;
 
-  // Kill particle if its time exceeds the cutoff
-  bool hit_time_boundary = false;
-  double time_cutoff = settings::time_cutoff[static_cast<int>(type())];
-  if (time() > time_cutoff) {
-    double dt = time() - time_cutoff;
-    time() = time_cutoff;
-    lifetime() = time_cutoff;
-
-    double push_back_distance = speed() * dt;
-    this->move_distance(-push_back_distance);
-    hit_time_boundary = true;
+  // Score timed track-length tallies
+  if (!model::active_timed_tracklength_tallies.empty()) {
+    score_timed_tracklength_tally(*this, distance);
   }
 
   // Score track-length tallies
@@ -284,7 +276,7 @@ void Particle::event_advance()
   }
 
   // Set particle weight to zero if it hit the time boundary
-  if (hit_time_boundary) {
+  if (distance == distance_cutoff) {
     wgt() = 0.0;
   }
 }
@@ -559,7 +551,8 @@ void Particle::cross_surface(const Surface& surf)
 #endif
 
   // Handle any applicable boundary conditions.
-  if (surf.bc_ && settings::run_mode != RunMode::PLOTTING) {
+  if (surf.bc_ && settings::run_mode != RunMode::PLOTTING &&
+      settings::run_mode != RunMode::VOLUME) {
     surf.bc_->handle_particle(*this, surf);
     return;
   }
@@ -573,9 +566,10 @@ void Particle::cross_surface(const Surface& surf)
     int32_t i_cell = next_cell(surface_index(), cell_last(n_coord() - 1),
                        lowest_coord().universe()) -
                      1;
-    // save material and temp
+    // save material, temperature, and density multiplier
     material_last() = material();
     sqrtkT_last() = sqrtkT();
+    density_mult_last() = density_mult();
     // set new cell value
     lowest_coord().cell() = i_cell;
     auto& cell = model::cells[i_cell];
@@ -586,6 +580,7 @@ void Particle::cross_surface(const Surface& surf)
 
     material() = cell->material(cell_instance());
     sqrtkT() = cell->sqrtkT(cell_instance());
+    density_mult() = cell->density_mult(cell_instance());
     return;
   }
 #endif
@@ -860,10 +855,12 @@ void Particle::update_neutron_xs(
 
   // If the cache doesn't match, recalculate micro xs
   if (this->E() != micro.last_E || this->sqrtkT() != micro.last_sqrtkT ||
-      i_sab != micro.index_sab || sab_frac != micro.sab_frac) {
+      i_sab != micro.index_sab || sab_frac != micro.sab_frac ||
+      ncrystal_xs != micro.ncrystal_xs) {
     data::nuclides[i_nuclide]->calculate_xs(i_sab, i_grid, sab_frac, *this);
 
     // If NCrystal is being used, update micro cross section cache
+    micro.ncrystal_xs = ncrystal_xs;
     if (ncrystal_xs >= 0.0) {
       data::nuclides[i_nuclide]->calculate_elastic_xs(*this);
       ncrystal_update_micro(ncrystal_xs, micro);

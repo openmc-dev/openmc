@@ -8,7 +8,7 @@ from uncertainties import UFloat
 
 import openmc
 import openmc.checkvalue as cv
-from ._xml import get_text
+from ._xml import get_elem_list, get_text
 from .mixin import IDManagerMixin
 from .plots import add_plot_params
 from .region import Region, Complement
@@ -72,6 +72,10 @@ class Cell(IDManagerMixin):
     temperature : float or iterable of float
         Temperature of the cell in Kelvin.  Multiple temperatures can be given
         to give each distributed cell instance a unique temperature.
+    density : float or iterable of float
+        Density of the cell in [g/cm3]. Multiple densities can be given to give
+        each distributed cell instance a unique density. Densities set here will
+        override the density set on materials used to fill the cell.
     translation : Iterable of float
         If the cell is filled with a universe, this array specifies a vector
         that is used to translate (shift) the universe.
@@ -109,6 +113,7 @@ class Cell(IDManagerMixin):
         self._rotation = None
         self._rotation_matrix = None
         self._temperature = None
+        self._density = None
         self._translation = None
         self._paths = None
         self._num_instances = None
@@ -141,6 +146,7 @@ class Cell(IDManagerMixin):
         if self.fill_type == 'material':
             string += '\t{0: <15}=\t{1}\n'.format('Temperature',
                                                   self.temperature)
+            string += '\t{0: <15}=\t{1}\n'.format('Density', self.density)
         string += '{: <16}=\t{}\n'.format('\tTranslation', self.translation)
         string += '{: <16}=\t{}\n'.format('\tVolume', self.volume)
 
@@ -256,6 +262,30 @@ class Cell(IDManagerMixin):
                     c._temperature = temperature
         else:
             self._temperature = temperature
+
+    @property
+    def density(self):
+        return self._density
+
+    @density.setter
+    def density(self, density):
+        # Make sure densities are greater than zero
+        cv.check_type('cell density', density, (Iterable, Real), none_ok=True)
+        if isinstance(density, Iterable):
+            cv.check_type('cell density', density, Iterable, Real)
+            for rho in density:
+                cv.check_greater_than('cell density', rho, 0.0, True)
+        elif isinstance(density, Real):
+            cv.check_greater_than('cell density', density, 0.0, True)
+
+        # If this cell is filled with a universe or lattice, propagate
+        # densities to all cells contained. Otherwise, simply assign it.
+        if self.fill_type in ('universe', 'lattice'):
+            for c in self.get_all_cells().values():
+                if c.fill_type == 'material':
+                    c._density = density
+        else:
+            self._density = density
 
     @property
     def translation(self):
@@ -525,6 +555,8 @@ class Cell(IDManagerMixin):
             clone.volume = self.volume
             if self.temperature is not None:
                 clone.temperature = self.temperature
+            if self.density is not None:
+                clone.density = self.density
             if self.translation is not None:
                 clone.translation = self.translation
             if self.rotation is not None:
@@ -567,10 +599,10 @@ class Cell(IDManagerMixin):
         .. versionadded:: 0.14.0
         """
         # Create dummy universe but preserve used_ids
-        next_id = openmc.Universe.next_id
+        next_id = openmc.UniverseBase.next_id
         u = openmc.Universe(cells=[self])
-        openmc.Universe.used_ids.remove(u.id)
-        openmc.Universe.next_id = next_id
+        openmc.UniverseBase.used_ids.remove(u.id)
+        openmc.UniverseBase.next_id = next_id
         return u.plot(*args, **kwargs)
 
     def create_xml_subelement(self, xml_element, memo=None):
@@ -650,6 +682,12 @@ class Cell(IDManagerMixin):
             else:
                 element.set("temperature", str(self.temperature))
 
+        if self.density is not None:
+            if isinstance(self.density, Iterable):
+                element.set("density", ' '.join(str(t) for t in self.density))
+            else:
+                element.set("density", str(self.density))
+
         if self.translation is not None:
             element.set("translation", ' '.join(map(str, self.translation)))
 
@@ -689,9 +727,8 @@ class Cell(IDManagerMixin):
         c = cls(cell_id, name)
 
         # Assign material/distributed materials or fill
-        mat_text = get_text(elem, 'material')
-        if mat_text is not None:
-            mat_ids = mat_text.split()
+        mat_ids = get_elem_list(elem, 'material', str)
+        if mat_ids is not None:
             if len(mat_ids) > 1:
                 c.fill = [materials[i] for i in mat_ids]
             else:
@@ -706,19 +743,21 @@ class Cell(IDManagerMixin):
             c.region = Region.from_expression(region, surfaces)
 
         # Check for other attributes
-        t = get_text(elem, 'temperature')
-        if t is not None:
-            if ' ' in t:
-                c.temperature = [float(t_i) for t_i in t.split()]
+        temperature = get_elem_list(elem, 'temperature', float)
+        if temperature is not None:
+            if len(temperature) > 1:
+                c.temperature = temperature
             else:
-                c.temperature = float(t)
+                c.temperature = temperature[0]
+        density = get_elem_list(elem, 'density', float)
+        if density is not None:
+            c.density = density if len(density) > 1 else density[0]
         v = get_text(elem, 'volume')
         if v is not None:
             c.volume = float(v)
-        for key in ('temperature', 'rotation', 'translation'):
-            value = get_text(elem, key)
-            if value is not None:
-                values = [float(x) for x in value.split()]
+        for key in ('temperature', 'density', 'rotation', 'translation'):
+            values = get_elem_list(elem, key, float)
+            if values is not None:
                 if key == 'rotation' and len(values) == 9:
                     values = np.array(values).reshape(3, 3)
                 setattr(c, key, values)

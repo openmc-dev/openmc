@@ -169,10 +169,8 @@ public:
   // We need to have quick access to some filters.  The following gives indices
   // for various filters that could be in the tally or C_NONE if they are not
   // present.
-  int energy_filter_ {C_NONE};
   int energyout_filter_ {C_NONE};
   int delayedgroup_filter_ {C_NONE};
-  int cell_filter_ {C_NONE};
 
   vector<Trigger> triggers_;
 
@@ -205,11 +203,14 @@ extern vector<unique_ptr<Tally>> tallies;
 extern vector<int> active_tallies;
 extern vector<int> active_analog_tallies;
 extern vector<int> active_tracklength_tallies;
+extern vector<int> active_timed_tracklength_tallies;
 extern vector<int> active_collision_tallies;
 extern vector<int> active_meshsurf_tallies;
 extern vector<int> active_surface_tallies;
 extern vector<int> active_pulse_height_tallies;
 extern vector<int> pulse_height_cells;
+extern vector<double> time_grid;
+
 } // namespace model
 
 namespace simulation {
@@ -240,6 +241,13 @@ void read_tallies_xml(pugi::xml_node root);
 //! \brief Accumulate the sum of the contributions from each history within the
 //! batch to a new random variable
 void accumulate_tallies();
+
+//! Determine distance to next time boundary
+//
+//! \param time Current time of particle
+//! \param speed Speed of particle
+//! \return Distance to next time boundary (or INFTY if none)
+double distance_to_time_boundary(double time, double speed);
 
 //! Determine which tallies should be active
 void setup_active_tallies();

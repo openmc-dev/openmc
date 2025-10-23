@@ -407,7 +407,7 @@ class ExternalSourceRates(ExternalRates):
         rate : float
             External source rate in units of mass per time. A positive or
             negative value corresponds to a feed or removal rate, respectively.
-        units : {'g/s', 'g/min', 'g/h', 'g/d', 'g/a'}
+        rate_units : {'g/s', 'g/min', 'g/h', 'g/d', 'g/a'}
             Units for values specified in the `rate` argument. 's' for seconds,
             'min' for minutes, 'h' for hours, 'a' for Julian years.
         timesteps : list of int, optional

@@ -18,7 +18,7 @@ import openmc.checkvalue as cv
 from openmc.checkvalue import PathLike
 from openmc.stats.multivariate import UnitSphere, Spatial
 from openmc.stats.univariate import Univariate
-from ._xml import get_text
+from ._xml import get_elem_list, get_text
 from .mesh import MeshBase, StructuredMesh, UnstructuredMesh
 from .utility_funcs import input_path
 
@@ -210,7 +210,7 @@ class SourceBase(ABC):
         constraints = {}
         domain_type = get_text(elem, "domain_type")
         if domain_type is not None:
-            domain_ids = [int(x) for x in get_text(elem, "domain_ids").split()]
+            domain_ids = get_elem_list(elem, "domain_ids", int)
 
             # Instantiate some throw-away domains that are used by the
             # constructor to assign IDs
@@ -224,13 +224,13 @@ class SourceBase(ABC):
                     domains = [openmc.Universe(uid) for uid in domain_ids]
             constraints['domains'] = domains
 
-        time_bounds = get_text(elem, "time_bounds")
+        time_bounds = get_elem_list(elem, "time_bounds", float)
         if time_bounds is not None:
-            constraints['time_bounds'] = [float(x) for x in time_bounds.split()]
+            constraints['time_bounds'] = time_bounds
 
-        energy_bounds = get_text(elem, "energy_bounds")
+        energy_bounds = get_elem_list(elem, "energy_bounds", float)
         if energy_bounds is not None:
-            constraints['energy_bounds'] = [float(x) for x in energy_bounds.split()]
+            constraints['energy_bounds'] = energy_bounds
 
         fissionable = get_text(elem, "fissionable")
         if fissionable is not None:
@@ -260,7 +260,7 @@ class IndependentSource(SourceBase):
         time distribution of source sites
     strength : float
         Strength of the source
-    particle : {'neutron', 'photon'}
+    particle : {'neutron', 'photon', 'electron', 'positron'}
         Source particle type
     domains : iterable of openmc.Cell, openmc.Material, or openmc.Universe
         Domains to reject based on, i.e., if a sampled spatial location is not
@@ -299,7 +299,7 @@ class IndependentSource(SourceBase):
 
     .. versionadded:: 0.14.0
 
-    particle : {'neutron', 'photon'}
+    particle : {'neutron', 'photon', 'electron', 'positron'}
         Source particle type
     constraints : dict
         Constraints on sampled source particles. Valid keys include
@@ -404,7 +404,8 @@ class IndependentSource(SourceBase):
 
     @particle.setter
     def particle(self, particle):
-        cv.check_value('source particle', particle, ['neutron', 'photon'])
+        cv.check_value('source particle', particle,
+                       ['neutron', 'photon', 'electron', 'positron'])
         self._particle = particle
 
     def populate_xml_element(self, element):

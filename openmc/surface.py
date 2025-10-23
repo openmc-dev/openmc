@@ -13,6 +13,7 @@ from .checkvalue import check_type, check_value, check_length, check_greater_tha
 from .mixin import IDManagerMixin, IDWarning
 from .region import Region, Intersection, Union
 from .bounding_box import BoundingBox
+from ._xml import get_elem_list, get_text
 
 
 _BOUNDARY_TYPES = {'transmission', 'vacuum', 'reflective', 'periodic', 'white'}
@@ -451,17 +452,17 @@ class Surface(IDManagerMixin, ABC):
         """
 
         # Determine appropriate class
-        surf_type = elem.get('type')
+        surf_type = get_text(elem, "type")
         cls = _SURFACE_CLASSES[surf_type]
 
         # Determine ID, boundary type, boundary albedo, coefficients
         kwargs = {}
-        kwargs['surface_id'] = int(elem.get('id'))
-        kwargs['boundary_type'] = elem.get('boundary', 'transmission')
+        kwargs['surface_id'] = int(get_text(elem, "id"))
+        kwargs['boundary_type'] = get_text(elem, "boundary", "transmission")
         if kwargs['boundary_type'] in _ALBEDO_BOUNDARIES:
-            kwargs['albedo'] = float(elem.get('albedo', 1.0))
-        kwargs['name'] = elem.get('name')
-        coeffs = [float(x) for x in elem.get('coeffs').split()]
+            kwargs['albedo'] = float(get_text(elem, "albedo", 1.0))
+        kwargs['name'] = get_text(elem, "name")
+        coeffs = get_elem_list(elem, "coeffs", float)
         kwargs.update(dict(zip(cls._coeff_keys, coeffs)))
 
         return cls(**kwargs)

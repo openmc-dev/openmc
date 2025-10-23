@@ -306,7 +306,7 @@ void RandomRay::event_advance_ray()
     for (int i = 0; i < n_coord(); i++) {
       // const auto& coord {coord(i)};
       Cell& c {*model::cells[coord(i).cell()]};
-      mpi::decomp_map.num_base_source_region_RT_batch_[sr] += c.surfaces().size(); //TODO: Is this correct value for "surfaces"
+      mpi::decomp_map.num_base_source_region_RT_batch_[sr] += c.n_surfaces(); //TODO: Is this correct value for "surfaces"
     }
   }
 

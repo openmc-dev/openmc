@@ -12,6 +12,8 @@
 #include "openmc/simulation.h"
 #include "openmc/string_utils.h"
 #include "openmc/surface.h"
+// #include "openmc/random_ray/decomposition_map.h"
+// #include "openmc/message_passing.h"
 
 namespace openmc {
 

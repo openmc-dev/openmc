@@ -983,19 +983,19 @@ class MeshFilter(Filter):
                 np.arange(1, nz + 1), nx * ny * stride, data_size)
         else:
             nrphi , nz = self.mesh.dimension
-            radius = self._mesh.hex_radius
+            radius = self.mesh.hex_radius
             filter_dict[mesh_key, 'r'] = np.tile(
                     np.repeat(
-                    np.concatenate([ [r] * self._mesh.hexes_in_ring(r) for r in range(radius+1) ]),stride),
+                    np.concatenate([ [r] * self.mesh.hexes_in_ring(r) for r in range(radius+1) ]),stride),
                     data_size // self._mesh.hex_count)
 
             filter_dict[mesh_key, 'phi'] = np.tile(
                     np.repeat(
-                    np.concatenate([ range(1,self._mesh_hexes_in_ring(r)+1) for r in range(radius+1) ]),stride),
-                    data_size // self._mesh.hex_count)
+                    np.concatenate([ range(1,self.mesh.hexes_in_ring(r)+1) for r in range(radius+1) ]),stride),
+                    data_size // self.mesh.hex_count)
 
             filter_dict[mesh_key, 'z'] = np.tile(
-                np.repeat(np.arange(1, nz + 1), nx * ny * stride), data_size // self._mesh.hex_count)
+                np.repeat(np.arange(1, nz + 1), self.mesh.hex_count * stride), data_size // self.mesh.hex_count)
 
         # Initialize a Pandas DataFrame from the mesh dictionary
         df = pd.concat([df, pd.DataFrame(filter_dict)])

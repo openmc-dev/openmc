@@ -82,7 +82,8 @@ _DOMAINS = (
     openmc.Cell,
     openmc.Universe,
     openmc.Material,
-    openmc.RegularMesh
+    openmc.RegularMesh,
+    openmc.HexagonalMesh
 )
 
 # Supported ScatterMatrixXS angular distribution types. Note that 'histogram' is
@@ -487,7 +488,7 @@ class MGXS:
                 self._domain_type = 'cell'
             elif isinstance(domain, openmc.Universe):
                 self._domain_type = 'universe'
-            elif isinstance(domain, openmc.RegularMesh):
+            elif isinstance(domain, openmc.RegularMesh) or isinstance(domain, openmc.HexagonalMesh):
                 self._domain_type = 'mesh'
 
     @property

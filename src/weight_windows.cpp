@@ -26,6 +26,7 @@
 #include "openmc/random_ray/flat_source_domain.h"
 #include "openmc/search.h"
 #include "openmc/settings.h"
+#include "openmc/simulation.h"
 #include "openmc/tallies/filter_energy.h"
 #include "openmc/tallies/filter_mesh.h"
 #include "openmc/tallies/filter_particle.h"

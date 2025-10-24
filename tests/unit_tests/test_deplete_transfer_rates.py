@@ -206,7 +206,8 @@ def test_transfer(run_in_tmpdir, model):
     ])
 def test_redox(case_name, buffer, ox, model):
     op = CoupledOperator(model, CHAIN_PATH)
-    transfer = TransferRates(op, model)
+    number_of_timesteps = 2
+    transfer = TransferRates(op, model.materials, number_of_timesteps)
 
     # Test by Openmc material, material name and material id
     material, dest_material, dest_material2 = [m for m in model.materials

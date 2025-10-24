@@ -288,6 +288,9 @@ void RandomRay::event_advance_ray()
     return;
   }
 
+  if (settings::check_overlaps)
+    check_cell_overlap(*this);
+
   if (is_active_) {
     // If the ray is in the active length, need to check if it has
     // reached its maximum termination distance. If so, reduce

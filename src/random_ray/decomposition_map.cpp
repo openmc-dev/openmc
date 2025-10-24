@@ -424,7 +424,7 @@ void DecompositionMap::exchange_sr_info(ParallelMap<SourceRegionKey, SourceRegio
           if (mpi::rank == sender) {
             SourceRegion& contested_sr = discovered_source_regions[sr_key];
             double volume_sr = contested_sr.scalars_.volume_;
-            bcast_load = C1 * contested_sr.scalars_.n_hits_ * negroups_ + C2 * volume_sr * ray_tracing_cost_[sr_key.base_source_region_id];
+            bcast_load = C1 * (contested_sr.scalars_.n_hits_/simulation::current_batch) * negroups_ + volume_sr * ray_tracing_cost_[sr_key.base_source_region_id];
             // bcast_n_hits = contested_sr.scalars_.n_hits_;
           }
           // MPI_Bcast(&bcast_n_hits, 1, MPI_INT, sender, mpi::intracomm);
@@ -613,7 +613,7 @@ void DecompositionMap::calculate_rank_load(FlatSourceDomain* domain){ //TODO: Th
   // Reset rank load
   std::fill(rank_load_.begin(), rank_load_.end(), 0.0);
 
-  std::fill(volume_base_sr_.begin(), volume_base_sr_.end(), 0);
+  std::fill(volume_base_sr_.begin(), volume_base_sr_.end(), 0.0);
 
 
   // double volume_normalization_factor =
@@ -664,6 +664,7 @@ void DecompositionMap::calculate_rank_load(FlatSourceDomain* domain){ //TODO: Th
     SourceRegionKey sr_key = domain->source_regions_.key(sr);
     uint64_t base_sr = sr_key.base_source_region_id;
     volume_base_sr_[base_sr] += domain->source_regions_.volume_t(sr);
+    volume_base_sr_[base_sr] += domain->source_regions_.volume(sr);
   }
 
   // int local_new_sr_discovered = 0;
@@ -701,10 +702,14 @@ void DecompositionMap::calculate_rank_load(FlatSourceDomain* domain){ //TODO: Th
   #pragma omp parallel for
     for (uint64_t bsr = 0; bsr < n_base_sr_; bsr++) {
       // volume_base_sr_[bsr] *= volume_normalization_factor;
-      if (mesh_bins_per_base_sr_[bsr] > 0) {
-        // ray_tracing_cost_[bsr] = (1/volume_base_sr_[bsr])*(static_cast<double>(num_base_source_region_RT_tot_[bsr] + num_mesh_bin_RT_tot_[bsr]) / 
+      if (volume_base_sr_[bsr] > 0.0) {
+      // if (mesh_bins_per_base_sr_[bsr] > 0) {
+        // ray_tracing_cost_[bsr] = (static_cast<double>(num_base_source_region_RT_tot_[bsr] + num_mesh_bin_RT_tot_[bsr]) / 
         //                           mesh_bins_per_base_sr_[bsr]); //TODO: weighted with volume?
-        ray_tracing_cost_[bsr] = static_cast<double>(num_base_source_region_RT_tot_[bsr] + num_mesh_bin_RT_tot_[bsr])/volume_base_sr_[bsr];
+        if (mpi::master){
+          printf("Base source region %lu: Volume %f, Mesh bins %lu, bsrRT %lu, mbRT: %lu\n", bsr, volume_base_sr_[bsr], mesh_bins_per_base_sr_[bsr], num_base_source_region_RT_tot_[bsr], num_mesh_bin_RT_tot_[bsr]);
+        }
+        ray_tracing_cost_[bsr] =  (C2 * static_cast<double>(num_base_source_region_RT_tot_[bsr]) +  C3 * static_cast<double>(num_mesh_bin_RT_tot_[bsr]))/volume_base_sr_[bsr];
       } else {
         ray_tracing_cost_[bsr] = 0.0;
       }
@@ -720,7 +725,8 @@ void DecompositionMap::calculate_rank_load(FlatSourceDomain* domain){ //TODO: Th
       SourceRegionKey sr_key = domain->source_regions_.key(sr);
       uint64_t base_sr = sr_key.base_source_region_id;
       double volume_sr = domain->source_regions_.volume_t(sr);
-      double load_sr = C1 * domain->source_regions_.n_hits(sr) * negroups_ + C2 * volume_sr * ray_tracing_cost_[base_sr];
+      volume_sr += domain->source_regions_.volume(sr);
+      double load_sr = C1 * (domain->source_regions_.n_hits(sr)/simulation::current_batch) * negroups_ + volume_sr * ray_tracing_cost_[base_sr];
       load += load_sr;
     }
 
@@ -729,30 +735,30 @@ void DecompositionMap::calculate_rank_load(FlatSourceDomain* domain){ //TODO: Th
   for (const auto & [sr_key, sr] : domain->discovered_source_regions_) {
     uint64_t base_sr = sr_key.base_source_region_id;
     double volume_sr = sr.scalars_.volume_;
-    load_sr = C1 * sr.scalars_.n_hits_ * negroups_ + C2 * volume_sr * ray_tracing_cost_[base_sr];
+    load_sr = C1 * (sr.scalars_.n_hits_/simulation::current_batch) * negroups_ + volume_sr * ray_tracing_cost_[base_sr];
     load += load_sr;
     // n_hits_rank += sr.scalars_.n_hits_;
   }
   
-  // if (mpi::master){
-  //   vector<double> volumes(n_base_sr_, 0.0);
+  if (mpi::master){
+    vector<double> volumes(n_base_sr_, 0.0);
 
-  //   for (int64_t sr = 0; sr < domain->n_source_regions(); sr++) {
-  //       SourceRegionKey sr_key = domain->source_regions_.key(sr);
-  //       uint64_t base_sr = sr_key.base_source_region_id;
-  //       volumes[base_sr] += domain->source_regions_.volume_t(sr)/volume_base_sr_[base_sr];
-  //   }
+    for (int64_t sr = 0; sr < domain->n_source_regions(); sr++) {
+        SourceRegionKey sr_key = domain->source_regions_.key(sr);
+        uint64_t base_sr = sr_key.base_source_region_id;
+        volumes[base_sr] += (domain->source_regions_.volume_t(sr)+domain->source_regions_.volume(sr))/volume_base_sr_[base_sr];
+    }
 
-  //   for (const auto & [sr_key, sr] : domain->discovered_source_regions_) {
-  //     uint64_t base_sr = sr_key.base_source_region_id;
-  //     double volume_sr = sr.scalars_.volume_;
-  //     volumes[base_sr] += volume_sr/volume_base_sr_[base_sr];
-  //   }
+    for (const auto & [sr_key, sr] : domain->discovered_source_regions_) {
+      uint64_t base_sr = sr_key.base_source_region_id;
+      double volume_sr = sr.scalars_.volume_;
+      volumes[base_sr] += volume_sr/volume_base_sr_[base_sr];
+    }
 
-  //   for (uint64_t bsr = 0; bsr < n_base_sr_; bsr++) {
-  //     printf("Base source region %lu: Volume total %f, \n", bsr, volumes[bsr]);
-  //   }
-  // }
+    for (uint64_t bsr = 0; bsr < n_base_sr_; bsr++) {
+      printf("Base source region %lu: Volume total %f, Ray tracing cost %f, \n", bsr, volumes[bsr], ray_tracing_cost_[bsr]);
+    }
+  }
 
   //TODO: Temporary print-outs
   if (mpi::master) {
@@ -1030,7 +1036,7 @@ void DecompositionMap::update_load(FlatSourceDomain* domain, bool check_all_rank
         int owner = find_closest_rank(centroid, check_all_ranks);
         // local_hits[owner] += domain->source_regions_.n_hits(sr);
         double volume_sr = domain->source_regions_.volume_t(sr);
-        local_load[owner] += C1 * domain->source_regions_.n_hits(sr) * negroups_ + C2 * volume_sr * ray_tracing_cost_[domain->source_regions_.key(sr).base_source_region_id];
+        local_load[owner] += C1 * (domain->source_regions_.n_hits(sr)/simulation::current_batch) * negroups_ + volume_sr * ray_tracing_cost_[domain->source_regions_.key(sr).base_source_region_id];
       }
 
     // Combine results from different threads

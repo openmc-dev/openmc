@@ -278,6 +278,10 @@ uint64_t RandomRay::transport_history_based_single_ray()
 // Transports ray across a single source region
 void RandomRay::event_advance_ray()
 {
+  // If geometry debug mode is on, check for cell overlaps
+  if (settings::check_overlaps)
+    check_cell_overlap(*this);
+
   // Find the distance to the nearest boundary
   boundary() = distance_to_boundary(*this);
   double distance = boundary().distance();
@@ -287,9 +291,6 @@ void RandomRay::event_advance_ray()
                  std::to_string(id()));
     return;
   }
-
-  if (settings::check_overlaps)
-    check_cell_overlap(*this);
 
   if (is_active_) {
     // If the ray is in the active length, need to check if it has

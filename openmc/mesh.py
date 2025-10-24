@@ -2698,7 +2698,7 @@ class UnstructuredMesh(MeshBase):
                 raise NotImplemented("VTKHDF output is only supported for MOAB meshes")
 
             # the self.connectivity contains an arrays of length 8, in the case of
-            # DAGMC tetrahedra mesh elements, the last 4 values are -1 and can be removed
+            # MOAB tetrahedra mesh elements, the last 4 values are -1 and can be removed
             trimmed_connectivity = []
             for cell in self.connectivity:
                 # Find the index of the first -1 value, if any
@@ -2713,7 +2713,7 @@ class UnstructuredMesh(MeshBase):
                 trimmed_connectivity, dtype="int32"
             ).flatten()
 
-            # DAGMC supports tet meshes only so we know it has 4 points per cell
+            # MOAB meshes supports tet elements only so we know it has 4 points per cell
             points_per_cell = 4
 
             # offsets are the indices of the first point of each cell in the array of points

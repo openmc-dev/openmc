@@ -1347,11 +1347,15 @@ void FlatSourceDomain::output_to_vtk_decomp() const
       }
     }
 
+    fill(vector_out_float.begin(), vector_out_float.end(), 0.0);
+
     // Plot actual load
     float transport_time = (simulation::time_transport.elapsed() - simulation::time_ray_buffering.elapsed());
     float total_transport_time = 0.0;
 
     MPI_Allreduce(&transport_time, &total_transport_time, 1, MPI_FLOAT, MPI_SUM, mpi::intracomm);
+
+    // printf("RANK %d: transport_time = %f %f\n", mpi::rank, transport_time, total_transport_time);
 
     for (int voxel_id : my_voxel_ids) {
       float value = transport_time/total_transport_time;

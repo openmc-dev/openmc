@@ -96,6 +96,35 @@ void openmc_run_random_ray()
     // Finalize OpenMC
     openmc_simulation_finalize();
 
+    // //expensive ray tracing
+    // double sum_bsr_RT = 0;
+    // for (int64_t sr = 0; sr < sim.domain()->n_source_regions(); sr++) {
+    //   SourceRegionKey sr_key = sim.domain()->source_regions_.key(sr);
+    //   uint64_t base_sr = sr_key.base_source_region_id;
+    //   sum_bsr_RT += static_cast<double>(mpi::decomp_map.num_base_source_region_RT_tot_[base_sr])/mpi::decomp_map.mesh_bins_per_base_sr_[base_sr];
+    // }
+
+    // // cheap ray tracing
+    // double sum_mb_RT = 0;
+    // for (int64_t sr = 0; sr < sim.domain()->n_source_regions(); sr++) {
+    //   SourceRegionKey sr_key = sim.domain()->source_regions_.key(sr);
+    //   uint64_t base_sr = sr_key.base_source_region_id;
+    //   sum_mb_RT += static_cast<double>(mpi::decomp_map.num_mesh_bin_RT_tot_[base_sr])/mpi::decomp_map.mesh_bins_per_base_sr_[base_sr];
+    // }
+
+    // // number of hits
+    // uint64_t sum_hits = 0;
+    // for (int64_t sr = 0; sr < sim.domain()->n_source_regions(); sr++) {
+    //   sum_hits += sim.domain()->source_regions_.n_hits(sr) * mpi::decomp_map.negroups_;
+    // }
+
+    double time_transport_total =
+      (simulation::time_transport.elapsed() - simulation::time_ray_buffering.elapsed());
+    double time_sum = time_transport_total + simulation::time_mpi_imbalance.elapsed();
+
+    // printf("RANK%d %f %f %f %f %f %lu\n", mpi::rank, time_transport_total, simulation::time_mpi_imbalance.elapsed(), time_sum, sum_bsr_RT, sum_mb_RT, sum_hits);
+    printf("RANK%d %f %f %f\n", mpi::rank, time_transport_total, simulation::time_mpi_imbalance.elapsed(), time_sum);
+
     // Output all simulation results
     sim.output_simulation_results();
   }

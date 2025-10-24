@@ -55,6 +55,7 @@ void DecompositionMap::initialize(){
   num_mesh_bin_RT_batch_.resize(n_base_sr_, 0);
   mesh_bins_per_base_sr_.resize(n_base_sr_, 0); // at least 1 mesh bin (no mesh)
   ray_tracing_cost_.resize(n_base_sr_);
+  volume_base_sr_.resize(n_base_sr_, 0.0);
 }
 
 void DecompositionMap::generate_rank_centers(){
@@ -422,7 +423,8 @@ void DecompositionMap::exchange_sr_info(ParallelMap<SourceRegionKey, SourceRegio
           // int bcast_n_hits = 0;
           if (mpi::rank == sender) {
             SourceRegion& contested_sr = discovered_source_regions[sr_key];
-            bcast_load = C1 * contested_sr.scalars_.n_hits_ * negroups_ + C2 * ray_tracing_cost_[sr_key.base_source_region_id];
+            double volume_sr = contested_sr.scalars_.volume_;
+            bcast_load = C1 * contested_sr.scalars_.n_hits_ * negroups_ + C2 * volume_sr * ray_tracing_cost_[sr_key.base_source_region_id];
             // bcast_n_hits = contested_sr.scalars_.n_hits_;
           }
           // MPI_Bcast(&bcast_n_hits, 1, MPI_INT, sender, mpi::intracomm);
@@ -611,74 +613,98 @@ void DecompositionMap::calculate_rank_load(FlatSourceDomain* domain){ //TODO: Th
   // Reset rank load
   std::fill(rank_load_.begin(), rank_load_.end(), 0.0);
 
+  std::fill(volume_base_sr_.begin(), volume_base_sr_.end(), 0);
+
+
+  // double volume_normalization_factor =
+  //   1.0 / (settings::n_particles * RandomRay::distance_active_ * simulation::current_batch);
+
+
   // Share number of ray tracing scores per base source region across all ranks
-  // MPI_Allreduce(num_base_source_region_RT_batch_.data(), num_base_source_region_RT_tot_.data(), n_base_sr_, MPI_UINT64_T, MPI_SUM, mpi::intracomm);
-  MPI_Allreduce(MPI_IN_PLACE, num_base_source_region_RT_batch_.data(), n_base_sr_, MPI_UINT64_T, MPI_SUM, mpi::intracomm);
-  MPI_Allreduce(MPI_IN_PLACE, num_mesh_bin_RT_batch_.data(), n_base_sr_, MPI_UINT64_T, MPI_SUM, mpi::intracomm);
-  // MPI_Allreduce(num_mesh_bin_RT_batch_.data(), num_mesh_bin_RT_tot_.data(), n_base_sr_, MPI_UINT64_T, MPI_SUM, mpi::intracomm);
+  // MPI_Allreduce(MPI_IN_PLACE, num_base_source_region_RT_batch_.data(), n_base_sr_, MPI_UINT64_T, MPI_SUM, mpi::intracomm);
+  // MPI_Allreduce(MPI_IN_PLACE, num_mesh_bin_RT_batch_.data(), n_base_sr_, MPI_UINT64_T, MPI_SUM, mpi::intracomm);
 
   if(mpi::master){
     uint64_t sum_bsr_RT = std::accumulate(num_base_source_region_RT_batch_.begin(), num_base_source_region_RT_batch_.end(), uint64_t{0});
     uint64_t sum_bsr_RT_tot = std::accumulate(num_base_source_region_RT_tot_.begin(), num_base_source_region_RT_tot_.end(), uint64_t{0});
+    uint64_t sum_mesh_bins = std::accumulate(mesh_bins_per_base_sr_.begin(), mesh_bins_per_base_sr_.end(), uint64_t{0});
     uint64_t sum_mb_RT = std::accumulate(num_mesh_bin_RT_batch_.begin(), num_mesh_bin_RT_batch_.end(), uint64_t{0});
+    uint64_t sum_mb_RT_tot = std::accumulate(num_mesh_bin_RT_tot_.begin(), num_mesh_bin_RT_tot_.end(), uint64_t{0});
     printf("Sum of base_source_region_RT_batch_ before: %lu\n", sum_bsr_RT_tot);
+    printf("Sum of mesh_bin_RT_batch_ before: %lu\n", sum_mb_RT_tot);
     printf("Sum of base_source_region_RT_batch_ new: %lu\n", sum_bsr_RT);
-    printf("Sum of mesh_bin_RT_batch_: %lu\n", sum_mb_RT);
+    printf("Sum of mesh_bin_RT_batch_ new: %lu\n", sum_mb_RT);
+    printf("Sum of mesh bins: %lu\n", sum_mesh_bins);
   }
+
+  num_base_source_region_RT_tot_ = num_base_source_region_RT_batch_;
+  num_mesh_bin_RT_tot_ = num_mesh_bin_RT_batch_;
 
   // Add to total
-  #pragma omp parallel for
-  for (uint64_t bsr = 0; bsr < n_base_sr_; bsr++) {
-    num_base_source_region_RT_tot_[bsr] += num_base_source_region_RT_batch_[bsr];
-    num_mesh_bin_RT_tot_[bsr] += num_mesh_bin_RT_batch_[bsr];
-  }
+  // #pragma omp parallel for
+  // for (uint64_t bsr = 0; bsr < n_base_sr_; bsr++) {
+  //   num_base_source_region_RT_tot_[bsr] += num_base_source_region_RT_batch_[bsr];
+  //   num_mesh_bin_RT_tot_[bsr] += num_mesh_bin_RT_batch_[bsr];
+  // }
 
-  // Reset batch-wise counters
-  fill(num_base_source_region_RT_batch_.begin(), num_base_source_region_RT_batch_.end(), 0);
-  fill(num_mesh_bin_RT_batch_.begin(), num_mesh_bin_RT_batch_.end(), 0);
+  // // Reset batch-wise counters
+  // fill(num_base_source_region_RT_batch_.begin(), num_base_source_region_RT_batch_.end(), 0);
+  // fill(num_mesh_bin_RT_batch_.begin(), num_mesh_bin_RT_batch_.end(), 0);
 
   // Add mesh_bins per base source region for newly discovered source regions
   vector<uint64_t> mesh_bins_per_base_sr_local(n_base_sr_, 0);
   for (const auto & [sr_key, sr] : domain->discovered_source_regions_) {
-    mesh_bins_per_base_sr_local[sr_key.base_source_region_id] ++;
+    mesh_bins_per_base_sr_[sr_key.base_source_region_id] ++;
+    volume_base_sr_[sr_key.base_source_region_id] += sr.scalars_.volume_;
+    // mesh_bins_per_base_sr_local[sr_key.base_source_region_id] ++;
   }
 
-  int local_new_sr_discovered = 0;
-  if (domain->discovered_source_regions_.size() > 0) {
-    local_new_sr_discovered = 1;
+
+  for (int64_t sr = 0; sr < domain->n_source_regions(); sr++) {
+    SourceRegionKey sr_key = domain->source_regions_.key(sr);
+    uint64_t base_sr = sr_key.base_source_region_id;
+    volume_base_sr_[base_sr] += domain->source_regions_.volume_t(sr);
   }
-  int global_new_sr_discovered = 0;
+
+  // int local_new_sr_discovered = 0;
+  // if (domain->discovered_source_regions_.size() > 0) {
+  //   local_new_sr_discovered = 1;
+  // }
+  // int global_new_sr_discovered = 0;
+  // // MPI_Allreduce(&local_new_sr_discovered, &global_new_sr_discovered, 1, MPI_INT, MPI_MAX, mpi::intracomm);
   // MPI_Allreduce(&local_new_sr_discovered, &global_new_sr_discovered, 1, MPI_INT, MPI_MAX, mpi::intracomm);
-  MPI_Allreduce(&local_new_sr_discovered, &global_new_sr_discovered, 1, MPI_INT, MPI_MAX, mpi::intracomm);
 
-  //TODO: Is that check worth it?
-  if (global_new_sr_discovered > 0) {
-    // Share mesh_bins_per_base_sr_ across all ranks
-    MPI_Allreduce(MPI_IN_PLACE, mesh_bins_per_base_sr_local.data(), n_base_sr_, MPI_UINT64_T, MPI_SUM, mpi::intracomm);
-    // MPI_Allreduce(mesh_bins_per_base_sr_local.data(), mesh_bins_per_base_sr_.data(), n_base_sr_, MPI_UINT64_T, MPI_SUM, mpi::intracomm);
-    #pragma omp parallel for
-    for (uint64_t bsr = 0; bsr < n_base_sr_; bsr++) {
-      mesh_bins_per_base_sr_[bsr] += mesh_bins_per_base_sr_local[bsr];
-    }
-  }
+  // //TODO: Is that check worth it?
+  // if (global_new_sr_discovered > 0) {
+  //   // Share mesh_bins_per_base_sr_ across all ranks
+  //   MPI_Allreduce(MPI_IN_PLACE, mesh_bins_per_base_sr_local.data(), n_base_sr_, MPI_UINT64_T, MPI_SUM, mpi::intracomm);
+  //   // MPI_Allreduce(mesh_bins_per_base_sr_local.data(), mesh_bins_per_base_sr_.data(), n_base_sr_, MPI_UINT64_T, MPI_SUM, mpi::intracomm);
+  //   #pragma omp parallel for
+  //   for (uint64_t bsr = 0; bsr < n_base_sr_; bsr++) {
+  //     mesh_bins_per_base_sr_[bsr] += mesh_bins_per_base_sr_local[bsr];
+  //   }
+  // }
   
-  if(mpi::master){
-    printf("RANK: %d, Number of base_source_regions: %lu\n", mpi::rank, n_base_sr_);
-    uint64_t sum_bsr_RT = std::accumulate(num_base_source_region_RT_tot_.begin(), num_base_source_region_RT_tot_.end(), uint64_t{0});
-    uint64_t sum_mb_RT = std::accumulate(num_mesh_bin_RT_tot_.begin(), num_mesh_bin_RT_tot_.end(), uint64_t{0});
-    uint64_t sum_mesh_bins = std::accumulate(mesh_bins_per_base_sr_.begin(), mesh_bins_per_base_sr_.end(), uint64_t{0});
-    printf("Sum of base_source_region_RT_tot_: %lu\n", sum_bsr_RT);
-    printf("Sum of mesh_bin_RT_tot_: %lu\n", sum_mb_RT);
-    printf("Sum of mesh bins: %lu\n", sum_mesh_bins);
-  }
+  // if(mpi::master){
+  //   printf("RANK: %d, Number of base_source_regions: %lu\n", mpi::rank, n_base_sr_);
+  //   // uint64_t sum_bsr_RT = std::accumulate(num_base_source_region_RT_tot_.begin(), num_base_source_region_RT_tot_.end(), uint64_t{0});
+  //   // uint64_t sum_mb_RT = std::accumulate(num_mesh_bin_RT_tot_.begin(), num_mesh_bin_RT_tot_.end(), uint64_t{0});
+  //   uint64_t sum_mesh_bins = std::accumulate(mesh_bins_per_base_sr_.begin(), mesh_bins_per_base_sr_.end(), uint64_t{0});
+  //   // printf("Sum of base_source_region_RT_tot_: %lu\n", sum_bsr_RT);
+  //   // printf("Sum of mesh_bin_RT_tot_: %lu\n", sum_mb_RT);
+  //   printf("Sum of mesh bins: %lu\n", sum_mesh_bins);
+  // }
 
 
   // calculate ray tracing cost per base source region
+  //TODO: Add check if volume is zero
   #pragma omp parallel for
     for (uint64_t bsr = 0; bsr < n_base_sr_; bsr++) {
+      // volume_base_sr_[bsr] *= volume_normalization_factor;
       if (mesh_bins_per_base_sr_[bsr] > 0) {
-        ray_tracing_cost_[bsr] = static_cast<double>(num_base_source_region_RT_tot_[bsr] + num_mesh_bin_RT_tot_[bsr]) / 
-                                  mesh_bins_per_base_sr_[bsr]; //TODO: weighted with volume?
+        // ray_tracing_cost_[bsr] = (1/volume_base_sr_[bsr])*(static_cast<double>(num_base_source_region_RT_tot_[bsr] + num_mesh_bin_RT_tot_[bsr]) / 
+        //                           mesh_bins_per_base_sr_[bsr]); //TODO: weighted with volume?
+        ray_tracing_cost_[bsr] = static_cast<double>(num_base_source_region_RT_tot_[bsr] + num_mesh_bin_RT_tot_[bsr])/volume_base_sr_[bsr];
       } else {
         ray_tracing_cost_[bsr] = 0.0;
       }
@@ -693,7 +719,8 @@ void DecompositionMap::calculate_rank_load(FlatSourceDomain* domain){ //TODO: Th
     for (int64_t sr = 0; sr < domain->n_source_regions(); sr++) {
       SourceRegionKey sr_key = domain->source_regions_.key(sr);
       uint64_t base_sr = sr_key.base_source_region_id;
-      double load_sr = C1 * domain->source_regions_.n_hits(sr) * negroups_ + C2 * ray_tracing_cost_[base_sr];
+      double volume_sr = domain->source_regions_.volume_t(sr);
+      double load_sr = C1 * domain->source_regions_.n_hits(sr) * negroups_ + C2 * volume_sr * ray_tracing_cost_[base_sr];
       load += load_sr;
     }
 
@@ -701,10 +728,31 @@ void DecompositionMap::calculate_rank_load(FlatSourceDomain* domain){ //TODO: Th
   double load_sr;
   for (const auto & [sr_key, sr] : domain->discovered_source_regions_) {
     uint64_t base_sr = sr_key.base_source_region_id;
-    load_sr = C1 * sr.scalars_.n_hits_ * negroups_ + C2 * ray_tracing_cost_[base_sr];
+    double volume_sr = sr.scalars_.volume_;
+    load_sr = C1 * sr.scalars_.n_hits_ * negroups_ + C2 * volume_sr * ray_tracing_cost_[base_sr];
     load += load_sr;
     // n_hits_rank += sr.scalars_.n_hits_;
   }
+  
+  // if (mpi::master){
+  //   vector<double> volumes(n_base_sr_, 0.0);
+
+  //   for (int64_t sr = 0; sr < domain->n_source_regions(); sr++) {
+  //       SourceRegionKey sr_key = domain->source_regions_.key(sr);
+  //       uint64_t base_sr = sr_key.base_source_region_id;
+  //       volumes[base_sr] += domain->source_regions_.volume_t(sr)/volume_base_sr_[base_sr];
+  //   }
+
+  //   for (const auto & [sr_key, sr] : domain->discovered_source_regions_) {
+  //     uint64_t base_sr = sr_key.base_source_region_id;
+  //     double volume_sr = sr.scalars_.volume_;
+  //     volumes[base_sr] += volume_sr/volume_base_sr_[base_sr];
+  //   }
+
+  //   for (uint64_t bsr = 0; bsr < n_base_sr_; bsr++) {
+  //     printf("Base source region %lu: Volume total %f, \n", bsr, volumes[bsr]);
+  //   }
+  // }
 
   //TODO: Temporary print-outs
   if (mpi::master) {
@@ -776,6 +824,10 @@ void DecompositionMap::calculate_rank_load(FlatSourceDomain* domain){ //TODO: Th
   double avg_load = std::accumulate(rank_load_.begin(), rank_load_.end(), 0.0)/mpi::n_procs;
   max_imbalance_ = (max_load - avg_load) / avg_load;
   if (mpi::master){printf("Max load %f, avg load %f \n", max_load, avg_load);}
+
+  // Reset batch-wise counters
+  fill(num_base_source_region_RT_batch_.begin(), num_base_source_region_RT_batch_.end(), 0);
+  fill(num_mesh_bin_RT_batch_.begin(), num_mesh_bin_RT_batch_.end(), 0);
 
 }
 
@@ -977,7 +1029,8 @@ void DecompositionMap::update_load(FlatSourceDomain* domain, bool check_all_rank
         Position centroid = domain->source_regions_.centroid(sr);
         int owner = find_closest_rank(centroid, check_all_ranks);
         // local_hits[owner] += domain->source_regions_.n_hits(sr);
-        local_load[owner] += C1 * domain->source_regions_.n_hits(sr) * negroups_ + C2 * ray_tracing_cost_[domain->source_regions_.key(sr).base_source_region_id];
+        double volume_sr = domain->source_regions_.volume_t(sr);
+        local_load[owner] += C1 * domain->source_regions_.n_hits(sr) * negroups_ + C2 * volume_sr * ray_tracing_cost_[domain->source_regions_.key(sr).base_source_region_id];
       }
 
     // Combine results from different threads

@@ -82,6 +82,7 @@ public:
   vector<uint64_t> num_mesh_bin_RT_batch_; // number of mesh bin ray trace operations per base source region for current batch
   vector<uint64_t> mesh_bins_per_base_sr_; // number of mesh bin ray trace operations per base source region for current batch
   vector<double> ray_tracing_cost_;
+  vector<double> volume_base_sr_;
 
   // coefficients for load calculation
   double C1 = 1.0;
@@ -95,6 +96,7 @@ public:
   int cnt_optimizations_total_ = 0;
   double max_imbalance_ = 0.0; //TODO: rename in max_load_imbalance_
   uint64_t n_base_sr_ = 0;
+  int negroups_;
 
 private:
   //----------------------------------------------------------------------------
@@ -102,7 +104,7 @@ private:
   SpatialBox* spatial_box_ = nullptr; 
   vector<Position> grid_points_; //TODO: This can be local variable when Voronoi centres ae established
   int grid_points_per_rank_{125}; // default 5x5x5 grid points per rank
-  int negroups_;
+  // int negroups_;
   // uint64_t n_hits_sum_;
   double total_load_;
 

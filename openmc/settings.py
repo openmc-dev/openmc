@@ -372,7 +372,6 @@ class Settings:
         self._confidence_intervals = None
         self._electron_treatment = None
         self._photon_transport = None
-        self._description = None
         self._plot_seed = None
         self._ptables = None
         self._uniform_source_sampling = None
@@ -442,6 +441,8 @@ class Settings:
         self._use_decay_photons = None
 
         self._random_ray = {}
+
+        self._description = None
 
         for key, value in kwargs.items():
             setattr(self, key, value)

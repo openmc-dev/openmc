@@ -2656,7 +2656,8 @@ class UnstructuredMesh(MeshBase):
         warnings.warn(
             "The 'UnstructuredMesh.write_vtk_mesh' method has been renamed "
             "to 'write_data_to_vtk' and will be removed in a future version "
-            " of OpenMC.", FutureWarning
+            " of OpenMC.",
+            FutureWarning,
         )
         self.write_data_to_vtk(**kwargs)
 
@@ -2688,39 +2689,88 @@ class UnstructuredMesh(MeshBase):
 
         if Path(filename).suffix == ".vtkhdf":
 
-            def append_dataset(dset, array):
-                """Convenience function to append data to an HDF5 dataset"""
-                origLen = dset.shape[0]
-                dset.resize(origLen + array.shape[0], axis=0)
-                dset[origLen:] = array
-
-            if self.library != "moab":
-                raise NotImplemented("VTKHDF output is only supported for MOAB meshes")
-
-            # the self.connectivity contains an arrays of length 8, in the case of
-            # MOAB tetrahedra mesh elements, the last 4 values are -1 and can be removed
-            trimmed_connectivity = []
-            for cell in self.connectivity:
-                # Find the index of the first -1 value, if any
-                first_negative_index = np.where(cell == -1)[0]
-                if first_negative_index.size > 0:
-                    # Slice the array up to the first -1 value
-                    trimmed_connectivity.append(cell[: first_negative_index[0]])
-                else:
-                    # No -1 values, append the whole cell
-                    trimmed_connectivity.append(cell)
-            trimmed_connectivity = np.array(
-                trimmed_connectivity, dtype="int32"
-            ).flatten()
-
-            # MOAB meshes supports tet elements only so we know it has 4 points per cell
-            points_per_cell = 4
-
-            # offsets are the indices of the first point of each cell in the array of points
-            offsets = np.arange(
-                0, self.n_elements * points_per_cell + 1, points_per_cell
+            self._write_data_to_vtk_vtk_format(
+                filename=filename,
+                datasets=datasets,
+                volume_normalization=volume_normalization,
             )
 
+        elif Path(filename).suffix == ".vtk" or Path(filename).suffix == ".vtu":
+
+            self._write_data_to_vtk_hdf5_format(
+                filename=filename,
+                datasets=datasets,
+                volume_normalization=volume_normalization,
+            )
+
+        else:
+            raise ValueError(
+                "Unsupported file extension, The filename must end with "
+                "'.vtkhdf', '.vtu' or '.vtk'"
+            )
+
+    def _write_data_to_vtk_vtk_format(
+        self,
+        filename: PathLike | None = None,
+        datasets: dict | None = None,
+        volume_normalization: bool = True,
+    ):
+        from vtkmodules.util import numpy_support
+        from vtkmodules import vtkCommonCore
+        from vtkmodules import vtkCommonDataModel
+        from vtkmodules import vtkIOLegacy
+        from vtkmodules import vtkIOXML
+
+        if self.connectivity is None or self.vertices is None:
+            raise RuntimeError("This mesh has not been loaded from a statepoint file.")
+
+        if filename is None:
+            filename = f"mesh_{self.id}.vtk"
+
+        if Path(filename).suffix == ".vtk":
+            writer = vtkIOLegacy.vtkUnstructuredGridWriter()
+
+        elif Path(filename).suffix == ".vtu":
+            writer = vtkIOXML.vtkXMLUnstructuredGridWriter()
+            writer.SetCompressorTypeToZLib()
+            writer.SetDataModeToBinary()
+
+        writer.SetFileName(str(filename))
+
+        grid = vtkCommonDataModel.vtkUnstructuredGrid()
+
+        points = vtkCommonCore.vtkPoints()
+        points.SetData(numpy_support.numpy_to_vtk(self.vertices))
+        grid.SetPoints(points)
+
+        n_skipped = 0
+        for elem_type, conn in zip(self.element_types, self.connectivity):
+            if elem_type == self._LINEAR_TET:
+                elem = vtkCommonDataModel.vtkTetra()
+            elif elem_type == self._LINEAR_HEX:
+                elem = vtkCommonDataModel.vtkHexahedron()
+            elif elem_type == self._UNSUPPORTED_ELEM:
+                n_skipped += 1
+                continue
+            else:
+                raise RuntimeError(f"Invalid element type {elem_type} found")
+
+            for i, c in enumerate(conn):
+                if c == -1:
+                    break
+                elem.GetPointIds().SetId(i, c)
+
+            grid.InsertNextCell(elem.GetCellType(), elem.GetPointIds())
+
+        if n_skipped > 0:
+            warnings.warn(
+                f"{n_skipped} elements were not written because "
+                "they are not of type linear tet/hex"
+            )
+
+        # check that datasets are the correct size
+        datasets_out = []
+        if datasets is not None:
             for name, data in datasets.items():
                 if data.shape != self.dimension:
                     raise ValueError(
@@ -2729,179 +2779,154 @@ class UnstructuredMesh(MeshBase):
                         f"with dimensions {self.dimension}"
                     )
 
-            with h5py.File(filename, "w") as f:
-
-                root = f.create_group("VTKHDF")
-                root.attrs["Version"] = (2, 1)
-                ascii_type = "UnstructuredGrid".encode("ascii")
-                root.attrs.create(
-                    "Type",
-                    ascii_type,
-                    dtype=h5py.string_dtype("ascii", len(ascii_type)),
-                )
-
-                # create hdf5 file structure
-                root.create_dataset(
-                    "NumberOfPoints", (0,), maxshape=(None,), dtype="i8"
-                )
-                root.create_dataset("Types", (0,), maxshape=(None,), dtype="uint8")
-                root.create_dataset("Points", (0, 3), maxshape=(None, 3), dtype="f")
-                root.create_dataset(
-                    "NumberOfConnectivityIds", (0,), maxshape=(None,), dtype="i8"
-                )
-                root.create_dataset("NumberOfCells", (0,), maxshape=(None,), dtype="i8")
-                root.create_dataset("Offsets", (0,), maxshape=(None,), dtype="i8")
-                root.create_dataset("Connectivity", (0,), maxshape=(None,), dtype="i8")
-
-                append_dataset(root["NumberOfPoints"], np.array([len(self.vertices)]))
-                append_dataset(root["Points"], self.vertices)
-                append_dataset(
-                    root["NumberOfConnectivityIds"],
-                    np.array([len(trimmed_connectivity)]),
-                )
-                append_dataset(root["Connectivity"], trimmed_connectivity)
-                append_dataset(root["NumberOfCells"], np.array([self.n_elements]))
-                append_dataset(root["Offsets"], offsets)
-
-                # VTK_TETRA type is known as DAGMC only supports tet meshes
-                append_dataset(
-                    root["Types"], np.full(self.n_elements, 10, dtype="uint8")
-                )
-
-                cell_data_group = root.create_group("CellData")
-
+            if volume_normalization:
                 for name, data in datasets.items():
-
-                    cell_data_group.create_dataset(
-                        name, (0,), maxshape=(None,), dtype="float64", chunks=True
-                    )
-
-                    if volume_normalization:
-                        data /= self.volumes
-                    append_dataset(cell_data_group[name], data)
-
-        elif Path(filename).suffix == ".vtk" or Path(filename).suffix == ".vtu":
-            
-            from vtkmodules.util import numpy_support
-            from vtkmodules import vtkCommonCore
-            from vtkmodules import vtkCommonDataModel
-            from vtkmodules import vtkIOLegacy
-            from vtkmodules import vtkIOXML
-
-            if self.connectivity is None or self.vertices is None:
-                raise RuntimeError(
-                    "This mesh has not been loaded from a statepoint file."
-                )
-
-            if filename is None:
-                filename = f"mesh_{self.id}.vtk"
-
-            if Path(filename).suffix == ".vtk":
-                writer = vtkIOLegacy.vtkUnstructuredGridWriter()
-
-            elif Path(filename).suffix == ".vtu":
-                writer = vtkIOXML.vtkXMLUnstructuredGridWriter()
-                writer.SetCompressorTypeToZLib()
-                writer.SetDataModeToBinary()
-
-            writer.SetFileName(str(filename))
-
-            grid = vtkCommonDataModel.vtkUnstructuredGrid()
-
-            points = vtkCommonCore.vtkPoints()
-            points.SetData(numpy_support.numpy_to_vtk(self.vertices))
-            grid.SetPoints(points)
-
-            n_skipped = 0
-            for elem_type, conn in zip(self.element_types, self.connectivity):
-                if elem_type == self._LINEAR_TET:
-                    elem = vtkCommonDataModel.vtkTetra()
-                elif elem_type == self._LINEAR_HEX:
-                    elem = vtkCommonDataModel.vtkHexahedron()
-                elif elem_type == self._UNSUPPORTED_ELEM:
-                    n_skipped += 1
-                    continue
-                else:
-                    raise RuntimeError(f"Invalid element type {elem_type} found")
-
-                for i, c in enumerate(conn):
-                    if c == -1:
-                        break
-                    elem.GetPointIds().SetId(i, c)
-
-                grid.InsertNextCell(elem.GetCellType(), elem.GetPointIds())
-
-            if n_skipped > 0:
-                warnings.warn(
-                    f"{n_skipped} elements were not written because "
-                    "they are not of type linear tet/hex"
-                )
-
-            # check that datasets are the correct size
-            datasets_out = []
-            if datasets is not None:
-                for name, data in datasets.items():
-                    if data.shape != self.dimension:
-                        raise ValueError(
-                            f'Cannot apply dataset "{name}" with '
-                            f"shape {data.shape} to mesh {self.id} "
-                            f"with dimensions {self.dimension}"
+                    if np.issubdtype(data.dtype, np.integer):
+                        warnings.warn(
+                            f'Integer data set "{name}" will '
+                            "not be volume-normalized."
                         )
+                        continue
+                    data /= self.volumes
+
+            # add data to the mesh
+            for name, data in datasets.items():
+                datasets_out.append(data)
+                arr = vtkCommonCore.vtkDoubleArray()
+                arr.SetName(name)
+                arr.SetNumberOfTuples(data.size)
+
+                for i in range(data.size):
+                    arr.SetTuple1(i, data.flat[i])
+                grid.GetCellData().AddArray(arr)
+
+        writer.SetInputData(grid)
+
+        writer.Write()
+
+    def _write_data_to_vtk_hdf_format(
+        self,
+        filename: PathLike | None = None,
+        datasets: dict | None = None,
+        volume_normalization: bool = True,
+    ):
+        def append_dataset(dset, array):
+            """Convenience function to append data to an HDF5 dataset"""
+            origLen = dset.shape[0]
+            dset.resize(origLen + array.shape[0], axis=0)
+            dset[origLen:] = array
+
+        if self.library != "moab":
+            raise NotImplemented("VTKHDF output is only supported for MOAB meshes")
+
+        # the self.connectivity contains an arrays of length 8, in the case of
+        # MOAB tetrahedra mesh elements, the last 4 values are -1 and can be removed
+        trimmed_connectivity = []
+        for cell in self.connectivity:
+            # Find the index of the first -1 value, if any
+            first_negative_index = np.where(cell == -1)[0]
+            if first_negative_index.size > 0:
+                # Slice the array up to the first -1 value
+                trimmed_connectivity.append(cell[: first_negative_index[0]])
+            else:
+                # No -1 values, append the whole cell
+                trimmed_connectivity.append(cell)
+        trimmed_connectivity = np.array(trimmed_connectivity, dtype="int32").flatten()
+
+        # MOAB meshes supports tet elements only so we know it has 4 points per cell
+        points_per_cell = 4
+
+        # offsets are the indices of the first point of each cell in the array of points
+        offsets = np.arange(0, self.n_elements * points_per_cell + 1, points_per_cell)
+
+        for name, data in datasets.items():
+            if data.shape != self.dimension:
+                raise ValueError(
+                    f'Cannot apply dataset "{name}" with '
+                    f"shape {data.shape} to mesh {self.id} "
+                    f"with dimensions {self.dimension}"
+                )
+
+        with h5py.File(filename, "w") as f:
+
+            root = f.create_group("VTKHDF")
+            vtk_file_format_version = (2, 1)
+            root.attrs["Version"] = vtk_file_format_version
+            ascii_type = "UnstructuredGrid".encode("ascii")
+            root.attrs.create(
+                "Type",
+                ascii_type,
+                dtype=h5py.string_dtype("ascii", len(ascii_type)),
+            )
+
+            # create hdf5 file structure
+            root.create_dataset("NumberOfPoints", (0,), maxshape=(None,), dtype="i8")
+            root.create_dataset("Types", (0,), maxshape=(None,), dtype="uint8")
+            root.create_dataset("Points", (0, 3), maxshape=(None, 3), dtype="f")
+            root.create_dataset(
+                "NumberOfConnectivityIds", (0,), maxshape=(None,), dtype="i8"
+            )
+            root.create_dataset("NumberOfCells", (0,), maxshape=(None,), dtype="i8")
+            root.create_dataset("Offsets", (0,), maxshape=(None,), dtype="i8")
+            root.create_dataset("Connectivity", (0,), maxshape=(None,), dtype="i8")
+
+            append_dataset(root["NumberOfPoints"], np.array([len(self.vertices)]))
+            append_dataset(root["Points"], self.vertices)
+            append_dataset(
+                root["NumberOfConnectivityIds"],
+                np.array([len(trimmed_connectivity)]),
+            )
+            append_dataset(root["Connectivity"], trimmed_connectivity)
+            append_dataset(root["NumberOfCells"], np.array([self.n_elements]))
+            append_dataset(root["Offsets"], offsets)
+
+            # VTK_TETRA type is known as DAGMC only supports tet meshes
+            element_type = 10  # VTK_TETRA
+            append_dataset(
+                root["Types"], np.full(self.n_elements, element_type, dtype="uint8")
+            )
+
+            cell_data_group = root.create_group("CellData")
+
+            for name, data in datasets.items():
+
+                cell_data_group.create_dataset(
+                    name, (0,), maxshape=(None,), dtype="float64", chunks=True
+                )
 
                 if volume_normalization:
-                    for name, data in datasets.items():
-                        if np.issubdtype(data.dtype, np.integer):
-                            warnings.warn(
-                                f'Integer data set "{name}" will '
-                                "not be volume-normalized."
-                            )
-                            continue
-                        data /= self.volumes
-
-                # add data to the mesh
-                for name, data in datasets.items():
-                    datasets_out.append(data)
-                    arr = vtkCommonCore.vtkDoubleArray()
-                    arr.SetName(name)
-                    arr.SetNumberOfTuples(data.size)
-
-                    for i in range(data.size):
-                        arr.SetTuple1(i, data.flat[i])
-                    grid.GetCellData().AddArray(arr)
-
-            writer.SetInputData(grid)
-
-            writer.Write()
-        
-        else:
-            raise ValueError(
-                "Unsupported file extension, The filename must end with "
-                "'.vtkhdf', '.vtu' or '.vtk'"
-            )
+                    data /= self.volumes
+                append_dataset(cell_data_group[name], data)
 
     @classmethod
     def from_hdf5(cls, group: h5py.Group, mesh_id: int, name: str):
-        filename = group['filename'][()].decode()
-        library = group['library'][()].decode()
-        if 'options' in group.attrs:
-            options = group.attrs['options'].decode()
+        filename = group["filename"][()].decode()
+        library = group["library"][()].decode()
+        if "options" in group.attrs:
+            options = group.attrs["options"].decode()
         else:
             options = None
 
-        mesh = cls(filename=filename, library=library, mesh_id=mesh_id, name=name, options=options)
+        mesh = cls(
+            filename=filename,
+            library=library,
+            mesh_id=mesh_id,
+            name=name,
+            options=options,
+        )
         mesh._has_statepoint_data = True
-        vol_data = group['volumes'][()]
+        vol_data = group["volumes"][()]
         mesh.volumes = np.reshape(vol_data, (vol_data.shape[0],))
         mesh.n_elements = mesh.volumes.size
 
-        vertices = group['vertices'][()]
+        vertices = group["vertices"][()]
         mesh._vertices = vertices.reshape((-1, 3))
-        connectivity = group['connectivity'][()]
+        connectivity = group["connectivity"][()]
         mesh._connectivity = connectivity.reshape((-1, 8))
-        mesh._element_types = group['element_types'][()]
+        mesh._element_types = group["element_types"][()]
 
-        if 'length_multiplier' in group:
-            mesh.length_multiplier = group['length_multiplier'][()]
+        if "length_multiplier" in group:
+            mesh.length_multiplier = group["length_multiplier"][()]
 
         return mesh
 
@@ -2920,7 +2945,7 @@ class UnstructuredMesh(MeshBase):
 
         element.set("library", self._library)
         if self.options is not None:
-            element.set('options', self.options)
+            element.set("options", self.options)
         subelement = ET.SubElement(element, "filename")
         subelement.text = str(self.filename)
 

@@ -4,10 +4,9 @@
 #include "openmc/random_lcg.h"
 #include "openmc/search.h"
 
-#include <gsl/gsl-lite.hpp>
-
 #include "xtensor/xview.hpp"
 
+#include <cassert>
 #include <cmath> // for log, exp
 
 namespace openmc {
@@ -40,7 +39,7 @@ void CoherentElasticAE::sample(
 
   const auto& energies {xs_.bragg_edges()};
 
-  Expects(E_in >= energies.front());
+  assert(E_in >= energies.front());
 
   const int i = lower_bound_index(energies.begin(), energies.end(), E_in);
 
@@ -330,6 +329,42 @@ void IncoherentInelasticAE::sample(
 
   // Smear cosine
   mu += std::min(mu - mu_left, mu_right - mu) * (prn(seed) - 0.5);
+}
+
+//==============================================================================
+// MixedElasticAE implementation
+//==============================================================================
+
+MixedElasticAE::MixedElasticAE(
+  hid_t group, const CoherentElasticXS& coh_xs, const Function1D& incoh_xs)
+  : coherent_dist_(coh_xs), coherent_xs_(coh_xs), incoherent_xs_(incoh_xs)
+{
+  // Read incoherent elastic distribution
+  hid_t incoherent_group = open_group(group, "incoherent");
+  std::string temp;
+  read_attribute(incoherent_group, "type", temp);
+  if (temp == "incoherent_elastic") {
+    incoherent_dist_ = make_unique<IncoherentElasticAE>(incoherent_group);
+  } else if (temp == "incoherent_elastic_discrete") {
+    auto xs = dynamic_cast<const Tabulated1D*>(&incoh_xs);
+    incoherent_dist_ =
+      make_unique<IncoherentElasticAEDiscrete>(incoherent_group, xs->x());
+  }
+  close_group(incoherent_group);
+}
+
+void MixedElasticAE::sample(
+  double E_in, double& E_out, double& mu, uint64_t* seed) const
+{
+  // Evaluate coherent and incoherent elastic cross sections
+  double xs_coh = coherent_xs_(E_in);
+  double xs_incoh = incoherent_xs_(E_in);
+
+  if (prn(seed) * (xs_coh + xs_incoh) < xs_coh) {
+    coherent_dist_.sample(E_in, E_out, mu, seed);
+  } else {
+    incoherent_dist_->sample(E_in, E_out, mu, seed);
+  }
 }
 
 } // namespace openmc

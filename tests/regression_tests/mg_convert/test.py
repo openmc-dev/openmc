@@ -1,3 +1,4 @@
+from math import isnan
 import os
 import hashlib
 
@@ -61,7 +62,8 @@ def build_mgxs_library(convert):
 
 
 class MGXSTestHarness(PyAPITestHarness):
-    def _build_inputs(self):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         # Instantiate some Macroscopic Data
         uo2_data = openmc.Macroscopic('UO2')
 
@@ -73,7 +75,7 @@ class MGXSTestHarness(PyAPITestHarness):
         # Instantiate a Materials collection and export to XML
         materials_file = openmc.Materials([mat])
         materials_file.cross_sections = "./mgxs.h5"
-        materials_file.export_to_xml()
+        self._model.materials = materials_file
 
         # Instantiate ZCylinder surfaces
         left = openmc.XPlane(surface_id=4, x0=-5., name='left')
@@ -102,8 +104,7 @@ class MGXSTestHarness(PyAPITestHarness):
         root.add_cells([fuel])
 
         # Instantiate a Geometry, register the root Universe, and export to XML
-        geometry = openmc.Geometry(root)
-        geometry.export_to_xml()
+        self._model.geometry = openmc.Geometry(root)
 
         settings_file = openmc.Settings()
         settings_file.energy_mode = "multi-group"
@@ -114,9 +115,9 @@ class MGXSTestHarness(PyAPITestHarness):
         # Create an initial uniform spatial source distribution
         bounds = [-5, -5, -5, 5, 5, 5]
         uniform_dist = openmc.stats.Box(bounds[:3], bounds[3:])
-        settings_file.source = openmc.source.Source(space=uniform_dist)
+        settings_file.source = openmc.IndependentSource(space=uniform_dist)
 
-        settings_file.export_to_xml()
+        self._model.settings = settings_file
 
     def _run_openmc(self):
         # Run multiple conversions to compare results
@@ -142,10 +143,13 @@ class MGXSTestHarness(PyAPITestHarness):
                 openmc.run(openmc_exec=config['exe'])
 
             with openmc.StatePoint('statepoint.{}.h5'.format(batches)) as sp:
+                # Sometimes NaN results are produced; convert these to 0.0
+                std_dev = 0.0 if isnan(sp.keff.s) else sp.keff.s
+
                 # Write out k-combined.
                 outstr += 'k-combined:\n'
                 form = '{:12.6E} {:12.6E}\n'
-                outstr += form.format(sp.k_combined.n, sp.k_combined.s)
+                outstr += form.format(sp.keff.n, std_dev)
 
         return outstr
 
@@ -194,5 +198,5 @@ class MGXSTestHarness(PyAPITestHarness):
 
 
 def test_mg_convert():
-    harness = MGXSTestHarness('statepoint.10.h5')
+    harness = MGXSTestHarness('statepoint.10.h5', model=openmc.Model())
     harness.main()

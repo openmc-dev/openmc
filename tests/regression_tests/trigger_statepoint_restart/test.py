@@ -29,7 +29,7 @@ def model():
     settings.inactive = 10
     settings.particles = 400
     # Choose a sufficiently low threshold to enable use of trigger
-    settings.keff_trigger = {'type': 'std_dev', 'threshold': 0.003}
+    settings.keff_trigger = {'type': 'std_dev', 'threshold': 0.002}
     settings.trigger_max_batches = 1000
     settings.trigger_batch_interval = 1
     settings.trigger_active = True
@@ -41,10 +41,10 @@ def model():
     tallies = openmc.Tallies([t])
 
     # Put it all together
-    model = openmc.model.Model(materials=materials,
-                               geometry=geometry,
-                               settings=settings,
-                               tallies=tallies)
+    model = openmc.Model(materials=materials,
+                         geometry=geometry,
+                         settings=settings,
+                         tallies=tallies)
     return model
 
 
@@ -90,7 +90,7 @@ class TriggerStatepointRestartTestHarness(PyAPITestHarness):
             assert spfile
             with openmc.StatePoint(spfile) as sp:
                  sp_batchno_1 = sp.current_batch
-                 k_combined_1 = sp.k_combined
+                 keff_1 = sp.keff
             assert sp_batchno_1 > 5
             print('Last batch no = %d' % sp_batchno_1)
             self._write_inputs(self._get_inputs())
@@ -108,13 +108,13 @@ class TriggerStatepointRestartTestHarness(PyAPITestHarness):
             assert spfile
             with openmc.StatePoint(spfile) as sp:
                  sp_batchno_2 = sp.current_batch
-                 k_combined_2 = sp.k_combined
+                 keff_2 = sp.keff
             assert sp_batchno_2 > 5
             assert sp_batchno_1 == sp_batchno_2, \
                 'Different final batch number after restart'
             # need str() here as uncertainties.ufloat instances are always different
-            assert str(k_combined_1) == str(k_combined_2), \
-                'Different final k_combined after restart'
+            assert str(keff_1) == str(keff_2), \
+                'Different final keff after restart'
             self._write_inputs(self._get_inputs())
             self._compare_inputs()
             self._test_output_created()

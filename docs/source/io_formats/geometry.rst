@@ -48,7 +48,7 @@ Each ``<surface>`` element can have the following attributes or sub-elements:
 
   :periodic_surface_id:
      If a periodic boundary condition is applied, this attribute identifies the
-     ``id`` of the corresponding periodic sufrace.
+     ``id`` of the corresponding periodic surface.
 
 The following quadratic surfaces can be modeled:
 
@@ -218,6 +218,30 @@ Each ``<cell>`` element can have the following attributes or sub-elements:
               specified.
 
     *Default*: None
+
+  :triso_particle:
+    If the cell is filled with a TRISO particle,  use this element to mark it.
+
+    .. note:: Only cells with spherical area can be marked.
+
+    *Default*: false
+
+  :virtual_lattice:
+    If the cell is filled with a matrix containing the TRISO particle,  use this
+    element to mark it. This can accelerate the search speed of neutrons in the 
+    region containing a large number of TRISO particles.
+
+    *Default*: false
+  
+  :shape:
+    If the virtual_lattice is True. This element specifies the shape of the
+    lattice.
+
+    .. note:: The shape of the lattice must be specified if the virtual_lattice
+              is True. Related methods can be referred to Liang, J., Li, R., Liu, Z., 
+              2024. Virtual lattice method for efficient Monte Carlo transport simulation
+              of dispersion nuclear fuels. Computer Physics Communications 295, 108985. 
+              https://doi.org/10.1016/j.cpc.2023.108985
 
 
 ---------------------
@@ -407,13 +431,33 @@ Each ``<dagmc_universe>`` element can have the following attributes or sub-eleme
 
     *Default*: None
 
+  :material_overrides:
+    This element contains information on material overrides to be applied to the
+    DAGMC universe. It has the following attributes and sub-elements:
 
-  .. note:: A geometry.xml file containing only a DAGMC model for a file named `dagmc.h5m` (no CSG)
-            looks as follows
+    :cell:
+      Material override information for a single cell. It contains the following
+      attributes and sub-elements:
 
-            .. code-block:: xml
+      :id:
+        The cell ID in the DAGMC geometry for which the material override will
+        apply.
 
-              <?xml version='1.0' encoding='utf-8'?>
-              <geometry>
-                <dagmc_universe filename="dagmc.h5m" id="1" />
-              </geometry>
+      :materials:
+        A list of material IDs that will apply to instances of the cell. If the
+        list contains only one ID, it will replace the original material
+        assignment of all instances of the DAGMC cell. If the list contains more
+        than one material, each material ID of the list will be assigned to the
+        various instances of the DAGMC cell.
+
+    *Default*: None
+
+.. note:: A geometry.xml file containing only a DAGMC model for a file named
+          `dagmc.h5m` (no CSG) looks as follows:
+
+    .. code-block:: xml
+
+        <?xml version='1.0' encoding='utf-8'?>
+        <geometry>
+          <dagmc_universe filename="dagmc.h5m" id="1" />
+        </geometry>

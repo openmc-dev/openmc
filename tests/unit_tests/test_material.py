@@ -1,8 +1,13 @@
 from collections import defaultdict
+from pathlib import Path
 
 import pytest
 
+import numpy as np
+
 import openmc
+from openmc.data import decay_photon_energy
+from openmc.deplete import Chain
 import openmc.examples
 import openmc.model
 import openmc.stats
@@ -25,6 +30,65 @@ def test_add_nuclide():
     with pytest.raises(ValueError):
         m.add_nuclide('H1', 1.0, 'oa')
 
+def test_add_components():
+    """Test adding multipe elements or nuclides at once"""
+    m = openmc.Material()
+    components = {'H1': 2.0,
+                  'O16': 1.0,
+                  'Zr': 1.0,
+                  'O': 1.0,
+                  'Ag110_m1': 1.0,
+                  'U': {'percent': 1.0,
+                        'enrichment': 4.5},
+                  'Li': {'percent': 1.0,
+                         'enrichment': 60.0,
+                         'enrichment_target': 'Li7'},
+                  'H': {'percent': 1.0,
+                        'enrichment': 50.0,
+                        'enrichment_target': 'H2',
+                        'enrichment_type': 'wo'}}
+    m.add_components(components)
+    with pytest.raises(ValueError):
+        m.add_components({'U': {'percent': 1.0,
+                                'enrichment': 100.0}})
+    with pytest.raises(ValueError):
+        m.add_components({'Pu': {'percent': 1.0,
+                                 'enrichment': 3.0}})
+    with pytest.raises(ValueError):
+        m.add_components({'U': {'percent': 1.0,
+                                'enrichment': 70.0,
+                                'enrichment_target':'U235'}})
+    with pytest.raises(ValueError):
+        m.add_components({'He': {'percent': 1.0,
+                                 'enrichment': 17.0,
+                                 'enrichment_target': 'He6'}})
+    with pytest.raises(ValueError):
+        m.add_components({'li': 1.0})  # should fail as 1st char is lowercase
+    with pytest.raises(ValueError):
+        m.add_components({'LI': 1.0})  # should fail as 2nd char is uppercase
+    with pytest.raises(ValueError):
+        m.add_components({'Xx': 1.0})  # should fail as Xx is not an element
+    with pytest.raises(ValueError):
+        m.add_components({'n': 1.0})  # check to avoid n for neutron being accepted
+    with pytest.raises(TypeError):
+        m.add_components({'H1': '1.0'})
+    with pytest.raises(TypeError):
+        m.add_components({1.0: 'H1'}, percent_type = 'wo')
+    with pytest.raises(ValueError):
+        m.add_components({'H1': 1.0}, percent_type = 'oa')
+
+def test_nuclides_to_ignore(run_in_tmpdir):
+    """Test nuclides_to_ignore when exporting a material to XML"""
+    m = openmc.Material()
+    m.add_nuclide('U235', 1.0)
+    m.add_nuclide('H1', 1.0)
+    m.add_nuclide('O16', 1.0)
+
+    mats = openmc.Materials([m])
+    mats.export_to_xml(nuclides_to_ignore=['H1'])
+
+    test_mats = openmc.Materials.from_xml()
+    assert 'H1' not in test_mats[0].get_nuclides()
 
 def test_remove_nuclide():
     """Test removing nuclides."""
@@ -38,7 +102,18 @@ def test_remove_nuclide():
     assert m.nuclides[1].percent == 2.0
 
 
-def test_elements():
+def test_remove_elements():
+    """Test removing elements."""
+    m = openmc.Material()
+    for elem, percent in [('Li', 1.0), ('Be', 1.0)]:
+        m.add_element(elem, percent)
+    m.remove_element('Li')
+    assert len(m.nuclides) == 1
+    assert m.nuclides[0].name == 'Be9'
+    assert m.nuclides[0].percent == 1.0
+
+
+def test_add_element():
     """Test adding elements."""
     m = openmc.Material()
     m.add_element('Zr', 1.0)
@@ -62,7 +137,6 @@ def test_elements():
         m.add_element('Xx', 1.0)  # should fail as Xx is not an element
     with pytest.raises(ValueError):
         m.add_element('n', 1.0)  # check to avoid n for neutron being accepted
-
 
 def test_elements_by_name():
     """Test adding elements by name"""
@@ -89,7 +163,7 @@ def test_add_elements_by_formula():
     m.add_elements_from_formula('Li4SiO4')
     # checking the ratio of elements is 4:1:4 for Li:Si:O
     elem = defaultdict(float)
-    for nuclide, adens in m.get_nuclide_atom_densities().values():
+    for nuclide, adens in m.get_nuclide_atom_densities().items():
         if nuclide.startswith("Li"):
             elem["Li"] += adens
         if nuclide.startswith("Si"):
@@ -106,7 +180,7 @@ def test_add_elements_by_formula():
                 'O16': 0.443386, 'O17': 0.000168}
     nuc_dens = m.get_nuclide_atom_densities()
     for nuclide in ref_dens:
-        assert nuc_dens[nuclide][1] == pytest.approx(ref_dens[nuclide], 1e-2)
+        assert nuc_dens[nuclide] == pytest.approx(ref_dens[nuclide], 1e-2)
 
     # testing the correct nuclides are added to the Material when enriched
     m = openmc.Material()
@@ -118,7 +192,7 @@ def test_add_elements_by_formula():
                 'O16': 0.443386, 'O17': 0.000168}
     nuc_dens = m.get_nuclide_atom_densities()
     for nuclide in ref_dens:
-        assert nuc_dens[nuclide][1] == pytest.approx(ref_dens[nuclide], 1e-2)
+        assert nuc_dens[nuclide] == pytest.approx(ref_dens[nuclide], 1e-2)
 
     # testing the use of brackets
     m = openmc.Material()
@@ -126,7 +200,7 @@ def test_add_elements_by_formula():
 
     # checking the ratio of elements is 2:2:6 for Mg:N:O
     elem = defaultdict(float)
-    for nuclide, adens in m.get_nuclide_atom_densities().values():
+    for nuclide, adens in m.get_nuclide_atom_densities().items():
         if nuclide.startswith("Mg"):
             elem["Mg"] += adens
         if nuclide.startswith("N"):
@@ -144,7 +218,7 @@ def test_add_elements_by_formula():
                 'O16': 0.599772, 'O17': 0.000227}
     nuc_dens = m.get_nuclide_atom_densities()
     for nuclide in ref_dens:
-        assert nuc_dens[nuclide][1] == pytest.approx(ref_dens[nuclide], 1e-2)
+        assert nuc_dens[nuclide] == pytest.approx(ref_dens[nuclide], 1e-2)
 
     # testing non integer multiplier results in a value error
     m = openmc.Material()
@@ -243,6 +317,23 @@ def test_isotropic():
     assert m2.isotropic == ['H1']
 
 
+def test_get_nuclides():
+    mat = openmc.Material()
+
+    mat.add_nuclide('Li6', 1.0)
+    assert mat.get_nuclides() == ['Li6']
+    assert mat.get_nuclides(element='Li') == ['Li6']
+    assert mat.get_nuclides(element='Be') == []
+
+    mat.add_element('Li', 1.0)
+    assert mat.get_nuclides() == ['Li6', 'Li7']
+    assert mat.get_nuclides(element='Be') == []
+
+    mat.add_element('Be', 1.0)
+    assert mat.get_nuclides() == ['Li6', 'Li7', 'Be9']
+    assert mat.get_nuclides(element='Be') == ['Be9']
+
+
 def test_get_elements():
     # test that zero elements exist on creation
     m = openmc.Material()
@@ -278,10 +369,53 @@ def test_get_nuclide_densities(uo2):
 
 
 def test_get_nuclide_atom_densities(uo2):
-    nucs = uo2.get_nuclide_atom_densities()
-    for nuc, density in nucs.values():
+    for nuc, density in uo2.get_nuclide_atom_densities().items():
         assert nuc in ('U235', 'O16')
         assert density > 0
+
+
+def test_get_nuclide_atom_densities_specific(uo2):
+    one_nuc = uo2.get_nuclide_atom_densities(nuclide='O16')
+    assert list(one_nuc.keys()) == ['O16']
+    assert list(one_nuc.values())[0] > 0
+
+    all_nuc = uo2.get_nuclide_atom_densities()
+    assert all_nuc['O16'] == one_nuc['O16']
+
+
+def test_get_element_atom_densities(uo2):
+    for element, density in uo2.get_element_atom_densities().items():
+        assert element in ('U', 'O')
+        assert density > 0
+
+
+def test_get_element_atom_densities_specific(uo2):
+    one_nuc = uo2.get_element_atom_densities('O')
+    assert list(one_nuc.keys()) == ['O']
+    assert list(one_nuc.values())[0] > 0
+
+    one_nuc = uo2.get_element_atom_densities('uranium')
+    assert list(one_nuc.keys()) == ['U']
+    assert list(one_nuc.values())[0] > 0
+
+    with pytest.raises(ValueError, match='not found'):
+        uo2.get_element_atom_densities('Li')
+
+    with pytest.raises(ValueError, match='not recognized'):
+        uo2.get_element_atom_densities('proximium')
+
+
+def test_get_nuclide_atoms():
+    mat = openmc.Material()
+    mat.add_nuclide('Li6', 1.0)
+    mat.set_density('atom/cm3', 3.26e20)
+    mat.volume = 100.0
+
+    atoms = mat.get_nuclide_atoms()
+    assert atoms['Li6'] == pytest.approx(mat.density * mat.volume)
+
+    atoms = mat.get_nuclide_atoms(volume=10.0)
+    assert atoms['Li6'] == pytest.approx(mat.density * 10.0)
 
 
 def test_mass():
@@ -299,6 +433,9 @@ def test_mass():
     assert m.get_mass('U235') == pytest.approx(10.0)
     assert m.get_mass() == pytest.approx(20.0)
     assert m.fissionable_mass == pytest.approx(10.0)
+
+    # Test with volume specified as argument
+    assert m.get_mass('Zr90', volume=1.0) == pytest.approx(1.0)
 
 
 def test_materials(run_in_tmpdir):
@@ -330,7 +467,7 @@ def test_borated_water():
                 'O16':2.4672e-02}
     nuc_dens = m.get_nuclide_atom_densities()
     for nuclide in ref_dens:
-        assert nuc_dens[nuclide][1] == pytest.approx(ref_dens[nuclide], 1e-2)
+        assert nuc_dens[nuclide] == pytest.approx(ref_dens[nuclide], 1e-2)
     assert m.id == 50
 
     # Test the Celsius conversion.
@@ -399,8 +536,234 @@ def test_mix_materials():
     dens4 = 1. / (f0 / m1dens + f1 / m2dens)
     dens5 = f0*m1dens + f1*m2dens
     m3 = openmc.Material.mix_materials([m1, m2], [f0, f1], percent_type='ao')
-    m4 = openmc.Material.mix_materials([m1, m2], [f0, f1], percent_type='wo')
-    m5 = openmc.Material.mix_materials([m1, m2], [f0, f1], percent_type='vo')
+    m4 = openmc.Material.mix_materials([m1, m2], [f0, f1], percent_type='wo', material_id=999)
+    m5 = openmc.Material.mix_materials([m1, m2], [f0, f1], percent_type='vo', name='m5')
     assert m3.density == pytest.approx(dens3)
     assert m4.density == pytest.approx(dens4)
     assert m5.density == pytest.approx(dens5)
+    assert m4.id == 999
+    assert m5.name == 'm5'
+
+
+def test_get_activity():
+    """Tests the activity of stable, metastable and active materials"""
+
+    # Creates a material with stable isotopes to check the activity is 0
+    m1 = openmc.Material()
+    m1.add_element("Fe", 0.7)
+    m1.add_element("Li", 0.3)
+    m1.set_density('g/cm3', 1.5)
+    # activity in Bq/cc and Bq/g should not require volume setting
+    assert m1.get_activity(units='Bq/cm3') == 0
+    assert m1.get_activity(units='Bq/g') == 0
+    m1.volume = 1
+    assert m1.get_activity(units='Bq') == 0
+
+    # Checks that 1g of tritium has the correct activity scaling
+    m2 = openmc.Material()
+    m2.add_nuclide("H3", 1)
+    m2.set_density('g/cm3', 1)
+    m2.volume = 1
+    assert pytest.approx(m2.get_activity(units='Bq')) == 3.559778e14
+    m2.set_density('g/cm3', 2)
+    assert pytest.approx(m2.get_activity(units='Bq')) == 3.559778e14*2
+    m2.volume = 3
+    assert pytest.approx(m2.get_activity(units='Bq')) == 3.559778e14*2*3
+
+    # Checks that 1 mol of a metastable nuclides has the correct activity
+    m3 = openmc.Material()
+    m3.add_nuclide("Tc99_m1", 1)
+    m3.set_density('g/cm3', 1)
+    m3.volume = 98.9
+    assert pytest.approx(m3.get_activity(units='Bq'), rel=0.001) == 1.93e19
+
+    # Checks that specific and volumetric activity of tritium are correct
+    m4 = openmc.Material()
+    m4.add_nuclide("H3", 1)
+    m4.set_density('g/cm3', 1.5)
+    assert pytest.approx(m4.get_activity(units='Bq/g')) == 355978108155965.94  # [Bq/g]
+    assert pytest.approx(m4.get_activity(units='Bq/kg')) == 355978108155965940  # [Bq/kg]
+    assert pytest.approx(m4.get_activity(units='Bq/g', by_nuclide=True)["H3"]) == 355978108155965.94  # [Bq/g]
+    assert pytest.approx(m4.get_activity(units='Bq/cm3')) == 355978108155965.94*3/2 # [Bq/cc]
+    assert pytest.approx(m4.get_activity(units='Bq/cm3', by_nuclide=True)["H3"]) == 355978108155965.94*3/2 # [Bq/cc]
+    # volume is required to calculate total activity
+    m4.volume = 10.
+    assert pytest.approx(m4.get_activity(units='Bq')) == 355978108155965.94*3/2*10 # [Bq]
+
+    # Test with volume specified as argument
+    assert pytest.approx(m4.get_activity(units='Bq', volume=1.0)) == 355978108155965.94*3/2
+
+    # Test units based on Ci
+    bq = m4.get_activity(units='Bq')
+    m3 = m4.volume * 1e-6
+    assert (ci := m4.get_activity(units='Ci')) == pytest.approx(bq/3.7e10)
+    assert m4.get_activity(units='Ci/m3') == pytest.approx(ci/m3)
+
+
+def test_get_decay_heat():
+    # Set chain file for testing
+    openmc.config['chain_file'] = Path(__file__).parents[1] / 'chain_simple.xml'
+
+    """Tests the decay heat of stable, metastable and active materials"""
+    m1 = openmc.Material()
+    m1.add_nuclide("U235", 0.2)
+    m1.add_nuclide("U238", 0.8)
+    m1.set_density('g/cm3', 10.5)
+    # decay heat in W/cc and W/g should not require volume setting
+    assert m1.get_decay_heat(units='W/cm3') == 0
+    assert m1.get_decay_heat(units='W/g') == 0
+    m1.volume = 1
+    assert m1.get_decay_heat(units='W') == 0
+
+    # Checks that 1g of tritium has the correct decay heat scaling
+    m2 = openmc.Material()
+    m2.add_nuclide("I135", 1)
+    m2.set_density('g/cm3', 1)
+    m2.volume = 1
+    assert pytest.approx(m2.get_decay_heat(units='W')) == 40175.15720273193
+    m2.set_density('g/cm3', 2)
+    assert pytest.approx(m2.get_decay_heat(units='W')) == 40175.15720273193*2
+    m2.volume = 3
+    assert pytest.approx(m2.get_decay_heat(units='W')) == 40175.15720273193*2*3
+
+    # Checks that 1 mol of a metastable nuclides has the correct decay heat
+    m3 = openmc.Material()
+    m3.add_nuclide("Xe135", 1)
+    m3.set_density('g/cm3', 1)
+    m3.volume = 98.9
+    assert pytest.approx(m3.get_decay_heat(units='W'), rel=0.001) == 846181.2921143445
+
+    # Checks that specific and volumetric decay heat of tritium are correct
+    m4 = openmc.Material()
+    m4.add_nuclide("I135", 1)
+    m4.set_density('g/cm3', 1.5)
+    assert pytest.approx(m4.get_decay_heat(units='W/g')) == 40175.15720273193 # [W/g]
+    assert pytest.approx(m4.get_decay_heat(units='W/kg')) == 40175157.20273193 # [W/kg]
+    assert pytest.approx(m4.get_decay_heat(units='W/g', by_nuclide=True)["I135"]) == 40175.15720273193 # [W/g]
+    assert pytest.approx(m4.get_decay_heat(units='W/cm3')) == 40175.15720273193*3/2 # [W/cc]
+    assert pytest.approx(m4.get_decay_heat(units='W/cm3', by_nuclide=True)["I135"]) == 40175.15720273193*3/2 #[W/cc]
+    # volume is required to calculate total decay heat
+    m4.volume = 10.
+    assert pytest.approx(m4.get_decay_heat(units='W')) == 40175.15720273193*3/2*10 # [W]
+
+    # Test with volume specified as argument
+    assert pytest.approx(m4.get_decay_heat(units='W', volume=1.0)) == 40175.15720273193*3/2
+
+
+def test_decay_photon_energy():
+    # Set chain file for testing
+    openmc.config['chain_file'] = Path(__file__).parents[1] / 'chain_simple.xml'
+
+    # Material representing single atom of I135 and Cs135
+    m = openmc.Material()
+    m.add_nuclide('I135', 1.0e-24)
+    m.add_nuclide('Cs135', 1.0e-24)
+    m.volume = 1.0
+
+    # Get decay photon source and make sure it's the right type
+    src = m.get_decay_photon_energy()
+    assert isinstance(src, openmc.stats.Discrete)
+
+    # Make sure units/volume work as expected
+    src_v2 = m.get_decay_photon_energy(volume=2.0)
+    assert src.p * 2.0 == pytest.approx(src_v2.p)
+    src_per_cm3 = m.get_decay_photon_energy(units='Bq/cm3', volume=100.0)
+    assert (src.p == src_per_cm3.p).all()
+    src_per_bqg = m.get_decay_photon_energy(units='Bq/g')
+    src_per_bqkg = m.get_decay_photon_energy(units='Bq/kg')
+    assert pytest.approx(src_per_bqg.integral()) == src_per_bqkg.integral() / 1000.
+
+    # If we add Xe135 (which has a tabular distribution), the photon source
+    # should be a mixture distribution
+    m.add_nuclide('Xe135', 1.0e-24)
+    src = m.get_decay_photon_energy()
+    assert isinstance(src, openmc.stats.Mixture)
+
+    # With a single atom of each, the intensity of the photon source should be
+    # equal to the sum of the intensities for each nuclide
+    def intensity(src):
+        return src.integral() if src is not None else 0.0
+
+    assert src.integral() == pytest.approx(sum(
+        intensity(decay_photon_energy(nuc)) for nuc in m.get_nuclides()
+    ), rel=1e-3)
+
+    # When the clipping threshold is zero, the intensities should match exactly
+    src = m.get_decay_photon_energy(0.0)
+    assert src.integral() == pytest.approx(sum(
+        intensity(decay_photon_energy(nuc)) for nuc in m.get_nuclides()
+    ))
+
+    # A material with no unstable nuclides should have no decay photon source
+    stable = openmc.Material()
+    stable.add_nuclide('Gd156', 1.0)
+    stable.volume = 1.0
+    assert stable.get_decay_photon_energy() is None
+
+
+def test_avoid_subnormal(run_in_tmpdir):
+    # Write a materials.xml with a material that has a nuclide density that is
+    # represented as a subnormal floating point value
+    mat = openmc.Material()
+    mat.add_nuclide('H1', 1.0)
+    mat.add_nuclide('H2', 1.0e-315)
+    mats = openmc.Materials([mat])
+    mats.export_to_xml()
+
+    # When read back in, the density should be zero
+    mats = openmc.Materials.from_xml()
+    assert mats[0].get_nuclide_atom_densities()['H2'] == 0.0
+
+
+def test_material_deplete():
+    pristine_material = openmc.Material()
+    pristine_material.add_nuclide("Ni58", 1.0)
+    pristine_material.set_density("g/cm3", 7.87)
+    pristine_material.depletable = True
+    pristine_material.temperature = 293.6
+    pristine_material.volume = 1.
+
+    mg_flux = [0.5e11] * 42
+
+    chain = Chain.from_xml(
+        Path(__file__).parents[1] / "chain_ni.xml"
+    )
+
+    depleted_material = pristine_material.deplete(
+        multigroup_flux=mg_flux,
+        energy_group_structure="VITAMIN-J-42",
+        timesteps=[10, 70.86],
+        source_rates=[1e19, 0.0],
+        timestep_units="d",
+        chain_file=chain,
+    )
+
+    for i_step, material in enumerate(depleted_material):
+        assert isinstance(material, openmc.Material)
+        if i_step > 0:
+            assert len(material.get_nuclides()) > len(pristine_material.get_nuclides())
+
+    Co58_mat_1_step_0 = depleted_material[0].get_nuclide_atom_densities("Co58").get("Co58", 0.0)
+    Co58_mat_1_step_1 = depleted_material[1].get_nuclide_atom_densities("Co58")["Co58"]
+    Co58_mat_1_step_2 = depleted_material[2].get_nuclide_atom_densities("Co58")["Co58"]
+
+    assert Co58_mat_1_step_0 == 0.0
+
+    # Check that Co58 is produced in the first step
+    assert Co58_mat_1_step_1 > 0.0
+
+    # Check that Co58 is halved in the second step which is one halflife later
+    assert np.allclose(Co58_mat_1_step_1 * 0.5, Co58_mat_1_step_2)
+
+
+def test_mean_free_path():
+
+    mat1 = openmc.Material()
+    mat1.add_nuclide('Si28', 1.0)
+    mat1.set_density('g/cm3', 2.32)
+    assert mat1.mean_free_path(energy=14e6) == pytest.approx(11.41, abs=1e-2)
+
+    mat2 = openmc.Material()
+    mat2.add_nuclide('Pb208', 1.0)
+    mat2.set_density('g/cm3', 11.34)
+    assert mat2.mean_free_path(energy=14e6) == pytest.approx(5.65, abs=1e-2)

@@ -14,6 +14,11 @@ _VERSION_SUMMARY = 6
 class Summary:
     """Summary of model used in a simulation.
 
+    Parameters
+    ----------
+    filename : str or path-like
+        Path to file to load
+
     Attributes
     ----------
     date_and_time : str
@@ -33,8 +38,9 @@ class Summary:
     """
 
     def __init__(self, filename):
+        filename = str(filename)
         if not filename.endswith(('.h5', '.hdf5')):
-            msg = 'Unable to open "{0}" which is not an HDF5 summary file'
+            msg = f'Unable to open "{filename}" which is not an HDF5 summary file'
             raise ValueError(msg)
 
         self._f = h5py.File(filename, 'r')
@@ -121,11 +127,23 @@ class Summary:
             self._fast_materials[material.id] = material
 
     def _read_surfaces(self):
+        periodic_surface_ids = set()
         for group in self._f['geometry/surfaces'].values():
             surface = openmc.Surface.from_hdf5(group)
             # surface may be None for DAGMC surfaces
             if surface:
                 self._fast_surfaces[surface.id] = surface
+                if surface.boundary_type == "periodic":
+                    periodic_surface_ids.add(surface.id)
+
+        # Assign periodic surfaces when information is in file
+        for surface_id in periodic_surface_ids:
+            group = self._f[f'geometry/surfaces/surface {surface_id}']
+            surface = self._fast_surfaces[surface_id]
+            if 'periodic_surface_id' in group:
+                periodic_surface_id = int(group['periodic_surface_id'][()])
+                surface.periodic_surface = self._fast_surfaces[periodic_surface_id]
+
 
     def _read_cells(self):
 
@@ -234,4 +252,9 @@ class Summary:
             Results from a stochastic volume calculation
 
         """
-        self.geometry.add_volume_information(volume_calc)
+        if volume_calc.domain_type == "material" and self.materials:
+            for material in self.materials:
+                if material.id in volume_calc.volumes:
+                    material.add_volume_information(volume_calc)
+        else:
+            self.geometry.add_volume_information(volume_calc)

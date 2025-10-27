@@ -58,27 +58,15 @@ class CorrelatedAngleEnergy(AngleEnergy):
     def breakpoints(self):
         return self._breakpoints
 
-    @property
-    def interpolation(self):
-        return self._interpolation
-
-    @property
-    def energy(self):
-        return self._energy
-
-    @property
-    def energy_out(self):
-        return self._energy_out
-
-    @property
-    def mu(self):
-        return self._mu
-
     @breakpoints.setter
     def breakpoints(self, breakpoints):
         cv.check_type('correlated angle-energy breakpoints', breakpoints,
                       Iterable, Integral)
         self._breakpoints = breakpoints
+
+    @property
+    def interpolation(self):
+        return self._interpolation
 
     @interpolation.setter
     def interpolation(self, interpolation):
@@ -86,17 +74,29 @@ class CorrelatedAngleEnergy(AngleEnergy):
                       Iterable, Integral)
         self._interpolation = interpolation
 
+    @property
+    def energy(self):
+        return self._energy
+
     @energy.setter
     def energy(self, energy):
         cv.check_type('correlated angle-energy incoming energy', energy,
                       Iterable, Real)
         self._energy = energy
 
+    @property
+    def energy_out(self):
+        return self._energy_out
+
     @energy_out.setter
     def energy_out(self, energy_out):
         cv.check_type('correlated angle-energy outgoing energy', energy_out,
                       Iterable, Univariate)
         self._energy_out = energy_out
+
+    @property
+    def mu(self):
+        return self._mu
 
     @mu.setter
     def mu(self, mu):
@@ -113,7 +113,7 @@ class CorrelatedAngleEnergy(AngleEnergy):
             HDF5 group to write to
 
         """
-        group.attrs['type'] = np.string_(self._name)
+        group.attrs['type'] = np.bytes_(self._name)
 
         dset = group.create_dataset('energy', data=self.energy)
         dset.attrs['interpolation'] = np.vstack((self.breakpoints,

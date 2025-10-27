@@ -1,6 +1,6 @@
 import numpy as np
 import openmc
-from pytest import fixture, approx
+from pytest import fixture, approx, raises
 
 
 @fixture(scope='module')
@@ -10,14 +10,14 @@ def box_model():
     m.add_nuclide('U235', 1.0)
     m.set_density('g/cm3', 1.0)
 
-    box = openmc.model.rectangular_prism(10., 10., boundary_type='vacuum')
-    c = openmc.Cell(fill=m, region=box)
+    box = openmc.model.RectangularPrism(10., 10., boundary_type='vacuum')
+    c = openmc.Cell(fill=m, region=-box)
     model.geometry.root_universe = openmc.Universe(cells=[c])
 
     model.settings.particles = 100
     model.settings.batches = 10
     model.settings.inactive = 0
-    model.settings.source = openmc.Source(space=openmc.stats.Point())
+    model.settings.source = openmc.IndependentSource(space=openmc.stats.Point())
     return model
 
 
@@ -240,3 +240,129 @@ def test_first_moment(run_in_tmpdir, box_model):
         assert first_score(sph_scat_tally) == scatter
         assert first_score(sph_flux_tally) == approx(flux)
         assert first_score(zernike_tally) == approx(scatter)
+
+
+def test_energy():
+    f = openmc.EnergyFilter.from_group_structure('CCFE-709')
+    assert f.bins.shape == (709, 2)
+    assert len(f.values) == 710
+
+
+def test_energyfilter_error_handling():
+    with raises(ValueError):
+        openmc.EnergyFilter([1e6])
+
+
+def test_lethargy_bin_width():
+    f = openmc.EnergyFilter.from_group_structure('VITAMIN-J-175')
+    assert len(f.lethargy_bin_width) == 175
+    energy_bins = openmc.mgxs.GROUP_STRUCTURES['VITAMIN-J-175']
+    assert f.lethargy_bin_width[0] == np.log10(energy_bins[1]/energy_bins[0])
+    assert f.lethargy_bin_width[-1] == np.log10(energy_bins[-1]/energy_bins[-2])
+
+
+def test_energyfunc():
+    f = openmc.EnergyFunctionFilter(
+        [0.0, 10.0, 2.0e3, 1.0e6, 20.0e6],
+        [1.0, 0.9, 0.8, 0.7, 0.6],
+        'histogram'
+    )
+
+    # Make sure XML roundtrip works
+    elem = f.to_xml_element()
+    new_f = openmc.EnergyFunctionFilter.from_xml_element(elem)
+    np.testing.assert_allclose(f.energy, new_f.energy)
+    np.testing.assert_allclose(f.y, new_f.y)
+    assert f.interpolation == new_f.interpolation
+
+
+def test_tabular_from_energyfilter():
+    efilter = openmc.EnergyFilter([0.0, 10.0, 20.0, 25.0])
+    tab = efilter.get_tabular(values=[5, 10, 10])
+
+    assert tab.x.tolist() == [0.0, 10.0, 20.0, 25.0]
+
+    # combination of different values passed into get_tabular and different
+    # width energy bins results in a doubling value for each p value
+    assert tab.p.tolist() == [0.02, 0.04, 0.08, 0.0]
+
+    # distribution should integrate to unity
+    assert tab.integral() == approx(1.0)
+
+    # 'histogram' is the default
+    assert tab.interpolation == 'histogram'
+
+    tab = efilter.get_tabular(values=np.array([10, 10, 5]), interpolation='linear-linear')
+    assert tab.interpolation == 'linear-linear'
+
+
+def test_energy_filter():
+
+    # testing that bins descending value raises error
+    msg = "Values 1.0 and 0.5 appear to be out of order"
+    with raises(ValueError, match=msg):
+        openmc.EnergyFilter([0.0, 1.0, 0.5])
+
+    # testing that bins with same value raises error
+    msg = "Values 0.25 and 0.25 appear to be out of order"
+    with raises(ValueError, match=msg):
+        openmc.EnergyFilter([0.0, 0.25, 0.25])
+
+    # testing that negative bins values raises error
+    msg = 'Unable to set "filter value" to "-1.2" since it is less than "0.0"'
+    with raises(ValueError, match=msg):
+        openmc.EnergyFilter([-1.2, 0.25, 0.5])
+
+
+def test_weight():
+    f = openmc.WeightFilter([0.01, 0.1, 1.0, 10.0])
+    expected_bins = [[0.01, 0.1], [0.1, 1.0], [1.0, 10.0]]
+
+    assert np.allclose(f.bins, expected_bins)
+    assert len(f.bins) == 3
+
+    # Make sure __repr__ works
+    repr(f)
+
+    # to_xml_element()
+    elem = f.to_xml_element()
+    assert elem.tag == 'filter'
+    assert elem.attrib['type'] == 'weight'
+
+    # from_xml_element()
+    new_f = openmc.Filter.from_xml_element(elem)
+    assert new_f.id == f.id
+    assert np.allclose(new_f.bins, f.bins)
+
+
+def test_mesh_material():
+    mat1 = openmc.Material()
+    mat2 = openmc.Material()
+
+    mesh = openmc.RegularMesh()
+    mesh.lower_left = (-1., -1., -1.)
+    mesh.upper_right = (1., 1., 1.)
+    mesh.dimension = (2, 4, 1)
+    bins = [(0, mat1), (0, mat2), (6, mat1), (7, mat2)]
+    f = openmc.MeshMaterialFilter(mesh, bins)
+
+    expected_bins = [(0, mat1.id), (0, mat2.id), (6, mat1.id), (7, mat2.id)]
+    assert np.allclose(f.bins, expected_bins)
+    assert f.mesh == mesh
+    assert f.shape == (4,)
+
+    # to_xml_element()
+    elem = f.to_xml_element()
+    assert elem.tag == 'filter'
+    assert elem.attrib['type'] == 'meshmaterial'
+
+    # from_xml_element()
+    new_f = openmc.Filter.from_xml_element(elem, meshes={mesh.id: mesh})
+    assert isinstance(new_f, openmc.MeshMaterialFilter)
+    assert new_f.id == f.id
+    assert new_f.mesh == f.mesh
+    assert np.allclose(new_f.bins, expected_bins)
+
+    # Test hash and str
+    hash(f)
+    str(f)

@@ -1,9 +1,9 @@
 """Module for parsing and manipulating data from ENDF evaluations.
 
-All the classes and functions in this module are based on document
-ENDF-102 titled "Data Formats and Procedures for the Evaluated Nuclear
-Data File ENDF-6". The latest version from June 2009 can be found at
-http://www-nds.iaea.org/ndspub/documents/endf/endf102/endf102.pdf
+All the classes and functions in this module are based on document ENDF-102
+titled "Data Formats and Procedures for the Evaluated Nuclear Data File ENDF-6".
+The version from September 2023 can be found at
+https://www.nndc.bnl.gov/endfdocs/ENDF-102-2023.pdf
 
 """
 import io
@@ -12,13 +12,9 @@ import re
 
 import numpy as np
 
-from .data import gnd_name
+from .data import gnds_name
 from .function import Tabulated1D
-try:
-    from ._endf import float_endf
-    _CYTHON = True
-except ImportError:
-    _CYTHON = False
+from endf.records import float_endf
 
 
 _LIBRARY = {0: 'ENDF/B', 1: 'ENDF/A', 2: 'JEFF', 3: 'EFF',
@@ -89,10 +85,6 @@ def py_float_endf(s):
 
     """
     return float(ENDF_FLOAT_RE.sub(r'\1e\2\3', s))
-
-
-if not _CYTHON:
-    float_endf = py_float_endf
 
 
 def int_endf(s):
@@ -449,8 +441,7 @@ class Evaluation:
 
     def __repr__(self):
         name = self.target['zsymam'].replace(' ', '')
-        return '<{} for {} {}>'.format(self.info['sublibrary'], name,
-                                       self.info['library'])
+        return f"<{self.info['sublibrary']} for {name} {self.info['library']}>"
 
     def _read_header(self):
         file_obj = io.StringIO(self.section[1, 451])
@@ -520,10 +511,10 @@ class Evaluation:
             self.reaction_list.append((mf, mt, nc, mod))
 
     @property
-    def gnd_name(self):
-        return gnd_name(self.target['atomic_number'],
-                        self.target['mass_number'],
-                        self.target['isomeric_state'])
+    def gnds_name(self):
+        return gnds_name(self.target['atomic_number'],
+                         self.target['mass_number'],
+                         self.target['isomeric_state'])
 
 
 class Tabulated2D:
@@ -531,7 +522,7 @@ class Tabulated2D:
 
     This is a dummy class that is not really used other than to store the
     interpolation information for a two-dimensional function. Once we refactor
-    to adopt GND-like data containers, this will probably be removed or
+    to adopt GNDS-like data containers, this will probably be removed or
     extended.
 
     Parameters

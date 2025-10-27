@@ -1,34 +1,34 @@
 <?xml version='1.0' encoding='utf-8'?>
-<geometry>
-  <cell id="1" material="1" region="1 2 -3 4" universe="0" />
-  <cell id="2" material="2" region="1 2 -4" universe="0" />
-  <surface boundary="periodic" coeffs="0.4999999999999999 0.8660254037844387 0.0 0.0" id="1" type="plane" />
-  <surface boundary="periodic" coeffs="0.4999999999999999 -0.8660254037844387 0.0 0.0" id="2" type="plane" />
-  <surface boundary="reflective" coeffs="5.0" id="3" type="x-plane" />
-  <surface coeffs="2.598076211353316 1.4999999999999998 2.0" id="4" type="z-cylinder" />
-</geometry>
-<?xml version='1.0' encoding='utf-8'?>
-<materials>
-  <material id="1">
-    <density units="g/cc" value="1.0" />
-    <nuclide ao="2.0" name="H1" />
-    <nuclide ao="1.0" name="O16" />
-    <sab name="c_H_in_H2O" />
-  </material>
-  <material depletable="true" id="2">
-    <density units="g/cc" value="4.5" />
-    <nuclide ao="1.0" name="U235" />
-  </material>
-</materials>
-<?xml version='1.0' encoding='utf-8'?>
-<settings>
-  <run_mode>eigenvalue</run_mode>
-  <particles>1000</particles>
-  <batches>4</batches>
-  <inactive>0</inactive>
-  <source strength="1.0">
-    <space type="box">
-      <parameters>0 0 0 5 5 0</parameters>
-    </space>
-  </source>
-</settings>
+<model>
+  <materials>
+    <material id="1">
+      <density value="1.0" units="g/cc"/>
+      <nuclide name="H1" ao="2.0"/>
+      <nuclide name="O16" ao="1.0"/>
+      <sab name="c_H_in_H2O"/>
+    </material>
+    <material id="2" depletable="true">
+      <density value="4.5" units="g/cc"/>
+      <nuclide name="U235" ao="1.0"/>
+    </material>
+  </materials>
+  <geometry>
+    <cell id="1" material="1" region="1 2 -3 4" universe="0"/>
+    <cell id="2" material="2" region="1 2 -4" universe="0"/>
+    <surface id="1" type="plane" boundary="periodic" coeffs="0.4999999999999999 0.8660254037844387 0.0 0.0"/>
+    <surface id="2" type="plane" boundary="periodic" coeffs="0.4999999999999999 -0.8660254037844387 0.0 0.0"/>
+    <surface id="3" type="x-plane" boundary="reflective" coeffs="5.0"/>
+    <surface id="4" type="z-cylinder" coeffs="2.598076211353316 1.4999999999999998 2.0"/>
+  </geometry>
+  <settings>
+    <run_mode>eigenvalue</run_mode>
+    <particles>1000</particles>
+    <batches>4</batches>
+    <inactive>0</inactive>
+    <source type="independent" strength="1.0" particle="neutron">
+      <space type="box">
+        <parameters>0 0 0 5 5 0</parameters>
+      </space>
+    </source>
+  </settings>
+  </model>

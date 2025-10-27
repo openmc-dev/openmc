@@ -1,15 +1,21 @@
 from contextlib import contextmanager
 from ctypes import (c_bool, c_int, c_int32, c_int64, c_double, c_char_p,
-                    c_char, POINTER, Structure, c_void_p, create_string_buffer)
+                    c_char, POINTER, Structure, c_void_p, create_string_buffer,
+                    c_uint64, c_size_t)
 import sys
 import os
+from pathlib import Path
+from random import getrandbits
+from tempfile import TemporaryDirectory
 
 import numpy as np
 from numpy.ctypeslib import as_array
 
 from . import _dll
 from .error import _error_handler
+from openmc.checkvalue import PathLike
 import openmc.lib
+import openmc
 
 
 class _SourceSite(Structure):
@@ -21,6 +27,7 @@ class _SourceSite(Structure):
                 ('delayed_group', c_int),
                 ('surf_id', c_int),
                 ('particle', c_int),
+                ('parent_nuclide', c_int),
                 ('parent_id', c_int64),
                 ('progeny_id', c_int64)]
 
@@ -91,11 +98,18 @@ _dll.openmc_simulation_finalize.errcheck = _error_handler
 _dll.openmc_statepoint_write.argtypes = [c_char_p, POINTER(c_bool)]
 _dll.openmc_statepoint_write.restype = c_int
 _dll.openmc_statepoint_write.errcheck = _error_handler
+_dll.openmc_statepoint_load.argtypes = [c_char_p]
+_dll.openmc_statepoint_load.restype = c_int
+_dll.openmc_statepoint_load.errcheck = _error_handler
+_dll.openmc_statepoint_write.restype = c_int
+_dll.openmc_statepoint_write.errcheck = _error_handler
 _dll.openmc_global_bounding_box.argtypes = [POINTER(c_double),
                                             POINTER(c_double)]
 _dll.openmc_global_bounding_box.restype = c_int
 _dll.openmc_global_bounding_box.errcheck = _error_handler
-
+_dll.openmc_sample_external_source.argtypes = [c_size_t, POINTER(c_uint64), POINTER(_SourceSite)]
+_dll.openmc_sample_external_source.restype = c_int
+_dll.openmc_sample_external_source.errcheck = _error_handler
 
 def global_bounding_box():
     """Calculate a global bounding box for the model"""
@@ -163,6 +177,54 @@ def export_properties(filename=None, output=True):
 
     with quiet_dll(output):
         _dll.openmc_properties_export(filename)
+
+
+def export_weight_windows(filename="weight_windows.h5", output=True):
+    """Export weight windows.
+
+    .. versionadded:: 0.14.0
+
+    Parameters
+    ----------
+    filename : PathLike or None
+        Filename to export weight windows to
+    output : bool, optional
+        Whether or not to show output.
+
+    See Also
+    --------
+    openmc.lib.import_weight_windows
+
+    """
+    if filename is not None:
+        filename = c_char_p(str(filename).encode())
+
+    with quiet_dll(output):
+        _dll.openmc_weight_windows_export(filename)
+
+
+def import_weight_windows(filename='weight_windows.h5', output=True):
+    """Import weight windows.
+
+    .. versionadded:: 0.14.0
+
+    Parameters
+    ----------
+    filename : PathLike or None
+        Filename to import weight windows from
+    output : bool, optional
+        Whether or not to show output.
+
+    See Also
+    --------
+    openmc.lib.export_weight_windows
+
+    """
+    if filename is not None:
+        filename = c_char_p(str(filename).encode())
+
+    with quiet_dll(output):
+        _dll.openmc_weight_windows_import(filename)
 
 
 def finalize():
@@ -415,6 +477,47 @@ def run(output=True):
         _dll.openmc_run()
 
 
+def sample_external_source(
+        n_samples: int = 1000,
+        prn_seed: int | None = None
+) -> openmc.ParticleList:
+    """Sample external source and return source particles.
+
+    .. versionadded:: 0.13.1
+
+    Parameters
+    ----------
+    n_samples : int
+        Number of samples
+    prn_seed : int
+        Pseudorandom number generator (PRNG) seed; if None, one will be
+        generated randomly.
+
+    Returns
+    -------
+    openmc.ParticleList
+        List of sampled source particles
+
+    """
+    if n_samples <= 0:
+        raise ValueError("Number of samples must be positive")
+    if prn_seed is None:
+        prn_seed = getrandbits(63)
+
+    # Call into C API to sample source
+    sites_array = (_SourceSite * n_samples)()
+    _dll.openmc_sample_external_source(c_size_t(n_samples), c_uint64(prn_seed), sites_array)
+
+    # Convert to list of SourceParticle and return
+    return openmc.ParticleList([openmc.SourceParticle(
+            r=site.r, u=site.u, E=site.E, time=site.time, wgt=site.wgt,
+            delayed_group=site.delayed_group, surf_id=site.surf_id,
+            particle=openmc.ParticleType(site.particle)
+        )
+        for site in sites_array
+    ])
+
+
 def simulation_init():
     """Initialize simulation"""
     _dll.openmc_simulation_init()
@@ -475,6 +578,19 @@ def statepoint_write(filename=None, write_source=True):
     _dll.openmc_statepoint_write(filename, c_bool(write_source))
 
 
+def statepoint_load(filename: PathLike):
+    """Load a statepoint file.
+
+    Parameters
+    ----------
+    filename : path-like
+        Path to the statepoint to load.
+
+    """
+    filename = c_char_p(str(filename).encode())
+    _dll.openmc_statepoint_load(filename)
+
+
 @contextmanager
 def run_in_memory(**kwargs):
     """Provides context manager for calling OpenMC shared library functions.
@@ -503,6 +619,73 @@ def run_in_memory(**kwargs):
         finalize()
 
 
+class TemporarySession:
+    """Context manager for running via openmc.lib in a temporary directory.
+
+    This class is useful for accessing functionality from openmc.lib without
+    polluting your current working directory with OpenMC files. It is used
+    internally as a persistent session to avoid loading cross sections multiple
+    times.
+
+    Parameters
+    ----------
+    model : openmc.Model, optional
+        OpenMC model to use for the session. If None, a minimal working model is
+        created.
+    **init_kwargs
+        Keyword arguments to pass to :func:`openmc.lib.init`.
+
+    Attributes
+    ----------
+    model : openmc.Model
+        The OpenMC model used for the session.
+
+    """
+    def __init__(self, model=None, **init_kwargs):
+        self.init_kwargs = init_kwargs
+        if model is None:
+            surf = openmc.Sphere(boundary_type="vacuum")
+            cell = openmc.Cell(region=-surf)
+            model = openmc.Model()
+            model.geometry = openmc.Geometry([cell])
+            model.settings = openmc.Settings(
+                particles=1, batches=1, output={'summary': False})
+        self.model = model
+
+    def __enter__(self):
+        """Initialize the OpenMC library in a temporary directory."""
+        # If already initialized, the context manager is a no-op
+        self.already_initialized = openmc.lib.is_initialized
+        if self.already_initialized:
+            return self
+
+        # Store original working directory
+        self.orig_dir = Path.cwd()
+
+        # Set up temporary directory
+        self.tmp_dir = TemporaryDirectory()
+        working_dir = Path(self.tmp_dir.name)
+        working_dir.mkdir(parents=True, exist_ok=True)
+        os.chdir(working_dir)
+
+        # Export model and initialize OpenMC
+        self.model.export_to_model_xml()
+        openmc.lib.init(**self.init_kwargs)
+
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        """Finalize the OpenMC library and clean up temporary directory."""
+        if self.already_initialized:
+            return
+
+        try:
+            finalize()
+        finally:
+            os.chdir(self.orig_dir)
+            self.tmp_dir.cleanup()
+
+
 class _DLLGlobal:
     """Data descriptor that exposes global variables from libopenmc."""
     def __init__(self, ctype, name):
@@ -518,7 +701,7 @@ class _DLLGlobal:
 
 class _FortranObject:
     def __repr__(self):
-        return "{}[{}]".format(type(self).__name__, self._index)
+        return f"<{type(self).__name__}(index={self._index})>"
 
 
 class _FortranObjectWithID(_FortranObject):
@@ -528,6 +711,9 @@ class _FortranObjectWithID(_FortranObject):
         # assigned. If the array index of the object is out of bounds, an
         # OutOfBoundsError will be raised here by virtue of referencing self.id
         self.id
+
+    def __repr__(self):
+        return f"<{type(self).__name__}(id={self.id})>"
 
 
 @contextmanager

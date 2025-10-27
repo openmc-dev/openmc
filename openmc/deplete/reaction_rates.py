@@ -2,6 +2,7 @@
 
 An ndarray to store reaction rates with string, integer, or slice indexing.
 """
+
 import numpy as np
 
 
@@ -29,11 +30,11 @@ class ReactionRates(np.ndarray):
 
     Attributes
     ----------
-    index_mat : OrderedDict of str to int
+    index_mat : dict of str to int
         A dictionary mapping material ID as string to index.
-    index_nuc : OrderedDict of str to int
+    index_nuc : dict of str to int
         A dictionary mapping nuclide name as string to index.
-    index_rx : OrderedDict of str to int
+    index_rx : dict of str to int
         A dictionary mapping reaction name as string to index.
     n_mat : int
         Number of materials.
@@ -50,6 +51,10 @@ class ReactionRates(np.ndarray):
     # subclasses need to handle the multiple ways of creating arrays by using
     # the __array_finalize__ method (discussed here:
     # https://docs.scipy.org/doc/numpy/user/basics.subclassing.html)
+
+    index_mat: dict[str, int]
+    index_nuc: dict[str, int]
+    index_rx: dict[str, int]
 
     def __new__(cls, local_mats, nuclides, reactions, from_results=False):
         # Create appropriately-sized zeroed-out ndarray

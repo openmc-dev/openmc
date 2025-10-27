@@ -1,4 +1,3 @@
-from collections import OrderedDict
 from collections.abc import Iterable
 import copy
 from numbers import Integral
@@ -72,13 +71,18 @@ class Library:
         Number of equi-width polar angle bins for angle discretization
     num_azimuthal : Integral
         Number of equi-width azimuthal angle bins for angle discretization
+    nuclides : Iterable of str or 'sum'
+        The optional user-specified nuclides for which to compute cross
+        sections (e.g., 'U238', 'O16'). If by_nuclide is True but nuclides
+        are not specified by the user, all nuclides in the domain
+        are included.
     estimator : str or None
         The tally estimator used to compute multi-group cross sections.
         If None, the default for each MGXS type is used.
     tally_trigger : openmc.Trigger
         An (optional) tally precision trigger given to each tally used to
         compute the cross section
-    all_mgxs : collections.OrderedDict
+    all_mgxs : dict
         MGXS objects keyed by domain ID and cross section type
     sp_filename : str
         The filename of the statepoint with tally data used to the
@@ -107,13 +111,14 @@ class Library:
         self._energy_groups = None
         self._num_polar = 1
         self._num_azimuthal = 1
+        self._nuclides = None
         self._num_delayed_groups = 0
         self._correction = 'P0'
         self._scatter_format = 'legendre'
         self._legendre_order = 0
         self._histogram_bins = 16
         self._tally_trigger = None
-        self._all_mgxs = OrderedDict()
+        self._all_mgxs = {}
         self._sp_filename = None
         self._keff = None
         self._sparse = False
@@ -145,6 +150,7 @@ class Library:
             clone._energy_groups = copy.deepcopy(self.energy_groups, memo)
             clone._num_polar = self.num_polar
             clone._num_azimuthal = self.num_azimuthal
+            clone._nuclides = self._nuclides
             clone._num_delayed_groups = self.num_delayed_groups
             clone._tally_trigger = copy.deepcopy(self.tally_trigger, memo)
             clone._all_mgxs = copy.deepcopy(self.all_mgxs)
@@ -152,9 +158,9 @@ class Library:
             clone._keff = self._keff
             clone._sparse = self.sparse
 
-            clone._all_mgxs = OrderedDict()
+            clone._all_mgxs = {}
             for domain in self.domains:
-                clone.all_mgxs[domain.id] = OrderedDict()
+                clone.all_mgxs[domain.id] = {}
                 for mgxs_type in self.mgxs_types:
                     mgxs = copy.deepcopy(self.all_mgxs[domain.id][mgxs_type])
                     clone.all_mgxs[domain.id][mgxs_type] = mgxs
@@ -171,21 +177,64 @@ class Library:
     def geometry(self):
         return self._geometry
 
+    @geometry.setter
+    def geometry(self, geometry):
+        cv.check_type('geometry', geometry, openmc.Geometry)
+        self._geometry = geometry
+
     @property
     def name(self):
         return self._name
+
+    @name.setter
+    def name(self, name):
+        cv.check_type('name', name, str)
+        self._name = name
 
     @property
     def mgxs_types(self):
         return self._mgxs_types
 
+    @mgxs_types.setter
+    def mgxs_types(self, mgxs_types):
+        all_mgxs_types = openmc.mgxs.MGXS_TYPES + openmc.mgxs.MDGXS_TYPES + \
+            openmc.mgxs.ARBITRARY_VECTOR_TYPES + \
+            openmc.mgxs.ARBITRARY_MATRIX_TYPES
+        if mgxs_types == 'all':
+            self._mgxs_types = all_mgxs_types
+        else:
+            cv.check_iterable_type('mgxs_types', mgxs_types, str)
+            for mgxs_type in mgxs_types:
+                cv.check_value('mgxs_type', mgxs_type, all_mgxs_types)
+            self._mgxs_types = mgxs_types
+
     @property
     def by_nuclide(self):
         return self._by_nuclide
 
+    @by_nuclide.setter
+    def by_nuclide(self, by_nuclide):
+        cv.check_type('by_nuclide', by_nuclide, bool)
+
+        if by_nuclide and self.domain_type == 'mesh':
+            raise ValueError('Unable to create MGXS library by nuclide with '
+                             'mesh domain')
+
+        self._by_nuclide = by_nuclide
+
     @property
     def domain_type(self):
         return self._domain_type
+
+    @domain_type.setter
+    def domain_type(self, domain_type):
+        cv.check_value('domain type', domain_type, openmc.mgxs.DOMAIN_TYPES)
+
+        if self.by_nuclide and domain_type == 'mesh':
+            raise ValueError('Unable to create MGXS library by nuclide with '
+                             'mesh domain')
+
+        self._domain_type = domain_type
 
     @property
     def domains(self):
@@ -204,109 +253,6 @@ class Library:
                 raise ValueError('Unable to get domains without a domain type')
         else:
             return self._domains
-
-    @property
-    def energy_groups(self):
-        return self._energy_groups
-
-    @property
-    def num_delayed_groups(self):
-        return self._num_delayed_groups
-
-    @property
-    def num_polar(self):
-        return self._num_polar
-
-    @property
-    def num_azimuthal(self):
-        return self._num_azimuthal
-
-    @property
-    def correction(self):
-        return self._correction
-
-    @property
-    def scatter_format(self):
-        return self._scatter_format
-
-    @property
-    def legendre_order(self):
-        return self._legendre_order
-
-    @property
-    def histogram_bins(self):
-        return self._histogram_bins
-
-    @property
-    def tally_trigger(self):
-        return self._tally_trigger
-
-    @property
-    def estimator(self):
-        return self._estimator
-
-    @property
-    def num_groups(self):
-        return self.energy_groups.num_groups
-
-    @property
-    def all_mgxs(self):
-        return self._all_mgxs
-
-    @property
-    def sp_filename(self):
-        return self._sp_filename
-
-    @property
-    def keff(self):
-        return self._keff
-
-    @property
-    def sparse(self):
-        return self._sparse
-
-    @geometry.setter
-    def geometry(self, geometry):
-        cv.check_type('geometry', geometry, openmc.Geometry)
-        self._geometry = geometry
-
-    @name.setter
-    def name(self, name):
-        cv.check_type('name', name, str)
-        self._name = name
-
-    @mgxs_types.setter
-    def mgxs_types(self, mgxs_types):
-        all_mgxs_types = openmc.mgxs.MGXS_TYPES + openmc.mgxs.MDGXS_TYPES + \
-            openmc.mgxs.ARBITRARY_VECTOR_TYPES + \
-            openmc.mgxs.ARBITRARY_MATRIX_TYPES
-        if mgxs_types == 'all':
-            self._mgxs_types = all_mgxs_types
-        else:
-            cv.check_iterable_type('mgxs_types', mgxs_types, str)
-            for mgxs_type in mgxs_types:
-                cv.check_value('mgxs_type', mgxs_type, all_mgxs_types)
-            self._mgxs_types = mgxs_types
-
-    @by_nuclide.setter
-    def by_nuclide(self, by_nuclide):
-        cv.check_type('by_nuclide', by_nuclide, bool)
-
-        if by_nuclide and self.domain_type == 'mesh':
-            raise ValueError('Unable to create MGXS library by nuclide with '
-                             'mesh domain')
-
-        self._by_nuclide = by_nuclide
-
-    @domain_type.setter
-    def domain_type(self, domain_type):
-        cv.check_value('domain type', domain_type, openmc.mgxs.DOMAIN_TYPES)
-
-        if self.by_nuclide and domain_type == 'mesh':
-            raise ValueError('Unable to create MGXS library by nuclide with '
-                             'mesh domain')
-
-        self._domain_type = domain_type
 
     @domains.setter
     def domains(self, domains):
@@ -347,10 +293,27 @@ class Library:
 
             self._domains = list(domains)
 
+    @property
+    def nuclides(self):
+        return self._nuclides
+
+    @nuclides.setter
+    def nuclides(self, nuclides):
+        cv.check_iterable_type('nuclides', nuclides, str)
+        self._nuclides = nuclides
+
+    @property
+    def energy_groups(self):
+        return self._energy_groups
+
     @energy_groups.setter
     def energy_groups(self, energy_groups):
         cv.check_type('energy groups', energy_groups, openmc.mgxs.EnergyGroups)
         self._energy_groups = energy_groups
+
+    @property
+    def num_delayed_groups(self):
+        return self._num_delayed_groups
 
     @num_delayed_groups.setter
     def num_delayed_groups(self, num_delayed_groups):
@@ -361,17 +324,29 @@ class Library:
                               equality=True)
         self._num_delayed_groups = num_delayed_groups
 
+    @property
+    def num_polar(self):
+        return self._num_polar
+
     @num_polar.setter
     def num_polar(self, num_polar):
         cv.check_type('num_polar', num_polar, Integral)
         cv.check_greater_than('num_polar', num_polar, 0)
         self._num_polar = num_polar
 
+    @property
+    def num_azimuthal(self):
+        return self._num_azimuthal
+
     @num_azimuthal.setter
     def num_azimuthal(self, num_azimuthal):
         cv.check_type('num_azimuthal', num_azimuthal, Integral)
         cv.check_greater_than('num_azimuthal', num_azimuthal, 0)
         self._num_azimuthal = num_azimuthal
+
+    @property
+    def correction(self):
+        return self._correction
 
     @correction.setter
     def correction(self, correction):
@@ -390,6 +365,10 @@ class Library:
 
         self._correction = correction
 
+    @property
+    def scatter_format(self):
+        return self._scatter_format
+
     @scatter_format.setter
     def scatter_format(self, scatter_format):
         cv.check_value('scatter_format', scatter_format,
@@ -402,6 +381,10 @@ class Library:
             self.correction = None
 
         self._scatter_format = scatter_format
+
+    @property
+    def legendre_order(self):
+        return self._legendre_order
 
     @legendre_order.setter
     def legendre_order(self, legendre_order):
@@ -424,6 +407,10 @@ class Library:
 
         self._legendre_order = legendre_order
 
+    @property
+    def histogram_bins(self):
+        return self._histogram_bins
+
     @histogram_bins.setter
     def histogram_bins(self, histogram_bins):
         cv.check_type('histogram_bins', histogram_bins, Integral)
@@ -443,15 +430,43 @@ class Library:
 
         self._histogram_bins = histogram_bins
 
+    @property
+    def tally_trigger(self):
+        return self._tally_trigger
+
     @tally_trigger.setter
     def tally_trigger(self, tally_trigger):
         cv.check_type('tally trigger', tally_trigger, openmc.Trigger)
         self._tally_trigger = tally_trigger
 
+    @property
+    def estimator(self):
+        return self._estimator
+
     @estimator.setter
     def estimator(self, estimator):
         cv.check_value('estimator', estimator, ESTIMATOR_TYPES)
         self._estimator = estimator
+
+    @property
+    def num_groups(self):
+        return self.energy_groups.num_groups
+
+    @property
+    def all_mgxs(self):
+        return self._all_mgxs
+
+    @property
+    def sp_filename(self):
+        return self._sp_filename
+
+    @property
+    def keff(self):
+        return self._keff
+
+    @property
+    def sparse(self):
+        return self._sparse
 
     @sparse.setter
     def sparse(self, sparse):
@@ -487,7 +502,7 @@ class Library:
 
         # Initialize MGXS for each domain and mgxs type and store in dictionary
         for domain in self.domains:
-            self.all_mgxs[domain.id] = OrderedDict()
+            self.all_mgxs[domain.id] = {}
             for mgxs_type in self.mgxs_types:
                 if mgxs_type in openmc.mgxs.MDGXS_TYPES:
                     mgxs = openmc.mgxs.MDGXS.get_mgxs(
@@ -523,6 +538,20 @@ class Library:
                     mgxs.scatter_format = self.scatter_format
                     mgxs.legendre_order = self.legendre_order
                     mgxs.histogram_bins = self.histogram_bins
+
+                if self.by_nuclide:
+                    try:
+                        domain_nuclides = domain.get_nuclides()
+                    except AttributeError:
+                        domain_nuclides = None
+                    if self.nuclides:
+                        if domain_nuclides:
+                            mgxs.nuclides = [
+                                nuclide for nuclide in self.nuclides
+                                if nuclide in domain_nuclides
+                            ] + ["total"]
+                        else:
+                            mgxs.nuclides = self.nuclides
 
                 self.all_mgxs[domain.id][mgxs_type] = mgxs
 
@@ -590,10 +619,10 @@ class Library:
 
         self._sp_filename = statepoint._f.filename
         self._geometry = statepoint.summary.geometry
-        self._nuclides = statepoint.summary.nuclides
+        self._atomic_weight_ratios = statepoint.summary.nuclides
 
         if statepoint.run_mode == 'eigenvalue':
-            self._keff = statepoint.k_combined.n
+            self._keff = statepoint.keff.n
 
         # Load tallies for each MGXS for each domain and mgxs type
         for domain in self.domains:
@@ -656,7 +685,7 @@ class Library:
 
         # Check that requested domain is included in library
         if mgxs_type not in self.mgxs_types:
-            msg = 'Unable to find MGXS type "{0}"'.format(mgxs_type)
+            msg = f'Unable to find MGXS type "{mgxs_type}"'
             raise ValueError(msg)
 
         return self.all_mgxs[domain_id][mgxs_type]
@@ -872,7 +901,7 @@ class Library:
         if not os.path.exists(directory):
             os.makedirs(directory)
 
-        full_filename = os.path.join(directory, '{}.pkl'.format(filename))
+        full_filename = os.path.join(directory, f'{filename}.pkl')
         full_filename = full_filename.replace(' ', '-')
 
         # Load and return pickled Library object
@@ -1005,7 +1034,7 @@ class Library:
             xsdata.num_azimuthal = self.num_azimuthal
 
         if nuclide != 'total':
-            xsdata.atomic_weight_ratio = self._nuclides[nuclide]
+            xsdata.atomic_weight_ratio = self._atomic_weight_ratios[nuclide]
 
         if subdomain is None:
             subdomain = 'all'

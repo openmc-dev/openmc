@@ -4,8 +4,7 @@
 #include <cstdint>
 #include <unordered_map>
 
-#include <gsl/gsl-lite.hpp>
-
+#include "openmc/span.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/vector.h"
 
@@ -25,7 +24,8 @@ public:
   //----------------------------------------------------------------------------
   // Methods
 
-  std::string type() const override { return "universe"; }
+  std::string type_str() const override { return "universe"; }
+  FilterType type() const override { return FilterType::UNIVERSE; }
 
   void from_xml(pugi::xml_node node) override;
 
@@ -39,7 +39,7 @@ public:
   //----------------------------------------------------------------------------
   // Accessors
 
-  void set_universes(gsl::span<int32_t> universes);
+  void set_universes(span<int32_t> universes);
 
 private:
   //----------------------------------------------------------------------------

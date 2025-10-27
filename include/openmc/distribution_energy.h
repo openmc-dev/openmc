@@ -37,7 +37,7 @@ public:
   //! \param[in] E Incident particle energy in [eV]
   //! \param[inout] seed Pseudorandom number seed pointer
   //! \return Sampled energy in [eV]
-  double sample(double E, uint64_t* seed) const;
+  double sample(double E, uint64_t* seed) const override;
 
 private:
   int primary_flag_; //!< Indicator of whether the photon is a primary or
@@ -58,7 +58,7 @@ public:
   //! \param[in] E Incident particle energy in [eV]
   //! \param[inout] seed Pseudorandom number seed pointer
   //! \return Sampled energy in [eV]
-  double sample(double E, uint64_t* seed) const;
+  double sample(double E, uint64_t* seed) const override;
 
 private:
   double threshold_;  //!< Energy threshold in lab, (A + 1)/A * |Q|
@@ -79,7 +79,7 @@ public:
   //! \param[in] E Incident particle energy in [eV]
   //! \param[inout] seed Pseudorandom number seed pointer
   //! \return Sampled energy in [eV]
-  double sample(double E, uint64_t* seed) const;
+  double sample(double E, uint64_t* seed) const override;
 
 private:
   //! Outgoing energy for a single incoming energy
@@ -110,7 +110,7 @@ public:
   //! \param[in] E Incident particle energy in [eV]
   //! \param[inout] seed Pseudorandom number seed pointer
   //! \return Sampled energy in [eV]
-  double sample(double E, uint64_t* seed) const;
+  double sample(double E, uint64_t* seed) const override;
 
 private:
   Tabulated1D theta_; //!< Incoming energy dependent parameter
@@ -130,7 +130,7 @@ public:
   //! \param[in] E Incident particle energy in [eV]
   //! \param[inout] seed Pseudorandom number seed pointer
   //! \return Sampled energy in [eV]
-  double sample(double E, uint64_t* seed) const;
+  double sample(double E, uint64_t* seed) const override;
 
 private:
   Tabulated1D theta_; //!< Incoming energy dependent parameter
@@ -150,7 +150,7 @@ public:
   //! \param[in] E Incident particle energy in [eV]
   //! \param[inout] seed Pseudorandom number seed pointer
   //! \return Sampled energy in [eV]
-  double sample(double E, uint64_t* seed) const;
+  double sample(double E, uint64_t* seed) const override;
 
 private:
   Tabulated1D a_; //!< Energy-dependent 'a' parameter

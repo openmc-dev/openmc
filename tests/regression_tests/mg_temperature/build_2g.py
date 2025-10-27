@@ -243,6 +243,7 @@ def build_inf_model(xsnames, xslibname, temperature, tempmethod='nearest'):
     tempmethod : {'nearest', 'interpolation'}
         by default 'nearest'
     """
+    model = openmc.Model()
     inf_medium = openmc.Material(name='test material', material_id=1)
     inf_medium.set_density("sum")
     for xs in xsnames:
@@ -251,7 +252,7 @@ def build_inf_model(xsnames, xslibname, temperature, tempmethod='nearest'):
     # Instantiate a Materials collection and export to XML
     materials_file = openmc.Materials([inf_medium])
     materials_file.cross_sections = xslibname
-    materials_file.export_to_xml()
+    model.materials = materials_file
 
     # Instantiate boundary Planes
     min_x = openmc.XPlane(boundary_type='reflective', x0=-INF)
@@ -272,10 +273,7 @@ def build_inf_model(xsnames, xslibname, temperature, tempmethod='nearest'):
     root_universe = openmc.Universe(name='root universe', cells=[cell])
 
     # Create Geometry and set root Universe
-    openmc_geometry = openmc.Geometry(root_universe)
-
-    # Export to "geometry.xml"
-    openmc_geometry.export_to_xml()
+    model.geometry = openmc.Geometry(root_universe)
 
     # OpenMC simulation parameters
     batches = 200
@@ -291,7 +289,9 @@ def build_inf_model(xsnames, xslibname, temperature, tempmethod='nearest'):
     settings_file.output = {'summary': False}
     # Create an initial uniform spatial source distribution over fissionable zones
     bounds = [-INF, -INF, -INF, INF, INF, INF]
-    uniform_dist = openmc.stats.Box(bounds[:3], bounds[3:], only_fissionable=True)
+    uniform_dist = openmc.stats.Box(bounds[:3], bounds[3:])
     settings_file.temperature = {'method': tempmethod}
-    settings_file.source = openmc.Source(space=uniform_dist)
-    settings_file.export_to_xml()
+    settings_file.source = openmc.IndependentSource(
+        space=uniform_dist, constraints={'fissionable': True})
+    model.settings = settings_file
+    model.export_to_model_xml()

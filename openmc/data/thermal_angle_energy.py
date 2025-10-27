@@ -2,6 +2,7 @@ import numpy as np
 
 from .angle_energy import AngleEnergy
 from .correlated import CorrelatedAngleEnergy
+import openmc.data
 
 
 class CoherentElasticAE(AngleEnergy):
@@ -42,8 +43,28 @@ class CoherentElasticAE(AngleEnergy):
             HDF5 group to write to
 
         """
-        group.attrs['type'] = np.string_('coherent_elastic')
-        group['coherent_xs'] = group.parent['xs']
+        group.attrs['type'] = np.bytes_('coherent_elastic')
+        self.coherent_xs.to_hdf5(group, 'coherent_xs')
+
+    @classmethod
+    def from_hdf5(cls, group):
+        """Generate coherent elastic distribution from HDF5 data
+
+        .. versionadded:: 0.13.1
+
+        Parameters
+        ----------
+        group : h5py.Group
+            HDF5 group to read from
+
+        Returns
+        -------
+        openmc.data.CoherentElasticAE
+            Coherent elastic distribution
+
+        """
+        coherent_xs = openmc.data.CoherentElastic.from_hdf5(group['coherent_xs'])
+        return cls(coherent_xs)
 
 
 class IncoherentElasticAE(AngleEnergy):
@@ -83,7 +104,7 @@ class IncoherentElasticAE(AngleEnergy):
             HDF5 group to write to
 
         """
-        group.attrs['type'] = np.string_('incoherent_elastic')
+        group.attrs['type'] = np.bytes_('incoherent_elastic')
         group.create_dataset('debye_waller', data=self.debye_waller)
 
     @classmethod
@@ -101,7 +122,7 @@ class IncoherentElasticAE(AngleEnergy):
             Incoherent elastic distribution
 
         """
-        return cls(group['debye_waller'])
+        return cls(group['debye_waller'][()])
 
 
 class IncoherentElasticAEDiscrete(AngleEnergy):
@@ -125,7 +146,7 @@ class IncoherentElasticAEDiscrete(AngleEnergy):
             HDF5 group to write to
 
         """
-        group.attrs['type'] = np.string_('incoherent_elastic_discrete')
+        group.attrs['type'] = np.bytes_('incoherent_elastic_discrete')
         group.create_dataset('mu_out', data=self.mu_out)
 
     @classmethod
@@ -182,7 +203,7 @@ class IncoherentInelasticAEDiscrete(AngleEnergy):
             HDF5 group to write to
 
         """
-        group.attrs['type'] = np.string_('incoherent_inelastic_discrete')
+        group.attrs['type'] = np.bytes_('incoherent_inelastic_discrete')
         group.create_dataset('energy_out', data=self.energy_out)
         group.create_dataset('mu_out', data=self.mu_out)
         group.create_dataset('skewed', data=self.skewed)
@@ -204,9 +225,68 @@ class IncoherentInelasticAEDiscrete(AngleEnergy):
         """
         energy_out = group['energy_out'][()]
         mu_out = group['mu_out'][()]
-        skewed = bool(group['skewed'])
+        skewed = bool(group['skewed'][()])
         return cls(energy_out, mu_out, skewed)
 
 
 class IncoherentInelasticAE(CorrelatedAngleEnergy):
     _name = 'incoherent_inelastic'
+
+
+class MixedElasticAE(AngleEnergy):
+    """Secondary distribution for mixed coherent/incoherent thermal elastic
+
+    .. versionadded:: 0.13.1
+
+    Parameters
+    ----------
+    coherent : AngleEnergy
+        Secondary distribution for coherent elastic scattering
+    incoherent : AngleEnergy
+        Secondary distribution for incoherent elastic scattering
+
+    Attributes
+    ----------
+    coherent : AngleEnergy
+        Secondary distribution for coherent elastic scattering
+    incoherent : AngleEnergy
+        Secondary distribution for incoherent elastic scattering
+
+    """
+    def __init__(self, coherent, incoherent):
+        self.coherent = coherent
+        self.incoherent = incoherent
+
+    def to_hdf5(self, group):
+        """Write mixed elastic distribution to an HDF5 group
+
+        Parameters
+        ----------
+        group : h5py.Group
+            HDF5 group to write to
+
+        """
+        group.attrs['type'] = np.bytes_('mixed_elastic')
+        coherent_group = group.create_group('coherent')
+        self.coherent.to_hdf5(coherent_group)
+        incoherent_group = group.create_group('incoherent')
+        self.incoherent.to_hdf5(incoherent_group)
+
+    @classmethod
+    def from_hdf5(cls, group):
+        """Generate mixed thermal elastic distribution from HDF5 data
+
+        Parameters
+        ----------
+        group : h5py.Group
+            HDF5 group to read from
+
+        Returns
+        -------
+        openmc.data.MixedElasticAE
+            Mixed thermal elastic distribution
+
+        """
+        coherent = AngleEnergy.from_hdf5(group['coherent'])
+        incoherent = AngleEnergy.from_hdf5(group['incoherent'])
+        return cls(coherent, incoherent)

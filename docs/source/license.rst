@@ -4,7 +4,7 @@
 License Agreement
 =================
 
-Copyright © 2011-2022 Massachusetts Institute of Technology, UChicago Argonne
+Copyright © 2011-2025 Massachusetts Institute of Technology, UChicago Argonne
 LLC, and OpenMC contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of

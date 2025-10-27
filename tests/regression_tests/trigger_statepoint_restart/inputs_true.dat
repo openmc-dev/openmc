@@ -1,35 +1,34 @@
 <?xml version='1.0' encoding='utf-8'?>
-<geometry>
-  <cell id="1" material="1" region="-1" universe="1" />
-  <surface boundary="vacuum" coeffs="0.0 0.0 0.0 10.0" id="1" type="sphere" />
-</geometry>
-<?xml version='1.0' encoding='utf-8'?>
-<materials>
-  <material depletable="true" id="1">
-    <density units="g/cm3" value="4.5" />
-    <nuclide ao="1.0" name="U235" />
-  </material>
-</materials>
-<?xml version='1.0' encoding='utf-8'?>
-<settings>
-  <run_mode>eigenvalue</run_mode>
-  <particles>400</particles>
-  <batches>15</batches>
-  <inactive>10</inactive>
-  <keff_trigger>
-    <threshold>0.003</threshold>
-    <type>std_dev</type>
-  </keff_trigger>
-  <trigger>
-    <active>true</active>
-    <max_batches>1000</max_batches>
-    <batch_interval>1</batch_interval>
-  </trigger>
-  <verbosity>1</verbosity>
-</settings>
-<?xml version='1.0' encoding='utf-8'?>
-<tallies>
-  <tally id="1">
-    <scores>flux</scores>
-  </tally>
-</tallies>
+<model>
+  <materials>
+    <material id="1" depletable="true">
+      <density value="4.5" units="g/cm3"/>
+      <nuclide name="U235" ao="1.0"/>
+    </material>
+  </materials>
+  <geometry>
+    <cell id="1" material="1" region="-1" universe="1"/>
+    <surface id="1" type="sphere" boundary="vacuum" coeffs="0.0 0.0 0.0 10.0"/>
+  </geometry>
+  <settings>
+    <run_mode>eigenvalue</run_mode>
+    <particles>400</particles>
+    <batches>15</batches>
+    <inactive>10</inactive>
+    <keff_trigger>
+      <threshold>0.002</threshold>
+      <type>std_dev</type>
+    </keff_trigger>
+    <trigger>
+      <active>true</active>
+      <max_batches>1000</max_batches>
+      <batch_interval>1</batch_interval>
+    </trigger>
+    <verbosity>1</verbosity>
+  </settings>
+  <tallies>
+    <tally id="1">
+      <scores>flux</scores>
+    </tally>
+  </tallies>
+</model>

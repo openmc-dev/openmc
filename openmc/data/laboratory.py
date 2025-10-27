@@ -54,26 +54,15 @@ class LaboratoryAngleEnergy(AngleEnergy):
     def breakpoints(self):
         return self._breakpoints
 
-    @property
-    def interpolation(self):
-        return self._interpolation
-    @property
-    def energy(self):
-        return self._energy
-
-    @property
-    def mu(self):
-        return self._mu
-
-    @property
-    def energy_out(self):
-        return self._energy_out
-
     @breakpoints.setter
     def breakpoints(self, breakpoints):
         cv.check_type('laboratory angle-energy breakpoints', breakpoints,
                       Iterable, Integral)
         self._breakpoints = breakpoints
+
+    @property
+    def interpolation(self):
+        return self._interpolation
 
     @interpolation.setter
     def interpolation(self, interpolation):
@@ -81,17 +70,29 @@ class LaboratoryAngleEnergy(AngleEnergy):
                       Iterable, Integral)
         self._interpolation = interpolation
 
+    @property
+    def energy(self):
+        return self._energy
+
     @energy.setter
     def energy(self, energy):
         cv.check_type('laboratory angle-energy incoming energy', energy,
                       Iterable, Real)
         self._energy = energy
 
+    @property
+    def mu(self):
+        return self._mu
+
     @mu.setter
     def mu(self, mu):
         cv.check_type('laboratory angle-energy outgoing cosine', mu,
                       Iterable, Univariate)
         self._mu = mu
+
+    @property
+    def energy_out(self):
+        return self._energy_out
 
     @energy_out.setter
     def energy_out(self, energy_out):

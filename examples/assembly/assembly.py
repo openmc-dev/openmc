@@ -99,11 +99,11 @@ def assembly_model():
     assembly.universes[gt_pos[:, 0], gt_pos[:, 1]] = guide_tube_pin()
 
     # Create outer boundary of the geometry to surround the lattice
-    outer_boundary = openmc.model.rectangular_prism(
+    outer_boundary = openmc.model.RectangularPrism(
         pitch, pitch, boundary_type='reflective')
 
     # Create a cell filled with the lattice
-    main_cell = openmc.Cell(fill=assembly, region=outer_boundary)
+    main_cell = openmc.Cell(fill=assembly, region=-outer_boundary)
 
     # Finally, create geometry by providing a list of cells that fill the root
     # universe
@@ -112,11 +112,10 @@ def assembly_model():
     model.settings.batches = 150
     model.settings.inactive = 50
     model.settings.particles = 1000
-    model.settings.source = openmc.Source(space=openmc.stats.Box(
-        (-pitch/2, -pitch/2, -1),
-        (pitch/2, pitch/2, 1),
-        only_fissionable=True
-    ))
+    model.settings.source = openmc.IndependentSource(
+        space=openmc.stats.Box((-pitch/2, -pitch/2, -1), (pitch/2, pitch/2, 1)),
+        constraints={'fissionable': True}
+    )
 
     # NOTE: We never actually created a Materials object. When you export/run
     # using the Model object, if no materials were assigned it will look through

@@ -1,17 +1,16 @@
-from collections import OrderedDict
 from collections.abc import Iterable, Mapping
 from numbers import Real, Integral
-from xml.etree import ElementTree as ET
 import warnings
 
+import h5py
+import lxml.etree as ET
 import numpy as np
 import pandas as pd
-import h5py
 from uncertainties import ufloat
 
 import openmc
 import openmc.checkvalue as cv
-from openmc._xml import get_text
+from openmc._xml import get_elem_list, get_text
 
 _VERSION_VOLUME = 1
 
@@ -122,33 +121,82 @@ class VolumeCalculation:
                 raise ValueError('Could not automatically determine bounding box '
                                  'for stochastic volume calculation.')
 
+        if np.isinf(self.lower_left).any() or np.isinf(self.upper_right).any():
+            raise ValueError('Lower-left and upper-right bounding box '
+                             'coordinates must be finite.')
+
     @property
     def ids(self):
         return self._ids
+
+    @ids.setter
+    def ids(self, ids):
+        cv.check_type('domain IDs', ids, Iterable, Real)
+        self._ids = ids
 
     @property
     def samples(self):
         return self._samples
 
+    @samples.setter
+    def samples(self, samples):
+        cv.check_type('number of samples', samples, Integral)
+        cv.check_greater_than('number of samples', samples, 0)
+        self._samples = samples
+
     @property
     def lower_left(self):
         return self._lower_left
+
+    @lower_left.setter
+    def lower_left(self, lower_left):
+        name = 'lower-left bounding box coordinates',
+        cv.check_type(name, lower_left, Iterable, Real)
+        cv.check_length(name, lower_left, 3)
+        self._lower_left = lower_left
 
     @property
     def upper_right(self):
         return self._upper_right
 
+    @upper_right.setter
+    def upper_right(self, upper_right):
+        name = 'upper-right bounding box coordinates'
+        cv.check_type(name, upper_right, Iterable, Real)
+        cv.check_length(name, upper_right, 3)
+        self._upper_right = upper_right
+
     @property
     def threshold(self):
         return self._threshold
+
+    @threshold.setter
+    def threshold(self, threshold):
+        name = 'volume std. dev. threshold'
+        cv.check_type(name, threshold, Real)
+        cv.check_greater_than(name, threshold, 0.0)
+        self._threshold = threshold
 
     @property
     def trigger_type(self):
         return self._trigger_type
 
+    @trigger_type.setter
+    def trigger_type(self, trigger_type):
+        cv.check_value('tally trigger type', trigger_type,
+                       ('variance', 'std_dev', 'rel_err'))
+        self._trigger_type = trigger_type
+
     @property
     def iterations(self):
         return self._iterations
+
+    @iterations.setter
+    def iterations(self, iterations):
+        name = 'volume calculation iterations'
+        cv.check_type(name, iterations, Integral)
+        cv.check_greater_than(name, iterations, 0)
+        self._iterations = iterations
 
     @property
     def domain_type(self):
@@ -158,9 +206,19 @@ class VolumeCalculation:
     def atoms(self):
         return self._atoms
 
+    @atoms.setter
+    def atoms(self, atoms):
+        cv.check_type('atoms', atoms, Mapping)
+        self._atoms = atoms
+
     @property
     def volumes(self):
         return self._volumes
+
+    @volumes.setter
+    def volumes(self, volumes):
+        cv.check_type('volumes', volumes, Mapping)
+        self._volumes = volumes
 
     @property
     def atoms_dataframe(self):
@@ -171,61 +229,6 @@ class VolumeCalculation:
                 items.append((uid, name, atoms))
 
         return pd.DataFrame.from_records(items, columns=columns)
-
-    @ids.setter
-    def ids(self, ids):
-        cv.check_type('domain IDs', ids, Iterable, Real)
-        self._ids = ids
-
-    @samples.setter
-    def samples(self, samples):
-        cv.check_type('number of samples', samples, Integral)
-        cv.check_greater_than('number of samples', samples, 0)
-        self._samples = samples
-
-    @lower_left.setter
-    def lower_left(self, lower_left):
-        name = 'lower-left bounding box coordinates',
-        cv.check_type(name, lower_left, Iterable, Real)
-        cv.check_length(name, lower_left, 3)
-        self._lower_left = lower_left
-
-    @upper_right.setter
-    def upper_right(self, upper_right):
-        name = 'upper-right bounding box coordinates'
-        cv.check_type(name, upper_right, Iterable, Real)
-        cv.check_length(name, upper_right, 3)
-        self._upper_right = upper_right
-
-    @threshold.setter
-    def threshold(self, threshold):
-        name = 'volume std. dev. threshold'
-        cv.check_type(name, threshold, Real)
-        cv.check_greater_than(name, threshold, 0.0)
-        self._threshold = threshold
-
-    @trigger_type.setter
-    def trigger_type(self, trigger_type):
-        cv.check_value('tally trigger type', trigger_type,
-                       ('variance', 'std_dev', 'rel_err'))
-        self._trigger_type = trigger_type
-
-    @iterations.setter
-    def iterations(self, iterations):
-        name = 'volume calculation iterations'
-        cv.check_type(name, iterations, Integral)
-        cv.check_greater_than(name, iterations, 0)
-        self._iterations = iterations
-
-    @volumes.setter
-    def volumes(self, volumes):
-        cv.check_type('volumes', volumes, Mapping)
-        self._volumes = volumes
-
-    @atoms.setter
-    def atoms(self, atoms):
-        cv.check_type('atoms', atoms, Mapping)
-        self._atoms = atoms
 
     def set_trigger(self, threshold, trigger_type):
         """Set a trigger on the volume calculation
@@ -281,7 +284,7 @@ class VolumeCalculation:
                     volumes[domain_id] = volume
                     nucnames = group['nuclides'][()]
                     atoms_ = group['atoms'][()]
-                    atom_dict = OrderedDict()
+                    atom_dict = {}
                     for name_i, atoms_i in zip(nucnames, atoms_):
                         atom_dict[name_i.decode()] = ufloat(*atoms_i)
                     atoms[domain_id] = atom_dict
@@ -333,7 +336,7 @@ class VolumeCalculation:
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing volume calculation data
 
         """
@@ -362,7 +365,7 @@ class VolumeCalculation:
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -372,13 +375,10 @@ class VolumeCalculation:
 
         """
         domain_type = get_text(elem, "domain_type")
-        domain_ids = get_text(elem, "domain_ids").split()
-        ids = [int(x) for x in domain_ids]
+        ids = get_elem_list(elem, "domain_ids", int)
         samples = int(get_text(elem, "samples"))
-        lower_left = get_text(elem, "lower_left").split()
-        lower_left = tuple([float(x) for x in lower_left])
-        upper_right = get_text(elem, "upper_right").split()
-        upper_right = tuple([float(x) for x in upper_right])
+        lower_left = tuple(get_elem_list(elem, "lower_left", float))
+        upper_right = tuple(get_elem_list(elem, "upper_right", float))
 
         # Instantiate some throw-away domains that are used by the constructor
         # to assign IDs

@@ -1,519 +1,643 @@
-"""The results module.
-
-Contains results generation and saving capabilities.
-"""
-
-from collections import OrderedDict
-import copy
+import numbers
+import bisect
+import math
+from collections.abc import Iterable
+from warnings import warn
 
 import h5py
 import numpy as np
 
-import openmc
-from openmc.mpi import comm, MPI
-from .reaction_rates import ReactionRates
+from .stepresult import StepResult, VERSION_RESULTS
+import openmc.checkvalue as cv
+from openmc.data import atomic_mass, AVOGADRO
+from openmc.data.library import DataLibrary
+from openmc.material import Material, Materials
+from openmc.exceptions import DataError
+from openmc.checkvalue import PathLike
 
-VERSION_RESULTS = (1, 1)
+__all__ = ["Results", "ResultsList"]
+
+_SECONDS_PER_MINUTE = 60
+_SECONDS_PER_HOUR = 60*60
+_SECONDS_PER_DAY = 24*60*60
+_SECONDS_PER_JULIAN_YEAR = 365.25*24*60*60  # 365.25 due to the leap year
 
 
-__all__ = ["Results"]
+def _get_time_as(seconds: float, units: str) -> float:
+    """Converts the time in seconds to time in different units
 
-
-class Results:
-    """Output of a depletion run
-
-    Attributes
+    Parameters
     ----------
-    k : list of (float, float)
-        Eigenvalue and uncertainty for each substep.
-    time : list of float
-        Time at beginning, end of step, in seconds.
-    source_rate : float
-        Source rate during timestep in [W] or [neutron/sec]
-    n_mat : int
-        Number of mats.
-    n_nuc : int
-        Number of nuclides.
-    rates : list of ReactionRates
-        The reaction rates for each substep.
-    volume : OrderedDict of str to float
-        Dictionary mapping mat id to volume.
-    mat_to_ind : OrderedDict of str to int
-        A dictionary mapping mat ID as string to index.
-    nuc_to_ind : OrderedDict of str to int
-        A dictionary mapping nuclide name as string to index.
-    mat_to_hdf5_ind : OrderedDict of str to int
-        A dictionary mapping mat ID as string to global index.
-    n_hdf5_mats : int
-        Number of materials in entire geometry.
-    n_stages : int
-        Number of stages in simulation.
-    data : numpy.ndarray
-        Atom quantity, stored by stage, mat, then by nuclide.
-    proc_time: int
-        Average time spent depleting a material across all
-        materials and processes
+    seconds : float
+        The time to convert expressed in seconds
+    units : {"s", "min", "h", "d", "a"}
+        The units to convert time into. Available options are seconds ``"s"``,
+        minutes ``"min"``, hours ``"h"`` days ``"d"``, Julian years ``"a"``
 
     """
-    def __init__(self):
-        self.k = None
-        self.time = None
-        self.source_rate = None
-        self.rates = None
-        self.volume = None
-        self.proc_time = None
+    if units == "a":
+        return seconds / _SECONDS_PER_JULIAN_YEAR
+    if units == "d":
+        return seconds / _SECONDS_PER_DAY
+    elif units == "h":
+        return seconds / _SECONDS_PER_HOUR
+    elif units == "min":
+        return seconds / _SECONDS_PER_MINUTE
+    else:
+        return seconds
 
-        self.mat_to_ind = None
-        self.nuc_to_ind = None
-        self.mat_to_hdf5_ind = None
 
-        self.data = None
+class Results(list):
+    """Results from a depletion simulation
 
-    def __getitem__(self, pos):
-        """Retrieves an item from results.
+    The :class:`Results` class acts as a list that stores the results from
+    each depletion step and provides extra methods for interrogating these
+    results.
 
-        Parameters
-        ----------
-        pos : tuple
-            A three-length tuple containing a stage index, mat index and a nuc
-            index.  All can be integers or slices.  The second two can be
-            strings corresponding to their respective dictionary.
+    .. versionchanged:: 0.13.1
+        Name changed from ``ResultsList`` to ``Results``
 
-        Returns
-        -------
-        float
-            The atoms for stage, mat, nuc
+    Parameters
+    ----------
+    filename : str, optional
+        Path to depletion result file
 
-        """
-        stage, mat, nuc = pos
-        if isinstance(mat, str):
-            mat = self.mat_to_ind[mat]
-        if isinstance(nuc, str):
-            nuc = self.nuc_to_ind[nuc]
+    """
+    def __init__(self, filename='depletion_results.h5'):
+        data = []
+        if filename is not None:
+            with h5py.File(str(filename), "r") as fh:
+                cv.check_filetype_version(fh, 'depletion results', VERSION_RESULTS[0])
 
-        return self.data[stage, mat, nuc]
+                # Get number of results stored
+                n = fh["number"][...].shape[0]
 
-    def __setitem__(self, pos, val):
-        """Sets an item from results.
+                for i in range(n):
+                    data.append(StepResult.from_hdf5(fh, i))
+        super().__init__(data)
 
-        Parameters
-        ----------
-        pos : tuple
-            A three-length tuple containing a stage index, mat index and a nuc
-            index.  All can be integers or slices.  The second two can be
-            strings corresponding to their respective dictionary.
-
-        val : float
-            The value to set data to.
-
-        """
-        stage, mat, nuc = pos
-        if isinstance(mat, str):
-            mat = self.mat_to_ind[mat]
-        if isinstance(nuc, str):
-            nuc = self.nuc_to_ind[nuc]
-
-        self.data[stage, mat, nuc] = val
-
-    @property
-    def n_mat(self):
-        return len(self.mat_to_ind)
-
-    @property
-    def n_nuc(self):
-        return len(self.nuc_to_ind)
-
-    @property
-    def n_hdf5_mats(self):
-        return len(self.mat_to_hdf5_ind)
-
-    @property
-    def n_stages(self):
-        return self.data.shape[0]
-
-    def allocate(self, volume, nuc_list, burn_list, full_burn_list, stages):
-        """Allocates memory of Results.
-
-        Parameters
-        ----------
-        volume : dict of str float
-            Volumes corresponding to materials in full_burn_dict
-        nuc_list : list of str
-            A list of all nuclide names. Used for sorting the simulation.
-        burn_list : list of int
-            A list of all mat IDs to be burned.  Used for sorting the simulation.
-        full_burn_list : list of str
-            List of all burnable material IDs
-        stages : int
-            Number of stages in simulation.
-
-        """
-        self.volume = copy.deepcopy(volume)
-        self.nuc_to_ind = {nuc: i for i, nuc in enumerate(nuc_list)}
-        self.mat_to_ind = {mat: i for i, mat in enumerate(burn_list)}
-        self.mat_to_hdf5_ind = {mat: i for i, mat in enumerate(full_burn_list)}
-
-        # Create storage array
-        self.data = np.zeros((stages, self.n_mat, self.n_nuc))
-
-    def distribute(self, local_materials, ranges):
-        """Create a new object containing data for distributed materials
-
-        Parameters
-        ----------
-        local_materials : iterable of str
-            Materials for this process
-        ranges : iterable of int
-            Slice-like object indicating indicies of ``local_materials``
-            in the material dimension of :attr:`data` and each element
-            in :attr:`rates`
-
-        Returns
-        -------
-        Results
-            New results object
-        """
-        new = Results()
-        new.volume = {lm: self.volume[lm] for lm in local_materials}
-        new.mat_to_ind = {mat: idx for (idx, mat) in enumerate(local_materials)}
-
-        # Direct transfer
-        direct_attrs = ("time", "k", "source_rate", "nuc_to_ind",
-                        "mat_to_hdf5_ind", "proc_time")
-        for attr in direct_attrs:
-            setattr(new, attr, getattr(self, attr))
-        # Get applicable slice of data
-        new.data = self.data[:, ranges]
-        new.rates = [r[ranges] for r in self.rates]
-        return new
-
-    def export_to_hdf5(self, filename, step):
-        """Export results to an HDF5 file
+    @classmethod
+    def from_hdf5(cls, filename: PathLike):
+        """Load in depletion results from a previous file
 
         Parameters
         ----------
         filename : str
-            The filename to write to
-        step : int
-            What step is this?
+            Path to depletion result file
+
+        Returns
+        -------
+        Results
+            New instance of depletion results
 
         """
-        # Write new file if first time step, else add to existing file
-        kwargs = {'mode': "w" if step == 0 else "a"}
+        warn(
+            "The ResultsList.from_hdf5(...) method is no longer necessary and will "
+            "be removed in a future version of OpenMC. Use Results(...) instead.",
+            FutureWarning
+        )
+        return cls(filename)
 
-        if h5py.get_config().mpi and comm.size > 1:
-            # Write results in parallel
-            kwargs['driver'] = 'mpio'
-            kwargs['comm'] = comm
-            with h5py.File(filename, **kwargs) as handle:
-                self._to_hdf5(handle, step, parallel=True)
+    def get_activity(
+        self,
+        mat: Material | str,
+        units: str = "Bq/cm3",
+        by_nuclide: bool = False,
+        volume: float | None = None
+    ) -> tuple[np.ndarray, np.ndarray | list[dict]]:
+        """Get activity of material over time.
+
+        .. versionadded:: 0.14.0
+
+        Parameters
+        ----------
+        mat : openmc.Material, str
+            Material object or material id to evaluate
+        units : {'Bq', 'Bq/g', 'Bq/kg', 'Bq/cm3'}
+            Specifies the type of activity to return, options include total
+            activity [Bq], specific [Bq/g, Bq/kg] or volumetric activity [Bq/cm3].
+        by_nuclide : bool
+            Specifies if the activity should be returned for the material as a
+            whole or per nuclide. Default is False.
+        volume : float, optional
+            Volume of the material. If not passed, defaults to using the
+            :attr:`Material.volume` attribute.
+
+        Returns
+        -------
+        times : numpy.ndarray
+            Array of times in [s]
+        activities : numpy.ndarray or List[dict]
+            Array of total activities if by_nuclide = False (default)
+            or list of dictionaries of activities by nuclide if
+            by_nuclide = True.
+
+        """
+        if isinstance(mat, Material):
+            mat_id = str(mat.id)
+        elif isinstance(mat, str):
+            mat_id = mat
         else:
-            # Gather results at root process
-            all_results = comm.gather(self)
+            raise TypeError('mat should be of type openmc.Material or str')
 
-            # Only root process writes results
-            if comm.rank == 0:
-                with h5py.File(filename, **kwargs) as handle:
-                    for res in all_results:
-                        res._to_hdf5(handle, step, parallel=False)
-
-    def _write_hdf5_metadata(self, handle):
-        """Writes result metadata in HDF5 file
-
-        Parameters
-        ----------
-        handle : h5py.File or h5py.Group
-            An hdf5 file or group type to store this in.
-
-        """
-        # Create and save the 5 dictionaries:
-        # quantities
-        #   self.mat_to_ind -> self.volume (TODO: support for changing volumes)
-        #   self.nuc_to_ind
-        # reactions
-        #   self.rates[0].nuc_to_ind (can be different from above, above is superset)
-        #   self.rates[0].react_to_ind
-        # these are shared by every step of the simulation, and should be deduplicated.
-
-        # Store concentration mat and nuclide dictionaries (along with volumes)
-
-        handle.attrs['version'] = np.array(VERSION_RESULTS)
-        handle.attrs['filetype'] = np.string_('depletion results')
-
-        mat_list = sorted(self.mat_to_hdf5_ind, key=int)
-        nuc_list = sorted(self.nuc_to_ind)
-        rxn_list = sorted(self.rates[0].index_rx)
-
-        n_mats = self.n_hdf5_mats
-        n_nuc_number = len(nuc_list)
-        n_nuc_rxn = len(self.rates[0].index_nuc)
-        n_rxn = len(rxn_list)
-        n_stages = self.n_stages
-
-        mat_group = handle.create_group("materials")
-
-        for mat in mat_list:
-            mat_single_group = mat_group.create_group(mat)
-            mat_single_group.attrs["index"] = self.mat_to_hdf5_ind[mat]
-            mat_single_group.attrs["volume"] = self.volume[mat]
-
-        nuc_group = handle.create_group("nuclides")
-
-        for nuc in nuc_list:
-            nuc_single_group = nuc_group.create_group(nuc)
-            nuc_single_group.attrs["atom number index"] = self.nuc_to_ind[nuc]
-            if nuc in self.rates[0].index_nuc:
-                nuc_single_group.attrs["reaction rate index"] = self.rates[0].index_nuc[nuc]
-
-        rxn_group = handle.create_group("reactions")
-
-        for rxn in rxn_list:
-            rxn_single_group = rxn_group.create_group(rxn)
-            rxn_single_group.attrs["index"] = self.rates[0].index_rx[rxn]
-
-        # Construct array storage
-
-        handle.create_dataset("number", (1, n_stages, n_mats, n_nuc_number),
-                              maxshape=(None, n_stages, n_mats, n_nuc_number),
-                              chunks=(1, 1, n_mats, n_nuc_number),
-                              dtype='float64')
-
-        handle.create_dataset("reaction rates", (1, n_stages, n_mats, n_nuc_rxn, n_rxn),
-                              maxshape=(None, n_stages, n_mats, n_nuc_rxn, n_rxn),
-                              chunks=(1, 1, n_mats, n_nuc_rxn, n_rxn),
-                              dtype='float64')
-
-        handle.create_dataset("eigenvalues", (1, n_stages, 2),
-                              maxshape=(None, n_stages, 2), dtype='float64')
-
-        handle.create_dataset("time", (1, 2), maxshape=(None, 2), dtype='float64')
-
-        handle.create_dataset("source_rate", (1, n_stages), maxshape=(None, n_stages),
-                              dtype='float64')
-
-        handle.create_dataset(
-            "depletion time", (1,), maxshape=(None,),
-            dtype="float64")
-
-    def _to_hdf5(self, handle, index, parallel=False):
-        """Converts results object into an hdf5 object.
-
-        Parameters
-        ----------
-        handle : h5py.File or h5py.Group
-            An HDF5 file or group type to store this in.
-        index : int
-            What step is this?
-        parallel : bool
-            Being called with parallel HDF5?
-
-        """
-        if "/number" not in handle:
-            if parallel:
-                comm.barrier()
-            self._write_hdf5_metadata(handle)
-
-        if parallel:
-            comm.barrier()
-
-        # Grab handles
-        number_dset = handle["/number"]
-        rxn_dset = handle["/reaction rates"]
-        eigenvalues_dset = handle["/eigenvalues"]
-        time_dset = handle["/time"]
-        source_rate_dset = handle["/source_rate"]
-        proc_time_dset = handle["/depletion time"]
-
-        # Get number of results stored
-        number_shape = list(number_dset.shape)
-        number_results = number_shape[0]
-
-        new_shape = index + 1
-
-        if number_results < new_shape:
-            # Extend first dimension by 1
-            number_shape[0] = new_shape
-            number_dset.resize(number_shape)
-
-            rxn_shape = list(rxn_dset.shape)
-            rxn_shape[0] = new_shape
-            rxn_dset.resize(rxn_shape)
-
-            eigenvalues_shape = list(eigenvalues_dset.shape)
-            eigenvalues_shape[0] = new_shape
-            eigenvalues_dset.resize(eigenvalues_shape)
-
-            time_shape = list(time_dset.shape)
-            time_shape[0] = new_shape
-            time_dset.resize(time_shape)
-
-            source_rate_shape = list(source_rate_dset.shape)
-            source_rate_shape[0] = new_shape
-            source_rate_dset.resize(source_rate_shape)
-
-            proc_shape = list(proc_time_dset.shape)
-            proc_shape[0] = new_shape
-            proc_time_dset.resize(proc_shape)
-
-        # If nothing to write, just return
-        if len(self.mat_to_ind) == 0:
-            return
-
-        # Add data
-        # Note, for the last step, self.n_stages = 1, even if n_stages != 1.
-        n_stages = self.n_stages
-        inds = [self.mat_to_hdf5_ind[mat] for mat in self.mat_to_ind]
-        low = min(inds)
-        high = max(inds)
-        for i in range(n_stages):
-            number_dset[index, i, low:high+1] = self.data[i]
-            rxn_dset[index, i, low:high+1] = self.rates[i]
-            if comm.rank == 0:
-                eigenvalues_dset[index, i] = self.k[i]
-        if comm.rank == 0:
-            time_dset[index] = self.time
-            source_rate_dset[index] = self.source_rate
-            if self.proc_time is not None:
-                proc_time_dset[index] = (
-                    self.proc_time / (comm.size * self.n_hdf5_mats)
-                )
-
-    @classmethod
-    def from_hdf5(cls, handle, step):
-        """Loads results object from HDF5.
-
-        Parameters
-        ----------
-        handle : h5py.File or h5py.Group
-            An HDF5 file or group type to load from.
-        step : int
-            Index for depletion step
-        """
-        results = cls()
-
-        # Grab handles
-        number_dset = handle["/number"]
-        eigenvalues_dset = handle["/eigenvalues"]
-        time_dset = handle["/time"]
-        if "source_rate" in handle:
-            source_rate_dset = handle["/source_rate"]
+        times = np.empty_like(self, dtype=float)
+        if by_nuclide:
+            activities = [None] * len(self)
         else:
-            # Older versions used "power" instead of "source_rate"
-            source_rate_dset = handle["/power"]
+            activities = np.empty_like(self, dtype=float)
 
-        results.data = number_dset[step, :, :, :]
-        results.k = eigenvalues_dset[step, :]
-        results.time = time_dset[step, :]
-        results.source_rate = source_rate_dset[step, :]
+        # Evaluate activity for each depletion time
+        for i, result in enumerate(self):
+            times[i] = result.time[0]
+            activities[i] = result.get_material(mat_id).get_activity(units, by_nuclide, volume)
 
-        if "depletion time" in handle:
-            proc_time_dset = handle["/depletion time"]
-            if step < proc_time_dset.shape[0]:
-                results.proc_time = proc_time_dset[step]
+        return times, activities
 
-        if results.proc_time is None:
-            results.proc_time = np.array([np.nan])
-
-        # Reconstruct dictionaries
-        results.volume = OrderedDict()
-        results.mat_to_ind = OrderedDict()
-        results.nuc_to_ind = OrderedDict()
-        rxn_nuc_to_ind = OrderedDict()
-        rxn_to_ind = OrderedDict()
-
-        for mat, mat_handle in handle["/materials"].items():
-            vol = mat_handle.attrs["volume"]
-            ind = mat_handle.attrs["index"]
-
-            results.volume[mat] = vol
-            results.mat_to_ind[mat] = ind
-
-        for nuc, nuc_handle in handle["/nuclides"].items():
-            ind_atom = nuc_handle.attrs["atom number index"]
-            results.nuc_to_ind[nuc] = ind_atom
-
-            if "reaction rate index" in nuc_handle.attrs:
-                rxn_nuc_to_ind[nuc] = nuc_handle.attrs["reaction rate index"]
-
-        for rxn, rxn_handle in handle["/reactions"].items():
-            rxn_to_ind[rxn] = rxn_handle.attrs["index"]
-
-        results.rates = []
-        # Reconstruct reactions
-        for i in range(results.n_stages):
-            rate = ReactionRates(results.mat_to_ind, rxn_nuc_to_ind, rxn_to_ind, True)
-
-            rate[:] = handle["/reaction rates"][step, i, :, :, :]
-            results.rates.append(rate)
-
-        return results
-
-    @staticmethod
-    def save(op, x, op_results, t, source_rate, step_ind, proc_time=None):
-        """Creates and writes depletion results to disk
+    def get_atoms(
+        self,
+        mat: Material | str,
+        nuc: str,
+        nuc_units: str = "atoms",
+        time_units: str = "s"
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Get number of nuclides over time from a single material
 
         Parameters
         ----------
-        op : openmc.deplete.TransportOperator
-            The operator used to generate these results.
-        x : list of list of numpy.array
-            The prior x vectors.  Indexed [i][cell] using the above equation.
-        op_results : list of openmc.deplete.OperatorResult
-            Results of applying transport operator
-        t : list of float
-            Time indices.
-        source_rate : float
-            Source rate during time step in [W] or [neutron/sec]
-        step_ind : int
-            Step index.
-        proc_time : float or None
-            Total process time spent depleting materials. This may
-            be process-dependent and will be reduced across MPI
-            processes.
+        mat : openmc.Material, str
+            Material object or material id to evaluate
+        nuc : str
+            Nuclide name to evaluate
+        nuc_units : {"atoms", "atom/b-cm", "atom/cm3"}, optional
+            Units for the returned concentration. Default is ``"atoms"``
+
+            .. versionadded:: 0.12
+        time_units : {"s", "min", "h", "d", "a"}, optional
+            Units for the returned time array. Default is ``"s"`` to
+            return the value in seconds. Other options are minutes ``"min"``,
+            hours ``"h"``, days ``"d"``, and Julian years ``"a"``.
+
+            .. versionadded:: 0.12
+
+        Returns
+        -------
+        times : numpy.ndarray
+            Array of times in units of ``time_units``
+        concentrations : numpy.ndarray
+            Concentration of specified nuclide in units of ``nuc_units``
 
         """
-        # Get indexing terms
-        vol_dict, nuc_list, burn_list, full_burn_list = op.get_results_info()
+        cv.check_value("time_units", time_units, {"s", "d", "min", "h", "a"})
+        cv.check_value("nuc_units", nuc_units,
+                    {"atoms", "atom/b-cm", "atom/cm3"})
 
-        stages = len(x)
-
-        # Create results
-        results = Results()
-        results.allocate(vol_dict, nuc_list, burn_list, full_burn_list, stages)
-
-        n_mat = len(burn_list)
-
-        for i in range(stages):
-            for mat_i in range(n_mat):
-                results[i, mat_i, :] = x[i][mat_i]
-
-        results.k = [(r.k.nominal_value, r.k.std_dev) for r in op_results]
-        results.rates = [r.rates for r in op_results]
-        results.time = t
-        results.source_rate = source_rate
-        results.proc_time = proc_time
-        if results.proc_time is not None:
-            results.proc_time = comm.reduce(proc_time, op=MPI.SUM)
-
-        results.export_to_hdf5("depletion_results.h5", step_ind)
-
-    def transfer_volumes(self, model):
-        """Transfers volumes from depletion results to geometry
-
-        Parameters
-        ----------
-        model : OpenMC model to be used in a depletion restart
-            calculation
-
-        """
-
-        if not model.materials:
-            materials = openmc.Materials(
-                model.geometry.get_all_materials().values()
-            )
+        if isinstance(mat, Material):
+            mat_id = str(mat.id)
+        elif isinstance(mat, str):
+            mat_id = mat
         else:
-            materials = model.materials
+            raise TypeError('mat should be of type openmc.Material or str')
+        times = np.empty_like(self, dtype=float)
+        concentrations = np.empty_like(self, dtype=float)
 
-        for material in materials:
-            if material.depletable:
-                material.volume = self.volume[str(material.id)]
+        # Evaluate value in each region
+        for i, result in enumerate(self):
+            times[i] = result.time[0]
+            concentrations[i] = result[0, mat_id, nuc]
+
+        # Unit conversions
+        times = _get_time_as(times, time_units)
+        if nuc_units != "atoms":
+            # Divide by volume to get density
+            concentrations /= self[0].volume[mat_id]
+            if nuc_units == "atom/b-cm":
+                # 1 barn = 1e-24 cm^2
+                concentrations *= 1e-24
+
+        return times, concentrations
+
+    def get_decay_heat(
+            self,
+            mat: Material | str,
+            units: str = "W",
+            by_nuclide: bool = False,
+            volume: float | None = None
+    ) -> tuple[np.ndarray, np.ndarray | list[dict]]:
+        """Get decay heat of material over time.
+
+        .. versionadded:: 0.14.0
+
+        Parameters
+        ----------
+        mat : openmc.Material, str
+            Material object or material id to evaluate.
+        units : {'W', 'W/g', 'W/kg', 'W/cm3'}
+            Specifies the units of decay heat to return. Options include total
+            heat [W], specific [W/g, W/kg] or volumetric heat [W/cm3].
+        by_nuclide : bool
+            Specifies if the decay heat should be returned for the material as a
+            whole or per nuclide. Default is False.
+        volume : float, optional
+            Volume of the material. If not passed, defaults to using the
+            :attr:`Material.volume` attribute.
+
+        Returns
+        -------
+        times : numpy.ndarray
+            Array of times in [s]
+        decay_heat : numpy.ndarray or list[dict]
+            Array of total decay heat values if by_nuclide = False (default)
+            or list of dictionaries of decay heat values by nuclide if
+            by_nuclide = True.
+        """
+
+        if isinstance(mat, Material):
+            mat_id = str(mat.id)
+        elif isinstance(mat, str):
+            mat_id = mat
+        else:
+            raise TypeError('mat should be of type openmc.Material or str')
+
+        times = np.empty_like(self, dtype=float)
+        if by_nuclide:
+            decay_heat = [None] * len(self)
+        else:
+            decay_heat = np.empty_like(self, dtype=float)
+
+        # Evaluate decay heat for each depletion time
+        for i, result in enumerate(self):
+            times[i] = result.time[0]
+            decay_heat[i] = result.get_material(mat_id).get_decay_heat(
+                units, by_nuclide, volume)
+
+        return times, decay_heat
+
+    def get_mass(self,
+        mat: Material | str,
+        nuc: str,
+        mass_units: str = "g",
+        time_units: str = "s"
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Get mass of nuclides over time from a single material
+
+        .. versionadded:: 0.14.0
+
+        Parameters
+        ----------
+        mat : openmc.Material, str
+            Material object or material id to evaluate
+        nuc : str
+            Nuclide name to evaluate
+        mass_units : {"g", "g/cm3", "kg"}, optional
+            Units for the returned mass.
+        time_units : {"s", "min", "h", "d", "a"}, optional
+            Units for the returned time array. Default is ``"s"`` to
+            return the value in seconds. Other options are minutes ``"min"``,
+            hours ``"h"``, days ``"d"``, and Julian years ``"a"``.
+
+        Returns
+        -------
+        times : numpy.ndarray
+            Array of times in units of ``time_units``
+        mass : numpy.ndarray
+            Mass of specified nuclide in units of ``mass_units``
+
+        """
+        cv.check_value("mass_units", mass_units, {"g", "g/cm3", "kg"})
+
+        if isinstance(mat, Material):
+            mat_id = str(mat.id)
+        elif isinstance(mat, str):
+            mat_id = mat
+        else:
+            raise TypeError('mat should be of type openmc.Material or str')
+
+        times, atoms = self.get_atoms(mat, nuc, time_units=time_units)
+
+        mass = atoms * atomic_mass(nuc) / AVOGADRO
+
+        # Unit conversions
+        if mass_units == "g/cm3":
+            # Divide by volume to get density
+            mass /= self[0].volume[mat_id]
+        elif mass_units == "kg":
+            mass /= 1e3
+
+        return times, mass
+
+    def get_reaction_rate(
+        self,
+        mat: Material | str,
+        nuc: str,
+        rx: str
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Get reaction rate in a single material/nuclide over time
+
+        Parameters
+        ----------
+        mat : openmc.Material, str
+            Material object or material id to evaluate
+        nuc : str
+            Nuclide name to evaluate
+        rx : str
+            Reaction rate to evaluate
+
+        Returns
+        -------
+        times : numpy.ndarray
+            Array of times in [s]
+        rates : numpy.ndarray
+            Array of reaction rates
+
+        """
+        times = np.empty_like(self, dtype=float)
+        rates = np.empty_like(self, dtype=float)
+
+        if isinstance(mat, Material):
+            mat_id = str(mat.id)
+        elif isinstance(mat, str):
+            mat_id = mat
+        else:
+            raise TypeError('mat should be of type openmc.Material or str')
+
+        # Evaluate value in each region
+        for i, result in enumerate(self):
+            times[i] = result.time[0]
+            rates[i] = result.rates[0].get(mat_id, nuc, rx) * result[0, mat, nuc]
+
+        return times, rates
+
+    def get_keff(self, time_units: str = 's') -> tuple[np.ndarray, np.ndarray]:
+        """Evaluates the eigenvalue from a results list.
+
+        .. versionadded:: 0.13.1
+
+        Parameters
+        ----------
+        time_units : {"s", "d", "min", "h", "a"}, optional
+            Desired units for the times array. Options are seconds ``"s"``,
+            minutes ``"min"``, hours ``"h"``, days ``"d"``, and Julian years
+            ``"a"``.
+
+        Returns
+        -------
+        times : numpy.ndarray
+            Array of times in specified units
+        eigenvalues : numpy.ndarray
+            k-eigenvalue at each time. Column 0
+            contains the eigenvalue, while column
+            1 contains the associated uncertainty
+
+        """
+        cv.check_value("time_units", time_units, {"s", "d", "min", "h", "a"})
+
+        times = np.empty_like(self, dtype=float)
+        eigenvalues = np.empty((len(self), 2), dtype=float)
+
+        # Get time/eigenvalue at each point
+        for i, result in enumerate(self):
+            times[i] = result.time[0]
+            eigenvalues[i] = result.k[0]
+
+        # Convert time units if necessary
+        times = _get_time_as(times, time_units)
+        return times, eigenvalues
+
+    def get_eigenvalue(self, time_units: str = 's') -> tuple[np.ndarray, np.ndarray]:
+        warn("The get_eigenvalue(...) function has been renamed get_keff and "
+             "will be removed in a future version of OpenMC.", FutureWarning)
+        return self.get_keff(time_units)
+
+    def get_depletion_time(self) -> np.ndarray:
+        """Return an array of the average time to deplete a material
+
+        .. note::
+            The return value will have one fewer values than several other
+            methods, such as :meth:`get_keff`, because no depletion is performed
+            at the final transport stage.
+
+        Returns
+        -------
+        times : numpy.ndarray
+            Vector of average time to deplete a single material
+            across all processes and materials.
+
+        """
+        times = np.empty(len(self) - 1)
+        # Need special logic because the predictor
+        # writes EOS values for step i as BOS values
+        # for step i+1
+        # The first proc_time may be zero
+        if self[0].proc_time > 0.0:
+            items = self[:-1]
+        else:
+            items = self[1:]
+        for ix, res in enumerate(items):
+            times[ix] = res.proc_time
+        return times
+
+    def get_times(self, time_units: str = "d") -> np.ndarray:
+        """Return the points in time that define the depletion schedule
+
+        .. versionadded:: 0.12.1
+
+        Parameters
+        ----------
+        time_units : {"s", "d", "min", "h", "a"}, optional
+            Return the vector in these units. Default is to
+            convert to days ``"d"``. Other options are seconds ``"s"``, minutes
+            ``"min"``, hours ``"h"``, days ``"d"``, and Julian years ``"a"``.
+
+        Returns
+        -------
+        numpy.ndarray
+            1-D vector of time points
+
+        """
+        cv.check_value("time_units", time_units, {"s", "d", "min", "h", "a"})
+
+        times = np.fromiter(
+            (r.time[0] for r in self),
+            dtype=self[0].time.dtype,
+            count=len(self),
+        )
+
+        return _get_time_as(times, time_units)
+
+    def get_source_rates(self) -> np.ndarray:
+        """
+        .. versionadded:: 0.15.1
+
+        Returns
+        -------
+        numpy.ndarray
+            1-D vector of source rates at each point in the depletion simulation
+            with the units originally defined by the user.
+
+        """
+        # Results duplicate the final source rate at the final simulation time
+        source_rates = np.fromiter(
+            (r.source_rate for r in self),
+            dtype=self[0].source_rate.dtype,
+            count=len(self)-1,
+        )
+
+        return source_rates
+
+    def get_step_where(
+        self, time, time_units: str = "d", atol: float = 1e-6, rtol: float = 1e-3
+    ) -> int:
+        """Return the index closest to a given point in time
+
+        In the event ``time`` lies exactly between two points, the
+        lower index will be returned. It is possible that the index
+        will be at most one past the point in time requested, but only
+        according to tolerances requested.
+
+        Passing ``atol=math.inf`` and ``rtol=math.inf`` will return
+        the closest index to the requested point.
+
+        .. versionadded:: 0.12.1
+
+        Parameters
+        ----------
+        time : float
+            Desired point in time
+        time_units : {"s", "d", "min", "h", "a"}, optional
+            Units on ``time``. Default: days ``"d"``. Other options are seconds
+            ``"s"``, minutes ``"min"``, hours ``"h"`` and Julian years ``"a"``.
+        atol : float, optional
+            Absolute tolerance (in ``time_units``) if ``time`` is not
+            found.
+        rtol : float, optional
+            Relative tolerance if ``time`` is not found.
+
+        Returns
+        -------
+        int
+
+        """
+        cv.check_type("time", time, numbers.Real)
+        cv.check_type("atol", atol, numbers.Real)
+        cv.check_type("rtol", rtol, numbers.Real)
+
+        times = self.get_times(time_units)
+
+        if times[0] < time < times[-1]:
+            ix = bisect.bisect_left(times, time)
+            if ix == times.size:
+                ix -= 1
+            # Bisection will place us either directly on the point
+            # or one-past the first value less than time
+            elif time - times[ix - 1] <= times[ix] - time:
+                ix -= 1
+        elif times[0] >= time:
+            ix = 0
+        elif time >= times[-1]:
+            ix = times.size - 1
+
+        if math.isclose(time, times[ix], rel_tol=rtol, abs_tol=atol):
+            return ix
+
+        closest = min(times, key=lambda t: abs(time - t))
+        raise ValueError(
+            f"A value of {time} {time_units} was not found given absolute and "
+            f"relative tolerances {atol} and {rtol}. Closest time is {closest} "
+            f"{time_units}."
+        )
+
+    def export_to_materials(
+        self,
+        burnup_index: int,
+        nuc_with_data: Iterable[str] | None = None,
+        path: PathLike = 'materials.xml'
+    ) -> Materials:
+        """Return openmc.Materials object based on results at a given step
+
+        .. versionadded:: 0.12.1
+
+        Parameters
+        ----------
+        burn_index : int
+            Index of burnup step to evaluate. See also: get_step_where for
+            obtaining burnup step indices from other data such as the time.
+        nuc_with_data : Iterable of str, optional
+            Nuclides to include in resulting materials.
+            This can be specified if not all nuclides appearing in
+            depletion results have associated neutron cross sections, and
+            as such cannot be used in subsequent transport calculations.
+            If not provided, nuclides from the cross_sections element of
+            materials.xml will be used. If that element is not present,
+            nuclides from openmc.config['cross_sections'] will be used.
+        path : PathLike
+            Path to materials XML file to read. Defaults to 'materials.xml'.
+
+            .. versionadded:: 0.13.3
+
+        Returns
+        -------
+        mat_file : Materials
+            A modified Materials instance containing depleted material data
+            and original isotopic compositions of non-depletable materials
+        """
+        result = self[burnup_index]
+
+        # Only materials found in the original materials.xml file will be
+        # updated. If for some reason you have modified OpenMC to produce
+        # new materials as depletion takes place, this method will not
+        # work as expected and leave out that material.
+        mat_file = Materials.from_xml(path)
+
+        # Only nuclides with valid transport data will be written to
+        # the new materials XML file. The precedence of nuclides to select
+        # is first ones provided as a kwarg here, then ones specified
+        # in the materials.xml file if provided, then finally from
+        # openmc.config['cross_sections'].
+        if nuc_with_data:
+            cv.check_iterable_type('nuclide names', nuc_with_data, str)
+            available_cross_sections = nuc_with_data
+        else:
+            # select cross_sections.xml file to use
+            if mat_file.cross_sections:
+                this_library = DataLibrary.from_xml(path=mat_file.cross_sections)
+            else:
+                this_library = DataLibrary.from_xml()
+
+            # Find neutron libraries we have access to
+            available_cross_sections = set()
+            for lib in this_library.libraries:
+                if lib['type'] == 'neutron':
+                    available_cross_sections.update(lib['materials'])
+            if not available_cross_sections:
+                raise DataError('No neutron libraries found in cross_sections.xml')
+
+        # Overwrite material definitions, if they can be found in the depletion
+        # results, and save them to the new depleted xml file.
+        for mat in mat_file:
+            mat_id = str(mat.id)
+            if mat_id in result.index_mat:
+                mat.volume = result.volume[mat_id]
+
+                # Change density of all nuclides in material to atom/b-cm
+                atoms_per_barn_cm = mat.get_nuclide_atom_densities()
+                for nuc, value in atoms_per_barn_cm.items():
+                    mat.remove_nuclide(nuc)
+                    mat.add_nuclide(nuc, value)
+                mat.set_density('sum')
+
+                # For nuclides in chain that have cross sections, replace
+                # density in original material with new density from results
+                for nuc in result.index_nuc:
+                    if nuc not in available_cross_sections:
+                        continue
+                    atoms = result[0, mat_id, nuc]
+                    if atoms > 0.0:
+                        atoms_per_barn_cm = 1e-24 * atoms / mat.volume
+                        mat.remove_nuclide(nuc) # Replace if it's there
+                        mat.add_nuclide(nuc, atoms_per_barn_cm)
+
+        return mat_file
+
+
+# Retain deprecated name for the time being
+ResultsList = Results

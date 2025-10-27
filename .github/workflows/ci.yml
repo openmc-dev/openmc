@@ -22,10 +22,10 @@ env:
 
 jobs:
   main:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     strategy:
       matrix:
-        python-version: [3.8]
+        python-version: ["3.11"]
         mpi: [n, y]
         omp: [n, y]
         dagmc: [n]
@@ -34,30 +34,30 @@ jobs:
         vectfit: [n]
 
         include:
-          - python-version: 3.6
+          - python-version: "3.12"
             omp: n
             mpi: n
-          - python-version: 3.7
+          - python-version: "3.13"
             omp: n
             mpi: n
           - dagmc: y
-            python-version: 3.8
+            python-version: "3.11"
             mpi: y
             omp: y
           - libmesh: y
-            python-version: 3.8
+            python-version: "3.11"
             mpi: y
             omp: y
           - libmesh: y
-            python-version: 3.8
+            python-version: "3.11"
             mpi: n
             omp: y
           - event: y
-            python-version: 3.8
+            python-version: "3.11"
             omp: y
             mpi: n
           - vectfit: y
-            python-version: 3.8
+            python-version: "3.11"
             omp: n
             mpi: y
     name: "Python ${{ matrix.python-version }} (omp=${{ matrix.omp }},
@@ -73,35 +73,69 @@ jobs:
       EVENT: ${{ matrix.event }}
       VECTFIT: ${{ matrix.vectfit }}
       LIBMESH: ${{ matrix.libmesh }}
+      NPY_DISABLE_CPU_FEATURES: "AVX512F AVX512_SKX"
+      OPENBLAS_NUM_THREADS: 1
+      PYTEST_ADDOPTS: --cov=openmc --cov-report=lcov:coverage-python.lcov
+      # libfabric complains about fork() as a result of using Python multiprocessing.
+      # We can work around it with RDMAV_FORK_SAFE=1 in libfabric < 1.13 and with
+      # FI_EFA_FORK_SAFE=1 in more recent versions.
+      RDMAV_FORK_SAFE: 1
 
     steps:
-      - uses: actions/checkout@v2
+      - name: Setup cmake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: '3.31'
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
       - name: Environment Variables
         run: |
-          echo "DAGMC_ROOT=$HOME/DAGMC"
           echo "OPENMC_CROSS_SECTIONS=$HOME/nndc_hdf5/cross_sections.xml" >> $GITHUB_ENV
           echo "OPENMC_ENDF_DATA=$HOME/endf-b-vii.1" >> $GITHUB_ENV
+          # get the sha of the last branch commit
+          # for push and workflow_dispatch events, use the current reference head
+          BRANCH_SHA=HEAD
+          # for a pull_request event, use the last reference of the parents of the merge commit
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            BRANCH_SHA=$(git rev-list --parents -n 1 HEAD | rev | cut -d" " -f 1 | rev)
+          fi
+          COMMIT_MESSAGE=$(git log $BRANCH_SHA -1 --pretty=%B | tr '\n' ' ')
+          echo ${COMMIT_MESSAGE}
+          echo "COMMIT_MESSAGE=${COMMIT_MESSAGE}" >> $GITHUB_ENV
 
       - name: Apt dependencies
         shell: bash
         run: |
           sudo apt -y update
           sudo apt install -y libpng-dev \
-                              libmpich-dev \
                               libnetcdf-dev \
                               libpnetcdf-dev \
                               libhdf5-serial-dev \
-                              libhdf5-mpich-dev \
                               libeigen3-dev
+
+      - name: Optional apt dependencies for MPI
+        shell: bash
+        if: ${{ matrix.mpi == 'y' }}
+        run: |
+          sudo apt install -y libhdf5-mpich-dev \
+                              libmpich-dev
           sudo update-alternatives --set mpi /usr/bin/mpicc.mpich
           sudo update-alternatives --set mpirun /usr/bin/mpirun.mpich
           sudo update-alternatives --set mpi-x86_64-linux-gnu /usr/include/x86_64-linux-gnu/mpich
+
+      - name: Optional apt dependencies for vectfit
+        shell: bash
+        if: ${{ matrix.vectfit == 'y' }}
+        run: sudo apt install -y libblas-dev liblapack-dev
 
       - name: install
         shell: bash
@@ -109,26 +143,73 @@ jobs:
           echo "$HOME/NJOY2016/build" >> $GITHUB_PATH
           $GITHUB_WORKSPACE/tools/ci/gha-install.sh
 
+      - name: display-config
+        shell: bash
+        run: |
+          openmc -v
+
+      - name: cache-xs
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/nndc_hdf5
+            ~/endf-b-vii.1
+          key: ${{ runner.os }}-build-xs-cache
+
       - name: before
         shell: bash
         run: $GITHUB_WORKSPACE/tools/ci/gha-before-script.sh
 
       - name: test
         shell: bash
-        run: $GITHUB_WORKSPACE/tools/ci/gha-script.sh
+        run: |
+          CTEST_OUTPUT_ON_FAILURE=1 make test -C $GITHUB_WORKSPACE/build/
+          $GITHUB_WORKSPACE/tools/ci/gha-script.sh
 
-      - name: after_success
+      - name: Setup tmate debug session
+        continue-on-error: true
+        if: ${{ contains(env.COMMIT_MESSAGE, '[gha-debug]') }}
+        uses: mxschmitt/action-tmate@v3
+        timeout-minutes: 10
+
+      - name: Generate C++ coverage (gcovr)
         shell: bash
         run: |
-          cpp-coveralls -i src -i include --exclude-pattern "/usr/*" --dump cpp_cov.json
-          coveralls --merge=cpp_cov.json --service=github
+          # Produce LCOV directly from gcov data in the build tree
+          gcovr \
+            --root "$GITHUB_WORKSPACE" \
+            --object-directory "$GITHUB_WORKSPACE/build" \
+            --filter "$GITHUB_WORKSPACE/src" \
+            --filter "$GITHUB_WORKSPACE/include" \
+            --exclude "$GITHUB_WORKSPACE/src/external/.*" \
+            --exclude "$GITHUB_WORKSPACE/src/include/openmc/external/.*" \
+            --gcov-ignore-errors source_not_found \
+            --gcov-ignore-errors output_error \
+            --gcov-ignore-parse-errors suspicious_hits.warn \
+            --print-summary \
+            --lcov -o coverage-cpp.lcov || true
+
+      - name: Merge C++ and Python coverage
+        shell: bash
+        run: |
+          # Merge C++ and Python LCOV into a single file for upload
+          cat coverage-cpp.lcov coverage-python.lcov > coverage.lcov
+
+      - name: Upload coverage to Coveralls
+        if: ${{ hashFiles('coverage.lcov') != '' }}
+        uses: coverallsapp/github-action@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          parallel: true
+          flag-name: C++ and Python
+          path-to-lcov: coverage.lcov
 
   finish:
     needs: main
     runs-on: ubuntu-latest
     steps:
       - name: Coveralls Finished
-        uses: coverallsapp/github-action@master
+        uses: coverallsapp/github-action@v2
         with:
-          github-token: ${{ secrets.github_token }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           parallel-finished: true

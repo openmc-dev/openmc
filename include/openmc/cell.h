@@ -10,13 +10,14 @@
 
 #include "hdf5.h"
 #include "pugixml.hpp"
-#include <gsl/gsl-lite.hpp>
 
+#include "openmc/bounding_box.h"
 #include "openmc/constants.h"
 #include "openmc/memory.h" // for unique_ptr
 #include "openmc/neighbor_list.h"
 #include "openmc/position.h"
 #include "openmc/surface.h"
+#include "openmc/universe.h"
 #include "openmc/vector.h"
 
 namespace openmc {
@@ -27,7 +28,6 @@ namespace openmc {
 
 enum class Fill { MATERIAL, UNIVERSE, LATTICE };
 
-// TODO: Convert to enum
 constexpr int32_t OP_LEFT_PAREN {std::numeric_limits<int32_t>::max()};
 constexpr int32_t OP_RIGHT_PAREN {std::numeric_limits<int32_t>::max() - 1};
 constexpr int32_t OP_COMPLEMENT {std::numeric_limits<int32_t>::max() - 2};
@@ -39,6 +39,7 @@ constexpr int32_t OP_UNION {std::numeric_limits<int32_t>::max() - 4};
 //==============================================================================
 
 class Cell;
+class GeometryState;
 class ParentCell;
 class CellInstance;
 class Universe;
@@ -48,38 +49,102 @@ namespace model {
 extern std::unordered_map<int32_t, int32_t> cell_map;
 extern vector<unique_ptr<Cell>> cells;
 
-extern std::unordered_map<int32_t, int32_t> universe_map;
-extern vector<unique_ptr<Universe>> universes;
 } // namespace model
 
 //==============================================================================
-//! A geometry primitive that fills all space and contains cells.
-//==============================================================================
 
-class Universe {
+class Region {
 public:
-  int32_t id_;            //!< Unique ID
-  vector<int32_t> cells_; //!< Cells within this universe
-  int filled_with_triso_base_ = -1; //!< ID of cell filled with virtual lattice
+  //----------------------------------------------------------------------------
+  // Constructors
+  Region() {}
+  explicit Region(std::string region_spec, int32_t cell_id);
 
-  //! \brief Write universe information to an HDF5 group.
-  //! \param group_id An HDF5 group id.
-  virtual void to_hdf5(hid_t group_id) const;
+  //----------------------------------------------------------------------------
+  // Methods
 
-  virtual bool find_cell(Particle& p) const;
+  //! \brief Determine if a cell contains the particle at a given location.
+  //!
+  //! The bounds of the cell are determined by a logical expression involving
+  //! surface half-spaces. The expression used is given in infix notation
+  //!
+  //! The function is split into two cases, one for simple cells (those
+  //! involving only the intersection of half-spaces) and one for complex cells.
+  //! Both cases use short circuiting; however, in the case fo complex cells,
+  //! the complexity increases with the binary operators involved.
+  //! \param r The 3D Cartesian coordinate to check.
+  //! \param u A direction used to "break ties" the coordinates are very
+  //!   close to a surface.
+  //! \param on_surface The signed index of a surface that the coordinate is
+  //!   known to be on.  This index takes precedence over surface sense
+  //!   calculations.
+  bool contains(Position r, Direction u, int32_t on_surface) const;
 
-  BoundingBox bounding_box() const;
+  //! Find the oncoming boundary of this cell.
+  std::pair<double, int32_t> distance(
+    Position r, Direction u, int32_t on_surface) const;
 
-  const GeometryType& geom_type() const { return geom_type_; }
-  GeometryType& geom_type() { return geom_type_; }
+  //! Get the BoundingBox for this cell.
+  BoundingBox bounding_box(int32_t cell_id) const;
 
-  unique_ptr<UniversePartitioner> partitioner_;
+  //! Get the CSG expression as a string
+  std::string str() const;
+
+  //! Get a vector containing all the surfaces in the region expression
+  vector<int32_t> surfaces() const;
+
+  //----------------------------------------------------------------------------
+  // Accessors
+
+  //! Get Boolean of if the cell is simple or not
+  bool is_simple() const { return simple_; }
+
+  //! Get a vector of the region expression in postfix notation
+  vector<int32_t> generate_postfix(int32_t cell_id) const;
 
 private:
-  GeometryType geom_type_ = GeometryType::CSG;
+  //----------------------------------------------------------------------------
+  // Private Methods
+
+  //! Determine if a particle is inside the cell for a simple cell (only
+  //! intersection operators)
+  bool contains_simple(Position r, Direction u, int32_t on_surface) const;
+
+  //! Determine if a particle is inside the cell for a complex cell.
+  //!
+  //! Uses the comobination of half-spaces and binary operators to determine
+  //! if short circuiting can be used. Short cicuiting uses the relative and
+  //! absolute depth of parentheses in the expression.
+  bool contains_complex(Position r, Direction u, int32_t on_surface) const;
+
+  //! BoundingBox if the paritcle is in a simple cell.
+  BoundingBox bounding_box_simple() const;
+
+  //! BoundingBox if the particle is in a complex cell.
+  BoundingBox bounding_box_complex(vector<int32_t> postfix) const;
+
+  //! Enfource precedence: Parenthases, Complement, Intersection, Union
+  void add_precedence();
+
+  //! Add parenthesis to enforce precedence
+  int64_t add_parentheses(int64_t start);
+
+  //! Remove complement operators from the expression
+  void remove_complement_ops();
+
+  //! Remove complement operators by using DeMorgan's laws
+  void apply_demorgan(
+    vector<int32_t>::iterator start, vector<int32_t>::iterator stop);
+
+  //----------------------------------------------------------------------------
+  // Private Data
+
+  //! Definition of spatial region as Boolean expression of half-spaces
+  // TODO: Should this be a vector of some other type
+  vector<int32_t> expression_;
+  bool simple_; //!< Does the region contain only intersections?
 };
 
-//==============================================================================
 //==============================================================================
 
 class Cell {
@@ -117,7 +182,7 @@ public:
 
   //! Find the oncoming boundary of this cell.
   virtual std::pair<double, int32_t> distance(
-    Position r, Direction u, int32_t on_surface, Particle* p) const = 0;
+    Position r, Direction u, int32_t on_surface, GeometryState* p) const = 0;
 
   //! Write all information needed to reconstruct the cell to an HDF5 group.
   //! \param group_id An HDF5 group id.
@@ -136,6 +201,12 @@ public:
   //! Get the BoundingBox for this cell.
   virtual BoundingBox bounding_box() const = 0;
 
+  //! Get a vector of surfaces in the cell
+  virtual vector<int32_t> surfaces() const { return vector<int32_t>(); }
+
+  //! Check if the cell region expression is simple
+  virtual bool is_simple() const { return true; }
+
   //----------------------------------------------------------------------------
   // Accessors
 
@@ -144,6 +215,18 @@ public:
   //!   the first instance is returned.
   //! \return Temperature in [K]
   double temperature(int32_t instance = -1) const;
+
+  //! Get the density multiplier of a cell instance
+  //! \param[in] instance Instance index. If -1 is given, the density multiplier
+  //! for the first instance is returned.
+  //! \return Density multiplier
+  double density_mult(int32_t instance = -1) const;
+
+  //! Get the density of a cell instance in g/cm3
+  //! \param[in] instance Instance index. If -1 is given, the density
+  //! for the first instance is returned.
+  //! \return Density in [g/cm3]
+  double density(int32_t instance = -1) const;
 
   //! Set the temperature of a cell instance
   //! \param[in] T Temperature in [K]
@@ -154,6 +237,18 @@ public:
   //!   temperatures.
   void set_temperature(
     double T, int32_t instance = -1, bool set_contained = false);
+
+  //! Set the density of a cell instance
+  //! \param[in] density Density [g/cm3]
+  //! \param[in] instance Instance index. If -1 is given, the density
+  //!   for all instances is set.
+  //! \param[in] set_contained If this cell is not filled with a material,
+  //!   collect all contained cells with material fills and set their
+  //!   densities.
+  void set_density(
+    double density, int32_t instance = -1, bool set_contained = false);
+
+  int32_t n_instances() const;
 
   //! Set the rotation matrix of a cell instance
   //! \param[in] rot The rotation matrix of length 3 or 9
@@ -176,6 +271,42 @@ public:
   std::unordered_map<int32_t, vector<int32_t>> get_contained_cells(
     int32_t instance = 0, Position* hint = nullptr) const;
 
+  //! Determine the material index corresponding to a specific cell instance,
+  //! taking into account presence of distribcell material
+  //! \param[in] instance of the cell
+  //! \return material index
+  int32_t material(int32_t instance) const
+  {
+    // If distributed materials are used, then each instance has its own
+    // material definition. If distributed materials are not used, then
+    // all instances used the same material stored at material_[0]. The
+    // presence of distributed materials is inferred from the size of
+    // the material_ vector being greater than one.
+    if (material_.size() > 1) {
+      return material_[instance];
+    } else {
+      return material_[0];
+    }
+  }
+
+  //! Determine the temperature index corresponding to a specific cell instance,
+  //! taking into account presence of distribcell temperature
+  //! \param[in] instance of the cell
+  //! \return temperature index
+  double sqrtkT(int32_t instance) const
+  {
+    // If distributed materials are used, then each instance has its own
+    // temperature definition. If distributed materials are not used, then
+    // all instances used the same temperature stored at sqrtkT_[0]. The
+    // presence of distributed materials is inferred from the size of
+    // the sqrtkT_ vector being greater than one.
+    if (sqrtkT_.size() > 1) {
+      return sqrtkT_[instance];
+    } else {
+      return sqrtkT_[0];
+    }
+  }
+
 protected:
   //! Determine the path to this cell instance in the geometry hierarchy
   //! \param[in] instance of the cell to find parent cells for
@@ -189,13 +320,12 @@ protected:
   //! \param[in] p particle used to do a fast search for parent cells
   //! \return parent cells
   vector<ParentCell> find_parent_cells(
-    int32_t instance, Particle& p) const;
+    int32_t instance, GeometryState& p) const;
 
   //! Determine the path to this cell instance in the geometry hierarchy
   //! \param[in] instance of the cell to find parent cells for
   //! \return parent cells
-  vector<ParentCell> exhaustive_find_parent_cells(
-    int32_t instance) const;
+  vector<ParentCell> exhaustive_find_parent_cells(int32_t instance) const;
 
   //! Inner function for retrieving contained cells
   void get_contained_cells_inner(
@@ -206,23 +336,19 @@ public:
   //----------------------------------------------------------------------------
   // Data members
 
-  int32_t id_;              //!< Unique ID
-  std::string name_;        //!< User-defined name
-  Fill type_;               //!< Material, universe, or lattice
-  int32_t universe_;        //!< Universe # this cell is in
-  int32_t fill_;            //!< Universe # filling this cell
-  int32_t n_instances_ {0}; //!< Number of instances of this cell
-  GeometryType geom_type_;  //!< Geometric representation type (CSG, DAGMC)
-  bool virtual_lattice_;    //!< If the cell is the base of a virtual triso lattice
+  int32_t id_;           //!< Unique ID
+  std::string name_;     //!< User-defined name
+  Fill type_;            //!< Material, universe, or lattice
+  int32_t universe_;     //!< Universe # this cell is in
+  int32_t fill_;         //!< Universe # filling this cell
+  bool virtual_lattice_; //!< If the cell is the base of a virtual triso lattice
   bool triso_particle_;
-
 
   //! \brief Specification of the virtual lattice
   vector<double> vl_lower_left_;
   vector<double> vl_pitch_;
   vector<int32_t> vl_shape_;
   vector<vector<int32_t>> vl_triso_distribution_;
-
   //! \brief Index corresponding to this cell in distribcell arrays
   int distribcell_index_ {C_NONE};
 
@@ -237,11 +363,8 @@ public:
   //! T. The units are sqrt(eV).
   vector<double> sqrtkT_;
 
-  //! Definition of spatial region as Boolean expression of half-spaces
-  vector<std::int32_t> region_;
-  //! Reverse Polish notation for region expression
-  vector<std::int32_t> rpn_;
-  bool simple_; //!< Does the region contain only intersections?
+  //! \brief Unitless density multiplier(s) within this cell.
+  vector<double> density_mult_;
 
   //! \brief Neighboring cells in the same universe.
   NeighborList neighbors_;
@@ -257,6 +380,9 @@ public:
   vector<double> rotation_;
 
   vector<int32_t> offset_; //!< Distribcell offset table
+
+  // Right now, either CSG or DAGMC cells are used.
+  virtual GeometryType geom_type() const = 0;
 };
 
 struct CellInstanceItem {
@@ -268,35 +394,38 @@ struct CellInstanceItem {
 
 class CSGCell : public Cell {
 public:
-  CSGCell();
-
+  //----------------------------------------------------------------------------
+  // Constructors
+  CSGCell() = default;
   explicit CSGCell(pugi::xml_node cell_node);
 
-  bool contains(Position r, Direction u, int32_t on_surface) const override;
+  //----------------------------------------------------------------------------
+  // Methods
+  vector<int32_t> surfaces() const override { return region_.surfaces(); }
 
-  std::pair<double, int32_t> distance(
-    Position r, Direction u, int32_t on_surface, Particle* p) const override;
+  std::pair<double, int32_t> distance(Position r, Direction u,
+    int32_t on_surface, GeometryState* p) const override;
+
+  std::pair<double, int32_t> distance_in_virtual_lattice(
+    Position r, Direction u, int32_t on_surface, GeometryState* p) const;
+
+  bool contains(Position r, Direction u, int32_t on_surface) const override
+  {
+    return region_.contains(r, u, on_surface);
+  }
+
+  BoundingBox bounding_box() const override
+  {
+    return region_.bounding_box(id_);
+  }
 
   void to_hdf5_inner(hid_t group_id) const override;
 
-  BoundingBox bounding_box() const override;
+  bool is_simple() const override { return region_.is_simple(); }
+
+  virtual GeometryType geom_type() const override { return GeometryType::CSG; }
 
 protected:
-  bool contains_simple(Position r, Direction u, int32_t on_surface) const;
-  bool contains_complex(Position r, Direction u, int32_t on_surface) const;
-  BoundingBox bounding_box_simple() const;
-  static BoundingBox bounding_box_complex(vector<int32_t> rpn);
-
-  //! Applies DeMorgan's laws to a section of the RPN
-  //! \param start Starting point for token modification
-  //! \param stop Stopping point for token modification
-  static void apply_demorgan(
-    vector<int32_t>::iterator start, vector<int32_t>::iterator stop);
-
-  //! Removes complement operators from the RPN
-  //! \param rpn The rpn to remove complement operators from.
-  static void remove_complement_ops(vector<int32_t>& rpn);
-
   //! Returns the beginning position of a parenthesis block (immediately before
   //! two surface tokens) in the RPN given a starting position at the end of
   //! that block (immediately after two surface tokens)
@@ -304,35 +433,9 @@ protected:
   //! \param rpn The rpn being searched
   static vector<int32_t>::iterator find_left_parenthesis(
     vector<int32_t>::iterator start, const vector<int32_t>& rpn);
-};
-
-//==============================================================================
-//! Speeds up geometry searches by grouping cells in a search tree.
-//
-//! Currently this object only works with universes that are divided up by a
-//! bunch of z-planes.  It could be generalized to other planes, cylinders,
-//! and spheres.
-//==============================================================================
-
-class UniversePartitioner {
-public:
-  explicit UniversePartitioner(const Universe& univ);
-
-  //! Return the list of cells that could contain the given coordinates.
-  const vector<int32_t>& get_cells(Position r, Direction u) const;
 
 private:
-  //! A sorted vector of indices to surfaces that partition the universe
-  vector<int32_t> surfs_;
-
-  //! Vectors listing the indices of the cells that lie within each partition
-  //
-  //! There are n+1 partitions with n surfaces.  `partitions_.front()` gives the
-  //! cells that lie on the negative side of `surfs_.front()`.
-  //! `partitions_.back()` gives the cells that lie on the positive side of
-  //! `surfs_.back()`.  Otherwise, `partitions_[i]` gives cells sandwiched
-  //! between `surfs_[i-1]` and `surfs_[i]`.
-  vector<vector<int32_t>> partitions_;
+  Region region_;
 };
 
 //==============================================================================
@@ -347,8 +450,8 @@ struct CellInstance {
     return index_cell == other.index_cell && instance == other.instance;
   }
 
-  gsl::index index_cell;
-  gsl::index instance;
+  int64_t index_cell;
+  int64_t instance;
 };
 
 //! Structure necessary for inserting CellInstance into hashed STL data
@@ -366,9 +469,8 @@ struct CellInstanceHash {
 
 void read_cells(pugi::xml_node node);
 
-#ifdef DAGMC
-class DAGUniverse;
-#endif
+//!  Add cells to universes
+void populate_universes();
 
 } // namespace openmc
 #endif // OPENMC_CELL_H

@@ -60,8 +60,8 @@ def model():
         [u3, u3, u2, u3],
         [u3, u3, u3, u2]
     ]
-    box = openmc.model.rectangular_prism(8.0, 8.0, boundary_type='reflective')
-    main_cell = openmc.Cell(fill=lat, region=box)
+    box = openmc.model.RectangularPrism(8.0, 8.0, boundary_type='reflective')
+    main_cell = openmc.Cell(fill=lat, region=-box)
     model.geometry.root_universe = openmc.Universe(cells=[main_cell])
     model.geometry.determine_paths()
 
@@ -69,7 +69,7 @@ def model():
     model.settings.batches = 5
     model.settings.inactive = 0
     model.settings.particles = 1000
-    model.settings.source = openmc.Source(space=openmc.stats.Point())
+    model.settings.source = openmc.IndependentSource(space=openmc.stats.Point())
 
     instances = ([(c4, i) for i in range(c4.num_instances)] +
                  [(c2, i) for i in range(c2.num_instances)] +

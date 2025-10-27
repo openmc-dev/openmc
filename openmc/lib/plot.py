@@ -31,7 +31,7 @@ class _Position(Structure):
         elif idx == 2:
             return self.z
         else:
-            raise IndexError("{} index is invalid for _Position".format(idx))
+            raise IndexError(f"{idx} index is invalid for _Position")
 
     def __setitem__(self, idx, val):
         if idx == 0:
@@ -41,10 +41,10 @@ class _Position(Structure):
         elif idx == 2:
             self.z = val
         else:
-            raise IndexError("{} index is invalid for _Position".format(idx))
+            raise IndexError(f"{idx} index is invalid for _Position")
 
     def __repr__(self):
-        return "({}, {}, {})".format(self.x, self.y, self.z)
+        return f"({self.x}, {self.y}, {self.z})"
 
 
 class _PlotBase(Structure):
@@ -90,19 +90,34 @@ class _PlotBase(Structure):
 
     def __init__(self):
         self.level_ = -1
+        self.basis_ = 1
         self.color_overlaps_ = False
 
     @property
     def origin(self):
         return self.origin_
 
+    @origin.setter
+    def origin(self, origin):
+        self.origin_.x = origin[0]
+        self.origin_.y = origin[1]
+        self.origin_.z = origin[2]
+
     @property
     def width(self):
         return self.width_.x
 
+    @width.setter
+    def width(self, width):
+        self.width_.x = width
+
     @property
     def height(self):
         return self.width_.y
+
+    @height.setter
+    def height(self, height):
+        self.width_.y = height
 
     @property
     def basis(self):
@@ -113,7 +128,7 @@ class _PlotBase(Structure):
         elif self.basis_ == 3:
             return 'yz'
 
-        raise ValueError("Plot basis {} is invalid".format(self.basis_))
+        raise ValueError(f"Plot basis {self.basis_} is invalid")
 
     @basis.setter
     def basis(self, basis):
@@ -121,7 +136,7 @@ class _PlotBase(Structure):
             valid_bases = ('xy', 'xz', 'yz')
             basis = basis.lower()
             if basis not in valid_bases:
-                raise ValueError("{} is not a valid plot basis.".format(basis))
+                raise ValueError(f"{basis} is not a valid plot basis.")
 
             if basis == 'xy':
                 self.basis_ = 1
@@ -134,24 +149,35 @@ class _PlotBase(Structure):
         if isinstance(basis, int):
             valid_bases = (1, 2, 3)
             if basis not in valid_bases:
-                raise ValueError("{} is not a valid plot basis.".format(basis))
+                raise ValueError(f"{basis} is not a valid plot basis.")
             self.basis_ = basis
             return
 
-        raise ValueError("{} of type {} is an"
-                         " invalid plot basis".format(basis, type(basis)))
+        raise ValueError(f"{basis} of type {type(basis)} is an invalid plot basis")
 
     @property
     def h_res(self):
         return self.pixels_[0]
 
+    @h_res.setter
+    def h_res(self, h_res):
+        self.pixels_[0] = h_res
+
     @property
     def v_res(self):
         return self.pixels_[1]
 
+    @v_res.setter
+    def v_res(self, v_res):
+        self.pixels_[1] = v_res
+
     @property
     def level(self):
         return int(self.level_)
+
+    @level.setter
+    def level(self, level):
+        self.level_ = level
 
     @property
     def color_overlaps(self):
@@ -160,32 +186,6 @@ class _PlotBase(Structure):
     @color_overlaps.setter
     def color_overlaps(self, color_overlaps):
         self.color_overlaps_ = color_overlaps
-
-    @origin.setter
-    def origin(self, origin):
-        self.origin_.x = origin[0]
-        self.origin_.y = origin[1]
-        self.origin_.z = origin[2]
-
-    @width.setter
-    def width(self, width):
-        self.width_.x = width
-
-    @height.setter
-    def height(self, height):
-        self.width_.y = height
-
-    @h_res.setter
-    def h_res(self, h_res):
-        self.pixels_[0] = h_res
-
-    @v_res.setter
-    def v_res(self, v_res):
-        self.pixels_[1] = v_res
-
-    @level.setter
-    def level(self, level):
-        self.level_ = level
 
     @property
     def color_overlaps(self):
@@ -199,14 +199,14 @@ class _PlotBase(Structure):
         out_str = ["-----",
                    "Plot:",
                    "-----",
-                   "Origin: {}".format(self.origin),
-                   "Width: {}".format(self.width),
-                   "Height: {}".format(self.height),
-                   "Basis: {}".format(self.basis),
-                   "HRes: {}".format(self.h_res),
-                   "VRes: {}".format(self.v_res),
-                   "Color Overlaps: {}".format(self.color_overlaps),
-                   "Level: {}".format(self.level)]
+                   f"Origin: {self.origin}",
+                   f"Width: {self.width}",
+                   f"Height: {self.height}",
+                   f"Basis: {self.basis}",
+                   f"HRes: {self.h_res}",
+                   f"VRes: {self.v_res}",
+                   f"Color Overlaps: {self.color_overlaps}",
+                   f"Level: {self.level}"]
         return '\n'.join(out_str)
 
 
@@ -229,7 +229,8 @@ def id_map(plot):
     -------
     id_map : numpy.ndarray
         A NumPy array with shape (vertical pixels, horizontal pixels, 3) of
-        OpenMC property ids with dtype int32
+        OpenMC property ids with dtype int32. The last dimension of the array
+        contains, in order, cell IDs, cell instances, and material IDs.
 
     """
     img_data = np.zeros((plot.v_res, plot.h_res, 3),

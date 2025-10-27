@@ -39,6 +39,9 @@ _dll.openmc_tally_get_filters.argtypes = [
     c_int32, POINTER(POINTER(c_int32)), POINTER(c_size_t)]
 _dll.openmc_tally_get_filters.restype = c_int
 _dll.openmc_tally_get_filters.errcheck = _error_handler
+_dll.openmc_tally_get_multiply_density.argtypes = [c_int32, POINTER(c_bool)]
+_dll.openmc_tally_get_multiply_density.restype = c_int
+_dll.openmc_tally_get_multiply_density.errcheck = _error_handler
 _dll.openmc_tally_get_n_realizations.argtypes = [c_int32, POINTER(c_int32)]
 _dll.openmc_tally_get_n_realizations.restype = c_int
 _dll.openmc_tally_get_n_realizations.errcheck = _error_handler
@@ -75,6 +78,9 @@ _dll.openmc_tally_set_estimator.errcheck = _error_handler
 _dll.openmc_tally_set_id.argtypes = [c_int32, c_int32]
 _dll.openmc_tally_set_id.restype = c_int
 _dll.openmc_tally_set_id.errcheck = _error_handler
+_dll.openmc_tally_set_multiply_density.argtypes = [c_int32, c_bool]
+_dll.openmc_tally_set_multiply_density.restype = c_int
+_dll.openmc_tally_set_multiply_density.errcheck = _error_handler
 _dll.openmc_tally_set_nuclides.argtypes = [c_int32, c_int, POINTER(c_char_p)]
 _dll.openmc_tally_set_nuclides.restype = c_int
 _dll.openmc_tally_set_nuclides.errcheck = _error_handler
@@ -87,6 +93,9 @@ _dll.openmc_tally_set_type.errcheck = _error_handler
 _dll.openmc_tally_set_writable.argtypes = [c_int32, c_bool]
 _dll.openmc_tally_set_writable.restype = c_int
 _dll.openmc_tally_set_writable.errcheck = _error_handler
+_dll.openmc_remove_tally.argtypes = [c_int32]
+_dll.openmc_remove_tally.restype = c_int
+_dll.openmc_remove_tally.errcheck = _error_handler
 _dll.tallies_size.restype = c_size_t
 
 
@@ -95,13 +104,15 @@ _SCORES = {
     -5: 'absorption', -6: 'fission', -7: 'nu-fission', -8: 'kappa-fission',
     -9: 'current', -10: 'events', -11: 'delayed-nu-fission',
     -12: 'prompt-nu-fission', -13: 'inverse-velocity', -14: 'fission-q-prompt',
-    -15: 'fission-q-recoverable', -16: 'decay-rate'
+    -15: 'fission-q-recoverable', -16: 'decay-rate', -17: 'pulse-height',
+    -18: 'ifp-time-numerator', -19: 'ifp-beta-numerator',
+    -20: 'ifp-denominator',
 }
 _ESTIMATORS = {
     0: 'analog', 1: 'tracklength', 2: 'collision'
 }
 _TALLY_TYPES = {
-    0: 'volume', 1: 'mesh-surface', 2: 'surface'
+    0: 'volume', 1: 'mesh-surface', 2: 'surface', 3: 'pulse-height'
 }
 
 
@@ -171,6 +182,10 @@ class Tally(_FortranObjectWithID):
         List of tally filters
     mean : numpy.ndarray
         An array containing the sample mean for each bin
+    multiply_density : bool
+        Whether reaction rates should be multiplied by atom density
+
+        .. versionadded:: 0.14.0
     nuclides : list of str
         List of nuclides to score results for
     num_realizations : int
@@ -218,6 +233,10 @@ class Tally(_FortranObjectWithID):
         _dll.openmc_tally_get_active(self._index, active)
         return active.value
 
+    @active.setter
+    def active(self, active):
+        _dll.openmc_tally_set_active(self._index, active)
+
     @property
     def type(self):
         type = c_int32()
@@ -237,10 +256,6 @@ class Tally(_FortranObjectWithID):
     @estimator.setter
     def estimator(self, estimator):
         _dll.openmc_tally_set_estimator(self._index, estimator.encode())
-
-    @active.setter
-    def active(self, active):
-        _dll.openmc_tally_set_active(self._index, active)
 
     @property
     def id(self):
@@ -266,6 +281,30 @@ class Tally(_FortranObjectWithID):
         indices = (c_int32*n)(*(f._index for f in filters))
 
         _dll.openmc_tally_set_filters(self._index, n, indices)
+
+    def find_filter(self, filter_type):
+        """
+        Returns the first instance of a filter matching the specified type
+
+        Parameters
+        ----------
+        filter_type : subclass of openmc.lib.Filter
+            The filter type to match when retrieving a filter instance
+
+        Returns
+        -------
+        filter : openmc.lib.Filter
+            The filter instance matching the input filter type
+
+        Raises
+        ------
+        ValueError if a filter instance matching the input filter type cannot be found.
+        """
+        for filter in self.filters:
+            if isinstance(filter, filter_type):
+                return filter
+
+        raise ValueError(f'No filter of type {filter_type} on tally {self.id}')
 
     @property
     def mean(self):
@@ -360,6 +399,16 @@ class Tally(_FortranObjectWithID):
     def writable(self, writable):
         _dll.openmc_tally_set_writable(self._index, writable)
 
+    @property
+    def multiply_density(self):
+        multiply_density = c_bool()
+        _dll.openmc_tally_get_multiply_density(self._index, multiply_density)
+        return multiply_density.value
+
+    @multiply_density.setter
+    def multiply_density(self, multiply_density):
+        _dll.openmc_tally_set_multiply_density(self._index, multiply_density)
+
     def reset(self):
         """Reset results and num_realizations of tally"""
         _dll.openmc_tally_reset(self._index)
@@ -404,5 +453,9 @@ class _TallyMapping(Mapping):
 
     def __repr__(self):
         return repr(dict(self))
+
+    def __delitem__(self, key):
+        """Delete a tally from tally vector and remove the ID,index pair from tally"""
+        _dll.openmc_remove_tally(self[key]._index)
 
 tallies = _TallyMapping()

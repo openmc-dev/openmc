@@ -44,6 +44,8 @@ class AngleEnergy(EqualityMixin, ABC):
             return openmc.data.IncoherentInelasticAEDiscrete.from_hdf5(group)
         elif dist_type == 'incoherent_inelastic':
             return openmc.data.IncoherentInelasticAE.from_hdf5(group)
+        elif dist_type == 'mixed_elastic':
+            return openmc.data.MixedElasticAE.from_hdf5(group)
 
     @staticmethod
     def from_ace(ace, location_dist, location_start, rx=None):
@@ -110,7 +112,6 @@ class AngleEnergy(EqualityMixin, ABC):
             distribution = openmc.data.NBodyPhaseSpace.from_ace(
                 ace, idx, rx.q_value)
         else:
-            raise ValueError("Unsupported ACE secondary energy "
-                             "distribution law {}".format(law))
+            raise ValueError(f"Unsupported ACE secondary energy distribution law {law}")
 
         return distribution

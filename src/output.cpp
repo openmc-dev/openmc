@@ -1,6 +1,7 @@
 #include "openmc/output.h"
 
 #include <algorithm> // for transform, max
+#include <cstdio>    // for stdout
 #include <cstring>   // for strlen
 #include <ctime>     // for time, localtime
 #include <fstream>
@@ -30,6 +31,7 @@
 #include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
 #include "openmc/plot.h"
+#include "openmc/random_ray/flat_source_domain.h"
 #include "openmc/reaction.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
@@ -73,13 +75,12 @@ void title()
   // Write version information
   fmt::print(
     "                 | The OpenMC Monte Carlo Code\n"
-    "       Copyright | 2011-2022 MIT, UChicago Argonne LLC, and contributors\n"
+    "       Copyright | 2011-2025 MIT, UChicago Argonne LLC, and contributors\n"
     "         License | https://docs.openmc.org/en/latest/license.html\n"
-    "         Version | {}.{}.{}{}\n",
-    VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE, VERSION_DEV ? "-dev" : "");
-#ifdef GIT_SHA1
-  fmt::print("        Git SHA1 | {}\n", GIT_SHA1);
-#endif
+    "         Version | {}.{}.{}{}{}\n",
+    VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE, VERSION_DEV ? "-dev" : "",
+    VERSION_COMMIT_COUNT);
+  fmt::print("     Commit Hash | {}\n", VERSION_COMMIT_HASH);
 
   // Write the date and time
   fmt::print("       Date/Time | {}\n", time_stamp());
@@ -93,7 +94,8 @@ void title()
   // Write number of OpenMP threads
   fmt::print("  OpenMP Threads | {}\n", omp_get_max_threads());
 #endif
-  std::cout << std::endl;
+  fmt::print("\n");
+  std::fflush(stdout);
 }
 
 //==============================================================================
@@ -132,8 +134,10 @@ void header(const char* msg, int level)
   auto out = header(msg);
 
   // Print header based on verbosity level.
-  if (settings::verbosity >= level)
-    std::cout << '\n' << out << "\n" << std::endl;
+  if (settings::verbosity >= level) {
+    fmt::print("\n{}\n\n", out);
+    std::fflush(stdout);
+  }
 }
 
 //==============================================================================
@@ -173,31 +177,32 @@ void print_particle(Particle& p)
   for (auto i = 0; i < p.n_coord(); i++) {
     fmt::print("  Level {}\n", i);
 
-    if (p.coord(i).cell != C_NONE) {
-      const Cell& c {*model::cells[p.coord(i).cell]};
+    if (p.coord(i).cell() != C_NONE) {
+      const Cell& c {*model::cells[p.coord(i).cell()]};
       fmt::print("    Cell             = {}\n", c.id_);
     }
 
-    if (p.coord(i).universe != C_NONE) {
-      const Universe& u {*model::universes[p.coord(i).universe]};
+    if (p.coord(i).universe() != C_NONE) {
+      const Universe& u {*model::universes[p.coord(i).universe()]};
       fmt::print("    Universe         = {}\n", u.id_);
     }
 
-    if (p.coord(i).lattice != C_NONE) {
-      const Lattice& lat {*model::lattices[p.coord(i).lattice]};
+    if (p.coord(i).lattice() != C_NONE) {
+      const Lattice& lat {*model::lattices[p.coord(i).lattice()]};
       fmt::print("    Lattice          = {}\n", lat.id_);
-      fmt::print("    Lattice position = ({},{},{})\n", p.coord(i).lattice_i[0],
-        p.coord(i).lattice_i[1], p.coord(i).lattice_i[2]);
+      fmt::print("    Lattice position = ({},{},{})\n",
+        p.coord(i).lattice_index()[0], p.coord(i).lattice_index()[1],
+        p.coord(i).lattice_index()[2]);
     }
 
-    fmt::print("    r = {}\n", p.coord(i).r);
-    fmt::print("    u = {}\n", p.coord(i).u);
+    fmt::print("    r = {}\n", p.coord(i).r());
+    fmt::print("    u = {}\n", p.coord(i).u());
   }
 
   // Display miscellaneous info.
-  if (p.surface() != 0) {
+  if (p.surface() != SURFACE_NONE) {
     // Surfaces identifiers are >= 1, but indices are >= 0 so we need -1
-    const Surface& surf {*model::surfaces[std::abs(p.surface()) - 1]};
+    const Surface& surf {*model::surfaces[p.surface_index()]};
     fmt::print("  Surface = {}\n", (p.surface() > 0) ? surf.id_ : -surf.id_);
   }
   fmt::print("  Weight = {}\n", p.wgt());
@@ -217,56 +222,11 @@ void print_plot()
   if (settings::verbosity < 5)
     return;
 
-  for (auto pl : model::plots) {
-    // Plot id
-    fmt::print("Plot ID: {}\n", pl.id_);
-    // Plot filename
-    fmt::print("Plot file: {}\n", pl.path_plot_);
-    // Plot level
-    fmt::print("Universe depth: {}\n", pl.level_);
-
-    // Plot type
-    if (PlotType::slice == pl.type_) {
-      fmt::print("Plot Type: Slice\n");
-    } else if (PlotType::voxel == pl.type_) {
-      fmt::print("Plot Type: Voxel\n");
-    }
-
-    // Plot parameters
-    fmt::print(
-      "Origin: {} {} {}\n", pl.origin_[0], pl.origin_[1], pl.origin_[2]);
-
-    if (PlotType::slice == pl.type_) {
-      fmt::print("Width: {:4} {:4}\n", pl.width_[0], pl.width_[1]);
-    } else if (PlotType::voxel == pl.type_) {
-      fmt::print(
-        "Width: {:4} {:4} {:4}\n", pl.width_[0], pl.width_[1], pl.width_[2]);
-    }
-
-    if (PlotColorBy::cells == pl.color_by_) {
-      fmt::print("Coloring: Cells\n");
-    } else if (PlotColorBy::mats == pl.color_by_) {
-      fmt::print("Coloring: Materials\n");
-    }
-
-    if (PlotType::slice == pl.type_) {
-      switch (pl.basis_) {
-      case PlotBasis::xy:
-        fmt::print("Basis: XY\n");
-        break;
-      case PlotBasis::xz:
-        fmt::print("Basis: XZ\n");
-        break;
-      case PlotBasis::yz:
-        fmt::print("Basis: YZ\n");
-        break;
-      }
-      fmt::print("Pixels: {} {}\n", pl.pixels_[0], pl.pixels_[1]);
-    } else if (PlotType::voxel == pl.type_) {
-      fmt::print(
-        "Voxels: {} {} {}\n", pl.pixels_[0], pl.pixels_[1], pl.pixels_[2]);
-    }
-
+  for (const auto& pl : model::plots) {
+    fmt::print("Plot ID: {}\n", pl->id());
+    fmt::print("Plot file: {}\n", pl->path_plot());
+    fmt::print("Universe depth: {}\n", pl->level());
+    pl->print_info(); // prints type-specific plot info
     fmt::print("\n");
   }
 }
@@ -309,7 +269,7 @@ void print_usage()
 {
   if (mpi::master) {
     fmt::print(
-      "Usage: openmc [options] [directory]\n\n"
+      "Usage: openmc [options] [path]\n\n"
       "Options:\n"
       "  -c, --volume           Run in stochastic volume calculation mode\n"
       "  -g, --geometry-debug   Run with geometry debugging on\n"
@@ -318,7 +278,8 @@ void print_usage()
       "  -r, --restart          Restart a previous run from a state point\n"
       "                         or a particle restart file\n"
       "  -s, --threads          Number of OpenMP threads\n"
-      "  -t, --track            Write tracks for all particles\n"
+      "  -t, --track            Write tracks for all particles (up to "
+      "max_tracks)\n"
       "  -e, --event            Run using event-based parallelism\n"
       "  -v, --version          Show version information\n"
       "  -h, --help             Show this message\n");
@@ -330,14 +291,77 @@ void print_usage()
 void print_version()
 {
   if (mpi::master) {
-    fmt::print("OpenMC version {}.{}.{}\n", VERSION_MAJOR, VERSION_MINOR,
-      VERSION_RELEASE);
-#ifdef GIT_SHA1
-    fmt::print("Git SHA1: {}\n", GIT_SHA1);
-#endif
-    fmt::print("Copyright (c) 2011-2022 MIT, UChicago Argonne LLC, and "
+    fmt::print("OpenMC version {}.{}.{}{}{}\n", VERSION_MAJOR, VERSION_MINOR,
+      VERSION_RELEASE, VERSION_DEV ? "-dev" : "", VERSION_COMMIT_COUNT);
+    fmt::print("Commit hash: {}\n", VERSION_COMMIT_HASH);
+    fmt::print("Copyright (c) 2011-2025 MIT, UChicago Argonne LLC, and "
                "contributors\nMIT/X license at "
                "<https://docs.openmc.org/en/latest/license.html>\n");
+  }
+}
+
+//==============================================================================
+
+void print_build_info()
+{
+  const std::string n("no");
+  const std::string y("yes");
+
+  std::string mpi(n);
+  std::string phdf5(n);
+  std::string dagmc(n);
+  std::string libmesh(n);
+  std::string png(n);
+  std::string profiling(n);
+  std::string coverage(n);
+  std::string mcpl(n);
+  std::string uwuw(n);
+
+#ifdef PHDF5
+  phdf5 = y;
+#endif
+#ifdef OPENMC_MPI
+  mpi = y;
+#endif
+#ifdef OPENMC_DAGMC_ENABLED
+  dagmc = y;
+#endif
+#ifdef OPENMC_LIBMESH_ENABLED
+  libmesh = y;
+#endif
+#ifdef OPENMC_MCPL
+  mcpl = y;
+#endif
+#ifdef USE_LIBPNG
+  png = y;
+#endif
+#ifdef PROFILINGBUILD
+  profiling = y;
+#endif
+#ifdef COVERAGEBUILD
+  coverage = y;
+#endif
+#ifdef OPENMC_UWUW_ENABLED
+  uwuw = y;
+#endif
+
+  // Wraps macro variables in quotes
+#define STRINGIFY(x) STRINGIFY2(x)
+#define STRINGIFY2(x) #x
+
+  if (mpi::master) {
+    fmt::print("Build type:            {}\n", STRINGIFY(BUILD_TYPE));
+    fmt::print("Compiler ID:           {} {}\n", STRINGIFY(COMPILER_ID),
+      STRINGIFY(COMPILER_VERSION));
+    fmt::print("MPI enabled:           {}\n", mpi);
+    fmt::print("Parallel HDF5 enabled: {}\n", phdf5);
+    fmt::print("PNG support:           {}\n", png);
+    fmt::print("DAGMC support:         {}\n", dagmc);
+    fmt::print("libMesh support:       {}\n", libmesh);
+    fmt::print("MCPL support:          {}\n", mcpl);
+    fmt::print("Coverage testing:      {}\n", coverage);
+    fmt::print("Profiling flags:       {}\n", profiling);
+    fmt::print("UWUW support:          {}\n", uwuw);
   }
 }
 
@@ -378,12 +402,13 @@ void print_generation()
   if (n > 1) {
     fmt::print("   {:8.5f} +/-{:8.5f}", simulation::keff, simulation::keff_std);
   }
-  std::cout << std::endl;
+  fmt::print("\n");
+  std::fflush(stdout);
 }
 
 //==============================================================================
 
-void show_time(const char* label, double secs, int indent_level = 0)
+void show_time(const char* label, double secs, int indent_level)
 {
   int width = 33 - indent_level * 2;
   fmt::print("{0:{1}} {2:<{3}} = {4:>10.4e} seconds\n", "", 2 * indent_level,
@@ -546,6 +571,7 @@ void print_results()
       gt(GlobalTally::LEAKAGE, TallyResult::SUM) / n);
   }
   fmt::print("\n");
+  std::fflush(stdout);
 }
 
 //==============================================================================
@@ -567,6 +593,10 @@ const std::unordered_map<int, const char*> score_names = {
   {SCORE_FISS_Q_PROMPT, "Prompt fission power"},
   {SCORE_FISS_Q_RECOV, "Recoverable fission power"},
   {SCORE_CURRENT, "Current"},
+  {SCORE_PULSE_HEIGHT, "pulse-height"},
+  {SCORE_IFP_TIME_NUM, "IFP lifetime numerator"},
+  {SCORE_IFP_BETA_NUM, "IFP delayed fraction numerator"},
+  {SCORE_IFP_DENOM, "IFP common denominator"},
 };
 
 //! Create an ASCII output file showing all tally results.
@@ -576,9 +606,12 @@ void write_tallies()
   if (model::tallies.empty())
     return;
 
+  // Set filename for tallies_out
+  std::string filename = fmt::format("{}tallies.out", settings::path_output);
+
   // Open the tallies.out file.
   std::ofstream tallies_out;
-  tallies_out.open("tallies.out", std::ios::out | std::ios::trunc);
+  tallies_out.open(filename, std::ios::out | std::ios::trunc);
 
   // Loop over each tally.
   for (auto i_tally = 0; i_tally < model::tallies.size(); ++i_tally) {

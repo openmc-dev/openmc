@@ -13,7 +13,9 @@
 #include "openmc/constants.h"
 #include "openmc/eigenvalue.h"
 #include "openmc/error.h"
+#include "openmc/file_utils.h"
 #include "openmc/hdf5_interface.h"
+#include "openmc/mcpl_interface.h"
 #include "openmc/mesh.h"
 #include "openmc/message_passing.h"
 #include "openmc/mgxs_interface.h"
@@ -34,7 +36,8 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
 {
   simulation::time_statepoint.start();
 
-  // Set the filename
+  // If a nullptr is passed in, we assume that the user
+  // wants a default name for this, of the form like output/statepoint.20.h5
   std::string filename_;
   if (filename) {
     filename_ = filename;
@@ -45,6 +48,13 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
     // Set filename for state point
     filename_ = fmt::format("{0}statepoint.{1:0{2}}.h5", settings::path_output,
       simulation::current_batch, w);
+  }
+
+  // If a file name was specified, ensure it has .h5 file extension
+  const auto extension = get_file_extension(filename_);
+  if (extension != "h5") {
+    warning("openmc_statepoint_write was passed a file extension differing "
+            "from .h5, but an hdf5 file will be written.");
   }
 
   // Determine whether or not to write the source bank
@@ -78,6 +88,9 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
 
     // Write out random number seed
     write_dataset(file_id, "seed", openmc_get_seed());
+
+    // Write out random number stride
+    write_dataset(file_id, "stride", openmc_get_stride());
 
     // Write run information
     write_dataset(file_id, "energy_mode",
@@ -180,6 +193,12 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
           write_attribute(tally_group, "internal", 1);
           close_group(tally_group);
           continue;
+        }
+
+        if (tally->multiply_density()) {
+          write_attribute(tally_group, "multiply_density", 1);
+        } else {
+          write_attribute(tally_group, "multiply_density", 0);
         }
 
         if (tally->estimator_ == TallyEstimator::ANALOG) {
@@ -316,12 +335,12 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
   if (write_source_) {
     if (mpi::master || parallel)
       file_id = file_open(filename_, 'a', true);
-    write_source_bank(file_id, false);
+    write_source_bank(file_id, simulation::source_bank, simulation::work_index);
     if (mpi::master || parallel)
       file_close(file_id);
   }
 
-#if defined(LIBMESH) || defined(DAGMC)
+#if defined(OPENMC_LIBMESH_ENABLED) || defined(OPENMC_DAGMC_ENABLED)
   // write unstructured mesh tally files
   write_unstructured_mesh_results();
 #endif
@@ -347,11 +366,27 @@ void restart_set_keff()
 
 void load_state_point()
 {
-  // Write message
-  write_message("Loading state point " + settings::path_statepoint + "...", 5);
+  write_message(
+    fmt::format("Loading state point {}...", settings::path_statepoint_c), 5);
+  openmc_statepoint_load(settings::path_statepoint.c_str());
+}
 
+void statepoint_version_check(hid_t file_id)
+{
+  // Read revision number for state point file and make sure it matches with
+  // current version
+  array<int, 2> version_array;
+  read_attribute(file_id, "version", version_array);
+  if (version_array != VERSION_STATEPOINT) {
+    fatal_error(
+      "State point version does not match current version in OpenMC.");
+  }
+}
+
+extern "C" int openmc_statepoint_load(const char* filename)
+{
   // Open file for reading
-  hid_t file_id = file_open(settings::path_statepoint.c_str(), 'r', true);
+  hid_t file_id = file_open(filename, 'r', true);
 
   // Read filetype
   std::string word;
@@ -360,19 +395,17 @@ void load_state_point()
     fatal_error("OpenMC tried to restart from a non-statepoint file.");
   }
 
-  // Read revision number for state point file and make sure it matches with
-  // current version
-  array<int, 2> array;
-  read_attribute(file_id, "version", array);
-  if (array != VERSION_STATEPOINT) {
-    fatal_error(
-      "State point version does not match current version in OpenMC.");
-  }
+  statepoint_version_check(file_id);
 
   // Read and overwrite random number seed
   int64_t seed;
   read_dataset(file_id, "seed", seed);
   openmc_set_seed(seed);
+
+  // Read and overwrite random number stride
+  uint64_t stride;
+  read_dataset(file_id, "stride", stride);
+  openmc_set_stride(stride);
 
   // It is not impossible for a state point to be generated from a CE run but
   // to be loaded in to an MG run (or vice versa), check to prevent that.
@@ -403,9 +436,13 @@ void load_state_point()
   // Read batch number to restart at
   read_dataset(file_id, "current_batch", simulation::restart_batch);
 
-  if (simulation::restart_batch > settings::n_batches) {
-    fatal_error("The number batches specified in settings.xml is fewer "
-                " than the number of batches in the given statepoint file.");
+  if (settings::restart_run &&
+      simulation::restart_batch >= settings::n_max_batches) {
+    warning(fmt::format(
+      "The number of batches specified for simulation ({}) is smaller "
+      "than or equal to the number of batches in the restart statepoint file "
+      "({})",
+      settings::n_max_batches, simulation::restart_batch));
   }
 
   // Logical flag for source present in statepoint file
@@ -470,7 +507,6 @@ void load_state_point()
         if (internal) {
           tally->writable_ = false;
         } else {
-
           auto& results = tally->results_;
           read_tally_results(tally_group, results.shape()[0],
             results.shape()[1], results.data());
@@ -478,7 +514,6 @@ void load_state_point()
           close_group(tally_group);
         }
       }
-
       close_group(tallies_group);
     }
   }
@@ -506,6 +541,8 @@ void load_state_point()
 
   // Close file
   file_close(file_id);
+
+  return 0;
 }
 
 hid_t h5banktype()
@@ -527,6 +564,7 @@ hid_t h5banktype()
   H5Tinsert(banktype, "r", HOFFSET(SourceSite, r), postype);
   H5Tinsert(banktype, "u", HOFFSET(SourceSite, u), postype);
   H5Tinsert(banktype, "E", HOFFSET(SourceSite, E), H5T_NATIVE_DOUBLE);
+  H5Tinsert(banktype, "time", HOFFSET(SourceSite, time), H5T_NATIVE_DOUBLE);
   H5Tinsert(banktype, "wgt", HOFFSET(SourceSite, wgt), H5T_NATIVE_DOUBLE);
   H5Tinsert(banktype, "delayed_group", HOFFSET(SourceSite, delayed_group),
     H5T_NATIVE_INT);
@@ -538,31 +576,25 @@ hid_t h5banktype()
   return banktype;
 }
 
-vector<int64_t> calculate_surf_source_size()
+void write_source_point(std::string filename, span<SourceSite> source_bank,
+  const vector<int64_t>& bank_index, bool use_mcpl)
 {
-  vector<int64_t> surf_source_index;
-  surf_source_index.reserve(mpi::n_procs + 1);
+  std::string ext = use_mcpl ? "mcpl" : "h5";
+  write_message("Creating source file {}.{} with {} particles ...", filename,
+    ext, source_bank.size(), 5);
 
-#ifdef OPENMC_MPI
-  surf_source_index.resize(mpi::n_procs);
-  vector<int64_t> bank_size(mpi::n_procs);
-
-  // Populate the surf_source_index with cumulative sum of the number of
-  // surface source banks per process
-  int64_t size = simulation::surf_source_bank.size();
-  MPI_Scan(&size, bank_size.data(), 1, MPI_INT64_T, MPI_SUM, mpi::intracomm);
-  MPI_Allgather(bank_size.data(), 1, MPI_INT64_T, surf_source_index.data(), 1,
-    MPI_INT64_T, mpi::intracomm);
-  surf_source_index.insert(surf_source_index.begin(), 0);
-#else
-  surf_source_index.push_back(0);
-  surf_source_index.push_back(simulation::surf_source_bank.size());
-#endif
-
-  return surf_source_index;
+  // Dispatch to appropriate function based on file type
+  if (use_mcpl) {
+    filename.append(".mcpl");
+    write_mcpl_source_point(filename.c_str(), source_bank, bank_index);
+  } else {
+    filename.append(".h5");
+    write_h5_source_point(filename.c_str(), source_bank, bank_index);
+  }
 }
 
-void write_source_point(const char* filename, bool surf_source_bank)
+void write_h5_source_point(const char* filename, span<SourceSite> source_bank,
+  const vector<int64_t>& bank_index)
 {
   // When using parallel HDF5, the file is written to collectively by all
   // processes. With MPI-only, the file is opened and written by the master
@@ -574,58 +606,37 @@ void write_source_point(const char* filename, bool surf_source_bank)
   bool parallel = false;
 #endif
 
-  std::string filename_;
-  if (filename) {
-    filename_ = filename;
-  } else {
-    // Determine width for zero padding
-    int w = std::to_string(settings::n_max_batches).size();
+  if (!filename)
+    fatal_error("write_source_point filename needs a nonempty name.");
 
-    filename_ = fmt::format("{0}source.{1:0{2}}.h5", settings::path_output,
-      simulation::current_batch, w);
+  std::string filename_(filename);
+  const auto extension = get_file_extension(filename_);
+  if (extension != "h5") {
+    warning("write_source_point was passed a file extension differing "
+            "from .h5, but an hdf5 file will be written.");
   }
 
   hid_t file_id;
   if (mpi::master || parallel) {
-    file_id = file_open(filename_, 'w', true);
+    file_id = file_open(filename_.c_str(), 'w', true);
     write_attribute(file_id, "filetype", "source");
   }
 
   // Get pointer to source bank and write to file
-  write_source_bank(file_id, surf_source_bank);
+  write_source_bank(file_id, source_bank, bank_index);
 
   if (mpi::master || parallel)
     file_close(file_id);
 }
 
-void write_source_bank(hid_t group_id, bool surf_source_bank)
+void write_source_bank(hid_t group_id, span<SourceSite> source_bank,
+  const vector<int64_t>& bank_index)
 {
   hid_t banktype = h5banktype();
 
   // Set total and individual process dataspace sizes for source bank
-  int64_t dims_size = settings::n_particles;
-  int64_t count_size = simulation::work_per_rank;
-
-  // Set vectors for source bank and starting bank index of each process
-  vector<int64_t>* bank_index = &simulation::work_index;
-  vector<SourceSite>* source_bank = &simulation::source_bank;
-  vector<int64_t> surf_source_index_vector;
-  vector<SourceSite> surf_source_bank_vector;
-
-  // Reset dataspace sizes and vectors for surface source bank
-  if (surf_source_bank) {
-    surf_source_index_vector = calculate_surf_source_size();
-    dims_size = surf_source_index_vector[mpi::n_procs];
-    count_size = simulation::surf_source_bank.size();
-
-    bank_index = &surf_source_index_vector;
-
-    // Copy data in a SharedArray into a vector.
-    surf_source_bank_vector.resize(count_size);
-    surf_source_bank_vector.assign(simulation::surf_source_bank.data(),
-      simulation::surf_source_bank.data() + count_size);
-    source_bank = &surf_source_bank_vector;
-  }
+  int64_t dims_size = bank_index.back();
+  int64_t count_size = bank_index[mpi::rank + 1] - bank_index[mpi::rank];
 
 #ifdef PHDF5
   // Set size of total dataspace for all procs and rank
@@ -639,7 +650,7 @@ void write_source_bank(hid_t group_id, bool surf_source_bank)
   hid_t memspace = H5Screate_simple(1, count, nullptr);
 
   // Select hyperslab for this dataspace
-  hsize_t start[] {static_cast<hsize_t>((*bank_index)[mpi::rank])};
+  hsize_t start[] {static_cast<hsize_t>(bank_index[mpi::rank])};
   H5Sselect_hyperslab(dspace, H5S_SELECT_SET, start, nullptr, count, nullptr);
 
   // Set up the property list for parallel writing
@@ -647,7 +658,7 @@ void write_source_bank(hid_t group_id, bool surf_source_bank)
   H5Pset_dxpl_mpio(plist, H5FD_MPIO_COLLECTIVE);
 
   // Write data to file in parallel
-  H5Dwrite(dset, banktype, memspace, dspace, plist, source_bank->data());
+  H5Dwrite(dset, banktype, memspace, dspace, plist, source_bank.data());
 
   // Free resources
   H5Sclose(dspace);
@@ -666,31 +677,30 @@ void write_source_bank(hid_t group_id, bool surf_source_bank)
 
     // Save source bank sites since the array is overwritten below
 #ifdef OPENMC_MPI
-    vector<SourceSite> temp_source {source_bank->begin(), source_bank->end()};
+    vector<SourceSite> temp_source {source_bank.begin(), source_bank.end()};
 #endif
 
     for (int i = 0; i < mpi::n_procs; ++i) {
       // Create memory space
-      hsize_t count[] {
-        static_cast<hsize_t>((*bank_index)[i + 1] - (*bank_index)[i])};
+      hsize_t count[] {static_cast<hsize_t>(bank_index[i + 1] - bank_index[i])};
       hid_t memspace = H5Screate_simple(1, count, nullptr);
 
 #ifdef OPENMC_MPI
       // Receive source sites from other processes
       if (i > 0)
-        MPI_Recv(source_bank->data(), count[0], mpi::source_site, i, i,
+        MPI_Recv(source_bank.data(), count[0], mpi::source_site, i, i,
           mpi::intracomm, MPI_STATUS_IGNORE);
 #endif
 
       // Select hyperslab for this dataspace
       dspace = H5Dget_space(dset);
-      hsize_t start[] {static_cast<hsize_t>((*bank_index)[i])};
+      hsize_t start[] {static_cast<hsize_t>(bank_index[i])};
       H5Sselect_hyperslab(
         dspace, H5S_SELECT_SET, start, nullptr, count, nullptr);
 
       // Write data to hyperslab
       H5Dwrite(
-        dset, banktype, memspace, dspace, H5P_DEFAULT, (*source_bank).data());
+        dset, banktype, memspace, dspace, H5P_DEFAULT, source_bank.data());
 
       H5Sclose(memspace);
       H5Sclose(dspace);
@@ -701,11 +711,11 @@ void write_source_bank(hid_t group_id, bool surf_source_bank)
 
 #ifdef OPENMC_MPI
     // Restore state of source bank
-    std::copy(temp_source.begin(), temp_source.end(), source_bank->begin());
+    std::copy(temp_source.begin(), temp_source.end(), source_bank.begin());
 #endif
   } else {
 #ifdef OPENMC_MPI
-    MPI_Send(source_bank->data(), count_size, mpi::source_site, 0, mpi::rank,
+    MPI_Send(source_bank.data(), count_size, mpi::source_site, 0, mpi::rank,
       mpi::intracomm);
 #endif
   }
@@ -803,7 +813,7 @@ void write_unstructured_mesh_results()
     vector<std::string> tally_scores;
     for (auto filter_idx : tally->filters()) {
       auto& filter = model::tally_filters[filter_idx];
-      if (filter->type() != "mesh")
+      if (filter->type() != FilterType::MESH)
         continue;
 
       // check if the filter uses an unstructured mesh
@@ -817,6 +827,16 @@ void write_unstructured_mesh_results()
 
       if (!umesh->output_)
         continue;
+
+      if (umesh->library() == "moab") {
+        if (mpi::master)
+          warning(fmt::format(
+            "Output for a MOAB mesh (mesh {}) was "
+            "requested but will not be written. Please use the Python "
+            "API to generated the desired VTK tetrahedral mesh.",
+            umesh->id_));
+        continue;
+      }
 
       // if this tally has more than one filter, print
       // warning and skip writing the mesh
@@ -889,12 +909,10 @@ void write_unstructured_mesh_results()
       std::string filename = fmt::format("tally_{0}.{1:0{2}}", tally->id_,
         simulation::current_batch, batch_width);
 
-      if (umesh->library() == "moab" && !mpi::master)
-        continue;
-
       // Write the unstructured mesh and data to file
       umesh->write(filename);
 
+      // remove score data added for this mesh write
       umesh->remove_scores();
     }
   }

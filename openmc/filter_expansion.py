@@ -1,8 +1,10 @@
 from numbers import Integral, Real
-from xml.etree import ElementTree as ET
+
+import lxml.etree as ET
 
 import openmc.checkvalue as cv
-from . import Filter
+from .filter import Filter
+from ._xml import get_text
 
 
 class ExpansionFilter(Filter):
@@ -33,7 +35,7 @@ class ExpansionFilter(Filter):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing Legendre filter data
 
         """
@@ -48,9 +50,37 @@ class ExpansionFilter(Filter):
 
     @classmethod
     def from_xml_element(cls, elem, **kwargs):
-        filter_id = int(elem.get('id'))
-        order = int(elem.find('order').text)
+        filter_id = int(get_text(elem, "id"))
+        order = int(get_text(elem, "order"))
         return cls(order, filter_id=filter_id)
+
+    def merge(self, other):
+        """Merge this filter with another.
+
+        This overrides the behavior of the parent Filter class, since its
+        merging technique is to take the union of the set of bins of each
+        filter. That technique does not apply to expansion filters, since the
+        argument should be the maximum filter order rather than the list of all
+        bins.
+
+        Parameters
+        ----------
+        other : openmc.Filter
+            Filter to merge with
+
+        Returns
+        -------
+        merged_filter : openmc.Filter
+            Filter resulting from the merge
+
+        """
+
+        if not self.can_merge(other):
+            msg = f'Unable to merge "{type(self)}" with "{type(other)}"'
+            raise ValueError(msg)
+
+        # Create a new filter with these bins and a new auto-generated ID
+        return type(self)(max(self.order, other.order))
 
 
 class LegendreFilter(ExpansionFilter):
@@ -218,7 +248,7 @@ class SpatialLegendreFilter(ExpansionFilter):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing Legendre filter data
 
         """
@@ -234,11 +264,11 @@ class SpatialLegendreFilter(ExpansionFilter):
 
     @classmethod
     def from_xml_element(cls, elem, **kwargs):
-        filter_id = int(elem.get('id'))
-        order = int(elem.find('order').text)
-        axis = elem.find('axis').text
-        minimum = float(elem.find('min').text)
-        maximum = float(elem.find('max').text)
+        filter_id = int(get_text(elem, "id"))
+        order = int(get_text(elem, "order"))
+        axis = get_text(elem, "axis")
+        minimum = float(get_text(elem, "min"))
+        maximum = float(get_text(elem, "max"))
         return cls(order, axis, minimum, maximum, filter_id=filter_id)
 
 
@@ -323,7 +353,7 @@ class SphericalHarmonicsFilter(ExpansionFilter):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing spherical harmonics filter data
 
         """
@@ -333,10 +363,10 @@ class SphericalHarmonicsFilter(ExpansionFilter):
 
     @classmethod
     def from_xml_element(cls, elem, **kwargs):
-        filter_id = int(elem.get('id'))
-        order = int(elem.find('order').text)
+        filter_id = int(get_text(elem, "id"))
+        order = int(get_text(elem, "order"))
         filter = cls(order, filter_id=filter_id)
-        filter.cosine = elem.get('cosine')
+        filter.cosine = get_text(elem, "cosine")
         return filter
 
 
@@ -473,7 +503,7 @@ class ZernikeFilter(ExpansionFilter):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing Zernike filter data
 
         """
@@ -489,11 +519,11 @@ class ZernikeFilter(ExpansionFilter):
 
     @classmethod
     def from_xml_element(cls, elem, **kwargs):
-        filter_id = int(elem.get('id'))
-        order = int(elem.find('order').text)
-        x = float(elem.find('x').text)
-        y = float(elem.find('y').text)
-        r = float(elem.find('r').text)
+        filter_id = int(get_text(elem, "id"))
+        order = int(get_text(elem, "order"))
+        x = float(get_text(elem, "x"))
+        y = float(get_text(elem, "y"))
+        r = float(get_text(elem, "r"))
         return cls(order, x, y, r, filter_id=filter_id)
 
 

@@ -1,0 +1,284 @@
+====================
+What's New in 0.14.0
+====================
+
+.. currentmodule:: openmc
+
+-------
+Summary
+-------
+
+This release of OpenMC includes many bug fixes, performance improvements, and
+several notable new features. Some of the highlights include projection plots,
+pulse height tallies for photons, weight window generation, and an ability to
+specify continuous removal or feed of nuclides/elements during depletion.
+Additionally, one of the longstanding annoyances of depletion calculations,
+namely the need to include initial "dilute" nuclides, has been eliminated. There
+are also a wide array of general improvements in the Python API.
+
+------------------------------------
+Compatibility Notes and Deprecations
+------------------------------------
+
+- The :class:`openmc.deplete.MicroXS` has been completely redesigned and
+  improved. See further comments below under "New Features". (`#2572
+  <https://github.com/openmc-dev/openmc/pull/2572>`_, `#2579
+  <https://github.com/openmc-dev/openmc/pull/2579>`_, `#2595
+  <https://github.com/openmc-dev/openmc/pull/2595>`_, `#2700
+  <https://github.com/openmc-dev/openmc/pull/2700>`_)
+- The ``rectangular_prism`` function has been replaced by the
+  :class:`openmc.model.RectangularPrism` class and the ``hexagonal_prism``
+  function has been replaced by the :class:`openmc.model.HexagonalPrism` class.
+  Note that whereas the ``rectangular_prism`` and ``hexagonal_prism`` functions
+  returned a region representing the interior of the prism, the new
+  :class:`~openmc.model.RectangularPrism` and
+  :class:`~openmc.model.HexagonalPrism` classes return composite surfaces, so
+  you need to use the unary ``-`` or ``+`` operators to obtain a region that can
+  be assigned to a cell. (`#2739
+  <https://github.com/openmc-dev/openmc/pull/2739>`_)
+- The ``Source`` class has been refactored and split up into three separate
+  classes: :class:`~openmc.IndependentSource`, :class:`~openmc.FileSource`, and
+  :class:`~openmc.CompiledSource`. (`#2524
+  <https://github.com/openmc-dev/openmc/pull/2524>`_)
+- The ``vertices`` and ``centroids`` attributes on mesh classes now always
+  return Cartesian coordinates and the shape of the returned arrays has changed
+  to allow `ijk` indexing using a tuple (i.e., `xyz = vertices[i, j, k]`).
+  (`#2711 <https://github.com/openmc-dev/openmc/pull/2711>`_)
+- The :attr:`openmc.Material.decay_photon_energy` attribute has been replaced by
+  the :meth:`openmc.Material.get_decay_photon_energy` method. (`#2715
+  <https://github.com/openmc-dev/openmc/pull/2715>`_)
+
+------------
+New Features
+------------
+
+- A new :class:`openmc.WireframeRayTracePlot` class enables the generation of orthographic or
+  perspective projection plots. (`#1926
+  <https://github.com/openmc-dev/openmc/pull/1926>`_)
+- The :class:`openmc.model.RightCircularCylinder` class now supports optional
+  filleted edges. (`#2309 <https://github.com/openmc-dev/openmc/pull/2309>`_)
+- Continuous removal or feed of nuclides/elements between materials can now be
+  modeled during depletion via the
+  :meth:`openmc.deplete.abc.Integrator.add_transfer_rate` method. (`#2358
+  <https://github.com/openmc-dev/openmc/pull/2358>`_, `#2564
+  <https://github.com/openmc-dev/openmc/pull/2564>`_, `#2626
+  <https://github.com/openmc-dev/openmc/pull/2626>`_)
+- The MAGIC method for global weight window generation has been implemented as
+  part of the C++ API. (`#2359
+  <https://github.com/openmc-dev/openmc/pull/2359>`_)
+- A new capability for pulse height tallies (currently limited to photons) has
+  been added and can be used via the "pulse-height" tally score. (`#2452
+  <https://github.com/openmc-dev/openmc/pull/2452>`_)
+- A :class:`openmc.model.CruciformPrism` class has been added that provides a
+  generalized cruciform prism composite surface. (`#2457
+  <https://github.com/openmc-dev/openmc/pull/2457>`_)
+- Type hints have been added in various places throughout the Python API.
+  (`#2462 <https://github.com/openmc-dev/openmc/pull/2462>`_, `#2467
+  <https://github.com/openmc-dev/openmc/pull/2467>`_, `#2468
+  <https://github.com/openmc-dev/openmc/pull/2468>`_, `#2470
+  <https://github.com/openmc-dev/openmc/pull/2470>`_, `#2471
+  <https://github.com/openmc-dev/openmc/pull/2471>`_, `#2601
+  <https://github.com/openmc-dev/openmc/pull/2601>`_)
+- Voxel plots can now be generated through the :meth:`openmc.Plot.to_vtk`
+  method. (`#2464 <https://github.com/openmc-dev/openmc/pull/2464>`_)
+- The :class:`openmc.mgxs.EnergyGroups` class now allows you to alternatively
+  pass a string of the group structure name (e.g., "CCFE-709") instead of the
+  energy group boundaries. (`#2466
+  <https://github.com/openmc-dev/openmc/pull/2466>`_)
+- Several enhancements have been made to the :meth:`openmc.Universe.plot` method
+  (addition of axis labels with units, ability to show legend and/or outlines, automatic
+  determination of origin/width, ability to pass total number of pixels).
+  (`#2472 <https://github.com/openmc-dev/openmc/pull/2472>`_, `#2482
+  <https://github.com/openmc-dev/openmc/pull/2482>`_, `#2483
+  <https://github.com/openmc-dev/openmc/pull/2483>`_, `#2492
+  <https://github.com/openmc-dev/openmc/pull/2492>`_, `#2513
+  <https://github.com/openmc-dev/openmc/pull/2513>`_, `#2575
+  <https://github.com/openmc-dev/openmc/pull/2575>`_)
+- Functionality in the Python dealing with bounding boxes now relies on a new
+  :class:`openmc.BoundingBox` class. (`#2475
+  <https://github.com/openmc-dev/openmc/pull/2475>`_)
+- Users now have more flexibility in specifying nuclides and reactions in the
+  :func:`openmc.plot_xs` function. (`#2478
+  <https://github.com/openmc-dev/openmc/pull/2478>`_)
+- The import time of the :mod:`openmc` Python module has been improved by
+  deferring the import of matplotlib. (`#2488
+  <https://github.com/openmc-dev/openmc/pull/2488>`_)
+- Mesh clases in the Python API now support a ``bounding_box`` property. (`#2507
+  <https://github.com/openmc-dev/openmc/pull/2507>`_, `#2620
+  <https://github.com/openmc-dev/openmc/pull/2620>`_, `#2621
+  <https://github.com/openmc-dev/openmc/pull/2621>`_)
+- The ``Source`` class has been refactored and split up into three separate
+  classes: :class:`~openmc.IndependentSource`, :class:`~openmc.FileSource`, and
+  :class:`~openmc.CompiledSource`. (`#2524
+  <https://github.com/openmc-dev/openmc/pull/2524>`_)
+- Support was added for curvilinear elements when exporting cylindrical and
+  spherical meshes to VTK. (`#2533
+  <https://github.com/openmc-dev/openmc/pull/2533>`_)
+- The :class:`openmc.Tally` class now has a
+  :attr:`~openmc.Tally.multiply_density` attribute that indicates whether
+  reaction rate tallies should include the number density of the nuclide of
+  interest. (`#2539 <https://github.com/openmc-dev/openmc/pull/2539>`_)
+- The :func:`~openmc.wwinp_to_wws` function now supports ``wwinp`` files with
+  cylindrical or spherical meshes. (`#2556
+  <https://github.com/openmc-dev/openmc/pull/2556>`_)
+- Depletion no longer relies on adding initial "dilute" nuclides to each
+  depletable material in order to compute reaction rates. (`#2559
+  <https://github.com/openmc-dev/openmc/pull/2559>`_, `#2568
+  <https://github.com/openmc-dev/openmc/pull/2568>`_)
+- The :class:`openmc.deplete.Results` class now has
+  :meth:`~openmc.deplete.Results.get_mass` (`#2565
+  <https://github.com/openmc-dev/openmc/pull/2565>`_),
+  :meth:`~openmc.deplete.Results.get_activity` (`#2617
+  <https://github.com/openmc-dev/openmc/pull/2617>`_), and
+  :meth:`~openmc.deplete.Results.get_decay_heat` (`#2625
+  <https://github.com/openmc-dev/openmc/pull/2625>`_) methods.
+- The :meth:`openmc.deplete.StepResult.save` method now supports a ``path``
+  argument. (`#2567 <https://github.com/openmc-dev/openmc/pull/2567>`_)
+- The :class:`openmc.deplete.MicroXS` has been completely redesigned and
+  improved. First, it no longer relies on the :mod:`openmc.mgxs` module, no
+  longer subclasses :class:`pandas.DataFrame`, and doesn't require adding
+  initial "dilute" nuclides into material compositions. It now enables users to
+  specify an energy group structure to collect multigroup cross sections,
+  specify nuclides/reactions, and works with mesh domains in addition to the
+  existing domains. A new :func:`openmc.deplete.get_microxs_and_flux` function
+  was added that improves the workflow for calculating microscopic cross
+  sections along with fluxes. Altogether, these changes make it straightforward
+  to switch between coupled and independent operators for depletion/activation
+  calculations. (`#2572 <https://github.com/openmc-dev/openmc/pull/2572>`_,
+  `#2579 <https://github.com/openmc-dev/openmc/pull/2579>`_, `#2595
+  <https://github.com/openmc-dev/openmc/pull/2595>`_, `#2700
+  <https://github.com/openmc-dev/openmc/pull/2700>`_)
+- The :class:`openmc.Geometry` class now has ``merge_surfaces`` and
+  ``surface_precision`` arguments. (`#2602
+  <https://github.com/openmc-dev/openmc/pull/2602>`_)
+- Several predefined energy group structures have been added ("MPACT-51",
+  "MPACT-60", "MPACT-69", "SCALE-252"). (`#2614
+  <https://github.com/openmc-dev/openmc/pull/2614>`_)
+- When running a depletion calculation, you are now allowed to include nuclides
+  in the initial material compositions that do not have neutron cross sections
+  (decay-only nuclides). (`#2616
+  <https://github.com/openmc-dev/openmc/pull/2616>`_)
+- The :class:`~openmc.CylindricalMesh` and :class:`~openmc.SphericalMesh`
+  classes can now be fully formed using the constructor. (`#2619
+  <https://github.com/openmc-dev/openmc/pull/2619>`_)
+- A time cutoff can now be specified in the :attr:`openmc.Settings.cutoff`
+  attribute. (`#2631 <https://github.com/openmc-dev/openmc/pull/2631>`_)
+- The :meth:`openmc.Material.add_element` method now supports a
+  ``cross_sections`` argument that allows a cross section data source to be
+  specified. (`#2633 <https://github.com/openmc-dev/openmc/pull/2633>`_)
+- The :class:`~openmc.Cell` class now has a :meth:`~openmc.Cell.plot` method.
+  (`#2648 <https://github.com/openmc-dev/openmc/pull/2648>`_)
+- The :class:`~openmc.Geometry` class now has a :meth:`~openmc.Geometry.plot`
+  method. (`#2661 <https://github.com/openmc-dev/openmc/pull/2661>`_)
+- When weight window checks are performed can now be explicitly specified with
+  the :attr:`openmc.Settings.weight_window_checkpoints` attribute. (`#2670
+  <https://github.com/openmc-dev/openmc/pull/2670>`_)
+- The :class:`~openmc.Settings` class now has a
+  :attr:`~openmc.Settings.max_write_lost_particles` attribute that can limit the
+  number of lost particle files written. (`#2688
+  <https://github.com/openmc-dev/openmc/pull/2688>`_)
+- The :class:`~openmc.deplete.CoupledOperator` class now has a
+  ``diff_volume_method`` argument that specifies how the volume of new materials
+  should be determined. (`#2691
+  <https://github.com/openmc-dev/openmc/pull/2691>`_)
+- The :meth:`openmc.DAGMCUniverse.bounding_region` method now has a
+  ``padding_distance`` argument. (`#2701
+  <https://github.com/openmc-dev/openmc/pull/2701>`_)
+- A new :meth:`openmc.Material.get_decay_photon_energy` method replaces the
+  :attr:`decay_photon_energy` attribute and includes an ability to eliminate
+  low-importance points. This is facilitated by a new
+  :meth:`openmc.stats.Discrete.clip` method. (`#2715
+  <https://github.com/openmc-dev/openmc/pull/2715>`_)
+- The :meth:`openmc.model.Model.differentiate_depletable_mats` method allows
+  depletable materials to be differentiated independent of the depletion
+  calculation itself. (`#2718
+  <https://github.com/openmc-dev/openmc/pull/2718>`_)
+- Albedos can now be specified on surface boundary conditions. (`#2724
+  <https://github.com/openmc-dev/openmc/pull/2724>`_)
+
+---------
+Bug Fixes
+---------
+
+- Enable use of NCrystal materials in plot_xs (`#2435 <https://github.com/openmc-dev/openmc/pull/2435>`_)
+- Avoid segfault from extern "C" std::string (`#2455 <https://github.com/openmc-dev/openmc/pull/2455>`_)
+- Fix several issues with the Model class (`#2465 <https://github.com/openmc-dev/openmc/pull/2465>`_)
+- Provide alternative batch estimation message (`#2479 <https://github.com/openmc-dev/openmc/pull/2479>`_)
+- Correct index check for remove_tally (`#2494 <https://github.com/openmc-dev/openmc/pull/2494>`_)
+- Support for NCrystal material in from_xml_element (`#2496 <https://github.com/openmc-dev/openmc/pull/2496>`_)
+- Fix compilation with gcc 5 (`#2498 <https://github.com/openmc-dev/openmc/pull/2498>`_)
+- Fixed in the Tally::add_filter method (`#2501 <https://github.com/openmc-dev/openmc/pull/2501>`_)
+- Fix meaning of "masking" for plots (`#2510 <https://github.com/openmc-dev/openmc/pull/2510>`_)
+- Fix description of statepoint.batches in Settings class (`#2514 <https://github.com/openmc-dev/openmc/pull/2514>`_)
+- Reorder list initialization of Plot constructor (`#2519 <https://github.com/openmc-dev/openmc/pull/2519>`_)
+- Added mkdir to cwd argument in Model.run (`#2523 <https://github.com/openmc-dev/openmc/pull/2523>`_)
+- Fix export of spherical coordinates in SphericalMesh (`#2538 <https://github.com/openmc-dev/openmc/pull/2538>`_)
+- Add virtual destructor on PlottableInterface (`#2541 <https://github.com/openmc-dev/openmc/pull/2541>`_)
+- Ensure parent directory is created during depletion (`#2543 <https://github.com/openmc-dev/openmc/pull/2543>`_)
+- Fix potential out-of-bounds access in TimeFilter (`#2532 <https://github.com/openmc-dev/openmc/pull/2532>`_)
+- Remove use of sscanf for reading surface coefficients (`#2574 <https://github.com/openmc-dev/openmc/pull/2574>`_)
+- Fix torus intersection bug (`#2589 <https://github.com/openmc-dev/openmc/pull/2589>`_)
+- Multigroup per-thread cache fixes (`#2591 <https://github.com/openmc-dev/openmc/pull/2591>`_)
+- Bank surface source particles in all active cycles (`#2592 <https://github.com/openmc-dev/openmc/pull/2592>`_)
+- Fix for muir standard deviation (`#2598 <https://github.com/openmc-dev/openmc/pull/2598>`_)
+- Check for zero fission cross section (`#2600 <https://github.com/openmc-dev/openmc/pull/2600>`_)
+- XML read fixes in Plot classes (`#2623 <https://github.com/openmc-dev/openmc/pull/2623>`_)
+- Added infinity check in VolumeCalculation (`#2634 <https://github.com/openmc-dev/openmc/pull/2634>`_)
+- Fix sampling issue in Mixture distributions (`#2658 <https://github.com/openmc-dev/openmc/pull/2658>`_)
+- Prevent segfault in distance to boundary calculation (`#2659 <https://github.com/openmc-dev/openmc/pull/2659>`_)
+- Several CylindricalMesh fixes (`#2676
+  <https://github.com/openmc-dev/openmc/pull/2676>`_, `#2680
+  <https://github.com/openmc-dev/openmc/pull/2680>`_, `#2684
+  <https://github.com/openmc-dev/openmc/pull/2684>`_, `#2710
+  <https://github.com/openmc-dev/openmc/pull/2710>`_)
+- Add type checks on Intersection, Union, Complement (`#2685 <https://github.com/openmc-dev/openmc/pull/2685>`_)
+- Fixed typo in CF4Integrator docstring (`#2704 <https://github.com/openmc-dev/openmc/pull/2704>`_)
+- Ensure property setters are used in CylindricalMesh and SphericalMesh (`#2709 <https://github.com/openmc-dev/openmc/pull/2709>`_)
+- Fix sample_external_source bug (`#2713 <https://github.com/openmc-dev/openmc/pull/2713>`_)
+- Fix localization issue affecting openmc-plotter (`#2723 <https://github.com/openmc-dev/openmc/pull/2723>`_)
+- Correct openmc.lib wrapper for evaluate_legendre (`#2729 <https://github.com/openmc-dev/openmc/pull/2729>`_)
+- Bug fix in Region.from_expression during tokenization (`#2733 <https://github.com/openmc-dev/openmc/pull/2733>`_)
+- Fix bug in temperature interpolation (`#2734 <https://github.com/openmc-dev/openmc/pull/2734>`_)
+- Check for invalid domain IDs in volume calculations (`#2742 <https://github.com/openmc-dev/openmc/pull/2742>`_)
+- Skip boundary condition check for volume calculations (`#2743 <https://github.com/openmc-dev/openmc/pull/2743>`_)
+- Fix loop over coordinates for source domain rejection (`#2751 <https://github.com/openmc-dev/openmc/pull/2751>`_)
+
+------------
+Contributors
+------------
+
+- `April Novak <https://github.com/aprilnovak>`_
+- `Baptiste Mouginot <https://github.com/bam241>`_
+- `Ben Collins <https://github.com/bscollin>`_
+- `Chritopher Billingham <https://github.com/cadarache2014>`_
+- `Christopher Fichtlscherer <https://github.com/cfichtlscherer>`_
+- `Christina Cai <https://github.com/christinacai123>`_
+- `Lorenzo Chierici <https://github.com/church89>`_
+- `Huw Rhys Jones <https://github.com/dubway420>`_
+- `Emilio Castro <https://github.com/ecasglez>`_
+- `Erik Knudsen <https://github.com/ebknudsen>`_
+- `Ethan Peterson <https://github.com/eepeterson>`_
+- `Egor Afanasenko <https://github.com/egor1abs>`_
+- `Paul Wilson <https://github.com/gonuke>`_
+- `Gavin Ridley <https://github.com/gridley>`_
+- `Hunter Belanger <https://github.com/HunterBelanger>`_
+- `Jack Fletcher <https://github.com/j-fletcher>`_
+- `John Vincent Cauilan <https://github.com/johvincau>`_
+- `Josh May <https://github.com/joshmay1>`_
+- `John Tramm <https://github.com/jtramm>`_
+- `Kevin McLaughlin <https://github.com/kevinm387>`_
+- `Yue Jin <https://github.com/kingyue737>`_
+- `Lewis Gross <https://github.com/lewisgross1296>`_
+- `Luke Labrie-Cleary <https://github.com/LukeLabie>`_
+- `Patrick Myers <https://github.com/myerspat>`_
+- `Nicola Rizzi <https://github.com/nicriz>`_
+- `Yuvraj Jain <https://github.com/nutcasev15>`_
+- `Paul Romano <https://github.com/paulromano>`_
+- `Patrick Shriwise <https://github.com/pshriwise>`_
+- `Rosie Barker <https://github.com/rlbarker>`_
+- `Jonathan Shimwell <https://github.com/Shimwell>`_
+- `John Tchakerian <https://github.com/stchaker>`_
+- `Travis Labossiere-Hickman <https://github.com/tjlaboss>`_
+- `Xinyan Wang <https://github.com/XinyanBradley>`_
+- `Olek Yardas <https://github.com/yardasol>`_
+- `Zoe Prieto <https://github.com/zoeprieto>`_

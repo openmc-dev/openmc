@@ -20,7 +20,7 @@ def cpp_driver(request):
     openmc_dir = Path(str(request.config.rootdir)) / 'build'
     with open('CMakeLists.txt', 'w') as f:
         f.write(textwrap.dedent("""
-            cmake_minimum_required(VERSION 3.3 FATAL_ERROR)
+            cmake_minimum_required(VERSION 3.10 FATAL_ERROR)
             project(openmc_cpp_driver CXX)
             add_executable(cpp_driver driver.cpp)
             find_package(OpenMC REQUIRED HINTS {})
@@ -33,12 +33,14 @@ def cpp_driver(request):
     os.chdir(str(local_builddir))
 
     if config['mpi']:
-        os.environ['CXX'] = 'mpicxx'
+        mpi_arg = "On"
+    else:
+        mpi_arg = "Off"
 
     try:
         print("Building driver")
         # Run cmake/make to build the shared libary
-        subprocess.run(['cmake', os.path.pardir], check=True)
+        subprocess.run(['cmake', os.path.pardir, f'-DOPENMC_USE_MPI={mpi_arg}'], check=True)
         subprocess.run(['make'], check=True)
         os.chdir(os.path.pardir)
 
@@ -46,8 +48,8 @@ def cpp_driver(request):
 
     finally:
         # Remove local build directory when test is complete
-        shutil.rmtree('build')
-        os.remove('CMakeLists.txt')
+        shutil.rmtree(request.node.path.parent / 'build')
+        os.remove(request.node.path.parent / 'CMakeLists.txt')
 
 
 @pytest.fixture
@@ -90,10 +92,9 @@ def model():
     lattice.pitch = (4.0, 4.0)
     lattice.lower_left = (-4.0, -4.0)
     lattice.universes = [[extra_univ, extra_univ], [extra_univ, extra_univ]]
-    lattice_region = openmc.model.rectangular_prism(8.0,
-                                                    8.0,
-                                                    boundary_type='reflective')
-    lattice_cell = openmc.Cell(fill=lattice, region=lattice_region)
+    lattice_prism = openmc.model.RectangularPrism(
+        8.0, 8.0, boundary_type='reflective')
+    lattice_cell = openmc.Cell(fill=lattice, region=-lattice_prism)
 
     model.geometry = openmc.Geometry([lattice_cell])
 

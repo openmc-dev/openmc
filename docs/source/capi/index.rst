@@ -84,6 +84,17 @@ Functions
    :return: Return status (negative if an error occurred)
    :rtype: int
 
+.. c:function:: int openmc_cell_get_density(int32_t index, const int32_t* instance, double* density)
+
+   Get the density of a cell
+
+   :param int32_t index: Index in the cells array
+   :param int32_t* instance: Which instance of the cell. If a null pointer is passed, the density
+                             multiplier of the first instance is returned.
+   :param double* density: Density of the cell in [g/cm3]
+   :return: Return status (negative if an error occurred)
+   :rtype: int
+
 .. c:function:: int openmc_cell_set_fill(int32_t index, int type, int32_t n, const int32_t* indices)
 
    Set the fill for a cell
@@ -113,8 +124,22 @@ Functions
    :param double T: Temperature in Kelvin
    :param instance: Which instance of the cell. To set the temperature for all
                     instances, pass a null pointer.
-   :param set_contained: If the cell is not filled by a material, whether to set the temperatures
-                         of all filled cells
+   :param bool set_contained: If the cell is not filled by a material, whether
+                              to set the temperatures of all filled cells
+   :type instance: const int32_t*
+   :return: Return status (negative if an error occurred)
+   :rtype: int
+
+.. c:function:: int openmc_cell_set_density(index index, double density, const int32_t* instance, bool set_contained)
+
+   Set the density of a cell.
+
+   :param int32_t index: Index in the cells array
+   :param double density: Density of the cell in [g/cm3]
+   :param instance: Which instance of the cell. To set the density multiplier for all
+                    instances, pass a null pointer.
+   :param bool set_contained: If the cell is not filled by a material, whether
+                              to set the density multiplier of all filled cells
    :type instance: const int32_t*
    :return: Return status (negative if an error occurred)
    :rtype: int
@@ -355,7 +380,7 @@ Functions
    Get density of a material.
 
    :param int32_t index: Index in the materials array
-   :param double* denity: Pointer to a density
+   :param double* density: Pointer to a density
    :return: Return status (negative if an error occurs)
    :rtype: int
 
@@ -420,12 +445,114 @@ Functions
    :return: Return status (negative if an error occurred)
    :rtype: int
 
+.. c:function:: int openmc_mesh_filter_get_mesh(int32_t index, int32_t* index_mesh)
+
+   Get the mesh for a mesh filter
+
+   :param int32_t index: Index in the filters array
+   :param index_mesh: Index in the meshes array
+   :type index_mesh: int32_t*
+   :return: Return status (negative if an error occurred)
+   :rtype: int
+
 .. c:function:: int openmc_mesh_filter_set_mesh(int32_t index, int32_t index_mesh)
 
    Set the mesh for a mesh filter
 
    :param int32_t index: Index in the filters array
    :param int32_t index_mesh: Index in the meshes array
+   :return: Return status (negative if an error occurred)
+   :rtype: int
+
+.. c:function:: int openmc_mesh_filter_get_translation(int32_t index, double translation[3])
+
+   Get the 3-D translation coordinates for a mesh filter
+
+   :param int32_t index: Index in the filters array
+   :param double[3] translation: 3-D translation coordinates
+   :return: Return status (negative if an error occurred)
+   :rtype: int
+
+.. c:function:: int openmc_mesh_filter_set_translation(int32_t index, double translation[3])
+
+   Set the 3-D translation coordinates for a mesh filter
+
+   :param int32_t index: Index in the filters array
+   :param double[3] translation: 3-D translation coordinates
+   :return: Return status (negative if an error occurred)
+   :rtype: int
+
+.. c:function:: int openmc_meshborn_filter_get_mesh(int32_t index, int32_t* index_mesh)
+
+   Get the mesh for a meshborn filter
+
+   :param int32_t index: Index in the filters array
+   :param index_mesh: Index in the meshes array
+   :type index_mesh: int32_t*
+   :return: Return status (negative if an error occurred)
+   :rtype: int
+
+.. c:function:: int openmc_meshborn_filter_set_mesh(int32_t index, int32_t index_mesh)
+
+   Set the mesh for a meshborn filter
+
+   :param int32_t index: Index in the filters array
+   :param int32_t index_mesh: Index in the meshes array
+   :return: Return status (negative if an error occurred)
+   :rtype: int
+
+.. c:function:: int openmc_meshborn_filter_get_translation(int32_t index, double translation[3])
+
+   Get the 3-D translation coordinates for a meshborn filter
+
+   :param int32_t index: Index in the filters array
+   :param double[3] translation: 3-D translation coordinates
+   :return: Return status (negative if an error occurred)
+   :rtype: int
+
+.. c:function:: int openmc_meshborn_filter_set_translation(int32_t index, double translation[3])
+
+   Set the 3-D translation coordinates for a meshborn filter
+
+   :param int32_t index: Index in the filters array
+   :param double[3] translation: 3-D translation coordinates
+   :return: Return status (negative if an error occurred)
+   :rtype: int
+
+.. c:function:: int openmc_meshsurface_filter_get_mesh(int32_t index, int32_t* index_mesh)
+
+   Get the mesh for a mesh surface filter
+
+   :param int32_t index: Index in the filters array
+   :param index_mesh: Index in the meshes array
+   :type index_mesh: int32_t*
+   :return: Return status (negative if an error occurred)
+   :rtype: int
+
+.. c:function:: int openmc_meshsurface_filter_set_mesh(int32_t index, int32_t index_mesh)
+
+   Set the mesh for a mesh surface filter
+
+   :param int32_t index: Index in the filters array
+   :param int32_t index_mesh: Index in the meshes array
+   :return: Return status (negative if an error occurred)
+   :rtype: int
+
+.. c:function:: int openmc_meshsurface_filter_get_translation(int32_t index, double translation[3])
+
+   Get the 3-D translation coordinates for a mesh surface filter
+
+   :param int32_t index: Index in the filters array
+   :param double[3] translation: 3-D translation coordinates
+   :return: Return status (negative if an error occurred)
+   :rtype: int
+
+.. c:function:: int openmc_meshsurface_filter_set_translation(int32_t index, double translation[3])
+
+   Set the 3-D translation coordinates for a mesh surface filter
+
+   :param int32_t index: Index in the filters array
+   :param double[3] translation: 3-D translation coordinates
    :return: Return status (negative if an error occurred)
    :rtype: int
 
@@ -457,6 +584,13 @@ Functions
 
    Resets all tally scores
 
+   :return: Return status (negative if an error occurs)
+   :rtype: int
+
+.. c:function:: int openmc_remove_tally(int32_t index);
+
+   Given an index of a tally, remove it from the tallies array
+   :param int index: Index in tallies array
    :return: Return status (negative if an error occurs)
    :rtype: int
 

@@ -18,21 +18,45 @@ _THERMAL_DATA = {
     'c_Al27': ThermalTuple('al27', [13027], 1),
     'c_Al_in_Al2O3': ThermalTuple('asap00', [13027], 1),
     'c_Be': ThermalTuple('be', [4009], 1),
+    'c_Be_distinct': ThermalTuple('besd', [4009], 1),
     'c_Be_in_BeO': ThermalTuple('bebeo', [4009], 1),
     'c_Be_in_Be2C': ThermalTuple('bebe2c', [4009], 1),
+    'c_Be_in_BeF2': ThermalTuple('bebef2', [4009], 1),
     'c_Be_in_FLiBe': ThermalTuple('beflib', [4009], 1),
     'c_C6H6': ThermalTuple('benz', [1001, 6000, 6012], 2),
+    'c_C_in_Be2C': ThermalTuple('cbe2c', [6000, 6012, 6013], 1),
+    'c_C_in_C5O2H8': ThermalTuple('clucit', [6000, 6012, 6013], 1),
+    'c_C_in_C8H8': ThermalTuple('cc8h8', [6000, 6012, 6013], 1),
+    'c_C_in_CF2': ThermalTuple('ccf2', [6000, 6012, 6013], 1),
     'c_C_in_SiC': ThermalTuple('csic', [6000, 6012, 6013], 1),
+    'c_C_in_UC_100p': ThermalTuple('cuc100', [6000, 6012, 6013], 1),
+    'c_C_in_UC_10p': ThermalTuple('cuc10', [6000, 6012, 6013], 1),
+    'c_C_in_UC_5p': ThermalTuple('cuc5', [6000, 6012, 6013], 1),
+    'c_C_in_UC': ThermalTuple('cinuc', [6000, 6012, 6013], 1),
+    'c_C_in_UC_HALEU': ThermalTuple('cuchal', [6000, 6012, 6013], 1),
+    'c_C_in_UC_HEU': ThermalTuple('cucheu', [6000, 6012, 6013], 1),
+    'c_C_in_ZrC': ThermalTuple('czrc', [6000, 6012, 6013], 1),
     'c_Ca_in_CaH2': ThermalTuple('cacah2', [20040, 20042, 20043, 20044, 20046, 20048], 1),
+    'c_D_in_7LiD': ThermalTuple('dlid', [1002], 1),
     'c_D_in_D2O': ThermalTuple('dd2o', [1002], 1),
     'c_D_in_D2O_solid': ThermalTuple('dice', [1002], 1),
+    'c_F_in_Be2': ThermalTuple('fbef2', [9019], 1),
+    'c_F_in_CF2': ThermalTuple('fcf2', [9019], 1),
     'c_F_in_FLiBe': ThermalTuple('fflibe', [9019], 1),
+    'c_F_in_HF': ThermalTuple('f_hf', [9019], 1),
+    'c_F_in_MgF2': ThermalTuple('fmgf2', [9019], 1),
     'c_Fe56': ThermalTuple('fe56', [26056], 1),
     'c_Graphite': ThermalTuple('graph', [6000, 6012, 6013], 1),
     'c_Graphite_10p': ThermalTuple('grph10', [6000, 6012, 6013], 1),
+    'c_Graphite_20p': ThermalTuple('grph20', [6000, 6012, 6013], 1),
     'c_Graphite_30p': ThermalTuple('grph30', [6000, 6012, 6013], 1),
+    'c_Graphite_distinct': ThermalTuple('grphsd', [6000, 6012, 6013], 1),
+    'c_H_in_7LiH': ThermalTuple('hlih', [1001], 1),
     'c_H_in_C5O2H8': ThermalTuple('lucite', [1001], 1),
+    'c_H_in_C8H8': ThermalTuple('hc8h8', [1001], 1),
     'c_H_in_CaH2': ThermalTuple('hcah2', [1001], 1),
+    'c_H1_in_CaH2': ThermalTuple('h1cah2', [1001], 1),
+    'c_H2_in_CaH2': ThermalTuple('h2cah2', [1001], 1),
     'c_H_in_CH2': ThermalTuple('hch2', [1001], 1),
     'c_H_in_CH4_liquid': ThermalTuple('lch4', [1001], 1),
     'c_H_in_CH4_solid': ThermalTuple('sch4', [1001], 1),
@@ -49,24 +73,67 @@ _THERMAL_DATA = {
     'c_H_in_ZrH2': ThermalTuple('hzrh2', [1001], 1),
     'c_H_in_ZrHx': ThermalTuple('hzrhx', [1001], 1),
     'c_Li_in_FLiBe': ThermalTuple('liflib', [3006, 3007], 1),
+    'c_Li_in_7LiD': ThermalTuple('lilid', [3007], 1),
+    'c_Li_in_7LiH': ThermalTuple('lilih', [3007], 1),
     'c_Mg24': ThermalTuple('mg24', [12024], 1),
+    'c_Mg_in_MgF2': ThermalTuple('mgmgf2', [12024, 12025, 12026], 1),
+    'c_Mg_in_MgO': ThermalTuple('mgmgo', [12024, 12025, 12026], 1),
+    'c_N_in_UN_100p': ThermalTuple('nun100', [7014, 7015], 1),
+    'c_N_in_UN_10p': ThermalTuple('nun10', [7014, 7015], 1),
+    'c_N_in_UN_5p': ThermalTuple('nun5', [7014, 7015], 1),
     'c_N_in_UN': ThermalTuple('n-un', [7014, 7015], 1),
-    'c_O_in_Al2O3': ThermalTuple('osap00', [92238], 1),
+    'c_N_in_UN_HALEU': ThermalTuple('nunhal', [7014, 7015], 1),
+    'c_N_in_UN_HEU': ThermalTuple('nunheu', [7014, 7015], 1),
+    'c_O_in_Al2O3': ThermalTuple('osap00', [8016, 8017, 8018], 1),
     'c_O_in_BeO': ThermalTuple('obeo', [8016, 8017, 8018], 1),
+    'c_O_in_C5O2H8': ThermalTuple('olucit', [8016, 8017, 8018], 1),
     'c_O_in_D2O': ThermalTuple('od2o', [8016, 8017, 8018], 1),
     'c_O_in_H2O_solid': ThermalTuple('oice', [8016, 8017, 8018], 1),
+    'c_O_in_MgO': ThermalTuple('omgo', [8016, 8017, 8018], 1),
+    'c_O_in_PuO2': ThermalTuple('opuo2', [8016, 8017, 8018], 1),
+    'c_O_in_SiO2_alpha': ThermalTuple('osio2a', [8016, 8017, 8018], 1),
+    'c_O_in_UO2_100p': ThermalTuple('ouo200', [8016, 8017, 8018], 1),
+    'c_O_in_UO2_10p': ThermalTuple('ouo210', [8016, 8017, 8018], 1),
+    'c_O_in_UO2_5p': ThermalTuple('ouo25', [8016, 8017, 8018], 1),
     'c_O_in_UO2': ThermalTuple('ouo2', [8016, 8017, 8018], 1),
+    'c_O_in_UO2_HALEU': ThermalTuple('ouo2hl', [8016, 8017, 8018], 1),
+    'c_O_in_UO2_HEU': ThermalTuple('ouo2he', [8016, 8017, 8018], 1),
     'c_ortho_D': ThermalTuple('orthod', [1002], 1),
     'c_ortho_H': ThermalTuple('orthoh', [1001], 1),
     'c_para_D': ThermalTuple('parad', [1002], 1),
     'c_para_H': ThermalTuple('parah', [1001], 1),
+    'c_Pu_in_PuO2': ThermalTuple('puo2', [94239, 94240, 94241, 94242, 94243], 1),
     'c_Si28': ThermalTuple('si00', [14028], 1),
     'c_Si_in_SiC': ThermalTuple('sisic', [14028, 14029, 14030], 1),
+    'c_Si_in_SiO2_alpha': ThermalTuple('si_o2a', [14028, 14029, 14030], 1),
     'c_SiO2_alpha': ThermalTuple('sio2-a', [8016, 8017, 8018, 14028, 14029, 14030], 3),
     'c_SiO2_beta': ThermalTuple('sio2-b', [8016, 8017, 8018, 14028, 14029, 14030], 3),
-    'c_U_in_UN': ThermalTuple('u-un', [92238], 1),
-    'c_U_in_UO2': ThermalTuple('uuo2', [8016, 8017, 8018], 1),
+    'c_U_metal_100p': ThermalTuple('u-100p', [92233, 92234, 92235, 92236, 92238], 1),
+    'c_U_metal_10p': ThermalTuple('u-10p', [92233, 92234, 92235, 92236, 92238], 1),
+    'c_U_metal_5p': ThermalTuple('u-5p', [92233, 92234, 92235, 92236, 92238], 1),
+    'c_U_metal': ThermalTuple('umetal', [92233, 92234, 92235, 92236, 92238], 1),
+    'c_U_metal_HALEU': ThermalTuple('uhaleu', [92233, 92234, 92235, 92236, 92238], 1),
+    'c_U_metal_HEU': ThermalTuple('u-heu', [92233, 92234, 92235, 92236, 92238], 1),
+    'c_U_in_UC_100p': ThermalTuple('uc-100', [92233, 92234, 92235, 92236, 92238], 1),
+    'c_U_in_UC_10p': ThermalTuple('uc-10', [92233, 92234, 92235, 92236, 92238], 1),
+    'c_U_in_UC_5p': ThermalTuple('uc-5', [92233, 92234, 92235, 92236, 92238], 1),
+    'c_U_in_UC': ThermalTuple('uc-nat', [92233, 92234, 92235, 92236, 92238], 1),
+    'c_U_in_UC_HALEU': ThermalTuple('uc-hal', [92233, 92234, 92235, 92236, 92238], 1),
+    'c_U_in_UC_HEU': ThermalTuple('uc-heu', [92233, 92234, 92235, 92236, 92238], 1),
+    'c_U_in_UN_100p': ThermalTuple('un-100', [92233, 92234, 92235, 92236, 92238], 1),
+    'c_U_in_UN_10p': ThermalTuple('un-10', [92233, 92234, 92235, 92236, 92238], 1),
+    'c_U_in_UN_5p': ThermalTuple('un-5', [92233, 92234, 92235, 92236, 92238], 1),
+    'c_U_in_UN': ThermalTuple('u-un', [92233, 92234, 92235, 92236, 92238], 1),
+    'c_U_in_UN_HALEU': ThermalTuple('un-hal', [92233, 92234, 92235, 92236, 92238], 1),
+    'c_U_in_UN_HEU': ThermalTuple('un-heu', [92233, 92234, 92235, 92236, 92238], 1),
+    'c_U_in_UO2_100p': ThermalTuple('uo2100', [92233, 92234, 92235, 92236, 92238], 1),
+    'c_U_in_UO2_10p': ThermalTuple('uo2-10', [92233, 92234, 92235, 92236, 92238], 1),
+    'c_U_in_UO2_5p': ThermalTuple('uo2-5', [92233, 92234, 92235, 92236, 92238], 1),
+    'c_U_in_UO2': ThermalTuple('uuo2', [92233, 92234, 92235, 92236, 92238], 1),
+    'c_U_in_UO2_HALEU': ThermalTuple('uo2hal', [92233, 92234, 92235, 92236, 92238], 1),
+    'c_U_in_UO2_HEU': ThermalTuple('uo2heu', [92233, 92234, 92235, 92236, 92238], 1),
     'c_Y_in_YH2': ThermalTuple('yyh2', [39089], 1),
+    'c_Zr_in_ZrC': ThermalTuple('zrzrc', [40000, 40090, 40091, 40092, 40094, 40096], 1),
     'c_Zr_in_ZrH': ThermalTuple('zrzrh', [40000, 40090, 40091, 40092, 40094, 40096], 1),
     'c_Zr_in_ZrH2': ThermalTuple('zrzrh2', [40000, 40090, 40091, 40092, 40094, 40096], 1),
     'c_Zr_in_ZrHx': ThermalTuple('zrzrhx', [40000, 40090, 40091, 40092, 40094, 40096], 1),
@@ -127,19 +194,19 @@ acer / %%%%%%%%%%%%%%%%%%%%%%%% Write out in ACE format %%%%%%%%%%%%%%%%%%%%%%%%
 1 0 1 .{ext} /
 '{library}: {zsymam} at {temperature}'/
 {mat} {temperature}
-1 1/
+1 1 {ismooth}/
 /
 """
 
 _THERMAL_TEMPLATE_THERMR = """
 thermr / %%%%%%%%%%%%%%%% Add thermal scattering data (free gas) %%%%%%%%%%%%%%%
 0 {nthermr1_in} {nthermr1}
-0 {mat} 12 {num_temp} 1 0 {iform} 1 221 1/
+0 {mat} {nbin} {num_temp} 1 0 {iform} 1 221 1/
 {temps}
 {error} {energy_max}
 thermr / %%%%%%%%%%%%%%%% Add thermal scattering data (bound) %%%%%%%%%%%%%%%%%%
 {nthermal_endf} {nthermr2_in} {nthermr2}
-{mat_thermal} {mat} 16 {num_temp} {inelastic} {elastic} {iform} {natom} 222 1/
+{mat_thermal} {mat} {nbin} {num_temp} {inelastic} {elastic} {iform} {natom} 222 1/
 {temps}
 {error} {energy_max}
 """
@@ -188,7 +255,7 @@ def run(commands, tapein, tapeout, input_filename=None, stdout=False,
     with tempfile.TemporaryDirectory() as tmpdir:
         # Copy evaluations to appropriates 'tapes'
         for tape_num, filename in tapein.items():
-            tmpfilename = os.path.join(tmpdir, 'tape{}'.format(tape_num))
+            tmpfilename = os.path.join(tmpdir, f'tape{tape_num}')
             shutil.copy(str(filename), tmpfilename)
 
         # Start up NJOY process
@@ -216,12 +283,12 @@ def run(commands, tapein, tapeout, input_filename=None, stdout=False,
 
         # Copy output files back to original directory
         for tape_num, filename in tapeout.items():
-            tmpfilename = os.path.join(tmpdir, 'tape{}'.format(tape_num))
+            tmpfilename = os.path.join(tmpdir, f'tape{tape_num}')
             if os.path.isfile(tmpfilename):
                 shutil.move(tmpfilename, str(filename))
 
 
-def make_pendf(filename, pendf='pendf', error=0.001, stdout=False):
+def make_pendf(filename, pendf='pendf', **kwargs):
     """Generate pointwise ENDF file from an ENDF file
 
     Parameters
@@ -230,10 +297,9 @@ def make_pendf(filename, pendf='pendf', error=0.001, stdout=False):
         Path to ENDF file
     pendf : str, optional
         Path of pointwise ENDF file to write
-    error : float, optional
-        Fractional error tolerance for NJOY processing
-    stdout : bool
-        Whether to display NJOY standard output
+    **kwargs
+        Keyword arguments passed to :func:`openmc.data.njoy.make_ace`. All NJOY
+        module arguments other than pendf default to False.
 
     Raises
     ------
@@ -241,14 +307,15 @@ def make_pendf(filename, pendf='pendf', error=0.001, stdout=False):
         If the NJOY process returns with a non-zero status
 
     """
-
-    make_ace(filename, pendf=pendf, error=error, broadr=False,
-             heatr=False, purr=False, acer=False, stdout=stdout)
+    for key in ('broadr', 'heatr', 'gaspr', 'purr', 'acer'):
+        kwargs.setdefault(key, False)
+    make_ace(filename, pendf=pendf, **kwargs)
 
 
 def make_ace(filename, temperatures=None, acer=True, xsdir=None,
              output_dir=None, pendf=False, error=0.001, broadr=True,
-             heatr=True, gaspr=True, purr=True, evaluation=None, **kwargs):
+             heatr=True, gaspr=True, purr=True, evaluation=None,
+             smoothing=True, **kwargs):
     """Generate incident neutron ACE file from an ENDF file
 
     File names can be passed to
@@ -298,6 +365,8 @@ def make_ace(filename, temperatures=None, acer=True, xsdir=None,
     evaluation : openmc.data.endf.Evaluation, optional
         If the ENDF file contains multiple material evaluations, this argument
         indicates which evaluation should be used.
+    smoothing : bool, optional
+        If the smoothing option (ACER card 6) is on (True) or off (False).
     **kwargs
         Keyword arguments passed to :func:`openmc.data.njoy.run`
 
@@ -314,7 +383,7 @@ def make_ace(filename, temperatures=None, acer=True, xsdir=None,
     else:
         output_dir = Path(output_dir)
         if not output_dir.is_dir():
-            raise IOError("{} is not a directory".format(output_dir))
+            raise IOError(f"{output_dir} is not a directory")
 
     ev = evaluation if evaluation is not None else endf.Evaluation(filename)
     mat = ev.material
@@ -380,17 +449,18 @@ def make_ace(filename, temperatures=None, acer=True, xsdir=None,
 
     # acer
     if acer:
+        ismooth = int(smoothing)
         nacer_in = nlast
         for i, temperature in enumerate(temperatures):
             # Extend input with an ACER run for each temperature
             nace = nacer_in + 1 + 2*i
             ndir = nace + 1
-            ext = '{:02}'.format(i + 1)
+            ext = f'{i + 1:02}'
             commands += _TEMPLATE_ACER.format(**locals())
 
             # Indicate tapes to save for each ACER run
-            tapeout[nace] = output_dir / "ace_{:.1f}".format(temperature)
-            tapeout[ndir] = output_dir / "xsdir_{:.1f}".format(temperature)
+            tapeout[nace] = output_dir / f"ace_{temperature:.1f}"
+            tapeout[ndir] = output_dir / f"xsdir_{temperature:.1f}"
     commands += 'stop\n'
     run(commands, tapein, tapeout, **kwargs)
 
@@ -400,7 +470,7 @@ def make_ace(filename, temperatures=None, acer=True, xsdir=None,
         with ace.open('w') as ace_file, xsdir.open('w') as xsdir_file:
             for temperature in temperatures:
                 # Get contents of ACE file
-                text = (output_dir / "ace_{:.1f}".format(temperature)).read_text()
+                text = (output_dir / f"ace_{temperature:.1f}").read_text()
 
                 # If the target is metastable, make sure that ZAID in the ACE
                 # file reflects this by adding 400
@@ -413,19 +483,19 @@ def make_ace(filename, temperatures=None, acer=True, xsdir=None,
                 ace_file.write(text)
 
                 # Concatenate into destination xsdir file
-                xsdir_in = output_dir / "xsdir_{:.1f}".format(temperature)
+                xsdir_in = output_dir / f"xsdir_{temperature:.1f}"
                 xsdir_file.write(xsdir_in.read_text())
 
         # Remove ACE/xsdir files for each temperature
         for temperature in temperatures:
-            (output_dir / "ace_{:.1f}".format(temperature)).unlink()
-            (output_dir / "xsdir_{:.1f}".format(temperature)).unlink()
+            (output_dir / f"ace_{temperature:.1f}").unlink()
+            (output_dir / f"xsdir_{temperature:.1f}").unlink()
 
 
 def make_ace_thermal(filename, filename_thermal, temperatures=None,
-                     ace='ace', xsdir=None, output_dir=None, error=0.001,
+                     ace=None, xsdir=None, output_dir=None, error=0.001,
                      iwt=2, evaluation=None, evaluation_thermal=None,
-                     table_name=None, zaids=None, nmix=None, **kwargs):
+                     table_name=None, zaids=None, nmix=None, nbin=16, **kwargs):
     """Generate thermal scattering ACE file from ENDF files
 
     Parameters
@@ -438,7 +508,7 @@ def make_ace_thermal(filename, filename_thermal, temperatures=None,
         Temperatures in Kelvin to produce data at. If omitted, data is produced
         at all temperatures given in the ENDF thermal scattering sublibrary.
     ace : str, optional
-        Path of ACE file to write
+        Path of ACE file to write. Default to ``"ace"``.
     xsdir : str, optional
         Path of xsdir file to write. Defaults to ``"xsdir"`` in the same
         directory as ``ace``
@@ -449,7 +519,7 @@ def make_ace_thermal(filename, filename_thermal, temperatures=None,
     error : float, optional
         Fractional error tolerance for NJOY processing
     iwt : int
-        `iwt` parameter used in NJOR/ACER card 9
+        `iwt` parameter used in NJOY/ACER card 9
     evaluation : openmc.data.endf.Evaluation, optional
         If the ENDF neutron sublibrary file contains multiple material
         evaluations, this argument indicates which evaluation to use.
@@ -462,6 +532,8 @@ def make_ace_thermal(filename, filename_thermal, temperatures=None,
         ZAIDs that the thermal scattering data applies to
     nmix : int, optional
         Number of atom types in mixed moderator
+    nbin : int, optional
+        Number of equi-probable angles
     **kwargs
         Keyword arguments passed to :func:`openmc.data.njoy.run`
 
@@ -476,7 +548,7 @@ def make_ace_thermal(filename, filename_thermal, temperatures=None,
     else:
         output_dir = Path(output_dir)
         if not output_dir.is_dir():
-            raise IOError("{} is not a directory".format(output_dir))
+            raise IOError(f"{output_dir} is not a directory")
 
     ev = evaluation if evaluation is not None else endf.Evaluation(filename)
     mat = ev.material
@@ -577,27 +649,27 @@ def make_ace_thermal(filename, filename_thermal, temperatures=None,
         # Extend input with an ACER run for each temperature
         nace = nthermal_acer_in + 1 + 2*i
         ndir = nace + 1
-        ext = '{:02}'.format(i + 1)
+        ext = f'{i + 1:02}'
         commands += _THERMAL_TEMPLATE_ACER.format(**locals())
 
         # Indicate tapes to save for each ACER run
-        tapeout[nace] = output_dir / "ace_{:.1f}".format(temperature)
-        tapeout[ndir] = output_dir / "xsdir_{:.1f}".format(temperature)
+        tapeout[nace] = output_dir / f"ace_{temperature:.1f}"
+        tapeout[ndir] = output_dir / f"xsdir_{temperature:.1f}"
     commands += 'stop\n'
     run(commands, tapein, tapeout, **kwargs)
 
-    ace = output_dir / ace
+    ace = (output_dir / "ace") if ace is None else Path(ace)
     xsdir = (ace.parent / "xsdir") if xsdir is None else Path(xsdir)
     with ace.open('w') as ace_file, xsdir.open('w') as xsdir_file:
         # Concatenate ACE and xsdir files together
         for temperature in temperatures:
-            ace_in = output_dir / "ace_{:.1f}".format(temperature)
+            ace_in = output_dir / f"ace_{temperature:.1f}"
             ace_file.write(ace_in.read_text())
 
-            xsdir_in = output_dir / "xsdir_{:.1f}".format(temperature)
+            xsdir_in = output_dir / f"xsdir_{temperature:.1f}"
             xsdir_file.write(xsdir_in.read_text())
 
     # Remove ACE/xsdir files for each temperature
     for temperature in temperatures:
-        (output_dir / "ace_{:.1f}".format(temperature)).unlink()
-        (output_dir / "xsdir_{:.1f}".format(temperature)).unlink()
+        (output_dir / f"ace_{temperature:.1f}").unlink()
+        (output_dir / f"xsdir_{temperature:.1f}").unlink()

@@ -8,11 +8,11 @@ import openmc.model
 import openmc.checkvalue as cv
 
 
-_SCALAR_BRACKETED_METHODS = ['brentq', 'brenth', 'ridder', 'bisect']
+_SCALAR_BRACKETED_METHODS = {'brentq', 'brenth', 'ridder', 'bisect'}
 
 
 def _search_keff(guess, target, model_builder, model_args, print_iterations,
-                 print_output, guesses, results):
+                 run_args, guesses, results):
     """Function which will actually create our model, run the calculation, and
     obtain the result. This function will be passed to the root finding
     algorithm
@@ -31,8 +31,8 @@ def _search_keff(guess, target, model_builder, model_args, print_iterations,
     print_iterations : bool
         Whether or not to print the guess and the resultant keff during the
         iteration process.
-    print_output : bool
-        Whether or not to print the OpenMC output during the iterations.
+    run_args : dict
+        Keyword arguments to pass to :meth:`openmc.Model.run`.
     guesses : Iterable of Real
         Running list of guesses thus far, to be updated during the execution of
         this function.
@@ -51,9 +51,9 @@ def _search_keff(guess, target, model_builder, model_args, print_iterations,
     model = model_builder(guess, **model_args)
 
     # Run the model and obtain keff
-    sp_filepath = model.run(output=print_output)
+    sp_filepath = model.run(**run_args)
     with openmc.StatePoint(sp_filepath) as sp:
-        keff = sp.k_combined
+        keff = sp.keff
 
     # Record the history
     guesses.append(guess)
@@ -70,7 +70,7 @@ def _search_keff(guess, target, model_builder, model_args, print_iterations,
 def search_for_keff(model_builder, initial_guess=None, target=1.0,
                     bracket=None, model_args=None, tol=None,
                     bracketed_method='bisect', print_iterations=False,
-                    print_output=False, **kwargs):
+                    run_args=None, **kwargs):
     """Function to perform a keff search by modifying a model parametrized by a
     single independent variable.
 
@@ -102,9 +102,11 @@ def search_for_keff(model_builder, initial_guess=None, target=1.0,
     print_iterations : bool
         Whether or not to print the guess and the result during the iteration
         process. Defaults to False.
-    print_output : bool
-        Whether or not to print the OpenMC output during the iterations.
-        Defaults to False.
+    run_args : dict, optional
+        Keyword arguments to pass to :meth:`openmc.Model.run`. Defaults to no
+        arguments.
+
+        .. versionadded:: 0.13.1
     **kwargs
         All remaining keyword arguments are passed to the root-finding
         method.
@@ -137,7 +139,10 @@ def search_for_keff(model_builder, initial_guess=None, target=1.0,
     cv.check_value('bracketed_method', bracketed_method,
                    _SCALAR_BRACKETED_METHODS)
     cv.check_type('print_iterations', print_iterations, bool)
-    cv.check_type('print_output', print_output, bool)
+    if run_args is None:
+        run_args = {}
+    else:
+        cv.check_type('run_args', run_args, dict)
     cv.check_type('model_builder', model_builder, Callable)
 
     # Run the model builder function once to make sure it provides the correct
@@ -188,7 +193,7 @@ def search_for_keff(model_builder, initial_guess=None, target=1.0,
 
     # Add information to be passed to the searching function
     args['args'] = (target, model_builder, model_args, print_iterations,
-                    print_output, guesses, results)
+                    run_args, guesses, results)
 
     # Create a new dictionary with the arguments from args and kwargs
     args.update(kwargs)

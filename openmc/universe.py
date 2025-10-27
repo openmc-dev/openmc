@@ -1,18 +1,14 @@
+from __future__ import annotations
 from abc import ABC, abstractmethod
-from collections import OrderedDict
 from collections.abc import Iterable
-from copy import copy, deepcopy
 from numbers import Real
-import random
-from xml.etree import ElementTree as ET
 
 import numpy as np
 
 import openmc
 import openmc.checkvalue as cv
-from ._xml import get_text
 from .mixin import IDManagerMixin
-from .plots import _SVG_COLORS
+from .plots import add_plot_params
 
 
 class UniverseBase(ABC, IDManagerMixin):
@@ -38,7 +34,7 @@ class UniverseBase(ABC, IDManagerMixin):
 
         # Keys   - Cell IDs
         # Values - Cells
-        self._cells = OrderedDict()
+        self._cells = {}
 
     def __repr__(self):
         string = 'Universe\n'
@@ -51,8 +47,8 @@ class UniverseBase(ABC, IDManagerMixin):
         return self._name
 
     @property
-    def volume(self):
-        return self._volume
+    def cells(self):
+        return self._cells
 
     @name.setter
     def name(self, name):
@@ -61,6 +57,10 @@ class UniverseBase(ABC, IDManagerMixin):
             self._name = name
         else:
             self._name = ''
+
+    @property
+    def volume(self):
+        return self._volume
 
     @volume.setter
     def volume(self, volume):
@@ -82,9 +82,33 @@ class UniverseBase(ABC, IDManagerMixin):
                 self._volume = volume_calc.volumes[self.id].n
                 self._atoms = volume_calc.atoms[self.id]
             else:
-                raise ValueError('No volume information found for this universe.')
+                raise ValueError(
+                    'No volume information found for this universe.')
         else:
             raise ValueError('No volume information found for this universe.')
+
+    def get_all_universes(self, memo=None):
+        """Return all universes that are contained within this one.
+
+        Returns
+        -------
+        universes : dict
+            Dictionary whose keys are universe IDs and values are
+            :class:`Universe` instances
+
+        """
+        if memo is None:
+            memo = set()
+        elif self in memo:
+            return {}
+        memo.add(self)
+
+        # Append all Universes within each Cell to the dictionary
+        universes = {}
+        for cell in self.get_all_cells().values():
+            universes.update(cell.get_all_universes(memo))
+
+        return universes
 
     @abstractmethod
     def create_xml_subelement(self, xml_element, memo=None):
@@ -92,7 +116,7 @@ class UniverseBase(ABC, IDManagerMixin):
 
         Parameters
         ----------
-        xml_element : xml.etree.ElementTree.Element
+        xml_element : lxml.etree._Element
             XML element to be added to
 
         memo : set or None
@@ -103,6 +127,137 @@ class UniverseBase(ABC, IDManagerMixin):
         Returns
         -------
         None
+
+        """
+
+    def _determine_paths(self, path='', instances_only=False):
+        """Count the number of instances for each cell in the universe, and
+        record the count in the :attr:`Cell.num_instances` properties."""
+
+        univ_path = path + f'u{self.id}'
+
+        for cell in self.cells.values():
+            cell_path = f'{univ_path}->c{cell.id}'
+            fill = cell._fill
+            fill_type = cell.fill_type
+
+            # If universe-filled, recursively count cells in filling universe
+            if fill_type == 'universe':
+                fill._determine_paths(cell_path + '->', instances_only)
+            # If lattice-filled, recursively call for all universes in lattice
+            elif fill_type == 'lattice':
+                latt = fill
+
+                # Count instances in each universe in the lattice
+                for index in latt._natural_indices:
+                    latt_path = '{}->l{}({})->'.format(
+                        cell_path, latt.id, ",".join(str(x) for x in index))
+                    univ = latt.get_universe(index)
+                    univ._determine_paths(latt_path, instances_only)
+
+            else:
+                if fill_type == 'material':
+                    mat = fill
+                elif fill_type == 'distribmat':
+                    mat = fill[cell._num_instances]
+                else:
+                    mat = None
+
+                if mat is not None:
+                    mat._num_instances += 1
+                    if not instances_only:
+                        mat._paths.append(f'{cell_path}->m{mat.id}')
+
+            # Append current path
+            cell._num_instances += 1
+            if not instances_only:
+                cell._paths.append(cell_path)
+
+    def add_cells(self, cells):
+        """Add multiple cells to the universe.
+
+        Parameters
+        ----------
+        cells : Iterable of openmc.Cell
+            Cells to add
+
+        """
+
+        if not isinstance(cells, Iterable):
+            msg = f'Unable to add Cells to Universe ID="{self._id}" since ' \
+                  f'"{cells}" is not iterable'
+            raise TypeError(msg)
+
+        for cell in cells:
+            self.add_cell(cell)
+
+    @abstractmethod
+    def add_cell(self, cell):
+        pass
+
+    @abstractmethod
+    def remove_cell(self, cell):
+        pass
+
+    def clear_cells(self):
+        """Remove all cells from the universe."""
+
+        self._cells.clear()
+
+    def get_all_cells(self, memo=None):
+        """Return all cells that are contained within the universe
+
+        Returns
+        -------
+        cells : dict
+            Dictionary whose keys are cell IDs and values are :class:`Cell`
+            instances
+
+        """
+
+        if memo is None:
+            memo = set()
+        elif self in memo:
+            return {}
+        memo.add(self)
+
+        # Add this Universe's cells to the dictionary
+        cells = {}
+        cells.update(self._cells)
+
+        # Append all Cells in each Cell in the Universe to the dictionary
+        for cell in self._cells.values():
+            cells.update(cell.get_all_cells(memo))
+
+        return cells
+
+    def get_all_materials(self, memo=None):
+        """Return all materials that are contained within the universe
+
+        Returns
+        -------
+        materials : dict
+            Dictionary whose keys are material IDs and values are
+            :class:`Material` instances
+
+        """
+
+        if memo is None:
+            memo = set()
+
+        materials = {}
+
+        # Append all Cells in each Cell in the Universe to the dictionary
+        cells = self.get_all_cells(memo)
+        for cell in cells.values():
+            materials.update(cell.get_all_materials(memo))
+
+        return materials
+
+    @abstractmethod
+    def _partial_deepcopy(self):
+        """Deepcopy all parameters of an openmc.UniverseBase object except its cells.
+        This should only be used from the openmc.UniverseBase.clone() context.
 
         """
 
@@ -133,107 +288,18 @@ class UniverseBase(ABC, IDManagerMixin):
 
         # If no memoize'd clone exists, instantiate one
         if self not in memo:
-            clone = deepcopy(self)
-            clone.id = None
+            clone = self._partial_deepcopy()
 
             # Clone all cells for the universe clone
-            clone._cells = OrderedDict()
+            clone._cells = {}
             for cell in self._cells.values():
                 clone.add_cell(cell.clone(clone_materials, clone_regions,
-                     memo))
+                                          memo))
 
             # Memoize the clone
             memo[self] = clone
 
         return memo[self]
-
-
-class Universe(UniverseBase):
-    """A collection of cells that can be repeated.
-
-    Parameters
-    ----------
-    universe_id : int, optional
-        Unique identifier of the universe. If not specified, an identifier will
-        automatically be assigned
-    name : str, optional
-        Name of the universe. If not specified, the name is the empty string.
-    cells : Iterable of openmc.Cell, optional
-        Cells to add to the universe. By default no cells are added.
-
-    Attributes
-    ----------
-    id : int
-        Unique identifier of the universe
-    name : str
-        Name of the universe
-    cells : collections.OrderedDict
-        Dictionary whose keys are cell IDs and values are :class:`Cell`
-        instances
-    volume : float
-        Volume of the universe in cm^3. This can either be set manually or
-        calculated in a stochastic volume calculation and added via the
-        :meth:`Universe.add_volume_information` method.
-    bounding_box : 2-tuple of numpy.array
-        Lower-left and upper-right coordinates of an axis-aligned bounding box
-        of the universe.
-
-    """
-
-    def __init__(self, universe_id=None, name='', cells=None):
-        super().__init__(universe_id, name)
-
-        if cells is not None:
-            self.add_cells(cells)
-
-    def __repr__(self):
-        string = super().__repr__()
-        string += '{: <16}=\t{}\n'.format('\tGeom', 'CSG')
-        string += '{: <16}=\t{}\n'.format('\tCells', list(self._cells.keys()))
-        return string
-
-    @property
-    def cells(self):
-        return self._cells
-
-    @property
-    def bounding_box(self):
-        regions = [c.region for c in self.cells.values()
-                   if c.region is not None]
-        if regions:
-            return openmc.Union(regions).bounding_box
-        else:
-            # Infinite bounding box
-            return openmc.Intersection([]).bounding_box
-
-    @classmethod
-    def from_hdf5(cls, group, cells):
-        """Create universe from HDF5 group
-
-        Parameters
-        ----------
-        group : h5py.Group
-            Group in HDF5 file
-        cells : dict
-            Dictionary mapping cell IDs to instances of :class:`openmc.Cell`.
-
-        Returns
-        -------
-        openmc.Universe
-            Universe instance
-
-        """
-        universe_id = int(group.name.split('/')[-1].lstrip('universe '))
-        cell_ids = group['cells'][()]
-
-        # Create this Universe
-        universe = cls(universe_id)
-
-        # Add each Cell to the Universe
-        for cell_id in cell_ids:
-            universe.add_cell(cells[cell_id])
-
-        return universe
 
     def find(self, point):
         """Find cells/universes/lattices which contain a given point
@@ -265,191 +331,13 @@ class Universe(UniverseBase):
                     return [self, cell] + cell.fill.find(p)
         return []
 
-    def plot(self, origin=(0., 0., 0.), width=(1., 1.), pixels=(200, 200),
-             basis='xy', color_by='cell', colors=None, seed=None,
-             **kwargs):
+    @add_plot_params
+    def plot(self, *args, **kwargs):
         """Display a slice plot of the universe.
-
-        To display or save the plot, call :func:`matplotlib.pyplot.show` or
-        :func:`matplotlib.pyplot.savefig`. In a Jupyter notebook, enabling the
-        matplotlib inline backend will show the plot inline.
-
-        Parameters
-        ----------
-        origin : Iterable of float
-            Coordinates at the origin of the plot
-        width : Iterable of float
-            Width of the plot in each basis direction
-        pixels : Iterable of int
-            Number of pixels to use in each basis direction
-        basis : {'xy', 'xz', 'yz'}
-            The basis directions for the plot
-        color_by : {'cell', 'material'}
-            Indicate whether the plot should be colored by cell or by material
-        colors : dict
-            Assigns colors to specific materials or cells. Keys are instances of
-            :class:`Cell` or :class:`Material` and values are RGB 3-tuples, RGBA
-            4-tuples, or strings indicating SVG color names. Red, green, blue,
-            and alpha should all be floats in the range [0.0, 1.0], for example:
-
-            .. code-block:: python
-
-               # Make water blue
-               water = openmc.Cell(fill=h2o)
-               universe.plot(..., colors={water: (0., 0., 1.))
-
-        seed : hashable object or None
-            Hashable object which is used to seed the random number generator
-            used to select colors. If None, the generator is seeded from the
-            current time.
-        **kwargs
-            All keyword arguments are passed to
-            :func:`matplotlib.pyplot.imshow`.
-
-        Returns
-        -------
-        matplotlib.image.AxesImage
-            Resulting image
-
         """
-        import matplotlib.pyplot as plt
-
-        # Seed the random number generator
-        if seed is not None:
-            random.seed(seed)
-
-        if colors is None:
-            # Create default dictionary if none supplied
-            colors = {}
-        else:
-            # Convert to RGBA if necessary
-            colors = copy(colors)
-            for obj, color in colors.items():
-                if isinstance(color, str):
-                    if color.lower() not in _SVG_COLORS:
-                        raise ValueError(f"'{color}' is not a valid color.")
-                    colors[obj] = [x/255 for x in
-                                   _SVG_COLORS[color.lower()]] + [1.0]
-                elif len(color) == 3:
-                    colors[obj] = list(color) + [1.0]
-
-        if basis == 'xy':
-            x_min = origin[0] - 0.5*width[0]
-            x_max = origin[0] + 0.5*width[0]
-            y_min = origin[1] - 0.5*width[1]
-            y_max = origin[1] + 0.5*width[1]
-        elif basis == 'yz':
-            # The x-axis will correspond to physical y and the y-axis will
-            # correspond to physical z
-            x_min = origin[1] - 0.5*width[0]
-            x_max = origin[1] + 0.5*width[0]
-            y_min = origin[2] - 0.5*width[1]
-            y_max = origin[2] + 0.5*width[1]
-        elif basis == 'xz':
-            # The y-axis will correspond to physical z
-            x_min = origin[0] - 0.5*width[0]
-            x_max = origin[0] + 0.5*width[0]
-            y_min = origin[2] - 0.5*width[1]
-            y_max = origin[2] + 0.5*width[1]
-
-        # Determine locations to determine cells at
-        x_coords = np.linspace(x_min, x_max, pixels[0], endpoint=False) + \
-                   0.5*(x_max - x_min)/pixels[0]
-        y_coords = np.linspace(y_max, y_min, pixels[1], endpoint=False) - \
-                   0.5*(y_max - y_min)/pixels[1]
-
-        # Initialize output image in RGBA format.  Flip the pixels from
-        # traditional (x, y) to (y, x) used in graphics.
-        img = np.zeros((pixels[1], pixels[0], 4))
-        for i, x in enumerate(x_coords):
-            for j, y in enumerate(y_coords):
-                if basis == 'xy':
-                    path = self.find((x, y, origin[2]))
-                elif basis == 'yz':
-                    path = self.find((origin[0], x, y))
-                elif basis == 'xz':
-                    path = self.find((x, origin[1], y))
-
-                if len(path) > 0:
-                    try:
-                        if color_by == 'cell':
-                            obj = path[-1]
-                        elif color_by == 'material':
-                            if path[-1].fill_type == 'material':
-                                obj = path[-1].fill
-                            else:
-                                continue
-                    except AttributeError:
-                        continue
-                    if obj not in colors:
-                        colors[obj] = (random.random(), random.random(),
-                                       random.random(), 1.0)
-                    img[j, i, :] = colors[obj]
-
-        # Display image
-        return plt.imshow(img, extent=(x_min, x_max, y_min, y_max),
-                          interpolation='nearest', **kwargs)
-
-    def add_cell(self, cell):
-        """Add a cell to the universe.
-
-        Parameters
-        ----------
-        cell : openmc.Cell
-            Cell to add
-
-        """
-
-        if not isinstance(cell, openmc.Cell):
-            msg = f'Unable to add a Cell to Universe ID="{self._id}" since ' \
-                  f'"{cell}" is not a Cell'
-            raise TypeError(msg)
-
-        cell_id = cell.id
-
-        if cell_id not in self._cells:
-            self._cells[cell_id] = cell
-
-    def add_cells(self, cells):
-        """Add multiple cells to the universe.
-
-        Parameters
-        ----------
-        cells : Iterable of openmc.Cell
-            Cells to add
-
-        """
-
-        if not isinstance(cells, Iterable):
-            msg = f'Unable to add Cells to Universe ID="{self._id}" since ' \
-                  f'"{cells}" is not iterable'
-            raise TypeError(msg)
-
-        for cell in cells:
-            self.add_cell(cell)
-
-    def remove_cell(self, cell):
-        """Remove a cell from the universe.
-
-        Parameters
-        ----------
-        cell : openmc.Cell
-            Cell to remove
-
-        """
-
-        if not isinstance(cell, openmc.Cell):
-            msg = f'Unable to remove a Cell from Universe ID="{self._id}" ' \
-                  f'since "{cell}" is not a Cell'
-            raise TypeError(msg)
-
-        # If the Cell is in the Universe's list of Cells, delete it
-        self._cells.pop(cell.id, None)
-
-    def clear_cells(self):
-        """Remove all cells from the universe."""
-
-        self._cells.clear()
+        model = openmc.Model()
+        model.geometry = openmc.Geometry(self)
+        return model.plot(*args, **kwargs)
 
     def get_nuclides(self):
         """Returns all nuclides in the universe
@@ -476,19 +364,18 @@ class Universe(UniverseBase):
 
         Returns
         -------
-        nuclides : collections.OrderedDict
+        nuclides : dict
             Dictionary whose keys are nuclide names and values are 2-tuples of
             (nuclide, density)
 
         """
-        nuclides = OrderedDict()
+        nuclides = {}
 
-        if self._atoms is not None:
+        if self._atoms:
             volume = self.volume
             for name, atoms in self._atoms.items():
-                nuclide = openmc.Nuclide(name)
                 density = 1.0e-24 * atoms.n/volume  # density in atoms/b-cm
-                nuclides[name] = (nuclide, density)
+                nuclides[name] = (name, density)
         else:
             raise RuntimeError(
                 'Volume information is needed to calculate microscopic cross '
@@ -498,81 +385,141 @@ class Universe(UniverseBase):
 
         return nuclides
 
-    def get_all_cells(self, memo=None):
-        """Return all cells that are contained within the universe
+
+
+class Universe(UniverseBase):
+    """A collection of cells that can be repeated.
+
+    Parameters
+    ----------
+    universe_id : int, optional
+        Unique identifier of the universe. If not specified, an identifier will
+        automatically be assigned
+    name : str, optional
+        Name of the universe. If not specified, the name is the empty string.
+    cells : Iterable of openmc.Cell, optional
+        Cells to add to the universe. By default no cells are added.
+
+    Attributes
+    ----------
+    id : int
+        Unique identifier of the universe
+    name : str
+        Name of the universe
+    cells : dict
+        Dictionary whose keys are cell IDs and values are :class:`Cell`
+        instances
+    volume : float
+        Volume of the universe in cm^3. This can either be set manually or
+        calculated in a stochastic volume calculation and added via the
+        :meth:`Universe.add_volume_information` method.
+    bounding_box : openmc.BoundingBox
+        Lower-left and upper-right coordinates of an axis-aligned bounding box
+        of the universe.
+
+    """
+
+    def __init__(self, universe_id=None, name='', cells=None):
+        super().__init__(universe_id, name)
+
+        if cells is not None:
+            self.add_cells(cells)
+
+    def __repr__(self):
+        string = super().__repr__()
+        string += '{: <16}=\t{}\n'.format('\tGeom', 'CSG')
+        string += '{: <16}=\t{}\n'.format('\tCells', list(self._cells.keys()))
+        return string
+
+    @property
+    def bounding_box(self) -> openmc.BoundingBox:
+        regions = [c.region for c in self.cells.values()
+                   if c.region is not None]
+        if regions:
+            return openmc.Union(regions).bounding_box
+        else:
+            return openmc.BoundingBox.infinite()
+
+    @classmethod
+    def from_hdf5(cls, group, cells):
+        """Create universe from HDF5 group
+
+        Parameters
+        ----------
+        group : h5py.Group
+            Group in HDF5 file
+        cells : dict
+            Dictionary mapping cell IDs to instances of :class:`openmc.Cell`.
 
         Returns
         -------
-        cells : collections.OrderedDict
-            Dictionary whose keys are cell IDs and values are :class:`Cell`
-            instances
+        openmc.Universe
+            Universe instance
+
+        """
+        universe_id = int(group.name.split('/')[-1].lstrip('universe '))
+        cell_ids = group['cells'][()]
+
+        # Create this Universe
+        universe = cls(universe_id)
+
+        # Add each Cell to the Universe
+        for cell_id in cell_ids:
+            universe.add_cell(cells[cell_id])
+
+        return universe
+
+
+    def add_cell(self, cell):
+        """Add a cell to the universe.
+
+        Parameters
+        ----------
+        cell : openmc.Cell
+            Cell to add
 
         """
 
-        cells = OrderedDict()
+        if not isinstance(cell, openmc.Cell):
+            msg = f'Unable to add a Cell to Universe ID="{self._id}" since ' \
+                  f'"{cell}" is not a Cell'
+            raise TypeError(msg)
 
-        if memo and self in memo:
-            return cells
+        cell_id = cell.id
 
-        if memo is not None:
-            memo.add(self)
+        if cell_id not in self._cells:
+            self._cells[cell_id] = cell
 
-        # Add this Universe's cells to the dictionary
-        cells.update(self._cells)
+    def remove_cell(self, cell):
+        """Remove a cell from the universe.
 
-        # Append all Cells in each Cell in the Universe to the dictionary
-        for cell in self._cells.values():
-            cells.update(cell.get_all_cells(memo))
-
-        return cells
-
-    def get_all_materials(self, memo=None):
-        """Return all materials that are contained within the universe
-
-        Returns
-        -------
-        materials : collections.OrderedDict
-            Dictionary whose keys are material IDs and values are
-            :class:`Material` instances
+        Parameters
+        ----------
+        cell : openmc.Cell
+            Cell to remove
 
         """
 
-        materials = OrderedDict()
+        if not isinstance(cell, openmc.Cell):
+            msg = f'Unable to remove a Cell from Universe ID="{self._id}" ' \
+                  f'since "{cell}" is not a Cell'
+            raise TypeError(msg)
 
-        # Append all Cells in each Cell in the Universe to the dictionary
-        cells = self.get_all_cells(memo)
-        for cell in cells.values():
-            materials.update(cell.get_all_materials(memo))
-
-        return materials
-
-    def get_all_universes(self):
-        """Return all universes that are contained within this one.
-
-        Returns
-        -------
-        universes : collections.OrderedDict
-            Dictionary whose keys are universe IDs and values are
-            :class:`Universe` instances
-
-        """
-        # Append all Universes within each Cell to the dictionary
-        universes = OrderedDict()
-        for cell in self.get_all_cells().values():
-            universes.update(cell.get_all_universes())
-
-        return universes
+        # If the Cell is in the Universe's list of Cells, delete it
+        self._cells.pop(cell.id, None)
 
     def create_xml_subelement(self, xml_element, memo=None):
+        if memo is None:
+            memo = set()
+
         # Iterate over all Cells
         for cell in self._cells.values():
 
             # If the cell was already written, move on
-            if memo and cell in memo:
+            if cell in memo:
                 continue
 
-            if memo is not None:
-                memo.add(cell)
+            memo.add(cell)
 
             # Create XML subelement for this Cell
             cell_element = cell.create_xml_subelement(xml_element, memo)
@@ -581,208 +528,11 @@ class Universe(UniverseBase):
             cell_element.set("universe", str(self._id))
             xml_element.append(cell_element)
 
-    def _determine_paths(self, path='', instances_only=False):
-        """Count the number of instances for each cell in the universe, and
-        record the count in the :attr:`Cell.num_instances` properties."""
-
-        univ_path = path + f'u{self.id}'
-
-        for cell in self.cells.values():
-            cell_path = f'{univ_path}->c{cell.id}'
-            fill = cell._fill
-            fill_type = cell.fill_type
-
-            # If universe-filled, recursively count cells in filling universe
-            if fill_type == 'universe':
-                fill._determine_paths(cell_path + '->', instances_only)
-
-            # If lattice-filled, recursively call for all universes in lattice
-            elif fill_type == 'lattice':
-                latt = fill
-
-                # Count instances in each universe in the lattice
-                for index in latt._natural_indices:
-                    latt_path = '{}->l{}({})->'.format(
-                        cell_path, latt.id, ",".join(str(x) for x in index))
-                    univ = latt.get_universe(index)
-                    univ._determine_paths(latt_path, instances_only)
-
-            else:
-                if fill_type == 'material':
-                    mat = fill
-                elif fill_type == 'distribmat':
-                    mat = fill[cell._num_instances]
-                else:
-                    mat = None
-
-                if mat is not None:
-                    mat._num_instances += 1
-                    if not instances_only:
-                        mat._paths.append(f'{cell_path}->m{mat.id}')
-
-            # Append current path
-            cell._num_instances += 1
-            if not instances_only:
-                cell._paths.append(cell_path)
-
-
-class DAGMCUniverse(UniverseBase):
-    """A reference to a DAGMC file to be used in the model.
-
-    .. versionadded:: 0.13.0
-
-    Parameters
-    ----------
-    filename : str
-        Path to the DAGMC file used to represent this universe.
-    universe_id : int, optional
-        Unique identifier of the universe. If not specified, an identifier will
-        automatically be assigned.
-    name : str, optional
-        Name of the universe. If not specified, the name is the empty string.
-    auto_geom_ids : bool
-        Set IDs automatically on initialization (True) or report overlaps
-        in ID space between CSG and DAGMC (False)
-    auto_mat_ids : bool
-        Set IDs automatically on initialization (True)  or report overlaps
-        in ID space between OpenMC and UWUW materials (False)
-
-    Attributes
-    ----------
-    id : int
-        Unique identifier of the universe
-    name : str
-        Name of the universe
-    filename : str
-        Path to the DAGMC file used to represent this universe.
-    auto_geom_ids : bool
-        Set IDs automatically on initialization (True) or report overlaps
-        in ID space between CSG and DAGMC (False)
-    auto_mat_ids : bool
-        Set IDs automatically on initialization (True)  or report overlaps
-        in ID space between OpenMC and UWUW materials (False)
-    """
-
-    def __init__(self,
-                 filename,
-                 universe_id=None,
-                 name='',
-                 auto_geom_ids=False,
-                 auto_mat_ids=False):
-        super().__init__(universe_id, name)
-        # Initialize class attributes
-        self.filename = filename
-        self.auto_geom_ids = auto_geom_ids
-        self.auto_mat_ids = auto_mat_ids
-
-    def __repr__(self):
-        string = super().__repr__()
-        string += '{: <16}=\t{}\n'.format('\tGeom', 'DAGMC')
-        string += '{: <16}=\t{}\n'.format('\tFile', self.filename)
-        return string
-
-    @property
-    def filename(self):
-        return self._filename
-
-    @filename.setter
-    def filename(self, val):
-        cv.check_type('DAGMC filename', val, str)
-        self._filename = val
-
-    @property
-    def auto_geom_ids(self):
-        return self._auto_geom_ids
-
-    @auto_geom_ids.setter
-    def auto_geom_ids(self, val):
-        cv.check_type('DAGMC automatic geometry ids', val, bool)
-        self._auto_geom_ids = val
-
-    @property
-    def auto_mat_ids(self):
-        return self._auto_mat_ids
-
-    @auto_mat_ids.setter
-    def auto_mat_ids(self, val):
-        cv.check_type('DAGMC automatic material ids', val, bool)
-        self._auto_mat_ids = val
-
-    def get_all_cells(self, memo=None):
-        return OrderedDict()
-
-    def get_all_materials(self, memo=None):
-        return OrderedDict()
-
-    def create_xml_subelement(self, xml_element, memo=None):
-        if memo and self in memo:
-            return
-
-        if memo is not None:
-            memo.add(self)
-
-        # Set xml element values
-        dagmc_element = ET.Element('dagmc_universe')
-        dagmc_element.set('id', str(self.id))
-
-        if self.auto_geom_ids:
-            dagmc_element.set('auto_geom_ids', 'true')
-        if self.auto_mat_ids:
-            dagmc_element.set('auto_mat_ids', 'true')
-        dagmc_element.set('filename', self.filename)
-        xml_element.append(dagmc_element)
-
-    @classmethod
-    def from_hdf5(cls, group):
-        """Create DAGMC universe from HDF5 group
-
-        Parameters
-        ----------
-        group : h5py.Group
-            Group in HDF5 file
-
-        Returns
-        -------
-        openmc.DAGMCUniverse
-            DAGMCUniverse instance
-
+    def _partial_deepcopy(self):
+        """Clone all of the openmc.Universe object's attributes except for its cells,
+        as they are copied within the clone function. This should only to be
+        used within the openmc.UniverseBase.clone() context.
         """
-        id = int(group.name.split('/')[-1].lstrip('universe '))
-        fname = group['filename'][()].decode()
-        name = group['name'][()].decode() if 'name' in group else None
-
-        out = cls(fname, universe_id=id, name=name)
-
-        out.auto_geom_ids = bool(group.attrs['auto_geom_ids'])
-        out.auto_mat_ids = bool(group.attrs['auto_mat_ids'])
-
-        return out
-
-    @classmethod
-    def from_xml_element(cls, elem):
-        """Generate DAGMC universe from XML element
-
-        Parameters
-        ----------
-        elem : xml.etree.ElementTree.Element
-            `<dagmc_universe>` element
-
-        Returns
-        -------
-        openmc.DAGMCUniverse
-            DAGMCUniverse instance
-
-        """
-        id = int(get_text(elem, 'id'))
-        fname = get_text(elem, 'filename')
-
-        out = cls(fname, universe_id=id)
-
-        name = get_text(elem, 'name')
-        if name is not None:
-            out.name = name
-
-        out.auto_geom_ids = bool(elem.get('auto_geom_ids'))
-        out.auto_mat_ids = bool(elem.get('auto_mat_ids'))
-
-        return out
+        clone = openmc.Universe(name=self.name)
+        clone.volume = self.volume
+        return clone

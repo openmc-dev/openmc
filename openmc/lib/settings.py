@@ -12,6 +12,8 @@ _RUN_MODES = {1: 'fixed source',
 
 _dll.openmc_set_seed.argtypes = [c_int64]
 _dll.openmc_get_seed.restype = c_int64
+_dll.openmc_set_stride.argtypes = [c_int64]
+_dll.openmc_get_stride.restype = c_int64
 _dll.openmc_get_n_batches.argtypes = [POINTER(c_int), c_bool]
 _dll.openmc_get_n_batches.restype = c_int
 _dll.openmc_get_n_batches.errcheck = _error_handler
@@ -35,6 +37,7 @@ class _Settings:
     run_CE = _DLLGlobal(c_bool, 'run_CE')
     verbosity = _DLLGlobal(c_int, 'verbosity')
     event_based = _DLLGlobal(c_bool, 'event_based')
+    weight_windows_on = _DLLGlobal(c_bool, 'weight_windows_on')
 
     @property
     def run_mode(self):
@@ -52,11 +55,11 @@ class _Settings:
                 current_idx.value = idx
                 break
         else:
-            raise ValueError('Invalid run mode: {}'.format(mode))
+            raise ValueError(f'Invalid run mode: {mode}')
 
     @property
     def path_statepoint(self):
-        path = c_char_p.in_dll(_dll, 'path_statepoint').value
+        path = c_char_p.in_dll(_dll, 'path_statepoint_c').value
         return path.decode()
 
     @property
@@ -66,6 +69,14 @@ class _Settings:
     @seed.setter
     def seed(self, seed):
         _dll.openmc_set_seed(seed)
+
+    @property
+    def stride(self):
+        return _dll.openmc_get_stride()
+
+    @stride.setter
+    def stride(self, stride):
+        _dll.openmc_set_stride(stride)
 
     def set_batches(self, n_batches, set_max_batches=True, add_sp_batch=True):
         """Set number of batches or maximum number of batches

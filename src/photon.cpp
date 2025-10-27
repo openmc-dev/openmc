@@ -14,7 +14,9 @@
 #include "openmc/settings.h"
 
 #include "xtensor/xbuilder.hpp"
+#include "xtensor/xmath.hpp"
 #include "xtensor/xoperation.hpp"
+#include "xtensor/xslice.hpp"
 #include "xtensor/xview.hpp"
 
 #include <cmath>
@@ -44,6 +46,8 @@ vector<unique_ptr<PhotonInteraction>> elements;
 
 PhotonInteraction::PhotonInteraction(hid_t group)
 {
+  using namespace xt::placeholders;
+
   // Set index of element in global vector
   index_ = data::elements.size();
 
@@ -87,9 +91,13 @@ PhotonInteraction::PhotonInteraction(hid_t group)
   close_group(rgroup);
 
   // Read pair production
-  rgroup = open_group(group, "pair_production_electron");
-  read_dataset(rgroup, "xs", pair_production_electron_);
-  close_group(rgroup);
+  if (object_exists(group, "pair_production_electron")) {
+    rgroup = open_group(group, "pair_production_electron");
+    read_dataset(rgroup, "xs", pair_production_electron_);
+    close_group(rgroup);
+  } else {
+    pair_production_electron_ = xt::zeros_like(energy_);
+  }
 
   // Read pair production
   if (object_exists(group, "pair_production_nuclear")) {
@@ -125,6 +133,7 @@ PhotonInteraction::PhotonInteraction(hid_t group)
   }
 
   shells_.resize(n_shell);
+  cross_sections_ = xt::zeros<double>({energy_.size(), n_shell});
 
   // Create mapping from designator to index
   std::unordered_map<int, int> shell_map;
@@ -149,19 +158,25 @@ PhotonInteraction::PhotonInteraction(hid_t group)
 
     // TODO: Move to ElectronSubshell constructor
 
-    // Read binding energy and number of electrons
     hid_t tgroup = open_group(rgroup, designator.c_str());
-    read_attribute(tgroup, "binding_energy", shell.binding_energy);
-    read_attribute(tgroup, "num_electrons", shell.n_electrons);
+
+    // Read binding energy energy and number of electrons if atomic relaxation
+    // data is present
+    if (attribute_exists(tgroup, "binding_energy")) {
+      has_atomic_relaxation_ = true;
+      read_attribute(tgroup, "binding_energy", shell.binding_energy);
+    }
 
     // Read subshell cross section
+    xt::xtensor<double, 1> xs;
     dset = open_dataset(tgroup, "xs");
     read_attribute(dset, "threshold_idx", shell.threshold);
     close_dataset(dset);
-    read_dataset(tgroup, "xs", shell.cross_section);
+    read_dataset(tgroup, "xs", xs);
 
-    auto& xs = shell.cross_section;
-    xs = xt::where(xs > 0.0, xt::log(xs), -500.0);
+    auto cross_section =
+      xt::view(cross_sections_, xt::range(shell.threshold, _), i);
+    cross_section = xt::where(xs > 0, xt::log(xs), 0);
 
     if (object_exists(tgroup, "transitions")) {
       // Determine dimensions of transitions
@@ -217,10 +232,33 @@ PhotonInteraction::PhotonInteraction(hid_t group)
   }
   close_group(rgroup);
 
+  // Map Compton subshell data to atomic relaxation data by finding the
+  // subshell with the equivalent binding energy
+  if (has_atomic_relaxation_) {
+    auto is_close = [](double a, double b) {
+      return std::abs(a - b) / a < FP_REL_PRECISION;
+    };
+    subshell_map_ = xt::full_like(binding_energy_, -1);
+    for (int i = 0; i < binding_energy_.size(); ++i) {
+      double E_b = binding_energy_[i];
+      if (i < n_shell && is_close(E_b, shells_[i].binding_energy)) {
+        subshell_map_[i] = i;
+      } else {
+        for (int j = 0; j < n_shell; ++j) {
+          if (is_close(E_b, shells_[j].binding_energy)) {
+            subshell_map_[i] = j;
+            break;
+          }
+        }
+      }
+    }
+  }
+
   // Create Compton profile CDF
   auto n_profile = data::compton_profile_pz.size();
-  profile_cdf_ = xt::empty<double>({n_shell, n_profile});
-  for (int i = 0; i < profile_pdf_.shape(0); ++i) {
+  auto n_shell_compton = profile_pdf_.shape(0);
+  profile_cdf_ = xt::empty<double>({n_shell_compton, n_profile});
+  for (int i = 0; i < n_shell_compton; ++i) {
     double c = 0.0;
     profile_cdf_(i, 0) = 0.0;
     for (int j = 0; j < n_profile - 1; ++j) {
@@ -311,15 +349,19 @@ PhotonInteraction::PhotonInteraction(hid_t group)
   }
 
   // Take logarithm of energies and cross sections since they are log-log
-  // interpolated
+  // interpolated. Note that cross section libraries converted from ACE files
+  // represent zero as exp(-500) to avoid log-log interpolation errors. For
+  // values below exp(-499) we store the log as -900, for which exp(-900)
+  // evaluates to zero.
+  double limit = std::exp(-499.0);
   energy_ = xt::log(energy_);
-  coherent_ = xt::where(coherent_ > 0.0, xt::log(coherent_), -500.0);
-  incoherent_ = xt::where(incoherent_ > 0.0, xt::log(incoherent_), -500.0);
+  coherent_ = xt::where(coherent_ > limit, xt::log(coherent_), -900.0);
+  incoherent_ = xt::where(incoherent_ > limit, xt::log(incoherent_), -900.0);
   photoelectric_total_ = xt::where(
-    photoelectric_total_ > 0.0, xt::log(photoelectric_total_), -500.0);
+    photoelectric_total_ > limit, xt::log(photoelectric_total_), -900.0);
   pair_production_total_ = xt::where(
-    pair_production_total_ > 0.0, xt::log(pair_production_total_), -500.0);
-  heating_ = xt::where(heating_ > 0.0, xt::log(heating_), -500.0);
+    pair_production_total_ > limit, xt::log(pair_production_total_), -900.0);
+  heating_ = xt::where(heating_ > limit, xt::log(heating_), -900.0);
 }
 
 PhotonInteraction::~PhotonInteraction()
@@ -566,18 +608,13 @@ void PhotonInteraction::calculate_xs(Particle& p) const
 
   // Calculate microscopic photoelectric cross section
   xs.photoelectric = 0.0;
-  for (const auto& shell : shells_) {
-    // Check threshold of reaction
-    int i_start = shell.threshold;
-    if (i_grid < i_start)
-      continue;
+  const auto& xs_lower = xt::row(cross_sections_, i_grid);
+  const auto& xs_upper = xt::row(cross_sections_, i_grid + 1);
 
-    // Evaluation subshell photoionization cross section
-    xs.photoelectric +=
-      std::exp(shell.cross_section(i_grid - i_start) +
-               f * (shell.cross_section(i_grid + 1 - i_start) -
-                     shell.cross_section(i_grid - i_start)));
-  }
+  for (int i = 0; i < xs_upper.size(); ++i)
+    if (xs_lower(i) != 0)
+      xs.photoelectric +=
+        std::exp(xs_lower(i) + f * (xs_upper(i) - xs_lower(i)));
 
   // Calculate microscopic pair production cross section
   xs.pair_production = std::exp(
@@ -747,6 +784,11 @@ void PhotonInteraction::pair_production(double alpha, double* E_electron,
 
 void PhotonInteraction::atomic_relaxation(int i_shell, Particle& p) const
 {
+  // Return if no atomic relaxation data is present or if the binding energy is
+  // larger than the incident particle energy
+  if (!has_atomic_relaxation_ || shells_[i_shell].binding_energy > p.E())
+    return;
+
   // Stack for unprocessed holes left by transitioning electrons
   int n_holes = 0;
   array<int, MAX_STACK_SIZE> holes;

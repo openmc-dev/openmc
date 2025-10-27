@@ -4,6 +4,7 @@
 
 #include "openmc/error.h"
 #include "openmc/string_utils.h"
+#include "openmc/vector.h"
 
 namespace openmc {
 
@@ -46,6 +47,31 @@ bool get_node_value_bool(pugi::xml_node node, const char* name)
       "Node \"{}\" is not a member of the \"{}\" XML node", name, node.name()));
   }
   return false;
+}
+
+vector<Position> get_node_position_array(
+  pugi::xml_node node, const char* name, bool lowercase)
+{
+  vector<double> coords = get_node_array<double>(node, name, lowercase);
+  if (coords.size() % 3 != 0) {
+    fatal_error(fmt::format(
+      "Incorect number of coordinates in Position array ({}) for \"{}\"",
+      coords.size(), name));
+  }
+  vector<Position> positions;
+  positions.reserve(coords.size() / 3);
+  auto it = coords.begin();
+  for (size_t i = 0; i < coords.size(); i += 3) {
+    positions.push_back({coords[i], coords[i + 1], coords[i + 2]});
+  }
+  return positions;
+}
+
+Position get_node_position(
+  pugi::xml_node node, const char* name, bool lowercase)
+{
+  vector<double> arr = get_node_array<double>(node, name, lowercase);
+  return Position(arr);
 }
 
 } // namespace openmc

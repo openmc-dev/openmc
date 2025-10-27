@@ -1,0 +1,90 @@
+<?xml version="1.0"?>
+<plots>
+
+  <plot id="1" type="wireframe_raytrace">
+    <look_at>0. 0. 0.</look_at>
+    <camera_position>20. 20. 20.</camera_position>
+    <pixels>200 200</pixels>
+    <color id="1" rgb="0 0 255" xs="10"/>
+    <color id="2" rgb="0 255 0" xs="0.1"/>
+    <color id="3" rgb="255 0 0" xs="1.0"/>
+    <field_of_view>70</field_of_view>
+  </plot>
+
+  <plot id="2" type="wireframe_raytrace">
+    <look_at>0. 0. 0.</look_at>
+    <camera_position>10. 10. 0.</camera_position>
+    <width>25 25</width>
+    <pixels>200 200</pixels>
+    <mask components="1 3" background="255 255 255" />
+    <field_of_view>90</field_of_view>
+    <wireframe_thickness>4</wireframe_thickness>
+    <filename>example1</filename>
+  </plot>
+
+  <plot id="3" color_by="material" type="wireframe_raytrace">
+    <look_at>0. 0. 0.</look_at>
+    <camera_position>20. 20. 20.</camera_position>
+    <pixels>200 200</pixels>
+    <background>240 240 240</background>
+    <filename>example2.png</filename>
+    <wireframe_ids>2</wireframe_ids>
+  </plot>
+
+  <plot id="4" color_by="material" type="wireframe_raytrace">
+    <look_at>0. 0. 0.</look_at>
+    <camera_position>0. 10.0 20.</camera_position>
+    <pixels>200 200</pixels>
+    <background>110 240 240</background>
+    <filename>example3.png</filename>
+  </plot>
+
+  <plot id="5" type="wireframe_raytrace">
+    <look_at>0. 0. 0.</look_at>
+    <camera_position>10. 10. 10.</camera_position>
+    <width>25 25</width>
+    <pixels>200 200</pixels>
+    <orthographic_width>25.0</orthographic_width>
+    <wireframe_thickness>2</wireframe_thickness>
+    <filename>orthographic_example1</filename>
+    <color id="1" rgb="0 0 255" xs="10"/>
+    <color id="2" rgb="0 255 0" xs="0.1"/>
+    <color id="3" rgb="255 0 0" xs="1.0"/>
+  </plot>
+
+  <plot id="6" color_by="material" type="solid_raytrace">
+    <look_at>0. 0. 0.</look_at>
+    <camera_position>10. 10. 10.</camera_position>
+    <pixels>200 200</pixels>
+    <filename>phong.png</filename>
+    <opaque_ids>1 3</opaque_ids>
+    <color id="1" rgb="0 0 255"/>
+    <color id="2" rgb="0 255 0"/>
+    <color id="3" rgb="255 0 100"/>
+  </plot>
+
+  <plot id="7" color_by="material" type="solid_raytrace">
+    <look_at>0. 0. 0.</look_at>
+    <camera_position>10. 10. 10.</camera_position>
+    <diffuse_fraction>0.5</diffuse_fraction>
+    <pixels>200 200</pixels>
+    <filename>phong_diffuse.png</filename>
+    <opaque_ids>1 3</opaque_ids>
+    <color id="1" rgb="0 0 255"/>
+    <color id="2" rgb="0 255 0"/>
+    <color id="3" rgb="255 0 100"/>
+  </plot>
+
+  <plot id="8" color_by="material" type="solid_raytrace">
+    <look_at>0. 0. 0.</look_at>
+    <camera_position>10. 10. 10.</camera_position>
+    <light_position>0. 10. 10.</light_position>
+    <pixels>200 200</pixels>
+    <filename>phong_move_light.png</filename>
+    <opaque_ids>1 3</opaque_ids>
+    <color id="1" rgb="0 0 255"/>
+    <color id="2" rgb="0 255 0"/>
+    <color id="3" rgb="255 0 100"/>
+  </plot>
+
+</plots>

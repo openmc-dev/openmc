@@ -6,6 +6,7 @@
 
 #include "openmc/constants.h"
 #include "openmc/error.h"
+#include "openmc/random_ray/random_ray.h"
 #include "openmc/surface.h"
 
 namespace openmc {
@@ -16,7 +17,18 @@ namespace openmc {
 
 void VacuumBC::handle_particle(Particle& p, const Surface& surf) const
 {
-  p.cross_vacuum_bc(surf);
+  // Random ray and Monte Carlo need different treatments at vacuum BCs
+  if (settings::solver_type == SolverType::RANDOM_RAY) {
+    // Reflect ray off of the surface
+    ReflectiveBC().handle_particle(p, surf);
+
+    // Set ray's angular flux spectrum to vacuum conditions (zero)
+    RandomRay* r = static_cast<RandomRay*>(&p);
+    std::fill(r->angular_flux_.begin(), r->angular_flux_.end(), 0.0);
+
+  } else {
+    p.cross_vacuum_bc(surf);
+  }
 }
 
 //==============================================================================
@@ -27,6 +39,9 @@ void ReflectiveBC::handle_particle(Particle& p, const Surface& surf) const
 {
   Direction u = surf.reflect(p.r(), p.u(), &p);
   u /= u.norm();
+
+  // Handle the effects of the surface albedo on the particle's weight.
+  BoundaryCondition::handle_albedo(p, surf);
 
   p.cross_reflective_bc(surf, u);
 }
@@ -39,6 +54,9 @@ void WhiteBC::handle_particle(Particle& p, const Surface& surf) const
 {
   Direction u = surf.diffuse_reflect(p.r(), p.u(), p.current_seed());
   u /= u.norm();
+
+  // Handle the effects of the surface albedo on the particle's weight.
+  BoundaryCondition::handle_albedo(p, surf);
 
   p.cross_reflective_bc(surf, u);
 }
@@ -111,8 +129,7 @@ TranslationalPeriodicBC::TranslationalPeriodicBC(int i_surf, int j_surf)
 void TranslationalPeriodicBC::handle_particle(
   Particle& p, const Surface& surf) const
 {
-  // TODO: off-by-one on surface indices throughout this function.
-  int i_particle_surf = std::abs(p.surface()) - 1;
+  int i_particle_surf = p.surface_index();
 
   // Figure out which of the two BC surfaces were struck then find the
   // particle's new location and surface.
@@ -129,6 +146,9 @@ void TranslationalPeriodicBC::handle_particle(
       "Called BoundaryCondition::handle_particle after "
       "hitting a surface, but that surface is not recognized by the BC.");
   }
+
+  // Handle the effects of the surface albedo on the particle's weight.
+  BoundaryCondition::handle_albedo(p, surf);
 
   // Pass the new location and surface to the particle.
   p.cross_periodic_bc(surf, new_r, p.u(), new_surface);
@@ -234,8 +254,7 @@ RotationalPeriodicBC::RotationalPeriodicBC(int i_surf, int j_surf)
 void RotationalPeriodicBC::handle_particle(
   Particle& p, const Surface& surf) const
 {
-  // TODO: off-by-one on surface indices throughout this function.
-  int i_particle_surf = std::abs(p.surface()) - 1;
+  int i_particle_surf = p.surface_index();
 
   // Figure out which of the two BC surfaces were struck to figure out if a
   // forward or backward rotation is required.  Specify the other surface as
@@ -263,6 +282,9 @@ void RotationalPeriodicBC::handle_particle(
     cos_theta * r.x - sin_theta * r.y, sin_theta * r.x + cos_theta * r.y, r.z};
   Direction new_u = {
     cos_theta * u.x - sin_theta * u.y, sin_theta * u.x + cos_theta * u.y, u.z};
+
+  // Handle the effects of the surface albedo on the particle's weight.
+  BoundaryCondition::handle_albedo(p, surf);
 
   // Pass the new location, direction, and surface to the particle.
   p.cross_periodic_bc(surf, new_r, new_u, new_surface);

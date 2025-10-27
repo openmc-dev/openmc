@@ -16,12 +16,12 @@ def model():
     zr.add_nuclide('Zr90', 1.0)
     model.materials.extend([fuel, zr])
 
-    box1 = openmc.model.rectangular_prism(10.0, 10.0)
-    box2 = openmc.model.rectangular_prism(20.0, 20.0, boundary_type='reflective')
+    box1 = openmc.model.RectangularPrism(10.0, 10.0)
+    box2 = openmc.model.RectangularPrism(20.0, 20.0, boundary_type='reflective')
     top = openmc.ZPlane(z0=10.0, boundary_type='vacuum')
     bottom = openmc.ZPlane(z0=-10.0, boundary_type='vacuum')
-    cell1 = openmc.Cell(fill=fuel, region=box1 & +bottom & -top)
-    cell2 = openmc.Cell(fill=zr, region=~box1 & box2 & +bottom & -top)
+    cell1 = openmc.Cell(fill=fuel, region=-box1 & +bottom & -top)
+    cell2 = openmc.Cell(fill=zr, region=+box1 & -box2 & +bottom & -top)
     model.geometry = openmc.Geometry([cell1, cell2])
 
     model.settings.batches = 5

@@ -1,0 +1,52 @@
+<?xml version='1.0' encoding='utf-8'?>
+<model>
+  <materials>
+    <material id="40" name="no-void fuel" depletable="true">
+      <density value="11" units="g/cc"/>
+      <nuclide name="U235" ao="1.0"/>
+    </material>
+    <material id="41" name="water">
+      <density value="1.0" units="g/cc"/>
+      <nuclide name="H1" ao="2.0"/>
+      <nuclide name="O16" ao="1.0"/>
+      <sab name="c_H_in_H2O"/>
+    </material>
+  </materials>
+  <geometry>
+    <cell id="8" fill="1" region="101 -102 103 -104 105 -106" universe="2"/>
+    <cell id="9" material="41" region="107 -108 109 -110 111 -112 (-101 | 102 | -103 | 104 | -105 | 106)" universe="2"/>
+    <dagmc_universe id="1" filename="../../dagmc/legacy/dagmc.h5m"/>
+    <surface id="101" type="z-plane" coeffs="-22.0"/>
+    <surface id="102" type="z-plane" coeffs="22.0"/>
+    <surface id="103" type="x-plane" coeffs="-22.0"/>
+    <surface id="104" type="x-plane" coeffs="22.0"/>
+    <surface id="105" type="y-plane" coeffs="-22.0"/>
+    <surface id="106" type="y-plane" coeffs="22.0"/>
+    <surface id="107" type="z-plane" boundary="vacuum" coeffs="-24.0"/>
+    <surface id="108" type="z-plane" boundary="vacuum" coeffs="24.0"/>
+    <surface id="109" type="x-plane" boundary="vacuum" coeffs="-24.0"/>
+    <surface id="110" type="x-plane" boundary="vacuum" coeffs="24.0"/>
+    <surface id="111" type="y-plane" boundary="vacuum" coeffs="-24.0"/>
+    <surface id="112" type="y-plane" boundary="vacuum" coeffs="24.0"/>
+  </geometry>
+  <settings>
+    <run_mode>eigenvalue</run_mode>
+    <particles>100</particles>
+    <batches>5</batches>
+    <inactive>1</inactive>
+    <source type="independent" strength="1.0" particle="neutron">
+      <space type="box">
+        <parameters>-4 -4 -20 4 4 20</parameters>
+      </space>
+      <constraints>
+        <fissionable>true</fissionable>
+      </constraints>
+    </source>
+    <surf_source_write>
+      <surface_ids>101 102 103 104 105 106</surface_ids>
+      <max_particles>300</max_particles>
+      <cell>7</cell>
+    </surf_source_write>
+    <seed>1</seed>
+  </settings>
+  </model>

@@ -5,6 +5,7 @@
 #include <iostream>
 #include <stdexcept> // for out_of_range
 
+#include "fmt/format.h"
 #include "openmc/array.h"
 #include "openmc/vector.h"
 
@@ -82,14 +83,35 @@ struct Position {
     return x * other.x + y * other.y + z * other.z;
   }
   inline double norm() const { return std::sqrt(x * x + y * y + z * z); }
+  inline Position cross(Position other) const
+  {
+    return {y * other.z - z * other.y, z * other.x - x * other.z,
+      x * other.y - y * other.x};
+  }
 
   //! Reflect a direction across a normal vector
   //! \param[in] other Vector to reflect across
   //! \result Reflected vector
   Position reflect(Position n) const;
 
-  //! Rotate the position based on a rotation matrix
-  Position rotate(const vector<double>& rotation) const;
+  //! Rotate the position by applying a rotation matrix
+  template<typename T>
+  Position rotate(const T& rotation) const
+  {
+    return {x * rotation[0] + y * rotation[1] + z * rotation[2],
+      x * rotation[3] + y * rotation[4] + z * rotation[5],
+      x * rotation[6] + y * rotation[7] + z * rotation[8]};
+  }
+
+  //! Rotate the position by applying the inverse of a rotation matrix
+  //! using the fact that rotation matrices are orthonormal.
+  template<typename T>
+  Position inverse_rotate(const T& rotation) const
+  {
+    return {x * rotation[0] + y * rotation[3] + z * rotation[6],
+      x * rotation[1] + y * rotation[4] + z * rotation[7],
+      x * rotation[2] + y * rotation[5] + z * rotation[8]};
+  }
 
   // Data members
   double x = 0.;
@@ -209,5 +231,23 @@ std::ostream& operator<<(std::ostream& os, Position a);
 using Direction = Position;
 
 } // namespace openmc
+
+namespace fmt {
+
+template<>
+struct formatter<openmc::Position> : formatter<std::string> {
+  template<typename FormatContext>
+#if FMT_VERSION >= 110000 // Version 11.0.0 and above
+  auto format(const openmc::Position& pos, FormatContext& ctx) const {
+#else // For versions below 11.0.0
+  auto format(const openmc::Position& pos, FormatContext& ctx)
+  {
+#endif
+    return formatter<std::string>::format(
+      fmt::format("({}, {}, {})", pos.x, pos.y, pos.z), ctx);
+}
+}; // namespace fmt
+
+} // namespace fmt
 
 #endif // OPENMC_POSITION_H

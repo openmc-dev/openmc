@@ -1,29 +1,28 @@
 <?xml version='1.0' encoding='utf-8'?>
-<geometry>
-  <dagmc_universe auto_geom_ids="true" filename="dagmc.h5m" id="9" />
-</geometry>
-<?xml version='1.0' encoding='utf-8'?>
-<materials>
-</materials>
-<?xml version='1.0' encoding='utf-8'?>
-<settings>
-  <run_mode>eigenvalue</run_mode>
-  <particles>100</particles>
-  <batches>5</batches>
-  <inactive>0</inactive>
-  <source strength="1.0">
-    <space type="box">
-      <parameters>-4 -4 -4 4 4 4</parameters>
-    </space>
-  </source>
-</settings>
-<?xml version='1.0' encoding='utf-8'?>
-<tallies>
-  <filter id="1" type="cell">
-    <bins>2</bins>
-  </filter>
-  <tally id="1">
-    <filters>1</filters>
-    <scores>total</scores>
-  </tally>
-</tallies>
+<model>
+  <materials>
+  </materials>
+  <geometry>
+    <dagmc_universe id="1" auto_geom_ids="true" filename="dagmc.h5m"/>
+  </geometry>
+  <settings>
+    <run_mode>eigenvalue</run_mode>
+    <particles>100</particles>
+    <batches>5</batches>
+    <inactive>0</inactive>
+    <source type="independent" strength="1.0" particle="neutron">
+      <space type="box">
+        <parameters>-4 -4 -4 4 4 4</parameters>
+      </space>
+    </source>
+  </settings>
+  <tallies>
+    <filter id="1" type="cell">
+      <bins>2</bins>
+    </filter>
+    <tally id="1">
+      <filters>1</filters>
+      <scores>total</scores>
+    </tally>
+  </tallies>
+</model>

@@ -4,7 +4,7 @@
 State Point File Format
 =======================
 
-The current version of the statepoint file format is 17.0.
+The current version of the statepoint file format is 18.1.
 
 **/**
 
@@ -23,6 +23,7 @@ The current version of the statepoint file format is 17.0.
                bank is present (1) or not (0).
 
 :Datasets: - **seed** (*int8_t*) -- Pseudo-random number generator seed.
+           - **stride** (*uint64_t*) -- Pseudo-random number generator stride.
            - **energy_mode** (*char[]*) -- Energy mode of the run, either
              'continuous-energy' or 'multi-group'.
            - **run_mode** (*char[]*) -- Run mode used, either 'eigenvalue' or
@@ -68,20 +69,44 @@ The current version of the statepoint file format is 17.0.
 :Attributes: - **n_meshes** (*int*) -- Number of meshes in the problem.
              - **ids** (*int[]*) -- User-defined unique ID of each mesh.
 
+.. _mesh-spec-hdf5:
+
 **/tallies/meshes/mesh <uid>/**
 
-:Datasets: - **type** (*char[]*) -- Type of mesh.
+:Attributes: - **id** (*int*) -- ID of the mesh
+
+:Datasets: - **name** (*char[]*) -- Name of the mesh.
+           - **type** (*char[]*) -- Type of mesh.
            - **dimension** (*int*) -- Number of mesh cells in each dimension.
-           - **lower_left** (*double[]*) -- Coordinates of lower-left corner of
-             mesh.
-           - **upper_right** (*double[]*) -- Coordinates of upper-right corner
-             of mesh.
-           - **width** (*double[]*) -- Width of each mesh cell in each
-             dimension.
+           - **Regular Mesh Only:**
+              - **lower_left** (*double[]*) -- Coordinates of lower-left corner of
+                mesh.
+              - **upper_right** (*double[]*) -- Coordinates of upper-right corner
+                of mesh.
+              - **width** (*double[]*) -- Width of each mesh cell in each
+                dimension.
+           - **Rectilinear Mesh Only:**
+              - **x_grid** (*double[]*) -- Mesh divisions along the x-axis.
+              - **y_grid** (*double[]*) -- Mesh divisions along the y-axis.
+              - **z_grid** (*double[]*) -- Mesh divisions along the z-axis.
+           - **Cylindrical & Spherical Mesh Only:**
+              - **r_grid** (*double[]*) -- The mesh divisions along the r-axis.
+              - **phi_grid** (*double[]*) -- The mesh divisions along the phi-axis.
+              - **origin** (*double[]*) -- The origin in cartesian coordinates.
+           - **Spherical Mesh Only:**
+              - **theta_grid** (*double[]*) -- The mesh divisions along the theta-axis.
            - **Unstructured Mesh Only:**
+              - **filename** (*char[]*) -- Name of the mesh file.
+              - **library** (*char[]*) -- Mesh library used to represent the
+                                          mesh ("moab" or "libmesh").
+              - **length_multiplier** (*double*) Scaling factor applied to the mesh.
+              - **options** (*char[]*) -- Special options that control spatial
+                                          search data structures used.
               - **volumes** (*double[]*) -- Volume of each mesh cell.
-              - **centroids** (*double[]*) -- Location of the mesh cell
-                centroids.
+              - **vertices** (*double[]*) -- x, y, z values of the mesh vertices.
+              - **connectivity** (*int[]*) -- Connectivity array for the mesh
+                cells.
+              - **element_types** (*int[]*) -- Mesh element types.
 
 **/tallies/filters/**
 
@@ -103,6 +128,10 @@ The current version of the statepoint file format is 17.0.
            - **y** (*double[]*) -- Interpolant values for energyfunction
              interpolation. Only used for 'energyfunction' filters.
 
+             :Attributes:
+                          - **interpolation** (*int*) -- Interpolation type. Only used for
+                            'energyfunction' filters.
+
 **/tallies/derivatives/derivative <id>/**
 
 :Datasets: - **independent variable** (*char[]*) -- Independent variable of
@@ -118,6 +147,8 @@ The current version of the statepoint file format is 17.0.
              - **internal** (*int*) -- Flag indicating the presence of tally
                data (0) or absence of tally data (1). All user defined
                tallies will have a value of 0 unless otherwise instructed.
+             - **multiply_density** (*int*) -- Flag indicating whether reaction
+               rates should be multiplied by atom density (1) or not (0).
 
 :Datasets: - **n_realizations** (*int*) -- Number of realizations.
            - **n_filters** (*int*) -- Number of filters used.
@@ -149,7 +180,7 @@ All values are given in seconds and are measured on the master process.
              finalization.
            - **transport** (*double*) -- Time spent transporting particles.
            - **inactive batches** (*double*) -- Time spent in the inactive
-             batches (including non-transport activities like communcating
+             batches (including non-transport activities like communicating
              sites).
            - **active batches** (*double*) -- Time spent in the active batches
              (including non-transport activities like communicating sites).

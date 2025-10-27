@@ -2,6 +2,7 @@
 #define OPENMC_TALLIES_FILTER_PARTICLE_H
 
 #include "openmc/particle.h"
+#include "openmc/span.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/vector.h"
 
@@ -21,7 +22,8 @@ public:
   //----------------------------------------------------------------------------
   // Methods
 
-  std::string type() const override { return "particle"; }
+  std::string type_str() const override { return "particle"; }
+  FilterType type() const override { return FilterType::PARTICLE; }
 
   void from_xml(pugi::xml_node node) override;
 
@@ -37,7 +39,7 @@ public:
 
   const vector<ParticleType>& particles() const { return particles_; }
 
-  void set_particles(gsl::span<ParticleType> particles);
+  void set_particles(span<ParticleType> particles);
 
 private:
   //----------------------------------------------------------------------------

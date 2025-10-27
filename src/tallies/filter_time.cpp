@@ -21,7 +21,7 @@ void TimeFilter::from_xml(pugi::xml_node node)
   this->set_bins(bins);
 }
 
-void TimeFilter::set_bins(gsl::span<const double> bins)
+void TimeFilter::set_bins(span<const double> bins)
 {
   // Clear existing bins
   bins_.clear();
@@ -55,12 +55,15 @@ void TimeFilter::get_all_bins(
     // the current track and find where it overlaps with time bins and score
     // accordingly
 
-    // Skip if time interval is zero
-    if (t_start == t_end)
-      return;
-
     // Determine first bin containing a portion of time interval
     auto i_bin = lower_bound_index(bins_.begin(), bins_.end(), t_start);
+
+    // If time interval is zero, add a match corresponding to the starting time
+    if (t_end == t_start) {
+      match.bins_.push_back(i_bin);
+      match.weights_.push_back(1.0);
+      return;
+    }
 
     // Find matching bins
     double dt_total = t_end - t_start;
@@ -77,10 +80,11 @@ void TimeFilter::get_all_bins(
       if (t_end < bins_[i_bin + 1])
         break;
     }
-  } else {
+  } else if (t_end < bins_.back()) {
     // -------------------------------------------------------------------------
     // For collision estimator or surface tallies, find a match based on the
     // exact time of the particle
+
     const auto i_bin = lower_bound_index(bins_.begin(), bins_.end(), t_end);
     match.bins_.push_back(i_bin);
     match.weights_.push_back(1.0);

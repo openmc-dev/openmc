@@ -2,11 +2,11 @@
 
 #include <cmath>
 #include <complex>
+#include <initializer_list>
 #include <set>
 #include <utility>
 
 #include <fmt/core.h>
-#include <gsl/gsl-lite.hpp>
 
 #include "openmc/array.h"
 #include "openmc/container_util.h"
@@ -34,100 +34,21 @@ vector<unique_ptr<Surface>> surfaces;
 // Helper functions for reading the "coeffs" node of an XML surface element
 //==============================================================================
 
-void read_coeffs(pugi::xml_node surf_node, int surf_id, double& c1)
-{
-  // Check the given number of coefficients.
-  std::string coeffs = get_node_value(surf_node, "coeffs");
-  int n_words = word_count(coeffs);
-  if (n_words != 1) {
-    fatal_error(fmt::format(
-      "Surface {} expects 1 coeff but was given {}", surf_id, n_words));
-  }
-
-  // Parse the coefficients.
-  int stat = sscanf(coeffs.c_str(), "%lf", &c1);
-  if (stat != 1) {
-    fatal_error(fmt::format(
-      "Something went wrong reading coeffs for surface {}", surf_id));
-  }
-}
-
 void read_coeffs(
-  pugi::xml_node surf_node, int surf_id, double& c1, double& c2, double& c3)
+  pugi::xml_node surf_node, int surf_id, std::initializer_list<double*> coeffs)
 {
   // Check the given number of coefficients.
-  std::string coeffs = get_node_value(surf_node, "coeffs");
-  int n_words = word_count(coeffs);
-  if (n_words != 3) {
-    fatal_error(fmt::format(
-      "Surface {} expects 3 coeffs but was given {}", surf_id, n_words));
+  auto coeffs_file = get_node_array<double>(surf_node, "coeffs");
+  if (coeffs_file.size() != coeffs.size()) {
+    fatal_error(
+      fmt::format("Surface {} expects {} coefficient but was given {}", surf_id,
+        coeffs.size(), coeffs_file.size()));
   }
 
-  // Parse the coefficients.
-  int stat = sscanf(coeffs.c_str(), "%lf %lf %lf", &c1, &c2, &c3);
-  if (stat != 3) {
-    fatal_error(fmt::format(
-      "Something went wrong reading coeffs for surface {}", surf_id));
-  }
-}
-
-void read_coeffs(pugi::xml_node surf_node, int surf_id, double& c1, double& c2,
-  double& c3, double& c4)
-{
-  // Check the given number of coefficients.
-  std::string coeffs = get_node_value(surf_node, "coeffs");
-  int n_words = word_count(coeffs);
-  if (n_words != 4) {
-    fatal_error(fmt::format(
-      "Surface {} expects 4 coeffs but was given ", surf_id, n_words));
-  }
-
-  // Parse the coefficients.
-  int stat = sscanf(coeffs.c_str(), "%lf %lf %lf %lf", &c1, &c2, &c3, &c4);
-  if (stat != 4) {
-    fatal_error(fmt::format(
-      "Something went wrong reading coeffs for surface {}", surf_id));
-  }
-}
-
-void read_coeffs(pugi::xml_node surf_node, int surf_id, double& c1, double& c2,
-  double& c3, double& c4, double& c5, double& c6)
-{
-  // Check the given number of coefficients.
-  std::string coeffs = get_node_value(surf_node, "coeffs");
-  int n_words = word_count(coeffs);
-  if (n_words != 6) {
-    fatal_error(fmt::format(
-      "Surface {} expects 6 coeffs but was given {}", surf_id, n_words));
-  }
-
-  // Parse the coefficients.
-  int stat = sscanf(
-    coeffs.c_str(), "%lf %lf %lf %lf %lf %lf", &c1, &c2, &c3, &c4, &c5, &c6);
-  if (stat != 6) {
-    fatal_error(fmt::format(
-      "Something went wrong reading coeffs for surface {}", surf_id));
-  }
-}
-
-void read_coeffs(pugi::xml_node surf_node, int surf_id, double& c1, double& c2,
-  double& c3, double& c4, double& c5, double& c6, double& c7, double& c8,
-  double& c9, double& c10)
-{
-  // Check the given number of coefficients.
-  std::string coeffs = get_node_value(surf_node, "coeffs");
-  int n_words = word_count(coeffs);
-  if (n_words != 10) {
-    fatal_error(fmt::format(
-      "Surface {} expects 10 coeffs but was given {}", surf_id, n_words));
-  }
-
-  // Parse the coefficients.
-  int stat = sscanf(coeffs.c_str(), "%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf",
-    &c1, &c2, &c3, &c4, &c5, &c6, &c7, &c8, &c9, &c10);
-  if (stat != 10) {
-    fatal_error(fmt::format(
-      "Something went wrong reading coeffs for surface {}", surf_id));
+  // Copy the coefficients
+  int i = 0;
+  for (auto c : coeffs) {
+    *c = coeffs_file[i++];
   }
 }
 
@@ -141,7 +62,8 @@ Surface::Surface(pugi::xml_node surf_node)
 {
   if (check_for_node(surf_node, "id")) {
     id_ = std::stoi(get_node_value(surf_node, "id"));
-    if (contains(settings::source_write_surf_id, id_)) {
+    if (contains(settings::source_write_surf_id, id_) ||
+        settings::source_write_surf_id.empty()) {
       surf_source_ = true;
     }
   } else {
@@ -158,18 +80,35 @@ Surface::Surface(pugi::xml_node surf_node)
     if (surf_bc == "transmission" || surf_bc == "transmit" || surf_bc.empty()) {
       // Leave the bc_ a nullptr
     } else if (surf_bc == "vacuum") {
-      bc_ = std::make_shared<VacuumBC>();
+      bc_ = make_unique<VacuumBC>();
     } else if (surf_bc == "reflective" || surf_bc == "reflect" ||
                surf_bc == "reflecting") {
-      bc_ = std::make_shared<ReflectiveBC>();
+      bc_ = make_unique<ReflectiveBC>();
     } else if (surf_bc == "white") {
-      bc_ = std::make_shared<WhiteBC>();
+      bc_ = make_unique<WhiteBC>();
     } else if (surf_bc == "periodic") {
-      // periodic BC's are handled separately
+      // Periodic BCs are handled separately
     } else {
       fatal_error(fmt::format("Unknown boundary condition \"{}\" specified "
                               "on surface {}",
         surf_bc, id_));
+    }
+
+    if (check_for_node(surf_node, "albedo") && bc_) {
+      double surf_alb = std::stod(get_node_value(surf_node, "albedo"));
+
+      if (surf_alb < 0.0)
+        fatal_error(fmt::format("Surface {} has an albedo of {}. "
+                                "Albedo values must be positive.",
+          id_, surf_alb));
+
+      if (surf_alb > 1.0)
+        warning(fmt::format("Surface {} has an albedo of {}. "
+                            "Albedos greater than 1 may cause "
+                            "unphysical behaviour.",
+          id_, surf_alb));
+
+      bc_->set_albedo(surf_alb);
     }
   }
 }
@@ -190,7 +129,7 @@ bool Surface::sense(Position r, Direction u) const
   return f > 0.0;
 }
 
-Direction Surface::reflect(Position r, Direction u, Particle* p) const
+Direction Surface::reflect(Position r, Direction u, GeometryState* p) const
 {
   // Determine projection of direction onto normal and squared magnitude of
   // normal.
@@ -225,13 +164,27 @@ void Surface::to_hdf5(hid_t group_id) const
 {
   hid_t surf_group = create_group(group_id, fmt::format("surface {}", id_));
 
-  if (geom_type_ == GeometryType::DAG) {
+  if (geom_type() == GeometryType::DAG) {
     write_string(surf_group, "geom_type", "dagmc", false);
-  } else if (geom_type_ == GeometryType::CSG) {
+  } else if (geom_type() == GeometryType::CSG) {
     write_string(surf_group, "geom_type", "csg", false);
 
     if (bc_) {
       write_string(surf_group, "boundary_type", bc_->type(), false);
+      bc_->to_hdf5(surf_group);
+
+      // write periodic surface ID
+      if (bc_->type() == "periodic") {
+        auto pbc = dynamic_cast<PeriodicBC*>(bc_.get());
+        Surface& surf1 {*model::surfaces[pbc->i_surf()]};
+        Surface& surf2 {*model::surfaces[pbc->j_surf()]};
+
+        if (id_ == surf1.id_) {
+          write_dataset(surf_group, "periodic_surface_id", surf2.id_);
+        } else {
+          write_dataset(surf_group, "periodic_surface_id", surf1.id_);
+        }
+      }
     } else {
       write_string(surf_group, "boundary_type", "transmission", false);
     }
@@ -245,15 +198,6 @@ void Surface::to_hdf5(hid_t group_id) const
 
   close_group(surf_group);
 }
-
-CSGSurface::CSGSurface() : Surface {}
-{
-  geom_type_ = GeometryType::CSG;
-};
-CSGSurface::CSGSurface(pugi::xml_node surf_node) : Surface {surf_node}
-{
-  geom_type_ = GeometryType::CSG;
-};
 
 //==============================================================================
 // Generic functions for x-, y-, and z-, planes.
@@ -277,9 +221,9 @@ double axis_aligned_plane_distance(
 // SurfaceXPlane implementation
 //==============================================================================
 
-SurfaceXPlane::SurfaceXPlane(pugi::xml_node surf_node) : CSGSurface(surf_node)
+SurfaceXPlane::SurfaceXPlane(pugi::xml_node surf_node) : Surface(surf_node)
 {
-  read_coeffs(surf_node, id_, x0_);
+  read_coeffs(surf_node, id_, {&x0_});
 }
 
 double SurfaceXPlane::evaluate(Position r) const
@@ -313,7 +257,8 @@ BoundingBox SurfaceXPlane::bounding_box(bool pos_side) const
   }
 }
 
-bool SurfaceXPlane::triso_in_mesh(vector<double> mesh_center, vector<double> lattice_pitch) const
+bool SurfaceXPlane::triso_in_mesh(
+  vector<double> mesh_center, vector<double> lattice_pitch) const
 {
   return false;
 }
@@ -321,15 +266,14 @@ bool SurfaceXPlane::triso_in_mesh(vector<double> mesh_center, vector<double> lat
 //==============================================================================
 // SurfaceYPlane implementation
 //==============================================================================
-
-bool SurfaceYPlane::triso_in_mesh(vector<double> mesh_center, vector<double> lattice_pitch) const
+bool SurfaceYPlane::triso_in_mesh(
+  vector<double> mesh_center, vector<double> lattice_pitch) const
 {
   return false;
 }
-
-SurfaceYPlane::SurfaceYPlane(pugi::xml_node surf_node) : CSGSurface(surf_node)
+SurfaceYPlane::SurfaceYPlane(pugi::xml_node surf_node) : Surface(surf_node)
 {
-  read_coeffs(surf_node, id_, y0_);
+  read_coeffs(surf_node, id_, {&y0_});
 }
 
 double SurfaceYPlane::evaluate(Position r) const
@@ -366,15 +310,14 @@ BoundingBox SurfaceYPlane::bounding_box(bool pos_side) const
 //==============================================================================
 // SurfaceZPlane implementation
 //==============================================================================
-
-bool SurfaceZPlane::triso_in_mesh(vector<double> mesh_center, vector<double> lattice_pitch) const
+bool SurfaceZPlane::triso_in_mesh(
+  vector<double> mesh_center, vector<double> lattice_pitch) const
 {
   return false;
 }
-
-SurfaceZPlane::SurfaceZPlane(pugi::xml_node surf_node) : CSGSurface(surf_node)
+SurfaceZPlane::SurfaceZPlane(pugi::xml_node surf_node) : Surface(surf_node)
 {
-  read_coeffs(surf_node, id_, z0_);
+  read_coeffs(surf_node, id_, {&z0_});
 }
 
 double SurfaceZPlane::evaluate(Position r) const
@@ -411,14 +354,15 @@ BoundingBox SurfaceZPlane::bounding_box(bool pos_side) const
 //==============================================================================
 // SurfacePlane implementation
 //==============================================================================
-bool SurfacePlane::triso_in_mesh(vector<double> mesh_center, vector<double> lattice_pitch) const
+bool SurfacePlane::triso_in_mesh(
+  vector<double> mesh_center, vector<double> lattice_pitch) const
 {
   return false;
 }
 
-SurfacePlane::SurfacePlane(pugi::xml_node surf_node) : CSGSurface(surf_node)
+SurfacePlane::SurfacePlane(pugi::xml_node surf_node) : Surface(surf_node)
 {
-  read_coeffs(surf_node, id_, A_, B_, C_, D_);
+  read_coeffs(surf_node, id_, {&A_, &B_, &C_, &D_});
 }
 
 double SurfacePlane::evaluate(Position r) const
@@ -534,15 +478,16 @@ Direction axis_aligned_cylinder_normal(
 // SurfaceXCylinder implementation
 //==============================================================================
 
-bool SurfaceXCylinder::triso_in_mesh(vector<double> mesh_center, vector<double> lattice_pitch) const
+bool SurfaceXCylinder::triso_in_mesh(
+  vector<double> mesh_center, vector<double> lattice_pitch) const
 {
   return false;
 }
 
 SurfaceXCylinder::SurfaceXCylinder(pugi::xml_node surf_node)
-  : CSGSurface(surf_node)
+  : Surface(surf_node)
 {
-  read_coeffs(surf_node, id_, y0_, z0_, radius_);
+  read_coeffs(surf_node, id_, {&y0_, &z0_, &radius_});
 }
 
 double SurfaceXCylinder::evaluate(Position r) const
@@ -582,15 +527,16 @@ BoundingBox SurfaceXCylinder::bounding_box(bool pos_side) const
 // SurfaceYCylinder implementation
 //==============================================================================
 
-bool SurfaceYCylinder::triso_in_mesh(vector<double> mesh_center, vector<double> lattice_pitch) const
+bool SurfaceYCylinder::triso_in_mesh(
+  vector<double> mesh_center, vector<double> lattice_pitch) const
 {
   return false;
 }
 
 SurfaceYCylinder::SurfaceYCylinder(pugi::xml_node surf_node)
-  : CSGSurface(surf_node)
+  : Surface(surf_node)
 {
-  read_coeffs(surf_node, id_, x0_, z0_, radius_);
+  read_coeffs(surf_node, id_, {&x0_, &z0_, &radius_});
 }
 
 double SurfaceYCylinder::evaluate(Position r) const
@@ -631,15 +577,16 @@ BoundingBox SurfaceYCylinder::bounding_box(bool pos_side) const
 // SurfaceZCylinder implementation
 //==============================================================================
 
-bool SurfaceZCylinder::triso_in_mesh(vector<double> mesh_center, vector<double> lattice_pitch) const
+bool SurfaceZCylinder::triso_in_mesh(
+  vector<double> mesh_center, vector<double> lattice_pitch) const
 {
   return false;
 }
 
 SurfaceZCylinder::SurfaceZCylinder(pugi::xml_node surf_node)
-  : CSGSurface(surf_node)
+  : Surface(surf_node)
 {
-  read_coeffs(surf_node, id_, x0_, y0_, radius_);
+  read_coeffs(surf_node, id_, {&x0_, &y0_, &radius_});
 }
 
 double SurfaceZCylinder::evaluate(Position r) const
@@ -680,9 +627,9 @@ BoundingBox SurfaceZCylinder::bounding_box(bool pos_side) const
 // SurfaceSphere implementation
 //==============================================================================
 
-SurfaceSphere::SurfaceSphere(pugi::xml_node surf_node) : CSGSurface(surf_node)
+SurfaceSphere::SurfaceSphere(pugi::xml_node surf_node) : Surface(surf_node)
 {
-  read_coeffs(surf_node, id_, x0_, y0_, z0_, radius_);
+  read_coeffs(surf_node, id_, {&x0_, &y0_, &z0_, &radius_});
 }
 
 double SurfaceSphere::evaluate(Position r) const
@@ -756,58 +703,61 @@ BoundingBox SurfaceSphere::bounding_box(bool pos_side) const
 
 void SurfaceSphere::connect_to_triso_base(int triso_index, std::string key)
 {
-  if (key=="base") {
-    triso_base_index_=triso_index;
-    is_triso_surface_=true;
-  } else if (key=="particle") {
-    triso_particle_index_=triso_index;
+  if (key == "base") {
+    triso_base_index_ = triso_index;
+    is_triso_surface_ = true;
+  } else if (key == "particle") {
+    triso_particle_index_ = triso_index;
   }
 }
 
-vector<double> SurfaceSphere::get_center() const {
-  return {x0_,y0_,z0_};
+vector<double> SurfaceSphere::get_center() const
+{
+  return {x0_, y0_, z0_};
 }
 
-double SurfaceSphere::get_radius() const {
+double SurfaceSphere::get_radius() const
+{
   return radius_;
 }
 
-bool SurfaceSphere::triso_in_mesh(vector<double> mesh_center, vector<double> lattice_pitch) const
+bool SurfaceSphere::triso_in_mesh(
+  vector<double> mesh_center, vector<double> lattice_pitch) const
 {
   double dis_x;
   double dis_y;
   double dis_z;
-  double x_min=mesh_center[0]-lattice_pitch[0]/2;
-  double x_max=mesh_center[0]+lattice_pitch[0]/2;
-  double y_min=mesh_center[1]-lattice_pitch[1]/2;
-  double y_max=mesh_center[1]+lattice_pitch[1]/2;
-  double z_min=mesh_center[2]-lattice_pitch[2]/2;
-  double z_max=mesh_center[2]+lattice_pitch[2]/2;
-  if (x0_>=x_min && x0_<=x_max) {
-    dis_x=0;
-  } else if (x0_<x_min) {
-    dis_x=pow(x_min-x0_, 2);
+  double x_min = mesh_center[0] - lattice_pitch[0] / 2;
+  double x_max = mesh_center[0] + lattice_pitch[0] / 2;
+  double y_min = mesh_center[1] - lattice_pitch[1] / 2;
+  double y_max = mesh_center[1] + lattice_pitch[1] / 2;
+  double z_min = mesh_center[2] - lattice_pitch[2] / 2;
+  double z_max = mesh_center[2] + lattice_pitch[2] / 2;
+  if (x0_ >= x_min && x0_ <= x_max) {
+    dis_x = 0;
+  } else if (x0_ < x_min) {
+    dis_x = pow(x_min - x0_, 2);
   } else {
-    dis_x=pow(x_max-x0_, 2);
+    dis_x = pow(x_max - x0_, 2);
   }
 
-  if (y0_>=y_min && y0_<=y_max) {
-    dis_y=0;
-  } else if (y0_<y_min) {
-    dis_y=pow(y_min-y0_, 2);
+  if (y0_ >= y_min && y0_ <= y_max) {
+    dis_y = 0;
+  } else if (y0_ < y_min) {
+    dis_y = pow(y_min - y0_, 2);
   } else {
-    dis_y=pow(y_max-y0_, 2);
+    dis_y = pow(y_max - y0_, 2);
   }
 
-  if (z0_>=z_min && z0_<=z_max) {
-    dis_z=0;
-  } else if (z0_<z_min) {
-    dis_z=pow(z_min-z0_, 2);
+  if (z0_ >= z_min && z0_ <= z_max) {
+    dis_z = 0;
+  } else if (z0_ < z_min) {
+    dis_z = pow(z_min - z0_, 2);
   } else {
-    dis_z=pow(z_max-z0_, 2);
+    dis_z = pow(z_max - z0_, 2);
   }
 
-  if (sqrt(dis_x+dis_y+dis_z) < radius_) {
+  if (sqrt(dis_x + dis_y + dis_z) < radius_) {
     return true;
   } else {
     return false;
@@ -905,15 +855,14 @@ Direction axis_aligned_cone_normal(
 //==============================================================================
 // SurfaceXCone implementation
 //==============================================================================
-
-bool SurfaceXCone::triso_in_mesh(vector<double> mesh_center, vector<double> lattice_pitch) const
+bool SurfaceXCone::triso_in_mesh(
+  vector<double> mesh_center, vector<double> lattice_pitch) const
 {
   return false;
 }
-
-SurfaceXCone::SurfaceXCone(pugi::xml_node surf_node) : CSGSurface(surf_node)
+SurfaceXCone::SurfaceXCone(pugi::xml_node surf_node) : Surface(surf_node)
 {
-  read_coeffs(surf_node, id_, x0_, y0_, z0_, radius_sq_);
+  read_coeffs(surf_node, id_, {&x0_, &y0_, &z0_, &radius_sq_});
 }
 
 double SurfaceXCone::evaluate(Position r) const
@@ -942,15 +891,14 @@ void SurfaceXCone::to_hdf5_inner(hid_t group_id) const
 //==============================================================================
 // SurfaceYCone implementation
 //==============================================================================
-
-bool SurfaceYCone::triso_in_mesh(vector<double> mesh_center, vector<double> lattice_pitch) const
+bool SurfaceYCone::triso_in_mesh(
+  vector<double> mesh_center, vector<double> lattice_pitch) const
 {
   return false;
 }
-
-SurfaceYCone::SurfaceYCone(pugi::xml_node surf_node) : CSGSurface(surf_node)
+SurfaceYCone::SurfaceYCone(pugi::xml_node surf_node) : Surface(surf_node)
 {
-  read_coeffs(surf_node, id_, x0_, y0_, z0_, radius_sq_);
+  read_coeffs(surf_node, id_, {&x0_, &y0_, &z0_, &radius_sq_});
 }
 
 double SurfaceYCone::evaluate(Position r) const
@@ -979,15 +927,15 @@ void SurfaceYCone::to_hdf5_inner(hid_t group_id) const
 //==============================================================================
 // SurfaceZCone implementation
 //==============================================================================
-
-bool SurfaceZCone::triso_in_mesh(vector<double> mesh_center, vector<double> lattice_pitch) const
+bool SurfaceZCone::triso_in_mesh(
+  vector<double> mesh_center, vector<double> lattice_pitch) const
 {
   return false;
 }
 
-SurfaceZCone::SurfaceZCone(pugi::xml_node surf_node) : CSGSurface(surf_node)
+SurfaceZCone::SurfaceZCone(pugi::xml_node surf_node) : Surface(surf_node)
 {
-  read_coeffs(surf_node, id_, x0_, y0_, z0_, radius_sq_);
+  read_coeffs(surf_node, id_, {&x0_, &y0_, &z0_, &radius_sq_});
 }
 
 double SurfaceZCone::evaluate(Position r) const
@@ -1016,15 +964,15 @@ void SurfaceZCone::to_hdf5_inner(hid_t group_id) const
 //==============================================================================
 // SurfaceQuadric implementation
 //==============================================================================
-
-bool SurfaceQuadric::triso_in_mesh(vector<double> mesh_center, vector<double> lattice_pitch) const
+bool SurfaceQuadric::triso_in_mesh(
+  vector<double> mesh_center, vector<double> lattice_pitch) const
 {
   return false;
 }
-
-SurfaceQuadric::SurfaceQuadric(pugi::xml_node surf_node) : CSGSurface(surf_node)
+SurfaceQuadric::SurfaceQuadric(pugi::xml_node surf_node) : Surface(surf_node)
 {
-  read_coeffs(surf_node, id_, A_, B_, C_, D_, E_, F_, G_, H_, J_, K_);
+  read_coeffs(
+    surf_node, id_, {&A_, &B_, &C_, &D_, &E_, &F_, &G_, &H_, &J_, &K_});
 }
 
 double SurfaceQuadric::evaluate(Position r) const
@@ -1140,9 +1088,11 @@ double torus_distance(double x1, double x2, double x3, double u1, double u2,
   double c1p = 2 * four_A2 * (u1 * x1 + u2 * x2);
   double c0p = four_A2 * (x1 * x1 + x2 * x2);
 
-  // Coefficient for equation: a t^4 + b t^3 + c t^2 + d t + e = 0
+  // Coefficient for equation: a t^4 + b t^3 + c t^2 + d t + e = 0. If the point
+  // is coincident, the 'e' coefficient should be zero. Explicitly setting it to
+  // zero helps avoid numerical issues below with root finding.
   double coeff[5];
-  coeff[0] = c0 * c0 - c0p;
+  coeff[0] = coincident ? 0.0 : c0 * c0 - c0p;
   coeff[1] = 2 * c0 * c1 - c1p;
   coeff[2] = c1 * c1 + 2 * c0 * c2 - c2p;
   coeff[3] = 2 * c1 * c2;
@@ -1156,12 +1106,19 @@ double torus_distance(double x1, double x2, double x3, double u1, double u2,
   // zero but possibly small and positive. A tolerance is set to discard that
   // zero.
   double distance = INFTY;
-  double cutoff = coincident ? 1e-10 : 0.0;
+  double cutoff = coincident ? TORUS_TOL : 0.0;
   for (int i = 0; i < 4; ++i) {
     if (roots[i].imag() == 0) {
       double root = roots[i].real();
       if (root > cutoff && root < distance) {
-        distance = root;
+        // Avoid roots corresponding to internal surfaces
+        double s1 = x1 + u1 * root;
+        double s2 = x2 + u2 * root;
+        double s3 = x3 + u3 * root;
+        double check = D * s3 * s3 + s1 * s1 + s2 * s2 + A * A - C * C;
+        if (check >= 0) {
+          distance = root;
+        }
       }
     }
   }
@@ -1171,15 +1128,14 @@ double torus_distance(double x1, double x2, double x3, double u1, double u2,
 //==============================================================================
 // SurfaceXTorus implementation
 //==============================================================================
-
-bool SurfaceXTorus::triso_in_mesh(vector<double> mesh_center, vector<double> lattice_pitch) const
+bool SurfaceXTorus::triso_in_mesh(
+  vector<double> mesh_center, vector<double> lattice_pitch) const
 {
   return false;
 }
-
-SurfaceXTorus::SurfaceXTorus(pugi::xml_node surf_node) : CSGSurface(surf_node)
+SurfaceXTorus::SurfaceXTorus(pugi::xml_node surf_node) : Surface(surf_node)
 {
-  read_coeffs(surf_node, id_, x0_, y0_, z0_, A_, B_, C_);
+  read_coeffs(surf_node, id_, {&x0_, &y0_, &z0_, &A_, &B_, &C_});
 }
 
 void SurfaceXTorus::to_hdf5_inner(hid_t group_id) const
@@ -1229,15 +1185,14 @@ Direction SurfaceXTorus::normal(Position r) const
 //==============================================================================
 // SurfaceYTorus implementation
 //==============================================================================
-
-bool SurfaceYTorus::triso_in_mesh(vector<double> mesh_center, vector<double> lattice_pitch) const
+bool SurfaceYTorus::triso_in_mesh(
+  vector<double> mesh_center, vector<double> lattice_pitch) const
 {
   return false;
 }
-
-SurfaceYTorus::SurfaceYTorus(pugi::xml_node surf_node) : CSGSurface(surf_node)
+SurfaceYTorus::SurfaceYTorus(pugi::xml_node surf_node) : Surface(surf_node)
 {
-  read_coeffs(surf_node, id_, x0_, y0_, z0_, A_, B_, C_);
+  read_coeffs(surf_node, id_, {&x0_, &y0_, &z0_, &A_, &B_, &C_});
 }
 
 void SurfaceYTorus::to_hdf5_inner(hid_t group_id) const
@@ -1287,14 +1242,15 @@ Direction SurfaceYTorus::normal(Position r) const
 //==============================================================================
 // SurfaceZTorus implementation
 //==============================================================================
-bool SurfaceZTorus::triso_in_mesh(vector<double> mesh_center, vector<double> lattice_pitch) const
+bool SurfaceZTorus::triso_in_mesh(
+  vector<double> mesh_center, vector<double> lattice_pitch) const
 {
   return false;
 }
 
-SurfaceZTorus::SurfaceZTorus(pugi::xml_node surf_node) : CSGSurface(surf_node)
+SurfaceZTorus::SurfaceZTorus(pugi::xml_node surf_node) : Surface(surf_node)
 {
-  read_coeffs(surf_node, id_, x0_, y0_, z0_, A_, B_, C_);
+  read_coeffs(surf_node, id_, {&x0_, &y0_, &z0_, &A_, &B_, &C_});
 }
 
 void SurfaceZTorus::to_hdf5_inner(hid_t group_id) const
@@ -1352,14 +1308,15 @@ void read_surfaces(pugi::xml_node node)
   }
 
   // Loop over XML surface elements and populate the array.  Keep track of
-  // periodic surfaces.
+  // periodic surfaces and their albedos.
   model::surfaces.reserve(n_surfaces);
   std::set<std::pair<int, int>> periodic_pairs;
+  std::unordered_map<int, double> albedo_map;
   {
     pugi::xml_node surf_node;
     int i_surf;
     for (surf_node = node.child("surface"), i_surf = 0; surf_node;
-         surf_node = surf_node.next_sibling("surface"), i_surf++) {
+      surf_node = surf_node.next_sibling("surface"), i_surf++) {
       std::string surf_type = get_node_value(surf_node, "type", true, true);
 
       // Allocate and initialize the new surface
@@ -1417,6 +1374,12 @@ void read_surfaces(pugi::xml_node node)
       if (check_for_node(surf_node, "boundary")) {
         std::string surf_bc = get_node_value(surf_node, "boundary", true, true);
         if (surf_bc == "periodic") {
+          // Check for surface albedo. Skip sanity check as it is already done
+          // in the Surface class's constructor.
+          if (check_for_node(surf_node, "albedo")) {
+            albedo_map[model::surfaces.back()->id_] =
+              std::stod(get_node_value(surf_node, "albedo"));
+          }
           if (check_for_node(surf_node, "periodic_surface_id")) {
             int i_periodic =
               std::stoi(get_node_value(surf_node, "periodic_surface_id"));
@@ -1480,7 +1443,7 @@ void read_surfaces(pugi::xml_node node)
     periodic_pairs.erase(second_unresolved);
   }
 
-  // Assign the periodic boundary conditions
+  // Assign the periodic boundary conditions with albedos
   for (auto periodic_pair : periodic_pairs) {
     int i_surf = model::surface_map[periodic_pair.first];
     int j_surf = model::surface_map[periodic_pair.second];
@@ -1498,11 +1461,19 @@ void read_surfaces(pugi::xml_node node)
     // planes are parallel which indicates a translational periodic boundary
     // condition.  Otherwise, it is a rotational periodic BC.
     if (std::abs(1.0 - dot_prod) < FP_PRECISION) {
-      surf1.bc_ = std::make_shared<TranslationalPeriodicBC>(i_surf, j_surf);
-      surf2.bc_ = surf1.bc_;
+      surf1.bc_ = make_unique<TranslationalPeriodicBC>(i_surf, j_surf);
+      surf2.bc_ = make_unique<TranslationalPeriodicBC>(i_surf, j_surf);
     } else {
-      surf1.bc_ = std::make_shared<RotationalPeriodicBC>(i_surf, j_surf);
-      surf2.bc_ = surf1.bc_;
+      surf1.bc_ = make_unique<RotationalPeriodicBC>(i_surf, j_surf);
+      surf2.bc_ = make_unique<RotationalPeriodicBC>(i_surf, j_surf);
+    }
+
+    // If albedo data is present in albedo map, set the boundary albedo.
+    if (albedo_map.count(surf1.id_)) {
+      surf1.bc_->set_albedo(albedo_map[surf1.id_]);
+    }
+    if (albedo_map.count(surf2.id_)) {
+      surf2.bc_->set_albedo(albedo_map[surf2.id_]);
     }
   }
 }

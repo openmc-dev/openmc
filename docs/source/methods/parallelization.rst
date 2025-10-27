@@ -293,7 +293,7 @@ Cost of Nearest Neighbor Algorithm
 ----------------------------------
 
 With the communication cost of the traditional fission bank algorithm
-quantified, we now proceed to discuss the communicatin cost of the proposed
+quantified, we now proceed to discuss the communication cost of the proposed
 algorithm. Comparing the cost of communication of this algorithm with the
 traditional algorithm is not trivial due to fact that the cost will be a
 function of how many fission sites are sampled on each node. If each node
@@ -398,7 +398,7 @@ equation :eq:`k-to-source`, we can relate the stochastic eigenvalue to the
 integral of the noise component of the source distribution as
 
 .. math::
-    :label: noise-integeral
+    :label: noise-integral
 
     N\hat{k} = Nk + \sqrt{N} \int \hat{\epsilon}(\mathbf{r}) \: d\mathbf{r}.
 
@@ -609,17 +609,17 @@ is actually independent of the number of nodes:
 
 .. _first paper: https://doi.org/10.2307/2280232
 
-.. _work of Forrest Brown: http://hdl.handle.net/2027.42/24996
+.. _work of Forrest Brown: https://deepblue.lib.umich.edu/handle/2027.42/24996
 
 .. _Brissenden and Garlick: https://doi.org/10.1016/0306-4549(86)90095-2
 
-.. _MPICH: http://www.mpich.org
+.. _MPICH: https://www.mpich.org
 
 .. _binomial tree: https://www.mcs.anl.gov/~thakur/papers/ijhpca-coll.pdf
 
 .. _Geary: https://doi.org/10.2307/2342070
 
-.. _Barnett: http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.51.7772
+.. _Barnett: https://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.51.7772
 
 .. _single-instruction multiple-data: https://en.wikipedia.org/wiki/SIMD
 

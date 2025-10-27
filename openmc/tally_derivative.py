@@ -1,8 +1,10 @@
 from numbers import Integral
-from xml.etree import ElementTree as ET
+
+import lxml.etree as ET
 
 import openmc.checkvalue as cv
 from .mixin import EqualityMixin, IDManagerMixin
+from ._xml import get_text
 
 
 class TallyDerivative(EqualityMixin, IDManagerMixin):
@@ -60,14 +62,6 @@ class TallyDerivative(EqualityMixin, IDManagerMixin):
     def variable(self):
         return self._variable
 
-    @property
-    def material(self):
-        return self._material
-
-    @property
-    def nuclide(self):
-        return self._nuclide
-
     @variable.setter
     def variable(self, var):
         if var is not None:
@@ -76,11 +70,19 @@ class TallyDerivative(EqualityMixin, IDManagerMixin):
                            ('density', 'nuclide_density', 'temperature'))
         self._variable = var
 
+    @property
+    def material(self):
+        return self._material
+
     @material.setter
     def material(self, mat):
         if mat is not None:
             cv.check_type('derivative material', mat, Integral)
         self._material = mat
+
+    @property
+    def nuclide(self):
+        return self._nuclide
 
     @nuclide.setter
     def nuclide(self, nuc):
@@ -93,7 +95,7 @@ class TallyDerivative(EqualityMixin, IDManagerMixin):
 
         Returns
         -------
-        element : xml.etree.ElementTree.Element
+        element : lxml.etree._Element
             XML element containing derivative data
 
         """
@@ -112,7 +114,7 @@ class TallyDerivative(EqualityMixin, IDManagerMixin):
 
         Parameters
         ----------
-        elem : xml.etree.ElementTree.Element
+        elem : lxml.etree._Element
             XML element
 
         Returns
@@ -121,8 +123,8 @@ class TallyDerivative(EqualityMixin, IDManagerMixin):
             Tally derivative object
 
         """
-        derivative_id = int(elem.get("id"))
-        variable = elem.get("variable")
-        material = int(elem.get("material"))
-        nuclide = elem.get("nuclide") if variable == "nuclide_density" else None
+        derivative_id = int(get_text(elem, "id"))
+        variable = get_text(elem, "variable")
+        material = int(get_text(elem, "material"))
+        nuclide = get_text(elem, "nuclide") if variable == "nuclide_density" else None
         return cls(derivative_id, variable, material, nuclide)

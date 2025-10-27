@@ -1,0 +1,220 @@
+<?xml version='1.0' encoding='utf-8'?>
+<model>
+  <materials>
+    <material id="1" name="UO2 (2.4%)" depletable="true">
+      <density value="10.29769" units="g/cm3"/>
+      <nuclide name="U234" ao="4.4843e-06"/>
+      <nuclide name="U235" ao="0.00055815"/>
+      <nuclide name="U238" ao="0.022408"/>
+      <nuclide name="O16" ao="0.045829"/>
+    </material>
+    <material id="2" name="Zircaloy">
+      <density value="6.55" units="g/cm3"/>
+      <nuclide name="Zr90" ao="0.021827"/>
+      <nuclide name="Zr91" ao="0.00476"/>
+      <nuclide name="Zr92" ao="0.0072758"/>
+      <nuclide name="Zr94" ao="0.0073734"/>
+      <nuclide name="Zr96" ao="0.0011879"/>
+    </material>
+    <material id="3" name="Hot borated water">
+      <density value="0.740582" units="g/cm3"/>
+      <nuclide name="H1" ao="0.049457"/>
+      <nuclide name="O16" ao="0.024672"/>
+      <nuclide name="B10" ao="8.0042e-06"/>
+      <nuclide name="B11" ao="3.2218e-05"/>
+      <sab name="c_H_in_H2O"/>
+    </material>
+  </materials>
+  <geometry>
+    <cell id="1" name="Fuel" material="1" region="-1" universe="0"/>
+    <cell id="2" name="Cladding" material="2" region="1 -2" universe="0"/>
+    <cell id="3" name="Water" material="3" region="2 3 -4 5 -6" universe="0"/>
+    <surface id="1" name="Fuel OR" type="z-cylinder" coeffs="0 0 0.39218"/>
+    <surface id="2" name="Clad OR" type="z-cylinder" coeffs="0 0 0.4572"/>
+    <surface id="3" name="left" type="x-plane" boundary="reflective" coeffs="-0.63"/>
+    <surface id="4" name="right" type="x-plane" boundary="reflective" coeffs="0.63"/>
+    <surface id="5" name="bottom" type="y-plane" boundary="reflective" coeffs="-0.63"/>
+    <surface id="6" name="top" type="y-plane" boundary="reflective" coeffs="0.63"/>
+  </geometry>
+  <settings>
+    <run_mode>eigenvalue</run_mode>
+    <particles>100</particles>
+    <batches>10</batches>
+    <inactive>5</inactive>
+    <source type="independent" strength="1.0" particle="neutron">
+      <space type="box">
+        <parameters>-0.63 -0.63 -1 0.63 0.63 1</parameters>
+      </space>
+      <constraints>
+        <fissionable>true</fissionable>
+      </constraints>
+    </source>
+  </settings>
+  <tallies>
+    <filter id="383" type="material">
+      <bins>1 2 3</bins>
+    </filter>
+    <filter id="2" type="energy">
+      <bins>0.0 0.625 20000000.0</bins>
+    </filter>
+    <filter id="1" type="material">
+      <bins>1</bins>
+    </filter>
+    <filter id="5" type="energyout">
+      <bins>0.0 0.625 20000000.0</bins>
+    </filter>
+    <filter id="6" type="legendre">
+      <order>1</order>
+    </filter>
+    <filter id="30" type="legendre">
+      <order>3</order>
+    </filter>
+    <filter id="54" type="energy">
+      <bins>0.0 20000000.0</bins>
+    </filter>
+    <filter id="106" type="material">
+      <bins>2</bins>
+    </filter>
+    <filter id="251" type="material">
+      <bins>3</bins>
+    </filter>
+    <tally id="528">
+      <filters>383 2</filters>
+      <nuclides>total</nuclides>
+      <scores>flux</scores>
+      <estimator>tracklength</estimator>
+    </tally>
+    <tally id="167">
+      <filters>1 2</filters>
+      <nuclides>U235 total</nuclides>
+      <scores>total absorption (n,2n) (n,3n) (n,4n) fission nu-fission kappa-fission scatter inverse-velocity prompt-nu-fission (n,elastic) (n,level) (n,na) (n,nc) (n,gamma) (n,a) (n,Xa) heating damage-energy (n,n1) (n,a0)</scores>
+      <estimator>tracklength</estimator>
+    </tally>
+    <tally id="540">
+      <filters>383 2</filters>
+      <nuclides>total</nuclides>
+      <scores>flux</scores>
+      <estimator>analog</estimator>
+    </tally>
+    <tally id="119">
+      <filters>1 5 6</filters>
+      <nuclides>U235 total</nuclides>
+      <scores>scatter nu-scatter</scores>
+      <estimator>analog</estimator>
+    </tally>
+    <tally id="54">
+      <filters>1 2</filters>
+      <nuclides>U235 total</nuclides>
+      <scores>nu-scatter</scores>
+      <estimator>analog</estimator>
+    </tally>
+    <tally id="84">
+      <filters>1 2 5 30</filters>
+      <nuclides>U235 total</nuclides>
+      <scores>scatter nu-scatter</scores>
+      <estimator>analog</estimator>
+    </tally>
+    <tally id="179">
+      <filters>1 2 5</filters>
+      <nuclides>U235 total</nuclides>
+      <scores>nu-scatter scatter nu-fission prompt-nu-fission (n,nc) (n,n1) (n,2n)</scores>
+      <estimator>analog</estimator>
+    </tally>
+    <tally id="90">
+      <filters>1 54</filters>
+      <nuclides>U235 total</nuclides>
+      <scores>nu-fission prompt-nu-fission</scores>
+      <estimator>analog</estimator>
+    </tally>
+    <tally id="91">
+      <filters>1 5</filters>
+      <nuclides>U235 total</nuclides>
+      <scores>nu-fission prompt-nu-fission</scores>
+      <estimator>analog</estimator>
+    </tally>
+    <tally id="348">
+      <filters>106 2</filters>
+      <nuclides>Zr90 total</nuclides>
+      <scores>total absorption (n,2n) (n,3n) (n,4n) fission nu-fission kappa-fission scatter inverse-velocity prompt-nu-fission (n,elastic) (n,level) (n,na) (n,nc) (n,gamma) (n,a) (n,Xa) heating damage-energy (n,n1) (n,a0)</scores>
+      <estimator>tracklength</estimator>
+    </tally>
+    <tally id="300">
+      <filters>106 5 6</filters>
+      <nuclides>Zr90 total</nuclides>
+      <scores>scatter nu-scatter</scores>
+      <estimator>analog</estimator>
+    </tally>
+    <tally id="235">
+      <filters>106 2</filters>
+      <nuclides>Zr90 total</nuclides>
+      <scores>nu-scatter</scores>
+      <estimator>analog</estimator>
+    </tally>
+    <tally id="265">
+      <filters>106 2 5 30</filters>
+      <nuclides>Zr90 total</nuclides>
+      <scores>scatter nu-scatter</scores>
+      <estimator>analog</estimator>
+    </tally>
+    <tally id="360">
+      <filters>106 2 5</filters>
+      <nuclides>Zr90 total</nuclides>
+      <scores>nu-scatter scatter nu-fission prompt-nu-fission (n,nc) (n,n1) (n,2n)</scores>
+      <estimator>analog</estimator>
+    </tally>
+    <tally id="271">
+      <filters>106 54</filters>
+      <nuclides>Zr90 total</nuclides>
+      <scores>nu-fission prompt-nu-fission</scores>
+      <estimator>analog</estimator>
+    </tally>
+    <tally id="272">
+      <filters>106 5</filters>
+      <nuclides>Zr90 total</nuclides>
+      <scores>nu-fission prompt-nu-fission</scores>
+      <estimator>analog</estimator>
+    </tally>
+    <tally id="529">
+      <filters>251 2</filters>
+      <nuclides>H1 total</nuclides>
+      <scores>total absorption (n,2n) (n,3n) (n,4n) fission nu-fission kappa-fission scatter inverse-velocity prompt-nu-fission (n,elastic) (n,level) (n,na) (n,nc) (n,gamma) (n,a) (n,Xa) heating damage-energy (n,n1) (n,a0)</scores>
+      <estimator>tracklength</estimator>
+    </tally>
+    <tally id="481">
+      <filters>251 5 6</filters>
+      <nuclides>H1 total</nuclides>
+      <scores>scatter nu-scatter</scores>
+      <estimator>analog</estimator>
+    </tally>
+    <tally id="416">
+      <filters>251 2</filters>
+      <nuclides>H1 total</nuclides>
+      <scores>nu-scatter</scores>
+      <estimator>analog</estimator>
+    </tally>
+    <tally id="446">
+      <filters>251 2 5 30</filters>
+      <nuclides>H1 total</nuclides>
+      <scores>scatter nu-scatter</scores>
+      <estimator>analog</estimator>
+    </tally>
+    <tally id="541">
+      <filters>251 2 5</filters>
+      <nuclides>H1 total</nuclides>
+      <scores>nu-scatter scatter nu-fission prompt-nu-fission (n,nc) (n,n1) (n,2n)</scores>
+      <estimator>analog</estimator>
+    </tally>
+    <tally id="452">
+      <filters>251 54</filters>
+      <nuclides>H1 total</nuclides>
+      <scores>nu-fission prompt-nu-fission</scores>
+      <estimator>analog</estimator>
+    </tally>
+    <tally id="453">
+      <filters>251 5</filters>
+      <nuclides>H1 total</nuclides>
+      <scores>nu-fission prompt-nu-fission</scores>
+      <estimator>analog</estimator>
+    </tally>
+  </tallies>
+</model>

@@ -1,10 +1,8 @@
-import xml.etree. ElementTree as ET
-
+import lxml.etree as ET
 import numpy as np
 from uncertainties import ufloat
 import openmc
 import pytest
-
 
 from tests.unit_tests import assert_unbounded
 from openmc.data import atomic_mass, AVOGADRO
@@ -57,25 +55,51 @@ def test_clone():
     m = openmc.Material()
     cyl = openmc.ZCylinder()
     c = openmc.Cell(fill=m, region=-cyl)
-    c.temperature = 650.
 
+    # Check cloning with all optional params as the defaults
     c2 = c.clone()
     assert c2.id != c.id
     assert c2.fill != c.fill
     assert c2.region != c.region
-    assert c2.temperature == c.temperature
 
     c3 = c.clone(clone_materials=False)
     assert c3.id != c.id
     assert c3.fill == c.fill
     assert c3.region != c.region
-    assert c3.temperature == c.temperature
 
     c4 = c.clone(clone_regions=False)
     assert c4.id != c.id
     assert c4.fill != c.fill
     assert c4.region == c.region
-    assert c4.temperature == c.temperature
+
+    # Add optional properties to the original cell to ensure they're cloned successfully
+    c.temperature = 650.
+    c.translation = (1., 2., 3.)
+    c.rotation = (4., 5., 6.)
+    c.volume = 100
+
+    c5 = c.clone(clone_materials=False, clone_regions=False)
+    assert c5.id != c.id
+    assert c5.fill == c.fill
+    assert c5.region == c.region
+    assert c5.temperature == c.temperature
+    assert c5.volume == c.volume
+    assert all(c5.translation == c.translation)
+    assert all(c5.rotation == c.rotation)
+
+    # Mutate the original to ensure the changes are not seen in the clones
+    c.fill = openmc.Material()
+    c.region = +openmc.ZCylinder()
+    c.translation = (-1., -2., -3.)
+    c.rotation = (-4., -5., -6.)
+    c.temperature = 1
+    c.volume = 1
+    assert c5.fill != c.fill
+    assert c5.region != c.region
+    assert c5.temperature != c.temperature
+    assert c5.volume != c.volume
+    assert all(c5.translation != c.translation)
+    assert all(c5.rotation != c.rotation)
 
 
 def test_temperature(cell_with_lattice):
@@ -92,12 +116,38 @@ def test_temperature(cell_with_lattice):
     assert c2.temperature == 400.0
     with pytest.raises(ValueError):
         c.temperature = -100.
+    c.temperature = None
+    assert c1.temperature == None
+    assert c2.temperature == None
 
     # distributed temperature
     cells, _, _, _ = cell_with_lattice
     c = cells[0]
     c.temperature = (300., 600., 900.)
 
+
+def test_densities(cell_with_lattice):
+    # Make sure density propagates through universes
+    m = openmc.Material()
+    s = openmc.XPlane()
+    c1 = openmc.Cell(fill=m, region=+s)
+    c2 = openmc.Cell(fill=m, region=-s)
+    u1 = openmc.Universe(cells=[c1, c2])
+    c = openmc.Cell(fill=u1)
+
+    c.density = 1.
+    assert c1.density == 1.
+    assert c2.density == 1.
+    with pytest.raises(ValueError):
+        c.density = -1.
+    c.density = None
+    assert c1.density == None
+    assert c2.density == None
+
+    # distributed density
+    cells, _, _, _ = cell_with_lattice
+    c = cells[0]
+    c.density = (1., 2., 3.)
 
 def test_rotation():
     u = openmc.Universe()
@@ -294,6 +344,43 @@ def test_to_xml_element(cell_with_lattice):
 
     c = cells[0]
     c.temperature = 900.0
+    c.volume = 1.0
     elem = c.create_xml_subelement(root)
     assert elem.get('region') == str(c.region)
     assert elem.get('temperature') == str(c.temperature)
+    assert elem.get('volume') == str(c.volume)
+
+
+@pytest.mark.parametrize("rotation", [
+    (90, 45, 0),
+    [[1.0, 0.0, 0.0], [0.0, 0.0, 1.0], [0.0, -1.0, 0.0]]
+])
+def test_rotation_from_xml(rotation):
+    # Make sure rotation attribute (matrix) round trips through XML correctly
+    s = openmc.ZCylinder(r=10.0)
+    cell = openmc.Cell(region=-s)
+    cell.rotation = rotation
+    root = ET.Element('geometry')
+    elem = cell.create_xml_subelement(root)
+    new_cell = openmc.Cell.from_xml_element(
+        elem, {s.id: s}, {'void': None}, openmc.Universe
+    )
+    np.testing.assert_allclose(new_cell.rotation, cell.rotation)
+
+
+def test_plot(run_in_tmpdir):
+    zcyl = openmc.ZCylinder()
+    c = openmc.Cell(region=-zcyl)
+
+    # create a universe before the plot
+    u_before = openmc.Universe()
+
+    # create a plot of the cell
+    c.plot()
+
+    # create a universe after the plot
+    u_after = openmc.Universe()
+
+    # ensure that calling the plot method doesn't
+    # affect the universe ID space
+    assert u_before.id + 1 == u_after.id

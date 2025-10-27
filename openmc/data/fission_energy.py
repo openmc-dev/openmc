@@ -44,7 +44,7 @@ class FissionEnergyRelease(EqualityMixin):
     ----------
     [1] D. G. Madland, "Total prompt energy release in the neutron-induced
     fission of ^235U, ^238U, and ^239Pu", Nuclear Physics A 772:113--137 (2006).
-    <http://dx.doi.org/10.1016/j.nuclphysa.2006.03.013>
+    <https://doi.org/10.1016/j.nuclphysa.2006.03.013>
 
     Attributes
     ----------
@@ -100,29 +100,64 @@ class FissionEnergyRelease(EqualityMixin):
     def fragments(self):
         return self._fragments
 
+    @fragments.setter
+    def fragments(self, energy_release):
+        cv.check_type('fragments', energy_release, Callable)
+        self._fragments = energy_release
+
     @property
     def prompt_neutrons(self):
         return self._prompt_neutrons
+
+    @prompt_neutrons.setter
+    def prompt_neutrons(self, energy_release):
+        cv.check_type('prompt_neutrons', energy_release, Callable)
+        self._prompt_neutrons = energy_release
 
     @property
     def delayed_neutrons(self):
         return self._delayed_neutrons
 
+    @delayed_neutrons.setter
+    def delayed_neutrons(self, energy_release):
+        cv.check_type('delayed_neutrons', energy_release, Callable)
+        self._delayed_neutrons = energy_release
+
     @property
     def prompt_photons(self):
         return self._prompt_photons
+
+    @prompt_photons.setter
+    def prompt_photons(self, energy_release):
+        cv.check_type('prompt_photons', energy_release, Callable)
+        self._prompt_photons = energy_release
 
     @property
     def delayed_photons(self):
         return self._delayed_photons
 
+    @delayed_photons.setter
+    def delayed_photons(self, energy_release):
+        cv.check_type('delayed_photons', energy_release, Callable)
+        self._delayed_photons = energy_release
+
     @property
     def betas(self):
         return self._betas
 
+    @betas.setter
+    def betas(self, energy_release):
+        cv.check_type('betas', energy_release, Callable)
+        self._betas = energy_release
+
     @property
     def neutrinos(self):
         return self._neutrinos
+
+    @neutrinos.setter
+    def neutrinos(self, energy_release):
+        cv.check_type('neutrinos', energy_release, Callable)
+        self._neutrinos = energy_release
 
     @property
     def recoverable(self):
@@ -153,41 +188,6 @@ class FissionEnergyRelease(EqualityMixin):
     def q_total(self):
         # Use a polynomial to subtract incident energy.
         return sum_functions([self.total, Polynomial((0.0, -1.0))])
-
-    @fragments.setter
-    def fragments(self, energy_release):
-        cv.check_type('fragments', energy_release, Callable)
-        self._fragments = energy_release
-
-    @prompt_neutrons.setter
-    def prompt_neutrons(self, energy_release):
-        cv.check_type('prompt_neutrons', energy_release, Callable)
-        self._prompt_neutrons = energy_release
-
-    @delayed_neutrons.setter
-    def delayed_neutrons(self, energy_release):
-        cv.check_type('delayed_neutrons', energy_release, Callable)
-        self._delayed_neutrons = energy_release
-
-    @prompt_photons.setter
-    def prompt_photons(self, energy_release):
-        cv.check_type('prompt_photons', energy_release, Callable)
-        self._prompt_photons = energy_release
-
-    @delayed_photons.setter
-    def delayed_photons(self, energy_release):
-        cv.check_type('delayed_photons', energy_release, Callable)
-        self._delayed_photons = energy_release
-
-    @betas.setter
-    def betas(self, energy_release):
-        cv.check_type('betas', energy_release, Callable)
-        self._betas = energy_release
-
-    @neutrinos.setter
-    def neutrinos(self, energy_release):
-        cv.check_type('neutrinos', energy_release, Callable)
-        self._neutrinos = energy_release
 
     @classmethod
     def from_endf(cls, ev, incident_neutron):

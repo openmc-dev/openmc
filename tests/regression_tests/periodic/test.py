@@ -42,7 +42,7 @@ def box_model():
     model.settings.particles = 1000
     model.settings.batches = 4
     model.settings.inactive = 0
-    model.settings.source = openmc.Source(space=openmc.stats.Box(
+    model.settings.source = openmc.IndependentSource(space=openmc.stats.Box(
         (0, 0, 0), (5, 5, 0))
     )
     return model

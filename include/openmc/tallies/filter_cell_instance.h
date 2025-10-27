@@ -4,9 +4,8 @@
 #include <cstdint>
 #include <unordered_map>
 
-#include <gsl/gsl-lite.hpp>
-
 #include "openmc/cell.h"
+#include "openmc/span.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/vector.h"
 
@@ -22,13 +21,14 @@ public:
   // Constructors, destructors
 
   CellInstanceFilter() = default;
-  CellInstanceFilter(gsl::span<CellInstance> instances);
+  CellInstanceFilter(span<CellInstance> instances);
   ~CellInstanceFilter() = default;
 
   //----------------------------------------------------------------------------
   // Methods
 
-  std::string type() const override { return "cellinstance"; }
+  std::string type_str() const override { return "cellinstance"; }
+  FilterType type() const override { return FilterType::CELL_INSTANCE; }
 
   void from_xml(pugi::xml_node node) override;
 
@@ -46,7 +46,7 @@ public:
 
   const std::unordered_set<int32_t>& cells() const { return cells_; }
 
-  void set_cell_instances(gsl::span<CellInstance> instances);
+  void set_cell_instances(span<CellInstance> instances);
 
 private:
   //----------------------------------------------------------------------------
@@ -59,7 +59,7 @@ private:
   std::unordered_set<int32_t> cells_;
 
   //! A map from cell/instance indices to filter bin indices.
-  std::unordered_map<CellInstance, gsl::index, CellInstanceHash> map_;
+  std::unordered_map<CellInstance, int64_t, CellInstanceHash> map_;
 
   //! Indicates if filter uses only material-filled cells
   bool material_cells_only_;

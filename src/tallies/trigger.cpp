@@ -37,6 +37,11 @@ std::pair<double, double> get_tally_uncertainty(
 
   int n = tally->n_realizations_;
   auto mean = sum / n;
+
+  // if the result has no contributions, return an invalid pair
+  if (mean == 0)
+    return {-1, -1};
+
   double std_dev = std::sqrt((sum_sq / n - mean * mean) / (n - 1));
   double rel_err = (mean != 0.) ? std_dev / std::abs(mean) : 0.;
 
@@ -68,42 +73,49 @@ void check_tally_triggers(double& ratio, int& tally_id, int& score)
       const auto& results = t.results_;
       for (auto filter_index = 0; filter_index < results.shape()[0];
            ++filter_index) {
-        for (auto score_index = 0; score_index < results.shape()[1];
-             ++score_index) {
-          // Compute the tally uncertainty metrics.
-          auto uncert_pair =
-            get_tally_uncertainty(i_tally, score_index, filter_index);
-          double std_dev = uncert_pair.first;
-          double rel_err = uncert_pair.second;
+        // Compute the tally uncertainty metrics.
+        auto uncert_pair =
+          get_tally_uncertainty(i_tally, trigger.score_index, filter_index);
 
-          // Pick out the relevant uncertainty metric for this trigger.
-          double uncertainty;
-          switch (trigger.metric) {
-          case TriggerMetric::variance:
-            uncertainty = std_dev * std_dev;
-            break;
-          case TriggerMetric::standard_deviation:
-            uncertainty = std_dev;
-            break;
-          case TriggerMetric::relative_error:
-            uncertainty = rel_err;
-            break;
-          case TriggerMetric::not_active:
-            UNREACHABLE();
-          }
+        // If there is a score without contributions, set ratio to inf and
+        // exit early, unless zero scores are ignored for this trigger.
+        if (uncert_pair.first == -1 && !trigger.ignore_zeros) {
+          ratio = INFINITY;
+          score = t.scores_[trigger.score_index];
+          tally_id = t.id_;
+          return;
+        }
 
-          // Compute the uncertainty / threshold ratio.
-          double this_ratio = uncertainty / trigger.threshold;
-          if (trigger.metric == TriggerMetric::variance) {
-            this_ratio = std::sqrt(ratio);
-          }
+        double std_dev = uncert_pair.first;
+        double rel_err = uncert_pair.second;
 
-          // If this is the most uncertain value, set the output variables.
-          if (this_ratio > ratio) {
-            ratio = this_ratio;
-            score = t.scores_[trigger.score_index];
-            tally_id = t.id_;
-          }
+        // Pick out the relevant uncertainty metric for this trigger.
+        double uncertainty;
+        switch (trigger.metric) {
+        case TriggerMetric::variance:
+          uncertainty = std_dev * std_dev;
+          break;
+        case TriggerMetric::standard_deviation:
+          uncertainty = std_dev;
+          break;
+        case TriggerMetric::relative_error:
+          uncertainty = rel_err;
+          break;
+        case TriggerMetric::not_active:
+          UNREACHABLE();
+        }
+
+        // Compute the uncertainty / threshold ratio.
+        double this_ratio = uncertainty / trigger.threshold;
+        if (trigger.metric == TriggerMetric::variance) {
+          this_ratio = std::sqrt(ratio);
+        }
+
+        // If this is the most uncertain value, set the output variables.
+        if (this_ratio > ratio) {
+          ratio = this_ratio;
+          score = t.scores_[trigger.score_index];
+          tally_id = t.id_;
         }
       }
     }
@@ -181,9 +193,15 @@ void check_triggers()
                       "eigenvalue",
       keff_ratio);
   } else {
-    msg = fmt::format(
-      "Triggers unsatisfied, max unc./thresh. is {} for {} in tally {}",
-      tally_ratio, reaction_name(score), tally_id);
+    if (tally_ratio == INFINITY) {
+      msg = fmt::format(
+        "Triggers unsatisfied, no result tallied for score {} in tally {}",
+        reaction_name(score), tally_id);
+    } else {
+      msg = fmt::format(
+        "Triggers unsatisfied, max unc./thresh. is {} for {} in tally {}",
+        tally_ratio, reaction_name(score), tally_id);
+    }
   }
   write_message(msg, 7);
 
@@ -196,13 +214,20 @@ void check_triggers()
     auto n_pred_batches = static_cast<int>(n_active * max_ratio * max_ratio) +
                           settings::n_inactive + 1;
 
-    std::string msg =
-      fmt::format("The estimated number of batches is {}", n_pred_batches);
-    if (n_pred_batches > settings::n_max_batches) {
-      msg.append(" --- greater than max batches");
-      warning(msg);
-    } else {
+    if (max_ratio == INFINITY) {
+      std::string msg =
+        fmt::format("One or more tallies with triggers have no scores. Unable "
+                    "to estimate the number of remaining batches.");
       write_message(msg, 7);
+    } else {
+      std::string msg =
+        fmt::format("The estimated number of batches is {}", n_pred_batches);
+      if (n_pred_batches > settings::n_max_batches) {
+        msg.append(" --- greater than max batches");
+        warning(msg);
+      } else {
+        write_message(msg, 7);
+      }
     }
   }
 }

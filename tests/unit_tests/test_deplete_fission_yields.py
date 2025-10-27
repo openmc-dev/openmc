@@ -27,8 +27,8 @@ def materials(tmpdir_factory):
         mfuel.add_nuclide(nuclide, 1.0)
     openmc.Materials([mfuel]).export_to_xml()
     # Geometry
-    box = openmc.rectangular_prism(1.0, 1.0, boundary_type="reflective")
-    cell = openmc.Cell(fill=mfuel, region=box)
+    box = openmc.model.RectangularPrism(1.0, 1.0, boundary_type="reflective")
+    cell = openmc.Cell(fill=mfuel, region=-box)
     root = openmc.Universe(cells=[cell])
     openmc.Geometry(root).export_to_xml()
     # settings

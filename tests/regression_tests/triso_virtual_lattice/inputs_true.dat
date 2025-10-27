@@ -1,278 +1,278 @@
 <?xml version='1.0' encoding='utf-8'?>
-<geometry>
-  <cell id="13" material="13" region="-9" universe="9" />
-  <cell id="14" material="14" region="9 -10" universe="9" />
-  <cell id="15" material="15" region="10 -11" universe="9" />
-  <cell id="16" material="16" region="11 -12" universe="9" />
-  <cell id="17" material="17" region="12" universe="9" />
-  <cell fill="10" id="18" region="13 -14 15 -16 17 -18" universe="0" />
-  <cell fill="9" id="135" region="-128" translation="-0.3347395345150967 0.3180755861660365 0.2414856636730901" triso_particle="true" universe="11" />
-  <cell fill="9" id="136" region="-129" translation="-0.22423430693555943 -0.004179177767328068 -0.046240930185910245" triso_particle="true" universe="11" />
-  <cell fill="9" id="137" region="-130" translation="0.13878336652768952 0.2643262279645623 -0.3718215483081879" triso_particle="true" universe="11" />
-  <cell fill="9" id="138" region="-131" translation="-0.43179788524410323 0.30739295263864075 -0.06155174933292362" triso_particle="true" universe="11" />
-  <cell fill="9" id="139" region="-132" translation="0.2401174154902459 -0.45582190815705814 -0.04999802384282931" triso_particle="true" universe="11" />
-  <cell fill="9" id="140" region="-133" translation="0.2028198996079864 -0.2483181864269006 0.4076453217796159" triso_particle="true" universe="11" />
-  <cell fill="9" id="141" region="-134" translation="0.36750683744331325 -0.4297448705327817 -0.43445431426048664" triso_particle="true" universe="11" />
-  <cell fill="9" id="142" region="-135" translation="0.037913118842446136 0.4020410585237264 -0.10875752039644154" triso_particle="true" universe="11" />
-  <cell fill="9" id="143" region="-136" translation="-0.2594532519269235 -0.07130227505402231 -0.4311631589752084" triso_particle="true" universe="11" />
-  <cell fill="9" id="144" region="-137" translation="-0.24436118578919225 -0.2463916812192289 -0.2574559603173461" triso_particle="true" universe="11" />
-  <cell fill="9" id="145" region="-138" translation="-0.03698302711710488 -0.19245493184241047 -0.4380761748290604" triso_particle="true" universe="11" />
-  <cell fill="9" id="146" region="-139" translation="0.30905263671908545 0.05168393238830282 0.1302704892646539" triso_particle="true" universe="11" />
-  <cell fill="9" id="147" region="-140" translation="-0.2875528135733859 0.45092349384718766 0.3295310471120879" triso_particle="true" universe="11" />
-  <cell fill="9" id="148" region="-141" translation="-0.3470752417977842 -0.15316755780280183 0.20276897514248216" triso_particle="true" universe="11" />
-  <cell fill="9" id="149" region="-142" translation="0.19334606515602848 0.39956135721490527 -0.07131104153532436" triso_particle="true" universe="11" />
-  <cell fill="9" id="150" region="-143" translation="0.30214767719264635 0.155914746052082 -0.1800161282409139" triso_particle="true" universe="11" />
-  <cell fill="9" id="151" region="-144" translation="0.08018004492442865 0.3501595252615657 0.3169437365711203" triso_particle="true" universe="11" />
-  <cell fill="9" id="152" region="-145" translation="0.00483733774062417 0.08148156718302602 -0.4261416024964468" triso_particle="true" universe="11" />
-  <cell fill="9" id="153" region="-146" translation="-0.23552155422132157 0.2722735886359643 -0.07844553364014112" triso_particle="true" universe="11" />
-  <cell fill="9" id="154" region="-147" translation="-0.29936172385437887 0.044675266050854034 0.18588381767108564" triso_particle="true" universe="11" />
-  <cell fill="9" id="155" region="-148" translation="0.15974177782488064 -0.11470938473074832 -0.055880627694202434" triso_particle="true" universe="11" />
-  <cell fill="9" id="156" region="-149" translation="0.007714449992858363 0.2549142140326335 0.019169121324834393" triso_particle="true" universe="11" />
-  <cell fill="9" id="157" region="-150" translation="-0.09772496056025104 -0.009435582016802613 -0.43067412048829656" triso_particle="true" universe="11" />
-  <cell fill="9" id="158" region="-151" translation="-0.4179373856785991 0.18619630211681182 0.4423583551970065" triso_particle="true" universe="11" />
-  <cell fill="9" id="159" region="-152" translation="0.08530970516294267 -0.09740948712101977 -0.3017953102786238" triso_particle="true" universe="11" />
-  <cell fill="9" id="160" region="-153" translation="0.002049400245853761 0.44134116166652815 0.24766393451509794" triso_particle="true" universe="11" />
-  <cell fill="9" id="161" region="-154" translation="0.036269774055772475 0.3298452926017631 -0.24519275475831015" triso_particle="true" universe="11" />
-  <cell fill="9" id="162" region="-155" translation="0.012607957648281654 0.41423389395960075 0.0712211465420014" triso_particle="true" universe="11" />
-  <cell fill="9" id="163" region="-156" translation="-0.03741489943578313 -0.21122463840237887 0.0439406213163509" triso_particle="true" universe="11" />
-  <cell fill="9" id="164" region="-157" translation="0.41848995567683767 -0.45252329198816527 0.2596863654593894" triso_particle="true" universe="11" />
-  <cell fill="9" id="165" region="-158" translation="0.2934048523677787 0.3535474062462105 0.2201808735332913" triso_particle="true" universe="11" />
-  <cell fill="9" id="166" region="-159" translation="0.28301757924875504 0.017099968565308377 0.056173125204605934" triso_particle="true" universe="11" />
-  <cell fill="9" id="167" region="-160" translation="-0.06766398274549851 -0.40636912111976214 0.3387442970642137" triso_particle="true" universe="11" />
-  <cell fill="9" id="168" region="-161" translation="0.06408439016382617 -0.2747970108278255 0.00432158793112436" triso_particle="true" universe="11" />
-  <cell fill="9" id="169" region="-162" translation="-0.013801059755509382 -0.13110878745909305 -0.1409156651388792" triso_particle="true" universe="11" />
-  <cell fill="9" id="170" region="-163" translation="0.03522733749799645 0.11305459403611595 0.10295023150858529" triso_particle="true" universe="11" />
-  <cell fill="9" id="171" region="-164" translation="-0.03831660450870228 -0.43213890207124234 -0.2475465938658846" triso_particle="true" universe="11" />
-  <cell fill="9" id="172" region="-165" translation="-0.2955130924417275 0.07732392719766301 0.3305036121112189" triso_particle="true" universe="11" />
-  <cell fill="9" id="173" region="-166" translation="0.2732208500986335 0.2719928185927968 0.28969841274831254" triso_particle="true" universe="11" />
-  <cell fill="9" id="174" region="-167" translation="-0.2240283063000714 0.31286739394693486 0.15848543253913627" triso_particle="true" universe="11" />
-  <cell fill="9" id="175" region="-168" translation="-0.3815491468405315 -0.44246972812920515 -0.4444203429563343" triso_particle="true" universe="11" />
-  <cell fill="9" id="176" region="-169" translation="0.23398969274338743 -0.2292785289142914 -0.35751316171201397" triso_particle="true" universe="11" />
-  <cell fill="9" id="177" region="-170" translation="0.11425630804159204 -0.14243086791965892 -0.39410867095500923" triso_particle="true" universe="11" />
-  <cell fill="9" id="178" region="-171" translation="-0.31161283214278257 0.02506675532845576 -0.30381330173336696" triso_particle="true" universe="11" />
-  <cell fill="9" id="179" region="-172" translation="-0.20789683309249835 0.19371057833811733 -0.04147065769319469" triso_particle="true" universe="11" />
-  <cell fill="9" id="180" region="-173" translation="-0.10385697059087434 -0.07239894918409101 -0.285600016500173" triso_particle="true" universe="11" />
-  <cell fill="9" id="181" region="-174" translation="-0.3581786705662241 0.3660338370759365 0.009261180540203251" triso_particle="true" universe="11" />
-  <cell fill="9" id="182" region="-175" translation="-0.43869102165974744 -0.4413950311821534 -0.32366427666439873" triso_particle="true" universe="11" />
-  <cell fill="9" id="183" region="-176" translation="0.20034387531341857 -0.3110616389475054 0.18731645229850835" triso_particle="true" universe="11" />
-  <cell fill="9" id="184" region="-177" translation="0.1631199405760454 0.04092483075648701 -0.2557909306852396" triso_particle="true" universe="11" />
-  <cell fill="9" id="185" region="-178" translation="0.43540678106227226 0.2726458402299813 0.01519685776716928" triso_particle="true" universe="11" />
-  <cell fill="9" id="186" region="-179" translation="-0.2534142631841729 0.13595762576986914 -0.09622087197472673" triso_particle="true" universe="11" />
-  <cell fill="9" id="187" region="-180" translation="0.06943697893246592 -0.1636494615445378 0.11988276699391809" triso_particle="true" universe="11" />
-  <cell fill="9" id="188" region="-181" translation="-0.4039322261129572 -0.18437625312013128 0.42836548044313905" triso_particle="true" universe="11" />
-  <cell fill="9" id="189" region="-182" translation="0.34380160059728826 -0.17725304908491335 0.32821993901943003" triso_particle="true" universe="11" />
-  <cell fill="9" id="190" region="-183" translation="-0.17361209915820575 0.4021685596198511 0.2232374596397494" triso_particle="true" universe="11" />
-  <cell fill="9" id="191" region="-184" translation="0.4231451301030389 0.06434186205946246 -0.3007260993647986" triso_particle="true" universe="11" />
-  <cell fill="9" id="192" region="-185" translation="0.3367035644902364 0.43374122870419773 0.1867831868031803" triso_particle="true" universe="11" />
-  <cell fill="9" id="193" region="-186" translation="-0.2800343805160589 -0.36214962398859274 0.15193411713913396" triso_particle="true" universe="11" />
-  <cell fill="9" id="194" region="-187" translation="-0.18669546779237473 -0.0001831711922081758 -0.15989605296102538" triso_particle="true" universe="11" />
-  <cell fill="9" id="195" region="-188" translation="0.3402194900462647 0.36590545585064216 -0.4411858734771481" triso_particle="true" universe="11" />
-  <cell fill="9" id="196" region="-189" translation="-0.27386906802598476 -0.1577033844843671 0.4458940167631079" triso_particle="true" universe="11" />
-  <cell fill="9" id="197" region="-190" translation="0.25881219398024335 -0.1473079343924702 -0.26272122141336496" triso_particle="true" universe="11" />
-  <cell fill="9" id="198" region="-191" translation="0.15971361633210523 0.30916532972595434 0.39566763051861575" triso_particle="true" universe="11" />
-  <cell fill="9" id="199" region="-192" translation="-0.014191419448261688 0.4444827844055178 -0.24293668187556428" triso_particle="true" universe="11" />
-  <cell fill="9" id="200" region="-193" translation="0.20641337800388493 -0.3802252490537087 -0.30239501318723816" triso_particle="true" universe="11" />
-  <cell fill="9" id="201" region="-194" translation="0.3762593158016361 -0.26277761748535117 0.237220865276901" triso_particle="true" universe="11" />
-  <cell fill="9" id="202" region="-195" translation="0.09174118398607445 0.31230652516871027 -0.12074712654412828" triso_particle="true" universe="11" />
-  <cell fill="9" id="203" region="-196" translation="-0.14621886735567996 -0.1911424043751062 0.33637284849380944" triso_particle="true" universe="11" />
-  <cell fill="9" id="204" region="-197" translation="-0.42191934538452835 -0.3907414250589849 0.33522713116909675" triso_particle="true" universe="11" />
-  <cell fill="9" id="205" region="-198" translation="0.2637706088079447 0.3007472168799734 -0.14565837160126788" triso_particle="true" universe="11" />
-  <cell fill="9" id="206" region="-199" translation="0.06480048668590577 -0.2529397663985018 -0.38291404331638357" triso_particle="true" universe="11" />
-  <cell fill="9" id="207" region="-200" translation="-0.21356450485022038 0.35774822105153203 0.059001075831400684" triso_particle="true" universe="11" />
-  <cell fill="9" id="208" region="-201" translation="0.3891490235303072 -0.03866224334773988 -0.20398917762840219" triso_particle="true" universe="11" />
-  <cell fill="9" id="209" region="-202" translation="0.262761924489481 0.30007174740916553 -0.4464145129224567" triso_particle="true" universe="11" />
-  <cell fill="9" id="210" region="-203" translation="0.35252249443257966 -0.4211084519770542 -0.23836565446379523" triso_particle="true" universe="11" />
-  <cell fill="9" id="211" region="-204" translation="0.4469091054738229 -0.07231206070759028 -0.3519564856677738" triso_particle="true" universe="11" />
-  <cell fill="9" id="212" region="-205" translation="-0.30451046300415074 -0.23672972899292466 0.22338787433963114" triso_particle="true" universe="11" />
-  <cell fill="9" id="213" region="-206" translation="-0.3636053393495334 0.37605482493472964 -0.11143715881676097" triso_particle="true" universe="11" />
-  <cell fill="9" id="214" region="-207" translation="0.4305267254415768 0.3746434076219761 -0.18857140797960453" triso_particle="true" universe="11" />
-  <cell fill="9" id="215" region="-208" translation="-0.22575302045434847 -0.02104725713738881 -0.3660817687133612" triso_particle="true" universe="11" />
-  <cell fill="9" id="216" region="-209" translation="0.1392019576325615 -0.42147769461975354 -0.44813161828465553" triso_particle="true" universe="11" />
-  <cell fill="9" id="217" region="-210" translation="0.44180531010694923 -0.18717410312521576 0.08841042383901798" triso_particle="true" universe="11" />
-  <cell fill="9" id="218" region="-211" translation="0.37846039171541845 0.43011405494529475 0.43009869986651816" triso_particle="true" universe="11" />
-  <cell fill="9" id="219" region="-212" translation="-0.35579780507883046 -0.2607405612819519 0.10785219865057927" triso_particle="true" universe="11" />
-  <cell fill="9" id="220" region="-213" translation="0.43939686703236547 0.03928703229725711 0.17228776926768086" triso_particle="true" universe="11" />
-  <cell fill="9" id="221" region="-214" translation="0.14815941963538226 -0.220556774457988 0.03808687169681996" triso_particle="true" universe="11" />
-  <cell fill="9" id="222" region="-215" translation="-0.17639751664264391 -0.23218801498409805 -0.38325689529114226" triso_particle="true" universe="11" />
-  <cell fill="9" id="223" region="-216" translation="-0.2006897545765396 0.4425313846143629 -0.04769549879176793" triso_particle="true" universe="11" />
-  <cell fill="9" id="224" region="-217" translation="0.13916564434634993 0.13134319648704007 0.4034924551189595" triso_particle="true" universe="11" />
-  <cell fill="9" id="225" region="-218" translation="-0.10026688643231585 -0.17688897806343928 -0.15816048485392958" triso_particle="true" universe="11" />
-  <cell fill="9" id="226" region="-219" translation="-0.16777897302623124 0.3178018781138999 0.36024947477502567" triso_particle="true" universe="11" />
-  <cell fill="9" id="227" region="-220" translation="-0.18052805868481137 -0.15166776712672753 0.040488366683789634" triso_particle="true" universe="11" />
-  <cell fill="9" id="228" region="-221" translation="0.07231116694829032 0.08785370537091952 -0.2333627774338999" triso_particle="true" universe="11" />
-  <cell fill="9" id="229" region="-222" translation="-0.43909757695745594 -0.2345883610075431 -0.3915341427407233" triso_particle="true" universe="11" />
-  <cell fill="9" id="230" region="-223" translation="0.046877953125145755 -0.39282606551755617 -0.3889686751909842" triso_particle="true" universe="11" />
-  <cell fill="9" id="231" region="-224" translation="0.1239423066569788 -0.19150287059104332 0.2674951458412387" triso_particle="true" universe="11" />
-  <cell fill="9" id="232" region="-225" translation="0.0013087859341976982 0.2700573885244849 -0.3871585540753848" triso_particle="true" universe="11" />
-  <cell fill="9" id="233" region="-226" translation="0.4439221700323984 0.2943791575126874 -0.16498774544300332" triso_particle="true" universe="11" />
-  <cell fill="9" id="234" region="-227" translation="-0.359903433990582 0.013144978841080679 0.38392127784738483" triso_particle="true" universe="11" />
-  <cell id="235" lower_left="-0.5 -0.5 -0.5" material="18" pitch="0.3333333333333333 0.3333333333333333 0.3333333333333333" region="128 129 130 131 132 133 134 135 136 137 138 139 140 141 142 143 144 145 146 147 148 149 150 151 152 153 154 155 156 157 158 159 160 161 162 163 164 165 166 167 168 169 170 171 172 173 174 175 176 177 178 179 180 181 182 183 184 185 186 187 188 189 190 191 192 193 194 195 196 197 198 199 200 201 202 203 204 205 206 207 208 209 210 211 212 213 214 215 216 217 218 219 220 221 222 223 224 225 226 227" shape="3 3 3" universe="11" virtual_lattice="True" />
-  <cell id="236" material="18" universe="12" />
-  <lattice id="10">
-    <pitch>1.0 1.0 1.0</pitch>
-    <outer>12</outer>
-    <dimension>1 1 1</dimension>
-    <lower_left>-0.5 -0.5 -0.5</lower_left>
-    <universes>
-11 </universes>
-  </lattice>
-  <surface coeffs="0.0 0.0 0.0 0.02125" id="9" type="sphere" />
-  <surface coeffs="0.0 0.0 0.0 0.03125" id="10" type="sphere" />
-  <surface coeffs="0.0 0.0 0.0 0.03475" id="11" type="sphere" />
-  <surface coeffs="0.0 0.0 0.0 0.03825" id="12" type="sphere" />
-  <surface boundary="reflective" coeffs="-0.5" id="13" type="x-plane" />
-  <surface boundary="reflective" coeffs="0.5" id="14" type="x-plane" />
-  <surface boundary="reflective" coeffs="-0.5" id="15" type="y-plane" />
-  <surface boundary="reflective" coeffs="0.5" id="16" type="y-plane" />
-  <surface boundary="reflective" coeffs="-0.5" id="17" type="z-plane" />
-  <surface boundary="reflective" coeffs="0.5" id="18" type="z-plane" />
-  <surface coeffs="-0.3347395345150967 0.3180755861660365 0.2414856636730901 0.04225" id="128" type="sphere" />
-  <surface coeffs="-0.22423430693555943 -0.004179177767328068 -0.046240930185910245 0.04225" id="129" type="sphere" />
-  <surface coeffs="0.13878336652768952 0.2643262279645623 -0.3718215483081879 0.04225" id="130" type="sphere" />
-  <surface coeffs="-0.43179788524410323 0.30739295263864075 -0.06155174933292362 0.04225" id="131" type="sphere" />
-  <surface coeffs="0.2401174154902459 -0.45582190815705814 -0.04999802384282931 0.04225" id="132" type="sphere" />
-  <surface coeffs="0.2028198996079864 -0.2483181864269006 0.4076453217796159 0.04225" id="133" type="sphere" />
-  <surface coeffs="0.36750683744331325 -0.4297448705327817 -0.43445431426048664 0.04225" id="134" type="sphere" />
-  <surface coeffs="0.037913118842446136 0.4020410585237264 -0.10875752039644154 0.04225" id="135" type="sphere" />
-  <surface coeffs="-0.2594532519269235 -0.07130227505402231 -0.4311631589752084 0.04225" id="136" type="sphere" />
-  <surface coeffs="-0.24436118578919225 -0.2463916812192289 -0.2574559603173461 0.04225" id="137" type="sphere" />
-  <surface coeffs="-0.03698302711710488 -0.19245493184241047 -0.4380761748290604 0.04225" id="138" type="sphere" />
-  <surface coeffs="0.30905263671908545 0.05168393238830282 0.1302704892646539 0.04225" id="139" type="sphere" />
-  <surface coeffs="-0.2875528135733859 0.45092349384718766 0.3295310471120879 0.04225" id="140" type="sphere" />
-  <surface coeffs="-0.3470752417977842 -0.15316755780280183 0.20276897514248216 0.04225" id="141" type="sphere" />
-  <surface coeffs="0.19334606515602848 0.39956135721490527 -0.07131104153532436 0.04225" id="142" type="sphere" />
-  <surface coeffs="0.30214767719264635 0.155914746052082 -0.1800161282409139 0.04225" id="143" type="sphere" />
-  <surface coeffs="0.08018004492442865 0.3501595252615657 0.3169437365711203 0.04225" id="144" type="sphere" />
-  <surface coeffs="0.00483733774062417 0.08148156718302602 -0.4261416024964468 0.04225" id="145" type="sphere" />
-  <surface coeffs="-0.23552155422132157 0.2722735886359643 -0.07844553364014112 0.04225" id="146" type="sphere" />
-  <surface coeffs="-0.29936172385437887 0.044675266050854034 0.18588381767108564 0.04225" id="147" type="sphere" />
-  <surface coeffs="0.15974177782488064 -0.11470938473074832 -0.055880627694202434 0.04225" id="148" type="sphere" />
-  <surface coeffs="0.007714449992858363 0.2549142140326335 0.019169121324834393 0.04225" id="149" type="sphere" />
-  <surface coeffs="-0.09772496056025104 -0.009435582016802613 -0.43067412048829656 0.04225" id="150" type="sphere" />
-  <surface coeffs="-0.4179373856785991 0.18619630211681182 0.4423583551970065 0.04225" id="151" type="sphere" />
-  <surface coeffs="0.08530970516294267 -0.09740948712101977 -0.3017953102786238 0.04225" id="152" type="sphere" />
-  <surface coeffs="0.002049400245853761 0.44134116166652815 0.24766393451509794 0.04225" id="153" type="sphere" />
-  <surface coeffs="0.036269774055772475 0.3298452926017631 -0.24519275475831015 0.04225" id="154" type="sphere" />
-  <surface coeffs="0.012607957648281654 0.41423389395960075 0.0712211465420014 0.04225" id="155" type="sphere" />
-  <surface coeffs="-0.03741489943578313 -0.21122463840237887 0.0439406213163509 0.04225" id="156" type="sphere" />
-  <surface coeffs="0.41848995567683767 -0.45252329198816527 0.2596863654593894 0.04225" id="157" type="sphere" />
-  <surface coeffs="0.2934048523677787 0.3535474062462105 0.2201808735332913 0.04225" id="158" type="sphere" />
-  <surface coeffs="0.28301757924875504 0.017099968565308377 0.056173125204605934 0.04225" id="159" type="sphere" />
-  <surface coeffs="-0.06766398274549851 -0.40636912111976214 0.3387442970642137 0.04225" id="160" type="sphere" />
-  <surface coeffs="0.06408439016382617 -0.2747970108278255 0.00432158793112436 0.04225" id="161" type="sphere" />
-  <surface coeffs="-0.013801059755509382 -0.13110878745909305 -0.1409156651388792 0.04225" id="162" type="sphere" />
-  <surface coeffs="0.03522733749799645 0.11305459403611595 0.10295023150858529 0.04225" id="163" type="sphere" />
-  <surface coeffs="-0.03831660450870228 -0.43213890207124234 -0.2475465938658846 0.04225" id="164" type="sphere" />
-  <surface coeffs="-0.2955130924417275 0.07732392719766301 0.3305036121112189 0.04225" id="165" type="sphere" />
-  <surface coeffs="0.2732208500986335 0.2719928185927968 0.28969841274831254 0.04225" id="166" type="sphere" />
-  <surface coeffs="-0.2240283063000714 0.31286739394693486 0.15848543253913627 0.04225" id="167" type="sphere" />
-  <surface coeffs="-0.3815491468405315 -0.44246972812920515 -0.4444203429563343 0.04225" id="168" type="sphere" />
-  <surface coeffs="0.23398969274338743 -0.2292785289142914 -0.35751316171201397 0.04225" id="169" type="sphere" />
-  <surface coeffs="0.11425630804159204 -0.14243086791965892 -0.39410867095500923 0.04225" id="170" type="sphere" />
-  <surface coeffs="-0.31161283214278257 0.02506675532845576 -0.30381330173336696 0.04225" id="171" type="sphere" />
-  <surface coeffs="-0.20789683309249835 0.19371057833811733 -0.04147065769319469 0.04225" id="172" type="sphere" />
-  <surface coeffs="-0.10385697059087434 -0.07239894918409101 -0.285600016500173 0.04225" id="173" type="sphere" />
-  <surface coeffs="-0.3581786705662241 0.3660338370759365 0.009261180540203251 0.04225" id="174" type="sphere" />
-  <surface coeffs="-0.43869102165974744 -0.4413950311821534 -0.32366427666439873 0.04225" id="175" type="sphere" />
-  <surface coeffs="0.20034387531341857 -0.3110616389475054 0.18731645229850835 0.04225" id="176" type="sphere" />
-  <surface coeffs="0.1631199405760454 0.04092483075648701 -0.2557909306852396 0.04225" id="177" type="sphere" />
-  <surface coeffs="0.43540678106227226 0.2726458402299813 0.01519685776716928 0.04225" id="178" type="sphere" />
-  <surface coeffs="-0.2534142631841729 0.13595762576986914 -0.09622087197472673 0.04225" id="179" type="sphere" />
-  <surface coeffs="0.06943697893246592 -0.1636494615445378 0.11988276699391809 0.04225" id="180" type="sphere" />
-  <surface coeffs="-0.4039322261129572 -0.18437625312013128 0.42836548044313905 0.04225" id="181" type="sphere" />
-  <surface coeffs="0.34380160059728826 -0.17725304908491335 0.32821993901943003 0.04225" id="182" type="sphere" />
-  <surface coeffs="-0.17361209915820575 0.4021685596198511 0.2232374596397494 0.04225" id="183" type="sphere" />
-  <surface coeffs="0.4231451301030389 0.06434186205946246 -0.3007260993647986 0.04225" id="184" type="sphere" />
-  <surface coeffs="0.3367035644902364 0.43374122870419773 0.1867831868031803 0.04225" id="185" type="sphere" />
-  <surface coeffs="-0.2800343805160589 -0.36214962398859274 0.15193411713913396 0.04225" id="186" type="sphere" />
-  <surface coeffs="-0.18669546779237473 -0.0001831711922081758 -0.15989605296102538 0.04225" id="187" type="sphere" />
-  <surface coeffs="0.3402194900462647 0.36590545585064216 -0.4411858734771481 0.04225" id="188" type="sphere" />
-  <surface coeffs="-0.27386906802598476 -0.1577033844843671 0.4458940167631079 0.04225" id="189" type="sphere" />
-  <surface coeffs="0.25881219398024335 -0.1473079343924702 -0.26272122141336496 0.04225" id="190" type="sphere" />
-  <surface coeffs="0.15971361633210523 0.30916532972595434 0.39566763051861575 0.04225" id="191" type="sphere" />
-  <surface coeffs="-0.014191419448261688 0.4444827844055178 -0.24293668187556428 0.04225" id="192" type="sphere" />
-  <surface coeffs="0.20641337800388493 -0.3802252490537087 -0.30239501318723816 0.04225" id="193" type="sphere" />
-  <surface coeffs="0.3762593158016361 -0.26277761748535117 0.237220865276901 0.04225" id="194" type="sphere" />
-  <surface coeffs="0.09174118398607445 0.31230652516871027 -0.12074712654412828 0.04225" id="195" type="sphere" />
-  <surface coeffs="-0.14621886735567996 -0.1911424043751062 0.33637284849380944 0.04225" id="196" type="sphere" />
-  <surface coeffs="-0.42191934538452835 -0.3907414250589849 0.33522713116909675 0.04225" id="197" type="sphere" />
-  <surface coeffs="0.2637706088079447 0.3007472168799734 -0.14565837160126788 0.04225" id="198" type="sphere" />
-  <surface coeffs="0.06480048668590577 -0.2529397663985018 -0.38291404331638357 0.04225" id="199" type="sphere" />
-  <surface coeffs="-0.21356450485022038 0.35774822105153203 0.059001075831400684 0.04225" id="200" type="sphere" />
-  <surface coeffs="0.3891490235303072 -0.03866224334773988 -0.20398917762840219 0.04225" id="201" type="sphere" />
-  <surface coeffs="0.262761924489481 0.30007174740916553 -0.4464145129224567 0.04225" id="202" type="sphere" />
-  <surface coeffs="0.35252249443257966 -0.4211084519770542 -0.23836565446379523 0.04225" id="203" type="sphere" />
-  <surface coeffs="0.4469091054738229 -0.07231206070759028 -0.3519564856677738 0.04225" id="204" type="sphere" />
-  <surface coeffs="-0.30451046300415074 -0.23672972899292466 0.22338787433963114 0.04225" id="205" type="sphere" />
-  <surface coeffs="-0.3636053393495334 0.37605482493472964 -0.11143715881676097 0.04225" id="206" type="sphere" />
-  <surface coeffs="0.4305267254415768 0.3746434076219761 -0.18857140797960453 0.04225" id="207" type="sphere" />
-  <surface coeffs="-0.22575302045434847 -0.02104725713738881 -0.3660817687133612 0.04225" id="208" type="sphere" />
-  <surface coeffs="0.1392019576325615 -0.42147769461975354 -0.44813161828465553 0.04225" id="209" type="sphere" />
-  <surface coeffs="0.44180531010694923 -0.18717410312521576 0.08841042383901798 0.04225" id="210" type="sphere" />
-  <surface coeffs="0.37846039171541845 0.43011405494529475 0.43009869986651816 0.04225" id="211" type="sphere" />
-  <surface coeffs="-0.35579780507883046 -0.2607405612819519 0.10785219865057927 0.04225" id="212" type="sphere" />
-  <surface coeffs="0.43939686703236547 0.03928703229725711 0.17228776926768086 0.04225" id="213" type="sphere" />
-  <surface coeffs="0.14815941963538226 -0.220556774457988 0.03808687169681996 0.04225" id="214" type="sphere" />
-  <surface coeffs="-0.17639751664264391 -0.23218801498409805 -0.38325689529114226 0.04225" id="215" type="sphere" />
-  <surface coeffs="-0.2006897545765396 0.4425313846143629 -0.04769549879176793 0.04225" id="216" type="sphere" />
-  <surface coeffs="0.13916564434634993 0.13134319648704007 0.4034924551189595 0.04225" id="217" type="sphere" />
-  <surface coeffs="-0.10026688643231585 -0.17688897806343928 -0.15816048485392958 0.04225" id="218" type="sphere" />
-  <surface coeffs="-0.16777897302623124 0.3178018781138999 0.36024947477502567 0.04225" id="219" type="sphere" />
-  <surface coeffs="-0.18052805868481137 -0.15166776712672753 0.040488366683789634 0.04225" id="220" type="sphere" />
-  <surface coeffs="0.07231116694829032 0.08785370537091952 -0.2333627774338999 0.04225" id="221" type="sphere" />
-  <surface coeffs="-0.43909757695745594 -0.2345883610075431 -0.3915341427407233 0.04225" id="222" type="sphere" />
-  <surface coeffs="0.046877953125145755 -0.39282606551755617 -0.3889686751909842 0.04225" id="223" type="sphere" />
-  <surface coeffs="0.1239423066569788 -0.19150287059104332 0.2674951458412387 0.04225" id="224" type="sphere" />
-  <surface coeffs="0.0013087859341976982 0.2700573885244849 -0.3871585540753848 0.04225" id="225" type="sphere" />
-  <surface coeffs="0.4439221700323984 0.2943791575126874 -0.16498774544300332 0.04225" id="226" type="sphere" />
-  <surface coeffs="-0.359903433990582 0.013144978841080679 0.38392127784738483 0.04225" id="227" type="sphere" />
-</geometry>
-<?xml version='1.0' encoding='utf-8'?>
-<materials>
-  <material depletable="true" id="13">
-    <density units="g/cm3" value="10.5" />
-    <nuclide ao="0.14154" name="U235" />
-    <nuclide ao="0.85846" name="U238" />
-    <nuclide ao="0.5" name="C0" />
-    <nuclide ao="1.5" name="O16" />
-  </material>
-  <material id="14">
-    <density units="g/cm3" value="1.0" />
-    <nuclide ao="1.0" name="C0" />
-    <sab name="c_Graphite" />
-  </material>
-  <material id="15">
-    <density units="g/cm3" value="1.9" />
-    <nuclide ao="1.0" name="C0" />
-    <sab name="c_Graphite" />
-  </material>
-  <material id="16">
-    <density units="g/cm3" value="3.2" />
-    <nuclide ao="1.0" name="C0" />
-    <nuclide ao="0.9222968" name="Si28" />
-    <nuclide ao="0.0468316" name="Si29" />
-    <nuclide ao="0.0308716" name="Si30" />
-  </material>
-  <material id="17">
-    <density units="g/cm3" value="1.87" />
-    <nuclide ao="1.0" name="C0" />
-    <sab name="c_Graphite" />
-  </material>
-  <material id="18">
-    <density units="g/cm3" value="1.1995" />
-    <nuclide ao="1.0" name="C0" />
-    <sab name="c_Graphite" />
-  </material>
-</materials>
-<?xml version='1.0' encoding='utf-8'?>
-<settings>
-  <run_mode>eigenvalue</run_mode>
-  <particles>100</particles>
-  <batches>4</batches>
-  <inactive>0</inactive>
-  <source strength="1.0">
-    <space type="point">
-      <parameters>0.0 0.0 0.0</parameters>
-    </space>
-  </source>
-</settings>
+<model>
+  <materials>
+    <material id="1" depletable="true">
+      <density value="10.5" units="g/cm3"/>
+      <nuclide name="U235" ao="0.14154"/>
+      <nuclide name="U238" ao="0.85846"/>
+      <nuclide name="C0" ao="0.5"/>
+      <nuclide name="O16" ao="1.5"/>
+    </material>
+    <material id="2">
+      <density value="1.0" units="g/cm3"/>
+      <nuclide name="C0" ao="1.0"/>
+      <sab name="c_Graphite"/>
+    </material>
+    <material id="3">
+      <density value="1.9" units="g/cm3"/>
+      <nuclide name="C0" ao="1.0"/>
+      <sab name="c_Graphite"/>
+    </material>
+    <material id="4">
+      <density value="3.2" units="g/cm3"/>
+      <nuclide name="C0" ao="1.0"/>
+      <nuclide name="Si28" ao="0.9222968"/>
+      <nuclide name="Si29" ao="0.0468316"/>
+      <nuclide name="Si30" ao="0.0308716"/>
+    </material>
+    <material id="5">
+      <density value="1.87" units="g/cm3"/>
+      <nuclide name="C0" ao="1.0"/>
+      <sab name="c_Graphite"/>
+    </material>
+    <material id="6">
+      <density value="1.1995" units="g/cm3"/>
+      <nuclide name="C0" ao="1.0"/>
+      <sab name="c_Graphite"/>
+    </material>
+  </materials>
+  <geometry>
+    <cell id="1" material="1" region="-1" universe="1"/>
+    <cell id="2" material="2" region="1 -2" universe="1"/>
+    <cell id="3" material="3" region="2 -3" universe="1"/>
+    <cell id="4" material="4" region="3 -4" universe="1"/>
+    <cell id="5" material="5" region="4" universe="1"/>
+    <cell id="6" fill="2" region="5 -6 7 -8 9 -10" universe="0"/>
+    <cell id="107" triso_particle="true" fill="1" region="-111" translation="-0.3347395345150967 0.3180755861660365 0.2414856636730901" universe="3"/>
+    <cell id="108" triso_particle="true" fill="1" region="-112" translation="-0.22423430693555943 -0.004179177767328068 -0.046240930185910245" universe="3"/>
+    <cell id="109" triso_particle="true" fill="1" region="-113" translation="0.13878336652768952 0.2643262279645623 -0.3718215483081879" universe="3"/>
+    <cell id="110" triso_particle="true" fill="1" region="-114" translation="-0.43179788524410323 0.30739295263864075 -0.06155174933292362" universe="3"/>
+    <cell id="111" triso_particle="true" fill="1" region="-115" translation="0.2401174154902459 -0.45582190815705814 -0.04999802384282931" universe="3"/>
+    <cell id="112" triso_particle="true" fill="1" region="-116" translation="0.2028198996079864 -0.2483181864269006 0.4076453217796159" universe="3"/>
+    <cell id="113" triso_particle="true" fill="1" region="-117" translation="0.36750683744331325 -0.4297448705327817 -0.43445431426048664" universe="3"/>
+    <cell id="114" triso_particle="true" fill="1" region="-118" translation="0.037913118842446136 0.4020410585237264 -0.10875752039644154" universe="3"/>
+    <cell id="115" triso_particle="true" fill="1" region="-119" translation="-0.2594532519269235 -0.07130227505402231 -0.4311631589752084" universe="3"/>
+    <cell id="116" triso_particle="true" fill="1" region="-120" translation="-0.24436118578919225 -0.2463916812192289 -0.2574559603173461" universe="3"/>
+    <cell id="117" triso_particle="true" fill="1" region="-121" translation="-0.03698302711710488 -0.19245493184241047 -0.4380761748290604" universe="3"/>
+    <cell id="118" triso_particle="true" fill="1" region="-122" translation="0.30905263671908545 0.05168393238830282 0.1302704892646539" universe="3"/>
+    <cell id="119" triso_particle="true" fill="1" region="-123" translation="-0.2875528135733859 0.45092349384718766 0.3295310471120879" universe="3"/>
+    <cell id="120" triso_particle="true" fill="1" region="-124" translation="-0.3470752417977842 -0.15316755780280183 0.20276897514248216" universe="3"/>
+    <cell id="121" triso_particle="true" fill="1" region="-125" translation="0.19334606515602848 0.39956135721490527 -0.07131104153532436" universe="3"/>
+    <cell id="122" triso_particle="true" fill="1" region="-126" translation="0.30214767719264635 0.155914746052082 -0.1800161282409139" universe="3"/>
+    <cell id="123" triso_particle="true" fill="1" region="-127" translation="0.08018004492442865 0.3501595252615657 0.3169437365711203" universe="3"/>
+    <cell id="124" triso_particle="true" fill="1" region="-128" translation="0.00483733774062417 0.08148156718302602 -0.4261416024964468" universe="3"/>
+    <cell id="125" triso_particle="true" fill="1" region="-129" translation="-0.23552155422132157 0.2722735886359643 -0.07844553364014112" universe="3"/>
+    <cell id="126" triso_particle="true" fill="1" region="-130" translation="-0.29936172385437887 0.044675266050854034 0.18588381767108564" universe="3"/>
+    <cell id="127" triso_particle="true" fill="1" region="-131" translation="0.15974177782488064 -0.11470938473074832 -0.055880627694202434" universe="3"/>
+    <cell id="128" triso_particle="true" fill="1" region="-132" translation="0.007714449992858363 0.2549142140326335 0.019169121324834393" universe="3"/>
+    <cell id="129" triso_particle="true" fill="1" region="-133" translation="-0.09772496056025104 -0.009435582016802613 -0.43067412048829656" universe="3"/>
+    <cell id="130" triso_particle="true" fill="1" region="-134" translation="-0.4179373856785991 0.18619630211681182 0.4423583551970065" universe="3"/>
+    <cell id="131" triso_particle="true" fill="1" region="-135" translation="0.08530970516294267 -0.09740948712101977 -0.3017953102786238" universe="3"/>
+    <cell id="132" triso_particle="true" fill="1" region="-136" translation="0.002049400245853761 0.44134116166652815 0.24766393451509794" universe="3"/>
+    <cell id="133" triso_particle="true" fill="1" region="-137" translation="0.036269774055772475 0.3298452926017631 -0.24519275475831015" universe="3"/>
+    <cell id="134" triso_particle="true" fill="1" region="-138" translation="0.012607957648281654 0.41423389395960075 0.0712211465420014" universe="3"/>
+    <cell id="135" triso_particle="true" fill="1" region="-139" translation="-0.03741489943578313 -0.21122463840237887 0.0439406213163509" universe="3"/>
+    <cell id="136" triso_particle="true" fill="1" region="-140" translation="0.41848995567683767 -0.45252329198816527 0.2596863654593894" universe="3"/>
+    <cell id="137" triso_particle="true" fill="1" region="-141" translation="0.2934048523677787 0.3535474062462105 0.2201808735332913" universe="3"/>
+    <cell id="138" triso_particle="true" fill="1" region="-142" translation="0.28301757924875504 0.017099968565308377 0.056173125204605934" universe="3"/>
+    <cell id="139" triso_particle="true" fill="1" region="-143" translation="-0.06766398274549851 -0.40636912111976214 0.3387442970642137" universe="3"/>
+    <cell id="140" triso_particle="true" fill="1" region="-144" translation="0.06408439016382617 -0.2747970108278255 0.00432158793112436" universe="3"/>
+    <cell id="141" triso_particle="true" fill="1" region="-145" translation="-0.013801059755509382 -0.13110878745909305 -0.1409156651388792" universe="3"/>
+    <cell id="142" triso_particle="true" fill="1" region="-146" translation="0.03522733749799645 0.11305459403611595 0.10295023150858529" universe="3"/>
+    <cell id="143" triso_particle="true" fill="1" region="-147" translation="-0.03831660450870228 -0.43213890207124234 -0.2475465938658846" universe="3"/>
+    <cell id="144" triso_particle="true" fill="1" region="-148" translation="-0.2955130924417275 0.07732392719766301 0.3305036121112189" universe="3"/>
+    <cell id="145" triso_particle="true" fill="1" region="-149" translation="0.2732208500986335 0.2719928185927968 0.28969841274831254" universe="3"/>
+    <cell id="146" triso_particle="true" fill="1" region="-150" translation="-0.2240283063000714 0.31286739394693486 0.15848543253913627" universe="3"/>
+    <cell id="147" triso_particle="true" fill="1" region="-151" translation="-0.3815491468405315 -0.44246972812920515 -0.4444203429563343" universe="3"/>
+    <cell id="148" triso_particle="true" fill="1" region="-152" translation="0.23398969274338743 -0.2292785289142914 -0.35751316171201397" universe="3"/>
+    <cell id="149" triso_particle="true" fill="1" region="-153" translation="0.11425630804159204 -0.14243086791965892 -0.39410867095500923" universe="3"/>
+    <cell id="150" triso_particle="true" fill="1" region="-154" translation="-0.31161283214278257 0.02506675532845576 -0.30381330173336696" universe="3"/>
+    <cell id="151" triso_particle="true" fill="1" region="-155" translation="-0.20789683309249835 0.19371057833811733 -0.04147065769319469" universe="3"/>
+    <cell id="152" triso_particle="true" fill="1" region="-156" translation="-0.10385697059087434 -0.07239894918409101 -0.285600016500173" universe="3"/>
+    <cell id="153" triso_particle="true" fill="1" region="-157" translation="-0.3581786705662241 0.3660338370759365 0.009261180540203251" universe="3"/>
+    <cell id="154" triso_particle="true" fill="1" region="-158" translation="-0.43869102165974744 -0.4413950311821534 -0.32366427666439873" universe="3"/>
+    <cell id="155" triso_particle="true" fill="1" region="-159" translation="0.20034387531341857 -0.3110616389475054 0.18731645229850835" universe="3"/>
+    <cell id="156" triso_particle="true" fill="1" region="-160" translation="0.1631199405760454 0.04092483075648701 -0.2557909306852396" universe="3"/>
+    <cell id="157" triso_particle="true" fill="1" region="-161" translation="0.43540678106227226 0.2726458402299813 0.01519685776716928" universe="3"/>
+    <cell id="158" triso_particle="true" fill="1" region="-162" translation="-0.2534142631841729 0.13595762576986914 -0.09622087197472673" universe="3"/>
+    <cell id="159" triso_particle="true" fill="1" region="-163" translation="0.06943697893246592 -0.1636494615445378 0.11988276699391809" universe="3"/>
+    <cell id="160" triso_particle="true" fill="1" region="-164" translation="-0.4039322261129572 -0.18437625312013128 0.42836548044313905" universe="3"/>
+    <cell id="161" triso_particle="true" fill="1" region="-165" translation="0.34380160059728826 -0.17725304908491335 0.32821993901943003" universe="3"/>
+    <cell id="162" triso_particle="true" fill="1" region="-166" translation="-0.17361209915820575 0.4021685596198511 0.2232374596397494" universe="3"/>
+    <cell id="163" triso_particle="true" fill="1" region="-167" translation="0.4231451301030389 0.06434186205946246 -0.3007260993647986" universe="3"/>
+    <cell id="164" triso_particle="true" fill="1" region="-168" translation="0.3367035644902364 0.43374122870419773 0.1867831868031803" universe="3"/>
+    <cell id="165" triso_particle="true" fill="1" region="-169" translation="-0.2800343805160589 -0.36214962398859274 0.15193411713913396" universe="3"/>
+    <cell id="166" triso_particle="true" fill="1" region="-170" translation="-0.18669546779237473 -0.0001831711922081758 -0.15989605296102538" universe="3"/>
+    <cell id="167" triso_particle="true" fill="1" region="-171" translation="0.3402194900462647 0.36590545585064216 -0.4411858734771481" universe="3"/>
+    <cell id="168" triso_particle="true" fill="1" region="-172" translation="-0.27386906802598476 -0.1577033844843671 0.4458940167631079" universe="3"/>
+    <cell id="169" triso_particle="true" fill="1" region="-173" translation="0.25881219398024335 -0.1473079343924702 -0.26272122141336496" universe="3"/>
+    <cell id="170" triso_particle="true" fill="1" region="-174" translation="0.15971361633210523 0.30916532972595434 0.39566763051861575" universe="3"/>
+    <cell id="171" triso_particle="true" fill="1" region="-175" translation="-0.014191419448261688 0.4444827844055178 -0.24293668187556428" universe="3"/>
+    <cell id="172" triso_particle="true" fill="1" region="-176" translation="0.20641337800388493 -0.3802252490537087 -0.30239501318723816" universe="3"/>
+    <cell id="173" triso_particle="true" fill="1" region="-177" translation="0.3762593158016361 -0.26277761748535117 0.237220865276901" universe="3"/>
+    <cell id="174" triso_particle="true" fill="1" region="-178" translation="0.09174118398607445 0.31230652516871027 -0.12074712654412828" universe="3"/>
+    <cell id="175" triso_particle="true" fill="1" region="-179" translation="-0.14621886735567996 -0.1911424043751062 0.33637284849380944" universe="3"/>
+    <cell id="176" triso_particle="true" fill="1" region="-180" translation="-0.42191934538452835 -0.3907414250589849 0.33522713116909675" universe="3"/>
+    <cell id="177" triso_particle="true" fill="1" region="-181" translation="0.2637706088079447 0.3007472168799734 -0.14565837160126788" universe="3"/>
+    <cell id="178" triso_particle="true" fill="1" region="-182" translation="0.06480048668590577 -0.2529397663985018 -0.38291404331638357" universe="3"/>
+    <cell id="179" triso_particle="true" fill="1" region="-183" translation="-0.21356450485022038 0.35774822105153203 0.059001075831400684" universe="3"/>
+    <cell id="180" triso_particle="true" fill="1" region="-184" translation="0.3891490235303072 -0.03866224334773988 -0.20398917762840219" universe="3"/>
+    <cell id="181" triso_particle="true" fill="1" region="-185" translation="0.262761924489481 0.30007174740916553 -0.4464145129224567" universe="3"/>
+    <cell id="182" triso_particle="true" fill="1" region="-186" translation="0.35252249443257966 -0.4211084519770542 -0.23836565446379523" universe="3"/>
+    <cell id="183" triso_particle="true" fill="1" region="-187" translation="0.4469091054738229 -0.07231206070759028 -0.3519564856677738" universe="3"/>
+    <cell id="184" triso_particle="true" fill="1" region="-188" translation="-0.30451046300415074 -0.23672972899292466 0.22338787433963114" universe="3"/>
+    <cell id="185" triso_particle="true" fill="1" region="-189" translation="-0.3636053393495334 0.37605482493472964 -0.11143715881676097" universe="3"/>
+    <cell id="186" triso_particle="true" fill="1" region="-190" translation="0.4305267254415768 0.3746434076219761 -0.18857140797960453" universe="3"/>
+    <cell id="187" triso_particle="true" fill="1" region="-191" translation="-0.22575302045434847 -0.02104725713738881 -0.3660817687133612" universe="3"/>
+    <cell id="188" triso_particle="true" fill="1" region="-192" translation="0.1392019576325615 -0.42147769461975354 -0.44813161828465553" universe="3"/>
+    <cell id="189" triso_particle="true" fill="1" region="-193" translation="0.44180531010694923 -0.18717410312521576 0.08841042383901798" universe="3"/>
+    <cell id="190" triso_particle="true" fill="1" region="-194" translation="0.37846039171541845 0.43011405494529475 0.43009869986651816" universe="3"/>
+    <cell id="191" triso_particle="true" fill="1" region="-195" translation="-0.35579780507883046 -0.2607405612819519 0.10785219865057927" universe="3"/>
+    <cell id="192" triso_particle="true" fill="1" region="-196" translation="0.43939686703236547 0.03928703229725711 0.17228776926768086" universe="3"/>
+    <cell id="193" triso_particle="true" fill="1" region="-197" translation="0.14815941963538226 -0.220556774457988 0.03808687169681996" universe="3"/>
+    <cell id="194" triso_particle="true" fill="1" region="-198" translation="-0.17639751664264391 -0.23218801498409805 -0.38325689529114226" universe="3"/>
+    <cell id="195" triso_particle="true" fill="1" region="-199" translation="-0.2006897545765396 0.4425313846143629 -0.04769549879176793" universe="3"/>
+    <cell id="196" triso_particle="true" fill="1" region="-200" translation="0.13916564434634993 0.13134319648704007 0.4034924551189595" universe="3"/>
+    <cell id="197" triso_particle="true" fill="1" region="-201" translation="-0.10026688643231585 -0.17688897806343928 -0.15816048485392958" universe="3"/>
+    <cell id="198" triso_particle="true" fill="1" region="-202" translation="-0.16777897302623124 0.3178018781138999 0.36024947477502567" universe="3"/>
+    <cell id="199" triso_particle="true" fill="1" region="-203" translation="-0.18052805868481137 -0.15166776712672753 0.040488366683789634" universe="3"/>
+    <cell id="200" triso_particle="true" fill="1" region="-204" translation="0.07231116694829032 0.08785370537091952 -0.2333627774338999" universe="3"/>
+    <cell id="201" triso_particle="true" fill="1" region="-205" translation="-0.43909757695745594 -0.2345883610075431 -0.3915341427407233" universe="3"/>
+    <cell id="202" triso_particle="true" fill="1" region="-206" translation="0.046877953125145755 -0.39282606551755617 -0.3889686751909842" universe="3"/>
+    <cell id="203" triso_particle="true" fill="1" region="-207" translation="0.1239423066569788 -0.19150287059104332 0.2674951458412387" universe="3"/>
+    <cell id="204" triso_particle="true" fill="1" region="-208" translation="0.0013087859341976982 0.2700573885244849 -0.3871585540753848" universe="3"/>
+    <cell id="205" triso_particle="true" fill="1" region="-209" translation="0.4439221700323984 0.2943791575126874 -0.16498774544300332" universe="3"/>
+    <cell id="206" triso_particle="true" fill="1" region="-210" translation="-0.359903433990582 0.013144978841080679 0.38392127784738483" universe="3"/>
+    <cell id="207" virtual_lattice="True" lower_left="-0.5 -0.5 -0.5" pitch="0.3333333333333333 0.3333333333333333 0.3333333333333333" shape="3 3 3" material="6" region="111 112 113 114 115 116 117 118 119 120 121 122 123 124 125 126 127 128 129 130 131 132 133 134 135 136 137 138 139 140 141 142 143 144 145 146 147 148 149 150 151 152 153 154 155 156 157 158 159 160 161 162 163 164 165 166 167 168 169 170 171 172 173 174 175 176 177 178 179 180 181 182 183 184 185 186 187 188 189 190 191 192 193 194 195 196 197 198 199 200 201 202 203 204 205 206 207 208 209 210" universe="3"/>
+    <cell id="208" material="6" universe="4"/>
+    <lattice id="2">
+      <pitch>1.0 1.0 1.0</pitch>
+      <outer>4</outer>
+      <dimension>1 1 1</dimension>
+      <lower_left>-0.5 -0.5 -0.5</lower_left>
+      <universes>
+3 </universes>
+    </lattice>
+    <surface id="1" type="sphere" coeffs="0.0 0.0 0.0 0.02125"/>
+    <surface id="2" type="sphere" coeffs="0.0 0.0 0.0 0.03125"/>
+    <surface id="3" type="sphere" coeffs="0.0 0.0 0.0 0.03475"/>
+    <surface id="4" type="sphere" coeffs="0.0 0.0 0.0 0.03825"/>
+    <surface id="5" type="x-plane" boundary="reflective" coeffs="-0.5"/>
+    <surface id="6" type="x-plane" boundary="reflective" coeffs="0.5"/>
+    <surface id="7" type="y-plane" boundary="reflective" coeffs="-0.5"/>
+    <surface id="8" type="y-plane" boundary="reflective" coeffs="0.5"/>
+    <surface id="9" type="z-plane" boundary="reflective" coeffs="-0.5"/>
+    <surface id="10" type="z-plane" boundary="reflective" coeffs="0.5"/>
+    <surface id="111" type="sphere" coeffs="-0.3347395345150967 0.3180755861660365 0.2414856636730901 0.04225"/>
+    <surface id="112" type="sphere" coeffs="-0.22423430693555943 -0.004179177767328068 -0.046240930185910245 0.04225"/>
+    <surface id="113" type="sphere" coeffs="0.13878336652768952 0.2643262279645623 -0.3718215483081879 0.04225"/>
+    <surface id="114" type="sphere" coeffs="-0.43179788524410323 0.30739295263864075 -0.06155174933292362 0.04225"/>
+    <surface id="115" type="sphere" coeffs="0.2401174154902459 -0.45582190815705814 -0.04999802384282931 0.04225"/>
+    <surface id="116" type="sphere" coeffs="0.2028198996079864 -0.2483181864269006 0.4076453217796159 0.04225"/>
+    <surface id="117" type="sphere" coeffs="0.36750683744331325 -0.4297448705327817 -0.43445431426048664 0.04225"/>
+    <surface id="118" type="sphere" coeffs="0.037913118842446136 0.4020410585237264 -0.10875752039644154 0.04225"/>
+    <surface id="119" type="sphere" coeffs="-0.2594532519269235 -0.07130227505402231 -0.4311631589752084 0.04225"/>
+    <surface id="120" type="sphere" coeffs="-0.24436118578919225 -0.2463916812192289 -0.2574559603173461 0.04225"/>
+    <surface id="121" type="sphere" coeffs="-0.03698302711710488 -0.19245493184241047 -0.4380761748290604 0.04225"/>
+    <surface id="122" type="sphere" coeffs="0.30905263671908545 0.05168393238830282 0.1302704892646539 0.04225"/>
+    <surface id="123" type="sphere" coeffs="-0.2875528135733859 0.45092349384718766 0.3295310471120879 0.04225"/>
+    <surface id="124" type="sphere" coeffs="-0.3470752417977842 -0.15316755780280183 0.20276897514248216 0.04225"/>
+    <surface id="125" type="sphere" coeffs="0.19334606515602848 0.39956135721490527 -0.07131104153532436 0.04225"/>
+    <surface id="126" type="sphere" coeffs="0.30214767719264635 0.155914746052082 -0.1800161282409139 0.04225"/>
+    <surface id="127" type="sphere" coeffs="0.08018004492442865 0.3501595252615657 0.3169437365711203 0.04225"/>
+    <surface id="128" type="sphere" coeffs="0.00483733774062417 0.08148156718302602 -0.4261416024964468 0.04225"/>
+    <surface id="129" type="sphere" coeffs="-0.23552155422132157 0.2722735886359643 -0.07844553364014112 0.04225"/>
+    <surface id="130" type="sphere" coeffs="-0.29936172385437887 0.044675266050854034 0.18588381767108564 0.04225"/>
+    <surface id="131" type="sphere" coeffs="0.15974177782488064 -0.11470938473074832 -0.055880627694202434 0.04225"/>
+    <surface id="132" type="sphere" coeffs="0.007714449992858363 0.2549142140326335 0.019169121324834393 0.04225"/>
+    <surface id="133" type="sphere" coeffs="-0.09772496056025104 -0.009435582016802613 -0.43067412048829656 0.04225"/>
+    <surface id="134" type="sphere" coeffs="-0.4179373856785991 0.18619630211681182 0.4423583551970065 0.04225"/>
+    <surface id="135" type="sphere" coeffs="0.08530970516294267 -0.09740948712101977 -0.3017953102786238 0.04225"/>
+    <surface id="136" type="sphere" coeffs="0.002049400245853761 0.44134116166652815 0.24766393451509794 0.04225"/>
+    <surface id="137" type="sphere" coeffs="0.036269774055772475 0.3298452926017631 -0.24519275475831015 0.04225"/>
+    <surface id="138" type="sphere" coeffs="0.012607957648281654 0.41423389395960075 0.0712211465420014 0.04225"/>
+    <surface id="139" type="sphere" coeffs="-0.03741489943578313 -0.21122463840237887 0.0439406213163509 0.04225"/>
+    <surface id="140" type="sphere" coeffs="0.41848995567683767 -0.45252329198816527 0.2596863654593894 0.04225"/>
+    <surface id="141" type="sphere" coeffs="0.2934048523677787 0.3535474062462105 0.2201808735332913 0.04225"/>
+    <surface id="142" type="sphere" coeffs="0.28301757924875504 0.017099968565308377 0.056173125204605934 0.04225"/>
+    <surface id="143" type="sphere" coeffs="-0.06766398274549851 -0.40636912111976214 0.3387442970642137 0.04225"/>
+    <surface id="144" type="sphere" coeffs="0.06408439016382617 -0.2747970108278255 0.00432158793112436 0.04225"/>
+    <surface id="145" type="sphere" coeffs="-0.013801059755509382 -0.13110878745909305 -0.1409156651388792 0.04225"/>
+    <surface id="146" type="sphere" coeffs="0.03522733749799645 0.11305459403611595 0.10295023150858529 0.04225"/>
+    <surface id="147" type="sphere" coeffs="-0.03831660450870228 -0.43213890207124234 -0.2475465938658846 0.04225"/>
+    <surface id="148" type="sphere" coeffs="-0.2955130924417275 0.07732392719766301 0.3305036121112189 0.04225"/>
+    <surface id="149" type="sphere" coeffs="0.2732208500986335 0.2719928185927968 0.28969841274831254 0.04225"/>
+    <surface id="150" type="sphere" coeffs="-0.2240283063000714 0.31286739394693486 0.15848543253913627 0.04225"/>
+    <surface id="151" type="sphere" coeffs="-0.3815491468405315 -0.44246972812920515 -0.4444203429563343 0.04225"/>
+    <surface id="152" type="sphere" coeffs="0.23398969274338743 -0.2292785289142914 -0.35751316171201397 0.04225"/>
+    <surface id="153" type="sphere" coeffs="0.11425630804159204 -0.14243086791965892 -0.39410867095500923 0.04225"/>
+    <surface id="154" type="sphere" coeffs="-0.31161283214278257 0.02506675532845576 -0.30381330173336696 0.04225"/>
+    <surface id="155" type="sphere" coeffs="-0.20789683309249835 0.19371057833811733 -0.04147065769319469 0.04225"/>
+    <surface id="156" type="sphere" coeffs="-0.10385697059087434 -0.07239894918409101 -0.285600016500173 0.04225"/>
+    <surface id="157" type="sphere" coeffs="-0.3581786705662241 0.3660338370759365 0.009261180540203251 0.04225"/>
+    <surface id="158" type="sphere" coeffs="-0.43869102165974744 -0.4413950311821534 -0.32366427666439873 0.04225"/>
+    <surface id="159" type="sphere" coeffs="0.20034387531341857 -0.3110616389475054 0.18731645229850835 0.04225"/>
+    <surface id="160" type="sphere" coeffs="0.1631199405760454 0.04092483075648701 -0.2557909306852396 0.04225"/>
+    <surface id="161" type="sphere" coeffs="0.43540678106227226 0.2726458402299813 0.01519685776716928 0.04225"/>
+    <surface id="162" type="sphere" coeffs="-0.2534142631841729 0.13595762576986914 -0.09622087197472673 0.04225"/>
+    <surface id="163" type="sphere" coeffs="0.06943697893246592 -0.1636494615445378 0.11988276699391809 0.04225"/>
+    <surface id="164" type="sphere" coeffs="-0.4039322261129572 -0.18437625312013128 0.42836548044313905 0.04225"/>
+    <surface id="165" type="sphere" coeffs="0.34380160059728826 -0.17725304908491335 0.32821993901943003 0.04225"/>
+    <surface id="166" type="sphere" coeffs="-0.17361209915820575 0.4021685596198511 0.2232374596397494 0.04225"/>
+    <surface id="167" type="sphere" coeffs="0.4231451301030389 0.06434186205946246 -0.3007260993647986 0.04225"/>
+    <surface id="168" type="sphere" coeffs="0.3367035644902364 0.43374122870419773 0.1867831868031803 0.04225"/>
+    <surface id="169" type="sphere" coeffs="-0.2800343805160589 -0.36214962398859274 0.15193411713913396 0.04225"/>
+    <surface id="170" type="sphere" coeffs="-0.18669546779237473 -0.0001831711922081758 -0.15989605296102538 0.04225"/>
+    <surface id="171" type="sphere" coeffs="0.3402194900462647 0.36590545585064216 -0.4411858734771481 0.04225"/>
+    <surface id="172" type="sphere" coeffs="-0.27386906802598476 -0.1577033844843671 0.4458940167631079 0.04225"/>
+    <surface id="173" type="sphere" coeffs="0.25881219398024335 -0.1473079343924702 -0.26272122141336496 0.04225"/>
+    <surface id="174" type="sphere" coeffs="0.15971361633210523 0.30916532972595434 0.39566763051861575 0.04225"/>
+    <surface id="175" type="sphere" coeffs="-0.014191419448261688 0.4444827844055178 -0.24293668187556428 0.04225"/>
+    <surface id="176" type="sphere" coeffs="0.20641337800388493 -0.3802252490537087 -0.30239501318723816 0.04225"/>
+    <surface id="177" type="sphere" coeffs="0.3762593158016361 -0.26277761748535117 0.237220865276901 0.04225"/>
+    <surface id="178" type="sphere" coeffs="0.09174118398607445 0.31230652516871027 -0.12074712654412828 0.04225"/>
+    <surface id="179" type="sphere" coeffs="-0.14621886735567996 -0.1911424043751062 0.33637284849380944 0.04225"/>
+    <surface id="180" type="sphere" coeffs="-0.42191934538452835 -0.3907414250589849 0.33522713116909675 0.04225"/>
+    <surface id="181" type="sphere" coeffs="0.2637706088079447 0.3007472168799734 -0.14565837160126788 0.04225"/>
+    <surface id="182" type="sphere" coeffs="0.06480048668590577 -0.2529397663985018 -0.38291404331638357 0.04225"/>
+    <surface id="183" type="sphere" coeffs="-0.21356450485022038 0.35774822105153203 0.059001075831400684 0.04225"/>
+    <surface id="184" type="sphere" coeffs="0.3891490235303072 -0.03866224334773988 -0.20398917762840219 0.04225"/>
+    <surface id="185" type="sphere" coeffs="0.262761924489481 0.30007174740916553 -0.4464145129224567 0.04225"/>
+    <surface id="186" type="sphere" coeffs="0.35252249443257966 -0.4211084519770542 -0.23836565446379523 0.04225"/>
+    <surface id="187" type="sphere" coeffs="0.4469091054738229 -0.07231206070759028 -0.3519564856677738 0.04225"/>
+    <surface id="188" type="sphere" coeffs="-0.30451046300415074 -0.23672972899292466 0.22338787433963114 0.04225"/>
+    <surface id="189" type="sphere" coeffs="-0.3636053393495334 0.37605482493472964 -0.11143715881676097 0.04225"/>
+    <surface id="190" type="sphere" coeffs="0.4305267254415768 0.3746434076219761 -0.18857140797960453 0.04225"/>
+    <surface id="191" type="sphere" coeffs="-0.22575302045434847 -0.02104725713738881 -0.3660817687133612 0.04225"/>
+    <surface id="192" type="sphere" coeffs="0.1392019576325615 -0.42147769461975354 -0.44813161828465553 0.04225"/>
+    <surface id="193" type="sphere" coeffs="0.44180531010694923 -0.18717410312521576 0.08841042383901798 0.04225"/>
+    <surface id="194" type="sphere" coeffs="0.37846039171541845 0.43011405494529475 0.43009869986651816 0.04225"/>
+    <surface id="195" type="sphere" coeffs="-0.35579780507883046 -0.2607405612819519 0.10785219865057927 0.04225"/>
+    <surface id="196" type="sphere" coeffs="0.43939686703236547 0.03928703229725711 0.17228776926768086 0.04225"/>
+    <surface id="197" type="sphere" coeffs="0.14815941963538226 -0.220556774457988 0.03808687169681996 0.04225"/>
+    <surface id="198" type="sphere" coeffs="-0.17639751664264391 -0.23218801498409805 -0.38325689529114226 0.04225"/>
+    <surface id="199" type="sphere" coeffs="-0.2006897545765396 0.4425313846143629 -0.04769549879176793 0.04225"/>
+    <surface id="200" type="sphere" coeffs="0.13916564434634993 0.13134319648704007 0.4034924551189595 0.04225"/>
+    <surface id="201" type="sphere" coeffs="-0.10026688643231585 -0.17688897806343928 -0.15816048485392958 0.04225"/>
+    <surface id="202" type="sphere" coeffs="-0.16777897302623124 0.3178018781138999 0.36024947477502567 0.04225"/>
+    <surface id="203" type="sphere" coeffs="-0.18052805868481137 -0.15166776712672753 0.040488366683789634 0.04225"/>
+    <surface id="204" type="sphere" coeffs="0.07231116694829032 0.08785370537091952 -0.2333627774338999 0.04225"/>
+    <surface id="205" type="sphere" coeffs="-0.43909757695745594 -0.2345883610075431 -0.3915341427407233 0.04225"/>
+    <surface id="206" type="sphere" coeffs="0.046877953125145755 -0.39282606551755617 -0.3889686751909842 0.04225"/>
+    <surface id="207" type="sphere" coeffs="0.1239423066569788 -0.19150287059104332 0.2674951458412387 0.04225"/>
+    <surface id="208" type="sphere" coeffs="0.0013087859341976982 0.2700573885244849 -0.3871585540753848 0.04225"/>
+    <surface id="209" type="sphere" coeffs="0.4439221700323984 0.2943791575126874 -0.16498774544300332 0.04225"/>
+    <surface id="210" type="sphere" coeffs="-0.359903433990582 0.013144978841080679 0.38392127784738483 0.04225"/>
+  </geometry>
+  <settings>
+    <run_mode>eigenvalue</run_mode>
+    <particles>100</particles>
+    <batches>4</batches>
+    <inactive>0</inactive>
+    <source type="independent" strength="1.0" particle="neutron">
+      <space type="point">
+        <parameters>0.0 0.0 0.0</parameters>
+      </space>
+    </source>
+  </settings>
+  </model>

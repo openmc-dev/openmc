@@ -40,6 +40,9 @@ void print_usage();
 //! Display current version and copright/license information
 void print_version();
 
+//! Display compile flags employed, etc
+void print_build_info();
+
 //! Display header listing what physical values will displayed
 void print_columns();
 
@@ -54,5 +57,33 @@ void print_results();
 
 void write_tallies();
 
+void show_time(const char* label, double secs, int indent_level = 0);
+
 } // namespace openmc
 #endif // OPENMC_OUTPUT_H
+
+//////////////////////////////////////
+// Custom formatters
+//////////////////////////////////////
+namespace fmt {
+
+template<typename T>
+struct formatter<std::array<T, 2>> {
+  template<typename ParseContext>
+  constexpr auto parse(ParseContext& ctx)
+  {
+    return ctx.begin();
+  }
+
+  template<typename FormatContext>
+#if FMT_VERSION >= 110000 // Version 11.0.0 and above
+  auto format(const std::array<T, 2>& arr, FormatContext& ctx) const {
+#else // For versions below 11.0.0
+  auto format(const std::array<T, 2>& arr, FormatContext& ctx)
+  {
+#endif
+    return format_to(ctx.out(), "({}, {})", arr[0], arr[1]);
+}
+}; // namespace fmt
+
+} // namespace fmt

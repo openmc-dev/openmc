@@ -1,9 +1,9 @@
 #ifndef OPENMC_TALLIES_FILTER_COLLISIONS_H
 #define OPENMC_TALLIES_FILTER_COLLISIONS_H
 
-#include <gsl/gsl-lite.hpp>
 #include <unordered_map>
 
+#include "openmc/span.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/vector.h"
 
@@ -23,7 +23,8 @@ public:
   //----------------------------------------------------------------------------
   // Methods
 
-  std::string type() const override { return "collision"; }
+  std::string type_str() const override { return "collision"; }
+  FilterType type() const override { return FilterType::COLLISION; }
 
   void from_xml(pugi::xml_node node) override;
 
@@ -38,7 +39,7 @@ public:
   // Accessors
 
   const vector<int>& bins() const { return bins_; }
-  void set_bins(gsl::span<const int> bins);
+  void set_bins(span<const int> bins);
 
 protected:
   //----------------------------------------------------------------------------

@@ -7,7 +7,6 @@
 #include "openmc/vector.h"
 
 #include "xtensor/xtensor.hpp"
-#include <gsl/gsl-lite.hpp>
 #include <hdf5.h>
 
 #include <string>
@@ -34,9 +33,7 @@ public:
 
   int index_subshell; //!< index in SUBSHELLS
   int threshold;
-  double n_electrons;
   double binding_energy;
-  xt::xtensor<double, 1> cross_section;
   vector<Transition> transitions;
 };
 
@@ -62,7 +59,7 @@ public:
   // Data members
   std::string name_; //!< Name of element, e.g. "Zr"
   int Z_;            //!< Atomic number
-  gsl::index index_; //!< Index in global elements vector
+  int64_t index_;    //!< Index in global elements vector
 
   // Microscopic cross sections
   xt::xtensor<double, 1> energy_;
@@ -80,14 +77,22 @@ public:
   Tabulated1D coherent_anomalous_real_;
   Tabulated1D coherent_anomalous_imag_;
 
-  // Photoionization and atomic relaxation data
+  // Photoionization and atomic relaxation data. Subshell cross sections are
+  // stored separately to improve memory access pattern when calculating the
+  // total cross section
   vector<ElectronSubshell> shells_;
+  xt::xtensor<double, 2> cross_sections_;
 
   // Compton profile data
   xt::xtensor<double, 2> profile_pdf_;
   xt::xtensor<double, 2> profile_cdf_;
   xt::xtensor<double, 1> binding_energy_;
   xt::xtensor<double, 1> electron_pdf_;
+
+  // Map subshells from Compton profile data obtained from Biggs et al,
+  // "Hartree-Fock Compton profiles for the elements" to ENDF/B atomic
+  // relaxation data
+  xt::xtensor<int, 1> subshell_map_;
 
   // Stopping power data
   double I_; // mean excitation energy
@@ -97,6 +102,9 @@ public:
 
   // Bremsstrahlung scaled DCS
   xt::xtensor<double, 2> dcs_;
+
+  // Whether atomic relaxation data is present
+  bool has_atomic_relaxation_ {false};
 
   // Constant data
   static constexpr int MAX_STACK_SIZE =

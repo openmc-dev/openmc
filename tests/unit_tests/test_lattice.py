@@ -1,6 +1,6 @@
 from math import sqrt
-import xml.etree.ElementTree as ET
 
+import lxml.etree as ET
 import openmc
 import pytest
 
@@ -157,11 +157,11 @@ def hlat3(pincell1, pincell2, uo2, water, zr):
 
 def test_get_nuclides(rlat2, rlat3, hlat2, hlat3):
     for lat in (rlat2, hlat2):
-        nucs = rlat2.get_nuclides()
+        nucs = lat.get_nuclides()
         assert sorted(nucs) == ['H1', 'O16', 'U235',
                                 'Zr90', 'Zr91', 'Zr92', 'Zr94', 'Zr96']
     for lat in (rlat3, hlat3):
-        nucs = rlat3.get_nuclides()
+        nucs = lat.get_nuclides()
         assert sorted(nucs) == ['H1', 'H2', 'O16', 'U235',
                                 'Zr90', 'Zr91', 'Zr92', 'Zr94', 'Zr96']
 
@@ -360,4 +360,63 @@ def test_show_indices():
         lines = openmc.HexLattice.show_indices(i).split('\n')
         assert len(lines) == 4*i - 3
         lines_x = openmc.HexLattice.show_indices(i, 'x').split('\n')
-        assert len(lines) == 4*i - 3
+        assert len(lines_x) == 4*i - 3
+
+
+def test_unset_universes():
+    elem = ET.Element("dummy")
+
+    lattice = openmc.RectLattice()
+    lattice.lower_left = (-1., -1.)
+    lattice.pitch = (1., 1.)
+    with pytest.raises(ValueError):
+        lattice.create_xml_subelement(elem)
+
+    hex_lattice = openmc.HexLattice()
+    hex_lattice.center = (0., 0.)
+    hex_lattice.pitch = (1.,)
+    with pytest.raises(ValueError):
+        hex_lattice.create_xml_subelement(elem)
+
+
+@pytest.mark.parametrize("orientation", ['x', 'y'])
+def test_hex_lattice_roundtrip(orientation):
+    openmc.reset_auto_ids()
+
+    # ensure that the lattice universes are the same on all axial levels
+    def check_lattice_universes(og_lattice, xml_lattice):
+        for axial_og, axial_rt in zip(og_lattice.universes, xml_lattice.universes):
+            for ring_og, ring_rt in zip(axial_og, axial_rt):
+                assert [u.id for u in ring_og] == [u.id for u in ring_rt]
+
+    latt = openmc.HexLattice()
+    latt.pitch = (1.0, 1.0)
+    latt.center = (0.0, 0.0, 0.0)
+    latt.orientation = orientation
+
+    # fill the lattice with universes in increasing order and repeat for
+    # the second actial level
+    lvl_one_univs = [openmc.Universe(cells=[openmc.Cell()]) for _ in range(19)]
+    lvl_one_univs = [lvl_one_univs[-12:], lvl_one_univs[1:7], lvl_one_univs[:1]]
+    latt.universes = [lvl_one_univs, lvl_one_univs]
+
+    geom = openmc.Geometry([openmc.Cell(fill=latt)])
+    geom.export_to_xml()
+
+    xml_geom = openmc.Geometry.from_xml(materials=openmc.Materials())
+
+    xml_latt = xml_geom.get_all_lattices()[latt.id]
+
+    check_lattice_universes(latt, xml_latt)
+
+    # same test but with unique universes for each axial level
+    lvl_two_univs = [openmc.Universe(cells=[openmc.Cell()]) for _ in range(19)]
+    lvl_two_univs = [lvl_two_univs[-12:], lvl_two_univs[1:7], lvl_two_univs[:1]]
+    latt.universes = [lvl_one_univs, lvl_two_univs]
+
+    geom.export_to_xml()
+
+    xml_geom = openmc.Geometry.from_xml(materials=openmc.Materials())
+    xml_latt = xml_geom.get_all_lattices()[latt.id]
+
+    check_lattice_universes(latt, xml_latt)

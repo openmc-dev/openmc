@@ -1,11 +1,14 @@
+from __future__ import annotations
 from abc import ABC, abstractmethod
-from collections import OrderedDict
 from collections.abc import MutableSequence
 from copy import deepcopy
+import warnings
 
 import numpy as np
 
-from .checkvalue import check_type
+import openmc
+from .bounding_box import BoundingBox
+from .plots import add_plot_params
 
 
 class Region(ABC):
@@ -17,6 +20,11 @@ class Region(ABC):
     respective classes are typically not instantiated directly but rather are
     created through operators of the Surface and Region classes.
 
+    Attributes
+    ----------
+    bounding_box : openmc.BoundingBox
+        Axis-aligned bounding box of the region
+
     """
     def __and__(self, other):
         return Intersection((self, other))
@@ -24,11 +32,17 @@ class Region(ABC):
     def __or__(self, other):
         return Union((self, other))
 
-    def __invert__(self):
-        return Complement(self)
+    @abstractmethod
+    def __invert__(self) -> Region:
+        pass
 
     @abstractmethod
     def __contains__(self, point):
+        pass
+
+    @property
+    @abstractmethod
+    def bounding_box(self) -> BoundingBox:
         pass
 
     @abstractmethod
@@ -46,17 +60,17 @@ class Region(ABC):
 
         Parameters
         ----------
-        surfaces: collections.OrderedDict, optional
+        surfaces : dict, optional
             Dictionary mapping surface IDs to :class:`openmc.Surface` instances
 
         Returns
         -------
-        surfaces: collections.OrderedDict
+        surfaces : dict
             Dictionary mapping surface IDs to :class:`openmc.Surface` instances
 
         """
         if surfaces is None:
-            surfaces = OrderedDict()
+            surfaces = {}
         for region in self:
             surfaces = region.get_surfaces(surfaces)
         return surfaces
@@ -112,18 +126,29 @@ class Region(ABC):
                     else:
                         tokens.append(+surfaces[abs(j)])
 
+                    # When an opening parenthesis appears after a non-operator,
+                    # there's an implicit intersection operator between them
+                    if expression[i] == '(':
+                        tokens.append(' ')
+
                 if expression[i] in '()|~':
                     # For everything other than intersection, add the operator
                     # to the list of tokens
                     tokens.append(expression[i])
+
+                    # If two parentheses appear immediately adjacent to one
+                    # another, we need an intersection between them
+                    if expression[i:i+2] == ')(':
+                        tokens.append(' ')
                 else:
                     # Find next non-space character
                     while expression[i+1] == ' ':
                         i += 1
 
-                    # If previous token is a halfspace or right parenthesis and next token
-                    # is not a left parenthese or union operator, that implies that the
-                    # whitespace is to be interpreted as an intersection operator
+                    # If previous token is a halfspace or right parenthesis and
+                    # next token is not a left parenthesis or union operator,
+                    # that implies that the whitespace is to be interpreted as
+                    # an intersection operator
                     if (i_start >= 0 or tokens[-1] == ')') and \
                        expression[i+1] not in ')|':
                         tokens.append(' ')
@@ -248,13 +273,18 @@ class Region(ABC):
         clone[:] = [n.clone(memo) for n in self]
         return clone
 
-    def translate(self, vector, memo=None):
+    def translate(self, vector, inplace=False, memo=None):
         """Translate region in given direction
 
         Parameters
         ----------
         vector : iterable of float
             Direction in which region should be translated
+        inplace : bool
+            Whether or not to return a region based on new surfaces or one based
+            on the original surfaces that have been modified.
+
+            .. versionadded:: 0.13.1
         memo : dict or None
             Dictionary used for memoization. This parameter is used internally
             and should not be specified by the user.
@@ -268,7 +298,7 @@ class Region(ABC):
 
         if memo is None:
             memo = {}
-        return type(self)(n.translate(vector, memo) for n in self)
+        return type(self)(n.translate(vector, inplace, memo) for n in self)
 
     def rotate(self, rotation, pivot=(0., 0., 0.), order='xyz', inplace=False,
                memo=None):
@@ -297,7 +327,7 @@ class Region(ABC):
             :math:`\psi` about z. This corresponds to an x-y-z extrinsic
             rotation as well as a z-y'-x'' intrinsic rotation using Tait-Bryan
             angles :math:`(\phi, \theta, \psi)`.
-        inplace : boolean
+        inplace : bool
             Whether or not to return a new instance of Surface or to modify the
             coefficients of this Surface in place. Defaults to False.
         memo : dict or None
@@ -313,6 +343,23 @@ class Region(ABC):
             memo = {}
         return type(self)(n.rotate(rotation, pivot=pivot, order=order,
                                    inplace=inplace, memo=memo) for n in self)
+
+    @add_plot_params
+    def plot(self, *args, **kwargs):
+        """Display a slice plot of the region.
+
+        .. versionadded:: 0.15.0
+        """
+        for key in ('color_by', 'colors', 'legend', 'legend_kwargs'):
+            if key in kwargs:
+                warnings.warn(f"The '{key}' argument is present but won't be applied in a region plot")
+
+        # Create cell while not perturbing use of autogenerated IDs
+        next_id = openmc.Cell.next_id
+        c = openmc.Cell(region=self)
+        openmc.Cell.used_ids.remove(c.id)
+        openmc.Cell.next_id = next_id
+        return c.plot(*args, **kwargs)
 
 
 class Intersection(Region, MutableSequence):
@@ -339,13 +386,16 @@ class Intersection(Region, MutableSequence):
 
     Attributes
     ----------
-    bounding_box : tuple of numpy.array
-        Lower-left and upper-right coordinates of an axis-aligned bounding box
+    bounding_box : openmc.BoundingBox
+        Axis-aligned bounding box of the region
 
     """
 
     def __init__(self, nodes):
         self._nodes = list(nodes)
+        for node in nodes:
+            if not isinstance(node, Region):
+                raise ValueError('Intersection operands must be of type Region')
 
     def __and__(self, other):
         new = Intersection(self)
@@ -358,6 +408,9 @@ class Intersection(Region, MutableSequence):
         else:
             self.append(other)
         return self
+
+    def __invert__(self) -> Union:
+        return Union(~n for n in self)
 
     # Implement mutable sequence protocol by delegating to list
     def __getitem__(self, key):
@@ -395,14 +448,11 @@ class Intersection(Region, MutableSequence):
         return '(' + ' '.join(map(str, self)) + ')'
 
     @property
-    def bounding_box(self):
-        lower_left = np.array([-np.inf, -np.inf, -np.inf])
-        upper_right = np.array([np.inf, np.inf, np.inf])
+    def bounding_box(self) -> BoundingBox:
+        box = BoundingBox.infinite()
         for n in self:
-            lower_left_n, upper_right_n = n.bounding_box
-            lower_left[:] = np.maximum(lower_left, lower_left_n)
-            upper_right[:] = np.minimum(upper_right, upper_right_n)
-        return lower_left, upper_right
+            box &= n.bounding_box
+        return box
 
 
 class Union(Region, MutableSequence):
@@ -427,13 +477,16 @@ class Union(Region, MutableSequence):
 
     Attributes
     ----------
-    bounding_box : 2-tuple of numpy.array
-        Lower-left and upper-right coordinates of an axis-aligned bounding box
+    bounding_box : openmc.BoundingBox
+        Axis-aligned bounding box of the region
 
     """
 
     def __init__(self, nodes):
         self._nodes = list(nodes)
+        for node in nodes:
+            if not isinstance(node, Region):
+                raise ValueError('Union operands must be of type Region')
 
     def __or__(self, other):
         new = Union(self)
@@ -446,6 +499,9 @@ class Union(Region, MutableSequence):
         else:
             self.append(other)
         return self
+
+    def __invert__(self) -> Intersection:
+        return Intersection(~n for n in self)
 
     # Implement mutable sequence protocol by delegating to list
     def __getitem__(self, key):
@@ -483,14 +539,12 @@ class Union(Region, MutableSequence):
         return '(' + ' | '.join(map(str, self)) + ')'
 
     @property
-    def bounding_box(self):
-        lower_left = np.array([np.inf, np.inf, np.inf])
-        upper_right = np.array([-np.inf, -np.inf, -np.inf])
+    def bounding_box(self) -> BoundingBox:
+        bbox = BoundingBox(np.array([np.inf]*3),
+                           np.array([-np.inf]*3))
         for n in self:
-            lower_left_n, upper_right_n = n.bounding_box
-            lower_left[:] = np.minimum(lower_left, lower_left_n)
-            upper_right[:] = np.maximum(upper_right, upper_right_n)
-        return lower_left, upper_right
+            bbox |= n.bounding_box
+        return bbox
 
 
 class Complement(Region):
@@ -517,12 +571,12 @@ class Complement(Region):
     ----------
     node : openmc.Region
         Regions to take the complement of
-    bounding_box : tuple of numpy.array
-        Lower-left and upper-right coordinates of an axis-aligned bounding box
+    bounding_box : openmc.BoundingBox
+        Axis-aligned bounding box of the region
 
     """
 
-    def __init__(self, node):
+    def __init__(self, node: Region):
         self.node = node
 
     def __contains__(self, point):
@@ -541,6 +595,9 @@ class Complement(Region):
         """
         return point not in self.node
 
+    def __invert__(self) -> Region:
+        return self.node
+
     def __str__(self):
         return '~' + str(self.node)
 
@@ -550,40 +607,30 @@ class Complement(Region):
 
     @node.setter
     def node(self, node):
-        check_type('node', node, Region)
+        if not isinstance(node, Region):
+            raise ValueError('Complement operand must be of type Region')
         self._node = node
 
     @property
-    def bounding_box(self):
-        # Use De Morgan's laws to distribute the complement operator so that it
-        # only applies to surface half-spaces, thus allowing us to calculate the
-        # bounding box in the usual recursive manner.
-        if isinstance(self.node, Union):
-            temp_region = Intersection(~n for n in self.node)
-        elif isinstance(self.node, Intersection):
-            temp_region = Union(~n for n in self.node)
-        elif isinstance(self.node, Complement):
-            temp_region = self.node.node
-        else:
-            temp_region = ~self.node
-        return temp_region.bounding_box
+    def bounding_box(self) -> BoundingBox:
+        return (~self.node).bounding_box
 
     def get_surfaces(self, surfaces=None):
         """Recursively find and return all the surfaces referenced by the node
 
         Parameters
         ----------
-        surfaces: collections.OrderedDict, optional
+        surfaces : dict, optional
             Dictionary mapping surface IDs to :class:`openmc.Surface` instances
 
         Returns
         -------
-        surfaces: collections.OrderedDict
+        surfaces : dict
             Dictionary mapping surface IDs to :class:`openmc.Surface` instances
 
         """
         if surfaces is None:
-            surfaces = OrderedDict()
+            surfaces = {}
         for region in self.node:
             surfaces = region.get_surfaces(surfaces)
         return surfaces
@@ -611,10 +658,10 @@ class Complement(Region):
         clone.node = self.node.clone(memo)
         return clone
 
-    def translate(self, vector, memo=None):
+    def translate(self, vector, inplace=False, memo=None):
         if memo is None:
             memo = {}
-        return type(self)(self.node.translate(vector, memo))
+        return type(self)(self.node.translate(vector, inplace, memo))
 
     def rotate(self, rotation, pivot=(0., 0., 0.), order='xyz', inplace=False,
                memo=None):

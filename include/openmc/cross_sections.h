@@ -62,6 +62,11 @@ extern vector<Library> libraries;
 //! libraries
 void read_cross_sections_xml();
 
+//! Read cross sections file (either XML or multigroup H5) and populate data
+//! libraries
+//! \param[in] root node of the cross_sections.xml
+void read_cross_sections_xml(pugi::xml_node root);
+
 //! Load nuclide and thermal scattering data from HDF5 files
 //
 //! \param[in] nuc_temps Temperatures for each nuclide in [K]

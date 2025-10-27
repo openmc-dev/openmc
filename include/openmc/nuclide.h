@@ -7,7 +7,6 @@
 #include <unordered_map>
 #include <utility> // for pair
 
-#include <gsl/gsl-lite.hpp>
 #include <hdf5.h>
 
 #include "openmc/array.h"
@@ -17,6 +16,7 @@
 #include "openmc/particle.h"
 #include "openmc/reaction.h"
 #include "openmc/reaction_product.h"
+#include "openmc/span.h"
 #include "openmc/urr.h"
 #include "openmc/vector.h"
 #include "openmc/wmp.h"
@@ -29,6 +29,7 @@ namespace openmc {
 
 class Nuclide {
 public:
+  //============================================================================
   // Types, aliases
   using EmissionMode = ReactionProduct::EmissionMode;
   struct EnergyGrid {
@@ -36,18 +37,32 @@ public:
     vector<double> energy;
   };
 
+  //============================================================================
   // Constructors/destructors
   Nuclide(hid_t group, const vector<double>& temperature);
   ~Nuclide();
 
+  //============================================================================
+  // Methods
+
   //! Initialize logarithmic grid for energy searches
   void init_grid();
 
+  //! Calculate microscopic cross sections
+  //
+  //! \param[in] i_sab  Index in data::thermal_scatt
+  //! \param[in] i_log_union  Log-grid search index
+  //! \param[in] sab_frac  S(a,b) table fraction
+  //! \param[in,out] p  Particle object
   void calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle& p);
 
+  //! Calculate thermal scattering cross section
+  //
+  //! \param[in] i_sab  Index in data::thermal_scatt
+  //! \param[in] sab_frac  S(a,b) table fraction
+  //! \param[in,out] p  Particle object
   void calculate_sab_xs(int i_sab, double sab_frac, Particle& p);
 
-  // Methods
   double nu(double E, EmissionMode mode, int group = 0) const;
   void calculate_elastic_xs(Particle& p) const;
 
@@ -66,16 +81,17 @@ public:
   //! \param[in] energy Energy group boundaries in [eV]
   //! \param[in] flux Flux in each energy group (not normalized per eV)
   //! \return Reaction rate
-  double collapse_rate(int MT, double temperature,
-    gsl::span<const double> energy, gsl::span<const double> flux) const;
+  double collapse_rate(int MT, double temperature, span<const double> energy,
+    span<const double> flux) const;
 
+  //============================================================================
   // Data members
   std::string name_; //!< Name of nuclide, e.g. "U235"
   int Z_;            //!< Atomic number
   int A_;            //!< Mass number
   int metastable_;   //!< Metastable state
   double awr_;       //!< Atomic weight ratio
-  gsl::index index_; //!< Index in the nuclides array
+  int64_t index_;    //!< Index in the nuclides array
 
   // Temperature dependent cross section data
   vector<double> kTs_;                //!< temperatures in eV (k*T)
@@ -122,7 +138,7 @@ private:
   //
   //! \param[in] T Temperature in [K]
   //! \return Temperature index and interpolation factor
-  std::pair<gsl::index, double> find_temperature(double T) const;
+  std::pair<int64_t, double> find_temperature(double T) const;
 
   static int XS_TOTAL;
   static int XS_ABSORPTION;
@@ -148,8 +164,8 @@ namespace data {
 
 // Minimum/maximum transport energy for each particle type. Order corresponds to
 // that of the ParticleType enum
-extern array<double, 2> energy_min;
-extern array<double, 2> energy_max;
+extern array<double, 4> energy_min;
+extern array<double, 4> energy_max;
 
 //! Minimum temperature in [K] that nuclide data is available at
 extern double temperature_min;

@@ -139,9 +139,19 @@ class _Container(ABC):
     def sphere_radius(self):
         return self._sphere_radius
 
+    @sphere_radius.setter
+    def sphere_radius(self, sphere_radius):
+        self._sphere_radius = float(sphere_radius)
+        self._limits = None
+        self._cell_length = None
+
     @property
     def center(self):
         return self._center
+
+    @center.setter
+    def center(self, center):
+        self._center = center
 
     @abstractproperty
     def limits(self):
@@ -155,15 +165,6 @@ class _Container(ABC):
     def volume(self):
         pass
 
-    @sphere_radius.setter
-    def sphere_radius(self, sphere_radius):
-        self._sphere_radius = float(sphere_radius)
-        self._limits = None
-        self._cell_length = None
-
-    @center.setter
-    def center(self, center):
-        self._center = center
 
     def mesh_cell(self, p):
         """Calculate the index of the cell in a mesh overlaid on the domain in
@@ -301,13 +302,31 @@ class _RectangularPrism(_Container):
     def width(self):
         return self._width
 
+    @width.setter
+    def width(self, width):
+        self._width = float(width)
+        self._limits = None
+        self._cell_length = None
+
     @property
     def depth(self):
         return self._depth
 
+    @depth.setter
+    def depth(self, depth):
+        self._depth = float(depth)
+        self._limits = None
+        self._cell_length = None
+
     @property
     def height(self):
         return self._height
+
+    @height.setter
+    def height(self, height):
+        self._height = float(height)
+        self._limits = None
+        self._cell_length = None
 
     @property
     def limits(self):
@@ -317,7 +336,12 @@ class _RectangularPrism(_Container):
             x, y, z = self.width/2, self.depth/2, self.height/2
             self._limits = [[c[0] - x + r, c[1] - y + r, c[2] - z + r],
                             [c[0] + x - r, c[1] + y - r, c[2] + z - r]]
+
         return self._limits
+
+    @limits.setter
+    def limits(self, limits):
+        self._limits = limits
 
     @property
     def cell_length(self):
@@ -330,28 +354,6 @@ class _RectangularPrism(_Container):
     @property
     def volume(self):
         return self.width*self.depth*self.height
-
-    @width.setter
-    def width(self, width):
-        self._width = float(width)
-        self._limits = None
-        self._cell_length = None
-
-    @depth.setter
-    def depth(self, depth):
-        self._depth = float(depth)
-        self._limits = None
-        self._cell_length = None
-
-    @height.setter
-    def height(self, height):
-        self._height = float(height)
-        self._limits = None
-        self._cell_length = None
-
-    @limits.setter
-    def limits(self, limits):
-        self._limits = limits
 
     @classmethod
     def from_region(self, region, sphere_radius):
@@ -471,13 +473,30 @@ class _Cylinder(_Container):
     def length(self):
         return self._length
 
+    @length.setter
+    def length(self, length):
+        self._length = float(length)
+        self._limits = None
+        self._cell_length = None
+
     @property
     def radius(self):
         return self._radius
 
+    @radius.setter
+    def radius(self, radius):
+        self._radius = float(radius)
+        self._limits = None
+        self._cell_length = None
+
     @property
     def axis(self):
         return self._axis
+
+    @axis.setter
+    def axis(self, axis):
+        self._axis = axis
+        self._shift = None
 
     @property
     def shift(self):
@@ -499,6 +518,10 @@ class _Cylinder(_Container):
             self._limits = [[z0 - z + r], [z0 + z - r, self.radius - r]]
         return self._limits
 
+    @limits.setter
+    def limits(self, limits):
+        self._limits = limits
+
     @property
     def cell_length(self):
         if self._cell_length is None:
@@ -513,27 +536,6 @@ class _Cylinder(_Container):
     @property
     def volume(self):
         return self.length*pi*self.radius**2
-
-    @length.setter
-    def length(self, length):
-        self._length = float(length)
-        self._limits = None
-        self._cell_length = None
-
-    @radius.setter
-    def radius(self, radius):
-        self._radius = float(radius)
-        self._limits = None
-        self._cell_length = None
-
-    @axis.setter
-    def axis(self, axis):
-        self._axis = axis
-        self._shift = None
-
-    @limits.setter
-    def limits(self, limits):
-        self._limits = limits
 
     @classmethod
     def from_region(self, region, sphere_radius):
@@ -677,9 +679,20 @@ class _SphericalShell(_Container):
     def radius(self):
         return self._radius
 
+    @radius.setter
+    def radius(self, radius):
+        self._radius = float(radius)
+        self._limits = None
+        self._cell_length = None
+
     @property
     def inner_radius(self):
         return self._inner_radius
+
+    @inner_radius.setter
+    def inner_radius(self, inner_radius):
+        self._inner_radius = float(inner_radius)
+        self._limits = None
 
     @property
     def limits(self):
@@ -692,6 +705,10 @@ class _SphericalShell(_Container):
             self._limits = [[r_min], [r_max]]
         return self._limits
 
+    @limits.setter
+    def limits(self, limits):
+        self._limits = limits
+
     @property
     def cell_length(self):
         if self._cell_length is None:
@@ -703,21 +720,6 @@ class _SphericalShell(_Container):
     @property
     def volume(self):
         return _volume_sphere(self.radius) - _volume_sphere(self.inner_radius)
-
-    @radius.setter
-    def radius(self, radius):
-        self._radius = float(radius)
-        self._limits = None
-        self._cell_length = None
-
-    @inner_radius.setter
-    def inner_radius(self, inner_radius):
-        self._inner_radius = float(inner_radius)
-        self._limits = None
-
-    @limits.setter
-    def limits(self, limits):
-        self._limits = limits
 
     @classmethod
     def from_region(self, region, sphere_radius):
@@ -817,6 +819,11 @@ def create_triso_lattice(trisos, lower_left, pitch, shape, background, virtual=F
     background : openmc.Material
         A background material that is used anywhere within the lattice but
         outside a TRISO particle
+    virtual : bool
+        If True, create a virtual lattice where each cell is repeated
+        according to the pitch and shape. This is useful for creating a
+        lattice with a very large number of elements.
+        Default is False.
 
     Returns
     -------
@@ -1221,7 +1228,7 @@ def _close_random_pack(domain, spheres, contraction_rate):
 
 
 def pack_spheres(radius, region, pf=None, num_spheres=None, initial_pf=0.3,
-                 contraction_rate=1.e-3, seed=1):
+                 contraction_rate=1.e-3, seed=None):
     """Generate a random, non-overlapping configuration of spheres within a
     container.
 
@@ -1250,7 +1257,7 @@ def pack_spheres(radius, region, pf=None, num_spheres=None, initial_pf=0.3,
         reached using a smaller contraction rate, but the algorithm will take
         longer to converge.
     seed : int, optional
-        RNG seed.
+        Pseudorandom number generator seed passed to :func:`random.seed`
 
     Returns
     ------
@@ -1293,7 +1300,8 @@ def pack_spheres(radius, region, pf=None, num_spheres=None, initial_pf=0.3,
 
     """
     # Seed RNG
-    random.seed(seed)
+    if seed is not None:
+        random.seed(seed)
 
     # Create container with the correct shape based on the supplied region
     domain = None
@@ -1325,14 +1333,13 @@ def pack_spheres(radius, region, pf=None, num_spheres=None, initial_pf=0.3,
 
     # Check packing fraction for close random packing
     if pf > MAX_PF_CRP:
-        raise ValueError('Packing fraction {0} is greater than the limit for '
-                         'close random packing, {1}'.format(pf, MAX_PF_CRP))
+        raise ValueError(f'Packing fraction {pf} is greater than the limit for '
+                         f'close random packing, {MAX_PF_CRP}')
 
     # Check packing fraction for random sequential packing
     if initial_pf > MAX_PF_RSP:
-        raise ValueError('Initial packing fraction {0} is greater than the '
-                         'limit for random sequential packing, '
-                         '{1}'.format(initial_pf, MAX_PF_RSP))
+        raise ValueError(f'Initial packing fraction {initial_pf} is greater than'
+                         f'the limit for random sequential packing, {MAX_PF_RSP}')
 
     # Calculate the sphere radius used in the initial random sequential
     # packing from the initial packing fraction

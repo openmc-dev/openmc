@@ -1,37 +1,37 @@
 <?xml version='1.0' encoding='utf-8'?>
-<geometry>
-  <cell id="1" material="1" region="1 -2 3 -4 5 -6 7" universe="0" />
-  <cell id="2" material="2" region="3 5 -6 -7" universe="0" />
-  <surface boundary="periodic" coeffs="0.0" id="1" periodic_surface_id="3" type="x-plane" />
-  <surface boundary="reflective" coeffs="5.0" id="2" type="x-plane" />
-  <surface boundary="periodic" coeffs="0.0" id="3" periodic_surface_id="1" type="y-plane" />
-  <surface boundary="reflective" coeffs="5.0" id="4" type="y-plane" />
-  <surface boundary="periodic" coeffs="-5.0" id="5" type="z-plane" />
-  <surface boundary="periodic" coeffs="0 0 1 5.0" id="6" type="plane" />
-  <surface coeffs="2.5 0.0 2.0" id="7" type="z-cylinder" />
-</geometry>
-<?xml version='1.0' encoding='utf-8'?>
-<materials>
-  <material id="1">
-    <density units="g/cc" value="1.0" />
-    <nuclide ao="2.0" name="H1" />
-    <nuclide ao="1.0" name="O16" />
-    <sab name="c_H_in_H2O" />
-  </material>
-  <material depletable="true" id="2">
-    <density units="g/cc" value="4.5" />
-    <nuclide ao="1.0" name="U235" />
-  </material>
-</materials>
-<?xml version='1.0' encoding='utf-8'?>
-<settings>
-  <run_mode>eigenvalue</run_mode>
-  <particles>1000</particles>
-  <batches>4</batches>
-  <inactive>0</inactive>
-  <source strength="1.0">
-    <space type="box">
-      <parameters>0 0 0 5 5 0</parameters>
-    </space>
-  </source>
-</settings>
+<model>
+  <materials>
+    <material id="1">
+      <density value="1.0" units="g/cc"/>
+      <nuclide name="H1" ao="2.0"/>
+      <nuclide name="O16" ao="1.0"/>
+      <sab name="c_H_in_H2O"/>
+    </material>
+    <material id="2" depletable="true">
+      <density value="4.5" units="g/cc"/>
+      <nuclide name="U235" ao="1.0"/>
+    </material>
+  </materials>
+  <geometry>
+    <cell id="1" material="1" region="1 -2 3 -4 5 -6 7" universe="0"/>
+    <cell id="2" material="2" region="3 5 -6 -7" universe="0"/>
+    <surface id="1" type="x-plane" boundary="periodic" coeffs="0.0" periodic_surface_id="3"/>
+    <surface id="2" type="x-plane" boundary="reflective" coeffs="5.0"/>
+    <surface id="3" type="y-plane" boundary="periodic" coeffs="0.0" periodic_surface_id="1"/>
+    <surface id="4" type="y-plane" boundary="reflective" coeffs="5.0"/>
+    <surface id="5" type="z-plane" boundary="periodic" coeffs="-5.0"/>
+    <surface id="6" type="plane" boundary="periodic" coeffs="0 0 1 5.0"/>
+    <surface id="7" type="z-cylinder" coeffs="2.5 0.0 2.0"/>
+  </geometry>
+  <settings>
+    <run_mode>eigenvalue</run_mode>
+    <particles>1000</particles>
+    <batches>4</batches>
+    <inactive>0</inactive>
+    <source type="independent" strength="1.0" particle="neutron">
+      <space type="box">
+        <parameters>0 0 0 5 5 0</parameters>
+      </space>
+    </source>
+  </settings>
+  </model>

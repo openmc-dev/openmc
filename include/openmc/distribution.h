@@ -10,6 +10,7 @@
 
 #include "openmc/constants.h"
 #include "openmc/memory.h" // for unique_ptr
+#include "openmc/span.h"
 #include "openmc/vector.h" // for vector
 
 namespace openmc {
@@ -22,6 +23,10 @@ class Distribution {
 public:
   virtual ~Distribution() = default;
   virtual double sample(uint64_t* seed) const = 0;
+
+  //! Return integral of distribution
+  //! \return Integral of distribution
+  virtual double integral() const { return 1.0; };
 };
 
 using UPtrDist = unique_ptr<Distribution>;
@@ -31,6 +36,40 @@ using UPtrDist = unique_ptr<Distribution>;
 //! \return Unique pointer to distribution
 UPtrDist distribution_from_xml(pugi::xml_node node);
 
+//==============================================================================
+//! A discrete distribution index (probability mass function)
+//==============================================================================
+
+class DiscreteIndex {
+public:
+  DiscreteIndex() {};
+  DiscreteIndex(pugi::xml_node node);
+  DiscreteIndex(span<const double> p);
+
+  void assign(span<const double> p);
+
+  //! Sample a value from the distribution
+  //! \param seed Pseudorandom number seed pointer
+  //! \return Sampled value
+  size_t sample(uint64_t* seed) const;
+
+  // Properties
+  const vector<double>& prob() const { return prob_; }
+  const vector<size_t>& alias() const { return alias_; }
+  double integral() const { return integral_; }
+
+private:
+  vector<double> prob_; //!< Probability of accepting the uniformly sampled bin,
+                        //!< mapped to alias method table
+  vector<size_t> alias_; //!< Alias table
+  double integral_;      //!< Integral of distribution
+
+  //! Normalize distribution so that probabilities sum to unity
+  void normalize();
+
+  //! Initialize alias tables for distribution
+  void init_alias();
+};
 
 //==============================================================================
 //! A discrete distribution (probability mass function)
@@ -39,23 +78,24 @@ UPtrDist distribution_from_xml(pugi::xml_node node);
 class Discrete : public Distribution {
 public:
   explicit Discrete(pugi::xml_node node);
-  Discrete(const double* x, const double* p, int n);
+  Discrete(const double* x, const double* p, size_t n);
 
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
-  double sample(uint64_t* seed) const;
+  double sample(uint64_t* seed) const override;
+
+  double integral() const override { return di_.integral(); };
 
   // Properties
   const vector<double>& x() const { return x_; }
-  const vector<double>& p() const { return p_; }
+  const vector<double>& prob() const { return di_.prob(); }
+  const vector<size_t>& alias() const { return di_.alias(); }
 
 private:
   vector<double> x_; //!< Possible outcomes
-  vector<double> p_; //!< Probability of each outcome
-
-  //! Normalize distribution so that probabilities sum to unity
-  void normalize();
+  DiscreteIndex di_; //!< discrete probability distribution of
+                     //!< outcome indices
 };
 
 //==============================================================================
@@ -70,7 +110,7 @@ public:
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
-  double sample(uint64_t* seed) const;
+  double sample(uint64_t* seed) const override;
 
   double a() const { return a_; }
   double b() const { return b_; }
@@ -94,16 +134,17 @@ public:
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
-  double sample(uint64_t* seed) const;
+  double sample(uint64_t* seed) const override;
 
   double a() const { return std::pow(offset_, ninv_); }
   double b() const { return std::pow(offset_ + span_, ninv_); }
   double n() const { return 1 / ninv_ - 1; }
+
 private:
   //! Store processed values in object to allow for faster sampling
   double offset_; //!< a^(n+1)
-  double span_; //!< b^(n+1) - a^(n+1)
-  double ninv_; //!< 1/(n+1)
+  double span_;   //!< b^(n+1) - a^(n+1)
+  double ninv_;   //!< 1/(n+1)
 };
 
 //==============================================================================
@@ -118,7 +159,7 @@ public:
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
-  double sample(uint64_t* seed) const;
+  double sample(uint64_t* seed) const override;
 
   double theta() const { return theta_; }
 
@@ -138,7 +179,7 @@ public:
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
-  double sample(uint64_t* seed) const;
+  double sample(uint64_t* seed) const override;
 
   double a() const { return a_; }
   double b() const { return b_; }
@@ -162,7 +203,7 @@ public:
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
-  double sample(uint64_t* seed) const;
+  double sample(uint64_t* seed) const override;
 
   double mean_value() const { return mean_value_; }
   double std_dev() const { return std_dev_; }
@@ -170,35 +211,6 @@ public:
 private:
   double mean_value_; //!< middle of distribution [eV]
   double std_dev_;    //!< standard deviation [eV]
-};
-
-//==============================================================================
-//! Muir (fusion) spectrum derived from Normal with extra params e0 is mean
-//! std dev is sqrt(4*e0*kt/m)
-//==============================================================================
-
-class Muir : public Distribution {
-public:
-  explicit Muir(pugi::xml_node node);
-  Muir(double e0, double m_rat, double kt)
-    : e0_ {e0}, m_rat_ {m_rat}, kt_ {kt} {};
-
-  //! Sample a value from the distribution
-  //! \param seed Pseudorandom number seed pointer
-  //! \return Sampled value
-  double sample(uint64_t* seed) const;
-
-  double e0() const { return e0_; }
-  double m_rat() const { return m_rat_; }
-  double kt() const { return kt_; }
-
-private:
-  // example DT fusion m_rat = 5 (D = 2 + T = 3)
-  // ion temp = 20000 eV
-  // mean neutron energy 14.08e6 eV
-  double e0_;    //!< mean neutron energy [eV]
-  double m_rat_; //!< ratio of reactant masses relative to atomic mass unit
-  double kt_;    //!< ion temperature [eV]
 };
 
 //==============================================================================
@@ -214,19 +226,21 @@ public:
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
-  double sample(uint64_t* seed) const;
+  double sample(uint64_t* seed) const override;
 
-  // x property
+  // properties
   vector<double>& x() { return x_; }
   const vector<double>& x() const { return x_; }
   const vector<double>& p() const { return p_; }
   Interpolation interp() const { return interp_; }
+  double integral() const override { return integral_; };
 
 private:
   vector<double> x_;     //!< tabulated independent variable
   vector<double> p_;     //!< tabulated probability density
   vector<double> c_;     //!< cumulative distribution at tabulated values
   Interpolation interp_; //!< interpolation rule
+  double integral_;      //!< Integral of distribution
 
   //! Initialize tabulated probability density function
   //! \param x Array of values for independent variable
@@ -248,7 +262,7 @@ public:
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
-  double sample(uint64_t* seed) const;
+  double sample(uint64_t* seed) const override;
 
   const vector<double>& x() const { return x_; }
 
@@ -267,16 +281,18 @@ public:
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled value
-  double sample(uint64_t* seed) const;
+  double sample(uint64_t* seed) const override;
+
+  double integral() const override { return integral_; }
 
 private:
   // Storrage for probability + distribution
   using DistPair = std::pair<double, UPtrDist>;
 
   vector<DistPair>
-    distribution_; //!< sub-distributions + cummulative probabilities
+    distribution_;  //!< sub-distributions + cummulative probabilities
+  double integral_; //!< integral of distribution
 };
-
 
 } // namespace openmc
 

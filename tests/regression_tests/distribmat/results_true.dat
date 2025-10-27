@@ -1,10 +1,10 @@
 k-combined:
-1.234870E+00 1.724266E-02
+1.246391E+00 1.414798E-02
 Cell
 	ID             =	11
 	Name           =	
 	Fill           =	[2, None, 3, 2]
-	Region         =	-9
+	Region         =	-1
 	Rotation       =	None
 	Translation    =	None
 	Volume         =	None

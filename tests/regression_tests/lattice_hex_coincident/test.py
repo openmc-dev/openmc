@@ -6,7 +6,8 @@ from tests.testing_harness import PyAPITestHarness
 
 
 class HexLatticeCoincidentTestHarness(PyAPITestHarness):
-    def _build_inputs(self):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         materials = openmc.Materials()
 
         fuel_mat = openmc.Material()
@@ -40,7 +41,7 @@ class HexLatticeCoincidentTestHarness(PyAPITestHarness):
         zirc.add_nuclide('Zr96', 1.131E-03, 'ao')
         materials.append(zirc)
 
-        materials.export_to_xml()
+        self._model.materials = materials
 
         ### Geometry ###
         pin_rad = 0.7 # cm
@@ -103,10 +104,10 @@ class HexLatticeCoincidentTestHarness(PyAPITestHarness):
         inf_mat_univ = openmc.Universe(cells=[inf_mat,])
 
         # a hex surface for the core to go inside of
-        hexprism = openmc.model.hexagonal_prism(edge_length=edge_length,
-                                                origin=(0.0, 0.0),
-                                                boundary_type = 'reflective',
-                                                orientation='x')
+        hexprism = openmc.model.HexagonalPrism(edge_length=edge_length,
+                                               origin=(0.0, 0.0),
+                                               boundary_type = 'reflective',
+                                               orientation='x')
 
         pincell_only_lattice = openmc.HexLattice(name="regular fuel assembly")
         pincell_only_lattice.center = (0., 0.)
@@ -119,20 +120,19 @@ class HexLatticeCoincidentTestHarness(PyAPITestHarness):
         pincell_only_lattice.universes = [ring1, ring0]
 
         pincell_only_cell = openmc.Cell(name="container cell")
-        pincell_only_cell.region = hexprism & +fuel_btm & -fuel_top
+        pincell_only_cell.region = -hexprism & +fuel_btm & -fuel_top
         pincell_only_cell.fill = pincell_only_lattice
 
         root_univ = openmc.Universe(name="root universe", cells=[pincell_only_cell,])
 
-        geom = openmc.Geometry(root_univ)
-        geom.export_to_xml()
+        self._model.geometry = openmc.Geometry(root_univ)
 
         ### Settings ###
 
         settings = openmc.Settings()
         settings.run_mode = 'eigenvalue'
 
-        source = openmc.Source()
+        source = openmc.IndependentSource()
         corner_dist = sqrt(2) * pin_rad
         ll = [-corner_dist, -corner_dist, 0.0]
         ur = [corner_dist, corner_dist, 10.0]
@@ -144,8 +144,9 @@ class HexLatticeCoincidentTestHarness(PyAPITestHarness):
         settings.inactive = 2
         settings.particles = 1000
         settings.seed = 22
-        settings.export_to_xml()
+        self._model.settings = settings
 
 def test_lattice_hex_coincident_surf():
-    harness = HexLatticeCoincidentTestHarness('statepoint.5.h5')
+    harness = HexLatticeCoincidentTestHarness('statepoint.5.h5',
+                                              model=openmc.Model())
     harness.main()

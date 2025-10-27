@@ -26,6 +26,8 @@ The current version of the particle restart file format is 2.0.
            - **run_mode** (*char[]*) -- Run mode used, either 'fixed source',
              'eigenvalue', or 'particle restart'.
            - **id** (*int8_t*) -- Unique identifier of the particle.
+           - **type** (*int*) -- Particle type (0=neutron, 1=photon, 2=electron,
+             3=positron)
            - **weight** (*double*) -- Weight of the particle.
            - **energy** (*double*) -- Energy of the particle in eV for
              continuous-energy mode, or the energy group of the particle for

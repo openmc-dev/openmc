@@ -4,8 +4,7 @@
 #include <cstdint>
 #include <unordered_map>
 
-#include <gsl/gsl-lite.hpp>
-
+#include "openmc/span.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/vector.h"
 
@@ -25,7 +24,8 @@ public:
   //----------------------------------------------------------------------------
   // Methods
 
-  std::string type() const override { return "material"; }
+  std::string type_str() const override { return "material"; }
+  FilterType type() const override { return FilterType::MATERIAL; }
 
   void from_xml(pugi::xml_node node) override;
 
@@ -43,9 +43,9 @@ public:
 
   const vector<int32_t>& materials() const { return materials_; }
 
-  void set_materials(gsl::span<const int32_t> materials);
+  void set_materials(span<const int32_t> materials);
 
-private:
+protected:
   //----------------------------------------------------------------------------
   // Data members
 

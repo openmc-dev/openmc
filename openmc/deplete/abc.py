@@ -1,42 +1,99 @@
-"""function module.
+"""abc module.
 
-This module contains the Operator class, which is then passed to an integrator
-to run a full depletion simulation.
+This module contains Abstract Base Classes for implementing operator,
+integrator, depletion system solver, and operator helper classes
 """
 
+from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections import namedtuple, defaultdict
 from collections.abc import Iterable, Callable
 from copy import deepcopy
 from inspect import signature
 from numbers import Real, Integral
-import os
 from pathlib import Path
-import sys
+from textwrap import dedent
 import time
+from typing import Optional, Union, Sequence
 from warnings import warn
 
-from numpy import nonzero, empty, asarray
+import numpy as np
 from uncertainties import ufloat
 
-from openmc.lib import MaterialFilter, Tally
-from openmc.checkvalue import check_type, check_greater_than
+from openmc.checkvalue import check_type, check_greater_than, PathLike
 from openmc.mpi import comm
-from .results import Results
-from .chain import Chain
-from .results_list import ResultsList
+from openmc.utility_funcs import change_directory
+from openmc import Material
+from .stepresult import StepResult
+from .chain import _get_chain
+from .results import Results, _SECONDS_PER_MINUTE, _SECONDS_PER_HOUR, \
+    _SECONDS_PER_DAY, _SECONDS_PER_JULIAN_YEAR
 from .pool import deplete
+from .reaction_rates import ReactionRates
+from .transfer_rates import TransferRates, ExternalSourceRates
 
 
 __all__ = [
-    "OperatorResult", "TransportOperator", "ReactionRateHelper",
-    "NormalizationHelper", "FissionYieldHelper", "TalliedFissionYieldHelper",
+    "OperatorResult", "TransportOperator",
+    "ReactionRateHelper", "NormalizationHelper", "FissionYieldHelper",
     "Integrator", "SIIntegrator", "DepSystemSolver", "add_params"]
 
 
-_SECONDS_PER_MINUTE = 60
-_SECONDS_PER_HOUR = 60*60
-_SECONDS_PER_DAY = 24*60*60
+def _normalize_timesteps(
+        timesteps: Sequence[float] | Sequence[tuple[float, str]],
+        source_rates: float | Sequence[float],
+        timestep_units: str = 's',
+        operator: TransportOperator | None = None,
+):
+    if not isinstance(source_rates, Sequence):
+        # Ensure that rate is single value if that is the case
+        source_rates = [source_rates] * len(timesteps)
+
+    if len(source_rates) != len(timesteps):
+        raise ValueError(
+            "Number of time steps ({}) != number of powers ({})".format(
+                len(timesteps), len(source_rates)))
+
+    # Get list of times / units
+    if isinstance(timesteps[0], Sequence):
+        times, units = zip(*timesteps)
+    else:
+        times = timesteps
+        units = [timestep_units] * len(timesteps)
+
+    # Determine number of seconds for each timestep
+    seconds = []
+    for timestep, unit, rate in zip(times, units, source_rates):
+        # Make sure values passed make sense
+        check_type('timestep', timestep, Real)
+        check_greater_than('timestep', timestep, 0.0, False)
+        check_type('timestep units', unit, str)
+        check_type('source rate', rate, Real)
+        check_greater_than('source rate', rate, 0.0, True)
+
+        if unit in ('s', 'sec'):
+            seconds.append(timestep)
+        elif unit in ('min', 'minute'):
+            seconds.append(timestep*_SECONDS_PER_MINUTE)
+        elif unit in ('h', 'hr', 'hour'):
+            seconds.append(timestep*_SECONDS_PER_HOUR)
+        elif unit in ('d', 'day'):
+            seconds.append(timestep*_SECONDS_PER_DAY)
+        elif unit in ('a', 'year'):
+            seconds.append(timestep*_SECONDS_PER_JULIAN_YEAR)
+        elif unit.lower() == 'mwd/kg':
+            watt_days_per_kg = 1e6*timestep
+            kilograms = 1e-3*operator.heavy_metal
+            if rate == 0.0:
+                raise ValueError("Cannot specify a timestep in [MWd/kg] when"
+                                 " the power is zero.")
+            days = watt_days_per_kg * kilograms / rate
+            seconds.append(days*_SECONDS_PER_DAY)
+        else:
+            raise ValueError(f"Invalid timestep unit '{unit}'")
+
+    return (np.asarray(seconds), np.asarray(source_rates))
+
 
 OperatorResult = namedtuple('OperatorResult', ['k', 'rates'])
 OperatorResult.__doc__ = """\
@@ -65,56 +122,41 @@ class TransportOperator(ABC):
     operator that takes a vector of material compositions and returns an
     eigenvalue and reaction rates. This abstract class sets the requirements
     for such a transport operator. Users should instantiate
-    :class:`openmc.deplete.Operator` rather than this class.
+    :class:`openmc.deplete.CoupledOperator` or
+    :class:`openmc.deplete.IndependentOperator` rather than this class.
 
     Parameters
     ----------
-    chain_file : str
-        Path to the depletion chain XML file
+    chain_file : PathLike or Chain
+        Path to the depletion chain XML file or instance of openmc.deplete.Chain.
     fission_q : dict, optional
         Dictionary of nuclides and their fission Q values [eV]. If not given,
         values will be pulled from the ``chain_file``.
-    dilute_initial : float, optional
-        Initial atom density [atoms/cm^3] to add for nuclides that are zero
-        in initial condition to ensure they exist in the decay chain.
-        Only done for nuclides with reaction rates.
-        Defaults to 1.0e3.
-    prev_results : ResultsList, optional
+    prev_results : Results, optional
         Results from a previous depletion calculation.
 
     Attributes
     ----------
-    dilute_initial : float
-        Initial atom density [atoms/cm^3] to add for nuclides that are zero
-        in initial condition to ensure they exist in the decay chain.
-        Only done for nuclides with reaction rates.
-    prev_res : ResultsList or None
+    output_dir : pathlib.Path
+        Path to output directory to save results.
+    prev_res : Results or None
         Results from a previous depletion calculation. ``None`` if no
         results are to be used.
+    chain : openmc.deplete.Chain
+        The depletion chain information necessary to form matrices and tallies.
+
     """
-    def __init__(self, chain_file, fission_q=None, dilute_initial=1.0e3,
-                 prev_results=None):
-        self.dilute_initial = dilute_initial
+    def __init__(self, chain_file=None, fission_q=None, prev_results=None):
         self.output_dir = '.'
 
         # Read depletion chain
-        self.chain = Chain.from_xml(chain_file, fission_q)
+        self.chain = _get_chain(chain_file, fission_q)
+
         if prev_results is None:
             self.prev_res = None
         else:
-            check_type("previous results", prev_results, ResultsList)
+            check_type("previous results", prev_results, Results)
             self.prev_res = prev_results
-
-    @property
-    def dilute_initial(self):
-        """Initial atom density for nuclides with zero initial concentration"""
-        return self._dilute_initial
-
-    @dilute_initial.setter
-    def dilute_initial(self, value):
-        check_type("dilute_initial", value, Real)
-        check_greater_than("dilute_initial", value, 0.0, equality=True)
-        self._dilute_initial = value
 
     @abstractmethod
     def __call__(self, vec, source_rate):
@@ -133,18 +175,6 @@ class TransportOperator(ABC):
             Eigenvalue and reaction rates resulting from transport operator
 
         """
-
-    def __enter__(self):
-        # Save current directory and move to specific output directory
-        self._orig_dir = os.getcwd()
-        self.output_dir.mkdir(exist_ok=True)
-        os.chdir(self.output_dir)
-
-        return self.initial_condition()
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        self.finalize()
-        os.chdir(self._orig_dir)
 
     @property
     def output_dir(self):
@@ -185,7 +215,7 @@ class TransportOperator(ABC):
         pass
 
     @abstractmethod
-    def write_bos_data(self, step):
+    def write_bos_data(self, step: int):
         """Document beginning of step data for a given step
 
         Called at the beginning of a depletion step and at
@@ -210,9 +240,11 @@ class ReactionRateHelper(ABC):
     Parameters
     ----------
     n_nucs : int
-        Number of burnable nuclides tracked by :class:`openmc.deplete.Operator`
+        Number of burnable nuclides tracked by
+        :class:`openmc.deplete.abc.TransportOperator`
     n_react : int
-        Number of reactions tracked by :class:`openmc.deplete.Operator`
+        Number of reactions tracked by
+        :class:`openmc.deplete.abc.TransportOperator`
 
     Attributes
     ----------
@@ -222,7 +254,7 @@ class ReactionRateHelper(ABC):
 
     def __init__(self, n_nucs, n_react):
         self._nuclides = None
-        self._results_cache = empty((n_nucs, n_react))
+        self._results_cache = np.empty((n_nucs, n_react))
 
     @abstractmethod
     def generate_tallies(self, materials, scores):
@@ -239,7 +271,12 @@ class ReactionRateHelper(ABC):
         self._nuclides = nuclides
 
     @abstractmethod
-    def get_material_rates(self, mat_id, nuc_index, react_index):
+    def get_material_rates(
+        self,
+        mat_id: int,
+        nuc_index: Sequence[str],
+        react_index: Sequence[str]
+    ):
         """Return 2D array of [nuclide, reaction] reaction rates
 
         Parameters
@@ -252,16 +289,15 @@ class ReactionRateHelper(ABC):
             Ordering of reactions
         """
 
-    def divide_by_adens(self, number):
-        """Normalize reaction rates by number of nuclides
+    def divide_by_atoms(self, number: Sequence[float]):
+        """Normalize reaction rates by number of atoms
 
         Acts on the current material examined by :meth:`get_material_rates`
 
         Parameters
         ----------
         number : iterable of float
-            Number density [atoms/b-cm] of each nuclide tracked in the
-            calculation.
+            Number of each nuclide in [atom] tracked in the calculation.
 
         Returns
         -------
@@ -270,7 +306,7 @@ class ReactionRateHelper(ABC):
             normalized by the number of nuclides
         """
 
-        mask = nonzero(number)
+        mask = np.nonzero(number)
         results = self._results_cache
         for col in range(results.shape[1]):
             results[mask, col] /= number[mask]
@@ -281,9 +317,9 @@ class NormalizationHelper(ABC):
     """Abstract class for obtaining normalization factor on tallies
 
     This helper class determines how reaction rates calculated by an instance of
-    :class:`openmc.deplete.Operator` should be normalized for the purpose of
-    constructing a burnup matrix. Based on the method chosen, the power or
-    source rate provided by the user, and reaction rates from a
+    :class:`openmc.deplete.abc.TransportOperator` should be normalized for the
+    purpose of constructing a burnup matrix. Based on the method chosen, the
+    power or source rate provided by the user, and reaction rates from a
     :class:`ReactionRateHelper`, this class will scale reaction rates to the
     correct values.
 
@@ -291,7 +327,7 @@ class NormalizationHelper(ABC):
     ----------
     nuclides : list of str
         All nuclides with desired reaction rates. Ordered to be
-        consistent with :class:`openmc.deplete.Operator`
+        consistent with :class:`openmc.deplete.abc.TransportOperator`
 
     """
 
@@ -302,12 +338,12 @@ class NormalizationHelper(ABC):
         """Reset state for normalization"""
 
     @abstractmethod
-    def prepare(self, chain_nucs, rate_index):
+    def prepare(self, chain_nucs: Sequence[str], rate_index: dict):
         """Perform work needed to obtain energy produced
 
-        This method is called prior to the transport simulations
-        in :meth:`openmc.deplete.Operator.initial_condition`. Only used for
-        energy-based normalization.
+        This method is called prior to calculating the reaction rates
+        in :meth:`openmc.deplete.abc.TransportOperator.initial_condition`. Only
+        used for energy-based normalization.
 
         Parameters
         ----------
@@ -341,7 +377,7 @@ class NormalizationHelper(ABC):
         self._nuclides = nuclides
 
     @abstractmethod
-    def factor(self, source_rate):
+    def factor(self, source_rate: float):
         """Return normalization factor
 
         Parameters
@@ -418,7 +454,7 @@ class FissionYieldHelper(ABC):
     def unpack():
         """Unpack tally data prior to compute fission yields.
 
-        Called after a :meth:`openmc.deplete.Operator.__call__`
+        Called after a :meth:`openmc.deplete.abc.TransportOperator.__call__`
         routine during the normalization of reaction rates.
 
         Not necessary for all subclasses to implement, unless tallies
@@ -439,26 +475,27 @@ class FissionYieldHelper(ABC):
         mat_indexes : iterable of int
             Indices of tallied materials that will have their fission
             yields computed by this helper. Necessary as the
-            :class:`openmc.deplete.Operator` that uses this helper
+            :class:`openmc.deplete.CoupledOperator` that uses this helper
             may only burn a subset of all materials when running
             in parallel mode.
         """
 
-    def update_tally_nuclides(self, nuclides):
+    def update_tally_nuclides(self, nuclides: Sequence[str]) -> list:
         """Return nuclides with non-zero densities and yield data
 
         Parameters
         ----------
         nuclides : iterable of str
             Nuclides with non-zero densities from the
-            :class:`openmc.deplete.Operator`
+            :class:`openmc.deplete.abc.TransportOperator`
 
         Returns
         -------
         nuclides : list of str
-            Union of nuclides that the :class:`openmc.deplete.Operator`
-            says have non-zero densities at this stage and those that
-            have yield data. Sorted by nuclide name
+            Union of nuclides that the
+            :class:`openmc.deplete.abc.TransportOperator` says have non-zero
+            densities at this stage and those that have yield data. Sorted by
+            nuclide name
 
         """
         return sorted(self._chain_set & set(nuclides))
@@ -472,105 +509,12 @@ class FissionYieldHelper(ABC):
 
         Parameters
         ----------
-        operator : openmc.deplete.TransportOperator
+        operator : openmc.deplete.abc.TransportOperator
             Operator with a depletion chain
         kwargs: optional
             Additional keyword arguments to be used in constuction
         """
         return cls(operator.chain.nuclides, **kwargs)
-
-
-class TalliedFissionYieldHelper(FissionYieldHelper):
-    """Abstract class for computing fission yields with tallies
-
-    Generates a basic fission rate tally in all burnable materials with
-    :meth:`generate_tallies`, and set nuclides to be tallied with
-    :meth:`update_tally_nuclides`. Subclasses will need to implement
-    :meth:`unpack` and :meth:`weighted_yields`.
-
-    Parameters
-    ----------
-    chain_nuclides : iterable of openmc.deplete.Nuclide
-        Nuclides tracked in the depletion chain. Not necessary
-        that all have yield data.
-
-    Attributes
-    ----------
-    constant_yields : dict of str to :class:`openmc.deplete.FissionYield`
-        Fission yields for all nuclides that only have one set of
-        fission yield data. Can be accessed as ``{parent: {product: yield}}``
-    results : None or numpy.ndarray
-        Tally results shaped in a manner useful to this helper.
-    """
-
-    _upper_energy = 20.0e6  # upper energy for tallies
-
-    def __init__(self, chain_nuclides):
-        super().__init__(chain_nuclides)
-        self._local_indexes = None
-        self._fission_rate_tally = None
-        self._tally_nucs = []
-        self.results = None
-
-    def generate_tallies(self, materials, mat_indexes):
-        """Construct the fission rate tally
-
-        Parameters
-        ----------
-        materials : iterable of :class:`openmc.lib.Material`
-            Materials to be used in :class:`openmc.lib.MaterialFilter`
-        mat_indexes : iterable of int
-            Indices of tallied materials that will have their fission
-            yields computed by this helper. Necessary as the
-            :class:`openmc.deplete.Operator` that uses this helper
-            may only burn a subset of all materials when running
-            in parallel mode.
-        """
-        self._local_indexes = asarray(mat_indexes)
-
-        # Tally group-wise fission reaction rates
-        self._fission_rate_tally = Tally()
-        self._fission_rate_tally.writable = False
-        self._fission_rate_tally.scores = ['fission']
-        self._fission_rate_tally.filters = [MaterialFilter(materials)]
-
-    def update_tally_nuclides(self, nuclides):
-        """Tally nuclides with non-zero density and multiple yields
-
-        Must be run after :meth:`generate_tallies`.
-
-        Parameters
-        ----------
-        nuclides : iterable of str
-            Potential nuclides to be tallied, such as those with
-            non-zero density at this stage.
-
-        Returns
-        -------
-        nuclides : list of str
-            Union of input nuclides and those that have multiple sets
-            of yield data.  Sorted by nuclide name
-
-        Raises
-        ------
-        AttributeError
-            If tallies not generated
-        """
-        assert self._fission_rate_tally is not None, (
-                "Run generate_tallies first")
-        overlap = set(self._chain_nuclides).intersection(set(nuclides))
-        nuclides = sorted(overlap)
-        self._tally_nucs = [self._chain_nuclides[n] for n in nuclides]
-        self._fission_rate_tally.nuclides = nuclides
-        return nuclides
-
-    @abstractmethod
-    def unpack(self):
-        """Unpack tallies after a transport run.
-
-        Abstract because each subclass will need to arrange its
-        tally data.
-        """
 
 
 def add_params(cls):
@@ -583,10 +527,10 @@ class Integrator(ABC):
     r"""Abstract class for solving the time-integration for depletion
     """
 
-    _params = r"""
+    _params = dedent(r"""
     Parameters
     ----------
-    operator : openmc.deplete.TransportOperator
+    operator : openmc.deplete.abc.TransportOperator
         Operator to perform transport simulations
     timesteps : iterable of float or iterable of tuple
         Array of timesteps. Note that values are not cumulative. The units are
@@ -604,16 +548,17 @@ class Integrator(ABC):
     power_density : float or iterable of float, optional
         Power density of the reactor in [W/gHM]. It is multiplied by
         initial heavy metal inventory to get total power if ``power``
-        is not speficied.
+        is not specified.
     source_rates : float or iterable of float, optional
-        Source rate in [neutron/sec] for each interval in :attr:`timesteps`
+        Source rate in [neutron/sec] or neutron flux in [neutron/s-cm^2] for
+        each interval in :attr:`timesteps`
 
         .. versionadded:: 0.12.1
-    timestep_units : {'s', 'min', 'h', 'd', 'MWd/kg'}
+    timestep_units : {'s', 'min', 'h', 'd', 'a', 'MWd/kg'}
         Units for values specified in the `timesteps` argument. 's' means
-        seconds, 'min' means minutes, 'h' means hours, and 'MWd/kg' indicates
-        that the values are given in burnup (MW-d of energy deposited per
-        kilogram of initial heavy metal).
+        seconds, 'min' means minutes, 'h' means hours, 'a' means Julian years
+        and 'MWd/kg' indicates that the values are given in burnup (MW-d of
+        energy deposited per kilogram of initial heavy metal).
     solver : str or callable, optional
         If a string, must be the name of the solver responsible for
         solving the Bateman equations.  Current options are:
@@ -625,10 +570,21 @@ class Integrator(ABC):
         :attr:`solver`.
 
         .. versionadded:: 0.12
+    continue_timesteps : bool, optional
+        Whether or not to treat the current solve as a continuation of a
+        previous simulation. Defaults to `False`. When `False`, the depletion
+        steps provided are appended to any previous steps. If `True`, the
+        timesteps provided to the `Integrator` must exacly match any that
+        exist in the `prev_results` passed to the `Operator`. The `power`,
+        `power_density`, or `source_rates` must match as well. The
+        method of specifying `power`, `power_density`, or
+        `source_rates` should be the same as the initial run.
+
+        .. versionadded:: 0.15.1
 
     Attributes
     ----------
-    operator : openmc.deplete.TransportOperator
+    operator : openmc.deplete.abc.TransportOperator
         Operator to perform transport simulations
     chain : openmc.deplete.Chain
         Depletion chain
@@ -644,7 +600,7 @@ class Integrator(ABC):
         User-supplied functions are expected to have the following signature:
         ``solver(A, n0, t) -> n1`` where
 
-            * ``A`` is a :class:`scipy.sparse.csr_matrix` making up the
+            * ``A`` is a :class:`scipy.sparse.csc_matrix` making up the
               depletion matrix
             * ``n0`` is a 1-D :class:`numpy.ndarray` of initial compositions
               for a given material in atoms/cm3
@@ -652,12 +608,29 @@ class Integrator(ABC):
             * ``n1`` is a :class:`numpy.ndarray` of compositions at the
               next time step. Expected to be of the same shape as ``n0``
 
-        .. versionadded:: 0.12
+    transfer_rates : openmc.deplete.TransferRates
+        Transfer rates for the depletion system used to model continuous
+        removal/feed between materials.
 
-    """
+        .. versionadded:: 0.14.0
+    external_source_rates : openmc.deplete.ExternalSourceRates
+        External source rates for the depletion system.
 
-    def __init__(self, operator, timesteps, power=None, power_density=None,
-                 source_rates=None, timestep_units='s', solver="cram48"):
+        .. versionadded:: 0.15.3
+
+    """)
+
+    def __init__(
+            self,
+            operator: TransportOperator,
+            timesteps: Sequence[float] | Sequence[tuple[float, str]],
+            power: Optional[Union[float, Sequence[float]]] = None,
+            power_density: Optional[Union[float, Sequence[float]]] = None,
+            source_rates: Optional[Union[float, Sequence[float]]] = None,
+            timestep_units: str = 's',
+            solver: str = "cram48",
+            continue_timesteps: bool = False,
+        ):
         # Check number of stages previously used
         if operator.prev_res is not None:
             res = operator.prev_res[-1]
@@ -668,6 +641,8 @@ class Integrator(ABC):
                     "this uses {}".format(
                         self.__class__.__name__, res.data.shape[0],
                         self._num_stages))
+        elif continue_timesteps:
+            raise ValueError("Continuation run requires passing prev_results.")
         self.operator = operator
         self.chain = operator.chain
 
@@ -682,50 +657,43 @@ class Integrator(ABC):
         elif source_rates is None:
             raise ValueError("Either power, power_density, or source_rates must be set")
 
-        if not isinstance(source_rates, Iterable):
-            # Ensure that rate is single value if that is the case
-            source_rates = [source_rates] * len(timesteps)
+        # Normalize timesteps and source rates
+        seconds, source_rates = _normalize_timesteps(
+            timesteps, source_rates, timestep_units, operator)
 
-        if len(source_rates) != len(timesteps):
-            raise ValueError(
-                "Number of time steps ({}) != number of powers ({})".format(
-                    len(timesteps), len(source_rates)))
+        if continue_timesteps:
+            # Get timesteps and source rates from previous results
+            prev_times = operator.prev_res.get_times(timestep_units)
+            prev_source_rates = operator.prev_res.get_source_rates()
+            prev_timesteps = np.diff(prev_times)
 
-        # Get list of times / units
-        if isinstance(timesteps[0], Iterable):
-            times, units = zip(*timesteps)
-        else:
-            times = timesteps
-            units = [timestep_units] * len(timesteps)
+            # Make sure parameters from the previous results are consistent with
+            # those passed to operator
+            num_prev = len(prev_timesteps)
+            if not np.array_equal(prev_timesteps, timesteps[:num_prev]):
+                raise ValueError(
+                    "You are attempting to continue a run in which the previous timesteps "
+                    "do not have the same initial timesteps as those provided to the "
+                    "Integrator. Please make sure you are using the correct timesteps."
+                )
+            if not np.array_equal(prev_source_rates, source_rates[:num_prev]):
+                raise ValueError(
+                    "You are attempting to continue a run in which the previous results "
+                    "do not have the same initial source rates, powers, or power densities "
+                    "as those provided to the Integrator. Please make sure you are using "
+                    "the correct powers, power densities, or source rates and previous "
+                    "results file."
+                )
 
-        # Determine number of seconds for each timestep
-        seconds = []
-        for timestep, unit, rate in zip(times, units, source_rates):
-            # Make sure values passed make sense
-            check_type('timestep', timestep, Real)
-            check_greater_than('timestep', timestep, 0.0, False)
-            check_type('timestep units', unit, str)
-            check_type('source rate', rate, Real)
-            check_greater_than('source rate', rate, 0.0, True)
+            # Run with only the new time steps and source rates provided
+            seconds = seconds[num_prev:]
+            source_rates = source_rates[num_prev:]
 
-            if unit in ('s', 'sec'):
-                seconds.append(timestep)
-            elif unit in ('min', 'minute'):
-                seconds.append(timestep*_SECONDS_PER_MINUTE)
-            elif unit in ('h', 'hr', 'hour'):
-                seconds.append(timestep*_SECONDS_PER_HOUR)
-            elif unit in ('d', 'day'):
-                seconds.append(timestep*_SECONDS_PER_DAY)
-            elif unit.lower() == 'mwd/kg':
-                watt_days_per_kg = 1e6*timestep
-                kilograms = 1e-3*operator.heavy_metal
-                days = watt_days_per_kg * kilograms / rate
-                seconds.append(days*_SECONDS_PER_DAY)
-            else:
-                raise ValueError("Invalid timestep unit '{}'".format(unit))
+        self.timesteps = np.asarray(seconds)
+        self.source_rates = np.asarray(source_rates)
 
-        self.timesteps = asarray(seconds)
-        self.source_rates = asarray(source_rates)
+        self.transfer_rates = None
+        self.external_source_rates = None
 
         if isinstance(solver, str):
             # Delay importing of cram module, which requires this file
@@ -737,8 +705,7 @@ class Integrator(ABC):
                 self._solver = CRAM16
             else:
                 raise ValueError(
-                    "Solver {} not understood. Expected 'cram48' or "
-                    "'cram16'".format(solver))
+                    f"Solver {solver} not understood. Expected 'cram48' or 'cram16'")
         else:
             self.solver = solver
 
@@ -750,14 +717,13 @@ class Integrator(ABC):
     def solver(self, func):
         if not isinstance(func, Callable):
             raise TypeError(
-                "Solver must be callable, not {}".format(type(func)))
+                f"Solver must be callable, not {type(func)}")
         try:
             sig = signature(func)
         except ValueError:
             # Guard against callables that aren't introspectable, e.g.
             # fortran functions wrapped by F2PY
-            warn("Could not determine arguments to {}. Proceeding "
-                 "anyways".format(func))
+            warn(f"Could not determine arguments to {func}. Proceeding anyways")
             self._solver = func
             return
 
@@ -769,25 +735,33 @@ class Integrator(ABC):
         for ix, param in enumerate(sig.parameters.values()):
             if param.kind in {param.KEYWORD_ONLY, param.VAR_KEYWORD}:
                 raise ValueError(
-                    "Keyword arguments like {} at position {} are not "
-                    "allowed".format(ix, param))
+                    f"Keyword arguments like {ix} at position {param} are not allowed")
 
         self._solver = func
 
-    def _timed_deplete(self, concs, rates, dt, matrix_func=None):
+    def _timed_deplete(self, n, rates, dt, i=None, matrix_func=None):
         start = time.time()
         results = deplete(
-            self._solver, self.chain, concs, rates, dt, matrix_func)
+            self._solver, self.chain, n, rates, dt, i, matrix_func,
+            self.transfer_rates, self.external_source_rates)
         return time.time() - start, results
 
     @abstractmethod
-    def __call__(self, conc, rates, dt, source_rate, i):
+    def __call__(
+        self,
+        n: Sequence[np.ndarray],
+        rates: ReactionRates,
+        dt: float,
+        source_rate: float,
+        i: int
+    ):
         """Perform the integration across one time step
 
         Parameters
         ----------
-        conc : numpy.ndarray
-            Initial concentrations for all nuclides in [atom]
+        n :  list of numpy.ndarray
+            List of atom number arrays for each material. Each array in the list
+            contains the number of [atom] of each nuclide.
         rates : openmc.deplete.ReactionRates
             Reaction rates from operator
         dt : float
@@ -801,7 +775,7 @@ class Integrator(ABC):
         -------
         proc_time : float
             Time spent in CRAM routines for all materials in [s]
-        conc_list : list of numpy.ndarray
+        n_list : list of list of numpy.ndarray
             Concentrations at each of the intermediate points with
             the final concentration as the last element
         op_results : list of openmc.deplete.OperatorResult
@@ -833,7 +807,7 @@ class Integrator(ABC):
         self.operator.write_bos_data(step_index + self._i_res)
         return x, res
 
-    def _get_bos_data_from_restart(self, step_index, source_rate, bos_conc):
+    def _get_bos_data_from_restart(self, source_rate, bos_conc):
         """Get beginning of step concentrations, reaction rates from restart"""
         res = self.operator.prev_res[-1]
         # Depletion methods expect list of arrays
@@ -841,17 +815,48 @@ class Integrator(ABC):
         rates = res.rates[0]
         k = ufloat(res.k[0, 0], res.k[0, 1])
 
-        # Scale reaction rates by ratio of source rates
-        rates *= source_rate / res.source_rate[0]
+        if res.source_rate != 0.0:
+            # Scale reaction rates by ratio of source rates
+            rates *= source_rate / res.source_rate
         return bos_conc, OperatorResult(k, rates)
 
-    def _get_start_data(self):
+    def _get_start_data(self) -> tuple[float, int]:
+        """
+        This function fetches the starting state of a depletion simulation in
+        terms of the simulation physical time at which to start and the index at
+        which the depletion simulation should start. When no previous results
+        exist, the time and index are both zero. When previous results do exist,
+        it returns the time corresponding to beginning the previous results last
+        timestep and the index as N-1 where N is the number of previous
+        StepResults found in the previous Results (as expected from 0-based
+        indexing).
+
+        Note that the openmc.deplete.Results.time object is a list of float with
+        [t,t+dt] where t is the beginning of timestep time and t+dt is the end
+        of timestep time. If the previous results correspond to a simulation
+        that finished to completeion, it will contain a results in the form of
+        [t,t], but if a simulation doesn't finish all the given timesteps, it is
+        the t that is the desired start time, not t+dt. Thus, it is always safe
+        to take time[0].
+
+        Returns
+        -------
+        start_time : float
+            Time at which depletion simulation should start in [s]
+        index : int
+            Index at which depletion simulation should start
+        """
         if self.operator.prev_res is None:
             return 0.0, 0
-        return (self.operator.prev_res[-1].time[-1],
+        return (self.operator.prev_res[-1].time[0],
                 len(self.operator.prev_res) - 1)
 
-    def integrate(self, final_step=True):
+    def integrate(
+            self,
+            final_step: bool = True,
+            output: bool = True,
+            path: PathLike = 'depletion_results.h5'
+        ):
         """Perform the entire depletion process across all steps
 
         Parameters
@@ -861,30 +866,41 @@ class Integrator(ABC):
             of the last timestep.
 
             .. versionadded:: 0.12.1
+        output : bool, optional
+            Indicate whether to display information about progress
 
+            .. versionadded:: 0.13.1
+        path : PathLike
+            Path to file to write. Defaults to 'depletion_results.h5'.
+
+            .. versionadded:: 0.15.0
         """
-        with self.operator as conc:
+        with change_directory(self.operator.output_dir):
+            n = self.operator.initial_condition()
             t, self._i_res = self._get_start_data()
 
             for i, (dt, source_rate) in enumerate(self):
+                if output and comm.rank == 0:
+                    print(f"[openmc.deplete] t={t} s, dt={dt} s, source={source_rate}")
+
                 # Solve transport equation (or obtain result from restart)
                 if i > 0 or self.operator.prev_res is None:
-                    conc, res = self._get_bos_data_from_operator(i, source_rate, conc)
+                    n, res = self._get_bos_data_from_operator(i, source_rate, n)
                 else:
-                    conc, res = self._get_bos_data_from_restart(i, source_rate, conc)
+                    n, res = self._get_bos_data_from_restart(source_rate, n)
 
                 # Solve Bateman equations over time interval
-                proc_time, conc_list, res_list = self(conc, res.rates, dt, source_rate, i)
+                proc_time, n_list, res_list = self(n, res.rates, dt, source_rate, i)
 
                 # Insert BOS concentration, transport results
-                conc_list.insert(0, conc)
+                n_list.insert(0, n)
                 res_list.insert(0, res)
 
                 # Remove actual EOS concentration for next step
-                conc = conc_list.pop()
+                n = n_list.pop()
 
-                Results.save(self.operator, conc_list, res_list, [t, t + dt],
-                             source_rate, self._i_res + i, proc_time)
+                StepResult.save(self.operator, n_list, res_list, [t, t + dt],
+                                source_rate, self._i_res + i, proc_time, path)
 
                 t += dt
 
@@ -892,10 +908,109 @@ class Integrator(ABC):
             # source rate is passed to the transport operator (which knows to
             # just return zero reaction rates without actually doing a transport
             # solve)
-            res_list = [self.operator(conc, source_rate if final_step else 0.0)]
-            Results.save(self.operator, [conc], res_list, [t, t],
-                         source_rate, self._i_res + len(self), proc_time)
+            if output and final_step and comm.rank == 0:
+                print(f"[openmc.deplete] t={t} (final operator evaluation)")
+            res_list = [self.operator(n, source_rate if final_step else 0.0)]
+            StepResult.save(self.operator, [n], res_list, [t, t],
+                         source_rate, self._i_res + len(self), proc_time, path)
             self.operator.write_bos_data(len(self) + self._i_res)
+
+        self.operator.finalize()
+
+    def add_transfer_rate(
+        self,
+        material: str | int | Material,
+        components: Sequence[str],
+        transfer_rate: float,
+        transfer_rate_units: str = '1/s',
+        timesteps: Sequence[int] | None = None,
+        destination_material: str | int | Material | None = None
+    ):
+        """Add transfer rates to depletable material.
+
+        Parameters
+        ----------
+        material : openmc.Material or str or int
+            Depletable material
+        components : list of str
+            List of strings of elements and/or nuclides that share transfer rate.
+            A transfer rate for a nuclide cannot be added to a material
+            alongside a transfer rate for its element and vice versa.
+        transfer_rate : float
+            Rate at which elements are transferred. A positive or negative values
+            set removal of feed rates, respectively.
+        transfer_rate_units : {'1/s', '1/min', '1/h', '1/d', '1/a'}
+            Units for values specified in the transfer_rate argument. 's' means
+            seconds, 'min' means minutes, 'h' means hours, 'a' means Julian years.
+        timesteps : list of int, optional
+            List of timestep indices where to set external source rates.
+            Defaults to None, which means the external source rate is set for
+            all timesteps.
+        destination_material : openmc.Material or str or int, Optional
+            Destination material to where nuclides get fed.
+
+        """
+        if self.transfer_rates is None:
+            if hasattr(self.operator, 'model'):
+                materials = self.operator.model.materials
+            elif hasattr(self.operator, 'materials'):
+                materials = self.operator.materials
+            self.transfer_rates = TransferRates(
+                self.operator, materials, len(self.timesteps))
+
+        if self.external_source_rates is not None and destination_material:
+            raise ValueError('Currently is not possible to set a transfer rate '
+                             'with destination matrial in combination with '
+                             'external source rates.')
+
+        self.transfer_rates.set_transfer_rate(
+            material, components, transfer_rate, transfer_rate_units,
+            timesteps, destination_material)
+
+    def add_external_source_rate(
+        self,
+        material: str | int | Material,
+        composition: dict[str, float],
+        rate: float,
+        rate_units: str = 'g/s',
+        timesteps: Sequence[int] | None = None
+    ):
+        """Add external source rates to depletable material.
+
+        Parameters
+        ----------
+        material : openmc.Material or str or int
+            Depletable material
+        composition : dict of str to float
+            External source rate composition vector, where key can be an element
+            or a nuclide and value the corresponding weight percent.
+        rate : float
+            External source rate in units of mass per time. A positive or
+            negative value corresponds to a feed or removal rate, respectively.
+        units : {'g/s', 'g/min', 'g/h', 'g/d', 'g/a'}
+            Units for values specified in the `rate` argument. 's' for seconds,
+            'min' for minutes, 'h' for hours, 'a' for Julian years.
+        timesteps : list of int, optional
+            List of timestep indices where to set external source rates.
+            Defaults to None, which means the external source rate is set for
+            all timesteps.
+
+        """
+        if self.external_source_rates is None:
+            if hasattr(self.operator, 'model'):
+                materials = self.operator.model.materials
+            elif hasattr(self.operator, 'materials'):
+                materials = self.operator.materials
+            self.external_source_rates = ExternalSourceRates(
+                self.operator, materials, len(self.timesteps))
+
+        if self.transfer_rates is not None and self.transfer_rates.index_transfer:
+            raise ValueError('Currently is not possible to set an external '
+                             'source rate in combination with transfer rates '
+                             'with destination matrial.')
+
+        self.external_source_rates.set_external_source_rate(
+            material, composition, rate, rate_units, timesteps)
 
 
 @add_params
@@ -906,11 +1021,11 @@ class SIIntegrator(Integrator):
     the number of particles used in initial transport calculation
     """
 
-    _params = r"""
+    _params = dedent(r"""
     Parameters
     ----------
-    operator : openmc.deplete.TransportOperator
-        The operator object to simulate on.
+    operator : openmc.deplete.abc.TransportOperator
+        Operator to perform transport simulations
     timesteps : iterable of float or iterable of tuple
         Array of timesteps. Note that values are not cumulative. The units are
         specified by the `timestep_units` argument when `timesteps` is an
@@ -927,9 +1042,10 @@ class SIIntegrator(Integrator):
     power_density : float or iterable of float, optional
         Power density of the reactor in [W/gHM]. It is multiplied by
         initial heavy metal inventory to get total power if ``power``
-        is not speficied.
+        is not specified.
     source_rates : float or iterable of float, optional
-        Source rate in [neutron/sec] for each interval in :attr:`timesteps`
+        Source rate in [neutron/sec] or neutron flux in [neutron/s-cm^2] for
+        each interval in :attr:`timesteps`
 
         .. versionadded:: 0.12.1
     timestep_units : {'s', 'min', 'h', 'd', 'MWd/kg'}
@@ -951,10 +1067,22 @@ class SIIntegrator(Integrator):
         :attr:`solver`.
 
         .. versionadded:: 0.12
+    continue_timesteps : bool, optional
+        Whether or not to treat the current solve as a continuation of a
+        previous simulation. Defaults to `False`. If `False`, all time
+        steps and source rates will be run in an append fashion and will run
+        after whatever time steps exist, if any. If `True`, the timesteps
+        provided to the `Integrator` must match exactly those that exist
+        in the `prev_results` passed to the `Opereator`. The `power`,
+        `power_density`, or `source_rates` must match as well. The
+        method of specifying `power`, `power_density`, or
+        `source_rates` should be the same as the initial run.
+
+        .. versionadded:: 0.15.1
 
     Attributes
     ----------
-    operator : openmc.deplete.TransportOperator
+    operator : openmc.deplete.abc.TransportOperator
         Operator to perform transport simulations
     chain : openmc.deplete.Chain
         Depletion chain
@@ -971,7 +1099,7 @@ class SIIntegrator(Integrator):
         User-supplied functions are expected to have the following signature:
         ``solver(A, n0, t) -> n1`` where
 
-            * ``A`` is a :class:`scipy.sparse.csr_matrix` making up the
+            * ``A`` is a :class:`scipy.sparse.csc_matrix` making up the
               depletion matrix
             * ``n0`` is a 1-D :class:`numpy.ndarray` of initial compositions
               for a given material in atoms/cm3
@@ -981,63 +1109,92 @@ class SIIntegrator(Integrator):
 
         .. versionadded:: 0.12
 
-    """
+    """)
 
-    def __init__(self, operator, timesteps, power=None, power_density=None,
-                 source_rates=None, timestep_units='s', n_steps=10,
-                 solver="cram48"):
+    def __init__(
+            self,
+            operator: TransportOperator,
+            timesteps: Sequence[float],
+            power: Optional[Union[float, Sequence[float]]] = None,
+            power_density: Optional[Union[float, Sequence[float]]] = None,
+            source_rates: Optional[Sequence[float]] = None,
+            timestep_units: str = 's',
+            n_steps: int = 10,
+            solver: str = "cram48",
+            continue_timesteps: bool = False,
+        ):
         check_type("n_steps", n_steps, Integral)
         check_greater_than("n_steps", n_steps, 0)
         super().__init__(
             operator, timesteps, power, power_density, source_rates,
-            timestep_units=timestep_units, solver=solver)
+            timestep_units=timestep_units, solver=solver, continue_timesteps=continue_timesteps)
         self.n_steps = n_steps
 
-    def _get_bos_data_from_operator(self, step_index, step_power, bos_conc):
+    def _get_bos_data_from_operator(self, step_index, step_power, n_bos):
         reset_particles = False
         if step_index == 0 and hasattr(self.operator, "settings"):
             reset_particles = True
             self.operator.settings.particles *= self.n_steps
         inherited = super()._get_bos_data_from_operator(
-            step_index, step_power, bos_conc)
+            step_index, step_power, n_bos)
         if reset_particles:
             self.operator.settings.particles //= self.n_steps
         return inherited
 
-    def integrate(self):
-        """Perform the entire depletion process across all steps"""
-        with self.operator as conc:
+    def integrate(
+        self,
+        output: bool = True,
+        path: PathLike = "depletion_results.h5"
+    ):
+        """Perform the entire depletion process across all steps
+
+        Parameters
+        ----------
+        output : bool, optional
+            Indicate whether to display information about progress
+        path : PathLike
+            Path to file to write. Defaults to 'depletion_results.h5'.
+
+            .. versionadded:: 0.15.0
+        """
+        with change_directory(self.operator.output_dir):
+            n = self.operator.initial_condition()
             t, self._i_res = self._get_start_data()
 
             for i, (dt, p) in enumerate(self):
+                if output:
+                    print(f"[openmc.deplete] t={t} s, dt={dt} s, source={p}")
+
                 if i == 0:
                     if self.operator.prev_res is None:
-                        conc, res = self._get_bos_data_from_operator(i, p, conc)
+                        n, res = self._get_bos_data_from_operator(i, p, n)
                     else:
-                        conc, res = self._get_bos_data_from_restart(i, p, conc)
+                        n, res = self._get_bos_data_from_restart(p, n)
                 else:
                     # Pull rates, k from previous iteration w/o
                     # re-running transport
                     res = res_list[-1]  # defined in previous i iteration
 
-                proc_time, conc_list, res_list = self(conc, res.rates, dt, p, i)
+                proc_time, n_list, res_list = self(n, res.rates, dt, p, i)
 
                 # Insert BOS concentration, transport results
-                conc_list.insert(0, conc)
+                n_list.insert(0, n)
                 res_list.insert(0, res)
 
                 # Remove actual EOS concentration for next step
-                conc = conc_list.pop()
+                n = n_list.pop()
 
-                Results.save(self.operator, conc_list, res_list, [t, t + dt],
-                             p, self._i_res + i, proc_time)
+                StepResult.save(self.operator, n_list, res_list, [t, t + dt],
+                             p, self._i_res + i, proc_time, path)
 
                 t += dt
 
             # No final simulation for SIE, use last iteration results
-            Results.save(self.operator, [conc], [res_list[-1]], [t, t],
-                         p, self._i_res + len(self), proc_time)
+            StepResult.save(self.operator, [n], [res_list[-1]], [t, t],
+                         p, self._i_res + len(self), proc_time, path)
             self.operator.write_bos_data(self._i_res + len(self))
+
+        self.operator.finalize()
 
 
 class DepSystemSolver(ABC):
@@ -1059,8 +1216,8 @@ class DepSystemSolver(ABC):
 
         Parameters
         ----------
-        A : scipy.sparse.csr_matrix
-            Sparse transmutation matrix ``A[j, i]`` desribing rates at
+        A : scipy.sparse.csc_matrix
+            Sparse transmutation matrix ``A[j, i]`` describing rates at
             which isotope ``i`` transmutes to isotope ``j``
         n0 : numpy.ndarray
             Initial compositions, typically given in number of atoms in some

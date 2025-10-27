@@ -3,8 +3,6 @@
 
 #include <string>
 
-#include <gsl/gsl-lite.hpp>
-
 #include "openmc/tallies/filter.h"
 
 namespace openmc {
@@ -25,7 +23,8 @@ public:
   //----------------------------------------------------------------------------
   // Methods
 
-  std::string type() const override { return "sphericalharmonics"; }
+  std::string type_str() const override { return "sphericalharmonics"; }
+  FilterType type() const override { return FilterType::SPHERICAL_HARMONICS; }
 
   void from_xml(pugi::xml_node node) override;
 
@@ -45,7 +44,7 @@ public:
 
   SphericalHarmonicsCosine cosine() const { return cosine_; }
 
-  void set_cosine(gsl::cstring_span cosine);
+  void set_cosine(const std::string& cosine);
 
 private:
   //----------------------------------------------------------------------------

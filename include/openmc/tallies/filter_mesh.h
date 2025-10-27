@@ -9,9 +9,9 @@
 namespace openmc {
 
 //==============================================================================
-//! Indexes the location of particle events to a regular mesh.  For tracklength
-//! tallies, it will produce multiple valid bins and the bin weight will
-//! correspond to the fraction of the track length that lies in that bin.
+//! Indexes the location of particle events to a mesh. For tracklength tallies,
+//! it will produce multiple valid bins and the bin weight will correspond to
+//! the fraction of the track length that lies in that bin.
 //==============================================================================
 
 class MeshFilter : public Filter {
@@ -24,7 +24,8 @@ public:
   //----------------------------------------------------------------------------
   // Methods
 
-  std::string type() const override { return "mesh"; }
+  std::string type_str() const override { return "mesh"; }
+  FilterType type() const override { return FilterType::MESH; }
 
   void from_xml(pugi::xml_node node) override;
 
@@ -54,9 +55,9 @@ protected:
   //----------------------------------------------------------------------------
   // Data members
 
-  int32_t mesh_;
-  bool translated_ {false};
-  Position translation_ {0.0, 0.0, 0.0};
+  int32_t mesh_;            //!< Index of the mesh
+  bool translated_ {false}; //!< Whether or not the filter is translated
+  Position translation_ {0.0, 0.0, 0.0}; //!< Filter translation
 };
 
 } // namespace openmc

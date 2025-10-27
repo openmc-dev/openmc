@@ -90,11 +90,11 @@ fuel_or = openmc.ZCylinder(r=0.54, name='Fuel OR')
 
 # Create a region represented as the inside of a rectangular prism
 pitch = 1.26
-box = openmc.rectangular_prism(pitch, pitch, boundary_type='reflective')
+box = openmc.model.RectangularPrism(pitch, pitch, boundary_type='reflective')
 
 # Instantiate Cells
 fuel = openmc.Cell(fill=uo2, region=-fuel_or, name='fuel')
-moderator = openmc.Cell(fill=water, region=+fuel_or & box, name='moderator')
+moderator = openmc.Cell(fill=water, region=+fuel_or & -box, name='moderator')
 
 # Create a geometry with the two cells and export to XML
 geometry = openmc.Geometry([fuel, moderator])
@@ -113,8 +113,9 @@ settings.particles = 1000
 # Create an initial uniform spatial source distribution over fissionable zones
 lower_left = (-pitch/2, -pitch/2, -1)
 upper_right = (pitch/2, pitch/2, 1)
-uniform_dist = openmc.stats.Box(lower_left, upper_right, only_fissionable=True)
-settings.source = openmc.source.Source(space=uniform_dist)
+uniform_dist = openmc.stats.Box(lower_left, upper_right)
+settings.source = openmc.IndependentSource(
+    space=uniform_dist, constraints={'fissionable': True})
 settings.export_to_xml()
 
 ###############################################################################

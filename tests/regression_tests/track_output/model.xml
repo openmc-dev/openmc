@@ -1,0 +1,299 @@
+<?xml version='1.0' encoding='utf-8'?>
+<model>
+  <materials>
+    <material id="1">
+      <density units="g/cc" value="0.99823" />
+      <nuclide ao="0.066737" name="H1" />
+      <nuclide ao="0.033369" name="O16" />
+      <nuclide ao="1.6769e-05" name="B10" />
+      <nuclide ao="6.7497e-05" name="B11" />
+      <sab name="c_H_in_H2O" />
+    </material>
+    <material depletable="true" id="2">
+      <density units="g/cc" value="10.24" />
+      <nuclide ao="0.00056868" name="U235" />
+      <nuclide ao="0.022268" name="U238" />
+      <nuclide ao="0.045683" name="O16" />
+      <nuclide ao="2.6055e-07" name="B10" />
+    </material>
+    <material id="3">
+      <density units="g/cc" value="6.55" />
+      <nuclide ao="0.00030743" name="O16" />
+      <nuclide ao="0.021827" name="Zr90" />
+      <nuclide ao="0.00476" name="Zr91" />
+      <nuclide ao="0.0072758" name="Zr92" />
+      <nuclide ao="0.0073734" name="Zr94" />
+      <nuclide ao="0.0011879" name="Zr96" />
+    </material>
+    <material id="4">
+      <density units="g/cc" value="2.2442" />
+      <nuclide ao="0.00097491" name="B10" />
+      <nuclide ao="0.0039241" name="B11" />
+      <nuclide ao="0.044829" name="O16" />
+    </material>
+  </materials>
+  <geometry>
+    <cell id="11" material="1" region="-99" universe="1" />
+    <cell id="12" material="1" region="99" universe="1" />
+    <cell id="21" material="2" region="-1" universe="2" />
+    <cell id="22" material="3" region="1 -2" universe="2" />
+    <cell id="23" material="1" region="2" universe="2" />
+    <cell id="31" material="4" region="-3" universe="3" />
+    <cell id="32" material="1" region="3" universe="3" />
+    <cell fill="1" id="99" region="-99" universe="999" />
+    <cell fill="11" id="111" universe="111" />
+    <cell fill="150" id="130" rotation="0.0 0.0 90.0" universe="130" />
+    <cell fill="14" id="140" universe="140" />
+    <cell fill="15" id="150" universe="150" />
+    <cell fill="260" id="220" rotation="0.0 0.0 90.0" universe="220" />
+    <cell fill="22" id="222" universe="222" />
+    <cell fill="360" id="230" rotation="0.0 0.0 90.0" universe="230" />
+    <cell fill="24" id="240" region="-99" universe="240" />
+    <cell fill="25" id="250" universe="250" />
+    <cell fill="26" id="260" universe="260" />
+    <cell fill="250" id="320" rotation="0.0 0.0 90.0" universe="320" />
+    <cell fill="33" id="333" universe="333" />
+    <cell fill="36" id="360" universe="360" />
+    <cell fill="140" id="410" rotation="0.0 0.0 90.0" universe="410" />
+    <cell fill="222" id="444" rotation="0.0 0.0 90.0" universe="444" />
+    <cell fill="140" id="470" rotation="0.0 0.0 270.0" universe="470" />
+    <cell fill="150" id="510" rotation="0.0 0.0 180.0" universe="510" />
+    <cell fill="360" id="520" rotation="0.0 0.0 180.0" universe="520" />
+    <cell fill="222" id="555" rotation="0.0 0.0 180.0" universe="555" />
+    <cell fill="250" id="560" rotation="0.0 0.0 270.0" universe="560" />
+    <cell fill="150" id="570" rotation="0.0 0.0 270.0" universe="570" />
+    <cell fill="260" id="620" rotation="0.0 0.0 180.0" universe="620" />
+    <cell fill="250" id="630" rotation="0.0 0.0 180.0" universe="630" />
+    <cell fill="360" id="650" rotation="0.0 0.0 270.0" universe="650" />
+    <cell fill="260" id="660" rotation="0.0 0.0 270.0" universe="660" />
+    <cell fill="222" id="666" rotation="0.0 0.0 270.0" universe="666" />
+    <cell fill="140" id="740" rotation="0.0 0.0 180.0" universe="740" />
+    <cell fill="333" id="777" rotation="0.0 0.0 90.0" universe="777" />
+    <cell fill="333" id="888" rotation="0.0 0.0 180.0" universe="888" />
+    <cell fill="333" id="998" rotation="0.0 0.0 270.0" universe="998" />
+    <cell fill="99" id="1111" region="10 -20 -30" universe="0" />
+    <cell id="1112" material="3" region="10 -20 30 -40" universe="0" />
+    <lattice id="11">
+      <pitch>1.63576 1.63576</pitch>
+      <dimension>15 15</dimension>
+      <lower_left>-12.2682 -12.2682</lower_left>
+      <universes>
+2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 
+2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 
+2 2 2 2 2 1 2 2 2 1 2 2 2 2 2 
+2 2 2 3 2 2 2 2 2 2 2 3 2 2 2 
+2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 
+2 2 1 2 2 1 2 2 2 1 2 2 1 2 2 
+2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 
+2 2 2 2 2 2 2 1 2 2 2 2 2 2 2 
+2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 
+2 2 1 2 2 1 2 2 2 1 2 2 1 2 2 
+2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 
+2 2 2 3 2 2 2 2 2 2 2 3 2 2 2 
+2 2 2 2 2 1 2 2 2 1 2 2 2 2 2 
+2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 
+2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 </universes>
+    </lattice>
+    <lattice id="14">
+      <pitch>1.63576 1.63576</pitch>
+      <dimension>15 15</dimension>
+      <lower_left>-12.2682 -12.2682</lower_left>
+      <universes>
+1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 
+2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 
+2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 </universes>
+    </lattice>
+    <lattice id="15">
+      <pitch>1.63576 1.63576</pitch>
+      <dimension>15 15</dimension>
+      <lower_left>-12.2682 -12.2682</lower_left>
+      <universes>
+1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+2 2 2 1 1 1 1 1 1 1 1 1 1 1 1 
+2 2 2 1 1 1 1 1 1 1 1 1 1 1 1 
+2 2 2 1 1 1 1 1 1 1 1 1 1 1 1 </universes>
+    </lattice>
+    <lattice id="22">
+      <pitch>1.63576 1.63576</pitch>
+      <dimension>15 15</dimension>
+      <lower_left>-12.2682 -12.2682</lower_left>
+      <universes>
+2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 
+2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 
+2 2 2 2 2 1 2 2 2 1 2 2 2 2 2 
+2 2 2 1 2 2 2 2 2 2 2 1 2 2 2 
+2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 
+2 2 1 2 2 1 2 2 2 1 2 2 1 2 2 
+2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 
+2 2 2 2 2 2 2 1 2 2 2 2 2 2 2 
+2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 
+2 2 1 2 2 1 2 2 2 1 2 2 1 2 2 
+2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 
+2 2 2 3 2 2 2 2 2 2 2 3 2 2 2 
+2 2 2 2 2 1 2 2 2 1 2 2 2 2 2 
+2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 
+2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 </universes>
+    </lattice>
+    <lattice id="24">
+      <pitch>1.63576 1.63576</pitch>
+      <dimension>15 15</dimension>
+      <lower_left>-12.2682 -12.2682</lower_left>
+      <universes>
+2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 
+2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 
+2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 
+2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 
+2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 
+2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 
+2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 
+2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 
+2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 
+2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 
+2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 
+2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 
+2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 
+2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 
+2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 </universes>
+    </lattice>
+    <lattice id="25">
+      <pitch>1.63576 1.63576</pitch>
+      <dimension>15 15</dimension>
+      <lower_left>-12.2682 -12.2682</lower_left>
+      <universes>
+2 2 2 1 1 1 1 1 1 1 1 1 1 1 1 
+2 2 2 1 1 1 1 1 1 1 1 1 1 1 1 
+2 2 2 2 2 2 2 2 2 2 2 2 2 1 1 
+2 2 2 2 2 2 2 2 2 2 2 2 2 1 1 
+2 2 2 2 2 2 2 2 2 2 2 2 2 1 1 
+2 2 2 2 2 2 2 2 2 2 2 2 2 1 1 
+2 2 2 2 2 2 2 2 2 2 2 2 2 1 1 
+2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 
+2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 
+2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 
+2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 
+2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 
+2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 
+2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 
+2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 </universes>
+    </lattice>
+    <lattice id="26">
+      <pitch>1.63576 1.63576</pitch>
+      <dimension>15 15</dimension>
+      <lower_left>-12.2682 -12.2682</lower_left>
+      <universes>
+1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 
+2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 
+2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 
+2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 
+2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 
+2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 
+2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 
+2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 
+2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 </universes>
+    </lattice>
+    <lattice id="33">
+      <pitch>1.63576 1.63576</pitch>
+      <dimension>15 15</dimension>
+      <lower_left>-12.2682 -12.2682</lower_left>
+      <universes>
+2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 
+2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 
+2 2 2 2 2 1 2 2 2 1 2 2 2 2 2 
+2 2 2 1 2 2 2 2 2 2 2 1 2 2 2 
+2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 
+2 2 1 2 2 1 2 2 2 1 2 2 1 2 2 
+2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 
+2 2 2 2 2 2 2 1 2 2 2 2 2 2 2 
+2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 
+2 2 1 2 2 1 2 2 2 1 2 2 1 2 2 
+2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 
+2 2 2 3 2 2 2 2 2 2 2 1 2 2 2 
+2 2 2 2 2 1 2 2 2 1 2 2 2 2 2 
+2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 
+2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 </universes>
+    </lattice>
+    <lattice id="36">
+      <pitch>1.63576 1.63576</pitch>
+      <dimension>15 15</dimension>
+      <lower_left>-12.2682 -12.2682</lower_left>
+      <universes>
+2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 
+2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 
+2 2 2 2 2 2 2 2 2 2 2 2 2 1 1 
+2 2 2 2 2 2 2 2 2 2 2 2 2 1 1 
+2 2 2 2 2 2 2 2 2 2 2 2 2 1 1 
+2 2 2 2 2 2 2 2 2 2 2 2 2 1 1 
+2 2 2 2 2 2 2 2 2 2 2 2 2 1 1 
+2 2 2 2 2 2 2 2 2 2 2 2 2 1 1 
+2 2 2 2 2 2 2 2 2 2 2 2 2 1 1 
+2 2 2 2 2 2 2 2 2 2 2 2 2 1 1 
+2 2 2 2 2 2 2 2 2 2 2 2 2 1 1 
+2 2 2 2 2 2 2 2 2 2 2 2 2 1 1 
+2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 
+2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 
+2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 </universes>
+    </lattice>
+    <lattice id="99">
+      <pitch>24.5364 24.5364</pitch>
+      <dimension>7 7</dimension>
+      <lower_left>-85.8774 -85.8774</lower_left>
+      <universes>
+999 999 130 140 150 999 999 
+999 220 230 240 250 260 999 
+130 320 777 222 333 360 150 
+410 240 444 111 666 240 470 
+510 520 888 555 998 560 570 
+999 620 630 240 650 660 999 
+999 999 510 740 570 999 999 </universes>
+    </lattice>
+    <surface coeffs="0.0 0.0 0.514858" id="1" type="z-cylinder" />
+    <surface coeffs="0.0 0.0 0.602996" id="2" type="z-cylinder" />
+    <surface coeffs="0.0 0.0 0.585" id="3" type="z-cylinder" />
+    <surface boundary="vacuum" coeffs="-81.662" id="10" type="z-plane" />
+    <surface boundary="vacuum" coeffs="81.662" id="20" type="z-plane" />
+    <surface coeffs="0.0 0.0 76.2" id="30" type="z-cylinder" />
+    <surface boundary="vacuum" coeffs="0.0 0.0 77.47" id="40" type="z-cylinder" />
+    <surface coeffs="0.0 0.0 0.0 400.0" id="99" type="sphere" />
+  </geometry>
+  <settings>
+    <run_mode>eigenvalue</run_mode>
+    <particles>100</particles>
+    <batches>2</batches>
+    <inactive>0</inactive>
+    <source strength="1.0">
+      <space type="box">
+        <parameters>-1.0 -1.0 -1.0 1.0 1.0 1.0</parameters>
+      </space>
+    </source>
+    <track>1 1 1 1 1 30 2 1 60</track>
+  </settings>
+  </model>

@@ -1,0 +1,56 @@
+<?xml version='1.0' encoding='utf-8'?>
+<model>
+  <materials>
+    <cross_sections>mgxs.h5</cross_sections>
+    <material id="1" name="UO2 fuel">
+      <density value="1.0" units="macro"/>
+      <macroscopic name="UO2"/>
+    </material>
+    <material id="2" name="Water">
+      <density value="1.0" units="macro"/>
+      <macroscopic name="LWTR"/>
+    </material>
+  </materials>
+  <geometry>
+    <cell id="1" name="fuel inner" material="1" region="-1" temperature="600.0" universe="1"/>
+    <cell id="2" name="fuel outer" material="1" region="1 -2" temperature="294.0" universe="1"/>
+    <cell id="3" name="moderator" material="2" region="2 3 -4 5 -6" universe="1"/>
+    <surface id="1" name="Fuel IR" type="z-cylinder" coeffs="0.0 0.0 0.25"/>
+    <surface id="2" name="Fuel OR" type="z-cylinder" coeffs="0.0 0.0 0.54"/>
+    <surface id="3" name="minimum x" type="x-plane" boundary="reflective" coeffs="-0.63"/>
+    <surface id="4" name="maximum x" type="x-plane" boundary="reflective" coeffs="0.63"/>
+    <surface id="5" name="minimum y" type="y-plane" boundary="reflective" coeffs="-0.63"/>
+    <surface id="6" name="maximum y" type="y-plane" boundary="reflective" coeffs="0.63"/>
+  </geometry>
+  <settings>
+    <run_mode>eigenvalue</run_mode>
+    <particles>1000</particles>
+    <batches>10</batches>
+    <inactive>5</inactive>
+    <source type="independent" strength="1.0" particle="neutron">
+      <space type="box">
+        <parameters>-0.63 -0.63 -1 0.63 0.63 1</parameters>
+      </space>
+      <constraints>
+        <fissionable>true</fissionable>
+      </constraints>
+    </source>
+    <energy_mode>multi-group</energy_mode>
+  </settings>
+  <tallies>
+    <filter id="1" type="cell">
+      <bins>1</bins>
+    </filter>
+    <filter id="2" type="cell">
+      <bins>2</bins>
+    </filter>
+    <tally id="1" name="inner tally">
+      <filters>1</filters>
+      <scores>flux</scores>
+    </tally>
+    <tally id="2" name="outer tally">
+      <filters>2</filters>
+      <scores>flux</scores>
+    </tally>
+  </tallies>
+</model>

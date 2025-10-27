@@ -29,6 +29,10 @@ whenever a file is saved. For example, `Visual Studio Code
 <https://code.visualstudio.com/docs/cpp/cpp-ide#_code-formatting>`_ includes
 support for running clang-format.
 
+.. note::
+    OpenMC's CI uses `clang-format` version 15. A different version of `clang-format`
+    may produce different line changes and as a result fail the CI test.
+
 Miscellaneous
 -------------
 
@@ -36,14 +40,15 @@ Follow the `C++ Core Guidelines`_ except when they conflict with another
 guideline listed here. For convenience, many important guidelines from that
 list are repeated here.
 
-Conform to the C++14 standard.
+Conform to the C++17 standard.
 
 Always use C++-style comments (``//``) as opposed to C-style (``/**/``). (It
 is more difficult to comment out a large section of code that uses C-style
 comments.)
 
 Do not use C-style casting. Always use the C++-style casts ``static_cast``,
-``const_cast``, or ``reinterpret_cast``. (See `ES.49 <http://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#es49-if-you-must-use-a-cast-use-a-named-cast>`_)
+``const_cast``, or ``reinterpret_cast``. (See `ES.49
+<https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#es49-if-you-must-use-a-cast-use-a-named-cast>`_)
 
 Source Files
 ------------
@@ -51,7 +56,7 @@ Source Files
 Use a ``.cpp`` suffix for code files and ``.h`` for header files.
 
 Header files should always use include guards with the following style (See
-`SF.8 <http://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#sf8-use-include-guards-for-all-h-files>`_):
+`SF.8 <https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#Rs-guards>`_):
 
 .. code-block:: C++
 
@@ -142,7 +147,7 @@ Style for Python code should follow PEP8_.
 
 Docstrings for functions and methods should follow numpydoc_ style.
 
-Python code should work with Python 3.6+.
+Python code should work with Python 3.8+.
 
 Use of third-party Python packages should be limited to numpy_, scipy_,
 matplotlib_, pandas_, and h5py_. Use of other third-party packages must be
@@ -152,11 +157,11 @@ Prefer pathlib_ when working with filesystem paths over functions in the os_
 module or other standard-library modules. Functions that accept arguments that
 represent a filesystem path should work with both strings and Path_ objects.
 
-.. _C++ Core Guidelines: http://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines
-.. _PEP8: https://www.python.org/dev/peps/pep-0008/
+.. _C++ Core Guidelines: https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines
+.. _PEP8: https://peps.python.org/pep-0008/
 .. _numpydoc: https://numpydoc.readthedocs.io/en/latest/format.html
 .. _numpy: https://numpy.org/
-.. _scipy: https://www.scipy.org/
+.. _scipy: https://scipy.org/
 .. _matplotlib: https://matplotlib.org/
 .. _pandas: https://pandas.pydata.org/
 .. _h5py: https://www.h5py.org/

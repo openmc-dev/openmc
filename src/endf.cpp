@@ -90,23 +90,25 @@ bool is_inelastic_scatter(int mt)
 
 unique_ptr<Function1D> read_function(hid_t group, const char* name)
 {
-  hid_t dset = open_dataset(group, name);
+  hid_t obj_id = open_object(group, name);
   std::string func_type;
-  read_attribute(dset, "type", func_type);
+  read_attribute(obj_id, "type", func_type);
   unique_ptr<Function1D> func;
   if (func_type == "Tabulated1D") {
-    func = make_unique<Tabulated1D>(dset);
+    func = make_unique<Tabulated1D>(obj_id);
   } else if (func_type == "Polynomial") {
-    func = make_unique<Polynomial>(dset);
+    func = make_unique<Polynomial>(obj_id);
   } else if (func_type == "CoherentElastic") {
-    func = make_unique<CoherentElasticXS>(dset);
+    func = make_unique<CoherentElasticXS>(obj_id);
   } else if (func_type == "IncoherentElastic") {
-    func = make_unique<IncoherentElasticXS>(dset);
+    func = make_unique<IncoherentElasticXS>(obj_id);
+  } else if (func_type == "Sum") {
+    func = make_unique<Sum1D>(obj_id);
   } else {
     throw std::runtime_error {"Unknown function type " + func_type +
-                              " for dataset " + object_name(dset)};
+                              " for dataset " + object_name(obj_id)};
   }
-  close_dataset(dset);
+  close_object(obj_id);
   return func;
 }
 
@@ -269,6 +271,32 @@ double IncoherentElasticXS::operator()(double E) const
   // Determine cross section using ENDF-102, Eq. (7.5)
   double W = debye_waller_;
   return bound_xs_ / 2.0 * ((1 - std::exp(-4.0 * E * W)) / (2.0 * E * W));
+}
+
+//==============================================================================
+// Sum1D implementation
+//==============================================================================
+
+Sum1D::Sum1D(hid_t group)
+{
+  // Get number of functions
+  int n;
+  read_attribute(group, "n", n);
+
+  // Get each function
+  for (int i = 0; i < n; ++i) {
+    auto dset_name = fmt::format("func_{}", i + 1);
+    functions_.push_back(read_function(group, dset_name.c_str()));
+  }
+}
+
+double Sum1D::operator()(double x) const
+{
+  double result = 0.0;
+  for (auto& func : functions_) {
+    result += (*func)(x);
+  }
+  return result;
 }
 
 } // namespace openmc

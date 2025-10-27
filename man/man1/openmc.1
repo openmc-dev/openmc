@@ -8,7 +8,10 @@ sections are available.
 .SH SYNOPSIS
 \fBopenmc\fR [\fIoptions\fR] [\fIpath\fR]
 .PP
-It is assumed that if no
+.I path
+specifies either the path to a single model XML file containing the full model
+or a directory containing either a model.xml file or a set of individual XML
+files (settings.xml, materials.xml, geometry.xml). It is assumed that if no
 .I path
 is specified, the XML input files are present in the current directory.
 .SH OPTIONS
@@ -34,7 +37,7 @@ Restart a previous run from a state point or a particle restart file named
 Use \fIN\fP OpenMP threads.
 .TP
 .B "\-t\fR, \fP\-\-track"
-Write tracks for all particles.
+Write tracks for all particles (up to max_tracks).
 .TP
 .B "\-v\fR, \fP\-\-version"
 Show version information.
@@ -45,6 +48,9 @@ Show help message.
 The behavior of
 .B openmc
 is affected by the following environment variables.
+.TP
+.B OPENMC_CHAIN_FILE
+Indicates the path to a depletion chain XML file.
 .TP
 .B OPENMC_CROSS_SECTIONS
 Indicates the default path to the cross_sections.xml summary file that is used
@@ -57,7 +63,7 @@ Indicates the default path to an HDF5 file that contains multi-group cross
 section libraries if the user has not specified the <cross_sections> tag in
 .I materials.xml\fP.
 .SH LICENSE
-Copyright \(co 2011-2022 Massachusetts Institute of Technology, UChicago
+Copyright \(co 2011-2025 Massachusetts Institute of Technology, UChicago
 Argonne LLC, and OpenMC contributors.
 .PP
 Permission is hereby granted, free of charge, to any person obtaining a copy of

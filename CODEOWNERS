@@ -5,9 +5,9 @@ openmc/data/ @paulromano
 openmc/lib/ @paulromano
 
 # Depletion
-openmc/deplete/ @drewejohnson
-tests/regression_tests/deplete/ @drewejohnson
-tests/unit_tests/test_deplete_*.py @drewejohnson
+openmc/deplete/ @paulromano
+tests/regression_tests/deplete/ @paulromano
+tests/unit_tests/test_deplete_*.py @paulromano
 
 # MG-related functionality
 openmc/mgxs_library.py @nelsonag
@@ -25,6 +25,12 @@ src/cmfd_solver.cpp @shikhar413
 src/dagmc.cpp @pshriwise
 tests/regression_tests/dagmc/ @pshriwise
 tests/unit_tests/dagmc/ @pshriwise
+
+# Weight windows
+openmc/weight_windows.py @pshriwise
+openmc/lib/weight_windows.py @pshriwise
+src/weight_windows.py @pshriwise
+tests/unit_tests/weightwindows/ @pshriwise
 
 # Photon transport
 openmc/data/BREMX.DAT @amandalund
@@ -46,3 +52,16 @@ openmc/lib/plot.py @pshriwise
 
 # Resonance covariance
 openmc/data/resonance_covariance.py @icmeyer
+
+# Docker
+Dockerfile @shimwell
+
+# Random ray
+src/random_ray/ @jtramm
+
+# NCrystal interface
+src/ncrystal_interface.cpp @marquezj @tkittel
+src/ncrystal_load.cpp @marquezj @tkittel
+
+# MCPL interface
+src/mcpl_interface.cpp @ebknudsen

@@ -49,23 +49,12 @@ following steps should be followed to make changes to user input:
    written out to the statepoint or summary files and that the
    :class:`openmc.StatePoint` and :class:`openmc.Summary` classes read them in.
 
-7. Finally, a set of `RELAX NG`_ schemas exists that enables validation of input
-   files. You should modify the RELAX NG schema for the file you changed. The
-   easiest way to do this is to change the `compact syntax`_ file
-   (e.g. ``src/relaxng/geometry.rnc``) and then convert it to regular XML syntax
-   using trang_::
-
-       trang geometry.rnc geometry.rng
-
 For most user input additions and changes, it is simple enough to follow a
 "monkey see, monkey do" approach. When in doubt, contact your nearest OpenMC
 developer or send a message to the `developers mailing list`_.
 
 
 .. _property attribute: https://docs.python.org/3.6/library/functions.html#property
-.. _XML Schema Part 2: http://www.w3.org/TR/xmlschema-2/
-.. _boolean: http://www.w3.org/TR/xmlschema-2/#boolean
-.. _RELAX NG: https://relaxng.org/
-.. _compact syntax: https://relaxng.org/compact-tutorial-20030326.html
-.. _trang: https://relaxng.org/jclark/trang.html
+.. _XML Schema Part 2: https://www.w3.org/TR/xmlschema-2/
+.. _boolean: https://www.w3.org/TR/xmlschema-2/#boolean
 .. _developers mailing list: https://groups.google.com/forum/?fromgroups=#!forum/openmc-dev

@@ -1,4 +1,3 @@
-from collections import OrderedDict
 from collections.abc import Mapping, MutableMapping
 from io import StringIO
 from math import log10
@@ -17,8 +16,7 @@ from .endf import (
     Evaluation, SUM_RULES, get_head_record, get_tab1_record, get_evaluations)
 from .fission_energy import FissionEnergyRelease
 from .function import Tabulated1D, Sum, ResonancesWithBackground
-from .grid import linearize, thin
-from .njoy import make_ace
+from .njoy import make_ace, make_pendf
 from .product import Product
 from .reaction import Reaction, _get_photon_products_ace, FISSION_MTS
 from . import resonance as res
@@ -44,7 +42,7 @@ class IncidentNeutron(EqualityMixin):
     Parameters
     ----------
     name : str
-        Name of the nuclide using the GND naming convention
+        Name of the nuclide using the GNDS naming convention
     atomic_number : int
         Number of protons in the target nucleus
     mass_number : int
@@ -75,8 +73,8 @@ class IncidentNeutron(EqualityMixin):
         Metastable state of the target nucleus. A value of zero indicates ground
         state.
     name : str
-        Name of the nuclide using the GND naming convention
-    reactions : collections.OrderedDict
+        Name of the nuclide using the GNDS naming convention
+    reactions : dict
         Contains the cross sections, secondary angle and energy distributions,
         and other associated data for each reaction. The keys are the MT values
         and the values are Reaction objects.
@@ -107,7 +105,7 @@ class IncidentNeutron(EqualityMixin):
         self.kTs = kTs
         self.energy = {}
         self._fission_energy = None
-        self.reactions = OrderedDict()
+        self.reactions = {}
         self._urr = {}
         self._resonances = None
 
@@ -123,10 +121,10 @@ class IncidentNeutron(EqualityMixin):
             if len(mts) > 0:
                 return self._get_redundant_reaction(mt, mts)
             else:
-                raise KeyError('No reaction with MT={}.'.format(mt))
+                raise KeyError(f'No reaction with MT={mt}.')
 
     def __repr__(self):
-        return "<IncidentNeutron: {}>".format(self.name)
+        return f"<IncidentNeutron: {self.name}>"
 
     def __iter__(self):
         return iter(self.reactions.values())
@@ -135,54 +133,14 @@ class IncidentNeutron(EqualityMixin):
     def name(self):
         return self._name
 
-    @property
-    def atomic_number(self):
-        return self._atomic_number
-
-    @property
-    def mass_number(self):
-        return self._mass_number
-
-    @property
-    def metastable(self):
-        return self._metastable
-
-    @property
-    def atomic_weight_ratio(self):
-        return self._atomic_weight_ratio
-
-    @property
-    def fission_energy(self):
-        return self._fission_energy
-
-    @property
-    def reactions(self):
-        return self._reactions
-
-    @property
-    def resonances(self):
-        return self._resonances
-
-    @property
-    def resonance_covariance(self):
-        return self._resonance_covariance
-
-    @property
-    def urr(self):
-        return self._urr
-
-    @property
-    def temperatures(self):
-        return ["{}K".format(int(round(kT / K_BOLTZMANN))) for kT in self.kTs]
-
     @name.setter
     def name(self, name):
         cv.check_type('name', name, str)
         self._name = name
 
     @property
-    def atomic_symbol(self):
-        return ATOMIC_SYMBOL[self.atomic_number]
+    def atomic_number(self):
+        return self._atomic_number
 
     @atomic_number.setter
     def atomic_number(self, atomic_number):
@@ -190,11 +148,19 @@ class IncidentNeutron(EqualityMixin):
         cv.check_greater_than('atomic number', atomic_number, 0, True)
         self._atomic_number = atomic_number
 
+    @property
+    def mass_number(self):
+        return self._mass_number
+
     @mass_number.setter
     def mass_number(self, mass_number):
         cv.check_type('mass number', mass_number, Integral)
         cv.check_greater_than('mass number', mass_number, 0, True)
         self._mass_number = mass_number
+
+    @property
+    def metastable(self):
+        return self._metastable
 
     @metastable.setter
     def metastable(self, metastable):
@@ -202,11 +168,19 @@ class IncidentNeutron(EqualityMixin):
         cv.check_greater_than('metastable', metastable, 0, True)
         self._metastable = metastable
 
+    @property
+    def atomic_weight_ratio(self):
+        return self._atomic_weight_ratio
+
     @atomic_weight_ratio.setter
     def atomic_weight_ratio(self, atomic_weight_ratio):
         cv.check_type('atomic weight ratio', atomic_weight_ratio, Real)
         cv.check_greater_than('atomic weight ratio', atomic_weight_ratio, 0.0)
         self._atomic_weight_ratio = atomic_weight_ratio
+
+    @property
+    def fission_energy(self):
+        return self._fission_energy
 
     @fission_energy.setter
     def fission_energy(self, fission_energy):
@@ -214,21 +188,37 @@ class IncidentNeutron(EqualityMixin):
                       FissionEnergyRelease)
         self._fission_energy = fission_energy
 
+    @property
+    def reactions(self):
+        return self._reactions
+
     @reactions.setter
     def reactions(self, reactions):
         cv.check_type('reactions', reactions, Mapping)
         self._reactions = reactions
+
+    @property
+    def resonances(self):
+        return self._resonances
 
     @resonances.setter
     def resonances(self, resonances):
         cv.check_type('resonances', resonances, res.Resonances)
         self._resonances = resonances
 
+    @property
+    def resonance_covariance(self):
+        return self._resonance_covariance
+
     @resonance_covariance.setter
     def resonance_covariance(self, resonance_covariance):
         cv.check_type('resonance covariance', resonance_covariance,
                       res_cov.ResonanceCovariances)
         self._resonance_covariance = resonance_covariance
+
+    @property
+    def urr(self):
+        return self._urr
 
     @urr.setter
     def urr(self, urr):
@@ -237,6 +227,14 @@ class IncidentNeutron(EqualityMixin):
             cv.check_type('probability table temperature', key, str)
             cv.check_type('probability tables', value, ProbabilityTables)
         self._urr = urr
+
+    @property
+    def temperatures(self):
+        return [f"{int(round(kT / K_BOLTZMANN))}K" for kT in self.kTs]
+
+    @property
+    def atomic_symbol(self):
+        return ATOMIC_SYMBOL[self.atomic_number]
 
     def add_temperature_from_ace(self, ace_or_filename, metastable_scheme='nndc'):
         """Append data from an ACE file at a different temperature.
@@ -262,7 +260,7 @@ class IncidentNeutron(EqualityMixin):
         # Check if temprature already exists
         strT = data.temperatures[0]
         if strT in self.temperatures:
-            warn('Cross sections at T={} already exist.'.format(strT))
+            warn(f'Cross sections at T={strT} already exist.')
             return
 
         # Check that name matches
@@ -287,7 +285,7 @@ class IncidentNeutron(EqualityMixin):
         if strT in data.urr:
             self.urr[strT] = data.urr[strT]
 
-    def add_elastic_0K_from_endf(self, filename, overwrite=False):
+    def add_elastic_0K_from_endf(self, filename, overwrite=False, **kwargs):
         """Append 0K elastic scattering cross section from an ENDF file.
 
         Parameters
@@ -298,6 +296,8 @@ class IncidentNeutron(EqualityMixin):
             If existing 0 K data is present, this flag can be used to indicate
             that it should be overwritten. Otherwise, an exception will be
             thrown.
+        **kwargs
+            Keyword arguments passed to :func:`openmc.data.njoy.make_pendf`
 
         Raises
         ------
@@ -310,75 +310,22 @@ class IncidentNeutron(EqualityMixin):
         if '0K' in self.energy and not overwrite:
             raise ValueError('0 K data already exists for this nuclide.')
 
-        data = type(self).from_endf(filename)
-        if data.resonances is not None:
-            x = []
-            y = []
-            for rr in data.resonances:
-                if isinstance(rr, res.RMatrixLimited):
-                    raise TypeError('R-Matrix Limited not supported.')
-                elif isinstance(rr, res.Unresolved):
-                    continue
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Set arguments for make_pendf
+            pendf_path = os.path.join(tmpdir, 'pendf')
+            kwargs.setdefault('output_dir', tmpdir)
+            kwargs.setdefault('pendf', pendf_path)
 
-                # Get energies/widths for resonances
-                e_peak = rr.parameters['energy'].values
-                if isinstance(rr, res.MultiLevelBreitWigner):
-                    gamma = rr.parameters['totalWidth'].values
-                elif isinstance(rr, res.ReichMoore):
-                    df = rr.parameters
-                    gamma = (df['neutronWidth'] +
-                             df['captureWidth'] +
-                             abs(df['fissionWidthA']) +
-                             abs(df['fissionWidthB'])).values
+            # Run NJOY to create a pointwise ENDF file
+            make_pendf(filename, **kwargs)
 
-                # Determine peak energies and widths
-                e_min, e_max = rr.energy_min, rr.energy_max
-                in_range = (e_peak > e_min) & (e_peak < e_max)
-                e_peak = e_peak[in_range]
-                gamma = gamma[in_range]
-
-                # Get midpoints between resonances (use min/max energy of
-                # resolved region as absolute lower/upper bound)
-                e_mid = np.concatenate(
-                    ([e_min], (e_peak[1:] + e_peak[:-1])/2, [e_max]))
-
-                # Add grid around each resonance that includes the peak +/- the
-                # width times each value in _RESONANCE_ENERGY_GRID. Values are
-                # constrained so that points around one resonance don't overlap
-                # with points around another. This algorithm is from Fudge
-                # (https://doi.org/10.1063/1.1945057).
-                energies = []
-                for e, g, e_lower, e_upper in zip(e_peak, gamma, e_mid[:-1],
-                                                  e_mid[1:]):
-                    e_left = e - g*_RESONANCE_ENERGY_GRID
-                    energies.append(e_left[e_left > e_lower][::-1])
-                    e_right = e + g*_RESONANCE_ENERGY_GRID[1:]
-                    energies.append(e_right[e_right < e_upper])
-
-                # Concatenate all points
-                energies = np.concatenate(energies)
-
-                # Create 1000 equal log-spaced energies over RRR, combine with
-                # resonance peaks and half-height energies
-                e_log = np.logspace(log10(e_min), log10(e_max), 1000)
-                energies = np.union1d(e_log, energies)
-
-                # Linearize and thin cross section
-                xi, yi = linearize(energies, data[2].xs['0K'])
-                xi, yi = thin(xi, yi)
-
-                # If there are multiple resolved resonance ranges (e.g. Pu239 in
-                # ENDF/B-VII.1), combine them
-                x = np.concatenate((x, xi))
-                y = np.concatenate((y, yi))
-        else:
-            energies = data[2].xs['0K'].x
-            x, y = linearize(energies, data[2].xs['0K'])
-            x, y = thin(x, y)
-
-        # Set 0K energy grid and elastic scattering cross section
-        self.energy['0K'] = x
-        self[2].xs['0K'] = Tabulated1D(x, y)
+            # Add 0K elastic scattering cross section
+            pendf = Evaluation(pendf_path)
+            file_obj = StringIO(pendf.section[3, 2])
+            get_head_record(file_obj)
+            params, xs = get_tab1_record(file_obj)
+            self.energy['0K'] = xs.x
+            self[2].xs['0K'] = xs
 
     def get_reaction_components(self, mt):
         """Determine what reactions make up redundant reaction.
@@ -426,7 +373,7 @@ class IncidentNeutron(EqualityMixin):
 
         # Open file and write version
         with h5py.File(str(path), mode, libver=libver) as f:
-            f.attrs['filetype'] = np.string_('data_neutron')
+            f.attrs['filetype'] = np.bytes_('data_neutron')
             f.attrs['version'] = np.array(HDF5_VERSION)
 
             # Write basic data
@@ -462,7 +409,7 @@ class IncidentNeutron(EqualityMixin):
                     if not (photon_rx or rx.mt in keep_mts):
                         continue
 
-                rx_group = rxs_group.create_group('reaction_{:03}'.format(rx.mt))
+                rx_group = rxs_group.create_group(f'reaction_{rx.mt:03}')
                 rx.to_hdf5(rx_group)
 
                 # Write total nu data if available
@@ -594,7 +541,7 @@ class IncidentNeutron(EqualityMixin):
         zaid, xs = ace.name.split('.')
         if not xs.endswith('c'):
             raise TypeError(
-                "{} is not a continuous-energy neutron ACE table.".format(ace))
+                f"{ace} is not a continuous-energy neutron ACE table.")
         name, element, Z, mass_number, metastable = \
             get_metadata(int(zaid), metastable_scheme)
 
@@ -733,9 +680,9 @@ class IncidentNeutron(EqualityMixin):
         # Determine name
         element = ATOMIC_SYMBOL[atomic_number]
         if metastable > 0:
-            name = '{}{}_m{}'.format(element, mass_number, metastable)
+            name = f'{element}{mass_number}_m{metastable}'
         else:
-            name = '{}{}'.format(element, mass_number)
+            name = f'{element}{mass_number}'
 
         # Instantiate incident neutron data
         data = cls(name, atomic_number, mass_number, metastable,
@@ -868,16 +815,15 @@ class IncidentNeutron(EqualityMixin):
 
             heatr_evals = get_evaluations(kwargs["heatr"])
             heatr_local_evals = get_evaluations(kwargs["heatr"] + "_local")
-            for ev, ev_local in zip(heatr_evals, heatr_local_evals):
-                temp = "{}K".format(round(ev.target["temperature"]))
 
+            for ev, ev_local, temp in zip(heatr_evals, heatr_local_evals, data.temperatures):
                 # Get total KERMA (originally from ACE file) and energy grid
                 kerma = data.reactions[301].xs[temp]
                 E = kerma.x
 
                 if f is not None:
                     # Replace fission KERMA with (EFR + EB)*sigma_f
-                    fission = data.reactions[18].xs[temp]
+                    fission = data[18].xs[temp]
                     kerma_fission = get_file3_xs(ev, 318, E)
                     kerma.y = kerma.y - kerma_fission + (
                         f.fragments(E) + f.betas(E)) * fission(E)

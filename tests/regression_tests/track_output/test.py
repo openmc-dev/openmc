@@ -1,11 +1,12 @@
 import glob
 import os
-from subprocess import call
-import shutil
+from pathlib import Path
 
+import numpy as np
+import openmc
 import pytest
 
-from tests.testing_harness import TestHarness
+from tests.testing_harness import TestHarness, config
 
 
 class TrackTestHarness(TestHarness):
@@ -13,26 +14,33 @@ class TrackTestHarness(TestHarness):
         """Make sure statepoint.* and track* have been created."""
         TestHarness._test_output_created(self)
 
-        outputs = glob.glob('track_1_1_*.h5')
-        assert len(outputs) == 2, 'Expected two track files.'
+        if config['mpi'] and int(config['mpi_np']) > 1:
+            outputs = Path.cwd().glob('tracks_p*.h5')
+            assert len(list(outputs)) == int(config['mpi_np'])
+        else:
+            assert Path('tracks.h5').is_file()
 
     def _get_results(self):
-        """Digest info in the statepoint and return as a string."""
-        # Run the track-to-vtk conversion script.
-        call(['../../../scripts/openmc-track-to-vtk', '-o', 'poly'] +
-             glob.glob('track_1_1_*.h5'))
+        """Get data from track file and return as a string."""
 
-        # Make sure the vtk file was created then return it's contents.
-        assert os.path.isfile('poly.pvtp'), 'poly.pvtp file not found.'
+        # For MPI mode, combine track files
+        if config['mpi']:
+            track_files = list(glob.glob('tracks_p*.h5'))
+            openmc.Tracks.combine(track_files, 'tracks.h5')
 
-        with open('poly.pvtp', 'r') as fin:
-            outstr = fin.read()
+        # Get string of track file information
+        outstr = ''
+        tracks = openmc.Tracks('tracks.h5')
+        for track in tracks:
+            with np.printoptions(formatter={'float_kind': '{:.6e}'.format}):
+                for ptrack in track:
+                    outstr += f"{ptrack.particle} {ptrack.states}\n"
 
         return outstr
 
     def _cleanup(self):
         TestHarness._cleanup(self)
-        output = glob.glob('track*') + glob.glob('poly*')
+        output = glob.glob('tracks*') + glob.glob('poly*')
         for f in output:
             if os.path.exists(f):
                 os.remove(f)

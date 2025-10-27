@@ -91,11 +91,28 @@ void score_analog_tally_mg(Particle& p);
 //! \param distance The distance in [cm] traveled by the particle
 void score_tracklength_tally(Particle& p, double distance);
 
+//! Score time filtered tallies using a tracklength estimate of the flux.
+//
+//! This is triggered at every event (surface crossing, lattice crossing, or
+//! collision) and thus cannot be done for tallies that require post-collision
+//! information.
+//
+//! \param p The particle being tracked
+//! \param total_distance The distance in [cm] traveled by the particle
+void score_timed_tracklength_tally(Particle& p, double total_distance);
+
 //! Score surface or mesh-surface tallies for particle currents.
 //
 //! \param p The particle being tracked
-//! \param tallies A vector of tallies to score to
+//! \param tallies A vector of the indices of the tallies to score to
 void score_surface_tally(Particle& p, const vector<int>& tallies);
+
+//! Score the pulse-height tally
+//! This is triggered at the end of every particle history
+//
+//! \param p The particle being tracked
+//! \param tallies A vector of the indices of the tallies to score to
+void score_pulse_height_tally(Particle& p, const vector<int>& tallies);
 
 } // namespace openmc
 

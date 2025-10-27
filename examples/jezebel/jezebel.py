@@ -29,5 +29,5 @@ openmc.run()
 # Get the resulting k-effective value
 n = settings.batches
 with openmc.StatePoint(f'statepoint.{n}.h5') as sp:
-    keff = sp.k_combined
+    keff = sp.keff
     print(f'Final k-effective = {keff}')

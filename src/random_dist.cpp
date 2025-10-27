@@ -12,6 +12,11 @@ double uniform_distribution(double a, double b, uint64_t* seed)
   return a + (b - a) * prn(seed);
 }
 
+int64_t uniform_int_distribution(int64_t a, int64_t b, uint64_t* seed)
+{
+  return a + static_cast<int64_t>(prn(seed) * (b - a + 1));
+}
+
 double maxwell_spectrum(double T, uint64_t* seed)
 {
   // Set the random numbers
@@ -44,13 +49,6 @@ double normal_variate(double mean, double standard_deviation, uint64_t* seed)
   } while (r2 > 1 || r2 == 0);
   double z = std::sqrt(-2.0 * std::log(r2) / r2);
   return mean + standard_deviation * z * x;
-}
-
-double muir_spectrum(double e0, double m_rat, double kt, uint64_t* seed)
-{
-  // https://permalink.lanl.gov/object/tr?what=info:lanl-repo/lareport/LA-05411-MS
-  double sigma = std::sqrt(4. * e0 * kt / m_rat);
-  return normal_variate(e0, sigma, seed);
 }
 
 } // namespace openmc

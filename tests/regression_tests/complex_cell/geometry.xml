@@ -19,7 +19,7 @@
 
   <cell id="1" material="1" region="3 -4 13 -14" />
   <cell id="2" material="2" region="2 -5 12 -15 ~(3 -4 13 -14)" />
-  <cell id="3" material="3" region="((1 -7 17 -16) | (7 -6 11 -17)) (-2 | 5 | -12 | 15)" />
+  <cell id="3" material="3" region="(1 -7 17 -16 | 7 -6 11 -17) (-2 | 5 | -12 | 15)" />
   <cell id="4" material="4" region="((1 -7 11 -17) | (7 -6 17 -16)) ~(2 -5 12 -15)" />
 
 </geometry>

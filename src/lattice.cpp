@@ -58,6 +58,11 @@ LatticeIter Lattice::end()
   return LatticeIter(*this, universes_.size());
 }
 
+int32_t& Lattice::back()
+{
+  return universes_.back();
+}
+
 ReverseLatticeIter Lattice::rbegin()
 {
   return ReverseLatticeIter(*this, universes_.size() - 1);
@@ -98,13 +103,28 @@ void Lattice::adjust_indices()
 
 //==============================================================================
 
-int32_t Lattice::fill_offset_table(int32_t offset, int32_t target_univ_id,
-  int map, std::unordered_map<int32_t, int32_t>& univ_count_memo)
+int32_t Lattice::fill_offset_table(int32_t target_univ_id, int map,
+  std::unordered_map<int32_t, int32_t>& univ_count_memo)
 {
+  // If the offsets have already been determined for this "map", don't bother
+  // recalculating all of them and just return the total offset. Note that the
+  // offsets_ array doesn't actually include the offset accounting for the last
+  // universe, so we get the before-last offset for the given map and then
+  // explicitly add the count for the last universe.
+  if (offsets_[map * universes_.size() + this->begin().indx_] != C_NONE) {
+    int last_offset =
+      offsets_[(map + 1) * universes_.size() - this->begin().indx_ - 1];
+    int last_univ = this->back();
+    return last_offset +
+           count_universe_instances(last_univ, target_univ_id, univ_count_memo);
+  }
+
+  int32_t offset = 0;
   for (LatticeIter it = begin(); it != end(); ++it) {
     offsets_[map * universes_.size() + it.indx_] = offset;
     offset += count_universe_instances(*it, target_univ_id, univ_count_memo);
   }
+
   return offset;
 }
 
@@ -213,14 +233,14 @@ RectLattice::RectLattice(pugi::xml_node lat_node) : Lattice {lat_node}
 
 //==============================================================================
 
-int32_t const& RectLattice::operator[](array<int, 3> const& i_xyz)
+const int32_t& RectLattice::operator[](const array<int, 3>& i_xyz)
 {
   return universes_[get_flat_index(i_xyz)];
 }
 
 //==============================================================================
 
-bool RectLattice::are_valid_indices(array<int, 3> const& i_xyz) const
+bool RectLattice::are_valid_indices(const array<int, 3>& i_xyz) const
 {
   return ((i_xyz[0] >= 0) && (i_xyz[0] < n_cells_[0]) && (i_xyz[1] >= 0) &&
           (i_xyz[1] < n_cells_[1]) && (i_xyz[2] >= 0) &&
@@ -342,7 +362,7 @@ Position RectLattice::get_local_position(
 
 //==============================================================================
 
-int32_t& RectLattice::offset(int map, array<int, 3> const& i_xyz)
+int32_t& RectLattice::offset(int map, const array<int, 3>& i_xyz)
 {
   return offsets_[n_cells_[0] * n_cells_[1] * n_cells_[2] * map +
                   n_cells_[0] * n_cells_[1] * i_xyz[2] +
@@ -664,13 +684,19 @@ void HexLattice::fill_lattice_y(const vector<std::string>& univ_words)
 
 //==============================================================================
 
-int32_t const& HexLattice::operator[](array<int, 3> const& i_xyz)
+const int32_t& HexLattice::operator[](const array<int, 3>& i_xyz)
 {
   return universes_[get_flat_index(i_xyz)];
 }
 
 //==============================================================================
 
+// The HexLattice iterators need their own versions b/c the universes array is
+// "square", meaning that it is allocated with entries that are intentionally
+// left empty. As such, the iterator indices need to skip the empty entries to
+// get cell instances and geometry paths correct. See the image in the Theory
+// and Methodology section on "Hexagonal Lattice Indexing" for a visual of where
+// the empty positions are.
 LatticeIter HexLattice::begin()
 {
   return LatticeIter(*this, n_rings_ - 1);
@@ -681,9 +707,24 @@ ReverseLatticeIter HexLattice::rbegin()
   return ReverseLatticeIter(*this, universes_.size() - n_rings_);
 }
 
+int32_t& HexLattice::back()
+{
+  return universes_[universes_.size() - n_rings_];
+}
+
+LatticeIter HexLattice::end()
+{
+  return LatticeIter(*this, universes_.size() - n_rings_ + 1);
+}
+
+ReverseLatticeIter HexLattice::rend()
+{
+  return ReverseLatticeIter(*this, n_rings_ - 2);
+}
+
 //==============================================================================
 
-bool HexLattice::are_valid_indices(array<int, 3> const& i_xyz) const
+bool HexLattice::are_valid_indices(const array<int, 3>& i_xyz) const
 {
   // Check if (x, alpha, z) indices are valid, accounting for number of rings
   return ((i_xyz[0] >= 0) && (i_xyz[1] >= 0) && (i_xyz[2] >= 0) &&
@@ -980,7 +1021,7 @@ bool HexLattice::is_valid_index(int indx) const
 
 //==============================================================================
 
-int32_t& HexLattice::offset(int map, array<int, 3> const& i_xyz)
+int32_t& HexLattice::offset(int map, const array<int, 3>& i_xyz)
 {
   int nx {2 * n_rings_ - 1};
   int ny {2 * n_rings_ - 1};

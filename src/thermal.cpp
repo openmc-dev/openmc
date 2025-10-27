@@ -19,6 +19,7 @@
 #include "openmc/secondary_correlated.h"
 #include "openmc/secondary_thermal.h"
 #include "openmc/settings.h"
+#include "openmc/string_utils.h"
 
 namespace openmc {
 
@@ -59,7 +60,7 @@ ThermalScattering::ThermalScattering(
     // Read temperature value
     double T;
     read_dataset(kT_group, dset_names[i].data(), T);
-    temps_available[i] = T / K_BOLTZMANN;
+    temps_available[i] = std::round(T / K_BOLTZMANN);
   }
   std::sort(temps_available.begin(), temps_available.end());
 
@@ -89,9 +90,12 @@ ThermalScattering::ThermalScattering(
           temps_to_read.push_back(std::round(temp_actual));
         }
       } else {
-        fatal_error(fmt::format("Nuclear data library does not contain cross "
-                                "sections for {} at or near {} K.",
-          name_, std::round(T)));
+        fatal_error(fmt::format(
+          "Nuclear data library does not contain cross sections "
+          "for {}  at or near {} K. Available temperatures "
+          "are {} K. Consider making use of openmc.Settings.temperature "
+          "to specify how intermediate temperatures are treated.",
+          name_, std::round(T), concatenate(temps_available)));
       }
     }
     break;
@@ -103,8 +107,8 @@ ThermalScattering::ThermalScattering(
       bool found = false;
       for (int j = 0; j < temps_available.size() - 1; ++j) {
         if (temps_available[j] <= T && T < temps_available[j + 1]) {
-          int T_j = std::round(temps_available[j]);
-          int T_j1 = std::round(temps_available[j + 1]);
+          int T_j = temps_available[j];
+          int T_j1 = temps_available[j + 1];
           if (std::find(temps_to_read.begin(), temps_to_read.end(), T_j) ==
               temps_to_read.end()) {
             temps_to_read.push_back(T_j);
@@ -117,10 +121,26 @@ ThermalScattering::ThermalScattering(
         }
       }
       if (!found) {
-        fatal_error(
-          fmt::format("Nuclear data library does not contain cross "
-                      "sections for {} at temperatures that bound {} K.",
-            name_, std::round(T)));
+        // If no pairs found, check if the desired temperature falls within
+        // bounds' tolerance
+        if (std::abs(T - temps_available[0]) <=
+            settings::temperature_tolerance) {
+          if (std::find(temps_to_read.begin(), temps_to_read.end(),
+                temps_available[0]) == temps_to_read.end()) {
+            temps_to_read.push_back(temps_available[0]);
+          }
+        } else if (std::abs(T - temps_available[n - 1]) <=
+                   settings::temperature_tolerance) {
+          if (std::find(temps_to_read.begin(), temps_to_read.end(),
+                temps_available[n - 1]) == temps_to_read.end()) {
+            temps_to_read.push_back(temps_available[n - 1]);
+          }
+        } else {
+          fatal_error(
+            fmt::format("Nuclear data library does not contain cross "
+                        "sections for {} at temperatures that bound {} K.",
+              name_, std::round(T)));
+        }
       }
     }
   }
@@ -159,20 +179,27 @@ void ThermalScattering::calculate_xs(double E, double sqrtkT, int* i_temp,
 
   auto n = kTs_.size();
   if (n > 1) {
-    // Find temperatures that bound the actual temperature
-    while (kTs_[i + 1] < kT && i + 1 < n - 1)
-      ++i;
-
     if (settings::temperature_method == TemperatureMethod::NEAREST) {
+      while (kTs_[i + 1] < kT && i + 1 < n - 1)
+        ++i;
       // Pick closer of two bounding temperatures
       if (kT - kTs_[i] > kTs_[i + 1] - kT)
         ++i;
-
     } else {
-      // Randomly sample between temperature i and i+1
-      double f = (kT - kTs_[i]) / (kTs_[i + 1] - kTs_[i]);
-      if (f > prn(seed))
-        ++i;
+      // If current kT outside of the bounds of available, snap to the bound
+      if (kT < kTs_.front()) {
+        i = 0;
+      } else if (kT > kTs_.back()) {
+        i = kTs_.size() - 1;
+      } else {
+        // Find temperatures that bound the actual temperature
+        while (kTs_[i + 1] < kT && i + 1 < n - 1)
+          ++i;
+        // Randomly sample between temperature i and i+1
+        double f = (kT - kTs_[i]) / (kTs_[i + 1] - kTs_[i]);
+        if (f > prn(seed))
+          ++i;
+      }
     }
   }
 
@@ -210,14 +237,22 @@ ThermalData::ThermalData(hid_t group)
     if (temp == "coherent_elastic") {
       auto xs = dynamic_cast<CoherentElasticXS*>(elastic_.xs.get());
       elastic_.distribution = make_unique<CoherentElasticAE>(*xs);
-    } else {
-      if (temp == "incoherent_elastic") {
-        elastic_.distribution = make_unique<IncoherentElasticAE>(dgroup);
-      } else if (temp == "incoherent_elastic_discrete") {
-        auto xs = dynamic_cast<Tabulated1D*>(elastic_.xs.get());
-        elastic_.distribution =
-          make_unique<IncoherentElasticAEDiscrete>(dgroup, xs->x());
-      }
+    } else if (temp == "incoherent_elastic") {
+      elastic_.distribution = make_unique<IncoherentElasticAE>(dgroup);
+    } else if (temp == "incoherent_elastic_discrete") {
+      auto xs = dynamic_cast<Tabulated1D*>(elastic_.xs.get());
+      elastic_.distribution =
+        make_unique<IncoherentElasticAEDiscrete>(dgroup, xs->x());
+    } else if (temp == "mixed_elastic") {
+      // Get coherent/incoherent cross sections
+      auto mixed_xs = dynamic_cast<Sum1D*>(elastic_.xs.get());
+      const auto& coh_xs =
+        dynamic_cast<const CoherentElasticXS*>(mixed_xs->functions(0).get());
+      const auto& incoh_xs = mixed_xs->functions(1).get();
+
+      // Create mixed elastic distribution
+      elastic_.distribution =
+        make_unique<MixedElasticAE>(dgroup, *coh_xs, *incoh_xs);
     }
 
     close_group(elastic_group);

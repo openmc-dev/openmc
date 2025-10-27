@@ -1,7 +1,9 @@
 """Tests for the openmc.deplete.Nuclide class."""
 
-import xml.etree.ElementTree as ET
+import copy
+import warnings
 
+import lxml.etree as ET
 import numpy as np
 import pytest
 from openmc.deplete import nuclide
@@ -276,9 +278,9 @@ def test_validate():
     }
 
     # nuclide is good and should have no warnings raise
-    with pytest.warns(None) as record:
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
         assert nuc.validate(strict=True, quiet=False, tolerance=0.0)
-    assert len(record) == 0
 
     # invalidate decay modes
     decay = nuc.decay_modes.pop()
@@ -335,3 +337,14 @@ def test_validate():
     assert "decay mode" in record[0].message.args[0]
     assert "0 reaction" in record[1].message.args[0]
     assert "1.0" in record[2].message.args[0]
+
+
+def test_deepcopy():
+    """Test deepcopying a FissionYield object"""
+    nuc = nuclide.FissionYield(products=("I129", "Sm149", "Xe135"), yields=np.array((0.001, 0.0003, 0.002)))
+    copied_nuc = copy.deepcopy(nuc)
+    # Check the deepcopy equals the original
+    assert copied_nuc == nuc
+    # Mutate the original and verify the copy remains intact
+    nuc *= 2
+    assert copied_nuc != nuc

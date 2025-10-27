@@ -1,5 +1,6 @@
 #include "openmc/initialize.h"
 
+#include <clocale>
 #include <cstddef>
 #include <cstdlib> // for getenv
 #include <cstring>
@@ -11,9 +12,11 @@
 #include <fmt/core.h>
 
 #include "openmc/capi.h"
+#include "openmc/chain.h"
 #include "openmc/constants.h"
 #include "openmc/cross_sections.h"
 #include "openmc/error.h"
+#include "openmc/file_utils.h"
 #include "openmc/geometry_aux.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/material.h"
@@ -21,6 +24,7 @@
 #include "openmc/message_passing.h"
 #include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
+#include "openmc/openmp_interface.h"
 #include "openmc/output.h"
 #include "openmc/plot.h"
 #include "openmc/random_lcg.h"
@@ -32,8 +36,9 @@
 #include "openmc/thermal.h"
 #include "openmc/timer.h"
 #include "openmc/vector.h"
+#include "openmc/weight_windows.h"
 
-#ifdef LIBMESH
+#ifdef OPENMC_LIBMESH_ENABLED
 #include "libmesh/libmesh.h"
 #endif
 
@@ -59,14 +64,8 @@ int openmc_init(int argc, char* argv[], const void* intracomm)
   if (err)
     return err;
 
-#ifdef LIBMESH
-
-#ifdef _OPENMP
-  int n_threads = omp_get_max_threads();
-#else
-  int n_threads = 1;
-#endif
-
+#ifdef OPENMC_LIBMESH_ENABLED
+  const int n_threads = num_threads();
   // initialize libMesh if it hasn't been initialized already
   // (if initialized externally, the libmesh_init object needs to be provided
   // also)
@@ -100,12 +99,32 @@ int openmc_init(int argc, char* argv[], const void* intracomm)
   }
 #endif
 
-  // Initialize random number generator -- if the user specifies a seed, it
-  // will be re-initialized later
+  // Initialize random number generator -- if the user specifies a seed and/or
+  // stride, it will be re-initialized later
   openmc::openmc_set_seed(DEFAULT_SEED);
+  openmc::openmc_set_stride(DEFAULT_STRIDE);
+
+  // Copy previous locale and set locale to C. This is a workaround for an issue
+  // whereby when openmc_init is called from the plotter, the Qt application
+  // framework first calls std::setlocale, which affects how pugixml reads
+  // floating point numbers due to a bug:
+  // https://github.com/zeux/pugixml/issues/469
+  std::string prev_locale = std::setlocale(LC_ALL, nullptr);
+  if (std::setlocale(LC_ALL, "C") == NULL) {
+    fatal_error("Cannot set locale to C.");
+  }
 
   // Read XML input files
-  read_input_xml();
+  if (!read_model_xml())
+    read_separate_xml_files();
+
+  // Reset locale to previous state
+  if (std::setlocale(LC_ALL, prev_locale.c_str()) == NULL) {
+    fatal_error("Cannot reset locale.");
+  }
+
+  // Write some initial output under the header if needed
+  initial_output();
 
   // Check for particle restart run
   if (settings::particle_restart_run)
@@ -138,7 +157,7 @@ void initialize_mpi(MPI_Comm intracomm)
 
   // Create bank datatype
   SourceSite b;
-  MPI_Aint disp[10];
+  MPI_Aint disp[11];
   MPI_Get_address(&b.r, &disp[0]);
   MPI_Get_address(&b.u, &disp[1]);
   MPI_Get_address(&b.E, &disp[2]);
@@ -147,16 +166,17 @@ void initialize_mpi(MPI_Comm intracomm)
   MPI_Get_address(&b.delayed_group, &disp[5]);
   MPI_Get_address(&b.surf_id, &disp[6]);
   MPI_Get_address(&b.particle, &disp[7]);
-  MPI_Get_address(&b.parent_id, &disp[8]);
-  MPI_Get_address(&b.progeny_id, &disp[9]);
-  for (int i = 9; i >= 0; --i) {
+  MPI_Get_address(&b.parent_nuclide, &disp[8]);
+  MPI_Get_address(&b.parent_id, &disp[9]);
+  MPI_Get_address(&b.progeny_id, &disp[10]);
+  for (int i = 10; i >= 0; --i) {
     disp[i] -= disp[0];
   }
 
-  int blocks[] {3, 3, 1, 1, 1, 1, 1, 1, 1, 1};
+  int blocks[] {3, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1};
   MPI_Datatype types[] {MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE,
-    MPI_DOUBLE, MPI_INT, MPI_INT, MPI_INT, MPI_LONG, MPI_LONG};
-  MPI_Type_create_struct(10, blocks, disp, types, &mpi::source_site);
+    MPI_DOUBLE, MPI_INT, MPI_INT, MPI_INT, MPI_INT, MPI_LONG, MPI_LONG};
+  MPI_Type_create_struct(11, blocks, disp, types, &mpi::source_site);
   MPI_Type_commit(&mpi::source_site);
 }
 #endif // OPENMC_MPI
@@ -177,10 +197,8 @@ int parse_command_line(int argc, char* argv[])
 
       } else if (arg == "-e" || arg == "--event") {
         settings::event_based = true;
-
       } else if (arg == "-r" || arg == "--restart") {
         i += 1;
-
         // Check what type of file this is
         hid_t file_id = file_open(argv[i], 'r', true);
         std::string filetype;
@@ -190,6 +208,7 @@ int parse_command_line(int argc, char* argv[])
         // Set path and flag for type of run
         if (filetype == "statepoint") {
           settings::path_statepoint = argv[i];
+          settings::path_statepoint_c = settings::path_statepoint.c_str();
           settings::restart_run = true;
         } else if (filetype == "particle restart") {
           settings::path_particle_restart = argv[i];
@@ -260,6 +279,7 @@ int parse_command_line(int argc, char* argv[])
 
       } else if (arg == "-v" || arg == "--version") {
         print_version();
+        print_build_info();
         return OPENMC_E_UNASSIGNED;
 
       } else if (arg == "-t" || arg == "--track") {
@@ -279,8 +299,17 @@ int parse_command_line(int argc, char* argv[])
   if (argc > 1 && last_flag < argc - 1) {
     settings::path_input = std::string(argv[last_flag + 1]);
 
+    // check that the path is either a valid directory or file
+    if (!dir_exists(settings::path_input) &&
+        !file_exists(settings::path_input)) {
+      fatal_error(fmt::format(
+        "The path specified to the OpenMC executable '{}' does not exist.",
+        settings::path_input));
+    }
+
     // Add slash at end of directory if it isn't there
-    if (!ends_with(settings::path_input, "/")) {
+    if (!ends_with(settings::path_input, "/") &&
+        dir_exists(settings::path_input)) {
       settings::path_input += "/";
     }
   }
@@ -288,10 +317,126 @@ int parse_command_line(int argc, char* argv[])
   return 0;
 }
 
-void read_input_xml()
+bool read_model_xml()
+{
+  std::string model_filename = settings::path_input;
+
+  // if the current filename is a directory, append the default model filename
+  if (model_filename.empty() || dir_exists(model_filename))
+    model_filename += "model.xml";
+
+  // if this file doesn't exist, stop here
+  if (!file_exists(model_filename))
+    return false;
+
+  // try to process the path input as an XML file
+  pugi::xml_document doc;
+  if (!doc.load_file(model_filename.c_str())) {
+    fatal_error(fmt::format(
+      "Error reading from single XML input file '{}'", model_filename));
+  }
+
+  pugi::xml_node root = doc.document_element();
+
+  // Read settings
+  if (!check_for_node(root, "settings")) {
+    fatal_error("No <settings> node present in the model.xml file.");
+  }
+  auto settings_root = root.child("settings");
+
+  // Verbosity
+  if (check_for_node(settings_root, "verbosity")) {
+    settings::verbosity = std::stoi(get_node_value(settings_root, "verbosity"));
+  }
+
+  // To this point, we haven't displayed any output since we didn't know what
+  // the verbosity is. Now that we checked for it, show the title if necessary
+  if (mpi::master) {
+    if (settings::verbosity >= 2)
+      title();
+  }
+
+  write_message(
+    fmt::format("Reading model XML file '{}' ...", model_filename), 5);
+
+  read_settings_xml(settings_root);
+
+  // If other XML files are present, display warning
+  // that they will be ignored
+  auto other_inputs = {"materials.xml", "geometry.xml", "settings.xml",
+    "tallies.xml", "plots.xml"};
+  for (const auto& input : other_inputs) {
+    if (file_exists(settings::path_input + input)) {
+      warning((fmt::format("Other XML file input(s) are present. These files "
+                           "may be ignored in favor of the {} file.",
+        model_filename)));
+      break;
+    }
+  }
+
+  // Read data from chain file
+  read_chain_file_xml();
+
+  // Read materials and cross sections
+  if (!check_for_node(root, "materials")) {
+    fatal_error(fmt::format(
+      "No <materials> node present in the {} file.", model_filename));
+  }
+
+  if (settings::run_mode != RunMode::PLOTTING) {
+    read_cross_sections_xml(root.child("materials"));
+  }
+  read_materials_xml(root.child("materials"));
+
+  // Read geometry
+  if (!check_for_node(root, "geometry")) {
+    fatal_error(fmt::format(
+      "No <geometry> node present in the {} file.", model_filename));
+  }
+  read_geometry_xml(root.child("geometry"));
+
+  // Final geometry setup and assign temperatures
+  finalize_geometry();
+
+  // Finalize cross sections having assigned temperatures
+  finalize_cross_sections();
+
+  // Compute cell density multipliers now that material densities
+  // have been finalized (from geometry_aux.h)
+  finalize_cell_densities();
+
+  if (check_for_node(root, "tallies"))
+    read_tallies_xml(root.child("tallies"));
+
+  // Initialize distribcell_filters
+  prepare_distribcell();
+
+  if (check_for_node(root, "plots")) {
+    read_plots_xml(root.child("plots"));
+  } else {
+    // When no <plots> element is present in the model.xml file, check for a
+    // regular plots.xml file
+    std::string filename = settings::path_input + "plots.xml";
+    if (file_exists(filename)) {
+      read_plots_xml();
+    }
+  }
+
+  finalize_variance_reduction();
+
+  return true;
+}
+
+void read_separate_xml_files()
 {
   read_settings_xml();
-  read_cross_sections_xml();
+  if (settings::run_mode != RunMode::PLOTTING) {
+    read_cross_sections_xml();
+  }
+
+  // Read data from chain file
+  read_chain_file_xml();
+
   read_materials_xml();
   read_geometry_xml();
 
@@ -301,6 +446,10 @@ void read_input_xml()
   // Finalize cross sections having assigned temperatures
   finalize_cross_sections();
 
+  // Compute cell density multipliers now that material densities
+  // have been finalized (from geometry_aux.h)
+  finalize_cell_densities();
+
   read_tallies_xml();
 
   // Initialize distribcell_filters
@@ -309,6 +458,13 @@ void read_input_xml()
   // Read the plots.xml regardless of plot mode in case plots are requested
   // via the API
   read_plots_xml();
+
+  finalize_variance_reduction();
+}
+
+void initial_output()
+{
+  // write initial output
   if (settings::run_mode == RunMode::PLOTTING) {
     // Read plots.xml if it exists
     if (mpi::master && settings::verbosity >= 5)

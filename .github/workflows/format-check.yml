@@ -1,0 +1,32 @@
+name: C++ Format Check
+
+on:
+  # allow workflow to be run manually
+  workflow_dispatch:
+
+  pull_request:
+    branches:
+      - develop
+      - master
+
+jobs:
+  cpp-linter:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cpp-linter/cpp-linter-action@v2
+        id: linter
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          style: file
+          files-changed-only: true
+          tidy-checks: '-*'
+          version: '15' # clang-format version
+          file-annotations: true
+          step-summary: true
+          extensions: 'cpp,h'
+
+      - name: Failure Check
+        if: steps.linter.outputs.checks-failed > 0
+        run: echo "Some files failed the formatting check! See job summary and file annotations for more info" && exit 1

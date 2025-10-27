@@ -1,8 +1,7 @@
 #ifndef OPENMC_TALLIES_FILTER_TIME_H
 #define OPENMC_TALLIES_FILTER_TIME_H
 
-#include <gsl/gsl-lite.hpp>
-
+#include "openmc/span.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/vector.h"
 
@@ -22,7 +21,8 @@ public:
   //----------------------------------------------------------------------------
   // Methods
 
-  std::string type() const override { return "time"; }
+  std::string type_str() const override { return "time"; }
+  FilterType type() const override { return FilterType::TIME; }
 
   void from_xml(pugi::xml_node node) override;
 
@@ -37,7 +37,7 @@ public:
   // Accessors
 
   const vector<double>& bins() const { return bins_; }
-  void set_bins(gsl::span<const double> bins);
+  void set_bins(span<const double> bins);
 
 protected:
   //----------------------------------------------------------------------------

@@ -106,7 +106,7 @@ def test_complement(reset):
     assert_unbounded(outside_equiv)
 
     # string represention
-    assert str(inside) == '~(1 | -2 | 3)'
+    assert str(inside) == '(-1 2 -3)'
 
     # evaluate method
     assert (0, 0, 0) in inside
@@ -200,3 +200,58 @@ def test_from_expression(reset):
     assert isinstance(r, openmc.Intersection)
     assert isinstance(r[1], openmc.Union)
     assert r[1][:] == [-s2, +s3]
+
+    # Make sure ")(" is handled correctly
+    r = openmc.Region.from_expression('(-1|2)(2|-3)', surfs)
+    assert str(r) == '((-1 | 2) (2 | -3))'
+
+    # Opening parenthesis immediately after halfspace
+    r = openmc.Region.from_expression('1(2|-3)', surfs)
+    assert str(r) == '(1 (2 | -3))'
+    r = openmc.Region.from_expression('-1|(1 2(-3))', surfs)
+    assert str(r) == '(-1 | (1 2 -3))'
+
+def test_translate_inplace():
+    sph = openmc.Sphere()
+    x = openmc.XPlane()
+    region = -sph & +x
+
+    # Translating a region should produce new surfaces
+    region2 = region.translate((0.5, -6.7, 3.9), inplace=False)
+    assert str(region) != str(region2)
+
+    # Translating a region in-place should *not* produce new surfaces
+    region3 = region.translate((0.5, -6.7, 3.9), inplace=True)
+    assert str(region) == str(region3)
+
+
+def test_invalid_operands():
+    s = openmc.Sphere()
+    z = 3
+
+    # Intersection with invalid operand
+    with pytest.raises(ValueError, match='must be of type Region'):
+        -s & +z
+
+    # Union with invalid operand
+    with pytest.raises(ValueError, match='must be of type Region'):
+        -s | +z
+
+    # Complement with invalid operand
+    with pytest.raises(ValueError, match='must be of type Region'):
+        openmc.Complement(z)
+
+
+def test_plot():
+    # Create region and plot
+    region = -openmc.Sphere() & +openmc.XPlane()
+    c_before = openmc.Cell()
+    region.plot()
+
+    # Close plot to avoid warning
+    import matplotlib.pyplot as plt
+    plt.close()
+
+    # Ensure that calling plot doesn't affect cell ID space
+    c_after = openmc.Cell()
+    assert c_after.id - 1 == c_before.id

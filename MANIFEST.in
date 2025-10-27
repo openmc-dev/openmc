@@ -8,7 +8,6 @@ include schemas.xml
 include pyproject.toml
 include pytest.ini
 include docs/source/_templates/layout.html
-include docs/sphinxext/LICENSE
 global-include *.cmake
 global-include *.cmake.in
 global-include *.rst
@@ -20,25 +19,20 @@ recursive-include docs *.svg
 recursive-include docs *.tex
 recursive-include docs *.txt
 recursive-include docs Makefile
-recursive-include examples *.h5
-recursive-include examples *.png
 recursive-include examples *.cpp
 recursive-include examples *.py
 recursive-include examples *.xml
 recursive-include include *.h
+recursive-include include *.h.in
+recursive-include include *.hh
 recursive-include man *.1
-recursive-inlcude openmc *.pyx
-recursive-include openmc *.c
-recursive-include src *.c
 recursive-include src *.cc
 recursive-include src *.cpp
-recursive-include src *.h
-recursive-include src *.hpp
 recursive-include src *.rnc
 recursive-include src *.rng
 recursive-include tests *.dat
 recursive-include tests *.h5
-recursive-inlcude tests *.h5m
+recursive-include tests *.h5m
 recursive-include tests *.py
 recursive-include tests *.xml
 recursive-include vendor CMakeLists.txt
@@ -49,6 +43,5 @@ recursive-include vendor *.hh
 recursive-include vendor *.hpp
 recursive-include vendor *.pc.in
 recursive-include vendor *.natvis
-include vendor/gsl-lite/include/gsl/gsl
 prune docs/build
 prune docs/source/pythonapi/generated/

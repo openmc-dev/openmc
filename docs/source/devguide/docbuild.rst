@@ -5,21 +5,14 @@ Building Sphinx Documentation
 =============================
 
 In order to build the documentation in the ``docs`` directory, you will need to
-have the `Sphinx <https://www.sphinx-doc.org/en/master/>`_ third-party Python
-package. The easiest way to install Sphinx is via pip:
+have the several third-party Python packages installed, including `Sphinx
+<https://www.sphinx-doc.org/en/master/>`_. To install the necessary
+prerequisites, provide the optional "docs" dependencies when installing OpenMC's
+Python API. That is, from the root directory of the OpenMC repository:
 
 .. code-block:: sh
 
-    pip install sphinx
-
-Additionally, you will need several Sphinx extensions that can be installed
-directly with pip:
-
-.. code-block:: sh
-
-    pip install sphinx-numfig
-    pip install sphinxcontrib-katex
-    pip install sphinxcontrib-svg2pdfconverter
+    python -m pip install ".[docs]"
 
 -----------------------------------
 Building Documentation as a Webpage

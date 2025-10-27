@@ -4,8 +4,7 @@
 #include "openmc/vector.h"
 #include <string>
 
-#include <gsl/gsl-lite.hpp>
-
+#include "openmc/span.h"
 #include "openmc/tallies/filter.h"
 
 namespace openmc {
@@ -24,7 +23,8 @@ public:
   //----------------------------------------------------------------------------
   // Methods
 
-  std::string type() const override { return "azimuthal"; }
+  std::string type_str() const override { return "azimuthal"; }
+  FilterType type() const override { return FilterType::AZIMUTHAL; }
 
   void from_xml(pugi::xml_node node) override;
 
@@ -38,7 +38,7 @@ public:
   //----------------------------------------------------------------------------
   // Accessors
 
-  void set_bins(gsl::span<double> bins);
+  void set_bins(span<double> bins);
 
 private:
   //----------------------------------------------------------------------------

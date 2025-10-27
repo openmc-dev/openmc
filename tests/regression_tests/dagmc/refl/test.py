@@ -6,40 +6,33 @@ import pytest
 from tests.testing_harness import PyAPITestHarness
 
 pytestmark = pytest.mark.skipif(
-    not openmc.lib._dagmc_enabled(),
-    reason="DAGMC CAD geometry is not enabled.")
+    not openmc.lib._uwuw_enabled(),
+    reason="UWUW is not enabled.")
 
 class UWUWTest(PyAPITestHarness):
-
-    def _build_inputs(self):
-        model = openmc.model.Model()
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
         # settings
-        model.settings.batches = 5
-        model.settings.inactive = 0
-        model.settings.particles = 100
+        self._model.settings.batches = 5
+        self._model.settings.inactive = 0
+        self._model.settings.particles = 100
 
-        source = openmc.Source(space=Box([-4, -4, -4],
-                                         [ 4,  4,  4]))
-        model.settings.source = source
-
-        model.settings.dagmc = True
-
-        model.settings.export_to_xml()
+        source = openmc.IndependentSource(space=Box([-4, -4, -4],
+                                                    [ 4,  4,  4]))
+        self._model.settings.source = source
 
         # geometry
         dag_univ = openmc.DAGMCUniverse("dagmc.h5m", auto_geom_ids=True)
-        model.geometry = openmc.Geometry(dag_univ)
+        self._model.geometry = openmc.Geometry(dag_univ)
 
         # tally
         tally = openmc.Tally()
         tally.scores = ['total']
         tally.filters = [openmc.CellFilter(2)]
-        model.tallies = [tally]
+        self._model.tallies = [tally]
 
-        model.tallies.export_to_xml()
-        model.export_to_xml()
 
 def test_refl():
-    harness = UWUWTest('statepoint.5.h5')
+    harness = UWUWTest('statepoint.5.h5', model=openmc.Model())
     harness.main()

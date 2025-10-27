@@ -5,10 +5,12 @@ from itertools import product
 from math import log
 import os
 from pathlib import Path
+import warnings
 
 import numpy as np
 from openmc.mpi import comm
 from openmc.deplete import Chain, reaction_rates, nuclide, cram, pool
+from openmc.stats import Discrete
 import pytest
 
 from tests import cdtemp
@@ -52,11 +54,11 @@ def simple_chain():
 
 
 @pytest.fixture(scope='module')
-def endf_chain():
-    endf_data = Path(os.environ['OPENMC_ENDF_DATA'])
-    decay_data = (endf_data / 'decay').glob('*.endf')
-    fpy_data = (endf_data / 'nfy').glob('*.endf')
-    neutron_data = (endf_data / 'neutrons').glob('*.endf')
+def endf_chain(endf_data):
+    endf_dir = Path(endf_data)
+    decay_data = (endf_dir / 'decay').glob('*.endf')
+    fpy_data = (endf_dir / 'nfy').glob('*.endf')
+    neutron_data = (endf_dir / 'neutrons').glob('*.endf')
     return Chain.from_endf(decay_data, fpy_data, neutron_data)
 
 
@@ -82,6 +84,14 @@ def test_from_endf(endf_chain):
     assert len(chain) == len(chain.nuclides) == len(chain.nuclide_dict) == 3820
     for nuc in chain.nuclides:
         assert nuc == chain[nuc.name]
+
+
+def test_unstable_nuclides(simple_chain: Chain):
+    assert [nuc.name for nuc in simple_chain.unstable_nuclides] == ["A", "B"]
+
+
+def test_stable_nuclides(simple_chain: Chain):
+    assert [nuc.name for nuc in simple_chain.stable_nuclides] == ["H1", "C"]
 
 
 def test_from_xml(simple_chain):
@@ -300,8 +310,7 @@ def test_capture_branch_infer_ground():
     # Create nuclide to be added into the chain
     xe136m = nuclide.Nuclide("Xe136_m1")
 
-    chain.nuclides.append(xe136m)
-    chain.nuclide_dict[xe136m.name] = len(chain.nuclides) - 1
+    chain.add_nuclide(xe136m)
 
     chain.set_branch_ratios(infer_br, "(n,gamma)")
 
@@ -317,8 +326,7 @@ def test_capture_branch_no_rxn():
 
     u5m = nuclide.Nuclide("U235_m1")
 
-    chain.nuclides.append(u5m)
-    chain.nuclide_dict[u5m.name] = len(chain.nuclides) - 1
+    chain.add_nuclide(u5m)
 
     with pytest.raises(AttributeError, match="U234"):
         chain.set_branch_ratios(u4br)
@@ -437,9 +445,9 @@ def test_validate(simple_chain):
     simple_chain["C"].yield_data = {0.0253: {"A": 1.4, "B": 0.6}}
 
     assert simple_chain.validate(strict=True, tolerance=0.0)
-    with pytest.warns(None) as record:
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
         assert simple_chain.validate(strict=False, quiet=False, tolerance=0.0)
-    assert len(record) == 0
 
     # Mess up "earlier" nuclide's reactions
     decay_mode = simple_chain["A"].decay_modes.pop()
@@ -476,6 +484,15 @@ def gnd_simple_chain():
     return Chain.from_xml(chainfile)
 
 
+def test_chain_sources(gnd_simple_chain):
+    i135 = gnd_simple_chain['I135']
+    assert isinstance(i135.sources, dict)
+    assert list(i135.sources.keys()) == ['photon']
+    photon_src = i135.sources['photon']
+    assert isinstance(photon_src, Discrete)
+    assert photon_src.integral() == pytest.approx(3.920996223799345e-05)
+
+
 def test_reduce(gnd_simple_chain, endf_chain):
     ref_U5 = gnd_simple_chain["U235"]
     ref_iodine = gnd_simple_chain["I135"]
@@ -490,6 +507,7 @@ def test_reduce(gnd_simple_chain, endf_chain):
     assert u5_round0.n_decay_modes == ref_U5.n_decay_modes
     assert u5_round0.half_life == ref_U5.half_life
     assert u5_round0.decay_energy == ref_U5.decay_energy
+    assert u5_round0.sources == ref_U5.sources
     for newmode, refmode in zip(u5_round0.decay_modes, ref_U5.decay_modes):
         assert newmode.target is None
         assert newmode.type == refmode.type
@@ -512,6 +530,7 @@ def test_reduce(gnd_simple_chain, endf_chain):
     assert bareI5.n_decay_modes == ref_iodine.n_decay_modes
     assert bareI5.half_life == ref_iodine.half_life
     assert bareI5.decay_energy == ref_iodine.decay_energy
+    assert bareI5.sources == ref_iodine.sources
     for newmode, refmode in zip(bareI5.decay_modes, ref_iodine.decay_modes):
         assert newmode.target is None
         assert newmode.type == refmode.type

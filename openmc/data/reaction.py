@@ -25,11 +25,11 @@ from .product import Product
 from .uncorrelated import UncorrelatedAngleEnergy
 
 
-REACTION_NAME = {1: '(n,total)', 2: '(n,elastic)', 4: '(n,level)',
-                 5: '(n,misc)', 11: '(n,2nd)', 16: '(n,2n)', 17: '(n,3n)',
-                 18: '(n,fission)', 19: '(n,f)', 20: '(n,nf)', 21: '(n,2nf)',
-                 22: '(n,na)', 23: '(n,n3a)', 24: '(n,2na)', 25: '(n,3na)',
-                 27: '(n,absorption)', 28: '(n,np)', 29: '(n,n2a)',
+REACTION_NAME = {1: '(n,total)', 2: '(n,elastic)', 3: "(n,nonelastic)",
+                 4: '(n,level)', 5: '(n,misc)', 11: '(n,2nd)', 16: '(n,2n)',
+                 17: '(n,3n)', 18: '(n,fission)', 19: '(n,f)', 20: '(n,nf)',
+                 21: '(n,2nf)', 22: '(n,na)', 23: '(n,n3a)', 24: '(n,2na)',
+                 25: '(n,3na)', 27: '(n,absorption)', 28: '(n,np)', 29: '(n,n2a)',
                  30: '(n,2n2a)', 32: '(n,nd)', 33: '(n,nt)', 34: '(n,n3He)',
                  35: '(n,nd2a)', 36: '(n,nt2a)', 37: '(n,4n)', 38: '(n,3nf)',
                  41: '(n,2np)', 42: '(n,3np)', 44: '(n,n2p)', 45: '(n,npa)',
@@ -56,13 +56,13 @@ REACTION_NAME = {1: '(n,total)', 2: '(n,elastic)', 4: '(n,level)',
                  301: 'heating', 444: 'damage-energy',
                  649: '(n,pc)', 699: '(n,dc)', 749: '(n,tc)', 799: '(n,3Hec)',
                  849: '(n,ac)', 891: '(n,2nc)', 901: 'heating-local'}
-REACTION_NAME.update({i: '(n,n{})'.format(i - 50) for i in range(51, 91)})
-REACTION_NAME.update({i: '(n,p{})'.format(i - 600) for i in range(600, 649)})
-REACTION_NAME.update({i: '(n,d{})'.format(i - 650) for i in range(650, 699)})
-REACTION_NAME.update({i: '(n,t{})'.format(i - 700) for i in range(700, 749)})
-REACTION_NAME.update({i: '(n,3He{})'.format(i - 750) for i in range(750, 799)})
-REACTION_NAME.update({i: '(n,a{})'.format(i - 800) for i in range(800, 849)})
-REACTION_NAME.update({i: '(n,2n{})'.format(i - 875) for i in range(875, 891)})
+REACTION_NAME.update({i: f'(n,n{i - 50})' for i in range(51, 91)})
+REACTION_NAME.update({i: f'(n,p{i - 600})' for i in range(600, 649)})
+REACTION_NAME.update({i: f'(n,d{i - 650})' for i in range(650, 699)})
+REACTION_NAME.update({i: f'(n,t{i - 700})' for i in range(700, 749)})
+REACTION_NAME.update({i: f'(n,3He{i - 750})' for i in range(750, 799)})
+REACTION_NAME.update({i: f'(n,a{i - 800})' for i in range(800, 849)})
+REACTION_NAME.update({i: f'(n,2n{i - 875})' for i in range(875, 891)})
 
 REACTION_MT = {name: mt for mt, name in REACTION_NAME.items()}
 REACTION_MT['fission'] = 18
@@ -79,6 +79,14 @@ def _get_products(ev, mt):
         ENDF evaluation to read from
     mt : int
         The MT value of the reaction to get products for
+
+    Raises
+    ------
+    IOError
+        When the Kalbach-Mann systematics is used, but the product
+        is not defined in the 'center-of-mass' system. The breakup logic
+        is not implemented which can lead to this error being raised while
+        the definition of the product is correct.
 
     Returns
     -------
@@ -101,7 +109,6 @@ def _get_products(ev, mt):
 
         za = int(params[0])
         awr = params[1]
-        lip = params[2]
         law = params[3]
 
         if za == 0:
@@ -112,7 +119,7 @@ def _get_products(ev, mt):
             p = Product('electron')
         else:
             Z, A = divmod(za, 1000)
-            p = Product('{}{}'.format(ATOMIC_SYMBOL[Z], A))
+            p = Product(f'{ATOMIC_SYMBOL[Z]}{A}')
 
         p.yield_ = yield_
 
@@ -141,7 +148,26 @@ def _get_products(ev, mt):
             if lang == 1:
                 p.distribution = [CorrelatedAngleEnergy.from_endf(file_obj)]
             elif lang == 2:
-                p.distribution = [KalbachMann.from_endf(file_obj)]
+                # Products need to be described in the center-of-mass system
+                product_center_of_mass = False
+                if reference_frame == 'center-of-mass':
+                    product_center_of_mass = True
+                elif reference_frame == 'light-heavy':
+                    product_center_of_mass = (awr <= 4.0)
+                # TODO: 'breakup' logic not implemented
+
+                if product_center_of_mass is False:
+                    raise IOError(
+                        "Kalbach-Mann representation must be defined in the "
+                        "'center-of-mass' system"
+                    )
+
+                zat = ev.target["atomic_number"] * 1000 + ev.target["mass_number"]
+                projectile_mass = ev.projectile["mass"]
+                p.distribution = [KalbachMann.from_endf(file_obj,
+                                                        za,
+                                                        zat,
+                                                        projectile_mass)]
 
         elif law == 2:
             # Discrete two-body scattering
@@ -528,12 +554,12 @@ def _get_activation_products(ev, rx):
             Z, A = divmod(items[2], 1000)
             excited_state = items[3]
 
-            # Get GND name for product
+            # Get GNDS name for product
             symbol = ATOMIC_SYMBOL[Z]
             if excited_state > 0:
-                name = '{}{}_e{}'.format(symbol, A, excited_state)
+                name = f'{symbol}{A}_e{excited_state}'
             else:
-                name = '{}{}'.format(symbol, A)
+                name = f'{symbol}{A}'
 
             p = Product(name)
             if mf == 9:
@@ -630,8 +656,7 @@ def _get_photon_products_ace(ace, rx):
             photon.yield_ = Tabulated1D(energy, yield_)
 
         else:
-            raise ValueError("MFTYPE must be 12, 13, 16. Got {0}".format(
-                mftype))
+            raise ValueError(f"MFTYPE must be 12, 13, 16. Got {mftype}")
 
         # ==================================================================
         # Photon energy distribution
@@ -820,59 +845,59 @@ class Reaction(EqualityMixin):
 
     def __repr__(self):
         if self.mt in REACTION_NAME:
-            return "<Reaction: MT={} {}>".format(self.mt, REACTION_NAME[self.mt])
+            return f"<Reaction: MT={self.mt} {REACTION_NAME[self.mt]}>"
         else:
-            return "<Reaction: MT={}>".format(self.mt)
+            return f"<Reaction: MT={self.mt}>"
 
     @property
     def center_of_mass(self):
         return self._center_of_mass
-
-    @property
-    def redundant(self):
-        return self._redundant
-
-    @property
-    def q_value(self):
-        return self._q_value
-
-    @property
-    def products(self):
-        return self._products
-
-    @property
-    def derived_products(self):
-        return self._derived_products
-
-    @property
-    def xs(self):
-        return self._xs
 
     @center_of_mass.setter
     def center_of_mass(self, center_of_mass):
         cv.check_type('center of mass', center_of_mass, (bool, np.bool_))
         self._center_of_mass = center_of_mass
 
+    @property
+    def redundant(self):
+        return self._redundant
+
     @redundant.setter
     def redundant(self, redundant):
         cv.check_type('redundant', redundant, (bool, np.bool_))
         self._redundant = redundant
+
+    @property
+    def q_value(self):
+        return self._q_value
 
     @q_value.setter
     def q_value(self, q_value):
         cv.check_type('Q value', q_value, Real)
         self._q_value = q_value
 
+    @property
+    def products(self):
+        return self._products
+
     @products.setter
     def products(self, products):
         cv.check_type('reaction products', products, Iterable, Product)
         self._products = products
+
+    @property
+    def derived_products(self):
+        return self._derived_products
 
     @derived_products.setter
     def derived_products(self, derived_products):
         cv.check_type('reaction derived products', derived_products,
                       Iterable, Product)
         self._derived_products = derived_products
+
+    @property
+    def xs(self):
+        return self._xs
 
     @xs.setter
     def xs(self, xs):
@@ -894,9 +919,9 @@ class Reaction(EqualityMixin):
 
         group.attrs['mt'] = self.mt
         if self.mt in REACTION_NAME:
-            group.attrs['label'] = np.string_(REACTION_NAME[self.mt])
+            group.attrs['label'] = np.bytes_(REACTION_NAME[self.mt])
         else:
-            group.attrs['label'] = np.string_(self.mt)
+            group.attrs['label'] = np.bytes_(self.mt)
         group.attrs['Q_value'] = self.q_value
         group.attrs['center_of_mass'] = 1 if self.center_of_mass else 0
         group.attrs['redundant'] = 1 if self.redundant else 0
@@ -907,7 +932,7 @@ class Reaction(EqualityMixin):
                 threshold_idx = getattr(self.xs[T], '_threshold_idx', 0)
                 dset.attrs['threshold_idx'] = threshold_idx
         for i, p in enumerate(self.products):
-            pgroup = group.create_group('product_{}'.format(i))
+            pgroup = group.create_group(f'product_{i}')
             p.to_hdf5(pgroup)
 
     @classmethod
@@ -959,7 +984,7 @@ class Reaction(EqualityMixin):
 
         # Read reaction products
         for i in range(n_product):
-            pgroup = group['product_{}'.format(i)]
+            pgroup = group[f'product_{i}']
             rx.products.append(Product.from_hdf5(pgroup))
 
         return rx

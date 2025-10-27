@@ -4,7 +4,7 @@
 Summary File Format
 ===================
 
-The current version of the summary file format is 6.0.
+The current version of the summary file format is 6.1.
 
 **/**
 
@@ -38,6 +38,7 @@ The current version of the summary file format is 6.0.
              is an array if the cell uses distributed materials, otherwise it is
              a scalar.
            - **temperature** (*double[]*) -- Temperature of the cell in Kelvin.
+           - **density** (*double[]*) -- Density of the cell in [g/cm3].
            - **translation** (*double[3]*) -- Translation applied to the fill
              universe. This dataset is present only if fill_type is set to
              'universe'.
@@ -60,9 +61,11 @@ The current version of the summary file format is 6.0.
            - **coefficients** (*double[]*) -- Array of coefficients that define
              the surface. See :ref:`surface_element` for what coefficients are
              defined for each surface type.
-           - **boundary_condition** (*char[]*) -- Boundary condition applied to
-             the surface. Can be 'transmission', 'vacuum', 'reflective', or
-             'periodic'.
+           - **boundary_type** (*char[]*) -- Boundary condition applied to
+             the surface. Can be 'transmission', 'vacuum', 'reflective',
+             'periodic', or 'white'.
+           - **albedo** (*double*) -- Boundary albedo as a positive multiplier
+             of particle weight. If absent, it is assumed to be 1.0.
            - **geom_type** (*char[]*) -- Type of geometry used to create the cell.
              Either 'csg' or 'dagmc'.
 

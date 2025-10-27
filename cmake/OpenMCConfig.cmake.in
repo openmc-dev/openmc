@@ -1,23 +1,37 @@
 get_filename_component(OpenMC_CMAKE_DIR "${CMAKE_CURRENT_LIST_FILE}" DIRECTORY)
 
-find_package(fmt REQUIRED HINTS ${OpenMC_CMAKE_DIR}/../fmt)
-find_package(gsl-lite REQUIRED HINTS ${OpenMC_CMAKE_DIR}/../gsl-lite)
-find_package(pugixml REQUIRED HINTS ${OpenMC_CMAKE_DIR}/../pugixml)
-find_package(xtl REQUIRED HINTS ${OpenMC_CMAKE_DIR}/../xtl)
-find_package(xtensor REQUIRED HINTS ${OpenMC_CMAKE_DIR}/../xtensor)
-if(@dagmc@)
+# Compute the install prefix from this file's location
+get_filename_component(_OPENMC_PREFIX "${OpenMC_CMAKE_DIR}/../../.." ABSOLUTE)
+
+find_package(fmt CONFIG REQUIRED HINTS ${_OPENMC_PREFIX})
+find_package(pugixml CONFIG REQUIRED HINTS ${_OPENMC_PREFIX})
+find_package(xtl CONFIG REQUIRED HINTS ${_OPENMC_PREFIX})
+find_package(xtensor CONFIG REQUIRED HINTS ${_OPENMC_PREFIX})
+if(@OPENMC_USE_DAGMC@)
   find_package(DAGMC REQUIRED HINTS @DAGMC_DIR@)
 endif()
 
-if(@libmesh@)
+if(@OPENMC_USE_LIBMESH@)
   include(FindPkgConfig)
   list(APPEND CMAKE_PREFIX_PATH @LIBMESH_PREFIX@)
   set(PKG_CONFIG_USE_CMAKE_PREFIX_PATH True)
-  pkg_check_modules(LIBMESH REQUIRED @LIBMESH_PC_FILE@>=1.6.0 IMPORTED_TARGET)
+  pkg_check_modules(LIBMESH REQUIRED @LIBMESH_PC_FILE@>=1.7.0 IMPORTED_TARGET)
 endif()
 
 find_package(PNG)
 
 if(NOT TARGET OpenMC::libopenmc)
   include("${OpenMC_CMAKE_DIR}/OpenMCTargets.cmake")
+endif()
+
+if(@OPENMC_USE_MPI@)
+  find_package(MPI REQUIRED)
+endif()
+
+if(@OPENMC_USE_OPENMP@)
+  find_package(OpenMP REQUIRED)
+endif()
+
+if(@OPENMC_USE_UWUW@ AND NOT ${DAGMC_BUILD_UWUW})
+  message(FATAL_ERROR "UWUW is enabled in OpenMC but the DAGMC installation discovered was not configured with UWUW.")
 endif()

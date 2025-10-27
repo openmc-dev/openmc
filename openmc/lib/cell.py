@@ -11,6 +11,8 @@ from . import _dll
 from .core import _FortranObjectWithID
 from .error import _error_handler
 from .material import Material
+from ..bounding_box import BoundingBox
+
 
 __all__ = ['Cell', 'cells']
 
@@ -32,6 +34,10 @@ _dll.openmc_cell_get_temperature.argtypes = [
     c_int32, POINTER(c_int32), POINTER(c_double)]
 _dll.openmc_cell_get_temperature.restype = c_int
 _dll.openmc_cell_get_temperature.errcheck = _error_handler
+_dll.openmc_cell_get_density.argtypes = [
+    c_int32, POINTER(c_int32), POINTER(c_double)]
+_dll.openmc_cell_get_density.restype = c_int
+_dll.openmc_cell_get_density.errcheck = _error_handler
 _dll.openmc_cell_get_name.argtypes = [c_int32, POINTER(c_char_p)]
 _dll.openmc_cell_get_name.restype = c_int
 _dll.openmc_cell_get_name.errcheck = _error_handler
@@ -56,6 +62,10 @@ _dll.openmc_cell_set_temperature.argtypes = [
     c_int32, c_double, POINTER(c_int32), c_bool]
 _dll.openmc_cell_set_temperature.restype = c_int
 _dll.openmc_cell_set_temperature.errcheck = _error_handler
+_dll.openmc_cell_set_density.argtypes = [
+    c_int32, c_double, POINTER(c_int32), c_bool]
+_dll.openmc_cell_set_density.restype = c_int
+_dll.openmc_cell_set_density.errcheck = _error_handler
 _dll.openmc_cell_set_translation.argtypes = [c_int32, POINTER(c_double)]
 _dll.openmc_cell_set_translation.restype = c_int
 _dll.openmc_cell_set_translation.errcheck = _error_handler
@@ -101,8 +111,8 @@ class Cell(_FortranObjectWithID):
         Name of the cell
     num_instances : int
         Number of unique cell instances
-    bounding_box : 2-tuple of numpy.ndarray
-        Lower-left and upper-right coordinates of bounding box
+    bounding_box : openmc.BoundingBox
+        Axis-aligned bounding box of the cell
     translation : Iterable of float
         3-D coordinates of the translation vector
     rotation : Iterable of float
@@ -234,6 +244,44 @@ class Cell(_FortranObjectWithID):
 
         _dll.openmc_cell_set_temperature(self._index, T, instance, set_contained)
 
+    def get_density(self, instance: int | None = None):
+        """Get the density of a cell in [g/cm3]
+
+        Parameters
+        ----------
+        instance : int or None
+            Which instance of the cell
+
+        """
+
+        if instance is not None:
+            instance = c_int32(instance)
+
+        rho = c_double()
+        _dll.openmc_cell_get_density(self._index, instance, rho)
+        return rho.value
+
+    def set_density(self, rho: float, instance: int | None = None,
+                    set_contained: bool = False):
+        """Set the density of a cell
+
+        Parameters
+        ----------
+        rho : float
+            Density of the cell in [g/cm3]
+        instance : int or None
+            Which instance of the cell
+        set_contained : bool
+            If cell is not filled by a material, whether to set the density
+            of all filled cells
+
+        """
+
+        if instance is not None:
+            instance = c_int32(instance)
+
+        _dll.openmc_cell_set_density(self._index, rho, instance, set_contained)
+
     @property
     def translation(self):
         translation = np.zeros(3)
@@ -266,7 +314,7 @@ class Cell(_FortranObjectWithID):
             return rotation_data[9:]
         else:
             raise ValueError(
-                'Invalid size of rotation matrix: {}'.format(rot_size))
+                f'Invalid size of rotation matrix: {rot_size}')
 
     @rotation.setter
     def rotation(self, rotation_data):
@@ -289,7 +337,7 @@ class Cell(_FortranObjectWithID):
         llc[llc == -inf] = -np.inf
         urc[urc == -inf] = -np.inf
 
-        return llc, urc
+        return BoundingBox(llc, urc)
 
 
 class _CellMapping(Mapping):

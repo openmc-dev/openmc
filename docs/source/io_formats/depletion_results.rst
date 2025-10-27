@@ -47,10 +47,3 @@ The current version of the depletion results file format is 1.1.
 **/reactions/<name>/**
 
 :Attributes: - **index** (*int*) -- Index user in results for this reaction
-
-.. note::
-
-    The reaction rates for some isotopes not originally present may
-    be non-zero, but should be negligible compared to other atoms.
-    This can be controlled by changing the
-    :class:`openmc.deplete.Operator` ``dilute_initial`` attribute.

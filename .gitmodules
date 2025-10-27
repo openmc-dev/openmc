@@ -1,9 +1,6 @@
 [submodule "vendor/pugixml"]
 	path = vendor/pugixml
 	url = https://github.com/zeux/pugixml.git
-[submodule "vendor/gsl-lite"]
-	path = vendor/gsl-lite
-	url = https://github.com/martinmoene/gsl-lite.git
 [submodule "vendor/xtensor"]
 	path = vendor/xtensor
 	url = https://github.com/xtensor-stack/xtensor.git
@@ -13,3 +10,6 @@
 [submodule "vendor/fmt"]
 	path = vendor/fmt
 	url = https://github.com/fmtlib/fmt.git
+[submodule "vendor/Catch2"]
+	path = vendor/Catch2
+	url = https://github.com/catchorg/Catch2.git

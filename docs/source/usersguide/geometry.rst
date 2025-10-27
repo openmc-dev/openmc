@@ -147,12 +147,13 @@ For many regions, a bounding-box can be determined automatically::
 While a bounding box can be determined for regions involving half-spaces of
 spheres, cylinders, and axis-aligned planes, it generally cannot be determined
 if the region involves cones, non-axis-aligned planes, or other exotic
-second-order surfaces. For example, the :func:`openmc.model.hexagonal_prism`
-function returns the interior region of a hexagonal prism; because it is bounded
-by a :class:`openmc.Plane`, trying to get its bounding box won't work::
+second-order surfaces. For example, the :class:`openmc.model.HexagonalPrism`
+class returns a hexagonal prism surface; because it utilizes a
+:class:`openmc.Plane`, trying to get the bounding box of its interior won't
+work::
 
-  >>> hex = openmc.model.hexagonal_prism()
-  >>> hex.bounding_box
+  >>> hex = openmc.model.HexagonalPrism()
+  >>> (-hex).bounding_box
   (array([-0.8660254,       -inf,       -inf]),
    array([ 0.8660254,        inf,        inf]))
 
@@ -172,13 +173,17 @@ surface. To specify a vacuum boundary condition, simply change the
    outer_surface = openmc.Sphere(r=100.0)
    outer_surface.boundary_type = 'vacuum'
 
-Reflective and periodic boundary conditions can be set with the strings
-'reflective' and 'periodic'. Vacuum and reflective boundary conditions can be
-applied to any type of surface. Periodic boundary conditions can be applied to
-pairs of planar surfaces. If there are only two periodic surfaces they will be
-matched automatically. Otherwise it is necessary to specify pairs explicitly
-using the :attr:`Surface.periodic_surface` attribute as in the following
-example::
+Reflective, periodic, and white boundary conditions can be set with the
+strings 'reflective', 'periodic', and 'white' respectively.
+Vacuum, reflective and white boundary conditions can be applied to any
+type of surface. The 'white' boundary condition supports diffuse particle
+reflection in contrast to specular reflection provided by the 'reflective'
+boundary condition.
+
+Periodic boundary conditions can be applied to pairs of planar surfaces.
+If there are only two periodic surfaces they will be matched automatically.
+Otherwise it is necessary to specify pairs explicitly using the
+:attr:`Surface.periodic_surface` attribute as in the following example::
 
   p1 = openmc.Plane(a=0.3, b=5.0, d=1.0, boundary_type='periodic')
   p2 = openmc.Plane(a=0.3, b=5.0, d=-1.0, boundary_type='periodic')
@@ -195,6 +200,20 @@ inwards---towards the valid geometry. For example, a :class:`XPlane` and
 lies in the first quadrant of the Cartesian grid. If the geometry instead lies
 in the fourth quadrant, the :class:`YPlane` must be replaced by a
 :class:`Plane` with the normal vector pointing in the :math:`-y` direction.
+
+Additionally, 'reflective', 'periodic', and 'white' boundary conditions have
+an albedo parameter that can be used to modify the importance of particles
+that encounter the boundary. The albedo value specifies the ratio between
+the particle's importance after interaction with the boundary to its initial
+importance. The following example creates a reflective planar surface which
+reduces the reflected particles' importance by 33.3%::
+
+   x1 = openmc.XPlane(1.0, boundary_type='reflective', albedo=0.667)
+
+   # This is equivalent
+   x1 = openmc.XPlane(1.0)
+   x1.boundary_type = 'reflective'
+   x1.albedo = 0.667
 
 .. _usersguide_cells:
 
@@ -410,7 +429,7 @@ code would work::
   hexlat.universes = [outer_ring, middle_ring, inner_ring]
 
 If you need to create a hexagonal boundary (composed of six planar surfaces) for
-a hexagonal lattice, :func:`openmc.model.hexagonal_prism` can be used.
+a hexagonal lattice, :class:`openmc.model.HexagonalPrism` can be used.
 
 .. _usersguide_geom_export:
 
@@ -455,7 +474,7 @@ applied as universes in the OpenMC geometry file. A geometry represented
 entirely by a DAGMC geometry will contain only the DAGMC universe. Using a
 :class:`openmc.DAGMCUniverse` looks like the following::
 
-   dag_univ = openmc.DAGMCUniverse(filename='dagmc.h5m')
+   dag_univ = openmc.DAGMCUniverse('dagmc.h5m')
    geometry = openmc.Geometry(dag_univ)
    geometry.export_to_xml()
 
@@ -476,13 +495,22 @@ It is important in these cases to understand the DAGMC model's position
 with respect to the CSG geometry. DAGMC geometries can be plotted with
 OpenMC to verify that the model matches one's expectations.
 
-**Note:** DAGMC geometries used in OpenMC are currently required to be clean,
-meaning that all surfaces have been `imprinted and merged
-<https://svalinn.github.io/DAGMC/usersguide/trelis_workflow.html>`_
-successfully and that the model is `watertight
-<https://svalinn.github.io/DAGMC/usersguide/tools.html#make-watertight>`_. Future
-implementations of DAGMC geometry will support small volume overlaps and
-un-merged surfaces.
+By default, when you specify a .h5m file for a :class:`~openmc.DAGMCUniverse`
+instance, it will store the absolute path to the .h5m file. If you prefer to
+store the relative path, you can set the ``'resolve_paths'`` configuration
+variable::
+
+  openmc.config['resolve_paths'] = False
+  dag_univ = openmc.DAGMCUniverse('dagmc.h5m')
+
+.. note::
+    DAGMC geometries used in OpenMC are currently required to be clean,
+    meaning that all surfaces have been `imprinted and merged
+    <https://svalinn.github.io/DAGMC/usersguide/cubit_basics.html>`_ successfully
+    and that the model is `watertight
+    <https://svalinn.github.io/DAGMC/usersguide/tools.html#make-watertight>`_.
+    Future implementations of DAGMC geometry will support small volume overlaps and
+    un-merged surfaces.
 
 Cell, Surface, and Material IDs
 -------------------------------

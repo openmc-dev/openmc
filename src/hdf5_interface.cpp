@@ -92,7 +92,7 @@ void get_shape_attr(hid_t obj_id, const char* name, hsize_t* dims)
   H5Aclose(attr);
 }
 
-hid_t create_group(hid_t parent_id, char const* name)
+hid_t create_group(hid_t parent_id, const char* name)
 {
   hid_t out = H5Gcreate(parent_id, name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   if (out < 0) {
@@ -116,6 +116,12 @@ void close_group(hid_t group_id)
 {
   if (H5Gclose(group_id) < 0)
     fatal_error("Failed to close group");
+}
+
+void close_object(hid_t obj_id)
+{
+  if (H5Oclose(obj_id) < 0)
+    fatal_error("Failed to close object");
 }
 
 int dataset_ndims(hid_t dset)
@@ -219,8 +225,7 @@ void get_name(hid_t obj_id, std::string& name)
 {
   size_t size = 1 + H5Iget_name(obj_id, nullptr, 0);
   name.resize(size);
-  // TODO: switch to name.data() when using C++17
-  H5Iget_name(obj_id, &name[0], size);
+  H5Iget_name(obj_id, name.data(), size);
 }
 
 int get_num_datasets(hid_t group_id)
@@ -392,6 +397,12 @@ hid_t open_group(hid_t group_id, const char* name)
 {
   ensure_exists(group_id, name);
   return H5Gopen(group_id, name, H5P_DEFAULT);
+}
+
+hid_t open_object(hid_t group_id, const std::string& name)
+{
+  ensure_exists(group_id, name.c_str());
+  return H5Oopen(group_id, name.c_str(), H5P_DEFAULT);
 }
 
 void read_attr(hid_t obj_id, const char* name, hid_t mem_type_id, void* buffer)

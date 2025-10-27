@@ -305,4 +305,4 @@ def test_plot_directory(run_in_tmpdir):
     # use a non-existent directory, should raise an error
     plot.filename = './not-a-dir/plot_1'
     with pytest.raises(RuntimeError, match='does not exist'):
-        pwr_pin.plot_geometry()        
+        pwr_pin.plot_geometry()

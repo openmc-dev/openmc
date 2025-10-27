@@ -306,3 +306,22 @@ def test_plot_directory(run_in_tmpdir):
     plot.filename = './not-a-dir/plot_1'
     with pytest.raises(RuntimeError, match='does not exist'):
         pwr_pin.plot_geometry()
+
+
+def test_plot_filename_pathlike():
+    """Test that plot filename accepts Path objects"""
+    plot = openmc.Plot()
+    
+    # Test with string (should still work)
+    plot.filename = "test_plot"
+    assert plot.filename == "test_plot"
+    
+    # Test with Path object
+    path_obj = Path("test_plot_path")
+    plot.filename = path_obj
+    assert plot.filename == path_obj
+    
+    # Test with Path object containing subdirectories
+    path_with_subdir = Path("subdir") / "test_plot"
+    plot.filename = path_with_subdir
+    assert plot.filename == path_with_subdir

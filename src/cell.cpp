@@ -101,6 +101,25 @@ double Cell::temperature(int32_t instance) const
   }
 }
 
+double Cell::density_mult(int32_t instance) const
+{
+  if (instance >= 0) {
+    return density_mult_.size() == 1 ? density_mult_.at(0)
+                                     : density_mult_.at(instance);
+  } else {
+    return density_mult_[0];
+  }
+}
+
+double Cell::density(int32_t instance) const
+{
+  const int32_t mat_index = material(instance);
+  if (mat_index == MATERIAL_VOID)
+    return 0.0;
+
+  return density_mult(instance) * model::materials[mat_index]->density_gpcc();
+}
+
 void Cell::set_temperature(double T, int32_t instance, bool set_contained)
 {
   if (settings::temperature_method == TemperatureMethod::INTERPOLATION) {
@@ -151,6 +170,47 @@ void Cell::set_temperature(double T, int32_t instance, bool set_contained)
   }
 }
 
+void Cell::set_density(double density, int32_t instance, bool set_contained)
+{
+  if (type_ != Fill::MATERIAL && !set_contained) {
+    fatal_error(
+      fmt::format("Attempted to set the density multiplier of cell {} "
+                  "which is not filled by a material.",
+        id_));
+  }
+
+  if (type_ == Fill::MATERIAL) {
+    const int32_t mat_index = material(instance);
+    if (mat_index == MATERIAL_VOID)
+      return;
+
+    if (instance >= 0) {
+      // If density multiplier vector is not big enough, resize it first
+      if (density_mult_.size() != n_instances())
+        density_mult_.resize(n_instances(), density_mult_[0]);
+
+      // Set density multiplier for the corresponding instance
+      density_mult_.at(instance) =
+        density / model::materials[mat_index]->density_gpcc();
+    } else {
+      // Set density multiplier for all instances
+      for (auto& x : density_mult_) {
+        x = density / model::materials[mat_index]->density_gpcc();
+      }
+    }
+  } else {
+    auto contained_cells = this->get_contained_cells(instance);
+    for (const auto& entry : contained_cells) {
+      auto& cell = model::cells[entry.first];
+      assert(cell->type_ == Fill::MATERIAL);
+      auto& instances = entry.second;
+      for (auto instance : instances) {
+        cell->set_density(density, instance);
+      }
+    }
+  }
+}
+
 void Cell::export_properties_hdf5(hid_t group) const
 {
   // Create a group for this cell.
@@ -161,6 +221,15 @@ void Cell::export_properties_hdf5(hid_t group) const
   for (auto sqrtkT_val : sqrtkT_)
     temps.push_back(sqrtkT_val * sqrtkT_val / K_BOLTZMANN);
   write_dataset(cell_group, "temperature", temps);
+
+  // Write density for one or more cell instances
+  if (type_ == Fill::MATERIAL && material_.size() > 0) {
+    vector<double> density;
+    for (int32_t i = 0; i < density_mult_.size(); ++i)
+      density.push_back(this->density(i));
+
+    write_dataset(cell_group, "density", density);
+  }
 
   close_group(cell_group);
 }
@@ -176,7 +245,7 @@ void Cell::import_properties_hdf5(hid_t group)
   // Ensure number of temperatures makes sense
   auto n_temps = temps.size();
   if (n_temps > 1 && n_temps != n_instances()) {
-    throw std::runtime_error(fmt::format(
+    fatal_error(fmt::format(
       "Number of temperatures for cell {} doesn't match number of instances",
       id_));
   }
@@ -186,6 +255,25 @@ void Cell::import_properties_hdf5(hid_t group)
   sqrtkT_.resize(temps.size());
   for (int64_t i = 0; i < temps.size(); ++i) {
     this->set_temperature(temps[i], i);
+  }
+
+  // Read densities
+  if (object_exists(cell_group, "density")) {
+    vector<double> density;
+    read_dataset(cell_group, "density", density);
+
+    // Ensure number of densities makes sense
+    auto n_density = density.size();
+    if (n_density > 1 && n_density != n_instances()) {
+      fatal_error(fmt::format("Number of densities for cell {} "
+                              "doesn't match number of instances",
+        id_));
+    }
+
+    // Set densities.
+    for (int32_t i = 0; i < n_density; ++i) {
+      this->set_density(density[i], i);
+    }
   }
 
   close_group(cell_group);
@@ -226,6 +314,8 @@ void Cell::to_hdf5(hid_t cell_group) const
     for (auto sqrtkT_val : sqrtkT_)
       temps.push_back(sqrtkT_val * sqrtkT_val / K_BOLTZMANN);
     write_dataset(group, "temperature", temps);
+
+    write_dataset(group, "density_mult", density_mult_);
 
   } else if (type_ == Fill::UNIVERSE) {
     write_dataset(group, "fill_type", "universe");
@@ -341,6 +431,44 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
     // Convert to sqrt(k*T).
     for (auto& T : sqrtkT_) {
       T = std::sqrt(K_BOLTZMANN * T);
+    }
+  }
+
+  // Read the density element which can be distributed similar to temperature.
+  // These get assigned to the density multiplier, requiring a division by
+  // the material density.
+  // Note: calculating the actual density multiplier is deferred until materials
+  // are finalized. density_mult_ contains the true density in the meantime.
+  if (check_for_node(cell_node, "density")) {
+    density_mult_ = get_node_array<double>(cell_node, "density");
+    density_mult_.shrink_to_fit();
+
+    // Make sure this is a material-filled cell.
+    if (material_.size() == 0) {
+      fatal_error(fmt::format(
+        "Cell {} was specified with a density but no material. Density"
+        "specification is only valid for cells filled with a material.",
+        id_));
+    }
+
+    // Make sure this is a non-void material.
+    for (auto mat_id : material_) {
+      if (mat_id == MATERIAL_VOID) {
+        fatal_error(fmt::format(
+          "Cell {} was specified with a density, but contains a void "
+          "material. Density specification is only valid for cells "
+          "filled with a non-void material.",
+          id_));
+      }
+    }
+
+    // Make sure all densities are non-negative and greater than zero.
+    for (auto rho : density_mult_) {
+      if (rho <= 0) {
+        fatal_error(fmt::format(
+          "Cell {} was specified with a density less than or equal to zero",
+          id_));
+      }
     }
   }
 
@@ -1129,6 +1257,24 @@ extern "C" int openmc_cell_set_temperature(
   return 0;
 }
 
+extern "C" int openmc_cell_set_density(
+  int32_t index, double density, const int32_t* instance, bool set_contained)
+{
+  if (index < 0 || index >= model::cells.size()) {
+    strcpy(openmc_err_msg, "Index in cells array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
+  int32_t instance_index = instance ? *instance : -1;
+  try {
+    model::cells[index]->set_density(density, instance_index, set_contained);
+  } catch (const std::exception& e) {
+    set_errmsg(e.what());
+    return OPENMC_E_UNASSIGNED;
+  }
+  return 0;
+}
+
 extern "C" int openmc_cell_get_temperature(
   int32_t index, const int32_t* instance, double* T)
 {
@@ -1140,6 +1286,36 @@ extern "C" int openmc_cell_get_temperature(
   int32_t instance_index = instance ? *instance : -1;
   try {
     *T = model::cells[index]->temperature(instance_index);
+  } catch (const std::exception& e) {
+    set_errmsg(e.what());
+    return OPENMC_E_UNASSIGNED;
+  }
+  return 0;
+}
+
+extern "C" int openmc_cell_get_density(
+  int32_t index, const int32_t* instance, double* density)
+{
+  if (index < 0 || index >= model::cells.size()) {
+    strcpy(openmc_err_msg, "Index in cells array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
+  int32_t instance_index = instance ? *instance : -1;
+  try {
+    if (model::cells[index]->type_ != Fill::MATERIAL) {
+      fatal_error(
+        fmt::format("Cell {}, instance {} is not filled with a material.",
+          model::cells[index]->id_, instance_index));
+    }
+
+    int32_t mat_index = model::cells[index]->material(instance_index);
+    if (mat_index == MATERIAL_VOID) {
+      *density = 0.0;
+    } else {
+      *density = model::cells[index]->density_mult(instance_index) *
+                 model::materials[mat_index]->density_gpcc();
+    }
   } catch (const std::exception& e) {
     set_errmsg(e.what());
     return OPENMC_E_UNASSIGNED;

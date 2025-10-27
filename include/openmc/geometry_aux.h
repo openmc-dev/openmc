@@ -38,6 +38,12 @@ void adjust_indices();
 void assign_temperatures();
 
 //==============================================================================
+//! Finalize densities (compute density multipliers).
+//==============================================================================
+
+void finalize_cell_densities();
+
+//==============================================================================
 //! \brief Obtain a list of temperatures that each nuclide/thermal scattering
 //! table appears at in the model. Later, this list is used to determine the
 //! actual temperatures to read (which may be different if interpolation is

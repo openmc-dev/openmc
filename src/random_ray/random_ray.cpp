@@ -909,7 +909,7 @@ void RandomRay::attenuate_flux_linear_source_void(
   }
 }
 
-void RandomRay::restart_ray(FlatSourceDomain* domain, RayExchangeData& data, vector<float> angular_flux)
+void RandomRay::restart_ray(FlatSourceDomain* domain, RayExchangeData& data, vector<float>& angular_flux)
 {
 
   domain_ = domain;

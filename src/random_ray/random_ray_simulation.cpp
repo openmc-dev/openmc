@@ -604,6 +604,13 @@ void RandomRaySimulation::simulate()
 
     // Average number of ray communications between ranks per batch
     avg_num_comms_ = avg_num_comms_/settings::n_batches; //TODO: should this be double?
+
+    // Exchange intersection data
+    if (mpi::master){
+      MPI_Reduce(MPI_IN_PLACE, &total_geometric_intersections_, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, 0, mpi::intracomm);
+    } else {
+      MPI_Reduce(&total_geometric_intersections_, nullptr, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, 0, mpi::intracomm);
+    }
   }
 
   domain_->count_external_source_regions();
@@ -736,7 +743,7 @@ void RandomRaySimulation::print_results_random_ray(
     if (mpi::n_procs > 1){
       fmt::print(" MPI Ranks                         = {}\n", mpi::n_procs);
       fmt::print(" Avg Number of Subdomain Crossings = {}\n", avg_num_comms);
-      fmt::print(" Number of load optimzation calls  = {}\n", mpi::decomp_map.cnt_optimizations_total_);
+      fmt::print(" Number of load optimization calls  = {}\n", mpi::decomp_map.cnt_optimizations_total_);
       fmt::print("    unconverged optimizations      = {}\n", mpi::decomp_map.cnt_unconverged_optimizations_total_);
       fmt::print(" Load per MPI Rank                 = Rank {}: {:.2f}%\n", 0, mpi::decomp_map.rank_load_[0]*100.0);
       for (int i = 1; i < mpi::n_procs; i++) {

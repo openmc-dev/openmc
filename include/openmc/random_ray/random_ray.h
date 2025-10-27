@@ -68,7 +68,7 @@ public:
     SourceRegionHandle& srh, double distance, Position r);
 
   void initialize_ray(uint64_t ray_id, FlatSourceDomain* domain);
-  void restart_ray(FlatSourceDomain* domain, RayExchangeData& data, vector<float> angular_flux);
+  void restart_ray(FlatSourceDomain* domain, RayExchangeData& data, vector<float>& angular_flux);
   // void initialize_ray(uint64_t ray_id, FlatSourceDomain* domain, RayBank RB);
   uint64_t transport_history_based_single_ray();
   SourceSite sample_prng();

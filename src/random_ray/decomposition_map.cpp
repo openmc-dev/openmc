@@ -89,10 +89,10 @@ void DecompositionMap::generate_rank_centers(){
 
     for (int rank = 0; rank < mpi::n_procs; rank++) {
 
-      if (mpi::master){
-        //TODO: temporary
-        printf("  Rank %d: Point (%f, %f, %f)\n", rank, rank_centers_[rank].x, rank_centers_[rank].y, rank_centers_[rank].z); 
-      }
+      // if (mpi::master){
+      //   //TODO: temporary
+      //   printf("  Rank %d: Point (%f, %f, %f)\n", rank, rank_centers_[rank].x, rank_centers_[rank].y, rank_centers_[rank].z); 
+      // }
 
       // Calculate centroid of the cell
       Position centroid = calculate_centroids(position_sum_per_rank[rank], num_points_per_rank[rank], rank);
@@ -137,7 +137,7 @@ void DecompositionMap::calculate_grid_points(int grid_points_total){
     double volume = domain_length[0] * domain_length[1] * domain_length[2];
 
     //TODO: temporary
-    printf("Spatial box volume: %f \n", volume);
+    // printf("Spatial box volume: %f \n", volume);
 
     // For each dimension, determine grid points along that direction based on aspect ratio: 
     // domain_length / volume^(1/3) = grid_points_dimension / grid_points_total^(1/3).
@@ -178,7 +178,7 @@ void DecompositionMap::calculate_grid_points(int grid_points_total){
     } 
 
     //TODO: temporary
-    printf("Grid points in x, y, z: %d, %d, %d \n", grid_points_per_dimension[0], grid_points_per_dimension[1], grid_points_per_dimension[2]);
+    // printf("Grid points in x, y, z: %d, %d, %d \n", grid_points_per_dimension[0], grid_points_per_dimension[1], grid_points_per_dimension[2]);
 
     // Adjust grid points in each dimension to match actual total number of grid points to the number of grid points requested
     double new_total = grid_points_per_dimension[0] * grid_points_per_dimension[1] * grid_points_per_dimension[2];
@@ -198,7 +198,7 @@ void DecompositionMap::calculate_grid_points(int grid_points_total){
     }
   
     //TODO: temporary
-    printf("Grid points in x, y, z: %d, %d, %d \n", grid_points_per_dimension[0], grid_points_per_dimension[1], grid_points_per_dimension[2]);
+    // printf("Grid points in x, y, z: %d, %d, %d \n", grid_points_per_dimension[0], grid_points_per_dimension[1], grid_points_per_dimension[2]);
 
     // Calculate spacing between grid points in each dimension
     vector <double> delta_value(3, 0.0);
@@ -339,13 +339,12 @@ bool DecompositionMap::any_discovered_source_regions(ParallelMap<SourceRegionKey
     discovered_source_regions){
 
   int flag = 0;
-
   if(discovered_source_regions.begin() != discovered_source_regions.end()) {
     flag = 1;
   }
   
   MPI_Allreduce(MPI_IN_PLACE, &flag, 1, MPI_INT, MPI_MAX, mpi::intracomm);
-  
+
   return flag > 0;
 }
 
@@ -418,19 +417,15 @@ void DecompositionMap::exchange_sr_info(ParallelMap<SourceRegionKey, SourceRegio
             receiver = resident_rank;
           }
 
-          // Broadcast n_hits such that each rank can update load balance
+          // Broadcast load of exchanged source region such that each rank can update load balance
           double bcast_load = 0;
-          // int bcast_n_hits = 0;
           if (mpi::rank == sender) {
             SourceRegion& contested_sr = discovered_source_regions[sr_key];
             double volume_sr = contested_sr.scalars_.volume_;
-            bcast_load = C1 * (contested_sr.scalars_.n_hits_/simulation::current_batch) * negroups_ + volume_sr * ray_tracing_cost_[sr_key.base_source_region_id];
-            // bcast_n_hits = contested_sr.scalars_.n_hits_;
+            bcast_load = C1_ * (contested_sr.scalars_.n_hits_/simulation::current_batch) * negroups_ + volume_sr * ray_tracing_cost_[sr_key.base_source_region_id];
           }
-          // MPI_Bcast(&bcast_n_hits, 1, MPI_INT, sender, mpi::intracomm);
           MPI_Bcast(&bcast_load, 1, MPI_DOUBLE, sender, mpi::intracomm);
 
-          // double load_change = bcast_n_hits / static_cast<double>(n_hits_sum_);
           double load_change = bcast_load / total_load_;
           rank_load_[sender] -= load_change;
           rank_load_[receiver] += load_change;
@@ -576,8 +571,6 @@ int DecompositionMap::find_closest_rank(Position r, bool test_all_ranks) {
   double min_distance = INFTY;
 
   vector<int> test_ranks;
-  // test_ranks = mpi::decomp_map.my_neighbors;
-
 
   if (test_all_ranks){
     test_ranks.resize(mpi::n_procs);
@@ -589,7 +582,6 @@ int DecompositionMap::find_closest_rank(Position r, bool test_all_ranks) {
   }
   
   // Find closest rank center
-  // for (int rank = 0; rank < mpi::n_procs; rank++) {
   for (int rank : test_ranks) {
       double dist = (r - rank_centers_[rank]).norm();
       // Distance function corresponding to weighted power Voronoi diagram.
@@ -608,34 +600,30 @@ int DecompositionMap::find_closest_rank(Position r, bool test_all_ranks) {
   return closest_rank;
 }
 
-void DecompositionMap::calculate_rank_load(FlatSourceDomain* domain){ //TODO: This uses accumulated value, not batch-wise values!
+void DecompositionMap::calculate_rank_load(FlatSourceDomain* domain){
 
   // Reset rank load
   std::fill(rank_load_.begin(), rank_load_.end(), 0.0);
 
+  // Reset volumes, local volumes of base source regions, which might change when source regions change rank ownership
   std::fill(volume_base_sr_.begin(), volume_base_sr_.end(), 0.0);
-
-
-  // double volume_normalization_factor =
-  //   1.0 / (settings::n_particles * RandomRay::distance_active_ * simulation::current_batch);
-
 
   // Share number of ray tracing scores per base source region across all ranks
   // MPI_Allreduce(MPI_IN_PLACE, num_base_source_region_RT_batch_.data(), n_base_sr_, MPI_UINT64_T, MPI_SUM, mpi::intracomm);
   // MPI_Allreduce(MPI_IN_PLACE, num_mesh_bin_RT_batch_.data(), n_base_sr_, MPI_UINT64_T, MPI_SUM, mpi::intracomm);
 
-  if(mpi::master){
-    uint64_t sum_bsr_RT = std::accumulate(num_base_source_region_RT_batch_.begin(), num_base_source_region_RT_batch_.end(), uint64_t{0});
-    uint64_t sum_bsr_RT_tot = std::accumulate(num_base_source_region_RT_tot_.begin(), num_base_source_region_RT_tot_.end(), uint64_t{0});
-    uint64_t sum_mesh_bins = std::accumulate(mesh_bins_per_base_sr_.begin(), mesh_bins_per_base_sr_.end(), uint64_t{0});
-    uint64_t sum_mb_RT = std::accumulate(num_mesh_bin_RT_batch_.begin(), num_mesh_bin_RT_batch_.end(), uint64_t{0});
-    uint64_t sum_mb_RT_tot = std::accumulate(num_mesh_bin_RT_tot_.begin(), num_mesh_bin_RT_tot_.end(), uint64_t{0});
-    printf("Sum of base_source_region_RT_batch_ before: %lu\n", sum_bsr_RT_tot);
-    printf("Sum of mesh_bin_RT_batch_ before: %lu\n", sum_mb_RT_tot);
-    printf("Sum of base_source_region_RT_batch_ new: %lu\n", sum_bsr_RT);
-    printf("Sum of mesh_bin_RT_batch_ new: %lu\n", sum_mb_RT);
-    printf("Sum of mesh bins: %lu\n", sum_mesh_bins);
-  }
+  // if(mpi::master){
+  //   uint64_t sum_bsr_RT = std::accumulate(num_base_source_region_RT_batch_.begin(), num_base_source_region_RT_batch_.end(), uint64_t{0});
+  //   uint64_t sum_bsr_RT_tot = std::accumulate(num_base_source_region_RT_tot_.begin(), num_base_source_region_RT_tot_.end(), uint64_t{0});
+  //   uint64_t sum_mesh_bins = std::accumulate(mesh_bins_per_base_sr_.begin(), mesh_bins_per_base_sr_.end(), uint64_t{0});
+  //   uint64_t sum_mb_RT = std::accumulate(num_mesh_bin_RT_batch_.begin(), num_mesh_bin_RT_batch_.end(), uint64_t{0});
+  //   uint64_t sum_mb_RT_tot = std::accumulate(num_mesh_bin_RT_tot_.begin(), num_mesh_bin_RT_tot_.end(), uint64_t{0});
+  //   printf("Sum of base_source_region_RT_batch_ before: %lu\n", sum_bsr_RT_tot);
+  //   printf("Sum of mesh_bin_RT_batch_ before: %lu\n", sum_mb_RT_tot);
+  //   printf("Sum of base_source_region_RT_batch_ new: %lu\n", sum_bsr_RT);
+  //   printf("Sum of mesh_bin_RT_batch_ new: %lu\n", sum_mb_RT);
+  //   printf("Sum of mesh bins: %lu\n", sum_mesh_bins);
+  // }
 
   num_base_source_region_RT_tot_ = num_base_source_region_RT_batch_;
   num_mesh_bin_RT_tot_ = num_mesh_bin_RT_batch_;
@@ -654,9 +642,8 @@ void DecompositionMap::calculate_rank_load(FlatSourceDomain* domain){ //TODO: Th
   // Add mesh_bins per base source region for newly discovered source regions
   vector<uint64_t> mesh_bins_per_base_sr_local(n_base_sr_, 0);
   for (const auto & [sr_key, sr] : domain->discovered_source_regions_) {
-    mesh_bins_per_base_sr_[sr_key.base_source_region_id] ++;
+    mesh_bins_per_base_sr_[sr_key.base_source_region_id] ++; //TODO: Remove this, currently still needed for testing
     volume_base_sr_[sr_key.base_source_region_id] += sr.scalars_.volume_;
-    // mesh_bins_per_base_sr_local[sr_key.base_source_region_id] ++;
   }
 
 
@@ -698,18 +685,16 @@ void DecompositionMap::calculate_rank_load(FlatSourceDomain* domain){ //TODO: Th
 
 
   // calculate ray tracing cost per base source region
-  //TODO: Add check if volume is zero
   #pragma omp parallel for
     for (uint64_t bsr = 0; bsr < n_base_sr_; bsr++) {
-      // volume_base_sr_[bsr] *= volume_normalization_factor;
       if (volume_base_sr_[bsr] > 0.0) {
       // if (mesh_bins_per_base_sr_[bsr] > 0) {
         // ray_tracing_cost_[bsr] = (static_cast<double>(num_base_source_region_RT_tot_[bsr] + num_mesh_bin_RT_tot_[bsr]) / 
         //                           mesh_bins_per_base_sr_[bsr]); //TODO: weighted with volume?
-        if (mpi::master){
-          printf("Base source region %lu: Volume %f, Mesh bins %lu, bsrRT %lu, mbRT: %lu\n", bsr, volume_base_sr_[bsr], mesh_bins_per_base_sr_[bsr], num_base_source_region_RT_tot_[bsr], num_mesh_bin_RT_tot_[bsr]);
-        }
-        ray_tracing_cost_[bsr] =  (C2 * static_cast<double>(num_base_source_region_RT_tot_[bsr]) +  C3 * static_cast<double>(num_mesh_bin_RT_tot_[bsr]))/volume_base_sr_[bsr];
+        // if (mpi::master){
+        //   printf("Base source region %lu: Volume %f, Mesh bins %lu, bsrRT %lu, mbRT: %lu\n", bsr, volume_base_sr_[bsr], mesh_bins_per_base_sr_[bsr], num_base_source_region_RT_tot_[bsr], num_mesh_bin_RT_tot_[bsr]);
+        // }
+        ray_tracing_cost_[bsr] =  (C2_ * static_cast<double>(num_base_source_region_RT_tot_[bsr]) +  C3_ * static_cast<double>(num_mesh_bin_RT_tot_[bsr]))/volume_base_sr_[bsr];
       } else {
         ray_tracing_cost_[bsr] = 0.0;
       }
@@ -726,7 +711,7 @@ void DecompositionMap::calculate_rank_load(FlatSourceDomain* domain){ //TODO: Th
       uint64_t base_sr = sr_key.base_source_region_id;
       double volume_sr = domain->source_regions_.volume_t(sr);
       volume_sr += domain->source_regions_.volume(sr);
-      double load_sr = C1 * (domain->source_regions_.n_hits(sr)/simulation::current_batch) * negroups_ + volume_sr * ray_tracing_cost_[base_sr];
+      double load_sr = C1_ * (domain->source_regions_.n_hits(sr)/simulation::current_batch) * negroups_ + volume_sr * ray_tracing_cost_[base_sr];
       load += load_sr;
     }
 
@@ -735,9 +720,8 @@ void DecompositionMap::calculate_rank_load(FlatSourceDomain* domain){ //TODO: Th
   for (const auto & [sr_key, sr] : domain->discovered_source_regions_) {
     uint64_t base_sr = sr_key.base_source_region_id;
     double volume_sr = sr.scalars_.volume_;
-    load_sr = C1 * (sr.scalars_.n_hits_/simulation::current_batch) * negroups_ + volume_sr * ray_tracing_cost_[base_sr];
+    load_sr = C1_ * (sr.scalars_.n_hits_/simulation::current_batch) * negroups_ + volume_sr * ray_tracing_cost_[base_sr];
     load += load_sr;
-    // n_hits_rank += sr.scalars_.n_hits_;
   }
   
   if (mpi::master){
@@ -755,9 +739,9 @@ void DecompositionMap::calculate_rank_load(FlatSourceDomain* domain){ //TODO: Th
       volumes[base_sr] += volume_sr/volume_base_sr_[base_sr];
     }
 
-    for (uint64_t bsr = 0; bsr < n_base_sr_; bsr++) {
-      printf("Base source region %lu: Volume total %f, Ray tracing cost %f, \n", bsr, volumes[bsr], ray_tracing_cost_[bsr]);
-    }
+    // for (uint64_t bsr = 0; bsr < n_base_sr_; bsr++) {
+    //   printf("Base source region %lu: Volume total %f, Ray tracing cost %f, \n", bsr, volumes[bsr], ray_tracing_cost_[bsr]);
+    // }
   }
 
   //TODO: Temporary print-outs
@@ -766,20 +750,11 @@ void DecompositionMap::calculate_rank_load(FlatSourceDomain* domain){ //TODO: Th
   }
 
   // Calculate rank load based on number of source region hits
-  // uint64_t n_hits_total = 0;
   double load_total = 0.0;
   MPI_Allreduce(&load, &load_total, 1, MPI_DOUBLE, MPI_SUM, mpi::intracomm);
   load = load / load_total; //TODO: Should load actually be fractional?
   total_load_ = load_total;
 
-  // n_hits_sum_ = load_total; // TODO: needs renaming
-  // MPI_Allreduce(&n_hits_rank, &n_hits_total, 1, MPI_INT64_T, MPI_SUM, mpi::intracomm);
-  // double load = (n_hits_rank/static_cast<double>(n_hits_total));
-  // n_hits_sum_ = n_hits_total; //TODO: This needs updating
-
-
-
-  
   //TODO: Temporary print-outs
   // if(mpi::master){
   //   printf("Total hits: %ld \n", n_hits_total);
@@ -788,18 +763,6 @@ void DecompositionMap::calculate_rank_load(FlatSourceDomain* domain){ //TODO: Th
   // Communicate load across ranks
   MPI_Allgather(&load, 1, MPI_DOUBLE, rank_load_.data(), 1, MPI_DOUBLE, mpi::intracomm);
 
-  // for (int rank = 0; rank < mpi::n_procs; rank++) {
-  //   double bcast_load = 0.0;
-  //   if (rank == mpi::rank) {
-  //     bcast_load = load;
-  //   }
-  //   MPI_Bcast(&bcast_load, 1, MPI_DOUBLE, rank, mpi::intracomm);
-  //   rank_load_[rank] = bcast_load;
-  //   //TODO: Temporary print-outs
-  //   // if (mpi::master) {
-  //   //   printf("RANK %d: %.2f%% ", rank, rank_load_[rank]*100.0);
-  //   // }
-  // }
   for (int rank = 0; rank < mpi::n_procs; rank++) {
     // TODO: Temporary print-outs
     if (mpi::master) {
@@ -826,10 +789,13 @@ void DecompositionMap::calculate_rank_load(FlatSourceDomain* domain){ //TODO: Th
   // }
 
   double max_load = *std::max_element(rank_load_.begin(), rank_load_.end());
-  // double avg_load = total_load_/mpi::n_procs;
+  // double avg_load1 = total_load_/mpi::n_procs;
   double avg_load = std::accumulate(rank_load_.begin(), rank_load_.end(), 0.0)/mpi::n_procs;
+  // if (mpi::master){
+  //   printf("Total load %f, avg load calc1 %f, avg load calc2 %f \n", total_load_, target_load_, avg_load);
+  // }
   max_imbalance_ = (max_load - avg_load) / avg_load;
-  if (mpi::master){printf("Max load %f, avg load %f \n", max_load, avg_load);}
+  if (mpi::master){printf("Max load %f, avg load %f \n", max_load, avg_load);} //TODO: can use target_load_ instead!
 
   // Reset batch-wise counters
   fill(num_base_source_region_RT_batch_.begin(), num_base_source_region_RT_batch_.end(), 0);
@@ -1036,7 +1002,7 @@ void DecompositionMap::update_load(FlatSourceDomain* domain, bool check_all_rank
         int owner = find_closest_rank(centroid, check_all_ranks);
         // local_hits[owner] += domain->source_regions_.n_hits(sr);
         double volume_sr = domain->source_regions_.volume_t(sr);
-        local_load[owner] += C1 * (domain->source_regions_.n_hits(sr)/simulation::current_batch) * negroups_ + volume_sr * ray_tracing_cost_[domain->source_regions_.key(sr).base_source_region_id];
+        local_load[owner] += C1_ * (domain->source_regions_.n_hits(sr)/simulation::current_batch) * negroups_ + volume_sr * ray_tracing_cost_[domain->source_regions_.key(sr).base_source_region_id];
       }
 
     // Combine results from different threads

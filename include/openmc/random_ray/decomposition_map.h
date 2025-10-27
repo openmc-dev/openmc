@@ -85,9 +85,9 @@ public:
   vector<double> volume_base_sr_;
 
   // coefficients for load calculation
-  double C1 = 1.0;
-  double C2 = 0.1; 
-  double C3 = 0.1; 
+  double C1_ = 1.0;
+  double C2_ = 0.1; 
+  double C3_ = 0.1; 
 
   vector<double> rank_load_;
   vector<double> rank_weights_;

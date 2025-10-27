@@ -195,22 +195,24 @@ void RayBank::communicate_rays(){
 
 void RayBank::update_my_ray_list(FlatSourceDomain* domain){
 
-  //TODO: OMP?
-
-  // Temporary vector containing angular flux data for re-initialization of random rays
-  vector <float> angular_flux_vec;
-  angular_flux_vec.resize(negroups_);
+  my_ray_list_.resize(received_ray_data_.size());
 
   // Add re-initialized random ray objects to my_ray_list
-  for (int i = 0; i < received_ray_data_.size(); i++) {
+  #pragma omp parallel
+  {
+    // Temporary vector containing angular flux data for re-initialization of random rays
+    vector<float> angular_flux_vec(negroups_);
 
-    for (int g = 0; g < negroups_; g++) {
-      angular_flux_vec[g] = received_angular_flux_data_[i * negroups_ + g];
+    #pragma omp for
+    for (int i = 0; i < received_ray_data_.size(); i++) {
+
+      for (int g = 0; g < negroups_; g++) {
+        angular_flux_vec[g] = received_angular_flux_data_[i * negroups_ + g];
+      }
+
+      // Re-initialize rays with received data
+      my_ray_list_[i] = RandomRay(domain, received_ray_data_[i], angular_flux_vec);
     }
-
-    // Re-initialize rays with received data
-    RandomRay ray_received(domain, received_ray_data_[i], angular_flux_vec);
-    my_ray_list_.push_back(ray_received);
   }
 
   // clear received data vectors

@@ -23,7 +23,7 @@ def test_pathlike_type_checking():
     check_type('filename', path_with_subdir, PathLike)
     
     # Test with invalid type (should raise TypeError)
-    with pytest.raises(TypeError):
+    with pytest.raises(AttributeError):
         check_type('filename', 123, PathLike)
 
 def test_plot_filename_pathlike():

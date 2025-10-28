@@ -43,9 +43,12 @@ public:
 
   // Methods for balancing the load between ranks
   void balance_load(FlatSourceDomain* domain);
-  void update_load(FlatSourceDomain* domain, bool check_all_ranks);
+  void update_load(FlatSourceDomain* domain, bool check_all_ranks, vector<double>& rank_load_combined, vector<double>& load_ratio);
   void redistribute_source_regions(FlatSourceDomain* domain);
-  bool load_balanced() const { return max_imbalance_ < imbalance_tolerance_; }
+  // bool load_balanced() const { return max_imbalance_ < imbalance_tolerance_; }
+  bool load_balanced() const { return max_load_imbalance_measured_ < imbalance_tolerance_; }
+
+
 
   // Methods to find owner of source region
   int find_owner(SourceRegionKey sr_key, Position r,  
@@ -55,7 +58,8 @@ public:
 
   // Method to calculate the load per rank based on the total number of hits in all source regions
   // of a rank
-  void calculate_rank_load(FlatSourceDomain* domain);  
+  void calculate_rank_load(FlatSourceDomain* domain, double batch_transport_time);  
+  double calculate_load_ratio(int rank);
 
   //----------------------------------------------------------------------------
   // Static data members
@@ -83,19 +87,26 @@ public:
   vector<uint64_t> mesh_bins_per_base_sr_; // number of mesh bin ray trace operations per base source region for current batch
   vector<double> ray_tracing_cost_;
   vector<double> volume_base_sr_;
+  vector<vector<double>> load_history_; // stores values of load per rank for last few batches
+  int history_idx = 0;
+  int load_history_size_ = 10;
+
 
   // coefficients for load calculation
   double C1_ = 1.0;
   double C2_ = 0.1; 
   double C3_ = 0.1; 
 
-  vector<double> rank_load_;
+  vector<double> rank_load_; //TODO: rename in rank_load_calculated_
+  vector<double> rank_load_absolute_; //TODO: rename in rank_load_calculated_
+  vector<double> rank_load_measured_; // Current measured load per rank
   vector<double> rank_weights_;
   double target_load_;
   //TODO: temporary
   int cnt_unconverged_optimizations_total_ = 0;
   int cnt_optimizations_total_ = 0;
-  double max_imbalance_ = 0.0; //TODO: rename in max_load_imbalance_
+  double max_imbalance_ = 0.0; //TODO: rename in max_load_imbalance_calculcated_
+  double max_load_imbalance_measured_ = 0.0;
   uint64_t n_base_sr_ = 0;
   int negroups_;
 

@@ -54,6 +54,7 @@ void RayBank::update(FlatSourceDomain* domain){
     // Send and receive rays between MPI ranks
     simulation::time_ray_comms.start();
     communicate_rays();
+    MPI_Barrier(mpi::intracomm); //TODO: Should this barrier stay here?
     simulation::time_ray_comms.stop();
 
     simulation::time_unpack_data.start();

@@ -44,6 +44,7 @@ extern Timer time_add_ray_to_bank;
 extern Timer time_comms_metadata;
 extern Timer time_unpack_data;
 extern Timer time_mpi_imbalance;
+// extern Timer time_load_per_batch;
 // extern Timer time_test; //TODO: remove
 
 } // namespace simulation

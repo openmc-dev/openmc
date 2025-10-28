@@ -599,7 +599,16 @@ void RandomRaySimulation::simulate()
     finalize_batch();
   } // End random ray power iteration loop
 
-  // Compute average load per rank based on geometric intersections
+  domain_->count_external_source_regions();
+}
+
+void RandomRaySimulation::output_simulation_results()
+{
+
+  // Compute values for diagnostics
+  int64_t total_n_source_regions = domain_->n_source_regions();
+  int64_t total_n_external_source_regions = domain_->n_external_source_regions_;
+
   if (mpi::n_procs > 1){
 
     // Average number of ray communications between ranks per batch
@@ -611,18 +620,22 @@ void RandomRaySimulation::simulate()
     } else {
       MPI_Reduce(&total_geometric_intersections_, nullptr, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, 0, mpi::intracomm);
     }
+
+    // Exchange source region data
+    if (mpi::master){
+      MPI_Reduce(MPI_IN_PLACE, &total_n_source_regions, 1, MPI_LONG_LONG, MPI_SUM, 0, mpi::intracomm);
+      MPI_Reduce(MPI_IN_PLACE, &total_n_external_source_regions, 1, MPI_LONG_LONG, MPI_SUM, 0, mpi::intracomm);
+    } else {
+      MPI_Reduce(&total_n_source_regions, nullptr, 1, MPI_LONG_LONG, MPI_SUM, 0, mpi::intracomm);
+      MPI_Reduce(&total_n_external_source_regions, nullptr, 1, MPI_LONG_LONG, MPI_SUM, 0, mpi::intracomm);
+    }
   }
 
-  domain_->count_external_source_regions();
-}
-
-void RandomRaySimulation::output_simulation_results() const
-{
   // Print random ray results
   if (mpi::master) {
     print_results_random_ray(total_geometric_intersections_,
       avg_miss_rate_ / settings::n_batches, negroups_,
-      domain_->n_source_regions(), domain_->n_external_source_regions_, avg_num_comms_);
+      total_n_source_regions, total_n_external_source_regions, avg_num_comms_);
   }
   
   if (model::plots.size() > 0) {
@@ -745,11 +758,11 @@ void RandomRaySimulation::print_results_random_ray(
       fmt::print(" Avg Number of Subdomain Crossings = {}\n", avg_num_comms);
       fmt::print(" Number of load optimization calls  = {}\n", mpi::decomp_map.cnt_optimizations_total_);
       fmt::print("    unconverged optimizations      = {}\n", mpi::decomp_map.cnt_unconverged_optimizations_total_);
-      fmt::print(" Load per MPI Rank                 = Rank {}: {:.2f}%\n", 0, mpi::decomp_map.rank_load_[0]*100.0);
+      fmt::print(" Load per MPI Rank                 = Rank {}: {:.2f}%\n", 0, mpi::decomp_map.rank_load_[0]*100.0); //TODO: show actual load not aclualted?
       for (int i = 1; i < mpi::n_procs; i++) {
         fmt::print("                                     Rank {}: {:.2f}%\n", i, mpi::decomp_map.rank_load_[i]*100.0);
       }
-      fmt::print("Maximum Load Imbalance             = {:.2f}%\n", mpi::decomp_map.max_imbalance_*100.0);
+      // fmt::print("Maximum Load Imbalance             = {:.2f}%\n", mpi::decomp_map.max_imbalance_*100.0); //TODO: This needs updating!
     }
 
     std::string estimator;
@@ -858,6 +871,10 @@ void RandomRaySimulation::transport_sweep() {
 }
 
 void RandomRaySimulation::transport_sweep_decomp(RayBank& RB) {
+
+  double start_time_transport = simulation::time_transport.elapsed();
+  double start_time_ray_buffering = simulation::time_ray_buffering.elapsed();
+
 
 
   //     Position sample;
@@ -982,7 +999,10 @@ void RandomRaySimulation::transport_sweep_decomp(RayBank& RB) {
     // }
 
     // Calculate load per rank based on number of hits in each source region that a rank owns
-    mpi::decomp_map.calculate_rank_load(domain_.get());
+    double batch_ray_buffering_time = simulation::time_ray_buffering.elapsed() - start_time_ray_buffering;
+    double batch_transport_time = simulation::time_transport.elapsed() - start_time_transport - batch_ray_buffering_time;
+    // printf("Batch %d, Rank %d: transport time: %f s\n", simulation::current_batch, mpi::rank, batch_transport_time);
+    mpi::decomp_map.calculate_rank_load(domain_.get(), batch_transport_time);
 
     avg_num_comms_ += num_comms;
 

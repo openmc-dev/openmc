@@ -3,11 +3,13 @@
 from pathlib import Path
 import tempfile
 import os
+import pytest
+import openmc
+from openmc.checkvalue import check_type, PathLike
 
 # Test the type checking directly
 def test_pathlike_type_checking():
     """Test that PathLike type checking works correctly"""
-    from openmc.checkvalue import check_type, PathLike
     
     # Test with string (should work)
     check_type('filename', 'test.txt', PathLike)
@@ -21,16 +23,11 @@ def test_pathlike_type_checking():
     check_type('filename', path_with_subdir, PathLike)
     
     # Test with invalid type (should raise TypeError)
-    try:
-        check_type('filename', 123, os.PathLike)
-        assert False, "Should have raised TypeError"
-    except TypeError:
-        pass  # Expected
-
+    with pytest.raises(TypeError):
+        check_type('filename', 123, PathLike)
 
 def test_plot_filename_pathlike():
-    """Test that plot filename accepts Path objects"""    
-    import openmc
+    """Test that plot filename accepts Path objects"""
     
     plot = openmc.Plot()
     

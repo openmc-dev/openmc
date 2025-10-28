@@ -1,13 +1,12 @@
 """Simple test for PathLike filename support"""
 
 from pathlib import Path
-import tempfile
-import os
+
 import pytest
 import openmc
 from openmc.checkvalue import check_type, PathLike
 
-# Test the type checking directly
+
 def test_pathlike_type_checking():
     """Test that PathLike type checking works correctly"""
 
@@ -25,6 +24,7 @@ def test_pathlike_type_checking():
     # Test with invalid type (should raise TypeError)
     with pytest.raises(TypeError):
         check_type('filename', 123, PathLike)
+
 
 def test_plot_filename_pathlike():
     """Test that plot filename accepts Path objects"""
@@ -44,13 +44,3 @@ def test_plot_filename_pathlike():
     path_with_subdir = Path("subdir") / "test_plot"
     plot.filename = path_with_subdir
     assert plot.filename == path_with_subdir
-
-
-if __name__ == "__main__":
-    test_pathlike_type_checking()
-    print("[STATUS] PathLike type checking works correctly")
-
-    test_plot_filename_pathlike()
-    print("[STATUS] Plot filename PathLike functionality works")
-
-    print("All tests passed!")

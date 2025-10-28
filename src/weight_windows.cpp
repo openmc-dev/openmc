@@ -26,6 +26,7 @@
 #include "openmc/random_ray/flat_source_domain.h"
 #include "openmc/search.h"
 #include "openmc/settings.h"
+#include "openmc/simulation.h"
 #include "openmc/tallies/filter_energy.h"
 #include "openmc/tallies/filter_mesh.h"
 #include "openmc/tallies/filter_particle.h"
@@ -966,11 +967,17 @@ void WeightWindowsGenerator::update() const
 
   Tally* tally = model::tallies[tally_idx_].get();
 
-  // if we're beyond the number of max realizations or not at the corrrect
-  // update interval, skip the update
-  if (max_realizations_ < tally->n_realizations_ ||
-      tally->n_realizations_ % update_interval_ != 0)
+  // If in random ray mode, only update on the last batch
+  if (settings::solver_type == SolverType::RANDOM_RAY) {
+    if (simulation::current_batch != settings::n_batches) {
+      return;
+    }
+    // If in Monte Carlo mode and beyond the number of max realizations or
+    // not at the correct update interval, skip the update
+  } else if (max_realizations_ < tally->n_realizations_ ||
+             tally->n_realizations_ % update_interval_ != 0) {
     return;
+  }
 
   wws->update_weights(tally, tally_value_, threshold_, ratio_, method_);
 

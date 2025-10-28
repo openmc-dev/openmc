@@ -280,14 +280,14 @@ def test_ztests_scipy_comparison():
 
     # -------- Normal dataset (should not reject) --------
     t0 = _tally_from_data(x_norm, higher_moments=True, normality=True)
-    stats0 = t0.normality_test(alternative="two-sided")
+    stats0 = t0.normaltest(alternative="two-sided")
 
-    Zb1_0 = stats0["Zb1"][0, 0, 0]
-    p_skew_0 = stats0["p_skew"][0, 0, 0]
-    Zb2_0 = stats0["Zb2"][0, 0, 0]
-    p_kurt_0 = stats0["p_kurt"][0, 0, 0]
-    K2_0 = stats0["K2"][0, 0, 0]
-    p_omni_0 = stats0["p_K2"][0, 0, 0]
+    Zb1_0 = np.asarray(stats0["skewstat"]).ravel()[0]
+    p_skew_0 = np.asarray(stats0["skew_pvalue"]).ravel()[0]
+    Zb2_0 = np.asarray(stats0["kurtstat"]).ravel()[0]
+    p_kurt_0 = np.asarray(stats0["kurt_pvalue"]).ravel()[0]
+    K2_0 = np.asarray(stats0["statistic"]).ravel()[0]
+    p_omni_0 = np.asarray(stats0["pvalue"]).ravel()[0]
 
     z_skew_sp0, p_skew_sp0 = sps.skewtest(x_norm)
     z_kurt_sp0, p_kurt_sp0 = sps.kurtosistest(x_norm)
@@ -302,15 +302,15 @@ def test_ztests_scipy_comparison():
 
     # -------- Exponential dataset (should strongly reject) --------
     t1 = _tally_from_data(x_exp, higher_moments=True, normality=True)
-    stats1 = t1.normality_test(alternative="two-sided")
+    stats1 = t1.normaltest(alternative="two-sided")
 
-    Zb1_1 = stats1["Zb1"][0, 0, 0]
-    p_skew_1 = stats1["p_skew"][0, 0, 0]
-    Zb2_1 = stats1["Zb2"][0, 0, 0]
-    p_kurt_1 = stats1["p_kurt"][0, 0, 0]
-    K2_1 = stats1["K2"][0, 0, 0]
-    p_omni_1 = stats1["p_K2"][0, 0, 0]
-
+    Zb1_1 = np.asarray(stats1["skewstat"]).ravel()[0]
+    p_skew_1 = np.asarray(stats1["skew_pvalue"]).ravel()[0]
+    Zb2_1 = np.asarray(stats1["kurtstat"]).ravel()[0]
+    p_kurt_1 = np.asarray(stats1["kurt_pvalue"]).ravel()[0]
+    K2_1 = np.asarray(stats1["statistic"]).ravel()[0]
+    p_omni_1 = np.asarray(stats1["pvalue"]).ravel()[0]
+    
     z_skew_sp1, p_skew_sp1 = sps.skewtest(x_exp)
     z_kurt_sp1, p_kurt_sp1 = sps.kurtosistest(x_exp)
     k2_sp1, p_omni_sp1 = sps.normaltest(x_exp)

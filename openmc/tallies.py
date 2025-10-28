@@ -432,6 +432,9 @@ class Tally(IDManagerMixin):
                 sum_third = data[:, :, 2]
                 sum_fourth = data[:, :, 3]
 
+                print("SUM THIRD=", sum_third)
+                print("SUM FOURTH=", sum_fourth)
+
                 # Reshape the results arrays
                 sum_third = np.reshape(sum_third, self.shape)
                 sum_fourth = np.reshape(sum_fourth, self.shape)
@@ -652,7 +655,11 @@ class Tally(IDManagerMixin):
         if bias:
             return g1
         else:
-            return np.where(n > 2, sqrt(n*(n - 1))/(n - 2)*g1, 0.0)
+            if n <= 2:
+                raise ValueError(f"Insufficient number of independent realizations" 
+                                 "for bias-corrected skewness: need n >= 3, got n = {n}.")
+            else:
+                return sqrt(n*(n - 1))/(n - 2)*g1
 
     def kurtosis(self, fisher=True, bias=False) -> np.ndarray:
         r"""Return the sample kurtosis of each tally bin.
@@ -707,84 +714,125 @@ class Tally(IDManagerMixin):
             return g2 if fisher else b2
         else:
             # Unbiased estimator with finite-sample correction
-            G2 = np.where(n > 3, ((n - 1)/((n - 2)*(n - 3)))*((n + 1)*g2 + 6.0),
-                          0.0)
-            return G2 if fisher else G2 + 3.0
-
-    def normality_test(self, alternative: str = "two-sided"):
-        if not self._higher_moments:
-            return None
-        if not self._normality_tests:
-            return None
-        if not self._sp_filename:
-            return None
-        if self._higher_moments and self._normality_tests:
-            n = self.num_realizations
-            if n < 8:
-                raise ValueError("Skewness test is not well-defined for n < 8.")
-            elif n < 20:
-                raise ValueError("Kurtosis test is typically recommended for " \
-                "n >= 20.")
+            if n <= 3:
+                raise ValueError(f"Insufficient number of independent realizations"
+                                 "for bias-corrected kurtosis: need n >= 4, got n = {n}.")
             else:
-                g1 = self.skew(bias=True)
-                b2 = self.kurtosis(bias=True, fisher=False)
+                G2 = ((n - 1)/((n - 2)*(n - 3)))*((n + 1)*g2 + 6.0)
+                return G2 if fisher else G2 + 3.0
 
-                # --- Z1 (skewness) ---
-                y = g1 * sqrt(((n + 1.0)*(n + 3.0))/(6.0*(n - 2.0)))
-                beta2 = (3.0*(n**2 + 27.0*n - 70.0)*(n + 1.0)*(n + 3.0)
-                         )/((n - 2.0)*(n + 5.0)*(n + 7.0)*(n + 9.0))
-                W2 = -1.0 + sqrt(2.0*(beta2 - 1.0))
-                delta = 1.0 / sqrt(log(sqrt(W2)))
-                alpha = sqrt(2.0 / (W2 - 1.0))
-                Zb1 = np.where(
-                    y >= 0.0,
-                    delta*np.log((y/alpha) + np.sqrt((y/alpha)**2 + 1.0)),
-                    -delta*np.log((-y/alpha) + np.sqrt((y/alpha)**2 + 1.0))
-                )
+    def skewtest(self, alternative: str = "two-sided"):
+        """D'Agostino's adjusted skewness test (returns Z and p-value)."""
 
-                # --- Z2 (kurtosis) ---
-                mean_b2 = 3.0 * (n - 1.0) / (n + 1.0)
-                var_b2 = (24.0*n*(n - 2.0)*(n - 3.0)/(
-                         (n + 1.0)**2*(n + 3.0)*(n + 5.0)))
-                x = (b2 - mean_b2)/np.sqrt(var_b2)
-                moment = ((6.0*(n**2 - 5.0*n + 2.0))/((n + 7.0)*(n + 9.0))
-                          )*sqrt((6.0*(n + 3.0)*(n + 5.0))/(n*(n - 2.0)*(n - 3.0)))
-                A = 6.0 + (8.0/moment)*((2.0/moment) + sqrt(1.0 + 4.0/(moment**2)))
-                Zb2 = (1.0- 2.0/(9.0*A) - ((1.0 - 2.0/A) / (1.0 + (x
-                       )*sqrt(2.0/(A - 4.0))))**(1.0/3.0)) / sqrt(2.0/(9.0*A))
+        if not self._higher_moments or not self._normality_tests or not self._sp_filename:
+            return None
 
-                # --- p-values ---
-                if alternative == "two-sided":
-                    p_skew = 2.0 * (1.0 - norm.cdf(np.abs(Zb1)))
-                    p_kurt = 2.0 * (1.0 - norm.cdf(np.abs(Zb2)))
-                elif alternative == "greater":
-                    p_skew = 1.0 - norm.cdf(Zb1)
-                    p_kurt = 1.0 - norm.cdf(Zb2)
-                elif alternative == "less":
-                    p_skew = norm.cdf(Zb1)
-                    p_kurt = norm.cdf(Zb2)
-                else:
-                    raise ValueError("alternative must be 'two-sided'," \
-                    " 'greater', or 'less'")
+        n = self.num_realizations
+        if n < 8:
+            raise ValueError("Skewness test is not well-defined for n < 8.")
 
-                # --- Omnibus Test ---
-                K2 = Zb1**2 + Zb2**2
+        g1 = np.asarray(self.skew(bias=True), dtype=float).reshape(-1)
 
-                try:
-                    p_K2 = chi2.sf(K2, 2)
-                except Exception:
-                    p_K2 = None
+        # --- Z1 (skewness) ---
+        y = g1 * sqrt(((n + 1.0)*(n + 3.0))/(6.0*(n - 2.0)))
+        beta2 = (3.0*(n**2 + 27.0*n - 70.0)*(n + 1.0)*(n + 3.0)
+                )/((n - 2.0)*(n + 5.0)*(n + 7.0)*(n + 9.0))
+        W2 = -1.0 + sqrt(2.0*(beta2 - 1.0))
+        delta = 1.0 / sqrt(log(sqrt(W2)))
+        alpha = sqrt(2.0 / (W2 - 1.0))
+        Zb1 = np.where(
+            y >= 0.0,
+            delta*np.log((y/alpha) + np.sqrt((y/alpha)**2 + 1.0)),
+            -delta*np.log((-y/alpha) + np.sqrt((y/alpha)**2 + 1.0))
+        )
 
-                return {"Zb1": Zb1, "p_skew": p_skew, "Zb2": Zb2,
-                        "p_kurt": p_kurt, "K2": K2, "p_K2": p_K2,
-                        "n": n, "g1": g1, "b2": b2}
+        # p-value
+        if alternative == "two-sided":
+            p = 2.0 * (1.0 - norm.cdf(np.abs(Zb1)))
+        elif alternative == "greater":
+            p = 1.0 - norm.cdf(Zb1)
+        elif alternative == "less":
+            p = norm.cdf(Zb1)
+        else:
+            raise ValueError("alternative must be 'two-sided', 'greater', or 'less'")
+
+        return {"statistic": Zb1, "pvalue": p, "n": n, "skew": g1}
+
+
+    def kurtosistest(self, alternative: str = "two-sided"):
+        """ Kurtosis test (returns Z and p-value)."""
+        if not self._higher_moments or not self._normality_tests or not self._sp_filename:
+            return None
+
+        n = self.num_realizations
+        if n < 20:
+            raise ValueError("Kurtosis test is typically recommended for n >= 20.")
+
+        b2 = np.asarray(self.kurtosis(bias=True, fisher=False),  dtype=float).reshape(-1)
+
+        # --- Z2 (kurtosis) ---
+        mean_b2 = 3.0 * (n - 1.0) / (n + 1.0)
+        var_b2 = (24.0*n*(n - 2.0)*(n - 3.0)/(
+                    (n + 1.0)**2*(n + 3.0)*(n + 5.0)))
+        x = (b2 - mean_b2)/np.sqrt(var_b2)
+        moment = ((6.0*(n**2 - 5.0*n + 2.0))/((n + 7.0)*(n + 9.0))
+                    )*sqrt((6.0*(n + 3.0)*(n + 5.0))/(n*(n - 2.0)*(n - 3.0)))
+        A = 6.0 + (8.0/moment)*((2.0/moment) + sqrt(1.0 + 4.0/(moment**2)))
+        Zb2 = (1.0- 2.0/(9.0*A) - ((1.0 - 2.0/A) / (1.0 + (x
+                )*sqrt(2.0/(A - 4.0))))**(1.0/3.0)) / sqrt(2.0/(9.0*A))
+        
+        # p-value
+        if alternative == "two-sided":
+            p = 2.0 * (1.0 - norm.cdf(np.abs(Zb2)))
+        elif alternative == "greater":
+            p = 1.0 - norm.cdf(Zb2)
+        elif alternative == "less":
+            p = norm.cdf(Zb2)
+        else:
+            raise ValueError("alternative must be 'two-sided', 'greater', or 'less'")
+
+        return {"statistic": Zb2, "pvalue": p, "n": n, "kurtosis": b2}
+
+
+
+    def normaltest(self, alternative: str = "two-sided"):
+        """
+        D'Agostino-Pearson omnibus normality test.
+        Returns a dict with the combined chi-square statistic (K2) and p-value.
+        """
+        if not self._higher_moments or not self._normality_tests or not self._sp_filename:
+            return None
+        
+        n = self.num_realizations
+        if n < 20:
+            raise ValueError("normaltest requires n >= 20 (per D'Agostino-Pearson).")
+
+        # Use the component tests
+        sk = self.skewtest(alternative="two-sided")
+        ku = self.kurtosistest(alternative="two-sided")
+
+        # Combine as chi-square with df=2 since we have skewness and kurtosis
+        Z1 =  np.asarray(sk["statistic"], dtype=float).reshape(-1)
+        Z2 = np.asarray(ku["statistic"], dtype=float).reshape(-1)
+        K2 = Z1**2 + Z2**2
+        p = chi2.sf(K2, df=2)
+        return {
+            "statistic": K2,
+            "pvalue": p,
+            "df": 2,
+            "n": int(n),
+            "skewstat": Z1,
+            "kurtstat": Z2,
+            "skew_pvalue": sk["pvalue"],
+            "kurt_pvalue": ku["pvalue"],
+        }
 
     def print_normality_report(self, sig_level: float = 0.05,
                                alternative: str = "two-sided", bin_index=None):
 
-        stats = self.normality_test(alternative=alternative)
+        stats = self.normaltest(alternative=alternative)
         if stats is None:
-            print("Normality tests not available (disabled or missing data).")
+            print("Normality tests not available")
             return
 
         # Helper to select a single bin from possibly-scalar/array stats
@@ -798,8 +846,9 @@ class Tally(IDManagerMixin):
             return arr.flat[idx]
 
         # Determine which bins to print
-        g1 = np.atleast_1d(stats["g1"])
-        n_bins = g1.size
+        K2_all = np.atleast_1d(stats["statistic"])
+        n_bins = K2_all.size
+
         if bin_index is None:
             indices = range(n_bins)
         elif isinstance(bin_index, (list, tuple, np.ndarray)):
@@ -809,57 +858,25 @@ class Tally(IDManagerMixin):
 
         for i in indices:
             if i < 0 or i >= n_bins:
-                print(f"[skip] bin {i} is out of range 0..{n_bins-1}")
+                print(f"[skip] bin {i} out of range 0..{n_bins-1}")
                 continue
 
-            n = _sel(stats["n"], i)
-            g1_i = _sel(stats["g1"], i)
-            b2_i = _sel(stats["b2"], i)
-            Zb1_i = _sel(stats["Zb1"], i)
-            Zb2_i = _sel(stats["Zb2"], i)
-            K2_i = _sel(stats["K2"], i)
-            p_s_i = _sel(stats["p_skew"], i)
-            p_k_i = _sel(stats["p_kurt"], i)
-            p_o_i = _sel(stats["p_K2"], i)
+            n      = _sel(stats["n"], i)
+            Z1     = _sel(stats["skewstat"], i)
+            p_s    = _sel(stats["skew_pvalue"], i)
+            Z2     = _sel(stats["kurtstat"], i)
+            p_k    = _sel(stats["kurt_pvalue"], i)
+            K2     = _sel(stats["statistic"], i)
+            p_K2   = _sel(stats["pvalue"], i)
 
-            print(f"\n===== Normality Report (bin {i}) =====")
+            verdict = "reject H0 (non-normal)" if (p_K2 is not None and p_K2 < sig_level) else "fail to reject H0"
 
-            # Skewness
-            print("\nSkewness Test Result:")
-            print(f"Raw skewness: {g1_i}")
-            print(f"Z statistic: {Zb1_i}, p-value: {p_s_i}")
-            if p_s_i is not None and p_s_i < sig_level:
-                if g1_i > 0:
-                    print("Data is right-skewed")
-                elif g1_i < 0:
-                    print("Data is left-skewed")
-                else:
-                    print("Data is symmetric.")
-            else:
-                print("Data is symmetric.")
-
-            # Kurtosis
-            print("\nKurtosis Test Result:")
-            print(f"Kurtosis: {b2_i}")
-            print(f"Z statistic: {Zb2_i}, p-value: {p_k_i}")
-            normal_b2 = 3.0 * (n - 1.0) / (n + 1.0)
-            if p_k_i is not None and p_k_i < sig_level:
-                if b2_i > normal_b2:
-                    print("Distribution is leptokurtic")
-                elif b2_i < normal_b2:
-                    print("Distribution is platykurtic")
-                else:
-                    print("Distribution has normal kurtosis.")
-            else:
-                print("Distribution has normal kurtosis.")
-
-            # Omnibus
-            print("\nOmnibus Test Result:")
-            print(f"K2 statistic: {K2_i}, p-value: {p_o_i}")
-            if p_o_i is not None and p_o_i < sig_level:
-                print("Data is not normally distributed.")
-            else:
-                print("Data is normally distributed.")
+            # Print a short summary per bin
+            print(
+                f"[bin {i}] n={int(n)} | skew Z={float(Z1):.3f} (p={float(p_s):.3g}) | "
+                f"kurt Z={float(Z2):.3f} (p={float(p_k):.3g}) | "
+                f"K2={float(K2):.3f} (p={float(p_K2):.3g}) -> {verdict}"
+            )
 
     @property
     def figure_of_merit(self):

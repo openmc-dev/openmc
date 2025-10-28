@@ -861,14 +861,13 @@ void DecompositionMap::balance_load(FlatSourceDomain* domain){
   cnt_optimizations_total_ ++;
 
   int max_iterations = 200;
-  double max_imbalance; // = max_imbalance_;
+  // double max_imbalance; // = max_imbalance_;
   // double imbalance;
 
   int it_outer = 0;
   double adaptation_factor = 1; //0.5 //0.1;
   double min_adaptation_factor = 0.01;
   double max_adaptation_factor = 2;
-  double prev_imbalance = max_imbalance;
   double avg_rank_distance = max_domain_length_/cbrt(mpi::n_procs); // rough estimate of average distance between ranks //TODO: cubic root might not be adaquate for problems that are not box like
   double weight_scale = avg_rank_distance * avg_rank_distance * optimization_history_factor_; //TODO: maybe adjust dynamically dependent on wether previous batch has converged
   // double weight_scale = std::accumulate(rank_weights_.begin(), rank_weights_.end(), 0.0) / mpi::n_procs; // scale weights based on average load
@@ -890,7 +889,8 @@ void DecompositionMap::balance_load(FlatSourceDomain* domain){
     rank_load_combined[rank] = (rank_load_combined[rank]/total_rank_load_combined);
   }
   double max_load = *std::max_element(rank_load_combined.begin(), rank_load_combined.end());
-  max_imbalance = (max_load - target_load_) / target_load_;
+  double max_imbalance = (max_load - target_load_) / target_load_;
+  double prev_imbalance = max_imbalance;
 
   // History tracking
   vector<double> imbalance_history;
@@ -909,7 +909,7 @@ void DecompositionMap::balance_load(FlatSourceDomain* domain){
   while (max_imbalance > imbalance_tolerance_ && it_outer < max_iterations){
 
     //TODO: temporary
-    // if (mpi::master)  printf("MPI load balancing iteration %d, max. imbalance: %.2f%% \n", it_outer, max_imbalance*100.0);
+    if (mpi::master)  printf("MPI load balancing iteration %d, max. imbalance: %.2f%% \n", it_outer, max_imbalance*100.0);
 
     // Optimise rank load rank by rank
     // for (int rank = 0; rank < mpi::n_procs; rank++) {

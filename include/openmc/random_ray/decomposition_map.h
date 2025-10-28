@@ -46,8 +46,7 @@ public:
   void update_load(FlatSourceDomain* domain, bool check_all_ranks, vector<double>& rank_load_combined, vector<double>& load_ratio);
   void redistribute_source_regions(FlatSourceDomain* domain);
   // bool load_balanced() const { return max_imbalance_ < imbalance_tolerance_; }
-  bool load_balanced() const { return max_load_imbalance_measured_ < imbalance_tolerance_; }
-
+  bool load_balanced() const { return max_load_imbalance_measured_ < imbalance_tolerance_time_; }
 
 
   // Methods to find owner of source region
@@ -91,7 +90,6 @@ public:
   int history_idx = 0;
   int load_history_size_ = 10;
 
-
   // coefficients for load calculation
   double C1_ = 1.0;
   double C2_ = 0.1; 
@@ -123,6 +121,7 @@ private:
   double max_domain_length_;
   bool is_linear_;
   double imbalance_tolerance_ = 0.01; // 1% imbalance tolerance
+  double imbalance_tolerance_time_ = 0.1; // 10% imbalance tolerance
   double optimization_history_factor_ = 1.0; 
   int cnt_unconverged_optimizations_ = 0;
 }; // class DecompositionMap

@@ -2514,7 +2514,7 @@ class MGXSLibrary:
 
         """
 
-        check_type('filename', filename, (str, PathLike))        
+        check_type('filename', filename, (str, PathLike))
         # Create and write to the HDF5 file
         file = h5py.File(filename, "w", libver=libver)
         file.attrs['filetype'] = np.bytes_(_FILETYPE_MGXS_LIBRARY)

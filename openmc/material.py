@@ -353,13 +353,17 @@ class Material(IDManagerMixin):
                 dists.append(source_per_atom)
                 probs.append(1e24 * atoms_per_bcm * multiplier)
 
+        # If no photon sources, exit early
         if not dists:
             return None
 
+        # Get combined distribution, clip low-intensity values in discrete spectra
         combined = openmc.data.combine_distributions(dists, probs)
         if isinstance(combined, (Discrete, Mixture)):
             combined.clip(clip_tolerance, inplace=True)
 
+        # If clipping resulted in a single distribution within a mixture, pick
+        # out that single distribution
         if isinstance(combined, Mixture) and len(combined.distribution) == 1:
             combined = combined.distribution[0]
 

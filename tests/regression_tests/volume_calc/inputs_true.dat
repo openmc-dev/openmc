@@ -32,6 +32,7 @@
       <samples>100000</samples>
       <lower_left>-1.0 -1.0 -6.0</lower_left>
       <upper_right>1.0 1.0 6.0</upper_right>
+      <estimator_type>hit</estimator_type>
     </volume_calc>
     <volume_calc>
       <domain_type>material</domain_type>
@@ -39,6 +40,7 @@
       <samples>100000</samples>
       <lower_left>-1.0 -1.0 -6.0</lower_left>
       <upper_right>1.0 1.0 6.0</upper_right>
+      <estimator_type>hit</estimator_type>
     </volume_calc>
     <volume_calc>
       <domain_type>universe</domain_type>
@@ -46,6 +48,7 @@
       <samples>100000</samples>
       <lower_left>-1.0 -1.0 -6.0</lower_left>
       <upper_right>1.0 1.0 6.0</upper_right>
+      <estimator_type>hit</estimator_type>
     </volume_calc>
     <volume_calc>
       <domain_type>cell</domain_type>
@@ -54,6 +57,7 @@
       <lower_left>-1.0 -1.0 -6.0</lower_left>
       <upper_right>1.0 1.0 6.0</upper_right>
       <threshold type="std_dev" threshold="0.1"/>
+      <estimator_type>hit</estimator_type>
     </volume_calc>
     <volume_calc>
       <domain_type>material</domain_type>
@@ -62,6 +66,7 @@
       <lower_left>-1.0 -1.0 -6.0</lower_left>
       <upper_right>1.0 1.0 6.0</upper_right>
       <threshold type="rel_err" threshold="0.1"/>
+      <estimator_type>hit</estimator_type>
     </volume_calc>
     <volume_calc>
       <domain_type>cell</domain_type>
@@ -70,6 +75,7 @@
       <lower_left>-1.0 -1.0 -6.0</lower_left>
       <upper_right>1.0 1.0 6.0</upper_right>
       <threshold type="variance" threshold="0.05"/>
+      <estimator_type>hit</estimator_type>
     </volume_calc>
   </settings>
   </model>

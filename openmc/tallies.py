@@ -432,9 +432,6 @@ class Tally(IDManagerMixin):
                 sum_third = data[:, :, 2]
                 sum_fourth = data[:, :, 3]
 
-                print("SUM THIRD=", sum_third)
-                print("SUM FOURTH=", sum_fourth)
-
                 # Reshape the results arrays
                 sum_third = np.reshape(sum_third, self.shape)
                 sum_fourth = np.reshape(sum_fourth, self.shape)
@@ -656,8 +653,8 @@ class Tally(IDManagerMixin):
             return g1
         else:
             if n <= 2:
-                raise ValueError(f"Insufficient number of independent realizations" 
-                                 "for bias-corrected skewness: need n >= 3, got n = {n}.")
+                raise ValueError("Insufficient number of independent realizations"
+                                 f"for bias-corrected skewness: need n >= 3, got {n=}.")
             else:
                 return sqrt(n*(n - 1))/(n - 2)*g1
 
@@ -715,8 +712,8 @@ class Tally(IDManagerMixin):
         else:
             # Unbiased estimator with finite-sample correction
             if n <= 3:
-                raise ValueError(f"Insufficient number of independent realizations"
-                                 "for bias-corrected kurtosis: need n >= 4, got n = {n}.")
+                raise ValueError("Insufficient number of independent realizations"
+                                 f"for bias-corrected kurtosis: need n >= 4, got {n=}.")
             else:
                 G2 = ((n - 1)/((n - 2)*(n - 3)))*((n + 1)*g2 + 6.0)
                 return G2 if fisher else G2 + 3.0
@@ -780,7 +777,7 @@ class Tally(IDManagerMixin):
         A = 6.0 + (8.0/moment)*((2.0/moment) + sqrt(1.0 + 4.0/(moment**2)))
         Zb2 = (1.0- 2.0/(9.0*A) - ((1.0 - 2.0/A) / (1.0 + (x
                 )*sqrt(2.0/(A - 4.0))))**(1.0/3.0)) / sqrt(2.0/(9.0*A))
-        
+
         # p-value
         if alternative == "two-sided":
             p = 2.0 * (1.0 - norm.cdf(np.abs(Zb2)))
@@ -802,14 +799,14 @@ class Tally(IDManagerMixin):
         """
         if not self._higher_moments or not self._normality_tests or not self._sp_filename:
             return None
-        
+
         n = self.num_realizations
         if n < 20:
             raise ValueError("normaltest requires n >= 20 (per D'Agostino-Pearson).")
 
         # Use the component tests
-        sk = self.skewtest(alternative="two-sided")
-        ku = self.kurtosistest(alternative="two-sided")
+        sk = self.skewtest(alternative)
+        ku = self.kurtosistest(alternative)
 
         # Combine as chi-square with df=2 since we have skewness and kurtosis
         Z1 =  np.asarray(sk["statistic"], dtype=float).reshape(-1)

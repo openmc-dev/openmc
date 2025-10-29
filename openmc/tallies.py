@@ -740,22 +740,10 @@ class Tally(IDManagerMixin):
 
         Returns
         -------
-        dict or None
-            A dictionary containing the test results with the following keys:
-
-            * 'statistic' : The computed z-score for the skewness test
-            * 'pvalue' : The p-value for the hypothesis test
-            * 'n' : Number of realizations used in the test
-            * 'skew' : The computed skewness value
-
-            Returns None if higher moments, normality tests are not enabled, or
-            if results have not been loaded.
-
-        Raises
-        ------
-        ValueError
-            If the number of realizations is less than 8, or if an invalid
-            alternative hypothesis is specified.
+        statistic : np.ndarray
+            The computed z-score for the skewness test for each tally bin
+        pvalue : np.ndarray
+            The p-value for the hypothesis test for each tally bin
 
         Notes
         -----
@@ -768,15 +756,11 @@ class Tally(IDManagerMixin):
                moderate and large sample size", Biometrika, 58, 341-348
 
         """
-
-        if not self._higher_moments or not self._normality_tests or not self._sp_filename:
-            return None
-
         n = self.num_realizations
         if n < 8:
             raise ValueError("Skewness test is not well-defined for n < 8.")
 
-        g1 = np.asarray(self.skew(bias=True), dtype=float).reshape(-1)
+        g1 = self.skew(bias=True)
 
         # --- Z1 (skewness) ---
         y = g1 * sqrt(((n + 1.0)*(n + 3.0))/(6.0*(n - 2.0)))
@@ -801,8 +785,7 @@ class Tally(IDManagerMixin):
         else:
             raise ValueError("alternative must be 'two-sided', 'greater', or 'less'")
 
-        return {"statistic": Zb1, "pvalue": p, "n": n, "skew": g1}
-
+        return Zb1, p
 
     def kurtosistest(self, alternative: str = "two-sided"):
         """Perform D'Agostino and Pearson's test for kurtosis.
@@ -826,16 +809,10 @@ class Tally(IDManagerMixin):
 
         Returns
         -------
-        dict or None
-            A dictionary containing the test results with the following keys:
-
-            * 'statistic' : The computed z-score for the kurtosis test
-            * 'pvalue' : The p-value for the hypothesis test
-            * 'n' : Number of realizations used in the test
-            * 'kurtosis' : The computed kurtosis value
-
-            Returns None if higher moments, normality tests are not enabled,
-            or if results have not been loaded.
+        statistic : np.ndarray
+            The computed z-score for the kurtosis test for each tally bin
+        pvalue : np.ndarray
+            The p-value for the hypothesis test for each tally bin
 
         Raises
         ------
@@ -855,14 +832,11 @@ class Tally(IDManagerMixin):
                moderate and large sample size", Biometrika, 58, 341-348
 
         """
-        if not self._higher_moments or not self._normality_tests or not self._sp_filename:
-            return None
-
         n = self.num_realizations
         if n < 20:
             raise ValueError("Kurtosis test is typically recommended for n >= 20.")
 
-        b2 = np.asarray(self.kurtosis(bias=True, fisher=False),  dtype=float).reshape(-1)
+        b2 = self.kurtosis(bias=True, fisher=False)
 
         # --- Z2 (kurtosis) ---
         mean_b2 = 3.0 * (n - 1.0) / (n + 1.0)
@@ -885,7 +859,7 @@ class Tally(IDManagerMixin):
         else:
             raise ValueError("alternative must be 'two-sided', 'greater', or 'less'")
 
-        return {"statistic": Zb2, "pvalue": p, "n": n, "kurtosis": b2}
+        return Zb2, p
 
     def normaltest(self, alternative: str = "two-sided"):
         """Perform D'Agostino and Pearson's omnibus test for normality.
@@ -907,20 +881,10 @@ class Tally(IDManagerMixin):
 
         Returns
         -------
-        dict or None
-            A dictionary containing the test results with the following keys:
-
-            * 'statistic' : The combined chi-square statistic (K2)
-            * 'pvalue' : The p-value for the hypothesis test
-            * 'df' : Degrees of freedom (always 2)
-            * 'n' : Number of realizations used in the test
-            * 'skewstat' : The z-score from the skewness test
-            * 'kurtstat' : The z-score from the kurtosis test
-            * 'skew_pvalue' : The p-value from the skewness test
-            * 'kurt_pvalue' : The p-value from the kurtosis test
-
-            Returns None if higher moments, normality tests are not enabled,
-            or if results have not been loaded.
+        statistic : np.ndarray
+            The computed z-score for the normality test for each tally bin
+        pvalue : np.ndarray
+            The p-value for the hypothesis test for each tally bin
 
         Raises
         ------
@@ -949,32 +913,18 @@ class Tally(IDManagerMixin):
                departure from normality", Biometrika, 60, 613-622
 
         """
-        if not self._higher_moments or not self._normality_tests or not self._sp_filename:
-            return None
-
         n = self.num_realizations
         if n < 20:
             raise ValueError("normaltest requires n >= 20 (per D'Agostino-Pearson).")
 
         # Use the component tests
-        sk = self.skewtest(alternative)
-        ku = self.kurtosistest(alternative)
+        Z1, _ = self.skewtest(alternative)
+        Z2, _ = self.kurtosistest(alternative)
 
         # Combine as chi-square with df=2 since we have skewness and kurtosis
-        Z1 =  np.asarray(sk["statistic"], dtype=float).reshape(-1)
-        Z2 = np.asarray(ku["statistic"], dtype=float).reshape(-1)
-        K2 = Z1**2 + Z2**2
+        K2 = Z1*Z1 + Z2*Z2
         p = chi2.sf(K2, df=2)
-        return {
-            "statistic": K2,
-            "pvalue": p,
-            "df": 2,
-            "n": int(n),
-            "skewstat": Z1,
-            "kurtstat": Z2,
-            "skew_pvalue": sk["pvalue"],
-            "kurt_pvalue": ku["pvalue"],
-        }
+        return K2, p
 
     def print_normality_report(self, sig_level: float = 0.05,
                                alternative: str = "two-sided", bin_index=None):

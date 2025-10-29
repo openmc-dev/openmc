@@ -719,7 +719,55 @@ class Tally(IDManagerMixin):
                 return G2 if fisher else G2 + 3.0
 
     def skewtest(self, alternative: str = "two-sided"):
-        """D'Agostino's adjusted skewness test (returns Z and p-value)."""
+        """Perform D'Agostino and Pearson's test for skewness.
+
+        This method tests the null hypothesis that the skewness of the
+        population that the sample was drawn from is the same as that of a
+        corresponding normal distribution.
+
+        Parameters
+        ----------
+        alternative : {'two-sided', 'less', 'greater'}, optional
+            Defines the alternative hypothesis. The following options are
+            available:
+
+            * 'two-sided': the skewness of the distribution is different from
+              that of the normal distribution (i.e., non-zero)
+            * 'less': the skewness of the distribution is less than that of the
+              normal distribution
+            * 'greater': the skewness of the distribution is greater than that
+              of the normal distribution
+
+        Returns
+        -------
+        dict or None
+            A dictionary containing the test results with the following keys:
+
+            * 'statistic' : The computed z-score for the skewness test
+            * 'pvalue' : The p-value for the hypothesis test
+            * 'n' : Number of realizations used in the test
+            * 'skew' : The computed skewness value
+
+            Returns None if higher moments, normality tests are not enabled, or
+            if results have not been loaded.
+
+        Raises
+        ------
+        ValueError
+            If the number of realizations is less than 8, or if an invalid
+            alternative hypothesis is specified.
+
+        Notes
+        -----
+        This test is based on D'Agostino and Pearson's test [1]_. The test
+        requires at least 8 realizations to produce valid results.
+
+        References
+        ----------
+        .. [1] D'Agostino, R. B. (1971), "An omnibus test of normality for
+               moderate and large sample size", Biometrika, 58, 341-348
+
+        """
 
         if not self._higher_moments or not self._normality_tests or not self._sp_filename:
             return None
@@ -757,7 +805,56 @@ class Tally(IDManagerMixin):
 
 
     def kurtosistest(self, alternative: str = "two-sided"):
-        """ Kurtosis test (returns Z and p-value)."""
+        """Perform D'Agostino and Pearson's test for kurtosis.
+
+        This method tests the null hypothesis that the kurtosis of the
+        population that the sample was drawn from is the same as that of a
+        corresponding normal distribution.
+
+        Parameters
+        ----------
+        alternative : {'two-sided', 'less', 'greater'}, optional
+            Defines the alternative hypothesis. Default is 'two-sided'.
+            The following options are available:
+
+            * 'two-sided': the kurtosis of the distribution is different from
+              that of the normal distribution
+            * 'less': the kurtosis of the distribution is less than that of the
+              normal distribution
+            * 'greater': the kurtosis of the distribution is greater than that
+              of the normal distribution
+
+        Returns
+        -------
+        dict or None
+            A dictionary containing the test results with the following keys:
+
+            * 'statistic' : The computed z-score for the kurtosis test
+            * 'pvalue' : The p-value for the hypothesis test
+            * 'n' : Number of realizations used in the test
+            * 'kurtosis' : The computed kurtosis value
+
+            Returns None if higher moments, normality tests are not enabled,
+            or if results have not been loaded.
+
+        Raises
+        ------
+        ValueError
+            If the number of realizations is less than 20, or if an invalid
+            alternative hypothesis is specified.
+
+        Notes
+        -----
+        This test is based on D'Agostino and Pearson's test [1]_. The test
+        is typically recommended for at least 20 realizations to produce
+        valid results.
+
+        References
+        ----------
+        .. [1] D'Agostino, R. B. (1971), "An omnibus test of normality for
+               moderate and large sample size", Biometrika, 58, 341-348
+
+        """
         if not self._higher_moments or not self._normality_tests or not self._sp_filename:
             return None
 
@@ -790,12 +887,67 @@ class Tally(IDManagerMixin):
 
         return {"statistic": Zb2, "pvalue": p, "n": n, "kurtosis": b2}
 
-
-
     def normaltest(self, alternative: str = "two-sided"):
-        """
-        D'Agostino-Pearson omnibus normality test.
-        Returns a dict with the combined chi-square statistic (K2) and p-value.
+        """Perform D'Agostino and Pearson's omnibus test for normality.
+
+        This method tests the null hypothesis that a sample comes from a
+        normal distribution. It combines skewness and kurtosis to produce an
+        omnibus test of normality.
+
+        Parameters
+        ----------
+        alternative : {'two-sided', 'less', 'greater'}, optional
+            Defines the alternative hypothesis used for the component skewness
+            and kurtosis tests. Default is 'two-sided'. The following options
+            are available:
+
+            * 'two-sided': the distribution is different from normal
+            * 'less': used for the component tests
+            * 'greater': used for the component tests
+
+        Returns
+        -------
+        dict or None
+            A dictionary containing the test results with the following keys:
+
+            * 'statistic' : The combined chi-square statistic (K2)
+            * 'pvalue' : The p-value for the hypothesis test
+            * 'df' : Degrees of freedom (always 2)
+            * 'n' : Number of realizations used in the test
+            * 'skewstat' : The z-score from the skewness test
+            * 'kurtstat' : The z-score from the kurtosis test
+            * 'skew_pvalue' : The p-value from the skewness test
+            * 'kurt_pvalue' : The p-value from the kurtosis test
+
+            Returns None if higher moments, normality tests are not enabled,
+            or if results have not been loaded.
+
+        Raises
+        ------
+        ValueError
+            If the number of realizations is less than 20, or if an invalid
+            alternative hypothesis is specified.
+
+        Notes
+        -----
+        This test combines a test for skewness and a test for kurtosis to
+        produce an omnibus test [1]_. The test statistic is:
+
+        .. math::
+
+            K^2 = Z_1^2 + Z_2^2
+
+        where :math:`Z_1` is the z-score from the skewness test and
+        :math:`Z_2` is the z-score from the kurtosis test. This statistic
+        follows a chi-square distribution with 2 degrees of freedom.
+
+        The test requires at least 20 realizations to produce valid results.
+
+        References
+        ----------
+        .. [1] D'Agostino, R. B. and Pearson, E. S. (1973), "Tests for
+               departure from normality", Biometrika, 60, 613-622
+
         """
         if not self._higher_moments or not self._normality_tests or not self._sp_filename:
             return None

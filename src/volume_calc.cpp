@@ -101,6 +101,15 @@ VolumeCalculation::VolumeCalculation(pugi::xml_node node)
       fatal_error(fmt::format(
         "Invalid volume calculation trigger type '{}' provided.", tmp));
     }
+
+    if (check_for_node(threshold_node, "max_iterations")) {
+      max_iterations_ =
+        std::stoi(get_node_value(threshold_node, "max_iterations"));
+      if (max_iterations_ <= 0) {
+        fatal_error(fmt::format(
+          "Invalid error max_iterations {} provided.", max_iterations_));
+      }
+    }
   }
 
   // Ensure there are no duplicates by copying elements to a set and then
@@ -251,21 +260,19 @@ void VolumeCalculation::execute(CalcResults& master_results) const
 #ifdef OPENMC_MPI
     master_results.collect_MPI(); // collect results to master process
 #endif
-    // Processing volume estimation results for trigger state determination
-    bool stop_calc;
+    // Process volume estimation results in master process for trigger state
+    // determination
+    bool stop_calc =
+      mpi::master && (trigger_type_ == TriggerMetric::not_active ||
+                       master_results.iterations == max_iterations_);
 
-    if (mpi::master) {
-
-      if (trigger_type_ == TriggerMetric::not_active) {
-        stop_calc = true;
-      } else {
-        // Compute current trigger state among totals (0th elements) only
-        for (auto& vt : master_results.vol_tallies) {
-          stop_calc = vt[0].trigger_state(
-            trigger_type_, threshold_cnd_, master_results.n_samples);
-          if (!stop_calc)
-            break;
-        }
+    if (!stop_calc) {
+      // Compute current trigger state among totals (0th elements) only
+      for (auto& vt : master_results.vol_tallies) {
+        stop_calc = vt[0].trigger_state(
+          trigger_type_, threshold_cnd_, master_results.n_samples);
+        if (!stop_calc)
+          break;
       }
     }
 
@@ -467,6 +474,10 @@ void VolumeCalculation::to_hdf5(
       break;
     }
     write_attribute(file_id, "trigger_type", trigger_str);
+    // check max_iterations on default value
+    if (max_iterations_ !=
+        std::numeric_limits<decltype(max_iterations_)>::max())
+      write_attribute(file_id, "max_iterations", max_iterations_);
   } else {
     write_attribute(file_id, "iterations", 1);
   }

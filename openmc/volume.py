@@ -70,6 +70,11 @@ class VolumeCalculation:
         Number of iterations over samples (for calculations with a trigger).
 
         .. versionadded:: 0.12
+    max_iterations : int
+        Limit of the maximal allowed iterations number (optional, for 
+        calculations with a trigger).
+
+        .. versionadded:: 0.15
 
     """
     def __init__(self, domains, samples, lower_left=None, upper_right=None,
@@ -78,6 +83,7 @@ class VolumeCalculation:
         self._volumes = {}
         self._threshold = None
         self._trigger_type = None
+        self._max_iterations = None
         self._iterations = None
 
         cv.check_type('domains', domains, Iterable,
@@ -195,6 +201,18 @@ class VolumeCalculation:
         self._trigger_type = trigger_type
 
     @property
+    def max_iterations(self):
+        return self._max_iterations
+
+    @max_iterations.setter
+    def max_iterations(self, max_iterations):
+        name = 'volume calculation iterations limit'
+        cv.check_type(name, max_iterations, Integral, none_ok=True)
+        if max_iterations is not None:
+            cv.check_greater_than(name, max_iterations, 0)
+        self._max_iterations = max_iterations
+
+    @property
     def iterations(self):
         return self._iterations
 
@@ -247,7 +265,7 @@ class VolumeCalculation:
 
         return pd.DataFrame.from_records(items, columns=columns)
 
-    def set_trigger(self, threshold, trigger_type):
+    def set_trigger(self, threshold, trigger_type, max_iterations=None):
         """Set a trigger on the volume calculation
 
         .. versionadded:: 0.12
@@ -258,9 +276,12 @@ class VolumeCalculation:
             Threshold for the maximum standard deviation of volumes
         trigger_type : {'variance', 'std_dev', 'rel_err'}
             Value type used to halt volume calculation
+        max_iterations : int
+            Maximal allowed number of iterations (optional)
         """
         self.trigger_type = trigger_type
         self.threshold = threshold
+        self.max_iterations = max_iterations
 
     def set_estimator(self, estimator_type):
         """Define type of volume estimator
@@ -299,6 +320,7 @@ class VolumeCalculation:
 
             threshold = f.attrs.get('threshold')
             trigger_type = f.attrs.get('trigger_type')
+            max_iterations = f.attrs.get('max_iterations')
             iterations = f.attrs.get('iterations', 1)
 
             estimator_type = f.attrs.get('estimator_type')
@@ -336,7 +358,7 @@ class VolumeCalculation:
                   estimator_type.decode())
 
         if trigger_type is not None:
-            vol.set_trigger(threshold, trigger_type.decode())
+            vol.set_trigger(threshold, trigger_type.decode(), max_iterations)
 
         vol.iterations = iterations
         vol.volumes = volumes
@@ -387,6 +409,8 @@ class VolumeCalculation:
             trigger_elem = ET.SubElement(element, "threshold")
             trigger_elem.set("type", self.trigger_type)
             trigger_elem.set("threshold", str(self.threshold))
+            if self.max_iterations is not None:
+                trigger_elem.set("max_iterations", str(self.max_iterations))
         et_elem = ET.SubElement(element, "estimator_type")
         et_elem.text = str(self.estimator_type)
         return element
@@ -433,6 +457,7 @@ class VolumeCalculation:
         if trigger_elem is not None:
             trigger_type = get_text(trigger_elem, "type")
             threshold = float(get_text(trigger_elem, "threshold"))
-            vol.set_trigger(threshold, trigger_type)
+            max_iterations = Integral(get_text(trigger_elem, "max_iterations"))
+            vol.set_trigger(threshold, trigger_type, max_iterations)
 
         return vol

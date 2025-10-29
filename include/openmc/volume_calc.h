@@ -171,11 +171,13 @@ public:
   enum class EstMode { REJECTION, RAYTRACE };
 
   // Data members
-  TallyDomain domain_type_; //!< Type of domain (cell, material, etc.)
-  size_t n_samples_;        //!< Number of samples to use
-  double volume_sample_;    //!< Volume of bounding primitive
-  double threshold_ {-1.0}; //!< Error threshold for domain volumes
-  double threshold_cnd_;    //!< Pre-computed value for trigger condition
+  TallyDomain domain_type_;      //!< Type of domain (cell, material, etc.)
+  size_t n_samples_;             //!< Number of samples to use
+  double volume_sample_;         //!< Volume of bounding primitive
+  double threshold_ {-1.0};      //!< Error threshold for domain volumes
+  double threshold_cnd_;         //!< Pre-computed value for trigger condition
+  int max_iterations_ {INT_MAX}; //!< Limit of iterations number (necessary
+                                 //!< maximum value of data type by default)
   TriggerMetric trigger_type_ {
     TriggerMetric::not_active}; //!< Trigger metric for the volume calculation
   Position lower_left_;         //!< Lower-left position of bounding box

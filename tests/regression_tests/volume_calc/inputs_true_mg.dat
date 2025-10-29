@@ -78,5 +78,14 @@
       <threshold type="variance" threshold="0.05"/>
       <estimator_type>hit</estimator_type>
     </volume_calc>
+    <volume_calc>
+      <domain_type>material</domain_type>
+      <domain_ids>1 2</domain_ids>
+      <samples>100</samples>
+      <lower_left>-1.0 -1.0 -6.0</lower_left>
+      <upper_right>1.0 1.0 6.0</upper_right>
+      <threshold type="rel_err" threshold="1e-10" max_iterations="9"/>
+      <estimator_type>hit</estimator_type>
+    </volume_calc>
   </settings>
   </model>

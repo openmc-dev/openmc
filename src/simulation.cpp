@@ -407,11 +407,8 @@ void finalize_batch()
   simulation::time_tallies.stop();
 
   // update weight windows if needed
-  if (settings::solver_type != SolverType::RANDOM_RAY ||
-      simulation::current_batch == settings::n_batches) {
-    for (const auto& wwg : variance_reduction::weight_windows_generators) {
-      wwg->update();
-    }
+  for (const auto& wwg : variance_reduction::weight_windows_generators) {
+    wwg->update();
   }
 
   // Reset global tally results

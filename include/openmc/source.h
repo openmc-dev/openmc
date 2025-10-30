@@ -79,6 +79,8 @@ public:
 
   static unique_ptr<Source> create(pugi::xml_node node);
 
+  bool satisfies_spatial_constraints(Position r) const;
+
 protected:
   // Strategy used for rejecting sites when constraints are applied. KILL means
   // that sites are always accepted but if they don't satisfy constraints, they
@@ -91,7 +93,7 @@ protected:
 
   // Methods for constraints
   void read_constraints(pugi::xml_node node);
-  bool satisfies_spatial_constraints(Position r) const;
+  // bool satisfies_spatial_constraints(Position r) const;
   bool satisfies_energy_constraints(double E) const;
   bool satisfies_time_constraints(double time) const;
 

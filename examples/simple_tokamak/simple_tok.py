@@ -28,7 +28,7 @@ model.geometry.root_universe = outer_universe
 model.geometry.determine_paths()
 
 # Make coarse mesh and tally for random ray void SR subdivision
-mesh_cell_size_cm = 100.0 # cm
+mesh_cell_size_cm = 50.0 # cm
 coarse_mesh = openmc.RegularMesh()
 bbox = model.geometry.bounding_box
 ll   = np.array(bbox.lower_left)
@@ -45,7 +45,7 @@ model.tallies.append(coarse_mesh_tally)
 
 
 # Make fine mesh and tally for random ray void SR subdivision
-mesh_cell_size_cm = 7.5 # cm
+mesh_cell_size_cm = 5.0 # cm
 fine_mesh = openmc.RegularMesh()
 bbox = model.geometry.bounding_box
 ll   = np.array(bbox.lower_left)
@@ -89,9 +89,9 @@ model.settings.random_ray['volume_estimator'] = 'naive'
 model.settings.random_ray["distance_inactive"] = 1500.0
 model.settings.random_ray["distance_active"] = 3000.0
 model.settings.random_ray["sample_method"] = 'prng'
-model.settings.particles = 40000
-model.settings.batches   = 200
-model.settings.inactive  = 100
+model.settings.particles = 1000000
+model.settings.batches   = 10
+model.settings.inactive  = 1
 
 plot = openmc.Plot()
 box = model.geometry.bounding_box

@@ -237,6 +237,24 @@ void DecompositionMap::calculate_grid_points(int grid_points_total){
             }
         }
     }
+
+    // check if mesh grid points are inside spatial domain, if not erase them
+    //TODO: maybe random sampling would be better
+    for (int i = grid_points_.size() - 1; i >= 0; i--){
+      Position xi = grid_points_[i];
+
+      bool is_inside_domain = RandomRay::ray_source_->satisfies_spatial_constraints(xi);
+
+      if (!is_inside_domain){
+        grid_points_.erase(grid_points_.begin() + i);
+      }
+    }
+
+    if (mpi::master && grid_points_.size() < grid_points_total) {
+      warning(fmt::format(
+        "Spatial constraints reduced grid points for Voronoi tesselation from {} to {}.",
+        grid_points_total, grid_points_.size()));
+    }
 }
 
 // Places random points in the spatial domain. 
@@ -245,9 +263,10 @@ void DecompositionMap::initialize_points(){
   rank_centers_.resize(mpi::n_procs);
 
   uint64_t seed = openmc_get_seed();
+  int rank_cnt = 0;
 
   // Sample random positions to start with
-  for (int rank = 0; rank < mpi::n_procs; rank++){
+  while(rank_cnt < mpi::n_procs){
 
     double x = prn(&seed);
     double y = prn(&seed);
@@ -262,8 +281,16 @@ void DecompositionMap::initialize_points(){
 
     // make a small shift in position to avoid geometry floating point issues //TODO: necessary? Adopted from halton sampling
     Position shift {FP_COINCIDENT, FP_COINCIDENT, FP_COINCIDENT};
-    rank_centers_[rank] = (spatial_box_->lower_left() + shift) +
+    xi = (spatial_box_->lower_left() + shift) +
             xi * ((spatial_box_->upper_right() - shift) - (spatial_box_->lower_left() + shift));
+
+    bool is_inside_domain = RandomRay::ray_source_->satisfies_spatial_constraints(xi) ;
+
+    if (is_inside_domain){
+      rank_centers_[rank_cnt] = xi;
+      rank_cnt++;
+    }
+
   }
 }
 
@@ -1041,6 +1068,7 @@ void DecompositionMap::balance_load(FlatSourceDomain* domain){
 
   simulation::time_load_balance_sr_transfer.start();
   redistribute_source_regions(domain);
+  MPI_Barrier(mpi::intracomm); //TODO: Should this barrier stay here?
   simulation::time_load_balance_sr_transfer.stop();
 
   //TODO: temporary

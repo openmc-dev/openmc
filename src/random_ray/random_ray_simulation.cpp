@@ -550,11 +550,12 @@ void RandomRaySimulation::simulate()
     // Balance load between ranks by changing weights of Voronoi cells
     // if (mpi::master){printf("Max imbalance %f", mpi::decomp_map.max_imbalance_);}
 
-    // if (mpi::n_procs > 1 && mpi::decomp_map.load_balanced() == false){
-    //   simulation::time_load_balance.start();
-    //   mpi::decomp_map.balance_load(domain_.get());
-    //   simulation::time_load_balance.stop();
-    // }
+    // TODO: limit load calulateion to first 5 batches as well
+    if (mpi::n_procs > 1 && simulation::current_batch <= 5) {// && mpi::decomp_map.load_balanced() == false){
+      simulation::time_load_balance.start();
+      mpi::decomp_map.balance_load(domain_.get());
+      simulation::time_load_balance.stop();
+    }
 
     // Add source to scalar flux, compute number of FSR hits
     int64_t n_hits = domain_->add_source_to_scalar_flux();

@@ -2447,6 +2447,7 @@ class UnstructuredMesh(MeshBase):
     _UNSUPPORTED_ELEM = -1
     _LINEAR_TET = 0
     _LINEAR_HEX = 1
+    _VTK_TETRA = 10  # VTK_TETRA type is known as DAGMC only supports tet meshes
 
     def __init__(self, filename: PathLike, library: str, mesh_id: int | None = None,
                  name: str = '', length_multiplier: float = 1.0,
@@ -2689,7 +2690,7 @@ class UnstructuredMesh(MeshBase):
 
         if Path(filename).suffix == ".vtkhdf":
 
-            self._write_data_to_vtk_vtk_format(
+            self._write_data_to_vtk_ascii_format(
                 filename=filename,
                 datasets=datasets,
                 volume_normalization=volume_normalization,
@@ -2804,7 +2805,7 @@ class UnstructuredMesh(MeshBase):
 
         writer.Write()
 
-    def _write_data_to_vtk_hdf_format(
+    def _write_data_to_vtk_hdf5_format(
         self,
         filename: PathLike | None = None,
         datasets: dict | None = None,
@@ -2880,10 +2881,8 @@ class UnstructuredMesh(MeshBase):
             append_dataset(root["NumberOfCells"], np.array([self.n_elements]))
             append_dataset(root["Offsets"], offsets)
 
-            # VTK_TETRA type is known as DAGMC only supports tet meshes
-            element_type = 10  # VTK_TETRA
             append_dataset(
-                root["Types"], np.full(self.n_elements, element_type, dtype="uint8")
+                root["Types"], np.full(self.n_elements, _VTK_TETRA, dtype="uint8")
             )
 
             cell_data_group = root.create_group("CellData")

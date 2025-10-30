@@ -526,9 +526,8 @@ def test_umesh(request):
 
     statepoint_file = my_model.run()
 
-    statepoint = openmc.StatePoint(statepoint_file)
-
-    my_tally = statepoint.get_tally(name="test_tally")
+    with openmc.StatePoint(statepoint_file) as statepoint:
+        my_tally = statepoint.get_tally(name="test_tally")
 
     umesh_from_sp = statepoint.meshes[1]
 

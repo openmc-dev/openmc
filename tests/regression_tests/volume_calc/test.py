@@ -51,7 +51,7 @@ class VolumeTest(PyAPITestHarness):
         # Define geometry
         inside_cyl = openmc.Cell(1, fill=fuel, region=-cyl & -top_plane & +bottom_plane)
         top_hemisphere = openmc.Cell(2, fill=water, region=-top_sphere & +top_plane)
-        bottom_hemisphere = openmc.Cell(3, fill=water, region=-bottom_sphere & -top_plane)
+        bottom_hemisphere = openmc.Cell(3, fill=water, region=-bottom_sphere & -bottom_plane)
         root = openmc.Universe(0, cells=(inside_cyl, top_hemisphere, bottom_hemisphere))
 
         self._model.geometry = openmc.Geometry(root)

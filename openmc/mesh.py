@@ -2709,7 +2709,7 @@ class UnstructuredMesh(MeshBase):
                 "'.vtkhdf', '.vtu' or '.vtk'"
             )
 
-    def _write_data_to_vtk_vtk_format(
+    def _write_data_to_vtk_ascii_format(
         self,
         filename: PathLike | None = None,
         datasets: dict | None = None,

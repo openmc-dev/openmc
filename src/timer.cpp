@@ -38,8 +38,13 @@ Timer time_source_region_exchange;
 Timer time_comms_metadata;
 Timer time_unpack_data;
 Timer time_mpi_imbalance;
-// Timer time_load_per_batch;
-// Timer time_test; //TODO: remove
+Timer time_all_reduce;
+Timer time_add_ray_to_bank;
+Timer time_calculate_rank_load;
+Timer time_check_status;
+Timer time_check_new_sr;
+Timer time_test1;
+Timer time_test2;
 
 } // namespace simulation
 

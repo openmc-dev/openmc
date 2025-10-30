@@ -60,6 +60,7 @@ void RayBank::update(FlatSourceDomain* domain){
     simulation::time_unpack_data.start();
     // Add received rays to ray list of that rank
     update_my_ray_list(domain);
+    MPI_Barrier(mpi::intracomm); //TODO: Should this barrier stay here?
     simulation::time_unpack_data.stop();
 
 }
@@ -199,30 +200,37 @@ void RayBank::update_my_ray_list(FlatSourceDomain* domain){
   my_ray_list_.resize(received_ray_data_.size());
 
   // Add re-initialized random ray objects to my_ray_list
-  #pragma omp parallel
-  {
+  // #pragma omp parallel
+  // {
     // Temporary vector containing angular flux data for re-initialization of random rays
-    vector<float> angular_flux_vec(negroups_);
+    // vector<float> angular_flux_vec(negroups_);
 
-    #pragma omp for
+    // #pragma omp for
+  #pragma omp parallel for
     for (int i = 0; i < received_ray_data_.size(); i++) {
 
-      for (int g = 0; g < negroups_; g++) {
-        angular_flux_vec[g] = received_angular_flux_data_[i * negroups_ + g];
-      }
+      // for (int g = 0; g < negroups_; g++) {
+      //   angular_flux_vec[g] = received_angular_flux_data_[i * negroups_ + g];
+      // }
 
       // Re-initialize rays with received data
-      my_ray_list_[i] = RandomRay(domain, received_ray_data_[i], angular_flux_vec);
+      // my_ray_list_.emplace_back(domain, received_ray_data_[i], &received_angular_flux_data_[i * negroups_]);
+      // my_ray_list_[i] = RandomRay(domain, received_ray_data_[i], angular_flux_vec);
+      // my_ray_list_[i] = RandomRay(domain, received_ray_data_[i], &received_angular_flux_data_[i * negroups_]);
+      
+      my_ray_list_[i].restart_ray(domain, received_ray_data_[i], &received_angular_flux_data_[i * negroups_]);
     }
-  }
+  // }
 
   // clear received data vectors
-  received_ray_data_.clear();
-  received_angular_flux_data_.clear();
+  received_ray_data_.resize(0);
+  received_angular_flux_data_.resize(0);
 
 }
 
 bool RayBank::is_any_ray_alive(){
+
+  simulation::time_check_status.start();
 
   int local_rays_alive = ray_bank_size();
   int flag = 0;
@@ -231,6 +239,8 @@ bool RayBank::is_any_ray_alive(){
   }
   
   MPI_Allreduce(MPI_IN_PLACE, &flag, 1, MPI_INT, MPI_MAX, mpi::intracomm);
+
+  simulation::time_check_status.stop();
   
   return flag > 0;
 }

@@ -661,7 +661,7 @@ void RandomRaySimulation::instability_check(
   if (mpi::n_procs > 1){
     // Reduce n_hits and n_source_regions on master rank to compute
     // global miss rate
-    simulation::time_decomposition_handling.start();
+    simulation::time_all_reduce.start();
     if (mpi::master) {
       MPI_Reduce(MPI_IN_PLACE, &n_hits, 1, MPI_LONG_LONG, MPI_SUM, 0, mpi::intracomm);
       MPI_Reduce(MPI_IN_PLACE, &n_source_regions, 1, MPI_LONG_LONG, MPI_SUM, 0, mpi::intracomm);
@@ -669,7 +669,7 @@ void RandomRaySimulation::instability_check(
       MPI_Reduce(&n_hits, nullptr, 1, MPI_LONG_LONG, MPI_SUM, 0, mpi::intracomm);
       MPI_Reduce(&n_source_regions, nullptr, 1, MPI_LONG_LONG, MPI_SUM, 0, mpi::intracomm);
     }
-    simulation::time_decomposition_handling.stop();
+    simulation::time_all_reduce.stop();
   }
 
   // if (mpi::master) {
@@ -682,6 +682,9 @@ void RandomRaySimulation::instability_check(
                             static_cast<double>(n_source_regions)) *
                           100.0;
     avg_miss_rate += percent_missed;
+
+    printf("Batch %d: FSR Miss Rate = %.3f%%\n", simulation::current_batch,
+      percent_missed);
 
     if (percent_missed > 10.0) {
       warning(fmt::format(
@@ -716,13 +719,10 @@ void RandomRaySimulation::print_results_random_ray(
 
   if (settings::verbosity >= 6) {
     double total_integrations = total_geometric_intersections * negroups;
-    double time_per_integration =
-      (time_transport.elapsed() - time_ray_buffering.elapsed())
-      / total_integrations;
+    double time_transport_total = time_transport.elapsed() - time_ray_buffering.elapsed();
+    double time_per_integration = time_transport_total / total_integrations;
     double time_domain_decomposition = time_decomposition_handling.elapsed()
-      + time_generate_voronoi_centers.elapsed() + time_ray_buffering.elapsed() + time_load_balance.elapsed() - time_transport.elapsed();
-    double time_transport_total =
-      (time_transport.elapsed() - time_ray_buffering.elapsed());
+      + time_generate_voronoi_centers.elapsed() + time_load_balance.elapsed() - time_transport_total + time_all_reduce.elapsed();
     double misc_time = time_total.elapsed() - time_update_src.elapsed() -
                        time_transport_total - time_tallies.elapsed() -
                        time_bank_sendrecv.elapsed() - time_domain_decomposition;
@@ -820,7 +820,8 @@ void RandomRaySimulation::print_results_random_ray(
     show_time("Tally conversion only", time_tallies.elapsed(), 1);
     if (mpi::n_procs > 1){
       double time_decomp_misc = time_domain_decomposition - time_source_region_exchange.elapsed() - time_generate_voronoi_centers.elapsed() 
-        - time_ray_comms.elapsed() - time_comms_metadata.elapsed() - time_unpack_data.elapsed() - time_mpi_imbalance.elapsed() - time_load_balance.elapsed();
+        - time_ray_comms.elapsed() - time_comms_metadata.elapsed() - time_unpack_data.elapsed() - time_mpi_imbalance.elapsed() - time_load_balance.elapsed() -  time_ray_buffering.elapsed() - time_all_reduce.elapsed() - time_calculate_rank_load.elapsed() - time_check_status.elapsed() - time_check_new_sr.elapsed()
+        - time_test1.elapsed(); //  - time_add_ray_to_bank.elapsed()
 
       show_time("Decomposition handling", time_domain_decomposition, 1);
       show_time("Ray communication", time_ray_comms.elapsed(), 2);
@@ -832,6 +833,13 @@ void RandomRaySimulation::print_results_random_ray(
       show_time("Generating Voronoi centers", time_generate_voronoi_centers.elapsed(), 2);
       show_time("Sending ray metadata", time_comms_metadata.elapsed(), 2);
       show_time("Unpacking ray data", time_unpack_data.elapsed(), 2);
+      show_time("Buffering rays", time_ray_buffering.elapsed(), 2);     
+      show_time("All reduce", time_all_reduce.elapsed(), 2);     
+      show_time("Adding rays to bank", time_add_ray_to_bank.elapsed(), 2);
+      show_time("Calculate rank load", time_calculate_rank_load.elapsed(), 2);
+      show_time("Check if rays alive", time_check_status.elapsed(), 2);
+      show_time("Check if new sr discovered", time_check_new_sr.elapsed(), 2);
+      show_time("Block", time_test1.elapsed(), 2);
       show_time("Other decomposition routines", time_decomp_misc, 2);
       // show_time("Testing: ", time_test.elapsed(), 2); //TODO: remove
     }
@@ -915,6 +923,8 @@ void RandomRaySimulation::transport_sweep_decomp(RayBank& RB) {
 
   // int ray_cnt = 0;
 
+  simulation::time_test1.start();
+
   // Create rays and add them to ray bank
   #pragma omp parallel for schedule(static)
     for (int i = 0; i < simulation::work_per_rank; i++) {
@@ -926,7 +936,9 @@ void RandomRaySimulation::transport_sweep_decomp(RayBank& RB) {
       if (!ray.has_left_subdomain()){
         #pragma omp critical (raybank)
         {
+          simulation::time_add_ray_to_bank.start();
           RB.add_ray_to_bank(ray);
+          simulation::time_add_ray_to_bank.stop();
         }
       } 
       // Put ray if straight into buffer it starts outside my subdomain
@@ -939,6 +951,8 @@ void RandomRaySimulation::transport_sweep_decomp(RayBank& RB) {
         }
       }
     }
+
+    simulation::time_test1.stop();
 
     // If no ray is alive at this stage, it means that all of them have been buffered because they were sampled in foregin subdomain. This requires a ray bank update here.
     if (!RB.is_any_ray_alive()) {
@@ -965,13 +979,13 @@ void RandomRaySimulation::transport_sweep_decomp(RayBank& RB) {
 
             // If ray has left my subdomain, buffer ray state
             if(ray.has_left_subdomain()){
-              simulation::time_ray_buffering.start();
               #pragma omp critical (raybuffer)
               {
+                simulation::time_ray_buffering.start();
                 num_ray_crossings_ ++;
                 RB.buffer_ray_data_to_send(ray, domain_.get());
+                simulation::time_ray_buffering.stop();
               }
-              simulation::time_ray_buffering.stop();
             }
           }
       simulation::time_transport.stop();
@@ -1002,7 +1016,9 @@ void RandomRaySimulation::transport_sweep_decomp(RayBank& RB) {
     double batch_ray_buffering_time = simulation::time_ray_buffering.elapsed() - start_time_ray_buffering;
     double batch_transport_time = simulation::time_transport.elapsed() - start_time_transport - batch_ray_buffering_time;
     // printf("Batch %d, Rank %d: transport time: %f s\n", simulation::current_batch, mpi::rank, batch_transport_time);
+    simulation::time_calculate_rank_load.start();
     mpi::decomp_map.calculate_rank_load(domain_.get(), batch_transport_time);
+    simulation::time_calculate_rank_load.stop();
 
     avg_num_comms_ += num_comms;
 

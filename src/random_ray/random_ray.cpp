@@ -262,7 +262,8 @@ RandomRay::RandomRay(uint64_t ray_id, FlatSourceDomain* domain) : RandomRay()
   initialize_ray(ray_id, domain);
 }
 
-RandomRay::RandomRay(FlatSourceDomain* domain, RayExchangeData& data, vector<float> angular_flux) : RandomRay()
+// RandomRay::RandomRay(FlatSourceDomain* domain, RayExchangeData& data, vector<float> angular_flux) : RandomRay() //TODO: obsolete, delete
+RandomRay::RandomRay(FlatSourceDomain* domain, RayExchangeData& data, float* angular_flux) : RandomRay()
 {
   restart_ray(domain, data, angular_flux);
 }
@@ -909,7 +910,8 @@ void RandomRay::attenuate_flux_linear_source_void(
   }
 }
 
-void RandomRay::restart_ray(FlatSourceDomain* domain, RayExchangeData& data, vector<float>& angular_flux)
+// void RandomRay::restart_ray(FlatSourceDomain* domain, RayExchangeData& data, vector<float>& angular_flux)
+void RandomRay::restart_ray(FlatSourceDomain* domain, RayExchangeData& data, float* angular_flux)
 {
 
   domain_ = domain;

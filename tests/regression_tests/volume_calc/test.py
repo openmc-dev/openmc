@@ -62,9 +62,11 @@ class VolumeTest(PyAPITestHarness):
             openmc.VolumeCalculation(list(root.cells.values()), 100000),
             openmc.VolumeCalculation([water, fuel], 100000, ll, ur),
             openmc.VolumeCalculation([root], 100000, ll, ur),
-            openmc.VolumeCalculation(list(root.cells.values()), 100),
-            openmc.VolumeCalculation([water, fuel], 100, ll, ur),
-            openmc.VolumeCalculation(list(root.cells.values()), 100),
+            openmc.VolumeCalculation(list(root.cells.values()), 100,
+                                     estimator_type = 'ray'),
+            openmc.VolumeCalculation([water, fuel], 100, ll, ur, 'ray'),
+            openmc.VolumeCalculation(list(root.cells.values()), 100,
+                                     estimator_type = 'ray'),
             openmc.VolumeCalculation([water, fuel], 100, ll, ur)
         ]
 

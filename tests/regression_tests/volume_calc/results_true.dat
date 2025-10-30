@@ -44,49 +44,49 @@ Volume calculation 3
 Trigger Type: std_dev
 Trigger threshold: 0.1
 Iterations limit: None
-Iterations completed: 523
-Domain 1: 31.31+/-0.10 cm^3
-Domain 2: 2.10+/-0.04 cm^3
-Domain 3: 2.19+/-0.04 cm^3
+Iterations completed: 254
+Domain 1: 31.34+/-0.10 cm^3
+Domain 2: 2.04+/-0.04 cm^3
+Domain 3: 2.08+/-0.04 cm^3
    Cell Nuclide                Atoms
-0     1    U235  (3.464+/-0.011)e+23
-1     1    Mo99  (3.464+/-0.011)e+22
-2     2      H1  (1.401+/-0.029)e+23
-3     2     O16    (7.01+/-0.14)e+22
-4     2     B10    (7.01+/-0.14)e+18
-5     3      H1  (1.464+/-0.029)e+23
-6     3     O16    (7.32+/-0.15)e+22
-7     3     B10    (7.32+/-0.15)e+18
+0     1    U235  (3.468+/-0.011)e+23
+1     1    Mo99  (3.468+/-0.011)e+22
+2     2      H1  (1.362+/-0.029)e+23
+3     2     O16    (6.81+/-0.15)e+22
+4     2     B10    (6.81+/-0.15)e+18
+5     3      H1  (1.392+/-0.029)e+23
+6     3     O16    (6.96+/-0.15)e+22
+7     3     B10    (6.96+/-0.15)e+18
 Volume calculation 4
 Trigger Type: rel_err
 Trigger threshold: 0.1
 Iterations limit: None
-Iterations completed: 9
-Domain 1: 5.3+/-0.5 cm^3
-Domain 2: 29.9+/-0.8 cm^3
+Iterations completed: 6
+Domain 1: 4.0+/-0.4 cm^3
+Domain 2: 31.4+/-0.6 cm^3
    Material Nuclide              Atoms
-0         1      H1  (3.53+/-0.33)e+23
-1         1     O16  (1.77+/-0.17)e+23
-2         1     B10  (1.77+/-0.17)e+19
-3         2    U235  (3.31+/-0.09)e+23
-4         2    Mo99  (3.31+/-0.09)e+22
+0         1      H1  (2.71+/-0.25)e+23
+1         1     O16  (1.35+/-0.13)e+23
+2         1     B10  (1.35+/-0.13)e+19
+3         2    U235  (3.48+/-0.07)e+23
+4         2    Mo99  (3.48+/-0.07)e+22
 Volume calculation 5
 Trigger Type: variance
 Trigger threshold: 0.05
 Iterations limit: None
-Iterations completed: 105
-Domain 1: 31.16+/-0.22 cm^3
-Domain 2: 1.91+/-0.09 cm^3
-Domain 3: 2.32+/-0.10 cm^3
+Iterations completed: 51
+Domain 1: 31.27+/-0.22 cm^3
+Domain 2: 1.88+/-0.09 cm^3
+Domain 3: 2.19+/-0.10 cm^3
    Cell Nuclide                Atoms
-0     1    U235  (3.448+/-0.025)e+23
-1     1    Mo99  (3.448+/-0.025)e+22
-2     2      H1    (1.28+/-0.06)e+23
-3     2     O16    (6.39+/-0.31)e+22
-4     2     B10    (6.39+/-0.31)e+18
-5     3      H1    (1.55+/-0.07)e+23
-6     3     O16    (7.76+/-0.34)e+22
-7     3     B10    (7.76+/-0.34)e+18
+0     1    U235  (3.460+/-0.025)e+23
+1     1    Mo99  (3.460+/-0.025)e+22
+2     2      H1    (1.26+/-0.06)e+23
+3     2     O16    (6.30+/-0.31)e+22
+4     2     B10    (6.30+/-0.31)e+18
+5     3      H1    (1.46+/-0.07)e+23
+6     3     O16    (7.32+/-0.34)e+22
+7     3     B10    (7.32+/-0.34)e+18
 Volume calculation 6
 Trigger Type: rel_err
 Trigger threshold: 1e-10

@@ -64,5 +64,8 @@ def test_plotting_geometry_filled_with_dagmc_universe(request):
     cell2 = openmc.Cell(fill=csg_material, region=+sphere1 & -sphere2)
 
     geometry = openmc.Geometry([cell1, cell2])
-
     geometry.plot()
+
+    # Close plot to avoid warning
+    import matplotlib.pyplot as plt
+    plt.close()

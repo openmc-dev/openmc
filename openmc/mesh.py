@@ -2690,7 +2690,7 @@ class UnstructuredMesh(MeshBase):
 
         if Path(filename).suffix == ".vtkhdf":
 
-            self._write_data_to_vtk_ascii_format(
+            self._write_data_to_vtk_hdf5_format(
                 filename=filename,
                 datasets=datasets,
                 volume_normalization=volume_normalization,

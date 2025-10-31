@@ -83,7 +83,7 @@ can be configured with the ``clip_tolerance`` argument.
 Cell-based R2S
 --------------
 
-In practice, users do not need manually go through each of the steps in an R2S
+In practice, users do not need to manually go through each of the steps in an R2S
 calculation described above. The :class:`~openmc.deplete.R2SManager` fully
 automates the execution of neutron transport, depletion, decay source
 generation, and photon transport. For a cell-based R2S calculation, once you
@@ -136,7 +136,7 @@ in the depletion schedule. That means in the case above, we would see three
 photon transport calculations. To specify specific times at which photon
 transport calculations should be run, pass the ``photon_time_indices`` argument.
 For example, if we wanted to run a photon transport calculation only on the last
-time (after the 5 day decay), we would run::
+time (after the 5 hour decay), we would run::
 
     r2s.run(timesteps, source_rates, bounding_boxes=bounding_boxes,
             photon_time_indices=[2])
@@ -169,7 +169,7 @@ that instead. This might look like the following::
 
     # Define a regular Cartesian mesh
     mesh = openmc.RegularMesh()
-    mesh.lower_left = (-50., -50, 0.)
+    mesh.lower_left = (-50., -50., 0.)
     mesh.upper_right = (50., 50., 75.)
     mesh.dimension = (10, 10, 5)
 

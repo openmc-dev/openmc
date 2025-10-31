@@ -8,6 +8,7 @@
 #include <stdexcept> // for runtime_error
 #include <string>    // for string, stod
 
+#include "openmc/constants.h"
 #include "openmc/error.h"
 #include "openmc/math_functions.h"
 #include "openmc/random_dist.h"
@@ -15,6 +16,13 @@
 #include "openmc/xml_interface.h"
 
 namespace openmc {
+
+// PDF evaluation not supported for all distribution types
+double Distribution::evaluate(double x) const
+{
+  throw std::runtime_error(
+    "PDF evaluation not implemented for this distribution type.");
+}
 
 //==============================================================================
 // DiscreteIndex implementation
@@ -38,11 +46,15 @@ void DiscreteIndex::assign(span<const double> p)
   prob_.assign(p.begin(), p.end());
 
   this->init_alias();
+  this->init_wgt();
 }
 
 void DiscreteIndex::init_alias()
 {
   normalize();
+
+  // record user input normalized distribution prob_actual for RR/source bias
+  prob_actual_ = prob_;
 
   // The initialization and sampling method is based on Vose
   // (DOI: 10.1109/32.92917)
@@ -84,6 +96,11 @@ void DiscreteIndex::init_alias()
   }
 }
 
+void DiscreteIndex::init_wgt()
+{
+  wgt_.assign(prob_.size(), 1.0);
+}
+
 size_t DiscreteIndex::sample(uint64_t* seed) const
 {
   // Alias sampling of discrete distribution
@@ -111,6 +128,37 @@ void DiscreteIndex::normalize()
   }
 }
 
+void DiscreteIndex::apply_bias(span<const double> b)
+{
+  // Replace the probability vector with that from the bias distribution.
+  prob_.assign(b.begin(), b.end());
+  if (prob_.size() != prob_actual_.size()) {
+    openmc::fatal_error(
+      "Size mismatch: Attempted to bias Discrete distribution with " +
+      std::to_string(prob_actual_.size()) +
+      " probability entries using a "
+      "Discrete distribution with " +
+      std::to_string(prob_.size()) +
+      " entries. Please ensure distributions have the same size.");
+  }
+
+  // Normalize biased probability vector and populate weight table.
+  normalize();
+  for (std::size_t i = 0; i < wgt_.size(); ++i) {
+    if (prob_[i] == 0.0) {
+      // Allow nonzero entries in original distribution to be given zero
+      // sampling probability in the biased distribution.
+      wgt_[i] = INFTY;
+    } else {
+      wgt_[i] = prob_actual_[i] / prob_[i];
+    }
+  }
+
+  // Reconstruct alias table for sampling from the biased distribution.
+  // Values from unbiased prob_actual_ may be recovered using weight table.
+  this->init_alias();
+}
+
 //==============================================================================
 // Discrete implementation
 //==============================================================================
@@ -130,9 +178,33 @@ Discrete::Discrete(const double* x, const double* p, size_t n) : di_({p, n})
   x_.assign(x, x + n);
 }
 
-double Discrete::sample(uint64_t* seed) const
+std::pair<double, double> Discrete::sample(uint64_t* seed) const
 {
-  return x_[di_.sample(seed)];
+  size_t sample_index = di_.sample(seed);
+  return {x_[sample_index], di_.weight()[sample_index]};
+}
+
+double Discrete::evaluate(double x) const
+{
+  // This function is not called when sampling from a Discrete distribution,
+  // even if it is biased. This is because Discrete distributions may only
+  // be biased by another Discrete distribution. It is only called when a
+  // Discrete distribution is used to bias another kind of distribution.
+  for (size_t i = 0; i < x_.size(); ++i) {
+    if (std::fabs(x_[i] - x) <= FP_PRECISION) {
+      return di_.prob_actual()[i];
+    }
+  }
+  return 0.0;
+}
+
+void Discrete::set_bias_discrete(pugi::xml_node node)
+{
+  // Takes the probability vector from a bias distribution and applies it to
+  // the existing DiscreteIndex.
+  auto bias_params = get_node_array<double>(node, "bias");
+
+  di_.apply_bias(bias_params);
 }
 
 //==============================================================================
@@ -151,9 +223,25 @@ Uniform::Uniform(pugi::xml_node node)
   b_ = params.at(1);
 }
 
-double Uniform::sample(uint64_t* seed) const
+std::pair<double, double> Uniform::sample(uint64_t* seed) const
 {
-  return a_ + prn(seed) * (b_ - a_);
+  if (bias()) {
+    auto [val, wgt] = bias()->sample(seed);
+    return {val, this->evaluate(val) / bias()->evaluate(val)};
+  } else {
+    return {a_ + prn(seed) * (b_ - a_), 1.0};
+  }
+}
+
+double Uniform::evaluate(double x) const
+{
+  if (x <= a()) {
+    return 0.0;
+  } else if (x >= b()) {
+    return 0.0;
+  } else {
+    return 1 / (b() - a());
+  }
 }
 
 //==============================================================================
@@ -177,9 +265,27 @@ PowerLaw::PowerLaw(pugi::xml_node node)
   ninv_ = 1 / (n + 1);
 }
 
-double PowerLaw::sample(uint64_t* seed) const
+double PowerLaw::evaluate(double x) const
 {
-  return std::pow(offset_ + prn(seed) * span_, ninv_);
+  if (x <= a()) {
+    return 0.0;
+  } else if (x >= b()) {
+    return 0.0;
+  } else {
+    int pwr = n() + 1;
+    double norm = pwr / span_;
+    return norm * std::pow(std::fabs(x), n());
+  }
+}
+
+std::pair<double, double> PowerLaw::sample(uint64_t* seed) const
+{
+  if (bias()) {
+    auto [val, wgt] = bias()->sample(seed);
+    return {val, this->evaluate(val) / bias()->evaluate(val)};
+  } else {
+    return {std::pow(offset_ + prn(seed) * span_, ninv_), 1.0};
+  }
 }
 
 //==============================================================================
@@ -191,9 +297,20 @@ Maxwell::Maxwell(pugi::xml_node node)
   theta_ = std::stod(get_node_value(node, "parameters"));
 }
 
-double Maxwell::sample(uint64_t* seed) const
+std::pair<double, double> Maxwell::sample(uint64_t* seed) const
 {
-  return maxwell_spectrum(theta_, seed);
+  if (bias()) {
+    auto [val, wgt] = bias()->sample(seed);
+    return {val, this->evaluate(val) / bias()->evaluate(val)};
+  } else {
+    return {maxwell_spectrum(theta_, seed), 1.0};
+  }
+}
+
+double Maxwell::evaluate(double x) const
+{
+  double c = (2.0 / SQRT_PI) * std::pow(theta_, -1.5);
+  return c * std::sqrt(x) * std::exp(-x / theta_);
 }
 
 //==============================================================================
@@ -211,9 +328,20 @@ Watt::Watt(pugi::xml_node node)
   b_ = params.at(1);
 }
 
-double Watt::sample(uint64_t* seed) const
+std::pair<double, double> Watt::sample(uint64_t* seed) const
 {
-  return watt_spectrum(a_, b_, seed);
+  if (bias()) {
+    auto [val, wgt] = bias()->sample(seed);
+    return {val, this->evaluate(val) / bias()->evaluate(val)};
+  } else {
+    return {watt_spectrum(a_, b_, seed), 1.0};
+  }
+}
+
+double Watt::evaluate(double x) const
+{
+  double c = std::exp(-a_ * (b_ / 4.0)) / (std::pow(a_, 2.0) * std::sqrt(b_));
+  return c * std::exp(-x / a_) * std::sinh(std::sqrt(b_ * x));
 }
 
 //==============================================================================
@@ -231,9 +359,21 @@ Normal::Normal(pugi::xml_node node)
   std_dev_ = params.at(1);
 }
 
-double Normal::sample(uint64_t* seed) const
+std::pair<double, double> Normal::sample(uint64_t* seed) const
 {
-  return normal_variate(mean_value_, std_dev_, seed);
+  if (bias()) {
+    auto [val, wgt] = bias()->sample(seed);
+    return {val, this->evaluate(val) / bias()->evaluate(val)};
+  } else {
+    return {normal_variate(mean_value_, std_dev_, seed), 1.0};
+  }
+}
+
+double Normal::evaluate(double x) const
+{
+  return (1.0 / (std::sqrt(2.0 / PI) * std_dev_)) *
+         std::exp(-(std::pow((x - mean_value_), 2.0)) /
+                  (2.0 * std::pow(std_dev_, 2.0)));
 }
 
 //==============================================================================
@@ -314,44 +454,79 @@ void Tabular::init(
   }
 }
 
-double Tabular::sample(uint64_t* seed) const
+std::pair<double, double> Tabular::sample(uint64_t* seed) const
 {
-  // Sample value of CDF
-  double c = prn(seed);
+  if (bias()) {
+    auto [val, wgt] = bias()->sample(seed);
+    return {val, this->evaluate(val) / bias()->evaluate(val)};
+  } else {
+    // Sample value of CDF
+    double c = prn(seed);
 
-  // Find first CDF bin which is above the sampled value
-  double c_i = c_[0];
-  int i;
-  std::size_t n = c_.size();
-  for (i = 0; i < n - 1; ++i) {
-    if (c <= c_[i + 1])
-      break;
-    c_i = c_[i + 1];
+    // Find first CDF bin which is above the sampled value
+    double c_i = c_[0];
+    int i;
+    std::size_t n = c_.size();
+    for (i = 0; i < n - 1; ++i) {
+      if (c <= c_[i + 1])
+        break;
+      c_i = c_[i + 1];
+    }
+
+    // Determine bounding PDF values
+    double x_i = x_[i];
+    double p_i = p_[i];
+
+    if (interp_ == Interpolation::histogram) {
+      // Histogram interpolation
+      if (p_i > 0.0) {
+        return {(x_i + (c - c_i) / p_i), 1.0};
+      } else {
+        return {x_i, 1.0};
+      }
+    } else {
+      // Linear-linear interpolation
+      double x_i1 = x_[i + 1];
+      double p_i1 = p_[i + 1];
+
+      double m = (p_i1 - p_i) / (x_i1 - x_i);
+      if (m == 0.0) {
+        return {(x_i + (c - c_i) / p_i), 1.0};
+      } else {
+        return {
+          (x_i +
+            (std::sqrt(std::max(0.0, p_i * p_i + 2 * m * (c - c_i))) - p_i) /
+              m),
+          1.0};
+      }
+    }
   }
+}
 
-  // Determine bounding PDF values
-  double x_i = x_[i];
-  double p_i = p_[i];
+double Tabular::evaluate(double x) const
+{
+  int i;
 
   if (interp_ == Interpolation::histogram) {
-    // Histogram interpolation
-    if (p_i > 0.0) {
-      return x_i + (c - c_i) / p_i;
+    i = std::upper_bound(x_.begin(), x_.end(), x) - x_.begin() - 1;
+    if (i < 0 || i >= static_cast<int>(p_.size())) {
+      return 0.0;
     } else {
-      return x_i;
+      return p_[i];
     }
   } else {
-    // Linear-linear interpolation
-    double x_i1 = x_[i + 1];
-    double p_i1 = p_[i + 1];
+    i = std::lower_bound(x_.begin(), x_.end(), x) - x_.begin() - 1;
 
-    double m = (p_i1 - p_i) / (x_i1 - x_i);
-    if (m == 0.0) {
-      return x_i + (c - c_i) / p_i;
+    if (i < 0 || i >= static_cast<int>(p_.size()) - 1) {
+      return 0.0;
     } else {
-      return x_i +
-             (std::sqrt(std::max(0.0, p_i * p_i + 2 * m * (c - c_i))) - p_i) /
-               m;
+      double x0 = x_[i];
+      double x1 = x_[i + 1];
+      double p0 = p_[i];
+      double p1 = p_[i + 1];
+
+      double t = (x - x0) / (x1 - x0);
+      return (1 - t) * p0 + t * p1;
     }
   }
 }
@@ -360,16 +535,33 @@ double Tabular::sample(uint64_t* seed) const
 // Equiprobable implementation
 //==============================================================================
 
-double Equiprobable::sample(uint64_t* seed) const
+std::pair<double, double> Equiprobable::sample(uint64_t* seed) const
 {
-  std::size_t n = x_.size();
+  if (bias()) {
+    auto [val, wgt] = bias()->sample(seed);
+    return {val, this->evaluate(val) / bias()->evaluate(val)};
+  } else {
+    std::size_t n = x_.size();
 
-  double r = prn(seed);
-  int i = std::floor((n - 1) * r);
+    double r = prn(seed);
+    int i = std::floor((n - 1) * r);
 
-  double xl = x_[i];
-  double xr = x_[i + i];
-  return xl + ((n - 1) * r - i) * (xr - xl);
+    double xl = x_[i];
+    double xr = x_[i + i];
+    return {(xl + ((n - 1) * r - i) * (xr - xl)), 1.0};
+  }
+}
+
+double Equiprobable::evaluate(double x) const
+{
+  double x_min = *std::min_element(x_.begin(), x_.end());
+  double x_max = *std::max_element(x_.begin(), x_.end());
+
+  if (x < x_min || x > x_max) {
+    return 0.0;
+  } else {
+    return 1.0 / (x_max - x_min);
+  }
 }
 
 //==============================================================================
@@ -378,7 +570,9 @@ double Equiprobable::sample(uint64_t* seed) const
 
 Mixture::Mixture(pugi::xml_node node)
 {
-  double cumsum = 0.0;
+  vector<double> probabilities;
+
+  // First pass: collect distributions and their probabilities
   for (pugi::xml_node pair : node.children("pair")) {
     // Check that required data exists
     if (!pair.attribute("probability"))
@@ -386,39 +580,41 @@ Mixture::Mixture(pugi::xml_node node)
     if (!pair.child("dist"))
       fatal_error("Mixture pair element does not have a distribution.");
 
-    // cummulative sum of probabilities
+    // Get probability and distribution
     double p = std::stod(pair.attribute("probability").value());
-
-    // Save cummulative probability and distribution
     auto dist = distribution_from_xml(pair.child("dist"));
-    cumsum += p * dist->integral();
 
-    distribution_.push_back(std::make_pair(cumsum, std::move(dist)));
+    // Weight probability by the distribution's integral
+    double weighted_prob = p * dist->integral();
+    probabilities.push_back(weighted_prob);
+    distribution_.push_back(std::move(dist));
   }
 
-  // Save integral of distribution
-  integral_ = cumsum;
+  // Save sum of weighted probabilities
+  integral_ = std::accumulate(probabilities.begin(), probabilities.end(), 0.0);
 
-  // Normalize cummulative probabilities to 1
-  for (auto& pair : distribution_) {
-    pair.first /= cumsum;
-  }
+  // Initialize DiscreteIndex with probability vector, which will normalize
+  di_.assign(probabilities);
 }
 
-double Mixture::sample(uint64_t* seed) const
+void Mixture::set_bias_mixture(pugi::xml_node node)
 {
-  // Sample value of CDF
-  const double p = prn(seed);
+  // Takes the probability vector from a bias distribution and applies it to
+  // the existing DiscreteIndex.
+  auto bias_params = get_node_array<double>(node, "bias");
 
-  // find matching distribution
-  const auto it = std::lower_bound(distribution_.cbegin(), distribution_.cend(),
-    p, [](const DistPair& pair, double p) { return pair.first < p; });
+  di_.apply_bias(bias_params);
+}
 
-  // This should not happen. Catch it
-  assert(it != distribution_.cend());
+std::pair<double, double> Mixture::sample(uint64_t* seed) const
+{
+  size_t sample_index = di_.sample(seed);
 
   // Sample the chosen distribution
-  return it->second->sample(seed);
+  std::pair<double, double> sample_pair =
+    distribution_[sample_index]->sample(seed);
+
+  return {sample_pair.first, di_.weight()[sample_index] * sample_pair.second};
 }
 
 //==============================================================================
@@ -458,6 +654,27 @@ UPtrDist distribution_from_xml(pugi::xml_node node)
   } else {
     openmc::fatal_error("Invalid distribution type: " + type);
   }
+
+  // Check for biasing distribution
+  if (check_for_node(node, "bias")) {
+    pugi::xml_node bias_node = node.child("bias");
+
+    if (check_for_node(bias_node, "bias")) {
+      openmc::fatal_error(
+        "Distribution of type " + type +
+        " has a bias distribution with its "
+        "own bias distribution. Please ensure bias distributions do not have "
+        "their own bias.");
+    } else if (type == "discrete") {
+      static_cast<Discrete*>(dist.get())->set_bias_discrete(node);
+    } else if (type == "mixture") {
+      static_cast<Mixture*>(dist.get())->set_bias_mixture(node);
+    } else {
+      UPtrDist bias = distribution_from_xml(bias_node);
+      dist->set_bias(std::move(bias));
+    }
+  }
+
   return dist;
 }
 

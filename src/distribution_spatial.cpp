@@ -80,9 +80,13 @@ CartesianIndependent::CartesianIndependent(pugi::xml_node node)
   }
 }
 
-Position CartesianIndependent::sample(uint64_t* seed) const
+std::pair<Position, double> CartesianIndependent::sample(uint64_t* seed) const
 {
-  return {x_->sample(seed), y_->sample(seed), z_->sample(seed)};
+  auto [x_val, x_wgt] = x_->sample(seed);
+  auto [y_val, y_wgt] = y_->sample(seed);
+  auto [z_val, z_wgt] = z_->sample(seed);
+  Position xi {x_val, y_val, z_val};
+  return {xi, x_wgt * y_wgt * z_wgt};
 }
 
 //==============================================================================
@@ -139,14 +143,16 @@ CylindricalIndependent::CylindricalIndependent(pugi::xml_node node)
   }
 }
 
-Position CylindricalIndependent::sample(uint64_t* seed) const
+std::pair<Position, double> CylindricalIndependent::sample(uint64_t* seed) const
 {
-  double r = r_->sample(seed);
-  double phi = phi_->sample(seed);
+  auto [r, r_wgt] = r_->sample(seed);
+  auto [phi, phi_wgt] = phi_->sample(seed);
+  auto [z, z_wgt] = z_->sample(seed);
   double x = r * cos(phi) + origin_.x;
   double y = r * sin(phi) + origin_.y;
-  double z = z_->sample(seed) + origin_.z;
-  return {x, y, z};
+  z += origin_.z;
+  Position xi {x, y, z};
+  return {xi, r_wgt * phi_wgt * z_wgt};
 }
 
 //==============================================================================
@@ -203,16 +209,17 @@ SphericalIndependent::SphericalIndependent(pugi::xml_node node)
   }
 }
 
-Position SphericalIndependent::sample(uint64_t* seed) const
+std::pair<Position, double> SphericalIndependent::sample(uint64_t* seed) const
 {
-  double r = r_->sample(seed);
-  double cos_theta = cos_theta_->sample(seed);
-  double phi = phi_->sample(seed);
+  auto [r, r_wgt] = r_->sample(seed);
+  auto [cos_theta, cos_theta_wgt] = cos_theta_->sample(seed);
+  auto [phi, phi_wgt] = phi_->sample(seed);
   // sin(theta) by sin**2 + cos**2 = 1
   double x = r * std::sqrt(1 - cos_theta * cos_theta) * cos(phi) + origin_.x;
   double y = r * std::sqrt(1 - cos_theta * cos_theta) * sin(phi) + origin_.y;
   double z = r * cos_theta + origin_.z;
-  return {x, y, z};
+  Position xi {x, y, z};
+  return {xi, r_wgt * cos_theta_wgt * phi_wgt};
 }
 
 //==============================================================================
@@ -260,6 +267,34 @@ MeshSpatial::MeshSpatial(pugi::xml_node node)
   }
 
   elem_idx_dist_.assign(strengths);
+
+  if (check_for_node(node, "bias")) {
+    pugi::xml_node bias_node = node.child("bias");
+
+    if (check_for_node(bias_node, "strengths")) {
+      std::vector<double> bias_strengths(n_bins, 1.0);
+      bias_strengths = get_node_array<double>(node, "strengths");
+
+      if (bias_strengths.size() != n_bins) {
+        fatal_error(
+          fmt::format("Number of entries in the bias strengths array {} does "
+                      "not match the number of entities in mesh {} ({}).",
+            bias_strengths.size(), mesh_id, n_bins));
+      }
+
+      if (get_node_value_bool(node, "volume_normalized")) {
+        for (int i = 0; i < n_bins; i++) {
+          bias_strengths[i] *= this->mesh()->volume(i);
+        }
+      }
+
+      span<const double> b {bias_strengths};
+      elem_idx_dist_.apply_bias(b);
+    } else {
+      fatal_error(fmt::format(
+        "Bias node for mesh {} found without strengths array.", mesh_id));
+    }
+  }
 }
 
 MeshSpatial::MeshSpatial(int32_t mesh_idx, span<const double> strengths)
@@ -295,9 +330,10 @@ std::pair<int32_t, Position> MeshSpatial::sample_mesh(uint64_t* seed) const
   return {elem_idx, mesh()->sample_element(elem_idx, seed)};
 }
 
-Position MeshSpatial::sample(uint64_t* seed) const
+std::pair<Position, double> MeshSpatial::sample(uint64_t* seed) const
 {
-  return this->sample_mesh(seed).second;
+  auto [elem_idx, u] = this->sample_mesh(seed);
+  return {u, elem_idx_dist_.weight()[elem_idx]};
 }
 
 //==============================================================================
@@ -328,6 +364,28 @@ PointCloud::PointCloud(pugi::xml_node node)
   }
 
   point_idx_dist_.assign(strengths);
+
+  if (check_for_node(node, "bias")) {
+    pugi::xml_node bias_node = node.child("bias");
+
+    if (check_for_node(bias_node, "strengths")) {
+      std::vector<double> bias_strengths(point_cloud_.size(), 1.0);
+      bias_strengths = get_node_array<double>(node, "strengths");
+
+      if (bias_strengths.size() != point_cloud_.size()) {
+        fatal_error(
+          fmt::format("Number of entries in the bias strengths array {} does "
+                      "not match the number of spatial points provided {}.",
+            bias_strengths.size(), point_cloud_.size()));
+      }
+
+      span<const double> b {bias_strengths};
+      point_idx_dist_.apply_bias(b);
+    } else {
+      fatal_error(
+        fmt::format("Bias node for PointCloud found without strengths array."));
+    }
+  }
 }
 
 PointCloud::PointCloud(
@@ -337,10 +395,10 @@ PointCloud::PointCloud(
   point_idx_dist_.assign(strengths);
 }
 
-Position PointCloud::sample(uint64_t* seed) const
+std::pair<Position, double> PointCloud::sample(uint64_t* seed) const
 {
   int32_t index = point_idx_dist_.sample(seed);
-  return point_cloud_[index];
+  return {point_cloud_[index], point_idx_dist_.weight()[index]};
 }
 
 //==============================================================================
@@ -360,10 +418,11 @@ SpatialBox::SpatialBox(pugi::xml_node node, bool fission)
   upper_right_ = Position {params[3], params[4], params[5]};
 }
 
-Position SpatialBox::sample(uint64_t* seed) const
+std::pair<Position, double> SpatialBox::sample(uint64_t* seed) const
 {
   Position xi {prn(seed), prn(seed), prn(seed)};
-  return lower_left_ + xi * (upper_right_ - lower_left_);
+  // Biasing not implemented--use CartesianIndependent instead
+  return {lower_left_ + xi * (upper_right_ - lower_left_), 1.0};
 }
 
 //==============================================================================
@@ -382,9 +441,9 @@ SpatialPoint::SpatialPoint(pugi::xml_node node)
   r_ = Position {params.data()};
 }
 
-Position SpatialPoint::sample(uint64_t* seed) const
+std::pair<Position, double> SpatialPoint::sample(uint64_t* seed) const
 {
-  return r_;
+  return {r_, 1.0};
 }
 
 } // namespace openmc

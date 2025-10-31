@@ -22,11 +22,24 @@ namespace openmc {
 class Distribution {
 public:
   virtual ~Distribution() = default;
-  virtual double sample(uint64_t* seed) const = 0;
+  virtual std::pair<double, double> sample(uint64_t* seed) const = 0;
+
+  //! Evaluate pdf at a point
+  //! \return Value of pdf at a point
+  virtual double evaluate(double x) const;
 
   //! Return integral of distribution
   //! \return Integral of distribution
   virtual double integral() const { return 1.0; };
+
+  // Set or get bias distribution
+  void set_bias(std::unique_ptr<Distribution> bias) { bias_ = std::move(bias); }
+
+  const Distribution* bias() const { return bias_.get(); }
+
+protected:
+  // Biasing distribution
+  unique_ptr<Distribution> bias_;
 };
 
 using UPtrDist = unique_ptr<Distribution>;
@@ -53,22 +66,34 @@ public:
   //! \return Sampled value
   size_t sample(uint64_t* seed) const;
 
+  //! Apply biased sampling using another Discrete distribution
+  //! \param b Biased probability vector for accepting a uniformly sampled bin
+  //! \return void
+  void apply_bias(span<const double> b);
+
   // Properties
   const vector<double>& prob() const { return prob_; }
   const vector<size_t>& alias() const { return alias_; }
+  const vector<double>& prob_actual() const { return prob_actual_; }
+  const vector<double>& weight() const { return wgt_; }
   double integral() const { return integral_; }
 
 private:
   vector<double> prob_; //!< Probability of accepting the uniformly sampled bin,
                         //!< mapped to alias method table
-  vector<size_t> alias_; //!< Alias table
-  double integral_;      //!< Integral of distribution
+  vector<size_t> alias_;       //!< Alias table
+  vector<double> wgt_;         //!< Weights for sampling from a biased prob_
+  double integral_;            //!< Integral of distribution
+  vector<double> prob_actual_; //!< actual probability before the Vose algorithm
 
   //! Normalize distribution so that probabilities sum to unity
   void normalize();
 
   //! Initialize alias tables for distribution
   void init_alias();
+
+  //! Initialize weight table for biased sampling
+  void init_wgt();
 };
 
 //==============================================================================
@@ -82,15 +107,24 @@ public:
 
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
-  //! \return Sampled value
-  double sample(uint64_t* seed) const override;
+  //! \return (sampled value, sample weight)
+  std::pair<double, double> sample(uint64_t* seed) const override;
+
+  //! Evaluate probability density at a point
+  //! \param x Point to evaluate f(x)
+  //! \return f(x)
+  double evaluate(double x) const override;
 
   double integral() const override { return di_.integral(); };
+
+  void set_bias_discrete(pugi::xml_node bias_node);
 
   // Properties
   const vector<double>& x() const { return x_; }
   const vector<double>& prob() const { return di_.prob(); }
   const vector<size_t>& alias() const { return di_.alias(); }
+  const vector<double>& prob_actual() const { return di_.prob_actual(); }
+  const vector<double>& weight() const { return di_.weight(); }
 
 private:
   vector<double> x_; //!< Possible outcomes
@@ -109,8 +143,13 @@ public:
 
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
-  //! \return Sampled value
-  double sample(uint64_t* seed) const override;
+  //! \return (sampled value, sample weight)
+  std::pair<double, double> sample(uint64_t* seed) const override;
+
+  //! Evaluate probability density at a point
+  //! \param x Point to evaluate f(x)
+  //! \return f(x)
+  double evaluate(double x) const override;
 
   double a() const { return a_; }
   double b() const { return b_; }
@@ -133,8 +172,13 @@ public:
 
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
-  //! \return Sampled value
-  double sample(uint64_t* seed) const override;
+  //! \return (sampled value, sample weight)
+  std::pair<double, double> sample(uint64_t* seed) const override;
+
+  //! Evaluate probability density at a point
+  //! \param x Point to evaluate f(x)
+  //! \return f(x)
+  double evaluate(double x) const override;
 
   double a() const { return std::pow(offset_, ninv_); }
   double b() const { return std::pow(offset_ + span_, ninv_); }
@@ -158,8 +202,13 @@ public:
 
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
-  //! \return Sampled value
-  double sample(uint64_t* seed) const override;
+  //! \return (sampled value, sample weight)
+  std::pair<double, double> sample(uint64_t* seed) const override;
+
+  //! Evaluate probability density at a point
+  //! \param x Point to evaluate f(x)
+  //! \return f(x)
+  double evaluate(double x) const override;
 
   double theta() const { return theta_; }
 
@@ -178,8 +227,13 @@ public:
 
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
-  //! \return Sampled value
-  double sample(uint64_t* seed) const override;
+  //! \return (sampled value, sample weight)
+  std::pair<double, double> sample(uint64_t* seed) const override;
+
+  //! Evaluate probability density at a point
+  //! \param x Point to evaluate f(x)
+  //! \return f(x)
+  double evaluate(double x) const override;
 
   double a() const { return a_; }
   double b() const { return b_; }
@@ -202,8 +256,13 @@ public:
 
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
-  //! \return Sampled value
-  double sample(uint64_t* seed) const override;
+  //! \return (sampled value, sample weight)
+  std::pair<double, double> sample(uint64_t* seed) const override;
+
+  //! Evaluate probability density at a point
+  //! \param x Point to evaluate f(x)
+  //! \return f(x)
+  double evaluate(double x) const override;
 
   double mean_value() const { return mean_value_; }
   double std_dev() const { return std_dev_; }
@@ -225,8 +284,13 @@ public:
 
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
-  //! \return Sampled value
-  double sample(uint64_t* seed) const override;
+  //! \return (sampled value, sample weight)
+  std::pair<double, double> sample(uint64_t* seed) const override;
+
+  //! Evaluate probability density at a point
+  //! \param x Point to evaluate f(x)
+  //! \return f(x)
+  double evaluate(double x) const override;
 
   // properties
   vector<double>& x() { return x_; }
@@ -261,8 +325,13 @@ public:
 
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
-  //! \return Sampled value
-  double sample(uint64_t* seed) const override;
+  //! \return (sampled value, sample weight)
+  std::pair<double, double> sample(uint64_t* seed) const override;
+
+  //! Evaluate probability density at a point
+  //! \param x Point to evaluate f(x)
+  //! \return f(x)
+  double evaluate(double x) const override;
 
   const vector<double>& x() const { return x_; }
 
@@ -280,18 +349,18 @@ public:
 
   //! Sample a value from the distribution
   //! \param seed Pseudorandom number seed pointer
-  //! \return Sampled value
-  double sample(uint64_t* seed) const override;
+  //! \return (sampled value, sample weight)
+  std::pair<double, double> sample(uint64_t* seed) const override;
 
   double integral() const override { return integral_; }
 
-private:
-  // Storrage for probability + distribution
-  using DistPair = std::pair<double, UPtrDist>;
+  void set_bias_mixture(pugi::xml_node bias_node);
 
-  vector<DistPair>
-    distribution_;  //!< sub-distributions + cummulative probabilities
-  double integral_; //!< integral of distribution
+private:
+  vector<UPtrDist> distribution_; //!< sub-distributions
+  DiscreteIndex di_;              //!< discrete probability distribution of
+                                  //!< sub-distribution indices
+  double integral_;               //!< integral of distribution
 };
 
 } // namespace openmc

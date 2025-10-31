@@ -28,7 +28,7 @@ TEST_CASE("Test alias method sampling of a discrete distribution")
   int counter = 0;
 
   for (size_t i = 0; i < n_samples; i++) {
-    auto sample = dist.sample(&seed);
+    auto [sample, sample_wgt] = dist.sample(&seed);
     std += sample * sample / n_samples;
     dist_mean += sample;
 
@@ -61,7 +61,7 @@ TEST_CASE("Test alias sampling method for pugixml constructor")
   // Initialize discrete distribution and seed
   openmc::Discrete dist(energy);
   uint64_t seed = openmc::init_seed(0, 0);
-  auto sample = dist.sample(&seed);
+  auto [sample, sample_wgt] = dist.sample(&seed);
 
   // Assertions
   REQUIRE(dist.x().size() == 3);

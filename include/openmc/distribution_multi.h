@@ -26,8 +26,8 @@ public:
 
   //! Sample a direction from the distribution
   //! \param seed Pseudorandom number seed pointer
-  //! \return Direction sampled
-  virtual Direction sample(uint64_t* seed) const = 0;
+  //! \return (sampled Direction, sample weight)
+  virtual std::pair<Direction, double> sample(uint64_t* seed) const = 0;
 
   Direction u_ref_ {0.0, 0.0, 1.0}; //!< reference direction
 };
@@ -43,8 +43,14 @@ public:
 
   //! Sample a direction from the distribution
   //! \param seed Pseudorandom number seed pointer
-  //! \return Direction sampled
-  Direction sample(uint64_t* seed) const override;
+  //! \return (sampled Direction, sample weight)
+  std::pair<Direction, double> sample(uint64_t* seed) const override;
+
+  //! Sample a direction and return evaluation of the PDF for biased sampling.
+  //! Note that bias distributions are intended to return unit-weight samples.
+  //! \param seed Pseudorandom number seed points
+  //! \return (sampled Direction, value of the PDF at this Direction)
+  std::pair<Direction, double> sample_as_bias(uint64_t* seed) const;
 
   // Observing pointers
   Distribution* mu() const { return mu_.get(); }
@@ -64,11 +70,24 @@ Direction isotropic_direction(uint64_t* seed);
 class Isotropic : public UnitSphereDistribution {
 public:
   Isotropic() {};
+  explicit Isotropic(pugi::xml_node node);
 
   //! Sample a direction from the distribution
   //! \param seed Pseudorandom number seed pointer
-  //! \return Sampled direction
-  Direction sample(uint64_t* seed) const override;
+  //! \return (sampled Direction, sample weight)
+  std::pair<Direction, double> sample(uint64_t* seed) const override;
+
+  // Set or get bias distribution
+  void set_bias(std::unique_ptr<PolarAzimuthal> bias)
+  {
+    bias_ = std::move(bias);
+  }
+
+  const PolarAzimuthal* bias() const { return bias_.get(); }
+
+protected:
+  // Biasing distribution
+  unique_ptr<PolarAzimuthal> bias_;
 };
 
 //==============================================================================
@@ -83,8 +102,8 @@ public:
 
   //! Sample a direction from the distribution
   //! \param seed Pseudorandom number seed pointer
-  //! \return Sampled direction
-  Direction sample(uint64_t* seed) const override;
+  //! \return (sampled Direction, sample weight)
+  std::pair<Direction, double> sample(uint64_t* seed) const override;
 };
 
 using UPtrAngle = unique_ptr<UnitSphereDistribution>;

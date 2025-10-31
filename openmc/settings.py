@@ -10,7 +10,7 @@ import lxml.etree as ET
 import openmc
 import openmc.checkvalue as cv
 from openmc.checkvalue import PathLike
-from openmc.stats.multivariate import MeshSpatial
+from openmc.stats.multivariate import MeshSpatial, Box, PolarAzimuthal, Isotropic
 from ._xml import clean_indentation, get_elem_list, get_text
 from .mesh import _read_meshes, RegularMesh, MeshBase
 from .source import SourceBase, MeshSource, IndependentSource
@@ -1720,8 +1720,32 @@ class Settings:
             element = ET.SubElement(root, "random_ray")
             for key, value in self._random_ray.items():
                 if key == 'ray_source' and isinstance(value, SourceBase):
+                    # ensure that ray source distribution(s) are not being biased
+                    if getattr(value, "space", None) is not None:
+                        if not isinstance(value.space, Box):
+                            if getattr(value.space, "bias", None) is not None:
+                                raise RuntimeError(
+                                    "Ray source distributions should not be biased.")
+                            
+                            for coord in ["x","y","z","r","cos_theta","phi"]:
+                                subdist = getattr(value.space, coord, None)
+                                if subdist is not None:
+                                    if getattr(subdist, "bias", None) is not None:
+                                        raise RuntimeError(
+                                            "Ray source distributions should not be biased.")
+
+                    if isinstance(getattr(value, "angle", None), Isotropic):
+                        if getattr(value.angle, "bias", None) is not None:
+                            raise RuntimeError(
+                                "Ray source distributions should not be biased.")
+                    elif isinstance(getattr(value, "angle", None), PolarAzimuthal):
+                        if (value.angle.mu.bias is not None) or (value.angle.phi.bias is not None):
+                            raise RuntimeError(
+                                "Ray source distributions should not be biased.")
+
                     source_element = value.to_xml_element()
                     element.append(source_element)
+
                 elif key == 'source_region_meshes':
                     subelement = ET.SubElement(element, 'source_region_meshes')
                     for mesh, domains in value:
@@ -2146,6 +2170,29 @@ class Settings:
                     self.random_ray[child.tag] = float(child.text)
                 elif child.tag == 'source':
                     source = SourceBase.from_xml_element(child)
+                    # ensure that ray source distribution(s) are not being biased
+                    if getattr(source, "space", None) is not None:
+                        if not isinstance(source.space, Box):
+                            if getattr(source.space, "bias", None) is not None:
+                                raise RuntimeError(
+                                    "Ray source distributions should not be biased.")
+                            
+                            for coord in ["x","y","z","r","cos_theta","phi"]:
+                                subdist = getattr(source.space, coord, None)
+                                if subdist is not None:
+                                    if getattr(subdist, "bias", None) is not None:
+                                        raise RuntimeError(
+                                            "Ray source distributions should not be biased.")
+
+                    if isinstance(getattr(source, "angle", None), Isotropic):
+                        if getattr(source.angle, "bias", None) is not None:
+                            raise RuntimeError(
+                                "Ray source distributions should not be biased.")
+                    elif isinstance(getattr(source, "angle", None), PolarAzimuthal):
+                        if (source.angle.mu.bias is not None) or (source.angle.phi.bias is not None):
+                            raise RuntimeError(
+                                "Ray source distributions should not be biased.")
+
                     self.random_ray['ray_source'] = source
                 elif child.tag == 'volume_estimator':
                     self.random_ray['volume_estimator'] = child.text

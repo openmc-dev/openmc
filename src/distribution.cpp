@@ -587,7 +587,7 @@ Mixture::Mixture(pugi::xml_node node)
     // Weight probability by the distribution's integral
     double weighted_prob = p * dist->integral();
     probabilities.push_back(weighted_prob);
-    distributions_.push_back(std::move(dist));
+    distribution_.push_back(std::move(dist));
   }
 
   // Save sum of weighted probabilities
@@ -615,7 +615,6 @@ std::pair<double, double> Mixture::sample(uint64_t* seed) const
     distribution_[sample_index]->sample(seed);
 
   return {sample_pair.first, di_.weight()[sample_index] * sample_pair.second};
-}
 }
 
 //==============================================================================

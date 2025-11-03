@@ -99,6 +99,13 @@ public:
   //----------------------------------------------------------------------------
   // Accessors
 
+  //! Get the atom density in [atom/b-cm]
+  //! \return Density in [atom/b-cm]
+  double atom_density(int32_t i, double rho_multiplier = 1.0) const
+  {
+    return atom_density_(i) * rho_multiplier;
+  }
+
   //! Get density in [atom/b-cm]
   //! \return Density in [atom/b-cm]
   double density() const { return density_; }

@@ -34,6 +34,7 @@ public:
   // Constructors
   HexagonalMesh() = default;
   HexagonalMesh(pugi::xml_node node);
+  HexagonalMesh(hid_t group);
 
   using HexMeshIndex = std::array<int, 4>;
 

@@ -1220,11 +1220,6 @@ extern "C" int openmc_set_n_batches(
     return OPENMC_E_INVALID_ARGUMENT;
   }
 
-  if (simulation::current_batch >= n_batches) {
-    set_errmsg("Number of batches must be greater than current batch.");
-    return OPENMC_E_INVALID_ARGUMENT;
-  }
-
   if (!settings::trigger_on) {
     // Set n_batches and n_max_batches to same value
     settings::n_batches = n_batches;

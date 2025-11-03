@@ -37,7 +37,7 @@ def check_type(name, value, expected_type, expected_iter_type=None, *, none_ok=F
                       [t.__name__ for t in expected_type]))
         else:
             msg = (f'Unable to set "{name}" to "{value}" which is not of type "'
-                   f'{expected_type.__name__}"')
+                   f'{expected_type}"')
         raise TypeError(msg)
 
     if expected_iter_type:

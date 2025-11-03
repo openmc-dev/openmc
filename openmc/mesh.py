@@ -325,20 +325,10 @@ class MeshBase(IDManagerMixin, ABC):
             vols = material_volumes
         mat_volume_by_element = [vols.by_element(i) for i in range(vols.num_elements)]
 
+        # Get dictionary of all materials
+        materials = model._get_all_materials()
+
         # Create homogenized material for each element
-        materials = model.geometry.get_all_materials()
-
-        # Account for materials in DAGMC universes
-        # TODO: This should really get incorporated in lower-level calls to
-        # get_all_materials, but right now it requires information from the
-        # Model object
-        for cell in model.geometry.get_all_cells().values():
-            if isinstance(cell.fill, openmc.DAGMCUniverse):
-                names = cell.fill.material_names
-                materials.update({
-                    mat.id: mat for mat in model.materials if mat.name in names
-                })
-
         homogenized_materials = []
         for mat_volume_list in mat_volume_by_element:
             material_ids, volumes = [list(x) for x in zip(*mat_volume_list)]
@@ -410,7 +400,7 @@ class MeshBase(IDManagerMixin, ABC):
 
         # In order to get mesh into model, we temporarily replace the
         # tallies with a single mesh tally using the current mesh
-        original_tallies = model.tallies
+        original_tallies = list(model.tallies)
         new_tally = openmc.Tally()
         new_tally.filters = [openmc.MeshFilter(self)]
         new_tally.scores = ['flux']

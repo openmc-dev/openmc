@@ -516,3 +516,33 @@ def test_combine_distributions():
     # uncertainty of the expected value
     samples = combined.sample(10_000)
     assert_sample_mean(samples, 0.25)
+
+def test_reference_vwu_projection():
+    """When a non-orthogonal vector is provided, the setter should project out
+    any component along reference_uvw so the stored vector is orthogonal.
+    """
+    pa = openmc.stats.PolarAzimuthal()  # default reference_uvw == (0, 0, 1)
+
+    # Provide a vector that is not orthogonal to (0,0,1)
+    pa.reference_vwu = (2.0, 0.5, 0.3)
+
+    reference_v = np.asarray(pa.reference_vwu)
+    reference_u = np.asarray(pa.reference_uvw)
+
+    # reference_v should be orthogonal to reference_u
+    assert abs(np.dot(reference_v, reference_u)) < 1e-6
+
+
+def test_reference_vwu_normalization():
+    """When a non-normalized vector is provided, the setter should normalize
+    the projected vector to unit length.
+    """
+    pa = openmc.stats.PolarAzimuthal()  # default reference_uvw == (0, 0, 1)
+
+    # Provide a vector that is neither orthogonal to (0,0,1) nor unit-length
+    pa.reference_vwu = (2.0, 0.5, 0.3)
+
+    reference_v = np.asarray(pa.reference_vwu)
+
+    # reference_v should be unit length
+    assert np.isclose(np.linalg.norm(reference_v), 1.0, atol=1e-12)

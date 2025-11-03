@@ -212,6 +212,29 @@ class Model:
             result[mat.name].add(mat)
         return result
 
+    # TODO: This should really get incorporated in lower-level calls to
+    # get_all_materials, but right now it requires information from the Model object
+    def _get_all_materials(self) -> dict[int, openmc.Material]:
+        """Get all materials including those in DAGMC universes
+
+        Returns
+        -------
+        dict
+            Dictionary mapping material ID to material instances
+        """
+        # Get all materials from the Geometry object
+        materials = self.geometry.get_all_materials()
+
+        # Account for materials in DAGMC universes
+        for cell in self.geometry.get_all_cells().values():
+            if isinstance(cell.fill, openmc.DAGMCUniverse):
+                names = cell.fill.material_names
+                materials.update({
+                    mat.id: mat for mat in self.materials if mat.name in names
+                })
+
+        return materials
+
     def add_kinetics_parameters_tallies(self, num_groups: int | None = None):
         """Add tallies for calculating kinetics parameters using the IFP method.
 

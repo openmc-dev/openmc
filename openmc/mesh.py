@@ -2882,7 +2882,7 @@ class UnstructuredMesh(MeshBase):
             append_dataset(root["Offsets"], offsets)
 
             append_dataset(
-                root["Types"], np.full(self.n_elements, _VTK_TETRA, dtype="uint8")
+                root["Types"], np.full(self.n_elements, self._VTK_TETRA, dtype="uint8")
             )
 
             cell_data_group = root.create_group("CellData")

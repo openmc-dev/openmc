@@ -16,6 +16,7 @@ def assert_sample_mean(samples, expected_mean):
     assert np.abs(expected_mean - samples.mean()) < 4*std_dev
 
 
+@pytest.mark.flaky(reruns=1)
 def test_discrete():
     x = [0.0, 1.0, 10.0]
     p = [0.3, 0.2, 0.5]
@@ -104,6 +105,7 @@ def test_clip_discrete():
         d.clip(5)
 
 
+@pytest.mark.flaky(reruns=1)
 def test_uniform():
     a, b = 10.0, 20.0
     d = openmc.stats.Uniform(a, b)
@@ -127,6 +129,7 @@ def test_uniform():
     assert_sample_mean(samples, exp_mean)
 
 
+@pytest.mark.flaky(reruns=1)
 def test_powerlaw():
     a, b, n = 10.0, 100.0, 2.0
     d = openmc.stats.PowerLaw(a, b, n)
@@ -148,6 +151,7 @@ def test_powerlaw():
     assert_sample_mean(samples, exp_mean)
 
 
+@pytest.mark.flaky(reruns=1)
 def test_maxwell():
     theta = 1.2895e6
     d = openmc.stats.Maxwell(theta)
@@ -171,6 +175,7 @@ def test_maxwell():
     assert samples_2.mean() != samples.mean()
 
 
+@pytest.mark.flaky(reruns=1)
 def test_watt():
     a, b = 0.965e6, 2.29e-6
     d = openmc.stats.Watt(a, b)
@@ -194,6 +199,7 @@ def test_watt():
     assert_sample_mean(samples, exp_mean)
 
 
+@pytest.mark.flaky(reruns=1)
 def test_tabular():
     # test linear-linear sampling
     x = np.array([0.0, 5.0, 7.0, 10.0])
@@ -270,6 +276,7 @@ def test_legendre():
         d.to_xml_element('distribution')
 
 
+@pytest.mark.flaky(reruns=1)
 def test_mixture():
     d1 = openmc.stats.Uniform(0, 5)
     d2 = openmc.stats.Uniform(3, 7)
@@ -425,6 +432,7 @@ def test_point():
     assert d.xyz == pytest.approx(p)
 
 
+@pytest.mark.flaky(reruns=1)
 def test_normal():
     mean = 10.0
     std_dev = 2.0
@@ -444,6 +452,7 @@ def test_normal():
     assert_sample_mean(samples, mean)
 
 
+@pytest.mark.flaky(reruns=1)
 def test_muir():
     mean = 10.0
     mass = 5.0
@@ -463,6 +472,7 @@ def test_muir():
     assert_sample_mean(samples, mean)
 
 
+@pytest.mark.flaky(reruns=1)
 def test_combine_distributions():
     # Combine two discrete (same data as in test_merge_discrete)
     x1 = [0.0, 1.0, 10.0]

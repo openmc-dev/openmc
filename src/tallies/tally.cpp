@@ -825,9 +825,14 @@ void Tally::accumulate()
       total_source = 1.0;
     }
 
+    // Determine number of particles contributing to tally
+    double contributing_particles = settings::reduce_tallies
+                                      ? settings::n_particles
+                                      : simulation::work_per_rank;
+
     // Account for number of source particles in normalization
     double norm =
-      total_source / (settings::n_particles * settings::gen_per_batch);
+      total_source / (contributing_particles * settings::gen_per_batch);
 
     if (settings::solver_type == SolverType::RANDOM_RAY) {
       norm = 1.0;

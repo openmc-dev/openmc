@@ -28,6 +28,10 @@ public:
   //! \param seed Pseudorandom number seed pointer
   //! \return Direction sampled
   virtual Direction sample(uint64_t* seed) const = 0;
+  virtual double evaluate(Direction u) const
+  {
+    fatal_error("evaluate not available for this UnitSphereDistribution type");
+  }
 
   Direction u_ref_ {0.0, 0.0, 1.0}; //!< reference direction
 };
@@ -45,6 +49,7 @@ public:
   //! \param seed Pseudorandom number seed pointer
   //! \return Direction sampled
   Direction sample(uint64_t* seed) const override;
+  double evaluate(Direction u) const override;
 
   // Observing pointers
   Distribution* mu() const { return mu_.get(); }
@@ -71,6 +76,7 @@ public:
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled direction
   Direction sample(uint64_t* seed) const override;
+  double evaluate(Direction u) const override;
 };
 
 //==============================================================================

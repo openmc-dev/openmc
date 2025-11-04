@@ -136,6 +136,9 @@ HexagonalMesh::HexagonalMesh(pugi::xml_node node)
       "Must specify either <upper_right> or <width> on a hexagonal mesh.");
   }
 
+
+
+
   // n.b. must check that the number of hexes is odd
   //   or allow a parameter crown/ring
   if (hex_radius_ == 0)
@@ -158,6 +161,14 @@ HexagonalMesh::HexagonalMesh(pugi::xml_node node)
 
   // scale grid vectors of hexagonal mesh
   scale_grid_vectors(size_);
+}
+
+int HexagonalMesh::set_grid()
+{
+}
+
+HexagonalMesh::HexagonalMesh(hid_t group) : StructuredMesh {group}
+{
 }
 
 const std::string HexagonalMesh::mesh_type = "hexagonal";

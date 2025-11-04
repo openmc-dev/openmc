@@ -2444,7 +2444,8 @@ class UnstructuredMesh(MeshBase):
     _UNSUPPORTED_ELEM = -1
     _LINEAR_TET = 0
     _LINEAR_HEX = 1
-    _VTK_TETRA = 10
+    _VTK_TET = 10
+    _VTK_HEX = 12
 
     def __init__(self, filename: PathLike, library: str, mesh_id: int | None = None,
                  name: str = '', length_multiplier: float = 1.0,
@@ -2814,29 +2815,33 @@ class UnstructuredMesh(MeshBase):
             dset.resize(origLen + array.shape[0], axis=0)
             dset[origLen:] = array
 
-        if self.library != "moab":
-            raise NotImplementedError("VTKHDF output is only supported for MOAB meshes")
+        # This writer supports linear tetrahedra and linear hexahedra elements
+        conn_list = []           # flattened connectivity ids
+        cell_sizes = []          # number of points per cell
+        vtk_types = []           # VTK cell types per cell (uint8)
 
-        # the self.connectivity contains arrays of length 8 to support hex
-        # elements as well, in the case of tetrahedra mesh elements, the
-        # last 4 values are -1 and are removed
-        trimmed_connectivity = []
-        for cell in self.connectivity:
-            # Find the index of the first -1 value, if any
-            first_negative_index = np.where(cell == -1)[0]
-            if first_negative_index.size > 0:
-                # Slice the array up to the first -1 value
-                trimmed_connectivity.append(cell[: first_negative_index[0]])
+        for conn, etype in zip(self.connectivity, self.element_types):
+            if etype == self._LINEAR_TET:
+                ids = conn[:4]
+                vtk_types.append(self._VTK_TETRA)
+            elif etype == self._LINEAR_HEX:
+                ids = conn[:8]
+                vtk_types.append(self._VTK_HEXAHEDRON)
             else:
-                # No -1 values, append the whole cell
-                trimmed_connectivity.append(cell)
-        trimmed_connectivity = np.array(trimmed_connectivity, dtype="int32").flatten()
+                raise RuntimeError(
+                    f"Invalid element type {etype} found in mesh {self.id}"
+                )
+            conn_list.extend(ids.tolist())
+            cell_sizes.append(len(ids))
 
-        # MOAB meshes supports tet elements only so we know it has 4 points per cell
-        points_per_cell = 4
+        connectivity = np.asarray(conn_list, dtype=np.int64)
 
-        # offsets are the indices of the first point of each cell in the array of points
-        offsets = np.arange(0, self.n_elements * points_per_cell + 1, points_per_cell)
+        # Offsets must be length (numCells + 1) with a leading 0 and
+        # cumulative end-indices thereafter, per VTK's layout
+        cell_sizes_arr = np.asarray(cell_sizes, dtype=np.int64)
+        offsets = np.empty(cell_sizes_arr.size + 1, dtype=np.int64)
+        offsets[0] = 0
+        np.cumsum(cell_sizes_arr, out=offsets[1:])
 
         for name, data in datasets.items():
             if data.shape != self.dimension:
@@ -2858,30 +2863,19 @@ class UnstructuredMesh(MeshBase):
                 dtype=h5py.string_dtype("ascii", len(ascii_type)),
             )
 
-            # create hdf5 file structure
-            root.create_dataset("NumberOfPoints", (0,), maxshape=(None,), dtype="i8")
-            root.create_dataset("Types", (0,), maxshape=(None,), dtype="uint8")
-            root.create_dataset("Points", (0, 3), maxshape=(None, 3), dtype="f")
-            root.create_dataset(
-                "NumberOfConnectivityIds", (0,), maxshape=(None,), dtype="i8"
-            )
-            root.create_dataset("NumberOfCells", (0,), maxshape=(None,), dtype="i8")
-            root.create_dataset("Offsets", (0,), maxshape=(None,), dtype="i8")
-            root.create_dataset("Connectivity", (0,), maxshape=(None,), dtype="i8")
+            # Create HDF5 file structure compliant with VTKHDF UnstructuredGrid
+            n_points = int(len(self.vertices))
+            n_cells = int(len(cell_sizes))
+            n_conn_ids = int(len(connectivity))
 
-            append_dataset(root["NumberOfPoints"], np.array([len(self.vertices)]))
-            append_dataset(root["Points"], self.vertices)
-            append_dataset(
-                root["NumberOfConnectivityIds"],
-                np.array([len(trimmed_connectivity)]),
-            )
-            append_dataset(root["Connectivity"], trimmed_connectivity)
-            append_dataset(root["NumberOfCells"], np.array([self.n_elements]))
-            append_dataset(root["Offsets"], offsets)
-
-            append_dataset(
-                root["Types"], np.full(self.n_elements, self._VTK_TETRA, dtype="uint8")
-            )
+            root.create_dataset("NumberOfPoints", data=(n_points,), dtype="i8")
+            root.create_dataset("NumberOfCells", data=(n_cells,), dtype="i8")
+            root.create_dataset("NumberOfConnectivityIds", data=(n_conn_ids,), dtype="i8")
+            # VTK typically stores points as double precision
+            root.create_dataset("Points", data=self.vertices.astype(np.float64, copy=False), dtype="f8")
+            root.create_dataset("Types", data=np.asarray(vtk_types, dtype=np.uint8), dtype="uint8")
+            root.create_dataset("Offsets", data=offsets.astype("i8"), dtype="i8")
+            root.create_dataset("Connectivity", data=connectivity.astype("i8"), dtype="i8")
 
             cell_data_group = root.create_group("CellData")
 

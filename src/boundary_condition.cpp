@@ -182,7 +182,8 @@ RotationalPeriodicBC::RotationalPeriodicBC(int i_surf, int j_surf, PeriodicAxis 
       axis_2_idx_ = 1;   // y component dependent
       break;
     default:
-      throw std::invalid_argument(fmt::format("You've specified an axis {} that is not x, y, or z."),axis)
+      throw std::invalid_argument(
+        fmt::format("You've specified an axis that is not x, y, or z."));
   }
 
 
@@ -221,7 +222,8 @@ RotationalPeriodicBC::RotationalPeriodicBC(int i_surf, int j_surf, PeriodicAxis 
       surf2.id_));
   }
 
-  angle_ = compute_periodic_rotation(norm1[axis_2_idx_], norm1[axis_1_idx_], norm2[axis_2_idx_], norm2[axis_1_idx_])
+  angle_ = compute_periodic_rotation(norm1[axis_2_idx_], norm1[axis_1_idx_],
+    norm2[axis_2_idx_], norm2[axis_1_idx_]);
 
   // Warn the user if the angle does not evenly divide a circle
   double rem = std::abs(std::remainder((2 * PI / angle_), 1.0));

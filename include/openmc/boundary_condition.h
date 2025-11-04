@@ -143,14 +143,14 @@ protected:
 
 class RotationalPeriodicBC : public PeriodicBC {
 public:
-  RotationalPeriodicBC(int i_surf, int j_surf);
+  enum PeriodicAxis { x, y, z };
+  RotationalPeriodicBC(int i_surf, int j_surf, PeriodicAxis axis = z);
   float compute_periodic_rotation(float rise_1, float run_1, float rise_2, float run_2) const;
   void handle_particle(Particle& p, const Surface& surf) const override;
 
 protected:
   //! Angle about the axis by which particle coordinates will be rotated
   double angle_;
-  enum PeriodicAxis {x, y, z};
   //! Ensure that choice of axes is right handed. axis_1_idx_ corresponds to the independent axis and axis_2_idx_ corresponds to the dependent axis in the 2D plane  perpendicular to the planes' axis of rotation
   int zero_axis_idx;
   int axis_1_idx_; 

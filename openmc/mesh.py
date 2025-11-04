@@ -2698,7 +2698,7 @@ class UnstructuredMesh(MeshBase):
 
         elif Path(filename).suffix == ".vtk" or Path(filename).suffix == ".vtu":
 
-            self._write_data_to_vtk_hdf5_format(
+            self._write_data_to_vtk_ascii_format(
                 filename=filename,
                 datasets=datasets,
                 volume_normalization=volume_normalization,

@@ -46,7 +46,7 @@ namespace openmc {
 
 int HexagonalMesh::set_grid()
 {
-  if (shape_[0] % 2 == 0){
+  if (shape_[0] % 2 == 0) {
     set_errmsg("Heaxgonal mesh cannot be an even number of hexes wide");
     return OPENMC_E_INVALID_ARGUMENT;
   }
@@ -77,7 +77,8 @@ int HexagonalMesh::set_grid()
   return 0;
 }
 
-HexagonalMesh::HexagonalMesh(pugi::xml_node node) : PeriodicStructuredMesh {node}
+HexagonalMesh::HexagonalMesh(pugi::xml_node node)
+  : PeriodicStructuredMesh {node}
 {
   // Determine number of dimensions for mesh
   if (!check_for_node(node, "dimension")) {
@@ -172,9 +173,9 @@ HexagonalMesh::HexagonalMesh(pugi::xml_node node) : PeriodicStructuredMesh {node
   }
 }
 
-HexagonalMesh::HexagonalMesh(hid_t group): PeriodicStructuredMesh {group}
+HexagonalMesh::HexagonalMesh(hid_t group) : PeriodicStructuredMesh {group}
 {
-    // Determine number of dimensions for mesh
+  // Determine number of dimensions for mesh
   if (!object_exists(group, "dimension")) {
     fatal_error("Must specify <dimension> on a regular mesh.");
   }
@@ -182,7 +183,7 @@ HexagonalMesh::HexagonalMesh(hid_t group): PeriodicStructuredMesh {group}
   xt::xtensor<int, 1> shape;
   read_dataset(group, "dimension", shape);
   int n = n_dimension_ = shape.size();
-  if (n !=1 && n != 2) {
+  if (n != 1 && n != 2) {
     fatal_error("Hexagonal mesh must be one or two, or three dimensions.");
   }
   std::copy(shape.begin(), shape.end(), shape_.begin());
@@ -197,14 +198,15 @@ HexagonalMesh::HexagonalMesh(hid_t group): PeriodicStructuredMesh {group}
 
   if (object_exists(group, "upper_right")) {
     read_dataset(group, "upper_right", upper_right_);
-   // Set width
+    // Set width
     width_ = xt::eval((upper_right_ - lower_left_) / shape);
   } else if (object_exists(group, "width")) {
     read_dataset(group, "width", width_);
     // Set width and upper right coordinate
     upper_right_ = xt::eval(lower_left_ + shape * width_);
   } else {
-    fatal_error("Must specify either upper_right or width dataset on a hexagonal mesh.");
+    fatal_error(
+      "Must specify either upper_right or width dataset on a hexagonal mesh.");
   }
 
   // Make sure shape has two numbers

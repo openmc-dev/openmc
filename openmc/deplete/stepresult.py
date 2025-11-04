@@ -232,7 +232,7 @@ class StepResult:
         material.volume = vol
         return material
 
-    def export_to_hdf5(self, filename, step, write_rates=True):
+    def export_to_hdf5(self, filename, step, write_rates: bool = False):
         """Export results to an HDF5 file
 
         Parameters
@@ -356,7 +356,7 @@ class StepResult:
             "depletion time", (1,), maxshape=(None,),
             dtype="float64")
 
-    def _to_hdf5(self, handle, index, parallel=False, write_rates=True):
+    def _to_hdf5(self, handle, index, parallel=False, write_rates: bool = False):
         """Converts results object into an hdf5 object.
 
         Parameters

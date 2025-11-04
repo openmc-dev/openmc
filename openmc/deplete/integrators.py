@@ -230,9 +230,6 @@ class CELIIntegrator(Integrator):
             Time spent in CRAM routines for all materials in [s]
         n_end : list of numpy.ndarray
             Concentrations at end of interval
-        op_result : openmc.deplete.OperatorResult
-            Eigenvalue and reaction rates from intermediate transport
-            simulation
         """
         # deplete to end using BOS rates
         proc_time, n_ce = self._timed_deplete(n_bos, rates, dt, _i)

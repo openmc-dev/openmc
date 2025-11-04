@@ -10,6 +10,7 @@ import numpy as np
 import openmc
 from openmc.data import REACTION_MT, REACTION_NAME, FISSION_MTS
 import openmc.checkvalue as cv
+from openmc.checkvalue import PathLike
 from ..tallies import ESTIMATOR_TYPES
 from . import EnergyGroups
 
@@ -1982,7 +1983,7 @@ class MGXS:
 
         """
 
-        cv.check_type('filename', filename, str)
+        cv.check_type('filename', filename, (str, PathLike))
         cv.check_type('directory', directory, str)
         cv.check_value('format', format, ['csv', 'excel', 'pickle', 'latex'])
         cv.check_value('xs_type', xs_type, ['macro', 'micro'])

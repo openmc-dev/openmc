@@ -10,6 +10,7 @@ import numpy as np
 import openmc
 import openmc.mgxs
 import openmc.checkvalue as cv
+from openmc.checkvalue import PathLike
 from ..tallies import ESTIMATOR_TYPES
 
 
@@ -851,7 +852,7 @@ class Library:
                   'since a statepoint has not yet been loaded'
             raise ValueError(msg)
 
-        cv.check_type('filename', filename, str)
+        cv.check_type('filename', filename, (str, PathLike))
         cv.check_type('directory', directory, str)
 
         import h5py
@@ -894,7 +895,7 @@ class Library:
 
         """
 
-        cv.check_type('filename', filename, str)
+        cv.check_type('filename', filename, (str, PathLike))
         cv.check_type('directory', directory, str)
 
         # Make directory if it does not exist
@@ -930,7 +931,7 @@ class Library:
 
         """
 
-        cv.check_type('filename', filename, str)
+        cv.check_type('filename', filename, (str, PathLike))
         cv.check_type('directory', directory, str)
 
         # Make directory if it does not exist

@@ -44,18 +44,50 @@ namespace openmc {
 // Global variables
 //==============================================================================
 
-HexagonalMesh::HexagonalMesh(pugi::xml_node node)
-  : PeriodicStructuredMesh {node}
+int HexagonalMesh::set_grid()
+{
+  if (shape_[0] % 2 == 0){
+    set_errmsg("Heaxgonal mesh cannot be an even number of hexes wide");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  hex_radius_ = (shape_[0] - 1) / 2;
+  
+  if (hex_radius_ == 0)
+    hex_count_ = 1;
+  else
+    hex_count_ = 1 + 3 * (hex_radius_ + 1) * hex_radius_;
+
+  // width[1] is the height of the full mesh block, width[0] is the width of
+  // the hexagon from flat end to flat end
+  element_volume_ = width_[1] * width_[0] * width_[0] * sqrt(3) * 0.5;
+
+  // size of hex is defined as the radius of the circumscribed circle
+  size_ = width_[0] / sqrt(3.0);
+
+  // radius of enclosing cylinder
+  r_encl_ = (hex_radius_ - 0.5) * sqrt(3) * size_ + (1 - sqrt(3) * 0.5) * size_;
+
+  // set the plane normals or 3 principal directions in the hex mesh
+  init_plane_normals();
+
+  // scale grid vectors of hexagonal mesh
+  scale_grid_vectors(size_);
+
+  return 0;
+}
+
+HexagonalMesh::HexagonalMesh(pugi::xml_node node) : PeriodicStructuredMesh {node}
 {
   // Determine number of dimensions for mesh
   if (!check_for_node(node, "dimension")) {
-    fatal_error("Must specify <dimension> on a regular mesh.");
+    fatal_error("Must specify <dimension> on a hexagonal mesh.");
   }
 
   xt::xtensor<int, 1> shape = get_node_xarray<int>(node, "dimension");
   int n = n_dimension_ = shape.size();
   if (n != 1 && n != 2) {
-    fatal_error("Mesh must be one or two dimensions.");
+    fatal_error("Hexagonal mesh must be one or two dimensions.");
   }
   std::copy(shape.begin(), shape.end(), shape_.begin());
 

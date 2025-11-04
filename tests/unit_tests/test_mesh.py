@@ -485,24 +485,23 @@ def test_umesh(run_in_tmpdir, simple_umesh, export_type):
         simple_umesh.write_data_to_vtk(datasets={'mean': ref_data[:-2]}, filename=filename)
 
 @pytest.mark.skipif(not openmc.lib._dagmc_enabled(), reason="DAGMC not enabled.")
-def test_umesh(request):
+def test_write_vtkhdf(request, run_in_tmpdir):
     """Performs a minimal UnstructuredMesh simulation, reads in the resulting
     statepoint file and writes the mesh data to vtk and vtkhdf files. It is
     necessary to read in the unstructured mesh from a statepoint file to ensure
     it has all the required attributes
     """
+    model = openmc.Model()
 
     surf1 = openmc.Sphere(R=1000.0, boundary_type="vacuum")
     cell1 = openmc.Cell(region=-surf1)
-    my_geometry = openmc.Geometry([cell1])
+    model.geometry = openmc.Geometry([cell1])
 
     umesh = openmc.UnstructuredMesh(
-        request.path.parent.parent
-        / "regression_tests/unstructured_mesh/test_mesh_dagmc_tets.vtk",
+        request.path.parent / "test_mesh_dagmc_tets.vtk",
         "moab",
+        mesh_id = 1
     )
-    # setting ID to make it easier to get the mesh from the statepoint later
-    umesh.id = 1
     mesh_filter = openmc.MeshFilter(umesh)
 
     # Create flux mesh tally to score alpha production
@@ -510,26 +509,18 @@ def test_umesh(request):
     mesh_tally.filters = [mesh_filter]
     mesh_tally.scores = ["flux"]
 
-    tallies = openmc.Tallies([mesh_tally])
+    model.tallies = [mesh_tally]
 
-    my_source = openmc.IndependentSource()
+    model.settings.run_mode = "fixed source"
+    model.settings.batches = 2
+    model.settings.particles = 10
 
-    settings = openmc.Settings()
-    settings.run_mode = "fixed source"
-    settings.batches = 2
-    settings.particles = 10
-    settings.source = my_source
-
-    my_model = openmc.Model(
-        materials=None, geometry=my_geometry, settings=settings, tallies=tallies
-    )
-
-    statepoint_file = my_model.run()
+    statepoint_file = model.run()
 
     with openmc.StatePoint(statepoint_file) as statepoint:
         my_tally = statepoint.get_tally(name="test_tally")
 
-    umesh_from_sp = statepoint.meshes[1]
+    umesh_from_sp = statepoint.meshes[umesh.id]
 
     datasets={
         "mean": my_tally.mean.flatten(),
@@ -554,7 +545,7 @@ def test_umesh(request):
 
     assert Path("test_mesh.vtk").exists()
     assert Path("test_mesh.vtkhdf").exists()
-   
+
 
 def test_mesh_get_homogenized_materials():
     """Test the get_homogenized_materials method"""

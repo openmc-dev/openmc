@@ -489,7 +489,7 @@ def test_umesh(run_in_tmpdir, simple_umesh, export_type):
 
 
 @pytest.mark.skipif(not openmc.lib._dagmc_enabled(), reason="DAGMC not enabled.")
-def test_write_vtkhdf(request, run_in_tmpdir):
+def test_write_vtkhdf(request):
     """Performs a minimal UnstructuredMesh simulation, reads in the resulting
     statepoint file and writes the mesh data to vtk and vtkhdf files. It is
     necessary to read in the unstructured mesh from a statepoint file to ensure
@@ -553,6 +553,25 @@ def test_write_vtkhdf(request, run_in_tmpdir):
     # just ensure we can open the file without error
     with h5py.File("test_mesh.vtkhdf", "r"):
         ...
+
+    import vtk
+    reader = vtk.vtkHDFReader()
+    reader.SetFileName("test_mesh.vtkhdf")
+    reader.Update()
+
+    # Get mean from file and make sure it matches original data
+    num_elements = reader.GetOutput().GetNumberOfCells()
+    assert num_elements == umesh_from_sp.n_elements
+
+    num_vertices = reader.GetOutput().GetNumberOfPoints()
+    assert num_vertices == umesh_from_sp.n_vertices
+
+    arr = reader.GetOutput().GetCellData().GetArray("mean")
+    mean = np.array([arr.GetTuple1(i) for i in range(my_tally.mean.size)])
+    np.testing.assert_almost_equal(mean, my_tally.mean.flatten()/umesh_from_sp.volumes)
+
+    std_dev = np.array([arr.GetTuple1(i) for i in range(my_tally.std_dev.size)])
+    np.testing.assert_almost_equal(std_dev, my_tally.std_dev.flatten()/umesh_from_sp.volumes)
 
 
 def test_mesh_get_homogenized_materials():

@@ -52,7 +52,7 @@ int HexagonalMesh::set_grid()
   }
 
   hex_radius_ = (shape_[0] - 1) / 2;
-  
+
   if (hex_radius_ == 0)
     hex_count_ = 1;
   else
@@ -198,7 +198,7 @@ HexagonalMesh::HexagonalMesh(hid_t group): PeriodicStructuredMesh {group}
   if (object_exists(group, "upper_right")) {
     read_dataset(group, "upper_right", upper_right_);
    // Set width
-    width_ = xt::eval((upper_right_ - lower_left_) / shape);     
+    width_ = xt::eval((upper_right_ - lower_left_) / shape);
   } else if (object_exists(group, "width")) {
     read_dataset(group, "width", width_);
     // Set width and upper right coordinate

@@ -2447,7 +2447,7 @@ class UnstructuredMesh(MeshBase):
     _UNSUPPORTED_ELEM = -1
     _LINEAR_TET = 0
     _LINEAR_HEX = 1
-    _VTK_TETRA = 10  # VTK_TETRA type is known as DAGMC only supports tet meshes
+    _VTK_TETRA = 10
 
     def __init__(self, filename: PathLike, library: str, mesh_id: int | None = None,
                  name: str = '', length_multiplier: float = 1.0,
@@ -2820,8 +2820,9 @@ class UnstructuredMesh(MeshBase):
         if self.library != "moab":
             raise NotImplemented("VTKHDF output is only supported for MOAB meshes")
 
-        # the self.connectivity contains an arrays of length 8, in the case of
-        # MOAB tetrahedra mesh elements, the last 4 values are -1 and can be removed
+        # the self.connectivity contains arrays of length 8 to support hex
+        # elements as well, in the case of tetrahedra mesh elements, the
+        # last 4 values are -1 and are removed
         trimmed_connectivity = []
         for cell in self.connectivity:
             # Find the index of the first -1 value, if any
@@ -2902,7 +2903,7 @@ class UnstructuredMesh(MeshBase):
         filename = group["filename"][()].decode()
         library = group["library"][()].decode()
         if "options" in group.attrs:
-            options = group.attrs["options"].decode()
+            options = group.attrs['options'].decode()
         else:
             options = None
 

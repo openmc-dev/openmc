@@ -106,7 +106,6 @@ HexagonalMesh::HexagonalMesh(pugi::xml_node node) : PeriodicStructuredMesh {node
     fatal_error("First shape coordinate must be odd to avoid non-integer "
                 "ring count.");
   }
-  hex_radius_ = (shape_[0] - 1) / 2;
 
   // Check for lower-left coordinates
   if (check_for_node(node, "lower_left")) {
@@ -168,39 +167,55 @@ HexagonalMesh::HexagonalMesh(pugi::xml_node node) : PeriodicStructuredMesh {node
       "Must specify either <upper_right> or <width> on a hexagonal mesh.");
   }
 
-
-
-
-  // n.b. must check that the number of hexes is odd
-  //   or allow a parameter crown/ring
-  if (hex_radius_ == 0)
-    hex_count_ = 1;
-  else
-    hex_count_ = 1 + 3 * (hex_radius_ + 1) * hex_radius_;
-
-  // width[1] is the height of the full mesh block, width[0] is the width of
-  // the hexagon from flat end to flat end
-  element_volume_ = width_[1] * width_[0] * width_[0] * sqrt(3) * 0.5;
-
-  // size of hex is defined as the radius of the circumscribed circle
-  size_ = width_[0] / sqrt(3.0);
-
-  // radius of enclosing cylinder
-  r_encl_ = (hex_radius_ - 0.5) * sqrt(3) * size_ + (1 - sqrt(3) * 0.5) * size_;
-
-  // set the plane normals or 3 principal directions in the hex mesh
-  init_plane_normals();
-
-  // scale grid vectors of hexagonal mesh
-  scale_grid_vectors(size_);
+  if (int err = set_grid()) {
+    fatal_error(openmc_err_msg);
+  }
 }
 
-int HexagonalMesh::set_grid()
+HexagonalMesh::HexagonalMesh(hid_t group): PeriodicStructuredMesh {group}
 {
-}
+    // Determine number of dimensions for mesh
+  if (!object_exists(group, "dimension")) {
+    fatal_error("Must specify <dimension> on a regular mesh.");
+  }
 
-HexagonalMesh::HexagonalMesh(hid_t group) : StructuredMesh {group}
-{
+  xt::xtensor<int, 1> shape;
+  read_dataset(group, "dimension", shape);
+  int n = n_dimension_ = shape.size();
+  if (n !=1 && n != 2) {
+    fatal_error("Hexagonal mesh must be one or two, or three dimensions.");
+  }
+  std::copy(shape.begin(), shape.end(), shape_.begin());
+
+  // Check for lower-left coordinates
+  if (object_exists(group, "lower_left")) {
+    // Read mesh lower-left corner location
+    read_dataset(group, "lower_left", lower_left_);
+  } else {
+    fatal_error("Must specify lower_left dataset on a mesh.");
+  }
+
+  if (object_exists(group, "upper_right")) {
+    read_dataset(group, "upper_right", upper_right_);
+   // Set width
+    width_ = xt::eval((upper_right_ - lower_left_) / shape);     
+  } else if (object_exists(group, "width")) {
+    read_dataset(group, "width", width_);
+    // Set width and upper right coordinate
+    upper_right_ = xt::eval(lower_left_ + shape * width_);
+  } else {
+    fatal_error("Must specify either upper_right or width dataset on a hexagonal mesh.");
+  }
+
+  // Make sure shape has two numbers
+  if (n == 1) {
+    shape_[1] = 1;
+    n = 2;
+  }
+
+  if (int err = set_grid()) {
+    fatal_error(openmc_err_msg);
+  }
 }
 
 const std::string HexagonalMesh::mesh_type = "hexagonal";

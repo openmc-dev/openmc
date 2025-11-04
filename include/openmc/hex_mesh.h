@@ -54,6 +54,8 @@ public:
     }
   };
 
+  int set_grid();
+
   HexMeshIndex get_hexindices_from_bin(const int32_t) const;
 
   int32_t get_bin_from_hexindices(const HexMeshIndex& ijkl) const;

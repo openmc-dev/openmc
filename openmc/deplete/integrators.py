@@ -22,7 +22,6 @@ class PredictorIntegrator(Integrator):
 
     .. math::
         \mathbf{n}_{i+1} = \exp\left(h\mathbf{A}(\mathbf{n}_i) \right) \mathbf{n}_i
-
     """
     _num_stages = 1
 

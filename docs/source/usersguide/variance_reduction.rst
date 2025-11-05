@@ -133,8 +133,7 @@ random ray mode can be found in the :ref:`Random Ray User Guide <random_ray>`.
        # we used for source region decomposition
        wwg = openmc.WeightWindowGenerator(
            method='fw_cadis',
-           mesh=mesh,
-           max_realizations=settings.batches
+           mesh=mesh
        )
 
        # Add generator to openmc.settings object

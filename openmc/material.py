@@ -1160,7 +1160,7 @@ class Material(IDManagerMixin):
         by_nuclide: bool = False,
         volume: float | None = None,
         particle: str | None = None,
-        chain_file: Optional[PathLike] = None,
+        chain_file: PathLike | None = None,
     ) -> dict[str, float] | float:
         """Returns the activity of the material or of each nuclide within.
 

@@ -356,12 +356,20 @@ class MicroXS:
             reactions = chain.reactions
         mts = [REACTION_MT[name] for name in reactions]
 
-        # Normalize multigroup flux
-        multigroup_flux = np.array(multigroup_flux)
-        multigroup_flux /= multigroup_flux.sum()
-
         # Create 3D array for microscopic cross sections
         microxs_arr = np.zeros((len(nuclides), len(mts), 1))
+
+        # Normalize multigroup flux
+        multigroup_flux = np.array(multigroup_flux)
+
+        flux_sum = multigroup_flux.sum()
+        if flux_sum <= 0:
+            # return zero microxs safely (no division by zero)
+            return cls(microxs_arr, nuclides, reactions)
+
+
+        multigroup_flux /= flux_sum
+
 
         # Compute microscopic cross sections within a temporary session
         with openmc.lib.TemporarySession(**init_kwargs):

@@ -2876,7 +2876,6 @@ class UnstructuredMesh(MeshBase):
             root.create_dataset("NumberOfPoints", data=(n_points,), dtype="i8")
             root.create_dataset("NumberOfCells", data=(n_cells,), dtype="i8")
             root.create_dataset("NumberOfConnectivityIds", data=(n_conn_ids,), dtype="i8")
-            # VTK typically stores points as double precision
             root.create_dataset("Points", data=self.vertices.astype(np.float64, copy=False), dtype="f8")
             root.create_dataset("Types", data=np.asarray(vtk_types, dtype=np.uint8), dtype="uint8")
             root.create_dataset("Offsets", data=offsets.astype("i8"), dtype="i8")

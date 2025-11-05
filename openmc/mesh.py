@@ -2678,7 +2678,7 @@ class UnstructuredMesh(MeshBase):
         filename : str or pathlib.Path
             Name of the VTK file to write. If the filename ends in '.vtkhdf'
             then a VTKHDF format file will be written. If the filename ends in
-            '.vtu' then a binary VTU format file will be written, if the
+            '.vtu' then a binary VTU format file will be written. If the
             filename ends in '.vtk' then a legacy VTK file will be written.
         datasets : dict
             Dictionary whose keys are the data labels and values are numpy
@@ -2818,7 +2818,7 @@ class UnstructuredMesh(MeshBase):
             dset[origLen:] = array
 
         if self.library != "moab":
-            raise NotImplemented("VTKHDF output is only supported for MOAB meshes")
+            raise NotImplementedError("VTKHDF output is only supported for MOAB meshes")
 
         # the self.connectivity contains arrays of length 8 to support hex
         # elements as well, in the case of tetrahedra mesh elements, the

@@ -2,6 +2,7 @@ from math import pi
 from tempfile import TemporaryDirectory
 from pathlib import Path
 
+import h5py
 import numpy as np
 import pytest
 import openmc
@@ -484,6 +485,7 @@ def test_umesh(run_in_tmpdir, simple_umesh, export_type):
     with pytest.raises(ValueError, match='Cannot apply dataset "mean"') as e:
         simple_umesh.write_data_to_vtk(datasets={'mean': ref_data[:-2]}, filename=filename)
 
+
 @pytest.mark.skipif(not openmc.lib._dagmc_enabled(), reason="DAGMC not enabled.")
 def test_write_vtkhdf(request, run_in_tmpdir):
     """Performs a minimal UnstructuredMesh simulation, reads in the resulting
@@ -493,7 +495,7 @@ def test_write_vtkhdf(request, run_in_tmpdir):
     """
     model = openmc.Model()
 
-    surf1 = openmc.Sphere(R=1000.0, boundary_type="vacuum")
+    surf1 = openmc.Sphere(r=1000.0, boundary_type="vacuum")
     cell1 = openmc.Cell(region=-surf1)
     model.geometry = openmc.Geometry([cell1])
 
@@ -545,6 +547,10 @@ def test_write_vtkhdf(request, run_in_tmpdir):
 
     assert Path("test_mesh.vtk").exists()
     assert Path("test_mesh.vtkhdf").exists()
+
+    # just ensure we can open the file without error
+    with h5py.File("test_mesh.vtkhdf", "r"):
+        ...
 
 
 def test_mesh_get_homogenized_materials():

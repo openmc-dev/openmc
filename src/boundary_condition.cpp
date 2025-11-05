@@ -158,34 +158,34 @@ void TranslationalPeriodicBC::handle_particle(
 // RotationalPeriodicBC implementation
 //==============================================================================
 
-RotationalPeriodicBC::RotationalPeriodicBC(int i_surf, int j_surf, PeriodicAxis axis)
+RotationalPeriodicBC::RotationalPeriodicBC(
+  int i_surf, int j_surf, PeriodicAxis axis)
   : PeriodicBC(i_surf, j_surf)
 {
   Surface& surf1 {*model::surfaces[i_surf_]};
   Surface& surf2 {*model::surfaces[j_surf_]};
 
   // below convention for right handed coordinate system
-  switch(axis) {
-    case x:
-      zero_axis_idx = 0; // x component of plane must be zero
-      axis_1_idx_ = 1;   // y component independent
-      axis_2_idx_ = 2;   // z component dependent
-      break;
-    case y:
-      zero_axis_idx = 1; // y component of plane must be zero
-      axis_1_idx_ = 2;   // z component independent
-      axis_2_idx_ = 0;   // x component dependent
-      break;
-    case z:
-      zero_axis_idx = 2; // z component of plane must be zero
-      axis_1_idx_ = 0;   // x component independent
-      axis_2_idx_ = 1;   // y component dependent
-      break;
-    default:
-      throw std::invalid_argument(
-        fmt::format("You've specified an axis that is not x, y, or z."));
+  switch (axis) {
+  case x:
+    zero_axis_idx = 0; // x component of plane must be zero
+    axis_1_idx_ = 1;   // y component independent
+    axis_2_idx_ = 2;   // z component dependent
+    break;
+  case y:
+    zero_axis_idx = 1; // y component of plane must be zero
+    axis_1_idx_ = 2;   // z component independent
+    axis_2_idx_ = 0;   // x component dependent
+    break;
+  case z:
+    zero_axis_idx = 2; // z component of plane must be zero
+    axis_1_idx_ = 0;   // x component independent
+    axis_2_idx_ = 1;   // y component dependent
+    break;
+  default:
+    throw std::invalid_argument(
+      fmt::format("You've specified an axis that is not x, y, or z."));
   }
-
 
   // Compute the surface normal vectors and make sure they are perpendicular
   // to the correct axis
@@ -276,10 +276,10 @@ void RotationalPeriodicBC::handle_particle(
   Direction u = p.u();
   double cos_theta = std::cos(theta);
   double sin_theta = std::sin(theta);
-  Position new_r = {
-    cos_theta * r[axis_1_idx_] - sin_theta * r[axis_2_idx_], sin_theta * r[axis_1_idx_] + cos_theta * r[axis_2_idx_], r[zero_axis_idx]};
-  Direction new_u = {
-    cos_theta * u[axis_1_idx_] - sin_theta * u[axis_2_idx_], sin_theta * u[axis_1_idx_] + cos_theta * u[axis_2_idx_], u[zero_axis_idx]};
+  Position new_r = {cos_theta * r[axis_1_idx_] - sin_theta * r[axis_2_idx_],
+    sin_theta * r[axis_1_idx_] + cos_theta * r[axis_2_idx_], r[zero_axis_idx]};
+  Direction new_u = {cos_theta * u[axis_1_idx_] - sin_theta * u[axis_2_idx_],
+    sin_theta * u[axis_1_idx_] + cos_theta * u[axis_2_idx_], u[zero_axis_idx]};
 
   // Handle the effects of the surface albedo on the particle's weight.
   BoundaryCondition::handle_albedo(p, surf);

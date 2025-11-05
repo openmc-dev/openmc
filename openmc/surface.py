@@ -124,7 +124,7 @@ class Surface(IDManagerMixin, ABC):
         Boundary condition that defines the behavior for particles hitting the
         surface. Defaults to transmissive boundary condition where particles
         freely pass through the surface. Note that only axis-aligned
-        periodicity is supported periodic around the o x-, y-, and z-axes.
+        periodicity is supported periodic around the x-, y-, and z-axes.
     albedo : float, optional
         Albedo of the surfaces as a ratio of particle weight after interaction
         with the surface to the initial weight. Values must be positive. Only

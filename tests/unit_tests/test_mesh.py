@@ -564,12 +564,13 @@ def test_write_vtkhdf(request):
     assert num_elements == umesh_from_sp.n_elements
 
     num_vertices = reader.GetOutput().GetNumberOfPoints()
-    assert num_vertices == umesh_from_sp.n_vertices
+    assert num_vertices == umesh_from_sp.vertices.shape[0]
 
     arr = reader.GetOutput().GetCellData().GetArray("mean")
     mean = np.array([arr.GetTuple1(i) for i in range(my_tally.mean.size)])
     np.testing.assert_almost_equal(mean, my_tally.mean.flatten()/umesh_from_sp.volumes)
 
+    arr = reader.GetOutput().GetCellData().GetArray("std_dev")
     std_dev = np.array([arr.GetTuple1(i) for i in range(my_tally.std_dev.size)])
     np.testing.assert_almost_equal(std_dev, my_tally.std_dev.flatten()/umesh_from_sp.volumes)
 

@@ -2752,7 +2752,9 @@ class UnstructuredMesh(MeshBase):
                 n_skipped += 1
                 continue
             else:
-                raise RuntimeError(f"Invalid element type {elem_type} found")
+                raise RuntimeError(
+                    f"Invalid element type {elem_type} found in mesh {self.id}"
+                )
 
             for i, c in enumerate(conn):
                 if c == -1:
@@ -2809,24 +2811,22 @@ class UnstructuredMesh(MeshBase):
         datasets: dict | None = None,
         volume_normalization: bool = True,
     ):
-        def append_dataset(dset, array):
-            """Convenience function to append data to an HDF5 dataset"""
-            origLen = dset.shape[0]
-            dset.resize(origLen + array.shape[0], axis=0)
-            dset[origLen:] = array
-
         # This writer supports linear tetrahedra and linear hexahedra elements
         conn_list = []           # flattened connectivity ids
         cell_sizes = []          # number of points per cell
         vtk_types = []           # VTK cell types per cell (uint8)
+        n_skipped = 0
 
         for conn, etype in zip(self.connectivity, self.element_types):
             if etype == self._LINEAR_TET:
                 ids = conn[:4]
-                vtk_types.append(self._VTK_TETRA)
+                vtk_types.append(self._VTK_TET)
             elif etype == self._LINEAR_HEX:
                 ids = conn[:8]
-                vtk_types.append(self._VTK_HEXAHEDRON)
+                vtk_types.append(self._VTK_HEX)
+            elif etype == self._UNSUPPORTED_ELEM:
+                n_skipped += 1
+                continue
             else:
                 raise RuntimeError(
                     f"Invalid element type {etype} found in mesh {self.id}"
@@ -2834,13 +2834,18 @@ class UnstructuredMesh(MeshBase):
             conn_list.extend(ids.tolist())
             cell_sizes.append(len(ids))
 
+        if n_skipped > 0:
+            warnings.warn(
+                f"{n_skipped} elements were not written because "
+                "they are not of type linear tet/hex"
+            )
+
         connectivity = np.asarray(conn_list, dtype=np.int64)
 
         # Offsets must be length (numCells + 1) with a leading 0 and
         # cumulative end-indices thereafter, per VTK's layout
         cell_sizes_arr = np.asarray(cell_sizes, dtype=np.int64)
-        offsets = np.empty(cell_sizes_arr.size + 1, dtype=np.int64)
-        offsets[0] = 0
+        offsets = np.zeros(cell_sizes_arr.size + 1, dtype=np.int64)
         np.cumsum(cell_sizes_arr, out=offsets[1:])
 
         for name, data in datasets.items():
@@ -2880,14 +2885,11 @@ class UnstructuredMesh(MeshBase):
             cell_data_group = root.create_group("CellData")
 
             for name, data in datasets.items():
-
-                cell_data_group.create_dataset(
-                    name, (0,), maxshape=(None,), dtype="float64", chunks=True
-                )
-
                 if volume_normalization:
                     data /= self.volumes
-                append_dataset(cell_data_group[name], data)
+                cell_data_group.create_dataset(
+                    name, data=data, dtype="float64", chunks=True
+                )
 
     @classmethod
     def from_hdf5(cls, group: h5py.Group, mesh_id: int, name: str):

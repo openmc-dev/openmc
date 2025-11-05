@@ -1,2 +1,77 @@
 [build-system]
-requires = ["setuptools", "wheel", "numpy", "cython"]
+requires = ["setuptools", "setuptools-scm", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "openmc"
+authors = [
+    {name = "The OpenMC Development Team", email = "openmc@anl.gov"},
+]
+description = "OpenMC"
+dynamic = ["version"]
+requires-python = ">=3.11"
+license = {file = "LICENSE"}
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: End Users/Desktop",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: English",
+    "Topic :: Scientific/Engineering",
+    "Programming Language :: C++",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+dependencies = [
+    "numpy",
+    "h5py",
+    "scipy",
+    "ipython",
+    "matplotlib",
+    "pandas",
+    "lxml",
+    "uncertainties",
+    "setuptools",
+    "endf",
+]
+
+[project.optional-dependencies]
+depletion-mpi = ["mpi4py"]
+docs = [
+    "sphinx",
+    "sphinxcontrib-katex",
+    "sphinx-numfig",
+    "jupyter",
+    "sphinxcontrib-svg2pdfconverter",
+    "sphinx-rtd-theme"
+]
+test = [
+    "packaging",
+    "pytest",
+    "pytest-cov>=4.0",
+    "pytest-rerunfailures",
+    "colorama",
+    "openpyxl",
+]
+ci = ["coverage>=7.4", "gcovr>=7.2"]
+vtk = ["vtk"]
+
+[project.urls]
+Homepage = "https://openmc.org"
+Documentation = "https://docs.openmc.org"
+Repository = "https://github.com/openmc-dev/openmc"
+Issues = "https://github.com/openmc-dev/openmc/issues"
+
+[tool.setuptools.packages.find]
+include = ['openmc*']
+exclude = ['tests*']
+
+[tool.setuptools.package-data]
+"openmc.data.effective_dose" = ["**/*.txt"]
+"openmc.data" = ["*.txt", "*.DAT", "*.json", "*.h5"]
+"openmc.lib" = ["libopenmc.dylib", "libopenmc.so"]
+
+[tool.setuptools_scm]

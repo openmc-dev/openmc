@@ -1,17 +1,20 @@
 #include "openmc/reaction.h"
 
+#include <algorithm> // for remove_if
 #include <string>
 #include <unordered_map>
 #include <utility> // for move
 
 #include <fmt/core.h>
 
+#include "openmc/chain.h"
 #include "openmc/constants.h"
 #include "openmc/endf.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/random_lcg.h"
 #include "openmc/search.h"
 #include "openmc/secondary_uncorrelated.h"
+#include "openmc/settings.h"
 
 namespace openmc {
 
@@ -19,7 +22,8 @@ namespace openmc {
 // Reaction implementation
 //==============================================================================
 
-Reaction::Reaction(hid_t group, const vector<int>& temperatures)
+Reaction::Reaction(
+  hid_t group, const vector<int>& temperatures, std::string name)
 {
   read_attribute(group, "Q_value", q_value_);
   read_attribute(group, "mt", mt_);
@@ -63,10 +67,37 @@ Reaction::Reaction(hid_t group, const vector<int>& temperatures)
       close_group(pgroup);
     }
   }
+
+  if (settings::use_decay_photons) {
+    // Remove photon products for D1S method
+    products_.erase(
+      std::remove_if(products_.begin(), products_.end(),
+        [](const auto& p) { return p.particle_ == ParticleType::photon; }),
+      products_.end());
+
+    // Determine product for D1S method
+    auto nuclide_it = data::chain_nuclide_map.find(name);
+    if (nuclide_it != data::chain_nuclide_map.end()) {
+      const auto& chain_nuc = data::chain_nuclides[nuclide_it->second];
+      const auto& rx_products = chain_nuc->reaction_products();
+      auto product_it = rx_products.find(mt_);
+      if (product_it != rx_products.end()) {
+        auto decay_products = product_it->second;
+        for (const auto& decay_product : decay_products) {
+          auto product_it = data::chain_nuclide_map.find(decay_product.name);
+          if (product_it != data::chain_nuclide_map.end()) {
+            const auto& product_nuc = data::chain_nuclides[product_it->second];
+            if (product_nuc->photon_energy()) {
+              products_.emplace_back(decay_product);
+            }
+          }
+        }
+      }
+    }
+  }
 }
 
-double Reaction::xs(
-  gsl::index i_temp, gsl::index i_grid, double interp_factor) const
+double Reaction::xs(int64_t i_temp, int64_t i_grid, double interp_factor) const
 {
   // If energy is below threshold, return 0. Otherwise interpolate between
   // nearest grid points
@@ -82,9 +113,8 @@ double Reaction::xs(const NuclideMicroXS& micro) const
   return this->xs(micro.index_temp, micro.index_grid, micro.interp_factor);
 }
 
-double Reaction::collapse_rate(gsl::index i_temp,
-  gsl::span<const double> energy, gsl::span<const double> flux,
-  const vector<double>& grid) const
+double Reaction::collapse_rate(int64_t i_temp, span<const double> energy,
+  span<const double> flux, const vector<double>& grid) const
 {
   // Find index corresponding to first energy
   const auto& xs = xs_[i_temp].value;
@@ -172,9 +202,13 @@ std::unordered_map<int, std::string> REACTION_NAME_MAP {
   {SCORE_FISS_Q_PROMPT, "fission-q-prompt"},
   {SCORE_FISS_Q_RECOV, "fission-q-recoverable"},
   {SCORE_PULSE_HEIGHT, "pulse-height"},
+  {SCORE_IFP_TIME_NUM, "ifp-time-numerator"},
+  {SCORE_IFP_BETA_NUM, "ifp-beta-numerator"},
+  {SCORE_IFP_DENOM, "ifp-denominator"},
   // Normal ENDF-based reactions
   {TOTAL_XS, "(n,total)"},
   {ELASTIC, "(n,elastic)"},
+  {N_NONELASTIC, "(n,nonelastic)"},
   {N_LEVEL, "(n,level)"},
   {N_2ND, "(n,2nd)"},
   {N_2N, "(n,2n)"},

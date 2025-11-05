@@ -6,6 +6,7 @@
 #include "openmc/distribution.h"
 #include "openmc/mesh.h"
 #include "openmc/position.h"
+#include "openmc/span.h"
 
 namespace openmc {
 
@@ -19,6 +20,8 @@ public:
 
   //! Sample a position from the distribution
   virtual Position sample(uint64_t* seed) const = 0;
+
+  static unique_ptr<SpatialDistribution> create(pugi::xml_node node);
 };
 
 //==============================================================================
@@ -102,20 +105,56 @@ private:
 class MeshSpatial : public SpatialDistribution {
 public:
   explicit MeshSpatial(pugi::xml_node node);
+  explicit MeshSpatial(int32_t mesh_id, span<const double> strengths);
 
   //! Sample a position from the distribution
   //! \param seed Pseudorandom number seed pointer
   //! \return Sampled position
   Position sample(uint64_t* seed) const override;
 
-  const Mesh* mesh() const { return model::meshes.at(mesh_idx_).get(); }
+  //! Sample the mesh for an element and position within that element
+  //! \param seed Pseudorandom number seed pointer
+  //! \return Sampled element index and position within that element
+  std::pair<int32_t, Position> sample_mesh(uint64_t* seed) const;
 
+  //! Sample a mesh element
+  //! \param seed Pseudorandom number seed pointer
+  //! \return Sampled element index
+  int32_t sample_element_index(uint64_t* seed) const;
+
+  //! For unstructured meshes, ensure that elements are all linear tetrahedra
+  void check_element_types() const;
+
+  // Accessors
+  const Mesh* mesh() const { return model::meshes.at(mesh_idx_).get(); }
   int32_t n_sources() const { return this->mesh()->n_bins(); }
+
+  double total_strength() { return this->elem_idx_dist_.integral(); }
 
 private:
   int32_t mesh_idx_ {C_NONE};
   DiscreteIndex elem_idx_dist_; //!< Distribution of
                                 //!< mesh element indices
+};
+
+//==============================================================================
+//! Distribution of points
+//==============================================================================
+
+class PointCloud : public SpatialDistribution {
+public:
+  explicit PointCloud(pugi::xml_node node);
+  explicit PointCloud(
+    std::vector<Position> point_cloud, span<const double> strengths);
+
+  //! Sample a position from the distribution
+  //! \param seed Pseudorandom number seed pointer
+  //! \return Sampled position
+  Position sample(uint64_t* seed) const override;
+
+private:
+  std::vector<Position> point_cloud_;
+  DiscreteIndex point_idx_dist_; //!< Distribution of Position indices
 };
 
 //==============================================================================

@@ -1,14 +1,16 @@
 #ifndef OPENMC_UNIVERSE_H
 #define OPENMC_UNIVERSE_H
 
+#include "openmc/bounding_box.h"
 #include "openmc/cell.h"
 
 namespace openmc {
 
-#ifdef DAGMC
+#ifdef OPENMC_DAGMC_ENABLED
 class DAGUniverse;
 #endif
 
+class GeometryState;
 class Universe;
 class UniversePartitioner;
 
@@ -27,22 +29,23 @@ class Universe {
 public:
   int32_t id_;            //!< Unique ID
   vector<int32_t> cells_; //!< Cells within this universe
+  int32_t n_instances_;   //!< Number of instances of this universe
 
   //! \brief Write universe information to an HDF5 group.
   //! \param group_id An HDF5 group id.
   virtual void to_hdf5(hid_t group_id) const;
 
-  virtual bool find_cell(Particle& p) const;
+  virtual bool find_cell(GeometryState& p) const;
 
   BoundingBox bounding_box() const;
 
-  const GeometryType& geom_type() const { return geom_type_; }
-  GeometryType& geom_type() { return geom_type_; }
+  /* By default, universes are CSG universes. The DAGMC
+   * universe overrides standard behaviors, and in the future,
+   * other things might too.
+   */
+  virtual GeometryType geom_type() const { return GeometryType::CSG; }
 
   unique_ptr<UniversePartitioner> partitioner_;
-
-private:
-  GeometryType geom_type_ = GeometryType::CSG;
 };
 
 //==============================================================================

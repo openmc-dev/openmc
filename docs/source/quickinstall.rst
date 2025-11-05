@@ -8,56 +8,42 @@ This quick install guide outlines the basic steps needed to install OpenMC on
 your computer. For more detailed instructions on configuring and installing
 OpenMC, see :ref:`usersguide_install` in the User's Manual.
 
---------------------------------------------------
-Installing on Linux/Mac with Mamba and conda-forge
---------------------------------------------------
+----------------------------------
+Installing on Linux/Mac with Conda
+----------------------------------
 
-`Conda <https://conda.io/en/latest/>`_ is an open source package management
+`Conda <https://docs.conda.io/en/latest/>`_ is an open source package management
 system and environments management system for installing multiple versions of
 software packages and their dependencies and switching easily between them.
-`Mamba <https://mamba.readthedocs.io/en/latest/>`_ is a cross-platform package
-manager and is compatible with `conda` packages.
-OpenMC can be installed in a `conda` environment with `mamba`.
-First, `conda` should be installed with one of the following installers:
-`Miniconda <https://docs.conda.io/en/latest/miniconda.html>`_,
-`Anaconda <https://www.anaconda.com/>`_, or `Miniforge <https://github.com/conda-forge/miniforge>`_.
-Once you have `conda` installed on your system, OpenMC can be installed via the
-`conda-forge` channel with `mamba`.
+OpenMC can be installed in a `conda` environment. First, `conda` should be
+`installed <https://www.anaconda.com/docs/getting-started/getting-started>`_
+with either Anaconda Distribution or Miniconda. Once you have `conda` installed
+on your system, OpenMC can be installed via the `conda-forge` channel.
 
 First, add the `conda-forge` channel with:
 
 .. code-block:: sh
 
     conda config --add channels conda-forge
+    conda config --set channel_priority strict
 
-Then create and activate a new conda enviroment called `openmc-env` in
-which to install OpenMC.
+Then create and activate a new conda enviroment called `openmc-env` (or whatever
+you wish) with OpenMC installed.
 
 .. code-block:: sh
 
-    conda create -n openmc-env
+    conda create --name openmc-env openmc
     conda activate openmc-env
 
-Then install `mamba`, which will be used to install OpenMC.
+If you are installing on macOS with an Apple silicon ARM-based processor, you
+will also need to specify the `--platform` option:
 
 .. code-block:: sh
 
-    conda install mamba
+    conda create --name openmc-env --platform osx-64 openmc
 
-To list the versions of OpenMC that are available on the `conda-forge` channel,
-in your terminal window or an Anaconda Prompt run:
-
-.. code-block:: sh
-
-    mamba search openmc
-
-OpenMC can then be installed with:
-
-.. code-block:: sh
-
-    mamba install openmc
-
-You are now in a conda environment called `openmc-env` that has OpenMC installed.
+You are now in a conda environment called `openmc-env` that has OpenMC
+installed.
 
 -------------------------------------------
 Installing on Linux/Mac/Windows with Docker
@@ -107,31 +93,53 @@ can be used to access the installed packages.
 .. _Spack: https://spack.readthedocs.io/en/latest/
 .. _setup guide: https://spack.readthedocs.io/en/latest/getting_started.html
 
---------------------------------
-Installing from Source on Ubuntu
---------------------------------
+-------------------------------
+Manually Installing from Source
+-------------------------------
 
-To build OpenMC from source, several :ref:`prerequisites <prerequisites>` are
-needed. If you are using Ubuntu or higher, all prerequisites can be installed
-directly from the package manager:
+Obtaining prerequisites on Ubuntu
+---------------------------------
+
+When building OpenMC from source, all :ref:`prerequisites <prerequisites>` can
+be installed using the package manager:
 
 .. code-block:: sh
 
     sudo apt install g++ cmake libhdf5-dev libpng-dev
 
-After the packages have been installed, follow the instructions below for
-building and installing OpenMC from source.
+After the packages have been installed, follow the instructions to build from
+source below.
 
--------------------------------------------
-Installing from Source on Linux or Mac OS X
--------------------------------------------
+Obtaining prerequisites on macOS
+--------------------------------
+
+For an OpenMC build with multithreading enabled, a package manager like
+`Homebrew <https://brew.sh>`_ should first be installed. Then, the following
+packages should be installed, for example in Homebrew via:
+
+.. code-block:: sh
+
+   brew install llvm cmake xtensor hdf5 python libomp libpng
+
+The compiler provided by the above LLVM package should be used in place of the
+one provisioned by XCode, which does not support the multithreading library used
+by OpenMC. To ensure CMake picks up the correct compiler, make sure that either
+the :envvar:`CXX` environment variable is set to the brew-installed ``clang++``
+or that the directory containing it is on your :envvar:`PATH` environment
+variable. Common locations for the brew-installed compiler are
+``/opt/homebrew/opt/llvm/bin`` and ``/usr/local/opt/llvm/bin``.
+
+After the packages have been installed, follow the instructions to build from
+source below.
+
+Building Source on Linux or macOS
+---------------------------------
 
 All OpenMC source code is hosted on `GitHub
 <https://github.com/openmc-dev/openmc>`_. If you have `git
-<https://git-scm.com>`_, the `gcc <https://gcc.gnu.org/>`_ compiler suite,
-`CMake <https://cmake.org>`_, and `HDF5
-<https://www.hdfgroup.org/solutions/hdf5/>`_ installed, you can download and
-install OpenMC be entering the following commands in a terminal:
+<https://git-scm.com>`_, a modern C++ compiler, `CMake <https://cmake.org>`_,
+and `HDF5 <https://www.hdfgroup.org/solutions/hdf5/>`_ installed, you can
+download and install OpenMC by entering the following commands in a terminal:
 
 .. code-block:: sh
 
@@ -151,14 +159,14 @@ should specify an installation directory where you have write access, e.g.
     cmake -DCMAKE_INSTALL_PREFIX=$HOME/.local ..
 
 The :mod:`openmc` Python package must be installed separately. The easiest way
-to install it is using `pip <https://pip.pypa.io/en/stable/>`_, which is
-included by default in Python 3.4+. From the root directory of the OpenMC
-distribution/repository, run:
+to install it is using `pip <https://pip.pypa.io/en/stable/>`_.
+From the root directory of the OpenMC repository, run:
 
 .. code-block:: sh
 
     python -m pip install .
 
-If you want to build a parallel version of OpenMC (using OpenMP or MPI),
-directions can be found in the :ref:`detailed installation instructions
+By default, OpenMC will be built with multithreading support. To build
+distributed-memory parallel versions of OpenMC using MPI or to configure other
+options, directions can be found in the :ref:`detailed installation instructions
 <usersguide_build>`.

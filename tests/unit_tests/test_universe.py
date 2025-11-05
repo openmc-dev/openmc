@@ -1,5 +1,4 @@
 import lxml.etree as ET
-
 import numpy as np
 import openmc
 import pytest
@@ -99,6 +98,10 @@ def test_plot(run_in_tmpdir, sphere_model):
             legend=True,
             pixels=100,
         )
+
+    # Close plots to avoid warning
+    import matplotlib.pyplot as plt
+    plt.close('all')
 
 
 def test_get_nuclides(uo2):

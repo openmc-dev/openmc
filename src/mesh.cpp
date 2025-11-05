@@ -1,16 +1,20 @@
 #include "openmc/mesh.h"
 #include <algorithm> // for copy, equal, min, min_element
-#include <cmath>     // for ceil
-#include <cstddef>   // for size_t
-#include <gsl/gsl-lite.hpp>
+#include <cassert>
+#define _USE_MATH_DEFINES // to make M_PI declared in Intel and MSVC compilers
+#include <cmath>          // for ceil
+#include <cstddef>        // for size_t
 #include <string>
+
+#ifdef _MSC_VER
+#include <intrin.h> // for _InterlockedCompareExchange
+#endif
 
 #ifdef OPENMC_MPI
 #include "mpi.h"
 #endif
-#ifdef _OPENMP
-#include <omp.h>
-#endif
+
+#include "xtensor/xadapt.hpp"
 #include "xtensor/xbuilder.hpp"
 #include "xtensor/xeval.hpp"
 #include "xtensor/xmath.hpp"
@@ -24,19 +28,33 @@
 #include "openmc/container_util.h"
 #include "openmc/error.h"
 #include "openmc/file_utils.h"
+#include "openmc/geometry.h"
 #include "openmc/hdf5_interface.h"
+#include "openmc/material.h"
 #include "openmc/memory.h"
 #include "openmc/message_passing.h"
+#include "openmc/openmp_interface.h"
+#include "openmc/output.h"
+#include "openmc/particle_data.h"
+#include "openmc/plot.h"
+#include "openmc/random_dist.h"
 #include "openmc/search.h"
 #include "openmc/settings.h"
+#include "openmc/string_utils.h"
 #include "openmc/tallies/filter.h"
 #include "openmc/tallies/tally.h"
+#include "openmc/timer.h"
+#include "openmc/volume_calc.h"
 #include "openmc/xml_interface.h"
 
-#ifdef LIBMESH
+#ifdef OPENMC_LIBMESH_ENABLED
 #include "libmesh/mesh_modification.h"
 #include "libmesh/mesh_tools.h"
 #include "libmesh/numeric_vector.h"
+#endif
+
+#ifdef OPENMC_DAGMC_ENABLED
+#include "moab/FileOptions.hpp"
 #endif
 
 namespace openmc {
@@ -45,11 +63,15 @@ namespace openmc {
 // Global variables
 //==============================================================================
 
-#ifdef LIBMESH
+#ifdef OPENMC_LIBMESH_ENABLED
 const bool LIBMESH_ENABLED = true;
 #else
 const bool LIBMESH_ENABLED = false;
 #endif
+
+// Value used to indicate an empty slot in the hash table. We use -2 because
+// the value -1 is used to indicate a void material.
+constexpr int32_t EMPTY = -2;
 
 namespace model {
 
@@ -58,7 +80,7 @@ vector<unique_ptr<Mesh>> meshes;
 
 } // namespace model
 
-#ifdef LIBMESH
+#ifdef OPENMC_LIBMESH_ENABLED
 namespace settings {
 unique_ptr<libMesh::LibMeshInit> libmesh_init;
 const libMesh::Parallel::Communicator* libmesh_comm {nullptr};
@@ -92,19 +114,180 @@ inline bool check_intersection_point(double x1, double x0, double y1, double y0,
   return false;
 }
 
+//! Atomic compare-and-swap for signed 32-bit integer
+//
+//! \param[in,out] ptr Pointer to value to update
+//! \param[in,out] expected Value to compare to
+//! \param[in] desired If comparison is successful, value to update to
+//! \return True if the comparison was successful and the value was updated
+inline bool atomic_cas_int32(int32_t* ptr, int32_t& expected, int32_t desired)
+{
+#if defined(__GNUC__) || defined(__clang__)
+  // For gcc/clang, use the __atomic_compare_exchange_n intrinsic
+  return __atomic_compare_exchange_n(
+    ptr, &expected, desired, false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
+
+#elif defined(_MSC_VER)
+  // For MSVC, use the _InterlockedCompareExchange intrinsic
+  int32_t old_val =
+    _InterlockedCompareExchange(reinterpret_cast<volatile long*>(ptr),
+      static_cast<long>(desired), static_cast<long>(expected));
+  return (old_val == expected);
+
+#else
+#error "No compare-and-swap implementation available for this compiler."
+#endif
+}
+
+namespace detail {
+
+//==============================================================================
+// MaterialVolumes implementation
+//==============================================================================
+
+void MaterialVolumes::add_volume(
+  int index_elem, int index_material, double volume)
+{
+  // This method handles adding elements to the materials hash table,
+  // implementing open addressing with linear probing. Consistency across
+  // multiple threads is handled by with an atomic compare-and-swap operation.
+  // Ideally, we would use #pragma omp atomic compare, but it was introduced in
+  // OpenMP 5.1 and is not widely supported yet.
+
+  // Loop for linear probing
+  for (int attempt = 0; attempt < table_size_; ++attempt) {
+    // Determine slot to check, making sure it is positive
+    int slot = (index_material + attempt) % table_size_;
+    if (slot < 0)
+      slot += table_size_;
+    int32_t* slot_ptr = &this->materials(index_elem, slot);
+
+    // Non-atomic read of current material
+    int32_t current_val = *slot_ptr;
+
+    // Found the desired material; accumulate volume
+    if (current_val == index_material) {
+#pragma omp atomic
+      this->volumes(index_elem, slot) += volume;
+      return;
+    }
+
+    // Slot appears to be empty; attempt to claim
+    if (current_val == EMPTY) {
+      // Attempt compare-and-swap from EMPTY to index_material
+      int32_t expected_val = EMPTY;
+      bool claimed_slot =
+        atomic_cas_int32(slot_ptr, expected_val, index_material);
+
+      // If we claimed the slot or another thread claimed it but the same
+      // material was inserted, proceed to accumulate
+      if (claimed_slot || (expected_val == index_material)) {
+#pragma omp atomic
+        this->volumes(index_elem, slot) += volume;
+        return;
+      }
+    }
+  }
+
+  // If table is full, set a flag that can be checked later
+  table_full_ = true;
+}
+
+void MaterialVolumes::add_volume_unsafe(
+  int index_elem, int index_material, double volume)
+{
+  // Linear probe
+  for (int attempt = 0; attempt < table_size_; ++attempt) {
+    // Determine slot to check, making sure it is positive
+    int slot = (index_material + attempt) % table_size_;
+    if (slot < 0)
+      slot += table_size_;
+
+    // Read current material
+    int32_t current_val = this->materials(index_elem, slot);
+
+    // Found the desired material; accumulate volume
+    if (current_val == index_material) {
+      this->volumes(index_elem, slot) += volume;
+      return;
+    }
+
+    // Claim empty slot
+    if (current_val == EMPTY) {
+      this->materials(index_elem, slot) = index_material;
+      this->volumes(index_elem, slot) += volume;
+      return;
+    }
+  }
+
+  // If table is full, set a flag that can be checked later
+  table_full_ = true;
+}
+
+} // namespace detail
+
 //==============================================================================
 // Mesh implementation
 //==============================================================================
+
+template<typename T>
+const std::unique_ptr<Mesh>& Mesh::create(
+  T dataset, const std::string& mesh_type, const std::string& mesh_library)
+{
+  // Determine mesh type. Add to model vector and map
+  if (mesh_type == RegularMesh::mesh_type) {
+    model::meshes.push_back(make_unique<RegularMesh>(dataset));
+  } else if (mesh_type == RectilinearMesh::mesh_type) {
+    model::meshes.push_back(make_unique<RectilinearMesh>(dataset));
+  } else if (mesh_type == CylindricalMesh::mesh_type) {
+    model::meshes.push_back(make_unique<CylindricalMesh>(dataset));
+  } else if (mesh_type == SphericalMesh::mesh_type) {
+    model::meshes.push_back(make_unique<SphericalMesh>(dataset));
+#ifdef OPENMC_DAGMC_ENABLED
+  } else if (mesh_type == UnstructuredMesh::mesh_type &&
+             mesh_library == MOABMesh::mesh_lib_type) {
+    model::meshes.push_back(make_unique<MOABMesh>(dataset));
+#endif
+#ifdef OPENMC_LIBMESH_ENABLED
+  } else if (mesh_type == UnstructuredMesh::mesh_type &&
+             mesh_library == LibMesh::mesh_lib_type) {
+    model::meshes.push_back(make_unique<LibMesh>(dataset));
+#endif
+  } else if (mesh_type == UnstructuredMesh::mesh_type) {
+    fatal_error("Unstructured mesh support is not enabled or the mesh "
+                "library is invalid.");
+  } else {
+    fatal_error(fmt::format("Invalid mesh type: {}", mesh_type));
+  }
+
+  // Map ID to position in vector
+  model::mesh_map[model::meshes.back()->id_] = model::meshes.size() - 1;
+
+  return model::meshes.back();
+}
 
 Mesh::Mesh(pugi::xml_node node)
 {
   // Read mesh id
   id_ = std::stoi(get_node_value(node, "id"));
+  if (check_for_node(node, "name"))
+    name_ = get_node_value(node, "name");
+}
+
+Mesh::Mesh(hid_t group)
+{
+  // Read mesh ID
+  read_attribute(group, "id", id_);
+
+  // Read mesh name
+  if (object_exists(group, "name")) {
+    read_dataset(group, "name", name_);
+  }
 }
 
 void Mesh::set_id(int32_t id)
 {
-  Expects(id >= 0 || id == C_NONE);
+  assert(id >= 0 || id == C_NONE);
 
   // Clear entry in mesh map in case one was already assigned
   if (id_ != C_NONE) {
@@ -129,7 +312,13 @@ void Mesh::set_id(int32_t id)
 
   // Update ID and entry in the mesh map
   id_ = id;
-  model::mesh_map[id] = model::meshes.size() - 1;
+
+  // find the index of this mesh in the model::meshes vector
+  // (search in reverse because this mesh was likely just added to the vector)
+  auto it = std::find_if(model::meshes.rbegin(), model::meshes.rend(),
+    [this](const std::unique_ptr<Mesh>& mesh) { return mesh.get() == this; });
+
+  model::mesh_map[id] = std::distance(model::meshes.begin(), it.base()) - 1;
 }
 
 vector<double> Mesh::volumes() const
@@ -139,6 +328,272 @@ vector<double> Mesh::volumes() const
     volumes[i] = this->volume(i);
   }
   return volumes;
+}
+
+void Mesh::material_volumes(int nx, int ny, int nz, int table_size,
+  int32_t* materials, double* volumes) const
+{
+  if (mpi::master) {
+    header("MESH MATERIAL VOLUMES CALCULATION", 7);
+  }
+  write_message(7, "Number of mesh elements = {}", n_bins());
+  write_message(7, "Number of rays (x) = {}", nx);
+  write_message(7, "Number of rays (y) = {}", ny);
+  write_message(7, "Number of rays (z) = {}", nz);
+  int64_t n_total = static_cast<int64_t>(nx) * ny +
+                    static_cast<int64_t>(ny) * nz +
+                    static_cast<int64_t>(nx) * nz;
+  write_message(7, "Total number of rays = {}", n_total);
+  write_message(7, "Table size per mesh element = {}", table_size);
+
+  Timer timer;
+  timer.start();
+
+  // Create object for keeping track of materials/volumes
+  detail::MaterialVolumes result(materials, volumes, table_size);
+
+  // Determine bounding box
+  auto bbox = this->bounding_box();
+
+  std::array<int, 3> n_rays = {nx, ny, nz};
+
+  // Determine effective width of rays
+  Position width((nx > 0) ? (bbox.xmax - bbox.xmin) / nx : 0.0,
+    (ny > 0) ? (bbox.ymax - bbox.ymin) / ny : 0.0,
+    (nz > 0) ? (bbox.zmax - bbox.zmin) / nz : 0.0);
+
+  // Set flag for mesh being contained within model
+  bool out_of_model = false;
+
+#pragma omp parallel
+  {
+    // Preallocate vector for mesh indices and length fractions and particle
+    std::vector<int> bins;
+    std::vector<double> length_fractions;
+    Particle p;
+
+    SourceSite site;
+    site.E = 1.0;
+    site.particle = ParticleType::neutron;
+
+    for (int axis = 0; axis < 3; ++axis) {
+      // Set starting position and direction
+      site.r = {0.0, 0.0, 0.0};
+      site.r[axis] = bbox.min()[axis];
+      site.u = {0.0, 0.0, 0.0};
+      site.u[axis] = 1.0;
+
+      // Determine width of rays and number of rays in other directions
+      int ax1 = (axis + 1) % 3;
+      int ax2 = (axis + 2) % 3;
+      double min1 = bbox.min()[ax1];
+      double min2 = bbox.min()[ax2];
+      double d1 = width[ax1];
+      double d2 = width[ax2];
+      int n1 = n_rays[ax1];
+      int n2 = n_rays[ax2];
+      if (n1 == 0 || n2 == 0) {
+        continue;
+      }
+
+      // Divide rays in first direction over MPI processes by computing starting
+      // and ending indices
+      int min_work = n1 / mpi::n_procs;
+      int remainder = n1 % mpi::n_procs;
+      int n1_local = (mpi::rank < remainder) ? min_work + 1 : min_work;
+      int i1_start = mpi::rank * min_work + std::min(mpi::rank, remainder);
+      int i1_end = i1_start + n1_local;
+
+      // Loop over rays on face of bounding box
+#pragma omp for collapse(2)
+      for (int i1 = i1_start; i1 < i1_end; ++i1) {
+        for (int i2 = 0; i2 < n2; ++i2) {
+          site.r[ax1] = min1 + (i1 + 0.5) * d1;
+          site.r[ax2] = min2 + (i2 + 0.5) * d2;
+
+          p.from_source(&site);
+
+          // Determine particle's location
+          if (!exhaustive_find_cell(p)) {
+            out_of_model = true;
+            continue;
+          }
+
+          // Set birth cell attribute
+          if (p.cell_born() == C_NONE)
+            p.cell_born() = p.lowest_coord().cell();
+
+          // Initialize last cells from current cell
+          for (int j = 0; j < p.n_coord(); ++j) {
+            p.cell_last(j) = p.coord(j).cell();
+          }
+          p.n_coord_last() = p.n_coord();
+
+          while (true) {
+            // Ray trace from r_start to r_end
+            Position r0 = p.r();
+            double max_distance = bbox.max()[axis] - r0[axis];
+
+            // Find the distance to the nearest boundary
+            BoundaryInfo boundary = distance_to_boundary(p);
+
+            // Advance particle forward
+            double distance = std::min(boundary.distance(), max_distance);
+            p.move_distance(distance);
+
+            // Determine what mesh elements were crossed by particle
+            bins.clear();
+            length_fractions.clear();
+            this->bins_crossed(r0, p.r(), p.u(), bins, length_fractions);
+
+            // Add volumes to any mesh elements that were crossed
+            int i_material = p.material();
+            if (i_material != C_NONE) {
+              i_material = model::materials[i_material]->id();
+            }
+            for (int i_bin = 0; i_bin < bins.size(); i_bin++) {
+              int mesh_index = bins[i_bin];
+              double length = distance * length_fractions[i_bin];
+
+              // Add volume to result
+              result.add_volume(mesh_index, i_material, length * d1 * d2);
+            }
+
+            if (distance == max_distance)
+              break;
+
+            // cross next geometric surface
+            for (int j = 0; j < p.n_coord(); ++j) {
+              p.cell_last(j) = p.coord(j).cell();
+            }
+            p.n_coord_last() = p.n_coord();
+
+            // Set surface that particle is on and adjust coordinate levels
+            p.surface() = boundary.surface();
+            p.n_coord() = boundary.coord_level();
+
+            if (boundary.lattice_translation()[0] != 0 ||
+                boundary.lattice_translation()[1] != 0 ||
+                boundary.lattice_translation()[2] != 0) {
+              // Particle crosses lattice boundary
+              cross_lattice(p, boundary);
+            } else {
+              // Particle crosses surface
+              const auto& surf {model::surfaces[p.surface_index()].get()};
+              p.cross_surface(*surf);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Check for errors
+  if (out_of_model) {
+    throw std::runtime_error("Mesh not fully contained in geometry.");
+  } else if (result.table_full()) {
+    throw std::runtime_error("Maximum number of materials for mesh material "
+                             "volume calculation insufficient.");
+  }
+
+  // Compute time for raytracing
+  double t_raytrace = timer.elapsed();
+
+#ifdef OPENMC_MPI
+  // Combine results from multiple MPI processes
+  if (mpi::n_procs > 1) {
+    int total = this->n_bins() * table_size;
+    if (mpi::master) {
+      // Allocate temporary buffer for receiving data
+      std::vector<int32_t> mats(total);
+      std::vector<double> vols(total);
+
+      for (int i = 1; i < mpi::n_procs; ++i) {
+        // Receive material indices and volumes from process i
+        MPI_Recv(mats.data(), total, MPI_INT32_T, i, i, mpi::intracomm,
+          MPI_STATUS_IGNORE);
+        MPI_Recv(vols.data(), total, MPI_DOUBLE, i, i, mpi::intracomm,
+          MPI_STATUS_IGNORE);
+
+        // Combine with existing results; we can call thread unsafe version of
+        // add_volume because each thread is operating on a different element
+#pragma omp for
+        for (int index_elem = 0; index_elem < n_bins(); ++index_elem) {
+          for (int k = 0; k < table_size; ++k) {
+            int index = index_elem * table_size + k;
+            if (mats[index] != EMPTY) {
+              result.add_volume_unsafe(index_elem, mats[index], vols[index]);
+            }
+          }
+        }
+      }
+    } else {
+      // Send material indices and volumes to process 0
+      MPI_Send(materials, total, MPI_INT32_T, 0, mpi::rank, mpi::intracomm);
+      MPI_Send(volumes, total, MPI_DOUBLE, 0, mpi::rank, mpi::intracomm);
+    }
+  }
+
+  // Report time for MPI communication
+  double t_mpi = timer.elapsed() - t_raytrace;
+#else
+  double t_mpi = 0.0;
+#endif
+
+  // Normalize based on known volumes of elements
+  for (int i = 0; i < this->n_bins(); ++i) {
+    // Estimated total volume in element i
+    double volume = 0.0;
+    for (int j = 0; j < table_size; ++j) {
+      volume += result.volumes(i, j);
+    }
+    // Renormalize volumes based on known volume of element i
+    double norm = this->volume(i) / volume;
+    for (int j = 0; j < table_size; ++j) {
+      result.volumes(i, j) *= norm;
+    }
+  }
+
+  // Get total time and normalization time
+  timer.stop();
+  double t_total = timer.elapsed();
+  double t_norm = t_total - t_raytrace - t_mpi;
+
+  // Show timing statistics
+  if (settings::verbosity < 7 || !mpi::master)
+    return;
+  header("Timing Statistics", 7);
+  fmt::print(" Total time elapsed            = {:.4e} seconds\n", t_total);
+  fmt::print("   Ray tracing                 = {:.4e} seconds\n", t_raytrace);
+  fmt::print("   MPI communication           = {:.4e} seconds\n", t_mpi);
+  fmt::print("   Normalization               = {:.4e} seconds\n", t_norm);
+  fmt::print(" Calculation rate              = {:.4e} rays/seconds\n",
+    n_total / t_raytrace);
+  fmt::print(" Calculation rate (per thread) = {:.4e} rays/seconds\n",
+    n_total / (t_raytrace * mpi::n_procs * num_threads()));
+  std::fflush(stdout);
+}
+
+void Mesh::to_hdf5(hid_t group) const
+{
+  // Create group for mesh
+  std::string group_name = fmt::format("mesh {}", id_);
+  hid_t mesh_group = create_group(group, group_name.c_str());
+
+  // Write mesh type
+  write_dataset(mesh_group, "type", this->get_mesh_type());
+
+  // Write mesh ID
+  write_attribute(mesh_group, "id", id_);
+
+  // Write mesh name
+  write_dataset(mesh_group, "name", name_);
+
+  // Write mesh data
+  this->to_hdf5_inner(mesh_group);
+
+  // Close group
+  close_group(mesh_group);
 }
 
 //==============================================================================
@@ -165,12 +620,30 @@ xt::xtensor<int, 1> StructuredMesh::get_x_shape() const
   return xt::adapt(tmp_shape, {n_dimension_});
 }
 
+Position StructuredMesh::sample_element(
+  const MeshIndex& ijk, uint64_t* seed) const
+{
+  // lookup the lower/upper bounds for the mesh element
+  double x_min = negative_grid_boundary(ijk, 0);
+  double x_max = positive_grid_boundary(ijk, 0);
+
+  double y_min = (n_dimension_ >= 2) ? negative_grid_boundary(ijk, 1) : 0.0;
+  double y_max = (n_dimension_ >= 2) ? positive_grid_boundary(ijk, 1) : 0.0;
+
+  double z_min = (n_dimension_ == 3) ? negative_grid_boundary(ijk, 2) : 0.0;
+  double z_max = (n_dimension_ == 3) ? positive_grid_boundary(ijk, 2) : 0.0;
+
+  return {x_min + (x_max - x_min) * prn(seed),
+    y_min + (y_max - y_min) * prn(seed), z_min + (z_max - z_min) * prn(seed)};
+}
+
 //==============================================================================
 // Unstructured Mesh implementation
 //==============================================================================
 
 UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node)
 {
+  n_dimension_ = 3;
 
   // check the mesh type
   if (check_for_node(node, "type")) {
@@ -183,7 +656,6 @@ UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node)
   // check if a length unit multiplier was specified
   if (check_for_node(node, "length_multiplier")) {
     length_multiplier_ = std::stod(get_node_value(node, "length_multiplier"));
-    specified_length_multiplier_ = true;
   }
 
   // get the filename of the unstructured mesh to load
@@ -197,11 +669,77 @@ UnstructuredMesh::UnstructuredMesh(pugi::xml_node node) : Mesh(node)
       "No filename supplied for unstructured mesh with ID: {}", id_));
   }
 
+  if (check_for_node(node, "options")) {
+    options_ = get_node_value(node, "options");
+  }
+
   // check if mesh tally data should be written with
   // statepoint files
   if (check_for_node(node, "output")) {
     output_ = get_node_value_bool(node, "output");
   }
+}
+
+UnstructuredMesh::UnstructuredMesh(hid_t group) : Mesh(group)
+{
+  n_dimension_ = 3;
+
+  // check the mesh type
+  if (object_exists(group, "type")) {
+    std::string temp;
+    read_dataset(group, "type", temp);
+    if (temp != mesh_type) {
+      fatal_error(fmt::format("Invalid mesh type: {}", temp));
+    }
+  }
+
+  // check if a length unit multiplier was specified
+  if (object_exists(group, "length_multiplier")) {
+    read_dataset(group, "length_multiplier", length_multiplier_);
+  }
+
+  // get the filename of the unstructured mesh to load
+  if (object_exists(group, "filename")) {
+    read_dataset(group, "filename", filename_);
+    if (!file_exists(filename_)) {
+      fatal_error("Mesh file '" + filename_ + "' does not exist!");
+    }
+  } else {
+    fatal_error(fmt::format(
+      "No filename supplied for unstructured mesh with ID: {}", id_));
+  }
+
+  if (attribute_exists(group, "options")) {
+    read_attribute(group, "options", options_);
+  }
+
+  // check if mesh tally data should be written with
+  // statepoint files
+  if (attribute_exists(group, "output")) {
+    read_attribute(group, "output", output_);
+  }
+}
+
+void UnstructuredMesh::determine_bounds()
+{
+  double xmin = INFTY;
+  double ymin = INFTY;
+  double zmin = INFTY;
+  double xmax = -INFTY;
+  double ymax = -INFTY;
+  double zmax = -INFTY;
+  int n = this->n_vertices();
+  for (int i = 0; i < n; ++i) {
+    auto v = this->vertex(i);
+    xmin = std::min(v.x, xmin);
+    ymin = std::min(v.y, ymin);
+    zmin = std::min(v.z, zmin);
+    xmax = std::max(v.x, xmax);
+    ymax = std::max(v.y, ymax);
+    zmax = std::max(v.z, zmax);
+  }
+  lower_left_ = {xmin, ymin, zmin};
+  upper_right_ = {xmax, ymax, zmax};
 }
 
 Position UnstructuredMesh::sample_tet(
@@ -252,15 +790,15 @@ std::string UnstructuredMesh::bin_label(int bin) const
   return fmt::format("Mesh Index ({})", bin);
 };
 
-void UnstructuredMesh::to_hdf5(hid_t group) const
+void UnstructuredMesh::to_hdf5_inner(hid_t mesh_group) const
 {
-  hid_t mesh_group = create_group(group, fmt::format("mesh {}", id_));
-
-  write_dataset(mesh_group, "type", mesh_type);
   write_dataset(mesh_group, "filename", filename_);
   write_dataset(mesh_group, "library", this->library());
+  if (!options_.empty()) {
+    write_attribute(mesh_group, "options", options_);
+  }
 
-  if (specified_length_multiplier_)
+  if (length_multiplier_ > 0.0)
     write_dataset(mesh_group, "length_multiplier", length_multiplier_);
 
   // write vertex coordinates
@@ -313,16 +851,11 @@ void UnstructuredMesh::to_hdf5(hid_t group) const
   write_dataset(mesh_group, "volumes", volumes);
   write_dataset(mesh_group, "connectivity", connectivity);
   write_dataset(mesh_group, "element_types", elem_types);
-
-  close_group(mesh_group);
 }
 
 void UnstructuredMesh::set_length_multiplier(double length_multiplier)
 {
   length_multiplier_ = length_multiplier;
-
-  if (length_multiplier_ != 1.0)
-    specified_length_multiplier_ = true;
 }
 
 ElementType UnstructuredMesh::element_type(int bin) const
@@ -379,11 +912,6 @@ StructuredMesh::MeshIndex StructuredMesh::get_indices_from_bin(int bin) const
     ijk[2] = bin / (shape_[0] * shape_[1]) + 1;
   }
   return ijk;
-}
-
-Position StructuredMesh::sample(uint64_t* seed, int32_t bin) const
-{
-  fatal_error("Position sampling on structured meshes is not yet implemented");
 }
 
 int StructuredMesh::get_bin(Position r) const
@@ -465,8 +993,8 @@ xt::xtensor<double, 1> StructuredMesh::count_sites(
 }
 
 // raytrace through the mesh. The template class T will do the tallying.
-// A modern optimizing compiler can recognize the noop method of T and eleminate
-// that call entirely.
+// A modern optimizing compiler can recognize the noop method of T and
+// eliminate that call entirely.
 template<class T>
 void StructuredMesh::raytrace_mesh(
   Position r0, Position r1, const Direction& u, T tally) const
@@ -479,8 +1007,13 @@ void StructuredMesh::raytrace_mesh(
 
   // Compute the length of the entire track.
   double total_distance = (r1 - r0).norm();
-  if (total_distance == 0.0)
+  if (total_distance == 0.0 && settings::solver_type != SolverType::RANDOM_RAY)
     return;
+
+  // keep a copy of the original global position to pass to get_indices,
+  // which performs its own transformation to local coordinates
+  Position global_r = r0;
+  Position local_r = local_coords(r0);
 
   const int n = n_dimension_;
 
@@ -492,7 +1025,7 @@ void StructuredMesh::raytrace_mesh(
 
   // Calculate index of current cell. Offset the position a tiny bit in
   // direction of flight
-  MeshIndex ijk = get_indices(r0 + TINY_BIT * u, in_mesh);
+  MeshIndex ijk = get_indices(global_r + TINY_BIT * u, in_mesh);
 
   // if track is very short, assume that it is completely inside one cell.
   // Only the current cell will score and no surfaces
@@ -503,16 +1036,10 @@ void StructuredMesh::raytrace_mesh(
     return;
   }
 
-  // translate start and end positions,
-  // this needs to come after the get_indices call because it does its own
-  // translation
-  local_coords(r0);
-  local_coords(r1);
-
   // Calculate initial distances to next surfaces in all three dimensions
   std::array<MeshDistance, 3> distances;
   for (int k = 0; k < n; ++k) {
-    distances[k] = distance_to_grid_boundary(ijk, k, r0, u, 0.0);
+    distances[k] = distance_to_grid_boundary(ijk, k, local_r, u, 0.0);
   }
 
   // Loop until r = r1 is eventually reached
@@ -534,28 +1061,30 @@ void StructuredMesh::raytrace_mesh(
       if (traveled_distance >= total_distance)
         return;
 
-      // If we have not reached r1, we have hit a surface. Tally outward current
+      // If we have not reached r1, we have hit a surface. Tally outward
+      // current
       tally.surface(ijk, k, distances[k].max_surface, false);
 
       // Update cell and calculate distance to next surface in k-direction.
       // The two other directions are still valid!
       ijk[k] = distances[k].next_index;
       distances[k] =
-        distance_to_grid_boundary(ijk, k, r0, u, traveled_distance);
+        distance_to_grid_boundary(ijk, k, local_r, u, traveled_distance);
 
       // Check if we have left the interior of the mesh
       in_mesh = ((ijk[k] >= 1) && (ijk[k] <= shape_[k]));
 
-      // If we are still inside the mesh, tally inward current for the next cell
+      // If we are still inside the mesh, tally inward current for the next
+      // cell
       if (in_mesh)
         tally.surface(ijk, k, !distances[k].max_surface, true);
 
     } else { // not inside mesh
 
-      // For all directions outside the mesh, find the distance that we need to
-      // travel to reach the next surface. Use the largest distance, as only
-      // this will cross all outer surfaces.
-      int k_max {0};
+      // For all directions outside the mesh, find the distance that we need
+      // to travel to reach the next surface. Use the largest distance, as
+      // only this will cross all outer surfaces.
+      int k_max {-1};
       for (int k = 0; k < n; ++k) {
         if ((ijk[k] < 1 || ijk[k] > shape_[k]) &&
             (distances[k].distance > traveled_distance)) {
@@ -563,20 +1092,25 @@ void StructuredMesh::raytrace_mesh(
           k_max = k;
         }
       }
+      // Assure some distance is traveled
+      if (k_max == -1) {
+        traveled_distance += TINY_BIT;
+      }
 
       // If r1 is not inside the mesh, exit here
       if (traveled_distance >= total_distance)
         return;
 
-      // Calculate the new cell index and update all distances to next surfaces.
-      ijk = get_indices(r0 + (traveled_distance + TINY_BIT) * u, in_mesh);
+      // Calculate the new cell index and update all distances to next
+      // surfaces.
+      ijk = get_indices(global_r + (traveled_distance + TINY_BIT) * u, in_mesh);
       for (int k = 0; k < n; ++k) {
         distances[k] =
-          distance_to_grid_boundary(ijk, k, r0, u, traveled_distance);
+          distance_to_grid_boundary(ijk, k, local_r, u, traveled_distance);
       }
 
       // If inside the mesh, Tally inward current
-      if (in_mesh)
+      if (in_mesh && k_max >= 0)
         tally.surface(ijk, k_max, !distances[k_max].max_surface, true);
     }
   }
@@ -645,6 +1179,72 @@ void StructuredMesh::surface_bins_crossed(
 // RegularMesh implementation
 //==============================================================================
 
+int RegularMesh::set_grid()
+{
+  auto shape = xt::adapt(shape_, {n_dimension_});
+
+  // Check that dimensions are all greater than zero
+  if (xt::any(shape <= 0)) {
+    set_errmsg("All entries for a regular mesh dimensions "
+               "must be positive.");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  // Make sure lower_left and dimension match
+  if (lower_left_.size() != n_dimension_) {
+    set_errmsg("Number of entries in lower_left must be the same "
+               "as the regular mesh dimensions.");
+    return OPENMC_E_INVALID_ARGUMENT;
+  }
+  if (width_.size() > 0) {
+
+    // Check to ensure width has same dimensions
+    if (width_.size() != n_dimension_) {
+      set_errmsg("Number of entries on width must be the same as "
+                 "the regular mesh dimensions.");
+      return OPENMC_E_INVALID_ARGUMENT;
+    }
+
+    // Check for negative widths
+    if (xt::any(width_ < 0.0)) {
+      set_errmsg("Cannot have a negative width on a regular mesh.");
+      return OPENMC_E_INVALID_ARGUMENT;
+    }
+
+    // Set width and upper right coordinate
+    upper_right_ = xt::eval(lower_left_ + shape * width_);
+
+  } else if (upper_right_.size() > 0) {
+
+    // Check to ensure upper_right_ has same dimensions
+    if (upper_right_.size() != n_dimension_) {
+      set_errmsg("Number of entries on upper_right must be the "
+                 "same as the regular mesh dimensions.");
+      return OPENMC_E_INVALID_ARGUMENT;
+    }
+
+    // Check that upper-right is above lower-left
+    if (xt::any(upper_right_ < lower_left_)) {
+      set_errmsg(
+        "The upper_right coordinates of a regular mesh must be greater than "
+        "the lower_left coordinates.");
+      return OPENMC_E_INVALID_ARGUMENT;
+    }
+
+    // Set width
+    width_ = xt::eval((upper_right_ - lower_left_) / shape);
+  }
+
+  // Set material volumes
+  volume_frac_ = 1.0 / xt::prod(shape)();
+
+  element_volume_ = 1.0;
+  for (int i = 0; i < n_dimension_; i++) {
+    element_volume_ *= width_[i];
+  }
+  return 0;
+}
+
 RegularMesh::RegularMesh(pugi::xml_node node) : StructuredMesh {node}
 {
   // Determine number of dimensions for mesh
@@ -659,24 +1259,12 @@ RegularMesh::RegularMesh(pugi::xml_node node) : StructuredMesh {node}
   }
   std::copy(shape.begin(), shape.end(), shape_.begin());
 
-  // Check that dimensions are all greater than zero
-  if (xt::any(shape <= 0)) {
-    fatal_error("All entries on the <dimension> element for a tally "
-                "mesh must be positive.");
-  }
-
   // Check for lower-left coordinates
   if (check_for_node(node, "lower_left")) {
     // Read mesh lower-left corner location
     lower_left_ = get_node_xarray<double>(node, "lower_left");
   } else {
     fatal_error("Must specify <lower_left> on a mesh.");
-  }
-
-  // Make sure lower_left and dimension match
-  if (shape.size() != lower_left_.size()) {
-    fatal_error("Number of entries on <lower_left> must be the same "
-                "as the number of entries on <dimension>.");
   }
 
   if (check_for_node(node, "width")) {
@@ -687,49 +1275,52 @@ RegularMesh::RegularMesh(pugi::xml_node node) : StructuredMesh {node}
 
     width_ = get_node_xarray<double>(node, "width");
 
-    // Check to ensure width has same dimensions
-    auto n = width_.size();
-    if (n != lower_left_.size()) {
-      fatal_error("Number of entries on <width> must be the same as "
-                  "the number of entries on <lower_left>.");
-    }
-
-    // Check for negative widths
-    if (xt::any(width_ < 0.0)) {
-      fatal_error("Cannot have a negative <width> on a tally mesh.");
-    }
-
-    // Set width and upper right coordinate
-    upper_right_ = xt::eval(lower_left_ + shape * width_);
-
   } else if (check_for_node(node, "upper_right")) {
+
     upper_right_ = get_node_xarray<double>(node, "upper_right");
 
-    // Check to ensure width has same dimensions
-    auto n = upper_right_.size();
-    if (n != lower_left_.size()) {
-      fatal_error("Number of entries on <upper_right> must be the "
-                  "same as the number of entries on <lower_left>.");
-    }
-
-    // Check that upper-right is above lower-left
-    if (xt::any(upper_right_ < lower_left_)) {
-      fatal_error("The <upper_right> coordinates must be greater than "
-                  "the <lower_left> coordinates on a tally mesh.");
-    }
-
-    // Set width
-    width_ = xt::eval((upper_right_ - lower_left_) / shape);
   } else {
     fatal_error("Must specify either <upper_right> or <width> on a mesh.");
   }
 
-  // Set volume fraction
-  volume_frac_ = 1.0 / xt::prod(shape)();
+  if (int err = set_grid()) {
+    fatal_error(openmc_err_msg);
+  }
+}
 
-  element_volume_ = 1.0;
-  for (int i = 0; i < n_dimension_; i++) {
-    element_volume_ *= width_[i];
+RegularMesh::RegularMesh(hid_t group) : StructuredMesh {group}
+{
+  // Determine number of dimensions for mesh
+  if (!object_exists(group, "dimension")) {
+    fatal_error("Must specify <dimension> on a regular mesh.");
+  }
+
+  xt::xtensor<int, 1> shape;
+  read_dataset(group, "dimension", shape);
+  int n = n_dimension_ = shape.size();
+  if (n != 1 && n != 2 && n != 3) {
+    fatal_error("Mesh must be one, two, or three dimensions.");
+  }
+  std::copy(shape.begin(), shape.end(), shape_.begin());
+
+  // Check for lower-left coordinates
+  if (object_exists(group, "lower_left")) {
+    // Read mesh lower-left corner location
+    read_dataset(group, "lower_left", lower_left_);
+  } else {
+    fatal_error("Must specify lower_left dataset on a mesh.");
+  }
+
+  if (object_exists(group, "upper_right")) {
+
+    read_dataset(group, "upper_right", upper_right_);
+
+  } else {
+    fatal_error("Must specify either upper_right dataset on a mesh.");
+  }
+
+  if (int err = set_grid()) {
+    fatal_error(openmc_err_msg);
   }
 }
 
@@ -772,6 +1363,7 @@ StructuredMesh::MeshDistance RegularMesh::distance_to_grid_boundary(
     d.next_index--;
     d.distance = (negative_grid_boundary(ijk, i) - r0[i]) / u[i];
   }
+
   return d;
 }
 
@@ -816,17 +1408,12 @@ std::pair<vector<double>, vector<double>> RegularMesh::plot(
   return {axis_lines[0], axis_lines[1]};
 }
 
-void RegularMesh::to_hdf5(hid_t group) const
+void RegularMesh::to_hdf5_inner(hid_t mesh_group) const
 {
-  hid_t mesh_group = create_group(group, "mesh " + std::to_string(id_));
-
-  write_dataset(mesh_group, "type", "regular");
   write_dataset(mesh_group, "dimension", get_x_shape());
   write_dataset(mesh_group, "lower_left", lower_left_);
   write_dataset(mesh_group, "upper_right", upper_right_);
   write_dataset(mesh_group, "width", width_);
-
-  close_group(mesh_group);
 }
 
 xt::xtensor<double, 1> RegularMesh::count_sites(
@@ -900,6 +1487,19 @@ RectilinearMesh::RectilinearMesh(pugi::xml_node node) : StructuredMesh {node}
   grid_[0] = get_node_array<double>(node, "x_grid");
   grid_[1] = get_node_array<double>(node, "y_grid");
   grid_[2] = get_node_array<double>(node, "z_grid");
+
+  if (int err = set_grid()) {
+    fatal_error(openmc_err_msg);
+  }
+}
+
+RectilinearMesh::RectilinearMesh(hid_t group) : StructuredMesh {group}
+{
+  n_dimension_ = 3;
+
+  read_dataset(group, "x_grid", grid_[0]);
+  read_dataset(group, "y_grid", grid_[1]);
+  read_dataset(group, "z_grid", grid_[2]);
 
   if (int err = set_grid()) {
     fatal_error(openmc_err_msg);
@@ -1006,16 +1606,11 @@ std::pair<vector<double>, vector<double>> RectilinearMesh::plot(
   return {axis_lines[0], axis_lines[1]};
 }
 
-void RectilinearMesh::to_hdf5(hid_t group) const
+void RectilinearMesh::to_hdf5_inner(hid_t mesh_group) const
 {
-  hid_t mesh_group = create_group(group, "mesh " + std::to_string(id_));
-
-  write_dataset(mesh_group, "type", "rectilinear");
   write_dataset(mesh_group, "x_grid", grid_[0]);
   write_dataset(mesh_group, "y_grid", grid_[1]);
   write_dataset(mesh_group, "z_grid", grid_[2]);
-
-  close_group(mesh_group);
 }
 
 double RectilinearMesh::volume(const MeshIndex& ijk) const
@@ -1023,7 +1618,7 @@ double RectilinearMesh::volume(const MeshIndex& ijk) const
   double vol {1.0};
 
   for (int i = 0; i < n_dimension_; i++) {
-    vol *= grid_[i][ijk[i] + 1] - grid_[i][ijk[i]];
+    vol *= grid_[i][ijk[i]] - grid_[i][ijk[i] - 1];
   }
   return vol;
 }
@@ -1046,6 +1641,19 @@ CylindricalMesh::CylindricalMesh(pugi::xml_node node)
   }
 }
 
+CylindricalMesh::CylindricalMesh(hid_t group) : PeriodicStructuredMesh {group}
+{
+  n_dimension_ = 3;
+  read_dataset(group, "r_grid", grid_[0]);
+  read_dataset(group, "phi_grid", grid_[1]);
+  read_dataset(group, "z_grid", grid_[2]);
+  read_dataset(group, "origin", origin_);
+
+  if (int err = set_grid()) {
+    fatal_error(openmc_err_msg);
+  }
+}
+
 const std::string CylindricalMesh::mesh_type = "cylindrical";
 
 std::string CylindricalMesh::get_mesh_type() const
@@ -1056,7 +1664,7 @@ std::string CylindricalMesh::get_mesh_type() const
 StructuredMesh::MeshIndex CylindricalMesh::get_indices(
   Position r, bool& in_mesh) const
 {
-  local_coords(r);
+  r = local_coords(r);
 
   Position mapped_r;
   mapped_r[0] = std::hypot(r.x, r.y);
@@ -1075,6 +1683,30 @@ StructuredMesh::MeshIndex CylindricalMesh::get_indices(
   idx[1] = sanitize_phi(idx[1]);
 
   return idx;
+}
+
+Position CylindricalMesh::sample_element(
+  const MeshIndex& ijk, uint64_t* seed) const
+{
+  double r_min = this->r(ijk[0] - 1);
+  double r_max = this->r(ijk[0]);
+
+  double phi_min = this->phi(ijk[1] - 1);
+  double phi_max = this->phi(ijk[1]);
+
+  double z_min = this->z(ijk[2] - 1);
+  double z_max = this->z(ijk[2]);
+
+  double r_min_sq = r_min * r_min;
+  double r_max_sq = r_max * r_max;
+  double r = std::sqrt(uniform_distribution(r_min_sq, r_max_sq, seed));
+  double phi = uniform_distribution(phi_min, phi_max, seed);
+  double z = uniform_distribution(z_min, z_max, seed);
+
+  double x = r * std::cos(phi);
+  double y = r * std::sin(phi);
+
+  return origin_ + Position(x, y, z);
 }
 
 double CylindricalMesh::find_r_crossing(
@@ -1180,23 +1812,21 @@ StructuredMesh::MeshDistance CylindricalMesh::distance_to_grid_boundary(
   const MeshIndex& ijk, int i, const Position& r0, const Direction& u,
   double l) const
 {
-  Position r = r0 - origin_;
-
   if (i == 0) {
 
     return std::min(
-      MeshDistance(ijk[i] + 1, true, find_r_crossing(r, u, l, ijk[i])),
-      MeshDistance(ijk[i] - 1, false, find_r_crossing(r, u, l, ijk[i] - 1)));
+      MeshDistance(ijk[i] + 1, true, find_r_crossing(r0, u, l, ijk[i])),
+      MeshDistance(ijk[i] - 1, false, find_r_crossing(r0, u, l, ijk[i] - 1)));
 
   } else if (i == 1) {
 
     return std::min(MeshDistance(sanitize_phi(ijk[i] + 1), true,
-                      find_phi_crossing(r, u, l, ijk[i])),
+                      find_phi_crossing(r0, u, l, ijk[i])),
       MeshDistance(sanitize_phi(ijk[i] - 1), false,
-        find_phi_crossing(r, u, l, ijk[i] - 1)));
+        find_phi_crossing(r0, u, l, ijk[i] - 1)));
 
   } else {
-    return find_z_crossing(r, u, l, ijk[i]);
+    return find_z_crossing(r0, u, l, ijk[i]);
   }
 }
 
@@ -1238,8 +1868,10 @@ int CylindricalMesh::set_grid()
 
   full_phi_ = (grid_[1].front() == 0.0) && (grid_[1].back() == 2.0 * PI);
 
-  lower_left_ = {grid_[0].front(), grid_[1].front(), grid_[2].front()};
-  upper_right_ = {grid_[0].back(), grid_[1].back(), grid_[2].back()};
+  lower_left_ = {origin_[0] - grid_[0].back(), origin_[1] - grid_[0].back(),
+    origin_[2] + grid_[2].front()};
+  upper_right_ = {origin_[0] + grid_[0].back(), origin_[1] + grid_[0].back(),
+    origin_[2] + grid_[2].back()};
 
   return 0;
 }
@@ -1259,17 +1891,12 @@ std::pair<vector<double>, vector<double>> CylindricalMesh::plot(
   return {axis_lines[0], axis_lines[1]};
 }
 
-void CylindricalMesh::to_hdf5(hid_t group) const
+void CylindricalMesh::to_hdf5_inner(hid_t mesh_group) const
 {
-  hid_t mesh_group = create_group(group, "mesh " + std::to_string(id_));
-
-  write_dataset(mesh_group, "type", "cylindrical");
   write_dataset(mesh_group, "r_grid", grid_[0]);
   write_dataset(mesh_group, "phi_grid", grid_[1]);
   write_dataset(mesh_group, "z_grid", grid_[2]);
   write_dataset(mesh_group, "origin", origin_);
-
-  close_group(mesh_group);
 }
 
 double CylindricalMesh::volume(const MeshIndex& ijk) const
@@ -1305,6 +1932,20 @@ SphericalMesh::SphericalMesh(pugi::xml_node node)
   }
 }
 
+SphericalMesh::SphericalMesh(hid_t group) : PeriodicStructuredMesh {group}
+{
+  n_dimension_ = 3;
+
+  read_dataset(group, "r_grid", grid_[0]);
+  read_dataset(group, "theta_grid", grid_[1]);
+  read_dataset(group, "phi_grid", grid_[2]);
+  read_dataset(group, "origin", origin_);
+
+  if (int err = set_grid()) {
+    fatal_error(openmc_err_msg);
+  }
+}
+
 const std::string SphericalMesh::mesh_type = "spherical";
 
 std::string SphericalMesh::get_mesh_type() const
@@ -1315,7 +1956,7 @@ std::string SphericalMesh::get_mesh_type() const
 StructuredMesh::MeshIndex SphericalMesh::get_indices(
   Position r, bool& in_mesh) const
 {
-  local_coords(r);
+  r = local_coords(r);
 
   Position mapped_r;
   mapped_r[0] = r.norm();
@@ -1336,6 +1977,34 @@ StructuredMesh::MeshIndex SphericalMesh::get_indices(
   idx[2] = sanitize_phi(idx[2]);
 
   return idx;
+}
+
+Position SphericalMesh::sample_element(
+  const MeshIndex& ijk, uint64_t* seed) const
+{
+  double r_min = this->r(ijk[0] - 1);
+  double r_max = this->r(ijk[0]);
+
+  double theta_min = this->theta(ijk[1] - 1);
+  double theta_max = this->theta(ijk[1]);
+
+  double phi_min = this->phi(ijk[2] - 1);
+  double phi_max = this->phi(ijk[2]);
+
+  double cos_theta =
+    uniform_distribution(std::cos(theta_min), std::cos(theta_max), seed);
+  double sin_theta = std::sin(std::acos(cos_theta));
+  double phi = uniform_distribution(phi_min, phi_max, seed);
+  double r_min_cub = std::pow(r_min, 3);
+  double r_max_cub = std::pow(r_max, 3);
+  // might be faster to do rejection here?
+  double r = std::cbrt(uniform_distribution(r_min_cub, r_max_cub, seed));
+
+  double x = r * std::cos(phi) * sin_theta;
+  double y = r * std::sin(phi) * sin_theta;
+  double z = r * cos_theta;
+
+  return origin_ + Position(x, y, z);
 }
 
 double SphericalMesh::find_r_crossing(
@@ -1392,7 +2061,8 @@ double SphericalMesh::find_theta_crossing(
   const double b = r.dot(u) * cos_t_2 - r.z * u.z;
   const double c = r.dot(r) * cos_t_2 - r.z * r.z;
 
-  // if factor of s^2 is zero, direction of flight is parallel to theta surface
+  // if factor of s^2 is zero, direction of flight is parallel to theta
+  // surface
   if (std::abs(a) < FP_PRECISION) {
     // if b vanishes, direction of flight is within theta surface and crossing
     // is not possible
@@ -1400,7 +2070,8 @@ double SphericalMesh::find_theta_crossing(
       return INFTY;
 
     const double s = -0.5 * c / b;
-    // Check if solution is in positive direction of flight and has correct sign
+    // Check if solution is in positive direction of flight and has correct
+    // sign
     if ((s > l) && (std::signbit(r.z + s * u.z) == sgn))
       return s;
 
@@ -1526,8 +2197,9 @@ int SphericalMesh::set_grid()
   full_theta_ = (grid_[1].front() == 0.0) && (grid_[1].back() == PI);
   full_phi_ = (grid_[2].front() == 0.0) && (grid_[2].back() == 2 * PI);
 
-  lower_left_ = {grid_[0].front(), grid_[1].front(), grid_[2].front()};
-  upper_right_ = {grid_[0].back(), grid_[1].back(), grid_[2].back()};
+  double r = grid_[0].back();
+  lower_left_ = {origin_[0] - r, origin_[1] - r, origin_[2] - r};
+  upper_right_ = {origin_[0] + r, origin_[1] + r, origin_[2] + r};
 
   return 0;
 }
@@ -1547,17 +2219,12 @@ std::pair<vector<double>, vector<double>> SphericalMesh::plot(
   return {axis_lines[0], axis_lines[1]};
 }
 
-void SphericalMesh::to_hdf5(hid_t group) const
+void SphericalMesh::to_hdf5_inner(hid_t mesh_group) const
 {
-  hid_t mesh_group = create_group(group, "mesh " + std::to_string(id_));
-
-  write_dataset(mesh_group, "type", SphericalMesh::mesh_type);
   write_dataset(mesh_group, "r_grid", grid_[0]);
   write_dataset(mesh_group, "theta_grid", grid_[1]);
   write_dataset(mesh_group, "phi_grid", grid_[2]);
   write_dataset(mesh_group, "origin", origin_);
-
-  close_group(mesh_group);
 }
 
 double SphericalMesh::volume(const MeshIndex& ijk) const
@@ -1659,14 +2326,14 @@ extern "C" int openmc_add_unstructured_mesh(
   std::string mesh_file(filename);
   bool valid_lib = false;
 
-#ifdef DAGMC
+#ifdef OPENMC_DAGMC_ENABLED
   if (lib_name == MOABMesh::mesh_lib_type) {
     model::meshes.push_back(std::move(make_unique<MOABMesh>(mesh_file)));
     valid_lib = true;
   }
 #endif
 
-#ifdef LIBMESH
+#ifdef OPENMC_LIBMESH_ENABLED
   if (lib_name == LibMesh::mesh_lib_type) {
     model::meshes.push_back(std::move(make_unique<LibMesh>(mesh_file)));
     valid_lib = true;
@@ -1715,6 +2382,124 @@ extern "C" int openmc_mesh_set_id(int32_t index, int32_t id)
     return err;
   model::meshes[index]->id_ = id;
   model::mesh_map[id] = index;
+  return 0;
+}
+
+//! Get the number of elements in a mesh
+extern "C" int openmc_mesh_get_n_elements(int32_t index, size_t* n)
+{
+  if (int err = check_mesh(index))
+    return err;
+  *n = model::meshes[index]->n_bins();
+  return 0;
+}
+
+//! Get the volume of each element in the mesh
+extern "C" int openmc_mesh_get_volumes(int32_t index, double* volumes)
+{
+  if (int err = check_mesh(index))
+    return err;
+  for (int i = 0; i < model::meshes[index]->n_bins(); ++i) {
+    volumes[i] = model::meshes[index]->volume(i);
+  }
+  return 0;
+}
+
+//! Get the bounding box of a mesh
+extern "C" int openmc_mesh_bounding_box(int32_t index, double* ll, double* ur)
+{
+  if (int err = check_mesh(index))
+    return err;
+
+  BoundingBox bbox = model::meshes[index]->bounding_box();
+
+  // set lower left corner values
+  ll[0] = bbox.xmin;
+  ll[1] = bbox.ymin;
+  ll[2] = bbox.zmin;
+
+  // set upper right corner values
+  ur[0] = bbox.xmax;
+  ur[1] = bbox.ymax;
+  ur[2] = bbox.zmax;
+  return 0;
+}
+
+extern "C" int openmc_mesh_material_volumes(int32_t index, int nx, int ny,
+  int nz, int table_size, int32_t* materials, double* volumes)
+{
+  if (int err = check_mesh(index))
+    return err;
+
+  try {
+    model::meshes[index]->material_volumes(
+      nx, ny, nz, table_size, materials, volumes);
+  } catch (const std::exception& e) {
+    set_errmsg(e.what());
+    if (starts_with(e.what(), "Mesh")) {
+      return OPENMC_E_GEOMETRY;
+    } else {
+      return OPENMC_E_ALLOCATE;
+    }
+  }
+
+  return 0;
+}
+
+extern "C" int openmc_mesh_get_plot_bins(int32_t index, Position origin,
+  Position width, int basis, int* pixels, int32_t* data)
+{
+  if (int err = check_mesh(index))
+    return err;
+  const auto& mesh = model::meshes[index].get();
+
+  int pixel_width = pixels[0];
+  int pixel_height = pixels[1];
+
+  // get pixel size
+  double in_pixel = (width[0]) / static_cast<double>(pixel_width);
+  double out_pixel = (width[1]) / static_cast<double>(pixel_height);
+
+  // setup basis indices and initial position centered on pixel
+  int in_i, out_i;
+  Position xyz = origin;
+  enum class PlotBasis { xy = 1, xz = 2, yz = 3 };
+  PlotBasis basis_enum = static_cast<PlotBasis>(basis);
+  switch (basis_enum) {
+  case PlotBasis::xy:
+    in_i = 0;
+    out_i = 1;
+    break;
+  case PlotBasis::xz:
+    in_i = 0;
+    out_i = 2;
+    break;
+  case PlotBasis::yz:
+    in_i = 1;
+    out_i = 2;
+    break;
+  default:
+    UNREACHABLE();
+  }
+
+  // set initial position
+  xyz[in_i] = origin[in_i] - width[0] / 2. + in_pixel / 2.;
+  xyz[out_i] = origin[out_i] + width[1] / 2. - out_pixel / 2.;
+
+#pragma omp parallel
+  {
+    Position r = xyz;
+
+#pragma omp for
+    for (int y = 0; y < pixel_height; y++) {
+      r[out_i] = xyz[out_i] - out_pixel * y;
+      for (int x = 0; x < pixel_width; x++) {
+        r[in_i] = xyz[in_i] + in_pixel * x;
+        data[pixel_width * y + x] = mesh->get_bin(r);
+      }
+    }
+  }
+
   return 0;
 }
 
@@ -1772,6 +2557,11 @@ extern "C" int openmc_regular_mesh_set_params(
     return err;
   RegularMesh* m = dynamic_cast<RegularMesh*>(model::meshes[index].get());
 
+  if (m->n_dimension_ == -1) {
+    set_errmsg("Need to set mesh dimension before setting parameters.");
+    return OPENMC_E_UNASSIGNED;
+  }
+
   vector<std::size_t> shape = {static_cast<std::size_t>(n)};
   if (ll && ur) {
     m->lower_left_ = xt::adapt(ll, n, xt::no_ownership(), shape);
@@ -1788,6 +2578,16 @@ extern "C" int openmc_regular_mesh_set_params(
   } else {
     set_errmsg("At least two parameters must be specified.");
     return OPENMC_E_INVALID_ARGUMENT;
+  }
+
+  // Set material volumes
+
+  // TODO: incorporate this into method in RegularMesh that can be called from
+  // here and from constructor
+  m->volume_frac_ = 1.0 / xt::prod(m->get_x_shape())();
+  m->element_volume_ = 1.0;
+  for (int i = 0; i < m->n_dimension_; i++) {
+    m->element_volume_ *= m->width_[i];
   }
 
   return 0;
@@ -1901,7 +2701,7 @@ extern "C" int openmc_spherical_mesh_set_grid(int32_t index,
     index, grid_x, nx, grid_y, ny, grid_z, nz);
 }
 
-#ifdef DAGMC
+#ifdef OPENMC_DAGMC_ENABLED
 
 const std::string MOABMesh::mesh_lib_type = "moab";
 
@@ -1910,8 +2710,15 @@ MOABMesh::MOABMesh(pugi::xml_node node) : UnstructuredMesh(node)
   initialize();
 }
 
-MOABMesh::MOABMesh(const std::string& filename, double length_multiplier)
+MOABMesh::MOABMesh(hid_t group) : UnstructuredMesh(group)
 {
+  initialize();
+}
+
+MOABMesh::MOABMesh(const std::string& filename, double length_multiplier)
+  : UnstructuredMesh()
+{
+  n_dimension_ = 3;
   filename_ = filename;
   set_length_multiplier(length_multiplier);
   initialize();
@@ -1967,7 +2774,7 @@ void MOABMesh::initialize()
     fatal_error("Failed to add tetrahedra to an entity set.");
   }
 
-  if (specified_length_multiplier_) {
+  if (length_multiplier_ > 0.0) {
     // get the connectivity of all tets
     moab::Range adj;
     rval = mbi_->get_adjacencies(ehs_, 0, true, adj, moab::Interface::UNION);
@@ -1995,6 +2802,16 @@ void MOABMesh::initialize()
     }
   }
 
+  // Determine bounds of mesh
+  this->determine_bounds();
+}
+
+void MOABMesh::prepare_for_point_location()
+{
+  // if the KDTree has already been constructed, do nothing
+  if (kdtree_)
+    return;
+
   // build acceleration data structures
   compute_barycentric_data(ehs_);
   build_kdtree(ehs_);
@@ -2020,6 +2837,7 @@ void MOABMesh::build_kdtree(const moab::Range& all_tets)
 {
   moab::Range all_tris;
   int adj_dim = 2;
+  write_message("Getting tet adjacencies...", 7);
   moab::ErrorCode rval = mbi_->get_adjacencies(
     all_tets, adj_dim, true, all_tris, moab::Interface::UNION);
   if (rval != moab::MB_SUCCESS) {
@@ -2038,10 +2856,21 @@ void MOABMesh::build_kdtree(const moab::Range& all_tets)
   all_tets_and_tris.merge(all_tris);
 
   // create a kd-tree instance
+  write_message(
+    7, "Building adaptive k-d tree for tet mesh with ID {}...", id_);
   kdtree_ = make_unique<moab::AdaptiveKDTree>(mbi_.get());
 
-  // build the tree
-  rval = kdtree_->build_tree(all_tets_and_tris, &kdtree_root_);
+  // Determine what options to use
+  std::ostringstream options_stream;
+  if (options_.empty()) {
+    options_stream << "MAX_DEPTH=20;PLANE_SET=2;";
+  } else {
+    options_stream << options_;
+  }
+  moab::FileOptions file_opts(options_stream.str().c_str());
+
+  // Build the k-d tree
+  rval = kdtree_->build_tree(all_tets_and_tris, &kdtree_root_, &file_opts);
   if (rval != moab::MB_SUCCESS) {
     fatal_error("Failed to construct KDTree for the "
                 "unstructured mesh file: " +
@@ -2057,7 +2886,8 @@ void MOABMesh::intersect_track(const moab::CartVect& start,
   moab::ErrorCode rval;
   vector<moab::EntityHandle> tris;
   // get all intersections with triangles in the tet mesh
-  // (distances are relative to the start point, not the previous intersection)
+  // (distances are relative to the start point, not the previous
+  // intersection)
   rval = kdtree_->ray_intersect_triangles(kdtree_root_, FP_COINCIDENT,
     dir.array(), start.array(), tris, hits, 0, track_len);
   if (rval != moab::MB_SUCCESS) {
@@ -2185,7 +3015,7 @@ std::string MOABMesh::library() const
 }
 
 // Sample position within a tet for MOAB type tets
-Position MOABMesh::sample(uint64_t* seed, int32_t bin) const
+Position MOABMesh::sample_element(int32_t bin, uint64_t* seed) const
 {
 
   moab::EntityHandle tet_ent = get_ent_handle_from_bin(bin);
@@ -2580,7 +3410,7 @@ void MOABMesh::write(const std::string& base_filename) const
 
 #endif
 
-#ifdef LIBMESH
+#ifdef OPENMC_LIBMESH_ENABLED
 
 const std::string LibMesh::mesh_lib_type = "libmesh";
 
@@ -2593,9 +3423,23 @@ LibMesh::LibMesh(pugi::xml_node node) : UnstructuredMesh(node)
   initialize();
 }
 
+LibMesh::LibMesh(hid_t group) : UnstructuredMesh(group)
+{
+  // filename_ and length_multiplier_ will already be set by the
+  // UnstructuredMesh constructor
+  set_mesh_pointer_from_filename(filename_);
+  set_length_multiplier(length_multiplier_);
+  initialize();
+}
+
 // create the mesh from a pointer to a libMesh Mesh
 LibMesh::LibMesh(libMesh::MeshBase& input_mesh, double length_multiplier)
 {
+  if (!dynamic_cast<libMesh::ReplicatedMesh*>(&input_mesh)) {
+    fatal_error("At present LibMesh tallies require a replicated mesh. Please "
+                "ensure 'input_mesh' is a libMesh::ReplicatedMesh.");
+  }
+
   m_ = &input_mesh;
   set_length_multiplier(length_multiplier);
   initialize();
@@ -2604,6 +3448,7 @@ LibMesh::LibMesh(libMesh::MeshBase& input_mesh, double length_multiplier)
 // create the mesh from an input file
 LibMesh::LibMesh(const std::string& filename, double length_multiplier)
 {
+  n_dimension_ = 3;
   set_mesh_pointer_from_filename(filename);
   set_length_multiplier(length_multiplier);
   initialize();
@@ -2612,23 +3457,33 @@ LibMesh::LibMesh(const std::string& filename, double length_multiplier)
 void LibMesh::set_mesh_pointer_from_filename(const std::string& filename)
 {
   filename_ = filename;
-  unique_m_ = make_unique<libMesh::Mesh>(*settings::libmesh_comm, n_dimension_);
+  unique_m_ =
+    make_unique<libMesh::ReplicatedMesh>(*settings::libmesh_comm, n_dimension_);
   m_ = unique_m_.get();
   m_->read(filename_);
+}
+
+// build a libMesh equation system for storing values
+void LibMesh::build_eqn_sys()
+{
+  eq_system_name_ = fmt::format("mesh_{}_system", id_);
+  equation_systems_ = make_unique<libMesh::EquationSystems>(*m_);
+  libMesh::ExplicitSystem& eq_sys =
+    equation_systems_->add_system<libMesh::ExplicitSystem>(eq_system_name_);
 }
 
 // intialize from mesh file
 void LibMesh::initialize()
 {
   if (!settings::libmesh_comm) {
-    fatal_error(
-      "Attempting to use an unstructured mesh without a libMesh communicator.");
+    fatal_error("Attempting to use an unstructured mesh without a libMesh "
+                "communicator.");
   }
 
   // assuming that unstructured meshes used in OpenMC are 3D
   n_dimension_ = 3;
 
-  if (specified_length_multiplier_) {
+  if (length_multiplier_ > 0.0) {
     libMesh::MeshTools::Modification::scale(*m_, length_multiplier_);
   }
   // if OpenMC is managing the libMesh::MeshBase instance, prepare the mesh.
@@ -2644,20 +3499,7 @@ void LibMesh::initialize()
       filename_));
   }
 
-  // create an equation system for storing values
-  eq_system_name_ = fmt::format("mesh_{}_system", id_);
-
-  equation_systems_ = make_unique<libMesh::EquationSystems>(*m_);
-  libMesh::ExplicitSystem& eq_sys =
-    equation_systems_->add_system<libMesh::ExplicitSystem>(eq_system_name_);
-
-#ifdef _OPENMP
-  int n_threads = omp_get_max_threads();
-#else
-  int n_threads = 1;
-#endif
-
-  for (int i = 0; i < n_threads; i++) {
+  for (int i = 0; i < num_threads(); i++) {
     pl_.emplace_back(m_->sub_point_locator());
     pl_.back()->set_contains_point_tol(FP_COINCIDENT);
     pl_.back()->enable_out_of_mesh_mode();
@@ -2669,10 +3511,14 @@ void LibMesh::initialize()
 
   // bounding box for the mesh for quick rejection checks
   bbox_ = libMesh::MeshTools::create_bounding_box(*m_);
+  libMesh::Point ll = bbox_.min();
+  libMesh::Point ur = bbox_.max();
+  lower_left_ = {ll(0), ll(1), ll(2)};
+  upper_right_ = {ur(0), ur(1), ur(2)};
 }
 
 // Sample position within a tet for LibMesh type tets
-Position LibMesh::sample(uint64_t* seed, int32_t bin) const
+Position LibMesh::sample_element(int32_t bin, uint64_t* seed) const
 {
   const auto& elem = get_element_from_bin(bin);
   // Get tet vertex coordinates from LibMesh
@@ -2743,6 +3589,10 @@ int LibMesh::n_surface_bins() const
 
 void LibMesh::add_score(const std::string& var_name)
 {
+  if (!equation_systems_) {
+    build_eqn_sys();
+  }
+
   // check if this is a new variable
   std::string value_name = var_name + "_mean";
   if (!variable_map_.count(value_name)) {
@@ -2764,14 +3614,20 @@ void LibMesh::add_score(const std::string& var_name)
 
 void LibMesh::remove_scores()
 {
-  auto& eqn_sys = equation_systems_->get_system(eq_system_name_);
-  eqn_sys.clear();
-  variable_map_.clear();
+  if (equation_systems_) {
+    auto& eqn_sys = equation_systems_->get_system(eq_system_name_);
+    eqn_sys.clear();
+    variable_map_.clear();
+  }
 }
 
 void LibMesh::set_score_data(const std::string& var_name,
   const vector<double>& values, const vector<double>& std_dev)
 {
+  if (!equation_systems_) {
+    build_eqn_sys();
+  }
+
   auto& eqn_sys = equation_systems_->get_system(eq_system_name_);
 
   if (!eqn_sys.is_initialized()) {
@@ -2789,18 +3645,22 @@ void LibMesh::set_score_data(const std::string& var_name,
 
   for (auto it = m_->local_elements_begin(); it != m_->local_elements_end();
        it++) {
+    if (!(*it)->active()) {
+      continue;
+    }
+
     auto bin = get_bin_from_element(*it);
 
     // set value
     vector<libMesh::dof_id_type> value_dof_indices;
     dof_map.dof_indices(*it, value_dof_indices, value_num);
-    Ensures(value_dof_indices.size() == 1);
+    assert(value_dof_indices.size() == 1);
     eqn_sys.solution->set(value_dof_indices[0], values.at(bin));
 
     // set std dev
     vector<libMesh::dof_id_type> std_dev_dof_indices;
     dof_map.dof_indices(*it, std_dev_dof_indices, std_dev_num);
-    Ensures(std_dev_dof_indices.size() == 1);
+    assert(std_dev_dof_indices.size() == 1);
     eqn_sys.solution->set(std_dev_dof_indices[0], std_dev.at(bin));
   }
 }
@@ -2832,13 +3692,7 @@ int LibMesh::get_bin(Position r) const
     return -1;
   }
 
-#ifdef _OPENMP
-  int thread_num = omp_get_thread_num();
-#else
-  int thread_num = 0;
-#endif
-
-  const auto& point_locator = pl_.at(thread_num);
+  const auto& point_locator = pl_.at(thread_num());
 
   const auto elem_ptr = (*point_locator)(p);
   return elem_ptr ? get_bin_from_element(elem_ptr) : -1;
@@ -2869,7 +3723,66 @@ double LibMesh::volume(int bin) const
   return this->get_element_from_bin(bin).volume();
 }
 
-#endif // LIBMESH
+AdaptiveLibMesh::AdaptiveLibMesh(
+  libMesh::MeshBase& input_mesh, double length_multiplier)
+  : LibMesh(input_mesh, length_multiplier), num_active_(m_->n_active_elem())
+{
+  // if the mesh is adaptive elements aren't guaranteed by libMesh to be
+  // contiguous in ID space, so we need to map from bin indices (defined over
+  // active elements) to global dof ids
+  bin_to_elem_map_.reserve(num_active_);
+  elem_to_bin_map_.resize(m_->n_elem(), -1);
+  for (auto it = m_->active_elements_begin(); it != m_->active_elements_end();
+       it++) {
+    auto elem = *it;
+
+    bin_to_elem_map_.push_back(elem->id());
+    elem_to_bin_map_[elem->id()] = bin_to_elem_map_.size() - 1;
+  }
+}
+
+int AdaptiveLibMesh::n_bins() const
+{
+  return num_active_;
+}
+
+void AdaptiveLibMesh::add_score(const std::string& var_name)
+{
+  warning(fmt::format(
+    "Exodus output cannot be provided as unstructured mesh {} is adaptive.",
+    this->id_));
+}
+
+void AdaptiveLibMesh::set_score_data(const std::string& var_name,
+  const vector<double>& values, const vector<double>& std_dev)
+{
+  warning(fmt::format(
+    "Exodus output cannot be provided as unstructured mesh {} is adaptive.",
+    this->id_));
+}
+
+void AdaptiveLibMesh::write(const std::string& filename) const
+{
+  warning(fmt::format(
+    "Exodus output cannot be provided as unstructured mesh {} is adaptive.",
+    this->id_));
+}
+
+int AdaptiveLibMesh::get_bin_from_element(const libMesh::Elem* elem) const
+{
+  int bin = elem_to_bin_map_[elem->id()];
+  if (bin >= n_bins() || bin < 0) {
+    fatal_error(fmt::format("Invalid bin: {}", bin));
+  }
+  return bin;
+}
+
+const libMesh::Elem& AdaptiveLibMesh::get_element_from_bin(int bin) const
+{
+  return m_->elem_ref(bin_to_elem_map_.at(bin));
+}
+
+#endif // OPENMC_LIBMESH_ENABLED
 
 //==============================================================================
 // Non-member functions
@@ -2883,8 +3796,8 @@ void read_meshes(pugi::xml_node root)
     // Check to make sure multiple meshes in the same file don't share IDs
     int id = std::stoi(get_node_value(node, "id"));
     if (contains(mesh_ids, id)) {
-      fatal_error(fmt::format(
-        "Two or more meshes use the same unique ID '{}' in the same input file",
+      fatal_error(fmt::format("Two or more meshes use the same unique ID "
+                              "'{}' in the same input file",
         id));
     }
     mesh_ids.insert(id);
@@ -2909,34 +3822,51 @@ void read_meshes(pugi::xml_node root)
       mesh_lib = get_node_value(node, "library", true, true);
     }
 
-    // Read mesh and add to vector
-    if (mesh_type == RegularMesh::mesh_type) {
-      model::meshes.push_back(make_unique<RegularMesh>(node));
-    } else if (mesh_type == RectilinearMesh::mesh_type) {
-      model::meshes.push_back(make_unique<RectilinearMesh>(node));
-    } else if (mesh_type == CylindricalMesh::mesh_type) {
-      model::meshes.push_back(make_unique<CylindricalMesh>(node));
-    } else if (mesh_type == SphericalMesh::mesh_type) {
-      model::meshes.push_back(make_unique<SphericalMesh>(node));
-#ifdef DAGMC
-    } else if (mesh_type == UnstructuredMesh::mesh_type &&
-               mesh_lib == MOABMesh::mesh_lib_type) {
-      model::meshes.push_back(make_unique<MOABMesh>(node));
-#endif
-#ifdef LIBMESH
-    } else if (mesh_type == UnstructuredMesh::mesh_type &&
-               mesh_lib == LibMesh::mesh_lib_type) {
-      model::meshes.push_back(make_unique<LibMesh>(node));
-#endif
-    } else if (mesh_type == UnstructuredMesh::mesh_type) {
-      fatal_error("Unstructured mesh support is not enabled or the mesh "
-                  "library is invalid.");
-    } else {
-      fatal_error("Invalid mesh type: " + mesh_type);
+    Mesh::create(node, mesh_type, mesh_lib);
+  }
+}
+
+void read_meshes(hid_t group)
+{
+  std::unordered_set<int> mesh_ids;
+
+  std::vector<int> ids;
+  read_attribute(group, "ids", ids);
+
+  for (auto id : ids) {
+
+    // Check to make sure multiple meshes in the same file don't share IDs
+    if (contains(mesh_ids, id)) {
+      fatal_error(fmt::format("Two or more meshes use the same unique ID "
+                              "'{}' in the same HDF5 input file",
+        id));
+    }
+    mesh_ids.insert(id);
+
+    // If we've already read a mesh with the same ID in a *different* file,
+    // assume it is the same here
+    if (model::mesh_map.find(id) != model::mesh_map.end()) {
+      warning(fmt::format("Mesh with ID={} appears in multiple files.", id));
+      continue;
     }
 
-    // Map ID to position in vector
-    model::mesh_map[model::meshes.back()->id_] = model::meshes.size() - 1;
+    std::string name = fmt::format("mesh {}", id);
+    hid_t mesh_group = open_group(group, name.c_str());
+
+    std::string mesh_type;
+    if (object_exists(mesh_group, "type")) {
+      read_dataset(mesh_group, "type", mesh_type);
+    } else {
+      mesh_type = "regular";
+    }
+
+    // determine the mesh library to use
+    std::string mesh_lib;
+    if (object_exists(mesh_group, "library")) {
+      read_dataset(mesh_group, "library", mesh_lib);
+    }
+
+    Mesh::create(mesh_group, mesh_type, mesh_lib);
   }
 }
 

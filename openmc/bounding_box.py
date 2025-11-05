@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Iterable
+from collections.abc import Iterable
 
 import numpy as np
 
@@ -42,7 +42,8 @@ class BoundingBox:
 
     def __repr__(self) -> str:
         return "BoundingBox(lower_left={}, upper_right={})".format(
-            tuple(self.lower_left), tuple(self.upper_right))
+            tuple(float(x) for x in self.lower_left),
+            tuple(float(x) for x in self.upper_right))
 
     def __getitem__(self, key) -> np.ndarray:
         return self._bounds[key]
@@ -94,6 +95,24 @@ class BoundingBox:
         new = BoundingBox(*self)
         new |= other
         return new
+
+    def __contains__(self, other):
+        """Check whether or not a point or another bounding box is in the bounding box.
+
+        For another bounding box to be in the parent it must lie fully inside of it.
+        """
+        # test for a single point
+        if isinstance(other, (tuple, list, np.ndarray)):
+            point = other
+            check_length("Point", point, 3, 3)
+            return all(point > self.lower_left) and all(point < self.upper_right)
+        elif isinstance(other, BoundingBox):
+            return all([p in self for p in [other.lower_left, other.upper_right]])
+        else:
+            raise TypeError(
+                f"Unable to determine if {other} is in the bounding box."
+                f" Expected a tuple or a bounding box, but {type(other)} given"
+            )
 
     @property
     def center(self) -> np.ndarray:

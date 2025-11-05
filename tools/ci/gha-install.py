@@ -2,24 +2,8 @@ import os
 import shutil
 import subprocess
 
-def which(program):
-    def is_exe(fpath):
-        return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
 
-    fpath, fname = os.path.split(program)
-    if fpath:
-        if is_exe(program):
-            return program
-    else:
-        for path in os.environ["PATH"].split(os.pathsep):
-            path = path.strip('"')
-            exe_file = os.path.join(path, program)
-            if is_exe(exe_file):
-                return exe_file
-    return None
-
-
-def install(omp=False, mpi=False, phdf5=False, dagmc=False, libmesh=False, ncrystal=False):
+def install(omp=False, mpi=False, phdf5=False, dagmc=False, libmesh=False):
     # Create build directory and change to it
     shutil.rmtree('build', ignore_errors=True)
     os.mkdir('build')
@@ -47,17 +31,14 @@ def install(omp=False, mpi=False, phdf5=False, dagmc=False, libmesh=False, ncrys
 
     if dagmc:
         cmake_cmd.append('-DOPENMC_USE_DAGMC=ON')
-        cmake_cmd.append('-DCMAKE_PREFIX_PATH=~/DAGMC')
+        cmake_cmd.append('-DOPENMC_USE_UWUW=ON')
+        dagmc_path = os.environ.get('HOME') + '/DAGMC'
+        cmake_cmd.append('-DCMAKE_PREFIX_PATH=' + dagmc_path)
 
     if libmesh:
         cmake_cmd.append('-DOPENMC_USE_LIBMESH=ON')
         libmesh_path = os.environ.get('HOME') + '/LIBMESH'
         cmake_cmd.append('-DCMAKE_PREFIX_PATH=' + libmesh_path)
-
-    if ncrystal:
-        cmake_cmd.append('-DOPENMC_USE_NCRYSTAL=ON')
-        ncrystal_cmake_path = os.environ.get('HOME') + '/ncrystal_inst/lib/cmake'
-        cmake_cmd.append(f'-DCMAKE_PREFIX_PATH={ncrystal_cmake_path}')
 
     # Build in coverage mode for coverage testing
     cmake_cmd.append('-DOPENMC_ENABLE_COVERAGE=on')
@@ -75,11 +56,10 @@ def main():
     mpi = (os.environ.get('MPI') == 'y')
     phdf5 = (os.environ.get('PHDF5') == 'y')
     dagmc = (os.environ.get('DAGMC') == 'y')
-    ncrystal = (os.environ.get('NCRYSTAL') == 'y')
     libmesh = (os.environ.get('LIBMESH') == 'y')
 
     # Build and install
-    install(omp, mpi, phdf5, dagmc, libmesh, ncrystal)
+    install(omp, mpi, phdf5, dagmc, libmesh)
 
 if __name__ == '__main__':
     main()

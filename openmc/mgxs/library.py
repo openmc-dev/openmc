@@ -10,6 +10,7 @@ import numpy as np
 import openmc
 import openmc.mgxs
 import openmc.checkvalue as cv
+from openmc.checkvalue import PathLike
 from ..tallies import ESTIMATOR_TYPES
 
 
@@ -685,7 +686,7 @@ class Library:
 
         # Check that requested domain is included in library
         if mgxs_type not in self.mgxs_types:
-            msg = 'Unable to find MGXS type "{0}"'.format(mgxs_type)
+            msg = f'Unable to find MGXS type "{mgxs_type}"'
             raise ValueError(msg)
 
         return self.all_mgxs[domain_id][mgxs_type]
@@ -851,7 +852,7 @@ class Library:
                   'since a statepoint has not yet been loaded'
             raise ValueError(msg)
 
-        cv.check_type('filename', filename, str)
+        cv.check_type('filename', filename, (str, PathLike))
         cv.check_type('directory', directory, str)
 
         import h5py
@@ -894,14 +895,14 @@ class Library:
 
         """
 
-        cv.check_type('filename', filename, str)
+        cv.check_type('filename', filename, (str, PathLike))
         cv.check_type('directory', directory, str)
 
         # Make directory if it does not exist
         if not os.path.exists(directory):
             os.makedirs(directory)
 
-        full_filename = os.path.join(directory, '{}.pkl'.format(filename))
+        full_filename = os.path.join(directory, f'{filename}.pkl')
         full_filename = full_filename.replace(' ', '-')
 
         # Load and return pickled Library object
@@ -930,7 +931,7 @@ class Library:
 
         """
 
-        cv.check_type('filename', filename, str)
+        cv.check_type('filename', filename, (str, PathLike))
         cv.check_type('directory', directory, str)
 
         # Make directory if it does not exist

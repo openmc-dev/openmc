@@ -2,6 +2,7 @@ import copy
 from numbers import Integral
 import os
 import warnings
+from textwrap import dedent
 
 import h5py
 import numpy as np
@@ -9,6 +10,7 @@ import numpy as np
 import openmc
 from openmc.data import REACTION_MT, REACTION_NAME, FISSION_MTS
 import openmc.checkvalue as cv
+from openmc.checkvalue import PathLike
 from ..tallies import ESTIMATOR_TYPES
 from . import EnergyGroups
 
@@ -164,7 +166,7 @@ class MGXS:
 
     """
 
-    _params = """
+    _params = dedent("""
     Parameters
     ----------
     domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.RegularMesh
@@ -251,7 +253,7 @@ class MGXS:
 
         .. versionadded:: 0.13.1
 
-    """
+    """)
 
     # Store whether or not the number density should be removed for microscopic
     # values of this data
@@ -956,7 +958,7 @@ class MGXS:
             self.xs_tally._nuclides = []
             nuclides = self.get_nuclides()
             for nuclide in nuclides:
-                self.xs_tally.nuclides.append(openmc.Nuclide(nuclide))
+                self.xs_tally.nuclides.append(nuclide)
 
         # Remove NaNs which may have resulted from divide-by-zero operations
         self.xs_tally._mean = np.nan_to_num(self.xs_tally.mean)
@@ -1427,7 +1429,7 @@ class MGXS:
                                         filter_bins=subdomains)
             avg_xs.tallies[tally_type] = tally_avg
 
-        avg_xs._domain_type = 'sum({0})'.format(self.domain_type)
+        avg_xs._domain_type = f'sum({self.domain_type})'
         avg_xs.sparse = self.sparse
         return avg_xs
 
@@ -1478,7 +1480,7 @@ class MGXS:
         # Clone this MGXS to initialize the homogenized version
         homogenized_mgxs = copy.deepcopy(self)
         homogenized_mgxs._derived = True
-        name = 'hom({}, '.format(self.domain.name)
+        name = f'hom({self.domain.name}, '
 
         # Get the domain filter
         filter_type = _DOMAIN_TO_FILTER[self.domain_type]
@@ -1505,7 +1507,7 @@ class MGXS:
             denom_tally += other_denom_tally
 
             # Update the name for the homogenzied MGXS
-            name += '{}, '.format(mgxs.domain.name)
+            name += f'{mgxs.domain.name}, '
 
         # Set the properties of the homogenized MGXS
         homogenized_mgxs._rxn_rate_tally = rxn_rate_tally
@@ -1745,7 +1747,7 @@ class MGXS:
         string += '{0: <16}=\t{1}\n'.format('\tDomain ID', self.domain.id)
 
         # Generate the header for an individual XS
-        xs_header = '\tCross Sections [{0}]:'.format(self.get_units(xs_type))
+        xs_header = f'\tCross Sections [{self.get_units(xs_type)}]:'
 
         # If cross section data has not been computed, only print string header
         if self.tallies is None:
@@ -1773,7 +1775,7 @@ class MGXS:
                     string += '{0: <16}=\t{1}\n'.format('\tNuclide', nuclide)
 
                 # Build header for cross section type
-                string += '{0: <16}\n'.format(xs_header)
+                string += f'{xs_header: <16}\n'
                 template = '{0: <12}Group {1} [{2: <10} - {3: <10}eV]:\t'
 
                 average_xs = self.get_xs(nuclides=[nuclide],
@@ -1981,7 +1983,7 @@ class MGXS:
 
         """
 
-        cv.check_type('filename', filename, str)
+        cv.check_type('filename', filename, (str, PathLike))
         cv.check_type('directory', directory, str)
         cv.check_value('format', format, ['csv', 'excel', 'pickle', 'latex'])
         cv.check_value('xs_type', xs_type, ['macro', 'micro'])
@@ -2001,9 +2003,9 @@ class MGXS:
             df.to_csv(filename + '.csv', index=False)
         elif format == 'excel':
             if self.domain_type == 'mesh':
-                df.to_excel(filename + '.xls')
+                df.to_excel(filename + '.xlsx')
             else:
-                df.to_excel(filename + '.xls', index=False)
+                df.to_excel(filename + '.xlsx', index=False)
         elif format == 'pickle':
             df.to_pickle(filename + '.pkl')
         elif format == 'latex':
@@ -2131,7 +2133,7 @@ class MGXS:
         # Sort the dataframe by domain type id (e.g., distribcell id) and
         # energy groups such that data is from fast to thermal
         if self.domain_type == 'mesh':
-            mesh_str = 'mesh {0}'.format(self.domain.id)
+            mesh_str = f'mesh {self.domain.id}'
             df.sort_values(by=[(mesh_str, 'x'), (mesh_str, 'y'),
                                (mesh_str, 'z')] + columns, inplace=True)
         else:
@@ -2472,7 +2474,7 @@ class MatrixMGXS(MGXS):
         string += '{0: <16}=\t{1}\n'.format('\tDomain ID', self.domain.id)
 
         # Generate the header for an individual XS
-        xs_header = '\tCross Sections [{0}]:'.format(self.get_units(xs_type))
+        xs_header = f'\tCross Sections [{self.get_units(xs_type)}]:'
 
         # If cross section data has not been computed, only print string header
         if self.tallies is None:
@@ -2508,7 +2510,7 @@ class MatrixMGXS(MGXS):
                     string += '{0: <16}=\t{1}\n'.format('\tNuclide', nuclide)
 
                 # Build header for cross section type
-                string += '{0: <16}\n'.format(xs_header)
+                string += f'{xs_header: <16}\n'
                 template = '{0: <12}Group {1} -> Group {2}:\t\t'
 
                 average_xs = self.get_xs(nuclides=[nuclide],
@@ -4476,7 +4478,7 @@ class ScatterMatrixXS(MatrixMGXS):
             slice_xs.legendre_order = legendre_order
 
             # Slice the scattering tally
-            filter_bins = [tuple(['P{}'.format(i)
+            filter_bins = [tuple([f'P{i}'
                                   for i in range(self.legendre_order + 1)])]
             slice_xs.tallies[self.rxn_type] = \
                 slice_xs.tallies[self.rxn_type].get_slice(
@@ -4613,7 +4615,7 @@ class ScatterMatrixXS(MatrixMGXS):
                 cv.check_less_than(
                     'moment', moment, self.legendre_order, equality=True)
                 filters.append(openmc.LegendreFilter)
-                filter_bins.append(('P{}'.format(moment),))
+                filter_bins.append((f'P{moment}',))
                 num_angle_bins = 1
             else:
                 num_angle_bins = self.legendre_order + 1
@@ -4804,7 +4806,7 @@ class ScatterMatrixXS(MatrixMGXS):
         cv.check_value('xs_type', xs_type, ['macro', 'micro'])
 
         if self.correction != 'P0' and self.scatter_format == SCATTER_LEGENDRE:
-            rxn_type = '{0} (P{1})'.format(self.mgxs_type, moment)
+            rxn_type = f'{self.mgxs_type} (P{moment})'
         else:
             rxn_type = self.mgxs_type
 
@@ -4815,7 +4817,7 @@ class ScatterMatrixXS(MatrixMGXS):
         string += '{0: <16}=\t{1}\n'.format('\tDomain ID', self.domain.id)
 
         # Generate the header for an individual XS
-        xs_header = '\tCross Sections [{0}]:'.format(self.get_units(xs_type))
+        xs_header = f'\tCross Sections [{self.get_units(xs_type)}]:'
 
         # If cross section data has not been computed, only print string header
         if self.tallies is None:
@@ -4851,7 +4853,7 @@ class ScatterMatrixXS(MatrixMGXS):
                     string += '{0: <16}=\t{1}\n'.format('\tNuclide', nuclide)
 
                 # Build header for cross section type
-                string += '{0: <16}\n'.format(xs_header)
+                string += f'{xs_header: <16}\n'
 
                 average_xs = self.get_xs(nuclides=[nuclide],
                                          subdomains=[subdomain],
@@ -4903,8 +4905,7 @@ class ScatterMatrixXS(MatrixMGXS):
                         for azi in range(len(azi_bins) - 1):
                             azi_low, azi_high = azi_bins[azi: azi + 2]
                             string += \
-                                '\t\tPolar Angle: [{0:5f} - {1:5f}]'.format(
-                                    pol_low, pol_high) + \
+                                f'\t\tPolar Angle: [{pol_low:5f} - {pol_high:5f}]' + \
                                 '\tAzimuthal Angle: [{0:5f} - {1:5f}]'.format(
                                     azi_low, azi_high) + '\n'
                             string += print_groups_and_histogram(
@@ -6226,7 +6227,7 @@ class MeshSurfaceMGXS(MGXS):
             if 'group out' in df:
                 df = df[df['group out'].isin(groups)]
 
-        mesh_str = 'mesh {0}'.format(self.domain.id)
+        mesh_str = f'mesh {self.domain.id}'
         col_key = (mesh_str, 'surf')
         surfaces = df.pop(col_key)
         df.insert(len(self.domain.dimension), col_key, surfaces)

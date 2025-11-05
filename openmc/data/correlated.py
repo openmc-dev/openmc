@@ -113,7 +113,7 @@ class CorrelatedAngleEnergy(AngleEnergy):
             HDF5 group to write to
 
         """
-        group.attrs['type'] = np.string_(self._name)
+        group.attrs['type'] = np.bytes_(self._name)
 
         dset = group.create_dataset('energy', data=self.energy)
         dset.attrs['interpolation'] = np.vstack((self.breakpoints,

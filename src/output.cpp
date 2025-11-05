@@ -31,6 +31,7 @@
 #include "openmc/mgxs_interface.h"
 #include "openmc/nuclide.h"
 #include "openmc/plot.h"
+#include "openmc/random_ray/flat_source_domain.h"
 #include "openmc/reaction.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
@@ -74,13 +75,12 @@ void title()
   // Write version information
   fmt::print(
     "                 | The OpenMC Monte Carlo Code\n"
-    "       Copyright | 2011-2023 MIT, UChicago Argonne LLC, and contributors\n"
+    "       Copyright | 2011-2025 MIT, UChicago Argonne LLC, and contributors\n"
     "         License | https://docs.openmc.org/en/latest/license.html\n"
-    "         Version | {}.{}.{}{}\n",
-    VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE, VERSION_DEV ? "-dev" : "");
-#ifdef GIT_SHA1
-  fmt::print("        Git SHA1 | {}\n", GIT_SHA1);
-#endif
+    "         Version | {}.{}.{}{}{}\n",
+    VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE, VERSION_DEV ? "-dev" : "",
+    VERSION_COMMIT_COUNT);
+  fmt::print("     Commit Hash | {}\n", VERSION_COMMIT_HASH);
 
   // Write the date and time
   fmt::print("       Date/Time | {}\n", time_stamp());
@@ -177,31 +177,32 @@ void print_particle(Particle& p)
   for (auto i = 0; i < p.n_coord(); i++) {
     fmt::print("  Level {}\n", i);
 
-    if (p.coord(i).cell != C_NONE) {
-      const Cell& c {*model::cells[p.coord(i).cell]};
+    if (p.coord(i).cell() != C_NONE) {
+      const Cell& c {*model::cells[p.coord(i).cell()]};
       fmt::print("    Cell             = {}\n", c.id_);
     }
 
-    if (p.coord(i).universe != C_NONE) {
-      const Universe& u {*model::universes[p.coord(i).universe]};
+    if (p.coord(i).universe() != C_NONE) {
+      const Universe& u {*model::universes[p.coord(i).universe()]};
       fmt::print("    Universe         = {}\n", u.id_);
     }
 
-    if (p.coord(i).lattice != C_NONE) {
-      const Lattice& lat {*model::lattices[p.coord(i).lattice]};
+    if (p.coord(i).lattice() != C_NONE) {
+      const Lattice& lat {*model::lattices[p.coord(i).lattice()]};
       fmt::print("    Lattice          = {}\n", lat.id_);
-      fmt::print("    Lattice position = ({},{},{})\n", p.coord(i).lattice_i[0],
-        p.coord(i).lattice_i[1], p.coord(i).lattice_i[2]);
+      fmt::print("    Lattice position = ({},{},{})\n",
+        p.coord(i).lattice_index()[0], p.coord(i).lattice_index()[1],
+        p.coord(i).lattice_index()[2]);
     }
 
-    fmt::print("    r = {}\n", p.coord(i).r);
-    fmt::print("    u = {}\n", p.coord(i).u);
+    fmt::print("    r = {}\n", p.coord(i).r());
+    fmt::print("    u = {}\n", p.coord(i).u());
   }
 
   // Display miscellaneous info.
-  if (p.surface() != 0) {
+  if (p.surface() != SURFACE_NONE) {
     // Surfaces identifiers are >= 1, but indices are >= 0 so we need -1
-    const Surface& surf {*model::surfaces[std::abs(p.surface()) - 1]};
+    const Surface& surf {*model::surfaces[p.surface_index()]};
     fmt::print("  Surface = {}\n", (p.surface() > 0) ? surf.id_ : -surf.id_);
   }
   fmt::print("  Weight = {}\n", p.wgt());
@@ -290,12 +291,10 @@ void print_usage()
 void print_version()
 {
   if (mpi::master) {
-    fmt::print("OpenMC version {}.{}.{}\n", VERSION_MAJOR, VERSION_MINOR,
-      VERSION_RELEASE);
-#ifdef GIT_SHA1
-    fmt::print("Git SHA1: {}\n", GIT_SHA1);
-#endif
-    fmt::print("Copyright (c) 2011-2023 MIT, UChicago Argonne LLC, and "
+    fmt::print("OpenMC version {}.{}.{}{}{}\n", VERSION_MAJOR, VERSION_MINOR,
+      VERSION_RELEASE, VERSION_DEV ? "-dev" : "", VERSION_COMMIT_COUNT);
+    fmt::print("Commit hash: {}\n", VERSION_COMMIT_HASH);
+    fmt::print("Copyright (c) 2011-2025 MIT, UChicago Argonne LLC, and "
                "contributors\nMIT/X license at "
                "<https://docs.openmc.org/en/latest/license.html>\n");
   }
@@ -316,7 +315,7 @@ void print_build_info()
   std::string profiling(n);
   std::string coverage(n);
   std::string mcpl(n);
-  std::string ncrystal(n);
+  std::string uwuw(n);
 
 #ifdef PHDF5
   phdf5 = y;
@@ -324,17 +323,14 @@ void print_build_info()
 #ifdef OPENMC_MPI
   mpi = y;
 #endif
-#ifdef DAGMC
+#ifdef OPENMC_DAGMC_ENABLED
   dagmc = y;
 #endif
-#ifdef LIBMESH
+#ifdef OPENMC_LIBMESH_ENABLED
   libmesh = y;
 #endif
 #ifdef OPENMC_MCPL
   mcpl = y;
-#endif
-#ifdef NCRYSTAL
-  ncrystal = y;
 #endif
 #ifdef USE_LIBPNG
   png = y;
@@ -344,6 +340,9 @@ void print_build_info()
 #endif
 #ifdef COVERAGEBUILD
   coverage = y;
+#endif
+#ifdef OPENMC_UWUW_ENABLED
+  uwuw = y;
 #endif
 
   // Wraps macro variables in quotes
@@ -360,9 +359,9 @@ void print_build_info()
     fmt::print("DAGMC support:         {}\n", dagmc);
     fmt::print("libMesh support:       {}\n", libmesh);
     fmt::print("MCPL support:          {}\n", mcpl);
-    fmt::print("NCrystal support:      {}\n", ncrystal);
     fmt::print("Coverage testing:      {}\n", coverage);
     fmt::print("Profiling flags:       {}\n", profiling);
+    fmt::print("UWUW support:          {}\n", uwuw);
   }
 }
 
@@ -409,7 +408,7 @@ void print_generation()
 
 //==============================================================================
 
-void show_time(const char* label, double secs, int indent_level = 0)
+void show_time(const char* label, double secs, int indent_level)
 {
   int width = 33 - indent_level * 2;
   fmt::print("{0:{1}} {2:<{3}} = {4:>10.4e} seconds\n", "", 2 * indent_level,
@@ -595,6 +594,9 @@ const std::unordered_map<int, const char*> score_names = {
   {SCORE_FISS_Q_RECOV, "Recoverable fission power"},
   {SCORE_CURRENT, "Current"},
   {SCORE_PULSE_HEIGHT, "pulse-height"},
+  {SCORE_IFP_TIME_NUM, "IFP lifetime numerator"},
+  {SCORE_IFP_BETA_NUM, "IFP delayed fraction numerator"},
+  {SCORE_IFP_DENOM, "IFP common denominator"},
 };
 
 //! Create an ASCII output file showing all tally results.

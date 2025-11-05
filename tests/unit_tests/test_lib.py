@@ -1,4 +1,5 @@
 from collections.abc import Mapping
+from math import pi
 import os
 
 import numpy as np
@@ -66,8 +67,10 @@ def uo2_trigger_model():
     model.settings.batches = 10
     model.settings.inactive = 5
     model.settings.particles = 100
-    model.settings.source = openmc.IndependentSource(space=openmc.stats.Box(
-        [-0.5, -0.5, -1], [0.5, 0.5, 1], only_fissionable=True))
+    model.settings.source = openmc.IndependentSource(
+        space=openmc.stats.Box([-0.5, -0.5, -1], [0.5, 0.5, 1]),
+        constraints={'fissionable': True},
+    )
     model.settings.verbosity = 1
     model.settings.keff_trigger = {'type': 'std_dev', 'threshold': 0.001}
     model.settings.trigger_active = True
@@ -126,7 +129,7 @@ def test_cell(lib_init):
     cell = openmc.lib.cells[1]
     assert isinstance(cell.fill, openmc.lib.Material)
     cell.fill = openmc.lib.materials[1]
-    assert str(cell) == 'Cell[0]'
+    assert str(cell) == '<Cell(id=1)>'
     assert cell.name == "Fuel"
     cell.name = "Not fuel"
     assert cell.name == "Not fuel"
@@ -154,6 +157,34 @@ def test_properties_temperature(lib_init):
     # Import properties and check that temperature is restored
     openmc.lib.import_properties('properties.h5')
     assert cell.get_temperature() == pytest.approx(200.0)
+
+
+def test_cell_density(lib_init):
+    cell = openmc.lib.cells[1]
+    print('density', cell.get_density())
+    orig_density = cell.get_density()
+    try:
+        cell.set_density(1.5, 0)
+        assert cell.get_density(0) == pytest.approx(1.5)
+        cell.set_density(2.0)
+        assert cell.get_density() == pytest.approx(2.0)
+    finally:
+        cell.set_density(orig_density)
+
+
+def test_properties_cell_density(lib_init):
+    # Cell density should be 2.0 from above test
+    cell = openmc.lib.cells[1]
+    orig_density = cell.get_density()
+
+    # Export properties and change density
+    openmc.lib.export_properties('properties.h5')
+    cell.set_density(3.0)
+    assert cell.get_density() == pytest.approx(3.0)
+
+    # Import properties and check that density is restored
+    openmc.lib.import_properties('properties.h5')
+    assert cell.get_density() == pytest.approx(orig_density)
 
 
 def test_new_cell(lib_init):
@@ -205,6 +236,10 @@ def test_material(lib_init):
     assert m.name == "Hot borated water"
     m.name = "Not hot borated water"
     assert m.name == "Not hot borated water"
+
+    assert m.depletable == False
+    m.depletable = True
+    assert m.depletable == True
 
 
 def test_properties_density(lib_init):
@@ -461,9 +496,6 @@ def test_set_n_batches(lib_run):
 
     for i in range(7):
         openmc.lib.next_batch()
-    # Setting n_batches less than current_batch should raise error
-    with pytest.raises(exc.InvalidArgumentError):
-        settings.set_batches(6)
     # n_batches should stay the same
     assert settings.get_batches() == 10
 
@@ -561,6 +593,14 @@ def test_regular_mesh(lib_init):
     assert mesh.upper_right == pytest.approx(ur)
     assert mesh.width == pytest.approx(width)
 
+    np.testing.assert_allclose(mesh.volumes, 1.0)
+
+    # bounding box
+    mesh.set_parameters(lower_left=ll, upper_right=ur)
+    bbox = mesh.bounding_box
+    np.testing.assert_allclose(bbox.lower_left, ll)
+    np.testing.assert_allclose(bbox.upper_right, ur)
+
     meshes = openmc.lib.meshes
     assert isinstance(meshes, Mapping)
     assert len(meshes) == 1
@@ -580,6 +620,50 @@ def test_regular_mesh(lib_init):
     msf.translation = translation
     assert msf.translation == translation
 
+    # Test material volumes
+    mesh = openmc.lib.RegularMesh()
+    mesh.dimension = (2, 2, 1)
+    mesh.set_parameters(lower_left=(-0.63, -0.63, -0.5),
+                        upper_right=(0.63, 0.63, 0.5))
+    vols = mesh.material_volumes()
+    assert vols.num_elements == 4
+    for i in range(vols.num_elements):
+        elem_vols = vols.by_element(i)
+        assert sum(f[1] for f in elem_vols) == pytest.approx(1.26 * 1.26 / 4)
+
+    # If the mesh extends beyond the boundaries of the model, we should get a
+    # GeometryError
+    mesh.dimension = (1, 1, 1)
+    mesh.set_parameters(lower_left=(-1.0, -1.0, -0.5),
+                        upper_right=(1.0, 1.0, 0.5))
+    with pytest.raises(exc.GeometryError, match="not fully contained"):
+        vols = mesh.material_volumes()
+
+
+def test_regular_mesh_get_plot_bins(lib_init):
+    mesh: openmc.lib.RegularMesh = openmc.lib.meshes[2]
+    mesh.dimension = (2, 2, 1)
+    mesh.set_parameters(lower_left=(-1.0, -1.0, -0.5),
+                        upper_right=(1.0, 1.0, 0.5))
+
+    # Get bins for a plot view covering only a single mesh bin
+    mesh_bins = mesh.get_plot_bins((-0.5, -0.5, 0.), (0.1, 0.1), 'xy', (20, 20))
+    assert (mesh_bins == 0).all()
+    mesh_bins = mesh.get_plot_bins((0.5, 0.5, 0.), (0.1, 0.1), 'xy', (20, 20))
+    assert (mesh_bins == 3).all()
+
+    # Get bins for a plot view covering all mesh bins. Note that the y direction
+    # (first dimension) is flipped for plotting purposes
+    mesh_bins = mesh.get_plot_bins((0., 0., 0.), (2., 2.), 'xy', (20, 20))
+    assert (mesh_bins[:10, :10] == 2).all()
+    assert (mesh_bins[:10, 10:] == 3).all()
+    assert (mesh_bins[10:, :10] == 0).all()
+    assert (mesh_bins[10:, 10:] == 1).all()
+
+    # Get bins for a plot view outside of the mesh
+    mesh_bins = mesh.get_plot_bins((100., 100., 0.), (2., 2.), 'xy', (20, 20))
+    assert (mesh_bins == -1).all()
+
 
 def test_rectilinear_mesh(lib_init):
     mesh = openmc.lib.RectilinearMesh()
@@ -595,12 +679,19 @@ def test_rectilinear_mesh(lib_init):
             for k, diff_z in enumerate(np.diff(z_grid)):
                 assert np.all(mesh.width[i, j, k, :] == (10, 10, 10))
 
+    np.testing.assert_allclose(mesh.volumes, 1000.0)
+
+    # bounding box
+    bbox = mesh.bounding_box
+    np.testing.assert_allclose(bbox.lower_left, (-10., 0., 10.))
+    np.testing.assert_allclose(bbox.upper_right, (10., 20., 30.))
+
     with pytest.raises(exc.AllocationError):
         mesh2 = openmc.lib.RectilinearMesh(mesh.id)
 
     meshes = openmc.lib.meshes
     assert isinstance(meshes, Mapping)
-    assert len(meshes) == 2
+    assert len(meshes) == 3
 
     mesh = meshes[mesh.id]
     assert isinstance(mesh, openmc.lib.RectilinearMesh)
@@ -611,8 +702,21 @@ def test_rectilinear_mesh(lib_init):
     msf = openmc.lib.MeshSurfaceFilter(mesh)
     assert msf.mesh == mesh
 
+    # Test material volumes
+    mesh = openmc.lib.RectilinearMesh()
+    w = 1.26
+    mesh.set_grid([-w/2, -w/4, w/2], [-w/2, -w/4, w/2], [-0.5, 0.5])
+
+    vols = mesh.material_volumes()
+    assert vols.num_elements == 4
+    assert sum(f[1] for f in vols.by_element(0)) == pytest.approx(w/4 * w/4)
+    assert sum(f[1] for f in vols.by_element(1)) == pytest.approx(w/4 * 3*w/4)
+    assert sum(f[1] for f in vols.by_element(2)) == pytest.approx(3*w/4 * w/4)
+    assert sum(f[1] for f in vols.by_element(3)) == pytest.approx(3*w/4 * 3*w/4)
+
+
 def test_cylindrical_mesh(lib_init):
-    deg2rad = lambda deg: deg*np.pi/180
+    deg2rad = lambda deg: deg*pi/180
     mesh = openmc.lib.CylindricalMesh()
     r_grid = [0., 5., 10.]
     phi_grid = np.radians([0., 10., 20.])
@@ -626,12 +730,20 @@ def test_cylindrical_mesh(lib_init):
             for k, _ in enumerate(np.diff(z_grid)):
                 assert np.allclose(mesh.width[i, j, k, :], (5, deg2rad(10), 10))
 
+    np.testing.assert_allclose(mesh.volumes[::2], 10/360 * pi * 5**2 * 10)
+    np.testing.assert_allclose(mesh.volumes[1::2], 10/360 * pi * (10**2 - 5**2) * 10)
+
+    # bounding box
+    bbox = mesh.bounding_box
+    np.testing.assert_allclose(bbox.lower_left, (-10., -10., 10.))
+    np.testing.assert_allclose(bbox.upper_right, (10., 10., 30.))
+
     with pytest.raises(exc.AllocationError):
         mesh2 = openmc.lib.CylindricalMesh(mesh.id)
 
     meshes = openmc.lib.meshes
     assert isinstance(meshes, Mapping)
-    assert len(meshes) == 3
+    assert len(meshes) == 5
 
     mesh = meshes[mesh.id]
     assert isinstance(mesh, openmc.lib.CylindricalMesh)
@@ -641,6 +753,21 @@ def test_cylindrical_mesh(lib_init):
 
     msf = openmc.lib.MeshSurfaceFilter(mesh)
     assert msf.mesh == mesh
+
+    # Test material volumes
+    mesh = openmc.lib.CylindricalMesh()
+    r_grid = (0., 0.25, 0.5)
+    phi_grid = np.linspace(0., 2.0*pi, 4)
+    z_grid = (-0.5, 0.5)
+    mesh.set_grid(r_grid, phi_grid, z_grid)
+
+    vols = mesh.material_volumes()
+    assert vols.num_elements == 6
+    for i in range(0, 6, 2):
+        assert sum(f[1] for f in vols.by_element(i)) == pytest.approx(pi * 0.25**2 / 3)
+    for i in range(1, 6, 2):
+        assert sum(f[1] for f in vols.by_element(i)) == pytest.approx(pi * (0.5**2 - 0.25**2) / 3)
+
 
 def test_spherical_mesh(lib_init):
     deg2rad = lambda deg: deg*np.pi/180
@@ -657,12 +784,24 @@ def test_spherical_mesh(lib_init):
             for k, _ in enumerate(np.diff(phi_grid)):
                 assert np.allclose(mesh.width[i, j, k, :], (5, deg2rad(10), deg2rad(10)))
 
+    dtheta = lambda d1, d2: np.cos(deg2rad(d1)) - np.cos(deg2rad(d2))
+    f = 1/3 * deg2rad(10.)
+    np.testing.assert_allclose(mesh.volumes[::4],  f * 5**3 * dtheta(0., 10.))
+    np.testing.assert_allclose(mesh.volumes[1::4], f * (10**3 - 5**3) * dtheta(0., 10.))
+    np.testing.assert_allclose(mesh.volumes[2::4], f * 5**3 * dtheta(10., 20.))
+    np.testing.assert_allclose(mesh.volumes[3::4], f * (10**3 - 5**3) * dtheta(10., 20.))
+
+    # bounding box
+    bbox = mesh.bounding_box
+    np.testing.assert_allclose(bbox.lower_left, (-10., -10., -10.))
+    np.testing.assert_allclose(bbox.upper_right, (10., 10., 10.))
+
     with pytest.raises(exc.AllocationError):
         mesh2 = openmc.lib.SphericalMesh(mesh.id)
 
     meshes = openmc.lib.meshes
     assert isinstance(meshes, Mapping)
-    assert len(meshes) == 4
+    assert len(meshes) == 7
 
     mesh = meshes[mesh.id]
     assert isinstance(mesh, openmc.lib.SphericalMesh)
@@ -672,6 +811,24 @@ def test_spherical_mesh(lib_init):
 
     msf = openmc.lib.MeshSurfaceFilter(mesh)
     assert msf.mesh == mesh
+
+    # Test material volumes
+    mesh = openmc.lib.SphericalMesh()
+    r_grid = (0., 0.25, 0.5)
+    theta_grid = np.linspace(0., pi, 3)
+    phi_grid = np.linspace(0., 2.0*pi, 4)
+    mesh.set_grid(r_grid, theta_grid, phi_grid)
+
+    vols = mesh.material_volumes()
+    assert vols.num_elements == 12
+    d_theta = theta_grid[1] - theta_grid[0]
+    d_phi = phi_grid[1] - phi_grid[0]
+    for i in range(0, 12, 2):
+        assert sum(f[1] for f in vols.by_element(i)) == pytest.approx(
+            0.25**3 / 3 * d_theta * d_phi * 2/pi)
+    for i in range(1, 12, 2):
+        assert sum(f[1] for f in vols.by_element(i)) == pytest.approx(
+            (0.5**3 - 0.25**3) / 3 * d_theta * d_phi * 2/pi)
 
 
 def test_restart(lib_init, mpi_intracomm):
@@ -852,7 +1009,8 @@ def test_sample_external_source(run_in_tmpdir, mpi_intracomm):
     model.settings.source = openmc.IndependentSource(
         space=openmc.stats.Box([-5., -5., -5.], [5., 5., 5.]),
         angle=openmc.stats.Monodirectional((0., 0., 1.)),
-        energy=openmc.stats.Discrete([1.0e5], [1.0])
+        energy=openmc.stats.Discrete([1.0e5], [1.0]),
+        constraints={'fissionable': True}
     )
     model.settings.particles = 1000
     model.settings.batches = 10
@@ -881,4 +1039,9 @@ def test_sample_external_source(run_in_tmpdir, mpi_intracomm):
         assert p1.time == p2.time
         assert p1.wgt == p2.wgt
 
+    openmc.lib.finalize()
+
+    # Make sure sampling works in volume calculation mode
+    openmc.lib.init(["-c"])
+    openmc.lib.sample_external_source(100)
     openmc.lib.finalize()

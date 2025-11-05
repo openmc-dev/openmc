@@ -20,9 +20,11 @@ __all__ = [
     'Filter', 'AzimuthalFilter', 'CellFilter', 'CellbornFilter', 'CellfromFilter',
     'CellInstanceFilter', 'CollisionFilter', 'DistribcellFilter', 'DelayedGroupFilter',
     'EnergyFilter', 'EnergyoutFilter', 'EnergyFunctionFilter', 'LegendreFilter',
-    'MaterialFilter', 'MaterialFromFilter', 'MeshFilter', 'MeshSurfaceFilter', 'MuFilter', 'ParticleFilter',
-    'PolarFilter', 'SphericalHarmonicsFilter', 'SpatialLegendreFilter', 'SurfaceFilter',
-    'UniverseFilter', 'ZernikeFilter', 'ZernikeRadialFilter', 'filters'
+    'MaterialFilter', 'MaterialFromFilter', 'MeshFilter', 'MeshBornFilter',
+    'MeshMaterialFilter', 'MeshSurfaceFilter', 'MuFilter', 'MuSurfaceFilter',
+    'ParentNuclideFilter', 'ParticleFilter', 'PolarFilter', 'SphericalHarmonicsFilter',
+    'SpatialLegendreFilter', 'SurfaceFilter', 'TimeFilter', 'UniverseFilter',
+    'WeightFilter', 'ZernikeFilter', 'ZernikeRadialFilter', 'filters'
 ]
 
 # Tally functions
@@ -89,18 +91,36 @@ _dll.openmc_mesh_filter_get_mesh.errcheck = _error_handler
 _dll.openmc_mesh_filter_set_mesh.argtypes = [c_int32, c_int32]
 _dll.openmc_mesh_filter_set_mesh.restype = c_int
 _dll.openmc_mesh_filter_set_mesh.errcheck = _error_handler
-_dll.openmc_meshsurface_filter_get_mesh.argtypes = [c_int32, POINTER(c_int32)]
-_dll.openmc_meshsurface_filter_get_mesh.restype = c_int
-_dll.openmc_meshsurface_filter_get_mesh.errcheck = _error_handler
-_dll.openmc_meshsurface_filter_set_mesh.argtypes = [c_int32, c_int32]
-_dll.openmc_meshsurface_filter_set_mesh.restype = c_int
-_dll.openmc_meshsurface_filter_set_mesh.errcheck = _error_handler
 _dll.openmc_mesh_filter_get_translation.argtypes = [c_int32, POINTER(c_double*3)]
 _dll.openmc_mesh_filter_get_translation.restype = c_int
 _dll.openmc_mesh_filter_get_translation.errcheck = _error_handler
 _dll.openmc_mesh_filter_set_translation.argtypes = [c_int32, POINTER(c_double*3)]
 _dll.openmc_mesh_filter_set_translation.restype = c_int
 _dll.openmc_mesh_filter_set_translation.errcheck = _error_handler
+_dll.openmc_meshborn_filter_get_mesh.argtypes = [c_int32, POINTER(c_int32)]
+_dll.openmc_meshborn_filter_get_mesh.restype = c_int
+_dll.openmc_meshborn_filter_get_mesh.errcheck = _error_handler
+_dll.openmc_meshborn_filter_set_mesh.argtypes = [c_int32, c_int32]
+_dll.openmc_meshborn_filter_set_mesh.restype = c_int
+_dll.openmc_meshborn_filter_set_mesh.errcheck = _error_handler
+_dll.openmc_meshborn_filter_get_translation.argtypes = [c_int32, POINTER(c_double*3)]
+_dll.openmc_meshborn_filter_get_translation.restype = c_int
+_dll.openmc_meshborn_filter_get_translation.errcheck = _error_handler
+_dll.openmc_meshborn_filter_set_translation.argtypes = [c_int32, POINTER(c_double*3)]
+_dll.openmc_meshborn_filter_set_translation.restype = c_int
+_dll.openmc_meshborn_filter_set_translation.errcheck = _error_handler
+_dll.openmc_meshsurface_filter_get_mesh.argtypes = [c_int32, POINTER(c_int32)]
+_dll.openmc_meshsurface_filter_get_mesh.restype = c_int
+_dll.openmc_meshsurface_filter_get_mesh.errcheck = _error_handler
+_dll.openmc_meshsurface_filter_set_mesh.argtypes = [c_int32, c_int32]
+_dll.openmc_meshsurface_filter_set_mesh.restype = c_int
+_dll.openmc_meshsurface_filter_set_mesh.errcheck = _error_handler
+_dll.openmc_meshsurface_filter_get_translation.argtypes = [c_int32, POINTER(c_double*3)]
+_dll.openmc_meshsurface_filter_get_translation.restype = c_int
+_dll.openmc_meshsurface_filter_get_translation.errcheck = _error_handler
+_dll.openmc_meshsurface_filter_set_translation.argtypes = [c_int32, POINTER(c_double*3)]
+_dll.openmc_meshsurface_filter_set_translation.restype = c_int
+_dll.openmc_meshsurface_filter_set_translation.errcheck = _error_handler
 _dll.openmc_new_filter.argtypes = [c_char_p, POINTER(c_int32)]
 _dll.openmc_new_filter.restype = c_int
 _dll.openmc_new_filter.errcheck = _error_handler
@@ -347,6 +367,34 @@ class MaterialFromFilter(Filter):
 
 
 class MeshFilter(Filter):
+    """Mesh filter stored internally.
+
+    This class exposes a Mesh filter that is stored internally in the OpenMC
+    library. To obtain a view of a Mesh filter with a given ID, use the
+    :data:`openmc.lib.filters` mapping.
+
+    Parameters
+    ----------
+    mesh : openmc.lib.Mesh
+        Mesh to use for the filter
+    uid : int or None
+        Unique ID of the Mesh filter
+    new : bool
+        When `index` is None, this argument controls whether a new object is
+        created or a view of an existing object is returned.
+    index : int
+        Index in the `filters` array.
+
+    Attributes
+    ----------
+    filter_type : str
+        Type of filter
+    mesh : openmc.lib.Mesh
+        Mesh used for the filter
+    translation : Iterable of float
+        3-D coordinates of the translation vector
+
+    """
     filter_type = 'mesh'
 
     def __init__(self, mesh=None, uid=None, new=True, index=None):
@@ -375,7 +423,96 @@ class MeshFilter(Filter):
         _dll.openmc_mesh_filter_set_translation(self._index, (c_double*3)(*translation))
 
 
+class MeshBornFilter(Filter):
+    """MeshBorn filter stored internally.
+
+    This class exposes a MeshBorn filter that is stored internally in the OpenMC
+    library. To obtain a view of a MeshBorn filter with a given ID, use the
+    :data:`openmc.lib.filters` mapping.
+
+    Parameters
+    ----------
+    mesh : openmc.lib.Mesh
+        Mesh to use for the filter
+    uid : int or None
+        Unique ID of the MeshBorn filter
+    new : bool
+        When `index` is None, this argument controls whether a new object is
+        created or a view of an existing object is returned.
+    index : int
+        Index in the `filters` array.
+
+    Attributes
+    ----------
+    filter_type : str
+        Type of filter
+    mesh : openmc.lib.Mesh
+        Mesh used for the filter
+    translation : Iterable of float
+        3-D coordinates of the translation vector
+
+    """
+    filter_type = 'meshborn'
+
+    def __init__(self, mesh=None, uid=None, new=True, index=None):
+        super().__init__(uid, new, index)
+        if mesh is not None:
+            self.mesh = mesh
+
+    @property
+    def mesh(self):
+        index_mesh = c_int32()
+        _dll.openmc_meshborn_filter_get_mesh(self._index, index_mesh)
+        return _get_mesh(index_mesh.value)
+
+    @mesh.setter
+    def mesh(self, mesh):
+        _dll.openmc_meshborn_filter_set_mesh(self._index, mesh._index)
+
+    @property
+    def translation(self):
+        translation = (c_double*3)()
+        _dll.openmc_meshborn_filter_get_translation(self._index, translation)
+        return tuple(translation)
+
+    @translation.setter
+    def translation(self, translation):
+        _dll.openmc_meshborn_filter_set_translation(self._index, (c_double*3)(*translation))
+
+
+class MeshMaterialFilter(Filter):
+    filter_type = 'meshmaterial'
+
+
 class MeshSurfaceFilter(Filter):
+    """MeshSurface filter stored internally.
+
+    This class exposes a MeshSurface filter that is stored internally in the
+    OpenMC library. To obtain a view of a MeshSurface filter with a given ID,
+    use the :data:`openmc.lib.filters` mapping.
+
+    Parameters
+    ----------
+    mesh : openmc.lib.Mesh
+        Mesh to use for the filter
+    uid : int or None
+        Unique ID of the MeshSurface filter
+    new : bool
+        When `index` is None, this argument controls whether a new object is
+        created or a view of an existing object is returned.
+    index : int
+        Index in the `filters` array.
+
+    Attributes
+    ----------
+    filter_type : str
+        Type of filter
+    mesh : openmc.lib.Mesh
+        Mesh used for the filter
+    translation : Iterable of float
+        3-D coordinates of the translation vector
+
+    """
     filter_type = 'meshsurface'
 
     def __init__(self, mesh=None, uid=None, new=True, index=None):
@@ -396,16 +533,24 @@ class MeshSurfaceFilter(Filter):
     @property
     def translation(self):
         translation = (c_double*3)()
-        _dll.openmc_mesh_filter_get_translation(self._index, translation)
+        _dll.openmc_meshsurface_filter_get_translation(self._index, translation)
         return tuple(translation)
 
     @translation.setter
     def translation(self, translation):
-        _dll.openmc_mesh_filter_set_translation(self._index, (c_double*3)(*translation))
+        _dll.openmc_meshsurface_filter_set_translation(self._index, (c_double*3)(*translation))
 
 
 class MuFilter(Filter):
     filter_type = 'mu'
+
+
+class MuSurfaceFilter(Filter):
+    filter_type = 'musurface'
+
+
+class ParentNuclideFilter(Filter):
+    filter_type = 'parentnuclide'
 
 
 class ParticleFilter(Filter):
@@ -465,8 +610,16 @@ class SurfaceFilter(Filter):
     filter_type = 'surface'
 
 
+class TimeFilter(Filter):
+    filter_type = 'time'
+
+
 class UniverseFilter(Filter):
     filter_type = 'universe'
+
+
+class WeightFilter(Filter):
+    filter_type = 'weight'
 
 
 class ZernikeFilter(Filter):
@@ -498,6 +651,7 @@ _FILTER_TYPE_MAP = {
     'cellborn': CellbornFilter,
     'cellfrom': CellfromFilter,
     'cellinstance': CellInstanceFilter,
+    'collision': CollisionFilter,
     'delayedgroup': DelayedGroupFilter,
     'distribcell': DistribcellFilter,
     'energy': EnergyFilter,
@@ -507,14 +661,20 @@ _FILTER_TYPE_MAP = {
     'material': MaterialFilter,
     'materialfrom': MaterialFromFilter,
     'mesh': MeshFilter,
+    'meshborn': MeshBornFilter,
+    'meshmaterial': MeshMaterialFilter,
     'meshsurface': MeshSurfaceFilter,
     'mu': MuFilter,
+    'musurface': MuSurfaceFilter,
+    'parentnuclide': ParentNuclideFilter,
     'particle': ParticleFilter,
     'polar': PolarFilter,
     'sphericalharmonics': SphericalHarmonicsFilter,
     'spatiallegendre': SpatialLegendreFilter,
     'surface': SurfaceFilter,
+    'time': TimeFilter,
     'universe': UniverseFilter,
+    'weight': WeightFilter,
     'zernike': ZernikeFilter,
     'zernikeradial': ZernikeRadialFilter
 }

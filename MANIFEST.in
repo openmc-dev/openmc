@@ -26,8 +26,6 @@ recursive-include include *.h
 recursive-include include *.h.in
 recursive-include include *.hh
 recursive-include man *.1
-recursive-include openmc *.pyx
-recursive-include openmc *.c
 recursive-include src *.cc
 recursive-include src *.cpp
 recursive-include src *.rnc
@@ -45,6 +43,5 @@ recursive-include vendor *.hh
 recursive-include vendor *.hpp
 recursive-include vendor *.pc.in
 recursive-include vendor *.natvis
-include vendor/gsl-lite/include/gsl/gsl
 prune docs/build
 prune docs/source/pythonapi/generated/

@@ -364,7 +364,7 @@ class Tabulated1D(Function1D):
         """
         dataset = group.create_dataset(name, data=np.vstack(
             [self.x, self.y]))
-        dataset.attrs['type'] = np.string_(type(self).__name__)
+        dataset.attrs['type'] = np.bytes_(type(self).__name__)
         dataset.attrs['breakpoints'] = self.breakpoints
         dataset.attrs['interpolation'] = self.interpolation
 
@@ -460,7 +460,7 @@ class Polynomial(np.polynomial.Polynomial, Function1D):
 
         """
         dataset = group.create_dataset(name, data=self.coef)
-        dataset.attrs['type'] = np.string_(type(self).__name__)
+        dataset.attrs['type'] = np.bytes_(type(self).__name__)
 
     @classmethod
     def from_hdf5(cls, dataset):
@@ -592,7 +592,7 @@ class Sum(Function1D):
 
         """
         sum_group = group.create_group(name)
-        sum_group.attrs['type'] = np.string_(type(self).__name__)
+        sum_group.attrs['type'] = np.bytes_(type(self).__name__)
         sum_group.attrs['n'] = len(self.functions)
         for i, f in enumerate(self.functions):
             f.to_hdf5(sum_group, f'func_{i+1}')
@@ -707,28 +707,6 @@ class ResonancesWithBackground(EqualityMixin):
         self.resonances = resonances
         self.background = background
         self.mt = mt
-
-    def __call__(self, x):
-        # Get background cross section
-        xs = self.background(x)
-
-        for r in self.resonances:
-            if not isinstance(r, openmc.data.resonance._RESOLVED):
-                continue
-
-            if isinstance(x, Iterable):
-                # Determine which energies are within resolved resonance range
-                within = (r.energy_min <= x) & (x <= r.energy_max)
-
-                # Get resonance cross sections and add to background
-                resonant_xs = r.reconstruct(x[within])
-                xs[within] += resonant_xs[self.mt]
-            else:
-                if r.energy_min <= x <= r.energy_max:
-                    resonant_xs = r.reconstruct(x)
-                    xs += resonant_xs[self.mt]
-
-        return xs
 
     @property
     def background(self):

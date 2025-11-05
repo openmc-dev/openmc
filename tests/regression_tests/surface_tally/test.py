@@ -72,9 +72,9 @@ class SurfaceTallyTestHarness(PyAPITestHarness):
 
         # Create an initial uniform spatial source distribution
         bounds = [-0.62992, -0.62992, -1, 0.62992, 0.62992, 1]
-        uniform_dist = openmc.stats.Box(bounds[:3], bounds[3:],\
-             only_fissionable=True)
-        settings_file.source = openmc.IndependentSource(space=uniform_dist)
+        uniform_dist = openmc.stats.Box(bounds[:3], bounds[3:],)
+        settings_file.source = openmc.IndependentSource(
+            space=uniform_dist, constraints={'fissionable': True})
         self._model.settings = settings_file
 
         # Tallies file

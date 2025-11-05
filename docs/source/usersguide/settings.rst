@@ -183,6 +183,7 @@ source distributions and has four main attributes that one can set:
 :attr:`IndependentSource.energy`, which defines the energy distribution, and
 :attr:`IndependentSource.time`, which defines the time distribution.
 
+
 The spatial distribution can be set equal to a sub-class of
 :class:`openmc.stats.Spatial`; common choices are :class:`openmc.stats.Point` or
 :class:`openmc.stats.Box`. To independently specify distributions in the
@@ -192,7 +193,9 @@ distributions using spherical or cylindrical coordinates, you can use
 :class:`openmc.stats.SphericalIndependent` or
 :class:`openmc.stats.CylindricalIndependent`, respectively. Meshes can also be
 used to represent spatial distributions with :class:`openmc.stats.MeshSpatial`
-by specifying a mesh and source strengths for each mesh element.
+by specifying a mesh and source strengths for each mesh element. It is also
+possible to define a "cloud" of source points, each with a different relative
+probability, using :class:`openmc.stats.PointCloud`.
 
 The angular distribution can be set equal to a sub-class of
 :class:`openmc.stats.UnitSphere` such as :class:`openmc.stats.Isotropic`,
@@ -223,6 +226,7 @@ distribution. This could be a probability mass function
 (:class:`openmc.stats.Tabular`). By default, if no time distribution is
 specified, particles are started at :math:`t=0`.
 
+
 As an example, to create an isotropic, 10 MeV monoenergetic source uniformly
 distributed over a cube centered at the origin with an edge length of 10 cm, and
 emitting a pulse of particles from 0 to 10 µs, one
@@ -249,6 +253,24 @@ sampled 70% of the time and another that should be sampled 30% of the time::
   ...
 
   settings.source = [src1, src2]
+
+When the relative strengths are several orders of magnitude different, it may
+happen that not enough statistics are obtained from the lower strength source.
+This can be improved by sampling among the sources with equal probability,
+applying the source strength as a weight on the sampled source particles. The
+:attr:`Settings.uniform_source_sampling` attribute can be used to enable this
+option::
+
+  src1 = openmc.IndependentSource()
+  src1.strength = 100.0
+  ...
+
+  src2 = openmc.IndependentSource()
+  src2.strength = 1.0
+  ...
+
+  settings.source = [src1, src2]
+  settings.uniform_source_sampling = True
 
 Finally, the :attr:`IndependentSource.particle` attribute can be used to
 indicate the source should be composed of particles other than neutrons. For
@@ -277,6 +299,9 @@ source file can be manually generated with the :func:`openmc.write_source_file`
 function. This is particularly useful for coupling OpenMC with another program
 that generates a source to be used in OpenMC.
 
+Surface Sources
++++++++++++++++
+
 A source file based on particles that cross one or more surfaces can be
 generated during a simulation using the :attr:`Settings.surf_source_write`
 attribute::
@@ -287,7 +312,62 @@ attribute::
   }
 
 In this example, at most 10,000 source particles are stored when particles cross
-surfaces with IDs of 1, 2, or 3.
+surfaces with IDs of 1, 2, or 3. If no surface IDs are declared, particles
+crossing any surface of the model will be banked::
+
+  settings.surf_source_write = {'max_particles': 10000}
+
+A cell ID can also be used to bank particles that are crossing any surface of
+a cell that particles are either coming from or going to::
+
+  settings.surf_source_write = {'cell': 1, 'max_particles': 10000}
+
+In this example, particles that are crossing any surface that bounds cell 1 will
+be banked excluding any surface that does not use a 'transmission' or 'vacuum'
+boundary condition.
+
+.. note:: Surfaces with boundary conditions that are not "transmission" or "vacuum"
+          are not eligible to store any particles when using ``cell``, ``cellfrom``
+          or ``cellto`` attributes. It is recommended to use surface IDs instead.
+
+Surface IDs can be used in combination with a cell ID::
+
+  settings.surf_source_write = {
+      'cell': 1,
+      'surfaces_ids': [1, 2, 3],
+      'max_particles': 10000
+  }
+
+In that case, only particles that are crossing the declared surfaces coming from
+cell 1 or going to cell 1 will be banked. To account specifically for particles
+leaving or entering a given cell, ``cellfrom`` and ``cellto`` are also available
+to respectively account for particles coming from a cell::
+
+  settings.surf_source_write = {
+      'cellfrom': 1,
+      'max_particles': 10000
+  }
+
+or particles going to a cell::
+
+  settings.surf_source_write = {
+      'cellto': 1,
+      'max_particles': 10000
+  }
+
+.. note:: The ``cell``, ``cellfrom`` and ``cellto`` attributes cannot be
+          used simultaneously.
+
+To generate more than one surface source files when the maximum number of stored
+particles is reached, ``max_source_files`` is available. The surface source bank
+will be cleared in simulation memory each time a surface source file is written.
+As an example, to write a maximum of three surface source files:::
+
+  settings.surf_source_write = {
+      'surfaces_ids': [1, 2, 3],
+      'max_particles': 10000,
+      'max_source_files': 3
+  }
 
 .. _compiled_source:
 
@@ -419,6 +499,54 @@ need to pass both the path of the shared library as well as the parameters as a
 string, which gets passed down to the ``openmc_create_source()`` function::
 
   settings.source = openmc.CompiledSource('libsource.so', '3.5e6')
+
+.. _usersguide_source_constraints:
+
+Source Constraints
+------------------
+
+All source classes in OpenMC have the ability to apply a set of "constraints"
+that limit which sampled source sites are actually used for transport. The most
+common use case is to sample source sites over some simple spatial distribution
+(e.g., uniform over a box) and then only accept those that appear in a given
+cell or material. This can be done with a domain constraint, which can be
+specified as follows::
+
+  source_cell = openmc.Cell(...)
+  ...
+
+  spatial_dist = openmc.stats.Box((-10., -10., -10.), (10., 10., 10.))
+  source = openmc.IndependentSource(
+      space=spatial_dist,
+      constraints={'domains': [source_cell]}
+  )
+
+For k-eigenvalue problems, a convenient constraint is available that limits
+source sites to those sampled in a fissionable material::
+
+  source = openmc.IndependentSource(
+      space=spatial_dist, constraints={'fissionable': True}
+  )
+
+Constraints can also be placed on a range of energies or times::
+
+  # Only use source sites between 500 keV and 1 MeV and with times under 1 sec
+  source = openmc.FileSource(
+      'source.h5',
+      constraints={'energy_bounds': [500.0e3, 1.0e6], 'time_bounds': [0.0, 1.0]}
+  )
+
+Normally, when a source site is rejected, a new one will be resampled until one
+is found that meets the constraints. However, the rejection strategy can be
+changed so that a rejected site will just not be simulated by specifying::
+
+  source = openmc.IndependentSource(
+      space=spatial_dist,
+      constraints={'domains': [cell], 'rejection_strategy': 'kill'}
+  )
+
+In this case, the actual number of particles simulated may be less than what you
+specified in :attr:`Settings.particles`.
 
 .. _usersguide_entropy:
 
@@ -623,8 +751,41 @@ instance, whereas the :meth:`openmc.Track.filter` method returns a new
           with more than one process, a separate track file will be written for
           each MPI process with the filename ``tracks_p#.h5`` where # is the
           rank of the corresponding process. Multiple track files can be
-          combined with the :ref:`scripts_track_combine` script:
+          combined with the :meth:`openmc.Tracks.combine` method::
 
-          .. code-block:: sh
+            track_files = [f"tracks_p{rank}.h5" for rank in range(32)]
+            openmc.Tracks.combine(track_files, "tracks.h5")
 
-            openmc-track-combine tracks_p*.h5 --out tracks.h5
+-----------------------
+Restarting a Simulation
+-----------------------
+
+OpenMC can be run in a mode where it reads in a statepoint file and continues a
+simulation from the ending point of the statepoint file. A restart simulation
+can be performed by passing the path to the statepoint file to the OpenMC
+executable:
+
+.. code-block:: sh
+
+    openmc -r statepoint.100.h5
+
+From the Python API, the `restart_file` argument provides the same behavior:
+
+.. code-block:: python
+
+    openmc.run(restart_file='statepoint.100.h5')
+
+or if using the :class:`~openmc.Model` class:
+
+.. code-block:: python
+
+    model.run(restart_file='statepoint.100.h5')
+
+The restart simulation will execute until the number of batches specified in the
+:class:`~openmc.Settings` object on a model (or in the :ref:`settings XML file
+<io_settings>`) is satisfied. Note that if the number of batches in the
+statepoint file is the same as that specified in the settings object (i.e., if
+the inputs were not modified before the restart run), no particles will be
+transported and OpenMC will exit immediately.
+
+.. note:: A statepoint file must match the input model to be successfully used in a restart simulation.

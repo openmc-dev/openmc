@@ -26,9 +26,10 @@ def test_export_to_xml(run_in_tmpdir):
     s.plot_seed = 100
     s.survival_biasing = True
     s.cutoff = {'weight': 0.25, 'weight_avg': 0.5, 'energy_neutron': 1.0e-5,
+                'survival_normalization': True,
                 'energy_photon': 1000.0, 'energy_electron': 1.0e-5,
-                'energy_positron': 1.0e-5, 'time_neutron': 1.0e-5, 
-                'time_photon': 1.0e-5, 'time_electron': 1.0e-5, 
+                'energy_positron': 1.0e-5, 'time_neutron': 1.0e-5,
+                'time_photon': 1.0e-5, 'time_electron': 1.0e-5,
                 'time_positron': 1.0e-5}
     mesh = openmc.RegularMesh()
     mesh.lower_left = (-10., -10., -10.)
@@ -58,6 +59,28 @@ def test_export_to_xml(run_in_tmpdir):
     s.electron_treatment = 'led'
     s.write_initial_source = True
     s.weight_window_checkpoints = {'surface': True, 'collision': False}
+    source_region_mesh = openmc.RegularMesh()
+    source_region_mesh.dimension = [2, 2, 2]
+    source_region_mesh.lower_left = [-2, -2, -2]
+    source_region_mesh.upper_right = [2, 2, 2]
+    root_universe = openmc.Universe()
+    s.random_ray = {
+        'distance_inactive': 10.0,
+        'distance_active': 100.0,
+        'ray_source': openmc.IndependentSource(
+            space=openmc.stats.Box((-1., -1., -1.), (1., 1., 1.))
+        ),
+        'source_region_meshes': [(source_region_mesh, [root_universe])],
+        'volume_estimator': 'hybrid',
+        'source_shape': 'linear',
+        'volume_normalized_flux_tallies': True,
+        'adjoint': False,
+        'sample_method': 'halton'
+    }
+    s.max_particle_events = 100
+    s.max_secondaries = 1_000_000
+    s.source_rejection_fraction = 0.01
+    s.free_gas_threshold = 800.0
 
     # Make sure exporting XML works
     s.export_to_xml()
@@ -82,7 +105,7 @@ def test_export_to_xml(run_in_tmpdir):
     assert s.sourcepoint == {'batches': [50, 150, 500, 1000], 'separate': True,
                              'write': True, 'overwrite': True, 'mcpl': True}
     assert s.statepoint == {'batches': [50, 150, 500, 1000]}
-    assert s.surf_source_read == {'path': 'surface_source_1.h5'}
+    assert s.surf_source_read['path'].name == 'surface_source_1.h5'
     assert s.surf_source_write == {'surface_ids': [2], 'max_particles': 200}
     assert s.confidence_intervals
     assert s.ptables
@@ -90,9 +113,10 @@ def test_export_to_xml(run_in_tmpdir):
     assert s.seed == 17
     assert s.survival_biasing
     assert s.cutoff == {'weight': 0.25, 'weight_avg': 0.5,
+                        'survival_normalization': True,
                         'energy_neutron': 1.0e-5, 'energy_photon': 1000.0,
                         'energy_electron': 1.0e-5, 'energy_positron': 1.0e-5,
-                        'time_neutron': 1.0e-5, 'time_photon': 1.0e-5, 
+                        'time_neutron': 1.0e-5, 'time_photon': 1.0e-5,
                         'time_electron': 1.0e-5, 'time_positron': 1.0e-5}
     assert isinstance(s.entropy_mesh, openmc.RegularMesh)
     assert s.entropy_mesh.lower_left == [-10., -10., -10.]
@@ -119,7 +143,7 @@ def test_export_to_xml(run_in_tmpdir):
     assert s.log_grid_bins == 2000
     assert not s.photon_transport
     assert s.electron_treatment == 'led'
-    assert s.write_initial_source == True
+    assert s.write_initial_source
     assert len(s.volume_calculations) == 1
     vol = s.volume_calculations[0]
     assert vol.domain_type == 'cell'
@@ -128,3 +152,23 @@ def test_export_to_xml(run_in_tmpdir):
     assert vol.lower_left == (-10., -10., -10.)
     assert vol.upper_right == (10., 10., 10.)
     assert s.weight_window_checkpoints == {'surface': True, 'collision': False}
+    assert s.max_particle_events == 100
+    assert s.random_ray['distance_inactive'] == 10.0
+    assert s.random_ray['distance_active'] == 100.0
+    assert s.random_ray['ray_source'].space.lower_left == [-1., -1., -1.]
+    assert s.random_ray['ray_source'].space.upper_right == [1., 1., 1.]
+    assert 'source_region_meshes' in s.random_ray
+    assert len(s.random_ray['source_region_meshes']) == 1
+    mesh_and_domains = s.random_ray['source_region_meshes'][0]
+    recovered_mesh = mesh_and_domains[0]
+    assert recovered_mesh.dimension == (2, 2, 2)
+    assert recovered_mesh.lower_left == [-2., -2., -2.]
+    assert recovered_mesh.upper_right == [2., 2., 2.]
+    assert s.random_ray['volume_estimator'] == 'hybrid'
+    assert s.random_ray['source_shape'] == 'linear'
+    assert s.random_ray['volume_normalized_flux_tallies']
+    assert not s.random_ray['adjoint']
+    assert s.random_ray['sample_method'] == 'halton'
+    assert s.max_secondaries == 1_000_000
+    assert s.source_rejection_fraction == 0.01
+    assert s.free_gas_threshold == 800.0

@@ -233,7 +233,7 @@ class StepResult:
             ) from e
         for nuc, _ in sorted(self.index_nuc.items(), key=lambda x: x[1]):
             atoms = self[0, mat_id, nuc]
-            if atoms < 0.0:
+            if atoms <= 0.0:
                 continue
             atom_per_bcm = atoms / vol * 1e-24
             material.add_nuclide(nuc, atom_per_bcm)
@@ -291,7 +291,7 @@ class StepResult:
         # Store concentration mat and nuclide dictionaries (along with volumes)
 
         handle.attrs['version'] = np.array(VERSION_RESULTS)
-        handle.attrs['filetype'] = np.string_('depletion results')
+        handle.attrs['filetype'] = np.bytes_('depletion results')
 
         mat_list = sorted(self.mat_to_hdf5_ind, key=int)
         nuc_list = sorted(self.index_nuc)
@@ -328,13 +328,13 @@ class StepResult:
 
         handle.create_dataset("number", (1, n_stages, n_mats, n_nuc_number),
                               maxshape=(None, n_stages, n_mats, n_nuc_number),
-                              chunks=(1, 1, n_mats, n_nuc_number),
+                              chunks=True,
                               dtype='float64')
 
         if n_nuc_rxn > 0 and n_rxn > 0:
             handle.create_dataset("reaction rates", (1, n_stages, n_mats, n_nuc_rxn, n_rxn),
                                 maxshape=(None, n_stages, n_mats, n_nuc_rxn, n_rxn),
-                                chunks=(1, 1, n_mats, n_nuc_rxn, n_rxn),
+                                chunks=True,
                                 dtype='float64')
 
         handle.create_dataset("eigenvalues", (1, n_stages, 2),

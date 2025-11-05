@@ -1,4 +1,6 @@
 import re
+import warnings
+
 import lxml.etree as ET
 
 import openmc.checkvalue as cv
@@ -122,6 +124,10 @@ class Element(str):
         # Get the nuclides present in nature
         natural_nuclides = {name for name, abundance in natural_isotopes(self)}
 
+        # Issue warning if no existing nuclides
+        if len(natural_nuclides) == 0:
+            warnings.warn(f"No naturally occurring isotopes found for {self}.")
+
         # Create dict to store the expanded nuclides and abundances
         abundances = {}
 
@@ -138,8 +144,7 @@ class Element(str):
             root = tree.getroot()
             for child in root.findall('library'):
                 nuclide = child.attrib['materials']
-                if re.match(r'{}\d+'.format(self), nuclide) and \
-                   '_m' not in nuclide:
+                if re.match(r'{}\d+'.format(self), nuclide):
                     library_nuclides.add(nuclide)
 
             # Get a set of the mutual and absent nuclides. Convert to lists
@@ -179,8 +184,10 @@ class Element(str):
                 for nuclide in absent_nuclides:
                     if nuclide in ['O17', 'O18'] and 'O16' in mutual_nuclides:
                         abundances['O16'] += NATURAL_ABUNDANCE[nuclide]
-                    elif nuclide == 'Ta180' and 'Ta181' in mutual_nuclides:
-                        abundances['Ta181'] += NATURAL_ABUNDANCE[nuclide]
+                    elif nuclide == 'Ta180_m1' and 'Ta180' in library_nuclides:
+                            abundances['Ta180'] = NATURAL_ABUNDANCE[nuclide]
+                    elif nuclide == 'Ta180_m1' and 'Ta181' in mutual_nuclides:
+                            abundances['Ta181'] += NATURAL_ABUNDANCE[nuclide]
                     elif nuclide == 'W180' and 'W182' in mutual_nuclides:
                         abundances['W182'] += NATURAL_ABUNDANCE[nuclide]
                     else:

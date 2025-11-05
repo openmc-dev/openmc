@@ -2,6 +2,7 @@
 #include "openmc/cell.h"
 
 #include <algorithm>
+#include <cassert>
 #include <cctype>
 #include <cmath>
 #include <iterator>
@@ -10,7 +11,6 @@
 #include <string>
 
 #include <fmt/core.h>
-#include <gsl/gsl-lite.hpp>
 
 #include "openmc/capi.h"
 #include "openmc/constants.h"
@@ -39,6 +39,11 @@ vector<unique_ptr<Cell>> cells;
 //==============================================================================
 // Cell implementation
 //==============================================================================
+
+int32_t Cell::n_instances() const
+{
+  return model::universes[universe_]->n_instances_;
+}
 
 void Cell::set_rotation(const vector<double>& rot)
 {
@@ -96,6 +101,25 @@ double Cell::temperature(int32_t instance) const
   }
 }
 
+double Cell::density_mult(int32_t instance) const
+{
+  if (instance >= 0) {
+    return density_mult_.size() == 1 ? density_mult_.at(0)
+                                     : density_mult_.at(instance);
+  } else {
+    return density_mult_[0];
+  }
+}
+
+double Cell::density(int32_t instance) const
+{
+  const int32_t mat_index = material(instance);
+  if (mat_index == MATERIAL_VOID)
+    return 0.0;
+
+  return density_mult(instance) * model::materials[mat_index]->density_gpcc();
+}
+
 void Cell::set_temperature(double T, int32_t instance, bool set_contained)
 {
   if (settings::temperature_method == TemperatureMethod::INTERPOLATION) {
@@ -115,8 +139,8 @@ void Cell::set_temperature(double T, int32_t instance, bool set_contained)
   if (type_ == Fill::MATERIAL) {
     if (instance >= 0) {
       // If temperature vector is not big enough, resize it first
-      if (sqrtkT_.size() != n_instances_)
-        sqrtkT_.resize(n_instances_, sqrtkT_[0]);
+      if (sqrtkT_.size() != n_instances())
+        sqrtkT_.resize(n_instances(), sqrtkT_[0]);
 
       // Set temperature for the corresponding instance
       sqrtkT_.at(instance) = std::sqrt(K_BOLTZMANN * T);
@@ -137,10 +161,51 @@ void Cell::set_temperature(double T, int32_t instance, bool set_contained)
     auto contained_cells = this->get_contained_cells(instance);
     for (const auto& entry : contained_cells) {
       auto& cell = model::cells[entry.first];
-      Expects(cell->type_ == Fill::MATERIAL);
+      assert(cell->type_ == Fill::MATERIAL);
       auto& instances = entry.second;
       for (auto instance : instances) {
         cell->set_temperature(T, instance);
+      }
+    }
+  }
+}
+
+void Cell::set_density(double density, int32_t instance, bool set_contained)
+{
+  if (type_ != Fill::MATERIAL && !set_contained) {
+    fatal_error(
+      fmt::format("Attempted to set the density multiplier of cell {} "
+                  "which is not filled by a material.",
+        id_));
+  }
+
+  if (type_ == Fill::MATERIAL) {
+    const int32_t mat_index = material(instance);
+    if (mat_index == MATERIAL_VOID)
+      return;
+
+    if (instance >= 0) {
+      // If density multiplier vector is not big enough, resize it first
+      if (density_mult_.size() != n_instances())
+        density_mult_.resize(n_instances(), density_mult_[0]);
+
+      // Set density multiplier for the corresponding instance
+      density_mult_.at(instance) =
+        density / model::materials[mat_index]->density_gpcc();
+    } else {
+      // Set density multiplier for all instances
+      for (auto& x : density_mult_) {
+        x = density / model::materials[mat_index]->density_gpcc();
+      }
+    }
+  } else {
+    auto contained_cells = this->get_contained_cells(instance);
+    for (const auto& entry : contained_cells) {
+      auto& cell = model::cells[entry.first];
+      assert(cell->type_ == Fill::MATERIAL);
+      auto& instances = entry.second;
+      for (auto instance : instances) {
+        cell->set_density(density, instance);
       }
     }
   }
@@ -157,6 +222,15 @@ void Cell::export_properties_hdf5(hid_t group) const
     temps.push_back(sqrtkT_val * sqrtkT_val / K_BOLTZMANN);
   write_dataset(cell_group, "temperature", temps);
 
+  // Write density for one or more cell instances
+  if (type_ == Fill::MATERIAL && material_.size() > 0) {
+    vector<double> density;
+    for (int32_t i = 0; i < density_mult_.size(); ++i)
+      density.push_back(this->density(i));
+
+    write_dataset(cell_group, "density", density);
+  }
+
   close_group(cell_group);
 }
 
@@ -170,8 +244,8 @@ void Cell::import_properties_hdf5(hid_t group)
 
   // Ensure number of temperatures makes sense
   auto n_temps = temps.size();
-  if (n_temps > 1 && n_temps != n_instances_) {
-    throw std::runtime_error(fmt::format(
+  if (n_temps > 1 && n_temps != n_instances()) {
+    fatal_error(fmt::format(
       "Number of temperatures for cell {} doesn't match number of instances",
       id_));
   }
@@ -179,8 +253,27 @@ void Cell::import_properties_hdf5(hid_t group)
   // Modify temperatures for the cell
   sqrtkT_.clear();
   sqrtkT_.resize(temps.size());
-  for (gsl::index i = 0; i < temps.size(); ++i) {
+  for (int64_t i = 0; i < temps.size(); ++i) {
     this->set_temperature(temps[i], i);
+  }
+
+  // Read densities
+  if (object_exists(cell_group, "density")) {
+    vector<double> density;
+    read_dataset(cell_group, "density", density);
+
+    // Ensure number of densities makes sense
+    auto n_density = density.size();
+    if (n_density > 1 && n_density != n_instances()) {
+      fatal_error(fmt::format("Number of densities for cell {} "
+                              "doesn't match number of instances",
+        id_));
+    }
+
+    // Set densities.
+    for (int32_t i = 0; i < n_density; ++i) {
+      this->set_density(density[i], i);
+    }
   }
 
   close_group(cell_group);
@@ -222,6 +315,8 @@ void Cell::to_hdf5(hid_t cell_group) const
       temps.push_back(sqrtkT_val * sqrtkT_val / K_BOLTZMANN);
     write_dataset(group, "temperature", temps);
 
+    write_dataset(group, "density_mult", density_mult_);
+
   } else if (type_ == Fill::UNIVERSE) {
     write_dataset(group, "fill_type", "universe");
     write_dataset(group, "fill", model::universes[fill_]->id_);
@@ -249,16 +344,8 @@ void Cell::to_hdf5(hid_t cell_group) const
 // CSGCell implementation
 //==============================================================================
 
-// default constructor
-CSGCell::CSGCell()
-{
-  geom_type_ = GeometryType::CSG;
-}
-
 CSGCell::CSGCell(pugi::xml_node cell_node)
 {
-  geom_type_ = GeometryType::CSG;
-
   if (check_for_node(cell_node, "id")) {
     id_ = std::stoi(get_node_value(cell_node, "id"));
   } else {
@@ -344,6 +431,44 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
     // Convert to sqrt(k*T).
     for (auto& T : sqrtkT_) {
       T = std::sqrt(K_BOLTZMANN * T);
+    }
+  }
+
+  // Read the density element which can be distributed similar to temperature.
+  // These get assigned to the density multiplier, requiring a division by
+  // the material density.
+  // Note: calculating the actual density multiplier is deferred until materials
+  // are finalized. density_mult_ contains the true density in the meantime.
+  if (check_for_node(cell_node, "density")) {
+    density_mult_ = get_node_array<double>(cell_node, "density");
+    density_mult_.shrink_to_fit();
+
+    // Make sure this is a material-filled cell.
+    if (material_.size() == 0) {
+      fatal_error(fmt::format(
+        "Cell {} was specified with a density but no material. Density"
+        "specification is only valid for cells filled with a material.",
+        id_));
+    }
+
+    // Make sure this is a non-void material.
+    for (auto mat_id : material_) {
+      if (mat_id == MATERIAL_VOID) {
+        fatal_error(fmt::format(
+          "Cell {} was specified with a density, but contains a void "
+          "material. Density specification is only valid for cells "
+          "filled with a non-void material.",
+          id_));
+      }
+    }
+
+    // Make sure all densities are non-negative and greater than zero.
+    for (auto rho : density_mult_) {
+      if (rho <= 0) {
+        fatal_error(fmt::format(
+          "Cell {} was specified with a density less than or equal to zero",
+          id_));
+      }
     }
   }
 
@@ -578,17 +703,14 @@ void Region::apply_demorgan(
 //! precedence than unions using parentheses.
 //==============================================================================
 
-std::vector<int32_t>::iterator Region::add_parentheses(
-  std::vector<int32_t>::iterator start)
+int64_t Region::add_parentheses(int64_t start)
 {
-  int32_t start_token = *start;
-  // Add left parenthesis
-  if (start_token == OP_INTERSECTION) {
-    start = expression_.insert(start - 1, OP_LEFT_PAREN);
-  } else {
-    start = expression_.insert(start + 1, OP_LEFT_PAREN);
+  int32_t start_token = expression_[start];
+  // Add left parenthesis and set new position to be after parenthesis
+  if (start_token == OP_UNION) {
+    start += 2;
   }
-  start++;
+  expression_.insert(expression_.begin() + start - 1, OP_LEFT_PAREN);
 
   // Keep track of return iterator distance. If we don't encounter a left
   // parenthesis, we return an iterator corresponding to wherever the right
@@ -600,23 +722,23 @@ std::vector<int32_t>::iterator Region::add_parentheses(
 
   // Add right parenthesis
   // While the start iterator is within the bounds of infix
-  while (start < expression_.end()) {
+  while (start + 1 < expression_.size()) {
     start++;
 
     // If the current token is an operator and is different than the start token
-    if (*start >= OP_UNION && *start != start_token) {
+    if (expression_[start] >= OP_UNION && expression_[start] != start_token) {
       // Skip wrapped regions but save iterator position to check precedence and
       // add right parenthesis, right parenthesis position depends on the
       // operator, when the operator is a union then do not include the operator
       // in the region, when the operator is an intersection then include the
       // operator and next surface
-      if (*start == OP_LEFT_PAREN) {
-        return_it_dist = std::distance(expression_.begin(), start);
+      if (expression_[start] == OP_LEFT_PAREN) {
+        return_it_dist = start;
         int depth = 1;
         do {
           start++;
-          if (*start > OP_COMPLEMENT) {
-            if (*start == OP_RIGHT_PAREN) {
+          if (expression_[start] > OP_COMPLEMENT) {
+            if (expression_[start] == OP_RIGHT_PAREN) {
               depth--;
             } else {
               depth++;
@@ -624,10 +746,12 @@ std::vector<int32_t>::iterator Region::add_parentheses(
           }
         } while (depth > 0);
       } else {
-        start = expression_.insert(
-          start_token == OP_UNION ? start - 1 : start, OP_RIGHT_PAREN);
+        if (start_token == OP_UNION) {
+          --start;
+        }
+        expression_.insert(expression_.begin() + start, OP_RIGHT_PAREN);
         if (return_it_dist > 0) {
-          return expression_.begin() + return_it_dist;
+          return return_it_dist;
         } else {
           return start - 1;
         }
@@ -638,7 +762,7 @@ std::vector<int32_t>::iterator Region::add_parentheses(
   // return iterator
   expression_.push_back(OP_RIGHT_PAREN);
   if (return_it_dist > 0) {
-    return expression_.begin() + return_it_dist;
+    return return_it_dist;
   } else {
     return start - 1;
   }
@@ -651,21 +775,21 @@ void Region::add_precedence()
   int32_t current_op = 0;
   std::size_t current_dist = 0;
 
-  for (auto it = expression_.begin(); it != expression_.end(); it++) {
-    int32_t token = *it;
+  for (int64_t i = 0; i < expression_.size(); i++) {
+    int32_t token = expression_[i];
 
     if (token == OP_UNION || token == OP_INTERSECTION) {
       if (current_op == 0) {
         // Set the current operator if is hasn't been set
         current_op = token;
-        current_dist = std::distance(expression_.begin(), it);
+        current_dist = i;
       } else if (token != current_op) {
         // If the current operator doesn't match the token, add parenthesis to
         // assert precedence
         if (current_op == OP_INTERSECTION) {
-          it = add_parentheses(expression_.begin() + current_dist);
+          i = add_parentheses(current_dist);
         } else {
-          it = add_parentheses(it);
+          i = add_parentheses(i);
         }
         current_op = 0;
         current_dist = 0;
@@ -784,7 +908,7 @@ std::string Region::str() const
 //==============================================================================
 
 std::pair<double, int32_t> Region::distance(
-  Position r, Direction u, int32_t on_surface, Particle* p) const
+  Position r, Direction u, int32_t on_surface) const
 {
   double min_dist {INFTY};
   int32_t i_surf {std::numeric_limits<int32_t>::max()};
@@ -947,7 +1071,7 @@ BoundingBox Region::bounding_box_complex(vector<int32_t> postfix) const
     }
   }
 
-  Ensures(i_stack == 0);
+  assert(i_stack == 0);
   return stack.front();
 }
 
@@ -1020,19 +1144,41 @@ void read_cells(pugi::xml_node node)
 
 void populate_universes()
 {
+  // Used to map universe index to the index of an implicit complement cell for
+  // DAGMC universes
+  std::unordered_map<int, int> implicit_comp_cells;
+
   // Populate the Universe vector and map.
-  for (int i = 0; i < model::cells.size(); i++) {
-    int32_t uid = model::cells[i]->universe_;
+  for (int index_cell = 0; index_cell < model::cells.size(); index_cell++) {
+    int32_t uid = model::cells[index_cell]->universe_;
     auto it = model::universe_map.find(uid);
     if (it == model::universe_map.end()) {
       model::universes.push_back(make_unique<Universe>());
       model::universes.back()->id_ = uid;
-      model::universes.back()->cells_.push_back(i);
+      model::universes.back()->cells_.push_back(index_cell);
       model::universe_map[uid] = model::universes.size() - 1;
     } else {
-      model::universes[it->second]->cells_.push_back(i);
+#ifdef OPENMC_DAGMC_ENABLED
+      // Skip implicit complement cells for now
+      Universe* univ = model::universes[it->second].get();
+      DAGUniverse* dag_univ = dynamic_cast<DAGUniverse*>(univ);
+      if (dag_univ && (dag_univ->implicit_complement_idx() == index_cell)) {
+        implicit_comp_cells[it->second] = index_cell;
+        continue;
+      }
+#endif
+
+      model::universes[it->second]->cells_.push_back(index_cell);
     }
   }
+
+  // Add DAGUniverse implicit complement cells last
+  for (const auto& it : implicit_comp_cells) {
+    int index_univ = it.first;
+    int index_cell = it.second;
+    model::universes[index_univ]->cells_.push_back(index_cell);
+  }
+
   model::universes.shrink_to_fit();
 }
 
@@ -1111,6 +1257,24 @@ extern "C" int openmc_cell_set_temperature(
   return 0;
 }
 
+extern "C" int openmc_cell_set_density(
+  int32_t index, double density, const int32_t* instance, bool set_contained)
+{
+  if (index < 0 || index >= model::cells.size()) {
+    strcpy(openmc_err_msg, "Index in cells array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
+  int32_t instance_index = instance ? *instance : -1;
+  try {
+    model::cells[index]->set_density(density, instance_index, set_contained);
+  } catch (const std::exception& e) {
+    set_errmsg(e.what());
+    return OPENMC_E_UNASSIGNED;
+  }
+  return 0;
+}
+
 extern "C" int openmc_cell_get_temperature(
   int32_t index, const int32_t* instance, double* T)
 {
@@ -1122,6 +1286,36 @@ extern "C" int openmc_cell_get_temperature(
   int32_t instance_index = instance ? *instance : -1;
   try {
     *T = model::cells[index]->temperature(instance_index);
+  } catch (const std::exception& e) {
+    set_errmsg(e.what());
+    return OPENMC_E_UNASSIGNED;
+  }
+  return 0;
+}
+
+extern "C" int openmc_cell_get_density(
+  int32_t index, const int32_t* instance, double* density)
+{
+  if (index < 0 || index >= model::cells.size()) {
+    strcpy(openmc_err_msg, "Index in cells array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
+  int32_t instance_index = instance ? *instance : -1;
+  try {
+    if (model::cells[index]->type_ != Fill::MATERIAL) {
+      fatal_error(
+        fmt::format("Cell {}, instance {} is not filled with a material.",
+          model::cells[index]->id_, instance_index));
+    }
+
+    int32_t mat_index = model::cells[index]->material(instance_index);
+    if (mat_index == MATERIAL_VOID) {
+      *density = 0.0;
+    } else {
+      *density = model::cells[index]->density_mult(instance_index) *
+                 model::materials[mat_index]->density_gpcc();
+    }
   } catch (const std::exception& e) {
     set_errmsg(e.what());
     return OPENMC_E_UNASSIGNED;
@@ -1197,8 +1391,8 @@ struct ParentCell {
              lattice_index < other.lattice_index);
   }
 
-  gsl::index cell_index;
-  gsl::index lattice_index;
+  int64_t cell_index;
+  int64_t lattice_index;
 };
 
 //! Structure used to insert ParentCell into hashed STL data structures
@@ -1250,6 +1444,9 @@ struct ParentCellStack {
   //! compute an instance for the provided distribcell index
   int32_t compute_instance(int32_t distribcell_index) const
   {
+    if (distribcell_index == C_NONE)
+      return 0;
+
     int32_t instance = 0;
     for (const auto& parent_cell : this->parent_cells_) {
       auto& cell = model::cells[parent_cell.cell_index];
@@ -1279,14 +1476,15 @@ vector<ParentCell> Cell::find_parent_cells(
 {
 
   // create a temporary particle
-  Particle dummy_particle {};
+  GeometryState dummy_particle {};
   dummy_particle.r() = r;
   dummy_particle.u() = {0., 0., 1.};
 
   return find_parent_cells(instance, dummy_particle);
 }
 
-vector<ParentCell> Cell::find_parent_cells(int32_t instance, Particle& p) const
+vector<ParentCell> Cell::find_parent_cells(
+  int32_t instance, GeometryState& p) const
 {
   // look up the particle's location
   exhaustive_find_cell(p);
@@ -1297,10 +1495,10 @@ vector<ParentCell> Cell::find_parent_cells(int32_t instance, Particle& p) const
   bool cell_found = false;
   for (auto it = coords.begin(); it != coords.end(); it++) {
     const auto& coord = *it;
-    const auto& cell = model::cells[coord.cell];
+    const auto& cell = model::cells[coord.cell()];
     // if the cell at this level matches the current cell, stop adding to the
     // stack
-    if (coord.cell == model::cell_map[this->id_]) {
+    if (coord.cell() == model::cell_map[this->id_]) {
       cell_found = true;
       break;
     }
@@ -1310,10 +1508,10 @@ vector<ParentCell> Cell::find_parent_cells(int32_t instance, Particle& p) const
     int lattice_idx = C_NONE;
     if (cell->type_ == Fill::LATTICE) {
       const auto& next_coord = *(it + 1);
-      lattice_idx = model::lattices[next_coord.lattice]->get_flat_index(
-        next_coord.lattice_i);
+      lattice_idx = model::lattices[next_coord.lattice()]->get_flat_index(
+        next_coord.lattice_index());
     }
-    stack.push(coord.universe, {coord.cell, lattice_idx});
+    stack.push(coord.universe(), {coord.cell(), lattice_idx});
   }
 
   // if this loop finished because the cell was found and
@@ -1601,7 +1799,7 @@ extern "C" int openmc_cell_get_num_instances(
     set_errmsg("Index in cells array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
-  *num_instances = model::cells[index]->n_instances_;
+  *num_instances = model::cells[index]->n_instances();
   return 0;
 }
 

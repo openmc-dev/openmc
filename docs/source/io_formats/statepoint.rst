@@ -23,6 +23,7 @@ The current version of the statepoint file format is 18.1.
                bank is present (1) or not (0).
 
 :Datasets: - **seed** (*int8_t*) -- Pseudo-random number generator seed.
+           - **stride** (*uint64_t*) -- Pseudo-random number generator stride.
            - **energy_mode** (*char[]*) -- Energy mode of the run, either
              'continuous-energy' or 'multi-group'.
            - **run_mode** (*char[]*) -- Run mode used, either 'eigenvalue' or
@@ -72,7 +73,10 @@ The current version of the statepoint file format is 18.1.
 
 **/tallies/meshes/mesh <uid>/**
 
-:Datasets: - **type** (*char[]*) -- Type of mesh.
+:Attributes: - **id** (*int*) -- ID of the mesh
+
+:Datasets: - **name** (*char[]*) -- Name of the mesh.
+           - **type** (*char[]*) -- Type of mesh.
            - **dimension** (*int*) -- Number of mesh cells in each dimension.
            - **Regular Mesh Only:**
               - **lower_left** (*double[]*) -- Coordinates of lower-left corner of
@@ -96,6 +100,8 @@ The current version of the statepoint file format is 18.1.
               - **library** (*char[]*) -- Mesh library used to represent the
                                           mesh ("moab" or "libmesh").
               - **length_multiplier** (*double*) Scaling factor applied to the mesh.
+              - **options** (*char[]*) -- Special options that control spatial
+                                          search data structures used.
               - **volumes** (*double[]*) -- Volume of each mesh cell.
               - **vertices** (*double[]*) -- x, y, z values of the mesh vertices.
               - **connectivity** (*int[]*) -- Connectivity array for the mesh

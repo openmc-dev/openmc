@@ -1,3 +1,4 @@
+from collections import Counter
 from math import pi
 
 import openmc
@@ -6,6 +7,8 @@ import openmc.stats
 import numpy as np
 import pytest
 from pytest import approx
+
+from tests.regression_tests import config
 
 
 def test_source():
@@ -47,11 +50,66 @@ def test_spherical_uniform():
 
     assert isinstance(sph_indep_function, openmc.stats.SphericalIndependent)
 
+def test_point_cloud():
+    positions = [(1, 0, 2), (0, 1, 0), (0, 0, 3), (4, 9, 2)]
+    strengths = [1, 2, 3, 4]
+
+    space = openmc.stats.PointCloud(positions, strengths)
+    np.testing.assert_equal(space.positions, positions)
+    np.testing.assert_equal(space.strengths, strengths)
+
+    src = openmc.IndependentSource(space=space)
+    assert src.space == space
+    np.testing.assert_equal(src.space.positions, positions)
+    np.testing.assert_equal(src.space.strengths, strengths)
+
+    elem = src.to_xml_element()
+    src = openmc.IndependentSource.from_xml_element(elem)
+    np.testing.assert_equal(src.space.positions, positions)
+    np.testing.assert_equal(src.space.strengths, strengths)
+
+
+def test_point_cloud_invalid():
+    with pytest.raises(ValueError, match='2D'):
+        openmc.stats.PointCloud([1, 0, 2, 0, 1, 0])
+
+    with pytest.raises(ValueError, match='3 values'):
+        openmc.stats.PointCloud([(1, 0, 2, 3), (4, 5, 2, 3)])
+
+    with pytest.raises(ValueError, match='1D'):
+        openmc.stats.PointCloud([(1, 0, 2), (4, 5, 2)], [(1, 2), (3, 4)])
+
+    with pytest.raises(ValueError, match='same length'):
+        openmc.stats.PointCloud([(1, 0, 2), (4, 5, 2)], [1, 2, 4])
+
+
+def test_point_cloud_strengths(run_in_tmpdir, sphere_box_model):
+    positions = [(1., 0., 2.), (0., 1., 0.), (0., 0., 3.), (-1., -1., 2.)]
+    strengths = [1, 2, 3, 4]
+    space = openmc.stats.PointCloud(positions, strengths)
+
+    model = sphere_box_model[0]
+    model.settings.run_mode = 'fixed source'
+    model.settings.source = openmc.IndependentSource(space=space)
+
+    try:
+        model.init_lib()
+        n_samples = 50_000
+        sites = openmc.lib.sample_external_source(n_samples)
+    finally:
+        model.finalize_lib()
+
+    count = Counter(s.r for s in sites)
+    for i, (strength, position) in enumerate(zip(strengths, positions)):
+        sampled_strength = count[position] / n_samples
+        expected_strength = pytest.approx(strength/sum(strengths), abs=0.02)
+        assert sampled_strength == expected_strength, f'Strength incorrect for {positions[i]}'
+
 
 def test_source_file():
     filename = 'source.h5'
     src = openmc.FileSource(path=filename)
-    assert src.path == filename
+    assert src.path.name == filename
 
     elem = src.to_xml_element()
     assert 'strength' in elem.attrib
@@ -59,9 +117,9 @@ def test_source_file():
 
 
 def test_source_dlopen():
-    library = './libsource.so'
-    src = openmc.CompiledSource(library=library)
-    assert src.library == library
+    library = 'libsource.so'
+    src = openmc.CompiledSource(library)
+    assert src.library.name == library
 
     elem = src.to_xml_element()
     assert 'library' in elem.attrib
@@ -100,7 +158,8 @@ def test_source_xml_roundtrip():
     assert new_src.strength == approx(src.strength)
 
 
-def test_rejection(run_in_tmpdir):
+@pytest.fixture
+def sphere_box_model():
     # Model with two spheres inside a box
     mat = openmc.Material()
     mat.add_nuclide('H1', 1.0)
@@ -119,22 +178,121 @@ def test_rejection(run_in_tmpdir):
     model.settings.batches = 10
     model.settings.run_mode = 'fixed source'
 
+    return model, cell1, cell2, cell3
+
+
+def test_constraints_independent(sphere_box_model, run_in_tmpdir):
+    model, cell1, cell2, cell3 = sphere_box_model
+
     # Set up a box source with rejection on the spherical cell
-    space = openmc.stats.Box(*cell3.bounding_box)
-    model.settings.source = openmc.IndependentSource(space=space, domains=[cell1, cell2])
+    space = openmc.stats.Box((-4., -1., -1.), (4., 1., 1.))
+    model.settings.source = openmc.IndependentSource(
+        space=space, constraints={'domains': [cell1, cell2]}
+    )
 
     # Load up model via openmc.lib and sample source
-    model.export_to_xml()
+    model.export_to_model_xml()
     openmc.lib.init()
     particles = openmc.lib.sample_external_source(1000)
 
     # Make sure that all sampled sources are within one of the spheres
-    joint_region = cell1.region | cell2.region
     for p in particles:
-        assert p.r in joint_region
-        assert p.r not in non_source_region
+        assert p.r in (cell1.region | cell2.region)
+        assert p.r not in cell3.region
 
     openmc.lib.finalize()
+
+
+def test_constraints_mesh(sphere_box_model, run_in_tmpdir):
+    model, cell1, cell2, cell3 = sphere_box_model
+
+    bbox = cell3.bounding_box
+    mesh = openmc.RegularMesh()
+    mesh.lower_left = bbox.lower_left
+    mesh.upper_right = bbox.upper_right
+    mesh.dimension = (2, 1, 1)
+
+    left_source = openmc.IndependentSource()
+    right_source = openmc.IndependentSource()
+    model.settings.source = openmc.MeshSource(
+        mesh, [left_source, right_source], constraints={'domains': [cell1, cell2]}
+    )
+
+    # Load up model via openmc.lib and sample source
+    model.export_to_model_xml()
+    openmc.lib.init()
+    particles = openmc.lib.sample_external_source(1000)
+
+    # Make sure that all sampled sources are within one of the spheres
+    for p in particles:
+        assert p.r in (cell1.region | cell2.region)
+        assert p.r not in cell3.region
+
+    openmc.lib.finalize()
+
+
+def test_constraints_file(sphere_box_model, run_in_tmpdir):
+    model = sphere_box_model[0]
+
+    # Create source file with randomly sampled source sites
+    rng = np.random.default_rng()
+    energy = rng.uniform(0., 1e6, 10_000)
+    time = rng.uniform(0., 1., 10_000)
+    particles = [openmc.SourceParticle(E=e, time=t) for e, t in zip(energy, time)]
+    openmc.write_source_file(particles, 'uniform_source.h5')
+
+    # Use source file
+    model.settings.source = openmc.FileSource(
+        'uniform_source.h5',
+        constraints={
+            'time_bounds': [0.25, 0.75],
+            'energy_bounds': [500.e3, 1.0e6],
+        }
+    )
+
+    # Load up model via openmc.lib and sample source
+    model.export_to_model_xml()
+    openmc.lib.init()
+    particles = openmc.lib.sample_external_source(1000)
+
+    # Make sure that all sampled sources are within energy/time bounds
+    for p in particles:
+        assert 0.25 <= p.time <= 0.75
+        assert 500.e3 <= p.E <= 1.0e6
+
+    openmc.lib.finalize()
+
+
+@pytest.mark.skipif(config['mpi'], reason='Not compatible with MPI')
+def test_rejection_fraction(run_in_tmpdir):
+    mat = openmc.Material()
+    mat.add_nuclide('H1', 1.0)
+    w = 0.25
+    rpp1 = openmc.model.RectangularParallelepiped(
+        -w/2, w/2, -w/2, w/2, -w/2, w/2)
+    rpp2 = openmc.model.RectangularParallelepiped(
+        -0.5, 0.5, -0.5, 0.5, -0.5, 0.5, boundary_type='vacuum')
+    cell1 = openmc.Cell(fill=mat, region=-rpp1)
+    cell2 = openmc.Cell(region=+rpp1 & -rpp2)
+    model = openmc.Model()
+    model.geometry = openmc.Geometry([cell1, cell2])
+
+    # Create a box source over a 1 cm³ volume that is constrained to the source
+    # cell of volume (0.25 cm)³ = 0.0125 cm³, which means the default rejection
+    # fraction of 0.05 won't work
+    model.settings.particles = 1000
+    model.settings.batches = 1
+    model.settings.run_mode = 'fixed source'
+    model.settings.source = openmc.IndependentSource(
+        space=openmc.stats.Box(*(-rpp2).bounding_box),
+        constraints={'domains': [cell1]}
+    )
+    with pytest.raises(RuntimeError, match='Too few source sites'):
+        model.run(openmc_exec=config['exe'])
+
+    # With a source rejection fraction below 0.0125, the simulation should run
+    model.settings.source_rejection_fraction = 0.005
+    model.run(openmc_exec=config['exe'])
 
 
 def test_exceptions():

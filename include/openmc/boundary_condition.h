@@ -10,6 +10,7 @@ namespace openmc {
 
 // Forward declare some types used in function arguments.
 class Particle;
+class RandomRay;
 class Surface;
 
 //==============================================================================
@@ -109,6 +110,10 @@ public:
   PeriodicBC(int i_surf, int j_surf) : i_surf_(i_surf), j_surf_(j_surf) {};
 
   std::string type() const override { return "periodic"; }
+
+  int i_surf() const { return i_surf_; }
+
+  int j_surf() const { return j_surf_; }
 
 protected:
   int i_surf_;

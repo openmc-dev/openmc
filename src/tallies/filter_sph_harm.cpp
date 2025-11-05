@@ -1,9 +1,9 @@
 #include "openmc/tallies/filter_sph_harm.h"
 
+#include <cassert>
 #include <utility> // For pair
 
 #include <fmt/core.h>
-#include <gsl/gsl-lite.hpp>
 
 #include "openmc/capi.h"
 #include "openmc/error.h"
@@ -25,12 +25,15 @@ void SphericalHarmonicsFilter::set_order(int order)
   if (order < 0) {
     throw std::invalid_argument {
       "Spherical harmonics order must be non-negative."};
+  } else if (order > 10) {
+    throw std::invalid_argument {"Spherical harmonics orders greater than 10 "
+                                 "are currently not supported!"};
   }
   order_ = order;
   n_bins_ = (order_ + 1) * (order_ + 1);
 }
 
-void SphericalHarmonicsFilter::set_cosine(gsl::cstring_span cosine)
+void SphericalHarmonicsFilter::set_cosine(const std::string& cosine)
 {
   if (cosine == "scatter") {
     cosine_ = SphericalHarmonicsCosine::scatter;
@@ -39,7 +42,7 @@ void SphericalHarmonicsFilter::set_cosine(gsl::cstring_span cosine)
   } else {
     throw std::invalid_argument {fmt::format("Unrecognized cosine type, \"{}\" "
                                              "in spherical harmonics filter",
-      gsl::to_string(cosine))};
+      cosine)};
   }
 }
 
@@ -87,7 +90,7 @@ void SphericalHarmonicsFilter::to_statepoint(hid_t filter_group) const
 
 std::string SphericalHarmonicsFilter::text_label(int bin) const
 {
-  Expects(bin >= 0 && bin < n_bins_);
+  assert(bin >= 0 && bin < n_bins_);
   for (int n = 0; n < order_ + 1; n++) {
     if (bin < (n + 1) * (n + 1)) {
       int m = (bin - n * n) - n;

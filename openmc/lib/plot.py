@@ -31,7 +31,7 @@ class _Position(Structure):
         elif idx == 2:
             return self.z
         else:
-            raise IndexError("{} index is invalid for _Position".format(idx))
+            raise IndexError(f"{idx} index is invalid for _Position")
 
     def __setitem__(self, idx, val):
         if idx == 0:
@@ -41,10 +41,10 @@ class _Position(Structure):
         elif idx == 2:
             self.z = val
         else:
-            raise IndexError("{} index is invalid for _Position".format(idx))
+            raise IndexError(f"{idx} index is invalid for _Position")
 
     def __repr__(self):
-        return "({}, {}, {})".format(self.x, self.y, self.z)
+        return f"({self.x}, {self.y}, {self.z})"
 
 
 class _PlotBase(Structure):
@@ -90,6 +90,7 @@ class _PlotBase(Structure):
 
     def __init__(self):
         self.level_ = -1
+        self.basis_ = 1
         self.color_overlaps_ = False
 
     @property
@@ -127,7 +128,7 @@ class _PlotBase(Structure):
         elif self.basis_ == 3:
             return 'yz'
 
-        raise ValueError("Plot basis {} is invalid".format(self.basis_))
+        raise ValueError(f"Plot basis {self.basis_} is invalid")
 
     @basis.setter
     def basis(self, basis):
@@ -135,7 +136,7 @@ class _PlotBase(Structure):
             valid_bases = ('xy', 'xz', 'yz')
             basis = basis.lower()
             if basis not in valid_bases:
-                raise ValueError("{} is not a valid plot basis.".format(basis))
+                raise ValueError(f"{basis} is not a valid plot basis.")
 
             if basis == 'xy':
                 self.basis_ = 1
@@ -148,12 +149,11 @@ class _PlotBase(Structure):
         if isinstance(basis, int):
             valid_bases = (1, 2, 3)
             if basis not in valid_bases:
-                raise ValueError("{} is not a valid plot basis.".format(basis))
+                raise ValueError(f"{basis} is not a valid plot basis.")
             self.basis_ = basis
             return
 
-        raise ValueError("{} of type {} is an"
-                         " invalid plot basis".format(basis, type(basis)))
+        raise ValueError(f"{basis} of type {type(basis)} is an invalid plot basis")
 
     @property
     def h_res(self):
@@ -199,14 +199,14 @@ class _PlotBase(Structure):
         out_str = ["-----",
                    "Plot:",
                    "-----",
-                   "Origin: {}".format(self.origin),
-                   "Width: {}".format(self.width),
-                   "Height: {}".format(self.height),
-                   "Basis: {}".format(self.basis),
-                   "HRes: {}".format(self.h_res),
-                   "VRes: {}".format(self.v_res),
-                   "Color Overlaps: {}".format(self.color_overlaps),
-                   "Level: {}".format(self.level)]
+                   f"Origin: {self.origin}",
+                   f"Width: {self.width}",
+                   f"Height: {self.height}",
+                   f"Basis: {self.basis}",
+                   f"HRes: {self.h_res}",
+                   f"VRes: {self.v_res}",
+                   f"Color Overlaps: {self.color_overlaps}",
+                   f"Level: {self.level}"]
         return '\n'.join(out_str)
 
 

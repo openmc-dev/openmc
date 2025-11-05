@@ -100,6 +100,18 @@ The ``<tally>`` element accepts the following sub-elements:
 
      *Default*: None
 
+   :ignore_zeros:
+     Whether to allow zero tally bins to be ignored when assessing the
+     convergece of the precision trigger. If True, only nonzero tally scores
+     will be compared to the trigger's threshold.
+
+     .. note:: The ``ignore_zeros`` option can cause the tally trigger to fire
+               prematurely if there are no hits in any bins at the first
+               evalulation. It is the user's responsibility to specify enough
+               particles per batch to get a nonzero score in at least one bin.
+
+     *Default*: False
+
    :scores:
      The score(s) in this tally to which the trigger should be applied.
 
@@ -317,6 +329,11 @@ If a mesh is desired as a filter for a tally, it must be specified in a separate
 element with the tag name ``<mesh>``. This element has the following
 attributes/sub-elements:
 
+  :name:
+    An optional string name to identify the mesh in output files.
+
+    *Default*: ""
+
   :type:
     The type of mesh. This can be either "regular", "rectilinear",
     "cylindrical", "spherical", or "unstructured".
@@ -363,6 +380,10 @@ attributes/sub-elements:
   :library:
     The mesh library used to represent an unstructured mesh. This can be either
     "moab" or "libmesh". (For unstructured mesh only.)
+
+  :options:
+    Special options that control spatial search data structures used. (For
+    unstructured mesh using MOAB only)
 
   :filename:
     The name of the mesh file to be loaded at runtime. (For unstructured mesh

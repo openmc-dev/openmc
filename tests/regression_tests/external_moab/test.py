@@ -32,14 +32,14 @@ def cpp_driver(request):
     openmc_dir = Path(str(request.config.rootdir)) / 'build'
     with open('CMakeLists.txt', 'w') as f:
         f.write(textwrap.dedent("""
-            cmake_minimum_required(VERSION 3.3 FATAL_ERROR)
+            cmake_minimum_required(VERSION 3.10 FATAL_ERROR)
             project(openmc_cpp_driver CXX)
             add_executable(main main.cpp)
             find_package(OpenMC REQUIRED HINTS {})
             target_link_libraries(main OpenMC::libopenmc)
             target_compile_features(main PUBLIC cxx_std_14)
             set(CMAKE_CXX_FLAGS "-pedantic-errors")
-            add_compile_definitions(DAGMC=1)
+            add_compile_definitions(OPENMC_DAGMC_ENABLED=1)
             """.format(openmc_dir)))
 
     # Create temporary build directory and change to there

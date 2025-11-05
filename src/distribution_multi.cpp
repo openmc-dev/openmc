@@ -12,6 +12,25 @@
 
 namespace openmc {
 
+unique_ptr<UnitSphereDistribution> UnitSphereDistribution::create(
+  pugi::xml_node node)
+{
+  // Check for type of angular distribution
+  std::string type;
+  if (check_for_node(node, "type"))
+    type = get_node_value(node, "type", true, true);
+  if (type == "isotropic") {
+    return UPtrAngle {new Isotropic()};
+  } else if (type == "monodirectional") {
+    return UPtrAngle {new Monodirectional(node)};
+  } else if (type == "mu-phi") {
+    return UPtrAngle {new PolarAzimuthal(node)};
+  } else {
+    fatal_error(fmt::format(
+      "Invalid angular distribution for external source: {}", type));
+  }
+}
+
 //==============================================================================
 // UnitSphereDistribution implementation
 //==============================================================================
@@ -39,6 +58,15 @@ PolarAzimuthal::PolarAzimuthal(Direction u, UPtrDist mu, UPtrDist phi)
 PolarAzimuthal::PolarAzimuthal(pugi::xml_node node)
   : UnitSphereDistribution {node}
 {
+  // Read reference directional unit vector
+  if (check_for_node(node, "reference_vwu")) {
+    auto v_ref = get_node_array<double>(node, "reference_vwu");
+    if (v_ref.size() != 3)
+      fatal_error("Angular distribution reference v direction must have "
+                  "three parameters specified.");
+    v_ref_ = Direction(v_ref.data());
+  }
+  w_ref_ = u_ref_.cross(v_ref_);
   if (check_for_node(node, "mu")) {
     pugi::xml_node node_dist = node.child("mu");
     mu_ = distribution_from_xml(node_dist);
@@ -60,11 +88,15 @@ Direction PolarAzimuthal::sample(uint64_t* seed) const
   double mu = mu_->sample(seed);
   if (mu == 1.0)
     return u_ref_;
+  if (mu == -1.0)
+    return -u_ref_;
 
   // Sample azimuthal angle
   double phi = phi_->sample(seed);
 
-  return rotate_angle(u_ref_, mu, &phi, seed);
+  double f = std::sqrt(1 - mu * mu);
+
+  return mu * u_ref_ + f * std::cos(phi) * v_ref_ + f * std::sin(phi) * w_ref_;
 }
 
 //==============================================================================

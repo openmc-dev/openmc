@@ -1,4 +1,5 @@
 #include "openmc/event.h"
+
 #include "openmc/material.h"
 #include "openmc/simulation.h"
 #include "openmc/timer.h"
@@ -51,7 +52,7 @@ void dispatch_xs_event(int64_t buffer_idx)
 {
   Particle& p = simulation::particles[buffer_idx];
   if (p.material() == MATERIAL_VOID ||
-      !model::materials[p.material()]->fissionable_) {
+      !model::materials[p.material()]->fissionable()) {
     simulation::calculate_nonfuel_xs_queue.thread_safe_append({p, buffer_idx});
   } else {
     simulation::calculate_fuel_xs_queue.thread_safe_append({p, buffer_idx});
@@ -73,17 +74,17 @@ void process_calculate_xs_events(SharedArray<EventQueueItem>& queue)
 {
   simulation::time_event_calculate_xs.start();
 
-  // TODO: If using C++17, perform a parallel sort of the queue
-  // by particle type, material type, and then energy, in order to
-  // improve cache locality and reduce thread divergence on GPU. Prior
-  // to C++17, std::sort is a serial only operation, which in this case
-  // makes it too slow to be practical for most test problems.
+  // TODO: If using C++17, we could perform a parallel sort of the queue by
+  // particle type, material type, and then energy, in order to improve cache
+  // locality and reduce thread divergence on GPU. However, the parallel
+  // algorithms typically require linking against an additional library (Intel
+  // TBB). Prior to C++17, std::sort is a serial only operation, which in this
+  // case makes it too slow to be practical for most test problems.
   //
   // std::sort(std::execution::par_unseq, queue.data(), queue.data() +
   // queue.size());
 
   int64_t offset = simulation::advance_particle_queue.size();
-  ;
 
 #pragma omp parallel for schedule(runtime)
   for (int64_t i = 0; i < queue.size(); i++) {
@@ -114,7 +115,7 @@ void process_advance_particle_events()
     p.event_advance();
     if (!p.alive())
       continue;
-    if (p.collision_distance() > p.boundary().distance) {
+    if (p.collision_distance() > p.boundary().distance()) {
       simulation::surface_crossing_queue.thread_safe_append({p, buffer_idx});
     } else {
       simulation::collision_queue.thread_safe_append({p, buffer_idx});

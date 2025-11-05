@@ -28,6 +28,7 @@ Univariate Probability Distributions
    :nosignatures:
    :template: myfunction.rst
 
+   openmc.stats.delta_function
    openmc.stats.muir
 
 Angular Distributions
@@ -58,6 +59,7 @@ Spatial Distributions
    openmc.stats.Box
    openmc.stats.Point
    openmc.stats.MeshSpatial
+   openmc.stats.PointCloud
 
 .. autosummary::
    :toctree: generated

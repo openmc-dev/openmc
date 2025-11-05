@@ -57,6 +57,8 @@ void print_results();
 
 void write_tallies();
 
+void show_time(const char* label, double secs, int indent_level = 0);
+
 } // namespace openmc
 #endif // OPENMC_OUTPUT_H
 
@@ -74,10 +76,14 @@ struct formatter<std::array<T, 2>> {
   }
 
   template<typename FormatContext>
+#if FMT_VERSION >= 110000 // Version 11.0.0 and above
+  auto format(const std::array<T, 2>& arr, FormatContext& ctx) const {
+#else // For versions below 11.0.0
   auto format(const std::array<T, 2>& arr, FormatContext& ctx)
   {
+#endif
     return format_to(ctx.out(), "({}, {})", arr[0], arr[1]);
-  }
-};
+}
+}; // namespace fmt
 
 } // namespace fmt

@@ -176,9 +176,6 @@ def get_microxs_and_flux(
         if not openmc.lib.is_initialized:
             run_kwargs.setdefault('cwd', temp_dir)
 
-        flux_tally_sp = None
-        rr_tally_sp = None
-
         statepoint_path = model.run(**run_kwargs)
 
         if comm.rank == 0:
@@ -191,16 +188,15 @@ def get_microxs_and_flux(
             if path_input is not None:
                 model.export_to_model_xml(path_input)
 
-            with StatePoint(statepoint_path) as sp:
-                if reaction_rate_mode == 'direct':
-                    rr_tally_sp = sp.tallies[rr_tally.id]
-                    rr_tally_sp._read_results()
-                flux_tally_sp = sp.tallies[flux_tally.id]
-                flux_tally_sp._read_results()
+        # Broadcast updated path to statepoint to all ranks
+        statepoint_path = comm.bcast(statepoint_path)
 
-        flux_tally = comm.bcast(flux_tally_sp)
-        if reaction_rate_mode == 'direct':
-            rr_tally = comm.bcast(rr_tally_sp)
+        with StatePoint(statepoint_path) as sp:
+            if reaction_rate_mode == 'direct':
+                rr_tally = sp.tallies[rr_tally.id]
+                rr_tally._read_results()
+            flux_tally = sp.tallies[flux_tally.id]
+            flux_tally._read_results()
 
     # Get flux values and make energy groups last dimension
     flux = flux_tally.get_reshaped_data()  # (domains, groups, 1, 1)

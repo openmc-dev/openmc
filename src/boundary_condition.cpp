@@ -191,21 +191,6 @@ RotationalPeriodicBC::RotationalPeriodicBC(
   // to the correct axis
   Direction norm1 = surf1.normal({0, 0, 0});
   Direction norm2 = surf2.normal({0, 0, 0});
-  if (std::abs(norm1[zero_axis_idx]) > FP_PRECISION) {
-    throw std::invalid_argument(fmt::format(
-      "Rotational periodic BCs are only "
-      "supported for rotations about the z-axis, but surface {} is not "
-      "perpendicular to the z-axis.",
-      surf1.id_));
-  }
-  if (std::abs(norm2[zero_axis_idx]) > FP_PRECISION) {
-    throw std::invalid_argument(fmt::format(
-      "Rotational periodic BCs are only "
-      "supported for rotations about the z-axis, but surface {} is not "
-      "perpendicular to the z-axis.",
-      surf2.id_));
-  }
-
   // Make sure both surfaces intersect the origin
   if (std::abs(surf1.evaluate({0, 0, 0})) > FP_COINCIDENT) {
     throw std::invalid_argument(fmt::format(

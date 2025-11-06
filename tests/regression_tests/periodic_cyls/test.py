@@ -1,7 +1,7 @@
 import openmc
-import numpy
+import numpy as np
 import pytest
-
+from openmc.utility_funcs import change_directory
 from tests.testing_harness import PyAPITestHarness
 
 
@@ -40,6 +40,7 @@ def xcyl_model():
     model.settings.source = openmc.IndependentSource(space=openmc.stats.Box(
         (0, 0, 0), (20, 20, 20))
     )
+    return model
 
 @pytest.fixture
 def ycyl_model():
@@ -75,11 +76,16 @@ def ycyl_model():
     model.settings.source = openmc.IndependentSource(space=openmc.stats.Box(
         (0, 0, 0), (20, 20, 20))
     )
+    return model
 
-
-@pytest.mark.parametrize('cyl_model', ['xcyl_model','ycyl_model'])
-def test_periodic(cyl_model):
-    with change_directory(cyl_model):
-        harness = PyAPITestHarness('statepoint.4.h5', cyl_model)
+def test_xcyl(xcyl_model):
+    with change_directory("xcyl_model"):
+        openmc.reset_auto_ids()
+        harness = PyAPITestHarness('statepoint.4.h5', xcyl_model)
         harness.main()
-    assert 
+
+def test_ycyl(ycyl_model):
+    with change_directory("ycyl_model"):
+        openmc.reset_auto_ids()
+        harness = PyAPITestHarness('statepoint.4.h5', ycyl_model)
+        harness.main()

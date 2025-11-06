@@ -155,7 +155,7 @@ protected:
   //! Ensure that choice of axes is right handed. axis_1_idx_ corresponds to the
   //! independent axis and axis_2_idx_ corresponds to the dependent axis in the
   //! 2D plane  perpendicular to the planes' axis of rotation
-  int zero_axis_idx;
+  int zero_axis_idx_;
   int axis_1_idx_;
   int axis_2_idx_;
 };

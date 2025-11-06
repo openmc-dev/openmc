@@ -168,19 +168,19 @@ RotationalPeriodicBC::RotationalPeriodicBC(
   // below convention for right handed coordinate system
   switch (axis) {
   case x:
-    zero_axis_idx = 0; // x component of plane must be zero
-    axis_1_idx_ = 1;   // y component independent
-    axis_2_idx_ = 2;   // z component dependent
+    zero_axis_idx_ = 0; // x component of plane must be zero
+    axis_1_idx_ = 1;    // y component independent
+    axis_2_idx_ = 2;    // z component dependent
     break;
   case y:
-    zero_axis_idx = 1; // y component of plane must be zero
-    axis_1_idx_ = 2;   // z component independent
-    axis_2_idx_ = 0;   // x component dependent
+    zero_axis_idx_ = 1; // y component of plane must be zero
+    axis_1_idx_ = 2;    // z component independent
+    axis_2_idx_ = 0;    // x component dependent
     break;
   case z:
-    zero_axis_idx = 2; // z component of plane must be zero
-    axis_1_idx_ = 0;   // x component independent
-    axis_2_idx_ = 1;   // y component dependent
+    zero_axis_idx_ = 2; // z component of plane must be zero
+    axis_1_idx_ = 0;    // x component independent
+    axis_2_idx_ = 1;    // y component dependent
     break;
   default:
     throw std::invalid_argument(
@@ -261,10 +261,28 @@ void RotationalPeriodicBC::handle_particle(
   Direction u = p.u();
   double cos_theta = std::cos(theta);
   double sin_theta = std::sin(theta);
-  Position new_r = {cos_theta * r[axis_1_idx_] - sin_theta * r[axis_2_idx_],
-    sin_theta * r[axis_1_idx_] + cos_theta * r[axis_2_idx_], r[zero_axis_idx]};
-  Direction new_u = {cos_theta * u[axis_1_idx_] - sin_theta * u[axis_2_idx_],
-    sin_theta * u[axis_1_idx_] + cos_theta * u[axis_2_idx_], u[zero_axis_idx]};
+
+  // rotations around the y-axis have sign flipped for the sin_theta terms
+  int flip;
+  if (zero_axis_idx_ == 1) {
+    flip = -1;
+  } else {
+    flip = 1;
+  }
+
+  Position new_r;
+  new_r[zero_axis_idx_] = r[zero_axis_idx_];
+  new_r[axis_1_idx_] =
+    cos_theta * r[axis_1_idx_] - flip * sin_theta * r[axis_2_idx_];
+  new_r[axis_2_idx_] =
+    flip * sin_theta * r[axis_1_idx_] + cos_theta * r[axis_2_idx_];
+
+  Direction new_u;
+  new_u[zero_axis_idx_] = u[zero_axis_idx_];
+  new_u[axis_1_idx_] =
+    cos_theta * u[axis_1_idx_] - flip * sin_theta * u[axis_2_idx_];
+  new_u[axis_2_idx_] =
+    flip * sin_theta * u[axis_1_idx_] + cos_theta * u[axis_2_idx_];
 
   // Handle the effects of the surface albedo on the particle's weight.
   BoundaryCondition::handle_albedo(p, surf);

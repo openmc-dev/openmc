@@ -17,7 +17,8 @@ from typing import List
 
 import lxml.etree as ET
 import scipy.sparse as sp
-
+import xmlschema
+   
 from openmc.checkvalue import check_type, check_greater_than, PathLike
 from openmc.data import gnds_name, zam
 from openmc.exceptions import DataError
@@ -544,7 +545,7 @@ class Chain:
 
         """
         chain = cls()
-
+        Chain.validate(filename)
         if fission_q is not None:
             check_type("fission_q", fission_q, Mapping)
         else:
@@ -1043,19 +1044,23 @@ class Chain:
                 yields = [yields]
             check_type("fission_yields", yields, Iterable, Mapping)
         self._fission_yields = yields
-
-    def validate(self, strict=True, quiet=False, tolerance=1e-4):
+    
+    @staticmethod
+    def validate(filename, strict=True, quiet=False, tolerance = None):
         """Search for possible inconsistencies
 
         The following checks are performed for all nuclides present:
-
-            1) For all non-fission reactions, does the sum of branching
+            
+            1) The XML file structure is validated against an XMLSchema 
+            2) For all non-fission reactions, does the sum of branching
                ratios equal about one?
-            2) For fission reactions, does the sum of fission yield
+            3) For fission reactions, does the sum of fission yield
                fractions equal about two?
 
         Parameters
         ----------
+        filename : str
+            Path of the XML file that needs to be validated
         strict : bool, optional
             Raise exceptions at the first inconsistency if true.
             Otherwise mark a warning
@@ -1084,16 +1089,40 @@ class Chain:
         --------
         openmc.deplete.Nuclide.validate
         """
-        check_type("tolerance", tolerance, Real)
-        check_greater_than("tolerance", tolerance, 0.0, True)
+        msg_func = ("Nuclide {name} caused the following error: {e}").format
+        xml_tree = ET.parse(filename)
+        schema_info =  Path(__file__).parent / "../../tests/openmc_chain_schemas.xsd"
         valid = True
-        # Sort through nuclides by name
-        for name in sorted(self.nuclide_dict):
-            stat = self[name].validate(strict, quiet, tolerance)
-            if quiet and not stat:
-                return stat
-            valid = valid and stat
-        return valid
+        if tolerance:
+            check_type("tolerance", tolerance, Real)
+            check_greater_than("tolerance", tolerance, 0.0, True)
+            xsd_text = schema_info.read_text()
+            schema_info = re.sub(r"0\.0001", str(tolerance), xsd_text)
+            
+        schema = xmlschema.XMLSchema11(schema_info)
+        # Get all the validation errors
+        errors = list(schema.iter_errors(xml_tree))
+        if errors:
+            for e in errors:
+                # Get the element that caused the error
+                elem = e.elem
+                parent = elem
+                # Find parent Nuclide tag
+                while parent is not None and parent.tag != "nuclide":
+                    parent = parent.getparent()
+                # Get Nuclide name
+                name = parent.get("name") 
+                msg = msg_func(name=name, e=e.message)
+                if strict:
+                    raise ValueError(msg)
+                elif quiet:
+                    valid = False
+                    continue
+                else:
+                    warn(msg)
+                    valid = False
+            
+        return valid 
 
     def reduce(self, initial_isotopes, level=None):
         """Reduce the size of the chain by following transmutation paths

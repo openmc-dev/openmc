@@ -27,6 +27,8 @@ from .._xml import get_text
 import openmc.data
 
 
+# Name of the XML schema file
+XML_SCHEMA = "openmc_chain_schemas.xsd"
 # tuple of (possible MT values, secondaries)
 ReactionInfo = namedtuple('ReactionInfo', ('mts', 'secondaries'))
 
@@ -1091,7 +1093,7 @@ class Chain:
         """
         msg_func = ("Nuclide {name} caused the following error: {e}").format
         xml_tree = ET.parse(filename)
-        schema_info =  Path(__file__).parent / "../../tests/openmc_chain_schemas.xsd"
+        schema_info =  Path(__file__).parent / XML_SCHEMA
         valid = True
         if tolerance:
             check_type("tolerance", tolerance, Real)

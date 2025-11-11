@@ -1327,7 +1327,7 @@ class Tally(IDManagerMixin):
             merged_tally._sum_sq = np.reshape(merged_sum_sq, merged_tally.shape)
 
         # Concatenate sum_third arrays if present in both tallies
-        if self.sum_third is not None and other.sum_third is not None:
+        if self._sum_third is not None and other._sum_third is not None:
             self_sum_third = self.get_reshaped_data(value="sum_third")
             other_sum_third = other_copy.get_reshaped_data(value="sum_third")
 
@@ -1341,7 +1341,7 @@ class Tally(IDManagerMixin):
             merged_tally._sum_third = np.reshape(merged_sum_third, merged_tally.shape)
 
         # Concatenate sum_fourth arrays if present in both tallies
-        if self.sum_fourth is not None and other.sum_fourth is not None:
+        if self._sum_fourth is not None and other._sum_fourth is not None:
             self_sum_fourth = self.get_reshaped_data(value="sum_fourth")
             other_sum_fourth = other_copy.get_reshaped_data(value="sum_fourth")
 
@@ -3211,16 +3211,16 @@ class Tally(IDManagerMixin):
             new_sum_sq = self.get_values(scores, filters, filter_bins,
                                          nuclides, 'sum_sq')
             new_tally.sum_sq = new_sum_sq
-        if not self.derived and self.sum_third is not None:
+        if not self.derived and self._sum_third is not None:
             new_sum_third = self.get_values(
                 scores, filters, filter_bins, nuclides, "sum_third"
             )
-            new_tally.sum_third = new_sum_third
-        if not self.derived and self.sum_fourth is not None:
+            new_tally._sum_third = new_sum_third
+        if not self.derived and self._sum_fourth is not None:
             new_sum_fourth = self.get_values(
                 scores, filters, filter_bins, nuclides, "sum_fourth"
             )
-            new_tally.sum_fourth = new_sum_fourth
+            new_tally._sum_fourth = new_sum_fourth
         if self.mean is not None:
             new_mean = self.get_values(scores, filters, filter_bins,
                                        nuclides, 'mean')
@@ -3661,10 +3661,10 @@ class Tally(IDManagerMixin):
         if not self.derived and self.sum_sq is not None:
             new_tally._sum_sq = np.zeros(new_tally.shape, dtype=np.float64)
             new_tally._sum_sq[diag_indices, :, :] = self.sum_sq
-        if not self.derived and self.sum_third is not None:
+        if not self.derived and self._sum_third is not None:
             new_tally._sum_third = np.zeros(new_tally.shape, dtype=np.float64)
             new_tally._sum_third[diag_indices, :, :] = self.sum_third
-        if not self.derived and self.sum_fourth is not None:
+        if not self.derived and self._sum_fourth is not None:
             new_tally._sum_fourth = np.zeros(new_tally.shape, dtype=np.float64)
             new_tally._sum_fourth[diag_indices, :, :] = self.sum_fourth
         if self.mean is not None:

@@ -563,27 +563,27 @@ class Tally(IDManagerMixin):
 
     @property
     def vov(self):
-        n = self.num_realizations
-        sum1 = self.sum
-        sum2 = self.sum_sq
-        sum3 = self.sum_third
-        sum4 = self.sum_fourth
-        self._vov = np.zeros_like(sum1, dtype=float)
+        if self._vov is None:
+            n = self.num_realizations
+            sum1 = self.sum
+            sum2 = self.sum_sq
+            sum3 = self.sum_third
+            sum4 = self.sum_fourth
+            self._vov = np.zeros_like(sum1, dtype=float)
 
-        # Calculate the variance of the variance (Eq. 2.232 in
-        # https://doi.org/10.2172/2372634)
-        numerator = (sum4 - (4.0*sum3*sum1)/n
-                    + (6.0*sum2*(sum1**2))/(n**2)
-                    - (3.0*(sum1)**4)/(n**3))
-        denominator = (sum2 - (1.0/n)*(sum1**2))**2
+            # Calculate the variance of the variance (Eq. 2.232 in
+            # https://doi.org/10.2172/2372634)
+            numerator = (sum4 - (4.0*sum3*sum1)/n
+                        + (6.0*sum2*(sum1**2))/(n**2)
+                        - (3.0*(sum1)**4)/(n**3))
+            denominator = (sum2 - (1.0/n)*(sum1**2))**2
 
-        mask = denominator > 0.0
+            mask = denominator > 0.0
 
-        self._vov[mask] = numerator[mask]/denominator[mask] - 1.0/n
+            self._vov[mask] = numerator[mask]/denominator[mask] - 1.0/n
 
-        if self.sparse:
-            self._vov = sps.lil_matrix(self._vov.flatten(),
-                                        self._vov.shape)
+            if self.sparse:
+                self._vov = sps.lil_matrix(self._vov.flatten(), self._vov.shape)
 
         if self.sparse:
             return np.reshape(self._vov.toarray(), self.shape)
@@ -1479,6 +1479,7 @@ class Tally(IDManagerMixin):
         self._mean = None
         self._std_dev = None
         self._vov = None
+        self._higher_moments = False
         self._num_realizations = 0
         self._results_read = False
 

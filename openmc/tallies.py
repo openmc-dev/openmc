@@ -488,6 +488,13 @@ class Tally(IDManagerMixin):
     @property
     @ensure_results
     def sum_third(self):
+        if not self._higher_moments:
+            raise ValueError(
+                "Higher moments have not been enabled for this tally. To make "
+                "higher moments available, set the higher_moments attribute to "
+                "True before running a simulation."
+            )
+
         if not self._sp_filename or self.derived:
             return None
 
@@ -504,6 +511,13 @@ class Tally(IDManagerMixin):
     @property
     @ensure_results
     def sum_fourth(self):
+        if not self._higher_moments:
+            raise ValueError(
+                "Higher moments have not been enabled for this tally. To make "
+                "higher moments available, set the higher_moments attribute to "
+                "True before running a simulation."
+            )
+
         if not self._sp_filename or self.derived:
             return None
 
@@ -561,32 +575,27 @@ class Tally(IDManagerMixin):
 
     @property
     def vov(self):
-        if not self._higher_moments:
-            return None
-        if not self._sp_filename:
-            return None
-        if self._higher_moments:
-            n = self.num_realizations
-            sum1 = self.sum
-            sum2 = self.sum_sq
-            sum3 = self.sum_third
-            sum4 = self.sum_fourth
-            self._vov = np.zeros_like(sum1, dtype=float)
+        n = self.num_realizations
+        sum1 = self.sum
+        sum2 = self.sum_sq
+        sum3 = self.sum_third
+        sum4 = self.sum_fourth
+        self._vov = np.zeros_like(sum1, dtype=float)
 
-            # Calculate the variance of the variance (Eq. 2.232 in
-            # https://doi.org/10.2172/2372634)
-            numerator = (sum4 - (4.0*sum3*sum1)/n
-                        + (6.0*sum2*(sum1**2))/(n**2)
-                        - (3.0*(sum1)**4)/(n**3))
-            denominator = (sum2 - (1.0/n)*(sum1**2))**2
+        # Calculate the variance of the variance (Eq. 2.232 in
+        # https://doi.org/10.2172/2372634)
+        numerator = (sum4 - (4.0*sum3*sum1)/n
+                    + (6.0*sum2*(sum1**2))/(n**2)
+                    - (3.0*(sum1)**4)/(n**3))
+        denominator = (sum2 - (1.0/n)*(sum1**2))**2
 
-            mask = denominator > 0.0
+        mask = denominator > 0.0
 
-            self._vov[mask] = numerator[mask]/denominator[mask] - 1.0/n
+        self._vov[mask] = numerator[mask]/denominator[mask] - 1.0/n
 
-            if self.sparse:
-                self._vov = sps.lil_matrix(self._vov.flatten(),
-                                           self._vov.shape)
+        if self.sparse:
+            self._vov = sps.lil_matrix(self._vov.flatten(),
+                                        self._vov.shape)
 
         if self.sparse:
             return np.reshape(self._vov.toarray(), self.shape)
@@ -600,9 +609,6 @@ class Tally(IDManagerMixin):
 
     @property
     def m3(self):
-        if not self._higher_moments:
-            raise ValueError("Third central moment is not available unless "
-                             "higher_moments is True.")
         n = self.num_realizations
         mean = self.mean
         sum2 = self.sum_sq/n
@@ -612,9 +618,6 @@ class Tally(IDManagerMixin):
 
     @property
     def m4(self):
-        if not self._higher_moments:
-            raise ValueError("Fourth central moment is not available unless "
-                             "higher_moments is True.")
         n = self.num_realizations
         mean = self.mean
         sum2 = self.sum_sq/n

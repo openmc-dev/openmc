@@ -174,7 +174,6 @@ def _tally_from_data(x, *, higher_moments=True, normality=True):
     t._results_read = True  # don't try to read from disk
     t._num_realizations = int(len(x))  # n
     t.higher_moments = bool(higher_moments)
-    t.normality_tests = bool(normality)
 
     x = np.asarray(x, dtype=float)
     # (num_filter_bins=1, num_nuclides=1, num_scores=1) -> (1,1,1) arrays

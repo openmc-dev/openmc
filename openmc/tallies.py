@@ -107,8 +107,6 @@ class Tally(IDManagerMixin):
         An array containing the variance of the variance for each tally bin
     higher_moments : bool
         Whether or not the tally accumulates the sums third and fourth to compute higher-order moments
-    normality_tests : bool
-        Whether or not normality tests are enabled for this tally
     figure_of_merit : numpy.ndarray
         An array containing the figure of merit for each bin
 
@@ -149,7 +147,6 @@ class Tally(IDManagerMixin):
         self._std_dev = None
         self._vov = None
         self._higher_moments = False
-        self._normality_tests = False
         self._simulation_time = None
         self._with_batch_statistics = False
         self._derived = False
@@ -248,15 +245,6 @@ class Tally(IDManagerMixin):
     def higher_moments(self, value):
         cv.check_type("higher_moments", value, bool)
         self._higher_moments = value
-
-    @property
-    def normality_tests(self):
-        return self._normality_tests
-
-    @normality_tests.setter
-    def normality_tests(self, value):
-        cv.check_type("normality_tests", value, bool)
-        self._normality_tests = value
 
     @property
     def filters(self):

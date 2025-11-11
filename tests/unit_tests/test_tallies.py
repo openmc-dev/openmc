@@ -280,14 +280,16 @@ def test_ztests_scipy_comparison():
 
     # -------- Normal dataset (should not reject) --------
     t0 = _tally_from_data(x_norm, higher_moments=True, normality=True)
-    stats0 = t0.normaltest(alternative="two-sided")
+    Zb1_0, p_skew_0 = t0.skewtest(alternative="two-sided")
+    Zb2_0, p_kurt_0 = t0.kurtosistest(alternative="two-sided")
+    K2_0, p_omni_0 = t0.normaltest(alternative="two-sided")
 
-    Zb1_0 = np.asarray(stats0["skewstat"]).ravel()[0]
-    p_skew_0 = np.asarray(stats0["skew_pvalue"]).ravel()[0]
-    Zb2_0 = np.asarray(stats0["kurtstat"]).ravel()[0]
-    p_kurt_0 = np.asarray(stats0["kurt_pvalue"]).ravel()[0]
-    K2_0 = np.asarray(stats0["statistic"]).ravel()[0]
-    p_omni_0 = np.asarray(stats0["pvalue"]).ravel()[0]
+    Zb1_0 = Zb1_0.ravel()[0]
+    p_skew_0 = p_skew_0.ravel()[0]
+    Zb2_0 = Zb2_0.ravel()[0]
+    p_kurt_0 = p_kurt_0.ravel()[0]
+    K2_0 = K2_0.ravel()[0]
+    p_omni_0 = p_omni_0.ravel()[0]
 
     z_skew_sp0, p_skew_sp0 = sps.skewtest(x_norm)
     z_kurt_sp0, p_kurt_sp0 = sps.kurtosistest(x_norm)
@@ -302,15 +304,18 @@ def test_ztests_scipy_comparison():
 
     # -------- Exponential dataset (should strongly reject) --------
     t1 = _tally_from_data(x_exp, higher_moments=True, normality=True)
-    stats1 = t1.normaltest(alternative="two-sided")
 
-    Zb1_1 = np.asarray(stats1["skewstat"]).ravel()[0]
-    p_skew_1 = np.asarray(stats1["skew_pvalue"]).ravel()[0]
-    Zb2_1 = np.asarray(stats1["kurtstat"]).ravel()[0]
-    p_kurt_1 = np.asarray(stats1["kurt_pvalue"]).ravel()[0]
-    K2_1 = np.asarray(stats1["statistic"]).ravel()[0]
-    p_omni_1 = np.asarray(stats1["pvalue"]).ravel()[0]
-    
+    Zb1_1, p_skew_1 = t1.skewtest(alternative="two-sided")
+    Zb2_1, p_kurt_1 = t1.kurtosistest(alternative="two-sided")
+    K2_1, p_omni_1 = t1.normaltest(alternative="two-sided")
+
+    Zb1_1 = Zb1_1.ravel()[0]
+    p_skew_1 = p_skew_1.ravel()[0]
+    Zb2_1 = Zb2_1.ravel()[0]
+    p_kurt_1 = p_kurt_1.ravel()[0]
+    K2_1 = K2_1.ravel()[0]
+    p_omni_1 = p_omni_1.ravel()[0]
+
     z_skew_sp1, p_skew_sp1 = sps.skewtest(x_exp)
     z_kurt_sp1, p_kurt_sp1 = sps.kurtosistest(x_exp)
     k2_sp1, p_omni_sp1 = sps.normaltest(x_exp)

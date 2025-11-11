@@ -929,57 +929,6 @@ class Tally(IDManagerMixin):
         p = chi2.sf(K2, df=2)
         return K2, p
 
-    def print_normality_report(self, sig_level: float = 0.05,
-                               alternative: str = "two-sided", bin_index=None):
-
-        stats = self.normaltest(alternative=alternative)
-        if stats is None:
-            print("Normality tests not available")
-            return
-
-        # Helper to select a single bin from possibly-scalar/array stats
-        def _sel(x, idx):
-            try:
-                arr = np.asarray(x)
-            except Exception:
-                return x
-            if arr.ndim == 0 or idx is None:
-                return x
-            return arr.flat[idx]
-
-        # Determine which bins to print
-        K2_all = np.atleast_1d(stats["statistic"])
-        n_bins = K2_all.size
-
-        if bin_index is None:
-            indices = range(n_bins)
-        elif isinstance(bin_index, (list, tuple, np.ndarray)):
-            indices = bin_index
-        else:
-            indices = [int(bin_index)]
-
-        for i in indices:
-            if i < 0 or i >= n_bins:
-                print(f"[skip] bin {i} out of range 0..{n_bins-1}")
-                continue
-
-            n      = _sel(stats["n"], i)
-            Z1     = _sel(stats["skewstat"], i)
-            p_s    = _sel(stats["skew_pvalue"], i)
-            Z2     = _sel(stats["kurtstat"], i)
-            p_k    = _sel(stats["kurt_pvalue"], i)
-            K2     = _sel(stats["statistic"], i)
-            p_K2   = _sel(stats["pvalue"], i)
-
-            verdict = "reject H0 (non-normal)" if (p_K2 is not None and p_K2 < sig_level) else "fail to reject H0"
-
-            # Print a short summary per bin
-            print(
-                f"[bin {i}] n={int(n)} | skew Z={float(Z1):.3f} (p={float(p_s):.3g}) | "
-                f"kurt Z={float(Z2):.3f} (p={float(p_k):.3g}) | "
-                f"K2={float(K2):.3f} (p={float(p_K2):.3g}) -> {verdict}"
-            )
-
     @property
     def figure_of_merit(self):
         mean = self.mean

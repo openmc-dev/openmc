@@ -674,14 +674,14 @@ class TemporarySession:
         self.orig_dir = Path.cwd()
 
         if self.cwd is None:
-            # Set up temporary directory
+            # Set up temporary directory on rank 0
             if self.comm.rank == 0:
                 self.tmp_dir = TemporaryDirectory()
                 path_str = self.tmp_dir.name
             else:
                 path_str = None
 
-            # Broadcast the string path
+            # Broadcast the path so that all ranks use the same directory
             path_str = self.comm.bcast(path_str)
             working_dir = Path(path_str)
         else:
@@ -709,6 +709,7 @@ class TemporarySession:
         finally:
             os.chdir(self.orig_dir)
 
+            # Make sure all ranks have finalized before deleting temporary dir
             self.comm.barrier()
             if hasattr(self, 'tmp_dir'):
                 self.tmp_dir.cleanup()

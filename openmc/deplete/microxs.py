@@ -170,12 +170,14 @@ def get_microxs_and_flux(
         # Reinitialize with tallies
         openmc.lib.init(intracomm=comm)
 
-    # create temporary run
     with TemporaryDirectory() as temp_dir:
+        # Indicate to run in temporary directory unless being executed through
+        # openmc.lib, in which case we don't need to specify the cwd
         run_kwargs = dict(run_kwargs) if run_kwargs else {}
         if not openmc.lib.is_initialized:
             run_kwargs.setdefault('cwd', temp_dir)
 
+        # Run transport simulation
         statepoint_path = model.run(**run_kwargs)
 
         if comm.rank == 0:
@@ -188,9 +190,10 @@ def get_microxs_and_flux(
             if path_input is not None:
                 model.export_to_model_xml(path_input)
 
-        # Broadcast updated path to statepoint to all ranks
+        # Broadcast updated statepoint path to all ranks
         statepoint_path = comm.bcast(statepoint_path)
 
+        # Read in tally results (on all ranks)
         with StatePoint(statepoint_path) as sp:
             if reaction_rate_mode == 'direct':
                 rr_tally = sp.tallies[rr_tally.id]

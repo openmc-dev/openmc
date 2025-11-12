@@ -202,6 +202,8 @@ class R2SManager:
         """
 
         if output_dir is None:
+            # Create timestamped output directory and broadcast to all ranks for
+            # consistency (different ranks may have slightly different times)
             stamp = datetime.now().strftime('%Y-%m-%dT%H-%M-%S')
             output_dir = Path(comm.bcast(f'r2s_{stamp}'))
 
@@ -303,7 +305,8 @@ class R2SManager:
         micro_kwargs.setdefault('path_statepoint', output_dir / 'statepoint.h5')
         micro_kwargs.setdefault('path_input', output_dir / 'model.xml')
 
-        # Run neutron transport and get fluxes and micros
+        # Run neutron transport and get fluxes and micros. Run via openmc.lib to
+        # maintain a consistent parallelism strategy with the activation step.
         with TemporarySession():
             self.results['fluxes'], self.results['micros'] = get_microxs_and_flux(
                 self.neutron_model, domains, **micro_kwargs)

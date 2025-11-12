@@ -201,6 +201,12 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
           write_attribute(tally_group, "multiply_density", 0);
         }
 
+        if (tally->higher_moments()) {
+          write_attribute(tally_group, "higher_moments", 1);
+        } else {
+          write_attribute(tally_group, "higher_moments", 0);
+        }
+
         if (tally->estimator_ == TallyEstimator::ANALOG) {
           write_dataset(tally_group, "estimator", "analog");
         } else if (tally->estimator_ == TallyEstimator::TRACKLENGTH) {
@@ -264,12 +270,13 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
         for (const auto& tally : model::tallies) {
           if (!tally->writable_)
             continue;
-          // Write sum and sum_sq for each bin
+
+          // Write results for each bin
           std::string name = "tally " + std::to_string(tally->id_);
           hid_t tally_group = open_group(tallies_group, name.c_str());
           auto& results = tally->results_;
           write_tally_results(tally_group, results.shape()[0],
-            results.shape()[1], results.data());
+            results.shape()[1], results.shape()[2], results.data());
           close_group(tally_group);
         }
       } else {
@@ -509,7 +516,8 @@ extern "C" int openmc_statepoint_load(const char* filename)
         } else {
           auto& results = tally->results_;
           read_tally_results(tally_group, results.shape()[0],
-            results.shape()[1], results.data());
+            results.shape()[1], results.shape()[2], results.data());
+
           read_dataset(tally_group, "n_realizations", tally->n_realizations_);
           close_group(tally_group);
         }
@@ -1001,7 +1009,8 @@ void write_tally_results_nr(hid_t file_id)
 
       // Write reduced tally results to file
       auto shape = results_copy.shape();
-      write_tally_results(tally_group, shape[0], shape[1], results_copy.data());
+      write_tally_results(
+        tally_group, shape[0], shape[1], shape[2], results_copy.data());
 
       close_group(tally_group);
     } else {

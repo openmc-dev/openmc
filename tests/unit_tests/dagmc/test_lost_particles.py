@@ -62,7 +62,7 @@ def broken_dagmc_model(request):
     return model
 
 
-def test_lost_particles(run_in_tmpdir, broken_dagmc_model):
+def test_lost_particles(broken_dagmc_model):
     broken_dagmc_model.export_to_xml()
     # ensure that particles will be lost when cell intersections can't be found
     # due to the removed triangles in this model
@@ -70,12 +70,12 @@ def test_lost_particles(run_in_tmpdir, broken_dagmc_model):
         openmc.run()
 
     # run this again, but with the dagmc universe as the root unvierse
+    # to ensure that lost particles are still caught in this case
     for univ in broken_dagmc_model.geometry.get_all_universes().values():
         if isinstance(univ, openmc.DAGMCUniverse):
-            broken_dagmc_model.geometry.root_unvierse = univ
+            broken_dagmc_model.geometry.root_universe = univ
             break
 
     broken_dagmc_model.export_to_xml()
     with pytest.raises(RuntimeError, match='Maximum number of lost particles has been reached.'):
         openmc.run()
-

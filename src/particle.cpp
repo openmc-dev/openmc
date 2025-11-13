@@ -8,6 +8,7 @@
 #include "openmc/bank.h"
 #include "openmc/capi.h"
 #include "openmc/cell.h"
+#include "openmc/collision_track.h"
 #include "openmc/constants.h"
 #include "openmc/dagmc.h"
 #include "openmc/error.h"
@@ -349,6 +350,11 @@ void Particle::event_collide()
     collision(*this);
   } else {
     collision_mg(*this);
+  }
+
+  // Collision track feature to recording particle interaction
+  if (settings::collision_track) {
+    collision_track_record(*this);
   }
 
   // Score collision estimator tallies -- this is done after a collision

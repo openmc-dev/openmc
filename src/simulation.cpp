@@ -2,6 +2,7 @@
 
 #include "openmc/bank.h"
 #include "openmc/capi.h"
+#include "openmc/collision_track.h"
 #include "openmc/container_util.h"
 #include "openmc/eigenvalue.h"
 #include "openmc/error.h"
@@ -9,7 +10,6 @@
 #include "openmc/geometry_aux.h"
 #include "openmc/ifp.h"
 #include "openmc/material.h"
-#include "openmc/mcpl_interface.h"
 #include "openmc/message_passing.h"
 #include "openmc/nuclide.h"
 #include "openmc/output.h"
@@ -118,6 +118,7 @@ int openmc_simulation_init()
   // Reset global variables -- this is done before loading state point (as that
   // will potentially populate k_generation and entropy)
   simulation::current_batch = 0;
+  simulation::ct_current_file = 1;
   simulation::ssw_current_file = 1;
   simulation::k_generation.clear();
   simulation::entropy.clear();
@@ -297,6 +298,7 @@ namespace openmc {
 
 namespace simulation {
 
+int ct_current_file;
 int current_batch;
 int current_gen;
 bool initialized {false};
@@ -346,6 +348,11 @@ void allocate_banks()
   if (settings::surf_source_write) {
     // Allocate surface source bank
     simulation::surf_source_bank.reserve(settings::ssw_max_particles);
+  }
+
+  if (settings::collision_track) {
+    // Allocate collision track bank
+    collision_track_reserve_bank();
   }
 }
 
@@ -489,6 +496,10 @@ void finalize_batch()
       }
       ++simulation::ssw_current_file;
     }
+  }
+  // Write collision track file if requested
+  if (settings::collision_track) {
+    collision_track_flush_bank();
   }
 }
 

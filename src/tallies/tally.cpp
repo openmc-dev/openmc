@@ -107,6 +107,9 @@ Tally::Tally(pugi::xml_node node)
     multiply_density_ = get_node_value_bool(node, "multiply_density");
   }
 
+  if (check_for_node(node, "higher_moments")) {
+    higher_moments_ = get_node_value_bool(node, "higher_moments");
+  }
   // =======================================================================
   // READ DATA FOR FILTERS
 
@@ -800,7 +803,11 @@ void Tally::init_triggers(pugi::xml_node node)
 void Tally::init_results()
 {
   int n_scores = scores_.size() * nuclides_.size();
-  results_ = xt::empty<double>({n_filter_bins_, n_scores, 3});
+  if (higher_moments_) {
+    results_ = xt::empty<double>({n_filter_bins_, n_scores, 5});
+  } else {
+    results_ = xt::empty<double>({n_filter_bins_, n_scores, 3});
+  }
 }
 
 void Tally::reset()
@@ -838,14 +845,33 @@ void Tally::accumulate()
       norm = 1.0;
     }
 
-// Accumulate each result
+    // Accumulate each result
+    if (higher_moments_) {
 #pragma omp parallel for
-    for (int i = 0; i < results_.shape()[0]; ++i) {
-      for (int j = 0; j < results_.shape()[1]; ++j) {
-        double val = results_(i, j, TallyResult::VALUE) * norm;
-        results_(i, j, TallyResult::VALUE) = 0.0;
-        results_(i, j, TallyResult::SUM) += val;
-        results_(i, j, TallyResult::SUM_SQ) += val * val;
+      // filter bins (specific cell, energy bins)
+      for (int i = 0; i < results_.shape()[0]; ++i) {
+        // score bins (flux, total reaction rate, fission reaction rate, etc.)
+        for (int j = 0; j < results_.shape()[1]; ++j) {
+          double val = results_(i, j, TallyResult::VALUE) * norm;
+          double val2 = val * val;
+          results_(i, j, TallyResult::VALUE) = 0.0;
+          results_(i, j, TallyResult::SUM) += val;
+          results_(i, j, TallyResult::SUM_SQ) += val2;
+          results_(i, j, TallyResult::SUM_THIRD) += val2 * val;
+          results_(i, j, TallyResult::SUM_FOURTH) += val2 * val2;
+        }
+      }
+    } else {
+#pragma omp parallel for
+      // filter bins (specific cell, energy bins)
+      for (int i = 0; i < results_.shape()[0]; ++i) {
+        // score bins (flux, total reaction rate, fission reaction rate, etc.)
+        for (int j = 0; j < results_.shape()[1]; ++j) {
+          double val = results_(i, j, TallyResult::VALUE) * norm;
+          results_(i, j, TallyResult::VALUE) = 0.0;
+          results_(i, j, TallyResult::SUM) += val;
+          results_(i, j, TallyResult::SUM_SQ) += val * val;
+        }
       }
     }
   }

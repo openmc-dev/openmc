@@ -1,13 +1,11 @@
 """Test the 'collision_track' setting used to store particle information
 during specified collision conditions in a file for a given simulation."""
 
-from pathlib import Path
-
 import openmc
-import openmc.lib
 import pytest
 import h5py
 import numpy as np
+
 from tests.testing_harness import CollisionTrackTestHarness as ctt
 
 
@@ -31,7 +29,7 @@ def geometry():
         {"max_collisions": 200, "material_ids": [1]},
         {"max_collisions": 200, "universe_ids": [1]},
         {"max_collisions": 200, "nuclides": ["H1"]},
-        {"max_collisions": 200, "deposited_E_threshold": 200000},
+        {"max_collisions": 200, "deposited_E_threshold": 200000.0},
         {"max_collisions": 200, "mcpl": True}
 
     ],
@@ -80,20 +78,17 @@ def model():
     return model
 
 
-@pytest.mark.parametrize(
-    "parameter",
-    [
-        {"max_collisions": 200, "reactions": ["elastic"], "cell_ids": [1, 2]},
-
-    ],
-)
-def test_particle_location(parameter, run_in_tmpdir, model):
+def test_particle_location(run_in_tmpdir, model):
     """Test the location of particles with respected to the "cell_ids"
     and the location x, y, z of the particle itself. the upper sphere will
     have positive z component and the bottom sphere a negative z compnent.
 
     """
-    model.settings.collision_track = parameter
+    model.settings.collision_track = {
+        "max_collisions": 200,
+        "reactions": ["elastic"],
+        "cell_ids": [1, 2]
+    }
     model.run()
 
     with h5py.File("collision_track.h5", "r") as f:
@@ -115,19 +110,13 @@ def test_particle_location(parameter, run_in_tmpdir, model):
 
 
 def test_format_similarity(run_in_tmpdir, model):
-
     model.settings.collision_track = {"max_collisions": 200, "reactions": ['elastic'],
                                       "cell_ids": [1, 2], "mcpl": False}
-
     model.run()
-
     data_h5 = ctt._return_collision_track_data('collision_track.h5')
 
-    model.settings.collision_track = {"max_collisions": 200, "reactions": ['elastic'],
-                                      "cell_ids": [1, 2], "mcpl": True}
-
+    model.settings.collision_track["mcpl"] = True
     model.run()
-
     data_mcpl = ctt._return_collision_track_data('collision_track.mcpl')
 
     assert len(data_h5) == 60

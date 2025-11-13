@@ -6,7 +6,6 @@ from numbers import Real
 from pathlib import Path
 import warnings
 from typing import Any
-from pathlib import Path
 
 import lxml.etree as ET
 import numpy as np
@@ -1381,7 +1380,7 @@ def read_collision_track_file(filename):
 
     filename = Path(filename)
     if filename.suffix not in ('.h5', '.mcpl'):
-        raise ValueError('Retina file must have a .h5 or .mcpl extension.')
+        raise ValueError('Collision track file must have a .h5 or .mcpl extension.')
 
     if filename.suffix == '.h5':
         return read_collision_track_hdf5(filename)

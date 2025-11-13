@@ -967,11 +967,6 @@ void read_settings_xml(pugi::xml_node root)
     if (check_for_node(node_ct, "nuclides")) {
       auto temp = get_node_array<std::string>(node_ct, "nuclides");
       for (const auto& b : temp) {
-        // if (openmc::data::nuclide_map.find(b) ==
-        // openmc::data::nuclide_map.end()) {
-        //   fatal_error("Could not find nuclide " + b + " in the nuclear data
-        //   library.");
-        // }
         collision_track_config.nuclides.insert(b);
       }
     }

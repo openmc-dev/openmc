@@ -381,7 +381,8 @@ class PyAPITestHarness(TestHarness):
         """Delete XMLs, statepoints, tally, and test files."""
         super()._cleanup()
         output = ['materials.xml', 'geometry.xml', 'settings.xml',
-                  'tallies.xml', 'plots.xml', 'inputs_test.dat', 'model.xml', 'collision_track.h5']
+                  'tallies.xml', 'plots.xml', 'inputs_test.dat', 'model.xml',
+                  'collision_track.h5', 'collision_track.mcpl']
         for f in output:
             if os.path.exists(f):
                 os.remove(f)
@@ -607,21 +608,20 @@ class CollisionTrackTestHarness(PyAPITestHarness):
 
         # Read source file
         source = openmc.read_collision_track_file(filepath)
-        N = len(source)
-        for j in range(N):
-            r = source['r'][j]
-            u = source['u'][j]
-            e = source['E'][j]
-            de = source['dE'][j]
-            time = source['time'][j]
-            wgt = source['wgt'][j]
-            delayed_group = source['delayed_group'][j]
-            cell_id = source['cell_id'][j]
-            nuclide_id = source['nuclide_id'][j]
-            material_id = source['material_id'][j]
-            universe_id = source['universe_id'][j]
-            n_collision = source['n_collision'][j]
-            event_mt = source['event_mt'][j]
+        for src in source:
+            r = src['r']
+            u = src['u']
+            e = src['E']
+            de = src['dE']
+            time = src['time']
+            wgt = src['wgt']
+            delayed_group = src['delayed_group']
+            cell_id = src['cell_id']
+            nuclide_id = src['nuclide_id']
+            material_id = src['material_id']
+            universe_id = src['universe_id']
+            n_collision = src['n_collision']
+            event_mt = src['event_mt']
             key = (
                 f"{r[0]:.10e} {r[1]:.10e} {r[2]:.10e} {u[0]:.10e} {u[1]:.10e} {u[2]:.10e}"
                 f"{e:.10e} {de:.10e}  {time:.10e} {wgt:.10e} {event_mt} {delayed_group} {cell_id}"

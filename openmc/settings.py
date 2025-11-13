@@ -2044,22 +2044,14 @@ class Settings:
                         'deposited_E_threshold', 'max_collisions', "max_collision_track_files", 'mcpl'):
                 value = get_text(elem, key)
                 if value is not None:
-                    if key == 'cell_ids':
+                    if key in ('cell_ids', 'universe_ids', 'material_ids'):
                         value = [int(x) for x in value.split()]
-                    elif key == 'reactions':
+                    elif key in ('reactions', 'nuclides'):
                         value = value.split()
-                    elif key == 'universe_ids':
-                        value = [int(x) for x in value.split()]
-                    elif key == 'material_ids':
-                        value = [int(x) for x in value.split()]
-                    elif key == 'nuclides':
-                        value = value.split()
-                    elif key in ('deposited_E_threshold'):
+                    elif key in ('max_collisions', 'max_collision_track_files'):
+                        value = int(value)
+                    elif key == 'deposited_E_threshold':
                         value = float(value)
-                    elif key in ('max_collisions'):
-                        value = int(value)
-                    elif key in ('max_collision_track_files'):
-                        value = int(value)
                     elif key == 'mcpl':
                         value = value in ('true', '1')
                     self.collision_track[key] = value

@@ -60,16 +60,11 @@ TODO:
 """
 
 import os
-import shutil
-from pathlib import Path
 
-import h5py
-import numpy as np
 import openmc
 import openmc.lib
 import pytest
 
-from tests.testing_harness import PyAPITestHarness
 from tests.testing_harness import CollisionTrackTestHarness
 from tests.regression_tests import config
 
@@ -242,7 +237,7 @@ def test_collision_track_several_cases(
     harness.main()
 
 
-@pytest.mark.skipif(config["event"] is True, reason="Results from history-based mode.")
+@pytest.mark.skipif(config["event"], reason="Results from history-based mode.")
 def test_collision_track_2threads(model_1, two_threads, single_process):
     # This test checks that the `max_collisions` setting is honored:
     # no collisions beyond the specified limit should be recorded.

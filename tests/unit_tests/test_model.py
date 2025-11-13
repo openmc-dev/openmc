@@ -91,13 +91,14 @@ def pin_model_attributes():
     chain_file_xml = """<?xml version="1.0"?>
 <depletion_chain>
   <nuclide name="Xe136" decay_modes="0" reactions="0" />
+  <nuclide name="Xe135" decay_modes="0" reactions="0" />
   <nuclide name="U235" decay_modes="0" reactions="1">
     <reaction type="fission" Q="200000000."/>
     <neutron_fission_yields>
       <energies>2.53000e-02</energies>
       <fission_yields energy="2.53000e-02">
-        <products>Xe136</products>
-        <data>1.0</data>
+        <products>Xe135 Xe136</products>
+        <data>1.0 1.0</data>
       </fission_yields>
     </neutron_fission_yields>
   </nuclide>

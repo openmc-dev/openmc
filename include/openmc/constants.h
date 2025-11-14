@@ -323,10 +323,20 @@ enum TallyScore {
   SCORE_FISS_Q_PROMPT = -14,      // prompt fission Q-value
   SCORE_FISS_Q_RECOV = -15,       // recoverable fission Q-value
   SCORE_DECAY_RATE = -16,         // delayed neutron precursor decay rate
-  SCORE_PULSE_HEIGHT = -17,       // pulse-height
-  SCORE_IFP_TIME_NUM = -18,       // IFP lifetime numerator
-  SCORE_IFP_BETA_NUM = -19,       // IFP delayed fraction numerator
-  SCORE_IFP_DENOM = -20           // IFP common denominator
+  SCORE_PULSE_HEIGHT = -17,                  // pulse-height
+  SCORE_IFP_TIME_NUM = -18,                  // IFP lifetime numerator
+  SCORE_IFP_BETA_NUM = -19,                  // IFP delayed fraction numerator
+  SCORE_IFP_DENOM = -20,                     // IFP common denominator
+  SCORE_PROMPT_CHAIN_FLUX = -21,             // flux from prompt chains
+  SCORE_DELAYED_CHAIN_FLUX = -22,            // flux from delayed chains
+  SCORE_PROMPT_CHAIN_NU_FISSION = -23,       // nu-fission from prompt chains
+  SCORE_DELAYED_CHAIN_NU_FISSION = -24,      // nu-fission from delayed chains
+  SCORE_PROMPT_CHAIN_GEN_TIME_NUM = -25,     // prompt gen time numerator
+  SCORE_PROMPT_CHAIN_GEN_TIME_DENOM = -26,   // prompt gen time denominator
+  SCORE_PROMPT_CHAIN_NU_FISSION_RATE = -27,  // prompt nu-fission rate
+  SCORE_PROMPT_CHAIN_ABSORPTION_RATE = -28,  // prompt absorption rate
+  SCORE_PROMPT_CHAIN_POPULATION = -29,       // prompt neutron population
+  SCORE_PROMPT_CHAIN_LEAKAGE_RATE = -30      // prompt leakage rate
 };
 
 // Global tally parameters

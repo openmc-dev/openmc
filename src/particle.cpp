@@ -150,6 +150,20 @@ void Particle::from_source(const SourceSite* src)
   parent_nuclide() = src->parent_nuclide;
   delayed_group() = src->delayed_group;
 
+  // Initialize lineage flag for kinetics calculations
+  has_delayed_ancestor() = src->has_delayed_ancestor;
+  // If IFP is on and tracking beta, check ancestor history
+  if (settings::ifp_on && is_beta_effective_or_both()) {
+    const auto& delayed_groups =
+      simulation::ifp_source_delayed_group_bank[current_work() - 1];
+    for (auto dg : delayed_groups) {
+      if (dg > 0) {
+        has_delayed_ancestor() = true;
+        break;
+      }
+    }
+  }
+
   // Convert signed surface ID to signed index
   if (src->surf_id != SURFACE_NONE) {
     int index_plus_one = model::surface_map[std::abs(src->surf_id)] + 1;

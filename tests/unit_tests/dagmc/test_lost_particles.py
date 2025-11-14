@@ -62,7 +62,7 @@ def broken_dagmc_model(request):
     return model
 
 
-def test_lost_particles(broken_dagmc_model):
+def test_lost_particles(run_in_tmpdir, broken_dagmc_model):
     broken_dagmc_model.export_to_xml()
     # ensure that particles will be lost when cell intersections can't be found
     # due to the removed triangles in this model

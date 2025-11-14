@@ -47,14 +47,14 @@ public:
     array<double, 2> score_acc; //!< Scores and squared scores accumulator
     int32_t index;              //!< Material ID
 
-    inline VolTally(const int& i_material = 0, const double& contrib = 0.0,
-      const double& score_acc_ = 0.0, const double& score2_acc_ = 0.0);
+    inline VolTally(const int i_material = 0, const double contrib = 0.0,
+      const double score_acc_ = 0.0, const double score2_acc_ = 0.0);
 
     // private:
     //! \brief Add batch scores means to a tally
     //! \param[in] batch_size_1 Inversed batch size
     //! \param[in] vol_tallies  All tallies
-    inline void finalize_batch(const double& batch_size_1);
+    inline void finalize_batch(const double batch_size_1);
 
     //! \brief Pass counters data from a given tally to this
     //! \param[in] vol_tally Data source
@@ -72,7 +72,7 @@ public:
     //! \param[in] n_samples    Statistics size
     //! \return                 True if trigger condition is satisfied
     inline bool trigger_state(const TriggerMetric trigger_type,
-      const double& threshold, const size_t& n_samples) const;
+      const double threshold, const size_t& n_samples) const;
   };
 
   //! \brief Online calculation results specific for each thread
@@ -96,7 +96,7 @@ public:
     void reset();
 
     //! \brief Append another counters to this
-    void append(CalcResults& other);
+    void append(const CalcResults& other);
 
 #ifdef OPENMC_MPI
     //! \brief Collects results from all MPI processes to this
@@ -124,7 +124,7 @@ public:
   //! \param[in] contrib         Scoring value
   //! \param[in,out] vol_tallies Vector of tallies corresponding to each
   //! material
-  void check_hit(const int32_t& i_material, const double& contrib,
+  void check_hit(const int32_t i_material, const double contrib,
     vector<VolTally>& vol_tallies) const;
 
   //! \brief Reduce vector of volumetric tallies from each thread to a single
@@ -213,7 +213,7 @@ private:
   //! \param[in] vol_tally    Tally
   //! \return                 Array of mean and stddev
   array<double, 2> get_tally_results(const size_t& n_samples,
-    const double& coeff_norm, const VolTally& vol_tally) const;
+    const double coeff_norm, const VolTally& vol_tally) const;
 };
 
 //==============================================================================
@@ -236,8 +236,8 @@ public:
   //! contain the reciprocal chord lenght and may contain stat. weight, etc.
   //! \param[in] vol_calc  Volume calculation parameters
   //! \param[in,out] results  Tallies for scoring during tracing etc.
-  VolEstRay(Position& r, Direction& u, const double& dist,
-    const double& coeff_mult, const VolumeCalculation& vol_calc,
+  VolEstRay(Position& r, Direction& u, const double dist,
+    const double coeff_mult, const VolumeCalculation& vol_calc,
     VolumeCalculation::CalcResults& results)
     : Ray(r, u), traversal_distance_max_(dist), coeff_mult_(coeff_mult),
       vol_calc_(vol_calc), results_(results)
@@ -265,7 +265,7 @@ private:
   //! \param[in] id_mat  Material ID required due to the material() and
   //! material_lst() disagreement (see the on_intersection() body for details)
   inline void vol_scoring(const VolumeCalculation::EstMode mode,
-    const double& score, const int& id_mat);
+    const double score, const int id_mat);
 
   //! \brief Returns a pointer to either current point location cell or last ray
   //! segment cell

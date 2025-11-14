@@ -204,8 +204,8 @@ void VolumeCalculation::execute(CalcResults& master_results) const
 
         switch (mode_) {
         case EstMode::REJECTION: {
-          Direction u {
-            1. / std::sqrt(3.), 1. / std::sqrt(3.), 1. / std::sqrt(3.)};
+          constexpr double flt3 = 1. / std::sqrt(3.);
+          Direction u {flt3, flt3, flt3};
 
           // Create zero-length ray, it is a bit excessive due to undemanded
           // internal ray variables initialization
@@ -268,7 +268,7 @@ void VolumeCalculation::execute(CalcResults& master_results) const
 
     if (!stop_calc) {
       // Compute current trigger state among totals (0th elements) only
-      for (auto& vt : master_results.vol_tallies) {
+      for (const auto& vt : master_results.vol_tallies) {
         stop_calc = vt[0].trigger_state(
           trigger_type_, threshold_cnd_, master_results.n_samples);
         if (!stop_calc)
@@ -307,7 +307,7 @@ void VolumeCalculation::execute(CalcResults& master_results) const
         xt::xtensor<double, 2> atoms({n_nuc, 2}, 0.0);
 
         for (int j = 0; j < master_results.vol_tallies[i_domain].size(); ++j) {
-          int i_material = master_results.vol_tallies[i_domain][j].index;
+          const int i_material = master_results.vol_tallies[i_domain][j].index;
           if (i_material == MATERIAL_VOID || i_material == _INDEX_TOTAL)
             continue;
 
@@ -522,8 +522,8 @@ void VolumeCalculation::to_hdf5(
   file_close(file_id);
 }
 
-void VolumeCalculation::check_hit(const int32_t& i_material,
-  const double& contrib, vector<VolTally>& vol_tallies) const
+void VolumeCalculation::check_hit(const int32_t i_material,
+  const double contrib, vector<VolTally>& vol_tallies) const
 {
   // Contribute to entire domain result tally
   vol_tallies[0].score += contrib;
@@ -571,8 +571,8 @@ void VolumeCalculation::reduce_results(
       for (int j = 0; j < local_vol_tall.size(); ++j) {
         // Check if this material has been added to the master list and if
         // so, accumulate scores
-        auto ind {local_vol_tall[j].index};
-        auto it = std::find_if(vol_tall.begin(), vol_tall.end(),
+        const auto ind {local_vol_tall[j].index};
+        const auto it = std::find_if(vol_tall.begin(), vol_tall.end(),
           [ind](const VolTally& vt) { return vt.index == ind; });
         if (it == vol_tall.end()) {
           vol_tall.push_back(local_vol_tall[j]);
@@ -723,7 +723,7 @@ void VolumeCalculation::CalcResults::reset()
   }
 }
 
-void VolumeCalculation::CalcResults::append(CalcResults& other)
+void VolumeCalculation::CalcResults::append(const CalcResults& other)
 {
   n_samples += other.n_samples;
   n_rays += other.n_rays;
@@ -736,7 +736,7 @@ void VolumeCalculation::CalcResults::append(CalcResults& other)
   for (auto id = 0; id < vol_tallies.size(); id++) {
     // Merging current domain vector from other.vol_tallies into this via
     // pair-wise comparisons
-    for (auto& vt_other : other.vol_tallies[id]) {
+    for (const auto& vt_other : other.vol_tallies[id]) {
       bool already_appended = false;
       for (auto& vt : vol_tallies[id]) {
         if (vt.index == vt_other.index) {
@@ -751,8 +751,8 @@ void VolumeCalculation::CalcResults::append(CalcResults& other)
   }
 }
 
-inline VolumeCalculation::VolTally::VolTally(const int& i_material,
-  const double& contrib, const double& score_acc_, const double& score2_acc_)
+inline VolumeCalculation::VolTally::VolTally(const int i_material,
+  const double contrib, const double score_acc_, const double score2_acc_)
 {
   score = contrib;
   score_acc[0] = score_acc_;
@@ -761,7 +761,7 @@ inline VolumeCalculation::VolTally::VolTally(const int& i_material,
 }
 
 inline void VolumeCalculation::VolTally::finalize_batch(
-  const double& batch_size_1)
+  const double batch_size_1)
 {
   if (score != 0.) {
     score *= batch_size_1;
@@ -786,7 +786,7 @@ inline void VolumeCalculation::VolTally::append_tally(const VolTally& vol_tally)
 }
 
 inline bool VolumeCalculation::VolTally::trigger_state(
-  const TriggerMetric trigger_type, const double& threshold,
+  const TriggerMetric trigger_type, const double threshold,
   const size_t& n_samples) const
 {
   // For sample contribution to volume fraction limited by 1, maximal allowed
@@ -811,7 +811,7 @@ inline bool VolumeCalculation::VolTally::trigger_state(
 }
 
 array<double, 2> VolumeCalculation::get_tally_results(const size_t& n_samples,
-  const double& coeff_norm, const VolTally& vol_tally) const
+  const double coeff_norm, const VolTally& vol_tally) const
 {
   array<double, 2> volume;
   const double ns_1 = 1. / static_cast<double>(n_samples);
@@ -895,7 +895,7 @@ void VolEstRay::score_hit()
 }
 
 void VolEstRay::vol_scoring(
-  const VolumeCalculation::EstMode mode, const double& score, const int& id_mat)
+  const VolumeCalculation::EstMode mode, const double score, const int id_mat)
 {
   const auto n_domains = vol_calc_.domain_ids_.size();
 

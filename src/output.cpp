@@ -554,6 +554,23 @@ void print_results()
     std::tie(mean, stdev) = mean_stdev(&gt(GlobalTally::LEAKAGE, 0), n);
     fmt::print(
       " Leakage Fraction            = {:.5f} +/- {:.5f}\n", mean, t_n1 * stdev);
+
+    // Print delayed neutron kinetics parameters if calculated
+    if (settings::run_mode == RunMode::EIGENVALUE &&
+        settings::calculate_prompt_k) {
+      fmt::print(" k-prompt                    = {:.5f} +/- {:.5f}\n",
+        simulation::keff_prompt, t_n1 * simulation::keff_prompt_std);
+      fmt::print(" Beta-effective              = {:.5f} +/- {:.5f}\n",
+        simulation::beta_eff, t_n1 * simulation::beta_eff_std);
+      if (settings::calculate_alpha) {
+        fmt::print(" Prompt generation time      = {:.6e} +/- {:.6e} s\n",
+          simulation::prompt_gen_time, t_n1 * simulation::prompt_gen_time_std);
+        fmt::print(" Alpha (k-based)             = {:.6e} +/- {:.6e} 1/s\n",
+          simulation::alpha_k_based, t_n1 * simulation::alpha_k_based_std);
+        fmt::print(" Alpha (rate-based)          = {:.6e} +/- {:.6e} 1/s\n",
+          simulation::alpha_rate_based, t_n1 * simulation::alpha_rate_based_std);
+      }
+    }
   } else {
     if (mpi::master)
       warning("Could not compute uncertainties -- only one "
@@ -569,6 +586,22 @@ void print_results()
     }
     fmt::print(" Leakage Fraction           = {:.5f}\n",
       gt(GlobalTally::LEAKAGE, TallyResult::SUM) / n);
+
+    // Print delayed neutron kinetics parameters if calculated (n=1 case)
+    if (settings::run_mode == RunMode::EIGENVALUE &&
+        settings::calculate_prompt_k) {
+      fmt::print(" k-prompt                   = {:.5f}\n",
+        simulation::keff_prompt);
+      fmt::print(" Beta-effective             = {:.5f}\n", simulation::beta_eff);
+      if (settings::calculate_alpha) {
+        fmt::print(" Prompt generation time     = {:.6e} s\n",
+          simulation::prompt_gen_time);
+        fmt::print(" Alpha (k-based)            = {:.6e} 1/s\n",
+          simulation::alpha_k_based);
+        fmt::print(" Alpha (rate-based)         = {:.6e} 1/s\n",
+          simulation::alpha_rate_based);
+      }
+    }
   }
   fmt::print("\n");
   std::fflush(stdout);

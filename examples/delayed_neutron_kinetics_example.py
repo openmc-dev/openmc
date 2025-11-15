@@ -8,6 +8,8 @@ This example shows how to enable calculation of:
 
 The kinetics parameters are automatically calculated during an eigenvalue
 simulation when enabled in the settings.
+
+Author: William Zywiec (willzywiec@gmail.com)
 """
 
 import openmc

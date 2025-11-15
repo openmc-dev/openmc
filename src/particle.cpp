@@ -14,6 +14,7 @@
 #include "openmc/error.h"
 #include "openmc/geometry.h"
 #include "openmc/hdf5_interface.h"
+#include "openmc/ifp.h"
 #include "openmc/material.h"
 #include "openmc/message_passing.h"
 #include "openmc/mgxs_interface.h"

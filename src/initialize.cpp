@@ -15,6 +15,7 @@
 #include "openmc/chain.h"
 #include "openmc/constants.h"
 #include "openmc/cross_sections.h"
+#include "openmc/eigenvalue.h"
 #include "openmc/error.h"
 #include "openmc/file_utils.h"
 #include "openmc/geometry_aux.h"

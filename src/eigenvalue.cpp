@@ -910,7 +910,7 @@ void setup_kinetics_tallies()
 
   // Create internal tally for kinetics parameters
   auto* tally = Tally::create();
-  simulation::kinetics_tally_index = tally->index_;
+  simulation::kinetics_tally_index = tally->index();
   tally->set_writable(false); // Don't write to tallies.out
 
   // Set scores for alpha eigenvalue calculations

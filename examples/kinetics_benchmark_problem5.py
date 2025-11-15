@@ -1,18 +1,23 @@
 """
-Reactor Kinetics Benchmark Problem 5: PWR Fuel Pin Cell
+Reactor Kinetics Benchmark Problem 5: Sub-critical Fast Neutron System
 
 This benchmark problem calculates delayed neutron kinetics parameters for a
-typical Pressurized Water Reactor (PWR) fuel pin cell with water moderator.
-This represents a more realistic reactor configuration with thermal neutron
-spectrum and strong moderation effects.
+sub-critical uranium sphere with exactly half the density of Problem 1 (Godiva).
+This problem demonstrates the difference between static and dynamic criticality
+calculations when the system is significantly sub-critical.
 
 The problem demonstrates:
-- Kinetics parameters in a thermal spectrum environment
-- Effect of moderation on delayed neutron behavior
-- Comparison of beta_eff between fast and thermal systems
-- Alpha eigenvalue sensitivity to spectrum
+- Calculation of k_eff and k_prompt for a deeply sub-critical system
+- How beta_eff behaves in sub-critical configurations
+- Significant differences between static and dynamic alpha eigenvalues
+- Importance of prompt vs delayed neutron contributions in sub-critical systems
+- When the system is far from critical, dynamic results are physically appropriate
 
-Reference: Based on typical PWR pin cell benchmarks
+Reference:
+Cullen, Dermott E., Christopher J. Clouse, Richard Procassini, and Robert C. Little.
+Static and Dynamic Criticality: Are They Different? UCRL-TR-201506.
+Livermore, CA: Lawrence Livermore National Laboratory, November 22, 2003.
+
 Author: William Zywiec (willzywiec@gmail.com)
 """
 
@@ -20,97 +25,55 @@ import openmc
 import numpy as np
 
 print("=" * 70)
-print("Reactor Kinetics Benchmark Problem 5: PWR Fuel Pin Cell")
+print("Problem 5: Sub-critical Fast Neutron System")
 print("=" * 70)
 
 # =============================================================================
 # Materials
 # =============================================================================
 
-# UO2 fuel at 3.1% enrichment (typical PWR fresh fuel)
-uo2 = openmc.Material(name='UO2 Fuel 3.1%')
-uo2.set_density('g/cm3', 10.29)
-uo2.add_nuclide('U235', 0.031)
-uo2.add_nuclide('U238', 0.969)
-uo2.add_element('O', 2.0)
-uo2.temperature = 900.0  # Fuel temperature in K
+# HEU sphere at half the density of Problem 1 - exact specification from Cullen et al. (2003)
+# Density: 9.3999 grams/cc (exactly half of Problem 1: 18.7398 / 2)
+# Composition (atom fractions - same as Problem 1):
+#   U-235: 0.937695
+#   U-238: 0.052053
+#   U-234: 0.010252
+heu_subcritical = openmc.Material(name='HEU Sub-critical')
+heu_subcritical.set_density('g/cm3', 9.3999)
+heu_subcritical.add_nuclide('U235', 0.937695)
+heu_subcritical.add_nuclide('U238', 0.052053)
+heu_subcritical.add_nuclide('U234', 0.010252)
+heu_subcritical.temperature = 293.6  # Room temperature
 
-# Zircaloy-4 cladding
-zirconium = openmc.Material(name='Zircaloy-4')
-zirconium.set_density('g/cm3', 6.56)
-zirconium.add_element('Zr', 0.9821)
-zirconium.add_element('Sn', 0.0145)
-zirconium.add_element('Fe', 0.0021)
-zirconium.add_element('Cr', 0.0010)
-zirconium.add_element('O', 0.0012)
-zirconium.temperature = 600.0
-
-# Water moderator with boron (typical PWR conditions)
-water = openmc.Material(name='Light Water with Boron')
-water.set_density('g/cm3', 0.7405)  # Density at PWR conditions
-water.add_nuclide('H1', 2.0)
-water.add_nuclide('O16', 1.0)
-water.add_element('B', 650e-6)  # 650 ppm boron
-water.add_s_alpha_beta('c_H_in_H2O')
-water.temperature = 600.0
-
-materials = openmc.Materials([uo2, zirconium, water])
+materials = openmc.Materials([heu_subcritical])
 materials.export_to_xml()
 
-print("\nMaterials:")
-print("  UO2 Fuel:")
-print("    Enrichment: 3.1% U-235")
-print("    Density: 10.29 g/cm³")
-print("    Temperature: 900 K")
-print("  Zircaloy-4 Cladding:")
-print("    Density: 6.56 g/cm³")
-print("    Temperature: 600 K")
-print("  Water Moderator:")
-print("    Density: 0.7405 g/cm³")
-print("    Boron concentration: 650 ppm")
-print("    Temperature: 600 K")
+print("\nMaterial: HEU at Half Density (UCRL-TR-201506)")
+print(f"  Density: 9.3999 g/cm³ (half of Problem 1)")
+print(f"  U-235: 0.937695 (atom fraction)")
+print(f"  U-238: 0.052053 (atom fraction)")
+print(f"  U-234: 0.010252 (atom fraction)")
+print(f"  Temperature: 293.6 K")
+print(f"  Note: Same isotopic composition as Problem 1")
 
 # =============================================================================
 # Geometry
 # =============================================================================
 
-# Typical PWR 17x17 lattice dimensions
-fuel_or = 0.4096   # Fuel outer radius (cm)
-clad_ir = 0.4178   # Cladding inner radius (cm)
-clad_or = 0.4750   # Cladding outer radius (cm)
-pitch = 1.26       # Pin pitch (cm)
+# Same geometry as Problem 1 - only density differs
+radius = 8.7407  # cm (same as Problem 1)
 
-# Surfaces
-fuel_surface = openmc.ZCylinder(r=fuel_or)
-clad_inner_surface = openmc.ZCylinder(r=clad_ir)
-clad_outer_surface = openmc.ZCylinder(r=clad_or)
+sphere_surface = openmc.Sphere(r=radius, boundary_type='vacuum')
+sphere_cell = openmc.Cell(fill=heu_subcritical, region=-sphere_surface)
 
-# Cells
-fuel_cell = openmc.Cell(fill=uo2, region=-fuel_surface, name='Fuel')
-gap_cell = openmc.Cell(region=+fuel_surface & -clad_inner_surface, name='Gap')
-clad_cell = openmc.Cell(fill=zirconium, region=+clad_inner_surface & -clad_outer_surface, name='Cladding')
-moderator_cell = openmc.Cell(fill=water, region=+clad_outer_surface, name='Moderator')
-
-# Pin cell universe
-pin_universe = openmc.Universe(cells=[fuel_cell, gap_cell, clad_cell, moderator_cell])
-
-# Create infinite lattice with reflective boundaries for pin cell calculation
-boundary_box = openmc.model.RectangularPrism(
-    width=pitch,
-    height=pitch,
-    boundary_type='reflective'
-)
-root_cell = openmc.Cell(fill=pin_universe, region=-boundary_box)
-
-geometry = openmc.Geometry([root_cell])
+geometry = openmc.Geometry([sphere_cell])
 geometry.export_to_xml()
 
-print(f"\nGeometry: PWR Pin Cell (infinite lattice)")
-print(f"  Fuel pellet radius: {fuel_or} cm")
-print(f"  Cladding inner radius: {clad_ir} cm")
-print(f"  Cladding outer radius: {clad_or} cm")
-print(f"  Pin pitch: {pitch} cm")
-print(f"  Boundary: Reflective (infinite lattice)")
+print(f"\nGeometry: Bare sphere with vacuum boundary")
+print(f"  Radius: {radius} cm (same as Problem 1)")
+print(f"  Characteristics: Homogeneous, fast neutron, very sub-critical")
+print(f"  This problem demonstrates static vs dynamic criticality")
+print(f"  when the system is far from critical.")
 
 # =============================================================================
 # Settings
@@ -118,26 +81,16 @@ print(f"  Boundary: Reflective (infinite lattice)")
 
 settings = openmc.Settings()
 settings.run_mode = 'eigenvalue'
-settings.particles = 10000
+settings.particles = 50000
 settings.batches = 150
-settings.inactive = 30
+settings.inactive = 50
 
-# Distributed source throughout the fuel
-lower_left = (-pitch/2, -pitch/2, -1)
-upper_right = (pitch/2, pitch/2, 1)
-uniform_dist = openmc.stats.Box(lower_left, upper_right)
-settings.source = openmc.IndependentSource(space=uniform_dist)
+# Use a point source at the center of the sphere
+settings.source = openmc.IndependentSource(space=openmc.stats.Point((0, 0, 0)))
 
 # Enable delayed neutron kinetics calculations
 settings.calculate_prompt_k = True
 settings.calculate_alpha = True
-
-# Use Shannon entropy to monitor source convergence
-entropy_mesh = openmc.RegularMesh()
-entropy_mesh.lower_left = (-pitch/2, -pitch/2, -1)
-entropy_mesh.upper_right = (pitch/2, pitch/2, 1)
-entropy_mesh.dimension = (5, 5, 1)
-settings.entropy_mesh = entropy_mesh
 
 settings.export_to_xml()
 
@@ -146,7 +99,8 @@ print(f"  Particles per batch: {settings.particles}")
 print(f"  Total batches: {settings.batches}")
 print(f"  Inactive batches: {settings.inactive}")
 print(f"  Kinetics calculations: ENABLED")
-print(f"  Shannon entropy: ENABLED")
+print(f"")
+print(f"Note: For sub-critical systems, convergence may require more particles")
 
 # =============================================================================
 # Run Simulation
@@ -186,11 +140,17 @@ print(f"Alpha (rate-based):       {sp.alpha_rate_based} 1/s")
 # - Prompt generation time much longer than fast systems (~50-100 μs)
 # - Alpha more negative due to longer generation time
 
-print("\\nExpected values for PWR pin cell:")
-print("  k_inf ≈ 1.2-1.4 (fresh fuel)")
-print("  beta_eff ≈ 0.0065-0.0075 (0.65-0.75%)")
-print("  Generation time ≈ 50-100 microseconds")
-print("  Alpha will depend on k_inf and generation time")
+print("\\nExpected values for Sub-critical System (UCRL-TR-201506):")
+print("  k_eff << 1.0 (very sub-critical, approximately 0.4-0.5)")
+print("  beta_eff ≈ 0.0065-0.0070 (same isotopic composition as Problem 1)")
+print("  k_prompt will be less than k_eff")
+print("  Alpha eigenvalue will be significantly negative")
+print("  ")
+print("  Key insight from Cullen et al.:")
+print("  When the system is far from critical, the difference between")
+print("  static and dynamic criticality calculations can be large and")
+print("  significant, and it is the DYNAMIC result that is physically")
+print("  appropriate.")
 
 # Plot k_eff and k_prompt convergence
 plt.figure(figsize=(10, 6))
@@ -203,18 +163,20 @@ plt.axhline(y=float(sp.k_prompt.nominal_value), color='r', linestyle='--',
             label=f'Mean k-prompt = {sp.k_prompt}')
 plt.xlabel('Generation')
 plt.ylabel('k-eigenvalue')
-plt.title('PWR Pin Cell: k-effective and k-prompt Convergence')
+plt.title('Problem 5: Sub-critical System - k-effective and k-prompt Convergence')
 plt.legend()
 plt.grid(True, alpha=0.3)
 plt.tight_layout()
-plt.savefig('pwr_kinetics_convergence.png', dpi=300)
-print("\\nPlot saved: pwr_kinetics_convergence.png")
+plt.savefig('problem5_kinetics_convergence.png', dpi=300)
+print("\\nPlot saved: problem5_kinetics_convergence.png")
 
 # Calculate beta_eff directly from difference
 beta_calculated = (sp.keff - sp.k_prompt) / sp.keff
 print(f"\\nBeta-eff (from k difference): {beta_calculated}")
 print(f"Beta-eff (from simulation):   {sp.beta_eff}")
 print("These should match within statistical uncertainties.")
+print("")
+print("Compare results with Problem 1 to see the effect of sub-criticality")
 """)
 print("=" * 70)
 

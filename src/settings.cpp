@@ -806,6 +806,22 @@ void read_settings_xml(pugi::xml_node root)
       "it by specifying its ID in a <ufs_mesh> element.");
   }
 
+  // Delayed neutron kinetics calculations
+  if (check_for_node(root, "kinetics")) {
+    auto node_kinetics = root.child("kinetics");
+    if (check_for_node(node_kinetics, "calculate_prompt_k")) {
+      calculate_prompt_k =
+        get_node_value_bool(node_kinetics, "calculate_prompt_k");
+    }
+    if (check_for_node(node_kinetics, "calculate_alpha")) {
+      calculate_alpha = get_node_value_bool(node_kinetics, "calculate_alpha");
+      // Alpha calculation requires k_prompt
+      if (calculate_alpha) {
+        calculate_prompt_k = true;
+      }
+    }
+  }
+
   // Check if the user has specified to write state points
   if (check_for_node(root, "state_point")) {
 

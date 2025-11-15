@@ -441,6 +441,9 @@ bool read_model_xml()
   if (check_for_node(root, "tallies"))
     read_tallies_xml(root.child("tallies"));
 
+  // Setup internal tallies for kinetics calculations
+  setup_kinetics_tallies();
+
   // Initialize distribcell_filters
   prepare_distribcell();
 
@@ -484,6 +487,9 @@ void read_separate_xml_files()
   finalize_cell_densities();
 
   read_tallies_xml();
+
+  // Setup internal tallies for kinetics calculations
+  setup_kinetics_tallies();
 
   // Initialize distribcell_filters
   prepare_distribcell();

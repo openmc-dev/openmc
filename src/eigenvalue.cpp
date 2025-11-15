@@ -55,6 +55,9 @@ double alpha_rate_based_std {0.0};
 double prompt_gen_time {0.0};
 double prompt_gen_time_std {0.0};
 
+// Index of internal kinetics tally (for alpha calculations)
+int kinetics_tally_index {-1};
+
 } // namespace simulation
 
 //==============================================================================
@@ -514,6 +517,55 @@ void calculate_kinetics_parameters()
         simulation::beta_eff_std = std::sqrt(term1 + term2);
       }
     }
+
+    // Calculate alpha eigenvalues if enabled and tally exists
+    if (settings::calculate_alpha && simulation::kinetics_tally_index >= 0) {
+      auto& tally = *model::tallies[simulation::kinetics_tally_index];
+      const auto& results = tally.results();
+
+      // Extract tally results (shape: [filters, nuclides, scores])
+      // No filters, no nuclides, so just access scores directly
+      // Score indices: 0=gen_time_num, 1=gen_time_denom, 2=nu_fission_rate,
+      //                3=absorption_rate, 4=leakage_rate, 5=population
+
+      double gen_time_num = results(0, 0, 0);
+      double gen_time_denom = results(0, 0, 1);
+      double nu_fission_rate = results(0, 0, 2);
+      double absorption_rate = results(0, 0, 3);
+      double leakage_rate = results(0, 0, 4);
+      double population = results(0, 0, 5);
+
+      // Calculate prompt generation time: Λ_prompt = num / (k_prompt × denom)
+      if (gen_time_denom > 0.0 && simulation::keff_prompt > 0.0) {
+        simulation::prompt_gen_time =
+          gen_time_num / (simulation::keff_prompt * gen_time_denom);
+
+        // Calculate alpha (k-based): α = (k_prompt - 1) / Λ_prompt
+        if (simulation::prompt_gen_time > 0.0) {
+          simulation::alpha_k_based = (simulation::keff_prompt - 1.0) /
+                                      simulation::prompt_gen_time;
+
+          // Error propagation for alpha_k_based
+          // For α = (k_p - 1) / Λ: σ_α² ≈ (1/Λ)² σ_kp² + ((k_p-1)/Λ²)² σ_Λ²
+          // Assuming σ_Λ small compared to σ_kp for now
+          if (n > 1 && simulation::prompt_gen_time > 0.0) {
+            simulation::alpha_k_based_std =
+              simulation::keff_prompt_std / simulation::prompt_gen_time;
+          }
+        }
+      }
+
+      // Calculate alpha (rate-based): α = (R_prod - R_removal) / N_prompt
+      // R_removal = absorption_rate + leakage_rate
+      if (population > 0.0) {
+        double removal_rate = absorption_rate + leakage_rate;
+        simulation::alpha_rate_based =
+          (nu_fission_rate - removal_rate) / population;
+
+        // Error propagation would require standard deviations from tallies
+        // For now, leave alpha_rate_based_std = 0.0 (to be improved)
+      }
+    }
   }
 }
 
@@ -790,6 +842,19 @@ void write_eigenvalue_hdf5(hid_t group)
     array<double, 2> beta_eff_vals {
       simulation::beta_eff, simulation::beta_eff_std};
     write_dataset(group, "beta_eff", beta_eff_vals);
+
+    // Write alpha eigenvalues if calculated
+    if (settings::calculate_alpha) {
+      array<double, 2> prompt_gen_time_vals {
+        simulation::prompt_gen_time, simulation::prompt_gen_time_std};
+      write_dataset(group, "prompt_gen_time", prompt_gen_time_vals);
+      array<double, 2> alpha_k_vals {
+        simulation::alpha_k_based, simulation::alpha_k_based_std};
+      write_dataset(group, "alpha_k_based", alpha_k_vals);
+      array<double, 2> alpha_rate_vals {
+        simulation::alpha_rate_based, simulation::alpha_rate_based_std};
+      write_dataset(group, "alpha_rate_based", alpha_rate_vals);
+    }
   }
 }
 
@@ -818,7 +883,53 @@ void read_eigenvalue_hdf5(hid_t group)
     read_dataset(group, "beta_eff", beta_eff_vals);
     simulation::beta_eff = beta_eff_vals[0];
     simulation::beta_eff_std = beta_eff_vals[1];
+
+    // Read alpha eigenvalues if they exist
+    if (settings::calculate_alpha && object_exists(group, "alpha_k_based")) {
+      array<double, 2> prompt_gen_time_vals;
+      read_dataset(group, "prompt_gen_time", prompt_gen_time_vals);
+      simulation::prompt_gen_time = prompt_gen_time_vals[0];
+      simulation::prompt_gen_time_std = prompt_gen_time_vals[1];
+      array<double, 2> alpha_k_vals;
+      read_dataset(group, "alpha_k_based", alpha_k_vals);
+      simulation::alpha_k_based = alpha_k_vals[0];
+      simulation::alpha_k_based_std = alpha_k_vals[1];
+      array<double, 2> alpha_rate_vals;
+      read_dataset(group, "alpha_rate_based", alpha_rate_vals);
+      simulation::alpha_rate_based = alpha_rate_vals[0];
+      simulation::alpha_rate_based_std = alpha_rate_vals[1];
+    }
   }
+}
+
+void setup_kinetics_tallies()
+{
+  // Only create tallies if alpha calculations are enabled
+  if (!settings::calculate_alpha)
+    return;
+
+  // Create internal tally for kinetics parameters
+  auto* tally = Tally::create();
+  simulation::kinetics_tally_index = tally->index_;
+  tally->set_writable(false); // Don't write to tallies.out
+
+  // Set scores for alpha eigenvalue calculations
+  vector<std::string> scores;
+
+  // Scores for k-based alpha: α = (k_prompt - 1) / Λ_prompt
+  scores.push_back("prompt-chain-gen-time-num");
+  scores.push_back("prompt-chain-gen-time-denom");
+
+  // Scores for rate-based alpha: α = (R_prod - R_removal) / N_prompt
+  scores.push_back("prompt-chain-nu-fission-rate");
+  scores.push_back("prompt-chain-absorption-rate");
+  scores.push_back("prompt-chain-leakage-rate");
+  scores.push_back("prompt-chain-population");
+
+  tally->set_scores(scores);
+
+  // No filters - tally over entire geometry
+  tally->set_filters({});
 }
 
 } // namespace openmc

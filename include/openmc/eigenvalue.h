@@ -65,6 +65,11 @@ void calculate_average_keff();
 //! over active generations. Results are stored in simulation namespace.
 void calculate_kinetics_parameters();
 
+//! Setup internal tallies for alpha eigenvalue calculations
+//!
+//! Creates tallies with prompt chain scores needed for alpha calculations
+void setup_kinetics_tallies();
+
 //! Calculates a minimum variance estimate of k-effective
 //!
 //! The minimum variance estimate is based on a linear combination of the

@@ -410,6 +410,10 @@ class Settings:
         # Iterated Fission Probability
         self._ifp_n_generation = None
 
+        # Delayed neutron kinetics calculations
+        self._calculate_prompt_k = None
+        self._calculate_alpha = None
+
         # Collision track feature
         self._collision_track = {}
 
@@ -1143,6 +1147,29 @@ class Settings:
         self._create_delayed_neutrons = create_delayed_neutrons
 
     @property
+    def calculate_prompt_k(self) -> bool:
+        return self._calculate_prompt_k
+
+    @calculate_prompt_k.setter
+    def calculate_prompt_k(self, calculate_prompt_k: bool):
+        cv.check_type('Whether to calculate prompt k-effective',
+                      calculate_prompt_k, bool)
+        self._calculate_prompt_k = calculate_prompt_k
+
+    @property
+    def calculate_alpha(self) -> bool:
+        return self._calculate_alpha
+
+    @calculate_alpha.setter
+    def calculate_alpha(self, calculate_alpha: bool):
+        cv.check_type('Whether to calculate alpha eigenvalue',
+                      calculate_alpha, bool)
+        self._calculate_alpha = calculate_alpha
+        # Alpha calculation requires k_prompt
+        if calculate_alpha:
+            self._calculate_prompt_k = True
+
+    @property
     def delayed_photon_scaling(self) -> bool:
         return self._delayed_photon_scaling
 
@@ -1703,6 +1730,16 @@ class Settings:
         if self._track is not None:
             element = ET.SubElement(root, "track")
             element.text = ' '.join(map(str, itertools.chain(*self._track)))
+
+    def _create_kinetics_subelement(self, root):
+        if self._calculate_prompt_k is not None or self._calculate_alpha is not None:
+            element = ET.SubElement(root, "kinetics")
+            if self._calculate_prompt_k is not None:
+                subelement = ET.SubElement(element, "calculate_prompt_k")
+                subelement.text = str(self._calculate_prompt_k).lower()
+            if self._calculate_alpha is not None:
+                subelement = ET.SubElement(element, "calculate_alpha")
+                subelement.text = str(self._calculate_alpha).lower()
 
     def _create_ufs_mesh_subelement(self, root, mesh_memo=None):
         if self.ufs_mesh is None:
@@ -2421,6 +2458,7 @@ class Settings:
         self._create_temperature_subelements(element)
         self._create_trace_subelement(element)
         self._create_track_subelement(element)
+        self._create_kinetics_subelement(element)
         self._create_ufs_mesh_subelement(element, mesh_memo)
         self._create_resonance_scattering_subelement(element)
         self._create_volume_calcs_subelement(element)

@@ -47,6 +47,7 @@ struct SourceSite {
   double time {0.0};
   double wgt {1.0};
   int delayed_group {0};
+  bool has_delayed_ancestor {false};
   int surf_id {SURFACE_NONE};
   ParticleType particle;
 
@@ -516,6 +517,7 @@ private:
   int event_nuclide_;
   int event_mt_;
   int delayed_group_ {0};
+  bool has_delayed_ancestor_ {false}; //!< lineage flag for kinetics
   int parent_nuclide_ {-1};
 
   int n_bank_ {0};
@@ -553,6 +555,9 @@ private:
   double keff_tally_collision_ {0.0};
   double keff_tally_tracklength_ {0.0};
   double keff_tally_leakage_ {0.0};
+
+  // Prompt k-effective tally accumulators for kinetics calculations
+  double keff_prompt_tally_tracklength_ {0.0};
 
   bool trace_ {false};
 
@@ -652,6 +657,8 @@ public:
   const int& event_mt() const { return event_mt_; }
   int& delayed_group() { return delayed_group_; } // delayed group
   const int& delayed_group() const { return delayed_group_; }
+  bool& has_delayed_ancestor() { return has_delayed_ancestor_; }
+  const bool& has_delayed_ancestor() const { return has_delayed_ancestor_; }
   const int& parent_nuclide() const { return parent_nuclide_; }
   int& parent_nuclide() { return parent_nuclide_; } // Parent nuclide
 
@@ -720,6 +727,10 @@ public:
   double& keff_tally_collision() { return keff_tally_collision_; }
   double& keff_tally_tracklength() { return keff_tally_tracklength_; }
   double& keff_tally_leakage() { return keff_tally_leakage_; }
+  double& keff_prompt_tally_tracklength()
+  {
+    return keff_prompt_tally_tracklength_;
+  }
 
   // Shows debug info
   bool& trace() { return trace_; }

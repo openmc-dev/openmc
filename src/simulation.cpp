@@ -516,6 +516,11 @@ void initialize_generation()
     // Store current value of tracklength k
     simulation::keff_generation = simulation::global_tallies(
       GlobalTally::K_TRACKLENGTH, TallyResult::VALUE);
+
+    // Store current value of prompt tracklength k for kinetics calculations
+    if (settings::calculate_prompt_k) {
+      simulation::keff_prompt_generation = global_tally_prompt_tracklength;
+    }
   }
 }
 
@@ -561,7 +566,9 @@ void finalize_generation()
 
     // Collect results and statistics
     calculate_generation_keff();
+    calculate_generation_prompt_keff();
     calculate_average_keff();
+    calculate_kinetics_parameters();
 
     // Write generation output
     if (mpi::master && settings::verbosity >= 7) {

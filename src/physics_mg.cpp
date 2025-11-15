@@ -163,6 +163,10 @@ void create_fission_sites(Particle& p)
     // of the code, 0 is prompt.
     site.delayed_group = dg + 1;
 
+    // Propagate delayed neutron lineage for kinetics calculations
+    site.has_delayed_ancestor =
+      (site.delayed_group > 0) || p.has_delayed_ancestor();
+
     // If delayed product production, sample time of emission
     if (dg != -1) {
       auto& macro_xs = data::mg.macro_xs_[p.material()];

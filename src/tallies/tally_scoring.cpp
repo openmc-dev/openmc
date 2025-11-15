@@ -1070,6 +1070,97 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
         p, tally, flux, HEATING, i_nuclide, atom_density);
       break;
 
+    case SCORE_PROMPT_CHAIN_FLUX:
+      // Only score flux from pure prompt neutron chains
+      if (!p.has_delayed_ancestor()) {
+        score = flux;
+      }
+      break;
+
+    case SCORE_DELAYED_CHAIN_FLUX:
+      // Only score flux from chains with delayed neutron ancestry
+      if (p.has_delayed_ancestor()) {
+        score = flux;
+      }
+      break;
+
+    case SCORE_PROMPT_CHAIN_NU_FISSION:
+      // Only score nu-fission from pure prompt chains
+      if (!p.has_delayed_ancestor()) {
+        if (p.macro_xs().fission == 0)
+          continue;
+        if (i_nuclide >= 0) {
+          score = p.neutron_xs(i_nuclide).nu_fission * atom_density * flux;
+        } else {
+          score = p.macro_xs().nu_fission * flux;
+        }
+      }
+      break;
+
+    case SCORE_DELAYED_CHAIN_NU_FISSION:
+      // Only score nu-fission from chains with delayed ancestry
+      if (p.has_delayed_ancestor()) {
+        if (p.macro_xs().fission == 0)
+          continue;
+        if (i_nuclide >= 0) {
+          score = p.neutron_xs(i_nuclide).nu_fission * atom_density * flux;
+        } else {
+          score = p.macro_xs().nu_fission * flux;
+        }
+      }
+      break;
+
+    case SCORE_PROMPT_CHAIN_GEN_TIME_NUM:
+      // Score lifetime * weight for prompt chains (numerator for Λ_prompt)
+      if (!p.has_delayed_ancestor() && p.fission()) {
+        score = p.lifetime() * p.wgt_last();
+      }
+      break;
+
+    case SCORE_PROMPT_CHAIN_GEN_TIME_DENOM:
+      // Score weight for prompt chains (denominator for Λ_prompt)
+      if (!p.has_delayed_ancestor() && p.fission()) {
+        score = p.wgt_last();
+      }
+      break;
+
+    case SCORE_PROMPT_CHAIN_NU_FISSION_RATE:
+      // Score prompt nu-fission RATE (production rate)
+      if (!p.has_delayed_ancestor()) {
+        if (p.macro_xs().fission == 0)
+          continue;
+        if (i_nuclide >= 0) {
+          score = p.neutron_xs(i_nuclide).nu_fission * atom_density * flux;
+        } else {
+          score = p.macro_xs().nu_fission * flux;
+        }
+      }
+      break;
+
+    case SCORE_PROMPT_CHAIN_ABSORPTION_RATE:
+      // Score prompt absorption RATE (removal rate)
+      if (!p.has_delayed_ancestor()) {
+        if (p.type() != Type::neutron)
+          continue;
+        if (i_nuclide >= 0) {
+          score = p.neutron_xs(i_nuclide).absorption * atom_density * flux;
+        } else {
+          score = p.macro_xs().absorption * flux;
+        }
+      }
+      break;
+
+    case SCORE_PROMPT_CHAIN_POPULATION:
+      // Score prompt neutron population (integrated flux)
+      if (!p.has_delayed_ancestor()) {
+        score = flux;
+      }
+      break;
+
+    case SCORE_PROMPT_CHAIN_LEAKAGE_RATE:
+      // This score is handled in surface crossing, not here
+      continue;
+
     default:
     default_case:
 
@@ -1539,6 +1630,75 @@ void score_general_ce_analog(Particle& p, int i_tally, int start_index,
       score =
         score_fission_q(p, score_bin, tally, flux, i_nuclide, atom_density);
       break;
+
+    case SCORE_PROMPT_CHAIN_FLUX:
+      // Only score flux from pure prompt neutron chains
+      if (!p.has_delayed_ancestor()) {
+        score = flux * p.wgt_last() / p.macro_xs().total;
+      }
+      break;
+
+    case SCORE_DELAYED_CHAIN_FLUX:
+      // Only score flux from chains with delayed neutron ancestry
+      if (p.has_delayed_ancestor()) {
+        score = flux * p.wgt_last() / p.macro_xs().total;
+      }
+      break;
+
+    case SCORE_PROMPT_CHAIN_NU_FISSION:
+      // Only score nu-fission from pure prompt chains (analog estimator)
+      if (!p.has_delayed_ancestor() && p.fission()) {
+        score = p.wgt_bank();
+      }
+      break;
+
+    case SCORE_DELAYED_CHAIN_NU_FISSION:
+      // Only score nu-fission from chains with delayed ancestry (analog)
+      if (p.has_delayed_ancestor() && p.fission()) {
+        score = p.wgt_bank();
+      }
+      break;
+
+    case SCORE_PROMPT_CHAIN_GEN_TIME_NUM:
+      // Score lifetime * weight for prompt chains (numerator for Λ_prompt)
+      if (!p.has_delayed_ancestor() && p.fission()) {
+        score = p.lifetime() * p.wgt_last();
+      }
+      break;
+
+    case SCORE_PROMPT_CHAIN_GEN_TIME_DENOM:
+      // Score weight for prompt chains (denominator for Λ_prompt)
+      if (!p.has_delayed_ancestor() && p.fission()) {
+        score = p.wgt_last();
+      }
+      break;
+
+    case SCORE_PROMPT_CHAIN_NU_FISSION_RATE:
+      // For analog, use banked weight as fission neutron production
+      if (!p.has_delayed_ancestor() && p.fission()) {
+        score = p.wgt_bank();
+      }
+      break;
+
+    case SCORE_PROMPT_CHAIN_ABSORPTION_RATE:
+      // For analog, score on absorption events
+      if (!p.has_delayed_ancestor()) {
+        if (p.event() == TallyEvent::ABSORB) {
+          score = p.wgt_last();
+        }
+      }
+      break;
+
+    case SCORE_PROMPT_CHAIN_POPULATION:
+      // Score prompt neutron population (analog uses collision estimator)
+      if (!p.has_delayed_ancestor()) {
+        score = flux * p.wgt_last() / p.macro_xs().total;
+      }
+      break;
+
+    case SCORE_PROMPT_CHAIN_LEAKAGE_RATE:
+      // This score is handled in surface crossing, not here
+      continue;
 
     case N_2N:
     case N_3N:
@@ -2298,6 +2458,133 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
 // Simply count the number of scoring events
 #pragma omp atomic
       tally.results_(filter_index, score_index, TallyResult::VALUE) += 1.0;
+      continue;
+
+    case SCORE_PROMPT_CHAIN_FLUX:
+      // Only score flux from pure prompt neutron chains
+      if (!p.has_delayed_ancestor()) {
+        if (tally.estimator_ == TallyEstimator::ANALOG) {
+          score = flux * p.wgt_last() / p.macro_xs().total;
+        } else {
+          score = flux;
+        }
+      }
+      break;
+
+    case SCORE_DELAYED_CHAIN_FLUX:
+      // Only score flux from chains with delayed neutron ancestry
+      if (p.has_delayed_ancestor()) {
+        if (tally.estimator_ == TallyEstimator::ANALOG) {
+          score = flux * p.wgt_last() / p.macro_xs().total;
+        } else {
+          score = flux;
+        }
+      }
+      break;
+
+    case SCORE_PROMPT_CHAIN_NU_FISSION:
+      // Only score nu-fission from pure prompt chains
+      if (!p.has_delayed_ancestor()) {
+        if (tally.estimator_ == TallyEstimator::ANALOG) {
+          if (p.fission()) {
+            score = p.wgt_bank();
+          }
+        } else {
+          if (i_nuclide >= 0) {
+            score = atom_density * flux *
+                    nuc_xs.get_xs(MgxsType::NU_FISSION, p_g, nuc_t, nuc_a);
+          } else {
+            score =
+              flux * macro_xs.get_xs(MgxsType::NU_FISSION, p_g, macro_t, macro_a);
+          }
+        }
+      }
+      break;
+
+    case SCORE_DELAYED_CHAIN_NU_FISSION:
+      // Only score nu-fission from chains with delayed ancestry
+      if (p.has_delayed_ancestor()) {
+        if (tally.estimator_ == TallyEstimator::ANALOG) {
+          if (p.fission()) {
+            score = p.wgt_bank();
+          }
+        } else {
+          if (i_nuclide >= 0) {
+            score = atom_density * flux *
+                    nuc_xs.get_xs(MgxsType::NU_FISSION, p_g, nuc_t, nuc_a);
+          } else {
+            score =
+              flux * macro_xs.get_xs(MgxsType::NU_FISSION, p_g, macro_t, macro_a);
+          }
+        }
+      }
+      break;
+
+    case SCORE_PROMPT_CHAIN_GEN_TIME_NUM:
+      // Score lifetime * weight for prompt chains (numerator for Λ_prompt)
+      if (!p.has_delayed_ancestor() && p.fission()) {
+        score = p.lifetime() * p.wgt_last();
+      }
+      break;
+
+    case SCORE_PROMPT_CHAIN_GEN_TIME_DENOM:
+      // Score weight for prompt chains (denominator for Λ_prompt)
+      if (!p.has_delayed_ancestor() && p.fission()) {
+        score = p.wgt_last();
+      }
+      break;
+
+    case SCORE_PROMPT_CHAIN_NU_FISSION_RATE:
+      // Score prompt nu-fission RATE (production rate)
+      if (!p.has_delayed_ancestor()) {
+        if (tally.estimator_ == TallyEstimator::ANALOG) {
+          if (p.fission()) {
+            score = p.wgt_bank();
+          }
+        } else {
+          if (i_nuclide >= 0) {
+            score = atom_density * flux *
+                    nuc_xs.get_xs(MgxsType::NU_FISSION, p_g, nuc_t, nuc_a);
+          } else {
+            score =
+              flux * macro_xs.get_xs(MgxsType::NU_FISSION, p_g, macro_t, macro_a);
+          }
+        }
+      }
+      break;
+
+    case SCORE_PROMPT_CHAIN_ABSORPTION_RATE:
+      // Score prompt absorption RATE (removal rate)
+      if (!p.has_delayed_ancestor()) {
+        if (tally.estimator_ == TallyEstimator::ANALOG) {
+          if (p.event() == TallyEvent::ABSORB) {
+            score = p.wgt_last();
+          }
+        } else {
+          if (i_nuclide >= 0) {
+            score = atom_density * flux *
+                    nuc_xs.get_xs(MgxsType::ABSORPTION, p_g, nuc_t, nuc_a);
+          } else {
+            score =
+              flux * macro_xs.get_xs(MgxsType::ABSORPTION, p_g, macro_t, macro_a);
+          }
+        }
+      }
+      break;
+
+    case SCORE_PROMPT_CHAIN_POPULATION:
+      // Score prompt neutron population (integrated flux)
+      if (!p.has_delayed_ancestor()) {
+        if (tally.estimator_ == TallyEstimator::ANALOG) {
+          score = flux * p.wgt_last() / p.macro_xs().total;
+        } else {
+          score = flux;
+        }
+      }
+      break;
+
+    case SCORE_PROMPT_CHAIN_LEAKAGE_RATE:
+      // This score is handled in surface crossing, not here
       continue;
 
     default:

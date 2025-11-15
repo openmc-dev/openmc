@@ -310,6 +310,54 @@ class StatePoint:
             return None
 
     @property
+    def k_prompt_generation(self):
+        """Prompt k-effective for each batch/generation."""
+        if self.run_mode == 'eigenvalue' and 'k_prompt_generation' in self._f:
+            return self._f['k_prompt_generation'][()]
+        else:
+            return None
+
+    @property
+    def k_prompt(self):
+        """Combined prompt k-effective estimator with uncertainty."""
+        if self.run_mode == 'eigenvalue' and 'k_prompt' in self._f:
+            return ufloat(*self._f['k_prompt'][()])
+        else:
+            return None
+
+    @property
+    def beta_eff(self):
+        """Effective delayed neutron fraction with uncertainty."""
+        if self.run_mode == 'eigenvalue' and 'beta_eff' in self._f:
+            return ufloat(*self._f['beta_eff'][()])
+        else:
+            return None
+
+    @property
+    def prompt_gen_time(self):
+        """Prompt neutron generation time with uncertainty."""
+        if self.run_mode == 'eigenvalue' and 'prompt_gen_time' in self._f:
+            return ufloat(*self._f['prompt_gen_time'][()])
+        else:
+            return None
+
+    @property
+    def alpha_k_based(self):
+        """Alpha eigenvalue (k-based method) with uncertainty."""
+        if self.run_mode == 'eigenvalue' and 'alpha_k_based' in self._f:
+            return ufloat(*self._f['alpha_k_based'][()])
+        else:
+            return None
+
+    @property
+    def alpha_rate_based(self):
+        """Alpha eigenvalue (rate-based method) with uncertainty."""
+        if self.run_mode == 'eigenvalue' and 'alpha_rate_based' in self._f:
+            return ufloat(*self._f['alpha_rate_based'][()])
+        else:
+            return None
+
+    @property
     def meshes(self):
         if not self._meshes_read:
             mesh_group = self._f['tallies/meshes']

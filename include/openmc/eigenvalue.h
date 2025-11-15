@@ -26,6 +26,20 @@ extern array<double, 2> k_sum; //!< Used to reduce sum and sum_sq
 extern vector<double> entropy; //!< Shannon entropy at each generation
 extern xt::xtensor<double, 1> source_frac; //!< Source fraction for UFS
 
+// Delayed neutron kinetics parameters
+extern double keff_prompt_generation; //!< Single-generation k_prompt
+extern vector<double> k_prompt;       //!< k_prompt for each generation
+extern double keff_prompt;            //!< Mean k_prompt over active generations
+extern double keff_prompt_std;        //!< Standard deviation of k_prompt
+extern double beta_eff;               //!< Effective delayed neutron fraction
+extern double beta_eff_std;           //!< Standard deviation of beta_eff
+extern double alpha_k_based;          //!< Alpha eigenvalue (k-based method)
+extern double alpha_k_based_std;      //!< Standard deviation of alpha (k-based)
+extern double alpha_rate_based;       //!< Alpha eigenvalue (rate-based method)
+extern double alpha_rate_based_std;   //!< Standard deviation of alpha (rate-based)
+extern double prompt_gen_time;        //!< Prompt neutron generation time
+extern double prompt_gen_time_std;    //!< Standard deviation of gen time
+
 } // namespace simulation
 
 //==============================================================================
@@ -35,12 +49,26 @@ extern xt::xtensor<double, 1> source_frac; //!< Source fraction for UFS
 //! Collect/normalize the tracklength keff from each process
 void calculate_generation_keff();
 
+//! Collect/normalize the tracklength k_prompt from each process
+void calculate_generation_prompt_keff();
+
 //! Calculate mean/standard deviation of keff during active generations
 //!
 //! This function sets the global variables keff and keff_std which represent
 //! the mean and standard deviation of the mean of k-effective over active
 //! generations. It also broadcasts the value from the master process.
 void calculate_average_keff();
+
+//! Calculate delayed neutron kinetics parameters
+//!
+//! This function calculates k_prompt, beta_eff, and alpha eigenvalues
+//! over active generations. Results are stored in simulation namespace.
+void calculate_kinetics_parameters();
+
+//! Setup internal tallies for alpha eigenvalue calculations
+//!
+//! Creates tallies with prompt chain scores needed for alpha calculations
+void setup_kinetics_tallies();
 
 //! Calculates a minimum variance estimate of k-effective
 //!

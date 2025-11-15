@@ -286,6 +286,12 @@ void Particle::event_advance()
   if (settings::run_mode == RunMode::EIGENVALUE &&
       type() == ParticleType::neutron) {
     keff_tally_tracklength() += wgt() * distance * macro_xs().nu_fission;
+
+    // Score track-length estimate of k_prompt (prompt chains only)
+    if (settings::calculate_prompt_k && !has_delayed_ancestor()) {
+      keff_prompt_tally_tracklength() +=
+        wgt() * distance * macro_xs().nu_fission;
+    }
   }
 
   // Score flux derivative accumulators for differential tallies.
@@ -506,12 +512,15 @@ void Particle::event_death()
   global_tally_tracklength += keff_tally_tracklength();
 #pragma omp atomic
   global_tally_leakage += keff_tally_leakage();
+#pragma omp atomic
+  global_tally_prompt_tracklength += keff_prompt_tally_tracklength();
 
   // Reset particle tallies once accumulated
   keff_tally_absorption() = 0.0;
   keff_tally_collision() = 0.0;
   keff_tally_tracklength() = 0.0;
   keff_tally_leakage() = 0.0;
+  keff_prompt_tally_tracklength() = 0.0;
 
   if (!model::active_pulse_height_tallies.empty()) {
     score_pulse_height_tally(*this, model::active_pulse_height_tallies);

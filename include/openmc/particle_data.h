@@ -556,6 +556,9 @@ private:
   double keff_tally_tracklength_ {0.0};
   double keff_tally_leakage_ {0.0};
 
+  // Prompt k-effective tally accumulators for kinetics calculations
+  double keff_prompt_tally_tracklength_ {0.0};
+
   bool trace_ {false};
 
   double collision_distance_;
@@ -724,6 +727,10 @@ public:
   double& keff_tally_collision() { return keff_tally_collision_; }
   double& keff_tally_tracklength() { return keff_tally_tracklength_; }
   double& keff_tally_leakage() { return keff_tally_leakage_; }
+  double& keff_prompt_tally_tracklength()
+  {
+    return keff_prompt_tally_tracklength_;
+  }
 
   // Shows debug info
   bool& trace() { return trace_; }

@@ -108,6 +108,8 @@ public:
 
   bool higher_moments() const { return higher_moments_; }
 
+  int64_t index() const { return index_; }
+
   //----------------------------------------------------------------------------
   // Other methods.
 

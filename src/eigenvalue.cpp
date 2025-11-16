@@ -466,6 +466,12 @@ void calculate_average_keff()
 
 void calculate_kinetics_parameters()
 {
+  // Skip kinetics calculation during alpha iterations to avoid corrupting
+  // the k_prompt and generation time values that were calculated from the
+  // main eigenvalue batches
+  if (simulation::alpha_iteration > 0)
+    return;
+
   // Only calculate if enabled
   if (!settings::calculate_prompt_k)
     return;
@@ -1011,15 +1017,49 @@ void run_alpha_iterations()
 {
   using namespace openmc;
 
+  // ============================================================================
+  // COG-STYLE ITERATIVE ALPHA EIGENVALUE CALCULATION
+  // ============================================================================
+  //
+  // This implements the COG Monte Carlo code's method for calculating the
+  // alpha eigenvalue through iterative refinement with pseudo-absorption.
+  //
+  // Method:
+  //   1. Initialize: α₀ = (k_prompt - 1) / Λ_prompt (k-based estimate)
+  //   2. Add pseudo-absorption: σ_α(E) = α / v(E) to material cross sections
+  //   3. Run eigenvalue batch with modified cross sections → get K'
+  //   4. Update: α_new = α_old + (K' - 1) / Λ
+  //   5. Iterate until convergence: |K' - 1.0| < tolerance
+  //
+  // The converged α satisfies K'(α) = 1, where K' is the eigenvalue of the
+  // transport equation with pseudo-absorption included.
+  //
+  // This method runs AFTER normal eigenvalue batches complete, using the
+  // converged source distribution. The alpha_iteration counter (> 0) signals
+  // that pseudo-absorption should be added during transport and that kinetics
+  // parameter calculation should be skipped to avoid corrupting k_prompt/Λ.
+  //
+  // Reference: COG User Manual, "Alpha Eigenvalue" section
+  // ============================================================================
+
   // Only run if calculate_alpha is enabled and we're in eigenvalue mode
   if (!settings::calculate_alpha || settings::run_mode != RunMode::EIGENVALUE)
     return;
 
-  // Check that we have valid k_prompt and generation time
+  // Verify that normal eigenvalue calculation has completed and we have
+  // valid kinetics parameters from the main simulation
   if (simulation::keff_prompt <= 0.0 || simulation::prompt_gen_time <= 0.0) {
     if (mpi::master) {
       warning(
         "Cannot run alpha iterations: invalid k_prompt or generation time");
+    }
+    return;
+  }
+
+  // Additional safety check: ensure we have completed some active batches
+  if (simulation::current_batch < settings::n_inactive + 1) {
+    if (mpi::master) {
+      warning("Cannot run alpha iterations: no active batches completed");
     }
     return;
   }
@@ -1106,11 +1146,14 @@ void run_alpha_iterations()
       " Converged in {} iterations\n\n", simulation::alpha_iteration - 1);
   }
 
-  // Store the result (use alpha_rate_based since this is COG's method)
+  // Store the result in alpha_rate_based variable
+  // Note: This is COG's iterative method, not a naive rate-based calculation.
+  // COG's method iteratively finds α such that K'(α) = 1 by adding
+  // pseudo-absorption σ_α = α/v to the cross sections.
   simulation::alpha_rate_based = simulation::alpha_previous;
   simulation::alpha_rate_based_std = std::numeric_limits<double>::quiet_NaN();
 
-  // Reset iteration counter
+  // Reset iteration counter to indicate we're done with alpha iterations
   simulation::alpha_iteration = 0;
 }
 

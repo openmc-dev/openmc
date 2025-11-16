@@ -217,19 +217,11 @@ void VolumeCalculation::execute(CalcResults& master_results) const
 
           // Compute lengths of the bounding box's chord segments
           const auto chord_len = get_box_chord(r, u);
-          const double coeff_mult = 1. / (-chord_len.first + chord_len.second);
+          const double ch_len_tot = -chord_len.first + chord_len.second;
 
-          // Keep sampled coordinates for backward tracing
-          Position r0 {r};
-          Direction u0 {-u};
-
-          // Trace chord in the forward and backward directions from the
-          // uniformly sampled point (r, u) and collect scorings into volume
-          // tallies
-          VolEstRay ray_f(r, u, chord_len.second, coeff_mult, *this, results);
-          ray_f.trace(); // Trace forward
-          VolEstRay ray_b(r0, u0, -chord_len.first, coeff_mult, *this, results);
-          ray_b.trace(); // Trace backward
+          r += chord_len.first * u;
+          VolEstRay ray(r, u, ch_len_tot, 1. / ch_len_tot, *this, results);
+          ray.trace(); // Trace from a boundary to another
         }
         }
 

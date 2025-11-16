@@ -47,7 +47,7 @@ struct SourceSite {
   double time {0.0};
   double wgt {1.0};
   int delayed_group {0};
-  bool has_delayed_ancestor {false};
+  bool is_delayed {false};
   int surf_id {SURFACE_NONE};
   ParticleType particle;
 
@@ -517,7 +517,7 @@ private:
   int event_nuclide_;
   int event_mt_;
   int delayed_group_ {0};
-  bool has_delayed_ancestor_ {false}; //!< flag indicating if neutron is delayed (for kinetics)
+  bool is_delayed_ {false}; //!< flag indicating if neutron is delayed (for kinetics)
   int parent_nuclide_ {-1};
 
   int n_bank_ {0};
@@ -657,8 +657,8 @@ public:
   const int& event_mt() const { return event_mt_; }
   int& delayed_group() { return delayed_group_; } // delayed group
   const int& delayed_group() const { return delayed_group_; }
-  bool& has_delayed_ancestor() { return has_delayed_ancestor_; }
-  const bool& has_delayed_ancestor() const { return has_delayed_ancestor_; }
+  bool& is_delayed() { return is_delayed_; }
+  const bool& is_delayed() const { return is_delayed_; }
   const int& parent_nuclide() const { return parent_nuclide_; }
   int& parent_nuclide() { return parent_nuclide_; } // Parent nuclide
 

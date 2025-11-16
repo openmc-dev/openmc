@@ -165,7 +165,7 @@ void create_fission_sites(Particle& p)
 
     // Set delayed neutron flag for kinetics calculations
     // Track whether this neutron itself is delayed (not genealogy)
-    site.has_delayed_ancestor = (site.delayed_group > 0);
+    site.is_delayed = (site.delayed_group > 0);
 
     // If delayed product production, sample time of emission
     if (dg != -1) {

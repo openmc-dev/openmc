@@ -523,17 +523,23 @@ void calculate_kinetics_parameters()
       auto& tally = *model::tallies[simulation::kinetics_tally_index];
       const auto& results = tally.results();
 
-      // Extract tally results (shape: [filters, nuclides, scores])
-      // No filters, no nuclides, so just access scores directly
+      // Extract tally results (shape: [filter_bins, scores*nuclides, result_types])
+      // No filters (n_filter_bins=1), no nuclides, so just access scores
       // Score indices: 0=gen_time_num, 1=gen_time_denom, 2=nu_fission_rate,
       //                3=absorption_rate, 4=leakage_rate, 5=population
+      // Result type indices: 0=VALUE, 1=SUM, 2=SUM_SQ
+      //
+      // NOTE: Must use TallyResult::SUM (index 1), not VALUE (index 0)!
+      // The SUM is already normalized per particle and accumulated over batches.
+      // Divide by n_realizations to get the average per batch.
 
-      double gen_time_num = results(0, 0, 0);
-      double gen_time_denom = results(0, 0, 1);
-      double nu_fission_rate = results(0, 0, 2);
-      double absorption_rate = results(0, 0, 3);
-      double leakage_rate = results(0, 0, 4);
-      double population = results(0, 0, 5);
+      int sum_idx = static_cast<int>(TallyResult::SUM);
+      double gen_time_num = results(0, 0, sum_idx) / tally.n_realizations();
+      double gen_time_denom = results(0, 1, sum_idx) / tally.n_realizations();
+      double nu_fission_rate = results(0, 2, sum_idx) / tally.n_realizations();
+      double absorption_rate = results(0, 3, sum_idx) / tally.n_realizations();
+      double leakage_rate = results(0, 4, sum_idx) / tally.n_realizations();
+      double population = results(0, 5, sum_idx) / tally.n_realizations();
 
       // Calculate prompt generation time: Λ_prompt = num / (k_prompt × denom)
       if (gen_time_denom > 0.0 && simulation::keff_prompt > 0.0) {

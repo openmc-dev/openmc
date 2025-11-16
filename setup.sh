@@ -9,7 +9,6 @@
 # Usage: ./setup.sh [OPTIONS]
 #
 # Options:
-#   --skip-deps       Skip system dependency installation
 #   --skip-xs         Skip cross section data copy
 #   --with-mpi        Build with MPI support
 #   --build-type      Set build type (Debug|Release|RelWithDebInfo)
@@ -26,7 +25,6 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Default options
-SKIP_DEPS=false
 SKIP_XS=false
 WITH_MPI=false
 BUILD_TYPE="RelWithDebInfo"
@@ -56,7 +54,7 @@ log_error() {
 }
 
 print_usage() {
-    sed -n '2,17p' "$0" | sed 's/^# //'
+    sed -n '2,16p' "$0" | sed 's/^# //'
 }
 
 ################################################################################
@@ -65,10 +63,6 @@ print_usage() {
 
 while [[ $# -gt 0 ]]; do
     case $1 in
-        --skip-deps)
-            SKIP_DEPS=true
-            shift
-            ;;
         --skip-xs)
             SKIP_XS=true
             shift
@@ -117,64 +111,6 @@ fi
 
 PYTHON_VERSION=$(python3 --version | awk '{print $2}')
 log_info "Found Python ${PYTHON_VERSION}"
-
-################################################################################
-# Install system dependencies
-################################################################################
-
-if [[ "$SKIP_DEPS" == false ]]; then
-    log_info "Installing system dependencies..."
-
-    # Detect package manager
-    if command -v apt-get &> /dev/null; then
-        PKG_MANAGER="apt-get"
-        PACKAGES="g++ cmake libhdf5-dev libpng-dev git"
-
-        if [[ "$WITH_MPI" == true ]]; then
-            PACKAGES="${PACKAGES} mpich libmpich-dev libhdf5-mpich-dev"
-        fi
-
-        log_info "Using apt-get to install: ${PACKAGES}"
-        sudo apt-get update
-        sudo apt-get install -y ${PACKAGES}
-
-    elif command -v dnf &> /dev/null; then
-        PKG_MANAGER="dnf"
-        PACKAGES="gcc-c++ cmake hdf5-devel libpng-devel git"
-
-        if [[ "$WITH_MPI" == true ]]; then
-            PACKAGES="${PACKAGES} mpich-devel hdf5-mpich-devel"
-        fi
-
-        log_info "Using dnf to install: ${PACKAGES}"
-        sudo dnf install -y ${PACKAGES}
-
-    elif command -v brew &> /dev/null; then
-        PKG_MANAGER="brew"
-        PACKAGES="cmake hdf5 libpng"
-
-        if [[ "$WITH_MPI" == true ]]; then
-            PACKAGES="${PACKAGES} mpich"
-        fi
-
-        log_info "Using Homebrew to install: ${PACKAGES}"
-        brew install ${PACKAGES}
-
-    else
-        log_warning "No supported package manager found. Please install dependencies manually:"
-        log_warning "  - C++ compiler (g++)"
-        log_warning "  - CMake"
-        log_warning "  - HDF5 library"
-        log_warning "  - libpng (optional, for plotting)"
-        if [[ "$WITH_MPI" == true ]]; then
-            log_warning "  - MPI implementation (MPICH or OpenMPI)"
-        fi
-    fi
-
-    log_success "System dependencies installed"
-else
-    log_info "Skipping system dependency installation"
-fi
 
 ################################################################################
 # Setup cross section data

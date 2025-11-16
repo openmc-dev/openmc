@@ -527,13 +527,16 @@ void calculate_kinetics_parameters()
       // No filters, no nuclides, so just access scores directly
       // Score indices: 0=gen_time_num, 1=gen_time_denom, 2=nu_fission_rate,
       //                3=absorption_rate, 4=leakage_rate, 5=population
+      //
+      // NOTE: Tally results accumulate over all active batches, so we must
+      // normalize by n to get per-batch averages (similar to k-effective)
 
-      double gen_time_num = results(0, 0, 0);
-      double gen_time_denom = results(0, 0, 1);
-      double nu_fission_rate = results(0, 0, 2);
-      double absorption_rate = results(0, 0, 3);
-      double leakage_rate = results(0, 0, 4);
-      double population = results(0, 0, 5);
+      double gen_time_num = results(0, 0, 0) / n;
+      double gen_time_denom = results(0, 0, 1) / n;
+      double nu_fission_rate = results(0, 0, 2) / n;
+      double absorption_rate = results(0, 0, 3) / n;
+      double leakage_rate = results(0, 0, 4) / n;
+      double population = results(0, 0, 5) / n;
 
       // Calculate prompt generation time: Λ_prompt = num / (k_prompt × denom)
       if (gen_time_denom > 0.0 && simulation::keff_prompt > 0.0) {

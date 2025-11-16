@@ -134,7 +134,6 @@ print(f"k-prompt:                 {sp.k_prompt}")
 print(f"Beta-effective:           {sp.beta_eff}")
 print(f"Prompt generation time:   {sp.prompt_gen_time} seconds")
 print(f"Alpha (k-based):          {sp.alpha_k_based} 1/s")
-print(f"Alpha (rate-based):       {sp.alpha_rate_based} 1/s")
 
 # Expected results for PWR systems:
 # - k_inf typically 1.2-1.4 for fresh fuel

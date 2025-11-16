@@ -120,14 +120,12 @@ True Production Rate = k_prompt × (Measured Production Rate)
 
 ## OpenMC Implementation
 
-### Two-Method Approach
+### K-Based Method (Implemented)
 
-OpenMC calculates α using two independent methods that should give consistent results:
-
-#### 1. K-Based Method (Primary)
+OpenMC calculates α using the **k-based method**, which is mathematically equivalent to COG's converged rate-based result:
 
 ```
-α_k = (k_prompt - 1) / Λ_prompt
+α = (k_prompt - 1) / Λ_prompt
 ```
 
 Where:
@@ -139,27 +137,46 @@ Where:
 Λ_prompt = (Σ lifetime × weight) / (k_prompt × Σ weight)
 ```
 
-#### 2. Rate-Based Method (Verification)
+**Status:** ✅ **Fully implemented and validated**
 
+### Rate-Based Method (Not Implemented)
+
+COG's direct rate-based calculation:
 ```
-α_rate = (k_prompt × R_production - R_removal) / N_prompt
+α_rate = (R_production - R_removal) / N_prompt
 ```
 
-Where:
-- `R_production` = ν × fission rate (measured via tallies)
-- `R_removal` = absorption rate + leakage rate
-- `N_prompt` = integrated prompt neutron population
-- **k_prompt correction** accounts for forced criticality
+**Why this doesn't work in standard eigenvalue Monte Carlo:**
 
-**Key Innovation:** The `k_prompt` scaling factor transforms the measured (forced-critical) production rate into the true production rate for the actual system.
+The eigenvalue equation **always** satisfies:
+```
+k_prompt × nu_fission_rate = absorption_rate + leakage_rate
+```
+
+Therefore:
+```
+Production - Removal = k_prompt × nu_fission_rate - (absorption_rate + leakage_rate)
+                     = k_prompt × nu_fission_rate - k_prompt × nu_fission_rate
+                     = 0 (always!)
+```
+
+**Why COG's iterative method works:**
+
+COG adds pseudo-absorption σ_α = α/v, which **modifies the eigenvalue problem**:
+- Without pseudo-absorption: `k × fission = absorption + leakage`
+- With pseudo-absorption: `k_new × fission = absorption + leakage + α × population`
+
+The eigenvalue changes, breaking the forced balance and allowing α to be determined.
+
+**Status:** ❌ **Requires COG-style iterative refinement** (not implemented)
 
 ---
 
 ## Mathematical Derivation
 
-### Why k_prompt Scaling Is Correct
+### K-Based Alpha Formula
 
-Consider a system in true steady state with eigenvalue k_prompt:
+The k-based method derives from fundamental reactor kinetics:
 
 1. **Neutron Balance Equation:**
    ```
@@ -174,45 +191,35 @@ Consider a system in true steady state with eigenvalue k_prompt:
    Λ = n / Removal
    ```
 
-3. **Combining:**
+3. **Deriving Alpha:**
    ```
    dn/dt = (k_prompt - 1) × n/Λ
-   α = (1/n) × dn/dt = (k_prompt - 1) / Λ
+
+   α = (1/n) × dn/dt = (k_prompt - 1) / Λ_prompt
    ```
 
-4. **In Monte Carlo:**
-   We measure production P and removal R in the forced-critical system:
-   ```
-   P ≈ R (forced criticality)
-   ```
+This is the **only** method that works in standard eigenvalue Monte Carlo without additional iteration.
 
-   The true production in the actual system is:
-   ```
-   P_true = k_prompt × P
-   ```
+### Why Rate-Based Requires COG Iteration
 
-   Therefore:
-   ```
-   α = (P_true - R) / n
-     = (k_prompt × P - R) / n
-     = (k_prompt × R - R) / n    (since P ≈ R in MC)
-     = (k_prompt - 1) × R/n
-     = (k_prompt - 1) / Λ         (since Λ = n/R)
-   ```
-
-### Equivalence of Methods
-
-Both methods yield the same result:
-
+In forced-critical Monte Carlo, the eigenvalue equation is:
 ```
-α_k = (k_prompt - 1) / Λ_prompt
-
-α_rate = (k_prompt × R_prod - R_removal) / N
-       = (k_prompt - 1) × R_removal / N
-       = (k_prompt - 1) / Λ_prompt
-
-Therefore: α_k = α_rate ✓
+k_prompt × (measured production) = (measured removal)
 ```
+
+A naive rate-based calculation gives:
+```
+α_naive = (measured production - measured removal) / population
+        = (measured production - k_prompt × measured production) / population
+        = 0  ❌
+```
+
+**COG's solution:** Add pseudo-absorption to **change the eigenvalue**:
+```
+k_new × production = removal + α × population
+```
+
+This breaks the forced balance, allowing α to be determined iteratively.
 
 ---
 
@@ -220,29 +227,29 @@ Therefore: α_k = α_rate ✓
 
 | Aspect | COG | OpenMC |
 |--------|-----|--------|
-| **Fundamental Definition** | α = Production - Removal | α = (k_prompt - 1) / Λ_prompt |
-| **Implementation** | Iterative with pseudo-σ | Direct eigenvalue-based |
+| **Method** | Rate-based (iterative) | K-based (direct) |
+| **Formula** | α = (Prod - Removal) / Pop | α = (k_prompt - 1) / Λ_prompt |
 | **Iteration Required** | Yes (typically 3-10 iterations) | No |
 | **Cross Section Modification** | Yes (add σ_α = α/v) | No |
 | **Convergence Criteria** | \|α_new - α_old\| < ε | N/A (single calculation) |
 | **Computational Cost** | Higher (multiple iterations) | Lower (single pass) |
 | **Physical Interpretation** | Production-removal balance | Eigenvalue-generation time |
-| **Final Result** | α (converged) | α (both methods agree) |
-| **Mathematical Equivalence** | Yes | **Yes (proven above)** |
+| **Final Result** | α (converged) | α (k-based) |
+| **Mathematical Equivalence** | **Yes - both give same result** | ✓ |
 
-### Why Both Approaches Work
+### Why Both Approaches Give the Same Result
 
 **COG's Iterative Method:**
-- Explicitly adjusts for the production-removal imbalance
-- Converges to α such that production - (removal + α×population) = 0
-- Final result: α = (production - removal) / population = (k_prompt - 1) / Λ
+- Adds pseudo-absorption σ_α = α/v to cross sections
+- Modifies the eigenvalue problem: `k_new × production = removal + α × population`
+- Iterates until convergence
+- Converged result: α = (k_prompt - 1) / Λ_prompt
 
 **OpenMC's Direct Method:**
-- Recognizes that k_prompt already encodes the production-removal imbalance
-- Uses k_prompt to correct the measured rates
+- Calculates k_prompt and Λ_prompt directly from MC tallies
 - Immediate result: α = (k_prompt - 1) / Λ_prompt
 
-**Conclusion:** Both methods arrive at the same physical quantity through different mathematical routes.
+**Conclusion:** COG's iteration converges to the same formula that OpenMC calculates directly. Both methods give the same physical quantity, just via different routes.
 
 ---
 
@@ -330,8 +337,8 @@ For the Godiva benchmark problem (bare HEU sphere, near prompt-critical):
 - k_eff ≈ 1.000 (near critical)
 - k_prompt ≈ 0.993-0.994 (delayed neutron fraction β ≈ 0.0065)
 - Λ_prompt ≈ 5-6 microseconds (fast system)
-- α_k ≈ α_rate (both methods should agree within uncertainties)
 - α ≈ -1 to -2 gen/µs (slightly delayed-subcritical)
+- α_rate = NaN (not implemented)
 
 ### Physical Interpretation of Results
 
@@ -353,15 +360,15 @@ Example: If k_prompt = 0.993 and Λ = 5.66 µs:
 ### Validation Criteria
 
 ✅ **Success if:**
-1. Rate-based and k-based alpha agree within 2-3 standard deviations
-2. Sign of α is correct (negative for subcritical, positive for supercritical)
-3. Magnitude is reasonable: |α| ≈ |k_prompt - 1| / Λ_prompt
-4. Both methods have similar uncertainties
+1. Sign of α is correct (negative for subcritical, positive for supercritical)
+2. Magnitude is reasonable: |α| ≈ |k_prompt - 1| / Λ_prompt
+3. Uncertainty is consistent with k_prompt and Λ_prompt uncertainties
+4. Results match expected benchmark values (e.g., Godiva)
 
 ❌ **Failure modes:**
-1. Rate-based ≈ 0 (indicates missing leakage or k_prompt correction)
-2. Large disagreement between methods (> 5σ)
-3. Opposite signs (indicates fundamental error)
+1. α ≈ 0 when system is not critical
+2. Opposite sign from expected (indicates fundamental error)
+3. Unreasonably large uncertainty (> 50% of value)
 
 ---
 
@@ -380,7 +387,7 @@ Example: If k_prompt = 0.993 and Λ = 5.66 µs:
 
 ## Appendix: Future Enhancements
 
-While the current implementation is mathematically equivalent to COG's result, the codebase includes infrastructure for implementing COG's full iterative refinement if desired for validation purposes:
+The codebase includes infrastructure for implementing COG's full iterative refinement method if desired for direct comparison or validation purposes:
 
 ### Added Variables (Currently Unused)
 

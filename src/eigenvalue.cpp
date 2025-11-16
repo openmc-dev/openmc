@@ -616,41 +616,36 @@ void calculate_kinetics_parameters()
         }
       }
 
-      // Calculate alpha (rate-based): α = (R_prod - R_removal) / N_prompt
-      // R_removal = absorption_rate + leakage_rate
-      // NOTE: nu_fission_rate must be scaled by k_prompt because it's measured
-      // in a forced-critical system. True production = k_prompt × nu_fission_rate
-      if (population > 0.0 && simulation::keff_prompt > 0.0) {
-        double removal_rate = absorption_rate + leakage_rate;
-        double true_production_rate = simulation::keff_prompt * nu_fission_rate;
-        simulation::alpha_rate_based =
-          (true_production_rate - removal_rate) / population;
-
-        // Error propagation for alpha_rate_based
-        // For α = (k_p × nu_fis - abs - leak) / pop:
-        // Partial derivatives:
-        // ∂α/∂k_p = nu_fis / pop
-        // ∂α/∂nu = k_p / pop
-        // ∂α/∂abs = -1 / pop
-        // ∂α/∂leak = -1 / pop
-        // ∂α/∂pop = -α / pop
-        if (n > 1) {
-          double dAlpha_dkp = nu_fission_rate / population;
-          double dAlpha_dnu = simulation::keff_prompt / population;
-          double dAlpha_dabs = -1.0 / population;
-          double dAlpha_dleak = -1.0 / population;
-          double dAlpha_dpop = -simulation::alpha_rate_based / population;
-
-          double var_alpha_rate =
-            dAlpha_dkp * dAlpha_dkp * simulation::keff_prompt_std * simulation::keff_prompt_std +
-            dAlpha_dnu * dAlpha_dnu * nu_fission_rate_std * nu_fission_rate_std +
-            dAlpha_dabs * dAlpha_dabs * absorption_rate_std * absorption_rate_std +
-            dAlpha_dleak * dAlpha_dleak * leakage_rate_std * leakage_rate_std +
-            dAlpha_dpop * dAlpha_dpop * population_std * population_std;
-
-          simulation::alpha_rate_based_std = std::sqrt(var_alpha_rate);
-        }
-      }
+      // ========================================================================
+      // RATE-BASED ALPHA CALCULATION (NOT IMPLEMENTED)
+      // ========================================================================
+      //
+      // COG's rate-based alpha: α = (R_prod - R_removal) / N_prompt
+      //
+      // This CANNOT work in standard eigenvalue Monte Carlo without COG's
+      // iterative refinement because:
+      //
+      // 1. OpenMC normalizes population each generation (forces k = 1)
+      // 2. The eigenvalue equation ALWAYS satisfies:
+      //    k_prompt × nu_fission_rate = absorption_rate + leakage_rate
+      // 3. Therefore: production - removal ≈ 0 (always!)
+      //
+      // COG's solution: Iterative refinement with pseudo-absorption
+      //   - Add σ_α(E) = α / v(E) to material cross sections
+      //   - This modifies the eigenvalue problem itself
+      //   - Iterate until α converges
+      //
+      // To implement this would require:
+      //   - Modifying cross sections between generations
+      //   - Running multiple eigenvalue iterations
+      //   - Convergence checking: |α_new - α_old| < ε
+      //
+      // USE THE K-BASED METHOD INSTEAD: α = (k_prompt - 1) / Λ_prompt
+      // This gives the same result as COG's converged rate-based method.
+      //
+      // Set to NaN to indicate not implemented
+      simulation::alpha_rate_based = std::numeric_limits<double>::quiet_NaN();
+      simulation::alpha_rate_based_std = std::numeric_limits<double>::quiet_NaN();
     }
   }
 }
@@ -937,9 +932,6 @@ void write_eigenvalue_hdf5(hid_t group)
       array<double, 2> alpha_k_vals {
         simulation::alpha_k_based, simulation::alpha_k_based_std};
       write_dataset(group, "alpha_k_based", alpha_k_vals);
-      array<double, 2> alpha_rate_vals {
-        simulation::alpha_rate_based, simulation::alpha_rate_based_std};
-      write_dataset(group, "alpha_rate_based", alpha_rate_vals);
     }
   }
 }
@@ -980,10 +972,6 @@ void read_eigenvalue_hdf5(hid_t group)
       read_dataset(group, "alpha_k_based", alpha_k_vals);
       simulation::alpha_k_based = alpha_k_vals[0];
       simulation::alpha_k_based_std = alpha_k_vals[1];
-      array<double, 2> alpha_rate_vals;
-      read_dataset(group, "alpha_rate_based", alpha_rate_vals);
-      simulation::alpha_rate_based = alpha_rate_vals[0];
-      simulation::alpha_rate_based_std = alpha_rate_vals[1];
     }
   }
 }

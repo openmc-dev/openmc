@@ -569,15 +569,11 @@ void print_results()
         // Convert alpha to gen/us (divide by 1e6)
         double alpha_k_based_us = simulation::alpha_k_based / 1.0e6;
         double alpha_k_based_std_us = simulation::alpha_k_based_std / 1.0e6;
-        double alpha_rate_based_us = simulation::alpha_rate_based / 1.0e6;
-        double alpha_rate_based_std_us = simulation::alpha_rate_based_std / 1.0e6;
 
         fmt::print(" Prompt generation time      = {:.6e} +/- {:.6e} us\n",
           prompt_gen_time_us, t_n1 * prompt_gen_time_std_us);
         fmt::print(" Alpha (k-based)             = {:.6e} +/- {:.6e} gen/us\n",
           alpha_k_based_us, t_n1 * alpha_k_based_std_us);
-        fmt::print(" Alpha (rate-based)          = {:.6e} +/- {:.6e} gen/us\n",
-          alpha_rate_based_us, t_n1 * alpha_rate_based_std_us);
       }
     }
   } else {

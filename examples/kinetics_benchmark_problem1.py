@@ -128,14 +128,12 @@ print(f"k-prompt:                 {sp.k_prompt}")
 print(f"Beta-effective:           {sp.beta_eff}")
 print(f"Prompt generation time:   {sp.prompt_gen_time} seconds")
 print(f"Alpha (k-based):          {sp.alpha_k_based} 1/s")
-print(f"Alpha (rate-based):       {sp.alpha_rate_based} 1/s")
 
 # Expected results for Godiva (from Cullen et al. 2003):
 # - k_eff should be close to 1.0 (near critical)
 # - k_prompt should be less than k_eff
 # - beta_eff should be approximately 0.0065-0.0070 (0.65-0.70%)
 # - alpha should be small (near zero) for a near-critical system
-# - Both alpha methods should agree within uncertainties
 
 print("\\nExpected values for Godiva (UCRL-TR-201506):")
 print("  k_eff ≈ 1.0 (near critical)")

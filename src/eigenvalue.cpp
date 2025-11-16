@@ -1044,7 +1044,6 @@ void run_alpha_iterations()
   //   Wilcox, Thomas, Edward Lent, Richard Buck, and Chuck Lee, COG User's
   //   Manual: A Multiparticle Monte Carlo Transport Code, 6th ed.,
   //   UCRL-TM-202590, Lawrence Livermore National Laboratory, 2025.
-  //   "Alpha Eigenvalue" section
   // ============================================================================
 
   // Only run if calculate_alpha is enabled and we're in eigenvalue mode

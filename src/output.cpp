@@ -609,8 +609,11 @@ void print_results()
           prompt_gen_time_us);
         fmt::print(" Alpha (k-based)            = {:.6e} gen/us\n",
           alpha_k_based_us);
-        fmt::print(" Alpha (rate-based)         = {:.6e} gen/us\n",
-          alpha_rate_based_us);
+        // Only print iterative alpha if it was actually computed
+        if (!std::isnan(alpha_rate_based_us)) {
+          fmt::print(" Alpha (COG iterative)      = {:.6e} gen/us\n",
+            alpha_rate_based_us);
+        }
       }
     }
   }

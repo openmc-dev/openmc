@@ -77,6 +77,13 @@ void calculate_kinetics_parameters();
 //! Creates tallies with prompt chain scores needed for alpha calculations
 void setup_kinetics_tallies();
 
+//! Run alpha eigenvalue iterations using COG's iterative method
+//!
+//! This function runs additional batches after normal eigenvalue calculation
+//! to determine alpha through iterative refinement with pseudo-absorption.
+//! The method seeks alpha such that K'(alpha) = 1.0.
+void run_alpha_iterations();
+
 //! Calculates a minimum variance estimate of k-effective
 //!
 //! The minimum variance estimate is based on a linear combination of the

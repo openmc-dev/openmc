@@ -28,6 +28,8 @@
 #include <limits>    //for infinity
 #include <string>
 
+#include <fmt/core.h>
+
 namespace openmc {
 
 //==============================================================================
@@ -617,33 +619,19 @@ void calculate_kinetics_parameters()
       }
 
       // ========================================================================
-      // RATE-BASED ALPHA CALCULATION (NOT IMPLEMENTED)
+      // COG-STYLE ITERATIVE ALPHA CALCULATION
       // ========================================================================
       //
-      // COG's rate-based alpha: α = (R_prod - R_removal) / N_prompt
+      // The COG iterative method is now implemented in run_alpha_iterations()
+      // which is called after normal eigenvalue batches complete.
       //
-      // This CANNOT work in standard eigenvalue Monte Carlo without COG's
-      // iterative refinement because:
+      // The method:
+      //   1. Initializes α₀ = (k_prompt - 1) / Λ_prompt
+      //   2. Adds pseudo-absorption σ_α = α / v to cross sections
+      //   3. Runs batches and computes K'
+      //   4. Updates α and iterates until K' → 1.0
       //
-      // 1. OpenMC normalizes population each generation (forces k = 1)
-      // 2. The eigenvalue equation ALWAYS satisfies:
-      //    k_prompt × nu_fission_rate = absorption_rate + leakage_rate
-      // 3. Therefore: production - removal ≈ 0 (always!)
-      //
-      // COG's solution: Iterative refinement with pseudo-absorption
-      //   - Add σ_α(E) = α / v(E) to material cross sections
-      //   - This modifies the eigenvalue problem itself
-      //   - Iterate until α converges
-      //
-      // To implement this would require:
-      //   - Modifying cross sections between generations
-      //   - Running multiple eigenvalue iterations
-      //   - Convergence checking: |α_new - α_old| < ε
-      //
-      // USE THE K-BASED METHOD INSTEAD: α = (k_prompt - 1) / Λ_prompt
-      // This gives the same result as COG's converged rate-based method.
-      //
-      // Set to NaN to indicate not implemented
+      // Initialize to NaN; will be set by run_alpha_iterations() if enabled
       simulation::alpha_rate_based = std::numeric_limits<double>::quiet_NaN();
       simulation::alpha_rate_based_std = std::numeric_limits<double>::quiet_NaN();
     }
@@ -1004,6 +992,107 @@ void setup_kinetics_tallies()
 
   // No filters - tally over entire geometry
   tally->set_filters({});
+}
+
+void run_alpha_iterations()
+{
+  using namespace openmc;
+
+  // Only run if calculate_alpha is enabled and we're in eigenvalue mode
+  if (!settings::calculate_alpha || settings::run_mode != RunMode::EIGENVALUE)
+    return;
+
+  // Check that we have valid k_prompt and generation time
+  if (simulation::keff_prompt <= 0.0 || simulation::prompt_gen_time <= 0.0) {
+    if (mpi::master) {
+      warning("Cannot run alpha iterations: invalid k_prompt or generation time");
+    }
+    return;
+  }
+
+  if (mpi::master) {
+    header("ALPHA EIGENVALUE ITERATION (COG METHOD)", 3);
+    fmt::print("\n");
+    fmt::print(" Initial k_prompt        = {:.6f}\n", simulation::keff_prompt);
+    fmt::print(" Initial gen time        = {:.6e} s\n", simulation::prompt_gen_time);
+  }
+
+  // Initialize alpha using k-based estimate: α = (k_prompt - 1) / Λ
+  simulation::alpha_previous = (simulation::keff_prompt - 1.0) /
+                                simulation::prompt_gen_time;
+
+  if (mpi::master) {
+    fmt::print(" Initial alpha estimate  = {:.6e} 1/s\n\n", simulation::alpha_previous);
+    fmt::print(" Iteration    Alpha (1/s)         K'          |K'-1|\n");
+    fmt::print(" ---------    ------------      --------      --------\n");
+  }
+
+  // Alpha iteration loop
+  simulation::alpha_converged = false;
+  double k_prime = 0.0;
+
+  for (simulation::alpha_iteration = 1;
+       simulation::alpha_iteration <= settings::max_alpha_iterations;
+       ++simulation::alpha_iteration) {
+
+    // Run a single batch with pseudo-absorption enabled
+    // The pseudo-absorption σ_α = α/v is added in particle.cpp
+    // Note: This runs additional batches beyond n_max_batches
+    int status = 0;
+    openmc_next_batch(&status);
+
+    // Get K' from this batch (track-length estimator)
+    k_prime = simulation::keff_generation;
+
+    // Check convergence: |K' - 1.0| < tolerance
+    double k_error = std::abs(k_prime - 1.0);
+
+    if (mpi::master) {
+      fmt::print(" {:4d}       {:.6e}    {:.6f}    {:.6e}\n",
+        simulation::alpha_iteration, simulation::alpha_previous, k_prime, k_error);
+    }
+
+    // Check for convergence
+    if (k_error < settings::alpha_tolerance) {
+      simulation::alpha_converged = true;
+      if (mpi::master) {
+        fmt::print("\n *** CONVERGED: K' = {:.6f} (target: 1.0) ***\n", k_prime);
+      }
+      break;
+    }
+
+    // Update alpha for next iteration
+    // Using COG's Order1 method: α_new = α_old + (K' - 1) / Λ
+    double delta_alpha = (k_prime - 1.0) / simulation::prompt_gen_time;
+    simulation::alpha_previous += delta_alpha;
+
+    // Check for divergence
+    if (std::abs(simulation::alpha_previous) > 1.0e10) {
+      if (mpi::master) {
+        warning("Alpha iteration diverging, stopping iterations");
+      }
+      break;
+    }
+  }
+
+  // Report final result
+  if (mpi::master) {
+    if (!simulation::alpha_converged &&
+        simulation::alpha_iteration > settings::max_alpha_iterations) {
+      fmt::print("\n *** WARNING: Maximum iterations reached without convergence ***\n");
+    }
+    fmt::print("\n Final alpha (COG iterative) = {:.6e} +/- N/A 1/s\n",
+      simulation::alpha_previous);
+    fmt::print(" Converged in {} iterations\n\n",
+      simulation::alpha_iteration - 1);
+  }
+
+  // Store the result (use alpha_rate_based since this is COG's method)
+  simulation::alpha_rate_based = simulation::alpha_previous;
+  simulation::alpha_rate_based_std = std::numeric_limits<double>::quiet_NaN();
+
+  // Reset iteration counter
+  simulation::alpha_iteration = 0;
 }
 
 } // namespace openmc

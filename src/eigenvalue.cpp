@@ -1112,7 +1112,7 @@ void run_alpha_iterations()
     openmc_next_batch(&status);
 
     // Get K' from this batch (track-length estimator)
-    k_prime = simulation::keff_generation;
+    k_prime = simulation::k_generation.back();
 
     // Check convergence: |K' - 1.0| < tolerance
     double k_error = std::abs(k_prime - 1.0);

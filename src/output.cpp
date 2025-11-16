@@ -540,13 +540,13 @@ void print_results()
   if (n > 1) {
     if (settings::run_mode == RunMode::EIGENVALUE) {
       std::tie(mean, stdev) = mean_stdev(&gt(GlobalTally::K_COLLISION, 0), n);
-      fmt::print(" k-effective (Collision)     = {:.5f} +/- {:.5f}\n", mean,
+      fmt::print(" k-effective (Collision)    = {:.5f} +/- {:.5f}\n", mean,
         t_n1 * stdev);
       std::tie(mean, stdev) = mean_stdev(&gt(GlobalTally::K_TRACKLENGTH, 0), n);
-      fmt::print(" k-effective (Track-length)  = {:.5f} +/- {:.5f}\n", mean,
+      fmt::print(" k-effective (Track-length) = {:.5f} +/- {:.5f}\n", mean,
         t_n1 * stdev);
       std::tie(mean, stdev) = mean_stdev(&gt(GlobalTally::K_ABSORPTION, 0), n);
-      fmt::print(" k-effective (Absorption)    = {:.5f} +/- {:.5f}\n", mean,
+      fmt::print(" k-effective (Absorption)   = {:.5f} +/- {:.5f}\n", mean,
         t_n1 * stdev);
       if (n > 3) {
         double k_combined[2];
@@ -567,17 +567,17 @@ void print_results()
       fmt::print(" Beta-effective              = {:.5f} +/- {:.5f}\n",
         simulation::beta_eff, t_n1 * simulation::beta_eff_std);
       if (settings::calculate_alpha) {
-        fmt::print(" Prompt Generation Time      = {:.5e} +/- {:.5e} s\n",
+        fmt::print(" Prompt Generation Time      = {:.5e} +/- {:.5e} seconds\n",
           simulation::prompt_gen_time, t_n1 * simulation::prompt_gen_time_std);
-        fmt::print(" Alpha (k-based)             = {:.5e} +/- {:.5e} 1/s\n",
+        fmt::print(" Alpha (k-based)             = {:.5e} +/- {:.5e} 1/seconds\n",
           simulation::alpha_k_based, t_n1 * simulation::alpha_k_based_std);
 
         if (!std::isnan(simulation::alpha_static)) {
           if (!std::isnan(simulation::alpha_static_std)) {
-            fmt::print(" Alpha (COG Static)          = {:.5e} +/- {:.5e} 1/s\n",
+            fmt::print(" Alpha (COG Static)          = {:.5e} +/- {:.5e} 1/seconds\n",
               simulation::alpha_static, t_n1 * simulation::alpha_static_std);
           } else {
-            fmt::print(" Alpha (COG Static)          = {:.5e} 1/s\n",
+            fmt::print(" Alpha (COG Static)          = {:.5e} 1/seconds\n",
               simulation::alpha_static);
           }
         }
@@ -608,12 +608,12 @@ void print_results()
         " Beta-effective             = {:.5f}\n", simulation::beta_eff);
       if (settings::calculate_alpha) {
         fmt::print(
-          " Prompt Generation Time     = {:.5e} s\n", simulation::prompt_gen_time);
+          " Prompt Generation Time     = {:.5e} seconds\n", simulation::prompt_gen_time);
         fmt::print(
-          " Alpha (k-based)            = {:.5e} 1/s\n", simulation::alpha_k_based);
+          " Alpha (k-based)            = {:.5e} 1/seconds\n", simulation::alpha_k_based);
         if (!std::isnan(simulation::alpha_static)) {
           fmt::print(
-            " Alpha (COG Static)         = {:.5e} 1/s\n", simulation::alpha_static);
+            " Alpha (COG Static)         = {:.5e} 1/seconds\n", simulation::alpha_static);
         }
       }
     }

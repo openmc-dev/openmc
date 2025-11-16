@@ -1082,14 +1082,14 @@ void run_alpha_iterations()
     (simulation::keff_prompt - 1.0) / simulation::prompt_gen_time;
 
   if (mpi::master) {
-    header("ALPHA EIGENVALUE CALCULATION (COG STATIC METHOD)", 3);
-    fmt::print(" Initial k-prompt            = {:.5f}\n", simulation::keff_prompt);
-    fmt::print(" Initial generation time     = {:.5e} +/- {:.5e} s\n",
+    header("ALPHA EIGENVALUE SIMULATION", 3);
+    fmt::print(" Initial k-prompt           = {:.5f}\n", simulation::keff_prompt);
+    fmt::print(" Initial Generation Time    = {:.5e} +/- {:.5e} seconds\n",
       simulation::prompt_gen_time, simulation::prompt_gen_time_std);
-    fmt::print(" Initial alpha estimate      = {:.5e} 1/s\n\n",
+    fmt::print(" Initial Alpha              = {:.5e} 1/seconds\n\n",
       simulation::alpha_previous);
-    fmt::print(" Iteration    Alpha (1/s)      K'        |K'-1|\n");
-    fmt::print(" ---------  --------------  --------  ----------\n");
+    fmt::print(" Iteration      Alpha          K'        |K'-1|\n");
+    fmt::print(" ---------  ------------  --------  -----------\n");
   }
 
   simulation::alpha_converged = false;
@@ -1109,7 +1109,7 @@ void run_alpha_iterations()
     alpha_values.push_back(simulation::alpha_previous);
 
     if (mpi::master) {
-      fmt::print("    {:2d}      {: .5e}  {:.5f}  {:.5e}\n",
+      fmt::print(" {:>9d}  {: >12.5e}  {:>8.5f}  {:>11.5e}\n",
         simulation::alpha_iteration, simulation::alpha_previous, k_prime, k_error);
     }
 

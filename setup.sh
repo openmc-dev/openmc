@@ -3,14 +3,14 @@
 # OpenMC Installation and Setup Script
 ################################################################################
 # This script automates the installation and configuration of OpenMC,
-# including copying cross-section data, building the code, setting up
+# including copying cross section data, building the code, setting up
 # a Python virtual environment, and installing the Python API.
 #
 # Usage: ./setup.sh [OPTIONS]
 #
 # Options:
 #   --skip-deps       Skip system dependency installation
-#   --skip-xs         Skip cross-section data copy
+#   --skip-xs         Skip cross section data copy
 #   --with-mpi        Build with MPI support
 #   --build-type      Set build type (Debug|Release|RelWithDebInfo)
 #   --help            Show this help message
@@ -177,11 +177,11 @@ else
 fi
 
 ################################################################################
-# Setup cross-section data
+# Setup cross section data
 ################################################################################
 
 if [[ "$SKIP_XS" == false ]]; then
-    log_info "Setting up cross-section data..."
+    log_info "Setting up cross section data..."
 
     # Define source and destination directories
     XS_SOURCE_DIR="/home/zywiec1/endfb80-hdf5"
@@ -189,24 +189,24 @@ if [[ "$SKIP_XS" == false ]]; then
 
     # Copy endfb80-hdf5 data if not already present
     if [[ ! -d "${XS_DATA_DIR}" ]]; then
-        log_info "Copying cross-section data from ${XS_SOURCE_DIR}..."
+        log_info "Copying cross section data from ${XS_SOURCE_DIR}..."
 
         if [[ -d "${XS_SOURCE_DIR}" ]]; then
             mkdir -p "$(dirname "${XS_DATA_DIR}")"
             cp -r "${XS_SOURCE_DIR}" "${XS_DATA_DIR}"
-            log_success "Cross-section data copied to ${XS_DATA_DIR}"
+            log_success "Cross section data copied to ${XS_DATA_DIR}"
         else
             log_error "Source directory ${XS_SOURCE_DIR} not found!"
             log_error "Please ensure the endfb80-hdf5 data is available at ${XS_SOURCE_DIR}"
             exit 1
         fi
     else
-        log_info "Cross-section data already exists at ${XS_DATA_DIR}, skipping copy"
+        log_info "Cross section data already exists at ${XS_DATA_DIR}, skipping copy"
     fi
 
-    log_success "Cross-section data ready at ${XS_DATA_DIR}"
+    log_success "Cross section data ready at ${XS_DATA_DIR}"
 else
-    log_info "Skipping cross-section data setup"
+    log_info "Skipping cross section data setup"
     XS_DATA_DIR="${HOME}/openmc/endfb80-hdf5"
 fi
 
@@ -311,7 +311,7 @@ fi
 # Add OpenMC binary to PATH
 export PATH="${HOME}/.local/bin:${PATH}"
 
-# Set cross-section data path
+# Set cross section data path
 export OPENMC_CROSS_SECTIONS="${HOME}/openmc/endfb80-hdf5/cross_sections.xml"
 
 echo "OpenMC environment configured:"
@@ -358,7 +358,7 @@ echo "==========================================================================
 echo ""
 echo "Installation summary:"
 echo "  - OpenMC installed to: ${INSTALL_PREFIX}"
-echo "  - Cross-section data: ${XS_DATA_DIR}"
+echo "  - Cross section data: ${XS_DATA_DIR}"
 echo "  - Python virtual environment: ${VENV_DIR}"
 echo "  - Build type: ${BUILD_TYPE}"
 echo "  - MPI support: $([ "$WITH_MPI" == true ] && echo "Enabled" || echo "Disabled")"

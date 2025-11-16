@@ -23,8 +23,8 @@ print(f"k-effective:              {sp.keff}")
 print(f"k-prompt:                 {sp.k_prompt}")
 print(f"Beta-effective:           {sp.beta_eff}")
 print(f"Prompt generation time:   {prompt_gen_time_us:.6e}+/-{prompt_gen_time_std_us:.6e} us")
-print(f"Alpha (k-based):          {alpha_k_based_us:.6e}+/-{alpha_k_based_std_us:.6e} 1/us")
-print(f"Alpha (rate-based):       {alpha_rate_based_us:.6e}+/-{alpha_rate_based_std_us:.6e} 1/us")
+print(f"Alpha (k-based):          {alpha_k_based_us:.6e}+/-{alpha_k_based_std_us:.6e} gen/us")
+print(f"Alpha (rate-based):       {alpha_rate_based_us:.6e}+/-{alpha_rate_based_std_us:.6e} gen/us")
 
 # Expected results for Godiva (from Cullen et al. 2003):
 print("\nExpected values for Godiva (UCRL-TR-201506):")

@@ -1083,11 +1083,6 @@ void run_alpha_iterations()
 
   if (mpi::master) {
     header("ALPHA EIGENVALUE SIMULATION", 3);
-    fmt::print(" Initial k-prompt           = {:.5f}\n", simulation::keff_prompt);
-    fmt::print(" Initial Generation Time    = {:.5e} +/- {:.5e} seconds\n",
-      simulation::prompt_gen_time, simulation::prompt_gen_time_std);
-    fmt::print(" Initial Alpha              = {:.5e} 1/seconds\n\n",
-      simulation::alpha_previous);
     fmt::print(" Iteration      Alpha          K'        |K'-1|\n");
     fmt::print(" ---------  ------------  --------  -----------\n");
   }

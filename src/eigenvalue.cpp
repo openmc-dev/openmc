@@ -15,6 +15,7 @@
 #include "openmc/math_functions.h"
 #include "openmc/mesh.h"
 #include "openmc/message_passing.h"
+#include "openmc/output.h"
 #include "openmc/random_lcg.h"
 #include "openmc/search.h"
 #include "openmc/settings.h"

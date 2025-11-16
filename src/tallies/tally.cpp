@@ -658,6 +658,17 @@ void Tally::set_scores(const vector<std::string>& scores)
     case SCORE_IFP_DENOM:
       estimator_ = TallyEstimator::COLLISION;
       break;
+
+    // Kinetics scores require analog estimator (need collision information)
+    case SCORE_PROMPT_CHAIN_GEN_TIME_NUM:
+    case SCORE_PROMPT_CHAIN_GEN_TIME_DENOM:
+    case SCORE_PROMPT_CHAIN_NU_FISSION_RATE:
+    case SCORE_PROMPT_CHAIN_ABSORPTION_RATE:
+    case SCORE_PROMPT_CHAIN_LEAKAGE_RATE:
+    case SCORE_PROMPT_CHAIN_POPULATION:
+    case SCORE_DELAYED_CHAIN_NU_FISSION:
+      estimator_ = TallyEstimator::ANALOG;
+      break;
     }
 
     scores_.push_back(score);

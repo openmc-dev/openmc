@@ -268,10 +268,20 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
     if (use_fission_bank) {
       int64_t idx = simulation::fission_bank.thread_safe_append(site);
       if (idx == -1) {
-        warning(
-          "The shared fission bank is full. Additional fission sites created "
-          "in this generation will not be banked. Results may be "
-          "non-deterministic.");
+        // Use a static flag to ensure warning is only printed once per rank
+        static bool warning_printed = false;
+        if (!warning_printed) {
+#pragma omp critical(FissionBankWarning)
+          {
+            if (!warning_printed) {
+              warning(
+                "The shared fission bank is full. Additional fission sites "
+                "created in this generation will not be banked. Results may be "
+                "non-deterministic.");
+              warning_printed = true;
+            }
+          }
+        }
 
         // Decrement number of particle progeny as storage was unsuccessful.
         // This step is needed so that the sum of all progeny is equal to the

@@ -28,6 +28,8 @@
 #include <limits>    //for infinity
 #include <string>
 
+#include <fmt/core.h>
+
 namespace openmc {
 
 //==============================================================================
@@ -50,19 +52,19 @@ double beta_eff {0.0};
 double beta_eff_std {0.0};
 double alpha_k_based {0.0};
 double alpha_k_based_std {0.0};
-double alpha_rate_based {0.0};
-double alpha_rate_based_std {0.0};
+double alpha_static {0.0};
+double alpha_static_std {0.0};
 double prompt_gen_time {0.0};
 double prompt_gen_time_std {0.0};
 
 // Index of internal kinetics tally (for alpha calculations)
 int kinetics_tally_index {-1};
 
-// Alpha iteration state (for COG-style iterative refinement)
-double alpha_previous {0.0};        // Previous iteration's alpha value
+// Alpha eigenvalue calculation (COG static method) - iteration state
+double alpha_previous {0.0};          // Previous iteration's alpha value
 double pseudo_absorption_sigma {0.0}; // Pseudo-absorption cross section
-int alpha_iteration {0};            // Current alpha iteration number
-bool alpha_converged {false};       // Alpha convergence flag
+int alpha_iteration {0};              // Current alpha iteration number
+bool alpha_converged {false};         // Alpha convergence flag
 
 } // namespace simulation
 
@@ -113,8 +115,8 @@ void calculate_generation_prompt_keff()
     return;
 
   // Get k_prompt for this generation by subtracting off the starting value
-  simulation::keff_prompt_generation = global_tally_prompt_tracklength -
-                                       simulation::keff_prompt_generation;
+  simulation::keff_prompt_generation =
+    global_tally_prompt_tracklength - simulation::keff_prompt_generation;
 
   double keff_prompt_reduced;
 #ifdef OPENMC_MPI
@@ -464,6 +466,12 @@ void calculate_average_keff()
 
 void calculate_kinetics_parameters()
 {
+  // Skip kinetics calculation during alpha iterations to avoid corrupting
+  // the k_prompt and generation time values that were calculated from the
+  // main eigenvalue batches
+  if (simulation::alpha_iteration > 0)
+    return;
+
   // Only calculate if enabled
   if (!settings::calculate_prompt_k)
     return;
@@ -501,9 +509,9 @@ void calculate_kinetics_parameters()
         t_value = 1.0;
       }
       simulation::keff_prompt_std =
-        t_value * std::sqrt((k_prompt_sum_sq / n -
-                              std::pow(simulation::keff_prompt, 2)) /
-                             (n - 1));
+        t_value *
+        std::sqrt((k_prompt_sum_sq / n - std::pow(simulation::keff_prompt, 2)) /
+                  (n - 1));
     }
 
     // Calculate beta_eff = (k_eff - k_prompt) / k_eff
@@ -529,15 +537,16 @@ void calculate_kinetics_parameters()
       auto& tally = *model::tallies[simulation::kinetics_tally_index];
       const auto& results = tally.results();
 
-      // Extract tally results (shape: [filter_bins, scores*nuclides, result_types])
-      // No filters (n_filter_bins=1), no nuclides, so just access scores
-      // Score indices: 0=gen_time_num, 1=gen_time_denom, 2=nu_fission_rate,
+      // Extract tally results (shape: [filter_bins, scores*nuclides,
+      // result_types]) No filters (n_filter_bins=1), no nuclides, so just
+      // access scores Score indices: 0=gen_time_num, 1=gen_time_denom,
+      // 2=nu_fission_rate,
       //                3=absorption_rate, 4=leakage_rate, 5=population
       // Result type indices: 0=VALUE, 1=SUM, 2=SUM_SQ
       //
       // NOTE: Must use TallyResult::SUM (index 1), not VALUE (index 0)!
-      // The SUM is already normalized per particle and accumulated over batches.
-      // Divide by n_realizations to get the average per batch.
+      // The SUM is already normalized per particle and accumulated over
+      // batches. Divide by n_realizations to get the average per batch.
 
       int sum_idx = static_cast<int>(TallyResult::SUM);
       int sum_sq_idx = static_cast<int>(TallyResult::SUM_SQ);
@@ -583,33 +592,44 @@ void calculate_kinetics_parameters()
         // For Λ = num / (k_p × denom):
         // σ_Λ² ≈ (∂Λ/∂num)² σ_num² + (∂Λ/∂denom)² σ_denom² + (∂Λ/∂k_p)² σ_kp²
         if (n > 1 && simulation::prompt_gen_time > 0.0) {
-          double dLambda_dnum = 1.0 / (simulation::keff_prompt * gen_time_denom);
+          double dLambda_dnum =
+            1.0 / (simulation::keff_prompt * gen_time_denom);
           double dLambda_ddenom =
-            -gen_time_num / (simulation::keff_prompt * gen_time_denom * gen_time_denom);
+            -gen_time_num /
+            (simulation::keff_prompt * gen_time_denom * gen_time_denom);
           double dLambda_dkp =
-            -gen_time_num / (simulation::keff_prompt * simulation::keff_prompt * gen_time_denom);
+            -gen_time_num / (simulation::keff_prompt * simulation::keff_prompt *
+                              gen_time_denom);
 
-          double var_Lambda = dLambda_dnum * dLambda_dnum * gen_time_num_std * gen_time_num_std +
-                             dLambda_ddenom * dLambda_ddenom * gen_time_denom_std * gen_time_denom_std +
-                             dLambda_dkp * dLambda_dkp * simulation::keff_prompt_std * simulation::keff_prompt_std;
+          double var_Lambda =
+            dLambda_dnum * dLambda_dnum * gen_time_num_std * gen_time_num_std +
+            dLambda_ddenom * dLambda_ddenom * gen_time_denom_std *
+              gen_time_denom_std +
+            dLambda_dkp * dLambda_dkp * simulation::keff_prompt_std *
+              simulation::keff_prompt_std;
 
           simulation::prompt_gen_time_std = std::sqrt(var_Lambda);
         }
 
         // Calculate alpha (k-based): α = (k_prompt - 1) / Λ_prompt
         if (simulation::prompt_gen_time > 0.0) {
-          simulation::alpha_k_based = (simulation::keff_prompt - 1.0) /
-                                      simulation::prompt_gen_time;
+          simulation::alpha_k_based =
+            (simulation::keff_prompt - 1.0) / simulation::prompt_gen_time;
 
           // Error propagation for alpha_k_based
           // For α = (k_p - 1) / Λ: σ_α² ≈ (1/Λ)² σ_kp² + ((k_p-1)/Λ²)² σ_Λ²
           if (n > 1 && simulation::prompt_gen_time > 0.0) {
             double dAlpha_dkp = 1.0 / simulation::prompt_gen_time;
-            double dAlpha_dLambda = -(simulation::keff_prompt - 1.0) /
-                                   (simulation::prompt_gen_time * simulation::prompt_gen_time);
+            double dAlpha_dLambda =
+              -(simulation::keff_prompt - 1.0) /
+              (simulation::prompt_gen_time * simulation::prompt_gen_time);
 
-            double var_alpha = dAlpha_dkp * dAlpha_dkp * simulation::keff_prompt_std * simulation::keff_prompt_std +
-                              dAlpha_dLambda * dAlpha_dLambda * simulation::prompt_gen_time_std * simulation::prompt_gen_time_std;
+            double var_alpha = dAlpha_dkp * dAlpha_dkp *
+                                 simulation::keff_prompt_std *
+                                 simulation::keff_prompt_std +
+                               dAlpha_dLambda * dAlpha_dLambda *
+                                 simulation::prompt_gen_time_std *
+                                 simulation::prompt_gen_time_std;
 
             simulation::alpha_k_based_std = std::sqrt(var_alpha);
           }
@@ -617,35 +637,22 @@ void calculate_kinetics_parameters()
       }
 
       // ========================================================================
-      // RATE-BASED ALPHA CALCULATION (NOT IMPLEMENTED)
+      // ALPHA EIGENVALUE CALCULATION (COG STATIC METHOD)
       // ========================================================================
       //
-      // COG's rate-based alpha: α = (R_prod - R_removal) / N_prompt
+      // This method is implemented in run_alpha_iterations() which is called
+      // after normal eigenvalue batches complete, based on the COG static
+      // method which uses iterative refinement with pseudo-absorption.
       //
-      // This CANNOT work in standard eigenvalue Monte Carlo without COG's
-      // iterative refinement because:
+      // The method:
+      //   1. Initializes α₀ = (k_prompt - 1) / Λ_prompt
+      //   2. Adds pseudo-absorption σ_α = α / v to cross sections
+      //   3. Runs batches and computes K'
+      //   4. Updates α and iterates until K' → 1.0
       //
-      // 1. OpenMC normalizes population each generation (forces k = 1)
-      // 2. The eigenvalue equation ALWAYS satisfies:
-      //    k_prompt × nu_fission_rate = absorption_rate + leakage_rate
-      // 3. Therefore: production - removal ≈ 0 (always!)
-      //
-      // COG's solution: Iterative refinement with pseudo-absorption
-      //   - Add σ_α(E) = α / v(E) to material cross sections
-      //   - This modifies the eigenvalue problem itself
-      //   - Iterate until α converges
-      //
-      // To implement this would require:
-      //   - Modifying cross sections between generations
-      //   - Running multiple eigenvalue iterations
-      //   - Convergence checking: |α_new - α_old| < ε
-      //
-      // USE THE K-BASED METHOD INSTEAD: α = (k_prompt - 1) / Λ_prompt
-      // This gives the same result as COG's converged rate-based method.
-      //
-      // Set to NaN to indicate not implemented
-      simulation::alpha_rate_based = std::numeric_limits<double>::quiet_NaN();
-      simulation::alpha_rate_based_std = std::numeric_limits<double>::quiet_NaN();
+      // Initialize to NaN; will be set by run_alpha_iterations() if enabled
+      simulation::alpha_static = std::numeric_limits<double>::quiet_NaN();
+      simulation::alpha_static_std = std::numeric_limits<double>::quiet_NaN();
     }
   }
 }
@@ -1004,6 +1011,151 @@ void setup_kinetics_tallies()
 
   // No filters - tally over entire geometry
   tally->set_filters({});
+}
+
+void run_alpha_iterations()
+{
+  using namespace openmc;
+
+  // ============================================================================
+  // ALPHA EIGENVALUE CALCULATION (COG STATIC METHOD)
+  // ============================================================================
+  //
+  // This implements the alpha eigenvalue calculation using the COG static
+  // method, which uses iterative refinement with pseudo-absorption to find
+  // the alpha eigenvalue.
+  //
+  // Method:
+  //   1. Initialize: α₀ = (k_prompt - 1) / Λ_prompt (k-based estimate)
+  //   2. Add pseudo-absorption: σ_α(E) = α / v(E) to material cross sections
+  //   3. Run eigenvalue batch with modified cross sections → get K'
+  //   4. Update: α_new = α_old + (K' - 1) / Λ
+  //   5. Iterate until convergence: |K' - 1.0| < tolerance
+  //
+  // The converged α satisfies K'(α) = 1, where K' is the eigenvalue of the
+  // transport equation with pseudo-absorption included.
+  //
+  // This method runs AFTER normal eigenvalue batches complete, using the
+  // converged source distribution. The alpha_iteration counter (> 0) signals
+  // that pseudo-absorption should be added during transport and that kinetics
+  // parameter calculation should be skipped to avoid corrupting k_prompt/Λ.
+  //
+  // Reference:
+  //   Wilcox, Thomas, Edward Lent, Richard Buck, and Chuck Lee, COG User's
+  //   Manual: A Multiparticle Monte Carlo Transport Code, 6th ed.,
+  //   UCRL-TM-202590, Lawrence Livermore National Laboratory, 2025.
+  // ============================================================================
+
+  // Only run if calculate_alpha is enabled and we're in eigenvalue mode
+  if (!settings::calculate_alpha || settings::run_mode != RunMode::EIGENVALUE)
+    return;
+
+  // Verify that normal eigenvalue calculation has completed and we have
+  // valid kinetics parameters from the main simulation
+  if (simulation::keff_prompt <= 0.0 || simulation::prompt_gen_time <= 0.0) {
+    if (mpi::master) {
+      warning(
+        "Cannot run alpha iterations: invalid k_prompt or generation time");
+    }
+    return;
+  }
+
+  // Additional safety check: ensure we have completed some active batches
+  if (simulation::current_batch < settings::n_inactive + 1) {
+    if (mpi::master) {
+      warning("Cannot run alpha iterations: no active batches completed");
+    }
+    return;
+  }
+
+  if (mpi::master) {
+    header("ALPHA EIGENVALUE CALCULATION (COG STATIC METHOD)", 3);
+    fmt::print("\n");
+    fmt::print(" Initial k_prompt        = {:.6f}\n", simulation::keff_prompt);
+    fmt::print(
+      " Initial gen time        = {:.6e} s\n", simulation::prompt_gen_time);
+  }
+
+  // Initialize alpha using k-based estimate: α = (k_prompt - 1) / Λ
+  simulation::alpha_previous =
+    (simulation::keff_prompt - 1.0) / simulation::prompt_gen_time;
+
+  if (mpi::master) {
+    fmt::print(
+      " Initial alpha estimate  = {:.6e} 1/s\n\n", simulation::alpha_previous);
+    fmt::print(" Iteration    Alpha (1/s)         K'          |K'-1|\n");
+    fmt::print(" ---------    ------------      --------      --------\n");
+  }
+
+  // Alpha iteration loop
+  simulation::alpha_converged = false;
+  double k_prime = 0.0;
+
+  for (simulation::alpha_iteration = 1;
+       simulation::alpha_iteration <= settings::max_alpha_iterations;
+       ++simulation::alpha_iteration) {
+
+    // Run a single batch with pseudo-absorption enabled
+    // The pseudo-absorption σ_α = α/v is added in particle.cpp
+    // Note: This runs additional batches beyond n_max_batches
+    int status = 0;
+    openmc_next_batch(&status);
+
+    // Get K' from this batch (track-length estimator)
+    k_prime = simulation::keff_generation;
+
+    // Check convergence: |K' - 1.0| < tolerance
+    double k_error = std::abs(k_prime - 1.0);
+
+    if (mpi::master) {
+      fmt::print(" {:4d}       {:.6e}    {:.6f}    {:.6e}\n",
+        simulation::alpha_iteration, simulation::alpha_previous, k_prime,
+        k_error);
+    }
+
+    // Check for convergence
+    if (k_error < settings::alpha_tolerance) {
+      simulation::alpha_converged = true;
+      if (mpi::master) {
+        fmt::print(
+          "\n *** CONVERGED: K' = {:.6f} (target: 1.0) ***\n", k_prime);
+      }
+      break;
+    }
+
+    // Update alpha for next iteration
+    // Using COG's Order1 method: α_new = α_old + (K' - 1) / Λ
+    double delta_alpha = (k_prime - 1.0) / simulation::prompt_gen_time;
+    simulation::alpha_previous += delta_alpha;
+
+    // Check for divergence
+    if (std::abs(simulation::alpha_previous) > 1.0e10) {
+      if (mpi::master) {
+        warning("Alpha iteration diverging, stopping iterations");
+      }
+      break;
+    }
+  }
+
+  // Report final result
+  if (mpi::master) {
+    if (!simulation::alpha_converged &&
+        simulation::alpha_iteration > settings::max_alpha_iterations) {
+      fmt::print(
+        "\n *** WARNING: Maximum iterations reached without convergence ***\n");
+    }
+    fmt::print("\n Final alpha (COG static) = {:.6e} +/- N/A 1/s\n",
+      simulation::alpha_previous);
+    fmt::print(
+      " Converged in {} iterations\n\n", simulation::alpha_iteration - 1);
+  }
+
+  // Store the converged alpha value from the COG static method
+  simulation::alpha_static = simulation::alpha_previous;
+  simulation::alpha_static_std = std::numeric_limits<double>::quiet_NaN();
+
+  // Reset iteration counter to indicate we're done with alpha iterations
+  simulation::alpha_iteration = 0;
 }
 
 } // namespace openmc

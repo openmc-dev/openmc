@@ -67,6 +67,12 @@ int openmc_run()
     err = openmc_next_batch(&status);
   }
 
+  // Run alpha eigenvalue iterations if requested (COG method)
+  // This runs AFTER normal k-eigenvalue batches complete
+  if (openmc::settings::run_mode == openmc::RunMode::EIGENVALUE) {
+    openmc::run_alpha_iterations();
+  }
+
   openmc_simulation_finalize();
   openmc::simulation::time_total.stop();
   return err;

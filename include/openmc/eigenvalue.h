@@ -35,17 +35,17 @@ extern double beta_eff;               //!< Effective delayed neutron fraction
 extern double beta_eff_std;           //!< Standard deviation of beta_eff
 extern double alpha_k_based;          //!< Alpha eigenvalue (k-based method)
 extern double alpha_k_based_std;      //!< Standard deviation of alpha (k-based)
-extern double alpha_rate_based;       //!< Alpha eigenvalue (rate-based method)
-extern double alpha_rate_based_std;   //!< Standard deviation of alpha (rate-based)
-extern double prompt_gen_time;        //!< Prompt neutron generation time
-extern double prompt_gen_time_std;    //!< Standard deviation of gen time
-extern int kinetics_tally_index;      //!< Index of internal kinetics tally
+extern double alpha_static;           //!< Alpha eigenvalue (COG static method)
+extern double alpha_static_std;    //!< Standard deviation of alpha (COG static)
+extern double prompt_gen_time;     //!< Prompt neutron generation time
+extern double prompt_gen_time_std; //!< Standard deviation of gen time
+extern int kinetics_tally_index;   //!< Index of internal kinetics tally
 
-// Alpha iteration state (for COG-style iterative refinement)
-extern double alpha_previous;         //!< Previous iteration's alpha value
+// Alpha eigenvalue calculation (COG static method) - iteration state
+extern double alpha_previous;          //!< Previous iteration's alpha value
 extern double pseudo_absorption_sigma; //!< Pseudo-absorption cross section
-extern int alpha_iteration;           //!< Current alpha iteration number
-extern bool alpha_converged;          //!< Alpha convergence flag
+extern int alpha_iteration;            //!< Current alpha iteration number
+extern bool alpha_converged;           //!< Alpha convergence flag
 
 } // namespace simulation
 
@@ -76,6 +76,14 @@ void calculate_kinetics_parameters();
 //!
 //! Creates tallies with prompt chain scores needed for alpha calculations
 void setup_kinetics_tallies();
+
+//! Run alpha eigenvalue calculation (COG static method)
+//!
+//! This function runs additional batches after normal eigenvalue calculation
+//! to determine alpha through iterative refinement with pseudo-absorption.
+//! The method seeks alpha such that K'(alpha) = 1.0, based on the alpha
+//! static method implemented in the COG Monte Carlo code.
+void run_alpha_iterations();
 
 //! Calculates a minimum variance estimate of k-effective
 //!

@@ -932,9 +932,6 @@ void write_eigenvalue_hdf5(hid_t group)
       array<double, 2> alpha_k_vals {
         simulation::alpha_k_based, simulation::alpha_k_based_std};
       write_dataset(group, "alpha_k_based", alpha_k_vals);
-      array<double, 2> alpha_rate_vals {
-        simulation::alpha_rate_based, simulation::alpha_rate_based_std};
-      write_dataset(group, "alpha_rate_based", alpha_rate_vals);
     }
   }
 }
@@ -975,10 +972,6 @@ void read_eigenvalue_hdf5(hid_t group)
       read_dataset(group, "alpha_k_based", alpha_k_vals);
       simulation::alpha_k_based = alpha_k_vals[0];
       simulation::alpha_k_based_std = alpha_k_vals[1];
-      array<double, 2> alpha_rate_vals;
-      read_dataset(group, "alpha_rate_based", alpha_rate_vals);
-      simulation::alpha_rate_based = alpha_rate_vals[0];
-      simulation::alpha_rate_based_std = alpha_rate_vals[1];
     }
   }
 }

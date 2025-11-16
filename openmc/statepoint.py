@@ -350,14 +350,6 @@ class StatePoint:
             return None
 
     @property
-    def alpha_rate_based(self):
-        """Alpha eigenvalue (rate-based method) with uncertainty."""
-        if self.run_mode == 'eigenvalue' and 'alpha_rate_based' in self._f:
-            return ufloat(*self._f['alpha_rate_based'][()])
-        else:
-            return None
-
-    @property
     def meshes(self):
         if not self._meshes_read:
             mesh_group = self._f['tallies/meshes']

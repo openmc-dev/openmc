@@ -69,7 +69,6 @@ settings.export_to_xml()
 # print(f"Beta-effective: {sp.beta_eff}")
 # print(f"Prompt generation time: {sp.prompt_gen_time}")
 # print(f"Alpha (k-based): {sp.alpha_k_based}")
-# print(f"Alpha (rate-based): {sp.alpha_rate_based}")
 
 print("Example files created successfully!")
 print("To run this example:")

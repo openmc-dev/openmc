@@ -1071,21 +1071,21 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
       break;
 
     case SCORE_PROMPT_CHAIN_FLUX:
-      // Only score flux from pure prompt neutron chains
+      // Only score flux from prompt neutrons
       if (!p.has_delayed_ancestor()) {
         score = flux;
       }
       break;
 
     case SCORE_DELAYED_CHAIN_FLUX:
-      // Only score flux from chains with delayed neutron ancestry
+      // Only score flux from delayed neutrons
       if (p.has_delayed_ancestor()) {
         score = flux;
       }
       break;
 
     case SCORE_PROMPT_CHAIN_NU_FISSION:
-      // Only score nu-fission from pure prompt chains
+      // Only score nu-fission from prompt neutrons
       if (!p.has_delayed_ancestor()) {
         if (p.macro_xs().fission == 0)
           continue;
@@ -1098,7 +1098,7 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
       break;
 
     case SCORE_DELAYED_CHAIN_NU_FISSION:
-      // Only score nu-fission from chains with delayed ancestry
+      // Only score nu-fission from delayed neutrons
       if (p.has_delayed_ancestor()) {
         if (p.macro_xs().fission == 0)
           continue;
@@ -1111,14 +1111,14 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
       break;
 
     case SCORE_PROMPT_CHAIN_GEN_TIME_NUM:
-      // Score lifetime * weight for prompt chains (numerator for Λ_prompt)
+      // Score lifetime * weight for prompt neutrons (numerator for Λ_prompt)
       if (!p.has_delayed_ancestor() && p.fission()) {
         score = p.lifetime() * p.wgt_last();
       }
       break;
 
     case SCORE_PROMPT_CHAIN_GEN_TIME_DENOM:
-      // Score weight for prompt chains (denominator for Λ_prompt)
+      // Score weight for prompt neutrons (denominator for Λ_prompt)
       if (!p.has_delayed_ancestor() && p.fission()) {
         score = p.wgt_last();
       }
@@ -1632,7 +1632,7 @@ void score_general_ce_analog(Particle& p, int i_tally, int start_index,
       break;
 
     case SCORE_PROMPT_CHAIN_FLUX:
-      // Only score flux from pure prompt neutron chains
+      // Only score flux from prompt neutrons
       if (!p.has_delayed_ancestor()) {
         score = flux * p.wgt_last() / p.macro_xs().total;
       }
@@ -1646,7 +1646,7 @@ void score_general_ce_analog(Particle& p, int i_tally, int start_index,
       break;
 
     case SCORE_PROMPT_CHAIN_NU_FISSION:
-      // Only score nu-fission from pure prompt chains (analog estimator)
+      // Only score nu-fission from prompt neutrons (analog estimator)
       if (!p.has_delayed_ancestor() && p.fission()) {
         score = p.wgt_bank();
       }
@@ -1660,14 +1660,14 @@ void score_general_ce_analog(Particle& p, int i_tally, int start_index,
       break;
 
     case SCORE_PROMPT_CHAIN_GEN_TIME_NUM:
-      // Score lifetime * weight for prompt chains (numerator for Λ_prompt)
+      // Score lifetime * weight for prompt neutrons (numerator for Λ_prompt)
       if (!p.has_delayed_ancestor() && p.fission()) {
         score = p.lifetime() * p.wgt_last();
       }
       break;
 
     case SCORE_PROMPT_CHAIN_GEN_TIME_DENOM:
-      // Score weight for prompt chains (denominator for Λ_prompt)
+      // Score weight for prompt neutrons (denominator for Λ_prompt)
       if (!p.has_delayed_ancestor() && p.fission()) {
         score = p.wgt_last();
       }
@@ -2461,7 +2461,7 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
       continue;
 
     case SCORE_PROMPT_CHAIN_FLUX:
-      // Only score flux from pure prompt neutron chains
+      // Only score flux from prompt neutrons
       if (!p.has_delayed_ancestor()) {
         if (tally.estimator_ == TallyEstimator::ANALOG) {
           score = flux * p.wgt_last() / p.macro_xs().total;
@@ -2483,7 +2483,7 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
       break;
 
     case SCORE_PROMPT_CHAIN_NU_FISSION:
-      // Only score nu-fission from pure prompt chains
+      // Only score nu-fission from prompt neutrons
       if (!p.has_delayed_ancestor()) {
         if (tally.estimator_ == TallyEstimator::ANALOG) {
           if (p.fission()) {
@@ -2521,14 +2521,14 @@ void score_general_mg(Particle& p, int i_tally, int start_index,
       break;
 
     case SCORE_PROMPT_CHAIN_GEN_TIME_NUM:
-      // Score lifetime * weight for prompt chains (numerator for Λ_prompt)
+      // Score lifetime * weight for prompt neutrons (numerator for Λ_prompt)
       if (!p.has_delayed_ancestor() && p.fission()) {
         score = p.lifetime() * p.wgt_last();
       }
       break;
 
     case SCORE_PROMPT_CHAIN_GEN_TIME_DENOM:
-      // Score weight for prompt chains (denominator for Λ_prompt)
+      // Score weight for prompt neutrons (denominator for Λ_prompt)
       if (!p.has_delayed_ancestor() && p.fission()) {
         score = p.wgt_last();
       }

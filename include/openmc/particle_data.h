@@ -517,7 +517,7 @@ private:
   int event_nuclide_;
   int event_mt_;
   int delayed_group_ {0};
-  bool has_delayed_ancestor_ {false}; //!< lineage flag for kinetics
+  bool has_delayed_ancestor_ {false}; //!< flag indicating if neutron is delayed (for kinetics)
   int parent_nuclide_ {-1};
 
   int n_bank_ {0};

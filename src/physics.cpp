@@ -1091,11 +1091,9 @@ void sample_fission_neutron(
     site->delayed_group = 0;
   }
 
-  // Propagate delayed neutron lineage for kinetics calculations
-  // A neutron has delayed ancestry if it IS delayed OR its parent had delayed
-  // ancestry
-  site->has_delayed_ancestor =
-    (site->delayed_group > 0) || p.has_delayed_ancestor();
+  // Set delayed neutron flag for kinetics calculations
+  // Track whether this neutron itself is delayed (not genealogy)
+  site->has_delayed_ancestor = (site->delayed_group > 0);
 
   // sample from prompt neutron energy distribution
   int n_sample = 0;

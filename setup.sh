@@ -3,14 +3,14 @@
 # OpenMC Installation and Setup Script
 ################################################################################
 # This script automates the installation and configuration of OpenMC,
-# including downloading cross-section data, installing dependencies,
-# building the code, and setting up the Python API.
+# including copying cross-section data, building the code, setting up
+# a Python virtual environment, and installing the Python API.
 #
 # Usage: ./setup.sh [OPTIONS]
 #
 # Options:
 #   --skip-deps       Skip system dependency installation
-#   --skip-xs         Skip cross-section data download
+#   --skip-xs         Skip cross-section data copy
 #   --with-mpi        Build with MPI support
 #   --build-type      Set build type (Debug|Release|RelWithDebInfo)
 #   --help            Show this help message
@@ -177,39 +177,31 @@ else
 fi
 
 ################################################################################
-# Download cross-section data
+# Setup cross-section data
 ################################################################################
 
 if [[ "$SKIP_XS" == false ]]; then
-    log_info "Downloading cross-section data..."
+    log_info "Setting up cross-section data..."
 
-    # Create data directory
-    XS_DATA_DIR="${HOME}/openmc_data"
-    mkdir -p "${XS_DATA_DIR}"
+    # Define source and destination directories
+    XS_SOURCE_DIR="/home/zywiec1/endfb80-hdf5"
+    XS_DATA_DIR="${HOME}/openmc/endfb80-hdf5"
 
-    # Download NNDC HDF5 cross sections
-    if [[ ! -e "${XS_DATA_DIR}/nndc_hdf5/cross_sections.xml" ]]; then
-        log_info "Downloading NNDC HDF5 cross-section library..."
-        wget -q --show-progress -O - \
-            https://anl.box.com/shared/static/teaup95cqv8s9nn56hfn7ku8mmelr95p.xz \
-            | tar -C "${XS_DATA_DIR}" -xJ
-        log_success "NNDC HDF5 data downloaded"
+    # Copy endfb80-hdf5 data if not already present
+    if [[ ! -d "${XS_DATA_DIR}" ]]; then
+        log_info "Copying cross-section data from ${XS_SOURCE_DIR}..."
+
+        if [[ -d "${XS_SOURCE_DIR}" ]]; then
+            mkdir -p "$(dirname "${XS_DATA_DIR}")"
+            cp -r "${XS_SOURCE_DIR}" "${XS_DATA_DIR}"
+            log_success "Cross-section data copied to ${XS_DATA_DIR}"
+        else
+            log_error "Source directory ${XS_SOURCE_DIR} not found!"
+            log_error "Please ensure the endfb80-hdf5 data is available at ${XS_SOURCE_DIR}"
+            exit 1
+        fi
     else
-        log_info "NNDC HDF5 data already exists, skipping download"
-    fi
-
-    # Download ENDF/B-VII.1 distribution
-    ENDF_DIR="${XS_DATA_DIR}/endf-b-vii.1"
-    if [[ ! -d "${ENDF_DIR}/neutrons" ]] || \
-       [[ ! -d "${ENDF_DIR}/photoat" ]] || \
-       [[ ! -d "${ENDF_DIR}/atomic_relax" ]]; then
-        log_info "Downloading ENDF/B-VII.1 distribution..."
-        wget -q --show-progress -O - \
-            https://anl.box.com/shared/static/4kd2gxnf4gtk4w1c8eua5fsua22kvgjb.xz \
-            | tar -C "${XS_DATA_DIR}" -xJ
-        log_success "ENDF/B-VII.1 data downloaded"
-    else
-        log_info "ENDF/B-VII.1 data already exists, skipping download"
+        log_info "Cross-section data already exists at ${XS_DATA_DIR}, skipping copy"
     fi
 
     # Copy ENDF/B-VIII.0 HDF5 data if available
@@ -226,8 +218,8 @@ if [[ "$SKIP_XS" == false ]]; then
 
     log_success "Cross-section data ready at ${XS_DATA_DIR}"
 else
-    log_info "Skipping cross-section data download"
-    XS_DATA_DIR="${HOME}/openmc_data"
+    log_info "Skipping cross-section data setup"
+    XS_DATA_DIR="${HOME}/openmc/endfb80-hdf5"
 fi
 
 ################################################################################
@@ -271,39 +263,37 @@ make install
 log_success "OpenMC compiled and installed"
 
 ################################################################################
-# Install Python API
+# Setup Python virtual environment and install OpenMC Python API
 ################################################################################
 
-log_info "Installing Python API..."
+log_info "Setting up Python virtual environment..."
 
 cd "${SCRIPT_DIR}"
 
-# Upgrade pip
-python3 -m pip install --upgrade pip
+# Create virtual environment if it doesn't exist
+VENV_DIR="${SCRIPT_DIR}/.env"
+if [[ ! -d "${VENV_DIR}" ]]; then
+    log_info "Creating Python virtual environment at ${VENV_DIR}..."
+    python3 -m venv "${VENV_DIR}"
+    log_success "Virtual environment created"
+else
+    log_info "Virtual environment already exists at ${VENV_DIR}"
+fi
 
-# Install Python dependencies
-log_info "Installing Python dependencies..."
-python3 -m pip install \
-    numpy \
-    scipy \
-    h5py \
-    matplotlib \
-    pandas \
-    lxml \
-    uncertainties \
-    ipython \
-    setuptools \
-    endf
+# Activate virtual environment
+log_info "Activating virtual environment..."
+source "${VENV_DIR}/bin/activate"
 
-# Install optional dependencies
-log_info "Installing optional Python packages..."
-python3 -m pip install mcpl ncrystal || log_warning "Some optional packages failed to install"
+# Upgrade pip in virtual environment
+log_info "Upgrading pip..."
+python -m pip install --upgrade pip --quiet
 
 # Install OpenMC Python API in development mode
-log_info "Installing OpenMC Python package..."
-python3 -m pip install -e .
+log_info "Installing OpenMC Python package in development mode..."
+python -m pip install -e .
 
-log_success "Python API installed"
+log_success "Python virtual environment setup complete"
+log_success "OpenMC Python bindings installed"
 
 ################################################################################
 # Set up environment
@@ -313,23 +303,33 @@ log_info "Configuring environment..."
 
 # Create environment setup script
 ENV_SCRIPT="${SCRIPT_DIR}/openmc_env.sh"
-cat > "${ENV_SCRIPT}" << EOF
+cat > "${ENV_SCRIPT}" << 'EOF'
 #!/bin/bash
 # OpenMC environment setup script
 # Source this file to set up the OpenMC environment:
-#   source ${ENV_SCRIPT}
+#   source openmc_env.sh
+
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Activate Python virtual environment
+if [[ -d "${SCRIPT_DIR}/.env" ]]; then
+    source "${SCRIPT_DIR}/.env/bin/activate"
+    echo "Python virtual environment activated"
+else
+    echo "Warning: Virtual environment not found at ${SCRIPT_DIR}/.env"
+fi
 
 # Add OpenMC binary to PATH
-export PATH="${INSTALL_PREFIX}/bin:\${PATH}"
+export PATH="${HOME}/.local/bin:${PATH}"
 
-# Set cross-section data paths
-export OPENMC_CROSS_SECTIONS="${XS_DATA_DIR}/nndc_hdf5/cross_sections.xml"
-export OPENMC_ENDF_DATA="${XS_DATA_DIR}/endf-b-vii.1"
+# Set cross-section data path
+export OPENMC_CROSS_SECTIONS="${HOME}/openmc/endfb80-hdf5/cross_sections.xml"
 
 echo "OpenMC environment configured:"
-echo "  OpenMC executable: \$(which openmc 2>/dev/null || echo 'not found in PATH')"
-echo "  Cross sections: \${OPENMC_CROSS_SECTIONS}"
-echo "  ENDF data: \${OPENMC_ENDF_DATA}"
+echo "  OpenMC executable: $(which openmc 2>/dev/null || echo 'not found in PATH')"
+echo "  Cross sections: ${OPENMC_CROSS_SECTIONS}"
+echo "  Python: $(which python)"
 EOF
 
 chmod +x "${ENV_SCRIPT}"
@@ -342,9 +342,6 @@ log_success "Environment script created: ${ENV_SCRIPT}"
 
 log_info "Verifying installation..."
 
-# Source the environment
-source "${ENV_SCRIPT}"
-
 # Check if openmc binary exists
 if command -v openmc &> /dev/null; then
     OPENMC_VERSION=$(openmc --version 2>&1 || echo "unknown")
@@ -354,8 +351,8 @@ else
     log_warning "OpenMC executable not found in PATH"
 fi
 
-# Check Python module
-if python3 -c "import openmc; print(f'OpenMC Python API version: {openmc.__version__}')" 2>/dev/null; then
+# Check Python module (should still be in activated venv)
+if python -c "import openmc; print(f'OpenMC Python API version: {openmc.__version__}')" 2>/dev/null; then
     log_success "OpenMC Python module imported successfully"
 else
     log_error "Failed to import OpenMC Python module"
@@ -374,18 +371,22 @@ echo ""
 echo "Installation summary:"
 echo "  - OpenMC installed to: ${INSTALL_PREFIX}"
 echo "  - Cross-section data: ${XS_DATA_DIR}"
+echo "  - Python virtual environment: ${VENV_DIR}"
 echo "  - Build type: ${BUILD_TYPE}"
 echo "  - MPI support: $([ "$WITH_MPI" == true ] && echo "Enabled" || echo "Disabled")"
 echo ""
-echo "To use OpenMC, run:"
-echo "  source ${ENV_SCRIPT}"
+echo "To use OpenMC in a new terminal, run:"
+echo "  cd ${SCRIPT_DIR}"
+echo "  source openmc_env.sh"
 echo ""
-echo "Or add the following to your ~/.bashrc or ~/.zshrc:"
-echo "  source ${ENV_SCRIPT}"
+echo "This will:"
+echo "  - Activate the Python virtual environment"
+echo "  - Add OpenMC binary to PATH"
+echo "  - Set OPENMC_CROSS_SECTIONS environment variable"
 echo ""
 echo "To test the installation, try running one of the examples:"
-echo "  cd ${SCRIPT_DIR}/examples/pincell"
-echo "  python build_xml.py"
-echo "  openmc"
+echo "  source openmc_env.sh"
+echo "  cd examples"
+echo "  python kinetics_benchmark_problem1.py"
 echo ""
 echo "================================================================================"

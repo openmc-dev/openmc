@@ -395,10 +395,11 @@ void Particle::event_collide()
   // Reset fission logical
   fission() = false;
 
-  // Reset delayed neutron flag after first collision
-  // A delayed neutron should only be considered "delayed" for its birth generation
-  // After scattering/collision, it becomes part of the prompt chain
-  is_delayed() = false;
+  // NOTE: Do NOT reset is_delayed() flag here!
+  // Once a neutron is delayed, it remains delayed throughout its lifetime.
+  // The delayed status is intrinsic to the neutron itself, not just its birth.
+  // This is important for kinetics calculations where we track prompt chains
+  // separately from delayed neutrons.
 
   // Save coordinates for tallying purposes
   r_last_current() = r();

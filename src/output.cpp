@@ -563,12 +563,21 @@ void print_results()
       fmt::print(" Beta-effective              = {:.5f} +/- {:.5f}\n",
         simulation::beta_eff, t_n1 * simulation::beta_eff_std);
       if (settings::calculate_alpha) {
-        fmt::print(" Prompt generation time      = {:.6e} +/- {:.6e} s\n",
-          simulation::prompt_gen_time, t_n1 * simulation::prompt_gen_time_std);
-        fmt::print(" Alpha (k-based)             = {:.6e} +/- {:.6e} 1/s\n",
-          simulation::alpha_k_based, t_n1 * simulation::alpha_k_based_std);
-        fmt::print(" Alpha (rate-based)          = {:.6e} +/- {:.6e} 1/s\n",
-          simulation::alpha_rate_based, t_n1 * simulation::alpha_rate_based_std);
+        // Convert to microseconds (1 s = 1e6 us)
+        double prompt_gen_time_us = simulation::prompt_gen_time * 1.0e6;
+        double prompt_gen_time_std_us = simulation::prompt_gen_time_std * 1.0e6;
+        // Convert alpha to 1/us (divide by 1e6)
+        double alpha_k_based_us = simulation::alpha_k_based / 1.0e6;
+        double alpha_k_based_std_us = simulation::alpha_k_based_std / 1.0e6;
+        double alpha_rate_based_us = simulation::alpha_rate_based / 1.0e6;
+        double alpha_rate_based_std_us = simulation::alpha_rate_based_std / 1.0e6;
+
+        fmt::print(" Prompt generation time      = {:.6e} +/- {:.6e} us\n",
+          prompt_gen_time_us, t_n1 * prompt_gen_time_std_us);
+        fmt::print(" Alpha (k-based)             = {:.6e} +/- {:.6e} 1/us\n",
+          alpha_k_based_us, t_n1 * alpha_k_based_std_us);
+        fmt::print(" Alpha (rate-based)          = {:.6e} +/- {:.6e} 1/us\n",
+          alpha_rate_based_us, t_n1 * alpha_rate_based_std_us);
       }
     }
   } else {
@@ -594,12 +603,18 @@ void print_results()
         simulation::keff_prompt);
       fmt::print(" Beta-effective             = {:.5f}\n", simulation::beta_eff);
       if (settings::calculate_alpha) {
-        fmt::print(" Prompt generation time     = {:.6e} s\n",
-          simulation::prompt_gen_time);
-        fmt::print(" Alpha (k-based)            = {:.6e} 1/s\n",
-          simulation::alpha_k_based);
-        fmt::print(" Alpha (rate-based)         = {:.6e} 1/s\n",
-          simulation::alpha_rate_based);
+        // Convert to microseconds (1 s = 1e6 us)
+        double prompt_gen_time_us = simulation::prompt_gen_time * 1.0e6;
+        // Convert alpha to 1/us (divide by 1e6)
+        double alpha_k_based_us = simulation::alpha_k_based / 1.0e6;
+        double alpha_rate_based_us = simulation::alpha_rate_based / 1.0e6;
+
+        fmt::print(" Prompt generation time     = {:.6e} us\n",
+          prompt_gen_time_us);
+        fmt::print(" Alpha (k-based)            = {:.6e} 1/us\n",
+          alpha_k_based_us);
+        fmt::print(" Alpha (rate-based)         = {:.6e} 1/us\n",
+          alpha_rate_based_us);
       }
     }
   }

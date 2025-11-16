@@ -351,7 +351,7 @@ class StatePoint:
 
     @property
     def alpha_static(self):
-        """Alpha eigenvalue (COG static method) with uncertainty."""
+        """Alpha eigenvalue (COG Static method) with uncertainty."""
         if self.run_mode == 'eigenvalue' and 'alpha_static' in self._f:
             return ufloat(*self._f['alpha_static'][()])
         else:

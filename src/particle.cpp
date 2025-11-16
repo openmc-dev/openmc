@@ -234,7 +234,7 @@ void Particle::event_calculate_xs()
     macro_xs().nu_fission = 0.0;
   }
 
-  // Add pseudo-absorption for alpha eigenvalue calculation (COG static method)
+  // Add pseudo-absorption for alpha eigenvalue calculation (COG Static method)
   // σ_α(E) = α / v(E), where α is in units of 1/time
   if (settings::calculate_alpha && simulation::alpha_iteration > 0) {
     double velocity = this->speed();

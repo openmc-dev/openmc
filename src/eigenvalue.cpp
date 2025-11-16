@@ -1085,7 +1085,6 @@ void run_alpha_iterations()
       " Initial gen time        = {:.6e} s\n", simulation::prompt_gen_time);
   }
 
-  // Initialize alpha using k-based estimate: α = (k_prompt - 1) / Λ
   simulation::alpha_previous =
     (simulation::keff_prompt - 1.0) / simulation::prompt_gen_time;
 

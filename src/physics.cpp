@@ -102,7 +102,7 @@ void sample_neutron_reaction(Particle& p)
 
       if (cutoff >= material_xs_total) {
         if (simulation::alpha_previous > 0.0) {
-          p.alive() = false;
+          p.wgt() = 0.0;
           return;
         } else {
           SourceSite site;
@@ -122,7 +122,6 @@ void sample_neutron_reaction(Particle& p)
     }
   }
 
-  // Sample a nuclide within the material
   int i_nuclide = sample_nuclide(p);
 
   // Save which nuclide particle had collision with

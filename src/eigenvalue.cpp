@@ -1040,7 +1040,11 @@ void run_alpha_iterations()
   // that pseudo-absorption should be added during transport and that kinetics
   // parameter calculation should be skipped to avoid corrupting k_prompt/Λ.
   //
-  // Reference: COG User Manual, "Alpha Eigenvalue" section
+  // Reference:
+  //   Wilcox, Thomas, Edward Lent, Richard Buck, and Chuck Lee, COG User's
+  //   Manual: A Multiparticle Monte Carlo Transport Code, 6th ed.,
+  //   UCRL-TM-202590, Lawrence Livermore National Laboratory, 2025.
+  //   "Alpha Eigenvalue" section
   // ============================================================================
 
   // Only run if calculate_alpha is enabled and we're in eigenvalue mode

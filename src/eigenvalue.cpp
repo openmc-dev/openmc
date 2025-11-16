@@ -534,6 +534,8 @@ void calculate_kinetics_parameters()
       // Divide by n_realizations to get the average per batch.
 
       int sum_idx = static_cast<int>(TallyResult::SUM);
+      int sum_sq_idx = static_cast<int>(TallyResult::SUM_SQ);
+
       double gen_time_num = results(0, 0, sum_idx) / n;
       double gen_time_denom = results(0, 1, sum_idx) / n;
       double nu_fission_rate = results(0, 2, sum_idx) / n;
@@ -541,10 +543,52 @@ void calculate_kinetics_parameters()
       double leakage_rate = results(0, 4, sum_idx) / n;
       double population = results(0, 5, sum_idx) / n;
 
+      // Calculate standard deviations for tally scores (if n > 1)
+      double gen_time_num_std = 0.0;
+      double gen_time_denom_std = 0.0;
+      double nu_fission_rate_std = 0.0;
+      double absorption_rate_std = 0.0;
+      double leakage_rate_std = 0.0;
+      double population_std = 0.0;
+
+      if (n > 1) {
+        // Standard deviation of mean: σ = sqrt((SUM_SQ/n - mean²)/(n-1))
+        auto calc_std = [&](int score_idx) {
+          double mean = results(0, score_idx, sum_idx) / n;
+          double sum_sq = results(0, score_idx, sum_sq_idx) / n;
+          double variance = (sum_sq - mean * mean) / (n - 1);
+          return (variance > 0.0) ? std::sqrt(variance) : 0.0;
+        };
+
+        gen_time_num_std = calc_std(0);
+        gen_time_denom_std = calc_std(1);
+        nu_fission_rate_std = calc_std(2);
+        absorption_rate_std = calc_std(3);
+        leakage_rate_std = calc_std(4);
+        population_std = calc_std(5);
+      }
+
       // Calculate prompt generation time: Λ_prompt = num / (k_prompt × denom)
       if (gen_time_denom > 0.0 && simulation::keff_prompt > 0.0) {
         simulation::prompt_gen_time =
           gen_time_num / (simulation::keff_prompt * gen_time_denom);
+
+        // Error propagation for prompt generation time
+        // For Λ = num / (k_p × denom):
+        // σ_Λ² ≈ (∂Λ/∂num)² σ_num² + (∂Λ/∂denom)² σ_denom² + (∂Λ/∂k_p)² σ_kp²
+        if (n > 1 && simulation::prompt_gen_time > 0.0) {
+          double dLambda_dnum = 1.0 / (simulation::keff_prompt * gen_time_denom);
+          double dLambda_ddenom =
+            -gen_time_num / (simulation::keff_prompt * gen_time_denom * gen_time_denom);
+          double dLambda_dkp =
+            -gen_time_num / (simulation::keff_prompt * simulation::keff_prompt * gen_time_denom);
+
+          double var_Lambda = dLambda_dnum * dLambda_dnum * gen_time_num_std * gen_time_num_std +
+                             dLambda_ddenom * dLambda_ddenom * gen_time_denom_std * gen_time_denom_std +
+                             dLambda_dkp * dLambda_dkp * simulation::keff_prompt_std * simulation::keff_prompt_std;
+
+          simulation::prompt_gen_time_std = std::sqrt(var_Lambda);
+        }
 
         // Calculate alpha (k-based): α = (k_prompt - 1) / Λ_prompt
         if (simulation::prompt_gen_time > 0.0) {
@@ -553,10 +597,15 @@ void calculate_kinetics_parameters()
 
           // Error propagation for alpha_k_based
           // For α = (k_p - 1) / Λ: σ_α² ≈ (1/Λ)² σ_kp² + ((k_p-1)/Λ²)² σ_Λ²
-          // Assuming σ_Λ small compared to σ_kp for now
           if (n > 1 && simulation::prompt_gen_time > 0.0) {
-            simulation::alpha_k_based_std =
-              simulation::keff_prompt_std / simulation::prompt_gen_time;
+            double dAlpha_dkp = 1.0 / simulation::prompt_gen_time;
+            double dAlpha_dLambda = -(simulation::keff_prompt - 1.0) /
+                                   (simulation::prompt_gen_time * simulation::prompt_gen_time);
+
+            double var_alpha = dAlpha_dkp * dAlpha_dkp * simulation::keff_prompt_std * simulation::keff_prompt_std +
+                              dAlpha_dLambda * dAlpha_dLambda * simulation::prompt_gen_time_std * simulation::prompt_gen_time_std;
+
+            simulation::alpha_k_based_std = std::sqrt(var_alpha);
           }
         }
       }
@@ -568,8 +617,23 @@ void calculate_kinetics_parameters()
         simulation::alpha_rate_based =
           (nu_fission_rate - removal_rate) / population;
 
-        // Error propagation would require standard deviations from tallies
-        // For now, leave alpha_rate_based_std = 0.0 (to be improved)
+        // Error propagation for alpha_rate_based
+        // For α = (nu_fis - abs - leak) / pop:
+        // σ_α² ≈ (1/pop)²(σ_nu² + σ_abs² + σ_leak²) + (α/pop)² σ_pop²
+        if (n > 1) {
+          double dAlpha_dnu = 1.0 / population;
+          double dAlpha_dabs = -1.0 / population;
+          double dAlpha_dleak = -1.0 / population;
+          double dAlpha_dpop = -simulation::alpha_rate_based / population;
+
+          double var_alpha_rate =
+            dAlpha_dnu * dAlpha_dnu * nu_fission_rate_std * nu_fission_rate_std +
+            dAlpha_dabs * dAlpha_dabs * absorption_rate_std * absorption_rate_std +
+            dAlpha_dleak * dAlpha_dleak * leakage_rate_std * leakage_rate_std +
+            dAlpha_dpop * dAlpha_dpop * population_std * population_std;
+
+          simulation::alpha_rate_based_std = std::sqrt(var_alpha_rate);
+        }
       }
     }
   }

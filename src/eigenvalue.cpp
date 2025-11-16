@@ -1134,29 +1134,50 @@ void run_alpha_iterations()
     }
   }
 
-  double alpha_mean = 0.0;
-  double alpha_std = 0.0;
+  // Use the final (converged) alpha value from the iterations.
+  // The alpha eigenvalue calculation is an iterative solver seeking alpha such
+  // that K'(alpha) = 1.0. The converged value is the solution, not the mean of
+  // the iteration path. We apply a final refinement correction based on the
+  // residual (k_prime - 1.0).
   int n_values = alpha_values.size();
 
-  if (n_values > 1) {
-    for (auto alpha : alpha_values) {
-      alpha_mean += alpha;
-    }
-    alpha_mean /= n_values;
+  if (n_values > 0) {
+    // Get the last alpha value used in the iterations
+    double alpha_final = alpha_values.back();
 
-    double sum_sq = 0.0;
-    for (auto alpha : alpha_values) {
-      double diff = alpha - alpha_mean;
-      sum_sq += diff * diff;
+    // Apply final refinement correction using the last k_prime
+    double final_correction = (k_prime - 1.0) / simulation::prompt_gen_time;
+    alpha_final += final_correction;
+
+    simulation::alpha_static = alpha_final;
+
+    // For uncertainty, calculate standard deviation from the last few iterations
+    // if we have multiple iterations, otherwise leave as NaN
+    if (n_values > 1) {
+      // Use last 3 iterations or all if fewer available for uncertainty estimate
+      int n_for_std = std::min(3, n_values);
+      double alpha_mean = 0.0;
+
+      for (int i = n_values - n_for_std; i < n_values; ++i) {
+        alpha_mean += alpha_values[i];
+      }
+      alpha_mean /= n_for_std;
+
+      double sum_sq = 0.0;
+      for (int i = n_values - n_for_std; i < n_values; ++i) {
+        double diff = alpha_values[i] - alpha_mean;
+        sum_sq += diff * diff;
+      }
+
+      if (n_for_std > 1) {
+        simulation::alpha_static_std = std::sqrt(sum_sq / (n_for_std - 1));
+      } else {
+        simulation::alpha_static_std = std::numeric_limits<double>::quiet_NaN();
+      }
+    } else {
+      simulation::alpha_static_std = std::numeric_limits<double>::quiet_NaN();
     }
-    alpha_std = std::sqrt(sum_sq / (n_values - 1));
-  } else if (n_values == 1) {
-    alpha_mean = alpha_values[0];
-    alpha_std = std::numeric_limits<double>::quiet_NaN();
   }
-
-  simulation::alpha_static = alpha_mean;
-  simulation::alpha_static_std = alpha_std;
 
   // Reset iteration counter to indicate we're done with alpha iterations
   simulation::alpha_iteration = 0;

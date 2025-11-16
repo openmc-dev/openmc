@@ -387,7 +387,36 @@ Example: If k_prompt = 0.993 and Λ = 5.66 µs:
 
 ## Convergence Acceleration Methods for Iterative Alpha Solver
 
-The COG Static method for alpha eigenvalue calculation is an iterative fixed-point method that seeks α such that K'(α) = 1.0. The basic iteration is:
+### Implementation Note: Simplified COG Static Approach
+
+**Important Limitation:** The current OpenMC implementation uses a **simplified iterative approach** that does NOT implement the full COG Static method. The true COG Static method requires:
+
+1. Modifying material cross sections: σ_total → σ_total + α/v
+2. Running eigenvalue calculation with modified physics
+3. Iterating until K'(α) = 1.0
+
+Instead, OpenMC's current approach:
+- Runs additional eigenvalue batches with **unmodified** cross sections
+- Uses the k_eff samples in the iterative formula: α_{n+1} = α_n + (K' - 1.0) / Λ
+- This is essentially **averaging k-based estimates** rather than true COG iteration
+
+**Consequences:**
+- Without cross section modification, we're sampling the same physical problem repeatedly
+- The iteration converges to the k-based result (which is already correct)
+- Convergence difficulties arise from:
+  - Statistical noise in k_eff samples
+  - Sensitivity to generation time for fast systems
+  - Lack of the physical feedback from modified cross sections
+
+**When Iteration is Skipped:**
+For systems far from critical (k_prompt < 0.7 or > 1.3), the iteration is automatically skipped and the k-based result is used directly, since:
+- The iterative approach adds no value without cross section modification
+- Extreme keff values can cause numerical instability
+- The k-based method is already accurate
+
+### Iterative Refinement Method
+
+For near-critical systems (0.7 < k_prompt < 1.3), OpenMC uses an iterative refinement that samples k_eff to reduce statistical uncertainty. The basic iteration is:
 
 ```
 α_{n+1} = α_n + (K'_n - 1.0) / Λ_prompt
@@ -431,8 +460,34 @@ For oscillating sequences, under-relaxation with ω < 1 reduces the effective Li
 
 **Implementation:** Relaxation factor adapts dynamically:
 - Start: ω = 1.0 (no damping)
-- Oscillation detected: ω ← max(0.5ω, 0.1)
+- Oscillation detected: ω ← max(0.5ω, ω_min)
 - Smooth convergence: ω ← min(1.2ω, 1.0)
+
+**Generation-Time Scaling:** The minimum relaxation factor ω_min scales with prompt generation time to handle fast systems:
+
+```
+λ_ref = 100 μs (thermal reference)
+λ_scale = min(1.0, Λ_prompt / λ_ref)
+ω_min = max(0.01 × λ_scale, 0.001)
+```
+
+**Rationale for Fast Systems:**
+
+For systems with very small generation times (Λ << 1 μs), the update formula creates huge alpha changes:
+
+```
+Δα = (K' - 1.0) / Λ
+```
+
+For a fast system like Godiva (Λ ≈ 5.66 ns) with K' = 1.01:
+```
+Δα = 0.01 / 5.66e-9 ≈ 1.77e6 1/s per iteration!
+```
+
+This overwhelms standard damping. Generation-time scaling provides:
+- **Fast systems (Λ < 1 ns):** ω_min ≈ 0.001 (1000× damping)
+- **Intermediate (Λ ≈ 1 μs):** ω_min ≈ 0.01 (100× damping)
+- **Thermal systems (Λ > 100 μs):** ω_min = 0.1 (standard damping)
 
 #### 3. Aitken's Δ² Acceleration
 

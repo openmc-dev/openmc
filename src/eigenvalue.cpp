@@ -1083,8 +1083,8 @@ void run_alpha_iterations()
 
   if (mpi::master) {
     header("ALPHA EIGENVALUE SIMULATION", 3);
-    fmt::print(" Iteration      Alpha          K'        |K'-1|\n");
-    fmt::print(" ---------  ------------  --------  -----------\n");
+    fmt::print(" Iteration     Alpha        K'       |K'-1|  \n");
+    fmt::print(" ---------  ------------  ---------  -----------\n");
   }
 
   simulation::alpha_converged = false;
@@ -1104,7 +1104,7 @@ void run_alpha_iterations()
     alpha_values.push_back(simulation::alpha_previous);
 
     if (mpi::master) {
-      fmt::print(" {:>9d}  {: >12.5e}  {:>8.5f}  {:>11.5e}\n",
+      fmt::print(" {:>9d}  {: >12.5e}  {:>9.5f}  {:>11.5e}\n",
         simulation::alpha_iteration, simulation::alpha_previous, k_prime, k_error);
     }
 

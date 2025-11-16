@@ -39,6 +39,7 @@ extern double alpha_rate_based;       //!< Alpha eigenvalue (rate-based method)
 extern double alpha_rate_based_std;   //!< Standard deviation of alpha (rate-based)
 extern double prompt_gen_time;        //!< Prompt neutron generation time
 extern double prompt_gen_time_std;    //!< Standard deviation of gen time
+extern int kinetics_tally_index;      //!< Index of internal kinetics tally
 
 } // namespace simulation
 

@@ -11,6 +11,7 @@
 #include "openmc/collision_track.h"
 #include "openmc/constants.h"
 #include "openmc/dagmc.h"
+#include "openmc/eigenvalue.h"
 #include "openmc/error.h"
 #include "openmc/geometry.h"
 #include "openmc/hdf5_interface.h"
@@ -664,6 +665,16 @@ void Particle::cross_vacuum_bc(const Surface& surf)
 
   // Score to global leakage tally
   keff_tally_leakage() += wgt();
+
+  // Score to kinetics tally leakage rate (prompt chain only)
+  if (settings::calculate_alpha && simulation::kinetics_tally_index >= 0 &&
+      !is_delayed()) {
+    auto& tally = *model::tallies[simulation::kinetics_tally_index];
+    double score = wgt();
+    // Score to leakage_rate (index 4 in the kinetics tally scores)
+#pragma omp atomic
+    tally.results_(0, 4, TallyResult::VALUE) += score;
+  }
 
   // Kill the particle
   wgt() = 0.0;

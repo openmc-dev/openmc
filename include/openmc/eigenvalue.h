@@ -41,6 +41,12 @@ extern double prompt_gen_time;        //!< Prompt neutron generation time
 extern double prompt_gen_time_std;    //!< Standard deviation of gen time
 extern int kinetics_tally_index;      //!< Index of internal kinetics tally
 
+// Alpha iteration state (for COG-style iterative refinement)
+extern double alpha_previous;         //!< Previous iteration's alpha value
+extern double pseudo_absorption_sigma; //!< Pseudo-absorption cross section
+extern int alpha_iteration;           //!< Current alpha iteration number
+extern bool alpha_converged;          //!< Alpha convergence flag
+
 } // namespace simulation
 
 //==============================================================================

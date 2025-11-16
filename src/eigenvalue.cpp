@@ -58,6 +58,12 @@ double prompt_gen_time_std {0.0};
 // Index of internal kinetics tally (for alpha calculations)
 int kinetics_tally_index {-1};
 
+// Alpha iteration state (for COG-style iterative refinement)
+double alpha_previous {0.0};        // Previous iteration's alpha value
+double pseudo_absorption_sigma {0.0}; // Pseudo-absorption cross section
+int alpha_iteration {0};            // Current alpha iteration number
+bool alpha_converged {false};       // Alpha convergence flag
+
 } // namespace simulation
 
 //==============================================================================
@@ -612,21 +618,31 @@ void calculate_kinetics_parameters()
 
       // Calculate alpha (rate-based): α = (R_prod - R_removal) / N_prompt
       // R_removal = absorption_rate + leakage_rate
-      if (population > 0.0) {
+      // NOTE: nu_fission_rate must be scaled by k_prompt because it's measured
+      // in a forced-critical system. True production = k_prompt × nu_fission_rate
+      if (population > 0.0 && simulation::keff_prompt > 0.0) {
         double removal_rate = absorption_rate + leakage_rate;
+        double true_production_rate = simulation::keff_prompt * nu_fission_rate;
         simulation::alpha_rate_based =
-          (nu_fission_rate - removal_rate) / population;
+          (true_production_rate - removal_rate) / population;
 
         // Error propagation for alpha_rate_based
-        // For α = (nu_fis - abs - leak) / pop:
-        // σ_α² ≈ (1/pop)²(σ_nu² + σ_abs² + σ_leak²) + (α/pop)² σ_pop²
+        // For α = (k_p × nu_fis - abs - leak) / pop:
+        // Partial derivatives:
+        // ∂α/∂k_p = nu_fis / pop
+        // ∂α/∂nu = k_p / pop
+        // ∂α/∂abs = -1 / pop
+        // ∂α/∂leak = -1 / pop
+        // ∂α/∂pop = -α / pop
         if (n > 1) {
-          double dAlpha_dnu = 1.0 / population;
+          double dAlpha_dkp = nu_fission_rate / population;
+          double dAlpha_dnu = simulation::keff_prompt / population;
           double dAlpha_dabs = -1.0 / population;
           double dAlpha_dleak = -1.0 / population;
           double dAlpha_dpop = -simulation::alpha_rate_based / population;
 
           double var_alpha_rate =
+            dAlpha_dkp * dAlpha_dkp * simulation::keff_prompt_std * simulation::keff_prompt_std +
             dAlpha_dnu * dAlpha_dnu * nu_fission_rate_std * nu_fission_rate_std +
             dAlpha_dabs * dAlpha_dabs * absorption_rate_std * absorption_rate_std +
             dAlpha_dleak * dAlpha_dleak * leakage_rate_std * leakage_rate_std +

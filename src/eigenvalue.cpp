@@ -534,12 +534,12 @@ void calculate_kinetics_parameters()
       // Divide by n_realizations to get the average per batch.
 
       int sum_idx = static_cast<int>(TallyResult::SUM);
-      double gen_time_num = results(0, 0, sum_idx) / tally.n_realizations();
-      double gen_time_denom = results(0, 1, sum_idx) / tally.n_realizations();
-      double nu_fission_rate = results(0, 2, sum_idx) / tally.n_realizations();
-      double absorption_rate = results(0, 3, sum_idx) / tally.n_realizations();
-      double leakage_rate = results(0, 4, sum_idx) / tally.n_realizations();
-      double population = results(0, 5, sum_idx) / tally.n_realizations();
+      double gen_time_num = results(0, 0, sum_idx) / n;
+      double gen_time_denom = results(0, 1, sum_idx) / n;
+      double nu_fission_rate = results(0, 2, sum_idx) / n;
+      double absorption_rate = results(0, 3, sum_idx) / n;
+      double leakage_rate = results(0, 4, sum_idx) / n;
+      double population = results(0, 5, sum_idx) / n;
 
       // Calculate prompt generation time: Λ_prompt = num / (k_prompt × denom)
       if (gen_time_denom > 0.0 && simulation::keff_prompt > 0.0) {

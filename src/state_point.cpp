@@ -62,7 +62,7 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
   bool write_source_ = write_source ? *write_source : true;
 
   // Write message
-  write_message("Creating state point " + filename_ + "...", 5);
+  write_message("\nCreating state point " + filename_ + "...", 5);
 
   hid_t file_id;
   if (mpi::master) {

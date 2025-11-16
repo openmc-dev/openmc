@@ -61,10 +61,10 @@ double prompt_gen_time_std {0.0};
 int kinetics_tally_index {-1};
 
 // Alpha iteration state (for COG-style iterative refinement)
-double alpha_previous {0.0};        // Previous iteration's alpha value
+double alpha_previous {0.0};          // Previous iteration's alpha value
 double pseudo_absorption_sigma {0.0}; // Pseudo-absorption cross section
-int alpha_iteration {0};            // Current alpha iteration number
-bool alpha_converged {false};       // Alpha convergence flag
+int alpha_iteration {0};              // Current alpha iteration number
+bool alpha_converged {false};         // Alpha convergence flag
 
 } // namespace simulation
 
@@ -115,8 +115,8 @@ void calculate_generation_prompt_keff()
     return;
 
   // Get k_prompt for this generation by subtracting off the starting value
-  simulation::keff_prompt_generation = global_tally_prompt_tracklength -
-                                       simulation::keff_prompt_generation;
+  simulation::keff_prompt_generation =
+    global_tally_prompt_tracklength - simulation::keff_prompt_generation;
 
   double keff_prompt_reduced;
 #ifdef OPENMC_MPI
@@ -503,9 +503,9 @@ void calculate_kinetics_parameters()
         t_value = 1.0;
       }
       simulation::keff_prompt_std =
-        t_value * std::sqrt((k_prompt_sum_sq / n -
-                              std::pow(simulation::keff_prompt, 2)) /
-                             (n - 1));
+        t_value *
+        std::sqrt((k_prompt_sum_sq / n - std::pow(simulation::keff_prompt, 2)) /
+                  (n - 1));
     }
 
     // Calculate beta_eff = (k_eff - k_prompt) / k_eff
@@ -531,15 +531,16 @@ void calculate_kinetics_parameters()
       auto& tally = *model::tallies[simulation::kinetics_tally_index];
       const auto& results = tally.results();
 
-      // Extract tally results (shape: [filter_bins, scores*nuclides, result_types])
-      // No filters (n_filter_bins=1), no nuclides, so just access scores
-      // Score indices: 0=gen_time_num, 1=gen_time_denom, 2=nu_fission_rate,
+      // Extract tally results (shape: [filter_bins, scores*nuclides,
+      // result_types]) No filters (n_filter_bins=1), no nuclides, so just
+      // access scores Score indices: 0=gen_time_num, 1=gen_time_denom,
+      // 2=nu_fission_rate,
       //                3=absorption_rate, 4=leakage_rate, 5=population
       // Result type indices: 0=VALUE, 1=SUM, 2=SUM_SQ
       //
       // NOTE: Must use TallyResult::SUM (index 1), not VALUE (index 0)!
-      // The SUM is already normalized per particle and accumulated over batches.
-      // Divide by n_realizations to get the average per batch.
+      // The SUM is already normalized per particle and accumulated over
+      // batches. Divide by n_realizations to get the average per batch.
 
       int sum_idx = static_cast<int>(TallyResult::SUM);
       int sum_sq_idx = static_cast<int>(TallyResult::SUM_SQ);
@@ -585,33 +586,44 @@ void calculate_kinetics_parameters()
         // For Λ = num / (k_p × denom):
         // σ_Λ² ≈ (∂Λ/∂num)² σ_num² + (∂Λ/∂denom)² σ_denom² + (∂Λ/∂k_p)² σ_kp²
         if (n > 1 && simulation::prompt_gen_time > 0.0) {
-          double dLambda_dnum = 1.0 / (simulation::keff_prompt * gen_time_denom);
+          double dLambda_dnum =
+            1.0 / (simulation::keff_prompt * gen_time_denom);
           double dLambda_ddenom =
-            -gen_time_num / (simulation::keff_prompt * gen_time_denom * gen_time_denom);
+            -gen_time_num /
+            (simulation::keff_prompt * gen_time_denom * gen_time_denom);
           double dLambda_dkp =
-            -gen_time_num / (simulation::keff_prompt * simulation::keff_prompt * gen_time_denom);
+            -gen_time_num / (simulation::keff_prompt * simulation::keff_prompt *
+                              gen_time_denom);
 
-          double var_Lambda = dLambda_dnum * dLambda_dnum * gen_time_num_std * gen_time_num_std +
-                             dLambda_ddenom * dLambda_ddenom * gen_time_denom_std * gen_time_denom_std +
-                             dLambda_dkp * dLambda_dkp * simulation::keff_prompt_std * simulation::keff_prompt_std;
+          double var_Lambda =
+            dLambda_dnum * dLambda_dnum * gen_time_num_std * gen_time_num_std +
+            dLambda_ddenom * dLambda_ddenom * gen_time_denom_std *
+              gen_time_denom_std +
+            dLambda_dkp * dLambda_dkp * simulation::keff_prompt_std *
+              simulation::keff_prompt_std;
 
           simulation::prompt_gen_time_std = std::sqrt(var_Lambda);
         }
 
         // Calculate alpha (k-based): α = (k_prompt - 1) / Λ_prompt
         if (simulation::prompt_gen_time > 0.0) {
-          simulation::alpha_k_based = (simulation::keff_prompt - 1.0) /
-                                      simulation::prompt_gen_time;
+          simulation::alpha_k_based =
+            (simulation::keff_prompt - 1.0) / simulation::prompt_gen_time;
 
           // Error propagation for alpha_k_based
           // For α = (k_p - 1) / Λ: σ_α² ≈ (1/Λ)² σ_kp² + ((k_p-1)/Λ²)² σ_Λ²
           if (n > 1 && simulation::prompt_gen_time > 0.0) {
             double dAlpha_dkp = 1.0 / simulation::prompt_gen_time;
-            double dAlpha_dLambda = -(simulation::keff_prompt - 1.0) /
-                                   (simulation::prompt_gen_time * simulation::prompt_gen_time);
+            double dAlpha_dLambda =
+              -(simulation::keff_prompt - 1.0) /
+              (simulation::prompt_gen_time * simulation::prompt_gen_time);
 
-            double var_alpha = dAlpha_dkp * dAlpha_dkp * simulation::keff_prompt_std * simulation::keff_prompt_std +
-                              dAlpha_dLambda * dAlpha_dLambda * simulation::prompt_gen_time_std * simulation::prompt_gen_time_std;
+            double var_alpha = dAlpha_dkp * dAlpha_dkp *
+                                 simulation::keff_prompt_std *
+                                 simulation::keff_prompt_std +
+                               dAlpha_dLambda * dAlpha_dLambda *
+                                 simulation::prompt_gen_time_std *
+                                 simulation::prompt_gen_time_std;
 
             simulation::alpha_k_based_std = std::sqrt(var_alpha);
           }
@@ -633,7 +645,8 @@ void calculate_kinetics_parameters()
       //
       // Initialize to NaN; will be set by run_alpha_iterations() if enabled
       simulation::alpha_rate_based = std::numeric_limits<double>::quiet_NaN();
-      simulation::alpha_rate_based_std = std::numeric_limits<double>::quiet_NaN();
+      simulation::alpha_rate_based_std =
+        std::numeric_limits<double>::quiet_NaN();
     }
   }
 }
@@ -1005,7 +1018,8 @@ void run_alpha_iterations()
   // Check that we have valid k_prompt and generation time
   if (simulation::keff_prompt <= 0.0 || simulation::prompt_gen_time <= 0.0) {
     if (mpi::master) {
-      warning("Cannot run alpha iterations: invalid k_prompt or generation time");
+      warning(
+        "Cannot run alpha iterations: invalid k_prompt or generation time");
     }
     return;
   }
@@ -1014,15 +1028,17 @@ void run_alpha_iterations()
     header("ALPHA EIGENVALUE ITERATION (COG METHOD)", 3);
     fmt::print("\n");
     fmt::print(" Initial k_prompt        = {:.6f}\n", simulation::keff_prompt);
-    fmt::print(" Initial gen time        = {:.6e} s\n", simulation::prompt_gen_time);
+    fmt::print(
+      " Initial gen time        = {:.6e} s\n", simulation::prompt_gen_time);
   }
 
   // Initialize alpha using k-based estimate: α = (k_prompt - 1) / Λ
-  simulation::alpha_previous = (simulation::keff_prompt - 1.0) /
-                                simulation::prompt_gen_time;
+  simulation::alpha_previous =
+    (simulation::keff_prompt - 1.0) / simulation::prompt_gen_time;
 
   if (mpi::master) {
-    fmt::print(" Initial alpha estimate  = {:.6e} 1/s\n\n", simulation::alpha_previous);
+    fmt::print(
+      " Initial alpha estimate  = {:.6e} 1/s\n\n", simulation::alpha_previous);
     fmt::print(" Iteration    Alpha (1/s)         K'          |K'-1|\n");
     fmt::print(" ---------    ------------      --------      --------\n");
   }
@@ -1049,14 +1065,16 @@ void run_alpha_iterations()
 
     if (mpi::master) {
       fmt::print(" {:4d}       {:.6e}    {:.6f}    {:.6e}\n",
-        simulation::alpha_iteration, simulation::alpha_previous, k_prime, k_error);
+        simulation::alpha_iteration, simulation::alpha_previous, k_prime,
+        k_error);
     }
 
     // Check for convergence
     if (k_error < settings::alpha_tolerance) {
       simulation::alpha_converged = true;
       if (mpi::master) {
-        fmt::print("\n *** CONVERGED: K' = {:.6f} (target: 1.0) ***\n", k_prime);
+        fmt::print(
+          "\n *** CONVERGED: K' = {:.6f} (target: 1.0) ***\n", k_prime);
       }
       break;
     }
@@ -1079,12 +1097,13 @@ void run_alpha_iterations()
   if (mpi::master) {
     if (!simulation::alpha_converged &&
         simulation::alpha_iteration > settings::max_alpha_iterations) {
-      fmt::print("\n *** WARNING: Maximum iterations reached without convergence ***\n");
+      fmt::print(
+        "\n *** WARNING: Maximum iterations reached without convergence ***\n");
     }
     fmt::print("\n Final alpha (COG iterative) = {:.6e} +/- N/A 1/s\n",
       simulation::alpha_previous);
-    fmt::print(" Converged in {} iterations\n\n",
-      simulation::alpha_iteration - 1);
+    fmt::print(
+      " Converged in {} iterations\n\n", simulation::alpha_iteration - 1);
   }
 
   // Store the result (use alpha_rate_based since this is COG's method)

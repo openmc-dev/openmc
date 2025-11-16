@@ -36,16 +36,17 @@ extern double beta_eff_std;           //!< Standard deviation of beta_eff
 extern double alpha_k_based;          //!< Alpha eigenvalue (k-based method)
 extern double alpha_k_based_std;      //!< Standard deviation of alpha (k-based)
 extern double alpha_rate_based;       //!< Alpha eigenvalue (rate-based method)
-extern double alpha_rate_based_std;   //!< Standard deviation of alpha (rate-based)
-extern double prompt_gen_time;        //!< Prompt neutron generation time
-extern double prompt_gen_time_std;    //!< Standard deviation of gen time
-extern int kinetics_tally_index;      //!< Index of internal kinetics tally
+extern double
+  alpha_rate_based_std;            //!< Standard deviation of alpha (rate-based)
+extern double prompt_gen_time;     //!< Prompt neutron generation time
+extern double prompt_gen_time_std; //!< Standard deviation of gen time
+extern int kinetics_tally_index;   //!< Index of internal kinetics tally
 
 // Alpha iteration state (for COG-style iterative refinement)
-extern double alpha_previous;         //!< Previous iteration's alpha value
+extern double alpha_previous;          //!< Previous iteration's alpha value
 extern double pseudo_absorption_sigma; //!< Pseudo-absorption cross section
-extern int alpha_iteration;           //!< Current alpha iteration number
-extern bool alpha_converged;          //!< Alpha convergence flag
+extern int alpha_iteration;            //!< Current alpha iteration number
+extern bool alpha_converged;           //!< Alpha convergence flag
 
 } // namespace simulation
 

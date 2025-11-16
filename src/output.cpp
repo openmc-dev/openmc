@@ -595,9 +595,10 @@ void print_results()
     // Print delayed neutron kinetics parameters if calculated (n=1 case)
     if (settings::run_mode == RunMode::EIGENVALUE &&
         settings::calculate_prompt_k) {
-      fmt::print(" k-prompt                   = {:.5f}\n",
-        simulation::keff_prompt);
-      fmt::print(" Beta-effective             = {:.5f}\n", simulation::beta_eff);
+      fmt::print(
+        " k-prompt                   = {:.5f}\n", simulation::keff_prompt);
+      fmt::print(
+        " Beta-effective             = {:.5f}\n", simulation::beta_eff);
       if (settings::calculate_alpha) {
         // Convert to microseconds (1 s = 1e6 us)
         double prompt_gen_time_us = simulation::prompt_gen_time * 1.0e6;
@@ -605,10 +606,10 @@ void print_results()
         double alpha_k_based_us = simulation::alpha_k_based / 1.0e6;
         double alpha_rate_based_us = simulation::alpha_rate_based / 1.0e6;
 
-        fmt::print(" Prompt Generation Time     = {:.6e} us\n",
-          prompt_gen_time_us);
-        fmt::print(" Alpha (k-based)            = {:.6e} gen/us\n",
-          alpha_k_based_us);
+        fmt::print(
+          " Prompt Generation Time     = {:.6e} us\n", prompt_gen_time_us);
+        fmt::print(
+          " Alpha (k-based)            = {:.6e} gen/us\n", alpha_k_based_us);
         // Only print iterative alpha if it was actually computed
         if (!std::isnan(alpha_rate_based_us)) {
           fmt::print(" Alpha (COG iterative)      = {:.6e} gen/us\n",

@@ -385,41 +385,40 @@ Example: If k_prompt = 0.993 and Λ = 5.66 µs:
 
 ---
 
-## Convergence Acceleration Methods for Iterative Alpha Solver
+## COG Static Method Implementation
 
-### Implementation Note: Simplified COG Static Approach
+OpenMC implements the true COG Static method for alpha eigenvalue calculation through iterative refinement with **pseudo-absorption cross sections**. During each alpha iteration, the method adds pseudo-absorption σ_α = |α|/v to the total and absorption cross sections, modifying the transport physics to find α such that K'(α) = 1.0.
 
-**Important Limitation:** The current OpenMC implementation uses a **simplified iterative approach** that does NOT implement the full COG Static method. The true COG Static method requires:
+### Pseudo-Absorption Cross Section
 
-1. Modifying material cross sections: σ_total → σ_total + α/v
-2. Running eigenvalue calculation with modified physics
-3. Iterating until K'(α) = 1.0
+During alpha iterations (when `alpha_iteration > 0`), the following modification is applied to all materials:
 
-Instead, OpenMC's current approach:
-- Runs additional eigenvalue batches with **unmodified** cross sections
-- Uses the k_eff samples in the iterative formula: α_{n+1} = α_n + (K' - 1.0) / Λ
-- This is essentially **averaging k-based estimates** rather than true COG iteration
+```cpp
+σ_α = |α| / v
+σ_total → σ_total + σ_α
+σ_absorption → σ_absorption + σ_α
+```
 
-**Consequences:**
-- Without cross section modification, we're sampling the same physical problem repeatedly
-- The iteration converges to the k-based result (which is already correct)
-- Convergence difficulties arise from:
-  - Statistical noise in k_eff samples
-  - Sensitivity to generation time for fast systems
-  - Lack of the physical feedback from modified cross sections
+where v is the neutron speed. This adds an energy-dependent absorption term that increases removal for high-energy (fast) neutrons and decreases for low-energy (thermal) neutrons, naturally balancing the neutron population.
 
-**When Iteration is Skipped:**
-For systems far from critical (k_prompt < 0.7 or > 1.3), the iteration is automatically skipped and the k-based result is used directly, since:
-- The iterative approach adds no value without cross section modification
-- Extreme keff values can cause numerical instability
-- The k-based method is already accurate
+**Key Benefits:**
+- Eliminates excessive particle splitting in subcritical systems
+- Provides physical feedback through modified eigenvalue K'(α)
+- Converges to the unique α where K'(α) = 1.0
 
-### Iterative Refinement Method
+### COG Static Algorithm
 
-For near-critical systems (0.7 < k_prompt < 1.3), OpenMC uses an iterative refinement that samples k_eff to reduce statistical uncertainty. The basic iteration is:
+The basic iteration is:
 
 ```
-α_{n+1} = α_n + (K'_n - 1.0) / Λ_prompt
+1. Initialize: α₀ = (k_prompt - 1) / Λ_prompt
+2. For iteration n = 1 to max_iterations:
+   a. Add pseudo-absorption: σ_α = |α_{n-1}| / v
+   b. Run eigenvalue batch with modified cross sections
+   c. Obtain K'_n from the modified problem
+   d. Update: α_n = α_{n-1} + (K'_n - 1.0) / Λ_prompt
+   e. If |K'_n - 1.0| < tolerance: converged
+3. Report converged α
 ```
 
 However, this simple iteration can converge slowly or oscillate. OpenMC implements an **adaptive convergence strategy** combining multiple acceleration techniques from numerical analysis.

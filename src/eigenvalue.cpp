@@ -1081,21 +1081,7 @@ void run_alpha_iterations()
   simulation::alpha_previous =
     (simulation::keff_prompt - 1.0) / simulation::prompt_gen_time;
 
-  // For extremely subcritical or supercritical systems, the iterative method
-  // may not converge well. Use k-based result directly as it's already accurate.
-  bool skip_iteration = false;
-  if (simulation::keff_prompt < 0.7 || simulation::keff_prompt > 1.3) {
-    skip_iteration = true;
-    if (mpi::master) {
-      fmt::print("\n");
-      fmt::print(" Alpha iteration skipped (k_prompt = {:.5f} is far from critical)\n",
-        simulation::keff_prompt);
-      fmt::print(" Using k-based result: Alpha = {:.5e} 1/seconds\n\n",
-        simulation::alpha_previous);
-    }
-  }
-
-  if (!skip_iteration && mpi::master) {
+  if (mpi::master) {
     header("ALPHA EIGENVALUE SIMULATION", 3);
     fmt::print(" Iteration     Alpha        K'       |K'-1|    Relax  Method\n");
     fmt::print(" =========  ============  =========  ========= ====== ========\n");

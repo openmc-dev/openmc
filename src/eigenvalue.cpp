@@ -1083,13 +1083,19 @@ void run_alpha_iterations()
 
   if (mpi::master) {
     header("ALPHA EIGENVALUE SIMULATION", 3);
-    fmt::print(" Iteration     Alpha        K'       |K'-1|  \n");
-    fmt::print(" ---------  ------------  ---------  -----------\n");
+    fmt::print(" Iteration     Alpha        K'       |K'-1|    Relax  Method\n");
+    fmt::print(" ---------  ------------  ---------  --------- ------ --------\n");
   }
 
   simulation::alpha_converged = false;
   double k_prime = 0.0;
   vector<double> alpha_values;
+  vector<double> k_prime_values;
+
+  // Adaptive convergence parameters
+  double relaxation_factor = 1.0;  // Start with no damping
+  double k_prev = 0.0;               // Previous K' value
+  bool use_aitken = false;           // Flag to enable Aitken acceleration
 
   for (simulation::alpha_iteration = 1;
        simulation::alpha_iteration <= settings::max_alpha_iterations;
@@ -1102,19 +1108,86 @@ void run_alpha_iterations()
     double k_error = std::abs(k_prime - 1.0);
 
     alpha_values.push_back(simulation::alpha_previous);
-
-    if (mpi::master) {
-      fmt::print(" {:>9d}  {: >12.5e}  {:>9.5f}  {:>11.5e}\n",
-        simulation::alpha_iteration, simulation::alpha_previous, k_prime, k_error);
-    }
+    k_prime_values.push_back(k_prime);
 
     if (k_error < settings::alpha_tolerance) {
+      // Print final iteration before convergence
+      if (mpi::master) {
+        fmt::print(" {:>9d}  {: >12.5e}  {:>9.5f}  {:>9.5e}  {:>5.2f}  Final\n",
+          simulation::alpha_iteration, simulation::alpha_previous, k_prime, k_error,
+          relaxation_factor);
+      }
       simulation::alpha_converged = true;
       break;
     }
 
+    // Compute the basic update
     double delta_alpha = (k_prime - 1.0) / simulation::prompt_gen_time;
-    simulation::alpha_previous += delta_alpha;
+
+    // ========================================================================
+    // ADAPTIVE CONVERGENCE STRATEGY
+    // ========================================================================
+
+    std::string method = "Standard";
+
+    if (simulation::alpha_iteration >= 3) {
+      // Detect oscillation: K' changes sign relative to 1.0
+      double residual_current = k_prime - 1.0;
+      double residual_previous = k_prev - 1.0;
+
+      if (residual_current * residual_previous < 0.0) {
+        // Oscillation detected: apply under-relaxation
+        relaxation_factor = std::max(0.5 * relaxation_factor, 0.1);
+        use_aitken = false;  // Don't use Aitken when oscillating
+        method = "Damped";
+      } else if (std::abs(residual_current) < std::abs(residual_previous)) {
+        // Monotonic convergence: try Aitken acceleration
+        use_aitken = true;
+        relaxation_factor = std::min(1.2 * relaxation_factor, 1.0);
+      }
+
+      // Apply Aitken's delta-squared acceleration for smooth convergence
+      if (use_aitken && simulation::alpha_iteration >= 4) {
+        // Aitken's method: extrapolate based on the sequence pattern
+        // alpha_n+1 = alpha_n - (delta_n)^2 / (delta_n+1 - delta_n)
+        // where delta_n = alpha_n - alpha_n-1
+
+        int n = alpha_values.size();
+        double alpha_n = alpha_values[n-1];
+        double alpha_n_minus_1 = alpha_values[n-2];
+        double alpha_n_minus_2 = alpha_values[n-3];
+
+        double delta_n = alpha_n - alpha_n_minus_1;
+        double delta_n_minus_1 = alpha_n_minus_1 - alpha_n_minus_2;
+        double delta_delta = delta_n - delta_n_minus_1;
+
+        // Only apply Aitken if denominator is not too small
+        if (std::abs(delta_delta) > 1.0e-15) {
+          double aitken_correction = -(delta_n * delta_n) / delta_delta;
+
+          // Limit the Aitken correction to avoid instability
+          double max_correction = 2.0 * std::abs(delta_alpha);
+          if (std::abs(aitken_correction) < max_correction) {
+            // Blend Aitken correction with standard update
+            delta_alpha = 0.7 * aitken_correction + 0.3 * delta_alpha;
+            method = "Aitken";
+          }
+        }
+      }
+    }
+
+    // Print current iteration with diagnostic info
+    if (mpi::master) {
+      fmt::print(" {:>9d}  {: >12.5e}  {:>9.5f}  {:>9.5e}  {:>5.2f}  {}\n",
+        simulation::alpha_iteration, simulation::alpha_previous, k_prime, k_error,
+        relaxation_factor, method);
+    }
+
+    // Apply relaxation factor to the update
+    simulation::alpha_previous += relaxation_factor * delta_alpha;
+
+    // Store values for next iteration
+    k_prev = k_prime;
 
     if (std::abs(simulation::alpha_previous) > 1.0e10) {
       if (mpi::master) {

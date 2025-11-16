@@ -604,16 +604,16 @@ void print_results()
         double prompt_gen_time_us = simulation::prompt_gen_time * 1.0e6;
         // Convert alpha to gen/us (divide by 1e6)
         double alpha_k_based_us = simulation::alpha_k_based / 1.0e6;
-        double alpha_rate_based_us = simulation::alpha_rate_based / 1.0e6;
+        double alpha_static_us = simulation::alpha_static / 1.0e6;
 
         fmt::print(
           " Prompt Generation Time     = {:.6e} us\n", prompt_gen_time_us);
         fmt::print(
           " Alpha (k-based)            = {:.6e} gen/us\n", alpha_k_based_us);
-        // Only print alpha static result if it was actually computed
-        if (!std::isnan(alpha_rate_based_us)) {
-          fmt::print(" Alpha (static)             = {:.6e} gen/us\n",
-            alpha_rate_based_us);
+        // Print alpha eigenvalue calculation (COG static method) if computed
+        if (!std::isnan(alpha_static_us)) {
+          fmt::print(
+            " Alpha (COG static)         = {:.6e} gen/us\n", alpha_static_us);
         }
       }
     }

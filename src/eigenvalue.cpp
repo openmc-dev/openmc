@@ -52,15 +52,15 @@ double beta_eff {0.0};
 double beta_eff_std {0.0};
 double alpha_k_based {0.0};
 double alpha_k_based_std {0.0};
-double alpha_rate_based {0.0};
-double alpha_rate_based_std {0.0};
+double alpha_static {0.0};
+double alpha_static_std {0.0};
 double prompt_gen_time {0.0};
 double prompt_gen_time_std {0.0};
 
 // Index of internal kinetics tally (for alpha calculations)
 int kinetics_tally_index {-1};
 
-// Alpha iteration state (for iterative pseudo-absorption method)
+// Alpha eigenvalue calculation (COG static method) - iteration state
 double alpha_previous {0.0};          // Previous iteration's alpha value
 double pseudo_absorption_sigma {0.0}; // Pseudo-absorption cross section
 int alpha_iteration {0};              // Current alpha iteration number
@@ -637,12 +637,12 @@ void calculate_kinetics_parameters()
       }
 
       // ========================================================================
-      // ALPHA STATIC METHOD WITH ITERATIVE PSEUDO-ABSORPTION
+      // ALPHA EIGENVALUE CALCULATION (COG STATIC METHOD)
       // ========================================================================
       //
       // This method is implemented in run_alpha_iterations() which is called
-      // after normal eigenvalue batches complete. Based on the alpha static
-      // method implemented in the COG Monte Carlo code.
+      // after normal eigenvalue batches complete, based on the COG static
+      // method which uses iterative refinement with pseudo-absorption.
       //
       // The method:
       //   1. Initializes α₀ = (k_prompt - 1) / Λ_prompt
@@ -651,9 +651,8 @@ void calculate_kinetics_parameters()
       //   4. Updates α and iterates until K' → 1.0
       //
       // Initialize to NaN; will be set by run_alpha_iterations() if enabled
-      simulation::alpha_rate_based = std::numeric_limits<double>::quiet_NaN();
-      simulation::alpha_rate_based_std =
-        std::numeric_limits<double>::quiet_NaN();
+      simulation::alpha_static = std::numeric_limits<double>::quiet_NaN();
+      simulation::alpha_static_std = std::numeric_limits<double>::quiet_NaN();
     }
   }
 }
@@ -1019,12 +1018,12 @@ void run_alpha_iterations()
   using namespace openmc;
 
   // ============================================================================
-  // ALPHA STATIC METHOD WITH ITERATIVE PSEUDO-ABSORPTION
+  // ALPHA EIGENVALUE CALCULATION (COG STATIC METHOD)
   // ============================================================================
   //
-  // This implements the alpha static eigenvalue method through iterative
-  // refinement with pseudo-absorption, based on the method implemented in
-  // the COG Monte Carlo code.
+  // This implements the alpha eigenvalue calculation using the COG static
+  // method, which uses iterative refinement with pseudo-absorption to find
+  // the alpha eigenvalue.
   //
   // Method:
   //   1. Initialize: α₀ = (k_prompt - 1) / Λ_prompt (k-based estimate)
@@ -1067,9 +1066,8 @@ void run_alpha_iterations()
   }
 
   if (mpi::master) {
-    header("ALPHA STATIC EIGENVALUE CALCULATION", 3);
+    header("ALPHA EIGENVALUE CALCULATION (COG STATIC METHOD)", 3);
     fmt::print("\n");
-    fmt::print(" Method: Iterative pseudo-absorption (based on COG)\n");
     fmt::print(" Initial k_prompt        = {:.6f}\n", simulation::keff_prompt);
     fmt::print(
       " Initial gen time        = {:.6e} s\n", simulation::prompt_gen_time);
@@ -1143,17 +1141,15 @@ void run_alpha_iterations()
       fmt::print(
         "\n *** WARNING: Maximum iterations reached without convergence ***\n");
     }
-    fmt::print("\n Final alpha (static method) = {:.6e} +/- N/A 1/s\n",
+    fmt::print("\n Final alpha (COG static) = {:.6e} +/- N/A 1/s\n",
       simulation::alpha_previous);
     fmt::print(
       " Converged in {} iterations\n\n", simulation::alpha_iteration - 1);
   }
 
-  // Store the converged alpha value
-  // This is the result from the alpha static method with iterative
-  // pseudo-absorption, which finds α such that K'(α) = 1.0
-  simulation::alpha_rate_based = simulation::alpha_previous;
-  simulation::alpha_rate_based_std = std::numeric_limits<double>::quiet_NaN();
+  // Store the converged alpha value from the COG static method
+  simulation::alpha_static = simulation::alpha_previous;
+  simulation::alpha_static_std = std::numeric_limits<double>::quiet_NaN();
 
   // Reset iteration counter to indicate we're done with alpha iterations
   simulation::alpha_iteration = 0;

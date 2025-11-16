@@ -382,6 +382,10 @@ void print_columns()
 
 void print_generation()
 {
+  // Skip printing during alpha eigenvalue iterations
+  if (simulation::alpha_iteration > 0)
+    return;
+
   // Determine overall generation index and number of active generations
   int idx = overall_generation() - 1;
   int n = simulation::current_batch > settings::n_inactive

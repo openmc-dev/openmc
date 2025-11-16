@@ -1080,7 +1080,6 @@ void run_alpha_iterations()
 
   if (mpi::master) {
     header("ALPHA EIGENVALUE CALCULATION (COG STATIC METHOD)", 3);
-    fmt::print("\n");
     fmt::print(" Initial k_prompt        = {:.6f}\n", simulation::keff_prompt);
     fmt::print(
       " Initial gen time        = {:.6e} s\n", simulation::prompt_gen_time);
@@ -1093,8 +1092,8 @@ void run_alpha_iterations()
   if (mpi::master) {
     fmt::print(
       " Initial alpha estimate  = {:.6e} 1/s\n\n", simulation::alpha_previous);
-    fmt::print(" Iteration    Alpha (1/s)         K'          |K'-1|\n");
-    fmt::print(" ---------    ------------      --------      --------\n");
+    fmt::print(" Iteration    Alpha (1/s)       K'        |K'-1|\n");
+    fmt::print(" ---------    ------------    --------    --------\n");
   }
 
   // Alpha iteration loop
@@ -1118,7 +1117,7 @@ void run_alpha_iterations()
     double k_error = std::abs(k_prime - 1.0);
 
     if (mpi::master) {
-      fmt::print(" {:4d}       {:.6e}    {:.6f}    {:.6e}\n",
+      fmt::print("    {:2d}        {:.6e}    {:.6f}    {:.6e}\n",
         simulation::alpha_iteration, simulation::alpha_previous, k_prime,
         k_error);
     }

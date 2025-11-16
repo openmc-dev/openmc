@@ -103,6 +103,7 @@ void sample_neutron_reaction(Particle& p)
       if (cutoff >= material_xs_total) {
         if (simulation::alpha_previous > 0.0) {
           p.alive() = false;
+          return;
         } else {
           SourceSite site;
           site.r = p.r();
@@ -117,7 +118,6 @@ void sample_neutron_reaction(Particle& p)
           site.progeny_id = p.n_progeny()++;
           p.secondary_bank().push_back(site);
         }
-        return;
       }
     }
   }

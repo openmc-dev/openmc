@@ -212,6 +212,18 @@ if [[ "$SKIP_XS" == false ]]; then
         log_info "ENDF/B-VII.1 data already exists, skipping download"
     fi
 
+    # Copy ENDF/B-VIII.0 HDF5 data if available
+    if [[ -d "endfb80-hdf5" ]]; then
+        log_info "Copying ENDF/B-VIII.0 HDF5 cross-section data..."
+        mkdir -p "${SCRIPT_DIR}/openmc"
+        cp -r endfb80-hdf5 "${SCRIPT_DIR}/openmc/endfb80-hdf5"
+        log_success "ENDF/B-VIII.0 HDF5 data copied to ${SCRIPT_DIR}/openmc/endfb80-hdf5"
+    elif [[ -d "${SCRIPT_DIR}/openmc/endfb80-hdf5" ]]; then
+        log_info "ENDF/B-VIII.0 HDF5 data already exists at ${SCRIPT_DIR}/openmc/endfb80-hdf5"
+    else
+        log_info "ENDF/B-VIII.0 HDF5 data not found, skipping (optional)"
+    fi
+
     log_success "Cross-section data ready at ${XS_DATA_DIR}"
 else
     log_info "Skipping cross-section data download"

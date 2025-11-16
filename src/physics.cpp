@@ -115,8 +115,6 @@ void sample_neutron_reaction(Particle& p)
           site.time = p.time();
           site.surf_id = 0;
           site.delayed_group = 0;
-          site.parent_id = p.id();
-          site.progeny_id = p.n_progeny()++;
           p.secondary_bank().push_back(site);
         }
       }

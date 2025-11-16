@@ -210,7 +210,13 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
   double weight = settings::ufs_on ? ufs_get_weight(p) : 1.0;
 
   // Determine the expected number of neutrons produced
-  double nu_t = p.wgt() / simulation::keff * weight *
+  // Apply a floor to keff to prevent excessive splitting in deeply subcritical
+  // systems. For very low keff (e.g., 0.01), dividing by keff would create
+  // hundreds of fission sites per event, overflowing the fission bank. A floor
+  // of 0.5 limits splitting to at most 2× the normal fission rate, which is
+  // reasonable for eigenvalue calculations while preventing numerical issues.
+  double keff_for_splitting = std::max(simulation::keff, 0.5);
+  double nu_t = p.wgt() / keff_for_splitting * weight *
                 p.neutron_xs(i_nuclide).nu_fission /
                 p.neutron_xs(i_nuclide).total;
 
@@ -268,10 +274,20 @@ void create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
     if (use_fission_bank) {
       int64_t idx = simulation::fission_bank.thread_safe_append(site);
       if (idx == -1) {
-        warning(
-          "The shared fission bank is full. Additional fission sites created "
-          "in this generation will not be banked. Results may be "
-          "non-deterministic.");
+        // Use a static flag to ensure warning is only printed once per rank
+        static bool warning_printed = false;
+        if (!warning_printed) {
+#pragma omp critical(FissionBankWarning)
+          {
+            if (!warning_printed) {
+              warning(
+                "The shared fission bank is full. Additional fission sites "
+                "created in this generation will not be banked. Results may be "
+                "non-deterministic.");
+              warning_printed = true;
+            }
+          }
+        }
 
         // Decrement number of particle progeny as storage was unsuccessful.
         // This step is needed so that the sum of all progeny is equal to the

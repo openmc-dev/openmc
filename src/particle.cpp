@@ -151,19 +151,9 @@ void Particle::from_source(const SourceSite* src)
   parent_nuclide() = src->parent_nuclide;
   delayed_group() = src->delayed_group;
 
-  // Initialize lineage flag for kinetics calculations
-  has_delayed_ancestor() = src->has_delayed_ancestor;
-  // If IFP is on and tracking beta, check ancestor history
-  if (settings::ifp_on && is_beta_effective_or_both()) {
-    const auto& delayed_groups =
-      simulation::ifp_source_delayed_group_bank[current_work() - 1];
-    for (auto dg : delayed_groups) {
-      if (dg > 0) {
-        has_delayed_ancestor() = true;
-        break;
-      }
-    }
-  }
+  // Initialize delayed neutron flag for kinetics calculations
+  // Track whether this neutron itself is delayed (not genealogy)
+  is_delayed() = (src->delayed_group > 0);
 
   // Convert signed surface ID to signed index
   if (src->surf_id != SURFACE_NONE) {
@@ -288,8 +278,8 @@ void Particle::event_advance()
       type() == ParticleType::neutron) {
     keff_tally_tracklength() += wgt() * distance * macro_xs().nu_fission;
 
-    // Score track-length estimate of k_prompt (prompt chains only)
-    if (settings::calculate_prompt_k && !has_delayed_ancestor()) {
+    // Score track-length estimate of k_prompt (prompt neutrons only)
+    if (settings::calculate_prompt_k && !is_delayed()) {
       keff_prompt_tally_tracklength() +=
         wgt() * distance * macro_xs().nu_fission;
     }

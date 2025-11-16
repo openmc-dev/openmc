@@ -165,7 +165,7 @@ void initialize_mpi(MPI_Comm intracomm)
   MPI_Get_address(&b.time, &disp[3]);
   MPI_Get_address(&b.wgt, &disp[4]);
   MPI_Get_address(&b.delayed_group, &disp[5]);
-  MPI_Get_address(&b.has_delayed_ancestor, &disp[6]);
+  MPI_Get_address(&b.is_delayed, &disp[6]);
   MPI_Get_address(&b.surf_id, &disp[7]);
   MPI_Get_address(&b.particle, &disp[8]);
   MPI_Get_address(&b.parent_nuclide, &disp[9]);

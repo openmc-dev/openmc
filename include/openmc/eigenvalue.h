@@ -35,14 +35,13 @@ extern double beta_eff;               //!< Effective delayed neutron fraction
 extern double beta_eff_std;           //!< Standard deviation of beta_eff
 extern double alpha_k_based;          //!< Alpha eigenvalue (k-based method)
 extern double alpha_k_based_std;      //!< Standard deviation of alpha (k-based)
-extern double alpha_rate_based;       //!< Alpha eigenvalue (rate-based method)
-extern double
-  alpha_rate_based_std;            //!< Standard deviation of alpha (rate-based)
-extern double prompt_gen_time;     //!< Prompt neutron generation time
-extern double prompt_gen_time_std; //!< Standard deviation of gen time
-extern int kinetics_tally_index;   //!< Index of internal kinetics tally
+extern double alpha_rate_based;       //!< Alpha eigenvalue (static method)
+extern double alpha_rate_based_std;   //!< Standard deviation of alpha (static)
+extern double prompt_gen_time;        //!< Prompt neutron generation time
+extern double prompt_gen_time_std;    //!< Standard deviation of gen time
+extern int kinetics_tally_index;      //!< Index of internal kinetics tally
 
-// Alpha iteration state (for COG-style iterative refinement)
+// Alpha iteration state (for iterative pseudo-absorption method)
 extern double alpha_previous;          //!< Previous iteration's alpha value
 extern double pseudo_absorption_sigma; //!< Pseudo-absorption cross section
 extern int alpha_iteration;            //!< Current alpha iteration number
@@ -78,11 +77,12 @@ void calculate_kinetics_parameters();
 //! Creates tallies with prompt chain scores needed for alpha calculations
 void setup_kinetics_tallies();
 
-//! Run alpha eigenvalue iterations using COG's iterative method
+//! Run alpha static eigenvalue calculation with iterative pseudo-absorption
 //!
 //! This function runs additional batches after normal eigenvalue calculation
 //! to determine alpha through iterative refinement with pseudo-absorption.
-//! The method seeks alpha such that K'(alpha) = 1.0.
+//! The method seeks alpha such that K'(alpha) = 1.0. Based on the alpha
+//! static method implemented in the COG Monte Carlo code.
 void run_alpha_iterations();
 
 //! Calculates a minimum variance estimate of k-effective

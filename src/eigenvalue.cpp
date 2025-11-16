@@ -60,7 +60,7 @@ double prompt_gen_time_std {0.0};
 // Index of internal kinetics tally (for alpha calculations)
 int kinetics_tally_index {-1};
 
-// Alpha iteration state (for COG-style iterative refinement)
+// Alpha iteration state (for iterative pseudo-absorption method)
 double alpha_previous {0.0};          // Previous iteration's alpha value
 double pseudo_absorption_sigma {0.0}; // Pseudo-absorption cross section
 int alpha_iteration {0};              // Current alpha iteration number
@@ -637,11 +637,12 @@ void calculate_kinetics_parameters()
       }
 
       // ========================================================================
-      // COG-STYLE ITERATIVE ALPHA CALCULATION
+      // ALPHA STATIC METHOD WITH ITERATIVE PSEUDO-ABSORPTION
       // ========================================================================
       //
-      // The COG iterative method is now implemented in run_alpha_iterations()
-      // which is called after normal eigenvalue batches complete.
+      // This method is implemented in run_alpha_iterations() which is called
+      // after normal eigenvalue batches complete. Based on the alpha static
+      // method implemented in the COG Monte Carlo code.
       //
       // The method:
       //   1. Initializes α₀ = (k_prompt - 1) / Λ_prompt
@@ -1018,11 +1019,12 @@ void run_alpha_iterations()
   using namespace openmc;
 
   // ============================================================================
-  // COG-STYLE ITERATIVE ALPHA EIGENVALUE CALCULATION
+  // ALPHA STATIC METHOD WITH ITERATIVE PSEUDO-ABSORPTION
   // ============================================================================
   //
-  // This implements the COG Monte Carlo code's method for calculating the
-  // alpha eigenvalue through iterative refinement with pseudo-absorption.
+  // This implements the alpha static eigenvalue method through iterative
+  // refinement with pseudo-absorption, based on the method implemented in
+  // the COG Monte Carlo code.
   //
   // Method:
   //   1. Initialize: α₀ = (k_prompt - 1) / Λ_prompt (k-based estimate)
@@ -1065,8 +1067,9 @@ void run_alpha_iterations()
   }
 
   if (mpi::master) {
-    header("ALPHA EIGENVALUE ITERATION (COG METHOD)", 3);
+    header("ALPHA STATIC EIGENVALUE CALCULATION", 3);
     fmt::print("\n");
+    fmt::print(" Method: Iterative pseudo-absorption (based on COG)\n");
     fmt::print(" Initial k_prompt        = {:.6f}\n", simulation::keff_prompt);
     fmt::print(
       " Initial gen time        = {:.6e} s\n", simulation::prompt_gen_time);
@@ -1140,16 +1143,15 @@ void run_alpha_iterations()
       fmt::print(
         "\n *** WARNING: Maximum iterations reached without convergence ***\n");
     }
-    fmt::print("\n Final alpha (COG iterative) = {:.6e} +/- N/A 1/s\n",
+    fmt::print("\n Final alpha (static method) = {:.6e} +/- N/A 1/s\n",
       simulation::alpha_previous);
     fmt::print(
       " Converged in {} iterations\n\n", simulation::alpha_iteration - 1);
   }
 
-  // Store the result in alpha_rate_based variable
-  // Note: This is COG's iterative method, not a naive rate-based calculation.
-  // COG's method iteratively finds α such that K'(α) = 1 by adding
-  // pseudo-absorption σ_α = α/v to the cross sections.
+  // Store the converged alpha value
+  // This is the result from the alpha static method with iterative
+  // pseudo-absorption, which finds α such that K'(α) = 1.0
   simulation::alpha_rate_based = simulation::alpha_previous;
   simulation::alpha_rate_based_std = std::numeric_limits<double>::quiet_NaN();
 

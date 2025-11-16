@@ -1078,21 +1078,17 @@ void run_alpha_iterations()
     return;
   }
 
-  double prompt_gen_time_us = simulation::prompt_gen_time * 1.0e6;
-  double prompt_gen_time_std_us = simulation::prompt_gen_time_std * 1.0e6;
-
   simulation::alpha_previous =
     (simulation::keff_prompt - 1.0) / simulation::prompt_gen_time;
-  double alpha_initial_us = simulation::alpha_previous / 1.0e6;
 
   if (mpi::master) {
     header("ALPHA EIGENVALUE CALCULATION (COG STATIC METHOD)", 3);
-    fmt::print(" Initial k-prompt            = {:.6f}\n", simulation::keff_prompt);
-    fmt::print(" Initial generation time     = {:.6e} +/- {:.6e} us\n",
-      prompt_gen_time_us, prompt_gen_time_std_us);
-    fmt::print(" Initial alpha estimate      = {:.6e} gen/us\n\n",
-      alpha_initial_us);
-    fmt::print(" Iteration  Alpha (gen/us)    K'        |K'-1|\n");
+    fmt::print(" Initial k-prompt            = {:.5f}\n", simulation::keff_prompt);
+    fmt::print(" Initial generation time     = {:.5e} +/- {:.5e} s\n",
+      simulation::prompt_gen_time, simulation::prompt_gen_time_std);
+    fmt::print(" Initial alpha estimate      = {:.5e} 1/s\n\n",
+      simulation::alpha_previous);
+    fmt::print(" Iteration    Alpha (1/s)      K'        |K'-1|\n");
     fmt::print(" ---------  --------------  --------  ----------\n");
   }
 
@@ -1110,12 +1106,11 @@ void run_alpha_iterations()
     k_prime = simulation::k_generation.back();
     double k_error = std::abs(k_prime - 1.0);
 
-    double alpha_us = simulation::alpha_previous / 1.0e6;
-    alpha_values.push_back(alpha_us);
+    alpha_values.push_back(simulation::alpha_previous);
 
     if (mpi::master) {
-      fmt::print("    {:2d}      {: .6e}  {:.6f}  {:.3e}\n",
-        simulation::alpha_iteration, alpha_us, k_prime, k_error);
+      fmt::print("    {:2d}      {: .5e}  {:.5f}  {:.5e}\n",
+        simulation::alpha_iteration, simulation::alpha_previous, k_prime, k_error);
     }
 
     if (k_error < settings::alpha_tolerance) {
@@ -1165,8 +1160,8 @@ void run_alpha_iterations()
     alpha_std = std::numeric_limits<double>::quiet_NaN();
   }
 
-  simulation::alpha_static = alpha_mean * 1.0e6;
-  simulation::alpha_static_std = alpha_std * 1.0e6;
+  simulation::alpha_static = alpha_mean;
+  simulation::alpha_static_std = alpha_std;
 
   // Reset iteration counter to indicate we're done with alpha iterations
   simulation::alpha_iteration = 0;

@@ -543,7 +543,7 @@ void print_results()
       fmt::print(" k-effective (Collision)     = {:.5f} +/- {:.5f}\n", mean,
         t_n1 * stdev);
       std::tie(mean, stdev) = mean_stdev(&gt(GlobalTally::K_TRACKLENGTH, 0), n);
-      fmt::print(" k-effective (Track-length) = {:.5f} +/- {:.5f}\n", mean,
+      fmt::print(" k-effective (Track-length)  = {:.5f} +/- {:.5f}\n", mean,
         t_n1 * stdev);
       std::tie(mean, stdev) = mean_stdev(&gt(GlobalTally::K_ABSORPTION, 0), n);
       fmt::print(" k-effective (Absorption)    = {:.5f} +/- {:.5f}\n", mean,
@@ -567,27 +567,18 @@ void print_results()
       fmt::print(" Beta-effective              = {:.5f} +/- {:.5f}\n",
         simulation::beta_eff, t_n1 * simulation::beta_eff_std);
       if (settings::calculate_alpha) {
-        // Convert to microseconds (1 s = 1e6 us)
-        double prompt_gen_time_us = simulation::prompt_gen_time * 1.0e6;
-        double prompt_gen_time_std_us = simulation::prompt_gen_time_std * 1.0e6;
-        // Convert alpha to gen/us (divide by 1e6)
-        double alpha_k_based_us = simulation::alpha_k_based / 1.0e6;
-        double alpha_k_based_std_us = simulation::alpha_k_based_std / 1.0e6;
+        fmt::print(" Prompt Generation Time      = {:.5e} +/- {:.5e} s\n",
+          simulation::prompt_gen_time, t_n1 * simulation::prompt_gen_time_std);
+        fmt::print(" Alpha (k-based)             = {:.5e} +/- {:.5e} 1/s\n",
+          simulation::alpha_k_based, t_n1 * simulation::alpha_k_based_std);
 
-        fmt::print(" Prompt Generation Time      = {:.6e} +/- {:.6e} us\n",
-          prompt_gen_time_us, t_n1 * prompt_gen_time_std_us);
-        fmt::print(" Alpha (k-based)             = {:.6e} +/- {:.6e} gen/us\n",
-          alpha_k_based_us, t_n1 * alpha_k_based_std_us);
-
-        double alpha_static_us = simulation::alpha_static / 1.0e6;
-        double alpha_static_std_us = simulation::alpha_static_std / 1.0e6;
-        if (!std::isnan(alpha_static_us)) {
-          if (!std::isnan(alpha_static_std_us)) {
-            fmt::print(" Alpha (COG Static)          = {:.6e} +/- {:.6e} gen/us\n",
-              alpha_static_us, t_n1 * alpha_static_std_us);
+        if (!std::isnan(simulation::alpha_static)) {
+          if (!std::isnan(simulation::alpha_static_std)) {
+            fmt::print(" Alpha (COG Static)          = {:.5e} +/- {:.5e} 1/s\n",
+              simulation::alpha_static, t_n1 * simulation::alpha_static_std);
           } else {
-            fmt::print(" Alpha (COG Static)          = {:.6e} gen/us\n",
-              alpha_static_us);
+            fmt::print(" Alpha (COG Static)          = {:.5e} 1/s\n",
+              simulation::alpha_static);
           }
         }
       }
@@ -616,20 +607,13 @@ void print_results()
       fmt::print(
         " Beta-effective             = {:.5f}\n", simulation::beta_eff);
       if (settings::calculate_alpha) {
-        // Convert to microseconds (1 s = 1e6 us)
-        double prompt_gen_time_us = simulation::prompt_gen_time * 1.0e6;
-        // Convert alpha to gen/us (divide by 1e6)
-        double alpha_k_based_us = simulation::alpha_k_based / 1.0e6;
-        double alpha_static_us = simulation::alpha_static / 1.0e6;
-
         fmt::print(
-          " Prompt Generation Time     = {:.6e} us\n", prompt_gen_time_us);
+          " Prompt Generation Time     = {:.5e} s\n", simulation::prompt_gen_time);
         fmt::print(
-          " Alpha (k-based)            = {:.6e} gen/us\n", alpha_k_based_us);
-        // Print alpha eigenvalue calculation (COG Static method) if computed
-        if (!std::isnan(alpha_static_us)) {
+          " Alpha (k-based)            = {:.5e} 1/s\n", simulation::alpha_k_based);
+        if (!std::isnan(simulation::alpha_static)) {
           fmt::print(
-            " Alpha (COG Static)         = {:.6e} gen/us\n", alpha_static_us);
+            " Alpha (COG Static)         = {:.5e} 1/s\n", simulation::alpha_static);
         }
       }
     }

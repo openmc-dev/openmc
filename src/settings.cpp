@@ -58,6 +58,8 @@ bool event_based {false};
 bool ifp_on {false};
 bool calculate_prompt_k {false};
 bool calculate_alpha {false};
+int max_alpha_iterations {10};     // Default: 10 iterations max
+double alpha_tolerance {1.0e-6};   // Default: 1 µgen/µs convergence tolerance
 bool legendre_to_tabular {true};
 bool material_cell_offsets {true};
 bool output_summary {true};

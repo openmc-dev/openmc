@@ -940,6 +940,9 @@ void write_eigenvalue_hdf5(hid_t group)
       array<double, 2> alpha_k_vals {
         simulation::alpha_k_based, simulation::alpha_k_based_std};
       write_dataset(group, "alpha_k_based", alpha_k_vals);
+      array<double, 2> alpha_static_vals {
+        simulation::alpha_static, simulation::alpha_static_std};
+      write_dataset(group, "alpha_static", alpha_static_vals);
     }
   }
 }
@@ -980,6 +983,12 @@ void read_eigenvalue_hdf5(hid_t group)
       read_dataset(group, "alpha_k_based", alpha_k_vals);
       simulation::alpha_k_based = alpha_k_vals[0];
       simulation::alpha_k_based_std = alpha_k_vals[1];
+      if (object_exists(group, "alpha_static")) {
+        array<double, 2> alpha_static_vals;
+        read_dataset(group, "alpha_static", alpha_static_vals);
+        simulation::alpha_static = alpha_static_vals[0];
+        simulation::alpha_static_std = alpha_static_vals[1];
+      }
     }
   }
 }

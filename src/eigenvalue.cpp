@@ -61,7 +61,7 @@ double prompt_gen_time_std {0.0};
 // Index of internal kinetics tally (for alpha calculations)
 int kinetics_tally_index {-1};
 
-// Alpha eigenvalue calculation (COG static method) - iteration state
+// Alpha eigenvalue calculation (COG Static method) - iteration state
 double alpha_previous {0.0};          // Previous iteration's alpha value
 double pseudo_absorption_sigma {0.0}; // Pseudo-absorption cross section
 int alpha_iteration {0};              // Current alpha iteration number
@@ -642,7 +642,7 @@ void calculate_kinetics_parameters()
       // ========================================================================
       //
       // This method is implemented in run_alpha_iterations() which is called
-      // after normal eigenvalue batches complete, based on the COG static
+      // after normal eigenvalue batches complete, based on the COG Static
       // method which uses iterative refinement with pseudo-absorption.
       //
       // The method:
@@ -940,6 +940,9 @@ void write_eigenvalue_hdf5(hid_t group)
       array<double, 2> alpha_k_vals {
         simulation::alpha_k_based, simulation::alpha_k_based_std};
       write_dataset(group, "alpha_k_based", alpha_k_vals);
+      array<double, 2> alpha_static_vals {
+        simulation::alpha_static, simulation::alpha_static_std};
+      write_dataset(group, "alpha_static", alpha_static_vals);
     }
   }
 }
@@ -980,6 +983,12 @@ void read_eigenvalue_hdf5(hid_t group)
       read_dataset(group, "alpha_k_based", alpha_k_vals);
       simulation::alpha_k_based = alpha_k_vals[0];
       simulation::alpha_k_based_std = alpha_k_vals[1];
+      if (object_exists(group, "alpha_static")) {
+        array<double, 2> alpha_static_vals;
+        read_dataset(group, "alpha_static", alpha_static_vals);
+        simulation::alpha_static = alpha_static_vals[0];
+        simulation::alpha_static_std = alpha_static_vals[1];
+      }
     }
   }
 }
@@ -1022,7 +1031,7 @@ void run_alpha_iterations()
   // ALPHA EIGENVALUE CALCULATION (COG STATIC METHOD)
   // ============================================================================
   //
-  // This implements the alpha eigenvalue calculation using the COG static
+  // This implements the alpha eigenvalue calculation using the COG Static
   // method, which uses iterative refinement with pseudo-absorption to find
   // the alpha eigenvalue.
   //
@@ -1145,13 +1154,13 @@ void run_alpha_iterations()
       fmt::print(
         "\n *** WARNING: Maximum iterations reached without convergence ***\n");
     }
-    fmt::print("\n Final alpha (COG static) = {:.6e} +/- N/A 1/s\n",
+    fmt::print("\n Final alpha (COG Static) = {:.6e} +/- N/A 1/s\n",
       simulation::alpha_previous);
     fmt::print(
       " Converged in {} iterations\n\n", simulation::alpha_iteration - 1);
   }
 
-  // Store the converged alpha value from the COG static method
+  // Store the converged alpha value from the COG Static method
   simulation::alpha_static = simulation::alpha_previous;
   simulation::alpha_static_std = std::numeric_limits<double>::quiet_NaN();
 

@@ -350,6 +350,14 @@ class StatePoint:
             return None
 
     @property
+    def alpha_static(self):
+        """Alpha eigenvalue (COG Static method) with uncertainty."""
+        if self.run_mode == 'eigenvalue' and 'alpha_static' in self._f:
+            return ufloat(*self._f['alpha_static'][()])
+        else:
+            return None
+
+    @property
     def meshes(self):
         if not self._meshes_read:
             mesh_group = self._f['tallies/meshes']

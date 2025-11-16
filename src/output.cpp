@@ -610,10 +610,10 @@ void print_results()
           " Prompt Generation Time     = {:.6e} us\n", prompt_gen_time_us);
         fmt::print(
           " Alpha (k-based)            = {:.6e} gen/us\n", alpha_k_based_us);
-        // Print alpha eigenvalue calculation (COG static method) if computed
+        // Print alpha eigenvalue calculation (COG Static method) if computed
         if (!std::isnan(alpha_static_us)) {
           fmt::print(
-            " Alpha (COG static)         = {:.6e} gen/us\n", alpha_static_us);
+            " Alpha (COG Static)         = {:.6e} gen/us\n", alpha_static_us);
         }
       }
     }

@@ -1084,7 +1084,7 @@ void run_alpha_iterations()
   if (mpi::master) {
     header("ALPHA EIGENVALUE SIMULATION", 3);
     fmt::print(" Iteration     Alpha        K'       |K'-1|    Relax  Method\n");
-    fmt::print(" ---------  ------------  ---------  --------- ------ --------\n");
+    fmt::print(" =========  ============  =========  ========= ====== ========\n");
   }
 
   simulation::alpha_converged = false;
@@ -1197,16 +1197,6 @@ void run_alpha_iterations()
     }
   }
 
-  if (mpi::master) {
-    fmt::print("\n");
-    if (simulation::alpha_converged) {
-      fmt::print(" Converged after {} iterations\n", simulation::alpha_iteration);
-    } else {
-      fmt::print(" Maximum iterations ({}) reached without convergence\n",
-        settings::max_alpha_iterations);
-    }
-  }
-
   // Use the final (converged) alpha value from the iterations.
   // The alpha eigenvalue calculation is an iterative solver seeking alpha such
   // that K'(alpha) = 1.0. The converged value is the solution, not the mean of
@@ -1249,6 +1239,29 @@ void run_alpha_iterations()
       }
     } else {
       simulation::alpha_static_std = std::numeric_limits<double>::quiet_NaN();
+    }
+  }
+
+  // Print convergence status and final Alpha (COG Static) result
+  if (mpi::master) {
+    fmt::print("\n");
+    if (simulation::alpha_converged) {
+      fmt::print(" Converged after {} iterations\n", simulation::alpha_iteration);
+    } else {
+      fmt::print(" Maximum iterations ({}) reached without convergence\n",
+        settings::max_alpha_iterations);
+    }
+
+    // Print final Alpha (COG Static) eigenvalue
+    if (!std::isnan(simulation::alpha_static)) {
+      fmt::print("\n");
+      if (!std::isnan(simulation::alpha_static_std)) {
+        fmt::print(" Alpha (COG Static) = {:.5e} +/- {:.5e} 1/seconds\n",
+          simulation::alpha_static, simulation::alpha_static_std);
+      } else {
+        fmt::print(" Alpha (COG Static) = {:.5e} 1/seconds\n",
+          simulation::alpha_static);
+      }
     }
   }
 

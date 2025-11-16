@@ -92,6 +92,36 @@ void collision(Particle& p)
 
 void sample_neutron_reaction(Particle& p)
 {
+  // Check for pseudo-absorption reaction (COG Static alpha iteration)
+  if (settings::calculate_alpha && simulation::alpha_iteration > 0) {
+    double velocity = p.speed();
+    if (velocity > 0.0) {
+      double sigma_alpha = std::abs(simulation::alpha_previous / velocity);
+      double material_xs_total = p.macro_xs().total - sigma_alpha;
+      double cutoff = prn(p.current_seed()) * p.macro_xs().total;
+
+      if (cutoff >= material_xs_total) {
+        if (simulation::alpha_previous > 0.0) {
+          p.alive() = false;
+        } else {
+          SourceSite site;
+          site.r = p.r();
+          site.u = p.u();
+          site.E = p.E();
+          site.wgt = p.wgt();
+          site.particle = ParticleType::neutron;
+          site.time = p.time();
+          site.surf_id = 0;
+          site.delayed_group = 0;
+          site.parent_id = p.id();
+          site.progeny_id = p.n_progeny()++;
+          p.secondary_bank().push_back(site);
+        }
+        return;
+      }
+    }
+  }
+
   // Sample a nuclide within the material
   int i_nuclide = sample_nuclide(p);
 

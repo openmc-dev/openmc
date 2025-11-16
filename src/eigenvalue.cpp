@@ -1078,65 +1078,54 @@ void run_alpha_iterations()
     return;
   }
 
-  if (mpi::master) {
-    header("ALPHA EIGENVALUE CALCULATION (COG STATIC METHOD)", 3);
-    fmt::print(" Initial k_prompt        = {:.6f}\n", simulation::keff_prompt);
-    fmt::print(
-      " Initial gen time        = {:.6e} s\n", simulation::prompt_gen_time);
-  }
+  double prompt_gen_time_us = simulation::prompt_gen_time * 1.0e6;
+  double prompt_gen_time_std_us = simulation::prompt_gen_time_std * 1.0e6;
 
   simulation::alpha_previous =
     (simulation::keff_prompt - 1.0) / simulation::prompt_gen_time;
+  double alpha_initial_us = simulation::alpha_previous / 1.0e6;
 
   if (mpi::master) {
-    fmt::print(
-      " Initial alpha estimate  = {:.6e} 1/s\n\n", simulation::alpha_previous);
-    fmt::print(" Iteration    Alpha (1/s)       K'        |K'-1|\n");
-    fmt::print(" ---------    ------------    --------    --------\n");
+    header("ALPHA EIGENVALUE CALCULATION (COG STATIC METHOD)", 3);
+    fmt::print(" Initial k-prompt            = {:.6f}\n", simulation::keff_prompt);
+    fmt::print(" Initial generation time     = {:.6e} +/- {:.6e} us\n",
+      prompt_gen_time_us, prompt_gen_time_std_us);
+    fmt::print(" Initial alpha estimate      = {:.6e} gen/us\n\n",
+      alpha_initial_us);
+    fmt::print(" Iteration  Alpha (gen/us)    K'        |K'-1|\n");
+    fmt::print(" ---------  --------------  --------  ----------\n");
   }
 
-  // Alpha iteration loop
   simulation::alpha_converged = false;
   double k_prime = 0.0;
+  vector<double> alpha_values;
 
   for (simulation::alpha_iteration = 1;
        simulation::alpha_iteration <= settings::max_alpha_iterations;
        ++simulation::alpha_iteration) {
 
-    // Run a single batch with pseudo-absorption enabled
-    // The pseudo-absorption σ_α = α/v is added in particle.cpp
-    // Note: This runs additional batches beyond n_max_batches
     int status = 0;
     openmc_next_batch(&status);
 
-    // Get K' from this batch (track-length estimator)
     k_prime = simulation::k_generation.back();
-
-    // Check convergence: |K' - 1.0| < tolerance
     double k_error = std::abs(k_prime - 1.0);
 
+    double alpha_us = simulation::alpha_previous / 1.0e6;
+    alpha_values.push_back(alpha_us);
+
     if (mpi::master) {
-      fmt::print("    {:2d}        {:.6e}    {:.6f}    {:.6e}\n",
-        simulation::alpha_iteration, simulation::alpha_previous, k_prime,
-        k_error);
+      fmt::print("    {:2d}      {: .6e}  {:.6f}  {:.3e}\n",
+        simulation::alpha_iteration, alpha_us, k_prime, k_error);
     }
 
-    // Check for convergence
     if (k_error < settings::alpha_tolerance) {
       simulation::alpha_converged = true;
-      if (mpi::master) {
-        fmt::print(
-          "\n *** CONVERGED: K' = {:.6f} (target: 1.0) ***\n", k_prime);
-      }
       break;
     }
 
-    // Update alpha for next iteration
-    // Using COG's Order1 method: α_new = α_old + (K' - 1) / Λ
     double delta_alpha = (k_prime - 1.0) / simulation::prompt_gen_time;
     simulation::alpha_previous += delta_alpha;
 
-    // Check for divergence
     if (std::abs(simulation::alpha_previous) > 1.0e10) {
       if (mpi::master) {
         warning("Alpha iteration diverging, stopping iterations");
@@ -1145,22 +1134,39 @@ void run_alpha_iterations()
     }
   }
 
-  // Report final result
   if (mpi::master) {
-    if (!simulation::alpha_converged &&
-        simulation::alpha_iteration > settings::max_alpha_iterations) {
-      fmt::print(
-        "\n *** WARNING: Maximum iterations reached without convergence ***\n");
+    fmt::print("\n");
+    if (simulation::alpha_converged) {
+      fmt::print(" Converged after {} iterations\n", simulation::alpha_iteration);
+    } else {
+      fmt::print(" Maximum iterations ({}) reached without convergence\n",
+        settings::max_alpha_iterations);
     }
-    fmt::print("\n Final alpha (COG Static) = {:.6e} +/- N/A 1/s\n",
-      simulation::alpha_previous);
-    fmt::print(
-      " Converged in {} iterations\n\n", simulation::alpha_iteration - 1);
   }
 
-  // Store the converged alpha value from the COG Static method
-  simulation::alpha_static = simulation::alpha_previous;
-  simulation::alpha_static_std = std::numeric_limits<double>::quiet_NaN();
+  double alpha_mean = 0.0;
+  double alpha_std = 0.0;
+  int n_values = alpha_values.size();
+
+  if (n_values > 1) {
+    for (auto alpha : alpha_values) {
+      alpha_mean += alpha;
+    }
+    alpha_mean /= n_values;
+
+    double sum_sq = 0.0;
+    for (auto alpha : alpha_values) {
+      double diff = alpha - alpha_mean;
+      sum_sq += diff * diff;
+    }
+    alpha_std = std::sqrt(sum_sq / (n_values - 1));
+  } else if (n_values == 1) {
+    alpha_mean = alpha_values[0];
+    alpha_std = std::numeric_limits<double>::quiet_NaN();
+  }
+
+  simulation::alpha_static = alpha_mean * 1.0e6;
+  simulation::alpha_static_std = alpha_std * 1.0e6;
 
   // Reset iteration counter to indicate we're done with alpha iterations
   simulation::alpha_iteration = 0;

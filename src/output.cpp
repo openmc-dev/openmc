@@ -543,7 +543,7 @@ void print_results()
       fmt::print(" k-effective (Collision)     = {:.5f} +/- {:.5f}\n", mean,
         t_n1 * stdev);
       std::tie(mean, stdev) = mean_stdev(&gt(GlobalTally::K_TRACKLENGTH, 0), n);
-      fmt::print(" k-effective (Track-length)  = {:.5f} +/- {:.5f}\n", mean,
+      fmt::print(" k-effective (Track-length) = {:.5f} +/- {:.5f}\n", mean,
         t_n1 * stdev);
       std::tie(mean, stdev) = mean_stdev(&gt(GlobalTally::K_ABSORPTION, 0), n);
       fmt::print(" k-effective (Absorption)    = {:.5f} +/- {:.5f}\n", mean,
@@ -578,6 +578,18 @@ void print_results()
           prompt_gen_time_us, t_n1 * prompt_gen_time_std_us);
         fmt::print(" Alpha (k-based)             = {:.6e} +/- {:.6e} gen/us\n",
           alpha_k_based_us, t_n1 * alpha_k_based_std_us);
+
+        double alpha_static_us = simulation::alpha_static / 1.0e6;
+        double alpha_static_std_us = simulation::alpha_static_std / 1.0e6;
+        if (!std::isnan(alpha_static_us)) {
+          if (!std::isnan(alpha_static_std_us)) {
+            fmt::print(" Alpha (COG Static)          = {:.6e} +/- {:.6e} gen/us\n",
+              alpha_static_us, t_n1 * alpha_static_std_us);
+          } else {
+            fmt::print(" Alpha (COG Static)          = {:.6e} gen/us\n",
+              alpha_static_us);
+          }
+        }
       }
     }
   } else {

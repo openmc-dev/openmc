@@ -92,11 +92,12 @@ void collision(Particle& p)
 
 void sample_neutron_reaction(Particle& p)
 {
-  // Check for pseudo-absorption reaction (COG Static alpha iteration)
+  double sigma_alpha = 0.0;
+
   if (settings::calculate_alpha && simulation::alpha_iteration > 0) {
     double velocity = p.speed();
     if (velocity > 0.0) {
-      double sigma_alpha = std::abs(simulation::alpha_previous / velocity);
+      sigma_alpha = std::abs(simulation::alpha_previous / velocity);
       double material_xs_total = p.macro_xs().total - sigma_alpha;
       double cutoff = prn(p.current_seed()) * p.macro_xs().total;
 
@@ -119,10 +120,18 @@ void sample_neutron_reaction(Particle& p)
           p.secondary_bank().push_back(site);
         }
       }
+
+      p.macro_xs().total -= sigma_alpha;
+      p.macro_xs().absorption -= sigma_alpha;
     }
   }
 
   int i_nuclide = sample_nuclide(p);
+
+  if (sigma_alpha > 0.0) {
+    p.macro_xs().total += sigma_alpha;
+    p.macro_xs().absorption += sigma_alpha;
+  }
 
   // Save which nuclide particle had collision with
   p.event_nuclide() = i_nuclide;

@@ -240,8 +240,15 @@ void Particle::event_calculate_xs()
     double velocity = this->speed();
     if (velocity > 0.0) {
       double sigma_alpha = simulation::alpha_previous / velocity;
-      macro_xs().total += sigma_alpha;
-      macro_xs().absorption += sigma_alpha;
+
+      // Ensure pseudo-absorption doesn't make total cross section negative
+      // For subcritical systems, α < 0, so σ_α < 0
+      // Only apply if it leaves total XS positive (with 1% safety margin)
+      double min_total_xs = 0.01 * macro_xs().total;
+      if (macro_xs().total + sigma_alpha > min_total_xs) {
+        macro_xs().total += sigma_alpha;
+        macro_xs().absorption += sigma_alpha;
+      }
     }
   }
 }

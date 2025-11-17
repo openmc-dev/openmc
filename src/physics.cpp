@@ -98,32 +98,31 @@ void sample_neutron_reaction(Particle& p)
     double velocity = p.speed();
     if (velocity > 0.0) {
       sigma_alpha = std::abs(simulation::alpha_previous / velocity);
-      double material_xs_total = p.macro_xs().total - sigma_alpha;
+
+      // Add pseudo-absorption to cross sections
+      p.macro_xs().total += sigma_alpha;
+      p.macro_xs().absorption += sigma_alpha;
+
+      // Sample reaction with modified cross sections
       double cutoff = prn(p.current_seed()) * p.macro_xs().total;
+      double material_xs_total = p.macro_xs().total - sigma_alpha;
 
+      // If pseudo-absorption reaction is sampled, kill the particle
       if (cutoff >= material_xs_total) {
-        if (simulation::alpha_previous > 0.0) {
-          p.wgt() = 0.0;
-          return;
-        } else {
-          // For negative alpha (subcritical systems), use weight-based implicit
-          // handling instead of creating split particles to avoid fission bank
-          // overflow. Multiply weight by 2 to account for the population growth
-          // that would have occurred from the split.
-          p.wgt() *= 2.0;
-        }
+        p.wgt() = 0.0;
+        p.macro_xs().total -= sigma_alpha;
+        p.macro_xs().absorption -= sigma_alpha;
+        return;
       }
-
-      p.macro_xs().total -= sigma_alpha;
-      p.macro_xs().absorption -= sigma_alpha;
     }
   }
 
   int i_nuclide = sample_nuclide(p);
 
+  // Restore cross sections (remove pseudo-absorption) before continuing
   if (sigma_alpha > 0.0) {
-    p.macro_xs().total += sigma_alpha;
-    p.macro_xs().absorption += sigma_alpha;
+    p.macro_xs().total -= sigma_alpha;
+    p.macro_xs().absorption -= sigma_alpha;
   }
 
   // Save which nuclide particle had collision with

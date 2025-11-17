@@ -385,12 +385,40 @@ Example: If k_prompt = 0.993 and Λ = 5.66 µs:
 
 ---
 
-## Convergence Acceleration Methods for Iterative Alpha Solver
+## COG Static Method Implementation
 
-The COG Static method for alpha eigenvalue calculation is an iterative fixed-point method that seeks α such that K'(α) = 1.0. The basic iteration is:
+OpenMC implements the true COG Static method for alpha eigenvalue calculation through iterative refinement with **pseudo-absorption cross sections**. During each alpha iteration, the method adds pseudo-absorption σ_α = |α|/v to the total and absorption cross sections, modifying the transport physics to find α such that K'(α) = 1.0.
+
+### Pseudo-Absorption Cross Section
+
+During alpha iterations (when `alpha_iteration > 0`), the following modification is applied to all materials:
+
+```cpp
+σ_α = |α| / v
+σ_total → σ_total + σ_α
+σ_absorption → σ_absorption + σ_α
+```
+
+where v is the neutron speed. This adds an energy-dependent absorption term that increases removal for high-energy (fast) neutrons and decreases for low-energy (thermal) neutrons, naturally balancing the neutron population.
+
+**Key Benefits:**
+- Eliminates excessive particle splitting in subcritical systems
+- Provides physical feedback through modified eigenvalue K'(α)
+- Converges to the unique α where K'(α) = 1.0
+
+### COG Static Algorithm
+
+The basic iteration is:
 
 ```
-α_{n+1} = α_n + (K'_n - 1.0) / Λ_prompt
+1. Initialize: α₀ = (k_prompt - 1) / Λ_prompt
+2. For iteration n = 1 to max_iterations:
+   a. Add pseudo-absorption: σ_α = |α_{n-1}| / v
+   b. Run eigenvalue batch with modified cross sections
+   c. Obtain K'_n from the modified problem
+   d. Update: α_n = α_{n-1} + (K'_n - 1.0) / Λ_prompt
+   e. If |K'_n - 1.0| < tolerance: converged
+3. Report converged α
 ```
 
 However, this simple iteration can converge slowly or oscillate. OpenMC implements an **adaptive convergence strategy** combining multiple acceleration techniques from numerical analysis.
@@ -431,8 +459,34 @@ For oscillating sequences, under-relaxation with ω < 1 reduces the effective Li
 
 **Implementation:** Relaxation factor adapts dynamically:
 - Start: ω = 1.0 (no damping)
-- Oscillation detected: ω ← max(0.5ω, 0.1)
+- Oscillation detected: ω ← max(0.5ω, ω_min)
 - Smooth convergence: ω ← min(1.2ω, 1.0)
+
+**Generation-Time Scaling:** The minimum relaxation factor ω_min scales with prompt generation time to handle fast systems:
+
+```
+λ_ref = 100 μs (thermal reference)
+λ_scale = min(1.0, Λ_prompt / λ_ref)
+ω_min = max(0.01 × λ_scale, 0.001)
+```
+
+**Rationale for Fast Systems:**
+
+For systems with very small generation times (Λ << 1 μs), the update formula creates huge alpha changes:
+
+```
+Δα = (K' - 1.0) / Λ
+```
+
+For a fast system like Godiva (Λ ≈ 5.66 ns) with K' = 1.01:
+```
+Δα = 0.01 / 5.66e-9 ≈ 1.77e6 1/s per iteration!
+```
+
+This overwhelms standard damping. Generation-time scaling provides:
+- **Fast systems (Λ < 1 ns):** ω_min ≈ 0.001 (1000× damping)
+- **Intermediate (Λ ≈ 1 μs):** ω_min ≈ 0.01 (100× damping)
+- **Thermal systems (Λ > 100 μs):** ω_min = 0.1 (standard damping)
 
 #### 3. Aitken's Δ² Acceleration
 

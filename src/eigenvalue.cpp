@@ -1097,6 +1097,28 @@ void run_alpha_iterations()
   double k_prev = 0.0;               // Previous K' value
   bool use_aitken = false;           // Flag to enable Aitken acceleration
 
+  // Generation-time-scaled damping: For fast systems (small Λ), use more
+  // aggressive damping to prevent huge alpha updates. Scale by comparing
+  // prompt generation time to a reference thermal system (~100 μs).
+  // Fast systems (Λ < 1 μs) get much stronger damping.
+  double lambda_ref = 1.0e-4;  // 100 microseconds reference
+  double lambda_scale = std::min(1.0, simulation::prompt_gen_time / lambda_ref);
+  double min_relaxation = 0.01 * lambda_scale;  // Minimum damping scales with Λ
+  min_relaxation = std::max(min_relaxation, 0.001);  // Floor at 0.001
+
+  // For very fast systems, start with more conservative relaxation
+  if (simulation::prompt_gen_time < 1.0e-6) {  // < 1 microsecond
+    relaxation_factor = 0.1 * lambda_scale;
+  }
+
+  // Skip iteration loop if system is far from critical
+  if (skip_iteration) {
+    simulation::alpha_static = simulation::alpha_previous;
+    simulation::alpha_static_std = std::numeric_limits<double>::quiet_NaN();
+    simulation::alpha_iteration = 0;
+    return;
+  }
+
   for (simulation::alpha_iteration = 1;
        simulation::alpha_iteration <= settings::max_alpha_iterations;
        ++simulation::alpha_iteration) {
@@ -1137,13 +1159,16 @@ void run_alpha_iterations()
 
       if (residual_current * residual_previous < 0.0) {
         // Oscillation detected: apply under-relaxation
-        relaxation_factor = std::max(0.5 * relaxation_factor, 0.1);
+        // Use generation-time-scaled minimum instead of fixed 0.1
+        relaxation_factor = std::max(0.5 * relaxation_factor, min_relaxation);
         use_aitken = false;  // Don't use Aitken when oscillating
         method = "Damped";
       } else if (std::abs(residual_current) < std::abs(residual_previous)) {
         // Monotonic convergence: try Aitken acceleration
         use_aitken = true;
-        relaxation_factor = std::min(1.2 * relaxation_factor, 1.0);
+        // Don't let relaxation grow too fast for fast systems
+        double max_growth = std::min(1.2, 1.0 + lambda_scale);
+        relaxation_factor = std::min(max_growth * relaxation_factor, 1.0);
       }
 
       // Apply Aitken's delta-squared acceleration for smooth convergence

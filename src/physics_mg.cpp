@@ -102,13 +102,7 @@ void create_fission_sites(Particle& p)
   double weight = settings::ufs_on ? ufs_get_weight(p) : 1.0;
 
   // Determine the expected number of neutrons produced
-  // Apply a floor to keff to prevent excessive splitting in deeply subcritical
-  // systems. For very low keff (e.g., 0.01), dividing by keff would create
-  // hundreds of fission sites per event, overflowing the fission bank. A floor
-  // of 0.5 limits splitting to at most 2× the normal fission rate, which is
-  // reasonable for eigenvalue calculations while preventing numerical issues.
-  double keff_for_splitting = std::max(simulation::keff, 0.5);
-  double nu_t = p.wgt() / keff_for_splitting * weight * p.macro_xs().nu_fission /
+  double nu_t = p.wgt() / simulation::keff * weight * p.macro_xs().nu_fission /
                 p.macro_xs().total;
 
   // Sample the number of neutrons produced

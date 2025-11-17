@@ -630,7 +630,7 @@ class Chain:
 
         n = len(self)
 
-        # we accumulate indices and value entries for everything and create the matrix 
+        # we accumulate indices and value entries for everything and create the matrix
         # in one step at the end to avoid expensive index checks scipy otherwise does.
         rows, cols, vals = [], [], []
         def setval(i, j, val):
@@ -716,7 +716,7 @@ class Chain:
         return sp.csc_matrix((vals, (rows, cols)), shape=(n, n))
 
     def add_redox_term(self, matrix, buffer, oxidation_states):
-        """Adds a redox term to the depletion matrix from data contained in
+        r"""Adds a redox term to the depletion matrix from data contained in
         the matrix itself and a few user-inputs.
 
         The redox term to add to the buffer nuclide :math:`N_j` can be written

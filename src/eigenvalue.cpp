@@ -1119,8 +1119,10 @@ void run_alpha_iterations()
     alpha_values.push_back(simulation::alpha_previous);
     k_prime_values.push_back(k_prime);
 
-    // Compute the alpha update: Δα = (K' - 1) / Λ_prompt
-    double delta_alpha = (k_prime - 1.0) / simulation::prompt_gen_time;
+    // Compute the alpha update: Δα = (1 - K') / Λ_prompt
+    // If K' < 1: need less absorption, reduce |α| (make α less negative)
+    // If K' > 1: need more absorption, increase |α| (make α more negative)
+    double delta_alpha = (1.0 - k_prime) / simulation::prompt_gen_time;
 
     // Oscillation detection and adaptive damping
     if (simulation::alpha_iteration >= 2) {

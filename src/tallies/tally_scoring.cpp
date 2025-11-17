@@ -955,7 +955,7 @@ void score_general_ce_nonanalog(Particle& p, int i_tally, int start_index,
       }
       break;
 
-    case SCORE_IFP_BETA_NUM:
+    case SCORE_IFP_BETA_NUM: // Comment to locate easily the part to be modified
       if (settings::ifp_on) {
         if ((p.type() == Type::neutron) && (p.fission())) {
           if (is_beta_effective_or_both()) {

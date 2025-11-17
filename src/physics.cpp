@@ -136,10 +136,6 @@ void sample_neutron_reaction(Particle& p)
         p.macro_xs().absorption -= sigma_alpha;
       }
     }
-  } else if (sigma_alpha > 0.0) {
-    // Material reaction without pseudo-absorption - restore normal XS
-    p.macro_xs().total -= sigma_alpha;
-    p.macro_xs().absorption -= sigma_alpha;
   }
 
   int i_nuclide = sample_nuclide(p);

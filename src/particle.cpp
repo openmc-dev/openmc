@@ -234,7 +234,15 @@ void Particle::event_calculate_xs()
     macro_xs().nu_fission = 0.0;
   }
 
-  // Alpha eigenvalue calculation uses weight-based method (no XS modification)
+  // Alpha eigenvalue: add pseudo-absorption cross section
+  if (settings::calculate_alpha && simulation::alpha_iteration > 0) {
+    double velocity = this->speed();
+    if (velocity > 0.0) {
+      double sigma_alpha = simulation::alpha_previous / velocity;
+      macro_xs().total += sigma_alpha;
+      macro_xs().absorption += sigma_alpha;
+    }
+  }
 }
 
 void Particle::event_advance()
@@ -265,13 +273,6 @@ void Particle::event_advance()
   double dt = distance / speed;
   this->time() += dt;
   this->lifetime() += dt;
-
-  // Alpha eigenvalue: apply time-based weight adjustment
-  // For N(t) = N₀ * exp(α*t), weight evolves as w → w * exp(α*Δt)
-  if (settings::calculate_alpha && simulation::alpha_iteration > 0) {
-    double weight_factor = std::exp(simulation::alpha_previous * dt);
-    this->wgt() *= weight_factor;
-  }
 
   // Score timed track-length tallies
   if (!model::active_timed_tracklength_tallies.empty()) {

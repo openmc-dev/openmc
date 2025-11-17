@@ -1091,6 +1091,7 @@ void run_alpha_iterations()
   double k_prime = 0.0;
   vector<double> alpha_values;
   vector<double> k_prime_values;
+  std::string convergence_type = "None";
 
   // Adaptive convergence parameters
   double relaxation_factor = 1.0;  // Start with no damping
@@ -1124,7 +1125,95 @@ void run_alpha_iterations()
     alpha_values.push_back(simulation::alpha_previous);
     k_prime_values.push_back(k_prime);
 
+    // ========================================================================
+    // MULTI-TIER ADAPTIVE CONVERGENCE DETECTION
+    // ========================================================================
+    // Check multiple convergence criteria to handle all system types without
+    // hard-coded thresholds. This enables convergence for near-critical,
+    // deeply subcritical, and high-noise systems.
+
+    bool converged = false;
+    int n_values = alpha_values.size();
+
+    // TIER 1: Tight convergence (traditional criterion)
+    // Works well for near-critical systems with good statistics
     if (k_error < settings::alpha_tolerance) {
+      converged = true;
+      convergence_type = "Tight";
+    }
+
+    // TIER 2: Stagnation detection (alpha not changing)
+    // Detects when iteration has reached practical convergence limit
+    // Uses last 5 iterations to check if alpha has stabilized
+    if (!converged && n_values >= 5) {
+      // Compute statistics on last 5 alpha values
+      int lookback = std::min(5, n_values);
+      double alpha_sum = 0.0;
+      double alpha_min = std::numeric_limits<double>::infinity();
+      double alpha_max = -std::numeric_limits<double>::infinity();
+
+      for (int i = n_values - lookback; i < n_values; ++i) {
+        alpha_sum += alpha_values[i];
+        alpha_min = std::min(alpha_min, alpha_values[i]);
+        alpha_max = std::max(alpha_max, alpha_values[i]);
+      }
+      double alpha_mean = alpha_sum / lookback;
+
+      // Check relative change (range / mean)
+      double alpha_range = alpha_max - alpha_min;
+      double relative_variation = std::abs(alpha_range / alpha_mean);
+
+      // If alpha varying by less than 0.01% over last 5 iterations, converged
+      if (relative_variation < 1.0e-4) {
+        converged = true;
+        convergence_type = "Stagnation";
+      }
+    }
+
+    // TIER 3: Statistical convergence (Monte Carlo noise dominates)
+    // Recognizes when K' fluctuations are dominated by statistical noise
+    // but alpha eigenvalue has converged
+    if (!converged && n_values >= 5) {
+      // Compute statistics on last 5 K' and alpha values
+      int lookback = std::min(5, n_values);
+      double k_sum = 0.0;
+      double alpha_sum = 0.0;
+
+      for (int i = n_values - lookback; i < n_values; ++i) {
+        k_sum += k_prime_values[i];
+        alpha_sum += alpha_values[i];
+      }
+      double k_mean = k_sum / lookback;
+      double alpha_mean = alpha_sum / lookback;
+
+      // Compute standard deviations
+      double k_var_sum = 0.0;
+      double alpha_var_sum = 0.0;
+      for (int i = n_values - lookback; i < n_values; ++i) {
+        double k_diff = k_prime_values[i] - k_mean;
+        double alpha_diff = alpha_values[i] - alpha_mean;
+        k_var_sum += k_diff * k_diff;
+        alpha_var_sum += alpha_diff * alpha_diff;
+      }
+
+      double k_std = std::sqrt(k_var_sum / (lookback - 1));
+      double alpha_std = std::sqrt(alpha_var_sum / (lookback - 1));
+
+      double k_residual_mean = std::abs(k_mean - 1.0);
+
+      // Check if Monte Carlo noise in K' exceeds the residual
+      // AND alpha coefficient of variation is small
+      if (k_std > 0.5 * k_residual_mean) {
+        double alpha_cov = std::abs(alpha_std / alpha_mean);
+        // If alpha varying by less than 0.1%, converged
+        if (alpha_cov < 1.0e-3) {
+          converged = true;
+          convergence_type = "Statistical";
+        }
+      }
+    }
+
+    if (converged) {
       // Print final iteration before convergence
       if (mpi::master) {
         fmt::print(" {:>9d}  {: >12.5e}  {:>9.5f}  {:>9.5e}\n",
@@ -1264,7 +1353,8 @@ void run_alpha_iterations()
   if (mpi::master) {
     fmt::print("\n");
     if (simulation::alpha_converged) {
-      fmt::print(" Converged after {} iterations\n", simulation::alpha_iteration);
+      fmt::print(" Converged after {} iterations ({})\n",
+        simulation::alpha_iteration, convergence_type);
     } else {
       fmt::print(" Maximum iterations ({}) reached without convergence\n",
         settings::max_alpha_iterations);

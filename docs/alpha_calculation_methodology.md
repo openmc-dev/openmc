@@ -387,22 +387,22 @@ Example: If k_prompt = 0.993 and Λ = 5.66 µs:
 
 ## COG Static Method Implementation
 
-OpenMC implements the true COG Static method for alpha eigenvalue calculation through iterative refinement with **pseudo-absorption cross sections**. During each alpha iteration, the method adds pseudo-absorption σ_α = |α|/v to the total and absorption cross sections, modifying the transport physics to find α such that K'(α) = 1.0.
+OpenMC implements the true COG Static method for alpha eigenvalue calculation through iterative refinement with **pseudo-absorption cross sections**. During each alpha iteration, the method adds pseudo-absorption σ_α = α/v to the total and absorption cross sections, modifying the transport physics to find α such that K'(α) = 1.0.
 
 ### Pseudo-Absorption Cross Section
 
 During alpha iterations (when `alpha_iteration > 0`), the following modification is applied to all materials:
 
 ```cpp
-σ_α = |α| / v
+σ_α = α / v
 σ_total → σ_total + σ_α
 σ_absorption → σ_absorption + σ_α
 ```
 
-where v is the neutron speed. This adds an energy-dependent absorption term that increases removal for high-energy (fast) neutrons and decreases for low-energy (thermal) neutrons, naturally balancing the neutron population.
+where v is the neutron speed. For supercritical systems (α > 0), this adds energy-dependent pseudo-absorption. For subcritical systems (α < 0), this adds negative cross sections (pseudo-production), which effectively reduces removal and increases the neutron population to drive K' toward 1.0.
 
 **Key Benefits:**
-- Eliminates excessive particle splitting in subcritical systems
+- Uses physically meaningful signed cross sections (negative for subcritical, positive for supercritical)
 - Provides physical feedback through modified eigenvalue K'(α)
 - Converges to the unique α where K'(α) = 1.0
 
@@ -413,7 +413,7 @@ The basic iteration is:
 ```
 1. Initialize: α₀ = (k_prompt - 1) / Λ_prompt
 2. For iteration n = 1 to max_iterations:
-   a. Add pseudo-absorption: σ_α = |α_{n-1}| / v
+   a. Add pseudo-absorption: σ_α = α_{n-1} / v
    b. Run eigenvalue batch with modified cross sections
    c. Obtain K'_n from the modified problem
    d. Update: α_n = α_{n-1} + (K'_n - 1.0) / Λ_prompt

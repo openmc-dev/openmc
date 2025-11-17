@@ -98,7 +98,7 @@ void sample_neutron_reaction(Particle& p)
   if (settings::calculate_alpha && simulation::alpha_iteration > 0) {
     double velocity = p.speed();
     if (velocity > 0.0) {
-      sigma_alpha = std::abs(simulation::alpha_previous / velocity);
+      sigma_alpha = simulation::alpha_previous / velocity;
 
       // Cross sections already include pseudo-absorption from transport phase
       // to properly account for its effect on mean free path and K'.
@@ -108,27 +108,15 @@ void sample_neutron_reaction(Particle& p)
       // Sample which reaction occurred using the modified total cross section
       double cutoff = prn(p.current_seed()) * p.macro_xs().total;
 
-      // If the sampled reaction is pseudo-absorption
+      // If the sampled reaction is pseudo-absorption (only for alpha > 0)
       if (cutoff >= material_xs_total) {
-        // For subcritical systems (alpha < 0), use implicit capture with
-        // weight adjustment to avoid population collapse and enable K' → 1.0
-        if (simulation::alpha_previous < 0.0) {
-          // Adjust weight to account for the pseudo-absorption that would have
-          // killed the particle. This compensates for the artificial absorption
-          // and allows K' to approach 1.0 for deeply subcritical systems.
-          p.wgt() *= (material_xs_total + sigma_alpha) / material_xs_total;
-
-          // Restore cross sections and continue as material reaction
-          p.macro_xs().total -= sigma_alpha;
-          p.macro_xs().absorption -= sigma_alpha;
-          // Fall through to sample material reaction below
-        } else {
-          // For supercritical systems (alpha > 0), use analog capture
-          p.wgt() = 0.0;
-          p.macro_xs().total -= sigma_alpha;
-          p.macro_xs().absorption -= sigma_alpha;
-          return;
-        }
+        // For supercritical systems (alpha > 0), use analog capture
+        // For subcritical systems (alpha < 0), this branch never executes
+        // because sigma_alpha < 0 makes material_xs_total > total
+        p.wgt() = 0.0;
+        p.macro_xs().total -= sigma_alpha;
+        p.macro_xs().absorption -= sigma_alpha;
+        return;
       } else {
         // Material reaction sampled - temporarily remove pseudo-absorption
         // for correct nuclide sampling
@@ -141,7 +129,7 @@ void sample_neutron_reaction(Particle& p)
   int i_nuclide = sample_nuclide(p);
 
   // Restore pseudo-absorption cross sections for continued transport
-  if (sigma_alpha > 0.0) {
+  if (sigma_alpha != 0.0) {
     p.macro_xs().total += sigma_alpha;
     p.macro_xs().absorption += sigma_alpha;
   }

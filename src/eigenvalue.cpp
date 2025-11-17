@@ -1087,21 +1087,14 @@ void run_alpha_iterations()
     fmt::print(" =========  ============  =========  =========\n");
   }
 
-  simulation::alpha_converged = false;
   double k_prime = 0.0;
   vector<double> alpha_values;
-  vector<double> k_prime_values;
 
-  // Adaptive convergence parameters
+  // Adaptive step sizing parameters
   double relaxation_factor = 1.0;  // Start with full step
-  double k_prev = 0.0;               // Previous K' value
-  bool use_aitken = false;           // Flag to enable Aitken acceleration
-
-  // Adaptive step sizing based on distance from target
-  // When K' is far from 1.0, use aggressive steps to converge quickly
-  // When K' is near 1.0, use conservative steps for stability
-  double min_relaxation = 0.1;  // Minimum relaxation factor
-  double max_relaxation = 5.0;  // Maximum relaxation factor (allow overshooting)
+  double k_prev = 0.0;               // Previous K' value for oscillation detection
+  double min_relaxation = 0.1;      // Minimum relaxation factor
+  double max_relaxation = 5.0;      // Maximum relaxation factor
 
   for (simulation::alpha_iteration = 1;
        simulation::alpha_iteration <= settings::max_alpha_iterations;
@@ -1114,161 +1107,95 @@ void run_alpha_iterations()
     double k_error = std::abs(k_prime - 1.0);
 
     alpha_values.push_back(simulation::alpha_previous);
-    k_prime_values.push_back(k_prime);
 
-    // Compute the basic update
+    // Compute the alpha update: Δα = (K' - 1) / Λ_prompt
     double delta_alpha = (k_prime - 1.0) / simulation::prompt_gen_time;
 
     // ========================================================================
-    // ADAPTIVE CONVERGENCE STRATEGY WITH AGGRESSIVE STEP SIZING
+    // ADAPTIVE STEP SIZING
     // ========================================================================
-    // Strategy: Scale relaxation factor based on how far K' is from 1.0
-    // - Far from target (|K'-1| > 0.1): Use aggressive steps (factor 2-5)
-    // - Medium distance (0.01 < |K'-1| < 0.1): Use moderate steps (factor 1-2)
-    // - Near target (|K'-1| < 0.01): Use conservative steps (factor 0.5-1)
+    // Scale relaxation factor based on distance from target (K' = 1.0)
+    // Far from target: aggressive steps (2-5x)
+    // Medium distance: moderate steps (1-2x)
+    // Near target: conservative steps (≤1x)
 
-    std::string method = "Standard";
-
-    // Compute distance-based relaxation factor
-    // This scales the step size based on how far we are from K'=1.0
     double distance_factor = 1.0;
     if (k_error > 0.1) {
-      // Very far from target - use aggressive steps
       distance_factor = std::min(5.0, 1.0 + 20.0 * k_error);
     } else if (k_error > 0.01) {
-      // Medium distance - use moderate steps
       distance_factor = 1.0 + 5.0 * k_error;
-    } else {
-      // Close to target - use standard or conservative steps
-      distance_factor = 1.0;
     }
 
     if (simulation::alpha_iteration >= 2) {
-      // Detect oscillation: K' changes sign relative to 1.0
       double residual_current = k_prime - 1.0;
       double residual_previous = k_prev - 1.0;
 
       if (residual_current * residual_previous < 0.0) {
-        // Oscillation detected: apply under-relaxation
-        // But don't go too conservative if we're still far from target
+        // Oscillation detected: apply damping
         double damping = (k_error > 0.05) ? 0.7 : 0.5;
         relaxation_factor = std::max(damping * relaxation_factor, min_relaxation);
-        use_aitken = false;  // Don't use Aitken when oscillating
-        method = "Damped";
       } else if (std::abs(residual_current) < std::abs(residual_previous)) {
-        // Monotonic convergence: increase relaxation factor
-        use_aitken = true;
-        // Apply distance-based scaling
+        // Improving: increase relaxation with distance-based scaling
         relaxation_factor = std::min(1.3 * relaxation_factor * distance_factor, max_relaxation);
       } else {
-        // Not improving but not oscillating - apply distance-based scaling
+        // Not improving: apply distance-based scaling
         relaxation_factor = std::min(relaxation_factor * distance_factor, max_relaxation);
       }
     } else {
-      // First iteration: apply aggressive distance-based scaling
+      // First iteration: use aggressive distance-based scaling
       relaxation_factor = distance_factor;
     }
 
-    // Apply Aitken's delta-squared acceleration for smooth convergence
-    if (use_aitken && simulation::alpha_iteration >= 4) {
-      // Aitken's method: extrapolate based on the sequence pattern
-      // alpha_n+1 = alpha_n - (delta_n)^2 / (delta_n+1 - delta_n)
-      // where delta_n = alpha_n - alpha_n-1
-
-      int n = alpha_values.size();
-      double alpha_n = alpha_values[n-1];
-      double alpha_n_minus_1 = alpha_values[n-2];
-      double alpha_n_minus_2 = alpha_values[n-3];
-
-      double delta_n = alpha_n - alpha_n_minus_1;
-      double delta_n_minus_1 = alpha_n_minus_1 - alpha_n_minus_2;
-      double delta_delta = delta_n - delta_n_minus_1;
-
-      // Only apply Aitken if denominator is not too small
-      if (std::abs(delta_delta) > 1.0e-15) {
-        double aitken_correction = -(delta_n * delta_n) / delta_delta;
-
-        // Limit the Aitken correction to avoid instability
-        double max_correction = 2.0 * std::abs(delta_alpha);
-        if (std::abs(aitken_correction) < max_correction) {
-          // Blend Aitken correction with standard update
-          delta_alpha = 0.7 * aitken_correction + 0.3 * delta_alpha;
-          method = "Aitken";
-        }
-      }
-    }
-
-    // Print current iteration
+    // Print iteration
     if (mpi::master) {
       fmt::print(" {:>9d}  {: >12.5e}  {:>9.5f}  {:>9.5e}\n",
         simulation::alpha_iteration, simulation::alpha_previous, k_prime, k_error);
     }
 
-    // Apply relaxation factor to the update
+    // Update alpha with relaxation
     simulation::alpha_previous += relaxation_factor * delta_alpha;
 
-    // Store values for next iteration
+    // Store K' for next iteration's oscillation detection
     k_prev = k_prime;
   }
 
-  // Use the final alpha value from the iterations.
-  // The alpha eigenvalue calculation is an iterative solver seeking alpha such
-  // that K'(alpha) = 1.0.
+  // Set final alpha value
+  simulation::alpha_static = simulation::alpha_previous;
+
+  // Calculate uncertainty from last 3 iterations
   int n_values = alpha_values.size();
-
-  if (n_values > 0) {
-    // Use the last updated value with relaxation
-    // simulation::alpha_previous already contains the relaxed update from
-    // the final iteration, so use it directly
-    simulation::alpha_static = simulation::alpha_previous;
-
-    // For uncertainty, calculate standard deviation from the last few iterations
-    // if we have multiple iterations, otherwise leave as NaN
-    if (n_values > 1) {
-      // Use last 3 iterations or all if fewer available for uncertainty estimate
-      int n_for_std = std::min(3, n_values);
-      double alpha_mean = 0.0;
-
-      for (int i = n_values - n_for_std; i < n_values; ++i) {
-        alpha_mean += alpha_values[i];
-      }
-      alpha_mean /= n_for_std;
-
-      double sum_sq = 0.0;
-      for (int i = n_values - n_for_std; i < n_values; ++i) {
-        double diff = alpha_values[i] - alpha_mean;
-        sum_sq += diff * diff;
-      }
-
-      if (n_for_std > 1) {
-        simulation::alpha_static_std = std::sqrt(sum_sq / (n_for_std - 1));
-      } else {
-        simulation::alpha_static_std = std::numeric_limits<double>::quiet_NaN();
-      }
-    } else {
-      simulation::alpha_static_std = std::numeric_limits<double>::quiet_NaN();
+  if (n_values > 1) {
+    int n_for_std = std::min(3, n_values);
+    double alpha_mean = 0.0;
+    for (int i = n_values - n_for_std; i < n_values; ++i) {
+      alpha_mean += alpha_values[i];
     }
+    alpha_mean /= n_for_std;
+
+    double sum_sq = 0.0;
+    for (int i = n_values - n_for_std; i < n_values; ++i) {
+      double diff = alpha_values[i] - alpha_mean;
+      sum_sq += diff * diff;
+    }
+    simulation::alpha_static_std = (n_for_std > 1)
+      ? std::sqrt(sum_sq / (n_for_std - 1))
+      : std::numeric_limits<double>::quiet_NaN();
+  } else {
+    simulation::alpha_static_std = std::numeric_limits<double>::quiet_NaN();
   }
 
-  // Print final Alpha (COG Static) result
+  // Print results
   if (mpi::master) {
-    fmt::print("\n");
-    fmt::print(" Completed {} iterations\n", settings::max_alpha_iterations);
-
-    // Print final Alpha (COG Static) eigenvalue
+    fmt::print("\n Completed {} iterations\n", settings::max_alpha_iterations);
     if (!std::isnan(simulation::alpha_static)) {
-      fmt::print("\n");
+      fmt::print("\n Alpha (COG Static) = {:.5e}", simulation::alpha_static);
       if (!std::isnan(simulation::alpha_static_std)) {
-        fmt::print(" Alpha (COG Static) = {:.5e} +/- {:.5e} 1/seconds\n",
-          simulation::alpha_static, simulation::alpha_static_std);
-      } else {
-        fmt::print(" Alpha (COG Static) = {:.5e} 1/seconds\n",
-          simulation::alpha_static);
+        fmt::print(" +/- {:.5e}", simulation::alpha_static_std);
       }
+      fmt::print(" 1/seconds\n");
     }
   }
 
-  // Reset iteration counter to indicate we're done with alpha iterations
   simulation::alpha_iteration = 0;
 }
 

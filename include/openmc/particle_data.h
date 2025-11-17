@@ -58,6 +58,25 @@ struct SourceSite {
   int64_t progeny_id;
 };
 
+struct CollisionTrackSite {
+  Position r;
+  Direction u;
+  double E;
+  double dE;
+  double time {0.0};
+  double wgt {1.0};
+  int event_mt {0};
+  int delayed_group {0};
+  int cell_id {0};
+  int nuclide_id;
+  int material_id {0};
+  int universe_id {0};
+  int n_collision {0};
+  ParticleType particle;
+  int64_t parent_id;
+  int64_t progeny_id;
+};
+
 //! State of a particle used for particle track files
 struct TrackState {
   Position r;           //!< Position in [cm]

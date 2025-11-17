@@ -8,6 +8,7 @@
 #include "openmc/bank.h"
 #include "openmc/capi.h"
 #include "openmc/cell.h"
+#include "openmc/collision_track.h"
 #include "openmc/constants.h"
 #include "openmc/dagmc.h"
 #include "openmc/error.h"
@@ -128,6 +129,9 @@ void Particle::from_source(const SourceSite* src)
   
   initialize_cumulative_sensitivities();
   lifetime() = 0.0;
+#ifdef OPENMC_DAGMC_ENABLED
+  history().reset();
+#endif
 
   // Copy attributes from source bank site
   type() = src->particle;
@@ -356,6 +360,11 @@ void Particle::event_collide()
     collision(*this);
   } else {
     collision_mg(*this);
+  }
+
+  // Collision track feature to recording particle interaction
+  if (settings::collision_track) {
+    collision_track_record(*this);
   }
 
   // Score collision estimator tallies -- this is done after a collision

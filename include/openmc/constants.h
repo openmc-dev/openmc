@@ -34,6 +34,7 @@ constexpr array<int, 2> VERSION_VOXEL {2, 0};
 constexpr array<int, 2> VERSION_MGXS_LIBRARY {1, 0};
 constexpr array<int, 2> VERSION_PROPERTIES {1, 1};
 constexpr array<int, 2> VERSION_WEIGHT_WINDOWS {1, 0};
+constexpr array<int, 2> VERSION_COLLISION_TRACK {1, 0};
 
 // ============================================================================
 // ADJUSTABLE PARAMETERS
@@ -291,7 +292,7 @@ enum class MgxsType {
 // ============================================================================
 // TALLY-RELATED CONSTANTS
 
-enum class TallyResult { VALUE, SUM, SUM_SQ, SIZE };
+enum class TallyResult { VALUE, SUM, SUM_SQ, SUM_THIRD, SUM_FOURTH };
 
 enum class SensitivityTallyResult { VALUE, SUM, SUM_SQ, PREVIOUS_VALUE };
 

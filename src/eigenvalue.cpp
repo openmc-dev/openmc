@@ -1212,22 +1212,25 @@ void run_alpha_iterations()
     }
   }
 
-  // Use the final (converged) alpha value from the iterations.
+  // Use the final alpha value from the iterations.
   // The alpha eigenvalue calculation is an iterative solver seeking alpha such
-  // that K'(alpha) = 1.0. The converged value is the solution, not the mean of
-  // the iteration path. We apply a final refinement correction based on the
-  // residual (k_prime - 1.0).
+  // that K'(alpha) = 1.0.
   int n_values = alpha_values.size();
 
   if (n_values > 0) {
-    // Get the last alpha value used in the iterations
-    double alpha_final = alpha_values.back();
-
-    // Apply final refinement correction using the last k_prime
-    double final_correction = (k_prime - 1.0) / simulation::prompt_gen_time;
-    alpha_final += final_correction;
-
-    simulation::alpha_static = alpha_final;
+    if (simulation::alpha_converged) {
+      // Converged: Apply final refinement to the converged value
+      // Since we broke before the update step, apply the correction now
+      double alpha_final = alpha_values.back();
+      double final_correction = (k_prime - 1.0) / simulation::prompt_gen_time;
+      alpha_final += final_correction;
+      simulation::alpha_static = alpha_final;
+    } else {
+      // Max iterations reached: use the last updated value with relaxation
+      // simulation::alpha_previous already contains the relaxed update from
+      // the final iteration, so use it directly
+      simulation::alpha_static = simulation::alpha_previous;
+    }
 
     // For uncertainty, calculate standard deviation from the last few iterations
     // if we have multiple iterations, otherwise leave as NaN

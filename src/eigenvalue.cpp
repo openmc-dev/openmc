@@ -1090,11 +1090,9 @@ void run_alpha_iterations()
   double k_prime = 0.0;
   vector<double> alpha_values;
 
-  // Adaptive step sizing parameters
-  double relaxation_factor = 1.0;  // Start with full step
-  double k_prev = 0.0;               // Previous K' value for oscillation detection
-  double min_relaxation = 0.1;      // Minimum relaxation factor
-  double max_relaxation = 5.0;      // Maximum relaxation factor
+  // Conservative step sizing parameters
+  double relaxation_factor = 0.3;  // Conservative default
+  double k_prev = 0.0;              // Previous K' for oscillation detection
 
   for (simulation::alpha_iteration = 1;
        simulation::alpha_iteration <= settings::max_alpha_iterations;
@@ -1111,39 +1109,20 @@ void run_alpha_iterations()
     // Compute the alpha update: Δα = (K' - 1) / Λ_prompt
     double delta_alpha = (k_prime - 1.0) / simulation::prompt_gen_time;
 
-    // ========================================================================
-    // ADAPTIVE STEP SIZING
-    // ========================================================================
-    // Scale relaxation factor based on distance from target (K' = 1.0)
-    // Far from target: aggressive steps (2-5x)
-    // Medium distance: moderate steps (1-2x)
-    // Near target: conservative steps (≤1x)
-
-    double distance_factor = 1.0;
-    if (k_error > 0.1) {
-      distance_factor = std::min(5.0, 1.0 + 20.0 * k_error);
-    } else if (k_error > 0.01) {
-      distance_factor = 1.0 + 5.0 * k_error;
-    }
-
+    // Oscillation detection and damping
     if (simulation::alpha_iteration >= 2) {
       double residual_current = k_prime - 1.0;
       double residual_previous = k_prev - 1.0;
 
       if (residual_current * residual_previous < 0.0) {
-        // Oscillation detected: apply damping
-        double damping = (k_error > 0.05) ? 0.7 : 0.5;
-        relaxation_factor = std::max(damping * relaxation_factor, min_relaxation);
+        // Oscillating: reduce step size
+        relaxation_factor *= 0.5;
+        if (relaxation_factor < 0.05) relaxation_factor = 0.05;
       } else if (std::abs(residual_current) < std::abs(residual_previous)) {
-        // Improving: increase relaxation with distance-based scaling
-        relaxation_factor = std::min(1.3 * relaxation_factor * distance_factor, max_relaxation);
-      } else {
-        // Not improving: apply distance-based scaling
-        relaxation_factor = std::min(relaxation_factor * distance_factor, max_relaxation);
+        // Improving: slightly increase step size
+        relaxation_factor *= 1.1;
+        if (relaxation_factor > 0.5) relaxation_factor = 0.5;
       }
-    } else {
-      // First iteration: use aggressive distance-based scaling
-      relaxation_factor = distance_factor;
     }
 
     // Print iteration

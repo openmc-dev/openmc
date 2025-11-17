@@ -93,21 +93,22 @@ void collision(Particle& p)
 void sample_neutron_reaction(Particle& p)
 {
   double sigma_alpha = 0.0;
+  double material_xs_total = p.macro_xs().total;
 
   if (settings::calculate_alpha && simulation::alpha_iteration > 0) {
     double velocity = p.speed();
     if (velocity > 0.0) {
       sigma_alpha = std::abs(simulation::alpha_previous / velocity);
 
-      // Add pseudo-absorption to cross sections
-      p.macro_xs().total += sigma_alpha;
-      p.macro_xs().absorption += sigma_alpha;
+      // Cross sections already include pseudo-absorption from transport phase
+      // to properly account for its effect on mean free path and K'.
+      // Calculate the original material cross section for reaction sampling.
+      material_xs_total = p.macro_xs().total - sigma_alpha;
 
-      // Sample reaction with modified cross sections
+      // Sample which reaction occurred using the modified total cross section
       double cutoff = prn(p.current_seed()) * p.macro_xs().total;
-      double material_xs_total = p.macro_xs().total - sigma_alpha;
 
-      // If pseudo-absorption reaction is sampled, kill the particle
+      // If the sampled reaction is pseudo-absorption, terminate the particle
       if (cutoff >= material_xs_total) {
         p.wgt() = 0.0;
         p.macro_xs().total -= sigma_alpha;
@@ -117,12 +118,19 @@ void sample_neutron_reaction(Particle& p)
     }
   }
 
-  int i_nuclide = sample_nuclide(p);
-
-  // Restore cross sections (remove pseudo-absorption) before continuing
+  // For material reactions, temporarily remove pseudo-absorption so that
+  // nuclide sampling uses the correct material cross sections
   if (sigma_alpha > 0.0) {
     p.macro_xs().total -= sigma_alpha;
     p.macro_xs().absorption -= sigma_alpha;
+  }
+
+  int i_nuclide = sample_nuclide(p);
+
+  // Restore pseudo-absorption cross sections for continued transport
+  if (sigma_alpha > 0.0) {
+    p.macro_xs().total += sigma_alpha;
+    p.macro_xs().absorption += sigma_alpha;
   }
 
   // Save which nuclide particle had collision with

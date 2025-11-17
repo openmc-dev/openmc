@@ -100,14 +100,15 @@ void sample_neutron_reaction(Particle& p)
     if (velocity > 0.0) {
       sigma_alpha = std::abs(simulation::alpha_previous / velocity);
 
-      // Particle cross sections include pseudo-absorption from transport phase.
-      // Extract original material cross section for reaction sampling.
+      // Cross sections already include pseudo-absorption from transport phase
+      // to properly account for its effect on mean free path and K'.
+      // Calculate the original material cross section for reaction sampling.
       material_xs_total = p.macro_xs().total - sigma_alpha;
 
-      // Sample reaction type from modified cross sections
+      // Sample which reaction occurred using the modified total cross section
       double cutoff = prn(p.current_seed()) * p.macro_xs().total;
 
-      // Pseudo-absorption sampled: kill particle
+      // If the sampled reaction is pseudo-absorption, terminate the particle
       if (cutoff >= material_xs_total) {
         p.wgt() = 0.0;
         p.macro_xs().total -= sigma_alpha;
@@ -117,7 +118,8 @@ void sample_neutron_reaction(Particle& p)
     }
   }
 
-  // Material reaction: temporarily remove pseudo-absorption for nuclide sampling
+  // For material reactions, temporarily remove pseudo-absorption so that
+  // nuclide sampling uses the correct material cross sections
   if (sigma_alpha > 0.0) {
     p.macro_xs().total -= sigma_alpha;
     p.macro_xs().absorption -= sigma_alpha;
@@ -125,7 +127,7 @@ void sample_neutron_reaction(Particle& p)
 
   int i_nuclide = sample_nuclide(p);
 
-  // Restore pseudo-absorption to cross sections
+  // Restore pseudo-absorption cross sections for continued transport
   if (sigma_alpha > 0.0) {
     p.macro_xs().total += sigma_alpha;
     p.macro_xs().absorption += sigma_alpha;

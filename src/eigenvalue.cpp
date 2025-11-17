@@ -1111,14 +1111,6 @@ void run_alpha_iterations()
     relaxation_factor = 0.1 * lambda_scale;
   }
 
-  // Skip iteration loop if system is far from critical
-  if (skip_iteration) {
-    simulation::alpha_static = simulation::alpha_previous;
-    simulation::alpha_static_std = std::numeric_limits<double>::quiet_NaN();
-    simulation::alpha_iteration = 0;
-    return;
-  }
-
   for (simulation::alpha_iteration = 1;
        simulation::alpha_iteration <= settings::max_alpha_iterations;
        ++simulation::alpha_iteration) {
